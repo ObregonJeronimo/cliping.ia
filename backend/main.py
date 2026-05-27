@@ -1,25 +1,36 @@
 import asyncio
 import json
+import sys
 import uuid
 from datetime import datetime
 from pathlib import Path
 
+# Fix para Windows: Playwright necesita ProactorEventLoop
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from agent import run_agent
+
+OUTPUTS_DIR = Path("outputs")
+OUTPUTS_DIR.mkdir(exist_ok=True)
 
 app = FastAPI(title="cliping.ia backend")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # en prod: tu dominio de Vercel
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# jobs en memoria (en prod: Redis o Firestore)
+# servir los videos generados
+app.mount("/outputs", StaticFiles(directory="outputs"), name="outputs")
+
 jobs: dict[str, dict] = {}
 
 class GenerateRequest(BaseModel):
@@ -52,14 +63,13 @@ async def generate(req: GenerateRequest):
         "error": None,
         "createdAt": datetime.utcnow().isoformat(),
     }
-    # lanzar tarea en background
     asyncio.create_task(process_job(job_id, req))
     return {"job_id": job_id}
 
 @app.get("/api/jobs/{job_id}")
 def get_job(job_id: str):
     if job_id not in jobs:
-        return {"error": "not found"}, 404
+        return {"error": "not found"}
     return jobs[job_id]
 
 @app.websocket("/ws/{job_id}")
@@ -98,4 +108,6 @@ async def process_job(job_id: str, req: GenerateRequest):
             "videoPath": str(video_path),
         })
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         jobs[job_id].update({"status": "error", "error": str(e)})
