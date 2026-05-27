@@ -17,21 +17,27 @@ const STEPS = [
   { key: 'export',   label: 'Ensamblando video final',   detail: 'Combinando audio, captions y logo' },
 ]
 
-const DURATIONS = [18, 25, 8, 20, 8, 6]
+const STEP_ORDER = STEPS.map(s => s.key)
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const WS_URL  = API_URL.replace('http', 'ws')
 
 export default function Home() {
-  const { profile } = useAuth()
+  const { user, profile } = useAuth()
   const [url, setUrl] = useState('')
   const [action, setAction] = useState('')
   const [format, setFormat] = useState('reel')
   const [style, setStyle] = useState('epic')
   const [voice, setVoice] = useState('female')
   const [logoFile, setLogoFile] = useState(null)
-  const [phase, setPhase] = useState('form')
+  const [phase, setPhase] = useState('form')   // form | progress | result | error
   const [stepStates, setStepStates] = useState({})
   const [progress, setProgress] = useState(0)
   const [errors, setErrors] = useState({})
+  const [videoPath, setVideoPath] = useState(null)
+  const [errorMsg, setErrorMsg] = useState('')
   const fileRef = useRef()
+  const wsRef = useRef(null)
 
   function validate() {
     const e = {}
@@ -40,35 +46,91 @@ export default function Home() {
     return e
   }
 
-  function handleGenerate() {
+  async function handleGenerate() {
     const e = validate()
     if (Object.keys(e).length) { setErrors(e); return }
     setErrors({})
     setPhase('progress')
     setStepStates({})
     setProgress(0)
-    simulateProgress()
+    setErrorMsg('')
+
+    try {
+      const res = await fetch(`${API_URL}/api/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url, action, format, style, voice,
+          userId: user?.uid || '',
+        }),
+      })
+
+      if (!res.ok) throw new Error('Error al conectar con el backend')
+      const { job_id } = await res.json()
+      connectWebSocket(job_id)
+
+    } catch (err) {
+      // backend no disponible: simulación para desarrollo
+      console.warn('Backend no disponible, modo simulación:', err.message)
+      simulateProgress()
+    }
   }
 
+  function connectWebSocket(job_id) {
+    const ws = new WebSocket(`${WS_URL}/ws/${job_id}`)
+    wsRef.current = ws
+
+    ws.onmessage = (event) => {
+      const job = JSON.parse(event.data)
+      setProgress(job.progress || 0)
+
+      if (job.step) {
+        const idx = STEP_ORDER.indexOf(job.step)
+        const newStates = {}
+        STEP_ORDER.forEach((k, i) => {
+          if (i < idx) newStates[k] = 'done'
+          else if (i === idx) newStates[k] = 'running'
+          else newStates[k] = 'idle'
+        })
+        setStepStates(newStates)
+      }
+
+      if (job.status === 'done') {
+        setStepStates(Object.fromEntries(STEP_ORDER.map(k => [k, 'done'])))
+        setProgress(100)
+        setVideoPath(job.videoPath)
+        setTimeout(() => setPhase('result'), 600)
+        ws.close()
+      } else if (job.status === 'error') {
+        setErrorMsg(job.error || 'Ocurrió un error')
+        setPhase('error')
+        ws.close()
+      }
+    }
+
+    ws.onerror = () => {
+      console.warn('WS error, fallback a simulación')
+      ws.close()
+      simulateProgress()
+    }
+  }
+
+  // simulación para cuando el backend no está corriendo
   function simulateProgress() {
+    const durations = [18, 25, 8, 20, 8, 6]
     let idx = 0
     const pctPerStep = 100 / STEPS.length
 
     function runStep() {
-      if (idx >= STEPS.length) {
-        setProgress(100)
-        setTimeout(() => setPhase('result'), 800)
-        return
-      }
+      if (idx >= STEPS.length) { setProgress(100); setTimeout(() => setPhase('result'), 800); return }
       const key = STEPS[idx].key
       setStepStates(prev => ({ ...prev, [key]: 'running' }))
-      const dur = DURATIONS[idx] * 1000
+      const dur = durations[idx] * 1000
       const startTime = Date.now()
       const startPct = idx * pctPerStep
 
       function tick() {
-        const elapsed = Date.now() - startTime
-        const frac = Math.min(elapsed / dur, 1)
+        const frac = Math.min((Date.now() - startTime) / dur, 1)
         setProgress(startPct + frac * pctPerStep)
         if (frac < 1) requestAnimationFrame(tick)
       }
@@ -84,11 +146,14 @@ export default function Home() {
   }
 
   function handleReset() {
+    wsRef.current?.close()
     setPhase('form')
     setStepStates({})
     setProgress(0)
     setUrl('')
     setAction('')
+    setVideoPath(null)
+    setErrorMsg('')
   }
 
   return (
@@ -107,25 +172,20 @@ export default function Home() {
         <div className={styles.card}>
           <div className={styles.field}>
             <label>URL del sitio</label>
-            <input
-              type="text"
-              value={url}
+            <input type="text" value={url}
               onChange={e => { setUrl(e.target.value); setErrors(p => ({...p, url: false})) }}
               placeholder="https://tu-tienda.com"
-              className={errors.url ? styles.inputErr : ''}
-            />
+              className={errors.url ? styles.inputErr : ''} />
             {errors.url && <span className={styles.errMsg}>Ingresá una URL</span>}
           </div>
 
           <div className={styles.field}>
             <label>¿Qué debe hacer el agente?</label>
-            <textarea
-              value={action}
+            <textarea value={action}
               onChange={e => { setAction(e.target.value); setErrors(p => ({...p, action: false})) }}
               rows={3}
               placeholder="Hacé un pedido de chocolate, registrate, navegá el catálogo..."
-              className={errors.action ? styles.inputErr : ''}
-            />
+              className={errors.action ? styles.inputErr : ''} />
             {errors.action && <span className={styles.errMsg}>Describí qué debe hacer el agente</span>}
           </div>
 
@@ -168,8 +228,7 @@ export default function Home() {
                 style={{ display: 'none' }} onChange={e => setLogoFile(e.target.files[0])} />
               {logoFile
                 ? <p className={styles.uploadDone}>✓ {logoFile.name}</p>
-                : <p className={styles.uploadText}>↑ Subir logo PNG o SVG — aparece animado al final</p>
-              }
+                : <p className={styles.uploadText}>↑ Subir logo PNG o SVG — aparece animado al final</p>}
             </div>
           </div>
 
@@ -214,11 +273,29 @@ export default function Home() {
             <button className={styles.btnSecondary} onClick={handleReset}>Nuevo video</button>
           </div>
           <div className={styles.videoPreview}>
-            <div className={styles.playBtn}><span className={styles.playTri} /></div>
+            {videoPath
+              ? <video src={`${API_URL}/outputs/${videoPath.split('/').pop()}`} controls style={{width:'100%',height:'100%',objectFit:'cover',borderRadius:8}} />
+              : <div className={styles.playBtn}><span className={styles.playTri} /></div>
+            }
           </div>
           <div className={styles.dlRow}>
-            <button className={styles.btnGenerate} style={{flex:1}}>↓ Descargar</button>
-            <button className={styles.btnSecondary}>↗ Compartir</button>
+            <button className={styles.btnGenerate} style={{flex:1}}
+              onClick={() => videoPath && window.open(`${API_URL}/outputs/${videoPath.split('/').pop()}`)}>
+              ↓ Descargar
+            </button>
+            <button className={styles.btnSecondary} onClick={handleReset}>↺ Nuevo</button>
+          </div>
+        </div>
+      )}
+
+      {phase === 'error' && (
+        <div className={styles.card}>
+          <div className={styles.errorBox}>
+            <div className={styles.errorTitle}>Ocurrió un error</div>
+            <div className={styles.errorDetail}>{errorMsg}</div>
+            <button className={styles.btnGenerate} style={{marginTop:16}} onClick={handleReset}>
+              Intentar de nuevo
+            </button>
           </div>
         </div>
       )}
