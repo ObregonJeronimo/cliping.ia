@@ -1,13 +1,8 @@
 import asyncio
 import json
-import sys
 import uuid
 from datetime import datetime
 from pathlib import Path
-
-# Fix para Windows: Playwright necesita ProactorEventLoop
-if sys.platform == "win32":
-    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -28,7 +23,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# servir los videos generados
 app.mount("/outputs", StaticFiles(directory="outputs"), name="outputs")
 
 jobs: dict[str, dict] = {}
