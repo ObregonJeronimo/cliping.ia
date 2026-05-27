@@ -3,19 +3,18 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // jobs: el usuario solo accede a sus propios jobs
     match /jobs/{jobId} {
-      allow create: if request.auth != null;
-      allow read, update: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null
+        && request.resource.data.userId == request.auth.uid;
+      allow read, update: if request.auth != null
+        && resource.data.userId == request.auth.uid;
       allow delete: if false;
     }
 
-    // users: cada usuario lee y escribe solo su propio documento
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // todo lo demas: bloqueado
     match /{document=**} {
       allow read, write: if false;
     }
