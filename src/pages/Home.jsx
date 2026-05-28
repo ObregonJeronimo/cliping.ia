@@ -98,7 +98,7 @@ export default function Home() {
       if (job.status === 'done') {
         setStepStates(Object.fromEntries(STEP_ORDER.map(k => [k, 'done'])))
         setProgress(100)
-        setVideoPath(job.videoPath)
+        setVideoPath(job.videoFilename || job.videoPath)
         setTimeout(() => setPhase('result'), 600)
         ws.close()
       } else if (job.status === 'error') {
@@ -274,13 +274,13 @@ export default function Home() {
           </div>
           <div className={styles.videoPreview}>
             {videoPath
-              ? <video src={`${API_URL}/outputs/${videoPath.split('/').pop()}`} controls style={{width:'100%',height:'100%',objectFit:'cover',borderRadius:8}} />
+              ? <video src={`${API_URL}/api/video/${videoPath?.includes('/') ? videoPath.split('/').pop() : videoPath}`} controls style={{width:'100%',height:'100%',objectFit:'cover',borderRadius:8}} />
               : <div className={styles.playBtn}><span className={styles.playTri} /></div>
             }
           </div>
           <div className={styles.dlRow}>
             <button className={styles.btnGenerate} style={{flex:1}}
-              onClick={() => videoPath && window.open(`${API_URL}/outputs/${videoPath.split('/').pop()}`)}>
+              onClick={() => videoPath && window.open(`${API_URL}/api/video/${videoPath?.includes('/') ? videoPath.split('/').pop() : videoPath}`)}>
               ↓ Descargar
             </button>
             <button className={styles.btnSecondary} onClick={handleReset}>↺ Nuevo</button>
