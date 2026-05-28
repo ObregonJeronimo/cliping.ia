@@ -34,7 +34,7 @@ export default function Home() {
   const [stepStates, setStepStates] = useState({})
   const [progress, setProgress] = useState(0)
   const [errors, setErrors] = useState({})
-  const [videoPath, setVideoPath] = useState(null)
+  const [videoFilename, setVideoFilename] = useState(null)
   const [errorMsg, setErrorMsg] = useState('')
   const fileRef = useRef()
   const wsRef = useRef(null)
@@ -98,7 +98,7 @@ export default function Home() {
       if (job.status === 'done') {
         setStepStates(Object.fromEntries(STEP_ORDER.map(k => [k, 'done'])))
         setProgress(100)
-        setVideoPath(job.videoFilename || job.videoPath)
+        setVideoFilename(job.videoFilename || (job.videoPath ? job.videoPath.split('\\').pop().split('/').pop() : null))
         setTimeout(() => setPhase('result'), 600)
         ws.close()
       } else if (job.status === 'error') {
@@ -152,7 +152,7 @@ export default function Home() {
     setProgress(0)
     setUrl('')
     setAction('')
-    setVideoPath(null)
+    setVideoFilename(null)
     setErrorMsg('')
   }
 
@@ -273,14 +273,14 @@ export default function Home() {
             <button className={styles.btnSecondary} onClick={handleReset}>Nuevo video</button>
           </div>
           <div className={styles.videoPreview}>
-            {videoPath
-              ? <video src={`${API_URL}/api/video/${videoPath?.includes('/') ? videoPath.split('/').pop() : videoPath}`} controls style={{width:'100%',height:'100%',objectFit:'cover',borderRadius:8}} />
+            {videoFilename
+              ? <video src={`${API_URL}/api/video/${videoFilename}`} controls style={{width:'100%',height:'100%',objectFit:'cover',borderRadius:8}} />
               : <div className={styles.playBtn}><span className={styles.playTri} /></div>
             }
           </div>
           <div className={styles.dlRow}>
             <button className={styles.btnGenerate} style={{flex:1}}
-              onClick={() => videoPath && window.open(`${API_URL}/api/video/${videoPath?.includes('/') ? videoPath.split('/').pop() : videoPath}`)}>
+              onClick={() => videoFilename && window.open(`${API_URL}/api/video/${videoFilename}`)}>
               ↓ Descargar
             </button>
             <button className={styles.btnSecondary} onClick={handleReset}>↺ Nuevo</button>
