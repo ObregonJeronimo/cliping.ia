@@ -15,7 +15,7 @@ FORMATS = {
     "feed":    {"w": 1080, "h": 1080},
 }
 
-RECORD_W, RECORD_H = 390, 844
+RECORD_W, RECORD_H = 430, 932  # un poco más ancho para que entren las cards
 
 async def run_agent(
     url: str,
@@ -41,7 +41,6 @@ async def run_agent(
         )
         context = await browser.new_context(
             viewport={"width": RECORD_W, "height": RECORD_H},
-            device_scale_factor=2,
             record_video_dir=str(OUTPUTS_DIR),
             record_video_size={"width": RECORD_W, "height": RECORD_H},
             user_agent="Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
@@ -192,10 +191,12 @@ async def run_agent(
 async def edit_video(input_path: Path, output_path: Path, fmt: dict, style: str) -> Path:
     w, h = fmt["w"], fmt["h"]
 
-    # escalar y crop al formato destino
-    vf_scale = f"scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h}"
-
-    vf = vf_scale
+    # escalar manteniendo el contenido visible, sin cortar
+    # pad agrega barras negras si el aspect ratio no coincide exactamente
+    vf = (
+        f"scale={w}:{h}:force_original_aspect_ratio=decrease,"
+        f"pad={w}:{h}:(ow-iw)/2:(oh-ih)/2:black"
+    )
 
     cmd = [
         "ffmpeg", "-y",
@@ -203,9 +204,8 @@ async def edit_video(input_path: Path, output_path: Path, fmt: dict, style: str)
         "-vf", vf,
         "-c:v", "libx264",
         "-preset", "fast",
-        "-crf", "20",
+        "-crf", "18",           # mejor calidad
         "-movflags", "+faststart",
-        "-vsync", "cfr",
         "-an",
         str(output_path),
     ]
