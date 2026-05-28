@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import styles from './Home.module.css'
 
@@ -24,11 +24,11 @@ const WS_URL  = API_URL.replace('http', 'ws')
 
 
 function VideoPlayer({ url }) {
-  const [blobUrl, setBlobUrl] = React.useState(null)
-  const [loading, setLoading] = React.useState(true)
-  const [error, setError] = React.useState(false)
+  const [blobUrl, setBlobUrl] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!url) return
     setLoading(true)
     setError(false)
