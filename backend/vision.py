@@ -7,7 +7,7 @@ import aiohttp
 
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
-MODEL = "qwen/qwen2.5-vl-72b-instruct:free"
+MODEL = "google/gemma-4-31b-it:free"
 
 async def analyze_screenshot(screenshot_bytes: bytes, action: str, page_url: str, step: int) -> dict:
     img_b64 = base64.b64encode(screenshot_bytes).decode()
