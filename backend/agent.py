@@ -179,7 +179,13 @@ async def run_agent(
     except Exception:
         pass
 
-    print(f"[agent] final video: {result_video} ({result_video.stat().st_size // 1024}KB)")
+    probe2 = await asyncio.create_subprocess_exec(
+        "ffprobe", "-v", "error", "-show_entries", "format=duration",
+        "-of", "default=noprint_wrappers=1:nokey=1", str(result_video),
+        stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL
+    )
+    dur2, _ = await probe2.communicate()
+    print(f"[agent] final video: {result_video} ({result_video.stat().st_size // 1024}KB) duration={dur2.decode().strip()}s")
     return result_video
 
 
@@ -189,10 +195,7 @@ async def edit_video(input_path: Path, output_path: Path, fmt: dict, style: str)
     # escalar y crop al formato destino
     vf_scale = f"scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h}"
 
-    # zoompan causa acortamiento del video — usar solo scale+crop
     vf = vf_scale
-    if style != "corporate":
-        vf += ",fade=t=in:st=0:d=0.5"
 
     cmd = [
         "ffmpeg", "-y",
