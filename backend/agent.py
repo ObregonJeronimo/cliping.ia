@@ -173,10 +173,8 @@ async def run_agent(
 
     progress_cb("export", 95)
 
-    try:
-        raw_video.unlink()
-    except Exception:
-        pass
+    # debug: mantener webm para inspeccion
+    pass
 
     probe2 = await asyncio.create_subprocess_exec(
         "ffprobe", "-v", "error", "-show_entries", "format=duration",
