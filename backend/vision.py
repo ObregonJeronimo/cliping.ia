@@ -33,6 +33,7 @@ Reglas: clickeá elementos relevantes para la instrucción, explorá con scroll,
                 async with s.post(GROQ_URL, json=payload, headers=headers,
                                   timeout=aiohttp.ClientTimeout(total=30)) as r:
                     data = await r.json()
+            print(f"[groq raw] {str(data)[:300]}")
             msg = data["choices"][0]["message"]["content"]
             text = msg if isinstance(msg, str) else (msg[0].get("text","") if isinstance(msg, list) else str(msg))
             text = re.sub(r"```json|```","",text).strip()
