@@ -181,17 +181,10 @@ async def edit_video(input_path: Path, output_path: Path, fmt: dict, style: str)
     # escalar y crop al formato destino
     vf_scale = f"scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h}"
 
-    if style == "epic":
-        # Ken Burns suave + fade in al inicio
-        vf = (
-            f"{vf_scale},"
-            f"zoompan=z='min(zoom+0.0008,1.12)':d=1:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={w}x{h},"
-            f"fade=t=in:st=0:d=0.5"
-        )
-    elif style == "minimal":
-        vf = f"{vf_scale},fade=t=in:st=0:d=0.8"
-    else:
-        vf = vf_scale
+    # zoompan causa acortamiento del video — usar solo scale+crop
+    vf = vf_scale
+    if style != "corporate":
+        vf += ",fade=t=in:st=0:d=0.5"
 
     cmd = [
         "ffmpeg", "-y",
