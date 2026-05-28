@@ -174,11 +174,10 @@ async def run_agent(
 
     progress_cb("export", 95)
 
-    # debug: no borrar webm para inspeccionar duración
-    # try:
-    #     raw_video.unlink()
-    # except Exception:
-    #     pass
+    try:
+        raw_video.unlink()
+    except Exception:
+        pass
 
     print(f"[agent] final video: {result_video} ({result_video.stat().st_size // 1024}KB)")
     return result_video
@@ -202,8 +201,8 @@ async def edit_video(input_path: Path, output_path: Path, fmt: dict, style: str)
         "-c:v", "libx264",
         "-preset", "fast",
         "-crf", "20",
-        "-r", "30",
         "-movflags", "+faststart",
+        "-vsync", "cfr",
         "-an",
         str(output_path),
     ]
