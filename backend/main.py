@@ -7,6 +7,7 @@ from pathlib import Path
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from agent import run_agent
@@ -54,6 +55,7 @@ async def generate(req: GenerateRequest):
         "voice": req.voice,
         "userId": req.userId,
         "videoPath": None,
+        "videoFilename": None,
         "error": None,
         "createdAt": datetime.utcnow().isoformat(),
     }
@@ -65,6 +67,13 @@ def get_job(job_id: str):
     if job_id not in jobs:
         return {"error": "not found"}
     return jobs[job_id]
+
+@app.get("/api/video/{filename}")
+def serve_video(filename: str):
+    path = OUTPUTS_DIR / filename
+    if not path.exists():
+        return {"error": "not found"}
+    return FileResponse(path, media_type="video/mp4")
 
 @app.websocket("/ws/{job_id}")
 async def websocket_progress(ws: WebSocket, job_id: str):
@@ -95,11 +104,13 @@ async def process_job(job_id: str, req: GenerateRequest):
             job_id=job_id,
             progress_cb=update,
         )
+        filename = video_path.name
         jobs[job_id].update({
             "status": "done",
             "progress": 100,
             "step": "export",
             "videoPath": str(video_path),
+            "videoFilename": filename,
         })
     except Exception as e:
         import traceback
