@@ -3,7 +3,7 @@ import aiohttp
 
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
-VISION_MODEL = "meta-llama/llama-4-maverick-17b-128e-instruct"
+VISION_MODEL = "llama-4-maverick-17b-128e-instruct"
 
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
