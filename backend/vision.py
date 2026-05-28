@@ -35,9 +35,14 @@ Reglas: clickeá elementos relevantes para la instrucción, explorá con scroll,
                     data = await r.json()
             print(f"[groq raw] {str(data)[:300]}")
             msg = data["choices"][0]["message"]["content"]
-            text = msg if isinstance(msg, str) else (msg[0].get("text","") if isinstance(msg, list) else str(msg))
-            text = re.sub(r"```json|```","",text).strip()
-            result = json.loads(text)
+            # Groq devuelve content como string o como lista JSON
+            if isinstance(msg, list):
+                # puede ser lista de objetos de accion directamente
+                result = msg[0] if msg else {}
+            else:
+                text = re.sub(r"```json|```","",str(msg)).strip()
+                parsed = json.loads(text)
+                result = parsed[0] if isinstance(parsed, list) else parsed
             print(f"[vision OK] step={step}: {result.get('action')} — {result.get('description','')}")
             return result
         except Exception as e:
