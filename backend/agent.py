@@ -148,6 +148,14 @@ async def run_agent(
         raise RuntimeError(f"Video grabado muy pequeño: {raw_video}")
 
     print(f"[agent] raw video: {raw_video} ({raw_video.stat().st_size // 1024}KB)")
+    # medir duración real
+    probe = await asyncio.create_subprocess_exec(
+        "ffprobe", "-v", "error", "-show_entries", "format=duration",
+        "-of", "default=noprint_wrappers=1:nokey=1", str(raw_video),
+        stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL
+    )
+    dur_out, _ = await probe.communicate()
+    print(f"[agent] raw duration: {dur_out.decode().strip()}s")
 
     progress_cb("detect", 55)
     progress_cb("edit", 65)
@@ -166,10 +174,11 @@ async def run_agent(
 
     progress_cb("export", 95)
 
-    try:
-        raw_video.unlink()
-    except Exception:
-        pass
+    # debug: no borrar webm para inspeccionar duración
+    # try:
+    #     raw_video.unlink()
+    # except Exception:
+    #     pass
 
     print(f"[agent] final video: {result_video} ({result_video.stat().st_size // 1024}KB)")
     return result_video
