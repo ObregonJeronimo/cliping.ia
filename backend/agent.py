@@ -269,7 +269,6 @@ async def mix_audio(video_path: Path, audio_path: Path, output_path: Path) -> Pa
         "-c:v", "copy",
         "-c:a", "aac",
         "-b:a", "128k",
-        "-shortest",
         "-movflags", "+faststart",
         str(output_path),
     ]
