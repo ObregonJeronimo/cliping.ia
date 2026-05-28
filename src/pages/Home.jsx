@@ -47,7 +47,7 @@ function VideoPlayer({ url }) {
 
   if (loading) return <div style={{color:'var(--muted)',fontSize:13}}>Cargando video...</div>
   if (error) return <div style={{color:'var(--red)',fontSize:13}}>Error al cargar el video. <a href={url} target="_blank" rel="noreferrer">Abrir directamente</a></div>
-  return <video src={blobUrl} controls style={{width:'100%',height:'100%',objectFit:'cover',borderRadius:8}} />
+  return <video src={blobUrl} controls style={{width:'100%',height:'auto',display:'block'}} />
 }
 
 export default function Home() {

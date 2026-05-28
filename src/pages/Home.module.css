@@ -170,12 +170,16 @@
 }
 
 .videoPreview {
-  width: 100%; aspect-ratio: 9/16; max-height: 360px;
+  width: 100%;
+  max-width: 280px;
+  margin: 0 auto 16px;
   background: var(--surface2);
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
-  display: flex; align-items: center; justify-content: center;
-  margin-bottom: 16px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .playBtn {
