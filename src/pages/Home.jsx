@@ -22,6 +22,34 @@ const STEP_ORDER = STEPS.map(s => s.key)
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 const WS_URL  = API_URL.replace('http', 'ws')
 
+
+function VideoPlayer({ url }) {
+  const [blobUrl, setBlobUrl] = React.useState(null)
+  const [loading, setLoading] = React.useState(true)
+  const [error, setError] = React.useState(false)
+
+  React.useEffect(() => {
+    if (!url) return
+    setLoading(true)
+    setError(false)
+    fetch(url, { headers: { 'ngrok-skip-browser-warning': 'true' } })
+      .then(r => {
+        if (!r.ok) throw new Error('Error al cargar video')
+        return r.blob()
+      })
+      .then(blob => {
+        setBlobUrl(URL.createObjectURL(blob))
+        setLoading(false)
+      })
+      .catch(() => { setError(true); setLoading(false) })
+    return () => { if (blobUrl) URL.revokeObjectURL(blobUrl) }
+  }, [url])
+
+  if (loading) return <div style={{color:'var(--muted)',fontSize:13}}>Cargando video...</div>
+  if (error) return <div style={{color:'var(--red)',fontSize:13}}>Error al cargar el video. <a href={url} target="_blank" rel="noreferrer">Abrir directamente</a></div>
+  return <video src={blobUrl} controls style={{width:'100%',height:'100%',objectFit:'cover',borderRadius:8}} />
+}
+
 export default function Home() {
   const { user, profile } = useAuth()
   const [url, setUrl] = useState('')
@@ -274,7 +302,7 @@ export default function Home() {
           </div>
           <div className={styles.videoPreview}>
             {videoFilename
-              ? <video src={`${API_URL}/api/video/${videoFilename}`} controls style={{width:'100%',height:'100%',objectFit:'cover',borderRadius:8}} />
+              ? <VideoPlayer url={`${API_URL}/api/video/${videoFilename}`} />
               : <div className={styles.playBtn}><span className={styles.playTri} /></div>
             }
           </div>

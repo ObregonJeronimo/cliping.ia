@@ -25,6 +25,17 @@ app.add_middleware(
 )
 
 app.mount("/outputs", StaticFiles(directory="outputs"), name="outputs")
+from fastapi import Request
+from fastapi.responses import Response
+
+@app.middleware("http")
+async def add_ngrok_header(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["ngrok-skip-browser-warning"] = "true"
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    return response
+
+
 
 jobs: dict[str, dict] = {}
 
