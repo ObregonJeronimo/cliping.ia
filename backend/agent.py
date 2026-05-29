@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Callable
 
 from playwright.async_api import async_playwright
-from vision import analyze_page, plan_actions, execute_step, generate_voiceover_script
+from vision import analyze_page, execute_step, generate_voiceover_script
 
 OUTPUTS_DIR = Path("outputs")
 OUTPUTS_DIR.mkdir(exist_ok=True)
