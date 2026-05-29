@@ -73,6 +73,21 @@ async def generate(req: GenerateRequest):
     asyncio.create_task(process_job(job_id, req))
     return {"job_id": job_id}
 
+@app.get("/api/voice-preview")
+async def voice_preview(voice: str = "female"):
+    import edge_tts, tempfile, os
+    from fastapi.responses import FileResponse
+    voice_map = {"female": "es-MX-DaliaNeural", "male": "es-MX-JorgeNeural"}
+    voice_name = voice_map.get(voice, "es-MX-DaliaNeural")
+    script = "Transformá la presencia digital de tu negocio. Más clientes, más ventas, todo desde un solo lugar."
+    tmp = OUTPUTS_DIR / f"preview_{voice}.mp3"
+    try:
+        communicate = edge_tts.Communicate(script, voice_name)
+        await communicate.save(str(tmp))
+        return FileResponse(str(tmp), media_type="audio/mpeg")
+    except Exception as e:
+        return {"error": str(e)}
+
 @app.get("/api/jobs/{job_id}")
 def get_job(job_id: str):
     if job_id not in jobs:
