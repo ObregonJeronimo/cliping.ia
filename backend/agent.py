@@ -240,11 +240,7 @@ async def edit_video(input_path: Path, output_path: Path, fmt: dict, style: str,
 
 async def generate_voice(script: str, job_id: str, voice: str) -> Path | None:
     audio_path = OUTPUTS_DIR / f"{job_id}_voice.mp3"
-    # Voces más naturales disponibles en Edge TTS
-    voice_map = {
-        "female": "es-ES-XimenaNeural",   # la más natural en femenino
-        "male":   "es-ES-AlvaroNeural",   # masculino natural
-    }
+    voice_map = {"female": "es-MX-DaliaNeural", "male": "es-MX-JorgeNeural"}
     try:
         import edge_tts
         communicate = edge_tts.Communicate(script, voice_map.get(voice, "es-AR-ElenaNeural"))
