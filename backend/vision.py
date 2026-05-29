@@ -165,29 +165,34 @@ Si no hay nada clickeable para este objetivo, respondé:
     return result
 
 
-async def generate_voiceover_script(action: str, url: str, descriptions: list, page_analysis: dict) -> str:
+async def generate_voiceover_script(action: str, url: str, descriptions: list, page_analysis: dict, duration: float = 30.0) -> str:
     domain = url.replace("https://","").replace("http://","").split("/")[0]
     page_type = page_analysis.get("page_type", "")
     summary = page_analysis.get("page_summary", "")
-    steps_done = " → ".join(descriptions[:6]) if descriptions else action
+    steps_done = " → ".join(descriptions[:8]) if descriptions else action
+    # locutor profesional habla ~2.3 palabras por segundo
+    target_words = max(25, int(duration * 2.3))
 
-    prompt = f"""Escribí un script de voz en off para un video de marketing. 
+    prompt = f"""Escribí un script de voz en off para un video de marketing de {int(duration)} segundos.
 
 Sitio: {domain}
-Tipo de página: {page_type}
+Tipo: {page_type}
 Descripción: {summary}
-Lo que se mostró: {steps_done}
+Secciones mostradas: {steps_done}
 
-Requisitos:
-- Máximo 35 palabras
-- Español rioplatense, natural y entusiasta
-- Destacar el beneficio principal del sitio
-- NO mencionar "IA" ni "agente"
-- Que invite a la acción
+Requisitos ESTRICTOS:
+- Entre {target_words - 8} y {target_words + 8} palabras (el video dura {int(duration)} segundos)
+- Tono de locutor profesional, cálido y confiable — no un bot
+- Español rioplatense natural
+- Mencioná el nombre del producto o sitio
+- Destacá 2-3 beneficios concretos que viste en la página
+- Terminá con una llamada a la acción clara
+- No uses signos de exclamación excesivos
+- No menciones "IA" ni "agente"
 
-Solo el texto del script, sin comillas ni explicaciones."""
+Escribí SOLO el texto del script, sin títulos ni comillas."""
 
-    result = await _groq_text(prompt, max_tokens=100)
+    result = await _groq_text(prompt, max_tokens=300)
     if not result:
-        result = f"Mirá todo lo que podés hacer en {domain}. Simple, rápido y sin complicaciones."
+        result = f"Conocé {domain}, la herramienta que simplifica tu trabajo. Gestioná todo desde un solo lugar, de forma rápida y segura. Probalo hoy."
     return result

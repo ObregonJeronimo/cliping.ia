@@ -185,7 +185,7 @@ async def run_agent(
     result_video = edited
     if voice != "none":
         progress_cb("voice", 82)
-        script = await generate_voiceover_script(action, url, descriptions, page_analysis)
+        script = await generate_voiceover_script(action, url, descriptions, page_analysis, raw_duration)
         print(f"[voice] {script}")
         audio_path = await generate_voice(script, job_id, voice)
         if audio_path and audio_path.exists():
@@ -240,7 +240,7 @@ async def edit_video(input_path: Path, output_path: Path, fmt: dict, style: str,
 
 async def generate_voice(script: str, job_id: str, voice: str) -> Path | None:
     audio_path = OUTPUTS_DIR / f"{job_id}_voice.mp3"
-    voice_map = {"female": "es-AR-ElenaNeural", "male": "es-AR-TomasNeural"}
+    voice_map = {"female": "es-ES-ElviraNeural", "male": "es-ES-AlvaroNeural"}
     try:
         import edge_tts
         communicate = edge_tts.Communicate(script, voice_map.get(voice, "es-AR-ElenaNeural"))
