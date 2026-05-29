@@ -96,9 +96,20 @@ async def render_video(
     props_file = OUTPUTS_DIR / f"{job_id}_props.json"
     props_file.write_text(props_json)
 
-    # Comando Remotion render
+    # En Windows npx no está en PATH desde Python — buscar node_modules/.bin
+    npx_candidates = [
+        str(REMOTION_DIR / "node_modules" / ".bin" / "remotion.cmd"),
+        str(REMOTION_DIR / "node_modules" / ".bin" / "remotion"),
+        "npx",
+    ]
+    remotion_bin = None
+    for candidate in npx_candidates:
+        if Path(candidate).exists() or candidate == "npx":
+            remotion_bin = candidate
+            break
+
     cmd = [
-        "npx", "remotion", "render",
+        remotion_bin, "render",
         "index.jsx",
         "MarketingVideo",
         str(output_path.absolute()),
@@ -107,10 +118,11 @@ async def render_video(
         "--fps", "30",
         "--width", "390",
         "--height", "844",
-        "--concurrency", "4",
+        "--concurrency", "2",
+        "--log", "error",
     ]
 
-    print(f"[remotion] rendering {job_id}...")
+    print(f"[remotion] rendering {job_id} with {remotion_bin}...")
     proc = await asyncio.create_subprocess_exec(
         *cmd,
         cwd=str(REMOTION_DIR),
