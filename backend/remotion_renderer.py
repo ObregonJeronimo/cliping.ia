@@ -108,6 +108,10 @@ async def render_video(
             remotion_bin = candidate
             break
 
+    import os
+    cpu_count = os.cpu_count() or 4
+    concurrency = min(cpu_count, 8)
+
     cmd = [
         remotion_bin, "render",
         "index.jsx",
@@ -118,7 +122,8 @@ async def render_video(
         "--fps", "30",
         "--width", "390",
         "--height", "844",
-        "--concurrency", "2",
+        "--concurrency", str(concurrency),
+        "--jpeg-quality", "80",
         "--log", "error",
     ]
 

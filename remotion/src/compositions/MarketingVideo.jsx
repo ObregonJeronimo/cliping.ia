@@ -6,241 +6,320 @@ import {
   useVideoConfig,
   Img,
   Sequence,
-  Audio,
 } from 'remotion';
 
-// ─── Helpers ───────────────────────────────────────────────────────────────
+// ─── Easing helpers ────────────────────────────────────────────────────────
 
-function ease(frame, start, end, from, to) {
-  return interpolate(frame, [start, end], [from, to], {
+const clamp = (val, min, max) => Math.min(Math.max(val, min), max);
+
+function lerp(frame, inStart, inEnd, outStart, outEnd) {
+  return interpolate(frame, [inStart, inEnd], [outStart, outEnd], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
   });
 }
 
-function springAnim(frame, fps, delay = 0, damping = 12) {
+function spr(frame, fps, delay = 0, damping = 14, stiffness = 120) {
   return spring({
-    frame: frame - delay,
+    frame: Math.max(0, frame - delay),
     fps,
-    config: { damping, stiffness: 100, mass: 0.8 },
+    config: { damping, stiffness, mass: 0.6 },
   });
 }
 
-// ─── Scene 1: Hero con nombre del sitio (0-3s = frames 0-89) ─────────────
+// ─── Partículas flotantes (siempre en movimiento) ──────────────────────────
+
+function FloatingParticles({ color, count = 8 }) {
+  const frame = useCurrentFrame();
+  const particles = Array.from({ length: count }, (_, i) => {
+    const speed = 0.3 + (i * 0.15);
+    const amp = 15 + i * 8;
+    const phase = (i * 137.5) % 360;
+    const x = (i / count) * 100;
+    const baseY = 20 + (i % 3) * 30;
+    const y = baseY + Math.sin((frame * speed + phase) * Math.PI / 180) * amp;
+    const opacity = 0.1 + Math.sin((frame * speed * 0.7 + phase) * Math.PI / 180) * 0.08;
+    const size = 3 + (i % 3) * 2;
+    return { x, y, opacity, size };
+  });
+
+  return (
+    <AbsoluteFill style={{ pointerEvents: 'none' }}>
+      {particles.map((p, i) => (
+        <div key={i} style={{
+          position: 'absolute',
+          left: `${p.x}%`,
+          top: `${p.y}%`,
+          width: p.size,
+          height: p.size,
+          borderRadius: '50%',
+          background: color,
+          opacity: p.opacity,
+        }} />
+      ))}
+    </AbsoluteFill>
+  );
+}
+
+// ─── Líneas animadas de fondo ──────────────────────────────────────────────
+
+function AnimatedLines({ color }) {
+  const frame = useCurrentFrame();
+  return (
+    <AbsoluteFill style={{ pointerEvents: 'none', overflow: 'hidden' }}>
+      {[0, 1, 2].map(i => {
+        const offset = lerp(frame, 0, 300, 0, 100 + i * 30);
+        return (
+          <div key={i} style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            height: 1,
+            background: `linear-gradient(90deg, transparent, ${color}20, transparent)`,
+            top: `${(30 + i * 25 + offset) % 100}%`,
+            transform: 'rotate(-15deg) scaleX(1.5)',
+          }} />
+        );
+      })}
+    </AbsoluteFill>
+  );
+}
+
+// ─── ESCENA 1: Hero (0-3s = frames 0-89) ──────────────────────────────────
 
 function SceneHero({ siteName, headline, primaryColor, secondaryColor }) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  const bgScale = interpolate(frame, [0, 90], [1.05, 1], { extrapolateRight: 'clamp' });
-  const titleY = ease(frame, 0, 25, 60, 0);
-  const titleOpacity = ease(frame, 0, 20, 0, 1);
-  const subtitleY = ease(frame, 10, 35, 40, 0);
-  const subtitleOpacity = ease(frame, 10, 30, 0, 1);
-  const lineScale = ease(frame, 15, 40, 0, 1);
+  // Animaciones de entrada
+  const bgProgress = spr(frame, fps, 0, 20, 80);
+  const chipProgress = spr(frame, fps, 5, 16, 100);
+  const titleProgress = spr(frame, fps, 10, 14, 120);
+  const lineProgress = spr(frame, fps, 18, 18, 100);
+  const subtitleProgress = spr(frame, fps, 22, 16, 100);
+
+  // Pulso continuo del glow
+  const glowPulse = 0.8 + Math.sin(frame * 0.08) * 0.2;
+  // Rotación suave del fondo
+  const bgRotate = frame * 0.05;
 
   return (
     <AbsoluteFill style={{
-      background: `linear-gradient(145deg, ${primaryColor} 0%, ${secondaryColor} 100%)`,
+      background: `linear-gradient(${135 + bgRotate}deg, ${primaryColor} 0%, ${secondaryColor} 60%, #1a0533 100%)`,
       overflow: 'hidden',
     }}>
-      {/* Círculos de fondo animados */}
+      {/* Círculo glow animado */}
       <div style={{
         position: 'absolute',
-        width: 500,
-        height: 500,
+        width: 600,
+        height: 600,
         borderRadius: '50%',
-        background: 'rgba(255,255,255,0.06)',
-        top: -150,
-        right: -150,
-        transform: `scale(${bgScale})`,
+        background: `radial-gradient(circle, rgba(255,255,255,${0.08 * glowPulse}) 0%, transparent 70%)`,
+        top: -200,
+        left: '50%',
+        transform: `translateX(-50%) scale(${bgProgress})`,
       }} />
       <div style={{
         position: 'absolute',
         width: 300,
         height: 300,
         borderRadius: '50%',
-        background: 'rgba(255,255,255,0.04)',
-        bottom: -50,
-        left: -80,
+        background: `radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%)`,
+        bottom: -80,
+        left: -60,
       }} />
 
-      {/* Contenido central */}
+      <FloatingParticles color="rgba(255,255,255,0.8)" count={10} />
+      <AnimatedLines color="white" />
+
       <AbsoluteFill style={{
         justifyContent: 'center',
         alignItems: 'center',
         flexDirection: 'column',
-        padding: 40,
+        padding: 36,
+        gap: 0,
       }}>
-        {/* Chip superior */}
+        {/* Chip */}
         <div style={{
           background: 'rgba(255,255,255,0.15)',
-          backdropFilter: 'blur(10px)',
+          backdropFilter: 'blur(12px)',
           borderRadius: 100,
           padding: '6px 18px',
-          marginBottom: 24,
-          opacity: subtitleOpacity,
-          transform: `translateY(${subtitleY}px)`,
+          marginBottom: 20,
+          opacity: chipProgress,
+          transform: `translateY(${(1 - chipProgress) * 20}px)`,
+          border: '1px solid rgba(255,255,255,0.2)',
         }}>
-          <span style={{ color: 'white', fontSize: 13, fontFamily: 'sans-serif', fontWeight: 600, letterSpacing: 1 }}>
-            ✦ VIDEO GENERADO CON IA
+          <span style={{ color: 'white', fontSize: 11, fontFamily: 'sans-serif', fontWeight: 700, letterSpacing: 2 }}>
+            ✦ PRESENTAMOS
           </span>
         </div>
 
-        {/* Nombre del sitio */}
-        <div style={{
-          transform: `translateY(${titleY}px)`,
-          opacity: titleOpacity,
+        {/* Nombre */}
+        <h1 style={{
+          color: 'white',
+          fontSize: 58,
+          fontFamily: 'sans-serif',
+          fontWeight: 900,
+          textAlign: 'center',
+          margin: '0 0 4px',
+          letterSpacing: -2.5,
+          lineHeight: 1.0,
+          opacity: titleProgress,
+          transform: `translateY(${(1 - titleProgress) * 30}px) scale(${0.85 + titleProgress * 0.15})`,
         }}>
-          <h1 style={{
-            color: 'white',
-            fontSize: 52,
-            fontFamily: 'sans-serif',
-            fontWeight: 900,
-            textAlign: 'center',
-            margin: 0,
-            letterSpacing: -2,
-            lineHeight: 1.1,
-          }}>
-            {siteName}
-          </h1>
-        </div>
+          {siteName}
+        </h1>
 
-        {/* Línea decorativa */}
+        {/* Línea */}
         <div style={{
-          width: 60 * lineScale,
+          width: 50 * lineProgress,
           height: 3,
-          background: 'rgba(255,255,255,0.6)',
+          background: 'rgba(255,255,255,0.7)',
           borderRadius: 2,
-          margin: '20px auto',
+          margin: '16px auto',
         }} />
 
         {/* Headline */}
-        <div style={{
-          transform: `translateY(${subtitleY}px)`,
-          opacity: subtitleOpacity,
+        <p style={{
+          color: 'rgba(255,255,255,0.88)',
+          fontSize: 17,
+          fontFamily: 'sans-serif',
+          fontWeight: 500,
+          textAlign: 'center',
+          margin: 0,
+          lineHeight: 1.55,
+          maxWidth: 270,
+          opacity: subtitleProgress,
+          transform: `translateY(${(1 - subtitleProgress) * 20}px)`,
         }}>
-          <p style={{
-            color: 'rgba(255,255,255,0.85)',
-            fontSize: 18,
-            fontFamily: 'sans-serif',
-            fontWeight: 500,
-            textAlign: 'center',
-            margin: 0,
-            lineHeight: 1.5,
-            maxWidth: 280,
-          }}>
-            {headline}
-          </p>
-        </div>
+          {headline}
+        </p>
       </AbsoluteFill>
     </AbsoluteFill>
   );
 }
 
-// ─── Scene 2: Mockup del sitio en iPhone (frames 90-300 = 3s-10s) ─────────
+// ─── ESCENA 2: iPhone mockup (frames 90-300 = 3s-10s) ─────────────────────
 
-function SceneMockup({ screenshotUrl, primaryColor, headline }) {
+function SceneMockup({ screenshotUrl, primaryColor, secondaryColor, headline }) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  const phoneY = springAnim(frame, fps, 0, 14);
-  const phoneScale = interpolate(phoneY, [0, 1], [0.7, 1], { extrapolateRight: 'clamp' });
-  const textOpacity = ease(frame, 30, 55, 0, 1);
-  const textY = ease(frame, 30, 55, 20, 0);
+  const phoneProgress = spr(frame, fps, 0, 14, 100);
+  const glowProgress = spr(frame, fps, 5, 16, 90);
+  const textProgress = spr(frame, fps, 25, 14, 100);
+
+  // Flotación continua del teléfono
+  const phoneFloat = Math.sin(frame * 0.06) * 6;
+  // Rotación suave
+  const phoneRotate = Math.sin(frame * 0.04) * 1.5;
 
   return (
     <AbsoluteFill style={{
-      background: '#0f0f13',
+      background: 'linear-gradient(180deg, #07070f 0%, #0f0f1a 100%)',
       justifyContent: 'center',
       alignItems: 'center',
       flexDirection: 'column',
     }}>
-      {/* Glow de fondo */}
+      {/* Glow de fondo animado */}
       <div style={{
         position: 'absolute',
-        width: 300,
-        height: 300,
+        width: 400,
+        height: 400,
         borderRadius: '50%',
-        background: `radial-gradient(circle, ${primaryColor}40 0%, transparent 70%)`,
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
+        background: `radial-gradient(circle, ${primaryColor}35 0%, transparent 70%)`,
+        opacity: glowProgress,
+        transform: `scale(${0.5 + glowProgress * 0.7})`,
       }} />
 
-      {/* iPhone mockup */}
+      <FloatingParticles color={primaryColor} count={12} />
+
+      {/* iPhone */}
       <div style={{
-        transform: `translateY(${(1 - phoneY) * 120}px) scale(${phoneScale})`,
+        transform: `translateY(${(1 - phoneProgress) * 150 + phoneFloat}px) rotate(${phoneRotate}deg)`,
+        opacity: phoneProgress,
         position: 'relative',
         zIndex: 2,
       }}>
-        {/* Marco del iPhone */}
+        {/* Sombra del teléfono */}
         <div style={{
-          width: 200,
-          height: 380,
-          background: '#1a1a2e',
-          borderRadius: 32,
-          border: '3px solid #333',
+          position: 'absolute',
+          bottom: -20,
+          left: '10%',
+          right: '10%',
+          height: 20,
+          background: `radial-gradient(ellipse, ${primaryColor}50 0%, transparent 70%)`,
+          filter: 'blur(8px)',
+        }} />
+
+        {/* Marco iPhone */}
+        <div style={{
+          width: 195,
+          height: 390,
+          background: 'linear-gradient(145deg, #2a2a3e, #1a1a2e)',
+          borderRadius: 36,
+          border: '2.5px solid #3a3a5e',
           overflow: 'hidden',
-          boxShadow: '0 30px 80px rgba(0,0,0,0.8), 0 0 0 1px #444',
+          boxShadow: `
+            0 40px 100px rgba(0,0,0,0.9),
+            0 0 0 1px #4a4a6e,
+            inset 0 1px 0 rgba(255,255,255,0.1)
+          `,
           position: 'relative',
         }}>
-          {/* Notch */}
+          {/* Dynamic Island */}
           <div style={{
             position: 'absolute',
-            top: 0,
+            top: 10,
             left: '50%',
             transform: 'translateX(-50%)',
-            width: 80,
+            width: 70,
             height: 22,
-            background: '#1a1a2e',
-            borderRadius: '0 0 16px 16px',
+            background: '#000',
+            borderRadius: 12,
             zIndex: 10,
           }} />
-          {/* Screenshot o placeholder */}
+
+          {/* Contenido */}
           {screenshotUrl ? (
-            <Img
-              src={screenshotUrl}
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            />
+            <Img src={screenshotUrl} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
           ) : (
             <div style={{
-              width: '100%',
-              height: '100%',
-              background: `linear-gradient(180deg, ${primaryColor}30 0%, #0a0a0f 100%)`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
+              width: '100%', height: '100%',
+              background: `linear-gradient(180deg, ${primaryColor}40 0%, #050510 100%)`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
-              <div style={{
-                color: 'rgba(255,255,255,0.3)',
-                fontSize: 12,
-                fontFamily: 'sans-serif',
-                textAlign: 'center',
-                padding: 20,
-              }}>
-                🌐 {headline?.slice(0, 30)}
-              </div>
+              <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: 32 }}>🌐</span>
             </div>
           )}
+
+          {/* Overlay gradiente inferior */}
+          <div style={{
+            position: 'absolute',
+            bottom: 0, left: 0, right: 0,
+            height: 80,
+            background: 'linear-gradient(0deg, rgba(10,10,20,0.8) 0%, transparent 100%)',
+          }} />
         </div>
       </div>
 
-      {/* Texto debajo */}
+      {/* Texto */}
       <div style={{
-        marginTop: 32,
-        opacity: textOpacity,
-        transform: `translateY(${textY}px)`,
+        marginTop: 28,
+        opacity: textProgress,
+        transform: `translateY(${(1 - textProgress) * 20}px)`,
         textAlign: 'center',
-        padding: '0 40px',
+        padding: '0 44px',
         zIndex: 2,
       }}>
         <p style={{
-          color: 'rgba(255,255,255,0.7)',
+          color: 'rgba(255,255,255,0.65)',
           fontSize: 15,
           fontFamily: 'sans-serif',
+          fontWeight: 400,
           margin: 0,
-          lineHeight: 1.5,
+          lineHeight: 1.6,
         }}>
           {headline}
         </p>
@@ -249,42 +328,42 @@ function SceneMockup({ screenshotUrl, primaryColor, headline }) {
   );
 }
 
-// ─── Scene 3: Beneficios animados (frames 300-570 = 10s-19s) ───────────────
+// ─── ESCENA 3: Beneficios (frames 300-570 = 10s-19s) ──────────────────────
 
-function BenefitItem({ text, index, frame, primaryColor }) {
-  const delay = index * 20;
-  const opacity = ease(frame, delay, delay + 20, 0, 1);
-  const x = ease(frame, delay, delay + 25, -40, 0);
+function BenefitCard({ text, index, primaryColor }) {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
 
+  const delay = index * 18;
+  const progress = spr(frame, fps, delay, 14, 100);
   const icons = ['⚡', '🎯', '🚀', '✨', '💎', '🔥'];
-  const icon = icons[index % icons.length];
 
   return (
     <div style={{
       display: 'flex',
       alignItems: 'center',
-      gap: 16,
-      opacity,
-      transform: `translateX(${x}px)`,
-      marginBottom: 20,
+      gap: 14,
+      opacity: progress,
+      transform: `translateX(${(1 - progress) * -50}px)`,
+      marginBottom: 16,
+      background: 'rgba(255,255,255,0.04)',
+      borderRadius: 14,
+      padding: '12px 16px',
+      border: `1px solid rgba(255,255,255,0.06)`,
     }}>
       <div style={{
-        width: 44,
-        height: 44,
-        borderRadius: 12,
-        background: `${primaryColor}25`,
-        border: `1px solid ${primaryColor}50`,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: 20,
-        flexShrink: 0,
+        width: 40, height: 40,
+        borderRadius: 10,
+        background: `linear-gradient(135deg, ${primaryColor}30, ${primaryColor}10)`,
+        border: `1px solid ${primaryColor}40`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 18, flexShrink: 0,
       }}>
-        {icon}
+        {icons[index % icons.length]}
       </div>
       <span style={{
-        color: 'white',
-        fontSize: 16,
+        color: 'rgba(255,255,255,0.9)',
+        fontSize: 15,
         fontFamily: 'sans-serif',
         fontWeight: 500,
         lineHeight: 1.4,
@@ -297,139 +376,184 @@ function BenefitItem({ text, index, frame, primaryColor }) {
 
 function SceneBenefits({ benefits, primaryColor, siteName }) {
   const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
 
-  const titleOpacity = ease(frame, 0, 20, 0, 1);
-  const titleY = ease(frame, 0, 20, -20, 0);
+  const titleProgress = spr(frame, fps, 0, 16, 100);
+  const lineProgress = spr(frame, fps, 8, 18, 100);
+  // Scan line animada
+  const scanY = lerp(frame, 0, 270, -10, 110);
 
   return (
     <AbsoluteFill style={{
-      background: '#0a0a0f',
-      padding: 36,
+      background: 'linear-gradient(160deg, #08080f 0%, #0d0d1a 100%)',
+      padding: '36px 32px',
       justifyContent: 'center',
+      overflow: 'hidden',
     }}>
-      {/* Línea decorativa izquierda */}
+      {/* Scan line */}
       <div style={{
         position: 'absolute',
-        left: 0,
-        top: 0,
-        bottom: 0,
-        width: 3,
-        background: `linear-gradient(180deg, transparent, ${primaryColor}, transparent)`,
+        left: 0, right: 0,
+        height: 1,
+        background: `linear-gradient(90deg, transparent, ${primaryColor}60, transparent)`,
+        top: `${scanY}%`,
+        pointerEvents: 'none',
       }} />
 
-      <div style={{ opacity: titleOpacity, transform: `translateY(${titleY}px)`, marginBottom: 36 }}>
+      {/* Borde izquierdo animado */}
+      <div style={{
+        position: 'absolute',
+        left: 0, top: 0, bottom: 0,
+        width: 3,
+        background: `linear-gradient(180deg, transparent, ${primaryColor}, transparent)`,
+        opacity: 0.8,
+      }} />
+
+      <FloatingParticles color={primaryColor} count={6} />
+
+      {/* Header */}
+      <div style={{
+        opacity: titleProgress,
+        transform: `translateY(${(1 - titleProgress) * -20}px)`,
+        marginBottom: 24,
+      }}>
         <div style={{
           color: primaryColor,
-          fontSize: 11,
+          fontSize: 10,
           fontFamily: 'sans-serif',
-          fontWeight: 700,
-          letterSpacing: 3,
+          fontWeight: 800,
+          letterSpacing: 3.5,
           textTransform: 'uppercase',
-          marginBottom: 8,
+          marginBottom: 6,
         }}>
-          ¿POR QUÉ {siteName.toUpperCase()}?
+          ¿POR QUÉ {siteName?.toUpperCase()}?
         </div>
         <h2 style={{
           color: 'white',
-          fontSize: 28,
+          fontSize: 26,
           fontFamily: 'sans-serif',
-          fontWeight: 800,
+          fontWeight: 900,
           margin: 0,
           letterSpacing: -1,
-          lineHeight: 1.2,
+          lineHeight: 1.15,
         }}>
-          Todo lo que necesitás,<br />en un solo lugar.
+          Todo lo que necesitás,<br />
+          <span style={{ color: primaryColor }}>en un solo lugar.</span>
         </h2>
+        {/* Línea animada */}
+        <div style={{
+          width: 40 * lineProgress,
+          height: 2,
+          background: `linear-gradient(90deg, ${primaryColor}, transparent)`,
+          marginTop: 10,
+          borderRadius: 2,
+        }} />
       </div>
 
-      {benefits.slice(0, 4).map((benefit, i) => (
-        <BenefitItem
-          key={i}
-          text={benefit}
-          index={i}
-          frame={frame}
-          primaryColor={primaryColor}
-        />
+      {benefits.slice(0, 4).map((b, i) => (
+        <BenefitCard key={i} text={b} index={i} primaryColor={primaryColor} />
       ))}
     </AbsoluteFill>
   );
 }
 
-// ─── Scene 4: Screenshot con zoom + CTA (frames 570-780 = 19s-26s) ─────────
+// ─── ESCENA 4: CTA con screenshot (frames 570-780 = 19s-26s) ──────────────
 
 function SceneCTA({ screenshotUrl, cta, primaryColor, secondaryColor }) {
   const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
 
-  const scale = interpolate(frame, [0, 210], [1, 1.08], { extrapolateRight: 'clamp' });
-  const ctaY = ease(frame, 60, 90, 60, 0);
-  const ctaOpacity = ease(frame, 60, 90, 0, 1);
-  const overlayOpacity = ease(frame, 0, 30, 0.7, 0.5);
-  const pulse = interpolate(
-    Math.sin((frame / 15) * Math.PI),
-    [-1, 1], [0.95, 1.05]
-  );
+  // Zoom continuo lento en el screenshot
+  const bgScale = lerp(frame, 0, 210, 1.0, 1.12);
+  const overlayProgress = spr(frame, fps, 0, 20, 80);
+  const textProgress = spr(frame, fps, 30, 14, 100);
+  const ctaProgress = spr(frame, fps, 45, 12, 100);
+
+  // Pulso del botón CTA
+  const ctaPulse = 1 + Math.sin(frame * 0.12) * 0.03;
+  const ctaGlow = 0.6 + Math.sin(frame * 0.08) * 0.4;
 
   return (
     <AbsoluteFill style={{ overflow: 'hidden' }}>
-      {/* Screenshot con zoom */}
+      {/* Screenshot con zoom continuo */}
       <div style={{
-        position: 'absolute',
-        inset: 0,
-        transform: `scale(${scale})`,
-        transformOrigin: 'center center',
+        position: 'absolute', inset: 0,
+        transform: `scale(${bgScale})`,
+        transformOrigin: 'center 30%',
       }}>
         {screenshotUrl ? (
-          <Img src={screenshotUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          <Img src={screenshotUrl} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
         ) : (
           <div style={{
             width: '100%', height: '100%',
-            background: `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)`,
+            background: `linear-gradient(135deg, ${primaryColor}, ${secondaryColor})`,
           }} />
         )}
       </div>
 
-      {/* Overlay oscuro gradiente */}
+      {/* Overlay multi-capa */}
       <div style={{
-        position: 'absolute',
-        inset: 0,
-        background: `linear-gradient(0deg, rgba(0,0,0,0.92) 0%, rgba(0,0,0,${overlayOpacity}) 60%, transparent 100%)`,
+        position: 'absolute', inset: 0,
+        background: `linear-gradient(0deg, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.6) 50%, rgba(0,0,0,0.2) 100%)`,
+        opacity: overlayProgress,
       }} />
 
-      {/* CTA */}
+      {/* Partículas sobre el overlay */}
+      <FloatingParticles color={primaryColor} count={8} />
+
+      {/* Contenido */}
       <AbsoluteFill style={{
         justifyContent: 'flex-end',
         alignItems: 'center',
-        paddingBottom: 80,
+        paddingBottom: 70,
         flexDirection: 'column',
-        gap: 20,
+        gap: 12,
       }}>
         <div style={{
-          opacity: ctaOpacity,
-          transform: `translateY(${ctaY}px)`,
+          opacity: textProgress,
+          transform: `translateY(${(1 - textProgress) * 30}px)`,
           textAlign: 'center',
         }}>
-          <p style={{
-            color: 'rgba(255,255,255,0.7)',
-            fontSize: 14,
+          <div style={{
+            color: primaryColor,
+            fontSize: 11,
             fontFamily: 'sans-serif',
-            margin: '0 0 16px',
+            fontWeight: 700,
+            letterSpacing: 3,
+            textTransform: 'uppercase',
+            marginBottom: 8,
           }}>
             ¿Listo para empezar?
+          </div>
+          <p style={{
+            color: 'rgba(255,255,255,0.7)',
+            fontSize: 15,
+            fontFamily: 'sans-serif',
+            margin: 0,
+            lineHeight: 1.5,
+            maxWidth: 260,
+          }}>
+            Empezá hoy y transformá tu negocio digital
           </p>
+        </div>
+
+        {/* Botón CTA pulsante */}
+        <div style={{
+          opacity: ctaProgress,
+          transform: `translateY(${(1 - ctaProgress) * 30}px) scale(${ctaPulse})`,
+        }}>
           <div style={{
-            display: 'inline-block',
             background: `linear-gradient(135deg, ${primaryColor}, ${secondaryColor})`,
             borderRadius: 100,
-            padding: '16px 36px',
-            transform: `scale(${pulse})`,
-            boxShadow: `0 0 40px ${primaryColor}80`,
+            padding: '15px 32px',
+            boxShadow: `0 0 ${30 + ctaGlow * 30}px ${primaryColor}${Math.round(ctaGlow * 100).toString(16).padStart(2, '0')}`,
           }}>
             <span style={{
               color: 'white',
-              fontSize: 18,
+              fontSize: 17,
               fontFamily: 'sans-serif',
               fontWeight: 800,
-              letterSpacing: -0.5,
+              letterSpacing: -0.3,
             }}>
               {cta} →
             </span>
@@ -440,13 +564,15 @@ function SceneCTA({ screenshotUrl, cta, primaryColor, secondaryColor }) {
   );
 }
 
-// ─── Scene 5: Logo final (frames 780-900 = 26s-30s) ───────────────────────
+// ─── ESCENA 5: Logo final (frames 780-900 = 26s-30s) ──────────────────────
 
 function SceneLogo({ siteName, primaryColor, secondaryColor }) {
   const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
 
-  const logoScale = springAnim(frame, 30, 5, 18);
-  const fadeOut = ease(frame, 90, 120, 1, 0);
+  const progress = spr(frame, fps, 0, 18, 100);
+  const glowPulse = 0.7 + Math.sin(frame * 0.1) * 0.3;
+  const particleAngle = frame * 2;
 
   return (
     <AbsoluteFill style={{
@@ -455,37 +581,57 @@ function SceneLogo({ siteName, primaryColor, secondaryColor }) {
       alignItems: 'center',
       flexDirection: 'column',
     }}>
-      {/* Glow */}
+      {/* Glow pulsante */}
       <div style={{
         position: 'absolute',
-        width: 400,
-        height: 400,
+        width: 500,
+        height: 500,
         borderRadius: '50%',
-        background: `radial-gradient(circle, ${primaryColor}30 0%, transparent 70%)`,
+        background: `radial-gradient(circle, ${primaryColor}${Math.round(glowPulse * 40).toString(16).padStart(2, '0')} 0%, transparent 70%)`,
+        transform: `scale(${0.5 + progress * 0.6})`,
       }} />
 
+      {/* Partículas orbitando */}
+      {[0, 1, 2, 3].map(i => {
+        const angle = (particleAngle + i * 90) * Math.PI / 180;
+        const r = 120;
+        const px = Math.cos(angle) * r;
+        const py = Math.sin(angle) * r;
+        return (
+          <div key={i} style={{
+            position: 'absolute',
+            width: 6, height: 6,
+            borderRadius: '50%',
+            background: i % 2 === 0 ? primaryColor : secondaryColor,
+            transform: `translate(${px}px, ${py}px)`,
+            opacity: progress * 0.8,
+          }} />
+        );
+      })}
+
       <div style={{
-        transform: `scale(${logoScale})`,
-        opacity: fadeOut,
+        transform: `scale(${progress}) rotate(${(1 - progress) * -10}deg)`,
+        opacity: progress,
         textAlign: 'center',
+        zIndex: 2,
       }}>
         <div style={{
-          fontSize: 56,
+          fontSize: 60,
           fontFamily: 'sans-serif',
           fontWeight: 900,
-          background: `linear-gradient(135deg, ${primaryColor}, ${secondaryColor}, white)`,
+          background: `linear-gradient(135deg, white, ${primaryColor}, ${secondaryColor})`,
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
-          letterSpacing: -2,
-          marginBottom: 8,
+          letterSpacing: -2.5,
+          marginBottom: 4,
         }}>
           {siteName}
         </div>
         <div style={{
-          color: 'rgba(255,255,255,0.4)',
-          fontSize: 13,
+          color: 'rgba(255,255,255,0.35)',
+          fontSize: 11,
           fontFamily: 'sans-serif',
-          letterSpacing: 4,
+          letterSpacing: 5,
           textTransform: 'uppercase',
         }}>
           Empezá hoy
@@ -495,12 +641,37 @@ function SceneLogo({ siteName, primaryColor, secondaryColor }) {
   );
 }
 
+// ─── TRANSICIÓN entre escenas ──────────────────────────────────────────────
+
+function SceneTransition({ fromFrame, duration = 8 }) {
+  const frame = useCurrentFrame();
+  const progress = lerp(frame, fromFrame, fromFrame + duration, 0, 1);
+  return (
+    <div style={{
+      position: 'absolute', inset: 0,
+      background: 'white',
+      opacity: Math.sin(progress * Math.PI) * 0.4,
+      pointerEvents: 'none',
+      zIndex: 100,
+    }} />
+  );
+}
+
 // ─── Composición principal ─────────────────────────────────────────────────
+
+// Timing exacto sin solapamientos
+const SCENE_TIMINGS = {
+  hero:     { from: 0,   dur: 90  },  // 0-3s
+  mockup:   { from: 90,  dur: 210 },  // 3-10s
+  benefits: { from: 300, dur: 270 },  // 10-19s
+  cta:      { from: 570, dur: 210 },  // 19-26s
+  logo:     { from: 780, dur: 120 },  // 26-30s
+};
 
 export const MarketingVideo = ({
   siteName = "Mi Sitio",
   headline = "La solución que necesitás",
-  benefits = ["Beneficio 1", "Beneficio 2", "Beneficio 3"],
+  benefits = ["Fácil de usar", "Ahorrá tiempo", "Resultados reales"],
   cta = "Empezá gratis",
   primaryColor = "#6366f1",
   secondaryColor = "#818cf8",
@@ -508,53 +679,33 @@ export const MarketingVideo = ({
   screenshotUrl = null,
   logoUrl = null,
 }) => {
+  const T = SCENE_TIMINGS;
+
   return (
-    <AbsoluteFill style={{ background: '#000', fontFamily: 'sans-serif' }}>
-      {/* Scene 1: Hero (0-90 frames = 0-3s) */}
-      <Sequence from={0} durationInFrames={120}>
-        <SceneHero
-          siteName={siteName}
-          headline={headline}
-          primaryColor={primaryColor}
-          secondaryColor={secondaryColor}
-        />
+    <AbsoluteFill style={{ background: '#000' }}>
+      {/* Escena 1: Hero */}
+      <Sequence from={T.hero.from} durationInFrames={T.hero.dur}>
+        <SceneHero siteName={siteName} headline={headline} primaryColor={primaryColor} secondaryColor={secondaryColor} />
       </Sequence>
 
-      {/* Scene 2: Mockup iPhone (90-300 frames = 3-10s) */}
-      <Sequence from={110} durationInFrames={210}>
-        <SceneMockup
-          screenshotUrl={screenshotUrl}
-          primaryColor={primaryColor}
-          headline={headline}
-        />
+      {/* Escena 2: Mockup iPhone */}
+      <Sequence from={T.mockup.from} durationInFrames={T.mockup.dur}>
+        <SceneMockup screenshotUrl={screenshotUrl} primaryColor={primaryColor} secondaryColor={secondaryColor} headline={headline} />
       </Sequence>
 
-      {/* Scene 3: Beneficios (300-570 frames = 10-19s) */}
-      <Sequence from={300} durationInFrames={270}>
-        <SceneBenefits
-          benefits={benefits}
-          primaryColor={primaryColor}
-          siteName={siteName}
-        />
+      {/* Escena 3: Beneficios */}
+      <Sequence from={T.benefits.from} durationInFrames={T.benefits.dur}>
+        <SceneBenefits benefits={benefits} primaryColor={primaryColor} siteName={siteName} />
       </Sequence>
 
-      {/* Scene 4: CTA con screenshot (570-780 frames = 19-26s) */}
-      <Sequence from={570} durationInFrames={210}>
-        <SceneCTA
-          screenshotUrl={screenshotUrl}
-          cta={cta}
-          primaryColor={primaryColor}
-          secondaryColor={secondaryColor}
-        />
+      {/* Escena 4: CTA */}
+      <Sequence from={T.cta.from} durationInFrames={T.cta.dur}>
+        <SceneCTA screenshotUrl={screenshotUrl} cta={cta} primaryColor={primaryColor} secondaryColor={secondaryColor} />
       </Sequence>
 
-      {/* Scene 5: Logo final (780-900 frames = 26-30s) */}
-      <Sequence from={780} durationInFrames={120}>
-        <SceneLogo
-          siteName={siteName}
-          primaryColor={primaryColor}
-          secondaryColor={secondaryColor}
-        />
+      {/* Escena 5: Logo */}
+      <Sequence from={T.logo.from} durationInFrames={T.logo.dur}>
+        <SceneLogo siteName={siteName} primaryColor={primaryColor} secondaryColor={secondaryColor} />
       </Sequence>
     </AbsoluteFill>
   );
