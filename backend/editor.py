@@ -286,34 +286,18 @@ async def _process_clip(
         f"pad={w}:{h}:(ow-iw)/2:(oh-ih)/2:black"
     )
 
-    fps = 30
-    total_frames = max(1, int(duration * fps))
-    zoom_amount = 1.2 if clip_type in ("hero", "cta") else 1.12
-
-    # Speed ramp primero
+    fps = 25
     speed_filter = f"setpts={1.0/speed:.4f}*PTS"
-
-    # Zoom suave centrado (sin coordenadas custom que generan negro)
-    zoom_filter = (
-        f"scale=8000:-1,"
-        f"zoompan="
-        f"z='min(zoom+{(zoom_amount-1.0)/total_frames:.6f},{zoom_amount})':"
-        f"x='iw/2-(iw/zoom/2)':"
-        f"y='ih/2-(ih/zoom/2)':"
-        f"d={total_frames}:"
-        f"s={w}x{h}:"
-        f"fps={fps}"
-    )
 
     # Fade in/out suave
     fade_filter = ""
     if index > 0:
-        fade_filter = f",fade=t=in:st=0:d=0.15"
+        fade_filter = f",fade=t=in:st=0:d=0.2"
     if index < total - 1:
-        fade_out_start = max(0.1, duration - 0.15)
-        fade_filter += f",fade=t=out:st={fade_out_start:.2f}:d=0.15"
+        fade_out_start = max(0.1, duration - 0.2)
+        fade_filter += f",fade=t=out:st={fade_out_start:.2f}:d=0.2"
 
-    vf = f"{scale_filter},{speed_filter},{zoom_filter}{fade_filter}"
+    vf = f"{scale_filter},{speed_filter}{fade_filter}"
 
     cmd = [
         "ffmpeg", "-y",
