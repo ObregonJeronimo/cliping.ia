@@ -20,21 +20,97 @@ const STEPS = [
 const STEP_ORDER = STEPS.map(s => s.key)
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 const WS_URL  = API_URL.replace('http', 'ws')
-const HISTORY_KEY = 'cliping_history'
-const MAX_HISTORY = 5
+const URL_LIST_KEY = 'cliping_url_list'
+const ACTION_LIST_KEY = 'cliping_action_list'
 
-function getHistory() {
-  try {
-    return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]')
-  } catch { return [] }
+function loadList(key) {
+  try { return JSON.parse(localStorage.getItem(key) || '[]') } catch { return [] }
+}
+function saveList(key, list) {
+  try { localStorage.setItem(key, JSON.stringify(list)) } catch {}
 }
 
-function saveToHistory(url, action) {
-  try {
-    const h = getHistory().filter(i => i.url !== url || i.action !== action)
-    h.unshift({ url, action })
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(h.slice(0, MAX_HISTORY)))
-  } catch {}
+function SavedList({ listKey, value, onSelect, placeholder, multiline = false }) {
+  const [items, setItems] = useState(() => loadList(listKey))
+  const [open, setOpen] = useState(false)
+  const [editIdx, setEditIdx] = useState(null)
+  const [editVal, setEditVal] = useState('')
+
+  function addCurrent() {
+    if (!value.trim()) return
+    const next = [value.trim(), ...items.filter(i => i !== value.trim())].slice(0, 10)
+    setItems(next)
+    saveList(listKey, next)
+  }
+
+  function remove(idx) {
+    const next = items.filter((_, i) => i !== idx)
+    setItems(next)
+    saveList(listKey, next)
+  }
+
+  function startEdit(idx) {
+    setEditIdx(idx)
+    setEditVal(items[idx])
+  }
+
+  function saveEdit() {
+    if (!editVal.trim()) return
+    const next = items.map((item, i) => i === editIdx ? editVal.trim() : item)
+    setItems(next)
+    saveList(listKey, next)
+    setEditIdx(null)
+  }
+
+  return (
+    <div className={styles.savedListWrap}>
+      <button
+        className={styles.saveBtn}
+        onClick={addCurrent}
+        title="Guardar valor actual"
+        type="button"
+      >+</button>
+
+      {items.length > 0 && (
+        <button
+          className={`${styles.listToggleBtn} ${open ? styles.listToggleActive : ''}`}
+          onClick={() => setOpen(o => !o)}
+          type="button"
+          title="Ver guardados"
+        >
+          ▾ {items.length}
+        </button>
+      )}
+
+      {open && items.length > 0 && (
+        <div className={styles.savedDropdown}>
+          <div className={styles.savedDropdownHeader}>Guardados</div>
+          {items.map((item, idx) => (
+            <div key={idx} className={styles.savedRow}>
+              {editIdx === idx ? (
+                <div className={styles.savedEditRow}>
+                  {multiline
+                    ? <textarea className={styles.savedEditInput} value={editVal} onChange={e => setEditVal(e.target.value)} rows={2} />
+                    : <input className={styles.savedEditInput} value={editVal} onChange={e => setEditVal(e.target.value)} />
+                  }
+                  <button className={styles.savedAction} onClick={saveEdit}>✓</button>
+                  <button className={styles.savedAction} onClick={() => setEditIdx(null)}>✕</button>
+                </div>
+              ) : (
+                <>
+                  <button className={styles.savedItemBtn} onClick={() => { onSelect(item); setOpen(false) }}>
+                    {item}
+                  </button>
+                  <button className={styles.savedAction} onClick={() => startEdit(idx)} title="Editar">✎</button>
+                  <button className={styles.savedAction} onClick={() => remove(idx)} title="Eliminar">✕</button>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 function VideoPlayer({ url }) {
@@ -44,8 +120,7 @@ function VideoPlayer({ url }) {
 
   useEffect(() => {
     if (!url) return
-    setLoading(true)
-    setError(false)
+    setLoading(true); setError(false)
     fetch(url, { headers: { 'ngrok-skip-browser-warning': 'true' } })
       .then(r => { if (!r.ok) throw new Error(); return r.blob() })
       .then(blob => { setBlobUrl(URL.createObjectURL(blob)); setLoading(false) })
@@ -72,14 +147,8 @@ export default function Home() {
   const [errors, setErrors] = useState({})
   const [videoFilename, setVideoFilename] = useState(null)
   const [errorMsg, setErrorMsg] = useState('')
-  const [history, setHistory] = useState(getHistory)
-  const [showUrlHistory, setShowUrlHistory] = useState(false)
-  const [showActionHistory, setShowActionHistory] = useState(false)
   const fileRef = useRef()
   const wsRef = useRef(null)
-
-  const urlHistory = [...new Set(history.map(h => h.url))].slice(0, MAX_HISTORY)
-  const actionHistory = [...new Set(history.map(h => h.action))].slice(0, MAX_HISTORY)
 
   function validate() {
     const e = {}
@@ -92,12 +161,7 @@ export default function Home() {
     const e = validate()
     if (Object.keys(e).length) { setErrors(e); return }
     setErrors({})
-    saveToHistory(url.trim(), action.trim())
-    setHistory(getHistory())
-    setPhase('progress')
-    setStepStates({})
-    setProgress(0)
-    setErrorMsg('')
+    setPhase('progress'); setStepStates({}); setProgress(0); setErrorMsg('')
 
     try {
       const res = await fetch(`${API_URL}/api/generate`, {
@@ -105,11 +169,10 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url, action, format, style, voice, userId: user?.uid || '' }),
       })
-      if (!res.ok) throw new Error('Error backend')
+      if (!res.ok) throw new Error()
       const { job_id } = await res.json()
       connectWebSocket(job_id)
-    } catch (err) {
-      console.warn('Backend no disponible, simulando:', err.message)
+    } catch {
       simulateProgress()
     }
   }
@@ -122,13 +185,9 @@ export default function Home() {
       setProgress(job.progress || 0)
       if (job.step) {
         const idx = STEP_ORDER.indexOf(job.step)
-        const newStates = {}
-        STEP_ORDER.forEach((k, i) => {
-          if (i < idx) newStates[k] = 'done'
-          else if (i === idx) newStates[k] = 'running'
-          else newStates[k] = 'idle'
-        })
-        setStepStates(newStates)
+        const s = {}
+        STEP_ORDER.forEach((k, i) => { s[k] = i < idx ? 'done' : i === idx ? 'running' : 'idle' })
+        setStepStates(s)
       }
       if (job.status === 'done') {
         setStepStates(Object.fromEntries(STEP_ORDER.map(k => [k, 'done'])))
@@ -137,9 +196,7 @@ export default function Home() {
         setTimeout(() => setPhase('result'), 600)
         ws.close()
       } else if (job.status === 'error') {
-        setErrorMsg(job.error || 'Ocurrió un error')
-        setPhase('error')
-        ws.close()
+        setErrorMsg(job.error || 'Ocurrió un error'); setPhase('error'); ws.close()
       }
     }
     ws.onerror = () => { ws.close(); simulateProgress() }
@@ -148,32 +205,22 @@ export default function Home() {
   function simulateProgress() {
     const durations = [18, 25, 8, 20, 8, 6]
     let idx = 0
-    const pctPerStep = 100 / STEPS.length
-    function runStep() {
+    const pct = 100 / STEPS.length
+    function run() {
       if (idx >= STEPS.length) { setProgress(100); setTimeout(() => setPhase('result'), 800); return }
       const key = STEPS[idx].key
       setStepStates(prev => ({ ...prev, [key]: 'running' }))
-      const dur = durations[idx] * 1000
-      const startTime = Date.now()
-      const startPct = idx * pctPerStep
-      function tick() {
-        const frac = Math.min((Date.now() - startTime) / dur, 1)
-        setProgress(startPct + frac * pctPerStep)
-        if (frac < 1) requestAnimationFrame(tick)
-      }
+      const dur = durations[idx] * 1000; const t = Date.now(); const sp = idx * pct
+      function tick() { const f = Math.min((Date.now()-t)/dur,1); setProgress(sp+f*pct); if(f<1) requestAnimationFrame(tick) }
       tick()
-      setTimeout(() => { setStepStates(prev => ({ ...prev, [key]: 'done' })); idx++; setTimeout(runStep, 300) }, dur)
+      setTimeout(() => { setStepStates(prev => ({...prev,[key]:'done'})); idx++; setTimeout(run,300) }, dur)
     }
-    runStep()
+    run()
   }
 
   function handleReset() {
     wsRef.current?.close()
-    setPhase('form')
-    setStepStates({})
-    setProgress(0)
-    setVideoFilename(null)
-    setErrorMsg('')
+    setPhase('form'); setStepStates({}); setProgress(0); setVideoFilename(null); setErrorMsg('')
   }
 
   return (
@@ -183,74 +230,42 @@ export default function Home() {
           <h1 className={styles.title}>Nuevo video</h1>
           <p className={styles.sub}>Pegá una URL y describí la acción. La IA hace el resto.</p>
         </div>
-        <div className={styles.creditsTag}>
-          <span>⚡</span> {profile?.credits ?? 0} créditos
-        </div>
+        <div className={styles.creditsTag}><span>⚡</span> {profile?.credits ?? 0} créditos</div>
       </div>
 
       {phase === 'form' && (
         <div className={styles.card}>
-          {/* URL */}
           <div className={styles.field}>
-            <label>URL del sitio</label>
-            <div className={styles.inputWithHistory}>
-              <input
-                type="text" value={url}
-                onChange={e => { setUrl(e.target.value); setErrors(p => ({...p, url: false})); setShowUrlHistory(false) }}
-                onFocus={() => setShowUrlHistory(urlHistory.length > 0)}
-                onBlur={() => setTimeout(() => setShowUrlHistory(false), 150)}
-                placeholder="https://tu-sitio.com"
-                className={errors.url ? styles.inputErr : ''}
-              />
-              {showUrlHistory && (
-                <div className={styles.historyDropdown}>
-                  {urlHistory.map((u, i) => (
-                    <button key={i} className={styles.historyItem} onMouseDown={() => { setUrl(u); setShowUrlHistory(false) }}>
-                      <span className={styles.historyIcon}>↩</span> {u}
-                    </button>
-                  ))}
-                </div>
-              )}
+            <div className={styles.labelRow}>
+              <label>URL del sitio</label>
+              <SavedList listKey={URL_LIST_KEY} value={url} onSelect={setUrl} />
             </div>
+            <input type="text" value={url}
+              onChange={e => { setUrl(e.target.value); setErrors(p=>({...p,url:false})) }}
+              placeholder="https://tu-sitio.com"
+              className={errors.url ? styles.inputErr : ''} />
             {errors.url && <span className={styles.errMsg}>Ingresá una URL</span>}
           </div>
 
-          {/* Acción */}
           <div className={styles.field}>
-            <label>¿Qué debe hacer el agente?</label>
-            <div className={styles.inputWithHistory}>
-              <textarea
-                value={action}
-                onChange={e => { setAction(e.target.value); setErrors(p => ({...p, action: false})); setShowActionHistory(false) }}
-                onFocus={() => setShowActionHistory(actionHistory.length > 0)}
-                onBlur={() => setTimeout(() => setShowActionHistory(false), 150)}
-                rows={3}
-                placeholder="Mostrá el sitio, navegá las secciones principales, destacá el CTA..."
-                className={errors.action ? styles.inputErr : ''}
-              />
-              {showActionHistory && (
-                <div className={styles.historyDropdown}>
-                  {actionHistory.map((a, i) => (
-                    <button key={i} className={styles.historyItem} onMouseDown={() => { setAction(a); setShowActionHistory(false) }}>
-                      <span className={styles.historyIcon}>↩</span> {a}
-                    </button>
-                  ))}
-                </div>
-              )}
+            <div className={styles.labelRow}>
+              <label>¿Qué debe hacer el agente?</label>
+              <SavedList listKey={ACTION_LIST_KEY} value={action} onSelect={setAction} multiline />
             </div>
+            <textarea value={action}
+              onChange={e => { setAction(e.target.value); setErrors(p=>({...p,action:false})) }}
+              rows={3}
+              placeholder="Mostrá el sitio, navegá las secciones principales, destacá el CTA..."
+              className={errors.action ? styles.inputErr : ''} />
             {errors.action && <span className={styles.errMsg}>Describí qué debe hacer el agente</span>}
           </div>
 
-          {/* Formato */}
           <div className={styles.field}>
             <label>Formato</label>
             <div className={styles.chips}>
               {FORMATS.map(f => (
-                <button key={f.val}
-                  className={`${styles.chip} ${format === f.val ? styles.chipActive : ''}`}
-                  onClick={() => setFormat(f.val)}>
-                  {f.icon} {f.label}
-                </button>
+                <button key={f.val} className={`${styles.chip} ${format===f.val?styles.chipActive:''}`}
+                  onClick={() => setFormat(f.val)}>{f.icon} {f.label}</button>
               ))}
             </div>
           </div>
@@ -268,7 +283,7 @@ export default function Home() {
               <label>Voz en off</label>
               <select value={voice} onChange={e => setVoice(e.target.value)}>
                 <option value="female">Femenina</option>
-                <option value="male">Masculino</option>
+                <option value="male">Masculina</option>
                 <option value="none">Sin voz</option>
               </select>
             </div>
@@ -278,16 +293,13 @@ export default function Home() {
             <label>Logo al final (opcional)</label>
             <div className={styles.uploadArea} onClick={() => fileRef.current?.click()}>
               <input ref={fileRef} type="file" accept="image/png,image/svg+xml"
-                style={{ display: 'none' }} onChange={e => setLogoFile(e.target.files[0])} />
-              {logoFile
-                ? <p className={styles.uploadDone}>✓ {logoFile.name}</p>
-                : <p className={styles.uploadText}>↑ Subir logo PNG o SVG</p>}
+                style={{display:'none'}} onChange={e => setLogoFile(e.target.files[0])} />
+              {logoFile ? <p className={styles.uploadDone}>✓ {logoFile.name}</p>
+                        : <p className={styles.uploadText}>↑ Subir logo PNG o SVG</p>}
             </div>
           </div>
 
-          <button className={styles.btnGenerate} onClick={handleGenerate}>
-            + Crear video
-          </button>
+          <button className={styles.btnGenerate} onClick={handleGenerate}>+ Crear video</button>
         </div>
       )}
 
@@ -297,19 +309,14 @@ export default function Home() {
             <span className={styles.progressTitle}>Generando tu video...</span>
             <span className={styles.progressPct}>{Math.round(progress)}%</span>
           </div>
-          <div className={styles.barWrap}>
-            <div className={styles.barFill} style={{ width: `${progress}%` }} />
-          </div>
+          <div className={styles.barWrap}><div className={styles.barFill} style={{width:`${progress}%`}} /></div>
           <div className={styles.steps}>
             {STEPS.map(s => {
               const st = stepStates[s.key] || 'idle'
               return (
-                <div key={s.key} className={`${styles.step} ${styles['step_' + st]}`}>
-                  <div className={styles.stepIcon}>{st === 'done' ? '✓' : st === 'running' ? '◌' : '·'}</div>
-                  <div>
-                    <div className={styles.stepName}>{s.label}</div>
-                    <div className={styles.stepDetail}>{s.detail}</div>
-                  </div>
+                <div key={s.key} className={`${styles.step} ${styles['step_'+st]}`}>
+                  <div className={styles.stepIcon}>{st==='done'?'✓':st==='running'?'◌':'·'}</div>
+                  <div><div className={styles.stepName}>{s.label}</div><div className={styles.stepDetail}>{s.detail}</div></div>
                 </div>
               )
             })}
@@ -326,14 +333,11 @@ export default function Home() {
           <div className={styles.videoPreview}>
             {videoFilename
               ? <VideoPlayer url={`${API_URL}/api/video/${videoFilename}`} />
-              : <div className={styles.playBtn}><span className={styles.playTri} /></div>
-            }
+              : <div className={styles.playBtn}><span className={styles.playTri} /></div>}
           </div>
           <div className={styles.dlRow}>
             <button className={styles.btnGenerate} style={{flex:1}}
-              onClick={() => videoFilename && window.open(`${API_URL}/api/video/${videoFilename}`)}>
-              ↓ Descargar
-            </button>
+              onClick={() => videoFilename && window.open(`${API_URL}/api/video/${videoFilename}`)}>↓ Descargar</button>
             <button className={styles.btnSecondary} onClick={handleReset}>↺ Nuevo</button>
           </div>
         </div>
@@ -344,9 +348,7 @@ export default function Home() {
           <div className={styles.errorBox}>
             <div className={styles.errorTitle}>Ocurrió un error</div>
             <div className={styles.errorDetail}>{errorMsg}</div>
-            <button className={styles.btnGenerate} style={{marginTop:16}} onClick={handleReset}>
-              Intentar de nuevo
-            </button>
+            <button className={styles.btnGenerate} style={{marginTop:16}} onClick={handleReset}>Intentar de nuevo</button>
           </div>
         </div>
       )}

@@ -245,3 +245,129 @@
   flex-shrink: 0;
   font-size: 12px;
 }
+
+/* SAVED LIST */
+.labelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.labelRow label { margin-bottom: 0; }
+
+.savedListWrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+}
+
+.saveBtn {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .15s;
+  font-weight: 600;
+  padding: 0;
+}
+.saveBtn:hover { background: var(--accent); border-color: var(--accent); color: white; }
+
+.listToggleBtn {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  background: none;
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  padding: 2px 6px;
+  cursor: pointer;
+  transition: all .15s;
+}
+.listToggleBtn:hover, .listToggleActive { color: var(--text); border-color: var(--text); }
+
+.savedDropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 280px;
+  max-width: 400px;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 4px 20px rgba(0,0,0,.1);
+  z-index: 100;
+  overflow: hidden;
+}
+
+.savedDropdownHeader {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted2);
+  padding: 8px 12px 4px;
+}
+
+.savedRow {
+  display: flex;
+  align-items: center;
+  border-top: 1px solid var(--border);
+  min-height: 36px;
+}
+
+.savedItemBtn {
+  flex: 1;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  text-align: left;
+  font-size: 12px;
+  color: var(--text);
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: background .1s;
+  line-height: 1.4;
+}
+.savedItemBtn:hover { background: var(--surface2); }
+
+.savedAction {
+  width: 28px; height: 100%;
+  background: none;
+  border: none;
+  border-left: 1px solid var(--border);
+  color: var(--muted2);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .1s;
+  min-height: 36px;
+}
+.savedAction:hover { background: var(--surface2); color: var(--text); }
+
+.savedEditRow {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  gap: 4px;
+  padding: 6px 8px;
+}
+.savedEditInput {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: var(--text);
+  outline: none;
+  resize: none;
+}
