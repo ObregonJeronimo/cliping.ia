@@ -4,68 +4,190 @@ import aiohttp
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
+TEXT_MODEL = "llama-3.3-70b-versatile"
 
 
-async def analyze_screenshot(screenshot_bytes: bytes, action: str, page_url: str, step: int) -> dict:
-    img_b64 = base64.b64encode(screenshot_bytes).decode()
-    prompt = f"""Sos un agente de navegación web para videos de marketing.
-URL: {page_url} | Instrucción: {action} | Paso: {step}
-Analizá el screenshot. Respondé SOLO JSON válido sin markdown:
-{{"action":"click"|"scroll_down"|"scroll_up"|"type"|"wait"|"done","selector":"texto visible del elemento","text":"texto a escribir si es type","description":"descripción en español de la acción","scroll_amount":350}}
-Reglas: clickeá elementos relevantes para la instrucción, explorá con scroll, done cuando terminaste."""
+def _img(screenshot_bytes: bytes) -> dict:
+    b64 = base64.b64encode(screenshot_bytes).decode()
+    return {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64}"}}
 
-    payload = {
-        "model": VISION_MODEL,
-        "messages": [{"role":"user","content":[
-            {"type":"text","text":prompt},
-            {"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{img_b64}"}}
-        ]}],
-        "max_tokens": 200,
-        "temperature": 0.1,
-    }
+
+async def _groq_vision(messages: list, max_tokens: int = 400) -> str:
     headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
-
+    payload = {"model": VISION_MODEL, "messages": messages, "max_tokens": max_tokens, "temperature": 0.1}
     for attempt in range(3):
         try:
             async with aiohttp.ClientSession() as s:
                 async with s.post(GROQ_URL, json=payload, headers=headers,
-                                  timeout=aiohttp.ClientTimeout(total=30)) as r:
+                                  timeout=aiohttp.ClientTimeout(total=35)) as r:
                     data = await r.json()
-            print(f"[groq raw] {str(data)[:300]}")
             msg = data["choices"][0]["message"]["content"]
-            # Groq devuelve content como string o como lista JSON
             if isinstance(msg, list):
-                # puede ser lista de objetos de accion directamente
-                result = msg[0] if msg else {}
-            else:
-                text = re.sub(r"```json|```","",str(msg)).strip()
-                parsed = json.loads(text)
-                result = parsed[0] if isinstance(parsed, list) else parsed
-            print(f"[vision OK] step={step}: {result.get('action')} — {result.get('description','')}")
-            return result
+                # puede ser lista — tomar primer texto
+                for item in msg:
+                    if isinstance(item, dict) and item.get("type") == "text":
+                        return item["text"]
+                return str(msg[0])
+            return str(msg)
         except Exception as e:
-            print(f"[vision fail] attempt={attempt}: {str(e)[:80]}")
+            print(f"[groq vision] attempt={attempt}: {str(e)[:60]}")
             if attempt < 2:
-                await asyncio.sleep(2)
+                await asyncio.sleep(3)
+    return "{}"
 
-    return {"action": "scroll_down", "description": "Explorando la página", "scroll_amount": 350}
 
-
-async def generate_voiceover_script(action: str, page_url: str, descriptions: list) -> str:
-    domain = page_url.replace("https://","").replace("http://","").split("/")[0]
-    steps = " → ".join(descriptions[:5]) if descriptions else action
+async def _groq_text(prompt: str, max_tokens: int = 200) -> str:
     headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
-    payload = {
-        "model": "llama-3.3-70b-versatile",
-        "messages": [{"role":"user","content":
-            f"Script voz en off marketing, max 30 palabras, español rioplatense, entusiasta.\nSitio: {domain}\nAcciones: {steps}\nSolo el texto:"}],
-        "max_tokens": 80, "temperature": 0.7
-    }
+    payload = {"model": TEXT_MODEL, "messages": [{"role": "user", "content": prompt}],
+               "max_tokens": max_tokens, "temperature": 0.3}
     try:
         async with aiohttp.ClientSession() as s:
             async with s.post(GROQ_URL, json=payload, headers=headers,
-                              timeout=aiohttp.ClientTimeout(total=15)) as r:
+                              timeout=aiohttp.ClientTimeout(total=20)) as r:
                 data = await r.json()
         return data["choices"][0]["message"]["content"].strip()
+    except Exception as e:
+        print(f"[groq text] {e}")
+        return ""
+
+
+def _parse_json(text: str) -> dict | list:
+    text = re.sub(r"```json|```", "", text).strip()
+    # si hay multiples JSONs, tomar el primero
+    try:
+        return json.loads(text)
     except Exception:
-        return f"Mirá qué fácil es en {domain}. Todo en segundos, sin complicaciones."
+        # intentar extraer JSON con regex
+        match = re.search(r'\{.*\}', text, re.DOTALL)
+        if match:
+            try:
+                return json.loads(match.group())
+            except Exception:
+                pass
+        match = re.search(r'\[.*\]', text, re.DOTALL)
+        if match:
+            try:
+                return json.loads(match.group())
+            except Exception:
+                pass
+        return {}
+
+
+async def analyze_page(screenshot_bytes: bytes, url: str, user_action: str) -> dict:
+    """
+    Analiza la página y crea un plan de accion detallado.
+    Retorna: { page_type, plan, steps: [{goal, action_type}] }
+    """
+    prompt = f"""Analizá esta página web y creá un plan detallado para grabar un video de marketing.
+
+URL: {url}
+Instrucción del usuario: {user_action}
+
+Respondé SOLO con JSON válido:
+{{
+  "page_type": "landing" | "ecommerce" | "saas" | "portfolio" | "blog" | "otro",
+  "page_summary": "descripción breve de qué hace la página",
+  "plan": "descripción del recorrido que vas a hacer para el video",
+  "steps": [
+    {{"goal": "descripción del objetivo de este paso", "action_type": "scroll_down|scroll_up|click|wait|scroll_to_top"}}
+  ]
+}}
+
+Creá entre 8 y 12 pasos que muestren la página de forma atractiva para marketing.
+Para landing pages: mostrar el hero, scrollear por las secciones, mostrar beneficios, CTA.
+Para ecommerce: mostrar productos, agregar al carrito, ir al carrito.
+Para SaaS: mostrar features, pricing, demo si hay."""
+
+    raw = await _groq_vision([{"role": "user", "content": [
+        {"type": "text", "text": prompt},
+        _img(screenshot_bytes)
+    ]}], max_tokens=600)
+
+    print(f"[analyze] raw: {raw[:200]}")
+    result = _parse_json(raw)
+    if not result or "steps" not in result:
+        # fallback generico
+        result = {
+            "page_type": "landing",
+            "plan": "Mostrar la pagina de forma atractiva",
+            "steps": [
+                {"goal": "Mostrar el inicio de la pagina", "action_type": "wait"},
+                {"goal": "Scrollear para ver mas contenido", "action_type": "scroll_down"},
+                {"goal": "Continuar explorando", "action_type": "scroll_down"},
+                {"goal": "Ver mas secciones", "action_type": "scroll_down"},
+                {"goal": "Volver arriba", "action_type": "scroll_to_top"},
+            ]
+        }
+    return result
+
+
+async def execute_step(screenshot_bytes: bytes, step: dict, url: str) -> dict:
+    """
+    Ejecuta un paso especifico. Si es click, devuelve coordenadas x,y.
+    """
+    goal = step.get("goal", "")
+    action_type = step.get("action_type", "scroll_down")
+
+    if action_type in ("scroll_down", "scroll_up", "scroll_to_top", "wait"):
+        amounts = {"scroll_down": 380, "scroll_up": 380}
+        return {
+            "action": action_type,
+            "description": goal,
+            "scroll_amount": amounts.get(action_type, 380)
+        }
+
+    # para clicks: pedir coordenadas exactas
+    prompt = f"""Objetivo: {goal}
+
+Mirá el screenshot. Necesito las coordenadas exactas (x, y en pixels) del elemento que hay que clickear para lograr el objetivo.
+
+El viewport es 390x844 pixels.
+
+Respondé SOLO con JSON:
+{{"action": "click", "x": 195, "y": 400, "description": "{goal}"}}
+
+Si no hay nada clickeable para este objetivo, respondé:
+{{"action": "scroll_down", "description": "{goal}", "scroll_amount": 380}}"""
+
+    raw = await _groq_vision([{"role": "user", "content": [
+        {"type": "text", "text": prompt},
+        _img(screenshot_bytes)
+    ]}], max_tokens=150)
+
+    result = _parse_json(raw)
+    if isinstance(result, list):
+        result = result[0] if result else {}
+    if not result:
+        result = {"action": "scroll_down", "description": goal, "scroll_amount": 380}
+
+    result["description"] = goal
+    print(f"[execute] {result.get('action')} x={result.get('x')} y={result.get('y')} — {goal}")
+    return result
+
+
+async def generate_voiceover_script(action: str, url: str, descriptions: list, page_analysis: dict) -> str:
+    domain = url.replace("https://","").replace("http://","").split("/")[0]
+    page_type = page_analysis.get("page_type", "")
+    summary = page_analysis.get("page_summary", "")
+    steps_done = " → ".join(descriptions[:6]) if descriptions else action
+
+    prompt = f"""Escribí un script de voz en off para un video de marketing. 
+
+Sitio: {domain}
+Tipo de página: {page_type}
+Descripción: {summary}
+Lo que se mostró: {steps_done}
+
+Requisitos:
+- Máximo 35 palabras
+- Español rioplatense, natural y entusiasta
+- Destacar el beneficio principal del sitio
+- NO mencionar "IA" ni "agente"
+- Que invite a la acción
+
+Solo el texto del script, sin comillas ni explicaciones."""
+
+    result = await _groq_text(prompt, max_tokens=100)
+    if not result:
+        result = f"Mirá todo lo que podés hacer en {domain}. Simple, rápido y sin complicaciones."
+    return result

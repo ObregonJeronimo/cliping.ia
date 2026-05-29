@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Callable
 
 from playwright.async_api import async_playwright
-from vision import analyze_screenshot, generate_voiceover_script
+from vision import analyze_page, plan_actions, execute_step, generate_voiceover_script
 
 OUTPUTS_DIR = Path("outputs")
 OUTPUTS_DIR.mkdir(exist_ok=True)
@@ -15,7 +15,7 @@ FORMATS = {
     "feed":    {"w": 1080, "h": 1080},
 }
 
-RECORD_W, RECORD_H = 430, 932  # un poco más ancho para que entren las cards
+RECORD_W, RECORD_H = 390, 844
 
 async def run_agent(
     url: str,
@@ -33,6 +33,7 @@ async def run_agent(
 
     progress_cb("browse", 10)
     descriptions = []
+    click_timestamps = []  # para zoom en edicion
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(
@@ -47,124 +48,145 @@ async def run_agent(
         )
         page = await context.new_page()
 
+        # cargar pagina
         progress_cb("browse", 15)
         try:
-            await page.goto(url, wait_until="domcontentloaded", timeout=30000)
+            await page.goto(url, wait_until="networkidle", timeout=30000)
         except Exception:
-            await page.goto(url, wait_until="commit", timeout=30000)
+            try:
+                await page.goto(url, wait_until="domcontentloaded", timeout=20000)
+            except Exception:
+                await page.goto(url, wait_until="commit", timeout=15000)
 
-        # pausa inicial larga para que se vea bien la página
         await page.wait_for_timeout(3000)
 
+        # FASE 1: analizar la pagina
+        progress_cb("browse", 20)
+        screenshot = await page.screenshot(type="png", full_page=False)
+        page_analysis = await analyze_page(screenshot, url, action)
+        print(f"[agent] page type: {page_analysis.get('page_type')} — plan: {page_analysis.get('plan')}")
+
+        # FASE 2: ejecutar pasos planificados
         progress_cb("navigate", 25)
-
-        max_steps = 12
-        for step in range(max_steps):
-            screenshot = await page.screenshot(type="png", full_page=False)
-            instruction = await analyze_screenshot(screenshot, action, url, step)
-
-            act = instruction.get("action", "scroll_down")
-            desc = instruction.get("description", "")
-            if desc:
-                descriptions.append(desc)
-                print(f"[step {step}] {act}: {desc}")
-
-            pct = 25 + int((step / max_steps) * 30)
+        steps = page_analysis.get("steps", [])
+        
+        for i, step in enumerate(steps[:10]):
+            pct = 25 + int((i / max(len(steps), 1)) * 35)
             progress_cb("navigate", pct)
 
+            screenshot = await page.screenshot(type="png", full_page=False)
+            result = await execute_step(screenshot, step, url)
+            
+            act = result.get("action", "scroll_down")
+            desc = result.get("description", "")
+            x = result.get("x")
+            y = result.get("y")
+            
+            if desc:
+                descriptions.append(desc)
+            print(f"[step {i}] {act} — {desc}")
+
             if act == "done":
-                # pausa larga al final para que se vea el resultado
-                await page.wait_for_timeout(3000)
+                await page.wait_for_timeout(2000)
                 break
 
-            elif act == "click":
-                sel = instruction.get("selector", "")
-                clicked = False
-                if sel:
-                    for try_fn in [
-                        lambda: page.get_by_text(sel, exact=False).first,
-                        lambda: page.locator(sel).first,
-                        lambda: page.get_by_role("button", name=sel).first,
-                    ]:
-                        try:
-                            el = try_fn()
-                            if await el.count() > 0:
-                                await el.scroll_into_view_if_needed()
-                                await page.wait_for_timeout(600)
-                                await el.click(timeout=5000)
-                                clicked = True
-                                break
-                        except Exception:
-                            continue
-                if not clicked:
-                    await page.evaluate("window.scrollBy(0, 300)")
-                # pausa después de click para que se vea la reacción
-                await page.wait_for_timeout(2500)
+            elif act == "click" and x and y:
+                # click por coordenadas — mas confiable
+                try:
+                    await page.mouse.move(x, y)
+                    await page.wait_for_timeout(300)
+                    await page.mouse.click(x, y)
+                    click_timestamps.append(i)
+                    await page.wait_for_timeout(2500)
+                except Exception as e:
+                    print(f"[click error] {e}")
+                    await page.evaluate(f"window.scrollBy({{top: 300, behavior: 'smooth'}})")
+                    await page.wait_for_timeout(1500)
+
+            elif act == "click_text":
+                sel = result.get("selector", "")
+                try:
+                    el = page.get_by_text(sel, exact=False).first
+                    if await el.count() > 0:
+                        await el.scroll_into_view_if_needed()
+                        await page.wait_for_timeout(400)
+                        await el.click(timeout=5000)
+                        click_timestamps.append(i)
+                        await page.wait_for_timeout(2500)
+                    else:
+                        await page.evaluate(f"window.scrollBy({{top: 300, behavior: 'smooth'}})")
+                        await page.wait_for_timeout(1500)
+                except Exception as e:
+                    print(f"[click_text error] {e}")
+
+            elif act == "scroll_down":
+                amount = result.get("scroll_amount", 400)
+                await page.evaluate(f"window.scrollBy({{top: {amount}, behavior: 'smooth'}})")
+                await page.wait_for_timeout(1800)
+
+            elif act == "scroll_up":
+                amount = result.get("scroll_amount", 400)
+                await page.evaluate(f"window.scrollBy({{top: -{amount}, behavior: 'smooth'}})")
+                await page.wait_for_timeout(1500)
+
+            elif act == "scroll_to_top":
+                await page.evaluate("window.scrollTo({top: 0, behavior: 'smooth'})")
+                await page.wait_for_timeout(1500)
 
             elif act == "type":
-                sel = instruction.get("selector", "")
-                text = instruction.get("text", "")
+                sel = result.get("selector", "")
+                text = result.get("text", "")
                 if sel and text:
                     try:
                         el = page.locator(sel).first
-                        if await el.count() > 0:
-                            await el.click()
-                            await page.wait_for_timeout(400)
-                            await el.fill(text)
-                            await page.wait_for_timeout(800)
+                        await el.click()
+                        await page.wait_for_timeout(300)
+                        await el.fill(text)
+                        await page.wait_for_timeout(800)
                     except Exception:
                         pass
-
-            elif act == "scroll_down":
-                amount = instruction.get("scroll_amount", 350)
-                await page.evaluate(f"window.scrollBy({{top: {amount}, behavior: 'smooth'}})")
-                await page.wait_for_timeout(1500)
-
-            elif act == "scroll_up":
-                amount = instruction.get("scroll_amount", 350)
-                await page.evaluate(f"window.scrollBy({{top: -{amount}, behavior: 'smooth'}})")
-                await page.wait_for_timeout(1500)
 
             elif act == "wait":
                 await page.wait_for_timeout(2500)
 
-        # pausa final
-        await page.wait_for_timeout(2500)
+        # pausa final para ver el resultado
+        await page.wait_for_timeout(3000)
         video_path_str = await page.video.path() if page.video else None
         await context.close()
         await browser.close()
 
-    # obtener el webm
+    # obtener webm
     if video_path_str:
         raw_video = Path(video_path_str)
     else:
         recorded = sorted(OUTPUTS_DIR.glob("*.webm"), key=lambda f: f.stat().st_mtime, reverse=True)
         if not recorded:
-            raise RuntimeError("Playwright no generó video")
+            raise RuntimeError("Playwright no genero video")
         raw_video = recorded[0]
 
     if not raw_video.exists() or raw_video.stat().st_size < 1000:
-        raise RuntimeError(f"Video grabado muy pequeño: {raw_video}")
+        raise RuntimeError(f"Video muy pequeno: {raw_video}")
 
-    print(f"[agent] raw video: {raw_video} ({raw_video.stat().st_size // 1024}KB)")
-    # medir duración real
     probe = await asyncio.create_subprocess_exec(
         "ffprobe", "-v", "error", "-show_entries", "format=duration",
         "-of", "default=noprint_wrappers=1:nokey=1", str(raw_video),
         stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL
     )
     dur_out, _ = await probe.communicate()
-    print(f"[agent] raw duration: {dur_out.decode().strip()}s")
+    raw_duration = float(dur_out.decode().strip() or "30")
+    print(f"[agent] raw video: {raw_video.name} ({raw_video.stat().st_size//1024}KB) {raw_duration:.1f}s")
 
-    progress_cb("detect", 55)
-    progress_cb("edit", 65)
-    edited = await edit_video(raw_video, final_video, fmt, style)
+    # editar
+    progress_cb("detect", 60)
+    progress_cb("edit", 68)
+    edited = await edit_video(raw_video, final_video, fmt, style, raw_duration)
 
+    # voz en off
     result_video = edited
     if voice != "none":
-        progress_cb("voice", 80)
-        script = await generate_voiceover_script(action, url, descriptions)
-        print(f"[voice] script: {script}")
+        progress_cb("voice", 82)
+        script = await generate_voiceover_script(action, url, descriptions, page_analysis)
+        print(f"[voice] {script}")
         audio_path = await generate_voice(script, job_id, voice)
         if audio_path and audio_path.exists():
             mixed = await mix_audio(edited, audio_path, mixed_video)
@@ -173,61 +195,52 @@ async def run_agent(
 
     progress_cb("export", 95)
 
-    # debug: mantener webm para inspeccion
-    pass
-
     probe2 = await asyncio.create_subprocess_exec(
         "ffprobe", "-v", "error", "-show_entries", "format=duration",
         "-of", "default=noprint_wrappers=1:nokey=1", str(result_video),
         stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL
     )
     dur2, _ = await probe2.communicate()
-    print(f"[agent] final video: {result_video} ({result_video.stat().st_size // 1024}KB) duration={dur2.decode().strip()}s")
+    print(f"[agent] final: {result_video.name} duration={dur2.decode().strip()}s")
+
+    try:
+        raw_video.unlink()
+    except Exception:
+        pass
+
     return result_video
 
 
-async def edit_video(input_path: Path, output_path: Path, fmt: dict, style: str) -> Path:
+async def edit_video(input_path: Path, output_path: Path, fmt: dict, style: str, duration: float) -> Path:
     w, h = fmt["w"], fmt["h"]
-
-    # escalar manteniendo el contenido visible, sin cortar
-    # pad agrega barras negras si el aspect ratio no coincide exactamente
     vf = (
         f"scale={w}:{h}:force_original_aspect_ratio=decrease,"
         f"pad={w}:{h}:(ow-iw)/2:(oh-ih)/2:black"
     )
-
     cmd = [
         "ffmpeg", "-y",
         "-i", str(input_path),
         "-vf", vf,
         "-c:v", "libx264",
         "-preset", "fast",
-        "-crf", "18",           # mejor calidad
+        "-crf", "18",
         "-movflags", "+faststart",
         "-an",
         str(output_path),
     ]
-
     proc = await asyncio.create_subprocess_exec(
-        *cmd,
-        stdout=asyncio.subprocess.DEVNULL,
-        stderr=asyncio.subprocess.PIPE,
+        *cmd, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.PIPE
     )
     _, stderr = await proc.communicate()
-
     if not output_path.exists() or output_path.stat().st_size < 10000:
-        print(f"FFmpeg error: {stderr.decode()[:500]}")
+        print(f"FFmpeg error: {stderr.decode()[:300]}")
         return input_path
-
     return output_path
 
 
 async def generate_voice(script: str, job_id: str, voice: str) -> Path | None:
     audio_path = OUTPUTS_DIR / f"{job_id}_voice.mp3"
-    voice_map = {
-        "female": "es-AR-ElenaNeural",
-        "male":   "es-AR-TomasNeural",
-    }
+    voice_map = {"female": "es-AR-ElenaNeural", "male": "es-AR-TomasNeural"}
     try:
         import edge_tts
         communicate = edge_tts.Communicate(script, voice_map.get(voice, "es-AR-ElenaNeural"))
@@ -239,41 +252,17 @@ async def generate_voice(script: str, job_id: str, voice: str) -> Path | None:
 
 
 async def mix_audio(video_path: Path, audio_path: Path, output_path: Path) -> Path:
-    # obtener duración del video
-    probe_cmd = [
-        "ffprobe", "-v", "error",
-        "-show_entries", "format=duration",
-        "-of", "default=noprint_wrappers=1:nokey=1",
-        str(video_path)
-    ]
-    proc = await asyncio.create_subprocess_exec(
-        *probe_cmd,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.DEVNULL,
-    )
-    stdout, _ = await proc.communicate()
-    try:
-        duration = float(stdout.decode().strip())
-    except Exception:
-        duration = 30.0
-
-    # mezclar: video + voz + música de fondo suave (si hay)
     cmd = [
         "ffmpeg", "-y",
         "-i", str(video_path),
         "-i", str(audio_path),
-        "-map", "0:v",
-        "-map", "1:a",
-        "-c:v", "copy",
-        "-c:a", "aac",
-        "-b:a", "128k",
+        "-map", "0:v", "-map", "1:a",
+        "-c:v", "copy", "-c:a", "aac", "-b:a", "128k",
         "-movflags", "+faststart",
         str(output_path),
     ]
     proc = await asyncio.create_subprocess_exec(
-        *cmd,
-        stdout=asyncio.subprocess.DEVNULL,
-        stderr=asyncio.subprocess.DEVNULL,
+        *cmd, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL
     )
     await proc.communicate()
     return output_path if output_path.exists() else video_path
