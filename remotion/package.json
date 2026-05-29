@@ -1,0 +1,13 @@
+{
+  "name": "cliping-remotion",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "npx remotion studio",
+    "render": "npx remotion render MarketingVideo"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.0",
+    "@remotion/player": "^4.0.0",
+    "remotion": "^4.0.0"
+  }
+}
