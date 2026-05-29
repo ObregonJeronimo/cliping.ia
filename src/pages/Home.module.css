@@ -391,3 +391,113 @@
   transition: all .15s;
 }
 .previewBtn:hover { border-color: var(--text); background: var(--surface); }
+
+/* ─── MODO TOGGLE ─────────────────────────────────────────────────────── */
+.modeToggle {
+  display: flex;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 4px;
+  margin-bottom: 16px;
+  gap: 4px;
+}
+
+.modeBtn {
+  flex: 1;
+  padding: 10px;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all .15s;
+}
+.modeBtn:hover { color: var(--text); }
+.modeBtnActive {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+/* ─── OPTION GRID ─────────────────────────────────────────────────────── */
+.optionGrid {
+  display: grid;
+  gap: 8px;
+}
+
+.optionCard {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 10px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all .15s;
+  text-align: left;
+}
+.optionCard:hover { border-color: var(--text); background: var(--surface2); }
+.optionCardActive {
+  border-color: var(--text);
+  background: var(--text);
+  color: var(--accent-text);
+}
+.optionCardActive .optionDesc { color: rgba(255,255,255,0.6); }
+
+.optionIcon { font-size: 16px; }
+.optionLabel { font-size: 12px; font-weight: 700; }
+.optionDesc { font-size: 10px; color: var(--muted); line-height: 1.3; }
+
+/* ─── DURATION PICKER ─────────────────────────────────────────────────── */
+.durationRow {
+  display: flex;
+  gap: 8px;
+}
+
+.durationBtn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 8px;
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all .15s;
+}
+.durationBtn:hover { border-color: var(--text); }
+.durationActive {
+  border-color: var(--text);
+  background: var(--text);
+  color: var(--accent-text);
+}
+.durationActive .durationDesc { color: rgba(255,255,255,0.6); }
+
+.durationLabel { font-size: 15px; font-weight: 800; }
+.durationDesc { font-size: 10px; color: var(--muted); }
+
+/* ─── ADVANCED DIVIDER ────────────────────────────────────────────────── */
+.advancedDivider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 0 20px;
+  color: var(--muted2);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.advancedDivider::before,
+.advancedDivider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}

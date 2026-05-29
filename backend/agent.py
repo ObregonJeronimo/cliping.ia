@@ -6,7 +6,7 @@ from typing import Callable
 from playwright.async_api import async_playwright
 from vision import analyze_page, execute_step, generate_voiceover_script
 from editor import get_duration, OUTPUTS_DIR
-from remotion_renderer import extract_page_data, render_video
+from remotion_renderer import extract_page_data_deep, render_video
 
 FORMATS = {
     "reel":    {"w": 390,  "h": 844},
@@ -25,7 +25,10 @@ async def run_agent(
     voice: str,
     job_id: str,
     progress_cb: Callable,
+    req_params: dict = None,
 ) -> Path:
+    if req_params is None:
+        req_params = {}
 
     fmt = FORMATS.get(format, FORMATS["reel"])
     mixed_video = OUTPUTS_DIR / f"{job_id}_mixed.mp4"
@@ -70,7 +73,7 @@ async def run_agent(
         progress_cb("browse", 20)
         hero_bytes = hero_path.read_bytes()
         page_analysis = await analyze_page(hero_bytes, url, action)
-        page_data = await extract_page_data(hero_bytes, url, action)
+        page_data = await extract_page_data_deep(hero_bytes, url, action)
         print(f"[agent] {page_data.get('siteName')} — {page_data.get('headline')}")
 
         # FASE 2: Navegar la página (para el rawvideo de referencia y para tener descripciones)
@@ -131,10 +134,22 @@ async def run_agent(
     progress_cb("edit", 60)
 
     try:
+        render_params = {
+            "url": url,
+            "mode": req_params.get("mode", "simple"),
+            "visualStyle": req_params.get("visualStyle", "dark_premium"),
+            "narrative": req_params.get("narrative", "problem_solution"),
+            "hook": req_params.get("hook", "question"),
+            "tone": req_params.get("tone", "enthusiastic"),
+            "focus": req_params.get("focus", "product"),
+            "duration": req_params.get("duration", 30),
+            "format": format,
+        }
         edited_video = await render_video(
             page_data=page_data,
             screenshot_path=hero_screenshot,
             job_id=job_id,
+            params=render_params,
         )
     except Exception as e:
         print(f"[remotion] falló: {e}, usando fallback")

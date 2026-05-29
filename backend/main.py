@@ -46,6 +46,14 @@ class GenerateRequest(BaseModel):
     style: str = "epic"
     voice: str = "female"
     userId: str = ""
+    # parametros de video avanzados
+    mode: str = "simple"
+    visualStyle: str = "dark_premium"
+    narrative: str = "problem_solution"
+    hook: str = "question"
+    tone: str = "enthusiastic"
+    focus: str = "product"
+    duration: int = 30
 
 @app.get("/")
 def root():
@@ -129,6 +137,7 @@ async def process_job(job_id: str, req: GenerateRequest):
             voice=req.voice,
             job_id=job_id,
             progress_cb=update,
+            req_params=req.model_dump(),
         )
         filename = video_path.name
         jobs[job_id].update({

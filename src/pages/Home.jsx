@@ -1,6 +1,8 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import styles from './Home.module.css'
+
+// ─── Constantes ────────────────────────────────────────────────────────────
 
 const FORMATS = [
   { val: 'reel', label: 'Reel / TikTok', icon: '📱' },
@@ -9,18 +11,67 @@ const FORMATS = [
 ]
 
 const STEPS = [
-  { key: 'browse',   label: 'Abriendo la página',       detail: 'Iniciando agente Playwright' },
-  { key: 'navigate', label: 'Navegando y grabando',      detail: 'El agente ejecuta las instrucciones' },
-  { key: 'detect',   label: 'Detectando momentos clave', detail: 'Analizando clicks y transiciones' },
-  { key: 'edit',     label: 'Editando con FFmpeg',       detail: 'Zoom, speed ramp, captions' },
-  { key: 'voice',    label: 'Generando voz en off',      detail: 'Narración sincronizada' },
-  { key: 'export',   label: 'Ensamblando video final',   detail: 'Combinando audio, captions y logo' },
+  { key: 'browse',   label: 'Analizando la página',      detail: 'Extrayendo datos y assets' },
+  { key: 'navigate', label: 'Navegando',                  detail: 'El agente recorre el sitio' },
+  { key: 'detect',   label: 'Seleccionando momentos',     detail: 'IA elige los mejores clips' },
+  { key: 'edit',     label: 'Generando animaciones',      detail: 'Remotion crea el video' },
+  { key: 'voice',    label: 'Voz en off',                 detail: 'Narración sincronizada' },
+  { key: 'export',   label: 'Exportando',                 detail: 'Ensamblando el video final' },
+]
+
+const VISUAL_STYLES = [
+  { val: 'dark_premium', label: 'Dark Premium', desc: 'Oscuro, elegante, moderno', icon: '🌑' },
+  { val: 'neon',         label: 'Neon',         desc: 'Colores vibrantes, cyberpunk', icon: '⚡' },
+  { val: 'minimal',      label: 'Minimalista',  desc: 'Limpio, blanco, tipografía', icon: '◻️' },
+  { val: 'brand',        label: 'Marca',        desc: 'Usa los colores del sitio', icon: '🎨' },
+  { val: 'corporate',    label: 'Corporativo',  desc: 'Profesional, serio', icon: '💼' },
+]
+
+const NARRATIVES = [
+  { val: 'problem_solution', label: 'Problema → Solución', desc: 'Mostrá el pain point y la respuesta', icon: '💡' },
+  { val: 'before_after',     label: 'Antes / Después',    desc: 'Transformación clara y poderosa', icon: '🔄' },
+  { val: 'features',         label: 'Features destacadas', desc: 'Mostrá las funciones clave', icon: '✨' },
+  { val: 'social_proof',     label: 'Social proof',        desc: 'Confianza, testimonios, números', icon: '⭐' },
+  { val: 'urgency',          label: 'Urgencia / CTA',      desc: 'Directo al grano, llamada a actuar', icon: '🚀' },
+  { val: 'story',            label: 'Historia',            desc: 'Narrativa emocional de 3 actos', icon: '📖' },
+]
+
+const HOOKS = [
+  { val: 'question',   label: '¿Pregunta impactante?',   icon: '❓' },
+  { val: 'stat',       label: 'Dato sorprendente',        icon: '📊' },
+  { val: 'bold',       label: 'Afirmación bold',          icon: '🔥' },
+  { val: 'did_you',    label: '¿Sabías que...?',          icon: '💭' },
+  { val: 'result',     label: 'Resultado prometido',      icon: '🎯' },
+  { val: 'pain',       label: 'Dolor directo',            icon: '😤' },
+]
+
+const TONES = [
+  { val: 'professional', label: 'Profesional', icon: '👔' },
+  { val: 'enthusiastic', label: 'Entusiasta',  icon: '🙌' },
+  { val: 'urgent',       label: 'Urgente',     icon: '⏰' },
+  { val: 'trustworthy',  label: 'Confiable',   icon: '🤝' },
+  { val: 'disruptive',   label: 'Disruptivo',  icon: '💥' },
+]
+
+const FOCUSES = [
+  { val: 'product',   label: 'Mostrar el producto',   icon: '📱' },
+  { val: 'problem',   label: 'El problema que resuelve', icon: '🎯' },
+  { val: 'benefits',  label: 'Beneficios clave',       icon: '✅' },
+  { val: 'flow',      label: 'Cómo funciona',          icon: '🔄' },
+  { val: 'proof',     label: 'Prueba social',          icon: '⭐' },
+]
+
+const DURATIONS = [
+  { val: 15,  label: '15s', desc: 'Hook directo' },
+  { val: 30,  label: '30s', desc: 'Completo' },
+  { val: 45,  label: '45s', desc: 'Con detalle' },
+  { val: 60,  label: '60s', desc: 'Extenso' },
 ]
 
 const STEP_ORDER = STEPS.map(s => s.key)
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 const WS_URL  = API_URL.replace('http', 'ws')
-const URL_LIST_KEY = 'cliping_url_list'
+const URL_LIST_KEY    = 'cliping_url_list'
 const ACTION_LIST_KEY = 'cliping_action_list'
 
 function loadList(key) {
@@ -30,59 +81,39 @@ function saveList(key, list) {
   try { localStorage.setItem(key, JSON.stringify(list)) } catch {}
 }
 
-function SavedList({ listKey, value, onSelect, placeholder, multiline = false }) {
+// ─── SavedList ─────────────────────────────────────────────────────────────
+
+function SavedList({ listKey, value, onSelect, multiline = false }) {
   const [items, setItems] = useState(() => loadList(listKey))
   const [open, setOpen] = useState(false)
   const [editIdx, setEditIdx] = useState(null)
   const [editVal, setEditVal] = useState('')
 
-  function addCurrent() {
+  function add() {
     if (!value.trim()) return
     const next = [value.trim(), ...items.filter(i => i !== value.trim())].slice(0, 10)
-    setItems(next)
-    saveList(listKey, next)
+    setItems(next); saveList(listKey, next)
   }
-
   function remove(idx) {
     const next = items.filter((_, i) => i !== idx)
-    setItems(next)
-    saveList(listKey, next)
+    setItems(next); saveList(listKey, next)
   }
-
-  function startEdit(idx) {
-    setEditIdx(idx)
-    setEditVal(items[idx])
-  }
-
   function saveEdit() {
     if (!editVal.trim()) return
-    const next = items.map((item, i) => i === editIdx ? editVal.trim() : item)
-    setItems(next)
-    saveList(listKey, next)
-    setEditIdx(null)
+    const next = items.map((it, i) => i === editIdx ? editVal.trim() : it)
+    setItems(next); saveList(listKey, next); setEditIdx(null)
   }
 
   return (
     <div className={styles.savedListWrap}>
-      <button
-        className={styles.saveBtn}
-        onClick={addCurrent}
-        title="Guardar valor actual"
-        type="button"
-      >+</button>
-
+      <button className={styles.saveBtn} onClick={add} title="Guardar" type="button">+</button>
       {items.length > 0 && (
-        <button
-          className={`${styles.listToggleBtn} ${open ? styles.listToggleActive : ''}`}
-          onClick={() => setOpen(o => !o)}
-          type="button"
-          title="Ver guardados"
-        >
+        <button className={`${styles.listToggleBtn} ${open ? styles.listToggleActive : ''}`}
+          onClick={() => setOpen(o => !o)} type="button">
           ▾ {items.length}
         </button>
       )}
-
-      {open && items.length > 0 && (
+      {open && (
         <div className={styles.savedDropdown}>
           <div className={styles.savedDropdownHeader}>Guardados</div>
           {items.map((item, idx) => (
@@ -98,11 +129,9 @@ function SavedList({ listKey, value, onSelect, placeholder, multiline = false })
                 </div>
               ) : (
                 <>
-                  <button className={styles.savedItemBtn} onClick={() => { onSelect(item); setOpen(false) }}>
-                    {item}
-                  </button>
-                  <button className={styles.savedAction} onClick={() => startEdit(idx)} title="Editar">✎</button>
-                  <button className={styles.savedAction} onClick={() => remove(idx)} title="Eliminar">✕</button>
+                  <button className={styles.savedItemBtn} onClick={() => { onSelect(item); setOpen(false) }}>{item}</button>
+                  <button className={styles.savedAction} onClick={() => { setEditIdx(idx); setEditVal(item) }}>✎</button>
+                  <button className={styles.savedAction} onClick={() => remove(idx)}>✕</button>
                 </>
               )}
             </div>
@@ -113,19 +142,61 @@ function SavedList({ listKey, value, onSelect, placeholder, multiline = false })
   )
 }
 
+// ─── OptionGrid ─────────────────────────────────────────────────────────────
+
+function OptionGrid({ options, value, onChange, cols = 2 }) {
+  return (
+    <div className={styles.optionGrid} style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
+      {options.map(opt => (
+        <button
+          key={opt.val}
+          type="button"
+          className={`${styles.optionCard} ${value === opt.val ? styles.optionCardActive : ''}`}
+          onClick={() => onChange(opt.val)}
+        >
+          <span className={styles.optionIcon}>{opt.icon}</span>
+          <span className={styles.optionLabel}>{opt.label}</span>
+          {opt.desc && <span className={styles.optionDesc}>{opt.desc}</span>}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+// ─── DurationPicker ─────────────────────────────────────────────────────────
+
+function DurationPicker({ value, onChange }) {
+  return (
+    <div className={styles.durationRow}>
+      {DURATIONS.map(d => (
+        <button
+          key={d.val}
+          type="button"
+          className={`${styles.durationBtn} ${value === d.val ? styles.durationActive : ''}`}
+          onClick={() => onChange(d.val)}
+        >
+          <span className={styles.durationLabel}>{d.label}</span>
+          <span className={styles.durationDesc}>{d.desc}</span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
+// ─── VideoPlayer ─────────────────────────────────────────────────────────────
+
 function VideoPlayer({ url }) {
   const [blobUrl, setBlobUrl] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
 
-  useEffect(() => {
+  useState(() => {
     if (!url) return
     setLoading(true); setError(false)
     fetch(url, { headers: { 'ngrok-skip-browser-warning': 'true' } })
       .then(r => { if (!r.ok) throw new Error(); return r.blob() })
       .then(blob => { setBlobUrl(URL.createObjectURL(blob)); setLoading(false) })
       .catch(() => { setError(true); setLoading(false) })
-    return () => { if (blobUrl) URL.revokeObjectURL(blobUrl) }
   }, [url])
 
   if (loading) return <div style={{color:'var(--muted)',fontSize:13,padding:'40px 0',textAlign:'center'}}>Cargando video...</div>
@@ -133,21 +204,35 @@ function VideoPlayer({ url }) {
   return <video src={blobUrl} controls style={{width:'100%',height:'auto',display:'block'}} />
 }
 
+// ─── Home ───────────────────────────────────────────────────────────────────
+
 export default function Home() {
   const { user, profile } = useAuth()
+  const fileRef = useRef()
+
+  // Form básico
   const [url, setUrl] = useState('')
   const [action, setAction] = useState('')
   const [format, setFormat] = useState('reel')
-  const [style, setStyle] = useState('epic')
   const [voice, setVoice] = useState('female')
   const [logoFile, setLogoFile] = useState(null)
+  const [mode, setMode] = useState('simple') // simple | advanced
+
+  // Parámetros avanzados
+  const [visualStyle, setVisualStyle] = useState('dark_premium')
+  const [narrative, setNarrative] = useState('problem_solution')
+  const [hook, setHook] = useState('question')
+  const [tone, setTone] = useState('enthusiastic')
+  const [focus, setFocus] = useState('product')
+  const [duration, setDuration] = useState(30)
+
+  // Estado del proceso
   const [phase, setPhase] = useState('form')
   const [stepStates, setStepStates] = useState({})
   const [progress, setProgress] = useState(0)
   const [errors, setErrors] = useState({})
   const [videoFilename, setVideoFilename] = useState(null)
   const [errorMsg, setErrorMsg] = useState('')
-  const fileRef = useRef()
   const wsRef = useRef(null)
 
   function validate() {
@@ -163,11 +248,19 @@ export default function Home() {
     setErrors({})
     setPhase('progress'); setStepStates({}); setProgress(0); setErrorMsg('')
 
+    const payload = {
+      url, action, format, voice,
+      userId: user?.uid || '',
+      // parámetros de video
+      visualStyle, narrative, hook, tone, focus, duration,
+      mode,
+    }
+
     try {
       const res = await fetch(`${API_URL}/api/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url, action, format, style, voice, userId: user?.uid || '' }),
+        body: JSON.stringify(payload),
       })
       if (!res.ok) throw new Error()
       const { job_id } = await res.json()
@@ -203,14 +296,14 @@ export default function Home() {
   }
 
   function simulateProgress() {
-    const durations = [18, 25, 8, 20, 8, 6]
+    const durs = [18, 25, 8, 60, 8, 6]
     let idx = 0
     const pct = 100 / STEPS.length
     function run() {
       if (idx >= STEPS.length) { setProgress(100); setTimeout(() => setPhase('result'), 800); return }
       const key = STEPS[idx].key
       setStepStates(prev => ({ ...prev, [key]: 'running' }))
-      const dur = durations[idx] * 1000; const t = Date.now(); const sp = idx * pct
+      const dur = durs[idx] * 1000; const t = Date.now(); const sp = idx * pct
       function tick() { const f = Math.min((Date.now()-t)/dur,1); setProgress(sp+f*pct); if(f<1) requestAnimationFrame(tick) }
       tick()
       setTimeout(() => { setStepStates(prev => ({...prev,[key]:'done'})); idx++; setTimeout(run,300) }, dur)
@@ -223,62 +316,76 @@ export default function Home() {
     setPhase('form'); setStepStates({}); setProgress(0); setVideoFilename(null); setErrorMsg('')
   }
 
+  // ─── Render ───────────────────────────────────────────────────────────────
+
   return (
     <div className={styles.page}>
       <div className={styles.header}>
         <div>
           <h1 className={styles.title}>Nuevo video</h1>
-          <p className={styles.sub}>Pegá una URL y describí la acción. La IA hace el resto.</p>
+          <p className={styles.sub}>Ingresá una URL y configurá tu video. La IA hace el resto.</p>
         </div>
         <div className={styles.creditsTag}><span>⚡</span> {profile?.credits ?? 0} créditos</div>
       </div>
 
       {phase === 'form' && (
-        <div className={styles.card}>
-          <div className={styles.field}>
-            <div className={styles.labelRow}>
-              <label>URL del sitio</label>
-              <SavedList listKey={URL_LIST_KEY} value={url} onSelect={setUrl} />
-            </div>
-            <input type="text" value={url}
-              onChange={e => { setUrl(e.target.value); setErrors(p=>({...p,url:false})) }}
-              placeholder="https://tu-sitio.com"
-              className={errors.url ? styles.inputErr : ''} />
-            {errors.url && <span className={styles.errMsg}>Ingresá una URL</span>}
+        <>
+          {/* Toggle Modo */}
+          <div className={styles.modeToggle}>
+            <button
+              className={`${styles.modeBtn} ${mode === 'simple' ? styles.modeBtnActive : ''}`}
+              onClick={() => setMode('simple')}
+            >
+              ⚡ Modo simple
+            </button>
+            <button
+              className={`${styles.modeBtn} ${mode === 'advanced' ? styles.modeBtnActive : ''}`}
+              onClick={() => setMode('advanced')}
+            >
+              🎛️ Modo avanzado
+            </button>
           </div>
 
-          <div className={styles.field}>
-            <div className={styles.labelRow}>
-              <label>¿Qué debe hacer el agente?</label>
-              <SavedList listKey={ACTION_LIST_KEY} value={action} onSelect={setAction} multiline />
-            </div>
-            <textarea value={action}
-              onChange={e => { setAction(e.target.value); setErrors(p=>({...p,action:false})) }}
-              rows={3}
-              placeholder="Mostrá el sitio, navegá las secciones principales, destacá el CTA..."
-              className={errors.action ? styles.inputErr : ''} />
-            {errors.action && <span className={styles.errMsg}>Describí qué debe hacer el agente</span>}
-          </div>
-
-          <div className={styles.field}>
-            <label>Formato</label>
-            <div className={styles.chips}>
-              {FORMATS.map(f => (
-                <button key={f.val} className={`${styles.chip} ${format===f.val?styles.chipActive:''}`}
-                  onClick={() => setFormat(f.val)}>{f.icon} {f.label}</button>
-              ))}
-            </div>
-          </div>
-
-          <div className={styles.row}>
+          <div className={styles.card}>
+            {/* URL */}
             <div className={styles.field}>
-              <label>Estilo visual</label>
-              <select value={style} onChange={e => setStyle(e.target.value)}>
-                <option value="epic">Épico / Dinámico</option>
-                <option value="minimal">Minimalista</option>
-                <option value="corporate">Corporativo</option>
-              </select>
+              <div className={styles.labelRow}>
+                <label>URL del sitio</label>
+                <SavedList listKey={URL_LIST_KEY} value={url} onSelect={setUrl} />
+              </div>
+              <input type="text" value={url}
+                onChange={e => { setUrl(e.target.value); setErrors(p=>({...p,url:false})) }}
+                placeholder="https://tu-sitio.com"
+                className={errors.url ? styles.inputErr : ''} />
+              {errors.url && <span className={styles.errMsg}>Ingresá una URL</span>}
             </div>
+
+            {/* Acción */}
+            <div className={styles.field}>
+              <div className={styles.labelRow}>
+                <label>¿Qué debe mostrar el video?</label>
+                <SavedList listKey={ACTION_LIST_KEY} value={action} onSelect={setAction} multiline />
+              </div>
+              <textarea value={action}
+                onChange={e => { setAction(e.target.value); setErrors(p=>({...p,action:false})) }}
+                rows={3}
+                placeholder="Mostrá el sitio y sus secciones principales para un video de marketing."
+                className={errors.action ? styles.inputErr : ''} />
+              {errors.action && <span className={styles.errMsg}>Describí qué debe mostrar</span>}
+            </div>
+
+            {/* Formato */}
+            <div className={styles.field}>
+              <label>Formato</label>
+              <div className={styles.chips}>
+                {FORMATS.map(f => (
+                  <button key={f.val} className={`${styles.chip} ${format===f.val?styles.chipActive:''}`}
+                    onClick={() => setFormat(f.val)} type="button">{f.icon} {f.label}</button>
+                ))}
+              </div>
+            </div>
+
+            {/* Voz */}
             <div className={styles.field}>
               <label>Voz en off</label>
               <div className={styles.voiceRow}>
@@ -288,37 +395,80 @@ export default function Home() {
                   <option value="none">Sin voz</option>
                 </select>
                 {voice !== 'none' && (
-                  <button
-                    className={styles.previewBtn}
-                    type="button"
+                  <button className={styles.previewBtn} type="button"
                     onClick={async () => {
                       try {
-                        const res = await fetch(`${API_URL}/api/voice-preview?voice=${voice}`, {
-                          headers: { 'ngrok-skip-browser-warning': 'true' }
-                        })
+                        const res = await fetch(`${API_URL}/api/voice-preview?voice=${voice}`, { headers: { 'ngrok-skip-browser-warning': 'true' } })
                         const blob = await res.blob()
-                        const audio = new Audio(URL.createObjectURL(blob))
-                        audio.play()
-                      } catch (e) { alert('Backend no disponible') }
-                    }}
-                  >▶ Escuchar</button>
+                        new Audio(URL.createObjectURL(blob)).play()
+                      } catch { alert('Backend no disponible') }
+                    }}>▶ Escuchar</button>
                 )}
               </div>
             </div>
-          </div>
 
-          <div className={styles.field}>
-            <label>Logo al final (opcional)</label>
-            <div className={styles.uploadArea} onClick={() => fileRef.current?.click()}>
-              <input ref={fileRef} type="file" accept="image/png,image/svg+xml"
-                style={{display:'none'}} onChange={e => setLogoFile(e.target.files[0])} />
-              {logoFile ? <p className={styles.uploadDone}>✓ {logoFile.name}</p>
-                        : <p className={styles.uploadText}>↑ Subir logo PNG o SVG</p>}
-            </div>
-          </div>
+            {/* MODO SIMPLE: solo duración */}
+            {mode === 'simple' && (
+              <div className={styles.field}>
+                <label>Duración</label>
+                <DurationPicker value={duration} onChange={setDuration} />
+              </div>
+            )}
 
-          <button className={styles.btnGenerate} onClick={handleGenerate}>+ Crear video</button>
-        </div>
+            {/* MODO AVANZADO: todos los parámetros */}
+            {mode === 'advanced' && (
+              <>
+                <div className={styles.advancedDivider}>
+                  <span>Personalización avanzada</span>
+                </div>
+
+                <div className={styles.field}>
+                  <label>Duración</label>
+                  <DurationPicker value={duration} onChange={setDuration} />
+                </div>
+
+                <div className={styles.field}>
+                  <label>Estilo visual</label>
+                  <OptionGrid options={VISUAL_STYLES} value={visualStyle} onChange={setVisualStyle} cols={2} />
+                </div>
+
+                <div className={styles.field}>
+                  <label>Estructura narrativa</label>
+                  <OptionGrid options={NARRATIVES} value={narrative} onChange={setNarrative} cols={2} />
+                </div>
+
+                <div className={styles.field}>
+                  <label>Hook de apertura</label>
+                  <OptionGrid options={HOOKS} value={hook} onChange={setHook} cols={3} />
+                </div>
+
+                <div className={styles.field}>
+                  <label>Tono</label>
+                  <OptionGrid options={TONES} value={tone} onChange={setTone} cols={3} />
+                </div>
+
+                <div className={styles.field}>
+                  <label>Foco del video</label>
+                  <OptionGrid options={FOCUSES} value={focus} onChange={setFocus} cols={2} />
+                </div>
+
+                <div className={styles.field}>
+                  <label>Logo al final (opcional)</label>
+                  <div className={styles.uploadArea} onClick={() => fileRef.current?.click()}>
+                    <input ref={fileRef} type="file" accept="image/png,image/svg+xml"
+                      style={{display:'none'}} onChange={e => setLogoFile(e.target.files[0])} />
+                    {logoFile ? <p className={styles.uploadDone}>✓ {logoFile.name}</p>
+                              : <p className={styles.uploadText}>↑ Subir logo PNG o SVG</p>}
+                  </div>
+                </div>
+              </>
+            )}
+
+            <button className={styles.btnGenerate} onClick={handleGenerate}>
+              {mode === 'simple' ? '✦ Generar video' : '✦ Generar video personalizado'}
+            </button>
+          </div>
+        </>
       )}
 
       {phase === 'progress' && (
@@ -334,7 +484,10 @@ export default function Home() {
               return (
                 <div key={s.key} className={`${styles.step} ${styles['step_'+st]}`}>
                   <div className={styles.stepIcon}>{st==='done'?'✓':st==='running'?'◌':'·'}</div>
-                  <div><div className={styles.stepName}>{s.label}</div><div className={styles.stepDetail}>{s.detail}</div></div>
+                  <div>
+                    <div className={styles.stepName}>{s.label}</div>
+                    <div className={styles.stepDetail}>{s.detail}</div>
+                  </div>
                 </div>
               )
             })}
@@ -355,7 +508,9 @@ export default function Home() {
           </div>
           <div className={styles.dlRow}>
             <button className={styles.btnGenerate} style={{flex:1}}
-              onClick={() => videoFilename && window.open(`${API_URL}/api/video/${videoFilename}`)}>↓ Descargar</button>
+              onClick={() => videoFilename && window.open(`${API_URL}/api/video/${videoFilename}`)}>
+              ↓ Descargar
+            </button>
             <button className={styles.btnSecondary} onClick={handleReset}>↺ Nuevo</button>
           </div>
         </div>
