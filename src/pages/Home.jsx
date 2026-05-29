@@ -281,11 +281,29 @@ export default function Home() {
             </div>
             <div className={styles.field}>
               <label>Voz en off</label>
-              <select value={voice} onChange={e => setVoice(e.target.value)}>
-                <option value="female">Femenina</option>
-                <option value="male">Masculina</option>
-                <option value="none">Sin voz</option>
-              </select>
+              <div className={styles.voiceRow}>
+                <select value={voice} onChange={e => setVoice(e.target.value)} style={{flex:1}}>
+                  <option value="female">Femenina — Dalia</option>
+                  <option value="male">Masculina — Jorge</option>
+                  <option value="none">Sin voz</option>
+                </select>
+                {voice !== 'none' && (
+                  <button
+                    className={styles.previewBtn}
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        const res = await fetch(`${API_URL}/api/voice-preview?voice=${voice}`, {
+                          headers: { 'ngrok-skip-browser-warning': 'true' }
+                        })
+                        const blob = await res.blob()
+                        const audio = new Audio(URL.createObjectURL(blob))
+                        audio.play()
+                      } catch (e) { alert('Backend no disponible') }
+                    }}
+                  >▶ Escuchar</button>
+                )}
+              </div>
             </div>
           </div>
 
