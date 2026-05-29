@@ -201,3 +201,47 @@
 .errorBox { text-align: center; padding: 16px 0; }
 .errorTitle { font-size: 16px; font-weight: 700; color: var(--red); margin-bottom: 8px; }
 .errorDetail { font-size: 13px; color: var(--muted); line-height: 1.5; }
+
+/* HISTORY DROPDOWN */
+.inputWithHistory {
+  position: relative;
+}
+
+.historyDropdown {
+  position: absolute;
+  top: 100%;
+  left: 0; right: 0;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 4px 16px rgba(0,0,0,.08);
+  z-index: 50;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.historyItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 12px;
+  background: none;
+  border: none;
+  text-align: left;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+  transition: background .1s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.historyItem:hover { background: var(--surface2); }
+
+.historyIcon {
+  color: var(--muted2);
+  flex-shrink: 0;
+  font-size: 12px;
+}
