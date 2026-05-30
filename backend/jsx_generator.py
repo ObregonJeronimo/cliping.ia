@@ -15,8 +15,10 @@ ANTHROPIC_URL = "https://api.anthropic.com/v1/messages"
 
 async def select_animations(video_context: dict) -> dict:
     """
-    Claude analiza el producto y elige las mejores animaciones + contenido.
-    Retorna JSON con la selección.
+    Claude actúa como director creativo:
+    1. Primero crea un brief visual detallado
+    2. Luego elige animaciones coherentes con ese brief
+    Retorna JSON con la selección + brief.
     """
     page_data = video_context["page_data"]
     site_name    = page_data.get("siteName", "Mi Sitio")
@@ -39,79 +41,89 @@ async def select_animations(video_context: dict) -> dict:
 
     catalog = get_catalog_for_claude()
 
-    prompt = f"""Sos un director creativo de motion graphics. Analizá este producto y elegí las mejores animaciones para su video de marketing.
+    # Análisis visual profundo
+    audience_insight = f"Audiencia: {audience}. Emoción objetivo: {emotion}."
+    color_context = f"Color primario: {primary} — secundario: {secondary}"
 
-PRODUCTO:
-- Nombre: {site_name}
-- Tipo: {page_type}
-- Headline: {headline}
-- Problema que resuelve: {problem}
-- Audiencia: {audience}
-- Beneficios: {json.dumps(benefits[:4], ensure_ascii=False)}
-- Features: {json.dumps(features[:3], ensure_ascii=False)}
-- CTA: {cta}
-- Garantía: {guarantee}
-- Números/stats: {json.dumps(numbers, ensure_ascii=False)}
-- Color primario: {primary}
-- Color secundario: {secondary}
-- Emoción objetivo: {emotion}
+    prompt = f"""Sos un director creativo senior de motion graphics especializado en videos de marketing viral.
+Tu trabajo es pensar el video completo como un profesional antes de elegir nada.
 
-DIRECCIÓN CREATIVA:
-- Estilo visual: {visual_style}
-- Narrativa: {narrative}
-- Tono: {tone}
+═══ PRODUCTO ═══
+Nombre: {site_name}
+Tipo: {page_type}
+Headline: {headline}
+Problema: {problem}
+Audiencia: {audience}
+Beneficios: {json.dumps(benefits[:4], ensure_ascii=False)}
+Features: {json.dumps(features[:3], ensure_ascii=False)}
+CTA: {cta}
+Garantía: {guarantee}
+Números reales: {json.dumps(numbers, ensure_ascii=False)}
+Color primario: {primary}
+Color secundario: {secondary}
+Emoción objetivo: {emotion}
+
+═══ DIRECCIÓN CREATIVA SOLICITADA ═══
+Estilo visual: {visual_style}
+Narrativa: {narrative}
+Tono: {tone}
 
 {catalog}
 
-Respondé SOLO con JSON válido con esta estructura exacta:
+═══ TU TAREA ═══
+Pensá como un director creativo que va a hacer un reel de 30 segundos para Instagram/TikTok.
+El video debe verse INCREÍBLE para {audience}.
+
+Respondé SOLO con JSON válido:
 {{
+  "brief": {{
+    "concepto": "En 1 oración: la idea creativa central del video",
+    "paleta": {{
+      "fondo": "color exacto o gradiente para el fondo (NUNCA negro puro #000 — siempre oscuro con personalidad: deep navy, dark purple, midnight, etc)",
+      "acento": "color vibrante para acentos — si {primary} es vibrante usalo, sino sugerí uno mejor",
+      "texto": "color del texto principal",
+      "justificacion": "por qué esta paleta funciona para {audience}"
+    }},
+    "uso_del_espacio": "cómo ocupar bien los 390x844px — qué elementos grandes, qué pequeños, dónde va el foco",
+    "ritmo": "rápido/medio/lento — justificación según la audiencia",
+    "must_avoid": "qué evitar específicamente para este tipo de página y audiencia"
+  }},
   "hook": {{
-    "animation": "nombre_de_animacion",
-    "params": {{
-      // parámetros específicos de esa animación con contenido real del producto
-    }}
+    "animation": "nombre_exacto_del_catalogo",
+    "params": {{}},
+    "razon": "por qué este hook conecta con {audience}"
   }},
   "product": {{
-    "animation": "nombre_de_animacion", 
-    "params": {{}}
+    "animation": "nombre_exacto_del_catalogo",
+    "params": {{}},
+    "razon": "por qué esta animación muestra bien el producto"
   }},
   "benefits": {{
-    "animation": "nombre_de_animacion",
-    "params": {{}}
+    "animation": "nombre_exacto_del_catalogo",
+    "params": {{}},
+    "razon": "por qué este formato comunica los beneficios"
   }},
   "cta": {{
-    "animation": "nombre_de_animacion",
-    "params": {{}}
+    "animation": "nombre_exacto_del_catalogo",
+    "params": {{}},
+    "razon": "por qué este CTA convierte para este público"
   }},
   "outro": {{
-    "animation": "nombre_de_animacion",
-    "params": {{}}
+    "animation": "nombre_exacto_del_catalogo",
+    "params": {{}},
+    "razon": "por qué este cierre refuerza la marca"
   }},
-  "reasoning": "breve explicación de por qué elegiste estas animaciones para este producto"
+  "reasoning": "resumen de la dirección creativa completa del video"
 }}
 
-REGLAS:
-- Elegí animaciones que hagan sentido para {page_type} con tono {tone}
-- Los params deben tener contenido REAL del producto (no placeholders)
-- NUNCA inventes datos, números ni estadísticas que no estén en la página
-- Para stats/numbers, usá SOLO los números que aparecen en los datos del producto — si no hay, omití ese parámetro o usá strings descriptivos sin números falsos
-- Para steps/flow, usá las features y benefits reales del producto
-- Para before/after, usá el problema real del producto vs sus beneficios reales
-- El contenido en params va en español, usando ÚNICA y EXCLUSIVAMENTE la información real del producto"""
+REGLAS CRÍTICAS para params:
+- NUNCA inventes datos — usá SOLO los números reales: {json.dumps(numbers, ensure_ascii=False)}
+- Si no hay números reales, usá strings descriptivos sin inventar cifras
+- El contenido va en español rioplatense
+- Usá SOLO animaciones del catálogo
+- Para fondo oscuro con personalidad: navy (#0a0f1e), deep purple (#0d0b1e), midnight (#07080f), dark teal (#070f0d), etc"""
 
-    headers = {
-        "x-api-key": ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-    }
-    payload = {
-        "model": "claude-sonnet-4-5",
-        "max_tokens": 1500,
-        "messages": [{"role": "user", "content": prompt}],
-    }
-
-    print(f"[jsx_generator] Claude eligiendo animaciones...")
-    async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession() as session:
         async with session.post(
             ANTHROPIC_URL, headers=headers, json=payload,
             timeout=aiohttp.ClientTimeout(total=60),
@@ -126,12 +138,23 @@ REGLAS:
         raw = data["content"][0]["text"].strip()
         raw = re.sub(r"```(?:json)?", "", raw).strip().rstrip("```").strip()
         result = json.loads(raw)
+        # Loguear brief creativo
+        brief = result.get("brief", {})
+        if brief:
+            print(f"[jsx_generator] BRIEF CREATIVO:")
+            print(f"  concepto: {brief.get('concepto','')[:80]}")
+            paleta = brief.get("paleta", {})
+            print(f"  fondo: {paleta.get('fondo','')}")
+            print(f"  acento: {paleta.get('acento','')}")
+            print(f"  espacio: {brief.get('uso_del_espacio','')[:60]}")
+            print(f"  evitar: {brief.get('must_avoid','')[:60]}")
+
         print(f"[jsx_generator] animaciones elegidas:")
         for scene, choice in result.items():
-            if scene != "reasoning" and isinstance(choice, dict):
+            if scene not in ("reasoning", "brief") and isinstance(choice, dict):
                 anim = choice.get("animation")
-                params_keys = list(choice.get("params", {}).keys())
-                print(f"  {scene:10}: {anim} | params={params_keys}")
+                razon = choice.get("razon", "")[:50]
+                print(f"  {scene:10}: {anim} | {razon}")
         print(f"  reasoning: {result.get('reasoning','')[:100]}")
 
         # Guardar JSON completo para debug

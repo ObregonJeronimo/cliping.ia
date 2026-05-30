@@ -186,6 +186,8 @@ async def render_video(
         "ctaParams":         anim_selection.get("cta", {}).get("params", {}),
         "outroAnimation":    anim_selection.get("outro", {}).get("animation", "orbit_logo"),
         "outroParams":       anim_selection.get("outro", {}).get("params", {}),
+        # Brief creativo del director de arte
+        "brief":             anim_selection.get("brief", {}),
     }
 
     props_file = OUTPUTS_DIR / f"{job_id}_props.json"

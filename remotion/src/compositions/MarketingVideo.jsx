@@ -62,14 +62,15 @@ function RadialGlow({ color, opacity = 0.25, size = 500 }) {
   );
 }
 
-function DarkScene({ color, children, variant = 'default' }) {
+function DarkScene({ color, children, variant = 'default', bg = null }) {
   const bgs = {
     default: `linear-gradient(145deg, #07070f 0%, #0d0d1a 100%)`,
     deep:    `linear-gradient(160deg, #050508 0%, #0a0a12 100%)`,
     warm:    `linear-gradient(145deg, #080508 0%, #120a0a 100%)`,
   };
+  const background = bg || bgs[variant] || bgs.default;
   return (
-    <AbsoluteFill style={{ background: bgs[variant] || bgs.default, overflow: 'hidden' }}>
+    <AbsoluteFill style={{ background, overflow: 'hidden' }}>
       <Particles frame={0} color={color} count={22} />
       <RadialGlow color={color} opacity={0.18} size={480} />
       {children}
@@ -683,13 +684,13 @@ function FlowDiagram({ frame, fps, steps, primaryColor }) {
 // BENEFITS ANIMATIONS
 // ══════════════════════════════════════════════════════════════════════════════
 
-function BenefitCardsStagger({ frame, fps, benefits, primaryColor }) {
+function BenefitCardsStagger({ frame, fps, benefits, primaryColor, bg }) {
   const safeBenefits = (benefits || []).slice(0, 4);
   const titleP = spr(frame, fps, 0, 16, 100);
   const lineP  = spr(frame, fps, 8, 18, 100);
 
   return (
-    <DarkScene color={primaryColor}>
+    <DarkScene color={primaryColor} bg={bg}>
       {/* Scan line */}
       <div style={{
         position: 'absolute', left: 0, right: 0, height: 1,
@@ -751,13 +752,13 @@ function BenefitCardsStagger({ frame, fps, benefits, primaryColor }) {
   );
 }
 
-function ComparisonTable({ frame, fps, before, after, primaryColor, siteName }) {
+function ComparisonTable({ frame, fps, before, after, primaryColor, siteName, bg }) {
   const safeBefore = (before || []).slice(0, 4);
   const safeAfter  = (after  || []).slice(0, 4);
   const titleP = spr(frame, fps, 0, 16, 100);
 
   return (
-    <DarkScene color={primaryColor}>
+    <DarkScene color={primaryColor} bg={bg}>
       <AbsoluteFill style={{ padding: '28px 22px', justifyContent: 'center' }}>
         <div style={{ opacity: titleP, transform: `translateY(${(1-titleP)*-14}px)`, marginBottom: 18, textAlign: 'center' }}>
           <Headline size={22} color="#fff">
@@ -2076,15 +2077,23 @@ export const MarketingVideo = (props) => {
     benefitsAnimation = 'benefit_cards_stagger', benefitsParams = {},
     ctaAnimation = 'liquid_button_cta', ctaParams = {},
     outroAnimation = 'orbit_logo',      outroParams = {},
+    brief = {},
   } = props;
+
+  // Colores del brief creativo del director de arte
+  const brandBg     = brief?.paleta?.fondo   || `linear-gradient(145deg, #07070f 0%, #0d0d1a 100%)`;
+  const brandAccent = brief?.paleta?.acento  || primaryColor;
+  const brandText   = brief?.paleta?.texto   || '#ffffff';
 
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
   const base = {
-    primaryColor, secondaryColor, siteName, headline, subheadline,
+    primaryColor: brandAccent || primaryColor,
+    secondaryColor, siteName, headline, subheadline,
     benefits, features, cta, problem, audience, numbers, guarantee,
     screenshotUrl,
+    brandBg, brandText, brief,
     steps: features.length > 0 ? features : benefits.slice(0, 4),
     stats: numbers.length > 0 ? numbers : benefits.slice(0, 4),
     before: [problem, 'Sin control', 'Tiempo perdido', 'Errores frecuentes'].slice(0, 4),
@@ -2101,7 +2110,7 @@ export const MarketingVideo = (props) => {
     subtext: subheadline || `Transformá ${audience || 'tu negocio'} hoy`,
   };
 
-  const merged = (extra) => ({ ...base, ...extra });
+  const merged = (extra) => ({ ...base, bg: brandBg, ...extra });
 
   return (
     <AbsoluteFill style={{ background: '#000' }}>
