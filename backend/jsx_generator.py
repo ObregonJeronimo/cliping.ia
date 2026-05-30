@@ -164,7 +164,7 @@ Escribí el código JSX ahora. Comenzá directamente con los componentes helper.
     }
 
     payload = {
-        "model": "claude-sonnet-4-20250514",
+        "model": "claude-sonnet-4-5",
         "max_tokens": 6000,
         "system": SYSTEM_PROMPT,
         "messages": [{"role": "user", "content": prompt}],
