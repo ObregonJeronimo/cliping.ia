@@ -41,6 +41,21 @@ async def select_animations(video_context: dict) -> dict:
 
     catalog = get_catalog_for_claude()
 
+    # Historial de animaciones usadas para forzar variedad
+    from pathlib import Path as _P
+    import glob as _glob
+    _used = set()
+    for f in _glob.glob("debug_reports/*_debug.json")[-8:]:  # ultimos 8 videos
+        try:
+            import json as _j
+            d = _j.loads(_P(f).read_text(encoding="utf-8"))
+            scenes = d.get("data",{}).get("animation_selection",{})
+            for k,v in scenes.items():
+                if isinstance(v,dict) and "animation" in v:
+                    _used.add(v["animation"])
+        except: pass
+    recently_used = list(_used)[:8]  # max 8 para no saturar el prompt
+
     # Análisis visual profundo
     audience_insight = f"Audiencia: {audience}. Emoción objetivo: {emotion}."
     bg_color     = page_data.get("bgColor", "#ffffff")
@@ -122,7 +137,10 @@ Respondé SOLO con JSON válido:
   "reasoning": "resumen de la dirección creativa completa del video"
 }}
 
-REGLAS CRÍTICAS para params:
+REGLAS CRÍTICAS:
+- NUNCA uses estas animaciones que ya se usaron recientemente: {recently_used}
+  Si una animación está en esa lista, elegí OTRA diferente para esa escena.
+- VARIEDAD OBLIGATORIA: cada video debe sentirse completamente distinto al anterior
 - NUNCA inventes datos — usá SOLO los números reales: {json.dumps(numbers, ensure_ascii=False)}
 - Si no hay números reales, usá strings descriptivos sin inventar cifras
 - El contenido va en español rioplatense
