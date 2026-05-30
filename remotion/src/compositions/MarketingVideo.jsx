@@ -3136,6 +3136,7 @@ export const MarketingVideo = (props) => {
       <Flash atFrame={T.benefits.from} />
       <Flash atFrame={T.cta.from} />
       <Flash atFrame={T.outro.from} />
+      </div>
     </AbsoluteFill>
   );
 };
