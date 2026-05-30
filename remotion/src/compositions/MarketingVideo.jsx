@@ -3046,6 +3046,12 @@ const T = {
   outro:    { from: 780, dur: 120 },
 };
 
+// Factor de escala: 1080 / 390 = 2.769
+// Todo el JSX fue diseñado para 390px, escalamos al contenedor
+const DESIGN_WIDTH = 390;
+const RENDER_WIDTH = 1080;
+const SCALE = RENDER_WIDTH / DESIGN_WIDTH; // ~2.769
+
 export const MarketingVideo = (props) => {
   const {
     siteName = 'Mi Sitio', headline = 'La solución que necesitás',
@@ -3095,7 +3101,17 @@ export const MarketingVideo = (props) => {
   const merged = (extra) => ({ ...base, bg: brandBg, ...extra });
 
   return (
-    <AbsoluteFill style={{ background: '#000' }}>
+    <AbsoluteFill style={{ background: '#000', overflow: 'hidden' }}>
+      {/* Scale wrapper: diseño en 390px escalado a 1080px */}
+      <div style={{
+        position: 'absolute',
+        top: 0, left: 0,
+        width: DESIGN_WIDTH,
+        height: Math.round(DESIGN_WIDTH * 1920 / 1080), // 844px aprox
+        transform: `scale(${SCALE})`,
+        transformOrigin: 'top left',
+        overflow: 'hidden',
+      }}>
       <Sequence from={T.hook.from} durationInFrames={T.hook.dur}>
         <SceneWrapper animName={hookAnimation} params={merged(hookParams)} frame={frame} fps={fps} />
       </Sequence>

@@ -145,11 +145,10 @@ async def render_video(
     # Dimensiones
     duration = params.get("duration", 30)
     fmt = params.get("format", "reel")
-    # Resolución estándar de Instagram/TikTok: 1080x1920 (9:16)
-    # Renderizamos a 2x para antialiasing y escalamos con Lanczos
-    SCALE = 2
-    width  = 1080 * SCALE if fmt == "reel" else (1920 * SCALE if fmt == "youtube" else 1080 * SCALE)
-    height = 1920 * SCALE if fmt == "reel" else (1080 * SCALE if fmt == "youtube" else 1920 * SCALE)
+    # 1080x1920 directo — estándar Instagram/TikTok 9:16
+    # Para producción (Lambda) se puede subir a 2x para antialiasing
+    width  = 1080 if fmt == "reel" else (1920 if fmt == "youtube" else 1080)
+    height = 1920 if fmt == "reel" else (1080 if fmt == "youtube" else 1920)
     total_frames = duration * 30
 
 
@@ -308,41 +307,37 @@ async def render_video(
     dur = await _get_dur(output_path)
     if debugger: debugger.set_render_result(True, output_path, duration_s=dur)
     # Downscale 2x→1x con antialiasing de alta calidad (Lanczos)
+    # Solo recomprimir para optimizar calidad/tamaño — sin escalar (ya está en resolución correcta)
     fmt = params.get("format", "reel")
-    final_w = 1080 if fmt == "reel" else (1920 if fmt == "youtube" else 1080)
-    final_h = 1920 if fmt == "reel" else (1080 if fmt == "youtube" else 1920)
-    scaled_path = OUTPUTS_DIR / f"{job_id}_scaled.mp4"
+    optimized_path = OUTPUTS_DIR / f"{job_id}_scaled.mp4"
 
-    scale_cmd = [
+    opt_cmd = [
         "ffmpeg", "-y",
         "-i", str(output_path),
-        "-vf", f"scale={final_w}:{final_h}:flags=lanczos+accurate_rnd+full_chroma_inp,unsharp=5:5:1.0:3:3:0.5",
+        "-vf", "unsharp=5:5:0.8:3:3:0.4",
         "-c:v", "libx264",
-        "-crf", "10",           # máxima calidad visual
-        "-preset", "slow",
+        "-crf", "16",
+        "-preset", "medium",
         "-profile:v", "high",
-        "-level", "4.2",
         "-pix_fmt", "yuv420p",
-        "-color_range", "tv",
         "-movflags", "+faststart",
-        "-b:v", "0",
-        str(scaled_path),
+        str(optimized_path),
     ]
 
-    scale_proc = await asyncio.create_subprocess_exec(
-        *scale_cmd,
+    opt_proc = await asyncio.create_subprocess_exec(
+        *opt_cmd,
         stdout=asyncio.subprocess.DEVNULL,
         stderr=asyncio.subprocess.DEVNULL,
     )
-    await scale_proc.communicate()
+    await opt_proc.communicate()
 
-    if scaled_path.exists() and scaled_path.stat().st_size > 50000:
+    if optimized_path.exists() and optimized_path.stat().st_size > 50000:
         try: output_path.unlink()
         except: pass
-        output_path = scaled_path
-        print(f"[renderer] scaled OK: {output_path.name} ({output_path.stat().st_size//1024}KB)")
+        output_path = optimized_path
+        print(f"[renderer] optimized OK: {output_path.name} ({output_path.stat().st_size//1024}KB)")
     else:
-        print(f"[renderer] scale falló, usando sin escalar")
+        print(f"[renderer] optimización falló, usando original")
 
     print(f"[renderer] OK: {output_path.name} ({output_path.stat().st_size//1024}KB)")
     return output_path
