@@ -95,8 +95,31 @@ def inject_animations(industry_key: str, animations: list[dict]) -> tuple[bool, 
             injected_names.append(anim_name)  # ya estaba, contar como disponible
             continue
 
-        # Preparar código limpio
+        # Parchear el código para garantizar helpers disponibles
         clean_code = fn_code.strip()
+        # Inyectar isDarkBg inline si lo usa y no está como función separada
+        if "isDarkBg" in clean_code:
+            # Reemplazar llamadas a isDarkBg con la lógica inline
+            clean_code = clean_code.replace(
+                "isDarkBg(bg)",
+                "(!bg || bg.includes('0a') || bg.includes('07') || bg.includes('0d') || bg.includes('linear'))"
+            ).replace(
+                "isDarkBg(primaryColor)",
+                "false"
+            )
+        # Reemplazar useCurrentFrame() con el frame recibido como prop
+        if "useCurrentFrame()" in clean_code:
+            # Agregar const frame = al inicio de la función
+            clean_code = re.sub(
+                r'(function\s+\w+\s*\([^)]*\)\s*\{)',
+                r'\1\n  // frame viene como prop, no usar useCurrentFrame();',
+                clean_code, count=1
+            )
+            clean_code = clean_code.replace("useCurrentFrame()", "frame")
+        # Eliminar useVideoConfig() si se usa solo para fps (ya viene como prop)
+        if "useVideoConfig()" in clean_code and "fps" in clean_code:
+            clean_code = re.sub(r'const\s*\{[^}]*fps[^}]*\}\s*=\s*useVideoConfig\(\);?', '', clean_code)
+
         block = f"\n// {description}\n// Scene: {scene} | Industry: {industry_key}\n{clean_code}\n"
         new_functions.append(block)
 
