@@ -1519,13 +1519,476 @@ function ProgressBars({ frame, fps, metrics, primaryColor }) {
   );
 }
 
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ANIMACIONES ÉPICAS — LIQUID, MORPHING, PAINT, GOOEY
+// ══════════════════════════════════════════════════════════════════════════════
+
+// LIQUID BLOB MORPH — formas orgánicas que se transforman con SVG filters
+function LiquidBlobMorph({ frame, fps, siteName, headline, primaryColor, secondaryColor }) {
+  const textP   = spr(frame, fps, 40, 14, 100);
+  const t       = frame / 30; // tiempo en segundos
+
+  // Puntos del path que morphean — 8 puntos formando un blob
+  const blobPoints = (time, rx, ry) => {
+    const pts = [];
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2;
+      const wobble = 1 + Math.sin(time * 1.3 + i * 0.8) * 0.22 + Math.cos(time * 0.9 + i * 1.2) * 0.15;
+      const x = 195 + Math.cos(angle) * rx * wobble;
+      const y = 422 + Math.sin(angle) * ry * wobble;
+      pts.push([x, y]);
+    }
+    // Generar path suave con curvas bezier
+    let d = `M ${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
+    for (let i = 0; i < pts.length; i++) {
+      const next = pts[(i + 1) % pts.length];
+      const curr = pts[i];
+      const cx1 = curr[0] + (next[0] - pts[(i - 1 + pts.length) % pts.length][0]) * 0.2;
+      const cy1 = curr[1] + (next[1] - pts[(i - 1 + pts.length) % pts.length][1]) * 0.2;
+      const cx2 = next[0] - (pts[(i + 2) % pts.length][0] - curr[0]) * 0.2;
+      const cy2 = next[1] - (pts[(i + 2) % pts.length][1] - curr[1]) * 0.2;
+      d += ` C ${cx1.toFixed(1)} ${cy1.toFixed(1)}, ${cx2.toFixed(1)} ${cy2.toFixed(1)}, ${next[0].toFixed(1)} ${next[1].toFixed(1)}`;
+    }
+    return d + ' Z';
+  };
+
+  const blob1 = blobPoints(t, 160, 180);
+  const blob2 = blobPoints(t * 0.7 + 1, 100, 110);
+  const pulse = 0.7 + Math.sin(frame * 0.06) * 0.3;
+
+  return (
+    <AbsoluteFill style={{ background: '#000', overflow: 'hidden' }}>
+      {/* SVG Gooey filter */}
+      <svg style={{ position: 'absolute', width: 0, height: 0 }}>
+        <defs>
+          <filter id="gooey">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="18" result="blur" />
+            <feColorMatrix in="blur" mode="matrix"
+              values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 22 -9" result="gooey" />
+          </filter>
+          <radialGradient id="blobGrad1" cx="40%" cy="40%" r="60%">
+            <stop offset="0%" stopColor={primaryColor} stopOpacity="0.95" />
+            <stop offset="100%" stopColor={secondaryColor} stopOpacity="0.6" />
+          </radialGradient>
+          <radialGradient id="blobGrad2" cx="60%" cy="60%" r="60%">
+            <stop offset="0%" stopColor={secondaryColor} stopOpacity="0.8" />
+            <stop offset="100%" stopColor={primaryColor} stopOpacity="0.4" />
+          </radialGradient>
+        </defs>
+      </svg>
+
+      {/* Blobs con filtro gooey */}
+      <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', filter: 'url(#gooey)' }} viewBox="0 0 390 844">
+        <path d={blob1} fill="url(#blobGrad1)" opacity="0.85" />
+        <path d={blob2} fill="url(#blobGrad2)" opacity="0.7" />
+        {/* Blob pequeño satélite */}
+        <circle
+          cx={195 + Math.cos(t * 1.1) * 120}
+          cy={422 + Math.sin(t * 0.9) * 100}
+          r={30 + Math.sin(t * 1.5) * 10}
+          fill={primaryColor} opacity="0.6"
+        />
+      </svg>
+
+      {/* Overlay oscuro para legibilidad */}
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)' }} />
+
+      <AbsoluteFill style={{ justifyContent: 'center', alignItems: 'center', flexDirection: 'column', padding: 36, textAlign: 'center' }}>
+        <div style={{ opacity: textP, transform: `scale(${0.8 + textP * 0.2})` }}>
+          <Headline size={66} color="#fff" style={{ textShadow: '0 2px 30px rgba(0,0,0,0.8)' }}>
+            {siteName}
+          </Headline>
+          <div style={{
+            fontSize: 16, color: 'rgba(255,255,255,0.75)',
+            fontFamily: 'system-ui, sans-serif', fontWeight: 500,
+            marginTop: 14, lineHeight: 1.5,
+            textShadow: '0 2px 12px rgba(0,0,0,0.8)',
+          }}>{headline}</div>
+        </div>
+      </AbsoluteFill>
+    </AbsoluteFill>
+  );
+}
+
+// PAINT BRUSH REVEAL — texto que aparece como si fuera pintado con un pincel
+function PaintBrushReveal({ frame, fps, headline, primaryColor, secondaryColor }) {
+  const words   = (headline || '').split(' ');
+  const titleP  = spr(frame, fps, 0, 16, 100);
+
+  // El pincel se mueve de izquierda a derecha
+  const brushX  = lerp(frame, 0, 55, -50, 440);
+  const brushY  = 380 + Math.sin(frame * 0.15) * 20;
+  const inkDrop = Math.abs(Math.sin(frame * 0.2)) * 8;
+
+  // Clip path que sigue al pincel — revela el texto
+  const revealPct = Math.min(100, (frame / 55) * 110);
+
+  return (
+    <AbsoluteFill style={{ background: '#0a0a0a', overflow: 'hidden' }}>
+      <Particles frame={frame} color={primaryColor} count={10} />
+
+      {/* SVG del pincel y trazos */}
+      <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} viewBox="0 0 390 844">
+        <defs>
+          <clipPath id="paintReveal">
+            <rect x="0" y="0" width={`${revealPct}%`} height="100%" />
+          </clipPath>
+          <filter id="inkBlur">
+            <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="3" seed={Math.floor(frame / 5)} />
+            <feDisplacementMap in="SourceGraphic" scale="4" xChannelSelector="R" yChannelSelector="G" />
+          </filter>
+        </defs>
+
+        {/* Trazo de pincel principal — grueso y orgánico */}
+        {frame > 2 && (
+          <path
+            d={`M -20 ${brushY} Q ${brushX * 0.3} ${brushY - 30} ${brushX * 0.6} ${brushY + 15} Q ${brushX * 0.8} ${brushY - 10} ${brushX} ${brushY}`}
+            stroke={primaryColor} strokeWidth={28 + inkDrop}
+            fill="none" strokeLinecap="round" opacity="0.85"
+            filter="url(#inkBlur)"
+          />
+        )}
+
+        {/* Trazo secundario más fino */}
+        {frame > 5 && (
+          <path
+            d={`M -20 ${brushY + 15} Q ${brushX * 0.4} ${brushY + 35} ${brushX * 0.7} ${brushY + 8} Q ${brushX * 0.9} ${brushY + 20} ${brushX} ${brushY + 12}`}
+            stroke={secondaryColor} strokeWidth={10 + inkDrop * 0.5}
+            fill="none" strokeLinecap="round" opacity="0.5"
+            filter="url(#inkBlur)"
+          />
+        )}
+
+        {/* Salpicaduras de tinta */}
+        {frame > 10 && [0,1,2,3].map(i => (
+          <circle key={i}
+            cx={brushX - 20 - i * 15 + Math.sin(frame * 0.3 + i) * 8}
+            cy={brushY + (i % 2 === 0 ? -1 : 1) * (20 + i * 10) + Math.cos(frame * 0.2 + i) * 5}
+            r={2 + i * 1.5}
+            fill={i % 2 === 0 ? primaryColor : secondaryColor}
+            opacity={0.6 - i * 0.1}
+          />
+        ))}
+      </svg>
+
+      <AbsoluteFill style={{ justifyContent: 'center', alignItems: 'center', flexDirection: 'column', padding: 36 }}>
+        {/* Texto revelado por el pincel */}
+        <div style={{ clipPath: `inset(0 ${100 - revealPct}% 0 0)`, textAlign: 'center' }}>
+          <Headline size={56} color="#fff" style={{ lineHeight: 1.1 }}>
+            {headline}
+          </Headline>
+        </div>
+
+        {/* Subtexto aparece después */}
+        <div style={{
+          opacity: lerp(frame, 60, 82, 0, 1),
+          transform: `translateY(${lerp(frame, 60, 82, 16, 0)}px)`,
+          marginTop: 20,
+          background: `rgba(${hex2rgb(primaryColor)},0.15)`,
+          border: `1px solid rgba(${hex2rgb(primaryColor)},0.35)`,
+          borderRadius: 100, padding: '8px 22px',
+        }}>
+          <Label color={primaryColor}>Descubrí más</Label>
+        </div>
+      </AbsoluteFill>
+    </AbsoluteFill>
+  );
+}
+
+// WATER RIPPLE CTA — botón con efecto de ondas de agua al "aparecer"
+function WaterRippleCTA({ frame, fps, cta, subtext, primaryColor, guarantee }) {
+  const btnP   = spr(frame, fps, 12, 10, 100);
+  const textP  = spr(frame, fps, 0, 16, 100);
+  const guarP  = spr(frame, fps, 42, 16, 100);
+  const pulse  = 1 + Math.sin(frame * 0.1) * 0.025;
+
+  // Ondas que emanan del botón
+  const ripples = [0, 18, 36].map(offset => {
+    const f = Math.max(0, frame - offset);
+    const scale = 1 + (f / 90) * 2.5;
+    const op    = Math.max(0, 1 - f / 90) * 0.5;
+    return { scale, op, active: f > 0 && f < 90 };
+  });
+
+  return (
+    <DarkScene color={primaryColor}>
+      <AbsoluteFill style={{ justifyContent: 'center', alignItems: 'center', flexDirection: 'column', padding: 36, gap: 20 }}>
+        <div style={{ opacity: textP, transform: `translateY(${(1-textP)*24}px)`, textAlign: 'center' }}>
+          <Label color={primaryColor} style={{ marginBottom: 10 }}>¿Listo para empezar?</Label>
+          <div style={{ fontSize: 20, color: 'rgba(255,255,255,0.7)', fontFamily: 'system-ui, sans-serif', fontWeight: 500, lineHeight: 1.4 }}>
+            {subtext}
+          </div>
+        </div>
+
+        {/* Botón con ondas */}
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {/* Ondas de agua */}
+          {ripples.map((r, i) => r.active && (
+            <div key={i} style={{
+              position: 'absolute',
+              width: 220, height: 58,
+              borderRadius: 100,
+              border: `2px solid rgba(${hex2rgb(primaryColor)},${r.op})`,
+              transform: `scale(${r.scale})`,
+              pointerEvents: 'none',
+            }} />
+          ))}
+
+          {/* Botón principal */}
+          <div style={{
+            opacity: btnP, transform: `scale(${btnP * pulse})`,
+            position: 'relative', zIndex: 2,
+          }}>
+            <div style={{
+              background: `linear-gradient(135deg, ${primaryColor}, rgba(${hex2rgb(primaryColor)},0.8))`,
+              borderRadius: 100, padding: '17px 40px',
+              boxShadow: `0 0 ${24 + Math.sin(frame*0.07)*16}px rgba(${hex2rgb(primaryColor)},0.65), 0 16px 40px rgba(${hex2rgb(primaryColor)},0.3)`,
+            }}>
+              <span style={{ color: '#fff', fontSize: 18, fontWeight: 800, fontFamily: 'system-ui, sans-serif' }}>
+                {cta} →
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {guarantee ? (
+          <div style={{ opacity: guarP * 0.6 }}>
+            <div style={{ color: 'rgba(255,255,255,0.38)', fontSize: 12, textAlign: 'center', fontFamily: 'system-ui, sans-serif' }}>
+              ✓ {guarantee}
+            </div>
+          </div>
+        ) : null}
+      </AbsoluteFill>
+    </DarkScene>
+  );
+}
+
+// NEON SIGN — texto que se enciende como un letrero de neón
+function NeonSignOutro({ frame, fps, siteName, primaryColor, secondaryColor }) {
+  const p = spr(frame, fps, 0, 14, 100);
+  // Efecto de encendido progresivo — el neón parpadea al inicio
+  const flicker = frame < 25
+    ? (frame % 4 < 2 ? 1 : 0.2)
+    : frame < 40
+    ? (frame % 7 < 5 ? 1 : 0.4)
+    : 1;
+
+  const glowIntensity = (20 + Math.sin(frame * 0.06) * 8) * flicker;
+  const glowOp = (0.7 + Math.sin(frame * 0.05) * 0.3) * flicker;
+
+  // Letras del logo que se encienden una por una
+  const letters = siteName.split('');
+  const letterDelay = 4;
+
+  return (
+    <AbsoluteFill style={{ background: '#000', justifyContent: 'center', alignItems: 'center', flexDirection: 'column' }}>
+      {/* Fondo oscuro con leve glow */}
+      <div style={{
+        position: 'absolute', inset: 0,
+        background: `radial-gradient(circle at 50% 50%, rgba(${hex2rgb(primaryColor)},${glowOp * 0.12}) 0%, transparent 60%)`,
+      }} />
+
+      {/* Marco de letrero */}
+      <div style={{
+        border: `2px solid rgba(${hex2rgb(primaryColor)},0.2)`,
+        borderRadius: 16, padding: '24px 36px',
+        position: 'relative', marginBottom: 20,
+        boxShadow: `0 0 ${glowIntensity * 0.5}px rgba(${hex2rgb(primaryColor)},0.2)`,
+        opacity: p,
+      }}>
+        {/* Tornillos decorativos */}
+        {[{top:8,left:8},{top:8,right:8},{bottom:8,left:8},{bottom:8,right:8}].map((pos,i) => (
+          <div key={i} style={{
+            position:'absolute', width:8, height:8, borderRadius:'50%',
+            background: `rgba(${hex2rgb(primaryColor)},0.4)`, ...pos,
+          }} />
+        ))}
+
+        {/* Letras de neón */}
+        <div style={{ display: 'flex', gap: 2 }}>
+          {letters.map((letter, i) => {
+            const letterOn = frame > i * letterDelay;
+            const letterFlicker = letterOn && frame < i * letterDelay + 15
+              ? (frame % 3 < 2 ? 1 : 0.1)
+              : letterOn ? 1 : 0;
+
+            return (
+              <span key={i} style={{
+                fontSize: 64, fontWeight: 900,
+                fontFamily: 'system-ui, sans-serif',
+                color: letterOn ? primaryColor : 'rgba(255,255,255,0.05)',
+                textShadow: letterOn ? `
+                  0 0 7px #fff,
+                  0 0 ${glowIntensity}px ${primaryColor},
+                  0 0 ${glowIntensity*2}px ${primaryColor},
+                  0 0 ${glowIntensity*4}px ${primaryColor}
+                ` : 'none',
+                letterSpacing: -2,
+                opacity: letterFlicker,
+                transition: 'color 0.1s',
+              }}>
+                {letter}
+              </span>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Tagline debajo */}
+      <div style={{
+        opacity: lerp(frame, letters.length * letterDelay + 10, letters.length * letterDelay + 30, 0, 1),
+        color: 'rgba(255,255,255,0.4)',
+        fontSize: 13, letterSpacing: 4, textTransform: 'uppercase',
+        fontFamily: 'system-ui, sans-serif',
+      }}>
+        Empezá hoy
+      </div>
+    </AbsoluteFill>
+  );
+}
+
+// MORPHING CARD — card que morphea su forma mientras muestra beneficios
+function MorphingCard({ frame, fps, benefits, primaryColor, secondaryColor }) {
+  const safeBenefits = (benefits || []).slice(0, 3);
+  const t = frame / 30;
+
+  // La card morphea su border-radius
+  const br1 = 50 + Math.sin(t * 0.8) * 30;
+  const br2 = 20 + Math.sin(t * 0.9 + 1) * 20;
+  const br3 = 40 + Math.sin(t * 0.7 + 2) * 25;
+  const br4 = 15 + Math.sin(t * 1.1 + 3) * 15;
+
+  const currentBenefit = Math.floor((frame / 90) * safeBenefits.length) % safeBenefits.length;
+  const benefitP = spr(frame % 90, fps, 0, 12, 100);
+
+  return (
+    <DarkScene color={primaryColor} variant="deep">
+      <AbsoluteFill style={{ justifyContent: 'center', alignItems: 'center', flexDirection: 'column', padding: 36 }}>
+        {/* Título */}
+        <div style={{ marginBottom: 32, textAlign: 'center', opacity: spr(frame, fps, 0, 16, 100) }}>
+          <Label color={primaryColor} style={{ marginBottom: 8 }}>Por qué elegirnos</Label>
+          <Headline size={28} color="#fff">Diseñado para destacar.</Headline>
+        </div>
+
+        {/* Card morpheante */}
+        <div style={{
+          width: 300, height: 180,
+          background: `linear-gradient(135deg, rgba(${hex2rgb(primaryColor)},0.2), rgba(${hex2rgb(secondaryColor)},0.1))`,
+          borderRadius: `${br1}px ${br2}px ${br3}px ${br4}px`,
+          border: `1.5px solid rgba(${hex2rgb(primaryColor)},0.4)`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
+          boxShadow: `0 0 ${20 + Math.sin(t)*10}px rgba(${hex2rgb(primaryColor)},0.25)`,
+          textAlign: 'center',
+        }}>
+          <div style={{ opacity: benefitP, transform: `scale(${0.8 + benefitP * 0.2})` }}>
+            <div style={{
+              fontSize: 15, fontWeight: 600, color: '#fff',
+              fontFamily: 'system-ui, sans-serif', lineHeight: 1.5,
+            }}>
+              {safeBenefits[currentBenefit] || ''}
+            </div>
+          </div>
+        </div>
+
+        {/* Dots indicadores */}
+        <div style={{ display: 'flex', gap: 8, marginTop: 20 }}>
+          {safeBenefits.map((_, i) => (
+            <div key={i} style={{
+              width: i === currentBenefit ? 20 : 6,
+              height: 6, borderRadius: 3,
+              background: i === currentBenefit ? primaryColor : 'rgba(255,255,255,0.2)',
+              transition: 'width 0.3s',
+            }} />
+          ))}
+        </div>
+      </AbsoluteFill>
+    </DarkScene>
+  );
+}
+
+// TYPEWRITER WITH CURSOR — text que se tipea con cursor parpadeante y fondo de terminal
+function TerminalReveal({ frame, fps, headline, subheadline, primaryColor }) {
+  const lines = [
+    `> Analizando ${new URL('https://example.com').hostname || 'sitio'}...`,
+    `> Extracting insights...`,
+    `> ${headline}`,
+  ].filter(Boolean);
+
+  // Cuántos caracteres mostrar en total
+  const totalChars = lines.reduce((a, l) => a + l.length, 0);
+  const charsToShow = Math.floor(lerp(frame, 5, 75, 0, totalChars));
+
+  let remaining = charsToShow;
+  const renderedLines = lines.map(line => {
+    if (remaining <= 0) return { text: '', full: false };
+    if (remaining >= line.length) { remaining -= line.length; return { text: line, full: true }; }
+    const t = line.slice(0, remaining); remaining = 0; return { text: t, full: false };
+  });
+
+  const cursor = frame % 25 < 14;
+  const promptP = spr(frame, fps, 0, 16, 100);
+
+  return (
+    <AbsoluteFill style={{ background: '#050508', overflow: 'hidden' }}>
+      {/* Grid de fondo */}
+      <svg style={{ position:'absolute', inset:0, width:'100%', height:'100%', opacity:0.04 }} viewBox="0 0 390 844">
+        {Array.from({length:8},(_,i)=><line key={i} x1={i*56} y1="0" x2={i*56} y2="844" stroke={primaryColor} strokeWidth="0.5"/>)}
+        {Array.from({length:7},(_,i)=><line key={i} x1="0" y1={i*125} x2="390" y2={i*125} stroke={primaryColor} strokeWidth="0.5"/>)}
+      </svg>
+
+      <RadialGlow color={primaryColor} opacity={0.12} size={400} />
+
+      <AbsoluteFill style={{ justifyContent:'center', padding:'0 28px', flexDirection:'column' }}>
+        {/* Header de terminal */}
+        <div style={{
+          background:'rgba(255,255,255,0.04)', borderRadius:'12px 12px 0 0',
+          padding:'10px 16px', border:'1px solid rgba(255,255,255,0.08)',
+          display:'flex', alignItems:'center', gap:8, marginBottom:0,
+          opacity: promptP,
+        }}>
+          {['#ff5f57','#febc2e','#28c840'].map((c,i)=>(
+            <div key={i} style={{width:10,height:10,borderRadius:'50%',background:c}} />
+          ))}
+          <span style={{fontSize:11,color:'rgba(255,255,255,0.3)',fontFamily:'monospace',marginLeft:8}}>
+            cliping.ia — terminal
+          </span>
+        </div>
+
+        <div style={{
+          background:'rgba(0,0,0,0.5)', borderRadius:'0 0 12px 12px',
+          padding:'20px 20px', border:'1px solid rgba(255,255,255,0.08)',
+          borderTop:'none', opacity: promptP,
+        }}>
+          {renderedLines.map((line, i) => (
+            <div key={i} style={{
+              fontSize: i === 2 ? 22 : 13,
+              fontFamily:'monospace',
+              color: i === 2 ? '#fff' : `rgba(${hex2rgb(primaryColor)},0.7)`,
+              fontWeight: i === 2 ? 700 : 400,
+              lineHeight: i === 2 ? 1.3 : 1.6,
+              marginBottom: i === 2 ? 0 : 4,
+            }}>
+              {line.text}
+              {!line.full && <span style={{opacity: cursor ? 1 : 0, color: primaryColor}}>█</span>}
+            </div>
+          ))}
+        </div>
+      </AbsoluteFill>
+    </AbsoluteFill>
+  );
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 // ROUTER
 // ══════════════════════════════════════════════════════════════════════════════
 
 const ANIM_MAP = {
-  // Hook
+  // Hook — básicas
   counter_explosion:     CounterExplosion,
+  liquid_blob_morph:     LiquidBlobMorph,
+  paint_brush_reveal:    PaintBrushReveal,
+  terminal_reveal:       TerminalReveal,
   typewriter_glitch:     TypewriterGlitch,
   reveal_swipe:          RevealSwipe,
   morphing_shapes:       MorphingShapes,
@@ -1554,10 +2017,15 @@ const ANIM_MAP = {
   liquid_button_cta:     LiquidButtonCTA,
   screenshot_zoom_cta:   ScreenshotZoomCTA,
   urgency_countdown:     UrgencyCTA,
+  // CTA adicionales
+  water_ripple_cta:      WaterRippleCTA,
+  // Benefits adicionales
+  morphing_card:         MorphingCard,
   // Outro
   logo_particle_burst:   LogoParticleBurst,
   orbit_logo:            OrbitLogo,
   gradient_text_outro:   GradientTextOutro,
+  neon_sign:             NeonSignOutro,
 };
 
 function SceneWrapper({ animName, params, frame, fps }) {

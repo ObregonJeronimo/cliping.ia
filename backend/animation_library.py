@@ -49,6 +49,43 @@ ANIMATION_CATALOG = {
         "scene": "hook",
         "params": ["siteName", "primaryColor"],
     },
+
+    "liquid_blob_morph": {
+        "desc": "Blobs orgánicos que morphean continuamente con SVG gooey filter — formas líquidas que se fusionan y separan",
+        "best_for": ["brand", "creative", "startup", "premium"],
+        "scene": "hook",
+        "params": ["siteName", "headline", "primaryColor", "secondaryColor"],
+    },
+    "paint_brush_reveal": {
+        "desc": "Texto revelado por un pincel animado con salpicaduras de tinta SVG — efecto de pintura artístico",
+        "best_for": ["creative", "agency", "art", "brand", "startup"],
+        "scene": "hook",
+        "params": ["headline", "primaryColor", "secondaryColor"],
+    },
+    "terminal_reveal": {
+        "desc": "Texto que aparece como si se escribiera en una terminal con cursor parpadeante y fondo de código",
+        "best_for": ["tech", "saas", "developer", "startup"],
+        "scene": "hook",
+        "params": ["headline", "subheadline", "primaryColor"],
+    },
+    "water_ripple_cta": {
+        "desc": "Botón CTA que al aparecer genera ondas concéntricas como gotas en el agua",
+        "best_for": ["saas", "ecommerce", "landing", "app"],
+        "scene": "cta",
+        "params": ["cta", "subtext", "primaryColor", "guarantee"],
+    },
+    "morphing_card": {
+        "desc": "Card cuyo border-radius morphea orgánicamente mientras rota entre los beneficios del producto",
+        "best_for": ["saas", "app", "startup", "product"],
+        "scene": "benefits",
+        "params": ["benefits", "primaryColor", "secondaryColor"],
+    },
+    "neon_sign": {
+        "desc": "Letrero de neón que se enciende letra por letra con parpadeo realista y glow pulsante",
+        "best_for": ["brand", "creative", "restaurant", "entertainment", "startup"],
+        "scene": "outro",
+        "params": ["siteName", "primaryColor", "secondaryColor"],
+    },
     "split_screen_problem": {
         "desc": "Pantalla dividida: izquierda muestra el caos/problema, derecha la solución",
         "best_for": ["saas", "productivity", "b2b"],
