@@ -111,47 +111,42 @@ async def render_video(
 
 
 
-    # Generar JSX con Claude
-    jsx_ok = False
+    # Claude elige animaciones (devuelve JSON, no código)
+    anim_selection = None
     if os.environ.get("ANTHROPIC_API_KEY"):
         try:
-            jsx_code = await generate_jsx(video_context, screenshot_b64)
-            print(f"[renderer] JSX len={len(jsx_code) if jsx_code else 0} has_export={'MarketingVideo' in (jsx_code or '')} starts={repr((jsx_code or '')[:80])}")
-            if jsx_code and len(jsx_code) > 500 and "MarketingVideo" in jsx_code:
-                full_jsx = REMOTION_IMPORTS + jsx_code
-                TEMPLATE_PATH.write_text(full_jsx, encoding='utf-8-sig')
-                # Guardar copia del JSX para debug
-                debug_path = OUTPUTS_DIR / f"{job_id}_generated.jsx"
-                debug_path.write_text(full_jsx, encoding='utf-8-sig')
-                print(f"[renderer] JSX de Claude escrito ({len(jsx_code)} chars) → {debug_path.name}")
-                jsx_ok = True
-            else:
-                print(f"[renderer] JSX de Claude insuficiente, usando template")
+            anim_selection = await select_animations(video_context)
         except Exception as e:
-            print(f"[renderer] error generando JSX: {e}")
-    else:
-        print(f"[renderer] sin ANTHROPIC_API_KEY, usando template estático")
+            print(f"[renderer] error seleccionando animaciones: {e}")
+    if not anim_selection:
+        anim_selection = get_default_selection(page_data)
+        print(f"[renderer] usando selección por defecto")
 
-    # Props
+    # Props: datos de página + animaciones elegidas por Claude
     props = {
-        "siteName":       page_data.get("siteName", "Mi Sitio"),
-        "headline":       page_data.get("headline", "La solución que necesitás"),
-        "subheadline":    page_data.get("subheadline", ""),
-        "benefits":       page_data.get("benefits", []),
-        "features":       page_data.get("features", []),
-        "cta":            page_data.get("cta", "Empezá gratis"),
-        "problem":        page_data.get("problem", ""),
-        "audience":       page_data.get("audience", ""),
-        "numbers":        page_data.get("numbers", []),
-        "guarantee":      page_data.get("guarantee", ""),
-        "primaryColor":   page_data.get("primaryColor", "#6366f1"),
-        "secondaryColor": page_data.get("secondaryColor", "#818cf8"),
-        "screenshotUrl":  screenshot_b64,
-        "visualStyle":    video_context["visual_style"],
-        "narrative":      video_context["narrative"],
-        "hook":           video_context["hook"],
-        "tone":           video_context["tone"],
-        "focus":          params.get("focus", "product"),
+        "siteName":          page_data.get("siteName", "Mi Sitio"),
+        "headline":          page_data.get("headline", "La solucion que necesitas"),
+        "subheadline":       page_data.get("subheadline", ""),
+        "benefits":          page_data.get("benefits", []),
+        "features":          page_data.get("features", []),
+        "cta":               page_data.get("cta", "Empeza gratis"),
+        "problem":           page_data.get("problem", ""),
+        "audience":          page_data.get("audience", ""),
+        "numbers":           page_data.get("numbers", []),
+        "guarantee":         page_data.get("guarantee", ""),
+        "primaryColor":      page_data.get("primaryColor", "#6366f1"),
+        "secondaryColor":    page_data.get("secondaryColor", "#818cf8"),
+        "screenshotUrl":     screenshot_b64,
+        "hookAnimation":     anim_selection.get("hook", {}).get("animation", "reveal_swipe"),
+        "hookParams":        anim_selection.get("hook", {}).get("params", {}),
+        "productAnimation":  anim_selection.get("product", {}).get("animation", "iphone_rise"),
+        "productParams":     anim_selection.get("product", {}).get("params", {}),
+        "benefitsAnimation": anim_selection.get("benefits", {}).get("animation", "benefit_cards_stagger"),
+        "benefitsParams":    anim_selection.get("benefits", {}).get("params", {}),
+        "ctaAnimation":      anim_selection.get("cta", {}).get("animation", "liquid_button_cta"),
+        "ctaParams":         anim_selection.get("cta", {}).get("params", {}),
+        "outroAnimation":    anim_selection.get("outro", {}).get("animation", "orbit_logo"),
+        "outroParams":       anim_selection.get("outro", {}).get("params", {}),
     }
 
     props_file = OUTPUTS_DIR / f"{job_id}_props.json"
