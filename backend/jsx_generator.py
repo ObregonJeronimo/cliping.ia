@@ -243,20 +243,29 @@ ANIMACIONES SIGNATURE QUE DEBES USAR CON FRECUENCIA (son únicas y muy impactant
 - freeze_frame_outro: screenshot congelado con badge PLAY
 - neon_sign: letrero de neón encendiéndose letra por letra
 
-REGLAS CRÍTICAS — VARIEDAD OBLIGATORIA:
-- HOOK: NO uses ninguna de estas: {hook_avoid}. Elegí algo DISTINTO.
-- PRODUCT: NO uses ninguna de estas: {product_avoid}. Elegí algo DISTINTO.
-- BENEFITS: NO uses ninguna de estas: {benefits_avoid}. Elegí algo DISTINTO.
-- CTA: NO uses ninguna de estas: {cta_avoid}. Elegí algo DISTINTO.
-- OUTRO: NO uses ninguna de estas: {outro_avoid}. Elegí algo DISTINTO.
-- CADA VIDEO DEBE VERSE DIFERENTE: varía colores del brief, tipografía, uso del espacio,
-  ritmo y elementos visuales aunque el producto sea el mismo.
-- Si el fondo fue navy la vez anterior, esta vez usá dark purple, midnight teal, o dark warm.
-- Si el hook fue un número, esta vez que sea texto. Si fue texto, que sea visual.
+REGLAS CRÍTICAS — ANTI-REPETICIÓN ACUMULATIVA:
+Vas a elegir 10 animaciones. A medida que elijas cada una, la siguiente NO puede repetirla.
+La lista de "ya usadas" crece con cada elección:
+
+- Histórico de videos anteriores a evitar por sección:
+  * hook (hook_a + hook_b): evitar {hook_avoid}
+  * product (product_a + product_b): evitar {product_avoid}
+  * benefits (a+b+c): evitar {benefits_avoid}
+  * cta (a+b): evitar {cta_avoid}
+  * outro: evitar {outro_avoid}
+
+- Dentro de ESTE video, nunca repitas la misma animación en dos sub-escenas distintas.
+  Ejemplo: si hook_a = water_drop_title, hook_b NO puede ser water_drop_title.
+  Si benefits_a = card_flip_3d, benefits_b y benefits_c deben ser DISTINTAS entre sí Y distintas a card_flip_3d.
+
+- Verificá antes de cada elección: ¿ya usé esta animación en alguna sub-escena anterior de este video?
+  Si sí → elegí otra diferente.
+
 - NUNCA inventes datos — usá SOLO los números reales: {json.dumps(numbers, ensure_ascii=False)}
 - NUNCA pongas screenshotUrl en ningún params — esa prop se maneja automáticamente
 - Para card_flip_3d los benefits deben ser STRINGS simples, nunca objetos con front/back
 - Para iphone_rise y cursor_click_reveal NO incluyas screenshotUrl en params
+- Solo elegí animaciones que existan en el catálogo listado arriba — si querés una nueva, anotala en new_animations_for_industry
 - Si no hay números reales, usá strings descriptivos sin inventar cifras
 - El contenido va en español rioplatense
 - Usá SOLO animaciones del catálogo

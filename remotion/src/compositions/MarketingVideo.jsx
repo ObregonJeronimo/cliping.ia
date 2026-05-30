@@ -3003,8 +3003,28 @@ const ANIM_MAP = {
   neon_sign:             NeonSignOutro,
 };
 
-function SceneWrapper({ animName, params, frame, fps }) {
-  const Component = ANIM_MAP[animName] || BenefitCardsStagger;
+// Fallbacks por tipo de escena para no repetir visualmente
+const SCENE_FALLBACKS = {
+  hook_a: 'counter_explosion',
+  hook_b: 'reveal_swipe',
+  product_a: 'cursor_click_reveal',
+  product_b: 'dashboard_build',
+  benefits_a: 'benefit_cards_stagger',
+  benefits_b: 'spotlight_reveal',
+  benefits_c: 'icon_draw_reveal',
+  cta_a: 'urgency_countdown',
+  cta_b: 'zoom_punch_cta',
+  outro: 'neon_sign',
+};
+
+function SceneWrapper({ animName, params, frame, fps, sceneKey }) {
+  const resolved = ANIM_MAP[animName]
+    ? animName
+    : (SCENE_FALLBACKS[sceneKey] || 'benefit_cards_stagger');
+  if (!ANIM_MAP[animName]) {
+    console.warn(`[SceneWrapper] '${animName}' no encontrada, usando fallback '${resolved}'`);
+  }
+  const Component = ANIM_MAP[resolved] || BenefitCardsStagger;
   return <Component frame={frame} fps={fps} {...params} />;
 }
 
@@ -3121,42 +3141,42 @@ export const MarketingVideo = (props) => {
 
         {/* ── HOOK ─────────────────────────────────────── */}
         <Sequence from={T.hook_a.from} durationInFrames={T.hook_a.dur}>
-          <SceneWrapper animName={hookAAnimation} params={merged(hookAParams)} frame={frame - T.hook_a.from} fps={fps} />
+          <SceneWrapper animName={hookAAnimation} params={merged(hookAParams)} frame={frame - T.hook_a.from} fps={fps} sceneKey="hook_a" />
         </Sequence>
         <Sequence from={T.hook_b.from} durationInFrames={T.hook_b.dur}>
-          <SceneWrapper animName={hookBAnimation} params={merged(hookBParams)} frame={frame - T.hook_b.from} fps={fps} />
+          <SceneWrapper animName={hookBAnimation} params={merged(hookBParams)} frame={frame - T.hook_b.from} fps={fps} sceneKey="hook_b" />
         </Sequence>
 
         {/* ── PRODUCT ──────────────────────────────────── */}
         <Sequence from={T.product_a.from} durationInFrames={T.product_a.dur}>
-          <SceneWrapper animName={productAAnimation} params={merged(productAParams)} frame={frame - T.product_a.from} fps={fps} />
+          <SceneWrapper animName={productAAnimation} params={merged(productAParams)} frame={frame - T.product_a.from} fps={fps} sceneKey="product_a" />
         </Sequence>
         <Sequence from={T.product_b.from} durationInFrames={T.product_b.dur}>
-          <SceneWrapper animName={productBAnimation} params={merged(productBParams)} frame={frame - T.product_b.from} fps={fps} />
+          <SceneWrapper animName={productBAnimation} params={merged(productBParams)} frame={frame - T.product_b.from} fps={fps} sceneKey="product_b" />
         </Sequence>
 
         {/* ── BENEFITS ─────────────────────────────────── */}
         <Sequence from={T.benefits_a.from} durationInFrames={T.benefits_a.dur}>
-          <SceneWrapper animName={benefitsAAnimation} params={merged(benefitsAParams)} frame={frame - T.benefits_a.from} fps={fps} />
+          <SceneWrapper animName={benefitsAAnimation} params={merged(benefitsAParams)} frame={frame - T.benefits_a.from} fps={fps} sceneKey="benefits_a" />
         </Sequence>
         <Sequence from={T.benefits_b.from} durationInFrames={T.benefits_b.dur}>
-          <SceneWrapper animName={benefitsBAnimation} params={merged(benefitsBParams)} frame={frame - T.benefits_b.from} fps={fps} />
+          <SceneWrapper animName={benefitsBAnimation} params={merged(benefitsBParams)} frame={frame - T.benefits_b.from} fps={fps} sceneKey="benefits_b" />
         </Sequence>
         <Sequence from={T.benefits_c.from} durationInFrames={T.benefits_c.dur}>
-          <SceneWrapper animName={benefitsCAnimation} params={merged(benefitsCParams)} frame={frame - T.benefits_c.from} fps={fps} />
+          <SceneWrapper animName={benefitsCAnimation} params={merged(benefitsCParams)} frame={frame - T.benefits_c.from} fps={fps} sceneKey="benefits_c" />
         </Sequence>
 
         {/* ── CTA ──────────────────────────────────────── */}
         <Sequence from={T.cta_a.from} durationInFrames={T.cta_a.dur}>
-          <SceneWrapper animName={ctaAAnimation} params={merged(ctaAParams)} frame={frame - T.cta_a.from} fps={fps} />
+          <SceneWrapper animName={ctaAAnimation} params={merged(ctaAParams)} frame={frame - T.cta_a.from} fps={fps} sceneKey="cta_a" />
         </Sequence>
         <Sequence from={T.cta_b.from} durationInFrames={T.cta_b.dur}>
-          <SceneWrapper animName={ctaBAnimation} params={merged(ctaBParams)} frame={frame - T.cta_b.from} fps={fps} />
+          <SceneWrapper animName={ctaBAnimation} params={merged(ctaBParams)} frame={frame - T.cta_b.from} fps={fps} sceneKey="cta_b" />
         </Sequence>
 
         {/* ── OUTRO ────────────────────────────────────── */}
         <Sequence from={T.outro.from} durationInFrames={T.outro.dur}>
-          <SceneWrapper animName={outroAnimation} params={merged(outroParams)} frame={frame - T.outro.from} fps={fps} />
+          <SceneWrapper animName={outroAnimation} params={merged(outroParams)} frame={frame - T.outro.from} fps={fps} sceneKey="outro" />
         </Sequence>
 
         {/* Flashes de transición */}
