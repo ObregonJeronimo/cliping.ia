@@ -159,6 +159,10 @@ async def render_video(
         "isDark":       page_data.get("isDark", False),
         "primaryColor": page_data.get("primaryColor", ""),
         "bgColor":      page_data.get("bgColor", ""),
+        # En modo simple, la variación aleatoria debe estar en la key
+        "visual_style": video_context.get("visual_style", ""),
+        "narrative":    video_context.get("narrative", ""),
+        "tone":         video_context.get("tone", ""),
     }
     anim_selection = get_cached(url_key, cache_context)
 
