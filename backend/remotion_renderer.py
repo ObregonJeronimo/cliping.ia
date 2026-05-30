@@ -11,6 +11,7 @@ from pathlib import Path
 from vision import _groq_vision, _parse_json, _img
 from variations import build_video_context
 from jsx_generator import select_animations, get_default_selection
+from animation_cache import get_cached, save_cache
 
 OUTPUTS_DIR = Path("outputs")
 REMOTION_DIR = Path(__file__).parent.parent / "remotion"
@@ -140,16 +141,24 @@ async def render_video(
 
 
 
-    # Claude elige animaciones (devuelve JSON, no código)
-    anim_selection = None
-    if os.environ.get("ANTHROPIC_API_KEY"):
-        try:
-            anim_selection = await select_animations(video_context)
-        except Exception as e:
-            print(f"[renderer] error seleccionando animaciones: {e}")
-    if not anim_selection:
-        anim_selection = get_default_selection(page_data)
-        print(f"[renderer] usando selección por defecto")
+    # Claude elige animaciones — con caché por URL
+    url_key = params.get("url", "")
+    anim_selection = get_cached(url_key)
+
+    if anim_selection:
+        print(f"[renderer] usando caché de animaciones para {url_key[:40]}")
+        if debugger: debugger.log("cache", f"HIT — reutilizando selección previa", level="ok")
+    else:
+        if os.environ.get("ANTHROPIC_API_KEY"):
+            try:
+                anim_selection = await select_animations(video_context)
+                if anim_selection:
+                    save_cache(url_key, anim_selection)
+            except Exception as e:
+                print(f"[renderer] error seleccionando animaciones: {e}")
+        if not anim_selection:
+            anim_selection = get_default_selection(page_data)
+            print(f"[renderer] usando selección por defecto")
     if debugger: debugger.set_animation_selection(anim_selection)
 
     # Props: datos de página + animaciones elegidas por Claude
@@ -210,11 +219,16 @@ async def render_video(
         remotion_bin, "render", "index.jsx", "MarketingVideo",
         str(output_path.absolute()),
         "--props", str(props_file.absolute()),
-        "--codec", "h264", "--fps", "30",
-        "--width", str(width), "--height", str(height),
+        "--codec", "h264",
+        "--fps", "30",
+        "--width", str(width),
+        "--height", str(height),
         "--duration-in-frames", str(total_frames),
         "--concurrency", str(concurrency),
-        "--jpeg-quality", "80", "--log", "error",
+        "--jpeg-quality", "95",        # máxima calidad de frames
+        "--crf", "16",                 # menor CRF = mayor calidad (18 default, 16 mejor)
+        "--pixel-format", "yuv420p",
+        "--log", "error",
     ]
 
     print(f"[renderer] rendering {duration}s {width}x{height} concurrency={concurrency}...")

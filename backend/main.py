@@ -81,6 +81,19 @@ async def generate(req: GenerateRequest):
     asyncio.create_task(process_job(job_id, req))
     return {"job_id": job_id}
 
+@app.get("/api/cache/list")
+async def cache_list():
+    """Lista todos los sitios en caché."""
+    from animation_cache import list_cache
+    return list_cache()
+
+@app.post("/api/cache/clear")
+async def cache_clear(url: str = None):
+    """Limpia el caché de una URL o todo."""
+    from animation_cache import clear_cache
+    count = clear_cache(url)
+    return {"cleared": count}
+
 @app.get("/api/debug/last")
 async def debug_last():
     """Retorna el último reporte de debug."""
