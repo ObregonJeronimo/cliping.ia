@@ -164,16 +164,22 @@ async def render_video(
         "narrative":    video_context.get("narrative", ""),
         "tone":         video_context.get("tone", ""),
     }
-    anim_selection = get_cached(url_key, cache_context)
+    is_simple_mode = params.get("mode", "simple") == "simple"
+
+    # Modo simple: NUNCA cachea — cada video debe ser único
+    # Modo avanzado: cachea por URL + colores + parámetros elegidos
+    anim_selection = None if is_simple_mode else get_cached(url_key, cache_context)
 
     if anim_selection:
-        print(f"[renderer] usando caché para {url_key[:40]}")
-        if debugger: debugger.log("cache", f"HIT — reutilizando selección previa", level="ok")
+        print(f"[renderer] cache HIT para {url_key[:40]}")
+        if debugger: debugger.log("cache", "HIT — reutilizando selección previa", level="ok")
     else:
+        if is_simple_mode:
+            print(f"[renderer] modo simple — generando animaciones únicas")
         if os.environ.get("ANTHROPIC_API_KEY"):
             try:
                 anim_selection = await select_animations(video_context)
-                if anim_selection:
+                if anim_selection and not is_simple_mode:
                     save_cache(url_key, anim_selection, cache_context)
             except Exception as e:
                 print(f"[renderer] error seleccionando animaciones: {e}")
