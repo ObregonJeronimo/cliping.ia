@@ -135,8 +135,10 @@ async def render_video(
     # Dimensiones
     duration = params.get("duration", 30)
     fmt = params.get("format", "reel")
-    width  = 390  if fmt == "reel" else (1280 if fmt == "youtube" else 1080)
-    height = 844  if fmt == "reel" else (720  if fmt == "youtube" else 1080)
+    # Renderizar a 2x para antialiasing — FFmpeg escala después
+    SCALE = 2
+    width  = 390  * SCALE if fmt == "reel" else (1280 * SCALE if fmt == "youtube" else 1080 * SCALE)
+    height = 844  * SCALE if fmt == "reel" else (720  * SCALE if fmt == "youtube" else 1080 * SCALE)
     total_frames = duration * 30
 
 
@@ -259,5 +261,38 @@ async def render_video(
     from editor import get_duration as _get_dur
     dur = await _get_dur(output_path)
     if debugger: debugger.set_render_result(True, output_path, duration_s=dur)
+    # Downscale 2x→1x con antialiasing de alta calidad (Lanczos)
+    fmt = params.get("format", "reel")
+    final_w = 390  if fmt == "reel" else (1280 if fmt == "youtube" else 1080)
+    final_h = 844  if fmt == "reel" else (720  if fmt == "youtube" else 1080)
+    scaled_path = OUTPUTS_DIR / f"{job_id}_scaled.mp4"
+
+    scale_cmd = [
+        "ffmpeg", "-y",
+        "-i", str(output_path),
+        "-vf", f"scale={final_w}:{final_h}:flags=lanczos+accurate_rnd",
+        "-c:v", "libx264",
+        "-crf", "14",
+        "-preset", "slow",
+        "-pix_fmt", "yuv420p",
+        "-movflags", "+faststart",
+        str(scaled_path),
+    ]
+
+    scale_proc = await asyncio.create_subprocess_exec(
+        *scale_cmd,
+        stdout=asyncio.subprocess.DEVNULL,
+        stderr=asyncio.subprocess.DEVNULL,
+    )
+    await scale_proc.communicate()
+
+    if scaled_path.exists() and scaled_path.stat().st_size > 50000:
+        try: output_path.unlink()
+        except: pass
+        output_path = scaled_path
+        print(f"[renderer] scaled OK: {output_path.name} ({output_path.stat().st_size//1024}KB)")
+    else:
+        print(f"[renderer] scale falló, usando sin escalar")
+
     print(f"[renderer] OK: {output_path.name} ({output_path.stat().st_size//1024}KB)")
     return output_path
