@@ -143,6 +143,24 @@ Respondé SOLO con JSON válido:
   "reasoning": "resumen de la dirección creativa completa del video"
 }}
 
+ANIMACIONES SIGNATURE QUE DEBES USAR CON FRECUENCIA (son únicas y muy impactantes):
+- water_drop_title: gota SVG que cae e impacta con ondas — muy visual para hook
+- liquid_fill_text: nombre del producto que se llena de líquido — para hook de marca
+- paint_brush_reveal: pincel que revela el texto — para hook creativo
+- scramble_decode: texto que se decodifica estilo hacker — para hook tech
+- split_chars_reveal: letras que vuelan desde distintas direcciones
+- ticker_tape: tickers de noticias corriendo horizontalmente
+- phone_notification: iPhone con notificaciones deslizantes en tiempo real
+- cursor_click_reveal: cursor que hace click y revela el producto
+- ink_splash_cta: explosión de tinta que revela el CTA
+- zoom_punch_cta: zoom de 3x que impacta en el CTA
+- water_ripple_cta: ondas concéntricas del botón
+- card_flip_3d: cards que dan vuelta en 3D (benefits)
+- grid_reveal: grilla 2x2 con reveal escalonado
+- spotlight_reveal: foco de luz cinematográfico
+- freeze_frame_outro: screenshot congelado con badge PLAY
+- neon_sign: letrero de neón encendiéndose letra por letra
+
 REGLAS CRÍTICAS — VARIEDAD OBLIGATORIA:
 - HOOK: NO uses ninguna de estas: {hook_avoid}. Elegí algo DISTINTO.
 - PRODUCT: NO uses ninguna de estas: {product_avoid}. Elegí algo DISTINTO.

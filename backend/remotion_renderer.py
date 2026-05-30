@@ -315,15 +315,16 @@ async def render_video(
     scale_cmd = [
         "ffmpeg", "-y",
         "-i", str(output_path),
-        "-vf", f"scale={final_w}:{final_h}:flags=lanczos+accurate_rnd,unsharp=5:5:0.8:3:3:0.4",
+        "-vf", f"scale={final_w}:{final_h}:flags=lanczos+accurate_rnd+full_chroma_inp,unsharp=5:5:1.0:3:3:0.5",
         "-c:v", "libx264",
-        "-crf", "12",           # muy alta calidad
-        "-preset", "medium",
+        "-crf", "10",           # máxima calidad visual
+        "-preset", "slow",
         "-profile:v", "high",
-        "-level", "4.1",
+        "-level", "4.2",
         "-pix_fmt", "yuv420p",
+        "-color_range", "tv",
         "-movflags", "+faststart",
-        "-b:v", "0",            # VBR puro
+        "-b:v", "0",
         str(scaled_path),
     ]
 

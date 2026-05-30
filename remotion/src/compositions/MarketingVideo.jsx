@@ -2870,6 +2870,84 @@ function TerminalReveal({ frame, fps, headline, subheadline, primaryColor }) {
   );
 }
 
+
+function PhoneNotification({ frame, fps, notifications, primaryColor, siteName, bg }) {
+  const safeNotifs = (notifications || [
+    `💰 Pago recibido`,
+    `✅ Sesión confirmada`,
+    `📊 Todo al día`,
+  ]).slice(0, 4);
+
+  const phoneP = spr(frame, fps, 0, 12, 95);
+  const float  = Math.sin(frame * 0.045) * 6;
+  const tilt   = Math.sin(frame * 0.03) * 1.5;
+
+  // Cada notificación aparece escalonada
+  const notifFrames = safeNotifs.map((_, i) => 40 + i * 35);
+
+  return (
+    <AbsoluteFill style={{ background: bg || 'linear-gradient(145deg, #07070f 0%, #0d0d1a 100%)', overflow: 'hidden' }}>
+      <Particles frame={frame} color={primaryColor} count={14} />
+      <RadialGlow color={primaryColor} opacity={0.15} size={380} />
+
+      <AbsoluteFill style={{ justifyContent: 'center', alignItems: 'center' }}>
+        <div style={{
+          transform: `translateY(${(1-phoneP)*150 + float}px) rotate(${tilt}deg)`,
+          opacity: phoneP, position: 'relative',
+        }}>
+          {/* Sombra */}
+          <div style={{ position:'absolute', bottom:-18, left:'10%', right:'10%', height:18, background:`radial-gradient(ellipse,rgba(${hex2rgb(primaryColor)},0.32) 0%,transparent 70%)`, filter:'blur(8px)' }}/>
+
+          {/* iPhone */}
+          <div style={{ width:196, height:396, background:'linear-gradient(145deg,#252535,#181828)', borderRadius:40, border:'2.5px solid #323250', overflow:'visible', position:'relative',
+            boxShadow:`0 40px 90px rgba(0,0,0,0.85), 0 0 50px rgba(${hex2rgb(primaryColor)},0.15)` }}>
+
+            {/* Pantalla */}
+            <div style={{ position:'absolute', inset:0, borderRadius:38, overflow:'hidden', background:'linear-gradient(180deg, #0a0a14 0%, #050510 100%)' }}>
+              <div style={{ position:'absolute', top:11, left:'50%', transform:'translateX(-50%)', width:74, height:22, background:'#000', borderRadius:12, zIndex:10 }}/>
+
+              {/* Header del app */}
+              <div style={{ position:'absolute', top:42, left:0, right:0, padding:'8px 14px', display:'flex', alignItems:'center', gap:8 }}>
+                <div style={{ width:28, height:28, borderRadius:8, background:`linear-gradient(135deg,${primaryColor},rgba(${hex2rgb(primaryColor)},0.6))`, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                  <div style={{ width:10, height:10, background:'#fff', borderRadius:2, opacity:0.9 }}/>
+                </div>
+                <span style={{ fontSize:11, fontWeight:700, color:'#fff', fontFamily:'system-ui,sans-serif' }}>{siteName}</span>
+              </div>
+
+              {/* Notificaciones */}
+              {safeNotifs.map((notif, i) => {
+                const startF = notifFrames[i];
+                const p = spr(frame, fps, startF, 14, 110);
+                const slideIn = lerp(frame, startF, startF+18, 220, 0);
+                const notifText = typeof notif === 'string' ? notif : (notif?.text || notif?.label || `Notificación ${i+1}`);
+                return (
+                  <div key={i} style={{
+                    position:'absolute',
+                    left:8, right:8,
+                    top: 90 + i * 72,
+                    opacity: p,
+                    transform: `translateX(${slideIn * (1-p)}px)`,
+                    background:'rgba(255,255,255,0.06)',
+                    border:`1px solid rgba(${hex2rgb(primaryColor)},0.25)`,
+                    borderRadius:12, padding:'10px 12px',
+                    display:'flex', alignItems:'center', gap:8,
+                    boxShadow: p > 0.8 ? `0 0 12px rgba(${hex2rgb(primaryColor)},0.2)` : 'none',
+                  }}>
+                    <div style={{ width:6, height:6, borderRadius:'50%', background:primaryColor, flexShrink:0, boxShadow:`0 0 6px ${primaryColor}` }}/>
+                    <span style={{ fontSize:10, color:'rgba(255,255,255,0.85)', fontFamily:'system-ui,sans-serif', fontWeight:500, lineHeight:1.3 }}>
+                      {notifText.slice(0, 38)}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </AbsoluteFill>
+    </AbsoluteFill>
+  );
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 // ROUTER
 // ══════════════════════════════════════════════════════════════════════════════
@@ -2898,7 +2976,7 @@ const ANIM_MAP = {
   browser_window:        IphoneRise,
   dashboard_build:       DashboardBuild,
   flow_diagram:          FlowDiagram,
-  phone_notification:    IphoneRise,
+  phone_notification:    PhoneNotification,
   // Benefits
   benefit_cards_stagger: BenefitCardsStagger,
   stat_counters:         StatCounters,
