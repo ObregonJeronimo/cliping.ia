@@ -24,6 +24,15 @@ const hex2rgb = (hex) => {
   return `${r},${g},${b}`;
 };
 
+// Detecta si un fondo es oscuro (para elegir color de texto)
+const isDarkBg = (bg) => {
+  if (!bg) return true;
+  const b = bg.toLowerCase();
+  return b.includes('0a') || b.includes('07') || b.includes('0d') ||
+         b.includes('linear') || b.includes('gradient') ||
+         b.includes('#0') || b.includes('#1') || b.includes('#2');
+};
+
 // ─── Shared Visual Components ────────────────────────────────────────────────
 
 function Particles({ frame, color, count = 20, spread = 1 }) {
