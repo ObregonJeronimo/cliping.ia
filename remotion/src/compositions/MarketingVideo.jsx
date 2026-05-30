@@ -1674,7 +1674,9 @@ function CardFlip3D({ frame, fps, benefits, primaryColor, secondaryColor, bg }) 
           }}>
             <div style={{ fontSize: 36, marginBottom: 12, color: primaryColor }}>✓</div>
             <div style={{ fontSize: 15, fontWeight: 600, color: isDark ? '#fff' : '#0a0a0a', textAlign: 'center', lineHeight: 1.4, fontFamily: 'system-ui, sans-serif' }}>
-              {safeBenefits[currentCard]}
+              {typeof safeBenefits[currentCard] === 'string'
+                ? safeBenefits[currentCard]
+                : (safeBenefits[currentCard]?.title || safeBenefits[currentCard]?.label || safeBenefits[currentCard]?.front || String(currentCard + 1))}
             </div>
           </div>
 
@@ -2773,7 +2775,9 @@ function MorphingCard({ frame, fps, benefits, primaryColor, secondaryColor }) {
               fontSize: 15, fontWeight: 600, color: '#fff',
               fontFamily: 'system-ui, sans-serif', lineHeight: 1.5,
             }}>
-              {safeBenefits[currentBenefit] || ''}
+              {typeof safeBenefits[currentBenefit] === 'string'
+                ? safeBenefits[currentBenefit]
+                : (safeBenefits[currentBenefit]?.title || safeBenefits[currentBenefit]?.label || '')}
             </div>
           </div>
         </div>
