@@ -133,10 +133,10 @@ async def render_video(
             print(f"[renderer] JSX len={len(jsx_code) if jsx_code else 0} has_export={'MarketingVideo' in (jsx_code or '')} starts={repr((jsx_code or '')[:80])}")
             if jsx_code and len(jsx_code) > 500 and "MarketingVideo" in jsx_code:
                 full_jsx = REMOTION_IMPORTS + jsx_code
-                TEMPLATE_PATH.write_text(full_jsx, encoding='utf-8')
+                TEMPLATE_PATH.write_text(full_jsx, encoding='utf-8-sig')
                 # Guardar copia del JSX para debug
                 debug_path = OUTPUTS_DIR / f"{job_id}_generated.jsx"
-                debug_path.write_text(full_jsx, encoding='utf-8')
+                debug_path.write_text(full_jsx, encoding='utf-8-sig')
                 print(f"[renderer] JSX de Claude escrito ({len(jsx_code)} chars) → {debug_path.name}")
                 jsx_ok = True
             else:

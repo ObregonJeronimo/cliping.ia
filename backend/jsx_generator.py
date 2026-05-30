@@ -155,6 +155,15 @@ siteName, headline, subheadline, benefits (array), features (array), cta,
 primaryColor, secondaryColor, screenshotUrl, problem, audience, 
 numbers (array), guarantee
 
+IMPORTANTE ADICIONAL:
+- NO uses emojis de ningún tipo (🔥💰📱 etc) — causan corrupción de encoding
+- NO uses caracteres especiales fuera de ASCII en strings hardcodeados
+- Los strings con texto en español van SOLO en las props, nunca hardcodeados en el JSX
+- Usá SIEMPRE fondos oscuros (#07070f, #0a0010, #000) — NUNCA fondo blanco plano
+- Mínimo 3 capas de profundidad visual en cada escena (fondo, medio, frente)
+- Tipografías: fontSize mínimo 48px para headlines, fontWeight 900 para impacto
+- Cada escena debe tener al MENOS un elemento que rota, pulsa o flota continuamente
+
 Escribí el código JSX ahora. Comenzá directamente con los componentes helper."""
 
     headers = {
