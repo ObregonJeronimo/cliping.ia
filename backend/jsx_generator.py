@@ -1,164 +1,197 @@
 """
-Genera código JSX de Remotion dinámicamente usando Groq.
-Cada video es único porque el LLM escribe el código basado en:
-- Los datos reales de la página
-- La combinación de estilo/narrativa/hook/tono elegida
-- Las técnicas de animación seleccionadas aleatoriamente
+Genera código JSX de Remotion usando Claude claude-sonnet-4-20250514.
+Claude tiene conocimiento profundo de Remotion y genera animaciones épicas y únicas.
 """
+import asyncio
 import json
+import os
 import re
-from vision import _groq_text
+import aiohttp
+
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+ANTHROPIC_URL = "https://api.anthropic.com/v1/messages"
 
 
-REMOTION_SYSTEM_PROMPT = """Sos un experto en Remotion (React para videos) y motion graphics.
-Tu tarea es escribir código JSX de Remotion para un video de marketing épico y único.
+SYSTEM_PROMPT = """Sos un experto en motion graphics y Remotion (React para videos programáticos).
+Generás código JSX de Remotion que crea videos de marketing ÉPICOS, únicos y visualmente impresionantes.
 
-REGLAS CRÍTICAS:
-1. Respondé SOLO con código JSX válido, sin explicaciones ni markdown
-2. El componente principal debe llamarse EXACTAMENTE: MarketingVideo
-3. Usá SOLO estas APIs de Remotion (ya están importadas):
-   - useCurrentFrame, useVideoConfig, interpolate, spring, Sequence, AbsoluteFill, Img
-4. NO uses useState, useEffect, ni ningún hook de React que no sea los de Remotion
-5. Todas las animaciones DEBEN depender de useCurrentFrame() — nada de Math.random() directo
-6. Para "aleatoriedad" visual usá: Math.sin(frame * N + offset) donde offset es una constante
-7. El video tiene exactamente {total_frames} frames a 30fps ({duration}s)
-8. Width: {width}px, Height: {height}px
-9. Los imports ya están hechos — comenzá directo con los componentes helper y luego MarketingVideo
-10. El export debe ser: export const MarketingVideo = ({{ ...props }}) => {{ ... }}"""
+REGLAS ABSOLUTAS:
+1. Respondé SOLO con código JSX válido — sin explicaciones, sin markdown, sin comentarios fuera del código
+2. El componente principal DEBE llamarse exactamente: MarketingVideo
+3. Imports disponibles (NO los repitas en tu respuesta):
+   import { AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig, Img, Sequence } from 'remotion';
+4. NUNCA uses useState, useEffect, useRef ni hooks de React — SOLO useCurrentFrame y useVideoConfig de Remotion
+5. Toda animación DEBE depender de useCurrentFrame() — es el único source of truth del tiempo
+6. Para variedad visual usá Math.sin(frame * constante + offset) donde offset es número hardcodeado
+7. NO uses Math.random() — los frames se renderizan en paralelo y random daría resultados inconsistentes
+8. El export final DEBE ser: export const MarketingVideo = (props) => { ... }
+9. Comenzá directo con los componentes helper, sin imports
+10. Hacé el video VISUALMENTE IMPRESIONANTE — como si lo hiciera un motion designer de nivel mundial"""
 
 
 async def generate_jsx(video_context: dict, screenshot_b64: str | None = None) -> str:
-    """
-    Genera código JSX de Remotion usando Groq basado en el contexto de variación.
-    """
+    """Genera JSX épico con Claude claude-sonnet-4-20250514."""
+
     page_data = video_context["page_data"]
     duration = video_context["duration"]
     total_frames = duration * 30
-    fmt = video_context["format"]
-    width = 390 if fmt == "reel" else (1280 if fmt == "youtube" else 1080)
-    height = 844 if fmt == "reel" else (720 if fmt == "youtube" else 1080)
+    fmt = video_context.get("format", "reel")
+    width  = 390  if fmt == "reel" else (1280 if fmt == "youtube" else 1080)
+    height = 844  if fmt == "reel" else (720  if fmt == "youtube" else 1080)
 
-    style = video_context["style_data"]
-    narrative = video_context["narrative_data"]
-    hook = video_context["hook_data"]
-    tone = video_context["tone_data"]
+    site_name    = page_data.get("siteName", "Mi Sitio")
+    headline     = page_data.get("headline", "La solución que necesitás")
+    subheadline  = page_data.get("subheadline", "")
+    benefits     = page_data.get("benefits", [])
+    features     = page_data.get("features", [])
+    cta          = page_data.get("cta", "Empezá gratis")
+    problem      = page_data.get("problem", "")
+    audience     = page_data.get("audience", "")
+    primary      = page_data.get("primaryColor", "#6366f1")
+    secondary    = page_data.get("secondaryColor", "#818cf8")
+    guarantee    = page_data.get("guarantee", "")
+    numbers      = page_data.get("numbers", [])
+    page_type    = page_data.get("pageType", "saas")
+    emotion      = page_data.get("emotion", "confianza")
 
-    site_name = page_data.get("siteName", "Mi Sitio")
-    headline = page_data.get("headline", "La solución que necesitás")
-    benefits = page_data.get("benefits", ["Beneficio 1", "Beneficio 2", "Beneficio 3"])
-    cta = page_data.get("cta", "Empezá gratis")
-    primary_color = page_data.get("primaryColor", "#6366f1")
-    secondary_color = page_data.get("secondaryColor", "#818cf8")
-    page_type = page_data.get("pageType", "saas")
-    features = page_data.get("features", [])
-    problem = page_data.get("problem", "")
-    audience = page_data.get("audience", "")
-    numbers = page_data.get("numbers", [])
+    # Parámetros de variación
+    visual_style = video_context.get("visual_style", "dark_premium")
+    narrative    = video_context.get("narrative", "features")
+    hook_type    = video_context.get("hook", "question")
+    tone         = video_context.get("tone", "enthusiastic")
+    anim_techs   = video_context.get("anim_techniques", ["reveal", "stagger", "zoom_punch"])
 
-    anim_descs = "\n".join([f"- {a}" for a in video_context["anim_descs"]])
-    scene_labels = narrative.get("scene_labels", ["Escena 1", "Escena 2", "Escena 3", "Escena 4", "Escena 5"])
-    scene_labels = [l.replace("{product}", site_name).replace("{character}", audience or "tu cliente") for l in scene_labels]
+    style_desc = {
+        "dark_premium": "fondo muy oscuro (#07070f a #0d0d1a), partículas sutiles blancas, glows de color, tipografía blanca pesada, sensación premium/tech",
+        "neon":         "fondo negro profundo, efectos neon con cyan/magenta/verde eléctrico, grid lines, glitch effects, cyberpunk",
+        "minimal":      "fondo blanco puro, tipografía negra grande, muchísimo espacio en blanco, colores de marca solo en acentos, ultra clean",
+        "brand":        f"usar {primary} como color dominante del fondo, todo coherente con la identidad de marca, {secondary} como acento",
+        "corporate":    "azul corporativo oscuro (#0d1a2e), líneas geométricas limpias, tipografía sans-serif profesional, confianza",
+    }.get(visual_style, "dark premium")
+
+    narrative_desc = {
+        "problem_solution": f"Abrí con el PROBLEMA que tiene {audience} (sin {site_name}). Agitá esa emoción. Luego revelá {site_name} como la solución heroica.",
+        "before_after":     f"Contraste visual BRUTAL entre el caos/dolor de antes vs la calma/eficiencia con {site_name}.",
+        "features":         f"Cada feature de {site_name} tiene su propia escena con animación específica que visualiza lo que hace.",
+        "social_proof":     f"Construí confianza progresivamente: números reales → testimonial → garantía → CTA irresistible.",
+        "urgency":          f"Mostrá lo que {audience} PIERDE cada día que no usa {site_name}. Creá urgencia genuina.",
+        "story":            f"Historia de 3 actos: {audience} tiene un problema → descubre {site_name} → su vida/trabajo mejora.",
+    }.get(narrative, "mostrá las features más importantes con animaciones épicas")
+
+    hook_desc = {
+        "question":  f"Abrí con una pregunta que golpea directo: '¿{problem or f'Cansado de perder tiempo en {page_type}?'}'",
+        "stat":      f"Abrí con un número impactante que valida el problema (contador animado gigante)",
+        "bold":      f"Afirmación bold que interrumpe el scroll — texto que entra con punch dramático",
+        "did_you":   f"'¿Sabías que...' seguido de un dato sorprendente sobre el problema",
+        "result":    f"Mostrá el resultado final primero, luego explicá cómo llegar ahí",
+        "pain":      f"Nombrá el dolor exacto de {audience} — que se sientan identificados instantáneamente",
+    }.get(hook_type, "hook impactante que detiene el scroll")
+
+    tone_desc = {
+        "professional": "movimientos suaves, damping alto, tipografía elegante, colores sobrios",
+        "enthusiastic": "animaciones con rebote (stiffness alto), colores saturados, texto grande y bold",
+        "urgent":       "cortes rápidos, texto que aparece de golpe (sin spring suave), cuenta regresiva si aplica",
+        "trustworthy":  "movimientos lentos y fluidos, íconos de check, colores azul/verde que transmiten seguridad",
+        "disruptive":   "efectos glitch (usar Math.sin para simular), tipografía experimental, inesperado",
+    }.get(tone, "energético y atractivo")
 
     screenshot_instruction = ""
     if screenshot_b64:
-        screenshot_instruction = f"""
-La screenshot del sitio está disponible como prop screenshotUrl (string base64).
-Podés usarla con: <Img src={{screenshotUrl}} style={{...}} />
-Usala en las escenas donde sea relevante mostrar la UI real del producto."""
+        screenshot_instruction = """
+IMPORTANTE: screenshotUrl está disponible como prop y contiene el screenshot real del sitio.
+Usalo con <Img src={screenshotUrl} /> en la escena donde mostrás el producto en acción.
+Colocalo dentro de un mockup de iPhone o browser window animado."""
 
-    prompt = f"""Escribí el código JSX completo para un video de marketing de Remotion con estas especificaciones:
+    prompt = f"""Creá un video de marketing de Remotion ÉPICO y ÚNICO para este producto:
 
 ═══ PRODUCTO ═══
 Nombre: {site_name}
 Tipo: {page_type}
 Headline: {headline}
-Beneficios: {json.dumps(benefits, ensure_ascii=False)}
-CTA: {cta}
-Color primario: {primary_color}
-Color secundario: {secondary_color}
-Problema que resuelve: {problem or 'No especificado'}
-Audiencia: {audience or 'No especificada'}
-Números/estadísticas: {json.dumps(numbers, ensure_ascii=False)}
-Features específicas: {json.dumps(features[:5], ensure_ascii=False)}
+Subheadline: {subheadline}
+Problema que resuelve: {problem}
+Audiencia: {audience}
+Beneficios: {json.dumps(benefits[:4], ensure_ascii=False)}
+Features: {json.dumps(features[:3], ensure_ascii=False)}
+CTA principal: {cta}
+Garantía: {guarantee}
+Números/stats: {json.dumps(numbers, ensure_ascii=False)}
+Color primario: {primary}
+Color secundario: {secondary}
+Emoción objetivo: {emotion}
 
 ═══ CONFIGURACIÓN DEL VIDEO ═══
-Duración: {duration} segundos ({total_frames} frames a 30fps)
-Dimensiones: {width}x{height}px
-Estructura narrativa: {video_context['narrative']} — {narrative.get('desc', '')}
-Escenas: {json.dumps(scene_labels, ensure_ascii=False)}
+Duración total: {duration}s = {total_frames} frames a 30fps
+Dimensiones: {width}x{height}px ({"vertical mobile" if fmt == "reel" else "horizontal" if fmt == "youtube" else "cuadrado"})
 
-═══ ESTILO VISUAL ═══
-Estilo: {video_context['visual_style']}
-Descripción visual: {style.get('accent_desc', '')}
-Fondo: {style.get('bg', '')}
-Tono: {video_context['tone']} — {tone.get('desc', '')}
-Peso tipográfico: {tone.get('font_weight', '700')}
-Velocidad animaciones: {tone.get('animation_speed', 'smooth')}
-
-═══ HOOK DE APERTURA ═══
-Tipo: {video_context['hook']} — {hook.get('desc', '')}
-Animación del hook: {hook.get('animation', '')}
-
-═══ TÉCNICAS DE ANIMACIÓN A USAR ═══
-{anim_descs}
+═══ DIRECCIÓN CREATIVA ═══
+Estilo visual: {visual_style} → {style_desc}
+Narrativa: {narrative} → {narrative_desc}
+Hook de apertura: {hook_type} → {hook_desc}
+Tono: {tone} → {tone_desc}
+Técnicas de animación a usar: {', '.join(anim_techs)}
 {screenshot_instruction}
 
-═══ CÓDIGO JSX REQUERIDO ═══
-El componente MarketingVideo recibe estas props:
-- siteName: string
-- headline: string  
-- benefits: string[]
-- cta: string
-- primaryColor: string
-- secondaryColor: string
-- screenshotUrl: string | null
+═══ ESTRUCTURA DEL VIDEO ═══
+Dividí el video en 5 escenas usando <Sequence from={{X}} durationInFrames={{Y}}>.
+Los frames de inicio deben ser EXACTOS sin superposición:
+- Escena 1: from=0, dur=90 (0-3s) → Hook de apertura impactante
+- Escena 2: from=90, dur=210 (3-10s) → Presentación del producto con mockup
+- Escena 3: from=300, dur=270 (10-19s) → Beneficios/features con animaciones específicas  
+- Escena 4: from=570, dur=210 (19-26s) → CTA con screenshot y glow
+- Escena 5: from=780, dur=120 (26-30s) → Logo final con partículas
 
-Imports ya disponibles (NO los repitas):
-import {{ AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig, Img, Sequence }} from 'remotion';
+═══ REQUISITOS DE CALIDAD ═══
+- Cada escena debe tener elementos SIEMPRE EN MOVIMIENTO (no frames estáticos)
+- Usá Math.sin(frame * velocidad + offset) para movimiento continuo (float, pulse, rotate)
+- spring() para entradas suaves con rebote natural
+- interpolate() para transiciones lineales precisas
+- Agregá profundidad con múltiples capas (fondo, medio, frente)
+- Los textos deben entrar con animaciones, no aparecer de golpe
+- Hacé un video que deje al espectador con la mandíbula caída
 
-Escribí SOLO el código JSX. Comenzá directamente con los componentes helper.
-Hacé el video ÉPICO, ÚNICO y POTENTE para marketing viral.
-Usá las técnicas de animación especificadas. Distribuí el contenido en {len(scene_labels)} escenas bien diferenciadas.
-Cada escena debe durar aproximadamente {duration // len(scene_labels)} segundos.
-Asegurate que NO haya solapamiento entre escenas — usá Sequence con from y durationInFrames exactos."""
+Props disponibles en MarketingVideo:
+siteName, headline, subheadline, benefits (array), features (array), cta, 
+primaryColor, secondaryColor, screenshotUrl, problem, audience, 
+numbers (array), guarantee
 
-    system = REMOTION_SYSTEM_PROMPT.format(
-        total_frames=total_frames,
-        duration=duration,
-        width=width,
-        height=height,
-    )
+Escribí el código JSX ahora. Comenzá directamente con los componentes helper."""
 
-    # Groq tiene límite de tokens — necesitamos el modelo de texto largo
-    result = await _groq_text_long(system + "\n\n" + prompt, max_tokens=4000)
-
-    # Limpiar markdown si lo incluye
-    result = re.sub(r"```(?:jsx|javascript|js)?", "", result)
-    result = re.sub(r"```$", "", result, flags=re.MULTILINE)
-    result = result.strip()
-
-    return result
-
-
-async def _groq_text_long(prompt: str, max_tokens: int = 4000) -> str:
-    """Llama a Groq con modelo que soporta outputs más largos."""
-    import aiohttp, os
-    GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
-    GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
-
-    headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
-    payload = {
-        "model": "llama-3.3-70b-versatile",
-        "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": max_tokens,
-        "temperature": 0.7,  # algo de creatividad para variedad
+    headers = {
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
     }
+
+    payload = {
+        "model": "claude-sonnet-4-20250514",
+        "max_tokens": 6000,
+        "system": SYSTEM_PROMPT,
+        "messages": [{"role": "user", "content": prompt}],
+    }
+
+    print(f"[jsx_generator] llamando a Claude claude-sonnet-4-20250514...")
+    async with aiohttp.ClientSession() as session:
+        async with session.post(
+            ANTHROPIC_URL,
+            headers=headers,
+            json=payload,
+            timeout=aiohttp.ClientTimeout(total=120),
+        ) as resp:
+            data = await resp.json()
+
+    if resp.status != 200:
+        print(f"[jsx_generator] error HTTP {resp.status}: {data}")
+        return ""
+
     try:
-        async with aiohttp.ClientSession() as s:
-            async with s.post(GROQ_URL, json=payload, headers=headers,
-                              timeout=aiohttp.ClientTimeout(total=60)) as r:
-                data = await r.json()
-        return data["choices"][0]["message"]["content"].strip()
+        jsx = data["content"][0]["text"].strip()
+        # Limpiar markdown si lo incluyó
+        jsx = re.sub(r"```(?:jsx|javascript|js|tsx)?", "", jsx)
+        jsx = re.sub(r"```\s*$", "", jsx, flags=re.MULTILINE)
+        jsx = jsx.strip()
+        print(f"[jsx_generator] JSX generado: {len(jsx)} chars")
+        return jsx
     except Exception as e:
-        print(f"[jsx_generator] error: {e}")
+        print(f"[jsx_generator] parse error: {e} — {data}")
         return ""
