@@ -93,10 +93,11 @@ Respondé SOLO con JSON válido con esta estructura exacta:
 REGLAS:
 - Elegí animaciones que hagan sentido para {page_type} con tono {tone}
 - Los params deben tener contenido REAL del producto (no placeholders)
-- Para stats/numbers, usá los números reales si existen, sino inventá valores verosímiles
-- Para steps/flow, creá pasos reales del proceso del producto
-- Para before/after, usá el problema real vs la solución
-- El contenido en params va en español, usando la información real del producto"""
+- NUNCA inventes datos, números ni estadísticas que no estén en la página
+- Para stats/numbers, usá SOLO los números que aparecen en los datos del producto — si no hay, omití ese parámetro o usá strings descriptivos sin números falsos
+- Para steps/flow, usá las features y benefits reales del producto
+- Para before/after, usá el problema real del producto vs sus beneficios reales
+- El contenido en params va en español, usando ÚNICA y EXCLUSIVAMENTE la información real del producto"""
 
     headers = {
         "x-api-key": ANTHROPIC_API_KEY,
