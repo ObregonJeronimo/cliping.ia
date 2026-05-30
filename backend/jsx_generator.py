@@ -41,20 +41,26 @@ async def select_animations(video_context: dict) -> dict:
 
     catalog = get_catalog_for_claude()
 
-    # Historial de animaciones usadas para forzar variedad
+    # Historial de animaciones usadas recientemente
     from pathlib import Path as _P
-    import glob as _glob
-    _used = set()
-    for f in _glob.glob("debug_reports/*_debug.json")[-8:]:  # ultimos 8 videos
+    import glob as _glob, random as _random
+    _used_by_scene = {"hook": [], "product": [], "benefits": [], "cta": [], "outro": []}
+    for f in sorted(_glob.glob("debug_reports/*_debug.json"))[-6:]:
         try:
             import json as _j
             d = _j.loads(_P(f).read_text(encoding="utf-8"))
             scenes = d.get("data",{}).get("animation_selection",{})
-            for k,v in scenes.items():
-                if isinstance(v,dict) and "animation" in v:
-                    _used.add(v["animation"])
+            for scene, v in scenes.items():
+                if scene in _used_by_scene and isinstance(v, dict) and "animation" in v:
+                    _used_by_scene[scene].append(v["animation"])
         except: pass
-    recently_used = list(_used)[:8]  # max 8 para no saturar el prompt
+    recently_used = list(set(a for lst in _used_by_scene.values() for a in lst))[:10]
+    # Qué no usar POR ESCENA
+    hook_avoid    = _used_by_scene["hook"][-2:]
+    product_avoid = _used_by_scene["product"][-2:]
+    benefits_avoid= _used_by_scene["benefits"][-2:]
+    cta_avoid     = _used_by_scene["cta"][-2:]
+    outro_avoid   = _used_by_scene["outro"][-2:]
 
     # Análisis visual profundo
     audience_insight = f"Audiencia: {audience}. Emoción objetivo: {emotion}."
@@ -137,10 +143,16 @@ Respondé SOLO con JSON válido:
   "reasoning": "resumen de la dirección creativa completa del video"
 }}
 
-REGLAS CRÍTICAS:
-- NUNCA uses estas animaciones que ya se usaron recientemente: {recently_used}
-  Si una animación está en esa lista, elegí OTRA diferente para esa escena.
-- VARIEDAD OBLIGATORIA: cada video debe sentirse completamente distinto al anterior
+REGLAS CRÍTICAS — VARIEDAD OBLIGATORIA:
+- HOOK: NO uses ninguna de estas: {hook_avoid}. Elegí algo DISTINTO.
+- PRODUCT: NO uses ninguna de estas: {product_avoid}. Elegí algo DISTINTO.
+- BENEFITS: NO uses ninguna de estas: {benefits_avoid}. Elegí algo DISTINTO.
+- CTA: NO uses ninguna de estas: {cta_avoid}. Elegí algo DISTINTO.
+- OUTRO: NO uses ninguna de estas: {outro_avoid}. Elegí algo DISTINTO.
+- CADA VIDEO DEBE VERSE DIFERENTE: varía colores del brief, tipografía, uso del espacio,
+  ritmo y elementos visuales aunque el producto sea el mismo.
+- Si el fondo fue navy la vez anterior, esta vez usá dark purple, midnight teal, o dark warm.
+- Si el hook fue un número, esta vez que sea texto. Si fue texto, que sea visual.
 - NUNCA inventes datos — usá SOLO los números reales: {json.dumps(numbers, ensure_ascii=False)}
 - Si no hay números reales, usá strings descriptivos sin inventar cifras
 - El contenido va en español rioplatense
