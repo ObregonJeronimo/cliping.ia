@@ -4,3 +4,4 @@ uvicorn>=0.48.0
 python-multipart>=0.0.29
 edge-tts>=6.1.9
 aiohttp>=3.9.0
+python-dotenv>=1.0.0

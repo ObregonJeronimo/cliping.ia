@@ -5,6 +5,8 @@ if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
 import uvicorn
+from dotenv import load_dotenv
+load_dotenv()  # carga .env si existe
 
 if __name__ == "__main__":
     # sin reload para que el policy se mantenga en el proceso principal
