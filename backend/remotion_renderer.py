@@ -154,18 +154,23 @@ async def render_video(
 
 
     # Claude elige animaciones — con caché por URL
-    url_key = params.get("url", "")
-    anim_selection = get_cached(url_key)
+    url_key      = params.get("url", "")
+    cache_context = {
+        "isDark":       page_data.get("isDark", False),
+        "primaryColor": page_data.get("primaryColor", ""),
+        "bgColor":      page_data.get("bgColor", ""),
+    }
+    anim_selection = get_cached(url_key, cache_context)
 
     if anim_selection:
-        print(f"[renderer] usando caché de animaciones para {url_key[:40]}")
+        print(f"[renderer] usando caché para {url_key[:40]}")
         if debugger: debugger.log("cache", f"HIT — reutilizando selección previa", level="ok")
     else:
         if os.environ.get("ANTHROPIC_API_KEY"):
             try:
                 anim_selection = await select_animations(video_context)
                 if anim_selection:
-                    save_cache(url_key, anim_selection)
+                    save_cache(url_key, anim_selection, cache_context)
             except Exception as e:
                 print(f"[renderer] error seleccionando animaciones: {e}")
         if not anim_selection:

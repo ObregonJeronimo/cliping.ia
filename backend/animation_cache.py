@@ -10,11 +10,15 @@ from pathlib import Path
 CACHE_DIR = Path("animation_cache")
 CACHE_DIR.mkdir(exist_ok=True)
 
-def _cache_key(url: str) -> str:
-    return hashlib.md5(url.encode()).hexdigest()
+def _cache_key(url: str, context: dict = None) -> str:
+    """Key incluye URL + isDark + primaryColor para que páginas distintas o con colores distintos no compartan caché."""
+    key_parts = url
+    if context:
+        key_parts += f"|isDark={context.get('isDark',False)}|color={context.get('primaryColor','')}"
+    return hashlib.md5(key_parts.encode()).hexdigest()
 
-def get_cached(url: str) -> dict | None:
-    key  = _cache_key(url)
+def get_cached(url: str, context: dict = None) -> dict | None:
+    key  = _cache_key(url, context)
     path = CACHE_DIR / f"{key}.json"
     if path.exists():
         try:
@@ -25,8 +29,8 @@ def get_cached(url: str) -> dict | None:
             print(f"[cache] error leyendo caché: {e}")
     return None
 
-def save_cache(url: str, selection: dict) -> None:
-    key  = _cache_key(url)
+def save_cache(url: str, selection: dict, context: dict = None) -> None:
+    key  = _cache_key(url, context)
     path = CACHE_DIR / f"{key}.json"
     try:
         path.write_text(json.dumps({
@@ -41,7 +45,7 @@ def save_cache(url: str, selection: dict) -> None:
 def clear_cache(url: str = None) -> int:
     """Limpiar caché de una URL específica o todo."""
     if url:
-        path = CACHE_DIR / f"{_cache_key(url)}.json"
+        path = CACHE_DIR / f"{_cache_key(url, None)}.json"
         if path.exists():
             path.unlink()
             return 1
