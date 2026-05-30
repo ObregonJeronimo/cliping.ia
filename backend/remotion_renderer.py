@@ -81,6 +81,7 @@ async def render_video(
     screenshot_path: Path,
     job_id: str,
     params: dict = None,
+    debugger = None,
 ) -> Path:
     """Genera JSX con Claude y renderiza con Remotion."""
 
@@ -101,6 +102,7 @@ async def render_video(
     video_context["duration"] = params.get("duration", 30)
     print(f"[renderer] style={video_context['visual_style']} | narrative={video_context['narrative']} | hook={video_context['hook']} | tone={video_context['tone']}")
     print(f"[renderer] animaciones: {video_context['anim_techniques']}")
+    if debugger: debugger.set_variation(video_context)
 
     # Dimensiones
     duration = params.get("duration", 30)
@@ -121,6 +123,7 @@ async def render_video(
     if not anim_selection:
         anim_selection = get_default_selection(page_data)
         print(f"[renderer] usando selección por defecto")
+    if debugger: debugger.set_animation_selection(anim_selection)
 
     # Props: datos de página + animaciones elegidas por Claude
     props = {
@@ -185,13 +188,18 @@ async def render_video(
     except Exception:
         pass
 
+    import time as _time; render_end = _time.time()
     if proc.returncode != 0:
         err = stderr.decode()[-800:]
         print(f"[renderer] remotion error: {err}")
+        if debugger: debugger.set_render_result(False, error=err[-200:])
         raise RuntimeError(f"Remotion falló: {err[-200:]}")
 
     if not output_path.exists():
         raise RuntimeError("Remotion no generó el archivo")
 
+    from editor import get_duration as _get_dur
+    dur = await _get_dur(output_path)
+    if debugger: debugger.set_render_result(True, output_path, duration_s=dur)
     print(f"[renderer] OK: {output_path.name} ({output_path.stat().st_size//1024}KB)")
     return output_path

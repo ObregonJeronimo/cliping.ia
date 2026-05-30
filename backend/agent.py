@@ -7,6 +7,7 @@ from playwright.async_api import async_playwright
 from vision import analyze_page, execute_step, generate_voiceover_script
 from editor import get_duration, OUTPUTS_DIR
 from remotion_renderer import extract_page_data_deep, render_video
+from debug_logger import VideoDebugger
 
 FORMATS = {
     "reel":    {"w": 390,  "h": 844},
@@ -35,6 +36,8 @@ async def run_agent(
     screenshots_dir = OUTPUTS_DIR / f"shots_{job_id}"
     screenshots_dir.mkdir(exist_ok=True)
 
+    debugger = VideoDebugger(job_id, url, action)
+    debugger.log("start", f"format={format} style={style} voice={voice}")
     progress_cb("browse", 10)
     descriptions = []
     hero_screenshot = None  # Screenshot principal para Remotion
@@ -74,6 +77,7 @@ async def run_agent(
         hero_bytes = hero_path.read_bytes()
         page_analysis = await analyze_page(hero_bytes, url, action)
         page_data = await extract_page_data_deep(hero_bytes, url, action)
+        debugger.set_page_data(page_data)
         print(f"[agent] {page_data.get('siteName')} — {page_data.get('headline')}")
 
         # FASE 2: Navegar la página (para el rawvideo de referencia y para tener descripciones)
@@ -132,6 +136,7 @@ async def run_agent(
     # FASE 3: Generar video animado con Remotion
     progress_cb("detect", 55)
     progress_cb("edit", 60)
+    debugger.log("render_start", "Iniciando Remotion")
 
     try:
         render_params = {
@@ -150,6 +155,7 @@ async def run_agent(
             screenshot_path=hero_screenshot,
             job_id=job_id,
             params=render_params,
+            debugger=debugger,
         )
     except Exception as e:
         print(f"[remotion] falló: {e}, usando fallback")
@@ -184,6 +190,7 @@ async def run_agent(
 
     progress_cb("export", 95)
     final_duration = await get_duration(result_video)
+    debugger.set_final(result_video)
     print(f"[agent] final: {result_video.name} {final_duration:.1f}s {result_video.stat().st_size//1024}KB")
 
     return result_video
