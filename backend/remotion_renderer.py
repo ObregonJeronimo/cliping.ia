@@ -130,6 +130,7 @@ async def render_video(
     if os.environ.get("ANTHROPIC_API_KEY"):
         try:
             jsx_code = await generate_jsx(video_context, screenshot_b64)
+            print(f"[renderer] JSX len={len(jsx_code) if jsx_code else 0} has_export={'MarketingVideo' in (jsx_code or '')} starts={repr((jsx_code or '')[:80])}")
             if jsx_code and len(jsx_code) > 500 and "MarketingVideo" in jsx_code:
                 full_jsx = REMOTION_IMPORTS + jsx_code
                 TEMPLATE_PATH.write_text(full_jsx, encoding='utf-8')
