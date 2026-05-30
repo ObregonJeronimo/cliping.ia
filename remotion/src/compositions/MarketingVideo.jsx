@@ -3092,14 +3092,17 @@ export const MarketingVideo = (props) => {
 
   const merged = (extra) => ({ ...base, bg: brandBg, ...extra });
 
+  // Altura del wrapper: cuántos px de 390-world necesito para cubrir 1920px del canvas
+  const WRAPPER_H = Math.ceil(1920 / SCALE); // ~692px en el espacio de diseño
+
   return (
-    <AbsoluteFill style={{ background: '#000', overflow: 'hidden' }}>
-      {/* Scale wrapper: diseño en 390px escalado a 1080px */}
+    <AbsoluteFill style={{ background: brandBg || '#07070f', overflow: 'hidden' }}>
+      {/* Scale wrapper: diseño en 390px escalado a 1080x1920 */}
       <div style={{
         position: 'absolute',
         top: 0, left: 0,
         width: DESIGN_WIDTH,
-        height: Math.round(DESIGN_WIDTH * 1920 / 1080), // 844px aprox
+        height: WRAPPER_H,
         transform: `scale(${SCALE})`,
         transformOrigin: 'top left',
         overflow: 'hidden',

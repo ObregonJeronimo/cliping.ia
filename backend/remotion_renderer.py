@@ -159,7 +159,7 @@ async def render_video(
     # Para producción (Lambda) se puede subir a 2x para antialiasing
     width  = 1080 if fmt == "reel" else (1920 if fmt == "youtube" else 1080)
     height = 1920 if fmt == "reel" else (1080 if fmt == "youtube" else 1920)
-    total_frames = duration * 30
+    total_frames = 990  # 33s fijo para que cuadre con los tiempos de escena
 
 
 
@@ -284,8 +284,8 @@ async def render_video(
         "--height", str(height),
         "--duration-in-frames", str(total_frames),
         "--concurrency", str(concurrency),
-        "--jpeg-quality", "95",        # máxima calidad de frames
-        "--crf", "16",                 # menor CRF = mayor calidad (18 default, 16 mejor)
+        "--jpeg-quality", "98",
+        "--crf", "14",
         "--pixel-format", "yuv420p",
         "--log", "error",
     ]
@@ -324,12 +324,14 @@ async def render_video(
     opt_cmd = [
         "ffmpeg", "-y",
         "-i", str(output_path),
-        "-vf", "unsharp=5:5:0.8:3:3:0.4",
+        "-vf", "unsharp=3:3:0.5:3:3:0.3",
         "-c:v", "libx264",
-        "-crf", "16",
-        "-preset", "medium",
+        "-crf", "14",
+        "-preset", "slow",
         "-profile:v", "high",
+        "-level", "4.2",
         "-pix_fmt", "yuv420p",
+        "-color_range", "tv",
         "-movflags", "+faststart",
         str(optimized_path),
     ]
