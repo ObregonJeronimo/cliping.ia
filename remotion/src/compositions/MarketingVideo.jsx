@@ -1213,35 +1213,348 @@ function GradientTextOutro({ frame, fps, siteName, tagline, primaryColor, second
   );
 }
 
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ANIMACIONES ÉPICAS ADICIONALES
+// ══════════════════════════════════════════════════════════════════════════════
+
+// Icon Draw Reveal — íconos SVG que se dibujan progresivamente
+function IconDrawReveal({ frame, fps, features, primaryColor }) {
+  const safeFeatures = (features || []).slice(0, 3);
+  const titleP = spr(frame, fps, 0, 16, 100);
+
+  const ICONS = {
+    users: "M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75",
+    "check-circle": "M22 11.08V12a10 10 0 1 1-5.93-9.14M22 4 12 14.01l-3-3",
+    "credit-card": "M1 4h22v16H1zM1 10h22",
+    zap: "M13 2 3 14h9l-1 8 10-12h-9l1-8z",
+    shield: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z",
+    trending: "M23 6l-9.5 9.5-5-5L1 18M17 6h6v6",
+    star: "M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z",
+    target: "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12zM12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z",
+  };
+
+  return (
+    <DarkScene color={primaryColor}>
+      <AbsoluteFill style={{ padding: '32px 28px', justifyContent: 'center' }}>
+        <div style={{ opacity: titleP, transform: `translateY(${(1-titleP)*-14}px)`, marginBottom: 28 }}>
+          <Label color={primaryColor} style={{ marginBottom: 8 }}>Lo que obtenés</Label>
+          <Headline size={26} color="#fff" style={{ lineHeight: 1.2 }}>
+            Diseñado para{' '}
+            <span style={{ color: primaryColor }}>profesionales como vos.</span>
+          </Headline>
+          <GlowLine color={primaryColor} progress={titleP} />
+        </div>
+
+        {safeFeatures.map((feat, i) => {
+          const p = spr(frame, fps, 20 + i * 25, 14, 100);
+          const iconKey = typeof feat === 'object' ? (feat.icon || 'star') : ['zap','shield','star'][i];
+          const iconPath = ICONS[iconKey] || ICONS.star;
+          const title = typeof feat === 'object' ? feat.title : (typeof feat === 'string' ? feat : `Beneficio ${i+1}`);
+          const desc  = typeof feat === 'object' ? (feat.description || '') : '';
+          const drawProgress = Math.min(Math.max((frame - 20 - i*25 - 5) / 30, 0), 1);
+
+          return (
+            <div key={i} style={{
+              display: 'flex', alignItems: 'flex-start', gap: 16,
+              opacity: p, transform: `translateX(${(1-p)*-44}px)`,
+              marginBottom: 18,
+            }}>
+              {/* Ícono SVG animado */}
+              <div style={{
+                width: 48, height: 48, borderRadius: 13, flexShrink: 0,
+                background: `rgba(${hex2rgb(primaryColor)},0.12)`,
+                border: `1.5px solid rgba(${hex2rgb(primaryColor)},0.35)`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: `0 0 ${12 + Math.sin(frame*0.08+i)*8}px rgba(${hex2rgb(primaryColor)},0.2)`,
+              }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+                  stroke={primaryColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                  style={{
+                    strokeDasharray: 80,
+                    strokeDashoffset: 80 * (1 - drawProgress),
+                  }}>
+                  <path d={iconPath} />
+                </svg>
+              </div>
+
+              {/* Texto */}
+              <div style={{ flex: 1 }}>
+                <div style={{
+                  fontSize: 15, fontWeight: 700, color: '#fff',
+                  lineHeight: 1.3, fontFamily: 'system-ui, sans-serif', marginBottom: 4,
+                }}>{title}</div>
+                {desc ? (
+                  <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', fontFamily: 'system-ui, sans-serif' }}>
+                    {desc}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          );
+        })}
+      </AbsoluteFill>
+    </DarkScene>
+  );
+}
+
+// Kinetic Text — palabras que entran con física y peso
+function KineticText({ frame, fps, headline, primaryColor, secondaryColor }) {
+  const words = (headline || '').split(' ');
+  const subtitleP = spr(frame, fps, words.length * 8 + 10, 16, 100);
+
+  return (
+    <DarkScene color={primaryColor} variant="deep">
+      {/* Grid decorativo */}
+      <svg style={{ position:'absolute', inset:0, width:'100%', height:'100%', opacity:0.04 }} viewBox="0 0 390 844">
+        {Array.from({length:7},(_,i)=><line key={i} x1={i*65} y1="0" x2={i*65} y2="844" stroke={primaryColor} strokeWidth="0.5"/>)}
+        {Array.from({length:5},(_,i)=><line key={i} x1="0" y1={i*170} x2="390" y2={i*170} stroke={primaryColor} strokeWidth="0.5"/>)}
+      </svg>
+
+      <AbsoluteFill style={{ justifyContent:'center', alignItems:'center', flexDirection:'column', padding:36 }}>
+        <div style={{ textAlign:'center', marginBottom:20 }}>
+          {words.map((word, i) => {
+            const p = spr(frame, fps, i * 8, 11, 130);
+            const isAccent = i === words.length - 1 || i === Math.floor(words.length/2);
+            return (
+              <span key={i} style={{
+                display: 'inline-block',
+                marginRight: 10,
+                opacity: p,
+                transform: `translateY(${(1-p)*50}px) rotate(${(1-p)*-8}deg)`,
+                fontSize: 58, fontWeight: 900,
+                color: isAccent ? primaryColor : '#fff',
+                letterSpacing: -2.5, lineHeight: 1.05,
+                fontFamily: 'system-ui, sans-serif',
+                textShadow: isAccent ? `0 0 40px rgba(${hex2rgb(primaryColor)},0.6)` : 'none',
+              }}>{word}</span>
+            );
+          })}
+        </div>
+
+        <div style={{ opacity: subtitleP, transform: `translateY(${(1-subtitleP)*16}px)` }}>
+          <div style={{
+            background: `rgba(${hex2rgb(primaryColor)},0.12)`,
+            border: `1px solid rgba(${hex2rgb(primaryColor)},0.3)`,
+            borderRadius: 100, padding: '9px 22px',
+          }}>
+            <Label color={primaryColor}>Descubrí cómo</Label>
+          </div>
+        </div>
+      </AbsoluteFill>
+    </DarkScene>
+  );
+}
+
+// Particle Reveal — texto que emerge de un campo de partículas
+function ParticleReveal({ frame, fps, siteName, headline, primaryColor, secondaryColor }) {
+  const TOTAL = 90;
+  const phase1 = Math.min(frame / 35, 1); // partículas acumulándose
+  const textP = spr(frame, fps, 38, 12, 110);
+  const ringP = spr(frame, fps, 28, 16, 90);
+
+  return (
+    <AbsoluteFill style={{ background: '#000', overflow: 'hidden' }}>
+      {/* Partículas que convergen al centro */}
+      {Array.from({ length: 40 }, (_, i) => {
+        const angle = (i / 40) * Math.PI * 2 + i * 0.3;
+        const startR = 220 + (i % 5) * 30;
+        const endR   = 20 + (i % 8) * 8;
+        const r = startR + (endR - startR) * phase1;
+        const x = Math.cos(angle) * r;
+        const y = Math.sin(angle) * r;
+        const op = 0.3 + phase1 * 0.6;
+        const sz = 2 + (i % 3);
+        return (
+          <div key={i} style={{
+            position: 'absolute', top: '50%', left: '50%',
+            width: sz, height: sz, borderRadius: '50%',
+            background: i % 3 === 0 ? primaryColor : i % 3 === 1 ? secondaryColor : '#fff',
+            transform: `translate(${x - sz/2}px, ${y - sz/2}px)`,
+            opacity: op,
+            boxShadow: i % 4 === 0 ? `0 0 6px ${primaryColor}` : 'none',
+          }} />
+        );
+      })}
+
+      {/* Anillos */}
+      <svg style={{ position:'absolute', inset:0, width:'100%', height:'100%' }} viewBox="0 0 390 844">
+        {[60,100,150].map((r,i) => (
+          <circle key={i} cx="195" cy="422" r={r * ringP}
+            fill="none" stroke={primaryColor} strokeWidth="0.8" opacity={0.2 - i*0.05}
+            strokeDasharray="6 4" transform={`rotate(${frame*(0.5-i*0.15)} 195 422)`} />
+        ))}
+      </svg>
+
+      <AbsoluteFill style={{ justifyContent:'center', alignItems:'center', flexDirection:'column', textAlign:'center', padding:36 }}>
+        <div style={{ opacity: textP, transform: `scale(${0.7 + textP*0.3})` }}>
+          <Headline size={72} color="#fff" style={{
+            textShadow: `0 0 60px rgba(${hex2rgb(primaryColor)},0.7)`,
+            letterSpacing: -3,
+          }}>
+            {siteName}
+          </Headline>
+          <div style={{
+            fontSize: 16, color: `rgba(255,255,255,0.6)`,
+            fontFamily: 'system-ui, sans-serif', fontWeight: 500, marginTop: 12,
+          }}>{headline}</div>
+        </div>
+      </AbsoluteFill>
+    </AbsoluteFill>
+  );
+}
+
+// Timeline Build — línea de tiempo que se construye de arriba a abajo
+function TimelineScroll({ frame, fps, steps, primaryColor }) {
+  const safeSteps = (steps || []).slice(0, 4);
+  const lineProgress = lerp(frame, 15, 200, 0, 1);
+  const titleP = spr(frame, fps, 0, 16, 100);
+
+  return (
+    <DarkScene color={primaryColor}>
+      <AbsoluteFill style={{ padding: '30px 30px', justifyContent: 'center' }}>
+        <div style={{ opacity: titleP, marginBottom: 24 }}>
+          <Label color={primaryColor} style={{ marginBottom: 6 }}>El proceso</Label>
+          <Headline size={26} color="#fff">Así de simple.</Headline>
+        </div>
+
+        <div style={{ position: 'relative' }}>
+          {/* Línea vertical animada */}
+          <div style={{
+            position: 'absolute', left: 22, top: 0,
+            width: 2, height: `${lineProgress * 100}%`,
+            background: `linear-gradient(180deg, ${primaryColor}, rgba(${hex2rgb(primaryColor)},0.1))`,
+            borderRadius: 2,
+          }} />
+
+          {safeSteps.map((step, i) => {
+            const p = spr(frame, fps, i * 22 + 15, 14, 100);
+            const stepText = typeof step === 'string' ? step : (step?.title || step?.label || `Paso ${i+1}`);
+            const dotGlow = 10 + Math.sin(frame*0.09+i)*8;
+            return (
+              <div key={i} style={{
+                display: 'flex', alignItems: 'center', gap: 18,
+                marginBottom: 22,
+                opacity: p, transform: `translateX(${(1-p)*-30}px)`,
+              }}>
+                {/* Dot */}
+                <div style={{
+                  width: 46, height: 46, borderRadius: '50%', flexShrink: 0,
+                  background: `rgba(${hex2rgb(primaryColor)},0.15)`,
+                  border: `2px solid ${primaryColor}`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: `0 0 ${dotGlow}px rgba(${hex2rgb(primaryColor)},0.5)`,
+                  fontSize: 16, fontWeight: 900, color: primaryColor,
+                  fontFamily: 'system-ui, sans-serif',
+                }}>
+                  {i + 1}
+                </div>
+                <div style={{
+                  flex: 1, background: 'rgba(255,255,255,0.04)',
+                  borderRadius: 13, padding: '12px 16px',
+                  border: '1px solid rgba(255,255,255,0.07)',
+                }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: '#fff', lineHeight: 1.4, fontFamily: 'system-ui, sans-serif' }}>
+                    {stepText}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </AbsoluteFill>
+    </DarkScene>
+  );
+}
+
+// Progress Bars — métricas con barras que se llenan animadas
+function ProgressBars({ frame, fps, metrics, primaryColor }) {
+  const safeMetrics = (metrics || []).slice(0, 4);
+  const titleP = spr(frame, fps, 0, 16, 100);
+
+  return (
+    <DarkScene color={primaryColor}>
+      <AbsoluteFill style={{ padding: '32px 28px', justifyContent: 'center' }}>
+        <div style={{ opacity: titleP, marginBottom: 28 }}>
+          <Label color={primaryColor} style={{ marginBottom: 8 }}>Rendimiento</Label>
+          <Headline size={26} color="#fff">Números que importan.</Headline>
+          <GlowLine color={primaryColor} progress={titleP} />
+        </div>
+
+        {safeMetrics.map((metric, i) => {
+          const p = spr(frame, fps, i * 20 + 8, 14, 100);
+          const barProgress = lerp(frame, i*20+18, i*20+65, 0, 1);
+          const label = typeof metric === 'string' ? metric.replace(/[\d%]+/g,'').trim() : (metric?.label || `Métrica ${i+1}`);
+          const pct = typeof metric === 'string'
+            ? (parseInt(metric.match(/\d+/)?.[0]) || 75)
+            : (metric?.value || 75);
+          const displayPct = Math.min(100, Math.round(barProgress * pct));
+
+          return (
+            <div key={i} style={{
+              marginBottom: 22, opacity: p, transform: `translateX(${(1-p)*-28}px)`,
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.75)', fontFamily: 'system-ui, sans-serif' }}>
+                  {label || `Métrica ${i+1}`}
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: primaryColor, fontFamily: 'system-ui, sans-serif' }}>
+                  {displayPct}%
+                </div>
+              </div>
+              <div style={{ height: 8, background: 'rgba(255,255,255,0.07)', borderRadius: 4, overflow: 'hidden' }}>
+                <div style={{
+                  height: '100%', borderRadius: 4,
+                  width: `${barProgress * pct}%`,
+                  background: `linear-gradient(90deg, ${primaryColor}, rgba(${hex2rgb(primaryColor)},0.7))`,
+                  boxShadow: `0 0 10px rgba(${hex2rgb(primaryColor)},0.5)`,
+                  transition: 'width 0.1s',
+                }} />
+              </div>
+            </div>
+          );
+        })}
+      </AbsoluteFill>
+    </DarkScene>
+  );
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 // ROUTER
 // ══════════════════════════════════════════════════════════════════════════════
 
 const ANIM_MAP = {
+  // Hook
   counter_explosion:     CounterExplosion,
   typewriter_glitch:     TypewriterGlitch,
   reveal_swipe:          RevealSwipe,
   morphing_shapes:       MorphingShapes,
   split_screen_problem:  SplitScreenProblem,
   liquid_title:          RevealSwipe,
-  word_split:            RevealSwipe,
-  particle_text:         MorphingShapes,
+  word_split:            KineticText,
+  particle_text:         ParticleReveal,
+  kinetic_text:          KineticText,
+  particle_reveal:       ParticleReveal,
+  // Product
   iphone_rise:           IphoneRise,
   cursor_demo:           CursorDemo,
   browser_window:        IphoneRise,
   dashboard_build:       DashboardBuild,
   flow_diagram:          FlowDiagram,
   phone_notification:    IphoneRise,
+  // Benefits
   benefit_cards_stagger: BenefitCardsStagger,
   stat_counters:         StatCounters,
   comparison_table:      ComparisonTable,
-  timeline_scroll:       FlowDiagram,
+  timeline_scroll:       TimelineScroll,
   floating_feature_orbs: FloatingFeatureOrbs,
-  icon_draw_reveal:      BenefitCardsStagger,
-  progress_bars:         StatCounters,
+  icon_draw_reveal:      IconDrawReveal,
+  progress_bars:         ProgressBars,
+  // CTA
   liquid_button_cta:     LiquidButtonCTA,
   screenshot_zoom_cta:   ScreenshotZoomCTA,
   urgency_countdown:     UrgencyCTA,
+  // Outro
   logo_particle_burst:   LogoParticleBurst,
   orbit_logo:            OrbitLogo,
   gradient_text_outro:   GradientTextOutro,

@@ -55,6 +55,18 @@ ANIMATION_CATALOG = {
         "scene": "hook",
         "params": ["problemText", "solutionText", "primaryColor"],
     },
+    "kinetic_text": {
+        "desc": "Palabras del headline que entran una por una con física y peso, muy impactante",
+        "best_for": ["brand", "startup", "saas", "landing"],
+        "scene": "hook",
+        "params": ["headline", "primaryColor", "secondaryColor"],
+    },
+    "particle_reveal": {
+        "desc": "Partículas que convergen desde los bordes para revelar el nombre del producto",
+        "best_for": ["tech", "premium", "saas", "brand"],
+        "scene": "hook",
+        "params": ["siteName", "headline", "primaryColor", "secondaryColor"],
+    },
 
     # ─── PRODUCTO / DEMO ────────────────────────────────────────────
     "iphone_rise": {
@@ -102,10 +114,16 @@ ANIMATION_CATALOG = {
         "params": ["benefits", "primaryColor"],
     },
     "icon_draw_reveal": {
-        "desc": "Íconos SVG que se dibujan progresivamente, luego aparece el texto",
-        "best_for": ["service", "feature", "explainer"],
+        "desc": "Íconos SVG que se dibujan progresivamente con animación de trazo, luego aparece título y descripción",
+        "best_for": ["service", "feature", "explainer", "saas"],
         "scene": "benefits",
         "params": ["features", "primaryColor"],
+    },
+    "progress_bars": {
+        "desc": "Barras de progreso que se llenan animadas mostrando métricas clave con porcentajes",
+        "best_for": ["analytics", "performance", "saas", "results"],
+        "scene": "benefits",
+        "params": ["metrics", "primaryColor"],
     },
     "stat_counters": {
         "desc": "Múltiples contadores animados que suben simultáneamente con sus labels",
@@ -114,8 +132,8 @@ ANIMATION_CATALOG = {
         "params": ["stats", "primaryColor"],
     },
     "timeline_scroll": {
-        "desc": "Timeline vertical que se dibuja de arriba a abajo con hitos del proceso",
-        "best_for": ["process", "onboarding", "howto"],
+        "desc": "Timeline vertical que se dibuja de arriba a abajo, ideal para mostrar el proceso paso a paso",
+        "best_for": ["process", "onboarding", "howto", "saas"],
         "scene": "benefits",
         "params": ["steps", "primaryColor"],
     },

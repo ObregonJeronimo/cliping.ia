@@ -87,8 +87,8 @@ Respondé SOLO con JSON válido:
             max_c, min_c = max(r,g,b), min(r,g,b)
             saturation = (max_c - min_c) / max_c if max_c > 0 else 0
             brightness = max_c / 255
-            # Si saturación baja o muy oscuro/claro → aburrido
-            return saturation < 0.2 or brightness < 0.15 or brightness > 0.95
+            # Solo rechazar si es casi gris (saturation muy baja) O casi negro O casi blanco puro
+            return saturation < 0.12 or brightness < 0.12 or (brightness > 0.96 and saturation < 0.05)
         except:
             return True
 
