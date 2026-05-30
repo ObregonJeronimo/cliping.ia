@@ -52,7 +52,8 @@ Respondé SOLO con JSON válido:
   "numbers": ["número o estadística real que aparece en la página"],
   "guarantee": "garantía si hay (ej: gratis 30 días, sin tarjeta)",
   "emotion": "confianza|urgencia|aspiración|alivio|entusiasmo",
-  "value_prop": "propuesta de valor única en una frase corta"
+  "value_prop": "propuesta de valor única en una frase corta",
+  "logoText": "texto/nombre del logo si se puede leer, o null"
 }}
 
 isDark: true si la página tiene fondo oscuro, false si es clara/blanca"""

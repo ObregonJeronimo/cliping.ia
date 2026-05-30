@@ -13,7 +13,7 @@ ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 ANTHROPIC_URL = "https://api.anthropic.com/v1/messages"
 
 
-async def select_animations(video_context: dict) -> dict:
+async def select_animations(video_context: dict, industry_key: str = 'generic', industry_anims: list = None, used_in_industry: list = None, needs_new_anims: bool = False) -> dict:
     """
     Claude actúa como director creativo:
     1. Primero crea un brief visual detallado
@@ -164,6 +164,14 @@ Respondé SOLO con JSON válido:
   }},
   "reasoning": "resumen de la dirección creativa completa del video"
 }}
+
+IMPORTANTE PARA LA ESCENA "product":
+- NO uses siempre "iphone_rise" — es la más genérica y aburrida
+- Para ecommerce/retail: usa "cursor_click_reveal" (cursor comprando) o "dashboard_build" (stats de ventas)  
+- Para SaaS: usa "phone_notification", "cursor_click_reveal", "dashboard_build"
+- Para restaurants: usa "morphing_shapes" o "liquid_blob_morph"
+- Para agencias/creativos: usa "floating_feature_orbs" o "particle_reveal"
+- "iphone_rise" solo si realmente tiene sentido para ese producto
 
 ANIMACIONES SIGNATURE QUE DEBES USAR CON FRECUENCIA (son únicas y muy impactantes):
 - water_drop_title: gota SVG que cae e impacta con ondas — muy visual para hook
