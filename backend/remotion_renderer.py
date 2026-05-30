@@ -133,7 +133,10 @@ async def render_video(
             if jsx_code and len(jsx_code) > 500 and "MarketingVideo" in jsx_code:
                 full_jsx = REMOTION_IMPORTS + jsx_code
                 TEMPLATE_PATH.write_text(full_jsx, encoding='utf-8')
-                print(f"[renderer] JSX de Claude escrito ({len(jsx_code)} chars)")
+                # Guardar copia del JSX para debug
+                debug_path = OUTPUTS_DIR / f"{job_id}_generated.jsx"
+                debug_path.write_text(full_jsx, encoding='utf-8')
+                print(f"[renderer] JSX de Claude escrito ({len(jsx_code)} chars) → {debug_path.name}")
                 jsx_ok = True
             else:
                 print(f"[renderer] JSX de Claude insuficiente, usando template")
