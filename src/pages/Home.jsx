@@ -228,6 +228,8 @@ export default function Home() {
 
   // Estado del proceso
   const [phase, setPhase] = useState('form')
+  const [elapsed, setElapsed] = useState(0)
+  const timerRef = useRef(null)
   const [stepStates, setStepStates] = useState({})
   const [progress, setProgress] = useState(0)
   const [errors, setErrors] = useState({})
@@ -246,7 +248,8 @@ export default function Home() {
     const e = validate()
     if (Object.keys(e).length) { setErrors(e); return }
     setErrors({})
-    setPhase('progress'); setStepStates({}); setProgress(0); setErrorMsg('')
+    setPhase('progress'); setStepStates({}); setProgress(0); setErrorMsg(''); setElapsed(0)
+    timerRef.current = setInterval(() => setElapsed(e => e + 1), 1000)
 
     const payload = {
       url, action, format, voice,
@@ -287,9 +290,10 @@ export default function Home() {
         setProgress(100)
         setVideoFilename(job.videoFilename || (job.videoPath ? job.videoPath.split('\\').pop().split('/').pop() : null))
         setTimeout(() => setPhase('result'), 600)
+        clearInterval(timerRef.current)
         ws.close()
       } else if (job.status === 'error') {
-        setErrorMsg(job.error || 'Ocurrió un error'); setPhase('error'); ws.close()
+        setErrorMsg(job.error || 'Ocurrió un error'); setPhase('error'); clearInterval(timerRef.current); ws.close()
       }
     }
     ws.onerror = () => { ws.close(); simulateProgress() }
@@ -475,7 +479,10 @@ export default function Home() {
         <div className={styles.card}>
           <div className={styles.progressHeader}>
             <span className={styles.progressTitle}>Generando tu video...</span>
-            <span className={styles.progressPct}>{Math.round(progress)}%</span>
+            <div style={{display:'flex',alignItems:'center',gap:10}}>
+              <span style={{fontSize:12,color:'var(--muted)',fontVariantNumeric:'tabular-nums'}}>{Math.floor(elapsed/60).toString().padStart(2,'0')}:{(elapsed%60).toString().padStart(2,'0')}</span>
+              <span className={styles.progressPct}>{Math.round(progress)}%</span>
+            </div>
           </div>
           <div className={styles.barWrap}><div className={styles.barFill} style={{width:`${progress}%`}} /></div>
           <div className={styles.steps}>

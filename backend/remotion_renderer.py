@@ -22,25 +22,27 @@ async def extract_page_data_deep(screenshot_bytes: bytes, url: str, action: str)
     """Extracción profunda de datos de la página."""
     domain = url.replace("https://", "").replace("http://", "").split("/")[0]
 
-    prompt = f"""Analizá este screenshot de {url} y extraé TODA la información para un video de marketing único.
+    prompt = f"""Analizá este screenshot de {url} y extraé TODA la información para crear un video de marketing profesional.
+
+IMPORTANTE para los colores: buscá el color MÁS VIBRANTE y característico de la marca — el color de los botones principales, logos, acentos llamativos. NO uses gris (#333, #666) ni negro como primaryColor — esos son colores de texto, no de marca. Si el sitio tiene amarillo, naranja, azul, verde, violeta, usá ESE color.
 
 Respondé SOLO con JSON válido:
 {{
   "siteName": "nombre exacto del producto (máximo 2 palabras)",
-  "headline": "titular principal exacto",
+  "headline": "titular principal exacto de la página",
   "subheadline": "subtítulo si existe",
-  "benefits": ["beneficio específico 1", "beneficio 2", "beneficio 3", "beneficio 4"],
-  "features": ["feature 1", "feature 2", "feature 3"],
-  "cta": "texto exacto del botón principal",
+  "benefits": ["beneficio específico 1", "beneficio específico 2", "beneficio específico 3", "beneficio 4"],
+  "features": ["feature técnica 1", "feature 2", "feature 3"],
+  "cta": "texto exacto del botón principal de acción",
   "problem": "el problema concreto que resuelve en una oración directa",
-  "audience": "a quién va dirigido (específico)",
+  "audience": "a quién va dirigido (específico, ej: médicos, dueños de restaurantes)",
   "pageType": "saas|ecommerce|landing|portfolio|agency|startup",
-  "primaryColor": "#hexcolor dominante de la marca",
-  "secondaryColor": "#hexcolor secundario",
-  "numbers": ["estadística real si existe"],
-  "guarantee": "garantía si hay",
+  "primaryColor": "#hexcolor del color MÁS VIBRANTE de la marca (botones, logo, acentos) — NUNCA gris o negro",
+  "secondaryColor": "#hexcolor secundario o complementario vibrante",
+  "numbers": ["número o estadística real que aparece en la página"],
+  "guarantee": "garantía si hay (ej: gratis 30 días, sin tarjeta)",
   "emotion": "confianza|urgencia|aspiración|alivio|entusiasmo",
-  "value_prop": "propuesta de valor única en una frase"
+  "value_prop": "propuesta de valor única en una frase corta"
 }}"""
 
     raw = await _groq_vision([{
@@ -70,6 +72,31 @@ Respondé SOLO con JSON válido:
             "emotion": "confianza",
             "value_prop": "La mejor solución",
         }
+
+    # Validar que el color primario no sea gris/negro/blanco
+    def is_boring_color(hex_color: str) -> bool:
+        if not hex_color or not hex_color.startswith("#"):
+            return True
+        h = hex_color.lstrip("#")
+        if len(h) == 3:
+            h = "".join(c*2 for c in h)
+        if len(h) != 6:
+            return True
+        try:
+            r, g, b = int(h[0:2],16), int(h[2:4],16), int(h[4:6],16)
+            max_c, min_c = max(r,g,b), min(r,g,b)
+            saturation = (max_c - min_c) / max_c if max_c > 0 else 0
+            brightness = max_c / 255
+            # Si saturación baja o muy oscuro/claro → aburrido
+            return saturation < 0.2 or brightness < 0.15 or brightness > 0.95
+        except:
+            return True
+
+    if is_boring_color(data.get("primaryColor", "")):
+        print(f"[renderer] color aburrido detectado ({data.get('primaryColor')}), usando fallback vibrante")
+        data["primaryColor"] = "#f59e0b"  # amber vibrante como fallback
+    if is_boring_color(data.get("secondaryColor", "")):
+        data["secondaryColor"] = "#6366f1"
 
     print(f"[renderer] {data.get('siteName')} | {data.get('pageType')} | {data.get('emotion')} | {data.get('primaryColor')}")
     print(f"[renderer] headline: {data.get('headline','')[:70]}")
