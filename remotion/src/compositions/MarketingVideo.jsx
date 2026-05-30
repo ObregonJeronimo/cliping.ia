@@ -480,10 +480,9 @@ function StatCounters({ frame, fps, stats, primaryColor }) {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, width: '100%' }}>
           {safeStats.map((stat, i) => {
             const p = spr(frame, fps, i * 15, 14, 100);
-            const statObj = typeof stat === 'string' 
+            const statObj = typeof stat === 'string'
               ? { value: parseFloat(stat.replace(/[^0-9.]/g, '')) || 100, label: stat.replace(/[\d,.]+/, '').trim() }
-              : (stat && typeof stat === 'object' ? { value: Number(stat.value) || 100, label: stat.label || '' } : { value: 100, label: '' })
-              : (stat && typeof stat === 'object' ? { value: stat.value || 100, label: stat.label || '' } : { value: 100, label: String(stat) });
+              : (stat && typeof stat === 'object' ? { value: Number(stat.value) || 100, label: stat.label || '' } : { value: 100, label: '' });
             const progress = Math.min(Math.max((frame - i * 15 - 10) / 45, 0), 1);
             const eased = 1 - Math.pow(1 - progress, 3);
             const current = Math.floor(eased * (statObj.value || 100));
