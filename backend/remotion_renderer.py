@@ -10,24 +10,12 @@ from pathlib import Path
 
 from vision import _groq_vision, _parse_json, _img
 from variations import build_video_context
-from jsx_generator import generate_jsx
+from jsx_generator import select_animations, get_default_selection
 
 OUTPUTS_DIR = Path("outputs")
 REMOTION_DIR = Path(__file__).parent.parent / "remotion"
 TEMPLATE_PATH = REMOTION_DIR / "src" / "compositions" / "MarketingVideo.jsx"
-TEMPLATE_BACKUP = REMOTION_DIR / "src" / "compositions" / "MarketingVideo.backup.jsx"
 
-REMOTION_IMPORTS = """import {
-  AbsoluteFill,
-  interpolate,
-  spring,
-  useCurrentFrame,
-  useVideoConfig,
-  Img,
-  Sequence,
-} from 'remotion';
-
-"""
 
 
 async def extract_page_data_deep(screenshot_bytes: bytes, url: str, action: str) -> dict:
@@ -121,9 +109,7 @@ async def render_video(
     height = 844  if fmt == "reel" else (720  if fmt == "youtube" else 1080)
     total_frames = duration * 30
 
-    # Backup del template actual
-    if TEMPLATE_PATH.exists():
-        TEMPLATE_BACKUP.write_text(TEMPLATE_PATH.read_text(encoding='utf-8'), encoding='utf-8')
+
 
     # Generar JSX con Claude
     jsx_ok = False
@@ -207,25 +193,7 @@ async def render_video(
     if proc.returncode != 0:
         err = stderr.decode()[-800:]
         print(f"[renderer] remotion error: {err}")
-
-        # Si el JSX generado falló, restaurar backup y reintentar
-        if jsx_ok and TEMPLATE_BACKUP.exists():
-            print(f"[renderer] JSX de Claude falló, restaurando template y reintentando...")
-            TEMPLATE_PATH.write_text(TEMPLATE_BACKUP.read_text(encoding='utf-8'), encoding='utf-8')
-
-            proc2 = await asyncio.create_subprocess_exec(
-                *cmd, cwd=str(REMOTION_DIR),
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
-            stdout2, stderr2 = await proc2.communicate()
-
-            if proc2.returncode == 0 and output_path.exists():
-                print(f"[renderer] template fallback OK")
-            else:
-                raise RuntimeError(f"Remotion falló incluso con template: {stderr2.decode()[-200:]}")
-        else:
-            raise RuntimeError(f"Remotion falló: {err[-200:]}")
+        raise RuntimeError(f"Remotion falló: {err[-200:]}")
 
     if not output_path.exists():
         raise RuntimeError("Remotion no generó el archivo")
