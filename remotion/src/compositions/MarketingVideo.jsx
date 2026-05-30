@@ -360,7 +360,7 @@ function DashboardBuild({ frame, fps, stats, primaryColor, siteName }) {
               borderColor: i === 1 ? `${primaryColor}40` : 'rgba(255,255,255,0.08)',
             }}>
               <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 6 }}>
-                {stat ? stat.replace(/[\d,.]+/, '').trim() || `Métrica ${i + 1}` : `Métrica ${i + 1}`}
+                {typeof stat === 'string' ? (stat.replace(/[\d,.]+/, '').trim() || `Métrica ${i + 1}`) : (stat?.label || `Métrica ${i + 1}`)}
               </div>
               <div style={{ fontSize: 36, fontWeight: 900, color: i === 1 ? primaryColor : '#fff', letterSpacing: -1 }}>
                 {current.toLocaleString('es-AR')}
@@ -479,7 +479,9 @@ function StatCounters({ frame, fps, stats, primaryColor }) {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, width: '100%' }}>
           {safeStats.map((stat, i) => {
             const p = spr(frame, fps, i * 15, 14, 100);
-            const statObj = typeof stat === 'string' ? { value: parseFloat(stat.replace(/[^0-9.]/g, '')) || 100, label: stat.replace(/[\d,.]+/, '').trim() } : stat;
+            const statObj = typeof stat === 'string' 
+              ? { value: parseFloat(stat.replace(/[^0-9.]/g, '')) || 100, label: stat.replace(/[\d,.]+/, '').trim() }
+              : (stat && typeof stat === 'object' ? { value: stat.value || 100, label: stat.label || '' } : { value: 100, label: String(stat) });
             const progress = Math.min(Math.max((frame - i * 15 - 10) / 45, 0), 1);
             const eased = 1 - Math.pow(1 - progress, 3);
             const current = Math.floor(eased * (statObj.value || 100));
