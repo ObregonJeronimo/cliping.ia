@@ -345,7 +345,8 @@ function DashboardBuild({ frame, fps, stats, primaryColor, siteName }) {
         {/* Stats cards */}
         {safeStats.map((stat, i) => {
           const p = cardP(i + 1);
-          const numMatch = (stat || '').match(/[\d,.]+/);
+          const statStr = typeof stat === 'string' ? stat : (stat?.label || stat?.value?.toString() || String((i+1)*1000));
+          const numMatch = statStr.match(/[\d,.]+/);
           const numVal = numMatch ? parseFloat(numMatch[0].replace(/[,.]/g, '')) : (i + 1) * 1000;
           const progress2 = Math.min(Math.max((frame - (i + 1) * 18 - 10) / 40, 0), 1);
           const eased = 1 - Math.pow(1 - progress2, 3);
@@ -481,6 +482,7 @@ function StatCounters({ frame, fps, stats, primaryColor }) {
             const p = spr(frame, fps, i * 15, 14, 100);
             const statObj = typeof stat === 'string' 
               ? { value: parseFloat(stat.replace(/[^0-9.]/g, '')) || 100, label: stat.replace(/[\d,.]+/, '').trim() }
+              : (stat && typeof stat === 'object' ? { value: Number(stat.value) || 100, label: stat.label || '' } : { value: 100, label: '' })
               : (stat && typeof stat === 'object' ? { value: stat.value || 100, label: stat.label || '' } : { value: 100, label: String(stat) });
             const progress = Math.min(Math.max((frame - i * 15 - 10) / 45, 0), 1);
             const eased = 1 - Math.pow(1 - progress, 3);
