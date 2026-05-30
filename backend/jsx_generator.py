@@ -55,7 +55,9 @@ async def select_animations(video_context: dict, industry_key: str = 'generic', 
     # Historial de animaciones usadas recientemente
     from pathlib import Path as _P
     import glob as _glob, random as _random
-    _used_by_scene = {"hook": [], "product": [], "benefits": [], "cta": [], "outro": []}
+    _used_by_scene = {"hook_a": [], "hook_b": [], "product_a": [], "product_b": [],
+                       "benefits_a": [], "benefits_b": [], "benefits_c": [],
+                       "cta_a": [], "cta_b": [], "outro": []}
     for f in sorted(_glob.glob("debug_reports/*_debug.json"))[-6:]:
         try:
             import json as _j
@@ -65,12 +67,11 @@ async def select_animations(video_context: dict, industry_key: str = 'generic', 
                 if scene in _used_by_scene and isinstance(v, dict) and "animation" in v:
                     _used_by_scene[scene].append(v["animation"])
         except: pass
-    recently_used = list(set(a for lst in _used_by_scene.values() for a in lst))[:10]
-    # Qué no usar POR ESCENA
-    hook_avoid    = _used_by_scene["hook"][-2:]
-    product_avoid = _used_by_scene["product"][-2:]
-    benefits_avoid= _used_by_scene["benefits"][-2:]
-    cta_avoid     = _used_by_scene["cta"][-2:]
+    recently_used = list(set(a for lst in _used_by_scene.values() for a in lst))[:15]
+    hook_avoid    = list(set(_used_by_scene["hook_a"] + _used_by_scene["hook_b"]))[-3:]
+    product_avoid = list(set(_used_by_scene["product_a"] + _used_by_scene["product_b"]))[-3:]
+    benefits_avoid= list(set(_used_by_scene["benefits_a"] + _used_by_scene["benefits_b"] + _used_by_scene["benefits_c"]))[-4:]
+    cta_avoid     = list(set(_used_by_scene["cta_a"] + _used_by_scene["cta_b"]))[-3:]
     outro_avoid   = _used_by_scene["outro"][-2:]
 
     # Análisis visual profundo
@@ -268,7 +269,7 @@ REGLAS CRÍTICAS — VARIEDAD OBLIGATORIA:
     }
     payload = {
         "model": "claude-sonnet-4-5",
-        "max_tokens": 2000,
+        "max_tokens": 4000,
         "messages": [{"role": "user", "content": prompt}],
     }
 
@@ -277,7 +278,7 @@ REGLAS CRÍTICAS — VARIEDAD OBLIGATORIA:
         async with aiohttp.ClientSession() as session:
             async with session.post(
                 ANTHROPIC_URL, headers=headers, json=payload,
-                timeout=aiohttp.ClientTimeout(total=90),
+                timeout=aiohttp.ClientTimeout(total=120),
             ) as resp:
                 data = await resp.json()
     except Exception as e:
@@ -328,13 +329,37 @@ REGLAS CRÍTICAS — VARIEDAD OBLIGATORIA:
         print(f"[jsx_generator] selección completa → {debug_file}")
         return result
     except Exception as e:
-        print(f"[jsx_generator] parse error: {e} — {data}")
+        raw_preview = ""
+        try: raw_preview = data["content"][0]["text"][:500]
+        except: pass
+        print(f"[jsx_generator] parse error: {e}")
+        print(f"[jsx_generator] raw preview: {raw_preview}")
         return None
 
 
 def get_default_selection(page_data: dict) -> dict:
-    """Selección por defecto si Claude falla."""
+    """Selección por defecto si Claude falla — estructura de 10 sub-escenas."""
+    pc = page_data.get("primaryColor", "#6366f1")
+    sc = page_data.get("secondaryColor", "#a855f7")
+    hl = page_data.get("headline", "")
+    site = page_data.get("siteName", "")
+    bens = page_data.get("benefits", ["Beneficio 1","Beneficio 2","Beneficio 3"])
+    ct = page_data.get("cta", "Empezá ahora")
+    nums = page_data.get("numbers", ["1000"])
     return {
+        "hook_a": {"animation": "counter_explosion", "params": {"number": nums[0] if nums else "1000", "label": hl, "primaryColor": pc}},
+        "hook_b": {"animation": "reveal_swipe", "params": {"headline": hl, "primaryColor": pc}},
+        "product_a": {"animation": "iphone_rise", "params": {"primaryColor": pc}},
+        "product_b": {"animation": "dashboard_build", "params": {"stats": nums[:3], "primaryColor": pc, "siteName": site}},
+        "benefits_a": {"animation": "card_flip_3d", "params": {"benefits": bens[:1], "primaryColor": pc}},
+        "benefits_b": {"animation": "spotlight_reveal", "params": {"benefits": bens[1:2], "primaryColor": pc}},
+        "benefits_c": {"animation": "icon_draw_reveal", "params": {"features": bens[2:3], "primaryColor": pc}},
+        "cta_a": {"animation": "urgency_countdown", "params": {"cta": ct, "primaryColor": pc}},
+        "cta_b": {"animation": "zoom_punch_cta", "params": {"cta": ct, "primaryColor": pc, "secondaryColor": sc}},
+        "outro": {"animation": "neon_sign", "params": {"siteName": site, "primaryColor": pc}},
+        "brief": {"paleta": {"fondo": "linear-gradient(145deg, #07070f 0%, #0d0d1a 100%)", "acento": pc, "texto": "#ffffff"}},
+        "reasoning": "Selección por defecto",
+        # Fix: también mantener claves viejas para el renderer viejo
         "hook": {"animation": "reveal_swipe", "params": {
             "headline": page_data.get("headline", ""),
             "primaryColor": page_data.get("primaryColor", "#6366f1"),
