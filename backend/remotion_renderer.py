@@ -25,7 +25,12 @@ async def extract_page_data_deep(screenshot_bytes: bytes, url: str, action: str)
 
     prompt = f"""Analizá este screenshot de {url} y extraé TODA la información para crear un video de marketing profesional.
 
-IMPORTANTE para los colores: buscá el color MÁS VIBRANTE y característico de la marca — el color de los botones principales, logos, acentos llamativos. NO uses gris (#333, #666) ni negro como primaryColor — esos son colores de texto, no de marca. Si el sitio tiene amarillo, naranja, azul, verde, violeta, usá ESE color.
+IMPORTANTE para los colores: 
+- Extraé la PALETA COMPLETA real de la página (no inventes colores)
+- primaryColor: el color más vibrante de botones/logo/acentos — NUNCA gris (#333) ni negro
+- bgColor: el color de fondo real de la página (puede ser blanco si la página es blanca)
+- textColor: el color del texto principal
+- Si la página es clara/blanca, el video debe reflejar eso con una paleta clara o de gradiente suave
 
 Respondé SOLO con JSON válido:
 {{
@@ -38,13 +43,18 @@ Respondé SOLO con JSON válido:
   "problem": "el problema concreto que resuelve en una oración directa",
   "audience": "a quién va dirigido (específico, ej: médicos, dueños de restaurantes)",
   "pageType": "saas|ecommerce|landing|portfolio|agency|startup",
-  "primaryColor": "#hexcolor del color MÁS VIBRANTE de la marca (botones, logo, acentos) — NUNCA gris o negro",
+  "primaryColor": "#hexcolor del color MÁS VIBRANTE de la marca (botones, logo, acentos) — NUNCA gris o negro puro",
   "secondaryColor": "#hexcolor secundario o complementario vibrante",
+  "bgColor": "#hexcolor del fondo real de la página — puede ser blanco (#ffffff) o claro",
+  "textColor": "#hexcolor del texto principal de la página",
+  "isDark": false,
   "numbers": ["número o estadística real que aparece en la página"],
   "guarantee": "garantía si hay (ej: gratis 30 días, sin tarjeta)",
   "emotion": "confianza|urgencia|aspiración|alivio|entusiasmo",
   "value_prop": "propuesta de valor única en una frase corta"
-}}"""
+}}
+
+isDark: true si la página tiene fondo oscuro, false si es clara/blanca"""
 
     raw = await _groq_vision([{
         "role": "user",
@@ -270,12 +280,15 @@ async def render_video(
     scale_cmd = [
         "ffmpeg", "-y",
         "-i", str(output_path),
-        "-vf", f"scale={final_w}:{final_h}:flags=lanczos+accurate_rnd",
+        "-vf", f"scale={final_w}:{final_h}:flags=lanczos+accurate_rnd,unsharp=5:5:0.8:3:3:0.4",
         "-c:v", "libx264",
-        "-crf", "14",
-        "-preset", "slow",
+        "-crf", "12",           # muy alta calidad
+        "-preset", "medium",
+        "-profile:v", "high",
+        "-level", "4.1",
         "-pix_fmt", "yuv420p",
         "-movflags", "+faststart",
+        "-b:v", "0",            # VBR puro
         str(scaled_path),
     ]
 

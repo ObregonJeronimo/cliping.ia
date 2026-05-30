@@ -43,7 +43,10 @@ async def select_animations(video_context: dict) -> dict:
 
     # Análisis visual profundo
     audience_insight = f"Audiencia: {audience}. Emoción objetivo: {emotion}."
-    color_context = f"Color primario: {primary} — secundario: {secondary}"
+    bg_color     = page_data.get("bgColor", "#ffffff")
+    is_dark      = page_data.get("isDark", False)
+    text_color   = page_data.get("textColor", "#0a0a0a")
+    color_context = f"Color primario: {primary} — secundario: {secondary} — fondo real de la página: {bg_color} — página oscura: {is_dark}"
 
     prompt = f"""Sos un director creativo senior de motion graphics especializado en videos de marketing viral.
 Tu trabajo es pensar el video completo como un profesional antes de elegir nada.
@@ -73,6 +76,9 @@ Tono: {tone}
 ═══ TU TAREA ═══
 Pensá como un director creativo que va a hacer un reel de 30 segundos para Instagram/TikTok.
 El video debe verse INCREÍBLE para {audience}.
+IMPORTANTE: La página real tiene fondo {bg_color} y es {"OSCURA" if is_dark else "CLARA/BLANCA"}.
+Si la página es clara, el video puede usar tanto fondos oscuros para contraste cinematográfico 
+como fondos claros que reflejen la marca. El director de arte decide qué funciona mejor.
 
 Respondé SOLO con JSON válido:
 {{

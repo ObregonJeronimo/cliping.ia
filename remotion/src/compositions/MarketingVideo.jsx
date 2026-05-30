@@ -1521,6 +1521,406 @@ function ProgressBars({ frame, fps, metrics, primaryColor }) {
 }
 
 
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ANIMACIONES SIGNATURE — WATER DROP, CURSOR, LIQUID FILL, INK SPLASH
+// ══════════════════════════════════════════════════════════════════════════════
+
+// WATER DROP TITLE — una gota cae y al impactar "pinta" el título con ondas
+function WaterDropTitle({ frame, fps, headline, primaryColor, secondaryColor, bg }) {
+  const DROP_FALL   = 35;  // frames cayendo
+  const IMPACT      = 36;  // frame del impacto
+  const RIPPLE_DUR  = 40;  // duración de las ondas
+  const TEXT_START  = 42;  // cuándo aparece el texto
+
+  const dropY = frame < DROP_FALL
+    ? lerp(frame, 0, DROP_FALL, -60, 390)  // cae desde arriba hasta el centro
+    : 390;
+
+  const dropScale = frame < DROP_FALL ? 1 : lerp(frame, IMPACT, IMPACT+5, 1, 0);
+  const dropOpacity = frame < DROP_FALL ? 1 : lerp(frame, IMPACT, IMPACT+4, 1, 0);
+
+  // Ondas que se expanden desde el punto de impacto
+  const ripples = [0, 8, 16].map((offset, i) => {
+    const f = Math.max(0, frame - IMPACT - offset);
+    const maxR = 200 + i * 40;
+    const r = Math.min(maxR, f * (maxR / RIPPLE_DUR));
+    const op = Math.max(0, 1 - f / RIPPLE_DUR) * (0.6 - i * 0.15);
+    return { r, op, active: f > 0 && f < RIPPLE_DUR + 5 };
+  });
+
+  // Salpicaduras radiales en el impacto
+  const splashActive = frame >= IMPACT && frame < IMPACT + 20;
+  const splashProgress = splashActive ? (frame - IMPACT) / 20 : 0;
+
+  // Texto que emerge desde el centro con spring
+  const textP = spr(frame, fps, TEXT_START, 16, 110);
+  const isDark = !bg || bg.includes('0a') || bg.includes('07') || bg.includes('0d') || bg === '#000';
+  const textColor = isDark ? '#fff' : '#0a0a0a';
+  const mutedColor = isDark ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.55)';
+
+  return (
+    <AbsoluteFill style={{
+      background: bg || `linear-gradient(145deg, #0a0f1e 0%, #0d1528 100%)`,
+      overflow: 'hidden',
+    }}>
+      {/* Partículas de fondo */}
+      <Particles frame={frame} color={primaryColor} count={16} />
+
+      {/* SVG de ondas y gota */}
+      <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
+        viewBox="0 0 390 844">
+
+        {/* Ondas de agua */}
+        {ripples.map((r, i) => r.active && (
+          <circle key={i} cx="195" cy="390" r={r.r}
+            fill="none"
+            stroke={primaryColor}
+            strokeWidth={3 - i * 0.8}
+            opacity={r.op}
+          />
+        ))}
+
+        {/* Salpicaduras */}
+        {splashActive && Array.from({ length: 10 }, (_, i) => {
+          const angle = (i / 10) * Math.PI * 2;
+          const dist = splashProgress * 60;
+          const x = 195 + Math.cos(angle) * dist;
+          const y = 390 + Math.sin(angle) * dist * 0.5;
+          const op = 1 - splashProgress;
+          const r = 4 - splashProgress * 3;
+          return r > 0 ? (
+            <circle key={i} cx={x} cy={y} r={r}
+              fill={primaryColor} opacity={op} />
+          ) : null;
+        })}
+
+        {/* La gota */}
+        {dropOpacity > 0 && (
+          <g transform={`translate(195, ${dropY}) scale(${dropScale})`} opacity={dropOpacity}>
+            {/* Forma de gota */}
+            <path d="M0,-22 C8,-14 14,-4 14,6 C14,16 8,22 0,22 C-8,22 -14,16 -14,6 C-14,-4 -8,-14 0,-22 Z"
+              fill={primaryColor}
+              style={{ filter: `drop-shadow(0 0 8px ${primaryColor})` }}
+            />
+            {/* Brillo de la gota */}
+            <ellipse cx="-4" cy="-6" rx="3" ry="5" fill="rgba(255,255,255,0.4)" />
+          </g>
+        )}
+      </svg>
+
+      {/* Glow en el punto de impacto */}
+      {frame >= IMPACT && frame < IMPACT + 25 && (
+        <div style={{
+          position: 'absolute',
+          width: 200, height: 200,
+          borderRadius: '50%',
+          background: `radial-gradient(circle, rgba(${hex2rgb(primaryColor)},${Math.max(0, 1-(frame-IMPACT)/25)*0.6}) 0%, transparent 70%)`,
+          top: '50%', left: '50%',
+          transform: 'translate(-50%, -50%)',
+        }} />
+      )}
+
+      {/* Texto que emerge */}
+      <AbsoluteFill style={{ justifyContent: 'center', alignItems: 'center', flexDirection: 'column', padding: 36, textAlign: 'center' }}>
+        <div style={{
+          opacity: textP,
+          transform: `translateY(${(1-textP)*40}px) scale(${0.8 + textP*0.2})`,
+        }}>
+          <Headline size={58} color={textColor} style={{
+            lineHeight: 1.05,
+            textShadow: isDark ? `0 0 40px rgba(${hex2rgb(primaryColor)},0.5)` : 'none',
+          }}>
+            {headline}
+          </Headline>
+          <GlowLine color={primaryColor} progress={textP} width={80} />
+        </div>
+      </AbsoluteFill>
+    </AbsoluteFill>
+  );
+}
+
+// CURSOR CLICK REVEAL — cursor animado hace click en un botón y revela el producto
+function CursorClickReveal({ frame, fps, screenshotUrl, cta, primaryColor, bg }) {
+  const CURSOR_MOVE = 60;  // frames moviéndose
+  const CLICK_F    = 65;  // frame del click
+  const REVEAL_F   = 75;  // frame de la revelación
+
+  // Cursor se mueve de esquina inferior izquierda al centro-bajo (donde está el botón)
+  const cursorX = lerp(frame, 0, CURSOR_MOVE, 30, 52);
+  const cursorY = lerp(frame, 0, CURSOR_MOVE, 85, 68);
+
+  const clickScale = frame >= CLICK_F && frame < CLICK_F+8
+    ? lerp(frame, CLICK_F, CLICK_F+8, 1, 0.7)
+    : frame >= CLICK_F+8 && frame < CLICK_F+16
+    ? lerp(frame, CLICK_F+8, CLICK_F+16, 0.7, 1)
+    : 1;
+
+  const rippleActive = frame >= CLICK_F && frame < CLICK_F+35;
+  const rippleScale = rippleActive ? lerp(frame, CLICK_F, CLICK_F+35, 0.3, 3) : 0;
+  const rippleOp   = rippleActive ? Math.max(0, 1 - (frame-CLICK_F)/35) : 0;
+
+  // Reveal del producto después del click
+  const phoneP = spr(frame, fps, REVEAL_F, 12, 95);
+  const float  = Math.sin(frame * 0.05) * 6;
+  const isDark = !bg || bg.includes('0a') || bg.includes('07');
+
+  return (
+    <AbsoluteFill style={{
+      background: bg || `linear-gradient(145deg, #0a0f1e 0%, #0d1528 100%)`,
+      overflow: 'hidden',
+    }}>
+      <Particles frame={frame} color={primaryColor} count={12} />
+      <RadialGlow color={primaryColor} opacity={0.15} size={400} />
+
+      {/* iPhone con el screenshot */}
+      <AbsoluteFill style={{ justifyContent: 'center', alignItems: 'center' }}>
+        <div style={{
+          transform: `translateY(${(1-phoneP)*200 + float}px)`,
+          opacity: phoneP,
+          position: 'relative',
+        }}>
+          <div style={{
+            position: 'absolute', bottom: -20, left: '10%', right: '10%', height: 20,
+            background: `radial-gradient(ellipse, rgba(${hex2rgb(primaryColor)},0.35) 0%, transparent 70%)`,
+            filter: 'blur(8px)',
+          }} />
+          <div style={{
+            width: 195, height: 395,
+            background: 'linear-gradient(145deg, #252535, #181828)',
+            borderRadius: 38, border: '2.5px solid #323250',
+            overflow: 'hidden', position: 'relative',
+            boxShadow: `0 40px 90px rgba(0,0,0,0.8), 0 0 50px rgba(${hex2rgb(primaryColor)},0.2)`,
+          }}>
+            <div style={{ position:'absolute', top:11, left:'50%', transform:'translateX(-50%)', width:72, height:22, background:'#000', borderRadius:12, zIndex:10 }} />
+            {screenshotUrl
+              ? <Img src={screenshotUrl} style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'top' }} />
+              : <div style={{ width:'100%', height:'100%', background:`linear-gradient(180deg, rgba(${hex2rgb(primaryColor)},0.3) 0%, #050510 100%)` }} />
+            }
+          </div>
+        </div>
+      </AbsoluteFill>
+
+      {/* Cursor animado */}
+      {frame < CLICK_F + 20 && (
+        <div style={{
+          position: 'absolute',
+          left: `${cursorX}%`, top: `${cursorY}%`,
+          transform: `scale(${clickScale})`,
+          zIndex: 20, pointerEvents: 'none',
+        }}>
+          <svg width="32" height="32" viewBox="0 0 32 32" style={{ filter: `drop-shadow(0 2px 6px rgba(0,0,0,0.5))` }}>
+            <path d="M4 2L4 26L12 18L16 28L20 26L16 16L26 16Z"
+              fill="white" stroke="rgba(0,0,0,0.4)" strokeWidth="1.5"
+              strokeLinejoin="round" strokeLinecap="round" />
+          </svg>
+
+          {/* Ripple de click */}
+          {rippleActive && (
+            <div style={{
+              position: 'absolute', top: -16, left: -16,
+              width: 64, height: 64, borderRadius: '50%',
+              border: `2.5px solid ${primaryColor}`,
+              opacity: rippleOp,
+              transform: `scale(${rippleScale})`,
+            }} />
+          )}
+        </div>
+      )}
+    </AbsoluteFill>
+  );
+}
+
+// LIQUID FILL TEXT — texto que se llena de líquido de abajo hacia arriba
+function LiquidFillText({ frame, fps, siteName, headline, primaryColor, secondaryColor, bg }) {
+  const fillProgress = lerp(frame, 10, 75, 0, 1); // llenado de 0 a 100%
+  const textP = spr(frame, fps, 5, 18, 90);
+  const waveOffset = frame * 4; // movimiento de la ola
+
+  // Path de ola sinusoidal para la animación del líquido
+  const waveY = 100 - fillProgress * 100; // % desde abajo
+  const POINTS = 20;
+  const wavePoints = Array.from({ length: POINTS+2 }, (_, i) => {
+    const x = (i / POINTS) * 390;
+    const y_pct = waveY + Math.sin((x * 0.06) + waveOffset * 0.18) * 3
+                         + Math.sin((x * 0.04) + waveOffset * 0.12 + 1) * 2;
+    return `${x},${(y_pct / 100) * 200}`;
+  }).join(' ');
+
+  const isDark = !bg || bg.includes('0a') || bg.includes('07');
+  const textColor = isDark ? '#fff' : '#0a0a0a';
+
+  return (
+    <AbsoluteFill style={{
+      background: bg || `linear-gradient(145deg, #07070f 0%, #0d0d1a 100%)`,
+      overflow: 'hidden',
+    }}>
+      <AbsoluteFill style={{ justifyContent: 'center', alignItems: 'center', flexDirection: 'column', padding: 40 }}>
+        {/* Contenedor del texto con clip del líquido */}
+        <div style={{ position: 'relative', textAlign: 'center', marginBottom: 16 }}>
+
+          {/* Texto base (gris/contorno) */}
+          <div style={{
+            fontSize: 76, fontWeight: 900, letterSpacing: -3,
+            fontFamily: 'system-ui, sans-serif', lineHeight: 1,
+            color: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+            userSelect: 'none',
+            opacity: textP,
+          }}>
+            {siteName}
+          </div>
+
+          {/* Texto "lleno" con clip del líquido */}
+          <div style={{
+            position: 'absolute', inset: 0,
+            fontSize: 76, fontWeight: 900, letterSpacing: -3,
+            fontFamily: 'system-ui, sans-serif', lineHeight: 1,
+            color: primaryColor,
+            clipPath: `inset(${Math.max(0, (1-fillProgress)*100)}% 0 0 0)`,
+            textShadow: `0 0 30px rgba(${hex2rgb(primaryColor)},0.6)`,
+            opacity: textP,
+          }}>
+            {siteName}
+          </div>
+
+          {/* Ola SVG superpuesta */}
+          <svg style={{
+            position: 'absolute', left: 0, right: 0,
+            top: `${(1-fillProgress)*100 - 5}%`, // justo en el borde del líquido
+            width: '100%', height: '15px',
+            opacity: fillProgress > 0.02 && fillProgress < 0.98 ? 0.6 : 0,
+          }} viewBox="0 0 390 15" preserveAspectRatio="none">
+            <polyline points={wavePoints} fill="none" stroke={primaryColor} strokeWidth="2" />
+          </svg>
+        </div>
+
+        {/* Headline */}
+        <div style={{
+          opacity: spr(frame, fps, 80, 16, 100),
+          transform: `translateY(${lerp(frame, 78, 90, 16, 0)}px)`,
+          textAlign: 'center',
+        }}>
+          <div style={{
+            fontSize: 16, fontWeight: 500, color: isDark ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.6)',
+            fontFamily: 'system-ui, sans-serif', lineHeight: 1.5,
+          }}>{headline}</div>
+        </div>
+      </AbsoluteFill>
+
+      {/* Partículas de burbuja subiendo */}
+      {Array.from({ length: 8 }, (_, i) => {
+        const bx = 30 + (i * 45) % 330;
+        const baseY = 900 - (frame * (1 + i * 0.3) + i * 80) % 950;
+        const bop = baseY < 844 ? Math.min(1, (844 - baseY) / 200) * 0.4 : 0;
+        const br = 2 + (i % 3);
+        return bop > 0 ? (
+          <div key={i} style={{
+            position: 'absolute', left: bx, top: baseY,
+            width: br*2, height: br*2, borderRadius: '50%',
+            border: `1px solid rgba(${hex2rgb(primaryColor)},0.5)`,
+            opacity: bop,
+          }} />
+        ) : null;
+      })}
+    </AbsoluteFill>
+  );
+}
+
+// INK SPLASH TRANSITION — transición con salpicadura de tinta que llena la pantalla
+function InkSplashCTA({ frame, fps, cta, subtext, primaryColor, secondaryColor, bg, guarantee }) {
+  // Fase 1: tinta que se expande desde el centro (frames 0-40)
+  // Fase 2: contenido del CTA aparece (frames 35+)
+  const inkScale  = lerp(frame, 0, 45, 0, 3.5);
+  const inkOpacity = frame < 40 ? 1 : lerp(frame, 40, 55, 1, 0);
+  const contentP  = spr(frame, fps, 38, 14, 100);
+  const btnP      = spr(frame, fps, 50, 10, 100);
+  const pulse     = 1 + Math.sin(frame * 0.11) * 0.028;
+  const glow      = 22 + Math.sin(frame * 0.07) * 18;
+
+  return (
+    <AbsoluteFill style={{
+      background: bg || `linear-gradient(145deg, #07070f 0%, #0d0d1a 100%)`,
+      overflow: 'hidden',
+    }}>
+      <Particles frame={frame} color={primaryColor} count={18} />
+
+      {/* Mancha de tinta que se expande */}
+      <div style={{
+        position: 'absolute',
+        width: 120, height: 120, borderRadius: '50%',
+        background: `radial-gradient(circle, ${primaryColor} 30%, ${secondaryColor} 60%, ${primaryColor}00 100%)`,
+        top: '50%', left: '50%',
+        transform: `translate(-50%, -50%) scale(${inkScale})`,
+        opacity: inkOpacity * 0.3,
+      }} />
+
+      {/* SVG de salpicaduras */}
+      <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: inkOpacity * 0.5 }} viewBox="0 0 390 844">
+        {Array.from({ length: 8 }, (_, i) => {
+          const angle = (i / 8) * Math.PI * 2;
+          const dist  = inkScale * 80;
+          const cx    = 195 + Math.cos(angle) * dist;
+          const cy    = 422 + Math.sin(angle) * dist * 0.7;
+          const r     = Math.max(0, (inkScale * 20) - i * 3);
+          return r > 0 ? (
+            <circle key={i} cx={cx} cy={cy} r={r}
+              fill={i % 2 === 0 ? primaryColor : secondaryColor} />
+          ) : null;
+        })}
+      </svg>
+
+      {/* Contenido del CTA */}
+      <AbsoluteFill style={{
+        justifyContent: 'flex-end', alignItems: 'center',
+        paddingBottom: 80, flexDirection: 'column', gap: 18,
+      }}>
+        <div style={{ opacity: contentP, transform: `translateY(${(1-contentP)*24}px)`, textAlign: 'center', padding: '0 36px' }}>
+          <Label color={primaryColor} style={{ marginBottom: 10 }}>¿Listo para empezar?</Label>
+          <div style={{ fontSize: 20, color: 'rgba(255,255,255,0.7)', fontFamily: 'system-ui, sans-serif', fontWeight: 500, lineHeight: 1.4 }}>
+            {subtext}
+          </div>
+        </div>
+
+        <div style={{ opacity: btnP, transform: `scale(${btnP * pulse})` }}>
+          <div style={{
+            background: `linear-gradient(135deg, ${primaryColor}, rgba(${hex2rgb(primaryColor)},0.8))`,
+            borderRadius: 100, padding: '17px 40px',
+            boxShadow: `0 0 ${glow}px rgba(${hex2rgb(primaryColor)},0.65), 0 16px 40px rgba(${hex2rgb(primaryColor)},0.3)`,
+          }}>
+            <span style={{ color: '#fff', fontSize: 18, fontWeight: 800, fontFamily: 'system-ui, sans-serif' }}>{cta} →</span>
+          </div>
+        </div>
+
+        {guarantee ? (
+          <div style={{ opacity: btnP * 0.6, color: 'rgba(255,255,255,0.38)', fontSize: 12, fontFamily: 'system-ui, sans-serif' }}>
+            ✓ {guarantee}
+          </div>
+        ) : null}
+      </AbsoluteFill>
+    </AbsoluteFill>
+  );
+}
+
+// LIGHT SCENE — para páginas claras (fondo blanco/claro)
+function LightScene({ color, children }) {
+  const frame = useCurrentFrame();
+  return (
+    <AbsoluteFill style={{ background: '#f8f8f8', overflow: 'hidden' }}>
+      {/* Partículas sutiles */}
+      {Array.from({ length: 12 }, (_, i) => {
+        const x = (i * 37.3) % 100;
+        const baseY = (i * 53.1) % 100;
+        const y = baseY + Math.sin((frame * 0.018 + i * 80) * Math.PI / 180) * 10;
+        const op = 0.03 + Math.abs(Math.sin(frame * 0.025 + i)) * 0.05;
+        const sz = 1.5 + (i % 3);
+        return <div key={i} style={{ position:'absolute', left:`${x}%`, top:`${y}%`, width:sz, height:sz, borderRadius:'50%', background:color, opacity:op }} />;
+      })}
+      <div style={{ position:'absolute', width:400, height:400, borderRadius:'50%', background:`radial-gradient(circle, rgba(${hex2rgb(color)},0.08) 0%, transparent 70%)`, top:'50%', left:'50%', transform:'translate(-50%,-50%)' }} />
+      {children}
+    </AbsoluteFill>
+  );
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 // ANIMACIONES ÉPICAS — LIQUID, MORPHING, PAINT, GOOEY
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1985,6 +2385,9 @@ function TerminalReveal({ frame, fps, headline, subheadline, primaryColor }) {
 // ══════════════════════════════════════════════════════════════════════════════
 
 const ANIM_MAP = {
+  // Hook — signature animations
+  water_drop_title:      WaterDropTitle,
+  liquid_fill_text:      LiquidFillText,
   // Hook — básicas
   counter_explosion:     CounterExplosion,
   liquid_blob_morph:     LiquidBlobMorph,
@@ -2018,6 +2421,9 @@ const ANIM_MAP = {
   liquid_button_cta:     LiquidButtonCTA,
   screenshot_zoom_cta:   ScreenshotZoomCTA,
   urgency_countdown:     UrgencyCTA,
+  // CTA signature
+  ink_splash_cta:        InkSplashCTA,
+  cursor_click_reveal:   CursorClickReveal,
   // CTA adicionales
   water_ripple_cta:      WaterRippleCTA,
   // Benefits adicionales

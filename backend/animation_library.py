@@ -86,6 +86,30 @@ ANIMATION_CATALOG = {
         "scene": "outro",
         "params": ["siteName", "primaryColor", "secondaryColor"],
     },
+    "water_drop_title": {
+        "desc": "Una gota SVG cae desde arriba, impacta y genera ondas de agua, luego el título emerge desde el centro — MUY impactante",
+        "best_for": ["saas", "fintech", "health", "startup", "premium", "landing"],
+        "scene": "hook",
+        "params": ["headline", "primaryColor", "secondaryColor"],
+    },
+    "liquid_fill_text": {
+        "desc": "El nombre del producto se llena de líquido de abajo hacia arriba con ola sinusoidal y burbujas — único y memorable",
+        "best_for": ["brand", "startup", "beverage", "saas", "premium"],
+        "scene": "hook",
+        "params": ["siteName", "headline", "primaryColor", "secondaryColor"],
+    },
+    "ink_splash_cta": {
+        "desc": "Una mancha de tinta explota desde el centro llenando la pantalla, luego revela el CTA — transición cinematográfica",
+        "best_for": ["creative", "agency", "brand", "startup", "saas"],
+        "scene": "cta",
+        "params": ["cta", "subtext", "primaryColor", "secondaryColor", "guarantee"],
+    },
+    "cursor_click_reveal": {
+        "desc": "Cursor animado SVG se mueve hacia un botón, hace click con ripple, y revela el producto en un iPhone — narrativo e interactivo",
+        "best_for": ["saas", "webapp", "tool", "dashboard", "app"],
+        "scene": "product",
+        "params": ["screenshotUrl", "cta", "primaryColor"],
+    },
     "split_screen_problem": {
         "desc": "Pantalla dividida: izquierda muestra el caos/problema, derecha la solución",
         "best_for": ["saas", "productivity", "b2b"],
