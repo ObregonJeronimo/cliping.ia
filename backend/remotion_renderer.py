@@ -155,6 +155,21 @@ async def render_video(
     props_file = OUTPUTS_DIR / f"{job_id}_props.json"
     props_file.write_text(json.dumps(props))
 
+    # Debug: loguear props clave
+    print(f"[renderer] props → siteName={props['siteName']} primaryColor={props['primaryColor']}")
+    print(f"[renderer] props → hook={props['hookAnimation']} product={props['productAnimation']}")
+    print(f"[renderer] props → benefits={props['benefitsAnimation']} cta={props['ctaAnimation']} outro={props['outroAnimation']}")
+    print(f"[renderer] props → screenshotUrl={'SI' if props.get('screenshotUrl') else 'NO'} benefits_count={len(props.get('benefits',[]))}")
+    if props.get('hookParams'):
+        print(f"[renderer] hookParams → {list(props['hookParams'].keys())}")
+    if props.get('productParams'):
+        print(f"[renderer] productParams → {list(props['productParams'].keys())}")
+
+    # Guardar props completas para debug
+    debug_props = OUTPUTS_DIR / f"{job_id}_props_debug.json"
+    debug_props.write_text(json.dumps(props, indent=2, default=lambda x: str(x)[:50] if isinstance(x, str) and len(str(x)) > 100 else x))
+    print(f"[renderer] props debug → {debug_props.name}")
+
     # Remotion bin
     candidates = [
         str(REMOTION_DIR / "node_modules" / ".bin" / "remotion.cmd"),

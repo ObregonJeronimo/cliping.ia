@@ -81,6 +81,44 @@ async def generate(req: GenerateRequest):
     asyncio.create_task(process_job(job_id, req))
     return {"job_id": job_id}
 
+@app.get("/api/debug/last")
+async def debug_last():
+    """Retorna el último reporte de debug."""
+    import glob, json
+    reports = sorted(glob.glob("debug_reports/*_debug.json"), key=lambda f: __import__("os").path.getmtime(f), reverse=True)
+    if not reports:
+        return {"error": "No hay reportes aún"}
+    return json.loads(open(reports[0], encoding="utf-8").read())
+
+@app.get("/api/debug/animations")
+async def debug_animations():
+    """Retorna la última selección de animaciones de Claude."""
+    from pathlib import Path
+    f = Path("debug_reports/last_animation_selection.json")
+    if not f.exists():
+        return {"error": "No hay selección aún"}
+    import json
+    return json.loads(f.read_text(encoding="utf-8"))
+
+@app.get("/api/debug/jobs")
+async def debug_jobs():
+    """Lista todos los reportes disponibles."""
+    import glob, os, json
+    reports = sorted(glob.glob("debug_reports/*_debug.json"), key=lambda f: os.path.getmtime(f), reverse=True)
+    result = []
+    for r in reports[:10]:
+        try:
+            data = json.loads(open(r, encoding="utf-8").read())
+            result.append({
+                "job_id": data.get("job_id","")[:8],
+                "url": data.get("url",""),
+                "errors": data.get("errors",[]),
+                "total_time": data.get("data",{}).get("final",{}).get("total_time_s"),
+                "animations": {k: v.get("animation") for k,v in data.get("data",{}).get("animation_selection",{}).items() if k != "reasoning" and isinstance(v,dict)},
+            })
+        except: pass
+    return result
+
 @app.get("/api/voice-preview")
 async def voice_preview(voice: str = "female"):
     import edge_tts, tempfile, os

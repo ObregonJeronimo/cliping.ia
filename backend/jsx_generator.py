@@ -128,8 +128,19 @@ REGLAS:
         print(f"[jsx_generator] animaciones elegidas:")
         for scene, choice in result.items():
             if scene != "reasoning" and isinstance(choice, dict):
-                print(f"  {scene}: {choice.get('animation')}")
-        print(f"  reasoning: {result.get('reasoning','')[:80]}")
+                anim = choice.get("animation")
+                params_keys = list(choice.get("params", {}).keys())
+                print(f"  {scene:10}: {anim} | params={params_keys}")
+        print(f"  reasoning: {result.get('reasoning','')[:100]}")
+
+        # Guardar JSON completo para debug
+        import json as _json
+        from pathlib import Path as _Path
+        debug_dir = _Path("debug_reports")
+        debug_dir.mkdir(exist_ok=True)
+        debug_file = debug_dir / "last_animation_selection.json"
+        debug_file.write_text(_json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(f"[jsx_generator] selección completa → {debug_file}")
         return result
     except Exception as e:
         print(f"[jsx_generator] parse error: {e} — {data}")
