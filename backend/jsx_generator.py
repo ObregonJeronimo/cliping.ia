@@ -69,8 +69,16 @@ async def select_animations(video_context: dict) -> dict:
     text_color   = page_data.get("textColor", "#0a0a0a")
     color_context = f"Color primario: {primary} — secundario: {secondary} — fondo real de la página: {bg_color} — página oscura: {is_dark}"
 
-    prompt = f"""Sos un director creativo senior de motion graphics especializado en videos de marketing viral.
-Tu trabajo es pensar el video completo como un profesional antes de elegir nada.
+    prompt = f"""Sos el dueño de una agencia de marketing digital especializada en videos virales para Instagram y TikTok.
+Antes de crear el video, te metés en la cabeza del dueño del negocio que lo va a publicar:
+¿Qué le duele? ¿Qué le da miedo? ¿Qué quiere lograr? ¿Qué lo haría parar de scrollear?
+
+PRIMERO pensás como el cliente ideal del producto ({audience}):
+- ¿Qué problema tiene que lo desvela?
+- ¿Qué emoción quiere sentir al ver este video?
+- ¿Qué necesita ver para confiar y actuar?
+
+LUEGO diseñás el video pensando en esa persona específica.
 
 ═══ PRODUCTO ═══
 Nombre: {site_name}
@@ -96,10 +104,16 @@ Tono: {tone}
 
 ═══ TU TAREA ═══
 Pensá como un director creativo que va a hacer un reel de 30 segundos para Instagram/TikTok.
-El video debe verse INCREÍBLE para {audience}.
-IMPORTANTE: La página real tiene fondo {bg_color} y es {"OSCURA" if is_dark else "CLARA/BLANCA"}.
-Si la página es clara, el video puede usar tanto fondos oscuros para contraste cinematográfico 
-como fondos claros que reflejen la marca. El director de arte decide qué funciona mejor.
+El video debe hacer que {audience} pare de scrollear en el primer segundo.
+
+CONTEXTO VISUAL DE LA MARCA:
+- La página real tiene fondo {bg_color} y es {"OSCURA" if is_dark else "CLARA/BLANCA"}
+- Color primario real: {primary} — usalo como acento principal
+- Si la página es clara/blanca, podés usar fondo oscuro cinematográfico para contraste
+  o fondo claro que respete la identidad visual — elegí lo que impacta más
+- NUNCA uses negro puro #000000 como fondo — siempre oscuro con personalidad
+- El fondo debe reflejar el tipo de negocio: finanzas/salud → navy, tech → dark purple,
+  food/retail → warm dark, creative → gradient vibrante
 
 Respondé SOLO con JSON válido:
 {{

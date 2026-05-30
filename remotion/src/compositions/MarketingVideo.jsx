@@ -146,10 +146,10 @@ function CounterExplosion({ frame, fps, number, label, prefix = '', suffix = '',
       })}
 
       {/* Arco decorativo SVG */}
-      <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.08 }} viewBox="0 0 390 844">
-        <circle cx="195" cy="380" r="200" fill="none" stroke={primaryColor} strokeWidth="1"
+      <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.08 }} viewBox="0 0 1080 1920">
+        <circle cx="540" cy="870" r="200" fill="none" stroke={primaryColor} strokeWidth="1"
           strokeDasharray="8 6" transform={`rotate(${frame * 0.3} 195 380)`} />
-        <circle cx="195" cy="380" r="130" fill="none" stroke={primaryColor} strokeWidth="0.5"
+        <circle cx="540" cy="870" r="130" fill="none" stroke={primaryColor} strokeWidth="0.5"
           strokeDasharray="4 8" transform={`rotate(${-frame * 0.2} 195 380)`} />
       </svg>
 
@@ -195,12 +195,12 @@ function TypewriterGlitch({ frame, fps, line1, line2, color }) {
   return (
     <DarkScene color={color}>
       {/* Grid lines decorativas */}
-      <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.04 }} viewBox="0 0 390 844">
+      <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.04 }} viewBox="0 0 1080 1920">
         {Array.from({ length: 8 }, (_, i) => (
           <line key={i} x1={i * 56} y1="0" x2={i * 56} y2="844" stroke={color} strokeWidth="0.5" />
         ))}
         {Array.from({ length: 6 }, (_, i) => (
-          <line key={i} x1="0" y1={i * 140} x2="390" y2={i * 140} stroke={color} strokeWidth="0.5" />
+          <line key={i} x1="0" y1={i * 140} x2="1080" y2={i * 140} stroke={color} strokeWidth="0.5" />
         ))}
       </svg>
 
@@ -1307,9 +1307,9 @@ function KineticText({ frame, fps, headline, primaryColor, secondaryColor }) {
   return (
     <DarkScene color={primaryColor} variant="deep">
       {/* Grid decorativo */}
-      <svg style={{ position:'absolute', inset:0, width:'100%', height:'100%', opacity:0.04 }} viewBox="0 0 390 844">
-        {Array.from({length:7},(_,i)=><line key={i} x1={i*65} y1="0" x2={i*65} y2="844" stroke={primaryColor} strokeWidth="0.5"/>)}
-        {Array.from({length:5},(_,i)=><line key={i} x1="0" y1={i*170} x2="390" y2={i*170} stroke={primaryColor} strokeWidth="0.5"/>)}
+      <svg style={{ position:'absolute', inset:0, width:'100%', height:'100%', opacity:0.04 }} viewBox="0 0 1080 1920">
+        {Array.from({length:7},(_,i)=><line key={i} x1={i*180} y1="0" x2={i*180} y2="844" stroke={primaryColor} strokeWidth="0.5"/>)}
+        {Array.from({length:5},(_,i)=><line key={i} x1="0" y1={i*384} x2="1080" y2={i*384} stroke={primaryColor} strokeWidth="0.5"/>)}
       </svg>
 
       <AbsoluteFill style={{ justifyContent:'center', alignItems:'center', flexDirection:'column', padding:36 }}>
@@ -1379,9 +1379,9 @@ function ParticleReveal({ frame, fps, siteName, headline, primaryColor, secondar
       })}
 
       {/* Anillos */}
-      <svg style={{ position:'absolute', inset:0, width:'100%', height:'100%' }} viewBox="0 0 390 844">
+      <svg style={{ position:'absolute', inset:0, width:'100%', height:'100%' }} viewBox="0 0 1080 1920">
         {[60,100,150].map((r,i) => (
-          <circle key={i} cx="195" cy="422" r={r * ringP}
+          <circle key={i} cx="540" cy="960" r={r * ringP}
             fill="none" stroke={primaryColor} strokeWidth="0.8" opacity={0.2 - i*0.05}
             strokeDasharray="6 4" transform={`rotate(${frame*(0.5-i*0.15)} 195 422)`} />
         ))}
@@ -1841,9 +1841,9 @@ function GridReveal({ frame, fps, benefits, primaryColor, secondaryColor, bg }) 
   return (
     <AbsoluteFill style={{ background: bg || 'linear-gradient(145deg, #07070f 0%, #0d0d1a 100%)', overflow: 'hidden' }}>
       {/* Grid decorativo de fondo */}
-      <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.05 }} viewBox="0 0 390 844">
-        {Array.from({ length: 7 }, (_, i) => <line key={`v${i}`} x1={i*65} y1="0" x2={i*65} y2="844" stroke={primaryColor} strokeWidth="1" />)}
-        {Array.from({ length: 7 }, (_, i) => <line key={`h${i}`} x1="0" y1={i*125} x2="390" y2={i*125} stroke={primaryColor} strokeWidth="1" />)}
+      <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.05 }} viewBox="0 0 1080 1920">
+        {Array.from({ length: 7 }, (_, i) => <line key={`v${i}`} x1={i*180} y1="0" x2={i*180} y2="844" stroke={primaryColor} strokeWidth="1" />)}
+        {Array.from({ length: 7 }, (_, i) => <line key={`h${i}`} x1="0" y1={i*280} x2="1080" y2={i*280} stroke={primaryColor} strokeWidth="1" />)}
       </svg>
 
       <AbsoluteFill style={{ padding: '32px 24px', justifyContent: 'center' }}>
@@ -1964,7 +1964,7 @@ function SpotlightReveal({ frame, fps, benefits, primaryColor, bg, siteName }) {
   return (
     <AbsoluteFill style={{ background: isDark ? '#000' : '#f0f0f0', overflow: 'hidden' }}>
       {/* Spotlight SVG */}
-      <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} viewBox="0 0 390 844">
+      <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} viewBox="0 0 1080 1920">
         <defs>
           <radialGradient id="spotlight" cx="50%" cy="50%" r="50%">
             <stop offset="0%" stopColor={primaryColor} stopOpacity="0.2" />
@@ -2057,11 +2057,11 @@ function WaterDropTitle({ frame, fps, headline, primaryColor, secondaryColor, bg
 
       {/* SVG de ondas y gota */}
       <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
-        viewBox="0 0 390 844">
+        viewBox="0 0 1080 1920">
 
         {/* Ondas de agua */}
         {ripples.map((r, i) => r.active && (
-          <circle key={i} cx="195" cy="390" r={r.r}
+          <circle key={i} cx="540" cy="390" r={r.r}
             fill="none"
             stroke={primaryColor}
             strokeWidth={3 - i * 0.8}
@@ -2343,7 +2343,7 @@ function InkSplashCTA({ frame, fps, cta, subtext, primaryColor, secondaryColor, 
       }} />
 
       {/* SVG de salpicaduras */}
-      <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: inkOpacity * 0.5 }} viewBox="0 0 390 844">
+      <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: inkOpacity * 0.5 }} viewBox="0 0 1080 1920">
         {Array.from({ length: 8 }, (_, i) => {
           const angle = (i / 8) * Math.PI * 2;
           const dist  = inkScale * 80;
@@ -2468,7 +2468,7 @@ function LiquidBlobMorph({ frame, fps, siteName, headline, primaryColor, seconda
       </svg>
 
       {/* Blobs con filtro gooey */}
-      <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', filter: 'url(#gooey)' }} viewBox="0 0 390 844">
+      <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', filter: 'url(#gooey)' }} viewBox="0 0 1080 1920">
         <path d={blob1} fill="url(#blobGrad1)" opacity="0.85" />
         <path d={blob2} fill="url(#blobGrad2)" opacity="0.7" />
         {/* Blob pequeño satélite */}
@@ -2518,7 +2518,7 @@ function PaintBrushReveal({ frame, fps, headline, primaryColor, secondaryColor }
       <Particles frame={frame} color={primaryColor} count={10} />
 
       {/* SVG del pincel y trazos */}
-      <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} viewBox="0 0 390 844">
+      <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} viewBox="0 0 1080 1920">
         <defs>
           <clipPath id="paintReveal">
             <rect x="0" y="0" width={`${revealPct}%`} height="100%" />
@@ -2823,9 +2823,9 @@ function TerminalReveal({ frame, fps, headline, subheadline, primaryColor }) {
   return (
     <AbsoluteFill style={{ background: '#050508', overflow: 'hidden' }}>
       {/* Grid de fondo */}
-      <svg style={{ position:'absolute', inset:0, width:'100%', height:'100%', opacity:0.04 }} viewBox="0 0 390 844">
-        {Array.from({length:8},(_,i)=><line key={i} x1={i*56} y1="0" x2={i*56} y2="844" stroke={primaryColor} strokeWidth="0.5"/>)}
-        {Array.from({length:7},(_,i)=><line key={i} x1="0" y1={i*125} x2="390" y2={i*125} stroke={primaryColor} strokeWidth="0.5"/>)}
+      <svg style={{ position:'absolute', inset:0, width:'100%', height:'100%', opacity:0.04 }} viewBox="0 0 1080 1920">
+        {Array.from({length:8},(_,i)=><line key={i} x1={i*154} y1="0" x2={i*154} y2="844" stroke={primaryColor} strokeWidth="0.5"/>)}
+        {Array.from({length:7},(_,i)=><line key={i} x1="0" y1={i*280} x2="1080" y2={i*280} stroke={primaryColor} strokeWidth="0.5"/>)}
       </svg>
 
       <RadialGlow color={primaryColor} opacity={0.12} size={400} />

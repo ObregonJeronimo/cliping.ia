@@ -9,8 +9,8 @@ export const RemotionRoot = () => {
         component={MarketingVideo}
         durationInFrames={900} // 30 segundos a 30fps
         fps={30}
-        width={390}
-        height={844}
+        width={1080}
+        height={1920}
         defaultProps={{
           siteName: "ConsulPay",
           headline: "Gestioná tu consultorio desde un solo lugar",

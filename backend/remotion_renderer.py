@@ -145,10 +145,11 @@ async def render_video(
     # Dimensiones
     duration = params.get("duration", 30)
     fmt = params.get("format", "reel")
-    # Renderizar a 2x para antialiasing — FFmpeg escala después
+    # Resolución estándar de Instagram/TikTok: 1080x1920 (9:16)
+    # Renderizamos a 2x para antialiasing y escalamos con Lanczos
     SCALE = 2
-    width  = 390  * SCALE if fmt == "reel" else (1280 * SCALE if fmt == "youtube" else 1080 * SCALE)
-    height = 844  * SCALE if fmt == "reel" else (720  * SCALE if fmt == "youtube" else 1080 * SCALE)
+    width  = 1080 * SCALE if fmt == "reel" else (1920 * SCALE if fmt == "youtube" else 1080 * SCALE)
+    height = 1920 * SCALE if fmt == "reel" else (1080 * SCALE if fmt == "youtube" else 1920 * SCALE)
     total_frames = duration * 30
 
 
@@ -308,8 +309,8 @@ async def render_video(
     if debugger: debugger.set_render_result(True, output_path, duration_s=dur)
     # Downscale 2x→1x con antialiasing de alta calidad (Lanczos)
     fmt = params.get("format", "reel")
-    final_w = 390  if fmt == "reel" else (1280 if fmt == "youtube" else 1080)
-    final_h = 844  if fmt == "reel" else (720  if fmt == "youtube" else 1080)
+    final_w = 1080 if fmt == "reel" else (1920 if fmt == "youtube" else 1080)
+    final_h = 1920 if fmt == "reel" else (1080 if fmt == "youtube" else 1920)
     scaled_path = OUTPUTS_DIR / f"{job_id}_scaled.mp4"
 
     scale_cmd = [
