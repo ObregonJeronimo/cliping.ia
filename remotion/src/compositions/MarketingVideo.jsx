@@ -3031,11 +3031,16 @@ function Flash({ atFrame, dur = 7 }) {
 // ══════════════════════════════════════════════════════════════════════════════
 
 const T = {
-  hook:     { from: 0,   dur: 90  },
-  product:  { from: 90,  dur: 210 },
-  benefits: { from: 300, dur: 270 },
-  cta:      { from: 570, dur: 210 },
-  outro:    { from: 780, dur: 120 },
+  hook_a:      { from: 0,   dur: 70  },
+  hook_b:      { from: 70,  dur: 80  },
+  product_a:   { from: 150, dur: 110 },
+  product_b:   { from: 260, dur: 100 },
+  benefits_a:  { from: 360, dur: 90  },
+  benefits_b:  { from: 450, dur: 90  },
+  benefits_c:  { from: 540, dur: 90  },
+  cta_a:       { from: 630, dur: 90  },
+  cta_b:       { from: 720, dur: 120 },
+  outro:       { from: 840, dur: 150 },
 };
 
 // Factor de escala: 1080 / 390 = 2.769
