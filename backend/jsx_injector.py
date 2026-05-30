@@ -28,7 +28,7 @@ def _validate_jsx(jsx_path: Path) -> tuple[bool, str]:
              "--duration-in-frames", "1",
              "--log", "error"],
             cwd=Path("../remotion"),
-            capture_output=True, text=True, timeout=60
+            capture_output=True, text=True, timeout=90
         )
         
         # Limpiar archivo de test si existe
@@ -39,8 +39,15 @@ def _validate_jsx(jsx_path: Path) -> tuple[bool, str]:
         if result.returncode == 0:
             return True, "OK"
         else:
-            err = (result.stderr or result.stdout)[-400:]
-            return False, err
+            # Capturar el error completo para debug
+            stderr = (result.stderr or "")
+            stdout = (result.stdout or "")
+            full_err = (stderr + stdout)
+            # Extraer la línea de error más relevante
+            for line in full_err.split("\n"):
+                if "Error" in line or "error" in line or "undefined" in line:
+                    print(f"[injector] error detalle: {line[:150]}")
+            return False, full_err[-600:]
     except subprocess.TimeoutExpired:
         return False, "Timeout en validación"
     except Exception as e:

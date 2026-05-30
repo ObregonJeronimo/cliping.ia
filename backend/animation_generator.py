@@ -46,7 +46,11 @@ REGLAS CRÍTICAS del código JSX que generás:
 6. El texto debe aparecer lo suficientemente LENTO para que se lea (mínimo 2s en pantalla)
 7. Usás `bg` como fondo de la escena, nunca hardcodeás negro
 8. Los tamaños están en px para un viewport de 390px de ancho
-9. La función se llama exactamente como indicás en el JSON de respuesta"""
+9. La función se llama exactamente como indicás en el JSON de respuesta
+10. NUNCA uses T.hook, T.product, T.benefits, T.cta, T.outro — esas claves NO EXISTEN
+    Las sub-escenas tienen sus propios frames y la función recibe `frame` ya relativo (desde 0)
+    El `frame` que recibís ya empieza en 0 para cada sub-escena, no necesitás T para nada
+11. NO uses useCurrentFrame() dentro de la función — el frame viene como prop directamente"""
 
 
 async def generate_industry_animations(

@@ -122,9 +122,10 @@ class VideoDebugger:
         print(f"  Problema:  {pd.get('problem','')[:50]}")
         anim = self.data.get("animation_selection", {})
         print(f"  Animaciones:")
-        for scene in ["hook","product","benefits","cta","outro"]:
+        for scene in ["hook_a","hook_b","product_a","product_b","benefits_a","benefits_b","benefits_c","cta_a","cta_b","outro"]:
             a = anim.get(scene, {}).get("animation","?")
-            print(f"    {scene:10}: {a}")
+            if a != "?":
+                print(f"    {scene:12}: {a}")
         render = self.data.get("render", {})
         print(f"  Render:    {'OK' if render.get('success') else 'FALLÓ'} en {render.get('render_duration_s')}s")
         print(f"  Total:     {total}s")

@@ -300,15 +300,13 @@ async def render_video(
     props_file = OUTPUTS_DIR / f"{job_id}_props.json"
     props_file.write_text(json.dumps(props))
 
-    # Debug: loguear props clave
+    # Debug: loguear props clave (estructura nueva 10 sub-escenas)
     print(f"[renderer] props → siteName={props['siteName']} primaryColor={props['primaryColor']}")
-    print(f"[renderer] props → hook={props['hookAnimation']} product={props['productAnimation']}")
-    print(f"[renderer] props → benefits={props['benefitsAnimation']} cta={props['ctaAnimation']} outro={props['outroAnimation']}")
+    print(f"[renderer] hook_a={props.get('hookAAnimation')} hook_b={props.get('hookBAnimation')}")
+    print(f"[renderer] product_a={props.get('productAAnimation')} product_b={props.get('productBAnimation')}")
+    print(f"[renderer] benefits_a={props.get('benefitsAAnimation')} b={props.get('benefitsBAnimation')} c={props.get('benefitsCAnimation')}")
+    print(f"[renderer] cta_a={props.get('ctaAAnimation')} cta_b={props.get('ctaBAnimation')} outro={props.get('outroAnimation')}")
     print(f"[renderer] props → screenshotUrl={'SI' if props.get('screenshotUrl') else 'NO'} benefits_count={len(props.get('benefits',[]))}")
-    if props.get('hookParams'):
-        print(f"[renderer] hookParams → {list(props['hookParams'].keys())}")
-    if props.get('productParams'):
-        print(f"[renderer] productParams → {list(props['productParams'].keys())}")
 
     # Guardar props completas para debug
     debug_props = OUTPUTS_DIR / f"{job_id}_props_debug.json"
