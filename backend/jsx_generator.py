@@ -123,12 +123,28 @@ REGLAS CRÍTICAS para params:
 - Usá SOLO animaciones del catálogo
 - Para fondo oscuro con personalidad: navy (#0a0f1e), deep purple (#0d0b1e), midnight (#07080f), dark teal (#070f0d), etc"""
 
+    headers = {
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+    }
+    payload = {
+        "model": "claude-sonnet-4-5",
+        "max_tokens": 2000,
+        "messages": [{"role": "user", "content": prompt}],
+    }
+
+    print(f"[jsx_generator] Claude eligiendo animaciones...")
+    try:
         async with aiohttp.ClientSession() as session:
-        async with session.post(
-            ANTHROPIC_URL, headers=headers, json=payload,
-            timeout=aiohttp.ClientTimeout(total=60),
-        ) as resp:
-            data = await resp.json()
+            async with session.post(
+                ANTHROPIC_URL, headers=headers, json=payload,
+                timeout=aiohttp.ClientTimeout(total=90),
+            ) as resp:
+                data = await resp.json()
+    except Exception as e:
+        print(f"[jsx_generator] error HTTP: {e}")
+        return None
 
     if resp.status != 200:
         print(f"[jsx_generator] error HTTP {resp.status}: {data}")
