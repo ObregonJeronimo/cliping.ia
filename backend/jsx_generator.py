@@ -141,14 +141,35 @@ Los frames de inicio deben ser EXACTOS sin superposición:
 - Escena 4: from=570, dur=210 (19-26s) → CTA con screenshot y glow
 - Escena 5: from=780, dur=120 (26-30s) → Logo final con partículas
 
-═══ REQUISITOS DE CALIDAD ═══
-- Cada escena debe tener elementos SIEMPRE EN MOVIMIENTO (no frames estáticos)
-- Usá Math.sin(frame * velocidad + offset) para movimiento continuo (float, pulse, rotate)
-- spring() para entradas suaves con rebote natural
-- interpolate() para transiciones lineales precisas
-- Agregá profundidad con múltiples capas (fondo, medio, frente)
-- Los textos deben entrar con animaciones, no aparecer de golpe
-- Hacé un video que deje al espectador con la mandíbula caída
+═══ REQUISITOS DE CALIDAD OBLIGATORIOS ═══
+VISUALES:
+- Fondo siempre oscuro (#07070f, #0a0010, #000814) con gradientes — NUNCA blanco
+- Al menos 30 partículas animadas en escenas oscuras
+- Círculos decorativos con borders sutiles que rotan lentamente
+- Glow effects en colores de marca (box-shadow, text-shadow)
+- Líneas de scan o grid animadas como fondo
+- Profundidad: mínimo 3 capas (bg particles, mid content, foreground text)
+
+TIPOGRAFÍA:
+- Headlines: fontSize 64-80px, fontWeight 900, letterSpacing negativo (-2px a -3px)
+- Subtítulos: fontSize 16-20px, fontWeight 600, letterSpacing 3-4px, UPPERCASE
+- Body: fontSize 18-22px, fontWeight 500
+- Usar colores: blanco puro para texto principal, primaryColor para acentos
+
+ANIMACIONES:
+- spring() con damping 12-16 y stiffness 100-140 para entradas naturales
+- Math.sin(frame * 0.05 + offset) para flotación continua (+/- 8-12px)
+- Math.sin(frame * 0.08) para pulso de glow (0.6 a 1.0)
+- Rotación continua: frame * 0.3 para elementos decorativos
+- Cada escena debe tener MÍNIMO 2 elementos siempre en movimiento
+
+IMPACTO:
+- Escena 1 hook: texto enorme que aparece con spring() explosivo
+- Escena 3 benefits: cards con borde del color de marca, glow pulsante
+- Escena 4 CTA: botón que pulsa y tiene glow dinámico, screenshot con zoom
+- Escena 5 logo: partículas orbitando, texto con gradient animado
+
+NO USAR: emojis, fondo blanco, fontSize menor a 14px, strings hardcodeados en español
 
 Props disponibles en MarketingVideo:
 siteName, headline, subheadline, benefits (array), features (array), cta, 
