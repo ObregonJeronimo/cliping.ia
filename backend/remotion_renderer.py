@@ -13,6 +13,8 @@ from variations import build_video_context
 from jsx_generator import select_animations, get_default_selection
 from animation_cache import get_cached, save_cache
 from industry_animator import get_industry_key, get_industry_animations, needs_new_animations, get_used_animations
+from animation_generator import generate_industry_animations, save_industry_animations, get_industry_function_map
+from jsx_injector import inject_animations
 
 OUTPUTS_DIR = Path("outputs")
 REMOTION_DIR = Path(__file__).parent.parent / "remotion"
@@ -144,6 +146,39 @@ async def render_video(
     used_in_industry = get_used_animations(industry_key)
     print(f"[industry] rubro='{industry_key}' | animaciones={len(industry_anims)} | {reason}")
     if debugger: debugger.log("industry", f"rubro={industry_key} | {reason}", {"needs_new": needs_new, "available": len(industry_anims)})
+
+    # Generar animaciones nuevas para el rubro si es necesario
+    if needs_new and os.environ.get("ANTHROPIC_API_KEY"):
+        industry_name = {
+            "health": "dietética/salud/natural",
+            "saas": "software SaaS/productividad",
+            "fintech": "finanzas/pagos/fintech",
+            "ecommerce": "comercio electrónico/retail",
+            "restaurant": "gastronomía/restaurant",
+            "agency": "agencia creativa/marketing",
+            "startup": "startup/innovación tecnológica",
+            "landing": "landing page/captación",
+            "portfolio": "portfolio/personal brand",
+            "generic": "negocio general",
+        }.get(industry_key, industry_key)
+        try:
+            new_anims = await generate_industry_animations(
+                industry_key=industry_key,
+                industry_name=industry_name,
+                page_data=page_data,
+                num_animations=4,
+            )
+            if new_anims:
+                save_industry_animations(industry_key, new_anims)
+                # Inyectar al JSX con validación y rollback
+                ok, injected = inject_animations(industry_key, new_anims)
+                if ok and injected:
+                    print(f"[renderer] ✓ {len(injected)} animaciones inyectadas al JSX: {injected}")
+                    if debugger: debugger.log("anim_gen", f"{len(injected)} animaciones nuevas inyectadas para {industry_key}", {"names": injected}, level="ok")
+                else:
+                    print(f"[renderer] Animaciones generadas pero no inyectadas (error de compilación)")
+        except Exception as e:
+            print(f"[renderer] Error generando animaciones: {e}")
 
     video_context = build_video_context(params, page_data, job_id, params.get("url", ""))
     video_context["format"] = params.get("format", "reel")

@@ -41,6 +41,17 @@ async def select_animations(video_context: dict, industry_key: str = 'generic', 
 
     catalog = get_catalog_for_claude()
 
+    # Agregar animaciones generadas para este rubro al catálogo
+    if industry_anims:
+        from industry_animator import get_industry_animations as _get_ia
+        from animation_generator import get_industry_function_map
+        _generated_map = get_industry_function_map(industry_key)
+        if _generated_map:
+            _extra = "\n\nANIMACIONES EXCLUSIVAS PARA ESTE RUBRO (úsalas prioritariamente):\n"
+            for snake, fn in _generated_map.items():
+                _extra += f"- {snake}: animación diseñada específicamente para {industry_key}\n"
+            catalog = catalog + _extra
+
     # Historial de animaciones usadas recientemente
     from pathlib import Path as _P
     import glob as _glob, random as _random
