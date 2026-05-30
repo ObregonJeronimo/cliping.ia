@@ -248,14 +248,29 @@ async def render_video(
         "primaryColor":      page_data.get("primaryColor", "#6366f1"),
         "secondaryColor":    page_data.get("secondaryColor", "#818cf8"),
         "screenshotUrl":     screenshot_b64,
-        "hookAnimation":     anim_selection.get("hook", {}).get("animation", "reveal_swipe"),
-        "hookParams":        anim_selection.get("hook", {}).get("params", {}),
-        "productAnimation":  anim_selection.get("product", {}).get("animation", "iphone_rise"),
-        "productParams":     anim_selection.get("product", {}).get("params", {}),
-        "benefitsAnimation": anim_selection.get("benefits", {}).get("animation", "benefit_cards_stagger"),
-        "benefitsParams":    anim_selection.get("benefits", {}).get("params", {}),
-        "ctaAnimation":      anim_selection.get("cta", {}).get("animation", "liquid_button_cta"),
-        "ctaParams":         anim_selection.get("cta", {}).get("params", {}),
+        # Hook: 2 sub-escenas
+        "hookAAnimation":    anim_selection.get("hook_a", {}).get("animation", "counter_explosion"),
+        "hookAParams":       anim_selection.get("hook_a", {}).get("params", {}),
+        "hookBAnimation":    anim_selection.get("hook_b", {}).get("animation", "reveal_swipe"),
+        "hookBParams":       anim_selection.get("hook_b", {}).get("params", {}),
+        # Product: 2 sub-escenas
+        "productAAnimation": anim_selection.get("product_a", {}).get("animation", "iphone_rise"),
+        "productAParams":    anim_selection.get("product_a", {}).get("params", {}),
+        "productBAnimation": anim_selection.get("product_b", {}).get("animation", "dashboard_build"),
+        "productBParams":    anim_selection.get("product_b", {}).get("params", {}),
+        # Benefits: 3 sub-escenas
+        "benefitsAAnimation": anim_selection.get("benefits_a", {}).get("animation", "benefit_cards_stagger"),
+        "benefitsAParams":    anim_selection.get("benefits_a", {}).get("params", {}),
+        "benefitsBAnimation": anim_selection.get("benefits_b", {}).get("animation", "icon_draw_reveal"),
+        "benefitsBParams":    anim_selection.get("benefits_b", {}).get("params", {}),
+        "benefitsCAnimation": anim_selection.get("benefits_c", {}).get("animation", "stat_counters"),
+        "benefitsCParams":    anim_selection.get("benefits_c", {}).get("params", {}),
+        # CTA: 2 sub-escenas
+        "ctaAAnimation":     anim_selection.get("cta_a", {}).get("animation", "urgency_countdown"),
+        "ctaAParams":        anim_selection.get("cta_a", {}).get("params", {}),
+        "ctaBAnimation":     anim_selection.get("cta_b", {}).get("animation", "liquid_button_cta"),
+        "ctaBParams":        anim_selection.get("cta_b", {}).get("params", {}),
+        # Outro
         "outroAnimation":    anim_selection.get("outro", {}).get("animation", "orbit_logo"),
         "outroParams":       anim_selection.get("outro", {}).get("params", {}),
         # Brief creativo del director de arte

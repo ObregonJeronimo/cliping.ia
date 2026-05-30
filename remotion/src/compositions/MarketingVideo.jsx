@@ -3052,11 +3052,21 @@ export const MarketingVideo = (props) => {
     numbers = [], guarantee = '',
     primaryColor = '#6366f1', secondaryColor = '#818cf8',
     screenshotUrl = null,
-    hookAnimation = 'reveal_swipe',     hookParams = {},
-    productAnimation = 'iphone_rise',   productParams = {},
-    benefitsAnimation = 'benefit_cards_stagger', benefitsParams = {},
-    ctaAnimation = 'liquid_button_cta', ctaParams = {},
-    outroAnimation = 'orbit_logo',      outroParams = {},
+    // Hook: 2 sub-escenas
+    hookAAnimation = 'counter_explosion', hookAParams = {},
+    hookBAnimation = 'reveal_swipe',      hookBParams = {},
+    // Product: 2 sub-escenas
+    productAAnimation = 'iphone_rise',    productAParams = {},
+    productBAnimation = 'dashboard_build', productBParams = {},
+    // Benefits: 3 sub-escenas (una por beneficio)
+    benefitsAAnimation = 'benefit_cards_stagger', benefitsAParams = {},
+    benefitsBAnimation = 'comparison_table',      benefitsBParams = {},
+    benefitsCAnimation = 'icon_draw_reveal',      benefitsCParams = {},
+    // CTA: 2 sub-escenas
+    ctaAAnimation = 'urgency_countdown',  ctaAParams = {},
+    ctaBAnimation = 'liquid_button_cta',  ctaBParams = {},
+    // Outro
+    outroAnimation = 'orbit_logo',        outroParams = {},
     brief = {},
   } = props;
 
@@ -3097,40 +3107,63 @@ export const MarketingVideo = (props) => {
 
   return (
     <AbsoluteFill style={{ background: brandBg || '#07070f', overflow: 'hidden' }}>
-      {/* Scale wrapper: diseño en 390px escalado a 1080x1920 */}
       <div style={{
-        position: 'absolute',
-        top: 0, left: 0,
-        width: DESIGN_WIDTH,
-        height: WRAPPER_H,
-        transform: `scale(${SCALE})`,
-        transformOrigin: 'top left',
+        position: 'absolute', top: 0, left: 0,
+        width: DESIGN_WIDTH, height: WRAPPER_H,
+        transform: `scale(${SCALE})`, transformOrigin: 'top left',
         overflow: 'hidden',
       }}>
-      <Sequence from={T.hook.from} durationInFrames={T.hook.dur}>
-        <SceneWrapper animName={hookAnimation} params={merged(hookParams)} frame={frame} fps={fps} />
-      </Sequence>
 
-      <Sequence from={T.product.from} durationInFrames={T.product.dur}>
-        <SceneWrapper animName={productAnimation} params={merged(productParams)} frame={frame - T.product.from} fps={fps} />
-      </Sequence>
+        {/* ── HOOK ─────────────────────────────────────── */}
+        <Sequence from={T.hook_a.from} durationInFrames={T.hook_a.dur}>
+          <SceneWrapper animName={hookAAnimation} params={merged(hookAParams)} frame={frame - T.hook_a.from} fps={fps} />
+        </Sequence>
+        <Sequence from={T.hook_b.from} durationInFrames={T.hook_b.dur}>
+          <SceneWrapper animName={hookBAnimation} params={merged(hookBParams)} frame={frame - T.hook_b.from} fps={fps} />
+        </Sequence>
 
-      <Sequence from={T.benefits.from} durationInFrames={T.benefits.dur}>
-        <SceneWrapper animName={benefitsAnimation} params={merged(benefitsParams)} frame={frame - T.benefits.from} fps={fps} />
-      </Sequence>
+        {/* ── PRODUCT ──────────────────────────────────── */}
+        <Sequence from={T.product_a.from} durationInFrames={T.product_a.dur}>
+          <SceneWrapper animName={productAAnimation} params={merged(productAParams)} frame={frame - T.product_a.from} fps={fps} />
+        </Sequence>
+        <Sequence from={T.product_b.from} durationInFrames={T.product_b.dur}>
+          <SceneWrapper animName={productBAnimation} params={merged(productBParams)} frame={frame - T.product_b.from} fps={fps} />
+        </Sequence>
 
-      <Sequence from={T.cta.from} durationInFrames={T.cta.dur}>
-        <SceneWrapper animName={ctaAnimation} params={merged(ctaParams)} frame={frame - T.cta.from} fps={fps} />
-      </Sequence>
+        {/* ── BENEFITS ─────────────────────────────────── */}
+        <Sequence from={T.benefits_a.from} durationInFrames={T.benefits_a.dur}>
+          <SceneWrapper animName={benefitsAAnimation} params={merged(benefitsAParams)} frame={frame - T.benefits_a.from} fps={fps} />
+        </Sequence>
+        <Sequence from={T.benefits_b.from} durationInFrames={T.benefits_b.dur}>
+          <SceneWrapper animName={benefitsBAnimation} params={merged(benefitsBParams)} frame={frame - T.benefits_b.from} fps={fps} />
+        </Sequence>
+        <Sequence from={T.benefits_c.from} durationInFrames={T.benefits_c.dur}>
+          <SceneWrapper animName={benefitsCAnimation} params={merged(benefitsCParams)} frame={frame - T.benefits_c.from} fps={fps} />
+        </Sequence>
 
-      <Sequence from={T.outro.from} durationInFrames={T.outro.dur}>
-        <SceneWrapper animName={outroAnimation} params={merged(outroParams)} frame={frame - T.outro.from} fps={fps} />
-      </Sequence>
+        {/* ── CTA ──────────────────────────────────────── */}
+        <Sequence from={T.cta_a.from} durationInFrames={T.cta_a.dur}>
+          <SceneWrapper animName={ctaAAnimation} params={merged(ctaAParams)} frame={frame - T.cta_a.from} fps={fps} />
+        </Sequence>
+        <Sequence from={T.cta_b.from} durationInFrames={T.cta_b.dur}>
+          <SceneWrapper animName={ctaBAnimation} params={merged(ctaBParams)} frame={frame - T.cta_b.from} fps={fps} />
+        </Sequence>
 
-      <Flash atFrame={T.product.from} />
-      <Flash atFrame={T.benefits.from} />
-      <Flash atFrame={T.cta.from} />
-      <Flash atFrame={T.outro.from} />
+        {/* ── OUTRO ────────────────────────────────────── */}
+        <Sequence from={T.outro.from} durationInFrames={T.outro.dur}>
+          <SceneWrapper animName={outroAnimation} params={merged(outroParams)} frame={frame - T.outro.from} fps={fps} />
+        </Sequence>
+
+        {/* Flashes de transición */}
+        <Flash atFrame={T.hook_b.from} />
+        <Flash atFrame={T.product_a.from} />
+        <Flash atFrame={T.product_b.from} />
+        <Flash atFrame={T.benefits_a.from} />
+        <Flash atFrame={T.benefits_b.from} />
+        <Flash atFrame={T.benefits_c.from} />
+        <Flash atFrame={T.cta_a.from} />
+        <Flash atFrame={T.cta_b.from} />
+        <Flash atFrame={T.outro.from} />
       </div>
     </AbsoluteFill>
   );

@@ -134,6 +134,21 @@ CONTEXTO VISUAL DE LA MARCA:
 - El fondo siempre debe tener al menos 3 stops de color para que sea rico visualmente
 - Nunca usar el mismo fondo que el video anterior — variar siempre el ángulo y los tonos
 
+NUEVA ESTRUCTURA — el video tiene 10 sub-escenas (2 por sección):
+- hook_a (2.3s): primer impacto que frena el scroll
+- hook_b (2.7s): refuerzo del mensaje principal
+- product_a (3.7s): mostrar el producto en acción
+- product_b (3.3s): demostrar valor concreto (números, stats)
+- benefits_a (3s): beneficio 1 individual
+- benefits_b (3s): beneficio 2 individual
+- benefits_c (3s): beneficio 3 individual (o variante del 2)
+- cta_a (3s): construir urgencia/deseo antes del botón
+- cta_b (4s): el botón final con máximo impacto
+- outro (5s): cierre memorable de marca
+
+Cada sub-escena es independiente — animaciones DISTINTAS entre sí.
+Nunca repitas la misma animación en dos sub-escenas.
+
 Respondé SOLO con JSON válido:
 {{
   "brief": {{
@@ -148,32 +163,57 @@ Respondé SOLO con JSON válido:
     "ritmo": "rápido/medio/lento — justificación según la audiencia",
     "must_avoid": "qué evitar específicamente para este tipo de página y audiencia"
   }},
-  "hook": {{
-    "animation": "nombre_exacto_del_catalogo",
+  "hook_a": {{
+    "animation": "nombre_exacto — primer impacto en 2.3s",
     "params": {{}},
-    "razon": "por qué este hook conecta con {audience}"
+    "razon": "por qué este hook frena el scroll en 0.5s"
   }},
-  "product": {{
-    "animation": "nombre_exacto_del_catalogo",
+  "hook_b": {{
+    "animation": "nombre_exacto — DISTINTO a hook_a",
     "params": {{}},
-    "razon": "por qué esta animación muestra bien el producto"
+    "razon": "cómo refuerza el mensaje del hook_a"
   }},
-  "benefits": {{
-    "animation": "nombre_exacto_del_catalogo",
+  "product_a": {{
+    "animation": "nombre_exacto — muestra el producto",
     "params": {{}},
-    "razon": "por qué este formato comunica los beneficios"
+    "razon": "cómo muestra el producto en 3.7s"
   }},
-  "cta": {{
-    "animation": "nombre_exacto_del_catalogo",
+  "product_b": {{
+    "animation": "nombre_exacto — DISTINTO a product_a — muestra valor/stats",
     "params": {{}},
-    "razon": "por qué este CTA convierte para este público"
+    "razon": "qué dato concreto refuerza"
+  }},
+  "benefits_a": {{
+    "animation": "nombre_exacto — para el beneficio: {benefits[0] if benefits else 'beneficio 1'}",
+    "params": {{}},
+    "razon": "por qué esta animación comunica este beneficio específico"
+  }},
+  "benefits_b": {{
+    "animation": "nombre_exacto — DISTINTO — para el beneficio: {benefits[1] if len(benefits)>1 else 'beneficio 2'}",
+    "params": {{}},
+    "razon": "por qué esta animación comunica este beneficio específico"
+  }},
+  "benefits_c": {{
+    "animation": "nombre_exacto — DISTINTO — para el beneficio: {benefits[2] if len(benefits)>2 else 'beneficio 3'}",
+    "params": {{}},
+    "razon": "por qué esta animación comunica este beneficio específico"
+  }},
+  "cta_a": {{
+    "animation": "nombre_exacto — construir urgencia/deseo",
+    "params": {{}},
+    "razon": "cómo genera urgencia antes del botón"
+  }},
+  "cta_b": {{
+    "animation": "nombre_exacto — DISTINTO a cta_a — botón final con impacto",
+    "params": {{}},
+    "razon": "por qué este remate convierte"
   }},
   "outro": {{
-    "animation": "nombre_exacto_del_catalogo",
+    "animation": "nombre_exacto — cierre memorable",
     "params": {{}},
-    "razon": "por qué este cierre refuerza la marca"
+    "razon": "por qué este cierre graba la marca"
   }},
-  "reasoning": "resumen de la dirección creativa completa del video"
+  "reasoning": "narrativa completa del video de 10 momentos"
 }}
 
 IMPORTANTE PARA LA ESCENA "product":
