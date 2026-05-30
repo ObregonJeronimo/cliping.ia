@@ -245,46 +245,38 @@ function TypewriterGlitch({ frame, fps, line1, line2, color }) {
   );
 }
 
-function RevealSwipe({ frame, fps, headline, primaryColor }) {
-  const swipe  = lerp(frame, 5, 38, 0, 105);
-  const textP  = spr(frame, fps, 8, 14, 100);
-  const chipP  = spr(frame, fps, 42, 16, 100);
-  const words  = (headline || '').split(' ');
+function RevealSwipe({ frame, fps, headline, primaryColor, bg }) {
+  // La cortina de color sale hacia la derecha revelando el texto
+  const curtain = lerp(frame, 2, 40, 0, 110);
+  const textFade = lerp(frame, 2, 38, 0, 1);
+  const chipP = spr(frame, fps, 42, 16, 100);
+  const dark = isDarkBg(bg);
+  const textColor = dark ? '#fff' : '#0a0a0a';
+  const lineP = spr(frame, fps, 44, 18, 100);
 
   return (
-    <DarkScene color={primaryColor}>
+    <AbsoluteFill style={{ background: bg || 'linear-gradient(145deg,#07070f,#0d0d1a)', overflow: 'hidden' }}>
+      <Particles frame={frame} color={primaryColor} count={15} />
+      <RadialGlow color={primaryColor} opacity={0.15} size={420} />
       <AbsoluteFill style={{ justifyContent: 'center', alignItems: 'center', flexDirection: 'column', padding: 40 }}>
-        {/* Chip superior */}
-        <div style={{
-          opacity: chipP, transform: `translateY(${(1 - chipP) * -16}px)`,
-          marginBottom: 28,
-          background: `rgba(${hex2rgb(primaryColor)},0.15)`,
-          border: `1px solid rgba(${hex2rgb(primaryColor)},0.4)`,
-          borderRadius: 100, padding: '7px 20px',
-        }}>
-          <Label color={primaryColor}>Nuevo</Label>
+        <div style={{ opacity: chipP, transform: `translateY(${(1-chipP)*-14}px)`, marginBottom: 26,
+          background: `rgba(${hex2rgb(primaryColor)},0.14)`, border: `1px solid rgba(${hex2rgb(primaryColor)},0.38)`,
+          borderRadius: 100, padding: '7px 20px' }}>
+          <Label color={primaryColor}>Presentamos</Label>
         </div>
-
-        {/* Headline con swipe reveal */}
-        <div style={{ position: 'relative', overflow: 'hidden', textAlign: 'center' }}>
-          <Headline size={58} color="#fff" style={{
-            opacity: textP, transform: `translateY(${(1 - textP) * 28}px)`,
-            textAlign: 'center', maxWidth: 300,
-          }}>
+        <div style={{ position: 'relative', textAlign: 'center', overflow: 'hidden' }}>
+          <Headline size={56} color={textColor} style={{ textAlign: 'center', maxWidth: 300, opacity: textFade }}>
             {headline}
           </Headline>
-          {/* Cortina de color que revela */}
-          <div style={{
-            position: 'absolute', inset: 0,
-            background: `rgba(${hex2rgb(primaryColor)},0.9)`,
-            transform: `translateX(${swipe}%)`,
-            borderRadius: 4,
-          }} />
+          {curtain < 105 && (
+            <div style={{ position: 'absolute', inset: 0,
+              background: `linear-gradient(90deg, ${primaryColor}, rgba(${hex2rgb(primaryColor)},0.8))`,
+              transform: `translateX(${curtain}%)`, borderRadius: 4 }} />
+          )}
         </div>
-
-        <GlowLine color={primaryColor} progress={chipP} width={60} />
+        <GlowLine color={primaryColor} progress={lineP} width={60} />
       </AbsoluteFill>
-    </DarkScene>
+    </AbsoluteFill>
   );
 }
 
