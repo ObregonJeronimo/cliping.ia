@@ -111,9 +111,17 @@ CONTEXTO VISUAL DE LA MARCA:
 - Color primario real: {primary} — usalo como acento principal
 - Si la página es clara/blanca, podés usar fondo oscuro cinematográfico para contraste
   o fondo claro que respete la identidad visual — elegí lo que impacta más
-- NUNCA uses negro puro #000000 como fondo — siempre oscuro con personalidad
-- El fondo debe reflejar el tipo de negocio: finanzas/salud → navy, tech → dark purple,
-  food/retail → warm dark, creative → gradient vibrante
+- NUNCA uses negro puro #000000 como fondo — siempre oscuro CON TEXTURA VISUAL
+- El fondo debe ser un gradiente de al menos 2 colores con dirección diagonal
+- Tipos de fondo según industria:
+  * Finanzas/salud → deep navy: "linear-gradient(145deg, #0a0f1e 0%, #0d1528 50%, #0a0a1a 100%)"
+  * Tech/SaaS → dark purple: "linear-gradient(145deg, #0d0b1e 0%, #1a0f2e 50%, #0a0a14 100%)"
+  * Creatividad/agencia → warm dark: "linear-gradient(145deg, #0f0a0a 0%, #1e0f0a 50%, #0a0808 100%)"
+  * Retail/moda → midnight: "linear-gradient(160deg, #080810 0%, #0f0f18 50%, #080808 100%)"
+  * Restaurant/food → deep brown: "linear-gradient(145deg, #0a0600 0%, #1a0e00 50%, #0d0800 100%)"
+  * Startup/innovacion → electric dark: "linear-gradient(135deg, #050510 0%, #0a0520 50%, #050510 100%)"
+- El fondo siempre debe tener al menos 3 stops de color para que sea rico visualmente
+- Nunca usar el mismo fondo que el video anterior — variar siempre el ángulo y los tonos
 
 Respondé SOLO con JSON válido:
 {{
@@ -225,6 +233,13 @@ REGLAS CRÍTICAS — VARIEDAD OBLIGATORIA:
         raw = data["content"][0]["text"].strip()
         raw = re.sub(r"```(?:json)?", "", raw).strip().rstrip("```").strip()
         result = json.loads(raw)
+        # Guardar animaciones nuevas sugeridas para el rubro
+        new_for_industry = result.get("new_animations_for_industry", [])
+        if new_for_industry and industry_key != "generic":
+            from industry_animator import save_generated_animations
+            save_generated_animations(industry_key, new_for_industry)
+            print(f"[jsx_generator] +{len(new_for_industry)} animaciones nuevas para rubro '{industry_key}': {new_for_industry}")
+
         # Loguear brief creativo
         brief = result.get("brief", {})
         if brief:

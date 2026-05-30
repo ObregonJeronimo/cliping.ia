@@ -12,6 +12,7 @@ from vision import _groq_vision, _parse_json, _img
 from variations import build_video_context
 from jsx_generator import select_animations, get_default_selection
 from animation_cache import get_cached, save_cache
+from industry_animator import get_industry_key, get_industry_animations, needs_new_animations, get_used_animations
 
 OUTPUTS_DIR = Path("outputs")
 REMOTION_DIR = Path(__file__).parent.parent / "remotion"
@@ -135,6 +136,14 @@ async def render_video(
         screenshot_b64 = f"data:image/png;base64,{b64}"
 
     # Contexto de variación
+    # Análisis de industria
+    industry_key = get_industry_key(page_data.get("pageType",""), page_data.get("audience",""))
+    industry_anims = get_industry_animations(industry_key)
+    needs_new, reason = needs_new_animations(industry_key)
+    used_in_industry = get_used_animations(industry_key)
+    print(f"[industry] rubro='{industry_key}' | animaciones={len(industry_anims)} | {reason}")
+    if debugger: debugger.log("industry", f"rubro={industry_key} | {reason}", {"needs_new": needs_new, "available": len(industry_anims)})
+
     video_context = build_video_context(params, page_data, job_id, params.get("url", ""))
     video_context["format"] = params.get("format", "reel")
     video_context["duration"] = params.get("duration", 30)
@@ -178,7 +187,7 @@ async def render_video(
             print(f"[renderer] modo simple — generando animaciones únicas")
         if os.environ.get("ANTHROPIC_API_KEY"):
             try:
-                anim_selection = await select_animations(video_context)
+                anim_selection = await select_animations(video_context, industry_key=industry_key, industry_anims=industry_anims, used_in_industry=used_in_industry, needs_new_anims=needs_new)
                 if anim_selection and not is_simple_mode:
                     save_cache(url_key, anim_selection, cache_context)
             except Exception as e:
