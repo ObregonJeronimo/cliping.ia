@@ -285,17 +285,52 @@ async def render_video(
     if props.get("ctaParams", {}).get("screenshotUrl"):
         del props["ctaParams"]["screenshotUrl"]
 
-    # Sanitizar card_flip_3d: si los beneficios vienen como {front, back}, convertir a strings
-    for scene_key in ["benefitsParams", "hookParams", "productParams"]:
+    # Sanitizar params — convertir objetos a strings donde corresponde
+    all_param_keys = [
+        "hookAParams","hookBParams","productAParams","productBParams",
+        "benefitsAParams","benefitsBParams","benefitsCParams",
+        "ctaAParams","ctaBParams","outroParams",
+        # compatibilidad backwards
+        "benefitsParams","hookParams","productParams","ctaParams","outroParams",
+    ]
+    for scene_key in all_param_keys:
         scene_params = props.get(scene_key, {})
-        if "benefits" in scene_params:
-            sanitized = []
-            for b in scene_params["benefits"]:
-                if isinstance(b, dict):
-                    sanitized.append(b.get("front") or b.get("title") or b.get("label") or str(b))
+        if not scene_params:
+            continue
+
+        # benefits/features/steps como lista de objetos → strings
+        for list_key in ["benefits", "features", "steps", "badges"]:
+            if list_key in scene_params and isinstance(scene_params[list_key], list):
+                sanitized = []
+                for item in scene_params[list_key]:
+                    if isinstance(item, dict):
+                        # Extraer el texto más relevante
+                        text = (item.get("label") or item.get("title") or
+                                item.get("front") or item.get("text") or
+                                item.get("benefit") or item.get("step") or
+                                item.get("name") or str(list(item.values())[0] if item else ""))
+                        sanitized.append(str(text))
+                    elif item is not None:
+                        sanitized.append(str(item))
+                scene_params[list_key] = sanitized
+
+        # stats como lista de objetos → solo valores
+        if "stats" in scene_params and isinstance(scene_params["stats"], list):
+            sanitized_stats = []
+            for stat in scene_params["stats"]:
+                if isinstance(stat, dict):
+                    val = stat.get("value") or stat.get("label") or str(stat)
+                    sanitized_stats.append(str(val))
                 else:
-                    sanitized.append(str(b) if b else "")
-            scene_params["benefits"] = sanitized
+                    sanitized_stats.append(str(stat) if stat else "")
+            scene_params["stats"] = sanitized_stats
+
+        # notifications como lista — asegurarse que son strings
+        if "notifications" in scene_params and isinstance(scene_params["notifications"], list):
+            scene_params["notifications"] = [
+                str(n) if not isinstance(n, str) else n
+                for n in scene_params["notifications"]
+            ]
 
     props_file = OUTPUTS_DIR / f"{job_id}_props.json"
     props_file.write_text(json.dumps(props))
