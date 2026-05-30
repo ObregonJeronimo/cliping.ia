@@ -26,14 +26,18 @@ REGLAS CRÍTICAS del código JSX que generás:
    - lerp(frame, a, b, from, to) — interpolación linear con clamp
    - spr(frame, fps, delay, damping, stiffness) — spring animation
    - hex2rgb(hex) — convierte "#rrggbb" a "r,g,b"
+   - isDarkBg(bg) — retorna true si el bg es oscuro
    - AbsoluteFill, Img, Sequence — de remotion (ya importados)
    - useCurrentFrame, useVideoConfig — de remotion (ya importados)
    - Particles({frame, color, count}) — componente compartido
    - RadialGlow({color, opacity, size}) — componente compartido
-   - DarkScene({color, children, bg}) — wrapper de escena
+   - DarkScene({color, children, bg}) — wrapper de escena con fondo
    - Label({children, color, style}) — texto etiqueta uppercase
-   - Headline({children, size, color, style}) — texto headline
-   - GlowLine({color, progress, width}) — línea con glow
+   - Headline({children, size, color, style}) — texto headline grande
+   - GlowLine({color, progress, width}) — línea con glow animada
+   
+   NUNCA uses isDarkBg sin importar — ya está disponible globalmente
+   NUNCA uses variables no declaradas — solo las de esta lista
 
 2. Cada animación recibe EXACTAMENTE estos props: { frame, fps, primaryColor, bg, ...otrosProps }
 3. NUNCA uses: useState, useEffect, hooks de React, setTimeout, fetch, imports externos
