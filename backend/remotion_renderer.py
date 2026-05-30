@@ -217,6 +217,26 @@ async def render_video(
         "brief":             anim_selection.get("brief", {}),
     }
 
+    # Sanitizar: asegurarse que screenshotUrl sea el real, no una URL inventada por Claude
+    if props.get("productParams", {}).get("screenshotUrl"):
+        del props["productParams"]["screenshotUrl"]  # siempre usar el real del base
+    if props.get("hookParams", {}).get("screenshotUrl"):
+        del props["hookParams"]["screenshotUrl"]
+    if props.get("ctaParams", {}).get("screenshotUrl"):
+        del props["ctaParams"]["screenshotUrl"]
+
+    # Sanitizar card_flip_3d: si los beneficios vienen como {front, back}, convertir a strings
+    for scene_key in ["benefitsParams", "hookParams", "productParams"]:
+        scene_params = props.get(scene_key, {})
+        if "benefits" in scene_params:
+            sanitized = []
+            for b in scene_params["benefits"]:
+                if isinstance(b, dict):
+                    sanitized.append(b.get("front") or b.get("title") or b.get("label") or str(b))
+                else:
+                    sanitized.append(str(b) if b else "")
+            scene_params["benefits"] = sanitized
+
     props_file = OUTPUTS_DIR / f"{job_id}_props.json"
     props_file.write_text(json.dumps(props))
 

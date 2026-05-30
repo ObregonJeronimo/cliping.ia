@@ -154,6 +154,9 @@ REGLAS CRÍTICAS — VARIEDAD OBLIGATORIA:
 - Si el fondo fue navy la vez anterior, esta vez usá dark purple, midnight teal, o dark warm.
 - Si el hook fue un número, esta vez que sea texto. Si fue texto, que sea visual.
 - NUNCA inventes datos — usá SOLO los números reales: {json.dumps(numbers, ensure_ascii=False)}
+- NUNCA pongas screenshotUrl en ningún params — esa prop se maneja automáticamente
+- Para card_flip_3d los benefits deben ser STRINGS simples, nunca objetos con front/back
+- Para iphone_rise y cursor_click_reveal NO incluyas screenshotUrl en params
 - Si no hay números reales, usá strings descriptivos sin inventar cifras
 - El contenido va en español rioplatense
 - Usá SOLO animaciones del catálogo
