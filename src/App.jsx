@@ -16,8 +16,12 @@ function PrivateRoute({ children }) {
 function AppRoutes() {
   return (
     <Routes>
+      {/* Rutas publicas */}
+      <Route path="/" element={<div>Landing page</div>} />
       <Route path="/login" element={<Login />} />
-      <Route path="/" element={
+
+      {/* Studio — requiere auth */}
+      <Route path="/studio" element={
         <PrivateRoute>
           <AppLayout />
         </PrivateRoute>
@@ -26,6 +30,8 @@ function AppRoutes() {
         <Route path="videos" element={<Videos />} />
         <Route path="settings" element={<Settings />} />
       </Route>
+
+      {/* Ruta desconocida -> landing */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

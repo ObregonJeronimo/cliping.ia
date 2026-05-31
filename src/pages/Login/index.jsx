@@ -8,7 +8,7 @@ export default function Login() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    if (!loading && user) navigate('/')
+    if (!loading && user) navigate('/studio')
   }, [user, loading, navigate])
 
   return (

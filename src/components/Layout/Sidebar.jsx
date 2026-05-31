@@ -3,9 +3,9 @@ import { useAuth } from '../../contexts/AuthContext'
 import styles from './Sidebar.module.css'
 
 const NAV = [
-  { to: '/',        icon: '⊞', label: 'Home' },
-  { to: '/videos',  icon: '▶', label: 'Mis videos' },
-  { to: '/settings',icon: '⚙', label: 'Configuración' },
+  { to: '/studio',          icon: '⊞', label: 'Home' },
+  { to: '/studio/videos',   icon: '▶', label: 'Mis videos' },
+  { to: '/studio/settings', icon: '⚙', label: 'Configuración' },
 ]
 
 export default function Sidebar() {
@@ -23,7 +23,7 @@ export default function Sidebar() {
         cliping<span>.ia</span>
       </div>
 
-      <button className={styles.newBtn} onClick={() => navigate('/')}>
+      <button className={styles.newBtn} onClick={() => navigate('/studio')}>
         + Nuevo video
       </button>
 
@@ -32,7 +32,7 @@ export default function Sidebar() {
           <NavLink
             key={item.to}
             to={item.to}
-            end={item.to === '/'}
+            end={item.to === '/studio'}
             className={({ isActive }) =>
               `${styles.navItem} ${isActive ? styles.navActive : ''}`
             }
@@ -48,7 +48,7 @@ export default function Sidebar() {
           <span className={styles.creditsIcon}>⚡</span>
           <span><strong>{profile?.credits ?? 0}</strong> créditos</span>
           {profile?.plan === 'free' && (
-            <button className={styles.upgradeBtn} onClick={() => navigate('/settings')}>
+            <button className={styles.upgradeBtn} onClick={() => navigate('/studio/settings')}>
               Upgrade
             </button>
           )}
