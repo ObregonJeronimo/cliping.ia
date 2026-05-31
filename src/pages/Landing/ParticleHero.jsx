@@ -61,6 +61,36 @@ function precomputeAll() {
   return { urlPts, promptPts, tlStates }
 }
 
+// ── Secuencia como lista plana de {t, fn} ─────────────────────────────────
+// t = segundos desde el inicio del ciclo
+function buildSequence(urlPts, promptPts, tlStates, onStateChange, setTargets) {
+  const seq = []
+  const add = (t, fn) => seq.push({ t, fn })
+
+  // Estado 1 — URL
+  add(0.0,  () => { setTargets(urlPts);    onStateChange?.('url') })
+  // Scatter
+  add(3.8,  () => { setTargets([]) })
+  // Estado 2 — Prompt
+  add(5.2,  () => { setTargets(promptPts); onStateChange?.('prompt') })
+  // Scatter
+  add(9.4,  () => { setTargets([]) })
+  // Estado 3 — Timeline, ítem a ítem
+  add(10.7, () => { setTargets(tlStates[0]); onStateChange?.('timeline') })
+  add(11.5, () => setTargets(tlStates[1]))
+  add(12.5, () => setTargets(tlStates[2]))
+  add(13.5, () => setTargets(tlStates[3]))
+  add(14.5, () => setTargets(tlStates[4]))
+  add(15.5, () => setTargets(tlStates[5]))
+  add(16.5, () => setTargets(tlStates[6]))
+  // Scatter final
+  add(19.3, () => setTargets([]))
+  // Duración total del ciclo
+  const CYCLE_DURATION = 21.0
+
+  return { seq, CYCLE_DURATION }
+}
+
 export default function ParticleHero({ onStateChange }) {
   const mountRef = useRef(null)
 
@@ -119,102 +149,59 @@ export default function ParticleHero({ onStateChange }) {
         )
     }
 
-    // ── Secuenciador: lista plana de pasos, un único setTimeout activo ────
-    let alive = true
-    let currentTimer = null
+    const { seq, CYCLE_DURATION } = buildSequence(urlPts, promptPts, tlStates, onStateChange, setTargets)
 
-    function cancelCurrent() {
-      if (currentTimer !== null) {
-        clearTimeout(currentTimer)
-        currentTimer = null
-      }
-    }
-
-    function runAfter(ms, fn) {
-      cancelCurrent()
-      if (!alive) return
-      currentTimer = setTimeout(() => {
-        currentTimer = null
-        if (alive) fn()
-      }, ms)
-    }
-
-    // Secuencia de pasos: cada paso recibe cuánto esperar antes de ejecutar
-    // y llama a next() para encadenar el siguiente
-    function startSequence() {
-      // Paso 1 — URL (visible 3.8s)
-      setTargets(urlPts)
-      onStateChange?.('url')
-
-      runAfter(3800, () => {
-        // Scatter (1.4s)
-        setTargets([])
-
-        runAfter(1400, () => {
-          // Paso 2 — Prompt (visible 4.2s)
-          setTargets(promptPts)
-          onStateChange?.('prompt')
-
-          runAfter(4200, () => {
-            // Scatter (1.3s)
-            setTargets([])
-
-            runAfter(1300, () => {
-              // Paso 3 — Timeline: mostrar base
-              onStateChange?.('timeline')
-              setTargets(tlStates[0])
-
-              // Completar ítems uno a uno con una cadena simple
-              function completeItem(step) {
-                runAfter(step === 0 ? 800 : 1000, () => {
-                  setTargets(tlStates[step + 1])
-                  if (step + 1 < ITEMS.length) {
-                    completeItem(step + 1)
-                  } else {
-                    // Todos completos — esperar y reiniciar
-                    runAfter(2800, () => {
-                      setTargets([])
-                      runAfter(1400, () => startSequence())
-                    })
-                  }
-                })
-              }
-              completeItem(0)
-            })
-          })
-        })
-      })
-    }
-
-    // ── Paleta ────────────────────────────────────────────────────────────
+    // ── Render loop con tiempo propio ─────────────────────────────────────
+    // No usamos setTimeout en absoluto — el tiempo lo maneja el render loop
     const C_TOP  = new THREE.Color(0xffffff)
     const C_MID  = new THREE.Color(0x9db8ff)
     const C_BOT  = new THREE.Color(0x4a5cc8)
     const C_IDLE = new THREE.Color(0x1a2550)
 
-    // ── Render loop ───────────────────────────────────────────────────────
-    let t = 0, rafId
+    let alive      = true
+    let rafId      = null
+    let elapsed    = 0       // tiempo total desde que arrancó
+    let cycleStart = 0       // elapsed al inicio del ciclo actual
+    let nextStep   = 0       // índice del próximo paso a ejecutar
+
+    const clock = new THREE.Clock()
 
     function animate() {
       if (!alive) return
       rafId = requestAnimationFrame(animate)
-      t += 0.016
-      const spd = state.forming ? 0.085 : 0.028
 
+      const delta   = clock.getDelta()
+      elapsed      += delta
+      const cycleT  = elapsed - cycleStart   // segundos dentro del ciclo actual
+
+      // Ejecutar todos los pasos cuyo tiempo ya llegó
+      while (nextStep < seq.length && cycleT >= seq[nextStep].t) {
+        seq[nextStep].fn()
+        nextStep++
+      }
+
+      // Reiniciar ciclo cuando termina
+      if (cycleT >= CYCLE_DURATION) {
+        cycleStart = elapsed
+        nextStep   = 0
+      }
+
+      // Renderizar
+      const spd = state.forming ? 0.085 : 0.028
       for (let i = 0; i < MAX; i++) {
         const c = cur[i], g = tgt[i]
         c.lerp(g, spd)
         if (!state.forming) {
-          c.x += Math.sin(t * 0.42 + i * 0.28) * 0.0015
-          c.y += Math.cos(t * 0.35 + i * 0.22) * 0.0015
-          c.z += Math.sin(t * 0.23 + i * 0.16) * 0.0007
+          c.x += Math.sin(elapsed * 0.42 + i * 0.28) * 0.0015
+          c.y += Math.cos(elapsed * 0.35 + i * 0.22) * 0.0015
+          c.z += Math.sin(elapsed * 0.23 + i * 0.16) * 0.0007
         }
         dummy.position.copy(c)
         const isActive  = i < state.activeN && state.forming
         const proximity = Math.max(0, 1 - c.distanceTo(g) * 0.5)
         dummy.scale.setScalar(isActive ? 0.078 + proximity * 0.055 : 0.009 + Math.random() * 0.003)
-        dummy.rotation.x = t * 0.14 + i * 0.018
-        dummy.rotation.y = t * 0.10 + i * 0.012
+        dummy.rotation.x = elapsed * 0.14 + i * 0.018
+        dummy.rotation.y = elapsed * 0.10 + i * 0.012
         dummy.updateMatrix()
         mesh.setMatrixAt(i, dummy.matrix)
 
@@ -223,7 +210,7 @@ export default function ParticleHero({ onStateChange }) {
           colTmp.lerpColors(n > 0.5 ? C_MID : C_BOT, n > 0.5 ? C_TOP : C_MID, n > 0.5 ? (n - 0.5) * 2 : n * 2)
           colTmp.multiplyScalar(0.35 + proximity * 0.65)
         } else {
-          colTmp.copy(C_IDLE).multiplyScalar(0.25 + Math.sin(t * 0.6 + i * 0.38) * 0.12)
+          colTmp.copy(C_IDLE).multiplyScalar(0.25 + Math.sin(elapsed * 0.6 + i * 0.38) * 0.12)
         }
         mesh.setColorAt(i, colTmp)
       }
@@ -240,13 +227,16 @@ export default function ParticleHero({ onStateChange }) {
     }
     window.addEventListener('resize', onResize)
 
-    animate()
-    runAfter(400, () => startSequence())
+    // Arrancar — pequeño delay para que el DOM esté listo
+    setTimeout(() => {
+      if (!alive) return
+      clock.start()
+      animate()
+    }, 300)
 
     return () => {
       alive = false
-      cancelCurrent()
-      cancelAnimationFrame(rafId)
+      if (rafId) cancelAnimationFrame(rafId)
       window.removeEventListener('resize', onResize)
       renderer.dispose(); geo.dispose(); mat.dispose()
       if (el.contains(renderer.domElement)) el.removeChild(renderer.domElement)
