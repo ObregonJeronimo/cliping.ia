@@ -1,112 +1,85 @@
 import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 
-// ─── Configuración ──────────────────────────────────────────────────────────
-const FONT_NAME        = 'system-ui, -apple-system, sans-serif'
-const TEXTURE_FONT_SIZE = 80   // tamaño en canvas — alto para buena calidad
-const FONT_SCALE       = 0.045 // factor canvas px → unidades 3D
-const SAMPLING_STEP    = 3     // 1 punto cada N píxeles
-const MAX_INSTANCES    = 4000
-const ITEMS = ['Hook', 'Problema', 'Features', 'Diferenciador', 'Beneficios', 'CTA']
+// ─── Config ──────────────────────────────────────────────────────────────────
+const FONT_SIZE    = 72      // tamaño canvas px
+const SCALE        = 0.032   // canvas px → unidades 3D  (más chico = texto más pequeño)
+const SAMPLE_STEP  = 3       // densidad de puntos
+const MAX          = 4000
+const ITEMS        = ['Hook', 'Problema', 'Features', 'Diferenciador', 'Beneficios', 'CTA']
 
-// ─── Samplear texto en canvas → coordenadas 2D (técnica Codrops) ─────────
-function sampleText(string) {
-  const lines          = string.split('\n')
-  const longestLine    = [...lines].sort((a, b) => b.length - a.length)[0]
-  const wTexture       = Math.ceil(TEXTURE_FONT_SIZE * 0.6 * longestLine.length + 40)
-  const hTexture       = Math.ceil(lines.length * TEXTURE_FONT_SIZE * 1.15 + 20)
-
-  const canvas = document.createElement('canvas')
-  canvas.width  = wTexture
-  canvas.height = hTexture
-  const ctx = canvas.getContext('2d')
-  if (!ctx) return { coords: [], wScene: 0, hScene: 0 }
-
-  ctx.clearRect(0, 0, wTexture, hTexture)
-  ctx.fillStyle  = '#fff'
-  ctx.font       = `bold ${TEXTURE_FONT_SIZE}px ${FONT_NAME}`
-  ctx.textAlign  = 'left'
-  ctx.textBaseline = 'top'
-
-  for (let i = 0; i < lines.length; i++) {
-    ctx.fillText(lines[i], 10, i * TEXTURE_FONT_SIZE * 1.15 + 10)
-  }
-
-  const imageData = ctx.getImageData(0, 0, wTexture, hTexture)
-  const coords    = []
-
-  for (let i = 0; i < hTexture; i += SAMPLING_STEP) {
-    for (let j = 0; j < wTexture; j += SAMPLING_STEP) {
-      // Canal alpha > 0 significa que hay texto ahí
-      if (imageData.data[(j + i * wTexture) * 4 + 3] > 128) {
-        coords.push({ x: j * FONT_SCALE, y: i * FONT_SCALE })
-      }
-    }
-  }
-
-  return {
-    coords,
-    wScene: wTexture * FONT_SCALE,
-    hScene: hTexture * FONT_SCALE,
-  }
-}
-
-// Convertir coordenadas canvas (top-left) a coordenadas 3D (centradas)
-function toVoxels(sampleResult) {
-  const { coords, wScene, hScene } = sampleResult
-  return coords.map(c => ({
-    x:  c.x - wScene / 2,
-    y: -(c.y - hScene / 2),  // invertir Y (canvas Y↓, Three.js Y↑)
-    z:  0,
-  }))
-}
-
-// ─── Samplear timeline ───────────────────────────────────────────────────────
-function sampleTimeline(items) {
-  const allCoords = []
-  const itemH     = TEXTURE_FONT_SIZE * 0.7   // altura por fila
-  const fontSz    = Math.round(TEXTURE_FONT_SIZE * 0.55)
-  const cW        = 420
-  const cH        = Math.ceil(items.length * itemH + 20)
-  const scaleFactor = FONT_SCALE * 0.85
+// ─── Canvas sampling (canal alpha, técnica correcta) ─────────────────────────
+function sampleString(string, fontSize, scale, step) {
+  const lines       = string.split('\n')
+  const longest     = [...lines].sort((a, b) => b.length - a.length)[0]
+  const cW          = Math.ceil(fontSize * 0.62 * longest.length + 32)
+  const cH          = Math.ceil(lines.length * fontSize * 1.2 + 16)
 
   const canvas = document.createElement('canvas')
   canvas.width  = cW
   canvas.height = cH
   const ctx = canvas.getContext('2d')
-  if (!ctx) return []
-
   ctx.clearRect(0, 0, cW, cH)
   ctx.fillStyle    = '#fff'
-  ctx.font         = `bold ${fontSz}px monospace`
+  ctx.font         = `bold ${fontSize}px system-ui, -apple-system, sans-serif`
   ctx.textAlign    = 'left'
   ctx.textBaseline = 'top'
 
-  items.forEach((it, i) => {
-    const label = (it.done ? '✓  ' : '○  ') + it.label
-    ctx.fillStyle = it.done ? '#fff' : 'rgba(255,255,255,0.6)'
-    ctx.fillText(label, 8, i * itemH + 10)
-  })
+  lines.forEach((line, i) => ctx.fillText(line, 8, i * fontSize * 1.2 + 8))
 
-  const imageData = ctx.getImageData(0, 0, cW, cH)
-  const step = 2
+  const img = ctx.getImageData(0, 0, cW, cH)
+  const pts = []
 
-  for (let i = 0; i < cH; i += step) {
-    for (let j = 0; j < cW; j += step) {
-      if (imageData.data[(j + i * cW) * 4 + 3] > 100) {
-        allCoords.push({
-          x: (j - cW / 2) * scaleFactor,
-          y:-(i - cH / 2) * scaleFactor,
+  for (let y = 0; y < cH; y += step)
+    for (let x = 0; x < cW; x += step)
+      if (img.data[(y * cW + x) * 4 + 3] > 128)   // canal alpha
+        pts.push({
+          x: (x - cW / 2) * scale,
+          y: -(y - cH / 2) * scale,
           z: 0,
         })
-      }
-    }
-  }
 
-  return allCoords
+  return pts
 }
 
-// ─── Componente principal ────────────────────────────────────────────────────
+function sampleTimeline(items) {
+  const fs   = 52
+  const sc   = 0.028
+  const step = 2
+  const cW   = 380
+  const rowH = fs * 1.3
+  const cH   = Math.ceil(items.length * rowH + 16)
+
+  const canvas = document.createElement('canvas')
+  canvas.width  = cW
+  canvas.height = cH
+  const ctx = canvas.getContext('2d')
+  ctx.clearRect(0, 0, cW, cH)
+  ctx.font         = `bold ${fs}px monospace`
+  ctx.textBaseline = 'top'
+  ctx.textAlign    = 'left'
+
+  items.forEach((it, i) => {
+    ctx.fillStyle = it.done ? 'rgba(255,255,255,1)' : 'rgba(255,255,255,0.45)'
+    ctx.fillText((it.done ? '✓  ' : '○  ') + it.label, 6, i * rowH + 8)
+  })
+
+  const img = ctx.getImageData(0, 0, cW, cH)
+  const pts = []
+
+  for (let y = 0; y < cH; y += step)
+    for (let x = 0; x < cW; x += step)
+      if (img.data[(y * cW + x) * 4 + 3] > 100)
+        pts.push({
+          x: (x - cW / 2) * sc,
+          y: -(y - cH / 2) * sc,
+          z: 0,
+        })
+
+  return pts
+}
+
+// ─── Componente ───────────────────────────────────────────────────────────────
 export default function ParticleHero({ onStateChange }) {
   const mountRef = useRef(null)
 
@@ -114,13 +87,11 @@ export default function ParticleHero({ onStateChange }) {
     const el = mountRef.current
     if (!el) return
 
-    // Pre-calcular voxels ANTES del renderer (evita conflicto de contextos WebGL)
-    const urlSample    = sampleText('misitio.com')
-    const promptSample = sampleText('Video profesional\ncon todas las herramientas')
-    const urlVoxels    = toVoxels(urlSample)
-    const promptVoxels = toVoxels(promptSample)
+    // Pre-calcular ANTES del renderer para evitar conflicto de contextos WebGL
+    const urlPts    = sampleString('misitio.com', FONT_SIZE, SCALE, SAMPLE_STEP)
+    const promptPts = sampleString('Video profesional\ncon todas las herramientas', FONT_SIZE * 0.72, SCALE, SAMPLE_STEP)
 
-    // ── Setup Three.js ─────────────────────────────────────────────────────
+    // ── Three.js setup ────────────────────────────────────────────────────
     const W = el.offsetWidth  || 700
     const H = el.offsetHeight || 650
 
@@ -131,98 +102,92 @@ export default function ParticleHero({ onStateChange }) {
 
     const scene = new THREE.Scene()
     const cam   = new THREE.PerspectiveCamera(50, W / H, 0.1, 200)
-    cam.position.z = 18
+    cam.position.z = 16
 
     // ── InstancedMesh ─────────────────────────────────────────────────────
+    // CRÍTICO: material blanco — los colores de instancia son multiplicativos
     const geo = new THREE.BoxGeometry(1, 1, 1)
-    const mat = new THREE.MeshBasicMaterial({ vertexColors: true })
-    const mesh = new THREE.InstancedMesh(geo, mat, MAX_INSTANCES)
+    const mat = new THREE.MeshBasicMaterial({ color: 0xffffff })
+    const mesh = new THREE.InstancedMesh(geo, mat, MAX)
     mesh.frustumCulled = false
 
-    // Colores por instancia via setColorAt
-    for (let i = 0; i < MAX_INSTANCES; i++) {
-      mesh.setColorAt(i, new THREE.Color(0x0a0f2a))
-    }
+    // Inicializar TODOS los colores antes del primer frame
+    const initCol = new THREE.Color(0x111830)
+    for (let i = 0; i < MAX; i++) mesh.setColorAt(i, initCol)
     mesh.instanceColor.needsUpdate = true
     scene.add(mesh)
 
     const dummy  = new THREE.Object3D()
     const colTmp = new THREE.Color()
 
-    // Posiciones base (scatter) distribuidas en esfera
-    const base = Array.from({ length: MAX_INSTANCES }, () => {
+    // Posiciones scatter base — esfera aplanada
+    const base = Array.from({ length: MAX }, () => {
       const theta = Math.random() * Math.PI * 2
       const phi   = Math.acos(2 * Math.random() - 1)
-      const r     = 6 + Math.random() * 8
+      const r     = 5 + Math.random() * 7
       return new THREE.Vector3(
         r * Math.sin(phi) * Math.cos(theta),
-        r * Math.sin(phi) * Math.sin(theta) * 0.65,
-        r * Math.cos(phi) * 0.4,
+        r * Math.sin(phi) * Math.sin(theta) * 0.55,
+        r * Math.cos(phi) * 0.35,
       )
     })
 
     const cur = base.map(v => v.clone())
     const tgt = base.map(v => v.clone())
-
     const state = { activeN: 0, forming: false }
 
-    function setTargets(voxels) {
-      state.activeN = Math.min(voxels.length, MAX_INSTANCES)
-      state.forming = voxels.length > 0
-      for (let i = 0; i < MAX_INSTANCES; i++) {
-        if (i < voxels.length) {
-          tgt[i].set(voxels[i].x, voxels[i].y, voxels[i].z ?? 0)
-        } else {
-          tgt[i].copy(base[i])
-        }
-      }
+    function setTargets(pts) {
+      state.activeN = Math.min(pts.length, MAX)
+      state.forming = pts.length > 0
+      for (let i = 0; i < MAX; i++)
+        tgt[i].set(
+          i < pts.length ? pts[i].x : base[i].x,
+          i < pts.length ? pts[i].y : base[i].y,
+          i < pts.length ? pts[i].z ?? 0 : base[i].z,
+        )
     }
 
-    // ── Ciclo de animación ─────────────────────────────────────────────────
+    // ── Ciclo ─────────────────────────────────────────────────────────────
     const timers = []
-    function wait(ms, fn) { timers.push(setTimeout(fn, ms)) }
+    const wait   = (ms, fn) => timers.push(setTimeout(fn, ms))
 
     function runCycle() {
-      setTargets(urlVoxels)
+      setTargets(urlPts)
       onStateChange?.('url')
 
       wait(3800, () => {
         setTargets([])
         wait(1400, () => {
-          setTargets(promptVoxels)
+          setTargets(promptPts)
           onStateChange?.('prompt')
-
           wait(4200, () => {
             setTargets([])
             wait(1300, () => {
               onStateChange?.('timeline')
               const items = ITEMS.map(l => ({ label: l, done: false }))
               setTargets(sampleTimeline(items))
-
               let idx = 0
-              function nextItem() {
+              function tick() {
                 if (idx > 0) items[idx - 1].done = true
                 idx++
                 setTargets(sampleTimeline(items))
-                if (idx <= ITEMS.length) {
-                  wait(1000, nextItem)
-                } else {
-                  wait(2600, () => { setTargets([]); wait(1400, runCycle) })
-                }
+                if (idx <= ITEMS.length) wait(1000, tick)
+                else wait(2600, () => { setTargets([]); wait(1400, runCycle) })
               }
-              wait(500, nextItem)
+              wait(600, tick)
             })
           })
         })
       })
     }
 
-    // ── Paleta de colores ──────────────────────────────────────────────────
-    const COL_TOP    = new THREE.Color(0xe8f0ff)  // blanco-azul
-    const COL_BOTTOM = new THREE.Color(0x6070c8)  // azul-violeta
-    const COL_IDLE   = new THREE.Color(0x0d1540)  // casi negro, azul muy oscuro
+    // ── Paleta ────────────────────────────────────────────────────────────
+    const C_TOP  = new THREE.Color(0xffffff)   // blanco puro arriba
+    const C_MID  = new THREE.Color(0xa0b8ff)   // azul claro centro
+    const C_BOT  = new THREE.Color(0x5060c8)   // azul-violeta abajo
+    const C_IDLE = new THREE.Color(0x1a2550)   // azul oscuro partículas fondo
 
-    // ── Render loop ────────────────────────────────────────────────────────
+    // ── Render loop ───────────────────────────────────────────────────────
     let t = 0, alive = true, rafId
 
     function animate() {
@@ -230,59 +195,66 @@ export default function ParticleHero({ onStateChange }) {
       rafId = requestAnimationFrame(animate)
       t += 0.016
 
-      const spd = state.forming ? 0.08 : 0.028
+      const spd = state.forming ? 0.085 : 0.028
 
-      for (let i = 0; i < MAX_INSTANCES; i++) {
+      for (let i = 0; i < MAX; i++) {
         const c = cur[i], g = tgt[i]
         c.lerp(g, spd)
 
         if (!state.forming) {
-          c.x += Math.sin(t * 0.45 + i * 0.29) * 0.0018
-          c.y += Math.cos(t * 0.38 + i * 0.23) * 0.0018
-          c.z += Math.sin(t * 0.25 + i * 0.17) * 0.0008
+          c.x += Math.sin(t * 0.42 + i * 0.28) * 0.0015
+          c.y += Math.cos(t * 0.35 + i * 0.22) * 0.0015
+          c.z += Math.sin(t * 0.23 + i * 0.16) * 0.0007
         }
 
         dummy.position.copy(c)
 
         const isActive  = i < state.activeN && state.forming
         const dist      = c.distanceTo(g)
-        const proximity = Math.max(0, 1 - dist * 0.6)
+        const proximity = Math.max(0, 1 - dist * 0.5)   // 0→1 cuando llega
 
-        // Escala — activos más grandes, inactivos mínimos
         const sc = isActive
-          ? 0.082 + proximity * 0.06
-          : 0.010 + Math.random() * 0.003
+          ? 0.078 + proximity * 0.055    // cubos activos grandes al llegar
+          : 0.009 + Math.random() * 0.003 // fondo muy pequeño
 
         dummy.scale.setScalar(sc)
-        dummy.rotation.x = t * 0.15 + i * 0.019
-        dummy.rotation.y = t * 0.11 + i * 0.013
+        dummy.rotation.x = t * 0.14 + i * 0.018
+        dummy.rotation.y = t * 0.10 + i * 0.012
         dummy.updateMatrix()
         mesh.setMatrixAt(i, dummy.matrix)
 
-        // Color
+        // ── Color por instancia ──────────────────────────────────────────
         if (isActive) {
-          const normY  = Math.max(0, Math.min(1, (c.y + 2.5) / 5))
-          colTmp.lerpColors(COL_BOTTOM, COL_TOP, normY)
-          const brightness = 0.5 + proximity * 0.5
+          // Gradiente vertical: blanco arriba → azul-violeta abajo
+          // Rango Y activo aprox -2 a +2 unidades
+          const normY = Math.max(0, Math.min(1, (c.y + 2.2) / 4.4))
+          if (normY > 0.5) {
+            colTmp.lerpColors(C_MID, C_TOP, (normY - 0.5) * 2)
+          } else {
+            colTmp.lerpColors(C_BOT, C_MID, normY * 2)
+          }
+          // Brillo: opaco cuando llega a destino, tenue cuando viaja
+          const brightness = 0.35 + proximity * 0.65
           colTmp.multiplyScalar(brightness)
         } else {
-          const pulse = 0.3 + Math.sin(t * 0.7 + i * 0.4) * 0.15
-          colTmp.copy(COL_IDLE).multiplyScalar(pulse)
+          // Partículas de fondo: pulso suave, muy oscuras
+          const pulse = 0.25 + Math.sin(t * 0.6 + i * 0.38) * 0.12
+          colTmp.copy(C_IDLE).multiplyScalar(pulse)
         }
+
         mesh.setColorAt(i, colTmp)
       }
 
       mesh.instanceMatrix.needsUpdate = true
-      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true
+      mesh.instanceColor.needsUpdate  = true
       renderer.render(scene, cam)
     }
 
-    // ── Resize ─────────────────────────────────────────────────────────────
+    // ── Resize ────────────────────────────────────────────────────────────
     const onResize = () => {
       const W2 = el.offsetWidth, H2 = el.offsetHeight
       if (!W2 || !H2) return
-      cam.aspect = W2 / H2
-      cam.updateProjectionMatrix()
+      cam.aspect = W2 / H2; cam.updateProjectionMatrix()
       renderer.setSize(W2, H2)
     }
     window.addEventListener('resize', onResize)
@@ -296,14 +268,10 @@ export default function ParticleHero({ onStateChange }) {
       clearTimeout(startId)
       timers.forEach(clearTimeout)
       window.removeEventListener('resize', onResize)
-      renderer.dispose()
-      geo.dispose()
-      mat.dispose()
+      renderer.dispose(); geo.dispose(); mat.dispose()
       if (el.contains(renderer.domElement)) el.removeChild(renderer.domElement)
     }
   }, [onStateChange])
 
-  return (
-    <div ref={mountRef} style={{ width: '100%', height: '100%', minHeight: '650px' }} />
-  )
+  return <div ref={mountRef} style={{ width: '100%', height: '100%', minHeight: '650px' }} />
 }
