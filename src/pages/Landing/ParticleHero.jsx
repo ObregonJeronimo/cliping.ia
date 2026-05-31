@@ -1,105 +1,112 @@
 import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 
-// ─── Samplear texto via canvas 2D ──────────────────────────────────────────
-// IMPORTANTE: crear el canvas ANTES del WebGLRenderer para evitar conflicto de contextos
-function sampleText(text, options = {}) {
-  const {
-    fontSize = 48,
-    fontFamily = 'monospace',
-    canvasW = 512,
-    canvasH = 128,
-    step = 3,        // tomar 1 px de cada N — controla la densidad
-  } = options
+// ─── Configuración ──────────────────────────────────────────────────────────
+const FONT_NAME        = 'system-ui, -apple-system, sans-serif'
+const TEXTURE_FONT_SIZE = 80   // tamaño en canvas — alto para buena calidad
+const FONT_SCALE       = 0.045 // factor canvas px → unidades 3D
+const SAMPLING_STEP    = 3     // 1 punto cada N píxeles
+const MAX_INSTANCES    = 4000
+const ITEMS = ['Hook', 'Problema', 'Features', 'Diferenciador', 'Beneficios', 'CTA']
 
-  const c = document.createElement('canvas')
-  c.width  = canvasW
-  c.height = canvasH
-  const ctx = c.getContext('2d')
-  if (!ctx) return []
+// ─── Samplear texto en canvas → coordenadas 2D (técnica Codrops) ─────────
+function sampleText(string) {
+  const lines          = string.split('\n')
+  const longestLine    = [...lines].sort((a, b) => b.length - a.length)[0]
+  const wTexture       = Math.ceil(TEXTURE_FONT_SIZE * 0.6 * longestLine.length + 40)
+  const hTexture       = Math.ceil(lines.length * TEXTURE_FONT_SIZE * 1.15 + 20)
 
-  ctx.fillStyle = '#000'
-  ctx.fillRect(0, 0, canvasW, canvasH)
-  ctx.fillStyle = '#fff'
-  ctx.font = `bold ${fontSize}px ${fontFamily}`
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'middle'
+  const canvas = document.createElement('canvas')
+  canvas.width  = wTexture
+  canvas.height = hTexture
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return { coords: [], wScene: 0, hScene: 0 }
 
-  const lines = text.split('\n')
-  const lineH = canvasH / lines.length
-  lines.forEach((line, i) =>
-    ctx.fillText(line, canvasW / 2, lineH * i + lineH / 2, canvasW - 16)
-  )
+  ctx.clearRect(0, 0, wTexture, hTexture)
+  ctx.fillStyle  = '#fff'
+  ctx.font       = `bold ${TEXTURE_FONT_SIZE}px ${FONT_NAME}`
+  ctx.textAlign  = 'left'
+  ctx.textBaseline = 'top'
 
-  const data = ctx.getImageData(0, 0, canvasW, canvasH).data
-  const pts  = []
-  for (let y = 0; y < canvasH; y += step)
-    for (let x = 0; x < canvasW; x += step)
-      if (data[(y * canvasW + x) * 4] > 120)
-        pts.push([
-          (x - canvasW / 2) * 0.028,
-          -(y - canvasH / 2) * 0.028,
-          0,
-        ])
-  return pts
-}
+  for (let i = 0; i < lines.length; i++) {
+    ctx.fillText(lines[i], 10, i * TEXTURE_FONT_SIZE * 1.15 + 10)
+  }
 
-function sampleTimeline(items) {
-  const pts   = []
-  const lh    = 3.6  // separación vertical entre ítems
-  const startY = ((items.length - 1) / 2) * lh
-  const cW    = 300
-  const cH    = 22
+  const imageData = ctx.getImageData(0, 0, wTexture, hTexture)
+  const coords    = []
 
-  items.forEach((it, i) => {
-    const label = (it.done ? '✓ ' : '○ ') + it.label
-    const c = document.createElement('canvas')
-    c.width  = cW
-    c.height = cH
-    const ctx = c.getContext('2d')
-    ctx.fillStyle = '#000'
-    ctx.fillRect(0, 0, cW, cH)
-    ctx.fillStyle = '#fff'
-    ctx.font = `bold 14px monospace`
-    ctx.textAlign = 'left'
-    ctx.textBaseline = 'middle'
-    ctx.fillText(label, 4, cH / 2, cW - 8)
+  for (let i = 0; i < hTexture; i += SAMPLING_STEP) {
+    for (let j = 0; j < wTexture; j += SAMPLING_STEP) {
+      // Canal alpha > 0 significa que hay texto ahí
+      if (imageData.data[(j + i * wTexture) * 4 + 3] > 128) {
+        coords.push({ x: j * FONT_SCALE, y: i * FONT_SCALE })
+      }
+    }
+  }
 
-    const data = ctx.getImageData(0, 0, cW, cH).data
-    const y0   = startY - i * lh
-    for (let py = 0; py < cH; py += 2)
-      for (let px = 0; px < cW; px += 2)
-        if (data[(py * cW + px) * 4] > 120)
-          pts.push([
-            (px - cW / 2) * 0.032,
-            y0 - (py - cH / 2) * 0.032,
-            0,
-          ])
-  })
-  return pts
-}
-
-// Pre-calcular todos los voxels ANTES de crear el renderer
-function precomputeVoxels() {
   return {
-    url: sampleText('misitio.com', {
-      fontSize: 52, canvasW: 480, canvasH: 80, step: 2,
-    }),
-    prompt: sampleText('Video profesional\ncon todas las herramientas', {
-      fontSize: 36, canvasW: 480, canvasH: 120, step: 2,
-    }),
+    coords,
+    wScene: wTexture * FONT_SCALE,
+    hScene: hTexture * FONT_SCALE,
   }
 }
 
-// ─── Constantes ─────────────────────────────────────────────────────────────
-const MAX   = 4000
-const ITEMS = ['Hook', 'Problema', 'Features', 'Diferenciador', 'Beneficios', 'CTA']
+// Convertir coordenadas canvas (top-left) a coordenadas 3D (centradas)
+function toVoxels(sampleResult) {
+  const { coords, wScene, hScene } = sampleResult
+  return coords.map(c => ({
+    x:  c.x - wScene / 2,
+    y: -(c.y - hScene / 2),  // invertir Y (canvas Y↓, Three.js Y↑)
+    z:  0,
+  }))
+}
 
-// Paleta de colores
-const COL_ACTIVE_TOP    = new THREE.Color(0xd0e0ff)  // blanco-azul brillante
-const COL_ACTIVE_BOTTOM = new THREE.Color(0x7080d0)  // azul-violeta
-const COL_IDLE          = new THREE.Color(0x1e2240)  // casi invisible, azul oscuro
+// ─── Samplear timeline ───────────────────────────────────────────────────────
+function sampleTimeline(items) {
+  const allCoords = []
+  const itemH     = TEXTURE_FONT_SIZE * 0.7   // altura por fila
+  const fontSz    = Math.round(TEXTURE_FONT_SIZE * 0.55)
+  const cW        = 420
+  const cH        = Math.ceil(items.length * itemH + 20)
+  const scaleFactor = FONT_SCALE * 0.85
 
+  const canvas = document.createElement('canvas')
+  canvas.width  = cW
+  canvas.height = cH
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return []
+
+  ctx.clearRect(0, 0, cW, cH)
+  ctx.fillStyle    = '#fff'
+  ctx.font         = `bold ${fontSz}px monospace`
+  ctx.textAlign    = 'left'
+  ctx.textBaseline = 'top'
+
+  items.forEach((it, i) => {
+    const label = (it.done ? '✓  ' : '○  ') + it.label
+    ctx.fillStyle = it.done ? '#fff' : 'rgba(255,255,255,0.6)'
+    ctx.fillText(label, 8, i * itemH + 10)
+  })
+
+  const imageData = ctx.getImageData(0, 0, cW, cH)
+  const step = 2
+
+  for (let i = 0; i < cH; i += step) {
+    for (let j = 0; j < cW; j += step) {
+      if (imageData.data[(j + i * cW) * 4 + 3] > 100) {
+        allCoords.push({
+          x: (j - cW / 2) * scaleFactor,
+          y:-(i - cH / 2) * scaleFactor,
+          z: 0,
+        })
+      }
+    }
+  }
+
+  return allCoords
+}
+
+// ─── Componente principal ────────────────────────────────────────────────────
 export default function ParticleHero({ onStateChange }) {
   const mountRef = useRef(null)
 
@@ -107,58 +114,50 @@ export default function ParticleHero({ onStateChange }) {
     const el = mountRef.current
     if (!el) return
 
-    // ── 1. Pre-calcular voxels ANTES del renderer ──────────────────────────
-    const voxels = precomputeVoxels()
+    // Pre-calcular voxels ANTES del renderer (evita conflicto de contextos WebGL)
+    const urlSample    = sampleText('misitio.com')
+    const promptSample = sampleText('Video profesional\ncon todas las herramientas')
+    const urlVoxels    = toVoxels(urlSample)
+    const promptVoxels = toVoxels(promptSample)
 
-    // ── 2. Setup Three.js ──────────────────────────────────────────────────
+    // ── Setup Three.js ─────────────────────────────────────────────────────
     const W = el.offsetWidth  || 700
     const H = el.offsetHeight || 650
 
-    const renderer = new THREE.WebGLRenderer({
-      antialias: false,
-      alpha: true,
-      powerPreference: 'high-performance',
-    })
+    const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true, powerPreference: 'high-performance' })
     renderer.setSize(W, H)
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
     el.appendChild(renderer.domElement)
 
     const scene = new THREE.Scene()
-    const cam   = new THREE.PerspectiveCamera(50, W / H, 0.1, 100)
-    cam.position.z = 16
+    const cam   = new THREE.PerspectiveCamera(50, W / H, 0.1, 200)
+    cam.position.z = 18
 
-    // ── 3. InstancedMesh con colores por instancia ─────────────────────────
+    // ── InstancedMesh ─────────────────────────────────────────────────────
     const geo = new THREE.BoxGeometry(1, 1, 1)
     const mat = new THREE.MeshBasicMaterial({ vertexColors: true })
-
-    const mesh = new THREE.InstancedMesh(geo, mat, MAX)
+    const mesh = new THREE.InstancedMesh(geo, mat, MAX_INSTANCES)
     mesh.frustumCulled = false
 
-    // Buffer de colores (RGB por instancia)
-    const colorBuf = new Float32Array(MAX * 3)
-    const colorAttr = new THREE.InstancedBufferAttribute(colorBuf, 3)
-    mesh.geometry.setAttribute('color', colorAttr)
-
-    // Inicializar color idle
-    for (let i = 0; i < MAX; i++) {
-      colorBuf[i * 3]     = COL_IDLE.r
-      colorBuf[i * 3 + 1] = COL_IDLE.g
-      colorBuf[i * 3 + 2] = COL_IDLE.b
+    // Colores por instancia via setColorAt
+    for (let i = 0; i < MAX_INSTANCES; i++) {
+      mesh.setColorAt(i, new THREE.Color(0x0a0f2a))
     }
-
+    mesh.instanceColor.needsUpdate = true
     scene.add(mesh)
 
-    const dummy = new THREE.Object3D()
+    const dummy  = new THREE.Object3D()
+    const colTmp = new THREE.Color()
 
-    // Posiciones scatter base — distribución más densa al centro
-    const base = Array.from({ length: MAX }, (_, i) => {
-      const r = 0.4 + Math.random() * 0.6
+    // Posiciones base (scatter) distribuidas en esfera
+    const base = Array.from({ length: MAX_INSTANCES }, () => {
       const theta = Math.random() * Math.PI * 2
       const phi   = Math.acos(2 * Math.random() - 1)
+      const r     = 6 + Math.random() * 8
       return new THREE.Vector3(
-        r * 14 * Math.sin(phi) * Math.cos(theta),
-        r * 9  * Math.sin(phi) * Math.sin(theta),
-        r * 6  * Math.cos(phi),
+        r * Math.sin(phi) * Math.cos(theta),
+        r * Math.sin(phi) * Math.sin(theta) * 0.65,
+        r * Math.cos(phi) * 0.4,
       )
     })
 
@@ -166,51 +165,38 @@ export default function ParticleHero({ onStateChange }) {
     const tgt = base.map(v => v.clone())
 
     const state = { activeN: 0, forming: false }
-    const tmpC  = new THREE.Color()
 
-    function setTargets(pts) {
-      state.activeN = Math.min(pts.length, MAX)
-      state.forming = pts.length > 0
-      for (let i = 0; i < MAX; i++) {
-        if (i < pts.length) {
-          tgt[i].set(pts[i][0], pts[i][1], pts[i][2])
+    function setTargets(voxels) {
+      state.activeN = Math.min(voxels.length, MAX_INSTANCES)
+      state.forming = voxels.length > 0
+      for (let i = 0; i < MAX_INSTANCES; i++) {
+        if (i < voxels.length) {
+          tgt[i].set(voxels[i].x, voxels[i].y, voxels[i].z ?? 0)
         } else {
           tgt[i].copy(base[i])
         }
       }
     }
 
-    // ── 4. Secuencia de estados ────────────────────────────────────────────
+    // ── Ciclo de animación ─────────────────────────────────────────────────
     const timers = []
-    function wait(ms, fn) {
-      const id = setTimeout(fn, ms)
-      timers.push(id)
-    }
+    function wait(ms, fn) { timers.push(setTimeout(fn, ms)) }
 
     function runCycle() {
-      // Estado 1 — URL
-      setTargets(voxels.url)
+      setTargets(urlVoxels)
       onStateChange?.('url')
 
-      wait(3600, () => {
-        // Scatter
+      wait(3800, () => {
         setTargets([])
-
-        wait(1500, () => {
-          // Estado 2 — Prompt
-          setTargets(voxels.prompt)
+        wait(1400, () => {
+          setTargets(promptVoxels)
           onStateChange?.('prompt')
 
-          wait(4000, () => {
-            // Scatter
+          wait(4200, () => {
             setTargets([])
-
             wait(1300, () => {
-              // Estado 3 — Timeline
               onStateChange?.('timeline')
               const items = ITEMS.map(l => ({ label: l, done: false }))
-
-              // Calcular timeline voxels aquí para tener los items frescos
               setTargets(sampleTimeline(items))
 
               let idx = 0
@@ -219,13 +205,9 @@ export default function ParticleHero({ onStateChange }) {
                 idx++
                 setTargets(sampleTimeline(items))
                 if (idx <= ITEMS.length) {
-                  wait(1100, nextItem)
+                  wait(1000, nextItem)
                 } else {
-                  // Todos completos
-                  wait(2500, () => {
-                    setTargets([])
-                    wait(1400, runCycle)
-                  })
+                  wait(2600, () => { setTargets([]); wait(1400, runCycle) })
                 }
               }
               wait(500, nextItem)
@@ -235,7 +217,12 @@ export default function ParticleHero({ onStateChange }) {
       })
     }
 
-    // ── 5. Render loop ─────────────────────────────────────────────────────
+    // ── Paleta de colores ──────────────────────────────────────────────────
+    const COL_TOP    = new THREE.Color(0xe8f0ff)  // blanco-azul
+    const COL_BOTTOM = new THREE.Color(0x6070c8)  // azul-violeta
+    const COL_IDLE   = new THREE.Color(0x0d1540)  // casi negro, azul muy oscuro
+
+    // ── Render loop ────────────────────────────────────────────────────────
     let t = 0, alive = true, rafId
 
     function animate() {
@@ -243,65 +230,54 @@ export default function ParticleHero({ onStateChange }) {
       rafId = requestAnimationFrame(animate)
       t += 0.016
 
-      const spd = state.forming ? 0.075 : 0.032
+      const spd = state.forming ? 0.08 : 0.028
 
-      for (let i = 0; i < MAX; i++) {
+      for (let i = 0; i < MAX_INSTANCES; i++) {
         const c = cur[i], g = tgt[i]
-
-        // Lerp posición
         c.lerp(g, spd)
 
-        // Wiggle cuando disperso
         if (!state.forming) {
-          c.x += Math.sin(t * 0.5 + i * 0.31) * 0.002
-          c.y += Math.cos(t * 0.4 + i * 0.27) * 0.002
-          c.z += Math.sin(t * 0.3 + i * 0.19) * 0.001
+          c.x += Math.sin(t * 0.45 + i * 0.29) * 0.0018
+          c.y += Math.cos(t * 0.38 + i * 0.23) * 0.0018
+          c.z += Math.sin(t * 0.25 + i * 0.17) * 0.0008
         }
 
         dummy.position.copy(c)
 
         const isActive  = i < state.activeN && state.forming
         const dist      = c.distanceTo(g)
-        const proximity = Math.max(0, 1 - dist * 0.8)
+        const proximity = Math.max(0, 1 - dist * 0.6)
 
-        // Escala: activos más grandes, inactivos casi invisibles
+        // Escala — activos más grandes, inactivos mínimos
         const sc = isActive
-          ? 0.072 + proximity * 0.05
-          : 0.012 + Math.random() * 0.004
+          ? 0.082 + proximity * 0.06
+          : 0.010 + Math.random() * 0.003
 
         dummy.scale.setScalar(sc)
-
-        // Rotación más lenta y orgánica
-        dummy.rotation.x = t * 0.18 + i * 0.021
-        dummy.rotation.y = t * 0.13 + i * 0.017
+        dummy.rotation.x = t * 0.15 + i * 0.019
+        dummy.rotation.y = t * 0.11 + i * 0.013
         dummy.updateMatrix()
         mesh.setMatrixAt(i, dummy.matrix)
 
-        // Color por instancia
-        // Activos: gradiente vertical top=blanco-azul / bottom=azul-violeta
-        // Inactivos: azul muy oscuro
+        // Color
         if (isActive) {
-          const normY  = Math.max(0, Math.min(1, (c.y + 3) / 6))
-          tmpC.lerpColors(COL_ACTIVE_BOTTOM, COL_ACTIVE_TOP, normY)
-          // Ajustar brillo por proximidad
-          colorBuf[i * 3]     = tmpC.r * (0.4 + proximity * 0.6)
-          colorBuf[i * 3 + 1] = tmpC.g * (0.4 + proximity * 0.6)
-          colorBuf[i * 3 + 2] = tmpC.b * (0.4 + proximity * 0.6)
+          const normY  = Math.max(0, Math.min(1, (c.y + 2.5) / 5))
+          colTmp.lerpColors(COL_BOTTOM, COL_TOP, normY)
+          const brightness = 0.5 + proximity * 0.5
+          colTmp.multiplyScalar(brightness)
         } else {
-          // Partículas de fondo: pulsan suavemente
-          const pulse = 0.08 + Math.sin(t * 0.8 + i * 0.5) * 0.04
-          colorBuf[i * 3]     = COL_IDLE.r * pulse * 6
-          colorBuf[i * 3 + 1] = COL_IDLE.g * pulse * 6
-          colorBuf[i * 3 + 2] = COL_IDLE.b * pulse * 6
+          const pulse = 0.3 + Math.sin(t * 0.7 + i * 0.4) * 0.15
+          colTmp.copy(COL_IDLE).multiplyScalar(pulse)
         }
+        mesh.setColorAt(i, colTmp)
       }
 
       mesh.instanceMatrix.needsUpdate = true
-      colorAttr.needsUpdate           = true
+      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true
       renderer.render(scene, cam)
     }
 
-    // ── 6. Resize ──────────────────────────────────────────────────────────
+    // ── Resize ─────────────────────────────────────────────────────────────
     const onResize = () => {
       const W2 = el.offsetWidth, H2 = el.offsetHeight
       if (!W2 || !H2) return
@@ -311,7 +287,6 @@ export default function ParticleHero({ onStateChange }) {
     }
     window.addEventListener('resize', onResize)
 
-    // ── Arrancar ───────────────────────────────────────────────────────────
     animate()
     const startId = setTimeout(runCycle, 300)
 
@@ -324,15 +299,11 @@ export default function ParticleHero({ onStateChange }) {
       renderer.dispose()
       geo.dispose()
       mat.dispose()
-      if (el.contains(renderer.domElement))
-        el.removeChild(renderer.domElement)
+      if (el.contains(renderer.domElement)) el.removeChild(renderer.domElement)
     }
   }, [onStateChange])
 
   return (
-    <div
-      ref={mountRef}
-      style={{ width: '100%', height: '100%', minHeight: '650px' }}
-    />
+    <div ref={mountRef} style={{ width: '100%', height: '100%', minHeight: '650px' }} />
   )
 }
