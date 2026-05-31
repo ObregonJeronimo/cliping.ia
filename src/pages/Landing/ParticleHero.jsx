@@ -9,10 +9,12 @@ function textToVoxels(text, gw, gh, fs) {
     const c = document.createElement('canvas')
     c.width = gw; c.height = gh
     const cx = c.getContext('2d')
-    cx.fillStyle = '#000'; cx.fillRect(0, 0, gw, gh)
+    cx.fillStyle = '#000'
+    cx.fillRect(0, 0, gw, gh)
     cx.fillStyle = '#fff'
     cx.font = `bold ${fs}px monospace`
-    cx.textAlign = 'center'; cx.textBaseline = 'middle'
+    cx.textAlign = 'center'
+    cx.textBaseline = 'middle'
     const lines = text.split('\n')
     const lh = gh / lines.length
     lines.forEach((l, i) => cx.fillText(l, gw / 2, lh * i + lh / 2, gw - 6))
@@ -27,7 +29,10 @@ function textToVoxels(text, gw, gh, fs) {
             0
           ))
     return pts
-  } catch (e) { return [] }
+  } catch (e) {
+    console.error('textToVoxels error:', e)
+    return []
+  }
 }
 
 function tlVoxels(items) {
@@ -67,7 +72,6 @@ export default function ParticleHero({ onStateChange }) {
     const W = el.offsetWidth || 600
     const H = el.offsetHeight || 600
 
-    // ── Renderer ──────────────────────────────────────────────────────────
     const renderer = new THREE.WebGLRenderer({
       antialias: false, alpha: true, powerPreference: 'high-performance'
     })
@@ -79,7 +83,6 @@ export default function ParticleHero({ onStateChange }) {
     const cam = new THREE.PerspectiveCamera(52, W / H, 0.1, 100)
     cam.position.z = 14
 
-    // ── InstancedMesh ─────────────────────────────────────────────────────
     const geo = new THREE.BoxGeometry(1, 1, 1)
     const mat = new THREE.MeshBasicMaterial({ color: 0xdce6ff })
     const mesh = new THREE.InstancedMesh(geo, mat, MAX)
@@ -87,136 +90,119 @@ export default function ParticleHero({ onStateChange }) {
     scene.add(mesh)
 
     const dummy = new THREE.Object3D()
-
-    // Posiciones iniciales aleatorias
     const cur = Array.from({ length: MAX }, () =>
       new THREE.Vector3(
         (Math.random() - .5) * 20,
         (Math.random() - .5) * 12,
         (Math.random() - .5) * 6
-      )
-    )
+      ))
     const tgt = cur.map(v => v.clone())
     const base = cur.map(v => v.clone())
-    let activeN = 0
-    let forming = false
 
-    // ── Helpers ───────────────────────────────────────────────────────────
+    // Estado mutable via ref para que el render loop siempre lea el valor actual
+    const state = { activeN: 0, forming: false }
+
     function setTargets(pts) {
-      activeN = Math.min(pts.length, MAX)
+      state.activeN = Math.min(pts.length, MAX)
       for (let i = 0; i < MAX; i++)
         tgt[i].copy(i < pts.length ? pts[i] : base[i])
-      forming = pts.length > 0
+      state.forming = pts.length > 0
     }
 
-    function scatter() {
-      setTargets([])
-      onStateChange?.('scatter')
-    }
-
-    // ── Secuencia de animación ─────────────────────────────────────────────
-    // Usamos un scheduler simple con delay absoluto desde el inicio del ciclo
-    let cycleStart = 0
+    // Secuencia con delays RELATIVOS encadenados (chain de setTimeout)
     const timers = []
-
-    function at(ms, fn) {
-      const id = setTimeout(fn, cycleStart + ms - Date.now())
+    function wait(ms, fn) {
+      const id = setTimeout(fn, ms)
       timers.push(id)
     }
 
-    function cycle() {
-      timers.forEach(clearTimeout)
-      timers.length = 0
-      cycleStart = Date.now()
-
-      // t=0 — URL
-      setTargets(textToVoxels('misitio.com', 120, 28, 22))
+    function runCycle() {
+      // Paso 1: mostrar URL (inmediato)
+      const urlPts = textToVoxels('misitio.com', 120, 28, 22)
+      console.log('[hero] url voxels:', urlPts.length)
+      setTargets(urlPts)
       onStateChange?.('url')
 
-      // t=3.4s — scatter
-      at(3400, () => scatter())
+      // Paso 2: scatter a t=3400
+      wait(3400, () => {
+        setTargets([])
+        onStateChange?.('scatter')
 
-      // t=5.0s — prompt
-      at(5000, () => {
-        setTargets(textToVoxels(
-          'Video profesional\ncon todas las herramientas',
-          120, 42, 14
-        ))
-        onStateChange?.('prompt')
-      })
+        // Paso 3: prompt a t=3400+1600=5000
+        wait(1600, () => {
+          const promptPts = textToVoxels(
+            'Video profesional\ncon todas las herramientas',
+            120, 42, 14
+          )
+          console.log('[hero] prompt voxels:', promptPts.length)
+          setTargets(promptPts)
+          onStateChange?.('prompt')
 
-      // t=9.0s — scatter
-      at(9000, () => scatter())
+          // Paso 4: scatter a t=5000+4000=9000
+          wait(4000, () => {
+            setTargets([])
+            onStateChange?.('scatter')
 
-      // t=10.4s — timeline, construyendo ítem a ítem
-      at(10400, () => {
-        onStateChange?.('timeline')
-        const items = ITEMS.map(l => ({ label: l, done: false }))
+            // Paso 5: timeline a t=9000+1400=10400
+            wait(1400, () => {
+              onStateChange?.('timeline')
+              const items = ITEMS.map(l => ({ label: l, done: false }))
+              setTargets(tlVoxels(items))
+              console.log('[hero] timeline voxels:', tlVoxels(items).length)
 
-        // Mostrar todos sin completar al inicio
-        setTargets(tlVoxels(items))
-
-        // Completar uno a uno
-        ITEMS.forEach((_, idx) => {
-          setTimeout(() => {
-            if (idx > 0) items[idx - 1].done = true
-            setTargets(tlVoxels(items))
-          }, 600 + idx * 1100)
+              // Completar ítems uno a uno, encadenados
+              let itemIdx = 0
+              function nextItem() {
+                if (itemIdx > 0) items[itemIdx - 1].done = true
+                itemIdx++
+                setTargets(tlVoxels(items))
+                if (itemIdx <= ITEMS.length) {
+                  wait(1100, nextItem)
+                } else {
+                  // Todos completos — esperar y reiniciar
+                  wait(2400, () => {
+                    setTargets([])
+                    wait(1400, runCycle)
+                  })
+                }
+              }
+              wait(600, nextItem)
+            })
+          })
         })
-
-        // Marcar el último
-        setTimeout(() => {
-          items[ITEMS.length - 1].done = true
-          setTargets(tlVoxels(items))
-        }, 600 + ITEMS.length * 1100)
       })
-
-      // t=total — reiniciar
-      const total = 10400 + 600 + ITEMS.length * 1100 + 2600
-      at(total, () => scatter())
-      at(total + 1400, () => cycle())
     }
 
-    // ── Render loop ───────────────────────────────────────────────────────
-    let t = 0
-    let alive = true
-    let rafId
-
+    // Render loop
+    let t = 0, alive = true, rafId
     function animate() {
       if (!alive) return
       rafId = requestAnimationFrame(animate)
       t += 0.016
 
-      const spd = forming ? 0.07 : 0.035
-
+      const spd = state.forming ? 0.07 : 0.035
       for (let i = 0; i < MAX; i++) {
         const c = cur[i], g = tgt[i]
         c.lerp(g, spd)
-
-        if (!forming) {
+        if (!state.forming) {
           c.x += Math.sin(t * 0.6 + i * 0.3) * 0.0025
           c.y += Math.cos(t * 0.45 + i * 0.26) * 0.0025
         }
-
         dummy.position.copy(c)
-
-        const isActive = i < activeN && forming
+        const isActive = i < state.activeN && state.forming
         const dist = c.distanceTo(g)
         const prox = Math.max(0, 1 - dist)
         const sc = isActive ? 0.068 + prox * 0.042 : 0.016 + Math.random() * 0.005
-
         dummy.scale.setScalar(sc)
         dummy.rotation.x = t * 0.2 + i * 0.018
         dummy.rotation.y = t * 0.15 + i * 0.013
         dummy.updateMatrix()
         mesh.setMatrixAt(i, dummy.matrix)
       }
-
       mesh.instanceMatrix.needsUpdate = true
       renderer.render(scene, cam)
     }
 
-    // ── Resize ────────────────────────────────────────────────────────────
     const onResize = () => {
       const W2 = el.offsetWidth, H2 = el.offsetHeight
       if (!W2 || !H2) return
@@ -226,11 +212,10 @@ export default function ParticleHero({ onStateChange }) {
     }
     window.addEventListener('resize', onResize)
 
-    // ── Arrancar ──────────────────────────────────────────────────────────
     animate()
-    const startId = setTimeout(cycle, 300)
+    // Pequeño delay para asegurar que el DOM está listo
+    const startId = setTimeout(runCycle, 500)
 
-    // ── Cleanup ───────────────────────────────────────────────────────────
     return () => {
       alive = false
       cancelAnimationFrame(rafId)
@@ -245,9 +230,6 @@ export default function ParticleHero({ onStateChange }) {
   }, [onStateChange])
 
   return (
-    <div
-      ref={mountRef}
-      style={{ width: '100%', height: '100%', minHeight: '600px' }}
-    />
+    <div ref={mountRef} style={{ width: '100%', height: '100%', minHeight: '600px' }} />
   )
 }
