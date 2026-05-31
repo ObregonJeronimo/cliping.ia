@@ -61,23 +61,6 @@ function precomputeAll() {
   return { urlPts, promptPts, tlStates }
 }
 
-// Secuencia: ms desde inicio del ciclo
-const SEQ = [
-  { ms: 0,     state: 'url' },
-  { ms: 3800,  state: 'scatter' },
-  { ms: 5200,  state: 'prompt' },
-  { ms: 9400,  state: 'scatter' },
-  { ms: 10700, state: 'timeline0' },
-  { ms: 11500, state: 'timeline1' },
-  { ms: 12500, state: 'timeline2' },
-  { ms: 13500, state: 'timeline3' },
-  { ms: 14500, state: 'timeline4' },
-  { ms: 15500, state: 'timeline5' },
-  { ms: 16500, state: 'timeline6' },
-  { ms: 19300, state: 'scatter' },
-]
-const CYCLE_MS = 21000
-
 export default function ParticleHero({ onStateChange }) {
   const mountRef = useRef(null)
 
@@ -123,11 +106,11 @@ export default function ParticleHero({ onStateChange }) {
     })
     const cur   = base.map(v => v.clone())
     const tgt   = base.map(v => v.clone())
-    const state = { activeN: 0, forming: false }
+    const anim  = { activeN: 0, forming: false }
 
     function setTargets(pts) {
-      state.activeN = Math.min(pts.length, MAX)
-      state.forming = pts.length > 0
+      anim.activeN = Math.min(pts.length, MAX)
+      anim.forming = pts.length > 0
       for (let i = 0; i < MAX; i++)
         tgt[i].set(
           i < pts.length ? pts[i].x : base[i].x,
@@ -136,71 +119,72 @@ export default function ParticleHero({ onStateChange }) {
         )
     }
 
-    function applyState(s) {
-      if (s === 'scatter')    { setTargets([]);          return }
-      if (s === 'url')        { setTargets(urlPts);      onStateChange?.('url');      return }
-      if (s === 'prompt')     { setTargets(promptPts);   onStateChange?.('prompt');   return }
-      if (s === 'timeline0')  { setTargets(tlStates[0]); onStateChange?.('timeline'); return }
-      if (s === 'timeline1')  { setTargets(tlStates[1]); return }
-      if (s === 'timeline2')  { setTargets(tlStates[2]); return }
-      if (s === 'timeline3')  { setTargets(tlStates[3]); return }
-      if (s === 'timeline4')  { setTargets(tlStates[4]); return }
-      if (s === 'timeline5')  { setTargets(tlStates[5]); return }
-      if (s === 'timeline6')  { setTargets(tlStates[6]); return }
+    // ── Secuenciador basado en pasos, sin timers ───────────────────────────
+    // Cada paso tiene duración en ms. Se avanza manualmente en el render loop.
+    const steps = [
+      { dur: 3800,  fn: () => { setTargets(urlPts);      onStateChange?.('url') } },
+      { dur: 1400,  fn: () => { setTargets([]) } },
+      { dur: 4200,  fn: () => { setTargets(promptPts);   onStateChange?.('prompt') } },
+      { dur: 1300,  fn: () => { setTargets([]) } },
+      { dur: 700,   fn: () => { setTargets(tlStates[0]); onStateChange?.('timeline') } },
+      { dur: 1000,  fn: () => setTargets(tlStates[1]) },
+      { dur: 1000,  fn: () => setTargets(tlStates[2]) },
+      { dur: 1000,  fn: () => setTargets(tlStates[3]) },
+      { dur: 1000,  fn: () => setTargets(tlStates[4]) },
+      { dur: 1000,  fn: () => setTargets(tlStates[5]) },
+      { dur: 1000,  fn: () => setTargets(tlStates[6]) },
+      { dur: 2800,  fn: () => setTargets([]) },
+      { dur: 1400,  fn: () => {} }, // pausa final antes de reiniciar
+    ]
+
+    let stepIdx    = 0
+    let stepStart  = null   // performance.now() cuando empezó el paso actual
+
+    function executeStep(idx) {
+      steps[idx].fn()
+      stepIdx   = idx
+      stepStart = null   // se setea en el primer frame del paso
     }
+
+    // Ejecutar primer paso inmediatamente
+    executeStep(0)
 
     const C_TOP  = new THREE.Color(0xffffff)
     const C_MID  = new THREE.Color(0x9db8ff)
     const C_BOT  = new THREE.Color(0x4a5cc8)
     const C_IDLE = new THREE.Color(0x1a2550)
 
-    let alive      = true
-    let rafId      = null
-    let startMs    = -1      // performance.now() cuando arrancó el ciclo
-    let prevStepIdx = -1     // último paso ejecutado
+    let alive = true
+    let rafId = null
 
     function animate(now) {
       if (!alive) return
       rafId = requestAnimationFrame(animate)
 
-      // Inicializar en el primer frame
-      if (startMs < 0) {
-        startMs     = now
-        prevStepIdx = -1
-        applyState('url')
-        onStateChange?.('url')
-      }
+      // Inicializar stepStart en el primer frame del paso
+      if (stepStart === null) stepStart = now
 
-      const cycleMs = (now - startMs) % CYCLE_MS
-      let stepIdx = 0
-      for (let si = 0; si < SEQ.length; si++) { if (SEQ[si].ms <= cycleMs) stepIdx = si }
-
-      // Ejecutar paso solo cuando cambia
-      if (stepIdx !== prevStepIdx) {
-        // Reinicio de ciclo: cuando cycleMs es menor que el ms del paso previo
-        if (stepIdx < prevStepIdx) {
-          // Nuevo ciclo — ejecutar desde paso 0
-          for (let i = 0; i <= stepIdx; i++) applyState(SEQ[i].state)
-        } else {
-          // Avanzar — ejecutar todos los pasos entre prevStepIdx+1 y stepIdx
-          for (let i = prevStepIdx + 1; i <= stepIdx; i++) applyState(SEQ[i].state)
-        }
-        prevStepIdx = stepIdx
+      // Ver si el paso actual terminó
+      const elapsed = now - stepStart
+      if (elapsed >= steps[stepIdx].dur) {
+        const nextIdx = (stepIdx + 1) % steps.length
+        executeStep(nextIdx)
+        stepStart = now   // el nuevo paso empieza ahora
       }
 
       const t   = now * 0.001
-      const spd = state.forming ? 0.085 : 0.028
+      const spd = anim.forming ? 0.085 : 0.028
 
       for (let i = 0; i < MAX; i++) {
         const c = cur[i], g = tgt[i]
         c.lerp(g, spd)
-        if (!state.forming) {
+        if (!anim.forming) {
           c.x += Math.sin(t * 0.42 + i * 0.28) * 0.0015
           c.y += Math.cos(t * 0.35 + i * 0.22) * 0.0015
           c.z += Math.sin(t * 0.23 + i * 0.16) * 0.0007
         }
         dummy.position.copy(c)
-        const isActive  = i < state.activeN && state.forming
+        const isActive  = i < anim.activeN && anim.forming
         const proximity = Math.max(0, 1 - c.distanceTo(g) * 0.5)
         dummy.scale.setScalar(isActive ? 0.078 + proximity * 0.055 : 0.009 + Math.random() * 0.003)
         dummy.rotation.x = t * 0.14 + i * 0.018
