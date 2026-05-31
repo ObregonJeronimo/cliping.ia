@@ -21,9 +21,9 @@ function sampleCanvas(canvas) {
 function makeTextCanvas(string, fontSize) {
   const lines   = string.split('\n')
   const longest = [...lines].sort((a, b) => b.length - a.length)[0]
-  const cW      = Math.ceil(fontSize * 0.62 * longest.length + 32)
-  const cH      = Math.ceil(lines.length * fontSize * 1.25 + 16)
-  const c       = document.createElement('canvas')
+  const cW = Math.ceil(fontSize * 0.62 * longest.length + 32)
+  const cH = Math.ceil(lines.length * fontSize * 1.25 + 16)
+  const c  = document.createElement('canvas')
   c.width = cW; c.height = cH
   const ctx = c.getContext('2d')
   ctx.clearRect(0, 0, cW, cH)
@@ -68,7 +68,6 @@ export default function ParticleHero({ onStateChange }) {
     const el = mountRef.current
     if (!el) return
 
-    // Pre-calcular TODO antes del renderer
     const { urlPts, promptPts, tlStates } = precomputeAll()
 
     const W = el.offsetWidth || 700
@@ -120,55 +119,71 @@ export default function ParticleHero({ onStateChange }) {
         )
     }
 
-    // ── Scheduler lineal — sin anidamiento ────────────────────────────────
-    // Construye una secuencia de {delay, fn} y los ejecuta uno tras otro
-    // con IDs guardados para poder cancelarlos todos de golpe
-    let schedIds = []
+    // ── Secuenciador: lista plana de pasos, un único setTimeout activo ────
+    let alive = true
+    let currentTimer = null
 
-    function clearSchedule() {
-      schedIds.forEach(clearTimeout)
-      schedIds = []
+    function cancelCurrent() {
+      if (currentTimer !== null) {
+        clearTimeout(currentTimer)
+        currentTimer = null
+      }
     }
 
-    function schedule(steps) {
-      // steps = [ {at: ms, fn: () => {}}, ... ]  — ms desde ahora
-      clearSchedule()
-      steps.forEach(({ at, fn }) => {
-        schedIds.push(setTimeout(fn, at))
+    function runAfter(ms, fn) {
+      cancelCurrent()
+      if (!alive) return
+      currentTimer = setTimeout(() => {
+        currentTimer = null
+        if (alive) fn()
+      }, ms)
+    }
+
+    // Secuencia de pasos: cada paso recibe cuánto esperar antes de ejecutar
+    // y llama a next() para encadenar el siguiente
+    function startSequence() {
+      // Paso 1 — URL (visible 3.8s)
+      setTargets(urlPts)
+      onStateChange?.('url')
+
+      runAfter(3800, () => {
+        // Scatter (1.4s)
+        setTargets([])
+
+        runAfter(1400, () => {
+          // Paso 2 — Prompt (visible 4.2s)
+          setTargets(promptPts)
+          onStateChange?.('prompt')
+
+          runAfter(4200, () => {
+            // Scatter (1.3s)
+            setTargets([])
+
+            runAfter(1300, () => {
+              // Paso 3 — Timeline: mostrar base
+              onStateChange?.('timeline')
+              setTargets(tlStates[0])
+
+              // Completar ítems uno a uno con una cadena simple
+              function completeItem(step) {
+                runAfter(step === 0 ? 800 : 1000, () => {
+                  setTargets(tlStates[step + 1])
+                  if (step + 1 < ITEMS.length) {
+                    completeItem(step + 1)
+                  } else {
+                    // Todos completos — esperar y reiniciar
+                    runAfter(2800, () => {
+                      setTargets([])
+                      runAfter(1400, () => startSequence())
+                    })
+                  }
+                })
+              }
+              completeItem(0)
+            })
+          })
+        })
       })
-    }
-
-    function runCycle() {
-      const tlDelay = 3800 + 1400 + 4200 + 1300  // = 10700ms desde inicio
-
-      const steps = [
-        // ── Estado 1: URL ─────────────────────────────────────────────
-        { at: 0, fn: () => { setTargets(urlPts); onStateChange?.('url') } },
-
-        // scatter
-        { at: 3800, fn: () => setTargets([]) },
-
-        // ── Estado 2: Prompt ──────────────────────────────────────────
-        { at: 3800 + 1400, fn: () => { setTargets(promptPts); onStateChange?.('prompt') } },
-
-        // scatter
-        { at: 3800 + 1400 + 4200, fn: () => setTargets([]) },
-
-        // ── Estado 3: Timeline — un ítem cada 1s ──────────────────────
-        { at: tlDelay,        fn: () => { onStateChange?.('timeline'); setTargets(tlStates[0]) } },
-        { at: tlDelay + 800,  fn: () => setTargets(tlStates[1]) },
-        { at: tlDelay + 1800, fn: () => setTargets(tlStates[2]) },
-        { at: tlDelay + 2800, fn: () => setTargets(tlStates[3]) },
-        { at: tlDelay + 3800, fn: () => setTargets(tlStates[4]) },
-        { at: tlDelay + 4800, fn: () => setTargets(tlStates[5]) },
-        { at: tlDelay + 5800, fn: () => setTargets(tlStates[6]) },
-
-        // scatter final + reinicio
-        { at: tlDelay + 5800 + 2800, fn: () => setTargets([]) },
-        { at: tlDelay + 5800 + 4400, fn: () => runCycle() },
-      ]
-
-      schedule(steps)
     }
 
     // ── Paleta ────────────────────────────────────────────────────────────
@@ -178,7 +193,7 @@ export default function ParticleHero({ onStateChange }) {
     const C_IDLE = new THREE.Color(0x1a2550)
 
     // ── Render loop ───────────────────────────────────────────────────────
-    let t = 0, alive = true, rafId
+    let t = 0, rafId
 
     function animate() {
       if (!alive) return
@@ -226,13 +241,12 @@ export default function ParticleHero({ onStateChange }) {
     window.addEventListener('resize', onResize)
 
     animate()
-    const startId = setTimeout(runCycle, 400)
+    runAfter(400, () => startSequence())
 
     return () => {
       alive = false
+      cancelCurrent()
       cancelAnimationFrame(rafId)
-      clearTimeout(startId)
-      clearSchedule()
       window.removeEventListener('resize', onResize)
       renderer.dispose(); geo.dispose(); mat.dispose()
       if (el.contains(renderer.domElement)) el.removeChild(renderer.domElement)
