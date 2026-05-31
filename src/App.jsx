@@ -5,6 +5,7 @@ import Home from './pages/Home'
 import Videos from './pages/Videos'
 import Settings from './pages/Settings'
 import Login from './pages/Login'
+import Landing from './pages/Landing'
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
@@ -16,11 +17,8 @@ function PrivateRoute({ children }) {
 function AppRoutes() {
   return (
     <Routes>
-      {/* Rutas publicas */}
-      <Route path="/" element={<div>Landing page</div>} />
+      <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
-
-      {/* Studio — requiere auth */}
       <Route path="/studio" element={
         <PrivateRoute>
           <AppLayout />
@@ -30,8 +28,6 @@ function AppRoutes() {
         <Route path="videos" element={<Videos />} />
         <Route path="settings" element={<Settings />} />
       </Route>
-
-      {/* Ruta desconocida -> landing */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
