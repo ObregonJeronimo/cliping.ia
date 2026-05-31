@@ -68,8 +68,6 @@ export default function ParticleHero({ onStateChange }) {
     const el = mountRef.current
     if (!el) return
 
-    console.log('[ParticleHero] useEffect MOUNT — onStateChange ref:', onStateChange?.toString().slice(0, 40))
-
     const { urlPts, promptPts, tlStates } = precomputeAll()
 
     const W = el.offsetWidth || 700
@@ -143,7 +141,6 @@ export default function ParticleHero({ onStateChange }) {
     let stepStart  = null   // performance.now() cuando empezó el paso actual
 
     function executeStep(idx) {
-      console.log('[ParticleHero] executeStep:', idx, steps[idx] ? 'dur:' + steps[idx].dur : 'INVALID')
       steps[idx].fn()
       stepIdx   = idx
       stepStart = null
@@ -221,7 +218,6 @@ export default function ParticleHero({ onStateChange }) {
     rafId = requestAnimationFrame(animate)
 
     return () => {
-      console.log('[ParticleHero] useEffect CLEANUP — stepIdx was:', stepIdx)
       alive = false
       if (rafId) cancelAnimationFrame(rafId)
       window.removeEventListener('resize', onResize)

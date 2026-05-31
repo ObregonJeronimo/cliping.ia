@@ -1,4 +1,4 @@
-import { useState, useRef, lazy, Suspense } from 'react'
+import { useState, useRef, useCallback, lazy, Suspense } from 'react'
 import { useNavigate } from 'react-router-dom'
 import styles from './Landing.module.css'
 
@@ -16,7 +16,9 @@ export default function Landing() {
   const [visible, setVisible] = useState(true)
   const prevState = useRef('url')
 
-  const handleStateChange = (state) => {
+  // useCallback — referencia estable, no cambia entre renders
+  // sin esto, cada setState recrea la funcion y rompe el useEffect del hijo
+  const handleStateChange = useCallback((state) => {
     if (state === prevState.current) return
     setVisible(false)
     setTimeout(() => {
@@ -24,7 +26,7 @@ export default function Landing() {
       prevState.current = state
       setVisible(true)
     }, 300)
-  }
+  }, []) // sin dependencias — la funcion nunca cambia
 
   const info = STATE_LABELS[currentState] || STATE_LABELS.url
 
