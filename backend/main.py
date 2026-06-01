@@ -340,42 +340,23 @@ async def render_with_data(req: RenderRequest):
     return {"job_id": job_id}
 
 async def process_render_job(job_id: str, req: RenderRequest):
-    def update(step, progress, status="processing"):
+    def update(step: str, progress: int, status: str = "processing"):
         jobs[job_id].update({"step": step, "progress": progress, "status": status})
 
     try:
-        update("browse", 10)
-        # Tomar screenshot para el video
-        from playwright.async_api import async_playwright
-        import asyncio as _asyncio
-
-        async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True)
-            page = await browser.new_page(viewport={"width": 390, "height": 844})
-            try:
-                await page.goto(req.url, wait_until="domcontentloaded", timeout=30000)
-            except Exception:
-                await page.goto(req.url, wait_until="load", timeout=30000)
-            await _asyncio.sleep(2)
-            hero_bytes = await page.screenshot(full_page=False)
-            await browser.close()
-
-        update("edit", 30)
-
-        # Renderizar usando los page_data ya validados
-        from remotion_renderer import render_video
-        video_path = await render_video(
-            page_data=req.page_data,
-            screenshot_bytes=hero_bytes,
-            job_id=job_id,
+        update("browse", 5)
+        # Usar run_agent igual que process_job pero con page_data editados por el usuario
+        video_path = await run_agent(
+            url=req.url,
+            action=req.action,
             format=req.format,
             style=req.style,
             voice=req.voice,
-            action=req.action,
-            req_params=req.model_dump(),
+            job_id=job_id,
             progress_cb=update,
+            req_params=req.model_dump(),
+            override_page_data=req.page_data if req.page_data else None,
         )
-
         filename = video_path.name
         jobs[job_id].update({
             "status": "done", "progress": 100, "step": "export",
@@ -388,7 +369,6 @@ async def process_render_job(job_id: str, req: RenderRequest):
             await save_job_to_firestore(job_id, req, filename, debug_data)
         except Exception as fe:
             print(f"[firebase] Error: {fe}")
-
     except Exception as e:
         import traceback
         traceback.print_exc()
