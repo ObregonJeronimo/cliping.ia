@@ -21,7 +21,10 @@ const spr = (f, fps, delay = 0, damping = 14, stiffness = 120) =>
   spring({ frame: Math.max(0, f - delay), fps, config: { damping, stiffness, mass: 0.6 } });
 
 const hex2rgb = (hex) => {
-  const h = hex.replace('#', '');
+  if (!hex || typeof hex !== 'string') return '100,100,100';
+  // Limpiar comentarios que Claude puede incluir en el color
+  const cleanHex = hex.split(/\s+[—–-]\s+/)[0].trim();
+  const h = cleanHex.replace('#', '');
   const r = parseInt(h.slice(0,2), 16);
   const g = parseInt(h.slice(2,4), 16);
   const b = parseInt(h.slice(4,6), 16);
@@ -31,8 +34,10 @@ const hex2rgb = (hex) => {
 // Detecta si un fondo es oscuro (para elegir color de texto)
 // Genera fondo oscuro derivado del primaryColor del sitio (no negro genérico)
 const darkBgFromColor = (primaryColor) => {
-  if (!primaryColor) return 'linear-gradient(145deg, #07070f 0%, #0d0d1a 100%)';
-  const h = primaryColor.replace('#','');
+  if (!primaryColor || typeof primaryColor !== 'string') return 'linear-gradient(145deg, #07070f 0%, #0d0d1a 100%)';
+  // Limpiar comentarios tipo "— verde bosque"
+  const cleanColor = primaryColor.split(/\s+[—–-]\s+/)[0].trim();
+  const h = cleanColor.replace('#','');
   const r = parseInt(h.slice(0,2),16) || 0;
   const g = parseInt(h.slice(2,4),16) || 0;
   const b = parseInt(h.slice(4,6),16) || 0;
@@ -4203,9 +4208,10 @@ export const MarketingVideo = (props) => {
     brief = {},
   } = props;
 
-  // Fondo: prioridad → prop bg del sistema → brief de Claude → fallback
-  const brandBg     = bg || brief?.paleta?.fondo || darkBgFromColor(primaryColor);
-  const brandAccent = brief?.paleta?.acento  || primaryColor;
+  // Limpiar comentarios que Claude agrega (ej: "#00c853 — verde vibrante...")
+  const cleanBriefVal = (v) => typeof v === 'string' ? v.split(/\s+[—–-]\s+/)[0].trim() : v;
+  const brandBg     = cleanBriefVal(bg || brief?.paleta?.fondo) || darkBgFromColor(primaryColor);
+  const brandAccent = cleanBriefVal(brief?.paleta?.acento) || primaryColor;
   const brandText   = brief?.paleta?.texto   || '#ffffff';
 
   const frame = useCurrentFrame();

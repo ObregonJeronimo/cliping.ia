@@ -388,8 +388,11 @@ async def render_video(
 
     # ── Fondo contextual ──────────────────────────────────────────────────
     # El brief de Claude puede proponer un fondo — si no, calculamos uno
-    brief_bg = anim_selection.get("brief", {}).get("paleta", {}).get("fondo", "")
-    if not brief_bg or brief_bg in ("#000000", "black", "#000"):
+    brief_bg_raw = anim_selection.get("brief", {}).get("paleta", {}).get("fondo", "")
+    # Limpiar comentarios que Claude agrega después del CSS (ej: "linear-gradient(...) — verde bosque")
+    import re as _re
+    brief_bg = _re.split(r'\s+[—–-]{1,2}\s+', str(brief_bg_raw))[0].strip() if brief_bg_raw else ""
+    if not brief_bg or brief_bg in ("#000000", "black", "#000") or not brief_bg.startswith(("linear-gradient", "radial-gradient", "#")):
         brief_bg = get_bg_for_site(page_data, industry_key)
 
     # Props
@@ -449,8 +452,14 @@ async def render_video(
         # Quitar screenshotUrl de cualquier params
         scene_params.pop("screenshotUrl", None)
 
-        # Inyectar bg global en cada escena si no tiene uno
-        if "bg" not in scene_params:
+        # Limpiar bg en params: puede tener comentarios de Claude (ej: "gradient — verde bosque")
+        if "bg" in scene_params:
+            bg_val = str(scene_params["bg"])
+            bg_clean = re.split(r"\s+[\u2014\u2013-]{1,2}\s+", bg_val)[0].strip()
+            if not bg_clean.startswith(("linear-gradient", "radial-gradient", "#")):
+                bg_clean = brief_bg
+            scene_params["bg"] = bg_clean
+        else:
             scene_params["bg"] = brief_bg
 
         # lists: benefits/features/steps/items/sections → normalizar
