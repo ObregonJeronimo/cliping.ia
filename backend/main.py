@@ -278,3 +278,111 @@ async def save_job_to_firestore(job_id: str, req, video_filename: str, debug_dat
         print(f"[firebase] Video {job_id[:8]} guardado para usuario {req.userId[:8]}")
     except Exception as e:
         print(f"[firebase] Error guardando job: {e}")
+
+
+# ─── Endpoint: solo analizar la página sin renderizar ─────────────────────────
+@app.post("/api/analyze")
+async def analyze_only(req: GenerateRequest):
+    """Analiza la URL y devuelve los datos extraídos para que el usuario los edite."""
+    import asyncio
+    from playwright.async_api import async_playwright
+
+    try:
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True)
+            page = await browser.new_page(viewport={"width": 390, "height": 844})
+            await page.goto(req.url, wait_until="networkidle", timeout=20000)
+            await asyncio.sleep(1)
+            hero_bytes = await page.screenshot(full_page=False)
+            await browser.close()
+
+        from remotion_renderer import extract_page_data_deep
+        page_data = await extract_page_data_deep(hero_bytes, req.url, req.action)
+        return {"ok": True, "page_data": page_data}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+# ─── Endpoint: renderizar con datos ya validados por el usuario ───────────────
+class RenderRequest(BaseModel):
+    url: str
+    action: str
+    page_data: dict          # datos editados por el usuario
+    scene_order: list = []   # orden de escenas (futuro)
+    format: str = "reel"
+    style: str = "epic"
+    voice: str = "female"
+    userId: str = ""
+    mode: str = "simple"
+    visualStyle: str = "dark_premium"
+    narrative: str = "problem_solution"
+    hook: str = "question"
+    tone: str = "enthusiastic"
+    focus: str = "product"
+    duration: int = 30
+
+@app.post("/api/render")
+async def render_with_data(req: RenderRequest):
+    """Renderiza el video usando datos ya validados por el usuario."""
+    job_id = str(uuid.uuid4())
+    jobs[job_id] = {
+        "id": job_id, "status": "queued", "step": None, "progress": 0,
+        "url": req.url, "action": req.action, "format": req.format,
+        "style": req.style, "voice": req.voice, "userId": req.userId,
+        "videoPath": None, "videoFilename": None, "error": None,
+        "createdAt": datetime.utcnow().isoformat(),
+    }
+    asyncio.create_task(process_render_job(job_id, req))
+    return {"job_id": job_id}
+
+async def process_render_job(job_id: str, req: RenderRequest):
+    def update(step, progress, status="processing"):
+        jobs[job_id].update({"step": step, "progress": progress, "status": status})
+
+    try:
+        update("browse", 10)
+        # Tomar screenshot para el video
+        from playwright.async_api import async_playwright
+        import asyncio as _asyncio
+
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True)
+            page = await browser.new_page(viewport={"width": 390, "height": 844})
+            await page.goto(req.url, wait_until="networkidle", timeout=20000)
+            await _asyncio.sleep(1)
+            hero_bytes = await page.screenshot(full_page=False)
+            await browser.close()
+
+        update("edit", 30)
+
+        # Renderizar usando los page_data ya validados
+        from remotion_renderer import render_video
+        video_path = await render_video(
+            page_data=req.page_data,
+            screenshot_bytes=hero_bytes,
+            job_id=job_id,
+            format=req.format,
+            style=req.style,
+            voice=req.voice,
+            action=req.action,
+            req_params=req.model_dump(),
+            progress_cb=update,
+        )
+
+        filename = video_path.name
+        jobs[job_id].update({
+            "status": "done", "progress": 100, "step": "export",
+            "videoPath": str(video_path), "videoFilename": filename,
+        })
+        try:
+            import glob
+            debug_files = sorted(glob.glob(f"debug_reports/{job_id}*_debug.json"))
+            debug_data = json.loads(open(debug_files[0], encoding="utf-8").read()) if debug_files else {}
+            await save_job_to_firestore(job_id, req, filename, debug_data)
+        except Exception as fe:
+            print(f"[firebase] Error: {fe}")
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        jobs[job_id].update({"status": "error", "error": str(e)})

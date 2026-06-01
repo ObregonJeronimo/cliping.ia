@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { doc, setDoc, collection } from 'firebase/firestore'
 import { db } from '../lib/firebase'
+import ReviewData from './ReviewData'
 import styles from './Home.module.css'
 
 // ─── Constantes ────────────────────────────────────────────────────────────
@@ -239,6 +240,11 @@ export default function Home() {
   const [errorMsg, setErrorMsg] = useState('')
   const wsRef = useRef(null)
 
+  // Nuevos estados para el flujo interactivo
+  const [analyzing, setAnalyzing] = useState(false)
+  const [pageData, setPageData] = useState(null)
+  const [analyzeError, setAnalyzeError] = useState('')
+
   function validate() {
     const e = {}
     if (!url.trim()) e.url = true
@@ -246,23 +252,48 @@ export default function Home() {
     return e
   }
 
-  async function handleGenerate() {
+  // Paso 1: analizar la página y mostrar datos para revisión
+  async function handleAnalyze() {
     const e = validate()
     if (Object.keys(e).length) { setErrors(e); return }
     setErrors({})
-    setPhase('progress'); setStepStates({}); setProgress(0); setErrorMsg(''); setElapsed(0)
+    setAnalyzeError('')
+    setAnalyzing(true)
+    try {
+      const res = await fetch(`${API_URL}/api/analyze`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url, action, format, voice, userId: user?.uid || '', mode }),
+      })
+      const data = await res.json()
+      if (!data.ok) throw new Error(data.error || 'Error al analizar')
+      setPageData(data.page_data)
+      setPhase('reviewing')
+    } catch (err) {
+      setAnalyzeError(err.message || 'No se pudo conectar al backend')
+    }
+    setAnalyzing(false)
+  }
+
+  // Paso 2: el usuario confirmó los datos — generar el video
+  async function handleGenerate(confirmedData) {
+    setPageData(confirmedData)
+    setPhase('progress')
+    setStepStates({})
+    setProgress(0)
+    setErrorMsg('')
+    setElapsed(0)
     timerRef.current = setInterval(() => setElapsed(e => e + 1), 1000)
 
     const payload = {
       url, action, format, voice,
       userId: user?.uid || '',
-      // parámetros de video
-      visualStyle, narrative, hook, tone, focus, duration,
-      mode,
+      page_data: confirmedData,
+      visualStyle, narrative, hook, tone, focus, duration, mode,
     }
 
     try {
-      const res = await fetch(`${API_URL}/api/generate`, {
+      const res = await fetch(`${API_URL}/api/render`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -271,7 +302,19 @@ export default function Home() {
       const { job_id } = await res.json()
       connectWebSocket(job_id)
     } catch {
-      simulateProgress()
+      // fallback al endpoint original si /api/render falla
+      try {
+        const res2 = await fetch(`${API_URL}/api/generate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url, action, format, voice, userId: user?.uid || '', visualStyle, narrative, hook, tone, focus, duration, mode }),
+        })
+        if (!res2.ok) throw new Error()
+        const { job_id } = await res2.json()
+        connectWebSocket(job_id)
+      } catch {
+        simulateProgress()
+      }
     }
   }
 
@@ -494,11 +537,22 @@ export default function Home() {
               </>
             )}
 
-            <button className={styles.btnGenerate} onClick={handleGenerate}>
-              {mode === 'simple' ? '✦ Generar video' : '✦ Generar video personalizado'}
+            <button className={styles.btnGenerate} onClick={handleAnalyze} disabled={analyzing}>
+              {analyzing
+                ? '⏳ Analizando sitio...'
+                : mode === 'simple' ? '✦ Analizar y generar' : '✦ Analizar y configurar'}
             </button>
+            {analyzeError && <div className={styles.analyzeError}>⚠ {analyzeError}</div>}
           </div>
         </>
+      )}
+
+      {phase === 'reviewing' && pageData && (
+        <ReviewData
+          pageData={pageData}
+          onConfirm={handleGenerate}
+          onBack={() => setPhase('form')}
+        />
       )}
 
       {phase === 'progress' && (

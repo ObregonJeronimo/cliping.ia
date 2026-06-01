@@ -1,0 +1,85 @@
+.page { display: flex; flex-direction: column; gap: 0; max-width: 680px; }
+
+.header { margin-bottom: 28px; }
+
+.stepBadge {
+  display: inline-block;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--accent, #6366f1);
+  background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.2);
+  border-radius: 100px; padding: 4px 12px; margin-bottom: 12px;
+}
+
+.title { font-size: 22px; font-weight: 600; color: #f0f0f0; margin: 0 0 6px; letter-spacing: -0.02em; }
+.sub { font-size: 14px; color: #666; margin: 0; line-height: 1.5; }
+
+.sections { display: flex; flex-direction: column; gap: 16px; margin-bottom: 28px; }
+
+.section {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 14px;
+  padding: 20px;
+}
+
+.sectionTitle {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase; color: #555; margin-bottom: 16px;
+}
+
+.field { margin-bottom: 14px; }
+.field:last-child { margin-bottom: 0; }
+
+.label { display: block; font-size: 12px; color: #888; margin-bottom: 6px; font-weight: 500; }
+
+.input, .textarea {
+  width: 100%; box-sizing: border-box;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px; padding: 9px 12px;
+  font-size: 14px; color: #e0e0e0;
+  font-family: inherit; outline: none;
+  transition: border-color 0.2s;
+}
+.input:focus, .textarea:focus { border-color: rgba(255,255,255,0.25); }
+.textarea { resize: vertical; min-height: 60px; line-height: 1.5; }
+
+.colorRow { display: flex; gap: 10px; align-items: center; }
+.colorPicker { width: 40px; height: 36px; border: none; border-radius: 8px; cursor: pointer; padding: 2px; background: rgba(255,255,255,0.05); }
+.colorText { flex: 1; }
+
+.listItems { display: flex; flex-direction: column; gap: 8px; }
+.listRow { display: flex; gap: 8px; }
+.listInput { flex: 1; }
+
+.removeBtn {
+  background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2);
+  color: #f87171; border-radius: 8px; padding: 0 12px;
+  font-size: 12px; cursor: pointer; transition: background 0.2s;
+}
+.removeBtn:hover { background: rgba(239,68,68,0.2); }
+
+.addBtn {
+  background: rgba(255,255,255,0.05); border: 1px dashed rgba(255,255,255,0.15);
+  color: #888; border-radius: 8px; padding: 8px 14px;
+  font-size: 13px; cursor: pointer; text-align: left;
+  transition: background 0.2s, color 0.2s;
+}
+.addBtn:hover { background: rgba(255,255,255,0.08); color: #ccc; }
+
+.actions { display: flex; gap: 12px; }
+
+.backBtn {
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+  color: #888; border-radius: 10px; padding: 12px 20px;
+  font-size: 14px; cursor: pointer; transition: background 0.2s;
+}
+.backBtn:hover { background: rgba(255,255,255,0.08); color: #ccc; }
+
+.confirmBtn {
+  flex: 1; background: #e8e8f0; border: none;
+  color: #080810; border-radius: 10px; padding: 13px 24px;
+  font-size: 15px; font-weight: 600; cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+}
+.confirmBtn:hover { background: #fff; transform: translateY(-1px); }
