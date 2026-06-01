@@ -652,7 +652,11 @@ function DashboardBuild({ frame, fps, stats, primaryColor, siteName }) {
 }
 
 function FlowDiagram({ frame, fps, steps, primaryColor }) {
-  const safeSteps = (steps || ['Paso 1', 'Paso 2', 'Paso 3']).slice(0, 4);
+  const rawSteps = steps || ['Paso 1', 'Paso 2', 'Paso 3'];
+  const safeSteps = rawSteps.slice(0, 4).map(s => {
+    if (typeof s === 'string') return s;
+    return s?.text || s?.title || s?.label || s?.description || String(Object.values(s || {})[0] || '');
+  });
   const titleP = spr(frame, fps, 0, 16, 100);
   const lineP  = lerp(frame, 18, 82, 0, 1);
 
@@ -3478,7 +3482,12 @@ function AccordionReveal({ frame, fps, benefits, primaryColor, bg }) {
 function BentoGrid({ frame, fps, benefits, items, primaryColor, bg }) {
   const raw = items || benefits || ['Rápido','Profesional','Automatizado','Sin edición','Para todos','Más']
   const safeItems = raw.slice(0, 6).map(b => {
-    if (typeof b === 'string') return { title: b, icon: '' }
+    if (typeof b === 'string') {
+      // Separar emoji inicial del texto si existe (ej: "🚚 Envío 24h")
+      const m = b.match(/^([\u{1F300}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}])\s*(.*)/u)
+      if (m) return { icon: m[1], title: m[2] }
+      return { title: b, icon: '' }
+    }
     return { title: b?.title || b?.label || '', icon: b?.icon || '' }
   })
   return (

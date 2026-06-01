@@ -299,31 +299,41 @@ async def render_video(
             continue
 
         # benefits/features/steps como lista de objetos → strings
-        for list_key in ["benefits", "features", "steps", "badges"]:
+        for list_key in ["benefits", "features", "steps", "badges", "items", "sections"]:
             if list_key in scene_params and isinstance(scene_params[list_key], list):
                 sanitized = []
                 for item in scene_params[list_key]:
                     if isinstance(item, dict):
                         # Extraer el texto más relevante
-                        text = (item.get("label") or item.get("title") or
-                                item.get("front") or item.get("text") or
-                                item.get("benefit") or item.get("step") or
-                                item.get("name") or str(list(item.values())[0] if item else ""))
+                        # Para items con icon, preservar como string "emoji título"
+                        icon = item.get("icon", "")
+                        title = (item.get("title") or item.get("label") or
+                                 item.get("front") or item.get("text") or
+                                 item.get("benefit") or item.get("step") or
+                                 item.get("name") or "")
+                        # Si tiene icon, concatenar para que BentoGrid lo parsee
+                        text = f"{icon} {title}".strip() if icon else str(title)
+                        if not text:
+                            text = str(list(item.values())[0] if item else "")
                         sanitized.append(str(text))
                     elif item is not None:
                         sanitized.append(str(item))
                 scene_params[list_key] = sanitized
 
-        # stats como lista de objetos → solo valores
+        # stats: normalizar a {value/number, label} para que DashboardBuild/WaveStats lean bien
         if "stats" in scene_params and isinstance(scene_params["stats"], list):
-            sanitized_stats = []
+            normalized = []
             for stat in scene_params["stats"]:
                 if isinstance(stat, dict):
-                    val = stat.get("value") or stat.get("label") or str(stat)
-                    sanitized_stats.append(str(val))
+                    # Preservar como objeto normalizado con value y label
+                    val = stat.get("value") or stat.get("number") or ""
+                    lbl = stat.get("label") or stat.get("title") or ""
+                    suf = stat.get("suffix") or ""
+                    pre = stat.get("prefix") or ""
+                    normalized.append({"value": str(val), "label": str(lbl), "suffix": suf, "prefix": pre})
                 else:
-                    sanitized_stats.append(str(stat) if stat else "")
-            scene_params["stats"] = sanitized_stats
+                    normalized.append(str(stat) if stat else "")
+            scene_params["stats"] = normalized
 
         # notifications como lista — asegurarse que son strings
         if "notifications" in scene_params and isinstance(scene_params["notifications"], list):
