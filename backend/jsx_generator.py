@@ -123,17 +123,12 @@ CONTEXTO VISUAL DE LA MARCA:
 - Color primario real: {primary} — usalo como acento principal
 - Si la página es clara/blanca, podés usar fondo oscuro cinematográfico para contraste
   o fondo claro que respete la identidad visual — elegí lo que impacta más
-- NUNCA uses negro puro #000000 como fondo — siempre oscuro CON TEXTURA VISUAL
-- El fondo debe ser un gradiente de al menos 2 colores con dirección diagonal
-- Tipos de fondo según industria:
-  * Finanzas/salud → deep navy: "linear-gradient(145deg, #0a0f1e 0%, #0d1528 50%, #0a0a1a 100%)"
-  * Tech/SaaS → dark purple: "linear-gradient(145deg, #0d0b1e 0%, #1a0f2e 50%, #0a0a14 100%)"
-  * Creatividad/agencia → warm dark: "linear-gradient(145deg, #0f0a0a 0%, #1e0f0a 50%, #0a0808 100%)"
-  * Retail/moda → midnight: "linear-gradient(160deg, #080810 0%, #0f0f18 50%, #080808 100%)"
-  * Restaurant/food → deep brown: "linear-gradient(145deg, #0a0600 0%, #1a0e00 50%, #0d0800 100%)"
-  * Startup/innovacion → electric dark: "linear-gradient(135deg, #050510 0%, #0a0520 50%, #050510 100%)"
-- El fondo siempre debe tener al menos 3 stops de color para que sea rico visualmente
-- Nunca usar el mismo fondo que el video anterior — variar siempre el ángulo y los tonos
+- El fondo YA está calculado por el sistema — lo recibirás en el prop "bg"
+- NO necesitás inventar fondos — el sistema ya calcula uno derivado del color del sitio
+- Para el brief, podés sugerir un ajuste de opacidad o textura adicional si querés
+- Si el sitio es de salud (verde), el fondo ya será verde muy oscuro
+- Si el sitio es de fintech, ya será navy oscuro
+- Nunca uses negro puro #000 ni blancos puros — ya está controlado por el sistema
 
 NUEVA ESTRUCTURA — el video tiene 10 sub-escenas (2 por sección):
 - hook_a (2.3s): primer impacto que frena el scroll
@@ -305,6 +300,10 @@ La lista de "ya usadas" crece con cada elección:
 
 - NUNCA inventes datos — usá SOLO los números reales: {json.dumps(numbers, ensure_ascii=False)}
 - NUNCA pongas screenshotUrl en ningún params — esa prop se maneja automáticamente
+- NUNCA pongas "bg" en los params de ninguna escena — ya viene del sistema con el color del sitio
+- Si querés ajustar colores, usá "primaryColor" en los params de la escena
+- NUNCA pongas "bg" en los params de ninguna escena — ya viene del sistema con el color del sitio
+- Si querés ajustar el color de fondo de una escena específica, usá "primaryColor" en sus params
 - Para card_flip_3d los benefits deben ser STRINGS simples, nunca objetos con front/back
 - Para iphone_rise y cursor_click_reveal NO incluyas screenshotUrl en params
 - Solo elegí animaciones que existan en el catálogo listado arriba — si querés una nueva, anotala en new_animations_for_industry

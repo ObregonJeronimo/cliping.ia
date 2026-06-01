@@ -4184,6 +4184,7 @@ export const MarketingVideo = (props) => {
     numbers = [], guarantee = '',
     primaryColor = '#6366f1', secondaryColor = '#818cf8',
     screenshotUrl = null,
+    bg = null,  // fondo global calculado por el sistema
     // Hook: 2 sub-escenas
     hookAAnimation = 'counter_explosion', hookAParams = {},
     hookBAnimation = 'reveal_swipe',      hookBParams = {},
@@ -4202,19 +4203,26 @@ export const MarketingVideo = (props) => {
     brief = {},
   } = props;
 
-  // Colores del brief creativo del director de arte
-  const brandBg     = brief?.paleta?.fondo   || `linear-gradient(145deg, #07070f 0%, #0d0d1a 100%)`;
+  // Fondo: prioridad → prop bg del sistema → brief de Claude → fallback
+  const brandBg     = bg || brief?.paleta?.fondo || darkBgFromColor(primaryColor);
   const brandAccent = brief?.paleta?.acento  || primaryColor;
   const brandText   = brief?.paleta?.texto   || '#ffffff';
 
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
+  // Label contextual según audiencia — sin hardcodear "usuarios satisfechos"
+  const contextLabel = audience
+    ? `Para ${audience}`
+    : numbers[1] ? String(numbers[1]).replace(/\d+/, '').trim() || 'satisfechos'
+    : 'satisfechos';
+
   const base = {
     primaryColor: brandAccent || primaryColor,
     secondaryColor, siteName, headline, subheadline,
     benefits, features, cta, problem, audience, numbers, guarantee,
     screenshotUrl,
+    bg: brandBg,
     brandBg, brandText, brief,
     steps: features.length > 0 ? features : benefits.slice(0, 4),
     stats: numbers.length > 0 ? numbers : benefits.slice(0, 4),
@@ -4224,7 +4232,7 @@ export const MarketingVideo = (props) => {
     tagline: subheadline || headline,
     line1: headline, line2: subheadline,
     title: siteName, subtitle: subheadline,
-    label: 'usuarios satisfechos', prefix: '$', suffix: '+',
+    label: contextLabel, prefix: '', suffix: '',
     number: numbers[0] || '1000',
     problemText: problem,
     solutionText: benefits[0] || cta,
