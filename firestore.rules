@@ -3,19 +3,20 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Perfil del usuario — solo el propio usuario puede leer/escribir
+    // Perfil del usuario
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
 
-      // Sub-colección de videos — solo el propio usuario puede leer y eliminar
-      // El backend (Admin SDK) escribe sin pasar por estas reglas
+      // Sub-coleccion de videos del usuario
+      // read y delete: solo el dueño
+      // create: el frontend puede crear (mientras no haya backend con Admin SDK)
       match /videos/{videoId} {
-        allow read, delete: if request.auth != null && request.auth.uid == userId;
-        allow create, update: if false; // solo el backend escribe via Admin SDK
+        allow read, create, delete: if request.auth != null && request.auth.uid == userId;
+        allow update: if request.auth != null && request.auth.uid == userId;
       }
     }
 
-    // Bloquear todo lo demás
+    // Bloquear todo lo demas
     match /{document=**} {
       allow read, write: if false;
     }
