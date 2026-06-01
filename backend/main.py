@@ -352,8 +352,11 @@ async def process_render_job(job_id: str, req: RenderRequest):
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=True)
             page = await browser.new_page(viewport={"width": 390, "height": 844})
-            await page.goto(req.url, wait_until="networkidle", timeout=20000)
-            await _asyncio.sleep(1)
+            try:
+                await page.goto(req.url, wait_until="domcontentloaded", timeout=30000)
+            except Exception:
+                await page.goto(req.url, wait_until="load", timeout=30000)
+            await _asyncio.sleep(2)
             hero_bytes = await page.screenshot(full_page=False)
             await browser.close()
 
