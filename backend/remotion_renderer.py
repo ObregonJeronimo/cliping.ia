@@ -89,13 +89,30 @@ async def extract_html_data(url: str) -> dict:
         paragraphs = [p.get_text(strip=True) for p in soup.find_all("p") if len(p.get_text(strip=True)) > 40]
         data["paragraphs"] = paragraphs[:5]
 
-        # Botones / CTAs
+        # Botones / CTAs — excluir links de navegación
         buttons = []
-        for btn in soup.find_all(["button", "a"]):
-            text = btn.get_text(strip=True)
-            if text and 3 < len(text) < 40 and not text.startswith("http"):
+        NAV_SKIP = {
+            'inicio', 'home', 'nosotros', 'about', 'productos', 'services',
+            'servicios', 'contacto', 'contact', 'blog', 'login', 'ingresar',
+            'registrarse', 'register', 'iniciar sesión', 'cerrar sesión',
+            'mi perfil', 'mis pedidos', 'carrito', 'cart', 'volver', 'back',
+            'más', 'ver más', 'leer más', 'siguiente', 'anterior', 'menu',
+            'menú', 'politicas', 'privacidad', 'distribuidores', 'mayoristas',
+        }
+        # Primero buscar <button> reales y links con clases de CTA
+        for el in soup.find_all(['button', 'a']):
+            text = el.get_text(strip=True)
+            if not text or len(text) < 3 or len(text) > 50: continue
+            if text.lower() in NAV_SKIP: continue
+            if text.startswith('http'): continue
+            # Priorizar si tiene clase que sugiere CTA
+            classes = ' '.join(el.get('class', []))
+            is_cta = any(c in classes.lower() for c in ['btn', 'button', 'cta', 'primary', 'action'])
+            if is_cta:
+                buttons.insert(0, text)
+            else:
                 buttons.append(text)
-        data["buttons"] = list(dict.fromkeys(buttons))[:8]  # deduplicar
+        data["buttons"] = list(dict.fromkeys(buttons))[:8]
 
         # Números explícitos en el HTML (ej: +600, 24h, 3 años)
         import re as _re
