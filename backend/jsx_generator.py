@@ -225,6 +225,48 @@ IMPORTANTE PARA LA ESCENA "product":
 - Para agencias/creativos: usa "floating_feature_orbs" o "particle_reveal"
 - "iphone_rise" solo si realmente tiene sentido para ese producto
 
+NUEVA BIBLIOTECA 2025/2026 — USARLAS CON PRIORIDAD (son más modernas y atractivas):
+
+HOOK NUEVAS (muy impactantes):
+- glitch_slice: texto en franjas que se reensamblan — para productos tech/disruptivos
+- magnetic_words: palabras que vuelan con física — para headlines con pocas palabras
+- staggered_lines: líneas con stagger premium — estilo Linear/Arc Browser
+- elastic_scale_in: spring con overshoot — muy moderno, estilo iOS
+- blur_reveal: headline desde blur a nitidez — para conceptos de claridad/precisión
+- typewriter_premium: typewriter con cursor — para productos SaaS/tech
+- morphing_number: número que cuenta + headline — para productos con métricas
+- split_reveal_h: pantalla se abre como puerta — muy cinematográfico
+- noise_reveal: emerge del ruido estático — para mensajes de IA/tech
+
+PRODUCT NUEVAS:
+- app_preview_slide: pantalla app que desliza con sombra premium
+- metrics_dashboard: dashboard de métricas animadas — para SaaS/fintech
+- code_terminal: terminal con comandos — para productos tech
+- notification_stack: notificaciones apiladas estilo iOS — para apps móviles
+- feature_spotlight: zoom en feature específica
+
+BENEFITS NUEVAS:
+- checklist_reveal: checkmarks animados — para listas de beneficios
+- pill_tags_cloud: pills flotantes — para muchos beneficios cortos
+- accordion_reveal: cards que se abren — para beneficios con descripción
+- bento_grid: layout tipo bento — muy moderno, estilo Notion/Linear
+- wave_stats: stats con ondas — para productos con números impactantes
+
+CTA NUEVAS:
+- glow_pulse_cta: botón con glow pulsante — muy Apple
+- swipe_up_cta: flechas animadas — para reels/TikTok
+- split_cta: pantalla antes/después — para mostrar transformación
+
+OUTRO NUEVAS:
+- minimal_logo: cierre minimalista — estilo Apple/Linear
+- grid_collapse: tiles que revelan logo — muy cinematográfico
+- particle_dissolve: logo que se disuelve — memorable
+- wipe_out_outro: barrido de color con logo
+
+UNIVERSALES (útiles en cualquier escena):
+- cinematic_title: estilo película con letterbox
+- floating_text_badge: badge premium flotante
+
 ANIMACIONES SIGNATURE QUE DEBES USAR CON FRECUENCIA (son únicas y muy impactantes):
 - water_drop_title: gota SVG que cae e impacta con ondas — muy visual para hook
 - liquid_fill_text: nombre del producto que se llena de líquido — para hook de marca

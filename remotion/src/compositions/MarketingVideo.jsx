@@ -2949,6 +2949,771 @@ function PhoneNotification({ frame, fps, notifications, primaryColor, siteName, 
   );
 }
 
+
+// ══════════════════════════════════════════════════════════════════════════════
+// NUEVA BIBLIOTECA — ANIMACIONES 2025/2026
+// Categorías: Hook · Product · Benefits · CTA · Outro · Universal
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ─── HOOK: Glitch Slice ───────────────────────────────────────────────────────
+// Texto que se corta en franjas horizontales y se reensambla
+function GlitchSlice({ frame, fps, headline, primaryColor, bg }) {
+  const p = spr(frame, fps, 0, 12, 80);
+  const slices = 6;
+  return (
+    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center' }}>
+      <Particles frame={frame} color={primaryColor} count={10} />
+      {Array.from({ length: slices }, (_, i) => {
+        const offset = Math.sin(frame * 0.4 + i * 1.2) * (1 - p) * 30;
+        const sliceP = spr(frame, fps, i * 6, 14, 90);
+        return (
+          <div key={i} style={{
+            position: 'absolute', left: 0, right: 0,
+            top: `${(100 / slices) * i}%`,
+            height: `${100 / slices}%`,
+            overflow: 'hidden',
+            transform: `translateX(${offset}px)`,
+            opacity: sliceP,
+          }}>
+            <div style={{
+              position: 'absolute', top: `-${(100 / slices) * i}%`,
+              left: 0, right: 0, height: `${slices * 100}%`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <Headline size={58} color="#fff" style={{ textAlign: 'center', maxWidth: 320 }}>{headline}</Headline>
+            </div>
+          </div>
+        );
+      })}
+    </AbsoluteFill>
+  );
+}
+
+// ─── HOOK: Magnetic Words ─────────────────────────────────────────────────────
+// Palabras que entran desde distintos ángulos con física de imán
+function MagneticWords({ frame, fps, headline, primaryColor, bg }) {
+  const words = (headline || '').split(' ');
+  return (
+    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', padding: 40 }}>
+      <RadialGlow color={primaryColor} opacity={0.12} size={400} />
+      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 10 }}>
+        {words.map((w, i) => {
+          const delay = i * 8;
+          const p = spr(frame, fps, delay, 10, 85);
+          const angle = (i % 2 === 0 ? -1 : 1) * (90 - i * 15);
+          const dist = (1 - p) * 160;
+          const rad = (angle * Math.PI) / 180;
+          return (
+            <div key={i} style={{
+              transform: `translate(${Math.cos(rad) * dist}px, ${Math.sin(rad) * dist}px) rotate(${angle * (1 - p) * 0.3}deg)`,
+              opacity: p,
+            }}>
+              <Headline size={52} color={i % 3 === 0 ? primaryColor : '#fff'}>{w}</Headline>
+            </div>
+          );
+        })}
+      </div>
+      <GlowLine color={primaryColor} progress={spr(frame, fps, words.length * 8, 16, 100)} width={80} />
+    </AbsoluteFill>
+  );
+}
+
+// ─── HOOK: Noise Reveal ───────────────────────────────────────────────────────
+// El texto emerge como si se limpiara el ruido estático de una pantalla
+function NoiseReveal({ frame, fps, headline, primaryColor, bg }) {
+  const p = spr(frame, fps, 0, 14, 90);
+  const noise = Math.max(0, 1 - p * 1.4);
+  const t = frame * 0.1;
+  return (
+    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', padding: 40 }}>
+      <div style={{ position: 'relative' }}>
+        <Headline size={56} color="#fff" style={{ textAlign: 'center', opacity: p, maxWidth: 320 }}>{headline}</Headline>
+        {noise > 0.05 && Array.from({ length: 18 }, (_, i) => (
+          <div key={i} style={{
+            position: 'absolute',
+            left: `${Math.sin(t + i) * 50 + 50}%`,
+            top: `${Math.cos(t * 1.3 + i) * 50 + 50}%`,
+            width: 3 + Math.random() * 8,
+            height: 2,
+            background: primaryColor,
+            opacity: noise * 0.6,
+            transform: 'translate(-50%,-50%)',
+          }} />
+        ))}
+      </div>
+      <div style={{ marginTop: 20, opacity: spr(frame, fps, 30, 16, 100) }}>
+        <Label color={primaryColor}>Procesando...</Label>
+      </div>
+    </AbsoluteFill>
+  );
+}
+
+// ─── HOOK: Staggered Lines ────────────────────────────────────────────────────
+// Líneas de texto que entran con stagger desde abajo, estilo Linear/Arc
+function StaggeredLines({ frame, fps, headline, primaryColor, bg }) {
+  const lines = (headline || '').split('\n').filter(Boolean);
+  return (
+    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', padding: 44, gap: 8 }}>
+      <Particles frame={frame} color={primaryColor} count={12} />
+      {lines.map((line, i) => {
+        const p = spr(frame, fps, i * 12, 11, 88);
+        return (
+          <div key={i} style={{ overflow: 'hidden' }}>
+            <Headline size={54} color={i === lines.length - 1 ? primaryColor : '#fff'} style={{
+              display: 'block',
+              transform: `translateY(${(1 - p) * 60}px)`,
+              opacity: p,
+              textAlign: 'center',
+            }}>{line}</Headline>
+          </div>
+        );
+      })}
+    </AbsoluteFill>
+  );
+}
+
+// ─── HOOK: Morphing Number ────────────────────────────────────────────────────
+// Un número grande que cuenta hacia arriba y luego revela el headline
+function MorphingNumber({ frame, fps, number, label, primaryColor, bg }) {
+  const num = parseInt(number) || 100;
+  const countP = Math.min(1, frame / 60);
+  const current = Math.round(countP * num);
+  const labelP = spr(frame, fps, 65, 14, 90);
+  return (
+    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column' }}>
+      <RadialGlow color={primaryColor} opacity={0.2} size={500} />
+      <div style={{ fontSize: 120, fontWeight: 800, color: primaryColor, letterSpacing: '-0.04em', fontFamily: 'system-ui', lineHeight: 1 }}>
+        {current}
+        <span style={{ fontSize: 48, color: '#fff' }}>%</span>
+      </div>
+      <div style={{ opacity: labelP, transform: `translateY(${(1 - labelP) * 20}px)`, marginTop: 16 }}>
+        <Headline size={28} color="#fff" style={{ textAlign: 'center' }}>{label || 'de clientes satisfechos'}</Headline>
+      </div>
+    </AbsoluteFill>
+  );
+}
+
+// ─── HOOK: Split Reveal Horizontal ───────────────────────────────────────────
+// La pantalla se divide en dos mitades que se abren como una puerta
+function SplitRevealHorizontal({ frame, fps, headline, primaryColor, bg }) {
+  const open = spr(frame, fps, 8, 11, 85);
+  const textP = spr(frame, fps, 28, 14, 95);
+  const half = open * 55;
+  return (
+    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden' }}>
+      <AbsoluteFill style={{ justifyContent: 'center', alignItems: 'center' }}>
+        <Headline size={56} color="#fff" style={{ textAlign: 'center', maxWidth: 320, opacity: textP }}>{headline}</Headline>
+      </AbsoluteFill>
+      <div style={{ position: 'absolute', top: 0, left: 0, width: '50%', height: '100%', background: primaryColor, transform: `translateX(-${half}%)`, opacity: 0.95 }} />
+      <div style={{ position: 'absolute', top: 0, right: 0, width: '50%', height: '100%', background: primaryColor, transform: `translateX(${half}%)`, opacity: 0.95 }} />
+    </AbsoluteFill>
+  );
+}
+
+// ─── HOOK: Typewriter Premium ─────────────────────────────────────────────────
+// Typewriter con cursor parpadeante y efecto de borrado final
+function TypewriterPremium({ frame, fps, headline, primaryColor, bg }) {
+  const text = headline || '';
+  const speed = 2;
+  const chars = Math.min(text.length, Math.floor(frame / speed));
+  const shown = text.slice(0, chars);
+  const blink = Math.floor(frame / 15) % 2 === 0;
+  const chipP = spr(frame, fps, text.length * speed + 10, 16, 100);
+  return (
+    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', padding: 44 }}>
+      <Particles frame={frame} color={primaryColor} count={8} />
+      <div style={{ fontFamily: 'monospace', fontSize: 42, fontWeight: 700, color: '#fff', textAlign: 'center', maxWidth: 340, lineHeight: 1.3 }}>
+        {shown}
+        <span style={{ color: primaryColor, opacity: blink ? 1 : 0 }}>|</span>
+      </div>
+      <div style={{ marginTop: 24, opacity: chipP }}>
+        <GlowLine color={primaryColor} progress={chipP} width={60} />
+      </div>
+    </AbsoluteFill>
+  );
+}
+
+// ─── HOOK: Elastic Scale In ───────────────────────────────────────────────────
+// El título entra con un spring exagerado (overshoot) tipo iOS
+function ElasticScaleIn({ frame, fps, headline, primaryColor, bg }) {
+  const p = spr(frame, fps, 0, 8, 120); // stiffness alta = overshoot
+  const chipP = spr(frame, fps, 20, 16, 100);
+  return (
+    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: 20, padding: 40 }}>
+      <RadialGlow color={primaryColor} opacity={0.18} size={460} />
+      <div style={{ transform: `scale(${p})`, opacity: Math.min(1, p * 1.5) }}>
+        <Headline size={60} color="#fff" style={{ textAlign: 'center', maxWidth: 320 }}>{headline}</Headline>
+      </div>
+      <div style={{ opacity: chipP, transform: `translateY(${(1 - chipP) * 16}px)` }}>
+        <div style={{ padding: '8px 20px', border: `1px solid rgba(${hex2rgb(primaryColor)},0.4)`, borderRadius: 100, background: `rgba(${hex2rgb(primaryColor)},0.1)` }}>
+          <Label color={primaryColor}>Generando tu video</Label>
+        </div>
+      </div>
+    </AbsoluteFill>
+  );
+}
+
+// ─── HOOK: Blur Reveal ────────────────────────────────────────────────────────
+// El headline aparece desde un blur extremo hasta nitidez
+function BlurReveal({ frame, fps, headline, primaryColor, bg }) {
+  const p = spr(frame, fps, 0, 13, 85);
+  const blur = (1 - p) * 28;
+  const scale = 0.85 + p * 0.15;
+  return (
+    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', padding: 44 }}>
+      <Particles frame={frame} color={primaryColor} count={14} />
+      <div style={{ filter: `blur(${blur}px)`, transform: `scale(${scale})`, opacity: Math.min(1, p * 1.2) }}>
+        <Headline size={58} color="#fff" style={{ textAlign: 'center', maxWidth: 320 }}>{headline}</Headline>
+      </div>
+      <div style={{ marginTop: 24, opacity: spr(frame, fps, 40, 16, 100) }}>
+        <GlowLine color={primaryColor} progress={p} width={70} />
+      </div>
+    </AbsoluteFill>
+  );
+}
+
+// ─── PRODUCT: App Preview Slide ───────────────────────────────────────────────
+// Una pantalla de app que desliza desde abajo con sombra premium
+function AppPreviewSlide({ frame, fps, siteName, primaryColor, bg }) {
+  const p = spr(frame, fps, 0, 11, 90);
+  const slideY = (1 - p) * 300;
+  const t = frame * 0.02;
+  return (
+    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center' }}>
+      <RadialGlow color={primaryColor} opacity={0.14} size={500} />
+      <div style={{
+        width: 220, height: 420,
+        background: 'linear-gradient(160deg, #1a1a2e 0%, #0f0f1a 100%)',
+        borderRadius: 28, border: '1.5px solid rgba(255,255,255,0.1)',
+        boxShadow: `0 40px 80px rgba(0,0,0,0.7), 0 0 60px rgba(${hex2rgb(primaryColor)},0.15)`,
+        transform: `translateY(${slideY}px) rotate(${(1 - p) * -5}deg)`,
+        opacity: p, overflow: 'hidden', position: 'relative',
+      }}>
+        <div style={{ padding: '20px 16px 0', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ width: 32, height: 32, borderRadius: 10, background: `linear-gradient(135deg,${primaryColor},rgba(${hex2rgb(primaryColor)},0.5))` }} />
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#fff', fontFamily: 'system-ui' }}>{siteName}</div>
+            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', fontFamily: 'system-ui' }}>Dashboard</div>
+          </div>
+        </div>
+        {Array.from({ length: 5 }, (_, i) => {
+          const barP = spr(frame, fps, 20 + i * 10, 12, 80);
+          return (
+            <div key={i} style={{ margin: '12px 16px 0', background: 'rgba(255,255,255,0.05)', borderRadius: 8, height: 36, overflow: 'hidden', display: 'flex', alignItems: 'center', padding: '0 12px', gap: 10 }}>
+              <div style={{ width: 20, height: 20, borderRadius: 6, background: `rgba(${hex2rgb(primaryColor)},${0.3 + i * 0.1})`, flexShrink: 0, transform: `scale(${barP})` }} />
+              <div style={{ flex: 1, height: 6, background: `rgba(255,255,255,${barP * 0.15})`, borderRadius: 3 }} />
+            </div>
+          );
+        })}
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '40%', background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)' }} />
+      </div>
+      <div style={{ position: 'absolute', bottom: 80, left: 0, right: 0, textAlign: 'center', opacity: spr(frame, fps, 40, 16, 100) }}>
+        <Label color={primaryColor}>{siteName}</Label>
+      </div>
+    </AbsoluteFill>
+  );
+}
+
+// ─── PRODUCT: Feature Spotlight Zoom ─────────────────────────────────────────
+// Zoom progresivo que enfoca una feature específica del producto
+function FeatureSpotlightZoom({ frame, fps, feature, description, primaryColor, bg }) {
+  const zoomP = spr(frame, fps, 0, 9, 80);
+  const scale = 1 + zoomP * 0.5;
+  const textP = spr(frame, fps, 30, 14, 100);
+  return (
+    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column' }}>
+      <div style={{ transform: `scale(${scale})`, opacity: zoomP, position: 'absolute', inset: 0, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+        <div style={{ width: 280, height: 160, background: 'rgba(255,255,255,0.04)', border: `1px solid rgba(${hex2rgb(primaryColor)},0.3)`, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', fontFamily: 'system-ui', textAlign: 'center' }}>{feature || 'Feature'}</div>
+        </div>
+        <div style={{ position: 'absolute', inset: 0, border: `2px solid rgba(${hex2rgb(primaryColor)},${zoomP * 0.6})`, borderRadius: 0, boxShadow: `inset 0 0 60px rgba(${hex2rgb(primaryColor)},0.15)` }} />
+      </div>
+      <div style={{ position: 'absolute', bottom: 80, left: 0, right: 0, textAlign: 'center', opacity: textP, padding: '0 40px' }}>
+        <Headline size={28} color="#fff">{description || feature}</Headline>
+      </div>
+    </AbsoluteFill>
+  );
+}
+
+// ─── PRODUCT: Metrics Dashboard ───────────────────────────────────────────────
+// Dashboard de métricas que se construye con animaciones stagger y barras
+function MetricsDashboard({ frame, fps, metrics, primaryColor, siteName, bg }) {
+  const safeMetrics = metrics || [
+    { label: 'Usuarios', value: '12.4K', delta: '+23%' },
+    { label: 'Conversión', value: '8.7%', delta: '+5%' },
+    { label: 'Revenue', value: '$48K', delta: '+31%' },
+  ];
+  const headerP = spr(frame, fps, 0, 12, 90);
+  return (
+    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', padding: 30, flexDirection: 'column', gap: 16, display: 'flex' }}>
+      <div style={{ opacity: headerP, transform: `translateY(${(1 - headerP) * -20}px)`, display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+        <div style={{ width: 28, height: 28, borderRadius: 8, background: primaryColor }} />
+        <div style={{ fontSize: 14, fontWeight: 600, color: '#fff', fontFamily: 'system-ui' }}>{siteName || 'Dashboard'}</div>
+        <div style={{ marginLeft: 'auto', fontSize: 10, color: `rgba(${hex2rgb(primaryColor)},0.8)`, fontFamily: 'monospace' }}>● LIVE</div>
+      </div>
+      {safeMetrics.map((m, i) => {
+        const p = spr(frame, fps, 12 + i * 14, 12, 85);
+        const barW = spr(frame, fps, 20 + i * 14, 10, 70);
+        return (
+          <div key={i} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: '14px 16px', opacity: p, transform: `translateX(${(1 - p) * -30}px)` }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 8 }}>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', fontFamily: 'system-ui', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{m.label}</div>
+              <div style={{ fontSize: 10, color: primaryColor, fontFamily: 'system-ui', fontWeight: 600 }}>{m.delta}</div>
+            </div>
+            <div style={{ fontSize: 28, fontWeight: 700, color: '#fff', fontFamily: 'system-ui', letterSpacing: '-0.02em', marginBottom: 8 }}>{m.value}</div>
+            <div style={{ height: 3, background: 'rgba(255,255,255,0.08)', borderRadius: 2 }}>
+              <div style={{ height: '100%', width: `${barW * 85}%`, background: `linear-gradient(90deg, ${primaryColor}, rgba(${hex2rgb(primaryColor)},0.4))`, borderRadius: 2 }} />
+            </div>
+          </div>
+        );
+      })}
+    </AbsoluteFill>
+  );
+}
+
+// ─── PRODUCT: Code Terminal ───────────────────────────────────────────────────
+// Terminal que muestra código o comandos línea a línea
+function CodeTerminal({ frame, fps, lines, primaryColor, bg }) {
+  const safeLines = lines || [
+    '> Analizando sitio web...',
+    '> Extrayendo contenido ✓',
+    '> Generando brief creativo...',
+    '> Seleccionando animaciones ✓',
+    '> Renderizando video... 100%',
+  ];
+  const headerP = spr(frame, fps, 0, 14, 90);
+  return (
+    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', padding: 30 }}>
+      <div style={{
+        width: '100%', maxWidth: 340,
+        background: '#0d1117', border: '1px solid rgba(255,255,255,0.1)',
+        borderRadius: 12, overflow: 'hidden',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+        opacity: headerP, transform: `scale(${0.9 + headerP * 0.1})`,
+      }}>
+        <div style={{ background: '#161b22', padding: '10px 14px', display: 'flex', gap: 6, alignItems: 'center' }}>
+          {['#ff5f56','#ffbd2e','#27c93f'].map((c, i) => <div key={i} style={{ width: 10, height: 10, borderRadius: '50%', background: c }} />)}
+          <div style={{ flex: 1, textAlign: 'center', fontSize: 10, color: 'rgba(255,255,255,0.3)', fontFamily: 'monospace' }}>cliping.ia — terminal</div>
+        </div>
+        <div style={{ padding: '16px 14px', fontFamily: 'monospace', fontSize: 12, lineHeight: 1.8 }}>
+          {safeLines.map((line, i) => {
+            const lineP = spr(frame, fps, 15 + i * 14, 12, 90);
+            const isSuccess = line.includes('✓');
+            const isRunning = line.includes('...');
+            return (
+              <div key={i} style={{
+                opacity: lineP,
+                color: isSuccess ? '#27c93f' : isRunning ? primaryColor : 'rgba(255,255,255,0.7)',
+                transform: `translateX(${(1 - lineP) * -10}px)`,
+              }}>
+                {line}
+                {isRunning && lineP > 0.8 && <span style={{ opacity: Math.sin(frame * 0.3) * 0.5 + 0.5 }}>_</span>}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </AbsoluteFill>
+  );
+}
+
+// ─── PRODUCT: Notification Stack ─────────────────────────────────────────────
+// Notificaciones que se apilan desde arriba, estilo iOS
+function NotificationStack({ frame, fps, notifications, primaryColor, siteName, bg }) {
+  const safeNotifs = notifications || [
+    { title: siteName || 'App', body: 'Nuevo usuario registrado 🎉' },
+    { title: siteName || 'App', body: 'Video generado exitosamente ✓' },
+    { title: siteName || 'App', body: 'Pago recibido: $49/mes' },
+  ];
+  return (
+    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', padding: 30, flexDirection: 'column', gap: 12 }}>
+      <Particles frame={frame} color={primaryColor} count={8} />
+      {safeNotifs.map((n, i) => {
+        const p = spr(frame, fps, i * 18, 11, 90);
+        return (
+          <div key={i} style={{
+            width: '100%', maxWidth: 310,
+            background: 'rgba(255,255,255,0.08)',
+            backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(255,255,255,0.12)',
+            borderRadius: 16, padding: '12px 16px',
+            display: 'flex', gap: 12, alignItems: 'center',
+            transform: `translateY(${(1 - p) * -60}px) scale(${0.85 + p * 0.15})`,
+            opacity: p,
+            boxShadow: `0 8px 32px rgba(0,0,0,0.3), 0 0 0 1px rgba(${hex2rgb(primaryColor)},0.1)`,
+          }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: `linear-gradient(135deg,${primaryColor},rgba(${hex2rgb(primaryColor)},0.5))`, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: 16, height: 16, background: '#fff', borderRadius: 4, opacity: 0.9 }} />
+            </div>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#fff', fontFamily: 'system-ui' }}>{n.title}</div>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', fontFamily: 'system-ui', marginTop: 2 }}>{n.body}</div>
+            </div>
+          </div>
+        );
+      })}
+    </AbsoluteFill>
+  );
+}
+
+// ─── BENEFITS: Checklist Reveal ───────────────────────────────────────────────
+// Lista de checkmarks que se revelan uno a uno con animación de tick
+function ChecklistReveal({ frame, fps, benefits, primaryColor, bg }) {
+  const safeBenefits = (benefits || []).map(b => typeof b === 'string' ? b : b?.title || b?.label || '');
+  return (
+    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', padding: 40 }}>
+      <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {safeBenefits.map((b, i) => {
+          const p = spr(frame, fps, i * 18, 12, 85);
+          const checkP = spr(frame, fps, i * 18 + 14, 14, 100);
+          return (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 16, opacity: p, transform: `translateX(${(1 - p) * -40}px)` }}>
+              <div style={{
+                width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
+                border: `2px solid ${primaryColor}`,
+                background: `rgba(${hex2rgb(primaryColor)},${checkP * 0.2})`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: checkP > 0.5 ? `0 0 12px rgba(${hex2rgb(primaryColor)},0.4)` : 'none',
+              }}>
+                <div style={{ width: 14, height: 14, opacity: checkP, color: primaryColor, fontSize: 14, textAlign: 'center', lineHeight: '14px', fontWeight: 700 }}>✓</div>
+              </div>
+              <div style={{ fontSize: 17, color: '#fff', fontFamily: 'system-ui', fontWeight: 500, lineHeight: 1.4 }}>{b}</div>
+            </div>
+          );
+        })}
+      </div>
+    </AbsoluteFill>
+  );
+}
+
+// ─── BENEFITS: Pill Tags Cloud ────────────────────────────────────────────────
+// Beneficios como pills/tags que flotan y aparecen con stagger
+function PillTagsCloud({ frame, fps, benefits, primaryColor, bg }) {
+  const safeBenefits = (benefits || []).map(b => typeof b === 'string' ? b : b?.title || b?.label || '');
+  return (
+    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', padding: 40 }}>
+      <RadialGlow color={primaryColor} opacity={0.1} size={420} />
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>
+        {safeBenefits.map((b, i) => {
+          const p = spr(frame, fps, i * 10, 11, 90);
+          const float = Math.sin(frame * 0.04 + i * 1.1) * 4;
+          return (
+            <div key={i} style={{
+              padding: '10px 20px',
+              background: i % 3 === 0 ? `rgba(${hex2rgb(primaryColor)},0.15)` : 'rgba(255,255,255,0.06)',
+              border: `1px solid ${i % 3 === 0 ? `rgba(${hex2rgb(primaryColor)},0.4)` : 'rgba(255,255,255,0.1)'}`,
+              borderRadius: 100, fontSize: 14, fontWeight: 500,
+              color: i % 3 === 0 ? primaryColor : 'rgba(255,255,255,0.75)',
+              fontFamily: 'system-ui',
+              opacity: p, transform: `translateY(${(1 - p) * 30 + float}px)`,
+            }}>{b}</div>
+          );
+        })}
+      </div>
+    </AbsoluteFill>
+  );
+}
+
+// ─── BENEFITS: Accordion Reveal ───────────────────────────────────────────────
+// Cards que se expanden hacia abajo una a una como un acordeón
+function AccordionReveal({ frame, fps, benefits, primaryColor, bg }) {
+  const safeBenefits = (benefits || []).map(b => typeof b === 'string' ? b : b?.title || b?.label || '');
+  const activeIdx = Math.min(safeBenefits.length - 1, Math.floor(frame / 35));
+  return (
+    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', padding: 32 }}>
+      <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {safeBenefits.map((b, i) => {
+          const isActive = i === activeIdx;
+          const wasActive = i < activeIdx;
+          const p = spr(frame, fps, i * 35, 12, 85);
+          return (
+            <div key={i} style={{
+              background: isActive ? `rgba(${hex2rgb(primaryColor)},0.12)` : 'rgba(255,255,255,0.04)',
+              border: `1px solid ${isActive ? `rgba(${hex2rgb(primaryColor)},0.5)` : 'rgba(255,255,255,0.08)'}`,
+              borderRadius: 12, overflow: 'hidden',
+              opacity: p, transform: `translateY(${(1 - p) * 20}px)`,
+              transition: 'background 0.3s',
+            }}>
+              <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ width: 24, height: 24, borderRadius: '50%', background: wasActive || isActive ? primaryColor : 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: '#000', fontWeight: 700, flexShrink: 0 }}>
+                  {wasActive ? '✓' : i + 1}
+                </div>
+                <div style={{ fontSize: 15, color: isActive ? '#fff' : 'rgba(255,255,255,0.55)', fontFamily: 'system-ui', fontWeight: isActive ? 600 : 400 }}>{b}</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </AbsoluteFill>
+  );
+}
+
+// ─── BENEFITS: Bento Grid ─────────────────────────────────────────────────────
+// Layout tipo bento box con cards de distintos tamaños
+function BentoGrid({ frame, fps, benefits, primaryColor, bg }) {
+  const safeBenefits = (benefits || ['Rápido','Profesional','Automatizado','Sin edición','Para todos']).map(b => typeof b === 'string' ? b : b?.title || '');
+  return (
+    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', padding: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: 'auto auto auto', gap: 8, height: '100%' }}>
+        {safeBenefits.slice(0, 4).map((b, i) => {
+          const p = spr(frame, fps, i * 12, 12, 88);
+          const isLarge = i === 0;
+          return (
+            <div key={i} style={{
+              gridColumn: isLarge ? '1 / -1' : 'auto',
+              background: i % 2 === 0 ? `rgba(${hex2rgb(primaryColor)},0.1)` : 'rgba(255,255,255,0.04)',
+              border: `1px solid ${i % 2 === 0 ? `rgba(${hex2rgb(primaryColor)},0.25)` : 'rgba(255,255,255,0.08)'}`,
+              borderRadius: 14, padding: isLarge ? '20px 24px' : '16px',
+              display: 'flex', alignItems: 'center', justifyContent: isLarge ? 'flex-start' : 'center',
+              opacity: p, transform: `scale(${0.9 + p * 0.1})`,
+            }}>
+              <div style={{ fontSize: isLarge ? 18 : 14, color: '#fff', fontFamily: 'system-ui', fontWeight: isLarge ? 600 : 500, textAlign: isLarge ? 'left' : 'center', lineHeight: 1.4 }}>{b}</div>
+            </div>
+          );
+        })}
+      </div>
+    </AbsoluteFill>
+  );
+}
+
+// ─── BENEFITS: Wave Stats ──────────────────────────────────────────────────────
+// Estadísticas que cuentan hacia arriba con ondas de fondo
+function WaveStats({ frame, fps, stats, primaryColor, bg }) {
+  const safeStats = (stats || ['95%','10x','48h']).map(s => typeof s === 'string' ? s : s?.value || String(s));
+  const labels = ['Satisfacción', 'Más rápido', 'Entrega'];
+  return (
+    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: 0 }}>
+      <svg style={{ position: 'absolute', bottom: 0, left: 0, right: 0, width: '100%' }} viewBox="0 0 390 200" preserveAspectRatio="none">
+        {[0, 1].map(wave => {
+          const offset = Math.sin(frame * 0.03 + wave * Math.PI) * 20;
+          return (
+            <path key={wave} d={`M0,${100 + offset} Q97,${60 + offset * 0.5} 195,${100 + offset} T390,${100 + offset} V200 H0 Z`}
+              fill={`rgba(${hex2rgb(primaryColor)},${0.06 - wave * 0.02})`} />
+          );
+        })}
+      </svg>
+      <div style={{ display: 'flex', gap: 32, justifyContent: 'center' }}>
+        {safeStats.map((s, i) => {
+          const p = spr(frame, fps, i * 20, 12, 85);
+          return (
+            <div key={i} style={{ textAlign: 'center', opacity: p, transform: `translateY(${(1 - p) * 30}px)` }}>
+              <div style={{ fontSize: 64, fontWeight: 800, color: primaryColor, fontFamily: 'system-ui', lineHeight: 1, letterSpacing: '-0.03em' }}>{s}</div>
+              <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', fontFamily: 'system-ui', marginTop: 6, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{labels[i] || ''}</div>
+            </div>
+          );
+        })}
+      </div>
+    </AbsoluteFill>
+  );
+}
+
+// ─── CTA: Glow Pulse CTA ──────────────────────────────────────────────────────
+// Botón CTA con pulso de glow expansivo, estilo Apple
+function GlowPulseCTA({ frame, fps, cta, subtext, primaryColor, bg }) {
+  const p = spr(frame, fps, 0, 12, 90);
+  const pulseScale = 1 + Math.sin(frame * 0.08) * 0.06;
+  const glowOpacity = 0.3 + Math.sin(frame * 0.08) * 0.15;
+  const textP = spr(frame, fps, 20, 14, 100);
+  return (
+    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: 20 }}>
+      <div style={{ opacity: textP, transform: `translateY(${(1 - textP) * -20}px)` }}>
+        <Headline size={42} color="#fff" style={{ textAlign: 'center', maxWidth: 300 }}>{subtext || '¿Listo para empezar?'}</Headline>
+      </div>
+      <div style={{ position: 'relative', opacity: p }}>
+        <div style={{ position: 'absolute', inset: -20, borderRadius: 60, background: primaryColor, opacity: glowOpacity, filter: 'blur(20px)', transform: `scale(${pulseScale})` }} />
+        <div style={{ position: 'relative', background: primaryColor, borderRadius: 40, padding: '16px 36px', cursor: 'pointer' }}>
+          <div style={{ fontSize: 18, fontWeight: 700, color: '#000', fontFamily: 'system-ui', letterSpacing: '-0.01em' }}>{cta || 'Empezar gratis'}</div>
+        </div>
+      </div>
+    </AbsoluteFill>
+  );
+}
+
+// ─── CTA: Swipe Up CTA ────────────────────────────────────────────────────────
+// Flecha animada que invita a hacer swipe, estilo TikTok/Reels
+function SwipeUpCTA({ frame, fps, cta, primaryColor, bg }) {
+  const p = spr(frame, fps, 0, 12, 90);
+  const arrowY = Math.sin(frame * 0.12) * 10 - 10;
+  const arrows = 3;
+  return (
+    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: 24 }}>
+      <RadialGlow color={primaryColor} opacity={0.15} size={350} />
+      <div style={{ opacity: p, transform: `translateY(${(1 - p) * 30}px)` }}>
+        <Headline size={44} color="#fff" style={{ textAlign: 'center', maxWidth: 280 }}>{cta || 'Crear mi video'}</Headline>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, opacity: p }}>
+        {Array.from({ length: arrows }, (_, i) => (
+          <svg key={i} width="28" height="20" viewBox="0 0 28 20" style={{ transform: `translateY(${arrowY + i * 4}px)`, opacity: (i + 1) / arrows }}>
+            <path d="M2 2 L14 16 L26 2" stroke={primaryColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+          </svg>
+        ))}
+      </div>
+    </AbsoluteFill>
+  );
+}
+
+// ─── CTA: Split CTA ───────────────────────────────────────────────────────────
+// Pantalla dividida antes/después con CTA en el centro
+function SplitCTA({ frame, fps, cta, subtext, primaryColor, bg }) {
+  const p = spr(frame, fps, 0, 11, 88);
+  const ctaP = spr(frame, fps, 30, 14, 100);
+  return (
+    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', top: 0, left: 0, width: `${p * 50}%`, height: '100%', background: `rgba(${hex2rgb(primaryColor)},0.08)`, borderRight: `1px solid rgba(${hex2rgb(primaryColor)},0.3)` }}>
+        <div style={{ position: 'absolute', top: '30%', left: 0, right: 0, textAlign: 'center', opacity: p * 0.5 }}>
+          <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontFamily: 'system-ui', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Antes</div>
+        </div>
+      </div>
+      <div style={{ position: 'absolute', top: 0, right: 0, width: `${p * 50}%`, height: '100%', background: `rgba(${hex2rgb(primaryColor)},0.06)` }}>
+        <div style={{ position: 'absolute', top: '30%', left: 0, right: 0, textAlign: 'center', opacity: p * 0.5 }}>
+          <div style={{ fontSize: 12, color: primaryColor, fontFamily: 'system-ui', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Después</div>
+        </div>
+      </div>
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: 20 }}>
+        <div style={{ opacity: ctaP, transform: `scale(${0.85 + ctaP * 0.15})` }}>
+          <div style={{ background: primaryColor, borderRadius: 40, padding: '18px 40px', boxShadow: `0 0 40px rgba(${hex2rgb(primaryColor)},0.4)` }}>
+            <div style={{ fontSize: 20, fontWeight: 700, color: '#000', fontFamily: 'system-ui' }}>{cta || 'Empezar ahora'}</div>
+          </div>
+        </div>
+        {subtext && <div style={{ opacity: ctaP * 0.7, fontSize: 13, color: 'rgba(255,255,255,0.4)', fontFamily: 'system-ui' }}>{subtext}</div>}
+      </div>
+    </AbsoluteFill>
+  );
+}
+
+// ─── OUTRO: Minimal Logo ──────────────────────────────────────────────────────
+// Cierre minimalista estilo Apple: logo solo, fade in limpio
+function MinimalLogo({ frame, fps, siteName, primaryColor, bg }) {
+  const p = spr(frame, fps, 0, 10, 80);
+  const dotP = spr(frame, fps, 25, 14, 100);
+  const taglineP = spr(frame, fps, 35, 14, 100);
+  return (
+    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: 12 }}>
+      <div style={{ opacity: p, transform: `scale(${0.9 + p * 0.1})` }}>
+        <div style={{ fontFamily: 'system-ui', fontSize: 52, fontWeight: 700, color: '#fff', letterSpacing: '-0.04em' }}>
+          {siteName || 'Brand'}
+        </div>
+      </div>
+      <div style={{ opacity: dotP, width: 4, height: 4, borderRadius: '50%', background: primaryColor, boxShadow: `0 0 8px ${primaryColor}` }} />
+      <div style={{ opacity: taglineP, fontSize: 13, color: 'rgba(255,255,255,0.35)', fontFamily: 'system-ui', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+        Powered by IA
+      </div>
+    </AbsoluteFill>
+  );
+}
+
+// ─── OUTRO: Wipe Out ──────────────────────────────────────────────────────────
+// El contenido se barre hacia arriba dejando el logo solo
+function WipeOutOutro({ frame, fps, siteName, primaryColor, bg }) {
+  const p = spr(frame, fps, 0, 11, 85);
+  const wipe = spr(frame, fps, 20, 9, 80);
+  const logoP = spr(frame, fps, 40, 14, 100);
+  return (
+    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center' }}>
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: `${wipe * 100}%`, background: primaryColor, opacity: 0.9, transition: 'none' }} />
+      <div style={{ position: 'relative', zIndex: 10, opacity: logoP }}>
+        <div style={{ fontFamily: 'system-ui', fontSize: 48, fontWeight: 700, color: wipe > 0.5 ? '#000' : '#fff', letterSpacing: '-0.03em', transition: 'color 0.3s' }}>
+          {siteName || 'Brand'}
+        </div>
+      </div>
+    </AbsoluteFill>
+  );
+}
+
+// ─── OUTRO: Particle Dissolve ─────────────────────────────────────────────────
+// El logo se forma y luego se disuelve en partículas
+function ParticleDissolveOutro({ frame, fps, siteName, primaryColor, bg }) {
+  const formP = spr(frame, fps, 0, 12, 80);
+  const dissolveP = spr(frame, fps, 60, 8, 100);
+  const opacity = formP * (1 - dissolveP * 0.7);
+  return (
+    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: 16 }}>
+      <Particles frame={frame} color={primaryColor} count={dissolveP > 0.1 ? 30 : 15} />
+      <div style={{ opacity, transform: `scale(${0.85 + formP * 0.15})`, filter: `blur(${dissolveP * 4}px)` }}>
+        <div style={{ fontFamily: 'system-ui', fontSize: 56, fontWeight: 700, color: '#fff', letterSpacing: '-0.04em' }}>{siteName || 'Brand'}</div>
+      </div>
+      <div style={{ opacity: formP * (1 - dissolveP), marginTop: 8 }}>
+        <GlowLine color={primaryColor} progress={formP} width={60} />
+      </div>
+    </AbsoluteFill>
+  );
+}
+
+// ─── OUTRO: Grid Collapse ──────────────────────────────────────────────────────
+// Una grilla de tiles que colapsan revelando el logo
+function GridCollapseOutro({ frame, fps, siteName, primaryColor, bg }) {
+  const cols = 4, rows = 6;
+  const total = cols * rows;
+  const logoP = spr(frame, fps, 35, 14, 100);
+  return (
+    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gridTemplateRows: `repeat(${rows}, 1fr)`, position: 'absolute', inset: 0 }}>
+        {Array.from({ length: total }, (_, i) => {
+          const delay = (i / total) * 40 + Math.random() * 10;
+          const p = spr(frame, fps, delay, 9, 85);
+          return (
+            <div key={i} style={{ background: `rgba(${hex2rgb(primaryColor)},${(1 - p) * 0.3})`, border: `1px solid rgba(${hex2rgb(primaryColor)},${(1 - p) * 0.15})`, transform: `scale(${1 - p * 0.05})`, opacity: 1 - p * 0.8 }} />
+          );
+        })}
+      </div>
+      <AbsoluteFill style={{ justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: 12 }}>
+        <div style={{ opacity: logoP, transform: `scale(${0.8 + logoP * 0.2})` }}>
+          <div style={{ fontFamily: 'system-ui', fontSize: 52, fontWeight: 700, color: '#fff', letterSpacing: '-0.04em' }}>{siteName || 'Brand'}</div>
+        </div>
+        <div style={{ opacity: logoP * 0.6, fontSize: 12, color: primaryColor, fontFamily: 'system-ui', letterSpacing: '0.12em', textTransform: 'uppercase' }}>Visitá nuestro sitio</div>
+      </AbsoluteFill>
+    </AbsoluteFill>
+  );
+}
+
+// ─── UNIVERSAL: Floating Text Badge ───────────────────────────────────────────
+// Badge flotante con texto, útil para cualquier escena
+function FloatingTextBadge({ frame, fps, headline, subtext, primaryColor, bg }) {
+  const p = spr(frame, fps, 0, 12, 88);
+  const float = Math.sin(frame * 0.05) * 8;
+  return (
+    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: 24, padding: 40 }}>
+      <RadialGlow color={primaryColor} opacity={0.12} size={380} />
+      <div style={{ opacity: p, transform: `translateY(${(1 - p) * 40 + float}px)` }}>
+        <div style={{
+          background: `rgba(${hex2rgb(primaryColor)},0.12)`,
+          border: `1px solid rgba(${hex2rgb(primaryColor)},0.35)`,
+          borderRadius: 20, padding: '24px 32px', textAlign: 'center', maxWidth: 300,
+          boxShadow: `0 20px 60px rgba(0,0,0,0.4), 0 0 0 1px rgba(${hex2rgb(primaryColor)},0.1)`,
+        }}>
+          <Headline size={44} color="#fff" style={{ marginBottom: 8 }}>{headline}</Headline>
+          {subtext && <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', fontFamily: 'system-ui' }}>{subtext}</div>}
+        </div>
+      </div>
+      <GlowLine color={primaryColor} progress={p} width={50} />
+    </AbsoluteFill>
+  );
+}
+
+// ─── UNIVERSAL: Cinematic Title Card ──────────────────────────────────────────
+// Título en estilo cinemático con letterbox y fade
+function CinematicTitleCard({ frame, fps, headline, subtext, primaryColor, bg }) {
+  const p = spr(frame, fps, 0, 10, 80);
+  const subP = spr(frame, fps, 20, 14, 100);
+  const letterboxH = 60;
+  return (
+    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: 12 }}>
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: letterboxH, background: '#000' }} />
+      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: letterboxH, background: '#000' }} />
+      <div style={{ opacity: p, transform: `translateY(${(1 - p) * 16}px)`, padding: '0 44px', textAlign: 'center' }}>
+        <Headline size={54} color="#fff" style={{ letterSpacing: '-0.03em' }}>{headline}</Headline>
+      </div>
+      {subtext && (
+        <div style={{ opacity: subP, padding: '0 44px', textAlign: 'center' }}>
+          <div style={{ fontSize: 14, color: `rgba(${hex2rgb(primaryColor)},0.8)`, fontFamily: 'system-ui', letterSpacing: '0.12em', textTransform: 'uppercase' }}>{subtext}</div>
+        </div>
+      )}
+      <div style={{ position: 'absolute', bottom: letterboxH + 20, left: 44, right: 44, height: 1, background: `linear-gradient(90deg, transparent, rgba(${hex2rgb(primaryColor)},0.5), transparent)`, opacity: subP }} />
+    </AbsoluteFill>
+  );
+}
+
+
 // ══════════════════════════════════════════════════════════════════════════════
 // ROUTER
 // ══════════════════════════════════════════════════════════════════════════════
@@ -3010,6 +3775,41 @@ const ANIM_MAP = {
   orbit_logo:            OrbitLogo,
   gradient_text_outro:   GradientTextOutro,
   neon_sign:             NeonSignOutro,
+  // ── NUEVA BIBLIOTECA 2025/2026 ──────────────────────────────────────────
+  // Hook — Nuevas
+  glitch_slice:          GlitchSlice,
+  magnetic_words:        MagneticWords,
+  noise_reveal:          NoiseReveal,
+  staggered_lines:       StaggeredLines,
+  morphing_number:       MorphingNumber,
+  split_reveal_h:        SplitRevealHorizontal,
+  typewriter_premium:    TypewriterPremium,
+  elastic_scale_in:      ElasticScaleIn,
+  blur_reveal:           BlurReveal,
+  // Product — Nuevas
+  app_preview_slide:     AppPreviewSlide,
+  feature_spotlight:     FeatureSpotlightZoom,
+  metrics_dashboard:     MetricsDashboard,
+  code_terminal:         CodeTerminal,
+  notification_stack:    NotificationStack,
+  // Benefits — Nuevas
+  checklist_reveal:      ChecklistReveal,
+  pill_tags_cloud:       PillTagsCloud,
+  accordion_reveal:      AccordionReveal,
+  bento_grid:            BentoGrid,
+  wave_stats:            WaveStats,
+  // CTA — Nuevas
+  glow_pulse_cta:        GlowPulseCTA,
+  swipe_up_cta:          SwipeUpCTA,
+  split_cta:             SplitCTA,
+  // Outro — Nuevas
+  minimal_logo:          MinimalLogo,
+  wipe_out_outro:        WipeOutOutro,
+  particle_dissolve:     ParticleDissolveOutro,
+  grid_collapse:         GridCollapseOutro,
+  // Universal
+  floating_text_badge:   FloatingTextBadge,
+  cinematic_title:       CinematicTitleCard,
 };
 
 // Fallbacks por tipo de escena para no repetir visualmente

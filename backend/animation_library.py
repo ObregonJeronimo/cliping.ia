@@ -320,3 +320,52 @@ def get_catalog_for_claude() -> str:
         lines.append(f"  {key}: {anim['desc']}")
         lines.append(f"    params: {anim['params']}")
     return "\n".join(lines)
+
+# ── NUEVA BIBLIOTECA 2025/2026 ─────────────────────────────────────────────
+HOOK_NEW = [
+    "glitch_slice",       # texto cortado en franjas que se reensamblan — muy dramático
+    "magnetic_words",     # palabras que vuelan desde distintos ángulos con física
+    "noise_reveal",       # texto emerge desde ruido estático de pantalla
+    "staggered_lines",    # líneas de texto con stagger desde abajo estilo Linear/Arc
+    "morphing_number",    # número grande que cuenta hacia arriba y revela headline
+    "split_reveal_h",     # pantalla se divide en dos puertas que se abren
+    "typewriter_premium", # typewriter con cursor real y efecto premium
+    "elastic_scale_in",   # título entra con spring con overshoot tipo iOS
+    "blur_reveal",        # headline emerge desde blur extremo a nitidez
+]
+
+PRODUCT_NEW = [
+    "app_preview_slide",  # pantalla de app que desliza desde abajo con sombra premium
+    "feature_spotlight",  # zoom que enfoca una feature específica del producto
+    "metrics_dashboard",  # dashboard de métricas con barras animadas
+    "code_terminal",      # terminal que muestra código o comandos línea a línea
+    "notification_stack", # notificaciones que se apilan desde arriba estilo iOS
+]
+
+BENEFITS_NEW = [
+    "checklist_reveal",   # checkmarks que se revelan con animación de tick
+    "pill_tags_cloud",    # beneficios como pills flotantes con stagger
+    "accordion_reveal",   # cards que se expanden como acordeón
+    "bento_grid",         # layout tipo bento box con cards de distintos tamaños
+    "wave_stats",         # estadísticas con ondas de fondo animadas
+]
+
+CTA_NEW = [
+    "glow_pulse_cta",     # botón con pulso de glow expansivo estilo Apple
+    "swipe_up_cta",       # flecha animada que invita a swipe estilo TikTok
+    "split_cta",          # pantalla dividida antes/después con CTA en el centro
+]
+
+OUTRO_NEW = [
+    "minimal_logo",       # cierre minimalista estilo Apple: logo solo
+    "wipe_out_outro",     # contenido se barre con color revelando el logo
+    "particle_dissolve",  # logo se forma y se disuelve en partículas
+    "grid_collapse",      # grilla de tiles que colapsan revelando el logo
+]
+
+UNIVERSAL_NEW = [
+    "floating_text_badge", # badge flotante con texto para cualquier escena
+    "cinematic_title",     # título cinemático con letterbox estilo película
+]
+
+ALL_NEW_ANIMATIONS = HOOK_NEW + PRODUCT_NEW + BENEFITS_NEW + CTA_NEW + OUTRO_NEW + UNIVERSAL_NEW
