@@ -4014,43 +4014,730 @@ function BlobOutro({ frame, fps, siteName, primaryColor, bg }) {
 // ROUTER
 // ══════════════════════════════════════════════════════════════════════════════
 
+
+// ════════════════════════════════════════════════════════════════════════════
+// BIBLIOTECA 2026 — ANIMACIONES DE CALIDAD
+// Fuentes: Linear, Arc, Vercel, Apple, Spotify, Framer, Lottie trends
+// Técnicas: kinetic typography, variable weight, geometric loops,
+//           depth parallax, fluid physics, SVG path draw, spatial layers
+// ════════════════════════════════════════════════════════════════════════════
+
+// ─── HOOK: Word Pressure ─────────────────────────────────────────────────────
+// Inspirado en Linear.app — palabras que entran con peso físico diferente
+// cada una tiene masa distinta: las cortas rebotan, las largas se deslizan
+function WordPressure({ frame, fps, headline, primaryColor, bg }) {
+  const words = (headline || '').split(' ').filter(Boolean)
+  return (
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow:'hidden', justifyContent:'center', alignItems:'center', padding:'0 36px' }}>
+      <Particles frame={frame} color={primaryColor} count={8} />
+      <div style={{ display:'flex', flexWrap:'wrap', gap:'8px 12px', justifyContent:'center' }}>
+        {words.map((w, i) => {
+          const mass = 0.4 + (w.length / 12)
+          const stiff = 180 - i * 14
+          const p = spr(frame, fps, i * 7, 16, Math.max(60, stiff))
+          const fromY = i % 2 === 0 ? -80 : 80
+          const fromX = (i % 3 - 1) * 40
+          const isAccent = i === 0 || (headline || '').toUpperCase().includes(w.toUpperCase()) && w.length > 4
+          return (
+            <div key={i} style={{
+              transform: `translate(${fromX*(1-p)}px, ${fromY*(1-p)}px)`,
+              opacity: Math.min(1, p * 1.4),
+            }}>
+              <div style={{
+                fontSize: w.length < 4 ? 44 : w.length < 7 ? 52 : 48,
+                fontWeight: 800, fontFamily:'system-ui', letterSpacing:'-0.03em',
+                color: isAccent ? primaryColor : '#fff',
+                lineHeight: 1.1,
+                textShadow: isAccent ? `0 0 30px rgba(${hex2rgb(primaryColor)},0.5)` : 'none',
+              }}>{w}</div>
+            </div>
+          )
+        })}
+      </div>
+      <GlowLine color={primaryColor} progress={spr(frame, fps, words.length * 7 + 8, 18, 100)} width={55} />
+    </AbsoluteFill>
+  )
+}
+
+// ─── HOOK: Variable Weight Title ──────────────────────────────────────────────
+// Técnica de variable fonts 2026: el peso de la tipografía oscila como pulso
+// El headline "respira" de thin a black y de vuelta
+function VariableWeightTitle({ frame, fps, headline, primaryColor, bg }) {
+  const p = spr(frame, fps, 0, 14, 90)
+  // Peso oscilante: de 200 a 900 y vuelve
+  const breatheCycle = Math.sin(frame * 0.05) * 0.5 + 0.5
+  const weight = Math.round(200 + breatheCycle * 700)
+  const stretch = 100 + breatheCycle * 15  // letter-spacing stretch
+  const lines = (headline || '').split('\n').filter(Boolean)
+  const mainLine = lines[0] || headline
+  return (
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow:'hidden', justifyContent:'center', alignItems:'center', flexDirection:'column', gap:16, padding:'0 36px' }}>
+      <RadialGlow color={primaryColor} opacity={0.12 + breatheCycle * 0.08} size={420} />
+      <div style={{ opacity: p, transform: `scale(${0.88 + p * 0.12})`, textAlign:'center' }}>
+        <div style={{
+          fontSize: 58, fontFamily:'system-ui', letterSpacing: `${-0.04 + breatheCycle * 0.01}em`,
+          fontWeight: Math.round(p * weight + (1-p) * 900),
+          color: '#fff', lineHeight: 1.1,
+          filter: `blur(${(1-p) * 6}px)`,
+        }}>{mainLine}</div>
+      </div>
+      <div style={{ opacity: spr(frame, fps, 22, 18, 100), transform: `translateY(${(1-spr(frame, fps, 22, 18, 100)) * 16}px)` }}>
+        <div style={{ width: 56, height: 2, background: `linear-gradient(90deg, transparent, ${primaryColor}, transparent)`,
+          opacity: 0.5 + breatheCycle * 0.3 }} />
+      </div>
+    </AbsoluteFill>
+  )
+}
+
+// ─── HOOK: Scramble Reveal ────────────────────────────────────────────────────
+// El texto empieza como ruido y se cristaliza letra por letra
+// Inspirado en activaciones de marca premium (Vercel, Anthropic)
+function ScrambleReveal({ frame, fps, headline, primaryColor, bg }) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&'
+  const text = (headline || '').toUpperCase()
+  const revealSpeed = 1.8  // frames por caracter
+  const result = text.split('').map((char, i) => {
+    const revealAt = i * revealSpeed
+    const progress = Math.max(0, Math.min(1, (frame - revealAt) / 12))
+    if (progress >= 1) return char
+    if (char === ' ') return ' '
+    if (progress <= 0) return chars[Math.floor(Math.random() * chars.length)]
+    return progress > 0.7 ? char : chars[Math.floor(frame * (i + 1) * 0.3) % chars.length]
+  }).join('')
+  const p = spr(frame, fps, 0, 16, 100)
+  return (
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow:'hidden', justifyContent:'center', alignItems:'center', flexDirection:'column', gap:20, padding:'0 36px' }}>
+      <div style={{ opacity: p, textAlign:'center' }}>
+        <div style={{
+          fontSize: 46, fontWeight: 700, fontFamily:'monospace',
+          letterSpacing:'0.06em', color: '#fff', lineHeight: 1.3,
+          textShadow: `0 0 20px rgba(${hex2rgb(primaryColor)},0.4)`,
+        }}>{result}</div>
+      </div>
+      <div style={{ opacity: spr(frame, fps, text.length * revealSpeed + 10, 18, 100) }}>
+        <div style={{ padding:'6px 18px', border:`1px solid rgba(${hex2rgb(primaryColor)},0.35)`,
+          borderRadius:100, background:`rgba(${hex2rgb(primaryColor)},0.08)` }}>
+          <Label color={primaryColor}>{(headline || '').substring(0, 30)}</Label>
+        </div>
+      </div>
+    </AbsoluteFill>
+  )
+}
+
+// ─── HOOK: Depth Parallax Hook ────────────────────────────────────────────────
+// 3 capas a diferentes velocidades crean sensación de profundidad real
+// Inspirado en scrollytelling 2.0 y Apple Vision Pro spatial layers
+function DepthParallaxHook({ frame, fps, headline, subtext, primaryColor, bg }) {
+  const p = spr(frame, fps, 0, 14, 90)
+  const drift = frame * 0.3
+  const layers = [
+    { text: headline?.split(' ').slice(0, 2).join(' ') || '', size: 72, z: 1.0, opacity: 1, ySpeed: 0.3, blur: 0 },
+    { text: headline?.split(' ').slice(2).join(' ') || subtext || '', size: 42, z: 0.7, opacity: 0.7, ySpeed: 0.6, blur: 0 },
+    { text: subtext || '', size: 20, z: 0.4, opacity: 0.4, ySpeed: 1.0, blur: 1 },
+  ]
+  return (
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow:'hidden', justifyContent:'center', alignItems:'center' }}>
+      <RadialGlow color={primaryColor} opacity={0.1} size={500} />
+      {layers.map((l, i) => l.text ? (
+        <div key={i} style={{
+          position:'absolute',
+          transform: `translateY(${Math.sin(drift * l.ySpeed * 0.01) * 8 * l.z}px) scale(${l.z * 0.4 + 0.6})`,
+          opacity: p * l.opacity,
+          filter: `blur(${l.blur * (1 - p)}px)`,
+          textAlign:'center', padding:'0 40px',
+        }}>
+          <div style={{
+            fontSize: l.size, fontWeight: i === 0 ? 800 : 600, fontFamily:'system-ui',
+            letterSpacing: i === 0 ? '-0.04em' : '-0.02em',
+            color: i === 0 ? '#fff' : `rgba(255,255,255,${l.opacity})`,
+            lineHeight: 1.1,
+          }}>{l.text}</div>
+        </div>
+      ) : null)}
+    </AbsoluteFill>
+  )
+}
+
+// ─── HOOK: Split Char Cascade ─────────────────────────────────────────────────
+// Cada letra entra desde una dirección aleatoria pero con timing perfecto
+// Técnica de kinetic typography usada por Spotify y Netflix promos
+function SplitCharCascade({ frame, fps, headline, primaryColor, bg }) {
+  const text = headline || ''
+  return (
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow:'hidden', justifyContent:'center', alignItems:'center', padding:'0 32px' }}>
+      <Particles frame={frame} color={primaryColor} count={12} />
+      <div style={{ display:'flex', flexWrap:'wrap', justifyContent:'center', gap:'2px 0' }}>
+        {text.split('').map((char, i) => {
+          const delay = i * 4
+          const p = spr(frame, fps, delay, 12, 110)
+          const angle = (i * 137.5) % 360  // golden angle distribution
+          const dist = 120
+          const rad = angle * Math.PI / 180
+          return (
+            <div key={i} style={{
+              transform: char === ' '
+                ? 'none'
+                : `translate(${Math.cos(rad) * dist * (1-p)}px, ${Math.sin(rad) * dist * (1-p)}px) rotate(${(1-p) * angle * 0.2}deg)`,
+              opacity: char === ' ' ? 0 : p,
+              display: 'inline-block',
+            }}>
+              <div style={{
+                fontSize: 58, fontWeight: 800, fontFamily:'system-ui',
+                letterSpacing: '-0.01em', color: '#fff', lineHeight: 1.1,
+              }}>{char === ' ' ? '\u00A0' : char}</div>
+            </div>
+          )
+        })}
+      </div>
+    </AbsoluteFill>
+  )
+}
+
+// ─── PRODUCT: Glass Card Reveal ───────────────────────────────────────────────
+// Cards con efecto glassmorphism premium que se revelan en cascada
+// Estilo Framer / Vercel dashboard 2025
+function GlassCardReveal({ frame, fps, benefits, features, primaryColor, bg }) {
+  const items = (benefits || features || []).slice(0, 4)
+  return (
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow:'hidden', justifyContent:'center', alignItems:'center', padding:'28px 24px', flexDirection:'column', gap:10 }}>
+      <RadialGlow color={primaryColor} opacity={0.1} size={460} />
+      {items.map((item, i) => {
+        const text = typeof item === 'string' ? item : item?.title || ''
+        const p = spr(frame, fps, i * 16, 12, 88)
+        const glowP = 0.05 + Math.sin(frame * 0.05 + i * 1.2) * 0.03
+        return (
+          <div key={i} style={{
+            width:'100%', borderRadius:18, overflow:'hidden',
+            background:`rgba(255,255,255,0.06)`,
+            border:`1px solid rgba(255,255,255,0.1)`,
+            backdropFilter:'blur(20px)',
+            boxShadow:`0 8px 32px rgba(0,0,0,0.3), 0 0 0 1px rgba(${hex2rgb(primaryColor)},${glowP})`,
+            padding:'18px 22px',
+            opacity: p, transform:`translateY(${(1-p)*32}px) scale(${0.94+p*0.06})`,
+          }}>
+            <div style={{ display:'flex', alignItems:'center', gap:14 }}>
+              <div style={{
+                width:8, height:8, borderRadius:'50%', background:primaryColor,
+                boxShadow:`0 0 ${8 + Math.sin(frame*0.08+i)*4}px ${primaryColor}`,
+                flexShrink:0,
+              }} />
+              <div style={{ fontSize:16, fontWeight:500, color:'#e8e8e8', fontFamily:'system-ui', lineHeight:1.4 }}>{text}</div>
+            </div>
+          </div>
+        )
+      })}
+    </AbsoluteFill>
+  )
+}
+
+// ─── PRODUCT: Liquid Number Morph ─────────────────────────────────────────────
+// Los números mutan entre sí con física de líquido — SVG path interpolation
+// Muy impactante para stats. Técnica usada en Stripe dashboards
+function LiquidNumberMorph({ frame, fps, stats, primaryColor, bg }) {
+  const safeStats = (stats || []).slice(0, 3).map(s => {
+    if (typeof s === 'string') return { value: s, label: '' }
+    return { value: s?.value ?? s?.number ?? '', label: s?.label ?? '' }
+  })
+  const cycleLen = 90
+  const activeIdx = Math.floor(frame / cycleLen) % safeStats.length
+  const cycleP = (frame % cycleLen) / cycleLen
+  const showP = cycleP < 0.15 ? cycleP / 0.15 : cycleP > 0.85 ? (1 - cycleP) / 0.15 : 1
+  const current = safeStats[activeIdx] || { value: '', label: '' }
+  const entryP = spr(frame, fps, 0, 14, 90)
+  return (
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow:'hidden', justifyContent:'center', alignItems:'center', flexDirection:'column', gap:8 }}>
+      <RadialGlow color={primaryColor} opacity={0.15 + showP * 0.08} size={380} />
+      {/* Dots indicadores */}
+      <div style={{ display:'flex', gap:6, marginBottom:8, opacity: entryP }}>
+        {safeStats.map((_, i) => (
+          <div key={i} style={{
+            width: i === activeIdx ? 20 : 6, height:6, borderRadius:3,
+            background: i === activeIdx ? primaryColor : `rgba(${hex2rgb(primaryColor)},0.3)`,
+            transition:'width 0.3s',
+          }} />
+        ))}
+      </div>
+      <div style={{ opacity: showP * entryP, transform:`scale(${0.85 + showP * 0.15})` }}>
+        <div style={{
+          fontSize:96, fontWeight:900, fontFamily:'system-ui', letterSpacing:'-0.05em',
+          color: primaryColor, lineHeight:1,
+          textShadow:`0 0 40px rgba(${hex2rgb(primaryColor)},0.6)`,
+        }}>{current.value}</div>
+      </div>
+      <div style={{ opacity: showP * entryP * 0.8, transform:`translateY(${(1-showP)*10}px)` }}>
+        <div style={{ fontSize:14, color:'rgba(255,255,255,0.55)', fontFamily:'system-ui', letterSpacing:'0.08em', textTransform:'uppercase' }}>
+          {current.label}
+        </div>
+      </div>
+    </AbsoluteFill>
+  )
+}
+
+// ─── PRODUCT: SVG Path Draw ───────────────────────────────────────────────────
+// Un SVG se dibuja en tiempo real — técnica de stroke-dashoffset
+// Muy premium, usado en Lottie files y brand reveals de Apple
+function SvgPathDraw({ frame, fps, siteName, headline, primaryColor, bg }) {
+  const drawP = Math.min(1, frame / 80)
+  const fadeP = spr(frame, fps, 50, 16, 100)
+  // Un camino abstracto que simboliza "flujo" o "crecimiento"
+  const path = "M 30,150 C 60,80 100,40 150,60 S 220,100 260,80 S 320,20 360,50 S 390,100 390,130"
+  const totalLen = 400
+  const dashOffset = totalLen * (1 - drawP)
+  return (
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow:'hidden', justifyContent:'center', alignItems:'center', flexDirection:'column', gap:24 }}>
+      <div style={{ width:'100%', height:180, position:'relative', opacity: spr(frame, fps, 0, 14, 90) }}>
+        <svg viewBox="0 0 420 200" style={{ width:'100%', height:'100%', overflow:'visible' }}>
+          {/* Glow path */}
+          <path d={path} fill="none" stroke={`rgba(${hex2rgb(primaryColor)},0.15)`} strokeWidth="12"
+            strokeLinecap="round" strokeLinejoin="round" />
+          {/* Main draw path */}
+          <path d={path} fill="none" stroke={primaryColor} strokeWidth="3"
+            strokeLinecap="round" strokeLinejoin="round"
+            strokeDasharray={totalLen} strokeDashoffset={dashOffset}
+            style={{ filter:`drop-shadow(0 0 6px ${primaryColor})` }} />
+          {/* Moving dot */}
+          {drawP > 0 && drawP < 0.98 && (
+            <circle r="6" fill={primaryColor}
+              style={{ filter:`drop-shadow(0 0 8px ${primaryColor})` }}>
+              <animateMotion dur="2.67s" repeatCount="1" fill="freeze"
+                path={path} />
+            </circle>
+          )}
+        </svg>
+      </div>
+      <div style={{ textAlign:'center', padding:'0 40px', opacity: fadeP, transform:`translateY(${(1-fadeP)*16}px)` }}>
+        <Headline size={40} color="#fff">{headline || siteName}</Headline>
+      </div>
+    </AbsoluteFill>
+  )
+}
+
+// ─── BENEFITS: Ticker Tape Pro ────────────────────────────────────────────────
+// Scrolling horizontal continuo estilo Bloomberg/financial ticker
+// Muy efectivo para mostrar múltiples beneficios sin perder atención
+function TickerTapePro({ frame, fps, benefits, primaryColor, bg }) {
+  const items = [...(benefits || []), ...(benefits || [])].map(b =>
+    typeof b === 'string' ? b : b?.title || ''
+  )
+  const speed = frame * 1.2
+  const totalW = items.length * 220
+  const offset = speed % totalW
+  const entryP = spr(frame, fps, 0, 14, 90)
+  return (
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow:'hidden', justifyContent:'center', alignItems:'center', flexDirection:'column', gap:24 }}>
+      <RadialGlow color={primaryColor} opacity={0.08} size={400} />
+      {/* Top ticker */}
+      <div style={{ width:'100%', overflow:'hidden', position:'relative', opacity: entryP }}>
+        {/* Fade edges */}
+        <div style={{ position:'absolute', left:0, top:0, bottom:0, width:60,
+          background:`linear-gradient(90deg, ${(bg||'#07070f').split(',')[0].replace('linear-gradient(145deg','').replace('(','').trim() || '#07070f'}, transparent)`,
+          zIndex:2 }} />
+        <div style={{ position:'absolute', right:0, top:0, bottom:0, width:60,
+          background:`linear-gradient(270deg, ${(bg||'#07070f').split(',')[0].replace('linear-gradient(145deg','').replace('(','').trim() || '#07070f'}, transparent)`,
+          zIndex:2 }} />
+        <div style={{ display:'flex', gap:0, transform:`translateX(-${offset}px)`, whiteSpace:'nowrap' }}>
+          {items.map((item, i) => (
+            <div key={i} style={{ display:'flex', alignItems:'center', gap:0, flexShrink:0 }}>
+              <div style={{ fontSize:22, fontWeight:600, color:'#fff', fontFamily:'system-ui',
+                padding:'12px 20px', opacity: 0.85 }}>{item}</div>
+              <div style={{ width:6, height:6, borderRadius:'50%', background:primaryColor,
+                margin:'0 8px', flexShrink:0,
+                boxShadow:`0 0 6px ${primaryColor}` }} />
+            </div>
+          ))}
+        </div>
+      </div>
+    </AbsoluteFill>
+  )
+}
+
+// ─── BENEFITS: Stagger Grid Cards ─────────────────────────────────────────────
+// Grid 2x2 de cards con stagger physics — cada una con micro-animación
+// Inspirado en Framer Components y MagicUI library 2025
+function StaggerGridCards({ frame, fps, benefits, primaryColor, bg }) {
+  const items = (benefits || []).slice(0, 4).map((b, i) => ({
+    text: typeof b === 'string' ? b : b?.title || '',
+    icon: ['✦', '◈', '⬡', '◉'][i % 4],
+  }))
+  return (
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow:'hidden', justifyContent:'center', alignItems:'center', padding:24 }}>
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, width:'100%' }}>
+        {items.map((item, i) => {
+          const p = spr(frame, fps, i * 14, 11, 90)
+          const hover = Math.sin(frame * 0.04 + i * 1.4) * 3
+          return (
+            <div key={i} style={{
+              background:`linear-gradient(135deg, rgba(${hex2rgb(primaryColor)},0.08) 0%, rgba(255,255,255,0.03) 100%)`,
+              border:`1px solid rgba(${hex2rgb(primaryColor)},0.15)`,
+              borderRadius:18, padding:'22px 18px',
+              opacity: p, transform:`translateY(${(1-p)*40 + hover}px) scale(${0.9+p*0.1})`,
+              boxShadow:`0 4px 24px rgba(0,0,0,0.2)`,
+            }}>
+              <div style={{ fontSize:24, marginBottom:10, opacity:0.7 }}>{item.icon}</div>
+              <div style={{ fontSize:15, fontWeight:600, color:'#e0e0e0', fontFamily:'system-ui', lineHeight:1.4 }}>{item.text}</div>
+            </div>
+          )
+        })}
+      </div>
+    </AbsoluteFill>
+  )
+}
+
+// ─── BENEFITS: Number Explosion ───────────────────────────────────────────────
+// El número explota desde el centro con partículas y luego se asienta
+// Técnica de motion design usada en Spotify Wrapped 2025
+function NumberExplosion({ frame, fps, number, label, primaryColor, bg }) {
+  const num = number || '600'
+  const explodeP = spr(frame, fps, 0, 8, 160)  // overshoot agresivo
+  const scale = explodeP > 1 ? 2 - explodeP * 0.5 : explodeP * 1.4
+  const settleP = spr(frame, fps, 15, 18, 80)
+  const particleCount = 20
+  return (
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow:'hidden', justifyContent:'center', alignItems:'center', flexDirection:'column', gap:16 }}>
+      {/* Partículas de explosión */}
+      {frame < 50 && Array.from({length: particleCount}, (_, i) => {
+        const angle = (i / particleCount) * Math.PI * 2
+        const dist = explodeP * (60 + i * 4)
+        const pOpacity = Math.max(0, 1 - explodeP * 1.2)
+        return (
+          <div key={i} style={{
+            position:'absolute', width:4+i%3*2, height:4+i%3*2, borderRadius:'50%',
+            background: i % 3 === 0 ? primaryColor : `rgba(${hex2rgb(primaryColor)},0.6)`,
+            transform: `translate(${195 + Math.cos(angle)*dist}px, ${422 + Math.sin(angle)*dist}px)`,
+            opacity: pOpacity,
+          }} />
+        )
+      })}
+      {/* El número */}
+      <div style={{
+        fontSize:110, fontWeight:900, fontFamily:'system-ui', letterSpacing:'-0.06em',
+        color: primaryColor, lineHeight:1,
+        transform:`scale(${Math.max(0.1, scale)})`,
+        opacity: Math.min(1, explodeP * 1.5),
+        textShadow:`0 0 ${40 + explodeP*20}px rgba(${hex2rgb(primaryColor)},0.7)`,
+      }}>{num}</div>
+      {/* Label */}
+      <div style={{ opacity: settleP, transform:`translateY(${(1-settleP)*20}px)` }}>
+        <div style={{ fontSize:16, color:'rgba(255,255,255,0.6)', fontFamily:'system-ui',
+          letterSpacing:'0.1em', textTransform:'uppercase' }}>{label || ''}</div>
+      </div>
+    </AbsoluteFill>
+  )
+}
+
+// ─── CTA: Magnetic Button ──────────────────────────────────────────────────────
+// El botón tiene campos magnéticos pulsantes — atrae la mirada
+// Técnica de micro-feedback loops 2026: el CTA parece vivo
+function MagneticButton({ frame, fps, cta, subtext, primaryColor, bg }) {
+  const p = spr(frame, fps, 0, 12, 90)
+  const textP = spr(frame, fps, 16, 14, 100)
+  const rings = [1, 2, 3]
+  const pulse = Math.sin(frame * 0.07) * 0.5 + 0.5
+  return (
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow:'hidden', justifyContent:'center', alignItems:'center', flexDirection:'column', gap:28 }}>
+      <div style={{ opacity: textP, transform:`translateY(${(1-textP)*-20}px)`, padding:'0 40px', textAlign:'center' }}>
+        <Headline size={40} color="#fff">{subtext || '¿Listo para empezar?'}</Headline>
+      </div>
+      <div style={{ position:'relative', opacity: p }}>
+        {/* Anillos magnéticos */}
+        {rings.map(r => (
+          <div key={r} style={{
+            position:'absolute', inset: -(r * 16 + pulse * r * 6),
+            border:`1px solid rgba(${hex2rgb(primaryColor)},${0.3 - r * 0.08})`,
+            borderRadius:100,
+            opacity: 0.6 - r * 0.15,
+          }} />
+        ))}
+        {/* Glow */}
+        <div style={{
+          position:'absolute', inset:-24,
+          background:`radial-gradient(ellipse, rgba(${hex2rgb(primaryColor)},${0.2 + pulse * 0.1}) 0%, transparent 70%)`,
+          borderRadius:100,
+        }} />
+        {/* Botón */}
+        <div style={{
+          position:'relative', borderRadius:100,
+          background:`linear-gradient(135deg, ${primaryColor} 0%, rgba(${hex2rgb(primaryColor)},0.8) 100%)`,
+          padding:'18px 44px',
+          boxShadow:`0 0 ${20 + pulse*12}px rgba(${hex2rgb(primaryColor)},0.5)`,
+          transform:`scale(${1 + pulse * 0.02})`,
+        }}>
+          <div style={{ fontSize:20, fontWeight:700, color:'#000', fontFamily:'system-ui', letterSpacing:'-0.01em', whiteSpace:'nowrap' }}>
+            {cta || 'Empezá ahora'}
+          </div>
+        </div>
+      </div>
+    </AbsoluteFill>
+  )
+}
+
+// ─── CTA: Split Screen Reveal ─────────────────────────────────────────────────
+// La pantalla se parte y revela el CTA desde dentro
+// Inspirado en transiciones cinematográficas de trailers de Apple
+function SplitScreenReveal({ frame, fps, cta, subtext, primaryColor, bg }) {
+  const splitP = spr(frame, fps, 0, 10, 80)
+  const ctaP = spr(frame, fps, 25, 14, 100)
+  const gap = splitP * 60
+  return (
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow:'hidden' }}>
+      {/* Panel superior */}
+      <div style={{
+        position:'absolute', top:0, left:0, right:0, height:'50%',
+        background:`linear-gradient(to bottom, rgba(${hex2rgb(primaryColor)},0.15), rgba(${hex2rgb(primaryColor)},0.05))`,
+        transform:`translateY(-${gap}px)`,
+        borderBottom:`1px solid rgba(${hex2rgb(primaryColor)},0.2)`,
+        display:'flex', alignItems:'flex-end', justifyContent:'center', paddingBottom:20,
+      }}>
+        <div style={{ opacity: splitP, fontSize:13, color:`rgba(${hex2rgb(primaryColor)},0.8)`, fontFamily:'system-ui',
+          letterSpacing:'0.12em', textTransform:'uppercase' }}>{subtext || ''}</div>
+      </div>
+      {/* Panel inferior */}
+      <div style={{
+        position:'absolute', bottom:0, left:0, right:0, height:'50%',
+        background:`linear-gradient(to top, rgba(${hex2rgb(primaryColor)},0.15), rgba(${hex2rgb(primaryColor)},0.05))`,
+        transform:`translateY(${gap}px)`,
+        borderTop:`1px solid rgba(${hex2rgb(primaryColor)},0.2)`,
+        display:'flex', alignItems:'flex-start', justifyContent:'center', paddingTop:20,
+      }}>
+        <div style={{ opacity: splitP, fontSize:13, color:'rgba(255,255,255,0.3)', fontFamily:'system-ui',
+          letterSpacing:'0.12em', textTransform:'uppercase' }}>→ {cta || 'Ver más'}</div>
+      </div>
+      {/* CTA central */}
+      <AbsoluteFill style={{ justifyContent:'center', alignItems:'center', flexDirection:'column', gap:20 }}>
+        <div style={{ opacity: ctaP, transform:`scale(${0.85 + ctaP * 0.15})` }}>
+          <div style={{
+            background: primaryColor, borderRadius:100,
+            padding:'20px 48px',
+            boxShadow:`0 0 40px rgba(${hex2rgb(primaryColor)},0.5)`,
+          }}>
+            <div style={{ fontSize:22, fontWeight:800, color:'#000', fontFamily:'system-ui' }}>{cta || 'Empezá gratis'}</div>
+          </div>
+        </div>
+      </AbsoluteFill>
+    </AbsoluteFill>
+  )
+}
+
+// ─── CTA: Countdown Real ──────────────────────────────────────────────────────
+// Countdown visual pero contextual — no "X usuarios activos"
+// Cuenta el tiempo de entrega/respuesta prometido por el negocio
+function ContextualCountdown({ frame, fps, deliveryTime, cta, primaryColor, bg }) {
+  const label = deliveryTime || '24h'
+  const p = spr(frame, fps, 0, 12, 90)
+  const textP = spr(frame, fps, 20, 16, 100)
+  // Extraer número del label
+  const numMatch = label.match(/\d+/)
+  const timeNum = numMatch ? parseInt(numMatch[0]) : 24
+  const unit = label.replace(/\d+/, '').trim() || 'hs'
+  const barP = spr(frame, fps, 8, 10, 70)
+  return (
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow:'hidden', justifyContent:'center', alignItems:'center', flexDirection:'column', gap:20 }}>
+      <RadialGlow color={primaryColor} opacity={0.12} size={380} />
+      {/* El número de entrega */}
+      <div style={{ opacity: p, transform:`scale(${0.8 + p * 0.2})`, textAlign:'center' }}>
+        <div style={{ fontSize:100, fontWeight:900, fontFamily:'system-ui', letterSpacing:'-0.06em',
+          color: primaryColor, lineHeight:1,
+          textShadow:`0 0 40px rgba(${hex2rgb(primaryColor)},0.5)` }}>{timeNum}</div>
+        <div style={{ fontSize:28, fontWeight:600, color:'rgba(255,255,255,0.7)', fontFamily:'system-ui',
+          letterSpacing:'0.1em', textTransform:'uppercase', marginTop:-8 }}>{unit}</div>
+      </div>
+      {/* Barra de progreso */}
+      <div style={{ width:'70%', height:3, background:'rgba(255,255,255,0.08)', borderRadius:2, overflow:'hidden', opacity: textP }}>
+        <div style={{ height:'100%', width:`${barP * 100}%`,
+          background:`linear-gradient(90deg, ${primaryColor}, rgba(${hex2rgb(primaryColor)},0.4))`,
+          borderRadius:2 }} />
+      </div>
+      <div style={{ opacity: textP, transform:`translateY(${(1-textP)*12}px)` }}>
+        <Headline size={26} color="#fff" style={{ textAlign:'center' }}>
+          {cta || 'Pedí ahora'}
+        </Headline>
+      </div>
+    </AbsoluteFill>
+  )
+}
+
+// ─── OUTRO: Spectrum Outro ────────────────────────────────────────────────────
+// El logo emerge de ondas de espectro de audio — como Spotify Wrapped
+// Muy memorable, graba la marca con personalidad musical
+function SpectrumOutro({ frame, fps, siteName, primaryColor, bg }) {
+  const p = spr(frame, fps, 0, 12, 88)
+  const logoP = spr(frame, fps, 40, 16, 100)
+  const barCount = 28
+  return (
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow:'hidden', justifyContent:'center', alignItems:'center', flexDirection:'column', gap:20 }}>
+      {/* Barras de espectro */}
+      <div style={{ display:'flex', gap:4, alignItems:'flex-end', height:80, opacity: p }}>
+        {Array.from({length: barCount}, (_, i) => {
+          const baseH = 20 + Math.sin(i * 0.6) * 18
+          const wave = Math.sin(frame * 0.08 + i * 0.4) * 20
+          const h = Math.max(4, baseH + wave * p)
+          return (
+            <div key={i} style={{
+              width:6, height:h, borderRadius:'3px 3px 0 0',
+              background:`rgba(${hex2rgb(primaryColor)},${0.4 + (i/barCount)*0.5})`,
+              transform:`scaleY(${p})`, transformOrigin:'bottom',
+            }} />
+          )
+        })}
+      </div>
+      {/* Logo */}
+      <div style={{ opacity: logoP, transform:`scale(${0.85 + logoP * 0.15})`, textAlign:'center' }}>
+        <div style={{ fontSize:52, fontWeight:700, color:'#fff', fontFamily:'system-ui', letterSpacing:'-0.03em' }}>
+          {siteName}
+        </div>
+        <div style={{ width:'100%', height:2, background:`linear-gradient(90deg, transparent, ${primaryColor}, transparent)`,
+          marginTop:8, opacity:0.6 }} />
+      </div>
+    </AbsoluteFill>
+  )
+}
+
+// ─── OUTRO: Typeface Fade ─────────────────────────────────────────────────────
+// El nombre de la marca en tipografía grande que se disuelve como niebla
+// Estilo editorial / Vogue motion 2026
+function TypefaceFadeOutro({ frame, fps, siteName, primaryColor, bg }) {
+  const p = spr(frame, fps, 0, 10, 80)
+  const holdEnd = 150
+  const fadeOut = frame > holdEnd ? Math.max(0, 1 - (frame - holdEnd) / 30) : 1
+  const blur = (1-p) * 20
+  const letterSpacing = -0.06 + (1-p) * 0.08
+  return (
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow:'hidden', justifyContent:'center', alignItems:'center', flexDirection:'column', gap:12 }}>
+      <div style={{ opacity: p * fadeOut, filter:`blur(${blur}px)`, textAlign:'center', padding:'0 24px' }}>
+        <div style={{
+          fontSize: 68, fontWeight:800, fontFamily:'system-ui',
+          letterSpacing:`${letterSpacing}em`, color:'#fff', lineHeight:1,
+          textTransform:'uppercase',
+        }}>{siteName}</div>
+      </div>
+      <div style={{ opacity: spr(frame, fps, 30, 18, 100) * fadeOut }}>
+        <GlowLine color={primaryColor} progress={p} width={50} />
+      </div>
+    </AbsoluteFill>
+  )
+}
+
+// ─── UNIVERSAL: Noise Texture Slide ───────────────────────────────────────────
+// Fondo con ruido animado que da textura orgánica — trend 2026
+// El contenido flota sobre la textura como en Framer sites
+function NoiseTextureSlide({ frame, fps, headline, subtext, primaryColor, bg }) {
+  const p = spr(frame, fps, 0, 12, 90)
+  const subP = spr(frame, fps, 18, 16, 100)
+  const noiseShift = frame * 0.5
+  // Simular ruido con múltiples capas SVG
+  return (
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow:'hidden', justifyContent:'center', alignItems:'center', flexDirection:'column', gap:16, padding:'0 36px' }}>
+      {/* Textura de ruido simulada con SVG filters */}
+      <svg style={{ position:'absolute', inset:0, width:'100%', height:'100%', opacity:0.04 }}>
+        <filter id="noise">
+          <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3"
+            seed={Math.floor(noiseShift) % 10} stitchTiles="stitch" />
+          <feColorMatrix type="saturate" values="0" />
+        </filter>
+        <rect width="100%" height="100%" filter="url(#noise)" />
+      </svg>
+      <div style={{ opacity: p, transform:`translateY(${(1-p)*24}px)`, textAlign:'center', position:'relative' }}>
+        <Headline size={52} color="#fff" style={{ lineHeight:1.15 }}>{headline}</Headline>
+      </div>
+      {subtext && (
+        <div style={{ opacity: subP, position:'relative' }}>
+          <div style={{ fontSize:16, color:'rgba(255,255,255,0.5)', fontFamily:'system-ui', textAlign:'center' }}>{subtext}</div>
+        </div>
+      )}
+      <GlowLine color={primaryColor} progress={p} width={45} />
+    </AbsoluteFill>
+  )
+}
+
+// ─── UNIVERSAL: Arc Browser Card ──────────────────────────────────────────────
+// Card con efecto de profundidad real — como Arc Browser boosts
+// Fondo con gradiente mesh y borde luminoso
+function ArcBrowserCard({ frame, fps, headline, subtext, primaryColor, bg }) {
+  const p = spr(frame, fps, 0, 11, 90)
+  const float = Math.sin(frame * 0.04) * 6
+  const glow = 0.15 + Math.sin(frame * 0.06) * 0.05
+  return (
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow:'hidden', justifyContent:'center', alignItems:'center', padding:32 }}>
+      <RadialGlow color={primaryColor} opacity={0.08} size={480} />
+      <div style={{
+        width:'100%', borderRadius:24,
+        background:`linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.03) 100%)`,
+        border:`1px solid rgba(255,255,255,0.1)`,
+        boxShadow:`0 20px 60px rgba(0,0,0,0.4), 0 0 0 1px rgba(${hex2rgb(primaryColor)},${glow}), inset 0 1px 0 rgba(255,255,255,0.08)`,
+        padding:'32px 28px',
+        opacity: p, transform:`translateY(${(1-p)*40 + float}px) scale(${0.92+p*0.08})`,
+      }}>
+        {/* Header line */}
+        <div style={{ width:32, height:3, background:primaryColor, borderRadius:2, marginBottom:20,
+          boxShadow:`0 0 8px ${primaryColor}` }} />
+        <Headline size={44} color="#fff" style={{ marginBottom:16, lineHeight:1.2 }}>{headline}</Headline>
+        {subtext && (
+          <div style={{ fontSize:15, color:'rgba(255,255,255,0.5)', fontFamily:'system-ui', lineHeight:1.5 }}>{subtext}</div>
+        )}
+      </div>
+    </AbsoluteFill>
+  )
+}
+
+// ─── UNIVERSAL: Geometric Loop BG ────────────────────────────────────────────
+// Fondo con formas geométricas en loop — Abstract Geometric trend 2026
+// Nunca se repite exactamente — patrón basado en frame
+function GeometricLoopBG({ frame, fps, headline, primaryColor, bg }) {
+  const p = spr(frame, fps, 0, 12, 90)
+  const rot = frame * 0.4
+  const shapes = [
+    { x:50, y:30, size:120, type:'circle', speed:0.3 },
+    { x:20, y:60, size:80, type:'square', speed:0.5 },
+    { x:80, y:70, size:100, type:'triangle', speed:0.2 },
+    { x:60, y:20, size:60, type:'circle', speed:0.7 },
+  ]
+  return (
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow:'hidden', justifyContent:'center', alignItems:'center', flexDirection:'column', gap:20, padding:'0 36px' }}>
+      {/* Formas geométricas de fondo */}
+      {shapes.map((s, i) => (
+        <div key={i} style={{
+          position:'absolute', left:`${s.x}%`, top:`${s.y}%`,
+          width:s.size, height:s.size,
+          border:`1px solid rgba(${hex2rgb(primaryColor)},0.08)`,
+          borderRadius: s.type === 'circle' ? '50%' : s.type === 'square' ? '4px' : '0',
+          transform:`translate(-50%,-50%) rotate(${rot * s.speed}deg)`,
+          opacity:0.4 + Math.sin(frame * 0.03 + i) * 0.2,
+        }} />
+      ))}
+      <div style={{ opacity: p, transform:`translateY(${(1-p)*20}px)`, position:'relative', textAlign:'center' }}>
+        <Headline size={50} color="#fff" style={{ lineHeight:1.2 }}>{headline}</Headline>
+      </div>
+    </AbsoluteFill>
+  )
+}
+
+
 const ANIM_MAP = {
   // Hook — signature animations
   water_drop_title:      WaterDropTitle,
   liquid_fill_text:      LiquidFillText,
   // Hook — básicas
-  counter_explosion:     CounterExplosion,
   liquid_blob_morph:     LiquidBlobMorph,
   paint_brush_reveal:    PaintBrushReveal,
   terminal_reveal:       TerminalReveal,
   typewriter_glitch:     TypewriterGlitch,
-  reveal_swipe:          RevealSwipe,
   morphing_shapes:       MorphingShapes,
   split_screen_problem:  SplitScreenProblem,
-  liquid_title:          RevealSwipe,
-  word_split:            KineticText,
-  particle_text:         ParticleReveal,
   kinetic_text:          KineticText,
   particle_reveal:       ParticleReveal,
   // Product
-  iphone_rise:           IphoneRise,
   cursor_demo:           CursorDemo,
-  browser_window:        IphoneRise,
   dashboard_build:       DashboardBuild,
   flow_diagram:          FlowDiagram,
   phone_notification:    PhoneNotification,
   // Benefits
   benefit_cards_stagger: BenefitCardsStagger,
-  stat_counters:         StatCounters,
   comparison_table:      ComparisonTable,
   timeline_scroll:       TimelineScroll,
   floating_feature_orbs: FloatingFeatureOrbs,
   icon_draw_reveal:      IconDrawReveal,
-  progress_bars:         ProgressBars,
   // CTA
   liquid_button_cta:     LiquidButtonCTA,
-  screenshot_zoom_cta:   ScreenshotZoomCTA,
-  urgency_countdown:     UrgencyCTA,
   // CTA — virales
   zoom_punch_cta:        ZoomPunchCTA,
   // CTA signature
@@ -4068,9 +4755,6 @@ const ANIM_MAP = {
   freeze_frame_outro:    FreezeFrameOutro,
   // Outro
   logo_particle_burst:   LogoParticleBurst,
-  orbit_logo:            OrbitLogo,
-  gradient_text_outro:   GradientTextOutro,
-  neon_sign:             NeonSignOutro,
   // ── NUEVA BIBLIOTECA 2025/2026 ──────────────────────────────────────────
   // Hook — Nuevas
   glitch_slice:          GlitchSlice,
@@ -4113,6 +4797,33 @@ const ANIM_MAP = {
   blob_cards:            BlobCards,
   shape_shift:           ShapeShift,
   blob_outro:            BlobOutro,
+  // ── BIBLIOTECA 2026 ─────────────────────────────────────────────────────
+  // Kinetic Typography
+  word_pressure:         WordPressure,
+  variable_weight_title: VariableWeightTitle,
+  scramble_reveal:       ScrambleReveal,
+  split_char_cascade:    SplitCharCascade,
+  // Depth & Spatial
+  depth_parallax_hook:   DepthParallaxHook,
+  // Product / Data
+  glass_card_reveal:     GlassCardReveal,
+  liquid_number_morph:   LiquidNumberMorph,
+  svg_path_draw:         SvgPathDraw,
+  // Benefits
+  ticker_tape_pro:       TickerTapePro,
+  stagger_grid_cards:    StaggerGridCards,
+  number_explosion:      NumberExplosion,
+  // CTA
+  magnetic_button:       MagneticButton,
+  split_screen_reveal:   SplitScreenReveal,
+  contextual_countdown:  ContextualCountdown,
+  // Outro
+  spectrum_outro:        SpectrumOutro,
+  typeface_fade_outro:   TypefaceFadeOutro,
+  // Universal
+  noise_texture_slide:   NoiseTextureSlide,
+  arc_browser_card:      ArcBrowserCard,
+  geometric_loop_bg:     GeometricLoopBG,
 };
 
 // Fallbacks por tipo de escena para no repetir visualmente

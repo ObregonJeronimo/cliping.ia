@@ -262,6 +262,39 @@ UNIVERSALES (útiles en cualquier escena):
 - cinematic_title: estilo película con letterbox
 - floating_text_badge: badge premium flotante
 
+ANIMACIONES 2026 - USA ESTAS PRIMERO (tecnicas de vanguardia, son las mejores):
+
+KINETIC TYPOGRAPHY (texto con fisica):
+- word_pressure: palabras con peso fisico diferente, cada una aterriza con masa propia — muy impactante
+- variable_weight_title: headline que respira de thin a black (variable fonts 2026) — para conceptos de fuerza
+- scramble_reveal: texto empieza como ruido y se cristaliza letra por letra (Vercel/Anthropic style)
+- split_char_cascade: cada letra vuela con golden angle distribution (Spotify style) — muy cinematografico
+- depth_parallax_hook: 3 capas de texto a velocidades distintas, profundidad real sin 3D (Apple Vision)
+
+PRODUCT / DATA PREMIUM:
+- glass_card_reveal: cards glassmorphism con glow pulsante en cascada (Framer style) — nunca generico
+- liquid_number_morph: numeros que rotan entre si con transicion liquida y dots indicadores (Stripe style)
+- svg_path_draw: SVG que se dibuja en tiempo real con dot viajero — para marcas con recorrido/proceso
+- stagger_grid_cards: grid 2x2 con micro-animaciones individuales y float (MagicUI library style)
+
+BENEFITS DE CALIDAD:
+- ticker_tape_pro: beneficios en ticker horizontal continuo estilo Bloomberg — para muchos beneficios
+- number_explosion: numero explota desde centro con particulas y se asienta (Spotify Wrapped style)
+
+CTA DE CONVERSION REAL:
+- magnetic_button: boton con anillos magneticos pulsantes — atrae la mirada fisicamente
+- split_screen_reveal: pantalla se parte y CTA emerge desde dentro (Apple trailer cinematografico)
+- contextual_countdown: tiempo de entrega/respuesta real con barra de progreso (no fake urgency)
+
+OUTRO MEMORABLE:
+- spectrum_outro: barras de espectro de audio que forman el logo (Spotify Wrapped 2025 style)
+- typeface_fade_outro: nombre en tipografia grande que se disuelve como niebla (editorial/Vogue motion)
+
+UNIVERSAL DE CALIDAD:
+- noise_texture_slide: fondo con ruido SVG animado, contenido flota sobre textura (Framer sites 2026)
+- arc_browser_card: card premium con gradient mesh y borde luminoso (Arc Browser style)
+- geometric_loop_bg: formas geometricas en loop como background (Abstract Geometric trend 2026)
+
 ANIMACIONES SIGNATURE QUE DEBES USAR CON FRECUENCIA (son únicas y muy impactantes):
 - water_drop_title: gota SVG que cae e impacta con ondas — muy visual para hook
 - liquid_fill_text: nombre del producto que se llena de líquido — para hook de marca
