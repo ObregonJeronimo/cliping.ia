@@ -1,5 +1,7 @@
 import { useState, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { doc, setDoc, collection } from 'firebase/firestore'
+import { db } from '../lib/firebase'
 import styles from './Home.module.css'
 
 // ─── Constantes ────────────────────────────────────────────────────────────
@@ -313,6 +315,28 @@ export default function Home() {
       setTimeout(() => { setStepStates(prev => ({...prev,[key]:'done'})); idx++; setTimeout(run,300) }, dur)
     }
     run()
+  }
+
+  async function saveVideoToFirestore(jobId, videoFilename, jobData) {
+    if (!user) return
+    try {
+      const videoRef = doc(collection(db, 'users', user.uid, 'videos'), jobId)
+      await setDoc(videoRef, {
+        jobId,
+        userId: user.uid,
+        url,
+        action,
+        videoUrl: `${API_URL}/api/video/${videoFilename}`,
+        filename: videoFilename,
+        siteName: '',
+        headline: '',
+        animations: {},
+        renderOk: true,
+        createdAt: new Date(),
+      })
+    } catch (e) {
+      console.error('[Home] Error guardando video en Firestore:', e)
+    }
   }
 
   function handleReset() {

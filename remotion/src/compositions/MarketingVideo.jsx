@@ -2263,28 +2263,19 @@ function LiquidFillText({ frame, fps, siteName, headline, primaryColor, secondar
             {siteName}
           </div>
 
-          {/* Texto "lleno" con clip del líquido */}
+          {/* Texto "lleno" — gradiente de llenado via background-clip:text */}
           <div style={{
             position: 'absolute', inset: 0,
             fontSize: 76, fontWeight: 900, letterSpacing: -3,
             fontFamily: 'system-ui, sans-serif', lineHeight: 1,
-            color: primaryColor,
-            clipPath: `inset(${Math.max(0, (1-fillProgress)*100)}% 0 0 0)`,
-            textShadow: `0 0 30px rgba(${hex2rgb(primaryColor)},0.6)`,
+            background: `linear-gradient(to top, ${primaryColor} ${fillProgress*100}%, transparent ${fillProgress*100}%)`,
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
             opacity: textP,
           }}>
             {siteName}
           </div>
-
-          {/* Ola SVG superpuesta */}
-          <svg style={{
-            position: 'absolute', left: 0, right: 0,
-            top: `${(1-fillProgress)*100 - 5}%`, // justo en el borde del líquido
-            width: '100%', height: '15px',
-            opacity: fillProgress > 0.02 && fillProgress < 0.98 ? 0.6 : 0,
-          }} viewBox="0 0 390 15" preserveAspectRatio="none">
-            <polyline points={wavePoints} fill="none" stroke={primaryColor} strokeWidth="2" />
-          </svg>
         </div>
 
         {/* Headline */}
@@ -3454,24 +3445,29 @@ function AccordionReveal({ frame, fps, benefits, primaryColor, bg }) {
 
 // ─── BENEFITS: Bento Grid ─────────────────────────────────────────────────────
 // Layout tipo bento box con cards de distintos tamaños
-function BentoGrid({ frame, fps, benefits, primaryColor, bg }) {
-  const safeBenefits = (benefits || ['Rápido','Profesional','Automatizado','Sin edición','Para todos']).map(b => typeof b === 'string' ? b : b?.title || '');
+function BentoGrid({ frame, fps, benefits, items, primaryColor, bg }) {
+  // Acepta items con {title, icon} o benefits como strings
+  const raw = items || benefits || ['Rápido','Profesional','Automatizado','Sin edición','Para todos','Mas']
+  const safeItems = raw.slice(0, 6).map(b => {
+    if (typeof b === 'string') return { title: b, icon: '' }
+    return { title: b?.title || b?.label || '', icon: b?.icon || '' }
+  })
   return (
-    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', padding: 24 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: 'auto auto auto', gap: 8, height: '100%' }}>
-        {safeBenefits.slice(0, 4).map((b, i) => {
-          const p = spr(frame, fps, i * 12, 12, 88);
-          const isLarge = i === 0;
+    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', padding: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, height: '100%', alignContent: 'start', paddingTop: 30 }}>
+        {safeItems.map((item, i) => {
+          const p = spr(frame, fps, i * 10, 11, 88);
           return (
             <div key={i} style={{
-              gridColumn: isLarge ? '1 / -1' : 'auto',
-              background: i % 2 === 0 ? `rgba(${hex2rgb(primaryColor)},0.1)` : 'rgba(255,255,255,0.04)',
-              border: `1px solid ${i % 2 === 0 ? `rgba(${hex2rgb(primaryColor)},0.25)` : 'rgba(255,255,255,0.08)'}`,
-              borderRadius: 14, padding: isLarge ? '20px 24px' : '16px',
-              display: 'flex', alignItems: 'center', justifyContent: isLarge ? 'flex-start' : 'center',
-              opacity: p, transform: `scale(${0.9 + p * 0.1})`,
+              background: i % 3 === 0 ? `rgba(${hex2rgb(primaryColor)},0.12)` : 'rgba(255,255,255,0.04)',
+              border: `1px solid ${i % 3 === 0 ? `rgba(${hex2rgb(primaryColor)},0.25)` : 'rgba(255,255,255,0.07)'}`,
+              borderRadius: 14, padding: '18px 16px',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8,
+              opacity: p, transform: `scale(${0.88 + p * 0.12})`,
+              minHeight: 90,
             }}>
-              <div style={{ fontSize: isLarge ? 18 : 14, color: '#fff', fontFamily: 'system-ui', fontWeight: isLarge ? 600 : 500, textAlign: isLarge ? 'left' : 'center', lineHeight: 1.4 }}>{b}</div>
+              {item.icon && <div style={{ fontSize: 28 }}>{item.icon}</div>}
+              <div style={{ fontSize: 14, color: '#fff', fontFamily: 'system-ui', fontWeight: 500, textAlign: 'center', lineHeight: 1.3 }}>{item.title}</div>
             </div>
           );
         })}
@@ -3483,8 +3479,16 @@ function BentoGrid({ frame, fps, benefits, primaryColor, bg }) {
 // ─── BENEFITS: Wave Stats ──────────────────────────────────────────────────────
 // Estadísticas que cuentan hacia arriba con ondas de fondo
 function WaveStats({ frame, fps, stats, primaryColor, bg }) {
-  const safeStats = (stats || ['95%','10x','48h']).map(s => typeof s === 'string' ? s : s?.value || String(s));
-  const labels = ['Satisfacción', 'Más rápido', 'Entrega'];
+  // Normalizar — acepta strings, {value/number, label, suffix/prefix}
+  const safeStats = (stats || ['95%','10x','48h']).map(s => {
+    if (typeof s === 'string') return { number: s, label: '', suffix: '' }
+    const num = s?.value ?? s?.number ?? ''
+    const suf = s?.suffix ?? s?.prefix ?? ''
+    const lbl = s?.label ?? ''
+    // Limpiar: quitar "%" o "h" duplicados si ya están en num
+    const display = suf && !String(num).includes(suf) ? `${suf}${num}` : String(num)
+    return { number: display, label: lbl }
+  })
   return (
     <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: 0 }}>
       <svg style={{ position: 'absolute', bottom: 0, left: 0, right: 0, width: '100%' }} viewBox="0 0 390 200" preserveAspectRatio="none">
@@ -3496,13 +3500,13 @@ function WaveStats({ frame, fps, stats, primaryColor, bg }) {
           );
         })}
       </svg>
-      <div style={{ display: 'flex', gap: 32, justifyContent: 'center' }}>
+      <div style={{ display: 'flex', gap: 28, justifyContent: 'center', flexWrap: 'wrap', padding: '0 24px' }}>
         {safeStats.map((s, i) => {
           const p = spr(frame, fps, i * 20, 12, 85);
           return (
             <div key={i} style={{ textAlign: 'center', opacity: p, transform: `translateY(${(1 - p) * 30}px)` }}>
-              <div style={{ fontSize: 64, fontWeight: 800, color: primaryColor, fontFamily: 'system-ui', lineHeight: 1, letterSpacing: '-0.03em' }}>{s}</div>
-              <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', fontFamily: 'system-ui', marginTop: 6, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{labels[i] || ''}</div>
+              <div style={{ fontSize: 60, fontWeight: 800, color: primaryColor, fontFamily: 'system-ui', lineHeight: 1, letterSpacing: '-0.03em' }}>{s.number}</div>
+              {s.label ? <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', fontFamily: 'system-ui', marginTop: 6, textTransform: 'uppercase', letterSpacing: '0.08em', maxWidth: 100 }}>{s.label}</div> : null}
             </div>
           );
         })}
@@ -3873,7 +3877,7 @@ const T = {
   benefits_c:  { from: 540, dur: 90  },
   cta_a:       { from: 630, dur: 90  },
   cta_b:       { from: 720, dur: 120 },
-  outro:       { from: 840, dur: 150 },
+  outro:       { from: 840, dur: 210 },
 };
 
 // Factor de escala: 1080 / 390 = 2.769
