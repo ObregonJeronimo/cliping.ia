@@ -262,6 +262,28 @@ UNIVERSALES (útiles en cualquier escena):
 - cinematic_title: estilo película con letterbox
 - floating_text_badge: badge premium flotante
 
+ANIMACIONES REACTBITS + ANIMEJS v4 - LAS MEJORES DEL MERCADO (MIT, open source):
+Fuente: reactbits.dev (39k estrellas GitHub) + animejs.com v4 (MIT)
+
+TEXT ANIMATIONS (reactbits.dev):
+- blur_text_reveal: cada palabra aparece desde blur extremo con stagger — signature ReactBits
+- true_focus_reveal: una palabra a la vez en foco, las demas en blur — efecto hipnotico
+- rotating_text_hook: linea fija + palabra que rota entre opciones (slide vertical)
+- gradient_shimmer_text: texto con destello de gradiente que viaja — como logo de Linear
+- neon_text_reveal: glow de neon que se activa letra por letra — premium
+- aurora_text: texto con gradiente aurora animado que rota (colores derivados del sitio)
+
+ANIMEJS v4 TECHNIQUES:
+- stagger_from_center: elementos animados desde el centro hacia afuera (stagger(65, center))
+- alternate_comparison: ping-pong entre antes/despues con easeInOutQuint
+- horizontal_wipe: palabras entran por derecha salen por izquierda (GSAP ScrollTrigger style)
+- particle_form_text: particulas que orbitan y forman el logo (AnimeJS particle system)
+- count_up_metrics: numeros cuentan hacia arriba con easing (react-countup style)
+
+REACTBITS UI COMPONENTS:
+- spotlight_card: card con spotlight que se mueve organicamente — muy premium
+- shiny_button_cta: boton con destello de luz que viaja por encima — muy efectivo para CTA
+
 ANIMACIONES 2026 - USA ESTAS PRIMERO (tecnicas de vanguardia, son las mejores):
 
 KINETIC TYPOGRAPHY (texto con fisica):

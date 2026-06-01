@@ -4712,6 +4712,534 @@ function GeometricLoopBG({ frame, fps, headline, primaryColor, bg }) {
 }
 
 
+
+// ════════════════════════════════════════════════════════════════════════════
+// BIBLIOTECA REACTBITS + ANIMEJS v4 + GSAP TECHNIQUES
+// Implementadas nativamente con useCurrentFrame/spring de Remotion
+// Fuente: reactbits.dev (MIT), animejs.com (MIT), gsap techniques
+// ════════════════════════════════════════════════════════════════════════════
+
+// ─── ReactBits: BlurText ─────────────────────────────────────────────────────
+// Cada palabra aparece desde blur extremo con stagger — signature de ReactBits
+// Técnica: filter:blur interpolado por palabra con delay escalonado
+function BlurTextReveal({ frame, fps, headline, primaryColor, bg }) {
+  const words = (headline || '').split(' ').filter(Boolean)
+  return (
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow:'hidden', justifyContent:'center', alignItems:'center', padding:'0 36px' }}>
+      <RadialGlow color={primaryColor} opacity={0.08} size={460} />
+      <div style={{ display:'flex', flexWrap:'wrap', gap:'6px 10px', justifyContent:'center' }}>
+        {words.map((w, i) => {
+          const delay = i * 8
+          const p = spr(frame, fps, delay, 18, 85)
+          const blur = (1 - p) * 14
+          const y = (1 - p) * 20
+          return (
+            <div key={i} style={{
+              filter: `blur(${blur}px)`,
+              transform: `translateY(${y}px)`,
+              opacity: Math.min(1, p * 1.3),
+            }}>
+              <div style={{
+                fontSize: 56, fontWeight: 700, fontFamily: 'system-ui',
+                letterSpacing: '-0.03em', color: '#fff', lineHeight: 1.15,
+              }}>{w}</div>
+            </div>
+          )
+        })}
+      </div>
+      <GlowLine color={primaryColor} progress={spr(frame, fps, words.length * 8 + 5, 18, 100)} width={50} />
+    </AbsoluteFill>
+  )
+}
+
+// ─── ReactBits: TrueFocus ─────────────────────────────────────────────────────
+// Una palabra a la vez en foco — las demás en blur/opacidad baja
+// Inspirado directo del componente TrueFocus de ReactBits
+function TrueFocusReveal({ frame, fps, headline, primaryColor, bg }) {
+  const words = (headline || '').split(' ').filter(Boolean)
+  const wordDur = 50
+  const activeIdx = Math.floor(frame / wordDur) % words.length
+  const cycleP = (frame % wordDur) / wordDur
+  const entryP = spr(frame, fps, 0, 14, 90)
+  return (
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow:'hidden', justifyContent:'center', alignItems:'center', padding:'0 32px' }}>
+      <Particles frame={frame} color={primaryColor} count={6} />
+      <div style={{ display:'flex', flexWrap:'wrap', gap:'4px 12px', justifyContent:'center', opacity: entryP }}>
+        {words.map((w, i) => {
+          const isFocus = i === activeIdx
+          const wasRecent = Math.abs(i - activeIdx) <= 1
+          const blur = isFocus ? 0 : wasRecent ? 2 : 5
+          const opacity = isFocus ? 1 : wasRecent ? 0.35 : 0.15
+          const scale = isFocus ? 1.06 : 1
+          return (
+            <div key={i} style={{
+              filter: `blur(${blur}px)`,
+              opacity,
+              transform: `scale(${scale})`,
+              transition: 'none',
+            }}>
+              <div style={{
+                fontSize: 52, fontWeight: 800, fontFamily: 'system-ui',
+                letterSpacing: '-0.035em', lineHeight: 1.1,
+                color: isFocus ? primaryColor : '#fff',
+                textShadow: isFocus ? `0 0 20px rgba(${hex2rgb(primaryColor)},0.5)` : 'none',
+              }}>{w}</div>
+            </div>
+          )
+        })}
+      </div>
+    </AbsoluteFill>
+  )
+}
+
+// ─── ReactBits: RotatingText ─────────────────────────────────────────────────
+// Una línea fija + una palabra que rota entre opciones con slide vertical
+// Estilo "La solución para [ECOMMERCE / NEGOCIOS / MARCAS]"
+function RotatingTextHook({ frame, fps, headline, options, primaryColor, bg }) {
+  const safeOptions = options || (headline || '').split(' / ').filter(Boolean) || ['tu negocio']
+  const wordDur = 60
+  const idx = Math.floor(frame / wordDur) % safeOptions.length
+  const cycleP = (frame % wordDur) / wordDur
+  const slideIn = spr({ frame: (frame % wordDur), fps, config:{damping:14,stiffness:100,mass:0.5} }, fps, 0, 14, 80)
+  const fadeIn = Math.min(1, cycleP < 0.1 ? cycleP / 0.1 : cycleP > 0.85 ? (1 - cycleP) / 0.15 : 1)
+  const introP = spr(frame, fps, 0, 14, 90)
+  const staticPart = (headline || '').split('/')[0]?.trim() || 'Hecho para'
+  return (
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow:'hidden', justifyContent:'center', alignItems:'center', flexDirection:'column', gap:8, padding:'0 36px' }}>
+      <RadialGlow color={primaryColor} opacity={0.1} size={420} />
+      <div style={{ opacity: introP, textAlign:'center' }}>
+        <div style={{ fontSize:32, fontWeight:500, color:'rgba(255,255,255,0.5)', fontFamily:'system-ui', marginBottom:4 }}>
+          {staticPart}
+        </div>
+        <div style={{ overflow:'hidden', height:72 }}>
+          <div style={{
+            transform: `translateY(${(1 - slideIn) * 60}px)`,
+            opacity: fadeIn,
+          }}>
+            <div style={{
+              fontSize:64, fontWeight:800, fontFamily:'system-ui',
+              letterSpacing:'-0.04em', color: primaryColor, lineHeight:1,
+              textShadow:`0 0 24px rgba(${hex2rgb(primaryColor)},0.4)`,
+            }}>
+              {safeOptions[idx]}
+            </div>
+          </div>
+        </div>
+      </div>
+    </AbsoluteFill>
+  )
+}
+
+// ─── AnimeJS v4: Stagger from center ─────────────────────────────────────────
+// delay: stagger(65, { from: 'center' }) — el efecto signature de AnimeJS v4
+// Los elementos se animan desde el centro hacia afuera
+function StaggerFromCenter({ frame, fps, benefits, headline, primaryColor, bg }) {
+  const items = (benefits || []).slice(0, 6).map(b => typeof b === 'string' ? b : b?.title || '')
+  const center = Math.floor(items.length / 2)
+  return (
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow:'hidden', justifyContent:'center', alignItems:'center', flexDirection:'column', gap:12, padding:'0 24px' }}>
+      <RadialGlow color={primaryColor} opacity={0.08} size={440} />
+      {headline && (
+        <div style={{ opacity: spr(frame, fps, 0, 14, 90), marginBottom:8, textAlign:'center' }}>
+          <div style={{ fontSize:24, fontWeight:600, color:'rgba(255,255,255,0.6)', fontFamily:'system-ui' }}>{headline}</div>
+        </div>
+      )}
+      <div style={{ width:'100%', display:'flex', flexDirection:'column', gap:10 }}>
+        {items.map((item, i) => {
+          // Stagger desde el centro: los del centro aparecen primero
+          const distFromCenter = Math.abs(i - center)
+          const delay = distFromCenter * 12
+          const p = spr(frame, fps, delay, 12, 88)
+          const fromDir = i < center ? -1 : 1
+          return (
+            <div key={i} style={{
+              display:'flex', alignItems:'center', gap:14,
+              opacity: p,
+              transform: `translateX(${fromDir * (1-p) * 50}px)`,
+            }}>
+              <div style={{
+                width:8, height:8, borderRadius:'50%', flexShrink:0,
+                background: primaryColor,
+                boxShadow: `0 0 ${6 + p*4}px ${primaryColor}`,
+              }} />
+              <div style={{ fontSize:17, color:'#e0e0e0', fontFamily:'system-ui', fontWeight:500 }}>{item}</div>
+            </div>
+          )
+        })}
+      </div>
+    </AbsoluteFill>
+  )
+}
+
+// ─── AnimeJS v4: Alternate loop / easeInOutQuint ─────────────────────────────
+// Ping-pong animation — los elementos van y vienen
+// Muy efectivo para demostrar un proceso bidireccional o comparación
+function AlternateComparison({ frame, fps, benefits, primaryColor, bg }) {
+  const items = (benefits || ['Antes','Después']).slice(0, 2).map(b => typeof b === 'string' ? b : b?.title || '')
+  const PERIOD = 80
+  // alternate: 0→1→0→1... con easeInOutQuint
+  const t = (frame % PERIOD) / PERIOD
+  const eased = t < 0.5
+    ? 8 * t * t * t * t * t
+    : 1 - Math.pow(-2 * t + 2, 5) / 2
+  const activeP = spr(frame, fps, 0, 14, 90)
+  return (
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow:'hidden', justifyContent:'center', alignItems:'center', flexDirection:'column', gap:24, padding:'0 36px' }}>
+      <div style={{ width:'100%', display:'flex', gap:16, opacity: activeP }}>
+        {items.map((item, i) => {
+          const isActive = i === 0 ? eased < 0.5 : eased >= 0.5
+          const scale = isActive ? 1.05 : 0.95
+          const opacity = isActive ? 1 : 0.35
+          return (
+            <div key={i} style={{
+              flex:1,
+              background: isActive ? `rgba(${hex2rgb(primaryColor)},0.15)` : 'rgba(255,255,255,0.03)',
+              border: `1px solid ${isActive ? `rgba(${hex2rgb(primaryColor)},0.4)` : 'rgba(255,255,255,0.06)'}`,
+              borderRadius:16, padding:'24px 20px', textAlign:'center',
+              transform: `scale(${scale})`, opacity,
+              boxShadow: isActive ? `0 0 24px rgba(${hex2rgb(primaryColor)},0.2)` : 'none',
+            }}>
+              <div style={{ fontSize:12, textTransform:'uppercase', letterSpacing:'0.1em',
+                color: isActive ? primaryColor : 'rgba(255,255,255,0.3)', fontFamily:'system-ui', marginBottom:10 }}>
+                {i === 0 ? 'Antes' : 'Después'}
+              </div>
+              <div style={{ fontSize:18, fontWeight:600, color: isActive ? '#fff' : 'rgba(255,255,255,0.4)', fontFamily:'system-ui', lineHeight:1.4 }}>{item}</div>
+            </div>
+          )
+        })}
+      </div>
+    </AbsoluteFill>
+  )
+}
+
+// ─── ReactBits: GradientText animado ─────────────────────────────────────────
+// El headline tiene un gradiente que se mueve — como el logo de Linear
+// La posición del gradiente oscila creando efecto de luz corriendo
+function GradientShimmerText({ frame, fps, headline, primaryColor, bg }) {
+  const p = spr(frame, fps, 0, 14, 90)
+  const shimmerPos = ((frame * 1.5) % 200) - 50  // 0 a 200, loop
+  const lines = (headline || '').split('\n').filter(Boolean)
+  const r = parseInt(primaryColor.replace('#','').slice(0,2), 16) || 100
+  const g = parseInt(primaryColor.replace('#','').slice(2,4), 16) || 100
+  const b = parseInt(primaryColor.replace('#','').slice(4,6), 16) || 100
+  return (
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow:'hidden', justifyContent:'center', alignItems:'center', flexDirection:'column', gap:12, padding:'0 36px' }}>
+      <Particles frame={frame} color={primaryColor} count={8} />
+      {lines.map((line, i) => {
+        const lp = spr(frame, fps, i * 10, 14, 90)
+        // El gradiente shimmer se mueve horizontalmente
+        const gradStart = shimmerPos - 30
+        const gradEnd = shimmerPos + 30
+        return (
+          <div key={i} style={{
+            opacity: lp, transform: `translateY(${(1-lp)*24}px)`,
+            fontSize: 58, fontWeight: 900, fontFamily: 'system-ui',
+            letterSpacing: '-0.04em', lineHeight: 1.1, textAlign: 'center',
+            background: `linear-gradient(90deg,
+              rgba(255,255,255,0.4) 0%,
+              rgba(255,255,255,0.4) ${gradStart}%,
+              rgba(${r},${g},${b},1) ${shimmerPos}%,
+              rgba(255,255,255,0.4) ${gradEnd}%,
+              rgba(255,255,255,0.4) 100%
+            )`,
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
+          }}>{line}</div>
+        )
+      })}
+    </AbsoluteFill>
+  )
+}
+
+// ─── ReactBits: CountUp animado ───────────────────────────────────────────────
+// Los números cuentan hacia arriba con easing — signature de react-countup
+// Pero con fondo premium y múltiples métricas
+function CountUpMetrics({ frame, fps, stats, primaryColor, bg }) {
+  const safeStats = (stats || []).slice(0, 3).map(s => {
+    if (typeof s === 'string') return { value: s, label: '' }
+    return { value: String(s?.value ?? s?.number ?? ''), label: s?.label ?? '' }
+  })
+  return (
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow:'hidden', justifyContent:'center', alignItems:'center', gap:0, flexDirection:'column' }}>
+      <RadialGlow color={primaryColor} opacity={0.12} size={420} />
+      <div style={{ display:'flex', gap:24, flexWrap:'wrap', justifyContent:'center', padding:'0 24px' }}>
+        {safeStats.map((s, i) => {
+          const p = spr(frame, fps, i * 18, 14, 85)
+          // Parsear el número para animarlo
+          const numMatch = s.value.match(/^([+\-$€£]?)(\d+(?:\.\d+)?)(.*)$/)
+          let displayVal = s.value
+          if (numMatch) {
+            const prefix = numMatch[1]
+            const num = parseFloat(numMatch[2])
+            const suffix = numMatch[3]
+            const current = Math.floor(p * num)
+            displayVal = `${prefix}${current}${suffix}`
+          }
+          return (
+            <div key={i} style={{
+              textAlign:'center', opacity: p,
+              transform: `translateY(${(1-p)*36}px) scale(${0.85+p*0.15})`,
+            }}>
+              <div style={{
+                fontSize:76, fontWeight:900, fontFamily:'system-ui', letterSpacing:'-0.05em',
+                color: primaryColor, lineHeight:1,
+                textShadow:`0 0 30px rgba(${hex2rgb(primaryColor)},0.5)`,
+              }}>{displayVal}</div>
+              {s.label && (
+                <div style={{ fontSize:13, color:'rgba(255,255,255,0.4)', fontFamily:'system-ui',
+                  textTransform:'uppercase', letterSpacing:'0.08em', marginTop:6 }}>{s.label}</div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </AbsoluteFill>
+  )
+}
+
+// ─── ReactBits: ShinyButton ───────────────────────────────────────────────────
+// El CTA tiene un destello de luz que viaja por el botón
+// Técnica del ShinyButton de ReactBits — muy efectiva para conversión
+function ShinyButtonCTA({ frame, fps, cta, subtext, primaryColor, bg }) {
+  const p = spr(frame, fps, 0, 12, 90)
+  const textP = spr(frame, fps, 15, 16, 100)
+  // El destello viaja de izquierda a derecha, loop cada 90 frames
+  const shineCycle = (frame % 90) / 90
+  const shineX = shineCycle * 200 - 20  // -20% a 180%
+  const shineOpacity = Math.sin(shineCycle * Math.PI) * 0.6
+  return (
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow:'hidden', justifyContent:'center', alignItems:'center', flexDirection:'column', gap:24 }}>
+      <RadialGlow color={primaryColor} opacity={0.1} size={380} />
+      <div style={{ opacity: textP, transform:`translateY(${(1-textP)*-18}px)`, textAlign:'center', padding:'0 40px' }}>
+        <Headline size={40} color="#fff">{subtext || '¿Listo para empezar?'}</Headline>
+      </div>
+      <div style={{ opacity: p, transform:`scale(${0.85+p*0.15})`, position:'relative', overflow:'hidden', borderRadius:100 }}>
+        {/* Botón base */}
+        <div style={{
+          background:`linear-gradient(135deg, ${primaryColor} 0%, rgba(${hex2rgb(primaryColor)},0.75) 100%)`,
+          borderRadius:100, padding:'18px 48px',
+          boxShadow:`0 0 30px rgba(${hex2rgb(primaryColor)},0.35), inset 0 1px 0 rgba(255,255,255,0.15)`,
+        }}>
+          <div style={{ fontSize:20, fontWeight:700, color:'#fff', fontFamily:'system-ui', letterSpacing:'-0.01em', position:'relative' }}>
+            {cta || 'Empezá ahora'}
+          </div>
+        </div>
+        {/* Destello que viaja */}
+        <div style={{
+          position:'absolute', top:0, bottom:0, width:'40%',
+          left:`${shineX}%`,
+          background:'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)',
+          transform:'skewX(-20deg)',
+          opacity: shineOpacity,
+          pointerEvents:'none',
+        }} />
+      </div>
+      {subtext && <div style={{ opacity: textP * 0.5, fontSize:13, color:'rgba(255,255,255,0.35)', fontFamily:'system-ui' }}>{subtext}</div>}
+    </AbsoluteFill>
+  )
+}
+
+// ─── ReactBits: SpotlightCard ────────────────────────────────────────────────
+// Card con spotlight (foco de luz) que sigue el movimiento — adaptado para video
+// El foco se mueve automáticamente de forma orgánica
+function SpotlightCard({ frame, fps, headline, benefits, primaryColor, bg }) {
+  const items = (benefits || []).slice(0, 3).map(b => typeof b === 'string' ? b : b?.title || '')
+  const p = spr(frame, fps, 0, 12, 90)
+  // Movimiento orgánico del spotlight
+  const spotX = 50 + Math.sin(frame * 0.03) * 30
+  const spotY = 50 + Math.cos(frame * 0.025) * 20
+  return (
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow:'hidden', justifyContent:'center', alignItems:'center', padding:28 }}>
+      <div style={{
+        width:'100%', borderRadius:22, padding:'28px 24px',
+        background:`radial-gradient(circle at ${spotX}% ${spotY}%, rgba(${hex2rgb(primaryColor)},0.12) 0%, rgba(255,255,255,0.03) 60%)`,
+        border:`1px solid rgba(255,255,255,0.08)`,
+        boxShadow:`0 20px 60px rgba(0,0,0,0.4)`,
+        opacity: p, transform:`scale(${0.92+p*0.08})`,
+        position:'relative', overflow:'hidden',
+      }}>
+        {/* Borde luminoso que sigue el spotlight */}
+        <div style={{
+          position:'absolute', inset:0, borderRadius:22,
+          background:`radial-gradient(circle at ${spotX}% ${spotY}%, rgba(${hex2rgb(primaryColor)},0.25) 0%, transparent 50%)`,
+          mask:'linear-gradient(black,black) padding-box, linear-gradient(black,black)',
+          WebkitMask:'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+          WebkitMaskComposite:'xor',
+          maskComposite:'exclude',
+          border:'1px solid transparent',
+          pointerEvents:'none',
+        }} />
+        {headline && (
+          <div style={{ fontSize:22, fontWeight:700, color:'#fff', fontFamily:'system-ui', marginBottom:20 }}>{headline}</div>
+        )}
+        <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+          {items.map((item, i) => {
+            const ip = spr(frame, fps, 12 + i * 14, 12, 88)
+            return (
+              <div key={i} style={{ display:'flex', alignItems:'center', gap:12, opacity: ip }}>
+                <div style={{ width:6, height:6, borderRadius:'50%', background:primaryColor, flexShrink:0,
+                  boxShadow:`0 0 6px ${primaryColor}` }} />
+                <div style={{ fontSize:16, color:'rgba(255,255,255,0.8)', fontFamily:'system-ui' }}>{item}</div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </AbsoluteFill>
+  )
+}
+
+// ─── ReactBits: NeonReveal ────────────────────────────────────────────────────
+// El texto tiene un glow de neón que se activa progresivamente
+// Muy diferente al neon_sign anterior — este es un reveal limpio
+function NeonTextReveal({ frame, fps, headline, primaryColor, bg }) {
+  const words = (headline || '').split(' ')
+  const totalDelay = words.length * 12
+  const globalP = spr(frame, fps, 0, 14, 90)
+  return (
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow:'hidden', justifyContent:'center', alignItems:'center', flexDirection:'column', gap:20, padding:'0 36px' }}>
+      {/* Fondo con pulso de neón */}
+      <div style={{
+        position:'absolute', inset:0,
+        background:`radial-gradient(circle at 50% 50%, rgba(${hex2rgb(primaryColor)},${globalP * 0.08}) 0%, transparent 70%)`,
+      }} />
+      <div style={{ display:'flex', flexWrap:'wrap', gap:'6px 8px', justifyContent:'center', position:'relative' }}>
+        {words.map((w, i) => {
+          const p = spr(frame, fps, i * 12, 16, 85)
+          const neonIntensity = p * 0.8
+          return (
+            <div key={i} style={{ opacity: p }}>
+              <div style={{
+                fontSize: 58, fontWeight: 800, fontFamily: 'system-ui',
+                letterSpacing: '-0.03em', lineHeight: 1.1,
+                color: '#fff',
+                textShadow: [
+                  `0 0 ${neonIntensity * 7}px rgba(${hex2rgb(primaryColor)},${neonIntensity})`,
+                  `0 0 ${neonIntensity * 20}px rgba(${hex2rgb(primaryColor)},${neonIntensity * 0.7})`,
+                  `0 0 ${neonIntensity * 40}px rgba(${hex2rgb(primaryColor)},${neonIntensity * 0.4})`,
+                ].join(', '),
+              }}>{w}</div>
+            </div>
+          )
+        })}
+      </div>
+    </AbsoluteFill>
+  )
+}
+
+// ─── GSAP ScrollTrigger: Horizontal Wipe ─────────────────────────────────────
+// El contenido anterior sale hacia la izquierda mientras el nuevo entra por la derecha
+// Técnica de GSAP horizontal scroll usada en landings premium
+function HorizontalWipe({ frame, fps, headlines, primaryColor, bg }) {
+  const items = headlines || ['Rápido', 'Simple', 'Efectivo']
+  const DUR = 70
+  const idx = Math.floor(frame / DUR) % items.length
+  const cycleFrame = frame % DUR
+  // El anterior sale por la izquierda
+  const outP = Math.min(1, cycleFrame / 20)
+  // El nuevo entra por la derecha
+  const inP = spr({ frame: Math.max(0, cycleFrame - 10), fps, config:{damping:16,stiffness:90,mass:0.6} }, fps, 0, 16, 80)
+  const introP = spr(frame, fps, 0, 14, 90)
+  return (
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow:'hidden', justifyContent:'center', alignItems:'center', flexDirection:'column', gap:16 }}>
+      <RadialGlow color={primaryColor} opacity={0.1} size={460} />
+      <div style={{ overflow:'hidden', position:'relative', opacity: introP, width:'100%', textAlign:'center' }}>
+        <div style={{
+          fontSize:72, fontWeight:900, fontFamily:'system-ui', letterSpacing:'-0.05em',
+          color: primaryColor, lineHeight:1,
+          transform:`translateX(${(1 - inP) * 120}px)`,
+          opacity: inP,
+        }}>
+          {items[idx]}
+        </div>
+      </div>
+    </AbsoluteFill>
+  )
+}
+
+// ─── AnimeJS v4: Particles Stagger ───────────────────────────────────────────
+// Partículas que forman texto — técnica de AnimeJS v4 particle system
+// Muy espectacular para hook de marca
+function ParticleFormText({ frame, fps, siteName, primaryColor, bg }) {
+  const text = siteName || ''
+  const charCount = text.length
+  const p = spr(frame, fps, 0, 12, 80)
+  const settled = spr(frame, fps, 20, 18, 90)
+  // Número fijo de partículas para evitar recreación
+  const PARTICLE_COUNT = Math.min(charCount * 3, 24)
+  return (
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow:'hidden', justifyContent:'center', alignItems:'center', flexDirection:'column', gap:16 }}>
+      {/* Partículas que orbitan y luego se asientan */}
+      {Array.from({length: PARTICLE_COUNT}, (_, i) => {
+        const angle = (i / PARTICLE_COUNT) * Math.PI * 2
+        const radius = (1 - settled) * 80
+        const x = Math.cos(angle + frame * 0.05) * radius
+        const y = Math.sin(angle + frame * 0.05) * radius
+        return (
+          <div key={i} style={{
+            position:'absolute',
+            left:'50%', top:'50%',
+            width: 4 + (i % 3) * 2, height: 4 + (i % 3) * 2,
+            borderRadius:'50%',
+            background: i % 2 === 0 ? primaryColor : `rgba(${hex2rgb(primaryColor)},0.5)`,
+            transform:`translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`,
+            opacity: p * (0.4 + (i % 3) * 0.2),
+          }} />
+        )
+      })}
+      {/* Texto que emerge */}
+      <div style={{ opacity: settled, transform:`scale(${0.7 + settled * 0.3})`, position:'relative' }}>
+        <div style={{
+          fontSize:64, fontWeight:900, fontFamily:'system-ui', letterSpacing:'-0.04em',
+          color:'#fff', textShadow:`0 0 30px rgba(${hex2rgb(primaryColor)},0.6)`,
+          filter:`blur(${(1-settled)*4}px)`,
+        }}>{text}</div>
+      </div>
+    </AbsoluteFill>
+  )
+}
+
+// ─── ReactBits: AuroraText ────────────────────────────────────────────────────
+// Texto con gradiente aurora animado — técnica de ReactBits AuroraText
+// El gradiente rota con colores derivados del primaryColor
+function AuroraText({ frame, fps, headline, primaryColor, bg }) {
+  const p = spr(frame, fps, 0, 14, 90)
+  const rotation = frame * 1.5
+  // Colores aurora derivados del primaryColor
+  const h = primaryColor.replace('#', '')
+  const r = parseInt(h.slice(0,2), 16)
+  const g = parseInt(h.slice(2,4), 16)
+  const b = parseInt(h.slice(4,6), 16)
+  // Complementario y análogos
+  const c1 = primaryColor
+  const c2 = `#${Math.min(255,r+60).toString(16).padStart(2,'0')}${Math.max(0,g-30).toString(16).padStart(2,'0')}${Math.min(255,b+80).toString(16).padStart(2,'0')}`
+  const c3 = `#${Math.max(0,r-40).toString(16).padStart(2,'0')}${Math.min(255,g+60).toString(16).padStart(2,'0')}${Math.max(0,b-20).toString(16).padStart(2,'0')}`
+  const lines = (headline || '').split('\n').filter(Boolean)
+  return (
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow:'hidden', justifyContent:'center', alignItems:'center', flexDirection:'column', gap:8, padding:'0 36px' }}>
+      <Particles frame={frame} color={primaryColor} count={10} />
+      {lines.map((line, i) => {
+        const lp = spr(frame, fps, i * 12, 14, 90)
+        return (
+          <div key={i} style={{
+            opacity: lp * p,
+            transform:`translateY(${(1-lp)*20}px) scale(${0.88+lp*0.12})`,
+            fontSize: i === 0 ? 62 : 44,
+            fontWeight: 900, fontFamily:'system-ui', letterSpacing:'-0.04em',
+            lineHeight: 1.1, textAlign:'center',
+            background:`linear-gradient(${rotation}deg, ${c1}, ${c2}, ${c3}, ${c1})`,
+            WebkitBackgroundClip:'text',
+            WebkitTextFillColor:'transparent',
+            backgroundClip:'text',
+          }}>{line}</div>
+        )
+      })}
+    </AbsoluteFill>
+  )
+}
+
+
 const ANIM_MAP = {
   // Hook — signature animations
   water_drop_title:      WaterDropTitle,
@@ -4824,6 +5352,23 @@ const ANIM_MAP = {
   noise_texture_slide:   NoiseTextureSlide,
   arc_browser_card:      ArcBrowserCard,
   geometric_loop_bg:     GeometricLoopBG,
+  // ── REACTBITS + ANIMEJS v4 + GSAP TECHNIQUES ────────────────────────────
+  // ReactBits text animations
+  blur_text_reveal:      BlurTextReveal,
+  true_focus_reveal:     TrueFocusReveal,
+  rotating_text_hook:    RotatingTextHook,
+  gradient_shimmer_text: GradientShimmerText,
+  neon_text_reveal:      NeonTextReveal,
+  aurora_text:           AuroraText,
+  // AnimeJS v4 techniques
+  stagger_from_center:   StaggerFromCenter,
+  alternate_comparison:  AlternateComparison,
+  horizontal_wipe:       HorizontalWipe,
+  particle_form_text:    ParticleFormText,
+  count_up_metrics:      CountUpMetrics,
+  // ReactBits UI components
+  spotlight_card:        SpotlightCard,
+  shiny_button_cta:      ShinyButtonCTA,
 };
 
 // Fallbacks por tipo de escena para no repetir visualmente
