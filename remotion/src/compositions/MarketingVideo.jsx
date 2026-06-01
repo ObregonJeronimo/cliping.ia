@@ -29,6 +29,19 @@ const hex2rgb = (hex) => {
 };
 
 // Detecta si un fondo es oscuro (para elegir color de texto)
+// Genera fondo oscuro derivado del primaryColor del sitio (no negro genérico)
+const darkBgFromColor = (primaryColor) => {
+  if (!primaryColor) return 'linear-gradient(145deg, #07070f 0%, #0d0d1a 100%)';
+  const h = primaryColor.replace('#','');
+  const r = parseInt(h.slice(0,2),16) || 0;
+  const g = parseInt(h.slice(2,4),16) || 0;
+  const b = parseInt(h.slice(4,6),16) || 0;
+  const mk = (rv,factor) => Math.min(255,Math.max(0,Math.round(rv*factor))).toString(16).padStart(2,'0');
+  const c1 = `#${mk(r,0.06)}${mk(g,0.07)}${mk(b,0.06)}`;
+  const c2 = `#${mk(r,0.10)}${mk(g,0.12)}${mk(b,0.10)}`;
+  return `linear-gradient(145deg, ${c1} 0%, ${c2} 55%, ${c1} 100%)`;
+};
+
 const isDarkBg = (bg) => {
   if (!bg) return true;
   const b = bg.toLowerCase();
@@ -1054,8 +1067,11 @@ function UrgencyCTA({ frame, fps, cta, guarantee, primaryColor, audience }) {
   const btnP     = spr(frame, fps, 36, 10, 100);
   const pulse    = 1 + Math.sin(frame * 0.11) * 0.032;
   const dotBlink = frame % 28 < 18;
-  const users    = Math.floor(23 + Math.sin(frame * 0.018) * 4);
   const glow     = 22 + Math.sin(frame * 0.07) * 18;
+  // Texto de prueba social coherente con la audiencia — sin inventar "usuarios activos"
+  const socialProof = audience
+    ? `Para ${audience}`
+    : 'Disponible ahora';
 
   return (
     <DarkScene color={primaryColor}>
@@ -1088,7 +1104,7 @@ function UrgencyCTA({ frame, fps, cta, guarantee, primaryColor, audience }) {
             opacity: dotBlink ? 1 : 0.35,
           }} />
           <span style={{ color: 'rgba(255,255,255,0.65)', fontSize: 13, fontWeight: 600, fontFamily: 'system-ui, sans-serif' }}>
-            {users} usando ahora
+            {socialProof}
           </span>
         </div>
 
@@ -2970,7 +2986,7 @@ function GlitchSlice({ frame, fps, headline, primaryColor, bg }) {
   const p = spr(frame, fps, 0, 12, 80);
   const slices = 6;
   return (
-    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center' }}>
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow: 'hidden', justifyContent: 'center', alignItems: 'center' }}>
       <Particles frame={frame} color={primaryColor} count={10} />
       {Array.from({ length: slices }, (_, i) => {
         const offset = Math.sin(frame * 0.4 + i * 1.2) * (1 - p) * 30;
@@ -3003,7 +3019,7 @@ function GlitchSlice({ frame, fps, headline, primaryColor, bg }) {
 function MagneticWords({ frame, fps, headline, primaryColor, bg }) {
   const words = (headline || '').split(' ');
   return (
-    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', padding: 40 }}>
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', padding: 40 }}>
       <RadialGlow color={primaryColor} opacity={0.12} size={400} />
       <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 10 }}>
         {words.map((w, i) => {
@@ -3034,7 +3050,7 @@ function NoiseReveal({ frame, fps, headline, primaryColor, bg }) {
   const noise = Math.max(0, 1 - p * 1.4);
   const t = frame * 0.1;
   return (
-    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', padding: 40 }}>
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', padding: 40 }}>
       <div style={{ position: 'relative' }}>
         <Headline size={56} color="#fff" style={{ textAlign: 'center', opacity: p, maxWidth: 320 }}>{headline}</Headline>
         {noise > 0.05 && Array.from({ length: 18 }, (_, i) => (
@@ -3062,7 +3078,7 @@ function NoiseReveal({ frame, fps, headline, primaryColor, bg }) {
 function StaggeredLines({ frame, fps, headline, primaryColor, bg }) {
   const lines = (headline || '').split('\n').filter(Boolean);
   return (
-    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', padding: 44, gap: 8 }}>
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', padding: 44, gap: 8 }}>
       <Particles frame={frame} color={primaryColor} count={12} />
       {lines.map((line, i) => {
         const p = spr(frame, fps, i * 12, 11, 88);
@@ -3089,7 +3105,7 @@ function MorphingNumber({ frame, fps, number, label, primaryColor, bg }) {
   const current = Math.round(countP * num);
   const labelP = spr(frame, fps, 65, 14, 90);
   return (
-    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column' }}>
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column' }}>
       <RadialGlow color={primaryColor} opacity={0.2} size={500} />
       <div style={{ fontSize: 120, fontWeight: 800, color: primaryColor, letterSpacing: '-0.04em', fontFamily: 'system-ui', lineHeight: 1 }}>
         {current}
@@ -3109,7 +3125,7 @@ function SplitRevealHorizontal({ frame, fps, headline, primaryColor, bg }) {
   const textP = spr(frame, fps, 28, 14, 95);
   const half = open * 55;
   return (
-    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden' }}>
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow: 'hidden' }}>
       <AbsoluteFill style={{ justifyContent: 'center', alignItems: 'center' }}>
         <Headline size={56} color="#fff" style={{ textAlign: 'center', maxWidth: 320, opacity: textP }}>{headline}</Headline>
       </AbsoluteFill>
@@ -3129,7 +3145,7 @@ function TypewriterPremium({ frame, fps, headline, primaryColor, bg }) {
   const blink = Math.floor(frame / 15) % 2 === 0;
   const chipP = spr(frame, fps, text.length * speed + 10, 16, 100);
   return (
-    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', padding: 44 }}>
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', padding: 44 }}>
       <Particles frame={frame} color={primaryColor} count={8} />
       <div style={{ fontFamily: 'monospace', fontSize: 42, fontWeight: 700, color: '#fff', textAlign: 'center', maxWidth: 340, lineHeight: 1.3 }}>
         {shown}
@@ -3148,7 +3164,7 @@ function ElasticScaleIn({ frame, fps, headline, primaryColor, bg }) {
   const p = spr(frame, fps, 0, 8, 120); // stiffness alta = overshoot
   const chipP = spr(frame, fps, 20, 16, 100);
   return (
-    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: 20, padding: 40 }}>
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: 20, padding: 40 }}>
       <RadialGlow color={primaryColor} opacity={0.18} size={460} />
       <div style={{ transform: `scale(${p})`, opacity: Math.min(1, p * 1.5) }}>
         <Headline size={60} color="#fff" style={{ textAlign: 'center', maxWidth: 320 }}>{headline}</Headline>
@@ -3169,7 +3185,7 @@ function BlurReveal({ frame, fps, headline, primaryColor, bg }) {
   const blur = (1 - p) * 28;
   const scale = 0.85 + p * 0.15;
   return (
-    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', padding: 44 }}>
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', padding: 44 }}>
       <Particles frame={frame} color={primaryColor} count={14} />
       <div style={{ filter: `blur(${blur}px)`, transform: `scale(${scale})`, opacity: Math.min(1, p * 1.2) }}>
         <Headline size={58} color="#fff" style={{ textAlign: 'center', maxWidth: 320 }}>{headline}</Headline>
@@ -3188,7 +3204,7 @@ function AppPreviewSlide({ frame, fps, siteName, primaryColor, bg }) {
   const slideY = (1 - p) * 300;
   const t = frame * 0.02;
   return (
-    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center' }}>
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow: 'hidden', justifyContent: 'center', alignItems: 'center' }}>
       <RadialGlow color={primaryColor} opacity={0.14} size={500} />
       <div style={{
         width: 220, height: 420,
@@ -3230,7 +3246,7 @@ function FeatureSpotlightZoom({ frame, fps, feature, description, primaryColor, 
   const scale = 1 + zoomP * 0.5;
   const textP = spr(frame, fps, 30, 14, 100);
   return (
-    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column' }}>
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column' }}>
       <div style={{ transform: `scale(${scale})`, opacity: zoomP, position: 'absolute', inset: 0, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
         <div style={{ width: 280, height: 160, background: 'rgba(255,255,255,0.04)', border: `1px solid rgba(${hex2rgb(primaryColor)},0.3)`, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
           <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', fontFamily: 'system-ui', textAlign: 'center' }}>{feature || 'Feature'}</div>
@@ -3254,7 +3270,7 @@ function MetricsDashboard({ frame, fps, metrics, primaryColor, siteName, bg }) {
   ];
   const headerP = spr(frame, fps, 0, 12, 90);
   return (
-    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', padding: 30, flexDirection: 'column', gap: 16, display: 'flex' }}>
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow: 'hidden', padding: 30, flexDirection: 'column', gap: 16, display: 'flex' }}>
       <div style={{ opacity: headerP, transform: `translateY(${(1 - headerP) * -20}px)`, display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
         <div style={{ width: 28, height: 28, borderRadius: 8, background: primaryColor }} />
         <div style={{ fontSize: 14, fontWeight: 600, color: '#fff', fontFamily: 'system-ui' }}>{siteName || 'Dashboard'}</div>
@@ -3292,7 +3308,7 @@ function CodeTerminal({ frame, fps, lines, primaryColor, bg }) {
   ];
   const headerP = spr(frame, fps, 0, 14, 90);
   return (
-    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', padding: 30 }}>
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow: 'hidden', justifyContent: 'center', alignItems: 'center', padding: 30 }}>
       <div style={{
         width: '100%', maxWidth: 340,
         background: '#0d1117', border: '1px solid rgba(255,255,255,0.1)',
@@ -3335,7 +3351,7 @@ function NotificationStack({ frame, fps, notifications, primaryColor, siteName, 
     { title: siteName || 'App', body: 'Pago recibido: $49/mes' },
   ];
   return (
-    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', padding: 30, flexDirection: 'column', gap: 12 }}>
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow: 'hidden', justifyContent: 'center', alignItems: 'center', padding: 30, flexDirection: 'column', gap: 12 }}>
       <Particles frame={frame} color={primaryColor} count={8} />
       {safeNotifs.map((n, i) => {
         const p = spr(frame, fps, i * 18, 11, 90);
@@ -3370,7 +3386,7 @@ function NotificationStack({ frame, fps, notifications, primaryColor, siteName, 
 function ChecklistReveal({ frame, fps, benefits, primaryColor, bg }) {
   const safeBenefits = (benefits || []).map(b => typeof b === 'string' ? b : b?.title || b?.label || '');
   return (
-    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', padding: 40 }}>
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow: 'hidden', justifyContent: 'center', alignItems: 'center', padding: 40 }}>
       <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 16 }}>
         {safeBenefits.map((b, i) => {
           const p = spr(frame, fps, i * 18, 12, 85);
@@ -3400,7 +3416,7 @@ function ChecklistReveal({ frame, fps, benefits, primaryColor, bg }) {
 function PillTagsCloud({ frame, fps, benefits, primaryColor, bg }) {
   const safeBenefits = (benefits || []).map(b => typeof b === 'string' ? b : b?.title || b?.label || '');
   return (
-    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', padding: 40 }}>
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow: 'hidden', justifyContent: 'center', alignItems: 'center', padding: 40 }}>
       <RadialGlow color={primaryColor} opacity={0.1} size={420} />
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>
         {safeBenefits.map((b, i) => {
@@ -3429,7 +3445,7 @@ function AccordionReveal({ frame, fps, benefits, primaryColor, bg }) {
   const safeBenefits = (benefits || []).map(b => typeof b === 'string' ? b : b?.title || b?.label || '');
   const activeIdx = Math.min(safeBenefits.length - 1, Math.floor(frame / 35));
   return (
-    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', padding: 32 }}>
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow: 'hidden', justifyContent: 'center', alignItems: 'center', padding: 32 }}>
       <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 8 }}>
         {safeBenefits.map((b, i) => {
           const isActive = i === activeIdx;
@@ -3466,7 +3482,7 @@ function BentoGrid({ frame, fps, benefits, items, primaryColor, bg }) {
     return { title: b?.title || b?.label || '', icon: b?.icon || '' }
   })
   return (
-    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, width: '100%' }}>
         {safeItems.map((item, i) => {
           const p = spr(frame, fps, i * 10, 11, 88);
@@ -3503,7 +3519,7 @@ function WaveStats({ frame, fps, stats, primaryColor, bg }) {
     return { number: display, label: lbl }
   })
   return (
-    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: 0 }}>
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: 0 }}>
       <svg style={{ position: 'absolute', bottom: 0, left: 0, right: 0, width: '100%' }} viewBox="0 0 390 200" preserveAspectRatio="none">
         {[0, 1].map(wave => {
           const offset = Math.sin(frame * 0.03 + wave * Math.PI) * 20;
@@ -3536,7 +3552,7 @@ function GlowPulseCTA({ frame, fps, cta, subtext, primaryColor, bg }) {
   const glowOpacity = 0.3 + Math.sin(frame * 0.08) * 0.15;
   const textP = spr(frame, fps, 20, 14, 100);
   return (
-    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: 20 }}>
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: 20 }}>
       <div style={{ opacity: textP, transform: `translateY(${(1 - textP) * -20}px)` }}>
         <Headline size={42} color="#fff" style={{ textAlign: 'center', maxWidth: 300 }}>{subtext || '¿Listo para empezar?'}</Headline>
       </div>
@@ -3557,7 +3573,7 @@ function SwipeUpCTA({ frame, fps, cta, primaryColor, bg }) {
   const arrowY = Math.sin(frame * 0.12) * 10 - 10;
   const arrows = 3;
   return (
-    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: 24 }}>
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: 24 }}>
       <RadialGlow color={primaryColor} opacity={0.15} size={350} />
       <div style={{ opacity: p, transform: `translateY(${(1 - p) * 30}px)` }}>
         <Headline size={44} color="#fff" style={{ textAlign: 'center', maxWidth: 280 }}>{cta || 'Crear mi video'}</Headline>
@@ -3579,7 +3595,7 @@ function SplitCTA({ frame, fps, cta, subtext, primaryColor, bg }) {
   const p = spr(frame, fps, 0, 11, 88);
   const ctaP = spr(frame, fps, 30, 14, 100);
   return (
-    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden' }}>
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow: 'hidden' }}>
       <div style={{ position: 'absolute', top: 0, left: 0, width: `${p * 50}%`, height: '100%', background: `rgba(${hex2rgb(primaryColor)},0.08)`, borderRight: `1px solid rgba(${hex2rgb(primaryColor)},0.3)` }}>
         <div style={{ position: 'absolute', top: '30%', left: 0, right: 0, textAlign: 'center', opacity: p * 0.5 }}>
           <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontFamily: 'system-ui', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Antes</div>
@@ -3609,7 +3625,7 @@ function MinimalLogo({ frame, fps, siteName, primaryColor, bg }) {
   const dotP = spr(frame, fps, 25, 14, 100);
   const taglineP = spr(frame, fps, 35, 14, 100);
   return (
-    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: 12 }}>
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: 12 }}>
       <div style={{ opacity: p, transform: `scale(${0.9 + p * 0.1})` }}>
         <div style={{ fontFamily: 'system-ui', fontSize: 52, fontWeight: 700, color: '#fff', letterSpacing: '-0.04em' }}>
           {siteName || 'Brand'}
@@ -3630,7 +3646,7 @@ function WipeOutOutro({ frame, fps, siteName, primaryColor, bg }) {
   const wipe = spr(frame, fps, 20, 9, 80);
   const logoP = spr(frame, fps, 40, 14, 100);
   return (
-    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center' }}>
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow: 'hidden', justifyContent: 'center', alignItems: 'center' }}>
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: `${wipe * 100}%`, background: primaryColor, opacity: 0.9, transition: 'none' }} />
       <div style={{ position: 'relative', zIndex: 10, opacity: logoP }}>
         <div style={{ fontFamily: 'system-ui', fontSize: 48, fontWeight: 700, color: wipe > 0.5 ? '#000' : '#fff', letterSpacing: '-0.03em', transition: 'color 0.3s' }}>
@@ -3648,7 +3664,7 @@ function ParticleDissolveOutro({ frame, fps, siteName, primaryColor, bg }) {
   const dissolveP = spr(frame, fps, 60, 8, 100);
   const opacity = formP * (1 - dissolveP * 0.7);
   return (
-    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: 16 }}>
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: 16 }}>
       <Particles frame={frame} color={primaryColor} count={dissolveP > 0.1 ? 30 : 15} />
       <div style={{ opacity, transform: `scale(${0.85 + formP * 0.15})`, filter: `blur(${dissolveP * 4}px)` }}>
         <div style={{ fontFamily: 'system-ui', fontSize: 56, fontWeight: 700, color: '#fff', letterSpacing: '-0.04em' }}>{siteName || 'Brand'}</div>
@@ -3667,7 +3683,7 @@ function GridCollapseOutro({ frame, fps, siteName, primaryColor, bg }) {
   const total = cols * rows;
   const logoP = spr(frame, fps, 35, 14, 100);
   return (
-    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden' }}>
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow: 'hidden' }}>
       <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gridTemplateRows: `repeat(${rows}, 1fr)`, position: 'absolute', inset: 0 }}>
         {Array.from({ length: total }, (_, i) => {
           const delay = (i / total) * 40 + Math.random() * 10;
@@ -3693,7 +3709,7 @@ function FloatingTextBadge({ frame, fps, headline, subtext, primaryColor, bg }) 
   const p = spr(frame, fps, 0, 12, 88);
   const float = Math.sin(frame * 0.05) * 8;
   return (
-    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: 24, padding: 40 }}>
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: 24, padding: 40 }}>
       <RadialGlow color={primaryColor} opacity={0.12} size={380} />
       <div style={{ opacity: p, transform: `translateY(${(1 - p) * 40 + float}px)` }}>
         <div style={{
@@ -3718,7 +3734,7 @@ function CinematicTitleCard({ frame, fps, headline, subtext, primaryColor, bg })
   const subP = spr(frame, fps, 20, 14, 100);
   const letterboxH = 60;
   return (
-    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: 12 }}>
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: 12 }}>
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: letterboxH, background: '#000' }} />
       <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: letterboxH, background: '#000' }} />
       <div style={{ opacity: p, transform: `translateY(${(1 - p) * 16}px)`, padding: '0 44px', textAlign: 'center' }}>
@@ -3765,7 +3781,7 @@ function BlobMorphHero({ frame, fps, headline, primaryColor, bg }) {
   const glow = 40 + Math.sin(frame * 0.06) * 20;
 
   return (
-    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: 32 }}>
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: 32 }}>
       {/* Blob de fondo */}
       <div style={{ position: 'absolute', width: 340, height: 340, borderRadius: blob2, background: `rgba(${hex2rgb(primaryColor)},0.06)`, transform: `scale(${scale * 1.3})`, filter: `blur(${(1-p)*20}px)` }} />
       {/* Blob principal */}
@@ -3800,7 +3816,7 @@ function LiquidButtonHook({ frame, fps, headline, cta, primaryColor, bg }) {
   const pulse = 1 + Math.sin(frame * 0.08) * 0.04;
 
   return (
-    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: 28, padding: 40 }}>
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: 28, padding: 40 }}>
       <Particles frame={frame} color={primaryColor} count={10} />
       <div style={{ opacity: textP, transform: `translateY(${(1-textP)*20}px)`, textAlign: 'center' }}>
         <Headline size={46} color="#fff" style={{ lineHeight: 1.2 }}>{headline}</Headline>
@@ -3844,7 +3860,7 @@ function MorphingCTA({ frame, fps, cta, subtext, primaryColor, bg }) {
   const scale = 1 + Math.sin(frame * 0.05) * 0.025;
 
   return (
-    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: 24 }}>
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: 24 }}>
       <RadialGlow color={primaryColor} opacity={0.15} size={400} />
       <div style={{ opacity: textP, transform: `translateY(${(1-textP)*-18}px)`, padding: '0 40px', textAlign: 'center' }}>
         <Headline size={40} color="#fff">{subtext || '¿Listo para el cambio?'}</Headline>
@@ -3876,7 +3892,7 @@ function MorphingCTA({ frame, fps, cta, subtext, primaryColor, bg }) {
 function BlobCards({ frame, fps, benefits, primaryColor, bg }) {
   const safeBenefits = (benefits || []).map(b => typeof b === 'string' ? b : b?.title || b?.label || '')
   return (
-    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', padding: 28, flexDirection: 'column', gap: 16 }}>
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow: 'hidden', justifyContent: 'center', alignItems: 'center', padding: 28, flexDirection: 'column', gap: 16 }}>
       {safeBenefits.slice(0, 4).map((b, i) => {
         const p = spr(frame, fps, i * 16, 12, 88);
         const blob = blobRadius(frame, 0.035, i * 1.5);
@@ -3921,7 +3937,7 @@ function ShapeShift({ frame, fps, headline, primaryColor, bg }) {
   const rotation = frame * 0.8
 
   return (
-    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: 32 }}>
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: 32 }}>
       <Particles frame={frame} color={primaryColor} count={14} />
       <div style={{
         width: 180, height: 180,
@@ -3949,7 +3965,7 @@ function BlobOutro({ frame, fps, siteName, primaryColor, bg }) {
   const glow = 50 + Math.sin(frame * 0.05) * 20;
 
   return (
-    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: 20 }}>
+    <AbsoluteFill style={{ background: bg || darkBgFromColor(primaryColor), overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: 20 }}>
       <div style={{ position: 'relative', opacity: p }}>
         <div style={{
           position: 'absolute', inset: -30, borderRadius: blob,
