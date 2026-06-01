@@ -5,12 +5,6 @@ import { auth, db } from '../lib/firebase'
 
 const AuthContext = createContext(null)
 
-// Emails con creditos de admin (99999)
-const ADMIN_EMAILS = [
-  'obregonjeronimo8@gmail.com',
-  'thiagojoelp@gmail.com',
-]
-
 export function AuthProvider({ children }) {
   const [user, setUser]       = useState(null)
   const [profile, setProfile] = useState(null)
@@ -31,32 +25,27 @@ export function AuthProvider({ children }) {
   }, [])
 
   async function loadOrCreateProfile(firebaseUser) {
-    const ref      = doc(db, 'users', firebaseUser.uid)
-    const snap     = await getDoc(ref)
-    const isAdmin  = ADMIN_EMAILS.includes(firebaseUser.email)
+    const ref  = doc(db, 'users', firebaseUser.uid)
+    const snap = await getDoc(ref)
 
     if (!snap.exists()) {
+      // Usuario nuevo — perfil base, sin asignar rol admin
+      // El admin se asigna manualmente desde Firebase Console
       const newProfile = {
         uid:         firebaseUser.uid,
         email:       firebaseUser.email,
         displayName: firebaseUser.displayName,
         photoURL:    firebaseUser.photoURL,
-        credits:     isAdmin ? 99999 : 10,
-        plan:        isAdmin ? 'admin' : 'free',
+        credits:     5,
+        plan:        'free',
         createdAt:   serverTimestamp(),
       }
       await setDoc(ref, newProfile)
       setProfile(newProfile)
     } else {
-      const data = snap.data()
-      // Si es admin y no tiene los creditos correctos, actualizarlos
-      if (isAdmin && data.plan !== 'admin') {
-        const updated = { ...data, credits: 99999, plan: 'admin' }
-        await setDoc(ref, updated, { merge: true })
-        setProfile(updated)
-      } else {
-        setProfile(data)
-      }
+      // Perfil existente — cargar tal cual desde Firestore
+      // El rol y créditos se editan manualmente desde Firebase Console
+      setProfile(snap.data())
     }
   }
 

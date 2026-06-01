@@ -10,8 +10,12 @@ import {
 
 // ─── Core helpers ────────────────────────────────────────────────────────────
 
-const lerp = (f, a, b, from, to) =>
-  interpolate(f, [a, b], [from, to], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+const lerp = (f, a, b, from, to) => {
+  // Garantizar que inputRange sea estrictamente creciente
+  if (a === b) return from;
+  if (a > b) return interpolate(f, [b, a], [to, from], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  return interpolate(f, [a, b], [from, to], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+};
 
 const spr = (f, fps, delay = 0, damping = 14, stiffness = 120) =>
   spring({ frame: Math.max(0, f - delay), fps, config: { damping, stiffness, mass: 0.6 } });
