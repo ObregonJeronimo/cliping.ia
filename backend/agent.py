@@ -27,6 +27,7 @@ async def run_agent(
     job_id: str,
     progress_cb: Callable,
     req_params: dict = None,
+    override_page_data: dict = None,   # si viene, se usan estos datos en vez de analizar
 ) -> Path:
     if req_params is None:
         req_params = {}
@@ -76,7 +77,11 @@ async def run_agent(
         progress_cb("browse", 20)
         hero_bytes = hero_path.read_bytes()
         page_analysis = await analyze_page(hero_bytes, url, action)
-        page_data = await extract_page_data_deep(hero_bytes, url, action)
+        if override_page_data:
+            page_data = override_page_data
+            print(f"[agent] (datos editados) {page_data.get('siteName')} — {page_data.get('headline')}")
+        else:
+            page_data = await extract_page_data_deep(hero_bytes, url, action)
         debugger.set_page_data(page_data)
         print(f"[agent] {page_data.get('siteName')} — {page_data.get('headline')}")
 

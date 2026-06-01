@@ -51,7 +51,7 @@ Respondé SOLO con JSON válido:
   "bgColor": "#hexcolor del fondo real de la página — puede ser blanco (#ffffff) o claro",
   "textColor": "#hexcolor del texto principal de la página",
   "isDark": false,
-  "numbers": ["número o estadística real que aparece en la página"],
+  "numbers": ["SOLO estadísticas de marketing del producto (ej: +5000 clientes, 99% uptime, -40% costos). NO incluir precios de ejemplo, datos de demo, montos de transacciones de ejemplo, ni números que sean contenido del producto en sí"],
   "guarantee": "garantía si hay (ej: gratis 30 días, sin tarjeta)",
   "emotion": "confianza|urgencia|aspiración|alivio|entusiasmo",
   "value_prop": "propuesta de valor única en una frase corta",
