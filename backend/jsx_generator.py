@@ -308,6 +308,22 @@ La lista de "ya usadas" crece con cada elección:
 - Para card_flip_3d los benefits deben ser STRINGS simples, nunca objetos con front/back
 - Para iphone_rise y cursor_click_reveal NO incluyas screenshotUrl en params
 - Solo elegí animaciones que existan en el catálogo listado arriba — si querés una nueva, anotala en new_animations_for_industry
+
+ANTI-REPETICIÓN DE DATOS — MUY IMPORTANTE:
+- Cada escena debe mostrar información DIFERENTE. Nunca repitas el mismo número, texto o beneficio en dos escenas distintas.
+- Antes de definir los params de cada escena, revisá todas las escenas anteriores y verificá que no estés repitiendo datos.
+- Si product_a muestra "+800" y "24h", product_b NO puede mostrar esos mismos números — debe mostrar otros datos del sitio.
+- Los benefits deben ser los beneficios reales extraídos del sitio: {json.dumps(benefits, ensure_ascii=False)}
+- El CTA debe usar el CTA real del sitio, no inventar "26 usando ahora" ni frases genéricas de SaaS si el sitio es un ecommerce.
+- Si el sitio es un ecommerce, el CTA debe ser sobre productos/compra. Si es SaaS, sobre registrarse/probar.
+- urgency_countdown con "usuarios activos" NO tiene sentido para un ecommerce — usá contexto correcto al tipo de negocio.
+- Tipo de sitio actual: {page_type} — todos los CTAs y urgencias deben ser coherentes con esto.
+
+PALETA DE COLORES CONTEXTUAL:
+- El sitio tiene bgColor: {bg_color}, primaryColor: {primary}, isDark: {is_dark}
+- Si el sitio tiene fondo claro (bgColor blanco o claro), el fondo del video debe ser oscuro pero coherente — no negro puro sin motivo.
+- Usá el primaryColor del sitio como base del acento. Ajustá brillo/saturación si es necesario para que se vea bien en dark.
+- El fondo del brief debe estar JUSTIFICADO por la paleta del sitio, no ser siempre el mismo negro genérico.
 - Si no hay números reales, usá strings descriptivos sin inventar cifras
 - El contenido va en español rioplatense
 - Usá SOLO animaciones del catálogo

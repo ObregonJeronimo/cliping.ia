@@ -369,3 +369,13 @@ UNIVERSAL_NEW = [
 ]
 
 ALL_NEW_ANIMATIONS = HOOK_NEW + PRODUCT_NEW + BENEFITS_NEW + CTA_NEW + OUTRO_NEW + UNIVERSAL_NEW
+
+MORPHING_LIQUID = [
+    "blob_morph_hero",    # forma blob orgánica que late y revela headline — muy impactante
+    "liquid_button_hook", # botón que morphea forma orgánicamente con blob
+    "morphing_cta",       # CTA donde el botón cambia de forma fluida (blob → pill → blob)
+    "blob_cards",         # cards de beneficios con forma blob animada
+    "shape_shift",        # formas geométricas que se transforman: círculo → cuadrado → rombo
+    "blob_outro",         # logo que emerge desde un blob orgánico expansivo
+]
+ALL_MORPHING = MORPHING_LIQUID

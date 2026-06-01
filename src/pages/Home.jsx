@@ -290,7 +290,9 @@ export default function Home() {
       if (job.status === 'done') {
         setStepStates(Object.fromEntries(STEP_ORDER.map(k => [k, 'done'])))
         setProgress(100)
-        setVideoFilename(job.videoFilename || (job.videoPath ? job.videoPath.split('\\').pop().split('/').pop() : null))
+        const fn = job.videoFilename || (job.videoPath ? job.videoPath.split('\\').pop().split('/').pop() : null)
+        setVideoFilename(fn)
+        if (fn) saveVideoToFirestore(job_id, fn, job)
         setTimeout(() => setPhase('result'), 600)
         clearInterval(timerRef.current)
         ws.close()

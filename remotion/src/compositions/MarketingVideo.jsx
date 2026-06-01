@@ -578,13 +578,29 @@ function DashboardBuild({ frame, fps, stats, primaryColor, siteName }) {
         {/* Stats cards */}
         {safeStats.map((stat, i) => {
           const p = spr(frame, fps, i * 20 + 8, 14, 100);
-          const statStr = typeof stat === 'string' ? stat
-            : (stat?.label || stat?.value?.toString() || String((i+1)*1000));
-          const numMatch = statStr.match(/[\d,.]+/);
-          const numVal = numMatch ? parseFloat(numMatch[0].replace(/[,.]/g, '')) : (i+1)*1000;
-          const prog = Math.min(Math.max((frame-(i*20+18))/45, 0), 1);
-          const eased = 1 - Math.pow(1-prog, 3);
-          const current = Math.floor(eased * numVal);
+
+          // Normalizar stat — acepta string "+800", "24h", o {label, value, color}
+          let displayValue, displayLabel;
+          if (typeof stat === 'string') {
+            displayValue = stat;
+            displayLabel = `Métrica ${i + 1}`;
+          } else {
+            displayValue = stat?.value ?? stat?.number ?? String(i + 1);
+            displayLabel = stat?.label ?? stat?.title ?? `Métrica ${i + 1}`;
+          }
+
+          // Animar el número si es posible
+          const numMatch = String(displayValue).match(/^([+$]?)(\d+)([%h+]?)$/);
+          const prog = Math.min(Math.max((frame - (i * 20 + 18)) / 45, 0), 1);
+          const eased = 1 - Math.pow(1 - prog, 3);
+          let animatedDisplay = displayValue;
+          if (numMatch) {
+            const prefix = numMatch[1];
+            const num = parseInt(numMatch[2]);
+            const suffix = numMatch[3];
+            animatedDisplay = `${prefix}${Math.floor(eased * num)}${suffix}`;
+          }
+
           const isHighlight = i === 0;
           const glowPulse = isHighlight ? (0.4 + Math.sin(frame * 0.08 + i) * 0.4) : 0;
 
@@ -605,16 +621,14 @@ function DashboardBuild({ frame, fps, stats, primaryColor, siteName }) {
                 letterSpacing: 2.5, textTransform: 'uppercase', marginBottom: 8,
                 fontFamily: 'system-ui, sans-serif', fontWeight: 700,
               }}>
-                {typeof stat === 'string'
-                  ? (stat.replace(/[\d,.$ ]+/, '').trim() || `Métrica ${i+1}`)
-                  : (stat?.label || `Métrica ${i+1}`)}
+                {displayLabel}
               </div>
               <div style={{
                 fontSize: 38, fontWeight: 900,
                 color: isHighlight ? primaryColor : '#fff',
                 letterSpacing: -1.5, fontFamily: 'system-ui, sans-serif',
               }}>
-                {current.toLocaleString('es-AR')}
+                {animatedDisplay}
               </div>
             </div>
           );
@@ -3446,28 +3460,27 @@ function AccordionReveal({ frame, fps, benefits, primaryColor, bg }) {
 // ─── BENEFITS: Bento Grid ─────────────────────────────────────────────────────
 // Layout tipo bento box con cards de distintos tamaños
 function BentoGrid({ frame, fps, benefits, items, primaryColor, bg }) {
-  // Acepta items con {title, icon} o benefits como strings
-  const raw = items || benefits || ['Rápido','Profesional','Automatizado','Sin edición','Para todos','Mas']
+  const raw = items || benefits || ['Rápido','Profesional','Automatizado','Sin edición','Para todos','Más']
   const safeItems = raw.slice(0, 6).map(b => {
     if (typeof b === 'string') return { title: b, icon: '' }
     return { title: b?.title || b?.label || '', icon: b?.icon || '' }
   })
   return (
-    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', padding: 20 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, height: '100%', alignContent: 'start', paddingTop: 30 }}>
+    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, width: '100%' }}>
         {safeItems.map((item, i) => {
           const p = spr(frame, fps, i * 10, 11, 88);
           return (
             <div key={i} style={{
-              background: i % 3 === 0 ? `rgba(${hex2rgb(primaryColor)},0.12)` : 'rgba(255,255,255,0.04)',
-              border: `1px solid ${i % 3 === 0 ? `rgba(${hex2rgb(primaryColor)},0.25)` : 'rgba(255,255,255,0.07)'}`,
-              borderRadius: 14, padding: '18px 16px',
-              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8,
+              background: i % 3 === 0 ? `rgba(${hex2rgb(primaryColor)},0.14)` : 'rgba(255,255,255,0.05)',
+              border: `1px solid ${i % 3 === 0 ? `rgba(${hex2rgb(primaryColor)},0.3)` : 'rgba(255,255,255,0.08)'}`,
+              borderRadius: 16, padding: '24px 16px',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10,
               opacity: p, transform: `scale(${0.88 + p * 0.12})`,
-              minHeight: 90,
+              minHeight: 110,
             }}>
-              {item.icon && <div style={{ fontSize: 28 }}>{item.icon}</div>}
-              <div style={{ fontSize: 14, color: '#fff', fontFamily: 'system-ui', fontWeight: 500, textAlign: 'center', lineHeight: 1.3 }}>{item.title}</div>
+              {item.icon && <div style={{ fontSize: 32 }}>{item.icon}</div>}
+              <div style={{ fontSize: 15, color: '#fff', fontFamily: 'system-ui', fontWeight: 600, textAlign: 'center', lineHeight: 1.3 }}>{item.title}</div>
             </div>
           );
         })}
@@ -3722,6 +3735,251 @@ function CinematicTitleCard({ frame, fps, headline, subtext, primaryColor, bg })
 }
 
 
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ANIMACIONES MORPHING — border-radius fluido, blob, liquid button
+// ══════════════════════════════════════════════════════════════════════════════
+
+// Helper: interpola border-radius orgánico basado en el frame
+function blobRadius(frame, speed = 0.04, seed = 0) {
+  const t = frame * speed + seed;
+  const a = 40 + Math.sin(t * 1.1) * 22;
+  const b = 60 - Math.sin(t * 1.3) * 22;
+  const c = 40 + Math.cos(t * 0.9) * 18;
+  const d = 60 - Math.cos(t * 1.2) * 18;
+  const e = 50 + Math.sin(t * 0.8 + 1) * 20;
+  const f = 50 - Math.sin(t * 1.4 + 1) * 20;
+  const g = 45 + Math.cos(t * 1.0 + 2) * 15;
+  const h = 55 - Math.cos(t * 0.7 + 2) * 15;
+  return `${a}% ${b}% ${c}% ${d}% / ${e}% ${f}% ${g}% ${h}%`;
+}
+
+// ─── HOOK: Blob Morph Hero ────────────────────────────────────────────────────
+// Forma orgánica blob que late y revela el headline
+function BlobMorphHero({ frame, fps, headline, primaryColor, bg }) {
+  const p = spr(frame, fps, 0, 12, 90);
+  const textP = spr(frame, fps, 20, 14, 100);
+  const blob1 = blobRadius(frame, 0.03, 0);
+  const blob2 = blobRadius(frame, 0.025, Math.PI);
+  const scale = 0.7 + p * 0.3;
+  const glow = 40 + Math.sin(frame * 0.06) * 20;
+
+  return (
+    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: 32 }}>
+      {/* Blob de fondo */}
+      <div style={{ position: 'absolute', width: 340, height: 340, borderRadius: blob2, background: `rgba(${hex2rgb(primaryColor)},0.06)`, transform: `scale(${scale * 1.3})`, filter: `blur(${(1-p)*20}px)` }} />
+      {/* Blob principal */}
+      <div style={{
+        width: 220, height: 220,
+        borderRadius: blob1,
+        background: `radial-gradient(circle at 35% 35%, rgba(${hex2rgb(primaryColor)},0.9), rgba(${hex2rgb(primaryColor)},0.3))`,
+        boxShadow: `0 0 ${glow}px rgba(${hex2rgb(primaryColor)},0.5), inset 0 0 40px rgba(255,255,255,0.08)`,
+        transform: `scale(${scale}) rotate(${(1-p)*15}deg)`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        opacity: p,
+      }}>
+        <div style={{ fontSize: 64, fontWeight: 900, color: '#fff', fontFamily: 'system-ui', letterSpacing: -3, textShadow: '0 2px 20px rgba(0,0,0,0.4)' }}>
+          {headline?.split(' ')[0] || '!'}
+        </div>
+      </div>
+      {/* Headline */}
+      <div style={{ opacity: textP, transform: `translateY(${(1-textP)*24}px)`, textAlign: 'center', padding: '0 40px' }}>
+        <Headline size={36} color="#fff" style={{ lineHeight: 1.25 }}>{headline}</Headline>
+      </div>
+    </AbsoluteFill>
+  );
+}
+
+// ─── HOOK: Liquid Button Hook ─────────────────────────────────────────────────
+// Botón que morphea de forma orgánica y revela el texto
+function LiquidButtonHook({ frame, fps, headline, cta, primaryColor, bg }) {
+  const p = spr(frame, fps, 0, 10, 80);
+  const textP = spr(frame, fps, 25, 14, 100);
+  const blob = blobRadius(frame, 0.04, 1);
+  const blobBtn = blobRadius(frame, 0.06, 2);
+  const pulse = 1 + Math.sin(frame * 0.08) * 0.04;
+
+  return (
+    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: 28, padding: 40 }}>
+      <Particles frame={frame} color={primaryColor} count={10} />
+      <div style={{ opacity: textP, transform: `translateY(${(1-textP)*20}px)`, textAlign: 'center' }}>
+        <Headline size={46} color="#fff" style={{ lineHeight: 1.2 }}>{headline}</Headline>
+      </div>
+      {/* Botón líquido */}
+      <div style={{
+        position: 'relative',
+        transform: `scale(${p * pulse})`,
+        opacity: p,
+      }}>
+        {/* Glow de fondo */}
+        <div style={{
+          position: 'absolute', inset: -16, borderRadius: blob,
+          background: `rgba(${hex2rgb(primaryColor)},0.25)`,
+          filter: 'blur(16px)',
+        }} />
+        {/* Botón real */}
+        <div style={{
+          position: 'relative',
+          borderRadius: blobBtn,
+          background: `linear-gradient(135deg, ${primaryColor}, rgba(${hex2rgb(primaryColor)},0.7))`,
+          padding: '18px 44px',
+          boxShadow: `0 4px 32px rgba(${hex2rgb(primaryColor)},0.4)`,
+        }}>
+          <div style={{ fontSize: 20, fontWeight: 700, color: '#fff', fontFamily: 'system-ui', letterSpacing: -0.5, whiteSpace: 'nowrap' }}>
+            {cta || 'Empezá ahora'}
+          </div>
+        </div>
+      </div>
+    </AbsoluteFill>
+  );
+}
+
+// ─── CTA: Morphing CTA ────────────────────────────────────────────────────────
+// CTA donde el botón va cambiando de forma orgánicamente (blob → pill → blob)
+function MorphingCTA({ frame, fps, cta, subtext, primaryColor, bg }) {
+  const p = spr(frame, fps, 0, 12, 90);
+  const textP = spr(frame, fps, 15, 14, 100);
+  const blobShape = blobRadius(frame, 0.05, 3);
+  const glow = 30 + Math.sin(frame * 0.07) * 15;
+  const scale = 1 + Math.sin(frame * 0.05) * 0.025;
+
+  return (
+    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: 24 }}>
+      <RadialGlow color={primaryColor} opacity={0.15} size={400} />
+      <div style={{ opacity: textP, transform: `translateY(${(1-textP)*-18}px)`, padding: '0 40px', textAlign: 'center' }}>
+        <Headline size={40} color="#fff">{subtext || '¿Listo para el cambio?'}</Headline>
+      </div>
+      <div style={{ opacity: p, transform: `scale(${p * scale})`, position: 'relative' }}>
+        <div style={{
+          position: 'absolute', inset: -20, borderRadius: blobShape,
+          background: primaryColor, opacity: 0.2, filter: 'blur(20px)',
+        }} />
+        <div style={{
+          borderRadius: blobShape,
+          background: `linear-gradient(135deg, ${primaryColor} 0%, rgba(${hex2rgb(primaryColor)},0.8) 100%)`,
+          padding: '20px 48px',
+          boxShadow: `0 0 ${glow}px rgba(${hex2rgb(primaryColor)},0.5)`,
+          position: 'relative',
+        }}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: '#fff', fontFamily: 'system-ui', letterSpacing: -0.5, whiteSpace: 'nowrap' }}>
+            {cta || 'Empezar gratis'}
+          </div>
+        </div>
+      </div>
+      {subtext && <div style={{ opacity: textP * 0.5, fontSize: 13, color: 'rgba(255,255,255,0.4)', fontFamily: 'system-ui' }}>{subtext}</div>}
+    </AbsoluteFill>
+  );
+}
+
+// ─── BENEFITS: Blob Cards ─────────────────────────────────────────────────────
+// Cards de beneficios con forma blob que cambia suavemente
+function BlobCards({ frame, fps, benefits, primaryColor, bg }) {
+  const safeBenefits = (benefits || []).map(b => typeof b === 'string' ? b : b?.title || b?.label || '')
+  return (
+    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', padding: 28, flexDirection: 'column', gap: 16 }}>
+      {safeBenefits.slice(0, 4).map((b, i) => {
+        const p = spr(frame, fps, i * 16, 12, 88);
+        const blob = blobRadius(frame, 0.035, i * 1.5);
+        const glowPulse = 0.08 + Math.sin(frame * 0.06 + i * 0.8) * 0.04;
+        return (
+          <div key={i} style={{
+            width: '100%',
+            background: `rgba(${hex2rgb(primaryColor)},${glowPulse * 2})`,
+            border: `1px solid rgba(${hex2rgb(primaryColor)},${0.2 + glowPulse})`,
+            borderRadius: i % 2 === 0 ? blob : '16px',
+            padding: '18px 22px',
+            opacity: p,
+            transform: `translateX(${(1-p)*-40}px) scale(${0.92+p*0.08})`,
+            boxShadow: `0 0 ${12 + glowPulse*80}px rgba(${hex2rgb(primaryColor)},${glowPulse})`,
+          }}>
+            <div style={{ fontSize: 16, color: '#fff', fontFamily: 'system-ui', fontWeight: 500, lineHeight: 1.4 }}>{b}</div>
+          </div>
+        );
+      })}
+    </AbsoluteFill>
+  );
+}
+
+// ─── HOOK: Shape Shift ────────────────────────────────────────────────────────
+// Formas geométricas que se transforman entre sí: círculo → cuadrado → rombo
+function ShapeShift({ frame, fps, headline, primaryColor, bg }) {
+  const p = spr(frame, fps, 0, 14, 90);
+  const textP = spr(frame, fps, 30, 14, 100);
+
+  // Ciclo de formas cada 40 frames
+  const cycle = Math.floor(frame / 40) % 3;
+  const cycleP = (frame % 40) / 40;
+  const eased = cycleP < 0.5 ? 2*cycleP*cycleP : -1+(4-2*cycleP)*cycleP;
+
+  const shapes = [
+    '50%',
+    `${Math.round(8 + eased * 42)}% ${Math.round(50 - eased * 42)}% ${Math.round(50 - eased * 42)}% ${Math.round(8 + eased * 42)}%`,
+    `${Math.round(50 + eased * 30)}% ${Math.round(20 + eased * 30)}% ${Math.round(50 + eased * 30)}% ${Math.round(20 + eased * 30)}%`,
+  ]
+
+  const currentShape = shapes[cycle]
+  const rotation = frame * 0.8
+
+  return (
+    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: 32 }}>
+      <Particles frame={frame} color={primaryColor} count={14} />
+      <div style={{
+        width: 180, height: 180,
+        borderRadius: currentShape,
+        background: `linear-gradient(${rotation}deg, ${primaryColor}, rgba(${hex2rgb(primaryColor)},0.4))`,
+        boxShadow: `0 0 60px rgba(${hex2rgb(primaryColor)},0.4)`,
+        transform: `scale(${p}) rotate(${rotation * 0.1}deg)`,
+        opacity: p,
+        transition: 'border-radius 0.6s cubic-bezier(0.34,1.56,0.64,1)',
+      }} />
+      <div style={{ opacity: textP, transform: `translateY(${(1-textP)*20}px)`, textAlign: 'center', padding: '0 40px' }}>
+        <Headline size={40} color="#fff" style={{ lineHeight: 1.25 }}>{headline}</Headline>
+      </div>
+    </AbsoluteFill>
+  );
+}
+
+// ─── OUTRO: Blob Outro ────────────────────────────────────────────────────────
+// Logo que emerge desde un blob orgánico que se expande y se asienta
+function BlobOutro({ frame, fps, siteName, primaryColor, bg }) {
+  const p = spr(frame, fps, 0, 8, 70);
+  const textP = spr(frame, fps, 30, 14, 100);
+  const blob = blobRadius(frame, 0.03, 4);
+  const scale = 0.5 + p * 0.5;
+  const glow = 50 + Math.sin(frame * 0.05) * 20;
+
+  return (
+    <AbsoluteFill style={{ background: bg || '#07070f', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: 20 }}>
+      <div style={{ position: 'relative', opacity: p }}>
+        <div style={{
+          position: 'absolute', inset: -30, borderRadius: blob,
+          background: `rgba(${hex2rgb(primaryColor)},0.12)`,
+          filter: 'blur(30px)',
+          transform: `scale(${scale * 1.2})`,
+        }} />
+        <div style={{
+          width: 200, height: 200, borderRadius: blob,
+          background: `radial-gradient(circle at 30% 30%, rgba(${hex2rgb(primaryColor)},0.25), rgba(${hex2rgb(primaryColor)},0.05))`,
+          border: `1px solid rgba(${hex2rgb(primaryColor)},0.3)`,
+          boxShadow: `0 0 ${glow}px rgba(${hex2rgb(primaryColor)},0.2)`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          transform: `scale(${scale})`,
+        }}>
+          <div style={{ fontSize: 36, fontWeight: 800, color: '#fff', fontFamily: 'system-ui', letterSpacing: -2, opacity: textP }}>
+            {(siteName || '').slice(0, 2).toUpperCase()}
+          </div>
+        </div>
+      </div>
+      <div style={{ opacity: textP, transform: `scale(${0.8 + textP * 0.2})` }}>
+        <div style={{ fontSize: 48, fontWeight: 700, color: '#fff', fontFamily: 'system-ui', letterSpacing: -2, textAlign: 'center' }}>{siteName}</div>
+      </div>
+      <div style={{ opacity: textP * 0.5, fontSize: 12, color: primaryColor, fontFamily: 'system-ui', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+        visitá nuestro sitio
+      </div>
+    </AbsoluteFill>
+  );
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 // ROUTER
 // ══════════════════════════════════════════════════════════════════════════════
@@ -3818,6 +4076,13 @@ const ANIM_MAP = {
   // Universal
   floating_text_badge:   FloatingTextBadge,
   cinematic_title:       CinematicTitleCard,
+  // ── MORPHING / LIQUID / BLOB ────────────────────────────────────────────
+  blob_morph_hero:       BlobMorphHero,
+  liquid_button_hook:    LiquidButtonHook,
+  morphing_cta:          MorphingCTA,
+  blob_cards:            BlobCards,
+  shape_shift:           ShapeShift,
+  blob_outro:            BlobOutro,
 };
 
 // Fallbacks por tipo de escena para no repetir visualmente
