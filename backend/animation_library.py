@@ -6,305 +6,230 @@ Claude solo elige qué animaciones usar y con qué contenido — no genera códi
 
 # Catálogo de animaciones disponibles para que Claude elija
 ANIMATION_CATALOG = {
-    # ─── INTRO / HOOK ──────────────────────────────────────────────
-    "liquid_title": {
-        "desc": "Título que emerge de un blob líquido que se expande desde el centro",
-        "best_for": ["saas", "startup", "app"],
+    # ─── ANIME.JS v4 — STAGGER ────────────────────────────────────────────
+    "anime_stagger_center": {
+        "desc": "stagger(90, from:'center') — palabras desde el centro con blur. El clasico de anime.js",
+        "best_for": ["hook", "cualquier"],
         "scene": "hook",
-        "params": ["title", "subtitle", "primaryColor"],
+        "params": ["headline", "primaryColor", "bg"],
     },
-    "typewriter_glitch": {
-        "desc": "Texto que se escribe como terminal con efecto glitch antes de estabilizarse",
-        "best_for": ["tech", "saas", "developer"],
-        "scene": "hook",
-        "params": ["line1", "line2", "color"],
-    },
-    "counter_explosion": {
-        "desc": "Número/estadística que explota desde 0 con partículas al llegar al máximo",
-        "best_for": ["ecommerce", "saas", "fintech"],
-        "scene": "hook",
-        "params": ["number", "label", "prefix", "suffix", "primaryColor"],
-    },
-    "word_split": {
-        "desc": "Palabras que se separan y reúnen para formar el headline",
-        "best_for": ["agency", "brand", "creative"],
-        "scene": "hook",
-        "params": ["words", "primaryColor"],
-    },
-    "morphing_shapes": {
-        "desc": "Formas geométricas que se morphean entre sí hasta revelar el logo/nombre",
-        "best_for": ["brand", "design", "creative"],
-        "scene": "hook",
-        "params": ["siteName", "primaryColor", "secondaryColor"],
-    },
-    "reveal_swipe": {
-        "desc": "Swipe de color que revela el headline de izquierda a derecha como pincelada",
-        "best_for": ["landing", "marketing", "ecommerce"],
-        "scene": "hook",
-        "params": ["headline", "primaryColor"],
-    },
-    "particle_text": {
-        "desc": "Partículas que vuelan y se ensamblan para formar el nombre del producto",
-        "best_for": ["tech", "saas", "startup"],
-        "scene": "hook",
-        "params": ["siteName", "primaryColor"],
-    },
-
-    "liquid_blob_morph": {
-        "desc": "Blobs orgánicos que morphean continuamente con SVG gooey filter — formas líquidas que se fusionan y separan",
-        "best_for": ["brand", "creative", "startup", "premium"],
-        "scene": "hook",
-        "params": ["siteName", "headline", "primaryColor", "secondaryColor"],
-    },
-    "paint_brush_reveal": {
-        "desc": "Texto revelado por un pincel animado con salpicaduras de tinta SVG — efecto de pintura artístico",
-        "best_for": ["creative", "agency", "art", "brand", "startup"],
-        "scene": "hook",
-        "params": ["headline", "primaryColor", "secondaryColor"],
-    },
-    "terminal_reveal": {
-        "desc": "Texto que aparece como si se escribiera en una terminal con cursor parpadeante y fondo de código",
-        "best_for": ["tech", "saas", "developer", "startup"],
-        "scene": "hook",
-        "params": ["headline", "subheadline", "primaryColor"],
-    },
-    "water_ripple_cta": {
-        "desc": "Botón CTA que al aparecer genera ondas concéntricas como gotas en el agua",
-        "best_for": ["saas", "ecommerce", "landing", "app"],
-        "scene": "cta",
-        "params": ["cta", "subtext", "primaryColor", "guarantee"],
-    },
-    "morphing_card": {
-        "desc": "Card cuyo border-radius morphea orgánicamente mientras rota entre los beneficios del producto",
-        "best_for": ["saas", "app", "startup", "product"],
+    "anime_stagger_grid_2d": {
+        "desc": "stagger(80, grid:[2,N], from:'center') — grilla 2D de beneficios desde el centro",
+        "best_for": ["benefits"],
         "scene": "benefits",
-        "params": ["benefits", "primaryColor", "secondaryColor"],
+        "params": ["benefits", "headline", "primaryColor", "bg"],
     },
-    "neon_sign": {
-        "desc": "Letrero de neón que se enciende letra por letra con parpadeo realista y glow pulsante",
-        "best_for": ["brand", "creative", "restaurant", "entertainment", "startup"],
+    "anime_stagger_irregular": {
+        "desc": "stagger con irregular(10,0.5) — orden caotico organico, muy dinamico",
+        "best_for": ["benefits"],
+        "scene": "benefits",
+        "params": ["benefits", "headline", "primaryColor", "bg"],
+    },
+    # ─── ANIME.JS v4 — TEXT ───────────────────────────────────────────────
+    "anime_scramble_reveal": {
+        "desc": "scrambleText() real — texto se cristaliza del ruido de caracteres",
+        "best_for": ["hook"],
+        "scene": "hook",
+        "params": ["headline", "primaryColor", "bg"],
+    },
+    "anime_letter_by_letter": {
+        "desc": "stagger(45) letra a letra con rotate — iconico de anime.js",
+        "best_for": ["hook"],
+        "scene": "hook",
+        "params": ["headline", "primaryColor", "bg"],
+    },
+    "anime_blur_words": {
+        "desc": "blur+opacity+y con stagger(70) — cada palabra aparece desde blur extremo",
+        "best_for": ["hook"],
+        "scene": "hook",
+        "params": ["headline", "primaryColor", "bg"],
+    },
+    "anime_kinetic_timeline": {
+        "desc": "createTimeline con labels: headline->sub->badge encadenados cinematograficamente",
+        "best_for": ["hook", "product"],
+        "scene": "hook",
+        "params": ["headline", "subtext", "cta", "primaryColor", "bg"],
+    },
+    "anime_true_focus": {
+        "desc": "una palabra en foco, resto en blur — efecto hipnotico que cambia palabra a palabra",
+        "best_for": ["hook"],
+        "scene": "hook",
+        "params": ["headline", "primaryColor", "bg"],
+    },
+    # ─── ANIME.JS v4 — SVG ────────────────────────────────────────────────
+    "anime_svg_draw": {
+        "desc": "createDrawable() — path SVG que se dibuja en tiempo real con punto viajero",
+        "best_for": ["product"],
+        "scene": "product",
+        "params": ["headline", "primaryColor", "bg"],
+    },
+    "anime_morph_blob": {
+        "desc": "morphTo() — blob SVG que morphea entre shapes organicamente",
+        "best_for": ["hook", "product"],
+        "scene": "hook",
+        "params": ["headline", "primaryColor", "bg"],
+    },
+    # ─── ANIME.JS v4 — KEYFRAMES / TIMELINE ──────────────────────────────
+    "anime_keyframe_bounce": {
+        "desc": "keyframes porcentuales con outBounce — letras que rebotan al aterrizar",
+        "best_for": ["hook"],
+        "scene": "hook",
+        "params": ["headline", "primaryColor", "bg"],
+    },
+    "anime_cinematic_tl": {
+        "desc": "createTimeline con .label() — secuencia cinematografica headline+sub+numeros",
+        "best_for": ["product"],
+        "scene": "product",
+        "params": ["headline", "subtext", "numbers", "primaryColor", "bg"],
+    },
+    # ─── ANIME.JS v4 — ALTERNATE / LOOP ──────────────────────────────────
+    "anime_alternate_cmp": {
+        "desc": "alternate:true loop — comparacion antes/despues pulsante con easeInOutQuint",
+        "best_for": ["benefits"],
+        "scene": "benefits",
+        "params": ["benefits", "primaryColor", "bg"],
+    },
+    "anime_rotating_words": {
+        "desc": "palabra que rota entre opciones con slide vertical y spring physics",
+        "best_for": ["hook"],
+        "scene": "hook",
+        "params": ["headline", "options", "primaryColor", "bg"],
+    },
+    # ─── ANIME.JS v4 — CTA ────────────────────────────────────────────────
+    "anime_shiny_button": {
+        "desc": "timeline con destello loop usando translateX — el mejor CTA de la biblioteca",
+        "best_for": ["cta"],
+        "scene": "cta",
+        "params": ["cta", "subtext", "primaryColor", "bg"],
+    },
+    "anime_magnetic_cta": {
+        "desc": "anillos concentricos pulsantes con outElastic — boton que atrae la mirada",
+        "best_for": ["cta"],
+        "scene": "cta",
+        "params": ["cta", "subtext", "primaryColor", "bg"],
+    },
+    "anime_countdown": {
+        "desc": "tiempo de entrega real con barra de progreso — countdown contextual no fake",
+        "best_for": ["cta"],
+        "scene": "cta",
+        "params": ["deliveryTime", "cta", "primaryColor", "bg"],
+    },
+    # ─── ANIME.JS v4 — DATA / PRODUCT ─────────────────────────────────────
+    "anime_counter_cascade": {
+        "desc": "stagger(150) numeros/stats con outBack — cada stat cae y rebota",
+        "best_for": ["product"],
+        "scene": "product",
+        "params": ["stats", "primaryColor", "bg"],
+    },
+    "anime_glass_cards": {
+        "desc": "glassmorphism con spotlight que se mueve organicamente — cards premium",
+        "best_for": ["benefits", "product"],
+        "scene": "benefits",
+        "params": ["benefits", "headline", "primaryColor", "bg"],
+    },
+    "anime_ticker_tape": {
+        "desc": "beneficios en ticker horizontal continuo estilo Bloomberg",
+        "best_for": ["benefits"],
+        "scene": "benefits",
+        "params": ["benefits", "primaryColor", "bg"],
+    },
+    # ─── ANIME.JS v4 — OUTRO ──────────────────────────────────────────────
+    "anime_spectrum_outro": {
+        "desc": "barras de espectro stagger(center) + logo — Spotify Wrapped style",
+        "best_for": ["outro"],
         "scene": "outro",
-        "params": ["siteName", "primaryColor", "secondaryColor"],
+        "params": ["siteName", "primaryColor", "bg"],
     },
-    "water_drop_title": {
-        "desc": "Una gota SVG cae desde arriba, impacta y genera ondas de agua, luego el título emerge desde el centro — MUY impactante",
-        "best_for": ["saas", "fintech", "health", "startup", "premium", "landing"],
-        "scene": "hook",
-        "params": ["headline", "primaryColor", "secondaryColor"],
-    },
-    "liquid_fill_text": {
-        "desc": "El nombre del producto se llena de líquido de abajo hacia arriba con ola sinusoidal y burbujas — único y memorable",
-        "best_for": ["brand", "startup", "beverage", "saas", "premium"],
-        "scene": "hook",
-        "params": ["siteName", "headline", "primaryColor", "secondaryColor"],
-    },
-    "ink_splash_cta": {
-        "desc": "Una mancha de tinta explota desde el centro llenando la pantalla, luego revela el CTA — transición cinematográfica",
-        "best_for": ["creative", "agency", "brand", "startup", "saas"],
-        "scene": "cta",
-        "params": ["cta", "subtext", "primaryColor", "secondaryColor", "guarantee"],
-    },
-    "cursor_click_reveal": {
-        "desc": "Cursor animado SVG se mueve hacia un botón, hace click con ripple, y revela el producto en un iPhone — narrativo e interactivo",
-        "best_for": ["saas", "webapp", "tool", "dashboard", "app"],
-        "scene": "product",
-        "params": ["screenshotUrl", "cta", "primaryColor"],
-    },
-    "scramble_decode": {
-        "desc": "Texto que se decodifica desde caracteres random estilo hacker — muy impactante para tech/fintech",
-        "best_for": ["tech", "saas", "fintech", "startup", "developer"],
-        "scene": "hook",
-        "params": ["headline", "primaryColor"],
-    },
-    "split_chars_reveal": {
-        "desc": "Cada letra del titular entra volando desde una dirección distinta con rotación — efecto dramático único",
-        "best_for": ["brand", "creative", "startup", "agency", "landing"],
-        "scene": "hook",
-        "params": ["headline", "primaryColor"],
-    },
-    "ticker_tape": {
-        "desc": "Tickers de noticias corriendo horizontalmente encuadrando el headline central — muy viral en 2025",
-        "best_for": ["news", "finance", "saas", "ecommerce", "launch"],
-        "scene": "hook",
-        "params": ["headline", "siteName", "primaryColor", "secondaryColor"],
-    },
-    "card_flip_3d": {
-        "desc": "Cards de beneficios que dan vuelta en 3D mostrando frente/dorso — efecto táctil y memorable",
-        "best_for": ["saas", "app", "product", "ecommerce"],
-        "scene": "benefits",
-        "params": ["benefits", "primaryColor", "secondaryColor"],
-    },
-    "grid_reveal": {
-        "desc": "Beneficios que aparecen en una grilla 2x2 con delays escalonados y glow dinámico",
-        "best_for": ["saas", "b2b", "service", "platform"],
-        "scene": "benefits",
-        "params": ["benefits", "primaryColor", "secondaryColor"],
-    },
-    "spotlight_reveal": {
-        "desc": "Foco de luz que recorre la pantalla revelando los beneficios — cinematográfico y elegante",
-        "best_for": ["premium", "creative", "brand", "saas"],
-        "scene": "benefits",
-        "params": ["benefits", "primaryColor", "siteName"],
-    },
-    "zoom_punch_cta": {
-        "desc": "Zoom dramático desde 3x que se contrae al CTA — efecto de impacto visual muy efectivo",
-        "best_for": ["saas", "ecommerce", "launch", "urgent"],
-        "scene": "cta",
-        "params": ["cta", "subtext", "primaryColor", "secondaryColor", "guarantee"],
-    },
-    "freeze_frame_outro": {
-        "desc": "Screenshot congelado con filtro, badge PLAY parpadeante y nombre del sitio emergiendo — cierre cinematográfico",
-        "best_for": ["saas", "app", "product", "webapp"],
+    "anime_typeface_fade": {
+        "desc": "nombre se disuelve con blur — editorial style, muy elegante",
+        "best_for": ["outro"],
         "scene": "outro",
-        "params": ["siteName", "primaryColor", "secondaryColor", "screenshotUrl"],
+        "params": ["siteName", "primaryColor", "bg"],
     },
-    "split_screen_problem": {
-        "desc": "Pantalla dividida: izquierda muestra el caos/problema, derecha la solución",
-        "best_for": ["saas", "productivity", "b2b"],
-        "scene": "hook",
-        "params": ["problemText", "solutionText", "primaryColor"],
-    },
-    "kinetic_text": {
-        "desc": "Palabras del headline que entran una por una con física y peso, muy impactante",
-        "best_for": ["brand", "startup", "saas", "landing"],
-        "scene": "hook",
-        "params": ["headline", "primaryColor", "secondaryColor"],
-    },
-    "particle_reveal": {
-        "desc": "Partículas que convergen desde los bordes para revelar el nombre del producto",
-        "best_for": ["tech", "premium", "saas", "brand"],
-        "scene": "hook",
-        "params": ["siteName", "headline", "primaryColor", "secondaryColor"],
-    },
-
-    # ─── PRODUCTO / DEMO ────────────────────────────────────────────
-    "iphone_rise": {
-        "desc": "iPhone que sube desde abajo con el screenshot del sitio, flota suavemente",
-        "best_for": ["saas", "app", "ecommerce"],
-        "scene": "product",
-        "params": ["screenshotUrl", "primaryColor"],
-    },
-    "cursor_demo": {
-        "desc": "Cursor animado SVG que se mueve, hace click en botones y navega la UI",
-        "best_for": ["saas", "tool", "dashboard"],
-        "scene": "product",
-        "params": ["screenshotUrl", "ctaText", "primaryColor"],
-    },
-    "browser_window": {
-        "desc": "Ventana de browser que se abre con animación y carga el screenshot",
-        "best_for": ["webapp", "saas", "tool"],
-        "scene": "product",
-        "params": ["screenshotUrl", "url", "primaryColor"],
-    },
-    "dashboard_build": {
-        "desc": "Dashboard que se construye elemento por elemento: cards, gráficos, stats",
-        "best_for": ["saas", "analytics", "fintech", "dashboard"],
-        "scene": "product",
-        "params": ["stats", "primaryColor", "siteName"],
-    },
-    "flow_diagram": {
-        "desc": "Diagrama de flujo animado: paso 1 → paso 2 → paso 3 con íconos SVG",
-        "best_for": ["process", "saas", "b2b"],
-        "scene": "product",
-        "params": ["steps", "primaryColor"],
-    },
-    "phone_notification": {
-        "desc": "Notificaciones que aparecen en el teléfono mostrando eventos del producto",
-        "best_for": ["app", "saas", "ecommerce"],
-        "scene": "product",
-        "params": ["notifications", "primaryColor", "siteName"],
-    },
-
-    # ─── BENEFICIOS / FEATURES ──────────────────────────────────────
-    "benefit_cards_stagger": {
-        "desc": "Cards que entran desde los lados con delay, tienen glow de color",
-        "best_for": ["saas", "service", "b2b"],
-        "scene": "benefits",
-        "params": ["benefits", "primaryColor"],
-    },
-    "icon_draw_reveal": {
-        "desc": "Íconos SVG que se dibujan progresivamente con animación de trazo, luego aparece título y descripción",
-        "best_for": ["service", "feature", "explainer", "saas"],
-        "scene": "benefits",
-        "params": ["features", "primaryColor"],
-    },
-    "progress_bars": {
-        "desc": "Barras de progreso que se llenan animadas mostrando métricas clave con porcentajes",
-        "best_for": ["analytics", "performance", "saas", "results"],
-        "scene": "benefits",
-        "params": ["metrics", "primaryColor"],
-    },
-    "stat_counters": {
-        "desc": "Múltiples contadores animados que suben simultáneamente con sus labels",
-        "best_for": ["ecommerce", "saas", "fintech"],
-        "scene": "benefits",
-        "params": ["stats", "primaryColor"],
-    },
-    "timeline_scroll": {
-        "desc": "Timeline vertical que se dibuja de arriba a abajo, ideal para mostrar el proceso paso a paso",
-        "best_for": ["process", "onboarding", "howto", "saas"],
-        "scene": "benefits",
-        "params": ["steps", "primaryColor"],
-    },
-    "comparison_table": {
-        "desc": "Tabla que compara el antes (X rojo) vs después (checkmark verde) animada",
-        "best_for": ["saas", "b2b", "productivity"],
-        "scene": "benefits",
-        "params": ["before", "after", "primaryColor", "siteName"],
-    },
-    "floating_feature_orbs": {
-        "desc": "Orbes flotantes que orbitan el centro, cada uno con un ícono y texto",
-        "best_for": ["tech", "saas", "platform"],
-        "scene": "benefits",
-        "params": ["features", "primaryColor", "secondaryColor"],
-    },
-    "progress_bars": {
-        "desc": "Barras de progreso que se llenan animadas mostrando métricas clave",
-        "best_for": ["analytics", "performance", "saas"],
-        "scene": "benefits",
-        "params": ["metrics", "primaryColor"],
-    },
-
-    # ─── CTA ───────────────────────────────────────────────────────
-    "liquid_button_cta": {
-        "desc": "Botón que tiene efecto líquido/blob al hacer hover, pulsa con glow",
-        "best_for": ["saas", "ecommerce", "landing"],
-        "scene": "cta",
-        "params": ["cta", "subtext", "primaryColor", "guarantee"],
-    },
-    "screenshot_zoom_cta": {
-        "desc": "Screenshot del sitio con zoom lento, overlay oscuro y botón CTA flotante",
-        "best_for": ["saas", "webapp", "tool"],
-        "scene": "cta",
-        "params": ["screenshotUrl", "cta", "primaryColor", "guarantee"],
-    },
-    "urgency_countdown": {
-        "desc": "CTA con elementos de urgencia: puntos de usuarios activos, garantía",
-        "best_for": ["saas", "ecommerce", "launch"],
-        "scene": "cta",
-        "params": ["cta", "guarantee", "primaryColor", "audience"],
-    },
-
-    # ─── LOGO / OUTRO ───────────────────────────────────────────────
-    "logo_particle_burst": {
-        "desc": "Partículas que explotan y se reensamblan formando el nombre del sitio",
-        "best_for": ["brand", "saas", "startup"],
+    "anime_particle_form": {
+        "desc": "particulas que orbitan y forman el logo con spring physics",
+        "best_for": ["outro"],
         "scene": "outro",
-        "params": ["siteName", "primaryColor", "secondaryColor"],
+        "params": ["siteName", "primaryColor", "bg"],
     },
-    "orbit_logo": {
-        "desc": "Letra inicial del producto con partículas orbitando, glow pulsante",
-        "best_for": ["saas", "app", "tech"],
-        "scene": "outro",
-        "params": ["siteName", "primaryColor", "secondaryColor"],
+    # ─── GSAP 3.15 — SplitText ────────────────────────────────────────────
+    "gsap_physics_shatter": {
+        "desc": "SplitText + Physics2D — letras aparecen y caen con gravedad real. UNICO",
+        "best_for": ["hook"],
+        "scene": "hook",
+        "params": ["headline", "primaryColor", "bg"],
     },
-    "gradient_text_outro": {
-        "desc": "Nombre del sitio con gradient animado y tagline que aparece debajo",
-        "best_for": ["brand", "agency", "creative"],
-        "scene": "outro",
-        "params": ["siteName", "tagline", "primaryColor", "secondaryColor"],
+    "gsap_mask_reveal": {
+        "desc": "SplitText mask:lines — lineas emergen de detras de mascara. Tecnica premium",
+        "best_for": ["hook"],
+        "scene": "hook",
+        "params": ["headline", "subtext", "primaryColor", "bg"],
+    },
+    "gsap_chars_rotate": {
+        "desc": "SplitText chars con rotationX 3D — cada caracter gira en el eje X",
+        "best_for": ["hook"],
+        "scene": "hook",
+        "params": ["headline", "primaryColor", "bg"],
+    },
+    "gsap_words_scramble": {
+        "desc": "SplitText words con scatter aleatorio — palabras vuelan y se asientan",
+        "best_for": ["hook"],
+        "scene": "hook",
+        "params": ["headline", "primaryColor", "bg"],
+    },
+    "gsap_lines_wave": {
+        "desc": "SplitText chars con wave stagger — ola de caracteres",
+        "best_for": ["hook", "product"],
+        "scene": "hook",
+        "params": ["headline", "primaryColor", "bg"],
+    },
+    # ─── GSAP 3.15 — SVG ──────────────────────────────────────────────────
+    "gsap_draw_svg": {
+        "desc": "DrawSVG con control preciso de % — path que se dibuja de X% a Y%",
+        "best_for": ["product"],
+        "scene": "product",
+        "params": ["headline", "primaryColor", "bg"],
+    },
+    "gsap_morph_shapes": {
+        "desc": "MorphSVG — circulo a ovoide a cuadrado a triangulo en loop",
+        "best_for": ["hook", "product"],
+        "scene": "hook",
+        "params": ["headline", "primaryColor", "bg"],
+    },
+    # ─── GSAP 3.15 — MOTION / PHYSICS ─────────────────────────────────────
+    "gsap_motion_path": {
+        "desc": "MotionPath — elemento viaja por path SVG con DrawSVG simultaneo",
+        "best_for": ["product"],
+        "scene": "product",
+        "params": ["headline", "steps", "primaryColor", "bg"],
+    },
+    "gsap_physics_rain": {
+        "desc": "Physics2D — beneficios llueven desde arriba con gravedad real",
+        "best_for": ["benefits"],
+        "scene": "benefits",
+        "params": ["benefits", "primaryColor", "bg"],
+    },
+    # ─── GSAP 3.15 — UI ───────────────────────────────────────────────────
+    "gsap_elastic_cards": {
+        "desc": "elastic.out(1,0.6) stagger — cards con resorte fisico",
+        "best_for": ["benefits", "cta"],
+        "scene": "benefits",
+        "params": ["benefits", "headline", "primaryColor", "bg"],
+    },
+    "gsap_flip_reveal": {
+        "desc": "rotationY flip 3D cards — cada card hace flip de costado",
+        "best_for": ["benefits"],
+        "scene": "benefits",
+        "params": ["benefits", "primaryColor", "bg"],
+    },
+    "gsap_physics_burst": {
+        "desc": "Physics2D burst — particulas explotan del CTA con gravedad",
+        "best_for": ["cta"],
+        "scene": "cta",
+        "params": ["cta", "subtext", "primaryColor", "bg"],
     },
 }
+
 
 def get_catalog_for_claude() -> str:
     """Retorna el catálogo en formato legible para Claude."""
