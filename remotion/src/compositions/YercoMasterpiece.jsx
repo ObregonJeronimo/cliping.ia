@@ -44,17 +44,19 @@ const noise2 = (x, y) => {
 };
 
 // ─── Helper: textura circular para partículas ────────────────────────────────
-function makeCircleTexture(size = 64, color = '#73ce73') {
+function makeCircleTexture(size = 64, hexColor = '#73ce73') {
   const canvas = document.createElement('canvas');
   canvas.width = size; canvas.height = size;
   const ctx = canvas.getContext('2d');
   const r = size / 2;
-  // Gradiente radial para glow suave
+  // Parsear hex a r,g,b
+  const h = hexColor.replace('#','');
+  const cr = parseInt(h.slice(0,2),16), cg = parseInt(h.slice(2,4),16), cb = parseInt(h.slice(4,6),16);
   const grad = ctx.createRadialGradient(r, r, 0, r, r, r);
-  grad.addColorStop(0,   color.replace(')', ', 1)').replace('rgb', 'rgba').replace('#', 'rgba(').replace('rgba(', 'rgba(') );
-  grad.addColorStop(0.4, color);
-  grad.addColorStop(0.7, color + 'bb');
-  grad.addColorStop(1,   'rgba(0,0,0,0)');
+  grad.addColorStop(0,   `rgba(${cr},${cg},${cb},1)`);
+  grad.addColorStop(0.4, `rgba(${cr},${cg},${cb},0.9)`);
+  grad.addColorStop(0.7, `rgba(${cr},${cg},${cb},0.4)`);
+  grad.addColorStop(1,   `rgba(${cr},${cg},${cb},0)`);
   ctx.fillStyle = grad;
   ctx.beginPath();
   ctx.arc(r, r, r, 0, Math.PI * 2);
