@@ -12,10 +12,9 @@ import { gsap } from '../../node_modules/gsap/index.js';
 import { SplitText } from '../../node_modules/gsap/SplitText.js';
 import { Physics2DPlugin } from '../../node_modules/gsap/Physics2DPlugin.js';
 import { DrawSVGPlugin } from '../../node_modules/gsap/DrawSVGPlugin.js';
-import { MorphSVGPlugin } from '../../node_modules/gsap/MorphSVGPlugin.js';
 import { MotionPathPlugin } from '../../node_modules/gsap/MotionPathPlugin.js';
 
-gsap.registerPlugin(SplitText, Physics2DPlugin, DrawSVGPlugin, MorphSVGPlugin, MotionPathPlugin);
+gsap.registerPlugin(SplitText, Physics2DPlugin, DrawSVGPlugin, MotionPathPlugin);
 
 // Hook GSAP — misma técnica que Anime.js: seek por frame
 function useGsap(factory, deps = []) {
@@ -210,9 +209,11 @@ export function GsapDrawSvg({ headline, primaryColor, bg }) {
   );
 }
 
-// ─── 6. MorphSVG SHAPES — formas SVG que morphean entre sí ──────────────────
+// ─── 6. MorphSVG SHAPES — interpolación manual entre shapes ─────────────────
 export function GsapMorphShapes({ headline, primaryColor, bg }) {
-  const ref = useRef(null);
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const p = spring({ frame, fps, config:{ damping:14, stiffness:80, mass:0.7 } });
 
   const shapes = [
     'M60,10 C88,10 110,32 110,60 C110,88 88,110 60,110 C32,110 10,88 10,60 C10,32 32,10 60,10 Z',
@@ -222,22 +223,29 @@ export function GsapMorphShapes({ headline, primaryColor, bg }) {
     'M60,10 C88,10 110,32 110,60 C110,88 88,110 60,110 C32,110 10,88 10,60 C10,32 32,10 60,10 Z',
   ];
 
-  useGsap(() => {
-    if (!ref.current) return gsap.timeline();
-    const tl = gsap.timeline({ repeat: -1 });
-    shapes.slice(1).forEach((shape, i) => {
-      tl.to('.gms-path', {
-        morphSVG: shape, duration: 1.2,
-        ease: i % 2 === 0 ? 'power2.inOut' : 'elastic.inOut(1, 0.5)',
-      }, `+=${i === 0 ? 0 : 0.5}`);
-    });
-    return tl;
-  }, []);
+  const CYCLE = 80;
+  const idx = Math.floor(frame / CYCLE) % (shapes.length - 1);
+  const t = (frame % CYCLE) / CYCLE;
+  const eased = -(Math.cos(Math.PI * t) - 1) / 2;
 
-  const p = spring({ frame: useCurrentFrame(), fps: 30, config: { damping:14, stiffness:80, mass:0.7 } });
+  const extractNums = (s) => s.match(/-?\d+(?:\.\d+)?/g).map(Number);
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const numsA = extractNums(shapes[idx]);
+  const numsB = extractNums(shapes[idx + 1]);
+  // Padear el más corto con el último valor
+  const maxLen = Math.max(numsA.length, numsB.length);
+  while (numsA.length < maxLen) numsA.push(numsA[numsA.length-1]);
+  while (numsB.length < maxLen) numsB.push(numsB[numsB.length-1]);
+  let ni = 0;
+  const morphedPath = shapes[idx].replace(/-?\d+(?:\.\d+)?/g, () => {
+    if (ni >= maxLen) return 0;
+    const v = lerp(numsA[ni], numsB[ni], eased);
+    ni++;
+    return Math.round(v * 10) / 10;
+  });
 
   return (
-    <AbsoluteFill ref={ref} style={{ background: bg||bg0(primaryColor), overflow:'hidden', justifyContent:'center', alignItems:'center', flexDirection:'column', gap: 28 }}>
+    <AbsoluteFill style={{ background: bg||bg0(primaryColor), overflow:'hidden', justifyContent:'center', alignItems:'center', flexDirection:'column', gap: 28 }}>
       <div style={{ opacity: Math.min(1, p*1.4), transform:`scale(${0.65+p*0.35})`, filter:`drop-shadow(0 0 24px rgba(${h2r(primaryColor)},0.55))` }}>
         <svg viewBox="0 0 120 120" width="200" height="200">
           <defs>
@@ -246,7 +254,7 @@ export function GsapMorphShapes({ headline, primaryColor, bg }) {
               <stop offset="100%" stopColor={`rgba(${h2r(primaryColor)},0.55)`} />
             </radialGradient>
           </defs>
-          <path className="gms-path" d={shapes[0]} fill="url(#gms-grad)" />
+          <path d={morphedPath} fill="url(#gms-grad)" />
         </svg>
       </div>
       {headline && (

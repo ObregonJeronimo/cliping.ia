@@ -14,7 +14,7 @@ import { useEffect, useRef } from 'react';
 import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from 'remotion';
 import {
   animate, createTimeline, stagger, eases,
-  scrambleText, splitText, morphTo, createDrawable,
+  scrambleText, splitText, createDrawable,
   createMotionPath, createSpring, createAnimatable,
   irregular, utils,
 } from '../../node_modules/animejs/dist/modules/index.js';
@@ -267,12 +267,11 @@ export function AnimeSvgDraw({ headline, primaryColor, bg }) {
   );
 }
 
-// 10. Blob SVG que morphea entre shapes con morphTo
+// 10. Blob SVG que morphea entre shapes — interpolación manual de paths
 export function AnimeMorphBlob({ headline, primaryColor, bg }) {
-  const ref = useRef(null);
-  const blobRef = useRef(null);
   const frame = useCurrentFrame();
-  const p = spring({ frame, fps:30, config:{ damping:14, stiffness:80, mass:0.7 } });
+  const { fps } = useVideoConfig();
+  const p = spring({ frame, fps, config:{ damping:14, stiffness:80, mass:0.7 } });
   const shapes = [
     'M60,8 C88,8 112,32 112,60 C112,88 88,112 60,112 C32,112 8,88 8,60 C8,32 32,8 60,8 Z',
     'M60,4 C90,2 118,26 116,60 C114,92 88,116 60,116 C28,116 2,90 4,60 C6,28 30,6 60,4 Z',
@@ -280,14 +279,24 @@ export function AnimeMorphBlob({ headline, primaryColor, bg }) {
     'M62,6 C92,4 116,32 114,62 C112,92 86,116 58,114 C28,112 4,86 6,60 C8,34 32,8 62,6 Z',
   ];
   const CYCLE = 90;
-  const idx = Math.floor(frame/CYCLE) % shapes.length;
-  useAnime(() => {
-    if (!blobRef.current) return { seek:()=>{} };
-    return createTimeline({ autoplay:false, loop:true })
-      .add(blobRef.current, { d: morphTo(shapes[(idx+1)%shapes.length], 2), duration:2800, ease:'inOutSine' }, 0);
-  }, [idx]);
+  const idx = Math.floor(frame / CYCLE) % shapes.length;
+  const nextIdx = (idx + 1) % shapes.length;
+  // Interpolar los números entre los dos paths
+  const t = (frame % CYCLE) / CYCLE;
+  const eased = -(Math.cos(Math.PI * t) - 1) / 2; // easeInOutSine
+  const extractNums = (s) => s.match(/-?\d+(?:\.\d+)?/g).map(Number);
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const numsA = extractNums(shapes[idx]);
+  const numsB = extractNums(shapes[nextIdx]);
+  let ni = 0;
+  const morphedPath = shapes[idx].replace(/-?\d+(?:\.\d+)?/g, () => {
+    const v = lerp(numsA[ni], numsB[ni], eased);
+    ni++;
+    return Math.round(v * 10) / 10;
+  });
+
   return (
-    <AbsoluteFill ref={ref} style={{ background:bg||bg0(primaryColor), overflow:'hidden', justifyContent:'center', alignItems:'center', flexDirection:'column', gap:28 }}>
+    <AbsoluteFill style={{ background:bg||bg0(primaryColor), overflow:'hidden', justifyContent:'center', alignItems:'center', flexDirection:'column', gap:28 }}>
       <div style={{ opacity:Math.min(1,p*1.4), transform:`scale(${0.65+p*0.35})`, filter:`drop-shadow(0 0 24px rgba(${h2r(primaryColor)},0.55))` }}>
         <svg viewBox="0 0 120 120" width="210" height="210">
           <defs>
@@ -296,7 +305,7 @@ export function AnimeMorphBlob({ headline, primaryColor, bg }) {
               <stop offset="100%" stopColor={`rgba(${h2r(primaryColor)},0.55)`} />
             </radialGradient>
           </defs>
-          <path ref={blobRef} d={shapes[idx]} fill="url(#bmg)" />
+          <path d={morphedPath} fill="url(#bmg)" />
         </svg>
       </div>
       {headline && <div style={{ fontSize:40, fontWeight:700, fontFamily:'system-ui', letterSpacing:'-0.03em', color:'#fff', textAlign:'center', padding:'0 40px', opacity:Math.min(1,p*1.6), transform:`translateY(${(1-Math.min(1,p*1.3))*20}px)` }}>{headline}</div>}
