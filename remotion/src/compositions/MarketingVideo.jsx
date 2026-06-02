@@ -25,6 +25,21 @@ import {
 } from './AnimeAnimations.jsx';
 
 import {
+  GsapPhysicsShatter,
+  GsapMaskReveal,
+  GsapCharsRotate,
+  GsapWordsScramble,
+  GsapDrawSvg,
+  GsapMorphShapes,
+  GsapMotionPath,
+  GsapPhysicsRain,
+  GsapLinesWave,
+  GsapElasticCards,
+  GsapFlipReveal,
+  GsapPhysicsBurst,
+} from './GsapAnimations.jsx';
+
+import {
   AnimeStaggerCenter,
   AnimeStaggerGrid2D,
   AnimeStaggerIrregular,
@@ -49,6 +64,21 @@ import {
   AnimeTypefaceFade,
   AnimeParticleForm,
 } from './AnimeAnimations.jsx';
+
+import {
+  GsapPhysicsShatter,
+  GsapMaskReveal,
+  GsapCharsRotate,
+  GsapWordsScramble,
+  GsapDrawSvg,
+  GsapMorphShapes,
+  GsapMotionPath,
+  GsapPhysicsRain,
+  GsapLinesWave,
+  GsapElasticCards,
+  GsapFlipReveal,
+  GsapPhysicsBurst,
+} from './GsapAnimations.jsx';
 
 import {
   AbsoluteFill,
@@ -5293,166 +5323,51 @@ function AuroraText({ frame, fps, headline, primaryColor, bg }) {
 
 
 const ANIM_MAP = {
-  // Hook — signature animations
-  water_drop_title:      WaterDropTitle,
-  liquid_fill_text:      LiquidFillText,
-  // Hook — básicas
-  liquid_blob_morph:     LiquidBlobMorph,
-  paint_brush_reveal:    PaintBrushReveal,
-  terminal_reveal:       TerminalReveal,
-  typewriter_glitch:     TypewriterGlitch,
-  morphing_shapes:       MorphingShapes,
-  split_screen_problem:  SplitScreenProblem,
-  kinetic_text:          KineticText,
-  particle_reveal:       ParticleReveal,
-  // Product
-  cursor_demo:           CursorDemo,
-  dashboard_build:       DashboardBuild,
-  flow_diagram:          FlowDiagram,
-  phone_notification:    PhoneNotification,
-  // Benefits
-  benefit_cards_stagger: BenefitCardsStagger,
-  comparison_table:      ComparisonTable,
-  timeline_scroll:       TimelineScroll,
-  floating_feature_orbs: FloatingFeatureOrbs,
-  icon_draw_reveal:      IconDrawReveal,
-  // CTA
-  liquid_button_cta:     LiquidButtonCTA,
-  // CTA — virales
-  zoom_punch_cta:        ZoomPunchCTA,
-  // CTA signature
-  ink_splash_cta:        InkSplashCTA,
-  cursor_click_reveal:   CursorClickReveal,
-  // CTA adicionales
-  water_ripple_cta:      WaterRippleCTA,
-  // Benefits — virales
-  card_flip_3d:          CardFlip3D,
-  grid_reveal:           GridReveal,
-  spotlight_reveal:      SpotlightReveal,
-  // Benefits adicionales
-  morphing_card:         MorphingCard,
-  // Outro — virales
-  freeze_frame_outro:    FreezeFrameOutro,
-  // Outro
-  logo_particle_burst:   LogoParticleBurst,
-  // ── NUEVA BIBLIOTECA 2025/2026 ──────────────────────────────────────────
-  // Hook — Nuevas
-  glitch_slice:          GlitchSlice,
-  magnetic_words:        MagneticWords,
-  noise_reveal:          NoiseReveal,
-  staggered_lines:       StaggeredLines,
-  morphing_number:       MorphingNumber,
-  split_reveal_h:        SplitRevealHorizontal,
-  typewriter_premium:    TypewriterPremium,
-  elastic_scale_in:      ElasticScaleIn,
-  blur_reveal:           BlurReveal,
-  // Product — Nuevas
-  app_preview_slide:     AppPreviewSlide,
-  feature_spotlight:     FeatureSpotlightZoom,
-  metrics_dashboard:     MetricsDashboard,
-  code_terminal:         CodeTerminal,
-  notification_stack:    NotificationStack,
-  // Benefits — Nuevas
-  checklist_reveal:      ChecklistReveal,
-  pill_tags_cloud:       PillTagsCloud,
-  accordion_reveal:      AccordionReveal,
-  bento_grid:            BentoGrid,
-  wave_stats:            WaveStats,
-  // CTA — Nuevas
-  glow_pulse_cta:        GlowPulseCTA,
-  swipe_up_cta:          SwipeUpCTA,
-  split_cta:             SplitCTA,
-  // Outro — Nuevas
-  minimal_logo:          MinimalLogo,
-  wipe_out_outro:        WipeOutOutro,
-  particle_dissolve:     ParticleDissolveOutro,
-  grid_collapse:         GridCollapseOutro,
-  // Universal
-  floating_text_badge:   FloatingTextBadge,
-  cinematic_title:       CinematicTitleCard,
-  // ── MORPHING / LIQUID / BLOB ────────────────────────────────────────────
-  blob_morph_hero:       BlobMorphHero,
-  liquid_button_hook:    LiquidButtonHook,
-  morphing_cta:          MorphingCTA,
-  blob_cards:            BlobCards,
-  shape_shift:           ShapeShift,
-  blob_outro:            BlobOutro,
-  // ── BIBLIOTECA 2026 ─────────────────────────────────────────────────────
-  // Kinetic Typography
-  word_pressure:         WordPressure,
-  variable_weight_title: VariableWeightTitle,
-  scramble_reveal:       ScrambleReveal,
-  split_char_cascade:    SplitCharCascade,
-  // Depth & Spatial
-  depth_parallax_hook:   DepthParallaxHook,
-  // Product / Data
-  glass_card_reveal:     GlassCardReveal,
-  liquid_number_morph:   LiquidNumberMorph,
-  svg_path_draw:         SvgPathDraw,
-  // Benefits
-  ticker_tape_pro:       TickerTapePro,
-  stagger_grid_cards:    StaggerGridCards,
-  number_explosion:      NumberExplosion,
-  // CTA
-  magnetic_button:       MagneticButton,
-  split_screen_reveal:   SplitScreenReveal,
-  contextual_countdown:  ContextualCountdown,
-  // Outro
-  spectrum_outro:        SpectrumOutro,
-  typeface_fade_outro:   TypefaceFadeOutro,
-  // Universal
-  noise_texture_slide:   NoiseTextureSlide,
-  arc_browser_card:      ArcBrowserCard,
-  geometric_loop_bg:     GeometricLoopBG,
-  // ── REACTBITS + ANIMEJS v4 + GSAP TECHNIQUES ────────────────────────────
-  // ReactBits text animations
-  blur_text_reveal:      BlurTextReveal,
-  true_focus_reveal:     TrueFocusReveal,
-  rotating_text_hook:    RotatingTextHook,
-  gradient_shimmer_text: GradientShimmerText,
-  neon_text_reveal:      NeonTextReveal,
-  aurora_text:           AuroraText,
-  // AnimeJS v4 techniques
-  stagger_from_center:   StaggerFromCenter,
-  alternate_comparison:  AlternateComparison,
-  horizontal_wipe:       HorizontalWipe,
-  particle_form_text:    ParticleFormText,
-  count_up_metrics:      CountUpMetrics,
-  // ReactBits UI components
-  spotlight_card:        SpotlightCard,
-  shiny_button_cta:      ShinyButtonCTA,
-  // ── ANIME.JS v4 REAL — 23 animaciones con la librería importada ─────────
-  // BLOQUE 1: Stagger techniques
+  // ── ANIME.JS v4 REAL ─────────────────────────────────────────────────────
+  // Stagger
   anime_stagger_center:   AnimeStaggerCenter,
   anime_stagger_grid_2d:  AnimeStaggerGrid2D,
   anime_stagger_irregular:AnimeStaggerIrregular,
-  // BLOQUE 2: Text techniques (scrambleText, splitText)
+  // Text
   anime_scramble_reveal:  AnimeScrambleReveal,
   anime_letter_by_letter: AnimeLetterByLetter,
   anime_blur_words:       AnimeBlurWords,
   anime_kinetic_timeline: AnimeKineticTimeline,
   anime_true_focus:       AnimeTrueFocus,
-  // BLOQUE 3: SVG techniques (createDrawable, morphTo)
+  // SVG
   anime_svg_draw:         AnimeSvgDraw,
   anime_morph_blob:       AnimeMorphBlob,
-  // BLOQUE 4: Timeline avanzada (keyframes, labels)
+  // Keyframes / Timeline
   anime_keyframe_bounce:  AnimeKeyframeBounce,
   anime_cinematic_tl:     AnimeCinematicTimeline,
-  // BLOQUE 5: Alternate / Loop
+  // Alternate / Loop
   anime_alternate_cmp:    AnimeAlternateComparison,
   anime_rotating_words:   AnimeRotatingWords,
-  // BLOQUE 6: CTA
+  // CTA
   anime_shiny_button:     AnimeShinyButton,
   anime_magnetic_cta:     AnimeMagneticCTA,
   anime_countdown:        AnimeContextualCountdown,
-  // BLOQUE 7: Data / Product
+  // Data / Product
   anime_counter_cascade:  AnimeCounterCascade,
   anime_glass_cards:      AnimeGlassCards,
   anime_ticker_tape:      AnimeTickerTape,
-  // BLOQUE 8: Outro
+  // Outro
   anime_spectrum_outro:   AnimeSpectrumOutro,
   anime_typeface_fade:    AnimeTypefaceFade,
   anime_particle_form:    AnimeParticleForm,
+  // ── GSAP 3.15 — Physics2D, SplitText, DrawSVG, MorphSVG, MotionPath ─────
+  gsap_physics_shatter:   GsapPhysicsShatter,
+  gsap_mask_reveal:       GsapMaskReveal,
+  gsap_chars_rotate:      GsapCharsRotate,
+  gsap_words_scramble:    GsapWordsScramble,
+  gsap_draw_svg:          GsapDrawSvg,
+  gsap_morph_shapes:      GsapMorphShapes,
+  gsap_motion_path:       GsapMotionPath,
+  gsap_physics_rain:      GsapPhysicsRain,
+  gsap_lines_wave:        GsapLinesWave,
+  gsap_elastic_cards:     GsapElasticCards,
+  gsap_flip_reveal:       GsapFlipReveal,
+  gsap_physics_burst:     GsapPhysicsBurst,
 };
 
 // Fallbacks por tipo de escena para no repetir visualmente

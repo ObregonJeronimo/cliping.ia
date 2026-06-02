@@ -262,134 +262,79 @@ UNIVERSALES (útiles en cualquier escena):
 - cinematic_title: estilo película con letterbox
 - floating_text_badge: badge premium flotante
 
-ANIMACIONES ANIME.JS v4 REAL - USA ESTAS PRIMERO, SON LAS MEJORES:
-Todas usan la API real de anime.js v4 con seek() por frame. MIT license.
+CATALOGO COMPLETO DE ANIMACIONES (34 en total — TODAS de Anime.js v4 o GSAP 3.15):
 
-BLOQUE 1 - STAGGER:
-- anime_stagger_center: stagger(90, from:'center') palabras desde el centro con blur — EL CLASICO de anime.js
-- anime_stagger_grid_2d: stagger(80, grid:[2,N], from:'center') — stagger 2D para grillas de beneficios
-- anime_stagger_irregular: stagger con irregular(10,0.5) easing — orden caótico orgánico
+═══ ANIME.JS v4 REAL (22 animaciones) ════════════════════════════════════════
 
-BLOQUE 2 - TEXT:
-- anime_scramble_reveal: scrambleText() real de anime.js — texto se cristaliza del ruido de caracteres
-- anime_letter_by_letter: stagger(45) letra a letra con rotate — el mas iconico de anime.js
-- anime_blur_words: blur+opacity+y con stagger(70) outCubic — ReactBits style
-- anime_kinetic_timeline: createTimeline con labels: headline-sub-badge encadenados
-- anime_true_focus: una palabra en foco, resto en blur — efecto hipnótico (usa spring de Remotion)
+STAGGER (desde el centro, 2D grid, irregular):
+- anime_stagger_center: stagger(90, from:'center') — palabras desde el centro con blur. El clasico de anime.js. PARA HOOK
+- anime_stagger_grid_2d: stagger(80, grid:[2,N], from:'center') — grilla 2D para beneficios. PARA BENEFITS
+- anime_stagger_irregular: stagger con irregular(10,0.5) — orden caotico organico. PARA BENEFITS
 
-BLOQUE 3 - SVG:
-- anime_svg_draw: createDrawable() real — path SVG que se dibuja en tiempo real
-- anime_morph_blob: morphTo() real — blob SVG que morphea entre shapes organicamente
+TEXT (scrambleText, blur, kinetic):
+- anime_scramble_reveal: scrambleText() real — texto se cristaliza del ruido de caracteres. PARA HOOK
+- anime_letter_by_letter: stagger(45) letra con rotate — iconico de anime.js. PARA HOOK
+- anime_blur_words: blur+opacity+y stagger(70) — ReactBits style. PARA HOOK
+- anime_kinetic_timeline: createTimeline labels: headline->sub->badge. PARA HOOK/PRODUCT
+- anime_true_focus: una palabra en foco, resto en blur — hipnotico. PARA HOOK
 
-BLOQUE 4 - KEYFRAMES:
-- anime_keyframe_bounce: keyframes porcentuales con outBounce — letras que rebotan
-- anime_cinematic_tl: createTimeline con .label() — secuencia cinematografica con puntos de referencia
+SVG (createDrawable, morphTo):
+- anime_svg_draw: createDrawable() — path SVG que se dibuja en tiempo real. PARA PRODUCT
+- anime_morph_blob: morphTo() — blob que morphea entre shapes reales. PARA HOOK/PRODUCT
 
-BLOQUE 5 - ALTERNATE/LOOP:
-- anime_alternate_cmp: alternate:true loop — comparacion antes/despues pulsante
-- anime_rotating_words: palabra que rota entre opciones con spring physics
+KEYFRAMES / TIMELINE:
+- anime_keyframe_bounce: keyframes % con outBounce — letras que rebotan. PARA HOOK
+- anime_cinematic_tl: createTimeline con .label() — secuencia cinematografica. PARA PRODUCT
 
-BLOQUE 6 - CTA:
-- anime_shiny_button: timeline con destello loop — el mejor CTA de la biblioteca
-- anime_magnetic_cta: anillos concentricos pulsantes con outElastic
-- anime_countdown: countdown con tiempo real de entrega (no fake urgency)
+ALTERNATE / LOOP:
+- anime_alternate_cmp: alternate:true — comparacion antes/despues pulsante. PARA BENEFITS
+- anime_rotating_words: palabra que rota entre opciones con spring. PARA HOOK
 
-BLOQUE 7 - DATA:
-- anime_counter_cascade: stagger(150) numeros/stats con outBack
-- anime_glass_cards: glassmorphism con spotlight que se mueve organicamente
-- anime_ticker_tape: beneficios en ticker horizontal continuo
+CTA:
+- anime_shiny_button: timeline con destello loop — el mejor CTA. PARA CTA
+- anime_magnetic_cta: anillos concentricos con outElastic. PARA CTA
+- anime_countdown: countdown con tiempo real de entrega. PARA CTA
 
-BLOQUE 8 - OUTRO:
-- anime_spectrum_outro: barras de espectro stagger(20,center) + logo — Spotify Wrapped style
-- anime_typeface_fade: nombre se disuelve con blur — editorial/Vogue style
-- anime_particle_form: particulas que orbitan y forman el logo — spring physics
+DATA / PRODUCT:
+- anime_counter_cascade: stagger(150) numeros con outBack. PARA PRODUCT
+- anime_glass_cards: glassmorphism con spotlight organico. PARA BENEFITS/PRODUCT
+- anime_ticker_tape: beneficios en ticker horizontal continuo. PARA BENEFITS
 
-ANIMACIONES ANIME.JS v4 REAL (libreria importada, MIT - animejs.com):
-ESTAS SON LAS MEJORES - usan la API real de anime.js con seek() por frame:
+OUTRO:
+- anime_spectrum_outro: barras de espectro stagger(center) + logo. PARA OUTRO
+- anime_typeface_fade: nombre se disuelve con blur — editorial. PARA OUTRO
+- anime_particle_form: particulas que orbitan y forman el logo. PARA OUTRO
 
-- anime_stagger_cascade: stagger(90, from:'center') - palabras desde el centro hacia afuera con blur
-- anime_letter_by_letter: stagger(45) letra por letra con rotate+translateY - iconico de anime.js
-- anime_kinetic_timeline: createTimeline().add().add() encadenado: headline->sub->badge
-- anime_stagger_grid: stagger(80, grid:[2,N], from:'center') - grid 2D desde el centro
-- anime_morph_blob: blob SVG que cambia de forma con spring physics
-- anime_shiny_button: boton con destello loop usando translateX anime - muy efectivo CTA
-- anime_counter_cascade: numeros/stats con stagger(150) y outBack ease
-- anime_blur_words: blur+opacity+y con stagger(70) outCubic - estilo ReactBits BlurText
-- anime_spotlight: cards con spotlight que se mueve + stagger entrada
-- anime_spectrum_outro: barras de espectro stagger(20,center) + logo - Spotify style
+═══ GSAP 3.15 REAL (12 animaciones — Physics2D, SplitText, DrawSVG, MorphSVG) ═
 
-ANIMACIONES REACTBITS + ANIMEJS v4 - LAS MEJORES DEL MERCADO (MIT, open source):
-Fuente: reactbits.dev (39k estrellas GitHub) + animejs.com v4 (MIT)
+TEXT con SplitText:
+- gsap_physics_shatter: SplitText + Physics2D — letras aparecen y luego caen con gravedad real. UNICO, PARA HOOK
+- gsap_mask_reveal: SplitText mask:lines — lineas emergen de detras de mascara. PREMIUM, PARA HOOK
+- gsap_chars_rotate: SplitText chars con rotationX 3D. PARA HOOK
+- gsap_words_scramble: SplitText words con scatter aleatorio. PARA HOOK
+- gsap_lines_wave: SplitText chars con wave stagger. PARA HOOK/PRODUCT
 
-TEXT ANIMATIONS (reactbits.dev):
-- blur_text_reveal: cada palabra aparece desde blur extremo con stagger — signature ReactBits
-- true_focus_reveal: una palabra a la vez en foco, las demas en blur — efecto hipnotico
-- rotating_text_hook: linea fija + palabra que rota entre opciones (slide vertical)
-- gradient_shimmer_text: texto con destello de gradiente que viaja — como logo de Linear
-- neon_text_reveal: glow de neon que se activa letra por letra — premium
-- aurora_text: texto con gradiente aurora animado que rota (colores derivados del sitio)
+SVG con DrawSVG / MorphSVG:
+- gsap_draw_svg: DrawSVG con control preciso de %. PARA PRODUCT
+- gsap_morph_shapes: MorphSVG — circulo→ovoide→cuadrado→triangulo loop. PARA HOOK/PRODUCT
 
-ANIMEJS v4 TECHNIQUES:
-- stagger_from_center: elementos animados desde el centro hacia afuera (stagger(65, center))
-- alternate_comparison: ping-pong entre antes/despues con easeInOutQuint
-- horizontal_wipe: palabras entran por derecha salen por izquierda (GSAP ScrollTrigger style)
-- particle_form_text: particulas que orbitan y forman el logo (AnimeJS particle system)
-- count_up_metrics: numeros cuentan hacia arriba con easing (react-countup style)
+Motion y Physics:
+- gsap_motion_path: MotionPath — elemento viaja por path SVG con DrawSVG simultaneo. PARA PRODUCT
+- gsap_physics_rain: Physics2D — beneficios llueven desde arriba. PARA BENEFITS
 
-REACTBITS UI COMPONENTS:
-- spotlight_card: card con spotlight que se mueve organicamente — muy premium
-- shiny_button_cta: boton con destello de luz que viaja por encima — muy efectivo para CTA
+UI:
+- gsap_elastic_cards: elastic.out(1,0.6) stagger — cards con resorte. PARA BENEFITS
+- gsap_flip_reveal: rotationY flip 3D cards. PARA BENEFITS
+- gsap_physics_burst: Physics2D burst — particulas explotan del CTA. PARA CTA
 
-ANIMACIONES 2026 - USA ESTAS PRIMERO (tecnicas de vanguardia, son las mejores):
-
-KINETIC TYPOGRAPHY (texto con fisica):
-- word_pressure: palabras con peso fisico diferente, cada una aterriza con masa propia — muy impactante
-- variable_weight_title: headline que respira de thin a black (variable fonts 2026) — para conceptos de fuerza
-- scramble_reveal: texto empieza como ruido y se cristaliza letra por letra (Vercel/Anthropic style)
-- split_char_cascade: cada letra vuela con golden angle distribution (Spotify style) — muy cinematografico
-- depth_parallax_hook: 3 capas de texto a velocidades distintas, profundidad real sin 3D (Apple Vision)
-
-PRODUCT / DATA PREMIUM:
-- glass_card_reveal: cards glassmorphism con glow pulsante en cascada (Framer style) — nunca generico
-- liquid_number_morph: numeros que rotan entre si con transicion liquida y dots indicadores (Stripe style)
-- svg_path_draw: SVG que se dibuja en tiempo real con dot viajero — para marcas con recorrido/proceso
-- stagger_grid_cards: grid 2x2 con micro-animaciones individuales y float (MagicUI library style)
-
-BENEFITS DE CALIDAD:
-- ticker_tape_pro: beneficios en ticker horizontal continuo estilo Bloomberg — para muchos beneficios
-- number_explosion: numero explota desde centro con particulas y se asienta (Spotify Wrapped style)
-
-CTA DE CONVERSION REAL:
-- magnetic_button: boton con anillos magneticos pulsantes — atrae la mirada fisicamente
-- split_screen_reveal: pantalla se parte y CTA emerge desde dentro (Apple trailer cinematografico)
-- contextual_countdown: tiempo de entrega/respuesta real con barra de progreso (no fake urgency)
-
-OUTRO MEMORABLE:
-- spectrum_outro: barras de espectro de audio que forman el logo (Spotify Wrapped 2025 style)
-- typeface_fade_outro: nombre en tipografia grande que se disuelve como niebla (editorial/Vogue motion)
-
-UNIVERSAL DE CALIDAD:
-- noise_texture_slide: fondo con ruido SVG animado, contenido flota sobre textura (Framer sites 2026)
-- arc_browser_card: card premium con gradient mesh y borde luminoso (Arc Browser style)
-- geometric_loop_bg: formas geometricas en loop como background (Abstract Geometric trend 2026)
-
-ANIMACIONES SIGNATURE QUE DEBES USAR CON FRECUENCIA (son únicas y muy impactantes):
-- water_drop_title: gota SVG que cae e impacta con ondas — muy visual para hook
-- liquid_fill_text: nombre del producto que se llena de líquido — para hook de marca
-- paint_brush_reveal: pincel que revela el texto — para hook creativo
-- scramble_decode: texto que se decodifica estilo hacker — para hook tech
-- split_chars_reveal: letras que vuelan desde distintas direcciones
-- ticker_tape: tickers de noticias corriendo horizontalmente
-- phone_notification: iPhone con notificaciones deslizantes en tiempo real
-- cursor_click_reveal: cursor que hace click y revela el producto
-- ink_splash_cta: explosión de tinta que revela el CTA
-- zoom_punch_cta: zoom de 3x que impacta en el CTA
-- water_ripple_cta: ondas concéntricas del botón
-- card_flip_3d: cards que dan vuelta en 3D (benefits)
-- grid_reveal: grilla 2x2 con reveal escalonado
-- spotlight_reveal: foco de luz cinematográfico
-- freeze_frame_outro: screenshot congelado con badge PLAY
-- neon_sign: letrero de neón encendiéndose letra por letra
+REGLAS DE USO:
+1. SIEMPRE usa animaciones de este catalogo — NO inventes nombres
+2. Para hook: prioriza anime_stagger_center, anime_scramble_reveal, gsap_mask_reveal, gsap_physics_shatter
+3. Para benefits: prioriza anime_stagger_grid_2d, anime_glass_cards, gsap_elastic_cards
+4. Para CTA: anime_shiny_button, anime_magnetic_cta, gsap_physics_burst
+5. Para outro: anime_spectrum_outro, anime_typeface_fade, anime_particle_form
+6. Para product: anime_cinematic_tl, gsap_draw_svg, gsap_motion_path, anime_counter_cascade
+7. Nunca repitas la misma animacion en dos escenas del mismo video
 
 REGLAS CRÍTICAS — ANTI-REPETICIÓN ACUMULATIVA:
 Vas a elegir 10 animaciones. A medida que elijas cada una, la siguiente NO puede repetirla.
