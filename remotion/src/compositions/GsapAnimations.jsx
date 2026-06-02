@@ -8,12 +8,12 @@
  */
 import { useEffect, useRef } from 'react';
 import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from 'remotion';
-import { gsap } from 'gsap';
-import { SplitText } from 'gsap/SplitText';
-import { Physics2DPlugin } from 'gsap/Physics2DPlugin';
-import { DrawSVGPlugin } from 'gsap/DrawSVGPlugin';
-import { MorphSVGPlugin } from 'gsap/MorphSVGPlugin';
-import { MotionPathPlugin } from 'gsap/MotionPathPlugin';
+import { gsap } from '../../node_modules/gsap/index.js';
+import { SplitText } from '../../node_modules/gsap/SplitText.js';
+import { Physics2DPlugin } from '../../node_modules/gsap/Physics2DPlugin.js';
+import { DrawSVGPlugin } from '../../node_modules/gsap/DrawSVGPlugin.js';
+import { MorphSVGPlugin } from '../../node_modules/gsap/MorphSVGPlugin.js';
+import { MotionPathPlugin } from '../../node_modules/gsap/MotionPathPlugin.js';
 
 gsap.registerPlugin(SplitText, Physics2DPlugin, DrawSVGPlugin, MorphSVGPlugin, MotionPathPlugin);
 

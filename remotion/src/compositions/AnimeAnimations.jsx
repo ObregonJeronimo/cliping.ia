@@ -17,7 +17,7 @@ import {
   scrambleText, splitText, morphTo, createDrawable,
   createMotionPath, createSpring, createAnimatable,
   irregular, utils,
-} from 'animejs';
+} from '../../node_modules/animejs/dist/modules/index.js';
 
 // ─── Hook base — scrubea la animación al frame actual ─────────────────────────
 function useAnime(factory, deps = []) {
