@@ -163,7 +163,9 @@ async def run_agent(
             debugger=debugger,
         )
     except Exception as e:
-        print(f"[remotion] falló: {e}, usando fallback")
+        import traceback
+        print(f"[remotion] falló: {e}")
+        print(f"[remotion] traceback:\n{traceback.format_exc()[-800:]}")
         # Fallback: buscar el webm más reciente
         webms = sorted(OUTPUTS_DIR.glob("*.webm"), key=lambda f: f.stat().st_mtime, reverse=True)
         if webms:

@@ -75,6 +75,10 @@ REGLAS DE COMPOSICIÓN:
 - El bg de cada escena puede variar levemente (distintos gradientes del mismo color base) para dar profundidad
 - Los params de cada animación deben reflejar la personalidad del brief: fontSize, glowIntensity, pulseSpeed, etc.
 
+IMPORTANTE: Los "key" de las escenas DEBEN ser exactamente estos en inglés:
+hook_a, hook_b, product_a, product_b, benefits_a, benefits_b, benefits_c, cta_a, cta_b, outro
+NO usar español (producto_a, beneficios_a, etc). NO usar otros nombres.
+
 OUTPUT: Un objeto JSON con la estructura de composición. Nada más, sin explicaciones, sin markdown."""
 
 async def generate_composition(page_data: dict, brief: dict, video_context: dict) -> dict:
@@ -264,6 +268,19 @@ def composition_to_props(composition: dict, page_data: dict) -> dict:
             'animation': s.get('animation', ''),
             'params': params,
         })
+
+    # Normalizar keys — Claude a veces usa español
+    KEY_MAP = {
+        'producto_a': 'product_a', 'producto_b': 'product_b',
+        'beneficios_a': 'benefits_a', 'beneficios_b': 'benefits_b', 'beneficios_c': 'benefits_c',
+        'beneficio_a': 'benefits_a', 'beneficio_b': 'benefits_b', 'beneficio_c': 'benefits_c',
+        'gancho_a': 'hook_a', 'gancho_b': 'hook_b',
+        'llamada': 'cta_a', 'llamada_a': 'cta_a', 'llamada_b': 'cta_b',
+        'cierre': 'outro', 'final': 'outro',
+    }
+    for s in normalized_scenes:
+        if s['key'] in KEY_MAP:
+            s['key'] = KEY_MAP[s['key']]
 
     scene_map = {s['key']: s for s in normalized_scenes}
     bg = composition.get('bg', '')
