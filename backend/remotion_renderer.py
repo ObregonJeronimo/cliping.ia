@@ -530,7 +530,7 @@ async def render_video(
         "--jpeg-quality", "98",
         "--crf", "14",
         "--pixel-format", "yuv420p",
-        "--log", "error",
+        "--log", "verbose",
     ]
 
     print(f"[renderer] rendering {width}x{height} concurrency={concurrency}...")
@@ -545,10 +545,16 @@ async def render_video(
     except: pass
 
     if proc.returncode != 0:
-        err = stderr.decode()[-800:]
-        print(f"[renderer] remotion error: {err}")
-        if debugger: debugger.set_render_result(False, error=err[-200:])
-        raise RuntimeError(f"Remotion falló: {err[-200:]}")
+        out_txt = stdout.decode(errors='replace')
+        err_txt = stderr.decode(errors='replace')
+        # Buscar la línea del error real (no el stack trace)
+        error_lines = [l for l in (out_txt + err_txt).splitlines()
+                       if any(k in l for k in ['Error:', 'error:', 'Cannot', 'Module', 'SyntaxError', 'TypeError', 'failed'])]
+        err_summary = '\n'.join(error_lines[:10]) if error_lines else err_txt[-600:]
+        print(f"[renderer] remotion error COMPLETO:\n{err_summary}")
+        print(f"[renderer] remotion stderr tail:\n{err_txt[-400:]}")
+        if debugger: debugger.set_render_result(False, error=err_summary[:300])
+        raise RuntimeError(f"Remotion falló: {err_summary[:300]}")
 
     if not output_path.exists():
         raise RuntimeError("Remotion no generó el archivo")
