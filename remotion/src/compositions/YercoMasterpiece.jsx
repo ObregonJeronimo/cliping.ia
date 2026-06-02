@@ -43,6 +43,25 @@ const noise2 = (x, y) => {
   return lerp(lerp(h(X+Y*57), h(X+1+Y*57), u), lerp(h(X+(Y+1)*57), h(X+1+(Y+1)*57), u), v2)*2-1;
 };
 
+// ─── Helper: textura circular para partículas ────────────────────────────────
+function makeCircleTexture(size = 64, color = '#73ce73') {
+  const canvas = document.createElement('canvas');
+  canvas.width = size; canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  const r = size / 2;
+  // Gradiente radial para glow suave
+  const grad = ctx.createRadialGradient(r, r, 0, r, r, r);
+  grad.addColorStop(0,   color.replace(')', ', 1)').replace('rgb', 'rgba').replace('#', 'rgba(').replace('rgba(', 'rgba(') );
+  grad.addColorStop(0.4, color);
+  grad.addColorStop(0.7, color + 'bb');
+  grad.addColorStop(1,   'rgba(0,0,0,0)');
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(r, r, r, 0, Math.PI * 2);
+  ctx.fill();
+  return new THREE.CanvasTexture(canvas);
+}
+
 // ─── ESCENA 1: Three.js partículas → "YERCO" (frames 0-90) ───────────────────
 function Scene1Particles({ frame }) {
   const canvasRef = useRef(null);
@@ -101,12 +120,16 @@ function Scene1Particles({ frame }) {
 
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    const circleTexture = makeCircleTexture(64, GREEN);
     const mat = new THREE.PointsMaterial({
       color: new THREE.Color(GREEN),
-      size: 6,
+      size: 10,
       transparent: true,
-      opacity: 0.9,
+      opacity: 0.92,
       sizeAttenuation: true,
+      map: circleTexture,
+      alphaTest: 0.01,
+      depthWrite: false,
     });
     const points = new THREE.Points(geo, mat);
     scene.add(points);
@@ -343,7 +366,8 @@ function Scene4Sphere({ frame, localFrame }) {
     }
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    const mat = new THREE.PointsMaterial({ color: new THREE.Color(GREEN), size: 5, transparent: true, opacity: 0.85 });
+    const circleTexture4 = makeCircleTexture(64, GREEN);
+    const mat = new THREE.PointsMaterial({ color: new THREE.Color(GREEN), size: 8, transparent: true, opacity: 0.88, map: circleTexture4, alphaTest: 0.01, depthWrite: false });
     const sphere = new THREE.Points(geo, mat);
     scene.add(sphere);
 
@@ -754,7 +778,8 @@ function Scene10Implosion({ frame, localFrame }) {
     }
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    const mat = new THREE.PointsMaterial({ color: new THREE.Color(GREEN), size: 5, transparent: true, opacity: 0.9 });
+    const circleTexture10 = makeCircleTexture(64, GREEN);
+    const mat = new THREE.PointsMaterial({ color: new THREE.Color(GREEN), size: 8, transparent: true, opacity: 0.92, map: circleTexture10, alphaTest: 0.01, depthWrite: false });
     const pts = new THREE.Points(geo, mat);
     scene.add(pts);
     stateRef.current = { renderer, scene, camera, pts, geo, positions, origins };
