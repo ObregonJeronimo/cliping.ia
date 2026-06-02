@@ -12,6 +12,19 @@ import {
 } from './AnimeAnimations.jsx';
 
 import {
+  AnimeStaggerCascade,
+  AnimeLetterByLetter,
+  AnimeKineticTimeline,
+  AnimeStaggerGrid,
+  AnimeMorphBlob,
+  AnimeShinyButtonCTA,
+  AnimeCounterCascade,
+  AnimeBlurWords,
+  AnimeSpotlightReveal,
+  AnimeSpectrumOutro,
+} from './AnimeAnimations.jsx';
+
+import {
   AbsoluteFill,
   interpolate,
   spring,
@@ -5382,6 +5395,17 @@ const ANIM_MAP = {
   // ReactBits UI components
   spotlight_card:        SpotlightCard,
   shiny_button_cta:      ShinyButtonCTA,
+  // ── ANIME.JS v4 REAL — librería importada, seek() por frame ─────────────
+  anime_stagger_cascade:  AnimeStaggerCascade,
+  anime_letter_by_letter: AnimeLetterByLetter,
+  anime_kinetic_timeline: AnimeKineticTimeline,
+  anime_stagger_grid:     AnimeStaggerGrid,
+  anime_morph_blob:       AnimeMorphBlob,
+  anime_shiny_button:     AnimeShinyButtonCTA,
+  anime_counter_cascade:  AnimeCounterCascade,
+  anime_blur_words:       AnimeBlurWords,
+  anime_spotlight:        AnimeSpotlightReveal,
+  anime_spectrum_outro:   AnimeSpectrumOutro,
 };
 
 // Fallbacks por tipo de escena para no repetir visualmente
