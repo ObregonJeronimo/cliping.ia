@@ -238,15 +238,40 @@ def _fallback_composition(page_data: dict, accent: str, bg: str) -> dict:
 def composition_to_props(composition: dict, page_data: dict) -> dict:
     """
     Convierte la composición generada a los props que recibe MarketingVideo.
-    Mapea cada escena al slot correspondiente.
+    Robusto contra respuestas malformadas de Claude.
     """
+    if not isinstance(composition, dict):
+        composition = {}
+
     scenes = composition.get('scenes', [])
-    scene_map = {s['key']: s for s in scenes}
+    if not isinstance(scenes, list):
+        scenes = []
+
+    # Normalizar cada escena — Claude puede usar keys distintas
+    normalized_scenes = []
+    for s in scenes:
+        if not isinstance(s, dict):
+            continue
+        dur = s.get('duration') or s.get('dur') or s.get('durationInFrames') or 90
+        params = s.get('params', {})
+        # Si params es string, ignorar
+        if not isinstance(params, dict):
+            params = {}
+        normalized_scenes.append({
+            'key': s.get('key', ''),
+            'from': s.get('from', 0),
+            'duration': int(dur),
+            'animation': s.get('animation', ''),
+            'params': params,
+        })
+
+    scene_map = {s['key']: s for s in normalized_scenes}
     bg = composition.get('bg', '')
 
     def scene_anim(key, default_anim):
         s = scene_map.get(key, {})
-        return s.get('animation', default_anim)
+        anim = s.get('animation', default_anim)
+        return anim if anim else default_anim
 
     def scene_params(key):
         s = scene_map.get(key, {})
@@ -254,8 +279,13 @@ def composition_to_props(composition: dict, page_data: dict) -> dict:
 
     # Timing dinámico basado en la composición
     timing = {}
-    for s in scenes:
-        timing[s['key']] = {'from': s['from'], 'dur': s['duration']}
+    for s in normalized_scenes:
+        if s['key']:
+            timing[s['key']] = {'from': s['from'], 'dur': s['duration']}
+
+    transitions = composition.get('transitions', [])
+    if not isinstance(transitions, list):
+        transitions = []
 
     return {
         # Datos del sitio
@@ -294,6 +324,6 @@ def composition_to_props(composition: dict, page_data: dict) -> dict:
         'outroParams': scene_params('outro'),
         # Timing dinámico
         '__timing': timing,
-        '__transitions': composition.get('transitions', []),
+        '__transitions': transitions,
         '__reasoning': composition.get('creative_reasoning', ''),
     }

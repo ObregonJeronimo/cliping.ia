@@ -444,6 +444,10 @@ async def render_video(
     ]
     for scene_key in all_param_keys:
         scene_params = props.get(scene_key, {})
+        # Asegurarse de que sea un dict — Claude puede devolver strings
+        if not isinstance(scene_params, dict):
+            props[scene_key] = {}
+            scene_params = {}
         if not scene_params: continue
 
         # Quitar screenshotUrl de cualquier params
