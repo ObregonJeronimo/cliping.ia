@@ -147,7 +147,7 @@ function Scene1Particles({ frame }) {
   useEffect(() => {
     const st = stateRef.current;
     if (!st) return;
-    const t = clamp(frame / 90, 0, 1);
+    const t = clamp(frame / 120, 0, 1);
     const gather = ease(t, 'inOutSine');
     const { positions, targets, velocities, geo, camera, renderer, scene } = st;
     const N = targets.length;

@@ -371,73 +371,91 @@ async def render_video(
     else:
         if os.environ.get("ANTHROPIC_API_KEY"):
             try:
+                # SISTEMA GENERATIVO: Claude genera la composición completa
+                from composition_generator import generate_composition, composition_to_props
+                brief_data = {}
+                if anim_selection and "brief" in anim_selection:
+                    brief_data = anim_selection.get("brief", {})
+
+                # Primero obtener el brief del select_animations (para reutilizar)
                 anim_selection = await select_animations(
                     video_context, industry_key=industry_key,
                     industry_anims=industry_anims,
                     used_in_industry=used_in_industry,
                     needs_new_anims=needs_new,
                 )
-                if anim_selection and not is_simple_mode:
+                brief_data = anim_selection.get("brief", {}) if anim_selection else {}
+
+                # Luego generar la composición completa con params reales
+                composition = await generate_composition(page_data, brief_data, video_context)
+                composition_props = composition_to_props(composition, page_data)
+
+                if composition and not is_simple_mode:
                     save_cache(url_key, anim_selection, cache_context)
+
+                print(f"[composition] reasoning: {composition.get('creative_reasoning','')[:80]}")
             except Exception as e:
-                print(f"[renderer] error seleccionando animaciones: {e}")
+                print(f"[renderer] error generando composición: {e}")
+                import traceback; traceback.print_exc()
+                composition_props = None
         if not anim_selection:
             anim_selection = get_default_selection(page_data)
 
-    if debugger: debugger.set_animation_selection(anim_selection)
+    if debugger: debugger.set_animation_selection(anim_selection or {})
 
-    # ── Fondo contextual ──────────────────────────────────────────────────
-    # El brief de Claude puede proponer un fondo — si no, calculamos uno
-    brief_bg_raw = anim_selection.get("brief", {}).get("paleta", {}).get("fondo", "")
-    # Limpiar comentarios que Claude agrega después del CSS (ej: "linear-gradient(...) — verde bosque")
-    import re as _re
-    brief_bg = _re.split(r'\s+[—–-]{1,2}\s+', str(brief_bg_raw))[0].strip() if brief_bg_raw else ""
-    if not brief_bg or brief_bg in ("#000000", "black", "#000") or not brief_bg.startswith(("linear-gradient", "radial-gradient", "#")):
-        brief_bg = get_bg_for_site(page_data, industry_key)
-
-    # Props
-    props = {
-        "siteName":           page_data.get("siteName", "Mi Sitio"),
-        "headline":           page_data.get("headline", "La solución que necesitás"),
-        "subheadline":        page_data.get("subheadline", ""),
-        "benefits":           page_data.get("benefits", []),
-        "features":           page_data.get("features", []),
-        "cta":                page_data.get("cta", "Empezá gratis"),
-        "problem":            page_data.get("problem", ""),
-        "audience":           page_data.get("audience", ""),
-        "numbers":            page_data.get("numbers", []),
-        "guarantee":          page_data.get("guarantee", ""),
-        "primaryColor":       page_data.get("primaryColor", "#6366f1"),
-        "secondaryColor":     page_data.get("secondaryColor", "#818cf8"),
-        "screenshotUrl":      screenshot_b64,
-        "bg":                 brief_bg,
-        # Hook
-        "hookAAnimation":     anim_selection.get("hook_a", {}).get("animation", "counter_explosion"),
-        "hookAParams":        anim_selection.get("hook_a", {}).get("params", {}),
-        "hookBAnimation":     anim_selection.get("hook_b", {}).get("animation", "reveal_swipe"),
-        "hookBParams":        anim_selection.get("hook_b", {}).get("params", {}),
-        # Product
-        "productAAnimation":  anim_selection.get("product_a", {}).get("animation", "iphone_rise"),
-        "productAParams":     anim_selection.get("product_a", {}).get("params", {}),
-        "productBAnimation":  anim_selection.get("product_b", {}).get("animation", "dashboard_build"),
-        "productBParams":     anim_selection.get("product_b", {}).get("params", {}),
-        # Benefits
-        "benefitsAAnimation": anim_selection.get("benefits_a", {}).get("animation", "benefit_cards_stagger"),
-        "benefitsAParams":    anim_selection.get("benefits_a", {}).get("params", {}),
-        "benefitsBAnimation": anim_selection.get("benefits_b", {}).get("animation", "icon_draw_reveal"),
-        "benefitsBParams":    anim_selection.get("benefits_b", {}).get("params", {}),
-        "benefitsCAnimation": anim_selection.get("benefits_c", {}).get("animation", "stat_counters"),
-        "benefitsCParams":    anim_selection.get("benefits_c", {}).get("params", {}),
-        # CTA
-        "ctaAAnimation":      anim_selection.get("cta_a", {}).get("animation", "urgency_countdown"),
-        "ctaAParams":         anim_selection.get("cta_a", {}).get("params", {}),
-        "ctaBAnimation":      anim_selection.get("cta_b", {}).get("animation", "liquid_button_cta"),
-        "ctaBParams":         anim_selection.get("cta_b", {}).get("params", {}),
-        # Outro
-        "outroAnimation":     anim_selection.get("outro", {}).get("animation", "orbit_logo"),
-        "outroParams":        anim_selection.get("outro", {}).get("params", {}),
-        "brief":              anim_selection.get("brief", {}),
-    }
+    # Si tenemos composición generativa, usarla directamente
+    if 'composition_props' in locals() and composition_props:
+        props = {
+            "screenshotUrl": screenshot_b64,
+            **composition_props,
+        }
+        brief_bg = composition_props.get("bg", "") or get_bg_for_site(page_data, industry_key)
+        props["bg"] = brief_bg
+    else:
+        # Fallback al sistema anterior
+        import re as _re
+        brief_bg_raw = (anim_selection or {}).get("brief", {}).get("paleta", {}).get("fondo", "")
+        brief_bg = _re.split(r'\s+[—–-]{1,2}\s+', str(brief_bg_raw))[0].strip() if brief_bg_raw else ""
+        if not brief_bg or brief_bg in ("#000000", "black", "#000") or not brief_bg.startswith(("linear-gradient", "radial-gradient", "#")):
+            brief_bg = get_bg_for_site(page_data, industry_key)
+        sel = anim_selection or {}
+        props = {
+            "siteName":           page_data.get("siteName", "Mi Sitio"),
+            "headline":           page_data.get("headline", ""),
+            "subheadline":        page_data.get("subheadline", ""),
+            "benefits":           page_data.get("benefits", []),
+            "features":           page_data.get("features", []),
+            "cta":                page_data.get("cta", "Empezá gratis"),
+            "problem":            page_data.get("problem", ""),
+            "audience":           page_data.get("audience", ""),
+            "numbers":            page_data.get("numbers", []),
+            "guarantee":          page_data.get("guarantee", ""),
+            "primaryColor":       page_data.get("primaryColor", "#6366f1"),
+            "secondaryColor":     page_data.get("secondaryColor", "#818cf8"),
+            "screenshotUrl":      screenshot_b64,
+            "bg":                 brief_bg,
+            "hookAAnimation":     sel.get("hook_a", {}).get("animation", "AnimeStaggerCenter"),
+            "hookAParams":        sel.get("hook_a", {}).get("params", {}),
+            "hookBAnimation":     sel.get("hook_b", {}).get("animation", "AnimeBlurWords"),
+            "hookBParams":        sel.get("hook_b", {}).get("params", {}),
+            "productAAnimation":  sel.get("product_a", {}).get("animation", "AnimeCinematicTimeline"),
+            "productAParams":     sel.get("product_a", {}).get("params", {}),
+            "productBAnimation":  sel.get("product_b", {}).get("animation", "AnimeCounterCascade"),
+            "productBParams":     sel.get("product_b", {}).get("params", {}),
+            "benefitsAAnimation": sel.get("benefits_a", {}).get("animation", "AnimeGlassCards"),
+            "benefitsAParams":    sel.get("benefits_a", {}).get("params", {}),
+            "benefitsBAnimation": sel.get("benefits_b", {}).get("animation", "AnimeStaggerGrid2D"),
+            "benefitsBParams":    sel.get("benefits_b", {}).get("params", {}),
+            "benefitsCAnimation": sel.get("benefits_c", {}).get("animation", "AnimeTickerTape"),
+            "benefitsCParams":    sel.get("benefits_c", {}).get("params", {}),
+            "ctaAAnimation":      sel.get("cta_a", {}).get("animation", "AnimeMagneticCTA"),
+            "ctaAParams":         sel.get("cta_a", {}).get("params", {}),
+            "ctaBAnimation":      sel.get("cta_b", {}).get("animation", "AnimeShinyButton"),
+            "ctaBParams":         sel.get("cta_b", {}).get("params", {}),
+            "outroAnimation":     sel.get("outro", {}).get("animation", "AnimeParticleForm"),
+            "outroParams":        sel.get("outro", {}).get("params", {}),
+            "brief":              sel.get("brief", {}),
+        }
 
     # Sanitizar params
     all_param_keys = [
