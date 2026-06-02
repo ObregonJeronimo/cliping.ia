@@ -11,11 +11,8 @@ from pathlib import Path
 
 from vision import _groq_vision, _parse_json, _img
 from variations import build_video_context
-from jsx_generator import select_animations, get_default_selection
+from composition_generator import generate_composition, composition_to_props, _fallback_composition
 from animation_cache import get_cached, save_cache
-from industry_animator import get_industry_key, get_industry_animations, needs_new_animations, get_used_animations
-from animation_generator import generate_industry_animations, save_industry_animations, get_industry_function_map
-from jsx_injector import inject_animations
 
 OUTPUTS_DIR = Path("outputs")
 REMOTION_DIR = Path(__file__).parent.parent / "remotion"
@@ -331,36 +328,6 @@ async def render_video(
         b64 = base64.b64encode(screenshot_path.read_bytes()).decode()
         screenshot_b64 = f"data:image/png;base64,{b64}"
 
-    # Industria
-    industry_key = get_industry_key(page_data.get("pageType",""), page_data.get("audience",""))
-    industry_anims = get_industry_animations(industry_key)
-    needs_new, reason = needs_new_animations(industry_key)
-    used_in_industry = get_used_animations(industry_key)
-    print(f"[industry] rubro='{industry_key}' | animaciones={len(industry_anims)} | {reason}")
-    if debugger: debugger.log("industry", f"rubro={industry_key} | {reason}", {"needs_new": needs_new, "available": len(industry_anims)})
-
-    if needs_new and os.environ.get("ANTHROPIC_API_KEY"):
-        industry_name = {
-            "health": "dietética/salud/natural", "saas": "software SaaS/productividad",
-            "fintech": "finanzas/pagos/fintech", "ecommerce": "comercio electrónico/retail",
-            "restaurant": "gastronomía/restaurant", "agency": "agencia creativa/marketing",
-            "startup": "startup/innovación tecnológica", "landing": "landing page/captación",
-            "portfolio": "portfolio/personal brand", "generic": "negocio general",
-        }.get(industry_key, industry_key)
-        try:
-            new_anims = await generate_industry_animations(
-                industry_key=industry_key, industry_name=industry_name,
-                page_data=page_data, num_animations=4,
-            )
-            if new_anims:
-                save_industry_animations(industry_key, new_anims)
-                ok, injected = inject_animations(industry_key, new_anims)
-                if ok and injected:
-                    print(f"[renderer] ✓ {len(injected)} animaciones inyectadas al JSX: {injected}")
-                    if debugger: debugger.log("anim_gen", f"{len(injected)} animaciones nuevas inyectadas para {industry_key}", {"names": injected}, level="ok")
-        except Exception as e:
-            print(f"[renderer] Error generando animaciones: {e}")
-
     video_context = build_video_context(params, page_data, job_id, params.get("url", ""))
     video_context["format"] = params.get("format", "reel")
     video_context["duration"] = params.get("duration", 30)
@@ -384,52 +351,44 @@ async def render_video(
         "tone": video_context.get("tone", ""),
     }
     is_simple_mode = params.get("mode", "simple") == "simple"
+    # Composición generativa — Claude genera todo en una sola llamada
+    composition_props = None
+    composition = None
     anim_selection = None if is_simple_mode else get_cached(url_key, cache_context)
 
     if anim_selection:
         print(f"[renderer] cache HIT para {url_key[:40]}")
+        # Reconstruir composition_props desde cache
+        composition_props = composition_to_props(anim_selection, page_data)
     else:
         if os.environ.get("ANTHROPIC_API_KEY"):
             try:
-                # SISTEMA GENERATIVO: Claude genera la composición completa
-                from composition_generator import generate_composition, composition_to_props
-                brief_data = {}
-                if anim_selection and "brief" in anim_selection:
-                    brief_data = anim_selection.get("brief", {})
-
-                # Primero obtener el brief del select_animations (para reutilizar)
-                anim_selection = await select_animations(
-                    video_context, industry_key=industry_key,
-                    industry_anims=industry_anims,
-                    used_in_industry=used_in_industry,
-                    needs_new_anims=needs_new,
-                )
-                brief_data = anim_selection.get("brief", {}) if anim_selection else {}
-
-                # Luego generar la composición completa con params reales
-                composition = await generate_composition(page_data, brief_data, video_context)
+                # Una sola llamada: Claude genera la composición completa
+                composition = await generate_composition(page_data, {}, video_context)
                 composition_props = composition_to_props(composition, page_data)
-
+                # Guardar en cache para reutilizar
                 if composition and not is_simple_mode:
-                    save_cache(url_key, anim_selection, cache_context)
-
-                print(f"[composition] reasoning: {composition.get('creative_reasoning','')[:80]}")
+                    save_cache(url_key, composition, cache_context)
+                print(f"[composition] {composition.get('creative_reasoning','')[:80]}")
             except Exception as e:
-                print(f"[renderer] error generando composición: {e}")
+                print(f"[renderer] error en composition_generator: {e}")
                 import traceback; traceback.print_exc()
                 composition_props = None
-        if not anim_selection:
-            anim_selection = get_default_selection(page_data)
+        if not composition_props:
+            # Fallback sin API
+            fallback = _fallback_composition(page_data, page_data.get('primaryColor','#6366f1'), get_bg_for_site(page_data, page_data.get('pageType','generic')))
+            composition_props = composition_to_props(fallback, page_data)
+            print(f"[renderer] usando composición fallback")
 
-    if debugger: debugger.set_animation_selection(anim_selection or {})
+    if debugger: debugger.set_animation_selection(composition or anim_selection or {})
 
-    # Si tenemos composición generativa, usarla directamente
-    if 'composition_props' in locals() and composition_props:
+    # Construir props finales
+    if composition_props:
         props = {
             "screenshotUrl": screenshot_b64,
             **composition_props,
         }
-        brief_bg = composition_props.get("bg", "") or get_bg_for_site(page_data, industry_key)
+        brief_bg = composition_props.get("bg", "") or get_bg_for_site(page_data, page_data.get('pageType','generic'))
         props["bg"] = brief_bg
     else:
         # Fallback al sistema anterior
@@ -437,7 +396,7 @@ async def render_video(
         brief_bg_raw = (anim_selection or {}).get("brief", {}).get("paleta", {}).get("fondo", "")
         brief_bg = _re.split(r'\s+[—–-]{1,2}\s+', str(brief_bg_raw))[0].strip() if brief_bg_raw else ""
         if not brief_bg or brief_bg in ("#000000", "black", "#000") or not brief_bg.startswith(("linear-gradient", "radial-gradient", "#")):
-            brief_bg = get_bg_for_site(page_data, industry_key)
+            brief_bg = get_bg_for_site(page_data, page_data.get('pageType','generic'))
         sel = anim_selection or {}
         props = {
             "siteName":           page_data.get("siteName", "Mi Sitio"),
