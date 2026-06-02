@@ -373,3 +373,60 @@ async def process_render_job(job_id: str, req: RenderRequest):
         import traceback
         traceback.print_exc()
         jobs[job_id].update({"status": "error", "error": str(e)})
+
+# ─── MASTERPIECE ENDPOINT ─────────────────────────────────────────────────────
+@app.post("/api/masterpiece")
+async def render_masterpiece():
+    """Renderiza YercoMasterpiece — composición compleja hardcodeada."""
+    job_id = str(uuid.uuid4())
+    jobs[job_id] = {
+        "id": job_id, "status": "queued", "step": None, "progress": 0,
+        "videoPath": None, "videoFilename": None, "error": None,
+        "createdAt": datetime.utcnow().isoformat(),
+    }
+    asyncio.create_task(_render_masterpiece_job(job_id))
+    return {"job_id": job_id}
+
+async def _render_masterpiece_job(job_id: str):
+    from pathlib import Path
+    import asyncio as _aio
+    REMOTION_DIR = Path(__file__).parent.parent / "remotion"
+    OUTPUTS_DIR = Path(__file__).parent / "outputs"
+    OUTPUTS_DIR.mkdir(exist_ok=True)
+    output_path = OUTPUTS_DIR / f"{job_id}_masterpiece.mp4"
+
+    jobs[job_id].update({"step": "render", "progress": 10, "status": "processing"})
+    try:
+        import sys
+        remotion_bin = "npx"
+        args = [remotion_bin, "remotion", "render", "index.jsx", "YercoMasterpiece",
+                str(output_path.absolute()),
+                "--codec", "h264", "--fps", "30",
+                "--width", "1080", "--height", "1920",
+                "--duration-in-frames", "765",
+                "--concurrency", "4",
+                "--jpeg-quality", "95",
+                "--crf", "18",
+                "--pixel-format", "yuv420p",
+                "--log", "verbose"]
+        print(f"[masterpiece] Iniciando render de 765 frames...")
+        proc = await _aio.create_subprocess_exec(
+            *args, cwd=str(REMOTION_DIR),
+            stdout=_aio.subprocess.PIPE,
+            stderr=_aio.subprocess.PIPE,
+        )
+        stdout, stderr = await proc.communicate()
+        if proc.returncode != 0:
+            out = stdout.decode(errors='replace') + stderr.decode(errors='replace')
+            err_lines = [l for l in out.splitlines() if 'Error' in l or 'error' in l][:5]
+            raise RuntimeError('\n'.join(err_lines) or out[-300:])
+
+        print(f"[masterpiece] Render OK → {output_path.name}")
+        jobs[job_id].update({
+            "status": "done", "progress": 100, "step": "export",
+            "videoPath": str(output_path),
+            "videoFilename": output_path.name,
+        })
+    except Exception as e:
+        print(f"[masterpiece] ERROR: {e}")
+        jobs[job_id].update({"status": "error", "error": str(e)})

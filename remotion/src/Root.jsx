@@ -1,9 +1,18 @@
 import {Composition} from 'remotion';
 import {MarketingVideo} from './compositions/MarketingVideo';
+import {YercoMasterpiece} from './compositions/YercoMasterpiece';
 
 export const RemotionRoot = () => {
   return (
     <>
+      <Composition
+        id="YercoMasterpiece"
+        component={YercoMasterpiece}
+        durationInFrames={765}
+        fps={30}
+        width={1080}
+        height={1920}
+      />
       <Composition
         id="MarketingVideo"
         component={MarketingVideo}
