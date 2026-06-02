@@ -1,27 +1,53 @@
 import {
-  AnimeStaggerCascade,
+  AnimeStaggerCenter,
+  AnimeStaggerGrid2D,
+  AnimeStaggerIrregular,
+  AnimeScrambleReveal,
   AnimeLetterByLetter,
-  AnimeKineticTimeline,
-  AnimeStaggerGrid,
-  AnimeMorphBlob,
-  AnimeShinyButtonCTA,
-  AnimeCounterCascade,
   AnimeBlurWords,
-  AnimeSpotlightReveal,
+  AnimeKineticTimeline,
+  AnimeTrueFocus,
+  AnimeSvgDraw,
+  AnimeMorphBlob,
+  AnimeKeyframeBounce,
+  AnimeCinematicTimeline,
+  AnimeAlternateComparison,
+  AnimeRotatingWords,
+  AnimeShinyButton,
+  AnimeMagneticCTA,
+  AnimeContextualCountdown,
+  AnimeCounterCascade,
+  AnimeGlassCards,
+  AnimeTickerTape,
   AnimeSpectrumOutro,
+  AnimeTypefaceFade,
+  AnimeParticleForm,
 } from './AnimeAnimations.jsx';
 
 import {
-  AnimeStaggerCascade,
+  AnimeStaggerCenter,
+  AnimeStaggerGrid2D,
+  AnimeStaggerIrregular,
+  AnimeScrambleReveal,
   AnimeLetterByLetter,
-  AnimeKineticTimeline,
-  AnimeStaggerGrid,
-  AnimeMorphBlob,
-  AnimeShinyButtonCTA,
-  AnimeCounterCascade,
   AnimeBlurWords,
-  AnimeSpotlightReveal,
+  AnimeKineticTimeline,
+  AnimeTrueFocus,
+  AnimeSvgDraw,
+  AnimeMorphBlob,
+  AnimeKeyframeBounce,
+  AnimeCinematicTimeline,
+  AnimeAlternateComparison,
+  AnimeRotatingWords,
+  AnimeShinyButton,
+  AnimeMagneticCTA,
+  AnimeContextualCountdown,
+  AnimeCounterCascade,
+  AnimeGlassCards,
+  AnimeTickerTape,
   AnimeSpectrumOutro,
+  AnimeTypefaceFade,
+  AnimeParticleForm,
 } from './AnimeAnimations.jsx';
 
 import {
@@ -5395,17 +5421,38 @@ const ANIM_MAP = {
   // ReactBits UI components
   spotlight_card:        SpotlightCard,
   shiny_button_cta:      ShinyButtonCTA,
-  // ── ANIME.JS v4 REAL — librería importada, seek() por frame ─────────────
-  anime_stagger_cascade:  AnimeStaggerCascade,
+  // ── ANIME.JS v4 REAL — 23 animaciones con la librería importada ─────────
+  // BLOQUE 1: Stagger techniques
+  anime_stagger_center:   AnimeStaggerCenter,
+  anime_stagger_grid_2d:  AnimeStaggerGrid2D,
+  anime_stagger_irregular:AnimeStaggerIrregular,
+  // BLOQUE 2: Text techniques (scrambleText, splitText)
+  anime_scramble_reveal:  AnimeScrambleReveal,
   anime_letter_by_letter: AnimeLetterByLetter,
-  anime_kinetic_timeline: AnimeKineticTimeline,
-  anime_stagger_grid:     AnimeStaggerGrid,
-  anime_morph_blob:       AnimeMorphBlob,
-  anime_shiny_button:     AnimeShinyButtonCTA,
-  anime_counter_cascade:  AnimeCounterCascade,
   anime_blur_words:       AnimeBlurWords,
-  anime_spotlight:        AnimeSpotlightReveal,
+  anime_kinetic_timeline: AnimeKineticTimeline,
+  anime_true_focus:       AnimeTrueFocus,
+  // BLOQUE 3: SVG techniques (createDrawable, morphTo)
+  anime_svg_draw:         AnimeSvgDraw,
+  anime_morph_blob:       AnimeMorphBlob,
+  // BLOQUE 4: Timeline avanzada (keyframes, labels)
+  anime_keyframe_bounce:  AnimeKeyframeBounce,
+  anime_cinematic_tl:     AnimeCinematicTimeline,
+  // BLOQUE 5: Alternate / Loop
+  anime_alternate_cmp:    AnimeAlternateComparison,
+  anime_rotating_words:   AnimeRotatingWords,
+  // BLOQUE 6: CTA
+  anime_shiny_button:     AnimeShinyButton,
+  anime_magnetic_cta:     AnimeMagneticCTA,
+  anime_countdown:        AnimeContextualCountdown,
+  // BLOQUE 7: Data / Product
+  anime_counter_cascade:  AnimeCounterCascade,
+  anime_glass_cards:      AnimeGlassCards,
+  anime_ticker_tape:      AnimeTickerTape,
+  // BLOQUE 8: Outro
   anime_spectrum_outro:   AnimeSpectrumOutro,
+  anime_typeface_fade:    AnimeTypefaceFade,
+  anime_particle_form:    AnimeParticleForm,
 };
 
 // Fallbacks por tipo de escena para no repetir visualmente

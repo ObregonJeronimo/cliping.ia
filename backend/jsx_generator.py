@@ -262,6 +262,48 @@ UNIVERSALES (útiles en cualquier escena):
 - cinematic_title: estilo película con letterbox
 - floating_text_badge: badge premium flotante
 
+ANIMACIONES ANIME.JS v4 REAL - USA ESTAS PRIMERO, SON LAS MEJORES:
+Todas usan la API real de anime.js v4 con seek() por frame. MIT license.
+
+BLOQUE 1 - STAGGER:
+- anime_stagger_center: stagger(90, from:'center') palabras desde el centro con blur — EL CLASICO de anime.js
+- anime_stagger_grid_2d: stagger(80, grid:[2,N], from:'center') — stagger 2D para grillas de beneficios
+- anime_stagger_irregular: stagger con irregular(10,0.5) easing — orden caótico orgánico
+
+BLOQUE 2 - TEXT:
+- anime_scramble_reveal: scrambleText() real de anime.js — texto se cristaliza del ruido de caracteres
+- anime_letter_by_letter: stagger(45) letra a letra con rotate — el mas iconico de anime.js
+- anime_blur_words: blur+opacity+y con stagger(70) outCubic — ReactBits style
+- anime_kinetic_timeline: createTimeline con labels: headline-sub-badge encadenados
+- anime_true_focus: una palabra en foco, resto en blur — efecto hipnótico (usa spring de Remotion)
+
+BLOQUE 3 - SVG:
+- anime_svg_draw: createDrawable() real — path SVG que se dibuja en tiempo real
+- anime_morph_blob: morphTo() real — blob SVG que morphea entre shapes organicamente
+
+BLOQUE 4 - KEYFRAMES:
+- anime_keyframe_bounce: keyframes porcentuales con outBounce — letras que rebotan
+- anime_cinematic_tl: createTimeline con .label() — secuencia cinematografica con puntos de referencia
+
+BLOQUE 5 - ALTERNATE/LOOP:
+- anime_alternate_cmp: alternate:true loop — comparacion antes/despues pulsante
+- anime_rotating_words: palabra que rota entre opciones con spring physics
+
+BLOQUE 6 - CTA:
+- anime_shiny_button: timeline con destello loop — el mejor CTA de la biblioteca
+- anime_magnetic_cta: anillos concentricos pulsantes con outElastic
+- anime_countdown: countdown con tiempo real de entrega (no fake urgency)
+
+BLOQUE 7 - DATA:
+- anime_counter_cascade: stagger(150) numeros/stats con outBack
+- anime_glass_cards: glassmorphism con spotlight que se mueve organicamente
+- anime_ticker_tape: beneficios en ticker horizontal continuo
+
+BLOQUE 8 - OUTRO:
+- anime_spectrum_outro: barras de espectro stagger(20,center) + logo — Spotify Wrapped style
+- anime_typeface_fade: nombre se disuelve con blur — editorial/Vogue style
+- anime_particle_form: particulas que orbitan y forman el logo — spring physics
+
 ANIMACIONES ANIME.JS v4 REAL (libreria importada, MIT - animejs.com):
 ESTAS SON LAS MEJORES - usan la API real de anime.js con seek() por frame:
 
