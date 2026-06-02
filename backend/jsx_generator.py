@@ -262,6 +262,20 @@ UNIVERSALES (útiles en cualquier escena):
 - cinematic_title: estilo película con letterbox
 - floating_text_badge: badge premium flotante
 
+ANIMACIONES ANIME.JS v4 REAL (libreria importada, MIT - animejs.com):
+ESTAS SON LAS MEJORES - usan la API real de anime.js con seek() por frame:
+
+- anime_stagger_cascade: stagger(90, from:'center') - palabras desde el centro hacia afuera con blur
+- anime_letter_by_letter: stagger(45) letra por letra con rotate+translateY - iconico de anime.js
+- anime_kinetic_timeline: createTimeline().add().add() encadenado: headline->sub->badge
+- anime_stagger_grid: stagger(80, grid:[2,N], from:'center') - grid 2D desde el centro
+- anime_morph_blob: blob SVG que cambia de forma con spring physics
+- anime_shiny_button: boton con destello loop usando translateX anime - muy efectivo CTA
+- anime_counter_cascade: numeros/stats con stagger(150) y outBack ease
+- anime_blur_words: blur+opacity+y con stagger(70) outCubic - estilo ReactBits BlurText
+- anime_spotlight: cards con spotlight que se mueve + stagger entrada
+- anime_spectrum_outro: barras de espectro stagger(20,center) + logo - Spotify style
+
 ANIMACIONES REACTBITS + ANIMEJS v4 - LAS MEJORES DEL MERCADO (MIT, open source):
 Fuente: reactbits.dev (39k estrellas GitHub) + animejs.com v4 (MIT)
 
