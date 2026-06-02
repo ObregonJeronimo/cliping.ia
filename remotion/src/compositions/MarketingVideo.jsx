@@ -19,6 +19,7 @@ import {
   AnimeShinyButton, AnimeMagneticCTA, AnimeContextualCountdown,
   AnimeCounterCascade, AnimeGlassCards, AnimeTickerTape,
   AnimeSpectrumOutro, AnimeTypefaceFade, AnimeParticleForm,
+  AnimeMotionPathStagger, GsapFlipCards,
   h2r, bg0,
 } from './AnimeAnimations.jsx';
 
@@ -71,6 +72,8 @@ const ANIM_MAP = {
   anime_spectrum_outro: AnimeSpectrumOutro,
   anime_typeface_fade: AnimeTypefaceFade,
   anime_particle_form: AnimeParticleForm,
+  anime_motion_path_stagger: AnimeMotionPathStagger,
+  gsap_flip_cards: GsapFlipCards,
   gsap_physics_shatter: GsapPhysicsShatter,
   gsap_mask_reveal: GsapMaskReveal,
   gsap_chars_rotate: GsapCharsRotate,
@@ -92,7 +95,7 @@ const FALLBACKS = {
   product_a:  'AnimeCinematicTimeline',
   product_b:  'AnimeCounterCascade',
   benefits_a: 'AnimeGlassCards',
-  benefits_b: 'AnimeStaggerGrid2D',
+  benefits_b: 'AnimeMotionPathStagger',
   benefits_c: 'AnimeTickerTape',
   cta_a:      'AnimeMagneticCTA',
   cta_b:      'AnimeShinyButton',

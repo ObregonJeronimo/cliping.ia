@@ -98,19 +98,39 @@ async def extract_html_data(url: str) -> dict:
             'mi perfil', 'mis pedidos', 'carrito', 'cart', 'volver', 'back',
             'más', 'ver más', 'leer más', 'siguiente', 'anterior', 'menu',
             'menú', 'politicas', 'privacidad', 'distribuidores', 'mayoristas',
+            # Botones de UI interna que NO son CTAs de marketing
+            'cancelar', 'cancel', 'cerrar', 'close', 'guardar', 'save',
+            'editar', 'edit', 'eliminar', 'delete', 'confirmar', 'aceptar',
+            'agregar dirección', 'añadir', 'quitar', 'aplicar', 'limpiar',
+            'filtrar', 'buscar', 'search', 'ok', 'sí', 'no', 'atrás',
+            'continuar', 'siguiente paso', 'paso anterior', 'volver al inicio',
+            'actualizar', 'enviar', 'submit', 'cargar', 'upload',
         }
-        # Primero buscar <button> reales y links con clases de CTA
+        # Palabras clave que indican CTA de marketing real
+        CTA_KEYWORDS = [
+            'ver', 'comprar', 'pedí', 'pedir', 'explorá', 'explorar',
+            'descubrí', 'descubrir', 'empezá', 'empezar', 'probá', 'probar',
+            'solicitá', 'solicitar', 'contactanos', 'escribinos', 'llámanos',
+            'ver productos', 'ver catálogo', 'ir a', 'conocé', 'conocer',
+            'whatsapp', 'cotizá', 'cotizar', 'reservá', 'reservar',
+        ]
         for el in soup.find_all(['button', 'a']):
             text = el.get_text(strip=True)
-            if not text or len(text) < 3 or len(text) > 50: continue
+            if not text or len(text) < 3 or len(text) > 60: continue
             if text.lower() in NAV_SKIP: continue
             if text.startswith('http'): continue
-            # Priorizar si tiene clase que sugiere CTA
+            # Saltar si el elemento está dentro de un nav, header o footer
+            parents = [p.name for p in el.parents if p.name]
+            if any(p in parents for p in ['nav', 'header', 'footer']): continue
             classes = ' '.join(el.get('class', []))
-            is_cta = any(c in classes.lower() for c in ['btn', 'button', 'cta', 'primary', 'action'])
-            if is_cta:
+            # Máxima prioridad: tiene clase de CTA Y palabra clave
+            is_primary_cta = any(c in classes.lower() for c in ['btn', 'button', 'cta', 'primary', 'action', 'buy', 'shop'])
+            has_cta_keyword = any(kw in text.lower() for kw in CTA_KEYWORDS)
+            if is_primary_cta and has_cta_keyword:
                 buttons.insert(0, text)
-            else:
+            elif is_primary_cta or has_cta_keyword:
+                buttons.append(text)
+            elif not any(skip in text.lower() for skip in ['cancelar', 'cerrar', 'guardar', 'editar']):
                 buttons.append(text)
         data["buttons"] = list(dict.fromkeys(buttons))[:8]
 

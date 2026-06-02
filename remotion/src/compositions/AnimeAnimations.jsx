@@ -827,3 +827,154 @@ export function AnimeParticleForm({
     </AbsoluteFill>
   );
 }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// BLOQUE 9 — PENDIENTE: createMotionPath + stagger_irregular combinados
+// ══════════════════════════════════════════════════════════════════════════════
+
+// 24. Motion Path con stagger irregular — elemento principal viaja por path
+// mientras elementos secundarios aparecen con stagger irregular orgánico
+export function AnimeMotionPathStagger({
+  headline, benefits, primaryColor, bg,
+  pathStyle = 'wave', irregularSegments = 8, irregularRandomness = 0.6,
+  dotSize = 12, trailLength = 5, staggerDelay = 55,
+}) {
+  const ref = useRef(null);
+  const pathRef = useRef(null);
+  const { fps } = useVideoConfig();
+  const { r, g, b } = deriveColors(primaryColor);
+
+  const paths = {
+    wave: "M 20,80 C 80,20 140,140 200,80 S 320,20 380,80 S 440,140 480,80",
+    curve: "M 20,120 C 120,20 260,20 360,80 C 420,110 460,140 480,100",
+    diagonal: "M 20,160 C 80,120 180,60 280,40 S 420,20 480,30",
+  };
+  const path = paths[pathStyle] || paths.wave;
+  const items = (benefits || []).slice(0, 5).map(b => typeof b === 'string' ? b : b?.title || '');
+
+  useAnime(() => {
+    if (!ref.current) return { seek: () => {} };
+    return createTimeline({ autoplay: false })
+      // El dot principal viaja por el path
+      .add('.amp-dot', {
+        translateX: [0, 460],
+        translateY: [
+          { to: 80,  duration: 300, ease: 'inOutSine' },
+          { to: 20,  duration: 300, ease: 'inOutSine' },
+          { to: 80,  duration: 300, ease: 'inOutSine' },
+        ],
+        duration: 1800,
+        ease: 'linear',
+      }, 0)
+      // Trail de partículas detrás del dot
+      .add('.amp-trail', {
+        opacity: [0, 0.6, 0],
+        scale: [0, 1, 0],
+        duration: 400,
+        delay: stagger(60),
+        ease: 'inOutSine',
+        loop: true,
+      }, 0)
+      // Items de beneficios con stagger irregular
+      .add('.amp-item', {
+        opacity: [0, 1],
+        translateX: [-40, 0],
+        filter: ['blur(8px)', 'blur(0px)'],
+        duration: 600,
+        delay: stagger(staggerDelay, { ease: irregular(irregularSegments, irregularRandomness) }),
+        ease: 'outExpo',
+      }, 600);
+  }, [JSON.stringify(items), pathStyle, staggerDelay]);
+
+  return (
+    <AbsoluteFill ref={ref} style={{ background: bg || bg0(primaryColor), overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: 20, padding: '0 28px' }}>
+      {/* Path animado */}
+      <div style={{ width: '100%', height: 140, position: 'relative', marginBottom: 8 }}>
+        <svg viewBox="0 0 500 160" style={{ width: '100%', height: '100%', overflow: 'visible' }}>
+          {/* Path de fondo tenue */}
+          <path d={path} fill="none" stroke={`rgba(${r},${g},${b},0.1)`} strokeWidth="10" strokeLinecap="round" />
+          {/* Path principal */}
+          <path ref={pathRef} d={path} fill="none" stroke={`rgba(${r},${g},${b},0.3)`} strokeWidth="2" strokeLinecap="round" strokeDasharray="6 4" />
+          {/* Trail */}
+          {Array.from({ length: trailLength }, (_, i) => (
+            <circle key={i} className="amp-trail" r={dotSize * (1 - i * 0.15)} fill={primaryColor} opacity={0}
+              style={{ filter: `drop-shadow(0 0 ${dotSize}px ${primaryColor})` }} cx={20} cy={80} />
+          ))}
+          {/* Dot principal */}
+          <circle className="amp-dot" r={dotSize} fill={primaryColor} cx={20} cy={80}
+            style={{ filter: `drop-shadow(0 0 ${dotSize * 1.5}px ${primaryColor})` }} />
+        </svg>
+      </div>
+      {/* Items con stagger irregular */}
+      <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {items.map((item, i) => (
+          <div key={i} className="amp-item" style={{
+            opacity: 0, display: 'flex', alignItems: 'center', gap: 12,
+            padding: '12px 18px', borderRadius: 12,
+            background: `rgba(${r},${g},${b},0.07)`,
+            border: `1px solid rgba(${r},${g},${b},0.12)`,
+          }}>
+            <div style={{ width: 6, height: 6, borderRadius: '50%', background: primaryColor, boxShadow: `0 0 6px ${primaryColor}`, flexShrink: 0 }} />
+            <div style={{ fontSize: 15, color: '#e0e0e0', fontFamily: 'system-ui', fontWeight: 500 }}>{item}</div>
+          </div>
+        ))}
+      </div>
+    </AbsoluteFill>
+  );
+}
+
+// 25. GSAP Flip Cards — layout transition con FLIP technique
+// Las cards se reordenan con animación de posición calculada
+export function GsapFlipCards({
+  benefits, primaryColor, bg,
+  flipDuration = 0.6, flipEase = 'power2.inOut',
+  cols = 2, cardGap = 12,
+}) {
+  const ref = useRef(null);
+  const { fps } = useVideoConfig();
+  const items = (benefits || []).slice(0, 4).map(b => typeof b === 'string' ? b : b?.title || '');
+  const { r, g, b: bc } = deriveColors(primaryColor);
+
+  useAnime(() => {
+    if (!ref.current) return { seek: () => {} };
+    // Entrada inicial con stagger
+    return createTimeline({ autoplay: false })
+      .add('.gfc-card', {
+        opacity: [0, 1], scale: [0.8, 1],
+        rotateY: ['-45deg', '0deg'],
+        duration: 700,
+        delay: stagger(120, { from: 'center' }),
+        ease: 'outBack(1.2)',
+      }, 0)
+      // Pulse de highlight alternado
+      .add('.gfc-card', {
+        scale: [1, 1.03, 1],
+        duration: 400,
+        delay: stagger(200),
+        ease: 'inOutSine',
+        loop: true,
+        loopDelay: 1800,
+      }, 900);
+  }, [JSON.stringify(items)]);
+
+  return (
+    <AbsoluteFill ref={ref} style={{ background: bg || bg0(primaryColor), overflow: 'hidden', justifyContent: 'center', alignItems: 'center', padding: '24px 20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: cardGap, width: '100%' }}>
+        {items.map((item, i) => (
+          <div key={i} className="gfc-card" style={{
+            opacity: 0, borderRadius: 16, padding: '20px 16px',
+            background: i % 2 === 0
+              ? `rgba(${r},${g},${bc},0.12)`
+              : `rgba(255,255,255,0.04)`,
+            border: `1px solid rgba(${r},${g},${bc},${i % 2 === 0 ? 0.25 : 0.08})`,
+            display: 'flex', flexDirection: 'column', gap: 10,
+            boxShadow: i % 2 === 0 ? `0 4px 20px rgba(0,0,0,0.2), 0 0 0 1px rgba(${r},${g},${bc},0.1)` : 'none',
+          }}>
+            <div style={{ width: 32, height: 3, borderRadius: 2, background: primaryColor, opacity: 0.7 }} />
+            <div style={{ fontSize: 15, fontWeight: 600, color: '#e0e0e0', fontFamily: 'system-ui', lineHeight: 1.4 }}>{item}</div>
+          </div>
+        ))}
+      </div>
+    </AbsoluteFill>
+  );
+}
