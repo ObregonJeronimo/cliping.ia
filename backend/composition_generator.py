@@ -56,30 +56,37 @@ GsapPhysicsBurst(cta, subtext, primaryColor, bg) — Physics2D burst partículas
 """
 
 SYSTEM_PROMPT = """Sos un director creativo de motion graphics de nivel mundial.
-Tu trabajo es generar una composición JSX completa y única para un video de marketing de 33 segundos (990 frames a 30fps).
+Tu trabajo es generar una composición JSX única para un video de marketing de 33 segundos (990 frames a 30fps).
 
-ARQUITECTURA DEL VIDEO — estructura narrativa que SIEMPRE se respeta:
-1. HOOK (0-150 frames): Captura atención. Plantea el problema o el resultado. SIN mostrar el logo todavía.
-2. PRODUCTO (150-360 frames): Muestra qué es y qué tiene. Números reales, catálogo, diferenciadores.
-3. BENEFICIOS (360-630 frames): Por qué elegirnos. Cada beneficio con su propia animación distinta.
-4. CTA (630-840 frames): Construir deseo y llamar a la acción. El botón tiene que "magnetizar".
-5. OUTRO (840-990 frames): Sello de marca. El logo se forma, se asienta y queda grabado.
+ARQUITECTURA NARRATIVA — cada sección tiene un propósito específico:
+1. HOOK (frames 0-150): Captura atención con un problema o pregunta. SIN nombre de marca todavía.
+2. PRODUCTO (150-360): Muestra qué es el negocio con datos reales. El nombre aparece acá.
+3. BENEFICIOS (360-630): Por qué elegirnos. Cada beneficio = una escena distinta, información distinta.
+4. CTA (630-840): Construir deseo y llamar a la acción concreta.
+5. OUTRO (840-990): Solo el nombre y tagline. Nada más.
 
-REGLAS DE COMPOSICIÓN:
-- Cada escena dura entre 60-120 frames según su importancia
-- Los parámetros deben VARIAR según el brief: si el ritmo es "urgente" los staggerDelay son menores (40-60), si es "orgánico" son mayores (80-120)
-- El color acento del brief (NO el primaryColor del sitio) es lo que se usa en las animaciones con más punch
-- Los números del sitio se muestran una sola vez y en la escena más impactante para ese dato
-- NUNCA repetir la misma animación dos veces en el mismo video
-- Las transiciones entre escenas se hacen con cambios de fondo o flashes suaves
-- El bg de cada escena puede variar levemente (distintos gradientes del mismo color base) para dar profundidad
-- Los params de cada animación deben reflejar la personalidad del brief: fontSize, glowIntensity, pulseSpeed, etc.
+REGLAS DE CONTENIDO — LO MÁS IMPORTANTE:
+- hook_a: Problema o pregunta. MAX 8 palabras. Ej: "¿Dónde conseguís productos naturales de calidad?"
+- hook_b: Respuesta. El nombre del negocio aparece por PRIMERA VEZ. Ej: "Yerco Dietética — tu respuesta local"
+- product_a: El dato/diferenciador MÁS impactante. UNO solo. Ej: "+600 productos naturales"
+- product_b: 2-3 números DISTINTOS de product_a. Nunca repetir. Ej: ["24h entrega", "+3 años", "online"]
+- benefits_a: Un beneficio concreto y específico. NO genérico. Ej: "Productos 100% naturales sin conservantes"
+- benefits_b: Otro beneficio DISTINTO. Complementa. Ej: "Envíos en 24h a tu barrio"
+- benefits_c: Variedad/amplitud del catálogo. Ej: ticker con categorías reales
+- cta_a: Journey de compra o urgencia REAL (no fake). Ej: 3 pasos simples, o el countdown de entrega real
+- cta_b: Botón con CTA real + beneficio concreto. Ej: cta="Ver productos" subtext="Envío gratis a Villa Allende"
+- outro: SOLO siteName. Sin beneficios, sin números, sin más texto
 
-IMPORTANTE: Los "key" de las escenas DEBEN ser exactamente estos en inglés:
-hook_a, hook_b, product_a, product_b, benefits_a, benefits_b, benefits_c, cta_a, cta_b, outro
-NO usar español (producto_a, beneficios_a, etc). NO usar otros nombres.
+REGLAS TÉCNICAS:
+- Keys exactos en inglés: hook_a, hook_b, product_a, product_b, benefits_a, benefits_b, benefits_c, cta_a, cta_b, outro
+- NUNCA repetir la misma animación dos veces
+- NUNCA mostrar el mismo dato en dos escenas
+- primaryColor en params = acento del brief (no el color del sitio)
+- durations deben sumar exactamente 990
+- staggerDelay: ritmo urgente=40-60, orgánico=80-120
+- bg puede variar levemente entre escenas
 
-OUTPUT: Un objeto JSON con la estructura de composición. Nada más, sin explicaciones, sin markdown."""
+OUTPUT: Solo el JSON. Sin explicaciones, sin markdown, sin ```."""
 
 async def generate_composition(page_data: dict, brief: dict, video_context: dict) -> dict:
     """
@@ -113,30 +120,45 @@ async def generate_composition(page_data: dict, brief: dict, video_context: dict
     bg_color = clean_color(brief_fondo) or f'#07070f'
     accent = clean_color(brief_acento) or primary_color
 
-    prompt = f"""SITIO: {site_name}
-HEADLINE: {headline}
-SUBHEADLINE: {subheadline}
-PROBLEMA: {problem}
-AUDIENCIA: {audience}
-BENEFICIOS: {json.dumps(benefits, ensure_ascii=False)}
-FEATURES: {json.dumps(features, ensure_ascii=False)}
-NUMEROS: {json.dumps(numbers, ensure_ascii=False)}
-CTA: {cta}
-COLOR PRIMARIO DEL SITIO: {primary_color}
+    prompt = f"""DATOS DEL NEGOCIO:
+- Nombre: {site_name}
+- Tipo: {page_data.get('pageType', 'landing')}
+- Headline del sitio: "{headline}"
+- Subheadline: "{subheadline}"
+- Propuesta de valor: "{page_data.get('value_prop', '')}"
+- Problema que resuelve: "{problem}"
+- Audiencia objetivo: "{audience}"
+- CTA real del sitio: "{cta}"
+- Zona geográfica: "{page_data.get('zone', '')}"
+
+DATOS PARA LAS ANIMACIONES (usar solo estos, nunca inventar):
+- Beneficios reales: {json.dumps(benefits[:4], ensure_ascii=False)}
+- Números/Stats reales: {json.dumps(numbers[:5], ensure_ascii=False)} ← usar en product_b
+- Features del producto: {json.dumps(features[:4], ensure_ascii=False)}
 
 BRIEF CREATIVO:
-- Concepto: {brief_concepto}
-- Fondo: {bg_color}
-- Acento: {accent}
+- Fondo del video: {bg_color}
+- Color acento (usar en primaryColor de todos los params): {accent}
 - Ritmo: {brief_ritmo}
-- Uso del espacio: {brief_espacio}
 - Evitar: {brief_evitar}
 
 VARIACIÓN: style={video_context.get('visual_style','dark_premium')} narrative={video_context.get('narrative','features')} hook={video_context.get('hook','bold')} tone={video_context.get('tone','professional')}
 
 {ANIMATIONS_REFERENCE}
 
-Generá la composición JSON con esta estructura exacta:
+EJEMPLO DE CÓMO DISTRIBUIR LA INFO (adaptar al negocio real):
+- hook_a: pregunta/problema → ej: "¿Dónde conseguís productos naturales en {audience}?"
+- hook_b: respuesta/marca → headline del sitio con el nombre
+- product_a: stat más impactante → ej: el número más grande de numbers[]
+- product_b: 2-3 stats distintos → los otros números de numbers[]
+- benefits_a: primer beneficio específico → benefits[0] con contexto
+- benefits_b: segundo beneficio distinto → benefits[1] con contexto  
+- benefits_c: variedad/amplitud → lista o ticker con benefits[2-4]
+- cta_a: journey simple o urgencia real → pasos de compra o tiempo de entrega
+- cta_b: botón final → cta="{cta}", subtext con beneficio concreto de la zona
+- outro: solo siteName="{site_name}"
+
+Generá el JSON:
 
 {{
   "bg": "{bg_color}",
@@ -148,24 +170,15 @@ Generá la composición JSON con esta estructura exacta:
       "duration": 75,
       "animation": "NombreExactoDelComponente",
       "params": {{
-        // parámetros específicos que hacen esta escena única
-        // usa el accent como primaryColor, no el color del sitio
         "primaryColor": "{accent}",
-        "bg": "{bg_color}",
-        // ... todos los params relevantes con valores concretos
+        "bg": "{bg_color}"
       }},
-      "razon": "por qué esta animación con estos params para este momento"
-    }},
-    // ... 8-10 escenas más cubriendo hook→producto→beneficios→cta→outro
+      "razon": "..."
+    }}
   ],
-  "transitions": [
-    {{"at_frame": 75, "type": "flash", "intensity": 0.3}},
-    // ... una transición entre cada escena
-  ],
-  "creative_reasoning": "narrativa completa del video en 2-3 oraciones"
+  "creative_reasoning": "narrativa del video en 2 oraciones"
 }}
 
-IMPORTANTE: Los frames de "from" deben sumar cronológicamente hasta 990 frames total.
 Los "duration" de todas las escenas deben sumar exactamente 990."""
 
     response = await client.messages.create(

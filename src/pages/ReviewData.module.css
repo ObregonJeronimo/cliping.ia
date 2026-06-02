@@ -5,29 +5,29 @@
 .stepBadge {
   display: inline-block;
   font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
-  text-transform: uppercase; color: #a5b4fc;
-  background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.2);
+  text-transform: uppercase; color: #6366f1;
+  background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.2);
   border-radius: 100px; padding: 3px 10px; margin-bottom: 10px;
 }
 
-.title { font-size: 20px; font-weight: 600; color: #f0f0f0; margin: 0 0 4px; letter-spacing: -0.02em; }
-.sub { font-size: 13px; color: #999; margin: 0; line-height: 1.4; }
+.title { font-size: 20px; font-weight: 600; color: #111; margin: 0 0 4px; letter-spacing: -0.02em; }
+.sub { font-size: 13px; color: #666; margin: 0; line-height: 1.4; }
 
 .sections { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
 
 .section {
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: #fff;
+  border: 1px solid #e8e8e8;
   border-radius: 12px;
   padding: 14px 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
 }
 
 .sectionTitle {
   font-size: 10px; font-weight: 700; letter-spacing: 0.12em;
-  text-transform: uppercase; color: #666; margin-bottom: 12px;
+  text-transform: uppercase; color: #999; margin-bottom: 12px;
 }
 
-/* Grid de 2 columnas para campos cortos */
 .fieldsGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -40,33 +40,33 @@
 
 .label {
   display: block;
-  font-size: 11px; color: #aaa; margin-bottom: 4px;
+  font-size: 11px; color: #888; margin-bottom: 4px;
   font-weight: 500; letter-spacing: 0.02em;
 }
 
 .input, .textarea {
   width: 100%; box-sizing: border-box;
-  background: rgba(255,255,255,0.09);
-  border: 1px solid rgba(255,255,255,0.15);
+  background: #f5f5f5;
+  border: 1px solid #e0e0e0;
   border-radius: 7px; padding: 7px 10px;
-  font-size: 13px; color: #f0f0f0;
+  font-size: 13px; color: #111;
   font-family: inherit; outline: none;
   transition: border-color 0.15s, background 0.15s;
 }
 .input::placeholder, .textarea::placeholder {
-  color: rgba(255,255,255,0.35);
+  color: #bbb;
 }
 .input:focus, .textarea:focus {
-  border-color: rgba(99,102,241,0.6);
-  background: rgba(255,255,255,0.12);
+  border-color: #6366f1;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(99,102,241,0.08);
 }
 .textarea { resize: vertical; min-height: 52px; line-height: 1.4; }
 
 .colorRow { display: flex; gap: 8px; align-items: center; }
 .colorPicker {
-  width: 36px; height: 32px; border: none; border-radius: 6px;
-  cursor: pointer; padding: 2px;
-  background: rgba(255,255,255,0.05);
+  width: 36px; height: 32px; border: 1px solid #e0e0e0; border-radius: 6px;
+  cursor: pointer; padding: 2px; background: #fff;
 }
 .colorText { flex: 1; }
 
@@ -75,34 +75,34 @@
 .listInput { flex: 1; }
 
 .removeBtn {
-  background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.18);
-  color: #f87171; border-radius: 6px; padding: 0 10px;
+  background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.2);
+  color: #ef4444; border-radius: 6px; padding: 0 10px;
   font-size: 11px; cursor: pointer; transition: background 0.15s;
   flex-shrink: 0;
 }
-.removeBtn:hover { background: rgba(239,68,68,0.18); }
+.removeBtn:hover { background: rgba(239,68,68,0.12); }
 
 .addBtn {
-  background: rgba(255,255,255,0.04); border: 1px dashed rgba(255,255,255,0.12);
-  color: #777; border-radius: 6px; padding: 6px 12px;
+  background: transparent; border: 1px dashed #d0d0d0;
+  color: #999; border-radius: 6px; padding: 6px 12px;
   font-size: 12px; cursor: pointer; text-align: left;
   transition: background 0.15s, color 0.15s;
 }
-.addBtn:hover { background: rgba(255,255,255,0.07); color: #bbb; }
+.addBtn:hover { background: #f5f5f5; color: #555; border-color: #bbb; }
 
-.actions { display: flex; gap: 10px; position: sticky; bottom: 0; padding: 12px 0 4px; background: transparent; }
+.actions { display: flex; gap: 10px; position: sticky; bottom: 0; padding: 12px 0 4px; background: var(--bg, #f9f9f9); }
 
 .backBtn {
-  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
-  color: #777; border-radius: 9px; padding: 10px 18px;
+  background: #fff; border: 1px solid #e0e0e0;
+  color: #555; border-radius: 9px; padding: 10px 18px;
   font-size: 13px; cursor: pointer; transition: background 0.15s; white-space: nowrap;
 }
-.backBtn:hover { background: rgba(255,255,255,0.07); color: #bbb; }
+.backBtn:hover { background: #f5f5f5; color: #222; }
 
 .confirmBtn {
-  flex: 1; background: #e8e8f0; border: none;
-  color: #080810; border-radius: 9px; padding: 11px 20px;
+  flex: 1; background: #111; border: none;
+  color: #fff; border-radius: 9px; padding: 11px 20px;
   font-size: 14px; font-weight: 600; cursor: pointer;
   transition: background 0.15s, transform 0.1s;
 }
-.confirmBtn:hover { background: #fff; transform: translateY(-1px); }
+.confirmBtn:hover { background: #222; transform: translateY(-1px); }

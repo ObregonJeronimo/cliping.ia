@@ -269,10 +269,23 @@ isDark: true solo si el fondo del CSS es oscuro"""
                 if btn.lower() not in skip:
                     data["cta"] = btn
                     break
-        # Números reales del HTML (filtrar precios)
+        # Números reales del HTML (filtrar precios y deduplicar)
         if html_data.get("numbers_raw"):
-            data["numbers"] = [n for n in html_data["numbers_raw"]
-                               if not re.match(r'^\$?\d{4,}', n.strip())][:5]
+            raw_nums = [n for n in html_data["numbers_raw"]
+                       if not re.match(r'^\$?\d{4,}', n.strip())]
+            # Deduplicar: si "600 productos" y "+600" son el mismo número, quedarse con el más descriptivo
+            seen_values = set()
+            deduped = []
+            for n in raw_nums:
+                # Extraer solo los dígitos para comparar
+                digits = re.sub(r'[^0-9]', '', n)
+                if digits and digits not in seen_values:
+                    seen_values.add(digits)
+                    deduped.append(n)
+            # Priorizar los que tienen unidad (24h, +600, +3 años) sobre los que son solo número
+            with_unit = [n for n in deduped if re.search(r'[a-zA-Z%]', n)]
+            without_unit = [n for n in deduped if not re.search(r'[a-zA-Z%]', n)]
+            data["numbers"] = (with_unit + without_unit)[:5]
 
     # Validar color primario
     def is_boring_color(hex_color: str) -> bool:
