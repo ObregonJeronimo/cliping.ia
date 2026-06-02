@@ -46,16 +46,19 @@
 
 .input, .textarea {
   width: 100%; box-sizing: border-box;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.09);
+  border: 1px solid rgba(255,255,255,0.15);
   border-radius: 7px; padding: 7px 10px;
-  font-size: 13px; color: #e8e8e8;
+  font-size: 13px; color: #f0f0f0;
   font-family: inherit; outline: none;
   transition: border-color 0.15s, background 0.15s;
 }
+.input::placeholder, .textarea::placeholder {
+  color: rgba(255,255,255,0.35);
+}
 .input:focus, .textarea:focus {
-  border-color: rgba(99,102,241,0.5);
-  background: rgba(255,255,255,0.08);
+  border-color: rgba(99,102,241,0.6);
+  background: rgba(255,255,255,0.12);
 }
 .textarea { resize: vertical; min-height: 52px; line-height: 1.4; }
 

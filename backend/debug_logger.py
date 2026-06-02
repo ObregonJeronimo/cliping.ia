@@ -61,9 +61,17 @@ class VideoDebugger:
 
     def set_animation_selection(self, selection: dict):
         self.data["animation_selection"] = selection
-        scenes = {k: v.get("animation") for k, v in selection.items() if k != "reasoning"}
+        # Nuevo formato: {scenes: [{key, animation, ...}], bg, accent, ...}
+        # Formato viejo: {hook_a: {animation: ...}, ...}
+        if isinstance(selection, dict) and "scenes" in selection:
+            scenes = {s.get("key", ""): s.get("animation", "") for s in selection.get("scenes", []) if isinstance(s, dict)}
+            reasoning = selection.get("creative_reasoning", "")
+        else:
+            scenes = {k: v.get("animation") if isinstance(v, dict) else str(v)
+                      for k, v in selection.items() if k not in ("reasoning", "brief", "bg", "accent")}
+            reasoning = selection.get("reasoning", "")
         self.log("animations", f"Claude eligió: {scenes}", {
-            "reasoning": selection.get("reasoning", ""),
+            "reasoning": reasoning,
             "scenes": scenes,
         }, "ok")
 
