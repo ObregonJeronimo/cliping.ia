@@ -390,6 +390,8 @@ async def render_masterpiece():
 async def _render_masterpiece_job(job_id: str):
     from pathlib import Path
     import asyncio as _aio
+    import shutil
+    import sys
     REMOTION_DIR = Path(__file__).parent.parent / "remotion"
     OUTPUTS_DIR = Path(__file__).parent / "outputs"
     OUTPUTS_DIR.mkdir(exist_ok=True)
@@ -397,9 +399,13 @@ async def _render_masterpiece_job(job_id: str):
 
     jobs[job_id].update({"step": "render", "progress": 10, "status": "processing"})
     try:
-        import sys
-        remotion_bin = "npx"
-        args = [remotion_bin, "remotion", "render", "index.jsx", "YercoMasterpiece",
+        # Mismo mecanismo que remotion_renderer.py
+        candidates = [
+            str(REMOTION_DIR / "node_modules" / ".bin" / "remotion.cmd"),
+            str(REMOTION_DIR / "node_modules" / ".bin" / "remotion"),
+        ]
+        remotion_bin = next((c for c in candidates if Path(c).exists()), "npx")
+        args = [remotion_bin, "render", "index.jsx", "YercoMasterpiece",
                 str(output_path.absolute()),
                 "--codec", "h264", "--fps", "30",
                 "--width", "1080", "--height", "1920",
