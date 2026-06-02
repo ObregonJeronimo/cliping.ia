@@ -160,52 +160,52 @@ Respondé SOLO con JSON válido:
     "must_avoid": "qué evitar específicamente para este tipo de página y audiencia"
   }},
   "hook_a": {{
-    "animation": "nombre_exacto — primer impacto en 2.3s",
+    "animation": "NOMBRE_DE_LA_LISTA_EXACTA — primer impacto en 2.3s",
     "params": {{}},
     "razon": "por qué este hook frena el scroll en 0.5s"
   }},
   "hook_b": {{
-    "animation": "nombre_exacto — DISTINTO a hook_a",
+    "animation": "NOMBRE_DE_LA_LISTA_EXACTA — DISTINTO a hook_a",
     "params": {{}},
     "razon": "cómo refuerza el mensaje del hook_a"
   }},
   "product_a": {{
-    "animation": "nombre_exacto — muestra el producto",
+    "animation": "NOMBRE_DE_LA_LISTA_EXACTA — muestra el producto",
     "params": {{}},
     "razon": "cómo muestra el producto en 3.7s"
   }},
   "product_b": {{
-    "animation": "nombre_exacto — DISTINTO a product_a — muestra valor/stats",
+    "animation": "NOMBRE_DE_LA_LISTA_EXACTA — DISTINTO a product_a — muestra valor/stats",
     "params": {{}},
     "razon": "qué dato concreto refuerza"
   }},
   "benefits_a": {{
-    "animation": "nombre_exacto — para el beneficio: {benefits[0] if benefits else 'beneficio 1'}",
+    "animation": "NOMBRE_DE_LA_LISTA_EXACTA — para el beneficio: {benefits[0] if benefits else 'beneficio 1'}",
     "params": {{}},
     "razon": "por qué esta animación comunica este beneficio específico"
   }},
   "benefits_b": {{
-    "animation": "nombre_exacto — DISTINTO — para el beneficio: {benefits[1] if len(benefits)>1 else 'beneficio 2'}",
+    "animation": "NOMBRE_DE_LA_LISTA_EXACTA — DISTINTO — para el beneficio: {benefits[1] if len(benefits)>1 else 'beneficio 2'}",
     "params": {{}},
     "razon": "por qué esta animación comunica este beneficio específico"
   }},
   "benefits_c": {{
-    "animation": "nombre_exacto — DISTINTO — para el beneficio: {benefits[2] if len(benefits)>2 else 'beneficio 3'}",
+    "animation": "NOMBRE_DE_LA_LISTA_EXACTA — DISTINTO — para el beneficio: {benefits[2] if len(benefits)>2 else 'beneficio 3'}",
     "params": {{}},
     "razon": "por qué esta animación comunica este beneficio específico"
   }},
   "cta_a": {{
-    "animation": "nombre_exacto — construir urgencia/deseo",
+    "animation": "NOMBRE_DE_LA_LISTA_EXACTA — construir urgencia/deseo",
     "params": {{}},
     "razon": "cómo genera urgencia antes del botón"
   }},
   "cta_b": {{
-    "animation": "nombre_exacto — DISTINTO a cta_a — botón final con impacto",
+    "animation": "NOMBRE_DE_LA_LISTA_EXACTA — DISTINTO a cta_a — botón final con impacto",
     "params": {{}},
     "razon": "por qué este remate convierte"
   }},
   "outro": {{
-    "animation": "nombre_exacto — cierre memorable",
+    "animation": "NOMBRE_DE_LA_LISTA_EXACTA — cierre memorable",
     "params": {{}},
     "razon": "por qué este cierre graba la marca"
   }},
@@ -213,12 +213,12 @@ Respondé SOLO con JSON válido:
 }}
 
 IMPORTANTE PARA LA ESCENA "product":
-- NO uses siempre "iphone_rise" — es la más genérica y aburrida
-- Para ecommerce/retail: usa "cursor_click_reveal" (cursor comprando) o "dashboard_build" (stats de ventas)  
-- Para SaaS: usa "phone_notification", "cursor_click_reveal", "dashboard_build"
+- NUNCA inventes un nombre que no esté en la lista de arriba
+- Para ecommerce/retail: usa "anime_kinetic_timeline" (cursor comprando) o "dashboard_build" (stats de ventas)  
+- Para SaaS: usa "anime_glass_cards", "anime_kinetic_timeline", "dashboard_build"
 - Para restaurants: usa "morphing_shapes" o "liquid_blob_morph"
 - Para agencias/creativos: usa "floating_feature_orbs" o "particle_reveal"
-- "iphone_rise" solo si realmente tiene sentido para ese producto
+
 
 NUEVA BIBLIOTECA 2025/2026 — USARLAS CON PRIORIDAD (son más modernas y atractivas):
 
@@ -328,7 +328,44 @@ UI:
 - gsap_physics_burst: Physics2D burst — particulas explotan del CTA. PARA CTA
 
 REGLAS DE USO:
-1. SIEMPRE usa animaciones de este catalogo — NO inventes nombres
+1. CRÍTICO: SOLO podés usar nombres de esta lista EXACTA — copia el nombre tal cual, sin inventar nada:
+   anime_stagger_center
+   anime_stagger_grid_2d
+   anime_stagger_irregular
+   anime_scramble_reveal
+   anime_letter_by_letter
+   anime_blur_words
+   anime_kinetic_timeline
+   anime_true_focus
+   anime_svg_draw
+   anime_morph_blob
+   anime_keyframe_bounce
+   anime_cinematic_tl
+   anime_alternate_cmp
+   anime_rotating_words
+   anime_shiny_button
+   anime_magnetic_cta
+   anime_countdown
+   anime_counter_cascade
+   anime_glass_cards
+   anime_ticker_tape
+   anime_spectrum_outro
+   anime_typeface_fade
+   anime_particle_form
+   gsap_physics_shatter
+   gsap_mask_reveal
+   gsap_chars_rotate
+   gsap_words_scramble
+   gsap_draw_svg
+   gsap_morph_shapes
+   gsap_motion_path
+   gsap_physics_rain
+   gsap_lines_wave
+   gsap_elastic_cards
+   gsap_flip_reveal
+   gsap_physics_burst
+
+2. Si se te ocurre un nombre que no está en esa lista — NO lo uses. Elegí el más apropiado de la lista.
 2. Para hook: prioriza anime_stagger_center, anime_scramble_reveal, gsap_mask_reveal, gsap_physics_shatter
 3. Para benefits: prioriza anime_stagger_grid_2d, anime_glass_cards, gsap_elastic_cards
 4. Para CTA: anime_shiny_button, anime_magnetic_cta, gsap_physics_burst
@@ -361,7 +398,7 @@ La lista de "ya usadas" crece con cada elección:
 - NUNCA pongas "bg" en los params de ninguna escena — ya viene del sistema con el color del sitio
 - Si querés ajustar el color de fondo de una escena específica, usá "primaryColor" en sus params
 - Para card_flip_3d los benefits deben ser STRINGS simples, nunca objetos con front/back
-- Para iphone_rise y cursor_click_reveal NO incluyas screenshotUrl en params
+- NUNCA incluyas screenshotUrl en ningún params
 - Solo elegí animaciones que existan en el catálogo listado arriba — si querés una nueva, anotala en new_animations_for_industry
 
 ANTI-REPETICIÓN DE DATOS — MUY IMPORTANTE:
@@ -371,7 +408,7 @@ ANTI-REPETICIÓN DE DATOS — MUY IMPORTANTE:
 - Los benefits deben ser los beneficios reales extraídos del sitio: {json.dumps(benefits, ensure_ascii=False)}
 - El CTA debe usar el CTA real del sitio, no inventar "26 usando ahora" ni frases genéricas de SaaS si el sitio es un ecommerce.
 - Si el sitio es un ecommerce, el CTA debe ser sobre productos/compra. Si es SaaS, sobre registrarse/probar.
-- urgency_countdown con "usuarios activos" NO tiene sentido para un ecommerce — usá contexto correcto al tipo de negocio.
+- Usá contexto correcto al tipo de negocio en todas las animaciones
 - Tipo de sitio actual: {page_type} — todos los CTAs y urgencias deben ser coherentes con esto.
 
 PALETA DE COLORES CONTEXTUAL:
@@ -469,24 +506,24 @@ def get_default_selection(page_data: dict) -> dict:
     ct = page_data.get("cta", "Empezá ahora")
     nums = page_data.get("numbers", ["1000"])
     return {
-        "hook_a": {"animation": "counter_explosion", "params": {"number": nums[0] if nums else "1000", "label": hl, "primaryColor": pc}},
-        "hook_b": {"animation": "reveal_swipe", "params": {"headline": hl, "primaryColor": pc}},
-        "product_a": {"animation": "iphone_rise", "params": {"primaryColor": pc}},
-        "product_b": {"animation": "dashboard_build", "params": {"stats": nums[:3], "primaryColor": pc, "siteName": site}},
+        "hook_a": {"animation": "anime_stagger_center", "params": {"number": nums[0] if nums else "1000", "label": hl, "primaryColor": pc}},
+        "hook_b": {"animation": "anime_blur_words", "params": {"headline": hl, "primaryColor": pc}},
+        "product_a": {"animation": "anime_cinematic_tl", "params": {"primaryColor": pc}},
+        "product_b": {"animation": "anime_counter_cascade", "params": {"stats": nums[:3], "primaryColor": pc, "siteName": site}},
         "benefits_a": {"animation": "card_flip_3d", "params": {"benefits": bens[:1], "primaryColor": pc}},
         "benefits_b": {"animation": "spotlight_reveal", "params": {"benefits": bens[1:2], "primaryColor": pc}},
         "benefits_c": {"animation": "icon_draw_reveal", "params": {"features": bens[2:3], "primaryColor": pc}},
-        "cta_a": {"animation": "urgency_countdown", "params": {"cta": ct, "primaryColor": pc}},
-        "cta_b": {"animation": "zoom_punch_cta", "params": {"cta": ct, "primaryColor": pc, "secondaryColor": sc}},
-        "outro": {"animation": "neon_sign", "params": {"siteName": site, "primaryColor": pc}},
+        "cta_a": {"animation": "anime_magnetic_cta", "params": {"cta": ct, "primaryColor": pc}},
+        "cta_b": {"animation": "anime_shiny_button", "params": {"cta": ct, "primaryColor": pc, "secondaryColor": sc}},
+        "outro": {"animation": "anime_spectrum_outro", "params": {"siteName": site, "primaryColor": pc}},
         "brief": {"paleta": {"fondo": "linear-gradient(145deg, #07070f 0%, #0d0d1a 100%)", "acento": pc, "texto": "#ffffff"}},
         "reasoning": "Selección por defecto",
         # Fix: también mantener claves viejas para el renderer viejo
-        "hook": {"animation": "reveal_swipe", "params": {
+        "hook": {"animation": "anime_blur_words", "params": {
             "headline": page_data.get("headline", ""),
             "primaryColor": page_data.get("primaryColor", "#6366f1"),
         }},
-        "product": {"animation": "iphone_rise", "params": {
+        "product": {"animation": "anime_cinematic_tl", "params": {
             "screenshotUrl": None,
             "primaryColor": page_data.get("primaryColor", "#6366f1"),
         }},
