@@ -122,11 +122,14 @@ async def forge_animation(
     component_name: str,
     rubro: str,
     anim_id: str,
+    tags: list = None,
+    desarrollo: str = "",
     progress_callback=None,
 ) -> dict:
     """
     Genera una animación en loop hasta que compile correctamente.
-    Retorna dict con el resultado.
+    tags: lista de conceptos seleccionados por el usuario
+    desarrollo: texto libre del usuario (puede estar vacío)
     """
 
     async def emit(msg: str, step: int, total: int = MAX_ATTEMPTS + 2):
@@ -141,18 +144,41 @@ async def forge_animation(
     attempt = 0
     success = False
 
-    # ── Intento inicial con Haiku ─────────────────────────────────────────────
+    # ── Construir el prompt según lo que puso el usuario ─────────────────────
+    tags_str = ", ".join(tags) if tags else ""
+
+    # Evaluar si el desarrollo tiene sentido real
+    desarrollo_limpio = (desarrollo or "").strip()
+    desarrollo_valido = len(desarrollo_limpio) > 3 and desarrollo_limpio not in [".", "..", "...", "x", "n"]
+
+    if desarrollo_valido:
+        narrativa_section = f"""EL USUARIO DESCRIBIÓ ESTA ANIMACIÓN (seguí esto al pie de la letra):
+"{desarrollo_limpio}"
+
+{"Los siguientes conceptos/tags también deben estar presentes: " + tags_str if tags_str else ""}"""
+    elif tags_str:
+        narrativa_section = f"""El usuario seleccionó estos conceptos para la animación: {tags_str}
+Creá una narrativa visual cinematográfica original basada EXCLUSIVAMENTE en estos conceptos.
+Rubro de referencia: {rubro}"""
+    else:
+        narrativa_section = f"""Creá una narrativa visual cinematográfica original y sorprendente para el rubro: {rubro}
+Sé muy creativo — buscá algo que nadie haya visto antes."""
+
     user_prompt = f"""Creá una animación React para Remotion llamada `{component_name}`.
 
-RUBRO: {rubro}
-IDEA NARRATIVA: {idea}
+{narrativa_section}
 
-El componente debe contar visualmente esa narrativa completa en 90 frames (3 segundos).
-Usá formas SVG (paths, círculos, polígonos) que se transforman y morphean entre sí.
-Cada momento de la narrativa ocupa un segmento del timeline de 0-90 frames.
-Las transiciones entre formas son suaves usando interpolación de paths.
+CÓMO HACERLO:
+- La animación dura 90 frames (3 segundos a 30fps)
+- Dividila en 5-6 segmentos de ~15 frames cada uno
+- Cada segmento muestra una transformación visual diferente
+- Usá SVG con paths, círculos, polígonos que se morphean entre sí
+- Las formas deben ser GRANDES y ocupar gran parte del canvas vertical
+- viewBox="0 0 1080 1920", centro en cx=540 cy=960
+- Las transiciones son suaves con lerp/easeInOut
+- Sin texto estático — todo debe moverse y transformarse
 
-Acordate: solo exports el componente, sin markdown, sin explicaciones."""
+Solo el código JSX, sin explicaciones ni markdown."""
 
     for attempt in range(1, MAX_ATTEMPTS + 1):
         await emit(f"⚙️ Intento {attempt}/{MAX_ATTEMPTS} — {'Haiku genera' if attempt == 1 else 'Haiku corrige'}...", attempt)

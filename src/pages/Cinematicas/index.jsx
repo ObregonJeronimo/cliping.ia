@@ -4,42 +4,43 @@ import styles from './Cinematicas.module.css'
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 const HEADERS = { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' }
 
-const PRIMERA_IDEA = {
-  idea: `Narrativa cinematográfica de ecommerce en 90 frames (3 segundos a 30fps):
-Frames 0-15: Círculo con texto del siteName pulsa en el centro, color primario vibrante
-Frames 15-30: El círculo se aplana hacia abajo morpheando su path a una gota que cae
-Frames 30-45: La gota impacta, ondas circulares se expanden, la gota sube como path de carrito
-Frames 45-60: El carrito morphea a un rectángulo (caja/paquete) que se sella
-Frames 60-75: El paquete se achica y sale disparado hacia la derecha con estela
-Frames 75-90: Explosión de pequeños círculos del color primario, siteName aparece brillando`,
-  component_name: "EcommerceJourney",
-  rubro: "ecommerce",
+// ─── Tags por categoría ───────────────────────────────────────────────────────
+const TAG_CATEGORIES = {
+  'Formas': ['Círculo', 'Triángulo', 'Cuadrado', 'Hexágono', 'Espiral', 'Estrella', 'Blob', 'Onda', 'Diamante'],
+  'Movimiento': ['Explosión', 'Implosión', 'Rotación', 'Pulso', 'Caída', 'Flotación', 'Rebote', 'Disparo', 'Morphing'],
+  'Concepto': ['Transformación', 'Crecimiento', 'Conexión', 'Velocidad', 'Naturaleza', 'Tecnología', 'Energía', 'Flujo', 'Impacto'],
+  'Estilo': ['Minimalista', 'Agresivo', 'Orgánico', 'Geométrico', 'Fluido', 'Fragmentado', 'Neon', 'Oscuro', 'Vibrante'],
+  'Narrativa': ['Inicio→Fin', 'Problema→Solución', 'Caos→Orden', 'Pequeño→Grande', 'Lento→Rápido', 'Oculto→Revelado'],
 }
 
-const RUBROS = [
-  { key: "ecommerce", label: "E-commerce", icon: "🛒" },
-  { key: "saas", label: "SaaS", icon: "⚡" },
-  { key: "restaurant", label: "Restaurante", icon: "🍽️" },
-  { key: "health", label: "Salud", icon: "💊" },
-  { key: "legal", label: "Legal", icon: "⚖️" },
-  { key: "real_estate", label: "Inmobiliaria", icon: "🏠" },
-  { key: "fitness", label: "Fitness", icon: "💪" },
-  { key: "education", label: "Educación", icon: "📚" },
-]
+// Genera nombre de componente aleatorio
+function randomName() {
+  const words = ['Burst', 'Flow', 'Morph', 'Rise', 'Pulse', 'Wave', 'Shift', 'Forge', 'Spark', 'Drift', 'Echo', 'Surge', 'Bloom', 'Crash', 'Glow']
+  const a = words[Math.floor(Math.random() * words.length)]
+  const b = words[Math.floor(Math.random() * words.length)]
+  return `${a}${b}`
+}
+
+// Selección aleatoria de tags
+function randomTags() {
+  const all = Object.values(TAG_CATEGORIES).flat()
+  const shuffled = all.sort(() => Math.random() - 0.5)
+  return shuffled.slice(0, Math.floor(Math.random() * 4) + 2) // 2-5 tags
+}
 
 export default function Cinematicas() {
   const [library, setLibrary] = useState([])
   const [activeJob, setActiveJob] = useState(null)
   const [progress, setProgress] = useState([])
   const [selectedAnim, setSelectedAnim] = useState(null)
-  const [customIdea, setCustomIdea] = useState('')
-  const [customName, setCustomName] = useState('')
-  const [customRubro, setCustomRubro] = useState('ecommerce')
-  const [mode, setMode] = useState('primera')
+  const [selectedTags, setSelectedTags] = useState([])
+  const [desarrollo, setDesarrollo] = useState('')
+  const [componentName, setComponentName] = useState(randomName())
   const [copied, setCopied] = useState(false)
   const [renderJob, setRenderJob] = useState(null)
   const [videoUrl, setVideoUrl] = useState(null)
   const [rendering, setRendering] = useState(false)
+  const [openCategory, setOpenCategory] = useState('Formas')
   const pollRef = useRef(null)
   const renderPollRef = useRef(null)
 
@@ -56,12 +57,22 @@ export default function Cinematicas() {
     } catch {}
   }
 
-  async function startForge() {
-    const payload = mode === 'primera'
-      ? PRIMERA_IDEA
-      : { idea: customIdea, component_name: customName || `Anim${Date.now()}`, rubro: customRubro }
-    if (mode === 'custom' && !customIdea.trim()) return
+  function toggleTag(tag) {
+    setSelectedTags(prev =>
+      prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+    )
+  }
 
+  function handleRandom() {
+    setSelectedTags(randomTags())
+    setComponentName(randomName())
+    setDesarrollo('')
+  }
+
+  async function startForge() {
+    if (selectedTags.length === 0 && !desarrollo.trim()) return
+
+    const name = componentName || randomName()
     setProgress([{ msg: '🚀 Iniciando forja...', step: 0, total: 7 }])
     setActiveJob(null)
     setSelectedAnim(null)
@@ -69,7 +80,14 @@ export default function Cinematicas() {
 
     try {
       const r = await fetch(`${API_URL}/api/forge/generate`, {
-        method: 'POST', headers: HEADERS, body: JSON.stringify(payload),
+        method: 'POST', headers: HEADERS,
+        body: JSON.stringify({
+          idea: '',
+          component_name: name,
+          rubro: 'cinematica',
+          tags: selectedTags,
+          desarrollo: desarrollo.trim(),
+        }),
       })
       const d = await r.json()
       const animId = d.anim_id
@@ -93,7 +111,6 @@ export default function Cinematicas() {
                 startRenderPoll(sd.render_job_id)
               }
             } else {
-              // Falló — mostrar el resultado igual para ver el error
               if (sd.result) setSelectedAnim(sd.result)
             }
           }
@@ -102,28 +119,6 @@ export default function Cinematicas() {
     } catch(e) {
       setProgress(p => [...p, { msg: `❌ Error: ${e.message}`, step: -1, total: 7 }])
     }
-  }
-
-  async function loadAnim(id) {
-    const r = await fetch(`${API_URL}/api/forge/animation/${id}`, { headers: HEADERS })
-    const d = await r.json()
-    setSelectedAnim(d)
-    setRendering(false)
-    // Si ya tiene video en Cloudinary o local, mostrarlo directo
-    setVideoUrl(d.video_url || null)
-  }
-
-  async function deleteAnim(id, e) {
-    e.stopPropagation()
-    await fetch(`${API_URL}/api/forge/animation/${id}`, { method: 'DELETE', headers: HEADERS })
-    loadLibrary()
-    if (selectedAnim?.id === id) { setSelectedAnim(null); setVideoUrl(null) }
-  }
-
-  function copyCode() {
-    navigator.clipboard.writeText(selectedAnim?.code || '')
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
   }
 
   function startRenderPoll(jobId) {
@@ -160,7 +155,29 @@ export default function Cinematicas() {
     } catch { setRendering(false) }
   }
 
+  async function loadAnim(id) {
+    const r = await fetch(`${API_URL}/api/forge/animation/${id}`, { headers: HEADERS })
+    const d = await r.json()
+    setSelectedAnim(d)
+    setRendering(false)
+    setVideoUrl(d.video_url || null)
+  }
+
+  async function deleteAnim(id, e) {
+    e.stopPropagation()
+    await fetch(`${API_URL}/api/forge/animation/${id}`, { method: 'DELETE', headers: HEADERS })
+    loadLibrary()
+    if (selectedAnim?.id === id) { setSelectedAnim(null); setVideoUrl(null) }
+  }
+
+  function copyCode() {
+    navigator.clipboard.writeText(selectedAnim?.code || '')
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
   const isRunning = !!activeJob
+  const canGenerate = (selectedTags.length > 0 || desarrollo.trim().length > 0) && !isRunning
 
   return (
     <div className={styles.page}>
@@ -173,62 +190,96 @@ export default function Cinematicas() {
       </div>
 
       <div className={styles.body}>
-        {/* LEFT — Generador */}
+        {/* LEFT */}
         <div className={styles.left}>
-          <div className={styles.modeRow}>
-            <button className={`${styles.modeBtn} ${mode==='primera'?styles.modeBtnActive:''}`} onClick={()=>setMode('primera')}>
-              Primera animación
-            </button>
-            <button className={`${styles.modeBtn} ${mode==='custom'?styles.modeBtnActive:''}`} onClick={()=>setMode('custom')}>
-              Idea propia
+
+          {/* Nombre + botón aleatorio */}
+          <div className={styles.nameRow}>
+            <input
+              className={styles.nameInput}
+              placeholder="NombreAnimacion"
+              value={componentName}
+              onChange={e => setComponentName(e.target.value.replace(/\s/g, ''))}
+            />
+            <button className={styles.randomBtn} onClick={handleRandom} title="Selección aleatoria">
+              🎲 Aleatorio
             </button>
           </div>
 
-          {mode === 'primera' ? (
-            <div className={styles.ideaCard}>
-              <div className={styles.ideaTitle}>E-commerce Journey</div>
-              <div className={styles.ideaSteps}>
-                {['Logo pulsa', 'Se derrite → gota', 'Gota → carrito SVG', 'Carrito → paquete sellado', 'Paquete → cohete', 'Confetti + nombre brillando'].map((s,i)=>(
-                  <div key={i} className={styles.step}>
-                    <div className={styles.stepNum}>{i+1}</div>
-                    <div>{s}</div>
-                  </div>
+          {/* Tags por categoría */}
+          <div className={styles.tagsSection}>
+            <div className={styles.tagsSectionLabel}>
+              Conceptos
+              {selectedTags.length > 0 && (
+                <button className={styles.clearTags} onClick={() => setSelectedTags([])}>
+                  Limpiar ({selectedTags.length})
+                </button>
+              )}
+            </div>
+            <div className={styles.catTabs}>
+              {Object.keys(TAG_CATEGORIES).map(cat => (
+                <button
+                  key={cat}
+                  className={`${styles.catTab} ${openCategory === cat ? styles.catTabActive : ''}`}
+                  onClick={() => setOpenCategory(cat)}>
+                  {cat}
+                </button>
+              ))}
+            </div>
+            <div className={styles.tagGrid}>
+              {TAG_CATEGORIES[openCategory]?.map(tag => (
+                <button
+                  key={tag}
+                  className={`${styles.tag} ${selectedTags.includes(tag) ? styles.tagActive : ''}`}
+                  onClick={() => toggleTag(tag)}>
+                  {tag}
+                </button>
+              ))}
+            </div>
+            {selectedTags.length > 0 && (
+              <div className={styles.selectedTagsRow}>
+                {selectedTags.map(t => (
+                  <span key={t} className={styles.selectedTag} onClick={() => toggleTag(t)}>
+                    {t} ×
+                  </span>
                 ))}
               </div>
-            </div>
-          ) : (
-            <div className={styles.customForm}>
-              <div className={styles.formGroup}>
-                <label>Rubro</label>
-                <div className={styles.rubroGrid}>
-                  {RUBROS.map(r=>(
-                    <button key={r.key} className={`${styles.rubroBtn} ${customRubro===r.key?styles.rubroBtnActive:''}`} onClick={()=>setCustomRubro(r.key)}>
-                      {r.icon} {r.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className={styles.formGroup}>
-                <label>Nombre (sin espacios)</label>
-                <input className={styles.input} placeholder="MiAnimacion" value={customName} onChange={e=>setCustomName(e.target.value.replace(/\s/g,''))} />
-              </div>
-              <div className={styles.formGroup}>
-                <label>Narrativa visual</label>
-                <textarea className={styles.textarea} rows={5} placeholder="Describí qué formas aparecen, cómo se transforman y qué historia cuentan..." value={customIdea} onChange={e=>setCustomIdea(e.target.value)} />
-              </div>
-            </div>
-          )}
+            )}
+          </div>
 
-          <button className={`${styles.forgeBtn} ${isRunning?styles.forgeBtnRunning:''}`} onClick={startForge} disabled={isRunning||(mode==='custom'&&!customIdea.trim())}>
-            {isRunning ? <><span className={styles.spinner}/>Generando en loop...</> : '⚡ Generar animación'}
+          {/* Desarrollo libre */}
+          <div className={styles.desarrolloSection}>
+            <div className={styles.desarrolloLabel}>
+              Descripción <span className={styles.desarrolloOpcional}>(opcional)</span>
+            </div>
+            <textarea
+              className={styles.textarea}
+              rows={4}
+              placeholder="Describí lo que querés ver. Puede ser corto o largo. Si no ponés nada, la IA usa solo los conceptos seleccionados."
+              value={desarrollo}
+              onChange={e => setDesarrollo(e.target.value)}
+            />
+          </div>
+
+          {/* Botón principal */}
+          <button
+            className={`${styles.forgeBtn} ${isRunning ? styles.forgeBtnRunning : ''}`}
+            onClick={startForge}
+            disabled={!canGenerate}>
+            {isRunning
+              ? <><span className={styles.spinner} />Generando en loop...</>
+              : selectedTags.length === 0 && !desarrollo.trim()
+              ? 'Seleccioná conceptos o describí algo'
+              : '⚡ Generar animación'}
           </button>
 
+          {/* Log */}
           {progress.length > 0 && (
             <div className={styles.log}>
-              {progress.map((p,i)=>(
-                <div key={i} className={`${styles.logLine} ${i===progress.length-1?styles.logActive:''}`}>
+              {progress.map((p, i) => (
+                <div key={i} className={`${styles.logLine} ${i === progress.length - 1 ? styles.logActive : ''}`}>
                   <div className={styles.progressBar}>
-                    <div className={styles.progressFill} style={{width:`${Math.max(4,(p.step/(p.total||7))*100)}%`}} />
+                    <div className={styles.progressFill} style={{ width: `${Math.max(4, (p.step / (p.total || 7)) * 100)}%` }} />
                   </div>
                   <span className={styles.logMsg}>{p.msg}</span>
                 </div>
@@ -236,20 +287,20 @@ export default function Cinematicas() {
             </div>
           )}
 
-          {/* Biblioteca lista */}
+          {/* Biblioteca */}
           {library.length > 0 && (
             <div className={styles.libMini}>
               <div className={styles.libMiniHeader}>Biblioteca</div>
               <div className={styles.libMiniList}>
-                {library.map(anim=>(
+                {library.map(anim => (
                   <div key={anim.id}
-                    className={`${styles.libMiniCard} ${selectedAnim?.id===anim.id?styles.libMiniCardActive:''} ${!anim.success?styles.libMiniCardFailed:''}`}
-                    onClick={()=>loadAnim(anim.id)}>
+                    className={`${styles.libMiniCard} ${selectedAnim?.id === anim.id ? styles.libMiniCardActive : ''} ${!anim.success ? styles.libMiniCardFailed : ''}`}
+                    onClick={() => loadAnim(anim.id)}>
                     <div className={styles.libMiniName}>{anim.component_name}</div>
-                    <div style={{display:'flex',gap:4,alignItems:'center'}}>
+                    <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                       <span className={styles.libMiniRubro}>{anim.rubro}</span>
-                      <span style={{fontSize:10}}>{anim.success?'✅':'❌'}</span>
-                      <button className={styles.delBtn} onClick={e=>deleteAnim(anim.id,e)}>×</button>
+                      <span style={{ fontSize: 10 }}>{anim.success ? '✅' : '❌'}</span>
+                      <button className={styles.delBtn} onClick={e => deleteAnim(anim.id, e)}>×</button>
                     </div>
                   </div>
                 ))}
@@ -258,69 +309,55 @@ export default function Cinematicas() {
           )}
         </div>
 
-        {/* RIGHT — Código + Reproductor */}
+        {/* RIGHT */}
         <div className={styles.right}>
           {selectedAnim ? (
             <div className={styles.preview}>
-              {/* Header */}
               <div className={styles.previewHeader}>
                 <div>
                   <div className={styles.previewName}>{selectedAnim.component_name}</div>
                   <div className={styles.previewMeta}>
-                    {selectedAnim.rubro} · {selectedAnim.attempts} intentos · {selectedAnim.elapsed_s}s · {selectedAnim.success?'✅ OK':'❌ Falló'}
+                    {selectedAnim.attempts} intentos · {selectedAnim.elapsed_s}s · {selectedAnim.success ? '✅ OK' : '❌ Falló'}
                   </div>
                 </div>
-                <button className={styles.closeBtn} onClick={()=>{setSelectedAnim(null);setVideoUrl(null)}}>×</button>
+                <button className={styles.closeBtn} onClick={() => { setSelectedAnim(null); setVideoUrl(null) }}>×</button>
               </div>
-
-              {/* Código con scroll */}
               <div className={styles.codeSection}>
                 <div className={styles.codeSectionHeader}>
                   <span className={styles.codeLang}>JSX</span>
-                  <button className={`${styles.copyBtn} ${copied?styles.copyBtnDone:''}`} onClick={copyCode}>
-                    {copied ? '✓ Copiado' : '⎘ Copiar código'}
+                  <button className={`${styles.copyBtn} ${copied ? styles.copyBtnDone : ''}`} onClick={copyCode}>
+                    {copied ? '✓ Copiado' : '⎘ Copiar'}
                   </button>
                 </div>
                 <div className={styles.codeWrap}>
                   <pre className={styles.code}>{selectedAnim.code}</pre>
                 </div>
               </div>
-
-              {/* Reproductor */}
               <div className={styles.playerSection}>
                 {videoUrl ? (
                   <div className={styles.playerWrap}>
-                    <video
-                      src={videoUrl}
-                      controls
-                      autoPlay
-                      loop
-                      className={styles.video}
-                      style={{ width: '100%', borderRadius: 8, background: '#000' }}
-                    />
+                    <video src={videoUrl} controls autoPlay loop className={styles.video} />
                   </div>
                 ) : (
                   <div className={styles.playerEmpty}>
                     <button
-                      className={`${styles.renderBtn} ${rendering?styles.renderBtnLoading:''}`}
+                      className={`${styles.renderBtn} ${rendering ? styles.renderBtnLoading : ''}`}
                       onClick={renderAnim}
                       disabled={rendering || !selectedAnim?.success}>
                       {rendering
-                        ? <><span className={styles.spinner}/>Renderizando (~30s)...</>
+                        ? <><span className={styles.spinner} />Renderizando (~30s)...</>
                         : '▶ Renderizar y reproducir'}
                     </button>
-                    {!selectedAnim?.success && (
-                      <div className={styles.renderNote}>Esta animación no compiló correctamente</div>
-                    )}
+                    {!selectedAnim?.success && <div className={styles.renderNote}>Esta animación no compiló</div>}
                   </div>
                 )}
               </div>
             </div>
           ) : (
             <div className={styles.empty}>
-              <div style={{fontSize:48}}>🎬</div>
+              <div style={{ fontSize: 48 }}>🎬</div>
               <div className={styles.emptyTitle}>Generá o seleccioná una animación</div>
-              <div className={styles.emptySub}>El código y el reproductor aparecen acá</div>
+              <div className={styles.emptySub}>Seleccioná conceptos, escribí algo (o ambos) y apretá generar</div>
             </div>
           )}
         </div>

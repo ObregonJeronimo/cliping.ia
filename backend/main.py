@@ -433,9 +433,11 @@ from animation_forge import forge_animation, list_library, get_animation
 forge_jobs: dict = {}
 
 class ForgeRequest(BaseModel):
-    idea: str
+    idea: str = ""
     component_name: str
-    rubro: str = "ecommerce"
+    rubro: str = "general"
+    tags: list = []
+    desarrollo: str = ""
 
 @app.post("/api/forge/generate")
 async def forge_generate(req: ForgeRequest):
@@ -457,6 +459,8 @@ async def forge_generate(req: ForgeRequest):
             component_name=req.component_name,
             rubro=req.rubro,
             anim_id=anim_id,
+            tags=req.tags,
+            desarrollo=req.desarrollo,
             progress_callback=on_progress,
         )
         forge_jobs[anim_id]["status"] = "done" if result["success"] else "failed"
