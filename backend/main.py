@@ -461,6 +461,9 @@ async def forge_generate(req: ForgeRequest):
             anim_id=anim_id,
             tags=req.tags,
             desarrollo=req.desarrollo,
+            primaryColor=req.primaryColor,
+            secondaryColor=req.secondaryColor,
+            accentColor=req.accentColor,
             progress_callback=on_progress,
         )
         forge_jobs[anim_id]["status"] = "done" if result["success"] else "failed"

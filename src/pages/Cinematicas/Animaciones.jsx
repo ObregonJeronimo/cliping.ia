@@ -37,6 +37,10 @@ export default function Animaciones() {
   const [videoUrl, setVideoUrl] = useState(null)
   const [rendering, setRendering] = useState(false)
   const [openCategory, setOpenCategory] = useState('Formas')
+  const [primaryColor, setPrimaryColor] = useState('#6366f1')
+  const [secondaryColor, setSecondaryColor] = useState('#a78bfa')
+  const [accentColor, setAccentColor] = useState('#f59e0b')
+  const [colorPreset, setColorPreset] = useState(null)
   const pollRef = useRef(null)
   const renderPollRef = useRef(null)
 
@@ -73,7 +77,7 @@ export default function Animaciones() {
     try {
       const r = await fetch(`${API_URL}/api/forge/generate`, {
         method: 'POST', headers: HEADERS,
-        body: JSON.stringify({ idea: '', component_name: name, rubro: 'cinematica', tags: selectedTags, desarrollo: desarrollo.trim() }),
+        body: JSON.stringify({ idea: '', component_name: name, rubro: 'cinematica', tags: selectedTags, desarrollo: desarrollo.trim(), primaryColor, secondaryColor, accentColor }),
       })
       const d = await r.json()
       const animId = d.anim_id
@@ -188,6 +192,50 @@ export default function Animaciones() {
           <div className={styles.desarrolloLabel}>Descripción <span className={styles.desarrolloOpcional}>(opcional)</span></div>
           <textarea className={styles.textarea} rows={3} placeholder="Describí lo que querés ver..." value={desarrollo} onChange={e => setDesarrollo(e.target.value)} />
         </div>
+        {/* Selector de colores */}
+        <div className={styles.colorSection}>
+          <div className={styles.colorSectionLabel}>
+            Paleta de colores
+          </div>
+          {/* Presets */}
+          <div className={styles.colorPresets}>
+            {[
+              { name: 'Violeta', p: '#6366f1', s: '#a78bfa', a: '#f59e0b' },
+              { name: 'Verde', p: '#22c55e', s: '#86efac', a: '#fbbf24' },
+              { name: 'Rojo', p: '#ef4444', s: '#fca5a5', a: '#fb923c' },
+              { name: 'Cyan', p: '#06b6d4', s: '#67e8f9', a: '#a78bfa' },
+              { name: 'Rosa', p: '#ec4899', s: '#f9a8d4', a: '#818cf8' },
+              { name: 'Naranja', p: '#f97316', s: '#fdba74', a: '#34d399' },
+              { name: 'Gold', p: '#eab308', s: '#fde047', a: '#f43f5e' },
+              { name: 'Oscuro', p: '#8b5cf6', s: '#4c1d95', a: '#c026d3' },
+            ].map(preset => (
+              <button key={preset.name}
+                className={`${styles.colorPreset} ${primaryColor === preset.p ? styles.colorPresetActive : ''}`}
+                style={{ background: `linear-gradient(135deg, ${preset.p}, ${preset.s})` }}
+                onClick={() => { setPrimaryColor(preset.p); setSecondaryColor(preset.s); setAccentColor(preset.a) }}
+                title={preset.name}
+              />
+            ))}
+          </div>
+          {/* Custom */}
+          <div className={styles.colorPickers}>
+            <div className={styles.colorPicker}>
+              <input type="color" value={primaryColor} onChange={e => setPrimaryColor(e.target.value)} className={styles.colorInput} />
+              <span>Principal</span>
+            </div>
+            <div className={styles.colorPicker}>
+              <input type="color" value={secondaryColor} onChange={e => setSecondaryColor(e.target.value)} className={styles.colorInput} />
+              <span>Secundario</span>
+            </div>
+            <div className={styles.colorPicker}>
+              <input type="color" value={accentColor} onChange={e => setAccentColor(e.target.value)} className={styles.colorInput} />
+              <span>Acento</span>
+            </div>
+          </div>
+          {/* Preview del degradado */}
+          <div className={styles.gradientPreview} style={{ background: `linear-gradient(135deg, ${primaryColor}, ${secondaryColor}, ${accentColor})` }} />
+        </div>
+
         <button className={`${styles.forgeBtn} ${isRunning ? styles.forgeBtnRunning : ''}`} onClick={startForge} disabled={!canGenerate}>
           {isRunning ? <><span className={styles.spinner} />Generando...</> : !canGenerate ? 'Seleccioná conceptos o describí algo' : '⚡ Generar animación'}
         </button>

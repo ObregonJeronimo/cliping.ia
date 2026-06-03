@@ -183,3 +183,16 @@
 .cinePlanProp { font-size:10px; color:#6366f1; font-weight:600; }
 .cinePlanThumb { width:40px; height:70px; object-fit:cover; border-radius:4px; flex-shrink:0; }
 .cineNote { padding:12px 16px; font-size:11px; color:#999; border-top:1px solid #f0f0f0; flex-shrink:0; }
+
+/* ─── Selector de colores ─── */
+.colorSection { display:flex; flex-direction:column; gap:6px; flex-shrink:0; background:#fff; border:1px solid #e8e8e8; border-radius:10px; padding:10px; }
+.colorSectionLabel { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:#999; }
+.colorPresets { display:flex; gap:5px; flex-wrap:wrap; }
+.colorPreset { width:24px; height:24px; border-radius:50%; border:2px solid transparent; cursor:pointer; transition:all 0.15s; }
+.colorPreset:hover { transform:scale(1.2); }
+.colorPresetActive { border-color:#111; transform:scale(1.15); box-shadow:0 0 0 2px #fff, 0 0 0 4px #111; }
+.colorPickers { display:flex; gap:8px; }
+.colorPicker { display:flex; flex-direction:column; align-items:center; gap:3px; }
+.colorPicker span { font-size:9px; color:#999; }
+.colorInput { width:32px; height:28px; border:1px solid #e0e0e0; border-radius:6px; cursor:pointer; padding:2px; background:#fff; }
+.gradientPreview { height:6px; border-radius:100px; margin-top:2px; }

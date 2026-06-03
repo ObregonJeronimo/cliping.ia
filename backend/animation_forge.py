@@ -26,33 +26,48 @@ HAIKU_MODEL   = "claude-haiku-4-5-20251001"
 OPUS_MODEL    = "claude-sonnet-4-6"  # fallback — más barato que Opus completo
 
 # ─── Prompt del sistema ───────────────────────────────────────────────────────
-FORGE_SYSTEM = """Sos un experto en motion graphics y animación SVG/React.
-Generás componentes React para Remotion que crean animaciones cinematográficas complejas.
+FORGE_SYSTEM = """Sos un director de arte y experto en motion graphics premium.
+Generás animaciones SVG/React para Remotion que son VISUALMENTE ESPECTACULARES.
 
 REGLAS TÉCNICAS ESTRICTAS:
-1. El componente DEBE llamarse exactamente como se te indique (ej: export function EcommerceJourney)
-2. Imports permitidos ÚNICAMENTE:
-   - import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from 'remotion'
-   - NO importes nada más — ni animejs, ni gsap, ni three
-3. Toda la animación va en el componente usando frame y matemáticas puras
-4. Props: ({ primaryColor = '#6366f1', bg = '#07070f', siteName = 'Marca' })
-5. El componente debe durar exactamente 90 frames (3 segundos a 30fps)
-6. Usá SVG para las formas — paths, círculos, polígonos
-7. CRÍTICO — el SVG SIEMPRE debe ser VERTICAL: viewBox="0 0 1080 1920" width="1080" height="1920"
-   El centro es cx=540 cy=960. Las formas deben ocupar toda la altura vertical.
-8. La interpolación es manual: lerp(a, b, t) donde t = frame/90
-9. Para morphing de paths: interpolá los números del path directamente
-10. NO uses hooks personalizados, NO uses useRef, NO uses useEffect
-11. Todo debe ser determinista — mismo frame = mismo output visual
-12. Las formas deben ser GRANDES — ocupar al menos 30% del ancho (324px mínimo)
+1. El componente DEBE llamarse exactamente como se indique
+2. Imports ÚNICAMENTE: import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from 'remotion'
+3. Props: ({ primaryColor = '#6366f1', secondaryColor = '#a78bfa', accentColor = '#f59e0b', bg = '#07070f', siteName = 'Marca' })
+4. Duración: exactamente 90 frames (3 segundos a 30fps)
+5. SVG SIEMPRE VERTICAL: viewBox="0 0 1080 1920" — el centro es cx=540 cy=960
+6. Las formas deben ser GRANDES — mínimo 200px de diámetro/tamaño
+7. NO uses hooks personalizados, NO useRef, NO useEffect
+8. Todo determinista — mismo frame = mismo output
 
-HELPER DISPONIBLE (ya definido, no lo reimplementes):
+CALIDAD VISUAL — ESTO ES LO MÁS IMPORTANTE:
+- Usá SIEMPRE degradados SVG (linearGradient, radialGradient) — nunca colores planos solos
+- Combiná primaryColor + secondaryColor + accentColor en degradados creativos
+- Los degradados deben MOVERSE — animá gradientTransform, offset, opacity
+- Usá filtros SVG: feGaussianBlur para glow, feDropShadow para sombras
+- Las formas deben tener múltiples capas: sombra + forma principal + brillo encima
+- Movimiento fluido: lerp + easeInOut, nunca cambios abruptos
+- Partículas decorativas: pequeños círculos que orbitan o explotan
+- El fondo no es negro plano — usá un radialGradient oscuro con tonos del primaryColor
+
+PALETA DE COLORES — siempre usá las 3:
+- primaryColor: el color principal, para la forma central
+- secondaryColor: complementario, para degradados y capas
+- accentColor: contraste, para brillos, partículas y destellos
+
+ESTRUCTURA DE CADA ANIMACIÓN:
+- Capa 1: Fondo con gradiente radial animado
+- Capa 2: Formas principales con morphing y degradados
+- Capa 3: Efectos de luz (glow, blur, resplandor)
+- Capa 4: Partículas decorativas
+- Capa 5: Brillo final o texto si corresponde
+
+HELPERS DISPONIBLES (no reimplementes):
 const lerp = (a, b, t) => a + (b - a) * t
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
 const easeInOut = (t) => t < 0.5 ? 2*t*t : -1+(4-2*t)*t
 const easeOut = (t) => 1 - Math.pow(1 - t, 3)
 
-OUTPUT: Solo el código JSX del componente. Sin explicaciones, sin markdown, sin ```."""
+OUTPUT: Solo el código JSX. Sin explicaciones, sin markdown, sin ```."""
 
 # ─── Prompt de corrección ─────────────────────────────────────────────────────
 CORRECTION_SYSTEM = """Sos un experto en debugging de React/JSX para Remotion.
@@ -124,6 +139,9 @@ async def forge_animation(
     anim_id: str,
     tags: list = None,
     desarrollo: str = "",
+    primaryColor: str = "#6366f1",
+    secondaryColor: str = "#a78bfa",
+    accentColor: str = "#f59e0b",
     progress_callback=None,
 ) -> dict:
     """
@@ -165,6 +183,12 @@ Rubro de referencia: {rubro}"""
 Sé muy creativo — buscá algo que nadie haya visto antes."""
 
     user_prompt = f"""Creá una animación React para Remotion llamada `{component_name}`.
+
+PALETA DE COLORES A USAR (obligatorio):
+- primaryColor = '{primaryColor}' → color principal, formas centrales
+- secondaryColor = '{secondaryColor}' → degradados y capas secundarias  
+- accentColor = '{accentColor}' → brillos, partículas, destellos
+- bg = '#07070f' → fondo oscuro base
 
 {narrativa_section}
 
