@@ -679,9 +679,13 @@ async def _render_cinematic_job(job_id: str, anim: dict):
 
     jobs[job_id].update({"step": "setup", "progress": 5, "status": "processing"})
 
-    # Limpiar imports de remotion del código generado (el wrapper ya los tiene)
+    # Limpiar imports y helpers duplicados del código generado
     code_clean = anim["code"]
+    # Quitar imports de remotion
     code_clean = re.sub(r"import\s*\{[^}]*\}\s*from\s*['\"]remotion['\"];?\s*\n?", "", code_clean)
+    # Quitar helpers que el wrapper ya define
+    for helper in ["const lerp", "const clamp", "const easeInOut", "const easeOut", "const easeIn"]:
+        code_clean = re.sub(rf"{helper}\s*=\s*[^\n]+\n?", "", code_clean)
 
     # 1. Escribir el JSX en src/compositions/
     jsx_content = f"""import {{ AbsoluteFill, useCurrentFrame, useVideoConfig, spring }} from 'remotion'
