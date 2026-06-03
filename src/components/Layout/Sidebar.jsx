@@ -6,6 +6,7 @@ const NAV = [
   { to: '/studio',          icon: '⊞', label: 'Home' },
   { to: '/studio/videos',   icon: '▶', label: 'Mis videos' },
   { to: '/studio/settings', icon: '⚙', label: 'Configuración' },
+  { to: '/studio/cinematicas', icon: '✦', label: 'Cinemáticas' },
 ]
 
 export default function Sidebar() {

@@ -4,6 +4,7 @@ import AppLayout from './components/Layout/AppLayout'
 import Home from './pages/Home'
 import Videos from './pages/Videos'
 import Settings from './pages/Settings'
+import Cinematicas from './pages/Cinematicas'
 import Login from './pages/Login'
 import Landing from './pages/Landing'
 
@@ -27,6 +28,7 @@ function AppRoutes() {
         <Route index element={<Home />} />
         <Route path="videos" element={<Videos />} />
         <Route path="settings" element={<Settings />} />
+        <Route path="cinematicas" element={<Cinematicas />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

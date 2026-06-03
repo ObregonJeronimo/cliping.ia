@@ -424,6 +424,83 @@ async def get_available_durations(req: DurationsRequest):
     return result
 
 
+
+# ─── CINEMATIC FORGE ENDPOINTS ───────────────────────────────────────────────
+import asyncio as _asyncio
+from animation_forge import forge_animation, list_library, get_animation
+
+# Jobs de forge activos
+forge_jobs: dict = {}
+
+class ForgeRequest(BaseModel):
+    idea: str
+    component_name: str
+    rubro: str = "ecommerce"
+
+@app.post("/api/forge/generate")
+async def forge_generate(req: ForgeRequest):
+    """Dispara la generación de una animación en loop. Retorna job_id."""
+    anim_id = str(uuid.uuid4())[:8]
+    forge_jobs[anim_id] = {
+        "id": anim_id,
+        "status": "running",
+        "progress": [],
+        "result": None,
+    }
+
+    async def run():
+        async def on_progress(evt):
+            forge_jobs[anim_id]["progress"].append(evt)
+
+        result = await forge_animation(
+            idea=req.idea,
+            component_name=req.component_name,
+            rubro=req.rubro,
+            anim_id=anim_id,
+            progress_callback=on_progress,
+        )
+        forge_jobs[anim_id]["status"] = "done" if result["success"] else "failed"
+        forge_jobs[anim_id]["result"] = result
+
+    _asyncio.create_task(run())
+    return {"anim_id": anim_id}
+
+@app.get("/api/forge/status/{anim_id}")
+async def forge_status(anim_id: str):
+    """Polling del estado de una generación."""
+    job = forge_jobs.get(anim_id)
+    if not job:
+        return {"error": "not found"}
+    return job
+
+@app.get("/api/forge/library")
+async def forge_library():
+    """Lista todas las animaciones en la biblioteca."""
+    return {"animations": list_library()}
+
+@app.get("/api/forge/animation/{anim_id}")
+async def forge_get(anim_id: str):
+    """Obtiene una animación completa con su código."""
+    anim = get_animation(anim_id)
+    if not anim:
+        return {"error": "not found"}
+    return anim
+
+@app.delete("/api/forge/animation/{anim_id}")
+async def forge_delete(anim_id: str):
+    """Elimina una animación de la biblioteca."""
+    from pathlib import Path as _Path
+    lib_dir = _Path(__file__).parent.parent / "cinematic_library"
+    f = lib_dir / f"{anim_id}.json"
+    if f.exists():
+        data = __import__("json").loads(f.read_text())
+        jsx = lib_dir / f"{data.get('component_name','unknown')}.jsx"
+        f.unlink(missing_ok=True)
+        jsx.unlink(missing_ok=True)
+        return {"ok": True}
+    return {"error": "not found"}
+
+
 # ─── MASTERPIECE ENDPOINT ─────────────────────────────────────────────────────
 @app.post("/api/masterpiece")
 async def render_masterpiece():
