@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import styles from './Cinematicas.module.css'
 
-const API_URL = import.meta.env.VITE_API_URL || ''
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const HEADERS = { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' }
 
 const PRIMERA_IDEA = {
   idea: `Narrativa cinematográfica de ecommerce en 90 frames (3 segundos a 30fps):
@@ -44,7 +45,7 @@ export default function Cinematicas() {
 
   async function loadLibrary() {
     try {
-      const r = await fetch(`${API_URL}/api/forge/library`)
+      const r = await fetch(`${API_URL}/api/forge/library`, { headers: HEADERS })
       const d = await r.json()
       setLibrary(d.animations || [])
     } catch {}
@@ -63,7 +64,7 @@ export default function Cinematicas() {
     try {
       const r = await fetch(`${API_URL}/api/forge/generate`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: HEADERS,
         body: JSON.stringify(payload),
       })
       const d = await r.json()
@@ -73,7 +74,7 @@ export default function Cinematicas() {
       let lastLen = 0
       pollRef.current = setInterval(async () => {
         try {
-          const sr = await fetch(`${API_URL}/api/forge/status/${animId}`)
+          const sr = await fetch(`${API_URL}/api/forge/status/${animId}`, { headers: HEADERS })
           const sd = await sr.json()
           if (sd.progress?.length > lastLen) {
             setProgress(sd.progress)
@@ -93,13 +94,13 @@ export default function Cinematicas() {
   }
 
   async function loadAnim(id) {
-    const r = await fetch(`${API_URL}/api/forge/animation/${id}`)
+    const r = await fetch(`${API_URL}/api/forge/animation/${id}`, { headers: HEADERS })
     setSelectedAnim(await r.json())
   }
 
   async function deleteAnim(id, e) {
     e.stopPropagation()
-    await fetch(`${API_URL}/api/forge/animation/${id}`, { method: 'DELETE' })
+    await fetch(`${API_URL}/api/forge/animation/${id}`, { method: 'DELETE', headers: HEADERS })
     loadLibrary()
     if (selectedAnim?.id === id) setSelectedAnim(null)
   }
