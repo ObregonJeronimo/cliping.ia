@@ -438,6 +438,9 @@ class ForgeRequest(BaseModel):
     rubro: str = "general"
     tags: list = []
     desarrollo: str = ""
+    primaryColor: str = "#6366f1"
+    secondaryColor: str = "#a78bfa"
+    accentColor: str = "#f59e0b"
 
 @app.post("/api/forge/generate")
 async def forge_generate(req: ForgeRequest):
