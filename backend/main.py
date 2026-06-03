@@ -23,6 +23,8 @@ app.add_middleware(
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_credentials=False,
+    expose_headers=["*"],
 )
 
 app.mount("/outputs", StaticFiles(directory="outputs"), name="outputs")
@@ -31,8 +33,20 @@ from fastapi.responses import Response
 
 @app.middleware("http")
 async def add_ngrok_header(request: Request, call_next):
+    # Para preflight OPTIONS, responder inmediatamente con los headers correctos
+    if request.method == "OPTIONS":
+        return Response(
+            status_code=200,
+            headers={
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+                "Access-Control-Allow-Headers": "*",
+                "ngrok-skip-browser-warning": "true",
+            }
+        )
     response = await call_next(request)
     response.headers["ngrok-skip-browser-warning"] = "true"
+    response.headers["Access-Control-Allow-Origin"] = "*"
     response.headers["Access-Control-Allow-Origin"] = "*"
     return response
 
