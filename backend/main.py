@@ -612,9 +612,44 @@ registerRoot(RemotionRoot)
             raise RuntimeError(err)
 
         jobs[job_id].update({
+            "status": "uploading", "progress": 85, "step": "upload",
+        })
+
+        # Subir a Cloudinary
+        cloudinary_url = ""
+        try:
+            from cloudinary_upload import upload_video
+            public_id = f"{component_name}_{anim_id}"
+            cloudinary_url = await upload_video(str(output_path), public_id)
+            print(f"[cinematic] Cloudinary OK → {cloudinary_url}")
+        except Exception as ce:
+            print(f"[cinematic] Cloudinary error: {ce}")
+
+        # Guardar en Firestore
+        try:
+            db = get_firestore()
+            if db:
+                db.collection("cinematicas").document(anim_id).set({
+                    "id":             anim_id,
+                    "componentName":  component_name,
+                    "rubro":          anim.get("rubro", ""),
+                    "idea":           anim.get("idea", "")[:300],
+                    "code":           anim.get("code", ""),
+                    "videoUrl":       cloudinary_url,
+                    "localFile":      output_path.name,
+                    "attempts":       anim.get("attempts", 0),
+                    "elapsedS":       anim.get("elapsed_s", 0),
+                    "createdAt":      __import__("datetime").datetime.utcnow().isoformat(),
+                })
+                print(f"[cinematic] Firestore OK → cinematicas/{anim_id}")
+        except Exception as fe:
+            print(f"[cinematic] Firestore error: {fe}")
+
+        jobs[job_id].update({
             "status": "done", "progress": 100, "step": "export",
-            "videoPath": str(output_path),
+            "videoPath":     str(output_path),
             "videoFilename": output_path.name,
+            "cloudinaryUrl": cloudinary_url,
         })
         print(f"[cinematic] OK → {output_path.name}")
     except Exception as e:
@@ -624,6 +659,33 @@ registerRoot(RemotionRoot)
         entry_file.unlink(missing_ok=True)
         print(f"[cinematic] ERROR: {e}")
         jobs[job_id].update({"status": "error", "error": str(e)[:300]})
+
+
+@app.get("/api/forge/firestore-library")
+async def forge_firestore_library():
+    """Lista animaciones desde Firestore (con video URLs de Cloudinary)."""
+    try:
+        db = get_firestore()
+        if not db:
+            return {"animations": [], "error": "Firestore no disponible"}
+        docs = db.collection("cinematicas").order_by("createdAt", direction="DESCENDING").limit(100).stream()
+        items = []
+        for doc in docs:
+            d = doc.to_dict()
+            items.append({
+                "id":            d.get("id",""),
+                "component_name": d.get("componentName",""),
+                "rubro":         d.get("rubro",""),
+                "idea":          d.get("idea","")[:100],
+                "video_url":     d.get("videoUrl",""),
+                "attempts":      d.get("attempts",0),
+                "elapsed_s":     d.get("elapsedS",0),
+                "created_at":    d.get("createdAt",""),
+                "code":          d.get("code",""),
+            })
+        return {"animations": items}
+    except Exception as e:
+        return {"animations": [], "error": str(e)}
 
 
 # ─── MASTERPIECE ENDPOINT ─────────────────────────────────────────────────────

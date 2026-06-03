@@ -98,7 +98,8 @@ export default function Cinematicas() {
     const r = await fetch(`${API_URL}/api/forge/animation/${id}`, { headers: HEADERS })
     const d = await r.json()
     setSelectedAnim(d)
-    setVideoUrl(null)
+    // Si ya tiene video en Cloudinary, mostrarlo directo
+    setVideoUrl(d.video_url || null)
   }
 
   async function deleteAnim(id, e) {
@@ -134,7 +135,9 @@ export default function Cinematicas() {
           if (sd.status === 'done') {
             clearInterval(renderPollRef.current)
             setRendering(false)
-            setVideoUrl(`${API_URL}/api/video/${sd.videoFilename}`)
+            // Preferir URL de Cloudinary, fallback a local
+            const url = sd.cloudinaryUrl || `${API_URL}/api/video/${sd.videoFilename}`
+            setVideoUrl(url)
           } else if (sd.status === 'error') {
             clearInterval(renderPollRef.current)
             setRendering(false)
