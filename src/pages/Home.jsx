@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { doc, setDoc, collection } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import ReviewData from './ReviewData'
+import Compositor from './Compositor'
 import styles from './Home.module.css'
 
 // ─── Constantes ────────────────────────────────────────────────────────────
@@ -243,6 +244,8 @@ export default function Home() {
   // Nuevos estados para el flujo interactivo
   const [analyzing, setAnalyzing] = useState(false)
   const [pageData, setPageData] = useState(null)
+  const [compositionData, setCompositionData] = useState(null)
+  const [density, setDensity] = useState(null)
   const [analyzeError, setAnalyzeError] = useState('')
 
   function validate() {
@@ -276,8 +279,27 @@ export default function Home() {
   }
 
   // Paso 2: el usuario confirmó los datos — generar el video
-  async function handleGenerate(confirmedData) {
+  async function handleReviewConfirm(confirmedData) {
     setPageData(confirmedData)
+    // Calcular densidad y generar composición IA antes de mostrar compositor
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || ''
+      // Generar composición IA para mostrar en el compositor
+      const compRes = await fetch(`${API_URL}/api/compose`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ page_data: confirmedData, duration: parseInt(duration) || 30 }),
+      })
+      const compData = await compRes.json()
+      setCompositionData(compData.composition)
+      setDensity(compData.density)
+    } catch(e) {
+      console.warn('density error', e)
+    }
+    setPhase('composing')
+  }
+
+  async function handleCompositorConfirm(userComposition) {
     setPhase('progress')
     setStepStates({})
     setProgress(0)
@@ -288,8 +310,9 @@ export default function Home() {
     const payload = {
       url, action, format, voice,
       userId: user?.uid || '',
-      page_data: confirmedData,
+      page_data: pageData,
       visualStyle, narrative, hook, tone, focus, duration, mode,
+      user_composition: userComposition || null,
     }
 
     try {
@@ -547,10 +570,19 @@ export default function Home() {
         </>
       )}
 
+      {phase === 'composing' && pageData && (
+        <Compositor
+          pageData={pageData}
+          composition={compositionData}
+          duration={parseInt(duration) || 30}
+          onConfirm={handleCompositorConfirm}
+          onBack={() => setPhase('reviewing')}
+        />
+      )}
       {phase === 'reviewing' && pageData && (
         <ReviewData
           pageData={pageData}
-          onConfirm={handleGenerate}
+          onConfirm={handleReviewConfirm}
           onBack={() => setPhase('form')}
         />
       )}

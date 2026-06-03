@@ -374,6 +374,56 @@ async def process_render_job(job_id: str, req: RenderRequest):
         traceback.print_exc()
         jobs[job_id].update({"status": "error", "error": str(e)})
 
+
+
+# ─── COMPOSITION PREVIEW ENDPOINT ────────────────────────────────────────────
+class CompositionRequest(BaseModel):
+    page_data: dict
+    duration: int = 30
+    visual_style: str = "dark_premium"
+
+@app.post("/api/compose")
+async def generate_composition_preview(req: CompositionRequest):
+    """Genera la composición IA para mostrarla en el compositor visual."""
+    from composition_generator import generate_composition, composition_to_props, _fallback_composition
+    from content_density import calculate_density
+    from variations import build_video_context
+
+    density = calculate_density(req.page_data)
+    video_context = {
+        "visual_style": req.visual_style,
+        "narrative": "problem_solution",
+        "hook": "bold",
+        "tone": "professional",
+        "duration": req.duration,
+        "format": "reel",
+    }
+    try:
+        composition = await generate_composition(req.page_data, {}, video_context)
+    except Exception as e:
+        print(f"[compose] fallback: {e}")
+        primary = req.page_data.get("primaryColor", "#6366f1")
+        bg = "#07070f"
+        composition = _fallback_composition(req.page_data, primary, bg)
+
+    return {
+        "composition": composition,
+        "density": density,
+    }
+
+
+# ─── DURATIONS ENDPOINT ───────────────────────────────────────────────────────
+class DurationsRequest(BaseModel):
+    page_data: dict
+
+@app.post("/api/available-durations")
+async def get_available_durations(req: DurationsRequest):
+    """Calcula duraciones disponibles según la densidad de info del sitio."""
+    from content_density import calculate_density
+    result = calculate_density(req.page_data)
+    return result
+
+
 # ─── MASTERPIECE ENDPOINT ─────────────────────────────────────────────────────
 @app.post("/api/masterpiece")
 async def render_masterpiece():

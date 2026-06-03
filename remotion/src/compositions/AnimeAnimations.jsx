@@ -94,7 +94,7 @@ export function AnimeStaggerCenter({
     <AbsoluteFill ref={ref} style={{ background: bg||bg0(primaryColor), overflow:'hidden', justifyContent:'center', alignItems:'center', flexDirection:'column', gap:24, padding:'0 36px' }}>
       <div style={{ position:'absolute', inset:0, background:`radial-gradient(ellipse at 50% 50%, rgba(${r},${g},${b},${glowIntensity*0.15}) 0%, transparent 65%)` }} />
       <div style={{ display:'flex', flexWrap:'wrap', gap:'8px 12px', justifyContent:'center' }}>
-        {words.map((w,i) => <span key={i} className="asc-w" style={{ display:'inline-block', opacity:0, fontSize, fontWeight:800, fontFamily:'system-ui', letterSpacing:'-0.03em', color:'#fff', lineHeight:1.15 }}>{w}</span>)}
+        {words.map((w,i) => <span key={i} className="asc-w" style={{ display:'inline-block', opacity:0, fontSize, fontWeight:800, fontFamily:'system-ui', letterSpacing:'-0.03em', color:'#fff', lineHeight:1.15, wordBreak:'break-word', overflowWrap:'anywhere' }}>{w}</span>)}
       </div>
       {showLine && <div className="asc-line" style={{ width:60, height:2, opacity:0, transformOrigin:'center', background:`linear-gradient(90deg,transparent,${primaryColor},transparent)`, boxShadow:`0 0 8px rgba(${r},${g},${b},0.5)` }} />}
     </AbsoluteFill>
@@ -177,7 +177,7 @@ export function AnimeStaggerIrregular({
 // 4. scrambleText — parametrizado
 export function AnimeScrambleReveal({
   headline, primaryColor, bg,
-  scrambleSpeed = 0.5, scrambleChars = '#@!%&ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789',
+  scrambleSpeed = 0.5, scrambleChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789',
   fontSize = 52, fontWeight = 700, monospace = true,
   glowColor = null,
 }) {
@@ -247,7 +247,7 @@ export function AnimeBlurWords({
   return (
     <AbsoluteFill ref={ref} style={{ background:bg||bg0(primaryColor), overflow:'hidden', justifyContent:'center', alignItems:'center', flexDirection:'column', gap:20, padding:'0 36px' }}>
       <div style={{ display:'flex', flexWrap:'wrap', gap:'6px 10px', justifyContent:'center' }}>
-        {words.map((w,i) => <span key={i} className="abw-w" style={{ display:'inline-block', opacity:0, fontSize, fontWeight, fontFamily:'system-ui', letterSpacing:'-0.035em', color:'#fff', lineHeight:1.15 }}>{w}</span>)}
+        {words.map((w,i) => <span key={i} className="abw-w" style={{ display:'inline-block', opacity:0, fontSize, fontWeight, fontFamily:'system-ui', letterSpacing:'-0.035em', color:'#fff', lineHeight:1.15, wordBreak:'break-word', overflowWrap:'anywhere' }}>{w}</span>)}
       </div>
     </AbsoluteFill>
   );
@@ -272,7 +272,7 @@ export function AnimeKineticTimeline({
   return (
     <AbsoluteFill ref={ref} style={{ background:bg||bg0(primaryColor), overflow:'hidden', justifyContent:'center', alignItems:'center', flexDirection:'column', gap:18, padding:'0 36px' }}>
       <div style={{ position:'absolute', inset:0, background:`radial-gradient(ellipse at 50% 50%, rgba(${r},${g},${b},0.1) 0%, transparent 60%)` }} />
-      <div className="akt-h" style={{ fontSize:headlineSize, fontWeight:900, fontFamily:'system-ui', letterSpacing:'-0.04em', color:'#fff', textAlign:'center', lineHeight:1.1, opacity:0 }}>{headline}</div>
+      <div className="akt-h" style={{ fontSize:headlineSize, fontWeight:900, fontFamily:'system-ui', letterSpacing:'-0.04em', color:'#fff', textAlign:'center', lineHeight:1.15, wordBreak:'break-word', overflowWrap:'anywhere', opacity:0 }}>{headline}</div>
       {subtext && <div className="akt-s" style={{ fontSize:18, color:'rgba(255,255,255,0.6)', fontFamily:'system-ui', textAlign:'center', maxWidth:300, lineHeight:1.5, opacity:0 }}>{subtext}</div>}
       {showBadge && cta && <div className="akt-b" style={{ padding:'10px 26px', borderRadius:badgeRadius, opacity:0, background:`rgba(${r},${g},${b},0.15)`, border:`1px solid rgba(${r},${g},${b},0.4)` }}><span style={{ fontSize:14, fontWeight:600, color:primaryColor, fontFamily:'system-ui' }}>{cta}</span></div>}
     </AbsoluteFill>
@@ -428,7 +428,7 @@ export function AnimeKeyframeBounce({
   return (
     <AbsoluteFill ref={ref} style={{ background:bg||bg0(primaryColor), overflow:'hidden', justifyContent:'center', alignItems:'center', padding:'0 32px' }}>
       <div style={{ display:'flex', flexWrap:'wrap', gap:'8px 12px', justifyContent:'center' }}>
-        {words.map((w,i) => <span key={i} className="akb-w" style={{ display:'inline-block', fontSize, fontWeight:800, fontFamily:'system-ui', letterSpacing:'-0.03em', color:i%accentEvery===0?primaryColor:'#fff', lineHeight:1.15 }}>{w}</span>)}
+        {words.map((w,i) => <span key={i} className="akb-w" style={{ display:'inline-block', fontSize, fontWeight:800, fontFamily:'system-ui', letterSpacing:'-0.03em', color:i%accentEvery===0?primaryColor:'#fff', lineHeight:1.15, wordBreak:'break-word', overflowWrap:'anywhere' }}>{w}</span>)}
       </div>
     </AbsoluteFill>
   );
@@ -460,7 +460,7 @@ export function AnimeCinematicTimeline({
     <AbsoluteFill ref={ref} style={{ background:bg||bg0(primaryColor), overflow:'hidden', justifyContent:'center', alignItems:'center', flexDirection:'column', gap:16, padding:'0 36px' }}>
       <div style={{ position:'absolute', inset:0, background:`radial-gradient(ellipse at 50% 40%, rgba(${r},${g},${b},0.08) 0%, transparent 60%)` }} />
       {showLine && <div className="act-line" style={{ width:'70%', height:1, background:`linear-gradient(90deg,transparent,rgba(${h2r(lc)},.5),transparent)`, opacity:0, transformOrigin:'center' }} />}
-      <div className="act-h" style={{ fontSize:headlineSize, fontWeight:900, fontFamily:'system-ui', letterSpacing:'-0.04em', color:'#fff', textAlign:'center', lineHeight:1.1, opacity:0 }}>{headline}</div>
+      <div className="act-h" style={{ fontSize:headlineSize, fontWeight:900, fontFamily:'system-ui', letterSpacing:'-0.04em', color:'#fff', textAlign:'center', lineHeight:1.15, wordBreak:'break-word', overflowWrap:'anywhere', opacity:0 }}>{headline}</div>
       {subtext && <div className="act-s" style={{ fontSize:16, color:'rgba(255,255,255,0.5)', fontFamily:'system-ui', textAlign:'center', opacity:0 }}>{subtext}</div>}
       {nums.length > 0 && (
         <div style={{ display:'flex', gap:24, marginTop:8 }}>

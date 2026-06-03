@@ -367,7 +367,15 @@ async def render_video(
     # Composición generativa — Claude genera todo en una sola llamada
     composition_props = None
     composition = None
-    anim_selection = None if is_simple_mode else get_cached(url_key, cache_context)
+
+    # Si el usuario mandó su propia composición desde el editor, usarla directamente
+    user_composition = params.get("user_composition") if params else None
+    if user_composition and isinstance(user_composition, dict) and user_composition.get("scenes"):
+        print(f"[renderer] usando composición del editor ({len(user_composition.get('scenes',[]))} escenas)")
+        composition_props = composition_to_props(user_composition, page_data)
+        anim_selection = user_composition
+    else:
+        anim_selection = None if is_simple_mode else get_cached(url_key, cache_context)
 
     if anim_selection:
         print(f"[renderer] cache HIT para {url_key[:40]}")

@@ -195,6 +195,24 @@ Los "duration" de todas las escenas deben sumar exactamente 990."""
 
     try:
         composition = json.loads(raw)
+        # Validar que cada escena tenga contenido real
+        scenes = composition.get("scenes", [])
+        for scene in scenes:
+            params = scene.get("params", {})
+            if not isinstance(params, dict):
+                scene["params"] = {}
+                continue
+            # Si headline/siteName está vacío, rellenar con datos del sitio
+            if not params.get("headline") and not params.get("siteName"):
+                key = scene.get("key", "")
+                if key in ("outro",):
+                    params["siteName"] = page_data.get("siteName", "")
+                else:
+                    params["headline"] = page_data.get("headline", "")
+            if not params.get("benefits") and "benefits" in str(scene.get("animation","")):
+                params["benefits"] = page_data.get("benefits", [])
+            if not params.get("stats") and "Counter" in str(scene.get("animation","")):
+                params["stats"] = [{"value": n, "label": ""} for n in page_data.get("numbers", [])][:3]
         print(f"[composition] {len(composition.get('scenes', []))} escenas generadas")
         print(f"[composition] reasoning: {composition.get('creative_reasoning','')[:80]}")
         return composition
