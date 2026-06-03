@@ -697,13 +697,11 @@ registerRoot(RemotionRoot)
         if proc.returncode != 0:
             out = stdout.decode(errors='replace')
             err = stderr.decode(errors='replace')
-            # Buscar líneas con el error real
             combined = out + err
-            error_lines = [l for l in combined.splitlines()
-                          if any(k in l for k in ['Error:', 'error:', 'Cannot', 'SyntaxError', 'TypeError', 'Expected', 'Unexpected', 'Module'])]
-            err_summary = '\n'.join(error_lines[:8]) if error_lines else combined[-400:]
-            print(f"[cinematic] ERROR COMPLETO:\n{err_summary}")
-            raise RuntimeError(err_summary)
+            # Mostrar TODO el output para debug
+            print(f"[cinematic] ERROR STDOUT:\n{out[-800:]}")
+            print(f"[cinematic] ERROR STDERR:\n{err[-800:]}")
+            raise RuntimeError(combined[-500:])
 
         jobs[job_id].update({
             "status": "uploading", "progress": 85, "step": "upload",
