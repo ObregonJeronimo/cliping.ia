@@ -551,17 +551,33 @@ async def forge_get(anim_id: str):
 
 @app.delete("/api/forge/animation/{anim_id}")
 async def forge_delete(anim_id: str):
-    """Elimina una animación de la biblioteca."""
+    """Elimina una animación de la biblioteca — Firestore + archivos locales."""
+    deleted = False
+
+    # Borrar de Firestore
+    try:
+        db = get_firestore()
+        if db:
+            db.collection("cinematicas").document(anim_id).delete()
+            deleted = True
+            print(f"[forge_delete] Firestore: cinematicas/{anim_id} eliminado")
+    except Exception as e:
+        print(f"[forge_delete] Firestore error: {e}")
+
+    # Borrar archivos locales
     from pathlib import Path as _Path
     lib_dir = _Path(__file__).parent.parent / "cinematic_library"
     f = lib_dir / f"{anim_id}.json"
     if f.exists():
-        data = __import__("json").loads(f.read_text())
-        jsx = lib_dir / f"{data.get('component_name','unknown')}.jsx"
-        f.unlink(missing_ok=True)
-        jsx.unlink(missing_ok=True)
-        return {"ok": True}
-    return {"error": "not found"}
+        try:
+            data = __import__("json").loads(f.read_text())
+            jsx = lib_dir / f"{data.get('component_name','unknown')}.jsx"
+            f.unlink(missing_ok=True)
+            jsx.unlink(missing_ok=True)
+            deleted = True
+        except: pass
+
+    return {"ok": deleted}
 
 
 # ─── RENDER CINEMATIC ─────────────────────────────────────────────────────────
