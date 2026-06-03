@@ -496,8 +496,7 @@ async def forge_status(anim_id: str):
 
 @app.get("/api/forge/library")
 async def forge_library():
-    """Lista animaciones — Firestore primero, local como fallback."""
-    # Intentar desde Firestore
+    """Lista animaciones — Firestore primero, local solo si Firestore no disponible."""
     try:
         db = get_firestore()
         if db:
@@ -516,11 +515,11 @@ async def forge_library():
                     "created_at":     d.get("createdAt", ""),
                     "video_url":      d.get("videoUrl", ""),
                 })
-            if items:
-                return {"animations": items, "source": "firestore"}
+            # Si Firestore está disponible, devolver lo que haya (aunque sea vacío)
+            return {"animations": items, "source": "firestore"}
     except Exception as e:
         print(f"[library] Firestore error: {e}")
-    # Fallback a archivos locales
+    # Fallback local SOLO si Firestore no disponible
     return {"animations": list_library(), "source": "local"}
 
 @app.get("/api/forge/animation/{anim_id}")
