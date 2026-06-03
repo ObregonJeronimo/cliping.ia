@@ -65,14 +65,14 @@
 .delBtn:hover { background:rgba(239,68,68,0.15); }
 
 /* ─── RIGHT ─── */
-.right { flex:1; min-width:0; background:#fff; border:1px solid #e8e8e8; border-radius:12px; overflow:hidden; display:flex; flex-direction:column; }
+.right { flex:1; min-width:0; background:#fff; border:1px solid #e8e8e8; border-radius:12px; overflow:hidden; display:flex; flex-direction:column; max-height:calc(100vh - 180px); }
 
 .empty { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; color:#aaa; text-align:center; padding:40px; }
 .emptyTitle { font-size:14px; font-weight:600; color:#999; }
 .emptySub { font-size:12px; color:#bbb; }
 
 /* Preview completo */
-.preview { display:flex; flex-direction:column; height:100%; min-height:0; }
+.preview { display:flex; flex-direction:column; overflow:hidden; height:100%; }
 
 .previewHeader { display:flex; justify-content:space-between; align-items:flex-start; padding:14px 16px 12px; border-bottom:1px solid #f0f0f0; flex-shrink:0; }
 .previewName { font-size:14px; font-weight:700; color:#111; }
@@ -87,19 +87,19 @@
 .copyBtn { font-size:11px; font-weight:600; color:#6366f1; background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.2); border-radius:6px; padding:4px 10px; cursor:pointer; transition:all 0.15s; }
 .copyBtn:hover { background:rgba(99,102,241,0.15); }
 .copyBtnDone { background:rgba(34,197,94,0.1); border-color:rgba(34,197,94,0.3); color:#16a34a; }
-.codeWrap { height:180px; overflow:auto; padding:10px 14px; background:#fafafa; }
+.codeWrap { height:150px; overflow:auto; padding:10px 14px; background:#fafafa; }
 .code { font-size:10px; line-height:1.6; color:#333; font-family:'Courier New','Consolas',monospace; white-space:pre; margin:0; }
 
 /* Reproductor */
-.playerSection { padding:14px 16px; flex-shrink:0; background:#fff; }
+.playerSection { padding:12px 16px; flex-shrink:0; background:#fff; }
 .playerEmpty { display:flex; flex-direction:column; align-items:center; gap:8px; }
-.renderBtn { padding:11px 28px; border-radius:9px; border:none; background:#111; color:#fff; font-size:13px; font-weight:600; cursor:pointer; transition:all 0.2s; display:flex; align-items:center; gap:8px; }
+.renderBtn { padding:10px 24px; border-radius:9px; border:none; background:#111; color:#fff; font-size:13px; font-weight:600; cursor:pointer; transition:all 0.2s; display:flex; align-items:center; gap:8px; }
 .renderBtn:hover:not(:disabled) { background:#222; transform:translateY(-1px); }
 .renderBtn:disabled { background:#ccc; cursor:not-allowed; }
 .renderBtnLoading { background:#6366f1; }
 .renderNote { font-size:11px; color:#ef4444; }
 .playerWrap { border-radius:8px; overflow:hidden; background:#000; display:flex; justify-content:center; }
-.video { display:block; height:420px; width:auto; max-width:100%; object-fit:contain; background:#000; }
+.video { display:block; height:340px; width:auto; max-width:100%; object-fit:contain; background:#000; }
 
 /* ─── Nueva UI ─── */
 .nameRow { display:flex; gap:6px; align-items:center; flex-shrink:0; }
