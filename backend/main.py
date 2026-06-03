@@ -486,12 +486,57 @@ async def forge_status(anim_id: str):
 
 @app.get("/api/forge/library")
 async def forge_library():
-    """Lista todas las animaciones en la biblioteca."""
-    return {"animations": list_library()}
+    """Lista animaciones — Firestore primero, local como fallback."""
+    # Intentar desde Firestore
+    try:
+        db = get_firestore()
+        if db:
+            docs = db.collection("cinematicas").order_by("createdAt", direction="DESCENDING").limit(100).stream()
+            items = []
+            for doc in docs:
+                d = doc.to_dict()
+                items.append({
+                    "id":             d.get("id", doc.id),
+                    "component_name": d.get("componentName", ""),
+                    "rubro":          d.get("rubro", ""),
+                    "idea":           d.get("idea", "")[:100],
+                    "success":        True,
+                    "attempts":       d.get("attempts", 0),
+                    "elapsed_s":      d.get("elapsedS", 0),
+                    "created_at":     d.get("createdAt", ""),
+                    "video_url":      d.get("videoUrl", ""),
+                })
+            if items:
+                return {"animations": items, "source": "firestore"}
+    except Exception as e:
+        print(f"[library] Firestore error: {e}")
+    # Fallback a archivos locales
+    return {"animations": list_library(), "source": "local"}
 
 @app.get("/api/forge/animation/{anim_id}")
 async def forge_get(anim_id: str):
-    """Obtiene una animación completa con su código."""
+    """Obtiene una animación completa — Firestore primero, local como fallback."""
+    try:
+        db = get_firestore()
+        if db:
+            doc = db.collection("cinematicas").document(anim_id).get()
+            if doc.exists:
+                d = doc.to_dict()
+                return {
+                    "id":             d.get("id", anim_id),
+                    "component_name": d.get("componentName", ""),
+                    "rubro":          d.get("rubro", ""),
+                    "idea":           d.get("idea", ""),
+                    "code":           d.get("code", ""),
+                    "success":        True,
+                    "attempts":       d.get("attempts", 0),
+                    "elapsed_s":      d.get("elapsedS", 0),
+                    "video_url":      d.get("videoUrl", ""),
+                    "created_at":     d.get("createdAt", ""),
+                }
+    except Exception as e:
+        print(f"[forge_get] Firestore error: {e}")
+    # Fallback local
     anim = get_animation(anim_id)
     if not anim:
         return {"error": "not found"}

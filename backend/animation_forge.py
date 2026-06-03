@@ -38,10 +38,13 @@ REGLAS TÉCNICAS ESTRICTAS:
 4. Props: ({ primaryColor = '#6366f1', bg = '#07070f', siteName = 'Marca' })
 5. El componente debe durar exactamente 90 frames (3 segundos a 30fps)
 6. Usá SVG para las formas — paths, círculos, polígonos
-7. La interpolación es manual: lerp(a, b, t) donde t = frame/90
-8. Para morphing de paths: interpolá los números del path directamente
-9. NO uses hooks personalizados, NO uses useRef, NO uses useEffect
-10. Todo debe ser determinista — mismo frame = mismo output visual
+7. CRÍTICO — el SVG SIEMPRE debe ser VERTICAL: viewBox="0 0 1080 1920" width="1080" height="1920"
+   El centro es cx=540 cy=960. Las formas deben ocupar toda la altura vertical.
+8. La interpolación es manual: lerp(a, b, t) donde t = frame/90
+9. Para morphing de paths: interpolá los números del path directamente
+10. NO uses hooks personalizados, NO uses useRef, NO uses useEffect
+11. Todo debe ser determinista — mismo frame = mismo output visual
+12. Las formas deben ser GRANDES — ocupar al menos 30% del ancho (324px mínimo)
 
 HELPER DISPONIBLE (ya definido, no lo reimplementes):
 const lerp = (a, b, t) => a + (b - a) * t

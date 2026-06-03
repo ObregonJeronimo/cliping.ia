@@ -106,7 +106,8 @@ export default function Cinematicas() {
     const r = await fetch(`${API_URL}/api/forge/animation/${id}`, { headers: HEADERS })
     const d = await r.json()
     setSelectedAnim(d)
-    // Si ya tiene video en Cloudinary, mostrarlo directo
+    setRendering(false)
+    // Si ya tiene video en Cloudinary o local, mostrarlo directo
     setVideoUrl(d.video_url || null)
   }
 
