@@ -1,5 +1,6 @@
 import asyncio
 import json
+import re
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -618,6 +619,10 @@ async def _render_cinematic_job(job_id: str, anim: dict):
 
     jobs[job_id].update({"step": "setup", "progress": 5, "status": "processing"})
 
+    # Limpiar imports de remotion del código generado (el wrapper ya los tiene)
+    code_clean = anim["code"]
+    code_clean = re.sub(r"import\s*\{[^}]*\}\s*from\s*['\"]remotion['\"];?\s*\n?", "", code_clean)
+
     # 1. Escribir el JSX en src/compositions/
     jsx_content = f"""import {{ AbsoluteFill, useCurrentFrame, useVideoConfig, spring }} from 'remotion'
 
@@ -626,7 +631,7 @@ const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
 const easeInOut = (t) => t < 0.5 ? 2*t*t : -1+(4-2*t)*t
 const easeOut = (t) => 1 - Math.pow(1 - t, 3)
 
-{anim["code"]}
+{code_clean}
 
 export default {component_name}
 """
@@ -690,8 +695,15 @@ registerRoot(RemotionRoot)
         entry_file.unlink(missing_ok=True)
 
         if proc.returncode != 0:
-            err = (stdout.decode(errors='replace') + stderr.decode(errors='replace'))[-400:]
-            raise RuntimeError(err)
+            out = stdout.decode(errors='replace')
+            err = stderr.decode(errors='replace')
+            # Buscar líneas con el error real
+            combined = out + err
+            error_lines = [l for l in combined.splitlines()
+                          if any(k in l for k in ['Error:', 'error:', 'Cannot', 'SyntaxError', 'TypeError', 'Expected', 'Unexpected', 'Module'])]
+            err_summary = '\n'.join(error_lines[:8]) if error_lines else combined[-400:]
+            print(f"[cinematic] ERROR COMPLETO:\n{err_summary}")
+            raise RuntimeError(err_summary)
 
         jobs[job_id].update({
             "status": "uploading", "progress": 85, "step": "upload",
