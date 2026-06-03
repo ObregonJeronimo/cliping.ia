@@ -487,16 +487,62 @@ async def forge_generate(req: ForgeRequest):
         forge_jobs[anim_id]["status"] = "done" if result["success"] else "failed"
         forge_jobs[anim_id]["result"] = result
 
-        # Si compiló OK → renderizar y subir automáticamente
+        # Si compiló OK → renderizar con loop de reintento
         if result["success"]:
-            render_job_id = str(uuid.uuid4())
-            jobs[render_job_id] = {
-                "id": render_job_id, "status": "queued", "step": None, "progress": 0,
-                "videoPath": None, "videoFilename": None, "error": None,
-                "createdAt": datetime.utcnow().isoformat(),
-            }
-            forge_jobs[anim_id]["render_job_id"] = render_job_id
-            asyncio.create_task(_render_cinematic_job(render_job_id, result))
+            MAX_RENDER_ATTEMPTS = 3
+            render_success = False
+
+            for render_attempt in range(1, MAX_RENDER_ATTEMPTS + 1):
+                render_job_id = str(uuid.uuid4())
+                jobs[render_job_id] = {
+                    "id": render_job_id, "status": "queued", "step": None, "progress": 0,
+                    "videoPath": None, "videoFilename": None, "error": None,
+                    "createdAt": datetime.utcnow().isoformat(),
+                }
+                forge_jobs[anim_id]["render_job_id"] = render_job_id
+                forge_jobs[anim_id]["progress"].append({
+                    "msg": f"🎬 Renderizando (intento {render_attempt}/{MAX_RENDER_ATTEMPTS})...",
+                    "step": 6, "total": 7, "id": anim_id
+                })
+
+                await _render_cinematic_job(render_job_id, result)
+
+                if jobs[render_job_id]["status"] == "done":
+                    render_success = True
+                    forge_jobs[anim_id]["progress"].append({
+                        "msg": f"✅ Video listo!", "step": 7, "total": 7, "id": anim_id
+                    })
+                    break
+                else:
+                    # Render falló — regenerar JSX antes del próximo intento
+                    err = jobs[render_job_id].get("error", "")
+                    forge_jobs[anim_id]["progress"].append({
+                        "msg": f"⚠️ Render falló (intento {render_attempt}) — regenerando JSX...",
+                        "step": 5, "total": 7, "id": anim_id
+                    })
+                    if render_attempt < MAX_RENDER_ATTEMPTS:
+                        # Regenerar con el error como contexto
+                        result = await forge_animation(
+                            idea=req.idea,
+                            component_name=req.component_name,
+                            rubro=req.rubro,
+                            anim_id=anim_id,
+                            tags=req.tags,
+                            desarrollo=req.desarrollo + f"\n\nEl intento anterior falló al renderizar con error: {err[:200]}. Asegurate de que el SVG sea válido y todas las etiquetas estén correctamente cerradas.",
+                            primaryColor=req.primaryColor,
+                            secondaryColor=req.secondaryColor,
+                            accentColor=req.accentColor,
+                            progress_callback=on_progress,
+                        )
+                        forge_jobs[anim_id]["result"] = result
+                        if not result["success"]:
+                            break  # Si no compila, no tiene sentido seguir
+
+            if not render_success:
+                forge_jobs[anim_id]["progress"].append({
+                    "msg": f"❌ No se pudo renderizar después de {MAX_RENDER_ATTEMPTS} intentos",
+                    "step": 7, "total": 7, "id": anim_id
+                })
 
     _asyncio.create_task(run())
     return {"anim_id": anim_id}
