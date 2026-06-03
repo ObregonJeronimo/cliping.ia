@@ -462,6 +462,17 @@ async def forge_generate(req: ForgeRequest):
         forge_jobs[anim_id]["status"] = "done" if result["success"] else "failed"
         forge_jobs[anim_id]["result"] = result
 
+        # Si compiló OK → renderizar y subir automáticamente
+        if result["success"]:
+            render_job_id = str(uuid.uuid4())
+            jobs[render_job_id] = {
+                "id": render_job_id, "status": "queued", "step": None, "progress": 0,
+                "videoPath": None, "videoFilename": None, "error": None,
+                "createdAt": datetime.utcnow().isoformat(),
+            }
+            forge_jobs[anim_id]["render_job_id"] = render_job_id
+            asyncio.create_task(_render_cinematic_job(render_job_id, result))
+
     _asyncio.create_task(run())
     return {"anim_id": anim_id}
 
@@ -526,13 +537,14 @@ async def render_cinematic(anim_id: str):
 
 async def _render_cinematic_job(job_id: str, anim: dict):
     from pathlib import Path as _Path
-    import asyncio as _asyncio, shutil as _shutil
+    import asyncio as _asyncio
     REMOTION_DIR = _Path(__file__).parent.parent / "remotion"
     OUTPUTS_DIR  = _Path(__file__).parent / "outputs"
     OUTPUTS_DIR.mkdir(exist_ok=True)
     COMPS_DIR = REMOTION_DIR / "src" / "compositions"
     output_path = OUTPUTS_DIR / f"{job_id}_cinematic.mp4"
     component_name = anim["component_name"]
+    anim_id = anim["id"]  # ← fix
 
     jobs[job_id].update({"step": "setup", "progress": 5, "status": "processing"})
 

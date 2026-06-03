@@ -85,7 +85,15 @@ export default function Cinematicas() {
             clearInterval(pollRef.current)
             setActiveJob(null)
             loadLibrary()
-            if (sd.result?.success) setSelectedAnim(sd.result)
+            if (sd.result?.success) {
+              setSelectedAnim(sd.result)
+              // Si hay render automático, empezar a pollearlo
+              if (sd.render_job_id) {
+                setRendering(true)
+                setVideoUrl(null)
+                startRenderPoll(sd.render_job_id)
+              }
+            }
           }
         } catch {}
       }, 1500)
@@ -115,35 +123,37 @@ export default function Cinematicas() {
     setTimeout(() => setCopied(false), 2000)
   }
 
+  function startRenderPoll(jobId) {
+    clearInterval(renderPollRef.current)
+    renderPollRef.current = setInterval(async () => {
+      try {
+        const sr = await fetch(`${API_URL}/api/jobs/${jobId}`, { headers: HEADERS })
+        const sd = await sr.json()
+        if (sd.status === 'done') {
+          clearInterval(renderPollRef.current)
+          setRendering(false)
+          const url = sd.cloudinaryUrl || `${API_URL}/api/video/${sd.videoFilename}`
+          setVideoUrl(url)
+          loadLibrary()
+        } else if (sd.status === 'error') {
+          clearInterval(renderPollRef.current)
+          setRendering(false)
+        }
+      } catch {}
+    }, 2000)
+  }
+
   async function renderAnim() {
     if (!selectedAnim?.id || rendering) return
     setRendering(true)
     setVideoUrl(null)
-
     try {
       const r = await fetch(`${API_URL}/api/forge/render/${selectedAnim.id}`, {
         method: 'POST', headers: HEADERS,
       })
       const d = await r.json()
       if (d.error) { setRendering(false); return }
-      const jobId = d.job_id
-
-      renderPollRef.current = setInterval(async () => {
-        try {
-          const sr = await fetch(`${API_URL}/api/jobs/${jobId}`, { headers: HEADERS })
-          const sd = await sr.json()
-          if (sd.status === 'done') {
-            clearInterval(renderPollRef.current)
-            setRendering(false)
-            // Preferir URL de Cloudinary, fallback a local
-            const url = sd.cloudinaryUrl || `${API_URL}/api/video/${sd.videoFilename}`
-            setVideoUrl(url)
-          } else if (sd.status === 'error') {
-            clearInterval(renderPollRef.current)
-            setRendering(false)
-          }
-        } catch {}
-      }, 2000)
+      startRenderPoll(d.job_id)
     } catch { setRendering(false) }
   }
 
