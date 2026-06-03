@@ -176,13 +176,24 @@ def build_objects_prompt_block(objects: dict[str, dict]) -> str:
         return ""
 
     lines = [
-        "OBJETOS VECTORIALES DISPONIBLES (usalos como elementos reales de la "
-        "animación; podés escalarlos, moverlos, recolorearlos con `color`, "
-        "y morphear/transicionar entre ellos):",
+        "OBJETOS DE LIBRERÍA (SVG real, uso comercial libre). Estos son los "
+        "PROTAGONISTAS de la animación:",
+        "",
+        "REGLAS OBLIGATORIAS:",
+        "- EMBEBÉ cada SVG provisto TAL CUAL (copiá su contenido dentro de un <svg viewBox=...>). "
+        "NO dibujes a mano una versión propia del objeto.",
+        "- Animalos: escala, posición, rotación, opacidad, recolor (con el atributo `color` o `fill`), "
+        "y morph/transición entre un objeto y otro.",
+        "- Los objetos llevan fill=\"currentColor\": para recolorearlos seteá `color` en el contenedor "
+        "(ej: <g style={{ color: primaryColor }}>...</g>).",
+        "- Hacelos GRANDES y centrales. Las formas dibujadas a mano quedan SOLO para fondo, glow y partículas de apoyo.",
+        "- Para ubicarlos/escalarlos dentro del canvas 1080x1920, anidá su <svg> con x, y, width y height "
+        "(el viewBox interno se mantiene). Ej: <svg x={320} y={760} width={440} height={440} viewBox=\"0 0 24 24\" style={{ color: primaryColor }}>{...body...}</svg>",
+        "",
     ]
     for concept, obj in objects.items():
         lines.append(
-            f'\n- "{concept}"  (viewBox="{obj["viewBox"]}"):\n'
+            f'\n● "{concept}"  (viewBox="{obj["viewBox"]}"):\n'
             f'  <svg viewBox="{obj["viewBox"]}">{obj["body"]}</svg>'
         )
     return "\n".join(lines)

@@ -98,6 +98,63 @@ REGLAS:
 - NO agregues imports nuevos
 - OUTPUT: Solo el código JSX corregido, sin explicaciones"""
 
+# ─── Planificador de objetos (qué buscar en la librería) ──────────────────────
+OBJECT_PLANNER_SYSTEM = """Sos un asistente que traduce una idea de animación en términos de búsqueda de objetos vectoriales.
+
+Devolvés SOLO un array JSON de 1 a 4 strings, EN INGLÉS, cada uno un objeto concreto,
+simple y buscable como icono (en singular). Pensá qué objetos REALES haría falta mostrar.
+
+Ejemplos:
+- "un carrito que al hacer click se convierte en dinero" -> ["shopping cart", "cursor arrow", "dollar coin"]
+- "crecimiento de una empresa de tecnología" -> ["line chart", "rocket", "computer chip"]
+- "agenda médica online" -> ["calendar", "stethoscope", "smartphone"]
+
+Si la idea es PURAMENTE abstracta (solo formas/energía/ondas sin objetos reales), devolvés [].
+Nada de explicaciones, solo el array JSON."""
+
+
+async def plan_object_queries(idea: str, tags: list, desarrollo: str,
+                              rubro: str, user_objects: list) -> list:
+    """
+    Decide qué objetos vectoriales buscar en la librería a partir de la idea.
+    Incorpora y traduce al inglés los objetos que el usuario cargó a mano.
+    Devuelve una lista de términos de búsqueda en inglés (máx 4). Si algo falla,
+    cae a los objetos del usuario tal cual.
+    """
+    partes = []
+    if (desarrollo or "").strip():
+        partes.append(f'Descripción: "{desarrollo.strip()}"')
+    if tags:
+        partes.append("Conceptos: " + ", ".join(tags))
+    if user_objects:
+        partes.append("Objetos que pidió el usuario (traducilos e incluilos): " + ", ".join(user_objects))
+    if rubro:
+        partes.append(f"Rubro: {rubro}")
+    if not partes:
+        return list(user_objects)[:4]
+
+    try:
+        resp = await client.messages.create(
+            model=HAIKU_MODEL,
+            max_tokens=200,
+            system=OBJECT_PLANNER_SYSTEM,
+            messages=[{"role": "user", "content": "\n".join(partes)}],
+        )
+        raw = resp.content[0].text.strip()
+        m = re.search(r"\[.*\]", raw, re.S)
+        if not m:
+            return list(user_objects)[:4]
+        arr = json.loads(m.group(0))
+        out = []
+        for x in arr:
+            if isinstance(x, str) and x.strip() and x.strip().lower() not in [o.lower() for o in out]:
+                out.append(x.strip())
+        return out[:4]
+    except Exception as e:
+        print(f"[forge] plan_object_queries error: {e}")
+        return list(user_objects)[:4]
+
+
 # ─── Compilar con esbuild (sandbox rápido) ────────────────────────────────────
 async def compile_jsx(code: str, component_name: str) -> tuple[bool, str]:
     """Compila el JSX con esbuild. Retorna (ok, error_message)."""
@@ -202,17 +259,26 @@ Rubro de referencia: {rubro}"""
         narrativa_section = f"""Creá una narrativa visual cinematográfica original y sorprendente para el rubro: {rubro}
 Sé muy creativo — buscá algo que nadie haya visto antes."""
 
-    # ── Objetos reales (Iconify): carrito, mouse, $, etc. ────────────────────
+    # ── Objetos reales (Iconify): se derivan AUTOMÁTICAMENTE de la idea ───────
+    # No hace falta que el usuario los cargue a mano: a partir de la idea/tags/
+    # descripción decidimos qué objetos vectoriales buscar (en inglés, que es
+    # como están etiquetados los iconos) y los inyectamos como protagonistas.
     objects_block = ""
-    if objects and _ICONIFY_OK:
+    if _ICONIFY_OK and (desarrollo_valido or tags_str or objects):
         try:
-            await emit("🔎 Buscando objetos vectoriales...", 0)
-            fetched = await fetch_objects_for_prompt(list(objects))
-            objects_block = build_objects_prompt_block(fetched)
-            if fetched:
-                await emit(f"📦 {len(fetched)} objeto(s) listo(s)", 0)
+            await emit("🔎 Eligiendo objetos para animar...", 0)
+            queries = await plan_object_queries(idea, tags, desarrollo_limpio, rubro, objects or [])
+            if not queries and objects:
+                queries = list(objects)[:4]
+            if queries:
+                fetched = await fetch_objects_for_prompt(queries)
+                objects_block = build_objects_prompt_block(fetched)
+                if fetched:
+                    await emit(f"📦 {len(fetched)} objeto(s) de librería listos: {', '.join(fetched.keys())}", 0)
+                else:
+                    await emit("📦 Sin coincidencias en la librería — uso formas", 0)
         except Exception as oe:
-            print(f"[forge] Iconify fetch error: {oe}")
+            print(f"[forge] Iconify/planner error: {oe}")
 
     user_prompt = f"""Creá una animación React para Remotion llamada `{component_name}`.
 
