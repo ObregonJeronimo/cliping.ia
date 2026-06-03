@@ -36,11 +36,16 @@ export default function Cinematicas() {
   const [customName, setCustomName] = useState('')
   const [customRubro, setCustomRubro] = useState('ecommerce')
   const [mode, setMode] = useState('primera')
+  const [copied, setCopied] = useState(false)
+  const [renderJob, setRenderJob] = useState(null)
+  const [videoUrl, setVideoUrl] = useState(null)
+  const [rendering, setRendering] = useState(false)
   const pollRef = useRef(null)
+  const renderPollRef = useRef(null)
 
   useEffect(() => {
     loadLibrary()
-    return () => clearInterval(pollRef.current)
+    return () => { clearInterval(pollRef.current); clearInterval(renderPollRef.current) }
   }, [])
 
   async function loadLibrary() {
@@ -60,12 +65,11 @@ export default function Cinematicas() {
     setProgress([{ msg: '🚀 Iniciando forja...', step: 0, total: 7 }])
     setActiveJob(null)
     setSelectedAnim(null)
+    setVideoUrl(null)
 
     try {
       const r = await fetch(`${API_URL}/api/forge/generate`, {
-        method: 'POST',
-        headers: HEADERS,
-        body: JSON.stringify(payload),
+        method: 'POST', headers: HEADERS, body: JSON.stringify(payload),
       })
       const d = await r.json()
       const animId = d.anim_id
@@ -76,10 +80,7 @@ export default function Cinematicas() {
         try {
           const sr = await fetch(`${API_URL}/api/forge/status/${animId}`, { headers: HEADERS })
           const sd = await sr.json()
-          if (sd.progress?.length > lastLen) {
-            setProgress(sd.progress)
-            lastLen = sd.progress.length
-          }
+          if (sd.progress?.length > lastLen) { setProgress(sd.progress); lastLen = sd.progress.length }
           if (sd.status === 'done' || sd.status === 'failed') {
             clearInterval(pollRef.current)
             setActiveJob(null)
@@ -95,14 +96,52 @@ export default function Cinematicas() {
 
   async function loadAnim(id) {
     const r = await fetch(`${API_URL}/api/forge/animation/${id}`, { headers: HEADERS })
-    setSelectedAnim(await r.json())
+    const d = await r.json()
+    setSelectedAnim(d)
+    setVideoUrl(null)
   }
 
   async function deleteAnim(id, e) {
     e.stopPropagation()
     await fetch(`${API_URL}/api/forge/animation/${id}`, { method: 'DELETE', headers: HEADERS })
     loadLibrary()
-    if (selectedAnim?.id === id) setSelectedAnim(null)
+    if (selectedAnim?.id === id) { setSelectedAnim(null); setVideoUrl(null) }
+  }
+
+  function copyCode() {
+    navigator.clipboard.writeText(selectedAnim?.code || '')
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  async function renderAnim() {
+    if (!selectedAnim?.id || rendering) return
+    setRendering(true)
+    setVideoUrl(null)
+
+    try {
+      const r = await fetch(`${API_URL}/api/forge/render/${selectedAnim.id}`, {
+        method: 'POST', headers: HEADERS,
+      })
+      const d = await r.json()
+      if (d.error) { setRendering(false); return }
+      const jobId = d.job_id
+
+      renderPollRef.current = setInterval(async () => {
+        try {
+          const sr = await fetch(`${API_URL}/api/jobs/${jobId}`, { headers: HEADERS })
+          const sd = await sr.json()
+          if (sd.status === 'done') {
+            clearInterval(renderPollRef.current)
+            setRendering(false)
+            setVideoUrl(`${API_URL}/api/video/${sd.videoFilename}`)
+          } else if (sd.status === 'error') {
+            clearInterval(renderPollRef.current)
+            setRendering(false)
+          }
+        } catch {}
+      }, 2000)
+    } catch { setRendering(false) }
   }
 
   const isRunning = !!activeJob
@@ -112,13 +151,13 @@ export default function Cinematicas() {
       <div className={styles.header}>
         <div>
           <h1 className={styles.title}>🎬 Cinemáticas</h1>
-          <p className={styles.sub}>Animaciones de transformación generadas por IA — cada una única, cada una corregida hasta funcionar perfectamente.</p>
+          <p className={styles.sub}>Animaciones de transformación generadas por IA — cada una única, corregida en loop hasta funcionar.</p>
         </div>
         <div className={styles.badge}>{library.filter(a=>a.success).length} listas · {library.length} total</div>
       </div>
 
       <div className={styles.body}>
-        {/* LEFT */}
+        {/* LEFT — Generador */}
         <div className={styles.left}>
           <div className={styles.modeRow}>
             <button className={`${styles.modeBtn} ${mode==='primera'?styles.modeBtnActive:''}`} onClick={()=>setMode('primera')}>
@@ -180,48 +219,92 @@ export default function Cinematicas() {
               ))}
             </div>
           )}
+
+          {/* Biblioteca lista */}
+          {library.length > 0 && (
+            <div className={styles.libMini}>
+              <div className={styles.libMiniHeader}>Biblioteca</div>
+              <div className={styles.libMiniList}>
+                {library.map(anim=>(
+                  <div key={anim.id}
+                    className={`${styles.libMiniCard} ${selectedAnim?.id===anim.id?styles.libMiniCardActive:''} ${!anim.success?styles.libMiniCardFailed:''}`}
+                    onClick={()=>loadAnim(anim.id)}>
+                    <div className={styles.libMiniName}>{anim.component_name}</div>
+                    <div style={{display:'flex',gap:4,alignItems:'center'}}>
+                      <span className={styles.libMiniRubro}>{anim.rubro}</span>
+                      <span style={{fontSize:10}}>{anim.success?'✅':'❌'}</span>
+                      <button className={styles.delBtn} onClick={e=>deleteAnim(anim.id,e)}>×</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* RIGHT */}
+        {/* RIGHT — Código + Reproductor */}
         <div className={styles.right}>
           {selectedAnim ? (
             <div className={styles.preview}>
+              {/* Header */}
               <div className={styles.previewHeader}>
                 <div>
                   <div className={styles.previewName}>{selectedAnim.component_name}</div>
-                  <div className={styles.previewMeta}>{selectedAnim.rubro} · {selectedAnim.attempts} intentos · {selectedAnim.elapsed_s}s · {selectedAnim.success?'✅ OK':'❌ Falló'}</div>
+                  <div className={styles.previewMeta}>
+                    {selectedAnim.rubro} · {selectedAnim.attempts} intentos · {selectedAnim.elapsed_s}s · {selectedAnim.success?'✅ OK':'❌ Falló'}
+                  </div>
                 </div>
-                <button className={styles.closeBtn} onClick={()=>setSelectedAnim(null)}>×</button>
+                <button className={styles.closeBtn} onClick={()=>{setSelectedAnim(null);setVideoUrl(null)}}>×</button>
               </div>
-              <div className={styles.codeWrap}>
-                <pre className={styles.code}>{selectedAnim.code}</pre>
+
+              {/* Código con scroll */}
+              <div className={styles.codeSection}>
+                <div className={styles.codeSectionHeader}>
+                  <span className={styles.codeLang}>JSX</span>
+                  <button className={`${styles.copyBtn} ${copied?styles.copyBtnDone:''}`} onClick={copyCode}>
+                    {copied ? '✓ Copiado' : '⎘ Copiar código'}
+                  </button>
+                </div>
+                <div className={styles.codeWrap}>
+                  <pre className={styles.code}>{selectedAnim.code}</pre>
+                </div>
+              </div>
+
+              {/* Reproductor */}
+              <div className={styles.playerSection}>
+                {videoUrl ? (
+                  <div className={styles.playerWrap}>
+                    <video
+                      src={videoUrl}
+                      controls
+                      autoPlay
+                      loop
+                      className={styles.video}
+                      style={{ width: '100%', borderRadius: 8, background: '#000' }}
+                    />
+                  </div>
+                ) : (
+                  <div className={styles.playerEmpty}>
+                    <button
+                      className={`${styles.renderBtn} ${rendering?styles.renderBtnLoading:''}`}
+                      onClick={renderAnim}
+                      disabled={rendering || !selectedAnim?.success}>
+                      {rendering
+                        ? <><span className={styles.spinner}/>Renderizando (~30s)...</>
+                        : '▶ Renderizar y reproducir'}
+                    </button>
+                    {!selectedAnim?.success && (
+                      <div className={styles.renderNote}>Esta animación no compiló correctamente</div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           ) : (
-            <div className={styles.libraryWrap}>
-              <div className={styles.libraryHeader}>Biblioteca</div>
-              {library.length===0 ? (
-                <div className={styles.empty}>
-                  <div style={{fontSize:48}}>🎬</div>
-                  <div>Generá la primera animación para empezar la biblioteca</div>
-                </div>
-              ) : (
-                <div className={styles.list}>
-                  {library.map(anim=>(
-                    <div key={anim.id} className={`${styles.card} ${!anim.success?styles.cardFailed:''}`} onClick={()=>loadAnim(anim.id)}>
-                      <div className={styles.cardTop}>
-                        <span className={styles.cardName}>{anim.component_name}</span>
-                        <div style={{display:'flex',gap:6,alignItems:'center'}}>
-                          <span className={styles.cardRubro}>{anim.rubro}</span>
-                          <button className={styles.delBtn} onClick={e=>deleteAnim(anim.id,e)}>×</button>
-                        </div>
-                      </div>
-                      <div className={styles.cardIdea}>{anim.idea}</div>
-                      <div className={styles.cardMeta}>{anim.success?'✅':'❌'} {anim.attempts} intentos · {anim.elapsed_s}s</div>
-                    </div>
-                  ))}
-                </div>
-              )}
+            <div className={styles.empty}>
+              <div style={{fontSize:48}}>🎬</div>
+              <div className={styles.emptyTitle}>Generá o seleccioná una animación</div>
+              <div className={styles.emptySub}>El código y el reproductor aparecen acá</div>
             </div>
           )}
         </div>

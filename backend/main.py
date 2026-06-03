@@ -501,6 +501,131 @@ async def forge_delete(anim_id: str):
     return {"error": "not found"}
 
 
+# ─── RENDER CINEMATIC ─────────────────────────────────────────────────────────
+@app.post("/api/forge/render/{anim_id}")
+async def render_cinematic(anim_id: str):
+    """Renderiza una animación de la biblioteca como video MP4."""
+    from animation_forge import get_animation
+    from pathlib import Path as _Path
+    import asyncio as _asyncio, shutil as _shutil
+
+    anim = get_animation(anim_id)
+    if not anim:
+        return {"error": "Animación no encontrada"}
+    if not anim.get("success"):
+        return {"error": "Esta animación no compiló correctamente"}
+
+    job_id = str(uuid.uuid4())
+    jobs[job_id] = {
+        "id": job_id, "status": "queued", "step": None, "progress": 0,
+        "videoPath": None, "videoFilename": None, "error": None,
+        "createdAt": datetime.utcnow().isoformat(),
+    }
+    asyncio.create_task(_render_cinematic_job(job_id, anim))
+    return {"job_id": job_id}
+
+async def _render_cinematic_job(job_id: str, anim: dict):
+    from pathlib import Path as _Path
+    import asyncio as _asyncio, shutil as _shutil
+    REMOTION_DIR = _Path(__file__).parent.parent / "remotion"
+    OUTPUTS_DIR  = _Path(__file__).parent / "outputs"
+    OUTPUTS_DIR.mkdir(exist_ok=True)
+    COMPS_DIR = REMOTION_DIR / "src" / "compositions"
+    output_path = OUTPUTS_DIR / f"{job_id}_cinematic.mp4"
+    component_name = anim["component_name"]
+
+    jobs[job_id].update({"step": "setup", "progress": 5, "status": "processing"})
+
+    # 1. Escribir el JSX en src/compositions/
+    jsx_content = f"""import {{ AbsoluteFill, useCurrentFrame, useVideoConfig, spring }} from 'remotion'
+
+const lerp = (a, b, t) => a + (b - a) * t
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
+const easeInOut = (t) => t < 0.5 ? 2*t*t : -1+(4-2*t)*t
+const easeOut = (t) => 1 - Math.pow(1 - t, 3)
+
+{anim["code"]}
+
+export default {component_name}
+"""
+    comp_file = COMPS_DIR / f"Cinematic_{component_name}.jsx"
+    comp_file.write_text(jsx_content, encoding="utf-8")
+
+    # 2. Escribir Root temporal que registra esta composición
+    root_content = f"""import {{Composition}} from 'remotion'
+import {component_name} from './compositions/Cinematic_{component_name}.jsx'
+import {{MarketingVideo}} from './compositions/MarketingVideo'
+
+export const RemotionRoot = () => (
+  <>
+    <Composition id="CinematicPreview" component={{{component_name}}}
+      durationInFrames={{90}} fps={{30}} width={{1080}} height={{1920}}
+      defaultProps={{{{ primaryColor: '#6366f1', bg: '#07070f', siteName: 'Preview' }}}}
+    />
+    <Composition id="MarketingVideo" component={{MarketingVideo}}
+      durationInFrames={{990}} fps={{30}} width={{1080}} height={{1920}} defaultProps={{{{}}}}
+    />
+  </>
+)
+"""
+    root_file = REMOTION_DIR / "src" / "Root_cinematic.jsx"
+    root_file.write_text(root_content, encoding="utf-8")
+    entry_file = REMOTION_DIR / "index_cinematic.jsx"
+    entry_file.write_text("""import {registerRoot} from 'remotion'
+import {RemotionRoot} from './src/Root_cinematic.jsx'
+registerRoot(RemotionRoot)
+""", encoding="utf-8")
+
+    jobs[job_id].update({"step": "render", "progress": 20, "status": "processing"})
+
+    try:
+        candidates = [
+            str(REMOTION_DIR / "node_modules" / ".bin" / "remotion.cmd"),
+            str(REMOTION_DIR / "node_modules" / ".bin" / "remotion"),
+        ]
+        remotion_bin = next((c for c in candidates if _Path(c).exists()), "npx")
+        args = [remotion_bin, "render", "index_cinematic.jsx", "CinematicPreview",
+                str(output_path.absolute()),
+                "--codec", "h264", "--fps", "30",
+                "--width", "1080", "--height", "1920",
+                "--duration-in-frames", "90",
+                "--concurrency", "4",
+                "--jpeg-quality", "90",
+                "--crf", "22",
+                "--log", "error"]
+
+        print(f"[cinematic] Renderizando {component_name}...")
+        proc = await _asyncio.create_subprocess_exec(
+            *args, cwd=str(REMOTION_DIR),
+            stdout=_asyncio.subprocess.PIPE,
+            stderr=_asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await proc.communicate()
+
+        # Limpiar archivos temporales
+        comp_file.unlink(missing_ok=True)
+        root_file.unlink(missing_ok=True)
+        entry_file.unlink(missing_ok=True)
+
+        if proc.returncode != 0:
+            err = (stdout.decode(errors='replace') + stderr.decode(errors='replace'))[-400:]
+            raise RuntimeError(err)
+
+        jobs[job_id].update({
+            "status": "done", "progress": 100, "step": "export",
+            "videoPath": str(output_path),
+            "videoFilename": output_path.name,
+        })
+        print(f"[cinematic] OK → {output_path.name}")
+    except Exception as e:
+        # Limpiar igual si falla
+        comp_file.unlink(missing_ok=True)
+        root_file.unlink(missing_ok=True)
+        entry_file.unlink(missing_ok=True)
+        print(f"[cinematic] ERROR: {e}")
+        jobs[job_id].update({"status": "error", "error": str(e)[:300]})
+
+
 # ─── MASTERPIECE ENDPOINT ─────────────────────────────────────────────────────
 @app.post("/api/masterpiece")
 async def render_masterpiece():
