@@ -130,3 +130,56 @@
 .desarrolloSection { display:flex; flex-direction:column; gap:5px; flex-shrink:0; }
 .desarrolloLabel { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:#999; }
 .desarrolloOpcional { font-weight:400; text-transform:none; letter-spacing:0; color:#bbb; font-size:10px; }
+
+/* ─── Tabs del header ─── */
+.tabs { display:flex; gap:4px; }
+.tabBtn { padding:8px 16px; border-radius:8px; border:1px solid #e0e0e0; background:#fff; font-size:12px; font-weight:600; color:#666; cursor:pointer; transition:all 0.15s; }
+.tabBtn:hover { background:#f5f5f5; }
+.tabBtnActive { background:#111; color:#fff; border-color:#111; }
+.tabContent { flex:1; min-height:0; display:flex; flex-direction:column; }
+
+/* ─── Cine ─── */
+.cineSection { display:flex; flex-direction:column; gap:5px; flex-shrink:0; }
+.cineSectionLabel { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:#999; display:flex; justify-content:space-between; align-items:center; }
+
+.propGrid { display:grid; grid-template-columns:1fr 1fr; gap:4px; }
+.propBtn { padding:7px 8px; border-radius:7px; border:1px solid #e0e0e0; background:#fff; font-size:11px; color:#555; cursor:pointer; text-align:left; transition:all 0.12s; }
+.propBtn:hover { background:#f5f5f5; }
+.propBtnActive { background:#111; color:#fff; border-color:#111; }
+
+.selCount { font-size:10px; font-weight:600; color:#999; }
+.selCountOk { color:#22c55e; }
+.selEmpty { font-size:11px; color:#bbb; font-style:italic; padding:8px 0; }
+.selList { display:flex; flex-direction:column; gap:4px; max-height:180px; overflow-y:auto; }
+.selItem { display:flex; align-items:center; gap:6px; padding:6px 8px; background:#f9f9f9; border:1px solid #ebebeb; border-radius:7px; }
+.selOrder { width:20px; height:20px; border-radius:50%; background:#6366f1; color:#fff; font-size:9px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.selName { flex:1; font-size:11px; font-weight:600; color:#111; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.selControls { display:flex; gap:2px; }
+.selControls button { width:18px; height:18px; border-radius:4px; border:1px solid #e0e0e0; background:#fff; font-size:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.selControls button:disabled { opacity:0.3; cursor:not-allowed; }
+.selRemove { color:#ef4444 !important; border-color:rgba(239,68,68,0.2) !important; }
+
+.forgeBtnDisabled { background:#e0e0e0 !important; cursor:not-allowed !important; }
+
+/* Cine library */
+.cineLibrary { flex:1; display:flex; flex-direction:column; min-height:0; }
+.cineLibList { flex:1; overflow-y:auto; padding:10px; display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:8px; align-content:start; }
+.cineLibCard { border-radius:10px; border:2px solid #e8e8e8; background:#fff; cursor:pointer; overflow:hidden; transition:all 0.15s; position:relative; }
+.cineLibCard:hover { border-color:#6366f1; transform:translateY(-2px); box-shadow:0 4px 12px rgba(0,0,0,0.1); }
+.cineLibCardSelected { border-color:#6366f1; background:#eef0ff; }
+.cineLibThumb { width:100%; height:90px; object-fit:cover; display:block; }
+.cineLibThumbEmpty { width:100%; height:90px; background:#f5f5f5; display:flex; align-items:center; justify-content:center; font-size:20px; color:#ccc; }
+.cineLibName { font-size:10px; font-weight:600; color:#111; padding:5px 7px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.cineLibBadge { position:absolute; top:5px; right:5px; width:20px; height:20px; border-radius:50%; background:#6366f1; color:#fff; font-size:10px; font-weight:700; display:flex; align-items:center; justify-content:center; }
+
+/* Cine result */
+.cineResult { display:flex; flex-direction:column; height:100%; }
+.cineResultHeader { padding:14px 16px 12px; border-bottom:1px solid #f0f0f0; flex-shrink:0; }
+.cinePlan { flex:1; overflow-y:auto; padding:10px; display:flex; flex-direction:column; gap:6px; }
+.cinePlanItem { display:flex; align-items:center; gap:10px; padding:10px; background:#f9f9f9; border:1px solid #ebebeb; border-radius:8px; }
+.cinePlanOrder { width:24px; height:24px; border-radius:50%; background:#111; color:#fff; font-size:10px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.cinePlanInfo { flex:1; }
+.cinePlanName { font-size:12px; font-weight:700; color:#111; }
+.cinePlanProp { font-size:10px; color:#6366f1; font-weight:600; }
+.cinePlanThumb { width:40px; height:70px; object-fit:cover; border-radius:4px; flex-shrink:0; }
+.cineNote { padding:12px 16px; font-size:11px; color:#999; border-top:1px solid #f0f0f0; flex-shrink:0; }
