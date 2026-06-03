@@ -13,6 +13,17 @@ const PROPOSITOS = [
   { key: 'branding',     label: 'Branding',      icon: '✨' },
 ]
 
+const STEP_LABELS = {
+  queued:   'En cola...',
+  fetch:    'Cargando animaciones...',
+  analyze:  'Analizando el sitio...',
+  script:   'Escribiendo el guion con IA...',
+  build:    'Armando la composición...',
+  render:   'Renderizando el video (esto tarda)...',
+  upload:   'Subiendo a la nube...',
+  export:   'Listo',
+}
+
 export default function Cine() {
   const [library, setLibrary] = useState([])
   const [selected, setSelected] = useState([]) // ids seleccionados
@@ -20,16 +31,23 @@ export default function Cine() {
   const [proposito, setProposito] = useState('marketing')
   const [desarrollo, setDesarrollo] = useState('')
   const [generating, setGenerating] = useState(false)
-  const [result, setResult] = useState(null)
+  const [status, setStatus] = useState(null)   // { step, progress }
+  const [plan, setPlan] = useState(null)
+  const [videoUrl, setVideoUrl] = useState(null)
+  const [error, setError] = useState(null)
+  const pollRef = useRef(null)
 
-  useEffect(() => { loadLibrary() }, [])
+  useEffect(() => {
+    loadLibrary()
+    return () => clearInterval(pollRef.current)
+  }, [])
 
   async function loadLibrary() {
     try {
       const r = await fetch(`${API_URL}/api/forge/library`, { headers: HEADERS })
       const d = await r.json()
-      // Solo las que compilaron y tienen video
-      setLibrary((d.animations || []).filter(a => a.success))
+      // Solo las que compilaron y tienen video (necesitamos el código renderizable)
+      setLibrary((d.animations || []).filter(a => a.success !== false))
     } catch {}
   }
 
@@ -54,24 +72,61 @@ export default function Cine() {
   const selectedAnims = selected.map(id => library.find(a => a.id === id)).filter(Boolean)
   const canGenerate = selected.length >= 5 && url.trim()
 
+  function resetResult() {
+    setPlan(null); setVideoUrl(null); setError(null); setStatus(null)
+  }
+
   async function handleGenerate() {
     if (!canGenerate || generating) return
     setGenerating(true)
-    setResult(null)
-    // TODO: endpoint /api/cine/generate
-    // Por ahora mostramos el plan que se generaría
-    setTimeout(() => {
-      setResult({
-        plan: selectedAnims.map((a, i) => ({
-          order: i + 1,
-          component: a.component_name,
-          video_url: a.video_url,
-          proposito: i === 0 ? 'Hook' : i === selectedAnims.length - 1 ? 'Cierre' : i <= 2 ? 'Producto' : 'Beneficio',
-        }))
+    resetResult()
+    setStatus({ step: 'queued', progress: 0 })
+    try {
+      const r = await fetch(`${API_URL}/api/cine/generate`, {
+        method: 'POST', headers: HEADERS,
+        body: JSON.stringify({
+          animation_ids: selected,
+          url: url.trim(),
+          proposito,
+          desarrollo: desarrollo.trim(),
+        }),
       })
+      const d = await r.json()
+      if (d.error || !d.job_id) {
+        setError(d.error || 'No se pudo iniciar la generación')
+        setGenerating(false)
+        return
+      }
+      pollJob(d.job_id)
+    } catch (e) {
+      setError(e.message)
       setGenerating(false)
-    }, 1500)
+    }
   }
+
+  function pollJob(jobId) {
+    clearInterval(pollRef.current)
+    pollRef.current = setInterval(async () => {
+      try {
+        const r = await fetch(`${API_URL}/api/jobs/${jobId}`, { headers: HEADERS })
+        const j = await r.json()
+        setStatus({ step: j.step || j.status, progress: j.progress || 0 })
+        if (j.plan) setPlan(j.plan)
+        if (j.status === 'done') {
+          clearInterval(pollRef.current)
+          setVideoUrl(j.cloudinaryUrl || (j.videoFilename ? `${API_URL}/api/video/${j.videoFilename}` : null))
+          setGenerating(false)
+        } else if (j.status === 'error') {
+          clearInterval(pollRef.current)
+          setError(j.error || 'Error en el render')
+          setGenerating(false)
+        }
+      } catch {}
+    }, 2000)
+  }
+
+  const showResultPanel = generating || plan || videoUrl || error
+  const pct = Math.max(4, status?.progress || 0)
 
   return (
     <div className={styles.body}>
@@ -154,29 +209,79 @@ export default function Cine() {
 
       {/* RIGHT — Biblioteca para seleccionar + resultado */}
       <div className={styles.right}>
-        {result ? (
+        {showResultPanel ? (
           <div className={styles.cineResult}>
             <div className={styles.cineResultHeader}>
-              <div className={styles.previewName}>Cinematografía lista</div>
+              <div className={styles.previewName}>
+                {videoUrl ? 'Cinematografía lista' : error ? 'No se pudo generar' : 'Generando cinematografía...'}
+              </div>
               <div className={styles.previewMeta}>{url} · {proposito}</div>
             </div>
-            <div className={styles.cinePlan}>
-              {result.plan.map((item, i) => (
-                <div key={i} className={styles.cinePlanItem}>
-                  <div className={styles.cinePlanOrder}>{item.order}</div>
-                  <div className={styles.cinePlanInfo}>
-                    <div className={styles.cinePlanName}>{item.component}</div>
-                    <div className={styles.cinePlanProp}>{item.proposito}</div>
-                  </div>
-                  {item.video_url && (
-                    <video src={item.video_url} autoPlay loop muted className={styles.cinePlanThumb} />
-                  )}
+
+            {/* Progreso */}
+            {generating && (
+              <div className={styles.log}>
+                <div className={`${styles.logLine} ${styles.logActive}`}>
+                  <div className={styles.progressBar}><div className={styles.progressFill} style={{ width: `${pct}%` }} /></div>
+                  <span className={styles.logMsg}>{STEP_LABELS[status?.step] || 'Procesando...'}</span>
                 </div>
-              ))}
-            </div>
-            <div className={styles.cineNote}>
-              🚧 El render completo de la cinematografía estará disponible próximamente.
-            </div>
+              </div>
+            )}
+
+            {/* Error */}
+            {error && <div className={styles.cineNote}>⚠️ {error}</div>}
+
+            {/* Video final */}
+            {videoUrl && (
+              <div className={styles.playerWrap}>
+                <video src={videoUrl} controls autoPlay loop className={styles.video} />
+              </div>
+            )}
+
+            {/* Plan narrativo */}
+            {plan && (
+              <div className={styles.cinePlan}>
+                {plan.intro_title && (
+                  <div className={styles.cinePlanItem}>
+                    <div className={styles.cinePlanOrder}>▶</div>
+                    <div className={styles.cinePlanInfo}>
+                      <div className={styles.cinePlanName}>Intro · {plan.intro_title}</div>
+                      <div className={styles.cinePlanProp}>Apertura de marca</div>
+                    </div>
+                  </div>
+                )}
+                {(plan.segments || []).map((seg, i) => {
+                  const anim = selectedAnims[i]
+                  return (
+                    <div key={i} className={styles.cinePlanItem}>
+                      <div className={styles.cinePlanOrder}>{i + 1}</div>
+                      <div className={styles.cinePlanInfo}>
+                        <div className={styles.cinePlanName}>{anim?.component_name || `Clip ${i + 1}`}</div>
+                        <div className={styles.cinePlanProp}>{seg.role}{seg.text ? ` · “${seg.text}”` : ''}</div>
+                      </div>
+                      {anim?.video_url && (
+                        <video src={anim.video_url} autoPlay loop muted className={styles.cinePlanThumb} />
+                      )}
+                    </div>
+                  )
+                })}
+                {plan.outro_cta && (
+                  <div className={styles.cinePlanItem}>
+                    <div className={styles.cinePlanOrder}>■</div>
+                    <div className={styles.cinePlanInfo}>
+                      <div className={styles.cinePlanName}>Cierre · {plan.outro_cta}</div>
+                      <div className={styles.cinePlanProp}>Llamado a la acción</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {(videoUrl || error) && (
+              <button className={styles.forgeBtn} style={{ marginTop: 14 }} onClick={() => { resetResult(); }}>
+                ← Volver a la biblioteca
+              </button>
+            )}
           </div>
         ) : (
           <div className={styles.cineLibrary}>

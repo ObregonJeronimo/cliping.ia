@@ -15,6 +15,15 @@ import asyncio, json, re, subprocess, tempfile, time, uuid
 from pathlib import Path
 from anthropic import AsyncAnthropic
 
+# Librería de objetos vectoriales (Iconify). Si no está disponible, el forge
+# sigue funcionando sin objetos.
+try:
+    from iconify_service import fetch_objects_for_prompt, build_objects_prompt_block
+    _ICONIFY_OK = True
+except Exception as _e:  # pragma: no cover
+    _ICONIFY_OK = False
+    print(f"[forge] Iconify no disponible: {_e}")
+
 client = AsyncAnthropic()
 
 REMOTION_DIR = Path(__file__).parent.parent / "remotion"
@@ -26,10 +35,10 @@ HAIKU_MODEL   = "claude-haiku-4-5-20251001"
 OPUS_MODEL    = "claude-sonnet-4-6"  # fallback — más barato que Opus completo
 
 # ─── Prompt del sistema ───────────────────────────────────────────────────────
-FORGE_SYSTEM = """Sos un director de arte y experto en motion graphics premium.
-Generás animaciones SVG/React para Remotion que son VISUALMENTE ESPECTACULARES.
+FORGE_SYSTEM = """Sos un director de motion graphics premium (nivel Apple/Stripe/Linear).
+Generás animaciones SVG/React para Remotion VISUALMENTE ESPECTACULARES y CON SENTIDO.
 
-REGLAS TÉCNICAS ESTRICTAS:
+REGLAS TÉCNICAS ESTRICTAS (si no se cumplen, no compila):
 1. El componente DEBE llamarse exactamente como se indique
 2. Imports ÚNICAMENTE: import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from 'remotion'
 3. Props: ({ primaryColor = '#6366f1', secondaryColor = '#a78bfa', accentColor = '#f59e0b', bg = '#07070f', siteName = 'Marca' })
@@ -37,35 +46,43 @@ REGLAS TÉCNICAS ESTRICTAS:
 5. SVG SIEMPRE VERTICAL: viewBox="0 0 1080 1920" — el centro es cx=540 cy=960
 6. Las formas deben ser GRANDES — mínimo 200px de diámetro/tamaño
 7. NO uses hooks personalizados, NO useRef, NO useEffect
-8. Todo determinista — mismo frame = mismo output
+8. Todo determinista — mismo frame = mismo output. Derivá TODO de useCurrentFrame().
+9. Para IDs de gradientes/filtros usá nombres únicos por animación (ej: 'grad-{algo}') para que no choquen al concatenar.
 
-CALIDAD VISUAL — ESTO ES LO MÁS IMPORTANTE:
-- Usá SIEMPRE degradados SVG (linearGradient, radialGradient) — nunca colores planos solos
-- Combiná primaryColor + secondaryColor + accentColor en degradados creativos
-- Los degradados deben MOVERSE — animá gradientTransform, offset, opacity
-- Usá filtros SVG: feGaussianBlur para glow, feDropShadow para sombras
-- Las formas deben tener múltiples capas: sombra + forma principal + brillo encima
-- Movimiento fluido: lerp + easeInOut, nunca cambios abruptos
-- Partículas decorativas: pequeños círculos que orbitan o explotan
-- El fondo no es negro plano — usá un radialGradient oscuro con tonos del primaryColor
+PRINCIPIOS DE MOTION (lo que separa lo amateur de lo premium):
+- TIMELINE CLARA: dividí los 90 frames en actos con propósito (entrada → desarrollo → clímax → salida). Que se lea una micro-historia, no ruido.
+- EASING SIEMPRE: nada se mueve a velocidad lineal. Usá easeOut para entradas, easeInOut para tránsitos. spring(...) para rebotes orgánicos.
+- ANTICIPACIÓN + OVERSHOOT + SETTLE: las cosas se preparan antes de moverse, se pasan un poco del objetivo y vuelven. Eso da vida.
+- STAGGER: si hay varios elementos, que entren escalonados (cada uno con delay), nunca todos juntos.
+- PROFUNDIDAD: parallax entre capas (fondo se mueve menos que el frente), escala + blur para simular distancia.
+- JERARQUÍA FOCAL: un único protagonista por momento. El resto acompaña, no compite.
 
-PALETA DE COLORES — siempre usá las 3:
-- primaryColor: el color principal, para la forma central
-- secondaryColor: complementario, para degradados y capas
-- accentColor: contraste, para brillos, partículas y destellos
+CALIDAD VISUAL:
+- Degradados SVG SIEMPRE (linear/radial), nunca color plano. Animá gradientTransform/offset/opacity.
+- Filtros SVG: feGaussianBlur para glow real, feDropShadow para profundidad.
+- Multicapa por objeto: sombra difusa + forma con degradado + highlight/specular encima.
+- Fondo vivo: radialGradient oscuro con tinte del primaryColor + grano/partículas sutiles, nunca #000 plano.
+- Partículas con propósito (orbitan, explotan en el clímax, fluyen), no decorado al azar.
+- Glow del accentColor en los momentos de impacto.
 
-ESTRUCTURA DE CADA ANIMACIÓN:
-- Capa 1: Fondo con gradiente radial animado
-- Capa 2: Formas principales con morphing y degradados
-- Capa 3: Efectos de luz (glow, blur, resplandor)
-- Capa 4: Partículas decorativas
-- Capa 5: Brillo final o texto si corresponde
+PALETA — usá las 3 con intención:
+- primaryColor: protagonista. secondaryColor: degradados/capas de apoyo. accentColor: destellos, partículas, el "pop".
 
-HELPERS DISPONIBLES (no reimplementes):
+HELPERS YA DEFINIDOS (no los reimplementes ni los redeclares):
 const lerp = (a, b, t) => a + (b - a) * t
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
 const easeInOut = (t) => t < 0.5 ? 2*t*t : -1+(4-2*t)*t
 const easeOut = (t) => 1 - Math.pow(1 - t, 3)
+(spring viene de remotion: spring({ frame, fps, config: { damping: 12 } }))
+
+PATRÓN DE REFERENCIA (estructura, no copiar literal):
+  const f = useCurrentFrame()
+  const { fps } = useVideoConfig()
+  const entrada = easeOut(clamp(f / 24, 0, 1))         // acto 1: 0-24
+  const climax  = easeInOut(clamp((f - 36) / 30, 0, 1)) // acto 2: 36-66
+  const salida  = clamp((f - 78) / 12, 0, 1)            // acto 3: 78-90
+  const pop = spring({ frame: f - 36, fps, config: { damping: 10 } })
+  // ...usar estos factores para escalar/rotar/desplazar/opacar capas con stagger.
 
 OUTPUT: Solo el código JSX. Sin explicaciones, sin markdown, sin ```."""
 
@@ -142,12 +159,15 @@ async def forge_animation(
     primaryColor: str = "#6366f1",
     secondaryColor: str = "#a78bfa",
     accentColor: str = "#f59e0b",
+    objects: list = None,
     progress_callback=None,
 ) -> dict:
     """
     Genera una animación en loop hasta que compile correctamente.
     tags: lista de conceptos seleccionados por el usuario
     desarrollo: texto libre del usuario (puede estar vacío)
+    objects: lista de conceptos de objetos reales a buscar en Iconify
+             (ej: ["shopping cart", "mouse pointer", "dollar"])
     """
 
     async def emit(msg: str, step: int, total: int = MAX_ATTEMPTS + 2):
@@ -182,6 +202,18 @@ Rubro de referencia: {rubro}"""
         narrativa_section = f"""Creá una narrativa visual cinematográfica original y sorprendente para el rubro: {rubro}
 Sé muy creativo — buscá algo que nadie haya visto antes."""
 
+    # ── Objetos reales (Iconify): carrito, mouse, $, etc. ────────────────────
+    objects_block = ""
+    if objects and _ICONIFY_OK:
+        try:
+            await emit("🔎 Buscando objetos vectoriales...", 0)
+            fetched = await fetch_objects_for_prompt(list(objects))
+            objects_block = build_objects_prompt_block(fetched)
+            if fetched:
+                await emit(f"📦 {len(fetched)} objeto(s) listo(s)", 0)
+        except Exception as oe:
+            print(f"[forge] Iconify fetch error: {oe}")
+
     user_prompt = f"""Creá una animación React para Remotion llamada `{component_name}`.
 
 PALETA DE COLORES A USAR (obligatorio):
@@ -191,15 +223,17 @@ PALETA DE COLORES A USAR (obligatorio):
 - bg = '#07070f' → fondo oscuro base
 
 {narrativa_section}
+{(chr(10) + objects_block) if objects_block else ""}
 
 CÓMO HACERLO:
 - La animación dura 90 frames (3 segundos a 30fps)
-- Dividila en 5-6 segmentos de ~15 frames cada uno
-- Cada segmento muestra una transformación visual diferente
-- Usá SVG con paths, círculos, polígonos que se morphean entre sí
+- Estructurala en actos con propósito (entrada → desarrollo → clímax → salida), no en bloques iguales
+- Cada acto transforma el protagonista con easing y stagger — nada lineal, nada abrupto
+- Usá SVG con paths, círculos, polígonos (y los objetos provistos si los hay) que se morphean/animan
 - Las formas deben ser GRANDES y ocupar gran parte del canvas vertical
 - viewBox="0 0 1080 1920", centro en cx=540 cy=960
-- Las transiciones son suaves con lerp/easeInOut
+- Profundidad real: capas con parallax, glow y sombras; fondo vivo con tinte del primaryColor
+- Si te dieron objetos, ELLOS son los protagonistas — animalos, no dibujes formas genéricas en su lugar
 - Sin texto estático — todo debe moverse y transformarse
 
 Solo el código JSX, sin explicaciones ni markdown."""

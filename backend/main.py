@@ -453,6 +453,7 @@ class ForgeRequest(BaseModel):
     rubro: str = "general"
     tags: list = []
     desarrollo: str = ""
+    objects: list = []
     primaryColor: str = "#6366f1"
     secondaryColor: str = "#a78bfa"
     accentColor: str = "#f59e0b"
@@ -479,6 +480,7 @@ async def forge_generate(req: ForgeRequest):
             anim_id=anim_id,
             tags=req.tags,
             desarrollo=req.desarrollo,
+            objects=req.objects,
             primaryColor=req.primaryColor,
             secondaryColor=req.secondaryColor,
             accentColor=req.accentColor,
@@ -529,6 +531,7 @@ async def forge_generate(req: ForgeRequest):
                             anim_id=anim_id,
                             tags=req.tags,
                             desarrollo=req.desarrollo + f"\n\nEl intento anterior falló al renderizar con error: {err[:200]}. Asegurate de que el SVG sea válido y todas las etiquetas estén correctamente cerradas.",
+                            objects=req.objects,
                             primaryColor=req.primaryColor,
                             secondaryColor=req.secondaryColor,
                             accentColor=req.accentColor,
@@ -843,6 +846,198 @@ async def forge_firestore_library():
         return {"animations": items}
     except Exception as e:
         return {"animations": [], "error": str(e)}
+
+
+# ─── CINE — RENDER DE CINEMATOGRAFÍAS COMPLETAS ──────────────────────────────
+from iconify_service import iconify_router
+app.include_router(iconify_router)
+
+import cine_generator
+
+
+def _get_full_animation(anim_id: str):
+    """Trae una animación completa (con código). Firestore primero, local fallback."""
+    try:
+        db = get_firestore()
+        if db:
+            doc = db.collection("cinematicas").document(anim_id).get()
+            if doc.exists:
+                d = doc.to_dict()
+                return {
+                    "id":             d.get("id", anim_id),
+                    "component_name": d.get("componentName", ""),
+                    "rubro":          d.get("rubro", ""),
+                    "idea":           d.get("idea", ""),
+                    "code":           d.get("code", ""),
+                    "video_url":      d.get("videoUrl", ""),
+                }
+    except Exception as e:
+        print(f"[cine] _get_full_animation Firestore: {e}")
+    return get_animation(anim_id)
+
+
+class CineRequest(BaseModel):
+    animation_ids: list
+    url: str = ""
+    proposito: str = "marketing"
+    desarrollo: str = ""
+    userId: str = ""
+
+
+@app.post("/api/cine/generate")
+async def cine_generate(req: CineRequest):
+    """Genera una cinematografía concatenando las animaciones seleccionadas."""
+    if len(req.animation_ids) < 2:
+        return {"error": "Necesitás al menos 2 animaciones"}
+    job_id = str(uuid.uuid4())
+    jobs[job_id] = {
+        "id": job_id, "status": "queued", "step": None, "progress": 0,
+        "videoPath": None, "videoFilename": None, "cloudinaryUrl": "",
+        "error": None, "plan": None, "createdAt": datetime.utcnow().isoformat(),
+    }
+    asyncio.create_task(_render_cine_job(job_id, req))
+    return {"job_id": job_id}
+
+
+async def _render_cine_job(job_id: str, req: CineRequest):
+    from pathlib import Path as _Path
+    import asyncio as _asyncio
+    REMOTION_DIR = _Path(__file__).parent.parent / "remotion"
+    OUTPUTS_DIR  = _Path(__file__).parent / "outputs"
+    OUTPUTS_DIR.mkdir(exist_ok=True)
+    output_path = OUTPUTS_DIR / f"{job_id}_cine.mp4"
+    temp_files = []
+
+    try:
+        jobs[job_id].update({"status": "processing", "step": "fetch", "progress": 8})
+
+        # 1. Traer los clips completos (con código) en el orden pedido
+        clips = []
+        for aid in req.animation_ids:
+            anim = _get_full_animation(aid)
+            if anim and anim.get("code"):
+                clips.append(anim)
+        if len(clips) < 2:
+            raise RuntimeError("No se pudieron cargar suficientes animaciones con código")
+
+        # 2. Analizar el sitio (liviano) + armar el guion con IA
+        jobs[job_id].update({"step": "analyze", "progress": 20})
+        url_data = await cine_generator.analyze_url_light(req.url)
+        jobs[job_id].update({"step": "script", "progress": 35})
+        plan = await cine_generator.build_narrative_plan(clips, url_data, req.proposito, req.desarrollo)
+        jobs[job_id]["plan"] = plan
+
+        # 3. Construir los archivos de la composición
+        jobs[job_id].update({"step": "build", "progress": 48})
+        entry, comp_id, total_frames, temp_files = cine_generator.build_cine_files(
+            job_id, clips, plan, REMOTION_DIR
+        )
+
+        # 4. Render con Remotion (mismo mecanismo que el render single)
+        jobs[job_id].update({"step": "render", "progress": 55})
+        candidates = [
+            str(REMOTION_DIR / "node_modules" / ".bin" / "remotion.cmd"),
+            str(REMOTION_DIR / "node_modules" / ".bin" / "remotion"),
+        ]
+        remotion_bin = next((c for c in candidates if _Path(c).exists()), "npx")
+        args = [remotion_bin, "render", entry, comp_id,
+                str(output_path.absolute()),
+                "--codec", "h264", "--fps", "30",
+                "--width", "1080", "--height", "1920",
+                "--duration-in-frames", str(total_frames),
+                "--concurrency", "4",
+                "--jpeg-quality", "90",
+                "--crf", "22",
+                "--log", "error"]
+        print(f"[cine] Renderizando {comp_id} ({total_frames} frames, {len(clips)} clips)...")
+        proc = await _asyncio.create_subprocess_exec(
+            *args, cwd=str(REMOTION_DIR),
+            stdout=_asyncio.subprocess.PIPE,
+            stderr=_asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await proc.communicate()
+
+        if proc.returncode != 0:
+            out = stdout.decode(errors='replace')
+            err = stderr.decode(errors='replace')
+            print(f"[cine] ERROR STDOUT:\n{out[:800]}")
+            print(f"[cine] ERROR STDERR:\n{err[:800]}")
+            raise RuntimeError((out + err)[-400:])
+
+        # 5. Subir a Cloudinary
+        jobs[job_id].update({"status": "uploading", "step": "upload", "progress": 86})
+        cloudinary_url = ""
+        try:
+            from cloudinary_upload import upload_video
+            cloudinary_url = await upload_video(str(output_path), f"cine_{job_id[:8]}")
+            print(f"[cine] Cloudinary OK → {cloudinary_url}")
+        except Exception as ce:
+            print(f"[cine] Cloudinary error: {ce}")
+
+        # 6. Guardar en Firestore (colección cines)
+        try:
+            db = get_firestore()
+            if db:
+                db.collection("cines").document(job_id).set({
+                    "id":           job_id,
+                    "url":          req.url,
+                    "proposito":    req.proposito,
+                    "desarrollo":   req.desarrollo,
+                    "userId":       req.userId,
+                    "animationIds": req.animation_ids,
+                    "introTitle":   plan["intro_title"],
+                    "outroCta":     plan["outro_cta"],
+                    "palette":      plan["palette"],
+                    "videoUrl":     cloudinary_url,
+                    "localFile":    output_path.name,
+                    "frames":       total_frames,
+                    "createdAt":    datetime.utcnow().isoformat(),
+                })
+                print(f"[cine] Firestore OK → cines/{job_id}")
+        except Exception as fe:
+            print(f"[cine] Firestore error: {fe}")
+
+        jobs[job_id].update({
+            "status": "done", "step": "export", "progress": 100,
+            "videoPath": str(output_path), "videoFilename": output_path.name,
+            "cloudinaryUrl": cloudinary_url,
+        })
+        print(f"[cine] OK → {output_path.name}")
+
+    except Exception as e:
+        print(f"[cine] ERROR: {e}")
+        jobs[job_id].update({"status": "error", "error": str(e)[:400]})
+    finally:
+        # Limpiar todos los archivos temporales generados para el render
+        for f in temp_files:
+            try:
+                f.unlink(missing_ok=True)
+            except Exception:
+                pass
+
+
+@app.get("/api/cine/library")
+async def cine_library():
+    """Lista las cinematografías generadas (Firestore)."""
+    try:
+        db = get_firestore()
+        if not db:
+            return {"cines": []}
+        docs = db.collection("cines").order_by("createdAt", direction="DESCENDING").limit(50).stream()
+        cines = []
+        for doc in docs:
+            d = doc.to_dict()
+            cines.append({
+                "id":          d.get("id", ""),
+                "url":         d.get("url", ""),
+                "proposito":   d.get("proposito", ""),
+                "video_url":   d.get("videoUrl", ""),
+                "intro_title": d.get("introTitle", ""),
+                "created_at":  d.get("createdAt", ""),
+            })
+        return {"cines": cines}
+    except Exception as e:
+        return {"cines": [], "error": str(e)}
 
 
 # ─── MASTERPIECE ENDPOINT ─────────────────────────────────────────────────────

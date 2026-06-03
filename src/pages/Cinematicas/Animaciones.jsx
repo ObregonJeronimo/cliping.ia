@@ -41,6 +41,8 @@ export default function Animaciones() {
   const [secondaryColor, setSecondaryColor] = useState('#a78bfa')
   const [accentColor, setAccentColor] = useState('#f59e0b')
   const [colorPreset, setColorPreset] = useState(null)
+  const [objects, setObjects] = useState([])
+  const [objInput, setObjInput] = useState('')
   const pollRef = useRef(null)
   const renderPollRef = useRef(null)
 
@@ -61,6 +63,17 @@ export default function Animaciones() {
     setSelectedTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag])
   }
 
+  function addObject() {
+    const v = objInput.trim()
+    if (!v) return
+    setObjects(prev => prev.includes(v) || prev.length >= 4 ? prev : [...prev, v])
+    setObjInput('')
+  }
+
+  function removeObject(o) {
+    setObjects(prev => prev.filter(x => x !== o))
+  }
+
   function handleRandom() {
     setSelectedTags(randomTags())
     setComponentName(randomName())
@@ -68,7 +81,7 @@ export default function Animaciones() {
   }
 
   async function startForge() {
-    if (selectedTags.length === 0 && !desarrollo.trim()) return
+    if (selectedTags.length === 0 && !desarrollo.trim() && objects.length === 0) return
     const name = componentName || randomName()
     setProgress([{ msg: '🚀 Iniciando forja...', step: 0, total: 7 }])
     setActiveJob(null)
@@ -77,7 +90,7 @@ export default function Animaciones() {
     try {
       const r = await fetch(`${API_URL}/api/forge/generate`, {
         method: 'POST', headers: HEADERS,
-        body: JSON.stringify({ idea: '', component_name: name, rubro: 'cinematica', tags: selectedTags, desarrollo: desarrollo.trim(), primaryColor, secondaryColor, accentColor }),
+        body: JSON.stringify({ idea: '', component_name: name, rubro: 'cinematica', tags: selectedTags, desarrollo: desarrollo.trim(), objects, primaryColor, secondaryColor, accentColor }),
       })
       const d = await r.json()
       const animId = d.anim_id
@@ -168,7 +181,7 @@ export default function Animaciones() {
   }
 
   const isRunning = !!activeJob
-  const canGenerate = (selectedTags.length > 0 || desarrollo.trim().length > 0) && !isRunning
+  const canGenerate = (selectedTags.length > 0 || desarrollo.trim().length > 0 || objects.length > 0) && !isRunning
 
   return (
     <div className={styles.body}>
@@ -202,6 +215,25 @@ export default function Animaciones() {
         <div className={styles.desarrolloSection}>
           <div className={styles.desarrolloLabel}>Descripción <span className={styles.desarrolloOpcional}>(opcional)</span></div>
           <textarea className={styles.textarea} rows={3} placeholder="Describí lo que querés ver..." value={desarrollo} onChange={e => setDesarrollo(e.target.value)} />
+        </div>
+        {/* Objetos reales (Iconify) */}
+        <div className={styles.desarrolloSection}>
+          <div className={styles.desarrolloLabel}>Objetos <span className={styles.desarrolloOpcional}>(opcional, máx 4)</span></div>
+          <div className={styles.nameRow}>
+            <input
+              className={styles.nameInput}
+              placeholder="ej: carrito, cursor de mouse, signo dólar"
+              value={objInput}
+              onChange={e => setObjInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addObject() } }}
+            />
+            <button className={styles.randomBtn} onClick={addObject} disabled={!objInput.trim() || objects.length >= 4}>+ Agregar</button>
+          </div>
+          {objects.length > 0 && (
+            <div className={styles.selectedTagsRow}>
+              {objects.map(o => <span key={o} className={styles.selectedTag} onClick={() => removeObject(o)}>{o} ×</span>)}
+            </div>
+          )}
         </div>
         {/* Selector de colores */}
         <div className={styles.colorSection}>
