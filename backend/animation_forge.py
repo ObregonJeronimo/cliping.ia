@@ -220,7 +220,7 @@ Solo el código JSX, sin explicaciones ni markdown."""
         try:
             resp = await client.messages.create(
                 model=model,
-                max_tokens=3000,
+                max_tokens=4000,
                 system=FORGE_SYSTEM if attempt == 1 else CORRECTION_SYSTEM,
                 messages=messages,
             )
