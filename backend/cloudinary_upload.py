@@ -1,16 +1,41 @@
 """
 Upload de videos a Cloudinary.
 Retorna la URL pública del video.
+
+Las credenciales se leen de variables de entorno (.env). El api_secret NUNCA
+debe quedar hardcodeado ni commiteado.
+
+Variables esperadas (en backend/.env o en el .env raíz):
+    CLOUDINARY_CLOUD_NAME=...
+    CLOUDINARY_API_KEY=...
+    CLOUDINARY_API_SECRET=...
 """
+import os
+
 import cloudinary
 import cloudinary.uploader
+from dotenv import load_dotenv
+
+# Idempotente: run.py ya lo llama, pero por si se importa este módulo aparte.
+load_dotenv()
+
+# cloud_name y api_key no son secretos (identifican la cuenta); el api_secret SÍ
+# lo es y solo puede venir del entorno.
+CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME", "dnbylaj2y")
+API_KEY    = os.getenv("CLOUDINARY_API_KEY", "474391961355116")
+API_SECRET = os.getenv("CLOUDINARY_API_SECRET", "")
+
+if not API_SECRET:
+    print("[cloudinary] FALTA CLOUDINARY_API_SECRET en el .env — "
+          "el upload a Cloudinary va a fallar (el render igual se guarda local).")
 
 cloudinary.config(
-    cloud_name = "dnbylaj2y",
-    api_key    = "474391961355116",
-    api_secret = "AjmdN_-65z1XG0GO0i_QhL79p5Y",
+    cloud_name = CLOUD_NAME,
+    api_key    = API_KEY,
+    api_secret = API_SECRET,
     secure     = True,
 )
+
 
 async def upload_video(file_path: str, public_id: str) -> str:
     """
