@@ -87,12 +87,14 @@ export default function Cinematicas() {
             loadLibrary()
             if (sd.result?.success) {
               setSelectedAnim(sd.result)
-              // Si hay render automático, empezar a pollearlo
               if (sd.render_job_id) {
                 setRendering(true)
                 setVideoUrl(null)
                 startRenderPoll(sd.render_job_id)
               }
+            } else {
+              // Falló — mostrar el resultado igual para ver el error
+              if (sd.result) setSelectedAnim(sd.result)
             }
           }
         } catch {}

@@ -69,9 +69,16 @@ REGLAS:
 # ─── Compilar con esbuild (sandbox rápido) ────────────────────────────────────
 async def compile_jsx(code: str, component_name: str) -> tuple[bool, str]:
     """Compila el JSX con esbuild. Retorna (ok, error_message)."""
+    # Si el código ya importa de remotion, no duplicar
+    has_remotion_import = "from 'remotion'" in code or 'from "remotion"' in code
+
     with tempfile.NamedTemporaryFile(suffix=".jsx", mode="w", delete=False, encoding="utf-8") as f:
-        # Agregar los helpers y el wrapper
-        full_code = f"""import {{ AbsoluteFill, useCurrentFrame, useVideoConfig, spring }} from 'remotion'
+        if has_remotion_import:
+            # El código ya tiene sus imports — solo agregar helpers si faltan
+            full_code = code
+        else:
+            # Agregar imports y helpers
+            full_code = f"""import {{ AbsoluteFill, useCurrentFrame, useVideoConfig, spring }} from 'remotion'
 
 const lerp = (a, b, t) => a + (b - a) * t
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
