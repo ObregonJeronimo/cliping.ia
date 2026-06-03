@@ -1,20 +1,11 @@
 @echo off
-title cliping.ia — Backend + Ngrok
+title cliping.ia
 cd /d C:\Users\Usuario\Documents\cliping.ia
 
-echo ========================================
-echo   cliping.ia — actualizando...
-echo ========================================
+echo Actualizando codigo...
 git pull
 
-echo.
-echo Iniciando ngrok en segundo plano...
-start /B ngrok http 8000 > nul 2>&1
-
-echo Ngrok corriendo en http://localhost:4040
-echo.
-echo ========================================
-echo   Backend — logs en vivo:
-echo ========================================
-cd backend
-python run.py
+wt --title "cliping.ia" ^
+  cmd /k "cd /d C:\Users\Usuario\Documents\cliping.ia\backend && python run.py" ^
+  ; split-pane --horizontal ^
+  cmd /k "ngrok http 8000"
