@@ -89,13 +89,24 @@ export default function Animaciones() {
           const sd = await sr.json()
           if (sd.progress?.length > lastLen) { setProgress(sd.progress); lastLen = sd.progress.length }
           if (sd.status === 'done' || sd.status === 'failed') {
-            clearInterval(pollRef.current)
-            setActiveJob(null)
-            loadLibrary()
-            if (sd.result?.success) {
+            // Si hay render automático corriendo, seguir esperándolo
+            if (sd.render_job_id && sd.status === 'done') {
+              clearInterval(pollRef.current)
+              setActiveJob(null)
+              loadLibrary()
               setSelectedAnim(sd.result)
-              if (sd.render_job_id) { setRendering(true); setVideoUrl(null); startRenderPoll(sd.render_job_id) }
-            } else if (sd.result) setSelectedAnim(sd.result)
+              setRendering(true)
+              setVideoUrl(null)
+              setProgress(p => [...p, { msg: '🎬 Renderizando automáticamente...', step: 6, total: 7 }])
+              startRenderPoll(sd.render_job_id)
+            } else {
+              clearInterval(pollRef.current)
+              setActiveJob(null)
+              loadLibrary()
+              if (sd.result?.success) {
+                setSelectedAnim(sd.result)
+              } else if (sd.result) setSelectedAnim(sd.result)
+            }
           }
         } catch {}
       }, 1500)
