@@ -686,6 +686,8 @@ async def _render_cinematic_job(job_id: str, anim: dict):
     # Quitar helpers que el wrapper ya define
     for helper in ["const lerp", "const clamp", "const easeInOut", "const easeOut", "const easeIn"]:
         code_clean = re.sub(rf"{helper}\s*=\s*[^\n]+\n?", "", code_clean)
+    # Quitar export default si ya está en el código (el wrapper lo agrega)
+    code_clean = re.sub(r"^export\s+default\s+\w+\s*;?\s*$", "", code_clean, flags=re.MULTILINE)
 
     # 1. Escribir el JSX en src/compositions/
     jsx_content = f"""import {{ AbsoluteFill, useCurrentFrame, useVideoConfig, spring }} from 'remotion'
