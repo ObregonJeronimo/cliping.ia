@@ -712,10 +712,9 @@ registerRoot(RemotionRoot)
             out = stdout.decode(errors='replace')
             err = stderr.decode(errors='replace')
             combined = out + err
-            # Mostrar TODO el output para debug
-            print(f"[cinematic] ERROR STDOUT:\n{out[-800:]}")
-            print(f"[cinematic] ERROR STDERR:\n{err[-800:]}")
-            raise RuntimeError(combined[-500:])
+            print(f"[cinematic] ERROR STDOUT inicio:\n{out[:800]}")
+            print(f"[cinematic] ERROR STDERR inicio:\n{err[:800]}")
+            raise RuntimeError(combined[-400:])
 
         jobs[job_id].update({
             "status": "uploading", "progress": 85, "step": "upload",
