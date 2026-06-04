@@ -3,39 +3,31 @@ import * as THREE from 'three'
 
 const FONT_SIZE   = 72
 const SCALE       = 0.030
-const SAMPLE_STEP = 2
-const MAX         = 4000
+const SAMPLE_STEP = 1        // 1px = maxima densidad de puntos
+const MAX         = 8000     // mas instancias para absorber la densidad extra
 const ITEMS       = ['Hook', 'Problema', 'Features', 'Diferenciador', 'Beneficios', 'CTA']
 
 const MODE_IDLE    = 'idle'
 const MODE_FORMING = 'forming'
 const MODE_BURST   = 'burst'
 
-// ── Spring 1D (threejs-animation: Spring Physics) ─────────────────────────
-// stiffness alta (~180) para convergencia rapida, damping critico (~26) sin rebote excesivo
 class Spring1D {
   constructor(stiffness = 180, damping = 26) {
-    this.k  = stiffness
-    this.d  = damping
+    this.k   = stiffness
+    this.d   = damping
     this.pos = 0
     this.vel = 0
     this.tgt = 0
   }
   reset(pos) { this.pos = pos; this.vel = 0 }
   update(dt) {
-    const capped = Math.min(dt, 0.033) // max 33ms para evitar explosiones
+    const capped = Math.min(dt, 0.033)
     const force  = -this.k * (this.pos - this.tgt) - this.d * this.vel
     this.vel += force * capped
     this.pos += this.vel * capped
     return this.pos
   }
 }
-
-// Springs por particula: x, y, z independientes
-// Se crean una vez y se reusan — no garbage por frame
-const springsX = Array.from({ length: MAX }, () => new Spring1D(180, 26))
-const springsY = Array.from({ length: MAX }, () => new Spring1D(180, 26))
-const springsZ = Array.from({ length: MAX }, () => new Spring1D(80,  18))
 
 function sampleCanvas(canvas) {
   const cW = canvas.width, cH = canvas.height
@@ -91,14 +83,12 @@ function precomputeAll() {
   return { urlPts, promptPts, tlStates }
 }
 
-// LineLoop (threejs-geometry: LineLoop) — circulo cerrado sin join visible
 function makeOrbitLoop(rx, ry, segments = 160) {
   const pts = []
   for (let i = 0; i < segments; i++) {
     const a = (i / segments) * Math.PI * 2
     pts.push(new THREE.Vector3(Math.cos(a) * rx, Math.sin(a) * ry, 0))
   }
-  // LineLoop no necesita repetir el primer punto — Three.js lo cierra solo
   return new THREE.BufferGeometry().setFromPoints(pts)
 }
 
@@ -110,6 +100,11 @@ export default function ParticleHero({ onStateChange }) {
     if (!el) return
 
     const { urlPts, promptPts, tlStates } = precomputeAll()
+
+    // Springs dentro del useEffect para que el size sea siempre MAX correcto
+    const springsX = Array.from({ length: MAX }, () => new Spring1D(180, 26))
+    const springsY = Array.from({ length: MAX }, () => new Spring1D(180, 26))
+    const springsZ = Array.from({ length: MAX }, () => new Spring1D(80,  18))
 
     const W = el.offsetWidth || 700
     const H = el.offsetHeight || 650
@@ -123,7 +118,7 @@ export default function ParticleHero({ onStateChange }) {
     const cam   = new THREE.PerspectiveCamera(50, W / H, 0.1, 200)
     cam.position.z = 16
 
-    // ── Particulas (InstancedMesh) ─────────────────────────────────────────
+    // ── Particulas ─────────────────────────────────────────────────────────
     const geo  = new THREE.BoxGeometry(1, 1, 1)
     const mat  = new THREE.MeshBasicMaterial({ color: 0xffffff })
     const mesh = new THREE.InstancedMesh(geo, mat, MAX)
@@ -133,7 +128,7 @@ export default function ParticleHero({ onStateChange }) {
     mesh.instanceColor.needsUpdate = true
     scene.add(mesh)
 
-    // ── Circulos orbitales (LineLoop — threejs-geometry) ───────────────────
+    // ── Circulos orbitales ─────────────────────────────────────────────────
     const orbits = [
       { rx: 9.0,  ry: 6.0,  tiltX: 0.18,  tiltZ: 0.08,  speed: 0.22,  opacity: 0.55 },
       { rx: 11.0, ry: 7.0,  tiltX: -0.12, tiltZ: 0.15,  speed: -0.14, opacity: 0.35 },
@@ -142,12 +137,7 @@ export default function ParticleHero({ onStateChange }) {
 
     const orbitMeshes = orbits.map(({ rx, ry, tiltX, tiltZ, opacity }) => {
       const orbitGeo = makeOrbitLoop(rx, ry)
-      const orbitMat = new THREE.LineBasicMaterial({
-        color: 0x7090e0,
-        transparent: true,
-        opacity,
-      })
-      // LineLoop: cierra el circulo automaticamente sin segmento visible de join
+      const orbitMat = new THREE.LineBasicMaterial({ color: 0x7090e0, transparent: true, opacity })
       const loop = new THREE.LineLoop(orbitGeo, orbitMat)
       loop.rotation.x = tiltX
       loop.rotation.z = tiltZ
@@ -158,7 +148,6 @@ export default function ParticleHero({ onStateChange }) {
     const dummy  = new THREE.Object3D()
     const colTmp = new THREE.Color()
 
-    // Posiciones base en esfera difusa
     const base = Array.from({ length: MAX }, () => {
       const theta = Math.random() * Math.PI * 2
       const phi   = Math.acos(2 * Math.random() - 1)
@@ -170,14 +159,12 @@ export default function ParticleHero({ onStateChange }) {
       )
     })
 
-    // Inicializar springs en posicion base
     for (let i = 0; i < MAX; i++) {
       springsX[i].reset(base[i].x)
       springsY[i].reset(base[i].y)
       springsZ[i].reset(base[i].z)
     }
 
-    // Velocidades de burst aleatorias por particula
     const burstVel = Array.from({ length: MAX }, () =>
       new THREE.Vector3(
         (Math.random() - 0.5) * 0.38,
@@ -186,7 +173,6 @@ export default function ParticleHero({ onStateChange }) {
       )
     )
 
-    // cur es lo que muestran los springs (se actualiza desde springsX/Y/Z)
     const cur       = base.map(v => v.clone())
     const tgt       = base.map(v => v.clone())
     const burstFrom = Array.from({ length: MAX }, () => new THREE.Vector3())
@@ -200,7 +186,6 @@ export default function ParticleHero({ onStateChange }) {
         const tx = i < pts.length ? pts[i].x : base[i].x
         const ty = i < pts.length ? pts[i].y : base[i].y
         tgt[i].set(tx, ty, 0)
-        // Actualizar target de springs
         springsX[i].tgt = tx
         springsY[i].tgt = ty
         springsZ[i].tgt = 0
@@ -251,8 +236,8 @@ export default function ParticleHero({ onStateChange }) {
       if (!alive) return
       rafId = requestAnimationFrame(animate)
 
-      const dt = lastNow !== null ? Math.min(now - lastNow, 50) : 16
-      lastNow = now
+      const dt    = lastNow !== null ? Math.min(now - lastNow, 50) : 16
+      lastNow     = now
       const dtSec = dt * 0.001
 
       if (stepStart === null) stepStart = now
@@ -267,7 +252,6 @@ export default function ParticleHero({ onStateChange }) {
 
       if (isBurst) anim.burstT = Math.min(anim.burstT + dt / 500, 1)
 
-      // Rotar circulos orbitales (oscillation — threejs-animation)
       orbits.forEach(({ speed }, idx) => {
         orbitMeshes[idx].rotation.y += speed * dtSec
       })
@@ -276,24 +260,18 @@ export default function ParticleHero({ onStateChange }) {
         const c = cur[i]
 
         if (isBurst) {
-          // Explosion con easing out cubico
           const ease = 1 - Math.pow(1 - anim.burstT, 3)
           c.x = burstFrom[i].x + burstVel[i].x * 20 * ease
           c.y = burstFrom[i].y + burstVel[i].y * 20 * ease
           c.z = burstFrom[i].z + burstVel[i].z * 8  * ease
-          // Sincronizar springs con la posicion actual del burst
-          // para que cuando retomen no haya salto brusco
           springsX[i].reset(c.x)
           springsY[i].reset(c.y)
           springsZ[i].reset(c.z)
         } else if (isForming) {
-          // Spring physics: converge con inercia y micro-rebote natural
           c.x = springsX[i].update(dtSec)
           c.y = springsY[i].update(dtSec)
           c.z = springsZ[i].update(dtSec)
         } else {
-          // Idle: spring suave hacia base + drift figura-8 (oscillation pattern)
-          // figura 8: x = sin(t), z = sin(2t) * 0.5 — da movimiento organico
           const phase = i * 0.28
           springsX[i].tgt = base[i].x + Math.sin(t * 0.42 + phase) * 0.18
           springsY[i].tgt = base[i].y + Math.cos(t * 0.35 + phase) * 0.18
@@ -309,9 +287,9 @@ export default function ParticleHero({ onStateChange }) {
         const proximity = isActive ? Math.max(0, 1 - c.distanceTo(tgt[i]) * 0.45) : 0
 
         let scale
-        if (isBurst)        scale = Math.max(0.002, 0.078 - anim.burstT * 0.076)
-        else if (isActive)  scale = 0.065 + proximity * 0.048
-        else                scale = 0.008 + Math.random() * 0.003
+        if (isBurst)        scale = Math.max(0.001, 0.038 - anim.burstT * 0.036)
+        else if (isActive)  scale = 0.038 + proximity * 0.018  // cubos mas chicos, mas densos
+        else                scale = 0.006 + Math.random() * 0.002
 
         dummy.scale.setScalar(scale)
         dummy.rotation.x = t * 0.14 + i * 0.018
