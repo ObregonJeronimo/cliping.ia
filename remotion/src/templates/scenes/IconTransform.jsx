@@ -89,23 +89,23 @@ export const IconTransform = ({ theme, iconFromSvg = null, iconToSvg = null, lab
           background: `radial-gradient(circle, #ffffff, ${theme.accentTo} 55%, rgba(0,0,0,0) 72%)` }} />
       )}
 
-      {/* ícono A */}
-      {aScale > 0.01 && (
-        <div style={{ position: 'absolute', left: CX, top: CY,
-          transform: `translate(-50%,-50%) scale(${aScale}) scaleY(${1 - squash})`,
-          filter: `drop-shadow(0 0 26px ${aColor}88)` }}>
-          <Icon icon={iconFromSvg} color={aColor} size={260} />
-        </div>
-      )}
-
-      {/* ícono B */}
-      {bOp > 0.01 && (
-        <div style={{ position: 'absolute', left: CX, top: CY,
-          transform: `translate(-50%,-50%) scale(${bSpring})`, opacity: bOp,
-          filter: `drop-shadow(0 0 34px ${bColor}aa)` }}>
-          <Icon icon={iconToSvg} color={bColor} size={280} />
-        </div>
-      )}
+      {/* íconos: comparten EXACTAMENTE la misma caja centrada -> quedan alineados */}
+      <div style={{ position: 'absolute', left: CX, top: CY, width: 300, height: 300, transform: 'translate(-50%,-50%)' }}>
+        {aScale > 0.01 && (
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            transform: `scale(${aScale}) scaleY(${1 - squash})`,
+            filter: `drop-shadow(0 0 26px ${aColor}88)` }}>
+            <Icon icon={iconFromSvg} color={aColor} size={260} />
+          </div>
+        )}
+        {bOp > 0.01 && (
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            transform: `scale(${bSpring})`, opacity: bOp,
+            filter: `drop-shadow(0 0 34px ${bColor}aa)` }}>
+            <Icon icon={iconToSvg} color={bColor} size={260} />
+          </div>
+        )}
+      </div>
 
       {/* sparkles del revelado */}
       {spk > 0.01 && (

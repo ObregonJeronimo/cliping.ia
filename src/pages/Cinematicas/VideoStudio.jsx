@@ -175,13 +175,6 @@ export default function VideoStudio() {
             {videoUrl && (
               <div className={styles.playerWrap}>
                 <video ref={videoRef} src={videoUrl} controls autoPlay loop playsInline className={styles.video} />
-                <button
-                  onClick={() => { const v = videoRef.current; if (v?.requestFullscreen) v.requestFullscreen(); else if (v?.webkitEnterFullscreen) v.webkitEnterFullscreen(); }}
-                  style={{ display: 'block', margin: '10px auto 0', padding: '7px 14px', fontSize: 13, fontWeight: 500,
-                    color: '#cbd0e0', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)',
-                    borderRadius: 8, cursor: 'pointer', width: 'auto' }}>
-                  ⛶ Pantalla completa
-                </button>
               </div>
             )}
 
