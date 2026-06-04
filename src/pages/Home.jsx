@@ -73,8 +73,8 @@ const DURATIONS = [
 ]
 
 const STEP_ORDER = STEPS.map(s => s.key)
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
-const WS_URL  = API_URL.replace('http', 'ws')
+const API_URL = import.meta.env.PROD ? '' : (import.meta.env.VITE_API_URL || 'http://localhost:8000')
+const WS_URL  = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace('http', 'ws')
 const URL_LIST_KEY    = 'cliping_url_list'
 const ACTION_LIST_KEY = 'cliping_action_list'
 
@@ -283,7 +283,7 @@ export default function Home() {
     setPageData(confirmedData)
     // Calcular densidad y generar composición IA antes de mostrar compositor
     try {
-      const API_URL = import.meta.env.VITE_API_URL || ''
+      const API_URL = import.meta.env.PROD ? '' : (import.meta.env.VITE_API_URL || 'http://localhost:8000')
       // Generar composición IA para mostrar en el compositor
       const compRes = await fetch(`${API_URL}/api/compose`, {
         method: 'POST',

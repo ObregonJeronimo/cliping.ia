@@ -1,5 +1,9 @@
 {
-  "rewrites": [{ "source": "/(.*)", "destination": "/" }],
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "https://draw-overturn-backpack.ngrok-free.dev/api/:path*" },
+    { "source": "/ws/:path*", "destination": "https://draw-overturn-backpack.ngrok-free.dev/ws/:path*" },
+    { "source": "/(.*)", "destination": "/" }
+  ],
   "headers": [
     {
       "source": "/(.*)",

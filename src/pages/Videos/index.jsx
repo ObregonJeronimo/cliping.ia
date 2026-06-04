@@ -4,7 +4,7 @@ import { db } from '../../lib/firebase'
 import { useAuth } from '../../contexts/AuthContext'
 import styles from './Videos.module.css'
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const API = import.meta.env.PROD ? '' : (import.meta.env.VITE_API_URL || 'http://localhost:8000')
 
 export default function Videos() {
   const { user } = useAuth()

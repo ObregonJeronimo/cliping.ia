@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import styles from './Cinematicas.module.css'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const API_URL = import.meta.env.PROD ? '' : (import.meta.env.VITE_API_URL || 'http://localhost:8000')
 const HEADERS = { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' }
 
 const THEMES = [
