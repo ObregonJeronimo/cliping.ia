@@ -11,6 +11,9 @@ const MODE_IDLE    = 'idle'
 const MODE_FORMING = 'forming'
 const MODE_BURST   = 'burst'
 
+// frustum con fov=50, z=16: alto ~11.8u, ancho ~15.4u (aspect 1.3)
+// todos los textos deben caber dentro de esos limites con SCALE=0.030
+
 class Spring1D {
   constructor(stiffness = 180, damping = 26) {
     this.k   = stiffness
@@ -57,20 +60,23 @@ function makeTextCanvas(string, fontSize) {
 }
 
 function makeTimelineCanvas(items) {
-  const fs   = 40
-  const rowH = fs * 1.35
-  const PAD  = 12
+  // fs=34: 6 items * 34 * 1.35 = ~275px * 0.030 = ~8.3u — entra en el frustum de 11.8u
+  const fs   = 34
+  const rowH = Math.ceil(fs * 1.35)
+  const PAD  = 10
+  const fontStr = `bold ${fs}px monospace`
 
-  // Medir el texto mas largo con measureText para que el canvas no se quede corto
+  // Medir ancho real con la fuente correcta seteada
   const probe = document.createElement('canvas')
+  probe.width = 1; probe.height = 1
   const pctx  = probe.getContext('2d')
-  pctx.font   = `bold ${fs}px monospace`
-  const longest = items.reduce((max, it) => {
-    const str   = '\u2713  ' + it.label
-    const w     = pctx.measureText(str).width
-    return w > max ? w : max
+  pctx.font   = fontStr   // CRITICO: setear fuente antes de measureText
+  const maxW  = items.reduce((acc, it) => {
+    const w = pctx.measureText('\u2713  ' + it.label).width
+    return w > acc ? w : acc
   }, 0)
-  const cW = Math.ceil(longest + PAD * 2)
+
+  const cW = Math.ceil(maxW + PAD * 2)
   const cH = Math.ceil(items.length * rowH + PAD)
 
   const c   = document.createElement('canvas')
@@ -78,9 +84,9 @@ function makeTimelineCanvas(items) {
   c.height  = cH
   const ctx = c.getContext('2d')
   ctx.clearRect(0, 0, cW, cH)
-  ctx.font          = `bold ${fs}px monospace`
-  ctx.textBaseline  = 'top'
-  ctx.textAlign     = 'left'
+  ctx.font         = fontStr
+  ctx.textBaseline = 'top'
+  ctx.textAlign    = 'left'
   items.forEach((it, i) => {
     ctx.fillStyle = it.done ? 'rgba(255,255,255,1)' : 'rgba(255,255,255,0.4)'
     ctx.fillText((it.done ? '\u2713  ' : '\u25cb  ') + it.label, PAD, i * rowH + PAD / 2)
@@ -90,6 +96,7 @@ function makeTimelineCanvas(items) {
 
 function precomputeAll() {
   const urlPts    = sampleCanvas(makeTextCanvas('URL', FONT_SIZE * 1.4))
+  // 3 lineas * 0.44 * 72 * 1.25 = ~118px alto * 0.030 = ~3.5u — bien centrado
   const promptPts = sampleCanvas(makeTextCanvas('Video profesional\ncon todas las\nherramientas del sitio', FONT_SIZE * 0.44))
   const tlStates  = []
   for (let step = 0; step <= ITEMS.length; step++) {
@@ -331,7 +338,7 @@ export default function ParticleHero({ onStateChange }) {
     const onResize = () => {
       const W2 = el.offsetWidth, H2 = el.offsetHeight
       if (!W2 || !H2) return
-      cam.aspect = W2 / H2; cam.updateProjectionMatrix()
+      cam.aspect = W2 / H2; cam.updateProjectionMatrix()\
       renderer.setSize(W2, H2)
     }
     window.addEventListener('resize', onResize)
