@@ -45,14 +45,20 @@ function makeTimelineCanvas(items) {
   ctx.textBaseline = 'top'; ctx.textAlign = 'left'
   items.forEach((it, i) => {
     ctx.fillStyle = it.done ? 'rgba(255,255,255,1)' : 'rgba(255,255,255,0.4)'
-    ctx.fillText((it.done ? '✓  ' : '○  ') + it.label, 6, i * rowH + 8)
+    ctx.fillText((it.done ? '\u2713  ' : '\u25cb  ') + it.label, 6, i * rowH + 8)
   })
   return c
 }
 
 function precomputeAll() {
   const urlPts    = sampleCanvas(makeTextCanvas('URL', FONT_SIZE * 1.4))
-  const promptPts = sampleCanvas(makeTextCanvas('Video profesional\ncon todas las\nherramientas del sitio', FONT_SIZE * 0.68))
+
+  // fontSize reducido a 0.44 (~32px) para que el texto mas largo
+  // ("herramientas del sitio", 22 chars) entre dentro del frustum
+  // de la camara (fov=50, z=16 => ~15 unidades de ancho visible).
+  // Calculo: 32 * 0.62 * 22 * 0.030 = ~13.1 unidades < 14 disponibles.
+  const promptPts = sampleCanvas(makeTextCanvas('Video profesional\ncon todas las\nherramientas del sitio', FONT_SIZE * 0.44))
+
   const tlStates  = []
   for (let step = 0; step <= ITEMS.length; step++) {
     const snapshot = ITEMS.map((l, i) => ({ label: l, done: i < step }))
@@ -119,8 +125,7 @@ export default function ParticleHero({ onStateChange }) {
         )
     }
 
-    // ── Secuenciador basado en pasos, sin timers ───────────────────────────
-    // Cada paso tiene duración en ms. Se avanza manualmente en el render loop.
+    // Secuenciador basado en pasos, sin timers
     const steps = [
       { dur: 3800,  fn: () => { setTargets(urlPts);      onStateChange?.('url') } },
       { dur: 1400,  fn: () => { setTargets([]) } },
@@ -138,7 +143,7 @@ export default function ParticleHero({ onStateChange }) {
     ]
 
     let stepIdx    = 0
-    let stepStart  = null   // performance.now() cuando empezó el paso actual
+    let stepStart  = null
 
     function executeStep(idx) {
       steps[idx].fn()
@@ -146,7 +151,6 @@ export default function ParticleHero({ onStateChange }) {
       stepStart = null
     }
 
-    // Ejecutar primer paso inmediatamente
     executeStep(0)
 
     const C_TOP  = new THREE.Color(0xffffff)
@@ -161,15 +165,13 @@ export default function ParticleHero({ onStateChange }) {
       if (!alive) return
       rafId = requestAnimationFrame(animate)
 
-      // Inicializar stepStart en el primer frame del paso
       if (stepStart === null) stepStart = now
 
-      // Ver si el paso actual terminó
       const elapsed = now - stepStart
       if (elapsed >= steps[stepIdx].dur) {
         const nextIdx = (stepIdx + 1) % steps.length
         executeStep(nextIdx)
-        stepStart = now   // el nuevo paso empieza ahora
+        stepStart = now
       }
 
       const t   = now * 0.001
