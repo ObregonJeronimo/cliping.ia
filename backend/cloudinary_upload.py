@@ -57,3 +57,20 @@ async def upload_video(file_path: str, public_id: str) -> str:
 
     url = await loop.run_in_executor(None, _upload)
     return url
+
+
+async def upload_image(file_path: str, public_id: str) -> str:
+    """Sube una imagen (ej. screenshot del sitio) y retorna la URL pública."""
+    import asyncio
+    loop = asyncio.get_event_loop()
+
+    def _upload():
+        result = cloudinary.uploader.upload(
+            file_path,
+            resource_type="image",
+            public_id=f"sitecaps/{public_id}",
+            overwrite=True,
+        )
+        return result.get("secure_url", "")
+
+    return await loop.run_in_executor(None, _upload)

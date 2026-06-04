@@ -196,3 +196,17 @@
 .colorPicker span { font-size:9px; color:#999; }
 .colorInput { width:32px; height:28px; border:1px solid #e0e0e0; border-radius:6px; cursor:pointer; padding:2px; background:#fff; }
 .gradientPreview { height:6px; border-radius:100px; margin-top:2px; }
+
+/* Toggle simple/avanzado del VideoStudio */
+.modeToggle {
+  display: flex;
+  gap: 8px;
+  padding: 4px;
+  margin-bottom: 18px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+}
+.modeToggle .modeBtn {
+  flex: 1;
+}

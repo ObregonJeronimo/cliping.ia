@@ -13,6 +13,7 @@ reusando el mismo mecanismo que el resto.
 from __future__ import annotations
 
 import json
+import random
 import re
 from pathlib import Path
 
@@ -24,6 +25,20 @@ _client = AsyncAnthropic()
 DIRECTOR_MODEL = "claude-sonnet-4-6"
 
 FADE = 12  # debe coincidir con VideoFromSpec.jsx
+
+# Variedad creativa: el director elige (o el usuario fija) entre estas opciones.
+CREATIVE_ANGLES = [
+    "hook con una pregunta provocadora",
+    "problema doloroso -> solución",
+    "antes vs después",
+    "dato/estadística que impacta",
+    "directo al beneficio principal",
+    "historia de un usuario",
+    "contraste 'sin esto' vs 'con esto'",
+    "promesa audaz y cómo se cumple",
+]
+MOODS = ["enérgico y rápido", "calmo y premium", "confiable y claro", "moderno y audaz"]
+LENGTH_SCENES = {"corto": (3, 4), "medio": (4, 5), "largo": (5, 6)}
 
 # Catálogo de escenas disponibles (se le pasa a la IA para que componga).
 SCENE_CATALOG = """ESCENAS DISPONIBLES (type + props):
@@ -111,26 +126,62 @@ def _normalize(spec: dict, url_data: dict, desarrollo: str, proposito: str) -> d
     return {"theme": theme, "brand": spec.get("brand") or fb["brand"], "scenes": clean}
 
 
-async def build_storyboard(url: str, desarrollo: str, proposito: str = "marketing") -> dict:
-    """URL + desarrollo -> storyboard spec (con fallback robusto)."""
+async def build_storyboard(url: str, desarrollo: str, proposito: str = "marketing",
+                           theme_override: str = "", tone: str = "",
+                           length: str = "medio", simple: bool = True) -> dict:
+    """
+    URL + desarrollo -> storyboard spec.
+
+    Modo simple (simple=True): el director elige ángulo/mood al azar y genera con
+    temperatura alta -> variedad entre corridas.
+    Modo avanzado (simple=False): respeta los parámetros del usuario (theme, tono,
+    duración) como restricciones, con menos azar.
+    """
     url_data = await cine_generator.analyze_url_light(url)
+
+    lo, hi = LENGTH_SCENES.get(length, LENGTH_SCENES["medio"])
+    n_scenes = random.randint(lo, hi)
+
+    if simple:
+        angle = random.choice(CREATIVE_ANGLES)
+        mood = random.choice(MOODS)
+        temperature = 0.95
+    else:
+        angle = "según las indicaciones del usuario"
+        mood = tone or random.choice(MOODS)
+        temperature = 0.6
+
+    brief = (
+        f"Dirección creativa para ESTE video (hacelo único, no formulaico):\n"
+        f"- Ángulo narrativo: {angle}\n"
+        f"- Mood: {mood}\n"
+        f"- Apuntá a unas {n_scenes} escenas."
+    )
+    if theme_override in ("saas-explainer", "organic-natural", "clinical-formal"):
+        brief += f"\n- Theme OBLIGATORIO: {theme_override}"
+
     extra = f'\nLo que pidió el usuario: "{desarrollo.strip()}"' if desarrollo.strip() else ""
     user_prompt = f"""PROPÓSITO: {proposito}
 SITIO: {url_data.get('siteName') or 'desconocido'}  ({url})
 HEADLINE DEL SITIO: {url_data.get('headline') or '(sin dato)'}{extra}
 
-Generá el storyboard JSON."""
+{brief}
+
+Generá el storyboard JSON. Que el copy y la estructura reflejen el ángulo y el mood."""
 
     try:
         resp = await _client.messages.create(
-            model=DIRECTOR_MODEL, max_tokens=1500,
+            model=DIRECTOR_MODEL, max_tokens=1500, temperature=temperature,
             system=DIRECTOR_SYSTEM,
             messages=[{"role": "user", "content": user_prompt}],
         )
         raw = resp.content[0].text.strip()
         m = re.search(r"\{.*\}", raw, re.S)
         spec = json.loads(m.group(0)) if m else None
-        return _normalize(spec, url_data, desarrollo, proposito)
+        spec = _normalize(spec, url_data, desarrollo, proposito)
+        if theme_override in ("saas-explainer", "organic-natural", "clinical-formal"):
+            spec["theme"] = theme_override
+        return spec
     except Exception as e:
         print(f"[director] fallback ({e})")
         return _fallback_spec(url_data, desarrollo, proposito)

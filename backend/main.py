@@ -1084,6 +1084,29 @@ async def _render_video_job(job_id: str, req: VideoGenRequest):
             spec["theme"] = req.theme
         jobs[job_id]["spec"] = spec
 
+        # 1b. Captura real del sitio para el/los MockupShowcase (best-effort)
+        needs_shot = [s for s in spec.get("scenes", [])
+                      if s.get("type") == "MockupShowcase" and not s.get("screenshot")]
+        if needs_shot and req.url.strip():
+            try:
+                jobs[job_id].update({"step": "capture", "progress": 30})
+                import site_capture
+                shot_path = str(OUTPUTS_DIR / f"{job_id}_cap.png")
+                got = await site_capture.capture_site(req.url.strip(), shot_path)
+                if got:
+                    shot_url = ""
+                    try:
+                        from cloudinary_upload import upload_image
+                        shot_url = await upload_image(got, f"cap_{job_id[:8]}")
+                    except Exception as ie:
+                        print(f"[video] upload screenshot error: {ie}")
+                    if shot_url:
+                        for s in needs_shot:
+                            s["screenshot"] = shot_url
+                        print(f"[video] screenshot del sitio listo")
+            except Exception as ce:
+                print(f"[video] captura del sitio falló (uso skeleton): {ce}")
+
         # 2. Construir los archivos del render
         jobs[job_id].update({"step": "build", "progress": 40})
         entry, comp_id, total_frames, temp_files = template_director.build_video_files(
