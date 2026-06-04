@@ -35,8 +35,11 @@ async def capture_site(url: str, out_path: str,
             browser = await p.chromium.launch(args=["--no-sandbox"])
             page = await browser.new_page(viewport={"width": width, "height": height},
                                           device_scale_factor=2)
-            await page.goto(url, wait_until="networkidle", timeout=20000)
-            await page.wait_for_timeout(800)
+            try:
+                await page.goto(url, wait_until="domcontentloaded", timeout=30000)
+            except Exception as ge:
+                print(f"[capture] goto lento ({ge}); capturo lo que haya")
+            await page.wait_for_timeout(2200)
             # Cerrar banners de cookies comunes (best-effort)
             for sel in ["#onetrust-accept-btn-handler", "button:has-text('Aceptar')",
                         "button:has-text('Accept')", "[aria-label*='accept' i]"]:
