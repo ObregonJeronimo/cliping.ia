@@ -11,9 +11,6 @@ const MODE_IDLE    = 'idle'
 const MODE_FORMING = 'forming'
 const MODE_BURST   = 'burst'
 
-// frustum con fov=50, z=16: alto ~11.8u, ancho ~15.4u (aspect 1.3)
-// todos los textos deben caber dentro de esos limites con SCALE=0.030
-
 class Spring1D {
   constructor(stiffness = 180, damping = 26) {
     this.k   = stiffness
@@ -60,17 +57,15 @@ function makeTextCanvas(string, fontSize) {
 }
 
 function makeTimelineCanvas(items) {
-  // fs=34: 6 items * 34 * 1.35 = ~275px * 0.030 = ~8.3u — entra en el frustum de 11.8u
-  const fs   = 34
-  const rowH = Math.ceil(fs * 1.35)
-  const PAD  = 10
+  const fs      = 34
+  const rowH    = Math.ceil(fs * 1.35)
+  const PAD     = 10
   const fontStr = `bold ${fs}px monospace`
 
-  // Medir ancho real con la fuente correcta seteada
   const probe = document.createElement('canvas')
-  probe.width = 1; probe.height = 1
+  probe.width = 600; probe.height = 1
   const pctx  = probe.getContext('2d')
-  pctx.font   = fontStr   // CRITICO: setear fuente antes de measureText
+  pctx.font   = fontStr
   const maxW  = items.reduce((acc, it) => {
     const w = pctx.measureText('\u2713  ' + it.label).width
     return w > acc ? w : acc
@@ -96,7 +91,6 @@ function makeTimelineCanvas(items) {
 
 function precomputeAll() {
   const urlPts    = sampleCanvas(makeTextCanvas('URL', FONT_SIZE * 1.4))
-  // 3 lineas * 0.44 * 72 * 1.25 = ~118px alto * 0.030 = ~3.5u — bien centrado
   const promptPts = sampleCanvas(makeTextCanvas('Video profesional\ncon todas las\nherramientas del sitio', FONT_SIZE * 0.44))
   const tlStates  = []
   for (let step = 0; step <= ITEMS.length; step++) {
@@ -128,8 +122,10 @@ export default function ParticleHero({ onStateChange }) {
     const springsY = Array.from({ length: MAX }, () => new Spring1D(180, 26))
     const springsZ = Array.from({ length: MAX }, () => new Spring1D(80,  18))
 
-    const W = el.offsetWidth || 700
-    const H = el.offsetHeight || 650
+    // Leer dimensiones reales en el primer rAF, despues del layout
+    // Evita el problema de offsetHeight=0 cuando Suspense monta antes del paint
+    let W = el.offsetWidth  || 700
+    let H = el.offsetHeight || 650
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' })
     renderer.setSize(W, H)
@@ -139,6 +135,21 @@ export default function ParticleHero({ onStateChange }) {
     const scene = new THREE.Scene()
     const cam   = new THREE.PerspectiveCamera(50, W / H, 0.1, 200)
     cam.position.z = 16
+
+    // ResizeObserver en el elemento — mas preciso que window resize
+    // corrige el aspect ratio cuando el layout termina de calcularse
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect
+        if (!width || !height) return
+        W = width
+        H = height
+        cam.aspect = W / H
+        cam.updateProjectionMatrix()
+        renderer.setSize(W, H)
+      }
+    })
+    resizeObserver.observe(el)
 
     const geo  = new THREE.BoxGeometry(1, 1, 1)
     const mat  = new THREE.MeshBasicMaterial({ color: 0xffffff })
@@ -335,19 +346,12 @@ export default function ParticleHero({ onStateChange }) {
       renderer.render(scene, cam)
     }
 
-    const onResize = () => {
-      const W2 = el.offsetWidth, H2 = el.offsetHeight
-      if (!W2 || !H2) return
-      cam.aspect = W2 / H2; cam.updateProjectionMatrix()\
-      renderer.setSize(W2, H2)
-    }
-    window.addEventListener('resize', onResize)
     rafId = requestAnimationFrame(animate)
 
     return () => {
       alive = false
       if (rafId) cancelAnimationFrame(rafId)
-      window.removeEventListener('resize', onResize)
+      resizeObserver.disconnect()
       renderer.dispose(); geo.dispose(); mat.dispose()
       orbitMeshes.forEach(l => { l.geometry.dispose(); l.material.dispose() })
       if (el.contains(renderer.domElement)) el.removeChild(renderer.domElement)
