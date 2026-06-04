@@ -12,14 +12,17 @@ reusando el mismo mecanismo que el resto.
 
 from __future__ import annotations
 
+import html
 import json
 import random
 import re
 from pathlib import Path
 
+import httpx
 from anthropic import AsyncAnthropic
 
 import cine_generator  # reutilizamos analyze_url_light
+import iconify_service
 
 _client = AsyncAnthropic()
 DIRECTOR_MODEL = "claude-sonnet-4-6"
@@ -44,11 +47,20 @@ LENGTH_SCENES = {"corto": (3, 4), "medio": (4, 5), "largo": (5, 6)}
 SCENE_CATALOG = """ESCENAS DISPONIBLES (type + props):
 - "KineticStatement": frase de impacto. props: lines = array de líneas; cada línea
   es array de segmentos { "t": "texto", "accent": true|false }. La palabra/grupo
-  clave va con accent:true. props opcional: subtitle. Ideal para hook y remates.
-- "IntegrationCluster": "todo en un solo lugar / muchas fuentes unificadas".
+  clave va con accent:true. IMPORTANTE: incluí los espacios DENTRO del texto del
+  segmento (ej: [{"t":"Comé "},{"t":"mejor","accent":true}]) para que no se peguen.
+  props opcional: subtitle. UNA sola idea por escena (no metas 2 frases).
+- "IntegrationCluster": "todo en un solo lugar / muchas cosas unificadas".
   props: title = array de segmentos { t, accent }. opcional colors = array de hex.
-- "MockupShowcase": muestra el producto/su UI. props: title = array de segmentos
+- "MockupShowcase": muestra el producto/su web. props: title = array de segmentos
   { t, accent }. (La captura del sitio se inyecta sola, no la pongas.)
+- "IconTransform": beat de TRANSFORMACIÓN. Un ícono se "clickea" y se convierte en
+  otro con un estallido. props: iconFrom y iconTo = CONCEPTOS de ícono EN INGLÉS
+  para buscar en una librería (ej "shopping cart", "money", "lock", "check",
+  "seedling", "leaf", "rocket", "clock", "heart"). props opcional: label = array de
+  segmentos { t, accent }. Usala cuando el guion tenga una idea de cambio/acción/
+  resultado (ej comprar->ahorrar, problema->solución, registrarse->crecer). Elegí
+  los íconos según el rubro y la idea concreta de la página. NO la fuerces si no pega.
 - "CtaOutro": cierre. props: brand = nombre de marca, cta = llamado a la acción corto."""
 
 THEME_GUIDE = """THEMES (elegí 1 según el rubro):
@@ -72,13 +84,18 @@ Devolvés SOLO un objeto JSON válido (sin markdown), con esta forma:
 
 REGLAS:
 - 4 a 6 escenas. La PRIMERA debe ser "KineticStatement" (hook). La ÚLTIMA "CtaOutro".
-- Incluí al menos un "MockupShowcase" si es un producto/software/plataforma.
+- Incluí "MockupShowcase" si hay un producto/web que mostrar.
+- Podés usar "IconTransform" en el medio cuando haya una idea de cambio/acción/resultado.
 - durationInFrames entre 75 y 120 por escena (30fps).
+- COPY: específico de ESTA marca, no genérico. Usá el contexto del sitio (qué vende,
+  para quién, su diferencial). Evitá frases vacías tipo "la mejor calidad" o "tu aliado".
+  Hablá de beneficios concretos y reales. Variá los verbos. Que suene humano.
 - Copy CORTO y potente, en el MISMO idioma del sitio/usuario (español rioplatense si aplica).
-- MUY IMPORTANTE: en KineticStatement cada línea va de 1 a 4 palabras (máx ~22 caracteres).
-  Partí las ideas largas en varias líneas o escenas. Pensá "to keep up" / "feature requests",
-  no frases enteras. Lo mismo para los títulos de las otras escenas: breves.
+- MUY IMPORTANTE: en KineticStatement cada línea va de 1 a 4 palabras (máx ~22 caracteres)
+  e incluí los espacios dentro de cada segmento. Partí ideas largas en varias líneas o
+  escenas. Pensá "to keep up" / "feature requests", no frases enteras.
 - En cada texto marcá con accent:true SOLO la palabra o grupo clave (1 por línea).
+- NO inventes datos que no sabés del sitio. Si no tenés un dato, no lo pongas.
 - El storyboard debe contar una micro-historia coherente con el propósito."""
 
 
@@ -112,7 +129,7 @@ def _normalize(spec: dict, url_data: dict, desarrollo: str, proposito: str) -> d
     scenes = spec.get("scenes")
     if not isinstance(scenes, list) or len(scenes) < 2:
         return fb
-    valid_types = {"KineticStatement", "IntegrationCluster", "MockupShowcase", "CtaOutro"}
+    valid_types = {"KineticStatement", "IntegrationCluster", "MockupShowcase", "CtaOutro", "IconTransform"}
     clean = []
     for s in scenes:
         if not isinstance(s, dict) or s.get("type") not in valid_types:
@@ -129,6 +146,68 @@ def _normalize(spec: dict, url_data: dict, desarrollo: str, proposito: str) -> d
     return {"theme": theme, "brand": spec.get("brand") or fb["brand"], "scenes": clean}
 
 
+async def analyze_site_rich(url: str) -> dict:
+    """
+    Lectura más profunda del sitio para que el director escriba mejor copy:
+    título, marca, descripción, subtítulos (h1/h2/h3) y primeros párrafos.
+    Best-effort: si falla, cae a analyze_url_light.
+    """
+    base = await cine_generator.analyze_url_light(url)
+    out = {"siteName": base.get("siteName", ""), "headline": base.get("headline", ""),
+           "themeColor": base.get("themeColor", ""), "description": "", "sections": [], "context": ""}
+    if not url:
+        return out
+    try:
+        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True,
+                headers={"User-Agent": "Mozilla/5.0 (compatible; clipingbot/1.0)"}) as c:
+            r = await c.get(url)
+            t = r.text[:300_000]
+
+        def grab(pat):
+            m = re.search(pat, t, re.I | re.S)
+            return html.unescape(re.sub(r"<[^>]+>", "", m.group(1))).strip() if m else ""
+
+        desc = grab(r'name=["\']description["\'][^>]*content=["\']([^"\']+)') \
+            or grab(r'property=["\']og:description["\'][^>]*content=["\']([^"\']+)')
+        out["description"] = re.sub(r"\s+", " ", desc)[:280]
+
+        heads = re.findall(r"<h[1-3][^>]*>(.*?)</h[1-3]>", t, re.I | re.S)
+        secs = []
+        for h in heads:
+            txt = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", html.unescape(h))).strip()
+            if 3 <= len(txt) <= 80 and txt.lower() not in [s.lower() for s in secs]:
+                secs.append(txt)
+        out["sections"] = secs[:8]
+
+        ctx = []
+        if out["siteName"]:    ctx.append(f"Marca: {out['siteName']}")
+        if out["headline"]:    ctx.append(f"Titular: {out['headline']}")
+        if out["description"]: ctx.append(f"Descripción: {out['description']}")
+        if out["sections"]:    ctx.append("Secciones: " + " · ".join(out["sections"]))
+        out["context"] = "\n".join(ctx)
+    except Exception as e:
+        print(f"[director] analyze_site_rich: {e}")
+    return out
+
+
+async def _resolve_icons(spec: dict) -> dict:
+    """Resuelve los conceptos de íconos de las escenas IconTransform a SVGs de Iconify."""
+    for s in spec.get("scenes", []):
+        if s.get("type") != "IconTransform":
+            continue
+        for key, svgkey in (("iconFrom", "iconFromSvg"), ("iconTo", "iconToSvg")):
+            concept = s.get(key)
+            if isinstance(concept, str) and concept.strip():
+                try:
+                    hits = await iconify_service.search_objects(concept.strip(), limit=1)
+                    body = await iconify_service.get_icon_body(hits[0]["id"]) if hits else None
+                    s[svgkey] = body  # {body, viewBox} o None (la escena cae a sparkle)
+                except Exception as ie:
+                    print(f"[director] icono '{concept}' no resuelto: {ie}")
+                    s[svgkey] = None
+    return spec
+
+
 async def build_storyboard(url: str, desarrollo: str, proposito: str = "marketing",
                            theme_override: str = "", tone: str = "",
                            length: str = "medio", simple: bool = True) -> dict:
@@ -140,7 +219,7 @@ async def build_storyboard(url: str, desarrollo: str, proposito: str = "marketin
     Modo avanzado (simple=False): respeta los parámetros del usuario (theme, tono,
     duración) como restricciones, con menos azar.
     """
-    url_data = await cine_generator.analyze_url_light(url)
+    url_data = await analyze_site_rich(url)
 
     lo, hi = LENGTH_SCENES.get(length, LENGTH_SCENES["medio"])
     n_scenes = random.randint(lo, hi)
@@ -164,13 +243,17 @@ async def build_storyboard(url: str, desarrollo: str, proposito: str = "marketin
         brief += f"\n- Theme OBLIGATORIO: {theme_override}"
 
     extra = f'\nLo que pidió el usuario: "{desarrollo.strip()}"' if desarrollo.strip() else ""
+    contexto = url_data.get("context") or f"Marca: {url_data.get('siteName') or 'desconocido'}"
     user_prompt = f"""PROPÓSITO: {proposito}
-SITIO: {url_data.get('siteName') or 'desconocido'}  ({url})
-HEADLINE DEL SITIO: {url_data.get('headline') or '(sin dato)'}{extra}
+URL: {url}
+
+CONTEXTO DEL SITIO (usalo para escribir copy específico y real, no genérico):
+{contexto}{extra}
 
 {brief}
 
-Generá el storyboard JSON. Que el copy y la estructura reflejen el ángulo y el mood."""
+Generá el storyboard JSON. El copy tiene que sonar a ESTA marca puntual (usá lo que
+sabés del sitio), reflejar el ángulo y el mood, y respetar las reglas de líneas cortas."""
 
     try:
         resp = await _client.messages.create(
@@ -184,6 +267,7 @@ Generá el storyboard JSON. Que el copy y la estructura reflejen el ángulo y el
         spec = _normalize(spec, url_data, desarrollo, proposito)
         if theme_override in ("saas-explainer", "organic-natural", "clinical-formal"):
             spec["theme"] = theme_override
+        spec = await _resolve_icons(spec)
         return spec
     except Exception as e:
         print(f"[director] fallback ({e})")

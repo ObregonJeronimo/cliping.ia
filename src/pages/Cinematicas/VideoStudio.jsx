@@ -196,7 +196,13 @@ export default function VideoStudio() {
                     <div className={styles.cinePlanOrder}>{i + 1}</div>
                     <div className={styles.cinePlanInfo}>
                       <div className={styles.cinePlanName}>{s.type}</div>
-                      <div className={styles.cinePlanProp}>{s.subtitle || s.cta || (s.title && s.title.map(x => x.t).join('')) || (s.lines && s.lines.flat().map(x => x.t).join(''))}</div>
+                      <div className={styles.cinePlanProp}>
+                        {s.type === 'IconTransform'
+                          ? `${s.iconFrom || '✦'} → ${s.iconTo || '✦'}${s.label ? '  ·  ' + s.label.map(x => x.t).join('') : ''}`
+                          : s.subtitle || s.cta
+                            || (s.title && s.title.map(x => x.t).join(''))
+                            || (s.lines && s.lines.map(line => line.map(x => x.t).join('')).join(' '))}
+                      </div>
                     </div>
                   </div>
                 ))}

@@ -5,6 +5,7 @@ import KineticStatement from './scenes/KineticStatement'
 import IntegrationCluster from './scenes/IntegrationCluster'
 import MockupShowcase from './scenes/MockupShowcase'
 import CtaOutro from './scenes/CtaOutro'
+import IconTransform from './scenes/IconTransform'
 
 // Carga Inter (pesos puntuales) para que las escenas usen la tipografía real del estilo.
 loadFont('normal', { weights: ['400', '600', '700'], subsets: ['latin'], ignoreTooManyRequestsWarning: true })
@@ -20,7 +21,7 @@ loadFont('normal', { weights: ['400', '600', '700'], subsets: ['latin'], ignoreT
  * Cada escena se ubica con un solape de FADE frames para crossfade.
  */
 
-const REGISTRY = { KineticStatement, IntegrationCluster, MockupShowcase, CtaOutro }
+const REGISTRY = { KineticStatement, IntegrationCluster, MockupShowcase, CtaOutro, IconTransform }
 const FADE = 12
 
 const Fader = ({ duration, children }) => {
