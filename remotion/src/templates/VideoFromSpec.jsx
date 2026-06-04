@@ -1,9 +1,13 @@
 import { AbsoluteFill, Sequence, useCurrentFrame, interpolate } from 'remotion'
+import { loadFont } from '@remotion/google-fonts/Inter'
 import { getTheme } from './theme'
 import KineticStatement from './scenes/KineticStatement'
 import IntegrationCluster from './scenes/IntegrationCluster'
 import MockupShowcase from './scenes/MockupShowcase'
 import CtaOutro from './scenes/CtaOutro'
+
+// Carga Inter para que las escenas usen la tipografía real del estilo.
+loadFont()
 
 /**
  * VideoFromSpec — arma el video completo a partir de un storyboard spec.

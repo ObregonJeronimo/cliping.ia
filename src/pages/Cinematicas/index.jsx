@@ -2,18 +2,24 @@ import { useState } from 'react'
 import styles from './Cinematicas.module.css'
 import Animaciones from './Animaciones'
 import Cine from './Cine'
+import VideoStudio from './VideoStudio'
 
 export default function Cinematicas() {
-  const [tab, setTab] = useState('animaciones')
+  const [tab, setTab] = useState('video')
 
   return (
     <div className={styles.page}>
       <div className={styles.header}>
         <div>
           <h1 className={styles.title}>🎬 Cinemáticas</h1>
-          <p className={styles.sub}>Animaciones generadas por IA — construí tu biblioteca y creá cinematografías completas.</p>
+          <p className={styles.sub}>Videos de marketing generados por IA — pegá una URL y listo, o construí tu biblioteca de animaciones.</p>
         </div>
         <div className={styles.tabs}>
+          <button
+            className={`${styles.tabBtn} ${tab === 'video' ? styles.tabBtnActive : ''}`}
+            onClick={() => setTab('video')}>
+            🎬 Video
+          </button>
           <button
             className={`${styles.tabBtn} ${tab === 'animaciones' ? styles.tabBtnActive : ''}`}
             onClick={() => setTab('animaciones')}>
@@ -28,7 +34,7 @@ export default function Cinematicas() {
       </div>
 
       <div className={styles.tabContent}>
-        {tab === 'animaciones' ? <Animaciones /> : <Cine />}
+        {tab === 'video' ? <VideoStudio /> : tab === 'animaciones' ? <Animaciones /> : <Cine />}
       </div>
     </div>
   )
