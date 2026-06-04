@@ -6,8 +6,8 @@ import IntegrationCluster from './scenes/IntegrationCluster'
 import MockupShowcase from './scenes/MockupShowcase'
 import CtaOutro from './scenes/CtaOutro'
 
-// Carga Inter para que las escenas usen la tipografía real del estilo.
-loadFont()
+// Carga Inter (pesos puntuales) para que las escenas usen la tipografía real del estilo.
+loadFont('normal', { weights: ['400', '600', '700'], subsets: ['latin'], ignoreTooManyRequestsWarning: true })
 
 /**
  * VideoFromSpec — arma el video completo a partir de un storyboard spec.

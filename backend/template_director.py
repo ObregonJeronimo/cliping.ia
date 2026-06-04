@@ -229,7 +229,7 @@ def build_video_files(job_id: str, spec: dict, remotion_dir):
     """
     remotion_dir = Path(remotion_dir)
     short = job_id[:8]
-    comp_id = f"MarketingVideo_{short}"
+    comp_id = f"MarketingVideo-{short}"
     total = compute_total(spec.get("scenes", []))
     temp_files = []
 
