@@ -54,13 +54,15 @@ SCENE_CATALOG = """ESCENAS DISPONIBLES (type + props):
   props: title = array de segmentos { t, accent }. opcional colors = array de hex.
 - "MockupShowcase": muestra el producto/su web. props: title = array de segmentos
   { t, accent }. (La captura del sitio se inyecta sola, no la pongas.)
-- "IconTransform": beat de TRANSFORMACIÓN. Un ícono se "clickea" y se convierte en
-  otro con un estallido. props: iconFrom y iconTo = CONCEPTOS de ícono EN INGLÉS
-  para buscar en una librería (ej "shopping cart", "money", "lock", "check",
-  "seedling", "leaf", "rocket", "clock", "heart"). props opcional: label = array de
-  segmentos { t, accent }. Usala cuando el guion tenga una idea de cambio/acción/
-  resultado (ej comprar->ahorrar, problema->solución, registrarse->crecer). Elegí
-  los íconos según el rubro y la idea concreta de la página. NO la fuerces si no pega.
+- "IconTransform": beat de TRANSFORMACIÓN (el efecto "wow"). Un ícono se "clickea" y
+  se convierte en otro con un estallido. props: iconFrom y iconTo = CONCEPTOS de ícono
+  EN INGLÉS para buscar en una librería. props opcional: label = array de segmentos
+  { t, accent }. BUSCÁ activamente el contraste/transformación del mensaje y pensá qué
+  DOS íconos lo cuentan para ESTA marca puntual. Ejemplos para que generalices (NO los
+  copies, inventá los tuyos): dietética: "burger"->"apple", "leaf"->"heart"; software:
+  "documents"->"lightning", "lock"->"check"; gym: "couch"->"dumbbell"; finanzas:
+  "piggy bank"->"chart"; e-commerce: "shopping cart"->"money". Elegí los íconos que de
+  verdad representen la idea de la página.
 - "CtaOutro": cierre. props: brand = nombre de marca, cta = llamado a la acción corto."""
 
 THEME_GUIDE = """THEMES (elegí 1 según el rubro):
@@ -85,7 +87,9 @@ Devolvés SOLO un objeto JSON válido (sin markdown), con esta forma:
 REGLAS:
 - 4 a 6 escenas. La PRIMERA debe ser "KineticStatement" (hook). La ÚLTIMA "CtaOutro".
 - Incluí "MockupShowcase" si hay un producto/web que mostrar.
-- Podés usar "IconTransform" en el medio cuando haya una idea de cambio/acción/resultado.
+- Incluí UN "IconTransform" cuando exista un contraste o transformación natural en el
+  mensaje (en marketing casi siempre lo hay: antes/después, problema/solución, acción/
+  resultado). Es el momento más vistoso del video. No lo fuerces solo si de verdad no pega.
 - durationInFrames entre 75 y 120 por escena (30fps).
 - COPY: específico de ESTA marca, no genérico. Usá el contexto del sitio (qué vende,
   para quién, su diferencial). Evitá frases vacías tipo "la mejor calidad" o "tu aliado".
