@@ -1040,6 +1040,124 @@ async def cine_library():
         return {"cines": [], "error": str(e)}
 
 
+# ─── VIDEO POR PLANTILLAS (director + escenas) ───────────────────────────────
+import template_director
+
+
+class VideoGenRequest(BaseModel):
+    url: str = ""
+    desarrollo: str = ""
+    proposito: str = "marketing"
+    theme: str = ""        # override opcional del theme
+    userId: str = ""
+
+
+@app.post("/api/video/generate")
+async def video_generate(req: VideoGenRequest):
+    """Modo simple/avanzado: URL + desarrollo -> video con plantillas."""
+    if not req.url.strip() and not req.desarrollo.strip():
+        return {"error": "Necesitás al menos una URL o una descripción"}
+    job_id = str(uuid.uuid4())
+    jobs[job_id] = {
+        "id": job_id, "status": "queued", "step": None, "progress": 0,
+        "videoPath": None, "videoFilename": None, "cloudinaryUrl": "",
+        "error": None, "spec": None, "createdAt": datetime.utcnow().isoformat(),
+    }
+    asyncio.create_task(_render_video_job(job_id, req))
+    return {"job_id": job_id}
+
+
+async def _render_video_job(job_id: str, req: VideoGenRequest):
+    from pathlib import Path as _Path
+    import asyncio as _asyncio
+    REMOTION_DIR = _Path(__file__).parent.parent / "remotion"
+    OUTPUTS_DIR  = _Path(__file__).parent / "outputs"
+    OUTPUTS_DIR.mkdir(exist_ok=True)
+    output_path = OUTPUTS_DIR / f"{job_id}_video.mp4"
+    temp_files = []
+
+    try:
+        jobs[job_id].update({"status": "processing", "step": "script", "progress": 18})
+        # 1. Director: URL + desarrollo -> storyboard
+        spec = await template_director.build_storyboard(req.url, req.desarrollo, req.proposito)
+        if req.theme in ("saas-explainer", "organic-natural", "clinical-formal"):
+            spec["theme"] = req.theme
+        jobs[job_id]["spec"] = spec
+
+        # 2. Construir los archivos del render
+        jobs[job_id].update({"step": "build", "progress": 40})
+        entry, comp_id, total_frames, temp_files = template_director.build_video_files(
+            job_id, spec, REMOTION_DIR
+        )
+
+        # 3. Render con Remotion
+        jobs[job_id].update({"step": "render", "progress": 52})
+        candidates = [
+            str(REMOTION_DIR / "node_modules" / ".bin" / "remotion.cmd"),
+            str(REMOTION_DIR / "node_modules" / ".bin" / "remotion"),
+        ]
+        remotion_bin = next((c for c in candidates if _Path(c).exists()), "npx")
+        args = [remotion_bin, "render", entry, comp_id,
+                str(output_path.absolute()),
+                "--codec", "h264", "--fps", "30",
+                "--width", "1080", "--height", "1920",
+                "--duration-in-frames", str(total_frames),
+                "--concurrency", "4", "--jpeg-quality", "90", "--crf", "22",
+                "--log", "error"]
+        print(f"[video] Renderizando {comp_id} ({total_frames} frames, theme={spec.get('theme')})...")
+        proc = await _asyncio.create_subprocess_exec(
+            *args, cwd=str(REMOTION_DIR),
+            stdout=_asyncio.subprocess.PIPE, stderr=_asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await proc.communicate()
+        if proc.returncode != 0:
+            out = stdout.decode(errors='replace'); err = stderr.decode(errors='replace')
+            print(f"[video] ERROR STDOUT:\n{out[:800]}")
+            print(f"[video] ERROR STDERR:\n{err[:800]}")
+            raise RuntimeError((out + err)[-400:])
+
+        # 4. Cloudinary
+        jobs[job_id].update({"status": "uploading", "step": "upload", "progress": 86})
+        cloudinary_url = ""
+        try:
+            from cloudinary_upload import upload_video
+            cloudinary_url = await upload_video(str(output_path), f"video_{job_id[:8]}")
+            print(f"[video] Cloudinary OK -> {cloudinary_url}")
+        except Exception as ce:
+            print(f"[video] Cloudinary error: {ce}")
+
+        # 5. Firestore
+        try:
+            db = get_firestore()
+            if db:
+                db.collection("videos").document(job_id).set({
+                    "id": job_id, "url": req.url, "desarrollo": req.desarrollo,
+                    "proposito": req.proposito, "userId": req.userId,
+                    "theme": spec.get("theme"), "brand": spec.get("brand"),
+                    "videoUrl": cloudinary_url, "localFile": output_path.name,
+                    "frames": total_frames, "createdAt": datetime.utcnow().isoformat(),
+                })
+                print(f"[video] Firestore OK -> videos/{job_id}")
+        except Exception as fe:
+            print(f"[video] Firestore error: {fe}")
+
+        jobs[job_id].update({
+            "status": "done", "step": "export", "progress": 100,
+            "videoPath": str(output_path), "videoFilename": output_path.name,
+            "cloudinaryUrl": cloudinary_url,
+        })
+        print(f"[video] OK -> {output_path.name}")
+    except Exception as e:
+        print(f"[video] ERROR: {e}")
+        jobs[job_id].update({"status": "error", "error": str(e)[:400]})
+    finally:
+        for f in temp_files:
+            try:
+                f.unlink(missing_ok=True)
+            except Exception:
+                pass
+
+
 # ─── MASTERPIECE ENDPOINT ─────────────────────────────────────────────────────
 @app.post("/api/masterpiece")
 async def render_masterpiece():

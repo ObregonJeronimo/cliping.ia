@@ -76,12 +76,14 @@ const Arcs = ({ theme, frame }) => {
   )
 }
 
-export const KineticStatement = ({ theme, lines = [], subtitle = '' }) => {
+export const KineticStatement = ({ theme, lines = [], subtitle = '', durationInFrames: durProp }) => {
   const frame = useCurrentFrame()
-  const { fps, durationInFrames } = useVideoConfig()
+  const vc = useVideoConfig()
+  const fps = vc.fps
+  const dur = durProp || vc.durationInFrames
   const m = theme.motion
 
-  const camT = easeInOut(clamp(frame / durationInFrames, 0, 1))
+  const camT = easeInOut(clamp(frame / dur, 0, 1))
   const camScale = 1 + m.cameraDrift * camT
   const glowOp = clamp(frame / 14, 0, 1)
 
