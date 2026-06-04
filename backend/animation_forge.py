@@ -31,8 +31,9 @@ LIBRARY_DIR  = Path(__file__).parent.parent / "cinematic_library"
 LIBRARY_DIR.mkdir(exist_ok=True)
 
 MAX_ATTEMPTS  = 5
-HAIKU_MODEL   = "claude-haiku-4-5-20251001"
-OPUS_MODEL    = "claude-sonnet-4-6"  # fallback — más barato que Opus completo
+HAIKU_MODEL   = "claude-haiku-4-5-20251001"   # rápido y barato — para corregir sintaxis
+GEN_MODEL     = "claude-sonnet-4-6"           # el creativo — genera la animación y la coreografía
+OPUS_MODEL    = "claude-sonnet-4-6"           # fallback final
 
 # ─── Prompt del sistema ───────────────────────────────────────────────────────
 FORGE_SYSTEM = """Sos un director de motion graphics premium (nivel Apple/Stripe/Linear).
@@ -56,6 +57,7 @@ PRINCIPIOS DE MOTION (lo que separa lo amateur de lo premium):
 - STAGGER: si hay varios elementos, que entren escalonados (cada uno con delay), nunca todos juntos.
 - PROFUNDIDAD: parallax entre capas (fondo se mueve menos que el frente), escala + blur para simular distancia.
 - JERARQUÍA FOCAL: un único protagonista por momento. El resto acompaña, no compite.
+- CÁMARA VIVA: envolvé toda la escena en un <g> con transform de translate+scale derivado del frame (zoom/paneo lento). La cámara NUNCA está 100% quieta; siempre hay deriva sutil. En el clímax podés acercar/alejar con más fuerza.
 
 CALIDAD VISUAL:
 - Degradados SVG SIEMPRE (linear/radial), nunca color plano. Animá gradientTransform/offset/opacity.
@@ -82,7 +84,14 @@ PATRÓN DE REFERENCIA (estructura, no copiar literal):
   const climax  = easeInOut(clamp((f - 36) / 30, 0, 1)) // acto 2: 36-66
   const salida  = clamp((f - 78) / 12, 0, 1)            // acto 3: 78-90
   const pop = spring({ frame: f - 36, fps, config: { damping: 10 } })
-  // ...usar estos factores para escalar/rotar/desplazar/opacar capas con stagger.
+  // CÁMARA: wrapper que se mueve siempre
+  const camScale = 1 + 0.12 * easeInOut(clamp(f / 90, 0, 1)) + 0.05 * pop
+  const camX = lerp(0, -40, easeInOut(clamp(f / 90, 0, 1)))
+  // <svg viewBox="0 0 1080 1920">
+  //   <g transform={`translate(${540 + camX}, 960) scale(${camScale}) translate(${-540}, ${-960})`}>
+  //     ...toda la escena, usando entrada/climax/salida/pop para animar capas con stagger...
+  //   </g>
+  // </svg>
 
 OUTPUT: Solo el código JSX. Sin explicaciones, sin markdown, sin ```."""
 
@@ -153,6 +162,51 @@ async def plan_object_queries(idea: str, tags: list, desarrollo: str,
     except Exception as e:
         print(f"[forge] plan_object_queries error: {e}")
         return list(user_objects)[:4]
+
+
+# ─── Planificador de coreografía (diseña el movimiento antes de programar) ────
+CHOREO_SYSTEM = """Sos director de motion graphics. Diseñás la COREOGRAFÍA de una animación
+vertical de 90 frames (30fps, 3 segundos) ANTES de que se programe.
+
+Devolvés un plan en texto, conciso y accionable (viñetas cortas, sin código):
+- 3 o 4 ACTOS con su rango de frames (ej: f0–24, f24–54, f54–78, f78–90).
+- En cada acto detallá: qué hace el/los OBJETO(S) protagonista(s) (entrada con
+  anticipación, transformación, morph entre objetos, salida), el movimiento de
+  CÁMARA (zoom in/out, paneo, leve rotación = escalar/trasladar un wrapper que
+  envuelve todo), y el EASING (easeOut/easeInOut/spring).
+- Usá acción SOLAPADA (un elemento arranca antes de que el otro termine) y
+  stagger. Marcá un CLÍMAX visual claro alrededor de f45–60 usando el accent.
+- Nada puede quedar estático: siempre hay deriva de cámara o movimiento secundario.
+
+Sé específico con números (escalas, posiciones, grados). Máximo ~12 viñetas."""
+
+
+async def plan_choreography(idea: str, tags: list, desarrollo: str,
+                            rubro: str, object_concepts: list) -> str:
+    """Genera un plan de coreografía en texto. Si falla, devuelve '' (no bloquea)."""
+    contexto = []
+    if (desarrollo or "").strip():
+        contexto.append(f'Idea del usuario: "{desarrollo.strip()}"')
+    if tags:
+        contexto.append("Conceptos: " + ", ".join(tags))
+    if object_concepts:
+        contexto.append("Objetos protagonistas disponibles (SVG reales): " + ", ".join(object_concepts))
+    if rubro:
+        contexto.append(f"Rubro: {rubro}")
+    if not contexto:
+        contexto.append(f"Animación abstracta para el rubro: {rubro}")
+
+    try:
+        resp = await client.messages.create(
+            model=GEN_MODEL,
+            max_tokens=700,
+            system=CHOREO_SYSTEM,
+            messages=[{"role": "user", "content": "\n".join(contexto)}],
+        )
+        return resp.content[0].text.strip()
+    except Exception as e:
+        print(f"[forge] plan_choreography error: {e}")
+        return ""
 
 
 # ─── Compilar con esbuild (sandbox rápido) ────────────────────────────────────
@@ -264,6 +318,7 @@ Sé muy creativo — buscá algo que nadie haya visto antes."""
     # descripción decidimos qué objetos vectoriales buscar (en inglés, que es
     # como están etiquetados los iconos) y los inyectamos como protagonistas.
     objects_block = ""
+    object_concepts = []
     if _ICONIFY_OK and (desarrollo_valido or tags_str or objects):
         try:
             await emit("🔎 Eligiendo objetos para animar...", 0)
@@ -273,12 +328,20 @@ Sé muy creativo — buscá algo que nadie haya visto antes."""
             if queries:
                 fetched = await fetch_objects_for_prompt(queries)
                 objects_block = build_objects_prompt_block(fetched)
+                object_concepts = list(fetched.keys())
                 if fetched:
-                    await emit(f"📦 {len(fetched)} objeto(s) de librería listos: {', '.join(fetched.keys())}", 0)
+                    await emit(f"📦 {len(fetched)} objeto(s) de librería listos: {', '.join(object_concepts)}", 0)
                 else:
                     await emit("📦 Sin coincidencias en la librería — uso formas", 0)
         except Exception as oe:
             print(f"[forge] Iconify/planner error: {oe}")
+
+    # ── Coreografía: planificamos el MOVIMIENTO antes de programar ────────────
+    await emit("🎨 Diseñando la coreografía...", 0)
+    choreo = await plan_choreography(idea, tags, desarrollo_limpio, rubro, object_concepts)
+    choreo_block = ""
+    if choreo:
+        choreo_block = f"\nCOREOGRAFÍA A IMPLEMENTAR (seguila al pie — es el guion de movimiento):\n{choreo}\n"
 
     user_prompt = f"""Creá una animación React para Remotion llamada `{component_name}`.
 
@@ -290,24 +353,25 @@ PALETA DE COLORES A USAR (obligatorio):
 
 {narrativa_section}
 {(chr(10) + objects_block) if objects_block else ""}
-
+{choreo_block}
 CÓMO HACERLO:
 - La animación dura 90 frames (3 segundos a 30fps)
-- Estructurala en actos con propósito (entrada → desarrollo → clímax → salida), no en bloques iguales
-- Cada acto transforma el protagonista con easing y stagger — nada lineal, nada abrupto
-- Usá SVG con paths, círculos, polígonos (y los objetos provistos si los hay) que se morphean/animan
-- Las formas deben ser GRANDES y ocupar gran parte del canvas vertical
+- Implementá la coreografía de arriba con precisión: respetá los rangos de frames, la cámara y el easing
+- CÁMARA: envolvé TODO en un <g transform={{`translate(...) scale(...)`}}> cuyo zoom/paneo deriva del frame, para que la escena nunca quede estática
+- Cada acto transforma el protagonista con easing, anticipación, overshoot y settle — nada lineal ni abrupto
+- Acción solapada y stagger entre elementos; movimiento secundario siempre presente
+- Las formas/objetos deben ser GRANDES y ocupar gran parte del canvas vertical
 - viewBox="0 0 1080 1920", centro en cx=540 cy=960
-- Profundidad real: capas con parallax, glow y sombras; fondo vivo con tinte del primaryColor
-- Si te dieron objetos, ELLOS son los protagonistas — animalos, no dibujes formas genéricas en su lugar
-- Sin texto estático — todo debe moverse y transformarse
+- Profundidad real: capas con parallax (el fondo se mueve menos que el frente), glow y sombras; fondo vivo con tinte del primaryColor
+- Si te dieron objetos, ELLOS son los protagonistas — embebé su SVG y animalo, no dibujes formas genéricas en su lugar
+- Clímax visual claro (~f45-60) con destello del accentColor
 
 Solo el código JSX, sin explicaciones ni markdown."""
 
     for attempt in range(1, MAX_ATTEMPTS + 1):
-        await emit(f"⚙️ Intento {attempt}/{MAX_ATTEMPTS} — {'Haiku genera' if attempt == 1 else 'Haiku corrige'}...", attempt)
+        await emit(f"⚙️ Intento {attempt}/{MAX_ATTEMPTS} — {'Sonnet genera' if attempt == 1 else 'Haiku corrige'}...", attempt)
 
-        model = HAIKU_MODEL
+        model = GEN_MODEL if attempt == 1 else HAIKU_MODEL
         if attempt == 1:
             messages = [{"role": "user", "content": user_prompt}]
         else:
@@ -320,7 +384,7 @@ Solo el código JSX, sin explicaciones ni markdown."""
         try:
             resp = await client.messages.create(
                 model=model,
-                max_tokens=4000,
+                max_tokens=8000 if attempt == 1 else 5000,
                 system=FORGE_SYSTEM if attempt == 1 else CORRECTION_SYSTEM,
                 messages=messages,
             )
