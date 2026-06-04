@@ -1,5 +1,5 @@
 import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from 'remotion'
-import { easeOut, easeInOut, clamp } from '../theme'
+import { easeOut, easeInOut, clamp, fitHeadline, segText } from '../theme'
 
 /**
  * KineticStatement — escena de texto cinético al estilo del explainer de SaaS.
@@ -108,8 +108,8 @@ export const KineticStatement = ({ theme, lines = [], subtitle = '', durationInF
           {theme.motifs.sparkle &&
             <div style={{ marginBottom: 26 }}><Sparkle theme={theme} frame={frame} fps={fps} delay={4} /></div>}
 
-          <div style={{ textAlign: 'center', fontWeight: theme.headWeight, fontSize: 128,
-            lineHeight: 1.05, letterSpacing: '-0.025em', color: theme.text, padding: '0 70px' }}>
+          <div style={{ textAlign: 'center', fontWeight: theme.headWeight, fontSize: fitHeadline(lines.map(segText).join(' ')),
+            lineHeight: 1.08, letterSpacing: '-0.025em', color: theme.text, maxWidth: 940, padding: '0 70px' }}>
             {lines.map((segs, i) => {
               const d = 8 + i * m.stagger * 2
               const up = (1 - easeOut(clamp((frame - d) / m.enterFrames, 0, 1))) * 60

@@ -1,5 +1,5 @@
 import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring, Img } from 'remotion'
-import { easeOut, clamp } from '../theme'
+import { easeOut, clamp, fitHeadline, segText } from '../theme'
 
 /**
  * MockupShowcase — captura de la app inclinada en 3D con glow.
@@ -60,7 +60,7 @@ export const MockupShowcase = ({ theme, title = [], screenshot = null }) => {
         background: `radial-gradient(circle, ${theme.glow}, rgba(0,0,0,0) 60%)` }} />
 
       <div style={{ position: 'absolute', top: 230, width: '100%', textAlign: 'center',
-        fontWeight: theme.headWeight, fontSize: 116, lineHeight: 1.06, letterSpacing: '-0.025em',
+        fontWeight: theme.headWeight, fontSize: fitHeadline(segText(title), 112), lineHeight: 1.08, letterSpacing: '-0.025em',
         color: theme.text, padding: '0 70px', transform: `translateY(${capUp}px)`, opacity: capOp }}>
         {title.map((s, j) => s.accent
           ? <GradientText key={j} theme={theme}>{s.t}</GradientText>

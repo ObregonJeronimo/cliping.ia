@@ -75,6 +75,9 @@ REGLAS:
 - Incluí al menos un "MockupShowcase" si es un producto/software/plataforma.
 - durationInFrames entre 75 y 120 por escena (30fps).
 - Copy CORTO y potente, en el MISMO idioma del sitio/usuario (español rioplatense si aplica).
+- MUY IMPORTANTE: en KineticStatement cada línea va de 1 a 4 palabras (máx ~22 caracteres).
+  Partí las ideas largas en varias líneas o escenas. Pensá "to keep up" / "feature requests",
+  no frases enteras. Lo mismo para los títulos de las otras escenas: breves.
 - En cada texto marcá con accent:true SOLO la palabra o grupo clave (1 por línea).
 - El storyboard debe contar una micro-historia coherente con el propósito."""
 

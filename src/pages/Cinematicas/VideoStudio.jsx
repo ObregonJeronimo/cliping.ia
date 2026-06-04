@@ -43,6 +43,7 @@ export default function VideoStudio() {
   const [videoUrl, setVideoUrl] = useState(null)
   const [error, setError] = useState(null)
   const pollRef = useRef(null)
+  const videoRef = useRef(null)
   useEffect(() => () => clearInterval(pollRef.current), [])
 
   const canGenerate = (url.trim() || desarrollo.trim()) && !generating
@@ -172,7 +173,13 @@ export default function VideoStudio() {
             {error && <div className={styles.cineNote}>⚠️ {error}</div>}
 
             {videoUrl && (
-              <div className={styles.playerWrap}><video src={videoUrl} controls autoPlay loop className={styles.video} /></div>
+              <div className={styles.playerWrap}>
+                <video ref={videoRef} src={videoUrl} controls autoPlay loop playsInline className={styles.video} />
+                <button className={styles.forgeBtn} style={{ marginTop: 10 }}
+                  onClick={() => { const v = videoRef.current; if (v?.requestFullscreen) v.requestFullscreen(); else if (v?.webkitEnterFullscreen) v.webkitEnterFullscreen(); }}>
+                  ⛶ Pantalla completa
+                </button>
+              </div>
             )}
 
             {spec && (

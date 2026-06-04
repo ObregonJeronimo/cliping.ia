@@ -83,3 +83,11 @@ export const easeOut = (t) => 1 - Math.pow(1 - t, 3);
 export const easeInOut = (t) => (t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t);
 export const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 export const lerp = (a, b, t) => a + (b - a) * t;
+
+// Ajusta el tamaño del título según el largo del texto (evita desbordes).
+export const fitHeadline = (text, base = 120, min = 54) => {
+  const t = (text || '').length;
+  return clamp(min, base - Math.max(0, t - 22) * 0.95, base);
+};
+
+export const segText = (segs) => (segs || []).map((s) => s.t).join('');

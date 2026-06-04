@@ -1,5 +1,5 @@
 import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from 'remotion'
-import { easeOut, easeInOut, clamp } from '../theme'
+import { easeOut, easeInOut, clamp, fitHeadline, segText } from '../theme'
 
 /**
  * IntegrationCluster — hub central + fuentes alrededor conectadas por líneas.
@@ -43,7 +43,7 @@ export const IntegrationCluster = ({ theme, title = [], colors = DEFAULT_COLORS 
         background: `radial-gradient(circle, ${theme.glow}, rgba(0,0,0,0) 60%)` }} />
 
       <div style={{ position: 'absolute', top: 250, width: '100%', textAlign: 'center',
-        fontWeight: theme.headWeight, fontSize: 112, lineHeight: 1.07, letterSpacing: '-0.025em',
+        fontWeight: theme.headWeight, fontSize: fitHeadline(segText(title), 112), lineHeight: 1.08, letterSpacing: '-0.025em',
         color: theme.text, padding: '0 70px', transform: `translateY(${capUp}px)`, opacity: capOp }}>
         {title.map((s, j) => s.accent
           ? <GradientText key={j} theme={theme}>{s.t}</GradientText>
