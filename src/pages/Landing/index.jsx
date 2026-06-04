@@ -16,8 +16,6 @@ export default function Landing() {
   const [visible, setVisible] = useState(true)
   const prevState = useRef('url')
 
-  // useCallback — referencia estable, no cambia entre renders
-  // sin esto, cada setState recrea la funcion y rompe el useEffect del hijo
   const handleStateChange = useCallback((state) => {
     if (state === prevState.current) return
     setVisible(false)
@@ -26,7 +24,7 @@ export default function Landing() {
       prevState.current = state
       setVisible(true)
     }, 300)
-  }, []) // sin dependencias — la funcion nunca cambia
+  }, [])
 
   const info = STATE_LABELS[currentState] || STATE_LABELS.url
 
@@ -47,11 +45,6 @@ export default function Landing() {
 
       <section className={styles.hero}>
         <div className={styles.left}>
-          <div className={styles.badge}>
-            <span className={styles.badgeDot} />
-            Potenciado por IA
-          </div>
-
           <h1 className={styles.title}>
             Tu video de<br />
             marketing,<br />
