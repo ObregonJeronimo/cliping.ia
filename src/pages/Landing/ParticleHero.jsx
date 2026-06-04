@@ -3,8 +3,8 @@ import * as THREE from 'three'
 
 const FONT_SIZE   = 72
 const SCALE       = 0.030
-const SAMPLE_STEP = 1        // 1px = maxima densidad de puntos
-const MAX         = 8000     // mas instancias para absorber la densidad extra
+const SAMPLE_STEP = 1
+const MAX         = 8000
 const ITEMS       = ['Hook', 'Problema', 'Features', 'Diferenciador', 'Beneficios', 'CTA']
 
 const MODE_IDLE    = 'idle'
@@ -57,17 +57,33 @@ function makeTextCanvas(string, fontSize) {
 }
 
 function makeTimelineCanvas(items) {
-  const fs = 40, rowH = fs * 1.35, cW = 340
-  const cH = Math.ceil(items.length * rowH + 16)
-  const c  = document.createElement('canvas')
-  c.width = cW; c.height = cH
+  const fs   = 40
+  const rowH = fs * 1.35
+  const PAD  = 12
+
+  // Medir el texto mas largo con measureText para que el canvas no se quede corto
+  const probe = document.createElement('canvas')
+  const pctx  = probe.getContext('2d')
+  pctx.font   = `bold ${fs}px monospace`
+  const longest = items.reduce((max, it) => {
+    const str   = '\u2713  ' + it.label
+    const w     = pctx.measureText(str).width
+    return w > max ? w : max
+  }, 0)
+  const cW = Math.ceil(longest + PAD * 2)
+  const cH = Math.ceil(items.length * rowH + PAD)
+
+  const c   = document.createElement('canvas')
+  c.width   = cW
+  c.height  = cH
   const ctx = c.getContext('2d')
   ctx.clearRect(0, 0, cW, cH)
-  ctx.font = `bold ${fs}px monospace`
-  ctx.textBaseline = 'top'; ctx.textAlign = 'left'
+  ctx.font          = `bold ${fs}px monospace`
+  ctx.textBaseline  = 'top'
+  ctx.textAlign     = 'left'
   items.forEach((it, i) => {
     ctx.fillStyle = it.done ? 'rgba(255,255,255,1)' : 'rgba(255,255,255,0.4)'
-    ctx.fillText((it.done ? '\u2713  ' : '\u25cb  ') + it.label, 6, i * rowH + 8)
+    ctx.fillText((it.done ? '\u2713  ' : '\u25cb  ') + it.label, PAD, i * rowH + PAD / 2)
   })
   return c
 }
@@ -101,7 +117,6 @@ export default function ParticleHero({ onStateChange }) {
 
     const { urlPts, promptPts, tlStates } = precomputeAll()
 
-    // Springs dentro del useEffect para que el size sea siempre MAX correcto
     const springsX = Array.from({ length: MAX }, () => new Spring1D(180, 26))
     const springsY = Array.from({ length: MAX }, () => new Spring1D(180, 26))
     const springsZ = Array.from({ length: MAX }, () => new Spring1D(80,  18))
@@ -118,7 +133,6 @@ export default function ParticleHero({ onStateChange }) {
     const cam   = new THREE.PerspectiveCamera(50, W / H, 0.1, 200)
     cam.position.z = 16
 
-    // ── Particulas ─────────────────────────────────────────────────────────
     const geo  = new THREE.BoxGeometry(1, 1, 1)
     const mat  = new THREE.MeshBasicMaterial({ color: 0xffffff })
     const mesh = new THREE.InstancedMesh(geo, mat, MAX)
@@ -128,7 +142,6 @@ export default function ParticleHero({ onStateChange }) {
     mesh.instanceColor.needsUpdate = true
     scene.add(mesh)
 
-    // ── Circulos orbitales ─────────────────────────────────────────────────
     const orbits = [
       { rx: 9.0,  ry: 6.0,  tiltX: 0.18,  tiltZ: 0.08,  speed: 0.22,  opacity: 0.55 },
       { rx: 11.0, ry: 7.0,  tiltX: -0.12, tiltZ: 0.15,  speed: -0.14, opacity: 0.35 },
@@ -288,7 +301,7 @@ export default function ParticleHero({ onStateChange }) {
 
         let scale
         if (isBurst)        scale = Math.max(0.001, 0.038 - anim.burstT * 0.036)
-        else if (isActive)  scale = 0.038 + proximity * 0.018  // cubos mas chicos, mas densos
+        else if (isActive)  scale = 0.038 + proximity * 0.018
         else                scale = 0.006 + Math.random() * 0.002
 
         dummy.scale.setScalar(scale)
