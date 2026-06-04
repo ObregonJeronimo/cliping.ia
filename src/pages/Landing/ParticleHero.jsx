@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 
 const FONT_SIZE   = 72
-const SCALE       = 0.028   // ligeramente reducido para dar margen al frustum
+const SCALE       = 0.030   // revertido al valor original
 const SAMPLE_STEP = 2
 const MAX         = 4000
 const ITEMS       = ['Hook', 'Problema', 'Features', 'Diferenciador', 'Beneficios', 'CTA']
@@ -39,7 +39,7 @@ function makeTextCanvas(string, fontSize) {
 }
 
 function makeTimelineCanvas(items) {
-  // fs bajado de 48 a 40 para que los 6 items entren en el frustum vertical
+  // fs=40 para que los 6 items entren en el frustum vertical
   const fs = 40, rowH = fs * 1.35, cW = 340
   const cH = Math.ceil(items.length * rowH + 16)
   const c  = document.createElement('canvas')
@@ -57,8 +57,8 @@ function makeTimelineCanvas(items) {
 
 function precomputeAll() {
   const urlPts    = sampleCanvas(makeTextCanvas('URL', FONT_SIZE * 1.4))
-  // subido de 0.44 a 0.52 — mas grande, sigue entrando con SCALE=0.028
-  const promptPts = sampleCanvas(makeTextCanvas('Video profesional\ncon todas las\nherramientas del sitio', FONT_SIZE * 0.52))
+  // 0.44 — valor que sabemos que entra con SCALE=0.030
+  const promptPts = sampleCanvas(makeTextCanvas('Video profesional\ncon todas las\nherramientas del sitio', FONT_SIZE * 0.44))
   const tlStates  = []
   for (let step = 0; step <= ITEMS.length; step++) {
     const snapshot = ITEMS.map((l, i) => ({ label: l, done: i < step }))
@@ -107,7 +107,7 @@ export default function ParticleHero({ onStateChange }) {
     mesh.instanceColor.needsUpdate = true
     scene.add(mesh)
 
-    // Circulos orbitales — radios aumentados para rodear mejor el texto
+    // Circulos orbitales — solo los radios cambian, todo lo demas igual
     const orbits = [
       { rx: 9.0,  ry: 6.0,  tiltX: 0.18,  tiltZ: 0.08,  speed: 0.22,  opacity: 0.55 },
       { rx: 11.0, ry: 7.0,  tiltX: -0.12, tiltZ: 0.15,  speed: -0.14, opacity: 0.35 },
