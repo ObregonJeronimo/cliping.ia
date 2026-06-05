@@ -9,6 +9,8 @@
     "@remotion/cli": "4.0.469",
     "@remotion/player": "4.0.469",
     "remotion": "4.0.469",
-    "@remotion/google-fonts": "4.0.469"
+    "@remotion/google-fonts": "4.0.469",
+    "@remotion/motion-blur": "4.0.469",
+    "@remotion/transitions": "4.0.469"
   }
 }
