@@ -11,6 +11,7 @@ import IntegrationCluster from './scenes/IntegrationCluster'
 import MockupShowcase from './scenes/MockupShowcase'
 import CtaOutro from './scenes/CtaOutro'
 import IconTransform from './scenes/IconTransform'
+import FinishLayer from './FinishLayer'
 
 // Carga Inter (pesos puntuales).
 loadFont('normal', { weights: ['400', '600', '700'], subsets: ['latin'], ignoreTooManyRequestsWarning: true })
@@ -70,6 +71,7 @@ export const VideoFromSpec = ({ spec }) => {
           ]
         })}
       </TransitionSeries>
+      {spec.finish !== false && <FinishLayer />}
     </AbsoluteFill>
   )
 }
