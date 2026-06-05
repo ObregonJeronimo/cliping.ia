@@ -74,12 +74,28 @@ Que el video se sienta hecho a medida, no plantilla:
 - Construir un theme override por marca al vuelo + usar logo/screenshots en
   MockupShowcase y en el cierre.
 
-## FASE 7 — Más tipos de escena + variantes
+## FASE 7 — Más tipos de escena + variantes  [EN CURSO]
 Cada escena nueva multiplica variedad y repertorio cinematográfico:
 - StatReveal (número que cuenta), FeatureList (filas con íconos en stagger),
   Comparison (antes/después, vs), Testimonial/Quote, SocialProof (logos/avatars en
   arco), BigText/Logo reveal.
 - Cada una themeable + con layouts variantes (alimenta la Fase 5).
+
+HECHO (en `main`):
+- 5 escenas nuevas en `remotion/src/templates/scenes/`: StatReveal, FeatureList,
+  Comparison, Testimonial, SocialProof. Todas themeables, usan `motion.js` (cámara,
+  parallax, stagger, springs) y consumen `durationInFrames` por prop.
+- Registradas en `VideoFromSpec.jsx` (REGISTRY) y en el director: catálogo de escenas,
+  `valid_types`, variantes de layout (`SCENE_VARIANTS`) y resolución de íconos
+  (FeatureList resuelve `item.icon` vía Iconify, igual que IconTransform; ahora en paralelo).
+- Reglas de HONESTIDAD en el director: StatReveal/Testimonial/SocialProof solo si hay
+  datos reales del sitio (no inventar cifras ni testimonios).
+- Variantes por escena: StatReveal (stack/ring/left), Comparison (sideBySide/stacked),
+  Testimonial (card/plain), SocialProof (arc/row), FeatureList (cards/bare).
+
+PENDIENTE de Fase 7:
+- BigText/Logo reveal (usar logo real del sitio, enlaza con Fase 6).
+- QA del render animado real en Windows y ajuste fino de timings por escena.
 
 ---
 

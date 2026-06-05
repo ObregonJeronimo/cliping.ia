@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import html
 import json
+import asyncio
 import random
 import re
 from pathlib import Path
@@ -47,6 +48,11 @@ LENGTH_SCENES = {"corto": (3, 4), "medio": (4, 5), "largo": (5, 6)}
 SCENE_VARIANTS = {
     "KineticStatement": ["center", "center", "center", "left"],
     "MockupShowcase": ["tiltLeft", "tiltLeft", "tiltRight", "flat"],
+    "StatReveal": ["stack", "stack", "ring", "left"],
+    "Comparison": ["sideBySide", "sideBySide", "stacked"],
+    "Testimonial": ["card", "card", "plain"],
+    "SocialProof": ["arc", "arc", "row"],
+    "FeatureList": ["cards", "cards", "bare"],
 }
 
 
@@ -101,6 +107,26 @@ SCENE_CATALOG = """ESCENAS DISPONIBLES (type + props):
   "documents"->"lightning", "lock"->"check"; gym: "couch"->"dumbbell"; finanzas:
   "piggy bank"->"chart"; e-commerce: "shopping cart"->"money". Elegí los íconos que de
   verdad representen la idea de la página.
+- "StatReveal": un NÚMERO que cuenta de 0 hasta el valor (el beat de "dato que impacta").
+  props: value = número (ej 95, 4.9, 12000); opcional prefix (ej "$", "+"); suffix (ej
+  "%", "x", "k", "/5"); caption = línea chica ARRIBA (string); label = array de segmentos
+  { t, accent } DEBAJO (qué describe el número). Usala SOLO si tenés un dato REAL del sitio.
+  NUNCA inventes una cifra.
+- "FeatureList": lista de features/beneficios en filas con ícono (cascada). props: opcional
+  title = segmentos { t, accent }; items = array de 2 a 5 objetos
+  { "icon": "<concepto EN INGLÉS>", "label": [segmentos { t, accent }] }. El ícono lo
+  resuelve el sistema vía Iconify (igual que IconTransform): poné un concepto simple en
+  inglés por item (ej "bolt", "lock", "chart", "clock"). Cada label corto (1 a 5 palabras).
+- "Comparison": antes vs después / "sin esto" vs "con esto". props: opcional title =
+  segmentos; leftLabel y rightLabel = segmentos (ej "Antes" / "Después"); leftItems y
+  rightItems = arrays de strings cortos (los puntos). La izquierda es lo NEGATIVO (se marca
+  con ✕), la derecha lo POSITIVO (✓). opcional connector: "vs" | "arrow". 2 a 3 puntos por lado.
+- "Testimonial": una cita/testimonio destacado. props: quote = array de segmentos { t, accent };
+  author = nombre; opcional role = cargo/empresa; opcional stars = 1 a 5. NO inventes
+  testimonios ni nombres: usala SOLO si el sitio muestra reseñas/testimonios reales.
+- "SocialProof": prueba social ("+500 equipos ya lo usan"): avatares en arco + título.
+  props: title = segmentos { t, accent }; opcional subtitle = string; opcional count (3 a 7).
+  Usala SOLO con datos reales o plausibles del sitio; no inventes cifras específicas falsas.
 - "CtaOutro": cierre. props: brand = nombre de marca, cta = llamado a la acción corto."""
 
 THEME_GUIDE = """THEMES (elegí 1 según el rubro):
@@ -128,6 +154,17 @@ REGLAS:
 - Incluí UN "IconTransform" cuando exista un contraste o transformación natural en el
   mensaje (en marketing casi siempre lo hay: antes/después, problema/solución, acción/
   resultado). Es el momento más vistoso del video. No lo fuerces solo si de verdad no pega.
+- Tenés un repertorio más amplio para que el video no sea formulaico: combiná las escenas
+  según lo que cuente la página. Buenas oportunidades:
+  · "StatReveal" si el sitio menciona un número fuerte (años, clientes, %, velocidad).
+  · "FeatureList" para mostrar 3-4 features/beneficios concretos de un saque.
+  · "Comparison" para un antes/después o "sin esto vs con esto" claro.
+  · "Testimonial" SOLO si hay reseñas/testimonios reales en el sitio.
+  · "SocialProof" si hay señales de adopción/confianza (clientes, comunidad).
+  No metas las 5 en un mismo video: elegí 1 o 2 que de verdad sumen a la historia.
+- HONESTIDAD (importante): StatReveal, Testimonial y SocialProof muestran "hechos". NO
+  inventes cifras, testimonios ni nombres. Si no tenés el dato real del sitio, NO uses esa
+  escena: contá el beneficio con KineticStatement/FeatureList en su lugar.
 - durationInFrames entre 75 y 120 por escena (30fps).
 - COPY: específico de ESTA marca, no genérico. Usá el contexto del sitio (qué vende,
   para quién, su diferencial). Evitá frases vacías tipo "la mejor calidad" o "tu aliado".
@@ -171,7 +208,8 @@ def _normalize(spec: dict, url_data: dict, desarrollo: str, proposito: str) -> d
     scenes = spec.get("scenes")
     if not isinstance(scenes, list) or len(scenes) < 2:
         return fb
-    valid_types = {"KineticStatement", "IntegrationCluster", "MockupShowcase", "CtaOutro", "IconTransform"}
+    valid_types = {"KineticStatement", "IntegrationCluster", "MockupShowcase", "CtaOutro", "IconTransform",
+                   "StatReveal", "FeatureList", "Comparison", "Testimonial", "SocialProof"}
     clean = []
     for s in scenes:
         if not isinstance(s, dict) or s.get("type") not in valid_types:
@@ -232,21 +270,45 @@ async def analyze_site_rich(url: str) -> dict:
     return out
 
 
+async def _resolve_one_icon(concept: str):
+    """Resuelve un concepto de ícono (en inglés) a {body, viewBox} de Iconify, o None."""
+    try:
+        hits = await iconify_service.search_objects(concept.strip(), limit=1)
+        return await iconify_service.get_icon_body(hits[0]["id"]) if hits else None
+    except Exception as ie:
+        print(f"[director] icono '{concept}' no resuelto: {ie}")
+        return None
+
+
 async def _resolve_icons(spec: dict) -> dict:
-    """Resuelve los conceptos de íconos de las escenas IconTransform a SVGs de Iconify."""
+    """
+    Resuelve los conceptos de íconos a SVGs de Iconify, en paralelo.
+    - IconTransform: iconFrom/iconTo -> iconFromSvg/iconToSvg.
+    - FeatureList: cada item.icon -> item.iconSvg.
+    """
+    # Junta (setter, concepto) para resolver todo de una con gather.
+    jobs = []
     for s in spec.get("scenes", []):
-        if s.get("type") != "IconTransform":
-            continue
-        for key, svgkey in (("iconFrom", "iconFromSvg"), ("iconTo", "iconToSvg")):
-            concept = s.get(key)
-            if isinstance(concept, str) and concept.strip():
-                try:
-                    hits = await iconify_service.search_objects(concept.strip(), limit=1)
-                    body = await iconify_service.get_icon_body(hits[0]["id"]) if hits else None
-                    s[svgkey] = body  # {body, viewBox} o None (la escena cae a sparkle)
-                except Exception as ie:
-                    print(f"[director] icono '{concept}' no resuelto: {ie}")
-                    s[svgkey] = None
+        t = s.get("type")
+        if t == "IconTransform":
+            for key, svgkey in (("iconFrom", "iconFromSvg"), ("iconTo", "iconToSvg")):
+                concept = s.get(key)
+                if isinstance(concept, str) and concept.strip():
+                    jobs.append((lambda body, _s=s, _k=svgkey: _s.__setitem__(_k, body), concept))
+        elif t == "FeatureList":
+            for it in s.get("items", []):
+                if not isinstance(it, dict):
+                    continue
+                concept = it.get("icon")
+                if isinstance(concept, str) and concept.strip():
+                    jobs.append((lambda body, _it=it: _it.__setitem__("iconSvg", body), concept))
+
+    if not jobs:
+        return spec
+
+    results = await asyncio.gather(*[_resolve_one_icon(c) for _, c in jobs])
+    for (setter, _), body in zip(jobs, results):
+        setter(body)
     return spec
 
 

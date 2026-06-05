@@ -11,6 +11,11 @@ import IntegrationCluster from './scenes/IntegrationCluster'
 import MockupShowcase from './scenes/MockupShowcase'
 import CtaOutro from './scenes/CtaOutro'
 import IconTransform from './scenes/IconTransform'
+import StatReveal from './scenes/StatReveal'
+import Comparison from './scenes/Comparison'
+import Testimonial from './scenes/Testimonial'
+import SocialProof from './scenes/SocialProof'
+import FeatureList from './scenes/FeatureList'
 import FinishLayer from './FinishLayer'
 
 // Carga Inter (pesos puntuales).
@@ -24,7 +29,7 @@ loadFont('normal', { weights: ['400', '600', '700'], subsets: ['latin'], ignoreT
  * todas con duración fija TDUR (para que el cálculo de total sea exacto).
  */
 
-const REGISTRY = { KineticStatement, IntegrationCluster, MockupShowcase, CtaOutro, IconTransform }
+const REGISTRY = { KineticStatement, IntegrationCluster, MockupShowcase, CtaOutro, IconTransform, StatReveal, Comparison, Testimonial, SocialProof, FeatureList }
 const TDUR = 14
 
 const POOL = [
