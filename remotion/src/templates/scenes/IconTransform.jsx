@@ -1,5 +1,6 @@
 import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from 'remotion'
 import { easeOut, clamp, fitHeadline, segText } from '../theme'
+import { SPRING } from '../motion'
 
 /**
  * IconTransform — beat de transformación genérico.
@@ -38,7 +39,7 @@ export const IconTransform = ({ theme, iconFromSvg = null, iconToSvg = null, lab
   const f = frame
   const pr = (a, b) => clamp((f - a * d) / ((b - a) * d), 0, 1)
 
-  const enterA = spring({ frame, fps, config: { damping: 13 }, durationInFrames: 18 })
+  const enterA = spring({ frame, fps, config: SPRING.bouncy, durationInFrames: 18 })
   const squash = Math.sin(pr(0.16, 0.30) * Math.PI) * 0.16
   const collapseA = pr(0.30, 0.42)
   const aScale = enterA * (1 - collapseA)
@@ -48,7 +49,7 @@ export const IconTransform = ({ theme, iconFromSvg = null, iconToSvg = null, lab
   const ring2 = pr(0.32, 0.64)
   const burstP = pr(0.32, 0.66)
 
-  const bSpring = spring({ frame: frame - Math.round(0.42 * d), fps, config: { damping: 10 }, durationInFrames: 26 })
+  const bSpring = spring({ frame: frame - Math.round(0.42 * d), fps, config: SPRING.pop, durationInFrames: 26 })
   const bOp = pr(0.42, 0.52)
   const spk = pr(0.52, 0.72)
   const labText = segText(label)
