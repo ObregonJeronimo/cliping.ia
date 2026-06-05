@@ -1,4 +1,9 @@
-import { AbsoluteFill, Sequence, useCurrentFrame, interpolate } from 'remotion'
+import { AbsoluteFill } from 'remotion'
+import { TransitionSeries, linearTiming } from '@remotion/transitions'
+import { fade } from '@remotion/transitions/fade'
+import { slide } from '@remotion/transitions/slide'
+import { wipe } from '@remotion/transitions/wipe'
+import { CameraMotionBlur } from '@remotion/motion-blur'
 import { loadFont } from '@remotion/google-fonts/Inter'
 import { getTheme } from './theme'
 import KineticStatement from './scenes/KineticStatement'
@@ -7,63 +12,64 @@ import MockupShowcase from './scenes/MockupShowcase'
 import CtaOutro from './scenes/CtaOutro'
 import IconTransform from './scenes/IconTransform'
 
-// Carga Inter (pesos puntuales) para que las escenas usen la tipografía real del estilo.
+// Carga Inter (pesos puntuales).
 loadFont('normal', { weights: ['400', '600', '700'], subsets: ['latin'], ignoreTooManyRequestsWarning: true })
 
 /**
- * VideoFromSpec — arma el video completo a partir de un storyboard spec.
+ * VideoFromSpec — arma el video desde un storyboard spec.
+ * spec = { theme, scenes: [{ type, durationInFrames, ...props }], motionBlur? }
  *
- * spec = {
- *   theme: 'saas-explainer',
- *   scenes: [ { type, durationInFrames, ...props }, ... ]
- * }
- *
- * Cada escena se ubica con un solape de FADE frames para crossfade.
+ * Transiciones con continuidad: pool curado que varía por corte (fade/slide/wipe),
+ * todas con duración fija TDUR (para que el cálculo de total sea exacto).
  */
 
 const REGISTRY = { KineticStatement, IntegrationCluster, MockupShowcase, CtaOutro, IconTransform }
-const FADE = 12
+const TDUR = 14
 
-const Fader = ({ duration, children }) => {
-  const frame = useCurrentFrame()
-  const opIn = interpolate(frame, [0, FADE], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
-  const opOut = interpolate(frame, [duration - FADE, duration], [1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
-  return <AbsoluteFill style={{ opacity: Math.min(opIn, opOut) }}>{children}</AbsoluteFill>
-}
+const POOL = [
+  () => ({ presentation: fade(), timing: linearTiming({ durationInFrames: TDUR }) }),
+  () => ({ presentation: slide({ direction: 'from-right' }), timing: linearTiming({ durationInFrames: TDUR }) }),
+  () => ({ presentation: slide({ direction: 'from-bottom' }), timing: linearTiming({ durationInFrames: TDUR }) }),
+  () => ({ presentation: wipe({ direction: 'from-left' }), timing: linearTiming({ durationInFrames: TDUR }) }),
+  () => ({ presentation: fade(), timing: linearTiming({ durationInFrames: TDUR }) }),
+  () => ({ presentation: slide({ direction: 'from-top' }), timing: linearTiming({ durationInFrames: TDUR }) }),
+]
+
+const pickTransition = (i, seed) => POOL[(i + seed) % POOL.length]()
 
 export const computeTotal = (scenes) => {
-  let cursor = 0, last = 0
-  scenes.forEach((s, i) => {
-    const dur = s.durationInFrames || 90
-    const from = i === 0 ? 0 : cursor
-    last = from + dur
-    cursor = from + dur - FADE
-  })
-  return last
+  const sum = (scenes || []).reduce((a, s) => a + (s.durationInFrames || 90), 0)
+  return sum - Math.max(0, (scenes || []).length - 1) * TDUR
 }
 
 export const VideoFromSpec = ({ spec }) => {
   const theme = getTheme(spec.theme)
-  let cursor = 0
-  const placed = (spec.scenes || []).map((s, i) => {
-    const dur = s.durationInFrames || 90
-    const from = i === 0 ? 0 : cursor
-    cursor = from + dur - FADE
-    return { s, from, dur }
-  })
+  const sc = spec.scenes || []
+  const seed = (spec.brand || '').length
 
   return (
     <AbsoluteFill style={{ backgroundColor: theme.bgSolid }}>
-      {placed.map(({ s, from, dur }, i) => {
-        const Comp = REGISTRY[s.type] || KineticStatement
-        return (
-          <Sequence key={i} from={from} durationInFrames={dur}>
-            <Fader duration={dur}>
-              <Comp theme={theme} {...s} />
-            </Fader>
-          </Sequence>
-        )
-      })}
+      <TransitionSeries>
+        {sc.flatMap((s, i) => {
+          const Comp = REGISTRY[s.type] || KineticStatement
+          const dur = s.durationInFrames || 90
+          const inner = <Comp theme={theme} {...s} />
+          const content = spec.motionBlur
+            ? <CameraMotionBlur shutterAngle={120} samples={6}>{inner}</CameraMotionBlur>
+            : inner
+          const seq = (
+            <TransitionSeries.Sequence key={`s${i}`} durationInFrames={dur}>
+              {content}
+            </TransitionSeries.Sequence>
+          )
+          if (i === 0) return [seq]
+          const t = pickTransition(i, seed)
+          return [
+            <TransitionSeries.Transition key={`t${i}`} presentation={t.presentation} timing={t.timing} />,
+            seq,
+          ]
+        })}
+      </TransitionSeries>
     </AbsoluteFill>
   )
 }

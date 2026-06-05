@@ -27,7 +27,7 @@ import iconify_service
 _client = AsyncAnthropic()
 DIRECTOR_MODEL = "claude-sonnet-4-6"
 
-FADE = 12  # debe coincidir con VideoFromSpec.jsx
+FADE = 14  # debe coincidir con TDUR en VideoFromSpec.jsx
 
 # Variedad creativa: el director elige (o el usuario fija) entre estas opciones.
 CREATIVE_ANGLES = [
