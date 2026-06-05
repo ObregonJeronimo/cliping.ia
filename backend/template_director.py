@@ -59,6 +59,28 @@ def _assign_variation(spec: dict) -> dict:
             s["variant"] = random.choice(opts)
     return spec
 
+
+def _brand_accent(url_data: dict):
+    """Devuelve el color de marca del sitio (theme-color) si es vibrante y usable."""
+    hex_ = (url_data.get("themeColor") or "").strip()
+    if not re.fullmatch(r"#[0-9a-fA-F]{6}", hex_):
+        return None
+    r, g, b = int(hex_[1:3], 16), int(hex_[3:5], 16), int(hex_[5:7], 16)
+    mx, mn = max(r, g, b), min(r, g, b)
+    sat = (mx - mn)
+    # vibrante: con saturación y ni muy oscuro ni muy claro (legible sobre fondo oscuro)
+    if sat >= 45 and 70 <= mx <= 252:
+        return hex_
+    return None
+
+
+def _finalize(spec: dict, url_data: dict) -> dict:
+    spec = _assign_variation(spec)
+    acc = _brand_accent(url_data)
+    if acc:
+        spec.setdefault("accent", acc)
+    return spec
+
 # Catálogo de escenas disponibles (se le pasa a la IA para que componga).
 SCENE_CATALOG = """ESCENAS DISPONIBLES (type + props):
 - "KineticStatement": frase de impacto. props: lines = array de líneas; cada línea
@@ -288,11 +310,10 @@ sabés del sitio), reflejar el ángulo y el mood, y respetar las reglas de líne
         if theme_override in ("saas-explainer", "organic-natural", "clinical-formal"):
             spec["theme"] = theme_override
         spec = await _resolve_icons(spec)
-        spec = _assign_variation(spec)
-        return spec
+        return _finalize(spec, url_data)
     except Exception as e:
         print(f"[director] fallback ({e})")
-        return _assign_variation(_fallback_spec(url_data, desarrollo, proposito))
+        return _finalize(_fallback_spec(url_data, desarrollo, proposito), url_data)
 
 
 def compute_total(scenes: list) -> int:

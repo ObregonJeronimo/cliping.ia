@@ -91,3 +91,30 @@ export const fitHeadline = (text, base = 120, min = 54) => {
 };
 
 export const segText = (segs) => (segs || []).map((s) => s.t).join('');
+
+// ── Marca real: aplica el color del sitio como acento del theme ───────────────
+const _hexLighten = (hex, amt) => {
+  const n = parseInt(hex.slice(1), 16);
+  let r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  r = Math.round(r + (255 - r) * amt);
+  g = Math.round(g + (255 - g) * amt);
+  b = Math.round(b + (255 - b) * amt);
+  return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+};
+const _hexA = (hex, a) => {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${a})`;
+};
+
+// Devuelve el theme con el acento reemplazado por el color de marca (si es válido).
+export function applyAccent(base, hex) {
+  if (!/^#[0-9a-fA-F]{6}$/.test(hex || '')) return base;
+  const to = _hexLighten(hex, 0.32);
+  return {
+    ...base,
+    accentFrom: hex,
+    accentTo: to,
+    accentGrad: `linear-gradient(105deg, ${hex}, ${to})`,
+    glow: _hexA(hex, 0.4),
+  };
+}

@@ -5,7 +5,7 @@ import { slide } from '@remotion/transitions/slide'
 import { wipe } from '@remotion/transitions/wipe'
 import { CameraMotionBlur } from '@remotion/motion-blur'
 import { loadFont } from '@remotion/google-fonts/Inter'
-import { getTheme } from './theme'
+import { getTheme, applyAccent } from './theme'
 import KineticStatement from './scenes/KineticStatement'
 import IntegrationCluster from './scenes/IntegrationCluster'
 import MockupShowcase from './scenes/MockupShowcase'
@@ -44,7 +44,7 @@ export const computeTotal = (scenes) => {
 }
 
 export const VideoFromSpec = ({ spec }) => {
-  const theme = getTheme(spec.theme)
+  const theme = spec.accent ? applyAccent(getTheme(spec.theme), spec.accent) : getTheme(spec.theme)
   const sc = spec.scenes || []
   const seed = typeof spec.seed === 'number' ? spec.seed : (spec.brand || '').length
 
