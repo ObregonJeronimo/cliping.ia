@@ -43,6 +43,22 @@ CREATIVE_ANGLES = [
 MOODS = ["enérgico y rápido", "calmo y premium", "confiable y claro", "moderno y audaz"]
 LENGTH_SCENES = {"corto": (3, 4), "medio": (4, 5), "largo": (5, 6)}
 
+# Variantes de layout por tipo de escena (azar curado: el piso de calidad no baja).
+SCENE_VARIANTS = {
+    "KineticStatement": ["center", "center", "center", "left"],
+    "MockupShowcase": ["tiltLeft", "tiltLeft", "tiltRight", "flat"],
+}
+
+
+def _assign_variation(spec: dict) -> dict:
+    """Semilla por video + variante de layout por escena -> dos videos nunca iguales."""
+    spec["seed"] = random.randint(0, 9999)
+    for s in spec.get("scenes", []):
+        opts = SCENE_VARIANTS.get(s.get("type"))
+        if opts and "variant" not in s:
+            s["variant"] = random.choice(opts)
+    return spec
+
 # Catálogo de escenas disponibles (se le pasa a la IA para que componga).
 SCENE_CATALOG = """ESCENAS DISPONIBLES (type + props):
 - "KineticStatement": frase de impacto. props: lines = array de líneas; cada línea
@@ -272,10 +288,11 @@ sabés del sitio), reflejar el ángulo y el mood, y respetar las reglas de líne
         if theme_override in ("saas-explainer", "organic-natural", "clinical-formal"):
             spec["theme"] = theme_override
         spec = await _resolve_icons(spec)
+        spec = _assign_variation(spec)
         return spec
     except Exception as e:
         print(f"[director] fallback ({e})")
-        return _fallback_spec(url_data, desarrollo, proposito)
+        return _assign_variation(_fallback_spec(url_data, desarrollo, proposito))
 
 
 def compute_total(scenes: list) -> int:

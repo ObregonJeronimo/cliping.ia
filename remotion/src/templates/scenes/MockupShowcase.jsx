@@ -35,7 +35,7 @@ const SkeletonBoard = ({ theme }) => (
   </div>
 )
 
-export const MockupShowcase = ({ theme, title = [], screenshot = null, durationInFrames: durProp }) => {
+export const MockupShowcase = ({ theme, title = [], screenshot = null, variant = 'tiltLeft', durationInFrames: durProp }) => {
   const frame = useCurrentFrame()
   const vc = useVideoConfig()
   const fps = vc.fps
@@ -46,8 +46,10 @@ export const MockupShowcase = ({ theme, title = [], screenshot = null, durationI
   const cap = enter(frame, 0, { dur: m.enterFrames, dist: 50, ease: EASE.out })
   const dev = spr(frame, fps, 8, SPRING.gentle, 30)
   const settle = prog(frame, 8, 38, EASE.out)
-  const rotY = -16 + (1 - settle) * -10
-  const rotX = 10 - (1 - settle) * 6
+  const baseY = variant === 'tiltRight' ? 16 : variant === 'flat' ? -6 : -16
+  const baseX = variant === 'flat' ? 6 : 10
+  const rotY = baseY + (1 - settle) * (baseY <= 0 ? -10 : 10)
+  const rotX = baseX - (1 - settle) * 6
   const fl = floatY(frame, 8, 120)
   const glowOp = clamp(frame / 16, 0, 1)
 

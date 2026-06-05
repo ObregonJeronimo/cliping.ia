@@ -46,7 +46,7 @@ export const computeTotal = (scenes) => {
 export const VideoFromSpec = ({ spec }) => {
   const theme = getTheme(spec.theme)
   const sc = spec.scenes || []
-  const seed = (spec.brand || '').length
+  const seed = typeof spec.seed === 'number' ? spec.seed : (spec.brand || '').length
 
   return (
     <AbsoluteFill style={{ backgroundColor: theme.bgSolid }}>

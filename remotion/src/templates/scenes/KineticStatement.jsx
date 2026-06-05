@@ -63,7 +63,7 @@ const Arcs = ({ theme, frame, px }) => {
   )
 }
 
-export const KineticStatement = ({ theme, lines = [], subtitle = '', durationInFrames: durProp }) => {
+export const KineticStatement = ({ theme, lines = [], subtitle = '', variant = 'center', durationInFrames: durProp }) => {
   const frame = useCurrentFrame()
   const vc = useVideoConfig()
   const fps = vc.fps
@@ -91,12 +91,13 @@ export const KineticStatement = ({ theme, lines = [], subtitle = '', durationInF
           <Pill theme={theme} frame={frame} fps={fps} x={240} y={680} rot={4} delay={14} blur={1.6} opacity={0.55} px={parallax(cam, 0.5)} />
         </>}
 
-        <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center' }}>
+        <AbsoluteFill style={{ alignItems: variant === 'left' ? 'flex-start' : 'center',
+          justifyContent: 'center', padding: variant === 'left' ? '0 0 0 90px' : 0 }}>
           {theme.motifs.sparkle &&
             <div style={{ marginBottom: 26 }}><Sparkle theme={theme} frame={frame} fps={fps} delay={4} /></div>}
 
-          <div style={{ textAlign: 'center', fontWeight: theme.headWeight, fontSize: fitHeadline(lines.map(segText).join(' ')),
-            lineHeight: 1.08, letterSpacing: '-0.025em', color: theme.text, maxWidth: 940, padding: '0 70px' }}>
+          <div style={{ textAlign: variant === 'left' ? 'left' : 'center', fontWeight: theme.headWeight, fontSize: fitHeadline(lines.map(segText).join(' ')),
+            lineHeight: 1.08, letterSpacing: '-0.025em', color: theme.text, maxWidth: 940, padding: variant === 'left' ? '0 60px 0 0' : '0 70px' }}>
             {lines.map((segs, i) => {
               const e = enter(frame, stagger(i, 8, m.stagger * 2), { dur: m.enterFrames, dist: 64, ease: EASE.back })
               return (
