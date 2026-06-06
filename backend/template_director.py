@@ -82,13 +82,13 @@ LENGTH_SCENES = {"corto": (3, 4), "medio": (4, 5), "largo": (5, 6)}
 # (ej. 2 de 3 la misma) -> casi siempre se veía igual. Ahora reparto parejo para que
 # la variedad se note de verdad (el piso de calidad lo sostienen los componentes).
 SCENE_VARIANTS = {
-    "KineticStatement": ["center", "left", "center"],   # 'center' un toque más probable (mejor para texto largo)
+    "KineticStatement": ["center", "left", "bar"],
     "MockupShowcase": ["tiltLeft", "tiltRight", "flat"],
     "StatReveal": ["stack", "ring", "left"],
     "Comparison": ["sideBySide", "stacked", "split"],
     "Testimonial": ["card", "plain"],
-    "SocialProof": ["arc", "row"],
-    "FeatureList": ["cards", "bare"],
+    "SocialProof": ["arc", "row", "stack"],
+    "FeatureList": ["cards", "bare", "numbered"],
     "LogoReveal": ["mark", "wordmark"],
     "IllustrationScene": ["center", "top"],
     "IntegrationCluster": ["hub", "orbit", "arc"],

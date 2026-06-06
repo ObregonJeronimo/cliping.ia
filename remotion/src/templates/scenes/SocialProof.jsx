@@ -49,6 +49,7 @@ export const SocialProof = ({
   const subE = entrance(theme.art, frame, Math.round(dur * 0.42), { dur: m.enterFrames, dist: 26, ease: EASE.out })
 
   const arc = variant === 'arc'
+  const stack = variant === 'stack'
   const CX = 540
   const CY = arc ? 760 : 720
   const R = 300
@@ -60,6 +61,11 @@ export const SocialProof = ({
     if (arc) {
       const a = Math.PI * (1 - t) // 180° -> 0°
       return { x: CX + Math.cos(a) * R, y: CY - Math.sin(a) * (R * 0.62) }
+    }
+    if (stack) {
+      const step = SIZE * 0.6 // se superponen (pila tipo "+N")
+      const span = (n - 1) * step
+      return { x: CX - span / 2 + i * step, y: CY - 20 }
     }
     const span = (n - 1) * (SIZE + 28)
     return { x: CX - span / 2 + i * (SIZE + 28), y: CY }

@@ -69,6 +69,7 @@ export const KineticStatement = ({ theme, lines = [], subtitle = '', variant = '
   const fps = vc.fps
   const dur = durProp || vc.durationInFrames
   const m = theme.motion
+  const leftish = variant === 'left' || variant === 'bar'
 
   const cam = camera(theme.art, frame, dur, m.cameraDrift)
   const pxBg = parallax(cam, 0.3)
@@ -91,23 +92,30 @@ export const KineticStatement = ({ theme, lines = [], subtitle = '', variant = '
           <Pill theme={theme} frame={frame} fps={fps} x={240} y={680} rot={4} delay={14} blur={1.6} opacity={0.55} px={parallax(cam, 0.5)} />
         </>}
 
-        <AbsoluteFill style={{ alignItems: variant === 'left' ? 'flex-start' : 'center',
-          justifyContent: 'center', padding: variant === 'left' ? '0 0 0 90px' : 0 }}>
+        <AbsoluteFill style={{ alignItems: leftish ? 'flex-start' : 'center',
+          justifyContent: 'center', padding: leftish ? '0 0 0 90px' : 0 }}>
           {theme.motifs.sparkle &&
             <div style={{ marginBottom: 26 }}><Sparkle theme={theme} frame={frame} fps={fps} delay={4} /></div>}
 
-          <div style={{ textAlign: variant === 'left' ? 'left' : 'center', fontWeight: theme.headWeight, fontSize: fitHeadline(lines.map(segText).join(' ')),
-            lineHeight: 1.08, letterSpacing: '-0.025em', color: theme.text, maxWidth: 940, padding: variant === 'left' ? '0 60px 0 0' : '0 70px' }}>
-            {lines.map((segs, i) => {
-              const e = entrance(theme.art, frame, stagger(i, 8, m.stagger * 2), { dur: m.enterFrames, dist: 64, ease: EASE.back })
-              return (
-                <div key={i} style={{ transform: e.transform, opacity: e.opacity }}>
-                  {segs.map((s, j) => s.accent
-                    ? <GradientText key={j} theme={theme}>{s.t}</GradientText>
-                    : <span key={j}>{s.t}</span>)}
-                </div>
-              )
-            })}
+          <div style={{ display: 'flex', alignItems: 'stretch', gap: 36 }}>
+            {variant === 'bar' && (
+              <div style={{ flexShrink: 0, width: 12, borderRadius: 6, alignSelf: 'stretch',
+                background: theme.accentGrad, boxShadow: `0 0 34px ${theme.glow}`,
+                opacity: clamp(frame / 12, 0, 1), transform: `scaleY(${clamp(frame / 12, 0, 1)})`, transformOrigin: 'top' }} />
+            )}
+            <div style={{ textAlign: leftish ? 'left' : 'center', fontWeight: theme.headWeight, fontSize: fitHeadline(lines.map(segText).join(' ')),
+              lineHeight: 1.08, letterSpacing: '-0.025em', color: theme.text, maxWidth: 940, padding: leftish ? '0 60px 0 0' : '0 70px' }}>
+              {lines.map((segs, i) => {
+                const e = entrance(theme.art, frame, stagger(i, 8, m.stagger * 2), { dur: m.enterFrames, dist: 64, ease: EASE.back })
+                return (
+                  <div key={i} style={{ transform: e.transform, opacity: e.opacity }}>
+                    {segs.map((s, j) => s.accent
+                      ? <GradientText key={j} theme={theme}>{s.t}</GradientText>
+                      : <span key={j}>{s.t}</span>)}
+                  </div>
+                )
+              })}
+            </div>
           </div>
 
           {subtitle && (() => {

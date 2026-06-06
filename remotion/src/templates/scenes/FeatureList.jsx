@@ -47,7 +47,8 @@ export const FeatureList = ({ theme, title = [], items = [], variant = 'cards', 
   const cap = entrance(theme.art, frame, 0, { dur: m.enterFrames, dist: 44, ease: EASE.out })
 
   const rows = (items || []).slice(0, 5)
-  const cards = variant !== 'bare'
+  const numbered = variant === 'numbered'
+  const cards = variant === 'cards'
   const base = segText(title) ? 12 : 6
 
   return (
@@ -86,12 +87,20 @@ export const FeatureList = ({ theme, title = [], items = [], variant = 'cards', 
                   borderRadius: theme.radius * 1.3,
                   boxShadow: cards ? '0 16px 44px rgba(0,0,0,0.4)' : 'none',
                 }}>
-                  <div style={{ flexShrink: 0, width: 96, height: 96, borderRadius: theme.radius,
-                    transform: `scale(${clamp(ic, 0, 1.12)})`,
-                    background: theme.accentGrad, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    boxShadow: `0 12px 34px ${theme.glow}` }}>
-                    <Icon icon={it.iconSvg} color="#fff" size={54} />
-                  </div>
+                  {numbered ? (
+                    <div style={{ flexShrink: 0, width: 100, textAlign: 'center', fontSize: 80,
+                      fontWeight: theme.headWeight, lineHeight: 1, letterSpacing: '-0.02em',
+                      transform: `scale(${clamp(ic, 0, 1.12)})` }}>
+                      <GradientText theme={theme}>{String(i + 1).padStart(2, '0')}</GradientText>
+                    </div>
+                  ) : (
+                    <div style={{ flexShrink: 0, width: 96, height: 96, borderRadius: theme.radius,
+                      transform: `scale(${clamp(ic, 0, 1.12)})`,
+                      background: theme.accentGrad, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      boxShadow: `0 12px 34px ${theme.glow}` }}>
+                      <Icon icon={it.iconSvg} color="#fff" size={54} />
+                    </div>
+                  )}
                   <div style={{ fontSize: fitHeadline(segText(it.label), 56, 36), fontWeight: 600,
                     lineHeight: 1.18, letterSpacing: '-0.015em', color: theme.text }}>
                     {(it.label || []).map((s, j) => s.accent
