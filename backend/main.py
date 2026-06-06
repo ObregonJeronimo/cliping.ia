@@ -121,6 +121,7 @@ class VideoGenRequest(BaseModel):
     desarrollo: str = ""
     proposito: str = "marketing"
     theme: str = ""        # override opcional del theme
+    seconds: int = 0       # duración exacta elegida (10/15/20); 0 = automática
     userId: str = ""
 
 
@@ -171,7 +172,7 @@ async def _render_video_job(job_id: str, req: VideoGenRequest):
     try:
         jobs[job_id].update({"status": "processing", "step": "script", "progress": 18})
         # 1. Director: URL + desarrollo -> storyboard
-        spec = await template_director.build_storyboard(req.url, req.desarrollo, req.proposito)
+        spec = await template_director.build_storyboard(req.url, req.desarrollo, req.proposito, seconds=req.seconds)
         if req.theme in template_director.VALID_THEMES:
             spec["theme"] = req.theme
         jobs[job_id]["spec"] = spec

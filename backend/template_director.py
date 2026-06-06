@@ -354,6 +354,37 @@ def _min_duration(s: dict) -> int:
     return min(170, 90 + max(0, n - 2) * 12)  # 90f (~3s) + 12f por item extra
 
 
+# Duración EXACTA elegida por el usuario -> cuántas escenas usar para que entre bien.
+SECONDS_SCENES = {10: 3, 15: 4, 20: 5}
+
+
+def _fit_duration(spec: dict, target_frames: int) -> dict:
+    """Reescala las duraciones de las escenas para que el total del video (contando el
+    solape FADE entre cortes) sea EXACTAMENTE target_frames. Reparte proporcional al
+    piso de lectura de cada escena, así las de más texto se llevan más tiempo."""
+    scenes = spec.get("scenes", [])
+    n = len(scenes)
+    if n == 0:
+        return spec
+    needed = target_frames + (n - 1) * FADE  # sum(durations) requerido (compute_total invertido)
+    mins = [_min_duration(s) for s in scenes]
+    sm = sum(mins) or n
+    if needed <= sm:
+        durs = [max(45, round(needed * (mn / sm))) for mn in mins]
+    else:
+        surplus = needed - sm
+        durs = [mn + round(surplus * (mn / sm)) for mn in mins]
+    # corregir el drift de redondeo en la última -> total exacto
+    durs[-1] += needed - sum(durs)
+    if durs[-1] < 45:  # si quedó muy corta, mover el ajuste a la escena más larga
+        durs[-1] = 45
+        k = durs.index(max(durs))
+        durs[k] += needed - sum(durs)
+    for s, d in zip(scenes, durs):
+        s["durationInFrames"] = int(d)
+    return spec
+
+
 def _normalize(spec: dict, url_data: dict, desarrollo: str, proposito: str) -> dict:
     fb = _fallback_spec(url_data, desarrollo, proposito)
     if not isinstance(spec, dict):
@@ -496,7 +527,7 @@ async def _resolve_icons(spec: dict) -> dict:
 
 async def build_storyboard(url: str, desarrollo: str, proposito: str = "marketing",
                            theme_override: str = "", tone: str = "",
-                           length: str = "medio", simple: bool = True) -> dict:
+                           length: str = "medio", seconds: int = 0, simple: bool = True) -> dict:
     """
     URL + desarrollo -> storyboard spec.
 
@@ -508,7 +539,7 @@ async def build_storyboard(url: str, desarrollo: str, proposito: str = "marketin
     url_data = await analyze_site_rich(url)
 
     lo, hi = LENGTH_SCENES.get(length, LENGTH_SCENES["medio"])
-    n_scenes = random.randint(lo, hi)
+    n_scenes = SECONDS_SCENES.get(seconds) or random.randint(lo, hi)
 
     if simple:
         angle = random.choice(CREATIVE_ANGLES)
@@ -558,10 +589,16 @@ sabés del sitio), reflejar el ángulo y el mood, y respetar las reglas de líne
         if theme_override in VALID_THEMES:
             spec["theme"] = theme_override
         spec = await _resolve_icons(spec)
-        return _attach_audio(_finalize(spec, url_data), mood)
+        out = _attach_audio(_finalize(spec, url_data), mood)
+        if seconds in SECONDS_SCENES:
+            out = _fit_duration(out, seconds * 30)
+        return out
     except Exception as e:
         print(f"[director] fallback ({e})")
-        return _attach_audio(_finalize(_fallback_spec(url_data, desarrollo, proposito), url_data), mood)
+        out = _attach_audio(_finalize(_fallback_spec(url_data, desarrollo, proposito), url_data), mood)
+        if seconds in SECONDS_SCENES:
+            out = _fit_duration(out, seconds * 30)
+        return out
 
 
 def compute_total(scenes: list) -> int:

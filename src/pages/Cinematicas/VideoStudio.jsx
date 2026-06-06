@@ -1,9 +1,6 @@
-import { useState, useEffect, useRef } from 'react'
-import { useAuth } from '../../contexts/AuthContext'
+import { useRef } from 'react'
+import { useVideoJob } from '../../contexts/VideoJobContext'
 import styles from './Cinematicas.module.css'
-
-const API_URL = import.meta.env.PROD ? '' : (import.meta.env.VITE_API_URL || 'http://localhost:8000')
-const HEADERS = { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' }
 
 const THEMES = [
   { key: '',                 label: '✨ Que elija la IA' },
@@ -25,11 +22,7 @@ const PROPOSITOS = [
   { key: 'branding',    label: '✨ Branding' },
 ]
 const TONOS = ['enérgico y rápido', 'calmo y premium', 'confiable y claro', 'moderno y audaz']
-const DURACIONES = [
-  { key: 'corto', label: 'Corto' },
-  { key: 'medio', label: 'Medio' },
-  { key: 'largo', label: 'Largo' },
-]
+const SEGUNDOS = [10, 15, 20]
 const STEP_LABELS = {
   queued: 'En cola...', script: 'Escribiendo el guion...', capture: 'Capturando el sitio...',
   build: 'Armando la composición...', render: 'Renderizando (esto tarda)...',
@@ -37,61 +30,14 @@ const STEP_LABELS = {
 }
 
 export default function VideoStudio() {
-  const { user } = useAuth()
-  const [mode, setMode] = useState('simple')      // 'simple' | 'avanzado'
-  const [url, setUrl] = useState('')
-  const [desarrollo, setDesarrollo] = useState('')
-  const [theme, setTheme] = useState('')
-  const [proposito, setProposito] = useState('marketing')
-  const [tono, setTono] = useState('')
-  const [duracion, setDuracion] = useState('medio')
-
-  const [generating, setGenerating] = useState(false)
-  const [status, setStatus] = useState(null)
-  const [spec, setSpec] = useState(null)
-  const [videoUrl, setVideoUrl] = useState(null)
-  const [error, setError] = useState(null)
-  const pollRef = useRef(null)
+  const {
+    mode, setMode, url, setUrl, desarrollo, setDesarrollo, theme, setTheme,
+    proposito, setProposito, tono, setTono, seconds, setSeconds,
+    generating, status, spec, videoUrl, error, generate, reset,
+  } = useVideoJob()
   const videoRef = useRef(null)
-  useEffect(() => () => clearInterval(pollRef.current), [])
 
   const canGenerate = (url.trim() || desarrollo.trim()) && !generating
-
-  function reset() { setStatus(null); setSpec(null); setVideoUrl(null); setError(null) }
-
-  async function handleGenerate() {
-    if (!canGenerate) return
-    setGenerating(true); reset(); setStatus({ step: 'queued', progress: 0 })
-    const body = mode === 'simple'
-      ? { url: url.trim(), desarrollo: desarrollo.trim(), proposito: 'marketing', userId: user?.uid || '' }
-      : { url: url.trim(), desarrollo: desarrollo.trim(), proposito, theme, tone: tono, length: duracion, userId: user?.uid || '' }
-    try {
-      const r = await fetch(`${API_URL}/api/video/generate`, { method: 'POST', headers: HEADERS, body: JSON.stringify(body) })
-      const d = await r.json()
-      if (d.error || !d.job_id) { setError(d.error || 'No se pudo iniciar'); setGenerating(false); return }
-      pollJob(d.job_id)
-    } catch (e) { setError(e.message); setGenerating(false) }
-  }
-
-  function pollJob(jobId) {
-    clearInterval(pollRef.current)
-    pollRef.current = setInterval(async () => {
-      try {
-        const r = await fetch(`${API_URL}/api/jobs/${jobId}`, { headers: HEADERS })
-        const j = await r.json()
-        setStatus({ step: j.step || j.status, progress: j.progress || 0 })
-        if (j.spec) setSpec(j.spec)
-        if (j.status === 'done') {
-          clearInterval(pollRef.current)
-          setVideoUrl(j.cloudinaryUrl || (j.videoFilename ? `${API_URL}/api/video/${j.videoFilename}` : null))
-          setGenerating(false)
-        } else if (j.status === 'error') {
-          clearInterval(pollRef.current); setError(j.error || 'Error en el render'); setGenerating(false)
-        }
-      } catch {}
-    }, 2000)
-  }
-
   const pct = Math.max(4, status?.progress || 0)
   const showResult = generating || spec || videoUrl || error
 
@@ -115,6 +61,15 @@ export default function VideoStudio() {
           <textarea className={styles.textarea} rows={3}
             placeholder={mode === 'simple' ? 'Dejalo vacío y la IA decide todo, o tirá una idea...' : 'Ángulo, qué destacar, tono...'}
             value={desarrollo} onChange={e => setDesarrollo(e.target.value)} />
+        </div>
+
+        <div className={styles.cineSection}>
+          <div className={styles.cineSectionLabel}>Duración</div>
+          <div className={styles.propGrid}>
+            {SEGUNDOS.map(s => (
+              <button key={s} className={`${styles.propBtn} ${seconds === s ? styles.propBtnActive : ''}`} onClick={() => setSeconds(s)}>{s}s</button>
+            ))}
+          </div>
         </div>
 
         {mode === 'avanzado' && <>
@@ -142,18 +97,10 @@ export default function VideoStudio() {
               ))}
             </div>
           </div>
-          <div className={styles.cineSection}>
-            <div className={styles.cineSectionLabel}>Duración</div>
-            <div className={styles.propGrid}>
-              {DURACIONES.map(d => (
-                <button key={d.key} className={`${styles.propBtn} ${duracion === d.key ? styles.propBtnActive : ''}`} onClick={() => setDuracion(d.key)}>{d.label}</button>
-              ))}
-            </div>
-          </div>
         </>}
 
         <button className={`${styles.forgeBtn} ${generating ? styles.forgeBtnRunning : ''} ${!canGenerate ? styles.forgeBtnDisabled : ''}`}
-          onClick={handleGenerate} disabled={!canGenerate}>
+          onClick={generate} disabled={!canGenerate}>
           {generating ? <><span className={styles.spinner} />Generando video...</>
             : !url.trim() && !desarrollo.trim() ? 'Ingresá una URL'
             : '🎬 Generar video'}
@@ -167,7 +114,7 @@ export default function VideoStudio() {
               <div className={styles.previewName}>
                 {videoUrl ? 'Video listo' : error ? 'No se pudo generar' : 'Generando tu video...'}
               </div>
-              <div className={styles.previewMeta}>{url || 'sin URL'} · {mode}</div>
+              <div className={styles.previewMeta}>{url || 'sin URL'} · {seconds}s · {mode}</div>
             </div>
 
             {generating && (
