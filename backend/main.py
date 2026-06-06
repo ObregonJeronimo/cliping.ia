@@ -1107,6 +1107,40 @@ async def _render_video_job(job_id: str, req: VideoGenRequest):
             except Exception as ce:
                 print(f"[video] captura del sitio falló (uso skeleton): {ce}")
 
+        # 1c. Logo real del sitio para el/los LogoReveal: lo bajamos y re-hosteamos en
+        # Cloudinary (URL confiable para Remotion). Si falla, la escena cae al wordmark.
+        needs_logo = [s for s in spec.get("scenes", [])
+                      if s.get("type") == "LogoReveal" and str(s.get("logo", "")).startswith("http")]
+        if needs_logo:
+            raw_logo = needs_logo[0]["logo"]
+            logo_url = ""
+            try:
+                import httpx
+                async with httpx.AsyncClient(timeout=10.0, follow_redirects=True,
+                        headers={"User-Agent": "Mozilla/5.0 (compatible; clipingbot/1.0)"}) as c:
+                    lr = await c.get(raw_logo)
+                if lr.status_code == 200 and lr.content:
+                    ext = ".png"
+                    ct = lr.headers.get("content-type", "")
+                    if "svg" in ct: ext = ".svg"
+                    elif "jpeg" in ct or "jpg" in ct: ext = ".jpg"
+                    elif "x-icon" in ct or "vnd.microsoft.icon" in ct or raw_logo.lower().endswith(".ico"): ext = ".ico"
+                    logo_path = str(OUTPUTS_DIR / f"{job_id}_logo{ext}")
+                    with open(logo_path, "wb") as f:
+                        f.write(lr.content)
+                    # .ico/.svg no son ideales para <Img>; solo subimos formatos ráster usables.
+                    if ext in (".png", ".jpg"):
+                        from cloudinary_upload import upload_image
+                        logo_url = await upload_image(logo_path, f"logo_{job_id[:8]}")
+            except Exception as le:
+                print(f"[video] logo del sitio falló (uso wordmark): {le}")
+            for s in needs_logo:
+                if logo_url:
+                    s["logo"] = logo_url
+                    print("[video] logo del sitio listo")
+                else:
+                    s.pop("logo", None)  # sin logo confiable -> wordmark
+
         # 2. Construir los archivos del render
         jobs[job_id].update({"step": "build", "progress": 40})
         entry, comp_id, total_frames, temp_files = template_director.build_video_files(

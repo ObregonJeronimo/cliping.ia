@@ -40,14 +40,25 @@ por corte, con continuidad:
   de un pool curado según theme/mood (no siempre la misma).
 Dep nueva: @remotion/transitions.
 
-## FASE 3 — Sonido  [barato, golpe de efecto enorme; ~40% de la calidad percibida]
+## FASE 3 — Sonido  [TÉCNICA CABLEADA · falta la música]  [barato, ~40% de la calidad percibida]
 - Cama musical (librería royalty-free curada, elegida por mood/theme).
 - Whooshes en transiciones + ticks sutiles en entradas.
 - Cortes sincronizados al beat (bpm -> frames por beat; alinear duración de escenas).
 - Implementación: assets en remotion/public/audio; el director elige track por mood;
   escenas/transiciones colocan <Audio> con sfx.
-- PENDIENTE definir: fuente de música royalty-free (librería propia curada o API con
-  licencia comercial). Es un requisito legal, no técnico.
+
+HECHO (en `main`):
+- `remotion/src/templates/SoundLayer.jsx`: capa de audio global con cama musical
+  (fade-in/out automático) + whooshes en los cortes. Usa `staticFile`. Inerte si no hay
+  `spec.audio` ni archivos -> no rompe el render.
+- `VideoFromSpec` calcula solo los frames de corte (`cutFrames`, respeta el solape TDUR)
+  y se los pasa al SoundLayer como `whooshAt`.
+- Estructura `remotion/public/audio/{music,sfx}/` + README con la convención de archivos
+  y la forma de `spec.audio`.
+
+PENDIENTE de Fase 3 (requisito legal, no técnico):
+- Conseguir la música royalty-free / con licencia comercial y dejarla en `audio/music/`.
+- Que el director setee `spec.audio.music` por mood (y, opcional, cortes al beat).
 
 ## FASE 4 — Capa de "finish" global
 Overlay aplicado sobre TODO el video en VideoFromSpec:
@@ -74,7 +85,7 @@ Que el video se sienta hecho a medida, no plantilla:
 - Construir un theme override por marca al vuelo + usar logo/screenshots en
   MockupShowcase y en el cierre.
 
-## FASE 7 — Más tipos de escena + variantes  [EN CURSO]
+## FASE 7 — Más tipos de escena + variantes  [COMPLETA]
 Cada escena nueva multiplica variedad y repertorio cinematográfico:
 - StatReveal (número que cuenta), FeatureList (filas con íconos en stagger),
   Comparison (antes/después, vs), Testimonial/Quote, SocialProof (logos/avatars en
@@ -82,19 +93,22 @@ Cada escena nueva multiplica variedad y repertorio cinematográfico:
 - Cada una themeable + con layouts variantes (alimenta la Fase 5).
 
 HECHO (en `main`):
-- 5 escenas nuevas en `remotion/src/templates/scenes/`: StatReveal, FeatureList,
-  Comparison, Testimonial, SocialProof. Todas themeables, usan `motion.js` (cámara,
-  parallax, stagger, springs) y consumen `durationInFrames` por prop.
+- 6 escenas nuevas en `remotion/src/templates/scenes/`: StatReveal, FeatureList,
+  Comparison, Testimonial, SocialProof y LogoReveal. Todas themeables, usan `motion.js`
+  (cámara, parallax, stagger, springs) y consumen `durationInFrames` por prop.
+- LogoReveal usa el LOGO REAL del sitio (apple-touch-icon > og:image > icon > favicon),
+  re-hosteado a Cloudinary en `main.py` (igual que el screenshot); si no hay logo usable
+  cae a un wordmark con el nombre de marca. Enlaza con Fase 6.
 - Registradas en `VideoFromSpec.jsx` (REGISTRY) y en el director: catálogo de escenas,
   `valid_types`, variantes de layout (`SCENE_VARIANTS`) y resolución de íconos
-  (FeatureList resuelve `item.icon` vía Iconify, igual que IconTransform; ahora en paralelo).
+  (FeatureList resuelve `item.icon` vía Iconify, en paralelo con `asyncio.gather`).
 - Reglas de HONESTIDAD en el director: StatReveal/Testimonial/SocialProof solo si hay
   datos reales del sitio (no inventar cifras ni testimonios).
 - Variantes por escena: StatReveal (stack/ring/left), Comparison (sideBySide/stacked),
-  Testimonial (card/plain), SocialProof (arc/row), FeatureList (cards/bare).
+  Testimonial (card/plain), SocialProof (arc/row), FeatureList (cards/bare),
+  LogoReveal (mark/wordmark).
 
 PENDIENTE de Fase 7:
-- BigText/Logo reveal (usar logo real del sitio, enlaza con Fase 6).
 - QA del render animado real en Windows y ajuste fino de timings por escena.
 
 ---

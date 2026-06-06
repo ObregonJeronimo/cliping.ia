@@ -16,7 +16,9 @@ import Comparison from './scenes/Comparison'
 import Testimonial from './scenes/Testimonial'
 import SocialProof from './scenes/SocialProof'
 import FeatureList from './scenes/FeatureList'
+import LogoReveal from './scenes/LogoReveal'
 import FinishLayer from './FinishLayer'
+import SoundLayer from './SoundLayer'
 
 // Carga Inter (pesos puntuales).
 loadFont('normal', { weights: ['400', '600', '700'], subsets: ['latin'], ignoreTooManyRequestsWarning: true })
@@ -29,7 +31,7 @@ loadFont('normal', { weights: ['400', '600', '700'], subsets: ['latin'], ignoreT
  * todas con duración fija TDUR (para que el cálculo de total sea exacto).
  */
 
-const REGISTRY = { KineticStatement, IntegrationCluster, MockupShowcase, CtaOutro, IconTransform, StatReveal, Comparison, Testimonial, SocialProof, FeatureList }
+const REGISTRY = { KineticStatement, IntegrationCluster, MockupShowcase, CtaOutro, IconTransform, StatReveal, Comparison, Testimonial, SocialProof, FeatureList, LogoReveal }
 const TDUR = 14
 
 const POOL = [
@@ -48,10 +50,27 @@ export const computeTotal = (scenes) => {
   return sum - Math.max(0, (scenes || []).length - 1) * TDUR
 }
 
+// Frames donde ocurre cada corte/transición (inicio de cada escena salvo la 1ª).
+// Sirve para sincronizar whooshes en SoundLayer. Considera el solape TDUR.
+const cutFrames = (scenes) => {
+  const cuts = []
+  let start = 0
+  ;(scenes || []).forEach((s, i) => {
+    if (i > 0) cuts.push(start)
+    start += (s.durationInFrames || 90) - TDUR
+  })
+  return cuts
+}
+
 export const VideoFromSpec = ({ spec }) => {
   const theme = spec.accent ? applyAccent(getTheme(spec.theme), spec.accent) : getTheme(spec.theme)
   const sc = spec.scenes || []
   const seed = typeof spec.seed === 'number' ? spec.seed : (spec.brand || '').length
+
+  // Audio (Fase 3): si el spec trae audio sin whooshAt, los completamos con los cortes.
+  const audio = spec.audio
+    ? { ...spec.audio, whooshAt: spec.audio.whooshAt || cutFrames(sc) }
+    : null
 
   return (
     <AbsoluteFill style={{ backgroundColor: theme.bgSolid }}>
@@ -77,6 +96,7 @@ export const VideoFromSpec = ({ spec }) => {
         })}
       </TransitionSeries>
       {spec.finish !== false && <FinishLayer />}
+      <SoundLayer audio={audio} />
     </AbsoluteFill>
   )
 }

@@ -53,6 +53,7 @@ SCENE_VARIANTS = {
     "Testimonial": ["card", "card", "plain"],
     "SocialProof": ["arc", "arc", "row"],
     "FeatureList": ["cards", "cards", "bare"],
+    "LogoReveal": ["mark", "mark", "wordmark"],
 }
 
 
@@ -85,6 +86,13 @@ def _finalize(spec: dict, url_data: dict) -> dict:
     acc = _brand_accent(url_data)
     if acc:
         spec.setdefault("accent", acc)
+    # Logo real del sitio para los LogoReveal (URL cruda; main.py la re-hostea a
+    # Cloudinary antes del render, igual que el screenshot del MockupShowcase).
+    logo = (url_data.get("logo") or "").strip()
+    if logo:
+        for s in spec.get("scenes", []):
+            if s.get("type") == "LogoReveal" and not s.get("logo"):
+                s["logo"] = logo
     return spec
 
 # Catálogo de escenas disponibles (se le pasa a la IA para que componga).
@@ -127,6 +135,9 @@ SCENE_CATALOG = """ESCENAS DISPONIBLES (type + props):
 - "SocialProof": prueba social ("+500 equipos ya lo usan"): avatares en arco + título.
   props: title = segmentos { t, accent }; opcional subtitle = string; opcional count (3 a 7).
   Usala SOLO con datos reales o plausibles del sitio; no inventes cifras específicas falsas.
+- "LogoReveal": sello de marca (stinger). props: brand = nombre de marca; opcional tagline
+  = línea corta. (El logo real del sitio se inyecta solo, NO lo pongas.) variant lo elige el
+  sistema. Útil como beat de marca en el medio del video; no la pongas primera ni última.
 - "CtaOutro": cierre. props: brand = nombre de marca, cta = llamado a la acción corto."""
 
 THEME_GUIDE = """THEMES (elegí 1 según el rubro):
@@ -209,7 +220,7 @@ def _normalize(spec: dict, url_data: dict, desarrollo: str, proposito: str) -> d
     if not isinstance(scenes, list) or len(scenes) < 2:
         return fb
     valid_types = {"KineticStatement", "IntegrationCluster", "MockupShowcase", "CtaOutro", "IconTransform",
-                   "StatReveal", "FeatureList", "Comparison", "Testimonial", "SocialProof"}
+                   "StatReveal", "FeatureList", "Comparison", "Testimonial", "SocialProof", "LogoReveal"}
     clean = []
     for s in scenes:
         if not isinstance(s, dict) or s.get("type") not in valid_types:
@@ -234,7 +245,8 @@ async def analyze_site_rich(url: str) -> dict:
     """
     base = await cine_generator.analyze_url_light(url)
     out = {"siteName": base.get("siteName", ""), "headline": base.get("headline", ""),
-           "themeColor": base.get("themeColor", ""), "description": "", "sections": [], "context": ""}
+           "themeColor": base.get("themeColor", ""), "description": "", "sections": [],
+           "logo": "", "context": ""}
     if not url:
         return out
     try:
@@ -258,6 +270,26 @@ async def analyze_site_rich(url: str) -> dict:
             if 3 <= len(txt) <= 80 and txt.lower() not in [s.lower() for s in secs]:
                 secs.append(txt)
         out["sections"] = secs[:8]
+
+        # Logo del sitio: apple-touch-icon (suele ser un mark limpio) > og:image >
+        # icon link > /favicon.ico. Lo resolvemos a URL absoluta.
+        def grab_attr(pat):
+            m = re.search(pat, t, re.I)
+            return m.group(1).strip() if m else ""
+
+        cand = (
+            grab_attr(r'<link[^>]+rel=["\'][^"\']*apple-touch-icon[^"\']*["\'][^>]*href=["\']([^"\']+)')
+            or grab_attr(r'<link[^>]+href=["\']([^"\']+)["\'][^>]*rel=["\'][^"\']*apple-touch-icon')
+            or grab_attr(r'property=["\']og:image["\'][^>]*content=["\']([^"\']+)')
+            or grab_attr(r'<link[^>]+rel=["\'][^"\']*icon[^"\']*["\'][^>]*href=["\']([^"\']+)')
+        )
+        if not cand:
+            cand = "/favicon.ico"
+        try:
+            from urllib.parse import urljoin
+            out["logo"] = urljoin(str(r.url), cand)
+        except Exception:
+            out["logo"] = ""
 
         ctx = []
         if out["siteName"]:    ctx.append(f"Marca: {out['siteName']}")
