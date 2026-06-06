@@ -17,6 +17,7 @@ import Testimonial from './scenes/Testimonial'
 import SocialProof from './scenes/SocialProof'
 import FeatureList from './scenes/FeatureList'
 import LogoReveal from './scenes/LogoReveal'
+import IllustrationScene from './scenes/IllustrationScene'
 import FinishLayer from './FinishLayer'
 import SoundLayer from './SoundLayer'
 import Backdrop from './Backdrop'
@@ -32,7 +33,7 @@ loadFont('normal', { weights: ['400', '600', '700'], subsets: ['latin'], ignoreT
  * todas con duración fija TDUR (para que el cálculo de total sea exacto).
  */
 
-const REGISTRY = { KineticStatement, IntegrationCluster, MockupShowcase, CtaOutro, IconTransform, StatReveal, Comparison, Testimonial, SocialProof, FeatureList, LogoReveal }
+const REGISTRY = { KineticStatement, IntegrationCluster, MockupShowcase, CtaOutro, IconTransform, StatReveal, Comparison, Testimonial, SocialProof, FeatureList, LogoReveal, IllustrationScene }
 const TDUR = 14
 const DEFAULT_ART = { camera: 'drift', entrance: 'rise', motif: 'none', transitions: 'mixed' }
 

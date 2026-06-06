@@ -74,6 +74,7 @@ SCENE_VARIANTS = {
     "SocialProof": ["arc", "arc", "row"],
     "FeatureList": ["cards", "cards", "bare"],
     "LogoReveal": ["mark", "mark", "wordmark"],
+    "IllustrationScene": ["center", "center", "top"],
 }
 
 
@@ -176,6 +177,11 @@ SCENE_CATALOG = """ESCENAS DISPONIBLES (type + props):
 - "LogoReveal": sello de marca (stinger). props: brand = nombre de marca; opcional tagline
   = línea corta. (El logo real del sitio se inyecta solo, NO lo pongas.) variant lo elige el
   sistema. Útil como beat de marca en el medio del video; no la pongas primera ni última.
+- "IllustrationScene": ilustración hero estática (estilo flat) con movimiento de cámara.
+  props: title = segmentos { t, accent } (opcional); name = UNA de: "growth" (crecimiento/
+  resultados), "audience" (público/comunidad), "launch" (lanzamiento/empezar), "connect"
+  (integración/red), "idea" (idea/innovación). Elegí el name que mejor represente el mensaje
+  de esa escena. Buen recurso visual cuando no hay screenshot ni datos para Stat.
 - "CtaOutro": cierre. props: brand = nombre de marca, cta = llamado a la acción corto."""
 
 # Paletas disponibles (NO son rubros: son VIBRAS/colores que sirven para cualquier
@@ -308,7 +314,7 @@ def _normalize(spec: dict, url_data: dict, desarrollo: str, proposito: str) -> d
     if not isinstance(scenes, list) or len(scenes) < 2:
         return fb
     valid_types = {"KineticStatement", "IntegrationCluster", "MockupShowcase", "CtaOutro", "IconTransform",
-                   "StatReveal", "FeatureList", "Comparison", "Testimonial", "SocialProof", "LogoReveal"}
+                   "StatReveal", "FeatureList", "Comparison", "Testimonial", "SocialProof", "LogoReveal", "IllustrationScene"}
     clean = []
     for s in scenes:
         if not isinstance(s, dict) or s.get("type") not in valid_types:
