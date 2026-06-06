@@ -49,7 +49,10 @@ export default function MisCinematicas() {
   }
 
   const srcOf = (v) => v.videoUrl || (v.localFile ? `${API_URL}/api/video/${v.localFile}` : null)
-  const fmtDate = (s) => { try { return new Date(s).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' }) } catch { return '' } }
+  const fmtDate = (s) => {
+    const d = new Date(s)
+    return isNaN(d.getTime()) ? '' : d.toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' })
+  }
   // Cloudinary: fl_attachment fuerza la descarga ("Guardar como").
   const downloadUrl = (v) => v.videoUrl
     ? v.videoUrl.replace('/upload/', '/upload/fl_attachment/')
@@ -118,7 +121,7 @@ export default function MisCinematicas() {
                     <span className={styles.brand}>{v.brand || v.url || 'Sin título'}</span>
                     {v.theme && <span className={styles.themeBadge}>{THEME_LABEL[v.theme] || v.theme}</span>}
                   </div>
-                  <div className={styles.date}>{fmtDate(v.createdAt)}</div>
+                  {fmtDate(v.createdAt) && <div className={styles.date}>{fmtDate(v.createdAt)}</div>}
                   <div className={styles.actions}>
                     {src && (
                       <a className={styles.actBtn} href={downloadUrl(v)} download target="_blank" rel="noreferrer">Descargar</a>
