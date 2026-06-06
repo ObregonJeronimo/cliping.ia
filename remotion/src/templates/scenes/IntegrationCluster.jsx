@@ -1,6 +1,6 @@
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from 'remotion'
 import { fitHeadline, segText, clamp } from '../theme'
-import { EASE, SPRING, prog, spr, enter, stagger, floatY, cameraDrift, parallax } from '../motion'
+import { EASE, SPRING, prog, spr, enter, entrance, stagger, floatY, camera, parallax } from '../motion'
 
 /**
  * IntegrationCluster — hub central + fuentes alrededor conectadas por líneas.
@@ -27,9 +27,9 @@ export const IntegrationCluster = ({ theme, title = [], colors = DEFAULT_COLORS,
   const m = theme.motion
   const HUB = { x: 540, y: 1140 }
 
-  const cam = cameraDrift(frame, dur, m.cameraDrift)
+  const cam = camera(theme.art, frame, dur, m.cameraDrift)
   const pxFg = parallax(cam, 0.6)
-  const cap = enter(frame, 0, { dur: m.enterFrames, dist: 50, ease: EASE.out })
+  const cap = entrance(theme.art, frame, 0, { dur: m.enterFrames, dist: 50, ease: EASE.out })
   const hub = spr(frame, fps, 8, SPRING.pop, 26)
   const hubRot = prog(frame, 8, 40, EASE.out) * 30
   const lineDraw = prog(frame, 14, 26, EASE.inOut)

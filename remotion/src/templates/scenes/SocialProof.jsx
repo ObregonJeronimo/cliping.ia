@@ -1,6 +1,6 @@
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from 'remotion'
 import { fitHeadline, segText, clamp } from '../theme'
-import { EASE, SPRING, prog, spr, enter, stagger, floatY, breathe, cameraDrift, parallax } from '../motion'
+import { EASE, SPRING, prog, spr, enter, entrance, stagger, floatY, breathe, camera, parallax } from '../motion'
 
 /**
  * SocialProof — "lo usan X / confían en nosotros": avatares en arco que aparecen
@@ -39,15 +39,15 @@ export const SocialProof = ({
   const dur = durProp || vc.durationInFrames
   const m = theme.motion
 
-  const cam = cameraDrift(frame, dur, m.cameraDrift)
+  const cam = camera(theme.art, frame, dur, m.cameraDrift)
   const pxFg = parallax(cam, 0.6)
   const glowOp = clamp(frame / 16, 0, 1) * breathe(frame, 0.05, 150)
 
   const n = clamp(count || colors.length || 6, 3, 7)
   const palette = Array.from({ length: n }, (_, i) => colors[i % colors.length])
 
-  const titleE = enter(frame, Math.round(dur * 0.3), { dur: m.enterFrames, dist: 44, ease: EASE.out })
-  const subE = enter(frame, Math.round(dur * 0.42), { dur: m.enterFrames, dist: 26, ease: EASE.out })
+  const titleE = entrance(theme.art, frame, Math.round(dur * 0.3), { dur: m.enterFrames, dist: 44, ease: EASE.out })
+  const subE = entrance(theme.art, frame, Math.round(dur * 0.42), { dur: m.enterFrames, dist: 26, ease: EASE.out })
 
   const arc = variant === 'arc'
   const CX = 540

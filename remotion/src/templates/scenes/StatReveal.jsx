@@ -1,6 +1,6 @@
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from 'remotion'
 import { fitHeadline, segText, clamp } from '../theme'
-import { EASE, SPRING, prog, spr, enter, floatY, breathe, cameraDrift, parallax } from '../motion'
+import { EASE, SPRING, prog, spr, enter, entrance, floatY, breathe, camera, parallax } from '../motion'
 
 /**
  * StatReveal — un número grande que CUENTA desde 0 hasta el valor, con pop al
@@ -41,7 +41,7 @@ export const StatReveal = ({
   const dur = durProp || vc.durationInFrames
   const m = theme.motion
 
-  const cam = cameraDrift(frame, dur, m.cameraDrift)
+  const cam = camera(theme.art, frame, dur, m.cameraDrift)
   const pxFg = parallax(cam, 0.6)
   const glowOp = clamp(frame / 14, 0, 1) * breathe(frame, 0.05, 150)
 
@@ -62,8 +62,8 @@ export const StatReveal = ({
   // Anillo de progreso (se dibuja al ritmo del conteo).
   const R = 360
   const C = 2 * Math.PI * R
-  const capE = enter(frame, 2, { dur: m.enterFrames, dist: 30, ease: EASE.out })
-  const labE = enter(frame, Math.round(dur * 0.4), { dur: m.enterFrames, dist: 34, ease: EASE.out })
+  const capE = entrance(theme.art, frame, 2, { dur: m.enterFrames, dist: 30, ease: EASE.out })
+  const labE = entrance(theme.art, frame, Math.round(dur * 0.4), { dur: m.enterFrames, dist: 34, ease: EASE.out })
 
   return (
     <AbsoluteFill style={{ background: theme.bg, fontFamily: theme.font, overflow: 'hidden' }}>

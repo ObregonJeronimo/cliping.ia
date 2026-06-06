@@ -1,6 +1,6 @@
 import { AbsoluteFill, useCurrentFrame, useVideoConfig, Img } from 'remotion'
 import { clamp, fitHeadline, segText } from '../theme'
-import { EASE, SPRING, prog, spr, enter, floatY, cameraDrift } from '../motion'
+import { EASE, SPRING, prog, spr, enter, entrance, floatY, camera } from '../motion'
 
 /**
  * MockupShowcase — captura de la app inclinada en 3D con glow.
@@ -42,8 +42,8 @@ export const MockupShowcase = ({ theme, title = [], screenshot = null, variant =
   const dur = durProp || vc.durationInFrames
   const m = theme.motion
 
-  const cam = cameraDrift(frame, dur, m.cameraDrift * 0.7)
-  const cap = enter(frame, 0, { dur: m.enterFrames, dist: 50, ease: EASE.out })
+  const cam = camera(theme.art, frame, dur, m.cameraDrift * 0.7)
+  const cap = entrance(theme.art, frame, 0, { dur: m.enterFrames, dist: 50, ease: EASE.out })
   const dev = spr(frame, fps, 8, SPRING.gentle, 30)
   const settle = prog(frame, 8, 38, EASE.out)
   const baseY = variant === 'tiltRight' ? 16 : variant === 'flat' ? -6 : -16

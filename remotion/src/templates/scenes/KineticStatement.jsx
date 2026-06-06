@@ -1,6 +1,6 @@
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from 'remotion'
 import { fitHeadline, segText, clamp } from '../theme'
-import { EASE, SPRING, prog, spr, enter, stagger, floatY, cameraDrift, parallax } from '../motion'
+import { EASE, SPRING, prog, spr, enter, entrance, stagger, floatY, camera, parallax } from '../motion'
 
 /**
  * KineticStatement — texto cinético al estilo del explainer de SaaS.
@@ -70,7 +70,7 @@ export const KineticStatement = ({ theme, lines = [], subtitle = '', variant = '
   const dur = durProp || vc.durationInFrames
   const m = theme.motion
 
-  const cam = cameraDrift(frame, dur, m.cameraDrift)
+  const cam = camera(theme.art, frame, dur, m.cameraDrift)
   const pxBg = parallax(cam, 0.3)
   const pxFg = parallax(cam, 0.7)
   const glowOp = clamp(frame / 14, 0, 1)
@@ -99,7 +99,7 @@ export const KineticStatement = ({ theme, lines = [], subtitle = '', variant = '
           <div style={{ textAlign: variant === 'left' ? 'left' : 'center', fontWeight: theme.headWeight, fontSize: fitHeadline(lines.map(segText).join(' ')),
             lineHeight: 1.08, letterSpacing: '-0.025em', color: theme.text, maxWidth: 940, padding: variant === 'left' ? '0 60px 0 0' : '0 70px' }}>
             {lines.map((segs, i) => {
-              const e = enter(frame, stagger(i, 8, m.stagger * 2), { dur: m.enterFrames, dist: 64, ease: EASE.back })
+              const e = entrance(theme.art, frame, stagger(i, 8, m.stagger * 2), { dur: m.enterFrames, dist: 64, ease: EASE.back })
               return (
                 <div key={i} style={{ transform: e.transform, opacity: e.opacity }}>
                   {segs.map((s, j) => s.accent
@@ -111,7 +111,7 @@ export const KineticStatement = ({ theme, lines = [], subtitle = '', variant = '
           </div>
 
           {subtitle && (() => {
-            const e = enter(frame, 8 + lines.length * m.stagger * 2 + 6, { dur: m.enterFrames, dist: 30, ease: EASE.out })
+            const e = entrance(theme.art, frame, 8 + lines.length * m.stagger * 2 + 6, { dur: m.enterFrames, dist: 30, ease: EASE.out })
             return (
               <div style={{ marginTop: 40, transform: e.transform, opacity: e.opacity,
                 color: theme.textMuted, fontSize: 50, fontWeight: 400 }}>{subtitle}</div>

@@ -1,6 +1,6 @@
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from 'remotion'
 import { clamp, fitHeadline } from '../theme'
-import { EASE, SPRING, prog, spr, enter, floatY, breathe } from '../motion'
+import { EASE, SPRING, prog, spr, enter, entrance, floatY, breathe } from '../motion'
 
 /**
  * CtaOutro — cierre con marca + llamado a la acción.
@@ -15,7 +15,7 @@ export const CtaOutro = ({ theme, brand = '', cta = 'Empezá gratis' }) => {
 
   const spk = spr(frame, fps, 0, SPRING.pop, 24)
   const spkRot = prog(frame, 0, 36, EASE.out) * 40
-  const brandE = enter(frame, 8, { dur: m.enterFrames, dist: 44, ease: EASE.back })
+  const brandE = entrance(theme.art, frame, 8, { dur: m.enterFrames, dist: 44, ease: EASE.back })
   const barW = prog(frame, 16, 18, EASE.out)
   const ctaS = spr(frame, fps, 22, SPRING.bouncy, 24)
   const pulse = 1 + 0.025 * Math.sin(frame / 9)

@@ -76,3 +76,58 @@ export const parallax = (cam, depth = 0.5) => ({ x: cam.x * depth, y: cam.y * de
 
 // Re-export por comodidad
 export { clamp } from './theme'
+
+// ══════════════════════════════════════════════════════════════════════════════
+// DIRECCIÓN DE ARTE — variedad de movimiento por video (azar curado).
+//
+// El director elige una "art direction" por video (spec.art) que cambia CÓMO se
+// mueve todo: el viaje de cámara y la familia de entrada de los elementos. Las
+// escenas llaman a camera(art, ...) y entrance(art, ...) en vez de cableado fijo,
+// así dos videos con las mismas escenas se sienten distintos.
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ── Viajes de cámara (devuelven { scale, x, y }) ──────────────────────────────
+export const CAMERAS = {
+  drift:   (t, a) => ({ scale: 1 + a * t,           x: (t - 0.5) * a * 220, y: (t - 0.5) * a * 80 }),  // suave (clásico)
+  pushIn:  (t, a) => ({ scale: 1 + a * 2.6 * t,     x: 0,                    y: 0 }),                   // acercándose
+  pullOut: (t, a) => ({ scale: 1 + a * 2.6 * (1 - t), x: 0,                  y: 0 }),                   // alejándose
+  panL:    (t, a) => ({ scale: 1 + a * 1.3,         x: (0.5 - t) * a * 560,  y: 0 }),                   // paneo a la izquierda
+  panR:    (t, a) => ({ scale: 1 + a * 1.3,         x: (t - 0.5) * a * 560,  y: 0 }),                   // paneo a la derecha
+  ken:     (t, a) => ({ scale: 1 + a * 2.0 * t,     x: (t - 0.5) * a * 200,  y: (0.5 - t) * a * 150 }), // ken burns diagonal
+  sway:    (t, a) => ({ scale: 1 + a * 0.9,         x: Math.sin(t * Math.PI * 2) * a * 130,             // vaivén orgánico
+                                                     y: Math.cos(t * Math.PI * 1.5) * a * 70 }),
+}
+
+/** Viaje de cámara según la art direction. total = duración de la escena. */
+export const camera = (art, frame, total, amount = 0.05) => {
+  const kind = (art && art.camera) || 'drift'
+  const t = prog(frame, 0, total, EASE.inOut)
+  return (CAMERAS[kind] || CAMERAS.drift)(t, amount)
+}
+
+// ── Familias de entrada (cómo aparece cada elemento) ──────────────────────────
+// Cada una recibe (p = progreso eased 0..1, op = opacidad 0..1, d = distancia) y
+// devuelve { opacity, transform } — mismo shape que enter(), drop-in.
+export const ENTRANCES = {
+  rise:  (p, op, d) => ({ opacity: op, transform: `translateY(${(1 - p) * d}px)` }),
+  drop:  (p, op, d) => ({ opacity: op, transform: `translateY(${-(1 - p) * d}px)` }),
+  slide: (p, op, d) => ({ opacity: op, transform: `translateX(${(1 - p) * d}px)` }),
+  scale: (p, op)    => ({ opacity: op, transform: `scale(${0.74 + p * 0.26})` }),
+  zoom:  (p, op)    => ({ opacity: op, transform: `scale(${1.2 - p * 0.2})` }),               // entra grande y asienta
+  tilt:  (p, op, d) => ({ opacity: op, transform: `translateY(${(1 - p) * d}px) rotate(${(1 - p) * -5}deg)` }),
+}
+const ENTRANCE_EASE = { rise: EASE.back, drop: EASE.back, slide: EASE.out, scale: EASE.back, zoom: EASE.out, tilt: EASE.back }
+
+/**
+ * Entrada según la art direction (con override por escena vía `fam`).
+ * Las escenas con dirección estructural (paneles izq/der, filas) pasan `fam`
+ * fijo; el resto deja que la art direction decida.
+ */
+export const entrance = (art, frame, from = 0, { dur = 16, dist = 60, axis = 'y', ease, fam } = {}) => {
+  let family = fam || (art && art.entrance) || (axis === 'x' ? 'slide' : 'rise')
+  if (!ENTRANCES[family]) family = 'rise'
+  const e = ease || ENTRANCE_EASE[family] || EASE.out
+  const p = prog(frame, from, dur, e)
+  const op = clamp((frame - from) / Math.max(1, dur * 0.7), 0, 1)
+  return ENTRANCES[family](p, op, dist)
+}

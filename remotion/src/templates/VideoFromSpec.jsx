@@ -19,6 +19,7 @@ import FeatureList from './scenes/FeatureList'
 import LogoReveal from './scenes/LogoReveal'
 import FinishLayer from './FinishLayer'
 import SoundLayer from './SoundLayer'
+import Backdrop from './Backdrop'
 
 // Carga Inter (pesos puntuales).
 loadFont('normal', { weights: ['400', '600', '700'], subsets: ['latin'], ignoreTooManyRequestsWarning: true })
@@ -33,17 +34,32 @@ loadFont('normal', { weights: ['400', '600', '700'], subsets: ['latin'], ignoreT
 
 const REGISTRY = { KineticStatement, IntegrationCluster, MockupShowcase, CtaOutro, IconTransform, StatReveal, Comparison, Testimonial, SocialProof, FeatureList, LogoReveal }
 const TDUR = 14
+const DEFAULT_ART = { camera: 'drift', entrance: 'rise', motif: 'none', transitions: 'mixed' }
 
-const POOL = [
-  () => ({ presentation: fade(), timing: linearTiming({ durationInFrames: TDUR }) }),
-  () => ({ presentation: slide({ direction: 'from-right' }), timing: linearTiming({ durationInFrames: TDUR }) }),
-  () => ({ presentation: slide({ direction: 'from-bottom' }), timing: linearTiming({ durationInFrames: TDUR }) }),
-  () => ({ presentation: wipe({ direction: 'from-left' }), timing: linearTiming({ durationInFrames: TDUR }) }),
-  () => ({ presentation: fade(), timing: linearTiming({ durationInFrames: TDUR }) }),
-  () => ({ presentation: slide({ direction: 'from-top' }), timing: linearTiming({ durationInFrames: TDUR }) }),
-]
+// Transiciones (factories). El SET se elige por art.transitions, así un video puede
+// ser todo fundidos suaves y otro a pura cortina/slide -> se sienten distintos.
+const T = (presentation) => ({ presentation, timing: linearTiming({ durationInFrames: TDUR }) })
+const tx = {
+  fade: () => T(fade()),
+  slideR: () => T(slide({ direction: 'from-right' })),
+  slideL: () => T(slide({ direction: 'from-left' })),
+  slideB: () => T(slide({ direction: 'from-bottom' })),
+  slideT: () => T(slide({ direction: 'from-top' })),
+  wipeL: () => T(wipe({ direction: 'from-left' })),
+  wipeR: () => T(wipe({ direction: 'from-right' })),
+  wipeT: () => T(wipe({ direction: 'from-top' })),
+}
+const POOLS = {
+  mixed:  [tx.fade, tx.slideR, tx.slideB, tx.wipeL, tx.fade, tx.slideT],
+  soft:   [tx.fade, tx.fade, tx.fade],
+  slides: [tx.slideR, tx.slideB, tx.slideL, tx.slideT],
+  wipes:  [tx.wipeL, tx.wipeR, tx.wipeT, tx.fade],
+}
 
-const pickTransition = (i, seed) => POOL[(i + seed) % POOL.length]()
+const pickTransition = (i, seed, set) => {
+  const pool = POOLS[set] || POOLS.mixed
+  return pool[(i + seed) % pool.length]()
+}
 
 export const computeTotal = (scenes) => {
   const sum = (scenes || []).reduce((a, s) => a + (s.durationInFrames || 90), 0)
@@ -63,7 +79,9 @@ const cutFrames = (scenes) => {
 }
 
 export const VideoFromSpec = ({ spec }) => {
-  const theme = spec.accent ? applyAccent(getTheme(spec.theme), spec.accent) : getTheme(spec.theme)
+  const base = spec.accent ? applyAccent(getTheme(spec.theme), spec.accent) : getTheme(spec.theme)
+  const art = { ...DEFAULT_ART, ...(spec.art || {}) }
+  const theme = { ...base, art }   // las escenas leen theme.art para cámara/entrada
   const sc = spec.scenes || []
   const seed = typeof spec.seed === 'number' ? spec.seed : (spec.brand || '').length
 
@@ -88,13 +106,14 @@ export const VideoFromSpec = ({ spec }) => {
             </TransitionSeries.Sequence>
           )
           if (i === 0) return [seq]
-          const t = pickTransition(i, seed)
+          const t = pickTransition(i, seed, art.transitions)
           return [
             <TransitionSeries.Transition key={`t${i}`} presentation={t.presentation} timing={t.timing} />,
             seq,
           ]
         })}
       </TransitionSeries>
+      <Backdrop theme={theme} kind={art.motif} />
       {spec.finish !== false && <FinishLayer />}
       <SoundLayer audio={audio} />
     </AbsoluteFill>

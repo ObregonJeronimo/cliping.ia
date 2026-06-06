@@ -77,13 +77,41 @@ SCENE_VARIANTS = {
 }
 
 
+# Direcciones de arte (azar curado y COHERENTE): cada preset cambia a la vez la
+# cámara, la familia de entrada, la atmósfera de fondo y el set de transiciones.
+# Esto es lo que hace que dos videos con las mismas escenas se sientan distintos.
+ART_PRESETS = [
+    {"name": "kinetic",   "camera": "pushIn",  "entrance": "rise",  "motif": "particles", "transitions": "slides"},
+    {"name": "calm",      "camera": "drift",   "entrance": "scale", "motif": "aurora",    "transitions": "soft"},
+    {"name": "bold",      "camera": "pullOut", "entrance": "zoom",  "motif": "rays",      "transitions": "wipes"},
+    {"name": "editorial", "camera": "panR",    "entrance": "slide", "motif": "grid",      "transitions": "mixed"},
+    {"name": "playful",   "camera": "sway",    "entrance": "drop",  "motif": "bokeh",     "transitions": "slides"},
+    {"name": "techno",    "camera": "ken",     "entrance": "tilt",  "motif": "dots",      "transitions": "mixed"},
+    {"name": "clean",     "camera": "drift",   "entrance": "rise",  "motif": "none",      "transitions": "soft"},
+    {"name": "flow",      "camera": "panL",    "entrance": "scale", "motif": "waves",     "transitions": "mixed"},
+]
+
+# Algunos motivos/cámaras pegan mejor según el rubro; el resto es libre.
+ART_BIAS = {
+    "clinical-formal": ["editorial", "clean", "techno", "kinetic"],   # formal: nada "playful"
+    "organic-natural": ["calm", "flow", "playful", "clean"],          # cálido/orgánico
+    "saas-explainer":  None,                                          # cualquiera
+}
+
+
 def _assign_variation(spec: dict) -> dict:
-    """Semilla por video + variante de layout por escena -> dos videos nunca iguales."""
+    """Semilla + layout por escena + DIRECCIÓN DE ARTE por video -> nunca se repite."""
     spec["seed"] = random.randint(0, 9999)
     for s in spec.get("scenes", []):
         opts = SCENE_VARIANTS.get(s.get("type"))
         if opts and "variant" not in s:
             s["variant"] = random.choice(opts)
+    if "art" not in spec:
+        allowed = ART_BIAS.get(spec.get("theme"))
+        pool = [p for p in ART_PRESETS if (allowed is None or p["name"] in allowed)] or ART_PRESETS
+        art = dict(random.choice(pool))
+        art.pop("name", None)
+        spec["art"] = art
     return spec
 
 

@@ -1,6 +1,6 @@
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from 'remotion'
 import { fitHeadline, segText, clamp } from '../theme'
-import { EASE, SPRING, prog, spr, enter, stagger, floatY, cameraDrift, parallax } from '../motion'
+import { EASE, SPRING, prog, spr, enter, entrance, stagger, floatY, camera, parallax } from '../motion'
 
 /**
  * Comparison — antes vs después / "sin esto" vs "con esto".
@@ -89,9 +89,9 @@ export const Comparison = ({
   const dur = durProp || vc.durationInFrames
   const m = theme.motion
 
-  const cam = cameraDrift(frame, dur, m.cameraDrift * 0.8)
+  const cam = camera(theme.art, frame, dur, m.cameraDrift * 0.8)
   const glowOp = clamp(frame / 16, 0, 1)
-  const cap = enter(frame, 0, { dur: m.enterFrames, dist: 44, ease: EASE.out })
+  const cap = entrance(theme.art, frame, 0, { dur: m.enterFrames, dist: 44, ease: EASE.out })
 
   const conn = spr(frame, fps, 18, SPRING.pop, 24)
   const connPulse = 1 + 0.06 * Math.sin(frame / 10)

@@ -1,6 +1,6 @@
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from 'remotion'
 import { fitHeadline, segText, clamp } from '../theme'
-import { EASE, SPRING, prog, spr, enter, stagger, floatY, cameraDrift, parallax } from '../motion'
+import { EASE, SPRING, prog, spr, enter, entrance, stagger, floatY, camera, parallax } from '../motion'
 
 /**
  * FeatureList — lista de features/beneficios: filas con ícono + texto que entran
@@ -41,10 +41,10 @@ export const FeatureList = ({ theme, title = [], items = [], variant = 'cards', 
   const dur = durProp || vc.durationInFrames
   const m = theme.motion
 
-  const cam = cameraDrift(frame, dur, m.cameraDrift * 0.8)
+  const cam = camera(theme.art, frame, dur, m.cameraDrift * 0.8)
   const pxFg = parallax(cam, 0.5)
   const glowOp = clamp(frame / 16, 0, 1)
-  const cap = enter(frame, 0, { dur: m.enterFrames, dist: 44, ease: EASE.out })
+  const cap = entrance(theme.art, frame, 0, { dur: m.enterFrames, dist: 44, ease: EASE.out })
 
   const rows = (items || []).slice(0, 5)
   const cards = variant !== 'bare'

@@ -1,6 +1,6 @@
 import { AbsoluteFill, useCurrentFrame, useVideoConfig, Img } from 'remotion'
 import { fitHeadline, clamp } from '../theme'
-import { EASE, SPRING, prog, spr, enter, floatY, breathe, cameraDrift } from '../motion'
+import { EASE, SPRING, prog, spr, enter, entrance, floatY, breathe, camera } from '../motion'
 
 /**
  * LogoReveal — sello de marca (stinger). Revela el LOGO REAL del sitio (si el
@@ -34,16 +34,16 @@ export const LogoReveal = ({
   const dur = durProp || vc.durationInFrames
   const m = theme.motion
 
-  const cam = cameraDrift(frame, dur, m.cameraDrift * 0.6)
+  const cam = camera(theme.art, frame, dur, m.cameraDrift * 0.6)
   const glowOp = clamp(frame / 14, 0, 1) * breathe(frame, 0.06, 150)
   const fl = floatY(frame, 6, 150)
 
   // Anillo que se abre alrededor del sello.
   const ring = prog(frame, 6, 30, EASE.out)
   const mark = spr(frame, fps, 4, SPRING.pop, 28)
-  const brandE = enter(frame, 16, { dur: m.enterFrames, dist: 40, ease: EASE.back })
+  const brandE = entrance(theme.art, frame, 16, { dur: m.enterFrames, dist: 40, ease: EASE.back })
   const barW = prog(frame, 24, 18, EASE.out)
-  const tagE = enter(frame, 30, { dur: m.enterFrames, dist: 22, ease: EASE.out })
+  const tagE = entrance(theme.art, frame, 30, { dur: m.enterFrames, dist: 22, ease: EASE.out })
 
   const wordmark = variant === 'wordmark'
   const CX = 540, CY = wordmark ? 860 : 720

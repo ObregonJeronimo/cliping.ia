@@ -1,6 +1,6 @@
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from 'remotion'
 import { fitHeadline, segText, clamp } from '../theme'
-import { EASE, SPRING, prog, spr, enter, floatY, breathe, cameraDrift, parallax } from '../motion'
+import { EASE, SPRING, prog, spr, enter, entrance, floatY, breathe, camera, parallax } from '../motion'
 
 /**
  * Testimonial — una cita destacada con autor. El beat de "prueba social humana".
@@ -41,7 +41,7 @@ export const Testimonial = ({
   const dur = durProp || vc.durationInFrames
   const m = theme.motion
 
-  const cam = cameraDrift(frame, dur, m.cameraDrift * 0.7)
+  const cam = camera(theme.art, frame, dur, m.cameraDrift * 0.7)
   const glowOp = clamp(frame / 16, 0, 1) * breathe(frame, 0.05, 150)
   const fl = floatY(frame, 7, 150)
 
@@ -50,7 +50,7 @@ export const Testimonial = ({
   const card = variant === 'card'
 
   const starsDelay = Math.round(dur * 0.42)
-  const authorE = enter(frame, Math.round(dur * 0.5), { dur: m.enterFrames, dist: 36, ease: EASE.out })
+  const authorE = entrance(theme.art, frame, Math.round(dur * 0.5), { dur: m.enterFrames, dist: 36, ease: EASE.out })
   const avatarS = spr(frame, fps, Math.round(dur * 0.5), SPRING.bouncy, 22)
 
   return (
@@ -94,7 +94,7 @@ export const Testimonial = ({
             <div style={{ fontWeight: theme.headWeight, fontSize: fitHeadline(qText, 78, 44),
               lineHeight: 1.22, letterSpacing: '-0.02em', color: theme.text }}>
               {quote.map((s, i) => {
-                const e = enter(frame, 8 + i * (m.stagger + 2), { dur: m.enterFrames, dist: 26, ease: EASE.out })
+                const e = entrance(theme.art, frame, 8 + i * (m.stagger + 2), { dur: m.enterFrames, dist: 26, ease: EASE.out })
                 return (
                   <span key={i} style={{ display: 'inline', opacity: e.opacity }}>
                     {s.accent ? <GradientText theme={theme}>{s.t}</GradientText> : <span>{s.t}</span>}
