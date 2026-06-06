@@ -2,26 +2,27 @@ import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 
 // ─────────────────────────────────────────────────────────────────────────
-//  ParticleHero — sistema de texto de particulas con auto-fit al frustum
+//  ParticleHero — texto de particulas con auto-fit y subsampleo uniforme
 //
-//  CLAVE: ya no se usa un SCALE fijo. Cada texto se muestrea, se calcula su
-//  bounding box y se escala automaticamente para entrar en un presupuesto
-//  de unidades de mundo que cabe en el frustum de la camara. Asi es
-//  imposible que el texto se corte, sin importar largo, lineas o aspect.
+//  - Auto-fit: cada texto se escala a un presupuesto de unidades de mundo
+//    que cabe en el frustum. Imposible que se corte por tamano.
+//  - capPoints: si un texto genera mas puntos que MAX, se subsamplea de
+//    forma uniforme en todo el texto (no se trunca la ultima linea).
+//  - Blending normal (NO aditivo): texto nitido, no manchas.
 // ─────────────────────────────────────────────────────────────────────────
 
 const FONT_SIZE   = 72
 const SAMPLE_STEP = 1
-const MAX         = 8000
+const MAX         = 10000
+const CAP         = 9600          // tope de puntos por estado (deja headroom)
 const ITEMS       = ['Hook', 'Problema', 'Features', 'Diferenciador', 'Beneficios', 'CTA']
 
 const MODE_IDLE    = 'idle'
 const MODE_FORMING = 'forming'
 const MODE_BURST   = 'burst'
 
-// Spring 1D para movimiento con inercia natural (no lerp lineal)
 class Spring1D {
-  constructor(stiffness = 190, damping = 26) {
+  constructor(stiffness = 200, damping = 28) {   // ~critico: settle limpio sin rebote
     this.k = stiffness; this.d = damping
     this.pos = 0; this.vel = 0; this.tgt = 0
   }
@@ -34,20 +35,28 @@ class Spring1D {
   }
 }
 
-// Muestrea pixeles opacos del canvas y devuelve coords CRUDAS (y invertida)
 function sampleRaw(canvas) {
   const w = canvas.width, h = canvas.height
   const data = canvas.getContext('2d').getImageData(0, 0, w, h).data
   const pts = []
   for (let y = 0; y < h; y += SAMPLE_STEP)
     for (let x = 0; x < w; x += SAMPLE_STEP)
-      if (data[(y * w + x) * 4 + 3] > 128) pts.push({ x, y: -y })
+      if (data[(y * w + x) * 4 + 3] > 100) pts.push({ x, y: -y })
   return pts
 }
 
-// Normaliza un set de puntos: centra en (0,0) y escala para que su
-// dimension mayor entre en maxW x maxH unidades de mundo. Imposible que
-// se salga del frustum si maxW/maxH estan dentro de los limites.
+// Subsampleo uniforme: si hay mas puntos que cap, toma con stride constante.
+// Como pts viene en orden row-major, el stride preserva la distribucion
+// espacial y TODAS las lineas quedan representadas (no se trunca el final).
+function capPoints(pts, cap) {
+  if (pts.length <= cap) return pts
+  const stride = pts.length / cap
+  const out = []
+  for (let i = 0; i < pts.length && out.length < cap; i += stride) out.push(pts[Math.floor(i)])
+  return out
+}
+
+// Centra en (0,0) y escala para entrar en maxW x maxH unidades de mundo
 function fitToWorld(raw, maxW, maxH) {
   if (!raw.length) return []
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
@@ -57,12 +66,14 @@ function fitToWorld(raw, maxW, maxH) {
     if (p.y < minY) minY = p.y
     if (p.y > maxY) maxY = p.y
   }
-  const w = (maxX - minX) || 1
-  const h = (maxY - minY) || 1
-  const s = Math.min(maxW / w, maxH / h)
+  const s  = Math.min(maxW / ((maxX - minX) || 1), maxH / ((maxY - minY) || 1))
   const cx = (minX + maxX) / 2
   const cy = (minY + maxY) / 2
   return raw.map(p => ({ x: (p.x - cx) * s, y: (p.y - cy) * s }))
+}
+
+function prep(canvas, maxW, maxH) {
+  return fitToWorld(capPoints(sampleRaw(canvas), CAP), maxW, maxH)
 }
 
 function makeTextCanvas(string, fontSize) {
@@ -80,6 +91,9 @@ function makeTextCanvas(string, fontSize) {
   return c
 }
 
+// Timeline: SIEMPRE dibuja los 6 items a opacidad plena (asi se muestrean
+// todos y las posiciones son identicas en cada estado). El progreso se
+// muestra solo con el glifo: check (hecho) vs circulo (pendiente).
 function makeTimelineCanvas(items) {
   const fs = 40, rowH = Math.ceil(fs * 1.35), PAD = 12
   const fontStr = `bold ${fs}px monospace`
@@ -98,21 +112,20 @@ function makeTimelineCanvas(items) {
   const ctx = c.getContext('2d')
   ctx.font = fontStr
   ctx.textBaseline = 'top'; ctx.textAlign = 'left'
+  ctx.fillStyle = '#fff'   // todos a opacidad plena → posiciones estables
   items.forEach((it, i) => {
-    ctx.fillStyle = it.done ? 'rgba(255,255,255,1)' : 'rgba(255,255,255,0.45)'
     ctx.fillText((it.done ? '\u2713  ' : '\u25cb  ') + it.label, PAD, i * rowH + PAD / 2)
   })
   return c
 }
 
 function precomputeAll() {
-  // Presupuestos en unidades de mundo (verificado: entran en aspect >= 0.75)
-  const urlPts    = fitToWorld(sampleRaw(makeTextCanvas('URL', FONT_SIZE * 1.4)), 10.0, 6.0)
-  const promptPts = fitToWorld(sampleRaw(makeTextCanvas('Video profesional\ncon todas las\nherramientas del sitio', FONT_SIZE * 0.5)), 10.5, 7.0)
+  const urlPts    = prep(makeTextCanvas('URL', FONT_SIZE * 1.4), 10.0, 6.0)
+  const promptPts = prep(makeTextCanvas('Video profesional\ncon todas las\nherramientas del sitio', FONT_SIZE * 0.5), 11.0, 7.0)
   const tlStates  = []
   for (let step = 0; step <= ITEMS.length; step++) {
     const snap = ITEMS.map((l, i) => ({ label: l, done: i < step }))
-    tlStates.push(fitToWorld(sampleRaw(makeTimelineCanvas(snap)), 9.5, 8.0))
+    tlStates.push(prep(makeTimelineCanvas(snap), 9.5, 8.5))
   }
   return { urlPts, promptPts, tlStates }
 }
@@ -133,13 +146,12 @@ export default function ParticleHero({ onStateChange }) {
     const el = mountRef.current
     if (!el) return
 
-    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     const { urlPts, promptPts, tlStates } = precomputeAll()
 
-    const sx = Array.from({ length: MAX }, () => new Spring1D(190, 26))
-    const sy = Array.from({ length: MAX }, () => new Spring1D(190, 26))
-    const sz = Array.from({ length: MAX }, () => new Spring1D(90, 18))
+    const sx = Array.from({ length: MAX }, () => new Spring1D())
+    const sy = Array.from({ length: MAX }, () => new Spring1D())
+    const sz = Array.from({ length: MAX }, () => new Spring1D(95, 19))
 
     let W = el.offsetWidth || 700
     let H = el.offsetHeight || 650
@@ -153,7 +165,6 @@ export default function ParticleHero({ onStateChange }) {
     const cam   = new THREE.PerspectiveCamera(50, W / H, 0.1, 200)
     cam.position.z = 16
 
-    // ResizeObserver en el elemento — corrige aspect cuando el layout calcula
     const ro = new ResizeObserver((entries) => {
       for (const e of entries) {
         const { width, height } = e.contentRect
@@ -166,32 +177,24 @@ export default function ParticleHero({ onStateChange }) {
     })
     ro.observe(el)
 
-    // Particulas con blending aditivo → glow real al solaparse
-    const geo  = new THREE.BoxGeometry(1, 1, 1)
-    const mat  = new THREE.MeshBasicMaterial({
-      color: 0xffffff,
-      transparent: true,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-    })
+    // Particulas — blending NORMAL (nitido). Esferas de pocos segmentos:
+    // se ven mas suaves que cubos y no generan ruido al rotar.
+    const geo  = new THREE.SphereGeometry(1, 6, 5)
+    const mat  = new THREE.MeshBasicMaterial({ color: 0xffffff })
     const mesh = new THREE.InstancedMesh(geo, mat, MAX)
     mesh.frustumCulled = false
-    const initCol = new THREE.Color(0x0a0f20)
+    const initCol = new THREE.Color(0x141a30)
     for (let i = 0; i < MAX; i++) mesh.setColorAt(i, initCol)
     mesh.instanceColor.needsUpdate = true
     scene.add(mesh)
 
-    // Anillos orbitales con blending aditivo
     const orbits = [
-      { rx: 9.0,  ry: 6.0, tiltX: 0.20,  tiltZ: 0.06,  speed: 0.20,  opacity: 0.5  },
-      { rx: 11.0, ry: 7.2, tiltX: -0.14, tiltZ: 0.16,  speed: -0.13, opacity: 0.32 },
-      { rx: 13.2, ry: 8.6, tiltX: 0.32,  tiltZ: -0.10, speed: 0.34,  opacity: 0.2  },
+      { rx: 9.5,  ry: 6.2, tiltX: 0.20,  tiltZ: 0.06,  speed: 0.18,  opacity: 0.4  },
+      { rx: 11.5, ry: 7.4, tiltX: -0.14, tiltZ: 0.16,  speed: -0.12, opacity: 0.26 },
+      { rx: 13.6, ry: 8.8, tiltX: 0.32,  tiltZ: -0.10, speed: 0.3,   opacity: 0.16 },
     ]
     const orbitMeshes = orbits.map(({ rx, ry, tiltX, tiltZ, opacity }) => {
-      const m = new THREE.LineBasicMaterial({
-        color: 0x8098f0, transparent: true, opacity,
-        blending: THREE.AdditiveBlending, depthWrite: false,
-      })
+      const m = new THREE.LineBasicMaterial({ color: 0x6c7fd8, transparent: true, opacity })
       const loop = new THREE.LineLoop(makeOrbitLoop(rx, ry), m)
       loop.rotation.x = tiltX
       loop.rotation.z = tiltZ
@@ -202,7 +205,6 @@ export default function ParticleHero({ onStateChange }) {
     const dummy  = new THREE.Object3D()
     const colTmp = new THREE.Color()
 
-    // Posiciones idle: nube esferica difusa
     const base = Array.from({ length: MAX }, () => {
       const th = Math.random() * Math.PI * 2
       const ph = Math.acos(2 * Math.random() - 1)
@@ -213,9 +215,8 @@ export default function ParticleHero({ onStateChange }) {
         r * Math.cos(ph) * 0.35,
       )
     })
-    // Z sutil por particula para dar profundidad/parallax al texto formado
     const formZ = Array.from({ length: MAX }, (_, i) =>
-      (Math.sin(i * 12.9898) * 43758.5453 % 1) * 0.6 - 0.3
+      ((Math.sin(i * 12.9898) * 43758.5453) % 1) * 0.5 - 0.25
     )
 
     for (let i = 0; i < MAX; i++) {
@@ -253,7 +254,7 @@ export default function ParticleHero({ onStateChange }) {
     const steps = [
       { dur: 3800, fn: () => { setTargets(urlPts);      onStateChange?.('url') } },
       { dur: 1000, fn: () => triggerBurst(() => setTargets([])) },
-      { dur: 4200, fn: () => { setTargets(promptPts);   onStateChange?.('prompt') } },
+      { dur: 4400, fn: () => { setTargets(promptPts);   onStateChange?.('prompt') } },
       { dur: 1000, fn: () => triggerBurst(() => setTargets([])) },
       { dur: 700,  fn: () => { setTargets(tlStates[0]); onStateChange?.('timeline') } },
       { dur: 850,  fn: () => setTargets(tlStates[1]) },
@@ -261,7 +262,7 @@ export default function ParticleHero({ onStateChange }) {
       { dur: 850,  fn: () => setTargets(tlStates[3]) },
       { dur: 850,  fn: () => setTargets(tlStates[4]) },
       { dur: 850,  fn: () => setTargets(tlStates[5]) },
-      { dur: 1100, fn: () => setTargets(tlStates[6]) },
+      { dur: 1300, fn: () => setTargets(tlStates[6]) },
       { dur: 1000, fn: () => triggerBurst(() => setTargets([])) },
       { dur: 1500, fn: () => {} },
     ]
@@ -270,10 +271,9 @@ export default function ParticleHero({ onStateChange }) {
     function executeStep(idx) { steps[idx].fn(); stepIdx = idx; stepStart = null }
     executeStep(0)
 
-    // Gradiente de color del texto (lila claro arriba → azul abajo)
-    const C_TOP = new THREE.Color(0xeef2ff)
-    const C_MID = new THREE.Color(0x90a8ff)
-    const C_BOT = new THREE.Color(0x4a5cc8)
+    const C_TOP = new THREE.Color(0xf4f6ff)
+    const C_MID = new THREE.Color(0x9db2ff)
+    const C_BOT = new THREE.Color(0x5a6cd8)
 
     let alive = true, rafId = null, lastNow = null
 
@@ -297,10 +297,10 @@ export default function ParticleHero({ onStateChange }) {
 
       if (burst) anim.burstT = Math.min(anim.burstT + dt / 500, 1)
 
-      // Deriva sutil de camara → vida + parallax (respeta reduced-motion)
-      if (!reducedMotion) {
-        cam.position.x = Math.sin(t * 0.13) * 0.5
-        cam.position.y = Math.cos(t * 0.11) * 0.35
+      // Deriva muy sutil de camara → parallax con la profundidad Z, sin marear
+      if (!reduced) {
+        cam.position.x = Math.sin(t * 0.12) * 0.35
+        cam.position.y = Math.cos(t * 0.10) * 0.22
         cam.lookAt(0, 0, 0)
       }
 
@@ -328,30 +328,33 @@ export default function ParticleHero({ onStateChange }) {
         dummy.position.copy(c)
 
         const active = i < anim.activeN && forming
-        const prox   = active ? Math.max(0, 1 - c.distanceTo(tgt[i]) * 0.45) : 0
+        const prox   = active ? Math.max(0, 1 - c.distanceTo(tgt[i]) * 0.5) : 0
 
         let scale
-        if (burst)       scale = Math.max(0.001, 0.04 - anim.burstT * 0.038)
-        else if (active) scale = 0.034 + prox * 0.02
-        else             scale = 0.005 + Math.random() * 0.0015
+        if (burst)       scale = Math.max(0.001, 0.036 - anim.burstT * 0.034)
+        else if (active) scale = 0.03 + prox * 0.012        // tamano consistente → texto nitido
+        else             scale = 0.006
 
         dummy.scale.setScalar(scale)
-        dummy.rotation.x = t * 0.14 + i * 0.018
-        dummy.rotation.y = t * 0.10 + i * 0.012
+        // Esferas casi sin rotacion cuando forman texto (sin ruido visual)
+        if (!active) {
+          dummy.rotation.x = t * 0.12 + i * 0.018
+          dummy.rotation.y = t * 0.09 + i * 0.012
+        } else {
+          dummy.rotation.set(0, 0, 0)
+        }
         dummy.updateMatrix()
         mesh.setMatrixAt(i, dummy.matrix)
 
         if (active) {
-          // Gradiente vertical segun altura. Color moderado: el blending
-          // aditivo suma el brillo en los nucleos densos (glow).
           const n = Math.max(0, Math.min(1, (c.y + 4) / 8))
           if (n > 0.5) colTmp.lerpColors(C_MID, C_TOP, (n - 0.5) * 2)
           else         colTmp.lerpColors(C_BOT, C_MID, n * 2)
-          colTmp.multiplyScalar(0.45 + prox * 0.4)
+          colTmp.multiplyScalar(0.7 + prox * 0.3)
         } else if (burst) {
-          colTmp.lerpColors(C_BOT, initCol, anim.burstT).multiplyScalar(1 - anim.burstT * 0.8)
+          colTmp.lerpColors(C_BOT, initCol, anim.burstT).multiplyScalar(1 - anim.burstT * 0.7)
         } else {
-          colTmp.copy(initCol).multiplyScalar(0.6 + Math.sin(t * 0.6 + i * 0.38) * 0.3)
+          colTmp.copy(initCol).multiplyScalar(0.5 + Math.sin(t * 0.6 + i * 0.38) * 0.25)
         }
         mesh.setColorAt(i, colTmp)
       }
