@@ -7,8 +7,15 @@ const HEADERS = { 'Content-Type': 'application/json', 'ngrok-skip-browser-warnin
 const THEMES = [
   { key: '',                 label: '✨ Que elija la IA' },
   { key: 'saas-explainer',   label: 'SaaS / Tech' },
-  { key: 'organic-natural',  label: 'Natural / Bienestar' },
+  { key: 'ocean-deep',       label: 'Ocean' },
   { key: 'clinical-formal',  label: 'Clínico / Formal' },
+  { key: 'organic-natural',  label: 'Natural / Orgánico' },
+  { key: 'sunset-warm',      label: 'Sunset' },
+  { key: 'crimson-bold',     label: 'Crimson' },
+  { key: 'berry-glow',       label: 'Berry' },
+  { key: 'gold-lux',         label: 'Gold / Lux' },
+  { key: 'cyber-neon',       label: 'Cyber Neón' },
+  { key: 'mono-ink',         label: 'Mono Ink' },
 ]
 const PROPOSITOS = [
   { key: 'marketing',   label: '📣 Marketing' },

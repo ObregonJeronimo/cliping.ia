@@ -3,7 +3,8 @@ import { useAuth } from '../../contexts/AuthContext'
 import styles from './Sidebar.module.css'
 
 const NAV = [
-  { to: '/studio/cinematicas', icon: '✦', label: 'Cinemáticas' },
+  { to: '/studio',             icon: '⊞', label: 'Home' },
+  { to: '/studio/cinematicas', icon: '✦', label: 'Mis cinemáticas' },
 ]
 
 export default function Sidebar() {
@@ -21,7 +22,7 @@ export default function Sidebar() {
         cliping<span>.ia</span>
       </div>
 
-      <button className={styles.newBtn} onClick={() => navigate('/studio/cinematicas')}>
+      <button className={styles.newBtn} onClick={() => navigate('/studio')}>
         + Nuevo video
       </button>
 

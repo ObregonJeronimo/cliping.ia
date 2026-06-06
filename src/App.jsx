@@ -1,7 +1,8 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import AppLayout from './components/Layout/AppLayout'
-import Cinematicas from './pages/Cinematicas'
+import VideoStudio from './pages/Cinematicas/VideoStudio'
+import MisCinematicas from './pages/Cinematicas/MisCinematicas'
 import Login from './pages/Login'
 import Landing from './pages/Landing'
 
@@ -22,8 +23,8 @@ function AppRoutes() {
           <AppLayout />
         </PrivateRoute>
       }>
-        <Route index element={<Cinematicas />} />
-        <Route path="cinematicas" element={<Cinematicas />} />
+        <Route index element={<VideoStudio />} />
+        <Route path="cinematicas" element={<MisCinematicas />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
