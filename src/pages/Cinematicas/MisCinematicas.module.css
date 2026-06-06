@@ -57,6 +57,12 @@
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+.btnSpinner {
+  display: inline-block; width: 11px; height: 11px; margin-right: 7px; vertical-align: -1px;
+  border: 2px solid #5a2e38; border-top-color: #e06a6a; border-radius: 50%;
+  animation: spin .6s linear infinite;
+}
+
 .empty { text-align: center; padding: 80px 20px; color: #8a8a93; }
 .emptyIcon { font-size: 40px; margin-bottom: 12px; }
 .emptyTitle { font-size: 17px; font-weight: 600; color: #d8d8dc; margin-bottom: 6px; }

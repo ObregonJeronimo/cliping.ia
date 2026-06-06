@@ -149,7 +149,9 @@ export default function MisCinematicas() {
                       onClick={() => handleDelete(v.id)}
                       disabled={deletingId === v.id}
                     >
-                      {deletingId === v.id ? '…' : 'Eliminar'}
+                      {deletingId === v.id
+                        ? <><span className={styles.btnSpinner} />Eliminando…</>
+                        : 'Eliminar'}
                     </button>
                   </div>
                 </div>
