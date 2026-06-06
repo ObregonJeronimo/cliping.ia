@@ -1,6 +1,7 @@
-import { useState, useRef, useCallback, lazy, Suspense } from 'react'
+import { useState, useCallback, lazy, Suspense } from 'react'
 import { useNavigate } from 'react-router-dom'
 import styles from './Landing.module.css'
+import HeroText from './HeroText'
 
 const ParticleHero = lazy(() => import('./ParticleHero'))
 
@@ -12,21 +13,16 @@ const STATE_LABELS = {
 
 export default function Landing() {
   const navigate = useNavigate()
-  const [currentState, setCurrentState] = useState('url')
-  const [visible, setVisible] = useState(true)
-  const prevState = useRef('url')
+  const [phase, setPhase] = useState('url')       // fase activa (texto a mostrar)
+  const [textVisible, setTextVisible] = useState(true)
 
-  const handleStateChange = useCallback((state) => {
-    if (state === prevState.current) return
-    setVisible(false)
-    setTimeout(() => {
-      setCurrentState(state)
-      prevState.current = state
-      setVisible(true)
-    }, 300)
+  // ParticleHero emite { phase, visible } en cada cambio del ciclo
+  const handlePhaseChange = useCallback(({ phase: p, visible }) => {
+    if (visible) setPhase(p)        // al aparecer: fijar fase y mostrar
+    setTextVisible(visible)
   }, [])
 
-  const info = STATE_LABELS[currentState] || STATE_LABELS.url
+  const info = STATE_LABELS[phase] || STATE_LABELS.url
 
   return (
     <div className={styles.page}>
@@ -66,7 +62,7 @@ export default function Landing() {
             <span className={styles.ctaNote}>Sin tarjeta de credito</span>
           </div>
 
-          <div className={`${styles.stateIndicator} ${visible ? styles.stateVisible : styles.stateHidden}`}>
+          <div className={`${styles.stateIndicator} ${textVisible ? styles.stateVisible : styles.stateHidden}`}>
             <div className={styles.stateTag}>{info.tag}</div>
             <div className={styles.stateDesc}>{info.desc}</div>
           </div>
@@ -75,9 +71,10 @@ export default function Landing() {
         <div className={styles.right}>
           <div className={styles.canvasWrapper}>
             <Suspense fallback={<div className={styles.canvasPlaceholder} />}>
-              <ParticleHero onStateChange={handleStateChange} />
+              <ParticleHero onPhaseChange={handlePhaseChange} />
             </Suspense>
             <div className={styles.vignette} />
+            <HeroText phase={phase} visible={textVisible} />
           </div>
         </div>
       </section>
