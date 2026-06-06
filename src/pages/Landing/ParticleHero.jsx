@@ -1,8 +1,16 @@
 import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 
+// ─────────────────────────────────────────────────────────────────────────
+//  ParticleHero — sistema de texto de particulas con auto-fit al frustum
+//
+//  CLAVE: ya no se usa un SCALE fijo. Cada texto se muestrea, se calcula su
+//  bounding box y se escala automaticamente para entrar en un presupuesto
+//  de unidades de mundo que cabe en el frustum de la camara. Asi es
+//  imposible que el texto se corte, sin importar largo, lineas o aspect.
+// ─────────────────────────────────────────────────────────────────────────
+
 const FONT_SIZE   = 72
-const SCALE       = 0.030
 const SAMPLE_STEP = 1
 const MAX         = 8000
 const ITEMS       = ['Hook', 'Problema', 'Features', 'Diferenciador', 'Beneficios', 'CTA']
@@ -11,33 +19,50 @@ const MODE_IDLE    = 'idle'
 const MODE_FORMING = 'forming'
 const MODE_BURST   = 'burst'
 
+// Spring 1D para movimiento con inercia natural (no lerp lineal)
 class Spring1D {
-  constructor(stiffness = 180, damping = 26) {
-    this.k   = stiffness
-    this.d   = damping
-    this.pos = 0
-    this.vel = 0
-    this.tgt = 0
+  constructor(stiffness = 190, damping = 26) {
+    this.k = stiffness; this.d = damping
+    this.pos = 0; this.vel = 0; this.tgt = 0
   }
-  reset(pos) { this.pos = pos; this.vel = 0 }
+  reset(p) { this.pos = p; this.vel = 0 }
   update(dt) {
-    const capped = Math.min(dt, 0.033)
-    const force  = -this.k * (this.pos - this.tgt) - this.d * this.vel
-    this.vel += force * capped
-    this.pos += this.vel * capped
+    const h = Math.min(dt, 0.033)
+    this.vel += (-this.k * (this.pos - this.tgt) - this.d * this.vel) * h
+    this.pos += this.vel * h
     return this.pos
   }
 }
 
-function sampleCanvas(canvas) {
-  const cW = canvas.width, cH = canvas.height
-  const img = canvas.getContext('2d').getImageData(0, 0, cW, cH)
+// Muestrea pixeles opacos del canvas y devuelve coords CRUDAS (y invertida)
+function sampleRaw(canvas) {
+  const w = canvas.width, h = canvas.height
+  const data = canvas.getContext('2d').getImageData(0, 0, w, h).data
   const pts = []
-  for (let y = 0; y < cH; y += SAMPLE_STEP)
-    for (let x = 0; x < cW; x += SAMPLE_STEP)
-      if (img.data[(y * cW + x) * 4 + 3] > 128)
-        pts.push({ x: (x - cW / 2) * SCALE, y: -(y - cH / 2) * SCALE })
+  for (let y = 0; y < h; y += SAMPLE_STEP)
+    for (let x = 0; x < w; x += SAMPLE_STEP)
+      if (data[(y * w + x) * 4 + 3] > 128) pts.push({ x, y: -y })
   return pts
+}
+
+// Normaliza un set de puntos: centra en (0,0) y escala para que su
+// dimension mayor entre en maxW x maxH unidades de mundo. Imposible que
+// se salga del frustum si maxW/maxH estan dentro de los limites.
+function fitToWorld(raw, maxW, maxH) {
+  if (!raw.length) return []
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
+  for (const p of raw) {
+    if (p.x < minX) minX = p.x
+    if (p.x > maxX) maxX = p.x
+    if (p.y < minY) minY = p.y
+    if (p.y > maxY) maxY = p.y
+  }
+  const w = (maxX - minX) || 1
+  const h = (maxY - minY) || 1
+  const s = Math.min(maxW / w, maxH / h)
+  const cx = (minX + maxX) / 2
+  const cy = (minY + maxY) / 2
+  return raw.map(p => ({ x: (p.x - cx) * s, y: (p.y - cy) * s }))
 }
 
 function makeTextCanvas(string, fontSize) {
@@ -48,7 +73,6 @@ function makeTextCanvas(string, fontSize) {
   const c  = document.createElement('canvas')
   c.width = cW; c.height = cH
   const ctx = c.getContext('2d')
-  ctx.clearRect(0, 0, cW, cH)
   ctx.fillStyle = '#fff'
   ctx.font = `bold ${fontSize}px system-ui, -apple-system, sans-serif`
   ctx.textAlign = 'left'; ctx.textBaseline = 'top'
@@ -57,53 +81,46 @@ function makeTextCanvas(string, fontSize) {
 }
 
 function makeTimelineCanvas(items) {
-  const fs      = 34
-  const rowH    = Math.ceil(fs * 1.35)
-  const PAD     = 10
+  const fs = 40, rowH = Math.ceil(fs * 1.35), PAD = 12
   const fontStr = `bold ${fs}px monospace`
-
   const probe = document.createElement('canvas')
-  probe.width = 600; probe.height = 1
-  const pctx  = probe.getContext('2d')
-  pctx.font   = fontStr
-  const maxW  = items.reduce((acc, it) => {
+  probe.width = 800; probe.height = 1
+  const pctx = probe.getContext('2d')
+  pctx.font = fontStr
+  const maxW = items.reduce((a, it) => {
     const w = pctx.measureText('\u2713  ' + it.label).width
-    return w > acc ? w : acc
+    return w > a ? w : a
   }, 0)
-
   const cW = Math.ceil(maxW + PAD * 2)
   const cH = Math.ceil(items.length * rowH + PAD)
-
-  const c   = document.createElement('canvas')
-  c.width   = cW
-  c.height  = cH
+  const c  = document.createElement('canvas')
+  c.width = cW; c.height = cH
   const ctx = c.getContext('2d')
-  ctx.clearRect(0, 0, cW, cH)
-  ctx.font         = fontStr
-  ctx.textBaseline = 'top'
-  ctx.textAlign    = 'left'
+  ctx.font = fontStr
+  ctx.textBaseline = 'top'; ctx.textAlign = 'left'
   items.forEach((it, i) => {
-    ctx.fillStyle = it.done ? 'rgba(255,255,255,1)' : 'rgba(255,255,255,0.4)'
+    ctx.fillStyle = it.done ? 'rgba(255,255,255,1)' : 'rgba(255,255,255,0.45)'
     ctx.fillText((it.done ? '\u2713  ' : '\u25cb  ') + it.label, PAD, i * rowH + PAD / 2)
   })
   return c
 }
 
 function precomputeAll() {
-  const urlPts    = sampleCanvas(makeTextCanvas('URL', FONT_SIZE * 1.4))
-  const promptPts = sampleCanvas(makeTextCanvas('Video profesional\ncon todas las\nherramientas del sitio', FONT_SIZE * 0.44))
+  // Presupuestos en unidades de mundo (verificado: entran en aspect >= 0.75)
+  const urlPts    = fitToWorld(sampleRaw(makeTextCanvas('URL', FONT_SIZE * 1.4)), 10.0, 6.0)
+  const promptPts = fitToWorld(sampleRaw(makeTextCanvas('Video profesional\ncon todas las\nherramientas del sitio', FONT_SIZE * 0.5)), 10.5, 7.0)
   const tlStates  = []
   for (let step = 0; step <= ITEMS.length; step++) {
-    const snapshot = ITEMS.map((l, i) => ({ label: l, done: i < step }))
-    tlStates.push(sampleCanvas(makeTimelineCanvas(snapshot)))
+    const snap = ITEMS.map((l, i) => ({ label: l, done: i < step }))
+    tlStates.push(fitToWorld(sampleRaw(makeTimelineCanvas(snap)), 9.5, 8.0))
   }
   return { urlPts, promptPts, tlStates }
 }
 
-function makeOrbitLoop(rx, ry, segments = 160) {
+function makeOrbitLoop(rx, ry, seg = 180) {
   const pts = []
-  for (let i = 0; i < segments; i++) {
-    const a = (i / segments) * Math.PI * 2
+  for (let i = 0; i < seg; i++) {
+    const a = (i / seg) * Math.PI * 2
     pts.push(new THREE.Vector3(Math.cos(a) * rx, Math.sin(a) * ry, 0))
   }
   return new THREE.BufferGeometry().setFromPoints(pts)
@@ -116,15 +133,15 @@ export default function ParticleHero({ onStateChange }) {
     const el = mountRef.current
     if (!el) return
 
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
     const { urlPts, promptPts, tlStates } = precomputeAll()
 
-    const springsX = Array.from({ length: MAX }, () => new Spring1D(180, 26))
-    const springsY = Array.from({ length: MAX }, () => new Spring1D(180, 26))
-    const springsZ = Array.from({ length: MAX }, () => new Spring1D(80,  18))
+    const sx = Array.from({ length: MAX }, () => new Spring1D(190, 26))
+    const sy = Array.from({ length: MAX }, () => new Spring1D(190, 26))
+    const sz = Array.from({ length: MAX }, () => new Spring1D(90, 18))
 
-    // Leer dimensiones reales en el primer rAF, despues del layout
-    // Evita el problema de offsetHeight=0 cuando Suspense monta antes del paint
-    let W = el.offsetWidth  || 700
+    let W = el.offsetWidth || 700
     let H = el.offsetHeight || 650
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' })
@@ -136,40 +153,46 @@ export default function ParticleHero({ onStateChange }) {
     const cam   = new THREE.PerspectiveCamera(50, W / H, 0.1, 200)
     cam.position.z = 16
 
-    // ResizeObserver en el elemento — mas preciso que window resize
-    // corrige el aspect ratio cuando el layout termina de calcularse
-    const resizeObserver = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const { width, height } = entry.contentRect
+    // ResizeObserver en el elemento — corrige aspect cuando el layout calcula
+    const ro = new ResizeObserver((entries) => {
+      for (const e of entries) {
+        const { width, height } = e.contentRect
         if (!width || !height) return
-        W = width
-        H = height
+        W = width; H = height
         cam.aspect = W / H
         cam.updateProjectionMatrix()
         renderer.setSize(W, H)
       }
     })
-    resizeObserver.observe(el)
+    ro.observe(el)
 
+    // Particulas con blending aditivo → glow real al solaparse
     const geo  = new THREE.BoxGeometry(1, 1, 1)
-    const mat  = new THREE.MeshBasicMaterial({ color: 0xffffff })
+    const mat  = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    })
     const mesh = new THREE.InstancedMesh(geo, mat, MAX)
     mesh.frustumCulled = false
-    const initCol = new THREE.Color(0x111830)
+    const initCol = new THREE.Color(0x0a0f20)
     for (let i = 0; i < MAX; i++) mesh.setColorAt(i, initCol)
     mesh.instanceColor.needsUpdate = true
     scene.add(mesh)
 
+    // Anillos orbitales con blending aditivo
     const orbits = [
-      { rx: 9.0,  ry: 6.0,  tiltX: 0.18,  tiltZ: 0.08,  speed: 0.22,  opacity: 0.55 },
-      { rx: 11.0, ry: 7.0,  tiltX: -0.12, tiltZ: 0.15,  speed: -0.14, opacity: 0.35 },
-      { rx: 13.0, ry: 8.5,  tiltX: 0.30,  tiltZ: -0.10, speed: 0.38,  opacity: 0.22 },
+      { rx: 9.0,  ry: 6.0, tiltX: 0.20,  tiltZ: 0.06,  speed: 0.20,  opacity: 0.5  },
+      { rx: 11.0, ry: 7.2, tiltX: -0.14, tiltZ: 0.16,  speed: -0.13, opacity: 0.32 },
+      { rx: 13.2, ry: 8.6, tiltX: 0.32,  tiltZ: -0.10, speed: 0.34,  opacity: 0.2  },
     ]
-
     const orbitMeshes = orbits.map(({ rx, ry, tiltX, tiltZ, opacity }) => {
-      const orbitGeo = makeOrbitLoop(rx, ry)
-      const orbitMat = new THREE.LineBasicMaterial({ color: 0x7090e0, transparent: true, opacity })
-      const loop = new THREE.LineLoop(orbitGeo, orbitMat)
+      const m = new THREE.LineBasicMaterial({
+        color: 0x8098f0, transparent: true, opacity,
+        blending: THREE.AdditiveBlending, depthWrite: false,
+      })
+      const loop = new THREE.LineLoop(makeOrbitLoop(rx, ry), m)
       loop.rotation.x = tiltX
       loop.rotation.z = tiltZ
       scene.add(loop)
@@ -179,29 +202,28 @@ export default function ParticleHero({ onStateChange }) {
     const dummy  = new THREE.Object3D()
     const colTmp = new THREE.Color()
 
+    // Posiciones idle: nube esferica difusa
     const base = Array.from({ length: MAX }, () => {
-      const theta = Math.random() * Math.PI * 2
-      const phi   = Math.acos(2 * Math.random() - 1)
-      const r     = 5 + Math.random() * 7
+      const th = Math.random() * Math.PI * 2
+      const ph = Math.acos(2 * Math.random() - 1)
+      const r  = 5 + Math.random() * 7
       return new THREE.Vector3(
-        r * Math.sin(phi) * Math.cos(theta),
-        r * Math.sin(phi) * Math.sin(theta) * 0.55,
-        r * Math.cos(phi) * 0.35,
+        r * Math.sin(ph) * Math.cos(th),
+        r * Math.sin(ph) * Math.sin(th) * 0.55,
+        r * Math.cos(ph) * 0.35,
       )
     })
+    // Z sutil por particula para dar profundidad/parallax al texto formado
+    const formZ = Array.from({ length: MAX }, (_, i) =>
+      (Math.sin(i * 12.9898) * 43758.5453 % 1) * 0.6 - 0.3
+    )
 
     for (let i = 0; i < MAX; i++) {
-      springsX[i].reset(base[i].x)
-      springsY[i].reset(base[i].y)
-      springsZ[i].reset(base[i].z)
+      sx[i].reset(base[i].x); sy[i].reset(base[i].y); sz[i].reset(base[i].z)
     }
 
     const burstVel = Array.from({ length: MAX }, () =>
-      new THREE.Vector3(
-        (Math.random() - 0.5) * 0.38,
-        (Math.random() - 0.5) * 0.38,
-        (Math.random() - 0.5) * 0.12,
-      )
+      new THREE.Vector3((Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 0.14)
     )
 
     const cur       = base.map(v => v.clone())
@@ -216,17 +238,15 @@ export default function ParticleHero({ onStateChange }) {
       for (let i = 0; i < MAX; i++) {
         const tx = i < pts.length ? pts[i].x : base[i].x
         const ty = i < pts.length ? pts[i].y : base[i].y
-        tgt[i].set(tx, ty, 0)
-        springsX[i].tgt = tx
-        springsY[i].tgt = ty
-        springsZ[i].tgt = 0
+        const tz = i < pts.length ? formZ[i] : base[i].z
+        tgt[i].set(tx, ty, tz)
+        sx[i].tgt = tx; sy[i].tgt = ty; sz[i].tgt = tz
       }
     }
 
     function triggerBurst(thenFn) {
       for (let i = 0; i < MAX; i++) burstFrom[i].copy(cur[i])
-      anim.mode   = MODE_BURST
-      anim.burstT = 0
+      anim.mode = MODE_BURST; anim.burstT = 0
       setTimeout(thenFn, 600)
     }
 
@@ -236,30 +256,24 @@ export default function ParticleHero({ onStateChange }) {
       { dur: 4200, fn: () => { setTargets(promptPts);   onStateChange?.('prompt') } },
       { dur: 1000, fn: () => triggerBurst(() => setTargets([])) },
       { dur: 700,  fn: () => { setTargets(tlStates[0]); onStateChange?.('timeline') } },
-      { dur: 900,  fn: () => setTargets(tlStates[1]) },
-      { dur: 900,  fn: () => setTargets(tlStates[2]) },
-      { dur: 900,  fn: () => setTargets(tlStates[3]) },
-      { dur: 900,  fn: () => setTargets(tlStates[4]) },
-      { dur: 900,  fn: () => setTargets(tlStates[5]) },
-      { dur: 900,  fn: () => setTargets(tlStates[6]) },
+      { dur: 850,  fn: () => setTargets(tlStates[1]) },
+      { dur: 850,  fn: () => setTargets(tlStates[2]) },
+      { dur: 850,  fn: () => setTargets(tlStates[3]) },
+      { dur: 850,  fn: () => setTargets(tlStates[4]) },
+      { dur: 850,  fn: () => setTargets(tlStates[5]) },
+      { dur: 1100, fn: () => setTargets(tlStates[6]) },
       { dur: 1000, fn: () => triggerBurst(() => setTargets([])) },
-      { dur: 1600, fn: () => {} },
+      { dur: 1500, fn: () => {} },
     ]
 
     let stepIdx = 0, stepStart = null
-
-    function executeStep(idx) {
-      steps[idx].fn()
-      stepIdx   = idx
-      stepStart = null
-    }
-
+    function executeStep(idx) { steps[idx].fn(); stepIdx = idx; stepStart = null }
     executeStep(0)
 
-    const C_TOP  = new THREE.Color(0xffffff)
-    const C_MID  = new THREE.Color(0x9db8ff)
-    const C_BOT  = new THREE.Color(0x4a5cc8)
-    const C_IDLE = new THREE.Color(0x1a2550)
+    // Gradiente de color del texto (lila claro arriba → azul abajo)
+    const C_TOP = new THREE.Color(0xeef2ff)
+    const C_MID = new THREE.Color(0x90a8ff)
+    const C_BOT = new THREE.Color(0x4a5cc8)
 
     let alive = true, rafId = null, lastNow = null
 
@@ -267,8 +281,8 @@ export default function ParticleHero({ onStateChange }) {
       if (!alive) return
       rafId = requestAnimationFrame(animate)
 
-      const dt    = lastNow !== null ? Math.min(now - lastNow, 50) : 16
-      lastNow     = now
+      const dt = lastNow !== null ? Math.min(now - lastNow, 50) : 16
+      lastNow = now
       const dtSec = dt * 0.001
 
       if (stepStart === null) stepStart = now
@@ -277,50 +291,49 @@ export default function ParticleHero({ onStateChange }) {
         stepStart = now
       }
 
-      const t         = now * 0.001
-      const isForming = anim.mode === MODE_FORMING
-      const isBurst   = anim.mode === MODE_BURST
+      const t       = now * 0.001
+      const forming = anim.mode === MODE_FORMING
+      const burst   = anim.mode === MODE_BURST
 
-      if (isBurst) anim.burstT = Math.min(anim.burstT + dt / 500, 1)
+      if (burst) anim.burstT = Math.min(anim.burstT + dt / 500, 1)
 
-      orbits.forEach(({ speed }, idx) => {
-        orbitMeshes[idx].rotation.y += speed * dtSec
-      })
+      // Deriva sutil de camara → vida + parallax (respeta reduced-motion)
+      if (!reducedMotion) {
+        cam.position.x = Math.sin(t * 0.13) * 0.5
+        cam.position.y = Math.cos(t * 0.11) * 0.35
+        cam.lookAt(0, 0, 0)
+      }
+
+      orbits.forEach(({ speed }, i) => { orbitMeshes[i].rotation.y += speed * dtSec })
 
       for (let i = 0; i < MAX; i++) {
         const c = cur[i]
 
-        if (isBurst) {
-          const ease = 1 - Math.pow(1 - anim.burstT, 3)
-          c.x = burstFrom[i].x + burstVel[i].x * 20 * ease
-          c.y = burstFrom[i].y + burstVel[i].y * 20 * ease
-          c.z = burstFrom[i].z + burstVel[i].z * 8  * ease
-          springsX[i].reset(c.x)
-          springsY[i].reset(c.y)
-          springsZ[i].reset(c.z)
-        } else if (isForming) {
-          c.x = springsX[i].update(dtSec)
-          c.y = springsY[i].update(dtSec)
-          c.z = springsZ[i].update(dtSec)
+        if (burst) {
+          const e = 1 - Math.pow(1 - anim.burstT, 3)
+          c.x = burstFrom[i].x + burstVel[i].x * 20 * e
+          c.y = burstFrom[i].y + burstVel[i].y * 20 * e
+          c.z = burstFrom[i].z + burstVel[i].z * 8  * e
+          sx[i].reset(c.x); sy[i].reset(c.y); sz[i].reset(c.z)
+        } else if (forming) {
+          c.x = sx[i].update(dtSec); c.y = sy[i].update(dtSec); c.z = sz[i].update(dtSec)
         } else {
-          const phase = i * 0.28
-          springsX[i].tgt = base[i].x + Math.sin(t * 0.42 + phase) * 0.18
-          springsY[i].tgt = base[i].y + Math.cos(t * 0.35 + phase) * 0.18
-          springsZ[i].tgt = base[i].z + Math.sin(t * 0.46 + phase * 2) * 0.08
-          c.x = springsX[i].update(dtSec)
-          c.y = springsY[i].update(dtSec)
-          c.z = springsZ[i].update(dtSec)
+          const ph = i * 0.28
+          sx[i].tgt = base[i].x + Math.sin(t * 0.42 + ph) * 0.18
+          sy[i].tgt = base[i].y + Math.cos(t * 0.35 + ph) * 0.18
+          sz[i].tgt = base[i].z + Math.sin(t * 0.46 + ph * 2) * 0.08
+          c.x = sx[i].update(dtSec); c.y = sy[i].update(dtSec); c.z = sz[i].update(dtSec)
         }
 
         dummy.position.copy(c)
 
-        const isActive  = i < anim.activeN && isForming
-        const proximity = isActive ? Math.max(0, 1 - c.distanceTo(tgt[i]) * 0.45) : 0
+        const active = i < anim.activeN && forming
+        const prox   = active ? Math.max(0, 1 - c.distanceTo(tgt[i]) * 0.45) : 0
 
         let scale
-        if (isBurst)        scale = Math.max(0.001, 0.038 - anim.burstT * 0.036)
-        else if (isActive)  scale = 0.038 + proximity * 0.018
-        else                scale = 0.006 + Math.random() * 0.002
+        if (burst)       scale = Math.max(0.001, 0.04 - anim.burstT * 0.038)
+        else if (active) scale = 0.034 + prox * 0.02
+        else             scale = 0.005 + Math.random() * 0.0015
 
         dummy.scale.setScalar(scale)
         dummy.rotation.x = t * 0.14 + i * 0.018
@@ -328,15 +341,17 @@ export default function ParticleHero({ onStateChange }) {
         dummy.updateMatrix()
         mesh.setMatrixAt(i, dummy.matrix)
 
-        if (isActive) {
-          const n = Math.max(0, Math.min(1, (c.y + 2.2) / 4.4))
-          colTmp.lerpColors(n > 0.5 ? C_MID : C_BOT, n > 0.5 ? C_TOP : C_MID, n > 0.5 ? (n - 0.5) * 2 : n * 2)
-          colTmp.multiplyScalar(0.4 + proximity * 0.6)
-        } else if (isBurst) {
-          colTmp.lerpColors(C_BOT, C_IDLE, anim.burstT)
-          colTmp.multiplyScalar(1 - anim.burstT * 0.7)
+        if (active) {
+          // Gradiente vertical segun altura. Color moderado: el blending
+          // aditivo suma el brillo en los nucleos densos (glow).
+          const n = Math.max(0, Math.min(1, (c.y + 4) / 8))
+          if (n > 0.5) colTmp.lerpColors(C_MID, C_TOP, (n - 0.5) * 2)
+          else         colTmp.lerpColors(C_BOT, C_MID, n * 2)
+          colTmp.multiplyScalar(0.45 + prox * 0.4)
+        } else if (burst) {
+          colTmp.lerpColors(C_BOT, initCol, anim.burstT).multiplyScalar(1 - anim.burstT * 0.8)
         } else {
-          colTmp.copy(C_IDLE).multiplyScalar(0.25 + Math.sin(t * 0.6 + i * 0.38) * 0.12)
+          colTmp.copy(initCol).multiplyScalar(0.6 + Math.sin(t * 0.6 + i * 0.38) * 0.3)
         }
         mesh.setColorAt(i, colTmp)
       }
@@ -351,7 +366,7 @@ export default function ParticleHero({ onStateChange }) {
     return () => {
       alive = false
       if (rafId) cancelAnimationFrame(rafId)
-      resizeObserver.disconnect()
+      ro.disconnect()
       renderer.dispose(); geo.dispose(); mat.dispose()
       orbitMeshes.forEach(l => { l.geometry.dispose(); l.material.dispose() })
       if (el.contains(renderer.domElement)) el.removeChild(renderer.domElement)
