@@ -26,9 +26,10 @@ URL + desarrollo + propósito → `backend/template_director.py:build_storyboard
 - Helpers de movimiento: `remotion/src/templates/motion.js`. Paletas/colores: `theme.js`.
 - Atmósfera global: `Backdrop.jsx`. Sonido (cableado, off sin archivos): `SoundLayer.jsx`.
 
-> Existe un pipeline VIEJO (cine_generator, composition_generator, remotion_renderer,
-> agent, forge) que el frontend todavía usa en otras pantallas. No lo toques al trabajar
-> en el sistema de templates.
+> Nota: el pipeline viejo (forge, cine, agent, etc.) fue eliminado. Quedan solo los
+> módulos del pipeline de templates: main, template_director, cine_generator (solo se
+> reusa `analyze_url_light`), iconify_service, site_capture, cloudinary_upload. Único
+> endpoint de generación: `POST /api/video/generate`.
 
 ## Reglas de oro (gotchas que YA rompimos)
 - **Versiones Remotion pineadas EXACTAS a `4.0.469`** (todas las deps `@remotion/*`). No bumpear suelto.
