@@ -7,7 +7,7 @@ import { EASE, SPRING, prog, spr, enter, entrance, floatY, breathe } from '../mo
  * Props: theme, brand, cta.
  */
 
-export const CtaOutro = ({ theme, brand = '', cta = 'Empezá gratis' }) => {
+export const CtaOutro = ({ theme, brand = '', cta = '' }) => {
   const frame = useCurrentFrame()
   const vc = useVideoConfig()
   const fps = vc.fps
@@ -49,11 +49,13 @@ export const CtaOutro = ({ theme, brand = '', cta = 'Empezá gratis' }) => {
 
       <div style={{ marginTop: 36, width: 280 * barW, height: 10, borderRadius: 6, background: theme.accentGrad }} />
 
-      <div style={{ marginTop: 70, transform: `scale(${clamp(ctaS, 0, 1.2) * pulse})`, opacity: clamp(ctaS, 0, 1),
-        padding: '34px 70px', borderRadius: theme.radius * 1.6, background: theme.accentGrad,
-        color: '#fff', fontSize: 52, fontWeight: 600, boxShadow: `0 24px 70px ${theme.glow}` }}>
-        {cta}
-      </div>
+      {cta && (
+        <div style={{ marginTop: 70, transform: `scale(${clamp(ctaS, 0, 1.2) * pulse})`, opacity: clamp(ctaS, 0, 1),
+          padding: '34px 70px', borderRadius: theme.radius * 1.6, background: theme.accentGrad,
+          color: '#fff', fontSize: 52, fontWeight: 600, boxShadow: `0 24px 70px ${theme.glow}` }}>
+          {cta}
+        </div>
+      )}
     </AbsoluteFill>
   )
 }

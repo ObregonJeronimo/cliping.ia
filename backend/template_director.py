@@ -216,7 +216,10 @@ Devolvés SOLO un objeto JSON válido (sin markdown), con esta forma:
 }}
 
 REGLAS:
-- 4 a 6 escenas. La PRIMERA debe ser "KineticStatement" (hook). La ÚLTIMA "CtaOutro".
+- 4 a 6 escenas. ABRÍ con un HOOK potente (no siempre el mismo tipo): puede ser
+  "KineticStatement" (frase), "StatReveal" (un dato fuerte), "Comparison" (un contraste)
+  o "LogoReveal" si la marca es conocida. Elegí la apertura según lo que MÁS enganche a
+  ESTE público. CERRÁ con "CtaOutro" (el llamado a la acción).
 - Incluí "MockupShowcase" si hay un producto/web que mostrar.
 - Incluí UN "IconTransform" cuando exista un contraste o transformación natural en el
   mensaje (en marketing casi siempre lo hay: antes/después, problema/solución, acción/
@@ -242,27 +245,56 @@ REGLAS:
   escenas. Pensá "to keep up" / "feature requests", no frases enteras.
 - En cada texto marcá con accent:true SOLO la palabra o grupo clave (1 por línea).
 - NO inventes datos que no sabés del sitio. Si no tenés un dato, no lo pongas.
-- El storyboard debe contar una micro-historia coherente con el propósito."""
+- El storyboard debe contar una micro-historia coherente con el propósito.
+- PÚBLICO (clave): inferí del sitio QUIÉN es el público objetivo (quién compra/usa esto:
+  rubro, nivel, qué le importa, qué problema tiene) y escribí TODO el copy hablándole a
+  ESE público, con su lenguaje y sus prioridades. El mismo producto se le presenta distinto
+  a un dueño de pyme, a un developer o a un consumidor final. Que el video se sienta hecho
+  para la audiencia de ESTA página, no un molde genérico."""
+
+
+def _chunk_lines(text, max_words=8, per_line=3):
+    """Parte un texto real del sitio en líneas cortas (1-4 palabras) con acento al final."""
+    words = (text or "").split()[:max_words]
+    if not words:
+        return None
+    lines = [[{"t": " ".join(words[i:i + per_line])}] for i in range(0, len(words), per_line)]
+    last = lines[-1][0]["t"]
+    parts = last.rsplit(" ", 1)
+    lines[-1] = ([{"t": parts[0] + " "}, {"t": parts[1], "accent": True}]
+                 if len(parts) == 2 else [{"t": last, "accent": True}])
+    return lines
 
 
 def _fallback_spec(url_data: dict, desarrollo: str, proposito: str) -> dict:
+    """
+    Respaldo SOLO si el director (LLM) falla. Aun así, arma el copy desde datos
+    REALES del sitio (titular, secciones, descripción), no frases fijas, y varía la
+    paleta. Nada hardcodeado de contenido.
+    """
     brand = url_data.get("siteName") or "Tu marca"
-    head = url_data.get("headline") or desarrollo or "Tu solución, simple"
-    return {
-        "theme": "saas-explainer",
-        "brand": brand,
-        "scenes": [
-            {"type": "KineticStatement", "durationInFrames": 90,
-             "lines": [[{"t": "Conocé "}, {"t": brand, "accent": True}]],
-             "subtitle": head[:60]},
-            {"type": "IntegrationCluster", "durationInFrames": 95,
-             "title": [{"t": "Todo "}, {"t": "en un solo lugar", "accent": True}]},
-            {"type": "MockupShowcase", "durationInFrames": 110,
-             "title": [{"t": "Mirá cómo "}, {"t": "funciona", "accent": True}]},
-            {"type": "CtaOutro", "durationInFrames": 80,
-             "brand": brand, "cta": "Empezá hoy"},
-        ],
-    }
+    head = (url_data.get("headline") or desarrollo or "").strip()
+    desc = (url_data.get("description") or "").strip()
+    secs = [s for s in (url_data.get("sections") or []) if s]
+
+    scenes = [{
+        "type": "KineticStatement", "durationInFrames": 90,
+        "lines": _chunk_lines(head) or [[{"t": "Conocé "}, {"t": brand, "accent": True}]],
+        "subtitle": (desc or head)[:60],
+    }]
+    # Si el sitio tiene secciones reales -> FeatureList con ESAS secciones.
+    if len(secs) >= 2:
+        scenes.append({"type": "FeatureList", "durationInFrames": 110,
+                       "title": [{"t": brand, "accent": True}],
+                       "items": [{"label": [{"t": s[:26], "accent": True}]} for s in secs[:3]]})
+    else:
+        scenes.append({"type": "MockupShowcase", "durationInFrames": 110,
+                       "title": _chunk_lines(head, 6) or [[{"t": brand, "accent": True}]]})
+    # CTA: sin frase inventada. El LLM normalmente lo escribe; en el fallback va vacío
+    # (el outro muestra la marca sin botón falso).
+    scenes.append({"type": "CtaOutro", "durationInFrames": 80, "brand": brand, "cta": ""})
+
+    return {"theme": random.choice(VALID_THEMES), "brand": brand, "scenes": scenes}
 
 
 def _normalize(spec: dict, url_data: dict, desarrollo: str, proposito: str) -> dict:
@@ -290,7 +322,11 @@ def _normalize(spec: dict, url_data: dict, desarrollo: str, proposito: str) -> d
         clean.append(s)
     if len(clean) < 2:
         return fb
-    return {"theme": theme, "brand": spec.get("brand") or fb["brand"], "scenes": clean}
+    brand = spec.get("brand") or fb["brand"]
+    for s in clean:
+        if s.get("type") == "CtaOutro" and not s.get("brand"):
+            s["brand"] = brand
+    return {"theme": theme, "brand": brand, "scenes": clean}
 
 
 async def analyze_site_rich(url: str) -> dict:

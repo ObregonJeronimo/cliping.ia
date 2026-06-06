@@ -258,3 +258,47 @@ export function applyAccent(base, hex) {
     glow: _hexA(hex, 0.4),
   };
 }
+
+// ── Paleta derivada del acento (en vez de colores hardcodeados) ───────────────
+// Genera n colores rotando el matiz alrededor del acento de marca. Así los chips
+// de "fuentes/integraciones" o los avatares salen de la MARCA del sitio, no de
+// una lista fija. Mantiene saturación viva y luminosidad legible sobre oscuro.
+function _hexToHsl(hex) {
+  const n = parseInt((hex || '#888888').slice(1), 16);
+  let r = ((n >> 16) & 255) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+  let h = 0;
+  if (d) {
+    if (mx === r) h = ((g - b) / d) % 6;
+    else if (mx === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+  }
+  h = (h * 60 + 360) % 360;
+  const l = (mx + mn) / 2;
+  const s = d ? d / (1 - Math.abs(2 * l - 1)) : 0;
+  return [h, s, l];
+}
+function _hslToHex(h, s, l) {
+  const c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs(((h / 60) % 2) - 1)), m = l - c / 2;
+  let r = 0, g = 0, b = 0;
+  if (h < 60) [r, g, b] = [c, x, 0];
+  else if (h < 120) [r, g, b] = [x, c, 0];
+  else if (h < 180) [r, g, b] = [0, c, x];
+  else if (h < 240) [r, g, b] = [0, x, c];
+  else if (h < 300) [r, g, b] = [x, 0, c];
+  else [r, g, b] = [c, 0, x];
+  const to = (v) => Math.round((v + m) * 255).toString(16).padStart(2, '0');
+  return '#' + to(r) + to(g) + to(b);
+}
+export function accentPalette(theme, n = 5, spread = 150) {
+  const [h0, s0] = _hexToHsl(theme.accentFrom || '#a855f7');
+  const s = clamp(s0 * 0.9 + 0.12, 0.5, 0.95);
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const t = n > 1 ? i / (n - 1) : 0.5;
+    const h = (h0 + (t - 0.5) * spread + 360) % 360;
+    const l = clamp(0.56 + (i % 2 ? 0.05 : -0.05), 0.42, 0.68);
+    out.push(_hslToHex(h, s, l));
+  }
+  return out;
+}

@@ -1,5 +1,5 @@
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from 'remotion'
-import { fitHeadline, segText, clamp } from '../theme'
+import { fitHeadline, segText, clamp, accentPalette } from '../theme'
 import { EASE, SPRING, prog, spr, enter, entrance, stagger, floatY, breathe, camera, parallax } from '../motion'
 
 /**
@@ -20,8 +20,6 @@ const GradientText = ({ theme, children }) => (
     backgroundClip: 'text', color: 'transparent' }}>{children}</span>
 )
 
-const DEFAULT_COLORS = ['#a855f7', '#36c5e0', '#e8b04b', '#25d366', '#e0489f', '#5865f2', '#ff7a59']
-
 // Silueta abstracta de persona (universal, sin IP).
 const Bust = ({ size = 56 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="#ffffffea">
@@ -31,7 +29,7 @@ const Bust = ({ size = 56 }) => (
 )
 
 export const SocialProof = ({
-  theme, title = [], subtitle = '', colors = DEFAULT_COLORS, count, variant = 'arc', durationInFrames: durProp,
+  theme, title = [], subtitle = '', colors = null, count, variant = 'arc', durationInFrames: durProp,
 }) => {
   const frame = useCurrentFrame()
   const vc = useVideoConfig()
@@ -43,8 +41,9 @@ export const SocialProof = ({
   const pxFg = parallax(cam, 0.6)
   const glowOp = clamp(frame / 16, 0, 1) * breathe(frame, 0.05, 150)
 
-  const n = clamp(count || colors.length || 6, 3, 7)
-  const palette = Array.from({ length: n }, (_, i) => colors[i % colors.length])
+  const n = clamp(count || 6, 3, 7)
+  const pal = (colors && colors.length) ? colors : accentPalette(theme, n)
+  const palette = Array.from({ length: n }, (_, i) => pal[i % pal.length])
 
   const titleE = entrance(theme.art, frame, Math.round(dur * 0.3), { dur: m.enterFrames, dist: 44, ease: EASE.out })
   const subE = entrance(theme.art, frame, Math.round(dur * 0.42), { dur: m.enterFrames, dist: 26, ease: EASE.out })

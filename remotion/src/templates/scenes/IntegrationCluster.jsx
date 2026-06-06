@@ -1,10 +1,11 @@
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from 'remotion'
-import { fitHeadline, segText, clamp } from '../theme'
+import { fitHeadline, segText, clamp, accentPalette } from '../theme'
 import { EASE, SPRING, prog, spr, enter, entrance, stagger, floatY, camera, parallax } from '../motion'
 
 /**
  * IntegrationCluster — hub central + fuentes alrededor conectadas por líneas.
- * Props: theme, title (segmentos {t,accent}), colors (array de hex).
+ * Props: theme, title (segmentos {t,accent}), colors (array de hex). Si no se pasan
+ * colors, se derivan del color de marca (no hay lista fija).
  */
 
 const GradientText = ({ theme, children }) => (
@@ -12,20 +13,20 @@ const GradientText = ({ theme, children }) => (
     backgroundClip: 'text', color: 'transparent' }}>{children}</span>
 )
 
-const DEFAULT_COLORS = ['#e01e5a', '#ea4335', '#5865f2', '#25d366', '#36c5e0']
 const SLOTS = [
   { x: 150, y: 880 }, { x: 930, y: 880 },
   { x: 90, y: 1140 }, { x: 990, y: 1140 },
   { x: 540, y: 1420 },
 ]
 
-export const IntegrationCluster = ({ theme, title = [], colors = DEFAULT_COLORS, durationInFrames: durProp }) => {
+export const IntegrationCluster = ({ theme, title = [], colors = null, durationInFrames: durProp }) => {
   const frame = useCurrentFrame()
   const vc = useVideoConfig()
   const fps = vc.fps
   const dur = durProp || vc.durationInFrames
   const m = theme.motion
   const HUB = { x: 540, y: 1140 }
+  const cols = (colors && colors.length) ? colors : accentPalette(theme, SLOTS.length)
 
   const cam = camera(theme.art, frame, dur, m.cameraDrift)
   const pxFg = parallax(cam, 0.6)
@@ -34,7 +35,7 @@ export const IntegrationCluster = ({ theme, title = [], colors = DEFAULT_COLORS,
   const hubRot = prog(frame, 8, 40, EASE.out) * 30
   const lineDraw = prog(frame, 14, 26, EASE.inOut)
   const glowOp = clamp(frame / 16, 0, 1)
-  const n = Math.min(colors.length, SLOTS.length)
+  const n = Math.min(cols.length, SLOTS.length)
 
   return (
     <AbsoluteFill style={{ background: theme.bg, fontFamily: theme.font, overflow: 'hidden' }}>
@@ -70,7 +71,7 @@ export const IntegrationCluster = ({ theme, title = [], colors = DEFAULT_COLORS,
               transform: `translate(-50%,-50%) translate(${pxFg.x}px, ${pxFg.y + fl}px) scale(${e})`, opacity: clamp(e, 0, 1),
               height: 112, borderRadius: 56, display: 'flex', alignItems: 'center', gap: 22, padding: '0 40px',
               background: theme.pillBg, border: `2px solid ${theme.pillBorder}`, boxShadow: '0 16px 40px rgba(0,0,0,0.45)' }}>
-              <div style={{ width: 48, height: 48, borderRadius: 14, background: colors[i] }} />
+              <div style={{ width: 48, height: 48, borderRadius: 14, background: cols[i] }} />
               <div style={{ width: 108, height: 22, borderRadius: 12, background: '#ffffff2a' }} />
             </div>
           )

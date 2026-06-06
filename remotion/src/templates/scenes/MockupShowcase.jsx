@@ -12,25 +12,30 @@ const GradientText = ({ theme, children }) => (
     backgroundClip: 'text', color: 'transparent' }}>{children}</span>
 )
 
+// Wireframe ABSTRACTO y neutro (sin texto ni layout de un rubro puntual). Solo se
+// usa como respaldo cuando no hay screenshot del sitio; usa los colores del theme.
 const SkeletonBoard = ({ theme }) => (
-  <div style={{ display: 'flex', height: '100%', background: '#141320' }}>
-    <div style={{ width: 150, background: '#181626', padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+  <div style={{ display: 'flex', height: '100%', background: theme.bgSolid }}>
+    <div style={{ width: 150, background: theme.pillBg, padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ height: 16, borderRadius: 5, background: theme.accentGrad }} />
-      {[0, 1, 2, 3].map(i => <div key={i} style={{ height: 16, borderRadius: 5, background: '#2a2740', width: i === 3 ? '70%' : '100%' }} />)}
+      {[0, 1, 2, 3].map(i => <div key={i} style={{ height: 14, borderRadius: 5, background: theme.pillBorder, width: i === 3 ? '70%' : '100%' }} />)}
     </div>
-    <div style={{ flex: 1, display: 'flex', gap: 14, padding: 18 }}>
-      {['Planned', 'En curso', 'Listo'].map((h, c) => (
-        <div key={c} style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div style={{ fontSize: 12, color: theme.textMuted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.6 }}>{h}</div>
-          {[0, 1].map(k => (
-            <div key={k} style={{ background: '#201d33', borderRadius: 10, padding: 11, display: 'flex', flexDirection: 'column', gap: 7, boxShadow: '0 4px 10px rgba(0,0,0,.3)' }}>
-              <div style={{ height: 9, width: 36, borderRadius: 5, background: [theme.accentFrom, theme.accentTo, '#28c840'][(c + k) % 3] }} />
-              <div style={{ height: 8, width: '80%', borderRadius: 4, background: '#3a3556' }} />
-              <div style={{ height: 7, width: '55%', borderRadius: 4, background: '#2f2b47' }} />
-            </div>
-          ))}
-        </div>
-      ))}
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 14, padding: 18 }}>
+      <div style={{ height: 22, width: '45%', borderRadius: 6, background: theme.pillBorder }} />
+      <div style={{ display: 'flex', gap: 14, flex: 1 }}>
+        {[0, 1, 2].map(c => (
+          <div key={c} style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {[0, 1].map(k => (
+              <div key={k} style={{ background: theme.pillBg, borderRadius: 10, padding: 11, display: 'flex', flexDirection: 'column', gap: 7,
+                border: `1px solid ${theme.pillBorder}`, boxShadow: '0 4px 10px rgba(0,0,0,.3)' }}>
+                <div style={{ height: 9, width: 36, borderRadius: 5, background: (c + k) % 2 ? theme.accentFrom : theme.accentTo }} />
+                <div style={{ height: 8, width: '80%', borderRadius: 4, background: theme.pillBorder }} />
+                <div style={{ height: 7, width: '55%', borderRadius: 4, background: theme.pillBorder, opacity: 0.7 }} />
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
     </div>
   </div>
 )
@@ -72,11 +77,11 @@ export const MockupShowcase = ({ theme, title = [], screenshot = null, variant =
         <div style={{ position: 'absolute', top: 720, left: 0, width: '100%', height: 900,
           perspective: 1600, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ width: 940, height: 600, borderRadius: 24, overflow: 'hidden',
-            background: '#141320', border: `1px solid ${theme.pillBorder}`,
+            background: theme.bgSolid, border: `1px solid ${theme.pillBorder}`,
             transform: `translateY(${fl}px) rotateX(${rotX}deg) rotateY(${rotY}deg) scale(${0.9 + clamp(dev, 0, 1.1) * 0.1})`,
             opacity: clamp(dev, 0, 1),
             boxShadow: `0 60px 140px ${theme.glow}, 0 0 0 1px ${theme.accentFrom}40` }}>
-            <div style={{ height: 56, background: '#1b1930', display: 'flex', alignItems: 'center', gap: 12, padding: '0 24px' }}>
+            <div style={{ height: 56, background: theme.pillBg, display: 'flex', alignItems: 'center', gap: 12, padding: '0 24px' }}>
               {['#ff5f57', '#febc2e', '#28c840'].map(c => <div key={c} style={{ width: 18, height: 18, borderRadius: '50%', background: c }} />)}
             </div>
             <div style={{ height: 'calc(100% - 56px)' }}>
