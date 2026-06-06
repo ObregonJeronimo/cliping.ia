@@ -4,10 +4,9 @@ import * as THREE from 'three'
 // ─────────────────────────────────────────────────────────────────────────
 //  ParticleHero — campo de particulas de AMBIENTE (enfoque hibrido)
 //
-//  Las particulas ya no forman texto: son un campo de energia que converge
-//  a una nube eliptica difusa cuando hay texto activo, y explota en las
-//  transiciones. El texto legible se renderiza nitido en una capa HTML
-//  encima (componente HeroText). Esto elimina por completo el pixelado.
+//  Las particulas no forman texto: son un campo de energia que converge a
+//  una nube eliptica difusa cuando hay texto activo y explota en las
+//  transiciones. El texto legible va nitido en una capa HTML (HeroText).
 //
 //  Emite onPhaseChange({ phase, visible }) para sincronizar el overlay.
 // ─────────────────────────────────────────────────────────────────────────
@@ -57,7 +56,7 @@ const FRAG = `
   varying vec3 vColor;
   void main() {
     float dist = length(gl_PointCoord - vec2(0.5));
-    float alpha = smoothstep(0.5, 0.1, dist);   // borde suave (glow)
+    float alpha = smoothstep(0.5, 0.1, dist);
     if (alpha < 0.01) discard;
     gl_FragColor = vec4(vColor, alpha);
   }
@@ -76,14 +75,21 @@ export default function ParticleHero({ onPhaseChange }) {
     const sy = Array.from({ length: MAX }, () => new Spring1D())
     const sz = Array.from({ length: MAX }, () => new Spring1D(120, 20))
 
-    let W = el.offsetWidth || 700
-    let H = el.offsetHeight || 650
+    let W = el.clientWidth  || 700
+    let H = el.clientHeight || 650
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' })
-    renderer.setSize(W, H)
+    renderer.setSize(W, H, false)              // false: NO toca el style del canvas
     const DPR = Math.min(window.devicePixelRatio, 2)
     renderer.setPixelRatio(DPR)
-    el.appendChild(renderer.domElement)
+    // canvas como block y absolute para que NO aporte altura al layout
+    const cvs = renderer.domElement
+    cvs.style.display  = 'block'
+    cvs.style.position = 'absolute'
+    cvs.style.inset    = '0'
+    cvs.style.width    = '100%'
+    cvs.style.height   = '100%'
+    el.appendChild(cvs)
 
     const scene = new THREE.Scene()
     const cam   = new THREE.PerspectiveCamera(50, W / H, 0.1, 200)
@@ -91,16 +97,28 @@ export default function ParticleHero({ onPhaseChange }) {
 
     const computeScale = () => (H * DPR) / (2 * Math.tan((50 / 2) * Math.PI / 180))
 
+    // Resize desacoplado con rAF para evitar el "ResizeObserver loop" que
+    // hacia crecer el contenedor infinitamente. Solo actua si cambio de verdad.
+    let resizePending = false
+    const applyResize = (w, h) => {
+      if (w === W && h === H) return
+      W = w; H = h
+      cam.aspect = W / H
+      cam.updateProjectionMatrix()
+      renderer.setSize(W, H, false)            // false otra vez: no toca el style
+      material.uniforms.uScale.value = computeScale()
+    }
     const ro = new ResizeObserver((entries) => {
-      for (const e of entries) {
-        const { width, height } = e.contentRect
-        if (!width || !height) return
-        W = width; H = height
-        cam.aspect = W / H
-        cam.updateProjectionMatrix()
-        renderer.setSize(W, H)
-        material.uniforms.uScale.value = computeScale()
-      }
+      if (resizePending) return
+      resizePending = true
+      requestAnimationFrame(() => {
+        resizePending = false
+        const e = entries[0]
+        if (!e) return
+        const w = Math.round(e.contentRect.width)
+        const h = Math.round(e.contentRect.height)
+        if (w && h) applyResize(w, h)
+      })
     })
     ro.observe(el)
 
@@ -120,7 +138,7 @@ export default function ParticleHero({ onPhaseChange }) {
       transparent: true,
       depthWrite: false,
       depthTest: false,
-      blending: THREE.AdditiveBlending,   // glow ambiente (no es texto, no ensucia)
+      blending: THREE.AdditiveBlending,
     })
 
     const points = new THREE.Points(geometry, material)
@@ -141,8 +159,6 @@ export default function ParticleHero({ onPhaseChange }) {
       return loop
     })
 
-    // Nube eliptica difusa: mas densa hacia el medio-exterior, centro mas
-    // despejado (el texto va ahi). Cada particula tiene su punto en la nube.
     const cloud = Array.from({ length: MAX }, () => {
       const a  = Math.random() * Math.PI * 2
       const rr = 0.25 + Math.sqrt(Math.random()) * 0.85
@@ -152,7 +168,6 @@ export default function ParticleHero({ onPhaseChange }) {
         (Math.random() - 0.5) * 2.4,
       )
     })
-    // Nube dispersa amplia para el estado de transicion/idle
     const wide = Array.from({ length: MAX }, () => {
       const th = Math.random() * Math.PI * 2
       const ph = Math.acos(2 * Math.random() - 1)
@@ -175,7 +190,7 @@ export default function ParticleHero({ onPhaseChange }) {
     const cur       = wide.map(v => v.clone())
     const burstFrom = Array.from({ length: MAX }, () => new THREE.Vector3())
 
-    const anim = { mode: MODE_CLOUD, burstT: 0, gather: 0 }  // gather: 0=disperso, 1=nube
+    const anim = { mode: MODE_CLOUD, burstT: 0 }
 
     function gatherCloud() {
       anim.mode = MODE_CLOUD
@@ -197,8 +212,6 @@ export default function ParticleHero({ onPhaseChange }) {
 
     const emit = (phase, visible) => onPhaseChange?.({ phase, visible })
 
-    // Secuenciador: cada fase muestra el texto (overlay) y junta la nube;
-    // la transicion explota las particulas y oculta el texto.
     const steps = [
       { dur: 3600, fn: () => { gatherCloud(); emit('url', true) } },
       { dur: 950,  fn: () => { emit('url', false); triggerBurst() } },
@@ -255,7 +268,6 @@ export default function ParticleHero({ onPhaseChange }) {
           c.z = burstFrom[i].z + burstVel[i].z * 9  * e
           sx[i].reset(c.x); sy[i].reset(c.y); sz[i].reset(c.z)
         } else {
-          // drift organico suave para que la nube "respire"
           const ph = i * 0.31
           const dxx = Math.sin(t * 0.5 + ph) * 0.06
           const dyy = Math.cos(t * 0.43 + ph) * 0.06
@@ -268,7 +280,6 @@ export default function ParticleHero({ onPhaseChange }) {
         positions[i * 3 + 1] = c.y
         positions[i * 3 + 2] = c.z
 
-        // tamano y color
         const flick = 0.6 + Math.sin(t * 1.2 + i * 0.5) * 0.4
         if (burst) {
           sizes[i] = Math.max(0.002, 0.05 * (1 - anim.burstT * 0.7))
@@ -296,9 +307,9 @@ export default function ParticleHero({ onPhaseChange }) {
       ro.disconnect()
       renderer.dispose(); geometry.dispose(); material.dispose()
       orbitMeshes.forEach(l => { l.geometry.dispose(); l.material.dispose() })
-      if (el.contains(renderer.domElement)) el.removeChild(renderer.domElement)
+      if (el.contains(cvs)) el.removeChild(cvs)
     }
   }, [onPhaseChange])
 
-  return <div ref={mountRef} style={{ width: '100%', height: '100%', minHeight: '650px' }} />
+  return <div ref={mountRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
 }
