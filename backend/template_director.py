@@ -271,9 +271,13 @@ REGLAS:
   · "SocialProof" si hay señales de adopción/confianza (clientes, comunidad).
   · "IllustrationScene" como hero visual cuando no haya screenshot ni datos para Stat.
   Elegí las que de verdad sumen a la historia; no repitas el mismo combo siempre.
-- HONESTIDAD (importante): StatReveal, Testimonial y SocialProof muestran "hechos". NO
-  inventes cifras, testimonios ni nombres. Si no tenés el dato real del sitio, NO uses esa
-  escena: contá el beneficio con KineticStatement/FeatureList en su lugar.
+- HONESTIDAD (CRÍTICO): StatReveal, Testimonial y SocialProof muestran "hechos". El número
+  de un StatReveal y cualquier cifra/cita/nombre TIENE que aparecer textualmente en el
+  CONTEXTO DEL SITIO que te paso. NO uses datos que "sabés" de memoria sobre marcas conocidas.
+  Ejemplo de lo que NO hay que hacer: para Google poner StatReveal "8.500.000.000 búsquedas
+  por día" o para YouTube "2.700M usuarios" -> eso es INVENTADO aunque suene real; NO lo hagas.
+  Si el contexto del sitio no trae un número/reseña concreto, NO uses StatReveal/Testimonial/
+  SocialProof: contá el beneficio con KineticStatement/FeatureList/Comparison en su lugar.
 - durationInFrames entre 75 y 120 por escena (30fps).
 - COPY: específico de ESTA marca, no genérico. Usá el contexto del sitio (qué vende,
   para quién, su diferencial). Evitá frases vacías tipo "la mejor calidad" o "tu aliado".
@@ -397,9 +401,33 @@ def _normalize(spec: dict, url_data: dict, desarrollo: str, proposito: str) -> d
         return fb
     valid_types = {"KineticStatement", "IntegrationCluster", "MockupShowcase", "CtaOutro", "IconTransform",
                    "StatReveal", "FeatureList", "Comparison", "Testimonial", "SocialProof", "LogoReveal", "IllustrationScene"}
+    # Antídoto contra info inventada: si el dato no está en el sitio, no se muestra como hecho.
+    hay = " ".join([
+        url_data.get("context", ""), url_data.get("description", ""),
+        url_data.get("headline", ""), " ".join(url_data.get("sections") or []),
+        desarrollo or "",
+    ]).lower()
+    hay_nums = [re.sub(r"\D", "", g) for g in re.findall(r"\d[\d.,]*", hay)]
+    has_reviews = bool(re.search(r"rese|testimoni|opini|review|estrella|calific|★|⭐", hay))
+
     clean = []
     for s in scenes:
         if not isinstance(s, dict) or s.get("type") not in valid_types:
+            continue
+        t = s.get("type")
+        # StatReveal con un número que NO aparece en el sitio = inventado -> pasar a frase.
+        if t == "StatReveal":
+            vd = re.sub(r"\D", "", str(s.get("value", "")))
+            if len(vd) >= 2 and not any(vd in g for g in hay_nums):
+                if s.get("label"):
+                    s = {"type": "KineticStatement", "lines": [s["label"]], "durationInFrames": s.get("durationInFrames", 90)}
+                elif s.get("caption"):
+                    s = {"type": "KineticStatement", "lines": [[{"t": s["caption"]}]], "durationInFrames": s.get("durationInFrames", 90)}
+                else:
+                    continue  # sin texto rescatable -> descartar
+                t = "KineticStatement"
+        # Testimonial sin señales de reseñas reales en el sitio -> descartar (no inventar).
+        if t == "Testimonial" and not has_reviews:
             continue
         d = s.get("durationInFrames", 90)
         try:
