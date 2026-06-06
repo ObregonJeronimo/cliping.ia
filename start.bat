@@ -2,6 +2,10 @@
 title cliping.ia
 cd /d C:\Users\Usuario\Documents\cliping.ia
 
+echo Cerrando instancias previas (backend y ngrok)...
+taskkill /F /IM ngrok.exe >nul 2>&1
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr :8000 ^| findstr LISTENING') do taskkill /F /PID %%a >nul 2>&1
+
 echo Actualizando codigo...
 git pull
 
