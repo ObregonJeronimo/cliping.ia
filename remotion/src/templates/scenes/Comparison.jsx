@@ -79,6 +79,44 @@ const Panel = ({ theme, frame, fps, side, accent, label, items, fromX, baseDelay
   )
 }
 
+// Variante 'split': media pantalla por lado, a sangre, sin tarjetas flotantes.
+const SplitHalf = ({ theme, frame, fps, accent, label, items, side, m }) => {
+  const e = enter(frame, side === 'left' ? 6 : 12, { dur: m.enterFrames, dist: side === 'left' ? -80 : 80, axis: 'x', ease: EASE.out })
+  const base = side === 'left' ? 6 : 12
+  return (
+    <div style={{
+      position: 'relative', flex: 1, height: '100%', overflow: 'hidden',
+      display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 26, padding: '0 70px',
+      transform: e.transform, opacity: e.opacity,
+      background: accent
+        ? `linear-gradient(180deg, ${theme.pillBg}, ${theme.bgSolid})`
+        : 'linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.28))',
+    }}>
+      <div style={{ fontSize: 52, fontWeight: theme.headWeight, letterSpacing: '-0.02em', marginBottom: 8,
+        color: accent ? theme.text : theme.textMuted }}>
+        {(label || []).map((s, j) => s.accent
+          ? <GradientText key={j} theme={theme}>{s.t}</GradientText>
+          : <span key={j}>{s.t}</span>)}
+      </div>
+      {(items || []).map((it, i) => {
+        const ie = spr(frame, fps, base + stagger(i, 10, m.stagger + 1), SPRING.gentle, 20)
+        const drawC = prog(frame, base + stagger(i, 10, m.stagger + 1) + 4, 14, EASE.out)
+        return (
+          <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 16, opacity: clamp(ie, 0, 1),
+            transform: `translateY(${(1 - clamp(ie, 0, 1)) * 14}px)` }}>
+            <div style={{ flexShrink: 0, width: 42, height: 42, borderRadius: 12, display: 'flex',
+              alignItems: 'center', justifyContent: 'center', background: accent ? `${theme.accentFrom}22` : '#ff6b6b1f' }}>
+              {accent ? <Check color={theme.accentTo} draw={drawC} /> : <Cross />}
+            </div>
+            <div style={{ fontSize: 38, lineHeight: 1.25, color: accent ? theme.text : theme.textMuted,
+              opacity: accent ? 1 : 0.82, paddingTop: 2 }}>{it}</div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 export const Comparison = ({
   theme, title = [], leftLabel = [{ t: 'Antes' }], rightLabel = [{ t: 'Después', accent: true }],
   leftItems = [], rightItems = [], connector = 'vs', variant = 'sideBySide', durationInFrames: durProp,
@@ -116,6 +154,19 @@ export const Comparison = ({
           </div>
         )}
 
+        {variant === 'split' ? (
+          <AbsoluteFill style={{ flexDirection: 'row', paddingTop: segText(title) ? 300 : 0 }}>
+            <SplitHalf theme={theme} frame={frame} fps={fps} accent={false} label={leftLabel} items={leftItems} side="left" m={m} />
+            <SplitHalf theme={theme} frame={frame} fps={fps} accent label={rightLabel} items={rightItems} side="right" m={m} />
+            <div style={{ position: 'absolute', left: '50%', top: '58%',
+              transform: `translate(-50%,-50%) scale(${clamp(conn, 0, 1.1) * connPulse})`, opacity: clamp(conn, 0, 1),
+              width: 104, height: 104, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: theme.accentGrad, boxShadow: `0 0 50px ${theme.glow}`, color: '#fff',
+              fontSize: connector === 'vs' ? 40 : 52, fontWeight: 700 }}>
+              {connector === 'vs' ? 'VS' : '→'}
+            </div>
+          </AbsoluteFill>
+        ) : (
         <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center', paddingTop: segText(title) ? 140 : 0 }}>
           <div style={{ display: 'flex', flexDirection: stacked ? 'column' : 'row',
             alignItems: 'center', justifyContent: 'center', gap: stacked ? 28 : 40 }}>
@@ -133,6 +184,7 @@ export const Comparison = ({
               label={rightLabel} items={rightItems} fromX={stacked ? 10 : 90} baseDelay={12} m={m} />
           </div>
         </AbsoluteFill>
+        )}
       </div>
     </AbsoluteFill>
   )

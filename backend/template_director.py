@@ -78,17 +78,33 @@ def _attach_audio(spec: dict, mood: str) -> dict:
     return spec
 LENGTH_SCENES = {"corto": (3, 4), "medio": (4, 5), "largo": (5, 6)}
 
-# Variantes de layout por tipo de escena (azar curado: el piso de calidad no baja).
+# Variantes de layout por tipo de escena. Antes el peso estaba cargado a la default
+# (ej. 2 de 3 la misma) -> casi siempre se veía igual. Ahora reparto parejo para que
+# la variedad se note de verdad (el piso de calidad lo sostienen los componentes).
 SCENE_VARIANTS = {
-    "KineticStatement": ["center", "center", "center", "left"],
-    "MockupShowcase": ["tiltLeft", "tiltLeft", "tiltRight", "flat"],
-    "StatReveal": ["stack", "stack", "ring", "left"],
-    "Comparison": ["sideBySide", "sideBySide", "stacked"],
-    "Testimonial": ["card", "card", "plain"],
-    "SocialProof": ["arc", "arc", "row"],
-    "FeatureList": ["cards", "cards", "bare"],
-    "LogoReveal": ["mark", "mark", "wordmark"],
-    "IllustrationScene": ["center", "center", "top"],
+    "KineticStatement": ["center", "left", "center"],   # 'center' un toque más probable (mejor para texto largo)
+    "MockupShowcase": ["tiltLeft", "tiltRight", "flat"],
+    "StatReveal": ["stack", "ring", "left"],
+    "Comparison": ["sideBySide", "stacked", "split"],
+    "Testimonial": ["card", "plain"],
+    "SocialProof": ["arc", "row"],
+    "FeatureList": ["cards", "bare"],
+    "LogoReveal": ["mark", "wordmark"],
+    "IllustrationScene": ["center", "top"],
+    "IntegrationCluster": ["hub", "orbit", "arc"],
+}
+
+# Apertura sugerida según el estilo de edición -> empuja a que la estructura ROTE
+# entre videos (es una sugerencia, no una imposición: si no encaja, el director elige).
+OPENINGS = {
+    "punchy":    "StatReveal con un dato fuerte, o un KineticStatement filoso",
+    "historia":  "KineticStatement que plantee el problema",
+    "showcase":  "MockupShowcase del producto, o un KineticStatement que prometa el resultado",
+    "listicle":  "KineticStatement corto que anticipe la lista",
+    "prueba":    "SocialProof o Testimonial si el sitio tiene datos reales; si no, KineticStatement",
+    "contraste": "Comparison (sin esto vs con esto)",
+    "ilustrado": "IllustrationScene como hero visual",
+    "dato":      "StatReveal con un número real del sitio",
 }
 
 
@@ -491,6 +507,7 @@ async def build_storyboard(url: str, desarrollo: str, proposito: str = "marketin
         f"- Ángulo narrativo: {angle}\n"
         f"- Mood: {mood}\n"
         f"- Estilo de edición: {edit[0]} — {edit[1]}\n"
+        f"- Apertura sugerida (si encaja con ESTA marca): {OPENINGS.get(edit[0], 'el HOOK que más enganche')}\n"
         f"- Apuntá a unas {n_scenes} escenas."
     )
     if theme_override in VALID_THEMES:

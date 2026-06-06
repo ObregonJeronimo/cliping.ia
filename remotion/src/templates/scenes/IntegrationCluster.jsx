@@ -19,7 +19,7 @@ const SLOTS = [
   { x: 540, y: 1420 },
 ]
 
-export const IntegrationCluster = ({ theme, title = [], colors = null, durationInFrames: durProp }) => {
+export const IntegrationCluster = ({ theme, title = [], colors = null, variant = 'hub', durationInFrames: durProp }) => {
   const frame = useCurrentFrame()
   const vc = useVideoConfig()
   const fps = vc.fps
@@ -36,6 +36,25 @@ export const IntegrationCluster = ({ theme, title = [], colors = null, durationI
   const lineDraw = prog(frame, 14, 26, EASE.inOut)
   const glowOp = clamp(frame / 16, 0, 1)
   const n = Math.min(cols.length, SLOTS.length)
+  // Disposición de los nodos según la variante (las líneas hub->nodo sirven para cualquiera).
+  const slots = (() => {
+    if (variant === 'orbit') {
+      const R = 330
+      return Array.from({ length: n }, (_, i) => {
+        const a = -Math.PI / 2 + (i / n) * Math.PI * 2
+        return { x: HUB.x + Math.cos(a) * R, y: HUB.y + Math.sin(a) * R }
+      })
+    }
+    if (variant === 'arc') {
+      const R = 360
+      return Array.from({ length: n }, (_, i) => {
+        const t = n === 1 ? 0.5 : i / (n - 1)
+        const a = Math.PI * (1 - t) // dome por encima del hub
+        return { x: HUB.x + Math.cos(a) * R, y: HUB.y - Math.sin(a) * R * 0.92 }
+      })
+    }
+    return SLOTS.slice(0, n) // 'hub' (disperso, default)
+  })()
 
   return (
     <AbsoluteFill style={{ background: theme.bg, fontFamily: theme.font, overflow: 'hidden' }}>
@@ -55,7 +74,7 @@ export const IntegrationCluster = ({ theme, title = [], colors = null, durationI
 
         <svg width="1080" height="1920" viewBox="0 0 1080 1920" style={{ position: 'absolute', inset: 0 }}>
           <g stroke={theme.accentFrom} strokeWidth="3" strokeDasharray="8 12" opacity="0.4" fill="none">
-            {SLOTS.slice(0, n).map((p, i) => {
+            {slots.map((p, i) => {
               const x2 = HUB.x + (p.x - HUB.x) * lineDraw
               const y2 = HUB.y + (p.y - HUB.y) * lineDraw
               return <line key={i} x1={HUB.x} y1={HUB.y} x2={x2} y2={y2} />
@@ -63,7 +82,7 @@ export const IntegrationCluster = ({ theme, title = [], colors = null, durationI
           </g>
         </svg>
 
-        {SLOTS.slice(0, n).map((p, i) => {
+        {slots.map((p, i) => {
           const e = spr(frame, fps, stagger(i, 12, m.stagger), SPRING.bouncy, 22)
           const fl = floatY(frame - i * 7, 7, 120)
           return (
