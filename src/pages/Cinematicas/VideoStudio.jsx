@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useAuth } from '../../contexts/AuthContext'
 import styles from './Cinematicas.module.css'
 
 const API_URL = import.meta.env.PROD ? '' : (import.meta.env.VITE_API_URL || 'http://localhost:8000')
@@ -36,6 +37,7 @@ const STEP_LABELS = {
 }
 
 export default function VideoStudio() {
+  const { user } = useAuth()
   const [mode, setMode] = useState('simple')      // 'simple' | 'avanzado'
   const [url, setUrl] = useState('')
   const [desarrollo, setDesarrollo] = useState('')
@@ -61,8 +63,8 @@ export default function VideoStudio() {
     if (!canGenerate) return
     setGenerating(true); reset(); setStatus({ step: 'queued', progress: 0 })
     const body = mode === 'simple'
-      ? { url: url.trim(), desarrollo: desarrollo.trim(), proposito: 'marketing' }
-      : { url: url.trim(), desarrollo: desarrollo.trim(), proposito, theme, tone: tono, length: duracion }
+      ? { url: url.trim(), desarrollo: desarrollo.trim(), proposito: 'marketing', userId: user?.uid || '' }
+      : { url: url.trim(), desarrollo: desarrollo.trim(), proposito, theme, tone: tono, length: duracion, userId: user?.uid || '' }
     try {
       const r = await fetch(`${API_URL}/api/video/generate`, { method: 'POST', headers: HEADERS, body: JSON.stringify(body) })
       const d = await r.json()

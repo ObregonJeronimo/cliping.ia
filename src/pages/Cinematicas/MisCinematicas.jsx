@@ -17,6 +17,8 @@ export default function MisCinematicas() {
   const [videos, setVideos] = useState([])
   const [loading, setLoading] = useState(true)
   const [deletingId, setDeletingId] = useState(null)
+  const [qy, setQy] = useState('')
+  const [copiedId, setCopiedId] = useState(null)
 
   useEffect(() => { if (user) load() }, [user])
 
@@ -48,12 +50,42 @@ export default function MisCinematicas() {
 
   const srcOf = (v) => v.videoUrl || (v.localFile ? `${API_URL}/api/video/${v.localFile}` : null)
   const fmtDate = (s) => { try { return new Date(s).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' }) } catch { return '' } }
+  // Cloudinary: fl_attachment fuerza la descarga ("Guardar como").
+  const downloadUrl = (v) => v.videoUrl
+    ? v.videoUrl.replace('/upload/', '/upload/fl_attachment/')
+    : srcOf(v)
+
+  async function copyLink(v) {
+    const link = v.videoUrl || srcOf(v)
+    if (!link) return
+    try {
+      await navigator.clipboard.writeText(link)
+      setCopiedId(v.id)
+      setTimeout(() => setCopiedId(c => (c === v.id ? null : c)), 1500)
+    } catch { /* no-op */ }
+  }
+
+  const q = qy.trim().toLowerCase()
+  const filtered = q
+    ? videos.filter(v => `${v.brand || ''} ${v.url || ''}`.toLowerCase().includes(q))
+    : videos
 
   return (
     <div className={styles.page}>
       <div className={styles.header}>
-        <h1 className={styles.title}>Mis cinemáticas</h1>
-        <p className={styles.sub}>Los videos que ya generaste, guardados acá.</p>
+        <div>
+          <h1 className={styles.title}>Mis cinemáticas</h1>
+          <p className={styles.sub}>Los videos que ya generaste, guardados acá.</p>
+        </div>
+        {videos.length > 0 && (
+          <input
+            className={styles.search}
+            type="text"
+            placeholder="Buscar por marca o URL…"
+            value={qy}
+            onChange={e => setQy(e.target.value)}
+          />
+        )}
       </div>
 
       {loading ? (
@@ -64,9 +96,15 @@ export default function MisCinematicas() {
           <div className={styles.emptyTitle}>Todavía no hiciste ninguna</div>
           <div className={styles.emptySub}>Generá tu primer video desde Home y va a aparecer acá.</div>
         </div>
+      ) : filtered.length === 0 ? (
+        <div className={styles.empty}>
+          <div className={styles.emptyIcon}>🔍</div>
+          <div className={styles.emptyTitle}>Nada coincide con "{qy}"</div>
+          <div className={styles.emptySub}>Probá con otra marca o URL.</div>
+        </div>
       ) : (
         <div className={styles.grid}>
-          {videos.map(v => {
+          {filtered.map(v => {
             const src = srcOf(v)
             return (
               <div key={v.id} className={styles.card}>
@@ -80,13 +118,20 @@ export default function MisCinematicas() {
                     <span className={styles.brand}>{v.brand || v.url || 'Sin título'}</span>
                     {v.theme && <span className={styles.themeBadge}>{THEME_LABEL[v.theme] || v.theme}</span>}
                   </div>
-                  <div className={styles.metaBottom}>
-                    <span className={styles.date}>{fmtDate(v.createdAt)}</span>
+                  <div className={styles.date}>{fmtDate(v.createdAt)}</div>
+                  <div className={styles.actions}>
+                    {src && (
+                      <a className={styles.actBtn} href={downloadUrl(v)} download target="_blank" rel="noreferrer">Descargar</a>
+                    )}
+                    {(v.videoUrl || src) && (
+                      <button className={styles.actBtn} onClick={() => copyLink(v)}>
+                        {copiedId === v.id ? '✓ Copiado' : 'Copiar link'}
+                      </button>
+                    )}
                     <button
-                      className={styles.delBtn}
+                      className={`${styles.actBtn} ${styles.del}`}
                       onClick={() => handleDelete(v.id)}
                       disabled={deletingId === v.id}
-                      title="Eliminar"
                     >
                       {deletingId === v.id ? '…' : 'Eliminar'}
                     </button>

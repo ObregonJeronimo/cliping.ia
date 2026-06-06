@@ -1,8 +1,14 @@
 .page { padding: 32px 40px; max-width: 1200px; margin: 0 auto; }
 
-.header { margin-bottom: 28px; }
+.header { margin-bottom: 28px; display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .title { font-size: 26px; font-weight: 700; color: #f5f5f7; margin: 0; letter-spacing: -0.02em; }
 .sub { font-size: 14px; color: #8a8a93; margin: 6px 0 0; }
+.search {
+  background: #16161c; border: 1px solid #2a2a32; border-radius: 9px; color: #e8e8ec;
+  font-size: 13px; padding: 9px 13px; width: 260px; outline: none; transition: border-color .15s ease;
+}
+.search:focus { border-color: #8b6dff; }
+.search::placeholder { color: #5a5a63; }
 
 .grid {
   display: grid;
@@ -30,15 +36,19 @@
   flex-shrink: 0; font-size: 11px; font-weight: 600; color: #b9a4ff;
   background: #221c3a; border: 1px solid #322a52; border-radius: 6px; padding: 2px 8px;
 }
-.metaBottom { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
-.date { font-size: 12px; color: #6f6f78; }
-.delBtn {
-  font-size: 12px; color: #e06a6a; background: transparent;
-  border: 1px solid #3a2630; border-radius: 6px; padding: 4px 10px; cursor: pointer;
-  transition: background .15s ease, border-color .15s ease;
+.metaBottom { display: none; }
+.date { font-size: 12px; color: #6f6f78; margin-top: 8px; }
+
+.actions { display: flex; gap: 7px; margin-top: 12px; flex-wrap: wrap; }
+.actBtn {
+  font-size: 12px; font-weight: 500; color: #c8c8d0; text-decoration: none;
+  background: #1d1d25; border: 1px solid #2e2e38; border-radius: 7px; padding: 5px 11px; cursor: pointer;
+  transition: background .15s ease, border-color .15s ease, color .15s ease;
 }
-.delBtn:hover:not(:disabled) { background: #2a1a1f; border-color: #5a2e38; }
-.delBtn:disabled { opacity: .5; cursor: default; }
+.actBtn:hover:not(:disabled) { background: #26262f; border-color: #3c3c48; color: #f0f0f4; }
+.actBtn:disabled { opacity: .5; cursor: default; }
+.del { color: #e06a6a; border-color: #3a2630; }
+.del:hover:not(:disabled) { background: #2a1a1f; border-color: #5a2e38; }
 
 .state { display: flex; align-items: center; gap: 10px; color: #8a8a93; font-size: 14px; padding: 40px 0; }
 .spinner {
