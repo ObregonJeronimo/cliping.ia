@@ -59,6 +59,12 @@ export const StatReveal = ({
   const left = variant === 'left'
   const ring = variant === 'ring'
 
+  // El número se achica si tiene muchos dígitos para no cortarse en pantalla. Se dimensiona
+  // por el valor FINAL (no por lo que se muestra mientras cuenta) -> no cambia de tamaño.
+  const numStr = fmtNum(value, decimals)
+  const approxChars = numStr.length + (prefix ? 0.5 : 0) + (suffix ? suffix.length * 0.5 : 0)
+  const numSize = Math.min(ring ? 280 : 340, Math.round((ring ? 660 : 940) / Math.max(1, approxChars * 0.58)))
+
   // Anillo de progreso (se dibuja al ritmo del conteo).
   const R = 360
   const C = 2 * Math.PI * R
@@ -97,7 +103,7 @@ export const StatReveal = ({
               </svg>
             )}
             <div style={{ display: 'flex', alignItems: 'baseline', fontWeight: theme.headWeight,
-              fontSize: ring ? 280 : 340, lineHeight: 1, letterSpacing: '-0.04em' }}>
+              fontSize: numSize, lineHeight: 1, letterSpacing: '-0.04em' }}>
               {prefix && <span style={{ fontSize: '0.42em', color: theme.text, opacity: 0.85, marginRight: 6 }}>{prefix}</span>}
               <GradientText theme={theme}>{shown}</GradientText>
               {suffix && <GradientText theme={theme} style={{ fontSize: '0.5em' }}>{suffix}</GradientText>}
