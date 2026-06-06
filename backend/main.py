@@ -255,18 +255,19 @@ async def _render_video_job(job_id: str, req: VideoGenRequest):
         except Exception as ce:
             print(f"[video] Cloudinary error: {ce}")
 
-        # 5. Firestore
+        # 5. Firestore: guardar en users/{uid}/videos (las reglas permiten que el dueño
+        #    lo lea/borre desde el cliente). Si no hay userId, no se guarda.
         try:
             db = get_firestore()
-            if db:
-                db.collection("videos").document(job_id).set({
+            if db and req.userId:
+                db.collection("users").document(req.userId).collection("videos").document(job_id).set({
                     "id": job_id, "url": req.url, "desarrollo": req.desarrollo,
                     "proposito": req.proposito, "userId": req.userId,
                     "theme": spec.get("theme"), "brand": spec.get("brand"),
                     "videoUrl": cloudinary_url, "localFile": output_path.name,
                     "frames": total_frames, "createdAt": datetime.utcnow().isoformat(),
                 })
-                print(f"[video] Firestore OK -> videos/{job_id}")
+                print(f"[video] Firestore OK -> users/{req.userId[:8]}/videos/{job_id[:8]}")
         except Exception as fe:
             print(f"[video] Firestore error: {fe}")
 

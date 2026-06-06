@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { collection, getDocs, deleteDoc, doc, query, where } from 'firebase/firestore'
+import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
 import { useAuth } from '../../contexts/AuthContext'
 import styles from './MisCinematicas.module.css'
@@ -23,8 +23,8 @@ export default function MisCinematicas() {
   async function load() {
     setLoading(true)
     try {
-      // Los videos los guarda /api/video/generate en la colección 'videos' con userId.
-      const snap = await getDocs(query(collection(db, 'videos'), where('userId', '==', user.uid)))
+      // Los videos los guarda /api/video/generate en users/{uid}/videos.
+      const snap = await getDocs(collection(db, 'users', user.uid, 'videos'))
       const list = snap.docs.map(d => ({ id: d.id, ...d.data() }))
       list.sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')))
       setVideos(list)
@@ -38,7 +38,7 @@ export default function MisCinematicas() {
     if (!confirm('¿Eliminar esta cinemática?')) return
     setDeletingId(id)
     try {
-      await deleteDoc(doc(db, 'videos', id))
+      await deleteDoc(doc(db, 'users', user.uid, 'videos', id))
       setVideos(vs => vs.filter(v => v.id !== id))
     } catch (e) {
       console.error('[MisCinematicas] error eliminando:', e)
