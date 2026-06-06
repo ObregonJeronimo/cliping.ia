@@ -2,6 +2,7 @@ import { useState, useCallback, lazy, Suspense } from 'react'
 import { useNavigate } from 'react-router-dom'
 import styles from './Landing.module.css'
 import HeroText from './HeroText'
+import MarqueeShowcase from './MarqueeShowcase'
 
 const ParticleHero = lazy(() => import('./ParticleHero'))
 
@@ -13,12 +14,11 @@ const STATE_LABELS = {
 
 export default function Landing() {
   const navigate = useNavigate()
-  const [phase, setPhase] = useState('url')       // fase activa (texto a mostrar)
+  const [phase, setPhase] = useState('url')
   const [textVisible, setTextVisible] = useState(true)
 
-  // ParticleHero emite { phase, visible } en cada cambio del ciclo
   const handlePhaseChange = useCallback(({ phase: p, visible }) => {
-    if (visible) setPhase(p)        // al aparecer: fijar fase y mostrar
+    if (visible) setPhase(p)
     setTextVisible(visible)
   }, [])
 
@@ -78,6 +78,8 @@ export default function Landing() {
           </div>
         </div>
       </section>
+
+      <MarqueeShowcase />
 
       <section className={styles.steps}>
         {[
