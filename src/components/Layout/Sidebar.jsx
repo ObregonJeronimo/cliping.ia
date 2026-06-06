@@ -3,9 +3,6 @@ import { useAuth } from '../../contexts/AuthContext'
 import styles from './Sidebar.module.css'
 
 const NAV = [
-  { to: '/studio',          icon: '⊞', label: 'Home' },
-  { to: '/studio/videos',   icon: '▶', label: 'Mis videos' },
-  { to: '/studio/settings', icon: '⚙', label: 'Configuración' },
   { to: '/studio/cinematicas', icon: '✦', label: 'Cinemáticas' },
 ]
 
@@ -24,7 +21,7 @@ export default function Sidebar() {
         cliping<span>.ia</span>
       </div>
 
-      <button className={styles.newBtn} onClick={() => navigate('/studio')}>
+      <button className={styles.newBtn} onClick={() => navigate('/studio/cinematicas')}>
         + Nuevo video
       </button>
 
@@ -48,11 +45,6 @@ export default function Sidebar() {
         <div className={styles.credits}>
           <span className={styles.creditsIcon}>⚡</span>
           <span><strong>{profile?.credits ?? 0}</strong> créditos</span>
-          {profile?.plan === 'free' && (
-            <button className={styles.upgradeBtn} onClick={() => navigate('/studio/settings')}>
-              Upgrade
-            </button>
-          )}
         </div>
 
         <div className={styles.userRow}>
