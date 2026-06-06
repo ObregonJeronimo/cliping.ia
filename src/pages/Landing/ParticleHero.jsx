@@ -4,24 +4,27 @@ import * as THREE from 'three'
 // ─────────────────────────────────────────────────────────────────────────
 //  ParticleHero — THREE.Points + ShaderMaterial
 //
-//  Puntos con NUCLEO SOLIDO que se solapan para formar trazos continuos
-//  (texto legible, no punteado). Muestreo a alta resolucion sin descarte:
-//  el spacing real coincide con el asumido, asi el tamano de punto es
-//  exacto y la cobertura uniforme.
+//  NITIDEZ: el texto se forma en un PLANO perfecto (Z=0) y la camara queda
+//  quieta mientras hay texto. Asi la proyeccion 2D no se distorsiona y los
+//  trazos quedan rectos y legibles. La deriva de camara y la profundidad
+//  solo viven en los estados sin texto (idle / transicion).
+//
+//  Densidad adaptativa por texto (step distinto) para que ninguno descarte
+//  puntos. Puntos con nucleo solido que se solapan = trazos continuos.
 // ─────────────────────────────────────────────────────────────────────────
 
-const SAMPLE_STEP = 3          // step que no descarta puntos (ver calculo)
-const MAX         = 13000
-const CAP         = 12000
-const POINT_FACTOR = 1.7       // tamano punto = step * fitScale * factor (solapa)
-const ITEMS       = ['Hook', 'Problema', 'Features', 'Diferenciador', 'Beneficios', 'CTA']
+const MAX          = 14000
+const CAP          = 13500
+const POINT_FACTOR = 1.6
+const ALPHA_THRESH = 128       // solo cuerpo solido de la letra (bordes limpios)
+const ITEMS        = ['Hook', 'Problema', 'Features', 'Diferenciador', 'Beneficios', 'CTA']
 
 const MODE_IDLE    = 'idle'
 const MODE_FORMING = 'forming'
 const MODE_BURST   = 'burst'
 
 class Spring1D {
-  constructor(stiffness = 205, damping = 28) {
+  constructor(stiffness = 210, damping = 29) {
     this.k = stiffness; this.d = damping
     this.pos = 0; this.vel = 0; this.tgt = 0
   }
@@ -34,13 +37,13 @@ class Spring1D {
   }
 }
 
-function sampleRaw(canvas) {
+function sampleRaw(canvas, step) {
   const w = canvas.width, h = canvas.height
   const data = canvas.getContext('2d').getImageData(0, 0, w, h).data
   const pts = []
-  for (let y = 0; y < h; y += SAMPLE_STEP)
-    for (let x = 0; x < w; x += SAMPLE_STEP)
-      if (data[(y * w + x) * 4 + 3] > 90) pts.push({ x, y: -y })
+  for (let y = 0; y < h; y += step)
+    for (let x = 0; x < w; x += step)
+      if (data[(y * w + x) * 4 + 3] > ALPHA_THRESH) pts.push({ x, y: -y })
   return pts
 }
 
@@ -67,9 +70,9 @@ function fitToWorld(raw, maxW, maxH) {
   return { pts: raw.map(p => ({ x: (p.x - cx) * s, y: (p.y - cy) * s })), fitScale: s }
 }
 
-function prep(canvas, maxW, maxH) {
-  const { pts, fitScale } = fitToWorld(capPoints(sampleRaw(canvas), CAP), maxW, maxH)
-  const pointSize = SAMPLE_STEP * fitScale * POINT_FACTOR
+function prep(canvas, maxW, maxH, step) {
+  const { pts, fitScale } = fitToWorld(capPoints(sampleRaw(canvas, step), CAP), maxW, maxH)
+  const pointSize = step * fitScale * POINT_FACTOR
   return { pts, pointSize }
 }
 
@@ -114,12 +117,13 @@ function makeTimelineCanvas(items, fs) {
 }
 
 function precomputeAll() {
-  const urlPts    = prep(makeTextCanvas('URL', 180), 10.0, 6.0)
-  const promptPts = prep(makeTextCanvas('Video profesional\ncon todas las\nherramientas del sitio', 90), 11.0, 7.0)
+  // step adaptativo: cada texto usa el step que lo mantiene denso sin descartar
+  const urlPts    = prep(makeTextCanvas('URL', 180), 10.0, 6.0, 2)
+  const promptPts = prep(makeTextCanvas('Video profesional\ncon todas las\nherramientas del sitio', 90), 11.0, 7.0, 3)
   const tlStates  = []
   for (let step = 0; step <= ITEMS.length; step++) {
     const snap = ITEMS.map((l, i) => ({ label: l, done: i < step }))
-    tlStates.push(prep(makeTimelineCanvas(snap, 60), 9.5, 8.5))
+    tlStates.push(prep(makeTimelineCanvas(snap, 60), 9.5, 8.5, 2))
   }
   return { urlPts, promptPts, tlStates }
 }
@@ -146,13 +150,11 @@ const VERT = `
   }
 `
 
-// Nucleo solido grande (alpha=1 hasta dist 0.44), borde con antialias fino.
-// Esto hace que los puntos solapados formen trazos continuos y legibles.
 const FRAG = `
   varying vec3 vColor;
   void main() {
     float dist = length(gl_PointCoord - vec2(0.5));
-    float alpha = smoothstep(0.5, 0.44, dist);
+    float alpha = smoothstep(0.5, 0.43, dist);
     if (alpha < 0.01) discard;
     gl_FragColor = vec4(vColor, alpha);
   }
@@ -170,7 +172,7 @@ export default function ParticleHero({ onStateChange }) {
 
     const sx = Array.from({ length: MAX }, () => new Spring1D())
     const sy = Array.from({ length: MAX }, () => new Spring1D())
-    const sz = Array.from({ length: MAX }, () => new Spring1D(100, 20))
+    const sz = Array.from({ length: MAX }, () => new Spring1D(110, 21))
 
     let W = el.offsetWidth || 700
     let H = el.offsetHeight || 650
@@ -183,7 +185,7 @@ export default function ParticleHero({ onStateChange }) {
 
     const scene = new THREE.Scene()
     const cam   = new THREE.PerspectiveCamera(50, W / H, 0.1, 200)
-    cam.position.z = 16
+    cam.position.set(0, 0, 16)
 
     const computeScale = () => (H * DPR) / (2 * Math.tan((50 / 2) * Math.PI / 180))
 
@@ -246,9 +248,6 @@ export default function ParticleHero({ onStateChange }) {
         r * Math.cos(ph) * 0.35,
       )
     })
-    const formZ = Array.from({ length: MAX }, (_, i) =>
-      ((Math.sin(i * 12.9898) * 43758.5453) % 1) * 0.4 - 0.2
-    )
 
     for (let i = 0; i < MAX; i++) {
       sx[i].reset(base[i].x); sy[i].reset(base[i].y); sz[i].reset(base[i].z)
@@ -263,7 +262,7 @@ export default function ParticleHero({ onStateChange }) {
     const burstFrom = Array.from({ length: MAX }, () => new THREE.Vector3())
 
     const anim = { mode: MODE_IDLE, activeN: 0, burstT: 0, pointSize: 0.02 }
-    const IDLE_SIZE = 0.014
+    const IDLE_SIZE = 0.013
 
     function setTargets(data) {
       const pts = data.pts || data
@@ -273,7 +272,7 @@ export default function ParticleHero({ onStateChange }) {
       for (let i = 0; i < MAX; i++) {
         const tx = i < pts.length ? pts[i].x : base[i].x
         const ty = i < pts.length ? pts[i].y : base[i].y
-        const tz = i < pts.length ? formZ[i] : base[i].z
+        const tz = i < pts.length ? 0 : base[i].z   // texto PLANO en Z=0
         tgt[i].set(tx, ty, tz)
         sx[i].tgt = tx; sy[i].tgt = ty; sz[i].tgt = tz
       }
@@ -305,7 +304,6 @@ export default function ParticleHero({ onStateChange }) {
     function executeStep(idx) { steps[idx].fn(); stepIdx = idx; stepStart = null }
     executeStep(0)
 
-    // Gradiente CLARO en todo el rango → todas las lineas legibles
     const C_TOP = new THREE.Color(0xf6f8ff)
     const C_MID = new THREE.Color(0xbcc8ff)
     const C_BOT = new THREE.Color(0x8c9cf2)
@@ -313,6 +311,7 @@ export default function ParticleHero({ onStateChange }) {
     const colTmp = new THREE.Color()
 
     let alive = true, rafId = null, lastNow = null
+    let driftAmt = 1   // 1 = deriva activa (idle), 0 = camara quieta (texto)
 
     function animate(now) {
       if (!alive) return
@@ -334,9 +333,13 @@ export default function ParticleHero({ onStateChange }) {
 
       if (burst) anim.burstT = Math.min(anim.burstT + dt / 500, 1)
 
+      // La camara se queda QUIETA cuando hay texto (driftAmt -> 0), asi la
+      // proyeccion del texto plano no se distorsiona. Deriva solo sin texto.
       if (!reduced) {
-        cam.position.x = Math.sin(t * 0.12) * 0.3
-        cam.position.y = Math.cos(t * 0.10) * 0.18
+        const driftTarget = forming ? 0 : 1
+        driftAmt += (driftTarget - driftAmt) * 0.04
+        cam.position.x = Math.sin(t * 0.12) * 0.3 * driftAmt
+        cam.position.y = Math.cos(t * 0.10) * 0.18 * driftAmt
         cam.lookAt(0, 0, 0)
       }
 
@@ -369,14 +372,14 @@ export default function ParticleHero({ onStateChange }) {
         const prox   = active ? Math.max(0, 1 - c.distanceTo(tgt[i]) * 0.5) : 0
 
         if (burst)       sizes[i] = Math.max(0.001, anim.pointSize * (1 - anim.burstT))
-        else if (active) sizes[i] = anim.pointSize * (0.82 + prox * 0.18)
+        else if (active) sizes[i] = anim.pointSize * (0.85 + prox * 0.15)
         else             sizes[i] = IDLE_SIZE
 
         if (active) {
           const n = Math.max(0, Math.min(1, (c.y + 4) / 8))
           if (n > 0.5) colTmp.lerpColors(C_MID, C_TOP, (n - 0.5) * 2)
           else         colTmp.lerpColors(C_BOT, C_MID, n * 2)
-          colTmp.multiplyScalar(0.85 + prox * 0.15)
+          colTmp.multiplyScalar(0.88 + prox * 0.12)
         } else if (burst) {
           colTmp.lerpColors(C_BOT, C_IDLE, anim.burstT)
         } else {
