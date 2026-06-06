@@ -44,6 +44,20 @@ CREATIVE_ANGLES = [
 ]
 MOODS = ["enérgico y rápido", "calmo y premium", "confiable y claro", "moderno y audaz"]
 
+# Estilo de EDICIÓN por video: rota qué escenas protagonizan y el ritmo, para que la
+# ESTRUCTURA no sea siempre la misma (Hook -> IconTransform -> Mockup -> CTA). Es a la
+# estructura lo que ART_PRESETS es al movimiento.
+EDIT_STYLES = [
+    ("punchy",    "ritmo rápido, 3-4 escenas cortas; abrí con StatReveal o una frase filosa; sin IconTransform; cerrá fuerte."),
+    ("historia",  "arco problema -> solución -> prueba -> CTA; KineticStatement para el problema y UN IconTransform para el giro."),
+    ("showcase",  "el producto es protagonista: MockupShowcase al frente + 1-2 FeatureList; usar si hay web/app que mostrar."),
+    ("listicle",  "formato lista: FeatureList con 3-4 beneficios concretos, ritmo parejo, SIN IconTransform ni Mockup obligatorios."),
+    ("prueba",    "liderado por confianza: SocialProof y/o Testimonial (SOLO con datos reales del sitio; si no hay, caé a FeatureList)."),
+    ("contraste", "construido sobre un Comparison (antes/después o sin/con); rematá con el beneficio. Sin Mockup salvo que sume."),
+    ("ilustrado", "IllustrationScene como hero visual + frase potente; estética limpia, poco texto; sin Mockup."),
+    ("dato",      "girá alrededor de StatReveal con un número REAL del sitio; si no hay número, usá el estilo 'historia'."),
+]
+
 # Cama musical por mood (Fase 3). Los archivos van en remotion/public/audio/music/<track>.mp3.
 # Se activa SOLO con la env CLIPING_AUDIO seteada (para no apuntar a archivos inexistentes y
 # romper el render). Cuando haya música cargada, prender CLIPING_AUDIO=1 y listo.
@@ -226,18 +240,21 @@ REGLAS:
   "KineticStatement" (frase), "StatReveal" (un dato fuerte), "Comparison" (un contraste)
   o "LogoReveal" si la marca es conocida. Elegí la apertura según lo que MÁS enganche a
   ESTE público. CERRÁ con "CtaOutro" (el llamado a la acción).
-- Incluí "MockupShowcase" si hay un producto/web que mostrar.
-- Incluí UN "IconTransform" cuando exista un contraste o transformación natural en el
-  mensaje (en marketing casi siempre lo hay: antes/después, problema/solución, acción/
-  resultado). Es el momento más vistoso del video. No lo fuerces solo si de verdad no pega.
-- Tenés un repertorio más amplio para que el video no sea formulaico: combiná las escenas
-  según lo que cuente la página. Buenas oportunidades:
+- Seguí el ESTILO DE EDICIÓN del brief: define qué escenas protagonizan y el ritmo.
+  No uses siempre el mismo esqueleto. Variá de verdad la estructura entre videos.
+- "MockupShowcase": usalo SOLO si hay un producto/web que mostrar Y el estilo lo pide
+  (no en todos los videos).
+- "IconTransform" es el beat más vistoso, pero NO es obligatorio: usalo como mucho UNA vez
+  y solo cuando haya un contraste/transformación real y el estilo lo favorezca. Muchos
+  videos NO lo llevan.
+- Aprovechá TODO el repertorio según lo que cuente la página y el estilo de edición:
   · "StatReveal" si el sitio menciona un número fuerte (años, clientes, %, velocidad).
-  · "FeatureList" para mostrar 3-4 features/beneficios concretos de un saque.
+  · "FeatureList" para 3-4 features/beneficios concretos de un saque.
   · "Comparison" para un antes/después o "sin esto vs con esto" claro.
   · "Testimonial" SOLO si hay reseñas/testimonios reales en el sitio.
   · "SocialProof" si hay señales de adopción/confianza (clientes, comunidad).
-  No metas las 5 en un mismo video: elegí 1 o 2 que de verdad sumen a la historia.
+  · "IllustrationScene" como hero visual cuando no haya screenshot ni datos para Stat.
+  Elegí las que de verdad sumen a la historia; no repitas el mismo combo siempre.
 - HONESTIDAD (importante): StatReveal, Testimonial y SocialProof muestran "hechos". NO
   inventes cifras, testimonios ni nombres. Si no tenés el dato real del sitio, NO uses esa
   escena: contá el beneficio con KineticStatement/FeatureList en su lugar.
@@ -461,16 +478,19 @@ async def build_storyboard(url: str, desarrollo: str, proposito: str = "marketin
     if simple:
         angle = random.choice(CREATIVE_ANGLES)
         mood = random.choice(MOODS)
+        edit = random.choice(EDIT_STYLES)
         temperature = 0.95
     else:
         angle = "según las indicaciones del usuario"
         mood = tone or random.choice(MOODS)
+        edit = random.choice(EDIT_STYLES)
         temperature = 0.6
 
     brief = (
         f"Dirección creativa para ESTE video (hacelo único, no formulaico):\n"
         f"- Ángulo narrativo: {angle}\n"
         f"- Mood: {mood}\n"
+        f"- Estilo de edición: {edit[0]} — {edit[1]}\n"
         f"- Apuntá a unas {n_scenes} escenas."
     )
     if theme_override in VALID_THEMES:
