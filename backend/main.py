@@ -256,10 +256,12 @@ async def _render_video_job(job_id: str, req: VideoGenRequest):
             print(f"[video] Cloudinary error: {ce}")
 
         # 5. Firestore: guardar en users/{uid}/videos (las reglas permiten que el dueño
-        #    lo lea/borre desde el cliente). Si no hay userId, no se guarda.
+        #    lo lea/borre desde el cliente). Guardamos SOLO si hay URL de Cloudinary:
+        #    el archivo local no es durable (cambia el ngrok / se limpia outputs/), así que
+        #    sin Cloudinary el video no sería reproducible más tarde -> no se persiste.
         try:
             db = get_firestore()
-            if db and req.userId:
+            if db and req.userId and cloudinary_url:
                 db.collection("users").document(req.userId).collection("videos").document(job_id).set({
                     "id": job_id, "url": req.url, "desarrollo": req.desarrollo,
                     "proposito": req.proposito, "userId": req.userId,
@@ -268,6 +270,8 @@ async def _render_video_job(job_id: str, req: VideoGenRequest):
                     "frames": total_frames, "createdAt": datetime.utcnow().isoformat(),
                 })
                 print(f"[video] Firestore OK -> users/{req.userId[:8]}/videos/{job_id[:8]}")
+            elif not cloudinary_url:
+                print("[video] sin URL de Cloudinary -> no se guarda en la galería (no sería reproducible)")
         except Exception as fe:
             print(f"[video] Firestore error: {fe}")
 
