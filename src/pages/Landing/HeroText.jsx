@@ -6,12 +6,10 @@ const TL_ITEMS = ['Hook', 'Problema', 'Features', 'Diferenciador', 'Beneficios',
 // Capa de texto vectorial nitido que se superpone al canvas de particulas.
 // Recibe { phase, visible } desde ParticleHero y anima la entrada/salida.
 export default function HeroText({ phase, visible }) {
-  // checks del timeline que se van marcando en secuencia
   const [activeCheck, setActiveCheck] = useState(-1)
   const timers = useRef([])
 
   useEffect(() => {
-    // limpiar timers previos
     timers.current.forEach(clearTimeout)
     timers.current = []
 
@@ -36,7 +34,6 @@ export default function HeroText({ phase, visible }) {
     return (
       <div className={cls} key="url">
         <div className={styles.urlBar}>
-          <span className={styles.urlDot} />
           <span className={styles.urlScheme}>https://</span>
           <span className={styles.urlDomain}>tunegocio.com</span>
           <span className={styles.caret} />
