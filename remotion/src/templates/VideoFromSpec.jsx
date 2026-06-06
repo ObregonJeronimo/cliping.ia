@@ -1,5 +1,5 @@
-import { AbsoluteFill } from 'remotion'
-import { TransitionSeries, linearTiming } from '@remotion/transitions'
+import { AbsoluteFill, Easing } from 'remotion'
+import { TransitionSeries, linearTiming, springTiming } from '@remotion/transitions'
 import { fade } from '@remotion/transitions/fade'
 import { slide } from '@remotion/transitions/slide'
 import { wipe } from '@remotion/transitions/wipe'
@@ -39,22 +39,34 @@ const DEFAULT_ART = { camera: 'drift', entrance: 'rise', motif: 'none', transiti
 
 // Transiciones (factories). El SET se elige por art.transitions, así un video puede
 // ser todo fundidos suaves y otro a pura cortina/slide -> se sienten distintos.
-const T = (presentation) => ({ presentation, timing: linearTiming({ durationInFrames: TDUR }) })
+// Duración fija TDUR (para que el cálculo de total sea exacto), pero NO lineal:
+//  · eased  -> acelera y frena suave (cinematográfico, no robótico).
+//  · spring -> con un poco de vida/inercia (clampado a TDUR para no romper el total).
+const EASED  = linearTiming({ durationInFrames: TDUR, easing: Easing.inOut(Easing.cubic) })
+const SPRING = (damping) => springTiming({ config: { damping, mass: 0.7, stiffness: 120 }, durationInFrames: TDUR, durationRestThreshold: 0.0001 })
+const ease = (presentation) => ({ presentation, timing: EASED })
+const sprg = (presentation, damping = 160) => ({ presentation, timing: SPRING(damping) })
 const tx = {
-  fade: () => T(fade()),
-  slideR: () => T(slide({ direction: 'from-right' })),
-  slideL: () => T(slide({ direction: 'from-left' })),
-  slideB: () => T(slide({ direction: 'from-bottom' })),
-  slideT: () => T(slide({ direction: 'from-top' })),
-  wipeL: () => T(wipe({ direction: 'from-left' })),
-  wipeR: () => T(wipe({ direction: 'from-right' })),
-  wipeT: () => T(wipe({ direction: 'from-top' })),
+  fade:    () => ease(fade()),
+  slideR:  () => ease(slide({ direction: 'from-right' })),
+  slideL:  () => ease(slide({ direction: 'from-left' })),
+  slideB:  () => ease(slide({ direction: 'from-bottom' })),
+  slideT:  () => ease(slide({ direction: 'from-top' })),
+  wipeL:   () => ease(wipe({ direction: 'from-left' })),
+  wipeR:   () => ease(wipe({ direction: 'from-right' })),
+  wipeT:   () => ease(wipe({ direction: 'from-top' })),
+  wipeTL:  () => ease(wipe({ direction: 'from-top-left' })),
+  wipeBR:  () => ease(wipe({ direction: 'from-bottom-right' })),
+  // versiones con vida para el set 'slides'
+  springR: () => sprg(slide({ direction: 'from-right' })),
+  springB: () => sprg(slide({ direction: 'from-bottom' })),
+  springL: () => sprg(slide({ direction: 'from-left' })),
 }
 const POOLS = {
-  mixed:  [tx.fade, tx.slideR, tx.slideB, tx.wipeL, tx.fade, tx.slideT],
-  soft:   [tx.fade, tx.fade, tx.fade],
-  slides: [tx.slideR, tx.slideB, tx.slideL, tx.slideT],
-  wipes:  [tx.wipeL, tx.wipeR, tx.wipeT, tx.fade],
+  mixed:  [tx.fade, tx.slideR, tx.wipeL, tx.slideB, tx.fade, tx.wipeTL, tx.slideL, tx.wipeT],
+  soft:   [tx.fade],                                                // todo fundido (elegante/premium)
+  slides: [tx.springR, tx.slideB, tx.springL, tx.slideT, tx.springB], // con inercia
+  wipes:  [tx.wipeL, tx.wipeTL, tx.wipeR, tx.fade, tx.wipeBR, tx.wipeT],
 }
 
 const pickTransition = (i, seed, set) => {
