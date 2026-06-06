@@ -139,6 +139,26 @@ async def video_generate(req: VideoGenRequest):
     return {"job_id": job_id}
 
 
+class DeleteVideoRequest(BaseModel):
+    publicId: str = ""
+
+
+@app.post("/api/video/delete")
+async def delete_video_endpoint(req: DeleteVideoRequest):
+    """Borra el asset de Cloudinary cuando se elimina una cinemática desde la galería.
+    El doc de Firestore lo borra el cliente (las reglas se lo permiten al dueño); acá
+    solo limpiamos el archivo en Cloudinary. Guard: solo la carpeta de cinemáticas."""
+    pid = (req.publicId or "").strip()
+    if not pid.startswith("cinematicas/"):
+        return {"ok": False, "error": "publicId inválido"}
+    try:
+        from cloudinary_upload import delete_video
+        ok = await delete_video(pid)
+        return {"ok": bool(ok)}
+    except Exception as e:
+        return {"ok": False, "error": str(e)[:200]}
+
+
 async def _render_video_job(job_id: str, req: VideoGenRequest):
     from pathlib import Path as _Path
     import asyncio as _asyncio
@@ -267,6 +287,7 @@ async def _render_video_job(job_id: str, req: VideoGenRequest):
                     "proposito": req.proposito, "userId": req.userId,
                     "theme": spec.get("theme"), "brand": spec.get("brand"),
                     "videoUrl": cloudinary_url, "localFile": output_path.name,
+                    "publicId": f"cinematicas/video_{job_id[:8]}",
                     "frames": total_frames, "createdAt": datetime.utcnow().isoformat(),
                 })
                 print(f"[video] Firestore OK -> users/{req.userId[:8]}/videos/{job_id[:8]}")

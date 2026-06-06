@@ -336,6 +336,24 @@ def _fallback_spec(url_data: dict, desarrollo: str, proposito: str) -> dict:
     return {"theme": random.choice(VALID_THEMES), "brand": brand, "scenes": scenes}
 
 
+def _min_duration(s: dict) -> int:
+    """Piso de duración por escena para que se llegue a LEER. Cuenta el solape de
+    transición (~14f de cada lado) y suma tiempo de lectura por item. Piso ~3s."""
+    t = s.get("type")
+    n = 0
+    if t == "Comparison":
+        n = len(s.get("leftItems") or []) + len(s.get("rightItems") or [])
+    elif t == "FeatureList":
+        n = len(s.get("items") or [])
+    elif t == "KineticStatement":
+        n = len(s.get("lines") or [])
+    elif t == "Testimonial":
+        n = 4  # una cita es bastante texto para leer
+    elif t in ("SocialProof", "IntegrationCluster", "IllustrationScene"):
+        n = 2
+    return min(170, 90 + max(0, n - 2) * 12)  # 90f (~3s) + 12f por item extra
+
+
 def _normalize(spec: dict, url_data: dict, desarrollo: str, proposito: str) -> dict:
     fb = _fallback_spec(url_data, desarrollo, proposito)
     if not isinstance(spec, dict):
@@ -354,9 +372,10 @@ def _normalize(spec: dict, url_data: dict, desarrollo: str, proposito: str) -> d
             continue
         d = s.get("durationInFrames", 90)
         try:
-            d = max(60, min(140, int(d)))
+            d = int(d)
         except Exception:
             d = 90
+        d = max(_min_duration(s), min(170, d))
         s["durationInFrames"] = d
         clean.append(s)
     if len(clean) < 2:

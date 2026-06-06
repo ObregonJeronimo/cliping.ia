@@ -59,6 +59,21 @@ async def upload_video(file_path: str, public_id: str) -> str:
     return url
 
 
+async def delete_video(public_id: str) -> bool:
+    """Borra un video de Cloudinary por public_id (ej 'cinematicas/video_abc12345').
+    Devuelve True si Cloudinary respondió ok o si ya no existía."""
+    if not public_id:
+        return False
+    import asyncio
+    loop = asyncio.get_event_loop()
+
+    def _del():
+        res = cloudinary.uploader.destroy(public_id, resource_type="video", invalidate=True)
+        return res.get("result") in ("ok", "not found")
+
+    return await loop.run_in_executor(None, _del)
+
+
 async def upload_image(file_path: str, public_id: str) -> str:
     """Sube una imagen (ej. screenshot del sitio) y retorna la URL pública."""
     import asyncio

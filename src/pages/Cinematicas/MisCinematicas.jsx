@@ -37,9 +37,22 @@ export default function MisCinematicas() {
   }
 
   async function handleDelete(id) {
+    const v = videos.find(x => x.id === id)
     if (!confirm('¿Eliminar esta cinemática?')) return
     setDeletingId(id)
     try {
+      // Borrar el asset de Cloudinary (best-effort: si el backend está caído, igual
+      // se quita de la galería). publicId del doc, o derivado del id para los viejos.
+      const publicId = v?.publicId || (v?.id ? `cinematicas/video_${String(v.id).slice(0, 8)}` : '')
+      if (publicId) {
+        try {
+          await fetch(`${API_URL}/api/video/delete`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
+            body: JSON.stringify({ publicId }),
+          })
+        } catch { /* backend offline: se borra igual de la galería */ }
+      }
       await deleteDoc(doc(db, 'users', user.uid, 'videos', id))
       setVideos(vs => vs.filter(v => v.id !== id))
     } catch (e) {
