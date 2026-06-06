@@ -53,12 +53,15 @@ HECHO (en `main`):
   `spec.audio` ni archivos -> no rompe el render.
 - `VideoFromSpec` calcula solo los frames de corte (`cutFrames`, respeta el solape TDUR)
   y se los pasa al SoundLayer como `whooshAt`.
-- Estructura `remotion/public/audio/{music,sfx}/` + README con la convención de archivos
-  y la forma de `spec.audio`.
+- El director elige el track por mood (`MOOD_TRACK`) y suma `spec.audio` solo si está
+  prendida la env `CLIPING_AUDIO` (para no apuntar a archivos inexistentes).
+- Estructura `remotion/public/audio/{music,sfx}/` + README con la convención de archivos,
+  los nombres de track por mood y la forma de `spec.audio`.
 
 PENDIENTE de Fase 3 (requisito legal, no técnico):
-- Conseguir la música royalty-free / con licencia comercial y dejarla en `audio/music/`.
-- Que el director setee `spec.audio.music` por mood (y, opcional, cortes al beat).
+- Conseguir la música royalty-free / con licencia comercial y dejarla en `audio/music/`
+  (energetic.mp3, calm.mp3, confident.mp3, bold.mp3 + sfx/whoosh.mp3); luego `CLIPING_AUDIO=1`.
+- Opcional: cortes al beat (bpm -> frames por beat).
 
 ## FASE 4 — Capa de "finish" global
 Overlay aplicado sobre TODO el video en VideoFromSpec:

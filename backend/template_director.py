@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import html
 import json
+import os
 import asyncio
 import random
 import re
@@ -42,6 +43,25 @@ CREATIVE_ANGLES = [
     "promesa audaz y cómo se cumple",
 ]
 MOODS = ["enérgico y rápido", "calmo y premium", "confiable y claro", "moderno y audaz"]
+
+# Cama musical por mood (Fase 3). Los archivos van en remotion/public/audio/music/<track>.mp3.
+# Se activa SOLO con la env CLIPING_AUDIO seteada (para no apuntar a archivos inexistentes y
+# romper el render). Cuando haya música cargada, prender CLIPING_AUDIO=1 y listo.
+MOOD_TRACK = {
+    "enérgico y rápido": "energetic",
+    "calmo y premium": "calm",
+    "confiable y claro": "confident",
+    "moderno y audaz": "bold",
+}
+
+
+def _attach_audio(spec: dict, mood: str) -> dict:
+    """Si hay música cargada (CLIPING_AUDIO seteada), suma la cama por mood al spec."""
+    if not os.getenv("CLIPING_AUDIO"):
+        return spec
+    track = MOOD_TRACK.get(mood, "calm")
+    spec.setdefault("audio", {"music": track, "musicVolume": 0.18, "whooshVolume": 0.5})
+    return spec
 LENGTH_SCENES = {"corto": (3, 4), "medio": (4, 5), "largo": (5, 6)}
 
 # Variantes de layout por tipo de escena (azar curado: el piso de calidad no baja).
@@ -404,10 +424,10 @@ sabés del sitio), reflejar el ángulo y el mood, y respetar las reglas de líne
         if theme_override in ("saas-explainer", "organic-natural", "clinical-formal"):
             spec["theme"] = theme_override
         spec = await _resolve_icons(spec)
-        return _finalize(spec, url_data)
+        return _attach_audio(_finalize(spec, url_data), mood)
     except Exception as e:
         print(f"[director] fallback ({e})")
-        return _finalize(_fallback_spec(url_data, desarrollo, proposito), url_data)
+        return _attach_audio(_finalize(_fallback_spec(url_data, desarrollo, proposito), url_data), mood)
 
 
 def compute_total(scenes: list) -> int:
