@@ -4,19 +4,16 @@ import * as THREE from 'three'
 // ─────────────────────────────────────────────────────────────────────────
 //  ParticleHero — THREE.Points + ShaderMaterial
 //
-//  Tecnica: en vez de InstancedMesh de esferas, se usa un sistema de Points
-//  donde cada particula es un quad orientado a camara y un fragment shader
-//  dibuja un circulo suave (falloff radial). Esto da:
-//    - particulas redondas y limpias (sin ruido de geometria rotando)
-//    - tamano por particula derivado de la densidad real del muestreo
-//    - mejor rendimiento (mas puntos posibles)
-//  El texto se muestrea a ALTA resolucion (fontSize grande) para bordes
-//  bien definidos, y se hace auto-fit + capPoints uniforme como antes.
+//  Puntos con NUCLEO SOLIDO que se solapan para formar trazos continuos
+//  (texto legible, no punteado). Muestreo a alta resolucion sin descarte:
+//  el spacing real coincide con el asumido, asi el tamano de punto es
+//  exacto y la cobertura uniforme.
 // ─────────────────────────────────────────────────────────────────────────
 
-const SAMPLE_STEP = 2          // step sobre canvas de alta resolucion
+const SAMPLE_STEP = 3          // step que no descarta puntos (ver calculo)
 const MAX         = 13000
 const CAP         = 12000
+const POINT_FACTOR = 1.7       // tamano punto = step * fitScale * factor (solapa)
 const ITEMS       = ['Hook', 'Problema', 'Features', 'Diferenciador', 'Beneficios', 'CTA']
 
 const MODE_IDLE    = 'idle'
@@ -43,7 +40,7 @@ function sampleRaw(canvas) {
   const pts = []
   for (let y = 0; y < h; y += SAMPLE_STEP)
     for (let x = 0; x < w; x += SAMPLE_STEP)
-      if (data[(y * w + x) * 4 + 3] > 110) pts.push({ x, y: -y })
+      if (data[(y * w + x) * 4 + 3] > 90) pts.push({ x, y: -y })
   return pts
 }
 
@@ -55,8 +52,6 @@ function capPoints(pts, cap) {
   return out
 }
 
-// Devuelve { pts, fitScale }: pts centrados/escalados a maxW x maxH,
-// y el factor de escala usado (para derivar el tamano del punto).
 function fitToWorld(raw, maxW, maxH) {
   if (!raw.length) return { pts: [], fitScale: 0.01 }
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
@@ -74,8 +69,7 @@ function fitToWorld(raw, maxW, maxH) {
 
 function prep(canvas, maxW, maxH) {
   const { pts, fitScale } = fitToWorld(capPoints(sampleRaw(canvas), CAP), maxW, maxH)
-  // Tamano de punto = spacing del muestreo en mundo * factor de cobertura
-  const pointSize = SAMPLE_STEP * fitScale * 1.35
+  const pointSize = SAMPLE_STEP * fitScale * POINT_FACTOR
   return { pts, pointSize }
 }
 
@@ -120,13 +114,12 @@ function makeTimelineCanvas(items, fs) {
 }
 
 function precomputeAll() {
-  // fontSize ALTO = bordes nitidos. El auto-fit lo lleva al tamano final.
   const urlPts    = prep(makeTextCanvas('URL', 180), 10.0, 6.0)
   const promptPts = prep(makeTextCanvas('Video profesional\ncon todas las\nherramientas del sitio', 90), 11.0, 7.0)
   const tlStates  = []
   for (let step = 0; step <= ITEMS.length; step++) {
     const snap = ITEMS.map((l, i) => ({ label: l, done: i < step }))
-    tlStates.push(prep(makeTimelineCanvas(snap, 80), 9.5, 8.5))
+    tlStates.push(prep(makeTimelineCanvas(snap, 60), 9.5, 8.5))
   }
   return { urlPts, promptPts, tlStates }
 }
@@ -140,34 +133,28 @@ function makeOrbitLoop(rx, ry, seg = 200) {
   return new THREE.BufferGeometry().setFromPoints(pts)
 }
 
-// Shader de punto: quad orientado a camara, circulo suave con falloff
 const VERT = `
   attribute float aSize;
   attribute vec3  aColor;
   varying   vec3  vColor;
-  varying   float vAlpha;
-  uniform   float uScale;   // alto del viewport en px para sizeAttenuation
+  uniform   float uScale;
   void main() {
     vColor = aColor;
     vec4 mv = modelViewMatrix * vec4(position, 1.0);
-    // tamano en px proporcional a distancia (perspectiva)
     gl_PointSize = aSize * uScale / -mv.z;
-    vAlpha = 1.0;
     gl_Position = projectionMatrix * mv;
   }
 `
 
+// Nucleo solido grande (alpha=1 hasta dist 0.44), borde con antialias fino.
+// Esto hace que los puntos solapados formen trazos continuos y legibles.
 const FRAG = `
-  varying vec3  vColor;
-  varying float vAlpha;
+  varying vec3 vColor;
   void main() {
-    // gl_PointCoord va de 0..1 en el quad; centro en 0.5
-    vec2 d = gl_PointCoord - vec2(0.5);
-    float dist = length(d);
-    // circulo suave: falloff de 0.5 (borde) con antialias
-    float alpha = smoothstep(0.5, 0.32, dist);
+    float dist = length(gl_PointCoord - vec2(0.5));
+    float alpha = smoothstep(0.5, 0.44, dist);
     if (alpha < 0.01) discard;
-    gl_FragColor = vec4(vColor, alpha * vAlpha);
+    gl_FragColor = vec4(vColor, alpha);
   }
 `
 
@@ -198,7 +185,6 @@ export default function ParticleHero({ onStateChange }) {
     const cam   = new THREE.PerspectiveCamera(50, W / H, 0.1, 200)
     cam.position.z = 16
 
-    // uScale: convierte tamano-mundo en gl_PointSize px. Aprox = alto_viewport_px / (2*tan(fov/2))
     const computeScale = () => (H * DPR) / (2 * Math.tan((50 / 2) * Math.PI / 180))
 
     const ro = new ResizeObserver((entries) => {
@@ -214,7 +200,6 @@ export default function ParticleHero({ onStateChange }) {
     })
     ro.observe(el)
 
-    // Buffers
     const positions = new Float32Array(MAX * 3)
     const colors    = new Float32Array(MAX * 3)
     const sizes     = new Float32Array(MAX)
@@ -237,7 +222,6 @@ export default function ParticleHero({ onStateChange }) {
     points.frustumCulled = false
     scene.add(points)
 
-    // Anillos orbitales
     const orbits = [
       { rx: 9.5,  ry: 6.2, tiltX: 0.20,  tiltZ: 0.06,  speed: 0.18,  opacity: 0.4  },
       { rx: 11.5, ry: 7.4, tiltX: -0.14, tiltZ: 0.16,  speed: -0.12, opacity: 0.26 },
@@ -252,7 +236,6 @@ export default function ParticleHero({ onStateChange }) {
       return loop
     })
 
-    // Posiciones idle
     const base = Array.from({ length: MAX }, () => {
       const th = Math.random() * Math.PI * 2
       const ph = Math.acos(2 * Math.random() - 1)
@@ -264,7 +247,7 @@ export default function ParticleHero({ onStateChange }) {
       )
     })
     const formZ = Array.from({ length: MAX }, (_, i) =>
-      ((Math.sin(i * 12.9898) * 43758.5453) % 1) * 0.45 - 0.225
+      ((Math.sin(i * 12.9898) * 43758.5453) % 1) * 0.4 - 0.2
     )
 
     for (let i = 0; i < MAX; i++) {
@@ -280,10 +263,10 @@ export default function ParticleHero({ onStateChange }) {
     const burstFrom = Array.from({ length: MAX }, () => new THREE.Vector3())
 
     const anim = { mode: MODE_IDLE, activeN: 0, burstT: 0, pointSize: 0.02 }
-    const IDLE_SIZE = 0.012
+    const IDLE_SIZE = 0.014
 
     function setTargets(data) {
-      const pts  = data.pts || data
+      const pts = data.pts || data
       anim.activeN   = Math.min(pts.length, MAX)
       anim.mode      = pts.length > 0 ? MODE_FORMING : MODE_IDLE
       anim.pointSize = data.pointSize || 0.02
@@ -322,9 +305,10 @@ export default function ParticleHero({ onStateChange }) {
     function executeStep(idx) { steps[idx].fn(); stepIdx = idx; stepStart = null }
     executeStep(0)
 
-    const C_TOP = new THREE.Color(0xf4f6ff)
-    const C_MID = new THREE.Color(0x9db2ff)
-    const C_BOT = new THREE.Color(0x5a6cd8)
+    // Gradiente CLARO en todo el rango → todas las lineas legibles
+    const C_TOP = new THREE.Color(0xf6f8ff)
+    const C_MID = new THREE.Color(0xbcc8ff)
+    const C_BOT = new THREE.Color(0x8c9cf2)
     const C_IDLE = new THREE.Color(0x2a3358)
     const colTmp = new THREE.Color()
 
@@ -351,8 +335,8 @@ export default function ParticleHero({ onStateChange }) {
       if (burst) anim.burstT = Math.min(anim.burstT + dt / 500, 1)
 
       if (!reduced) {
-        cam.position.x = Math.sin(t * 0.12) * 0.35
-        cam.position.y = Math.cos(t * 0.10) * 0.22
+        cam.position.x = Math.sin(t * 0.12) * 0.3
+        cam.position.y = Math.cos(t * 0.10) * 0.18
         cam.lookAt(0, 0, 0)
       }
 
@@ -384,17 +368,15 @@ export default function ParticleHero({ onStateChange }) {
         const active = i < anim.activeN && forming
         const prox   = active ? Math.max(0, 1 - c.distanceTo(tgt[i]) * 0.5) : 0
 
-        // Tamano del punto
         if (burst)       sizes[i] = Math.max(0.001, anim.pointSize * (1 - anim.burstT))
-        else if (active) sizes[i] = anim.pointSize * (0.7 + prox * 0.3)
+        else if (active) sizes[i] = anim.pointSize * (0.82 + prox * 0.18)
         else             sizes[i] = IDLE_SIZE
 
-        // Color
         if (active) {
           const n = Math.max(0, Math.min(1, (c.y + 4) / 8))
           if (n > 0.5) colTmp.lerpColors(C_MID, C_TOP, (n - 0.5) * 2)
           else         colTmp.lerpColors(C_BOT, C_MID, n * 2)
-          colTmp.multiplyScalar(0.8 + prox * 0.2)
+          colTmp.multiplyScalar(0.85 + prox * 0.15)
         } else if (burst) {
           colTmp.lerpColors(C_BOT, C_IDLE, anim.burstT)
         } else {
