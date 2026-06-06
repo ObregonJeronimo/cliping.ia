@@ -91,14 +91,6 @@ ART_PRESETS = [
     {"name": "flow",      "camera": "panL",    "entrance": "scale", "motif": "waves",     "transitions": "mixed"},
 ]
 
-# Algunos motivos/cámaras pegan mejor según el rubro; el resto es libre.
-ART_BIAS = {
-    "clinical-formal": ["editorial", "clean", "techno", "kinetic"],   # formal: nada "playful"
-    "organic-natural": ["calm", "flow", "playful", "clean"],          # cálido/orgánico
-    "saas-explainer":  None,                                          # cualquiera
-}
-
-
 def _assign_variation(spec: dict) -> dict:
     """Semilla + layout por escena + DIRECCIÓN DE ARTE por video -> nunca se repite."""
     spec["seed"] = random.randint(0, 9999)
@@ -107,9 +99,7 @@ def _assign_variation(spec: dict) -> dict:
         if opts and "variant" not in s:
             s["variant"] = random.choice(opts)
     if "art" not in spec:
-        allowed = ART_BIAS.get(spec.get("theme"))
-        pool = [p for p in ART_PRESETS if (allowed is None or p["name"] in allowed)] or ART_PRESETS
-        art = dict(random.choice(pool))
+        art = dict(random.choice(ART_PRESETS))
         art.pop("name", None)
         spec["art"] = art
     return spec
@@ -188,10 +178,28 @@ SCENE_CATALOG = """ESCENAS DISPONIBLES (type + props):
   sistema. Útil como beat de marca en el medio del video; no la pongas primera ni última.
 - "CtaOutro": cierre. props: brand = nombre de marca, cta = llamado a la acción corto."""
 
-THEME_GUIDE = """THEMES (elegí 1 según el rubro):
-- "saas-explainer": software, SaaS, apps, tech, plataformas, herramientas digitales.
-- "organic-natural": comida saludable, dietética, productos naturales, bienestar, orgánico.
-- "clinical-formal": médico, salud profesional, sistemas B2B serios, consultorios, finanzas, legal."""
+# Paletas disponibles (NO son rubros: son VIBRAS/colores que sirven para cualquier
+# marca). El brand-accent (Fase 6) recolorea el acento con el color real del sitio
+# arriba de la paleta, así además se adapta a cada marca.
+THEME_VIBES = {
+    "saas-explainer":  "violeta tech, moderno y digital",
+    "ocean-deep":      "turquesa y azul profundo, fresco y confiable",
+    "clinical-formal": "azul frío, preciso y profesional",
+    "organic-natural": "verde cálido, natural y orgánico",
+    "sunset-warm":     "naranjas y rosas de atardecer, cálido y lifestyle",
+    "crimson-bold":    "rojo y magenta intensos, energía y urgencia",
+    "berry-glow":      "púrpura y rosa con glow, creativo y vibrante",
+    "gold-lux":        "negro y dorado, premium y elegante",
+    "cyber-neon":      "neón cyan/lima sobre casi negro, futurista",
+    "mono-ink":        "monocromo tinta con un acento, editorial y minimal",
+}
+VALID_THEMES = tuple(THEME_VIBES.keys())
+
+THEME_GUIDE = (
+    "PALETAS (elegí 1 por la VIBRA de la marca — sirve para CUALQUIER rubro, no son "
+    "categorías cerradas; guiate por el tono y los colores del sitio):\n"
+    + "\n".join(f'- "{k}": {v}' for k, v in THEME_VIBES.items())
+)
 
 DIRECTOR_SYSTEM = f"""Sos director creativo de videos verticales (reels) de marketing/explainer
 para marcas. Diseñás un STORYBOARD que un motor renderiza con plantillas.
@@ -262,7 +270,7 @@ def _normalize(spec: dict, url_data: dict, desarrollo: str, proposito: str) -> d
     if not isinstance(spec, dict):
         return fb
     theme = spec.get("theme")
-    if theme not in ("saas-explainer", "organic-natural", "clinical-formal"):
+    if theme not in VALID_THEMES:
         theme = "saas-explainer"
     scenes = spec.get("scenes")
     if not isinstance(scenes, list) or len(scenes) < 2:
@@ -423,7 +431,7 @@ async def build_storyboard(url: str, desarrollo: str, proposito: str = "marketin
         f"- Mood: {mood}\n"
         f"- Apuntá a unas {n_scenes} escenas."
     )
-    if theme_override in ("saas-explainer", "organic-natural", "clinical-formal"):
+    if theme_override in VALID_THEMES:
         brief += f"\n- Theme OBLIGATORIO: {theme_override}"
 
     extra = f'\nLo que pidió el usuario: "{desarrollo.strip()}"' if desarrollo.strip() else ""
@@ -449,7 +457,7 @@ sabés del sitio), reflejar el ángulo y el mood, y respetar las reglas de líne
         m = re.search(r"\{.*\}", raw, re.S)
         spec = json.loads(m.group(0)) if m else None
         spec = _normalize(spec, url_data, desarrollo, proposito)
-        if theme_override in ("saas-explainer", "organic-natural", "clinical-formal"):
+        if theme_override in VALID_THEMES:
             spec["theme"] = theme_override
         spec = await _resolve_icons(spec)
         return _attach_audio(_finalize(spec, url_data), mood)

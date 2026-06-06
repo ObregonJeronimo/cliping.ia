@@ -1080,7 +1080,7 @@ async def _render_video_job(job_id: str, req: VideoGenRequest):
         jobs[job_id].update({"status": "processing", "step": "script", "progress": 18})
         # 1. Director: URL + desarrollo -> storyboard
         spec = await template_director.build_storyboard(req.url, req.desarrollo, req.proposito)
-        if req.theme in ("saas-explainer", "organic-natural", "clinical-formal"):
+        if req.theme in template_director.VALID_THEMES:
             spec["theme"] = req.theme
         jobs[job_id]["spec"] = spec
 
