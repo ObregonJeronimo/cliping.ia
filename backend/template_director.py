@@ -57,6 +57,61 @@ PURPOSE_GUIDE = {
     "educational": "Enseñá algo útil en pasos claros; la marca aparece como quien lo resuelve.",
 }
 
+# BIBLIOTECA DE HOOKS (swipe file): patrones de apertura probados en social 2026. El director
+# remixea uno por video (rotado) para la PRIMERA escena, en vez de inventar de cero. El hook
+# decide la retención de los primeros 1-3s, que es la señal #1 del algoritmo.
+HOOK_ARCHETYPES = [
+    {"name": "pregunta-dolor",
+     "guide": "Abrí con UNA pregunta que toque el dolor del público ('¿Todavía...?', '¿Cuánto...?'). Corta y filosa.",
+     "ex": "¿Todavía lo hacés a mano?"},
+    {"name": "loop-curiosidad",
+     "guide": "Abrí un BUCLE de curiosidad: insinuá algo intrigante que el video recién resuelve más adelante (NO lo cierres en la primera escena).",
+     "ex": "Hay una forma más fácil."},
+    {"name": "numero-shock",
+     "guide": "Abrí con un NÚMERO fuerte y REAL del sitio como gancho (al toque, no en el medio). Que sorprenda.",
+     "ex": "+600 productos. Sin moverte."},
+    {"name": "mito-contradiccion",
+     "guide": "Abrí ROMPIENDO una creencia común del rubro ('X no es lo que pensás'). Genera tensión.",
+     "ex": "Comer sano no es caro."},
+    {"name": "pov-situacion",
+     "guide": "Abrí con un POV/situación con la que el público se identifica ('POV:...', 'Cuando...'). Relatable = shares.",
+     "ex": "POV: cobrar te saca el sueño."},
+    {"name": "negacion-basta",
+     "guide": "Abrí con una NEGACIÓN/orden que corta el scroll ('Dejá de...', 'Basta de...', 'No más...').",
+     "ex": "Dejá de perseguir pagos."},
+    {"name": "promesa-audaz",
+     "guide": "Abrí con una PROMESA audaz y concreta del beneficio principal, en 3-5 palabras.",
+     "ex": "Tu cobranza, en automático."},
+    {"name": "antes-despues",
+     "guide": "Abrí contrastando un ANTES doloroso al toque (corto, visual): 'Antes X. Ahora Y.'",
+     "ex": "Antes: planillas. Ahora: un click."},
+]
+
+# ARCOS NARRATIVOS: esqueletos de historia probados. Le dan columna vertebral al video (no
+# 'escenas lindas en fila'). Se rota entre los que encajan con el propósito -> variedad + estructura.
+NARRATIVE_ARCS = {
+    "pas":           "ARCO PAS: 1) hook que nombra el PROBLEMA · 2) agitá el dolor (qué se pierde/cuesta hoy) · 3) la SOLUCIÓN (tu marca) · 4) CTA. Potente para conversión.",
+    "antes_despues": "ARCO ANTES/DESPUÉS: 1) hook · 2) el ANTES (cómo se sufre hoy) · 3) el DESPUÉS (con la marca: alivio/resultado) · 4) CTA.",
+    "tres_razones":  "ARCO 3 RAZONES: 1) hook con la promesa · 2-3) dos o tres razones/beneficios concretos y REALES (una por escena o un FeatureList) · 4) CTA.",
+    "como_funciona": "ARCO CÓMO FUNCIONA: 1) hook · 2) cómo funciona en PASOS simples (usá ProcessSteps) · 3) el resultado · 4) CTA. Ideal educativo.",
+    "prueba_real":   "ARCO PRUEBA: 1) hook · 2) un DATO real (StatReveal) o testimonio real del sitio · 3) por qué importa · 4) CTA. SOLO si hay datos reales en el contexto.",
+    "oferta":        "ARCO OFERTA: 1) hook · 2) el PRODUCTO/oferta con precio real (OfferPrice) · 3) urgencia/beneficio · 4) CTA de compra. Ideal ecommerce/ventas.",
+    "manifiesto":    "ARCO MANIFIESTO: 1) hook de identidad · 2-3) qué representa la marca / su diferencial (KineticStatement + IllustrationScene) · 4) CTA suave. Ideal branding.",
+}
+
+# Qué arcos encajan con cada propósito (se ROTA entre ellos para no repetir estructura).
+PURPOSE_ARCS = {
+    "marketing":   ["pas", "tres_razones", "antes_despues", "como_funciona"],
+    "awareness":   ["manifiesto", "tres_razones", "antes_despues"],
+    "branding":    ["manifiesto", "antes_despues", "tres_razones"],
+    "conversion":  ["pas", "oferta", "antes_despues", "prueba_real"],
+    "ventas":      ["pas", "oferta", "antes_despues", "prueba_real"],
+    "lanzamiento": ["como_funciona", "tres_razones", "manifiesto"],
+    "launch":      ["como_funciona", "tres_razones", "manifiesto"],
+    "educacion":   ["como_funciona", "tres_razones", "prueba_real"],
+    "educational": ["como_funciona", "tres_razones", "prueba_real"],
+}
+
 # Estilo de EDICIÓN por video: rota qué escenas protagonizan y el ritmo, para que la
 # ESTRUCTURA no sea siempre la misma (Hook -> IconTransform -> Mockup -> CTA). Es a la
 # estructura lo que ART_PRESETS es al movimiento.
@@ -844,6 +899,8 @@ async def build_storyboard(url: str, desarrollo: str, proposito: str = "marketin
     rec_themes = rp.get("themes") or []
     rec_arts = rp.get("arts") or []
     rec_decors = rp.get("decors") or []
+    rec_hooks = rp.get("hooks") or []
+    rec_arcs = rp.get("arcs") or []
 
     lo, hi = LENGTH_SCENES.get(length, LENGTH_SCENES["medio"])
     n_scenes = SECONDS_SCENES.get(seconds) or random.randint(lo, hi)
@@ -864,6 +921,12 @@ async def build_storyboard(url: str, desarrollo: str, proposito: str = "marketin
     art_name = art_preset.get("name", "")
     # Decoración de primer plano rotada por separado (más combinaciones, coherente por video).
     decor = _pick_avoiding(DECORS, rec_decors)
+    # HOOK rotado (swipe file): patrón de apertura probado, distinto del/los recientes.
+    hook = _pick_avoiding(HOOK_ARCHETYPES, rec_hooks, key="name")
+    # ARCO narrativo rotado entre los que encajan con el propósito (estructura + variedad).
+    _arc_pool = PURPOSE_ARCS.get((proposito or "").lower(), PURPOSE_ARCS["marketing"])
+    arc_name = _pick_avoiding(_arc_pool, rec_arcs)
+    arc_guide = NARRATIVE_ARCS.get(arc_name, "")
 
     brief = (
         f"Dirección creativa para ESTE video (hacelo único, no formulaico):\n"
@@ -898,10 +961,15 @@ CONTEXTO DEL SITIO (usalo para escribir copy específico y real, no genérico):
 
 OBJETIVO DEL VIDEO ({proposito}): {PURPOSE_GUIDE.get((proposito or '').lower(), PURPOSE_GUIDE['marketing'])}
 
-EL HOOK MANDA: la PRIMERA escena tiene que enganchar en los primeros 1-2 segundos (frase
-filosa, dato real, o pregunta que pegue). NUNCA arranques con Comparison ni FeatureList (son
-pesadas de texto, no enganchan): la primera escena es un hook CORTO (KineticStatement filoso,
-StatReveal con dato real, o IllustrationScene). Si la apertura es débil o larga, el resto no se ve.
+ESTRUCTURA SUGERIDA (seguí este arco, adaptándolo a ESTA marca; no lo recites literal):
+{arc_guide}
+
+EL HOOK MANDA (primeros 1-3 segundos = la señal #1 del algoritmo): usá ESTE patrón de apertura
+para la PRIMERA escena, adaptado a la marca y su público:
+>> {hook['guide']} (ejemplo de forma, NO de contenido: "{hook['ex']}")
+La primera escena es CORTA y filosa (KineticStatement / StatReveal con dato real / IllustrationScene).
+NUNCA arranques con Comparison ni FeatureList (pesadas de texto, no enganchan). Si la apertura
+es débil o larga, nadie ve el resto.
 
 Generá el storyboard JSON. El copy tiene que sonar a ESTA marca puntual (usá el brief y lo que
 sabés del sitio), reflejar el ángulo y el mood, y respetar las reglas de líneas cortas."""
@@ -912,6 +980,8 @@ sabés del sitio), reflejar el ángulo y el mood, y respetar las reglas de líne
         out["angle"] = angle
         out["artName"] = art_name
         out["decorName"] = decor
+        out["hookName"] = hook["name"]
+        out["arcName"] = arc_name
         # Asegurar que el arte lleve la decoración elegida (coherente en todas las escenas).
         if isinstance(out.get("art"), dict):
             out["art"].setdefault("decor", decor)

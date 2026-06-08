@@ -154,7 +154,7 @@ def _dominant_accent(image_path: str):
 def _get_recent_profile(db, user_id: str, brand_key: str) -> dict:
     """Perfil de rotación reciente de esta marca/usuario: estilos, ángulos, paletas y artes
     usados (reciente primero). Sirve para que dos videos de la misma marca NO se repitan."""
-    empty = {"styles": [], "angles": [], "themes": [], "arts": [], "decors": []}
+    empty = {"styles": [], "angles": [], "themes": [], "arts": [], "decors": [], "hooks": [], "arcs": []}
     if not (db and user_id):
         return empty
     try:
@@ -167,6 +167,8 @@ def _get_recent_profile(db, user_id: str, brand_key: str) -> dict:
                 "themes": d.get("recent_themes", []) or [],
                 "arts":   d.get("recent_arts", []) or [],
                 "decors": d.get("recent_decors", []) or [],
+                "hooks":  d.get("recent_hooks", []) or [],
+                "arcs":   d.get("recent_arcs", []) or [],
             }
     except Exception as e:
         print(f"[styles] leer historial falló: {e}")
@@ -190,6 +192,8 @@ def _push_recent_profile(db, user_id: str, brand_key: str, spec: dict):
             "recent_themes":  _bump(prev["themes"], spec.get("theme", "")),
             "recent_arts":    _bump(prev["arts"],   spec.get("artName", "")),
             "recent_decors":  _bump(prev["decors"], spec.get("decorName", "")),
+            "recent_hooks":   _bump(prev["hooks"],  spec.get("hookName", "")),
+            "recent_arcs":    _bump(prev["arcs"],   spec.get("arcName", "")),
         })
     except Exception as e:
         print(f"[styles] guardar historial falló: {e}")
@@ -397,6 +401,7 @@ async def _render_video_job(job_id: str, req: VideoGenRequest):
                     "recipe": {
                         "editStyle": spec.get("editStyle"), "angle": spec.get("angle"),
                         "artName": spec.get("artName"), "decorName": spec.get("decorName"),
+                        "hookName": spec.get("hookName"), "arcName": spec.get("arcName"),
                         "theme": spec.get("theme"),
                     },
                     "rating": 0,  # 0 = sin puntuar; la app lo actualiza con el pulgar arriba/abajo
