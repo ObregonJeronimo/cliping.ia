@@ -1,4 +1,4 @@
-import { AbsoluteFill, Easing, useCurrentFrame } from 'remotion'
+import { AbsoluteFill, Easing, useCurrentFrame, useVideoConfig } from 'remotion'
 import { TransitionSeries, linearTiming } from '@remotion/transitions'
 import { fade } from '@remotion/transitions/fade'
 import { CameraMotionBlur } from '@remotion/motion-blur'
@@ -57,12 +57,16 @@ const EXIT_LEN = 20          // dura ~0.66s
 const EXIT_END_PAD = 10      // termina ~10f antes del final (la transición dura TDUR=14)
 const SceneShell = ({ durationInFrames, exit, children }) => {
   const frame = useCurrentFrame()
+  const { width, height } = useVideoConfig()
+  // En vertical (9:16) sesgamos hacia arriba para esquivar la UI de Reels/TikTok; en cuadrado/
+  // horizontal el contenido va centrado (no hay esa UI abajo).
+  const safeUp = (width / height) < 0.85 ? SAFE_UP : 0
   const end = durationInFrames - EXIT_END_PAD
   const p = exit ? clamp01((frame - (end - EXIT_LEN)) / EXIT_LEN) : 0
   const e = p * p * (3 - 2 * p) // smoothstep: acelera la salida suave
   return (
     <div style={{ position: 'absolute', inset: 0, transformOrigin: '50% 48%',
-      transform: `translateY(${-SAFE_UP - 52 * e}px) scale(${1 - 0.06 * e})`, opacity: 1 - e }}>
+      transform: `translateY(${-safeUp - 52 * e}px) scale(${1 - 0.06 * e})`, opacity: 1 - e }}>
       {children}
     </div>
   )

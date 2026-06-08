@@ -1088,8 +1088,8 @@ export const RemotionRoot = () => (
     component={VideoFromSpec}
     durationInFrames={__TOTAL__}
     fps={30}
-    width={1080}
-    height={1920}
+    width={__WIDTH__}
+    height={__HEIGHT__}
     defaultProps={{ spec: SPEC }}
   />
 )
@@ -1113,10 +1113,16 @@ def build_video_files(job_id: str, spec: dict, remotion_dir):
     total = compute_total(spec.get("scenes", []))
     temp_files = []
 
+    # Formato de salida (9:16 vertical por defecto, 1:1 cuadrado, 16:9 horizontal).
+    FORMATS = {"vertical": (1080, 1920), "square": (1080, 1080), "wide": (1920, 1080)}
+    w, h = FORMATS.get(spec.get("format", "vertical"), FORMATS["vertical"])
+
     root_src = (_ROOT_TEMPLATE
                 .replace("__SPEC_JSON__", json.dumps(spec, ensure_ascii=False))
                 .replace("__TOTAL__", str(total))
-                .replace("__COMPID__", comp_id))
+                .replace("__COMPID__", comp_id)
+                .replace("__WIDTH__", str(w))
+                .replace("__HEIGHT__", str(h)))
     root_file = f"Root_vid_{short}.jsx"
     (remotion_dir / "src" / root_file).write_text(root_src, encoding="utf-8")
     temp_files.append(remotion_dir / "src" / root_file)

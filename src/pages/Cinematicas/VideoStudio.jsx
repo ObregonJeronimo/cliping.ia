@@ -23,6 +23,11 @@ const PROPOSITOS = [
 ]
 const TONOS = ['enérgico y rápido', 'calmo y premium', 'confiable y claro', 'moderno y audaz']
 const SEGUNDOS = [10, 15, 20]
+const FORMATOS = [
+  { key: 'vertical', label: 'Vertical 9:16' },
+  { key: 'square', label: 'Cuadrado 1:1' },
+  { key: 'wide', label: 'Horizontal 16:9' },
+]
 // Idioma del video (independiente del idioma de la página). '' = automático (según el sitio).
 const IDIOMAS = [
   { key: '', label: 'Auto' },
@@ -40,7 +45,7 @@ export default function VideoStudio() {
   const {
     mode, setMode, url, setUrl, desarrollo, setDesarrollo, theme, setTheme,
     proposito, setProposito, tono, setTono, seconds, setSeconds,
-    idioma, setIdioma, submitted,
+    idioma, setIdioma, formato, setFormato, submitted,
     generating, status, spec, videoUrl, error, generate, reset,
   } = useVideoJob()
   const videoRef = useRef(null)
@@ -86,6 +91,16 @@ export default function VideoStudio() {
           <div className={styles.propGrid}>
             {SEGUNDOS.map(s => (
               <button key={s} className={`${styles.propBtn} ${seconds === s ? styles.propBtnActive : ''}`} onClick={() => setSeconds(s)} disabled={generating}>{s}s</button>
+            ))}
+          </div>
+        </div>
+
+        <div className={styles.cineSection}>
+          <div className={styles.cineSectionLabel}>Formato</div>
+          <div className={styles.propGrid}>
+            {FORMATOS.map(f => (
+              <button key={f.key} className={`${styles.propBtn} ${formato === f.key ? styles.propBtnActive : ''}`}
+                onClick={() => setFormato(f.key)} disabled={generating}>{f.label}</button>
             ))}
           </div>
         </div>

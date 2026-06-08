@@ -283,6 +283,7 @@ class VideoGenRequest(BaseModel):
     seconds: int = 0       # duración exacta elegida (10/15/20); 0 = automática
     userId: str = ""
     idioma: str = ""       # idioma del video elegido por el usuario ('' = auto/según la página)
+    formato: str = "vertical"  # 'vertical' (9:16) | 'square' (1:1) | 'wide' (16:9)
     spec: dict | None = None  # variante ya elegida: si viene, se renderiza sin pasar por el director
 
 
@@ -426,6 +427,8 @@ async def _render_video_job(job_id: str, req: VideoGenRequest):
             _push_recent_profile(_db, req.userId, _bkey, spec)
         if req.theme in template_director.VALID_THEMES:
             spec["theme"] = req.theme
+        if req.formato in ("vertical", "square", "wide"):
+            spec["format"] = req.formato
         jobs[job_id]["spec"] = spec
 
         # 1b. MockupShowcase: REUSAMOS el screenshot de la carga única (no recapturamos).

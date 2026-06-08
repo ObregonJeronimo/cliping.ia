@@ -1,6 +1,7 @@
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from 'remotion'
 import { fitHeadline, segText, clamp, accentPalette } from '../theme'
 import { EASE, SPRING, prog, spr, enter, entrance, stagger, floatY, camera, parallax } from '../motion'
+import { fmt } from '../layout'
 
 /**
  * IntegrationCluster — hub central + fuentes alrededor conectadas por líneas.
@@ -13,18 +14,13 @@ const GradientText = ({ theme, children }) => (
     backgroundClip: 'text', color: 'transparent' }}>{children}</span>
 )
 
-const SLOTS = [
-  { x: 250, y: 880 }, { x: 830, y: 880 },
-  { x: 215, y: 1150 }, { x: 865, y: 1150 },
-  { x: 540, y: 1430 },
-]
-
 export const IntegrationCluster = ({ theme, title = [], colors = null, variant = '', hubMark = '', durationInFrames: durProp }) => {
   const frame = useCurrentFrame()
   const vc = useVideoConfig()
   const fps = vc.fps
   const dur = durProp || vc.durationInFrames
   const m = theme.motion
+  const F = fmt(vc)
   // Variedad estable por video (mismo título -> mismo look; títulos distintos -> looks distintos):
   // si el director no fijó variant/hubMark, los derivamos de un hash del título.
   const _txt = (title || []).map(s => s && s.t ? s.t : '').join('')
@@ -34,8 +30,11 @@ export const IntegrationCluster = ({ theme, title = [], colors = null, variant =
   const _marks = ['spark', 'rings', 'orb', 'plus', 'hex']
   variant = variant || _variants[_h % _variants.length]
   hubMark = hubMark || _marks[(_h >> 3) % _marks.length]
-  const HUB = { x: 540, y: 1140 }
-  const cols = (colors && colors.length) ? colors : accentPalette(theme, SLOTS.length)
+  // Posiciones RELATIVAS al formato (en vertical 1080x1920 equivalen a las de antes).
+  const HUB = { x: F.cx, y: F.H * 0.594 }
+  const REL_SLOTS = [[0.231, 0.458], [0.769, 0.458], [0.199, 0.599], [0.801, 0.599], [0.50, 0.745]]
+    .map(([fx, fy]) => ({ x: F.W * fx, y: F.H * fy }))
+  const cols = (colors && colors.length) ? colors : accentPalette(theme, REL_SLOTS.length)
 
   const cam = camera(theme.art, frame, dur, m.cameraDrift)
   const pxFg = parallax(cam, 0.35)
@@ -44,25 +43,26 @@ export const IntegrationCluster = ({ theme, title = [], colors = null, variant =
   const hubRot = prog(frame, 8, 40, EASE.out) * 30
   const lineDraw = prog(frame, 14, 26, EASE.inOut)
   const glowOp = clamp(frame / 16, 0, 1)
-  const n = Math.min(cols.length, SLOTS.length)
+  const n = Math.min(cols.length, REL_SLOTS.length)
+  const _Rmin = Math.min(F.W, F.H)
   // Disposición de los nodos según la variante (las líneas hub->nodo sirven para cualquiera).
   const slots = (() => {
     if (variant === 'orbit') {
-      const R = 330
+      const R = _Rmin * 0.305
       return Array.from({ length: n }, (_, i) => {
         const a = -Math.PI / 2 + (i / n) * Math.PI * 2
         return { x: HUB.x + Math.cos(a) * R, y: HUB.y + Math.sin(a) * R }
       })
     }
     if (variant === 'arc') {
-      const R = 360
+      const R = _Rmin * 0.333
       return Array.from({ length: n }, (_, i) => {
         const t = n === 1 ? 0.5 : i / (n - 1)
         const a = Math.PI * (1 - t) // dome por encima del hub
         return { x: HUB.x + Math.cos(a) * R, y: HUB.y - Math.sin(a) * R * 0.92 }
       })
     }
-    return SLOTS.slice(0, n) // 'hub' (disperso, default)
+    return REL_SLOTS.slice(0, n) // 'hub' (disperso, default)
   })()
 
   return (
@@ -73,7 +73,7 @@ export const IntegrationCluster = ({ theme, title = [], colors = null, variant =
           transform: 'translate(-50%,-50%)', opacity: glowOp,
           background: `radial-gradient(circle, ${theme.glow}, rgba(0,0,0,0) 60%)` }} />
 
-        <div style={{ position: 'absolute', top: 250, width: '100%', textAlign: 'center',
+        <div style={{ position: 'absolute', top: F.H * 0.13, width: '100%', textAlign: 'center',
           fontWeight: theme.headWeight, fontSize: fitHeadline(segText(title), 112), lineHeight: 1.08, letterSpacing: '-0.025em',
           color: theme.text, padding: '0 70px', transform: cap.transform, opacity: cap.opacity }}>
           {title.map((s, j) => s.accent
@@ -81,7 +81,7 @@ export const IntegrationCluster = ({ theme, title = [], colors = null, variant =
             : <span key={j}>{s.t}</span>)}
         </div>
 
-        <svg width="1080" height="1920" viewBox="0 0 1080 1920" style={{ position: 'absolute', inset: 0 }}>
+        <svg width={F.W} height={F.H} viewBox={`0 0 ${F.W} ${F.H}`} style={{ position: 'absolute', inset: 0 }}>
           <g stroke={theme.accentFrom} strokeWidth="3" strokeDasharray="8 12" opacity="0.4" fill="none">
             {slots.map((p, i) => {
               const x2 = HUB.x + (p.x - HUB.x) * lineDraw
