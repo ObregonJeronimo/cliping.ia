@@ -128,6 +128,9 @@ SCENE_VARIANTS = {
     "LogoReveal": ["mark", "wordmark"],
     "IllustrationScene": ["center", "top"],
     "IntegrationCluster": ["hub", "orbit", "arc"],
+    "ProcessSteps": ["flow", "cards"],
+    "OfferPrice": ["stack", "tag"],
+    "MapLocation": ["pin", "card"],
 }
 
 # Apertura sugerida según el estilo de edición -> empuja a que la estructura ROTE
@@ -261,7 +264,18 @@ SCENE_CATALOG = """ESCENAS DISPONIBLES (type + props):
   ej dietética/salud -> "organic" o "care" (NUNCA "launch"/cohete); seguridad/servicios ->
   "quality"; software/startup -> "idea"/"launch". Si ningún name encaja, mejor NO uses esta escena.
 - "CtaOutro": cierre. props: brand = nombre de marca, cta = llamado a la acción corto.
-  (El logo real del sitio y la decoración del cierre se inyectan solos; NO los pongas.)"""
+  (El logo real del sitio y la decoración del cierre se inyectan solos; NO los pongas.)
+- "ProcessSteps": flujo de pasos 1->2->3 ("cómo funciona" / el proceso, secuencial — NO es una
+  lista de features). props: opcional title = segmentos { t, accent }; steps = array de 3-4
+  { label: [segmentos {t,accent}] } cortos. Ideal para servicios o "así de fácil es".
+- "OfferPrice": oferta/precio (ideal ECOMMERCE). props: opcional badge = string corto ("OFERTA",
+  "-20%"); opcional title = segmentos; price = string (ej "$15.000"); opcional oldPrice = string
+  tachado; opcional caption = string ("Envío gratis · Solo esta semana"). USALA SOLO si el sitio
+  tiene un PRECIO REAL (aparece en el contexto); si inventás el precio, se descarta.
+- "MapLocation": ubicación estilizada para negocios LOCALES (mapa abstracto + pin que cae).
+  props: city = string ("Villa Allende"); opcional area = string ("Córdoba · Av. San Martín 123");
+  opcional label = segmentos ("Te esperamos"). USALA SOLO si es claramente un negocio físico/local
+  con ubicación; NO inventes direcciones."""
 
 # Paletas disponibles (NO son rubros: son VIBRAS/colores que sirven para cualquier
 # marca). El brand-accent (Fase 6) recolorea el acento con el color real del sitio
@@ -476,7 +490,8 @@ def _normalize(spec: dict, url_data: dict, desarrollo: str, proposito: str) -> d
     if not isinstance(scenes, list) or len(scenes) < 2:
         return fb
     valid_types = {"KineticStatement", "IntegrationCluster", "MockupShowcase", "CtaOutro", "IconTransform",
-                   "StatReveal", "FeatureList", "Comparison", "Testimonial", "SocialProof", "LogoReveal", "IllustrationScene"}
+                   "StatReveal", "FeatureList", "Comparison", "Testimonial", "SocialProof", "LogoReveal",
+                   "IllustrationScene", "ProcessSteps", "OfferPrice", "MapLocation"}
     # Antídoto contra info inventada: si el dato no está en el sitio, no se muestra como hecho.
     hay = " ".join([
         url_data.get("context", ""), url_data.get("description", ""),
@@ -507,6 +522,16 @@ def _normalize(spec: dict, url_data: dict, desarrollo: str, proposito: str) -> d
         # Testimonial sin señales de reseñas reales en el sitio -> descartar (no inventar).
         if t == "Testimonial" and not has_reviews:
             continue
+        # OfferPrice con un precio que NO aparece en el sitio = inventado -> descartar (o pasar
+        # a frase si hay titular). No mostramos precios falsos.
+        if t == "OfferPrice":
+            pd = re.sub(r"\D", "", str(s.get("price", "")))
+            if len(pd) < 2 or not any(pd in g for g in hay_nums):
+                if s.get("title"):
+                    s = {"type": "KineticStatement", "lines": [s["title"]], "durationInFrames": s.get("durationInFrames", 90)}
+                    t = "KineticStatement"
+                else:
+                    continue
         d = s.get("durationInFrames", 90)
         try:
             d = int(d)
