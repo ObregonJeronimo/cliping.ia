@@ -136,7 +136,8 @@ export default function MisCinematicas() {
             const src = srcOf(v)
             return (
               <div key={v.id} className={styles.card}>
-                <div className={styles.videoWrap}>
+                <div className={styles.videoWrap}
+                  style={{ aspectRatio: v.format === 'wide' ? '16 / 9' : v.format === 'square' ? '1 / 1' : '9 / 16' }}>
                   {src
                     ? <video className={styles.video} src={src} controls preload="metadata" />
                     : <div className={styles.videoEmpty}>sin archivo</div>}
@@ -144,6 +145,7 @@ export default function MisCinematicas() {
                 <div className={styles.meta}>
                   <div className={styles.metaTop}>
                     <span className={styles.brand}>{v.brand || v.url || 'Sin título'}</span>
+                    {v.format && <span className={styles.themeBadge}>{v.format === 'wide' ? '16:9' : v.format === 'square' ? '1:1' : '9:16'}</span>}
                     {v.theme && <span className={styles.themeBadge}>{THEME_LABEL[v.theme] || v.theme}</span>}
                   </div>
                   {fmtDate(v.createdAt) && <div className={styles.date}>{fmtDate(v.createdAt)}</div>}
