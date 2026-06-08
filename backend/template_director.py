@@ -106,11 +106,20 @@ MOOD_TRACK = {
 
 
 def _attach_audio(spec: dict, mood: str) -> dict:
-    """Si hay música cargada (CLIPING_AUDIO seteada), suma la cama por mood al spec."""
-    if not os.getenv("CLIPING_AUDIO"):
+    """Audio del video. Default: SILENCIO (cero líos de licencia, nunca rompe el render).
+    Activables por entorno (cuando el dev deje los archivos en remotion/public/audio/):
+      · CLIPING_SFX   -> whoosh sutil en los cortes (necesita audio/sfx/whoosh.mp3).
+      · CLIPING_AUDIO -> cama musical por mood (necesita audio/music/<track>.mp3).
+    Se pueden combinar. El usuario igual puede sumar audio de tendencia al postear en IG/TikTok."""
+    sfx = bool(os.getenv("CLIPING_SFX"))
+    music = bool(os.getenv("CLIPING_AUDIO"))
+    if not (sfx or music):
         return spec
-    track = MOOD_TRACK.get(mood, "calm")
-    spec.setdefault("audio", {"music": track, "musicVolume": 0.18, "whooshVolume": 0.5})
+    audio = {"whoosh": sfx, "whooshVolume": 0.45}
+    if music:
+        audio["music"] = MOOD_TRACK.get(mood, "calm")
+        audio["musicVolume"] = 0.18
+    spec.setdefault("audio", audio)
     return spec
 LENGTH_SCENES = {"corto": (3, 4), "medio": (4, 5), "largo": (5, 6)}
 

@@ -42,11 +42,13 @@ const DEFAULT_ART = { camera: 'drift', entrance: 'rise', motif: 'none' }
 // Duración fija TDUR (para que el cálculo de total sea exacto) y easing suave (no lineal).
 const EASED = linearTiming({ durationInFrames: TDUR, easing: Easing.inOut(Easing.cubic) })
 
-// SceneShell — envuelve el contenido de cada escena y le da SALIDA (no solo entrada): en los
-// últimos frames el contenido se eleva apenas, se achica un toque y se desvanece, sincronizado
-// con el crossfade. Así el contenido "se va con gracia" en vez de cortar seco. La última escena
-// no tiene salida (no hay nada después).
+// SceneShell — envuelve el contenido de cada escena. Hace dos cosas:
+//  1) ZONA SEGURA: sesga el contenido un poco hacia arriba (SAFE_UP) para que el texto clave
+//     no quede tapado por la UI de Reels/TikTok (botones a la derecha, caption/audio abajo).
+//  2) SALIDA: en los últimos frames lo eleva, achica y desvanece (sincronizado con el crossfade),
+//     así "se va con gracia" en vez de cortar seco. La última escena no tiene salida.
 const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x)
+const SAFE_UP = 40
 const SceneShell = ({ durationInFrames, exit, children }) => {
   const frame = useCurrentFrame()
   const EXIT = 18
@@ -54,7 +56,7 @@ const SceneShell = ({ durationInFrames, exit, children }) => {
   const e = p * p * (3 - 2 * p) // smoothstep: acelera la salida suave
   return (
     <div style={{ position: 'absolute', inset: 0, transformOrigin: '50% 48%',
-      transform: `translateY(${-30 * e}px) scale(${1 - 0.05 * e})`, opacity: 1 - 0.45 * e }}>
+      transform: `translateY(${-SAFE_UP - 30 * e}px) scale(${1 - 0.05 * e})`, opacity: 1 - 0.45 * e }}>
       {children}
     </div>
   )
