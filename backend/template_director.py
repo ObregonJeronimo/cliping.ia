@@ -149,6 +149,32 @@ def _pick_avoiding(options, recent=None, n=2, key=None):
     pool = [o for o in options if (o.get(key) if key else o) not in rec]
     return random.choice(pool or options)
 
+
+def _pick_smart(options, recent=None, net=None, n=2, key=None):
+    """Como _pick_avoiding (evita los recientes -> rotación) PERO además sesga por rating:
+    favorece los valores con rating neto positivo y evita los de rating negativo.
+    net = {valor: score acumulado de ratings}. Sin net, se comporta como _pick_avoiding."""
+    rec = set((recent or [])[:n])
+    net = net or {}
+    weights = []
+    for o in options:
+        val = o.get(key) if key else o
+        w = 0.06 if val in rec else 1.0          # recientes casi no salen (rotación)
+        s = net.get(val, 0)
+        if s > 0:
+            w *= (1 + min(s, 4) * 0.8)            # gustó -> más probable
+        elif s < 0:
+            w *= 0.2                              # no gustó -> mucho menos probable
+        weights.append(max(w, 0.0001))
+    total = sum(weights)
+    r = random.uniform(0, total)
+    acc = 0.0
+    for o, w in zip(options, weights):
+        acc += w
+        if r <= acc:
+            return o
+    return options[-1] if options else None
+
 # Cama musical por mood (Fase 3). Los archivos van en remotion/public/audio/music/<track>.mp3.
 # Se activa SOLO con la env CLIPING_AUDIO seteada (para no apuntar a archivos inexistentes y
 # romper el render). Cuando haya música cargada, prender CLIPING_AUDIO=1 y listo.
@@ -892,7 +918,7 @@ async def build_storyboard(url: str, desarrollo: str, proposito: str = "marketin
                            theme_override: str = "", tone: str = "",
                            length: str = "medio", seconds: int = 0, simple: bool = True,
                            recent_profile: dict = None, prefetched_site: dict = None,
-                           idioma: str = "") -> dict:
+                           idioma: str = "", rating_bias: dict = None) -> dict:
     """
     URL + desarrollo -> storyboard spec.
 
@@ -910,12 +936,13 @@ async def build_storyboard(url: str, desarrollo: str, proposito: str = "marketin
     rec_decors = rp.get("decors") or []
     rec_hooks = rp.get("hooks") or []
     rec_arcs = rp.get("arcs") or []
+    rb = rating_bias or {}
 
     lo, hi = LENGTH_SCENES.get(length, LENGTH_SCENES["medio"])
     n_scenes = SECONDS_SCENES.get(seconds) or random.randint(lo, hi)
 
     if simple:
-        angle = _pick_avoiding(CREATIVE_ANGLES, rec_angles)
+        angle = _pick_smart(CREATIVE_ANGLES, rec_angles, net=rb.get("angles"))
         mood = random.choice(MOODS)
         edit = pick_edit_style(rec_styles)
         temperature = 0.95
@@ -925,16 +952,16 @@ async def build_storyboard(url: str, desarrollo: str, proposito: str = "marketin
         edit = pick_edit_style(rec_styles)
         temperature = 0.6
 
-    # Dirección de ARTE rotada (cámara + entrada + atmósfera), evitando las recientes.
-    art_preset = _pick_avoiding(ART_PRESETS, rec_arts, key="name")
+    # Dirección de ARTE rotada (cámara + entrada + atmósfera), evitando las recientes + sesgo rating.
+    art_preset = _pick_smart(ART_PRESETS, rec_arts, net=rb.get("arts"), key="name")
     art_name = art_preset.get("name", "")
     # Decoración de primer plano rotada por separado (más combinaciones, coherente por video).
-    decor = _pick_avoiding(DECORS, rec_decors)
+    decor = _pick_smart(DECORS, rec_decors, net=rb.get("decors"))
     # HOOK rotado (swipe file): patrón de apertura probado, distinto del/los recientes.
-    hook = _pick_avoiding(HOOK_ARCHETYPES, rec_hooks, key="name")
+    hook = _pick_smart(HOOK_ARCHETYPES, rec_hooks, net=rb.get("hooks"), key="name")
     # ARCO narrativo rotado entre los que encajan con el propósito (estructura + variedad).
     _arc_pool = PURPOSE_ARCS.get((proposito or "").lower(), PURPOSE_ARCS["marketing"])
-    arc_name = _pick_avoiding(_arc_pool, rec_arcs)
+    arc_name = _pick_smart(_arc_pool, rec_arcs, net=rb.get("arcs"))
     arc_guide = NARRATIVE_ARCS.get(arc_name, "")
 
     brief = (

@@ -117,6 +117,32 @@ import template_director
 import re as _re
 
 
+def _get_rating_bias(db, user_id: str) -> dict:
+    """Agrega los ratings 👍/👎 del usuario por dimensión de receta -> el director sesga la rotación
+    hacia lo que puntuó bien y evita lo que puntuó mal. Best-effort; sin ratings -> dict vacío
+    (no cambia nada). Es el cierre del loop de feedback."""
+    out = {"angles": {}, "arts": {}, "decors": {}, "hooks": {}, "arcs": {}, "styles": {}, "themes": {}}
+    if not (db and user_id):
+        return out
+    try:
+        snap = db.collection("users").document(user_id).collection("videos").get()
+        DIMS = [("angle", "angles"), ("artName", "arts"), ("decorName", "decors"),
+                ("hookName", "hooks"), ("arcName", "arcs"), ("editStyle", "styles"), ("theme", "themes")]
+        for d in snap:
+            v = d.to_dict() or {}
+            r = v.get("rating", 0)
+            if not r:
+                continue
+            rec = v.get("recipe") or {}
+            for kspec, kdim in DIMS:
+                val = rec.get(kspec) or v.get(kspec)
+                if val:
+                    out[kdim][val] = out[kdim].get(val, 0) + r
+    except Exception as e:
+        print(f"[rating] bias falló: {e}")
+    return out
+
+
 def _brand_key(url: str) -> str:
     """Clave estable por marca/dominio para el historial de estilos."""
     host = _re.sub(r"^https?://(www\.)?", "", (url or "").strip().lower()).split("/")[0]
@@ -392,9 +418,11 @@ async def _render_video_job(job_id: str, req: VideoGenRequest):
             print("[video] usando spec pre-elegido (variante)")
         else:
             _recent = _get_recent_profile(_db, req.userId, _bkey)
+            _bias = _get_rating_bias(_db, req.userId)
             spec = await template_director.build_storyboard(
                 req.url, req.desarrollo, req.proposito, seconds=req.seconds,
-                recent_profile=_recent, prefetched_site=_site.get("content"), idioma=req.idioma)
+                recent_profile=_recent, prefetched_site=_site.get("content"),
+                idioma=req.idioma, rating_bias=_bias)
             _push_recent_profile(_db, req.userId, _bkey, spec)
         if req.theme in template_director.VALID_THEMES:
             spec["theme"] = req.theme
