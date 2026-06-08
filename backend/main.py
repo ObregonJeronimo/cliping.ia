@@ -256,6 +256,7 @@ class VideoGenRequest(BaseModel):
     theme: str = ""        # override opcional del theme
     seconds: int = 0       # duración exacta elegida (10/15/20); 0 = automática
     userId: str = ""
+    idioma: str = ""       # idioma del video elegido por el usuario ('' = auto/según la página)
     spec: dict | None = None  # variante ya elegida: si viene, se renderiza sin pasar por el director
 
 
@@ -281,6 +282,7 @@ class VariantsRequest(BaseModel):
     theme: str = ""
     seconds: int = 0
     userId: str = ""
+    idioma: str = ""
     count: int = 3
 
 
@@ -310,7 +312,7 @@ async def video_variants(req: VariantsRequest):
         try:
             spec = await template_director.build_storyboard(
                 req.url, req.desarrollo, req.proposito, seconds=req.seconds,
-                recent_profile=rolling, prefetched_site=content)
+                recent_profile=rolling, prefetched_site=content, idioma=req.idioma)
             if req.theme in template_director.VALID_THEMES:
                 spec["theme"] = req.theme
             for ks, kr in [("editStyle", "styles"), ("angle", "angles"), ("theme", "themes"),
@@ -392,7 +394,7 @@ async def _render_video_job(job_id: str, req: VideoGenRequest):
             _recent = _get_recent_profile(_db, req.userId, _bkey)
             spec = await template_director.build_storyboard(
                 req.url, req.desarrollo, req.proposito, seconds=req.seconds,
-                recent_profile=_recent, prefetched_site=_site.get("content"))
+                recent_profile=_recent, prefetched_site=_site.get("content"), idioma=req.idioma)
             _push_recent_profile(_db, req.userId, _bkey, spec)
         if req.theme in template_director.VALID_THEMES:
             spec["theme"] = req.theme

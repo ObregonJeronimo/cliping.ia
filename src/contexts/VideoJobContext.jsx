@@ -24,6 +24,8 @@ export function VideoJobProvider({ children }) {
   const [proposito, setProposito] = useState('marketing')
   const [tono, setTono] = useState('')
   const [seconds, setSeconds] = useState(15)
+  const [idioma, setIdioma] = useState('')      // idioma del video elegido por el usuario ('' = auto/según la página)
+  const [submitted, setSubmitted] = useState(null)  // snapshot de lo usado en el último video
 
   // Estado de generación (persiste entre páginas)
   const [generating, setGenerating] = useState(false)
@@ -62,9 +64,12 @@ export function VideoJobProvider({ children }) {
   async function generate() {
     if (!(url.trim() || desarrollo.trim()) || generating) return
     setGenerating(true); reset(); setStatus({ step: 'queued', progress: 0 })
+    // Snapshot de lo que se usó para ESTE video: el resultado muestra esto, no el form en vivo
+    // (si el usuario edita la URL para el próximo, el "Video listo" no debe cambiar).
+    setSubmitted({ url: url.trim(), seconds, mode, idioma })
     const body = mode === 'simple'
-      ? { url: url.trim(), desarrollo: desarrollo.trim(), proposito: 'marketing', seconds, userId: user?.uid || '' }
-      : { url: url.trim(), desarrollo: desarrollo.trim(), proposito, theme, tone: tono, seconds, userId: user?.uid || '' }
+      ? { url: url.trim(), desarrollo: desarrollo.trim(), proposito: 'marketing', seconds, idioma, userId: user?.uid || '' }
+      : { url: url.trim(), desarrollo: desarrollo.trim(), proposito, theme, tone: tono, seconds, idioma, userId: user?.uid || '' }
     try {
       const r = await fetch(`${API_URL}/api/video/generate`, { method: 'POST', headers: HEADERS, body: JSON.stringify(body) })
       const d = await r.json()
@@ -76,6 +81,7 @@ export function VideoJobProvider({ children }) {
   const value = {
     mode, setMode, url, setUrl, desarrollo, setDesarrollo, theme, setTheme,
     proposito, setProposito, tono, setTono, seconds, setSeconds,
+    idioma, setIdioma, submitted,
     generating, status, spec, videoUrl, error, generate, reset,
   }
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>

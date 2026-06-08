@@ -23,6 +23,13 @@ const PROPOSITOS = [
 ]
 const TONOS = ['enérgico y rápido', 'calmo y premium', 'confiable y claro', 'moderno y audaz']
 const SEGUNDOS = [10, 15, 20]
+// Idioma del video (independiente del idioma de la página). '' = automático (según el sitio).
+const IDIOMAS = [
+  { key: '', label: 'Auto' },
+  { key: 'es', label: 'Español' },
+  { key: 'en', label: 'Inglés' },
+  { key: 'pt', label: 'Português' },
+]
 const STEP_LABELS = {
   queued: 'En cola...', script: 'Escribiendo el guion...', capture: 'Capturando el sitio...',
   build: 'Armando la composición...', render: 'Renderizando (esto tarda)...',
@@ -33,6 +40,7 @@ export default function VideoStudio() {
   const {
     mode, setMode, url, setUrl, desarrollo, setDesarrollo, theme, setTheme,
     proposito, setProposito, tono, setTono, seconds, setSeconds,
+    idioma, setIdioma, submitted,
     generating, status, spec, videoUrl, error, generate, reset,
   } = useVideoJob()
   const videoRef = useRef(null)
@@ -61,6 +69,16 @@ export default function VideoStudio() {
           <textarea className={styles.textarea} rows={3}
             placeholder={mode === 'simple' ? 'Dejalo vacío y la IA decide todo, o tirá una idea...' : 'Ángulo, qué destacar, tono...'}
             value={desarrollo} onChange={e => setDesarrollo(e.target.value)} disabled={generating} />
+        </div>
+
+        <div className={styles.cineSection}>
+          <div className={styles.cineSectionLabel}>Idioma del video</div>
+          <div className={styles.propGrid}>
+            {IDIOMAS.map(l => (
+              <button key={l.key} className={`${styles.propBtn} ${idioma === l.key ? styles.propBtnActive : ''}`}
+                onClick={() => setIdioma(l.key)} disabled={generating}>{l.label}</button>
+            ))}
+          </div>
         </div>
 
         <div className={styles.cineSection}>
@@ -114,7 +132,7 @@ export default function VideoStudio() {
               <div className={styles.previewName}>
                 {videoUrl ? 'Video listo' : error ? 'No se pudo generar' : 'Generando tu video...'}
               </div>
-              <div className={styles.previewMeta}>{url || 'sin URL'} · {seconds}s · {mode}</div>
+              <div className={styles.previewMeta}>{(submitted?.url) || 'sin URL'} · {(submitted?.seconds ?? seconds)}s · {submitted?.mode || mode}</div>
             </div>
 
             {generating && (

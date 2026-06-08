@@ -891,7 +891,8 @@ def _parse_spec(raw: str):
 async def build_storyboard(url: str, desarrollo: str, proposito: str = "marketing",
                            theme_override: str = "", tone: str = "",
                            length: str = "medio", seconds: int = 0, simple: bool = True,
-                           recent_profile: dict = None, prefetched_site: dict = None) -> dict:
+                           recent_profile: dict = None, prefetched_site: dict = None,
+                           idioma: str = "") -> dict:
     """
     URL + desarrollo -> storyboard spec.
 
@@ -952,8 +953,14 @@ async def build_storyboard(url: str, desarrollo: str, proposito: str = "marketin
     extra = f'\nLo que pidió el usuario: "{desarrollo.strip()}"' if desarrollo.strip() else ""
     contexto = url_data.get("context") or f"Marca: {url_data.get('siteName') or 'desconocido'}"
     _lang = (url_data.get("lang") or "").lower()
-    lang_hint = (f"\nIDIOMA: el sitio está en '{_lang}' — escribí TODO el copy en ese idioma."
-                 if _lang and not _lang.startswith("es") else "")
+    _LANG_NAME = {"es": "español rioplatense (voseo)", "en": "inglés", "pt": "portugués"}
+    if idioma:
+        # El usuario eligió un idioma explícito -> manda sobre el idioma del sitio.
+        lang_hint = (f"\nIDIOMA OBLIGATORIO: escribí TODO el copy en {_LANG_NAME.get(idioma, idioma)}, "
+                     f"sin importar el idioma del sitio.")
+    else:
+        lang_hint = (f"\nIDIOMA: el sitio está en '{_lang}' — escribí TODO el copy en ese idioma."
+                     if _lang and not _lang.startswith("es") else "")
 
     # Paso 1 (entender la marca): brief estratégico. Paso 2 (guionar): el storyboard.
     brief_txt = await _build_brief(url_data, desarrollo, proposito)
