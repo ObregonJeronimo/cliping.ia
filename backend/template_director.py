@@ -86,6 +86,14 @@ def pick_edit_style(recent=None):
         pool = no_list or pool
     return random.choice(pool or EDIT_STYLES)
 
+
+def _pick_avoiding(options, recent=None, n=2, key=None):
+    """Elige al azar EVITANDO los 'n' más recientes (para rotar varias variables a la vez y
+    que dos videos de la misma marca no se sientan iguales). key = atributo si son dicts."""
+    rec = set((recent or [])[:n])
+    pool = [o for o in options if (o.get(key) if key else o) not in rec]
+    return random.choice(pool or options)
+
 # Cama musical por mood (Fase 3). Los archivos van en remotion/public/audio/music/<track>.mp3.
 # Se activa SOLO con la env CLIPING_AUDIO seteada (para no apuntar a archivos inexistentes y
 # romper el render). Cuando haya música cargada, prender CLIPING_AUDIO=1 y listo.
@@ -750,30 +758,39 @@ def _parse_spec(raw: str):
 async def build_storyboard(url: str, desarrollo: str, proposito: str = "marketing",
                            theme_override: str = "", tone: str = "",
                            length: str = "medio", seconds: int = 0, simple: bool = True,
-                           recent_styles: list = None) -> dict:
+                           recent_profile: dict = None) -> dict:
     """
     URL + desarrollo -> storyboard spec.
 
-    Modo simple (simple=True): el director elige ángulo/mood al azar y genera con
-    temperatura alta -> variedad entre corridas.
-    Modo avanzado (simple=False): respeta los parámetros del usuario (theme, tono,
-    duración) como restricciones, con menos azar.
+    Modo simple: el director elige ángulo/mood/paleta/arte ROTANDO respecto de los videos
+    recientes de la misma marca, así dos videos del mismo rubro NO se sienten iguales.
+    Modo avanzado: respeta los parámetros del usuario como restricciones, con menos azar.
     """
     url_data = await analyze_site_rich(url)
+
+    rp = recent_profile or {}
+    rec_styles = rp.get("styles") or []
+    rec_angles = rp.get("angles") or []
+    rec_themes = rp.get("themes") or []
+    rec_arts = rp.get("arts") or []
 
     lo, hi = LENGTH_SCENES.get(length, LENGTH_SCENES["medio"])
     n_scenes = SECONDS_SCENES.get(seconds) or random.randint(lo, hi)
 
     if simple:
-        angle = random.choice(CREATIVE_ANGLES)
+        angle = _pick_avoiding(CREATIVE_ANGLES, rec_angles)
         mood = random.choice(MOODS)
-        edit = pick_edit_style(recent_styles)
+        edit = pick_edit_style(rec_styles)
         temperature = 0.95
     else:
         angle = "según las indicaciones del usuario"
         mood = tone or random.choice(MOODS)
-        edit = pick_edit_style(recent_styles)
+        edit = pick_edit_style(rec_styles)
         temperature = 0.6
+
+    # Dirección de ARTE rotada (cámara + entrada + atmósfera), evitando las recientes.
+    art_preset = _pick_avoiding(ART_PRESETS, rec_arts, key="name")
+    art_name = art_preset.get("name", "")
 
     brief = (
         f"Dirección creativa para ESTE video (hacelo único, no formulaico):\n"
@@ -785,6 +802,8 @@ async def build_storyboard(url: str, desarrollo: str, proposito: str = "marketin
     )
     if theme_override in VALID_THEMES:
         brief += f"\n- Theme OBLIGATORIO: {theme_override}"
+    elif rec_themes:
+        brief += f"\n- Paletas usadas hace poco para esta marca (elegí una DISTINTA): {', '.join(rec_themes[:2])}"
 
     extra = f'\nLo que pidió el usuario: "{desarrollo.strip()}"' if desarrollo.strip() else ""
     contexto = url_data.get("context") or f"Marca: {url_data.get('siteName') or 'desconocido'}"
@@ -812,6 +831,13 @@ filosa, dato real, o pregunta que pegue). Si la apertura es débil, el resto no 
 Generá el storyboard JSON. El copy tiene que sonar a ESTA marca puntual (usá el brief y lo que
 sabés del sitio), reflejar el ángulo y el mood, y respetar las reglas de líneas cortas."""
 
+    def _tag(out):
+        """Anota las variables elegidas para que main.py actualice la memoria de rotación."""
+        out["editStyle"] = edit[0]
+        out["angle"] = angle
+        out["artName"] = art_name
+        return out
+
     try:
         resp = await _client.messages.create(
             model=DIRECTOR_MODEL, max_tokens=2200, temperature=temperature,
@@ -820,7 +846,6 @@ sabés del sitio), reflejar el ángulo y el mood, y respetar las reglas de líne
         )
         spec = _parse_spec(resp.content[0].text.strip())
         if spec is None:
-            # Reintento: pedir SOLO JSON válido (a veces se va en preámbulo o se corta).
             resp2 = await _client.messages.create(
                 model=DIRECTOR_MODEL, max_tokens=2200, temperature=min(temperature, 0.5),
                 system=DIRECTOR_SYSTEM,
@@ -829,21 +854,26 @@ sabés del sitio), reflejar el ángulo y el mood, y respetar las reglas de líne
             )
             spec = _parse_spec(resp2.content[0].text.strip())
         spec = _normalize(spec, url_data, desarrollo, proposito)
+        # Paleta: override gana; si no, y el director repitió una reciente, la cambiamos.
         if theme_override in VALID_THEMES:
             spec["theme"] = theme_override
+        elif spec.get("theme") in set(rec_themes[:2]):
+            spec["theme"] = _pick_avoiding(list(VALID_THEMES), rec_themes, n=2)
+        # Arte rotado (si el director no impuso uno).
+        spec.setdefault("art", {k: v for k, v in art_preset.items() if k != "name"})
         spec = await _resolve_icons(spec)
         out = _attach_audio(_finalize(spec, url_data), mood)
         if seconds in SECONDS_SCENES:
             out = _fit_duration(out, seconds * 30)
-        out["editStyle"] = edit[0]
-        return out
+        return _tag(out)
     except Exception as e:
         print(f"[director] fallback ({e})")
-        out = _attach_audio(_finalize(_fallback_spec(url_data, desarrollo, proposito), url_data), mood)
+        fb = _fallback_spec(url_data, desarrollo, proposito)
+        fb.setdefault("art", {k: v for k, v in art_preset.items() if k != "name"})
+        out = _attach_audio(_finalize(fb, url_data), mood)
         if seconds in SECONDS_SCENES:
             out = _fit_duration(out, seconds * 30)
-        out["editStyle"] = edit[0]
-        return out
+        return _tag(out)
 
 
 def compute_total(scenes: list) -> int:

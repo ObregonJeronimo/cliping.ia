@@ -124,29 +124,44 @@ def _brand_key(url: str) -> str:
     return key or "sin_url"
 
 
-def _get_recent_styles(db, user_id: str, brand_key: str) -> list:
-    """Últimos estilos de edición usados por este usuario para esta marca (reciente primero)."""
+def _get_recent_profile(db, user_id: str, brand_key: str) -> dict:
+    """Perfil de rotación reciente de esta marca/usuario: estilos, ángulos, paletas y artes
+    usados (reciente primero). Sirve para que dos videos de la misma marca NO se repitan."""
+    empty = {"styles": [], "angles": [], "themes": [], "arts": []}
     if not (db and user_id):
-        return []
+        return empty
     try:
         doc = db.collection("users").document(user_id).collection("style_history").document(brand_key).get()
         if doc.exists:
-            return (doc.to_dict() or {}).get("recent", []) or []
+            d = doc.to_dict() or {}
+            return {
+                "styles": d.get("recent", []) or [],          # compat con docs viejos
+                "angles": d.get("recent_angles", []) or [],
+                "themes": d.get("recent_themes", []) or [],
+                "arts":   d.get("recent_arts", []) or [],
+            }
     except Exception as e:
         print(f"[styles] leer historial falló: {e}")
-    return []
+    return empty
 
 
-def _push_recent_style(db, user_id: str, brand_key: str, style: str):
-    """Agrega el estilo recién usado al historial (cap 3, reciente primero)."""
-    if not (db and user_id and style):
+def _push_recent_profile(db, user_id: str, brand_key: str, spec: dict):
+    """Agrega lo recién usado a cada eje del historial (cap 4, reciente primero)."""
+    if not (db and user_id and isinstance(spec, dict)):
         return
     try:
-        prev = _get_recent_styles(db, user_id, brand_key)
-        recent = [style] + [s for s in prev if s != style]
-        db.collection("users").document(user_id).collection("style_history").document(brand_key).set(
-            {"recent": recent[:3], "brand_key": brand_key}
-        )
+        prev = _get_recent_profile(db, user_id, brand_key)
+
+        def _bump(lst, val):
+            return ([val] + [x for x in lst if x != val])[:4] if val else lst[:4]
+
+        db.collection("users").document(user_id).collection("style_history").document(brand_key).set({
+            "brand_key": brand_key,
+            "recent":         _bump(prev["styles"], spec.get("editStyle", "")),
+            "recent_angles":  _bump(prev["angles"], spec.get("angle", "")),
+            "recent_themes":  _bump(prev["themes"], spec.get("theme", "")),
+            "recent_arts":    _bump(prev["arts"],   spec.get("artName", "")),
+        })
     except Exception as e:
         print(f"[styles] guardar historial falló: {e}")
 
@@ -207,13 +222,14 @@ async def _render_video_job(job_id: str, req: VideoGenRequest):
     try:
         jobs[job_id].update({"status": "processing", "step": "script", "progress": 18})
         # 1. Director: URL + desarrollo -> storyboard.
-        # Rotación de estilo por usuario+marca: no repetir los últimos, ni dos listas seguidas.
+        # Rotación MULTIDIMENSIONAL por usuario+marca: no repetir ángulo/estilo/paleta/arte
+        # recientes -> dos videos de la misma marca (mismo rubro) NO se sienten iguales.
         _db = get_firestore()
         _bkey = _brand_key(req.url)
-        _recent = _get_recent_styles(_db, req.userId, _bkey)
+        _recent = _get_recent_profile(_db, req.userId, _bkey)
         spec = await template_director.build_storyboard(
-            req.url, req.desarrollo, req.proposito, seconds=req.seconds, recent_styles=_recent)
-        _push_recent_style(_db, req.userId, _bkey, spec.get("editStyle", ""))
+            req.url, req.desarrollo, req.proposito, seconds=req.seconds, recent_profile=_recent)
+        _push_recent_profile(_db, req.userId, _bkey, spec)
         if req.theme in template_director.VALID_THEMES:
             spec["theme"] = req.theme
         jobs[job_id]["spec"] = spec
