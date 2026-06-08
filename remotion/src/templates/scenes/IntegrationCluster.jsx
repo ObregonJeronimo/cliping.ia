@@ -19,12 +19,21 @@ const SLOTS = [
   { x: 540, y: 1430 },
 ]
 
-export const IntegrationCluster = ({ theme, title = [], colors = null, variant = 'hub', durationInFrames: durProp }) => {
+export const IntegrationCluster = ({ theme, title = [], colors = null, variant = '', hubMark = '', durationInFrames: durProp }) => {
   const frame = useCurrentFrame()
   const vc = useVideoConfig()
   const fps = vc.fps
   const dur = durProp || vc.durationInFrames
   const m = theme.motion
+  // Variedad estable por video (mismo título -> mismo look; títulos distintos -> looks distintos):
+  // si el director no fijó variant/hubMark, los derivamos de un hash del título.
+  const _txt = (title || []).map(s => s && s.t ? s.t : '').join('')
+  let _h = 0
+  for (let i = 0; i < _txt.length; i++) _h = (_h * 31 + _txt.charCodeAt(i)) >>> 0
+  const _variants = ['hub', 'orbit', 'arc']
+  const _marks = ['spark', 'rings', 'orb', 'plus', 'hex']
+  variant = variant || _variants[_h % _variants.length]
+  hubMark = hubMark || _marks[(_h >> 3) % _marks.length]
   const HUB = { x: 540, y: 1140 }
   const cols = (colors && colors.length) ? colors : accentPalette(theme, SLOTS.length)
 
@@ -99,11 +108,36 @@ export const IntegrationCluster = ({ theme, title = [], colors = null, variant =
 
         <div style={{ position: 'absolute', left: HUB.x, top: HUB.y,
           transform: `translate(-50%,-50%) scale(${hub})`,
-          width: 260, height: 260, borderRadius: 72, background: theme.accentGrad,
+          width: 260, height: 260, borderRadius: hubMark === 'orb' ? '50%' : 72, background: theme.accentGrad,
           boxShadow: `0 0 120px ${theme.glow}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <svg width={112} height={112} viewBox="-1 -1 2 2" style={{ transform: `rotate(${hubRot}deg)` }}>
-            <path d="M0,-1 C0.12,-0.12 0.12,-0.12 1,0 C0.12,0.12 0.12,0.12 0,1 C-0.12,0.12 -0.12,0.12 -1,0 C-0.12,-0.12 -0.12,-0.12 0,-1 Z" fill="#fff" />
-          </svg>
+          {hubMark === 'spark' && (
+            <svg width={112} height={112} viewBox="-1 -1 2 2" style={{ transform: `rotate(${hubRot}deg)` }}>
+              <path d="M0,-1 C0.12,-0.12 0.12,-0.12 1,0 C0.12,0.12 0.12,0.12 0,1 C-0.12,0.12 -0.12,0.12 -1,0 C-0.12,-0.12 -0.12,-0.12 0,-1 Z" fill="#fff" />
+            </svg>
+          )}
+          {hubMark === 'plus' && (
+            <div style={{ width: 120, height: 120, position: 'relative', transform: `rotate(${hubRot * 0.3}deg)` }}>
+              <div style={{ position: 'absolute', left: '50%', top: 0, width: 26, height: '100%', transform: 'translateX(-50%)', background: '#fff', borderRadius: 13 }} />
+              <div style={{ position: 'absolute', top: '50%', left: 0, height: 26, width: '100%', transform: 'translateY(-50%)', background: '#fff', borderRadius: 13 }} />
+            </div>
+          )}
+          {hubMark === 'rings' && (
+            <svg width={140} height={140} viewBox="0 0 140 140">
+              {[58, 40, 22].map((r, i) => (
+                <circle key={i} cx="70" cy="70" r={r} fill="none" stroke="#fff" strokeWidth={i === 2 ? 14 : 8}
+                  opacity={0.55 + i * 0.2} />
+              ))}
+            </svg>
+          )}
+          {hubMark === 'orb' && (
+            <div style={{ width: 150, height: 150, borderRadius: '50%', background: 'rgba(255,255,255,0.92)',
+              boxShadow: 'inset 0 0 40px rgba(0,0,0,0.18)' }} />
+          )}
+          {hubMark === 'hex' && (
+            <svg width={130} height={130} viewBox="0 0 100 100" style={{ transform: `rotate(${hubRot * 0.4}deg)` }}>
+              <polygon points="50,6 91,28 91,72 50,94 9,72 9,28" fill="#fff" />
+            </svg>
+          )}
         </div>
       </div>
     </AbsoluteFill>
