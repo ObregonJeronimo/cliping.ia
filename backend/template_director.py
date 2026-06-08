@@ -49,8 +49,7 @@ MOODS = ["enérgico y rápido", "calmo y premium", "confiable y claro", "moderno
 # estructura lo que ART_PRESETS es al movimiento.
 EDIT_STYLES = [
     ("punchy",    "ritmo rápido: 3-4 frases KineticStatement cortas y filosas; SIN listas (ni FeatureList ni Comparison); cerrá fuerte."),
-    ("historia",  "arco problema -> solución -> CTA contado con KineticStatement; UN beat vistoso (MorphScene o IconTransform) para el giro; SIN listas."),
-    ("morph",     "centrá un MorphScene de transformación que cuente la METÁFORA de la marca, con frases KineticStatement alrededor; SIN listas."),
+    ("historia",  "arco problema -> solución -> CTA contado con KineticStatement; UN IconTransform para el giro; SIN listas."),
     ("ilustrado", "IllustrationScene como hero visual + una frase potente; estética limpia, poco texto; SIN listas ni Mockup."),
     ("dato",      "girá alrededor de UN StatReveal con un número REAL del sitio; si no hay número, contalo con frases; SIN listas."),
     ("showcase",  "el producto es protagonista: MockupShowcase al frente + frases; usar SOLO si hay web/app para mostrar; SIN listas."),
@@ -209,28 +208,6 @@ SCENE_CATALOG = """ESCENAS DISPONIBLES (type + props):
   "documents"->"lightning", "lock"->"check"; gym: "couch"->"dumbbell"; finanzas:
   "piggy bank"->"chart"; e-commerce: "shopping cart"->"money". Elegí los íconos que de
   verdad representen la idea de la página.
-- "MorphScene": transformación FLUIDA entre formas vectoriales (morph real, gratis). Una
-  forma se convierte en la siguiente -> sirve para contar una METÁFORA de la marca.
-  props: shapes = array de 2 o 3 KEYS (preferí 2-3, NO 4) de esta lista EXACTA:
-  ["leaf","apple","flame","droplet","heart","cup","bottle","shield","check","bag","box","house","pin","bell","mail","chat","bolt","bulb","cloud","plane","book","cap","pencil","eye","gem","crown","rocket","star","play","arrow","circle","square","triangle","plus"].
-  (Si una key no está en la lista, NO la inventes.)
-  REGLA DE ORO: la cadena tiene que CONTAR algo coherente (concepto -> resultado), NO formas
-  al azar. Cada forma debe significar algo para ESTA marca. Elegí las formas MÁS ESPECÍFICAS
-  del rubro (ej dietética: "leaf"/"apple"; cafetería: "cup"; envío: "box"; finanzas: "shield").
-  NO caigas por defecto en "heart" salvo que el mensaje central sea cariño/salud/bienestar.
-  Antes de elegir, preguntate: ¿qué dos objetos representan EXACTAMENTE lo que hace esta marca?
-  PROHIBIDO encadenar formas abstractas porque sí (ej "square"->"triangle"->"heart" NO significa nada).
-  Ejemplos BIEN por rubro: dietética/saludable: "leaf"->"heart", "apple"->"heart";
-  cafetería/bebidas: "bottle"->"cup", "leaf"->"cup"; e-commerce con envío: "bag"->"house",
-  "box"->"house"; seguridad/confianza: "shield"->"check"; rapidez/energía: "bolt"->"check";
-  idea/software: "bulb"->"rocket", "bulb"->"check"; educación: "book"->"cap", "pencil"->"bulb";
-  cercanía local: "pin"->"heart"; mensajería/comunidad: "chat"->"heart"; premium/calidad: "gem"->"crown".
-  Si NINGUNA cadena cuenta algo real de la marca, NO uses MorphScene.
-  COMPATIBILIDAD (para que el morph salga fluido): encadená formas de SILUETA/complejidad
-  parecida. Bien: orgánicas entre sí (leaf↔heart↔droplet↔apple↔flame), o geométricas entre sí
-  (square↔box↔house↔gem). Evitá saltos extremos (ej circle↔star, o square↔heart) porque el
-  morph se ve más brusco. Dos formas "primas" se transforman hermoso. opcional title = segmentos { t, accent } y subtitle (string).
-  Es un beat vistoso: como MUCHO una vez por video.
 - "StatReveal": un NÚMERO que cuenta de 0 hasta el valor (el beat de "dato que impacta").
   props: value = número (ej 95, 4.9, 12000); opcional prefix (ej "$", "+"); suffix (ej
   "%", "x", "k", "/5"); caption = línea chica ARRIBA (string); label = array de segmentos
@@ -321,16 +298,13 @@ REGLAS:
   · "Testimonial" SOLO si hay reseñas/testimonios reales en el sitio.
   · "SocialProof" si hay señales de adopción/confianza (clientes, comunidad).
   · "IllustrationScene" como hero visual cuando no haya screenshot ni datos para Stat.
-  · "MorphScene" si una METÁFORA DE FORMAS cuenta la idea de la marca (ej dietética:
-    "droplet"->"heart", o "leaf"/"plus"->"heart"; e-commerce: "bag"->"box"->"house").
-    Es un beat de transformación fluido y vistoso; usalo como mucho UNA vez y solo si encaja.
   Elegí las que de verdad sumen a la historia; no repitas el mismo combo siempre.
 - ANTI-FÓRMULA (CRÍTICO, leé esto): el error más común es armar SIEMPRE el mismo esqueleto
   (Hook -> Comparison -> FeatureList -> CtaOutro). NO lo hagas. "Comparison" y "FeatureList"
   son OPCIONALES, no obligatorias: NO las uses a las dos en el mismo video por defecto, y
   MUCHOS videos no deberían llevar NINGUNA de las dos. Pensá qué combinación cuenta MEJOR a
-  ESTA marca puntual y animate a estructuras distintas (ej: KineticStatement con reveal:"type"
-  -> MorphScene -> CtaOutro; o StatReveal -> IllustrationScene -> KineticStatement -> CtaOutro).
+  ESTA marca puntual y animate a estructuras distintas (ej: KineticStatement -> IllustrationScene
+  -> KineticStatement -> CtaOutro; o StatReveal -> IconTransform -> KineticStatement -> CtaOutro).
   Si dos marcas distintas terminan con el mismo esqueleto, fallaste.
 - HONESTIDAD (CRÍTICO): StatReveal, Testimonial y SocialProof muestran "hechos". El número
   de un StatReveal y cualquier cifra/cita/nombre TIENE que aparecer textualmente en el
@@ -412,8 +386,6 @@ def _min_duration(s: dict) -> int:
         n = len(s.get("items") or [])
     elif t == "KineticStatement":
         n = len(s.get("lines") or [])
-    elif t == "MorphScene":
-        n = len(s.get("shapes") or [])
     elif t == "Testimonial":
         n = 4  # una cita es bastante texto para leer
     elif t in ("SocialProof", "IntegrationCluster", "IllustrationScene"):
@@ -463,7 +435,7 @@ def _normalize(spec: dict, url_data: dict, desarrollo: str, proposito: str) -> d
     if not isinstance(scenes, list) or len(scenes) < 2:
         return fb
     valid_types = {"KineticStatement", "IntegrationCluster", "MockupShowcase", "CtaOutro", "IconTransform",
-                   "StatReveal", "FeatureList", "Comparison", "Testimonial", "SocialProof", "LogoReveal", "IllustrationScene", "MorphScene"}
+                   "StatReveal", "FeatureList", "Comparison", "Testimonial", "SocialProof", "LogoReveal", "IllustrationScene"}
     # Antídoto contra info inventada: si el dato no está en el sitio, no se muestra como hecho.
     hay = " ".join([
         url_data.get("context", ""), url_data.get("description", ""),
