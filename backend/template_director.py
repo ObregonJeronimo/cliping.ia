@@ -331,7 +331,11 @@ SCENE_CATALOG = """ESCENAS DISPONIBLES (type + props):
   "idea" (idea/innovación), "launch" (lanzamiento/startup). ELEGÍ el name que MATCHEE el rubro:
   ej dietética/salud -> "organic" o "care" (NUNCA "launch"/cohete); seguridad/servicios ->
   "quality"; software/startup -> "idea"/"launch". Si ningún name encaja, mejor NO uses esta escena.
-- "CtaOutro": cierre. props: brand = nombre de marca, cta = llamado a la acción corto.
+- "CtaOutro": cierre. props: brand = nombre de marca, cta = llamado a la acción corto y con
+  ACCIÓN concreta (ej: "Pedí en yerco.ar", "Agendá tu demo", "Escribinos por WhatsApp").
+  Prop OPCIONAL "urgency": una línea corta de urgencia/escasez SOLO si el propósito es
+  conversión/ventas/oferta (ej: "Solo esta semana", "Cupos limitados", "Oferta por tiempo limitado").
+  NO inventes urgencia falsa: usala solo si el contexto la respalda o el propósito lo amerita.
   (El logo real del sitio y la decoración del cierre se inyectan solos; NO los pongas.)
 - "ProcessSteps": flujo de pasos 1->2->3 ("cómo funciona" / el proceso, secuencial — NO es una
   lista de features). props: opcional title = segmentos { t, accent }; steps = array de 3-4

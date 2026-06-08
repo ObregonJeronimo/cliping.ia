@@ -7,7 +7,7 @@ import { EASE, SPRING, prog, spr, enter, entrance, floatY, breathe } from '../mo
  * Props: theme, brand, cta.
  */
 
-export const CtaOutro = ({ theme, brand = '', cta = '', logo = '', mark = 'star' }) => {
+export const CtaOutro = ({ theme, brand = '', cta = '', logo = '', mark = 'star', urgency = '' }) => {
   const frame = useCurrentFrame()
   const vc = useVideoConfig()
   const fps = vc.fps
@@ -97,10 +97,22 @@ export const CtaOutro = ({ theme, brand = '', cta = '', logo = '', mark = 'star'
       <div style={{ marginTop: 36, width: 280 * barW, height: 10, borderRadius: 6, background: theme.accentGrad }} />
 
       {cta && (
-        <div style={{ marginTop: 70, transform: `scale(${clamp(ctaS, 0, 1.2) * pulse})`, opacity: clamp(ctaS, 0, 1),
-          padding: '34px 70px', borderRadius: theme.radius * 1.6, background: theme.accentGrad,
-          color: '#fff', fontSize: 52, fontWeight: 600, boxShadow: `0 24px 70px ${theme.glow}` }}>
-          {cta}
+        <div style={{ marginTop: 56, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18 }}>
+          {urgency && (
+            <div style={{ opacity: clamp((frame - 26) / 12, 0, 1), transform: `scale(${pulse})`,
+              padding: '10px 24px', borderRadius: 99, border: `1.5px solid ${theme.accentTo}66`,
+              background: `${theme.accentTo}22`, color: theme.text, fontSize: 30, fontWeight: 700,
+              letterSpacing: '0.02em' }}>
+              {urgency}
+            </div>
+          )}
+          <div style={{ transform: `scale(${clamp(ctaS, 0, 1.2) * pulse})`, opacity: clamp(ctaS, 0, 1),
+            padding: '34px 64px', borderRadius: theme.radius * 1.6, background: theme.accentGrad,
+            color: '#fff', fontSize: 52, fontWeight: 600, boxShadow: `0 24px 70px ${theme.glow}`,
+            display: 'flex', alignItems: 'center', gap: 16 }}>
+            <span>{cta}</span>
+            <span style={{ transform: `translateX(${4 * Math.sin(frame / 6)}px)`, fontWeight: 800 }}>→</span>
+          </div>
         </div>
       )}
     </AbsoluteFill>

@@ -4,6 +4,7 @@ import { fade } from '@remotion/transitions/fade'
 import { CameraMotionBlur } from '@remotion/motion-blur'
 import { loadFont } from '@remotion/google-fonts/Inter'
 import { getTheme, applyAccent } from './theme'
+import { clamp } from './theme'
 import KineticStatement from './scenes/KineticStatement'
 import IntegrationCluster from './scenes/IntegrationCluster'
 import MockupShowcase from './scenes/MockupShowcase'
@@ -83,6 +84,25 @@ const cutFrames = (scenes) => {
   return cuts
 }
 
+// Handle de marca sutil y PERSISTENTE: identidad en cada frame (recordación de marca). Arriba,
+// dentro de la zona segura (lejos de la UI de Reels/TikTok). Se puede apagar con watermark:false.
+const BrandMark = ({ theme, brand }) => {
+  const frame = useCurrentFrame()
+  if (!brand) return null
+  const op = clamp((frame - 6) / 14, 0, 1) * 0.55
+  return (
+    <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'flex-start', pointerEvents: 'none' }}>
+      <div style={{ marginTop: 70, display: 'flex', alignItems: 'center', gap: 11, opacity: op,
+        maxWidth: 820, overflow: 'hidden' }}>
+        <div style={{ width: 13, height: 13, borderRadius: 99, backgroundImage: theme.accentGrad,
+          boxShadow: `0 0 14px ${theme.accentTo}aa`, flex: '0 0 auto' }} />
+        <span style={{ fontFamily: theme.font, fontWeight: 700, fontSize: 30, letterSpacing: '0.01em',
+          color: theme.text, whiteSpace: 'nowrap' }}>{brand}</span>
+      </div>
+    </AbsoluteFill>
+  )
+}
+
 export const VideoFromSpec = ({ spec }) => {
   const base = spec.accent ? applyAccent(getTheme(spec.theme), spec.accent) : getTheme(spec.theme)
   const art = { ...DEFAULT_ART, ...(spec.art || {}) }
@@ -129,6 +149,7 @@ export const VideoFromSpec = ({ spec }) => {
       </TransitionSeries>
       <Backdrop theme={theme} kind={art.motif} />
       {spec.finish !== false && <FinishLayer />}
+      {spec.watermark !== false && <BrandMark theme={theme} brand={spec.brand} />}
       <SoundLayer audio={audio} />
     </AbsoluteFill>
   )
