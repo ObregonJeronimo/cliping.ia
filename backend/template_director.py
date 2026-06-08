@@ -670,6 +670,50 @@ async def _resolve_icons(spec: dict) -> dict:
     return spec
 
 
+BRIEF_SYSTEM = """Sos estratega de marca. A partir del contexto de un sitio, devolvé un BRIEF
+brevísimo y CONCRETO para guiar un video vertical de marketing. Escribí en español rioplatense
+(voseo), salvo que el contexto esté claramente en otro idioma. Formato EXACTO (sin markdown,
+sin texto extra, una línea por campo):
+QUÉ VENDE: <una frase concreta>
+DIFERENCIAL: <qué los hace distintos, una frase>
+PÚBLICO: <a quién le hablan>
+MENSAJES CLAVE: <3 mensajes separados por ' | '>
+PRUEBAS REALES: <datos/precios/claims reales que aparezcan en el contexto, o 'ninguna'>
+HOOK: <una idea de gancho potente para los primeros 2 segundos>
+TONO: <2-3 adjetivos>
+Si el contexto es pobre, inferí lo razonable del rubro, pero NO inventes datos numéricos."""
+
+
+async def _build_brief(url_data: dict, desarrollo: str, proposito: str) -> str:
+    """Paso 1 (entender): Sonnet destila un brief de marca concreto desde el contexto del sitio.
+    Best-effort: si falla, devuelve '' y el storyboard se arma directo del contexto."""
+    contexto = url_data.get("context") or f"Marca: {url_data.get('siteName') or 'desconocido'}"
+    extra = f'\nPedido del usuario: "{desarrollo.strip()}"' if (desarrollo or "").strip() else ""
+    try:
+        resp = await _client.messages.create(
+            model=DIRECTOR_MODEL, max_tokens=500, temperature=0.4,
+            system=BRIEF_SYSTEM,
+            messages=[{"role": "user", "content": f"PROPÓSITO: {proposito}\n\nCONTEXTO DEL SITIO:\n{contexto}{extra}"}],
+        )
+        return (resp.content[0].text or "").strip()
+    except Exception as e:
+        print(f"[director] brief fallback ({e})")
+        return ""
+
+
+def _parse_spec(raw: str):
+    """Extrae el primer objeto JSON del texto. None si no hay o no parsea."""
+    if not raw:
+        return None
+    m = re.search(r"\{.*\}", raw, re.S)
+    if not m:
+        return None
+    try:
+        return json.loads(m.group(0))
+    except Exception:
+        return None
+
+
 async def build_storyboard(url: str, desarrollo: str, proposito: str = "marketing",
                            theme_override: str = "", tone: str = "",
                            length: str = "medio", seconds: int = 0, simple: bool = True,
@@ -714,26 +758,41 @@ async def build_storyboard(url: str, desarrollo: str, proposito: str = "marketin
     _lang = (url_data.get("lang") or "").lower()
     lang_hint = (f"\nIDIOMA: el sitio está en '{_lang}' — escribí TODO el copy en ese idioma."
                  if _lang and not _lang.startswith("es") else "")
+
+    # Paso 1 (entender la marca): brief estratégico. Paso 2 (guionar): el storyboard.
+    brief_txt = await _build_brief(url_data, desarrollo, proposito)
+    brief_block = f"\nBRIEF ESTRATÉGICO (basate en esto, es la lectura de la marca):\n{brief_txt}\n" if brief_txt else ""
+
     user_prompt = f"""PROPÓSITO: {proposito}
 URL: {url}
 
 CONTEXTO DEL SITIO (usalo para escribir copy específico y real, no genérico):
 {contexto}{extra}{lang_hint}
-
+{brief_block}
 {brief}
 
-Generá el storyboard JSON. El copy tiene que sonar a ESTA marca puntual (usá lo que
+EL HOOK MANDA: la PRIMERA escena tiene que enganchar en los primeros 1-2 segundos (frase
+filosa, dato real, o pregunta que pegue). Si la apertura es débil, el resto no se ve.
+
+Generá el storyboard JSON. El copy tiene que sonar a ESTA marca puntual (usá el brief y lo que
 sabés del sitio), reflejar el ángulo y el mood, y respetar las reglas de líneas cortas."""
 
     try:
         resp = await _client.messages.create(
-            model=DIRECTOR_MODEL, max_tokens=1500, temperature=temperature,
+            model=DIRECTOR_MODEL, max_tokens=2200, temperature=temperature,
             system=DIRECTOR_SYSTEM,
             messages=[{"role": "user", "content": user_prompt}],
         )
-        raw = resp.content[0].text.strip()
-        m = re.search(r"\{.*\}", raw, re.S)
-        spec = json.loads(m.group(0)) if m else None
+        spec = _parse_spec(resp.content[0].text.strip())
+        if spec is None:
+            # Reintento: pedir SOLO JSON válido (a veces se va en preámbulo o se corta).
+            resp2 = await _client.messages.create(
+                model=DIRECTOR_MODEL, max_tokens=2200, temperature=min(temperature, 0.5),
+                system=DIRECTOR_SYSTEM,
+                messages=[{"role": "user", "content": user_prompt
+                           + "\n\nIMPORTANTE: respondé SOLO el JSON del storyboard, sin texto antes ni después."}],
+            )
+            spec = _parse_spec(resp2.content[0].text.strip())
         spec = _normalize(spec, url_data, desarrollo, proposito)
         if theme_override in VALID_THEMES:
             spec["theme"] = theme_override
