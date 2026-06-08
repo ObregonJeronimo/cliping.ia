@@ -170,6 +170,10 @@ ART_PRESETS = [
     {"name": "flow",      "camera": "panL",    "entrance": "scale", "motif": "waves",     "transitions": "mixed"},
 ]
 
+# Tipos de decoración de primer plano (flotantes). Se ROTAN por video (coherente: uno por video).
+DECORS = ["pills", "orbs", "sparks", "rings", "chips", "cross"]
+
+
 def _assign_variation(spec: dict) -> dict:
     """Semilla + layout por escena + DIRECCIÓN DE ARTE por video -> nunca se repite."""
     spec["seed"] = random.randint(0, 9999)
@@ -825,6 +829,7 @@ async def build_storyboard(url: str, desarrollo: str, proposito: str = "marketin
     rec_angles = rp.get("angles") or []
     rec_themes = rp.get("themes") or []
     rec_arts = rp.get("arts") or []
+    rec_decors = rp.get("decors") or []
 
     lo, hi = LENGTH_SCENES.get(length, LENGTH_SCENES["medio"])
     n_scenes = SECONDS_SCENES.get(seconds) or random.randint(lo, hi)
@@ -843,6 +848,8 @@ async def build_storyboard(url: str, desarrollo: str, proposito: str = "marketin
     # Dirección de ARTE rotada (cámara + entrada + atmósfera), evitando las recientes.
     art_preset = _pick_avoiding(ART_PRESETS, rec_arts, key="name")
     art_name = art_preset.get("name", "")
+    # Decoración de primer plano rotada por separado (más combinaciones, coherente por video).
+    decor = _pick_avoiding(DECORS, rec_decors)
 
     brief = (
         f"Dirección creativa para ESTE video (hacelo único, no formulaico):\n"
@@ -888,6 +895,10 @@ sabés del sitio), reflejar el ángulo y el mood, y respetar las reglas de líne
         out["editStyle"] = edit[0]
         out["angle"] = angle
         out["artName"] = art_name
+        out["decorName"] = decor
+        # Asegurar que el arte lleve la decoración elegida (coherente en todas las escenas).
+        if isinstance(out.get("art"), dict):
+            out["art"].setdefault("decor", decor)
         return out
 
     try:

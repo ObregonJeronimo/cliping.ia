@@ -36,7 +36,7 @@ loadFont('normal', { weights: ['400', '600', '700'], subsets: ['latin'], ignoreT
 
 const REGISTRY = { KineticStatement, IntegrationCluster, MockupShowcase, CtaOutro, IconTransform, StatReveal, Comparison, Testimonial, SocialProof, FeatureList, LogoReveal, IllustrationScene, ProcessSteps, OfferPrice, MapLocation }
 const TDUR = 14
-const DEFAULT_ART = { camera: 'drift', entrance: 'rise', motif: 'none' }
+const DEFAULT_ART = { camera: 'drift', entrance: 'rise', motif: 'none', decor: 'pills' }
 
 // Transición única: crossfade entre escenas sobre el fondo continuo (sensación fusionada).
 // Duración fija TDUR (para que el cálculo de total sea exacto) y easing suave (no lineal).

@@ -141,14 +141,20 @@ const MOTIFS = { particles: Particles, bokeh: Bokeh, aurora: Aurora, rays: Rays,
  */
 export const ContinuousBg = ({ theme }) => {
   const frame = useCurrentFrame()
-  const gx = 50 + Math.sin(frame / 240) * 9
-  const gy = 36 + Math.cos(frame / 320) * 7
-  const breath = 0.55 + 0.08 * Math.sin(frame / 110)
+  const gx = 50 + Math.sin(frame / 150) * 12
+  const gy = 36 + Math.cos(frame / 190) * 9
+  const breath = 0.55 + 0.10 * Math.sin(frame / 80)
+  // Segundo glow de ACENTO que deriva distinto -> el fondo SIEMPRE tiene movimiento (nunca estático).
+  const ax = 50 + Math.cos(frame / 220) * 22
+  const ay = 60 + Math.sin(frame / 180) * 16
   return (
     <AbsoluteFill style={{ background: theme.bg, pointerEvents: 'none' }}>
       <div style={{ position: 'absolute', left: `${gx}%`, top: `${gy}%`, width: 1500, height: 1500,
         transform: 'translate(-50%,-50%)', opacity: breath,
         background: `radial-gradient(circle, ${theme.glow}, rgba(0,0,0,0) 60%)` }} />
+      <div style={{ position: 'absolute', left: `${ax}%`, top: `${ay}%`, width: 1000, height: 1000,
+        transform: 'translate(-50%,-50%)', opacity: 0.22, mixBlendMode: 'screen',
+        background: `radial-gradient(circle, ${theme.accentFrom}55, rgba(0,0,0,0) 65%)` }} />
     </AbsoluteFill>
   )
 }

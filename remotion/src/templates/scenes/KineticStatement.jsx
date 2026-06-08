@@ -1,6 +1,7 @@
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from 'remotion'
 import { fitHeadline, segText, clamp } from '../theme'
 import { EASE, SPRING, prog, spr, enter, entrance, stagger, floatY, camera, parallax } from '../motion'
+import Decor from '../Decor'
 
 /**
  * KineticStatement — texto cinético al estilo del explainer de SaaS.
@@ -118,23 +119,14 @@ export const KineticStatement = ({ theme, lines = [], subtitle = '', variant = '
     <AbsoluteFill style={{ background: theme.bg, fontFamily: theme.font, overflow: 'hidden' }}>
       <div style={{ position: 'absolute', inset: 0,
         transform: `scale(${cam.scale}) translate(${cam.x}px, ${cam.y}px)`, transformOrigin: '50% 42%' }}>
-        {theme.motifs.arcs && <Arcs theme={theme} frame={frame} px={pxBg} />}
+        <Decor kind={(theme.art || {}).decor} theme={theme} frame={frame} fps={fps} cam={cam} />
 
         <div style={{ position: 'absolute', left: '50%', top: '34%', width: 1100, height: 1100,
           transform: 'translate(-50%,-50%)', opacity: glowOp,
           background: `radial-gradient(circle, ${theme.glow}, rgba(0,0,0,0) 62%)` }} />
 
-        {theme.motifs.pills && <>
-          <Pill theme={theme} frame={frame} fps={fps} x={140} y={500} rot={-8} delay={6} accent px={pxFg} />
-          <Pill theme={theme} frame={frame} fps={fps} x={720} y={450} rot={6} delay={10} blur={0.8} opacity={0.9} px={pxFg} />
-          <Pill theme={theme} frame={frame} fps={fps} x={240} y={680} rot={4} delay={14} blur={1.6} opacity={0.55} px={parallax(cam, 0.5)} />
-        </>}
-
         <AbsoluteFill style={{ alignItems: leftish ? 'flex-start' : 'center',
           justifyContent: 'center', padding: leftish ? '0 0 0 90px' : 0 }}>
-          {theme.motifs.sparkle &&
-            <div style={{ marginBottom: 26 }}><Sparkle theme={theme} frame={frame} fps={fps} delay={4} /></div>}
-
           <div style={{ display: 'flex', alignItems: 'stretch', gap: 36 }}>
             {variant === 'bar' && (
               <div style={{ flexShrink: 0, width: 12, borderRadius: 6, alignSelf: 'stretch',
