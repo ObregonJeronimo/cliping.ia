@@ -1,4 +1,4 @@
-import { AbsoluteFill, Easing } from 'remotion'
+import { AbsoluteFill, Easing, useCurrentFrame } from 'remotion'
 import { TransitionSeries, linearTiming, springTiming } from '@remotion/transitions'
 import { fade } from '@remotion/transitions/fade'
 import { slide } from '@remotion/transitions/slide'
@@ -74,6 +74,24 @@ const pickTransition = (i, seed, set) => {
   return pool[(i + seed) % pool.length]()
 }
 
+// SceneShell — envuelve el contenido de cada escena y le da SALIDA (no solo entrada): en los
+// últimos frames el contenido se eleva apenas, se achica un toque y se desvanece, sincronizado
+// con el crossfade. Así el contenido "se va con gracia" en vez de cortar seco. La última escena
+// no tiene salida (no hay nada después).
+const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x)
+const SceneShell = ({ durationInFrames, exit, children }) => {
+  const frame = useCurrentFrame()
+  const EXIT = 18
+  const p = exit ? clamp01((frame - (durationInFrames - EXIT)) / EXIT) : 0
+  const e = p * p * (3 - 2 * p) // smoothstep: acelera la salida suave
+  return (
+    <div style={{ position: 'absolute', inset: 0, transformOrigin: '50% 48%',
+      transform: `translateY(${-30 * e}px) scale(${1 - 0.05 * e})`, opacity: 1 - 0.45 * e }}>
+      {children}
+    </div>
+  )
+}
+
 export const computeTotal = (scenes) => {
   const sum = (scenes || []).reduce((a, s) => a + (s.durationInFrames || 90), 0)
   return sum - Math.max(0, (scenes || []).length - 1) * TDUR
@@ -114,9 +132,14 @@ export const VideoFromSpec = ({ spec }) => {
           const Comp = REGISTRY[s.type] || KineticStatement
           const dur = s.durationInFrames || 90
           const inner = <Comp theme={sceneTheme} {...s} />
-          const content = spec.motionBlur
+          const blurred = spec.motionBlur
             ? <CameraMotionBlur shutterAngle={120} samples={6}>{inner}</CameraMotionBlur>
             : inner
+          const content = (
+            <SceneShell durationInFrames={dur} exit={i < sc.length - 1}>
+              {blurred}
+            </SceneShell>
+          )
           const seq = (
             <TransitionSeries.Sequence key={`s${i}`} durationInFrames={dur}>
               {content}
