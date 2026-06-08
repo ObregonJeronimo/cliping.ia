@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore'
+import { collection, getDocs, deleteDoc, doc, updateDoc } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
 import { useAuth } from '../../contexts/AuthContext'
 import styles from './MisCinematicas.module.css'
@@ -59,6 +59,18 @@ export default function MisCinematicas() {
       console.error('[MisCinematicas] error eliminando:', e)
     }
     setDeletingId(null)
+  }
+
+  // Rating del video (loop de feedback): 1 = me gustó, -1 = no, 0 = sin puntuar (toggle).
+  // Se guarda junto a la "receta" del video -> a futuro sesga la rotación hacia lo que funciona.
+  const rateVideo = async (v, value) => {
+    const next = v.rating === value ? 0 : value
+    try {
+      await updateDoc(doc(db, 'users', user.uid, 'videos', v.id), { rating: next })
+      setVideos(vs => vs.map(x => x.id === v.id ? { ...x, rating: next } : x))
+    } catch (e) {
+      console.error('[MisCinematicas] error puntuando:', e)
+    }
   }
 
   const srcOf = (v) => v.videoUrl || (v.localFile ? `${API_URL}/api/video/${v.localFile}` : null)
@@ -135,6 +147,13 @@ export default function MisCinematicas() {
                     {v.theme && <span className={styles.themeBadge}>{THEME_LABEL[v.theme] || v.theme}</span>}
                   </div>
                   {fmtDate(v.createdAt) && <div className={styles.date}>{fmtDate(v.createdAt)}</div>}
+                  <div className={styles.rateRow}>
+                    <span className={styles.rateLabel}>¿Te sirvió?</span>
+                    <button className={`${styles.rateBtn} ${v.rating === 1 ? styles.rateUp : ''}`}
+                      onClick={() => rateVideo(v, 1)} title="Me gustó" aria-label="Me gustó">👍</button>
+                    <button className={`${styles.rateBtn} ${v.rating === -1 ? styles.rateDown : ''}`}
+                      onClick={() => rateVideo(v, -1)} title="No me gustó" aria-label="No me gustó">👎</button>
+                  </div>
                   <div className={styles.actions}>
                     {src && (
                       <a className={styles.actBtn} href={downloadUrl(v)} download target="_blank" rel="noreferrer">Descargar</a>

@@ -67,3 +67,12 @@
 .emptyIcon { font-size: 40px; margin-bottom: 12px; }
 .emptyTitle { font-size: 17px; font-weight: 600; color: #d8d8dc; margin-bottom: 6px; }
 .emptySub { font-size: 14px; color: #6f6f78; }
+
+/* Rating del video (loop de feedback) */
+.rateRow { display:flex; align-items:center; gap:8px; margin:6px 0 10px; }
+.rateLabel { font-size:11px; color:#888; margin-right:2px; }
+.rateBtn { border:1px solid #e0e0e0; background:#fff; border-radius:8px; padding:4px 9px;
+  font-size:14px; cursor:pointer; line-height:1; transition:all .12s; filter:grayscale(0.4); opacity:.7; }
+.rateBtn:hover { background:#f5f5f5; opacity:1; filter:none; }
+.rateUp { background:#e7f7ec; border-color:#34c759; filter:none; opacity:1; }
+.rateDown { background:#fdeaea; border-color:#ff3b30; filter:none; opacity:1; }
