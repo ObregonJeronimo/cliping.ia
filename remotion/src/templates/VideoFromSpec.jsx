@@ -43,20 +43,24 @@ const DEFAULT_ART = { camera: 'drift', entrance: 'rise', motif: 'none' }
 const EASED = linearTiming({ durationInFrames: TDUR, easing: Easing.inOut(Easing.cubic) })
 
 // SceneShell — envuelve el contenido de cada escena. Hace dos cosas:
-//  1) ZONA SEGURA: sesga el contenido un poco hacia arriba (SAFE_UP) para que el texto clave
-//     no quede tapado por la UI de Reels/TikTok (botones a la derecha, caption/audio abajo).
-//  2) SALIDA: en los últimos frames lo eleva, achica y desvanece (sincronizado con el crossfade),
-//     así "se va con gracia" en vez de cortar seco. La última escena no tiene salida.
+//  1) ZONA SEGURA: sesga el contenido hacia arriba (SAFE_UP) para que el texto clave no quede
+//     tapado por la UI de Reels/TikTok (botones a la derecha, caption/audio abajo).
+//  2) SALIDA SINCRONIZADA: la salida se ADELANTA para terminar casi cuando arranca el crossfade
+//     (TDUR), de modo que el contenido viejo ya está ~ido (opacidad ~0) cuando entra el nuevo.
+//     Así no se superponen los dos contenidos ~0.5s; se siente "sale -> entra", no "los dos juntos".
+//     La última escena no tiene salida (no hay nada después).
 const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x)
 const SAFE_UP = 40
+const EXIT_LEN = 20          // dura ~0.66s
+const EXIT_END_PAD = 10      // termina ~10f antes del final (la transición dura TDUR=14)
 const SceneShell = ({ durationInFrames, exit, children }) => {
   const frame = useCurrentFrame()
-  const EXIT = 18
-  const p = exit ? clamp01((frame - (durationInFrames - EXIT)) / EXIT) : 0
+  const end = durationInFrames - EXIT_END_PAD
+  const p = exit ? clamp01((frame - (end - EXIT_LEN)) / EXIT_LEN) : 0
   const e = p * p * (3 - 2 * p) // smoothstep: acelera la salida suave
   return (
     <div style={{ position: 'absolute', inset: 0, transformOrigin: '50% 48%',
-      transform: `translateY(${-SAFE_UP - 30 * e}px) scale(${1 - 0.05 * e})`, opacity: 1 - 0.45 * e }}>
+      transform: `translateY(${-SAFE_UP - 52 * e}px) scale(${1 - 0.06 * e})`, opacity: 1 - e }}>
       {children}
     </div>
   )
