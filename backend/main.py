@@ -151,6 +151,56 @@ def _dominant_accent(image_path: str):
     return f"#{best[0] // n:02x}{best[1] // n:02x}{best[2] // n:02x}"
 
 
+async def _rehost_images(urls, job_id: str, limit: int = 3):
+    """Baja imágenes reales del sitio y las re-hostea en Cloudinary (URLs confiables para Remotion).
+    Filtra por content-type y tamaño real (descarta iconos/logos chicos). Devuelve solo las que
+    subieron OK (puede ser []). Con guardas: si algo falla, se saltea esa imagen, no rompe."""
+    out = []
+    if not urls:
+        return out
+    try:
+        import httpx
+        from cloudinary_upload import upload_image
+    except Exception as e:
+        print(f"[video] rehost imgs: deps no disponibles ({e})")
+        return out
+    n = 0
+    try:
+        async with httpx.AsyncClient(timeout=12.0, follow_redirects=True,
+                headers={"User-Agent": "Mozilla/5.0 (compatible; clipingbot/1.0)"}) as c:
+            for u in urls:
+                if n >= limit:
+                    break
+                try:
+                    r = await c.get(u)
+                    if r.status_code != 200 or not r.content:
+                        continue
+                    ct = r.headers.get("content-type", "")
+                    if "image" not in ct or "svg" in ct:
+                        continue
+                    ext = ".jpg" if ("jpeg" in ct or "jpg" in ct) else ".webp" if "webp" in ct else ".png"
+                    p = str(OUTPUTS_DIR / f"{job_id}_img{n}{ext}")
+                    with open(p, "wb") as f:
+                        f.write(r.content)
+                    # Filtro de tamaño real: descartar imágenes chicas (probables iconos/logos).
+                    try:
+                        from PIL import Image
+                        w, h = Image.open(p).size
+                        if w < 500 or h < 300:
+                            continue
+                    except Exception:
+                        pass
+                    up = await upload_image(p, f"siteimg_{job_id[:8]}_{n}")
+                    if up:
+                        out.append(up)
+                        n += 1
+                except Exception as ie:
+                    print(f"[video] rehost img saltada ({ie})")
+    except Exception as e:
+        print(f"[video] rehost imgs error: {e}")
+    return out
+
+
 def _get_recent_profile(db, user_id: str, brand_key: str) -> dict:
     """Perfil de rotación reciente de esta marca/usuario: estilos, ángulos, paletas y artes
     usados (reciente primero). Sirve para que dos videos de la misma marca NO se repitan."""
@@ -297,6 +347,33 @@ async def _render_video_job(job_id: str, req: VideoGenRequest):
                     print(f"[video] screenshot del sitio listo")
             except Exception as ce:
                 print(f"[video] screenshot del sitio falló (uso skeleton): {ce}")
+
+        # 1b-bis. ProductShowcase: inyectar FOTOS REALES del sitio (re-hosteadas a Cloudinary).
+        #   Si no se consigue ninguna imagen usable, convertimos la escena a una frase (con su
+        #   título) o la descartamos -> nunca queda un ProductShowcase vacío que rompa el render.
+        needs_imgs = [s for s in spec.get("scenes", []) if s.get("type") == "ProductShowcase"]
+        if needs_imgs:
+            real_imgs = await _rehost_images(_site.get("images") or [], job_id, limit=3)
+            if real_imgs:
+                for s in needs_imgs:
+                    s["images"] = real_imgs
+                print(f"[video] {len(real_imgs)} imagen(es) real(es) del sitio para ProductShowcase")
+            else:
+                new_scenes = []
+                for s in spec["scenes"]:
+                    if s.get("type") == "ProductShowcase":
+                        if s.get("title"):
+                            new_scenes.append({"type": "KineticStatement", "lines": [s["title"]],
+                                               "durationInFrames": s.get("durationInFrames", 90)})
+                        # sin título -> se descarta
+                    else:
+                        new_scenes.append(s)
+                if len(new_scenes) >= 2:
+                    spec["scenes"] = new_scenes
+                else:
+                    for s in needs_imgs:  # caso borde: dejarla como placeholder, no romper
+                        s["images"] = []
+                print("[video] sin imágenes reales usables -> ProductShowcase convertida/descartada")
 
         # 1c. Logo real del sitio para el/los LogoReveal: lo bajamos y re-hosteamos en
         # Cloudinary (URL confiable para Remotion). Si falla, la escena cae al wordmark.

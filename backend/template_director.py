@@ -395,6 +395,10 @@ REGLAS:
   No uses siempre el mismo esqueleto. Variá de verdad la estructura entre videos.
 - "MockupShowcase": usalo SOLO si hay un producto/web que mostrar Y el estilo lo pide
   (no en todos los videos).
+- "ProductShowcase": muestra FOTOS REALES del sitio (producto/hero/lifestyle) con movimiento.
+  Usalo cuando el sitio sea visual (ecommerce, gastronomía, productos, lugar) y la historia gane
+  con ver el producto de verdad. prop OPCIONAL: title (1 frase corta). NO pongas "images": las
+  fotos reales se inyectan solas desde el sitio. Si la marca no es visual, NO uses esta escena.
 - "IconTransform" es el beat más vistoso, pero NO es obligatorio: usalo como mucho UNA vez
   y solo cuando haya un contraste/transformación real y el estilo lo favorezca. Muchos
   videos NO lo llevan.
@@ -563,7 +567,7 @@ def _normalize(spec: dict, url_data: dict, desarrollo: str, proposito: str) -> d
         return fb
     valid_types = {"KineticStatement", "IntegrationCluster", "MockupShowcase", "CtaOutro", "IconTransform",
                    "StatReveal", "FeatureList", "Comparison", "Testimonial", "SocialProof", "LogoReveal",
-                   "IllustrationScene", "ProcessSteps", "OfferPrice", "MapLocation"}
+                   "IllustrationScene", "ProcessSteps", "OfferPrice", "MapLocation", "ProductShowcase"}
     # Antídoto contra info inventada: si el dato no está en el sitio, no se muestra como hecho.
     hay = " ".join([
         url_data.get("context", ""), url_data.get("description", ""),

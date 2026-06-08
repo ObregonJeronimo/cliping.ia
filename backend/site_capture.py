@@ -91,6 +91,42 @@ _JS_EXTRACT = r"""
 """
 
 
+# Extrae URLs de imágenes REALES del sitio (fotos de producto/hero), priorizando las grandes.
+# Descarta iconos, data-URIs y svgs. Devuelve hasta 6 URLs absolutas, mayor área primero.
+_JS_IMAGES = r"""
+() => {
+  const abs = (u) => { try { return new URL(u, location.href).href } catch (e) { return null } };
+  const seen = new Set(); const out = [];
+  const push = (u, area) => {
+    if (!u) return;
+    const a = abs(u); if (!a) return;
+    if (a.startsWith('data:')) return;
+    if (a.toLowerCase().split('?')[0].endsWith('.svg')) return;
+    if (seen.has(a)) return;
+    seen.add(a); out.push({ u: a, area });
+  };
+  const og = document.querySelector('meta[property="og:image"], meta[name="og:image"]');
+  if (og && og.content) push(og.content, 5e9);            // suele ser la mejor foto de marca
+  for (const im of Array.from(document.images)) {
+    const w = im.naturalWidth || im.width, h = im.naturalHeight || im.height;
+    if (w < 400 || h < 250) continue;
+    const r = im.getBoundingClientRect();
+    if (r.width < 160) continue;
+    push(im.currentSrc || im.src, w * h);
+  }
+  const els = Array.from(document.querySelectorAll('section,header,div,figure,a')).slice(0, 250);
+  for (const el of els) {
+    const r = el.getBoundingClientRect();
+    if (r.width < 600 || r.height < 280) continue;
+    const bg = getComputedStyle(el).backgroundImage;
+    const m = bg && bg.match(/url\(["']?(.*?)["']?\)/);
+    if (m && m[1]) push(m[1], r.width * r.height);
+  }
+  return out.sort((a, b) => b.area - a.area).slice(0, 6).map(x => x.u);
+}
+"""
+
+
 async def extract_content(url: str) -> dict | None:
     """
     Carga la página con Chromium y extrae el texto YA RENDERIZADO (clave para sitios
@@ -120,7 +156,7 @@ async def capture_all(url: str, out_path: str, width: int = 1280, height: int = 
     """UNA sola carga de Chromium: extrae el texto renderizado (content) Y saca el screenshot,
     en vez de abrir el navegador dos veces por video. Devuelve {'screenshot': path|None,
     'content': dict|None}. Best-effort: cualquier parte que falle vuelve None, no rompe."""
-    out = {"screenshot": None, "content": None}
+    out = {"screenshot": None, "content": None, "images": []}
     if not _PW_OK or not url:
         return out
     try:
@@ -169,6 +205,12 @@ async def capture_all(url: str, out_path: str, width: int = 1280, height: int = 
                     out["content"] = data
             except Exception as ee:
                 print(f"[capture_all] extract: {ee}")
+            try:
+                imgs = await page.evaluate(_JS_IMAGES)
+                if isinstance(imgs, list):
+                    out["images"] = imgs
+            except Exception as ie:
+                print(f"[capture_all] images: {ie}")
             try:
                 await page.screenshot(path=out_path, clip={"x": 0, "y": 0, "width": width, "height": height})
                 if Path(out_path).exists():

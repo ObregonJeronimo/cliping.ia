@@ -20,6 +20,7 @@ import IllustrationScene from './scenes/IllustrationScene'
 import ProcessSteps from './scenes/ProcessSteps'
 import OfferPrice from './scenes/OfferPrice'
 import MapLocation from './scenes/MapLocation'
+import ProductShowcase from './scenes/ProductShowcase'
 import FinishLayer from './FinishLayer'
 import SoundLayer from './SoundLayer'
 import Backdrop, { ContinuousBg } from './Backdrop'
@@ -35,7 +36,7 @@ loadFont('normal', { weights: ['400', '600', '700'], subsets: ['latin'], ignoreT
  * (duración fija TDUR para que el cálculo de total sea exacto) -> video fusionado/fluido.
  */
 
-const REGISTRY = { KineticStatement, IntegrationCluster, MockupShowcase, CtaOutro, IconTransform, StatReveal, Comparison, Testimonial, SocialProof, FeatureList, LogoReveal, IllustrationScene, ProcessSteps, OfferPrice, MapLocation }
+const REGISTRY = { KineticStatement, IntegrationCluster, MockupShowcase, CtaOutro, IconTransform, StatReveal, Comparison, Testimonial, SocialProof, FeatureList, LogoReveal, IllustrationScene, ProcessSteps, OfferPrice, MapLocation, ProductShowcase }
 const TDUR = 14
 const DEFAULT_ART = { camera: 'drift', entrance: 'rise', motif: 'none', decor: 'pills' }
 
