@@ -9,6 +9,15 @@ for /f "tokens=5" %%a in ('netstat -ano ^| findstr :8000 ^| findstr LISTENING') 
 echo Actualizando codigo...
 git pull
 
+echo Publicando reglas de Firestore (best-effort)...
+where firebase >nul 2>&1
+if %errorlevel%==0 (
+  call firebase deploy --only firestore:rules --non-interactive
+) else (
+  echo   Firebase CLI no encontrado. Para publicar reglas automaticamente, una sola vez:
+  echo     npm i -g firebase-tools  ^&^&  firebase login
+)
+
 echo Instalando dependencias del backend...
 python -m pip install -r backend\requirements.txt --quiet --disable-pip-version-check
 
