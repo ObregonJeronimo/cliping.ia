@@ -147,8 +147,15 @@ export const KineticStatement = ({ theme, lines = [], subtitle = '', variant = '
                       wi++
                       const p = prog(frame, delay, m.enterFrames, EASE.back)
                       const op = clamp((frame - delay) / Math.max(1, m.enterFrames * 0.6), 0, 1)
+                      // La palabra de ACENTO pega un "pop" de escala justo al aterrizar -> el ojo
+                      // va directo al mensaje (clave en consumo mudo / scroll rápido).
+                      const land = delay + m.enterFrames
+                      const t = frame - land
+                      const pop = (s.accent && t >= 0 && t <= 12) ? Math.sin((t / 12) * Math.PI) : 0
+                      const sc = 1 + 0.16 * pop
                       const st = { display: 'inline-block', marginRight: '0.26em',
-                        transform: `translateY(${(1 - p) * 42}px)`, opacity: op }
+                        transform: `translateY(${(1 - p) * 42}px) scale(${sc})`, opacity: op,
+                        transformOrigin: 'center bottom' }
                       return s.accent
                         ? <span key={`${j}-${k}`} style={st}><GradientText theme={theme}>{w}</GradientText></span>
                         : <span key={`${j}-${k}`} style={st}>{w}</span>
