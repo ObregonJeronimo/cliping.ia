@@ -35,6 +35,8 @@ const SHAPES = {
   chat:     'M3 4 H21 V16 H9 L4 21 V16 H3 Z',
   check:    'M4 12 L9 18 L20 5 L21.5 6.5 L9 21 L2.5 13.5 Z',
   bag:      'M6 8 H18 V21 H6 Z',
+  leaf:     'M5 19 C5 10 11 4 19 4 C19 13 13 19 5 19 Z',
+  shield:   'M12 2 L20 5 V11 C20 16.5 16.5 20.5 12 22 C7.5 20.5 4 16.5 4 11 V5 Z',
 }
 const KEYS = Object.keys(SHAPES)
 

@@ -209,12 +209,17 @@ SCENE_CATALOG = """ESCENAS DISPONIBLES (type + props):
   "piggy bank"->"chart"; e-commerce: "shopping cart"->"money". Elegí los íconos que de
   verdad representen la idea de la página.
 - "MorphScene": transformación FLUIDA entre formas vectoriales (morph real, gratis). Una
-  forma se convierte en la siguiente encadenando 2 a 4 figuras -> ideal para contar una
-  metáfora visual de la marca (ej e-commerce: "bag"->"box"->"house"; salud: "droplet"->"heart";
-  software: "square"->"check"). props: shapes = array de 2 a 4 KEYS de esta lista EXACTA:
-  ["circle","square","triangle","star","heart","plus","play","arrow","droplet","house","bolt","pin","box","chat","check","bag"].
-  Elegí una cadena que cuente la idea de ESTA marca; opcional title = segmentos { t, accent } y subtitle (string).
-  Es un beat vistoso: usalo como MUCHO una vez por video, y SOLO si una metáfora de formas encaja.
+  forma se convierte en la siguiente -> sirve para contar una METÁFORA de la marca.
+  props: shapes = array de 2 o 3 KEYS (preferí 2-3, NO 4) de esta lista EXACTA:
+  ["leaf","heart","shield","check","bag","box","house","droplet","bolt","pin","star","chat","play","arrow","circle","square","triangle","plus"].
+  REGLA DE ORO: la cadena tiene que CONTAR algo coherente (concepto -> resultado), NO formas
+  al azar. Cada forma debe significar algo para ESTA marca. PROHIBIDO encadenar formas
+  abstractas porque sí (ej "square"->"triangle"->"heart" NO significa nada -> está MAL).
+  Ejemplos BIEN: dietética/salud natural: "leaf"->"heart" (lo natural se vuelve bienestar);
+  e-commerce con envío: "bag"->"house" o "box"->"house"; seguridad/confianza: "shield"->"check";
+  rapidez: "bolt"->"check"; cercanía local: "pin"->"heart". Si NINGUNA cadena cuenta algo
+  real de la marca, NO uses MorphScene. opcional title = segmentos { t, accent } y subtitle (string).
+  Es un beat vistoso: como MUCHO una vez por video.
 - "StatReveal": un NÚMERO que cuenta de 0 hasta el valor (el beat de "dato que impacta").
   props: value = número (ej 95, 4.9, 12000); opcional prefix (ej "$", "+"); suffix (ej
   "%", "x", "k", "/5"); caption = línea chica ARRIBA (string); label = array de segmentos
@@ -238,11 +243,14 @@ SCENE_CATALOG = """ESCENAS DISPONIBLES (type + props):
 - "LogoReveal": sello de marca (stinger). props: brand = nombre de marca; opcional tagline
   = línea corta. (El logo real del sitio se inyecta solo, NO lo pongas.) variant lo elige el
   sistema. Útil como beat de marca en el medio del video; no la pongas primera ni última.
-- "IllustrationScene": ilustración hero estática (estilo flat) con movimiento de cámara.
-  props: title = segmentos { t, accent } (opcional); name = UNA de: "growth" (crecimiento/
-  resultados), "audience" (público/comunidad), "launch" (lanzamiento/empezar), "connect"
-  (integración/red), "idea" (idea/innovación). Elegí el name que mejor represente el mensaje
-  de esa escena. Buen recurso visual cuando no hay screenshot ni datos para Stat.
+- "IllustrationScene": ilustración hero (estilo flat) con cámara, puntos flotantes y subtítulo.
+  props: title = segmentos { t, accent }; opcional subtitle = string corto (da contexto y llena
+  la escena, MUY recomendado). name = UNA de: "organic" (natural/saludable/plantas),
+  "care" (salud/cuidado/bienestar), "quality" (confianza/calidad/garantía), "growth"
+  (crecimiento/resultados), "audience" (público/comunidad), "connect" (integración/red),
+  "idea" (idea/innovación), "launch" (lanzamiento/startup). ELEGÍ el name que MATCHEE el rubro:
+  ej dietética/salud -> "organic" o "care" (NUNCA "launch"/cohete); seguridad/servicios ->
+  "quality"; software/startup -> "idea"/"launch". Si ningún name encaja, mejor NO uses esta escena.
 - "CtaOutro": cierre. props: brand = nombre de marca, cta = llamado a la acción corto.
   (El logo real del sitio y la decoración del cierre se inyectan solos; NO los pongas.)"""
 
@@ -479,6 +487,8 @@ def _normalize(spec: dict, url_data: dict, desarrollo: str, proposito: str) -> d
         except Exception:
             d = 90
         d = max(_min_duration(s), min(170, d))
+        if t == "IllustrationScene":
+            d = min(d, 105)  # hero visual: corto, que no se cuelgue en el vacío
         s["durationInFrames"] = d
         clean.append(s)
     if len(clean) < 2:

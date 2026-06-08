@@ -86,10 +86,38 @@ const FIGURES = {
       ))}
     </>
   ),
+  organic: (c) => (
+    <>
+      <path d="M200 252 C120 200 96 150 96 116 C150 120 200 160 200 252 Z" fill={c.a1} opacity="0.92" />
+      <path d="M200 252 C280 200 304 150 304 116 C250 120 200 160 200 252 Z" fill={c.a2} />
+      <line x1="200" y1="258" x2="200" y2="150" stroke={c.n2} strokeWidth="6" strokeLinecap="round" />
+      <circle cx="200" cy="118" r="13" fill={c.a2} />
+    </>
+  ),
+  care: (c) => (
+    <>
+      <path d="M200 248 C120 188 95 152 95 120 A42 42 0 0 1 200 106 A42 42 0 0 1 305 120 C305 152 280 188 200 248 Z" fill={c.a1} />
+      <path d="M132 158 H172 L188 130 L210 192 L226 158 H268" fill="none" stroke={c.n1} strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" />
+    </>
+  ),
+  quality: (c) => (
+    <>
+      <path d="M200 64 L292 98 V162 C292 218 252 248 200 264 C148 248 108 218 108 162 V98 Z" fill={c.a1} opacity="0.95" />
+      <path d="M164 166 L192 194 L242 134" fill="none" stroke={c.n1} strokeWidth="13" strokeLinecap="round" strokeLinejoin="round" />
+    </>
+  ),
 }
 
+const Title = ({ theme, title, e }) => (
+  <div style={{ transform: e.transform, opacity: e.opacity, textAlign: 'center', padding: '0 10px',
+    fontWeight: theme.headWeight, fontSize: fitHeadline(segText(title), 100, 56), lineHeight: 1.05,
+    letterSpacing: '-0.03em', color: theme.text }}>
+    {title.map((s, i) => <span key={i} style={s.accent ? { color: 'transparent', backgroundImage: theme.accentGrad, WebkitBackgroundClip: 'text', backgroundClip: 'text' } : null}>{s.t}</span>)}
+  </div>
+)
+
 export const IllustrationScene = ({
-  theme, title = [], name = 'growth', svg = null, variant = 'center', durationInFrames: durProp,
+  theme, title = [], subtitle = '', name = 'growth', svg = null, variant = 'center', durationInFrames: durProp,
 }) => {
   const frame = useCurrentFrame()
   const vc = useVideoConfig()
@@ -100,42 +128,40 @@ export const IllustrationScene = ({
   const cam = camera(theme.art, frame, dur, m.cameraDrift)
   const fl = floatY(frame, 14, 150)
   const pop = entrance(theme.art, frame, 2, { dur: m.enterFrames + 4, dist: 60 })
-  const titleE = enter(frame, 18, { dur: m.enterFrames, dist: 34, ease: EASE.out })
+  const titleE = enter(frame, 16, { dur: m.enterFrames, dist: 34, ease: EASE.out })
+  const subE = enter(frame, 26, { dur: m.enterFrames, dist: 24, ease: EASE.out })
   const glow = clamp(frame / 16, 0, 1) * breathe(frame, 0.05, 150)
-  const top = variant === 'top'
 
   const Fig = FIGURES[name] || FIGURES.growth
+  // Puntos flotantes para llenar el aire (decorativos, themeados)
+  const DOTS = [[150, 360, 7], [720, 300, 5], [120, 1500, 6], [770, 1540, 8], [80, 840, 4], [840, 1000, 5], [260, 1660, 4], [650, 1720, 6]]
 
   return (
     <AbsoluteFill style={{ background: theme.bg, fontFamily: theme.font, overflow: 'hidden' }}>
-      <div style={{ position: 'absolute', inset: 0, transform: `scale(${cam.scale}) translate(${cam.x}px, ${cam.y}px)`, transformOrigin: '50% 46%' }}>
-        <div style={{ position: 'absolute', left: '50%', top: top ? '60%' : '46%', width: 980, height: 980,
+      <div style={{ position: 'absolute', inset: 0, transform: `scale(${cam.scale}) translate(${cam.x}px, ${cam.y}px)`, transformOrigin: '50% 50%' }}>
+        <div style={{ position: 'absolute', left: '50%', top: '50%', width: 1150, height: 1150,
           transform: 'translate(-50%,-50%)', opacity: glow,
-          background: `radial-gradient(circle, ${theme.glow}, rgba(0,0,0,0) 62%)` }} />
+          background: `radial-gradient(circle, ${theme.glow}, rgba(0,0,0,0) 60%)` }} />
 
-        <AbsoluteFill style={{ alignItems: 'center', justifyContent: top ? 'flex-start' : 'center',
-          paddingTop: top ? 200 : 0, gap: 70 }}>
-          {top && title.length > 0 && (
-            <div style={{ transform: titleE.transform, opacity: titleE.opacity, textAlign: 'center', padding: '0 80px',
-              fontWeight: theme.headWeight, fontSize: fitHeadline(segText(title), 104, 56), lineHeight: 1.05,
-              letterSpacing: '-0.03em', color: theme.text }}>
-              {title.map((s, i) => <span key={i} style={s.accent ? { color: 'transparent', backgroundImage: theme.accentGrad, WebkitBackgroundClip: 'text', backgroundClip: 'text' } : null}>{s.t}</span>)}
-            </div>
-          )}
+        {DOTS.map(([x, y, r], i) => (
+          <div key={i} style={{ position: 'absolute', left: x, top: y + floatY(frame - i * 7, 10, 150),
+            width: r * 2, height: r * 2, borderRadius: '50%', background: i % 3 === 0 ? c.a2 : c.n3,
+            opacity: clamp(frame / 20, 0, 1) * (i % 3 === 0 ? 0.8 : 0.5) }} />
+        ))}
 
-          <div style={{ transform: `translateY(${fl}px) scale(${clamp(pop.opacity ? 0.6 + pop.opacity * 0.4 : 1, 0, 1)})`,
-            opacity: pop.opacity, width: 760, filter: `drop-shadow(0 30px 60px ${theme.glow})` }}>
+        <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center', gap: 54, padding: '0 70px' }}>
+          {segText(title) && <Title theme={theme} title={title} e={titleE} />}
+
+          <div style={{ transform: `translateY(${fl}px) scale(${clamp(0.6 + pop.opacity * 0.4, 0, 1)})`,
+            opacity: pop.opacity, width: 860, filter: `drop-shadow(0 30px 70px ${theme.glow})` }}>
             {svg && svg.body
-              ? <svg viewBox={svg.viewBox || '0 0 400 300'} width="760" dangerouslySetInnerHTML={{ __html: svg.body }} />
-              : <svg viewBox="0 0 400 300" width="760">{Fig(c)}</svg>}
+              ? <svg viewBox={svg.viewBox || '0 0 400 300'} width="860" dangerouslySetInnerHTML={{ __html: svg.body }} />
+              : <svg viewBox="0 0 400 300" width="860">{Fig(c)}</svg>}
           </div>
 
-          {!top && title.length > 0 && (
-            <div style={{ transform: titleE.transform, opacity: titleE.opacity, textAlign: 'center', padding: '0 80px',
-              fontWeight: theme.headWeight, fontSize: fitHeadline(segText(title), 104, 56), lineHeight: 1.05,
-              letterSpacing: '-0.03em', color: theme.text }}>
-              {title.map((s, i) => <span key={i} style={s.accent ? { color: 'transparent', backgroundImage: theme.accentGrad, WebkitBackgroundClip: 'text', backgroundClip: 'text' } : null}>{s.t}</span>)}
-            </div>
+          {subtitle && (
+            <div style={{ transform: subE.transform, opacity: subE.opacity, color: theme.textMuted,
+              fontSize: 44, textAlign: 'center', maxWidth: 820, lineHeight: 1.35 }}>{subtitle}</div>
           )}
         </AbsoluteFill>
       </div>
