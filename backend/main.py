@@ -575,6 +575,7 @@ async def _render_video_job(job_id: str, req: VideoGenRequest):
                     "id": job_id, "url": req.url, "desarrollo": req.desarrollo,
                     "proposito": req.proposito, "userId": req.userId,
                     "theme": spec.get("theme"), "brand": spec.get("brand"),
+                    "format": spec.get("format", "vertical"),
                     # Receta de generación (base del loop de feedback: cuando la app sume el rating,
                     # ya sabemos qué combinación se uso para sesgar futuras generaciones).
                     "recipe": {
