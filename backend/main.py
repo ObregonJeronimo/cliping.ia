@@ -256,6 +256,7 @@ class VideoGenRequest(BaseModel):
     theme: str = ""        # override opcional del theme
     seconds: int = 0       # duración exacta elegida (10/15/20); 0 = automática
     userId: str = ""
+    spec: dict | None = None  # variante ya elegida: si viene, se renderiza sin pasar por el director
 
 
 @app.post("/api/video/generate")
@@ -271,6 +272,68 @@ async def video_generate(req: VideoGenRequest):
     }
     asyncio.create_task(_render_video_job(job_id, req))
     return {"job_id": job_id}
+
+
+class VariantsRequest(BaseModel):
+    url: str = ""
+    desarrollo: str = ""
+    proposito: str = "marketing"
+    theme: str = ""
+    seconds: int = 0
+    userId: str = ""
+    count: int = 3
+
+
+@app.post("/api/video/variants")
+async def video_variants(req: VariantsRequest):
+    """Genera N variantes de STORYBOARD (hooks/arcos/paletas DISTINTOS entre sí) para la misma URL,
+    para que el usuario elija / haga A·B antes de renderizar. UNA sola carga del sitio (reusada por
+    todas). Devuelve previews + el spec de cada una; renderizar la elegida = POST a /api/video/generate
+    con ese spec. NO renderiza acá (es barato: solo llamadas al director)."""
+    if not req.url.strip() and not req.desarrollo.strip():
+        return {"error": "Necesitás al menos una URL o una descripción"}
+    n = max(1, min(int(req.count or 3), 4))
+    OUTPUTS_DIR.mkdir(exist_ok=True)
+    content = None
+    if req.url.strip():
+        try:
+            import site_capture
+            cap = await site_capture.capture_all(
+                req.url.strip(), str(OUTPUTS_DIR / f"variants_{uuid.uuid4().hex[:8]}.png"))
+            content = cap.get("content")
+        except Exception as e:
+            print(f"[variants] capture_all falló: {e}")
+    # Perfil 'rodante' local: acumula lo usado para que cada variante rote respecto de la anterior.
+    rolling = {"styles": [], "angles": [], "themes": [], "arts": [], "decors": [], "hooks": [], "arcs": []}
+    out = []
+    for i in range(n):
+        try:
+            spec = await template_director.build_storyboard(
+                req.url, req.desarrollo, req.proposito, seconds=req.seconds,
+                recent_profile=rolling, prefetched_site=content)
+            if req.theme in template_director.VALID_THEMES:
+                spec["theme"] = req.theme
+            for ks, kr in [("editStyle", "styles"), ("angle", "angles"), ("theme", "themes"),
+                           ("artName", "arts"), ("decorName", "decors"),
+                           ("hookName", "hooks"), ("arcName", "arcs")]:
+                v = spec.get(ks)
+                if v:
+                    rolling[kr] = [v] + [x for x in rolling[kr] if x != v]
+            first = ""
+            for s in spec.get("scenes", []):
+                if s.get("type") == "KineticStatement" and s.get("lines"):
+                    ln = s["lines"][0]
+                    first = ln if isinstance(ln, str) else "".join(
+                        seg.get("t", "") for seg in ln if isinstance(seg, dict))
+                    break
+            out.append({
+                "index": i, "hookName": spec.get("hookName"), "arcName": spec.get("arcName"),
+                "theme": spec.get("theme"), "brand": spec.get("brand"), "firstLine": first,
+                "sceneTypes": [s.get("type") for s in spec.get("scenes", [])], "spec": spec,
+            })
+        except Exception as e:
+            print(f"[variants] variante {i} falló: {e}")
+    return {"variants": out}
 
 
 class DeleteVideoRequest(BaseModel):
@@ -320,11 +383,17 @@ async def _render_video_job(job_id: str, req: VideoGenRequest):
         # recientes -> dos videos de la misma marca (mismo rubro) NO se sienten iguales.
         _db = get_firestore()
         _bkey = _brand_key(req.url)
-        _recent = _get_recent_profile(_db, req.userId, _bkey)
-        spec = await template_director.build_storyboard(
-            req.url, req.desarrollo, req.proposito, seconds=req.seconds,
-            recent_profile=_recent, prefetched_site=_site.get("content"))
-        _push_recent_profile(_db, req.userId, _bkey, spec)
+        if isinstance(getattr(req, "spec", None), dict) and req.spec.get("scenes"):
+            # Variante ya elegida por el usuario: la renderamos tal cual (igual inyectamos
+            # screenshot/logo/imágenes reales abajo). Saltea al director.
+            spec = req.spec
+            print("[video] usando spec pre-elegido (variante)")
+        else:
+            _recent = _get_recent_profile(_db, req.userId, _bkey)
+            spec = await template_director.build_storyboard(
+                req.url, req.desarrollo, req.proposito, seconds=req.seconds,
+                recent_profile=_recent, prefetched_site=_site.get("content"))
+            _push_recent_profile(_db, req.userId, _bkey, spec)
         if req.theme in template_director.VALID_THEMES:
             spec["theme"] = req.theme
         jobs[job_id]["spec"] = spec
