@@ -222,42 +222,50 @@ async def _render_video_job(job_id: str, req: VideoGenRequest):
     temp_files = []
 
     try:
-        jobs[job_id].update({"status": "processing", "step": "script", "progress": 18})
-        # 1. Director: URL + desarrollo -> storyboard.
-        # Rotación MULTIDIMENSIONAL por usuario+marca: no repetir ángulo/estilo/paleta/arte
+        jobs[job_id].update({"status": "processing", "step": "script", "progress": 14})
+        # 0. UNA sola carga del sitio (Chromium): texto para el guion + screenshot para Mockup.
+        #    Antes se abría el navegador dos veces por video; ahora una sola -> más rápido.
+        _site = {"screenshot": None, "content": None}
+        _shot_path = str(OUTPUTS_DIR / f"{job_id}_cap.png")
+        if req.url.strip():
+            try:
+                import site_capture
+                _site = await site_capture.capture_all(req.url.strip(), _shot_path)
+            except Exception as ce:
+                print(f"[video] capture_all falló (sigo con scrape liviano): {ce}")
+
+        # 1. Director: usa el texto YA extraído (no recarga el browser).
+        # Rotación MULTIDIMENSIONAL por usuario+marca: no repetir ángulo/estilo/paleta/arte/decor
         # recientes -> dos videos de la misma marca (mismo rubro) NO se sienten iguales.
         _db = get_firestore()
         _bkey = _brand_key(req.url)
         _recent = _get_recent_profile(_db, req.userId, _bkey)
         spec = await template_director.build_storyboard(
-            req.url, req.desarrollo, req.proposito, seconds=req.seconds, recent_profile=_recent)
+            req.url, req.desarrollo, req.proposito, seconds=req.seconds,
+            recent_profile=_recent, prefetched_site=_site.get("content"))
         _push_recent_profile(_db, req.userId, _bkey, spec)
         if req.theme in template_director.VALID_THEMES:
             spec["theme"] = req.theme
         jobs[job_id]["spec"] = spec
 
-        # 1b. Captura real del sitio para el/los MockupShowcase (best-effort)
+        # 1b. MockupShowcase: REUSAMOS el screenshot de la carga única (no recapturamos).
         needs_shot = [s for s in spec.get("scenes", [])
                       if s.get("type") == "MockupShowcase" and not s.get("screenshot")]
-        if needs_shot and req.url.strip():
+        if needs_shot and _site.get("screenshot"):
             try:
                 jobs[job_id].update({"step": "capture", "progress": 30})
-                import site_capture
-                shot_path = str(OUTPUTS_DIR / f"{job_id}_cap.png")
-                got = await site_capture.capture_site(req.url.strip(), shot_path)
-                if got:
-                    shot_url = ""
-                    try:
-                        from cloudinary_upload import upload_image
-                        shot_url = await upload_image(got, f"cap_{job_id[:8]}")
-                    except Exception as ie:
-                        print(f"[video] upload screenshot error: {ie}")
-                    if shot_url:
-                        for s in needs_shot:
-                            s["screenshot"] = shot_url
-                        print(f"[video] screenshot del sitio listo")
+                shot_url = ""
+                try:
+                    from cloudinary_upload import upload_image
+                    shot_url = await upload_image(_site["screenshot"], f"cap_{job_id[:8]}")
+                except Exception as ie:
+                    print(f"[video] upload screenshot error: {ie}")
+                if shot_url:
+                    for s in needs_shot:
+                        s["screenshot"] = shot_url
+                    print(f"[video] screenshot del sitio listo")
             except Exception as ce:
-                print(f"[video] captura del sitio falló (uso skeleton): {ce}")
+                print(f"[video] screenshot del sitio falló (uso skeleton): {ce}")
 
         # 1c. Logo real del sitio para el/los LogoReveal: lo bajamos y re-hosteamos en
         # Cloudinary (URL confiable para Remotion). Si falla, la escena cae al wordmark.

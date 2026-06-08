@@ -622,21 +622,23 @@ _SITE_CACHE = {}          # url -> (timestamp, data)
 _SITE_TTL = 1800          # 30 min: varios videos de la MISMA marca no re-scrapean
 
 
-async def analyze_site_rich(url: str) -> dict:
-    """Wrapper con cache por URL (TTL 30 min). Hacer muchos videos de la misma marca no
-    vuelve a cargar el browser ni re-scrapea: más rápido y reproducible dentro de la ventana."""
+async def analyze_site_rich(url: str, prefetched: dict = None) -> dict:
+    """Wrapper con cache por URL (TTL 30 min). Si llega `prefetched` (texto ya extraído por una
+    carga de browser previa, p.ej. capture_all), lo usa y evita re-cargar. Varios videos de la
+    misma marca tampoco re-scrapean."""
     import time
     now = time.time()
-    hit = _SITE_CACHE.get(url or "")
-    if hit and (now - hit[0]) < _SITE_TTL:
-        return hit[1]
-    out = await _analyze_site_rich_uncached(url)
+    if prefetched is None:
+        hit = _SITE_CACHE.get(url or "")
+        if hit and (now - hit[0]) < _SITE_TTL:
+            return hit[1]
+    out = await _analyze_site_rich_uncached(url, prefetched=prefetched)
     if url:
         _SITE_CACHE[url] = (now, out)
     return out
 
 
-async def _analyze_site_rich_uncached(url: str) -> dict:
+async def _analyze_site_rich_uncached(url: str, prefetched: dict = None) -> dict:
     """
     Lectura PROFUNDA del sitio para que el director escriba copy específico y real.
     Primario: texto YA RENDERIZADO vía Chromium (sirve para SPAs React/Vue/Next que
@@ -650,11 +652,14 @@ async def _analyze_site_rich_uncached(url: str) -> dict:
         return out
 
     rich = None
-    try:
-        import site_capture
-        rich = await site_capture.extract_content(url)
-    except Exception as e:
-        print(f"[director] extract_content no disponible: {e}")
+    if prefetched and isinstance(prefetched, dict):
+        rich = prefetched          # texto ya extraído (capture_all) -> no recargamos browser
+    else:
+        try:
+            import site_capture
+            rich = await site_capture.extract_content(url)
+        except Exception as e:
+            print(f"[director] extract_content no disponible: {e}")
 
     if rich and (rich.get("bodyText") or rich.get("headings")):
         heads = rich.get("headings") or []
@@ -823,7 +828,7 @@ def _parse_spec(raw: str):
 async def build_storyboard(url: str, desarrollo: str, proposito: str = "marketing",
                            theme_override: str = "", tone: str = "",
                            length: str = "medio", seconds: int = 0, simple: bool = True,
-                           recent_profile: dict = None) -> dict:
+                           recent_profile: dict = None, prefetched_site: dict = None) -> dict:
     """
     URL + desarrollo -> storyboard spec.
 
@@ -831,7 +836,7 @@ async def build_storyboard(url: str, desarrollo: str, proposito: str = "marketin
     recientes de la misma marca, así dos videos del mismo rubro NO se sienten iguales.
     Modo avanzado: respeta los parámetros del usuario como restricciones, con menos azar.
     """
-    url_data = await analyze_site_rich(url)
+    url_data = await analyze_site_rich(url, prefetched=prefetched_site)
 
     rp = recent_profile or {}
     rec_styles = rp.get("styles") or []

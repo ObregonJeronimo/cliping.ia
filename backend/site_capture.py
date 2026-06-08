@@ -114,3 +114,45 @@ async def extract_content(url: str) -> dict | None:
     except Exception as e:
         print(f"[extract] error: {e}")
         return None
+
+
+async def capture_all(url: str, out_path: str, width: int = 1280, height: int = 900) -> dict:
+    """UNA sola carga de Chromium: extrae el texto renderizado (content) Y saca el screenshot,
+    en vez de abrir el navegador dos veces por video. Devuelve {'screenshot': path|None,
+    'content': dict|None}. Best-effort: cualquier parte que falle vuelve None, no rompe."""
+    out = {"screenshot": None, "content": None}
+    if not _PW_OK or not url:
+        return out
+    try:
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(args=["--no-sandbox"])
+            page = await browser.new_page(viewport={"width": width, "height": height},
+                                          device_scale_factor=2)
+            try:
+                await page.goto(url, wait_until="domcontentloaded", timeout=30000)
+            except Exception as ge:
+                print(f"[capture_all] goto lento ({ge}); sigo con lo que haya")
+            await page.wait_for_timeout(2200)
+            for sel in ["#onetrust-accept-btn-handler", "button:has-text('Aceptar')",
+                        "button:has-text('Accept')", "[aria-label*='accept' i]"]:
+                try:
+                    await page.click(sel, timeout=800)
+                    break
+                except Exception:
+                    pass
+            try:
+                data = await page.evaluate(_JS_EXTRACT)
+                if isinstance(data, dict):
+                    out["content"] = data
+            except Exception as ee:
+                print(f"[capture_all] extract: {ee}")
+            try:
+                await page.screenshot(path=out_path, clip={"x": 0, "y": 0, "width": width, "height": height})
+                if Path(out_path).exists():
+                    out["screenshot"] = out_path
+            except Exception as se:
+                print(f"[capture_all] screenshot: {se}")
+            await browser.close()
+    except Exception as e:
+        print(f"[capture_all] error: {e}")
+    return out
