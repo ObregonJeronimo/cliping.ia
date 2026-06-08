@@ -184,6 +184,13 @@ SCENE_CATALOG = """ESCENAS DISPONIBLES (type + props):
   "documents"->"lightning", "lock"->"check"; gym: "couch"->"dumbbell"; finanzas:
   "piggy bank"->"chart"; e-commerce: "shopping cart"->"money". Elegí los íconos que de
   verdad representen la idea de la página.
+- "MorphScene": transformación FLUIDA entre formas vectoriales (morph real, gratis). Una
+  forma se convierte en la siguiente encadenando 2 a 4 figuras -> ideal para contar una
+  metáfora visual de la marca (ej e-commerce: "bag"->"box"->"house"; salud: "droplet"->"heart";
+  software: "square"->"check"). props: shapes = array de 2 a 4 KEYS de esta lista EXACTA:
+  ["circle","square","triangle","star","heart","plus","play","arrow","droplet","house","bolt","pin","box","chat","check","bag"].
+  Elegí una cadena que cuente la idea de ESTA marca; opcional title = segmentos { t, accent } y subtitle (string).
+  Es un beat vistoso: usalo como MUCHO una vez por video, y SOLO si una metáfora de formas encaja.
 - "StatReveal": un NÚMERO que cuenta de 0 hasta el valor (el beat de "dato que impacta").
   props: value = número (ej 95, 4.9, 12000); opcional prefix (ej "$", "+"); suffix (ej
   "%", "x", "k", "/5"); caption = línea chica ARRIBA (string); label = array de segmentos
@@ -351,6 +358,8 @@ def _min_duration(s: dict) -> int:
         n = len(s.get("items") or [])
     elif t == "KineticStatement":
         n = len(s.get("lines") or [])
+    elif t == "MorphScene":
+        n = len(s.get("shapes") or [])
     elif t == "Testimonial":
         n = 4  # una cita es bastante texto para leer
     elif t in ("SocialProof", "IntegrationCluster", "IllustrationScene"):
@@ -400,7 +409,7 @@ def _normalize(spec: dict, url_data: dict, desarrollo: str, proposito: str) -> d
     if not isinstance(scenes, list) or len(scenes) < 2:
         return fb
     valid_types = {"KineticStatement", "IntegrationCluster", "MockupShowcase", "CtaOutro", "IconTransform",
-                   "StatReveal", "FeatureList", "Comparison", "Testimonial", "SocialProof", "LogoReveal", "IllustrationScene"}
+                   "StatReveal", "FeatureList", "Comparison", "Testimonial", "SocialProof", "LogoReveal", "IllustrationScene", "MorphScene"}
     # Antídoto contra info inventada: si el dato no está en el sitio, no se muestra como hecho.
     hay = " ".join([
         url_data.get("context", ""), url_data.get("description", ""),
