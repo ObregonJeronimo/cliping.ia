@@ -568,6 +568,15 @@ def _normalize(spec: dict, url_data: dict, desarrollo: str, proposito: str) -> d
             seen_list = True
         capped.append(s)
     clean = capped if len(capped) >= 2 else clean
+    # La PRIMERA escena nunca debe ser pesada (lista/comparación): no engancha. Si quedó así,
+    # la cambiamos por el primer hook liviano que haya.
+    HEAVY = {"FeatureList", "Comparison"}
+    LIGHT = {"KineticStatement", "StatReveal", "IconTransform", "IllustrationScene", "ProcessSteps"}
+    if clean and clean[0].get("type") in HEAVY:
+        for i in range(1, len(clean)):
+            if clean[i].get("type") in LIGHT:
+                clean[0], clean[i] = clean[i], clean[0]
+                break
     brand = spec.get("brand") or fb["brand"]
     for s in clean:
         if s.get("type") == "CtaOutro" and not s.get("brand"):
@@ -885,7 +894,9 @@ CONTEXTO DEL SITIO (usalo para escribir copy específico y real, no genérico):
 OBJETIVO DEL VIDEO ({proposito}): {PURPOSE_GUIDE.get((proposito or '').lower(), PURPOSE_GUIDE['marketing'])}
 
 EL HOOK MANDA: la PRIMERA escena tiene que enganchar en los primeros 1-2 segundos (frase
-filosa, dato real, o pregunta que pegue). Si la apertura es débil, el resto no se ve.
+filosa, dato real, o pregunta que pegue). NUNCA arranques con Comparison ni FeatureList (son
+pesadas de texto, no enganchan): la primera escena es un hook CORTO (KineticStatement filoso,
+StatReveal con dato real, o IllustrationScene). Si la apertura es débil o larga, el resto no se ve.
 
 Generá el storyboard JSON. El copy tiene que sonar a ESTA marca puntual (usá el brief y lo que
 sabés del sitio), reflejar el ángulo y el mood, y respetar las reglas de líneas cortas."""
