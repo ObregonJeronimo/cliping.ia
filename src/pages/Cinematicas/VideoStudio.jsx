@@ -45,13 +45,13 @@ export default function VideoStudio() {
     <div className={styles.body}>
       <div className={styles.left}>
         <div className={styles.modeToggle}>
-          <button className={`${styles.modeBtn} ${mode === 'simple' ? styles.modeBtnActive : ''}`} onClick={() => setMode('simple')}>Simple</button>
-          <button className={`${styles.modeBtn} ${mode === 'avanzado' ? styles.modeBtnActive : ''}`} onClick={() => setMode('avanzado')}>Avanzado</button>
+          <button className={`${styles.modeBtn} ${mode === 'simple' ? styles.modeBtnActive : ''}`} onClick={() => setMode('simple')} disabled={generating}>Simple</button>
+          <button className={`${styles.modeBtn} ${mode === 'avanzado' ? styles.modeBtnActive : ''}`} onClick={() => setMode('avanzado')} disabled={generating}>Avanzado</button>
         </div>
 
         <div className={styles.cineSection}>
           <div className={styles.cineSectionLabel}>URL del sitio</div>
-          <input className={styles.nameInput} placeholder="https://tusitio.com" value={url} onChange={e => setUrl(e.target.value)} />
+          <input className={styles.nameInput} placeholder="https://tusitio.com" value={url} onChange={e => setUrl(e.target.value)} disabled={generating} />
         </div>
 
         <div className={styles.cineSection}>
@@ -60,14 +60,14 @@ export default function VideoStudio() {
           </div>
           <textarea className={styles.textarea} rows={3}
             placeholder={mode === 'simple' ? 'Dejalo vacío y la IA decide todo, o tirá una idea...' : 'Ángulo, qué destacar, tono...'}
-            value={desarrollo} onChange={e => setDesarrollo(e.target.value)} />
+            value={desarrollo} onChange={e => setDesarrollo(e.target.value)} disabled={generating} />
         </div>
 
         <div className={styles.cineSection}>
           <div className={styles.cineSectionLabel}>Duración</div>
           <div className={styles.propGrid}>
             {SEGUNDOS.map(s => (
-              <button key={s} className={`${styles.propBtn} ${seconds === s ? styles.propBtnActive : ''}`} onClick={() => setSeconds(s)}>{s}s</button>
+              <button key={s} className={`${styles.propBtn} ${seconds === s ? styles.propBtnActive : ''}`} onClick={() => setSeconds(s)} disabled={generating}>{s}s</button>
             ))}
           </div>
         </div>
@@ -77,7 +77,7 @@ export default function VideoStudio() {
             <div className={styles.cineSectionLabel}>Estilo (theme)</div>
             <div className={styles.propGrid}>
               {THEMES.map(t => (
-                <button key={t.key} className={`${styles.propBtn} ${theme === t.key ? styles.propBtnActive : ''}`} onClick={() => setTheme(t.key)}>{t.label}</button>
+                <button key={t.key} className={`${styles.propBtn} ${theme === t.key ? styles.propBtnActive : ''}`} onClick={() => setTheme(t.key)} disabled={generating}>{t.label}</button>
               ))}
             </div>
           </div>
@@ -85,7 +85,7 @@ export default function VideoStudio() {
             <div className={styles.cineSectionLabel}>Propósito</div>
             <div className={styles.propGrid}>
               {PROPOSITOS.map(p => (
-                <button key={p.key} className={`${styles.propBtn} ${proposito === p.key ? styles.propBtnActive : ''}`} onClick={() => setProposito(p.key)}>{p.label}</button>
+                <button key={p.key} className={`${styles.propBtn} ${proposito === p.key ? styles.propBtnActive : ''}`} onClick={() => setProposito(p.key)} disabled={generating}>{p.label}</button>
               ))}
             </div>
           </div>
@@ -93,7 +93,7 @@ export default function VideoStudio() {
             <div className={styles.cineSectionLabel}>Tono</div>
             <div className={styles.propGrid}>
               {TONOS.map(t => (
-                <button key={t} className={`${styles.propBtn} ${tono === t ? styles.propBtnActive : ''}`} onClick={() => setTono(tono === t ? '' : t)}>{t}</button>
+                <button key={t} className={`${styles.propBtn} ${tono === t ? styles.propBtnActive : ''}`} onClick={() => setTono(tono === t ? '' : t)} disabled={generating}>{t}</button>
               ))}
             </div>
           </div>
