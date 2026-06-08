@@ -44,6 +44,19 @@ CREATIVE_ANGLES = [
 ]
 MOODS = ["enérgico y rápido", "calmo y premium", "confiable y claro", "moderno y audaz"]
 
+# El PROPÓSITO moldea la ESTRUCTURA y el CTA del video (no solo el copy suelto).
+PURPOSE_GUIDE = {
+    "marketing":   "Equilibrá enganche + valor + marca; cerrá con un CTA claro.",
+    "awareness":   "Priorizá un HOOK fuerte y la idea central de marca; CTA suave (seguir/conocer).",
+    "branding":    "Priorizá identidad, tono y un mensaje memorable; CTA suave.",
+    "conversion":  "Estructura: problema -> solución -> prueba real -> CTA fuerte y directo (comprar/agendar).",
+    "ventas":      "Estructura: problema -> solución -> prueba real -> CTA fuerte y directo (comprar/agendar).",
+    "lanzamiento": "Estructura: teaser -> reveal de la novedad/producto -> fecha o CTA de acción.",
+    "launch":      "Estructura: teaser -> reveal de la novedad/producto -> fecha o CTA de acción.",
+    "educacion":   "Enseñá algo útil en pasos claros; la marca aparece como quien lo resuelve.",
+    "educational": "Enseñá algo útil en pasos claros; la marca aparece como quien lo resuelve.",
+}
+
 # Estilo de EDICIÓN por video: rota qué escenas protagonizan y el ritmo, para que la
 # ESTRUCTURA no sea siempre la misma (Hook -> IconTransform -> Mockup -> CTA). Es a la
 # estructura lo que ART_PRESETS es al movimiento.
@@ -790,6 +803,8 @@ CONTEXTO DEL SITIO (usalo para escribir copy específico y real, no genérico):
 {contexto}{extra}{lang_hint}
 {brief_block}
 {brief}
+
+OBJETIVO DEL VIDEO ({proposito}): {PURPOSE_GUIDE.get((proposito or '').lower(), PURPOSE_GUIDE['marketing'])}
 
 EL HOOK MANDA: la PRIMERA escena tiene que enganchar en los primeros 1-2 segundos (frase
 filosa, dato real, o pregunta que pegue). Si la apertura es débil, el resto no se ve.
