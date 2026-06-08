@@ -107,11 +107,12 @@ export const CtaOutro = ({ theme, brand = '', cta = '', logo = '', mark = 'star'
             </div>
           )}
           <div style={{ transform: `scale(${clamp(ctaS, 0, 1.2) * pulse})`, opacity: clamp(ctaS, 0, 1),
-            padding: '34px 64px', borderRadius: theme.radius * 1.6, background: theme.accentGrad,
-            color: '#fff', fontSize: 52, fontWeight: 600, boxShadow: `0 24px 70px ${theme.glow}`,
-            display: 'flex', alignItems: 'center', gap: 16 }}>
-            <span>{cta}</span>
-            <span style={{ transform: `translateX(${4 * Math.sin(frame / 6)}px)`, fontWeight: 800 }}>→</span>
+            transformOrigin: 'center center', maxWidth: 860, boxSizing: 'border-box',
+            padding: '30px 52px', borderRadius: theme.radius * 1.6, background: theme.accentGrad,
+            color: '#fff', fontSize: cta.length > 24 ? 40 : 52, fontWeight: 600, boxShadow: `0 24px 70px ${theme.glow}`,
+            display: 'flex', alignItems: 'center', gap: 16, textAlign: 'center', lineHeight: 1.15 }}>
+            <span style={{ flex: '1 1 auto', whiteSpace: 'normal' }}>{cta}</span>
+            <span style={{ flex: '0 0 auto', transform: `translateX(${4 * Math.sin(frame / 6)}px)`, fontWeight: 800 }}>→</span>
           </div>
         </div>
       )}

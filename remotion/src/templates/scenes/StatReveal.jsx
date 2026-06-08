@@ -46,9 +46,10 @@ export const StatReveal = ({
   const glowOp = clamp(frame / 14, 0, 1) * breathe(frame, 0.05, 150)
 
   // Conteo: 0 -> value con expo-out (monótono, nunca se pasa del objetivo).
-  const decimals = (String(value).split('.')[1] || '').length
+  const safeVal = Number.isFinite(Number(value)) ? Number(value) : 0
+  const decimals = (String(safeVal).split('.')[1] || '').length
   const countP = prog(frame, 10, Math.round(dur * 0.55), EASE.out)
-  const shown = fmtNum(value * countP, decimals)
+  const shown = fmtNum(safeVal * countP, decimals)
 
   // Pop del número al entrar + micro-rebote cuando termina de contar.
   const pop = spr(frame, fps, 8, SPRING.pop, 26)
@@ -58,12 +59,14 @@ export const StatReveal = ({
 
   const left = variant === 'left'
   const ring = variant === 'ring'
+  // Caption en mayúscula inicial (se veía en minúscula -> poco prolijo).
+  const capTxt = caption ? caption.charAt(0).toUpperCase() + caption.slice(1) : ''
 
   // El número se achica si tiene muchos dígitos para no cortarse en pantalla. Se dimensiona
   // por el valor FINAL (no por lo que se muestra mientras cuenta) -> no cambia de tamaño.
-  const numStr = fmtNum(value, decimals)
+  const numStr = fmtNum(safeVal, decimals)
   const approxChars = numStr.length + (prefix ? 0.5 : 0) + (suffix ? suffix.length * 0.5 : 0)
-  const numSize = Math.min(ring ? 280 : 340, Math.round((ring ? 660 : 940) / Math.max(1, approxChars * 0.58)))
+  const numSize = Math.min(ring ? 230 : 380, Math.round((ring ? 560 : 1040) / Math.max(1, approxChars * 0.58)))
 
   // Anillo de progreso (se dibuja al ritmo del conteo).
   const R = 360
@@ -83,42 +86,48 @@ export const StatReveal = ({
           alignItems: left ? 'flex-start' : 'center', justifyContent: 'center',
           padding: left ? '0 0 0 96px' : 0, textAlign: left ? 'left' : 'center',
         }}>
-          {caption && (
-            <div style={{ transform: capE.transform, opacity: capE.opacity, marginBottom: 8,
-              color: theme.textMuted, fontSize: 44, fontWeight: 600, letterSpacing: '-0.01em' }}>
-              {caption}
-            </div>
-          )}
-
-          {/* Número (con anillo opcional alrededor) */}
-          <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            transform: `translateY(${fl}px) scale(${clamp(pop, 0, 1.15) * landPulse})` }}>
+          <div style={{ position: 'relative', display: 'flex', flexDirection: 'column',
+            alignItems: left ? 'flex-start' : 'center', justifyContent: 'center',
+            width: ring ? 820 : 'auto', height: ring ? 820 : 'auto' }}>
             {ring && (
-              <svg width={840} height={840} viewBox="0 0 840 840"
+              <svg width={820} height={820} viewBox="0 0 820 820"
                 style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%) rotate(-90deg)' }}>
-                <circle cx={420} cy={420} r={R} fill="none" stroke={theme.pillBorder} strokeWidth={22} opacity={0.5} />
-                <circle cx={420} cy={420} r={R} fill="none" stroke={theme.accentFrom} strokeWidth={22} strokeLinecap="round"
+                <circle cx={410} cy={410} r={R} fill="none" stroke={theme.pillBorder} strokeWidth={20} opacity={0.5} />
+                <circle cx={410} cy={410} r={R} fill="none" stroke={theme.accentFrom} strokeWidth={20} strokeLinecap="round"
                   pathLength={1} strokeDasharray={1} strokeDashoffset={1 - countP}
                   style={{ filter: `drop-shadow(0 0 18px ${theme.accentTo}aa)` }} />
               </svg>
             )}
-            <div style={{ display: 'flex', alignItems: 'baseline', fontWeight: theme.headWeight,
-              fontSize: numSize, lineHeight: 1, letterSpacing: '-0.04em' }}>
-              {prefix && <span style={{ fontSize: '0.42em', color: theme.text, opacity: 0.85, marginRight: 6 }}>{prefix}</span>}
-              <GradientText theme={theme}>{shown}</GradientText>
-              {suffix && <GradientText theme={theme} style={{ fontSize: '0.5em' }}>{suffix}</GradientText>}
-            </div>
-          </div>
+            {capTxt && (
+              <div style={{ transform: capE.transform, opacity: capE.opacity, marginBottom: 8,
+                color: theme.textMuted, fontSize: ring ? 34 : 44, fontWeight: 600, letterSpacing: '-0.01em',
+                maxWidth: ring ? 520 : 900, padding: ring ? '0 20px' : 0 }}>
+                {capTxt}
+              </div>
+            )}
 
-          {segText(label) && (
-            <div style={{ marginTop: ring ? 36 : 24, transform: labE.transform, opacity: labE.opacity,
-              fontWeight: theme.headWeight, fontSize: fitHeadline(segText(label), 78, 46), lineHeight: 1.1,
-              letterSpacing: '-0.02em', color: theme.text, maxWidth: 920, padding: left ? '0 60px 0 0' : '0 80px' }}>
-              {label.map((s, j) => s.accent
-                ? <GradientText key={j} theme={theme}>{s.t}</GradientText>
-                : <span key={j}>{s.t}</span>)}
+            {/* Número */}
+            <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              transform: `translateY(${fl}px) scale(${clamp(pop, 0, 1.15) * landPulse})` }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', fontWeight: theme.headWeight,
+                fontSize: numSize, lineHeight: 1, letterSpacing: '-0.04em' }}>
+                {prefix && <span style={{ fontSize: '0.42em', color: theme.text, opacity: 0.85, marginRight: 6 }}>{prefix}</span>}
+                <GradientText theme={theme}>{shown}</GradientText>
+                {suffix && <GradientText theme={theme} style={{ fontSize: '0.5em' }}>{suffix}</GradientText>}
+              </div>
             </div>
-          )}
+
+            {segText(label) && (
+              <div style={{ marginTop: ring ? 18 : 24, transform: labE.transform, opacity: labE.opacity,
+                fontWeight: theme.headWeight, fontSize: ring ? Math.min(56, fitHeadline(segText(label), 56, 36)) : fitHeadline(segText(label), 78, 46),
+                lineHeight: 1.1, letterSpacing: '-0.02em', color: theme.text,
+                maxWidth: ring ? 500 : 920, padding: left ? '0 60px 0 0' : ring ? '0 24px' : '0 80px' }}>
+                {label.map((s, j) => s.accent
+                  ? <GradientText key={j} theme={theme}>{s.t}</GradientText>
+                  : <span key={j}>{s.t}</span>)}
+              </div>
+            )}
+          </div>
         </AbsoluteFill>
       </div>
     </AbsoluteFill>

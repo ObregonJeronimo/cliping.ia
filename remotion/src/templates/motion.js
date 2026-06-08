@@ -52,11 +52,11 @@ export const enter = (frame, from = 0, { dur = 16, dist = 60, axis = 'y', ease =
 }
 
 // ── Flote idle (nada queda quieto). Devuelve px. ──────────────────────────────
-export const floatY = (frame, amp = 8, period = 90, phase = 0) =>
+export const floatY = (frame, amp = 6, period = 120, phase = 0) =>
   Math.sin((frame / period) * Math.PI * 2 + phase) * amp
 
 // ── Respiración (escala ~1 que late). ─────────────────────────────────────────
-export const breathe = (frame, amp = 0.015, period = 120) =>
+export const breathe = (frame, amp = 0.012, period = 160) =>
   1 + Math.sin((frame / period) * Math.PI * 2) * amp
 
 /**

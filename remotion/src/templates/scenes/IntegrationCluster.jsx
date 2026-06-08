@@ -14,9 +14,9 @@ const GradientText = ({ theme, children }) => (
 )
 
 const SLOTS = [
-  { x: 150, y: 880 }, { x: 930, y: 880 },
-  { x: 90, y: 1140 }, { x: 990, y: 1140 },
-  { x: 540, y: 1420 },
+  { x: 250, y: 880 }, { x: 830, y: 880 },
+  { x: 215, y: 1150 }, { x: 865, y: 1150 },
+  { x: 540, y: 1430 },
 ]
 
 export const IntegrationCluster = ({ theme, title = [], colors = null, variant = 'hub', durationInFrames: durProp }) => {
@@ -29,7 +29,7 @@ export const IntegrationCluster = ({ theme, title = [], colors = null, variant =
   const cols = (colors && colors.length) ? colors : accentPalette(theme, SLOTS.length)
 
   const cam = camera(theme.art, frame, dur, m.cameraDrift)
-  const pxFg = parallax(cam, 0.6)
+  const pxFg = parallax(cam, 0.35)
   const cap = entrance(theme.art, frame, 0, { dur: m.enterFrames, dist: 50, ease: EASE.out })
   const hub = spr(frame, fps, 8, SPRING.pop, 26)
   const hubRot = prog(frame, 8, 40, EASE.out) * 30
@@ -88,7 +88,8 @@ export const IntegrationCluster = ({ theme, title = [], colors = null, variant =
           return (
             <div key={i} style={{ position: 'absolute', left: p.x, top: p.y,
               transform: `translate(-50%,-50%) translate(${pxFg.x}px, ${pxFg.y + fl}px) scale(${e})`, opacity: clamp(e, 0, 1),
-              height: 112, borderRadius: 56, display: 'flex', alignItems: 'center', gap: 22, padding: '0 40px',
+              height: 108, borderRadius: 54, display: 'flex', alignItems: 'center', gap: 18, padding: '0 32px',
+              maxWidth: 300, transformOrigin: 'center center', boxSizing: 'border-box',
               background: theme.pillBg, border: `2px solid ${theme.pillBorder}`, boxShadow: '0 16px 40px rgba(0,0,0,0.45)' }}>
               <div style={{ width: 48, height: 48, borderRadius: 14, background: cols[i] }} />
               <div style={{ width: 108, height: 22, borderRadius: 12, background: '#ffffff2a' }} />
