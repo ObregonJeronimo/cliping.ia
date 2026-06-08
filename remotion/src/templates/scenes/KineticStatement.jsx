@@ -63,7 +63,42 @@ const Arcs = ({ theme, frame, px }) => {
   )
 }
 
-export const KineticStatement = ({ theme, lines = [], subtitle = '', variant = 'center', durationInFrames: durProp }) => {
+const Caret = ({ theme, frame, solid }) => {
+  const on = solid ? true : Math.floor(frame / 15) % 2 === 0
+  return <span style={{ display: 'inline-block', width: '0.06em', height: '0.92em', verticalAlign: '-0.12em',
+    marginLeft: '0.04em', background: theme.accentTo, opacity: on ? 1 : 0, borderRadius: 2,
+    boxShadow: `0 0 18px ${theme.accentTo}` }} />
+}
+
+// Texto que aparece "tipeado" (carácter por carácter) con cursor. Respeta acentos por segmento.
+const TypewriterLines = ({ theme, lines, frame }) => {
+  const CPS = 1.7            // caracteres por frame (~51/seg a 30fps)
+  const START = 6
+  const ranges = []
+  let acc = 0
+  lines.forEach(segs => { const len = segs.reduce((b, s) => b + s.t.length, 0); ranges.push([acc, acc + len]); acc += len })
+  const total = acc
+  const revealed = Math.max(0, Math.floor((frame - START) * CPS))
+  const done = revealed >= total
+  return lines.map((segs, i) => {
+    let off = ranges[i][0]
+    const cursorHere = done ? i === lines.length - 1 : revealed >= ranges[i][0] && revealed < ranges[i][1]
+    return (
+      <div key={i}>
+        {segs.map((s, j) => {
+          const segStart = off; off += s.t.length
+          const show = clamp(revealed - segStart, 0, s.t.length)
+          const sub = s.t.slice(0, show)
+          if (!sub) return null
+          return s.accent ? <GradientText key={j} theme={theme}>{sub}</GradientText> : <span key={j}>{sub}</span>
+        })}
+        {cursorHere && <Caret theme={theme} frame={frame} solid={!done} />}
+      </div>
+    )
+  })
+}
+
+export const KineticStatement = ({ theme, lines = [], subtitle = '', variant = 'center', reveal = 'none', durationInFrames: durProp }) => {
   const frame = useCurrentFrame()
   const vc = useVideoConfig()
   const fps = vc.fps
@@ -105,7 +140,9 @@ export const KineticStatement = ({ theme, lines = [], subtitle = '', variant = '
             )}
             <div style={{ textAlign: leftish ? 'left' : 'center', fontWeight: theme.headWeight, fontSize: fitHeadline(lines.map(segText).join(' ')),
               lineHeight: 1.08, letterSpacing: '-0.025em', color: theme.text, maxWidth: 940, padding: leftish ? '0 60px 0 0' : '0 70px' }}>
-              {lines.map((segs, i) => {
+              {reveal === 'type'
+                ? <TypewriterLines theme={theme} lines={lines} frame={frame} />
+                : lines.map((segs, i) => {
                 const e = entrance(theme.art, frame, stagger(i, 8, m.stagger * 2), { dur: m.enterFrames, dist: 64, ease: EASE.back })
                 return (
                   <div key={i} style={{ transform: e.transform, opacity: e.opacity }}>

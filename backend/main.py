@@ -220,7 +220,7 @@ async def _render_video_job(job_id: str, req: VideoGenRequest):
         # 1c. Logo real del sitio para el/los LogoReveal: lo bajamos y re-hosteamos en
         # Cloudinary (URL confiable para Remotion). Si falla, la escena cae al wordmark.
         needs_logo = [s for s in spec.get("scenes", [])
-                      if s.get("type") == "LogoReveal" and str(s.get("logo", "")).startswith("http")]
+                      if s.get("type") in ("LogoReveal", "CtaOutro") and str(s.get("logo", "")).startswith("http")]
         if needs_logo:
             raw_logo = needs_logo[0]["logo"]
             logo_url = ""

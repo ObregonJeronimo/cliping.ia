@@ -158,10 +158,15 @@ def _finalize(spec: dict, url_data: dict) -> dict:
     # Logo real del sitio para los LogoReveal (URL cruda; main.py la re-hostea a
     # Cloudinary antes del render, igual que el screenshot del MockupShowcase).
     logo = (url_data.get("logo") or "").strip()
-    if logo:
-        for s in spec.get("scenes", []):
-            if s.get("type") == "LogoReveal" and not s.get("logo"):
-                s["logo"] = logo
+    seed = spec.get("seed", 0)
+    # El cierre NO siempre con la estrella: si hay logo lo usa; si no, rota la decoración.
+    marks = ["star", "initial", "ring", "dot", "none"]
+    for s in spec.get("scenes", []):
+        t = s.get("type")
+        if logo and t in ("LogoReveal", "CtaOutro") and not s.get("logo"):
+            s["logo"] = logo
+        if t == "CtaOutro" and not s.get("mark"):
+            s["mark"] = marks[seed % len(marks)]  # fallback variado (la escena usa el logo si existe)
     return spec
 
 # Catálogo de escenas disponibles (se le pasa a la IA para que componga).
@@ -171,6 +176,9 @@ SCENE_CATALOG = """ESCENAS DISPONIBLES (type + props):
   clave va con accent:true. IMPORTANTE: incluí los espacios DENTRO del texto del
   segmento (ej: [{"t":"Comé "},{"t":"mejor","accent":true}]) para que no se peguen.
   props opcional: subtitle. UNA sola idea por escena (no metas 2 frases).
+  props opcional: reveal = "type" -> el texto aparece TIPEADO (como si lo escribieran
+  en el momento, con cursor parpadeante). Es un efecto lindo para un HOOK o una frase
+  con intención; usalo SOLO de vez en cuando (1 escena como mucho), NO en todos los videos.
 - "IntegrationCluster": "todo en un solo lugar / muchas cosas unificadas".
   props: title = array de segmentos { t, accent }. opcional colors = array de hex.
 - "MockupShowcase": muestra el producto/su web. props: title = array de segmentos
@@ -219,7 +227,8 @@ SCENE_CATALOG = """ESCENAS DISPONIBLES (type + props):
   resultados), "audience" (público/comunidad), "launch" (lanzamiento/empezar), "connect"
   (integración/red), "idea" (idea/innovación). Elegí el name que mejor represente el mensaje
   de esa escena. Buen recurso visual cuando no hay screenshot ni datos para Stat.
-- "CtaOutro": cierre. props: brand = nombre de marca, cta = llamado a la acción corto."""
+- "CtaOutro": cierre. props: brand = nombre de marca, cta = llamado a la acción corto.
+  (El logo real del sitio y la decoración del cierre se inyectan solos; NO los pongas.)"""
 
 # Paletas disponibles (NO son rubros: son VIBRAS/colores que sirven para cualquier
 # marca). El brand-accent (Fase 6) recolorea el acento con el color real del sitio
@@ -277,7 +286,17 @@ REGLAS:
   · "Testimonial" SOLO si hay reseñas/testimonios reales en el sitio.
   · "SocialProof" si hay señales de adopción/confianza (clientes, comunidad).
   · "IllustrationScene" como hero visual cuando no haya screenshot ni datos para Stat.
+  · "MorphScene" si una METÁFORA DE FORMAS cuenta la idea de la marca (ej dietética:
+    "droplet"->"heart", o "leaf"/"plus"->"heart"; e-commerce: "bag"->"box"->"house").
+    Es un beat de transformación fluido y vistoso; usalo como mucho UNA vez y solo si encaja.
   Elegí las que de verdad sumen a la historia; no repitas el mismo combo siempre.
+- ANTI-FÓRMULA (CRÍTICO, leé esto): el error más común es armar SIEMPRE el mismo esqueleto
+  (Hook -> Comparison -> FeatureList -> CtaOutro). NO lo hagas. "Comparison" y "FeatureList"
+  son OPCIONALES, no obligatorias: NO las uses a las dos en el mismo video por defecto, y
+  MUCHOS videos no deberían llevar NINGUNA de las dos. Pensá qué combinación cuenta MEJOR a
+  ESTA marca puntual y animate a estructuras distintas (ej: KineticStatement con reveal:"type"
+  -> MorphScene -> CtaOutro; o StatReveal -> IllustrationScene -> KineticStatement -> CtaOutro).
+  Si dos marcas distintas terminan con el mismo esqueleto, fallaste.
 - HONESTIDAD (CRÍTICO): StatReveal, Testimonial y SocialProof muestran "hechos". El número
   de un StatReveal y cualquier cifra/cita/nombre TIENE que aparecer textualmente en el
   CONTEXTO DEL SITIO que te paso. NO uses datos que "sabés" de memoria sobre marcas conocidas.
