@@ -46,7 +46,7 @@ export default function VideoStudio() {
     mode, setMode, url, setUrl, desarrollo, setDesarrollo, theme, setTheme,
     proposito, setProposito, tono, setTono, seconds, setSeconds,
     idioma, setIdioma, formato, setFormato, submitted,
-    generating, status, spec, videoUrl, error, generate, generateTest, reset,
+    generating, status, spec, videoUrl, error, generate, reset,
   } = useVideoJob()
   const videoRef = useRef(null)
 
@@ -138,16 +138,6 @@ export default function VideoStudio() {
             : !url.trim() && !desarrollo.trim() ? 'Ingresá una URL'
             : '🎬 Generar video'}
         </button>
-
-        {/* ⚠️ TEMPORAL: prueba yerco.ar en los 3 formatos de una (sacar despues de testear) */}
-        <button className={styles.forgeBtn}
-          style={{ marginTop: 10, background: '#fff3cd', color: '#7a5b00', border: '1px dashed #c9a227' }}
-          onClick={generateTest} disabled={generating}>
-          {generating ? 'Probando...' : '🧪 Probar yerco.ar en los 3 formatos'}
-        </button>
-        <div style={{ fontSize: 11, color: '#999', marginTop: 6, lineHeight: 1.4 }}>
-          Genera 3 videos (vertical/cuadrado/horizontal) con el mismo contenido. Mirá los resultados en “Mis cinemáticas”.
-        </div>
       </div>
 
       <div className={styles.right}>

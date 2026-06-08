@@ -79,37 +79,11 @@ export function VideoJobProvider({ children }) {
     } catch (e) { setError(e.message); setGenerating(false) }
   }
 
-  // ⚠️ TEMPORAL (botón de prueba): genera yerco.ar en los 3 formatos con el MISMO contenido
-  // (un spec base -> render vertical/cuadrado/horizontal). Los 3 quedan en "Mis cinemáticas".
-  async function generateTest() {
-    if (generating) return
-    setGenerating(true); reset(); setStatus({ step: 'queued', progress: 0 })
-    setSubmitted({ url: 'https://yerco.ar', seconds, mode: 'PRUEBA · 3 formatos', idioma, formato: 'vertical+square+wide' })
-    try {
-      let baseSpec = null
-      try {
-        const vr = await fetch(`${API_URL}/api/video/variants`, { method: 'POST', headers: HEADERS,
-          body: JSON.stringify({ url: 'https://yerco.ar', desarrollo: '', proposito: 'marketing', seconds, idioma, userId: user?.uid || '', count: 1 }) })
-        const vd = await vr.json()
-        baseSpec = vd?.variants?.[0]?.spec || null
-      } catch { /* si falla, cada formato genera su propio spec */ }
-      let lastJob = null
-      for (const f of ['vertical', 'square', 'wide']) {
-        const body = { url: 'https://yerco.ar', userId: user?.uid || '', formato: f, idioma, seconds, ...(baseSpec ? { spec: baseSpec } : {}) }
-        const r = await fetch(`${API_URL}/api/video/generate`, { method: 'POST', headers: HEADERS, body: JSON.stringify(body) })
-        const d = await r.json()
-        if (d.job_id) lastJob = d.job_id
-      }
-      if (lastJob) pollJob(lastJob)   // seguimos el último; los 3 se guardan en la galería
-      else { setError('No se pudo iniciar la prueba'); setGenerating(false) }
-    } catch (e) { setError(e.message); setGenerating(false) }
-  }
-
   const value = {
     mode, setMode, url, setUrl, desarrollo, setDesarrollo, theme, setTheme,
     proposito, setProposito, tono, setTono, seconds, setSeconds,
     idioma, setIdioma, formato, setFormato, submitted,
-    generating, status, spec, videoUrl, error, generate, generateTest, reset,
+    generating, status, spec, videoUrl, error, generate, reset,
   }
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
