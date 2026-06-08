@@ -37,6 +37,23 @@ const SHAPES = {
   bag:      'M6 8 H18 V21 H6 Z',
   leaf:     'M5 19 C5 10 11 4 19 4 C19 13 13 19 5 19 Z',
   shield:   'M12 2 L20 5 V11 C20 16.5 16.5 20.5 12 22 C7.5 20.5 4 16.5 4 11 V5 Z',
+  // ── ampliación por rubro (todas de UN solo trazo cerrado, morfeables) ──
+  cup:      'M5 4 H19 V11 A7 7 0 0 1 5 11 Z',
+  bottle:   'M10 2 H14 V5 L16 9 V20 A1 1 0 0 1 15 21 H9 A1 1 0 0 1 8 20 V9 L10 5 Z',
+  flame:    'M12 2 C15 6 18 9 17 14 A5 5 0 0 1 7 14 C6 11 8 10 9 8 C10 10 12 9 12 2 Z',
+  cloud:    'M7 19 A5 5 0 0 1 6.5 9.1 A6 6 0 0 1 18 10 A4 4 0 0 1 18 19 Z',
+  bulb:     'M12 2 A7 7 0 0 0 8 15 V18 H16 V15 A7 7 0 0 0 12 2 Z',
+  plane:    'M2 12 L22 3 L13 22 L10 14 Z',
+  mail:     'M3 6 L12 13 L21 6 L21 19 L3 19 Z',
+  bell:     'M12 2 C8 2 6 5 6 9 V14 L4 18 H20 L18 14 V9 C18 5 16 2 12 2 Z',
+  eye:      'M2 12 C6 5 18 5 22 12 C18 19 6 19 2 12 Z',
+  pencil:   'M3 21 L5 14 L15 4 L20 9 L10 19 Z',
+  cap:      'M2 9 L12 4 L22 9 L12 14 Z',
+  book:     'M4 4 C8 2 11 3 12 5 V21 C11 19 8 18 4 20 Z',
+  apple:    'M12 7 C10 4 7 5 7 5 C9 5 10 6 11 7 C7 6 5 9 5 13 C5 18 9 21 12 21 C15 21 19 18 19 13 C19 9 16 6 12 7 Z',
+  gem:      'M5 4 H19 L22 9 L12 22 L2 9 Z',
+  crown:    'M3 8 L7 13 L12 5 L17 13 L21 8 L19 20 H5 Z',
+  rocket:   'M12 2 C16 6 17 11 16 16 L13 19 H11 L8 16 C7 11 8 6 12 2 Z',
 }
 const KEYS = Object.keys(SHAPES)
 

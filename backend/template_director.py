@@ -211,14 +211,17 @@ SCENE_CATALOG = """ESCENAS DISPONIBLES (type + props):
 - "MorphScene": transformación FLUIDA entre formas vectoriales (morph real, gratis). Una
   forma se convierte en la siguiente -> sirve para contar una METÁFORA de la marca.
   props: shapes = array de 2 o 3 KEYS (preferí 2-3, NO 4) de esta lista EXACTA:
-  ["leaf","heart","shield","check","bag","box","house","droplet","bolt","pin","star","chat","play","arrow","circle","square","triangle","plus"].
+  ["leaf","apple","flame","droplet","heart","cup","bottle","shield","check","bag","box","house","pin","bell","mail","chat","bolt","bulb","cloud","plane","book","cap","pencil","eye","gem","crown","rocket","star","play","arrow","circle","square","triangle","plus"].
+  (Si una key no está en la lista, NO la inventes.)
   REGLA DE ORO: la cadena tiene que CONTAR algo coherente (concepto -> resultado), NO formas
   al azar. Cada forma debe significar algo para ESTA marca. PROHIBIDO encadenar formas
   abstractas porque sí (ej "square"->"triangle"->"heart" NO significa nada -> está MAL).
-  Ejemplos BIEN: dietética/salud natural: "leaf"->"heart" (lo natural se vuelve bienestar);
-  e-commerce con envío: "bag"->"house" o "box"->"house"; seguridad/confianza: "shield"->"check";
-  rapidez: "bolt"->"check"; cercanía local: "pin"->"heart". Si NINGUNA cadena cuenta algo
-  real de la marca, NO uses MorphScene. opcional title = segmentos { t, accent } y subtitle (string).
+  Ejemplos BIEN por rubro: dietética/saludable: "leaf"->"heart", "apple"->"heart";
+  cafetería/bebidas: "bottle"->"cup", "leaf"->"cup"; e-commerce con envío: "bag"->"house",
+  "box"->"house"; seguridad/confianza: "shield"->"check"; rapidez/energía: "bolt"->"check";
+  idea/software: "bulb"->"rocket", "bulb"->"check"; educación: "book"->"cap", "pencil"->"bulb";
+  cercanía local: "pin"->"heart"; mensajería/comunidad: "chat"->"heart"; premium/calidad: "gem"->"crown".
+  Si NINGUNA cadena cuenta algo real de la marca, NO uses MorphScene. opcional title = segmentos { t, accent } y subtitle (string).
   Es un beat vistoso: como MUCHO una vez por video.
 - "StatReveal": un NÚMERO que cuenta de 0 hasta el valor (el beat de "dato que impacta").
   props: value = número (ej 95, 4.9, 12000); opcional prefix (ej "$", "+"); suffix (ej
