@@ -605,7 +605,25 @@ def _extract_claims(text: str) -> list:
     return out[:8]
 
 
+_SITE_CACHE = {}          # url -> (timestamp, data)
+_SITE_TTL = 1800          # 30 min: varios videos de la MISMA marca no re-scrapean
+
+
 async def analyze_site_rich(url: str) -> dict:
+    """Wrapper con cache por URL (TTL 30 min). Hacer muchos videos de la misma marca no
+    vuelve a cargar el browser ni re-scrapea: más rápido y reproducible dentro de la ventana."""
+    import time
+    now = time.time()
+    hit = _SITE_CACHE.get(url or "")
+    if hit and (now - hit[0]) < _SITE_TTL:
+        return hit[1]
+    out = await _analyze_site_rich_uncached(url)
+    if url:
+        _SITE_CACHE[url] = (now, out)
+    return out
+
+
+async def _analyze_site_rich_uncached(url: str) -> dict:
     """
     Lectura PROFUNDA del sitio para que el director escriba copy específico y real.
     Primario: texto YA RENDERIZADO vía Chromium (sirve para SPAs React/Vue/Next que
