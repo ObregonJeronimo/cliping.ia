@@ -444,17 +444,17 @@ def _collect_text(node) -> list:
 
 
 def _min_duration(s: dict) -> int:
-    """Piso de duración por escena según el TIEMPO DE LECTURA real del texto (no por cantidad
-    de items). Base ~3s para entrada/salida + ~0.42s por palabra. Listas: aire extra por item."""
+    """Piso de duración por escena según el TIEMPO DE LECTURA real del texto. El término fijo (90f)
+    cubre el overhead de entrada+salida que NO se lee, así el tiempo legible alcanza. Piso ~4s."""
     t = s.get("type")
     txt = " ".join(_collect_text(s))
     words = len([w for w in txt.split() if w])
-    read = int(0.42 * words * 30)          # ~0.42s por palabra (ritmo kinetic social)
-    floor = 90                             # ~3s mínimo
+    read = int(0.42 * words * 30)          # ~0.42s por palabra
+    floor = 120                            # ~4s mínimo (antes 3s) -> el +1s que pediste
     if t in ("FeatureList", "Comparison"):
         n = len(s.get("items") or []) + len(s.get("leftItems") or []) + len(s.get("rightItems") or [])
-        floor = max(floor, 80 + n * 16)    # cada item necesita aparecer y leerse
-    return int(min(175, max(floor, 60 + read)))
+        floor = max(floor, 100 + n * 16)
+    return int(min(200, max(floor, 90 + read)))
 
 
 # Duración EXACTA elegida por el usuario -> cuántas escenas usar para que entre bien.

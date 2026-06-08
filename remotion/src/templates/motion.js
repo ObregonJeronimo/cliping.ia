@@ -88,14 +88,14 @@ export { clamp } from './theme'
 
 // ── Viajes de cámara (devuelven { scale, x, y }) ──────────────────────────────
 export const CAMERAS = {
-  drift:   (t, a) => ({ scale: 1 + a * t,           x: (t - 0.5) * a * 220, y: (t - 0.5) * a * 80 }),  // suave (clásico)
-  pushIn:  (t, a) => ({ scale: 1 + a * 2.6 * t,     x: 0,                    y: 0 }),                   // acercándose
-  pullOut: (t, a) => ({ scale: 1 + a * 2.6 * (1 - t), x: 0,                  y: 0 }),                   // alejándose
-  panL:    (t, a) => ({ scale: 1 + a * 1.3,         x: (0.5 - t) * a * 560,  y: 0 }),                   // paneo a la izquierda
-  panR:    (t, a) => ({ scale: 1 + a * 1.3,         x: (t - 0.5) * a * 560,  y: 0 }),                   // paneo a la derecha
-  ken:     (t, a) => ({ scale: 1 + a * 2.0 * t,     x: (t - 0.5) * a * 200,  y: (0.5 - t) * a * 150 }), // ken burns diagonal
-  sway:    (t, a) => ({ scale: 1 + a * 0.9,         x: Math.sin(t * Math.PI * 2) * a * 130,             // vaivén orgánico
-                                                     y: Math.cos(t * Math.PI * 1.5) * a * 70 }),
+  drift:   (t, a) => ({ scale: 1 + a * 0.8 * t,     x: (t - 0.5) * a * 200, y: (t - 0.5) * a * 70 }),  // suave (clásico)
+  pushIn:  (t, a) => ({ scale: 1 + a * 1.3 * t,     x: 0,                    y: 0 }),                   // acercándose (suave)
+  pullOut: (t, a) => ({ scale: 1 + a * 1.3 * (1 - t), x: 0,                  y: 0 }),                   // alejándose (suave)
+  panL:    (t, a) => ({ scale: 1 + a * 0.9,         x: (0.5 - t) * a * 460,  y: 0 }),                   // paneo a la izquierda
+  panR:    (t, a) => ({ scale: 1 + a * 0.9,         x: (t - 0.5) * a * 460,  y: 0 }),                   // paneo a la derecha
+  ken:     (t, a) => ({ scale: 1 + a * 1.1 * t,     x: (t - 0.5) * a * 170,  y: (0.5 - t) * a * 120 }), // ken burns diagonal
+  sway:    (t, a) => ({ scale: 1 + a * 0.7,         x: Math.sin(t * Math.PI * 2) * a * 110,             // vaivén orgánico
+                                                     y: Math.cos(t * Math.PI * 1.5) * a * 60 }),
 }
 
 /** Viaje de cámara según la art direction. total = duración de la escena. */

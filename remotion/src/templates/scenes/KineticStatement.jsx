@@ -162,7 +162,8 @@ export const KineticStatement = ({ theme, lines = [], subtitle = '', variant = '
             const e = entrance(theme.art, frame, 8 + lines.length * m.stagger * 2 + 6, { dur: m.enterFrames, dist: 30, ease: EASE.out })
             return (
               <div style={{ marginTop: 40, transform: e.transform, opacity: e.opacity,
-                color: theme.textMuted, fontSize: 50, fontWeight: 400 }}>{subtitle}</div>
+                color: theme.textMuted, fontSize: 46, fontWeight: 400, maxWidth: 880,
+                textAlign: leftish ? 'left' : 'center', lineHeight: 1.3, padding: '0 80px' }}>{subtitle}</div>
             )
           })()}
         </AbsoluteFill>
