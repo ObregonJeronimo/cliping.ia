@@ -5,6 +5,7 @@ import styles from './Sidebar.module.css'
 const NAV = [
   { to: '/studio',             icon: '⊞', label: 'Home' },
   { to: '/studio/cinematicas', icon: '✦', label: 'Mis cinemáticas' },
+  { to: '/studio/animaciones', icon: '✨', label: 'Animaciones IA' },
 ]
 
 export default function Sidebar() {
