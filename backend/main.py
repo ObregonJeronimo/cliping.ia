@@ -195,23 +195,6 @@ async def delete_video_endpoint(req: DeleteVideoRequest):
         return {"ok": False, "error": str(e)[:200]}
 
 
-class AnimConceptRequest(BaseModel):
-    url: str = ""
-    idea: str = ""
-
-
-@app.post("/api/anim/concept")
-async def anim_concept(req: AnimConceptRequest):
-    """Modo animaciones IA (prototipo): Sonnet idea una animación de transformación
-    encadenada para el sitio. Devuelve el storyboard + prompts (render generativo = fase 2)."""
-    try:
-        import anim_director
-        concept = await anim_director.build_concept(req.url, req.idea)
-        return {"ok": True, "concept": concept}
-    except Exception as e:
-        return {"ok": False, "error": str(e)[:300]}
-
-
 async def _render_video_job(job_id: str, req: VideoGenRequest):
     from pathlib import Path as _Path
     import asyncio as _asyncio
