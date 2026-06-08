@@ -21,7 +21,7 @@ import IllustrationScene from './scenes/IllustrationScene'
 import MorphScene from './scenes/MorphScene'
 import FinishLayer from './FinishLayer'
 import SoundLayer from './SoundLayer'
-import Backdrop from './Backdrop'
+import Backdrop, { ContinuousBg } from './Backdrop'
 
 // Carga Inter (pesos puntuales).
 loadFont('normal', { weights: ['400', '600', '700'], subsets: ['latin'], ignoreTooManyRequestsWarning: true })
@@ -96,6 +96,9 @@ export const VideoFromSpec = ({ spec }) => {
   const base = spec.accent ? applyAccent(getTheme(spec.theme), spec.accent) : getTheme(spec.theme)
   const art = { ...DEFAULT_ART, ...(spec.art || {}) }
   const theme = { ...base, art }   // las escenas leen theme.art para cámara/entrada
+  // Las escenas van TRANSPARENTES: el fondo lo pinta ContinuousBg (único y continuo),
+  // así no corta en cada transición -> sensación fusionada/fluida (estilo Canva).
+  const sceneTheme = { ...theme, bg: 'transparent' }
   const sc = spec.scenes || []
   const seed = typeof spec.seed === 'number' ? spec.seed : (spec.brand || '').length
 
@@ -106,11 +109,12 @@ export const VideoFromSpec = ({ spec }) => {
 
   return (
     <AbsoluteFill style={{ backgroundColor: theme.bgSolid }}>
+      <ContinuousBg theme={theme} />
       <TransitionSeries>
         {sc.flatMap((s, i) => {
           const Comp = REGISTRY[s.type] || KineticStatement
           const dur = s.durationInFrames || 90
-          const inner = <Comp theme={theme} {...s} />
+          const inner = <Comp theme={sceneTheme} {...s} />
           const content = spec.motionBlur
             ? <CameraMotionBlur shutterAngle={120} samples={6}>{inner}</CameraMotionBlur>
             : inner
@@ -120,9 +124,10 @@ export const VideoFromSpec = ({ spec }) => {
             </TransitionSeries.Sequence>
           )
           if (i === 0) return [seq]
-          const t = pickTransition(i, seed, art.transitions)
+          // Fundido (crossfade) entre escenas: el contenido se funde sobre el fondo continuo.
+          // Es lo que da la sensación "fusionada"; las cortinas/slides cortaban la continuidad.
           return [
-            <TransitionSeries.Transition key={`t${i}`} presentation={t.presentation} timing={t.timing} />,
+            <TransitionSeries.Transition key={`t${i}`} presentation={fade()} timing={EASED} />,
             seq,
           ]
         })}

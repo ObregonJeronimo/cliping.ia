@@ -133,6 +133,26 @@ const Waves = ({ theme, frame }) => {
 
 const MOTIFS = { particles: Particles, bokeh: Bokeh, aurora: Aurora, rays: Rays, grid: Grid, dots: Dots, waves: Waves }
 
+/**
+ * ContinuousBg — fondo ÚNICO y CONTINUO detrás de TODO el video. Usa el frame global
+ * (no se reinicia entre escenas) -> el gradiente y el glow nunca "cortan" en las
+ * transiciones. Esto es lo que hace que el video se sienta fusionado/fluido (estilo Canva):
+ * las escenas van transparentes encima y solo el CONTENIDO hace fundido, el fondo fluye.
+ */
+export const ContinuousBg = ({ theme }) => {
+  const frame = useCurrentFrame()
+  const gx = 50 + Math.sin(frame / 240) * 9
+  const gy = 36 + Math.cos(frame / 320) * 7
+  const breath = 0.55 + 0.08 * Math.sin(frame / 110)
+  return (
+    <AbsoluteFill style={{ background: theme.bg, pointerEvents: 'none' }}>
+      <div style={{ position: 'absolute', left: `${gx}%`, top: `${gy}%`, width: 1500, height: 1500,
+        transform: 'translate(-50%,-50%)', opacity: breath,
+        background: `radial-gradient(circle, ${theme.glow}, rgba(0,0,0,0) 60%)` }} />
+    </AbsoluteFill>
+  )
+}
+
 export const Backdrop = ({ theme, kind = 'none' }) => {
   const frame = useCurrentFrame()
   useVideoConfig()
