@@ -48,14 +48,15 @@ MOODS = ["enérgico y rápido", "calmo y premium", "confiable y claro", "moderno
 # ESTRUCTURA no sea siempre la misma (Hook -> IconTransform -> Mockup -> CTA). Es a la
 # estructura lo que ART_PRESETS es al movimiento.
 EDIT_STYLES = [
-    ("punchy",    "ritmo rápido, 3-4 escenas cortas; abrí con StatReveal o una frase filosa; sin IconTransform; cerrá fuerte."),
-    ("historia",  "arco problema -> solución -> prueba -> CTA; KineticStatement para el problema y UN IconTransform para el giro."),
-    ("showcase",  "el producto es protagonista: MockupShowcase al frente + 1-2 FeatureList; usar si hay web/app que mostrar."),
-    ("listicle",  "formato lista: FeatureList con 3-4 beneficios concretos, ritmo parejo, SIN IconTransform ni Mockup obligatorios."),
-    ("prueba",    "liderado por confianza: SocialProof y/o Testimonial (SOLO con datos reales del sitio; si no hay, caé a FeatureList)."),
-    ("contraste", "construido sobre un Comparison (antes/después o sin/con); rematá con el beneficio. Sin Mockup salvo que sume."),
-    ("ilustrado", "IllustrationScene como hero visual + frase potente; estética limpia, poco texto; sin Mockup."),
-    ("dato",      "girá alrededor de StatReveal con un número REAL del sitio; si no hay número, usá el estilo 'historia'."),
+    ("punchy",    "ritmo rápido: 3-4 frases KineticStatement cortas y filosas; variá el reveal (alguna con reveal:'type'); SIN listas (ni FeatureList ni Comparison); cerrá fuerte."),
+    ("historia",  "arco problema -> solución -> CTA contado con KineticStatement; UN beat vistoso (MorphScene o IconTransform) para el giro; SIN listas."),
+    ("morph",     "centrá un MorphScene de transformación que cuente la METÁFORA de la marca, con frases KineticStatement alrededor; SIN listas."),
+    ("ilustrado", "IllustrationScene como hero visual + una frase potente; estética limpia, poco texto; SIN listas ni Mockup."),
+    ("dato",      "girá alrededor de UN StatReveal con un número REAL del sitio; si no hay número, contalo con frases; SIN listas."),
+    ("showcase",  "el producto es protagonista: MockupShowcase al frente + frases; usar SOLO si hay web/app para mostrar; SIN listas."),
+    ("prueba",    "liderado por confianza: SocialProof y/o Testimonial SOLO con datos reales del sitio; si no hay, contá con frases; SIN listas."),
+    ("listicle",  "UNA sola FeatureList (3-4 beneficios concretos) como beat principal + frases; NADA de Comparison."),
+    ("contraste", "UNA sola Comparison (sin esto vs con esto) + remate con el beneficio; NADA de FeatureList."),
 ]
 
 # Cama musical por mood (Fase 3). Los archivos van en remotion/public/audio/music/<track>.mp3.
@@ -467,6 +468,17 @@ def _normalize(spec: dict, url_data: dict, desarrollo: str, proposito: str) -> d
         clean.append(s)
     if len(clean) < 2:
         return fb
+    # Red de seguridad anti-repetición: como MUCHO una escena de lista por video.
+    # (FeatureList/Comparison son las que "se ven iguales" entre videos.)
+    seen_list = False
+    capped = []
+    for s in clean:
+        if s.get("type") in ("FeatureList", "Comparison"):
+            if seen_list:
+                continue  # ya hay una lista -> descartamos la extra
+            seen_list = True
+        capped.append(s)
+    clean = capped if len(capped) >= 2 else clean
     brand = spec.get("brand") or fb["brand"]
     for s in clean:
         if s.get("type") == "CtaOutro" and not s.get("brand"):

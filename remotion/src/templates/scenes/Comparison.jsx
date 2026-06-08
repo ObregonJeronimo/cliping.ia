@@ -143,47 +143,57 @@ export const Comparison = ({
           transform: 'translate(-50%,-50%)', opacity: glowOp,
           background: `radial-gradient(circle, ${theme.glow}, rgba(0,0,0,0) 62%)` }} />
 
-        {segText(title) && (
-          <div style={{ position: 'absolute', top: 220, width: '100%', textAlign: 'center',
-            fontWeight: theme.headWeight, fontSize: fitHeadline(segText(title), 96), lineHeight: 1.08,
-            letterSpacing: '-0.025em', color: theme.text, padding: '0 80px',
-            transform: cap.transform, opacity: cap.opacity }}>
-            {title.map((s, j) => s.accent
-              ? <GradientText key={j} theme={theme}>{s.t}</GradientText>
-              : <span key={j}>{s.t}</span>)}
-          </div>
-        )}
-
         {variant === 'split' ? (
-          <AbsoluteFill style={{ flexDirection: 'row', paddingTop: segText(title) ? 300 : 0 }}>
-            <SplitHalf theme={theme} frame={frame} fps={fps} accent={false} label={leftLabel} items={leftItems} side="left" m={m} />
-            <SplitHalf theme={theme} frame={frame} fps={fps} accent label={rightLabel} items={rightItems} side="right" m={m} />
-            <div style={{ position: 'absolute', left: '50%', top: '58%',
-              transform: `translate(-50%,-50%) scale(${clamp(conn, 0, 1.1) * connPulse})`, opacity: clamp(conn, 0, 1),
-              width: 104, height: 104, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: theme.accentGrad, boxShadow: `0 0 50px ${theme.glow}`, color: '#fff',
-              fontSize: connector === 'vs' ? 40 : 52, fontWeight: 700 }}>
-              {connector === 'vs' ? 'VS' : '→'}
+          <>
+            {segText(title) && (
+              <div style={{ position: 'absolute', top: 130, width: '100%', textAlign: 'center',
+                fontWeight: theme.headWeight, fontSize: fitHeadline(segText(title), 74), lineHeight: 1.08,
+                letterSpacing: '-0.025em', color: theme.text, padding: '0 80px', zIndex: 2,
+                transform: cap.transform, opacity: cap.opacity }}>
+                {title.map((s, j) => s.accent
+                  ? <GradientText key={j} theme={theme}>{s.t}</GradientText>
+                  : <span key={j}>{s.t}</span>)}
+              </div>
+            )}
+            <AbsoluteFill style={{ flexDirection: 'row', paddingTop: segText(title) ? 320 : 0 }}>
+              <SplitHalf theme={theme} frame={frame} fps={fps} accent={false} label={leftLabel} items={leftItems} side="left" m={m} />
+              <SplitHalf theme={theme} frame={frame} fps={fps} accent label={rightLabel} items={rightItems} side="right" m={m} />
+              <div style={{ position: 'absolute', left: '50%', top: '58%',
+                transform: `translate(-50%,-50%) scale(${clamp(conn, 0, 1.1) * connPulse})`, opacity: clamp(conn, 0, 1),
+                width: 104, height: 104, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: theme.accentGrad, boxShadow: `0 0 50px ${theme.glow}`, color: '#fff',
+                fontSize: connector === 'vs' ? 40 : 52, fontWeight: 700 }}>
+                {connector === 'vs' ? 'VS' : '→'}
+              </div>
+            </AbsoluteFill>
+          </>
+        ) : (
+          <AbsoluteFill style={{ flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '170px 0', gap: 54 }}>
+            {segText(title) && (
+              <div style={{ textAlign: 'center', fontWeight: theme.headWeight,
+                fontSize: fitHeadline(segText(title), 80), lineHeight: 1.08, letterSpacing: '-0.025em',
+                color: theme.text, maxWidth: 980, padding: '0 70px', transform: cap.transform, opacity: cap.opacity }}>
+                {title.map((s, j) => s.accent
+                  ? <GradientText key={j} theme={theme}>{s.t}</GradientText>
+                  : <span key={j}>{s.t}</span>)}
+              </div>
+            )}
+            <div style={{ display: 'flex', flexDirection: stacked ? 'column' : 'row',
+              alignItems: 'center', justifyContent: 'center', gap: stacked ? 28 : 40 }}>
+              <Panel theme={theme} frame={frame} fps={fps} side="left" accent={false}
+                label={leftLabel} items={leftItems} fromX={stacked ? -10 : -90} baseDelay={6} m={m} />
+
+              <div style={{ flexShrink: 0, transform: `scale(${clamp(conn, 0, 1.1) * connPulse})`, opacity: clamp(conn, 0, 1),
+                width: 96, height: 96, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: theme.accentGrad, boxShadow: `0 0 50px ${theme.glow}`, color: '#fff',
+                fontSize: connector === 'vs' ? 38 : 50, fontWeight: 700 }}>
+                {connector === 'vs' ? 'VS' : (stacked ? '↓' : '→')}
+              </div>
+
+              <Panel theme={theme} frame={frame} fps={fps} side="right" accent
+                label={rightLabel} items={rightItems} fromX={stacked ? 10 : 90} baseDelay={12} m={m} />
             </div>
           </AbsoluteFill>
-        ) : (
-        <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center', paddingTop: segText(title) ? 140 : 0 }}>
-          <div style={{ display: 'flex', flexDirection: stacked ? 'column' : 'row',
-            alignItems: 'center', justifyContent: 'center', gap: stacked ? 28 : 40 }}>
-            <Panel theme={theme} frame={frame} fps={fps} side="left" accent={false}
-              label={leftLabel} items={leftItems} fromX={stacked ? -10 : -90} baseDelay={6} m={m} />
-
-            <div style={{ flexShrink: 0, transform: `scale(${clamp(conn, 0, 1.1) * connPulse})`, opacity: clamp(conn, 0, 1),
-              width: 96, height: 96, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: theme.accentGrad, boxShadow: `0 0 50px ${theme.glow}`, color: '#fff',
-              fontSize: connector === 'vs' ? 38 : 50, fontWeight: 700 }}>
-              {connector === 'vs' ? 'VS' : (stacked ? '↓' : '→')}
-            </div>
-
-            <Panel theme={theme} frame={frame} fps={fps} side="right" accent
-              label={rightLabel} items={rightItems} fromX={stacked ? 10 : 90} baseDelay={12} m={m} />
-          </div>
-        </AbsoluteFill>
         )}
       </div>
     </AbsoluteFill>
