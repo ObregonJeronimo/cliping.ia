@@ -375,22 +375,42 @@ def _fallback_spec(url_data: dict, desarrollo: str, proposito: str) -> dict:
     return {"theme": random.choice(VALID_THEMES), "brand": brand, "scenes": scenes}
 
 
+_SKIP_KEYS = {"type", "variant", "logo", "mark", "reveal", "durationInFrames",
+              "accent", "icon", "seed", "art", "color", "image", "src"}
+_NUM_KEYS = {"value"}  # los números se leen rápido, cuentan poco
+
+
+def _collect_text(node) -> list:
+    """Junta el texto VISIBLE de una escena (recursivo) para estimar tiempo de lectura."""
+    parts = []
+    if isinstance(node, str):
+        parts.append(node)
+    elif isinstance(node, list):
+        for x in node:
+            parts.extend(_collect_text(x))
+    elif isinstance(node, dict):
+        for k, v in node.items():
+            if k in _SKIP_KEYS:
+                continue
+            if isinstance(v, (list, dict)):
+                parts.extend(_collect_text(v))
+            elif isinstance(v, str):
+                parts.append(v if k not in _NUM_KEYS else " ")
+    return parts
+
+
 def _min_duration(s: dict) -> int:
-    """Piso de duración por escena para que se llegue a LEER. Cuenta el solape de
-    transición (~14f de cada lado) y suma tiempo de lectura por item. Piso ~3s."""
+    """Piso de duración por escena según el TIEMPO DE LECTURA real del texto (no por cantidad
+    de items). Base ~3s para entrada/salida + ~0.42s por palabra. Listas: aire extra por item."""
     t = s.get("type")
-    n = 0
-    if t == "Comparison":
-        n = len(s.get("leftItems") or []) + len(s.get("rightItems") or [])
-    elif t == "FeatureList":
-        n = len(s.get("items") or [])
-    elif t == "KineticStatement":
-        n = len(s.get("lines") or [])
-    elif t == "Testimonial":
-        n = 4  # una cita es bastante texto para leer
-    elif t in ("SocialProof", "IntegrationCluster", "IllustrationScene"):
-        n = 2
-    return min(170, 90 + max(0, n - 2) * 12)  # 90f (~3s) + 12f por item extra
+    txt = " ".join(_collect_text(s))
+    words = len([w for w in txt.split() if w])
+    read = int(0.42 * words * 30)          # ~0.42s por palabra (ritmo kinetic social)
+    floor = 90                             # ~3s mínimo
+    if t in ("FeatureList", "Comparison"):
+        n = len(s.get("items") or []) + len(s.get("leftItems") or []) + len(s.get("rightItems") or [])
+        floor = max(floor, 80 + n * 16)    # cada item necesita aparecer y leerse
+    return int(min(175, max(floor, 60 + read)))
 
 
 # Duración EXACTA elegida por el usuario -> cuántas escenas usar para que entre bien.

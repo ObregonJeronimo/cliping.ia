@@ -1,8 +1,6 @@
 import { AbsoluteFill, Easing, useCurrentFrame } from 'remotion'
-import { TransitionSeries, linearTiming, springTiming } from '@remotion/transitions'
+import { TransitionSeries, linearTiming } from '@remotion/transitions'
 import { fade } from '@remotion/transitions/fade'
-import { slide } from '@remotion/transitions/slide'
-import { wipe } from '@remotion/transitions/wipe'
 import { CameraMotionBlur } from '@remotion/motion-blur'
 import { loadFont } from '@remotion/google-fonts/Inter'
 import { getTheme, applyAccent } from './theme'
@@ -29,50 +27,17 @@ loadFont('normal', { weights: ['400', '600', '700'], subsets: ['latin'], ignoreT
  * VideoFromSpec — arma el video desde un storyboard spec.
  * spec = { theme, scenes: [{ type, durationInFrames, ...props }], motionBlur? }
  *
- * Transiciones con continuidad: pool curado que varía por corte (fade/slide/wipe),
- * todas con duración fija TDUR (para que el cálculo de total sea exacto).
+ * Fondo único continuo (ContinuousBg) + escenas transparentes + crossfade entre cortes
+ * (duración fija TDUR para que el cálculo de total sea exacto) -> video fusionado/fluido.
  */
 
 const REGISTRY = { KineticStatement, IntegrationCluster, MockupShowcase, CtaOutro, IconTransform, StatReveal, Comparison, Testimonial, SocialProof, FeatureList, LogoReveal, IllustrationScene }
 const TDUR = 14
-const DEFAULT_ART = { camera: 'drift', entrance: 'rise', motif: 'none', transitions: 'mixed' }
+const DEFAULT_ART = { camera: 'drift', entrance: 'rise', motif: 'none' }
 
-// Transiciones (factories). El SET se elige por art.transitions, así un video puede
-// ser todo fundidos suaves y otro a pura cortina/slide -> se sienten distintos.
-// Duración fija TDUR (para que el cálculo de total sea exacto), pero NO lineal:
-//  · eased  -> acelera y frena suave (cinematográfico, no robótico).
-//  · spring -> con un poco de vida/inercia (clampado a TDUR para no romper el total).
-const EASED  = linearTiming({ durationInFrames: TDUR, easing: Easing.inOut(Easing.cubic) })
-const SPRING = (damping) => springTiming({ config: { damping, mass: 0.7, stiffness: 120 }, durationInFrames: TDUR, durationRestThreshold: 0.0001 })
-const ease = (presentation) => ({ presentation, timing: EASED })
-const sprg = (presentation, damping = 160) => ({ presentation, timing: SPRING(damping) })
-const tx = {
-  fade:    () => ease(fade()),
-  slideR:  () => ease(slide({ direction: 'from-right' })),
-  slideL:  () => ease(slide({ direction: 'from-left' })),
-  slideB:  () => ease(slide({ direction: 'from-bottom' })),
-  slideT:  () => ease(slide({ direction: 'from-top' })),
-  wipeL:   () => ease(wipe({ direction: 'from-left' })),
-  wipeR:   () => ease(wipe({ direction: 'from-right' })),
-  wipeT:   () => ease(wipe({ direction: 'from-top' })),
-  wipeTL:  () => ease(wipe({ direction: 'from-top-left' })),
-  wipeBR:  () => ease(wipe({ direction: 'from-bottom-right' })),
-  // versiones con vida para el set 'slides'
-  springR: () => sprg(slide({ direction: 'from-right' })),
-  springB: () => sprg(slide({ direction: 'from-bottom' })),
-  springL: () => sprg(slide({ direction: 'from-left' })),
-}
-const POOLS = {
-  mixed:  [tx.fade, tx.slideR, tx.wipeL, tx.slideB, tx.fade, tx.wipeTL, tx.slideL, tx.wipeT],
-  soft:   [tx.fade],                                                // todo fundido (elegante/premium)
-  slides: [tx.springR, tx.slideB, tx.springL, tx.slideT, tx.springB], // con inercia
-  wipes:  [tx.wipeL, tx.wipeTL, tx.wipeR, tx.fade, tx.wipeBR, tx.wipeT],
-}
-
-const pickTransition = (i, seed, set) => {
-  const pool = POOLS[set] || POOLS.mixed
-  return pool[(i + seed) % pool.length]()
-}
+// Transición única: crossfade entre escenas sobre el fondo continuo (sensación fusionada).
+// Duración fija TDUR (para que el cálculo de total sea exacto) y easing suave (no lineal).
+const EASED = linearTiming({ durationInFrames: TDUR, easing: Easing.inOut(Easing.cubic) })
 
 // SceneShell — envuelve el contenido de cada escena y le da SALIDA (no solo entrada): en los
 // últimos frames el contenido se eleva apenas, se achica un toque y se desvanece, sincronizado
@@ -117,7 +82,6 @@ export const VideoFromSpec = ({ spec }) => {
   // así no corta en cada transición -> sensación fusionada/fluida (estilo Canva).
   const sceneTheme = { ...theme, bg: 'transparent' }
   const sc = spec.scenes || []
-  const seed = typeof spec.seed === 'number' ? spec.seed : (spec.brand || '').length
 
   // Audio (Fase 3): si el spec trae audio sin whooshAt, los completamos con los cortes.
   const audio = spec.audio
