@@ -132,7 +132,7 @@ async def capture_all(url: str, out_path: str, width: int = 1280, height: int = 
                 await page.goto(url, wait_until="domcontentloaded", timeout=30000)
             except Exception as ge:
                 print(f"[capture_all] goto lento ({ge}); sigo con lo que haya")
-            await page.wait_for_timeout(2200)
+            # Cerrar cookies temprano (si las hay) para no taparle el hero al screenshot.
             for sel in ["#onetrust-accept-btn-handler", "button:has-text('Aceptar')",
                         "button:has-text('Accept')", "[aria-label*='accept' i]"]:
                 try:
@@ -140,6 +140,29 @@ async def capture_all(url: str, out_path: str, width: int = 1280, height: int = 
                     break
                 except Exception:
                     pass
+            # Esperar a que la red se calme: hero, imágenes y FONDOS CSS terminan de cargar.
+            # (Antes sacábamos la foto apenas cargaba el DOM y el hero salía vacío.)
+            try:
+                await page.wait_for_load_state("networkidle", timeout=9000)
+            except Exception:
+                pass
+            # Forzar lazy-load: muchos heroes cargan recién al entrar al viewport.
+            try:
+                await page.evaluate("window.scrollTo(0, Math.round(document.body.scrollHeight*0.4))")
+                await page.wait_for_timeout(700)
+                await page.evaluate("window.scrollTo(0, 0)")
+                await page.wait_for_timeout(500)
+            except Exception:
+                pass
+            # Esperar a que las <img> grandes (hero incluido) estén realmente cargadas.
+            try:
+                await page.wait_for_function(
+                    "() => Array.from(document.images).filter(i=>i.width>200)"
+                    ".every(i=>i.complete && i.naturalWidth>0)",
+                    timeout=5000)
+            except Exception:
+                pass
+            await page.wait_for_timeout(900)
             try:
                 data = await page.evaluate(_JS_EXTRACT)
                 if isinstance(data, dict):
