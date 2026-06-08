@@ -124,6 +124,33 @@ def _brand_key(url: str) -> str:
     return key or "sin_url"
 
 
+def _dominant_accent(image_path: str):
+    """Color de marca dominante y VIBRANTE del screenshot, para usar de acento cuando el sitio
+    no expone un theme-color usable. Descarta grises/negros/blancos. Devuelve '#rrggbb' o None.
+    Requiere Pillow; si no está, devuelve None (no rompe)."""
+    try:
+        from PIL import Image
+    except Exception:
+        return None
+    try:
+        img = Image.open(image_path).convert("RGB").resize((64, 64))
+    except Exception:
+        return None
+    buckets = {}
+    for r, g, b in img.getdata():
+        mx, mn = max(r, g, b), min(r, g, b)
+        if (mx - mn) < 55 or mx < 60 or mx > 235:   # poco saturado / muy oscuro / muy claro
+            continue
+        key = (r // 32, g // 32, b // 32)
+        acc = buckets.setdefault(key, [0, 0, 0, 0])
+        acc[0] += r; acc[1] += g; acc[2] += b; acc[3] += 1
+    if not buckets:
+        return None
+    best = max(buckets.values(), key=lambda a: a[3])
+    n = best[3]
+    return f"#{best[0] // n:02x}{best[1] // n:02x}{best[2] // n:02x}"
+
+
 def _get_recent_profile(db, user_id: str, brand_key: str) -> dict:
     """Perfil de rotación reciente de esta marca/usuario: estilos, ángulos, paletas y artes
     usados (reciente primero). Sirve para que dos videos de la misma marca NO se repitan."""
@@ -300,6 +327,17 @@ async def _render_video_job(job_id: str, req: VideoGenRequest):
                     print("[video] logo del sitio listo")
                 else:
                     s.pop("logo", None)  # sin logo confiable -> wordmark
+
+        # 1d. Color de marca: si NO salió un theme-color usable, derivamos el acento del color
+        #     dominante vibrante del screenshot -> el fondo/acentos pegan más con la marca.
+        if not spec.get("accent") and _site.get("screenshot"):
+            try:
+                col = _dominant_accent(_site["screenshot"])
+                if col:
+                    spec["accent"] = col
+                    print(f"[video] accent desde screenshot -> {col}")
+            except Exception as ae:
+                print(f"[video] accent desde screenshot falló: {ae}")
 
         # 2. Construir los archivos del render
         jobs[job_id].update({"step": "build", "progress": 40})
