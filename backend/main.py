@@ -114,6 +114,41 @@ forge_jobs: dict = {}
 
 # ─── VIDEO POR PLANTILLAS (director + escenas) ───────────────────────────────
 import template_director
+import re as _re
+
+
+def _brand_key(url: str) -> str:
+    """Clave estable por marca/dominio para el historial de estilos."""
+    host = _re.sub(r"^https?://(www\.)?", "", (url or "").strip().lower()).split("/")[0]
+    key = _re.sub(r"[^a-z0-9]+", "_", host).strip("_")
+    return key or "sin_url"
+
+
+def _get_recent_styles(db, user_id: str, brand_key: str) -> list:
+    """Últimos estilos de edición usados por este usuario para esta marca (reciente primero)."""
+    if not (db and user_id):
+        return []
+    try:
+        doc = db.collection("users").document(user_id).collection("style_history").document(brand_key).get()
+        if doc.exists:
+            return (doc.to_dict() or {}).get("recent", []) or []
+    except Exception as e:
+        print(f"[styles] leer historial falló: {e}")
+    return []
+
+
+def _push_recent_style(db, user_id: str, brand_key: str, style: str):
+    """Agrega el estilo recién usado al historial (cap 3, reciente primero)."""
+    if not (db and user_id and style):
+        return
+    try:
+        prev = _get_recent_styles(db, user_id, brand_key)
+        recent = [style] + [s for s in prev if s != style]
+        db.collection("users").document(user_id).collection("style_history").document(brand_key).set(
+            {"recent": recent[:3], "brand_key": brand_key}
+        )
+    except Exception as e:
+        print(f"[styles] guardar historial falló: {e}")
 
 
 class VideoGenRequest(BaseModel):
@@ -188,8 +223,14 @@ async def _render_video_job(job_id: str, req: VideoGenRequest):
 
     try:
         jobs[job_id].update({"status": "processing", "step": "script", "progress": 18})
-        # 1. Director: URL + desarrollo -> storyboard
-        spec = await template_director.build_storyboard(req.url, req.desarrollo, req.proposito, seconds=req.seconds)
+        # 1. Director: URL + desarrollo -> storyboard.
+        # Rotación de estilo por usuario+marca: no repetir los últimos, ni dos listas seguidas.
+        _db = get_firestore()
+        _bkey = _brand_key(req.url)
+        _recent = _get_recent_styles(_db, req.userId, _bkey)
+        spec = await template_director.build_storyboard(
+            req.url, req.desarrollo, req.proposito, seconds=req.seconds, recent_styles=_recent)
+        _push_recent_style(_db, req.userId, _bkey, spec.get("editStyle", ""))
         if req.theme in template_director.VALID_THEMES:
             spec["theme"] = req.theme
         jobs[job_id]["spec"] = spec

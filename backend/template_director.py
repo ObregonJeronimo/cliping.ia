@@ -59,6 +59,21 @@ EDIT_STYLES = [
     ("contraste", "UNA sola Comparison (sin esto vs con esto) + remate con el beneficio; NADA de FeatureList."),
 ]
 
+# Estilos que protagonizan con una LISTA (los que "se ven iguales" entre videos).
+LIST_STYLES = {"listicle", "contraste"}
+
+
+def pick_edit_style(recent=None):
+    """Elige un EDIT_STYLE evitando los últimos usados (rotación por usuario+marca) y
+    sin permitir dos listas seguidas. recent = lista de nombres, más reciente primero."""
+    recent = recent or []
+    pool = [e for e in EDIT_STYLES if e[0] not in recent[:3]]
+    # Nunca dos listas seguidas: si el último fue lista, esta vez no hay lista.
+    if recent and recent[0] in LIST_STYLES:
+        no_list = [e for e in pool if e[0] not in LIST_STYLES]
+        pool = no_list or pool
+    return random.choice(pool or EDIT_STYLES)
+
 # Cama musical por mood (Fase 3). Los archivos van en remotion/public/audio/music/<track>.mp3.
 # Se activa SOLO con la env CLIPING_AUDIO seteada (para no apuntar a archivos inexistentes y
 # romper el render). Cuando haya música cargada, prender CLIPING_AUDIO=1 y listo.
@@ -595,7 +610,8 @@ async def _resolve_icons(spec: dict) -> dict:
 
 async def build_storyboard(url: str, desarrollo: str, proposito: str = "marketing",
                            theme_override: str = "", tone: str = "",
-                           length: str = "medio", seconds: int = 0, simple: bool = True) -> dict:
+                           length: str = "medio", seconds: int = 0, simple: bool = True,
+                           recent_styles: list = None) -> dict:
     """
     URL + desarrollo -> storyboard spec.
 
@@ -612,12 +628,12 @@ async def build_storyboard(url: str, desarrollo: str, proposito: str = "marketin
     if simple:
         angle = random.choice(CREATIVE_ANGLES)
         mood = random.choice(MOODS)
-        edit = random.choice(EDIT_STYLES)
+        edit = pick_edit_style(recent_styles)
         temperature = 0.95
     else:
         angle = "según las indicaciones del usuario"
         mood = tone or random.choice(MOODS)
-        edit = random.choice(EDIT_STYLES)
+        edit = pick_edit_style(recent_styles)
         temperature = 0.6
 
     brief = (
@@ -660,12 +676,14 @@ sabés del sitio), reflejar el ángulo y el mood, y respetar las reglas de líne
         out = _attach_audio(_finalize(spec, url_data), mood)
         if seconds in SECONDS_SCENES:
             out = _fit_duration(out, seconds * 30)
+        out["editStyle"] = edit[0]
         return out
     except Exception as e:
         print(f"[director] fallback ({e})")
         out = _attach_audio(_finalize(_fallback_spec(url_data, desarrollo, proposito), url_data), mood)
         if seconds in SECONDS_SCENES:
             out = _fit_duration(out, seconds * 30)
+        out["editStyle"] = edit[0]
         return out
 
 
