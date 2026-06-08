@@ -134,7 +134,7 @@ export const KineticStatement = ({ theme, lines = [], subtitle = '', variant = '
                 opacity: clamp(frame / 12, 0, 1), transform: `scaleY(${clamp(frame / 12, 0, 1)})`, transformOrigin: 'top' }} />
             )}
             <div style={{ textAlign: leftish ? 'left' : 'center', fontWeight: theme.headWeight, fontSize: fitHeadline(lines.map(segText).join(' ')),
-              lineHeight: 1.08, letterSpacing: '-0.025em', color: theme.text, maxWidth: 940, padding: leftish ? '0 60px 0 0' : '0 70px' }}>
+              lineHeight: 1.08, letterSpacing: '-0.025em', color: theme.text, maxWidth: 940, padding: leftish ? '0 60px 0 0' : '0 70px', textWrap: 'balance' }}>
               {reveal === 'type'
                 ? <TypewriterLines theme={theme} lines={lines} frame={frame} dur={dur} />
                 : lines.map((segs, i) => {
@@ -155,7 +155,7 @@ export const KineticStatement = ({ theme, lines = [], subtitle = '', variant = '
             return (
               <div style={{ marginTop: 40, transform: e.transform, opacity: e.opacity,
                 color: theme.textMuted, fontSize: 46, fontWeight: 400, maxWidth: 880,
-                textAlign: leftish ? 'left' : 'center', lineHeight: 1.3, padding: '0 80px' }}>{subtitle}</div>
+                textAlign: leftish ? 'left' : 'center', lineHeight: 1.3, padding: '0 80px', textWrap: 'balance' }}>{subtitle}</div>
             )
           })()}
         </AbsoluteFill>

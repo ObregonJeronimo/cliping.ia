@@ -346,6 +346,14 @@ async def _render_video_job(job_id: str, req: VideoGenRequest):
                     "id": job_id, "url": req.url, "desarrollo": req.desarrollo,
                     "proposito": req.proposito, "userId": req.userId,
                     "theme": spec.get("theme"), "brand": spec.get("brand"),
+                    # Receta de generación (base del loop de feedback: cuando la app sume el rating,
+                    # ya sabemos qué combinación se uso para sesgar futuras generaciones).
+                    "recipe": {
+                        "editStyle": spec.get("editStyle"), "angle": spec.get("angle"),
+                        "artName": spec.get("artName"), "decorName": spec.get("decorName"),
+                        "theme": spec.get("theme"),
+                    },
+                    "rating": 0,  # 0 = sin puntuar; la app lo actualiza con el pulgar arriba/abajo
                     "videoUrl": cloudinary_url, "localFile": output_path.name,
                     "publicId": f"cinematicas/video_{job_id[:8]}",
                     "frames": total_frames, "createdAt": datetime.utcnow().isoformat(),
