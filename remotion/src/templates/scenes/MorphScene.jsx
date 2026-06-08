@@ -57,6 +57,25 @@ const SHAPES = {
 }
 const KEYS = Object.keys(SHAPES)
 
+// Easing fuerte (quint inOut): arranca lento, acelera, frena suave -> morph más natural.
+const easeQuint = (t) => (t < 0.5 ? 16 * t * t * t * t * t : 1 - Math.pow(-2 * t + 2, 5) / 2)
+
+// Centro del bounding box. El output de flubber es poligonal (solo M/L), así que
+// emparejar todos los números como (x,y) da el bbox real -> centramos sin "salto".
+const bboxCenter = (d) => {
+  const nums = (d.match(/-?\d+(?:\.\d+)?/g) || []).map(Number)
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+  for (let i = 0; i + 1 < nums.length; i += 2) {
+    const x = nums[i], y = nums[i + 1]
+    if (x < minX) minX = x
+    if (x > maxX) maxX = x
+    if (y < minY) minY = y
+    if (y > maxY) maxY = y
+  }
+  if (!isFinite(minX)) return { cx: 12, cy: 12 }
+  return { cx: (minX + maxX) / 2, cy: (minY + maxY) / 2 }
+}
+
 export const MorphScene = ({ theme, title = [], subtitle = '', shapes = [], variant = 'center', durationInFrames: durProp }) => {
   const frame = useCurrentFrame()
   const vc = useVideoConfig()
@@ -71,27 +90,37 @@ export const MorphScene = ({ theme, title = [], subtitle = '', shapes = [], vari
     return ks.slice(0, 4).map(k => SHAPES[k])
   }, [shapes])
 
-  // Interpoladores entre formas consecutivas (memoizados).
+  // Interpoladores entre formas consecutivas (memoizados). maxSegmentLength bajo = más
+  // puntos de muestreo = morph más suave y predecible.
   const interps = useMemo(
-    () => paths.slice(0, -1).map((p, i) => flubber(p, paths[i + 1], { maxSegmentLength: 2 })),
+    () => paths.slice(0, -1).map((p, i) => flubber(p, paths[i + 1], { maxSegmentLength: 1 })),
     [paths]
   )
 
-  // Timeline: D se reparte en (N-1) tramos. Cada tramo: HOLD 35% + MORPH 65% (con ease).
+  // Timeline: D se reparte en (N-1) tramos. Cada tramo: HOLD 38% (se "lee" la forma) +
+  // MORPH 62% con easing quint. Usamos SIEMPRE el output de flubber (poligonal) para poder
+  // centrarlo cada frame.
   const n = paths.length
   const segDur = dur / (n - 1)
   const seg = Math.min(n - 2, Math.floor(frame / segDur))
   const local = frame - seg * segDur
-  const holdF = segDur * 0.35
-  const tRaw = local <= holdF ? 0 : (local - holdF) / (segDur - holdF)
-  const t = EASE.inOut(clamp(tRaw, 0, 1))
-  const d = frame >= dur - 1 ? paths[n - 1] : interps[seg](t)
+  const holdF = segDur * 0.38
+  const tRaw = clamp(local <= holdF ? 0 : (local - holdF) / (segDur - holdF), 0, 1)
+  const t = easeQuint(tRaw)
+  const d = interps[seg](t)
 
-  // Entrada + respiración sutil de la figura
+  // Centrado por-frame: saca el "salto" de posición cuando dos formas ocupan distinto lugar.
+  const { cx, cy } = bboxCenter(d)
+  const dx = 12 - cx, dy = 12 - cy
+
+  // Actividad del morph (campana, pico en la mitad de la transición): mueve rotación,
+  // respiración, blur de transición y glow -> el cambio se siente orgánico y cinematográfico.
+  const act = Math.sin(tRaw * Math.PI)
   const intro = prog(frame, 0, m.enterFrames, EASE.back)
-  const pulse = 1 + Math.sin(frame / 14) * 0.012
-  const morphing = local > holdF && local < segDur * 0.98
-  const glowBoost = morphing ? 1.4 : 1
+  const breathe2 = 1 + Math.sin(frame / 14) * 0.012 + act * 0.05
+  const rot = act * 6
+  const blur = act * 2.6
+  const glowBoost = 1 + act * 0.6
 
   const Title = ({ size }) => (
     <div style={{ textAlign: 'center', fontWeight: theme.headWeight, fontSize: size, lineHeight: 1.06,
@@ -111,8 +140,8 @@ export const MorphScene = ({ theme, title = [], subtitle = '', shapes = [], vari
 
         <div style={{
           opacity: clamp(intro, 0, 1),
-          transform: `scale(${(0.6 + 0.4 * clamp(intro, 0, 1)) * pulse})`,
-          filter: `drop-shadow(0 0 ${44 * glowBoost}px ${theme.glow})`,
+          transform: `scale(${(0.6 + 0.4 * clamp(intro, 0, 1)) * breathe2}) rotate(${rot}deg)`,
+          filter: `drop-shadow(0 0 ${44 * glowBoost}px ${theme.glow})${blur > 0.05 ? ` blur(${blur}px)` : ''}`,
         }}>
           <svg viewBox="0 0 24 24" width="440" height="440" style={{ overflow: 'visible' }}>
             <defs>
@@ -121,7 +150,9 @@ export const MorphScene = ({ theme, title = [], subtitle = '', shapes = [], vari
                 <stop offset="100%" stopColor={theme.accentTo} />
               </linearGradient>
             </defs>
-            <path d={d} fill="url(#morphGrad)" />
+            <g transform={`translate(${dx} ${dy})`}>
+              <path d={d} fill="url(#morphGrad)" />
+            </g>
           </svg>
         </div>
 

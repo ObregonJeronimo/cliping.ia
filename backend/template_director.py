@@ -221,7 +221,11 @@ SCENE_CATALOG = """ESCENAS DISPONIBLES (type + props):
   "box"->"house"; seguridad/confianza: "shield"->"check"; rapidez/energía: "bolt"->"check";
   idea/software: "bulb"->"rocket", "bulb"->"check"; educación: "book"->"cap", "pencil"->"bulb";
   cercanía local: "pin"->"heart"; mensajería/comunidad: "chat"->"heart"; premium/calidad: "gem"->"crown".
-  Si NINGUNA cadena cuenta algo real de la marca, NO uses MorphScene. opcional title = segmentos { t, accent } y subtitle (string).
+  Si NINGUNA cadena cuenta algo real de la marca, NO uses MorphScene.
+  COMPATIBILIDAD (para que el morph salga fluido): encadená formas de SILUETA/complejidad
+  parecida. Bien: orgánicas entre sí (leaf↔heart↔droplet↔apple↔flame), o geométricas entre sí
+  (square↔box↔house↔gem). Evitá saltos extremos (ej circle↔star, o square↔heart) porque el
+  morph se ve más brusco. Dos formas "primas" se transforman hermoso. opcional title = segmentos { t, accent } y subtitle (string).
   Es un beat vistoso: como MUCHO una vez por video.
 - "StatReveal": un NÚMERO que cuenta de 0 hasta el valor (el beat de "dato que impacta").
   props: value = número (ej 95, 4.9, 12000); opcional prefix (ej "$", "+"); suffix (ej
