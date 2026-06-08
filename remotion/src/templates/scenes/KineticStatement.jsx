@@ -137,16 +137,25 @@ export const KineticStatement = ({ theme, lines = [], subtitle = '', variant = '
               lineHeight: 1.08, letterSpacing: '-0.025em', color: theme.text, maxWidth: 940, padding: leftish ? '0 60px 0 0' : '0 70px', textWrap: 'balance' }}>
               {reveal === 'type'
                 ? <TypewriterLines theme={theme} lines={lines} frame={frame} dur={dur} />
-                : lines.map((segs, i) => {
-                const e = entrance(theme.art, frame, stagger(i, 8, m.stagger * 2), { dur: m.enterFrames, dist: 64, ease: EASE.back })
-                return (
-                  <div key={i} style={{ transform: e.transform, opacity: e.opacity }}>
-                    {segs.map((s, j) => s.accent
-                      ? <GradientText key={j} theme={theme}>{s.t}</GradientText>
-                      : <span key={j}>{s.t}</span>)}
+                : (() => {
+                let wi = 0  // índice global de palabra -> stagger tipo "caption kinético"
+                return lines.map((segs, i) => (
+                  <div key={i}>
+                    {segs.map((s, j) => s.t.split(' ').map((w, k) => {
+                      if (w === '') return null
+                      const delay = 6 + wi * 3
+                      wi++
+                      const p = prog(frame, delay, m.enterFrames, EASE.back)
+                      const op = clamp((frame - delay) / Math.max(1, m.enterFrames * 0.6), 0, 1)
+                      const st = { display: 'inline-block', marginRight: '0.26em',
+                        transform: `translateY(${(1 - p) * 42}px)`, opacity: op }
+                      return s.accent
+                        ? <span key={`${j}-${k}`} style={st}><GradientText theme={theme}>{w}</GradientText></span>
+                        : <span key={`${j}-${k}`} style={st}>{w}</span>
+                    }))}
                   </div>
-                )
-              })}
+                ))
+              })()}
             </div>
           </div>
 
