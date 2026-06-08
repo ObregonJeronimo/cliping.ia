@@ -87,6 +87,22 @@ const cutFrames = (scenes) => {
 
 // Handle de marca sutil y PERSISTENTE: identidad en cada frame (recordación de marca). Arriba,
 // dentro de la zona segura (lejos de la UI de Reels/TikTok). Se puede apagar con watermark:false.
+// Capa táctil: viñeta suave (foco + profundidad) + grano fino (textura premium, menos "plano
+// digital"). Sutil y apagable con tactile:false. Es lo que separa "limpio" de "se ve caro".
+const TactileLayer = () => (
+  <AbsoluteFill style={{ pointerEvents: 'none' }}>
+    <AbsoluteFill style={{ background:
+      'radial-gradient(ellipse 75% 65% at 50% 42%, transparent 52%, rgba(0,0,0,0.34) 100%)' }} />
+    <svg width="100%" height="100%" preserveAspectRatio="none"
+      style={{ position: 'absolute', inset: 0, opacity: 0.05, mixBlendMode: 'overlay' }}>
+      <filter id="cl-grain">
+        <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch" />
+      </filter>
+      <rect width="100%" height="100%" filter="url(#cl-grain)" />
+    </svg>
+  </AbsoluteFill>
+)
+
 const BrandMark = ({ theme, brand }) => {
   const frame = useCurrentFrame()
   if (!brand) return null
@@ -149,6 +165,7 @@ export const VideoFromSpec = ({ spec }) => {
         })}
       </TransitionSeries>
       <Backdrop theme={theme} kind={art.motif} />
+      {spec.tactile !== false && <TactileLayer />}
       {spec.finish !== false && <FinishLayer />}
       {spec.watermark !== false && <BrandMark theme={theme} brand={spec.brand} />}
       <SoundLayer audio={audio} />
