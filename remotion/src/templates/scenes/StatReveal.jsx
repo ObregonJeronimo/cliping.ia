@@ -1,4 +1,5 @@
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from 'remotion'
+import { fmt } from '../layout'
 import { fitHeadline, segText, clamp } from '../theme'
 import { EASE, SPRING, prog, spr, enter, entrance, floatY, breathe, camera, parallax } from '../motion'
 import Decor from '../Decor'
@@ -41,6 +42,7 @@ export const StatReveal = ({
   const fps = vc.fps
   const dur = durProp || vc.durationInFrames
   const m = theme.motion
+  const F = fmt(vc)
 
   const cam = camera(theme.art, frame, dur, m.cameraDrift)
   const pxFg = parallax(cam, 0.6)
@@ -90,6 +92,7 @@ export const StatReveal = ({
         }}>
           <div style={{ position: 'relative', display: 'flex', flexDirection: 'column',
             alignItems: left ? 'flex-start' : 'center', justifyContent: 'center',
+            transform: `scale(${F.uiScale})`,
             width: ring ? 820 : 'auto', height: ring ? 820 : 'auto' }}>
             {ring && (
               <svg width={820} height={820} viewBox="0 0 820 820"

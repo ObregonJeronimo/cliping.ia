@@ -1,6 +1,7 @@
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from 'remotion'
 import { fitHeadline, segText, clamp } from '../theme'
 import { EASE, SPRING, prog, spr, enter, entrance, stagger, floatY, camera, parallax } from '../motion'
+import { fmt } from '../layout'
 import Decor from '../Decor'
 
 /**
@@ -109,6 +110,7 @@ export const KineticStatement = ({ theme, lines = [], subtitle = '', variant = '
   const dur = durProp || vc.durationInFrames
   const m = theme.motion
   const leftish = variant === 'left' || variant === 'bar'
+  const F = fmt(vc)
 
   const cam = camera(theme.art, frame, dur, m.cameraDrift)
   const pxBg = parallax(cam, 0.3)
@@ -127,6 +129,8 @@ export const KineticStatement = ({ theme, lines = [], subtitle = '', variant = '
 
         <AbsoluteFill style={{ alignItems: leftish ? 'flex-start' : 'center',
           justifyContent: 'center', padding: leftish ? '0 0 0 90px' : 0 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', width: '100%',
+            alignItems: leftish ? 'flex-start' : 'center', transform: `scale(${F.uiScale})` }}>
           <div style={{ display: 'flex', alignItems: 'stretch', gap: 36 }}>
             {variant === 'bar' && (
               <div style={{ flexShrink: 0, width: 12, borderRadius: 6, alignSelf: 'stretch',
@@ -174,6 +178,7 @@ export const KineticStatement = ({ theme, lines = [], subtitle = '', variant = '
                 textAlign: leftish ? 'left' : 'center', lineHeight: 1.3, padding: '0 80px', textWrap: 'balance' }}>{subtitle}</div>
             )
           })()}
+          </div>
         </AbsoluteFill>
       </div>
     </AbsoluteFill>

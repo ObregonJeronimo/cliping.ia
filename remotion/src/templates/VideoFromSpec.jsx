@@ -110,25 +110,25 @@ const TactileLayer = () => (
 const BrandMark = ({ theme, brand, logo }) => {
   const frame = useCurrentFrame()
   if (!brand) return null
-  const op = clamp((frame - 6) / 14, 0, 1) * 0.6
+  const op = clamp((frame - 6) / 14, 0, 1) * 0.85
   const initial = (brand.trim()[0] || '').toUpperCase()
   return (
     <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'flex-start', pointerEvents: 'none' }}>
-      <div style={{ marginTop: 64, display: 'flex', alignItems: 'center', gap: 12, opacity: op,
+      <div style={{ marginTop: 64, display: 'flex', alignItems: 'center', gap: 13, opacity: op,
         maxWidth: 820, overflow: 'hidden' }}>
         {logo
-          ? <div style={{ width: 38, height: 38, borderRadius: 11, overflow: 'hidden', flex: '0 0 auto',
+          ? <div style={{ width: 42, height: 42, borderRadius: 12, overflow: 'hidden', flex: '0 0 auto',
               background: '#fff', boxShadow: `0 4px 16px ${theme.accentTo}66`,
               display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Img src={logo} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
             </div>
-          : <div style={{ width: 38, height: 38, borderRadius: 11, backgroundImage: theme.accentGrad,
+          : <div style={{ width: 42, height: 42, borderRadius: 12, backgroundImage: theme.accentGrad,
               display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto',
-              color: '#fff', fontWeight: 800, fontSize: 22, fontFamily: theme.font,
+              color: '#fff', fontWeight: 800, fontSize: 24, fontFamily: theme.font,
               boxShadow: `0 4px 16px ${theme.accentTo}66` }}>
               {initial}
             </div>}
-        <span style={{ fontFamily: theme.font, fontWeight: 700, fontSize: 29, letterSpacing: '0.01em',
+        <span style={{ fontFamily: theme.font, fontWeight: 700, fontSize: 31, letterSpacing: '0.01em',
           color: theme.text, whiteSpace: 'nowrap' }}>{brand}</span>
       </div>
     </AbsoluteFill>
