@@ -48,7 +48,7 @@ MOODS = ["enérgico y rápido", "calmo y premium", "confiable y claro", "moderno
 # ESTRUCTURA no sea siempre la misma (Hook -> IconTransform -> Mockup -> CTA). Es a la
 # estructura lo que ART_PRESETS es al movimiento.
 EDIT_STYLES = [
-    ("punchy",    "ritmo rápido: 3-4 frases KineticStatement cortas y filosas; variá el reveal (alguna con reveal:'type'); SIN listas (ni FeatureList ni Comparison); cerrá fuerte."),
+    ("punchy",    "ritmo rápido: 3-4 frases KineticStatement cortas y filosas; SIN listas (ni FeatureList ni Comparison); cerrá fuerte."),
     ("historia",  "arco problema -> solución -> CTA contado con KineticStatement; UN beat vistoso (MorphScene o IconTransform) para el giro; SIN listas."),
     ("morph",     "centrá un MorphScene de transformación que cuente la METÁFORA de la marca, con frases KineticStatement alrededor; SIN listas."),
     ("ilustrado", "IllustrationScene como hero visual + una frase potente; estética limpia, poco texto; SIN listas ni Mockup."),
@@ -193,8 +193,9 @@ SCENE_CATALOG = """ESCENAS DISPONIBLES (type + props):
   segmento (ej: [{"t":"Comé "},{"t":"mejor","accent":true}]) para que no se peguen.
   props opcional: subtitle. UNA sola idea por escena (no metas 2 frases).
   props opcional: reveal = "type" -> el texto aparece TIPEADO (como si lo escribieran
-  en el momento, con cursor parpadeante). Es un efecto lindo para un HOOK o una frase
-  con intención; usalo SOLO de vez en cuando (1 escena como mucho), NO en todos los videos.
+  en el momento, con cursor parpadeante). Es un efecto OCASIONAL: NO lo uses por defecto ni en
+  la mayoría de los videos. Como mucho en 1 escena, y solo si le aporta intención a esa frase
+  puntual. La inmensa mayoría de las frases van SIN reveal (aparición normal).
 - "IntegrationCluster": "todo en un solo lugar / muchas cosas unificadas".
   props: title = array de segmentos { t, accent }. opcional colors = array de hex.
 - "MockupShowcase": muestra el producto/su web. props: title = array de segmentos
@@ -214,8 +215,11 @@ SCENE_CATALOG = """ESCENAS DISPONIBLES (type + props):
   ["leaf","apple","flame","droplet","heart","cup","bottle","shield","check","bag","box","house","pin","bell","mail","chat","bolt","bulb","cloud","plane","book","cap","pencil","eye","gem","crown","rocket","star","play","arrow","circle","square","triangle","plus"].
   (Si una key no está en la lista, NO la inventes.)
   REGLA DE ORO: la cadena tiene que CONTAR algo coherente (concepto -> resultado), NO formas
-  al azar. Cada forma debe significar algo para ESTA marca. PROHIBIDO encadenar formas
-  abstractas porque sí (ej "square"->"triangle"->"heart" NO significa nada -> está MAL).
+  al azar. Cada forma debe significar algo para ESTA marca. Elegí las formas MÁS ESPECÍFICAS
+  del rubro (ej dietética: "leaf"/"apple"; cafetería: "cup"; envío: "box"; finanzas: "shield").
+  NO caigas por defecto en "heart" salvo que el mensaje central sea cariño/salud/bienestar.
+  Antes de elegir, preguntate: ¿qué dos objetos representan EXACTAMENTE lo que hace esta marca?
+  PROHIBIDO encadenar formas abstractas porque sí (ej "square"->"triangle"->"heart" NO significa nada).
   Ejemplos BIEN por rubro: dietética/saludable: "leaf"->"heart", "apple"->"heart";
   cafetería/bebidas: "bottle"->"cup", "leaf"->"cup"; e-commerce con envío: "bag"->"house",
   "box"->"house"; seguridad/confianza: "shield"->"check"; rapidez/energía: "bolt"->"check";

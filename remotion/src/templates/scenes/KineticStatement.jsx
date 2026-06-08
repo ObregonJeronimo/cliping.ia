@@ -71,13 +71,16 @@ const Caret = ({ theme, frame, solid }) => {
 }
 
 // Texto que aparece "tipeado" (carácter por carácter) con cursor. Respeta acentos por segmento.
-const TypewriterLines = ({ theme, lines, frame }) => {
-  const CPS = 1.7            // caracteres por frame (~51/seg a 30fps)
-  const START = 6
+const TypewriterLines = ({ theme, lines, frame, dur = 100 }) => {
+  const START = 8
   const ranges = []
   let acc = 0
   lines.forEach(segs => { const len = segs.reduce((b, s) => b + s.t.length, 0); ranges.push([acc, acc + len]); acc += len })
-  const total = acc
+  const total = acc || 1
+  // Velocidad adaptativa: termina de tipear ~al 55% de la escena (deja tiempo para LEER),
+  // pero a ritmo humano (entre ~0.5 y ~1.1 chars/frame, o sea ~15-33 chars/seg).
+  const typeWindow = Math.max(12, dur * 0.55 - START)
+  const CPS = clamp(total / typeWindow, 0.5, 1.1)
   const revealed = Math.max(0, Math.floor((frame - START) * CPS))
   const done = revealed >= total
   return lines.map((segs, i) => {
@@ -141,7 +144,7 @@ export const KineticStatement = ({ theme, lines = [], subtitle = '', variant = '
             <div style={{ textAlign: leftish ? 'left' : 'center', fontWeight: theme.headWeight, fontSize: fitHeadline(lines.map(segText).join(' ')),
               lineHeight: 1.08, letterSpacing: '-0.025em', color: theme.text, maxWidth: 940, padding: leftish ? '0 60px 0 0' : '0 70px' }}>
               {reveal === 'type'
-                ? <TypewriterLines theme={theme} lines={lines} frame={frame} />
+                ? <TypewriterLines theme={theme} lines={lines} frame={frame} dur={dur} />
                 : lines.map((segs, i) => {
                 const e = entrance(theme.art, frame, stagger(i, 8, m.stagger * 2), { dur: m.enterFrames, dist: 64, ease: EASE.back })
                 return (

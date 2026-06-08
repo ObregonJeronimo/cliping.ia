@@ -97,14 +97,18 @@ export const MorphScene = ({ theme, title = [], subtitle = '', shapes = [], vari
     [paths]
   )
 
-  // Timeline: D se reparte en (N-1) tramos. Cada tramo: HOLD 38% (se "lee" la forma) +
-  // MORPH 62% con easing quint. Usamos SIEMPRE el output de flubber (poligonal) para poder
-  // centrarlo cada frame.
+  // Timeline con ESPERAS: pequeña espera inicial (HEAD) para leer la 1ra forma, los morphs
+  // ocurren en el medio, y una espera final (TAIL) mantiene la ÚLTIMA forma para que se "lea"
+  // y el morph TERMINE antes de que la escena haga el crossfade de salida (~14f).
   const n = paths.length
-  const segDur = dur / (n - 1)
-  const seg = Math.min(n - 2, Math.floor(frame / segDur))
-  const local = frame - seg * segDur
-  const holdF = segDur * 0.38
+  const TAIL = Math.min(30, Math.max(20, Math.round(dur * 0.18)))
+  const HEAD = Math.min(16, Math.max(8, Math.round(dur * 0.08)))
+  const morphSpan = Math.max(1, dur - TAIL - HEAD)
+  const segDur = morphSpan / (n - 1)
+  const fLocal = clamp(frame - HEAD, 0, morphSpan)
+  const seg = Math.min(n - 2, Math.floor(fLocal / segDur))
+  const local = fLocal - seg * segDur
+  const holdF = segDur * 0.28
   const tRaw = clamp(local <= holdF ? 0 : (local - holdF) / (segDur - holdF), 0, 1)
   const t = easeQuint(tRaw)
   const d = interps[seg](t)
@@ -145,9 +149,9 @@ export const MorphScene = ({ theme, title = [], subtitle = '', shapes = [], vari
         }}>
           <svg viewBox="0 0 24 24" width="440" height="440" style={{ overflow: 'visible' }}>
             <defs>
-              <linearGradient id="morphGrad" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor={theme.accentFrom} />
-                <stop offset="100%" stopColor={theme.accentTo} />
+              <linearGradient id="morphGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={theme.accentTo} />
+                <stop offset="100%" stopColor={theme.accentFrom} />
               </linearGradient>
             </defs>
             <g transform={`translate(${dx} ${dy})`}>
