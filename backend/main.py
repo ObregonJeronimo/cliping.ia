@@ -543,15 +543,15 @@ async def _render_video_job(job_id: str, req: VideoGenRequest):
             str(REMOTION_DIR / "node_modules" / ".bin" / "remotion"),
         ]
         remotion_bin = next((c for c in candidates if _Path(c).exists()), "npx")
-        # Dimensiones según el formato del spec (antes estaba fijo 1080x1920 y pisaba el formato).
+        # Las dimensiones las define la composición (Root del formato). NO pasamos --width/--height
+        # por CLI para no forzar un reescalado (eso bajaba la calidad en cuadrado/horizontal).
         _FMT = {"vertical": (1080, 1920), "square": (1080, 1080), "wide": (1920, 1080)}
         _w, _h = _FMT.get(spec.get("format", "vertical"), _FMT["vertical"])
         args = [remotion_bin, "render", entry, comp_id,
                 str(output_path.absolute()),
                 "--codec", "h264", "--fps", "30",
-                "--width", str(_w), "--height", str(_h),
                 "--duration-in-frames", str(total_frames),
-                "--concurrency", "4", "--jpeg-quality", "90", "--crf", "22",
+                "--concurrency", "4", "--jpeg-quality", "100", "--crf", "18",
                 "--log", "error"]
         print(f"[video] Renderizando {comp_id} ({total_frames} frames, {_w}x{_h}, theme={spec.get('theme')})...")
         proc = await _asyncio.create_subprocess_exec(

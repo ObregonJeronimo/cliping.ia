@@ -542,12 +542,14 @@ def _min_duration(s: dict) -> int:
     t = s.get("type")
     txt = " ".join(_collect_text(s))
     words = len([w for w in txt.split() if w])
-    read = int(0.42 * words * 30)          # ~0.42s por palabra
-    floor = 120                            # ~4s mínimo (antes 3s) -> el +1s que pediste
+    read = int(0.52 * words * 30)          # ~0.52s por palabra (antes 0.42, no se llegaba a leer)
+    floor = 120                            # ~4s mínimo
+    if words >= 8:
+        floor += 30                        # +1s extra a las escenas con más texto
     if t in ("FeatureList", "Comparison"):
         n = len(s.get("items") or []) + len(s.get("leftItems") or []) + len(s.get("rightItems") or [])
-        floor = max(floor, 100 + n * 16)
-    return int(min(200, max(floor, 90 + read)))
+        floor = max(floor, 110 + n * 18)
+    return int(min(240, max(floor, 90 + read)))
 
 
 # Duración EXACTA elegida por el usuario -> cuántas escenas usar para que entre bien.

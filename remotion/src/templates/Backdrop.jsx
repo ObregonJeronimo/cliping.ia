@@ -7,17 +7,17 @@ import { AbsoluteFill, useCurrentFrame, useVideoConfig } from 'remotion'
  * video (spec.art.motif), así dos videos con las mismas escenas se ven distintos.
  *
  * Motivos: particles | grid | aurora | rays | bokeh | dots | waves | none
- * No interactúa con el contenido (pointerEvents none).
+ * Todos los motivos reciben W/H REALES del formato (9:16 / 1:1 / 16:9) para cubrir
+ * toda la pantalla. No interactúan con el contenido (pointerEvents none).
  */
 
-const W = 1080, H = 1920
 // pseudo-random determinista (estable por frame) a partir de un índice.
 const rnd = (i, s = 1) => {
   const x = Math.sin(i * 12.9898 + s * 78.233) * 43758.5453
   return x - Math.floor(x)
 }
 
-const Particles = ({ theme, frame }) => {
+const Particles = ({ theme, frame, W, H }) => {
   const N = 40
   return (
     <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ position: 'absolute', inset: 0, mixBlendMode: 'screen', opacity: 0.55 }}>
@@ -34,7 +34,7 @@ const Particles = ({ theme, frame }) => {
   )
 }
 
-const Bokeh = ({ theme, frame }) => {
+const Bokeh = ({ theme, frame, W, H }) => {
   const N = 11
   return (
     <AbsoluteFill style={{ mixBlendMode: 'screen', opacity: 0.45, filter: 'blur(2px)' }}>
@@ -54,7 +54,7 @@ const Bokeh = ({ theme, frame }) => {
   )
 }
 
-const Aurora = ({ theme, frame }) => {
+const Aurora = ({ theme, frame, W, H }) => {
   const blobs = [
     { c: theme.accentFrom, bx: 0.28, by: 0.30, s: 760, px: 120, py: 90, ph: 0 },
     { c: theme.accentTo, bx: 0.72, by: 0.62, s: 820, px: 150, py: 110, ph: 2 },
@@ -74,13 +74,14 @@ const Aurora = ({ theme, frame }) => {
   )
 }
 
-const Rays = ({ theme, frame }) => {
-  const shift = (frame * 1.2) % 360
+const Rays = ({ theme, frame, W, H }) => {
+  // El gradiente repite cada 160px -> el loop debe reiniciar cada 160px (no 360) para no saltar.
+  const shift = (frame * 1.2) % 160
   return (
     <AbsoluteFill style={{ mixBlendMode: 'screen', opacity: 0.18, overflow: 'hidden' }}>
       <div style={{
         position: 'absolute', left: -200, top: -400, width: W + 400, height: H + 800,
-        transform: `rotate(24deg) translateX(${shift - 180}px)`,
+        transform: `rotate(24deg) translateX(${shift - 80}px)`,
         background: `repeating-linear-gradient(90deg, ${theme.accentFrom}00 0px, ${theme.accentTo}55 60px, ${theme.accentFrom}00 160px)`,
       }} />
     </AbsoluteFill>
@@ -88,7 +89,7 @@ const Rays = ({ theme, frame }) => {
 }
 
 const Grid = ({ theme, frame }) => {
-  const off = (frame * 0.6) % 90
+  const off = (frame * 0.6) % 90  // patrón 90px, loop cada 90 -> sin salto
   return (
     <AbsoluteFill style={{ mixBlendMode: 'soft-light', opacity: 0.5 }}>
       <div style={{ position: 'absolute', inset: -90,
@@ -100,18 +101,19 @@ const Grid = ({ theme, frame }) => {
 }
 
 const Dots = ({ theme, frame }) => {
+  // patrón 54px -> loop cada 54 en AMBOS ejes (antes el eje Y usaba off*0.6 y saltaba).
   const off = (frame * 0.5) % 54
   return (
     <AbsoluteFill style={{ mixBlendMode: 'soft-light', opacity: 0.5 }}>
       <div style={{ position: 'absolute', inset: -60,
         backgroundImage: `radial-gradient(${theme.accentTo}66 2.4px, transparent 2.8px)`,
-        backgroundSize: '54px 54px', transform: `translate(${off}px, ${off * 0.6}px)`,
+        backgroundSize: '54px 54px', transform: `translate(${off}px, ${off}px)`,
         maskImage: 'radial-gradient(120% 90% at 50% 45%, transparent 30%, #000 100%)' }} />
     </AbsoluteFill>
   )
 }
 
-const Waves = ({ theme, frame }) => {
+const Waves = ({ theme, frame, W, H }) => {
   const lines = [
     { y: H * 0.32, amp: 60, k: 0.006, sp: 1.4, c: theme.accentFrom, o: 0.5 },
     { y: H * 0.55, amp: 90, k: 0.005, sp: -1.0, c: theme.accentTo, o: 0.4 },
@@ -136,15 +138,13 @@ const MOTIFS = { particles: Particles, bokeh: Bokeh, aurora: Aurora, rays: Rays,
 /**
  * ContinuousBg — fondo ÚNICO y CONTINUO detrás de TODO el video. Usa el frame global
  * (no se reinicia entre escenas) -> el gradiente y el glow nunca "cortan" en las
- * transiciones. Esto es lo que hace que el video se sienta fusionado/fluido (estilo Canva):
- * las escenas van transparentes encima y solo el CONTENIDO hace fundido, el fondo fluye.
+ * transiciones, y como se mueve con senoidales puras NO tiene punto de reinicio (nunca salta).
  */
 export const ContinuousBg = ({ theme }) => {
   const frame = useCurrentFrame()
   const gx = 50 + Math.sin(frame / 150) * 12
   const gy = 36 + Math.cos(frame / 190) * 9
   const breath = 0.55 + 0.10 * Math.sin(frame / 80)
-  // Segundo glow de ACENTO que deriva distinto -> el fondo SIEMPRE tiene movimiento (nunca estático).
   const ax = 50 + Math.cos(frame / 220) * 22
   const ay = 60 + Math.sin(frame / 180) * 16
   return (
@@ -161,12 +161,12 @@ export const ContinuousBg = ({ theme }) => {
 
 export const Backdrop = ({ theme, kind = 'none' }) => {
   const frame = useCurrentFrame()
-  useVideoConfig()
+  const { width: W, height: H } = useVideoConfig()
   const Comp = MOTIFS[kind]
   if (!Comp) return null
   return (
     <AbsoluteFill style={{ pointerEvents: 'none' }}>
-      <Comp theme={theme} frame={frame} />
+      <Comp theme={theme} frame={frame} W={W} H={H} />
     </AbsoluteFill>
   )
 }
