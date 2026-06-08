@@ -440,6 +440,8 @@ def _normalize(spec: dict, url_data: dict, desarrollo: str, proposito: str) -> d
     hay = " ".join([
         url_data.get("context", ""), url_data.get("description", ""),
         url_data.get("headline", ""), " ".join(url_data.get("sections") or []),
+        " ".join(url_data.get("paragraphs") or []), url_data.get("bodyText", ""),
+        " ".join(url_data.get("prices") or []), " ".join(url_data.get("claims") or []),
         desarrollo or "",
     ]).lower()
     hay_nums = [re.sub(r"\D", "", g) for g in re.findall(r"\d[\d.,]*", hay)]
@@ -494,68 +496,135 @@ def _normalize(spec: dict, url_data: dict, desarrollo: str, proposito: str) -> d
     return {"theme": theme, "brand": brand, "scenes": clean}
 
 
+def _name_from_title(title: str) -> str:
+    """Marca a partir del <title> (toma lo de antes del separador típico)."""
+    return re.split(r"[|\-–—·:]", title or "")[0].strip()[:60]
+
+
+_PRICE_RE = re.compile(r"(?:US?\$|AR\$|\$|€|USD|EUR|ARS)\s?\d[\d.,]*", re.I)
+_CLAIM_RE = re.compile(
+    r"(?:\+\s?)?\d[\d.,]*\s?(?:años|año|clientes|usuarios|productos|proyectos|"
+    r"pa[ií]ses|marcas|millones|mil|%|estrellas|opiniones|rese[ñn]as|env[ií]os|ventas)",
+    re.I)
+_RATING_RE = re.compile(r"\b[1-5][.,]\d\b")
+
+
+def _extract_prices(text: str) -> list:
+    out = []
+    for m in _PRICE_RE.findall(text or ""):
+        v = m.strip().rstrip(".,")
+        if v not in out:
+            out.append(v)
+        if len(out) >= 6:
+            break
+    return out
+
+
+def _extract_claims(text: str) -> list:
+    out = []
+    for rx in (_CLAIM_RE, _RATING_RE):
+        for m in rx.findall(text or ""):
+            v = m.strip()
+            if v and v not in out:
+                out.append(v)
+    return out[:8]
+
+
 async def analyze_site_rich(url: str) -> dict:
     """
-    Lectura más profunda del sitio para que el director escriba mejor copy:
-    título, marca, descripción, subtítulos (h1/h2/h3) y primeros párrafos.
-    Best-effort: si falla, cae a analyze_url_light.
+    Lectura PROFUNDA del sitio para que el director escriba copy específico y real.
+    Primario: texto YA RENDERIZADO vía Chromium (sirve para SPAs React/Vue/Next que
+    devuelven HTML vacío). Fallback: scrape liviano + httpx. Extrae además precios y
+    datos reales (años, clientes, ratings) para StatReveal/SocialProof honestos.
     """
-    base = await cine_generator.analyze_url_light(url)
-    out = {"siteName": base.get("siteName", ""), "headline": base.get("headline", ""),
-           "themeColor": base.get("themeColor", ""), "description": "", "sections": [],
-           "logo": "", "context": ""}
+    out = {"siteName": "", "headline": "", "themeColor": "", "description": "",
+           "sections": [], "nav": [], "paragraphs": [], "prices": [], "claims": [],
+           "lang": "", "logo": "", "bodyText": "", "context": ""}
     if not url:
         return out
+
+    rich = None
     try:
-        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True,
-                headers={"User-Agent": "Mozilla/5.0 (compatible; clipingbot/1.0)"}) as c:
-            r = await c.get(url)
-            t = r.text[:300_000]
-
-        def grab(pat):
-            m = re.search(pat, t, re.I | re.S)
-            return html.unescape(re.sub(r"<[^>]+>", "", m.group(1))).strip() if m else ""
-
-        desc = grab(r'name=["\']description["\'][^>]*content=["\']([^"\']+)') \
-            or grab(r'property=["\']og:description["\'][^>]*content=["\']([^"\']+)')
-        out["description"] = re.sub(r"\s+", " ", desc)[:280]
-
-        heads = re.findall(r"<h[1-3][^>]*>(.*?)</h[1-3]>", t, re.I | re.S)
-        secs = []
-        for h in heads:
-            txt = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", html.unescape(h))).strip()
-            if 3 <= len(txt) <= 80 and txt.lower() not in [s.lower() for s in secs]:
-                secs.append(txt)
-        out["sections"] = secs[:8]
-
-        # Logo del sitio: apple-touch-icon (suele ser un mark limpio) > og:image >
-        # icon link > /favicon.ico. Lo resolvemos a URL absoluta.
-        def grab_attr(pat):
-            m = re.search(pat, t, re.I)
-            return m.group(1).strip() if m else ""
-
-        cand = (
-            grab_attr(r'<link[^>]+rel=["\'][^"\']*apple-touch-icon[^"\']*["\'][^>]*href=["\']([^"\']+)')
-            or grab_attr(r'<link[^>]+href=["\']([^"\']+)["\'][^>]*rel=["\'][^"\']*apple-touch-icon')
-            or grab_attr(r'property=["\']og:image["\'][^>]*content=["\']([^"\']+)')
-            or grab_attr(r'<link[^>]+rel=["\'][^"\']*icon[^"\']*["\'][^>]*href=["\']([^"\']+)')
-        )
-        if not cand:
-            cand = "/favicon.ico"
-        try:
-            from urllib.parse import urljoin
-            out["logo"] = urljoin(str(r.url), cand)
-        except Exception:
-            out["logo"] = ""
-
-        ctx = []
-        if out["siteName"]:    ctx.append(f"Marca: {out['siteName']}")
-        if out["headline"]:    ctx.append(f"Titular: {out['headline']}")
-        if out["description"]: ctx.append(f"Descripción: {out['description']}")
-        if out["sections"]:    ctx.append("Secciones: " + " · ".join(out["sections"]))
-        out["context"] = "\n".join(ctx)
+        import site_capture
+        rich = await site_capture.extract_content(url)
     except Exception as e:
-        print(f"[director] analyze_site_rich: {e}")
+        print(f"[director] extract_content no disponible: {e}")
+
+    if rich and (rich.get("bodyText") or rich.get("headings")):
+        heads = rich.get("headings") or []
+        out["siteName"] = rich.get("siteName") or _name_from_title(rich.get("title", ""))
+        out["headline"] = heads[0] if heads else ""
+        out["description"] = rich.get("description", "")
+        out["themeColor"] = rich.get("themeColor", "")
+        out["logo"] = rich.get("logo", "")
+        out["lang"] = rich.get("lang", "")
+        out["sections"] = heads[:8]
+        out["nav"] = (rich.get("nav") or [])[:10]
+        out["paragraphs"] = (rich.get("paragraphs") or [])[:8]
+        out["bodyText"] = rich.get("bodyText", "")
+    else:
+        # Fallback sin browser: scrape liviano + httpx (lo de siempre).
+        base = await cine_generator.analyze_url_light(url)
+        out["siteName"] = base.get("siteName", "")
+        out["headline"] = base.get("headline", "")
+        out["themeColor"] = base.get("themeColor", "")
+        try:
+            async with httpx.AsyncClient(timeout=10.0, follow_redirects=True,
+                    headers={"User-Agent": "Mozilla/5.0 (compatible; clipingbot/1.0)"}) as c:
+                r = await c.get(url)
+                t = r.text[:300_000]
+
+            def grab(pat):
+                m = re.search(pat, t, re.I | re.S)
+                return html.unescape(re.sub(r"<[^>]+>", "", m.group(1))).strip() if m else ""
+
+            desc = grab(r'name=["\']description["\'][^>]*content=["\']([^"\']+)') \
+                or grab(r'property=["\']og:description["\'][^>]*content=["\']([^"\']+)')
+            out["description"] = re.sub(r"\s+", " ", desc)[:280]
+
+            heads = re.findall(r"<h[1-3][^>]*>(.*?)</h[1-3]>", t, re.I | re.S)
+            secs = []
+            for h in heads:
+                txt = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", html.unescape(h))).strip()
+                if 3 <= len(txt) <= 80 and txt.lower() not in [s.lower() for s in secs]:
+                    secs.append(txt)
+            out["sections"] = secs[:8]
+            out["bodyText"] = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", html.unescape(t)))[:4000]
+
+            def grab_attr(pat):
+                m = re.search(pat, t, re.I)
+                return m.group(1).strip() if m else ""
+
+            cand = (
+                grab_attr(r'<link[^>]+rel=["\'][^"\']*apple-touch-icon[^"\']*["\'][^>]*href=["\']([^"\']+)')
+                or grab_attr(r'<link[^>]+href=["\']([^"\']+)["\'][^>]*rel=["\'][^"\']*apple-touch-icon')
+                or grab_attr(r'property=["\']og:image["\'][^>]*content=["\']([^"\']+)')
+                or grab_attr(r'<link[^>]+rel=["\'][^"\']*icon[^"\']*["\'][^>]*href=["\']([^"\']+)')
+            ) or "/favicon.ico"
+            try:
+                from urllib.parse import urljoin
+                out["logo"] = urljoin(str(r.url), cand)
+            except Exception:
+                out["logo"] = ""
+        except Exception as e:
+            print(f"[director] analyze_site_rich httpx: {e}")
+
+    # Datos reales (precios / claims) desde TODO el texto disponible -> copy honesto y específico.
+    text_all = " ".join([out["bodyText"], out["description"], " ".join(out["sections"]),
+                         " ".join(out["paragraphs"])])
+    out["prices"] = _extract_prices(text_all)
+    out["claims"] = _extract_claims(text_all)
+
+    ctx = []
+    if out["siteName"]:    ctx.append(f"Marca: {out['siteName']}")
+    if out["headline"]:    ctx.append(f"Titular: {out['headline']}")
+    if out["description"]: ctx.append(f"Descripción: {out['description']}")
+    if out["sections"]:    ctx.append("Secciones: " + " · ".join(out["sections"]))
+    if out["nav"]:         ctx.append("Menú: " + " · ".join(out["nav"]))
+    if out["paragraphs"]:  ctx.append("Frases del sitio: " + " | ".join(out["paragraphs"][:6]))
+    if out["prices"]:      ctx.append("Precios reales: " + " · ".join(out["prices"]))
+    if out["claims"]:      ctx.append("Datos reales (usalos, no inventes): " + " · ".join(out["claims"]))
+    out["context"] = "\n".join(ctx)
     return out
 
 
@@ -642,11 +711,14 @@ async def build_storyboard(url: str, desarrollo: str, proposito: str = "marketin
 
     extra = f'\nLo que pidió el usuario: "{desarrollo.strip()}"' if desarrollo.strip() else ""
     contexto = url_data.get("context") or f"Marca: {url_data.get('siteName') or 'desconocido'}"
+    _lang = (url_data.get("lang") or "").lower()
+    lang_hint = (f"\nIDIOMA: el sitio está en '{_lang}' — escribí TODO el copy en ese idioma."
+                 if _lang and not _lang.startswith("es") else "")
     user_prompt = f"""PROPÓSITO: {proposito}
 URL: {url}
 
 CONTEXTO DEL SITIO (usalo para escribir copy específico y real, no genérico):
-{contexto}{extra}
+{contexto}{extra}{lang_hint}
 
 {brief}
 
