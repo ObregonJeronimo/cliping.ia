@@ -477,12 +477,17 @@ async def _render_video_job(job_id: str, req: VideoGenRequest):
                         s["images"] = []
                 print("[video] sin imágenes reales usables -> ProductShowcase convertida/descartada")
 
-        # 1c. Logo real del sitio para el/los LogoReveal: lo bajamos y re-hosteamos en
-        # Cloudinary (URL confiable para Remotion). Si falla, la escena cae al wordmark.
+        # 1c. Logo real del sitio: lo bajamos y re-hosteamos en Cloudinary (URL confiable para
+        # Remotion). Sirve para el/los LogoReveal/CtaOutro Y para la marca de arriba (BrandMark).
+        # Fuente: el logo que el director puso en una escena, o el favicon/apple-touch-icon del sitio.
         needs_logo = [s for s in spec.get("scenes", [])
                       if s.get("type") in ("LogoReveal", "CtaOutro") and str(s.get("logo", "")).startswith("http")]
+        raw_logo = ""
         if needs_logo:
             raw_logo = needs_logo[0]["logo"]
+        elif str(_site.get("logo", "")).startswith("http"):
+            raw_logo = _site["logo"]   # favicon/apple-touch-icon para la marca de arriba
+        if raw_logo:
             logo_url = ""
             try:
                 import httpx
@@ -494,20 +499,23 @@ async def _render_video_job(job_id: str, req: VideoGenRequest):
                     ct = lr.headers.get("content-type", "")
                     if "svg" in ct: ext = ".svg"
                     elif "jpeg" in ct or "jpg" in ct: ext = ".jpg"
+                    elif "webp" in ct: ext = ".webp"
                     elif "x-icon" in ct or "vnd.microsoft.icon" in ct or raw_logo.lower().endswith(".ico"): ext = ".ico"
                     logo_path = str(OUTPUTS_DIR / f"{job_id}_logo{ext}")
                     with open(logo_path, "wb") as f:
                         f.write(lr.content)
                     # .ico/.svg no son ideales para <Img>; solo subimos formatos ráster usables.
-                    if ext in (".png", ".jpg"):
+                    if ext in (".png", ".jpg", ".webp"):
                         from cloudinary_upload import upload_image
                         logo_url = await upload_image(logo_path, f"logo_{job_id[:8]}")
             except Exception as le:
                 print(f"[video] logo del sitio falló (uso wordmark): {le}")
+            if logo_url:
+                spec["brandLogo"] = logo_url   # icono real para la marca de arriba en todas las escenas
+                print("[video] logo del sitio listo")
             for s in needs_logo:
                 if logo_url:
                     s["logo"] = logo_url
-                    print("[video] logo del sitio listo")
                 else:
                     s.pop("logo", None)  # sin logo confiable -> wordmark
 

@@ -1,5 +1,7 @@
 import { clamp } from './theme'
 import { SPRING, spr, floatY, parallax } from './motion'
+import { useVideoConfig } from 'remotion'
+import { fmt } from './layout'
 
 /**
  * Decor — decoración flotante de PRIMER PLANO, elegida POR VIDEO (theme.art.decor) y coherente
@@ -7,14 +9,17 @@ import { SPRING, spr, floatY, parallax } from './motion'
  * videos). Muchos tipos -> variedad real entre videos, sin mezclar tipos dentro de un mismo video.
  *
  * Tipos: pills | orbs | sparks | rings | chips | cross | none
- * Se posiciona en los bordes (evita la banda central donde va el texto). pointerEvents none.
+ * Se posiciona en las ESQUINAS/bordes (evita la banda central donde va el texto), relativo al
+ * formato real (9:16 / 1:1 / 16:9) para no caer encima del texto en cuadrado/horizontal.
+ * pointerEvents none.
  */
 
-const W = 1080, H = 1920
-// Posiciones alrededor del cuadro, lejos de la banda central de texto (~32-68% vertical).
+// Posiciones en esquinas/bordes, lejos de la banda central de texto (y 0.30-0.70) y del centro
+// superior (donde va la marca). Las primeras son las más seguras (las usan los counts bajos).
 const SPOTS = [
-  { x: 0.14, y: 0.19 }, { x: 0.83, y: 0.15 }, { x: 0.21, y: 0.80 },
-  { x: 0.79, y: 0.83 }, { x: 0.50, y: 0.09 }, { x: 0.10, y: 0.49 }, { x: 0.90, y: 0.53 },
+  { x: 0.12, y: 0.16 }, { x: 0.88, y: 0.14 },
+  { x: 0.13, y: 0.85 }, { x: 0.87, y: 0.86 },
+  { x: 0.50, y: 0.93 }, { x: 0.09, y: 0.50 }, { x: 0.91, y: 0.50 },
 ]
 
 const SHAPES = {
@@ -57,6 +62,7 @@ const SHAPES = {
 const COUNTS = { pills: 3, orbs: 4, sparks: 5, rings: 3, chips: 4, cross: 4 }
 
 export const Decor = ({ kind = 'none', theme, frame, fps, cam }) => {
+  const F = fmt(useVideoConfig())
   if (!kind || kind === 'none' || !SHAPES[kind]) return null
   const n = COUNTS[kind] || 3
   const px = parallax(cam || { x: 0, y: 0 }, 0.5)
@@ -67,8 +73,8 @@ export const Decor = ({ kind = 'none', theme, frame, fps, cam }) => {
         const e = spr(frame, fps, 4 + i * 4, SPRING.bouncy, 24)
         const fl = floatY(frame - i * 12, 9, 128 + i * 9)
         return (
-          <div key={i} style={{ position: 'absolute', left: sp.x * W, top: sp.y * H,
-            transform: `translate(${px.x}px, ${px.y + fl}px) scale(${clamp(e, 0, 1.1)})`, opacity: clamp(e, 0, 1) }}>
+          <div key={i} style={{ position: 'absolute', left: sp.x * F.W, top: sp.y * F.H,
+            transform: `translate(-50%,-50%) translate(${px.x}px, ${px.y + fl}px) scale(${clamp(e, 0, 1.1)})`, opacity: clamp(e, 0, 1) }}>
             {SHAPES[kind](theme, i)}
           </div>
         )

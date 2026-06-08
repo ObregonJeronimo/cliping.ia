@@ -1,4 +1,4 @@
-import { AbsoluteFill, Easing, useCurrentFrame, useVideoConfig } from 'remotion'
+import { AbsoluteFill, Easing, Img, useCurrentFrame, useVideoConfig } from 'remotion'
 import { TransitionSeries, linearTiming } from '@remotion/transitions'
 import { fade } from '@remotion/transitions/fade'
 import { CameraMotionBlur } from '@remotion/motion-blur'
@@ -107,7 +107,7 @@ const TactileLayer = () => (
   </AbsoluteFill>
 )
 
-const BrandMark = ({ theme, brand }) => {
+const BrandMark = ({ theme, brand, logo }) => {
   const frame = useCurrentFrame()
   if (!brand) return null
   const op = clamp((frame - 6) / 14, 0, 1) * 0.6
@@ -116,12 +116,18 @@ const BrandMark = ({ theme, brand }) => {
     <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'flex-start', pointerEvents: 'none' }}>
       <div style={{ marginTop: 64, display: 'flex', alignItems: 'center', gap: 12, opacity: op,
         maxWidth: 820, overflow: 'hidden' }}>
-        <div style={{ width: 38, height: 38, borderRadius: 11, backgroundImage: theme.accentGrad,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto',
-          color: '#fff', fontWeight: 800, fontSize: 22, fontFamily: theme.font,
-          boxShadow: `0 4px 16px ${theme.accentTo}66` }}>
-          {initial}
-        </div>
+        {logo
+          ? <div style={{ width: 38, height: 38, borderRadius: 11, overflow: 'hidden', flex: '0 0 auto',
+              background: '#fff', boxShadow: `0 4px 16px ${theme.accentTo}66`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Img src={logo} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            </div>
+          : <div style={{ width: 38, height: 38, borderRadius: 11, backgroundImage: theme.accentGrad,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto',
+              color: '#fff', fontWeight: 800, fontSize: 22, fontFamily: theme.font,
+              boxShadow: `0 4px 16px ${theme.accentTo}66` }}>
+              {initial}
+            </div>}
         <span style={{ fontFamily: theme.font, fontWeight: 700, fontSize: 29, letterSpacing: '0.01em',
           color: theme.text, whiteSpace: 'nowrap' }}>{brand}</span>
       </div>
@@ -176,7 +182,7 @@ export const VideoFromSpec = ({ spec }) => {
       <Backdrop theme={theme} kind={art.motif} />
       {spec.tactile !== false && <TactileLayer />}
       {spec.finish !== false && <FinishLayer />}
-      {spec.watermark !== false && <BrandMark theme={theme} brand={spec.brand} />}
+      {spec.watermark !== false && <BrandMark theme={theme} brand={spec.brand} logo={spec.brandLogo} />}
       <SoundLayer audio={audio} />
     </AbsoluteFill>
   )

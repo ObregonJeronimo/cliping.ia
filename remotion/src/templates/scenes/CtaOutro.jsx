@@ -1,6 +1,7 @@
 import { AbsoluteFill, useCurrentFrame, useVideoConfig, Img } from 'remotion'
 import { clamp, fitHeadline } from '../theme'
 import { EASE, SPRING, prog, spr, enter, entrance, floatY, breathe } from '../motion'
+import { fmt } from '../layout'
 
 /**
  * CtaOutro — cierre con marca + llamado a la acción.
@@ -12,6 +13,7 @@ export const CtaOutro = ({ theme, brand = '', cta = '', logo = '', mark = 'star'
   const vc = useVideoConfig()
   const fps = vc.fps
   const m = theme.motion
+  const F = fmt(vc)
 
   const spk = spr(frame, fps, 0, SPRING.pop, 24)
   const spkRot = prog(frame, 0, 36, EASE.out) * 40
@@ -81,6 +83,8 @@ export const CtaOutro = ({ theme, brand = '', cta = '', logo = '', mark = 'star'
         transform: 'translate(-50%,-50%)', opacity: glowOp,
         background: `radial-gradient(circle, ${theme.glow}, rgba(0,0,0,0) 62%)` }} />
 
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center',
+        transform: `scale(${F.uiScale})` }}>
       {hasMark && (
         <div style={{ transform: `translateY(${fl}px) scale(${spk})`, marginBottom: 50,
           filter: `drop-shadow(0 0 30px ${theme.accentTo}aa)` }}>
@@ -116,6 +120,7 @@ export const CtaOutro = ({ theme, brand = '', cta = '', logo = '', mark = 'star'
           </div>
         </div>
       )}
+      </div>
     </AbsoluteFill>
   )
 }
