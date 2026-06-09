@@ -41,6 +41,7 @@ MODEL_PRICES = {
 
 def _acc_usage(sink, stage, model, resp):
     """Acumula el uso de tokens de una llamada en 'sink' (lista) para medir costo por video.
+    Captura también los tokens de prompt caching (escritura/lectura) para que el costo sea exacto.
     No-op si sink es None. Best-effort (nunca rompe la generación)."""
     if sink is None:
         return
@@ -48,21 +49,26 @@ def _acc_usage(sink, stage, model, resp):
         u = resp.usage
         sink.append({"stage": stage, "model": model,
                      "in": int(getattr(u, "input_tokens", 0) or 0),
-                     "out": int(getattr(u, "output_tokens", 0) or 0)})
+                     "out": int(getattr(u, "output_tokens", 0) or 0),
+                     "cache_w": int(getattr(u, "cache_creation_input_tokens", 0) or 0),
+                     "cache_r": int(getattr(u, "cache_read_input_tokens", 0) or 0)})
     except Exception:
         pass
 
 
 def usage_cost(usage):
-    """Suma tokens y estima el costo USD de una lista de usos (la que llena _acc_usage)."""
-    tin = tout = 0
+    """Suma tokens y estima el costo USD. Incluye prompt caching: escritura de cache = 1.25x el precio
+    de input, lectura de cache = 0.1x. Así el costo medido es realista aun con caching activo."""
+    tin = tout = tcw = tcr = 0
     cost = 0.0
     for e in usage or []:
         pin, pout = MODEL_PRICES.get(e.get("model"), (3.0, 15.0))
-        tin += e.get("in", 0)
-        tout += e.get("out", 0)
-        cost += e.get("in", 0) / 1e6 * pin + e.get("out", 0) / 1e6 * pout
-    return {"in": tin, "out": tout, "cost_usd": round(cost, 5), "calls": len(usage or [])}
+        i, o = e.get("in", 0), e.get("out", 0)
+        cw, cr = e.get("cache_w", 0), e.get("cache_r", 0)
+        tin += i; tout += o; tcw += cw; tcr += cr
+        cost += i / 1e6 * pin + o / 1e6 * pout + cw / 1e6 * pin * 1.25 + cr / 1e6 * pin * 0.1
+    return {"in": tin, "out": tout, "cache_w": tcw, "cache_r": tcr,
+            "cost_usd": round(cost, 5), "calls": len(usage or [])}
 
 
 def _brief_field(brief_txt: str, field: str) -> str:
@@ -964,48 +970,89 @@ async def _resolve_icons(spec: dict) -> dict:
     return spec
 
 
-BRIEF_SYSTEM = """Sos estratega de marca. A partir del contexto de un sitio (y, si lo hay, del
-PEDIDO DEL USUARIO), devolvé un BRIEF brevísimo y CONCRETO para guiar un video vertical de marketing.
-Escribí en español rioplatense (voseo), salvo que el contexto esté claramente en otro idioma.
-
-PRIORIDAD ABSOLUTA: si hay un PEDIDO DEL USUARIO, ese pedido MANDA sobre todo lo demás. El objetivo,
-la oferta, el público y el tono del video se subordinan a lo que el usuario pidió. Si nombra una
-oferta/producto/promo puntual, el video gira alrededor de eso. Si pide un tono o un público,
-respetalos aunque difieran del default del rubro. Si pide evitar algo, no lo incluyas.
-
+BRAND_SYSTEM = """Sos estratega de marca. A partir del contexto de un sitio, extraé los HECHOS de la
+marca (lo estable, NO el video puntual). Escribí en español rioplatense (voseo), salvo que el contexto
+esté claramente en otro idioma.
 Formato EXACTO (sin markdown, sin texto extra, una línea por campo):
 INDUSTRIA: <el rubro en 1-3 palabras: ej "dietética/comida", "software SaaS", "clínica de salud", "gimnasio", "tienda de ropa", "inmobiliaria">
-PÚBLICO: <a quién le hablan (si el usuario lo indicó, ESE)>
+QUÉ VENDE: <una frase concreta>
+DIFERENCIAL: <qué los hace distintos, una frase>
+PRUEBAS REALES: <datos/precios/claims reales que aparezcan en el contexto, o 'ninguna'>
+TONO: <2-3 adjetivos del tono de la marca>
+Si el contexto es pobre, inferí lo razonable del rubro, pero NO inventes datos numéricos."""
+
+CREATIVE_SYSTEM = """Sos director creativo. Te paso los HECHOS de una marca y (si lo hay) el PEDIDO DEL
+USUARIO. Devolvé la dirección creativa para UN video de marketing concreto. Español rioplatense (voseo),
+salvo que los hechos estén en otro idioma.
+PRIORIDAD ABSOLUTA: si hay un PEDIDO DEL USUARIO, ese pedido MANDA sobre todo lo demás. El objetivo, la
+oferta, el público y el tono del video se subordinan a lo que pidió. Si nombra una oferta/producto/promo
+puntual, el video gira alrededor de eso. Si pide un público o un tono, respetalos aunque difieran del
+default del rubro. Si pide evitar algo, no lo incluyas.
+Formato EXACTO (sin markdown, sin texto extra, una línea por campo):
+PÚBLICO: <a quién le habla ESTE video (si el usuario lo indicó, ESE; si no, el público natural de la marca)>
 OBJETIVO: <qué tiene que LOGRAR el video: vender X / lanzar Y / traer registros / dar a conocer Z. Si el usuario lo dijo, usá eso>
 CONCEPTO: <la UNA idea creativa central del video, en una frase (el hilo conductor)>
 MOMENTO HÉROE: <el momento que frena el scroll: qué dato/frase/imagen es el golpe de efecto>
-QUÉ VENDE: <una frase concreta>
-DIFERENCIAL: <qué los hace distintos, una frase>
 MENSAJES CLAVE: <3 mensajes separados por ' | ', priorizando lo que pidió el usuario>
-PRUEBAS REALES: <datos/precios/claims reales que aparezcan en el contexto, o 'ninguna'>
 HOOK: <una idea de gancho potente para los primeros 2 segundos, alineada al OBJETIVO>
-TONO: <2-3 adjetivos>
-EVITAR: <qué NO incluir si el usuario lo pidió, o 'nada'>
-Si el contexto es pobre, inferí lo razonable del rubro, pero NO inventes datos numéricos."""
+EVITAR: <qué NO incluir si el usuario lo pidió, o 'nada'>"""
 
 
-async def _build_brief(url_data: dict, desarrollo: str, proposito: str, usage: list = None) -> str:
-    """Paso 1 (entender): Sonnet destila un brief de marca concreto desde el contexto del sitio.
-    Best-effort: si falla, devuelve '' y el storyboard se arma directo del contexto."""
+def _sys_cached(text: str):
+    """System como bloque CACHEABLE (prompt caching de Anthropic): en llamadas seguidas (ventana ~5 min)
+    el input del system se cobra ~10% en vez de 100%. Ideal para el system grande y fijo del director."""
+    return [{"type": "text", "text": text, "cache_control": {"type": "ephemeral"}}]
+
+
+async def _analyze_brand(url_data: dict, usage: list = None) -> str:
+    """Hechos de marca (INDUSTRIA/QUÉ VENDE/DIFERENCIAL/PRUEBAS/TONO). Estables por URL e independientes
+    del pedido -> CACHEABLES. Best-effort: si falla, devuelve ''."""
     contexto = url_data.get("context") or f"Marca: {url_data.get('siteName') or 'desconocido'}"
-    extra = (f'\n\n>>> PEDIDO DEL USUARIO (PRIORIDAD ABSOLUTA, manda sobre todo lo demás):\n"{desarrollo.strip()}"'
-             if (desarrollo or "").strip() else "")
     try:
         resp = await _client.messages.create(
-            model=DIRECTOR_MODEL, max_tokens=700, temperature=0.4,
-            system=BRIEF_SYSTEM,
-            messages=[{"role": "user", "content": f"PROPÓSITO: {proposito}\n\nCONTEXTO DEL SITIO:\n{contexto}{extra}"}],
+            model=DIRECTOR_MODEL, max_tokens=350, temperature=0.3,
+            system=BRAND_SYSTEM,
+            messages=[{"role": "user", "content": f"CONTEXTO DEL SITIO:\n{contexto}"}],
         )
-        _acc_usage(usage, "brief", DIRECTOR_MODEL, resp)
+        _acc_usage(usage, "brand_facts", DIRECTOR_MODEL, resp)
         return (resp.content[0].text or "").strip()
     except Exception as e:
-        print(f"[director] brief fallback ({e})")
+        print(f"[director] análisis de marca falló ({e})")
         return ""
+
+
+async def _creative_brief(brand_block: str, desarrollo: str, proposito: str, usage: list = None) -> str:
+    """Dirección creativa para ESTE video (PÚBLICO/OBJETIVO/CONCEPTO/HÉROE/MENSAJES/HOOK/EVITAR).
+    Depende del pedido -> FRESCA en cada video. Best-effort: si falla, devuelve ''."""
+    extra = (f'\n\n>>> PEDIDO DEL USUARIO (PRIORIDAD ABSOLUTA, manda sobre todo):\n"{desarrollo.strip()}"'
+             if (desarrollo or "").strip() else "")
+    body = f"PROPÓSITO: {proposito}\n\nHECHOS DE LA MARCA:\n{brand_block or '(poco contexto disponible)'}{extra}"
+    try:
+        resp = await _client.messages.create(
+            model=DIRECTOR_MODEL, max_tokens=400, temperature=0.5,
+            system=CREATIVE_SYSTEM,
+            messages=[{"role": "user", "content": body}],
+        )
+        _acc_usage(usage, "creative", DIRECTOR_MODEL, resp)
+        return (resp.content[0].text or "").strip()
+    except Exception as e:
+        print(f"[director] brief creativo falló ({e})")
+        return ""
+
+
+async def _build_brief(url_data: dict, desarrollo: str, proposito: str, usage: list = None,
+                       cached_brand: str = None):
+    """Paso 1 (entender): HECHOS de marca (cacheables por URL) + dirección CREATIVA (fresca por pedido).
+    Devuelve (brief_txt, brand_block); brand_block se cachea para no re-analizar la misma página.
+    Best-effort: si algo falla, devuelve lo que tenga y el storyboard se arma del contexto."""
+    if cached_brand:
+        brand_block = cached_brand
+        print("[director] hechos de marca: usando CACHE (skip análisis de marca)")
+    else:
+        brand_block = await _analyze_brand(url_data, usage=usage)
+    creative = await _creative_brief(brand_block, desarrollo, proposito, usage=usage)
+    brief_txt = "\n".join([b for b in (brand_block, creative) if b]).strip()
+    return brief_txt, brand_block
 
 
 def _parse_spec(raw: str):
@@ -1026,7 +1073,7 @@ async def build_storyboard(url: str, desarrollo: str, proposito: str = "marketin
                            length: str = "medio", seconds: int = 0, simple: bool = True,
                            recent_profile: dict = None, prefetched_site: dict = None,
                            idioma: str = "", rating_bias: dict = None, usage: list = None,
-                           dna: dict = None) -> dict:
+                           dna: dict = None, cached_brand: str = None, brand_sink: list = None) -> dict:
     """
     URL + desarrollo -> storyboard spec.
 
@@ -1100,7 +1147,9 @@ async def build_storyboard(url: str, desarrollo: str, proposito: str = "marketin
                      if _lang and not _lang.startswith("es") else "")
 
     # Paso 1 (entender la marca): brief estratégico. Paso 2 (guionar): el storyboard.
-    brief_txt = await _build_brief(url_data, desarrollo, proposito, usage=usage)
+    brief_txt, _brand_block = await _build_brief(url_data, desarrollo, proposito, usage=usage, cached_brand=cached_brand)
+    if brand_sink is not None:
+        brand_sink.append(_brand_block)   # para que main.py lo cachee (no re-analizar la misma URL)
     brief_block = f"\nBRIEF ESTRATÉGICO (basate en esto, es la lectura de la marca):\n{brief_txt}\n" if brief_txt else ""
 
     # Playbook del rubro: lo elige el brief (INDUSTRIA/PÚBLICO). Es la guía de marketing para ESE público.
@@ -1183,7 +1232,7 @@ evitar algo, no aparece."""
     try:
         resp = await _client.messages.create(
             model=DIRECTOR_MODEL, max_tokens=2200, temperature=temperature,
-            system=DIRECTOR_SYSTEM,
+            system=_sys_cached(DIRECTOR_SYSTEM),
             messages=[{"role": "user", "content": user_prompt}],
         )
         spec = _parse_spec(resp.content[0].text.strip())
@@ -1191,7 +1240,7 @@ evitar algo, no aparece."""
         if spec is None:
             resp2 = await _client.messages.create(
                 model=DIRECTOR_MODEL, max_tokens=2200, temperature=min(temperature, 0.5),
-                system=DIRECTOR_SYSTEM,
+                system=_sys_cached(DIRECTOR_SYSTEM),
                 messages=[{"role": "user", "content": user_prompt
                            + "\n\nIMPORTANTE: respondé SOLO el JSON del storyboard, sin texto antes ni después."}],
             )

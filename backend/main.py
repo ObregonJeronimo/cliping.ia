@@ -1,6 +1,7 @@
 import asyncio
 import json
 import re
+import time
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -276,6 +277,40 @@ def _push_recent_profile(db, user_id: str, brand_key: str, spec: dict):
         print(f"[styles] guardar historial falló: {e}")
 
 
+_BRAND_CACHE_TTL = 14 * 24 * 3600  # 14 días: la identidad visual de un sitio casi nunca cambia
+
+
+def _get_brand_cache(db, user_id: str, brand_key: str):
+    """Análisis cacheado de una URL (ADN visual + hechos de marca). Devuelve dict o None si no hay/venció.
+    Evita re-analizar la misma página en cada video -> baja costos. El VIDEO igual sale distinto."""
+    if not (db and user_id):
+        return None
+    try:
+        doc = db.collection("users").document(user_id).collection("brand_cache").document(brand_key).get()
+        if not doc.exists:
+            return None
+        d = doc.to_dict() or {}
+        if (time.time() - float(d.get("ts", 0))) > _BRAND_CACHE_TTL:
+            return None
+        return d
+    except Exception as e:
+        print(f"[cache] leer análisis falló: {e}")
+        return None
+
+
+def _set_brand_cache(db, user_id: str, brand_key: str, dna: dict, brand: str):
+    """Guarda el análisis (ADN + hechos) de una URL. Best-effort."""
+    if not (db and user_id):
+        return
+    try:
+        db.collection("users").document(user_id).collection("brand_cache").document(brand_key).set({
+            "brand_key": brand_key, "dna": dna or {}, "brand": brand or "", "ts": time.time(),
+        })
+        print(f"[cache] análisis guardado para {brand_key} (próximos videos de esta URL no re-analizan)")
+    except Exception as e:
+        print(f"[cache] guardar análisis falló: {e}")
+
+
 class VideoGenRequest(BaseModel):
     url: str = ""
     desarrollo: str = ""
@@ -285,6 +320,7 @@ class VideoGenRequest(BaseModel):
     userId: str = ""
     idioma: str = ""       # idioma del video elegido por el usuario ('' = auto/según la página)
     formato: str = "vertical"  # 'vertical' (9:16) | 'square' (1:1) | 'wide' (16:9)
+    refreshBrand: bool = False  # True = ignora el cache de análisis de la URL y re-analiza
     spec: dict | None = None  # variante ya elegida: si viene, se renderiza sin pasar por el director
 
 
@@ -422,17 +458,33 @@ async def _render_video_job(job_id: str, req: VideoGenRequest):
         else:
             _recent = _get_recent_profile(_db, req.userId, _bkey)
             _bias = _get_rating_bias(_db, req.userId)
-            # ADN visual del sitio (lee el "alma" desde el screenshot) -> guía la dirección de arte.
-            _dna = {}
-            try:
-                _dna = await brand_dna.analyze_brand_dna(
-                    _site.get("screenshot"), theme_options=template_director.THEME_VIBES, usage=_usage)
-            except Exception as _de:
-                print(f"[dna] error (no crítico, sigue con defaults): {_de}")
+            # Cache de análisis por URL (ADN visual + hechos de marca): repetir la misma página NO
+            # re-analiza -> más barato. El VIDEO igual sale distinto (director + rotación de arte frescos).
+            _cache = None if req.refreshBrand else _get_brand_cache(_db, req.userId, _bkey)
+            if _cache:
+                _dna = _cache.get("dna") or {}
+                _cached_brand = _cache.get("brand") or ""
+                print(f"[cache] análisis de '{req.url}' desde cache (skip visión + hechos de marca)")
+            else:
+                _dna = {}
+                try:
+                    _dna = await brand_dna.analyze_brand_dna(
+                        _site.get("screenshot"), theme_options=template_director.THEME_VIBES, usage=_usage)
+                except Exception as _de:
+                    print(f"[dna] error (no crítico, sigue con defaults): {_de}")
+                _cached_brand = None
+            _brand_sink = []
             spec = await template_director.build_storyboard(
                 req.url, req.desarrollo, req.proposito, seconds=req.seconds,
                 recent_profile=_recent, prefetched_site=_site.get("content"),
-                idioma=req.idioma, rating_bias=_bias, usage=_usage, dna=_dna)
+                idioma=req.idioma, rating_bias=_bias, usage=_usage, dna=_dna,
+                cached_brand=_cached_brand, brand_sink=_brand_sink)
+            # Guardar el análisis SOLO si fue fresco y completo (ADN visual OK + hechos) -> así un fallo
+            # transitorio de visión no queda cacheado y se reintenta la próxima.
+            if not _cache:
+                _facts = _brand_sink[0] if _brand_sink else ""
+                if _dna and (_dna.get("summary") or _dna.get("mood")) and _facts:
+                    _set_brand_cache(_db, req.userId, _bkey, _dna, _facts)
             _push_recent_profile(_db, req.userId, _bkey, spec)
         if req.theme in template_director.VALID_THEMES:
             spec["theme"] = req.theme
