@@ -199,21 +199,38 @@ con su ojo**. Sé honesto con eso: no prometas "cero ajuste" en lo visual.
 
 ## 7. Estado actual y PENDIENTES
 
-### ⏭️ PRÓXIMO: Fase 2 — director multi-etapa + crítica
-- Agregar un **paso de estrategia/concepto** más fuerte y un **loop de auto-crítica** del storyboard
-  (el director revisa y mejora su propio guion antes de renderizar).
-- **DECISIÓN DE JERO (importante, respetala):** para la crítica condicional **NO uses Sonnet solo para
-  ahorrar si no rinde igual que Opus.** Si **Opus realmente marca la diferencia** en la calidad de la
-  crítica (mejor detección/mejora de problemas del guion), entonces **usá Opus**. La calidad manda sobre
-  los centavos en este paso. Igual: **medí el costo** con el logging que ya existe y comparale el
-  resultado, para tomar la decisión con datos. (Jero es consciente de que la Fase 2 sube el costo por
-  video porque agrega llamadas.)
+### ✅ HECHO: Fase 2 — auto-crítica del guion (commit `e2fd385`)
+- Se agregó un **loop de auto-crítica**: después de que el director arma el borrador (y lo normaliza),
+  un **director SENIOR** revisa y MEJORA el storyboard antes de renderizar. Rúbrica: pedido/objetivo,
+  hook, copy genérico, anti-fórmula, momento héroe, coherencia, **honestidad** (no inventar datos) y
+  reglas de forma. Si el guion ya es fuerte, lo deja igual (`verdict:"ok"`).
+- **Dónde:** `template_director.py` → `CRITIC_SYSTEM`, `_critique_spec`, `_parse_critic`, y el loop
+  dentro de `build_storyboard` (entre `_normalize` del borrador y la asignación de paleta). La salida
+  del crítico **se re-normaliza** (red de seguridad: tipos válidos, honestidad de Stat/Offer/Testimonial,
+  cap de listas) → aunque el crítico alucine un dato, `_normalize` lo saca.
+- **Decisión de Jero respetada:** default = **Opus** (`claude-opus-4-8`). Toggles por env (para decidir
+  con DATOS):
+  - `CLIPING_CRITIC=0` → apaga la crítica (baseline, comportamiento previo).
+  - `CLIPING_CRITIC_MODEL=claude-sonnet-4-6` → corre la crítica con Sonnet (comparar calidad/costo vs Opus).
+  - `CLIPING_CRITIC_ROUNDS=2` → hasta 2 vueltas (default 1; corta antes si `verdict:"ok"`).
+- **Medición:** el costo del crítico aparece en el log `[video] tokens: ... [critic: IN+OUT]` y se suma
+  en `tokens.cost_usd` (Firestore). El log `[critic] rN <verdict>: <notas>` dice QUÉ mejoró. La receta
+  guarda `criticModel` para poder correlacionar con el 👍/👎 más adelante.
+- **OJO costo:** la crítica con Opus ~DUPLICA el costo por video (de ~$0.05 a ~$0.09). Con ~$0.18 de
+  saldo alcanzan ~2 videos con crítica Opus. Es esperado (Jero lo sabía). Decidir Opus-vs-Sonnet
+  comparando renders reales + los logs de costo.
+- **PENDIENTE de Fase 2 (no hecho, decisión consciente para no sumar otra llamada paga):** un **paso de
+  estrategia/concepto dedicado** (una llamada propia que razone la estrategia antes del director). Por
+  ahora la estrategia/concepto vive en el `_creative_brief` (CONCEPTO/MOMENTO HÉROE) y el crítico la
+  hace cumplir. Si Jero quiere el paso separado, es fácil de agregar (cuesta +1 llamada por video).
 
 ### 🧪 Antes que nada: TESTEAR (Jero no probó nada todavía)
-Todo lo de la última sesión está validado headless pero **Jero no vio ningún video renderizado aún**.
-Lo que más vale mirar a ojo: el **kinetic a nivel carácter** (la escena estrella) y las **transiciones
-slide** en energía alta. Sugerencia: generar un rubro de energía alta (gym) y uno de energía baja
-(lujo/clínica) para ver la adaptación; Yerco (energía media) queda igual a propósito.
+Todo lo de las últimas sesiones está validado headless pero **Jero no vio ningún video renderizado aún**.
+Lo que más vale mirar a ojo: el **kinetic a nivel carácter** (la escena estrella), las **transiciones
+slide** en energía alta, y ahora **si la auto-crítica mejora de verdad el guion** (comparar un video con
+`CLIPING_CRITIC=0` vs con Opus, mismo sitio). Sugerencia: generar un rubro de energía alta (gym) y uno de
+energía baja (lujo/clínica); Yerco (energía media) queda igual a propósito. **Recordá: cambios de backend
+→ Jero reinicia `start.bat`.**
 
 ### Otros pendientes (del roadmap)
 - **Librería de ilustraciones SVG** (estilo unDraw, libres, comerciales) como 2ª fuente de objetos en la
@@ -224,7 +241,8 @@ slide** en energía alta. Sugerencia: generar un rubro de energía alta (gym) y 
   conseguir tracks. (En esta sesión eligió la opción "c": dejarla para después.)
 - **Fase 5 — nube:** migrar el render a **Remotion Lambda** (sacar el render de la PC Windows; es el
   cuello de botella real a escala, no los tokens). Plan en `docs/PLAN_NUBE.md`. + loop
-  **rating→playbooks** (que los 👍/👎 retroalimenten los playbooks).
+  **rating→playbooks** (que los 👍/👎 retroalimenten los playbooks). Ya guardamos `criticModel` en la
+  receta para que el feedback pueda comparar con/sin crítica.
 - **`docs/PLAN_CALIDAD.md`**: 7 fases más de calidad cinematográfica.
 
 ---
