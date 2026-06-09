@@ -13,6 +13,12 @@ export default function Login() {
 
   return (
     <div className={styles.page}>
+      {/* Volver al inicio */}
+      <button className={styles.backLogo} onClick={() => navigate('/')} aria-label="Volver al inicio">
+        <img src="/logo.svg" alt="" width="26" height="26" />
+        <span>cliping<span>.ia</span></span>
+      </button>
+
       {/* Columna izquierda: card de login */}
       <div className={styles.left}>
         <div className={styles.card}>
