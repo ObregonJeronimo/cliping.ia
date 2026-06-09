@@ -7,6 +7,8 @@ import TimelineStudio from './pages/Animaciones/TimelineStudio'
 import MisAnimaciones from './pages/Animaciones/MisAnimaciones'
 import Login from './pages/Login'
 import Landing from './pages/Landing'
+import Terminos from './pages/Legal/Terminos'
+import Privacidad from './pages/Legal/Privacidad'
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
@@ -20,6 +22,8 @@ function AppRoutes() {
     <Routes>
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/terminos" element={<Terminos />} />
+      <Route path="/privacidad" element={<Privacidad />} />
       <Route path="/studio" element={
         <PrivateRoute>
           <AppLayout />
