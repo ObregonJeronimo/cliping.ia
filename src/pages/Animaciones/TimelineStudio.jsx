@@ -8,7 +8,8 @@ import styles from './TimelineStudio.module.css'
 const API_URL = import.meta.env.PROD ? '' : (import.meta.env.VITE_API_URL || 'http://localhost:8000')
 const HEADERS = { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' }
 const STEP_LABELS = {
-  queued: 'En cola…', build: 'Armando la composición…', render: 'Renderizando en tu PC (esto tarda)…',
+  queued: 'En cola…', script: 'Analizando el sitio y escribiendo el guion…',
+  build: 'Armando la composición…', render: 'Renderizando en tu PC (esto tarda)…',
   upload: 'Subiendo a la nube…', export: 'Listo',
 }
 const FORMATOS = [
@@ -16,69 +17,29 @@ const FORMATOS = [
   { key: 'square', label: 'Cuadrado 1:1', on: false },
   { key: 'wide', label: 'Horizontal 16:9', on: false },
 ]
-
-// ─────────────────────────────────────────────────────────────────────────────
-// "IA FALSA" — timelines hardcodeados de proyectos reales (yo, Claude, haciendo de IA).
-// Sirve para testear el pipeline COMPLETO end-to-end a $0 (sin análisis ni llamadas al modelo).
-// Cada uno tiene distinto arco/orden de escenas y copy real -> prueba que NO hay patrones repetidos.
-// Es exactamente la estructura que despues va a escribir la IA de verdad desde un link.
-// ─────────────────────────────────────────────────────────────────────────────
-const PROJECTS = [
-  {
-    key: 'consulpay', label: 'ConsulPay',
-    timeline: {
-      brand: 'ConsulPay', accent: '#6366f1',
-      scenes: [
-        { type: 'paintTitle', title: 'ConsulPay', subtitles: ['Tu consultorio', 'sin papeles ni planillas'], durationInFrames: 234 },
-        { type: 'statement', text: 'Dejá de perseguir pagos y turnos', durationInFrames: 150 },
-        { type: 'checklist', title: 'Todo bajo control', items: ['Agenda y pacientes', 'Cobros al instante', 'Reportes en vivo', 'Equipo coordinado'], durationInFrames: 198 },
-        { type: 'outro', brand: 'ConsulPay', cta: 'Creá tu consultorio gratis', durationInFrames: 150 },
-      ],
-    },
-  },
-  {
-    key: 'yerco', label: 'YERCO',
-    timeline: {
-      brand: 'YERCO', accent: '#3fae5a',
-      scenes: [
-        { type: 'paintTitle', title: 'YERCO', subtitles: ['Dietética online', 'directo a tu casa'], durationInFrames: 234 },
-        { type: 'checklist', title: 'Por qué YERCO', items: ['Productos naturales', 'Envío en el día', 'Precios claros', 'A granel o envasado'], durationInFrames: 198 },
-        { type: 'statement', text: 'Comé mejor, sin complicarte', durationInFrames: 150 },
-        { type: 'outro', brand: 'YERCO', cta: 'Comprá online', durationInFrames: 150 },
-      ],
-    },
-  },
-  {
-    key: 'cliping', label: 'cliping.ia',
-    timeline: {
-      brand: 'cliping.ia', accent: '#ff5a8a',
-      scenes: [
-        { type: 'statement', text: 'Tu marca merece un video, no una excusa', durationInFrames: 162 },
-        { type: 'paintTitle', title: 'cliping.ia', subtitles: ['Videos de marketing', 'en minutos'], durationInFrames: 234 },
-        { type: 'checklist', title: 'Sin diseñadores', items: ['Pegás tu link', 'La IA arma el guion', 'Listo para postear'], durationInFrames: 174 },
-        { type: 'outro', brand: 'cliping.ia', cta: 'Probalo gratis', durationInFrames: 150 },
-      ],
-    },
-  },
-  {
-    key: 'brujula', label: 'Brújula KIT',
-    timeline: {
-      brand: 'Brújula KIT', accent: '#2bb3c0',
-      scenes: [
-        { type: 'paintTitle', title: 'Brújula KIT', subtitles: ['Evaluación fono', 'más simple'], durationInFrames: 234 },
-        { type: 'statement', text: 'Siete herramientas clínicas en un lugar', durationInFrames: 156 },
-        { type: 'checklist', title: 'Para fonoaudiólogos', items: ['Tests clínicos guiados', 'Informes con IA', 'Resultados al toque'], durationInFrames: 174 },
-        { type: 'outro', brand: 'Brújula KIT', cta: 'Empezá gratis', durationInFrames: 150 },
-      ],
-    },
-  },
+const PROPOSITOS = [
+  { key: 'marketing', label: '📣 Marketing' },
+  { key: 'conversion', label: '🎯 Conversión' },
+  { key: 'branding', label: '✨ Branding' },
+  { key: 'awareness', label: '👋 Awareness' },
 ]
 
+// Resumen corto de una escena del timeline (para el "plan" del resultado, estilo Home).
+function sceneSummary(s) {
+  if (!s) return ''
+  if (s.type === 'paintTitle') return [s.title, (s.subtitles || []).join(' / ')].filter(Boolean).join(' · ')
+  if (s.type === 'statement') return s.text || ''
+  if (s.type === 'checklist') return [(s.title || ''), (s.items || []).join(', ')].filter(Boolean).join(': ')
+  if (s.type === 'bigStat') return [(s.prefix || '') + s.value + (s.suffix || ''), s.label].filter(Boolean).join(' · ')
+  if (s.type === 'outro') return s.cta || ''
+  return ''
+}
+
 /**
- * Animaciones — misma interfaz que Home (Cinemáticas), pero para el motor NUEVO (Canvas por timeline).
- * El formulario URL/desarrollo es el shell para cuando conectemos la IA (próximo paso). Mientras tanto,
- * la sección "Testing" hace de IA: timelines hardcodeados de proyectos reales que renderizan el MP4
- * completo (Remotion en tu PC -> Cloudinary), a $0, para testear todo el pipeline end-to-end.
+ * Animaciones — misma interfaz que Home (Cinemáticas), pero para el motor Canvas por timeline.
+ * Pegás un link + (opcional) qué contar y la IA REAL (Sonnet director + Opus crítico) escribe el
+ * timeline desde el sitio — mismo análisis/rotación/anti-repetición que cinematicas. El video se
+ * renderiza por Remotion (tu PC) → Cloudinary. Una generación = un video.
  */
 export default function TimelineStudio() {
   const canvasRef = useRef(null)
@@ -91,11 +52,11 @@ export default function TimelineStudio() {
 
   const [playing, setPlaying] = useState(true)
   const [speed, setSpeed] = useState(1)
-  const [active, setActive] = useState(-1)        // proyecto en preview / generando
-  const [gen, setGen] = useState(null)            // { status, step, progress, videoUrl, error, label }
   const [url, setUrl] = useState('')
   const [desarrollo, setDesarrollo] = useState('')
+  const [proposito, setProposito] = useState('marketing')
   const [formato, setFormato] = useState('vertical')
+  const [gen, setGen] = useState(null)   // { status, step, progress, videoUrl, error, timeline }
 
   useEffect(() => {
     const eng = createTimelineEngine(canvasRef.current, {
@@ -117,21 +78,16 @@ export default function TimelineStudio() {
   const onSeek = (e) => engineRef.current.seek(Number(e.target.value) / 1000)
   const pickSpeed = (s) => { engineRef.current.setSpeed(s); setSpeed(s) }
 
-  // Click en un proyecto: previsualiza al toque + dispara el render del MP4.
-  function runProject(i) {
-    setActive(i)
-    engineRef.current.setTimeline(PROJECTS[i].timeline)
-    engineRef.current.play(); setPlaying(true)
-    generate(PROJECTS[i].timeline, PROJECTS[i].label)
-  }
+  const canGenerate = url.trim() && !(gen?.status === 'running')
 
-  async function generate(timeline, label) {
-    if (gen?.status === 'running') return
-    setGen({ status: 'running', step: 'queued', progress: 0, videoUrl: null, error: null, label })
+  async function generate() {
+    const u = url.trim()
+    if (!u || gen?.status === 'running') return
+    setGen({ status: 'running', step: 'script', progress: 0, videoUrl: null, error: null, timeline: null })
     try {
       const r = await fetch(`${API_URL}/api/timeline/generate`, {
         method: 'POST', headers: HEADERS,
-        body: JSON.stringify({ userId: user?.uid || '', formato: 'vertical', timeline }),
+        body: JSON.stringify({ userId: user?.uid || '', url: u, desarrollo, proposito, formato: 'vertical', idioma: '' }),
       })
       const d = await r.json()
       if (d.error || !d.job_id) { setGen(g => ({ ...g, status: 'error', error: d.error || 'No se pudo iniciar' })); return }
@@ -141,77 +97,74 @@ export default function TimelineStudio() {
           const jr = await fetch(`${API_URL}/api/jobs/${d.job_id}`, { headers: HEADERS })
           const j = await jr.json()
           setGen(g => g ? ({ ...g, step: j.step || j.status, progress: j.progress || 0 }) : g)
+          // Apenas la IA devuelve el guion, lo previsualizamos en vivo (aunque el MP4 siga renderizando).
+          if (j.timeline?.scenes && engineRef.current) {
+            engineRef.current.setTimeline(j.timeline); setPlaying(true)
+            setGen(g => g && !g.timeline ? ({ ...g, timeline: j.timeline }) : g)
+          }
           if (j.status === 'done') {
             clearInterval(pollRef.current)
-            setGen(g => ({ ...g, status: 'done', progress: 100, videoUrl: j.cloudinaryUrl || (j.videoFilename ? `${API_URL}/api/video/${j.videoFilename}` : null) }))
+            setGen(g => ({ ...g, status: 'done', progress: 100, timeline: j.timeline || g.timeline, videoUrl: j.cloudinaryUrl || (j.videoFilename ? `${API_URL}/api/video/${j.videoFilename}` : null) }))
           } else if (j.status === 'error') {
             clearInterval(pollRef.current)
-            setGen(g => ({ ...g, status: 'error', error: j.error || 'Error en el render' }))
+            setGen(g => ({ ...g, status: 'error', error: j.error || 'Error en la generación' }))
           }
         } catch { /* reintenta */ }
-      }, 2000)
+      }, 2500)
     } catch (e) { setGen(g => ({ ...g, status: 'error', error: e.message })) }
   }
 
   const pct = Math.max(4, gen?.progress || 0)
+  const planScenes = gen?.timeline?.scenes || []
 
   return (
     <div className={cine.body}>
       <div className={cine.left}>
         <div className={styles.head}>
           <div className={styles.title}>Animaciones <span className={styles.beta}>beta</span></div>
-          <div className={styles.sub}>Motor nuevo: animaciones reales por timeline (Canvas), no plantillas de texto.</div>
+          <div className={styles.sub}>Animaciones reales por timeline (Canvas). La IA escribe el guion desde tu link.</div>
         </div>
 
-        {/* TESTING — yo haciendo de IA, $0 */}
-        <div className={cine.cineSection}>
-          <div className={cine.cineSectionLabel}>🧪 Testing end-to-end <span className={cine.desarrolloOpcional}>(sin IA · $0)</span></div>
-          <div className={styles.testNote}>
-            Hago de IA con timelines hardcodeados de tus proyectos. Cada uno se previsualiza al toque y
-            renderiza el MP4 completo por Remotion (tu PC) → Cloudinary, sin análisis ni gasto.
-          </div>
-          <div className={cine.propGrid}>
-            {PROJECTS.map((p, i) => (
-              <button key={p.key}
-                className={`${cine.propBtn} ${active === i ? cine.propBtnActive : ''}`}
-                disabled={gen?.status === 'running'}
-                onClick={() => runProject(i)}>
-                {p.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* FORM — shell para la IA (próximo paso) */}
         <div className={cine.cineSection}>
           <div className={cine.cineSectionLabel}>URL del sitio</div>
-          <input className={cine.nameInput} placeholder="https://tusitio.com" value={url} onChange={e => setUrl(e.target.value)} />
+          <input className={cine.nameInput} placeholder="https://tusitio.com" value={url}
+            onChange={e => setUrl(e.target.value)} disabled={gen?.status === 'running'} />
         </div>
         <div className={cine.cineSection}>
           <div className={cine.cineSectionLabel}>Qué querés contar <span className={cine.desarrolloOpcional}>(opcional)</span></div>
-          <textarea className={cine.textarea} rows={3} placeholder="Ángulo, qué destacar, tono…" value={desarrollo} onChange={e => setDesarrollo(e.target.value)} />
+          <textarea className={cine.textarea} rows={3} placeholder="Dejalo vacío y la IA decide, o tirá un ángulo / qué destacar / tono…"
+            value={desarrollo} onChange={e => setDesarrollo(e.target.value)} disabled={gen?.status === 'running'} />
+        </div>
+        <div className={cine.cineSection}>
+          <div className={cine.cineSectionLabel}>Propósito</div>
+          <div className={cine.propGrid}>
+            {PROPOSITOS.map(p => (
+              <button key={p.key} className={`${cine.propBtn} ${proposito === p.key ? cine.propBtnActive : ''}`}
+                disabled={gen?.status === 'running'} onClick={() => setProposito(p.key)}>{p.label}</button>
+            ))}
+          </div>
         </div>
         <div className={cine.cineSection}>
           <div className={cine.cineSectionLabel}>Formato</div>
           <div className={cine.propGrid}>
             {FORMATOS.map(f => (
-              <button key={f.key}
-                className={`${cine.propBtn} ${formato === f.key ? cine.propBtnActive : ''}`}
-                disabled={!f.on}
-                title={f.on ? '' : 'Próximamente'}
-                onClick={() => f.on && setFormato(f.key)}>
-                {f.label}{!f.on ? ' ·' : ''}
-              </button>
+              <button key={f.key} className={`${cine.propBtn} ${formato === f.key ? cine.propBtnActive : ''}`}
+                disabled={!f.on || gen?.status === 'running'} title={f.on ? '' : 'Próximamente'}
+                onClick={() => f.on && setFormato(f.key)}>{f.label}{!f.on ? ' ·' : ''}</button>
             ))}
           </div>
         </div>
-        <button className={`${cine.forgeBtn} ${cine.forgeBtnDisabled}`} disabled title="Próximo paso">
-          Próximamente: la IA escribe el guion desde tu link
+
+        <button
+          className={`${cine.forgeBtn} ${gen?.status === 'running' ? cine.forgeBtnRunning : ''} ${!canGenerate ? cine.forgeBtnDisabled : ''}`}
+          onClick={generate} disabled={!canGenerate}>
+          {gen?.status === 'running'
+            ? <><span className={cine.spinner} />Generando…</>
+            : !url.trim() ? 'Ingresá una URL' : '✨ Generar animación'}
         </button>
       </div>
 
       <div className={cine.right}>
-        {/* PREVIEW EN VIVO */}
         <div className={styles.frame}>
           <canvas ref={canvasRef} className={styles.canvas} />
         </div>
@@ -229,20 +182,41 @@ export default function TimelineStudio() {
           </div>
         </div>
 
-        {/* RESULTADO DEL RENDER */}
         {gen && (
           <div className={styles.renderPanel}>
             {gen.status === 'running' && (
               <div className={styles.progressWrap}>
                 <div className={styles.progressBar}><div className={styles.progressFill} style={{ width: `${pct}%` }} /></div>
-                <span className={styles.progressMsg}>{(gen.label ? gen.label + ' · ' : '') + (STEP_LABELS[gen.step] || 'Procesando…')}</span>
+                <span className={styles.progressMsg}>{STEP_LABELS[gen.step] || 'Procesando…'}</span>
               </div>
             )}
             {gen.status === 'error' && <div className={styles.err}>⚠️ {gen.error}</div>}
             {gen.status === 'done' && gen.videoUrl && (
               <div className={styles.done}>
                 <video src={gen.videoUrl} controls autoPlay loop playsInline className={styles.resultVideo} />
-                <a className={`${styles.ctl} ${styles.primary}`} href={gen.videoUrl} target="_blank" rel="noreferrer" download>⬇ Descargar MP4 ({gen.label})</a>
+                <a className={`${styles.ctl} ${styles.primary}`} href={gen.videoUrl} target="_blank" rel="noreferrer" download>⬇ Descargar MP4</a>
+              </div>
+            )}
+            {planScenes.length > 0 && (
+              <div className={cine.cinePlan} style={{ width: '100%' }}>
+                {gen.timeline?.brand && (
+                  <div className={cine.cinePlanItem}>
+                    <div className={cine.cinePlanOrder}>🎬</div>
+                    <div className={cine.cinePlanInfo}>
+                      <div className={cine.cinePlanName}>{gen.timeline.brand}</div>
+                      <div className={cine.cinePlanProp}>guion de la IA · {planScenes.length} escenas</div>
+                    </div>
+                  </div>
+                )}
+                {planScenes.map((s, i) => (
+                  <div key={i} className={cine.cinePlanItem}>
+                    <div className={cine.cinePlanOrder}>{i + 1}</div>
+                    <div className={cine.cinePlanInfo}>
+                      <div className={cine.cinePlanName}>{s.type}</div>
+                      <div className={cine.cinePlanProp}>{sceneSummary(s)}</div>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>

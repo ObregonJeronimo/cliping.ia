@@ -72,3 +72,305 @@ def build_timeline_files(job_id: str, timeline: dict, remotion_dir, fmt: str = "
     temp_files.append(remotion_dir / entry_file)
 
     return entry_file, comp_id, total, temp_files
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# DIRECTOR DE TIMELINE (IA real) — adapta el cerebro de cinematicas al motor Canvas.
+# Reusa de template_director: analisis del sitio, brief estrategico, playbooks, rotacion
+# (angulo/hook/arco evitando recientes + sesgo por rating), cliente API y medicion de costo.
+# Lo NUEVO aca: el catalogo de escenas Canvas (por categoria de uso) y los prompts.
+# Salida: un timeline { brand, accent, scenes:[{type, ...props, durationInFrames}] }.
+# Una generacion = UN video (sin A/B). Costo: ~1 call Sonnet (director) + 1 Opus (critico).
+# ══════════════════════════════════════════════════════════════════════════════
+import os as _os
+import json as _json
+import random as _random
+import template_director as _td
+import brand_dna as _bdna
+
+TL_DIRECTOR_MODEL = "claude-sonnet-4-6"
+TL_CRITIC_MODEL = _os.getenv("CLIPING_CRITIC_MODEL", "claude-opus-4-8")
+TL_CRITIC_ENABLED = _os.getenv("CLIPING_CRITIC", "1").strip().lower() not in ("0", "false", "no", "off", "")
+try:
+    TL_CRITIC_ROUNDS = max(1, int(_os.getenv("CLIPING_CRITIC_ROUNDS", "1")))
+except Exception:
+    TL_CRITIC_ROUNDS = 1
+
+# Biblioteca de escenas del motor Canvas, SEPARADA POR CATEGORIA DE USO. El director elige
+# segun lo que cuente la marca y el arco; cada escena dice para que sirve y sus props.
+TL_SCENE_CATALOG = """ESCENAS DISPONIBLES (motor Canvas) — agrupadas por CATEGORIA DE USO:
+
+[APERTURA / HOOK]  (la 1ra escena: corta y filosa, frena el scroll)
+- "statement": una frase con gancho. props: text (string, 4-9 palabras, potente).
+- "paintTitle": el nombre de la marca "pintado" con 2 subtitulos. props: title (string = marca),
+  subtitles (array de exactamente 2 strings cortos). Es un reveal de marca; tambien sirve de cierre visual.
+
+[DATO / PRUEBA]
+- "bigStat": un numero que cuenta de 0 al valor (el beat de "dato que impacta"). props: value (numero),
+  prefix? ("+","$"), suffix? ("%","k","/5"), label (string corto debajo, que describe el numero).
+  USALA SOLO si hay un numero REAL en el contexto del sitio. NUNCA inventes la cifra.
+
+[BENEFICIOS]
+- "checklist": lista de 3 o 4 beneficios concretos con tilde. props: title (string), items (array de 3-4
+  strings cortos, 1 a 4 palabras c/u). Para "3 razones" / features reales.
+
+[ENFASIS]
+- "statement": (ver arriba) tambien sirve en el medio para un remate o giro.
+
+[CIERRE]  (la ULTIMA escena, siempre)
+- "outro": marca + llamado a la accion. props: brand (string), cta (string con ACCION concreta,
+  ej "Probalo gratis", "Pedi en yerco.ar", "Agenda tu demo").
+
+REGLA DE DURACION: el motor anima la escena y CONGELA su frame final para dar tiempo de lectura.
+Por eso durationInFrames = animacion + lectura. Valores recomendados (30fps):
+paintTitle 234 · statement 150 · checklist 186 (3 items) a 198 (4) · bigStat 150 · outro 150."""
+
+TL_DIRECTOR_SYSTEM = (
+    "Sos director creativo de videos verticales (reels) de marketing/explainer para marcas. "
+    "Disenas un TIMELINE que un motor de animacion (Canvas) renderiza. El video se dibuja a mano "
+    "(no son plantillas de texto): es motion-graphics limpio.\n\n"
+    + TL_SCENE_CATALOG +
+    "\n\nDevolves SOLO un objeto JSON valido (sin markdown, sin texto antes ni despues), con esta forma:\n"
+    '{ "brand": "<nombre de marca>", "accent": "<#rrggbb vivo de la marca>", '
+    '"scenes": [ { "type": "...", "durationInFrames": 150, ...props } ] }\n\n'
+    "REGLAS:\n"
+    "- 4 a 5 escenas. ABRI con un HOOK ('statement' o 'paintTitle'), NUNCA con 'checklist' ni 'bigStat'. "
+    "CERRA SIEMPRE con 'outro'.\n"
+    "- ANTI-FORMULA (critico): no armes siempre el mismo esqueleto. Pensa que combinacion cuenta MEJOR a "
+    "ESTA marca puntual. Si dos marcas distintas terminan con la misma estructura, fallaste. 'checklist' y "
+    "'bigStat' son OPCIONALES; muchos videos no llevan ninguna.\n"
+    "- HONESTIDAD (critico): 'bigStat' muestra un HECHO. El numero TIENE que aparecer textualmente en el "
+    "CONTEXTO DEL SITIO que te paso. NO uses datos que 'sabes' de memoria de marcas conocidas. Si no hay un "
+    "numero real, NO uses bigStat: conta el beneficio con statement/checklist.\n"
+    "- COPY: especifico de ESTA marca y su PUBLICO, no generico. Evita frases vacias ('la mejor calidad', "
+    "'tu aliado ideal'). Beneficios concretos y reales, sacados del contexto. Verbos variados. Que suene humano.\n"
+    "- Copy CORTO. En 'statement' la frase es de 4 a 9 palabras. En 'checklist' cada item 1 a 4 palabras. "
+    "En 'paintTitle' los subtitulos son 2 frases muy cortas.\n"
+    "- PUBLICO (clave): infieri del sitio QUIEN compra/usa esto y escribi TODO hablandole a ESE publico, "
+    "con su lenguaje y prioridades. Que el video se sienta hecho para la audiencia de ESTA pagina.\n"
+    "- accent: un hex VIVO (saturado) acorde a la marca; si te paso uno sugerido, usalo.\n"
+    "- El timeline cuenta una micro-historia coherente con el proposito y el arco indicado."
+)
+
+TL_CRITIC_SYSTEM = (
+    "Sos director creativo SENIOR. Un junior te pasa el TIMELINE (JSON) de un reel hecho con un motor de "
+    "animacion Canvas, mas el BRIEF y el contexto del sitio. Tu trabajo: ELEVAR el guion ANTES de renderizar. "
+    "Si ya es fuerte, lo dejas casi igual; solo cambias lo que DE VERDAD lo mejora. Exigente pero quirurgico.\n\n"
+    "Revisa en este orden:\n"
+    "1. PEDIDO/OBJETIVO (manda): que cumpla lo que pidio el usuario y el objetivo del brief.\n"
+    "2. HOOK: la 1ra escena ('statement' o 'paintTitle') tiene que enganchar en 1-3s. Si es debil o generica, reescribila.\n"
+    "3. COPY GENERICO (matalo): frases vacias -> beneficios concretos y especificos de ESTA marca, del contexto. Verbos variados, humano.\n"
+    "4. ANTI-FORMULA: si la estructura es un molde repetido, rompela. checklist/bigStat son opcionales.\n"
+    "5. HONESTIDAD (critico): el numero de un 'bigStat' TIENE que estar TEXTUAL en el contexto del sitio. Si no esta, sacalo o pasalo a 'statement'. NUNCA inventes cifras.\n"
+    "6. PUBLICO + IDIOMA: copy al publico correcto, en el MISMO idioma del guion.\n\n"
+    "FORMA (no la rompas): 4-5 escenas; abri con statement/paintTitle; cerra con outro. Tipos validos: "
+    "statement, paintTitle, checklist, bigStat, outro. statement.text 4-9 palabras; checklist.items 3-4 strings cortos; "
+    "paintTitle.subtitles = 2 strings; bigStat.value numero real. durationInFrames: paintTitle 234, statement 150, "
+    "checklist 186-198, bigStat 150, outro 150.\n\n"
+    "SALIDA: SOLO un JSON valido (sin markdown), con esta forma EXACTA:\n"
+    '{"verdict":"ok"|"revisado","notas":"<1-2 frases>","spec":{"brand":"<marca>","accent":"<#rrggbb>","scenes":[ ... ]}}\n'
+    "Si ya esta bien, verdict='ok' y devolve el spec TAL CUAL. El campo 'spec' SIEMPRE va completo."
+)
+
+_TL_VALID_TYPES = {"paintTitle", "statement", "checklist", "outro", "bigStat", "deliver"}
+_TL_DEFAULT_DUR = {"paintTitle": 234, "statement": 150, "checklist": 192, "outro": 150, "bigStat": 150, "deliver": 204}
+
+
+def _normalize_timeline(tl: dict, dna: dict = None) -> dict:
+    """Red de seguridad: deja solo tipos validos, props sanas y duraciones con tiempo de lectura."""
+    if not isinstance(tl, dict):
+        tl = {}
+    out_scenes = []
+    for s in (tl.get("scenes") or []):
+        if not isinstance(s, dict):
+            continue
+        ty = s.get("type")
+        if ty not in _TL_VALID_TYPES:
+            continue
+        s = dict(s)
+        try:
+            d = int(s.get("durationInFrames") or 0)
+        except Exception:
+            d = 0
+        if d < 60 or d > 360:
+            d = _TL_DEFAULT_DUR.get(ty, 150)
+        s["durationInFrames"] = d
+        if ty == "checklist":
+            s["items"] = [str(x) for x in (s.get("items") or []) if str(x).strip()][:4]
+            if len(s["items"]) < 2:
+                continue
+            s["title"] = str(s.get("title") or "")
+        if ty == "paintTitle":
+            s["title"] = str(s.get("title") or tl.get("brand") or "")
+            s["subtitles"] = [str(x) for x in (s.get("subtitles") or [])][:2]
+        if ty == "statement":
+            s["text"] = str(s.get("text") or "")
+            if not s["text"].strip():
+                continue
+        if ty == "bigStat":
+            if s.get("value") in (None, "") or not str(s.get("value")).strip():
+                continue
+        if ty == "outro":
+            s["brand"] = str(s.get("brand") or tl.get("brand") or "")
+            s["cta"] = str(s.get("cta") or "Conoce mas")
+        out_scenes.append(s)
+    # cerrar SIEMPRE con outro
+    if not out_scenes or out_scenes[-1].get("type") != "outro":
+        out_scenes.append({"type": "outro", "brand": tl.get("brand") or "", "cta": "Conoce mas", "durationInFrames": 150})
+    tl["scenes"] = out_scenes[:6]
+    # acento: ADN visual (real) > el que eligio la IA > default del motor
+    acc = (dna or {}).get("accent") or tl.get("accent") or ""
+    if _bdna._hex_ok(acc):
+        tl["accent"] = acc
+    elif not _bdna._hex_ok(str(tl.get("accent") or "")):
+        tl.pop("accent", None)
+    tl.setdefault("brand", "")
+    return tl
+
+
+def _fallback_timeline(url_data: dict, dna: dict = None) -> dict:
+    brand = (url_data or {}).get("siteName") or "Tu marca"
+    tl = {"brand": brand, "scenes": [
+        {"type": "paintTitle", "title": brand, "subtitles": [], "durationInFrames": 234},
+        {"type": "statement", "text": "Descubri lo que podemos hacer por vos", "durationInFrames": 150},
+        {"type": "outro", "brand": brand, "cta": "Conoce mas", "durationInFrames": 150},
+    ]}
+    acc = (dna or {}).get("accent") or ""
+    if _bdna._hex_ok(acc):
+        tl["accent"] = acc
+    return tl
+
+
+async def _critique_timeline(tl, *, brief_txt="", contexto="", desarrollo="", proposito="marketing", round_i=1, usage=None):
+    """Fase 2 para timelines: un director SENIOR (Opus) revisa y mejora. Misma red que cinematicas."""
+    if not TL_CRITIC_ENABLED or not isinstance(tl, dict) or not tl.get("scenes"):
+        return tl
+    payload = {
+        "objetivo": proposito, "pedido_usuario": (desarrollo or "")[:500],
+        "brief": (brief_txt or "")[:1500], "contexto_sitio": (contexto or "")[:2000],
+        "timeline": {"brand": tl.get("brand"), "accent": tl.get("accent"), "scenes": tl.get("scenes")},
+    }
+    try:
+        resp = await _td._client.messages.create(
+            model=TL_CRITIC_MODEL, max_tokens=1500, temperature=0.4,
+            system=_td._sys_cached(TL_CRITIC_SYSTEM),
+            messages=[{"role": "user", "content": _json.dumps(payload, ensure_ascii=False)}],
+        )
+        _td._acc_usage(usage, "tl_critic", TL_CRITIC_MODEL, resp)
+        parsed = _td._parse_critic((resp.content[0].text or "").strip())
+        if not parsed:
+            print(f"[tl-critic] r{round_i}: no parseo -> mantengo el guion del director")
+            return tl
+        print(f"[tl-critic] r{round_i} {parsed.get('verdict')} ({TL_CRITIC_MODEL}): {(parsed.get('notas') or '')[:160]}")
+        improved = parsed.get("spec")
+        if isinstance(improved, dict) and improved.get("scenes"):
+            return improved
+        return tl
+    except Exception as e:
+        print(f"[tl-critic] r{round_i} fallo ({e}) -> mantengo el guion del director")
+        return tl
+
+
+async def write_timeline(url, desarrollo, proposito="marketing", idioma="",
+                         recent_profile=None, rating_bias=None, prefetched_site=None,
+                         dna=None, cached_brand=None, usage=None, brand_sink=None):
+    """URL + desarrollo -> timeline. Reusa analisis + rotacion + brief de cinematicas; director Canvas + critico."""
+    url_data = await _td.analyze_site_rich(url, prefetched=prefetched_site)
+    rp = recent_profile or {}
+    rb = rating_bias or {}
+
+    angle = _td._pick_smart(_td.CREATIVE_ANGLES, rp.get("angles"), net=rb.get("angles"))
+    mood = _random.choice(_td.MOODS)
+    hook = _td._pick_smart(_td.HOOK_ARCHETYPES, rp.get("hooks"), net=rb.get("hooks"), key="name")
+    _arc_pool = _td.PURPOSE_ARCS.get((proposito or "").lower(), _td.PURPOSE_ARCS["marketing"])
+    arc_name = _td._pick_smart(_arc_pool, rp.get("arcs"), net=rb.get("arcs"))
+    arc_guide = _td.NARRATIVE_ARCS.get(arc_name, "")
+
+    # Brief estrategico (reusa el de cinematicas): industria/publico/concepto/momento heroe + playbook.
+    brief_txt, _brand_block = await _td._build_brief(url_data, desarrollo, proposito, usage=usage, cached_brand=cached_brand)
+    if brand_sink is not None:
+        brand_sink.append(_brand_block)
+    industria = _td._brief_field(brief_txt, "INDUSTRIA")
+    publico = _td._brief_field(brief_txt, "PUBLICO") or _td._brief_field(brief_txt, "PÚBLICO")
+    pb = _td.playbooks.pick(industria, publico)
+    concepto = _td._brief_field(brief_txt, "CONCEPTO")
+    heroe = _td._brief_field(brief_txt, "MOMENTO HEROE") or _td._brief_field(brief_txt, "MOMENTO HÉROE")
+
+    contexto = url_data.get("context") or f"Marca: {url_data.get('siteName') or 'desconocido'}"
+    _lang = (url_data.get("lang") or "").lower()
+    _LANG_NAME = {"es": "español rioplatense (voseo)", "en": "inglés", "pt": "portugués"}
+    if idioma:
+        lang_hint = f"\nIDIOMA OBLIGATORIO: escribí TODO el copy en {_LANG_NAME.get(idioma, idioma)}."
+    else:
+        lang_hint = (f"\nIDIOMA: el sitio está en '{_lang}' — escribí el copy en ese idioma."
+                     if _lang and not _lang.startswith("es") else "")
+    accent = (dna or {}).get("accent") or ""
+    accent_hint = (f"\nACENTO sugerido (color real de la marca): {accent}"
+                   if _bdna._hex_ok(accent) else "\nACENTO: elegí un hex VIVO acorde a la marca (saturado, no gris).")
+    extra = (f'\n\n>>> PEDIDO DEL USUARIO (PRIORIDAD ABSOLUTA, el video DEBE cumplirlo): "{desarrollo.strip()}"'
+             if (desarrollo or "").strip() else "")
+
+    user_prompt = f"""PROPÓSITO: {proposito}
+URL: {url}
+
+CONTEXTO DEL SITIO (usalo para copy específico y real, no genérico):
+{contexto}{extra}{lang_hint}{accent_hint}
+
+BRIEF ESTRATÉGICO (la lectura de la marca, basate en esto):
+{brief_txt}
+
+{pb['guide']}
+{('CONCEPTO (que todo gire alrededor): ' + concepto) if concepto else ''}
+{('MOMENTO HÉROE (dale la escena más fuerte): ' + heroe) if heroe else ''}
+
+DIRECCIÓN DE ESTE VIDEO (hacelo único, no formulaico):
+- Ángulo narrativo: {angle}
+- Mood: {mood}
+- ARCO (seguilo adaptándolo a ESTA marca, no lo recites literal): {arc_guide}
+
+EL HOOK MANDA (primeros 1-3s = la señal #1 del algoritmo): la PRIMERA escena usa este patrón,
+adaptado a la marca y su público:
+>> {hook['guide']} (ejemplo de FORMA, no de contenido: "{hook['ex']}")
+Abrí con 'statement' o 'paintTitle' (cortos y filosos). NUNCA arranques con 'checklist'.
+
+OBJETIVO ({proposito}): {_td.PURPOSE_GUIDE.get((proposito or '').lower(), _td.PURPOSE_GUIDE['marketing'])}
+
+Generá el timeline JSON (brand, accent, scenes). 4-5 escenas, cerrá con 'outro'. El copy tiene que
+sonar a ESTA marca puntual y su público (usá el brief y el contexto). Si NO hay un número real en el
+contexto, NO uses bigStat. Si hay un PEDIDO DEL USUARIO, cumplilo SÍ O SÍ por encima de todo."""
+
+    try:
+        resp = await _td._client.messages.create(
+            model=TL_DIRECTOR_MODEL, max_tokens=1500, temperature=0.9,
+            system=_td._sys_cached(TL_DIRECTOR_SYSTEM),
+            messages=[{"role": "user", "content": user_prompt}],
+        )
+        _td._acc_usage(usage, "tl_director", TL_DIRECTOR_MODEL, resp)
+        tl = _td._parse_spec(resp.content[0].text.strip())
+        if tl is None:
+            resp2 = await _td._client.messages.create(
+                model=TL_DIRECTOR_MODEL, max_tokens=1500, temperature=0.5,
+                system=_td._sys_cached(TL_DIRECTOR_SYSTEM),
+                messages=[{"role": "user", "content": user_prompt + "\n\nIMPORTANTE: respondé SOLO el JSON del timeline, sin texto antes ni después."}],
+            )
+            _td._acc_usage(usage, "tl_director_retry", TL_DIRECTOR_MODEL, resp2)
+            tl = _td._parse_spec(resp2.content[0].text.strip())
+        tl = _normalize_timeline(tl, dna)
+        for _r in range(TL_CRITIC_ROUNDS):
+            improved = await _critique_timeline(tl, brief_txt=brief_txt, contexto=contexto,
+                                                desarrollo=desarrollo, proposito=proposito,
+                                                round_i=_r + 1, usage=usage)
+            if improved is tl:
+                break
+            tl = _normalize_timeline(improved, dna)
+        if not tl.get("scenes"):
+            tl = _fallback_timeline(url_data, dna)
+    except Exception as e:
+        print(f"[tl-director] fallback ({e})")
+        tl = _fallback_timeline(url_data, dna)
+
+    # Anotar dimensiones de receta para la rotacion/rating (las lee _push_recent_profile en main.py).
+    tl["angle"] = angle
+    tl["hookName"] = hook["name"]
+    tl["arcName"] = arc_name
+    return tl

@@ -539,15 +539,38 @@ function setAccent(hex) {
     }
   }
 
-  const DRAWERS = { paintTitle: sceneTitle, deliver: sceneCart, checklist: sceneList, outro: sceneOutro, statement: sceneStatement };
+  // ESCENA: bigStat — un numero que cuenta de 0 al valor + label debajo. El beat de "dato que impacta".
+  // Solo con un numero REAL del sitio. Nativo de Canvas, limpio.
+  function sceneBigStat(t, p = {}) {
+    const cx = W / 2, cy = H * 0.42;
+    const value = Number(p.value) || 0;
+    const prog = eOutCubic(inv(t, 0.2, 1.7));
+    const shown = value * prog;
+    const dec = (value % 1 !== 0) ? 1 : 0;
+    const body = shown.toFixed(dec).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    const num = (p.prefix || '') + body + (p.suffix || '');
+    const pop = lerp(0.72, 1, eOutCubic(inv(t, 0.1, 0.6)));
+    ctx.save();
+    ctx.globalAlpha = inv(t, 0.05, 0.4);
+    ctx.translate(cx, cy); ctx.scale(pop, pop); ctx.translate(-cx, -cy);
+    ctx.font = '800 92px "Inter",system-ui,sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = accent(cx - 130, cy, cx + 130, cy);
+    ctx.fillText(num, cx, cy);
+    ctx.restore();
+    if (p.label) fxText(p.label, cx, cy + 84, 24, inv(t, 1.3, 1.9), 600, '#e9d9e4');
+  }
+
+  const DRAWERS = { paintTitle: sceneTitle, deliver: sceneCart, checklist: sceneList, outro: sceneOutro, statement: sceneStatement, bigStat: sceneBigStat };
   // Cuanto dura la COREOGRAFIA de cada escena (segundos). Pasado esto, el motor CONGELA el frame final
   // = tiempo de lectura. Asi: durationInFrames = animacion + lectura (mas largo = mas tiempo para leer).
-  const ANIM_LEN = { paintTitle: 6.0, deliver: 6.4, checklist: 3.9, outro: 3.2, statement: 2.6 };
+  const ANIM_LEN = { paintTitle: 6.0, deliver: 6.4, checklist: 3.9, outro: 3.2, statement: 2.6, bigStat: 2.4 };
   const SCENE_LABELS = {
     paintTitle: '<b>paintTitle</b> · puntito -> boton -> barra -> se derrite -> gota -> pinta el titulo',
     deliver: '<b>deliver</b> · carrito -> click -> caja -> le salen alas -> vuela -> cae en la casa',
     checklist: '<b>checklist</b> · lista con botones OK',
     statement: '<b>statement</b> · linea con gancho + barrido de acento',
+    bigStat: '<b>bigStat</b> · numero que impacta (cuenta de 0)',
     outro: '<b>outro</b> · marca + CTA',
   };
 

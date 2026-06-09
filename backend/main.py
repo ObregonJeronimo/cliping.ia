@@ -735,9 +735,12 @@ async def _render_video_job(job_id: str, req: VideoGenRequest):
 class TimelineGenRequest(BaseModel):
     userId: str = ""
     formato: str = "vertical"   # vertical (9:16) por ahora
-    timeline: dict | None = None  # guion ya armado (preset o IA). Si no viene, usa la demo.
-    url: str = ""               # reservado (todavia no se usa)
-    desarrollo: str = ""        # reservado (todavia no se usa)
+    timeline: dict | None = None  # guion ya armado (interno). Si no viene y hay url, lo escribe la IA.
+    url: str = ""
+    desarrollo: str = ""
+    proposito: str = "marketing"
+    idioma: str = ""
+    refreshBrand: bool = False   # ignora el cache de marca y re-analiza
 
 
 @app.post("/api/timeline/generate")
@@ -760,13 +763,59 @@ async def _render_timeline_job(job_id: str, req: TimelineGenRequest):
     output_path = OUT / f"{job_id}_timeline.mp4"
     temp_files = []
     try:
-        jobs[job_id].update({"status": "processing", "step": "build", "progress": 20})
-        # Timeline desde la request (preset elegido o, mas adelante, el que escriba la IA).
-        # Si no trae escenas, el nucleo renderiza la demo (fallback).
+        # ── Armar el timeline ─────────────────────────────────────────────────────
         if req.timeline and req.timeline.get("scenes"):
+            # Timeline ya armado (uso interno) -> render directo.
             timeline = req.timeline
+            jobs[job_id].update({"status": "processing", "step": "build", "progress": 35})
+        elif req.url.strip():
+            # PIPELINE REAL: mismo analisis/rotacion que cinematicas, pero el director escribe un TIMELINE.
+            jobs[job_id].update({"status": "processing", "step": "script", "progress": 12})
+            _db = get_firestore()
+            _bkey = _brand_key(req.url)
+            _usage = []
+            _shot_path = str(OUT / f"{job_id}_cap.png")
+            _site = {"screenshot": None, "content": None}
+            try:
+                import site_capture
+                _site = await site_capture.capture_all(req.url.strip(), _shot_path)
+            except Exception as ce:
+                print(f"[timeline] capture_all fallo (sigo con scrape liviano): {ce}")
+            _recent = _get_recent_profile(_db, req.userId, _bkey)
+            _bias = _get_rating_bias(_db, req.userId)
+            _cache = None if req.refreshBrand else _get_brand_cache(_db, req.userId, _bkey)
+            if _cache:
+                _dna = _cache.get("dna") or {}
+                _cached_brand = _cache.get("brand") or ""
+                print(f"[timeline] analisis de '{req.url}' desde cache (skip vision + hechos)")
+            else:
+                _dna = {}
+                try:
+                    _dna = await brand_dna.analyze_brand_dna(
+                        _site.get("screenshot"), theme_options=template_director.THEME_VIBES, usage=_usage)
+                except Exception as _de:
+                    print(f"[timeline] dna error (no critico): {_de}")
+                _cached_brand = None
+            _brand_sink = []
+            jobs[job_id].update({"step": "script", "progress": 32})
+            timeline = await timeline_director.write_timeline(
+                req.url, req.desarrollo, req.proposito, idioma=req.idioma,
+                recent_profile=_recent, rating_bias=_bias, prefetched_site=_site.get("content"),
+                dna=_dna, cached_brand=_cached_brand, usage=_usage, brand_sink=_brand_sink)
+            if not _cache:
+                _facts = _brand_sink[0] if _brand_sink else ""
+                if _dna and (_dna.get("summary") or _dna.get("mood")) and _facts:
+                    _set_brand_cache(_db, req.userId, _bkey, _dna, _facts)
+            try:
+                _push_recent_profile(_db, req.userId, _bkey, timeline)
+            except Exception as _pe:
+                print(f"[timeline] push recent fallo: {_pe}")
+            jobs[job_id]["timeline"] = timeline   # el front lo usa para previsualizar el guion generado
+            print(f"[timeline] costo: {template_director.usage_cost(_usage)}")
         else:
             timeline = {"durationInFrames": timeline_director.DEMO_FRAMES}
+
+        jobs[job_id].update({"status": "processing", "step": "build", "progress": 42})
         entry, comp_id, total, temp_files = timeline_director.build_timeline_files(
             job_id, timeline, REMOTION_DIR, req.formato)
 
