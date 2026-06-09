@@ -218,15 +218,119 @@
 /* ── DEMO 3: b-roll ─────────────────────────────────────────────────────── */
 .demoBroll {
   display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
-  width: 100%; max-width: 280px;
+  width: 100%; max-width: 300px;
 }
 .brollCell {
+  position: relative;
   aspect-ratio: 1; border-radius: 10px;
-  background: linear-gradient(135deg, rgba(108,92,231,0.35), rgba(140,156,242,0.12));
+  background: linear-gradient(135deg, rgba(108,92,231,0.28), rgba(140,156,242,0.1));
+  border: 1px solid rgba(255,255,255,0.06);
+  overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
   opacity: 0; transform: scale(0.85);
   transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 .brollGo .brollCell { opacity: 1; transform: scale(1); }
+
+/* celda 0: texto que se reescribe (typewriter ciclico) */
+.cellTyper {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(232, 240, 255, 0.92);
+  display: flex;
+  align-items: center;
+}
+.cellCaret {
+  display: inline-block;
+  width: 1.5px; height: 11px;
+  background: #a8b4ff;
+  margin-left: 1px;
+  animation: caretBlink 0.9s step-end infinite;
+}
+
+/* celda 1: gota que cae + onda */
+.cellDrop { position: relative; width: 100%; height: 100%; }
+.cellDrop .drop {
+  position: absolute;
+  left: 50%; top: 18%;
+  width: 7px; height: 7px;
+  margin-left: -3.5px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(45deg);
+  background: linear-gradient(135deg, #a8b4ff, #8c6ff0);
+  animation: dropFall 2.2s ease-in infinite;
+}
+.cellDrop .ripple {
+  position: absolute;
+  left: 50%; top: 72%;
+  width: 6px; height: 6px;
+  margin-left: -3px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(168, 180, 255, 0.7);
+  opacity: 0;
+  animation: dropRipple 2.2s ease-out infinite;
+}
+@keyframes dropFall {
+  0%   { top: 12%; opacity: 0; transform: rotate(45deg) scale(0.6); }
+  20%  { opacity: 1; }
+  55%  { top: 68%; opacity: 1; transform: rotate(45deg) scale(1); }
+  62%  { top: 70%; opacity: 0; transform: rotate(45deg) scale(0.4); }
+  100% { top: 70%; opacity: 0; }
+}
+@keyframes dropRipple {
+  0%, 55%  { opacity: 0; transform: scale(0.4); }
+  62%      { opacity: 0.9; transform: scale(0.6); }
+  85%      { opacity: 0; transform: scale(2.4); }
+  100%     { opacity: 0; }
+}
+
+/* celda 2: barras de chart que crecen */
+.cellBars { display: flex; align-items: flex-end; gap: 4px; height: 46%; }
+.cellBars span {
+  width: 5px; border-radius: 2px;
+  background: linear-gradient(to top, #6c5ce7, #a8b4ff);
+  height: 30%;
+  animation: barGrow 1.4s ease-in-out infinite alternate;
+}
+@keyframes barGrow { from { height: 25%; } to { height: 100%; } }
+
+/* celda 3: play que late */
+.cellPlay { color: #c8d0ff; animation: playPulse 1.6s ease-in-out infinite; }
+@keyframes playPulse {
+  0%, 100% { transform: scale(0.92); opacity: 0.7; }
+  50%      { transform: scale(1.12); opacity: 1; }
+}
+
+/* celda 4: linea de scan que recorre */
+.cellScan { position: relative; width: 70%; height: 70%; border-radius: 6px; background: rgba(255,255,255,0.04); overflow: hidden; }
+.cellScan span {
+  position: absolute; left: 0; top: 0;
+  width: 100%; height: 2px;
+  background: linear-gradient(90deg, transparent, #a8b4ff, transparent);
+  animation: scanMove 1.8s ease-in-out infinite;
+}
+@keyframes scanMove {
+  0%   { top: 8%; }
+  50%  { top: 88%; }
+  100% { top: 8%; }
+}
+
+/* celda 5: puntos orbitando */
+.cellOrbit { position: relative; width: 34px; height: 34px; }
+.cellOrbit span {
+  position: absolute; top: 50%; left: 50%;
+  width: 6px; height: 6px; margin: -3px;
+  border-radius: 50%;
+  background: #a8b4ff;
+  animation: orbit 2s linear infinite;
+}
+.cellOrbit span:nth-child(2) { animation-delay: -0.66s; background: #c8a8f0; }
+.cellOrbit span:nth-child(3) { animation-delay: -1.33s; background: #8c9cf2; }
+@keyframes orbit {
+  from { transform: rotate(0deg) translateX(13px) rotate(0deg); }
+  to   { transform: rotate(360deg) translateX(13px) rotate(-360deg); }
+}
 
 /* ── DEMO 4: voz / waveform ─────────────────────────────────────────────── */
 .demoVoice { display: flex; align-items: center; justify-content: center; gap: 4px; height: 90px; }
@@ -249,11 +353,15 @@
   transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 .brandLogo {
-  font-family: 'DM Mono', monospace; font-size: 14px; color: rgba(232,232,240,0.5);
-  padding: 12px 18px; border-radius: 12px; border: 1px dashed rgba(255,255,255,0.2);
+  display: flex; align-items: center; justify-content: center;
+  width: 56px; height: 56px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
   opacity: 0; transform: translateY(12px);
   transition: opacity 0.5s ease, transform 0.5s ease;
 }
+.brandLogo img { display: block; width: 32px; height: 32px; }
 .brandGo .swatch,
 .brandGo .brandLogo { opacity: 1; transform: translateY(0) scale(1); }
 
@@ -269,7 +377,6 @@
 }
 @keyframes drawLine { to { stroke-dashoffset: 0; } }
 .advNode {
-  fill: url(#advGrad);
   fill: #8c6ff0;
   animation: nodePulse 1.8s ease-in-out infinite;
 }
@@ -277,7 +384,9 @@
 
 @media (prefers-reduced-motion: reduce) {
   .row { opacity: 1; transform: none; transition: none; }
-  .waveBar, .advNode, .advLine, .generating span { animation: none; }
+  .waveBar, .advNode, .advLine, .generating span,
+  .cellCaret, .cellDrop .drop, .cellDrop .ripple, .cellBars span,
+  .cellPlay, .cellScan span, .cellOrbit span { animation: none; }
   .scriptItem, .brollCell, .swatch, .brandLogo { opacity: 1; transform: none; }
   .advLine { stroke-dashoffset: 0; }
 }
@@ -293,7 +402,6 @@
   .section { padding: 64px 24px; }
   .head { margin-bottom: 56px; }
   .rows { gap: 64px; }
-  /* en mobile todo a una columna; la demo va arriba del texto */
   .row, .rowReverse {
     grid-template-columns: 1fr;
     gap: 24px;
