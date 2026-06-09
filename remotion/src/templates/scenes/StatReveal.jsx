@@ -3,6 +3,7 @@ import { fmt } from '../layout'
 import { fitHeadline, segText, clamp } from '../theme'
 import { EASE, SPRING, prog, spr, enter, entrance, floatY, breathe, camera, parallax } from '../motion'
 import Decor from '../Decor'
+import { SparkBurst } from '../Particles'
 
 /**
  * StatReveal — un número grande que CUENTA desde 0 hasta el valor, con pop al
@@ -80,6 +81,9 @@ export const StatReveal = ({
   return (
     <AbsoluteFill style={{ background: theme.bg, fontFamily: theme.font, overflow: 'hidden' }}>
       <Decor kind={(theme.art || {}).decor} theme={theme} frame={frame} fps={fps} cam={cam} />
+      {/* Momento héroe: estallido de chispas cuando el número termina de contar (frena el scroll). */}
+      <SparkBurst at={Math.round(10 + dur * 0.55)} cx={F.cx} cy={F.cy * (ring ? 1.0 : 0.96)}
+        color={theme.accentTo} count={ring ? 14 : 18} spread={ring ? 300 : 360} />
       <div style={{ position: 'absolute', inset: 0,
         transform: `scale(${cam.scale}) translate(${cam.x}px, ${cam.y}px)`, transformOrigin: '50% 46%' }}>
         <div style={{ position: 'absolute', left: '50%', top: '44%', width: 1000, height: 1000,

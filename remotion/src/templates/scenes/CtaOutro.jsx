@@ -2,6 +2,7 @@ import { AbsoluteFill, useCurrentFrame, useVideoConfig, Img } from 'remotion'
 import { clamp, fitHeadline } from '../theme'
 import { EASE, SPRING, prog, spr, enter, entrance, floatY, breathe } from '../motion'
 import { fmt } from '../layout'
+import { SparkBurst, AmbientMotes } from '../Particles'
 
 /**
  * CtaOutro — cierre con marca + llamado a la acción.
@@ -79,6 +80,9 @@ export const CtaOutro = ({ theme, brand = '', cta = '', logo = '', mark = 'star'
   return (
     <AbsoluteFill style={{ background: theme.bg, fontFamily: theme.font,
       alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+      <AmbientMotes color={theme.accentTo} count={12} opacity={0.16} />
+      {/* Estallido cuando aparece la marca (apertura del cierre). */}
+      <SparkBurst at={2} cx={F.cx} cy={F.cy - F.H * 0.12} color={theme.accentTo} count={16} spread={300} />
       <div style={{ position: 'absolute', left: '50%', top: '50%', width: 1000, height: 1000,
         transform: 'translate(-50%,-50%)', opacity: glowOp,
         background: `radial-gradient(circle, ${theme.glow}, rgba(0,0,0,0) 62%)` }} />
