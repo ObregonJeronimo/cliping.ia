@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import styles from './Landing.module.css'
 import HeroText from './HeroText'
 import MarqueeShowcase from './MarqueeShowcase'
+import Features from './Features'
 import Pricing from './Pricing'
 
 const ParticleHero = lazy(() => import('./ParticleHero'))
@@ -81,6 +82,8 @@ export default function Landing() {
       </section>
 
       <MarqueeShowcase />
+
+      <Features />
 
       <section className={styles.steps}>
         {[
