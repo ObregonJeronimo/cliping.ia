@@ -142,11 +142,17 @@ const MOTIFS = { particles: Particles, bokeh: Bokeh, aurora: Aurora, rays: Rays,
  */
 export const ContinuousBg = ({ theme }) => {
   const frame = useCurrentFrame()
+  // Glow principal (base, igual que antes -> no cambia el carácter).
   const gx = 50 + Math.sin(frame / 150) * 12
   const gy = 36 + Math.cos(frame / 190) * 9
   const breath = 0.55 + 0.10 * Math.sin(frame / 80)
+  // Blob de acento 1 (accentFrom).
   const ax = 50 + Math.cos(frame / 220) * 22
   const ay = 60 + Math.sin(frame / 180) * 16
+  // Blob de acento 2 (accentTo) en otra fase -> profundidad de color tipo gradient-mesh.
+  const bx = 30 + Math.sin(frame / 260 + 1.3) * 20
+  const by = 30 + Math.cos(frame / 240 + 0.7) * 18
+  const bBreath = 0.16 + 0.06 * Math.sin(frame / 110 + 2)
   return (
     <AbsoluteFill style={{ background: theme.bg, pointerEvents: 'none' }}>
       <div style={{ position: 'absolute', left: `${gx}%`, top: `${gy}%`, width: 1500, height: 1500,
@@ -155,6 +161,12 @@ export const ContinuousBg = ({ theme }) => {
       <div style={{ position: 'absolute', left: `${ax}%`, top: `${ay}%`, width: 1000, height: 1000,
         transform: 'translate(-50%,-50%)', opacity: 0.22, mixBlendMode: 'screen',
         background: `radial-gradient(circle, ${theme.accentFrom}55, rgba(0,0,0,0) 65%)` }} />
+      <div style={{ position: 'absolute', left: `${bx}%`, top: `${by}%`, width: 1180, height: 1180,
+        transform: 'translate(-50%,-50%)', opacity: bBreath, mixBlendMode: 'screen',
+        background: `radial-gradient(circle, ${theme.accentTo}44, rgba(0,0,0,0) 68%)` }} />
+      {/* Viñeta cinematográfica: oscurece sutil los bordes -> enfoca el centro, se siente "filmado". */}
+      <AbsoluteFill style={{
+        background: 'radial-gradient(ellipse 75% 75% at 50% 46%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.34) 100%)' }} />
     </AbsoluteFill>
   )
 }
