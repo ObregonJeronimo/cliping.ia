@@ -854,6 +854,8 @@ async def _render_timeline_job(job_id: str, req: TimelineGenRequest):
             try:
                 db.collection("users").document(req.userId).collection("videos").add({
                     "kind": "timeline", "format": req.formato, "rating": 0,
+                    "brand": (timeline.get("brand") if isinstance(timeline, dict) else "") or "",
+                    "url": req.url, "publicId": f"cinematicas/timeline_{job_id[:8]}",
                     "videoUrl": cloudinary_url, "localFile": output_path.name,
                     "createdAt": datetime.utcnow().isoformat(),
                 })

@@ -2,17 +2,15 @@ import { useState, useEffect } from 'react'
 import { collection, getDocs, deleteDoc, doc, updateDoc } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
 import { useAuth } from '../../contexts/AuthContext'
-import styles from './MisCinematicas.module.css'
+import styles from '../Cinematicas/MisCinematicas.module.css'
 
 const API_URL = import.meta.env.PROD ? '' : (import.meta.env.VITE_API_URL || 'http://localhost:8000')
 
-const THEME_LABEL = {
-  'saas-explainer': 'SaaS', 'ocean-deep': 'Ocean', 'clinical-formal': 'Clínico',
-  'organic-natural': 'Orgánico', 'sunset-warm': 'Sunset', 'crimson-bold': 'Crimson',
-  'berry-glow': 'Berry', 'gold-lux': 'Gold', 'cyber-neon': 'Cyber', 'mono-ink': 'Mono',
-}
-
-export default function MisCinematicas() {
+/**
+ * Mis animaciones — historial de los videos del motor Canvas (kind === 'timeline'), guardados en
+ * users/{uid}/videos por /api/timeline/generate, con su link de Cloudinary. Espeja Mis cinemáticas.
+ */
+export default function MisAnimaciones() {
   const { user } = useAuth()
   const [videos, setVideos] = useState([])
   const [loading, setLoading] = useState(true)
@@ -25,27 +23,24 @@ export default function MisCinematicas() {
   async function load() {
     setLoading(true)
     try {
-      // Los videos los guarda /api/video/generate en users/{uid}/videos.
       const snap = await getDocs(collection(db, 'users', user.uid, 'videos'))
       const list = snap.docs
         .map(d => ({ id: d.id, ...d.data() }))
-        .filter(v => v.kind !== 'timeline')   // las animaciones (Canvas) van en "Mis animaciones"
+        .filter(v => v.kind === 'timeline')   // solo animaciones (Canvas)
       list.sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')))
       setVideos(list)
     } catch (e) {
-      console.error('[MisCinematicas] error cargando:', e)
+      console.error('[MisAnimaciones] error cargando:', e)
     }
     setLoading(false)
   }
 
   async function handleDelete(id) {
     const v = videos.find(x => x.id === id)
-    if (!confirm('¿Eliminar esta cinemática?')) return
+    if (!confirm('¿Eliminar esta animación?')) return
     setDeletingId(id)
     try {
-      // Borrar el asset de Cloudinary (best-effort: si el backend está caído, igual
-      // se quita de la galería). publicId del doc, o derivado del id para los viejos.
-      const publicId = v?.publicId || (v?.id ? `cinematicas/video_${String(v.id).slice(0, 8)}` : '')
+      const publicId = v?.publicId || ''
       if (publicId) {
         try {
           await fetch(`${API_URL}/api/video/delete`, {
@@ -58,20 +53,18 @@ export default function MisCinematicas() {
       await deleteDoc(doc(db, 'users', user.uid, 'videos', id))
       setVideos(vs => vs.filter(v => v.id !== id))
     } catch (e) {
-      console.error('[MisCinematicas] error eliminando:', e)
+      console.error('[MisAnimaciones] error eliminando:', e)
     }
     setDeletingId(null)
   }
 
-  // Rating del video (loop de feedback): 1 = me gustó, -1 = no, 0 = sin puntuar (toggle).
-  // Se guarda junto a la "receta" del video -> a futuro sesga la rotación hacia lo que funciona.
   const rateVideo = async (v, value) => {
     const next = v.rating === value ? 0 : value
     try {
       await updateDoc(doc(db, 'users', user.uid, 'videos', v.id), { rating: next })
       setVideos(vs => vs.map(x => x.id === v.id ? { ...x, rating: next } : x))
     } catch (e) {
-      console.error('[MisCinematicas] error puntuando:', e)
+      console.error('[MisAnimaciones] error puntuando:', e)
     }
   }
 
@@ -80,7 +73,6 @@ export default function MisCinematicas() {
     const d = new Date(s)
     return isNaN(d.getTime()) ? '' : d.toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' })
   }
-  // Cloudinary: fl_attachment fuerza la descarga ("Guardar como").
   const downloadUrl = (v) => v.videoUrl
     ? v.videoUrl.replace('/upload/', '/upload/fl_attachment/')
     : srcOf(v)
@@ -104,8 +96,8 @@ export default function MisCinematicas() {
     <div className={styles.page}>
       <div className={styles.header}>
         <div>
-          <h1 className={styles.title}>Mis cinemáticas</h1>
-          <p className={styles.sub}>Los videos que ya generaste, guardados acá.</p>
+          <h1 className={styles.title}>Mis animaciones</h1>
+          <p className={styles.sub}>Las animaciones que generaste, guardadas acá.</p>
         </div>
         {videos.length > 0 && (
           <input
@@ -124,7 +116,7 @@ export default function MisCinematicas() {
         <div className={styles.empty}>
           <div className={styles.emptyIcon}>🎬</div>
           <div className={styles.emptyTitle}>Todavía no hiciste ninguna</div>
-          <div className={styles.emptySub}>Generá tu primer video desde Home y va a aparecer acá.</div>
+          <div className={styles.emptySub}>Generá tu primera animación desde Animaciones y va a aparecer acá.</div>
         </div>
       ) : filtered.length === 0 ? (
         <div className={styles.empty}>
@@ -148,7 +140,6 @@ export default function MisCinematicas() {
                   <div className={styles.metaTop}>
                     <span className={styles.brand}>{v.brand || v.url || 'Sin título'}</span>
                     {v.format && <span className={styles.themeBadge}>{v.format === 'wide' ? '16:9' : v.format === 'square' ? '1:1' : '9:16'}</span>}
-                    {v.theme && <span className={styles.themeBadge}>{THEME_LABEL[v.theme] || v.theme}</span>}
                   </div>
                   {fmtDate(v.createdAt) && <div className={styles.date}>{fmtDate(v.createdAt)}</div>}
                   <div className={styles.rateRow}>

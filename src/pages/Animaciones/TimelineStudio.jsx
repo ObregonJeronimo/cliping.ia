@@ -1,15 +1,12 @@
-import { useEffect, useRef, useState } from 'react'
-import { createTimelineEngine } from './engine'
-import { DEMO_TIMELINE } from './engineCore'
+import { useRef, useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
-import cine from '../Cinematicas/Cinematicas.module.css'
-import styles from './TimelineStudio.module.css'
+import styles from '../Cinematicas/Cinematicas.module.css'
 
 const API_URL = import.meta.env.PROD ? '' : (import.meta.env.VITE_API_URL || 'http://localhost:8000')
 const HEADERS = { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' }
 const STEP_LABELS = {
   queued: 'En cola…', script: 'Analizando el sitio y escribiendo el guion…',
-  build: 'Armando la composición…', render: 'Renderizando en tu PC (esto tarda)…',
+  build: 'Armando la composición…', render: 'Renderizando (esto tarda)…',
   upload: 'Subiendo a la nube…', export: 'Listo',
 }
 const FORMATOS = [
@@ -24,7 +21,6 @@ const PROPOSITOS = [
   { key: 'awareness', label: '👋 Awareness' },
 ]
 
-// Resumen corto de una escena del timeline (para el "plan" del resultado, estilo Home).
 function sceneSummary(s) {
   if (!s) return ''
   if (s.type === 'paintTitle') return [s.title, (s.subtitles || []).join(' / ')].filter(Boolean).join(' · ')
@@ -36,54 +32,35 @@ function sceneSummary(s) {
 }
 
 /**
- * Animaciones — misma interfaz que Home (Cinemáticas), pero para el motor Canvas por timeline.
- * Pegás un link + (opcional) qué contar y la IA REAL (Sonnet director + Opus crítico) escribe el
- * timeline desde el sitio — mismo análisis/rotación/anti-repetición que cinematicas. El video se
- * renderiza por Remotion (tu PC) → Cloudinary. Una generación = un video.
+ * Animaciones — MISMA interfaz que Home (Cinemáticas), pero para el motor de animación Canvas.
+ * Pegás un link + (opcional) qué contar y la IA real (Sonnet director + Opus crítico) escribe el
+ * guion desde el sitio (mismo análisis/rotación que cinematicas). El video lo renderiza Remotion
+ * (tu PC) → Cloudinary, y queda guardado en "Mis animaciones". Una generación = un video.
  */
 export default function TimelineStudio() {
-  const canvasRef = useRef(null)
-  const engineRef = useRef(null)
-  const beatRef = useRef(null)
-  const timeRef = useRef(null)
-  const seekRef = useRef(null)
-  const pollRef = useRef(null)
   const { user } = useAuth()
+  const videoRef = useRef(null)
+  const pollRef = useRef(null)
 
-  const [playing, setPlaying] = useState(true)
-  const [speed, setSpeed] = useState(1)
+  const [mode, setMode] = useState('simple')
   const [url, setUrl] = useState('')
   const [desarrollo, setDesarrollo] = useState('')
   const [proposito, setProposito] = useState('marketing')
   const [formato, setFormato] = useState('vertical')
   const [gen, setGen] = useState(null)   // { status, step, progress, videoUrl, error, timeline }
 
-  useEffect(() => {
-    const eng = createTimelineEngine(canvasRef.current, {
-      timeline: DEMO_TIMELINE,
-      onFrame: ({ playhead, T, label }) => {
-        if (timeRef.current) timeRef.current.textContent = `${playhead.toFixed(1)} / ${T.toFixed(1)}`
-        if (seekRef.current) seekRef.current.value = String(Math.round((playhead / T) * 1000))
-        if (beatRef.current) beatRef.current.innerHTML = label
-      },
-    })
-    engineRef.current = eng
-    return () => eng.destroy()
-  }, [])
+  const generating = gen?.status === 'running'
+  const canGenerate = url.trim() && !generating
+  const pct = Math.max(4, gen?.progress || 0)
+  const showResult = !!gen
+  const planScenes = gen?.timeline?.scenes || []
 
-  useEffect(() => () => clearInterval(pollRef.current), [])
-
-  const toggle = () => setPlaying(engineRef.current.toggle())
-  const restart = () => engineRef.current.restart()
-  const onSeek = (e) => engineRef.current.seek(Number(e.target.value) / 1000)
-  const pickSpeed = (s) => { engineRef.current.setSpeed(s); setSpeed(s) }
-
-  const canGenerate = url.trim() && !(gen?.status === 'running')
+  function reset() { clearInterval(pollRef.current); setGen(null) }
 
   async function generate() {
     const u = url.trim()
-    if (!u || gen?.status === 'running') return
-    setGen({ status: 'running', step: 'script', progress: 0, videoUrl: null, error: null, timeline: null })
+    if (!u || generating) return
+    setGen({ status: 'running', step: 'script', progress: 0, videoUrl: null, error: null, timeline: null, url: u })
     try {
       const r = await fetch(`${API_URL}/api/timeline/generate`, {
         method: 'POST', headers: HEADERS,
@@ -96,12 +73,7 @@ export default function TimelineStudio() {
         try {
           const jr = await fetch(`${API_URL}/api/jobs/${d.job_id}`, { headers: HEADERS })
           const j = await jr.json()
-          setGen(g => g ? ({ ...g, step: j.step || j.status, progress: j.progress || 0 }) : g)
-          // Apenas la IA devuelve el guion, lo previsualizamos en vivo (aunque el MP4 siga renderizando).
-          if (j.timeline?.scenes && engineRef.current) {
-            engineRef.current.setTimeline(j.timeline); setPlaying(true)
-            setGen(g => g && !g.timeline ? ({ ...g, timeline: j.timeline }) : g)
-          }
+          setGen(g => g ? ({ ...g, step: j.step || j.status, progress: j.progress || 0, timeline: j.timeline || g.timeline }) : g)
           if (j.status === 'done') {
             clearInterval(pollRef.current)
             setGen(g => ({ ...g, status: 'done', progress: 100, timeline: j.timeline || g.timeline, videoUrl: j.cloudinaryUrl || (j.videoFilename ? `${API_URL}/api/video/${j.videoFilename}` : null) }))
@@ -114,111 +86,122 @@ export default function TimelineStudio() {
     } catch (e) { setGen(g => ({ ...g, status: 'error', error: e.message })) }
   }
 
-  const pct = Math.max(4, gen?.progress || 0)
-  const planScenes = gen?.timeline?.scenes || []
-
   return (
-    <div className={cine.body}>
-      <div className={cine.left}>
-        <div className={styles.head}>
-          <div className={styles.title}>Animaciones <span className={styles.beta}>beta</span></div>
-          <div className={styles.sub}>Animaciones reales por timeline (Canvas). La IA escribe el guion desde tu link.</div>
+    <div className={styles.body}>
+      <div className={styles.left}>
+        <div className={styles.modeToggle}>
+          <button className={`${styles.modeBtn} ${mode === 'simple' ? styles.modeBtnActive : ''}`} onClick={() => setMode('simple')} disabled={generating}>Simple</button>
+          <button className={`${styles.modeBtn} ${mode === 'avanzado' ? styles.modeBtnActive : ''}`} onClick={() => setMode('avanzado')} disabled={generating}>Avanzado</button>
         </div>
 
-        <div className={cine.cineSection}>
-          <div className={cine.cineSectionLabel}>URL del sitio</div>
-          <input className={cine.nameInput} placeholder="https://tusitio.com" value={url}
-            onChange={e => setUrl(e.target.value)} disabled={gen?.status === 'running'} />
+        <div className={styles.cineSection}>
+          <div className={styles.cineSectionLabel}>URL del sitio</div>
+          <input className={styles.nameInput} placeholder="https://tusitio.com" value={url}
+            onChange={e => setUrl(e.target.value)} disabled={generating} />
         </div>
-        <div className={cine.cineSection}>
-          <div className={cine.cineSectionLabel}>Qué querés contar <span className={cine.desarrolloOpcional}>(opcional)</span></div>
-          <textarea className={cine.textarea} rows={3} placeholder="Dejalo vacío y la IA decide, o tirá un ángulo / qué destacar / tono…"
-            value={desarrollo} onChange={e => setDesarrollo(e.target.value)} disabled={gen?.status === 'running'} />
-        </div>
-        <div className={cine.cineSection}>
-          <div className={cine.cineSectionLabel}>Propósito</div>
-          <div className={cine.propGrid}>
-            {PROPOSITOS.map(p => (
-              <button key={p.key} className={`${cine.propBtn} ${proposito === p.key ? cine.propBtnActive : ''}`}
-                disabled={gen?.status === 'running'} onClick={() => setProposito(p.key)}>{p.label}</button>
-            ))}
+
+        <div className={styles.cineSection}>
+          <div className={styles.cineSectionLabel}>
+            {mode === 'simple' ? 'Qué querés contar' : 'Desarrollo'} <span className={styles.desarrolloOpcional}>(opcional)</span>
           </div>
+          <textarea className={styles.textarea} rows={3}
+            placeholder={mode === 'simple' ? 'Dejalo vacío y la IA decide todo, o tirá una idea…' : 'Ángulo, qué destacar, tono…'}
+            value={desarrollo} onChange={e => setDesarrollo(e.target.value)} disabled={generating} />
         </div>
-        <div className={cine.cineSection}>
-          <div className={cine.cineSectionLabel}>Formato</div>
-          <div className={cine.propGrid}>
-            {FORMATOS.map(f => (
-              <button key={f.key} className={`${cine.propBtn} ${formato === f.key ? cine.propBtnActive : ''}`}
-                disabled={!f.on || gen?.status === 'running'} title={f.on ? '' : 'Próximamente'}
-                onClick={() => f.on && setFormato(f.key)}>{f.label}{!f.on ? ' ·' : ''}</button>
-            ))}
-          </div>
-        </div>
+
+        {mode === 'avanzado' && (
+          <>
+            <div className={styles.cineSection}>
+              <div className={styles.cineSectionLabel}>Propósito</div>
+              <div className={styles.propGrid}>
+                {PROPOSITOS.map(p => (
+                  <button key={p.key} className={`${styles.propBtn} ${proposito === p.key ? styles.propBtnActive : ''}`}
+                    onClick={() => setProposito(p.key)} disabled={generating}>{p.label}</button>
+                ))}
+              </div>
+            </div>
+            <div className={styles.cineSection}>
+              <div className={styles.cineSectionLabel}>Formato</div>
+              <div className={styles.propGrid}>
+                {FORMATOS.map(f => (
+                  <button key={f.key} className={`${styles.propBtn} ${formato === f.key ? styles.propBtnActive : ''}`}
+                    disabled={!f.on || generating} title={f.on ? '' : 'Próximamente'}
+                    onClick={() => f.on && setFormato(f.key)}>{f.label}{!f.on ? ' ·' : ''}</button>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
 
         <button
-          className={`${cine.forgeBtn} ${gen?.status === 'running' ? cine.forgeBtnRunning : ''} ${!canGenerate ? cine.forgeBtnDisabled : ''}`}
+          className={`${styles.forgeBtn} ${generating ? styles.forgeBtnRunning : ''} ${!canGenerate ? styles.forgeBtnDisabled : ''}`}
           onClick={generate} disabled={!canGenerate}>
-          {gen?.status === 'running'
-            ? <><span className={cine.spinner} />Generando…</>
+          {generating ? <><span className={styles.spinner} />Generando animación…</>
             : !url.trim() ? 'Ingresá una URL' : '✨ Generar animación'}
         </button>
       </div>
 
-      <div className={cine.right}>
-        <div className={styles.frame}>
-          <canvas ref={canvasRef} className={styles.canvas} />
-        </div>
-        <div className={styles.beat} ref={beatRef} />
-        <div className={styles.controls}>
-          <button className={`${styles.ctl} ${styles.primary}`} onClick={toggle}>{playing ? '⏸ Pausa' : '▶ Play'}</button>
-          <button className={styles.ctl} onClick={restart}>↺ Reiniciar</button>
-          <div className={styles.seek}>
-            <input type="range" min="0" max="1000" defaultValue="0" ref={seekRef} onChange={onSeek} className={styles.range} />
-            <span className={styles.time} ref={timeRef}>0.0 / 0.0</span>
-          </div>
-          <div className={styles.seg}>
-            <button className={speed === 0.5 ? styles.on : ''} onClick={() => pickSpeed(0.5)}>0.5×</button>
-            <button className={speed === 1 ? styles.on : ''} onClick={() => pickSpeed(1)}>1×</button>
-          </div>
-        </div>
+      <div className={styles.right}>
+        {showResult ? (
+          <div className={styles.cineResult}>
+            <div className={styles.cineResultHeader}>
+              <div className={styles.previewName}>
+                {gen.videoUrl ? 'Animación lista' : gen.status === 'error' ? 'No se pudo generar' : 'Generando tu animación…'}
+              </div>
+              <div className={styles.previewMeta}>{gen.url || 'sin URL'} · Canvas · {proposito}</div>
+            </div>
 
-        {gen && (
-          <div className={styles.renderPanel}>
-            {gen.status === 'running' && (
-              <div className={styles.progressWrap}>
-                <div className={styles.progressBar}><div className={styles.progressFill} style={{ width: `${pct}%` }} /></div>
-                <span className={styles.progressMsg}>{STEP_LABELS[gen.step] || 'Procesando…'}</span>
+            {generating && (
+              <div className={styles.log}>
+                <div className={`${styles.logLine} ${styles.logActive}`}>
+                  <div className={styles.progressBar}><div className={styles.progressFill} style={{ width: `${pct}%` }} /></div>
+                  <span className={styles.logMsg}>{STEP_LABELS[gen.step] || 'Procesando…'}</span>
+                </div>
               </div>
             )}
-            {gen.status === 'error' && <div className={styles.err}>⚠️ {gen.error}</div>}
-            {gen.status === 'done' && gen.videoUrl && (
-              <div className={styles.done}>
-                <video src={gen.videoUrl} controls autoPlay loop playsInline className={styles.resultVideo} />
-                <a className={`${styles.ctl} ${styles.primary}`} href={gen.videoUrl} target="_blank" rel="noreferrer" download>⬇ Descargar MP4</a>
+
+            {gen.status === 'error' && <div className={styles.cineNote}>⚠️ {gen.error}</div>}
+
+            {gen.videoUrl && (
+              <div className={styles.playerWrap}>
+                <video ref={videoRef} src={gen.videoUrl} controls autoPlay loop playsInline className={styles.video} />
               </div>
             )}
+
             {planScenes.length > 0 && (
-              <div className={cine.cinePlan} style={{ width: '100%' }}>
+              <div className={styles.cinePlan}>
                 {gen.timeline?.brand && (
-                  <div className={cine.cinePlanItem}>
-                    <div className={cine.cinePlanOrder}>🎬</div>
-                    <div className={cine.cinePlanInfo}>
-                      <div className={cine.cinePlanName}>{gen.timeline.brand}</div>
-                      <div className={cine.cinePlanProp}>guion de la IA · {planScenes.length} escenas</div>
+                  <div className={styles.cinePlanItem}>
+                    <div className={styles.cinePlanOrder}>🎬</div>
+                    <div className={styles.cinePlanInfo}>
+                      <div className={styles.cinePlanName}>{gen.timeline.brand}</div>
+                      <div className={styles.cinePlanProp}>guion de la IA · {planScenes.length} escenas</div>
                     </div>
                   </div>
                 )}
                 {planScenes.map((s, i) => (
-                  <div key={i} className={cine.cinePlanItem}>
-                    <div className={cine.cinePlanOrder}>{i + 1}</div>
-                    <div className={cine.cinePlanInfo}>
-                      <div className={cine.cinePlanName}>{s.type}</div>
-                      <div className={cine.cinePlanProp}>{sceneSummary(s)}</div>
+                  <div key={i} className={styles.cinePlanItem}>
+                    <div className={styles.cinePlanOrder}>{i + 1}</div>
+                    <div className={styles.cinePlanInfo}>
+                      <div className={styles.cinePlanName}>{s.type}</div>
+                      <div className={styles.cinePlanProp}>{sceneSummary(s)}</div>
                     </div>
                   </div>
                 ))}
               </div>
             )}
+
+            {(gen.videoUrl || gen.status === 'error') && (
+              <button className={styles.forgeBtn} style={{ marginTop: 14 }} onClick={reset}>← Generar otra</button>
+            )}
+          </div>
+        ) : (
+          <div className={styles.cineLibrary}>
+            <div className={styles.empty}>
+              <div style={{ fontSize: 36 }}>🎬</div>
+              <div className={styles.emptyTitle}>Tu animación aparece acá</div>
+              <div className={styles.emptySub}>Pegá la URL de tu sitio y dale generar — la IA escribe el guion y el motor anima.</div>
+            </div>
           </div>
         )}
       </div>
