@@ -5,6 +5,7 @@ import HeroText from './HeroText'
 import MarqueeShowcase from './MarqueeShowcase'
 import Features from './Features'
 import Pricing from './Pricing'
+import Footer from './Footer'
 
 const ParticleHero = lazy(() => import('./ParticleHero'))
 
@@ -86,6 +87,8 @@ export default function Landing() {
       <Features />
 
       <Pricing />
+
+      <Footer />
     </div>
   )
 }
