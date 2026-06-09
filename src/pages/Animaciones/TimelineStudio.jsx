@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createTimelineEngine } from './engine'
+import { DEMO_TIMELINE } from './engineCore'
 import { useAuth } from '../../contexts/AuthContext'
 import styles from './TimelineStudio.module.css'
 
@@ -9,6 +10,24 @@ const STEP_LABELS = {
   queued: 'En cola…', build: 'Armando el render…', render: 'Renderizando en tu PC (esto tarda)…',
   upload: 'Subiendo a la nube…', export: 'Listo',
 }
+
+// Dos guiones escritos a mano COMO DATOS. Mismo motor, distinto contenido/orden/acento -> prueba que
+// es data-driven (es exactamente lo que va a escribir la IA desde un link).
+const PRESETS = [
+  { label: 'E-commerce', timeline: DEMO_TIMELINE },
+  {
+    label: 'SaaS / consultorio',
+    timeline: {
+      brand: 'ConsulPay', accent: '#4f8bff',
+      scenes: [
+        { type: 'paintTitle', title: 'ConsulPay', subtitles: ['Tu consultorio', 'ordenado y al día'], durationInFrames: 180 },
+        { type: 'checklist', title: 'Todo en un lugar', items: ['Pacientes y sesiones', 'Pagos al instante', 'Reportes claros'], durationInFrames: 138 },
+        { type: 'deliver', caption: 'Del caos al control', durationInFrames: 180 },
+        { type: 'outro', brand: 'ConsulPay', cta: 'Probalo gratis', durationInFrames: 114 },
+      ],
+    },
+  },
+]
 
 /**
  * Animaciones (beta) — el método NUEVO para los videos: animaciones reales por timeline
@@ -24,6 +43,7 @@ export default function TimelineStudio() {
   const seekRef = useRef(null)
   const [playing, setPlaying] = useState(true)
   const [speed, setSpeed] = useState(1)
+  const [preset, setPreset] = useState(0)
   const { user } = useAuth()
   const [gen, setGen] = useState(null)   // { status, step, progress, videoUrl, error }
   const pollRef = useRef(null)
@@ -46,6 +66,7 @@ export default function TimelineStudio() {
   const restart = () => engineRef.current.restart()
   const onSeek = (e) => engineRef.current.seek(Number(e.target.value) / 1000)
   const pickSpeed = (s) => { engineRef.current.setSpeed(s); setSpeed(s) }
+  const pickPreset = (i) => { setPreset(i); engineRef.current.setTimeline(PRESETS[i].timeline); engineRef.current.play(); setPlaying(true) }
 
   async function generateMp4() {
     if (gen?.status === 'running') return
@@ -53,7 +74,7 @@ export default function TimelineStudio() {
     try {
       const r = await fetch(`${API_URL}/api/timeline/generate`, {
         method: 'POST', headers: HEADERS,
-        body: JSON.stringify({ userId: user?.uid || '', formato: 'vertical' }),
+        body: JSON.stringify({ userId: user?.uid || '', formato: 'vertical', timeline: PRESETS[preset].timeline }),
       })
       const d = await r.json()
       if (d.error || !d.job_id) { setGen(g => ({ ...g, status: 'error', error: d.error || 'No se pudo iniciar' })); return }
@@ -92,6 +113,15 @@ export default function TimelineStudio() {
 
         <div className={styles.beat} ref={beatRef} />
 
+        <div className={styles.presets}>
+          <span className={styles.presetsLabel}>Guion (datos):</span>
+          {PRESETS.map((p, i) => (
+            <button key={p.label} className={preset === i ? styles.presetOn : styles.preset} onClick={() => pickPreset(i)}>
+              {p.label}
+            </button>
+          ))}
+        </div>
+
         <div className={styles.controls}>
           <button className={`${styles.ctl} ${styles.primary}`} onClick={toggle}>
             {playing ? '⏸ Pausa' : '▶ Play'}
@@ -112,7 +142,7 @@ export default function TimelineStudio() {
             className={`${styles.ctl} ${styles.primary} ${styles.renderBtn}`}
             onClick={generateMp4}
             disabled={gen?.status === 'running'}>
-            {gen?.status === 'running' ? '⏳ Generando MP4…' : '⬇ Generar MP4 (demo)'}
+            {gen?.status === 'running' ? '⏳ Generando MP4…' : `⬇ Generar MP4 (${PRESETS[preset].label})`}
           </button>
 
           {gen?.status === 'running' && (
@@ -131,8 +161,9 @@ export default function TimelineStudio() {
         </div>
 
         <div className={styles.foot}>
-          El MP4 lo renderiza Remotion en tu PC (gratis) y se sube a Cloudinary, igual que las cinematografías.
-          Por ahora exporta la demo horneada; el próximo paso es que la IA escriba el timeline desde tu sitio.
+          El motor ahora es <strong>data-driven</strong>: cambiá el guion arriba y mirá cómo se rearma con
+          otro contenido, orden y acento. El MP4 lo renderiza Remotion en tu PC (gratis) y se sube a
+          Cloudinary. Próximo paso: que la IA escriba ese guion desde tu link.
         </div>
       </div>
     </div>

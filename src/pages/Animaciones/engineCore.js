@@ -4,6 +4,19 @@
 export const W = 405, H = 720;
 let ctx = null;
 
+// Acento de marca, variable por timeline. setAccent() lo cambia; por defecto, sunset vivo.
+let A1 = '#ff8a4c', A2 = '#ff4f8b';
+function _lighten(hex, amt) {
+  const n = parseInt(hex.slice(1), 16);
+  let r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  r = Math.round(r + (255 - r) * amt); g = Math.round(g + (255 - g) * amt); b = Math.round(b + (255 - b) * amt);
+  return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+}
+function setAccent(hex) {
+  if (typeof hex === 'string' && /^#[0-9a-fA-F]{6}$/.test(hex)) { A1 = hex; A2 = _lighten(hex, 0.3); }
+  else { A1 = '#ff8a4c'; A2 = '#ff4f8b'; }
+}
+
 
   // roundRect polyfill (por las dudas)
   if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D.prototype.roundRect) {
@@ -35,7 +48,7 @@ let ctx = null;
   // gradiente de acento reutilizable
   function accent(x0, y0, x1, y1) {
     const g = ctx.createLinearGradient(x0, y0, x1, y1);
-    g.addColorStop(0, '#ff8a4c'); g.addColorStop(1, '#ff4f8b');
+    g.addColorStop(0, A1); g.addColorStop(1, A2);
     return g;
   }
   function setShadow(color, blur, dy = 0) { ctx.shadowColor = color; ctx.shadowBlur = blur; ctx.shadowOffsetY = dy; }
@@ -162,7 +175,7 @@ let ctx = null;
   }
 
   // ---------- ESCENA 1: título (puntito → botón → barra → derretir → gota pinta título) ----------
-  function sceneTitle(t) {
+  function sceneTitle(t, p = {}) {
     const cx = W / 2, cy = H * 0.40;
     const appear = inv(t, 0.35, 0.6);
 
@@ -216,7 +229,7 @@ let ctx = null;
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.fillStyle = '#fff6f0';
         ctx.save(); ctx.translate(cx, cy + sink); ctx.scale(eOutBack(clamp(tin, 0, 1)) * 0.06 + 0.94, eOutBack(clamp(tin, 0, 1)) * 0.06 + 0.94);
-        ctx.fillText('Sabor real', 0, 0); ctx.restore();
+        ctx.fillText(p.title || '', 0, 0); ctx.restore();
       }
       ctx.restore();
     }
@@ -250,7 +263,8 @@ let ctx = null;
     // ----- título grande "pintado" progresivamente -----
     const pp = inv(t, 4.3, 5.7);
     if (pp > 0) {
-      const titleY = paintY, fontSize = 58, half = fontSize * 0.62;
+      const _ttl = p.title || '';
+      const titleY = paintY, fontSize = _ttl.length > 13 ? Math.max(34, 58 - (_ttl.length - 13) * 2.2) : 58, half = fontSize * 0.62;
       const top = titleY - half, bot = titleY + half + 8;
       const front = lerp(top - 6, bot, eOutCubic(pp));
       ctx.save();
@@ -262,7 +276,7 @@ let ctx = null;
       ctx.font = `800 ${fontSize}px "Inter",system-ui,sans-serif`;
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillStyle = accent(cx - 140, titleY - 30, cx + 140, titleY + 30);
-      ctx.fillText('Sabor real', cx, titleY);
+      ctx.fillText(_ttl, cx, titleY);
       ctx.restore();
       // goteos en el frente
       if (pp < 1) {
@@ -276,14 +290,16 @@ let ctx = null;
     }
 
     // ----- subtítulos minúsculo → leíble -----
-    fxText('Productos naturales', cx, H * 0.72, 22, inv(t, 5.2, 5.8), 600, '#e9d9e4');
-    fxText('directo a tu casa', cx, H * 0.755, 22, inv(t, 5.45, 6.0), 600, '#e9d9e4');
+    const _subs = p.subtitles || [];
+    if (_subs[0]) fxText(_subs[0], cx, H * 0.72, 22, inv(t, 5.2, 5.8), 600, '#e9d9e4');
+    if (_subs[1]) fxText(_subs[1], cx, H * 0.755, 22, inv(t, 5.45, 6.0), 600, '#e9d9e4');
   }
 
   // ---------- ESCENA 2: carrito → click → caja → alas → vuela → casa ----------
-  function sceneCart(t) {
+  function sceneCart(t, p = {}) {
     const cx = W / 2, cy = H * 0.44;
     const hx = W * 0.72, hy = H * 0.64;
+    if (p.caption) fxText(p.caption, W / 2, H * 0.15, 23, inv(t, 0.3, 1.0), 600, '#f0e7f0');
 
     // casa aparece antes de que llegue
     const hin = inv(t, 3.2, 4.1);
@@ -377,10 +393,10 @@ let ctx = null;
   }
 
   // ---------- ESCENA 3: checklist con botones OK ----------
-  function sceneList(t) {
+  function sceneList(t, p = {}) {
     const cx = W / 2;
-    fxText('Por qué Sabor real', cx, H * 0.24, 30, inv(t, 0.1, 0.7), 800);
-    const items = ['Sin conservantes', 'Envío en el día', 'Precios claros', 'Atención humana'];
+    fxText(p.title || '', cx, H * 0.24, (p.title || '').length > 18 ? 24 : 30, inv(t, 0.1, 0.7), 800);
+    const items = (p.items || []).slice(0, 4);
     const startY = H * 0.36, gap = 64;
     items.forEach((label, i) => {
       const d = 0.55 + i * 0.26;
@@ -421,12 +437,13 @@ let ctx = null;
   }
 
   // ---------- ESCENA 4: marca + CTA ----------
-  function sceneOutro(t) {
+  function sceneOutro(t, p = {}) {
     const cx = W / 2, cy = H * 0.42;
     // marca paint-in
     const bn = inv(t, 0.2, 1.05);
     if (bn > 0) {
-      const fontSize = 56, half = fontSize * 0.62, top = cy - half, bot = cy + half;
+      const _bn = p.brand || '';
+      const fontSize = _bn.length > 13 ? Math.max(34, 56 - (_bn.length - 13) * 2.2) : 56, half = fontSize * 0.62, top = cy - half, bot = cy + half;
       const front = lerp(top - 6, bot, eOutCubic(bn));
       ctx.save();
       ctx.beginPath(); ctx.moveTo(0, top - 30); ctx.lineTo(W, top - 30); ctx.lineTo(W, front);
@@ -435,7 +452,7 @@ let ctx = null;
       ctx.font = `800 ${fontSize}px "Inter",system-ui,sans-serif`;
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillStyle = accent(cx - 130, top, cx + 130, bot);
-      ctx.fillText('Sabor real', cx, cy);
+      ctx.fillText(_bn, cx, cy);
       ctx.restore();
     }
     // barra
@@ -453,7 +470,7 @@ let ctx = null;
       ctx.roundRect(-w / 2, -h / 2, w, h, h / 2); ctx.fill(); noShadow();
       ctx.font = `700 25px "Inter",system-ui,sans-serif`;
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#1a0a14';
-      ctx.fillText('Visitá ahora  →', 0, 1);
+      ctx.fillText((p.cta || 'Visitá ahora') + '  →', 0, 1);
       ctx.restore();
       // chispas al aparecer
       const burst = inv(t, 1.1, 1.55);
@@ -471,13 +488,44 @@ let ctx = null;
   }
 
   // ---------- timeline / escenas ----------
-  const SCENES = [
-    { s: 0.0, e: 6.4, f: sceneTitle, label: '<b>Escena 1</b> · puntito → botón → barra → se derrite → gota → pinta el título' },
-    { s: 6.4, e: 13.2, f: sceneCart, label: '<b>Escena 2</b> · carrito → click → caja → le salen alas → vuela → cae en la casa' },
-    { s: 13.2, e: 17.4, f: sceneList, label: '<b>Escena 3</b> · checklist con botones OK' },
-    { s: 17.4, e: 21.4, f: sceneOutro, label: '<b>Escena 4</b> · marca + CTA “Visitá ahora”' },
-  ];
-  const T = SCENES[SCENES.length - 1].e;
+  // ---------- timeline (DATOS) -> escenas ----------
+  // Cada escena: { type, ...props, durationInFrames }. El motor mapea type -> dibujante y lo
+  // renderiza con sus props. El contenido (texto / items / acento) viene de los DATOS, no horneado.
+  // Asi la IA puede componer cualquier video escribiendo un timeline; el render es el mismo.
+  const DRAWERS = { paintTitle: sceneTitle, deliver: sceneCart, checklist: sceneList, outro: sceneOutro };
+  const SCENE_LABELS = {
+    paintTitle: '<b>paintTitle</b> · puntito -> boton -> barra -> se derrite -> gota -> pinta el titulo',
+    deliver: '<b>deliver</b> · carrito -> click -> caja -> le salen alas -> vuela -> cae en la casa',
+    checklist: '<b>checklist</b> · lista con botones OK',
+    outro: '<b>outro</b> · marca + CTA',
+  };
+
+  // Timeline por defecto = la demo de siempre, ahora expresada como DATOS (render identico).
+  const DEMO_TIMELINE = {
+    brand: 'Sabor real', accent: '#ff5a8a',
+    scenes: [
+      { type: 'paintTitle', title: 'Sabor real', subtitles: ['Productos naturales', 'directo a tu casa'], durationInFrames: 192 },
+      { type: 'deliver', caption: '', durationInFrames: 204 },
+      { type: 'checklist', title: 'Por que Sabor real', items: ['Sin conservantes', 'Envio en el dia', 'Precios claros', 'Atencion humana'], durationInFrames: 126 },
+      { type: 'outro', brand: 'Sabor real', cta: 'Visita ahora', durationInFrames: 120 },
+    ],
+  };
+
+  function pickTimeline(tl) {
+    return (tl && Array.isArray(tl.scenes) && tl.scenes.length) ? tl : DEMO_TIMELINE;
+  }
+
+  // Acumula los rangos [s,e] (segundos) de cada escena a partir de su durationInFrames.
+  function layout(tl) {
+    let cursor = 0; const out = [];
+    for (const sc of (tl.scenes || [])) {
+      const f = Math.max(30, sc.durationInFrames || 120);
+      const d = f / 30;
+      out.push({ ...sc, s: cursor, e: cursor + d });
+      cursor += d;
+    }
+    return out;
+  }
 
   function sceneEdge(t, s, e) {
     if (t < s || t > e) return 0;
@@ -486,14 +534,18 @@ let ctx = null;
     return clamp(Math.min(fin, fout), 0, 1);
   }
 
-  function drawFrame(c, t) {
+  function drawFrame(c, t, timeline) {
     ctx = c;
+    const tl = pickTimeline(timeline);
+    setAccent(tl.accent);
     ctx.clearRect(0, 0, W, H);
     drawBg(t);
-    for (const sc of SCENES) {
+    for (const sc of layout(tl)) {
       const a = sceneEdge(t, sc.s, sc.e);
       if (a <= 0) continue;
-      // micro zoom de entrada/salida para sabor cinematográfico
+      const drawer = DRAWERS[sc.type];
+      if (!drawer) continue;
+      // micro zoom de entrada/salida para sabor cinematografico
       const local = t - sc.s, dur = sc.e - sc.s;
       const zin = lerp(1.04, 1, eOutCubic(inv(local, 0, 0.5)));
       const zout = lerp(1, 0.985, eInCubic(inv(local, dur - 0.5, dur)));
@@ -501,16 +553,21 @@ let ctx = null;
       ctx.save();
       ctx.globalAlpha = a;
       ctx.translate(W / 2, H / 2); ctx.scale(z, z); ctx.translate(-W / 2, -H / 2);
-      sc.f(local);
+      drawer(local, sc);
       ctx.restore();
     }
   }
 
+  function timelineDuration(timeline) {
+    const s = layout(pickTimeline(timeline));
+    return s.length ? s[s.length - 1].e : 0;
+  }
 
+  function beatAt(t, timeline) {
+    const s = layout(pickTimeline(timeline));
+    const cur = s.find(x => t >= x.s && t < x.e) || s[s.length - 1];
+    if (!cur) return '';
+    return cur.label || SCENE_LABELS[cur.type] || ('Escena · ' + cur.type);
+  }
 
-export const DURATION = T;
-export { drawFrame };
-export function beatAt(t) {
-  const cur = SCENES.find(sc => t >= sc.s && t < sc.e) || SCENES[SCENES.length - 1];
-  return cur.label;
-}
+export { drawFrame, beatAt, timelineDuration, setAccent, DEMO_TIMELINE };

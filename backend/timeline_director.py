@@ -48,7 +48,11 @@ def build_timeline_files(job_id: str, timeline: dict, remotion_dir, fmt: str = "
     remotion_dir = Path(remotion_dir)
     short = job_id[:8]
     comp_id = f"TimelineVideo-{short}"
-    total = int((timeline or {}).get("durationInFrames") or DEMO_FRAMES)
+    scenes = (timeline or {}).get("scenes") or []
+    if scenes:
+        total = int(sum(max(30, int(s.get("durationInFrames") or 120)) for s in scenes))
+    else:
+        total = int((timeline or {}).get("durationInFrames") or DEMO_FRAMES)
     w, h = FORMATS.get(fmt, FORMATS["vertical"])
     temp_files = []
 

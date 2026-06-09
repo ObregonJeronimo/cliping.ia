@@ -24,7 +24,7 @@ export const TimelineVideo = ({ timeline = null }) => {
     // de la composicion (1080x1920): 1080/405 == 1920/720, asi que una sola escala alcanza.
     const scale = width / LOGICAL_W
     ctx.setTransform(scale, 0, 0, scale, 0, 0)
-    drawFrame(ctx, frame / fps)
+    drawFrame(ctx, frame / fps, timeline)   // timeline desde props; si viene vacio, el nucleo usa la demo
   }, [frame, width, fps, timeline])
 
   return (

@@ -735,6 +735,7 @@ async def _render_video_job(job_id: str, req: VideoGenRequest):
 class TimelineGenRequest(BaseModel):
     userId: str = ""
     formato: str = "vertical"   # vertical (9:16) por ahora
+    timeline: dict | None = None  # guion ya armado (preset o IA). Si no viene, usa la demo.
     url: str = ""               # reservado (todavia no se usa)
     desarrollo: str = ""        # reservado (todavia no se usa)
 
@@ -760,8 +761,12 @@ async def _render_timeline_job(job_id: str, req: TimelineGenRequest):
     temp_files = []
     try:
         jobs[job_id].update({"status": "processing", "step": "build", "progress": 20})
-        # Timeline: por ahora la DEMO horneada en el nucleo. Mas adelante lo escribe la IA desde la URL.
-        timeline = {"durationInFrames": timeline_director.DEMO_FRAMES}
+        # Timeline desde la request (preset elegido o, mas adelante, el que escriba la IA).
+        # Si no trae escenas, el nucleo renderiza la demo (fallback).
+        if req.timeline and req.timeline.get("scenes"):
+            timeline = req.timeline
+        else:
+            timeline = {"durationInFrames": timeline_director.DEMO_FRAMES}
         entry, comp_id, total, temp_files = timeline_director.build_timeline_files(
             job_id, timeline, REMOTION_DIR, req.formato)
 
