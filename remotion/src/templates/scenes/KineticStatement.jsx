@@ -142,27 +142,43 @@ export const KineticStatement = ({ theme, lines = [], subtitle = '', variant = '
               {reveal === 'type'
                 ? <TypewriterLines theme={theme} lines={lines} frame={frame} dur={dur} />
                 : (() => {
-                let wi = 0  // índice global de palabra -> stagger tipo "caption kinético"
+                // Kinético a nivel CARÁCTER (estándar pro): cada letra entra combinando
+                // posición + escala + rotación + opacidad, con overshoot (EASE.back) y stagger
+                // adaptativo (termina de revelar ~al 50% de la escena -> deja tiempo para leer).
+                // Las palabras NO se parten (wrapper nowrap). Rotación modulada por energía de marca.
+                const allChars = lines.reduce((a, segs) => a + segs.reduce((b, s) => b + s.t.replace(/\s+/g, '').length, 0), 0)
+                const START = 6
+                const win = Math.max(10, dur * 0.5 - START)
+                const STEP = clamp(win / Math.max(1, allChars), 0.55, 2.0)  // frames por carácter
+                const energy = (theme.art || {}).energy || 'medio'
+                const ROT = energy === 'bajo' ? 0 : (energy === 'alto' ? 3.2 : 2)  // wobble de entrada (grados)
+                let ci = 0
                 return lines.map((segs, i) => (
                   <div key={i}>
                     {segs.map((s, j) => s.t.split(' ').map((w, k) => {
                       if (w === '') return null
-                      const delay = 6 + wi * 3
-                      wi++
-                      const p = prog(frame, delay, m.enterFrames, EASE.back)
-                      const op = clamp((frame - delay) / Math.max(1, m.enterFrames * 0.6), 0, 1)
-                      // La palabra de ACENTO pega un "pop" de escala justo al aterrizar -> el ojo
-                      // va directo al mensaje (clave en consumo mudo / scroll rápido).
-                      const land = delay + m.enterFrames
-                      const t = frame - land
-                      const pop = (s.accent && t >= 0 && t <= 12) ? Math.sin((t / 12) * Math.PI) : 0
-                      const sc = 1 + 0.16 * pop
-                      const st = { display: 'inline-block', marginRight: '0.26em',
-                        transform: `translateY(${(1 - p) * 42}px) scale(${sc})`, opacity: op,
-                        transformOrigin: 'center bottom' }
-                      return s.accent
-                        ? <span key={`${j}-${k}`} style={st}><GradientText theme={theme}>{w}</GradientText></span>
-                        : <span key={`${j}-${k}`} style={st}>{w}</span>
+                      return (
+                        <span key={`${j}-${k}`} style={{ display: 'inline-block', whiteSpace: 'nowrap', marginRight: '0.26em' }}>
+                          {[...w].map((ch, c) => {
+                            const delay = START + ci * STEP
+                            ci++
+                            const p = prog(frame, delay, m.enterFrames, EASE.back)
+                            const op = clamp((frame - delay) / Math.max(1, m.enterFrames * 0.5), 0, 1)
+                            // Énfasis al aterrizar la letra de una palabra de ACENTO (el ojo va al mensaje).
+                            const land = delay + m.enterFrames
+                            const t = frame - land
+                            const pop = (s.accent && t >= 0 && t <= 12) ? Math.sin((t / 12) * Math.PI) : 0
+                            const sc = 0.7 + p * 0.3 + 0.12 * pop
+                            const rot = (1 - p) * ROT * (c % 2 ? 1 : -1)
+                            const st = { display: 'inline-block',
+                              transform: `translateY(${(1 - p) * 32}px) scale(${sc}) rotate(${rot}deg)`,
+                              opacity: op, transformOrigin: 'center bottom' }
+                            return s.accent
+                              ? <span key={c} style={st}><GradientText theme={theme}>{ch}</GradientText></span>
+                              : <span key={c} style={st}>{ch}</span>
+                          })}
+                        </span>
+                      )
                     }))}
                   </div>
                 ))
