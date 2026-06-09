@@ -151,6 +151,9 @@ Haiku para clasificar/visión, crítica condicional, expirar videos viejos en Cl
   energía de la marca; (2) sistema de partículas + momento héroe (StatReveal/CtaOutro); (3) fondo
   cinematográfico (gradient-mesh + viñeta); (4) tipografía cinética a nivel carácter; (5) transiciones
   diseñadas por energía. Todo no-regresivo (energía media = idéntico a hoy) y validado en render.
-- Fase 2: director multi-etapa con paso de estrategia en Opus (opcional) + loop de crítica.
+- Fase 2: director multi-etapa con paso de estrategia + loop de crítica. DECISIÓN DE JERO: la crítica
+  debe usar **Opus si realmente marca la diferencia** en calidad (no usar Sonnet solo para ahorrar si no
+  rinde igual). Medir el costo igual con el logging existente, pero la calidad manda. Jero sabe que esto
+  sube el costo por video.
 - Fase 4: música + beat-sync (POSPUESTA — bloqueada por assets/licencia). Fase 5: Lambda + variantes
   + rating→playbooks.
