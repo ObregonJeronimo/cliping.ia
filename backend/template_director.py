@@ -31,6 +31,19 @@ import iconify_service
 _client = AsyncAnthropic()
 DIRECTOR_MODEL = "claude-sonnet-4-6"
 
+# --- Fase 2: crítica / auto-revisión del guion (un "director SENIOR" revisa antes de renderizar) ---
+# El modelo de la crítica es CONFIGURABLE para poder comparar calidad/costo con DATOS reales:
+#   CLIPING_CRITIC=0                        -> apaga la crítica (vuelve al comportamiento base / baseline)
+#   CLIPING_CRITIC_MODEL=claude-sonnet-4-6  -> usa Sonnet en la crítica (más barato; comparar vs Opus)
+#   CLIPING_CRITIC_ROUNDS=2                 -> hasta 2 vueltas de crítica (default 1)
+# Default = ON con Opus (la calidad manda en este paso; el costo se mide solo en [video] tokens / [critic]).
+CRITIC_MODEL = os.getenv("CLIPING_CRITIC_MODEL", "claude-opus-4-8")
+CRITIC_ENABLED = os.getenv("CLIPING_CRITIC", "1").strip().lower() not in ("0", "false", "no", "off", "")
+try:
+    CRITIC_ROUNDS = max(1, int(os.getenv("CLIPING_CRITIC_ROUNDS", "1")))
+except Exception:
+    CRITIC_ROUNDS = 1
+
 # Precios por millón de tokens (input, output) por modelo, para estimar el costo real por video.
 MODEL_PRICES = {
     "claude-opus-4-8": (5.0, 25.0),
@@ -566,6 +579,51 @@ REGLAS:
   para la audiencia de ESTA página, no un molde genérico."""
 
 
+CRITIC_SYSTEM = """Sos director creativo SENIOR. Un director junior te pasa el STORYBOARD (spec JSON) de
+un reel de marketing + el BRIEF + el contexto del sitio. Tu trabajo: ELEVAR la calidad del guion ANTES
+de renderizar. NO reescribís por reescribir: si el guion ya es fuerte, lo dejás casi igual. Solo cambiás
+lo que DE VERDAD lo mejora. Sé exigente pero quirúrgico.
+
+REVISÁ con ojo crítico, en este orden de prioridad:
+1. PEDIDO / OBJETIVO (manda sobre todo): ¿el video cumple lo que pidió el usuario y el OBJETIVO del
+   brief? Si no lo cumple, reescribilo para que lo cumpla. Si pidió una oferta/producto puntual, eso es
+   el corazón del video y del CTA.
+2. HOOK: ¿los primeros 1-3 segundos enganchan de verdad? La 1ª escena tiene que ser CORTA y filosa
+   (KineticStatement / StatReveal con dato real / IllustrationScene), NUNCA pesada (Comparison/FeatureList).
+   Si el hook es débil, largo o genérico, reescribilo.
+3. COPY GENÉRICO (matalo): frases vacías tipo "la mejor calidad", "tu aliado ideal", "soluciones a
+   medida", "llevá tu negocio al siguiente nivel", "calidad y confianza" -> reemplazalas por beneficios
+   CONCRETOS y específicos de ESTA marca, sacados del contexto del sitio. Variá los verbos. Que suene humano.
+4. ANTI-FÓRMULA: si la estructura es el molde Hook -> Comparison -> FeatureList -> CTA, rompela.
+   Comparison y FeatureList son OPCIONALES; rara vez van las dos en el mismo video, y muchos no llevan
+   ninguna. Elegí la estructura que cuente MEJOR a ESTA marca puntual.
+5. MOMENTO HÉROE: el golpe que frena el scroll tiene que estar en la escena más fuerte y notarse. Si
+   está enterrado o tibio, potencialo.
+6. COHERENCIA: que sea una micro-historia con un hilo (el concepto), no escenas sueltas. Arreglá saltos
+   lógicos. Cerrá con CtaOutro y un CTA accionable y concreto.
+7. HONESTIDAD (CRÍTICO): cualquier número (StatReveal), precio (OfferPrice), testimonio (Testimonial) o
+   cifra de prueba social TIENE que aparecer TEXTUALMENTE en el CONTEXTO DEL SITIO que te paso. Si no
+   está ahí, NO es un hecho: sacalo o pasalo a una frase (KineticStatement). NUNCA inventes datos, ni
+   siquiera "de memoria" para marcas conocidas.
+8. PÚBLICO + IDIOMA: que el copy le hable al público correcto, en el MISMO idioma del guion.
+
+REGLAS DE FORMA (no las rompas):
+- 4 a 6 escenas. Abrí con un hook fuerte; cerrá con CtaOutro.
+- KineticStatement: cada línea de 1 a 4 palabras (máx ~22 caracteres); 1 solo segmento accent:true por
+  línea; incluí los espacios DENTRO del texto de cada segmento (ej [{"t":"Comé "},{"t":"mejor","accent":true}]).
+- Tipos de escena VÁLIDOS (no inventes otros): KineticStatement, StatReveal, FeatureList, Comparison,
+  IconTransform, IllustrationScene, MockupShowcase, ProductShowcase, IntegrationCluster, Testimonial,
+  SocialProof, LogoReveal, ProcessSteps, OfferPrice, MapLocation, CtaOutro.
+- NO agregues "images" en ProductShowcase ni "logo" en LogoReveal/CtaOutro (se inyectan solos).
+- En IconTransform/FeatureList los íconos son CONCEPTOS en inglés (ej "leaf", "lock", "chart").
+- durationInFrames entre 75 y 120 por escena.
+
+SALIDA: devolvés SOLO un objeto JSON válido (sin markdown, sin texto antes ni después), con esta forma EXACTA:
+{"verdict":"ok"|"revisado","notas":"<1-2 frases: qué mejoraste, o por qué ya estaba bien>","spec":{"theme":"<theme>","brand":"<marca>","scenes":[ ... ]}}
+Si el guion ya está bien, poné verdict="ok" y devolvé el spec TAL CUAL (mismo theme, brand y scenes).
+El campo "spec" SIEMPRE va completo (theme + brand + scenes), revisado o no."""
+
+
 def _chunk_lines(text, max_words=8, per_line=3):
     """Parte un texto real del sitio en líneas cortas (1-4 palabras) con acento al final."""
     words = (text or "").split()[:max_words]
@@ -1068,6 +1126,62 @@ def _parse_spec(raw: str):
         return None
 
 
+def _parse_critic(raw: str):
+    """Lee la respuesta del crítico. Espera {"verdict","notas","spec":{...}}; tolera que devuelva el
+    storyboard pelado. Devuelve (verdict, notas, spec) o None si no parsea."""
+    obj = _parse_spec(raw)
+    if not isinstance(obj, dict):
+        return None
+    if isinstance(obj.get("spec"), dict) and obj["spec"].get("scenes"):
+        return (str(obj.get("verdict") or "?"),
+                str(obj.get("notas") or obj.get("notes") or ""), obj["spec"])
+    if obj.get("scenes"):   # el modelo devolvió el storyboard sin envoltorio -> lo tomamos igual
+        return (str(obj.get("verdict") or "revisado"),
+                str(obj.get("notas") or obj.get("notes") or ""), obj)
+    return None
+
+
+async def _critique_spec(spec: dict, *, brief_txt: str = "", contexto: str = "",
+                         proposito: str = "marketing", desarrollo: str = "",
+                         energy: str = "medio", round_i: int = 1, usage: list = None) -> dict:
+    """Fase 2: un director SENIOR revisa el storyboard y lo MEJORA (o lo deja igual si ya es fuerte).
+    Best-effort TOTAL: si está apagado, no parsea o falla, devuelve el MISMO spec (identidad) sin romper
+    nada. El costo se acumula en 'usage' (stage 'critic') -> aparece en el log [video] tokens.
+    Importante: la salida se RE-NORMALIZA afuera (honestidad/tipos/listas) como red de seguridad."""
+    if not CRITIC_ENABLED or not isinstance(spec, dict) or not spec.get("scenes"):
+        return spec
+    try:
+        spec_json = json.dumps({"theme": spec.get("theme"), "brand": spec.get("brand"),
+                                "scenes": spec.get("scenes")}, ensure_ascii=False)
+        pedido = (f'\n\nPEDIDO DEL USUARIO (PRIORIDAD ABSOLUTA, el video DEBE cumplirlo):\n"{desarrollo.strip()}"'
+                  if (desarrollo or "").strip() else "")
+        body = (f"PROPÓSITO: {proposito}  ·  ENERGÍA: {energy}\n\n"
+                f"BRIEF (concepto / momento héroe / público / objetivo):\n{brief_txt or '(poco contexto)'}\n\n"
+                f"CONTEXTO DEL SITIO (chequeá especificidad y HONESTIDAD: los datos del video tienen que "
+                f"estar acá):\n{(contexto or '')[:1800]}{pedido}\n\n"
+                f"STORYBOARD A REVISAR:\n{spec_json}")
+        resp = await _client.messages.create(
+            model=CRITIC_MODEL, max_tokens=2200, temperature=0.4,
+            system=_sys_cached(CRITIC_SYSTEM),
+            messages=[{"role": "user", "content": body}],
+        )
+        _acc_usage(usage, "critic", CRITIC_MODEL, resp)
+        parsed = _parse_critic((resp.content[0].text or "").strip())
+        if parsed is None:
+            print(f"[critic] r{round_i}: no parseó -> mantengo el guion del director")
+            return spec
+        verdict, notas, improved = parsed
+        print(f"[critic] r{round_i} {verdict} ({CRITIC_MODEL}): {notas[:160]}")
+        if str(verdict).lower().startswith("ok"):
+            return spec   # ya estaba bien -> no tocamos (corta el loop)
+        if isinstance(improved, dict) and improved.get("scenes"):
+            return improved
+        return spec
+    except Exception as e:
+        print(f"[critic] r{round_i} falló ({e}) -> mantengo el guion del director")
+        return spec
+
+
 async def build_storyboard(url: str, desarrollo: str, proposito: str = "marketing",
                            theme_override: str = "", tone: str = "",
                            length: str = "medio", seconds: int = 0, simple: bool = True,
@@ -1224,6 +1338,7 @@ evitar algo, no aparece."""
         out["decorName"] = decor
         out["hookName"] = hook["name"]
         out["arcName"] = arc_name
+        out["criticModel"] = CRITIC_MODEL if CRITIC_ENABLED else None
         # Asegurar que el arte lleve la decoración elegida (coherente en todas las escenas).
         if isinstance(out.get("art"), dict):
             out["art"].setdefault("decor", decor)
@@ -1247,6 +1362,15 @@ evitar algo, no aparece."""
             _acc_usage(usage, "director_retry", DIRECTOR_MODEL, resp2)
             spec = _parse_spec(resp2.content[0].text.strip())
         spec = _normalize(spec, url_data, desarrollo, proposito)
+        # --- Fase 2: auto-crítica. Un director SENIOR revisa y MEJORA el guion antes de renderizar.
+        # Cada vuelta se RE-NORMALIZA (red de seguridad: honestidad/tipos/listas) sobre la salida del crítico.
+        for _r in range(CRITIC_ROUNDS):
+            _improved = await _critique_spec(spec, brief_txt=brief_txt, contexto=contexto,
+                                             proposito=proposito, desarrollo=desarrollo,
+                                             energy=_energy, round_i=_r + 1, usage=usage)
+            if _improved is spec:
+                break  # crítica apagada / sin cambios (verdict ok) / falló -> cortamos el loop
+            spec = _normalize(_improved, url_data, desarrollo, proposito)
         # Paleta: el usuario manda; si no, el ADN visual (el "alma"); si no, evitar repetir reciente.
         _dna = dna or {}
         if theme_override in VALID_THEMES:

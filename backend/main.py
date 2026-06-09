@@ -640,7 +640,7 @@ async def _render_video_job(job_id: str, req: VideoGenRequest):
         #    lo lea/borre desde el cliente). Guardamos SOLO si hay URL de Cloudinary:
         #    el archivo local no es durable (cambia el ngrok / se limpia outputs/), así que
         #    sin Cloudinary el video no sería reproducible más tarde -> no se persiste.
-        # Costo real de tokens de este video (por etapa: brief + director [+ retry]).
+        # Costo real de tokens de este video (por etapa: brief + director [+ retry] [+ critic]).
         _cost = template_director.usage_cost(_usage)
         if _usage:
             _per = " · ".join(f"{e['stage']}: {e['in']}+{e['out']}" for e in _usage)
@@ -662,7 +662,7 @@ async def _render_video_job(job_id: str, req: VideoGenRequest):
                         "editStyle": spec.get("editStyle"), "angle": spec.get("angle"),
                         "artName": spec.get("artName"), "decorName": spec.get("decorName"),
                         "hookName": spec.get("hookName"), "arcName": spec.get("arcName"),
-                        "theme": spec.get("theme"),
+                        "theme": spec.get("theme"), "criticModel": spec.get("criticModel"),
                     },
                     "rating": 0,  # 0 = sin puntuar; la app lo actualiza con el pulgar arriba/abajo
                     "videoUrl": cloudinary_url, "localFile": output_path.name,
