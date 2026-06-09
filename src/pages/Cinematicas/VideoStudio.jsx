@@ -46,6 +46,7 @@ export default function VideoStudio() {
     mode, setMode, url, setUrl, desarrollo, setDesarrollo, theme, setTheme,
     proposito, setProposito, tono, setTono, seconds, setSeconds,
     idioma, setIdioma, formato, setFormato, submitted,
+    useCache, setUseCache, cacheMsg, clearBrandCache,
     generating, status, spec, videoUrl, error, generate, reset,
   } = useVideoJob()
   const videoRef = useRef(null)
@@ -103,6 +104,19 @@ export default function VideoStudio() {
                 onClick={() => setFormato(f.key)} disabled={generating}>{f.label}</button>
             ))}
           </div>
+        </div>
+
+        <div className={styles.cineSection}>
+          <div className={styles.cineSectionLabel}>Caché de marca <span className={styles.desarrolloOpcional}>(testing)</span></div>
+          <div className={styles.propGrid}>
+            <button className={`${styles.propBtn} ${useCache ? styles.propBtnActive : ''}`}
+              onClick={() => setUseCache(true)} disabled={generating}>Usar guardado</button>
+            <button className={`${styles.propBtn} ${!useCache ? styles.propBtnActive : ''}`}
+              onClick={() => setUseCache(false)} disabled={generating}>Reanalizar</button>
+          </div>
+          <button className={styles.propBtn} style={{ marginTop: 8, width: '100%' }}
+            onClick={clearBrandCache} disabled={generating}>🗑 Borrar caché guardado</button>
+          {cacheMsg && <div className={styles.cineNote} style={{ marginTop: 8 }}>{cacheMsg}</div>}
         </div>
 
         {mode === 'avanzado' && <>

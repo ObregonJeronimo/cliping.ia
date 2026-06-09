@@ -26,6 +26,8 @@ export function VideoJobProvider({ children }) {
   const [seconds, setSeconds] = useState(15)
   const [idioma, setIdioma] = useState('')      // idioma del video elegido por el usuario ('' = auto/según la página)
   const [formato, setFormato] = useState('vertical')  // vertical (9:16) | square (1:1) | wide (16:9)
+  const [useCache, setUseCache] = useState(true)    // testing: usar el análisis de marca guardado vs reanalizar
+  const [cacheMsg, setCacheMsg] = useState('')      // feedback del borrado de caché (testing)
   const [submitted, setSubmitted] = useState(null)  // snapshot de lo usado en el último video
 
   // Estado de generación (persiste entre páginas)
@@ -69,8 +71,8 @@ export function VideoJobProvider({ children }) {
     // (si el usuario edita la URL para el próximo, el "Video listo" no debe cambiar).
     setSubmitted({ url: url.trim(), seconds, mode, idioma, formato })
     const body = mode === 'simple'
-      ? { url: url.trim(), desarrollo: desarrollo.trim(), proposito: 'marketing', seconds, idioma, formato, userId: user?.uid || '' }
-      : { url: url.trim(), desarrollo: desarrollo.trim(), proposito, theme, tone: tono, seconds, idioma, formato, userId: user?.uid || '' }
+      ? { url: url.trim(), desarrollo: desarrollo.trim(), proposito: 'marketing', seconds, idioma, formato, refreshBrand: !useCache, userId: user?.uid || '' }
+      : { url: url.trim(), desarrollo: desarrollo.trim(), proposito, theme, tone: tono, seconds, idioma, formato, refreshBrand: !useCache, userId: user?.uid || '' }
     try {
       const r = await fetch(`${API_URL}/api/video/generate`, { method: 'POST', headers: HEADERS, body: JSON.stringify(body) })
       const d = await r.json()
@@ -79,10 +81,23 @@ export function VideoJobProvider({ children }) {
     } catch (e) { setError(e.message); setGenerating(false) }
   }
 
+  // TESTING: borra el análisis de marca guardado (todas las URLs) para iterar el look sin caché viejo.
+  async function clearBrandCache() {
+    setCacheMsg('Borrando…')
+    try {
+      const r = await fetch(`${API_URL}/api/brand-cache/clear`, {
+        method: 'POST', headers: HEADERS, body: JSON.stringify({ userId: user?.uid || '' }),
+      })
+      const d = await r.json()
+      setCacheMsg(d.error ? `No se pudo borrar: ${d.error}` : `Caché borrado (${d.deleted ?? 0})`)
+    } catch (e) { setCacheMsg(`No se pudo borrar: ${e.message}`) }
+  }
+
   const value = {
     mode, setMode, url, setUrl, desarrollo, setDesarrollo, theme, setTheme,
     proposito, setProposito, tono, setTono, seconds, setSeconds,
     idioma, setIdioma, formato, setFormato, submitted,
+    useCache, setUseCache, cacheMsg, clearBrandCache,
     generating, status, spec, videoUrl, error, generate, reset,
   }
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>

@@ -299,16 +299,49 @@ def _get_brand_cache(db, user_id: str, brand_key: str):
 
 
 def _set_brand_cache(db, user_id: str, brand_key: str, dna: dict, brand: str):
-    """Guarda el análisis (ADN + hechos) de una URL. Best-effort."""
+    """Guarda el análisis (ADN + hechos) de una URL. Best-effort.
+    TESTING: mantiene UN SOLO caché guardado por usuario (borra los de otras URLs) para no acumular.
+    Más adelante, si querés cachear varias URLs a la vez, sacá el bloque 'single-slot'."""
     if not (db and user_id):
         return
     try:
-        db.collection("users").document(user_id).collection("brand_cache").document(brand_key).set({
+        col = db.collection("users").document(user_id).collection("brand_cache")
+        # single-slot (testing): dejar SOLO el de esta URL.
+        for d in col.stream():
+            if d.id != brand_key:
+                d.reference.delete()
+        col.document(brand_key).set({
             "brand_key": brand_key, "dna": dna or {}, "brand": brand or "", "ts": time.time(),
         })
-        print(f"[cache] análisis guardado para {brand_key} (próximos videos de esta URL no re-analizan)")
+        print(f"[cache] análisis guardado para {brand_key} (único; próximos videos de esta URL no re-analizan)")
     except Exception as e:
         print(f"[cache] guardar análisis falló: {e}")
+
+
+class ClearBrandCacheRequest(BaseModel):
+    userId: str = ""
+
+
+@app.post("/api/brand-cache/clear")
+async def brand_cache_clear(req: ClearBrandCacheRequest):
+    """TESTING: borra el análisis de marca guardado del usuario (todas las URLs), así un análisis
+    viejo no queda pegado 14 días mientras iterás el look. Best-effort."""
+    db = get_firestore()
+    if not db:
+        return {"deleted": 0, "error": "sin Firestore"}
+    if not req.userId:
+        return {"deleted": 0, "error": "falta userId"}
+    try:
+        col = db.collection("users").document(req.userId).collection("brand_cache")
+        n = 0
+        for d in col.stream():
+            d.reference.delete()
+            n += 1
+        print(f"[cache] borrado manual: {n} doc(s) de brand_cache de {req.userId}")
+        return {"deleted": n, "error": ""}
+    except Exception as e:
+        print(f"[cache] borrado manual falló: {e}")
+        return {"deleted": 0, "error": str(e)}
 
 
 class VideoGenRequest(BaseModel):
