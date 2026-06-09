@@ -186,7 +186,7 @@ function setAccent(hex) {
     const br = Math.min(bw, bh) / 2;
 
     const meltP = inv(t, 2.95, 3.85);
-    const sink = lerp(0, 52, meltP * meltP);
+    const sink = lerp(0, 38, meltP * meltP);
     const meltAlpha = 1 - inv(t, 3.35, 3.9);
     const showBtn = t < 3.95;
 
@@ -200,12 +200,12 @@ function setAccent(hex) {
       ctx.beginPath();
       ctx.moveTo(bx + br, by);
       ctx.arcTo(bx + bw, by, bx + bw, by + bh, br);
-      // borde inferior con goteo
-      const drip = meltP * 46;
+      // borde inferior con UN goteo central limpio (no una ola amorfa)
+      const drip = meltP * 30;
       ctx.lineTo(bx + bw, by + bh - br);
-      ctx.quadraticCurveTo(bx + bw * 0.78, by + bh + drip, bx + bw * 0.62, by + bh);
-      ctx.quadraticCurveTo(bx + bw * 0.5, by + bh + drip * 1.6, bx + bw * 0.38, by + bh);
-      ctx.quadraticCurveTo(bx + bw * 0.22, by + bh + drip, bx + br, by + bh);
+      ctx.quadraticCurveTo(bx + bw * 0.74, by + bh + drip * 0.5, bx + bw * 0.6, by + bh);
+      ctx.quadraticCurveTo(bx + bw * 0.5, by + bh + drip * 1.7, bx + bw * 0.4, by + bh);
+      ctx.quadraticCurveTo(bx + bw * 0.26, by + bh + drip * 0.5, bx + br, by + bh);
       ctx.arcTo(bx, by + bh, bx, by, br);
       ctx.arcTo(bx, by, bx + bw, by, br);
       ctx.closePath(); ctx.fill();

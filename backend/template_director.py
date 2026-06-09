@@ -1161,7 +1161,7 @@ async def _critique_spec(spec: dict, *, brief_txt: str = "", contexto: str = "",
                 f"estar acá):\n{(contexto or '')[:1800]}{pedido}\n\n"
                 f"STORYBOARD A REVISAR:\n{spec_json}")
         resp = await _client.messages.create(
-            model=CRITIC_MODEL, max_tokens=2200, temperature=0.4,
+            model=CRITIC_MODEL, max_tokens=2200,
             system=_sys_cached(CRITIC_SYSTEM),
             messages=[{"role": "user", "content": body}],
         )

@@ -252,7 +252,7 @@ async def _critique_timeline(tl, *, brief_txt="", contexto="", desarrollo="", pr
     }
     try:
         resp = await _td._client.messages.create(
-            model=TL_CRITIC_MODEL, max_tokens=1500, temperature=0.4,
+            model=TL_CRITIC_MODEL, max_tokens=1500,
             system=_td._sys_cached(TL_CRITIC_SYSTEM),
             messages=[{"role": "user", "content": _json.dumps(payload, ensure_ascii=False)}],
         )
@@ -261,8 +261,10 @@ async def _critique_timeline(tl, *, brief_txt="", contexto="", desarrollo="", pr
         if not parsed:
             print(f"[tl-critic] r{round_i}: no parseo -> mantengo el guion del director")
             return tl
-        print(f"[tl-critic] r{round_i} {parsed.get('verdict')} ({TL_CRITIC_MODEL}): {(parsed.get('notas') or '')[:160]}")
-        improved = parsed.get("spec")
+        verdict, notas, improved = parsed
+        print(f"[tl-critic] r{round_i} {verdict} ({TL_CRITIC_MODEL}): {(notas or '')[:160]}")
+        if str(verdict).lower().startswith("ok"):
+            return tl   # ya estaba bien -> corta el loop
         if isinstance(improved, dict) and improved.get("scenes"):
             return improved
         return tl
