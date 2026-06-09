@@ -412,6 +412,7 @@ async def _render_video_job(job_id: str, req: VideoGenRequest):
         # recientes -> dos videos de la misma marca (mismo rubro) NO se sienten iguales.
         _db = get_firestore()
         _bkey = _brand_key(req.url)
+        _usage = []   # uso de tokens por etapa (para medir costo real por video)
         if isinstance(getattr(req, "spec", None), dict) and req.spec.get("scenes"):
             # Variante ya elegida por el usuario: la renderamos tal cual (igual inyectamos
             # screenshot/logo/imágenes reales abajo). Saltea al director.
@@ -423,7 +424,7 @@ async def _render_video_job(job_id: str, req: VideoGenRequest):
             spec = await template_director.build_storyboard(
                 req.url, req.desarrollo, req.proposito, seconds=req.seconds,
                 recent_profile=_recent, prefetched_site=_site.get("content"),
-                idioma=req.idioma, rating_bias=_bias)
+                idioma=req.idioma, rating_bias=_bias, usage=_usage)
             _push_recent_profile(_db, req.userId, _bkey, spec)
         if req.theme in template_director.VALID_THEMES:
             spec["theme"] = req.theme
@@ -579,6 +580,12 @@ async def _render_video_job(job_id: str, req: VideoGenRequest):
         #    lo lea/borre desde el cliente). Guardamos SOLO si hay URL de Cloudinary:
         #    el archivo local no es durable (cambia el ngrok / se limpia outputs/), así que
         #    sin Cloudinary el video no sería reproducible más tarde -> no se persiste.
+        # Costo real de tokens de este video (por etapa: brief + director [+ retry]).
+        _cost = template_director.usage_cost(_usage)
+        if _usage:
+            _per = " · ".join(f"{e['stage']}: {e['in']}+{e['out']}" for e in _usage)
+            print(f"[video] tokens: {_cost['in']} in + {_cost['out']} out  (~${_cost['cost_usd']})  [{_per}]")
+
         try:
             db = get_firestore()
             if db and req.userId and cloudinary_url:
@@ -587,6 +594,8 @@ async def _render_video_job(job_id: str, req: VideoGenRequest):
                     "proposito": req.proposito, "userId": req.userId,
                     "theme": spec.get("theme"), "brand": spec.get("brand"),
                     "format": spec.get("format", "vertical"),
+                    # Costo real de generación (tokens por etapa + estimado USD) para medir economía.
+                    "tokens": _cost,
                     # Receta de generación (base del loop de feedback: cuando la app sume el rating,
                     # ya sabemos qué combinación se uso para sesgar futuras generaciones).
                     "recipe": {

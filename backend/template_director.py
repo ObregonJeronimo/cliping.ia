@@ -29,6 +29,39 @@ import iconify_service
 _client = AsyncAnthropic()
 DIRECTOR_MODEL = "claude-sonnet-4-6"
 
+# Precios por millón de tokens (input, output) por modelo, para estimar el costo real por video.
+MODEL_PRICES = {
+    "claude-opus-4-8": (5.0, 25.0),
+    "claude-sonnet-4-6": (3.0, 15.0),
+    "claude-haiku-4-5-20251001": (1.0, 5.0),
+}
+
+
+def _acc_usage(sink, stage, model, resp):
+    """Acumula el uso de tokens de una llamada en 'sink' (lista) para medir costo por video.
+    No-op si sink es None. Best-effort (nunca rompe la generación)."""
+    if sink is None:
+        return
+    try:
+        u = resp.usage
+        sink.append({"stage": stage, "model": model,
+                     "in": int(getattr(u, "input_tokens", 0) or 0),
+                     "out": int(getattr(u, "output_tokens", 0) or 0)})
+    except Exception:
+        pass
+
+
+def usage_cost(usage):
+    """Suma tokens y estima el costo USD de una lista de usos (la que llena _acc_usage)."""
+    tin = tout = 0
+    cost = 0.0
+    for e in usage or []:
+        pin, pout = MODEL_PRICES.get(e.get("model"), (3.0, 15.0))
+        tin += e.get("in", 0)
+        tout += e.get("out", 0)
+        cost += e.get("in", 0) / 1e6 * pin + e.get("out", 0) / 1e6 * pout
+    return {"in": tin, "out": tout, "cost_usd": round(cost, 5), "calls": len(usage or [])}
+
 FADE = 14  # debe coincidir con TDUR en VideoFromSpec.jsx
 
 # Variedad creativa: el director elige (o el usuario fija) entre estas opciones.
@@ -872,31 +905,41 @@ async def _resolve_icons(spec: dict) -> dict:
     return spec
 
 
-BRIEF_SYSTEM = """Sos estratega de marca. A partir del contexto de un sitio, devolvé un BRIEF
-brevísimo y CONCRETO para guiar un video vertical de marketing. Escribí en español rioplatense
-(voseo), salvo que el contexto esté claramente en otro idioma. Formato EXACTO (sin markdown,
-sin texto extra, una línea por campo):
+BRIEF_SYSTEM = """Sos estratega de marca. A partir del contexto de un sitio (y, si lo hay, del
+PEDIDO DEL USUARIO), devolvé un BRIEF brevísimo y CONCRETO para guiar un video vertical de marketing.
+Escribí en español rioplatense (voseo), salvo que el contexto esté claramente en otro idioma.
+
+PRIORIDAD ABSOLUTA: si hay un PEDIDO DEL USUARIO, ese pedido MANDA sobre todo lo demás. El objetivo,
+la oferta, el público y el tono del video se subordinan a lo que el usuario pidió. Si nombra una
+oferta/producto/promo puntual, el video gira alrededor de eso. Si pide un tono o un público,
+respetalos aunque difieran del default del rubro. Si pide evitar algo, no lo incluyas.
+
+Formato EXACTO (sin markdown, sin texto extra, una línea por campo):
+OBJETIVO: <qué tiene que LOGRAR el video: vender X / lanzar Y / traer registros / dar a conocer Z. Si el usuario lo dijo, usá eso>
 QUÉ VENDE: <una frase concreta>
 DIFERENCIAL: <qué los hace distintos, una frase>
-PÚBLICO: <a quién le hablan>
-MENSAJES CLAVE: <3 mensajes separados por ' | '>
+PÚBLICO: <a quién le hablan (si el usuario lo indicó, ESE)>
+MENSAJES CLAVE: <3 mensajes separados por ' | ', priorizando lo que pidió el usuario>
 PRUEBAS REALES: <datos/precios/claims reales que aparezcan en el contexto, o 'ninguna'>
-HOOK: <una idea de gancho potente para los primeros 2 segundos>
+HOOK: <una idea de gancho potente para los primeros 2 segundos, alineada al OBJETIVO>
 TONO: <2-3 adjetivos>
+EVITAR: <qué NO incluir si el usuario lo pidió, o 'nada'>
 Si el contexto es pobre, inferí lo razonable del rubro, pero NO inventes datos numéricos."""
 
 
-async def _build_brief(url_data: dict, desarrollo: str, proposito: str) -> str:
+async def _build_brief(url_data: dict, desarrollo: str, proposito: str, usage: list = None) -> str:
     """Paso 1 (entender): Sonnet destila un brief de marca concreto desde el contexto del sitio.
     Best-effort: si falla, devuelve '' y el storyboard se arma directo del contexto."""
     contexto = url_data.get("context") or f"Marca: {url_data.get('siteName') or 'desconocido'}"
-    extra = f'\nPedido del usuario: "{desarrollo.strip()}"' if (desarrollo or "").strip() else ""
+    extra = (f'\n\n>>> PEDIDO DEL USUARIO (PRIORIDAD ABSOLUTA, manda sobre todo lo demás):\n"{desarrollo.strip()}"'
+             if (desarrollo or "").strip() else "")
     try:
         resp = await _client.messages.create(
             model=DIRECTOR_MODEL, max_tokens=500, temperature=0.4,
             system=BRIEF_SYSTEM,
             messages=[{"role": "user", "content": f"PROPÓSITO: {proposito}\n\nCONTEXTO DEL SITIO:\n{contexto}{extra}"}],
         )
+        _acc_usage(usage, "brief", DIRECTOR_MODEL, resp)
         return (resp.content[0].text or "").strip()
     except Exception as e:
         print(f"[director] brief fallback ({e})")
@@ -920,7 +963,7 @@ async def build_storyboard(url: str, desarrollo: str, proposito: str = "marketin
                            theme_override: str = "", tone: str = "",
                            length: str = "medio", seconds: int = 0, simple: bool = True,
                            recent_profile: dict = None, prefetched_site: dict = None,
-                           idioma: str = "", rating_bias: dict = None) -> dict:
+                           idioma: str = "", rating_bias: dict = None, usage: list = None) -> dict:
     """
     URL + desarrollo -> storyboard spec.
 
@@ -979,7 +1022,9 @@ async def build_storyboard(url: str, desarrollo: str, proposito: str = "marketin
     elif rec_themes:
         brief += f"\n- Paletas usadas hace poco para esta marca (elegí una DISTINTA): {', '.join(rec_themes[:2])}"
 
-    extra = f'\nLo que pidió el usuario: "{desarrollo.strip()}"' if desarrollo.strip() else ""
+    extra = (f'\n\n>>> LO QUE PIDIÓ EL USUARIO (PRIORIDAD ABSOLUTA — el video DEBE cumplir esto; '
+             f'manda sobre el arco, el hook y los defaults sugeridos más abajo):\n"{desarrollo.strip()}"'
+             if desarrollo.strip() else "")
     contexto = url_data.get("context") or f"Marca: {url_data.get('siteName') or 'desconocido'}"
     _lang = (url_data.get("lang") or "").lower()
     _LANG_NAME = {"es": "español rioplatense (voseo)", "en": "inglés", "pt": "portugués"}
@@ -992,7 +1037,7 @@ async def build_storyboard(url: str, desarrollo: str, proposito: str = "marketin
                      if _lang and not _lang.startswith("es") else "")
 
     # Paso 1 (entender la marca): brief estratégico. Paso 2 (guionar): el storyboard.
-    brief_txt = await _build_brief(url_data, desarrollo, proposito)
+    brief_txt = await _build_brief(url_data, desarrollo, proposito, usage=usage)
     brief_block = f"\nBRIEF ESTRATÉGICO (basate en esto, es la lectura de la marca):\n{brief_txt}\n" if brief_txt else ""
 
     user_prompt = f"""PROPÓSITO: {proposito}
@@ -1016,7 +1061,13 @@ NUNCA arranques con Comparison ni FeatureList (pesadas de texto, no enganchan). 
 es débil o larga, nadie ve el resto.
 
 Generá el storyboard JSON. El copy tiene que sonar a ESTA marca puntual (usá el brief y lo que
-sabés del sitio), reflejar el ángulo y el mood, y respetar las reglas de líneas cortas."""
+sabés del sitio), reflejar el ángulo y el mood, y respetar las reglas de líneas cortas.
+
+REGLA QUE MANDA SOBRE TODO: si hay un PEDIDO DEL USUARIO o un OBJETIVO en el brief, el video tiene
+que cumplirlo SÍ O SÍ. Ante cualquier conflicto entre lo que pidió el usuario y la estructura/hook/
+defaults sugeridos acá, GANA el usuario: adaptá el arco, el hook y las escenas para servir su pedido
+y su objetivo. Si pidió una oferta puntual, esa oferta es el corazón del video y el CTA. Si pidió
+evitar algo, no aparece."""
 
     def _tag(out):
         """Anota las variables elegidas para que main.py actualice la memoria de rotación."""
@@ -1038,6 +1089,7 @@ sabés del sitio), reflejar el ángulo y el mood, y respetar las reglas de líne
             messages=[{"role": "user", "content": user_prompt}],
         )
         spec = _parse_spec(resp.content[0].text.strip())
+        _acc_usage(usage, "director", DIRECTOR_MODEL, resp)
         if spec is None:
             resp2 = await _client.messages.create(
                 model=DIRECTOR_MODEL, max_tokens=2200, temperature=min(temperature, 0.5),
@@ -1045,6 +1097,7 @@ sabés del sitio), reflejar el ángulo y el mood, y respetar las reglas de líne
                 messages=[{"role": "user", "content": user_prompt
                            + "\n\nIMPORTANTE: respondé SOLO el JSON del storyboard, sin texto antes ni después."}],
             )
+            _acc_usage(usage, "director_retry", DIRECTOR_MODEL, resp2)
             spec = _parse_spec(resp2.content[0].text.strip())
         spec = _normalize(spec, url_data, desarrollo, proposito)
         # Paleta: override gana; si no, y el director repitió una reciente, la cambiamos.
