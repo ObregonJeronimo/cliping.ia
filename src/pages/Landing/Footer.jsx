@@ -7,14 +7,22 @@ export default function Footer() {
 
   return (
     <footer className={styles.footer}>
-      {/* ── Bloque CTA con fondo de puntos ─────────────────────────────── */}
+      {/* ── Bloque CTA con fondo decorativo ────────────────────────────── */}
       <div className={styles.cta}>
-        <div className={styles.dots} aria-hidden="true" />
+        <div className={styles.scene} aria-hidden="true">
+          <span className={styles.ring} />
+          <span className={styles.ring} />
+          <span className={styles.ring} />
+          <span className={styles.spark} />
+          <span className={styles.spark} />
+          <span className={styles.spark} />
+          <span className={styles.spark} />
+          <span className={styles.spark} />
+        </div>
         <div className={styles.ctaInner}>
-          <span className={styles.eyebrow}>Empeza ahora</span>
           <h2 className={styles.ctaTitle}>
-            Lo que antes necesitaba un equipo,<br />
-            <span className={styles.accent}>ahora toma un clic.</span>
+            Lo que te tomaba dias en hacer,<br />
+            <span className={styles.accent}>ahora en minutos.</span>
           </h2>
           <p className={styles.ctaSub}>
             Pega la URL de tu sitio y deja que la IA arme tu proximo video de marketing.
@@ -62,14 +70,13 @@ export default function Footer() {
 
           <div className={styles.linkCol}>
             <span className={styles.colTitle}>Legal</span>
-            <a href="#">Terminos de uso</a>
-            <a href="#">Politica de privacidad</a>
+            <button className={styles.linkBtn} onClick={() => navigate('/terminos')}>Terminos de uso</button>
+            <button className={styles.linkBtn} onClick={() => navigate('/privacidad')}>Politica de privacidad</button>
           </div>
         </div>
 
         <div className={styles.legal}>
           <span>© {year} cliping.ia. Todos los derechos reservados.</span>
-          <span className={styles.madeWith}>Hecho con IA en Argentina</span>
         </div>
       </div>
     </footer>
