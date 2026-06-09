@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext'
 import AppLayout from './components/Layout/AppLayout'
 import VideoStudio from './pages/Cinematicas/VideoStudio'
 import MisCinematicas from './pages/Cinematicas/MisCinematicas'
+import TimelineStudio from './pages/Animaciones/TimelineStudio'
 import Login from './pages/Login'
 import Landing from './pages/Landing'
 
@@ -24,6 +25,7 @@ function AppRoutes() {
         </PrivateRoute>
       }>
         <Route index element={<VideoStudio />} />
+        <Route path="animaciones" element={<TimelineStudio />} />
         <Route path="cinematicas" element={<MisCinematicas />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

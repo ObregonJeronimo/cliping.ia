@@ -4,6 +4,7 @@ import styles from './Sidebar.module.css'
 
 const NAV = [
   { to: '/studio',             icon: '⊞', label: 'Home' },
+  { to: '/studio/animaciones', icon: '◆', label: 'Animaciones' },
   { to: '/studio/cinematicas', icon: '✦', label: 'Mis cinemáticas' },
 ]
 
