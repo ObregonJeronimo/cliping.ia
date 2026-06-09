@@ -159,7 +159,8 @@
   box-shadow: 0 4px 18px rgba(140, 156, 242, 0.4);
 }
 
-@media (max-width: 900px) {
-  .layer { padding: 0 6%; }
-  .tlItem { gap: 12px; }
+/* En mobile el canvas es fondo full y el texto principal va encima; el
+   overlay del prompt/timeline pisaria el titular, asi que se oculta. */
+@media (max-width: 768px) {
+  .layer { display: none; }
 }
