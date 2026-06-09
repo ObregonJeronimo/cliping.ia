@@ -85,20 +85,6 @@ export default function Landing() {
 
       <Features />
 
-      <section className={styles.steps}>
-        {[
-          { num: '01', label: 'Ingresas tu URL',    desc: 'La IA analiza tu sitio completo' },
-          { num: '02', label: 'Describes el video', desc: 'En lenguaje natural, sin tecnicismos' },
-          { num: '03', label: 'Recibes tu video',   desc: 'Listo para Instagram, TikTok o YouTube' },
-        ].map((s) => (
-          <div key={s.num} className={styles.step}>
-            <div className={styles.stepNum}>{s.num}</div>
-            <div className={styles.stepLabel}>{s.label}</div>
-            <div className={styles.stepDesc}>{s.desc}</div>
-          </div>
-        ))}
-      </section>
-
       <Pricing />
     </div>
   )
