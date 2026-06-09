@@ -4,7 +4,6 @@ import styles from './Features.module.css'
 const TYPED_TEXT = 'Un video que muestre todas las herramientas de mi sitio, profesional y listo para publicar'
 const SCRIPT = ['Hook', 'Problema', 'Beneficios', 'CTA']
 
-// ── Hook: dispara una sola vez cuando el elemento entra en viewport ──────
 function useInView(threshold = 0.4) {
   const ref = useRef(null)
   const [inView, setInView] = useState(false)
@@ -21,9 +20,7 @@ function useInView(threshold = 0.4) {
   return [ref, inView]
 }
 
-// ───────────────────────────────────────────────────────────────────────
-//  DEMO 1 — De tu URL a un video: typewriter del prompt + guion cargando
-// ───────────────────────────────────────────────────────────────────────
+// ── DEMO 1 — prompt -> guion ────────────────────────────────────────────
 function DemoPromptToScript({ active }) {
   const [typed, setTyped] = useState('')
   const [scriptStep, setScriptStep] = useState(-1)
@@ -33,23 +30,15 @@ function DemoPromptToScript({ active }) {
     if (!active) return
     let timers = []
     setTyped(''); setScriptStep(-1); setGenerating(false)
-
-    // 1) typewriter
     let i = 0
     const type = () => {
       if (i <= TYPED_TEXT.length) {
-        setTyped(TYPED_TEXT.slice(0, i))
-        i++
+        setTyped(TYPED_TEXT.slice(0, i)); i++
         timers.push(setTimeout(type, 28))
       } else {
-        // 2) generando
         timers.push(setTimeout(() => setGenerating(true), 400))
-        // 3) guion en secuencia
         SCRIPT.forEach((_, idx) => {
-          timers.push(setTimeout(() => {
-            setGenerating(false)
-            setScriptStep(idx)
-          }, 900 + idx * 700))
+          timers.push(setTimeout(() => { setGenerating(false); setScriptStep(idx) }, 900 + idx * 700))
         })
       }
     }
@@ -60,9 +49,7 @@ function DemoPromptToScript({ active }) {
   return (
     <div className={styles.demoStack}>
       <div className={styles.inputBox}>
-        <span className={styles.inputText}>
-          {typed}<span className={styles.inputCaret} />
-        </span>
+        <span className={styles.inputText}>{typed}<span className={styles.inputCaret} /></span>
         <div className={styles.inputBar}>
           <span className={styles.inputPlus}>+</span>
           <span className={styles.inputSend}>
@@ -72,14 +59,10 @@ function DemoPromptToScript({ active }) {
           </span>
         </div>
       </div>
-
       <div className={styles.scriptBox}>
         {generating && <div className={styles.generating}><span /><span /><span /></div>}
         {!generating && SCRIPT.map((s, i) => (
-          <div
-            key={s}
-            className={`${styles.scriptItem} ${i <= scriptStep ? styles.scriptShown : ''}`}
-          >
+          <div key={s} className={`${styles.scriptItem} ${i <= scriptStep ? styles.scriptShown : ''}`}>
             <span className={styles.scriptCheck}>
               <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
                 <path d="M2.5 7.5l3 3 6-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -93,7 +76,7 @@ function DemoPromptToScript({ active }) {
   )
 }
 
-// ── DEMO 2 — Formatos: se destacan por turnos ───────────────────────────
+// ── DEMO 2 — formatos ───────────────────────────────────────────────────
 function DemoFormats({ active }) {
   const [idx, setIdx] = useState(0)
   useEffect(() => {
@@ -109,11 +92,7 @@ function DemoFormats({ active }) {
   return (
     <div className={styles.demoFormats}>
       {fmts.map((f, i) => (
-        <div
-          key={f.label}
-          className={`${styles.fmt} ${i === idx ? styles.fmtActive : ''}`}
-          style={{ width: f.w, height: f.h }}
-        >
+        <div key={f.label} className={`${styles.fmt} ${i === idx ? styles.fmtActive : ''}`} style={{ width: f.w, height: f.h }}>
           <span>{f.label}</span>
         </div>
       ))}
@@ -121,45 +100,107 @@ function DemoFormats({ active }) {
   )
 }
 
-// ── DEMO 3 — B-Roll: celdas que aparecen escalonadas ────────────────────
+// ── DEMO 3 — B-Roll: 6 celdas, cada una con su micro-animacion en loop ───
+// Celda 0: texto que se sobrescribe por otro (typewriter ciclico)
+function CellTyper() {
+  const words = ['Hook', 'Escena', 'Corte', 'Zoom']
+  const [w, setW] = useState(0)
+  const [txt, setTxt] = useState('')
+  useEffect(() => {
+    let timers = []
+    let i = 0
+    const cur = words[w]
+    const tick = () => {
+      if (i <= cur.length) { setTxt(cur.slice(0, i)); i++; timers.push(setTimeout(tick, 130)) }
+      else timers.push(setTimeout(() => setW(v => (v + 1) % words.length), 900))
+    }
+    timers.push(setTimeout(tick, 200))
+    return () => timers.forEach(clearTimeout)
+  }, [w])
+  return <div className={styles.cellTyper}>{txt}<span className={styles.cellCaret} /></div>
+}
+
+// Celda 1: gotita que cae
+function CellDrop() {
+  return (
+    <div className={styles.cellDrop}>
+      <span className={styles.drop} />
+      <span className={styles.ripple} />
+    </div>
+  )
+}
+
+// Celda 2: barras de un mini-chart que crecen
+function CellBars() {
+  return (
+    <div className={styles.cellBars}>
+      {[0,1,2,3].map(i => <span key={i} style={{ animationDelay: `${i * 0.18}s` }} />)}
+    </div>
+  )
+}
+
+// Celda 3: play que late
+function CellPlay() {
+  return (
+    <div className={styles.cellPlay}>
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M6 4l10 6-10 6V4z" fill="currentColor" /></svg>
+    </div>
+  )
+}
+
+// Celda 4: linea de scan que recorre
+function CellScan() {
+  return <div className={styles.cellScan}><span /></div>
+}
+
+// Celda 5: puntos orbitando
+function CellOrbit() {
+  return (
+    <div className={styles.cellOrbit}>
+      <span /><span /><span />
+    </div>
+  )
+}
+
 function DemoBroll({ active }) {
+  const cells = [CellTyper, CellDrop, CellBars, CellPlay, CellScan, CellOrbit]
   return (
     <div className={`${styles.demoBroll} ${active ? styles.brollGo : ''}`}>
-      {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className={styles.brollCell} style={{ transitionDelay: `${i * 90}ms` }} />
+      {cells.map((Cell, i) => (
+        <div key={i} className={styles.brollCell} style={{ transitionDelay: `${i * 90}ms` }}>
+          {active && <Cell />}
+        </div>
       ))}
     </div>
   )
 }
 
-// ── DEMO 4 — Voz en off: waveform reproduciendose ───────────────────────
+// ── DEMO 4 — voz ────────────────────────────────────────────────────────
 function DemoVoice({ active }) {
   return (
     <div className={styles.demoVoice}>
       {Array.from({ length: 32 }).map((_, i) => (
-        <span
-          key={i}
-          className={active ? styles.waveBar : ''}
-          style={{ animationDelay: `${i * 60}ms`, height: '30%' }}
-        />
+        <span key={i} className={active ? styles.waveBar : ''} style={{ animationDelay: `${i * 60}ms`, height: '30%' }} />
       ))}
     </div>
   )
 }
 
-// ── DEMO 5 — Tu marca: swatches y logo aplicandose ──────────────────────
+// ── DEMO 5 — marca (con logo de cliping.ia) ─────────────────────────────
 function DemoBrand({ active }) {
   return (
     <div className={`${styles.demoBrand} ${active ? styles.brandGo : ''}`}>
       <span className={styles.swatch} style={{ background: '#6c5ce7', transitionDelay: '0ms' }} />
       <span className={styles.swatch} style={{ background: '#c8a8f0', transitionDelay: '120ms' }} />
       <span className={styles.swatch} style={{ background: '#9ad7b0', transitionDelay: '240ms' }} />
-      <span className={styles.brandLogo} style={{ transitionDelay: '360ms' }}>logo</span>
+      <span className={styles.brandLogo} style={{ transitionDelay: '360ms' }}>
+        <img src="/logo.svg" alt="cliping.ia" width="32" height="32" />
+      </span>
     </div>
   )
 }
 
-// ── DEMO 6 — Modo avanzado: nodos conectados pulsando ───────────────────
+// ── DEMO 6 — avanzado ───────────────────────────────────────────────────
 function DemoAdvanced({ active }) {
   return (
     <div className={styles.demoAdvanced}>
@@ -176,14 +217,10 @@ function DemoAdvanced({ active }) {
   )
 }
 
-// ── Franja de feature (texto + demo, alterna lado) ──────────────────────
-function FeatureRow({ index, eyebrow, title, desc, demo, reverse, badge }) {
+function FeatureRow({ eyebrow, title, desc, demo, reverse, badge }) {
   const [ref, inView] = useInView(0.35)
   return (
-    <div
-      ref={ref}
-      className={`${styles.row} ${reverse ? styles.rowReverse : ''} ${inView ? styles.rowIn : ''}`}
-    >
+    <div ref={ref} className={`${styles.row} ${reverse ? styles.rowReverse : ''} ${inView ? styles.rowIn : ''}`}>
       <div className={styles.rowText}>
         <span className={styles.rowEyebrow}>{eyebrow}{badge && <span className={styles.rowBadge}>{badge}</span>}</span>
         <h3 className={styles.rowTitle}>{title}</h3>
