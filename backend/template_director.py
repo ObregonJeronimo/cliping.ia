@@ -79,10 +79,11 @@ def _qa_spec(spec: dict) -> list:
     issues = []
     try:
         scenes = spec.get("scenes") or []
-        fmt = spec.get("format", "vertical")
-        if fmt not in ("vertical", "square", "wide"):
-            spec["format"] = "vertical"
-            issues.append(f"format inválido '{fmt}' -> vertical")
+        # NOTA: el formato (vertical/square/wide) lo elige el USUARIO (req.formato) y se aplica en
+        # main.py DESPUÉS de esto. El QA NO decide ni pisa el formato; solo lo reporta si viene raro.
+        fmt = spec.get("format", "")
+        if fmt and fmt not in ("vertical", "square", "wide"):
+            issues.append(f"format raro en el spec ('{fmt}') — lo define el usuario, no lo toco acá")
         if not scenes:
             issues.append("sin escenas")
             return issues
