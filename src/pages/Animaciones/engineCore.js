@@ -21,10 +21,10 @@ function setAccent(hex) {
 // pinta un fondo acorde al rubro, no violeta para todo. Textos del motor son claros -> todos los
 // fondos son oscuros pero con el HUE de la marca. El glow ambiente sale del acento de la marca.
 const THEMES = {
-  'organic-natural': { bg: ['#34291b', '#241c10', '#140e06'], mote: '255,240,210' },
-  'sunset-warm':     { bg: ['#3a201a', '#251210', '#140807'], mote: '255,220,190' },
-  'crimson-bold':    { bg: ['#3a121a', '#240a10', '#140509'], mote: '255,205,210' },
-  'gold-lux':        { bg: ['#2c2614', '#1c170b', '#0f0c05'], mote: '255,238,190' },
+  'organic-natural': { bg: ['#4f4230', '#3d3120', '#2b2114'], mote: '255,240,210' },
+  'sunset-warm':     { bg: ['#4a2b22', '#341c17', '#22100c'], mote: '255,220,190' },
+  'crimson-bold':    { bg: ['#48181f', '#300f15', '#1e070b'], mote: '255,205,210' },
+  'gold-lux':        { bg: ['#3a321c', '#28200f', '#181206'], mote: '255,238,190' },
   'berry-glow':      { bg: ['#2a1336', '#1a0c22', '#0c0512'], mote: '255,220,245' },
   'ocean-deep':      { bg: ['#0e3848', '#07242f', '#03141b'], mote: '200,240,255' },
   'clinical-formal': { bg: ['#16243f', '#0e162e', '#070c1b'], mote: '220,235,255' },
@@ -32,7 +32,7 @@ const THEMES = {
   'cyber-neon':      { bg: ['#101a2a', '#0a0f1c', '#05080f'], mote: '180,220,255' },
   'mono-ink':        { bg: ['#262626', '#161616', '#080808'], mote: '230,230,230' },
 };
-const THEME_DEFAULT = { bg: ['#202836', '#12161f', '#080a10'], mote: '225,232,245' };  // slate neutro (NO violeta)
+const THEME_DEFAULT = { bg: ['#2a3240', '#1a1f2a', '#0e1118'], mote: '225,232,245' };  // slate neutro (NO violeta)
 let BG = THEME_DEFAULT.bg, MOTE = THEME_DEFAULT.mote;
 function setTheme(name) {
   const p = THEMES[name] || THEME_DEFAULT;
@@ -106,7 +106,7 @@ function _rgba(hex, a) {
     ctx.restore();
     // viñeta
     const v = ctx.createRadialGradient(W / 2, H / 2, H * 0.32, W / 2, H / 2, H * 0.72);
-    v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,0.5)');
+    v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(20,12,4,0.3)');
     ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
   }
 
@@ -272,7 +272,7 @@ function _rgba(hex, a) {
     }
 
     // ----- gota que cae y pinta -----
-    const paintX = cx, paintY = H * 0.62;
+    const paintX = cx, paintY = H * 0.52;
     if (t > 3.5 && t < 4.5) {
       const dp = inv(t, 3.5, 4.15);
       const y = lerp(cy + sink + 30, paintY - 40, eInCubic(dp));
@@ -328,15 +328,15 @@ function _rgba(hex, a) {
 
     // ----- subtítulos minúsculo → leíble -----
     const _subs = p.subtitles || [];
-    if (_subs[0]) fxText(_subs[0], cx, H * 0.72, 22, inv(t, 5.2, 5.8), 600, '#e9d9e4', W * 0.82);
-    if (_subs[1]) fxText(_subs[1], cx, H * 0.755, 22, inv(t, 5.45, 6.0), 600, '#e9d9e4', W * 0.82);
+    if (_subs[0]) fxText(_subs[0], cx, H * 0.63, 22, inv(t, 5.2, 5.8), 600, '#f2ebd9', W * 0.82);
+    if (_subs[1]) fxText(_subs[1], cx, H * 0.665, 22, inv(t, 5.45, 6.0), 600, '#f2ebd9', W * 0.82);
   }
 
   // ---------- ESCENA 2: carrito → click → caja → alas → vuela → casa ----------
   function sceneCart(t, p = {}) {
     const cx = W / 2, cy = H * 0.44;
     const hx = W * 0.72, hy = H * 0.64;
-    if (p.caption) fxText(p.caption, W / 2, H * 0.15, 23, inv(t, 0.3, 1.0), 600, '#f0e7f0', W * 0.86);
+    if (p.caption) fxText(p.caption, W / 2, H * 0.15, 23, inv(t, 0.3, 1.0), 600, '#f4ede0', W * 0.86);
 
     // casa aparece antes de que llegue
     const hin = inv(t, 3.2, 4.1);
@@ -436,7 +436,7 @@ function _rgba(hex, a) {
     const items = (p.items || []).slice(0, 4);
     const gap = 64, startY = H * 0.52 - (items.length - 1) * gap / 2;
     items.forEach((label, i) => {
-      const d = 0.5 + i * 0.34;
+      const d = 0.5 + i * 0.42;
       const rin = inv(t, d, d + 0.55);
       if (rin <= 0) return;
       const x = cx - 150, y = startY + i * gap;
@@ -467,7 +467,7 @@ function _rgba(hex, a) {
       ctx.restore();
       // label (auto-ajuste para no cortar en el borde de la tarjeta)
       ctx.font = `600 ${fitFont(label, 21, 228, 13, 600)}px "Inter",system-ui,sans-serif`;
-      ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#f0e7f0';
+      ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#f4ede0';
       ctx.fillText(label, x + 58, y);
       ctx.restore();
     });
@@ -552,7 +552,7 @@ function _rgba(hex, a) {
     }
     if (cur) lines.push(cur);
     const lh = fs * 1.18;
-    const topY = H * 0.46 - (lines.length * lh) / 2 + lh / 2;
+    const topY = H * 0.5 - (lines.length * lh) / 2 + lh / 2;
     // lineas suben + aparecen escalonadas
     lines.forEach((ln, i) => {
       const start = 0.15 + i * 0.26;
@@ -560,7 +560,7 @@ function _rgba(hex, a) {
       if (pr <= 0) return;
       ctx.save();
       ctx.globalAlpha = pr;
-      ctx.fillStyle = '#f3ecf7';
+      ctx.fillStyle = '#f7f1e6';
       ctx.fillText(ln, cx, topY + i * lh + (1 - pr) * 26);
       ctx.restore();
     });
@@ -598,13 +598,13 @@ function _rgba(hex, a) {
     ctx.fillStyle = accent(cx - 130, cy, cx + 130, cy);
     ctx.fillText(num, cx, cy);
     ctx.restore();
-    if (p.label) fxText(p.label, cx, cy + 84, 24, inv(t, 1.3, 1.9), 600, '#e9d9e4', W * 0.86);
+    if (p.label) fxText(p.label, cx, cy + 84, 24, inv(t, 1.8, 2.3), 600, '#f2ebd9', W * 0.86);
   }
 
   const DRAWERS = { paintTitle: sceneTitle, deliver: sceneCart, checklist: sceneList, outro: sceneOutro, statement: sceneStatement, bigStat: sceneBigStat };
   // Cuanto dura la COREOGRAFIA de cada escena (segundos). Pasado esto, el motor CONGELA el frame final
   // = tiempo de lectura. Asi: durationInFrames = animacion + lectura (mas largo = mas tiempo para leer).
-  const ANIM_LEN = { paintTitle: 6.0, deliver: 6.4, checklist: 3.9, outro: 3.2, statement: 2.6, bigStat: 2.4 };
+  const ANIM_LEN = { paintTitle: 6.0, deliver: 6.4, checklist: 3.9, outro: 3.2, statement: 2.6, bigStat: 2.6 };
   const SCENE_LABELS = {
     paintTitle: '<b>paintTitle</b> · puntito -> boton -> barra -> se derrite -> gota -> pinta el titulo',
     deliver: '<b>deliver</b> · carrito -> click -> caja -> le salen alas -> vuela -> cae en la casa',
@@ -655,15 +655,25 @@ function _rgba(hex, a) {
     setTheme(tl.theme);
     ctx.clearRect(0, 0, W, H);
     drawBg(t);
-    for (const sc of layout(tl)) {
-      const a = sceneEdge(t, sc.s, sc.e);
-      if (a <= 0) continue;
+    const _scenes = layout(tl);
+    const XF = 0.45; // cross-fade: la escena saliente sostiene su frame final y se funde con la entrante
+    _scenes.forEach((sc, i) => {
       const drawer = DRAWERS[sc.type];
-      if (!drawer) continue;
-      // micro zoom de entrada/salida para sabor cinematografico
-      const local = t - sc.s, dur = sc.e - sc.s;
-      // tiempo de LECTURA: la escena anima a velocidad natural hasta ANIM_LEN y despues congela
-      // su frame final (queda quieto, legible) el resto de la escena.
+      if (!drawer) return;
+      const isLast = i === _scenes.length - 1;
+      const dur = sc.e - sc.s;
+      // la saliente (no la ultima) se funde DESPUES de su salida, solapando la entrada de la proxima.
+      // la ultima se funde dentro de su tramo => el total NO cambia (no rompe el conteo de frames).
+      const foStart = isLast ? sc.e - 0.5 : sc.e;
+      const foDur = isLast ? 0.5 : XF;
+      const renderEnd = isLast ? sc.e : sc.e + XF;
+      if (t < sc.s || t >= renderEnd) return;
+      const fin = eInOutCubic(inv(t, sc.s, sc.s + 0.5));
+      const fout = eInOutCubic(1 - inv(t, foStart, foStart + foDur));
+      const a = clamp(Math.min(fin, fout), 0, 1);
+      if (a <= 0) return;
+      // tiempo de LECTURA: anima a velocidad natural hasta ANIM_LEN y despues congela el frame final.
+      const local = t - sc.s;
       const animLen = ANIM_LEN[sc.type] || dur;
       const tFed = Math.min(local, animLen);
       const zin = lerp(1.04, 1, eOutCubic(inv(local, 0, 0.5)));
@@ -674,7 +684,7 @@ function _rgba(hex, a) {
       ctx.translate(W / 2, H / 2); ctx.scale(z, z); ctx.translate(-W / 2, -H / 2);
       drawer(tFed, sc);
       ctx.restore();
-    }
+    });
   }
 
   function timelineDuration(timeline) {

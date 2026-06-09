@@ -1026,7 +1026,8 @@ async def _run_batch_job(batch_id: str, req: TimelineBatchRequest, n: int):
                     except Exception:
                         pass
             J.update({"progress": round(i / n * 100)})
-            J["cost"] = template_director.usage_cost(usage)
+            _c = template_director.usage_cost(usage)
+            J["cost"] = f"US${_c['cost_usd']:.2f} · {_c['calls']} llamadas IA · {_c['in'] + _c['cache_w'] + _c['cache_r']:,} tok in / {_c['out']:,} out"
 
         ok = sum(1 for v in J["videos"] if v.get("status") == "done")
         J.update({"status": "done" if ok else "error", "step": "export", "progress": 100,
