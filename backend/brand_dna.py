@@ -87,6 +87,27 @@ def ensure_visible_on_dark(h: str, min_ratio: float = 3.0) -> str:
     return out
 
 
+# Saturación mínima para usar un color como ACENTO de marca. Por debajo es gris/apagado:
+# aplicarlo LAVA todo (botones, cajas de íconos, texto de acento). En ese caso NO se usa y el
+# video se queda con el acento vibrante del theme.
+MIN_ACCENT_SAT = 0.32
+
+
+def saturation(h: str) -> float:
+    """Saturación HSL (0..1) de un hex. Un gris da ~0; un color vivo, alto."""
+    try:
+        r, g, b = (c / 255.0 for c in _rgb(h))
+    except Exception:
+        return 0.0
+    mx, mn = max(r, g, b), min(r, g, b)
+    d = mx - mn
+    if d == 0:
+        return 0.0
+    l = (mx + mn) / 2.0
+    denom = 1 - abs(2 * l - 1)
+    return d / denom if denom else 0.0
+
+
 # ---------- paleta por PIL (fallback / refuerzo) ----------
 
 def palette_from_screenshot(image_path: str):
@@ -196,12 +217,19 @@ async def analyze_brand_dna(image_path: str, theme_options=None, usage: list = N
         dna["primary"] = pil.get("primary", "")
     if not _hex_ok(dna.get("accent", "")):
         dna["accent"] = pil.get("accent", dna.get("primary", ""))
-    # acento legible sobre fondo oscuro
-    if _hex_ok(dna.get("accent", "")):
-        fixed = ensure_visible_on_dark(dna["accent"])
-        if fixed != dna["accent"]:
-            print(f"[dna] acento {dna['accent']} con poco contraste -> aclarado a {fixed}")
-            dna["accent"] = fixed
+    # ACENTO de marca: solo se usa si es un color VÍVIDO. Si lo que se ve es gris/apagado, NO lo
+    # aplicamos (si no, lava botones, cajas de íconos y texto de acento) -> el theme aporta el acento
+    # vibrante. Si es vívido pero oscuro, lo aclaramos hasta que se lea sobre el fondo oscuro.
+    _acc = dna.get("accent", "")
+    if _hex_ok(_acc) and saturation(_acc) >= MIN_ACCENT_SAT:
+        fixed = ensure_visible_on_dark(_acc)
+        if fixed != _acc:
+            print(f"[dna] acento {_acc} con poco contraste -> aclarado a {fixed}")
+        dna["accent"] = fixed
+    else:
+        if _hex_ok(_acc):
+            print(f"[dna] acento {_acc} muy apagado (sat<{MIN_ACCENT_SAT}) -> se ignora, usa el del theme")
+        dna["accent"] = ""   # invalida el acento de marca -> se mantiene el acento del theme
     th = dna.get("theme", "")
     if theme_options and th not in theme_options:
         print(f"[dna] theme '{th}' no válido -> lo ignora (rotación elige)")
