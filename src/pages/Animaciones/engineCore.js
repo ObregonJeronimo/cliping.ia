@@ -187,10 +187,20 @@ function _rgba(hex, a) {
     ctx.restore();
   }
 
-  // texto con escala desde minúsculo + sombra de marca
-  function fxText(str, x, y, size, p, weight = 700, col = '#fff6f0') {
+  // tamaño de fuente mas grande (<= base, >= min) con el que `str` entra en maxW (anti-recorte)
+  function fitFont(str, base, maxW, min = 14, weight = 700) {
+    let s = base;
+    ctx.font = `${weight} ${s}px "Inter",system-ui,sans-serif`;
+    while (s > min && ctx.measureText(str).width > maxW) {
+      s -= 1; ctx.font = `${weight} ${s}px "Inter",system-ui,sans-serif`;
+    }
+    return s;
+  }
+  // texto con entrada suave (scale + fade, leve overshoot) + auto-ajuste de tamaño si se pasa maxW
+  function fxText(str, x, y, size, p, weight = 700, col = '#fff6f0', maxW = 0) {
     if (p <= 0) return;
-    const sc = lerp(0.06, 1, eOutBack(clamp(p, 0, 1)));
+    if (maxW > 0) size = fitFont(str, size, maxW, 14, weight);
+    const sc = lerp(0.55, 1, eOutBack(clamp(p, 0, 1)));
     ctx.save();
     ctx.globalAlpha *= clamp(p * 1.4, 0, 1);
     ctx.translate(x, y); ctx.scale(sc, sc);
@@ -291,7 +301,7 @@ function _rgba(hex, a) {
     const pp = inv(t, 4.3, 5.7);
     if (pp > 0) {
       const _ttl = p.title || '';
-      const titleY = paintY, fontSize = _ttl.length > 13 ? Math.max(34, 58 - (_ttl.length - 13) * 2.2) : 58, half = fontSize * 0.62;
+      const titleY = paintY, fontSize = fitFont(_ttl, 58, W * 0.86, 32, 800), half = fontSize * 0.62;
       const top = titleY - half, bot = titleY + half + 8;
       const front = lerp(top - 6, bot, eOutCubic(pp));
       ctx.save();
@@ -318,15 +328,15 @@ function _rgba(hex, a) {
 
     // ----- subtítulos minúsculo → leíble -----
     const _subs = p.subtitles || [];
-    if (_subs[0]) fxText(_subs[0], cx, H * 0.72, 22, inv(t, 5.2, 5.8), 600, '#e9d9e4');
-    if (_subs[1]) fxText(_subs[1], cx, H * 0.755, 22, inv(t, 5.45, 6.0), 600, '#e9d9e4');
+    if (_subs[0]) fxText(_subs[0], cx, H * 0.72, 22, inv(t, 5.2, 5.8), 600, '#e9d9e4', W * 0.82);
+    if (_subs[1]) fxText(_subs[1], cx, H * 0.755, 22, inv(t, 5.45, 6.0), 600, '#e9d9e4', W * 0.82);
   }
 
   // ---------- ESCENA 2: carrito → click → caja → alas → vuela → casa ----------
   function sceneCart(t, p = {}) {
     const cx = W / 2, cy = H * 0.44;
     const hx = W * 0.72, hy = H * 0.64;
-    if (p.caption) fxText(p.caption, W / 2, H * 0.15, 23, inv(t, 0.3, 1.0), 600, '#f0e7f0');
+    if (p.caption) fxText(p.caption, W / 2, H * 0.15, 23, inv(t, 0.3, 1.0), 600, '#f0e7f0', W * 0.86);
 
     // casa aparece antes de que llegue
     const hin = inv(t, 3.2, 4.1);
@@ -422,15 +432,15 @@ function _rgba(hex, a) {
   // ---------- ESCENA 3: checklist con botones OK ----------
   function sceneList(t, p = {}) {
     const cx = W / 2;
-    fxText(p.title || '', cx, H * 0.24, (p.title || '').length > 18 ? 24 : 30, inv(t, 0.1, 0.7), 800);
+    fxText(p.title || '', cx, H * 0.24, (p.title || '').length > 18 ? 24 : 30, inv(t, 0.1, 0.7), 800, '#fff6f0', W * 0.86);
     const items = (p.items || []).slice(0, 4);
-    const startY = H * 0.36, gap = 64;
+    const gap = 64, startY = H * 0.52 - (items.length - 1) * gap / 2;
     items.forEach((label, i) => {
-      const d = 0.55 + i * 0.26;
+      const d = 0.5 + i * 0.34;
       const rin = inv(t, d, d + 0.55);
       if (rin <= 0) return;
       const x = cx - 150, y = startY + i * gap;
-      const slide = lerp(46, 0, eOutCubic(rin));
+      const slide = lerp(46, 0, eOutBack(rin));
       ctx.save();
       ctx.globalAlpha *= clamp(rin * 1.5, 0, 1);
       ctx.translate(slide, 0);
@@ -455,8 +465,8 @@ function _rgba(hex, a) {
         ctx.stroke();
       }
       ctx.restore();
-      // label
-      ctx.font = `600 21px "Inter",system-ui,sans-serif`;
+      // label (auto-ajuste para no cortar en el borde de la tarjeta)
+      ctx.font = `600 ${fitFont(label, 21, 228, 13, 600)}px "Inter",system-ui,sans-serif`;
       ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#f0e7f0';
       ctx.fillText(label, x + 58, y);
       ctx.restore();
@@ -470,7 +480,7 @@ function _rgba(hex, a) {
     const bn = inv(t, 0.2, 1.05);
     if (bn > 0) {
       const _bn = p.brand || '';
-      const fontSize = _bn.length > 13 ? Math.max(34, 56 - (_bn.length - 13) * 2.2) : 56, half = fontSize * 0.62, top = cy - half, bot = cy + half;
+      const fontSize = fitFont(_bn, 56, W * 0.86, 32, 800), half = fontSize * 0.62, top = cy - half, bot = cy + half;
       const front = lerp(top - 6, bot, eOutCubic(bn));
       ctx.save();
       ctx.beginPath(); ctx.moveTo(0, top - 30); ctx.lineTo(W, top - 30); ctx.lineTo(W, front);
@@ -491,13 +501,16 @@ function _rgba(hex, a) {
       const pulse = 1 + Math.sin(t * 4) * 0.025 * clamp(inv(t, 1.6, 1.8), 0, 1);
       const sc = eOutBack(clamp(cta, 0, 1)) * pulse;
       ctx.save(); ctx.translate(cx, cy + 110); ctx.scale(sc, sc);
-      const w = 250, h = 64;
+      const ctaStr = (p.cta || 'Visitá ahora') + '  →';
+      ctx.font = `700 25px "Inter",system-ui,sans-serif`;
+      const w = Math.max(250, Math.min(360, ctx.measureText(ctaStr).width + 56)), h = 64;
+      const ctaSize = fitFont(ctaStr, 25, w - 44, 15, 700);
       setShadow('rgba(255,79,139,0.55)', 30, 10);
       ctx.fillStyle = accent(-w / 2, -h / 2, w / 2, h / 2);
       ctx.roundRect(-w / 2, -h / 2, w, h, h / 2); ctx.fill(); noShadow();
-      ctx.font = `700 25px "Inter",system-ui,sans-serif`;
+      ctx.font = `700 ${ctaSize}px "Inter",system-ui,sans-serif`;
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#1a0a14';
-      ctx.fillText((p.cta || 'Visitá ahora') + '  →', 0, 1);
+      ctx.fillText(ctaStr, 0, 1);
       ctx.restore();
       // chispas al aparecer
       const burst = inv(t, 1.1, 1.55);
@@ -539,7 +552,7 @@ function _rgba(hex, a) {
     }
     if (cur) lines.push(cur);
     const lh = fs * 1.18;
-    const topY = H * 0.42 - (lines.length * lh) / 2 + lh / 2;
+    const topY = H * 0.46 - (lines.length * lh) / 2 + lh / 2;
     // lineas suben + aparecen escalonadas
     lines.forEach((ln, i) => {
       const start = 0.15 + i * 0.26;
@@ -569,7 +582,7 @@ function _rgba(hex, a) {
   // ESCENA: bigStat — un numero que cuenta de 0 al valor + label debajo. El beat de "dato que impacta".
   // Solo con un numero REAL del sitio. Nativo de Canvas, limpio.
   function sceneBigStat(t, p = {}) {
-    const cx = W / 2, cy = H * 0.42;
+    const cx = W / 2, cy = H * 0.46;
     const value = Number(p.value) || 0;
     const prog = eOutCubic(inv(t, 0.2, 1.7));
     const shown = value * prog;
@@ -585,7 +598,7 @@ function _rgba(hex, a) {
     ctx.fillStyle = accent(cx - 130, cy, cx + 130, cy);
     ctx.fillText(num, cx, cy);
     ctx.restore();
-    if (p.label) fxText(p.label, cx, cy + 84, 24, inv(t, 1.3, 1.9), 600, '#e9d9e4');
+    if (p.label) fxText(p.label, cx, cy + 84, 24, inv(t, 1.3, 1.9), 600, '#e9d9e4', W * 0.86);
   }
 
   const DRAWERS = { paintTitle: sceneTitle, deliver: sceneCart, checklist: sceneList, outro: sceneOutro, statement: sceneStatement, bigStat: sceneBigStat };
