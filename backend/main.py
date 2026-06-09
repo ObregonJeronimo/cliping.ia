@@ -300,21 +300,16 @@ def _get_brand_cache(db, user_id: str, brand_key: str):
 
 
 def _set_brand_cache(db, user_id: str, brand_key: str, dna: dict, brand: str):
-    """Guarda el análisis (ADN + hechos) de una URL. Best-effort.
-    TESTING: mantiene UN SOLO caché guardado por usuario (borra los de otras URLs) para no acumular.
-    Más adelante, si querés cachear varias URLs a la vez, sacá el bloque 'single-slot'."""
+    """Guarda el análisis (ADN + hechos) de una URL. Best-effort. Multi-página: cada URL queda
+    cacheada por separado (se gestionan/borran desde la lista en Animaciones)."""
     if not (db and user_id):
         return
     try:
         col = db.collection("users").document(user_id).collection("brand_cache")
-        # single-slot (testing): dejar SOLO el de esta URL.
-        for d in col.stream():
-            if d.id != brand_key:
-                d.reference.delete()
         col.document(brand_key).set({
             "brand_key": brand_key, "dna": dna or {}, "brand": brand or "", "ts": time.time(),
         })
-        print(f"[cache] análisis guardado para {brand_key} (único; próximos videos de esta URL no re-analizan)")
+        print(f"[cache] análisis guardado para {brand_key} (próximos videos de esta URL no re-analizan)")
     except Exception as e:
         print(f"[cache] guardar análisis falló: {e}")
 

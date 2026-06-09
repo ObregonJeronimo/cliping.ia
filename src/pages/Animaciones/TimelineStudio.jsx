@@ -1,4 +1,6 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
+import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore'
+import { db } from '../../lib/firebase'
 import { useAuth } from '../../contexts/AuthContext'
 import styles from '../Cinematicas/Cinematicas.module.css'
 
@@ -48,6 +50,9 @@ export default function TimelineStudio() {
   const [proposito, setProposito] = useState('marketing')
   const [formato, setFormato] = useState('vertical')
   const [gen, setGen] = useState(null)   // { status, step, progress, videoUrl, error, timeline }
+  const [cached, setCached] = useState([])        // páginas cacheadas (ADN guardado por URL)
+  const [cacheLoading, setCacheLoading] = useState(true)
+  const [cacheDel, setCacheDel] = useState(null)  // id que se está borrando
 
   const generating = gen?.status === 'running'
   const canGenerate = url.trim() && !generating
@@ -56,6 +61,42 @@ export default function TimelineStudio() {
   const planScenes = gen?.timeline?.scenes || []
 
   function reset() { clearInterval(pollRef.current); setGen(null) }
+
+  // Caché de marcas: el análisis (ADN) de cada URL queda guardado en users/{uid}/brand_cache
+  // (lo escribe el backend al generar). Acá lo listamos y borramos client-side, como Mis cinemáticas.
+  useEffect(() => { if (user) loadCache() }, [user])
+  async function loadCache() {
+    if (!user?.uid) { setCacheLoading(false); return }
+    setCacheLoading(true)
+    try {
+      const snap = await getDocs(collection(db, 'users', user.uid, 'brand_cache'))
+      const list = snap.docs.map(d => {
+        const x = d.data() || {}
+        return { id: d.id, accent: x.dna?.accent || '', summary: x.dna?.summary || '', ts: x.ts || 0 }
+      })
+      list.sort((a, b) => (b.ts || 0) - (a.ts || 0))
+      setCached(list)
+    } catch (e) { console.error('[Animaciones] cache load:', e) }
+    setCacheLoading(false)
+  }
+  async function delCacheOne(id) {
+    if (!user?.uid) return
+    setCacheDel(id)
+    try {
+      await deleteDoc(doc(db, 'users', user.uid, 'brand_cache', id))
+      setCached(cs => cs.filter(c => c.id !== id))
+    } catch (e) { console.error('[Animaciones] cache delete:', e) }
+    setCacheDel(null)
+  }
+  async function clearAllCache() {
+    if (!user?.uid || cached.length === 0) return
+    if (!confirm(`¿Borrar las ${cached.length} páginas cacheadas?`)) return
+    const ids = cached.map(c => c.id)
+    setCached([])
+    for (const id of ids) {
+      try { await deleteDoc(doc(db, 'users', user.uid, 'brand_cache', id)) } catch { /* sigue */ }
+    }
+  }
 
   async function generate() {
     const u = url.trim()
@@ -77,9 +118,11 @@ export default function TimelineStudio() {
           if (j.status === 'done') {
             clearInterval(pollRef.current)
             setGen(g => ({ ...g, status: 'done', progress: 100, timeline: j.timeline || g.timeline, videoUrl: j.cloudinaryUrl || (j.videoFilename ? `${API_URL}/api/video/${j.videoFilename}` : null) }))
+            loadCache()
           } else if (j.status === 'error') {
             clearInterval(pollRef.current)
             setGen(g => ({ ...g, status: 'error', error: j.error || 'Error en la generación' }))
+            loadCache()
           }
         } catch { /* reintenta */ }
       }, 2500)
@@ -139,6 +182,37 @@ export default function TimelineStudio() {
           {generating ? <><span className={styles.spinner} />Generando animación…</>
             : !url.trim() ? 'Ingresá una URL' : '✨ Generar animación'}
         </button>
+
+        <div className={styles.cineSection} style={{ marginTop: 4 }}>
+          <div className={styles.cineSectionLabel}>
+            <span>Páginas cacheadas{cached.length > 0 ? ` · ${cached.length}` : ''}</span>
+            {cached.length > 0 && (
+              <button onClick={clearAllCache}
+                style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', cursor: 'pointer', padding: 0 }}>
+                Borrar todo
+              </button>
+            )}
+          </div>
+          {cacheLoading ? (
+            <div className={styles.selEmpty}>cargando…</div>
+          ) : cached.length === 0 ? (
+            <div className={styles.selEmpty}>Cuando generes, la página queda cacheada acá (no se re-analiza la próxima vez).</div>
+          ) : (
+            <div className={styles.selList}>
+              {cached.map(c => (
+                <div key={c.id} className={styles.selItem}>
+                  <span style={{ width: 9, height: 9, borderRadius: '50%', flexShrink: 0, background: c.accent || '#ddd' }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.id}</div>
+                    {c.summary && <div style={{ fontSize: 10, color: '#999', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.summary}</div>}
+                  </div>
+                  <button className={styles.delBtn} onClick={() => delCacheOne(c.id)} disabled={cacheDel === c.id}
+                    title="Borrar del caché" aria-label="Borrar del caché">✕</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className={styles.right}>
