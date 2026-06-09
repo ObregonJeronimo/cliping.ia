@@ -79,29 +79,55 @@
 }
 
 /* ─── Hero ─────────────────────────────────────────────────────────────── */
-/* Altura FIJA basada en viewport (no depende del contenido) → sin loops de
-   crecimiento. El canvas es absolute dentro de .canvasWrapper, no aporta
-   altura al layout. */
+/* El canvas de particulas es un fondo absoluto que cubre TODO el hero
+   (no esta confinado a una columna), asi la animacion es full-bleed y no
+   se ve como una caja. El texto va por encima a la izquierda. */
 .hero {
-  display: grid;
-  grid-template-columns: 1fr 1.1fr;
+  position: relative;
   height: 100vh;
   height: 100dvh;
   min-height: 640px;
   padding-top: 64px;
-  position: relative;
   z-index: 2;
   box-sizing: border-box;
+  overflow: hidden;
 }
 
+/* Canvas de fondo: cubre todo el hero */
+.canvasWrapper {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.canvasPlaceholder {
+  position: absolute;
+  inset: 0;
+  background: transparent;
+}
+
+/* Fundido lateral izquierdo MUY suave para dar legibilidad al texto sin
+   formar una caja: solo un degradado tenue que se desvanece hacia el centro. */
+.vignette {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    linear-gradient(to right, rgba(8, 8, 16, 0.85) 0%, rgba(8, 8, 16, 0.4) 28%, transparent 55%);
+}
+
+/* Texto a la izquierda, por encima del canvas */
 .left {
+  position: relative;
+  z-index: 4;
+  height: 100%;
   display: flex;
   flex-direction: column;
   justify-content: center;
   padding: 40px 56px 40px 80px;
-  min-width: 0;
-  position: relative;
-  z-index: 4;             /* el texto queda sobre el canvas */
+  max-width: 620px;
+  box-sizing: border-box;
 }
 
 .title {
@@ -123,7 +149,7 @@
 .subtitle {
   font-size: clamp(15px, 1.4vw, 17px);
   line-height: 1.65;
-  color: rgba(232, 232, 240, 0.45);
+  color: rgba(232, 232, 240, 0.55);
   margin: 0 0 36px;
   max-width: 400px;
   letter-spacing: 0.005em;
@@ -186,34 +212,6 @@
   line-height: 1.5;
 }
 
-/* Right column */
-.right {
-  position: relative;
-  overflow: hidden;          /* contiene el canvas absolute, sin desbordes */
-}
-
-.canvasWrapper {
-  position: absolute;        /* llena .right sin aportar altura al layout */
-  inset: 0;
-}
-
-/* Fundido muy sutil solo para que el campo de particulas no choque contra
-   los bordes; SIN franja vertical que parta el hero en dos mitades. */
-.vignette {
-  pointer-events: none;
-  position: absolute;
-  inset: 0;
-  z-index: 3;
-  background:
-    radial-gradient(ellipse 100% 100% at 60% 50%, transparent 80%, rgba(8, 8, 16, 0.5) 100%);
-}
-
-.canvasPlaceholder {
-  position: absolute;
-  inset: 0;
-  background: transparent;
-}
-
 /* ─── Steps ────────────────────────────────────────────────────────────── */
 .steps {
   position: relative;
@@ -262,22 +260,19 @@
 
 /* ─── Responsive: mobile ───────────────────────────────────────────────── */
 @media (max-width: 768px) {
-  /* El hero pasa a una sola columna: canvas arriba, texto abajo. Altura
-     auto (no 100dvh) para que el contenido fluya y no se corte. */
+  /* El canvas sigue siendo fondo full; el texto se alinea abajo y el
+     fundido pasa a ser vertical para legibilidad. */
   .hero {
-    grid-template-columns: 1fr;
-    grid-template-rows: 42vh auto;
     height: auto;
     min-height: 100dvh;
   }
 
-  .right {
-    order: -1;            /* canvas arriba en mobile */
-  }
-
   .left {
-    padding: 32px 24px 48px;
-    justify-content: flex-start;
+    height: auto;
+    min-height: calc(100dvh - 64px);
+    justify-content: flex-end;
+    padding: 32px 24px 56px;
+    max-width: none;
   }
 
   .title {
@@ -294,6 +289,12 @@
   .nav { padding: 0 20px; }
   .navLinks { display: none; }
 
+  /* fundido de abajo hacia arriba para que el texto se lea sobre el canvas */
+  .vignette {
+    background:
+      linear-gradient(to top, rgba(8, 8, 16, 0.92) 0%, rgba(8, 8, 16, 0.5) 35%, transparent 65%);
+  }
+
   .steps {
     grid-template-columns: 1fr;
     padding: 0 24px;
@@ -306,18 +307,11 @@
   }
 
   .step:last-child { border-bottom: none; }
-
-  /* En mobile el canvas esta arriba: fundimos suave por abajo para unirlo
-     con el texto, sin corte duro. */
-  .vignette {
-    background:
-      linear-gradient(to bottom, rgba(8, 8, 16, 0) 70%, rgba(8, 8, 16, 0.85) 100%);
-  }
 }
 
 /* ─── Responsive: mobile chico ─────────────────────────────────────────── */
 @media (max-width: 380px) {
-  .left { padding: 28px 18px 40px; }
+  .left { padding: 28px 18px 48px; }
   .nav  { padding: 0 16px; }
   .steps { padding: 0 18px; }
 }
