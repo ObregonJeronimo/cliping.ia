@@ -17,6 +17,33 @@ function setAccent(hex) {
   else { A1 = '#ff8a4c'; A2 = '#ff4f8b'; }
 }
 
+// FONDO por tema de marca: el ADN detecta el tema (organic-natural, ocean-deep, etc.) y el motor
+// pinta un fondo acorde al rubro, no violeta para todo. Textos del motor son claros -> todos los
+// fondos son oscuros pero con el HUE de la marca. El glow ambiente sale del acento de la marca.
+const THEMES = {
+  'organic-natural': { bg: ['#34291b', '#241c10', '#140e06'], mote: '255,240,210' },
+  'sunset-warm':     { bg: ['#3a201a', '#251210', '#140807'], mote: '255,220,190' },
+  'crimson-bold':    { bg: ['#3a121a', '#240a10', '#140509'], mote: '255,205,210' },
+  'gold-lux':        { bg: ['#2c2614', '#1c170b', '#0f0c05'], mote: '255,238,190' },
+  'berry-glow':      { bg: ['#2a1336', '#1a0c22', '#0c0512'], mote: '255,220,245' },
+  'ocean-deep':      { bg: ['#0e3848', '#07242f', '#03141b'], mote: '200,240,255' },
+  'clinical-formal': { bg: ['#16243f', '#0e162e', '#070c1b'], mote: '220,235,255' },
+  'saas-explainer':  { bg: ['#1e2b40', '#11192a', '#070c16'], mote: '215,230,255' },
+  'cyber-neon':      { bg: ['#101a2a', '#0a0f1c', '#05080f'], mote: '180,220,255' },
+  'mono-ink':        { bg: ['#262626', '#161616', '#080808'], mote: '230,230,230' },
+};
+const THEME_DEFAULT = { bg: ['#202836', '#12161f', '#080a10'], mote: '225,232,245' };  // slate neutro (NO violeta)
+let BG = THEME_DEFAULT.bg, MOTE = THEME_DEFAULT.mote;
+function setTheme(name) {
+  const p = THEMES[name] || THEME_DEFAULT;
+  BG = p.bg; MOTE = p.mote;
+}
+function _rgba(hex, a) {
+  if (typeof hex !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(hex)) return `rgba(255,140,76,${a})`;
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+}
+
 
   // roundRect polyfill (por las dudas)
   if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D.prototype.roundRect) {
@@ -61,25 +88,25 @@ function setAccent(hex) {
   }));
   function drawBg(t) {
     const g = ctx.createRadialGradient(W * 0.5, H * 0.34, 40, W * 0.5, H * 0.4, H * 0.9);
-    g.addColorStop(0, '#241640'); g.addColorStop(0.5, '#150d28'); g.addColorStop(1, '#08060f');
+    g.addColorStop(0, BG[0]); g.addColorStop(0.5, BG[1]); g.addColorStop(1, BG[2]);
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-    // glow que respira y se mueve lento
+    // glow que respira y se mueve lento — tinte del ACENTO de la marca (antes era rosa fijo)
     const gx = W * 0.5 + Math.sin(t * 0.3) * 70, gy = H * 0.33 + Math.cos(t * 0.23) * 40;
     const gl = ctx.createRadialGradient(gx, gy, 0, gx, gy, 260);
-    gl.addColorStop(0, 'rgba(255,90,140,0.10)'); gl.addColorStop(1, 'rgba(255,90,140,0)');
+    gl.addColorStop(0, _rgba(A1, 0.12)); gl.addColorStop(1, _rgba(A1, 0));
     ctx.fillStyle = gl; ctx.fillRect(0, 0, W, H);
-    // partículas
+    // partículas (tinte segun tema)
     ctx.save();
     for (const m of motes) {
       const y = (m.y - t * m.sp) % (H + 20); const yy = y < -10 ? y + H + 20 : y;
       const tw = 0.4 + 0.6 * (0.5 + 0.5 * Math.sin(t * 1.5 + m.ph));
-      ctx.beginPath(); ctx.fillStyle = `rgba(255,225,235,${0.10 * tw})`;
+      ctx.beginPath(); ctx.fillStyle = `rgba(${MOTE},${0.10 * tw})`;
       ctx.arc(m.x, yy, m.r, 0, TAU); ctx.fill();
     }
     ctx.restore();
     // viñeta
     const v = ctx.createRadialGradient(W / 2, H / 2, H * 0.32, W / 2, H / 2, H * 0.72);
-    v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,0.55)');
+    v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,0.5)');
     ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
   }
 
@@ -612,6 +639,7 @@ function setAccent(hex) {
     ctx = c;
     const tl = pickTimeline(timeline);
     setAccent(tl.accent);
+    setTheme(tl.theme);
     ctx.clearRect(0, 0, W, H);
     drawBg(t);
     for (const sc of layout(tl)) {
@@ -648,4 +676,4 @@ function setAccent(hex) {
     return cur.label || SCENE_LABELS[cur.type] || ('Escena · ' + cur.type);
   }
 
-export { drawFrame, beatAt, timelineDuration, setAccent, DEMO_TIMELINE };
+export { drawFrame, beatAt, timelineDuration, setAccent, setTheme, DEMO_TIMELINE };

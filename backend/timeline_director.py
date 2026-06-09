@@ -224,6 +224,10 @@ def _normalize_timeline(tl: dict, dna: dict = None) -> dict:
         tl["accent"] = acc
     elif not _bdna._hex_ok(str(tl.get("accent") or "")):
         tl.pop("accent", None)
+    # tema visual (del ADN) -> el motor elige la paleta de fondo acorde al rubro
+    th = (dna or {}).get("theme")
+    if isinstance(th, str) and th.strip():
+        tl["theme"] = th.strip()
     tl.setdefault("brand", "")
     return tl
 
