@@ -872,3 +872,165 @@ async def _render_timeline_job(job_id: str, req: TimelineGenRequest):
                 f.unlink(missing_ok=True)
             except Exception:
                 pass
+
+
+# ─── Prueba de 5: genera N videos en serie y, tras CADA render, corre la crítica con visión ───
+def _scene_titles(tl):
+    return " · ".join((s.get("type") or "?") for s in (tl or {}).get("scenes", []) or [])
+
+
+class TimelineBatchRequest(BaseModel):
+    userId: str = ""
+    url: str = ""
+    desarrollo: str = ""
+    proposito: str = "marketing"
+    idioma: str = ""
+    n: int = 5
+    refreshBrand: bool = False
+
+
+@app.post("/api/timeline/batch")
+async def timeline_batch(req: TimelineBatchRequest):
+    batch_id = str(uuid.uuid4())
+    n = max(1, min(8, int(req.n or 5)))
+    jobs[batch_id] = {
+        "id": batch_id, "kind": "batch", "status": "running", "step": "queued",
+        "progress": 0, "current": 0, "total": n, "videos": [], "error": None,
+        "cost": "", "createdAt": datetime.utcnow().isoformat(),
+    }
+    asyncio.create_task(_run_batch_job(batch_id, req, n))
+    return {"job_id": batch_id}
+
+
+async def _run_batch_job(batch_id: str, req: TimelineBatchRequest, n: int):
+    from pathlib import Path as _Path
+    REMOTION_DIR = _Path(__file__).parent.parent / "remotion"
+    OUT = _Path(__file__).parent / "outputs"
+    OUT.mkdir(exist_ok=True)
+    J = jobs[batch_id]
+
+    def setv(i, **kw):
+        vs = J["videos"]
+        while len(vs) < i:
+            vs.append({"index": len(vs) + 1, "status": "pending"})
+        vs[i - 1].update(kw)
+
+    try:
+        import vision_critic  # perezoso: si falta imageio-ffmpeg, no tira abajo todo el backend
+        db = get_firestore()
+        bkey = _brand_key(req.url)
+        usage = []
+        # Captura del sitio UNA vez (se reusa en los N videos).
+        site = {"screenshot": None, "content": None}
+        try:
+            import site_capture
+            J.update({"step": "capture", "progress": 3})
+            site = await site_capture.capture_all(req.url.strip(), str(OUT / f"{batch_id}_cap.png"))
+        except Exception as ce:
+            print(f"[batch] capture_all fallo: {ce}")
+        bias = _get_rating_bias(db, req.userId)
+        cache = None if req.refreshBrand else _get_brand_cache(db, req.userId, bkey)
+        reuse_dna = (cache.get("dna") or {}) if cache else None
+        reuse_brand = (cache.get("brand") or "") if cache else None
+
+        for i in range(1, n + 1):
+            base = (i - 1) / n * 100
+            J.update({"current": i, "step": "script", "progress": round(base + 4)})
+            setv(i, status="running", step="script")
+            vid_id = uuid.uuid4().hex
+            out_path = OUT / f"{vid_id}_timeline.mp4"
+            temp_files = []
+            try:
+                recent = _get_recent_profile(db, req.userId, bkey)
+                brand_sink = []
+                dna_for = reuse_dna if reuse_dna is not None else {}
+                if reuse_dna is None:
+                    try:
+                        dna_for = await brand_dna.analyze_brand_dna(
+                            site.get("screenshot"), theme_options=template_director.THEME_VIBES, usage=usage)
+                    except Exception as de:
+                        print(f"[batch] dna error: {de}")
+                        dna_for = {}
+                timeline = await timeline_director.write_timeline(
+                    req.url, req.desarrollo, req.proposito, idioma=req.idioma,
+                    recent_profile=recent, rating_bias=bias, prefetched_site=site.get("content"),
+                    dna=dna_for, cached_brand=reuse_brand, usage=usage, brand_sink=brand_sink)
+                facts = (brand_sink[0] if brand_sink else "") or reuse_brand or ""
+                if reuse_dna is None:
+                    reuse_dna, reuse_brand = dna_for, facts
+                    if dna_for and (dna_for.get("summary") or dna_for.get("mood")) and facts:
+                        _set_brand_cache(db, req.userId, bkey, dna_for, facts)
+                try:
+                    _push_recent_profile(db, req.userId, bkey, timeline)   # variedad dentro de la tanda
+                except Exception:
+                    pass
+
+                # Build + render (idéntico al job single).
+                J.update({"step": "render", "progress": round(base + 8)})
+                setv(i, step="render", sceneSummary=_scene_titles(timeline), brand=(timeline.get("brand") or ""))
+                entry, comp_id, total, temp_files = timeline_director.build_timeline_files(
+                    vid_id, timeline, REMOTION_DIR, req.formato)
+                candidates = [str(REMOTION_DIR / "node_modules" / ".bin" / "remotion.cmd"),
+                              str(REMOTION_DIR / "node_modules" / ".bin" / "remotion")]
+                remotion_bin = next((c for c in candidates if _Path(c).exists()), "npx")
+                args = [remotion_bin, "render", entry, comp_id, str(out_path.absolute()),
+                        "--codec", "h264", "--fps", "30", "--duration-in-frames", str(total),
+                        "--concurrency", "4", "--jpeg-quality", "100", "--crf", "18", "--log", "error"]
+                proc = await _asyncio.create_subprocess_exec(
+                    *args, cwd=str(REMOTION_DIR),
+                    stdout=_asyncio.subprocess.PIPE, stderr=_asyncio.subprocess.PIPE)
+                stdout, stderr = await proc.communicate()
+                if proc.returncode != 0:
+                    raise RuntimeError((stdout.decode(errors="replace") + stderr.decode(errors="replace"))[-300:])
+
+                cloud = ""
+                try:
+                    from cloudinary_upload import upload_video
+                    cloud = await upload_video(str(out_path), f"timeline_{vid_id[:8]}")
+                except Exception as ue:
+                    print(f"[batch] cloudinary fallo: {ue}")
+
+                if db and req.userId and cloud:
+                    try:
+                        db.collection("users").document(req.userId).collection("videos").add({
+                            "kind": "timeline", "format": req.formato, "rating": 0,
+                            "brand": (timeline.get("brand") or ""), "url": req.url,
+                            "publicId": f"cinematicas/timeline_{vid_id[:8]}",
+                            "videoUrl": cloud, "localFile": out_path.name,
+                            "createdAt": datetime.utcnow().isoformat(),
+                        })
+                    except Exception as fe:
+                        print(f"[batch] firestore: {fe}")
+                setv(i, videoUrl=(cloud or f"/api/video/{out_path.name}"))
+
+                # CRÍTICA CON VISIÓN (lo nuevo).
+                J.update({"step": "vision", "progress": round(base + 14)})
+                setv(i, step="vision")
+                _sum = (dna_for.get("summary", "") if isinstance(dna_for, dict) else "")
+                brief = (facts + (("\nResumen de marca: " + _sum) if _sum else "") + f"\nObjetivo: {req.proposito}").strip()
+                crit = await vision_critic.analyze_video(str(out_path), timeline, brief, fmt=req.formato, usage=usage)
+                if crit.get("ok"):
+                    setv(i, status="done", step="done", scores=crit.get("scores"),
+                         analysis=crit.get("analysis"), frames=crit.get("frames"), critModel=crit.get("model"))
+                else:
+                    setv(i, status="done", step="done", scores=None,
+                         analysis=f"(la crítica con visión falló: {crit.get('error')})")
+            except Exception as ve:
+                print(f"[batch] video {i} ERROR: {ve}")
+                setv(i, status="error", error=str(ve)[:300])
+            finally:
+                for f in temp_files:
+                    try:
+                        f.unlink(missing_ok=True)
+                    except Exception:
+                        pass
+            J.update({"progress": round(i / n * 100)})
+            J["cost"] = template_director.usage_cost(usage)
+
+        ok = sum(1 for v in J["videos"] if v.get("status") == "done")
+        J.update({"status": "done" if ok else "error", "step": "export", "progress": 100,
+                  "error": None if ok else "todos los videos fallaron"})
+        print(f"[batch] {batch_id} listo: {ok}/{n} | costo {J.get('cost')}")
+    except Exception as e:
+        print(f"[batch] ERROR fatal: {e}")
+        J.update({"status": "error", "error": str(e)[:400]})

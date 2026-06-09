@@ -53,12 +53,18 @@ export default function TimelineStudio() {
   const [cached, setCached] = useState([])        // páginas cacheadas (ADN guardado por URL)
   const [cacheLoading, setCacheLoading] = useState(true)
   const [cacheDel, setCacheDel] = useState(null)  // id que se está borrando
+  const [batchUrl, setBatchUrl] = useState('')
+  const [batch, setBatch] = useState(null)        // estado de la prueba de 5
+  const [logCopied, setLogCopied] = useState(false)
+  const batchPoll = useRef(null)
 
   const generating = gen?.status === 'running'
   const canGenerate = url.trim() && !generating
   const pct = Math.max(4, gen?.progress || 0)
   const showResult = !!gen
   const planScenes = gen?.timeline?.scenes || []
+  const batchRunning = batch?.status === 'running'
+  const BATCH_STEPS = { queued: 'En cola…', capture: 'Analizando el sitio…', script: 'Escribiendo el guion…', render: 'Renderizando…', vision: 'Analizando el video con visión…', export: 'Listo', done: 'Listo' }
 
   function reset() { clearInterval(pollRef.current); setGen(null) }
 
@@ -98,6 +104,61 @@ export default function TimelineStudio() {
     }
   }
 
+  // Prueba de 5: arranca el batch en el backend y poolea el estado (cada video + su análisis).
+  async function startBatch() {
+    const u = (batchUrl.trim() || url.trim())
+    if (!u || batchRunning) return
+    setBatch({ status: 'running', current: 0, total: 5, step: 'queued', progress: 0, videos: [] })
+    try {
+      const r = await fetch(`${API_URL}/api/timeline/batch`, {
+        method: 'POST', headers: HEADERS,
+        body: JSON.stringify({ userId: user?.uid || '', url: u, desarrollo, proposito, formato: 'vertical', idioma: '', n: 5 }),
+      })
+      const d = await r.json()
+      if (d.error || !d.job_id) { setBatch(b => ({ ...b, status: 'error', error: d.error || 'No se pudo iniciar' })); return }
+      clearInterval(batchPoll.current)
+      batchPoll.current = setInterval(async () => {
+        try {
+          const jr = await fetch(`${API_URL}/api/jobs/${d.job_id}`, { headers: HEADERS })
+          const j = await jr.json()
+          if (!j.error) setBatch(j)
+          if (j.status === 'done' || j.status === 'error') { clearInterval(batchPoll.current); loadCache() }
+        } catch { /* reintenta */ }
+      }, 3000)
+    } catch (e) { setBatch(b => ({ ...b, status: 'error', error: e.message })) }
+  }
+
+  function buildBatchLog() {
+    const vids = batch?.videos || []
+    const head = `# Prueba de ${batch?.total || vids.length} videos — ${(batchUrl.trim() || url.trim())}\n`
+      + `Modelo de crítica: ${vids.find(v => v.critModel)?.critModel || 'sonnet'}\n`
+      + `Costo total: ${batch?.cost || '-'}\n\n`
+    const body = vids.map(v => {
+      const sc = v.scores
+      const ejes = sc?.ejes ? Object.entries(sc.ejes).map(([k, val]) => `${k}: ${val}`).join(' · ') : ''
+      return `---\n\n## Video ${v.index}${v.brand ? ' — ' + v.brand : ''}\n`
+        + (v.sceneSummary ? `Escenas: ${v.sceneSummary}\n` : '')
+        + (sc?.puntaje != null ? `Puntaje global: ${sc.puntaje}/10\n` : '')
+        + (ejes ? `Ejes: ${ejes}\n` : '')
+        + (sc?.veredicto ? `Veredicto: ${sc.veredicto}\n` : '')
+        + `\n${v.analysis || (v.error ? '(error: ' + v.error + ')' : '(sin análisis)')}\n`
+    }).join('\n')
+    return head + body
+  }
+  function copyBatchLog() {
+    navigator.clipboard.writeText(buildBatchLog())
+      .then(() => { setLogCopied(true); setTimeout(() => setLogCopied(false), 1500) })
+      .catch(() => {})
+  }
+  function downloadBatchLog() {
+    const blob = new Blob([buildBatchLog()], { type: 'text/markdown' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = `prueba-5-${Date.now()}.md`
+    a.click()
+    URL.revokeObjectURL(a.href)
+  }
+
   async function generate() {
     const u = url.trim()
     if (!u || generating) return
@@ -130,6 +191,7 @@ export default function TimelineStudio() {
   }
 
   return (
+    <>
     <div className={styles.body}>
       <div className={styles.left}>
         <div className={styles.modeToggle}>
@@ -280,5 +342,87 @@ export default function TimelineStudio() {
         )}
       </div>
     </div>
+
+    {/* ── Laboratorio de auto-mejora: prueba de 5 con crítica de visión ── */}
+    <div style={{ marginTop: 30, paddingTop: 22, borderTop: '1px solid #ececec' }}>
+      <div className={styles.cineSectionLabel} style={{ marginBottom: 8 }}>
+        <span>🧪 Laboratorio · prueba de 5 (crítica con visión)</span>
+      </div>
+      <p style={{ fontSize: 12, color: '#888', margin: '0 0 14px', maxWidth: 660, lineHeight: 1.5 }}>
+        Genera 5 videos seguidos del mismo sitio. Después de cada uno, una IA mira los fotogramas y escribe
+        un análisis profundo (marketing + diseño) antes de pasar al siguiente. Al final tenés el log de los
+        5 para copiar o bajar en .md. Tu PC queda ocupada ~15-25 min.
+      </p>
+
+      <div style={{ display: 'flex', gap: 8, maxWidth: 660, marginBottom: 16 }}>
+        <input className={styles.nameInput} style={{ flex: 1 }} disabled={batchRunning}
+          placeholder={url.trim() ? `usar ${url.trim()}` : 'https://tusitio.com'}
+          value={batchUrl} onChange={e => setBatchUrl(e.target.value)} />
+        <button className={`${styles.forgeBtn} ${batchRunning ? styles.forgeBtnRunning : ''}`}
+          style={{ width: 'auto', whiteSpace: 'nowrap', flexShrink: 0 }}
+          onClick={startBatch} disabled={batchRunning || (!batchUrl.trim() && !url.trim())}>
+          {batchRunning ? <><span className={styles.spinner} />Trabajando…</> : '▶ Iniciar prueba de 5'}
+        </button>
+      </div>
+
+      {batch && (
+        <div>
+          {batchRunning && (
+            <div className={styles.log} style={{ marginBottom: 16 }}>
+              <div className={`${styles.logLine} ${styles.logActive}`}>
+                <div className={styles.progressBar}><div className={styles.progressFill} style={{ width: `${Math.max(4, batch.progress || 0)}%` }} /></div>
+                <span className={styles.logMsg}>Video {batch.current || 0} de {batch.total} — {BATCH_STEPS[batch.step] || 'Procesando…'}</span>
+              </div>
+            </div>
+          )}
+          {batch.status === 'error' && <div className={styles.cineNote}>⚠️ {batch.error}</div>}
+
+          <div style={{ display: 'grid', gap: 16 }}>
+            {(batch.videos || []).map(v => (
+              <div key={v.index} style={{ border: '1px solid #ececec', borderRadius: 12, padding: 14, display: 'grid', gridTemplateColumns: '190px 1fr', gap: 16, alignItems: 'start' }}>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 6 }}>Video {v.index}{v.brand ? ` · ${v.brand}` : ''}</div>
+                  {v.videoUrl
+                    ? <video src={v.videoUrl.startsWith('http') ? v.videoUrl : `${API_URL}${v.videoUrl}`} controls loop playsInline style={{ width: '100%', borderRadius: 8, background: '#000', aspectRatio: '9 / 16' }} />
+                    : <div style={{ aspectRatio: '9 / 16', borderRadius: 8, background: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: '#bbb', fontSize: 12 }}>
+                        {v.status === 'error' ? 'falló' : <><span className={styles.spinner} />{BATCH_STEPS[v.step] || '…'}</>}
+                      </div>}
+                  {v.scores?.puntaje != null && <div style={{ marginTop: 8, fontSize: 13, fontWeight: 700 }}>Puntaje: {v.scores.puntaje}/10</div>}
+                  {v.scores?.ejes && (
+                    <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                      {Object.entries(v.scores.ejes).map(([k, val]) => (
+                        <span key={k} style={{ fontSize: 10, background: '#f3f3f3', borderRadius: 5, padding: '2px 6px', color: '#555' }}>{k} {val}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  {v.scores?.veredicto && <div style={{ fontSize: 13, fontStyle: 'italic', color: '#444', marginBottom: 8 }}>“{v.scores.veredicto}”</div>}
+                  {v.analysis
+                    ? <div style={{ fontSize: 12.5, lineHeight: 1.55, color: '#333', whiteSpace: 'pre-wrap', maxHeight: 380, overflowY: 'auto', background: '#fafafa', border: '1px solid #f0f0f0', borderRadius: 8, padding: 12 }}>{v.analysis}</div>
+                    : v.status === 'error'
+                      ? <div className={styles.cineNote}>⚠️ {v.error}</div>
+                      : <div style={{ fontSize: 12, color: '#aaa' }}>{v.status === 'running' ? `${BATCH_STEPS[v.step] || 'trabajando'}…` : 'en cola…'}</div>}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {(batch.videos || []).some(v => v.analysis) && (
+            <div style={{ marginTop: 18 }}>
+              <div className={styles.cineSectionLabel} style={{ marginBottom: 8 }}>
+                <span>Log completo de los {batch.total}{batch.cost ? ` · costo ${batch.cost}` : ''}</span>
+                <span style={{ display: 'flex', gap: 10 }}>
+                  <button onClick={copyBatchLog} style={{ background: 'none', border: 'none', color: '#6366f1', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', cursor: 'pointer', padding: 0 }}>{logCopied ? '✓ copiado' : 'Copiar'}</button>
+                  <button onClick={downloadBatchLog} style={{ background: 'none', border: 'none', color: '#6366f1', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', cursor: 'pointer', padding: 0 }}>Descargar .md</button>
+                </span>
+              </div>
+              <div style={{ fontSize: 11.5, lineHeight: 1.5, color: '#444', whiteSpace: 'pre-wrap', maxHeight: 320, overflowY: 'auto', background: '#fafafa', border: '1px solid #f0f0f0', borderRadius: 8, padding: 12, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}>{buildBatchLog()}</div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+    </>
   )
 }
