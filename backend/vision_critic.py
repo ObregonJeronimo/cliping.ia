@@ -48,16 +48,17 @@ def _scene_spans(timeline, fps=FPS):
 
 
 def _fracs(k):
-    """k posiciones dentro de una escena, sesgadas al principio (la animación de entrada vive ahí)."""
+    """k posiciones dentro de una escena, sesgadas FUERTE al principio (la animación de entrada vive ahí)."""
     presets = {
         1: [0.5],
         2: [0.10, 0.85],
         3: [0.06, 0.35, 0.92],
         4: [0.05, 0.18, 0.45, 0.92],
-        5: [0.04, 0.14, 0.30, 0.55, 0.92],
-        6: [0.04, 0.12, 0.22, 0.38, 0.62, 0.92],
+        6: [0.03, 0.08, 0.16, 0.28, 0.50, 0.92],
+        8: [0.02, 0.06, 0.11, 0.17, 0.25, 0.40, 0.65, 0.93],
+        10: [0.02, 0.05, 0.09, 0.14, 0.20, 0.28, 0.40, 0.58, 0.78, 0.94],
     }
-    return presets.get(k, presets[6])
+    return presets.get(k, presets[8])
 
 
 # ---------- armado de las hojas (PIL) ----------
@@ -140,8 +141,8 @@ def build_frames(mp4_path, timeline, fps=FPS):
 
     # --- STORYBOARD: una fila por escena, muestreo denso sesgado al inicio (movimiento) ---
     nsc = len(spans)
-    per = 6 if nsc <= 4 else (5 if nsc <= 6 else 4)   # ~24-30 frames totales
-    seqW, rows = 150, []
+    per = 10 if nsc <= 4 else (8 if nsc <= 6 else 6)   # storyboard denso, sesgado a la entrada (~40-60 frames)
+    seqW, rows = 120, []
     for idx, typ, start, dur in spans:
         row = []
         for j, fr_frac in enumerate(_fracs(per)):
