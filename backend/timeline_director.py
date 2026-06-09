@@ -39,7 +39,7 @@ FORMATS = {"vertical": (1080, 1920), "square": (1080, 1080), "wide": (1920, 1080
 
 # Duracion de la demo horneada (engineCore: ~21.4s a 30fps). Cuando el timeline venga en datos,
 # se usa timeline["durationInFrames"].
-DEMO_FRAMES = 642
+DEMO_FRAMES = 732
 
 
 def build_timeline_files(job_id: str, timeline: dict, remotion_dir, fmt: str = "vertical"):

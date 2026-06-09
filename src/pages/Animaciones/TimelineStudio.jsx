@@ -20,10 +20,10 @@ const PRESETS = [
     timeline: {
       brand: 'ConsulPay', accent: '#4f8bff',
       scenes: [
-        { type: 'paintTitle', title: 'ConsulPay', subtitles: ['Tu consultorio', 'ordenado y al día'], durationInFrames: 180 },
-        { type: 'checklist', title: 'Todo en un lugar', items: ['Pacientes y sesiones', 'Pagos al instante', 'Reportes claros'], durationInFrames: 138 },
-        { type: 'deliver', caption: 'Del caos al control', durationInFrames: 180 },
-        { type: 'outro', brand: 'ConsulPay', cta: 'Probalo gratis', durationInFrames: 114 },
+        { type: 'paintTitle', title: 'ConsulPay', subtitles: ['Tu consultorio', 'ordenado y al día'], durationInFrames: 240 },
+        { type: 'statement', text: 'Del caos al control en un clic', durationInFrames: 150 },
+        { type: 'checklist', title: 'Todo en un lugar', items: ['Pacientes y sesiones', 'Pagos al instante', 'Reportes claros'], durationInFrames: 186 },
+        { type: 'outro', brand: 'ConsulPay', cta: 'Probalo gratis', durationInFrames: 150 },
       ],
     },
   },

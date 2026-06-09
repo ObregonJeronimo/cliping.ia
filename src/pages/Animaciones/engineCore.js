@@ -492,11 +492,62 @@ function setAccent(hex) {
   // Cada escena: { type, ...props, durationInFrames }. El motor mapea type -> dibujante y lo
   // renderiza con sus props. El contenido (texto / items / acento) viene de los DATOS, no horneado.
   // Asi la IA puede componer cualquier video escribiendo un timeline; el render es el mismo.
-  const DRAWERS = { paintTitle: sceneTitle, deliver: sceneCart, checklist: sceneList, outro: sceneOutro };
+  // ESCENA: statement — una linea con gancho, revelado limpio (sin clipart). Las lineas suben/aparecen
+  // escalonadas y un barrido de acento (mascara) subraya el bloque. Nativo de Canvas, premium, no generico.
+  function sceneStatement(t, p = {}) {
+    const text = p.text || '';
+    if (!text) return;
+    const cx = W / 2;
+    const fs = text.length > 26 ? 30 : (text.length > 16 ? 36 : 42);
+    ctx.font = `800 ${fs}px "Inter",system-ui,sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    // wrap por ancho
+    const words = text.split(' ');
+    const maxW = W * 0.82;
+    const lines = []; let cur = '';
+    for (const w of words) {
+      const test = cur ? cur + ' ' + w : w;
+      if (ctx.measureText(test).width > maxW && cur) { lines.push(cur); cur = w; }
+      else cur = test;
+    }
+    if (cur) lines.push(cur);
+    const lh = fs * 1.18;
+    const topY = H * 0.42 - (lines.length * lh) / 2 + lh / 2;
+    // lineas suben + aparecen escalonadas
+    lines.forEach((ln, i) => {
+      const start = 0.15 + i * 0.26;
+      const pr = eOutCubic(inv(t, start, start + 0.55));
+      if (pr <= 0) return;
+      ctx.save();
+      ctx.globalAlpha = pr;
+      ctx.fillStyle = '#f3ecf7';
+      ctx.fillText(ln, cx, topY + i * lh + (1 - pr) * 26);
+      ctx.restore();
+    });
+    // barrido de acento que subraya el bloque
+    const uStart = 0.15 + lines.length * 0.26 + 0.12;
+    const up = eInOutCubic(inv(t, uStart, uStart + 0.5));
+    if (up > 0) {
+      const uy = topY + (lines.length - 1) * lh + fs * 0.72;
+      const half = Math.min(maxW, ctx.measureText(lines[lines.length - 1]).width) / 2 + 6;
+      ctx.save();
+      ctx.fillStyle = accent(cx - half, uy, cx + half, uy);
+      ctx.beginPath();
+      ctx.roundRect(cx - half, uy, half * 2 * up, 5, 3);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  const DRAWERS = { paintTitle: sceneTitle, deliver: sceneCart, checklist: sceneList, outro: sceneOutro, statement: sceneStatement };
+  // Cuanto dura la COREOGRAFIA de cada escena (segundos). Pasado esto, el motor CONGELA el frame final
+  // = tiempo de lectura. Asi: durationInFrames = animacion + lectura (mas largo = mas tiempo para leer).
+  const ANIM_LEN = { paintTitle: 6.0, deliver: 6.4, checklist: 3.9, outro: 3.2, statement: 2.6 };
   const SCENE_LABELS = {
     paintTitle: '<b>paintTitle</b> · puntito -> boton -> barra -> se derrite -> gota -> pinta el titulo',
     deliver: '<b>deliver</b> · carrito -> click -> caja -> le salen alas -> vuela -> cae en la casa',
     checklist: '<b>checklist</b> · lista con botones OK',
+    statement: '<b>statement</b> · linea con gancho + barrido de acento',
     outro: '<b>outro</b> · marca + CTA',
   };
 
@@ -504,10 +555,10 @@ function setAccent(hex) {
   const DEMO_TIMELINE = {
     brand: 'Sabor real', accent: '#ff5a8a',
     scenes: [
-      { type: 'paintTitle', title: 'Sabor real', subtitles: ['Productos naturales', 'directo a tu casa'], durationInFrames: 192 },
-      { type: 'deliver', caption: '', durationInFrames: 204 },
-      { type: 'checklist', title: 'Por que Sabor real', items: ['Sin conservantes', 'Envio en el dia', 'Precios claros', 'Atencion humana'], durationInFrames: 126 },
-      { type: 'outro', brand: 'Sabor real', cta: 'Visita ahora', durationInFrames: 120 },
+      { type: 'paintTitle', title: 'Sabor real', subtitles: ['Productos naturales', 'directo a tu casa'], durationInFrames: 240 },
+      { type: 'statement', text: 'Del campo a tu mesa, sin vueltas', durationInFrames: 150 },
+      { type: 'checklist', title: 'Por que Sabor real', items: ['Sin conservantes', 'Envio en el dia', 'Precios claros', 'Atencion humana'], durationInFrames: 192 },
+      { type: 'outro', brand: 'Sabor real', cta: 'Visita ahora', durationInFrames: 150 },
     ],
   };
 
@@ -547,13 +598,17 @@ function setAccent(hex) {
       if (!drawer) continue;
       // micro zoom de entrada/salida para sabor cinematografico
       const local = t - sc.s, dur = sc.e - sc.s;
+      // tiempo de LECTURA: la escena anima a velocidad natural hasta ANIM_LEN y despues congela
+      // su frame final (queda quieto, legible) el resto de la escena.
+      const animLen = ANIM_LEN[sc.type] || dur;
+      const tFed = Math.min(local, animLen);
       const zin = lerp(1.04, 1, eOutCubic(inv(local, 0, 0.5)));
       const zout = lerp(1, 0.985, eInCubic(inv(local, dur - 0.5, dur)));
       const z = Math.min(zin, zout);
       ctx.save();
       ctx.globalAlpha = a;
       ctx.translate(W / 2, H / 2); ctx.scale(z, z); ctx.translate(-W / 2, -H / 2);
-      drawer(local, sc);
+      drawer(tFed, sc);
       ctx.restore();
     }
   }
