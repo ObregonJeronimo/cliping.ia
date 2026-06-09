@@ -5,63 +5,85 @@
   background: #080810;
 }
 
-/* ── Bloque CTA con fondo de puntos (halftone) ──────────────────────────── */
+/* ── Bloque CTA con escena decorativa ───────────────────────────────────── */
 .cta {
   position: relative;
   overflow: hidden;
-  padding: 120px 40px 130px;
+  padding: 130px 40px 140px;
   text-align: center;
   border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-/* Textura de puntos: dos capas de radial-gradient en grilla, con mascara
-   que las concentra hacia abajo (efecto "horizonte de particulas"). */
-.dots {
+/* Escena: anillos concentricos + glow + chispas (eco del hero de particulas) */
+.scene {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background-image:
-    radial-gradient(circle at center, rgba(168, 180, 255, 0.5) 1px, transparent 1.6px),
-    radial-gradient(circle at center, rgba(140, 111, 240, 0.35) 1px, transparent 1.6px);
-  background-size: 22px 22px, 22px 22px;
-  background-position: 0 0, 11px 11px;
-  -webkit-mask-image: radial-gradient(ellipse 80% 75% at 50% 120%, #000 0%, transparent 70%);
-  mask-image: radial-gradient(ellipse 80% 75% at 50% 120%, #000 0%, transparent 70%);
-  opacity: 0.8;
 }
 
-/* glow violeta detras del texto */
-.cta::before {
+/* glow central */
+.scene::before {
   content: '';
   position: absolute;
-  left: 50%; bottom: -40%;
-  width: 700px; height: 500px;
-  transform: translateX(-50%);
-  background: radial-gradient(ellipse at center, rgba(108, 92, 231, 0.3), transparent 65%);
-  filter: blur(30px);
-  pointer-events: none;
+  left: 50%; top: 50%;
+  width: 620px; height: 620px;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, rgba(108, 92, 231, 0.28), transparent 62%);
+  filter: blur(20px);
+}
+
+.ring {
+  position: absolute;
+  left: 50%; top: 50%;
+  border-radius: 50%;
+  border: 1px solid rgba(140, 156, 242, 0.16);
+  transform: translate(-50%, -50%);
+}
+.ring:nth-child(1) { width: 320px;  height: 320px;  animation: spin 30s linear infinite; }
+.ring:nth-child(2) { width: 520px;  height: 520px;  animation: spin 46s linear infinite reverse; border-color: rgba(200, 168, 240, 0.12); }
+.ring:nth-child(3) { width: 740px;  height: 740px;  animation: spin 64s linear infinite; border-color: rgba(140, 156, 242, 0.08); }
+
+@keyframes spin {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to   { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* chispas flotantes */
+.spark {
+  position: absolute;
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #c8d0ff, rgba(140, 156, 242, 0.4));
+  box-shadow: 0 0 8px rgba(168, 180, 255, 0.8);
+  animation: floatSpark 6s ease-in-out infinite;
+}
+.spark:nth-child(4) { left: 22%; top: 32%; animation-delay: 0s;   }
+.spark:nth-child(5) { left: 74%; top: 28%; animation-delay: 1.2s; width: 3px; height: 3px; }
+.spark:nth-child(6) { left: 30%; top: 68%; animation-delay: 2.4s; }
+.spark:nth-child(7) { left: 68%; top: 64%; animation-delay: 3.1s; width: 5px; height: 5px; }
+.spark:nth-child(8) { left: 50%; top: 18%; animation-delay: 1.8s; width: 3px; height: 3px; }
+
+@keyframes floatSpark {
+  0%, 100% { transform: translateY(0); opacity: 0.4; }
+  50%      { transform: translateY(-18px); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ring, .spark { animation: none; }
 }
 
 .ctaInner {
   position: relative;
   z-index: 1;
-  max-width: 680px;
+  max-width: 720px;
   margin: 0 auto;
 }
 
-.eyebrow {
-  display: inline-block;
-  font-family: 'DM Mono', monospace;
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: rgba(200, 200, 240, 0.8);
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 100px;
-  padding: 6px 16px;
-  margin-bottom: 26px;
+.accent {
+  background: linear-gradient(120deg, #a8b4ff 0%, #c8a8f0 60%, #a8c8f0 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .ctaTitle {
@@ -71,13 +93,6 @@
   letter-spacing: -0.03em;
   color: #f4f5fb;
   margin: 0 0 18px;
-}
-
-.accent {
-  background: linear-gradient(120deg, #a8b4ff 0%, #c8a8f0 60%, #a8c8f0 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
 }
 
 .ctaSub {
@@ -217,15 +232,13 @@
   color: rgba(232, 232, 240, 0.3);
 }
 
-.madeWith { color: rgba(160, 170, 240, 0.4); }
-
 /* ── Responsive ─────────────────────────────────────────────────────────── */
 @media (max-width: 1024px) {
   .bottom { padding: 56px 40px 32px; }
 }
 
 @media (max-width: 768px) {
-  .cta { padding: 80px 24px 90px; }
+  .cta { padding: 90px 24px 100px; }
   .bottom { padding: 48px 24px 28px; }
   .cols {
     grid-template-columns: 1fr 1fr;
