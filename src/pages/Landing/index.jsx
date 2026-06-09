@@ -43,6 +43,16 @@ export default function Landing() {
       </nav>
 
       <section className={styles.hero}>
+        {/* Fondo full-bleed: canvas de particulas + overlay de texto */}
+        <div className={styles.canvasWrapper}>
+          <Suspense fallback={<div className={styles.canvasPlaceholder} />}>
+            <ParticleHero onPhaseChange={handlePhaseChange} />
+          </Suspense>
+          <HeroText phase={phase} visible={textVisible} />
+        </div>
+        <div className={styles.vignette} />
+
+        {/* Texto principal por encima del fondo */}
         <div className={styles.left}>
           <h1 className={styles.title}>
             Tu video de<br />
@@ -68,16 +78,6 @@ export default function Landing() {
           <div className={`${styles.stateIndicator} ${textVisible ? styles.stateVisible : styles.stateHidden}`}>
             <div className={styles.stateTag}>{info.tag}</div>
             <div className={styles.stateDesc}>{info.desc}</div>
-          </div>
-        </div>
-
-        <div className={styles.right}>
-          <div className={styles.canvasWrapper}>
-            <Suspense fallback={<div className={styles.canvasPlaceholder} />}>
-              <ParticleHero onPhaseChange={handlePhaseChange} />
-            </Suspense>
-            <div className={styles.vignette} />
-            <HeroText phase={phase} visible={textVisible} />
           </div>
         </div>
       </section>
