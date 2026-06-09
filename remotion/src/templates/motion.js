@@ -29,6 +29,14 @@ export const SPRING = {
   gentle: { damping: 26, mass: 1.1, stiffness: 90 }, // suave, casi sin rebote
 }
 
+// ── Intensidad de movimiento según la ENERGÍA de la marca (del ADN/playbook) ──────────────────
+// medio = 1.0 EXACTO -> no regresa el vertical actual. alto = más viaje y más rápido (punch).
+// bajo = menos viaje y más lento (calmo/elegante). Lo leen camera() y entrance() vía art.energy.
+const _ENERGY = (art) => (art && art.energy) || 'medio'
+const CAM_K = { alto: 1.32, medio: 1.0, bajo: 0.72 }   // multiplica el "amount" de la cámara
+const DIST_K = { alto: 1.18, medio: 1.0, bajo: 0.82 }  // viaje de las entradas
+const DUR_K = { alto: 0.82, medio: 1.0, bajo: 1.22 }   // velocidad de las entradas (menor = más rápido)
+
 // ── Progreso eased entre [from, from+dur] ─────────────────────────────────────
 export const prog = (frame, from, dur, ease = EASE.out) =>
   ease(clamp((frame - from) / Math.max(1, dur), 0, 1))
@@ -102,7 +110,8 @@ export const CAMERAS = {
 export const camera = (art, frame, total, amount = 0.05) => {
   const kind = (art && art.camera) || 'drift'
   const t = prog(frame, 0, total, EASE.inOut)
-  return (CAMERAS[kind] || CAMERAS.drift)(t, amount)
+  const amt = amount * (CAM_K[_ENERGY(art)] || 1)   // energía de la marca modula el movimiento
+  return (CAMERAS[kind] || CAMERAS.drift)(t, amt)
 }
 
 // ── Familias de entrada (cómo aparece cada elemento) ──────────────────────────
@@ -127,7 +136,10 @@ export const entrance = (art, frame, from = 0, { dur = 16, dist = 60, axis = 'y'
   let family = fam || (art && art.entrance) || (axis === 'x' ? 'slide' : 'rise')
   if (!ENTRANCES[family]) family = 'rise'
   const e = ease || ENTRANCE_EASE[family] || EASE.out
-  const p = prog(frame, from, dur, e)
-  const op = clamp((frame - from) / Math.max(1, dur * 0.7), 0, 1)
-  return ENTRANCES[family](p, op, dist)
+  const en = _ENERGY(art)                                   // energía de la marca:
+  const effDur = Math.max(6, dur * (DUR_K[en] || 1))        //  alto = más rápido, bajo = más lento
+  const effDist = dist * (DIST_K[en] || 1)                  //  alto = más viaje, bajo = menos
+  const p = prog(frame, from, effDur, e)
+  const op = clamp((frame - from) / Math.max(1, effDur * 0.7), 0, 1)
+  return ENTRANCES[family](p, op, effDist)
 }

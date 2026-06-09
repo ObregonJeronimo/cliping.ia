@@ -1217,6 +1217,8 @@ evitar algo, no aparece."""
         print("[qa] " + (" | ".join(_issues) if _issues else "OK"))
         # Arte rotado (si el director no impuso uno).
         spec.setdefault("art", {k: v for k, v in art_preset.items() if k != "name"})
+        if isinstance(spec.get("art"), dict):
+            spec["art"]["energy"] = spec.get("energy", "medio")   # modula el movimiento (motion.js)
         spec = await _resolve_icons(spec)
         out = _attach_audio(_finalize(spec, url_data), mood)
         if seconds in SECONDS_SCENES:
