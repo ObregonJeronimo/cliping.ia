@@ -9,9 +9,10 @@
   align-items: center;
   justify-content: center;
   gap: 18px;
-  padding: 0 8%;
+  padding: 80px 8%;
   pointer-events: none;
   text-align: center;
+  overflow: hidden;
   transition: opacity 0.45s ease, transform 0.45s ease, filter 0.45s ease;
 }
 
@@ -159,8 +160,10 @@
   box-shadow: 0 4px 18px rgba(140, 156, 242, 0.4);
 }
 
-/* En mobile el canvas es fondo full y el texto principal va encima; el
-   overlay del prompt/timeline pisaria el titular, asi que se oculta. */
-@media (max-width: 768px) {
+/* En tablet angosto y mobile el canvas es fondo full y el texto principal
+   va encima; el overlay del prompt/timeline pisaria el titular y ademas no
+   entra en la altura disponible (se cortaria arriba/abajo), asi que se
+   oculta por completo. */
+@media (max-width: 900px) {
   .layer { display: none; }
 }
