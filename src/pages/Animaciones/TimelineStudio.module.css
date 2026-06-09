@@ -50,8 +50,9 @@
 .frame {
   position: relative;
   aspect-ratio: 405 / 720;
-  height: min(64vh, 660px);
+  height: min(52vh, 520px);
   width: auto;
+  margin: 0 auto;
   border-radius: 26px;
   overflow: hidden;
   background: #000;
@@ -236,4 +237,21 @@
   border-color: transparent;
   color: #fff;
   background: linear-gradient(90deg, #ff8a4c, #ff4f8b);
+}
+
+/* ---- testing section + panel de render (layout Home) ---- */
+.testNote {
+  font-size: 12px;
+  color: #9b8fb8;
+  line-height: 1.5;
+  margin: 2px 0 10px;
+}
+.controls { max-width: 460px; margin-left: auto; margin-right: auto; width: 100%; }
+.renderPanel {
+  width: min(100%, 460px);
+  margin: 14px auto 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
 }
