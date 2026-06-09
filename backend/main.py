@@ -114,6 +114,7 @@ forge_jobs: dict = {}
 
 # ─── VIDEO POR PLANTILLAS (director + escenas) ───────────────────────────────
 import template_director
+import brand_dna
 import re as _re
 
 
@@ -421,10 +422,17 @@ async def _render_video_job(job_id: str, req: VideoGenRequest):
         else:
             _recent = _get_recent_profile(_db, req.userId, _bkey)
             _bias = _get_rating_bias(_db, req.userId)
+            # ADN visual del sitio (lee el "alma" desde el screenshot) -> guía la dirección de arte.
+            _dna = {}
+            try:
+                _dna = await brand_dna.analyze_brand_dna(
+                    _site.get("screenshot"), theme_options=template_director.THEME_VIBES, usage=_usage)
+            except Exception as _de:
+                print(f"[dna] error (no crítico, sigue con defaults): {_de}")
             spec = await template_director.build_storyboard(
                 req.url, req.desarrollo, req.proposito, seconds=req.seconds,
                 recent_profile=_recent, prefetched_site=_site.get("content"),
-                idioma=req.idioma, rating_bias=_bias, usage=_usage)
+                idioma=req.idioma, rating_bias=_bias, usage=_usage, dna=_dna)
             _push_recent_profile(_db, req.userId, _bkey, spec)
         if req.theme in template_director.VALID_THEMES:
             spec["theme"] = req.theme

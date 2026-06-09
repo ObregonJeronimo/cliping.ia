@@ -129,11 +129,24 @@ Haiku para clasificar/visión, crítica condicional, expirar videos viejos en Cl
 ---
 
 ## Estado actual (hecho)
-- ✅ **Logging de tokens por etapa** (brief + director [+ retry]) con costo USD estimado; se loguea y
-  se guarda en el doc del video (`tokens: {in, out, cost_usd, calls}`). En una semana = costo real medido.
-- ✅ **Desarrollo como columna vertebral (v1)**: BRIEF_SYSTEM con OBJETIVO/EVITAR + pedido del usuario
-  como PRIORIDAD ABSOLUTA en el brief y en el prompt del director (manda sobre arco/hook/defaults).
+- ✅ **Logging de tokens por etapa** (vision + brief + director [+ retry]) con costo USD; se loguea y
+  se guarda en el doc del video (`tokens: {in,out,cost_usd,calls}`). En una semana = costo real medido.
+- ✅ **Desarrollo como columna vertebral**: brief con OBJETIVO/EVITAR + pedido del usuario como
+  PRIORIDAD ABSOLUTA en brief y director (manda sobre arco/hook/defaults).
+- ✅ **Fase 0.2 — Playbooks por rubro** (`playbooks.py`, 14 verticales + modificador por público):
+  el brief clasifica INDUSTRIA/PÚBLICO y se inyecta el playbook (tono, ritmo, prueba, escenas a
+  priorizar/evitar, CTA, energía) al director. DATA editable, mejora sin tocar código.
+- ✅ **Fase 1 — BrandDNA / el alma** (`brand_dna.py`): lectura visual del screenshot con modelo
+  multimodal (mood, paleta real, vibra tipográfica, energía, densidad, mejor theme) + paleta por PIL
+  de refuerzo. El theme y el acento del video se DERIVAN del sitio (el alma manda sobre la rotación).
+  Todo best-effort: si falla, vuelve a defaults sin romper. Logea [dna].
+- ✅ **Concepto + momento héroe**: el brief define la idea central y el golpe que frena el scroll;
+  se inyectan al director.
+- ✅ **QA determinista con autocorrección** (`_qa_spec`): formato, escena pesada al inicio (swap),
+  cierre, acento legible (autoaclarado), duplicados, tiempo de lectura (bump de duración), líneas
+  largas. Logea [qa]. Reduce la necesidad de "ajuste" a ojo.
 
 ## Próximo
-Fase 0 parte 2: clasificador de industria/público + primer set de playbooks (datos). Luego Fase 1
-(BrandDNA con lectura visual).
+- Fase 2: director multi-etapa con paso de estrategia en Opus (opcional) + loop de crítica.
+- Fase 3 (con tu ojo, visual): overhaul del sistema de movimiento (animaciones complejas).
+- Fase 4: música + beat-sync. Fase 5: Lambda + variantes + rating→playbooks.

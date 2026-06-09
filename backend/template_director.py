@@ -22,6 +22,8 @@ from pathlib import Path
 
 import httpx
 from anthropic import AsyncAnthropic
+import playbooks
+import brand_dna
 
 import cine_generator  # reutilizamos analyze_url_light
 import iconify_service
@@ -61,6 +63,62 @@ def usage_cost(usage):
         tout += e.get("out", 0)
         cost += e.get("in", 0) / 1e6 * pin + e.get("out", 0) / 1e6 * pout
     return {"in": tin, "out": tout, "cost_usd": round(cost, 5), "calls": len(usage or [])}
+
+
+def _brief_field(brief_txt: str, field: str) -> str:
+    """Extrae el valor de un campo del brief (formato 'CAMPO: valor', una línea por campo)."""
+    if not brief_txt:
+        return ""
+    m = re.search(rf"^{re.escape(field)}\s*:\s*(.+)$", brief_txt, re.M | re.I)
+    return m.group(1).strip() if m else ""
+
+
+def _qa_spec(spec: dict) -> list:
+    """QA determinista del spec final: detecta y AUTOCORRIGE lo que si no requeriría 'ajuste' a ojo.
+    Devuelve la lista de issues (para log). Modifica spec in place. Nunca rompe el pipeline."""
+    issues = []
+    try:
+        scenes = spec.get("scenes") or []
+        fmt = spec.get("format", "vertical")
+        if fmt not in ("vertical", "square", "wide"):
+            spec["format"] = "vertical"
+            issues.append(f"format inválido '{fmt}' -> vertical")
+        if not scenes:
+            issues.append("sin escenas")
+            return issues
+        HEAVY = ("Comparison", "FeatureList")
+        if scenes[0].get("type") in HEAVY:
+            swap = next((i for i, s in enumerate(scenes) if i > 0 and s.get("type") not in HEAVY), None)
+            if swap:
+                t0 = scenes[0].get("type")
+                scenes[0], scenes[swap] = scenes[swap], scenes[0]
+                issues.append(f"primera escena {t0} (pesada) -> swap con escena {swap}")
+        if scenes[-1].get("type") not in ("CtaOutro", "LogoReveal"):
+            issues.append("última escena no es CtaOutro/LogoReveal (sin cierre claro)")
+        acc = spec.get("accent", "")
+        if brand_dna._hex_ok(acc):
+            fixed = brand_dna.ensure_visible_on_dark(acc)
+            if fixed != acc:
+                spec["accent"] = fixed
+                issues.append(f"acento {acc} poco visible sobre fondo oscuro -> {fixed}")
+        for i in range(1, len(scenes)):
+            if scenes[i].get("type") == scenes[i - 1].get("type"):
+                issues.append(f"escenas {i-1}-{i} mismo tipo ({scenes[i].get('type')}) consecutivas")
+        for i, s in enumerate(scenes):
+            txt = " ".join(_collect_text(s))
+            words = len([w for w in txt.split() if w])
+            d = int(s.get("durationInFrames", 90) or 90)
+            if words >= 6 and d < (90 + int(0.45 * words * 30)):
+                newd = min(240, 90 + int(0.5 * words * 30))
+                s["durationInFrames"] = newd
+                issues.append(f"escena {i} ({s.get('type')}): {words} palabras en {d}f -> {newd}f")
+            for ln in (s.get("lines") or []):
+                t = ln if isinstance(ln, str) else "".join(seg.get("t", "") for seg in (ln or []))
+                if len(t) > 32:
+                    issues.append(f"escena {i} ({s.get('type')}): línea larga ({len(t)}ch) '{t[:30]}…'")
+    except Exception as e:
+        issues.append(f"QA error (no crítico): {e}")
+    return issues
 
 FADE = 14  # debe coincidir con TDUR en VideoFromSpec.jsx
 
@@ -915,10 +973,13 @@ oferta/producto/promo puntual, el video gira alrededor de eso. Si pide un tono o
 respetalos aunque difieran del default del rubro. Si pide evitar algo, no lo incluyas.
 
 Formato EXACTO (sin markdown, sin texto extra, una línea por campo):
+INDUSTRIA: <el rubro en 1-3 palabras: ej "dietética/comida", "software SaaS", "clínica de salud", "gimnasio", "tienda de ropa", "inmobiliaria">
+PÚBLICO: <a quién le hablan (si el usuario lo indicó, ESE)>
 OBJETIVO: <qué tiene que LOGRAR el video: vender X / lanzar Y / traer registros / dar a conocer Z. Si el usuario lo dijo, usá eso>
+CONCEPTO: <la UNA idea creativa central del video, en una frase (el hilo conductor)>
+MOMENTO HÉROE: <el momento que frena el scroll: qué dato/frase/imagen es el golpe de efecto>
 QUÉ VENDE: <una frase concreta>
 DIFERENCIAL: <qué los hace distintos, una frase>
-PÚBLICO: <a quién le hablan (si el usuario lo indicó, ESE)>
 MENSAJES CLAVE: <3 mensajes separados por ' | ', priorizando lo que pidió el usuario>
 PRUEBAS REALES: <datos/precios/claims reales que aparezcan en el contexto, o 'ninguna'>
 HOOK: <una idea de gancho potente para los primeros 2 segundos, alineada al OBJETIVO>
@@ -935,7 +996,7 @@ async def _build_brief(url_data: dict, desarrollo: str, proposito: str, usage: l
              if (desarrollo or "").strip() else "")
     try:
         resp = await _client.messages.create(
-            model=DIRECTOR_MODEL, max_tokens=500, temperature=0.4,
+            model=DIRECTOR_MODEL, max_tokens=700, temperature=0.4,
             system=BRIEF_SYSTEM,
             messages=[{"role": "user", "content": f"PROPÓSITO: {proposito}\n\nCONTEXTO DEL SITIO:\n{contexto}{extra}"}],
         )
@@ -963,7 +1024,8 @@ async def build_storyboard(url: str, desarrollo: str, proposito: str = "marketin
                            theme_override: str = "", tone: str = "",
                            length: str = "medio", seconds: int = 0, simple: bool = True,
                            recent_profile: dict = None, prefetched_site: dict = None,
-                           idioma: str = "", rating_bias: dict = None, usage: list = None) -> dict:
+                           idioma: str = "", rating_bias: dict = None, usage: list = None,
+                           dna: dict = None) -> dict:
     """
     URL + desarrollo -> storyboard spec.
 
@@ -1040,12 +1102,46 @@ async def build_storyboard(url: str, desarrollo: str, proposito: str = "marketin
     brief_txt = await _build_brief(url_data, desarrollo, proposito, usage=usage)
     brief_block = f"\nBRIEF ESTRATÉGICO (basate en esto, es la lectura de la marca):\n{brief_txt}\n" if brief_txt else ""
 
+    # Playbook del rubro: lo elige el brief (INDUSTRIA/PÚBLICO). Es la guía de marketing para ESE público.
+    _industria = _brief_field(brief_txt, "INDUSTRIA")
+    _publico = _brief_field(brief_txt, "PÚBLICO") or _brief_field(brief_txt, "PUBLICO")
+    _pb = playbooks.pick(_industria, _publico)
+    playbook_block = f"\n{_pb['guide']}\n"
+    print(f"[director] rubro='{_industria}' publico='{_publico}' -> playbook={_pb['key']} (energía {_pb['energy']})")
+
+    # Concepto + momento héroe (del brief): el hilo creativo y el golpe que frena el scroll.
+    _concepto = _brief_field(brief_txt, "CONCEPTO")
+    _heroe = _brief_field(brief_txt, "MOMENTO HÉROE") or _brief_field(brief_txt, "MOMENTO HEROE")
+    concepto_block = ""
+    if _concepto or _heroe:
+        concepto_block = "\nCONCEPTO CREATIVO (que todo el video gire alrededor de esto):"
+        if _concepto:
+            concepto_block += f"\n- Idea central: {_concepto}"
+        if _heroe:
+            concepto_block += f"\n- Momento héroe (el golpe que frena el scroll): {_heroe} — dale a esto la escena más fuerte."
+
+    # ADN visual del sitio (el "alma"): mood + vibra para que el video se sienta de la marca.
+    dna_block = ""
+    if dna and (dna.get("summary") or dna.get("mood")):
+        _mood = ", ".join(dna.get("mood") or []) if isinstance(dna.get("mood"), list) else (dna.get("mood") or "")
+        dna_block = ("\nALMA VISUAL DEL SITIO (replicá esta estética para que el video se sienta de la marca):"
+                     f"\n- {dna.get('summary','')}"
+                     f"\n- Estética: {_mood} | energía visual: {dna.get('energy','')} | densidad: {dna.get('density','')}"
+                     "\nEl ritmo y el tono del video tienen que ir con esta estética.")
+
+    # Energía efectiva: la del playbook, salvo que el ADN visual diga otra cosa.
+    _energy = (dna or {}).get("energy") or _pb["energy"]
+    energy_block = {
+        "alto": "\nENERGÍA: ALTA -> escenas más cortas y punchy, frases filosas, ritmo rápido.",
+        "bajo": "\nENERGÍA: BAJA -> más aire, ritmo calmo y elegante, frases que respiran.",
+    }.get(_energy, "\nENERGÍA: MEDIA -> ágil pero legible.")
+
     user_prompt = f"""PROPÓSITO: {proposito}
 URL: {url}
 
 CONTEXTO DEL SITIO (usalo para escribir copy específico y real, no genérico):
 {contexto}{extra}{lang_hint}
-{brief_block}
+{brief_block}{playbook_block}{concepto_block}{dna_block}{energy_block}
 {brief}
 
 OBJETIVO DEL VIDEO ({proposito}): {PURPOSE_GUIDE.get((proposito or '').lower(), PURPOSE_GUIDE['marketing'])}
@@ -1061,7 +1157,8 @@ NUNCA arranques con Comparison ni FeatureList (pesadas de texto, no enganchan). 
 es débil o larga, nadie ve el resto.
 
 Generá el storyboard JSON. El copy tiene que sonar a ESTA marca puntual (usá el brief y lo que
-sabés del sitio), reflejar el ángulo y el mood, y respetar las reglas de líneas cortas.
+sabés del sitio), reflejar el ángulo, el mood y el playbook del rubro, y respetar las reglas de
+líneas cortas.
 
 REGLA QUE MANDA SOBRE TODO: si hay un PEDIDO DEL USUARIO o un OBJETIVO en el brief, el video tiene
 que cumplirlo SÍ O SÍ. Ante cualquier conflicto entre lo que pidió el usuario y la estructura/hook/
@@ -1100,11 +1197,23 @@ evitar algo, no aparece."""
             _acc_usage(usage, "director_retry", DIRECTOR_MODEL, resp2)
             spec = _parse_spec(resp2.content[0].text.strip())
         spec = _normalize(spec, url_data, desarrollo, proposito)
-        # Paleta: override gana; si no, y el director repitió una reciente, la cambiamos.
+        # Paleta: el usuario manda; si no, el ADN visual (el "alma"); si no, evitar repetir reciente.
+        _dna = dna or {}
         if theme_override in VALID_THEMES:
             spec["theme"] = theme_override
+        elif _dna.get("theme") in VALID_THEMES:
+            spec["theme"] = _dna["theme"]
+            print(f"[director] theme por ADN visual -> {_dna['theme']}")
         elif spec.get("theme") in set(rec_themes[:2]):
             spec["theme"] = _pick_avoiding(list(VALID_THEMES), rec_themes, n=2)
+        # Acento real del sitio (del ADN visual) -> el color de marca pega con la página.
+        if brand_dna._hex_ok(_dna.get("accent", "")):
+            spec["accent"] = _dna["accent"]
+            print(f"[director] accent por ADN visual -> {_dna['accent']}")
+        spec["energy"] = _dna.get("energy") or _pb["energy"]
+        # QA determinista: detecta y autocorrige lo que si no requeriría ajuste a ojo.
+        _issues = _qa_spec(spec)
+        print("[qa] " + (" | ".join(_issues) if _issues else "OK"))
         # Arte rotado (si el director no impuso uno).
         spec.setdefault("art", {k: v for k, v in art_preset.items() if k != "name"})
         spec = await _resolve_icons(spec)
