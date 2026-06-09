@@ -147,6 +147,10 @@ Haiku para clasificar/visión, crítica condicional, expirar videos viejos en Cl
   largas. Logea [qa]. Reduce la necesidad de "ajuste" a ojo.
 
 ## Próximo
+- ✅ **Fase 3 — overhaul de animación** (hecho, a validar con el ojo): (1) movimiento adaptado a la
+  energía de la marca; (2) sistema de partículas + momento héroe (StatReveal/CtaOutro); (3) fondo
+  cinematográfico (gradient-mesh + viñeta); (4) tipografía cinética a nivel carácter; (5) transiciones
+  diseñadas por energía. Todo no-regresivo (energía media = idéntico a hoy) y validado en render.
 - Fase 2: director multi-etapa con paso de estrategia en Opus (opcional) + loop de crítica.
-- Fase 3 (con tu ojo, visual): overhaul del sistema de movimiento (animaciones complejas).
-- Fase 4: música + beat-sync. Fase 5: Lambda + variantes + rating→playbooks.
+- Fase 4: música + beat-sync (POSPUESTA — bloqueada por assets/licencia). Fase 5: Lambda + variantes
+  + rating→playbooks.
