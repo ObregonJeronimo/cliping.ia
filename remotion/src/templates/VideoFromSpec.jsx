@@ -1,6 +1,7 @@
 import { AbsoluteFill, Easing, Img, useCurrentFrame, useVideoConfig } from 'remotion'
 import { TransitionSeries, linearTiming } from '@remotion/transitions'
 import { fade } from '@remotion/transitions/fade'
+import { slide } from '@remotion/transitions/slide'
 import { CameraMotionBlur } from '@remotion/motion-blur'
 import { loadFont } from '@remotion/google-fonts/Inter'
 import { getTheme, applyAccent } from './theme'
@@ -144,6 +145,16 @@ export const VideoFromSpec = ({ spec }) => {
   const sceneTheme = { ...theme, bg: 'transparent' }
   const sc = spec.scenes || []
 
+  // ── Transiciones diseñadas por ENERGÍA ──────────────────────────────────────
+  // Por defecto crossfade (fusionado, lo de hoy). Solo en energía ALTA se alternan slides
+  // diseñados (presentaciones oficiales de Remotion) en cortes impares -> ritmo punchy con variedad.
+  // El timing es fijo (EASED/TDUR) en TODAS las transiciones -> el total de frames sigue EXACTO.
+  // medio/bajo: 100% fade -> idéntico a hoy, cero regresión.
+  const energy = art.energy || 'medio'
+  const isSlide = (i) => energy === 'alto' && i % 2 === 1
+  const slideDir = (i) => (Math.floor(i / 2) % 2 === 0 ? 'from-right' : 'from-bottom')
+  const presFor = (i) => (isSlide(i) ? slide({ direction: slideDir(i) }) : fade())
+
   // Audio (Fase 3): si el spec trae audio sin whooshAt, los completamos con los cortes.
   const audio = spec.audio
     ? { ...spec.audio, whooshAt: spec.audio.whooshAt || cutFrames(sc) }
@@ -161,7 +172,7 @@ export const VideoFromSpec = ({ spec }) => {
             ? <CameraMotionBlur shutterAngle={120} samples={6}>{inner}</CameraMotionBlur>
             : inner
           const content = (
-            <SceneShell durationInFrames={dur} exit={i < sc.length - 1}>
+            <SceneShell durationInFrames={dur} exit={i < sc.length - 1 && !isSlide(i + 1)}>
               {blurred}
             </SceneShell>
           )
@@ -171,10 +182,11 @@ export const VideoFromSpec = ({ spec }) => {
             </TransitionSeries.Sequence>
           )
           if (i === 0) return [seq]
-          // Fundido (crossfade) entre escenas: el contenido se funde sobre el fondo continuo.
-          // Es lo que da la sensación "fusionada"; las cortinas/slides cortaban la continuidad.
+          // Transición del corte i: fade (fusionado) o slide diseñado si energía alta.
+          // Si el corte es slide, la escena saliente NO hace su fade-scale de salida (evita doble
+          // movimiento): la presentación del slide se encarga de sacarla.
           return [
-            <TransitionSeries.Transition key={`t${i}`} presentation={fade()} timing={EASED} />,
+            <TransitionSeries.Transition key={`t${i}`} presentation={presFor(i)} timing={EASED} />,
             seq,
           ]
         })}
