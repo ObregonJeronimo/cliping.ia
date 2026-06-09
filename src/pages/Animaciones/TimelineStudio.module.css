@@ -162,3 +162,52 @@
   max-width: 460px;
   line-height: 1.5;
 }
+
+/* ---- generar MP4 ---- */
+.render {
+  width: min(100%, 480px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.renderBtn { padding: 12px 18px; font-size: 14px; }
+.progressWrap { width: 100%; display: flex; flex-direction: column; gap: 6px; }
+.progressBar {
+  width: 100%;
+  height: 7px;
+  border-radius: 6px;
+  background: #1b1530;
+  overflow: hidden;
+}
+.progressFill {
+  height: 100%;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #ff8a4c, #ff4f8b);
+  transition: width 0.4s ease;
+}
+.progressMsg { font-size: 12px; color: #9b8fb8; text-align: center; }
+.err {
+  width: 100%;
+  font-size: 13px;
+  color: #ffb4c4;
+  background: rgba(255, 79, 139, 0.1);
+  border: 1px solid rgba(255, 79, 139, 0.25);
+  border-radius: 10px;
+  padding: 10px 12px;
+  text-align: center;
+}
+.done {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.resultVideo {
+  width: min(100%, 300px);
+  aspect-ratio: 9 / 16;
+  border-radius: 16px;
+  background: #000;
+  border: 1px solid #20182f;
+}

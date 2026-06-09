@@ -115,6 +115,7 @@ forge_jobs: dict = {}
 
 # ─── VIDEO POR PLANTILLAS (director + escenas) ───────────────────────────────
 import template_director
+import timeline_director
 import brand_dna
 import re as _re
 
@@ -716,6 +717,103 @@ async def _render_video_job(job_id: str, req: VideoGenRequest):
         print(f"[video] OK -> {output_path.name}")
     except Exception as e:
         print(f"[video] ERROR: {e}")
+        jobs[job_id].update({"status": "error", "error": str(e)[:400]})
+    finally:
+        for f in temp_files:
+            try:
+                f.unlink(missing_ok=True)
+            except Exception:
+                pass
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# MOTOR NUEVO (animaciones por timeline, Canvas -> Remotion -> MP4 -> Cloudinary).
+# Mismo render que las cinematografias, pero la composicion es TimelineVideo (el motor Canvas,
+# el mismo nucleo que el preview en vivo del sidebar). Por ahora renderiza la DEMO horneada,
+# sin analisis ni IA -> costo $0. Cuando sumemos la IA, ella escribe el `timeline` desde la URL.
+# ──────────────────────────────────────────────────────────────────────────────
+class TimelineGenRequest(BaseModel):
+    userId: str = ""
+    formato: str = "vertical"   # vertical (9:16) por ahora
+    url: str = ""               # reservado (todavia no se usa)
+    desarrollo: str = ""        # reservado (todavia no se usa)
+
+
+@app.post("/api/timeline/generate")
+async def timeline_generate(req: TimelineGenRequest):
+    job_id = str(uuid.uuid4())
+    jobs[job_id] = {
+        "id": job_id, "status": "queued", "step": None, "progress": 0,
+        "videoPath": None, "videoFilename": None, "cloudinaryUrl": "",
+        "error": None, "createdAt": datetime.utcnow().isoformat(),
+    }
+    asyncio.create_task(_render_timeline_job(job_id, req))
+    return {"job_id": job_id}
+
+
+async def _render_timeline_job(job_id: str, req: TimelineGenRequest):
+    from pathlib import Path as _Path
+    REMOTION_DIR = _Path(__file__).parent.parent / "remotion"
+    OUT = _Path(__file__).parent / "outputs"
+    OUT.mkdir(exist_ok=True)
+    output_path = OUT / f"{job_id}_timeline.mp4"
+    temp_files = []
+    try:
+        jobs[job_id].update({"status": "processing", "step": "build", "progress": 20})
+        # Timeline: por ahora la DEMO horneada en el nucleo. Mas adelante lo escribe la IA desde la URL.
+        timeline = {"durationInFrames": timeline_director.DEMO_FRAMES}
+        entry, comp_id, total, temp_files = timeline_director.build_timeline_files(
+            job_id, timeline, REMOTION_DIR, req.formato)
+
+        jobs[job_id].update({"step": "render", "progress": 45})
+        candidates = [
+            str(REMOTION_DIR / "node_modules" / ".bin" / "remotion.cmd"),
+            str(REMOTION_DIR / "node_modules" / ".bin" / "remotion"),
+        ]
+        remotion_bin = next((c for c in candidates if _Path(c).exists()), "npx")
+        args = [remotion_bin, "render", entry, comp_id, str(output_path.absolute()),
+                "--codec", "h264", "--fps", "30", "--duration-in-frames", str(total),
+                "--concurrency", "4", "--jpeg-quality", "100", "--crf", "18", "--log", "error"]
+        print(f"[timeline] Renderizando {comp_id} ({total} frames)...")
+        proc = await _asyncio.create_subprocess_exec(
+            *args, cwd=str(REMOTION_DIR),
+            stdout=_asyncio.subprocess.PIPE, stderr=_asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await proc.communicate()
+        if proc.returncode != 0:
+            out = stdout.decode(errors="replace"); err = stderr.decode(errors="replace")
+            print(f"[timeline] ERROR STDOUT:\n{out[:800]}")
+            print(f"[timeline] ERROR STDERR:\n{err[:800]}")
+            raise RuntimeError((out + err)[-400:])
+
+        jobs[job_id].update({"status": "uploading", "step": "upload", "progress": 86})
+        cloudinary_url = ""
+        try:
+            from cloudinary_upload import upload_video
+            cloudinary_url = await upload_video(str(output_path), f"timeline_{job_id[:8]}")
+            print(f"[timeline] Cloudinary OK -> {cloudinary_url}")
+        except Exception as ce:
+            print(f"[timeline] Cloudinary fallo (sigue con archivo local): {ce}")
+
+        db = get_firestore()
+        if db and req.userId and cloudinary_url:
+            try:
+                db.collection("users").document(req.userId).collection("videos").add({
+                    "kind": "timeline", "format": req.formato, "rating": 0,
+                    "videoUrl": cloudinary_url, "localFile": output_path.name,
+                    "createdAt": datetime.utcnow().isoformat(),
+                })
+            except Exception as fe:
+                print(f"[timeline] Firestore error: {fe}")
+
+        jobs[job_id].update({
+            "status": "done", "step": "export", "progress": 100,
+            "videoPath": str(output_path), "videoFilename": output_path.name,
+            "cloudinaryUrl": cloudinary_url,
+        })
+        print(f"[timeline] OK -> {output_path.name}")
+    except Exception as e:
+        print(f"[timeline] ERROR: {e}")
         jobs[job_id].update({"status": "error", "error": str(e)[:400]})
     finally:
         for f in temp_files:

@@ -1,6 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { createTimelineEngine } from './engine'
+import { useAuth } from '../../contexts/AuthContext'
 import styles from './TimelineStudio.module.css'
+
+const API_URL = import.meta.env.PROD ? '' : (import.meta.env.VITE_API_URL || 'http://localhost:8000')
+const HEADERS = { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' }
+const STEP_LABELS = {
+  queued: 'En cola…', build: 'Armando el render…', render: 'Renderizando en tu PC (esto tarda)…',
+  upload: 'Subiendo a la nube…', export: 'Listo',
+}
 
 /**
  * Animaciones (beta) — el método NUEVO para los videos: animaciones reales por timeline
@@ -16,6 +24,9 @@ export default function TimelineStudio() {
   const seekRef = useRef(null)
   const [playing, setPlaying] = useState(true)
   const [speed, setSpeed] = useState(1)
+  const { user } = useAuth()
+  const [gen, setGen] = useState(null)   // { status, step, progress, videoUrl, error }
+  const pollRef = useRef(null)
 
   useEffect(() => {
     const eng = createTimelineEngine(canvasRef.current, {
@@ -29,10 +40,40 @@ export default function TimelineStudio() {
     return () => eng.destroy()
   }, [])
 
+  useEffect(() => () => clearInterval(pollRef.current), [])
+
   const toggle = () => setPlaying(engineRef.current.toggle())
   const restart = () => engineRef.current.restart()
   const onSeek = (e) => engineRef.current.seek(Number(e.target.value) / 1000)
   const pickSpeed = (s) => { engineRef.current.setSpeed(s); setSpeed(s) }
+
+  async function generateMp4() {
+    if (gen?.status === 'running') return
+    setGen({ status: 'running', step: 'queued', progress: 0, videoUrl: null, error: null })
+    try {
+      const r = await fetch(`${API_URL}/api/timeline/generate`, {
+        method: 'POST', headers: HEADERS,
+        body: JSON.stringify({ userId: user?.uid || '', formato: 'vertical' }),
+      })
+      const d = await r.json()
+      if (d.error || !d.job_id) { setGen(g => ({ ...g, status: 'error', error: d.error || 'No se pudo iniciar' })); return }
+      clearInterval(pollRef.current)
+      pollRef.current = setInterval(async () => {
+        try {
+          const jr = await fetch(`${API_URL}/api/jobs/${d.job_id}`, { headers: HEADERS })
+          const j = await jr.json()
+          setGen(g => ({ ...g, step: j.step || j.status, progress: j.progress || 0 }))
+          if (j.status === 'done') {
+            clearInterval(pollRef.current)
+            setGen(g => ({ ...g, status: 'done', progress: 100, videoUrl: j.cloudinaryUrl || (j.videoFilename ? `${API_URL}/api/video/${j.videoFilename}` : null) }))
+          } else if (j.status === 'error') {
+            clearInterval(pollRef.current)
+            setGen(g => ({ ...g, status: 'error', error: j.error || 'Error en el render' }))
+          }
+        } catch { /* reintenta */ }
+      }, 2000)
+    } catch (e) { setGen(g => ({ ...g, status: 'error', error: e.message })) }
+  }
 
   return (
     <div className={styles.body}>
@@ -66,8 +107,32 @@ export default function TimelineStudio() {
           </div>
         </div>
 
+        <div className={styles.render}>
+          <button
+            className={`${styles.ctl} ${styles.primary} ${styles.renderBtn}`}
+            onClick={generateMp4}
+            disabled={gen?.status === 'running'}>
+            {gen?.status === 'running' ? '⏳ Generando MP4…' : '⬇ Generar MP4 (demo)'}
+          </button>
+
+          {gen?.status === 'running' && (
+            <div className={styles.progressWrap}>
+              <div className={styles.progressBar}><div className={styles.progressFill} style={{ width: `${Math.max(4, gen.progress)}%` }} /></div>
+              <span className={styles.progressMsg}>{STEP_LABELS[gen.step] || 'Procesando…'}</span>
+            </div>
+          )}
+          {gen?.status === 'error' && <div className={styles.err}>⚠️ {gen.error}</div>}
+          {gen?.status === 'done' && gen.videoUrl && (
+            <div className={styles.done}>
+              <video src={gen.videoUrl} controls autoPlay loop playsInline className={styles.resultVideo} />
+              <a className={`${styles.ctl} ${styles.primary}`} href={gen.videoUrl} target="_blank" rel="noreferrer" download>⬇ Ver / descargar MP4</a>
+            </div>
+          )}
+        </div>
+
         <div className={styles.foot}>
-          Demo de ejemplo (e-commerce). Próximo: que la IA escriba el timeline desde tu sitio y exportar a MP4 con Remotion.
+          El MP4 lo renderiza Remotion en tu PC (gratis) y se sube a Cloudinary, igual que las cinematografías.
+          Por ahora exporta la demo horneada; el próximo paso es que la IA escriba el timeline desde tu sitio.
         </div>
       </div>
     </div>
