@@ -89,7 +89,7 @@ import template_director as _td
 import brand_dna as _bdna
 
 TL_DIRECTOR_MODEL = "claude-sonnet-4-6"
-TL_CRITIC_MODEL = _os.getenv("CLIPING_CRITIC_MODEL", "claude-opus-4-8")
+TL_CRITIC_MODEL = _os.getenv("CLIPING_CRITIC_MODEL", "claude-sonnet-4-6")
 TL_CRITIC_ENABLED = _os.getenv("CLIPING_CRITIC", "1").strip().lower() not in ("0", "false", "no", "off", "")
 try:
     TL_CRITIC_ROUNDS = max(1, int(_os.getenv("CLIPING_CRITIC_ROUNDS", "1")))
@@ -153,22 +153,22 @@ TL_DIRECTOR_SYSTEM = (
 )
 
 TL_CRITIC_SYSTEM = (
-    "Sos director creativo SENIOR. Un junior te pasa el TIMELINE (JSON) de un reel hecho con un motor de "
+    "Sos director creativo SENIOR de una agencia top. Un junior te pasa el TIMELINE (JSON) de un reel hecho con un motor de "
     "animacion Canvas, mas el BRIEF y el contexto del sitio. Tu trabajo: ELEVAR el guion ANTES de renderizar. "
-    "Si ya es fuerte, lo dejas casi igual; solo cambias lo que DE VERDAD lo mejora. Exigente pero quirurgico.\n\n"
+    "Si ya es fuerte, lo dejas casi igual; solo cambias lo que DE VERDAD lo mejora. Exigente, especifico y quirurgico, nunca generico.\n\n"
     "Revisa en este orden:\n"
     "1. PEDIDO/OBJETIVO (manda): que cumpla lo que pidio el usuario y el objetivo del brief.\n"
-    "2. HOOK: la 1ra escena ('statement' o 'paintTitle') tiene que enganchar en 1-3s. Si es debil o generica, reescribila.\n"
-    "3. COPY GENERICO (matalo): frases vacias -> beneficios concretos y especificos de ESTA marca, del contexto. Verbos variados, humano.\n"
+    "2. HOOK (1ra escena, statement o paintTitle): tiene que frenar el scroll en 1-3s. Un hook fuerte dice algo concreto, contraintuitivo o que toca un dolor real del publico; uno debil es una descripcion neutra ('Bienvenido a X', 'Productos de calidad'). Si es debil, reescribilo apuntando al dolor o deseo concreto del publico del brief.\n"
+    "3. COPY GENERICO (matalo): toda frase vacia ('calidad', 'lo mejor', 'tu aliado', 'soluciones a medida') -> beneficio concreto y especifico de ESTA marca, sacado del contexto. Verbos variados, tono humano. Si una linea podria estar en el reel de cualquier competidor, no sirve.\n"
     "4. ANTI-FORMULA: si la estructura es un molde repetido, rompela. checklist/bigStat son opcionales.\n"
     "5. HONESTIDAD (critico): el numero de un 'bigStat' TIENE que estar TEXTUAL en el contexto del sitio. Si no esta, sacalo o pasalo a 'statement'. NUNCA inventes cifras.\n"
     "6. PUBLICO + IDIOMA: copy al publico correcto, en el MISMO idioma del guion.\n\n"
     "FORMA (no la rompas): 4-5 escenas; abri con statement/paintTitle; cerra con outro. Tipos validos: "
     "statement, paintTitle, checklist, bigStat, outro. statement.text 4-9 palabras; checklist.items 3-4 strings cortos; "
     "paintTitle.subtitles = 2 strings; bigStat.value numero real. durationInFrames: paintTitle 234, statement 150, "
-    "checklist 186-198, bigStat 150, outro 150.\n\n"
+    "checklist 186-198, bigStat 150, outro 150. ANTES DE RESPONDER relee cada linea de copy del spec: si alguna es generica o no se siente de ESTA marca puntual, reescribila.\n\n"
     "SALIDA: SOLO un JSON valido (sin markdown), con esta forma EXACTA:\n"
-    '{"verdict":"ok"|"revisado","notas":"<1-2 frases>","spec":{"brand":"<marca>","accent":"<#rrggbb>","scenes":[ ... ]}}\n'
+    '{"verdict":"ok"|"revisado","notas":"<1-2 frases concretas: que cambiaste y por que>","spec":{"brand":"<marca>","accent":"<#rrggbb>","scenes":[ ... ]}}\n'
     "Si ya esta bien, verdict='ok' y devolve el spec TAL CUAL. El campo 'spec' SIEMPRE va completo."
 )
 
@@ -242,7 +242,7 @@ def _fallback_timeline(url_data: dict, dna: dict = None) -> dict:
 
 
 async def _critique_timeline(tl, *, brief_txt="", contexto="", desarrollo="", proposito="marketing", round_i=1, usage=None):
-    """Fase 2 para timelines: un director SENIOR (Opus) revisa y mejora. Misma red que cinematicas."""
+    """Fase 2 para timelines: un director SENIOR (Sonnet por default) revisa y mejora. Misma red que cinematicas."""
     if not TL_CRITIC_ENABLED or not isinstance(tl, dict) or not tl.get("scenes"):
         return tl
     payload = {
