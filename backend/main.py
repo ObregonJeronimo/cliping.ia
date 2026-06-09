@@ -885,6 +885,7 @@ class TimelineBatchRequest(BaseModel):
     desarrollo: str = ""
     proposito: str = "marketing"
     idioma: str = ""
+    formato: str = "vertical"
     n: int = 5
     refreshBrand: bool = False
 
