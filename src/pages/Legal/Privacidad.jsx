@@ -3,7 +3,7 @@ import styles from './Legal.module.css'
 
 export default function Privacidad() {
   const navigate = useNavigate()
-  const updated = '9 de junio de 2026'
+  const updated = '10 de junio de 2026'
 
   return (
     <div className={styles.page}>
@@ -93,7 +93,25 @@ export default function Privacidad() {
         </section>
 
         <section className={styles.section}>
-          <h2>8. Cambios en esta politica</h2>
+          <h2>8. Datos corporativos y uso de marca</h2>
+          <p>
+            Cuando te registras con un correo de dominio corporativo, asociamos tu
+            cuenta a la organizacion correspondiente a ese dominio. Esta informacion
+            puede usarse, segun lo previsto en la seccion 9 de los Terminos de uso
+            ("Uso de marcas y logotipos"), para identificar que equipos de esa
+            organizacion utilizan el Servicio y para incluir el nombre o logotipo de la
+            organizacion en materiales de marketing.
+          </p>
+          <p>
+            La organizacion o el usuario pueden solicitar la baja de este uso en
+            cualquier momento contactando a Urvid a traves de sus canales oficiales,
+            tras lo cual dejaremos de utilizar dicha marca en nuevos materiales en un
+            plazo razonable.
+          </p>
+        </section>
+
+        <section className={styles.section}>
+          <h2>9. Cambios en esta politica</h2>
           <p>
             Podemos actualizar esta Politica de privacidad periodicamente. Los cambios
             significativos seran notificados a traves del Servicio.
@@ -101,7 +119,7 @@ export default function Privacidad() {
         </section>
 
         <section className={styles.section}>
-          <h2>9. Contacto</h2>
+          <h2>10. Contacto</h2>
           <p>
             Ante cualquier consulta sobre el tratamiento de tus datos, podes contactarnos
             a traves de los canales oficiales de Urvid.
