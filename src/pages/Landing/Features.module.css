@@ -1,16 +1,16 @@
-/* ─── Seccion Features (scrollytelling) ────────────────────────────────── */
+/* ─── Seccion Features (sticky stack scroll-driven) ────────────────────── */
 .section {
   position: relative;
   z-index: 2;
   background: #f3f2ee;
   border-top: 1px solid rgba(22, 21, 15, 0.1);
-  padding: 110px 80px;
 }
 
 .head {
   text-align: center;
   max-width: 660px;
-  margin: 0 auto 90px;
+  margin: 0 auto;
+  padding: 110px 24px 10px;
 }
 
 .eyebrow {
@@ -43,29 +43,42 @@
   margin: 0;
 }
 
-/* ── Filas del recorrido ────────────────────────────────────────────────── */
-.rows {
-  max-width: 1100px;
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 120px;
+/* ── Stack apilable: cada panel se fija (sticky) y el siguiente se monta
+   encima. El anterior se achica/atenua via JS (scroll-driven). ─────────── */
+.stack {
+  position: relative;
 }
 
-.row {
+.panel {
+  position: sticky;
+  top: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6vh 24px;
+  box-sizing: border-box;
+}
+
+.card {
+  width: 100%;
+  max-width: 1040px;
   display: grid;
   grid-template-columns: 1fr 1fr;
   align-items: center;
-  gap: 64px;
-  opacity: 0;
-  transform: translateY(40px);
-  transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  gap: 48px;
+  padding: 56px;
+  background: #ffffff;
+  border: 1px solid rgba(22, 21, 15, 0.1);
+  border-radius: 28px;
+  box-shadow: 0 30px 70px -34px rgba(22, 21, 15, 0.3);
+  transform-origin: center 30%;
+  will-change: transform, opacity;
 }
 
-.rowIn { opacity: 1; transform: translateY(0); }
-
-.rowReverse .rowText { order: 2; }
-.rowReverse .rowDemo { order: 1; }
+.cardText { min-width: 0; }
+.cardDemo { display: flex; justify-content: center; }
 
 .rowEyebrow {
   display: inline-flex;
@@ -108,8 +121,6 @@
 }
 
 /* ── Marco de la demo ───────────────────────────────────────────────────── */
-.rowDemo { display: flex; justify-content: center; }
-
 .demoFrame {
   position: relative;
   width: 100%;
@@ -120,9 +131,8 @@
   justify-content: center;
   padding: 28px;
   border-radius: 22px;
-  background: #ffffff;
+  background: #f3f2ee;
   border: 1px solid rgba(22, 21, 15, 0.1);
-  box-shadow: 0 24px 50px -28px rgba(22, 21, 15, 0.25);
   overflow: hidden;
 }
 
@@ -130,7 +140,7 @@
 .demoStack { width: 100%; display: flex; flex-direction: column; gap: 16px; }
 
 .inputBox {
-  background: #f3f2ee;
+  background: #ffffff;
   border: 1px solid rgba(22, 21, 15, 0.12);
   border-radius: 14px;
   padding: 16px;
@@ -353,7 +363,7 @@
   display: flex; align-items: center; justify-content: center;
   width: 56px; height: 56px;
   border-radius: 14px;
-  background: #f3f2ee;
+  background: #ffffff;
   border: 1px solid rgba(22,21,15,0.1);
   opacity: 0; transform: translateY(12px);
   transition: opacity 0.5s ease, transform 0.5s ease;
@@ -380,7 +390,9 @@
 @keyframes nodePulse { 0%, 100% { opacity: 0.5; r: 6; } 50% { opacity: 1; r: 8; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .row { opacity: 1; transform: none; transition: none; }
+  /* sin pin ni transforms: lista vertical normal */
+  .panel { position: relative; min-height: 0; padding: 32px 24px; }
+  .card { transform: none !important; opacity: 1 !important; }
   .waveBar, .advNode, .advLine, .generating span,
   .cellCaret, .cellDrop .drop, .cellDrop .ripple, .cellBars span,
   .cellPlay, .cellScan span, .cellOrbit span { animation: none; }
@@ -390,26 +402,26 @@
 
 /* ── Responsive ─────────────────────────────────────────────────────────── */
 @media (max-width: 1024px) {
-  .section { padding: 90px 40px; }
-  .rows { gap: 90px; }
-  .row { gap: 40px; }
+  .card { padding: 44px; gap: 36px; }
+}
+
+@media (max-width: 900px) {
+  .card {
+    grid-template-columns: 1fr;
+    gap: 28px;
+    max-width: 560px;
+    padding: 36px 28px;
+  }
+  .rowDesc { max-width: none; }
+  .demoFrame { max-width: 380px; }
 }
 
 @media (max-width: 768px) {
-  .section { padding: 64px 24px; }
-  .head { margin-bottom: 56px; }
-  .rows { gap: 64px; }
-  .row, .rowReverse {
-    grid-template-columns: 1fr;
-    gap: 24px;
-  }
-  .rowText, .rowReverse .rowText { order: 2; }
-  .rowDemo, .rowReverse .rowDemo { order: 1; }
-  .rowDesc { max-width: none; }
-  .demoFrame { max-width: 360px; aspect-ratio: 16 / 11; }
+  .head { padding: 72px 24px 8px; }
+  .panel { padding: 3vh 18px; }
 }
 
 @media (max-width: 380px) {
-  .section { padding: 48px 18px; }
+  .card { padding: 28px 20px; border-radius: 22px; }
   .demoFrame { padding: 20px; }
 }
