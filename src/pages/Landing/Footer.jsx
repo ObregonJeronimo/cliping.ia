@@ -46,8 +46,8 @@ export default function Footer() {
         <div className={styles.cols}>
           <div className={styles.brandCol}>
             <div className={styles.logoRow}>
-              <img src="/logo.svg" alt="cliping.ia" width="28" height="28" />
-              <span className={styles.logo}>cliping<span>.ia</span></span>
+              <img src="/logo.svg" alt="Urvid" width="28" height="28" />
+              <span className={styles.logo}>Ur<span>vid</span></span>
             </div>
             <p className={styles.tagline}>
               Videos de marketing generados con IA, desde la URL de tu sitio.
@@ -76,7 +76,7 @@ export default function Footer() {
         </div>
 
         <div className={styles.legal}>
-          <span>© {year} cliping.ia. Todos los derechos reservados.</span>
+          <span>© {year} Urvid. Todos los derechos reservados.</span>
         </div>
       </div>
     </footer>
