@@ -186,15 +186,15 @@ function DemoVoice({ active }) {
   )
 }
 
-// ── DEMO 5 — marca (con logo de cliping.ia) ─────────────────────────────
+// ── DEMO 5 — marca (con logo de Urvid) ──────────────────────────────────
 function DemoBrand({ active }) {
   return (
     <div className={`${styles.demoBrand} ${active ? styles.brandGo : ''}`}>
-      <span className={styles.swatch} style={{ background: '#6c5ce7', transitionDelay: '0ms' }} />
-      <span className={styles.swatch} style={{ background: '#c8a8f0', transitionDelay: '120ms' }} />
-      <span className={styles.swatch} style={{ background: '#9ad7b0', transitionDelay: '240ms' }} />
+      <span className={styles.swatch} style={{ background: '#16150f', transitionDelay: '0ms' }} />
+      <span className={styles.swatch} style={{ background: '#74716a', transitionDelay: '120ms' }} />
+      <span className={styles.swatch} style={{ background: '#c4c0b6', transitionDelay: '240ms' }} />
       <span className={styles.brandLogo} style={{ transitionDelay: '360ms' }}>
-        <img src="/logo.svg" alt="cliping.ia" width="32" height="32" />
+        <img src="/logo.svg" alt="Urvid" width="32" height="32" />
       </span>
     </div>
   )
