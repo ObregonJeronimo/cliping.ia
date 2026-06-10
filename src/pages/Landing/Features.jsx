@@ -4,22 +4,6 @@ import styles from './Features.module.css'
 const TYPED_TEXT = 'Un video que muestre todas las herramientas de mi sitio, profesional y listo para publicar'
 const SCRIPT = ['Hook', 'Problema', 'Beneficios', 'CTA']
 
-function useInView(threshold = 0.4) {
-  const ref = useRef(null)
-  const [inView, setInView] = useState(false)
-  useEffect(() => {
-    const node = ref.current
-    if (!node) return
-    const obs = new IntersectionObserver(
-      ([e]) => { if (e.isIntersecting) setInView(true) },
-      { threshold }
-    )
-    obs.observe(node)
-    return () => obs.disconnect()
-  }, [threshold])
-  return [ref, inView]
-}
-
 // ── DEMO 1 — prompt -> guion ────────────────────────────────────────────
 function DemoPromptToScript({ active }) {
   const [typed, setTyped] = useState('')
@@ -217,18 +201,131 @@ function DemoAdvanced({ active }) {
   )
 }
 
-function FeatureRow({ eyebrow, title, desc, demo, reverse, badge }) {
-  const [ref, inView] = useInView(0.35)
+// ── Datos de las features ───────────────────────────────────────────────
+const FEATURES = [
+  {
+    key: 'core',
+    eyebrow: '01 — El nucleo',
+    title: 'De tu URL a un video, sin tocar un editor',
+    desc: 'Pega el link de tu sitio y describe lo que queres. La IA analiza tu negocio, escribe el guion y arma el video completo. Sin software de edicion, sin curva de aprendizaje.',
+    Demo: DemoPromptToScript,
+  },
+  {
+    key: 'dist',
+    eyebrow: '02 — Distribucion',
+    title: 'Un video, todos los formatos',
+    desc: 'Vertical para TikTok y Reels, cuadrado para el feed, horizontal para YouTube. Cada plataforma con su formato ideal, en una sola generacion.',
+    Demo: DemoFormats,
+  },
+  {
+    key: 'broll',
+    eyebrow: '03 — Narrativa',
+    title: 'Visuales y B-Roll automaticos',
+    desc: 'La IA elige y genera imagenes y clips que acompañan cada escena del guion. Sin buscar stock ni grabar nada.',
+    Demo: DemoBroll,
+  },
+  {
+    key: 'audio',
+    eyebrow: '04 — Audio',
+    title: 'Voz en off y subtitulos',
+    desc: 'Narracion con voz natural y subtitulos sincronizados automaticamente. Listos para que tu video funcione con o sin sonido.',
+    Demo: DemoVoice,
+  },
+  {
+    key: 'brand',
+    eyebrow: '05 — Identidad',
+    title: 'Tu marca, siempre',
+    desc: 'Tus colores, tu logo y tu tipografia aplicados de forma consistente en cada video que generes.',
+    Demo: DemoBrand,
+  },
+  {
+    key: 'pro',
+    eyebrow: '06 — Pro',
+    title: 'Modo avanzado de IA',
+    desc: 'Control fino sobre el guion, el ritmo y el estilo visual. Render en maxima calidad y resultados de nivel agencia.',
+    Demo: DemoAdvanced,
+    badge: 'Studio',
+  },
+]
+
+// ── Stack con scroll: cada panel queda fijo y el siguiente se apila encima
+//    mientras el anterior se achica/atenua hacia atras. El scroll dicta todo.
+function FeatureStack() {
+  const stackRef = useRef(null)
+  const cardRefs = useRef([])
+  const [active, setActive] = useState(0)
+
+  useEffect(() => {
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reduce) { setActive(-1); return }   // -1 => todas las demos activas, sin transform
+
+    let raf = null
+    const n = FEATURES.length
+
+    const update = () => {
+      raf = null
+      const stack = stackRef.current
+      if (!stack) return
+      const vh = window.innerHeight || 1
+      const stackTop = stack.getBoundingClientRect().top + window.scrollY
+      // p: 0 cuando el panel 0 recien se fija; 1 cuando el 1 lo cubre; etc.
+      const p = (window.scrollY - stackTop) / vh
+
+      for (let i = 0; i < n; i++) {
+        const card = cardRefs.current[i]
+        if (!card) continue
+        // cuanto fue cubierto este panel por el siguiente (0..1)
+        const cov = Math.min(Math.max(p - i, 0), 1)
+        const scale = 1 - cov * 0.09
+        const ty = -cov * 26
+        const op = 1 - cov * 0.55
+        card.style.transform = `translateY(${ty}px) scale(${scale})`
+        card.style.opacity = String(op)
+      }
+
+      let act = Math.round(p)
+      if (act < 0) act = 0
+      if (act > n - 1) act = n - 1
+      setActive(prev => (prev === act ? prev : act))
+    }
+
+    const onScroll = () => { if (raf == null) raf = requestAnimationFrame(update) }
+    update()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', onScroll)
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', onScroll)
+      if (raf) cancelAnimationFrame(raf)
+    }
+  }, [])
+
   return (
-    <div ref={ref} className={`${styles.row} ${reverse ? styles.rowReverse : ''} ${inView ? styles.rowIn : ''}`}>
-      <div className={styles.rowText}>
-        <span className={styles.rowEyebrow}>{eyebrow}{badge && <span className={styles.rowBadge}>{badge}</span>}</span>
-        <h3 className={styles.rowTitle}>{title}</h3>
-        <p className={styles.rowDesc}>{desc}</p>
-      </div>
-      <div className={styles.rowDemo}>
-        <div className={styles.demoFrame}>{demo(inView)}</div>
-      </div>
+    <div className={styles.stack} ref={stackRef}>
+      {FEATURES.map((f, i) => {
+        const Demo = f.Demo
+        return (
+          <div key={f.key} className={styles.panel}>
+            <div
+              className={styles.card}
+              ref={el => { cardRefs.current[i] = el }}
+            >
+              <div className={styles.cardText}>
+                <span className={styles.rowEyebrow}>
+                  {f.eyebrow}{f.badge && <span className={styles.rowBadge}>{f.badge}</span>}
+                </span>
+                <h3 className={styles.rowTitle}>{f.title}</h3>
+                <p className={styles.rowDesc}>{f.desc}</p>
+              </div>
+              <div className={styles.cardDemo}>
+                <div className={styles.demoFrame}>
+                  <Demo active={active === i || active === -1} />
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -247,48 +344,7 @@ export default function Features() {
         </p>
       </div>
 
-      <div className={styles.rows}>
-        <FeatureRow
-          eyebrow="01 — El nucleo"
-          title="De tu URL a un video, sin tocar un editor"
-          desc="Pega el link de tu sitio y describe lo que queres. La IA analiza tu negocio, escribe el guion y arma el video completo. Sin software de edicion, sin curva de aprendizaje."
-          demo={(active) => <DemoPromptToScript active={active} />}
-        />
-        <FeatureRow
-          reverse
-          eyebrow="02 — Distribucion"
-          title="Un video, todos los formatos"
-          desc="Vertical para TikTok y Reels, cuadrado para el feed, horizontal para YouTube. Cada plataforma con su formato ideal, en una sola generacion."
-          demo={(active) => <DemoFormats active={active} />}
-        />
-        <FeatureRow
-          eyebrow="03 — Narrativa"
-          title="Visuales y B-Roll automaticos"
-          desc="La IA elige y genera imagenes y clips que acompañan cada escena del guion. Sin buscar stock ni grabar nada."
-          demo={(active) => <DemoBroll active={active} />}
-        />
-        <FeatureRow
-          reverse
-          eyebrow="04 — Audio"
-          title="Voz en off y subtitulos"
-          desc="Narracion con voz natural y subtitulos sincronizados automaticamente. Listos para que tu video funcione con o sin sonido."
-          demo={(active) => <DemoVoice active={active} />}
-        />
-        <FeatureRow
-          eyebrow="05 — Identidad"
-          title="Tu marca, siempre"
-          desc="Tus colores, tu logo y tu tipografia aplicados de forma consistente en cada video que generes."
-          demo={(active) => <DemoBrand active={active} />}
-        />
-        <FeatureRow
-          reverse
-          badge="Studio"
-          eyebrow="06 — Pro"
-          title="Modo avanzado de IA"
-          desc="Control fino sobre el guion, el ritmo y el estilo visual. Render en maxima calidad y resultados de nivel agencia."
-          demo={(active) => <DemoAdvanced active={active} />}
-        />
-      </div>
+      <FeatureStack />
     </section>
   )
 }
