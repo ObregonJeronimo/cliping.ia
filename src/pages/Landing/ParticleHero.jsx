@@ -131,6 +131,8 @@ export default function ParticleHero({ onPhaseChange }) {
     geometry.setAttribute('aColor',   new THREE.BufferAttribute(colors, 3))
     geometry.setAttribute('aSize',    new THREE.BufferAttribute(sizes, 1))
 
+    // Blending normal (no aditivo): sobre fondo claro las particulas son
+    // tinta oscura, sin glow.
     const material = new THREE.ShaderMaterial({
       uniforms: { uScale: { value: computeScale() } },
       vertexShader: VERT,
@@ -138,7 +140,7 @@ export default function ParticleHero({ onPhaseChange }) {
       transparent: true,
       depthWrite: false,
       depthTest: false,
-      blending: THREE.AdditiveBlending,
+      blending: THREE.NormalBlending,
     })
 
     const points = new THREE.Points(geometry, material)
@@ -146,12 +148,12 @@ export default function ParticleHero({ onPhaseChange }) {
     scene.add(points)
 
     const orbits = [
-      { rx: 9.5,  ry: 6.2, tiltX: 0.20,  tiltZ: 0.06,  speed: 0.16,  opacity: 0.4  },
-      { rx: 11.5, ry: 7.4, tiltX: -0.14, tiltZ: 0.16,  speed: -0.1,  opacity: 0.26 },
-      { rx: 13.6, ry: 8.8, tiltX: 0.32,  tiltZ: -0.10, speed: 0.26,  opacity: 0.16 },
+      { rx: 9.5,  ry: 6.2, tiltX: 0.20,  tiltZ: 0.06,  speed: 0.16,  opacity: 0.16 },
+      { rx: 11.5, ry: 7.4, tiltX: -0.14, tiltZ: 0.16,  speed: -0.1,  opacity: 0.1  },
+      { rx: 13.6, ry: 8.8, tiltX: 0.32,  tiltZ: -0.10, speed: 0.26,  opacity: 0.07 },
     ]
     const orbitMeshes = orbits.map(({ rx, ry, tiltX, tiltZ, opacity }) => {
-      const m = new THREE.LineBasicMaterial({ color: 0x6c7fd8, transparent: true, opacity })
+      const m = new THREE.LineBasicMaterial({ color: 0x16150f, transparent: true, opacity })
       const loop = new THREE.LineLoop(makeOrbitLoop(rx, ry), m)
       loop.rotation.x = tiltX
       loop.rotation.z = tiltZ
@@ -226,8 +228,9 @@ export default function ParticleHero({ onPhaseChange }) {
     function executeStep(idx) { steps[idx].fn(); stepIdx = idx; stepStart = null }
     executeStep(0)
 
-    const C_HI = new THREE.Color(0x8ea4ff)
-    const C_LO = new THREE.Color(0x3a4690)
+    // Tinta oscura sobre fondo claro (sin violeta). HI = tinta plena, LO = atenuada.
+    const C_HI = new THREE.Color(0x16150f)
+    const C_LO = new THREE.Color(0x8f8c83)
     const colTmp = new THREE.Color()
 
     let alive = true, rafId = null, lastNow = null
