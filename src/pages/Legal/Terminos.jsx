@@ -9,7 +9,7 @@ export default function Terminos() {
     <div className={styles.page}>
       <button className={styles.backLogo} onClick={() => navigate('/')} aria-label="Volver al inicio">
         <img src="/logo.svg" alt="" width="26" height="26" />
-        <span>cliping<span>.ia</span></span>
+        <span>Ur<span>vid</span></span>
       </button>
 
       <article className={styles.doc}>
@@ -25,9 +25,9 @@ export default function Terminos() {
         <section className={styles.section}>
           <h2>1. Aceptacion de los terminos</h2>
           <p>
-            Al crear una cuenta o utilizar cliping.ia (el "Servicio"), aceptas estos
+            Al crear una cuenta o utilizar Urvid (el "Servicio"), aceptas estos
             Terminos de uso. Si no estas de acuerdo con ellos, no debes utilizar el
-            Servicio. El uso de cliping.ia implica la aceptacion plena de las
+            Servicio. El uso de Urvid implica la aceptacion plena de las
             condiciones aqui descritas.
           </p>
         </section>
@@ -35,7 +35,7 @@ export default function Terminos() {
         <section className={styles.section}>
           <h2>2. Descripcion del Servicio</h2>
           <p>
-            cliping.ia es una plataforma que genera videos de marketing de forma
+            Urvid es una plataforma que genera videos de marketing de forma
             automatizada mediante inteligencia artificial, a partir de la URL de un
             sitio web y de las instrucciones provistas por el usuario. El resultado
             incluye guion, edicion, voz en off y elementos visuales generados o
@@ -49,14 +49,14 @@ export default function Terminos() {
             Para utilizar el Servicio debes iniciar sesion con una cuenta de Google
             valida. Sos responsable de mantener la confidencialidad de tu cuenta y de
             toda la actividad que ocurra bajo la misma. Debes ser mayor de edad en tu
-            jurisdiccion para utilizar cliping.ia.
+            jurisdiccion para utilizar Urvid.
           </p>
         </section>
 
         <section className={styles.section}>
           <h2>4. Planes y pagos</h2>
           <p>
-            cliping.ia ofrece un plan gratuito de prueba con un numero limitado de
+            Urvid ofrece un plan gratuito de prueba con un numero limitado de
             videos, y planes pagos (Esencial y Studio) con distintas capacidades y
             limites de generacion. Los planes pagos se facturan de forma mensual o
             anual segun la opcion elegida. Los precios pueden modificarse, notificando
@@ -74,7 +74,7 @@ export default function Terminos() {
           <p>
             Te comprometes a no utilizar el Servicio para generar contenido ilegal,
             difamatorio, que infrinja derechos de terceros, que vulnere propiedad
-            intelectual, o que promueva actividades prohibidas. cliping.ia se reserva
+            intelectual, o que promueva actividades prohibidas. Urvid se reserva
             el derecho de suspender cuentas que incumplan estas condiciones.
           </p>
         </section>
@@ -84,7 +84,7 @@ export default function Terminos() {
           <p>
             Conservas los derechos sobre el contenido que ingresas (URL, instrucciones,
             material de tu marca) y sobre los videos generados a partir de tus
-            indicaciones, dentro de los limites de tu plan. cliping.ia no reclama
+            indicaciones, dentro de los limites de tu plan. Urvid no reclama
             propiedad sobre tus videos finales, pero conserva los derechos sobre la
             plataforma, su tecnologia y sus modelos.
           </p>
@@ -103,7 +103,7 @@ export default function Terminos() {
         <section className={styles.section}>
           <h2>8. Limitacion de responsabilidad</h2>
           <p>
-            En la maxima medida permitida por la ley, cliping.ia no sera responsable
+            En la maxima medida permitida por la ley, Urvid no sera responsable
             por daños indirectos, perdida de ingresos o de datos derivados del uso o la
             imposibilidad de uso del Servicio.
           </p>
@@ -122,7 +122,7 @@ export default function Terminos() {
           <h2>10. Contacto</h2>
           <p>
             Ante cualquier consulta sobre estos Terminos, podes contactarnos a traves de
-            los canales oficiales de cliping.ia.
+            los canales oficiales de Urvid.
           </p>
         </section>
       </article>
