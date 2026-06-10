@@ -16,15 +16,15 @@ export default function Login() {
       {/* Volver al inicio */}
       <button className={styles.backLogo} onClick={() => navigate('/')} aria-label="Volver al inicio">
         <img src="/logo.svg" alt="" width="26" height="26" />
-        <span>cliping<span>.ia</span></span>
+        <span>Ur<span>vid</span></span>
       </button>
 
       {/* Columna izquierda: card de login */}
       <div className={styles.left}>
         <div className={styles.card}>
           <div className={styles.logoRow}>
-            <img src="/logo.svg" alt="cliping.ia" width="34" height="34" />
-            <span className={styles.logo}>cliping<span>.ia</span></span>
+            <img src="/logo.svg" alt="Urvid" width="34" height="34" />
+            <span className={styles.logo}>Ur<span>vid</span></span>
           </div>
 
           <h1 className={styles.title}>Bienvenido</h1>
