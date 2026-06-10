@@ -2,8 +2,8 @@
 .section {
   position: relative;
   z-index: 2;
-  background: #080810;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  background: #f3f2ee;
+  border-top: 1px solid rgba(22, 21, 15, 0.1);
   overflow: hidden;
 }
 
@@ -21,31 +21,31 @@
 .copy { max-width: 520px; }
 
 .heading {
+  font-family: 'Bricolage Grotesque', sans-serif;
   font-size: clamp(34px, 4vw, 56px);
-  font-weight: 700;
-  line-height: 1.1;
-  letter-spacing: -0.03em;
-  color: #f2f3fa;
+  font-weight: 600;
+  line-height: 1.04;
+  letter-spacing: -0.04em;
+  color: #16150f;
   margin: 0 0 24px;
 }
 
+/* El acento ya no es degradado violeta: tinta atenuada (jerarquia por color) */
 .accent {
-  background: linear-gradient(120deg, #a8b4ff 0%, #c8a8f0 60%, #a8c8f0 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: #a9a69d;
+  -webkit-text-fill-color: #a9a69d;
 }
 
 .sub {
   font-size: clamp(15px, 1.3vw, 17px);
   line-height: 1.7;
-  color: rgba(232, 232, 240, 0.5);
+  color: #74716a;
   margin: 0 0 36px;
 }
 
 .sub em {
   font-style: normal;
-  color: rgba(232, 232, 240, 0.85);
+  color: #16150f;
   font-weight: 500;
 }
 
@@ -54,22 +54,20 @@
   align-items: center;
   gap: 8px;
   font-size: 15px;
-  font-weight: 600;
-  color: #fff;
-  background: linear-gradient(135deg, #6c5ce7, #8c6ff0);
+  font-weight: 500;
+  color: #f3f2ee;
+  background: #16150f;
   border: none;
-  border-radius: 12px;
+  border-radius: 11px;
   padding: 15px 28px;
   cursor: pointer;
   letter-spacing: -0.01em;
-  min-height: 44px;
-  box-shadow: 0 8px 28px rgba(108, 92, 231, 0.35);
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  min-height: 46px;
+  transition: transform 0.15s ease;
 }
 
-.cta:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 36px rgba(108, 92, 231, 0.5);
+.cta:active {
+  transform: scale(0.98);
 }
 
 /* ── Marquee de 3 columnas ──────────────────────────────────────────────── */
@@ -127,26 +125,24 @@
   pointer-events: none;
   z-index: 2;
 }
-.fadeTop    { top: 0;    background: linear-gradient(to bottom, #080810, transparent); }
-.fadeBottom { bottom: 0; background: linear-gradient(to top,    #080810, transparent); }
+.fadeTop    { top: 0;    background: linear-gradient(to bottom, #f3f2ee, transparent); }
+.fadeBottom { bottom: 0; background: linear-gradient(to top,    #f3f2ee, transparent); }
 
 /* ── Card ───────────────────────────────────────────────────────────────── */
 .card {
-  background: linear-gradient(160deg, rgba(28, 28, 46, 0.9), rgba(16, 16, 28, 0.9));
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: #ffffff;
+  border: 1px solid rgba(22, 21, 15, 0.1);
   border-radius: 16px;
   padding: 14px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  box-shadow: 0 12px 30px -20px rgba(22, 21, 15, 0.2);
 }
 
 .cardVisual {
   position: relative;
   height: 124px;
   border-radius: 10px;
-  background: radial-gradient(ellipse at 30% 20%, rgba(108, 92, 231, 0.18), transparent 70%), #0c0c16;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: #f3f2ee;
+  border: 1px solid rgba(22, 21, 15, 0.08);
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -162,52 +158,52 @@
 }
 
 .cardTag {
-  font-family: 'DM Mono', monospace;
+  font-family: 'JetBrains Mono', monospace;
   font-size: 10px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(160, 170, 240, 0.6);
+  color: #74716a;
 }
 
 .cardTitle {
   font-size: 14px;
   font-weight: 500;
-  color: rgba(232, 232, 240, 0.9);
+  color: #16150f;
   letter-spacing: -0.01em;
 }
 
 /* ── Placeholders visuales dentro de las cards ──────────────────────────── */
 /* browser */
-.vBrowser { width: 100%; height: 100%; border-radius: 8px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); overflow: hidden; }
-.vBrowserBar { display: flex; gap: 5px; padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.06); }
-.vBrowserBar span { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,0.18); }
+.vBrowser { width: 100%; height: 100%; border-radius: 8px; background: #ffffff; border: 1px solid rgba(22,21,15,0.08); overflow: hidden; }
+.vBrowserBar { display: flex; gap: 5px; padding: 8px 10px; border-bottom: 1px solid rgba(22,21,15,0.08); }
+.vBrowserBar span { width: 7px; height: 7px; border-radius: 50%; background: rgba(22,21,15,0.18); }
 .vBrowserBody { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
-.vBlock { height: 7px; border-radius: 4px; background: rgba(255,255,255,0.1); }
-.vBtn { margin-top: 4px; width: 42px; height: 16px; border-radius: 5px; background: linear-gradient(90deg, #6c5ce7, #8c6ff0); }
+.vBlock { height: 7px; border-radius: 4px; background: rgba(22,21,15,0.12); }
+.vBtn { margin-top: 4px; width: 42px; height: 16px; border-radius: 5px; background: #16150f; }
 
 /* lines */
 .vLines { width: 100%; display: flex; flex-direction: column; gap: 9px; }
-.vLine { height: 8px; border-radius: 4px; background: linear-gradient(90deg, rgba(140,156,242,0.4), rgba(140,156,242,0.1)); }
+.vLine { height: 8px; border-radius: 4px; background: rgba(22,21,15,0.16); }
 
 /* grid */
 .vGrid { width: 100%; height: 100%; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr); gap: 6px; }
-.vGridCell { border-radius: 6px; background: linear-gradient(135deg, rgba(108,92,231,0.3), rgba(140,156,242,0.12)); }
+.vGridCell { border-radius: 6px; background: rgba(22,21,15,0.12); }
 
 /* wave */
 .vWave { width: 100%; height: 60%; display: flex; align-items: center; justify-content: center; gap: 3px; }
-.vWave span { width: 3px; border-radius: 2px; background: linear-gradient(to top, #6c5ce7, #a8b4ff); }
+.vWave span { width: 3px; border-radius: 2px; background: #16150f; }
 
 /* timeline */
 .vTimeline { position: relative; width: 100%; display: flex; flex-direction: column; gap: 8px; }
-.vTrack { position: relative; height: 22px; border-radius: 5px; background: rgba(255,255,255,0.04); }
-.vClip { position: absolute; top: 3px; bottom: 3px; border-radius: 4px; background: linear-gradient(90deg, rgba(108,92,231,0.6), rgba(140,156,242,0.4)); }
-.vPlayhead { position: absolute; top: 0; bottom: 0; left: 45%; width: 2px; background: #c8a8f0; }
+.vTrack { position: relative; height: 22px; border-radius: 5px; background: rgba(22,21,15,0.06); }
+.vClip { position: absolute; top: 3px; bottom: 3px; border-radius: 4px; background: rgba(22,21,15,0.4); }
+.vPlayhead { position: absolute; top: 0; bottom: 0; left: 45%; width: 2px; background: #16150f; }
 
 /* player */
 .vPlayer { position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
-.vPlayBtn { width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, #6c5ce7, #8c6ff0); display: flex; align-items: center; justify-content: center; color: #fff; box-shadow: 0 6px 20px rgba(108,92,231,0.5); }
-.vProgress { position: absolute; left: 14px; right: 14px; bottom: 14px; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.12); overflow: hidden; }
-.vProgress span { display: block; width: 38%; height: 100%; background: linear-gradient(90deg, #6c5ce7, #a8b4ff); border-radius: 2px; }
+.vPlayBtn { width: 44px; height: 44px; border-radius: 50%; background: #16150f; display: flex; align-items: center; justify-content: center; color: #f3f2ee; }
+.vProgress { position: absolute; left: 14px; right: 14px; bottom: 14px; height: 4px; border-radius: 2px; background: rgba(22,21,15,0.12); overflow: hidden; }
+.vProgress span { display: block; width: 38%; height: 100%; background: #16150f; border-radius: 2px; }
 
 /* ── Responsive ─────────────────────────────────────────────────────────── */
 @media (max-width: 1024px) {
