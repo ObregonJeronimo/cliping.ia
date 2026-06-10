@@ -120,6 +120,17 @@
   margin: 22px 0 0;
 }
 
+.termsLink {
+  color: #74716a;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color 0.2s ease;
+}
+
+.termsLink:hover {
+  color: #16150f;
+}
+
 /* ── Columna derecha: panel animado ─────────────────────────────────────── */
 .right {
   position: relative;
