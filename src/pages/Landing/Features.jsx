@@ -262,6 +262,10 @@ function FeatureStack() {
     let raf = null
     const n = FEATURES.length
 
+    // DEAD: porcion inicial del recorrido de cada panel en la que se mantiene
+    // 100% visible (hold) antes de empezar a recederse. Sube = menos sensible.
+    const DEAD = 0.5
+
     const update = () => {
       raf = null
       const stack = stackRef.current
@@ -274,8 +278,10 @@ function FeatureStack() {
       for (let i = 0; i < n; i++) {
         const card = cardRefs.current[i]
         if (!card) continue
-        // cuanto fue cubierto este panel por el siguiente (0..1)
-        const cov = Math.min(Math.max(p - i, 0), 1)
+        const local = p - i                       // progreso dentro de este panel
+        let t = (local - DEAD) / (1 - DEAD)        // zona muerta: nada hasta DEAD
+        t = Math.min(Math.max(t, 0), 1)
+        const cov = t * t * (3 - 2 * t)            // smoothstep: arranque suave
         const scale = 1 - cov * 0.09
         const ty = -cov * 26
         const op = 1 - cov * 0.55
