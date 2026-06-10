@@ -87,6 +87,7 @@ import json as _json
 import random as _random
 import template_director as _td
 import brand_dna as _bdna
+import iconify_service
 
 TL_DIRECTOR_MODEL = "claude-sonnet-4-6"
 TL_CRITIC_MODEL = _os.getenv("CLIPING_CRITIC_MODEL", "claude-sonnet-4-6")
@@ -133,8 +134,12 @@ TL_SCENE_CATALOG = """ESCENAS DISPONIBLES (motor Canvas) — agrupadas por CATEG
        hexagon, star, plus, heart, leaf, drop, flower, shield, blob. El motor funde una silueta en la otra con bordes
        SUAVES y puntos alineados (morph organico, sin facetas ni torsion). fill, stroke y blur:true (estela) opcionales.
        Ideal para un hero: semilla -> hoja -> flower; punto -> estrella; gota -> blob. Elegi formas que digan algo del rubro.
-    - "icon"  -> props: icon (box, flyingbox, house, cart, check, star, leaf, dot). 'flyingbox' = caja con alas: animala con
-       x/y + ctrl para que VUELE por una curva. blur:true le agrega estela de movimiento (fluidez).
+    - "icon"  -> iconos simples hand-coded: icon (box, house, cart, check, star, leaf, dot).
+    - "svgicon" -> ICONO de BIBLIOTECA (Iconify, +200k iconos). props: concept = CONCEPTO en INGLES de lo que
+       queres mostrar (ej "shopping cart","fresh leaf","shield","rocket","heart","truck","lock","medal","clock").
+       El backend lo busca y lo resuelve solo. props: size (px ~56-120), fill ('accent'|'ink'|'dim'|#hex).
+       Animalo con keys (opacity/scale/x/y/rot/ease). USALOS para LLENAR la escena y que NO quede vacia:
+       1-3 iconos relevantes al rubro, bien ubicados (no encimados, no tapando el texto).
     - "shape" -> token (dot, circle, pill, bar, box, card, line, square) + w/h/r; morphea entre tokens; label opcional.
     - "particles" -> count, spread; con un key burst de 0 a 1 = estallido (chispas / celebracion).
   colores (tokens): accent (color de marca), accent2, ink (texto claro), dim (texto tenue), dark, o un #rrggbb.
@@ -177,7 +182,7 @@ TL_DIRECTOR_SYSTEM = (
     "- PUBLICO (clave): infieri del sitio QUIEN compra/usa esto y escribi TODO hablandole a ESE publico, "
     "con su lenguaje y prioridades. Que el video se sienta hecho para la audiencia de ESTA pagina.\n"
     "- accent: un hex VIVO (saturado) acorde a la marca; si te paso uno sugerido, usalo.\n"
-    "- LIENZO (clave anti-patron): para la APERTURA/HERO, preferi una 'scene' DIRIGIDA que capte el alma de ESTA marca (un morph, un objeto que vuela, una forma que se construye) salvo que un statement crudo claramente pegue mas fuerte. Variá el recurso entre marcas: si dos marcas terminan con el mismo hero, fallaste. Las escenas enlatadas (statement/checklist/bigStat/paintTitle) siguen disponibles para los beats de apoyo.\n"
+    "- LIENZO (clave anti-patron): para la APERTURA/HERO, preferi una 'scene' DIRIGIDA que capte el alma de ESTA marca (un morph, iconos de biblioteca svgicon que llenen el cuadro, una forma que se construye) salvo que un statement crudo claramente pegue mas fuerte. Variá el recurso entre marcas: si dos marcas terminan con el mismo hero, fallaste. Las escenas enlatadas (statement/checklist/bigStat/paintTitle) siguen disponibles para los beats de apoyo.\n"
     "- El timeline cuenta una micro-historia coherente con el proposito y el arco indicado."
 )
 
@@ -207,9 +212,9 @@ _TL_VALID_TYPES = {"paintTitle", "statement", "checklist", "outro", "bigStat", "
 _TL_DEFAULT_DUR = {"paintTitle": 234, "statement": 150, "checklist": 192, "outro": 150, "bigStat": 150, "deliver": 204, "scene": 210}
 
 
-_SCENE_KINDS = {"text", "icon", "shape", "morph", "particles"}
+_SCENE_KINDS = {"text", "icon", "shape", "morph", "particles", "svgicon"}
 _SCENE_FORMS = {"circle", "ring", "square", "diamond", "triangle", "pentagon", "hexagon", "star", "plus", "heart", "leaf", "drop", "flower", "shield", "blob"}
-_SCENE_ICONS = {"box", "flyingbox", "house", "cart", "check", "star", "leaf", "dot"}
+_SCENE_ICONS = {"box", "house", "cart", "check", "star", "leaf", "dot"}
 _SCENE_SHAPE_TOK = {"dot", "circle", "pill", "bar", "box", "card", "line", "square"}
 _SCENE_EASES = {"linear", "outCubic", "inCubic", "inOutCubic", "outBack", "outElastic", "spring", "smooth", "outQuint", "inOutQuint"}
 
@@ -280,6 +285,22 @@ def _norm_scene_elements(s: dict, dur_frames: int) -> list:
             nel["icon"] = ic if (isinstance(ic, str) and ic in _SCENE_ICONS) else "dot"
             if el.get("blur"):
                 nel["blur"] = True
+        elif kind == "svgicon":
+            cpt = el.get("concept")
+            if isinstance(cpt, str) and cpt.strip():
+                nel["concept"] = cpt.strip()[:60]
+            ic = el.get("icon")
+            if isinstance(ic, str) and ic in _SCENE_ICONS:
+                nel["icon"] = ic
+            if isinstance(el.get("fill"), str):
+                nel["fill"] = el["fill"]
+            if "size" in el:
+                try:
+                    nel["size"] = float(el["size"])
+                except Exception:
+                    pass
+            if not nel.get("concept") and not nel.get("icon"):
+                continue
         elif kind == "shape":
             if isinstance(el.get("fill"), str):
                 nel["fill"] = el["fill"]
@@ -420,6 +441,39 @@ async def _critique_timeline(tl, *, brief_txt="", contexto="", desarrollo="", pr
         return tl
 
 
+async def _resolve_one_timeline_icon(concept):
+    """Resuelve un concepto (en ingles) a {body,width,height} de Iconify, o None."""
+    try:
+        hits = await iconify_service.search_objects(concept.strip(), limit=1)
+        return await iconify_service.get_icon_body(hits[0]["id"]) if hits else None
+    except Exception as ie:
+        print(f"[tl-director] icono '{concept}' no resuelto: {ie}")
+        return None
+
+
+async def _resolve_timeline_icons(tl):
+    """Resuelve los elementos svgicon (concept) a SVG de Iconify, en paralelo. Si uno no se
+    resuelve, queda sin svg -> el motor dibuja un punto chico (nunca rompe la escena)."""
+    import asyncio
+    jobs = []
+    for sc in tl.get("scenes", []):
+        if not isinstance(sc, dict):
+            continue
+        for el in (sc.get("elements") or []):
+            if isinstance(el, dict) and el.get("kind") == "svgicon" and isinstance(el.get("concept"), str) and el["concept"].strip():
+                jobs.append(el)
+    if not jobs:
+        return tl
+    results = await asyncio.gather(*[_resolve_one_timeline_icon(el["concept"]) for el in jobs])
+    n_ok = 0
+    for el, body in zip(jobs, results):
+        if body:
+            el["svg"] = {"body": body["body"], "width": body["width"], "height": body["height"]}
+            n_ok += 1
+    print(f"[tl-director] iconos Iconify resueltos: {n_ok}/{len(jobs)}")
+    return tl
+
+
 async def write_timeline(url, desarrollo, proposito="marketing", idioma="",
                          recent_profile=None, rating_bias=None, prefetched_site=None,
                          dna=None, cached_brand=None, usage=None, brand_sink=None):
@@ -527,4 +581,5 @@ contexto, NO uses bigStat. Si hay un PEDIDO DEL USUARIO, cumplilo SÍ O SÍ por 
     tl["angle"] = angle
     tl["hookName"] = hook["name"]
     tl["arcName"] = arc_name
+    tl = await _resolve_timeline_icons(tl)
     return tl

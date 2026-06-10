@@ -714,7 +714,7 @@ function _rgba(hex, a) {
   function _drawIcon(name, scale, alpha, tl) {
     const s = scale;
     if (name === 'box') return drawBox(s);
-    if (name === 'flyingbox') { drawWings(s, (tl || 0) * 16, 0); return drawBox(s); }
+    if (name === 'flyingbox') return drawBox(s);  // sin alas: la caja voladora se dio de baja
     if (name === 'house') return drawHouse(s, alpha);
     if (name === 'cart') return drawCart(s, alpha);
     if (name === 'check') {
@@ -811,6 +811,35 @@ function _rgba(hex, a) {
     ctx.closePath();
   }
   // dibujante GENERICO de escena por keyframes (la IA arma la historia con esto)
+  // ---------- ICONOS DE BIBLIOTECA (Iconify) en Canvas via Path2D ----------
+  // El backend resuelve un CONCEPTO ("shopping cart") -> {body,width,height} de Iconify y lo embebe
+  // en el elemento. Aca parseamos los <path> y los dibujamos escalados, centrados y coloreados.
+  const _svgCache = new Map();
+  function _parseSvgIcon(body) {
+    if (_svgCache.has(body)) return _svgCache.get(body);
+    const paths = []; const re = /<path[^>]*\bd="([^"]+)"/g; let m;
+    while ((m = re.exec(body))) paths.push(m[1]);
+    const stroked = /fill="none"/.test(body) || /\bstroke="(?!none)[^"]+"/.test(body);
+    let sw = 2; const sm = body.match(/stroke-width="([\d.]+)"/); if (sm) sw = parseFloat(sm[1]);
+    const parsed = { paths, stroked, sw };
+    _svgCache.set(body, parsed);
+    return parsed;
+  }
+  function _drawSvgIcon(svg, size, color) {
+    if (!svg || !svg.body || typeof Path2D === 'undefined') return;
+    const { paths, stroked, sw } = _parseSvgIcon(svg.body);
+    if (!paths.length) return;
+    const w = svg.width || svg.w || 24, h = svg.height || svg.h || 24;
+    const k = (size || 56) / Math.max(w, h);
+    ctx.save();
+    ctx.translate(-w * k / 2, -h * k / 2); ctx.scale(k, k);
+    ctx.fillStyle = color; ctx.strokeStyle = color;
+    ctx.lineWidth = sw; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    setShadow(_rgba(typeof color === 'string' && color[0] === '#' ? color : A1, 0.32), 16, 4);
+    for (const d of paths) { const pp = new Path2D(d); if (stroked) ctx.stroke(pp); else ctx.fill(pp); }
+    noShadow();
+    ctx.restore();
+  }
   function sceneSpec(t, p = {}) {
     const els = Array.isArray(p.elements) ? p.elements : [];
     for (const el of els) {
@@ -836,6 +865,10 @@ function _rgba(hex, a) {
         if (el.blur) for (let b = 3; b >= 1; b--) { const tb = Math.max(0, t - b * 0.022); const pb = _pos(keys, tb); const sb = Math.max(0, _num(keys, tb, 'scale', scale)); ctx.save(); ctx.globalAlpha *= 0.1; ctx.translate(pb[0], pb[1]); _drawIcon(el.icon || 'dot', sb, op, tb); ctx.restore(); }
         ctx.translate(x, y); if (rot) ctx.rotate(rot);
         _drawIcon(el.icon || 'dot', scale, op, t);
+      } else if (kind === 'svgicon') {
+        ctx.translate(x, y); if (rot) ctx.rotate(rot);
+        if (el.svg && el.svg.body) _drawSvgIcon(el.svg, (el.size || 56) * scale, _resolveColor(el.fill || 'accent'));
+        else _drawIcon(el.icon || 'dot', scale, op, t);
       } else if (kind === 'particles') {
         const n = Math.max(1, el.count || 10), prog = clamp(_num(keys, t, 'burst', clamp(t, 0, 1)), 0, 1);
         ctx.translate(x, y);
