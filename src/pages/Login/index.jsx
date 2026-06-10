@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import styles from './Login.module.css'
 
@@ -44,7 +44,11 @@ export default function Login() {
           </button>
 
           <p className={styles.terms}>
-            Al ingresar aceptas los terminos de uso y la politica de privacidad.
+            Al hacer clic en "Continuar con Google" acepto los{' '}
+            <Link className={styles.termsLink} to="/terminos">Terminos de uso</Link>
+            {' '}y reconozco la{' '}
+            <Link className={styles.termsLink} to="/privacidad">Politica de privacidad</Link>
+            {' '}de Urvid.
           </p>
         </div>
       </div>
