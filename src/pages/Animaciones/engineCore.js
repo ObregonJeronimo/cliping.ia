@@ -733,6 +733,83 @@ function _rgba(hex, a) {
     }
     ctx.fillStyle = A1; ctx.beginPath(); ctx.arc(0, 0, 8 * s, 0, TAU); ctx.fill();
   }
+  // ---------- MORPH de formas: siluetas nombradas que se interpolan punto a punto ----------
+  // La IA anima keyframes con 'form' (circle, star, blob, heart, leaf, triangle, hexagon, plus...)
+  // y opcional 'r'; el motor re-muestrea cada silueta a N puntos y las funde => morph REAL.
+  function _formPoints(form, r) {
+    r = Math.max(1, r || 60);
+    const poly = (n, rot0 = -Math.PI / 2) => { const a = []; for (let i = 0; i < n; i++) { const an = rot0 + i / n * TAU; a.push({ x: Math.cos(an) * r, y: Math.sin(an) * r }); } return a; };
+    switch (form) {
+      case 'circle': case 'ring': return poly(44);
+      case 'square': return [{ x: -r, y: -r }, { x: r, y: -r }, { x: r, y: r }, { x: -r, y: r }];
+      case 'diamond': return poly(4, -Math.PI / 2);
+      case 'triangle': return poly(3, -Math.PI / 2);
+      case 'pentagon': return poly(5, -Math.PI / 2);
+      case 'hexagon': return poly(6, -Math.PI / 2);
+      case 'star': { const a = []; for (let i = 0; i < 10; i++) { const an = -Math.PI / 2 + i / 10 * TAU; const rr = i % 2 ? r * 0.45 : r; a.push({ x: Math.cos(an) * rr, y: Math.sin(an) * rr }); } return a; }
+      case 'plus': { const t = r * 0.38; return [{ x: -t, y: -r }, { x: t, y: -r }, { x: t, y: -t }, { x: r, y: -t }, { x: r, y: t }, { x: t, y: t }, { x: t, y: r }, { x: -t, y: r }, { x: -t, y: t }, { x: -r, y: t }, { x: -r, y: -t }, { x: -t, y: -t }]; }
+      case 'heart': { const a = []; const N = 40; for (let i = 0; i < N; i++) { const tt = i / N * TAU; const x = 16 * Math.pow(Math.sin(tt), 3); const y = -(13 * Math.cos(tt) - 5 * Math.cos(2 * tt) - 2 * Math.cos(3 * tt) - Math.cos(4 * tt)); a.push({ x: x / 17 * r, y: y / 17 * r }); } return a; }
+      case 'leaf': { const a = []; const N = 26; for (let i = 0; i <= N; i++) { const tt = i / N; a.push({ x: Math.sin(tt * Math.PI) * r * 0.6, y: -r + tt * 2 * r }); } for (let i = 0; i <= N; i++) { const tt = i / N; a.push({ x: -Math.sin((1 - tt) * Math.PI) * r * 0.6, y: r - (1 - tt) * 2 * r }); } return a; }
+      case 'drop': { const a = []; const N = 44, m = 2; for (let i = 0; i < N; i++) { const tt = i / N * TAU; const px = Math.cos(tt), py = Math.sin(tt) * Math.pow(Math.sin(tt / 2), m); a.push({ x: py * r, y: -px * r }); } return a; }
+      case 'flower': { const a = []; const N = 60, pet = 5; for (let i = 0; i < N; i++) { const an = i / N * TAU; const rr = r * (0.45 + 0.55 * Math.abs(Math.cos(pet * an / 2))); a.push({ x: Math.cos(an) * rr, y: Math.sin(an) * rr }); } return a; }
+      case 'shield': return [{ x: 0, y: -r }, { x: r * 0.82, y: -r * 0.66 }, { x: r * 0.82, y: r * 0.2 }, { x: 0, y: r }, { x: -r * 0.82, y: r * 0.2 }, { x: -r * 0.82, y: -r * 0.66 }];
+      case 'blob': default: { const a = []; const M = 8; for (let i = 0; i < M; i++) { const an = i / M * TAU; const rr = r * (0.82 + 0.24 * Math.sin(i * 1.9 + 1)); a.push({ x: Math.cos(an) * rr, y: Math.sin(an) * rr }); } return a; }
+    }
+  }
+  // re-muestrea un poligono cerrado a n puntos equiespaciados por longitud de arco (para morphear formas distintas)
+  function _resample(pts, n) {
+    if (!pts || pts.length < 2) return Array.from({ length: n }, () => ({ x: 0, y: 0 }));
+    const segs = []; let total = 0;
+    for (let i = 0; i < pts.length; i++) { const a = pts[i], b = pts[(i + 1) % pts.length]; const d = Math.hypot(b.x - a.x, b.y - a.y); segs.push(d); total += d; }
+    if (total < 1e-6) return Array.from({ length: n }, () => ({ x: pts[0].x, y: pts[0].y }));
+    const out = []; const step = total / n; let si = 0, sacc = 0;
+    for (let k = 0; k < n; k++) { const target = k * step; while (si < segs.length - 1 && sacc + segs[si] < target) { sacc += segs[si]; si++; } const a = pts[si], b = pts[(si + 1) % pts.length]; const f = clamp((target - sacc) / (segs[si] || 1), 0, 1); out.push({ x: lerp(a.x, b.x, f), y: lerp(a.y, b.y, f) }); }
+    return out;
+  }
+  // alinea la forma DESTINO con la de ORIGEN (rota el arreglo ciclicamente) para que el morph no se "tuerza".
+  function _alignPts(from, to) {
+    const n = to.length; if (n === 0 || from.length !== n) return to;
+    let best = 0, bestD = Infinity;
+    for (let r = 0; r < n; r++) {
+      let d = 0;
+      for (let i = 0; i < n; i++) { const a = from[i], b = to[(i + r) % n]; const dx = a.x - b.x, dy = a.y - b.y; d += dx * dx + dy * dy; if (d >= bestD) break; }
+      if (d < bestD) { bestD = d; best = r; }
+    }
+    if (best === 0) return to;
+    const out = new Array(n); for (let i = 0; i < n; i++) out[i] = to[(i + best) % n]; return out;
+  }
+  function _morphAt(keys, tt) {
+    const FN = 48; let prev = null;
+    const ptsOf = k => _resample(_formPoints(k.form, k.r), FN);
+    for (const k of keys) {
+      if (!k.form) continue;
+      if (k.t <= tt) { prev = k; continue; }
+      const cur = ptsOf(k);
+      if (prev === null) return cur;
+      const a = ptsOf(prev), cur2 = _alignPts(a, cur), span = (k.t - prev.t) || 1e-6, u = _easeOf(k.ease)(clamp((tt - prev.t) / span, 0, 1));
+      const out = []; for (let i = 0; i < FN; i++) out.push({ x: lerp(a[i].x, cur2[i].x, u), y: lerp(a[i].y, cur2[i].y, u) });
+      return out;
+    }
+    return prev ? ptsOf(prev) : null;
+  }
+  function _polyPath(pts) {
+    if (!pts || pts.length < 3) return;
+    ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+    ctx.closePath();
+  }
+  // traza una curva CERRADA y SUAVE (Catmull-Rom -> bezier) por los puntos => siluetas organicas, no facetadas.
+  function _smoothPath(pts) {
+    const n = pts && pts.length; if (!n || n < 3) return _polyPath(pts);
+    ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 0; i < n; i++) {
+      const p0 = pts[(i - 1 + n) % n], p1 = pts[i], p2 = pts[(i + 1) % n], p3 = pts[(i + 2) % n];
+      const c1x = p1.x + (p2.x - p0.x) / 6, c1y = p1.y + (p2.y - p0.y) / 6;
+      const c2x = p2.x - (p3.x - p1.x) / 6, c2y = p2.y - (p3.y - p1.y) / 6;
+      ctx.bezierCurveTo(c1x, c1y, c2x, c2y, p2.x, p2.y);
+    }
+    ctx.closePath();
+  }
   // dibujante GENERICO de escena por keyframes (la IA arma la historia con esto)
   function sceneSpec(t, p = {}) {
     const els = Array.isArray(p.elements) ? p.elements : [];
@@ -756,12 +833,24 @@ function _rgba(hex, a) {
         ctx.fillStyle = _colorAt(keys, t, _resolveColor(el.fill || 'ink'));
         ctx.fillText(str, 0, 0);
       } else if (kind === 'icon') {
+        if (el.blur) for (let b = 3; b >= 1; b--) { const tb = Math.max(0, t - b * 0.022); const pb = _pos(keys, tb); const sb = Math.max(0, _num(keys, tb, 'scale', scale)); ctx.save(); ctx.globalAlpha *= 0.1; ctx.translate(pb[0], pb[1]); _drawIcon(el.icon || 'dot', sb, op, tb); ctx.restore(); }
         ctx.translate(x, y); if (rot) ctx.rotate(rot);
         _drawIcon(el.icon || 'dot', scale, op, t);
       } else if (kind === 'particles') {
         const n = Math.max(1, el.count || 10), prog = clamp(_num(keys, t, 'burst', clamp(t, 0, 1)), 0, 1);
         ctx.translate(x, y);
         for (let i = 0; i < n; i++) { const a = (i / n) * TAU, d = lerp(10, el.spread || 90, eOutCubic(prog)); ctx.globalAlpha = op * (1 - prog) * 0.9; ctx.fillStyle = i % 2 ? A2 : A1; ctx.beginPath(); ctx.arc(Math.cos(a) * d, Math.sin(a) * d, el.dotR || 3, 0, TAU); ctx.fill(); }
+      } else if (kind === 'morph') {
+        if (el.blur) for (let b = 3; b >= 1; b--) { const tb = Math.max(0, t - b * 0.022); const pb = _pos(keys, tb); const sb = Math.max(0, _num(keys, tb, 'scale', scale)); const gpts = _morphAt(keys, tb); if (gpts) { ctx.save(); ctx.globalAlpha *= 0.1; ctx.translate(pb[0], pb[1]); if (sb !== 1) ctx.scale(sb, sb); ctx.fillStyle = _colorAt(keys, tb, _resolveColor(el.fill || 'accent')); _smoothPath(gpts); ctx.fill(); ctx.restore(); } }
+        const pts = _morphAt(keys, t);
+        if (pts) {
+          ctx.translate(x, y); if (scale !== 1) ctx.scale(scale, scale); if (rot) ctx.rotate(rot);
+          const fill = _colorAt(keys, t, _resolveColor(el.fill || 'accent'));
+          if (el.glow !== false) setShadow(_rgba(typeof fill === 'string' && fill[0] === '#' ? fill : A1, 0.4), 24, 6);
+          ctx.fillStyle = fill; _smoothPath(pts); ctx.fill();
+          if (el.glow !== false) noShadow();
+          if (el.stroke) { ctx.strokeStyle = _resolveColor(el.stroke); ctx.lineWidth = el.strokeW || 3; _smoothPath(pts); ctx.stroke(); }
+        }
       } else {
         const w = _shapeDim(keys, t, 'w', 80) * scale, h = _shapeDim(keys, t, 'h', 80) * scale;
         const r = _shapeDim(keys, t, 'r', Math.min(w, h) / 2);

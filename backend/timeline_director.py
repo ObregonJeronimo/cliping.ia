@@ -121,9 +121,37 @@ TL_SCENE_CATALOG = """ESCENAS DISPONIBLES (motor Canvas) — agrupadas por CATEG
 - "outro": marca + llamado a la accion. props: brand (string), cta (string con ACCION concreta,
   ej "Probalo gratis", "Pedi en yerco.ar", "Agenda tu demo").
 
+[ESCENA LIBRE / DIRIGIDA]  (tu lienzo SIN molde: para el HERO/apertura y para cualquier momento que pida movimiento propio)
+- "scene": vos COMPONES la escena con objetos animados por keyframes. Aca no hay plantilla: cada marca puede tener un hero unico
+  que capte SU alma. props: elements (array de objetos animados).
+  Cada element = { kind, ...estilo, keys:[ fotogramas ] }. Los keys van en SEGUNDOS (campo t) y el motor interpola con easing.
+  En cada keyframe podes setear: t (seg), opacity (0-1), scale, rot (grados), x, y (pixeles; lienzo 405x720, centro 202,360),
+    ctrl:[cx,cy] (hace una CURVA bezier hacia ese punto -> arcos y vuelos), fill (color), ease.
+  kinds:
+    - "text"  -> props: text, size, weight (700|800), fill, align. (el texto se autoajusta para no cortarse)
+    - "morph" -> forma que MUTA: en cada key pone form y r (radio). forms: circle, square, triangle, diamond, pentagon,
+       hexagon, star, plus, heart, leaf, drop, flower, shield, blob. El motor funde una silueta en la otra con bordes
+       SUAVES y puntos alineados (morph organico, sin facetas ni torsion). fill, stroke y blur:true (estela) opcionales.
+       Ideal para un hero: semilla -> hoja -> flower; punto -> estrella; gota -> blob. Elegi formas que digan algo del rubro.
+    - "icon"  -> props: icon (box, flyingbox, house, cart, check, star, leaf, dot). 'flyingbox' = caja con alas: animala con
+       x/y + ctrl para que VUELE por una curva. blur:true le agrega estela de movimiento (fluidez).
+    - "shape" -> token (dot, circle, pill, bar, box, card, line, square) + w/h/r; morphea entre tokens; label opcional.
+    - "particles" -> count, spread; con un key burst de 0 a 1 = estallido (chispas / celebracion).
+  colores (tokens): accent (color de marca), accent2, ink (texto claro), dim (texto tenue), dark, o un #rrggbb.
+  ease: outCubic, inCubic, inOutCubic, outBack (overshoot), spring, smooth, outQuint.
+  EJEMPLO de hero (una semilla crece a hoja y aparece la marca; adaptalo al rubro, NO lo copies tal cual):
+  {"type":"scene","durationInFrames":210,"elements":[
+    {"kind":"morph","fill":"accent","keys":[{"t":0,"form":"circle","r":6,"opacity":0},{"t":0.5,"form":"circle","r":34,"opacity":1,"ease":"outBack"},{"t":1.8,"form":"leaf","r":86,"ease":"inOutCubic"},{"t":5.5,"form":"leaf","r":86}]},
+    {"kind":"text","text":"<marca>","fill":"ink","size":46,"weight":800,"keys":[{"t":2.0,"opacity":0,"y":430,"scale":0.85},{"t":2.6,"opacity":1,"y":408,"scale":1,"ease":"outBack"}]},
+    {"kind":"text","text":"<subtitulo de 2-4 palabras>","fill":"dim","size":22,"weight":600,"keys":[{"t":2.8,"opacity":0,"y":470},{"t":3.4,"opacity":1,"y":452,"ease":"outCubic"}]}
+  ]}
+  REGLAS de 'scene': conta UNA idea visual clara (no amontones objetos sueltos); que el movimiento APOYE el mensaje (no decoracion
+  al azar); arranca cada objeto en opacity 0 y hacelo entrar con ease; usa morph y/o curvas para que se sienta vivo; el texto
+  SIEMPRE legible. Que el momento capte el ALMA de ESTA pagina (rubro, tono, publico) y sea IRREPETIBLE.
+
 REGLA DE DURACION: el motor anima la escena y CONGELA su frame final para dar tiempo de lectura.
 Por eso durationInFrames = animacion + lectura. Valores recomendados (30fps):
-paintTitle 234 · statement 150 · checklist 186 (3 items) a 198 (4) · bigStat 150 · outro 150."""
+paintTitle 234 · statement 150 · checklist 186 (3 items) a 198 (4) · bigStat 150 · scene 210 · outro 150."""
 
 TL_DIRECTOR_SYSTEM = (
     "Sos director creativo de videos verticales (reels) de marketing/explainer para marcas. "
@@ -149,6 +177,7 @@ TL_DIRECTOR_SYSTEM = (
     "- PUBLICO (clave): infieri del sitio QUIEN compra/usa esto y escribi TODO hablandole a ESE publico, "
     "con su lenguaje y prioridades. Que el video se sienta hecho para la audiencia de ESTA pagina.\n"
     "- accent: un hex VIVO (saturado) acorde a la marca; si te paso uno sugerido, usalo.\n"
+    "- LIENZO (clave anti-patron): para la APERTURA/HERO, preferi una 'scene' DIRIGIDA que capte el alma de ESTA marca (un morph, un objeto que vuela, una forma que se construye) salvo que un statement crudo claramente pegue mas fuerte. Variá el recurso entre marcas: si dos marcas terminan con el mismo hero, fallaste. Las escenas enlatadas (statement/checklist/bigStat/paintTitle) siguen disponibles para los beats de apoyo.\n"
     "- El timeline cuenta una micro-historia coherente con el proposito y el arco indicado."
 )
 
@@ -163,8 +192,10 @@ TL_CRITIC_SYSTEM = (
     "4. ANTI-FORMULA: si la estructura es un molde repetido, rompela. checklist/bigStat son opcionales.\n"
     "5. HONESTIDAD (critico): el numero de un 'bigStat' TIENE que estar TEXTUAL en el contexto del sitio. Si no esta, sacalo o pasalo a 'statement'. NUNCA inventes cifras.\n"
     "6. PUBLICO + IDIOMA: copy al publico correcto, en el MISMO idioma del guion.\n\n"
-    "FORMA (no la rompas): 4-5 escenas; abri con statement/paintTitle; cerra con outro. Tipos validos: "
-    "statement, paintTitle, checklist, bigStat, outro. statement.text 4-9 palabras; checklist.items 3-4 strings cortos; "
+    "FORMA (no la rompas): 4-5 escenas; abri con un HOOK; cerra con outro. Tipos validos: "
+    "statement, paintTitle, checklist, bigStat, outro, scene. Si una escena es 'scene' (motion propio con elements/keys), "
+    "NO la reestructures ni le toques los keys: respetala tal cual; como mucho afina el copy de sus elements 'text' si es generico. "
+    "statement.text 4-9 palabras; checklist.items 3-4 strings cortos; "
     "paintTitle.subtitles = 2 strings; bigStat.value numero real. durationInFrames: paintTitle 234, statement 150, "
     "checklist 186-198, bigStat 150, outro 150. ANTES DE RESPONDER relee cada linea de copy del spec: si alguna es generica o no se siente de ESTA marca puntual, reescribila.\n\n"
     "SALIDA: SOLO un JSON valido (sin markdown), con esta forma EXACTA:\n"
@@ -172,8 +203,115 @@ TL_CRITIC_SYSTEM = (
     "Si ya esta bien, verdict='ok' y devolve el spec TAL CUAL. El campo 'spec' SIEMPRE va completo."
 )
 
-_TL_VALID_TYPES = {"paintTitle", "statement", "checklist", "outro", "bigStat", "deliver"}
-_TL_DEFAULT_DUR = {"paintTitle": 234, "statement": 150, "checklist": 192, "outro": 150, "bigStat": 150, "deliver": 204}
+_TL_VALID_TYPES = {"paintTitle", "statement", "checklist", "outro", "bigStat", "deliver", "scene"}
+_TL_DEFAULT_DUR = {"paintTitle": 234, "statement": 150, "checklist": 192, "outro": 150, "bigStat": 150, "deliver": 204, "scene": 210}
+
+
+_SCENE_KINDS = {"text", "icon", "shape", "morph", "particles"}
+_SCENE_FORMS = {"circle", "ring", "square", "diamond", "triangle", "pentagon", "hexagon", "star", "plus", "heart", "leaf", "drop", "flower", "shield", "blob"}
+_SCENE_ICONS = {"box", "flyingbox", "house", "cart", "check", "star", "leaf", "dot"}
+_SCENE_SHAPE_TOK = {"dot", "circle", "pill", "bar", "box", "card", "line", "square"}
+_SCENE_EASES = {"linear", "outCubic", "inCubic", "inOutCubic", "outBack", "outElastic", "spring", "smooth", "outQuint", "inOutQuint"}
+
+
+def _norm_scene_elements(s: dict, dur_frames: int) -> list:
+    """Blinda una escena 'scene' (dirigida): coacciona kinds/keys/canales a valores seguros, descarta
+    lo invalido y clampa los tiempos. Asi cualquier cosa que invente la IA (o el critico) renderiza sin romper."""
+    dur_s = max(1.0, dur_frames / 30.0)
+    out = []
+    for el in (s.get("elements") or [])[:8]:
+        if not isinstance(el, dict):
+            continue
+        kind = el.get("kind")
+        if kind not in _SCENE_KINDS or not isinstance(el.get("keys"), list) or not el["keys"]:
+            continue
+        keys = []
+        for k in el["keys"][:14]:
+            if not isinstance(k, dict):
+                continue
+            try:
+                tk = max(0.0, min(dur_s, float(k.get("t", 0))))
+            except Exception:
+                continue
+            nk = {"t": round(tk, 3)}
+            for ch in ("opacity", "scale", "rot", "x", "y", "size", "w", "h", "r", "burst", "labelOpacity"):
+                if ch in k:
+                    try:
+                        nk[ch] = float(k[ch])
+                    except Exception:
+                        pass
+            c = k.get("ctrl")
+            if isinstance(c, list) and len(c) == 2:
+                try:
+                    nk["ctrl"] = [float(c[0]), float(c[1])]
+                except Exception:
+                    pass
+            if isinstance(k.get("ease"), str) and k["ease"] in _SCENE_EASES:
+                nk["ease"] = k["ease"]
+            if isinstance(k.get("fill"), str):
+                nk["fill"] = k["fill"]
+            if kind == "morph" and isinstance(k.get("form"), str) and k["form"] in _SCENE_FORMS:
+                nk["form"] = k["form"]
+            if kind == "shape" and isinstance(k.get("shape"), str) and k["shape"] in _SCENE_SHAPE_TOK:
+                nk["shape"] = k["shape"]
+            keys.append(nk)
+        if not keys:
+            continue
+        if kind == "morph" and not any("form" in k for k in keys):
+            continue
+        nel = {"kind": kind, "keys": keys}
+        if kind == "text":
+            txt = str(el.get("text") or "").strip()
+            if not txt:
+                continue
+            nel["text"] = txt
+            if isinstance(el.get("fill"), str):
+                nel["fill"] = el["fill"]
+            if el.get("align") in ("left", "center", "right"):
+                nel["align"] = el["align"]
+            for f in ("size", "weight", "maxW"):
+                if f in el:
+                    try:
+                        nel[f] = (int(el[f]) if f == "weight" else float(el[f]))
+                    except Exception:
+                        pass
+        elif kind == "icon":
+            ic = el.get("icon")
+            nel["icon"] = ic if (isinstance(ic, str) and ic in _SCENE_ICONS) else "dot"
+            if el.get("blur"):
+                nel["blur"] = True
+        elif kind == "shape":
+            if isinstance(el.get("fill"), str):
+                nel["fill"] = el["fill"]
+            if el.get("glow") is False:
+                nel["glow"] = False
+            if el.get("label"):
+                nel["label"] = str(el["label"])
+                if isinstance(el.get("labelFill"), str):
+                    nel["labelFill"] = el["labelFill"]
+        elif kind == "morph":
+            if isinstance(el.get("fill"), str):
+                nel["fill"] = el["fill"]
+            if isinstance(el.get("stroke"), str):
+                nel["stroke"] = el["stroke"]
+                if "strokeW" in el:
+                    try:
+                        nel["strokeW"] = float(el["strokeW"])
+                    except Exception:
+                        pass
+            if el.get("glow") is False:
+                nel["glow"] = False
+            if el.get("blur"):
+                nel["blur"] = True
+        elif kind == "particles":
+            for f in ("count", "spread", "dotR"):
+                if f in el:
+                    try:
+                        nel[f] = float(el[f])
+                    except Exception:
+                        pass
+        out.append(nel)
+    return out
 
 
 def _normalize_timeline(tl: dict, dna: dict = None) -> dict:
@@ -213,6 +351,11 @@ def _normalize_timeline(tl: dict, dna: dict = None) -> dict:
         if ty == "outro":
             s["brand"] = str(s.get("brand") or tl.get("brand") or "")
             s["cta"] = str(s.get("cta") or "Conoce mas")
+        if ty == "scene":
+            els = _norm_scene_elements(s, d)
+            if not els:
+                continue
+            s["elements"] = els
         out_scenes.append(s)
     # cerrar SIEMPRE con outro
     if not out_scenes or out_scenes[-1].get("type") != "outro":
