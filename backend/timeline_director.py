@@ -399,7 +399,7 @@ async def _critique_timeline(tl, *, brief_txt="", contexto="", desarrollo="", pr
     }
     try:
         resp = await _td._client.messages.create(
-            model=TL_CRITIC_MODEL, max_tokens=1500,
+            model=TL_CRITIC_MODEL, max_tokens=4000,
             system=_td._sys_cached(TL_CRITIC_SYSTEM),
             messages=[{"role": "user", "content": _json.dumps(payload, ensure_ascii=False)}],
         )
@@ -490,21 +490,26 @@ contexto, NO uses bigStat. Si hay un PEDIDO DEL USUARIO, cumplilo SÍ O SÍ por 
 
     try:
         resp = await _td._client.messages.create(
-            model=TL_DIRECTOR_MODEL, max_tokens=1500, temperature=0.9,
+            model=TL_DIRECTOR_MODEL, max_tokens=4000, temperature=0.9,
             system=_td._sys_cached(TL_DIRECTOR_SYSTEM),
             messages=[{"role": "user", "content": user_prompt}],
         )
         _td._acc_usage(usage, "tl_director", TL_DIRECTOR_MODEL, resp)
+        if getattr(resp, "stop_reason", None) == "max_tokens":
+            print(f"[tl-director] OJO: respuesta CORTADA por max_tokens ({len(resp.content[0].text or '')} chars) -> el JSON puede no cerrar")
         tl = _td._parse_spec(resp.content[0].text.strip())
         if tl is None:
+            print("[tl-director] r1 no parseo -> reintento")
             resp2 = await _td._client.messages.create(
-                model=TL_DIRECTOR_MODEL, max_tokens=1500, temperature=0.5,
+                model=TL_DIRECTOR_MODEL, max_tokens=4000, temperature=0.5,
                 system=_td._sys_cached(TL_DIRECTOR_SYSTEM),
                 messages=[{"role": "user", "content": user_prompt + "\n\nIMPORTANTE: respondé SOLO el JSON del timeline, sin texto antes ni después."}],
             )
             _td._acc_usage(usage, "tl_director_retry", TL_DIRECTOR_MODEL, resp2)
             tl = _td._parse_spec(resp2.content[0].text.strip())
+        _types_raw = [sc.get("type") for sc in (tl.get("scenes") or [])] if isinstance(tl, dict) else "None(parse fallo)"
         tl = _normalize_timeline(tl, dna)
+        print(f"[tl-director] director={_types_raw} -> normalizado={[sc.get('type') for sc in tl.get('scenes', [])]}")
         for _r in range(TL_CRITIC_ROUNDS):
             improved = await _critique_timeline(tl, brief_txt=brief_txt, contexto=contexto,
                                                 desarrollo=desarrollo, proposito=proposito,

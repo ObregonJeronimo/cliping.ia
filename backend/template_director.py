@@ -1114,14 +1114,55 @@ async def _build_brief(url_data: dict, desarrollo: str, proposito: str, usage: l
 
 
 def _parse_spec(raw: str):
-    """Extrae el primer objeto JSON del texto. None si no hay o no parsea."""
+    """Extrae el primer objeto JSON del texto. Si el JSON viene CORTADO (p.ej. por max_tokens),
+    lo repara: recorta al ultimo cierre completo y balancea con una PILA (orden correcto)."""
     if not raw:
         return None
-    m = re.search(r"\{.*\}", raw, re.S)
-    if not m:
+    raw = raw.strip()
+    if raw.startswith("```"):
+        raw = re.sub(r"^```[a-zA-Z]*\n?", "", raw)
+        raw = re.sub(r"\n?```$", "", raw).strip()
+    start = raw.find("{")
+    if start < 0:
         return None
+    frag = raw[start:]
+    m = re.search(r"\{.*\}", frag, re.S)
+    if m:
+        try:
+            return json.loads(m.group(0))
+        except Exception:
+            pass
+    # salvage: recorta al ultimo } o ] (frontera de item completo) y cierra con pila en orden inverso
+    cut = max(frag.rfind("}"), frag.rfind("]"))
+    if cut < 0:
+        return None
+    s = frag[:cut + 1]
+    stack = []
+    in_str = False
+    esc = False
+    for ch in s:
+        if esc:
+            esc = False
+            continue
+        if ch == "\\" and in_str:
+            esc = True
+            continue
+        if ch == '"':
+            in_str = not in_str
+            continue
+        if in_str:
+            continue
+        if ch == "{":
+            stack.append("}")
+        elif ch == "[":
+            stack.append("]")
+        elif ch == "}" or ch == "]":
+            if stack:
+                stack.pop()
+    s = re.sub(r",\s*$", "", s.rstrip())
+    s += "".join(reversed(stack))
     try:
-        return json.loads(m.group(0))
+        return json.loads(s)
     except Exception:
         return None
 
