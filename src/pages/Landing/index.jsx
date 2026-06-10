@@ -32,7 +32,7 @@ export default function Landing() {
       <div className={styles.grain} />
 
       <nav className={styles.nav}>
-        <div className={styles.logo}>cliping<span>.ia</span></div>
+        <div className={styles.logo}>Ur<span>vid</span></div>
         <div className={styles.navLinks}>
           <a href="#features">Features</a>
           <a href="#pricing">Precios</a>
