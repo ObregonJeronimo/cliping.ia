@@ -2,7 +2,7 @@
 .footer {
   position: relative;
   z-index: 2;
-  background: #080810;
+  background: #f3f2ee;
 }
 
 /* ── Bloque CTA con escena decorativa ───────────────────────────────────── */
@@ -11,50 +11,38 @@
   overflow: hidden;
   padding: 130px 40px 140px;
   text-align: center;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-top: 1px solid rgba(22, 21, 15, 0.1);
 }
 
-/* Escena: anillos concentricos + glow + chispas (eco del hero de particulas) */
+/* Escena: anillos concentricos + chispas en tinta (eco del hero), sin glow */
 .scene {
   position: absolute;
   inset: 0;
   pointer-events: none;
 }
 
-/* glow central */
-.scene::before {
-  content: '';
-  position: absolute;
-  left: 50%; top: 50%;
-  width: 620px; height: 620px;
-  transform: translate(-50%, -50%);
-  background: radial-gradient(circle, rgba(108, 92, 231, 0.28), transparent 62%);
-  filter: blur(20px);
-}
-
 .ring {
   position: absolute;
   left: 50%; top: 50%;
   border-radius: 50%;
-  border: 1px solid rgba(140, 156, 242, 0.16);
+  border: 1px solid rgba(22, 21, 15, 0.08);
   transform: translate(-50%, -50%);
 }
 .ring:nth-child(1) { width: 320px;  height: 320px;  animation: spin 30s linear infinite; }
-.ring:nth-child(2) { width: 520px;  height: 520px;  animation: spin 46s linear infinite reverse; border-color: rgba(200, 168, 240, 0.12); }
-.ring:nth-child(3) { width: 740px;  height: 740px;  animation: spin 64s linear infinite; border-color: rgba(140, 156, 242, 0.08); }
+.ring:nth-child(2) { width: 520px;  height: 520px;  animation: spin 46s linear infinite reverse; border-color: rgba(22, 21, 15, 0.06); }
+.ring:nth-child(3) { width: 740px;  height: 740px;  animation: spin 64s linear infinite; border-color: rgba(22, 21, 15, 0.04); }
 
 @keyframes spin {
   from { transform: translate(-50%, -50%) rotate(0deg); }
   to   { transform: translate(-50%, -50%) rotate(360deg); }
 }
 
-/* chispas flotantes */
+/* chispas flotantes en tinta, sin glow */
 .spark {
   position: absolute;
   width: 4px; height: 4px;
   border-radius: 50%;
-  background: radial-gradient(circle, #c8d0ff, rgba(140, 156, 242, 0.4));
-  box-shadow: 0 0 8px rgba(168, 180, 255, 0.8);
+  background: rgba(22, 21, 15, 0.5);
   animation: floatSpark 6s ease-in-out infinite;
 }
 .spark:nth-child(4) { left: 22%; top: 32%; animation-delay: 0s;   }
@@ -64,8 +52,8 @@
 .spark:nth-child(8) { left: 50%; top: 18%; animation-delay: 1.8s; width: 3px; height: 3px; }
 
 @keyframes floatSpark {
-  0%, 100% { transform: translateY(0); opacity: 0.4; }
-  50%      { transform: translateY(-18px); opacity: 1; }
+  0%, 100% { transform: translateY(0); opacity: 0.3; }
+  50%      { transform: translateY(-18px); opacity: 0.7; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -80,25 +68,24 @@
 }
 
 .accent {
-  background: linear-gradient(120deg, #a8b4ff 0%, #c8a8f0 60%, #a8c8f0 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: #a9a69d;
+  -webkit-text-fill-color: #a9a69d;
 }
 
 .ctaTitle {
+  font-family: 'Bricolage Grotesque', sans-serif;
   font-size: clamp(32px, 4.5vw, 56px);
-  font-weight: 700;
-  line-height: 1.1;
-  letter-spacing: -0.03em;
-  color: #f4f5fb;
+  font-weight: 600;
+  line-height: 1.04;
+  letter-spacing: -0.04em;
+  color: #16150f;
   margin: 0 0 18px;
 }
 
 .ctaSub {
   font-size: 17px;
   line-height: 1.6;
-  color: rgba(232, 232, 240, 0.55);
+  color: #74716a;
   margin: 0 auto 36px;
   max-width: 480px;
 }
@@ -116,44 +103,39 @@
   align-items: center;
   gap: 8px;
   font-size: 15px;
-  font-weight: 600;
-  color: #fff;
-  background: linear-gradient(135deg, #6c5ce7, #8c6ff0);
+  font-weight: 500;
+  color: #f3f2ee;
+  background: #16150f;
   border: none;
   border-radius: 12px;
   padding: 14px 26px;
   cursor: pointer;
   min-height: 48px;
-  box-shadow: 0 10px 30px rgba(108, 92, 231, 0.4);
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  transition: transform 0.15s ease;
 }
 
-.btnPrimary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 14px 38px rgba(108, 92, 231, 0.55);
-}
+.btnPrimary:active { transform: scale(0.98); }
 
 .btnGhost {
   font-size: 15px;
-  font-weight: 600;
-  color: #e8e8f0;
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  font-weight: 500;
+  color: #16150f;
+  background: transparent;
+  border: 1px solid rgba(22, 21, 15, 0.16);
   border-radius: 12px;
   padding: 14px 26px;
   cursor: pointer;
   min-height: 48px;
-  transition: background 0.2s ease, border-color 0.2s ease;
+  transition: border-color 0.2s ease;
 }
 
 .btnGhost:hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.2);
+  border-color: #16150f;
 }
 
 /* ── Links y legal ──────────────────────────────────────────────────────── */
 .bottom {
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid rgba(22, 21, 15, 0.1);
   padding: 56px 80px 32px;
   max-width: 1280px;
   margin: 0 auto;
@@ -177,18 +159,17 @@
 .logoRow img { display: block; }
 
 .logo {
-  font-family: 'DM Mono', monospace;
-  font-size: 17px;
-  font-weight: 500;
-  letter-spacing: -0.02em;
-  color: #f2f3fa;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  color: #16150f;
 }
-.logo span { color: rgba(140, 140, 220, 0.9); }
+.logo span { color: #74716a; }
 
 .tagline {
   font-size: 14px;
   line-height: 1.6;
-  color: rgba(232, 232, 240, 0.4);
+  color: #74716a;
   margin: 0;
 }
 
@@ -199,16 +180,19 @@
 }
 
 .colTitle {
-  font-size: 13px;
-  font-weight: 600;
-  color: rgba(232, 232, 240, 0.85);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #16150f;
   margin-bottom: 4px;
 }
 
 .linkCol a,
 .linkBtn {
   font-size: 14px;
-  color: rgba(232, 232, 240, 0.45);
+  color: #74716a;
   text-decoration: none;
   transition: color 0.2s ease;
   text-align: left;
@@ -220,16 +204,16 @@
 }
 
 .linkCol a:hover,
-.linkBtn:hover { color: rgba(232, 232, 240, 0.85); }
+.linkBtn:hover { color: #16150f; }
 
 .legal {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding-top: 28px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid rgba(22, 21, 15, 0.1);
   font-size: 13px;
-  color: rgba(232, 232, 240, 0.3);
+  color: #a9a69d;
 }
 
 /* ── Responsive ─────────────────────────────────────────────────────────── */
