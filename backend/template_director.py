@@ -414,6 +414,10 @@ def _finalize(spec: dict, url_data: dict) -> dict:
     return spec
 
 # Catálogo de escenas disponibles (se le pasa a la IA para que componga).
+_TEXT_ANIMS = {"fadeUp", "fadeUpChar", "lineUp", "riseRotate", "zoomBlur", "scaleSnap",
+               "slideRight", "slideLeft", "wordPop", "charPop", "dropIn", "blurIn",
+               "trackingExpand", "flip3D", "clipUp", "clipWipe"}
+
 SCENE_CATALOG = """ESCENAS DISPONIBLES (type + props):
 - "KineticStatement": frase de impacto. props: lines = array de líneas; cada línea
   es array de segmentos { "t": "texto", "accent": true|false }. La palabra/grupo
@@ -424,6 +428,13 @@ SCENE_CATALOG = """ESCENAS DISPONIBLES (type + props):
   en el momento, con cursor parpadeante). Es un efecto OCASIONAL: NO lo uses por defecto ni en
   la mayoría de los videos. Como mucho en 1 escena, y solo si le aporta intención a esa frase
   puntual. La inmensa mayoría de las frases van SIN reveal (aparición normal).
+  props opcional: textAnim = ESTILO de animacion del texto. ELEGI uno segun la VIBRA de la marca.
+  Catalogo por vibra -> calmo: "fadeUp","fadeUpChar","lineUp"; energico: "riseRotate","zoomBlur";
+  bold: "scaleSnap"; dinamico: "slideRight","slideLeft"; playful: "wordPop","charPop","dropIn";
+  elegante: "blurIn"; lujo: "trackingExpand"; techy: "flip3D"; editorial: "clipUp","clipWipe".
+  Pone textAnim en las escenas KineticStatement y VARIA entre escenas/videos (que no todas usen el mismo).
+  Marca calida/natural -> calmo/elegante; tech/SaaS -> techy/bold; gastronomia/lifestyle -> playful/dinamico;
+  premium/lujo -> lujo/elegante. Si no pones textAnim, usa un default razonable.
 - "IntegrationCluster": "todo en un solo lugar / muchas cosas unificadas".
   props: title = array de segmentos { t, accent }. opcional colors = array de hex.
 - "MockupShowcase": muestra el producto/su web. props: title = array de segmentos
@@ -792,6 +803,8 @@ def _normalize(spec: dict, url_data: dict, desarrollo: str, proposito: str) -> d
                     t = "KineticStatement"
                 else:
                     continue
+        if s.get("type") != "KineticStatement" or s.get("textAnim") not in _TEXT_ANIMS:
+            s.pop("textAnim", None)
         d = s.get("durationInFrames", 90)
         try:
             d = int(d)

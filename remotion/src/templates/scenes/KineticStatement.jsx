@@ -1,6 +1,7 @@
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from 'remotion'
 import { fitHeadline, segText, clamp } from '../theme'
 import { EASE, SPRING, prog, spr, enter, entrance, stagger, floatY, camera, parallax } from '../motion'
+import { KineticText, isTextAnim } from '../kineticText'
 import { fmt } from '../layout'
 import Decor from '../Decor'
 
@@ -103,7 +104,7 @@ const TypewriterLines = ({ theme, lines, frame, dur = 100 }) => {
   })
 }
 
-export const KineticStatement = ({ theme, lines = [], subtitle = '', variant = 'center', reveal = 'none', durationInFrames: durProp }) => {
+export const KineticStatement = ({ theme, lines = [], subtitle = '', variant = 'center', reveal = 'none', textAnim, durationInFrames: durProp }) => {
   const frame = useCurrentFrame()
   const vc = useVideoConfig()
   const fps = vc.fps
@@ -141,6 +142,8 @@ export const KineticStatement = ({ theme, lines = [], subtitle = '', variant = '
               lineHeight: 1.08, letterSpacing: '-0.025em', color: theme.text, maxWidth: 940, padding: leftish ? '0 60px 0 0' : '0 70px', textWrap: 'balance' }}>
               {reveal === 'type'
                 ? <TypewriterLines theme={theme} lines={lines} frame={frame} dur={dur} />
+                : isTextAnim(textAnim)
+                ? <KineticText lines={lines} animId={textAnim} frame={frame} fps={fps} dur={dur} theme={theme} />
                 : (() => {
                 // Kinético a nivel CARÁCTER (estándar pro): cada letra entra combinando
                 // posición + escala + rotación + opacidad, con overshoot (EASE.back) y stagger
