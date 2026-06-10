@@ -9,7 +9,7 @@ export default function Privacidad() {
     <div className={styles.page}>
       <button className={styles.backLogo} onClick={() => navigate('/')} aria-label="Volver al inicio">
         <img src="/logo.svg" alt="" width="26" height="26" />
-        <span>cliping<span>.ia</span></span>
+        <span>Ur<span>vid</span></span>
       </button>
 
       <article className={styles.doc}>
@@ -25,7 +25,7 @@ export default function Privacidad() {
         <section className={styles.section}>
           <h2>1. Informacion que recopilamos</h2>
           <p>
-            Cuando usas cliping.ia recopilamos: (a) datos de tu cuenta de Google
+            Cuando usas Urvid recopilamos: (a) datos de tu cuenta de Google
             necesarios para autenticarte, como nombre, correo electronico e imagen de
             perfil; (b) las URL e instrucciones que ingresas para generar videos;
             (c) datos de uso del Servicio, como cantidad de videos generados y
@@ -57,7 +57,7 @@ export default function Privacidad() {
         <section className={styles.section}>
           <h2>4. Proveedores externos</h2>
           <p>
-            cliping.ia se apoya en servicios de terceros para funcionar, como
+            Urvid se apoya en servicios de terceros para funcionar, como
             autenticacion (Google), infraestructura de alojamiento y procesamiento, y
             servicios de modelos de IA. Estos proveedores solo acceden a la informacion
             necesaria para prestar su funcion y estan sujetos a sus propias politicas.
@@ -79,7 +79,7 @@ export default function Privacidad() {
           <p>
             Podes acceder, corregir o eliminar tu informacion personal, y solicitar
             informacion sobre como la tratamos. Para ejercer estos derechos, contactanos
-            a traves de los canales oficiales de cliping.ia.
+            a traves de los canales oficiales de Urvid.
           </p>
         </section>
 
@@ -104,7 +104,7 @@ export default function Privacidad() {
           <h2>9. Contacto</h2>
           <p>
             Ante cualquier consulta sobre el tratamiento de tus datos, podes contactarnos
-            a traves de los canales oficiales de cliping.ia.
+            a traves de los canales oficiales de Urvid.
           </p>
         </section>
       </article>
