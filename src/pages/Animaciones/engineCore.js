@@ -116,7 +116,7 @@ function _rgba(hex, a) {
     ctx.save();
     ctx.scale(s * (1 + squash * 0.5), s * (1 - squash));
     const w = 88, h = 80, r = 16;
-    setShadow('rgba(255,79,139,0.45)', 26, 8);
+    setShadow(_rgba(A1, 0.45), 26, 8);
     ctx.fillStyle = accent(-w / 2, -h / 2, w / 2, h / 2);
     ctx.roundRect(-w / 2, -h / 2, w, h, r); ctx.fill();
     noShadow();
@@ -148,7 +148,7 @@ function _rgba(hex, a) {
       ctx.fill();
       noShadow();
       // pluma interior
-      ctx.strokeStyle = 'rgba(255,79,139,0.35)'; ctx.lineWidth = 2;
+      ctx.strokeStyle = _rgba(A1, 0.35); ctx.lineWidth = 2;
       ctx.beginPath(); ctx.moveTo(dir * 6, 0); ctx.quadraticCurveTo(dir * span * 0.5, -span * 0.35, dir * span * 0.8, -span * 0.12); ctx.stroke();
       ctx.restore();
     }
@@ -157,7 +157,7 @@ function _rgba(hex, a) {
   function drawCart(s, alpha = 1) {
     ctx.save(); ctx.globalAlpha *= alpha; ctx.scale(s, s);
     ctx.strokeStyle = 'rgba(255,246,250,0.95)'; ctx.lineWidth = 6; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    setShadow('rgba(255,79,139,0.4)', 18, 4);
+    setShadow(_rgba(A1, 0.4), 18, 4);
     // canasta
     ctx.beginPath();
     ctx.moveTo(-44, -28); ctx.lineTo(-30, -28); ctx.lineTo(-20, 16); ctx.lineTo(30, 16);
@@ -177,7 +177,7 @@ function _rgba(hex, a) {
     ctx.roundRect(-46, -6, 92, 70, 10); ctx.fill(); ctx.stroke();
     // techo
     ctx.fillStyle = accent(-56, -56, 56, -6);
-    setShadow('rgba(255,79,139,0.4)', 18, 6);
+    setShadow(_rgba(A1, 0.4), 18, 6);
     ctx.beginPath(); ctx.moveTo(-58, -4); ctx.lineTo(0, -56); ctx.lineTo(58, -4); ctx.closePath(); ctx.fill();
     noShadow();
     // puerta
@@ -231,7 +231,7 @@ function _rgba(hex, a) {
       ctx.save();
       ctx.globalAlpha *= appear * meltAlpha;
       const bx = cx - bw / 2, by = cy - bh / 2 + sink;
-      setShadow('rgba(255,79,139,0.5)', 30, 10);
+      setShadow(_rgba(A1, 0.5), 30, 10);
       ctx.fillStyle = accent(bx, by, bx + bw, by + bh);
       // cuerpo del botón con fondo que se derrite (bordes inferiores caen)
       ctx.beginPath();
@@ -292,7 +292,7 @@ function _rgba(hex, a) {
     if (imp > 0 && imp < 1) {
       ctx.save();
       ctx.globalAlpha *= (1 - imp);
-      ctx.strokeStyle = 'rgba(255,160,120,0.8)'; ctx.lineWidth = 3;
+      ctx.strokeStyle = _rgba(A1, 0.8); ctx.lineWidth = 3;
       ctx.beginPath(); ctx.arc(paintX, paintY, lerp(4, 60, eOutCubic(imp)), 0, TAU); ctx.stroke();
       ctx.restore();
     }
@@ -505,7 +505,7 @@ function _rgba(hex, a) {
       ctx.font = `700 25px "Inter",system-ui,sans-serif`;
       const w = Math.max(250, Math.min(360, ctx.measureText(ctaStr).width + 56)), h = 64;
       const ctaSize = fitFont(ctaStr, 25, w - 44, 15, 700);
-      setShadow('rgba(255,79,139,0.55)', 30, 10);
+      setShadow(_rgba(A1, 0.55), 30, 10);
       ctx.fillStyle = accent(-w / 2, -h / 2, w / 2, h / 2);
       ctx.roundRect(-w / 2, -h / 2, w, h, h / 2); ctx.fill(); noShadow();
       ctx.font = `700 ${ctaSize}px "Inter",system-ui,sans-serif`;
@@ -519,7 +519,7 @@ function _rgba(hex, a) {
         for (let i = 0; i < 10; i++) {
           const a = (i / 10) * TAU, d = lerp(20, 90, eOutCubic(burst));
           ctx.globalAlpha = (1 - burst) * 0.9;
-          ctx.fillStyle = i % 2 ? '#ff8a4c' : '#ff4f8b';
+          ctx.fillStyle = i % 2 ? A1 : A2;
           ctx.beginPath(); ctx.arc(Math.cos(a) * d, Math.sin(a) * d, 3, 0, TAU); ctx.fill();
         }
         ctx.restore();
@@ -601,7 +601,185 @@ function _rgba(hex, a) {
     if (p.label) fxText(p.label, cx, cy + 84, 24, inv(t, 1.8, 2.3), 600, '#f2ebd9', W * 0.86);
   }
 
-  const DRAWERS = { paintTitle: sceneTitle, deliver: sceneCart, checklist: sceneList, outro: sceneOutro, statement: sceneStatement, bigStat: sceneBigStat };
+  // =========================================================================
+  // MOTOR DECLARATIVO POR KEYFRAMES + MORPH (lo COMPONE la IA, no esta horneado).
+  // Una escena { type:'scene', elements:[...] }. Cada elemento tiene una pista de
+  // keyframes con props (x,y,w,h,r,rot,scale,opacity,fill,shape,...). El motor
+  // interpola con easing POR TRAMO. Las FORMAS son parametricas: un "rounded box"
+  // donde punto/circulo/pildora/barra/caja/linea son casos de (w,h,r) => el MORPH
+  // entre formas = interpolar (w,h,r). Robusto: todo tiene default y guarda anti-NaN,
+  // asi lo que componga la IA SIEMPRE renderiza algo coherente y fluido.
+  // =========================================================================
+  const _EASES = { linear: t => t, outCubic: eOutCubic, inCubic: eInCubic, inOutCubic: eInOutCubic, outBack: eOutBack, outElastic: eOutElastic, smooth };
+  const _easeOf = n => _EASES[n] || eOutCubic;
+  function _hex2rgb(h) {
+    if (typeof h === 'string' && /^#[0-9a-fA-F]{6}$/.test(h)) { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+    return null;
+  }
+  // formas nombradas -> (w,h,r) base; la IA puede pisar w/h/r explicitos en cada keyframe
+  const _SHAPES = {
+    dot: { w: 14, h: 14, r: 7 }, circle: { w: 84, h: 84, r: 42 }, pill: { w: 240, h: 74, r: 37 },
+    bar: { w: 240, h: 12, r: 6 }, box: { w: 150, h: 120, r: 18 }, card: { w: 300, h: 180, r: 22 },
+    line: { w: 240, h: 4, r: 2 }, square: { w: 120, h: 120, r: 16 },
+  };
+  function _resolveColor(tok) {
+    if (typeof tok === 'string') {
+      if (tok === 'accent') return A1; if (tok === 'accent2') return A2;
+      if (tok === 'ink' || tok === 'light') return '#fbf6ec'; if (tok === 'dim') return '#cdbfae';
+      if (tok === 'dark') return '#1c140a'; if (/^#[0-9a-fA-F]{6}$/.test(tok)) return tok;
+    }
+    return '#fbf6ec';
+  }
+  // interpola UNA prop numerica a lo largo de los keyframes en el tiempo tt (inherit + easing)
+  function _num(keys, tt, prop, dflt) {
+    let prev = null;
+    for (const k of keys) {
+      if (k[prop] === undefined || k[prop] === null) continue;
+      if (k.t <= tt) { prev = k; continue; }
+      if (prev === null) return Number(k[prop]);
+      const span = (k.t - prev.t) || 1e-6;
+      const u = _easeOf(k.ease)(clamp((tt - prev.t) / span, 0, 1));
+      const v = Number(prev[prop]) + (Number(k[prop]) - Number(prev[prop])) * u;
+      return Number.isFinite(v) ? v : dflt;
+    }
+    if (prev !== null) { const v = Number(prev[prop]); return Number.isFinite(v) ? v : dflt; }
+    return dflt;
+  }
+  // w/h/r: si ningun keyframe las da explicitas, las deriva de los tokens 'shape' (que tambien morphean)
+  function _shapeDim(keys, tt, prop, dflt) {
+    if (keys.some(k => k[prop] !== undefined)) return _num(keys, tt, prop, dflt);
+    let prev = null;
+    for (const k of keys) {
+      if (!k.shape || !_SHAPES[k.shape]) continue;
+      if (k.t <= tt) { prev = k; continue; }
+      if (prev === null) return _SHAPES[k.shape][prop];
+      const span = (k.t - prev.t) || 1e-6;
+      const u = _easeOf(k.ease)(clamp((tt - prev.t) / span, 0, 1));
+      return _SHAPES[prev.shape][prop] + (_SHAPES[k.shape][prop] - _SHAPES[prev.shape][prop]) * u;
+    }
+    if (prev && _SHAPES[prev.shape]) return _SHAPES[prev.shape][prop];
+    return dflt;
+  }
+  // interpola el color (fill) a lo largo de los keyframes; tokens -> hex -> lerp RGB
+  function _colorAt(keys, tt, dflt) {
+    let prev = null;
+    for (const k of keys) {
+      if (k.fill === undefined || k.fill === null) continue;
+      if (k.t <= tt) { prev = k; continue; }
+      const c1 = _hex2rgb(_resolveColor(k.fill));
+      if (prev === null) return _resolveColor(k.fill);
+      const c0 = _hex2rgb(_resolveColor(prev.fill));
+      if (!c0 || !c1) return _resolveColor(k.fill);
+      const span = (k.t - prev.t) || 1e-6;
+      const u = _easeOf(k.ease)(clamp((tt - prev.t) / span, 0, 1));
+      return `rgb(${Math.round(c0[0] + (c1[0] - c0[0]) * u)},${Math.round(c0[1] + (c1[1] - c0[1]) * u)},${Math.round(c0[2] + (c1[2] - c0[2]) * u)})`;
+    }
+    if (prev) return _resolveColor(prev.fill);
+    return dflt;
+  }
+  // posicion: bezier cuadratica si el keyframe trae ctrl [cx,cy] (curvas, arcos); si no, lerp recto
+  function _pos(keys, tt) {
+    let prev = null;
+    for (const k of keys) {
+      if (k.x === undefined && k.y === undefined) continue;
+      if (k.t <= tt) { prev = k; continue; }
+      const x1 = k.x !== undefined ? k.x : (prev ? prev.x : W / 2), y1 = k.y !== undefined ? k.y : (prev ? prev.y : H / 2);
+      if (prev === null) return [x1, y1];
+      const x0 = prev.x !== undefined ? prev.x : x1, y0 = prev.y !== undefined ? prev.y : y1;
+      const span = (k.t - prev.t) || 1e-6;
+      const u = _easeOf(k.ease)(clamp((tt - prev.t) / span, 0, 1));
+      if (Array.isArray(k.ctrl) && k.ctrl.length === 2) {
+        const mt = 1 - u;
+        return [mt * mt * x0 + 2 * mt * u * k.ctrl[0] + u * u * x1, mt * mt * y0 + 2 * mt * u * k.ctrl[1] + u * u * y1];
+      }
+      return [x0 + (x1 - x0) * u, y0 + (y1 - y0) * u];
+    }
+    if (prev) return [prev.x !== undefined ? prev.x : W / 2, prev.y !== undefined ? prev.y : H / 2];
+    return [W / 2, H / 2];
+  }
+  // forma "rounded box" parametrica: cubre punto/circulo/pildora/barra/caja/linea con un solo dibujo
+  function _drawRoundedShape(x, y, w, h, r, rot, fill, glow) {
+    w = Math.max(0, w); h = Math.max(0, h); r = clamp(r, 0, Math.min(w, h) / 2);
+    if (w < 0.5 || h < 0.5) return;
+    ctx.save();
+    ctx.translate(x, y); if (rot) ctx.rotate(rot);
+    if (glow) setShadow(_rgba(typeof fill === 'string' && fill[0] === '#' ? fill : A1, 0.45), 26, 8);
+    ctx.fillStyle = fill;
+    ctx.beginPath(); ctx.roundRect(-w / 2, -h / 2, w, h, r); ctx.fill();
+    if (glow) noShadow();
+    ctx.restore();
+  }
+  // iconos componibles: reusa los objetos ROBUSTOS ya tuneados + algunos parametricos.
+  // La IA los coloca y los mueve via keyframes (la caja voladora = icon 'flyingbox' + curva bezier).
+  function _drawIcon(name, scale, alpha, tl) {
+    const s = scale;
+    if (name === 'box') return drawBox(s);
+    if (name === 'flyingbox') { drawWings(s, (tl || 0) * 16, 0); return drawBox(s); }
+    if (name === 'house') return drawHouse(s, alpha);
+    if (name === 'cart') return drawCart(s, alpha);
+    if (name === 'check') {
+      ctx.fillStyle = '#37d39a'; setShadow(_rgba('#37d39a', 0.5), 14, 4); ctx.beginPath(); ctx.arc(0, 0, 16 * s, 0, TAU); ctx.fill(); noShadow();
+      ctx.strokeStyle = '#0a2218'; ctx.lineWidth = 3.4 * s; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      ctx.beginPath(); ctx.moveTo(-6 * s, 0); ctx.lineTo(-2 * s, 5 * s); ctx.lineTo(7 * s, -6 * s); ctx.stroke(); return;
+    }
+    if (name === 'star') {
+      ctx.fillStyle = A1; setShadow(_rgba(A1, 0.4), 16, 4); ctx.beginPath();
+      for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = (i % 2 ? 7 : 16) * s; if (i) ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); else ctx.moveTo(Math.cos(a) * rr, Math.sin(a) * rr); }
+      ctx.closePath(); ctx.fill(); noShadow(); return;
+    }
+    if (name === 'leaf') {
+      ctx.fillStyle = A1; ctx.beginPath(); ctx.moveTo(0, -18 * s); ctx.quadraticCurveTo(16 * s, -2 * s, 0, 18 * s); ctx.quadraticCurveTo(-16 * s, -2 * s, 0, -18 * s); ctx.fill();
+      ctx.strokeStyle = _rgba('#ffffff', 0.5); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(0, -15 * s); ctx.lineTo(0, 15 * s); ctx.stroke(); return;
+    }
+    ctx.fillStyle = A1; ctx.beginPath(); ctx.arc(0, 0, 8 * s, 0, TAU); ctx.fill();
+  }
+  // dibujante GENERICO de escena por keyframes (la IA arma la historia con esto)
+  function sceneSpec(t, p = {}) {
+    const els = Array.isArray(p.elements) ? p.elements : [];
+    for (const el of els) {
+      const keys = (Array.isArray(el.keys) && el.keys.length) ? el.keys.slice().sort((a, b) => (a.t || 0) - (b.t || 0)) : [{ t: 0 }];
+      const op = clamp(_num(keys, t, 'opacity', 1), 0, 1);
+      if (op <= 0.001) continue;
+      const pos = _pos(keys, t), x = pos[0], y = pos[1];
+      const scale = Math.max(0, _num(keys, t, 'scale', 1));
+      const rot = _num(keys, t, 'rot', 0) * Math.PI / 180;
+      const kind = el.kind || 'shape';
+      ctx.save();
+      ctx.globalAlpha *= op;
+      if (kind === 'text') {
+        const str = (el.text || '').toString();
+        const size = _num(keys, t, 'size', el.size || 40), weight = el.weight || 800, maxW = el.maxW || W * 0.86;
+        const fit = fitFont(str, size, maxW, 14, weight);
+        ctx.translate(x, y); if (scale !== 1) ctx.scale(scale, scale); if (rot) ctx.rotate(rot);
+        ctx.font = `${weight} ${fit}px "Inter",system-ui,sans-serif`;
+        ctx.textAlign = el.align || 'center'; ctx.textBaseline = 'middle';
+        ctx.fillStyle = _colorAt(keys, t, _resolveColor(el.fill || 'ink'));
+        ctx.fillText(str, 0, 0);
+      } else if (kind === 'icon') {
+        ctx.translate(x, y); if (rot) ctx.rotate(rot);
+        _drawIcon(el.icon || 'dot', scale, op, t);
+      } else if (kind === 'particles') {
+        const n = Math.max(1, el.count || 10), prog = clamp(_num(keys, t, 'burst', clamp(t, 0, 1)), 0, 1);
+        ctx.translate(x, y);
+        for (let i = 0; i < n; i++) { const a = (i / n) * TAU, d = lerp(10, el.spread || 90, eOutCubic(prog)); ctx.globalAlpha = op * (1 - prog) * 0.9; ctx.fillStyle = i % 2 ? A2 : A1; ctx.beginPath(); ctx.arc(Math.cos(a) * d, Math.sin(a) * d, el.dotR || 3, 0, TAU); ctx.fill(); }
+      } else {
+        const w = _shapeDim(keys, t, 'w', 80) * scale, h = _shapeDim(keys, t, 'h', 80) * scale;
+        const r = _shapeDim(keys, t, 'r', Math.min(w, h) / 2);
+        _drawRoundedShape(x, y, w, h, r, rot, _colorAt(keys, t, _resolveColor(el.fill || 'accent')), el.glow !== false);
+        if (el.label) {
+          const lo = clamp(_num(keys, t, 'labelOpacity', 1), 0, 1);
+          if (lo > 0.01) { ctx.globalAlpha *= lo; const fs = fitFont(el.label, el.labelSize || 26, Math.max(20, w * 0.82), 12, 700); ctx.font = `700 ${fs}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = _resolveColor(el.labelFill || 'ink'); ctx.fillText(el.label, x, y); }
+        }
+      }
+      ctx.restore();
+    }
+  }
+  function _specAnimLen(sc) {
+    let m = 0; for (const el of (sc.elements || [])) for (const k of (el.keys || [])) if ((k.t || 0) > m) m = k.t;
+    return m > 0 ? m : ((sc.e - sc.s) || 3);
+  }
+
+  const DRAWERS = { paintTitle: sceneTitle, deliver: sceneCart, checklist: sceneList, outro: sceneOutro, statement: sceneStatement, bigStat: sceneBigStat, scene: sceneSpec };
   // Cuanto dura la COREOGRAFIA de cada escena (segundos). Pasado esto, el motor CONGELA el frame final
   // = tiempo de lectura. Asi: durationInFrames = animacion + lectura (mas largo = mas tiempo para leer).
   const ANIM_LEN = { paintTitle: 6.0, deliver: 6.4, checklist: 3.9, outro: 3.2, statement: 2.6, bigStat: 2.6 };
@@ -674,7 +852,7 @@ function _rgba(hex, a) {
       if (a <= 0) return;
       // tiempo de LECTURA: anima a velocidad natural hasta ANIM_LEN y despues congela el frame final.
       const local = t - sc.s;
-      const animLen = ANIM_LEN[sc.type] || dur;
+      const animLen = sc.type === 'scene' ? _specAnimLen(sc) : (ANIM_LEN[sc.type] || dur);
       const tFed = Math.min(local, animLen);
       const zin = lerp(1.04, 1, eOutCubic(inv(local, 0, 0.5)));
       const zout = lerp(1, 0.985, eInCubic(inv(local, dur - 0.5, dur)));
