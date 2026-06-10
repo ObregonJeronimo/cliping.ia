@@ -3,7 +3,7 @@ import styles from './Legal.module.css'
 
 export default function Terminos() {
   const navigate = useNavigate()
-  const updated = '9 de junio de 2026'
+  const updated = '10 de junio de 2026'
 
   return (
     <div className={styles.page}>
@@ -110,7 +110,33 @@ export default function Terminos() {
         </section>
 
         <section className={styles.section}>
-          <h2>9. Cambios en los terminos</h2>
+          <h2>9. Uso de marcas y logotipos (derechos de publicidad)</h2>
+          <p>
+            Al registrarse en Urvid utilizando un correo electronico con un dominio
+            corporativo (por ejemplo, nombre@empresa.com), el Usuario otorga a Urvid
+            una licencia mundial, no exclusiva, revocable y libre de regalias para
+            utilizar el nombre comercial, el nombre de la empresa, las marcas
+            registradas y/o los logotipos de dicha organizacion exclusivamente con
+            fines de marketing y promocion.
+          </p>
+          <p>
+            Esta autorizacion permite a Urvid incluir dichos logotipos en su sitio web
+            (por ejemplo, en secciones de "Clientes" o "Equipos que confian en
+            nosotros") y en presentaciones comerciales para demostrar que miembros o
+            equipos de dicha organizacion utilizan o han utilizado el Servicio. El
+            Usuario declara y garantiza que tiene la autoridad necesaria para vincular
+            a su organizacion a esta disposicion.
+          </p>
+          <p>
+            El Usuario o la organizacion pueden revocar esta licencia en cualquier
+            momento contactando a Urvid a traves de sus canales oficiales, tras lo cual
+            Urvid dejara de utilizar dichas marcas en nuevos materiales en un plazo
+            razonable.
+          </p>
+        </section>
+
+        <section className={styles.section}>
+          <h2>10. Cambios en los terminos</h2>
           <p>
             Podemos actualizar estos Terminos periodicamente. Los cambios significativos
             seran notificados a traves del Servicio. El uso continuado luego de una
@@ -119,7 +145,7 @@ export default function Terminos() {
         </section>
 
         <section className={styles.section}>
-          <h2>10. Contacto</h2>
+          <h2>11. Contacto</h2>
           <p>
             Ante cualquier consulta sobre estos Terminos, podes contactarnos a traves de
             los canales oficiales de Urvid.
