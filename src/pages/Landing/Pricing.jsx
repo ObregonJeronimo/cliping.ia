@@ -79,7 +79,6 @@ export default function Pricing() {
   return (
     <section id="pricing" className={styles.section}>
       <div className={styles.head}>
-        <span className={styles.eyebrow}>Precios</span>
         <h2 className={styles.title}>
           Empeza gratis. Escala <span className={styles.accent}>cuando crezcas.</span>
         </h2>
