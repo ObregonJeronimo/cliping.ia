@@ -340,7 +340,6 @@ export default function Features() {
   return (
     <section id="features" className={styles.section}>
       <div className={styles.head}>
-        <span className={styles.eyebrow}>Features</span>
         <h2 className={styles.title}>
           Todo un equipo de video,<br />
           <span className={styles.accent}>en una sola herramienta.</span>
