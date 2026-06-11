@@ -1,9 +1,12 @@
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import styles from './Legal.module.css'
 
 export default function Privacidad() {
   const navigate = useNavigate()
   const updated = '10 de junio de 2026'
+
+  useEffect(() => { window.scrollTo(0, 0) }, [])
 
   return (
     <div className={styles.page}>
