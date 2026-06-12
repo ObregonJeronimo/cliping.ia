@@ -372,32 +372,114 @@
 .brandGo .swatch,
 .brandGo .brandLogo { opacity: 1; transform: translateY(0) scale(1); }
 
-/* ── DEMO 6: nodos avanzados ────────────────────────────────────────────── */
-.demoAdvanced { width: 100%; display: flex; justify-content: center; }
-.advSvg { width: 100%; max-width: 280px; height: auto; }
-.advLine {
-  stroke: rgba(22, 21, 15, 0.35);
-  stroke-width: 1.5;
-  stroke-dasharray: 120;
-  stroke-dashoffset: 120;
-  animation: drawLine 1s ease forwards;
+/* ── DEMO 6: selector Estilo / Proposito / Tono con cursor ──────────────── */
+.demoAdv {
+  position: relative;
+  width: 100%;
+  max-width: 300px;
+  height: 200px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
-@keyframes drawLine { to { stroke-dashoffset: 0; } }
-.advNode {
-  fill: #16150f;
-  animation: nodePulse 1.8s ease-in-out infinite;
+
+.advPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
-@keyframes nodePulse { 0%, 100% { opacity: 0.5; r: 6; } 50% { opacity: 1; r: 8; } }
+
+/* entrada desde abajo, salida hacia arriba (scroll up entre grupos) */
+.advPanelEnter {
+  animation: advIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.advPanelLeave {
+  animation: advOut 0.45s cubic-bezier(0.7, 0, 0.84, 0) both;
+}
+@keyframes advIn {
+  from { opacity: 0; transform: translateY(26px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes advOut {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(-26px); }
+}
+
+.advLabel {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #74716a;
+  margin-bottom: 2px;
+}
+
+.advOptions {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.advOpt {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #16150f;
+  background: #ffffff;
+  border: 1px solid rgba(22, 21, 15, 0.12);
+  border-radius: 9px;
+  padding: 9px 12px;
+  transition: background 0.25s ease, border-color 0.25s ease, color 0.25s ease;
+}
+
+.advDot {
+  width: 12px; height: 12px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1.5px solid rgba(22, 21, 15, 0.25);
+  transition: all 0.25s ease;
+}
+
+/* opcion seleccionada: tinta plena */
+.advOptOn {
+  background: #16150f;
+  border-color: #16150f;
+  color: #f3f2ee;
+}
+.advOptOn .advDot {
+  border-color: #f3f2ee;
+  background: radial-gradient(circle, #f3f2ee 0 40%, transparent 46%);
+}
+
+/* cursor que viaja y clickea */
+.advCursor {
+  position: absolute;
+  top: 0; left: 0;
+  width: 20px; height: 20px;
+  margin: -2px 0 0 -2px;
+  pointer-events: none;
+  transition: transform 0.7s cubic-bezier(0.5, 0, 0.2, 1);
+  filter: drop-shadow(0 3px 5px rgba(22, 21, 15, 0.3));
+  z-index: 3;
+}
+.advCursorDown {
+  transition: transform 0.7s cubic-bezier(0.5, 0, 0.2, 1), scale 0.12s ease;
+  scale: 0.82;
+}
 
 @media (prefers-reduced-motion: reduce) {
   /* sin pin ni transforms: lista vertical normal */
   .panel { position: relative; min-height: 0; padding: 32px 24px; }
   .card { transform: none !important; opacity: 1 !important; }
-  .waveBar, .advNode, .advLine, .generating span,
+  .waveBar, .generating span,
   .cellCaret, .cellDrop .drop, .cellDrop .ripple, .cellBars span,
   .cellPlay, .cellScan span, .cellOrbit span { animation: none; }
   .scriptItem, .brollCell, .swatch, .brandLogo { opacity: 1; transform: none; }
-  .advLine { stroke-dashoffset: 0; }
+  .advPanelEnter, .advPanelLeave { animation: none; opacity: 1; transform: none; }
+  .advCursor { display: none; }
 }
 
 /* ── Responsive ─────────────────────────────────────────────────────────── */
