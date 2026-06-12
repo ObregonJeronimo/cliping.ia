@@ -184,19 +184,132 @@ function DemoBrand({ active }) {
   )
 }
 
-// ── DEMO 6 — avanzado ───────────────────────────────────────────────────
+// ── DEMO 6 — avanzado: selector de Estilo / Proposito / Tono ────────────
+// Cicla por 3 grupos. En cada uno: el cursor viaja hasta una opcion, la
+// "clickea" (queda seleccionada), y el grupo scrollea hacia arriba para dar
+// paso al siguiente. Las posiciones del cursor se calculan con refs reales.
+const ADV_GROUPS = [
+  {
+    key: 'estilo',
+    label: 'Estilo',
+    options: ['Que elija la IA', 'SaaS / Tech', 'Ocean', 'Natural', 'Sunset'],
+    pick: 1,
+  },
+  {
+    key: 'proposito',
+    label: 'Proposito',
+    options: ['Marketing', 'Informativo', 'Producto', 'Branding'],
+    pick: 0,
+  },
+  {
+    key: 'tono',
+    label: 'Tono',
+    options: ['Energico y rapido', 'Calmo y premium', 'Confiable y claro', 'Moderno y audaz'],
+    pick: 3,
+  },
+]
+
 function DemoAdvanced({ active }) {
+  const [step, setStep] = useState(0)        // grupo actual
+  const [picked, setPicked] = useState(-1)   // indice seleccionado en el grupo actual
+  const [leaving, setLeaving] = useState(false)
+  const [cursor, setCursor] = useState({ x: 18, y: 80, down: false })
+
+  const frameRef = useRef(null)
+  const optRefs = useRef([])
+
+  useEffect(() => {
+    if (!active) {
+      setStep(0); setPicked(-1); setLeaving(false)
+      setCursor({ x: 18, y: 80, down: false })
+      return
+    }
+    let timers = []
+    let cancelled = false
+
+    const runGroup = (g) => {
+      if (cancelled) return
+      setPicked(-1); setLeaving(false)
+
+      const group = ADV_GROUPS[g]
+      const target = group.pick
+
+      // 1) mover el cursor a la opcion objetivo
+      timers.push(setTimeout(() => {
+        if (cancelled) return
+        const frame = frameRef.current
+        const el = optRefs.current[target]
+        if (frame && el) {
+          const fr = frame.getBoundingClientRect()
+          const er = el.getBoundingClientRect()
+          setCursor({
+            x: er.left - fr.left + er.width * 0.5,
+            y: er.top - fr.top + er.height * 0.5,
+            down: false,
+          })
+        }
+      }, 600))
+
+      // 2) "click" (cursor baja un instante) + seleccion
+      timers.push(setTimeout(() => {
+        if (cancelled) return
+        setCursor(c => ({ ...c, down: true }))
+      }, 1500))
+      timers.push(setTimeout(() => {
+        if (cancelled) return
+        setPicked(target)
+        setCursor(c => ({ ...c, down: false }))
+      }, 1650))
+
+      // 3) salida hacia arriba
+      timers.push(setTimeout(() => {
+        if (cancelled) return
+        setLeaving(true)
+      }, 2500))
+
+      // 4) siguiente grupo (o reinicio)
+      timers.push(setTimeout(() => {
+        if (cancelled) return
+        const next = (g + 1) % ADV_GROUPS.length
+        setStep(next)
+        setCursor({ x: 18, y: 80, down: false })
+        runGroup(next)
+      }, 2950))
+    }
+
+    runGroup(0)
+    return () => { cancelled = true; timers.forEach(clearTimeout) }
+  }, [active])
+
+  const group = ADV_GROUPS[step]
+
   return (
-    <div className={styles.demoAdvanced}>
-      <svg viewBox="0 0 200 90" className={styles.advSvg}>
-        <line x1="20" y1="45" x2="100" y2="20" className={active ? styles.advLine : ''} />
-        <line x1="20" y1="45" x2="100" y2="70" className={active ? styles.advLine : ''} />
-        <line x1="100" y1="20" x2="180" y2="45" className={active ? styles.advLine : ''} />
-        <line x1="100" y1="70" x2="180" y2="45" className={active ? styles.advLine : ''} />
-        {[[20,45],[100,20],[100,70],[180,45]].map(([cx,cy],i) => (
-          <circle key={i} cx={cx} cy={cy} r="7" className={active ? styles.advNode : ''} style={{ animationDelay: `${i * 0.25}s` }} />
-        ))}
-      </svg>
+    <div className={styles.demoAdv} ref={frameRef}>
+      <div className={`${styles.advPanel} ${leaving ? styles.advPanelLeave : styles.advPanelEnter}`}>
+        <div className={styles.advLabel}>{group.label}</div>
+        <div className={styles.advOptions}>
+          {group.options.map((opt, i) => (
+            <div
+              key={opt}
+              ref={el => { optRefs.current[i] = el }}
+              className={`${styles.advOpt} ${picked === i ? styles.advOptOn : ''}`}
+            >
+              <span className={styles.advDot} />
+              {opt}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* cursor */}
+      <div
+        className={`${styles.advCursor} ${cursor.down ? styles.advCursorDown : ''}`}
+        style={{ transform: `translate(${cursor.x}px, ${cursor.y}px)` }}
+      >
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <path d="M3 2l5.5 13 2.2-5.3L16 7.5 3 2z" fill="#16150f" stroke="#f3f2ee" strokeWidth="1.2" strokeLinejoin="round" />
+        </svg>
+      </div>
     </div>
   )
 }
@@ -242,7 +355,7 @@ const FEATURES = [
     key: 'pro',
     eyebrow: '06 — Pro',
     title: 'Modo avanzado de IA',
-    desc: 'Control fino sobre el guion, el ritmo y el estilo visual. Render en maxima calidad y resultados de nivel agencia.',
+    desc: 'Control fino sobre el estilo, el proposito y el tono del video. Render en maxima calidad y resultados de nivel agencia.',
     Demo: DemoAdvanced,
     badge: 'Studio',
   },
