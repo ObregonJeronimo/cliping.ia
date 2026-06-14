@@ -494,6 +494,47 @@ function _rgba(hex, a) {
     }
     ctx.restore();
   }
+  // FLOTANTES AMBIENTALES: objetos vectoriales que DERIVAN por la periferia y rellenan los vacios (pedido del
+  // usuario: "sin morph, rellenar con objetos/movimiento"). Deterministas (mulberry32 por SEED), contextuales
+  // por rubro, baja opacidad y fuera de la columna central de texto -> dan vida sin pisar la legibilidad.
+  function _floaterShape(id, sz, col) {
+    ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = Math.max(1.4, sz * 0.13);
+    if (id === 1) { ctx.beginPath(); ctx.arc(0, 0, sz * 0.3, 0, TAU); ctx.fill(); }                                  // punto
+    else if (id === 2) { const s = sz * 0.5; ctx.beginPath(); ctx.moveTo(-s, 0); ctx.lineTo(s, 0); ctx.moveTo(0, -s); ctx.lineTo(0, s); ctx.stroke(); }  // cruz
+    else if (id === 3) { const s = sz * 0.55; ctx.beginPath(); ctx.moveTo(0, -s); ctx.lineTo(s * 0.87, s * 0.5); ctx.lineTo(-s * 0.87, s * 0.5); ctx.closePath(); ctx.stroke(); }  // triangulo
+    else if (id === 4) { const s = sz * 0.45; ctx.strokeRect(-s, -s, s * 2, s * 2); }                               // cuadrado (ventana)
+    else if (id === 5) { const s = sz * 0.62; ctx.beginPath(); for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2; ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * s, Math.sin(a) * s); } ctx.stroke(); }  // destello 4 puntas
+    else if (id === 6) { const s = sz * 0.5; ctx.beginPath(); ctx.moveTo(-s, -s * 0.4); ctx.lineTo(0, s * 0.4); ctx.lineTo(s, -s * 0.4); ctx.stroke(); }  // chevron
+    else if (id === 7) { const s = sz * 0.42; ctx.beginPath(); ctx.rect(-s, -s * 0.2, s * 2, s * 1.2); ctx.moveTo(-s * 1.18, -s * 0.2); ctx.lineTo(0, -s * 1.15); ctx.lineTo(s * 1.18, -s * 0.2); ctx.stroke(); }  // casita
+    else if (id === 8) { ctx.beginPath(); ctx.arc(0, 0, sz * 0.42, 0, TAU); ctx.stroke(); ctx.beginPath(); ctx.arc(0, 0, sz * 0.12, 0, TAU); ctx.fill(); }  // anillo + punto
+    else { ctx.beginPath(); ctx.arc(0, 0, sz * 0.42, 0, TAU); ctx.stroke(); }                                       // 0: anillo
+  }
+  function _floaterShapes(rubro) {
+    if (rubro === 'inmobiliaria') return [7, 4, 0];
+    if (rubro === 'finanzas' || rubro === 'tech' || rubro === 'educacion') return [1, 2, 8, 4];
+    if (rubro === 'gastronomia') return [0, 1, 5];
+    if (rubro === 'fitness') return [6, 2, 8];
+    if (rubro === 'belleza' || rubro === 'salud') return [5, 1, 0];
+    if (rubro === 'moda') return [0, 2, 8];
+    return [0, 2, 3, 4];
+  }
+  function _drawFloaters(t) {
+    const shapes = _floaterShapes(MOTIF);
+    const rnd = mulberry32(((SEED || 1) ^ 0x710A7) >>> 0);
+    const col = _accentInk(_resolveColor('accent'), 0.42);
+    ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    for (let i = 0; i < 16; i++) {
+      const side = rnd() < 0.5 ? rnd() * 0.27 : 0.73 + rnd() * 0.27;   // a los LADOS, no en la columna de texto
+      const x0 = side * W, y0 = rnd() * (H + 60), sp = 4 + rnd() * 10, amp = 10 + rnd() * 20, ph = rnd() * TAU;
+      const sz = 7 + rnd() * 15, a = (TONE === 'light' ? 0.07 : 0.09) + rnd() * 0.06;
+      const sid = shapes[Math.floor(rnd() * shapes.length)], rs = (0.06 + rnd() * 0.18) * (i % 2 ? 1 : -1);
+      const x = x0 + Math.sin(t * 0.11 + ph) * amp;
+      const y = ((y0 - t * sp) % (H + 60) + (H + 60)) % (H + 60) - 30;   // deriva vertical lenta con wrap
+      ctx.save(); ctx.globalAlpha = a; ctx.translate(x, y); ctx.rotate(t * rs + ph);
+      _floaterShape(sid, sz, col); ctx.restore();
+    }
+    ctx.restore();
+  }
   // GRANO DE FILM sobre TODO (animado y determinista por frame) -> mata el look "vector 2D limpio" y sube
   // la percepcion premium (textura analogica). Determinista: misma (seed, frame) => mismo grano.
   function _filmGrain(t) {
@@ -600,6 +641,7 @@ function _rgba(hex, a) {
     for (const gp of grain) { ctx.globalAlpha = Math.min(0.05, (gp.a || 0.06) * 0.6); ctx.fillStyle = '#1c130c'; ctx.fillRect(gp.x, gp.y, gp.r || 1.3, gp.r || 1.3); }
     ctx.restore();
     if (MOTIF) _drawMotif(MOTIF, t, pal);   // motivo contextual tambien en tono claro
+    if (BG_STYLE !== 'speedlines' && BG_STYLE !== 'brutalist') _drawFloaters(t);   // objetos flotantes que rellenan los vacios
     const v = ctx.createRadialGradient(W / 2, H * 0.46, H * 0.32, W / 2, H * 0.5, H * 0.82);
     v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(60,45,35,0.10)');
     ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
@@ -627,6 +669,7 @@ function _rgba(hex, a) {
     else if (BG_STYLE === 'typo') _bgField(t, pal);    // typographic: base sobria + wordmark fantasma (en drawFrame)
     else _bgMesh(t, pal);
     if (MOTIF) _drawMotif(MOTIF, t, pal);   // capa CONTEXTUAL: motivo del rubro (skyline, sparkline, etc.)
+    if (BG_STYLE !== 'speedlines' && BG_STYLE !== 'brutalist') _drawFloaters(t);   // objetos flotantes que rellenan los vacios
     // 3) motes (polvo) con tinte del tema, deriva vertical sembrada
     ctx.save();
     for (const m of motes) {
