@@ -547,6 +547,21 @@ function _rgba(hex, a) {
         ctx.fillStyle = gl; ctx.fillRect(baseX - w, 0, w * 2, H);
       }
       ctx.restore();
+    } else if (BG_STYLE === 'paper') {
+      // HECHO A MANO: capa de papel -> fibra grumosa + manchas de tinta/acuarela + borde dibujado a mano.
+      // antes handmade usaba 'field' y caia al crema generico -> el panel lo vio identico a swiss/typographic.
+      const rnd = mulberry32((SEED || 1) ^ 0x9A7E);
+      ctx.save();
+      for (let i = 0; i < 520; i++) { ctx.fillStyle = rnd() < 0.5 ? 'rgba(120,95,70,0.05)' : 'rgba(255,255,255,0.06)'; const px = rnd() * W, py = rnd() * H, pr = 1 + rnd() * 2.4; ctx.fillRect(px, py, pr, pr); }
+      ctx.restore();
+      ctx.save(); ctx.globalCompositeOperation = 'multiply';
+      for (let k = 0; k < 3; k++) { const mx = W * (0.12 + 0.76 * rnd()), my = H * (0.1 + 0.8 * rnd()), mr = H * (0.12 + rnd() * 0.12), gl = ctx.createRadialGradient(mx, my, 0, mx, my, mr); gl.addColorStop(0, _rgba(_accentInk(pal[0], 0.3), 0.12)); gl.addColorStop(1, _rgba(pal[0], 0)); ctx.fillStyle = gl; ctx.fillRect(0, 0, W, H); }
+      ctx.restore();
+      ctx.save(); ctx.strokeStyle = _rgba(_accentInk(pal[0], 0.45), 0.5); ctx.lineWidth = 2.4; ctx.lineJoin = 'round';
+      const m = 26, corners = [[m, m], [W - m, m], [W - m, H - m], [m, H - m], [m, m]]; ctx.beginPath();
+      for (let c = 0; c < corners.length - 1; c++) { const x0 = corners[c][0], y0 = corners[c][1], x1 = corners[c + 1][0], y1 = corners[c + 1][1], seg = 12;
+        for (let i = 0; i <= seg; i++) { const f = i / seg, x = lerp(x0, x1, f) + (rnd() - 0.5) * 5, y = lerp(y0, y1, f) + (rnd() - 0.5) * 5; (c === 0 && i === 0) ? ctx.moveTo(x, y) : ctx.lineTo(x, y); } }
+      ctx.stroke(); ctx.restore();
     }
     ctx.save();
     for (const gp of grain) { ctx.globalAlpha = Math.min(0.05, (gp.a || 0.06) * 0.6); ctx.fillStyle = '#1c130c'; ctx.fillRect(gp.x, gp.y, gp.r || 1.3, gp.r || 1.3); }
@@ -575,6 +590,7 @@ function _rgba(hex, a) {
     else if (BG_STYLE === 'sunburst') _bgSunburst(t, pal);
     else if (BG_STYLE === 'speedlines') _bgSpeedlines(t, pal);
     else if (BG_STYLE === 'halftone') _bgHalftone(t, pal);
+    else if (BG_STYLE === 'paper') _bgField(t, pal);   // handmade en oscuro (raro): cae a field suave
     else _bgMesh(t, pal);
     if (MOTIF) _drawMotif(MOTIF, t, pal);   // capa CONTEXTUAL: motivo del rubro (skyline, sparkline, etc.)
     // 3) motes (polvo) con tinte del tema, deriva vertical sembrada
