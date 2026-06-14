@@ -615,6 +615,8 @@ contexto, NO uses bigStat. Si hay un PEDIDO DEL USUARIO, cumplilo SÍ O SÍ por 
     # desde el preset si el ADN no los dio. El motor (engineCore._seedFor) usa tl["seed"].
     tl["seed"] = _preset["seed"]
     tl.setdefault("texture", _preset.get("bg_texture", "none"))   # identidad del fondo por rubro
+    tl.setdefault("motif", _preset.get("rubro", ""))              # fondo CONTEXTUAL por rubro (skyline / sparkline / vapor / pulso / botanico)
+    tl.setdefault("bgEnergy", _preset.get("bg_energy", 1.0))      # energia/velocidad del fondo por rubro
     if not tl.get("theme"):
         tl["theme"] = _preset["theme"]
     if not _bdna._hex_ok(str(tl.get("accent") or "")):
