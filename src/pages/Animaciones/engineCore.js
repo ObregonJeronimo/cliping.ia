@@ -631,7 +631,7 @@ function _rgba(hex, a) {
   // LAYOUT alternativo: grilla de 2 columnas (stat-cards) -> variedad estructural vs la lista vertical.
   function _listGrid(items, t, lanchor) {
     const cols = 2, cw = 150, ch = 70, gx = 14, gy = 14, rows = Math.ceil(items.length / cols);
-    const gw = cols * cw + (cols - 1) * gx, x0 = lanchor ? 40 : (W - gw) / 2, y0 = H * 0.52 - (rows * (ch + gy) - gy) / 2;
+    const gw = cols * cw + (cols - 1) * gx, x0 = lanchor ? 40 : (W - gw) / 2, y0 = H * 0.46 - (rows * (ch + gy) - gy) / 2;
     items.forEach((label, i) => {
       const d = 0.5 + i * 0.34, rin = inv(t, d, d + 0.5); if (rin <= 0) return;
       const r = Math.floor(i / cols), c = i % cols, x = x0 + c * (cw + gx), y = y0 + r * (ch + gy), pop = eOutBack(clamp(rin, 0, 1));
@@ -650,9 +650,12 @@ function _rgba(hex, a) {
     if (lanchor) {
       if (tp > 0) { ctx.save(); ctx.globalAlpha *= eOutCubic(clamp(tp, 0, 1)); ctx.font = `800 ${(p.title || '').length > 18 ? 24 : 30}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#fff6f0'; ctx.fillText(p.title || '', rx, H * 0.23); ctx.restore(); }
     } else { fxText(p.title || '', cx, H * 0.23, (p.title || '').length > 18 ? 24 : 30, tp, 800, '#fff6f0', W * 0.86); }
+    // regla de acento bajo el titulo -> lo liga a la lista (proximidad Gestalt), no queda flotando aparte
+    const ru = eOutCubic(inv(t, 0.3, 0.8));
+    if (ru > 0) { const ry = H * 0.285, rxr = lanchor ? rx : cx - 26; ctx.save(); ctx.fillStyle = accent(rxr, ry, rxr + 52, ry); ctx.beginPath(); ctx.roundRect(rxr, ry, 52 * ru, 4, 2); ctx.fill(); ctx.restore(); }
     const items = (p.items || []).slice(0, 4);
     if (p.listLayout === 'grid') { _listGrid(items, t, lanchor); return; }
-    const gap = style === 'bar' ? 60 : 64, startY = H * 0.52 - (items.length - 1) * gap / 2;
+    const gap = (items.length >= 4 ? 58 : 70), startY = H * 0.46 - (items.length - 1) * gap / 2;
     const row = style === 'bar' ? _rowBar : style === 'number' ? _rowEditorial : style === 'dash' ? _rowPlain : _rowCard;
     items.forEach((label, i) => {
       const d = 0.5 + i * 0.42, rin = inv(t, d, d + 0.55);
@@ -715,18 +718,18 @@ function _rgba(hex, a) {
         ctx.save(); setShadow(_rgba(A1, 0.5), 26, 8);
         const g = ctx.createLinearGradient(24, by, 24 + bw, by); g.addColorStop(0, _lighten(A1, 0.5)); g.addColorStop(1, _lighten(A2, 0.36));
         ctx.fillStyle = g; ctx.beginPath(); ctx.roundRect(24, by - bh / 2, bw, bh, 14); ctx.fill(); noShadow();
-        if (br > 0.55) { ctx.globalAlpha = clamp((br - 0.55) / 0.45, 0, 1); ctx.font = `800 26px "Inter",system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#14090e'; ctx.fillText((p.cta || 'Visita ahora'), W / 2, by); }
+        if (br > 0.55) { ctx.globalAlpha = clamp((br - 0.55) / 0.45, 0, 1); const _bs = fitFont((p.cta || 'Visita ahora'), 26, W - 92, 14, 800); ctx.font = `800 ${_bs}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#14090e'; ctx.fillText((p.cta || 'Visita ahora'), W / 2, by); }
         ctx.restore();
       }
     } else if (comp === 'bigtype') {
-      wordmark(cx, cy - 78, 'center', 34);
+      wordmark(cx, cy - 88, 'center', 42);
       const tg = eOutBack(clamp(inv(t, 1.0, 1.6), 0, 1));
       if (tg > 0) {
         const cta = p.cta || 'Visita ahora', fs = fitFont(cta, 72, W * 0.86, 34, 800);
         ctx.save(); ctx.translate(cx, cy + 34); ctx.scale(0.92 + 0.08 * tg, 0.92 + 0.08 * tg);
         ctx.font = `800 ${fs}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         const _cg = ctx.createLinearGradient(-130, -fs * 0.6, 130, fs * 0.6); _cg.addColorStop(0, _lighten(A1, 0.55)); _cg.addColorStop(1, _lighten(A2, 0.42));
-        setShadow('rgba(0,0,0,0.4)', 8, 2); _kineticDraw(cta, _cg, 'center', t, 1.0); noShadow(); ctx.restore();
+        setShadow('rgba(0,0,0,0.4)', 8, 2); _kineticDraw(cta, _cg, 'center', t, 1.0, -fs * 0.02); noShadow(); ctx.restore();
         const ar = inv(t, 1.5, 1.9);
         if (ar > 0) { ctx.save(); ctx.globalAlpha = ar; ctx.strokeStyle = _lighten(A1, 0.4); ctx.lineWidth = 4; ctx.lineCap = 'round'; const ay = cy + 34 + fs * 0.7 + 20; ctx.beginPath(); ctx.moveTo(cx - 16, ay); ctx.lineTo(cx, ay + 14); ctx.lineTo(cx + 16, ay); ctx.stroke(); ctx.restore(); }
       }
@@ -747,19 +750,22 @@ function _rgba(hex, a) {
     if (!text) return;
     const style = p.stmtStyle || 'centered';   // centered (kicker) · left (regla) · quote (comilla) · panel
     const left = style === 'left';
-    const fs = text.length > 26 ? 30 : (text.length > 16 ? 36 : 42);
+    // statement = unico beat 100% tipografico -> agrandado (no timido) para que tenga presencia
+    const fs = text.length > 34 ? 34 : (text.length > 22 ? 40 : (text.length > 12 ? 48 : 56));
     ctx.font = `800 ${fs}px "Inter",system-ui,sans-serif`; ctx.textBaseline = 'middle';
-    const maxW = left ? W * 0.72 : W * 0.78;
+    const maxW = left ? W * 0.74 : W * 0.82;
     const words = text.split(' '); const lines = []; let cur = '';
     for (const w of words) { const test = cur ? cur + ' ' + w : w; if (ctx.measureText(test).width > maxW && cur) { lines.push(cur); cur = w; } else cur = test; }
     if (cur) lines.push(cur);
-    const lh = fs * 1.18, topY = H * 0.5 - (lines.length * lh) / 2 + lh / 2;
+    // anclar el centro de masa al TERCIO (no al 50% matematico) -> intencionalidad, libera el tercio inferior
+    const anchorY = (style === 'quote' || style === 'panel') ? 0.46 : (left ? 0.44 : 0.42);
+    const lh = fs * 1.18, topY = H * anchorY - (lines.length * lh) / 2 + lh / 2;
     function drawLines(ox, align, riseX) {
       ctx.font = `800 ${fs}px "Inter",system-ui,sans-serif`; ctx.textBaseline = 'middle'; ctx.textAlign = align;
       lines.forEach((ln, i) => {
         const pr = eOutCubic(inv(t, 0.16 + i * 0.24, 0.16 + i * 0.24 + 0.55)); if (pr <= 0) return;
-        ctx.save(); ctx.globalAlpha *= pr; ctx.fillStyle = '#f7f1e6';
-        ctx.fillText(ln, ox + (riseX ? (1 - pr) * 18 : 0), topY + i * lh + (riseX ? 0 : (1 - pr) * 24)); ctx.restore();
+        ctx.save(); ctx.globalAlpha *= pr; ctx.fillStyle = '#f9f4ea'; setShadow('rgba(0,0,0,0.5)', 6, 2);   // sombra -> legible sobre fondos calidos/ocupados
+        ctx.fillText(ln, ox + (riseX ? (1 - pr) * 18 : 0), topY + i * lh + (riseX ? 0 : (1 - pr) * 24)); noShadow(); ctx.restore();
       });
     }
     if (left) {
@@ -768,8 +774,10 @@ function _rgba(hex, a) {
       drawLines(ax, 'left', true);
     } else if (style === 'quote') {
       const cx = W / 2, qp = eOutBack(clamp(inv(t, 0.05, 0.55), 0, 1));
-      if (qp > 0) { ctx.save(); ctx.globalAlpha *= 0.4 * qp; ctx.font = `800 ${Math.round(86 * qp)}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = _lighten(A1, 0.3); ctx.fillText('“', cx, topY - lh * 0.18); ctx.restore(); }
+      if (qp > 0) { ctx.save(); ctx.globalAlpha *= 0.55 * qp; ctx.font = `800 ${Math.round(86 * qp)}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = _lighten(A1, 0.32); ctx.fillText('“', cx, topY - lh * 0.18); ctx.restore(); }
       drawLines(cx, 'center', false);
+      const qcp = eOutBack(clamp(inv(t, 0.55, 1.05), 0, 1));   // comilla de CIERRE espejada al final -> par completo, no huerfana
+      if (qcp > 0) { const ly = topY + (lines.length - 1) * lh; ctx.save(); ctx.globalAlpha *= 0.5 * qcp; ctx.font = `800 ${Math.round(72 * qcp)}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = _lighten(A1, 0.32); ctx.fillText('”', cx, ly + lh * 0.92); ctx.restore(); }
     } else if (style === 'panel') {
       const cx = W / 2, longest = Math.max.apply(null, lines.map(l => ctx.measureText(l).width));
       const pw = Math.min(W * 0.86, longest + 56), ph = lines.length * lh + 40, py = topY - lh * 0.5 - 20;
@@ -841,7 +849,7 @@ function _rgba(hex, a) {
   function _resolveColor(tok) {
     if (typeof tok === 'string') {
       if (tok === 'accent') return A1; if (tok === 'accent2') return A2;
-      if (tok === 'ink' || tok === 'light') return '#fbf6ec'; if (tok === 'dim') return '#e8ddcc';
+      if (tok === 'ink' || tok === 'light') return '#fbf6ec'; if (tok === 'dim') return '#efe6d6';
       if (tok === 'dark') return '#1c140a'; if (/^#[0-9a-fA-F]{6}$/.test(tok)) return tok;
     }
     return '#fbf6ec';
@@ -1058,17 +1066,18 @@ function _rgba(hex, a) {
   }
   // TIPOGRAFIA CINETICA: revela el texto LETRA POR LETRA con stagger (cada una entra desde abajo con un
   // leve overshoot). Asume ctx.font/translate ya seteados; dibuja alrededor del origen segun 'align'.
-  function _kineticDraw(str, col, align, t, start) {
+  function _kineticDraw(str, col, align, t, start, track = 0) {
     const chars = str.split('');
     const widths = chars.map(c => ctx.measureText(c).width);
-    const total = widths.reduce((a, b) => a + b, 0);
+    const total = widths.reduce((a, b) => a + b, 0) + track * Math.max(0, chars.length - 1);   // tracking por rol
     let xoff = align === 'center' ? -total / 2 : align === 'right' ? -total : 0;
     const prevAlign = ctx.textAlign; ctx.textAlign = 'left'; ctx.fillStyle = col;
     const each = Math.min(0.05, 0.55 / Math.max(1, chars.length)), baseAlpha = ctx.globalAlpha;
     for (let i = 0; i < chars.length; i++) {
       const lp = eOutBack(clamp((t - start - i * each) / 0.42, 0, 1));
-      if (lp > 0.001) { ctx.globalAlpha = baseAlpha * clamp(lp, 0, 1); ctx.fillText(chars[i], xoff, (1 - lp) * 24); }
-      xoff += widths[i];
+      // rise mas corto (12) + curva de alpha mas agresiva (x1.6) -> menos "doble exposicion" en el frame intermedio
+      if (lp > 0.001) { ctx.globalAlpha = baseAlpha * clamp(lp * 1.6, 0, 1); ctx.fillText(chars[i], xoff, (1 - lp) * 12); }
+      xoff += widths[i] + track;
     }
     ctx.globalAlpha = baseAlpha; ctx.textAlign = prevAlign;
   }
@@ -1092,8 +1101,10 @@ function _rgba(hex, a) {
         ctx.font = `${weight} ${fit}px "Inter",system-ui,sans-serif`;
         ctx.textAlign = el.align || 'center'; ctx.textBaseline = 'middle';
         const _tcol = _colorAt(keys, t, _resolveColor(el.fill || 'ink'));
-        if (el.kinetic) _kineticDraw(str, _tcol, el.align || 'center', t, (keys[0] && keys[0].t) || 0);
-        else { ctx.fillStyle = _tcol; ctx.fillText(str, 0, 0); }
+        // tracking por rol: displays grandes apretados (-2%), kickers chicos abiertos (+6%) -> presencia de marca
+        const _trk = el.track != null ? el.track : (fit > 44 ? -fit * 0.02 : (fit < 24 ? fit * 0.06 : 0));
+        if (el.kinetic) _kineticDraw(str, _tcol, el.align || 'center', t, (keys[0] && keys[0].t) || 0, _trk);
+        else { ctx.fillStyle = _tcol; if (el.fill === 'dim') setShadow('rgba(0,0,0,0.5)', 6, 1); ctx.fillText(str, 0, 0); if (el.fill === 'dim') noShadow(); }
       } else if (kind === 'icon') {
         if (el.blur) for (let b = 3; b >= 1; b--) { const tb = Math.max(0, t - b * 0.022); const pb = _pos(keys, tb); const sb = Math.max(0, _num(keys, tb, 'scale', scale)); ctx.save(); ctx.globalAlpha *= 0.1; ctx.translate(pb[0], pb[1]); _drawIcon(el.icon || 'dot', sb, op, tb); ctx.restore(); }
         ctx.translate(x, y); if (rot) ctx.rotate(rot);

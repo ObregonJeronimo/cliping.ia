@@ -181,7 +181,7 @@ def _hero_scene(brand, rubro, accent_light, rnd, comp, blur=True):
             {"t": 1.2, "x": sx, "y": sy, "burst": 0}, {"t": 2.1, "x": sx, "y": sy, "burst": 1}]},
         {"kind": "text", "text": brand, "fill": "ink", "size": L["nsz"], "weight": 800, "align": L["al"], "maxW": L.get("maxW", 348), "kinetic": True, "keys": [
             {"t": ns, "opacity": 1, "x": L["nx"], "y": L["ny"]}]},
-        {"kind": "text", "text": sub, "fill": "dim", "size": 21, "weight": 600, "align": L["al"], "maxW": min(300, L.get("maxW", 300)), "keys": [
+        {"kind": "text", "text": sub, "fill": "dim", "size": 23, "weight": 600, "align": L["al"], "maxW": min(300, L.get("maxW", 300)), "keys": [
             {"t": ns + 0.9, "opacity": 0, "x": L["bx"], "y": L["by"] + 14},
             {"t": ns + 1.4, "opacity": 1, "x": L["bx"], "y": L["by"], "ease": "outCubic"}]},
     ]
@@ -319,9 +319,11 @@ if __name__ == "__main__":
         return comp, st, ll
 
     def _sig(tl):
-        # "carta" exacta del video: hero + layout de statement + layout de checklist + tema.
+        # "carta" exacta del video: hero + layout de statement + layout de checklist + tema + FRASE del
+        # statement (asi dos marcas del mismo rubro no muestran la misma frase calcada en la galeria).
         comp, st, ll = _parts(tl)
-        return (comp, st, ll, tl.get("theme"))
+        stmt = next((s.get("text") for s in tl["scenes"] if s.get("type") == "statement"), "")
+        return (comp, st, ll, tl.get("theme"), stmt)
 
     def _pair(tl):
         # arquitectura de layout (sin color/tema): hero + layout de checklist. Dos marcas con la
