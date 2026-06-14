@@ -374,7 +374,7 @@ function _rgba(hex, a) {
     }
     // 4) scrim central suave: baja un toque el brillo del centro para que el texto SIEMPRE se lea
     const sc = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, H * 0.5);
-    sc.addColorStop(0, 'rgba(0,0,0,0.18)'); sc.addColorStop(1, 'rgba(0,0,0,0)');
+    sc.addColorStop(0, 'rgba(0,0,0,0.23)'); sc.addColorStop(1, 'rgba(0,0,0,0)');   // un poco mas de scrim -> el texto sobre fondos del mismo hue (Altos navy) se despega
     ctx.fillStyle = sc; ctx.fillRect(0, 0, W, H);
     // 5) viñeta (oscurece bordes -> foco)
     const v = ctx.createRadialGradient(W / 2, H / 2, H * 0.30, W / 2, H / 2, H * 0.74);
@@ -1264,9 +1264,9 @@ function _rgba(hex, a) {
     const total = widths.reduce((a, b) => a + b, 0) + track * Math.max(0, chars.length - 1);   // tracking por rol
     let xoff = align === 'center' ? -total / 2 : align === 'right' ? -total : 0;
     const prevAlign = ctx.textAlign; ctx.textAlign = 'left'; ctx.fillStyle = col;
-    const each = Math.min(0.05, 0.55 / Math.max(1, chars.length)), baseAlpha = ctx.globalAlpha;
+    const each = Math.min(0.04, 0.4 / Math.max(1, chars.length)), baseAlpha = ctx.globalAlpha;
     for (let i = 0; i < chars.length; i++) {
-      const lp = eOutBack(clamp((t - start - i * each) / 0.42, 0, 1));
+      const lp = eOutBack(clamp((t - start - i * each) / 0.34, 0, 1));   // reveal mas rapido -> menos tiempo "medio tipeado"
       // rise mas corto (12) + curva de alpha mas agresiva (x1.6) -> menos "doble exposicion" en el frame intermedio
       if (lp > 0.001) { ctx.globalAlpha = baseAlpha * clamp(lp * 1.6, 0, 1); ctx.fillText(chars[i], xoff, (1 - lp) * 12); }
       xoff += widths[i] + track;
