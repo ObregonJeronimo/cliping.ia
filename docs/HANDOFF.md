@@ -75,6 +75,17 @@ contextuales por rubro + 12 estilos elegibles + todo type-led. El director marc�
 de la COMPOSICIÓN, no del color" y "el fondo debe HABLAR del rubro" -> ambos atacados.
 
 ## PENDIENTES / cómo seguir
+0. **PROXIMO FRENTE: tipografia-como-firma (comp-level).** Tras la pasada "assert signature" de FONDOS (ver
+   abajo), 2 paneles de director coinciden: el fondo ya NO es el problema; lo que falta para que cada estilo
+   se lea inequivoco vive en la TIPOGRAFIA y el primer plano. Pendientes concretos por estilo:
+   swiss = grilla modular dura visible + 1 acento saturado (hoy lee pastel-minimal); brutalist = la palabra
+   enfatizada como SLAB (mono/condensada MAYUS ~2x en caja solida de borde duro, anclada izq); sport = titular
+   atletico italica/condensada + motion-blur en el angulo de las speedlines; typographic = wordmark/letra
+   GIGANTE fantasma (~8-12% alpha) sangrada/tileada detras del texto nitido; obsidian = facetas angulares de
+   vidrio con glints especulares (hoy es wash violeta); handmade = subrayados/doodles de marcador en PRIMER
+   plano + 2da tinta calida. RIESGO: tocar el render de tipo puede romper legibilidad (hoy 12/12 legible) ->
+   verificar frame a frame. Probablemente requiere un STYLE var en el motor (hoy solo hay BG_STYLE) o cambiar
+   el bg de cada estilo a un valor unico (como ya se hizo: handmade->'paper'; pendiente typographic->'typo').
 1. **Seguir el loop de test+corrección** (lo que vengo haciendo): ventanas densas por estilo, mirar frames,
    corregir legibilidad/contraste/motion/transiciones/motivos, commit por fix, bg-check 16/16.
 2. **Mismatches del SHOWCASE** (NO bugs de producción): el banco fuerza 1 estilo por marca para mostrar los
@@ -89,7 +100,21 @@ de la COMPOSICIÓN, no del color" y "el fondo debe HABLAR del rubro" -> ambos at
 5. **Mejora profunda futura**: composición por estilo también en escenas de CONTENIDO (no solo hero);
    más variedad/cobertura de motivos contextuales.
 
-## Commits recientes (orden)
+## Pasada "ASSERT SIGNATURE" de fondos (sesion mas reciente) — HECHO
+El problema raiz que marcaron 2 paneles de director: los 12 estilos estaban definidos pero los PINTORES DE
+FONDO eran demasiado tenues -> todo colapsaba a "dark/claro minimal generico" (la queja original del usuario:
+"siempre se usa un solo estilo"). Se reforzo la FIRMA de cada fondo sin romper legibilidad (12/12 legible,
+determinismo 16/16 en cada commit). Commits (orden): 42d7b23 motivo moda = pliegues de tela visibles ·
+17e2d2d fondos oscuros (cortinas aurora multi-hue, sunburst, speedlines+destellos, riso duotono, spotlight
+blanco-platino, mesh +alpha) · (light) ramas de tono CLARO para mesh/aurora + riso duotono claro · handmade
+con bg propio 'paper' (fibra+tinta+borde a mano) + typographic liderado por typeSlam · blueprint = AZUL
+tecnico real (lamina navy source-over + grilla cyan + cota) + brutalist con mas masa (slab 0.18 + bloque) ·
+retro70s = paleta CALIDA 70s (substrato crema/mostaza + rayos burnt-orange, light_p 0.85) + fix watermark
+del monograma que tapaba la lista en checklists (ahora chico en esquina) + meshflow claro mas contrastado.
+Resultado medido (panel r2): aurora 3.5->6 (ya lee), handmade 4.5->6.5, riso 5.5->7, platinum/brutalist +0.5,
+retro70s arreglado. La galeria (tools/out/brands-gallery.png) ya muestra variedad real entre los 12.
+
+## Commits recientes (orden, antes de esta sesion)
 e4b9d0d catálogo compartido + producción · 24d8dbb selector UI end-to-end · a4a4028 sport/retro/dedupe ·
 7ef26c9 sin emblem (todo type-led) · b5de66f motivos legibles + heartbeat persistente. (Y antes, todo el
 arco del motor: estilos de fondo, tono claro/oscuro, typeSlam, end-cards, etc.)
