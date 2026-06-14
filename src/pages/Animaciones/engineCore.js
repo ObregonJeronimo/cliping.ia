@@ -380,9 +380,11 @@ function _rgba(hex, a) {
   // CAPA CONTEXTUAL: motivo vectorial TENUE que evoca el rubro del link (no un gradiente generico). Detras
   // del contenido, baja opacidad, determinista por SEED + t. Esto hace que el fondo "hable" del dominio.
   function _drawMotif(rubro, t, pal) {
-    // mas presencia (antes casi invisible): el motivo del rubro tiene que LEERSE a un metro del telefono
-    const col = _rgba(pal[0], TONE === 'light' ? 0.2 : 0.26);
-    const col2 = _rgba(pal[0], TONE === 'light' ? 0.1 : 0.13);
+    // mas presencia + CONTRASTE: el color del motivo se aclara sobre fondo oscuro y se oscurece sobre claro
+    // (antes era el acento al mismo hue que el fondo -> invisible: verde/verde, rojo/rojo). Tiene que LEERSE.
+    const _mc = _accentInk(_resolveColor('accent'), 0.42);
+    const col = _rgba(_mc, TONE === 'light' ? 0.2 : 0.24);
+    const col2 = _rgba(_mc, TONE === 'light' ? 0.1 : 0.12);
     ctx.save();
     if (rubro === 'inmobiliaria') {
       const rnd = mulberry32((SEED || 1) ^ 0x5417); const baseY = H * 0.99; let x = -24;
@@ -401,10 +403,15 @@ function _rgba(hex, a) {
       ctx.stroke();
       ctx.fillStyle = col; for (let i = 0; i < n; i++) if (dp * (n - 1) >= i) { ctx.beginPath(); ctx.arc(pts[i][0], pts[i][1], 4.5, 0, TAU); ctx.fill(); }
     } else if (rubro === 'fitness') {
-      ctx.strokeStyle = col; ctx.lineWidth = 3.5; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-      const y = H * 0.7, endX = W * clamp((t * 0.55) % 1.5, 0, 1); ctx.beginPath(); ctx.moveTo(0, y);
-      for (const s of [[0.3, 0], [0.4, -8], [0.46, 64], [0.52, -94], [0.58, 18], [0.66, 0], [1, 0]]) { const px = W * s[0]; if (px > endX) break; ctx.lineTo(px, y + s[1]); }
+      // pulso/heartbeat PERSISTENTE (antes se ciclaba a casi cero y no se veia) + blip que lo recorre
+      ctx.strokeStyle = col; ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      const y = H * 0.72, seg = [[0, 0], [0.3, 0], [0.4, -10], [0.46, 72], [0.52, -104], [0.58, 22], [0.66, 0], [1, 0]];
+      ctx.beginPath(); ctx.moveTo(0, y);
+      for (const s of seg) ctx.lineTo(W * s[0], y + s[1]);
       ctx.stroke();
+      const bx = ((t * 0.22) % 1) * W;   // blip de luz que viaja por el pulso
+      let by = y; for (let k = 1; k < seg.length; k++) { if (W * seg[k][0] >= bx) { const f = (bx - W * seg[k - 1][0]) / Math.max(1, W * (seg[k][0] - seg[k - 1][0])); by = y + lerp(seg[k - 1][1], seg[k][1], f); break; } }
+      ctx.save(); ctx.globalAlpha *= 0.9; setShadow(col, 12, 0); ctx.fillStyle = _accentInk(_resolveColor('accent'), 0.5); ctx.beginPath(); ctx.arc(bx, by, 5, 0, TAU); ctx.fill(); noShadow(); ctx.restore();
     } else if (rubro === 'gastronomia') {
       ctx.strokeStyle = col; ctx.lineWidth = 3.5; ctx.lineCap = 'round';
       for (let i = 0; i < 3; i++) { const bx = W * (0.32 + i * 0.18); ctx.beginPath(); let first = true; for (let yy = H * 0.86; yy > H * 0.44; yy -= 7) { const xx = bx + Math.sin(yy * 0.045 + t * 1.1 + i * 1.7) * 17; if (first) { ctx.moveTo(xx, yy); first = false; } else ctx.lineTo(xx, yy); } ctx.stroke(); }
