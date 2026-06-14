@@ -68,10 +68,11 @@ function _rgba(hex, a) {
   const eOutCubic = t => 1 - Math.pow(1 - t, 3);
   const eInCubic = t => t * t * t;
   const eInOutCubic = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-  const eOutBack = (t, s = 1.7) => 1 + (s + 1) * Math.pow(t - 1, 3) + s * Math.pow(t - 1, 2);
-  const eOutElastic = t => (t === 0 || t === 1) ? t : Math.pow(2, -10 * t) * Math.sin((t - .075) * (2 * Math.PI) / .3) + 1;
+  const eOutBack = (t, s = 2.0) => 1 + (s + 1) * Math.pow(t - 1, 3) + s * Math.pow(t - 1, 2);   // overshoot mas vivo
+  const eOutElastic = t => (t === 0 || t === 1) ? t : Math.pow(2, -9 * t) * Math.sin((t - .1) * (2 * Math.PI) / .42) + 1;  // rebote mas lento/visible
   const smooth = t => t * t * (3 - 2 * t);
   const TAU = Math.PI * 2;
+  let _holdT = 0;   // tiempo CONTINUO de la escena actual (para idle-loops durante el hold; el dibujo base usa tFed congelado)
 
   // ---------- aleatoriedad SEMBRADA (determinista, reemplaza Math.random) ----------
   // mulberry32: PRNG rapido y determinista. Misma semilla => misma secuencia, en cada corrida
@@ -136,6 +137,13 @@ function _rgba(hex, a) {
     else if (h < 300) { r = x; b = c; } else { r = c; b = x; }
     const to = (v) => Math.round((v + m) * 255).toString(16).padStart(2, '0');
     return '#' + to(r) + to(g) + to(b);
+  }
+  // versión SATURADA del acento para el "dato que golpea" (numero de bigStat / CTA): asi en rubros
+  // desaturados (grafito / finanzas sobrio) el elemento estrella igual tiene fuerza cromatica, sin
+  // tocar el fondo sobrio del rubro.
+  function _accentPop(hex) {
+    const a = _hexToHsl(hex);
+    return _hslToHex(a.h, Math.max(a.s, 0.62), clamp(Math.max(a.l, 0.55), 0, 0.64));
   }
   // paleta multi-hue ANCLADA en el acento de marca (generica para cualquier rubro): brand + analogos
   // + contraste casi-complementario + tinte del tema. Da "zonas de color" tipo Canva, no un unico glow.
@@ -773,7 +781,14 @@ function _rgba(hex, a) {
       if (kr > 0) { ctx.save(); ctx.fillStyle = accent(cx - 30, 0, cx + 30, 0); ctx.beginPath(); ctx.roundRect(cx - 28 * kr, topY - lh * 0.5 - 30, 56 * kr, 5, 3); ctx.fill(); ctx.restore(); }
       drawLines(cx, 'center', false);
       const uStart = 0.16 + lines.length * 0.24 + 0.12, up = eInOutCubic(inv(t, uStart, uStart + 0.5));
-      if (up > 0) { const uy = topY + (lines.length - 1) * lh + fs * 0.72, half = Math.min(maxW, ctx.measureText(lines[lines.length - 1]).width) / 2 + 6; ctx.save(); ctx.fillStyle = accent(cx - half, uy, cx + half, uy); ctx.beginPath(); ctx.roundRect(cx - half, uy, half * 2 * up, 5, 3); ctx.fill(); ctx.restore(); }
+      if (up > 0) {
+        const uy = topY + (lines.length - 1) * lh + fs * 0.72, half = Math.min(maxW, ctx.measureText(lines[lines.length - 1]).width) / 2 + 6;
+        ctx.save(); ctx.fillStyle = accent(cx - half, uy, cx + half, uy); ctx.beginPath(); ctx.roundRect(cx - half, uy, half * 2 * up, 5, 3); ctx.fill(); ctx.restore();
+        if (up >= 0.99) {   // glint que recorre el subrayado durante la lectura -> el beat tipografico no queda inmovil
+          const gx = cx - half + (Math.sin(_holdT * 1.05) * 0.5 + 0.5) * (half * 2 - 30);
+          ctx.save(); ctx.globalAlpha *= 0.5; ctx.fillStyle = _rgba(_lighten(A1, 0.55), 0.7); ctx.beginPath(); ctx.roundRect(gx, uy, 30, 5, 3); ctx.fill(); ctx.restore();
+        }
+      }
     }
   }
 
@@ -788,13 +803,16 @@ function _rgba(hex, a) {
     const body = shown.toFixed(dec).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
     const num = (p.prefix || '') + body + (p.suffix || '');
     const pop = lerp(0.72, 1, eOutCubic(inv(t, 0.1, 0.6)));
+    const pulse = 1 + Math.sin(_holdT * 2.1) * 0.012;   // latido sutil del numero durante la lectura -> el dato no queda plano
     ctx.save();
     ctx.globalAlpha = inv(t, 0.05, 0.4);
-    ctx.translate(cx, cy); ctx.scale(pop, pop); ctx.translate(-cx, -cy);
+    ctx.translate(cx, cy); ctx.scale(pop * pulse, pop * pulse); ctx.translate(-cx, -cy);
     ctx.font = '800 92px "Inter",system-ui,sans-serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillStyle = accent(cx - 130, cy, cx + 130, cy);
-    ctx.fillText(num, cx, cy);
+    const ng = ctx.createLinearGradient(cx - 130, cy, cx + 130, cy);   // acento POP -> el numero golpea aunque el rubro sea sobrio
+    ng.addColorStop(0, _accentPop(A1)); ng.addColorStop(1, _accentPop(A2));
+    ctx.fillStyle = ng; setShadow(_rgba(_accentPop(A1), 0.35), 18, 2);
+    ctx.fillText(num, cx, cy); noShadow();
     ctx.restore();
     if (p.label) fxText(p.label, cx, cy + 84, 24, inv(t, 1.8, 2.3), 600, '#f2ebd9', W * 0.86);
   }
@@ -1227,8 +1245,10 @@ function _rgba(hex, a) {
       const z = Math.min(zin, zout);
       ctx.save();
       ctx.globalAlpha = a;
-      ctx.translate(W / 2, H / 2); ctx.scale(z, z); ctx.translate(-W / 2, -H / 2);
-      ctx.translate(0, Math.sin(t * 0.55 + i * 1.3) * 2.2);   // float continuo sutil -> el frame "respira" siempre
+      const breath = 1 + Math.sin(t * 1.05 + i * 0.7) * 0.006;   // respiracion continua de escala -> ningun frame queda 100% congelado
+      ctx.translate(W / 2, H / 2); ctx.scale(z * breath, z * breath); ctx.translate(-W / 2, -H / 2);
+      ctx.translate(0, Math.sin(t * 0.5 + i * 1.3) * 4.0);   // float continuo -> el frame "respira" durante toda la lectura
+      _holdT = local;   // expone el tiempo continuo de la escena (los drawers lo usan para latidos/shimmer durante el hold)
       drawer(tFed, sc);
       ctx.restore();
     });
@@ -1240,9 +1260,12 @@ function _rgba(hex, a) {
         const pw = W * 0.4, cxp = lerp(-pw, W + pw, eInOutCubic(wp)), fade = Math.sin(wp * Math.PI);
         ctx.save();
         const g = ctx.createLinearGradient(cxp - pw, 0, cxp + pw, 0);
-        g.addColorStop(0, _rgba(A1, 0)); g.addColorStop(0.7, _rgba(A1, 0.4 * fade)); g.addColorStop(1, _rgba(A2, 0.5 * fade));
+        g.addColorStop(0, _rgba(A1, 0)); g.addColorStop(0.7, _rgba(A1, 0.34 * fade)); g.addColorStop(1, _rgba(A2, 0.44 * fade));
         ctx.fillStyle = g; ctx.fillRect(cxp - pw, 0, pw * 2, H);
-        ctx.fillStyle = _rgba(_lighten(A1, 0.45), 0.7 * fade); ctx.fillRect(cxp + pw - 5, 0, 5, H);  // canto brillante = direccion del wipe
+        // canto del wipe DIFUMINADO (~26px) en vez de una linea dura de 5px -> el corte deja de leerse como tear/glitch
+        const eg = ctx.createLinearGradient(cxp + pw - 24, 0, cxp + pw + 6, 0);
+        eg.addColorStop(0, _rgba(_lighten(A1, 0.5), 0)); eg.addColorStop(0.72, _rgba(_lighten(A1, 0.5), 0.32 * fade)); eg.addColorStop(1, _rgba(_lighten(A1, 0.5), 0));
+        ctx.fillStyle = eg; ctx.fillRect(cxp + pw - 24, 0, 30, H);
         ctx.restore();
       }
     }
