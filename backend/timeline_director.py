@@ -617,6 +617,20 @@ contexto, NO uses bigStat. Si hay un PEDIDO DEL USUARIO, cumplilo SÍ O SÍ por 
     tl.setdefault("texture", _preset.get("bg_texture", "none"))   # identidad del fondo por rubro
     tl.setdefault("motif", _preset.get("rubro", ""))              # fondo CONTEXTUAL por rubro (skyline / sparkline / vapor / pulso / botanico)
     tl.setdefault("bgEnergy", _preset.get("bg_energy", 1.0))      # energia/velocidad del fondo por rubro
+    # ESTILO VISUAL: lo ELIGE el usuario (dna['styleId']) o se recomienda por rubro. Aplica la direccion de
+    # arte del catalogo compartido (bgStyle / tono / sombra / textura) -> el video toma el estilo elegido.
+    try:
+        import style_catalog as _sc
+        import random as _rnd
+        _rub = _preset.get("rubro", "default")
+        _sr = _rnd.Random((int(_preset.get("seed", 0)) ^ 0x5715) & 0xFFFFFFFF)
+        _sid = (dna.get("styleId") if isinstance(dna, dict) else None) or _sc.recommend_style(_rub, _sr)
+        if _sid in _sc.STYLE_PRESETS:
+            _ston = "light" if _sr.random() < _sc.STYLE_PRESETS[_sid]["light_p"] else "dark"
+            for _k, _v in _sc.style_fields(_sid, _ston).items():
+                tl[_k] = _v   # el estilo manda sobre los defaults de fondo/tono/textura
+    except Exception as _e:
+        print(f"[tl-director] estilo no aplicado ({_e})")
     if not tl.get("theme"):
         tl["theme"] = _preset["theme"]
     if not _bdna._hex_ok(str(tl.get("accent") or "")):
