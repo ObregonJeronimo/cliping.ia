@@ -47,10 +47,10 @@ def _shape_paint(accent, rubro, tone="dark"):
         # fondo claro: la forma debe ser saturada/oscura para contrastar (nada de aclararla)
         return _darken(accent, 0.14), (rubro in _SERENE)
     if rubro in _ENERGETIC:
-        return _lighten(accent, 0.12), False   # nitida y saturada
+        return _lighten(accent, 0.24), False   # nitida y mas clara -> separa de un fondo del mismo hue (Forja rojo/rojo)
     if rubro in _SERENE:
         return _lighten(accent, 0.42), True    # tenue y difusa
-    return _lighten(accent, 0.28), True
+    return _lighten(accent, 0.30), True
 
 # FX del hero por rubro: cantidad/tamano/velocidad de particulas y orbitas -> el MOVIMIENTO tambien distingue
 # marcas (fitness = enjambre rapido y denso; belleza = pocas y lentas; tech = regulares y veloces).
@@ -293,8 +293,12 @@ def generate(brand: str, industria: str, facts=None, seed: int = None) -> dict:
     # (salud/inmobiliaria) -> mas largas (respiracion). Asi el video no corre el mismo tempo en todos.
     energy = pre.get("bg_energy", 1.0)
     factor = max(0.78, min(1.22, 1.0 - (energy - 1.0) * 0.45))
-    for s in scenes:
-        s["durationInFrames"] = max(60, min(360, int(s.get("durationInFrames", 150) * factor)))
+    # RITMO con contraste: statements/dato punchy, hero respira -> el video no corre a tempo plano. Ademas
+    # el PRIMER beat arranca mas rapido (hook -> frena el scroll del publico objetivo del link).
+    _rhythm = {"statement": 0.9, "bigStat": 0.94, "scene": 1.06, "checklist": 1.0, "outro": 0.95}
+    for idx, s in enumerate(scenes):
+        m = factor * _rhythm.get(s.get("type"), 1.0) * (0.88 if idx == 0 else 1.0)
+        s["durationInFrames"] = max(60, min(360, int(s.get("durationInFrames", 150) * m)))
 
     return {
         "brand": brand, "accent": pre["accent"], "theme": pre["theme"], "seed": pre["seed"],

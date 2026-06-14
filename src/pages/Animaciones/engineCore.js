@@ -122,7 +122,7 @@ function _rgba(hex, a) {
   let TONE = 'dark', INK = '#fbf6ec', DIM = '#efe6d6';
   function setTone(n) {
     TONE = (n === 'light') ? 'light' : 'dark';
-    if (TONE === 'light') { INK = '#1c1510'; DIM = '#6b5e52'; }
+    if (TONE === 'light') { INK = '#1c1510'; DIM = '#564a3e'; }
     else { INK = '#fbf6ec'; DIM = '#efe6d6'; }
   }
   // acento legible como TEXTO/relleno-protagonico segun el tono del fondo (claro -> mas oscuro y saturado;
@@ -130,8 +130,11 @@ function _rgba(hex, a) {
   function _accentInk(hex, amt) {
     const a = _hexToHsl(hex || A1 || '#3aa0ff');
     if (TONE === 'light') return _hslToHex(a.h, Math.min(0.92, a.s + 0.12), Math.max(0.32, Math.min(a.l, 0.44)));
-    return _lighten(hex || A1, amt == null ? 0.55 : amt);
+    return _lighten(hex || A1, (amt == null ? 0.55 : amt) * 0.85);   // un punto menos pastel -> color mas rico (no "candy")
   }
+  // relleno/borde de cards y paneles segun el tono (blanco translucido en oscuro, negro translucido en claro)
+  function _panelFill() { return TONE === 'light' ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.10)'; }
+  function _panelStroke() { return TONE === 'light' ? 'rgba(0,0,0,0.13)' : 'rgba(255,255,255,0.20)'; }
   // HSL <-> hex (para construir una paleta MULTI-COLOR a partir del acento de marca)
   function _hexToHsl(hex) {
     let r = 0, g = 0, b = 0;
@@ -292,6 +295,14 @@ function _rgba(hex, a) {
     }
     ctx.restore();
   }
+  // GRANO DE FILM sobre TODO (animado y determinista por frame) -> mata el look "vector 2D limpio" y sube
+  // la percepcion premium (textura analogica). Determinista: misma (seed, frame) => mismo grano.
+  function _filmGrain(t) {
+    const fr = mulberry32(((SEED || 1) ^ (Math.floor(t * 24) * 0x9E3779B1)) >>> 0);
+    ctx.save(); ctx.globalAlpha = TONE === 'light' ? 0.045 : 0.052;
+    for (let i = 0; i < 260; i++) { ctx.fillStyle = fr() < 0.5 ? '#fff' : '#000'; ctx.fillRect(fr() * W, fr() * H, 1.2, 1.2); }
+    ctx.restore();
+  }
   // FONDO CLARO (editorial): crema con tinte del acento (multiply, no aditivo) + grano papel + viñeta sutil.
   // Mundo visual opuesto al oscuro -> mitad de las marcas se sienten de otra liga.
   function _bgLightFull(t) {
@@ -303,7 +314,7 @@ function _rgba(hex, a) {
     g.addColorStop(0, c0); g.addColorStop(1, c1);
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
     ctx.save(); ctx.globalCompositeOperation = 'multiply';
-    const spots = [[0.24, 0.28, pal[0], 0.30], [0.80, 0.70, pal[3], 0.22], [0.62, 0.16, pal[1], 0.18]];
+    const spots = [[0.24, 0.28, pal[0], 0.20], [0.80, 0.70, pal[3], 0.14], [0.62, 0.16, pal[1], 0.11]];
     for (let i = 0; i < spots.length; i++) {
       const s = spots[i];
       const cx = W * s[0] + Math.sin(t * 0.06 + i) * 20, cy = H * s[1] + Math.cos(t * 0.05 + i) * 16;
@@ -318,6 +329,7 @@ function _rgba(hex, a) {
     const v = ctx.createRadialGradient(W / 2, H * 0.46, H * 0.32, W / 2, H * 0.5, H * 0.82);
     v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(60,45,35,0.10)');
     ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+    _filmGrain(t);
   }
   function drawBg(t) {
     if (TONE === 'light') { _bgLightFull(t); return; }
@@ -368,6 +380,7 @@ function _rgba(hex, a) {
     const v = ctx.createRadialGradient(W / 2, H / 2, H * 0.30, W / 2, H / 2, H * 0.74);
     v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,0.4)');
     ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+    _filmGrain(t);
   }
 
   // ---------- iconos (paths vectoriales, dibujados al origen) ----------
@@ -720,7 +733,7 @@ function _rgba(hex, a) {
   // card (boxed, gastronomia/salud), plain (tech, sin caja + linea fina), editorial (moda/inmob/educ,
   // numero grande), bar-bold (fitness/finanzas, barra de acento que se llena). Cada uno con su ritmo.
   function _rowCard(label, x, y, i, t, d) {
-    ctx.fillStyle = 'rgba(255,255,255,0.085)'; ctx.strokeStyle = 'rgba(255,255,255,0.16)'; ctx.lineWidth = 1.5;
+    ctx.fillStyle = _panelFill(); ctx.strokeStyle = _panelStroke(); ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.roundRect(x, y - 24, 300, 48, 14); ctx.fill(); ctx.stroke();
     const ms = eOutBack(clamp(inv(t, d + 0.1, d + 0.5), 0, 1));
     ctx.save(); ctx.translate(x + 30, y); ctx.scale(ms, ms); _listMarker('check', i, t, d); ctx.restore();
@@ -760,7 +773,7 @@ function _rgba(hex, a) {
       const r = Math.floor(i / cols), c = i % cols, x = x0 + c * (cw + gx), y = y0 + r * (ch + gy), pop = eOutBack(clamp(rin, 0, 1));
       ctx.save(); ctx.globalAlpha *= clamp(rin * 1.5, 0, 1);
       ctx.translate(x + cw / 2, y + ch / 2); ctx.scale(pop, pop); ctx.translate(-(x + cw / 2), -(y + ch / 2));
-      ctx.fillStyle = 'rgba(255,255,255,0.085)'; ctx.strokeStyle = 'rgba(255,255,255,0.16)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.roundRect(x, y, cw, ch, 12); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = _panelFill(); ctx.strokeStyle = _panelStroke(); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.roundRect(x, y, cw, ch, 12); ctx.fill(); ctx.stroke();
       setShadow(_rgba(A1, 0.4), 10, 2); ctx.fillStyle = A1; ctx.beginPath(); ctx.arc(x + 18, y + 20, 6, 0, TAU); ctx.fill(); noShadow();
       ctx.font = `700 ${fitFont(label, 16, cw - 22, 12, 700)}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = INK; setShadow('rgba(0,0,0,0.5)', 4, 1);
       ctx.fillText(label, x + 14, y + ch - 22); noShadow();
@@ -935,7 +948,7 @@ function _rgba(hex, a) {
       const cx = W / 2, longest = Math.max.apply(null, lines.map(l => ctx.measureText(l).width));
       const pw = Math.min(W * 0.86, longest + 56), ph = lines.length * lh + 40, py = topY - lh * 0.5 - 20;
       const pp = eOutCubic(clamp(inv(t, 0.05, 0.55), 0, 1));
-      if (pp > 0) { ctx.save(); ctx.globalAlpha *= pp; ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.strokeStyle = 'rgba(255,255,255,0.10)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.roundRect(cx - pw / 2, py, pw, ph, 18); ctx.fill(); ctx.stroke(); ctx.fillStyle = accent(0, py, 0, py + ph); ctx.beginPath(); ctx.roundRect(cx - pw / 2, py, 6, ph, 3); ctx.fill(); ctx.restore(); }
+      if (pp > 0) { ctx.save(); ctx.globalAlpha *= pp; ctx.fillStyle = _panelFill(); ctx.strokeStyle = _panelStroke(); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.roundRect(cx - pw / 2, py, pw, ph, 18); ctx.fill(); ctx.stroke(); ctx.fillStyle = accent(0, py, 0, py + ph); ctx.beginPath(); ctx.roundRect(cx - pw / 2, py, 6, ph, 3); ctx.fill(); ctx.restore(); }
       drawLines(cx, 'center', false);
     } else {
       const cx = W / 2, kr = eOutBack(clamp(inv(t, 0.05, 0.5), 0, 1));
