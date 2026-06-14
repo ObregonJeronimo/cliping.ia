@@ -322,20 +322,34 @@ function _rgba(hex, a) {
   }
   // 'blueprint': plano tecnico -> grilla fina + lineas mayores + glow de acento. Lee "arquitectonico/serio".
   function _bgBlueprint(t, pal) {
+    // PLANO TECNICO: substrato azul + grilla CYAN + cota de dimension con ticks. El "blueprint" es AZUL por
+    // definicion -> antes la grilla heredaba el acento del rubro (gold/etc) y leia como cartel con grilla, no
+    // como plano. El rubro sigue presente via el motivo contextual + un glow de acento chico.
+    // source-over (no multiply): LAMINA navy translucida que RECOLOREA el base hacia azul (multiply solo
+    // oscurecia y el calido seguia dominando -> seguia leyendo marron). Recubre ~75% -> azul dominante.
     ctx.save();
-    ctx.strokeStyle = _rgba(pal[0], 0.13); ctx.lineWidth = 1;
+    const bw = ctx.createLinearGradient(0, 0, W * 0.35, H);
+    bw.addColorStop(0, 'rgba(13,46,84,0.78)'); bw.addColorStop(1, 'rgba(7,20,40,0.86)');
+    ctx.fillStyle = bw; ctx.fillRect(0, 0, W, H); ctx.restore();
+    const CY = '#5fd0ff';
+    ctx.save();
+    ctx.strokeStyle = _rgba(CY, 0.1); ctx.lineWidth = 1;
     const step = 34, off = (t * 4) % step; ctx.beginPath();
     for (let gx = -off; gx < W; gx += step) { ctx.moveTo(gx, 0); ctx.lineTo(gx, H); }
     for (let gy = -off; gy < H; gy += step) { ctx.moveTo(0, gy); ctx.lineTo(W, gy); }
     ctx.stroke();
-    ctx.strokeStyle = _rgba(pal[0], 0.24); ctx.lineWidth = 1.5; ctx.beginPath();
+    ctx.strokeStyle = _rgba(CY, 0.22); ctx.lineWidth = 1.4; ctx.beginPath();
     for (let gx = -off; gx < W; gx += step * 5) { ctx.moveTo(gx, 0); ctx.lineTo(gx, H); }
     for (let gy = -off; gy < H; gy += step * 5) { ctx.moveTo(0, gy); ctx.lineTo(W, gy); }
     ctx.stroke();
+    ctx.strokeStyle = _rgba(CY, 0.3); ctx.lineWidth = 1.2; const dy = H * 0.13; ctx.beginPath();
+    ctx.moveTo(W * 0.12, dy); ctx.lineTo(W * 0.52, dy);
+    ctx.moveTo(W * 0.12, dy - 6); ctx.lineTo(W * 0.12, dy + 6);
+    ctx.moveTo(W * 0.52, dy - 6); ctx.lineTo(W * 0.52, dy + 6); ctx.stroke();
     ctx.restore();
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
-    const gx2 = W * 0.7, gy2 = H * 0.3, gl = ctx.createRadialGradient(gx2, gy2, 0, gx2, gy2, H * 0.7);
-    gl.addColorStop(0, _rgba(pal[0], 0.18)); gl.addColorStop(1, _rgba(pal[0], 0));
+    const gx2 = W * 0.78, gy2 = H * 0.26, gl = ctx.createRadialGradient(gx2, gy2, 0, gx2, gy2, H * 0.5);
+    gl.addColorStop(0, _rgba(pal[0], 0.16)); gl.addColorStop(1, _rgba(pal[0], 0));
     ctx.fillStyle = gl; ctx.fillRect(0, 0, W, H); ctx.restore();
   }
   // 'brutalist': grafico crudo -> grilla gruesa + franja de acento solida a un borde (sin glow). Alto contraste.
@@ -346,9 +360,10 @@ function _rgba(hex, a) {
     for (let gx = 0; gx <= W; gx += step) { ctx.moveTo(gx, 0); ctx.lineTo(gx, H); }
     for (let gy = 0; gy <= H; gy += step) { ctx.moveTo(0, gy); ctx.lineTo(W, gy); }
     ctx.stroke();
-    const sw = W * 0.14;
-    ctx.fillStyle = _rgba(pal[0], 0.92); ctx.fillRect(0, 0, sw, H);   // franja de acento solida al borde izq
-    ctx.fillStyle = _rgba(pal[3], 0.9); ctx.fillRect(W - 10, 0, 10, H);
+    const sw = W * 0.18;   // slab MAS ancho (masa cruda brutalist) - antes 0.14 leia como SaaS minimal
+    ctx.fillStyle = _rgba(pal[0], 0.95); ctx.fillRect(0, 0, sw, H);   // franja de acento solida al borde izq
+    ctx.fillStyle = _rgba(pal[3], 0.92); ctx.fillRect(W - 14, 0, 14, H);
+    ctx.fillStyle = _rgba(pal[3], 0.85); ctx.fillRect(W - W * 0.26, H - H * 0.09, W * 0.26, H * 0.09);   // bloque duro inf-der
     ctx.restore();
   }
   // 'sunburst': retro -> rayos radiales calidos que rotan lento desde un punto alto.
