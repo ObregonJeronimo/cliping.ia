@@ -1606,7 +1606,8 @@ function _rgba(hex, a) {
     // FIRMA AMBIENTAL: la forma firma de la marca persiste como marca de agua viva (a la deriva, en la
     // esquina OPUESTA al texto -> tambien hace contrapeso compositivo) durante el bloque de contenido
     // (statement/checklist). Asi la identidad NO se muere a mitad del reel. Se dibuja DETRAS del contenido.
-    if (tl.signatureForm) {
+    const _mono = (tl.brand || '').trim().charAt(0).toUpperCase();
+    if (_mono) {
       const _wac = _accentInk(_resolveColor('accent'), 0.12);   // tone-aware: claro->oscurece, oscuro->aclara
       const _lAcc = _hexToHsl(_wac).l, _lBg = TONE === 'light' ? 0.92 : _hexToHsl((BG && BG[0]) ? BG[0] : '#223040').l;
       const _wAlpha = lerp(0.30, 0.17, clamp(Math.abs(_lAcc - _lBg) / 0.34, 0, 1));   // bajo contraste con el fondo -> mas alpha (legible sobre fondos claros / verde-sobre-verde)
@@ -1621,9 +1622,9 @@ function _rgba(hex, a) {
         const leftAnch = sc.listAnchor === 'left' || sc.stmtStyle === 'left';
         const mx = leftAnch ? W - 86 : 86, my = H - 178;   // dentro del safe-area (radio 58 + jitter 6 no sangra) y mas arriba (no pisa el CTA del outro)
         ctx.save(); ctx.globalAlpha = aa;
-        ctx.translate(mx + Math.sin(t * 0.4 + _wph) * 6, my + Math.cos(t * 0.33 + _wph) * 6); ctx.rotate(Math.sin(t * 0.25 + _wph) * 0.16);   // vaiven suave sembrado -> silueta firma reconocible, gesto propio por marca
-        setShadow(_rgba(_wac, 0.5), 16, 0);
-        ctx.fillStyle = _wac; _smoothPath(_resample(_formPoints(tl.signatureForm, 58), 48)); ctx.fill(); noShadow();
+        ctx.translate(mx + Math.sin(t * 0.4 + _wph) * 6, my + Math.cos(t * 0.33 + _wph) * 6); ctx.rotate(Math.sin(t * 0.25 + _wph) * 0.05);   // vaiven minimo (un letra no se inclina mucho)
+        ctx.font = '800 168px "Inter",system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        setShadow(_rgba(_wac, 0.4), 14, 0); ctx.fillStyle = _wac; ctx.fillText(_mono, 0, 0); noShadow();   // MONOGRAMA: inicial de la marca como marca de agua (mas de marca que una figura)
         ctx.restore();
       }
     }
