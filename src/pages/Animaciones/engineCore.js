@@ -446,6 +446,39 @@ function _rgba(hex, a) {
       ctx.fillStyle = gl; ctx.fillRect(0, 0, W, H);
     }
     ctx.restore();
+    // tratamiento estructural del ESTILO adaptado a tono CLARO (grilla / franja / rayos / lineas / puntos)
+    // -> los estilos claros (swiss, handmade, brutalist-claro, etc.) dejan de compartir el mismo fondo.
+    const aink = _accentInk(pal[0], 0.5);
+    if (BG_STYLE === 'blueprint' || BG_STYLE === 'swiss') {
+      ctx.save(); ctx.strokeStyle = 'rgba(20,16,12,0.07)'; ctx.lineWidth = 1;
+      const step = 34, off = (t * 4) % step; ctx.beginPath();
+      for (let gx = -off; gx < W; gx += step) { ctx.moveTo(gx, 0); ctx.lineTo(gx, H); }
+      for (let gy = -off; gy < H; gy += step) { ctx.moveTo(0, gy); ctx.lineTo(W, gy); }
+      ctx.stroke();
+      ctx.strokeStyle = _rgba(aink, 0.18); ctx.lineWidth = 1.4; ctx.beginPath();
+      for (let gx = -off; gx < W; gx += step * 5) { ctx.moveTo(gx, 0); ctx.lineTo(gx, H); }
+      for (let gy = -off; gy < H; gy += step * 5) { ctx.moveTo(0, gy); ctx.lineTo(W, gy); }
+      ctx.stroke(); ctx.restore();
+    } else if (BG_STYLE === 'brutalist') {
+      ctx.save(); ctx.fillStyle = _rgba(aink, 0.92); ctx.fillRect(0, 0, W * 0.13, H);
+      ctx.strokeStyle = 'rgba(20,16,12,0.08)'; ctx.lineWidth = 2; const step = 60; ctx.beginPath();
+      for (let gx = 0; gx <= W; gx += step) { ctx.moveTo(gx, 0); ctx.lineTo(gx, H); }
+      for (let gy = 0; gy <= H; gy += step) { ctx.moveTo(0, gy); ctx.lineTo(W, gy); }
+      ctx.stroke(); ctx.restore();
+    } else if (BG_STYLE === 'sunburst') {
+      ctx.save(); ctx.globalCompositeOperation = 'multiply'; const cx2 = W * 0.5, cy2 = H * 0.26, rays = 20, rot = t * 0.035;
+      for (let i = 0; i < rays; i += 2) { const a = rot + i / rays * TAU; ctx.fillStyle = _rgba(pal[i % 2 ? 1 : 0], 0.06); ctx.beginPath(); ctx.moveTo(cx2, cy2); ctx.lineTo(cx2 + Math.cos(a - 0.075) * H * 1.3, cy2 + Math.sin(a - 0.075) * H * 1.3); ctx.lineTo(cx2 + Math.cos(a + 0.075) * H * 1.3, cy2 + Math.sin(a + 0.075) * H * 1.3); ctx.closePath(); ctx.fill(); }
+      ctx.restore();
+    } else if (BG_STYLE === 'speedlines') {
+      const rnd = mulberry32((SEED || 1) ^ 0x59ED); ctx.save(); ctx.lineCap = 'round'; const n = 16, ang = -0.34, span = H * 1.7;
+      for (let i = 0; i < n; i++) { const base = rnd(), y = -H * 0.35 + ((base * span + t * 150) % span), x = rnd() * W, len = lerp(50, 260, rnd()); ctx.globalAlpha = 0.1 + 0.26 * rnd(); ctx.lineWidth = 2 + rnd() * 3; ctx.strokeStyle = aink; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(ang) * len, y + Math.sin(ang) * len); ctx.stroke(); }
+      ctx.restore();
+    } else if (BG_STYLE === 'halftone') {
+      ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = _rgba(pal[0], 0.3);
+      const step = 13, drift = (t * 5) % step, fx = W * 0.35, fy = H * 0.34;
+      for (let gy = -drift; gy < H + step; gy += step) for (let gx = -drift; gx < W + step; gx += step) { const d = Math.hypot(gx - fx, gy - fy) / H, r = clamp(3.1 * (1 - d), 0.4, 3.1); ctx.beginPath(); ctx.arc(gx, gy, r, 0, TAU); ctx.fill(); }
+      ctx.restore();
+    }
     ctx.save();
     for (const gp of grain) { ctx.globalAlpha = Math.min(0.05, (gp.a || 0.06) * 0.6); ctx.fillStyle = '#1c130c'; ctx.fillRect(gp.x, gp.y, gp.r || 1.3, gp.r || 1.3); }
     ctx.restore();

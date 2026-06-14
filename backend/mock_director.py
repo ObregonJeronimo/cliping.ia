@@ -328,7 +328,7 @@ STYLE_PRESETS = {
     "blueprint":   {"nombre": "Blueprint", "bg": "blueprint", "light_p": 0.12, "shadow": "soft", "tex": "grid",
                     "comps": ["typeStack", "sideLeft", "typeSlam"], "stmt": ["editorial", "left"], "list": "number", "grid_p": 0.0,
                     "outro": ["bigtype", "diagonal", "left"], "rhythm": _RH_MED, "structs": _ST_FULL},
-    "swiss":       {"nombre": "Swiss / Grid", "bg": "mesh", "light_p": 0.92, "shadow": "soft", "tex": "grid",
+    "swiss":       {"nombre": "Swiss / Grid", "bg": "blueprint", "light_p": 0.92, "shadow": "soft", "tex": "grid",
                     "comps": ["typeStack", "typeOnly", "sideLeft"], "stmt": ["centered", "panel"], "list": "dash", "grid_p": 0.5,
                     "outro": ["left", "diagonal", "center"], "rhythm": _RH_MED, "structs": _ST_FULL},
     "platinum":    {"nombre": "Platinum Linear", "bg": "spotlight", "light_p": 0.08, "shadow": "soft", "tex": "grid",
