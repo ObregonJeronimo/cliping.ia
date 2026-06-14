@@ -328,7 +328,7 @@ def _norm_scene_elements(s: dict, dur_frames: int) -> list:
             if el.get("blur"):
                 nel["blur"] = True
         elif kind == "particles":
-            for f in ("count", "spread", "dotR"):
+            for f in ("count", "spread", "dotR", "phase"):
                 if f in el:
                     try:
                         nel[f] = float(el[f])

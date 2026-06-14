@@ -650,8 +650,8 @@ function _rgba(hex, a) {
       const _bn = p.brand || '', fs = fitFont(_bn, size || 56, W * 0.82, 28, 800), top = wy - fs * 0.62, bot = wy + fs * 0.62;
       ctx.save(); ctx.globalAlpha *= bn; ctx.font = `800 ${fs}px "Inter",system-ui,sans-serif`;
       ctx.textAlign = align; ctx.textBaseline = 'middle';
-      const wg = ctx.createLinearGradient(wx - 130, top, wx + 130, bot); wg.addColorStop(0, _lighten(A1, 0.5)); wg.addColorStop(1, _lighten(A2, 0.38));
-      ctx.fillStyle = wg; setShadow('rgba(0,0,0,0.42)', 7, 1);   // aclarado + sombra -> legible sobre el mismo color
+      const wg = ctx.createLinearGradient(wx - 130, top, wx + 130, bot); wg.addColorStop(0, _lighten(A1, 0.62)); wg.addColorStop(1, _lighten(A2, 0.5));
+      ctx.fillStyle = wg; setShadow('rgba(0,0,0,0.5)', 8, 1);   // aclarado + sombra -> legible sobre el mismo color (Aura/Trama)
       ctx.fillText(_bn, wx, wy + (1 - bn) * 16); noShadow(); ctx.restore();
     }
     function accentBar(bx, byy, bw0, align) {
@@ -1069,7 +1069,7 @@ function _rgba(hex, a) {
       } else if (kind === 'particles') {
         const n = Math.max(1, el.count || 10), prog = clamp(_num(keys, t, 'burst', clamp(t, 0, 1)), 0, 1);
         ctx.translate(x, y);
-        for (let i = 0; i < n; i++) { const a = (i / n) * TAU, d = lerp(10, el.spread || 90, eOutCubic(prog)); ctx.globalAlpha = op * (1 - prog) * 0.9; ctx.fillStyle = i % 2 ? A2 : A1; ctx.beginPath(); ctx.arc(Math.cos(a) * d, Math.sin(a) * d, el.dotR || 3, 0, TAU); ctx.fill(); }
+        for (let i = 0; i < n; i++) { const a = (i / n) * TAU + (el.phase || 0), d = lerp(10, el.spread || 90, eOutCubic(prog)) * (0.7 + 0.6 * ((i * 2654435761 % 97) / 97)); ctx.globalAlpha = op * (1 - prog) * 0.9; ctx.fillStyle = i % 2 ? A2 : A1; ctx.beginPath(); ctx.arc(Math.cos(a) * d, Math.sin(a) * d, el.dotR || 3, 0, TAU); ctx.fill(); }
       } else if (kind === 'orbit') {
         // satelites que ORBITAN el centro (x,y) -> da complejidad y vida al hero. ry<1 = orbita eliptica.
         const n = Math.max(1, el.count || 3), rr = el.r || 120, sp = el.speed || 1.1, ph = el.phase || 0;
@@ -1213,6 +1213,20 @@ function _rgba(hex, a) {
       drawer(tFed, sc);
       ctx.restore();
     });
+    // TRANSICION encadenada: en cada corte BARRE un panel suave de acento (cubre el cross-fade ->
+    // el cambio de escena se siente como un swipe, no como un corte seco). Semitransparente.
+    for (let i = 0; i < _scenes.length - 1; i++) {
+      const wp = inv(t, _scenes[i].e - 0.12, _scenes[i].e + 0.34);
+      if (wp > 0 && wp < 1) {
+        const pw = W * 0.4, cxp = lerp(-pw, W + pw, eInOutCubic(wp)), fade = Math.sin(wp * Math.PI);
+        ctx.save();
+        const g = ctx.createLinearGradient(cxp - pw, 0, cxp + pw, 0);
+        g.addColorStop(0, _rgba(A1, 0)); g.addColorStop(0.7, _rgba(A1, 0.4 * fade)); g.addColorStop(1, _rgba(A2, 0.5 * fade));
+        ctx.fillStyle = g; ctx.fillRect(cxp - pw, 0, pw * 2, H);
+        ctx.fillStyle = _rgba(_lighten(A1, 0.45), 0.7 * fade); ctx.fillRect(cxp + pw - 5, 0, 5, H);  // canto brillante = direccion del wipe
+        ctx.restore();
+      }
+    }
   }
 
   function timelineDuration(timeline) {

@@ -139,7 +139,7 @@ def _hero_scene(brand, rubro, accent_light, rnd, comp):
             {"t": 5.6, "form": f1, "r": sr, "opacity": sop, "x": sx, "y": sy, "rot": 6, "ease": "inOutCubic"},
             {"t": 7.0, "form": f1, "r": round(sr * 1.05, 1), "opacity": sop, "x": sx, "y": sy, "rot": 16, "ease": "inOutCubic"},
         ]},
-        {"kind": "particles", "count": 16, "spread": round(sr * 1.5, 1), "keys": [
+        {"kind": "particles", "count": 16, "spread": round(sr * 1.5, 1), "phase": round(rnd.uniform(0, 6.28), 2), "keys": [
             {"t": 1.2, "x": sx, "y": sy, "burst": 0}, {"t": 2.1, "x": sx, "y": sy, "burst": 1}]},
         {"kind": "text", "text": brand, "fill": "ink", "size": L["nsz"], "weight": 800, "align": L["al"], "maxW": 368, "kinetic": True, "keys": [
             {"t": ns, "opacity": 1, "x": L["nx"], "y": L["ny"]}]},
