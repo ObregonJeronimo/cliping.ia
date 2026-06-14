@@ -152,17 +152,20 @@ HERO_COMP = {
     "educacion": ["typeSlam", "cornerAnchor", "typeHero"], "finanzas": ["sideLeft", "typeSlam", "topAnchor"],
     "belleza": ["shapeBehind", "cornerAnchor", "topAnchor"], "default": ["emblem", "typeSlam", "diagonal"],
 }
+# shape: lead = forma protagonista (solo rubros donde encaja) | accent = marca chica | none = SOLO tipografia
+# (una regla de acento ancla el titular, sin figura geometrica). El default del sistema es type-led.
 _HERO_LAYOUT = {
-    "emblem":       dict(sx=202, sy=286, sr=108, nx=202, ny=486, nsz=52, al="center", bx=202, by=522, sop=1.0, orb=True,  ns=2.0, maxW=348),
-    "sideLeft":     dict(sx=112, sy=322, sr=82,  nx=212, ny=300, nsz=46, al="left",   bx=212, by=350, sop=1.0, orb=False, ns=2.0, maxW=178),
-    "typeHero":     dict(sx=150, sy=232, sr=54,  nx=202, ny=330, nsz=80, al="center", bx=202, by=408, sop=1.0, orb=True,  ns=1.3, maxW=372),
-    "shapeBehind":  dict(sx=250, sy=288, sr=150, nx=176, ny=372, nsz=56, al="left",   bx=176, by=452, sop=0.5, orb=False, ns=2.0, maxW=210),
-    "topAnchor":    dict(sx=202, sy=224, sr=92,  nx=202, ny=486, nsz=52, al="center", bx=202, by=522, sop=1.0, orb=True,  ns=2.2, maxW=348),
-    "cornerAnchor": dict(sx=318, sy=150, sr=60,  nx=44,  ny=470, nsz=58, al="left",   bx=44,  by=512, sop=1.0, orb=True,  ns=1.8, maxW=320),
-    "diagonal":     dict(sx=104, sy=540, sr=104, nx=360, ny=250, nsz=52, al="right",  bx=360, by=300, sop=1.0, orb=True,  ns=1.8, maxW=300),
-    # typeSlam: NOMBRE gigante protagonista, la forma reducida a un acento minimo arriba (no figurita
-    # flotante de stock) -> tipografia como heroe, look editorial premium.
-    "typeSlam":     dict(sx=330, sy=140, sr=22,  nx=202, ny=372, nsz=104, al="center", bx=202, by=470, sop=1.0, orb=False, ns=0.85, maxW=384),
+    "emblem":       dict(sx=202, sy=286, sr=108, nx=202, ny=486, nsz=52, al="center", bx=202, by=522, sop=1.0, orb=True,  ns=2.0, maxW=348, shape="lead"),
+    "sideLeft":     dict(sx=112, sy=322, sr=82,  nx=212, ny=300, nsz=46, al="left",   bx=212, by=350, sop=1.0, orb=False, ns=2.0, maxW=178, shape="lead"),
+    "typeHero":     dict(sx=150, sy=232, sr=54,  nx=202, ny=330, nsz=80, al="center", bx=202, by=408, sop=1.0, orb=True,  ns=1.3, maxW=372, shape="accent"),
+    "shapeBehind":  dict(sx=250, sy=288, sr=150, nx=176, ny=372, nsz=56, al="left",   bx=176, by=452, sop=0.5, orb=False, ns=2.0, maxW=210, shape="lead"),
+    "topAnchor":    dict(sx=202, sy=224, sr=92,  nx=202, ny=486, nsz=52, al="center", bx=202, by=522, sop=1.0, orb=True,  ns=2.2, maxW=348, shape="lead"),
+    "cornerAnchor": dict(sx=318, sy=150, sr=58,  nx=44,  ny=470, nsz=58, al="left",   bx=44,  by=512, sop=1.0, orb=True,  ns=1.8, maxW=320, shape="accent"),
+    "diagonal":     dict(sx=104, sy=540, sr=104, nx=360, ny=250, nsz=52, al="right",  bx=360, by=300, sop=1.0, orb=True,  ns=1.8, maxW=300, shape="lead"),
+    "typeSlam":     dict(sx=330, sy=140, sr=22,  nx=202, ny=372, nsz=104, al="center", bx=202, by=470, sop=1.0, orb=False, ns=0.85, maxW=384, shape="accent"),
+    # TYPE-LED puros: la marca/titular es el heroe, CERO figura; una regla de acento lo ancla.
+    "typeStack":    dict(sx=0, sy=0, sr=0, nx=40,  ny=318, nsz=86, al="left",   bx=40,  by=392, sop=0, orb=False, ns=0.7, maxW=336, shape="none"),
+    "typeOnly":     dict(sx=0, sy=0, sr=0, nx=202, ny=336, nsz=94, al="center", bx=202, by=414, sop=0, orb=False, ns=0.7, maxW=384, shape="none"),
 }
 # El frame de cierre (outro) hereda la personalidad del hero: cada composicion su CTA.
 _OUTRO_BY_COMP = {"emblem": "center", "sideLeft": "left", "typeHero": "bigtype", "shapeBehind": "center",
@@ -177,30 +180,40 @@ def _hero_scene(brand, rubro, accent_light, rnd, comp, blur, f1, f2):
     ease_in = rnd.choice(["outBack", "outElastic"])
     sub = "  ".join(rnd.choice(SUBTITLES.get(rubro, SUBTITLES["default"])))
     L = _HERO_LAYOUT[comp]
-    # jitter determinista de la posicion de la forma (+-16px) -> dos marcas con el mismo comp no calcan el frame
-    jx, jy = rnd.randint(-16, 16), rnd.randint(-16, 16)
+    shape_mode = L.get("shape", "lead")
+    jx, jy = rnd.randint(-14, 14), rnd.randint(-14, 14)
     sx, sy, sr, sop, ns = L["sx"] + jx, L["sy"] + jy, L["sr"], L["sop"], L["ns"]
-    els = [
-        {"kind": "morph", "fill": accent_light, "blur": blur, "keys": [
-            {"t": 0.0, "form": "circle", "r": round(sr * 0.1, 1), "opacity": 0, "x": sx, "y": sy},
-            {"t": 0.42, "form": f1, "r": round(sr * 0.52, 1), "opacity": sop, "x": sx, "y": sy, "ease": ease_in},
-            {"t": 1.1, "form": f2, "r": round(sr * 0.84, 1), "opacity": sop, "x": sx, "y": sy, "rot": 7, "ease": "inOutCubic"},
-            {"t": 2.0, "form": f1, "r": round(sr * 0.96, 1), "opacity": sop, "x": sx, "y": sy, "rot": -6, "ease": "inOutCubic"},
-            {"t": 3.2, "form": f1, "r": sr, "opacity": sop, "x": sx, "y": sy, "rot": -11, "ease": "inOutCubic"},
-            {"t": 4.6, "form": f1, "r": round(sr * 1.07, 1), "opacity": sop, "x": sx, "y": sy, "rot": 2, "ease": "inOutCubic"},
-            {"t": 7.0, "form": f1, "r": sr, "opacity": sop, "x": sx, "y": sy, "rot": 13, "ease": "inOutCubic"},
-        ]},
-        {"kind": "particles", "count": fx["pc"], "spread": round(sr * fx["ps"], 1), "phase": round(rnd.uniform(0, 6.28), 2), "dotR": fx["dr"], "keys": [
-            {"t": 1.2, "x": sx, "y": sy, "burst": 0}, {"t": 2.1, "x": sx, "y": sy, "burst": 1}]},
-        {"kind": "text", "text": brand, "fill": "ink", "size": L["nsz"], "weight": 800, "align": L["al"], "maxW": L.get("maxW", 348), "kinetic": True, "keys": [
-            {"t": ns, "opacity": 1, "x": L["nx"], "y": L["ny"]}]},
-        {"kind": "text", "text": sub, "fill": "dim", "size": max(20, min(30, round(L["nsz"] * 0.42))), "weight": 600, "align": L["al"], "maxW": min(300, L.get("maxW", 300)), "keys": [
-            {"t": ns + 0.9, "opacity": 0, "x": L["bx"], "y": L["by"] + 14},
-            {"t": ns + 1.4, "opacity": 1, "x": L["bx"], "y": L["by"], "ease": "outCubic"}]},
-    ]
-    if L["orb"]:
-        els.insert(1, {"kind": "orbit", "count": fx["od"], "r": round(sr * 1.42, 1), "speed": fx["osp"], "fill": "accent2", "dotR": max(5, fx["dr"] + 2), "keys": [
-            {"t": 1.6, "x": sx, "y": sy, "opacity": 0}, {"t": 2.3, "x": sx, "y": sy, "opacity": 0.9, "ease": "outCubic"}]})
+    els = []
+    if shape_mode != "none":
+        # forma firma: protagonista (lead) o acento chico (accent). NUNCA en los heros type-led.
+        rmul = 1.0 if shape_mode == "lead" else 0.82
+        els.append({"kind": "morph", "fill": accent_light, "blur": blur, "keys": [
+            {"t": 0.0, "form": "circle", "r": round(sr * 0.1 * rmul, 1), "opacity": 0, "x": sx, "y": sy},
+            {"t": 0.42, "form": f1, "r": round(sr * 0.52 * rmul, 1), "opacity": sop, "x": sx, "y": sy, "ease": ease_in},
+            {"t": 1.1, "form": f2, "r": round(sr * 0.84 * rmul, 1), "opacity": sop, "x": sx, "y": sy, "rot": 7, "ease": "inOutCubic"},
+            {"t": 2.0, "form": f1, "r": round(sr * 0.96 * rmul, 1), "opacity": sop, "x": sx, "y": sy, "rot": -6, "ease": "inOutCubic"},
+            {"t": 3.2, "form": f1, "r": round(sr * rmul, 1), "opacity": sop, "x": sx, "y": sy, "rot": -11, "ease": "inOutCubic"},
+            {"t": 4.6, "form": f1, "r": round(sr * 1.07 * rmul, 1), "opacity": sop, "x": sx, "y": sy, "rot": 2, "ease": "inOutCubic"},
+            {"t": 7.0, "form": f1, "r": round(sr * rmul, 1), "opacity": sop, "x": sx, "y": sy, "rot": 13, "ease": "inOutCubic"},
+        ]})
+        if shape_mode == "lead":
+            els.append({"kind": "particles", "count": fx["pc"], "spread": round(sr * fx["ps"], 1), "phase": round(rnd.uniform(0, 6.28), 2), "dotR": fx["dr"], "keys": [
+                {"t": 1.2, "x": sx, "y": sy, "burst": 0}, {"t": 2.1, "x": sx, "y": sy, "burst": 1}]})
+            if L["orb"]:
+                els.append({"kind": "orbit", "count": fx["od"], "r": round(sr * 1.42, 1), "speed": fx["osp"], "fill": "accent2", "dotR": max(5, fx["dr"] + 2), "keys": [
+                    {"t": 1.6, "x": sx, "y": sy, "opacity": 0}, {"t": 2.3, "x": sx, "y": sy, "opacity": 0.9, "ease": "outCubic"}]})
+    else:
+        # TYPE-LED: una REGLA de acento que crece ancla el titular (reemplaza a la figura geometrica)
+        ruy = L["ny"] - round(L["nsz"] * 0.72)
+        rcx = L["nx"] + (37 if L["al"] == "center" else 37)
+        els.append({"kind": "shape", "fill": "accent", "glow": False, "keys": [
+            {"t": ns - 0.05, "w": 0, "h": 6, "r": 3, "x": rcx, "y": ruy, "opacity": 0},
+            {"t": ns + 0.4, "w": 74, "h": 6, "r": 3, "x": rcx, "y": ruy, "opacity": 1, "ease": "outCubic"}]})
+    els.append({"kind": "text", "text": brand, "fill": "ink", "size": L["nsz"], "weight": 800, "align": L["al"], "maxW": L.get("maxW", 348), "kinetic": True, "keys": [
+        {"t": ns, "opacity": 1, "x": L["nx"], "y": L["ny"]}]})
+    els.append({"kind": "text", "text": sub, "fill": "dim", "size": max(20, min(30, round(L["nsz"] * 0.42))), "weight": 600, "align": L["al"], "maxW": min(300, L.get("maxW", 300)), "keys": [
+        {"t": ns + 0.9, "opacity": 0, "x": L["bx"], "y": L["by"] + 14},
+        {"t": ns + 1.4, "opacity": 1, "x": L["bx"], "y": L["by"], "ease": "outCubic"}]})
     return {"type": "scene", "durationInFrames": 210, "elements": els, "comp": comp}
 
 
@@ -259,22 +272,22 @@ RUBRO_STRUCT = {
 #   clean      -> minimal tipo Linear/Vercel: balanceado, medido, cualquier tono
 #   expressive -> organico/belleza: capas suaves, claro, fluido
 ARCHETYPES = {
-    "editorial":  {"comps": ["typeSlam", "sideLeft", "cornerAnchor"], "stmt": ["editorial"],
+    "editorial":  {"comps": ["typeStack", "typeSlam", "typeOnly"], "stmt": ["editorial"],
                    "list_style": "number", "grid_p": 0.0, "light_p": 0.55, "bg_dark": ["spotlight", "field", "mesh"], "bg_light": ["field", "aurora", "mesh"],
                    "tex": "lines", "rhythm": {"scene": 1.12, "statement": 0.96, "checklist": 1.0, "bigStat": 0.96, "outro": 1.0},
                    "structs": [["hero", "statement", "outro"], ["statement", "hero", "outro"],
                                ["hero", "statement", "checklist", "outro"], ["statement", "statement", "hero", "outro"]]},
-    "bold":       {"comps": ["typeSlam", "typeHero", "diagonal"], "stmt": ["editorial", "centered"],
+    "bold":       {"comps": ["typeSlam", "typeOnly", "typeStack"], "stmt": ["editorial", "centered"],
                    "list_style": "bar", "grid_p": 0.0, "light_p": 0.12, "bg_dark": ["spotlight", "bands"], "bg_light": ["bands", "field"],
                    "tex": "grain2", "rhythm": {"scene": 0.96, "statement": 0.82, "checklist": 0.86, "bigStat": 0.85, "outro": 0.9},
                    "structs": [["statement", "hero", "outro"], ["hero", "statement", "outro"],
                                ["statement", "statement", "outro"], ["hero", "checklist", "outro"]]},
-    "clean":      {"comps": ["emblem", "sideLeft", "topAnchor"], "stmt": ["centered", "panel"],
+    "clean":      {"comps": ["typeStack", "typeOnly", "sideLeft"], "stmt": ["centered", "panel"],
                    "list_style": "dash", "grid_p": 0.4, "light_p": 0.45, "bg_dark": ["mesh", "field"], "bg_light": ["mesh", "field"],
                    "tex": "grid", "rhythm": {"scene": 1.0, "statement": 1.0, "checklist": 1.0, "bigStat": 1.0, "outro": 1.0},
                    "structs": [["hero", "statement", "checklist", "outro"], ["hero", "checklist", "outro"],
                                ["statement", "hero", "checklist", "outro"], ["hero", "statement", "outro"]]},
-    "expressive": {"comps": ["shapeBehind", "cornerAnchor", "topAnchor"], "stmt": ["quote", "panel"],
+    "expressive": {"comps": ["shapeBehind", "cornerAnchor", "typeStack"], "stmt": ["quote", "panel"],
                    "list_style": "check", "grid_p": 0.3, "light_p": 0.78, "bg_dark": ["aurora", "field"], "bg_light": ["aurora", "field"],
                    "tex": "grain", "rhythm": {"scene": 1.1, "statement": 1.06, "checklist": 1.04, "bigStat": 1.0, "outro": 1.05},
                    "structs": [["hero", "statement", "outro"], ["statement", "hero", "outro"],
@@ -322,7 +335,7 @@ def generate(brand: str, industria: str, facts=None, seed: int = None) -> dict:
     forms = st["forms"][:]
     rnd.shuffle(forms)
     f1, f2 = forms[0], (forms[1] if len(forms) > 1 else forms[0])
-    left_anchored = comp in ("sideLeft", "cornerAnchor")
+    left_anchored = comp in ("sideLeft", "cornerAnchor", "typeStack")
     # statement: lo manda el arquetipo; si el hero es de columna izquierda y el arquetipo no trae 'editorial',
     # usar 'left' para mantener la columna.
     if left_anchored and "editorial" not in A["stmt"]:
