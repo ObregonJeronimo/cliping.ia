@@ -395,6 +395,8 @@ def generate(brand: str, industria: str, facts=None, seed: int = None) -> dict:
         "archetype": arche_name,
         "bgStyle": bg_style,
         "tone": tone,
+        # MOTIVO contextual del fondo segun el rubro (skyline / sparkline / vapor / pulso / botanico...)
+        "motif": rubro,
         # forma FIRMA de la marca -> el motor la persiste como marca de agua viva en las escenas de contenido
         "signatureForm": f1,
         # metadatos de receta (como el director real)

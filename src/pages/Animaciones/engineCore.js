@@ -99,8 +99,16 @@ function _rgba(hex, a) {
     g.addColorStop(0, A1); g.addColorStop(1, A2);
     return g;
   }
-  function setShadow(color, blur, dy = 0) { ctx.shadowColor = color; ctx.shadowBlur = blur; ctx.shadowOffsetY = dy; }
-  function noShadow() { ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0; }
+  // MODO DE SOMBRA por estilo: 'soft' = glow difuso (premium) | 'hard' = sombra solida desplazada sin blur
+  // (neo-brutalist / grafico plano). Es el switch barato que cambia toda la familia visual (lo confirma la
+  // investigacion: shadowBlur 0 vs N).
+  let SHADOW_MODE = 'soft';
+  function setShadowMode(m) { SHADOW_MODE = (m === 'hard') ? 'hard' : 'soft'; }
+  function setShadow(color, blur, dy = 0) {
+    if (SHADOW_MODE === 'hard') { ctx.shadowColor = color; ctx.shadowBlur = 0; ctx.shadowOffsetX = 5; ctx.shadowOffsetY = Math.max(5, dy + 4); }
+    else { ctx.shadowColor = color; ctx.shadowBlur = blur; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = dy; }
+  }
+  function noShadow() { ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0; }
 
   // ---------- fondo FLUIDO (mesh-gradient + motes), SEMBRADO y determinista ----------
   // Toda la "materia prima" del fondo (posiciones, fases, frecuencias, amplitudes) sale de la SEMILLA
@@ -116,6 +124,10 @@ function _rgba(hex, a) {
   // editorial) | bands (bloques de color geometricos, bold) | aurora (cintas verticales que fluyen).
   let BG_STYLE = 'mesh';
   function setBgStyle(n) { BG_STYLE = (typeof n === 'string' && n) ? n : 'mesh'; }
+  // MOTIVO CONTEXTUAL del fondo segun el rubro (skyline, sparkline, vapor, pulso, botanico, circuito...).
+  // Hace que el fondo HABLE del dominio del link, no un gradiente generico. Se dibuja tenue, detras del contenido.
+  let MOTIF = '';
+  function setMotif(n) { MOTIF = (typeof n === 'string' && n) ? n : ''; }
   // TONO del video: 'dark' (texto claro sobre fondo oscuro) | 'light' (editorial: texto oscuro sobre fondo
   // claro). Que ~parte de las marcas sean claras rompe fuerte el "todos los videos se parecen". INK/DIM =
   // colores de texto que se invierten; _accentInk = el acento usado como TEXTO, legible segun el tono.
@@ -295,6 +307,117 @@ function _rgba(hex, a) {
     }
     ctx.restore();
   }
+  // 'blueprint': plano tecnico -> grilla fina + lineas mayores + glow de acento. Lee "arquitectonico/serio".
+  function _bgBlueprint(t, pal) {
+    ctx.save();
+    ctx.strokeStyle = _rgba(pal[0], 0.13); ctx.lineWidth = 1;
+    const step = 34, off = (t * 4) % step; ctx.beginPath();
+    for (let gx = -off; gx < W; gx += step) { ctx.moveTo(gx, 0); ctx.lineTo(gx, H); }
+    for (let gy = -off; gy < H; gy += step) { ctx.moveTo(0, gy); ctx.lineTo(W, gy); }
+    ctx.stroke();
+    ctx.strokeStyle = _rgba(pal[0], 0.24); ctx.lineWidth = 1.5; ctx.beginPath();
+    for (let gx = -off; gx < W; gx += step * 5) { ctx.moveTo(gx, 0); ctx.lineTo(gx, H); }
+    for (let gy = -off; gy < H; gy += step * 5) { ctx.moveTo(0, gy); ctx.lineTo(W, gy); }
+    ctx.stroke();
+    ctx.restore();
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    const gx2 = W * 0.7, gy2 = H * 0.3, gl = ctx.createRadialGradient(gx2, gy2, 0, gx2, gy2, H * 0.7);
+    gl.addColorStop(0, _rgba(pal[0], 0.18)); gl.addColorStop(1, _rgba(pal[0], 0));
+    ctx.fillStyle = gl; ctx.fillRect(0, 0, W, H); ctx.restore();
+  }
+  // 'brutalist': grafico crudo -> grilla gruesa + franja de acento solida a un borde (sin glow). Alto contraste.
+  function _bgBrutalist(t, pal) {
+    ctx.save();
+    ctx.strokeStyle = _rgba('#ffffff', TONE === 'light' ? 0.07 : 0.06); ctx.lineWidth = 2;
+    const step = 60; ctx.beginPath();
+    for (let gx = 0; gx <= W; gx += step) { ctx.moveTo(gx, 0); ctx.lineTo(gx, H); }
+    for (let gy = 0; gy <= H; gy += step) { ctx.moveTo(0, gy); ctx.lineTo(W, gy); }
+    ctx.stroke();
+    const sw = W * 0.14;
+    ctx.fillStyle = _rgba(pal[0], 0.92); ctx.fillRect(0, 0, sw, H);   // franja de acento solida al borde izq
+    ctx.fillStyle = _rgba(pal[3], 0.9); ctx.fillRect(W - 10, 0, 10, H);
+    ctx.restore();
+  }
+  // 'sunburst': retro -> rayos radiales calidos que rotan lento desde un punto alto.
+  function _bgSunburst(t, pal) {
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    const cx2 = W * 0.5, cy2 = H * 0.26, rays = 20, rot = t * 0.035;
+    for (let i = 0; i < rays; i += 2) {
+      const a = rot + i / rays * TAU;
+      ctx.fillStyle = _rgba(pal[i % 2 ? 1 : 0], 0.085);
+      ctx.beginPath(); ctx.moveTo(cx2, cy2);
+      ctx.lineTo(cx2 + Math.cos(a - 0.075) * H * 1.3, cy2 + Math.sin(a - 0.075) * H * 1.3);
+      ctx.lineTo(cx2 + Math.cos(a + 0.075) * H * 1.3, cy2 + Math.sin(a + 0.075) * H * 1.3);
+      ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
+  }
+  // 'speedlines': deporte/urgencia -> estelas diagonales que corren.
+  function _bgSpeedlines(t, pal) {
+    const rnd = mulberry32((SEED || 1) ^ 0x59ED);
+    ctx.save(); ctx.lineCap = 'round'; const n = 16, ang = -0.34, span = H * 1.7;
+    for (let i = 0; i < n; i++) {
+      const base = rnd(), y = -H * 0.35 + ((base * span + t * 150) % span);
+      const x = rnd() * W, len = lerp(50, 260, rnd());
+      ctx.globalAlpha = 0.18 + 0.42 * rnd(); ctx.lineWidth = 2 + rnd() * 3;
+      ctx.strokeStyle = _rgba(rnd() < 0.5 ? pal[0] : pal[3], 1);
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(ang) * len, y + Math.sin(ang) * len); ctx.stroke();
+    }
+    ctx.restore();
+  }
+  // 'halftone': riso tactil -> campo de puntos cuyo radio varia por gradiente (foco alto-izq).
+  function _bgHalftone(t, pal) {
+    ctx.save(); ctx.fillStyle = _rgba(pal[0], TONE === 'light' ? 0.5 : 0.42);
+    const step = 13, drift = (t * 5) % step, fx = W * 0.35, fy = H * 0.34;
+    for (let gy = -drift; gy < H + step; gy += step) {
+      for (let gx = -drift; gx < W + step; gx += step) {
+        const d = Math.hypot(gx - fx, gy - fy) / H, r = clamp(3.1 * (1 - d), 0.4, 3.1);
+        ctx.beginPath(); ctx.arc(gx, gy, r, 0, TAU); ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+  // CAPA CONTEXTUAL: motivo vectorial TENUE que evoca el rubro del link (no un gradiente generico). Detras
+  // del contenido, baja opacidad, determinista por SEED + t. Esto hace que el fondo "hable" del dominio.
+  function _drawMotif(rubro, t, pal) {
+    const col = _rgba(pal[0], TONE === 'light' ? 0.12 : 0.15);
+    const col2 = _rgba(pal[0], TONE === 'light' ? 0.06 : 0.08);
+    ctx.save();
+    if (rubro === 'inmobiliaria') {
+      const rnd = mulberry32((SEED || 1) ^ 0x5417); const baseY = H * 0.99; let x = -24;
+      while (x < W + 24) {
+        const bw = 28 + rnd() * 46, bh = 80 + rnd() * 210;
+        ctx.fillStyle = col; ctx.fillRect(x, baseY - bh, bw, bh);
+        ctx.fillStyle = col2; for (let wy = baseY - bh + 14; wy < baseY - 14; wy += 22) for (let wx = x + 7; wx < x + bw - 9; wx += 15) ctx.fillRect(wx, wy, 6, 10);
+        x += bw + 9;
+      }
+    } else if (rubro === 'finanzas' || rubro === 'tech' || rubro === 'educacion') {
+      const rnd = mulberry32((SEED || 1) ^ 0x5417); const n = 7, y0 = H * 0.72, pts = [];
+      for (let i = 0; i < n; i++) pts.push([W * 0.1 + i * (W * 0.8 / (n - 1)), y0 - (i / (n - 1)) * H * 0.32 - rnd() * 36 + 18]);
+      const dp = clamp((t - 0.3) * 0.45, 0, 1);
+      ctx.strokeStyle = col; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
+      for (let i = 1; i < n; i++) { const f = clamp(dp * (n - 1) - (i - 1), 0, 1); if (f <= 0) break; ctx.lineTo(lerp(pts[i - 1][0], pts[i][0], f), lerp(pts[i - 1][1], pts[i][1], f)); }
+      ctx.stroke();
+      ctx.fillStyle = col; for (let i = 0; i < n; i++) if (dp * (n - 1) >= i) { ctx.beginPath(); ctx.arc(pts[i][0], pts[i][1], 4.5, 0, TAU); ctx.fill(); }
+    } else if (rubro === 'fitness') {
+      ctx.strokeStyle = col; ctx.lineWidth = 3.5; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      const y = H * 0.7, endX = W * clamp((t * 0.55) % 1.5, 0, 1); ctx.beginPath(); ctx.moveTo(0, y);
+      for (const s of [[0.3, 0], [0.4, -8], [0.46, 64], [0.52, -94], [0.58, 18], [0.66, 0], [1, 0]]) { const px = W * s[0]; if (px > endX) break; ctx.lineTo(px, y + s[1]); }
+      ctx.stroke();
+    } else if (rubro === 'gastronomia') {
+      ctx.strokeStyle = col; ctx.lineWidth = 3.5; ctx.lineCap = 'round';
+      for (let i = 0; i < 3; i++) { const bx = W * (0.32 + i * 0.18); ctx.beginPath(); let first = true; for (let yy = H * 0.86; yy > H * 0.44; yy -= 7) { const xx = bx + Math.sin(yy * 0.045 + t * 1.1 + i * 1.7) * 17; if (first) { ctx.moveTo(xx, yy); first = false; } else ctx.lineTo(xx, yy); } ctx.stroke(); }
+    } else if (rubro === 'belleza' || rubro === 'salud') {
+      ctx.strokeStyle = col; ctx.lineWidth = 3; ctx.lineCap = 'round';
+      const bx = W * 0.82, by = H * 0.95, topY = H * 0.5;
+      ctx.beginPath(); ctx.moveTo(bx, by); ctx.quadraticCurveTo(bx - 30, (by + topY) / 2, bx - 10, topY); ctx.stroke();
+      ctx.fillStyle = col; for (let k = 0; k < 5; k++) { const ly = lerp(by - 30, topY + 20, k / 4), lx = bx - lerp(6, 12, k / 4) - (k % 2 ? 0 : 24); ctx.save(); ctx.translate(lx, ly); ctx.rotate((k % 2 ? -0.6 : 0.6) + Math.sin(t * 0.6 + k) * 0.08); ctx.beginPath(); ctx.ellipse(0, 0, 22, 9, 0, 0, TAU); ctx.fill(); ctx.restore(); }
+    } else if (rubro === 'moda') {
+      ctx.strokeStyle = col2; ctx.lineWidth = 1.5;
+      for (let i = 0; i < 6; i++) { const y = H * (0.2 + i * 0.12) + Math.sin(t * 0.3 + i) * 4; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+    }
+    ctx.restore();
+  }
   // GRANO DE FILM sobre TODO (animado y determinista por frame) -> mata el look "vector 2D limpio" y sube
   // la percepcion premium (textura analogica). Determinista: misma (seed, frame) => mismo grano.
   function _filmGrain(t) {
@@ -326,6 +449,7 @@ function _rgba(hex, a) {
     ctx.save();
     for (const gp of grain) { ctx.globalAlpha = Math.min(0.05, (gp.a || 0.06) * 0.6); ctx.fillStyle = '#1c130c'; ctx.fillRect(gp.x, gp.y, gp.r || 1.3, gp.r || 1.3); }
     ctx.restore();
+    if (MOTIF) _drawMotif(MOTIF, t, pal);   // motivo contextual tambien en tono claro
     const v = ctx.createRadialGradient(W / 2, H * 0.46, H * 0.32, W / 2, H * 0.5, H * 0.82);
     v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(60,45,35,0.10)');
     ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
@@ -344,7 +468,13 @@ function _rgba(hex, a) {
     else if (BG_STYLE === 'spotlight') _bgSpotlight(t, pal);
     else if (BG_STYLE === 'bands') _bgBands(t, pal);
     else if (BG_STYLE === 'aurora') _bgAurora(t, pal);
+    else if (BG_STYLE === 'blueprint') _bgBlueprint(t, pal);
+    else if (BG_STYLE === 'brutalist') _bgBrutalist(t, pal);
+    else if (BG_STYLE === 'sunburst') _bgSunburst(t, pal);
+    else if (BG_STYLE === 'speedlines') _bgSpeedlines(t, pal);
+    else if (BG_STYLE === 'halftone') _bgHalftone(t, pal);
     else _bgMesh(t, pal);
+    if (MOTIF) _drawMotif(MOTIF, t, pal);   // capa CONTEXTUAL: motivo del rubro (skyline, sparkline, etc.)
     // 3) motes (polvo) con tinte del tema, deriva vertical sembrada
     ctx.save();
     for (const m of motes) {
@@ -1417,6 +1547,8 @@ function _rgba(hex, a) {
     setTexture(o.texture);
     setBgStyle(o.bgStyle);
     setTone(o.tone);
+    setShadowMode(o.shadowMode);
+    setMotif(o.motif);
     ctx.clearRect(0, 0, W, H);
     drawBg(t);
   }
@@ -1431,6 +1563,8 @@ function _rgba(hex, a) {
     setEnergy(tl.bgEnergy);
     setBgStyle(tl.bgStyle);
     setTone(tl.tone);
+    setShadowMode(tl.shadowMode);
+    setMotif(tl.motif);
     ctx.clearRect(0, 0, W, H);
     drawBg(t);
     const _scenes = layout(tl);
