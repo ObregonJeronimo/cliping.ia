@@ -834,7 +834,7 @@ function _rgba(hex, a) {
       setShadow(_rgba(A1, 0.55), 30, 9);
       const cg = ctx.createLinearGradient(-w / 2, -h / 2, w / 2, h / 2); cg.addColorStop(0, _accentInk(A1, 0.62)); cg.addColorStop(1, _accentInk(A2, 0.48));
       ctx.fillStyle = cg; ctx.beginPath(); ctx.roundRect(-w / 2, -h / 2, w, h, chip ? 13 : h / 2); ctx.fill(); noShadow();
-      ctx.lineWidth = 1.5; ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.roundRect(-w / 2, -h / 2, w, h, chip ? 13 : h / 2); ctx.stroke();
+      ctx.lineWidth = 1; ctx.strokeStyle = _rgba('#ffffff', 0.16); ctx.beginPath(); ctx.roundRect(-w / 2 + 1, -h / 2 + 1, w - 2, h * 0.5, chip ? 12 : h / 2); ctx.stroke();   // brillo superior sutil en vez de borde de boton
       ctx.font = `700 ${ctaSize}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = TONE === 'light' ? '#fff' : '#14090e';
       ctx.fillText(ctaStr, 0, 1); ctx.restore();
       const burst = inv(t, 1.1, 1.55);
@@ -1300,7 +1300,14 @@ function _rgba(hex, a) {
           ctx.translate(x, y); if (scale !== 1) ctx.scale(scale, scale); if (rot) ctx.rotate(rot);
           const fill = _colorAt(keys, t, _resolveColor(el.fill || 'accent'));
           if (el.glow !== false) setShadow(_rgba(typeof fill === 'string' && fill[0] === '#' ? fill : A1, 0.4), 24, 6);
-          ctx.fillStyle = fill; _smoothPath(pts); ctx.fill();
+          // relleno con GRADIENTE (sheen arriba->base) en vez de color plano -> la forma tiene volumen, no "figurita de stock"
+          if (typeof fill === 'string' && fill[0] === '#') {
+            let mnY = 1e9, mxY = -1e9; for (const pp of pts) { if (pp.y < mnY) mnY = pp.y; if (pp.y > mxY) mxY = pp.y; }
+            const fg = ctx.createLinearGradient(0, mnY, 0, mxY || mnY + 1);
+            fg.addColorStop(0, _lighten(fill, 0.22)); fg.addColorStop(1, fill);
+            ctx.fillStyle = fg;
+          } else { ctx.fillStyle = fill; }
+          _smoothPath(pts); ctx.fill();
           if (el.glow !== false) noShadow();
           if (el.stroke) { ctx.strokeStyle = _resolveColor(el.stroke); ctx.lineWidth = el.strokeW || 3; _smoothPath(pts); ctx.stroke(); }
         }

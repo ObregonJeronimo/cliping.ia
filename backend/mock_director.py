@@ -146,11 +146,11 @@ CTAS = {
 #   diagonal     -> forma grande abajo-izquierda + nombre arriba-derecha alineado a la derecha (tension)
 # Cada rubro tiene >=1 comp ASIMETRICO (rompe el "centrado por defecto" que hacia leer plantilla).
 HERO_COMP = {
-    "gastronomia": ["emblem", "cornerAnchor", "topAnchor"], "tech": ["typeHero", "sideLeft", "diagonal"],
-    "salud": ["emblem", "sideLeft", "shapeBehind"], "moda": ["typeHero", "diagonal", "sideLeft"],
-    "inmobiliaria": ["sideLeft", "cornerAnchor", "topAnchor"], "fitness": ["typeHero", "diagonal", "topAnchor"],
-    "educacion": ["sideLeft", "cornerAnchor", "typeHero"], "finanzas": ["sideLeft", "typeHero", "topAnchor"],
-    "belleza": ["shapeBehind", "cornerAnchor", "topAnchor"], "default": ["emblem", "topAnchor", "diagonal"],
+    "gastronomia": ["emblem", "cornerAnchor", "typeSlam"], "tech": ["typeHero", "typeSlam", "diagonal"],
+    "salud": ["emblem", "sideLeft", "shapeBehind"], "moda": ["typeSlam", "typeHero", "diagonal"],
+    "inmobiliaria": ["sideLeft", "cornerAnchor", "topAnchor"], "fitness": ["typeHero", "typeSlam", "topAnchor"],
+    "educacion": ["typeSlam", "cornerAnchor", "typeHero"], "finanzas": ["sideLeft", "typeSlam", "topAnchor"],
+    "belleza": ["shapeBehind", "cornerAnchor", "topAnchor"], "default": ["emblem", "typeSlam", "diagonal"],
 }
 _HERO_LAYOUT = {
     "emblem":       dict(sx=202, sy=286, sr=108, nx=202, ny=486, nsz=52, al="center", bx=202, by=522, sop=1.0, orb=True,  ns=2.0, maxW=348),
@@ -160,10 +160,13 @@ _HERO_LAYOUT = {
     "topAnchor":    dict(sx=202, sy=224, sr=92,  nx=202, ny=486, nsz=52, al="center", bx=202, by=522, sop=1.0, orb=True,  ns=2.2, maxW=348),
     "cornerAnchor": dict(sx=318, sy=150, sr=60,  nx=44,  ny=470, nsz=58, al="left",   bx=44,  by=512, sop=1.0, orb=True,  ns=1.8, maxW=320),
     "diagonal":     dict(sx=104, sy=540, sr=104, nx=360, ny=250, nsz=52, al="right",  bx=360, by=300, sop=1.0, orb=True,  ns=1.8, maxW=300),
+    # typeSlam: NOMBRE gigante protagonista, la forma reducida a un acento minimo arriba (no figurita
+    # flotante de stock) -> tipografia como heroe, look editorial premium.
+    "typeSlam":     dict(sx=330, sy=140, sr=22,  nx=202, ny=372, nsz=104, al="center", bx=202, by=470, sop=1.0, orb=False, ns=0.85, maxW=384),
 }
 # El frame de cierre (outro) hereda la personalidad del hero: cada composicion su CTA.
 _OUTRO_BY_COMP = {"emblem": "center", "sideLeft": "left", "typeHero": "bigtype", "shapeBehind": "center",
-                  "topAnchor": "bar", "cornerAnchor": "left", "diagonal": "bar"}
+                  "topAnchor": "bar", "cornerAnchor": "left", "diagonal": "bar", "typeSlam": "bigtype"}
 
 
 def _hero_scene(brand, rubro, accent_light, rnd, comp, blur, f1, f2):
