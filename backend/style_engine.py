@@ -186,6 +186,20 @@ _RUBRO_BGSTYLE = {
     "educacion":    ["mesh", "bands", "field"],
     "default":      ["mesh", "field", "spotlight"],
 }
+# TONO por rubro (dark/light): rubros editoriales (moda/belleza/inmob/salud) tienden a CLARO; los bold/
+# tecnicos (fitness/tech/finanzas) tienden a OSCURO. ~45% claro -> mitad de los videos cambian de liga.
+_RUBRO_TONE = {
+    "moda":         ["light", "dark", "light"],
+    "belleza":      ["light", "light", "dark"],
+    "inmobiliaria": ["light", "dark", "light"],
+    "salud":        ["light", "dark", "light"],
+    "educacion":    ["light", "dark", "dark"],
+    "gastronomia":  ["light", "dark", "dark"],
+    "tech":         ["dark", "dark", "light"],
+    "finanzas":     ["dark", "light", "dark"],
+    "fitness":      ["dark", "dark", "dark"],
+    "default":      ["dark", "light", "dark"],
+}
 
 
 def preset(industria: str = "", publico: str = "", energy: str = "medio", seed: int = 0) -> dict:
@@ -200,6 +214,7 @@ def preset(industria: str = "", publico: str = "", energy: str = "medio", seed: 
     accent = _hsl_to_hex(hue, sat, light)
     theme = rnd.choice(p["themes"])
     bg_style = rnd.choice(_RUBRO_BGSTYLE.get(canon, _RUBRO_BGSTYLE["default"]))
+    tone = rnd.choice(_RUBRO_TONE.get(canon, _RUBRO_TONE["default"]))
 
     # subconjunto DISJUNTO de formas/iconos para ESTA marca (de la familia del rubro)
     morphs = p["morphs"][:]
@@ -234,6 +249,7 @@ def preset(industria: str = "", publico: str = "", energy: str = "medio", seed: 
         "bg_texture": _RUBRO_TEX.get(canon, _RUBRO_TEX["default"]),
         "bg_energy": _RUBRO_ENERGY.get(canon, 1.0),
         "bg_style": bg_style,
+        "tone": tone,
         "stmt_style": _RUBRO_STMT.get(canon, "centered"),
         "bg_texture": _RUBRO_TEX.get(canon, _RUBRO_TEX["default"]),
         # String-Seed-of-Thought: cadena estable que el LLM usa como ancla de diversidad fiel a la marca

@@ -31,8 +31,21 @@ def _lighten(hex_str, amt):
 _ENERGETIC = {"fitness", "moda", "tech", "gastronomia"}
 _SERENE = {"salud", "belleza", "inmobiliaria", "finanzas"}
 
-def _shape_paint(accent, rubro):
-    """(color_de_la_forma, blur) segun energia del rubro."""
+def _darken(hex_str, amt):
+    h = (hex_str or "").lstrip("#")
+    try:
+        r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+    except Exception:
+        return hex_str
+    r = int(r * (1 - amt)); g = int(g * (1 - amt)); b = int(b * (1 - amt))
+    return f"#{r:02x}{g:02x}{b:02x}"
+
+
+def _shape_paint(accent, rubro, tone="dark"):
+    """(color_de_la_forma, blur) segun energia del rubro y TONO del fondo."""
+    if tone == "light":
+        # fondo claro: la forma debe ser saturada/oscura para contrastar (nada de aclararla)
+        return _darken(accent, 0.14), (rubro in _SERENE)
     if rubro in _ENERGETIC:
         return _lighten(accent, 0.12), False   # nitida y saturada
     if rubro in _SERENE:
@@ -243,8 +256,9 @@ def generate(brand: str, industria: str, facts=None, seed: int = None) -> dict:
     rnd = random.Random((int(seed) ^ 0x9E3779B9) & 0xFFFFFFFF)
 
     st = RUBRO_STYLE.get(rubro, RUBRO_STYLE["default"])
-    # color + dureza de la forma firma derivan de la energia del rubro (no un lighten fijo para todos)
-    accent_light, shape_blur = _shape_paint(pre["accent"], rubro)
+    tone = pre.get("tone", "dark")
+    # color + dureza de la forma firma derivan de la energia del rubro Y del tono del fondo
+    accent_light, shape_blur = _shape_paint(pre["accent"], rubro, tone)
     # La COMPOSICION del hero define la "personalidad" del video y se PROPAGA al resto (alineacion + CTA)
     # -> dos marcas con hero distinto divergen en TODOS los frames, no solo el del hero.
     comp = rnd.choice(HERO_COMP.get(rubro, HERO_COMP["default"]))
@@ -285,8 +299,9 @@ def generate(brand: str, industria: str, facts=None, seed: int = None) -> dict:
     return {
         "brand": brand, "accent": pre["accent"], "theme": pre["theme"], "seed": pre["seed"],
         "texture": st["texture"], "bgEnergy": pre.get("bg_energy", 1.0), "rubro": rubro, "scenes": scenes,
-        # estilo de FONDO de la marca (mesh/field/spotlight/bands/aurora) -> cada video en un mundo distinto
+        # estilo de FONDO + TONO de la marca -> cada video en un mundo distinto (oscuro o editorial claro)
         "bgStyle": pre.get("bg_style", "mesh"),
+        "tone": tone,
         # forma FIRMA de la marca -> el motor la persiste como marca de agua viva en las escenas de contenido
         "signatureForm": f1,
         # metadatos de receta (como el director real)

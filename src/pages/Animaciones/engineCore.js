@@ -116,6 +116,22 @@ function _rgba(hex, a) {
   // editorial) | bands (bloques de color geometricos, bold) | aurora (cintas verticales que fluyen).
   let BG_STYLE = 'mesh';
   function setBgStyle(n) { BG_STYLE = (typeof n === 'string' && n) ? n : 'mesh'; }
+  // TONO del video: 'dark' (texto claro sobre fondo oscuro) | 'light' (editorial: texto oscuro sobre fondo
+  // claro). Que ~parte de las marcas sean claras rompe fuerte el "todos los videos se parecen". INK/DIM =
+  // colores de texto que se invierten; _accentInk = el acento usado como TEXTO, legible segun el tono.
+  let TONE = 'dark', INK = '#fbf6ec', DIM = '#efe6d6';
+  function setTone(n) {
+    TONE = (n === 'light') ? 'light' : 'dark';
+    if (TONE === 'light') { INK = '#1c1510'; DIM = '#6b5e52'; }
+    else { INK = '#fbf6ec'; DIM = '#efe6d6'; }
+  }
+  // acento legible como TEXTO/relleno-protagonico segun el tono del fondo (claro -> mas oscuro y saturado;
+  // oscuro -> aclarado). Asi wordmark/CTA/numero contrastan en ambos tonos.
+  function _accentInk(hex, amt) {
+    const a = _hexToHsl(hex || A1 || '#3aa0ff');
+    if (TONE === 'light') return _hslToHex(a.h, Math.min(0.92, a.s + 0.12), Math.max(0.32, Math.min(a.l, 0.44)));
+    return _lighten(hex || A1, amt == null ? 0.55 : amt);
+  }
   // HSL <-> hex (para construir una paleta MULTI-COLOR a partir del acento de marca)
   function _hexToHsl(hex) {
     let r = 0, g = 0, b = 0;
@@ -276,7 +292,35 @@ function _rgba(hex, a) {
     }
     ctx.restore();
   }
+  // FONDO CLARO (editorial): crema con tinte del acento (multiply, no aditivo) + grano papel + viñeta sutil.
+  // Mundo visual opuesto al oscuro -> mitad de las marcas se sienten de otra liga.
+  function _bgLightFull(t) {
+    if (!blobs.length) _buildBg();
+    const pal = _meshPalette();
+    const aH = _hexToHsl(A1 || '#3aa0ff');
+    const c0 = _hslToHex(aH.h, 0.16, 0.955), c1 = _hslToHex(aH.h, 0.12, 0.90);
+    const g = ctx.createLinearGradient(0, 0, W * 0.3, H);
+    g.addColorStop(0, c0); g.addColorStop(1, c1);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    ctx.save(); ctx.globalCompositeOperation = 'multiply';
+    const spots = [[0.24, 0.28, pal[0], 0.30], [0.80, 0.70, pal[3], 0.22], [0.62, 0.16, pal[1], 0.18]];
+    for (let i = 0; i < spots.length; i++) {
+      const s = spots[i];
+      const cx = W * s[0] + Math.sin(t * 0.06 + i) * 20, cy = H * s[1] + Math.cos(t * 0.05 + i) * 16;
+      const gl = ctx.createRadialGradient(cx, cy, 0, cx, cy, H * 0.62);
+      gl.addColorStop(0, _rgba(s[2], s[3])); gl.addColorStop(1, _rgba(s[2], 0));
+      ctx.fillStyle = gl; ctx.fillRect(0, 0, W, H);
+    }
+    ctx.restore();
+    ctx.save();
+    for (const gp of grain) { ctx.globalAlpha = Math.min(0.05, (gp.a || 0.06) * 0.6); ctx.fillStyle = '#1c130c'; ctx.fillRect(gp.x, gp.y, gp.r || 1.3, gp.r || 1.3); }
+    ctx.restore();
+    const v = ctx.createRadialGradient(W / 2, H * 0.46, H * 0.32, W / 2, H * 0.5, H * 0.82);
+    v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(60,45,35,0.10)');
+    ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+  }
   function drawBg(t) {
+    if (TONE === 'light') { _bgLightFull(t); return; }
     if (!blobs.length) _buildBg();
     // 1) base: gradiente radial del tema (oscuro, para que las zonas de color resalten)
     const g = ctx.createRadialGradient(W * 0.5, H * 0.36, 30, W * 0.5, H * 0.42, H * 0.95);
@@ -413,7 +457,7 @@ function _rgba(hex, a) {
     return s;
   }
   // texto con entrada suave (scale + fade, leve overshoot) + auto-ajuste de tamaño si se pasa maxW
-  function fxText(str, x, y, size, p, weight = 700, col = '#fff6f0', maxW = 0) {
+  function fxText(str, x, y, size, p, weight = 700, col = INK, maxW = 0) {
     if (p <= 0) return;
     if (maxW > 0) size = fitFont(str, size, maxW, 14, weight);
     const sc = lerp(0.55, 1, eOutBack(clamp(p, 0, 1)));
@@ -480,7 +524,7 @@ function _rgba(hex, a) {
         ctx.globalAlpha *= (1 - meltP);
         ctx.font = `700 26px "Inter",system-ui,sans-serif`;
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillStyle = '#fff6f0';
+        ctx.fillStyle = INK;
         ctx.save(); ctx.translate(cx, cy + sink); ctx.scale(eOutBack(clamp(tin, 0, 1)) * 0.06 + 0.94, eOutBack(clamp(tin, 0, 1)) * 0.06 + 0.94);
         ctx.fillText(p.title || '', 0, 0); ctx.restore();
       }
@@ -544,15 +588,15 @@ function _rgba(hex, a) {
 
     // ----- subtítulos minúsculo → leíble -----
     const _subs = p.subtitles || [];
-    if (_subs[0]) fxText(_subs[0], cx, H * 0.63, 22, inv(t, 5.2, 5.8), 600, '#f2ebd9', W * 0.82);
-    if (_subs[1]) fxText(_subs[1], cx, H * 0.665, 22, inv(t, 5.45, 6.0), 600, '#f2ebd9', W * 0.82);
+    if (_subs[0]) fxText(_subs[0], cx, H * 0.63, 22, inv(t, 5.2, 5.8), 600, DIM, W * 0.82);
+    if (_subs[1]) fxText(_subs[1], cx, H * 0.665, 22, inv(t, 5.45, 6.0), 600, DIM, W * 0.82);
   }
 
   // ---------- ESCENA 2: carrito → click → caja → alas → vuela → casa ----------
   function sceneCart(t, p = {}) {
     const cx = W / 2, cy = H * 0.44;
     const hx = W * 0.72, hy = H * 0.64;
-    if (p.caption) fxText(p.caption, W / 2, H * 0.15, 23, inv(t, 0.3, 1.0), 600, '#f4ede0', W * 0.86);
+    if (p.caption) fxText(p.caption, W / 2, H * 0.15, 23, inv(t, 0.3, 1.0), 600, INK, W * 0.86);
 
     // casa aparece antes de que llegue
     const hin = inv(t, 3.2, 4.1);
@@ -681,13 +725,13 @@ function _rgba(hex, a) {
     const ms = eOutBack(clamp(inv(t, d + 0.1, d + 0.5), 0, 1));
     ctx.save(); ctx.translate(x + 30, y); ctx.scale(ms, ms); _listMarker('check', i, t, d); ctx.restore();
     ctx.font = `600 ${fitFont(label, 21, 224, 13, 600)}px "Inter",system-ui,sans-serif`;
-    ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#f4ede0'; ctx.fillText(label, x + 58, y);
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = INK; ctx.fillText(label, x + 58, y);
   }
   function _rowPlain(label, x, y, i, t, d) {     // tech: sin caja, guion + linea fina (drawing/CAD)
     const ms = eOutBack(clamp(inv(t, d + 0.1, d + 0.5), 0, 1));
     ctx.save(); ctx.translate(x + 14, y); ctx.scale(ms, ms); ctx.fillStyle = A1; ctx.beginPath(); ctx.roundRect(-13, -2, 26, 4, 2); ctx.fill(); ctx.restore();
     ctx.font = `600 ${fitFont(label, 21, 240, 13, 600)}px "Inter",system-ui,sans-serif`;
-    ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#eef2f7'; setShadow('rgba(0,0,0,0.5)', 5, 1); ctx.fillText(label, x + 44, y); noShadow();
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = INK; setShadow('rgba(0,0,0,0.5)', 5, 1); ctx.fillText(label, x + 44, y); noShadow();
     const lp = clamp(inv(t, d + 0.15, d + 0.7), 0, 1);
     ctx.strokeStyle = 'rgba(255,255,255,0.11)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + 44, y + 19); ctx.lineTo(x + 44 + 256 * lp, y + 19); ctx.stroke();
   }
@@ -696,7 +740,7 @@ function _rgba(hex, a) {
     ctx.save(); ctx.globalAlpha *= np; ctx.font = '800 33px "Inter",system-ui,sans-serif';
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = A1; ctx.fillText(String(i + 1).padStart(2, '0'), x, y - 1); ctx.restore();
     ctx.font = `600 ${fitFont(label, 20, 206, 13, 600)}px "Inter",system-ui,sans-serif`;
-    ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#f4ede0'; setShadow('rgba(0,0,0,0.5)', 5, 1); ctx.fillText(label, x + 56, y); noShadow();
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = INK; setShadow('rgba(0,0,0,0.5)', 5, 1); ctx.fillText(label, x + 56, y); noShadow();
     const lp = clamp(inv(t, d + 0.15, d + 0.7), 0, 1);
     ctx.strokeStyle = 'rgba(255,255,255,0.13)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, y + 21); ctx.lineTo(x + 300 * lp, y + 21); ctx.stroke();
   }
@@ -705,7 +749,7 @@ function _rgba(hex, a) {
     ctx.fillStyle = _rgba(A1, 0.16); ctx.beginPath(); ctx.roundRect(x, y - 21, 300 * fp, 42, 9); ctx.fill();
     ctx.fillStyle = A1; ctx.beginPath(); ctx.roundRect(x, y - 21, 8 * fp, 42, 3); ctx.fill();
     ctx.font = `700 ${fitFont(label, 20, 250, 13, 700)}px "Inter",system-ui,sans-serif`;
-    ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#ffffff'; ctx.globalAlpha *= clamp(fp * 1.4, 0, 1); setShadow('rgba(0,0,0,0.45)', 4, 1); ctx.fillText(label, x + 24, y); noShadow();
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = INK; ctx.globalAlpha *= clamp(fp * 1.4, 0, 1); setShadow('rgba(0,0,0,0.45)', 4, 1); ctx.fillText(label, x + 24, y); noShadow();
   }
   // LAYOUT alternativo: grilla de 2 columnas (stat-cards) -> variedad estructural vs la lista vertical.
   function _listGrid(items, t, lanchor) {
@@ -718,7 +762,7 @@ function _rgba(hex, a) {
       ctx.translate(x + cw / 2, y + ch / 2); ctx.scale(pop, pop); ctx.translate(-(x + cw / 2), -(y + ch / 2));
       ctx.fillStyle = 'rgba(255,255,255,0.085)'; ctx.strokeStyle = 'rgba(255,255,255,0.16)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.roundRect(x, y, cw, ch, 12); ctx.fill(); ctx.stroke();
       setShadow(_rgba(A1, 0.4), 10, 2); ctx.fillStyle = A1; ctx.beginPath(); ctx.arc(x + 18, y + 20, 6, 0, TAU); ctx.fill(); noShadow();
-      ctx.font = `700 ${fitFont(label, 16, cw - 22, 12, 700)}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#fbf6ec'; setShadow('rgba(0,0,0,0.5)', 4, 1);
+      ctx.font = `700 ${fitFont(label, 16, cw - 22, 12, 700)}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = INK; setShadow('rgba(0,0,0,0.5)', 4, 1);
       ctx.fillText(label, x + 14, y + ch - 22); noShadow();
       ctx.restore();
     });
@@ -727,8 +771,8 @@ function _rgba(hex, a) {
     const cx = W / 2, style = p.listStyle || 'check', lanchor = p.listAnchor === 'left';
     const rx = lanchor ? 53 : cx - 150, tp = inv(t, 0.1, 0.7);   // contrato sideLeft: MISMO margen izq
     if (lanchor) {
-      if (tp > 0) { ctx.save(); ctx.globalAlpha *= eOutCubic(clamp(tp, 0, 1)); ctx.font = `800 ${(p.title || '').length > 18 ? 24 : 30}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#fff6f0'; ctx.fillText(p.title || '', rx, H * 0.23); ctx.restore(); }
-    } else { fxText(p.title || '', cx, H * 0.23, (p.title || '').length > 18 ? 24 : 30, tp, 800, '#fff6f0', W * 0.86); }
+      if (tp > 0) { ctx.save(); ctx.globalAlpha *= eOutCubic(clamp(tp, 0, 1)); ctx.font = `800 ${(p.title || '').length > 18 ? 24 : 30}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = INK; ctx.fillText(p.title || '', rx, H * 0.23); ctx.restore(); }
+    } else { fxText(p.title || '', cx, H * 0.23, (p.title || '').length > 18 ? 24 : 30, tp, 800, INK, W * 0.86); }
     // regla de acento bajo el titulo -> lo liga a la lista (proximidad Gestalt), no queda flotando aparte
     const ru = eOutCubic(inv(t, 0.3, 0.8));
     if (ru > 0) { const ry = H * 0.285, rxr = lanchor ? rx : cx - 26; ctx.save(); ctx.fillStyle = accent(rxr, ry, rxr + 52, ry); ctx.beginPath(); ctx.roundRect(rxr, ry, 52 * ru, 4, 2); ctx.fill(); ctx.restore(); }
@@ -757,7 +801,7 @@ function _rgba(hex, a) {
       const _bn = p.brand || '', fs = fitFont(_bn, size || 56, W * 0.82, 28, 800), top = wy - fs * 0.62, bot = wy + fs * 0.62;
       ctx.save(); ctx.globalAlpha *= bn; ctx.font = `800 ${fs}px "Inter",system-ui,sans-serif`;
       ctx.textAlign = align; ctx.textBaseline = 'middle';
-      const wg = ctx.createLinearGradient(wx - 130, top, wx + 130, bot); wg.addColorStop(0, _lighten(A1, 0.62)); wg.addColorStop(1, _lighten(A2, 0.5));
+      const wg = ctx.createLinearGradient(wx - 130, top, wx + 130, bot); wg.addColorStop(0, _accentInk(A1, 0.62)); wg.addColorStop(1, _accentInk(A2, 0.5));
       ctx.fillStyle = wg; setShadow('rgba(0,0,0,0.5)', 8, 1);   // aclarado + sombra -> legible sobre el mismo color (Aura/Trama)
       ctx.fillText(_bn, wx, wy + (1 - bn) * 16); noShadow(); ctx.restore();
     }
@@ -775,10 +819,10 @@ function _rgba(hex, a) {
       const px = align === 'left' ? anchorX + w / 2 : anchorX;
       ctx.save(); ctx.translate(px, py); ctx.scale(sc, sc);
       setShadow(_rgba(A1, 0.55), 30, 9);
-      const cg = ctx.createLinearGradient(-w / 2, -h / 2, w / 2, h / 2); cg.addColorStop(0, _lighten(A1, 0.62)); cg.addColorStop(1, _lighten(A2, 0.48));
+      const cg = ctx.createLinearGradient(-w / 2, -h / 2, w / 2, h / 2); cg.addColorStop(0, _accentInk(A1, 0.62)); cg.addColorStop(1, _accentInk(A2, 0.48));
       ctx.fillStyle = cg; ctx.beginPath(); ctx.roundRect(-w / 2, -h / 2, w, h, chip ? 13 : h / 2); ctx.fill(); noShadow();
       ctx.lineWidth = 1.5; ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.roundRect(-w / 2, -h / 2, w, h, chip ? 13 : h / 2); ctx.stroke();
-      ctx.font = `700 ${ctaSize}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#14090e';
+      ctx.font = `700 ${ctaSize}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = TONE === 'light' ? '#fff' : '#14090e';
       ctx.fillText(ctaStr, 0, 1); ctx.restore();
       const burst = inv(t, 1.1, 1.55);
       if (burst > 0 && burst < 1) {
@@ -797,7 +841,7 @@ function _rgba(hex, a) {
         ctx.save(); setShadow(_rgba(A1, 0.5), 26, 8);
         const g = ctx.createLinearGradient(24, by, 24 + bw, by); g.addColorStop(0, _lighten(A1, 0.5)); g.addColorStop(1, _lighten(A2, 0.36));
         ctx.fillStyle = g; ctx.beginPath(); ctx.roundRect(24, by - bh / 2, bw, bh, 14); ctx.fill(); noShadow();
-        if (br > 0.55) { ctx.globalAlpha = clamp((br - 0.55) / 0.45, 0, 1); const _bs = fitFont((p.cta || 'Visita ahora'), 26, W - 92, 14, 800); ctx.font = `800 ${_bs}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#14090e'; ctx.fillText((p.cta || 'Visita ahora'), W / 2, by); }
+        if (br > 0.55) { ctx.globalAlpha = clamp((br - 0.55) / 0.45, 0, 1); const _bs = fitFont((p.cta || 'Visita ahora'), 26, W - 92, 14, 800); ctx.font = `800 ${_bs}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = TONE === 'light' ? '#fff' : '#14090e'; ctx.fillText((p.cta || 'Visita ahora'), W / 2, by); }
         ctx.restore();
       }
     } else if (comp === 'bigtype') {
@@ -807,7 +851,7 @@ function _rgba(hex, a) {
         const cta = p.cta || 'Visita ahora', fs = fitFont(cta, 72, W * 0.86, 34, 800);
         ctx.save(); ctx.translate(cx, cy + 34); ctx.scale(0.92 + 0.08 * tg, 0.92 + 0.08 * tg);
         ctx.font = `800 ${fs}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        const _cg = ctx.createLinearGradient(-130, -fs * 0.6, 130, fs * 0.6); _cg.addColorStop(0, _lighten(A1, 0.55)); _cg.addColorStop(1, _lighten(A2, 0.42));
+        const _cg = ctx.createLinearGradient(-130, -fs * 0.6, 130, fs * 0.6); _cg.addColorStop(0, _accentInk(A1, 0.55)); _cg.addColorStop(1, _accentInk(A2, 0.42));
         setShadow('rgba(0,0,0,0.4)', 8, 2); _kineticDraw(cta, _cg, 'center', t, 1.0, -fs * 0.02); noShadow(); ctx.restore();
         const ar = inv(t, 1.5, 1.9);
         if (ar > 0) { ctx.save(); ctx.globalAlpha = ar; ctx.strokeStyle = _lighten(A1, 0.4); ctx.lineWidth = 4; ctx.lineCap = 'round'; const ay = cy + 34 + fs * 0.7 + 20; ctx.beginPath(); ctx.moveTo(cx - 16, ay); ctx.lineTo(cx, ay + 14); ctx.lineTo(cx + 16, ay); ctx.stroke(); ctx.restore(); }
@@ -843,7 +887,7 @@ function _rgba(hex, a) {
       ctx.font = `800 ${fs}px "Inter",system-ui,sans-serif`; ctx.textBaseline = 'middle'; ctx.textAlign = align;
       lines.forEach((ln, i) => {
         const pr = eOutCubic(inv(t, 0.16 + i * 0.24, 0.16 + i * 0.24 + 0.55)); if (pr <= 0) return;
-        ctx.save(); ctx.globalAlpha *= pr; ctx.fillStyle = '#f9f4ea'; setShadow('rgba(0,0,0,0.5)', 6, 2);   // sombra -> legible sobre fondos calidos/ocupados
+        ctx.save(); ctx.globalAlpha *= pr; ctx.fillStyle = INK; setShadow('rgba(0,0,0,0.5)', 6, 2);   // sombra -> legible sobre fondos calidos/ocupados
         ctx.fillText(ln, ox + (riseX ? (1 - pr) * 18 : 0), topY + i * lh + (riseX ? 0 : (1 - pr) * 24)); noShadow(); ctx.restore();
       });
     }
@@ -897,11 +941,11 @@ function _rgba(hex, a) {
     ctx.font = '800 92px "Inter",system-ui,sans-serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     const ng = ctx.createLinearGradient(cx - 130, cy, cx + 130, cy);   // acento POP -> el numero golpea aunque el rubro sea sobrio
-    ng.addColorStop(0, _accentPop(A1)); ng.addColorStop(1, _accentPop(A2));
+    ng.addColorStop(0, TONE === 'light' ? _accentInk(A1) : _accentPop(A1)); ng.addColorStop(1, TONE === 'light' ? _accentInk(A2) : _accentPop(A2));
     ctx.fillStyle = ng; setShadow(_rgba(_accentPop(A1), 0.35), 18, 2);
     ctx.fillText(num, cx, cy); noShadow();
     ctx.restore();
-    if (p.label) fxText(p.label, cx, cy + 84, 24, inv(t, 1.8, 2.3), 600, '#f2ebd9', W * 0.86);
+    if (p.label) fxText(p.label, cx, cy + 84, 24, inv(t, 1.8, 2.3), 600, DIM, W * 0.86);
   }
 
   // =========================================================================
@@ -928,10 +972,10 @@ function _rgba(hex, a) {
   function _resolveColor(tok) {
     if (typeof tok === 'string') {
       if (tok === 'accent') return A1; if (tok === 'accent2') return A2;
-      if (tok === 'ink' || tok === 'light') return '#fbf6ec'; if (tok === 'dim') return '#efe6d6';
+      if (tok === 'ink' || tok === 'light') return INK; if (tok === 'dim') return DIM;
       if (tok === 'dark') return '#1c140a'; if (/^#[0-9a-fA-F]{6}$/.test(tok)) return tok;
     }
-    return '#fbf6ec';
+    return INK;
   }
   // interpola UNA prop numerica a lo largo de los keyframes en el tiempo tt (inherit + easing)
   function _num(keys, tt, prop, dflt) {
@@ -1296,6 +1340,7 @@ function _rgba(hex, a) {
     setSeed((typeof o.seed === 'number' && isFinite(o.seed)) ? (o.seed >>> 0) : hashSeed(o.seed));
     setTexture(o.texture);
     setBgStyle(o.bgStyle);
+    setTone(o.tone);
     ctx.clearRect(0, 0, W, H);
     drawBg(t);
   }
@@ -1309,6 +1354,7 @@ function _rgba(hex, a) {
     setTexture(tl.texture);
     setEnergy(tl.bgEnergy);
     setBgStyle(tl.bgStyle);
+    setTone(tl.tone);
     ctx.clearRect(0, 0, W, H);
     drawBg(t);
     const _scenes = layout(tl);
@@ -1317,8 +1363,8 @@ function _rgba(hex, a) {
     // esquina OPUESTA al texto -> tambien hace contrapeso compositivo) durante el bloque de contenido
     // (statement/checklist). Asi la identidad NO se muere a mitad del reel. Se dibuja DETRAS del contenido.
     if (tl.signatureForm) {
-      const _wac = _lighten(_resolveColor('accent'), 0.12);   // un punto mas clara que el acento -> separa de un fondo del mismo hue
-      const _lAcc = _hexToHsl(_wac).l, _lBg = _hexToHsl((BG && BG[0]) ? BG[0] : '#223040').l;
+      const _wac = _accentInk(_resolveColor('accent'), 0.12);   // tone-aware: claro->oscurece, oscuro->aclara
+      const _lAcc = _hexToHsl(_wac).l, _lBg = TONE === 'light' ? 0.92 : _hexToHsl((BG && BG[0]) ? BG[0] : '#223040').l;
       const _wAlpha = lerp(0.30, 0.17, clamp(Math.abs(_lAcc - _lBg) / 0.34, 0, 1));   // bajo contraste con el fondo -> mas alpha (legible sobre fondos claros / verde-sobre-verde)
       const _wph = ((tl.seed || 1) % 997) / 158;   // fase de deriva SEMBRADA por marca -> cada watermark tiene su gesto propio
       for (let si = 0; si < _scenes.length; si++) {
