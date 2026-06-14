@@ -8,8 +8,9 @@
 //
 // OJO de honestidad: Skia ~= Chromium (Remotion), pero NO es identico (fuentes: sin Inter local usa
 // fallback sans). Sirve para juzgar composicion/color/movimiento/variedad. El MP4 final lo rinde Jero.
-import { createCanvas } from '@napi-rs/canvas'
-import { writeFileSync, mkdirSync, readFileSync, readdirSync } from 'node:fs'
+import { createCanvas, GlobalFonts } from '@napi-rs/canvas'
+import { writeFileSync, mkdirSync, readFileSync, readdirSync, rmSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { drawFrame, drawBackground, beatAt, timelineDuration, DEMO_TIMELINE, THEME_NAMES } from '../src/pages/Animaciones/engineCore.js'
@@ -17,8 +18,15 @@ import { drawMotionDemo } from '../src/pages/Animaciones/motionDemo.js'
 
 const W = 405, H = 720
 const SS = 2                          // supersample del frame fuente (nitidez)
-const OUT = join(dirname(fileURLToPath(import.meta.url)), 'out')
+const HERE = dirname(fileURLToPath(import.meta.url))
+const OUT = join(HERE, 'out')
 mkdirSync(OUT, { recursive: true })
+// FUENTES REALES: registrar los TTF de tools/fonts/ en Skia -> el visor deja de usar el fallback sans y
+// muestra la tipografia de verdad (Inter/Space Grotesk/etc). Si falta la carpeta, corre: node tools/get-fonts.mjs
+try {
+  const fdir = join(HERE, 'fonts'); const n = GlobalFonts.loadFontsFromDir(fdir)
+  if (process.env.FONTDEBUG) console.log('(fonts) cargadas', n, '->', GlobalFonts.getFamilies?.().map(f => f.family).join(', '))
+} catch (e) { console.log('(fonts) sin tools/fonts/ -> fallback sans. Corre node tools/get-fonts.mjs.', e.message) }
 
 // renderiza una funcion de dibujo a un canvas WxH (supersampleado)
 function frameCanvas(drawFn) {
@@ -54,11 +62,31 @@ function sheet(name, title, items, cols, tileW = 232) {
 
 function videoStrip(tl, name, title, n = 12) {
   const dur = timelineDuration(tl) || 8
+  const cols = n > 16 ? 6 : 4
   const items = Array.from({ length: n }, (_, i) => {
     const t = (i + 0.5) * dur / n
-    return { cv: frameCanvas((ctx) => drawFrame(ctx, t, tl)), label: `${t.toFixed(1)}s · ${beatAt(t, tl)}`.slice(0, 34) }
+    return { cv: frameCanvas((ctx) => drawFrame(ctx, t, tl)), label: `${t.toFixed(1)}s · ${beatAt(t, tl)}`.slice(0, 30) }
   })
-  sheet(name, title, items, 4)
+  sheet(name, title, items, cols, cols > 4 ? 150 : 232)
+}
+
+// GIF animado (para VER el movimiento real, no frames sueltos). Render N frames -> ffmpeg con paleta.
+function gifExport(path, name, fps = 14) {
+  const tl = path ? JSON.parse(readFileSync(path, 'utf8')) : DEMO_TIMELINE
+  const dur = timelineDuration(tl) || 8
+  const tmp = join(OUT, '_gifframes'); rmSync(tmp, { recursive: true, force: true }); mkdirSync(tmp, { recursive: true })
+  const total = Math.max(1, Math.round(dur * fps)), GS = 1.5
+  for (let i = 0; i < total; i++) {
+    const t = (i + 0.5) / fps
+    const cv = createCanvas(W * GS, H * GS); const ctx = cv.getContext('2d'); ctx.setTransform(GS, 0, 0, GS, 0, 0)
+    drawFrame(ctx, t, tl)
+    writeFileSync(join(tmp, `f${String(i).padStart(4, '0')}.png`), cv.toBuffer('image/png'))
+  }
+  const outGif = join(OUT, name + '.gif')
+  const vf = `scale=320:-1:flags=lanczos,split[s0][s1];[s0]palettegen=stats_mode=diff[p];[s1][p]paletteuse=dither=bayer:bayer_scale=3`
+  execFileSync('ffmpeg', ['-y', '-framerate', String(fps), '-i', join(tmp, 'f%04d.png'), '-vf', vf, '-loop', '0', outGif], { stdio: 'ignore' })
+  rmSync(tmp, { recursive: true, force: true })
+  console.log('wrote', outGif, `(${total} frames @ ${fps}fps, ${dur.toFixed(1)}s)`)
 }
 
 const SHOW_ACCENT = {
@@ -135,8 +163,11 @@ if (mode === 'window') {
 } else if (mode === 'video') {
   const path = process.argv[3]
   const name = process.argv[4] || 'video'
+  const n = parseInt(process.argv[5] || '12', 10)
   const tl = path ? JSON.parse(readFileSync(path, 'utf8')) : DEMO_TIMELINE
-  videoStrip(tl, name, `Video · ${name}`)
+  videoStrip(tl, name, `Video · ${name}`, n)
+} else if (mode === 'gif') {
+  gifExport(process.argv[3], process.argv[4] || 'video', parseInt(process.argv[5] || '14', 10))
 } else if (mode === 'motion') {
   motionSheets(process.argv[3] || '#5aa0ff')
 } else if (mode === 'rubros') {

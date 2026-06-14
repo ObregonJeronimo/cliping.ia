@@ -16,3 +16,7 @@ tools/brands/
 tools/style-presets.json
 remotion/props-*.json
 *.mp4
+
+# TTFs de fuentes para el visor (regenerables con node tools/get-fonts.mjs) + scratch
+tools/fonts/
+tools/_*
