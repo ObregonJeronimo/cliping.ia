@@ -421,8 +421,16 @@ function _rgba(hex, a) {
       ctx.beginPath(); ctx.moveTo(bx, by); ctx.quadraticCurveTo(bx - 30, (by + topY) / 2, bx - 10, topY); ctx.stroke();
       ctx.fillStyle = col; for (let k = 0; k < 5; k++) { const ly = lerp(by - 30, topY + 20, k / 4), lx = bx - lerp(6, 12, k / 4) - (k % 2 ? 0 : 24); ctx.save(); ctx.translate(lx, ly); ctx.rotate((k % 2 ? -0.6 : 0.6) + Math.sin(t * 0.6 + k) * 0.08); ctx.beginPath(); ctx.ellipse(0, 0, 22, 9, 0, 0, TAU); ctx.fill(); ctx.restore(); }
     } else if (rubro === 'moda') {
-      ctx.strokeStyle = col2; ctx.lineWidth = 1.5;
-      for (let i = 0; i < 6; i++) { const y = H * (0.2 + i * 0.12) + Math.sin(t * 0.3 + i) * 4; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+      // pliegues de tela / hilos drapeados (textil) -> LEE como moda, no como scanlines genericas invisibles.
+      // antes: col2 (el tono mas tenue) + lineas planas full-width de 1.5px -> casi invisible.
+      ctx.lineCap = 'round';
+      for (let i = 0; i < 6; i++) {
+        const y = H * (0.15 + i * 0.13);
+        const sag = 28 + Math.sin(t * 0.5 + i * 0.9) * 13;   // la caida del pliegue respira
+        const drift = Math.sin(t * 0.3 + i * 1.4) * 18;
+        ctx.strokeStyle = i % 2 ? col2 : col; ctx.lineWidth = i % 2 ? 1.6 : 2.6;
+        ctx.beginPath(); ctx.moveTo(-12, y); ctx.quadraticCurveTo(W * 0.5 + drift, y + sag, W + 12, y); ctx.stroke();
+      }
     }
     ctx.restore();
   }
