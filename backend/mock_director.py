@@ -163,9 +163,12 @@ _HERO_LAYOUT = {
     "cornerAnchor": dict(sx=318, sy=150, sr=58,  nx=44,  ny=470, nsz=58, al="left",   bx=44,  by=512, sop=1.0, orb=True,  ns=1.8, maxW=320, shape="accent"),
     "diagonal":     dict(sx=104, sy=540, sr=104, nx=360, ny=250, nsz=52, al="right",  bx=360, by=300, sop=1.0, orb=True,  ns=1.8, maxW=300, shape="lead"),
     "typeSlam":     dict(sx=330, sy=140, sr=22,  nx=202, ny=372, nsz=104, al="center", bx=202, by=470, sop=1.0, orb=False, ns=0.85, maxW=384, shape="accent"),
-    # TYPE-LED puros: la marca/titular es el heroe, CERO figura; una regla de acento lo ancla.
+    # TYPE-LED puros: la marca/titular es el heroe, CERO figura; una regla de acento lo ancla. Distinto
+    # ANCLAJE VERTICAL por comp -> la composicion (no solo el color) cambia entre estilos.
     "typeStack":    dict(sx=0, sy=0, sr=0, nx=40,  ny=318, nsz=86, al="left",   bx=40,  by=392, sop=0, orb=False, ns=0.7, maxW=336, shape="none"),
     "typeOnly":     dict(sx=0, sy=0, sr=0, nx=202, ny=336, nsz=94, al="center", bx=202, by=414, sop=0, orb=False, ns=0.7, maxW=384, shape="none"),
+    "typeTop":      dict(sx=0, sy=0, sr=0, nx=40,  ny=186, nsz=88, al="left",   bx=40,  by=262, sop=0, orb=False, ns=0.7, maxW=340, shape="none"),
+    "typeLower":    dict(sx=0, sy=0, sr=0, nx=40,  ny=566, nsz=80, al="left",   bx=40,  by=636, sop=0, orb=False, ns=0.7, maxW=340, shape="none"),
 }
 # El frame de cierre (outro) hereda la personalidad del hero: cada composicion su CTA.
 _OUTRO_BY_COMP = {"emblem": "center", "sideLeft": "left", "typeHero": "bigtype", "shapeBehind": "center",
@@ -326,10 +329,10 @@ _ST_FULL = [["hero", "statement", "checklist", "outro"], ["hero", "checklist", "
 
 STYLE_PRESETS = {
     "blueprint":   {"nombre": "Blueprint", "bg": "blueprint", "light_p": 0.12, "shadow": "soft", "tex": "grid",
-                    "comps": ["typeStack", "sideLeft", "typeSlam"], "stmt": ["editorial", "left"], "list": "number", "grid_p": 0.0,
+                    "comps": ["typeStack", "typeLower", "sideLeft"], "stmt": ["editorial", "left"], "list": "number", "grid_p": 0.0,
                     "outro": ["bigtype", "diagonal", "left"], "rhythm": _RH_MED, "structs": _ST_FULL},
     "swiss":       {"nombre": "Swiss / Grid", "bg": "blueprint", "light_p": 0.92, "shadow": "soft", "tex": "grid",
-                    "comps": ["typeStack", "typeOnly", "sideLeft"], "stmt": ["centered", "panel"], "list": "dash", "grid_p": 0.5,
+                    "comps": ["typeStack", "typeLower", "sideLeft"], "stmt": ["centered", "panel"], "list": "dash", "grid_p": 0.5,
                     "outro": ["left", "diagonal", "center"], "rhythm": _RH_MED, "structs": _ST_FULL},
     "platinum":    {"nombre": "Platinum Linear", "bg": "spotlight", "light_p": 0.08, "shadow": "soft", "tex": "grid",
                     "comps": ["typeSlam", "typeOnly", "sideLeft"], "stmt": ["editorial", "centered"], "list": "dash", "grid_p": 0.3,
@@ -347,10 +350,10 @@ STYLE_PRESETS = {
                     "comps": ["typeStack", "cornerAnchor", "emblem"], "stmt": ["panel", "quote"], "list": "check", "grid_p": 0.0,
                     "outro": ["left", "center", "diagonal"], "rhythm": _RH_SLOW, "structs": _ST_FULL},
     "brutalist":   {"nombre": "Neo-Brutalist", "bg": "brutalist", "light_p": 0.25, "shadow": "hard", "tex": "none",
-                    "comps": ["typeOnly", "typeSlam", "typeStack"], "stmt": ["editorial", "centered"], "list": "bar", "grid_p": 0.0,
+                    "comps": ["typeTop", "typeOnly", "typeStack"], "stmt": ["editorial", "centered"], "list": "bar", "grid_p": 0.0,
                     "outro": ["ctaOnly", "bigtype"], "rhythm": _RH_FAST, "structs": _ST_PUNCHY},
     "typographic": {"nombre": "Typographic", "bg": "field", "light_p": 0.4, "shadow": "soft", "tex": "none",
-                    "comps": ["typeOnly", "typeSlam"], "stmt": ["editorial"], "list": "number", "grid_p": 0.0,
+                    "comps": ["typeTop", "typeOnly", "typeSlam"], "stmt": ["editorial"], "list": "number", "grid_p": 0.0,
                     "outro": ["ctaOnly", "bigtype"], "rhythm": _RH_MED, "structs": _ST_PUNCHY},
     "riso":        {"nombre": "Risograph", "bg": "halftone", "light_p": 0.5, "shadow": "hard", "tex": "none",
                     "comps": ["typeStack", "cornerAnchor", "typeOnly"], "stmt": ["editorial", "quote"], "list": "number", "grid_p": 0.0,
@@ -407,7 +410,7 @@ def generate(brand: str, industria: str, facts=None, seed: int = None, style: st
     forms = st["forms"][:]
     rnd.shuffle(forms)
     f1, f2 = forms[0], (forms[1] if len(forms) > 1 else forms[0])
-    left_anchored = comp in ("sideLeft", "cornerAnchor", "typeStack")
+    left_anchored = comp in ("sideLeft", "cornerAnchor", "typeStack", "typeTop", "typeLower")
     # statement: lo manda el estilo; si el hero es de columna izquierda y el estilo no trae editorial/left, usar left
     if left_anchored and "editorial" not in S["stmt"] and "left" not in S["stmt"]:
         stmt_style = "left"
