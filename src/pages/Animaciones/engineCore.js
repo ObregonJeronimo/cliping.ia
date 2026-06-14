@@ -33,6 +33,7 @@ const THEMES = {
   'mono-ink':        { bg: ['#262626', '#161616', '#080808'], mote: '230,230,230' },
 };
 const THEME_DEFAULT = { bg: ['#2a3240', '#1a1f2a', '#0e1118'], mote: '225,232,245' };  // slate neutro (NO violeta)
+const THEME_NAMES = Object.keys(THEMES);   // para la seccion "Fondo" del sidebar (lab)
 let BG = THEME_DEFAULT.bg, MOTE = THEME_DEFAULT.mote;
 function setTheme(name) {
   const p = THEMES[name] || THEME_DEFAULT;
@@ -72,6 +73,25 @@ function _rgba(hex, a) {
   const smooth = t => t * t * (3 - 2 * t);
   const TAU = Math.PI * 2;
 
+  // ---------- aleatoriedad SEMBRADA (determinista, reemplaza Math.random) ----------
+  // mulberry32: PRNG rapido y determinista. Misma semilla => misma secuencia, en cada corrida
+  // y en cada hilo del render paralelo de Remotion (Math.random NO es reproducible y rompe el render).
+  function mulberry32(a) {
+    return function () {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      let r = Math.imul(a ^ (a >>> 15), 1 | a);
+      r = (r + Math.imul(r ^ (r >>> 7), 61 | r)) ^ r;
+      return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  // hash de string -> entero 32 bits (FNV-1a): deriva una semilla ESTABLE de la marca/tema/acento.
+  function hashSeed(str) {
+    let h = 2166136261 >>> 0;
+    const s = String(str == null ? 'urvid' : str);
+    for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return h >>> 0;
+  }
+
   // gradiente de acento reutilizable
   function accent(x0, y0, x1, y1) {
     const g = ctx.createLinearGradient(x0, y0, x1, y1);
@@ -81,21 +101,108 @@ function _rgba(hex, a) {
   function setShadow(color, blur, dy = 0) { ctx.shadowColor = color; ctx.shadowBlur = blur; ctx.shadowOffsetY = dy; }
   function noShadow() { ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0; }
 
-  // ---------- fondo cinematográfico ----------
-  const motes = Array.from({ length: 16 }, () => ({
-    x: Math.random() * W, y: Math.random() * H, r: Math.random() * 2 + .6,
-    sp: Math.random() * 8 + 4, ph: Math.random() * TAU
-  }));
+  // ---------- fondo FLUIDO (mesh-gradient + motes), SEMBRADO y determinista ----------
+  // Toda la "materia prima" del fondo (posiciones, fases, frecuencias, amplitudes) sale de la SEMILLA
+  // del timeline: misma marca => mismo fondo; marca distinta => fondo distinto. Cero Math.random => el
+  // render paralelo de Remotion es reproducible. El movimiento es funcion pura de (t, seed).
+  let SEED = 0, motes = [], blobs = [], grain = [];
+  let BG_TEX = 'none';   // textura del fondo por rubro: grain | grain2 | grid | lines | none
+  function setTexture(n) { BG_TEX = (typeof n === 'string' && n) ? n : 'none'; }
+  let BG_ENERGY = 1;     // energia/velocidad del mesh por rubro (rapido tech/fitness, sereno salud/inmob)
+  function setEnergy(n) { BG_ENERGY = (typeof n === 'number' && isFinite(n)) ? clamp(n, 0.4, 2.2) : 1; }
+  // HSL <-> hex (para construir una paleta MULTI-COLOR a partir del acento de marca)
+  function _hexToHsl(hex) {
+    let r = 0, g = 0, b = 0;
+    if (typeof hex === 'string' && /^#[0-9a-fA-F]{6}$/.test(hex)) {
+      const n = parseInt(hex.slice(1), 16); r = ((n >> 16) & 255) / 255; g = ((n >> 8) & 255) / 255; b = (n & 255) / 255;
+    }
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+    let h = 0; const l = (mx + mn) / 2;
+    const s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
+    if (d !== 0) {
+      if (mx === r) h = ((g - b) / d) % 6;
+      else if (mx === g) h = (b - r) / d + 2;
+      else h = (r - g) / d + 4;
+      h *= 60; if (h < 0) h += 360;
+    }
+    return { h, s, l };
+  }
+  function _hslToHex(h, s, l) {
+    h = ((h % 360) + 360) % 360; s = clamp(s, 0, 1); l = clamp(l, 0, 1);
+    const c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = l - c / 2;
+    let r = 0, g = 0, b = 0;
+    if (h < 60) { r = c; g = x; } else if (h < 120) { r = x; g = c; }
+    else if (h < 180) { g = c; b = x; } else if (h < 240) { g = x; b = c; }
+    else if (h < 300) { r = x; b = c; } else { r = c; b = x; }
+    const to = (v) => Math.round((v + m) * 255).toString(16).padStart(2, '0');
+    return '#' + to(r) + to(g) + to(b);
+  }
+  // paleta multi-hue ANCLADA en el acento de marca (generica para cualquier rubro): brand + analogos
+  // + contraste casi-complementario + tinte del tema. Da "zonas de color" tipo Canva, no un unico glow.
+  function _meshPalette() {
+    const a = _hexToHsl(A1 || '#3aa0ff');
+    const S = clamp(a.s || 0.6, 0.5, 0.85);
+    const mk = (dh, l, s) => _hslToHex(a.h + dh, s == null ? S : s, l);
+    const th = _hexToHsl((BG && BG[0]) ? BG[0] : '#223040');
+    return [
+      mk(0, 0.58), mk(30, 0.56), mk(-34, 0.55), mk(158, 0.6, clamp(a.s, 0.55, 0.9)),
+      _hslToHex(th.h, clamp((th.s || 0.3) + 0.28, 0.4, 0.72), 0.5),
+    ];
+  }
+  function _buildBg() {
+    const rnd = mulberry32(SEED || 1);
+    // motes: polvo fino que flota (base sembrada; reemplaza el Math.random sin semilla original).
+    motes = Array.from({ length: 26 }, () => ({
+      x: rnd() * W, y: rnd() * H, r: rnd() * 1.8 + 0.5,
+      sp: rnd() * 7 + 3, ph: rnd() * TAU,
+    }));
+    // blobs del mesh-gradient: 7 manchas distribuidas en un ANILLO (evitan el centro -> color a los
+    // lados y centro mas calmo para el texto). Cada una deriva lento y se funde de forma aditiva.
+    // Posicion/color/tamano sembrados => fondo irrepetible por marca.
+    blobs = Array.from({ length: 7 }, () => {
+      const ang = rnd() * TAU, dist = 0.34 + 0.52 * rnd();
+      return {
+        bx: W / 2 + Math.cos(ang) * dist * W * 0.66,
+        by: H / 2 + Math.sin(ang) * dist * H * 0.54,
+        rad: H * (0.28 + 0.26 * rnd()),
+        ax: 55 + rnd() * 120, ay: 70 + rnd() * 150,
+        fx: 0.05 + rnd() * 0.15, fy: 0.05 + rnd() * 0.14,
+        px: rnd() * TAU, py: rnd() * TAU,
+        pi: Math.floor(rnd() * 5),   // indice de paleta (color resuelto al dibujar -> accent/tema en vivo)
+        a: 0.17 + rnd() * 0.11,      // alpha mas contenido -> evita bandas demasiado brillantes (Aura)
+      };
+    });
+    // grano sembrado (textura organica para rubros calidos; tinte del tema). Mas denso/visible.
+    grain = Array.from({ length: 230 }, () => ({ x: rnd() * W, y: rnd() * H, a: 0.05 + rnd() * 0.08, r: 1.3 + rnd() * 0.9 }));
+  }
+  function setSeed(n) {
+    const s = (typeof n === 'number' && isFinite(n)) ? (n >>> 0) : hashSeed(n);
+    if (s === SEED && blobs.length) return;   // ya construido para esta semilla
+    SEED = s; _buildBg();
+  }
   function drawBg(t) {
-    const g = ctx.createRadialGradient(W * 0.5, H * 0.34, 40, W * 0.5, H * 0.4, H * 0.9);
+    if (!blobs.length) _buildBg();
+    // 1) base: gradiente radial del tema (oscuro, para que las zonas de color resalten)
+    const g = ctx.createRadialGradient(W * 0.5, H * 0.36, 30, W * 0.5, H * 0.42, H * 0.95);
     g.addColorStop(0, BG[0]); g.addColorStop(0.5, BG[1]); g.addColorStop(1, BG[2]);
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-    // glow que respira y se mueve lento — tinte del ACENTO de la marca (antes era rosa fijo)
-    const gx = W * 0.5 + Math.sin(t * 0.3) * 70, gy = H * 0.33 + Math.cos(t * 0.23) * 40;
-    const gl = ctx.createRadialGradient(gx, gy, 0, gx, gy, 260);
-    gl.addColorStop(0, _rgba(A1, 0.12)); gl.addColorStop(1, _rgba(A1, 0));
-    ctx.fillStyle = gl; ctx.fillRect(0, 0, W, H);
-    // partículas (tinte segun tema)
+    // 2) mesh-gradient: zonas de color que derivan y se FUNDEN de forma aditiva ('lighter').
+    //    Sin ctx.filter (no es portable a Firefox); el blend aditivo da el look "Canva" y rasteriza igual.
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const pal = _meshPalette();
+    for (const b of blobs) {
+      const cx = b.bx + Math.sin(t * b.fx * BG_ENERGY + b.px) * b.ax;
+      const cy = b.by + Math.cos(t * b.fy * BG_ENERGY + b.py) * b.ay;
+      const col = pal[b.pi % pal.length];
+      const gl = ctx.createRadialGradient(cx, cy, 0, cx, cy, b.rad);
+      gl.addColorStop(0, _rgba(col, b.a));
+      gl.addColorStop(0.55, _rgba(col, b.a * 0.4));
+      gl.addColorStop(1, _rgba(col, 0));
+      ctx.fillStyle = gl; ctx.fillRect(0, 0, W, H);
+    }
+    ctx.restore();
+    // 3) motes (polvo) con tinte del tema, deriva vertical sembrada
     ctx.save();
     for (const m of motes) {
       const y = (m.y - t * m.sp) % (H + 20); const yy = y < -10 ? y + H + 20 : y;
@@ -104,9 +211,31 @@ function _rgba(hex, a) {
       ctx.arc(m.x, yy, m.r, 0, TAU); ctx.fill();
     }
     ctx.restore();
-    // viñeta
-    const v = ctx.createRadialGradient(W / 2, H / 2, H * 0.32, W / 2, H / 2, H * 0.72);
-    v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(20,12,4,0.3)');
+    // 3.5) TEXTURA por rubro: el fondo deja de ser un gradiente generico y aporta identidad.
+    if (BG_TEX === 'grain' || BG_TEX === 'grain2') {
+      ctx.save();
+      const amp = BG_TEX === 'grain2' ? 1.7 : 1.15;
+      for (const gp of grain) { ctx.globalAlpha = Math.min(0.26, gp.a * amp); ctx.fillStyle = `rgb(${MOTE})`; ctx.fillRect(gp.x, gp.y, gp.r || 1.5, gp.r || 1.5); }
+      ctx.restore();
+    } else if (BG_TEX === 'grid') {
+      ctx.save(); ctx.strokeStyle = `rgba(${MOTE},0.12)`; ctx.lineWidth = 1;
+      const step = 44, off = (t * 5) % step; ctx.beginPath();
+      for (let gx = -off; gx < W; gx += step) { ctx.moveTo(gx, 0); ctx.lineTo(gx, H); }
+      for (let gy = -off; gy < H; gy += step) { ctx.moveTo(0, gy); ctx.lineTo(W, gy); }
+      ctx.stroke(); ctx.restore();
+    } else if (BG_TEX === 'lines') {
+      ctx.save(); ctx.strokeStyle = `rgba(${MOTE},0.13)`; ctx.lineWidth = 1.2;
+      const step = 24, off = (t * 4) % step; ctx.beginPath();
+      for (let i = -H - off; i < W; i += step) { ctx.moveTo(i, 0); ctx.lineTo(i + H, H); }
+      ctx.stroke(); ctx.restore();
+    }
+    // 4) scrim central suave: baja un toque el brillo del centro para que el texto SIEMPRE se lea
+    const sc = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, H * 0.5);
+    sc.addColorStop(0, 'rgba(0,0,0,0.18)'); sc.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = sc; ctx.fillRect(0, 0, W, H);
+    // 5) viñeta (oscurece bordes -> foco)
+    const v = ctx.createRadialGradient(W / 2, H / 2, H * 0.30, W / 2, H / 2, H * 0.74);
+    v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,0.4)');
     ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
   }
 
@@ -430,92 +559,134 @@ function _rgba(hex, a) {
   }
 
   // ---------- ESCENA 3: checklist con botones OK ----------
-  function sceneList(t, p = {}) {
-    const cx = W / 2;
-    fxText(p.title || '', cx, H * 0.24, (p.title || '').length > 18 ? 24 : 30, inv(t, 0.1, 0.7), 800, '#fff6f0', W * 0.86);
-    const items = (p.items || []).slice(0, 4);
-    const gap = 64, startY = H * 0.52 - (items.length - 1) * gap / 2;
-    items.forEach((label, i) => {
-      const d = 0.5 + i * 0.42;
-      const rin = inv(t, d, d + 0.55);
-      if (rin <= 0) return;
-      const x = cx - 150, y = startY + i * gap;
-      const slide = lerp(46, 0, eOutBack(rin));
-      ctx.save();
-      ctx.globalAlpha *= clamp(rin * 1.5, 0, 1);
-      ctx.translate(slide, 0);
-      // tarjeta
-      ctx.fillStyle = 'rgba(255,255,255,0.05)';
-      ctx.strokeStyle = 'rgba(255,255,255,0.10)'; ctx.lineWidth = 1.5;
-      ctx.roundRect(x, y - 24, 300, 48, 14); ctx.fill(); ctx.stroke();
-      // botón OK con check que se dibuja
-      const okScale = eOutBack(clamp(inv(t, d + 0.1, d + 0.5), 0, 1));
-      ctx.save(); ctx.translate(x + 30, y); ctx.scale(okScale, okScale);
-      setShadow('rgba(55,211,154,0.5)', 14, 4);
-      ctx.fillStyle = '#37d39a'; ctx.beginPath(); ctx.arc(0, 0, 15, 0, TAU); ctx.fill(); noShadow();
+  // marcador de item del checklist segun listStyle, RE-TENIDO al acento de marca (rompe el "check
+  // verde universal" que delataba el molde). Estilos: check / number / bar / dash -> distinto por rubro.
+  function _listMarker(style, i, t, d) {
+    if (style === 'number') {
+      setShadow(_rgba(A1, 0.4), 12, 3);
+      ctx.fillStyle = A1; ctx.beginPath(); ctx.arc(0, 0, 15, 0, TAU); ctx.fill(); noShadow();
+      ctx.fillStyle = '#15100a'; ctx.font = '800 17px "Inter",system-ui,sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(i + 1), 0, 1);
+    } else if (style === 'bar') {
+      ctx.fillStyle = accent(0, -15, 0, 15); ctx.beginPath(); ctx.roundRect(-3.5, -15, 7, 30, 3.5); ctx.fill();
+    } else if (style === 'dash') {
+      ctx.fillStyle = A1; ctx.beginPath(); ctx.roundRect(-14, -2.5, 28, 5, 2.5); ctx.fill();
+    } else {
+      setShadow(_rgba(A1, 0.45), 14, 4);
+      ctx.fillStyle = A1; ctx.beginPath(); ctx.arc(0, 0, 15, 0, TAU); ctx.fill(); noShadow();
       const ck = inv(t, d + 0.25, d + 0.6);
-      ctx.strokeStyle = '#0a2218'; ctx.lineWidth = 3.2; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-      ctx.beginPath();
-      const pts = [[-6, 0], [-2, 5], [7, -6]];
-      ctx.moveTo(pts[0][0], pts[0][1]);
+      ctx.strokeStyle = '#10100a'; ctx.lineWidth = 3.2; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      ctx.beginPath(); const pts = [[-6, 0], [-2, 5], [7, -6]]; ctx.moveTo(pts[0][0], pts[0][1]);
       if (ck > 0) {
-        const seg1 = clamp(ck / 0.45, 0, 1), seg2 = clamp((ck - 0.45) / 0.55, 0, 1);
-        ctx.lineTo(lerp(pts[0][0], pts[1][0], seg1), lerp(pts[0][1], pts[1][1], seg1));
-        if (seg2 > 0) ctx.lineTo(lerp(pts[1][0], pts[2][0], seg2), lerp(pts[1][1], pts[2][1], seg2));
+        const s1 = clamp(ck / 0.45, 0, 1), s2 = clamp((ck - 0.45) / 0.55, 0, 1);
+        ctx.lineTo(lerp(pts[0][0], pts[1][0], s1), lerp(pts[0][1], pts[1][1], s1));
+        if (s2 > 0) ctx.lineTo(lerp(pts[1][0], pts[2][0], s2), lerp(pts[1][1], pts[2][1], s2));
         ctx.stroke();
       }
-      ctx.restore();
-      // label (auto-ajuste para no cortar en el borde de la tarjeta)
-      ctx.font = `600 ${fitFont(label, 21, 228, 13, 600)}px "Inter",system-ui,sans-serif`;
-      ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#f4ede0';
-      ctx.fillText(label, x + 58, y);
+    }
+  }
+  // === 4 LAYOUTS de checklist (no solo el marcador) -> rompe de verdad el esqueleto compartido ===
+  // card (boxed, gastronomia/salud), plain (tech, sin caja + linea fina), editorial (moda/inmob/educ,
+  // numero grande), bar-bold (fitness/finanzas, barra de acento que se llena). Cada uno con su ritmo.
+  function _rowCard(label, x, y, i, t, d) {
+    ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.strokeStyle = 'rgba(255,255,255,0.10)'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.roundRect(x, y - 24, 300, 48, 14); ctx.fill(); ctx.stroke();
+    const ms = eOutBack(clamp(inv(t, d + 0.1, d + 0.5), 0, 1));
+    ctx.save(); ctx.translate(x + 30, y); ctx.scale(ms, ms); _listMarker('check', i, t, d); ctx.restore();
+    ctx.font = `600 ${fitFont(label, 21, 224, 13, 600)}px "Inter",system-ui,sans-serif`;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#f4ede0'; ctx.fillText(label, x + 58, y);
+  }
+  function _rowPlain(label, x, y, i, t, d) {     // tech: sin caja, guion + linea fina (drawing/CAD)
+    const ms = eOutBack(clamp(inv(t, d + 0.1, d + 0.5), 0, 1));
+    ctx.save(); ctx.translate(x + 14, y); ctx.scale(ms, ms); ctx.fillStyle = A1; ctx.beginPath(); ctx.roundRect(-13, -2, 26, 4, 2); ctx.fill(); ctx.restore();
+    ctx.font = `600 ${fitFont(label, 21, 240, 13, 600)}px "Inter",system-ui,sans-serif`;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#eef2f7'; setShadow('rgba(0,0,0,0.5)', 5, 1); ctx.fillText(label, x + 44, y); noShadow();
+    const lp = clamp(inv(t, d + 0.15, d + 0.7), 0, 1);
+    ctx.strokeStyle = 'rgba(255,255,255,0.11)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + 44, y + 19); ctx.lineTo(x + 44 + 256 * lp, y + 19); ctx.stroke();
+  }
+  function _rowEditorial(label, x, y, i, t, d) { // moda/inmob: numero grande, sin caja, regla fina
+    const np = clamp(inv(t, d + 0.05, d + 0.5), 0, 1);
+    ctx.save(); ctx.globalAlpha *= np; ctx.font = '800 33px "Inter",system-ui,sans-serif';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = A1; ctx.fillText(String(i + 1).padStart(2, '0'), x, y - 1); ctx.restore();
+    ctx.font = `600 ${fitFont(label, 20, 206, 13, 600)}px "Inter",system-ui,sans-serif`;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#f4ede0'; setShadow('rgba(0,0,0,0.5)', 5, 1); ctx.fillText(label, x + 56, y); noShadow();
+    const lp = clamp(inv(t, d + 0.15, d + 0.7), 0, 1);
+    ctx.strokeStyle = 'rgba(255,255,255,0.13)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, y + 21); ctx.lineTo(x + 300 * lp, y + 21); ctx.stroke();
+  }
+  function _rowBar(label, x, y, i, t, d) {       // fitness/finanzas: barra de acento que se llena
+    const fp = eOutCubic(clamp(inv(t, d, d + 0.5), 0, 1));
+    ctx.fillStyle = _rgba(A1, 0.16); ctx.beginPath(); ctx.roundRect(x, y - 21, 300 * fp, 42, 9); ctx.fill();
+    ctx.fillStyle = A1; ctx.beginPath(); ctx.roundRect(x, y - 21, 8 * fp, 42, 3); ctx.fill();
+    ctx.font = `700 ${fitFont(label, 20, 250, 13, 700)}px "Inter",system-ui,sans-serif`;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#ffffff'; ctx.globalAlpha *= clamp(fp * 1.4, 0, 1); setShadow('rgba(0,0,0,0.45)', 4, 1); ctx.fillText(label, x + 24, y); noShadow();
+  }
+  function sceneList(t, p = {}) {
+    const cx = W / 2, style = p.listStyle || 'check';
+    fxText(p.title || '', cx, H * 0.23, (p.title || '').length > 18 ? 24 : 30, inv(t, 0.1, 0.7), 800, '#fff6f0', W * 0.86);
+    const items = (p.items || []).slice(0, 4);
+    const gap = style === 'bar' ? 60 : 64, startY = H * 0.52 - (items.length - 1) * gap / 2;
+    const row = style === 'bar' ? _rowBar : style === 'number' ? _rowEditorial : style === 'dash' ? _rowPlain : _rowCard;
+    items.forEach((label, i) => {
+      const d = 0.5 + i * 0.42, rin = inv(t, d, d + 0.55);
+      if (rin <= 0) return;
+      const x = cx - 150, y = startY + i * gap, slide = lerp(46, 0, eOutBack(rin));
+      ctx.save(); ctx.globalAlpha *= clamp(rin * 1.5, 0, 1); ctx.translate(slide, 0);
+      row(label, x, y, i, t, d);
       ctx.restore();
     });
   }
 
   // ---------- ESCENA 4: marca + CTA ----------
   function sceneOutro(t, p = {}) {
-    const cx = W / 2, cy = H * 0.42;
-    // marca paint-in
-    const bn = inv(t, 0.2, 1.05);
+    const lft = p.ctaStyle === 'chip';          // chip rubros -> outro EDITORIAL a la izquierda
+    const cx = W / 2, cy = H * 0.42, ax = lft ? W * 0.16 : cx, al = lft ? 'left' : 'center';
+    // marca paint-in (wipe horizontal con borde ondulado)
+    const bn = eOutCubic(inv(t, 0.2, 1.0));
     if (bn > 0) {
       const _bn = p.brand || '';
-      const fontSize = fitFont(_bn, 56, W * 0.86, 32, 800), half = fontSize * 0.62, top = cy - half, bot = cy + half;
-      const front = lerp(top - 6, bot, eOutCubic(bn));
+      const fontSize = fitFont(_bn, 56, W * 0.82, 32, 800), top = cy - fontSize * 0.62, bot = cy + fontSize * 0.62;
       ctx.save();
-      ctx.beginPath(); ctx.moveTo(0, top - 30); ctx.lineTo(W, top - 30); ctx.lineTo(W, front);
-      for (let x = W; x >= 0; x -= 10) ctx.lineTo(x, front + Math.sin(x * 0.08 + t * 6) * 3);
-      ctx.closePath(); ctx.clip();
+      ctx.globalAlpha *= bn;
       ctx.font = `800 ${fontSize}px "Inter",system-ui,sans-serif`;
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillStyle = accent(cx - 130, top, cx + 130, bot);
-      ctx.fillText(_bn, cx, cy);
+      ctx.textAlign = al; ctx.textBaseline = 'middle';
+      ctx.fillStyle = accent(ax - 130, top, ax + 130, bot);
+      ctx.fillText(_bn, ax, cy + (1 - bn) * 16);
       ctx.restore();
     }
-    // barra
+    // barra de acento bajo la marca
     const bar = inv(t, 0.9, 1.4);
-    if (bar > 0) { ctx.save(); ctx.fillStyle = accent(cx - 60, 0, cx + 60, 0); ctx.roundRect(cx - 60 * eOutCubic(bar), cy + 44, 120 * eOutCubic(bar), 5, 3); ctx.fill(); ctx.restore(); }
+    if (bar > 0) {
+      const bw = 120 * eOutCubic(bar);
+      ctx.save(); ctx.fillStyle = accent(ax - 60, 0, ax + 60, 0);
+      ctx.roundRect(lft ? ax : ax - bw / 2, cy + 44, bw, 5, 3); ctx.fill(); ctx.restore();
+    }
     // CTA
     const cta = inv(t, 1.1, 1.6);
     if (cta > 0) {
       const pulse = 1 + Math.sin(t * 4) * 0.025 * clamp(inv(t, 1.6, 1.8), 0, 1);
       const sc = eOutBack(clamp(cta, 0, 1)) * pulse;
-      ctx.save(); ctx.translate(cx, cy + 110); ctx.scale(sc, sc);
       const ctaStr = (p.cta || 'Visitá ahora') + '  →';
       ctx.font = `700 25px "Inter",system-ui,sans-serif`;
-      const w = Math.max(250, Math.min(360, ctx.measureText(ctaStr).width + 56)), h = 64;
+      const w = Math.max(230, Math.min(360, ctx.measureText(ctaStr).width + 56)), h = 64;
       const ctaSize = fitFont(ctaStr, 25, w - 44, 15, 700);
-      setShadow(_rgba(A1, 0.55), 30, 10);
-      ctx.fillStyle = accent(-w / 2, -h / 2, w / 2, h / 2);
-      ctx.roundRect(-w / 2, -h / 2, w, h, h / 2); ctx.fill(); noShadow();
+      const px = lft ? ax + w / 2 : cx;
+      ctx.save(); ctx.translate(px, cy + 110); ctx.scale(sc, sc);
+      // boton CLARO (acento muy aclarado, casi pastel) -> garantiza contraste sobre el fondo del MISMO
+      // color de marca (rojo-sobre-rojo, cyan-sobre-cyan); texto y ring oscuros para definirlo.
+      setShadow(_rgba(A1, 0.55), 30, 9);
+      const cg = ctx.createLinearGradient(-w / 2, -h / 2, w / 2, h / 2);
+      cg.addColorStop(0, _lighten(A1, 0.62)); cg.addColorStop(1, _lighten(A2, 0.48));
+      ctx.fillStyle = cg;
+      ctx.beginPath(); ctx.roundRect(-w / 2, -h / 2, w, h, (lft ? 13 : h / 2)); ctx.fill(); noShadow();
+      ctx.lineWidth = 1.5; ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.roundRect(-w / 2, -h / 2, w, h, (lft ? 13 : h / 2)); ctx.stroke();
       ctx.font = `700 ${ctaSize}px "Inter",system-ui,sans-serif`;
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#1a0a14';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#14090e';
       ctx.fillText(ctaStr, 0, 1);
       ctx.restore();
       // chispas al aparecer
       const burst = inv(t, 1.1, 1.55);
       if (burst > 0 && burst < 1) {
-        ctx.save(); ctx.translate(cx, cy + 110);
+        ctx.save(); ctx.translate(px, cy + 110);
         for (let i = 0; i < 10; i++) {
           const a = (i / 10) * TAU, d = lerp(20, 90, eOutCubic(burst));
           ctx.globalAlpha = (1 - burst) * 0.9;
@@ -537,45 +708,43 @@ function _rgba(hex, a) {
   function sceneStatement(t, p = {}) {
     const text = p.text || '';
     if (!text) return;
-    const cx = W / 2;
+    const left = p.stmtStyle === 'left';   // 'left' editorial (tech/finanzas/moda) vs 'centered' (default)
     const fs = text.length > 26 ? 30 : (text.length > 16 ? 36 : 42);
     ctx.font = `800 ${fs}px "Inter",system-ui,sans-serif`;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    // wrap por ancho
-    const words = text.split(' ');
-    const maxW = W * 0.82;
-    const lines = []; let cur = '';
+    ctx.textBaseline = 'middle';
+    const maxW = left ? W * 0.72 : W * 0.82;
+    const words = text.split(' '); const lines = []; let cur = '';
     for (const w of words) {
       const test = cur ? cur + ' ' + w : w;
-      if (ctx.measureText(test).width > maxW && cur) { lines.push(cur); cur = w; }
-      else cur = test;
+      if (ctx.measureText(test).width > maxW && cur) { lines.push(cur); cur = w; } else cur = test;
     }
     if (cur) lines.push(cur);
     const lh = fs * 1.18;
     const topY = H * 0.5 - (lines.length * lh) / 2 + lh / 2;
-    // lineas suben + aparecen escalonadas
-    lines.forEach((ln, i) => {
-      const start = 0.15 + i * 0.26;
-      const pr = eOutCubic(inv(t, start, start + 0.55));
-      if (pr <= 0) return;
-      ctx.save();
-      ctx.globalAlpha = pr;
-      ctx.fillStyle = '#f7f1e6';
-      ctx.fillText(ln, cx, topY + i * lh + (1 - pr) * 26);
-      ctx.restore();
-    });
-    // barrido de acento que subraya el bloque
-    const uStart = 0.15 + lines.length * 0.26 + 0.12;
-    const up = eInOutCubic(inv(t, uStart, uStart + 0.5));
-    if (up > 0) {
-      const uy = topY + (lines.length - 1) * lh + fs * 0.72;
-      const half = Math.min(maxW, ctx.measureText(lines[lines.length - 1]).width) / 2 + 6;
-      ctx.save();
-      ctx.fillStyle = accent(cx - half, uy, cx + half, uy);
-      ctx.beginPath();
-      ctx.roundRect(cx - half, uy, half * 2 * up, 5, 3);
-      ctx.fill();
-      ctx.restore();
+    if (left) {
+      const ax = W * 0.14; ctx.textAlign = 'left';
+      const bh = lines.length * lh, rr = eOutCubic(clamp(inv(t, 0.05, 0.6), 0, 1));
+      if (rr > 0) { ctx.save(); ctx.fillStyle = accent(0, topY - lh * 0.5, 0, topY - lh * 0.5 + bh); ctx.beginPath(); ctx.roundRect(ax - 20, topY - lh * 0.5, 5, bh * rr, 2.5); ctx.fill(); ctx.restore(); }
+      lines.forEach((ln, i) => {
+        const pr = eOutCubic(inv(t, 0.15 + i * 0.22, 0.15 + i * 0.22 + 0.55));
+        if (pr <= 0) return;
+        ctx.save(); ctx.globalAlpha = pr; ctx.fillStyle = '#f7f1e6'; ctx.fillText(ln, ax + (1 - pr) * 18, topY + i * lh); ctx.restore();
+      });
+    } else {
+      const cx = W / 2; ctx.textAlign = 'center';
+      const kr = eOutBack(clamp(inv(t, 0.05, 0.5), 0, 1));
+      if (kr > 0) { ctx.save(); ctx.fillStyle = accent(cx - 30, 0, cx + 30, 0); ctx.beginPath(); ctx.roundRect(cx - 28 * kr, topY - lh * 0.5 - 30, 56 * kr, 5, 3); ctx.fill(); ctx.restore(); }
+      lines.forEach((ln, i) => {
+        const pr = eOutCubic(inv(t, 0.15 + i * 0.26, 0.15 + i * 0.26 + 0.55));
+        if (pr <= 0) return;
+        ctx.save(); ctx.globalAlpha = pr; ctx.fillStyle = '#f7f1e6'; ctx.fillText(ln, cx, topY + i * lh + (1 - pr) * 26); ctx.restore();
+      });
+      const uStart = 0.15 + lines.length * 0.26 + 0.12, up = eInOutCubic(inv(t, uStart, uStart + 0.5));
+      if (up > 0) {
+        const uy = topY + (lines.length - 1) * lh + fs * 0.72;
+        const half = Math.min(maxW, ctx.measureText(lines[lines.length - 1]).width) / 2 + 6;
+        ctx.save(); ctx.fillStyle = accent(cx - half, uy, cx + half, uy); ctx.beginPath(); ctx.roundRect(cx - half, uy, half * 2 * up, 5, 3); ctx.fill(); ctx.restore();
+      }
     }
   }
 
@@ -625,7 +794,7 @@ function _rgba(hex, a) {
   function _resolveColor(tok) {
     if (typeof tok === 'string') {
       if (tok === 'accent') return A1; if (tok === 'accent2') return A2;
-      if (tok === 'ink' || tok === 'light') return '#fbf6ec'; if (tok === 'dim') return '#cdbfae';
+      if (tok === 'ink' || tok === 'light') return '#fbf6ec'; if (tok === 'dim') return '#dccfbe';
       if (tok === 'dark') return '#1c140a'; if (/^#[0-9a-fA-F]{6}$/.test(tok)) return tok;
     }
     return '#fbf6ec';
@@ -683,7 +852,7 @@ function _rgba(hex, a) {
     for (const k of keys) {
       if (k.x === undefined && k.y === undefined) continue;
       if (k.t <= tt) { prev = k; continue; }
-      const x1 = k.x !== undefined ? k.x : (prev ? prev.x : W / 2), y1 = k.y !== undefined ? k.y : (prev ? prev.y : H / 2);
+      const x1 = k.x !== undefined ? k.x : (prev && prev.x !== undefined ? prev.x : W / 2), y1 = k.y !== undefined ? k.y : (prev && prev.y !== undefined ? prev.y : H / 2);
       if (prev === null) return [x1, y1];
       const x0 = prev.x !== undefined ? prev.x : x1, y0 = prev.y !== undefined ? prev.y : y1;
       const span = (k.t - prev.t) || 1e-6;
@@ -873,6 +1042,16 @@ function _rgba(hex, a) {
         const n = Math.max(1, el.count || 10), prog = clamp(_num(keys, t, 'burst', clamp(t, 0, 1)), 0, 1);
         ctx.translate(x, y);
         for (let i = 0; i < n; i++) { const a = (i / n) * TAU, d = lerp(10, el.spread || 90, eOutCubic(prog)); ctx.globalAlpha = op * (1 - prog) * 0.9; ctx.fillStyle = i % 2 ? A2 : A1; ctx.beginPath(); ctx.arc(Math.cos(a) * d, Math.sin(a) * d, el.dotR || 3, 0, TAU); ctx.fill(); }
+      } else if (kind === 'orbit') {
+        // satelites que ORBITAN el centro (x,y) -> da complejidad y vida al hero. ry<1 = orbita eliptica.
+        const n = Math.max(1, el.count || 3), rr = el.r || 120, sp = el.speed || 1.1, ph = el.phase || 0;
+        const ry = (el.ry != null) ? el.ry : 1, col = _resolveColor(el.fill || 'accent2');
+        const gcol = (typeof col === 'string' && col[0] === '#') ? col : A1;
+        for (let i = 0; i < n; i++) {
+          const a = t * sp + ph + i * TAU / n;
+          ctx.save(); setShadow(_rgba(gcol, 0.5), 12, 0); ctx.fillStyle = col;
+          ctx.beginPath(); ctx.arc(x + Math.cos(a) * rr, y + Math.sin(a) * rr * ry, el.dotR || 6, 0, TAU); ctx.fill(); noShadow(); ctx.restore();
+        }
       } else if (kind === 'morph') {
         if (el.blur) for (let b = 3; b >= 1; b--) { const tb = Math.max(0, t - b * 0.022); const pb = _pos(keys, tb); const sb = Math.max(0, _num(keys, tb, 'scale', scale)); const gpts = _morphAt(keys, tb); if (gpts) { ctx.save(); ctx.globalAlpha *= 0.1; ctx.translate(pb[0], pb[1]); if (sb !== 1) ctx.scale(sb, sb); ctx.fillStyle = _colorAt(keys, tb, _resolveColor(el.fill || 'accent')); _smoothPath(gpts); ctx.fill(); ctx.restore(); } }
         const pts = _morphAt(keys, t);
@@ -948,11 +1127,32 @@ function _rgba(hex, a) {
     return clamp(Math.min(fin, fout), 0, 1);
   }
 
+  // Semilla del fondo: la explicita del timeline, o una derivada ESTABLE de marca+tema+acento.
+  function _seedFor(tl) {
+    if (tl && typeof tl.seed === 'number' && isFinite(tl.seed)) return tl.seed >>> 0;
+    return hashSeed((tl ? (tl.brand || '') + '|' + (tl.theme || '') + '|' + (tl.accent || '') : 'urvid'));
+  }
+
+  // API aislada para la seccion "Fondo" del sidebar (lab): dibuja SOLO el fondo fluido, sin escenas.
+  function drawBackground(c, t, opts) {
+    ctx = c;
+    const o = opts || {};
+    setAccent(o.accent);
+    setTheme(o.theme);
+    setSeed((typeof o.seed === 'number' && isFinite(o.seed)) ? (o.seed >>> 0) : hashSeed(o.seed));
+    setTexture(o.texture);
+    ctx.clearRect(0, 0, W, H);
+    drawBg(t);
+  }
+
   function drawFrame(c, t, timeline) {
     ctx = c;
     const tl = pickTimeline(timeline);
     setAccent(tl.accent);
     setTheme(tl.theme);
+    setSeed(_seedFor(tl));
+    setTexture(tl.texture);
+    setEnergy(tl.bgEnergy);
     ctx.clearRect(0, 0, W, H);
     drawBg(t);
     const _scenes = layout(tl);
@@ -999,4 +1199,4 @@ function _rgba(hex, a) {
     return cur.label || SCENE_LABELS[cur.type] || ('Escena · ' + cur.type);
   }
 
-export { drawFrame, beatAt, timelineDuration, setAccent, setTheme, DEMO_TIMELINE };
+export { drawFrame, beatAt, timelineDuration, setAccent, setTheme, setSeed, drawBackground, DEMO_TIMELINE, THEME_NAMES };

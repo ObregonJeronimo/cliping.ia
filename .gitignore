@@ -4,3 +4,15 @@ dist
 .env.local
 .DS_Store
 *.log
+
+# secretos server-side (NUNCA versionar) — Firebase Admin / service accounts
+backend/firebase-service-account.json
+*service-account*.json
+*serviceAccount*.json
+
+# artefactos de render del visor offline (PNGs/MP4), marcas de test y presets generados
+tools/out/
+tools/brands/
+tools/style-presets.json
+remotion/props-*.json
+*.mp4

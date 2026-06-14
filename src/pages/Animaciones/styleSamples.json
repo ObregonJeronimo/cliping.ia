@@ -1,0 +1,250 @@
+[
+  {
+    "label": "restaurant de comida natural",
+    "rubro": "gastronomia",
+    "seed": 2729467555,
+    "accent": "#e2a93b",
+    "theme": "crimson-bold",
+    "pacing": "calido",
+    "density": "media",
+    "bg_blobs": 7,
+    "n_scenes": 4,
+    "morphs": [
+      "drop",
+      "flower",
+      "circle"
+    ],
+    "icons": [
+      "check",
+      "star"
+    ],
+    "motion": [
+      "stagger",
+      "morph"
+    ],
+    "hook_bias": "antojo",
+    "list_style": "check",
+    "cta_style": "pill",
+    "bg_texture": "grain",
+    "bg_energy": 1.0,
+    "stmt_style": "centered",
+    "style_seed": "gastronomia-5ea3-crimson-bold"
+  },
+  {
+    "label": "almacen organico",
+    "rubro": "gastronomia",
+    "seed": 3986983128,
+    "accent": "#d56949",
+    "theme": "sunset-warm",
+    "pacing": "calido",
+    "density": "media",
+    "bg_blobs": 7,
+    "n_scenes": 4,
+    "morphs": [
+      "flower",
+      "drop",
+      "circle"
+    ],
+    "icons": [
+      "star",
+      "check"
+    ],
+    "motion": [
+      "morph",
+      "stagger"
+    ],
+    "hook_bias": "sensorial",
+    "list_style": "check",
+    "cta_style": "pill",
+    "bg_texture": "grain",
+    "bg_energy": 1.0,
+    "stmt_style": "centered",
+    "style_seed": "gastronomia-88d8-sunset-warm"
+  },
+  {
+    "label": "plataforma SaaS de automatizacion",
+    "rubro": "tech",
+    "seed": 3720046995,
+    "accent": "#4752eb",
+    "theme": "clinical-formal",
+    "pacing": "rapido",
+    "density": "alta",
+    "bg_blobs": 9,
+    "n_scenes": 5,
+    "morphs": [
+      "hexagon",
+      "square",
+      "gear"
+    ],
+    "icons": [
+      "check",
+      "dot"
+    ],
+    "motion": [
+      "outExpo",
+      "path"
+    ],
+    "hook_bias": "dato",
+    "list_style": "dash",
+    "cta_style": "chip",
+    "bg_texture": "grid",
+    "bg_energy": 1.5,
+    "stmt_style": "left",
+    "style_seed": "tech-6993-clinical-formal"
+  },
+  {
+    "label": "clinica odontologica",
+    "rubro": "salud",
+    "seed": 1354856000,
+    "accent": "#44c5b8",
+    "theme": "clinical-formal",
+    "pacing": "sereno",
+    "density": "baja",
+    "bg_blobs": 5,
+    "n_scenes": 4,
+    "morphs": [
+      "plus",
+      "heart",
+      "circle"
+    ],
+    "icons": [
+      "check",
+      "leaf"
+    ],
+    "motion": [
+      "outCubic",
+      "morph"
+    ],
+    "hook_bias": "dato",
+    "list_style": "check",
+    "cta_style": "pill",
+    "bg_texture": "grain",
+    "bg_energy": 0.7,
+    "stmt_style": "centered",
+    "style_seed": "salud-7640-clinical-formal"
+  },
+  {
+    "label": "marca de ropa urbana",
+    "rubro": "moda",
+    "seed": 2686163569,
+    "accent": "#d857db",
+    "theme": "berry-glow",
+    "pacing": "editorial",
+    "density": "media",
+    "bg_blobs": 7,
+    "n_scenes": 4,
+    "morphs": [
+      "blob",
+      "diamond",
+      "star5"
+    ],
+    "icons": [
+      "star",
+      "dot"
+    ],
+    "motion": [
+      "path",
+      "outExpo"
+    ],
+    "hook_bias": "drop",
+    "list_style": "number",
+    "cta_style": "chip",
+    "bg_texture": "lines",
+    "bg_energy": 1.1,
+    "stmt_style": "left",
+    "style_seed": "moda-9a71-berry-glow"
+  },
+  {
+    "label": "inmobiliaria premium",
+    "rubro": "inmobiliaria",
+    "seed": 2046723771,
+    "accent": "#4b89d3",
+    "theme": "gold-lux",
+    "pacing": "sereno",
+    "density": "media",
+    "bg_blobs": 7,
+    "n_scenes": 4,
+    "morphs": [
+      "circle",
+      "hexagon",
+      "house"
+    ],
+    "icons": [
+      "dot",
+      "house"
+    ],
+    "motion": [
+      "outCubic",
+      "stagger"
+    ],
+    "hook_bias": "aspiracional",
+    "list_style": "number",
+    "cta_style": "pill",
+    "bg_texture": "lines",
+    "bg_energy": 0.7,
+    "stmt_style": "left",
+    "style_seed": "inmobiliaria-86bb-gold-lux"
+  },
+  {
+    "label": "gimnasio crossfit",
+    "rubro": "fitness",
+    "seed": 4213605252,
+    "accent": "#ef4348",
+    "theme": "cyber-neon",
+    "pacing": "energico",
+    "density": "alta",
+    "bg_blobs": 9,
+    "n_scenes": 5,
+    "morphs": [
+      "blob",
+      "star5",
+      "triangle"
+    ],
+    "icons": [
+      "star",
+      "dot"
+    ],
+    "motion": [
+      "outBack",
+      "stagger"
+    ],
+    "hook_bias": "energia",
+    "list_style": "bar",
+    "cta_style": "chip",
+    "bg_texture": "grain2",
+    "bg_energy": 1.6,
+    "stmt_style": "centered",
+    "style_seed": "fitness-8384-cyber-neon"
+  },
+  {
+    "label": "fintech de inversiones",
+    "rubro": "finanzas",
+    "seed": 648472911,
+    "accent": "#5dc1a4",
+    "theme": "clinical-formal",
+    "pacing": "sobrio",
+    "density": "baja",
+    "bg_blobs": 5,
+    "n_scenes": 4,
+    "morphs": [
+      "circle",
+      "square",
+      "triangle"
+    ],
+    "icons": [
+      "dot",
+      "box"
+    ],
+    "motion": [
+      "outCubic",
+      "path"
+    ],
+    "hook_bias": "dato",
+    "list_style": "bar",
+    "cta_style": "chip",
+    "bg_texture": "grid",
+    "bg_energy": 1.2,
+    "stmt_style": "left",
+    "style_seed": "finanzas-e94f-clinical-formal"
+  }
+]
