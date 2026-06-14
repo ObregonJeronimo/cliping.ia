@@ -261,16 +261,24 @@ RUBRO_STRUCT = {
 ARCHETYPES = {
     "editorial":  {"comps": ["typeSlam", "sideLeft", "cornerAnchor"], "stmt": ["editorial"],
                    "list_style": "number", "grid_p": 0.0, "light_p": 0.55, "bg_dark": ["spotlight", "field", "mesh"], "bg_light": ["field", "aurora", "mesh"],
-                   "tex": "lines", "rhythm": {"scene": 1.12, "statement": 0.96, "checklist": 1.0, "bigStat": 0.96, "outro": 1.0}},
+                   "tex": "lines", "rhythm": {"scene": 1.12, "statement": 0.96, "checklist": 1.0, "bigStat": 0.96, "outro": 1.0},
+                   "structs": [["hero", "statement", "outro"], ["statement", "hero", "outro"],
+                               ["hero", "statement", "checklist", "outro"], ["statement", "statement", "hero", "outro"]]},
     "bold":       {"comps": ["typeSlam", "typeHero", "diagonal"], "stmt": ["editorial", "centered"],
                    "list_style": "bar", "grid_p": 0.0, "light_p": 0.12, "bg_dark": ["spotlight", "bands"], "bg_light": ["bands", "field"],
-                   "tex": "grain2", "rhythm": {"scene": 0.96, "statement": 0.82, "checklist": 0.86, "bigStat": 0.85, "outro": 0.9}},
+                   "tex": "grain2", "rhythm": {"scene": 0.96, "statement": 0.82, "checklist": 0.86, "bigStat": 0.85, "outro": 0.9},
+                   "structs": [["statement", "hero", "outro"], ["hero", "statement", "outro"],
+                               ["statement", "statement", "outro"], ["hero", "checklist", "outro"]]},
     "clean":      {"comps": ["emblem", "sideLeft", "topAnchor"], "stmt": ["centered", "panel"],
                    "list_style": "dash", "grid_p": 0.4, "light_p": 0.45, "bg_dark": ["mesh", "field"], "bg_light": ["mesh", "field"],
-                   "tex": "grid", "rhythm": {"scene": 1.0, "statement": 1.0, "checklist": 1.0, "bigStat": 1.0, "outro": 1.0}},
+                   "tex": "grid", "rhythm": {"scene": 1.0, "statement": 1.0, "checklist": 1.0, "bigStat": 1.0, "outro": 1.0},
+                   "structs": [["hero", "statement", "checklist", "outro"], ["hero", "checklist", "outro"],
+                               ["statement", "hero", "checklist", "outro"], ["hero", "statement", "outro"]]},
     "expressive": {"comps": ["shapeBehind", "cornerAnchor", "topAnchor"], "stmt": ["quote", "panel"],
                    "list_style": "check", "grid_p": 0.3, "light_p": 0.78, "bg_dark": ["aurora", "field"], "bg_light": ["aurora", "field"],
-                   "tex": "grain", "rhythm": {"scene": 1.1, "statement": 1.06, "checklist": 1.04, "bigStat": 1.0, "outro": 1.05}},
+                   "tex": "grain", "rhythm": {"scene": 1.1, "statement": 1.06, "checklist": 1.04, "bigStat": 1.0, "outro": 1.05},
+                   "structs": [["hero", "statement", "outro"], ["statement", "hero", "outro"],
+                               ["hero", "outro"], ["hero", "statement", "checklist", "outro"]]},
 }
 # sesgo de arquetipo por rubro (la semilla elige uno del pool -> variedad real dentro del rubro)
 RUBRO_ARCHE = {
@@ -317,18 +325,32 @@ def generate(brand: str, industria: str, facts=None, seed: int = None) -> dict:
     # la grilla de cards solo en OSCURO (en claro lee como placeholders grises); en claro, filas editoriales
     list_layout = "grid" if (tone == "dark" and A["grid_p"] > 0 and rnd.random() < A["grid_p"]) else "rows"
     outro_comp = _OUTRO_BY_COMP.get(comp, "center")
-    skel = rnd.choice(RUBRO_STRUCT.get(rubro, RUBRO_STRUCT["default"]))
+    # ESTRUCTURA NARRATIVA del arquetipo (no una sola coreografia para todos): conteo/orden/beats varian
+    # -> dos videos del mismo arquetipo dejan de ser hermanos. Algunas no tienen lista; bold puede ser un
+    # cold-open de dos claims sin hero (la marca aparece en el cierre).
+    skel = rnd.choice(A["structs"])
     scenes = []
+    _used_stmt = set()
+
+    def _fresh_statement():
+        sc = _statement(rubro, rnd, stmt_style)
+        n = 0
+        while sc["text"] in _used_stmt and n < 6:
+            sc = _statement(rubro, rnd, stmt_style)
+            n += 1
+        _used_stmt.add(sc["text"])
+        return sc
+
     for slot in skel:
         if slot == "hero":
             scenes.append(_hero_scene(brand, rubro, accent_light, rnd, comp, shape_blur, f1, f2))
         elif slot == "statement":
-            scenes.append(_statement(rubro, rnd, stmt_style))
+            scenes.append(_fresh_statement())
         elif slot == "checklist":
             scenes.append(_checklist(brand, rubro, rnd, list_style, list_anchor, list_layout))
         elif slot == "bigStat":
             bs = _bigstat(facts, rnd)
-            scenes.append(bs if bs else _statement(rubro, rnd, stmt_style))
+            scenes.append(bs if bs else _fresh_statement())
         elif slot == "outro":
             scenes.append(_outro(brand, rubro, rnd, outro_comp))
 
@@ -339,7 +361,8 @@ def generate(brand: str, industria: str, facts=None, seed: int = None) -> dict:
     # RITMO del ARQUETIPO (bold = punchy, editorial/expressive = respira) + 1er beat mas rapido (hook).
     _rhythm = A["rhythm"]
     for idx, s in enumerate(scenes):
-        m = factor * _rhythm.get(s.get("type"), 1.0) * (0.88 if idx == 0 else 1.0)
+        # jitter de duracion por escena -> el tempo NO es parejo ni entre videos del mismo arquetipo/estructura
+        m = factor * _rhythm.get(s.get("type"), 1.0) * (0.88 if idx == 0 else 1.0) * rnd.uniform(0.9, 1.12)
         s["durationInFrames"] = max(60, min(360, int(s.get("durationInFrames", 150) * m)))
 
     return {
@@ -392,7 +415,7 @@ if __name__ == "__main__":
         # ambas tech, mismo rango de azul) colisionen en color Y silueta; incluir la frase evita texto calcado.
         comp, st, ll = _parts(tl)
         stmt = next((s.get("text") for s in tl["scenes"] if s.get("type") == "statement"), "")
-        return (comp, tl.get("signatureForm"), st, ll, tl.get("theme"), stmt)
+        return (comp, tl.get("signatureForm"), st, ll, tl.get("theme"), stmt, tuple(tl.get("structure", [])))
 
     def _pair(tl):
         # arquitectura de layout (sin color/tema): hero + layout de checklist. Dos marcas con la
