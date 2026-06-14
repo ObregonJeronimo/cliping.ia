@@ -129,7 +129,7 @@ function _rgba(hex, a) {
   // oscuro -> aclarado). Asi wordmark/CTA/numero contrastan en ambos tonos.
   function _accentInk(hex, amt) {
     const a = _hexToHsl(hex || A1 || '#3aa0ff');
-    if (TONE === 'light') return _hslToHex(a.h, Math.min(0.92, a.s + 0.12), Math.max(0.32, Math.min(a.l, 0.44)));
+    if (TONE === 'light') return _hslToHex(a.h, Math.min(0.94, a.s + 0.16), Math.max(0.3, Math.min(a.l, 0.4)));
     return _lighten(hex || A1, (amt == null ? 0.55 : amt) * 0.85);   // un punto menos pastel -> color mas rico (no "candy")
   }
   // relleno/borde de cards y paneles segun el tono (blanco translucido en oscuro, negro translucido en claro)
@@ -766,7 +766,7 @@ function _rgba(hex, a) {
   }
   // LAYOUT alternativo: grilla de 2 columnas (stat-cards) -> variedad estructural vs la lista vertical.
   function _listGrid(items, t, lanchor) {
-    const cols = 2, cw = 150, ch = 70, gx = 14, gy = 14, rows = Math.ceil(items.length / cols);
+    const cols = 2, cw = 158, ch = 84, gx = 12, gy = 14, rows = Math.ceil(items.length / cols);
     const gw = cols * cw + (cols - 1) * gx, x0 = lanchor ? 40 : (W - gw) / 2, y0 = H * 0.46 - (rows * (ch + gy) - gy) / 2;
     items.forEach((label, i) => {
       const d = 0.5 + i * 0.34, rin = inv(t, d, d + 0.5); if (rin <= 0) return;
@@ -775,8 +775,8 @@ function _rgba(hex, a) {
       ctx.translate(x + cw / 2, y + ch / 2); ctx.scale(pop, pop); ctx.translate(-(x + cw / 2), -(y + ch / 2));
       ctx.fillStyle = _panelFill(); ctx.strokeStyle = _panelStroke(); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.roundRect(x, y, cw, ch, 12); ctx.fill(); ctx.stroke();
       setShadow(_rgba(A1, 0.4), 10, 2); ctx.fillStyle = A1; ctx.beginPath(); ctx.arc(x + 18, y + 20, 6, 0, TAU); ctx.fill(); noShadow();
-      ctx.font = `700 ${fitFont(label, 16, cw - 22, 12, 700)}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = INK; setShadow('rgba(0,0,0,0.5)', 4, 1);
-      ctx.fillText(label, x + 14, y + ch - 22); noShadow();
+      ctx.font = `700 ${fitFont(label, 19, cw - 22, 13, 700)}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = INK; setShadow('rgba(0,0,0,0.5)', 4, 1);
+      ctx.fillText(label, x + 14, y + ch - 26); noShadow();
       ctx.restore();
     });
   }
@@ -828,26 +828,26 @@ function _rgba(hex, a) {
     function ctaButton(anchorX, py, align) {
       const cta = inv(t, 1.1, 1.6); if (cta <= 0) return;
       const ctaStr = (p.cta || 'Visita ahora');
-      const fs = fitFont(ctaStr, 32, W * 0.74, 18, 800), isL = align === 'left';
+      const fs = fitFont(ctaStr, 32, W * 0.74, 18, 800), isL = align === 'left', isR = align === 'right';
       const appear = eOutBack(clamp(cta, 0, 1));
       ctx.save();
       ctx.globalAlpha *= clamp(cta * 1.3, 0, 1);
       ctx.translate(0, (1 - appear) * 12);
       ctx.font = `800 ${fs}px "Inter",system-ui,sans-serif`;
-      ctx.textAlign = isL ? 'left' : 'center'; ctx.textBaseline = 'middle';
+      ctx.textAlign = isL ? 'left' : isR ? 'right' : 'center'; ctx.textBaseline = 'middle';
       ctx.fillStyle = _accentInk(A1, 0.5);
       if (TONE !== 'light') setShadow('rgba(0,0,0,0.4)', 6, 1);
       ctx.fillText(ctaStr, anchorX, py); noShadow();
-      const tw = Math.min(W * 0.74, ctx.measureText(ctaStr).width), ux = isL ? anchorX : anchorX - tw / 2;
+      const tw = Math.min(W * 0.74, ctx.measureText(ctaStr).width), ux = isL ? anchorX : isR ? anchorX - tw : anchorX - tw / 2;
       const up = eOutCubic(clamp(inv(t, 1.3, 1.85), 0, 1));
-      ctx.fillStyle = accent(ux, py, ux + tw, py);
-      ctx.beginPath(); ctx.roundRect(ux, py + fs * 0.62, tw * up, 4, 2); ctx.fill();
+      ctx.fillStyle = _accentInk(A1, 0.5);   // subrayado tan brillante como el texto (legible en oscuro)
+      ctx.beginPath(); ctx.roundRect(ux, py + fs * 0.62, tw * up, 5, 2.5); ctx.fill();
       const ar = inv(t, 1.6, 2.0);
-      if (ar > 0) { ctx.save(); ctx.globalAlpha *= ar; ctx.strokeStyle = _accentInk(A1, 0.5); ctx.lineWidth = 3.5; ctx.lineCap = 'round'; const acx = isL ? ux + tw / 2 : anchorX, ay = py + fs * 0.62 + 22; ctx.beginPath(); ctx.moveTo(acx - 13, ay); ctx.lineTo(acx, ay + 11); ctx.lineTo(acx + 13, ay); ctx.stroke(); ctx.restore(); }
+      if (ar > 0) { ctx.save(); ctx.globalAlpha *= ar; ctx.strokeStyle = _accentInk(A1, 0.5); ctx.lineWidth = 4; ctx.lineCap = 'round'; const acx = isL ? ux + tw / 2 : isR ? anchorX - tw / 2 : anchorX, ay = py + fs * 0.62 + 22; ctx.beginPath(); ctx.moveTo(acx - 13, ay); ctx.lineTo(acx, ay + 11); ctx.lineTo(acx + 13, ay); ctx.stroke(); ctx.restore(); }
       ctx.restore();
       const burst = inv(t, 1.1, 1.55);
       if (burst > 0 && burst < 1) {
-        ctx.save(); ctx.translate(isL ? anchorX + 30 : anchorX, py);
+        ctx.save(); ctx.translate(isL ? anchorX + 30 : isR ? anchorX - 30 : anchorX, py);
         for (let i = 0; i < 10; i++) { const a = (i / 10) * TAU, d = lerp(16, 78, eOutCubic(burst)); ctx.globalAlpha = (1 - burst) * 0.8; ctx.fillStyle = i % 2 ? A1 : A2; ctx.beginPath(); ctx.arc(Math.cos(a) * d, Math.sin(a) * d, 2.6, 0, TAU); ctx.fill(); }
         ctx.restore();
       }
@@ -877,6 +877,24 @@ function _rgba(hex, a) {
         const ar = inv(t, 1.5, 1.9);
         if (ar > 0) { ctx.save(); ctx.globalAlpha = ar; ctx.strokeStyle = _lighten(A1, 0.4); ctx.lineWidth = 4; ctx.lineCap = 'round'; const ay = cy + 34 + fs * 0.7 + 20; ctx.beginPath(); ctx.moveTo(cx - 16, ay); ctx.lineTo(cx, ay + 14); ctx.lineTo(cx + 16, ay); ctx.stroke(); ctx.restore(); }
       }
+    } else if (comp === 'diagonal') {
+      // end-card DIAGONAL: marca arriba-izquierda + CTA abajo-derecha (rompe el cierre centrado)
+      wordmark(W * 0.1, H * 0.27, 'left', 48); accentBar(W * 0.1, H * 0.27 + 42, 96, 'left');
+      ctaButton(W * 0.9, H * 0.7, 'right');
+    } else if (comp === 'ctaOnly') {
+      // end-card CTA-PROTAGONISTA: el CTA gigante es el cierre; la marca firma chica al pie (ya cerro antes)
+      const tg = eOutBack(clamp(inv(t, 0.45, 1.15), 0, 1));
+      if (tg > 0) {
+        const cta = p.cta || 'Visita ahora', fs = fitFont(cta, 80, W * 0.88, 36, 800);
+        ctx.save(); ctx.translate(cx, H * 0.45); ctx.scale(0.9 + 0.1 * tg, 0.9 + 0.1 * tg);
+        ctx.font = `800 ${fs}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        const _cg = ctx.createLinearGradient(-130, -fs * 0.6, 130, fs * 0.6); _cg.addColorStop(0, _accentInk(A1, 0.55)); _cg.addColorStop(1, _accentInk(A2, 0.42));
+        setShadow(TONE === 'light' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.45)', 8, 2); _kineticDraw(cta, _cg, 'center', t, 0.5, -fs * 0.02); noShadow(); ctx.restore();
+        const ar = inv(t, 1.0, 1.4);
+        if (ar > 0) { ctx.save(); ctx.globalAlpha = ar; ctx.strokeStyle = _accentInk(A1, 0.5); ctx.lineWidth = 4; ctx.lineCap = 'round'; const ay = H * 0.45 + fs * 0.66 + 22; ctx.beginPath(); ctx.moveTo(cx - 15, ay); ctx.lineTo(cx, ay + 12); ctx.lineTo(cx + 15, ay); ctx.stroke(); ctx.restore(); }
+      }
+      const bn = clamp(inv(t, 1.1, 1.6), 0, 1);
+      if (bn > 0) { ctx.save(); ctx.globalAlpha *= bn; const bfs = fitFont(p.brand || '', 24, W * 0.6, 14, 700); ctx.font = `700 ${bfs}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = DIM; ctx.fillText(p.brand || '', cx, H * 0.84); ctx.restore(); }
     } else {
       wordmark(cx, cy, 'center'); accentBar(cx, cy + 44, 120, 'center'); ctaButton(cx, cy + 110, 'center', false);
     }

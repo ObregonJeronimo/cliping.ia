@@ -288,6 +288,15 @@ RUBRO_ARCHE = {
     "inmobiliaria": ["editorial", "clean", "expressive"], "educacion": ["clean", "editorial", "bold"],
     "gastronomia":  ["expressive", "editorial", "bold"], "default": ["clean", "bold", "editorial"],
 }
+# END-CARDS (cierre) por arquetipo: el final tambien VARIA por video, no siempre marca centrada + CTA.
+#   center=marca+CTA centrado | left=lockup lateral | bar=barra full-width | bigtype=CTA grande+marca chica
+#   diagonal=marca arriba-izq + CTA abajo-der | ctaOnly=CTA protagonista, marca firma chica al pie
+ARCHE_OUTRO = {
+    "editorial":  ["bigtype", "diagonal", "left"],
+    "bold":       ["ctaOnly", "bigtype", "diagonal"],
+    "clean":      ["center", "diagonal", "left"],
+    "expressive": ["center", "bar", "ctaOnly"],
+}
 
 
 def generate(brand: str, industria: str, facts=None, seed: int = None) -> dict:
@@ -324,7 +333,8 @@ def generate(brand: str, industria: str, facts=None, seed: int = None) -> dict:
     list_style = A["list_style"]
     # la grilla de cards solo en OSCURO (en claro lee como placeholders grises); en claro, filas editoriales
     list_layout = "grid" if (tone == "dark" and A["grid_p"] > 0 and rnd.random() < A["grid_p"]) else "rows"
-    outro_comp = _OUTRO_BY_COMP.get(comp, "center")
+    # el END-CARD lo elige el arquetipo (no se deriva del hero) -> el CIERRE tambien varia entre videos
+    outro_comp = rnd.choice(ARCHE_OUTRO[arche_name])
     # ESTRUCTURA NARRATIVA del arquetipo (no una sola coreografia para todos): conteo/orden/beats varian
     # -> dos videos del mismo arquetipo dejan de ser hermanos. Algunas no tienen lista; bold puede ser un
     # cold-open de dos claims sin hero (la marca aparece en el cierre).
