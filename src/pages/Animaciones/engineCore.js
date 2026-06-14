@@ -868,10 +868,40 @@ function _rgba(hex, a) {
   // Asi la IA puede componer cualquier video escribiendo un timeline; el render es el mismo.
   // ESCENA: statement — una linea con gancho, revelado limpio (sin clipart). Las lineas suben/aparecen
   // escalonadas y un barrido de acento (mascara) subraya el bloque. Nativo de Canvas, premium, no generico.
+  // ESTILO EDITORIAL: titular GRANDE a la izquierda, ragged, con la ULTIMA palabra en acento (pop de autor)
+  // y reveal por MASCARA (un clip que crece de izquierda a derecha por linea) -> se siente "de revista", no
+  // texto centrado generico. Es el momento tipografico protagonista que usan las marcas premium.
+  function _stmtEditorial(t, text) {
+    const ax = W * 0.09, efs = text.length > 44 ? 46 : (text.length > 28 ? 56 : 66);
+    ctx.font = `800 ${efs}px "Inter",system-ui,sans-serif`; ctx.textBaseline = 'alphabetic';
+    const maxW = W * 0.86;
+    const words = text.split(' '); const lines = []; let cur = '';
+    for (const w of words) { const test = cur ? cur + ' ' + w : w; if (ctx.measureText(test).width > maxW && cur) { lines.push(cur); cur = w; } else cur = test; }
+    if (cur) lines.push(cur);
+    const lh = efs * 1.06, topY = H * 0.45 + efs * 0.36 - (lines.length - 1) * lh / 2;
+    const mr = eOutCubic(clamp(inv(t, 0.05, 0.5), 0, 1));   // marca de acento sobre el titular (encuadre)
+    if (mr > 0) { ctx.save(); ctx.fillStyle = _accentInk(A1, 0.5); ctx.beginPath(); ctx.roundRect(ax, topY - efs - 28, 66 * mr, 6, 3); ctx.fill(); ctx.restore(); }
+    const lastIdx = lines.length - 1;
+    lines.forEach((ln, i) => {
+      const pr = eOutCubic(inv(t, 0.14 + i * 0.16, 0.14 + i * 0.16 + 0.5)); if (pr <= 0) return;
+      const ly = topY + i * lh;
+      ctx.save();
+      ctx.beginPath(); ctx.rect(ax - 6, ly - efs, (maxW + 14) * pr, efs * 1.34); ctx.clip();   // reveal por mascara (wipe)
+      ctx.font = `800 ${efs}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+      setShadow('rgba(0,0,0,0.38)', 6, 2);
+      if (i === lastIdx) {
+        const ws = ln.split(' '), last = ws.pop(), head = ws.join(' ') + (ws.length ? ' ' : '');
+        ctx.fillStyle = INK; ctx.fillText(head, ax, ly);
+        ctx.fillStyle = _accentInk(A1, 0.5); ctx.fillText(last, ax + ctx.measureText(head).width, ly);
+      } else { ctx.fillStyle = INK; ctx.fillText(ln, ax, ly); }
+      noShadow(); ctx.restore();
+    });
+  }
   function sceneStatement(t, p = {}) {
     const text = p.text || '';
     if (!text) return;
-    const style = p.stmtStyle || 'centered';   // centered (kicker) · left (regla) · quote (comilla) · panel
+    const style = p.stmtStyle || 'centered';   // centered · left · quote · panel · editorial
+    if (style === 'editorial') { _stmtEditorial(t, text); return; }
     const left = style === 'left';
     // statement = unico beat 100% tipografico -> agrandado (no timido) para que tenga presencia
     const fs = text.length > 34 ? 34 : (text.length > 22 ? 40 : (text.length > 12 ? 48 : 56));

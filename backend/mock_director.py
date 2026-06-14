@@ -270,7 +270,7 @@ def generate(brand: str, industria: str, facts=None, seed: int = None) -> dict:
     # statement/lista heredan la columna izquierda de los heros anclados a la izquierda; el resto VARIA por
     # semilla (centrado/comilla/panel) para no leer plantilla.
     left_anchored = comp in ("sideLeft", "cornerAnchor")
-    stmt_style = "left" if left_anchored else rnd.choice(["centered", "quote", "panel"])
+    stmt_style = rnd.choice(["left", "editorial"]) if left_anchored else rnd.choice(["centered", "quote", "panel", "editorial"])
     list_anchor = "left" if left_anchored else "center"
     list_layout = rnd.choice(["rows", "grid"])   # variedad estructural: lista vertical vs grilla 2-col
     outro_comp = _OUTRO_BY_COMP.get(comp, "center")
