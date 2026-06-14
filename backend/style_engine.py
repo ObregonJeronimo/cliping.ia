@@ -80,7 +80,7 @@ PROFILES = {
         "hooks": ["aspiracional", "drop", "identidad"],
     },
     "inmobiliaria": {
-        "hue": (190, 220), "sat": (0.4, 0.62), "themes": ["ocean-deep", "clinical-formal", "gold-lux"],
+        "hue": (190, 220), "sat": (0.4, 0.62), "themes": ["ocean-deep", "clinical-formal", "saas-explainer"],
         "morphs": ["square", "house", "hexagon", "circle"], "icons": ["house", "check", "dot"],
         "pacing": "sereno", "density": "media", "motion": ["outCubic", "stagger"],
         "hooks": ["aspiracional", "oportunidad", "dato"],

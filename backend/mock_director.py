@@ -113,6 +113,8 @@ _HERO_LAYOUT = {
     "shapeBehind": dict(sx=202, sy=330, sr=158, nx=202, ny=330, nsz=58, al="center", bx=202, by=414, sop=0.3, orb=False, ns=2.0),
     "topAnchor":   dict(sx=202, sy=224, sr=92,  nx=202, ny=486, nsz=52, al="center", bx=202, by=522, sop=1.0, orb=True,  ns=2.2),
 }
+# El frame de cierre (outro) hereda la personalidad del hero: cada composicion su CTA.
+_OUTRO_BY_COMP = {"emblem": "center", "sideLeft": "left", "typeHero": "bigtype", "shapeBehind": "center", "topAnchor": "bar"}
 
 
 def _hero_scene(brand, rubro, accent_light, rnd, comp):
@@ -157,17 +159,17 @@ def _statement(rubro, rnd, stmt_style="centered"):
             "stmtStyle": stmt_style, "durationInFrames": 150}
 
 
-def _checklist(brand, rubro, rnd, list_style):
+def _checklist(brand, rubro, rnd, list_style, list_anchor="center"):
     pool = BENEFITS.get(rubro, BENEFITS["default"])[:]
     rnd.shuffle(pool)
     n = rnd.choice([3, 3, 4])
     return {"type": "checklist", "title": f"Por que {brand}", "items": pool[:n],
-            "listStyle": list_style, "durationInFrames": 174 + (n - 3) * 12}
+            "listStyle": list_style, "listAnchor": list_anchor, "durationInFrames": 174 + (n - 3) * 12}
 
 
-def _outro(brand, rubro, rnd, cta_style):
+def _outro(brand, rubro, rnd, outro_comp):
     return {"type": "outro", "brand": brand, "cta": rnd.choice(CTAS.get(rubro, CTAS["default"])),
-            "ctaStyle": cta_style, "durationInFrames": 150}
+            "outroComp": outro_comp, "durationInFrames": 150}
 
 
 def _bigstat(facts, rnd):
@@ -212,7 +214,8 @@ def generate(brand: str, industria: str, facts=None, seed: int = None) -> dict:
     # -> dos marcas con hero distinto divergen en TODOS los frames, no solo el del hero.
     comp = rnd.choice(HERO_COMP.get(rubro, HERO_COMP["default"]))
     stmt_style = "left" if comp == "sideLeft" else "centered"
-    cta_style = "chip" if comp == "sideLeft" else "pill"
+    list_anchor = "left" if comp == "sideLeft" else "center"
+    outro_comp = _OUTRO_BY_COMP.get(comp, "center")
     skel = rnd.choice(RUBRO_STRUCT.get(rubro, RUBRO_STRUCT["default"]))
     scenes = []
     for slot in skel:
@@ -221,12 +224,12 @@ def generate(brand: str, industria: str, facts=None, seed: int = None) -> dict:
         elif slot == "statement":
             scenes.append(_statement(rubro, rnd, stmt_style))
         elif slot == "checklist":
-            scenes.append(_checklist(brand, rubro, rnd, st["listStyle"]))
+            scenes.append(_checklist(brand, rubro, rnd, st["listStyle"], list_anchor))
         elif slot == "bigStat":
             bs = _bigstat(facts, rnd)
             scenes.append(bs if bs else _statement(rubro, rnd, stmt_style))
         elif slot == "outro":
-            scenes.append(_outro(brand, rubro, rnd, cta_style))
+            scenes.append(_outro(brand, rubro, rnd, outro_comp))
 
     # RITMO por rubro: energia alta (tech/fitness) -> escenas mas cortas (cortes rapidos); baja
     # (salud/inmobiliaria) -> mas largas (respiracion). Asi el video no corre el mismo tempo en todos.
@@ -254,7 +257,7 @@ TEST_BRANDS = [
     ("Aula Viva", "academia de cursos online de programacion"),
     ("Capitalia", "fintech de inversiones para principiantes"),
     ("Aura", "spa y centro de estetica"),
-    ("Pampa Cafe", "cafeteria de especialidad"),
+    ("Vibra", "app de meditacion y bienestar mental"),
     ("DataFlow", "software de analitica de datos"),
     ("Raiz", "tienda de plantas y jardineria"),
 ]
