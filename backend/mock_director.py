@@ -250,6 +250,38 @@ RUBRO_STRUCT = {
 }
 
 
+# ARQUETIPOS = direccion de arte COHERENTE para TODO el video (no solo otro orden de escenas). Cada uno fija
+# composicion del hero + estilo de statement + estilo/grilla de lista + tono + fondo + textura + RITMO. Asi
+# dos videos de arquetipos distintos se sienten de marcas distintas; y como la semilla elige el arquetipo
+# (con sesgo por rubro), la MISMA marca puede caer en arquetipos distintos -> se rompe "rubro = un solo look".
+#   editorial  -> revista premium: tipografia protagonista, claro, sobrio, holds largos
+#   bold       -> punchy/deportivo: nombre gigante, oscuro dramatico, cortes rapidos
+#   clean      -> minimal tipo Linear/Vercel: balanceado, medido, cualquier tono
+#   expressive -> organico/belleza: capas suaves, claro, fluido
+ARCHETYPES = {
+    "editorial":  {"comps": ["typeSlam", "sideLeft", "cornerAnchor"], "stmt": ["editorial"],
+                   "list_style": "number", "grid_p": 0.0, "light_p": 0.55, "bg_dark": ["spotlight", "field", "mesh"], "bg_light": ["field", "aurora", "mesh"],
+                   "tex": "lines", "rhythm": {"scene": 1.12, "statement": 0.96, "checklist": 1.0, "bigStat": 0.96, "outro": 1.0}},
+    "bold":       {"comps": ["typeSlam", "typeHero", "diagonal"], "stmt": ["editorial", "centered"],
+                   "list_style": "bar", "grid_p": 0.0, "light_p": 0.12, "bg_dark": ["spotlight", "bands"], "bg_light": ["bands", "field"],
+                   "tex": "grain2", "rhythm": {"scene": 0.96, "statement": 0.82, "checklist": 0.86, "bigStat": 0.85, "outro": 0.9}},
+    "clean":      {"comps": ["emblem", "sideLeft", "topAnchor"], "stmt": ["centered", "panel"],
+                   "list_style": "dash", "grid_p": 0.4, "light_p": 0.45, "bg_dark": ["mesh", "field"], "bg_light": ["mesh", "field"],
+                   "tex": "grid", "rhythm": {"scene": 1.0, "statement": 1.0, "checklist": 1.0, "bigStat": 1.0, "outro": 1.0}},
+    "expressive": {"comps": ["shapeBehind", "cornerAnchor", "topAnchor"], "stmt": ["quote", "panel"],
+                   "list_style": "check", "grid_p": 0.3, "light_p": 0.78, "bg_dark": ["aurora", "field"], "bg_light": ["aurora", "field"],
+                   "tex": "grain", "rhythm": {"scene": 1.1, "statement": 1.06, "checklist": 1.04, "bigStat": 1.0, "outro": 1.05}},
+}
+# sesgo de arquetipo por rubro (la semilla elige uno del pool -> variedad real dentro del rubro)
+RUBRO_ARCHE = {
+    "moda":         ["editorial", "bold", "expressive"], "belleza": ["expressive", "editorial", "clean"],
+    "tech":         ["bold", "clean", "editorial"],      "finanzas": ["clean", "bold", "editorial"],
+    "fitness":      ["bold", "bold", "editorial"],       "salud": ["expressive", "clean", "editorial"],
+    "inmobiliaria": ["editorial", "clean", "expressive"], "educacion": ["clean", "editorial", "bold"],
+    "gastronomia":  ["expressive", "editorial", "bold"], "default": ["clean", "bold", "editorial"],
+}
+
+
 def generate(brand: str, industria: str, facts=None, seed: int = None) -> dict:
     """Marca + rubro -> timeline COMPLETO (imita al LLM, determinista). Para test y fallback offline."""
     if seed is None:
@@ -259,23 +291,30 @@ def generate(brand: str, industria: str, facts=None, seed: int = None) -> dict:
     rnd = random.Random((int(seed) ^ 0x9E3779B9) & 0xFFFFFFFF)
 
     st = RUBRO_STYLE.get(rubro, RUBRO_STYLE["default"])
-    tone = pre.get("tone", "dark")
+    # ARQUETIPO: direccion de arte coherente para TODO el video (sesgo por rubro, la semilla elige).
+    arche_name = rnd.choice(RUBRO_ARCHE.get(rubro, RUBRO_ARCHE["default"]))
+    A = ARCHETYPES[arche_name]
+    tone = "light" if rnd.random() < A["light_p"] else "dark"
+    texture = A["tex"]
+    bg_style = rnd.choice(A["bg_light"] if tone == "light" else A["bg_dark"])
     # color + dureza de la forma firma derivan de la energia del rubro Y del tono del fondo
     accent_light, shape_blur = _shape_paint(pre["accent"], rubro, tone)
-    # La COMPOSICION del hero define la "personalidad" del video y se PROPAGA al resto (alineacion + CTA)
-    # -> dos marcas con hero distinto divergen en TODOS los frames, no solo el del hero.
-    comp = rnd.choice(HERO_COMP.get(rubro, HERO_COMP["default"]))
-    # forma FIRMA de la marca (de la familia del rubro): se elige aca para poder GUARDARLA en la marca y
-    # persistirla como marca de agua durante el bloque de contenido (asi la identidad no muere a mitad de reel).
+    # La COMPOSICION del hero (del arquetipo) define la personalidad y se PROPAGA al resto (alineacion + CTA).
+    comp = rnd.choice(A["comps"])
+    # forma FIRMA de la marca (de la familia del rubro): se guarda para persistirla como marca de agua.
     forms = st["forms"][:]
     rnd.shuffle(forms)
     f1, f2 = forms[0], (forms[1] if len(forms) > 1 else forms[0])
-    # statement/lista heredan la columna izquierda de los heros anclados a la izquierda; el resto VARIA por
-    # semilla (centrado/comilla/panel) para no leer plantilla.
     left_anchored = comp in ("sideLeft", "cornerAnchor")
-    stmt_style = rnd.choice(["left", "editorial"]) if left_anchored else rnd.choice(["centered", "quote", "panel", "editorial"])
+    # statement: lo manda el arquetipo; si el hero es de columna izquierda y el arquetipo no trae 'editorial',
+    # usar 'left' para mantener la columna.
+    if left_anchored and "editorial" not in A["stmt"]:
+        stmt_style = "left"
+    else:
+        stmt_style = rnd.choice(A["stmt"])
     list_anchor = "left" if left_anchored else "center"
-    list_layout = rnd.choice(["rows", "rows", "grid"])   # favorecer filas editoriales sobre la grilla tipo "checklist SaaS"
+    list_style = A["list_style"]
+    list_layout = "grid" if (A["grid_p"] > 0 and rnd.random() < A["grid_p"]) else "rows"
     outro_comp = _OUTRO_BY_COMP.get(comp, "center")
     skel = rnd.choice(RUBRO_STRUCT.get(rubro, RUBRO_STRUCT["default"]))
     scenes = []
@@ -285,7 +324,7 @@ def generate(brand: str, industria: str, facts=None, seed: int = None) -> dict:
         elif slot == "statement":
             scenes.append(_statement(rubro, rnd, stmt_style))
         elif slot == "checklist":
-            scenes.append(_checklist(brand, rubro, rnd, st["listStyle"], list_anchor, list_layout))
+            scenes.append(_checklist(brand, rubro, rnd, list_style, list_anchor, list_layout))
         elif slot == "bigStat":
             bs = _bigstat(facts, rnd)
             scenes.append(bs if bs else _statement(rubro, rnd, stmt_style))
@@ -296,18 +335,18 @@ def generate(brand: str, industria: str, facts=None, seed: int = None) -> dict:
     # (salud/inmobiliaria) -> mas largas (respiracion). Asi el video no corre el mismo tempo en todos.
     energy = pre.get("bg_energy", 1.0)
     factor = max(0.78, min(1.22, 1.0 - (energy - 1.0) * 0.45))
-    # RITMO con contraste: statements/dato punchy, hero respira -> el video no corre a tempo plano. Ademas
-    # el PRIMER beat arranca mas rapido (hook -> frena el scroll del publico objetivo del link).
-    _rhythm = {"statement": 0.9, "bigStat": 0.94, "scene": 1.06, "checklist": 1.0, "outro": 0.95}
+    # RITMO del ARQUETIPO (bold = punchy, editorial/expressive = respira) + 1er beat mas rapido (hook).
+    _rhythm = A["rhythm"]
     for idx, s in enumerate(scenes):
         m = factor * _rhythm.get(s.get("type"), 1.0) * (0.88 if idx == 0 else 1.0)
         s["durationInFrames"] = max(60, min(360, int(s.get("durationInFrames", 150) * m)))
 
     return {
         "brand": brand, "accent": pre["accent"], "theme": pre["theme"], "seed": pre["seed"],
-        "texture": st["texture"], "bgEnergy": pre.get("bg_energy", 1.0), "rubro": rubro, "scenes": scenes,
-        # estilo de FONDO + TONO de la marca -> cada video en un mundo distinto (oscuro o editorial claro)
-        "bgStyle": pre.get("bg_style", "mesh"),
+        "texture": texture, "bgEnergy": pre.get("bg_energy", 1.0), "rubro": rubro, "scenes": scenes,
+        # ARQUETIPO + estilo de FONDO + TONO -> cada video en un mundo coherente y distinto
+        "archetype": arche_name,
+        "bgStyle": bg_style,
         "tone": tone,
         # forma FIRMA de la marca -> el motor la persiste como marca de agua viva en las escenas de contenido
         "signatureForm": f1,
