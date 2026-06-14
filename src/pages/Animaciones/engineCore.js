@@ -589,7 +589,7 @@ function _rgba(hex, a) {
   // card (boxed, gastronomia/salud), plain (tech, sin caja + linea fina), editorial (moda/inmob/educ,
   // numero grande), bar-bold (fitness/finanzas, barra de acento que se llena). Cada uno con su ritmo.
   function _rowCard(label, x, y, i, t, d) {
-    ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.strokeStyle = 'rgba(255,255,255,0.10)'; ctx.lineWidth = 1.5;
+    ctx.fillStyle = 'rgba(255,255,255,0.085)'; ctx.strokeStyle = 'rgba(255,255,255,0.16)'; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.roundRect(x, y - 24, 300, 48, 14); ctx.fill(); ctx.stroke();
     const ms = eOutBack(clamp(inv(t, d + 0.1, d + 0.5), 0, 1));
     ctx.save(); ctx.translate(x + 30, y); ctx.scale(ms, ms); _listMarker('check', i, t, d); ctx.restore();
@@ -620,6 +620,22 @@ function _rgba(hex, a) {
     ctx.font = `700 ${fitFont(label, 20, 250, 13, 700)}px "Inter",system-ui,sans-serif`;
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#ffffff'; ctx.globalAlpha *= clamp(fp * 1.4, 0, 1); setShadow('rgba(0,0,0,0.45)', 4, 1); ctx.fillText(label, x + 24, y); noShadow();
   }
+  // LAYOUT alternativo: grilla de 2 columnas (stat-cards) -> variedad estructural vs la lista vertical.
+  function _listGrid(items, t, lanchor) {
+    const cols = 2, cw = 150, ch = 70, gx = 14, gy = 14, rows = Math.ceil(items.length / cols);
+    const gw = cols * cw + (cols - 1) * gx, x0 = lanchor ? 40 : (W - gw) / 2, y0 = H * 0.52 - (rows * (ch + gy) - gy) / 2;
+    items.forEach((label, i) => {
+      const d = 0.5 + i * 0.34, rin = inv(t, d, d + 0.5); if (rin <= 0) return;
+      const r = Math.floor(i / cols), c = i % cols, x = x0 + c * (cw + gx), y = y0 + r * (ch + gy), pop = eOutBack(clamp(rin, 0, 1));
+      ctx.save(); ctx.globalAlpha *= clamp(rin * 1.5, 0, 1);
+      ctx.translate(x + cw / 2, y + ch / 2); ctx.scale(pop, pop); ctx.translate(-(x + cw / 2), -(y + ch / 2));
+      ctx.fillStyle = 'rgba(255,255,255,0.085)'; ctx.strokeStyle = 'rgba(255,255,255,0.16)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.roundRect(x, y, cw, ch, 12); ctx.fill(); ctx.stroke();
+      setShadow(_rgba(A1, 0.4), 10, 2); ctx.fillStyle = A1; ctx.beginPath(); ctx.arc(x + 18, y + 20, 6, 0, TAU); ctx.fill(); noShadow();
+      ctx.font = `600 ${fitFont(label, 15, cw - 24, 11, 600)}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#f4ede0'; setShadow('rgba(0,0,0,0.4)', 4, 1);
+      ctx.fillText(label, x + 14, y + ch - 22); noShadow();
+      ctx.restore();
+    });
+  }
   function sceneList(t, p = {}) {
     const cx = W / 2, style = p.listStyle || 'check', lanchor = p.listAnchor === 'left';
     const rx = lanchor ? 53 : cx - 150, tp = inv(t, 0.1, 0.7);   // contrato sideLeft: MISMO margen izq
@@ -627,6 +643,7 @@ function _rgba(hex, a) {
       if (tp > 0) { ctx.save(); ctx.globalAlpha *= eOutCubic(clamp(tp, 0, 1)); ctx.font = `800 ${(p.title || '').length > 18 ? 24 : 30}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#fff6f0'; ctx.fillText(p.title || '', rx, H * 0.23); ctx.restore(); }
     } else { fxText(p.title || '', cx, H * 0.23, (p.title || '').length > 18 ? 24 : 30, tp, 800, '#fff6f0', W * 0.86); }
     const items = (p.items || []).slice(0, 4);
+    if (p.listLayout === 'grid') { _listGrid(items, t, lanchor); return; }
     const gap = style === 'bar' ? 60 : 64, startY = H * 0.52 - (items.length - 1) * gap / 2;
     const row = style === 'bar' ? _rowBar : style === 'number' ? _rowEditorial : style === 'dash' ? _rowPlain : _rowCard;
     items.forEach((label, i) => {
@@ -700,7 +717,8 @@ function _rgba(hex, a) {
         const cta = p.cta || 'Visita ahora', fs = fitFont(cta, 72, W * 0.86, 34, 800);
         ctx.save(); ctx.translate(cx, cy + 34); ctx.scale(0.92 + 0.08 * tg, 0.92 + 0.08 * tg);
         ctx.font = `800 ${fs}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        _kineticDraw(cta, accent(-130, -fs * 0.6, 130, fs * 0.6), 'center', t, 1.0); ctx.restore();
+        const _cg = ctx.createLinearGradient(-130, -fs * 0.6, 130, fs * 0.6); _cg.addColorStop(0, _lighten(A1, 0.55)); _cg.addColorStop(1, _lighten(A2, 0.42));
+        setShadow('rgba(0,0,0,0.4)', 8, 2); _kineticDraw(cta, _cg, 'center', t, 1.0); noShadow(); ctx.restore();
         const ar = inv(t, 1.5, 1.9);
         if (ar > 0) { ctx.save(); ctx.globalAlpha = ar; ctx.strokeStyle = _lighten(A1, 0.4); ctx.lineWidth = 4; ctx.lineCap = 'round'; const ay = cy + 34 + fs * 0.7 + 20; ctx.beginPath(); ctx.moveTo(cx - 16, ay); ctx.lineTo(cx, ay + 14); ctx.lineTo(cx + 16, ay); ctx.stroke(); ctx.restore(); }
       }
@@ -719,43 +737,43 @@ function _rgba(hex, a) {
   function sceneStatement(t, p = {}) {
     const text = p.text || '';
     if (!text) return;
-    const left = p.stmtStyle === 'left';   // 'left' editorial (tech/finanzas/moda) vs 'centered' (default)
+    const style = p.stmtStyle || 'centered';   // centered (kicker) · left (regla) · quote (comilla) · panel
+    const left = style === 'left';
     const fs = text.length > 26 ? 30 : (text.length > 16 ? 36 : 42);
-    ctx.font = `800 ${fs}px "Inter",system-ui,sans-serif`;
-    ctx.textBaseline = 'middle';
-    const maxW = left ? W * 0.72 : W * 0.82;
+    ctx.font = `800 ${fs}px "Inter",system-ui,sans-serif`; ctx.textBaseline = 'middle';
+    const maxW = left ? W * 0.72 : W * 0.78;
     const words = text.split(' '); const lines = []; let cur = '';
-    for (const w of words) {
-      const test = cur ? cur + ' ' + w : w;
-      if (ctx.measureText(test).width > maxW && cur) { lines.push(cur); cur = w; } else cur = test;
-    }
+    for (const w of words) { const test = cur ? cur + ' ' + w : w; if (ctx.measureText(test).width > maxW && cur) { lines.push(cur); cur = w; } else cur = test; }
     if (cur) lines.push(cur);
-    const lh = fs * 1.18;
-    const topY = H * 0.5 - (lines.length * lh) / 2 + lh / 2;
+    const lh = fs * 1.18, topY = H * 0.5 - (lines.length * lh) / 2 + lh / 2;
+    function drawLines(ox, align, riseX) {
+      ctx.font = `800 ${fs}px "Inter",system-ui,sans-serif`; ctx.textBaseline = 'middle'; ctx.textAlign = align;
+      lines.forEach((ln, i) => {
+        const pr = eOutCubic(inv(t, 0.16 + i * 0.24, 0.16 + i * 0.24 + 0.55)); if (pr <= 0) return;
+        ctx.save(); ctx.globalAlpha *= pr; ctx.fillStyle = '#f7f1e6';
+        ctx.fillText(ln, ox + (riseX ? (1 - pr) * 18 : 0), topY + i * lh + (riseX ? 0 : (1 - pr) * 24)); ctx.restore();
+      });
+    }
     if (left) {
-      const ax = W * 0.13; ctx.textAlign = 'left';
-      const bh = lines.length * lh, rr = eOutCubic(clamp(inv(t, 0.05, 0.6), 0, 1));
+      const ax = W * 0.13, bh = lines.length * lh, rr = eOutCubic(clamp(inv(t, 0.05, 0.6), 0, 1));
       if (rr > 0) { ctx.save(); ctx.fillStyle = accent(0, topY - lh * 0.5, 0, topY - lh * 0.5 + bh); ctx.beginPath(); ctx.roundRect(ax - 20, topY - lh * 0.5, 5, bh * rr, 2.5); ctx.fill(); ctx.restore(); }
-      lines.forEach((ln, i) => {
-        const pr = eOutCubic(inv(t, 0.15 + i * 0.22, 0.15 + i * 0.22 + 0.55));
-        if (pr <= 0) return;
-        ctx.save(); ctx.globalAlpha = pr; ctx.fillStyle = '#f7f1e6'; ctx.fillText(ln, ax + (1 - pr) * 18, topY + i * lh); ctx.restore();
-      });
+      drawLines(ax, 'left', true);
+    } else if (style === 'quote') {
+      const cx = W / 2, qp = eOutBack(clamp(inv(t, 0.05, 0.55), 0, 1));
+      if (qp > 0) { ctx.save(); ctx.globalAlpha *= 0.4 * qp; ctx.font = `800 ${Math.round(86 * qp)}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = _lighten(A1, 0.3); ctx.fillText('“', cx, topY - lh * 0.18); ctx.restore(); }
+      drawLines(cx, 'center', false);
+    } else if (style === 'panel') {
+      const cx = W / 2, longest = Math.max.apply(null, lines.map(l => ctx.measureText(l).width));
+      const pw = Math.min(W * 0.86, longest + 56), ph = lines.length * lh + 40, py = topY - lh * 0.5 - 20;
+      const pp = eOutCubic(clamp(inv(t, 0.05, 0.55), 0, 1));
+      if (pp > 0) { ctx.save(); ctx.globalAlpha *= pp; ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.strokeStyle = 'rgba(255,255,255,0.10)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.roundRect(cx - pw / 2, py, pw, ph, 18); ctx.fill(); ctx.stroke(); ctx.fillStyle = accent(0, py, 0, py + ph); ctx.beginPath(); ctx.roundRect(cx - pw / 2, py, 6, ph, 3); ctx.fill(); ctx.restore(); }
+      drawLines(cx, 'center', false);
     } else {
-      const cx = W / 2; ctx.textAlign = 'center';
-      const kr = eOutBack(clamp(inv(t, 0.05, 0.5), 0, 1));
+      const cx = W / 2, kr = eOutBack(clamp(inv(t, 0.05, 0.5), 0, 1));
       if (kr > 0) { ctx.save(); ctx.fillStyle = accent(cx - 30, 0, cx + 30, 0); ctx.beginPath(); ctx.roundRect(cx - 28 * kr, topY - lh * 0.5 - 30, 56 * kr, 5, 3); ctx.fill(); ctx.restore(); }
-      lines.forEach((ln, i) => {
-        const pr = eOutCubic(inv(t, 0.15 + i * 0.26, 0.15 + i * 0.26 + 0.55));
-        if (pr <= 0) return;
-        ctx.save(); ctx.globalAlpha = pr; ctx.fillStyle = '#f7f1e6'; ctx.fillText(ln, cx, topY + i * lh + (1 - pr) * 26); ctx.restore();
-      });
-      const uStart = 0.15 + lines.length * 0.26 + 0.12, up = eInOutCubic(inv(t, uStart, uStart + 0.5));
-      if (up > 0) {
-        const uy = topY + (lines.length - 1) * lh + fs * 0.72;
-        const half = Math.min(maxW, ctx.measureText(lines[lines.length - 1]).width) / 2 + 6;
-        ctx.save(); ctx.fillStyle = accent(cx - half, uy, cx + half, uy); ctx.beginPath(); ctx.roundRect(cx - half, uy, half * 2 * up, 5, 3); ctx.fill(); ctx.restore();
-      }
+      drawLines(cx, 'center', false);
+      const uStart = 0.16 + lines.length * 0.24 + 0.12, up = eInOutCubic(inv(t, uStart, uStart + 0.5));
+      if (up > 0) { const uy = topY + (lines.length - 1) * lh + fs * 0.72, half = Math.min(maxW, ctx.measureText(lines[lines.length - 1]).width) / 2 + 6; ctx.save(); ctx.fillStyle = accent(cx - half, uy, cx + half, uy); ctx.beginPath(); ctx.roundRect(cx - half, uy, half * 2 * up, 5, 3); ctx.fill(); ctx.restore(); }
     }
   }
 
@@ -1210,6 +1228,7 @@ function _rgba(hex, a) {
       ctx.save();
       ctx.globalAlpha = a;
       ctx.translate(W / 2, H / 2); ctx.scale(z, z); ctx.translate(-W / 2, -H / 2);
+      ctx.translate(0, Math.sin(t * 0.55 + i * 1.3) * 2.2);   // float continuo sutil -> el frame "respira" siempre
       drawer(tFed, sc);
       ctx.restore();
     });

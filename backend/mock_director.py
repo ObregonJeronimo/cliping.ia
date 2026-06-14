@@ -158,12 +158,12 @@ def _statement(rubro, rnd, stmt_style="centered"):
             "stmtStyle": stmt_style, "durationInFrames": 150}
 
 
-def _checklist(brand, rubro, rnd, list_style, list_anchor="center"):
+def _checklist(brand, rubro, rnd, list_style, list_anchor="center", list_layout="rows"):
     pool = BENEFITS.get(rubro, BENEFITS["default"])[:]
     rnd.shuffle(pool)
-    n = rnd.choice([3, 3, 4])
-    return {"type": "checklist", "title": f"Por que {brand}", "items": pool[:n],
-            "listStyle": list_style, "listAnchor": list_anchor, "durationInFrames": 174 + (n - 3) * 12}
+    n = 4 if list_layout == "grid" else rnd.choice([3, 3, 4])
+    return {"type": "checklist", "title": f"Por que {brand}", "items": pool[:n], "listStyle": list_style,
+            "listAnchor": list_anchor, "listLayout": list_layout, "durationInFrames": 174 + (n - 3) * 12}
 
 
 def _outro(brand, rubro, rnd, outro_comp):
@@ -212,8 +212,10 @@ def generate(brand: str, industria: str, facts=None, seed: int = None) -> dict:
     # La COMPOSICION del hero define la "personalidad" del video y se PROPAGA al resto (alineacion + CTA)
     # -> dos marcas con hero distinto divergen en TODOS los frames, no solo el del hero.
     comp = rnd.choice(HERO_COMP.get(rubro, HERO_COMP["default"]))
-    stmt_style = "left" if comp == "sideLeft" else "centered"
+    # statement: sideLeft mantiene la columna izquierda; el resto VARIA por semilla (centrado/comilla/panel)
+    stmt_style = "left" if comp == "sideLeft" else rnd.choice(["centered", "quote", "panel"])
     list_anchor = "left" if comp == "sideLeft" else "center"
+    list_layout = rnd.choice(["rows", "grid"])   # variedad estructural: lista vertical vs grilla 2-col
     outro_comp = _OUTRO_BY_COMP.get(comp, "center")
     skel = rnd.choice(RUBRO_STRUCT.get(rubro, RUBRO_STRUCT["default"]))
     scenes = []
@@ -223,7 +225,7 @@ def generate(brand: str, industria: str, facts=None, seed: int = None) -> dict:
         elif slot == "statement":
             scenes.append(_statement(rubro, rnd, stmt_style))
         elif slot == "checklist":
-            scenes.append(_checklist(brand, rubro, rnd, st["listStyle"], list_anchor))
+            scenes.append(_checklist(brand, rubro, rnd, st["listStyle"], list_anchor, list_layout))
         elif slot == "bigStat":
             bs = _bigstat(facts, rnd)
             scenes.append(bs if bs else _statement(rubro, rnd, stmt_style))
@@ -268,9 +270,27 @@ if __name__ == "__main__":
     if "--out" in sys.argv:
         out_dir = sys.argv[sys.argv.index("--out") + 1]
     os.makedirs(out_dir, exist_ok=True)
-    written = []
+
+    def _sig(tl):
+        # "carta" del video: composicion del hero + layout de statement + layout de checklist + tema.
+        comp = next((s.get("comp") for s in tl["scenes"] if s.get("type") == "scene"), "")
+        st = next((s.get("stmtStyle") for s in tl["scenes"] if s.get("type") == "statement"), "")
+        ll = next((s.get("listLayout") for s in tl["scenes"] if s.get("type") == "checklist"), "")
+        return (comp, st, ll, tl.get("theme"))
+
+    written, seen = [], set()
     for i, (name, ind) in enumerate(TEST_BRANDS):
-        tl = generate(name, ind)
+        # ANTI-COLISION (solo en el banco de prueba): si dos marcas sacan la MISMA carta, re-roll la
+        # semilla hasta que sean distintas. En produccion cada marca se genera sola; esto es para que
+        # las 12 de la galeria nunca se repitan (la queja "Nimbus/Vibra misma plantilla").
+        seed = se.stable_seed(name, ind)
+        tl = generate(name, ind, seed=seed)
+        tries = 0
+        while _sig(tl) in seen and tries < 12:
+            seed = (seed + 0x9E3779B9) & 0xFFFFFFFF
+            tl = generate(name, ind, seed=seed)
+            tries += 1
+        seen.add(_sig(tl))
         slug = "".join(c for c in name.lower().replace(" ", "-") if c.isalnum() or c == "-")
         path = os.path.join(out_dir, f"{i:02d}-{slug}.json")
         json.dump(tl, open(path, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
