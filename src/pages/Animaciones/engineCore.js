@@ -1432,14 +1432,18 @@ function _rgba(hex, a) {
       const local = t - sc.s;
       const animLen = sc.type === 'scene' ? _specAnimLen(sc) : (ANIM_LEN[sc.type] || dur);
       const tFed = Math.min(local, animLen);
-      const zin = lerp(1.04, 1, eOutCubic(inv(local, 0, 0.5)));
+      // CAMARA: push-in lento y CONTINUO durante toda la escena (Ken Burns) + paneo suave alterno por
+      // escena -> cada beat se siente como un movimiento de camara, no un frame estatico que solo respira.
+      const camSpan = Math.max(1.5, dur);
+      const camPush = lerp(1.055, 1.0, eOutCubic(inv(local, 0, camSpan)));
       const zout = lerp(1, 0.985, eInCubic(inv(local, dur - 0.5, dur)));
-      const z = Math.min(zin, zout);
+      const z = Math.min(camPush, zout);
+      const panX = (i % 2 ? -1 : 1) * lerp(11, -5, eOutCubic(inv(local, 0, camSpan)));
       ctx.save();
       ctx.globalAlpha = a;
-      const breath = 1 + Math.sin(t * 1.05 + i * 0.7) * 0.006;   // respiracion continua de escala -> ningun frame queda 100% congelado
+      const breath = 1 + Math.sin(t * 1.05 + i * 0.7) * 0.005;   // respiracion continua de escala -> ningun frame queda 100% congelado
       ctx.translate(W / 2, H / 2); ctx.scale(z * breath, z * breath); ctx.translate(-W / 2, -H / 2);
-      ctx.translate(0, Math.sin(t * 0.5 + i * 1.3) * 4.0);   // float continuo -> el frame "respira" durante toda la lectura
+      ctx.translate(panX, Math.sin(t * 0.5 + i * 1.3) * 3.4);   // paneo de camara + float continuo
       _holdT = local;   // expone el tiempo continuo de la escena (los drawers lo usan para latidos/shimmer durante el hold)
       drawer(tFed, sc);
       ctx.restore();
