@@ -92,43 +92,64 @@ CTAS = {
 }
 
 
-def _hero_scene(brand, rubro, accent_light, rnd):
-    """HERO con animacion compleja: una forma FIRMA del rubro que nace y MUTA (mas grande, mas temprana
-    y de ALTO contraste -> tinte claro del acento + glow), mientras aparece la marca y estalla una rafaga
-    de particulas. f1 = firma del rubro (identidad); f2 varia por marca (unicidad dentro del rubro)."""
+# COMPOSICIONES de HERO: rompen el molde "forma centrada + nombre debajo" (lo que hacia que TODOS se
+# parezcan). Cada rubro tiene un par (la semilla elige) -> el FRAME del hero se ve distinto por marca.
+#   emblem      -> forma centrada + nombre debajo (clasico)
+#   sideLeft    -> forma a la izquierda + nombre grande a la derecha (asimetrico, editorial)
+#   typeHero    -> NOMBRE GIGANTE protagonista + forma chica de acento arriba (tipografico)
+#   shapeBehind -> forma grande y TENUE detras + nombre en blanco encima (capas/superposicion)
+#   topAnchor   -> forma arriba + nombre abajo (vertical asimetrico)
+HERO_COMP = {
+    "gastronomia": ["emblem", "shapeBehind", "topAnchor"], "tech": ["typeHero", "sideLeft", "topAnchor"],
+    "salud": ["emblem", "sideLeft", "shapeBehind"], "moda": ["typeHero", "shapeBehind", "sideLeft"],
+    "inmobiliaria": ["sideLeft", "topAnchor", "emblem"], "fitness": ["shapeBehind", "topAnchor", "typeHero"],
+    "educacion": ["sideLeft", "emblem", "typeHero"], "finanzas": ["sideLeft", "typeHero", "topAnchor"],
+    "belleza": ["shapeBehind", "emblem", "topAnchor"], "default": ["emblem", "topAnchor", "sideLeft"],
+}
+_HERO_LAYOUT = {
+    "emblem":      dict(sx=202, sy=286, sr=108, nx=202, ny=486, nsz=52, al="center", bx=202, by=522, sop=1.0, orb=True,  ns=2.0),
+    "sideLeft":    dict(sx=112, sy=322, sr=82,  nx=212, ny=302, nsz=46, al="left",   bx=212, by=350, sop=1.0, orb=False, ns=2.0),
+    "typeHero":    dict(sx=312, sy=172, sr=58,  nx=202, ny=358, nsz=82, al="center", bx=202, by=438, sop=1.0, orb=True,  ns=1.3),
+    "shapeBehind": dict(sx=202, sy=330, sr=158, nx=202, ny=330, nsz=58, al="center", bx=202, by=414, sop=0.3, orb=False, ns=2.0),
+    "topAnchor":   dict(sx=202, sy=224, sr=92,  nx=202, ny=486, nsz=52, al="center", bx=202, by=522, sop=1.0, orb=True,  ns=2.2),
+}
+
+
+def _hero_scene(brand, rubro, accent_light, rnd, comp):
+    """HERO con COMPOSICION variable (no siempre forma-centrada): la forma firma del rubro nace, MUTA,
+    respira y rota, con el layout (posicion/tamano/tipografia) de la composicion 'comp'. f1 = firma
+    (varia por marca); f2 = forma intermedia."""
     st = RUBRO_STYLE.get(rubro, RUBRO_STYLE["default"])
     forms = st["forms"][:]
-    rnd.shuffle(forms)   # la firma del HERO varia por MARCA dentro de la familia del rubro -> Nimbus != DataFlow
+    rnd.shuffle(forms)
     f1, f2 = forms[0], (forms[1] if len(forms) > 1 else forms[0])
     ease_in = rnd.choice(["outBack", "outElastic"])
     sub = "  ".join(rnd.choice(SUBTITLES.get(rubro, SUBTITLES["default"])))
-    return {
-        "type": "scene", "durationInFrames": 210,
-        "elements": [
-            {"kind": "morph", "fill": accent_light, "blur": True, "keys": [
-                {"t": 0.0, "form": "circle", "r": 10, "opacity": 0, "y": 286},
-                {"t": 0.42, "form": "circle", "r": 54, "opacity": 1, "y": 286, "ease": ease_in},
-                {"t": 1.5, "form": f2, "r": 98, "y": 286, "ease": "inOutCubic"},
-                {"t": 3.0, "form": f1, "r": 108, "y": 286, "rot": -14, "ease": "inOutCubic"},
-                {"t": 4.3, "form": f1, "r": 117, "y": 286, "rot": -4, "ease": "inOutCubic"},
-                {"t": 5.6, "form": f1, "r": 108, "y": 286, "rot": 6, "ease": "inOutCubic"},
-                {"t": 7.0, "form": f1, "r": 115, "y": 286, "rot": 16, "ease": "inOutCubic"},
-            ]},
-            {"kind": "orbit", "count": 3, "r": 152, "speed": 0.85, "fill": "accent2", "dotR": 7, "keys": [
-                {"t": 1.6, "x": 202, "y": 286, "opacity": 0}, {"t": 2.3, "x": 202, "y": 286, "opacity": 0.9, "ease": "outCubic"},
-            ]},
-            {"kind": "particles", "count": 18, "spread": 168, "keys": [
-                {"t": 1.2, "x": 202, "y": 286, "burst": 0}, {"t": 2.1, "x": 202, "y": 286, "burst": 1},
-            ]},
-            {"kind": "text", "text": brand, "fill": "ink", "size": 52, "weight": 800, "keys": [
-                {"t": 1.9, "opacity": 0, "y": 500, "scale": 0.86},
-                {"t": 2.5, "opacity": 1, "y": 486, "scale": 1, "ease": "outBack"},
-            ]},
-            {"kind": "text", "text": sub, "fill": "dim", "size": 21, "weight": 600, "keys": [
-                {"t": 2.9, "opacity": 0, "y": 536}, {"t": 3.4, "opacity": 1, "y": 522, "ease": "outCubic"},
-            ]},
-        ],
-    }
+    L = _HERO_LAYOUT[comp]
+    sx, sy, sr, sop, ns = L["sx"], L["sy"], L["sr"], L["sop"], L["ns"]
+    els = [
+        {"kind": "morph", "fill": accent_light, "blur": True, "keys": [
+            {"t": 0.0, "form": "circle", "r": round(sr * 0.1, 1), "opacity": 0, "x": sx, "y": sy},
+            {"t": 0.42, "form": "circle", "r": round(sr * 0.5, 1), "opacity": sop, "x": sx, "y": sy, "ease": ease_in},
+            {"t": 1.5, "form": f2, "r": round(sr * 0.9, 1), "opacity": sop, "x": sx, "y": sy, "ease": "inOutCubic"},
+            {"t": 3.0, "form": f1, "r": sr, "opacity": sop, "x": sx, "y": sy, "rot": -14, "ease": "inOutCubic"},
+            {"t": 4.3, "form": f1, "r": round(sr * 1.07, 1), "opacity": sop, "x": sx, "y": sy, "rot": -4, "ease": "inOutCubic"},
+            {"t": 5.6, "form": f1, "r": sr, "opacity": sop, "x": sx, "y": sy, "rot": 6, "ease": "inOutCubic"},
+            {"t": 7.0, "form": f1, "r": round(sr * 1.05, 1), "opacity": sop, "x": sx, "y": sy, "rot": 16, "ease": "inOutCubic"},
+        ]},
+        {"kind": "particles", "count": 16, "spread": round(sr * 1.5, 1), "keys": [
+            {"t": 1.2, "x": sx, "y": sy, "burst": 0}, {"t": 2.1, "x": sx, "y": sy, "burst": 1}]},
+        {"kind": "text", "text": brand, "fill": "ink", "size": L["nsz"], "weight": 800, "align": L["al"], "maxW": 368, "keys": [
+            {"t": ns, "opacity": 0, "x": L["nx"], "y": L["ny"] + 14, "scale": 0.86},
+            {"t": ns + 0.6, "opacity": 1, "x": L["nx"], "y": L["ny"], "scale": 1, "ease": "outBack"}]},
+        {"kind": "text", "text": sub, "fill": "dim", "size": 21, "weight": 600, "align": L["al"], "maxW": 300, "keys": [
+            {"t": ns + 0.9, "opacity": 0, "x": L["bx"], "y": L["by"] + 14},
+            {"t": ns + 1.4, "opacity": 1, "x": L["bx"], "y": L["by"], "ease": "outCubic"}]},
+    ]
+    if L["orb"]:
+        els.insert(1, {"kind": "orbit", "count": 3, "r": round(sr * 1.42, 1), "speed": 0.85, "fill": "accent2", "dotR": 7, "keys": [
+            {"t": 1.6, "x": sx, "y": sy, "opacity": 0}, {"t": 2.3, "x": sx, "y": sy, "opacity": 0.9, "ease": "outCubic"}]})
+    return {"type": "scene", "durationInFrames": 210, "elements": els, "comp": comp}
 
 
 def _statement(rubro, rnd, stmt_style="centered"):
@@ -187,12 +208,16 @@ def generate(brand: str, industria: str, facts=None, seed: int = None) -> dict:
 
     st = RUBRO_STYLE.get(rubro, RUBRO_STYLE["default"])
     accent_light = _lighten(pre["accent"], 0.36)
-    stmt_style = pre.get("stmt_style", "centered")
+    # La COMPOSICION del hero define la "personalidad" del video y se PROPAGA al resto (alineacion + CTA)
+    # -> dos marcas con hero distinto divergen en TODOS los frames, no solo el del hero.
+    comp = rnd.choice(HERO_COMP.get(rubro, HERO_COMP["default"]))
+    stmt_style = "left" if comp == "sideLeft" else "centered"
+    cta_style = "chip" if comp == "sideLeft" else "pill"
     skel = rnd.choice(RUBRO_STRUCT.get(rubro, RUBRO_STRUCT["default"]))
     scenes = []
     for slot in skel:
         if slot == "hero":
-            scenes.append(_hero_scene(brand, rubro, accent_light, rnd))
+            scenes.append(_hero_scene(brand, rubro, accent_light, rnd, comp))
         elif slot == "statement":
             scenes.append(_statement(rubro, rnd, stmt_style))
         elif slot == "checklist":
@@ -201,7 +226,7 @@ def generate(brand: str, industria: str, facts=None, seed: int = None) -> dict:
             bs = _bigstat(facts, rnd)
             scenes.append(bs if bs else _statement(rubro, rnd, stmt_style))
         elif slot == "outro":
-            scenes.append(_outro(brand, rubro, rnd, st["ctaStyle"]))
+            scenes.append(_outro(brand, rubro, rnd, cta_style))
 
     # RITMO por rubro: energia alta (tech/fitness) -> escenas mas cortas (cortes rapidos); baja
     # (salud/inmobiliaria) -> mas largas (respiracion). Asi el video no corre el mismo tempo en todos.
