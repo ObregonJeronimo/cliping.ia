@@ -232,8 +232,9 @@ function _rgba(hex, a) {
       const cx = b.bx + Math.sin(t * b.fx * BG_ENERGY + b.px) * b.ax;
       const cy = b.by + Math.cos(t * b.fy * BG_ENERGY + b.py) * b.ay;
       const col = pal[b.pi % pal.length];
+      const aa = b.a * 1.5;   // mas presencia -> el flujo de color del mesh se VE (no colapsa a dark plano)
       const gl = ctx.createRadialGradient(cx, cy, 0, cx, cy, b.rad);
-      gl.addColorStop(0, _rgba(col, b.a)); gl.addColorStop(0.55, _rgba(col, b.a * 0.4)); gl.addColorStop(1, _rgba(col, 0));
+      gl.addColorStop(0, _rgba(col, aa)); gl.addColorStop(0.5, _rgba(col, aa * 0.45)); gl.addColorStop(1, _rgba(col, 0));
       ctx.fillStyle = gl; ctx.fillRect(0, 0, W, H);
     }
     ctx.restore();
@@ -267,10 +268,12 @@ function _rgba(hex, a) {
     // 2) cono de luz: centro casi blanco-acento, cae rapido (no inunda)
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
     const sw = 0.5 + Math.sin(t * 0.18) * 0.05;
-    const gl = ctx.createRadialGradient(px, py, 0, px, py, H * (0.6 + sw * 0.16));
-    gl.addColorStop(0, _rgba(_lighten(pal[0], 0.6), 0.6));
-    gl.addColorStop(0.24, _rgba(_lighten(pal[0], 0.15), 0.34));
-    gl.addColorStop(0.6, _rgba(pal[0], 0.08));
+    const gl = ctx.createRadialGradient(px, py, 0, px, py, H * (0.54 + sw * 0.14));
+    // nucleo blanco-platino (independiente del rubro) -> la luz de escenario que DEFINE el estilo.
+    // antes dependia de pal[0] (teal/acento desaturado) y se lavaba -> leia como grid plano generico.
+    gl.addColorStop(0, 'rgba(246,248,251,0.85)');
+    gl.addColorStop(0.2, _rgba(_lighten(pal[0], 0.4), 0.46));
+    gl.addColorStop(0.55, _rgba(pal[0], 0.1));
     gl.addColorStop(1, _rgba(pal[0], 0));
     ctx.fillStyle = gl; ctx.fillRect(0, 0, W, H);
     ctx.restore();
@@ -295,16 +298,26 @@ function _rgba(hex, a) {
   }
   // 'aurora': organico premium -> cintas verticales que ondulan (tipo aurora boreal).
   function _bgAurora(t, pal) {
+    // aurora REAL: cortinas verticales MULTI-HUE (teal/verde/magenta/violeta) que ondulan y brillan sobre
+    // el oscuro + un velo horizontal que las ata. Antes: 4 cintas monocromaticas casi planas (alpha 0.2)
+    // -> el panel lo leia como "degradado marron liso, no hay aurora". Ahora el abanico de color es la firma.
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
-    const n = 4;
+    const aH = _hexToHsl(A1 || '#3aa0ff');
+    const hues = [aH.h, aH.h + 145, aH.h - 95, aH.h + 60, aH.h + 205];   // abanico tipo aurora boreal
+    const n = 5;
     for (let i = 0; i < n; i++) {
-      const baseX = (i + 0.5) / n * W + Math.sin(t * 0.12 + i * 1.7) * 58;
-      const w = W * (0.17 + 0.05 * (((i * 31) % 5) / 5));
-      const col = pal[[0, 1, 3, 2][i % 4]];
+      const baseX = (i + 0.5) / n * W + Math.sin(t * 0.16 + i * 1.7) * 72;
+      const w = W * (0.20 + 0.06 * (((i * 31) % 5) / 5));
+      const col = _hslToHex(hues[i % hues.length], 0.72, 0.56);
       const gl = ctx.createLinearGradient(baseX - w, 0, baseX + w, 0);
-      gl.addColorStop(0, _rgba(col, 0)); gl.addColorStop(0.5, _rgba(col, 0.2)); gl.addColorStop(1, _rgba(col, 0));
+      gl.addColorStop(0, _rgba(col, 0)); gl.addColorStop(0.5, _rgba(col, 0.3)); gl.addColorStop(1, _rgba(col, 0));
       ctx.fillStyle = gl; ctx.fillRect(baseX - w, 0, w * 2, H);
     }
+    // velo/arco horizontal en el tercio superior (la "cinta" que define la aurora boreal)
+    const ry = H * (0.26 + Math.sin(t * 0.1) * 0.03), rcol = _hslToHex(aH.h + 145, 0.7, 0.6);
+    const rg = ctx.createLinearGradient(0, ry - H * 0.12, 0, ry + H * 0.12);
+    rg.addColorStop(0, _rgba(rcol, 0)); rg.addColorStop(0.5, _rgba(rcol, 0.16)); rg.addColorStop(1, _rgba(rcol, 0));
+    ctx.fillStyle = rg; ctx.fillRect(0, ry - H * 0.12, W, H * 0.24);
     ctx.restore();
   }
   // 'blueprint': plano tecnico -> grilla fina + lineas mayores + glow de acento. Lee "arquitectonico/serio".
@@ -340,42 +353,59 @@ function _rgba(hex, a) {
   }
   // 'sunburst': retro -> rayos radiales calidos que rotan lento desde un punto alto.
   function _bgSunburst(t, pal) {
+    // abanico de rayos que DOMINA como un poster 70s. Antes alpha 0.085 (invisible) + centro bajo ->
+    // el panel lo leia como "minimal oscuro generico". Ahora rayos gruesos, contraste alterno y centro alto.
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
-    const cx2 = W * 0.5, cy2 = H * 0.26, rays = 20, rot = t * 0.035;
+    const cx2 = W * 0.5, cy2 = H * 0.2, rays = 24, rot = t * 0.04;
     for (let i = 0; i < rays; i += 2) {
       const a = rot + i / rays * TAU;
-      ctx.fillStyle = _rgba(pal[i % 2 ? 1 : 0], 0.085);
+      ctx.fillStyle = _rgba(pal[i % 2 ? 1 : 0], i % 4 ? 0.2 : 0.12);
       ctx.beginPath(); ctx.moveTo(cx2, cy2);
-      ctx.lineTo(cx2 + Math.cos(a - 0.075) * H * 1.3, cy2 + Math.sin(a - 0.075) * H * 1.3);
-      ctx.lineTo(cx2 + Math.cos(a + 0.075) * H * 1.3, cy2 + Math.sin(a + 0.075) * H * 1.3);
+      ctx.lineTo(cx2 + Math.cos(a - 0.085) * H * 1.45, cy2 + Math.sin(a - 0.085) * H * 1.45);
+      ctx.lineTo(cx2 + Math.cos(a + 0.085) * H * 1.45, cy2 + Math.sin(a + 0.085) * H * 1.45);
       ctx.closePath(); ctx.fill();
     }
+    // halo calido en el punto de fuga -> remata el look solar 70s
+    const hg = ctx.createRadialGradient(cx2, cy2, 0, cx2, cy2, H * 0.3);
+    hg.addColorStop(0, _rgba(_lighten(pal[0], 0.35), 0.3)); hg.addColorStop(1, _rgba(pal[0], 0));
+    ctx.fillStyle = hg; ctx.fillRect(0, 0, W, H);
     ctx.restore();
   }
   // 'speedlines': deporte/urgencia -> estelas diagonales que corren.
   function _bgSpeedlines(t, pal) {
     const rnd = mulberry32((SEED || 1) ^ 0x59ED);
-    ctx.save(); ctx.lineCap = 'round'; const n = 24, ang = -0.34, span = H * 1.8;
+    ctx.save(); ctx.lineCap = 'round'; const n = 28, ang = -0.34, span = H * 1.8;
     for (let i = 0; i < n; i++) {
-      const base = rnd(), y = -H * 0.4 + ((base * span + t * 220) % span);   // mas rapido = mas velocidad
-      const x = rnd() * W, len = lerp(80, 330, rnd());                        // estelas mas largas
-      ctx.globalAlpha = 0.26 + 0.52 * rnd(); ctx.lineWidth = 2 + rnd() * 4;
+      const base = rnd(), y = -H * 0.4 + ((base * span + t * 230) % span);   // mas rapido = mas velocidad
+      const x = rnd() * W, len = lerp(90, 360, rnd());                        // estelas mas largas
+      ctx.globalAlpha = 0.26 + 0.54 * rnd(); ctx.lineWidth = 2.5 + rnd() * 5;
       ctx.strokeStyle = _rgba(rnd() < 0.5 ? pal[0] : pal[3], 1);
       ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(ang) * len, y + Math.sin(ang) * len); ctx.stroke();
+    }
+    // 2 destellos de acento BRILLANTES que cruzan en parallax -> el golpe de velocidad (lee deportivo)
+    for (let k = 0; k < 2; k++) {
+      const fx = ((t * (150 + k * 80) + k * W * 0.55) % (W * 1.5)) - W * 0.25;
+      const fy = H * (0.3 + k * 0.4) + Math.sin(t + k) * 20, len = 420 - k * 120;
+      ctx.globalAlpha = 0.55; ctx.lineWidth = 8 - k * 3; ctx.strokeStyle = _rgba(_lighten(pal[0], 0.32), 1);
+      ctx.beginPath(); ctx.moveTo(fx, fy); ctx.lineTo(fx + Math.cos(ang) * len, fy + Math.sin(ang) * len); ctx.stroke();
     }
     ctx.restore();
   }
   // 'halftone': riso tactil -> campo de puntos cuyo radio varia por gradiente (foco alto-izq).
   function _bgHalftone(t, pal) {
-    ctx.save(); ctx.fillStyle = _rgba(pal[0], TONE === 'light' ? 0.5 : 0.42);
-    const step = 13, drift = (t * 5) % step, fx = W * 0.35, fy = H * 0.34;
-    for (let gy = -drift; gy < H + step; gy += step) {
-      for (let gx = -drift; gx < W + step; gx += step) {
-        const d = Math.hypot(gx - fx, gy - fy) / H, r = clamp(3.1 * (1 - d), 0.4, 3.1);
+    // riso DUOTONO con misregistro: 2 tintas de hue distinto, la 2da corrida ~5px -> firma de serigrafia.
+    // antes: 1 tinta, puntos chicos (r<=3.1) y tenues -> el panel lo leia como "rosa lavado minimal".
+    const step = 18, drift = (t * 5) % step, fx = W * 0.35, fy = H * 0.34;
+    const pass = (col, ox, oy, mul) => {
+      ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = col;
+      for (let gy = -drift + oy; gy < H + step; gy += step) for (let gx = -drift + ox; gx < W + step; gx += step) {
+        const d = Math.hypot(gx - fx, gy - fy) / H, r = clamp(6.4 * (1 - d) * mul, 0.5, 6.4);
         ctx.beginPath(); ctx.arc(gx, gy, r, 0, TAU); ctx.fill();
       }
-    }
-    ctx.restore();
+      ctx.restore();
+    };
+    pass(_rgba(pal[0], 0.36), 0, 0, 1);
+    pass(_rgba(pal[3], 0.32), 5, 5, 0.8);   // 2da tinta de otro hue, corrida = misregistro riso
   }
   // CAPA CONTEXTUAL: motivo vectorial TENUE que evoca el rubro del link (no un gradiente generico). Detras
   // del contenido, baja opacidad, determinista por SEED + t. Esto hace que el fondo "hable" del dominio.
