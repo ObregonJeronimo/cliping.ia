@@ -774,10 +774,10 @@ function _rgba(hex, a) {
       drawLines(ax, 'left', true);
     } else if (style === 'quote') {
       const cx = W / 2, qp = eOutBack(clamp(inv(t, 0.05, 0.55), 0, 1));
-      if (qp > 0) { ctx.save(); ctx.globalAlpha *= 0.55 * qp; ctx.font = `800 ${Math.round(86 * qp)}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = _lighten(A1, 0.32); ctx.fillText('“', cx, topY - lh * 0.18); ctx.restore(); }
+      if (qp > 0) { ctx.save(); ctx.globalAlpha *= 0.7 * qp; ctx.font = `800 ${Math.round(86 * qp)}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = _lighten(A1, 0.5); setShadow('rgba(0,0,0,0.45)', 6, 1); ctx.fillText('“', cx, topY - lh * 0.18); noShadow(); ctx.restore(); }
       drawLines(cx, 'center', false);
-      const qcp = eOutBack(clamp(inv(t, 0.55, 1.05), 0, 1));   // comilla de CIERRE espejada al final -> par completo, no huerfana
-      if (qcp > 0) { const ly = topY + (lines.length - 1) * lh; ctx.save(); ctx.globalAlpha *= 0.5 * qcp; ctx.font = `800 ${Math.round(72 * qcp)}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = _lighten(A1, 0.32); ctx.fillText('”', cx, ly + lh * 0.92); ctx.restore(); }
+      const qcp = eOutBack(clamp(inv(t, 0.55, 1.05), 0, 1));   // comilla de CIERRE espejada al final -> par completo, legible como la apertura
+      if (qcp > 0) { const ly = topY + (lines.length - 1) * lh; ctx.save(); ctx.globalAlpha *= 0.7 * qcp; ctx.font = `800 ${Math.round(76 * qcp)}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = _lighten(A1, 0.5); setShadow('rgba(0,0,0,0.45)', 6, 1); ctx.fillText('”', cx, ly + lh * 0.92); noShadow(); ctx.restore(); }
     } else if (style === 'panel') {
       const cx = W / 2, longest = Math.max.apply(null, lines.map(l => ctx.measureText(l).width));
       const pw = Math.min(W * 0.86, longest + 56), ph = lines.length * lh + 40, py = topY - lh * 0.5 - 20;
@@ -1102,7 +1102,7 @@ function _rgba(hex, a) {
         ctx.textAlign = el.align || 'center'; ctx.textBaseline = 'middle';
         const _tcol = _colorAt(keys, t, _resolveColor(el.fill || 'ink'));
         // tracking por rol: displays grandes apretados (-2%), kickers chicos abiertos (+6%) -> presencia de marca
-        const _trk = el.track != null ? el.track : (fit > 44 ? -fit * 0.02 : (fit < 24 ? fit * 0.06 : 0));
+        const _trk = el.track != null ? el.track : (fit > 44 ? Math.max(-1.2, -fit * 0.02) * (str.length > 8 ? 0.5 : 1) : (fit < 24 ? fit * 0.06 : 0));
         if (el.kinetic) _kineticDraw(str, _tcol, el.align || 'center', t, (keys[0] && keys[0].t) || 0, _trk);
         else { ctx.fillStyle = _tcol; if (el.fill === 'dim') setShadow('rgba(0,0,0,0.5)', 6, 1); ctx.fillText(str, 0, 0); if (el.fill === 'dim') noShadow(); }
       } else if (kind === 'icon') {
@@ -1232,6 +1232,24 @@ function _rgba(hex, a) {
     drawBg(t);
     const _scenes = layout(tl);
     const XF = 0.45; // cross-fade: la escena saliente sostiene su frame final y se funde con la entrante
+    // FIRMA AMBIENTAL: la forma firma de la marca persiste como marca de agua viva (a la deriva, en la
+    // esquina OPUESTA al texto -> tambien hace contrapeso compositivo) durante el bloque de contenido
+    // (statement/checklist). Asi la identidad NO se muere a mitad del reel. Se dibuja DETRAS del contenido.
+    if (tl.signatureForm) {
+      for (const sc of _scenes) {
+        if (sc.type !== 'statement' && sc.type !== 'checklist') continue;
+        if (t < sc.s || t >= sc.e) continue;
+        const aa = clamp(Math.min(inv(t, sc.s, sc.s + 0.5), 1 - inv(t, sc.e - 0.5, sc.e)), 0, 1) * 0.18;
+        if (aa <= 0) continue;
+        const leftAnch = sc.listAnchor === 'left' || sc.stmtStyle === 'left';
+        const mx = leftAnch ? W - 70 : 70, my = H - 100;
+        ctx.save(); ctx.globalAlpha = aa;
+        ctx.translate(mx + Math.sin(t * 0.4) * 6, my + Math.cos(t * 0.33) * 6); ctx.rotate(Math.sin(t * 0.25) * 0.16);   // vaiven suave (no giro completo) -> la silueta firma sigue reconocible
+        setShadow(_rgba(_resolveColor('accent'), 0.5), 16, 0);
+        ctx.fillStyle = _resolveColor('accent'); _smoothPath(_resample(_formPoints(tl.signatureForm, 76), 48)); ctx.fill(); noShadow();
+        ctx.restore();
+      }
+    }
     _scenes.forEach((sc, i) => {
       const drawer = DRAWERS[sc.type];
       if (!drawer) return;

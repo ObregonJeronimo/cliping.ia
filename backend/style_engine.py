@@ -100,7 +100,7 @@ PROFILES = {
         "hooks": ["dolor", "promesa", "dato"],
     },
     "finanzas": {
-        "hue": (140, 162), "sat": (0.32, 0.5), "themes": ["clinical-formal", "saas-explainer", "mono-ink"],
+        "hue": (140, 162), "sat": (0.42, 0.58), "themes": ["clinical-formal", "saas-explainer", "mono-ink"],
         "morphs": ["square", "hexagon", "triangle", "circle"], "icons": ["check", "dot", "box"],
         "pacing": "sobrio", "density": "baja", "motion": ["outCubic", "path"],
         "hooks": ["confianza", "dato", "oportunidad"],

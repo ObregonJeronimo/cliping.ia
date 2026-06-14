@@ -153,20 +153,17 @@ _OUTRO_BY_COMP = {"emblem": "center", "sideLeft": "left", "typeHero": "bigtype",
                   "topAnchor": "bar", "cornerAnchor": "left", "diagonal": "bar"}
 
 
-def _hero_scene(brand, rubro, accent_light, rnd, comp, blur=True):
-    """HERO con COMPOSICION variable (no siempre forma-centrada): la forma FIRMA del rubro aparece YA en el
-    arranque (t=0.42, no a los 3s) y el morph la usa para un flourish corto + pulso/rotacion, no para
-    revelarla tarde. Asi el frame-portada (galeria/thumbnail) ya muestra la identidad. f1 = firma (varia por
-    marca); f2 = excursion breve. blur/saturacion vienen de la energia del rubro."""
-    st = RUBRO_STYLE.get(rubro, RUBRO_STYLE["default"])
+def _hero_scene(brand, rubro, accent_light, rnd, comp, blur, f1, f2):
+    """HERO con COMPOSICION variable (no siempre forma-centrada): la forma FIRMA del rubro (f1, elegida en
+    generate y guardada en la marca) aparece YA en el arranque (t=0.42) y el morph la usa para un flourish
+    corto + pulso/rotacion. f2 = excursion breve. blur/saturacion vienen de la energia del rubro."""
     fx = RUBRO_FX.get(rubro, RUBRO_FX["default"])
-    forms = st["forms"][:]
-    rnd.shuffle(forms)
-    f1, f2 = forms[0], (forms[1] if len(forms) > 1 else forms[0])
     ease_in = rnd.choice(["outBack", "outElastic"])
     sub = "  ".join(rnd.choice(SUBTITLES.get(rubro, SUBTITLES["default"])))
     L = _HERO_LAYOUT[comp]
-    sx, sy, sr, sop, ns = L["sx"], L["sy"], L["sr"], L["sop"], L["ns"]
+    # jitter determinista de la posicion de la forma (+-16px) -> dos marcas con el mismo comp no calcan el frame
+    jx, jy = rnd.randint(-16, 16), rnd.randint(-16, 16)
+    sx, sy, sr, sop, ns = L["sx"] + jx, L["sy"] + jy, L["sr"], L["sop"], L["ns"]
     els = [
         {"kind": "morph", "fill": accent_light, "blur": blur, "keys": [
             {"t": 0.0, "form": "circle", "r": round(sr * 0.1, 1), "opacity": 0, "x": sx, "y": sy},
@@ -181,7 +178,7 @@ def _hero_scene(brand, rubro, accent_light, rnd, comp, blur=True):
             {"t": 1.2, "x": sx, "y": sy, "burst": 0}, {"t": 2.1, "x": sx, "y": sy, "burst": 1}]},
         {"kind": "text", "text": brand, "fill": "ink", "size": L["nsz"], "weight": 800, "align": L["al"], "maxW": L.get("maxW", 348), "kinetic": True, "keys": [
             {"t": ns, "opacity": 1, "x": L["nx"], "y": L["ny"]}]},
-        {"kind": "text", "text": sub, "fill": "dim", "size": 23, "weight": 600, "align": L["al"], "maxW": min(300, L.get("maxW", 300)), "keys": [
+        {"kind": "text", "text": sub, "fill": "dim", "size": max(20, min(30, round(L["nsz"] * 0.42))), "weight": 600, "align": L["al"], "maxW": min(300, L.get("maxW", 300)), "keys": [
             {"t": ns + 0.9, "opacity": 0, "x": L["bx"], "y": L["by"] + 14},
             {"t": ns + 1.4, "opacity": 1, "x": L["bx"], "y": L["by"], "ease": "outCubic"}]},
     ]
@@ -251,6 +248,11 @@ def generate(brand: str, industria: str, facts=None, seed: int = None) -> dict:
     # La COMPOSICION del hero define la "personalidad" del video y se PROPAGA al resto (alineacion + CTA)
     # -> dos marcas con hero distinto divergen en TODOS los frames, no solo el del hero.
     comp = rnd.choice(HERO_COMP.get(rubro, HERO_COMP["default"]))
+    # forma FIRMA de la marca (de la familia del rubro): se elige aca para poder GUARDARLA en la marca y
+    # persistirla como marca de agua durante el bloque de contenido (asi la identidad no muere a mitad de reel).
+    forms = st["forms"][:]
+    rnd.shuffle(forms)
+    f1, f2 = forms[0], (forms[1] if len(forms) > 1 else forms[0])
     # statement/lista heredan la columna izquierda de los heros anclados a la izquierda; el resto VARIA por
     # semilla (centrado/comilla/panel) para no leer plantilla.
     left_anchored = comp in ("sideLeft", "cornerAnchor")
@@ -262,7 +264,7 @@ def generate(brand: str, industria: str, facts=None, seed: int = None) -> dict:
     scenes = []
     for slot in skel:
         if slot == "hero":
-            scenes.append(_hero_scene(brand, rubro, accent_light, rnd, comp, shape_blur))
+            scenes.append(_hero_scene(brand, rubro, accent_light, rnd, comp, shape_blur, f1, f2))
         elif slot == "statement":
             scenes.append(_statement(rubro, rnd, stmt_style))
         elif slot == "checklist":
@@ -283,6 +285,8 @@ def generate(brand: str, industria: str, facts=None, seed: int = None) -> dict:
     return {
         "brand": brand, "accent": pre["accent"], "theme": pre["theme"], "seed": pre["seed"],
         "texture": st["texture"], "bgEnergy": pre.get("bg_energy", 1.0), "rubro": rubro, "scenes": scenes,
+        # forma FIRMA de la marca -> el motor la persiste como marca de agua viva en las escenas de contenido
+        "signatureForm": f1,
         # metadatos de receta (como el director real)
         "hookName": pre["hook_bias"], "structure": skel,
     }
@@ -319,11 +323,12 @@ if __name__ == "__main__":
         return comp, st, ll
 
     def _sig(tl):
-        # "carta" exacta del video: hero + layout de statement + layout de checklist + tema + FRASE del
-        # statement (asi dos marcas del mismo rubro no muestran la misma frase calcada en la galeria).
+        # "carta" exacta del video: hero + forma firma + layout de statement + layout de checklist + tema +
+        # FRASE del statement. Incluir la FORMA evita que dos marcas del mismo rubro (ej Nimbus/DataFlow,
+        # ambas tech, mismo rango de azul) colisionen en color Y silueta; incluir la frase evita texto calcado.
         comp, st, ll = _parts(tl)
         stmt = next((s.get("text") for s in tl["scenes"] if s.get("type") == "statement"), "")
-        return (comp, st, ll, tl.get("theme"), stmt)
+        return (comp, tl.get("signatureForm"), st, ll, tl.get("theme"), stmt)
 
     def _pair(tl):
         # arquitectura de layout (sin color/tema): hero + layout de checklist. Dos marcas con la
