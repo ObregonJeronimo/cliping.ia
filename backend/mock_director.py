@@ -311,8 +311,75 @@ ARCHE_OUTRO = {
     "expressive": ["center", "bar", "ctaOnly"],
 }
 
+# ====================================================================================================
+# CATALOGO DE ESTILOS (lo que el USUARIO elige). Cada estilo es una direccion de arte completa: tratamiento
+# de fondo + tono + modo de sombra + textura + composiciones + statement + lista + end-card + ritmo +
+# estructura narrativa. El RUBRO sigue aportando color + MOTIVO del fondo (ortogonal al estilo). 12 estilos
+# ordenados de seguro -> audaz. Basado en investigacion de video marketing 2026 (workflow wyvnqmn17).
+# ====================================================================================================
+_RH_SLOW = {"scene": 1.12, "statement": 1.0, "checklist": 1.02, "bigStat": 0.98, "outro": 1.06}
+_RH_MED = {"scene": 1.0, "statement": 0.95, "checklist": 1.0, "bigStat": 0.96, "outro": 1.0}
+_RH_FAST = {"scene": 0.95, "statement": 0.8, "checklist": 0.86, "bigStat": 0.84, "outro": 0.9}
+_ST_PREMIUM = [["hero", "statement", "outro"], ["statement", "hero", "outro"], ["hero", "statement", "checklist", "outro"]]
+_ST_PUNCHY = [["statement", "hero", "outro"], ["statement", "statement", "outro"], ["hero", "outro"], ["hero", "statement", "outro"]]
+_ST_FULL = [["hero", "statement", "checklist", "outro"], ["hero", "checklist", "outro"], ["statement", "hero", "checklist", "outro"], ["hero", "statement", "outro"]]
 
-def generate(brand: str, industria: str, facts=None, seed: int = None) -> dict:
+STYLE_PRESETS = {
+    "blueprint":   {"nombre": "Blueprint", "bg": "blueprint", "light_p": 0.12, "shadow": "soft", "tex": "grid",
+                    "comps": ["typeStack", "sideLeft", "typeSlam"], "stmt": ["editorial", "left"], "list": "number", "grid_p": 0.0,
+                    "outro": ["bigtype", "diagonal", "left"], "rhythm": _RH_MED, "structs": _ST_FULL},
+    "swiss":       {"nombre": "Swiss / Grid", "bg": "mesh", "light_p": 0.92, "shadow": "soft", "tex": "grid",
+                    "comps": ["typeStack", "typeOnly", "sideLeft"], "stmt": ["centered", "panel"], "list": "dash", "grid_p": 0.5,
+                    "outro": ["left", "diagonal", "center"], "rhythm": _RH_MED, "structs": _ST_FULL},
+    "platinum":    {"nombre": "Platinum Linear", "bg": "spotlight", "light_p": 0.08, "shadow": "soft", "tex": "grid",
+                    "comps": ["typeSlam", "typeOnly", "sideLeft"], "stmt": ["editorial", "centered"], "list": "dash", "grid_p": 0.3,
+                    "outro": ["bigtype", "ctaOnly", "diagonal"], "rhythm": _RH_MED, "structs": _ST_PREMIUM},
+    "obsidian":    {"nombre": "Obsidian Luxe", "bg": "field", "light_p": 0.0, "shadow": "soft", "tex": "grain",
+                    "comps": ["typeOnly", "typeStack", "emblem"], "stmt": ["quote", "editorial"], "list": "number", "grid_p": 0.0,
+                    "outro": ["ctaOnly", "bigtype", "center"], "rhythm": _RH_SLOW, "structs": _ST_PREMIUM},
+    "meshflow":    {"nombre": "Mesh Flow", "bg": "mesh", "light_p": 0.5, "shadow": "soft", "tex": "none",
+                    "comps": ["typeSlam", "typeStack", "shapeBehind"], "stmt": ["centered", "editorial"], "list": "check", "grid_p": 0.0,
+                    "outro": ["bigtype", "center", "diagonal"], "rhythm": _RH_MED, "structs": _ST_PREMIUM},
+    "aurora":      {"nombre": "Aurora Flux", "bg": "aurora", "light_p": 0.72, "shadow": "soft", "tex": "grain",
+                    "comps": ["shapeBehind", "cornerAnchor", "typeStack"], "stmt": ["quote", "panel"], "list": "check", "grid_p": 0.3,
+                    "outro": ["center", "bar", "ctaOnly"], "rhythm": _RH_SLOW, "structs": _ST_PREMIUM},
+    "handmade":    {"nombre": "Hecho a Mano", "bg": "field", "light_p": 0.9, "shadow": "soft", "tex": "grain",
+                    "comps": ["typeStack", "cornerAnchor", "emblem"], "stmt": ["panel", "quote"], "list": "check", "grid_p": 0.0,
+                    "outro": ["left", "center", "diagonal"], "rhythm": _RH_SLOW, "structs": _ST_FULL},
+    "brutalist":   {"nombre": "Neo-Brutalist", "bg": "brutalist", "light_p": 0.25, "shadow": "hard", "tex": "none",
+                    "comps": ["typeOnly", "typeSlam", "typeStack"], "stmt": ["editorial", "centered"], "list": "bar", "grid_p": 0.0,
+                    "outro": ["ctaOnly", "bigtype"], "rhythm": _RH_FAST, "structs": _ST_PUNCHY},
+    "typographic": {"nombre": "Typographic", "bg": "field", "light_p": 0.4, "shadow": "soft", "tex": "none",
+                    "comps": ["typeOnly", "typeSlam"], "stmt": ["editorial"], "list": "number", "grid_p": 0.0,
+                    "outro": ["ctaOnly", "bigtype"], "rhythm": _RH_MED, "structs": _ST_PUNCHY},
+    "riso":        {"nombre": "Risograph", "bg": "halftone", "light_p": 0.5, "shadow": "hard", "tex": "none",
+                    "comps": ["typeStack", "cornerAnchor", "typeOnly"], "stmt": ["editorial", "quote"], "list": "number", "grid_p": 0.0,
+                    "outro": ["diagonal", "left", "ctaOnly"], "rhythm": _RH_MED, "structs": _ST_FULL},
+    "retro70s":    {"nombre": "Retro 70s", "bg": "sunburst", "light_p": 0.35, "shadow": "soft", "tex": "grain",
+                    "comps": ["typeSlam", "emblem", "typeStack"], "stmt": ["centered", "panel"], "list": "check", "grid_p": 0.0,
+                    "outro": ["center", "bigtype"], "rhythm": _RH_MED, "structs": _ST_FULL},
+    "sport":       {"nombre": "Sport Velocity", "bg": "speedlines", "light_p": 0.05, "shadow": "hard", "tex": "none",
+                    "comps": ["typeOnly", "typeSlam", "diagonal"], "stmt": ["editorial", "centered"], "list": "bar", "grid_p": 0.0,
+                    "outro": ["ctaOnly", "bigtype"], "rhythm": _RH_FAST, "structs": _ST_PUNCHY},
+}
+# orden seguro -> audaz (para la UI del selector) + sesgo de estilo recomendado por rubro (auto cuando el
+# usuario no elige). El usuario SIEMPRE puede pisar esto con su eleccion.
+STYLE_ORDER = ["blueprint", "swiss", "platinum", "obsidian", "meshflow", "aurora", "handmade", "typographic", "riso", "retro70s", "brutalist", "sport"]
+RUBRO_STYLE_BIAS = {
+    "inmobiliaria": ["blueprint", "swiss", "obsidian", "platinum"],
+    "finanzas":     ["platinum", "swiss", "blueprint", "brutalist"],
+    "tech":         ["platinum", "meshflow", "typographic", "brutalist"],
+    "salud":        ["aurora", "swiss", "meshflow", "handmade"],
+    "belleza":      ["aurora", "obsidian", "handmade", "riso"],
+    "gastronomia":  ["handmade", "retro70s", "riso", "meshflow"],
+    "fitness":      ["sport", "brutalist", "typographic", "platinum"],
+    "educacion":    ["swiss", "retro70s", "typographic", "meshflow"],
+    "moda":         ["obsidian", "typographic", "riso", "brutalist"],
+    "default":      ["meshflow", "swiss", "platinum", "typographic"],
+}
+
+
+def generate(brand: str, industria: str, facts=None, seed: int = None, style: str = None) -> dict:
     """Marca + rubro -> timeline COMPLETO (imita al LLM, determinista). Para test y fallback offline."""
     if seed is None:
         seed = se.stable_seed(brand, industria)
@@ -321,37 +388,39 @@ def generate(brand: str, industria: str, facts=None, seed: int = None) -> dict:
     rnd = random.Random((int(seed) ^ 0x9E3779B9) & 0xFFFFFFFF)
 
     st = RUBRO_STYLE.get(rubro, RUBRO_STYLE["default"])
-    # ARQUETIPO: direccion de arte coherente para TODO el video (sesgo por rubro, la semilla elige).
-    arche_name = rnd.choice(RUBRO_ARCHE.get(rubro, RUBRO_ARCHE["default"]))
-    A = ARCHETYPES[arche_name]
-    tone = "light" if rnd.random() < A["light_p"] else "dark"
-    texture = A["tex"]
-    bg_style = rnd.choice(A["bg_light"] if tone == "light" else A["bg_dark"])
+    # ESTILO: lo ELIGE el usuario; si no, auto por sesgo de rubro + semilla. Es la direccion de arte completa
+    # (fondo + tono + sombra + textura + comps + statement + lista + end-card + ritmo + estructura). El rubro
+    # aporta color + MOTIVO del fondo (ortogonal al estilo).
+    if style and style in STYLE_PRESETS:
+        style_id = style
+    else:
+        style_id = rnd.choice(RUBRO_STYLE_BIAS.get(rubro, RUBRO_STYLE_BIAS["default"]))
+    S = STYLE_PRESETS[style_id]
+    tone = "light" if rnd.random() < S["light_p"] else "dark"
+    texture = S["tex"]
+    bg_style = S["bg"]
+    shadow_mode = S["shadow"]
     # color + dureza de la forma firma derivan de la energia del rubro Y del tono del fondo
     accent_light, shape_blur = _shape_paint(pre["accent"], rubro, tone)
-    # La COMPOSICION del hero (del arquetipo) define la personalidad y se PROPAGA al resto (alineacion + CTA).
-    comp = rnd.choice(A["comps"])
+    comp = rnd.choice(S["comps"])
     # forma FIRMA de la marca (de la familia del rubro): se guarda para persistirla como marca de agua.
     forms = st["forms"][:]
     rnd.shuffle(forms)
     f1, f2 = forms[0], (forms[1] if len(forms) > 1 else forms[0])
     left_anchored = comp in ("sideLeft", "cornerAnchor", "typeStack")
-    # statement: lo manda el arquetipo; si el hero es de columna izquierda y el arquetipo no trae 'editorial',
-    # usar 'left' para mantener la columna.
-    if left_anchored and "editorial" not in A["stmt"]:
+    # statement: lo manda el estilo; si el hero es de columna izquierda y el estilo no trae editorial/left, usar left
+    if left_anchored and "editorial" not in S["stmt"] and "left" not in S["stmt"]:
         stmt_style = "left"
     else:
-        stmt_style = rnd.choice(A["stmt"])
+        stmt_style = rnd.choice(S["stmt"])
     list_anchor = "left" if left_anchored else "center"
-    list_style = A["list_style"]
+    list_style = S["list"]
     # la grilla de cards solo en OSCURO (en claro lee como placeholders grises); en claro, filas editoriales
-    list_layout = "grid" if (tone == "dark" and A["grid_p"] > 0 and rnd.random() < A["grid_p"]) else "rows"
-    # el END-CARD lo elige el arquetipo (no se deriva del hero) -> el CIERRE tambien varia entre videos
-    outro_comp = rnd.choice(ARCHE_OUTRO[arche_name])
-    # ESTRUCTURA NARRATIVA del arquetipo (no una sola coreografia para todos): conteo/orden/beats varian
-    # -> dos videos del mismo arquetipo dejan de ser hermanos. Algunas no tienen lista; bold puede ser un
-    # cold-open de dos claims sin hero (la marca aparece en el cierre).
-    skel = rnd.choice(A["structs"])
+    list_layout = "grid" if (tone == "dark" and S["grid_p"] > 0 and rnd.random() < S["grid_p"]) else "rows"
+    # el END-CARD lo elige el estilo -> el CIERRE tambien varia entre videos
+    outro_comp = rnd.choice(S["outro"])
+    # ESTRUCTURA NARRATIVA del estilo (no una sola coreografia para todos): conteo/orden/beats varian.
+    skel = rnd.choice(S["structs"])
     scenes = []
     _used_stmt = set()
 
@@ -381,8 +450,8 @@ def generate(brand: str, industria: str, facts=None, seed: int = None) -> dict:
     # (salud/inmobiliaria) -> mas largas (respiracion). Asi el video no corre el mismo tempo en todos.
     energy = pre.get("bg_energy", 1.0)
     factor = max(0.78, min(1.22, 1.0 - (energy - 1.0) * 0.45))
-    # RITMO del ARQUETIPO (bold = punchy, editorial/expressive = respira) + 1er beat mas rapido (hook).
-    _rhythm = A["rhythm"]
+    # RITMO del ESTILO (sport/brutalist = punchy, obsidian/aurora = respira) + 1er beat mas rapido (hook).
+    _rhythm = S["rhythm"]
     for idx, s in enumerate(scenes):
         # jitter de duracion por escena -> el tempo NO es parejo ni entre videos del mismo arquetipo/estructura
         m = factor * _rhythm.get(s.get("type"), 1.0) * (0.88 if idx == 0 else 1.0) * rnd.uniform(0.9, 1.12)
@@ -391,10 +460,11 @@ def generate(brand: str, industria: str, facts=None, seed: int = None) -> dict:
     return {
         "brand": brand, "accent": pre["accent"], "theme": pre["theme"], "seed": pre["seed"],
         "texture": texture, "bgEnergy": pre.get("bg_energy", 1.0), "rubro": rubro, "scenes": scenes,
-        # ARQUETIPO + estilo de FONDO + TONO -> cada video en un mundo coherente y distinto
-        "archetype": arche_name,
+        # ESTILO (elegible por el usuario) + FONDO + TONO + SOMBRA -> direccion de arte completa
+        "style": style_id,
         "bgStyle": bg_style,
         "tone": tone,
+        "shadowMode": shadow_mode,
         # MOTIVO contextual del fondo segun el rubro (skyline / sparkline / vapor / pulso / botanico...)
         "motif": rubro,
         # forma FIRMA de la marca -> el motor la persiste como marca de agua viva en las escenas de contenido
@@ -459,8 +529,10 @@ if __name__ == "__main__":
         # repitan carta. Intento evitar TAMBIEN la arquitectura de layout y que dos del mismo rubro
         # compartan forma; si en N tiros no se puede, me conformo con que la carta exacta sea unica
         # (garantia dura). En produccion cada marca se genera sola; esto es solo para la galeria de prueba.
+        # el banco muestra los 12 ESTILOS (uno por marca) -> la galeria es un showcase del catalogo elegible
+        sty = STYLE_ORDER[i % len(STYLE_ORDER)]
         seed = se.stable_seed(name, ind)
-        tl = generate(name, ind, seed=seed)
+        tl = generate(name, ind, seed=seed, style=sty)
         tries, best = 0, None
         while tries < 20:
             sig_ok = _sig(tl) not in seen
@@ -472,7 +544,7 @@ if __name__ == "__main__":
             if sig_ok and best is None:
                 best = (seed, tl)  # cumple la garantia dura; lo guardo por si no logro evitar par/forma
             seed = (seed + 0x9E3779B9) & 0xFFFFFFFF
-            tl = generate(name, ind, seed=seed)
+            tl = generate(name, ind, seed=seed, style=sty)
             tries += 1
         if best is not None and _sig(tl) in seen:
             seed, tl = best  # no se pudo evitar par/forma en N tiros -> uso la mejor carta-unica hallada
