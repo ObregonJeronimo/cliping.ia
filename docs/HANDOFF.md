@@ -74,6 +74,17 @@ Motor base 5.5 -> 7.0 -> 7.8 -> 8.2/10 "profesional/no-plantilla". Luego (pedido
 contextuales por rubro + 12 estilos elegibles + todo type-led. El director marcó: "la variedad real viene
 de la COMPOSICIÓN, no del color" y "el fondo debe HABLAR del rubro" -> ambos atacados.
 
+## TIPOGRAFIA + MOTION + ESTILOS NUEVOS -> ver `docs/VIDEO-UPGRADE-PLAN.md`
+Sesion reciente (pedido del usuario: "las tipografias son todas iguales" + "videos simples, rellenar vacios sin morph"
++ "mas estilos" + "logo?"). HECHO: (a) VISOR muestra fuentes REALES (Skia registra tools/fonts/ via
+`node tools/get-fonts.mjs`) + export **GIF** (`node tools/render.mjs gif <json> <name>`) + strips densas
+(`video <json> <name> <N>`); (b) **SISTEMA DE FUENTES por estilo** (display/text/accent) en style_catalog.STYLE_FONTS
+-> timeline -> engine fontStr() (rompe el Inter-para-todo; cada estilo con su Google Font: Fraunces/Anton/Caveat/
+Caprasimo/etc), cargadas en visor+index.html+TimelineVideo(MP4); (c) **FLOTANTES** ambientales contextuales que
+rellenan los vacios con movimiento (determinista). El plan completo (estilos nuevos, mas motion, auto-por-rubro,
+logo) esta en `docs/VIDEO-UPGRADE-PLAN.md`. LOGO: site_capture.py lo extrae pero el motor NO lo usa (dibuja
+monograma) -> pendiente cablearlo. NOTA: algunos videos mock salen largos (~20s) -> revisar pacing/duracion.
+
 ## PENDIENTES / cómo seguir
 0. **PROXIMO FRENTE: tipografia-como-firma (comp-level).** Tras la pasada "assert signature" de FONDOS (ver
    abajo), 2 paneles de director coinciden: el fondo ya NO es el problema; lo que falta para que cada estilo
