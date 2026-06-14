@@ -350,6 +350,7 @@ class VideoGenRequest(BaseModel):
     idioma: str = ""       # idioma del video elegido por el usuario ('' = auto/según la página)
     formato: str = "vertical"  # 'vertical' (9:16) | 'square' (1:1) | 'wide' (16:9)
     refreshBrand: bool = False  # True = ignora el cache de análisis de la URL y re-analiza
+    styleId: str = ""      # ESTILO visual elegido por el usuario ('' = recomendado por rubro). Ver style_catalog.
     spec: dict | None = None  # variante ya elegida: si viene, se renderiza sin pasar por el director
 
 
@@ -503,6 +504,8 @@ async def _render_video_job(job_id: str, req: VideoGenRequest):
                     print(f"[dna] error (no crítico, sigue con defaults): {_de}")
                 _cached_brand = None
             _brand_sink = []
+            if req.styleId:
+                _dna["styleId"] = req.styleId   # el estilo elegido por el usuario viaja al director via el ADN
             spec = await template_director.build_storyboard(
                 req.url, req.desarrollo, req.proposito, seconds=req.seconds,
                 recent_profile=_recent, prefetched_site=_site.get("content"),
@@ -736,6 +739,7 @@ class TimelineGenRequest(BaseModel):
     proposito: str = "marketing"
     idioma: str = ""
     refreshBrand: bool = False   # ignora el cache de marca y re-analiza
+    styleId: str = ""            # ESTILO visual elegido por el usuario ('' = recomendado por rubro)
 
 
 @app.post("/api/timeline/generate")
@@ -792,6 +796,8 @@ async def _render_timeline_job(job_id: str, req: TimelineGenRequest):
                     print(f"[timeline] dna error (no critico): {_de}")
                 _cached_brand = None
             _brand_sink = []
+            if req.styleId:
+                _dna["styleId"] = req.styleId   # el estilo elegido por el usuario -> el director lo aplica
             jobs[job_id].update({"step": "script", "progress": 32})
             timeline = await timeline_director.write_timeline(
                 req.url, req.desarrollo, req.proposito, idioma=req.idioma,

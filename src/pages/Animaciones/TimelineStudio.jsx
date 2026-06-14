@@ -22,6 +22,23 @@ const PROPOSITOS = [
   { key: 'branding', label: '✨ Branding' },
   { key: 'awareness', label: '👋 Awareness' },
 ]
+// ESTILO visual del video (lo elige el usuario). Orden seguro -> audaz; debe coincidir con backend/style_catalog.py.
+// '' = Auto: el sistema recomienda un estilo segun el rubro del link.
+const STYLES = [
+  { id: '', label: '✨ Auto', vibe: 'recomendado por rubro' },
+  { id: 'blueprint', label: 'Blueprint', vibe: 'plano técnico, serio' },
+  { id: 'swiss', label: 'Swiss', vibe: 'grilla clara, ordenado' },
+  { id: 'platinum', label: 'Platinum', vibe: 'spotlight premium' },
+  { id: 'obsidian', label: 'Obsidian', vibe: 'lujo oscuro' },
+  { id: 'meshflow', label: 'Mesh Flow', vibe: 'fluido moderno' },
+  { id: 'aurora', label: 'Aurora', vibe: 'soñador, calmo' },
+  { id: 'handmade', label: 'Hecho a mano', vibe: 'cálido, cercano' },
+  { id: 'typographic', label: 'Tipográfico', vibe: 'tipografía gigante' },
+  { id: 'riso', label: 'Risograph', vibe: 'tramado táctil' },
+  { id: 'retro70s', label: 'Retro 70s', vibe: 'sunburst nostálgico' },
+  { id: 'brutalist', label: 'Brutalist', vibe: 'crudo, audaz' },
+  { id: 'sport', label: 'Sport', vibe: 'velocidad, urgencia' },
+]
 
 function sceneSummary(s) {
   if (!s) return ''
@@ -49,6 +66,7 @@ export default function TimelineStudio() {
   const [desarrollo, setDesarrollo] = useState('')
   const [proposito, setProposito] = useState('marketing')
   const [formato, setFormato] = useState('vertical')
+  const [styleId, setStyleId] = useState('')   // ESTILO visual elegido ('' = recomendado por rubro). Ver STYLES.
   const [gen, setGen] = useState(null)   // { status, step, progress, videoUrl, error, timeline }
   const [cached, setCached] = useState([])        // páginas cacheadas (ADN guardado por URL)
   const [cacheLoading, setCacheLoading] = useState(true)
@@ -166,7 +184,7 @@ export default function TimelineStudio() {
     try {
       const r = await fetch(`${API_URL}/api/timeline/generate`, {
         method: 'POST', headers: HEADERS,
-        body: JSON.stringify({ userId: user?.uid || '', url: u, desarrollo, proposito, formato: 'vertical', idioma: '' }),
+        body: JSON.stringify({ userId: user?.uid || '', url: u, desarrollo, proposito, formato: 'vertical', idioma: '', styleId }),
       })
       const d = await r.json()
       if (d.error || !d.job_id) { setGen(g => ({ ...g, status: 'error', error: d.error || 'No se pudo iniciar' })); return }
@@ -222,6 +240,15 @@ export default function TimelineStudio() {
                 {PROPOSITOS.map(p => (
                   <button key={p.key} className={`${styles.propBtn} ${proposito === p.key ? styles.propBtnActive : ''}`}
                     onClick={() => setProposito(p.key)} disabled={generating}>{p.label}</button>
+                ))}
+              </div>
+            </div>
+            <div className={styles.cineSection}>
+              <div className={styles.cineSectionLabel}>Estilo <span style={{ opacity: 0.5, fontWeight: 400 }}>· cómo se ve el video</span></div>
+              <div className={styles.propGrid}>
+                {STYLES.map(s => (
+                  <button key={s.id || 'auto'} className={`${styles.propBtn} ${styleId === s.id ? styles.propBtnActive : ''}`}
+                    onClick={() => setStyleId(s.id)} disabled={generating} title={s.vibe}>{s.label}</button>
                 ))}
               </div>
             </div>
