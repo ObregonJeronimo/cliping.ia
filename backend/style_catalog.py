@@ -49,7 +49,7 @@ STYLE_PRESETS = {
                     "comps": ["typeStack", "cornerAnchor", "typeOnly"], "stmt": ["editorial", "quote"], "list": "number", "grid_p": 0.0,
                     "outro": ["diagonal", "left", "ctaOnly"], "rhythm": _RH_MED, "structs": _ST_FULL},
     "retro70s":    {"nombre": "Retro 70s", "bg": "sunburst", "light_p": 0.35, "shadow": "soft", "tex": "grain",
-                    "comps": ["typeSlam", "emblem", "typeStack"], "stmt": ["centered", "panel"], "list": "check", "grid_p": 0.0,
+                    "comps": ["typeSlam", "typeStack", "typeOnly"], "stmt": ["centered", "panel"], "list": "check", "grid_p": 0.0,
                     "outro": ["center", "bigtype"], "rhythm": _RH_MED, "structs": _ST_FULL},
     "sport":       {"nombre": "Sport Velocity", "bg": "speedlines", "light_p": 0.05, "shadow": "hard", "tex": "none",
                     "comps": ["typeOnly", "typeSlam", "diagonal"], "stmt": ["editorial", "centered"], "list": "bar", "grid_p": 0.0,

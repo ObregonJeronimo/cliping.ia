@@ -381,6 +381,11 @@ RUBRO_STYLE_BIAS = {
     "default":      ["meshflow", "swiss", "platinum", "typographic"],
 }
 
+# FUENTE DE VERDAD COMPARTIDA con produccion: el catalogo canonico vive en style_catalog (lo usa
+# timeline_director). Re-vinculamos aca -> el banco de prueba (mock) y produccion NUNCA se desincronizan.
+# (Las defs de arriba quedan como referencia; este import las pisa con las del modulo compartido.)
+from style_catalog import STYLE_PRESETS, STYLE_ORDER, RUBRO_STYLE_BIAS  # noqa: E402
+
 
 def generate(brand: str, industria: str, facts=None, seed: int = None, style: str = None) -> dict:
     """Marca + rubro -> timeline COMPLETO (imita al LLM, determinista). Para test y fallback offline."""

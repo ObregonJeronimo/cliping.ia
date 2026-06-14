@@ -355,11 +355,11 @@ function _rgba(hex, a) {
   // 'speedlines': deporte/urgencia -> estelas diagonales que corren.
   function _bgSpeedlines(t, pal) {
     const rnd = mulberry32((SEED || 1) ^ 0x59ED);
-    ctx.save(); ctx.lineCap = 'round'; const n = 16, ang = -0.34, span = H * 1.7;
+    ctx.save(); ctx.lineCap = 'round'; const n = 24, ang = -0.34, span = H * 1.8;
     for (let i = 0; i < n; i++) {
-      const base = rnd(), y = -H * 0.35 + ((base * span + t * 150) % span);
-      const x = rnd() * W, len = lerp(50, 260, rnd());
-      ctx.globalAlpha = 0.18 + 0.42 * rnd(); ctx.lineWidth = 2 + rnd() * 3;
+      const base = rnd(), y = -H * 0.4 + ((base * span + t * 220) % span);   // mas rapido = mas velocidad
+      const x = rnd() * W, len = lerp(80, 330, rnd());                        // estelas mas largas
+      ctx.globalAlpha = 0.26 + 0.52 * rnd(); ctx.lineWidth = 2 + rnd() * 4;
       ctx.strokeStyle = _rgba(rnd() < 0.5 ? pal[0] : pal[3], 1);
       ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(ang) * len, y + Math.sin(ang) * len); ctx.stroke();
     }
