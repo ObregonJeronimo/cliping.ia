@@ -520,9 +520,32 @@ function _rgba(hex, a) {
       for (let i = 0; i < n; i++) { const base = rnd(), y = -H * 0.35 + ((base * span + t * 150) % span), x = rnd() * W, len = lerp(50, 260, rnd()); ctx.globalAlpha = 0.1 + 0.26 * rnd(); ctx.lineWidth = 2 + rnd() * 3; ctx.strokeStyle = aink; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(ang) * len, y + Math.sin(ang) * len); ctx.stroke(); }
       ctx.restore();
     } else if (BG_STYLE === 'halftone') {
-      ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = _rgba(pal[0], 0.3);
-      const step = 13, drift = (t * 5) % step, fx = W * 0.35, fy = H * 0.34;
-      for (let gy = -drift; gy < H + step; gy += step) for (let gx = -drift; gx < W + step; gx += step) { const d = Math.hypot(gx - fx, gy - fy) / H, r = clamp(3.1 * (1 - d), 0.4, 3.1); ctx.beginPath(); ctx.arc(gx, gy, r, 0, TAU); ctx.fill(); }
+      // riso DUOTONO en claro: 2 tintas (multiply) de hue distinto, la 2da corrida = misregistro de serigrafia
+      const step = 18, drift = (t * 5) % step, fx = W * 0.35, fy = H * 0.34;
+      const pass = (col, ox, oy, mul) => { ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = col;
+        for (let gy = -drift + oy; gy < H + step; gy += step) for (let gx = -drift + ox; gx < W + step; gx += step) { const d = Math.hypot(gx - fx, gy - fy) / H, r = clamp(6 * (1 - d) * mul, 0.5, 6); ctx.beginPath(); ctx.arc(gx, gy, r, 0, TAU); ctx.fill(); } ctx.restore(); };
+      pass(_rgba(pal[0], 0.34), 0, 0, 1); pass(_rgba(pal[3], 0.3), 5, 5, 0.8);
+    } else if (BG_STYLE === 'mesh') {
+      // meshflow CLARO: zonas de color que derivan y tintan la crema (multiply) -> flujo visible, no cream plano.
+      // antes el tono claro caia al gradiente crema generico (sin rama mesh) -> el panel lo leia monocromo.
+      ctx.save(); ctx.globalCompositeOperation = 'multiply';
+      for (const b of blobs) {
+        const cx = b.bx + Math.sin(t * b.fx * BG_ENERGY + b.px) * b.ax, cy = b.by + Math.cos(t * b.fy * BG_ENERGY + b.py) * b.ay;
+        const col = pal[b.pi % pal.length], gl = ctx.createRadialGradient(cx, cy, 0, cx, cy, b.rad);
+        gl.addColorStop(0, _rgba(col, 0.22)); gl.addColorStop(0.55, _rgba(col, 0.1)); gl.addColorStop(1, _rgba(col, 0));
+        ctx.fillStyle = gl; ctx.fillRect(0, 0, W, H);
+      }
+      ctx.restore();
+    } else if (BG_STYLE === 'aurora') {
+      // aurora CLARO: cortinas verticales multi-hue que tintan la crema (multiply)
+      ctx.save(); ctx.globalCompositeOperation = 'multiply';
+      const aH = _hexToHsl(A1 || '#3aa0ff'), hues = [aH.h, aH.h + 145, aH.h - 95, aH.h + 60, aH.h + 205], n = 5;
+      for (let i = 0; i < n; i++) {
+        const baseX = (i + 0.5) / n * W + Math.sin(t * 0.16 + i * 1.7) * 72, w = W * (0.2 + 0.06 * (((i * 31) % 5) / 5));
+        const col = _hslToHex(hues[i % hues.length], 0.6, 0.5), gl = ctx.createLinearGradient(baseX - w, 0, baseX + w, 0);
+        gl.addColorStop(0, _rgba(col, 0)); gl.addColorStop(0.5, _rgba(col, 0.16)); gl.addColorStop(1, _rgba(col, 0));
+        ctx.fillStyle = gl; ctx.fillRect(baseX - w, 0, w * 2, H);
+      }
       ctx.restore();
     }
     ctx.save();
