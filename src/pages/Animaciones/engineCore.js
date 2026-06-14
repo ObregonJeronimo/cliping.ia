@@ -527,8 +527,11 @@ function _rgba(hex, a) {
       for (let gy = 0; gy <= H; gy += step) { ctx.moveTo(0, gy); ctx.lineTo(W, gy); }
       ctx.stroke(); ctx.restore();
     } else if (BG_STYLE === 'sunburst') {
-      ctx.save(); ctx.globalCompositeOperation = 'multiply'; const cx2 = W * 0.5, cy2 = H * 0.26, rays = 20, rot = t * 0.035;
-      for (let i = 0; i < rays; i += 2) { const a = rot + i / rays * TAU; ctx.fillStyle = _rgba(pal[i % 2 ? 1 : 0], 0.06); ctx.beginPath(); ctx.moveTo(cx2, cy2); ctx.lineTo(cx2 + Math.cos(a - 0.075) * H * 1.3, cy2 + Math.sin(a - 0.075) * H * 1.3); ctx.lineTo(cx2 + Math.cos(a + 0.075) * H * 1.3, cy2 + Math.sin(a + 0.075) * H * 1.3); ctx.closePath(); ctx.fill(); }
+      // RETRO 70s: substrato CALIDO (crema -> mostaza) + rayos burnt-orange/mostaza que DOMINAN, fijo e
+      // independiente del acento del rubro. Sin esto el sunburst quedaba navy/frio y no leia 70s (panel 3.5).
+      ctx.save(); const wb = ctx.createLinearGradient(0, 0, 0, H); wb.addColorStop(0, '#f0dcae'); wb.addColorStop(1, '#e6c184'); ctx.fillStyle = wb; ctx.fillRect(0, 0, W, H); ctx.restore();
+      ctx.save(); ctx.globalCompositeOperation = 'multiply'; const cx2 = W * 0.5, cy2 = H * 0.18, rays = 24, rot = t * 0.04, warm = ['#bb4d22', '#d6912a'];
+      for (let i = 0; i < rays; i += 2) { const a = rot + i / rays * TAU; ctx.fillStyle = _rgba(i % 4 ? warm[0] : warm[1], i % 4 ? 0.22 : 0.14); ctx.beginPath(); ctx.moveTo(cx2, cy2); ctx.lineTo(cx2 + Math.cos(a - 0.085) * H * 1.45, cy2 + Math.sin(a - 0.085) * H * 1.45); ctx.lineTo(cx2 + Math.cos(a + 0.085) * H * 1.45, cy2 + Math.sin(a + 0.085) * H * 1.45); ctx.closePath(); ctx.fill(); }
       ctx.restore();
     } else if (BG_STYLE === 'speedlines') {
       const rnd = mulberry32((SEED || 1) ^ 0x59ED); ctx.save(); ctx.lineCap = 'round'; const n = 16, ang = -0.34, span = H * 1.7;
@@ -547,7 +550,7 @@ function _rgba(hex, a) {
       for (const b of blobs) {
         const cx = b.bx + Math.sin(t * b.fx * BG_ENERGY + b.px) * b.ax, cy = b.by + Math.cos(t * b.fy * BG_ENERGY + b.py) * b.ay;
         const col = pal[b.pi % pal.length], gl = ctx.createRadialGradient(cx, cy, 0, cx, cy, b.rad);
-        gl.addColorStop(0, _rgba(col, 0.22)); gl.addColorStop(0.55, _rgba(col, 0.1)); gl.addColorStop(1, _rgba(col, 0));
+        gl.addColorStop(0, _rgba(col, 0.34)); gl.addColorStop(0.5, _rgba(col, 0.15)); gl.addColorStop(1, _rgba(col, 0));
         ctx.fillStyle = gl; ctx.fillRect(0, 0, W, H);
       }
       ctx.restore();
@@ -1719,10 +1722,15 @@ function _rgba(hex, a) {
         const aa = clamp(Math.min(inv(t, sc.s, sc.s + 0.5), 1 - inv(t, sc.e - tail, sc.e)), 0, 1) * _wAlpha;
         if (aa <= 0) continue;
         const leftAnch = sc.listAnchor === 'left' || sc.stmtStyle === 'left';
-        const mx = leftAnch ? W - 86 : 86, my = H - 178;   // dentro del safe-area (radio 58 + jitter 6 no sangra) y mas arriba (no pisa el CTA del outro)
-        ctx.save(); ctx.globalAlpha = aa;
+        // en CHECKLIST el monograma va CHICO a la esquina superior-externa (fuera de las filas) -> no se come
+        // la legibilidad de los items (era el bug del panel: la "A" gigante DETRAS de la lista). En statement
+        // queda grande y a la deriva abajo, donde hay aire.
+        const isChk = sc.type === 'checklist';
+        const mx = leftAnch ? W - (isChk ? 56 : 86) : (isChk ? 56 : 86), my = isChk ? 90 : H - 178;
+        const fs = isChk ? 84 : 168;
+        ctx.save(); ctx.globalAlpha = aa * (isChk ? 0.55 : 1);
         ctx.translate(mx + Math.sin(t * 0.4 + _wph) * 6, my + Math.cos(t * 0.33 + _wph) * 6); ctx.rotate(Math.sin(t * 0.25 + _wph) * 0.05);   // vaiven minimo (un letra no se inclina mucho)
-        ctx.font = '800 168px "Inter",system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.font = `800 ${fs}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         setShadow(_rgba(_wac, 0.4), 14, 0); ctx.fillStyle = _wac; ctx.fillText(_mono, 0, 0); noShadow();   // MONOGRAMA: inicial de la marca como marca de agua (mas de marca que una figura)
         ctx.restore();
       }
