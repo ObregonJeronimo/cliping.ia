@@ -260,17 +260,17 @@ function _rgba(hex, a) {
     const fromTop = rnd() < 0.6;
     const px = fromTop ? W * (0.28 + rnd() * 0.44) : (rnd() < 0.5 ? -W * 0.06 : W * 1.06);
     const py = fromTop ? -H * 0.05 : H * (0.22 + rnd() * 0.3);
-    // 1) oscurecer todo menos el cono (antes de la luz) -> el cono va a resaltar de verdad
-    const dk = ctx.createRadialGradient(px, py, H * 0.04, px, py, H * 0.95);
-    dk.addColorStop(0, 'rgba(0,0,0,0)'); dk.addColorStop(0.55, 'rgba(0,0,0,0.34)'); dk.addColorStop(1, 'rgba(0,0,0,0.68)');
+    // 1) oscurecer FUERTE todo menos el cono (negro real) -> el cono resalta, no queda embarrado
+    const dk = ctx.createRadialGradient(px, py, H * 0.04, px, py, H * 0.92);
+    dk.addColorStop(0, 'rgba(0,0,0,0)'); dk.addColorStop(0.5, 'rgba(0,0,0,0.45)'); dk.addColorStop(1, 'rgba(8,8,11,0.86)');
     ctx.fillStyle = dk; ctx.fillRect(0, 0, W, H);
     // 2) cono de luz: centro casi blanco-acento, cae rapido (no inunda)
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
     const sw = 0.5 + Math.sin(t * 0.18) * 0.05;
-    const gl = ctx.createRadialGradient(px, py, 0, px, py, H * (0.62 + sw * 0.16));
-    gl.addColorStop(0, _rgba(_lighten(pal[0], 0.5), 0.5));
-    gl.addColorStop(0.26, _rgba(_lighten(pal[0], 0.12), 0.3));
-    gl.addColorStop(0.62, _rgba(pal[0], 0.08));
+    const gl = ctx.createRadialGradient(px, py, 0, px, py, H * (0.6 + sw * 0.16));
+    gl.addColorStop(0, _rgba(_lighten(pal[0], 0.6), 0.6));
+    gl.addColorStop(0.24, _rgba(_lighten(pal[0], 0.15), 0.34));
+    gl.addColorStop(0.6, _rgba(pal[0], 0.08));
     gl.addColorStop(1, _rgba(pal[0], 0));
     ctx.fillStyle = gl; ctx.fillRect(0, 0, W, H);
     ctx.restore();
@@ -380,8 +380,9 @@ function _rgba(hex, a) {
   // CAPA CONTEXTUAL: motivo vectorial TENUE que evoca el rubro del link (no un gradiente generico). Detras
   // del contenido, baja opacidad, determinista por SEED + t. Esto hace que el fondo "hable" del dominio.
   function _drawMotif(rubro, t, pal) {
-    const col = _rgba(pal[0], TONE === 'light' ? 0.12 : 0.15);
-    const col2 = _rgba(pal[0], TONE === 'light' ? 0.06 : 0.08);
+    // mas presencia (antes casi invisible): el motivo del rubro tiene que LEERSE a un metro del telefono
+    const col = _rgba(pal[0], TONE === 'light' ? 0.2 : 0.26);
+    const col2 = _rgba(pal[0], TONE === 'light' ? 0.1 : 0.13);
     ctx.save();
     if (rubro === 'inmobiliaria') {
       const rnd = mulberry32((SEED || 1) ^ 0x5417); const baseY = H * 0.99; let x = -24;
