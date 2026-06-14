@@ -631,7 +631,7 @@ function _rgba(hex, a) {
       ctx.translate(x + cw / 2, y + ch / 2); ctx.scale(pop, pop); ctx.translate(-(x + cw / 2), -(y + ch / 2));
       ctx.fillStyle = 'rgba(255,255,255,0.085)'; ctx.strokeStyle = 'rgba(255,255,255,0.16)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.roundRect(x, y, cw, ch, 12); ctx.fill(); ctx.stroke();
       setShadow(_rgba(A1, 0.4), 10, 2); ctx.fillStyle = A1; ctx.beginPath(); ctx.arc(x + 18, y + 20, 6, 0, TAU); ctx.fill(); noShadow();
-      ctx.font = `600 ${fitFont(label, 15, cw - 24, 11, 600)}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#f4ede0'; setShadow('rgba(0,0,0,0.4)', 4, 1);
+      ctx.font = `700 ${fitFont(label, 16, cw - 22, 12, 700)}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#fbf6ec'; setShadow('rgba(0,0,0,0.5)', 4, 1);
       ctx.fillText(label, x + 14, y + ch - 22); noShadow();
       ctx.restore();
     });
@@ -823,7 +823,7 @@ function _rgba(hex, a) {
   function _resolveColor(tok) {
     if (typeof tok === 'string') {
       if (tok === 'accent') return A1; if (tok === 'accent2') return A2;
-      if (tok === 'ink' || tok === 'light') return '#fbf6ec'; if (tok === 'dim') return '#dccfbe';
+      if (tok === 'ink' || tok === 'light') return '#fbf6ec'; if (tok === 'dim') return '#e8ddcc';
       if (tok === 'dark') return '#1c140a'; if (/^#[0-9a-fA-F]{6}$/.test(tok)) return tok;
     }
     return '#fbf6ec';

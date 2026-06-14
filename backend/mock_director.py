@@ -271,26 +271,47 @@ if __name__ == "__main__":
         out_dir = sys.argv[sys.argv.index("--out") + 1]
     os.makedirs(out_dir, exist_ok=True)
 
-    def _sig(tl):
-        # "carta" del video: composicion del hero + layout de statement + layout de checklist + tema.
+    def _parts(tl):
         comp = next((s.get("comp") for s in tl["scenes"] if s.get("type") == "scene"), "")
         st = next((s.get("stmtStyle") for s in tl["scenes"] if s.get("type") == "statement"), "")
         ll = next((s.get("listLayout") for s in tl["scenes"] if s.get("type") == "checklist"), "")
+        return comp, st, ll
+
+    def _sig(tl):
+        # "carta" exacta del video: hero + layout de statement + layout de checklist + tema.
+        comp, st, ll = _parts(tl)
         return (comp, st, ll, tl.get("theme"))
 
-    written, seen = [], set()
+    def _pair(tl):
+        # arquitectura de layout (sin color/tema): hero + layout de checklist. Dos marcas con la
+        # misma arquitectura se leen parecidas aunque cambie el tema (la queja Vibra/DataFlow).
+        comp, _st, ll = _parts(tl)
+        return (comp, ll)
+
+    written, seen, seen_pair = [], set(), set()
     for i, (name, ind) in enumerate(TEST_BRANDS):
-        # ANTI-COLISION (solo en el banco de prueba): si dos marcas sacan la MISMA carta, re-roll la
-        # semilla hasta que sean distintas. En produccion cada marca se genera sola; esto es para que
-        # las 12 de la galeria nunca se repitan (la queja "Nimbus/Vibra misma plantilla").
+        # ANTI-COLISION (solo en el banco de prueba): re-roll la semilla para que las 12 marcas nunca
+        # repitan carta. Primero intento evitar TAMBIEN la arquitectura de layout (no solo la carta
+        # exacta); si en N tiros no se puede, me conformo con que la carta exacta sea unica (garantia
+        # dura). En produccion cada marca se genera sola; esto es solo para la galeria de prueba.
         seed = se.stable_seed(name, ind)
         tl = generate(name, ind, seed=seed)
-        tries = 0
-        while _sig(tl) in seen and tries < 12:
+        tries, best = 0, None
+        while tries < 16:
+            sig_ok = _sig(tl) not in seen
+            pair_ok = _pair(tl) not in seen_pair
+            if sig_ok and pair_ok:
+                best = None
+                break
+            if sig_ok and best is None:
+                best = (seed, tl)  # cumple la garantia dura; lo guardo por si no logro evitar el par
             seed = (seed + 0x9E3779B9) & 0xFFFFFFFF
             tl = generate(name, ind, seed=seed)
             tries += 1
+        if best is not None and _sig(tl) in seen:
+            seed, tl = best  # no se pudo evitar el par en N tiros -> uso la mejor carta-unica hallada
         seen.add(_sig(tl))
+        seen_pair.add(_pair(tl))
         slug = "".join(c for c in name.lower().replace(" ", "-") if c.isalnum() or c == "-")
         path = os.path.join(out_dir, f"{i:02d}-{slug}.json")
         json.dump(tl, open(path, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
