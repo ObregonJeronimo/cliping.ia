@@ -141,9 +141,8 @@ def _hero_scene(brand, rubro, accent_light, rnd, comp):
         ]},
         {"kind": "particles", "count": 16, "spread": round(sr * 1.5, 1), "keys": [
             {"t": 1.2, "x": sx, "y": sy, "burst": 0}, {"t": 2.1, "x": sx, "y": sy, "burst": 1}]},
-        {"kind": "text", "text": brand, "fill": "ink", "size": L["nsz"], "weight": 800, "align": L["al"], "maxW": 368, "keys": [
-            {"t": ns, "opacity": 0, "x": L["nx"], "y": L["ny"] + 14, "scale": 0.86},
-            {"t": ns + 0.6, "opacity": 1, "x": L["nx"], "y": L["ny"], "scale": 1, "ease": "outBack"}]},
+        {"kind": "text", "text": brand, "fill": "ink", "size": L["nsz"], "weight": 800, "align": L["al"], "maxW": 368, "kinetic": True, "keys": [
+            {"t": ns, "opacity": 1, "x": L["nx"], "y": L["ny"]}]},
         {"kind": "text", "text": sub, "fill": "dim", "size": 21, "weight": 600, "align": L["al"], "maxW": 300, "keys": [
             {"t": ns + 0.9, "opacity": 0, "x": L["bx"], "y": L["by"] + 14},
             {"t": ns + 1.4, "opacity": 1, "x": L["bx"], "y": L["by"], "ease": "outCubic"}]},

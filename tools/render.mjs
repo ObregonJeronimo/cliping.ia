@@ -110,8 +110,19 @@ function galleryFromDir(dir, t = 3.0) {
   sheet('brands-gallery', `Marcas mock · frame del HERO (t=${t}s) — comparar UNICIDAD entre marcas`, items, 4)
 }
 
+function windowStrip(path, name, t0, t1) {
+  const tl = JSON.parse(readFileSync(path, 'utf8'))
+  const items = Array.from({ length: 12 }, (_, i) => {
+    const t = t0 + (t1 - t0) * (i / 11)
+    return { cv: frameCanvas(ctx => drawFrame(ctx, t, tl)), label: `t=${t.toFixed(2)}` }
+  })
+  sheet(name, `${name} · ventana densa t ${t0}-${t1}`, items, 4)
+}
+
 const mode = process.argv[2] || 'all'
-if (mode === 'gallery') {
+if (mode === 'window') {
+  windowStrip(process.argv[3], process.argv[4] || 'window', parseFloat(process.argv[5] || '0'), parseFloat(process.argv[6] || '3'))
+} else if (mode === 'gallery') {
   galleryFromDir(process.argv[3] || 'tools/brands', parseFloat(process.argv[4] || '3.0'))
 } else if (mode === 'video') {
   const path = process.argv[3]

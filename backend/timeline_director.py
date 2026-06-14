@@ -281,6 +281,8 @@ def _norm_scene_elements(s: dict, dur_frames: int) -> list:
                         nel[f] = (int(el[f]) if f == "weight" else float(el[f]))
                     except Exception:
                         pass
+            if el.get("kinetic"):
+                nel["kinetic"] = True
         elif kind == "icon":
             ic = el.get("icon")
             nel["icon"] = ic if (isinstance(ic, str) and ic in _SCENE_ICONS) else "dot"

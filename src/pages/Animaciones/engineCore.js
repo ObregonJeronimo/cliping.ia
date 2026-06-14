@@ -698,9 +698,9 @@ function _rgba(hex, a) {
       const tg = eOutBack(clamp(inv(t, 1.0, 1.6), 0, 1));
       if (tg > 0) {
         const cta = p.cta || 'Visita ahora', fs = fitFont(cta, 72, W * 0.86, 34, 800);
-        ctx.save(); ctx.globalAlpha = clamp(tg, 0, 1); ctx.translate(cx, cy + 34); ctx.scale(0.9 + 0.1 * tg, 0.9 + 0.1 * tg);
+        ctx.save(); ctx.translate(cx, cy + 34); ctx.scale(0.92 + 0.08 * tg, 0.92 + 0.08 * tg);
         ctx.font = `800 ${fs}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillStyle = accent(-130, -fs * 0.6, 130, fs * 0.6); ctx.fillText(cta, 0, 0); ctx.restore();
+        _kineticDraw(cta, accent(-130, -fs * 0.6, 130, fs * 0.6), 'center', t, 1.0); ctx.restore();
         const ar = inv(t, 1.5, 1.9);
         if (ar > 0) { ctx.save(); ctx.globalAlpha = ar; ctx.strokeStyle = _lighten(A1, 0.4); ctx.lineWidth = 4; ctx.lineCap = 'round'; const ay = cy + 34 + fs * 0.7 + 20; ctx.beginPath(); ctx.moveTo(cx - 16, ay); ctx.lineTo(cx, ay + 14); ctx.lineTo(cx + 16, ay); ctx.stroke(); ctx.restore(); }
       }
@@ -1020,6 +1020,22 @@ function _rgba(hex, a) {
     noShadow();
     ctx.restore();
   }
+  // TIPOGRAFIA CINETICA: revela el texto LETRA POR LETRA con stagger (cada una entra desde abajo con un
+  // leve overshoot). Asume ctx.font/translate ya seteados; dibuja alrededor del origen segun 'align'.
+  function _kineticDraw(str, col, align, t, start) {
+    const chars = str.split('');
+    const widths = chars.map(c => ctx.measureText(c).width);
+    const total = widths.reduce((a, b) => a + b, 0);
+    let xoff = align === 'center' ? -total / 2 : align === 'right' ? -total : 0;
+    const prevAlign = ctx.textAlign; ctx.textAlign = 'left'; ctx.fillStyle = col;
+    const each = Math.min(0.05, 0.55 / Math.max(1, chars.length)), baseAlpha = ctx.globalAlpha;
+    for (let i = 0; i < chars.length; i++) {
+      const lp = eOutBack(clamp((t - start - i * each) / 0.42, 0, 1));
+      if (lp > 0.001) { ctx.globalAlpha = baseAlpha * clamp(lp, 0, 1); ctx.fillText(chars[i], xoff, (1 - lp) * 24); }
+      xoff += widths[i];
+    }
+    ctx.globalAlpha = baseAlpha; ctx.textAlign = prevAlign;
+  }
   function sceneSpec(t, p = {}) {
     const els = Array.isArray(p.elements) ? p.elements : [];
     for (const el of els) {
@@ -1039,8 +1055,9 @@ function _rgba(hex, a) {
         ctx.translate(x, y); if (scale !== 1) ctx.scale(scale, scale); if (rot) ctx.rotate(rot);
         ctx.font = `${weight} ${fit}px "Inter",system-ui,sans-serif`;
         ctx.textAlign = el.align || 'center'; ctx.textBaseline = 'middle';
-        ctx.fillStyle = _colorAt(keys, t, _resolveColor(el.fill || 'ink'));
-        ctx.fillText(str, 0, 0);
+        const _tcol = _colorAt(keys, t, _resolveColor(el.fill || 'ink'));
+        if (el.kinetic) _kineticDraw(str, _tcol, el.align || 'center', t, (keys[0] && keys[0].t) || 0);
+        else { ctx.fillStyle = _tcol; ctx.fillText(str, 0, 0); }
       } else if (kind === 'icon') {
         if (el.blur) for (let b = 3; b >= 1; b--) { const tb = Math.max(0, t - b * 0.022); const pb = _pos(keys, tb); const sb = Math.max(0, _num(keys, tb, 'scale', scale)); ctx.save(); ctx.globalAlpha *= 0.1; ctx.translate(pb[0], pb[1]); _drawIcon(el.icon || 'dot', sb, op, tb); ctx.restore(); }
         ctx.translate(x, y); if (rot) ctx.rotate(rot);
