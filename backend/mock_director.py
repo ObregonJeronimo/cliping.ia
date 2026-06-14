@@ -25,6 +25,36 @@ def _lighten(hex_str, amt):
     return f"#{r:02x}{g:02x}{b:02x}"
 
 
+# Energia del rubro -> "dureza" de la forma firma. Energicos: forma nitida, casi sin aclarar (borde duro =
+# caracter), sin motion-blur. Serenos: mas aclarada y difusa (niebla suave). Asi la SATURACION/DUREZA del
+# trazo tambien lleva el alma del rubro, no solo el hue (Forja agresivo != Aura suave aunque compartan layout).
+_ENERGETIC = {"fitness", "moda", "tech", "gastronomia"}
+_SERENE = {"salud", "belleza", "inmobiliaria", "finanzas"}
+
+def _shape_paint(accent, rubro):
+    """(color_de_la_forma, blur) segun energia del rubro."""
+    if rubro in _ENERGETIC:
+        return _lighten(accent, 0.12), False   # nitida y saturada
+    if rubro in _SERENE:
+        return _lighten(accent, 0.42), True    # tenue y difusa
+    return _lighten(accent, 0.28), True
+
+# FX del hero por rubro: cantidad/tamano/velocidad de particulas y orbitas -> el MOVIMIENTO tambien distingue
+# marcas (fitness = enjambre rapido y denso; belleza = pocas y lentas; tech = regulares y veloces).
+RUBRO_FX = {
+    "fitness":      dict(pc=24, ps=1.7,  osp=1.25, od=4, dr=4),
+    "tech":         dict(pc=18, ps=1.45, osp=1.15, od=4, dr=3),
+    "moda":         dict(pc=14, ps=1.6,  osp=1.0,  od=3, dr=5),
+    "gastronomia":  dict(pc=15, ps=1.5,  osp=0.85, od=3, dr=5),
+    "salud":        dict(pc=10, ps=1.35, osp=0.7,  od=3, dr=6),
+    "belleza":      dict(pc=8,  ps=1.5,  osp=0.6,  od=3, dr=6),
+    "inmobiliaria": dict(pc=10, ps=1.3,  osp=0.8,  od=3, dr=5),
+    "educacion":    dict(pc=14, ps=1.5,  osp=0.95, od=3, dr=5),
+    "finanzas":     dict(pc=12, ps=1.3,  osp=0.9,  od=4, dr=4),
+    "default":      dict(pc=12, ps=1.5,  osp=0.85, od=3, dr=5),
+}
+
+
 # ESTILO por rubro: forma FIRMA distinta (1er morph, no se repite entre rubros -> identidad), + estilo de
 # marcador del checklist (check/number/bar/dash) y de CTA (pill/chip) -> rompe el molde compartido.
 # Las formas estan en el vocabulario REAL del motor (engineCore _SCENE_FORMS) para que siempre renderice.
@@ -94,34 +124,42 @@ CTAS = {
 
 # COMPOSICIONES de HERO: rompen el molde "forma centrada + nombre debajo" (lo que hacia que TODOS se
 # parezcan). Cada rubro tiene un par (la semilla elige) -> el FRAME del hero se ve distinto por marca.
-#   emblem      -> forma centrada + nombre debajo (clasico)
-#   sideLeft    -> forma a la izquierda + nombre grande a la derecha (asimetrico, editorial)
-#   typeHero    -> NOMBRE GIGANTE protagonista + forma chica de acento arriba (tipografico)
-#   shapeBehind -> forma grande y TENUE detras + nombre en blanco encima (capas/superposicion)
-#   topAnchor   -> forma arriba + nombre abajo (vertical asimetrico)
+#   emblem       -> forma centrada + nombre debajo (clasico, simetrico)
+#   sideLeft     -> forma a la izquierda + nombre grande a la derecha (asimetrico, editorial)
+#   typeHero     -> NOMBRE GIGANTE protagonista + forma chica de acento pegada arriba (tipografico)
+#   shapeBehind  -> forma grande y TENUE descentrada detras + nombre encima (capas/profundidad)
+#   topAnchor    -> forma arriba + nombre abajo (vertical asimetrico)
+#   cornerAnchor -> forma chica arriba-derecha + nombre abajo-izquierda (diagonal, aire)
+#   diagonal     -> forma grande abajo-izquierda + nombre arriba-derecha alineado a la derecha (tension)
+# Cada rubro tiene >=1 comp ASIMETRICO (rompe el "centrado por defecto" que hacia leer plantilla).
 HERO_COMP = {
-    "gastronomia": ["emblem", "shapeBehind", "topAnchor"], "tech": ["typeHero", "sideLeft", "topAnchor"],
-    "salud": ["emblem", "sideLeft", "shapeBehind"], "moda": ["typeHero", "shapeBehind", "sideLeft"],
-    "inmobiliaria": ["sideLeft", "topAnchor", "emblem"], "fitness": ["shapeBehind", "topAnchor", "typeHero"],
-    "educacion": ["sideLeft", "emblem", "typeHero"], "finanzas": ["sideLeft", "typeHero", "topAnchor"],
-    "belleza": ["shapeBehind", "emblem", "topAnchor"], "default": ["emblem", "topAnchor", "sideLeft"],
+    "gastronomia": ["emblem", "cornerAnchor", "topAnchor"], "tech": ["typeHero", "sideLeft", "diagonal"],
+    "salud": ["emblem", "sideLeft", "shapeBehind"], "moda": ["typeHero", "diagonal", "sideLeft"],
+    "inmobiliaria": ["sideLeft", "cornerAnchor", "topAnchor"], "fitness": ["typeHero", "diagonal", "topAnchor"],
+    "educacion": ["sideLeft", "cornerAnchor", "typeHero"], "finanzas": ["sideLeft", "typeHero", "topAnchor"],
+    "belleza": ["shapeBehind", "cornerAnchor", "topAnchor"], "default": ["emblem", "topAnchor", "diagonal"],
 }
 _HERO_LAYOUT = {
-    "emblem":      dict(sx=202, sy=286, sr=108, nx=202, ny=486, nsz=52, al="center", bx=202, by=522, sop=1.0, orb=True,  ns=2.0),
-    "sideLeft":    dict(sx=112, sy=322, sr=82,  nx=212, ny=302, nsz=46, al="left",   bx=212, by=350, sop=1.0, orb=False, ns=2.0),
-    "typeHero":    dict(sx=312, sy=172, sr=58,  nx=202, ny=358, nsz=82, al="center", bx=202, by=438, sop=1.0, orb=True,  ns=1.3),
-    "shapeBehind": dict(sx=202, sy=330, sr=158, nx=202, ny=330, nsz=58, al="center", bx=202, by=414, sop=0.3, orb=False, ns=2.0),
-    "topAnchor":   dict(sx=202, sy=224, sr=92,  nx=202, ny=486, nsz=52, al="center", bx=202, by=522, sop=1.0, orb=True,  ns=2.2),
+    "emblem":       dict(sx=202, sy=286, sr=108, nx=202, ny=486, nsz=52, al="center", bx=202, by=522, sop=1.0, orb=True,  ns=2.0, maxW=348),
+    "sideLeft":     dict(sx=112, sy=322, sr=82,  nx=212, ny=300, nsz=46, al="left",   bx=212, by=350, sop=1.0, orb=False, ns=2.0, maxW=178),
+    "typeHero":     dict(sx=150, sy=232, sr=54,  nx=202, ny=330, nsz=80, al="center", bx=202, by=408, sop=1.0, orb=True,  ns=1.3, maxW=372),
+    "shapeBehind":  dict(sx=250, sy=288, sr=150, nx=176, ny=372, nsz=56, al="left",   bx=176, by=452, sop=0.5, orb=False, ns=2.0, maxW=210),
+    "topAnchor":    dict(sx=202, sy=224, sr=92,  nx=202, ny=486, nsz=52, al="center", bx=202, by=522, sop=1.0, orb=True,  ns=2.2, maxW=348),
+    "cornerAnchor": dict(sx=318, sy=150, sr=60,  nx=44,  ny=470, nsz=58, al="left",   bx=44,  by=512, sop=1.0, orb=True,  ns=1.8, maxW=320),
+    "diagonal":     dict(sx=104, sy=540, sr=104, nx=360, ny=250, nsz=52, al="right",  bx=360, by=300, sop=1.0, orb=True,  ns=1.8, maxW=300),
 }
 # El frame de cierre (outro) hereda la personalidad del hero: cada composicion su CTA.
-_OUTRO_BY_COMP = {"emblem": "center", "sideLeft": "left", "typeHero": "bigtype", "shapeBehind": "center", "topAnchor": "bar"}
+_OUTRO_BY_COMP = {"emblem": "center", "sideLeft": "left", "typeHero": "bigtype", "shapeBehind": "center",
+                  "topAnchor": "bar", "cornerAnchor": "left", "diagonal": "bar"}
 
 
-def _hero_scene(brand, rubro, accent_light, rnd, comp):
-    """HERO con COMPOSICION variable (no siempre forma-centrada): la forma firma del rubro nace, MUTA,
-    respira y rota, con el layout (posicion/tamano/tipografia) de la composicion 'comp'. f1 = firma
-    (varia por marca); f2 = forma intermedia."""
+def _hero_scene(brand, rubro, accent_light, rnd, comp, blur=True):
+    """HERO con COMPOSICION variable (no siempre forma-centrada): la forma FIRMA del rubro aparece YA en el
+    arranque (t=0.42, no a los 3s) y el morph la usa para un flourish corto + pulso/rotacion, no para
+    revelarla tarde. Asi el frame-portada (galeria/thumbnail) ya muestra la identidad. f1 = firma (varia por
+    marca); f2 = excursion breve. blur/saturacion vienen de la energia del rubro."""
     st = RUBRO_STYLE.get(rubro, RUBRO_STYLE["default"])
+    fx = RUBRO_FX.get(rubro, RUBRO_FX["default"])
     forms = st["forms"][:]
     rnd.shuffle(forms)
     f1, f2 = forms[0], (forms[1] if len(forms) > 1 else forms[0])
@@ -130,25 +168,25 @@ def _hero_scene(brand, rubro, accent_light, rnd, comp):
     L = _HERO_LAYOUT[comp]
     sx, sy, sr, sop, ns = L["sx"], L["sy"], L["sr"], L["sop"], L["ns"]
     els = [
-        {"kind": "morph", "fill": accent_light, "blur": True, "keys": [
+        {"kind": "morph", "fill": accent_light, "blur": blur, "keys": [
             {"t": 0.0, "form": "circle", "r": round(sr * 0.1, 1), "opacity": 0, "x": sx, "y": sy},
-            {"t": 0.42, "form": "circle", "r": round(sr * 0.5, 1), "opacity": sop, "x": sx, "y": sy, "ease": ease_in},
-            {"t": 1.5, "form": f2, "r": round(sr * 0.9, 1), "opacity": sop, "x": sx, "y": sy, "ease": "inOutCubic"},
-            {"t": 3.0, "form": f1, "r": sr, "opacity": sop, "x": sx, "y": sy, "rot": -14, "ease": "inOutCubic"},
-            {"t": 4.3, "form": f1, "r": round(sr * 1.07, 1), "opacity": sop, "x": sx, "y": sy, "rot": -4, "ease": "inOutCubic"},
-            {"t": 5.6, "form": f1, "r": sr, "opacity": sop, "x": sx, "y": sy, "rot": 6, "ease": "inOutCubic"},
-            {"t": 7.0, "form": f1, "r": round(sr * 1.05, 1), "opacity": sop, "x": sx, "y": sy, "rot": 16, "ease": "inOutCubic"},
+            {"t": 0.42, "form": f1, "r": round(sr * 0.52, 1), "opacity": sop, "x": sx, "y": sy, "ease": ease_in},
+            {"t": 1.1, "form": f2, "r": round(sr * 0.84, 1), "opacity": sop, "x": sx, "y": sy, "rot": 7, "ease": "inOutCubic"},
+            {"t": 2.0, "form": f1, "r": round(sr * 0.96, 1), "opacity": sop, "x": sx, "y": sy, "rot": -6, "ease": "inOutCubic"},
+            {"t": 3.2, "form": f1, "r": sr, "opacity": sop, "x": sx, "y": sy, "rot": -11, "ease": "inOutCubic"},
+            {"t": 4.6, "form": f1, "r": round(sr * 1.07, 1), "opacity": sop, "x": sx, "y": sy, "rot": 2, "ease": "inOutCubic"},
+            {"t": 7.0, "form": f1, "r": sr, "opacity": sop, "x": sx, "y": sy, "rot": 13, "ease": "inOutCubic"},
         ]},
-        {"kind": "particles", "count": 16, "spread": round(sr * 1.5, 1), "phase": round(rnd.uniform(0, 6.28), 2), "keys": [
+        {"kind": "particles", "count": fx["pc"], "spread": round(sr * fx["ps"], 1), "phase": round(rnd.uniform(0, 6.28), 2), "dotR": fx["dr"], "keys": [
             {"t": 1.2, "x": sx, "y": sy, "burst": 0}, {"t": 2.1, "x": sx, "y": sy, "burst": 1}]},
-        {"kind": "text", "text": brand, "fill": "ink", "size": L["nsz"], "weight": 800, "align": L["al"], "maxW": 368, "kinetic": True, "keys": [
+        {"kind": "text", "text": brand, "fill": "ink", "size": L["nsz"], "weight": 800, "align": L["al"], "maxW": L.get("maxW", 348), "kinetic": True, "keys": [
             {"t": ns, "opacity": 1, "x": L["nx"], "y": L["ny"]}]},
-        {"kind": "text", "text": sub, "fill": "dim", "size": 21, "weight": 600, "align": L["al"], "maxW": 300, "keys": [
+        {"kind": "text", "text": sub, "fill": "dim", "size": 21, "weight": 600, "align": L["al"], "maxW": min(300, L.get("maxW", 300)), "keys": [
             {"t": ns + 0.9, "opacity": 0, "x": L["bx"], "y": L["by"] + 14},
             {"t": ns + 1.4, "opacity": 1, "x": L["bx"], "y": L["by"], "ease": "outCubic"}]},
     ]
     if L["orb"]:
-        els.insert(1, {"kind": "orbit", "count": 3, "r": round(sr * 1.42, 1), "speed": 0.85, "fill": "accent2", "dotR": 7, "keys": [
+        els.insert(1, {"kind": "orbit", "count": fx["od"], "r": round(sr * 1.42, 1), "speed": fx["osp"], "fill": "accent2", "dotR": max(5, fx["dr"] + 2), "keys": [
             {"t": 1.6, "x": sx, "y": sy, "opacity": 0}, {"t": 2.3, "x": sx, "y": sy, "opacity": 0.9, "ease": "outCubic"}]})
     return {"type": "scene", "durationInFrames": 210, "elements": els, "comp": comp}
 
@@ -208,20 +246,23 @@ def generate(brand: str, industria: str, facts=None, seed: int = None) -> dict:
     rnd = random.Random((int(seed) ^ 0x9E3779B9) & 0xFFFFFFFF)
 
     st = RUBRO_STYLE.get(rubro, RUBRO_STYLE["default"])
-    accent_light = _lighten(pre["accent"], 0.36)
+    # color + dureza de la forma firma derivan de la energia del rubro (no un lighten fijo para todos)
+    accent_light, shape_blur = _shape_paint(pre["accent"], rubro)
     # La COMPOSICION del hero define la "personalidad" del video y se PROPAGA al resto (alineacion + CTA)
     # -> dos marcas con hero distinto divergen en TODOS los frames, no solo el del hero.
     comp = rnd.choice(HERO_COMP.get(rubro, HERO_COMP["default"]))
-    # statement: sideLeft mantiene la columna izquierda; el resto VARIA por semilla (centrado/comilla/panel)
-    stmt_style = "left" if comp == "sideLeft" else rnd.choice(["centered", "quote", "panel"])
-    list_anchor = "left" if comp == "sideLeft" else "center"
+    # statement/lista heredan la columna izquierda de los heros anclados a la izquierda; el resto VARIA por
+    # semilla (centrado/comilla/panel) para no leer plantilla.
+    left_anchored = comp in ("sideLeft", "cornerAnchor")
+    stmt_style = "left" if left_anchored else rnd.choice(["centered", "quote", "panel"])
+    list_anchor = "left" if left_anchored else "center"
     list_layout = rnd.choice(["rows", "grid"])   # variedad estructural: lista vertical vs grilla 2-col
     outro_comp = _OUTRO_BY_COMP.get(comp, "center")
     skel = rnd.choice(RUBRO_STRUCT.get(rubro, RUBRO_STRUCT["default"]))
     scenes = []
     for slot in skel:
         if slot == "hero":
-            scenes.append(_hero_scene(brand, rubro, accent_light, rnd, comp))
+            scenes.append(_hero_scene(brand, rubro, accent_light, rnd, comp, shape_blur))
         elif slot == "statement":
             scenes.append(_statement(rubro, rnd, stmt_style))
         elif slot == "checklist":

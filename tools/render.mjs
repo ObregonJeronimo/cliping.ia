@@ -105,9 +105,17 @@ function galleryFromDir(dir, t = 3.0) {
   const files = readdirSync(dir).filter(f => f.endsWith('.json')).sort()
   const items = files.map(f => {
     const tl = JSON.parse(readFileSync(join(dir, f), 'utf8'))
-    return { cv: frameCanvas(ctx => drawFrame(ctx, t, tl)), label: `${tl.brand} · ${tl.rubro || ''}` }
+    // muestrear el HERO en su frame de maxima identidad (la firma ya consolidada), no el t global:
+    // recorrer las escenas acumulando tiempo y caer dentro de la escena 'scene' (el hero).
+    let cur = 0, ht = t
+    for (const sc of (tl.scenes || [])) {
+      const d = Math.max(30, sc.durationInFrames || 120) / 30
+      if (sc.type === 'scene') { ht = cur + Math.min(3.2, d * 0.55); break }
+      cur += d
+    }
+    return { cv: frameCanvas(ctx => drawFrame(ctx, ht, tl)), label: `${tl.brand} · ${tl.rubro || ''}` }
   })
-  sheet('brands-gallery', `Marcas mock · frame del HERO (t=${t}s) — comparar UNICIDAD entre marcas`, items, 4)
+  sheet('brands-gallery', `Marcas mock · frame del HERO en su identidad — comparar UNICIDAD entre marcas`, items, 4)
 }
 
 function windowStrip(path, name, t0, t1) {

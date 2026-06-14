@@ -56,31 +56,31 @@ def stable_seed(*parts) -> int:
 # Los rangos de hue por rubro hacen que dos rubros NO compartan paleta; la semilla elige dentro del rango.
 PROFILES = {
     "gastronomia": {
-        "hue": (8, 42), "sat": (0.62, 0.82), "themes": ["sunset-warm", "organic-natural", "crimson-bold"],
+        "hue": (16, 40), "sat": (0.62, 0.82), "themes": ["sunset-warm", "organic-natural", "crimson-bold"],
         "morphs": ["drop", "blob", "circle", "flower"], "icons": ["leaf", "check", "star"],
         "pacing": "calido", "density": "media", "motion": ["outBack", "stagger", "morph"],
         "hooks": ["sensorial", "antojo", "origen"],
     },
     "tech": {
-        "hue": (192, 244), "sat": (0.55, 0.82), "themes": ["saas-explainer", "cyber-neon", "clinical-formal"],
+        "hue": (224, 248), "sat": (0.58, 0.82), "themes": ["saas-explainer", "cyber-neon", "clinical-formal"],
         "morphs": ["hexagon", "square", "gear", "triangle"], "icons": ["box", "check", "dot"],
         "pacing": "rapido", "density": "alta", "motion": ["path", "outExpo", "stagger"],
         "hooks": ["dolor", "antes-despues", "dato"],
     },
     "salud": {
-        "hue": (150, 195), "sat": (0.45, 0.68), "themes": ["clinical-formal", "ocean-deep", "organic-natural"],
+        "hue": (172, 192), "sat": (0.42, 0.60), "themes": ["clinical-formal", "ocean-deep", "organic-natural"],
         "morphs": ["plus", "circle", "heart", "leaf"], "icons": ["check", "star", "leaf"],
         "pacing": "sereno", "density": "baja", "motion": ["outCubic", "morph"],
         "hooks": ["confianza", "cuidado", "dato"],
     },
     "moda": {
-        "hue": (288, 332), "sat": (0.55, 0.8), "themes": ["berry-glow", "crimson-bold", "gold-lux"],
+        "hue": (292, 316), "sat": (0.55, 0.8), "themes": ["berry-glow", "crimson-bold", "gold-lux"],
         "morphs": ["star5", "diamond", "flower", "blob"], "icons": ["star", "dot"],
         "pacing": "editorial", "density": "media", "motion": ["path", "outExpo", "morph"],
         "hooks": ["aspiracional", "drop", "identidad"],
     },
     "inmobiliaria": {
-        "hue": (190, 220), "sat": (0.4, 0.62), "themes": ["ocean-deep", "clinical-formal", "saas-explainer"],
+        "hue": (200, 216), "sat": (0.34, 0.52), "themes": ["ocean-deep", "clinical-formal", "saas-explainer"],
         "morphs": ["square", "house", "hexagon", "circle"], "icons": ["house", "check", "dot"],
         "pacing": "sereno", "density": "media", "motion": ["outCubic", "stagger"],
         "hooks": ["aspiracional", "oportunidad", "dato"],
@@ -94,26 +94,26 @@ PROFILES = {
     },
     "educacion": {
         # violeta (separa del azul de tech/inmobiliaria en la galeria)
-        "hue": (256, 292), "sat": (0.5, 0.72), "themes": ["berry-glow", "saas-explainer", "clinical-formal"],
+        "hue": (262, 286), "sat": (0.5, 0.72), "themes": ["berry-glow", "saas-explainer", "clinical-formal"],
         "morphs": ["circle", "hexagon", "star5", "plus"], "icons": ["check", "star", "box"],
         "pacing": "claro", "density": "media", "motion": ["stagger", "morph"],
         "hooks": ["dolor", "promesa", "dato"],
     },
     "finanzas": {
-        "hue": (150, 175), "sat": (0.4, 0.6), "themes": ["clinical-formal", "saas-explainer", "gold-lux"],
+        "hue": (140, 162), "sat": (0.32, 0.5), "themes": ["clinical-formal", "saas-explainer", "mono-ink"],
         "morphs": ["square", "hexagon", "triangle", "circle"], "icons": ["check", "dot", "box"],
         "pacing": "sobrio", "density": "baja", "motion": ["outCubic", "path"],
         "hooks": ["confianza", "dato", "oportunidad"],
     },
     "belleza": {
-        "hue": (320, 350), "sat": (0.5, 0.75), "themes": ["berry-glow", "gold-lux", "crimson-bold"],
+        "hue": (320, 344), "sat": (0.5, 0.75), "themes": ["berry-glow", "gold-lux", "crimson-bold"],
         "morphs": ["flower", "drop", "blob", "star5"], "icons": ["star", "leaf", "dot"],
         "pacing": "editorial", "density": "baja", "motion": ["morph", "outExpo"],
         "hooks": ["aspiracional", "sensorial", "identidad"],
     },
     "default": {
         # neutro grafito (baja saturacion) para que NO colisione con ningun rubro vivido (ej tech azul).
-        "hue": (212, 236), "sat": (0.12, 0.26), "themes": ["mono-ink", "clinical-formal"],
+        "hue": (210, 232), "sat": (0.10, 0.22), "themes": ["mono-ink", "clinical-formal"],
         "morphs": ["circle", "square", "blob", "hexagon"], "icons": ["check", "dot"],
         "pacing": "claro", "density": "media", "motion": ["outCubic", "stagger", "morph"],
         "hooks": ["dolor", "promesa", "dato"],
