@@ -609,6 +609,7 @@ function _rgba(hex, a) {
     else if (BG_STYLE === 'speedlines') _bgSpeedlines(t, pal);
     else if (BG_STYLE === 'halftone') _bgHalftone(t, pal);
     else if (BG_STYLE === 'paper') _bgField(t, pal);   // handmade en oscuro (raro): cae a field suave
+    else if (BG_STYLE === 'typo') _bgField(t, pal);    // typographic: base sobria + wordmark fantasma (en drawFrame)
     else _bgMesh(t, pal);
     if (MOTIF) _drawMotif(MOTIF, t, pal);   // capa CONTEXTUAL: motivo del rubro (skyline, sparkline, etc.)
     // 3) motes (polvo) con tinte del tema, deriva vertical sembrada
@@ -1705,10 +1706,23 @@ function _rgba(hex, a) {
     drawBg(t);
     const _scenes = layout(tl);
     const XF = 0.3; // cross-fade mas corto -> cortes mas agiles/punchy (menos "todo se funde lento")
+    // FIRMA TYPOGRAPHIC: el wordmark de la marca GIGANTE y fantasma (sangra fuera de cuadro, 2 lineas que
+    // derivan) ES el fondo -> hace el estilo inequivoco sin costo de legibilidad (alpha bajo, detras del texto).
+    if (BG_STYLE === 'typo') {
+      const _word = (tl.brand || '').trim().toUpperCase();
+      if (_word) {
+        ctx.save(); ctx.font = '900 300px "Space Grotesk","Inter",system-ui,sans-serif';
+        ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.globalAlpha = TONE === 'light' ? 0.06 : 0.075; ctx.fillStyle = INK;
+        const _gd = (t * 8) % 380;
+        ctx.fillText(_word, -_gd, H * 0.31); ctx.fillText(_word, -_gd + 64, H * 0.63);
+        ctx.restore();
+      }
+    }
     // FIRMA AMBIENTAL: la forma firma de la marca persiste como marca de agua viva (a la deriva, en la
     // esquina OPUESTA al texto -> tambien hace contrapeso compositivo) durante el bloque de contenido
     // (statement/checklist). Asi la identidad NO se muere a mitad del reel. Se dibuja DETRAS del contenido.
-    const _mono = (tl.brand || '').trim().charAt(0).toUpperCase();
+    // En 'typo' se omite (el wordmark fantasma ya es la firma ambiental -> evita doble texto tenue).
+    const _mono = BG_STYLE === 'typo' ? '' : (tl.brand || '').trim().charAt(0).toUpperCase();
     if (_mono) {
       const _wac = _accentInk(_resolveColor('accent'), 0.12);   // tone-aware: claro->oscurece, oscuro->aclara
       const _lAcc = _hexToHsl(_wac).l, _lBg = TONE === 'light' ? 0.92 : _hexToHsl((BG && BG[0]) ? BG[0] : '#223040').l;

@@ -42,7 +42,7 @@ STYLE_PRESETS = {
     "brutalist":   {"nombre": "Neo-Brutalist", "bg": "brutalist", "light_p": 0.25, "shadow": "hard", "tex": "none",
                     "comps": ["typeTop", "typeOnly", "typeStack"], "stmt": ["editorial", "centered"], "list": "bar", "grid_p": 0.0,
                     "outro": ["ctaOnly", "bigtype"], "rhythm": _RH_FAST, "structs": _ST_PUNCHY},
-    "typographic": {"nombre": "Typographic", "bg": "field", "light_p": 0.4, "shadow": "soft", "tex": "none",
+    "typographic": {"nombre": "Typographic", "bg": "typo", "light_p": 0.4, "shadow": "soft", "tex": "none",
                     "comps": ["typeSlam", "typeOnly", "typeStack"], "stmt": ["editorial"], "list": "number", "grid_p": 0.0,
                     "outro": ["ctaOnly", "bigtype"], "rhythm": _RH_MED, "structs": _ST_PUNCHY},
     "riso":        {"nombre": "Risograph", "bg": "halftone", "light_p": 0.5, "shadow": "hard", "tex": "none",
