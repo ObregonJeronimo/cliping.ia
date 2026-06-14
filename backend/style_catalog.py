@@ -59,8 +59,8 @@ STYLE_PRESETS = {
 # usuario no elige). El usuario SIEMPRE puede pisar esto con su eleccion.
 STYLE_ORDER = ["blueprint", "swiss", "platinum", "obsidian", "meshflow", "aurora", "handmade", "typographic", "riso", "retro70s", "brutalist", "sport"]
 RUBRO_STYLE_BIAS = {
-    "inmobiliaria": ["blueprint", "swiss", "obsidian", "platinum"],
-    "finanzas":     ["platinum", "swiss", "blueprint", "brutalist"],
+    "inmobiliaria": ["blueprint", "swiss", "obsidian", "meshflow"],
+    "finanzas":     ["swiss", "blueprint", "obsidian", "platinum"],
     "tech":         ["platinum", "meshflow", "typographic", "brutalist"],
     "salud":        ["aurora", "swiss", "meshflow", "handmade"],
     "belleza":      ["aurora", "obsidian", "handmade", "riso"],
@@ -68,7 +68,7 @@ RUBRO_STYLE_BIAS = {
     "fitness":      ["sport", "brutalist", "typographic", "platinum"],
     "educacion":    ["swiss", "retro70s", "typographic", "meshflow"],
     "moda":         ["obsidian", "typographic", "riso", "brutalist"],
-    "default":      ["meshflow", "swiss", "platinum", "typographic"],
+    "default":      ["meshflow", "swiss", "typographic", "obsidian"],
 }
 
 
