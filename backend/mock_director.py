@@ -59,7 +59,7 @@ RUBRO_FX = {
 # marcador del checklist (check/number/bar/dash) y de CTA (pill/chip) -> rompe el molde compartido.
 # Las formas estan en el vocabulario REAL del motor (engineCore _SCENE_FORMS) para que siempre renderice.
 RUBRO_STYLE = {
-    "gastronomia": {"forms": ["leaf", "drop", "flower", "blob"], "listStyle": "check", "ctaStyle": "pill", "texture": "grain"},
+    "gastronomia": {"forms": ["leaf", "drop", "blob"], "listStyle": "check", "ctaStyle": "pill", "texture": "grain"},
     "tech":        {"forms": ["hexagon", "triangle", "diamond"], "listStyle": "dash", "ctaStyle": "chip", "texture": "grid"},
     "salud":       {"forms": ["plus", "heart", "circle"], "listStyle": "check", "ctaStyle": "pill", "texture": "grain"},
     "moda":        {"forms": ["diamond", "star", "blob"], "listStyle": "number", "ctaStyle": "chip", "texture": "lines"},
@@ -336,30 +336,37 @@ if __name__ == "__main__":
         comp, _st, ll = _parts(tl)
         return (comp, ll)
 
-    written, seen, seen_pair = [], set(), set()
+    def _rf(tl):
+        # (rubro, forma firma): dos marcas del MISMO rubro nunca comparten silueta (la queja Vibra/Raiz,
+        # ambas default+cuadrado), aunque difieran en estructura.
+        return (tl.get("rubro"), tl.get("signatureForm"))
+
+    written, seen, seen_pair, seen_rf = [], set(), set(), set()
     for i, (name, ind) in enumerate(TEST_BRANDS):
         # ANTI-COLISION (solo en el banco de prueba): re-roll la semilla para que las 12 marcas nunca
-        # repitan carta. Primero intento evitar TAMBIEN la arquitectura de layout (no solo la carta
-        # exacta); si en N tiros no se puede, me conformo con que la carta exacta sea unica (garantia
-        # dura). En produccion cada marca se genera sola; esto es solo para la galeria de prueba.
+        # repitan carta. Intento evitar TAMBIEN la arquitectura de layout y que dos del mismo rubro
+        # compartan forma; si en N tiros no se puede, me conformo con que la carta exacta sea unica
+        # (garantia dura). En produccion cada marca se genera sola; esto es solo para la galeria de prueba.
         seed = se.stable_seed(name, ind)
         tl = generate(name, ind, seed=seed)
         tries, best = 0, None
-        while tries < 16:
+        while tries < 20:
             sig_ok = _sig(tl) not in seen
             pair_ok = _pair(tl) not in seen_pair
-            if sig_ok and pair_ok:
+            rf_ok = _rf(tl) not in seen_rf
+            if sig_ok and pair_ok and rf_ok:
                 best = None
                 break
             if sig_ok and best is None:
-                best = (seed, tl)  # cumple la garantia dura; lo guardo por si no logro evitar el par
+                best = (seed, tl)  # cumple la garantia dura; lo guardo por si no logro evitar par/forma
             seed = (seed + 0x9E3779B9) & 0xFFFFFFFF
             tl = generate(name, ind, seed=seed)
             tries += 1
         if best is not None and _sig(tl) in seen:
-            seed, tl = best  # no se pudo evitar el par en N tiros -> uso la mejor carta-unica hallada
+            seed, tl = best  # no se pudo evitar par/forma en N tiros -> uso la mejor carta-unica hallada
         seen.add(_sig(tl))
         seen_pair.add(_pair(tl))
+        seen_rf.add(_rf(tl))
         slug = "".join(c for c in name.lower().replace(" ", "-") if c.isalnum() or c == "-")
         path = os.path.join(out_dir, f"{i:02d}-{slug}.json")
         json.dump(tl, open(path, "w", encoding="utf-8"), ensure_ascii=False, indent=2)

@@ -774,10 +774,10 @@ function _rgba(hex, a) {
       drawLines(ax, 'left', true);
     } else if (style === 'quote') {
       const cx = W / 2, qp = eOutBack(clamp(inv(t, 0.05, 0.55), 0, 1));
-      if (qp > 0) { ctx.save(); ctx.globalAlpha *= 0.7 * qp; ctx.font = `800 ${Math.round(86 * qp)}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = _lighten(A1, 0.5); setShadow('rgba(0,0,0,0.45)', 6, 1); ctx.fillText('“', cx, topY - lh * 0.18); noShadow(); ctx.restore(); }
+      if (qp > 0) { ctx.save(); ctx.globalAlpha *= 0.85 * qp; ctx.font = `800 ${Math.round(86 * qp)}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = _lighten(A1, 0.5); setShadow('rgba(0,0,0,0.45)', 6, 1); ctx.fillText('“', cx, topY - lh * 0.18); noShadow(); ctx.restore(); }
       drawLines(cx, 'center', false);
       const qcp = eOutBack(clamp(inv(t, 0.55, 1.05), 0, 1));   // comilla de CIERRE espejada al final -> par completo, legible como la apertura
-      if (qcp > 0) { const ly = topY + (lines.length - 1) * lh; ctx.save(); ctx.globalAlpha *= 0.7 * qcp; ctx.font = `800 ${Math.round(76 * qcp)}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = _lighten(A1, 0.5); setShadow('rgba(0,0,0,0.45)', 6, 1); ctx.fillText('”', cx, ly + lh * 0.92); noShadow(); ctx.restore(); }
+      if (qcp > 0) { const ly = topY + (lines.length - 1) * lh; ctx.save(); ctx.globalAlpha *= 0.85 * qcp; ctx.font = `800 ${Math.round(86 * qcp)}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = _lighten(A1, 0.5); setShadow('rgba(0,0,0,0.45)', 6, 1); ctx.fillText('”', cx, ly + lh * 0.7); noShadow(); ctx.restore(); }
     } else if (style === 'panel') {
       const cx = W / 2, longest = Math.max.apply(null, lines.map(l => ctx.measureText(l).width));
       const pw = Math.min(W * 0.86, longest + 56), ph = lines.length * lh + 40, py = topY - lh * 0.5 - 20;
@@ -1236,17 +1236,23 @@ function _rgba(hex, a) {
     // esquina OPUESTA al texto -> tambien hace contrapeso compositivo) durante el bloque de contenido
     // (statement/checklist). Asi la identidad NO se muere a mitad del reel. Se dibuja DETRAS del contenido.
     if (tl.signatureForm) {
-      for (const sc of _scenes) {
+      const _wac = _lighten(_resolveColor('accent'), 0.12);   // un punto mas clara que el acento -> separa de un fondo del mismo hue
+      const _lAcc = _hexToHsl(_wac).l, _lBg = _hexToHsl((BG && BG[0]) ? BG[0] : '#223040').l;
+      const _wAlpha = lerp(0.30, 0.17, clamp(Math.abs(_lAcc - _lBg) / 0.34, 0, 1));   // bajo contraste con el fondo -> mas alpha (legible sobre fondos claros / verde-sobre-verde)
+      const _wph = ((tl.seed || 1) % 997) / 158;   // fase de deriva SEMBRADA por marca -> cada watermark tiene su gesto propio
+      for (let si = 0; si < _scenes.length; si++) {
+        const sc = _scenes[si];
         if (sc.type !== 'statement' && sc.type !== 'checklist') continue;
         if (t < sc.s || t >= sc.e) continue;
-        const aa = clamp(Math.min(inv(t, sc.s, sc.s + 0.5), 1 - inv(t, sc.e - 0.5, sc.e)), 0, 1) * 0.18;
+        const tail = (_scenes[si + 1] && _scenes[si + 1].type === 'outro') ? 0.9 : 0.5;   // si sigue el outro, fundir antes -> nunca comparte frame con el CTA
+        const aa = clamp(Math.min(inv(t, sc.s, sc.s + 0.5), 1 - inv(t, sc.e - tail, sc.e)), 0, 1) * _wAlpha;
         if (aa <= 0) continue;
         const leftAnch = sc.listAnchor === 'left' || sc.stmtStyle === 'left';
-        const mx = leftAnch ? W - 70 : 70, my = H - 100;
+        const mx = leftAnch ? W - 86 : 86, my = H - 178;   // dentro del safe-area (radio 58 + jitter 6 no sangra) y mas arriba (no pisa el CTA del outro)
         ctx.save(); ctx.globalAlpha = aa;
-        ctx.translate(mx + Math.sin(t * 0.4) * 6, my + Math.cos(t * 0.33) * 6); ctx.rotate(Math.sin(t * 0.25) * 0.16);   // vaiven suave (no giro completo) -> la silueta firma sigue reconocible
-        setShadow(_rgba(_resolveColor('accent'), 0.5), 16, 0);
-        ctx.fillStyle = _resolveColor('accent'); _smoothPath(_resample(_formPoints(tl.signatureForm, 76), 48)); ctx.fill(); noShadow();
+        ctx.translate(mx + Math.sin(t * 0.4 + _wph) * 6, my + Math.cos(t * 0.33 + _wph) * 6); ctx.rotate(Math.sin(t * 0.25 + _wph) * 0.16);   // vaiven suave sembrado -> silueta firma reconocible, gesto propio por marca
+        setShadow(_rgba(_wac, 0.5), 16, 0);
+        ctx.fillStyle = _wac; _smoothPath(_resample(_formPoints(tl.signatureForm, 58), 48)); ctx.fill(); noShadow();
         ctx.restore();
       }
     }
