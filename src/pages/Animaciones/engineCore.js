@@ -124,6 +124,21 @@ function _rgba(hex, a) {
   // editorial) | bands (bloques de color geometricos, bold) | aurora (cintas verticales que fluyen).
   let BG_STYLE = 'mesh';
   function setBgStyle(n) { BG_STYLE = (typeof n === 'string' && n) ? n : 'mesh'; }
+  // SISTEMA DE FUENTES por estilo (rompe el "Inter para todo"): 3 roles. display = titular/hero/wordmark;
+  // text = cuerpo/listas (siempre caption-safe); accent = numeros/indices (suele ser mono). Cada estilo
+  // declara su set en style_catalog -> el timeline lo trae -> setFonts lo aplica. fontStr() arma el ctx.font.
+  let FONT_DISPLAY = 'Space Grotesk', FONT_TEXT = 'Inter', FONT_ACCENT = 'JetBrains Mono';
+  function setFonts(o) {
+    FONT_DISPLAY = (o && o.fontDisplay) || 'Space Grotesk';
+    FONT_TEXT = (o && o.fontText) || 'Inter';
+    FONT_ACCENT = (o && o.fontAccent) || FONT_TEXT;
+  }
+  // arma el string de ctx.font segun rol ('d' display | 't' text | 'a' accent). Fallback acorde al rol.
+  function fontStr(weight, size, role) {
+    const f = role === 'd' ? FONT_DISPLAY : role === 'a' ? FONT_ACCENT : FONT_TEXT;
+    const fb = role === 'a' ? 'ui-monospace,monospace' : 'system-ui,sans-serif';
+    return `${weight} ${size}px "${f}",${fb}`;
+  }
   // MOTIVO CONTEXTUAL del fondo segun el rubro (skyline, sparkline, vapor, pulso, botanico, circuito...).
   // Hace que el fondo HABLE del dominio del link, no un gradiente generico. Se dibuja tenue, detras del contenido.
   let MOTIF = '';
@@ -727,24 +742,25 @@ function _rgba(hex, a) {
     ctx.restore();
   }
 
-  // tamaño de fuente mas grande (<= base, >= min) con el que `str` entra en maxW (anti-recorte)
-  function fitFont(str, base, maxW, min = 14, weight = 700) {
+  // tamaño de fuente mas grande (<= base, >= min) con el que `str` entra en maxW (anti-recorte).
+  // role: mide con la MISMA familia con la que se va a dibujar (display/text/accent) -> sin overflow al cambiar fuente.
+  function fitFont(str, base, maxW, min = 14, weight = 700, role = 't') {
     let s = base;
-    ctx.font = `${weight} ${s}px "Inter",system-ui,sans-serif`;
+    ctx.font = fontStr(weight, s, role);
     while (s > min && ctx.measureText(str).width > maxW) {
-      s -= 1; ctx.font = `${weight} ${s}px "Inter",system-ui,sans-serif`;
+      s -= 1; ctx.font = fontStr(weight, s, role);
     }
     return s;
   }
   // texto con entrada suave (scale + fade, leve overshoot) + auto-ajuste de tamaño si se pasa maxW
-  function fxText(str, x, y, size, p, weight = 700, col = INK, maxW = 0) {
+  function fxText(str, x, y, size, p, weight = 700, col = INK, maxW = 0, role = 'd') {
     if (p <= 0) return;
-    if (maxW > 0) size = fitFont(str, size, maxW, 14, weight);
+    if (maxW > 0) size = fitFont(str, size, maxW, 14, weight, role);
     const sc = lerp(0.55, 1, eOutBack(clamp(p, 0, 1)));
     ctx.save();
     ctx.globalAlpha *= clamp(p * 1.4, 0, 1);
     ctx.translate(x, y); ctx.scale(sc, sc);
-    ctx.font = `${weight} ${size}px "Inter",system-ui,sans-serif`;
+    ctx.font = fontStr(weight, size, role);
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillStyle = col;
     ctx.fillText(str, 0, 0);
@@ -802,7 +818,7 @@ function _rgba(hex, a) {
       const tin = inv(t, 1.45, 1.95);
       if (tin > 0 && meltP < 0.35) {
         ctx.globalAlpha *= (1 - meltP);
-        ctx.font = `700 26px "Inter",system-ui,sans-serif`;
+        ctx.font = fontStr(700, 26, 'd');
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.fillStyle = INK;
         ctx.save(); ctx.translate(cx, cy + sink); ctx.scale(eOutBack(clamp(tin, 0, 1)) * 0.06 + 0.94, eOutBack(clamp(tin, 0, 1)) * 0.06 + 0.94);
@@ -850,7 +866,7 @@ function _rgba(hex, a) {
       ctx.moveTo(0, top - 30); ctx.lineTo(W, top - 30); ctx.lineTo(W, front);
       for (let x = W; x >= 0; x -= 10) ctx.lineTo(x, front + Math.sin(x * 0.08 + t * 6) * 4);
       ctx.closePath(); ctx.clip();
-      ctx.font = `800 ${fontSize}px "Inter",system-ui,sans-serif`;
+      ctx.font = fontStr(800, fontSize, 'd');
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillStyle = accent(cx - 140, titleY - 30, cx + 140, titleY + 30);
       ctx.fillText(_ttl, cx, titleY);
@@ -976,7 +992,7 @@ function _rgba(hex, a) {
     if (style === 'number') {
       setShadow(_rgba(A1, 0.4), 12, 3);
       ctx.fillStyle = A1; ctx.beginPath(); ctx.arc(0, 0, 15, 0, TAU); ctx.fill(); noShadow();
-      ctx.fillStyle = '#15100a'; ctx.font = '800 17px "Inter",system-ui,sans-serif';
+      ctx.fillStyle = '#15100a'; ctx.font = fontStr(800, 17, 'a');
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(i + 1), 0, 1);
     } else if (style === 'bar') {
       ctx.fillStyle = accent(0, -15, 0, 15); ctx.beginPath(); ctx.roundRect(-3.5, -15, 7, 30, 3.5); ctx.fill();
@@ -1004,22 +1020,22 @@ function _rgba(hex, a) {
     ctx.beginPath(); ctx.roundRect(x, y - 24, 300, 48, 14); ctx.fill(); ctx.stroke();
     const ms = eOutBack(clamp(inv(t, d + 0.1, d + 0.5), 0, 1));
     ctx.save(); ctx.translate(x + 30, y); ctx.scale(ms, ms); _listMarker('check', i, t, d); ctx.restore();
-    ctx.font = `600 ${fitFont(label, 21, 224, 13, 600)}px "Inter",system-ui,sans-serif`;
+    ctx.font = fontStr(600, fitFont(label, 21, 224, 13, 600, 't'), 't');
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = INK; ctx.fillText(label, x + 58, y);
   }
   function _rowPlain(label, x, y, i, t, d) {     // tech: sin caja, guion + linea fina (drawing/CAD)
     const ms = eOutBack(clamp(inv(t, d + 0.1, d + 0.5), 0, 1));
     ctx.save(); ctx.translate(x + 14, y); ctx.scale(ms, ms); ctx.fillStyle = A1; ctx.beginPath(); ctx.roundRect(-13, -2, 26, 4, 2); ctx.fill(); ctx.restore();
-    ctx.font = `600 ${fitFont(label, 21, 240, 13, 600)}px "Inter",system-ui,sans-serif`;
+    ctx.font = fontStr(600, fitFont(label, 21, 240, 13, 600, 't'), 't');
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = INK; setShadow('rgba(0,0,0,0.5)', 5, 1); ctx.fillText(label, x + 44, y); noShadow();
     const lp = clamp(inv(t, d + 0.15, d + 0.7), 0, 1);
     ctx.strokeStyle = 'rgba(255,255,255,0.11)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + 44, y + 19); ctx.lineTo(x + 44 + 256 * lp, y + 19); ctx.stroke();
   }
   function _rowEditorial(label, x, y, i, t, d) { // moda/inmob: numero grande, sin caja, regla fina
     const np = clamp(inv(t, d + 0.05, d + 0.5), 0, 1);
-    ctx.save(); ctx.globalAlpha *= np; ctx.font = '800 33px "Inter",system-ui,sans-serif';
+    ctx.save(); ctx.globalAlpha *= np; ctx.font = fontStr(800, 33, 'a');
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = A1; ctx.fillText(String(i + 1).padStart(2, '0'), x, y - 1); ctx.restore();
-    ctx.font = `600 ${fitFont(label, 20, 206, 13, 600)}px "Inter",system-ui,sans-serif`;
+    ctx.font = fontStr(600, fitFont(label, 20, 206, 13, 600, 't'), 't');
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = INK; setShadow('rgba(0,0,0,0.5)', 5, 1); ctx.fillText(label, x + 56, y); noShadow();
     const lp = clamp(inv(t, d + 0.15, d + 0.7), 0, 1);
     ctx.strokeStyle = 'rgba(255,255,255,0.13)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, y + 21); ctx.lineTo(x + 300 * lp, y + 21); ctx.stroke();
@@ -1028,7 +1044,7 @@ function _rgba(hex, a) {
     const fp = eOutCubic(clamp(inv(t, d, d + 0.5), 0, 1));
     ctx.fillStyle = _rgba(A1, 0.16); ctx.beginPath(); ctx.roundRect(x, y - 21, 300 * fp, 42, 9); ctx.fill();
     ctx.fillStyle = A1; ctx.beginPath(); ctx.roundRect(x, y - 21, 8 * fp, 42, 3); ctx.fill();
-    ctx.font = `700 ${fitFont(label, 20, 250, 13, 700)}px "Inter",system-ui,sans-serif`;
+    ctx.font = fontStr(700, fitFont(label, 20, 250, 13, 700, 't'), 't');
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = INK; ctx.globalAlpha *= clamp(fp * 1.4, 0, 1); setShadow('rgba(0,0,0,0.45)', 4, 1); ctx.fillText(label, x + 24, y); noShadow();
   }
   // LAYOUT alternativo: grilla de 2 columnas (stat-cards) -> variedad estructural vs la lista vertical.
@@ -1042,7 +1058,7 @@ function _rgba(hex, a) {
       ctx.translate(x + cw / 2, y + ch / 2); ctx.scale(pop, pop); ctx.translate(-(x + cw / 2), -(y + ch / 2));
       ctx.fillStyle = _panelFill(); ctx.strokeStyle = _panelStroke(); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.roundRect(x, y, cw, ch, 12); ctx.fill(); ctx.stroke();
       setShadow(_rgba(A1, 0.4), 10, 2); ctx.fillStyle = A1; ctx.beginPath(); ctx.arc(x + 18, y + 20, 6, 0, TAU); ctx.fill(); noShadow();
-      ctx.font = `700 ${fitFont(label, 19, cw - 22, 13, 700)}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = INK; setShadow('rgba(0,0,0,0.5)', 4, 1);
+      ctx.font = fontStr(700, fitFont(label, 19, cw - 22, 13, 700, 't'), 't'); ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = INK; setShadow('rgba(0,0,0,0.5)', 4, 1);
       ctx.fillText(label, x + 14, y + ch - 26); noShadow();
       ctx.restore();
     });
@@ -1051,7 +1067,7 @@ function _rgba(hex, a) {
     const cx = W / 2, style = p.listStyle || 'check', lanchor = p.listAnchor === 'left';
     const rx = lanchor ? 53 : cx - 150, tp = inv(t, 0.1, 0.7);   // contrato sideLeft: MISMO margen izq
     if (lanchor) {
-      if (tp > 0) { ctx.save(); ctx.globalAlpha *= eOutCubic(clamp(tp, 0, 1)); ctx.font = `800 ${(p.title || '').length > 18 ? 24 : 30}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = INK; ctx.fillText(p.title || '', rx, H * 0.23); ctx.restore(); }
+      if (tp > 0) { ctx.save(); ctx.globalAlpha *= eOutCubic(clamp(tp, 0, 1)); ctx.font = fontStr(800, (p.title || '').length > 18 ? 24 : 30, 'd'); ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = INK; ctx.fillText(p.title || '', rx, H * 0.23); ctx.restore(); }
     } else { fxText(p.title || '', cx, H * 0.23, (p.title || '').length > 18 ? 24 : 30, tp, 800, INK, W * 0.86); }
     // regla de acento bajo el titulo -> lo liga a la lista (proximidad Gestalt), no queda flotando aparte
     const ru = eOutCubic(inv(t, 0.3, 0.8));
@@ -1078,8 +1094,8 @@ function _rgba(hex, a) {
     const cx = W / 2, cy = H * 0.42;
     function wordmark(wx, wy, align, size) {
       const bn = eOutCubic(inv(t, 0.2, 1.0)); if (bn <= 0) return;
-      const _bn = p.brand || '', fs = fitFont(_bn, size || 56, W * 0.82, 28, 800), top = wy - fs * 0.62, bot = wy + fs * 0.62;
-      ctx.save(); ctx.globalAlpha *= bn; ctx.font = `800 ${fs}px "Inter",system-ui,sans-serif`;
+      const _bn = p.brand || '', fs = fitFont(_bn, size || 56, W * 0.82, 28, 800, 'd'), top = wy - fs * 0.62, bot = wy + fs * 0.62;
+      ctx.save(); ctx.globalAlpha *= bn; ctx.font = fontStr(800, fs, 'd');
       ctx.textAlign = align; ctx.textBaseline = 'middle';
       const wg = ctx.createLinearGradient(wx - 130, top, wx + 130, bot); wg.addColorStop(0, _accentInk(A1, 0.62)); wg.addColorStop(1, _accentInk(A2, 0.5));
       ctx.fillStyle = wg; setShadow('rgba(0,0,0,0.5)', 8, 1);   // aclarado + sombra -> legible sobre el mismo color (Aura/Trama)
@@ -1100,7 +1116,7 @@ function _rgba(hex, a) {
       ctx.save();
       ctx.globalAlpha *= clamp(cta * 1.3, 0, 1);
       ctx.translate(0, (1 - appear) * 12);
-      ctx.font = `800 ${fs}px "Inter",system-ui,sans-serif`;
+      ctx.font = fontStr(800, fs, 'd');
       ctx.textAlign = isL ? 'left' : isR ? 'right' : 'center'; ctx.textBaseline = 'middle';
       ctx.fillStyle = _accentInk(A1, 0.5);
       if (TONE !== 'light') setShadow('rgba(0,0,0,0.4)', 6, 1);
@@ -1129,7 +1145,7 @@ function _rgba(hex, a) {
         ctx.save(); setShadow(_rgba(A1, 0.5), 26, 8);
         const g = ctx.createLinearGradient(24, by, 24 + bw, by); g.addColorStop(0, _lighten(A1, 0.5)); g.addColorStop(1, _lighten(A2, 0.36));
         ctx.fillStyle = g; ctx.beginPath(); ctx.roundRect(24, by - bh / 2, bw, bh, 14); ctx.fill(); noShadow();
-        if (br > 0.55) { ctx.globalAlpha = clamp((br - 0.55) / 0.45, 0, 1); const _bs = fitFont((p.cta || 'Visita ahora'), 26, W - 92, 14, 800); ctx.font = `800 ${_bs}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = TONE === 'light' ? '#fff' : '#14090e'; ctx.fillText((p.cta || 'Visita ahora'), W / 2, by); }
+        if (br > 0.55) { ctx.globalAlpha = clamp((br - 0.55) / 0.45, 0, 1); const _bs = fitFont((p.cta || 'Visita ahora'), 26, W - 92, 14, 800, 'd'); ctx.font = fontStr(800, _bs, 'd'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = TONE === 'light' ? '#fff' : '#14090e'; ctx.fillText((p.cta || 'Visita ahora'), W / 2, by); }
         ctx.restore();
       }
     } else if (comp === 'bigtype') {
@@ -1138,7 +1154,7 @@ function _rgba(hex, a) {
       if (tg > 0) {
         const cta = p.cta || 'Visita ahora', fs = fitFont(cta, 72, W * 0.86, 34, 800);
         ctx.save(); ctx.translate(cx, cy + 34); ctx.scale(0.92 + 0.08 * tg, 0.92 + 0.08 * tg);
-        ctx.font = `800 ${fs}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.font = fontStr(800, fs, 'd'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         const _cg = ctx.createLinearGradient(-130, -fs * 0.6, 130, fs * 0.6); _cg.addColorStop(0, _accentInk(A1, 0.55)); _cg.addColorStop(1, _accentInk(A2, 0.42));
         setShadow('rgba(0,0,0,0.4)', 8, 2); _kineticDraw(cta, _cg, 'center', t, 1.0, -fs * 0.02); noShadow(); ctx.restore();
         const ar = inv(t, 1.5, 1.9);
@@ -1154,14 +1170,14 @@ function _rgba(hex, a) {
       if (tg > 0) {
         const cta = p.cta || 'Visita ahora', fs = fitFont(cta, 80, W * 0.88, 36, 800);
         ctx.save(); ctx.translate(cx, H * 0.45); ctx.scale(0.9 + 0.1 * tg, 0.9 + 0.1 * tg);
-        ctx.font = `800 ${fs}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.font = fontStr(800, fs, 'd'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         const _cg = ctx.createLinearGradient(-130, -fs * 0.6, 130, fs * 0.6); _cg.addColorStop(0, _accentInk(A1, 0.55)); _cg.addColorStop(1, _accentInk(A2, 0.42));
         setShadow(TONE === 'light' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.45)', 8, 2); _kineticDraw(cta, _cg, 'center', t, 0.5, -fs * 0.02); noShadow(); ctx.restore();
         const ar = inv(t, 1.0, 1.4);
         if (ar > 0) { ctx.save(); ctx.globalAlpha = ar; ctx.strokeStyle = _accentInk(A1, 0.5); ctx.lineWidth = 4; ctx.lineCap = 'round'; const ay = H * 0.45 + fs * 0.66 + 22; ctx.beginPath(); ctx.moveTo(cx - 15, ay); ctx.lineTo(cx, ay + 12); ctx.lineTo(cx + 15, ay); ctx.stroke(); ctx.restore(); }
       }
       const bn = clamp(inv(t, 1.1, 1.6), 0, 1);
-      if (bn > 0) { ctx.save(); ctx.globalAlpha *= bn; const bfs = fitFont(p.brand || '', 24, W * 0.6, 14, 700); ctx.font = `700 ${bfs}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = DIM; ctx.fillText(p.brand || '', cx, H * 0.84); ctx.restore(); }
+      if (bn > 0) { ctx.save(); ctx.globalAlpha *= bn; const bfs = fitFont(p.brand || '', 24, W * 0.6, 14, 700, 'd'); ctx.font = fontStr(700, bfs, 'd'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = DIM; ctx.fillText(p.brand || '', cx, H * 0.84); ctx.restore(); }
     } else {
       wordmark(cx, cy, 'center'); accentBar(cx, cy + 44, 120, 'center'); ctaButton(cx, cy + 110, 'center', false);
     }
@@ -1179,7 +1195,7 @@ function _rgba(hex, a) {
   // texto centrado generico. Es el momento tipografico protagonista que usan las marcas premium.
   function _stmtEditorial(t, text) {
     const ax = W * 0.09, efs = text.length > 44 ? 46 : (text.length > 28 ? 56 : 66);
-    ctx.font = `800 ${efs}px "Inter",system-ui,sans-serif`; ctx.textBaseline = 'alphabetic';
+    ctx.font = fontStr(800, efs, 'd'); ctx.textBaseline = 'alphabetic';
     const maxW = W * 0.86;
     const words = text.split(' '); const lines = []; let cur = '';
     for (const w of words) { const test = cur ? cur + ' ' + w : w; if (ctx.measureText(test).width > maxW && cur) { lines.push(cur); cur = w; } else cur = test; }
@@ -1193,7 +1209,7 @@ function _rgba(hex, a) {
       const ly = topY + i * lh;
       ctx.save();
       ctx.beginPath(); ctx.rect(ax - 6, ly - efs, (maxW + 14) * pr, efs * 1.34); ctx.clip();   // reveal por mascara (wipe)
-      ctx.font = `800 ${efs}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+      ctx.font = fontStr(800, efs, 'd'); ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
       setShadow(TONE === 'light' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.6)', 7, 2);   // halo del tono opuesto -> el titular se despega del fondo del mismo hue
       if (i === lastIdx) {
         const ws = ln.split(' '), last = ws.pop(), head = ws.join(' ') + (ws.length ? ' ' : '');
@@ -1211,7 +1227,7 @@ function _rgba(hex, a) {
     const left = style === 'left';
     // statement = unico beat 100% tipografico -> agrandado (no timido) para que tenga presencia
     const fs = text.length > 34 ? 34 : (text.length > 22 ? 40 : (text.length > 12 ? 48 : 56));
-    ctx.font = `800 ${fs}px "Inter",system-ui,sans-serif`; ctx.textBaseline = 'middle';
+    ctx.font = fontStr(800, fs, 'd'); ctx.textBaseline = 'middle';
     const maxW = left ? W * 0.74 : W * 0.82;
     const words = text.split(' '); const lines = []; let cur = '';
     for (const w of words) { const test = cur ? cur + ' ' + w : w; if (ctx.measureText(test).width > maxW && cur) { lines.push(cur); cur = w; } else cur = test; }
@@ -1220,7 +1236,7 @@ function _rgba(hex, a) {
     const anchorY = (style === 'quote' || style === 'panel') ? 0.46 : (left ? 0.44 : 0.42);
     const lh = fs * 1.18, topY = H * anchorY - (lines.length * lh) / 2 + lh / 2;
     function drawLines(ox, align, riseX) {
-      ctx.font = `800 ${fs}px "Inter",system-ui,sans-serif`; ctx.textBaseline = 'middle'; ctx.textAlign = align;
+      ctx.font = fontStr(800, fs, 'd'); ctx.textBaseline = 'middle'; ctx.textAlign = align;
       lines.forEach((ln, i) => {
         const pr = eOutCubic(inv(t, 0.16 + i * 0.24, 0.16 + i * 0.24 + 0.55)); if (pr <= 0) return;
         ctx.save(); ctx.globalAlpha *= pr; ctx.fillStyle = INK; setShadow('rgba(0,0,0,0.5)', 6, 2);   // sombra -> legible sobre fondos calidos/ocupados
@@ -1233,10 +1249,10 @@ function _rgba(hex, a) {
       drawLines(ax, 'left', true);
     } else if (style === 'quote') {
       const cx = W / 2, qp = eOutBack(clamp(inv(t, 0.05, 0.55), 0, 1));
-      if (qp > 0) { ctx.save(); ctx.globalAlpha *= 0.85 * qp; ctx.font = `800 ${Math.round(86 * qp)}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = _lighten(A1, 0.5); setShadow('rgba(0,0,0,0.45)', 6, 1); ctx.fillText('“', cx, topY - lh * 0.18); noShadow(); ctx.restore(); }
+      if (qp > 0) { ctx.save(); ctx.globalAlpha *= 0.85 * qp; ctx.font = fontStr(800, Math.round(86 * qp), 'd'); ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = _lighten(A1, 0.5); setShadow('rgba(0,0,0,0.45)', 6, 1); ctx.fillText('“', cx, topY - lh * 0.18); noShadow(); ctx.restore(); }
       drawLines(cx, 'center', false);
       const qcp = eOutBack(clamp(inv(t, 0.55, 1.05), 0, 1));   // comilla de CIERRE espejada al final -> par completo, legible como la apertura
-      if (qcp > 0) { const ly = topY + (lines.length - 1) * lh; ctx.save(); ctx.globalAlpha *= 0.85 * qcp; ctx.font = `800 ${Math.round(86 * qcp)}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = _lighten(A1, 0.5); setShadow('rgba(0,0,0,0.45)', 6, 1); ctx.fillText('”', cx, ly + lh * 0.7); noShadow(); ctx.restore(); }
+      if (qcp > 0) { const ly = topY + (lines.length - 1) * lh; ctx.save(); ctx.globalAlpha *= 0.85 * qcp; ctx.font = fontStr(800, Math.round(86 * qcp), 'd'); ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = _lighten(A1, 0.5); setShadow('rgba(0,0,0,0.45)', 6, 1); ctx.fillText('”', cx, ly + lh * 0.7); noShadow(); ctx.restore(); }
     } else if (style === 'panel') {
       const cx = W / 2, longest = Math.max.apply(null, lines.map(l => ctx.measureText(l).width));
       const pw = Math.min(W * 0.86, longest + 56), ph = lines.length * lh + 40, py = topY - lh * 0.5 - 20;
@@ -1274,7 +1290,7 @@ function _rgba(hex, a) {
     ctx.save();
     ctx.globalAlpha = inv(t, 0.05, 0.4);
     ctx.translate(cx, cy); ctx.scale(pop * pulse, pop * pulse); ctx.translate(-cx, -cy);
-    ctx.font = '800 92px "Inter",system-ui,sans-serif';
+    ctx.font = fontStr(800, 92, 'd');
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     const ng = ctx.createLinearGradient(cx - 130, cy, cx + 130, cy);   // acento POP -> el numero golpea aunque el rubro sea sobrio
     ng.addColorStop(0, TONE === 'light' ? _accentInk(A1) : _accentPop(A1)); ng.addColorStop(1, TONE === 'light' ? _accentInk(A2) : _accentPop(A2));
@@ -1557,7 +1573,7 @@ function _rgba(hex, a) {
         const size = _num(keys, t, 'size', el.size || 40), weight = el.weight || 800, maxW = el.maxW || W * 0.86;
         const fit = fitFont(str, size, maxW, 14, weight);
         ctx.translate(x, y); if (scale !== 1) ctx.scale(scale, scale); if (rot) ctx.rotate(rot);
-        ctx.font = `${weight} ${fit}px "Inter",system-ui,sans-serif`;
+        ctx.font = fontStr(weight, fit, 't');
         ctx.textAlign = el.align || 'center'; ctx.textBaseline = 'middle';
         const _tcol = _colorAt(keys, t, _resolveColor(el.fill || 'ink'));
         // tracking por rol: displays grandes apretados (-2%), kickers chicos abiertos (+6%) -> presencia de marca
@@ -1610,7 +1626,7 @@ function _rgba(hex, a) {
         _drawRoundedShape(x, y, w, h, r, rot, _colorAt(keys, t, _resolveColor(el.fill || 'accent')), el.glow !== false);
         if (el.label) {
           const lo = clamp(_num(keys, t, 'labelOpacity', 1), 0, 1);
-          if (lo > 0.01) { ctx.globalAlpha *= lo; const fs = fitFont(el.label, el.labelSize || 26, Math.max(20, w * 0.82), 12, 700); ctx.font = `700 ${fs}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = _resolveColor(el.labelFill || 'ink'); ctx.fillText(el.label, x, y); }
+          if (lo > 0.01) { ctx.globalAlpha *= lo; const fs = fitFont(el.label, el.labelSize || 26, Math.max(20, w * 0.82), 12, 700, 't'); ctx.font = fontStr(700, fs, 't'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = _resolveColor(el.labelFill || 'ink'); ctx.fillText(el.label, x, y); }
         }
       }
       ctx.restore();
@@ -1702,6 +1718,7 @@ function _rgba(hex, a) {
     setTone(tl.tone);
     setShadowMode(tl.shadowMode);
     setMotif(tl.motif);
+    setFonts(tl);
     ctx.clearRect(0, 0, W, H);
     drawBg(t);
     const _scenes = layout(tl);
@@ -1711,7 +1728,7 @@ function _rgba(hex, a) {
     if (BG_STYLE === 'typo') {
       const _word = (tl.brand || '').trim().toUpperCase();
       if (_word) {
-        ctx.save(); ctx.font = '900 300px "Space Grotesk","Inter",system-ui,sans-serif';
+        ctx.save(); ctx.font = fontStr(900, 300, 'd');
         ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.globalAlpha = TONE === 'light' ? 0.06 : 0.075; ctx.fillStyle = INK;
         const _gd = (t * 8) % 380;
         ctx.fillText(_word, -_gd, H * 0.31); ctx.fillText(_word, -_gd + 64, H * 0.63);
@@ -1744,7 +1761,7 @@ function _rgba(hex, a) {
         const fs = isChk ? 84 : 168;
         ctx.save(); ctx.globalAlpha = aa * (isChk ? 0.55 : 1);
         ctx.translate(mx + Math.sin(t * 0.4 + _wph) * 6, my + Math.cos(t * 0.33 + _wph) * 6); ctx.rotate(Math.sin(t * 0.25 + _wph) * 0.05);   // vaiven minimo (un letra no se inclina mucho)
-        ctx.font = `800 ${fs}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.font = fontStr(800, fs, 'd'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         setShadow(_rgba(_wac, 0.4), 14, 0); ctx.fillStyle = _wac; ctx.fillText(_mono, 0, 0); noShadow();   // MONOGRAMA: inicial de la marca como marca de agua (mas de marca que una figura)
         ctx.restore();
       }

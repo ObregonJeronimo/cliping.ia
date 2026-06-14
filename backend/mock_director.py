@@ -384,7 +384,7 @@ RUBRO_STYLE_BIAS = {
 # FUENTE DE VERDAD COMPARTIDA con produccion: el catalogo canonico vive en style_catalog (lo usa
 # timeline_director). Re-vinculamos aca -> el banco de prueba (mock) y produccion NUNCA se desincronizan.
 # (Las defs de arriba quedan como referencia; este import las pisa con las del modulo compartido.)
-from style_catalog import STYLE_PRESETS, STYLE_ORDER, RUBRO_STYLE_BIAS  # noqa: E402
+from style_catalog import STYLE_PRESETS, STYLE_ORDER, RUBRO_STYLE_BIAS, STYLE_FONTS, _DEFAULT_FONTS  # noqa: E402
 
 
 def generate(brand: str, industria: str, facts=None, seed: int = None, style: str = None) -> dict:
@@ -479,6 +479,10 @@ def generate(brand: str, industria: str, facts=None, seed: int = None, style: st
         "bgStyle": bg_style,
         "tone": tone,
         "shadowMode": shadow_mode,
+        # SISTEMA DE FUENTES por estilo (display/text/accent) -> rompe el "Inter para todo"
+        "fontDisplay": STYLE_FONTS.get(style_id, _DEFAULT_FONTS)["display"],
+        "fontText": STYLE_FONTS.get(style_id, _DEFAULT_FONTS)["text"],
+        "fontAccent": STYLE_FONTS.get(style_id, _DEFAULT_FONTS)["accent"],
         # MOTIVO contextual del fondo segun el rubro (skyline / sparkline / vapor / pulso / botanico...)
         "motif": rubro,
         # forma FIRMA de la marca -> el motor la persiste como marca de agua viva en las escenas de contenido

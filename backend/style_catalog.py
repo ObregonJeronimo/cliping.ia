@@ -58,6 +58,24 @@ STYLE_PRESETS = {
 # orden seguro -> audaz (para la UI del selector) + sesgo de estilo recomendado por rubro (auto cuando el
 # usuario no elige). El usuario SIEMPRE puede pisar esto con su eleccion.
 STYLE_ORDER = ["blueprint", "swiss", "platinum", "obsidian", "meshflow", "aurora", "handmade", "typographic", "riso", "retro70s", "brutalist", "sport"]
+# SISTEMA DE FUENTES por estilo (rompe el "Inter para todo"). display=titular/hero; text=cuerpo/listas
+# (caption-safe); accent=numeros/indices (mono). Familias = Google Fonts (cargadas en el motor por estilo).
+# Basado en la investigacion de tipografia para video marketing 2026. El motor lee fontDisplay/Text/Accent.
+STYLE_FONTS = {
+    "blueprint":   {"display": "Space Grotesk", "text": "IBM Plex Mono", "accent": "JetBrains Mono"},
+    "swiss":       {"display": "Archivo", "text": "Inter", "accent": "Archivo"},
+    "platinum":    {"display": "Fraunces", "text": "Hanken Grotesk", "accent": "Space Mono"},
+    "obsidian":    {"display": "Sora", "text": "Inter Tight", "accent": "Space Mono"},
+    "meshflow":    {"display": "Outfit", "text": "Plus Jakarta Sans", "accent": "Space Grotesk"},
+    "aurora":      {"display": "Bricolage Grotesque", "text": "Onest", "accent": "Caveat"},
+    "handmade":    {"display": "Caveat", "text": "Familjen Grotesk", "accent": "Caveat"},
+    "typographic": {"display": "Big Shoulders Display", "text": "Newsreader", "accent": "Space Mono"},
+    "riso":        {"display": "Space Grotesk", "text": "Space Grotesk", "accent": "Space Mono"},
+    "retro70s":    {"display": "Caprasimo", "text": "DM Sans", "accent": "Righteous"},
+    "brutalist":   {"display": "Anton", "text": "Darker Grotesque", "accent": "Space Mono"},
+    "sport":       {"display": "Oswald", "text": "Barlow", "accent": "Big Shoulders Display"},
+}
+_DEFAULT_FONTS = {"display": "Space Grotesk", "text": "Inter", "accent": "JetBrains Mono"}
 RUBRO_STYLE_BIAS = {
     "inmobiliaria": ["blueprint", "swiss", "obsidian", "meshflow"],
     "finanzas":     ["swiss", "blueprint", "obsidian", "platinum"],
@@ -82,7 +100,9 @@ def style_fields(style_id: str, tone: str):
     """Campos de timeline a NIVEL VIDEO que el motor lee para aplicar el estilo (bgStyle/shadowMode/texture).
     El tono (dark/light) lo decide el llamador (suele venir de light_p del estilo)."""
     s = STYLE_PRESETS.get(style_id, STYLE_PRESETS["meshflow"])
-    return {"style": style_id, "bgStyle": s["bg"], "shadowMode": s["shadow"], "texture": s["tex"], "tone": tone}
+    f = STYLE_FONTS.get(style_id, _DEFAULT_FONTS)
+    return {"style": style_id, "bgStyle": s["bg"], "shadowMode": s["shadow"], "texture": s["tex"], "tone": tone,
+            "fontDisplay": f["display"], "fontText": f["text"], "fontAccent": f["accent"]}
 
 
 def catalog_for_ui():

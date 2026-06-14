@@ -11,20 +11,47 @@ import { fileURLToPath } from 'node:url'
 const OUT = join(dirname(fileURLToPath(import.meta.url)), 'fonts')
 mkdirSync(OUT, { recursive: true })
 
-// [familia, query css2 (con pesos), slug archivo]
+// [familia, query css2 (con pesos), slug archivo]. Cubre el set por estilo (display/text/accent) de los 12
+// estilos + fuentes de los estilos nuevos. Reusable: agrega filas y volve a correr.
 const FONTS = [
+  // --- cuerpo / grotesque / geometric (caption-safe) ---
   ['Inter', 'Inter:wght@400;500;600;700;800', 'Inter'],
-  ['Archivo Black', 'Archivo+Black', 'ArchivoBlack'],
+  ['Inter Tight', 'Inter+Tight:wght@500;700', 'InterTight'],
+  ['Archivo', 'Archivo:wght@400;600;900', 'Archivo'],
+  ['Hanken Grotesk', 'Hanken+Grotesk:wght@400;700', 'HankenGrotesk'],
+  ['Familjen Grotesk', 'Familjen+Grotesk:wght@500;700', 'FamiljenGrotesk'],
+  ['Space Grotesk', 'Space+Grotesk:wght@500;700', 'SpaceGrotesk'],
+  ['Sora', 'Sora:wght@600;700;800', 'Sora'],
+  ['Outfit', 'Outfit:wght@400;700;800', 'Outfit'],
+  ['Plus Jakarta Sans', 'Plus+Jakarta+Sans:wght@400;700;800', 'PlusJakartaSans'],
+  ['Onest', 'Onest:wght@400;600', 'Onest'],
+  ['DM Sans', 'DM+Sans:wght@400;500;700', 'DMSans'],
+  ['Barlow', 'Barlow:wght@400;600', 'Barlow'],
+  ['Darker Grotesque', 'Darker+Grotesque:wght@700;900', 'DarkerGrotesque'],
+  ['Quicksand', 'Quicksand:wght@500;700', 'Quicksand'],
+  // --- condensed / athletic / wide display ---
   ['Anton', 'Anton', 'Anton'],
   ['Oswald', 'Oswald:wght@500;700', 'Oswald'],
-  ['DM Serif Display', 'DM+Serif+Display', 'DMSerifDisplay'],
-  ['Fraunces', 'Fraunces:opsz,wght@9..144,500;9..144,700', 'Fraunces'],
-  ['Space Grotesk', 'Space+Grotesk:wght@500;700', 'SpaceGrotesk'],
+  ['Big Shoulders Display', 'Big+Shoulders+Display:wght@700;900', 'BigShouldersDisplay'],
+  // --- serif (editorial + humanist) ---
+  ['Fraunces', 'Fraunces:opsz,wght@9..144,600;9..144,900', 'Fraunces'],
+  ['Playfair Display', 'Playfair+Display:wght@700;900', 'PlayfairDisplay'],
+  ['Newsreader', 'Newsreader:wght@400;600', 'Newsreader'],
+  ['Spectral', 'Spectral:ital,wght@0,400;1,400', 'Spectral'],
+  // --- mono / technical ---
+  ['JetBrains Mono', 'JetBrains+Mono:wght@400;700', 'JetBrainsMono'],
+  ['IBM Plex Mono', 'IBM+Plex+Mono:wght@400;600', 'IBMPlexMono'],
   ['Space Mono', 'Space+Mono:wght@400;700', 'SpaceMono'],
-  ['JetBrains Mono', 'JetBrains+Mono:wght@500;700', 'JetBrainsMono'],
-  ['Permanent Marker', 'Permanent+Marker', 'PermanentMarker'],
+  // --- display / expressive / retro ---
+  ['Bricolage Grotesque', 'Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800', 'BricolageGrotesque'],
+  ['Unbounded', 'Unbounded:wght@600;800', 'Unbounded'],
+  ['Caprasimo', 'Caprasimo', 'Caprasimo'],
+  ['Righteous', 'Righteous', 'Righteous'],
+  ['Bagel Fat One', 'Bagel+Fat+One', 'BagelFatOne'],
+  ['Chakra Petch', 'Chakra+Petch:wght@500;700', 'ChakraPetch'],
+  // --- script / handmade ---
   ['Caveat', 'Caveat:wght@600;700', 'Caveat'],
-  ['Bricolage Grotesque', 'Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800', 'BricolageGrotesque'],
+  ['Permanent Marker', 'Permanent+Marker', 'PermanentMarker'],
 ]
 
 // UA tipo Wget -> Google sirve TTF (no woff2), que es lo que registra @napi-rs/canvas (Skia)
