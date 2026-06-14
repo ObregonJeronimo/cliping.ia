@@ -1,0 +1,12 @@
+{
+  "brand": "Verde",
+  "accent": "#e2a93b",
+  "theme": "sunset-warm",
+  "seed": 2729467555,
+  "scenes": [
+    { "type": "paintTitle", "title": "Verde", "subtitles": ["Del campo", "a tu mesa"], "durationInFrames": 234 },
+    { "type": "statement", "text": "Frescura real, todos los dias", "durationInFrames": 150 },
+    { "type": "checklist", "title": "Lo nuestro", "items": ["Organico", "Local", "Sin conservantes"], "durationInFrames": 186 },
+    { "type": "outro", "brand": "Verde", "cta": "Pedi en verde.ar", "durationInFrames": 150 }
+  ]
+}

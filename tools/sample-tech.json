@@ -1,0 +1,12 @@
+{
+  "brand": "Flux",
+  "accent": "#4b66e7",
+  "theme": "clinical-formal",
+  "seed": 3720046995,
+  "scenes": [
+    { "type": "paintTitle", "title": "Flux", "subtitles": ["Automatiza tu", "operacion"], "durationInFrames": 234 },
+    { "type": "statement", "text": "Menos tareas repetitivas, mas foco", "durationInFrames": 150 },
+    { "type": "checklist", "title": "Por que Flux", "items": ["Sin codigo", "Listo en minutos", "Se integra con todo"], "durationInFrames": 186 },
+    { "type": "outro", "brand": "Flux", "cta": "Probalo gratis", "durationInFrames": 150 }
+  ]
+}
