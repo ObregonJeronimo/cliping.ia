@@ -1408,7 +1408,7 @@ function _rgba(hex, a) {
     ctx.clearRect(0, 0, W, H);
     drawBg(t);
     const _scenes = layout(tl);
-    const XF = 0.45; // cross-fade: la escena saliente sostiene su frame final y se funde con la entrante
+    const XF = 0.3; // cross-fade mas corto -> cortes mas agiles/punchy (menos "todo se funde lento")
     // FIRMA AMBIENTAL: la forma firma de la marca persiste como marca de agua viva (a la deriva, en la
     // esquina OPUESTA al texto -> tambien hace contrapeso compositivo) durante el bloque de contenido
     // (statement/checklist). Asi la identidad NO se muere a mitad del reel. Se dibuja DETRAS del contenido.

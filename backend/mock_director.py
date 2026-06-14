@@ -275,7 +275,7 @@ def generate(brand: str, industria: str, facts=None, seed: int = None) -> dict:
     left_anchored = comp in ("sideLeft", "cornerAnchor")
     stmt_style = rnd.choice(["left", "editorial"]) if left_anchored else rnd.choice(["centered", "quote", "panel", "editorial"])
     list_anchor = "left" if left_anchored else "center"
-    list_layout = rnd.choice(["rows", "grid"])   # variedad estructural: lista vertical vs grilla 2-col
+    list_layout = rnd.choice(["rows", "rows", "grid"])   # favorecer filas editoriales sobre la grilla tipo "checklist SaaS"
     outro_comp = _OUTRO_BY_COMP.get(comp, "center")
     skel = rnd.choice(RUBRO_STRUCT.get(rubro, RUBRO_STRUCT["default"]))
     scenes = []
