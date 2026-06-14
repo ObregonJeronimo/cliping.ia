@@ -1,0 +1,252 @@
+"""
+mock_director.py — DIRECTOR FALSO determinista que IMITA al LLM (sin tocar la API de Claude).
+
+Para que? Para testear TODO el pipeline (director -> motor -> render) y verificar que los videos salen
+UNICOS, sin gastar tokens. Toma una marca (nombre + rubro + datos opcionales) y compone un timeline
+COMPLETO y variado: estructura distinta por marca, hero con animacion compleja (morph + particulas),
+copy templado por rubro (no generico-vacio), y todo anclado al preset de style_engine (paleta/formas/
+ritmo/semilla). Mismo contrato de salida que el director real -> el motor lo renderiza igual.
+
+NO pretende escribir copy tan bueno como el LLM; pretende producir timelines REALISTAS y DIVERSOS para
+poder renderizar, mirar y autocorregir el motor. Tambien sirve de fallback offline del backend.
+"""
+from __future__ import annotations
+import json
+import random
+import style_engine as se
+
+def _lighten(hex_str, amt):
+    h = (hex_str or "").lstrip("#")
+    try:
+        r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+    except Exception:
+        return hex_str
+    r = int(r + (255 - r) * amt); g = int(g + (255 - g) * amt); b = int(b + (255 - b) * amt)
+    return f"#{r:02x}{g:02x}{b:02x}"
+
+
+# ESTILO por rubro: forma FIRMA distinta (1er morph, no se repite entre rubros -> identidad), + estilo de
+# marcador del checklist (check/number/bar/dash) y de CTA (pill/chip) -> rompe el molde compartido.
+# Las formas estan en el vocabulario REAL del motor (engineCore _SCENE_FORMS) para que siempre renderice.
+RUBRO_STYLE = {
+    "gastronomia": {"forms": ["leaf", "drop", "flower", "blob"], "listStyle": "check", "ctaStyle": "pill", "texture": "grain"},
+    "tech":        {"forms": ["hexagon", "triangle", "diamond"], "listStyle": "dash", "ctaStyle": "chip", "texture": "grid"},
+    "salud":       {"forms": ["plus", "heart", "circle"], "listStyle": "check", "ctaStyle": "pill", "texture": "grain"},
+    "moda":        {"forms": ["diamond", "star", "blob"], "listStyle": "number", "ctaStyle": "chip", "texture": "lines"},
+    "inmobiliaria": {"forms": ["shield", "square", "pentagon"], "listStyle": "number", "ctaStyle": "pill", "texture": "lines"},
+    "fitness":     {"forms": ["triangle", "star", "blob"], "listStyle": "bar", "ctaStyle": "chip", "texture": "grain2"},
+    "educacion":   {"forms": ["star", "circle", "plus"], "listStyle": "number", "ctaStyle": "pill", "texture": "grid"},
+    "finanzas":    {"forms": ["pentagon", "hexagon", "square"], "listStyle": "bar", "ctaStyle": "chip", "texture": "grid"},
+    "belleza":     {"forms": ["flower", "drop", "heart"], "listStyle": "check", "ctaStyle": "pill", "texture": "grain"},
+    "default":     {"forms": ["square", "circle", "blob"], "listStyle": "dash", "ctaStyle": "pill", "texture": "none"},
+}
+
+# Pools de copy por rubro (voseo, rioplatense). Templado pero especifico del rubro -> evita lo generico.
+SUBTITLES = {
+    "gastronomia": [["Sabor real,", "todos los dias"], ["Del productor", "a tu mesa"], ["Hecho", "con ganas"]],
+    "tech": [["Automatiza", "lo aburrido"], ["Mas foco,", "menos tareas"], ["Tu equipo,", "sin fricciones"]],
+    "salud": [["Cuidarte", "es simple"], ["Tu salud,", "en buenas manos"], ["Atencion", "de verdad"]],
+    "moda": [["Tu estilo,", "tu regla"], ["Disenado", "para vos"], ["Lo que viene,", "primero"]],
+    "inmobiliaria": [["Tu lugar", "te espera"], ["Encontra", "tu proximo hogar"], ["Invertir,", "sin vueltas"]],
+    "fitness": [["Tu mejor", "version"], ["Entrena", "con proposito"], ["Sin excusas,", "con resultados"]],
+    "educacion": [["Aprende", "haciendo"], ["Tu proximo", "nivel"], ["Conocimiento", "que se usa"]],
+    "finanzas": [["Tu plata,", "clara"], ["Decisiones", "con datos"], ["Crecer,", "sin riesgos raros"]],
+    "belleza": [["Realza", "lo tuyo"], ["Tu ritual,", "tu momento"], ["Cuidado", "que se nota"]],
+    "default": [["Hecho", "para vos"], ["Simple,", "y bien"], ["Lo que", "necesitas"]],
+}
+STATEMENTS = {
+    "gastronomia": ["Frescura que se siente en cada bocado", "Ingredientes reales, sin atajos", "El sabor de lo bien hecho"],
+    "tech": ["Menos tareas repetitivas, mas resultados", "Lo que hacias en horas, en minutos", "Tu operacion, en piloto automatico"],
+    "salud": ["Tu bienestar empieza por una decision", "Cuidado profesional, trato humano", "Prevenir es mas facil de lo que crees"],
+    "moda": ["Lo que te poner dice quien sos", "Piezas que duran mas que la tendencia", "Tu armario, con identidad"],
+    "inmobiliaria": ["El lugar indicado existe, te lo mostramos", "Comprar bien es comprar tranquilo", "Tu proxima decision, sin sorpresas"],
+    "fitness": ["El cambio empieza con la primera serie", "Resultados que se ven y se sienten", "Tu cuerpo responde, vos decidis"],
+    "educacion": ["Aprende algo que vas a usar manana", "Del concepto a la practica, rapido", "Tu tiempo invertido, no perdido"],
+    "finanzas": ["Tu plata trabajando, no durmiendo", "Numeros claros, decisiones tranquilas", "Crecer ordenado es crecer seguro"],
+    "belleza": ["Tu mejor cara, todos los dias", "El ritual que te devuelve el brillo", "Cuidado que se nota desde el primer dia"],
+    "default": ["Lo simple, bien hecho, cambia todo", "Pensado para que te resulte facil", "Resultados, sin complicarte"],
+}
+BENEFITS = {
+    "gastronomia": ["Ingredientes frescos", "Hecho del dia", "Sin conservantes", "Envio rapido", "Recetas propias"],
+    "tech": ["Sin codigo", "Listo en minutos", "Se integra con todo", "Soporte real", "Escala con vos"],
+    "salud": ["Turnos rapidos", "Profesionales reales", "Seguimiento cercano", "Sin esperas", "Trato humano"],
+    "moda": ["Edicion limitada", "Calidad premium", "Envio a todo el pais", "Cambios faciles", "Diseno propio"],
+    "inmobiliaria": ["Visitas guiadas", "Asesoria honesta", "Opciones reales", "Sin letra chica", "Financiacion clara"],
+    "fitness": ["Planes a medida", "Coaches certificados", "Comunidad activa", "Horarios flexibles", "Resultados medidos"],
+    "educacion": ["Practico desde el dia 1", "Mentores reales", "A tu ritmo", "Certificado", "Comunidad"],
+    "finanzas": ["Comisiones claras", "Datos en vivo", "Soporte humano", "Sin sorpresas", "Empeza con poco"],
+    "belleza": ["Productos premium", "Atencion personalizada", "Resultados visibles", "Sin turnos eternos", "Rituales a medida"],
+    "default": ["Facil de usar", "Soporte cercano", "Sin vueltas", "Pensado en vos", "Empeza ya"],
+}
+CTAS = {
+    "gastronomia": ["Pedi ahora", "Conoce el menu", "Probalo hoy"],
+    "tech": ["Probalo gratis", "Agenda una demo", "Empeza ya"],
+    "salud": ["Saca tu turno", "Reserva ahora", "Consultanos"],
+    "moda": ["Ver coleccion", "Compra ahora", "Descubri mas"],
+    "inmobiliaria": ["Agenda una visita", "Ver propiedades", "Consultanos"],
+    "fitness": ["Sumate hoy", "Probá una clase", "Empeza ahora"],
+    "educacion": ["Inscribite", "Ver el programa", "Empeza gratis"],
+    "finanzas": ["Abri tu cuenta", "Simula gratis", "Empeza hoy"],
+    "belleza": ["Reserva tu turno", "Ver servicios", "Consultanos"],
+    "default": ["Conoce mas", "Empeza ya", "Probalo"],
+}
+
+
+def _hero_scene(brand, rubro, accent_light, rnd):
+    """HERO con animacion compleja: una forma FIRMA del rubro que nace y MUTA (mas grande, mas temprana
+    y de ALTO contraste -> tinte claro del acento + glow), mientras aparece la marca y estalla una rafaga
+    de particulas. f1 = firma del rubro (identidad); f2 varia por marca (unicidad dentro del rubro)."""
+    st = RUBRO_STYLE.get(rubro, RUBRO_STYLE["default"])
+    forms = st["forms"][:]
+    rnd.shuffle(forms)   # la firma del HERO varia por MARCA dentro de la familia del rubro -> Nimbus != DataFlow
+    f1, f2 = forms[0], (forms[1] if len(forms) > 1 else forms[0])
+    ease_in = rnd.choice(["outBack", "outElastic"])
+    sub = "  ".join(rnd.choice(SUBTITLES.get(rubro, SUBTITLES["default"])))
+    return {
+        "type": "scene", "durationInFrames": 210,
+        "elements": [
+            {"kind": "morph", "fill": accent_light, "blur": True, "keys": [
+                {"t": 0.0, "form": "circle", "r": 10, "opacity": 0, "y": 286},
+                {"t": 0.42, "form": "circle", "r": 54, "opacity": 1, "y": 286, "ease": ease_in},
+                {"t": 1.5, "form": f2, "r": 98, "y": 286, "ease": "inOutCubic"},
+                {"t": 3.0, "form": f1, "r": 108, "y": 286, "rot": -14, "ease": "inOutCubic"},
+                {"t": 4.3, "form": f1, "r": 117, "y": 286, "rot": -4, "ease": "inOutCubic"},
+                {"t": 5.6, "form": f1, "r": 108, "y": 286, "rot": 6, "ease": "inOutCubic"},
+                {"t": 7.0, "form": f1, "r": 115, "y": 286, "rot": 16, "ease": "inOutCubic"},
+            ]},
+            {"kind": "orbit", "count": 3, "r": 152, "speed": 0.85, "fill": "accent2", "dotR": 7, "keys": [
+                {"t": 1.6, "x": 202, "y": 286, "opacity": 0}, {"t": 2.3, "x": 202, "y": 286, "opacity": 0.9, "ease": "outCubic"},
+            ]},
+            {"kind": "particles", "count": 18, "spread": 168, "keys": [
+                {"t": 1.2, "x": 202, "y": 286, "burst": 0}, {"t": 2.1, "x": 202, "y": 286, "burst": 1},
+            ]},
+            {"kind": "text", "text": brand, "fill": "ink", "size": 52, "weight": 800, "keys": [
+                {"t": 1.9, "opacity": 0, "y": 500, "scale": 0.86},
+                {"t": 2.5, "opacity": 1, "y": 486, "scale": 1, "ease": "outBack"},
+            ]},
+            {"kind": "text", "text": sub, "fill": "dim", "size": 21, "weight": 600, "keys": [
+                {"t": 2.9, "opacity": 0, "y": 536}, {"t": 3.4, "opacity": 1, "y": 522, "ease": "outCubic"},
+            ]},
+        ],
+    }
+
+
+def _statement(rubro, rnd, stmt_style="centered"):
+    return {"type": "statement", "text": rnd.choice(STATEMENTS.get(rubro, STATEMENTS["default"])),
+            "stmtStyle": stmt_style, "durationInFrames": 150}
+
+
+def _checklist(brand, rubro, rnd, list_style):
+    pool = BENEFITS.get(rubro, BENEFITS["default"])[:]
+    rnd.shuffle(pool)
+    n = rnd.choice([3, 3, 4])
+    return {"type": "checklist", "title": f"Por que {brand}", "items": pool[:n],
+            "listStyle": list_style, "durationInFrames": 174 + (n - 3) * 12}
+
+
+def _outro(brand, rubro, rnd, cta_style):
+    return {"type": "outro", "brand": brand, "cta": rnd.choice(CTAS.get(rubro, CTAS["default"])),
+            "ctaStyle": cta_style, "durationInFrames": 150}
+
+
+def _bigstat(facts, rnd):
+    if not facts:
+        return None
+    for f in facts:
+        if isinstance(f, dict) and f.get("value") is not None:
+            return {"type": "bigStat", "value": f["value"], "prefix": f.get("prefix", ""), "suffix": f.get("suffix", ""),
+                    "label": f.get("label", ""), "durationInFrames": 150}
+    return None
+
+
+# Estructura POR RUBRO: distinto ORDEN y composicion de bloques, no solo distinto color/duracion.
+# fitness/gastronomia abren con el claim (punchy/sensorial); salud respira y va lista-primero; moda/
+# belleza son minimalistas/editoriales; tech/finanzas llevan dato. Asi el ESQUELETO temporal cambia
+# por rubro (el ojo deja de leer "plantilla"). Se elige uno del pool del rubro por semilla.
+RUBRO_STRUCT = {
+    "gastronomia": [["statement", "hero", "checklist", "outro"], ["hero", "checklist", "statement", "outro"], ["statement", "hero", "outro"]],
+    "tech":        [["hero", "statement", "checklist", "outro"], ["hero", "bigStat", "checklist", "outro"], ["hero", "checklist", "outro"]],
+    "salud":       [["statement", "checklist", "hero", "outro"], ["hero", "checklist", "statement", "outro"], ["hero", "statement", "outro"]],
+    "moda":        [["hero", "statement", "outro"], ["statement", "hero", "outro"], ["hero", "outro"]],
+    "inmobiliaria": [["hero", "checklist", "statement", "outro"], ["statement", "hero", "checklist", "outro"], ["hero", "statement", "outro"]],
+    "fitness":     [["statement", "hero", "checklist", "outro"], ["hero", "bigStat", "outro"], ["hero", "checklist", "outro"]],
+    "educacion":   [["hero", "checklist", "statement", "outro"], ["hero", "statement", "checklist", "outro"], ["statement", "hero", "checklist", "outro"]],
+    "finanzas":    [["hero", "bigStat", "checklist", "outro"], ["statement", "hero", "checklist", "outro"], ["hero", "checklist", "outro"]],
+    "belleza":     [["hero", "statement", "outro"], ["statement", "hero", "outro"], ["hero", "outro"]],
+    "default":     [["hero", "statement", "checklist", "outro"], ["hero", "checklist", "outro"]],
+}
+
+
+def generate(brand: str, industria: str, facts=None, seed: int = None) -> dict:
+    """Marca + rubro -> timeline COMPLETO (imita al LLM, determinista). Para test y fallback offline."""
+    if seed is None:
+        seed = se.stable_seed(brand, industria)
+    pre = se.preset(industria, "", "medio", seed)
+    rubro = pre["rubro"]
+    rnd = random.Random((int(seed) ^ 0x9E3779B9) & 0xFFFFFFFF)
+
+    st = RUBRO_STYLE.get(rubro, RUBRO_STYLE["default"])
+    accent_light = _lighten(pre["accent"], 0.36)
+    stmt_style = pre.get("stmt_style", "centered")
+    skel = rnd.choice(RUBRO_STRUCT.get(rubro, RUBRO_STRUCT["default"]))
+    scenes = []
+    for slot in skel:
+        if slot == "hero":
+            scenes.append(_hero_scene(brand, rubro, accent_light, rnd))
+        elif slot == "statement":
+            scenes.append(_statement(rubro, rnd, stmt_style))
+        elif slot == "checklist":
+            scenes.append(_checklist(brand, rubro, rnd, st["listStyle"]))
+        elif slot == "bigStat":
+            bs = _bigstat(facts, rnd)
+            scenes.append(bs if bs else _statement(rubro, rnd, stmt_style))
+        elif slot == "outro":
+            scenes.append(_outro(brand, rubro, rnd, st["ctaStyle"]))
+
+    # RITMO por rubro: energia alta (tech/fitness) -> escenas mas cortas (cortes rapidos); baja
+    # (salud/inmobiliaria) -> mas largas (respiracion). Asi el video no corre el mismo tempo en todos.
+    energy = pre.get("bg_energy", 1.0)
+    factor = max(0.78, min(1.22, 1.0 - (energy - 1.0) * 0.45))
+    for s in scenes:
+        s["durationInFrames"] = max(60, min(360, int(s.get("durationInFrames", 150) * factor)))
+
+    return {
+        "brand": brand, "accent": pre["accent"], "theme": pre["theme"], "seed": pre["seed"],
+        "texture": st["texture"], "bgEnergy": pre.get("bg_energy", 1.0), "rubro": rubro, "scenes": scenes,
+        # metadatos de receta (como el director real)
+        "hookName": pre["hook_bias"], "structure": skel,
+    }
+
+
+# Set de marcas de prueba DIVERSAS (rubros y nombres distintos) para el banco de tests.
+TEST_BRANDS = [
+    ("Verdo", "almacen de comida natural y dietetica"),
+    ("Nimbus", "plataforma SaaS de automatizacion para pymes"),
+    ("Sonrisa", "clinica odontologica familiar"),
+    ("Trama", "marca de ropa urbana de diseno"),
+    ("Altos del Sur", "inmobiliaria de propiedades premium"),
+    ("Forja", "gimnasio funcional y crossfit"),
+    ("Aula Viva", "academia de cursos online de programacion"),
+    ("Capitalia", "fintech de inversiones para principiantes"),
+    ("Aura", "spa y centro de estetica"),
+    ("Pampa Cafe", "cafeteria de especialidad"),
+    ("DataFlow", "software de analitica de datos"),
+    ("Raiz", "tienda de plantas y jardineria"),
+]
+
+
+if __name__ == "__main__":
+    import sys, os
+    out_dir = "tools/brands"
+    if "--out" in sys.argv:
+        out_dir = sys.argv[sys.argv.index("--out") + 1]
+    os.makedirs(out_dir, exist_ok=True)
+    written = []
+    for i, (name, ind) in enumerate(TEST_BRANDS):
+        tl = generate(name, ind)
+        slug = "".join(c for c in name.lower().replace(" ", "-") if c.isalnum() or c == "-")
+        path = os.path.join(out_dir, f"{i:02d}-{slug}.json")
+        json.dump(tl, open(path, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+        written.append(path)
+        print(f"{name:16} {tl['rubro']:13} {tl['theme']:16} {tl['accent']}  estructura={'-'.join(tl['structure'])}")
+    print(f"\n{len(written)} timelines en {out_dir}/")

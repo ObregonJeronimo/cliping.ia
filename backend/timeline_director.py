@@ -88,6 +88,7 @@ import random as _random
 import template_director as _td
 import brand_dna as _bdna
 import iconify_service
+import style_engine as _se
 
 TL_DIRECTOR_MODEL = "claude-sonnet-4-6"
 TL_CRITIC_MODEL = _os.getenv("CLIPING_CRITIC_MODEL", "claude-sonnet-4-6")
@@ -212,7 +213,7 @@ _TL_VALID_TYPES = {"paintTitle", "statement", "checklist", "outro", "bigStat", "
 _TL_DEFAULT_DUR = {"paintTitle": 234, "statement": 150, "checklist": 192, "outro": 150, "bigStat": 150, "deliver": 204, "scene": 210}
 
 
-_SCENE_KINDS = {"text", "icon", "shape", "morph", "particles", "svgicon"}
+_SCENE_KINDS = {"text", "icon", "shape", "morph", "particles", "svgicon", "orbit"}
 _SCENE_FORMS = {"circle", "ring", "square", "diamond", "triangle", "pentagon", "hexagon", "star", "plus", "heart", "leaf", "drop", "flower", "shield", "blob"}
 _SCENE_ICONS = {"box", "house", "cart", "check", "star", "leaf", "dot"}
 _SCENE_SHAPE_TOK = {"dot", "circle", "pill", "bar", "box", "card", "line", "square"}
@@ -326,6 +327,15 @@ def _norm_scene_elements(s: dict, dur_frames: int) -> list:
                 nel["blur"] = True
         elif kind == "particles":
             for f in ("count", "spread", "dotR"):
+                if f in el:
+                    try:
+                        nel[f] = float(el[f])
+                    except Exception:
+                        pass
+        elif kind == "orbit":
+            if isinstance(el.get("fill"), str):
+                nel["fill"] = el["fill"]
+            for f in ("count", "r", "speed", "phase", "dotR", "ry"):
                 if f in el:
                     try:
                         nel[f] = float(el[f])
@@ -499,6 +509,15 @@ async def write_timeline(url, desarrollo, proposito="marketing", idioma="",
     concepto = _td._brief_field(brief_txt, "CONCEPTO")
     heroe = _td._brief_field(brief_txt, "MOMENTO HEROE") or _td._brief_field(brief_txt, "MOMENTO HÉROE")
 
+    # POC 3 — direccion generativa: preset de estilo DETERMINISTA por rubro+marca. Acota el vocabulario
+    # (paleta/formas/ritmo) y mete un String-Seed para que dos marcas NO salgan iguales. No usa IA.
+    _energy = (dna or {}).get("energy", "medio") if isinstance(dna, dict) else "medio"
+    _style_seed_int = _se.stable_seed(url_data.get("siteName") or url, url)
+    _preset = _se.preset(industria, publico, _energy, _style_seed_int)
+    _style_block = _se.prompt_block(_preset)
+    print(f"[tl-style] rubro={_preset['rubro']} theme={_preset['theme']} accent={_preset['accent']} "
+          f"seed={_preset['seed']} formas={_preset['morphs']}")
+
     contexto = url_data.get("context") or f"Marca: {url_data.get('siteName') or 'desconocido'}"
     _lang = (url_data.get("lang") or "").lower()
     _LANG_NAME = {"es": "español rioplatense (voseo)", "en": "inglés", "pt": "portugués"}
@@ -525,6 +544,8 @@ BRIEF ESTRATÉGICO (la lectura de la marca, basate en esto):
 {pb['guide']}
 {('CONCEPTO (que todo gire alrededor): ' + concepto) if concepto else ''}
 {('MOMENTO HÉROE (dale la escena más fuerte): ' + heroe) if heroe else ''}
+
+{_style_block}
 
 DIRECCIÓN DE ESTE VIDEO (hacelo único, no formulaico):
 - Ángulo narrativo: {angle}
@@ -576,6 +597,26 @@ contexto, NO uses bigStat. Si hay un PEDIDO DEL USUARIO, cumplilo SÍ O SÍ por 
     except Exception as e:
         print(f"[tl-director] fallback ({e})")
         tl = _fallback_timeline(url_data, dna)
+
+    # POC 3 / unicidad: marcar las escenas enlatadas con el ESTILO por rubro (listStyle/ctaStyle) para que
+    # checklist y outro NO se vean iguales entre marcas (el motor los lee; si faltan, usa defaults).
+    for _sc in tl.get("scenes", []):
+        if isinstance(_sc, dict):
+            if _sc.get("type") == "checklist":
+                _sc.setdefault("listStyle", _preset.get("list_style", "check"))
+            elif _sc.get("type") == "outro":
+                _sc.setdefault("ctaStyle", _preset.get("cta_style", "pill"))
+            elif _sc.get("type") == "statement":
+                _sc.setdefault("stmtStyle", _preset.get("stmt_style", "centered"))
+
+    # POC 3: fijar la SEMILLA del fondo (el fondo fluido varia por marca) y completar tema/acento
+    # desde el preset si el ADN no los dio. El motor (engineCore._seedFor) usa tl["seed"].
+    tl["seed"] = _preset["seed"]
+    tl.setdefault("texture", _preset.get("bg_texture", "none"))   # identidad del fondo por rubro
+    if not tl.get("theme"):
+        tl["theme"] = _preset["theme"]
+    if not _bdna._hex_ok(str(tl.get("accent") or "")):
+        tl["accent"] = _preset["accent"]
 
     # Anotar dimensiones de receta para la rotacion/rating (las lee _push_recent_profile en main.py).
     tl["angle"] = angle
