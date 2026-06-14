@@ -314,7 +314,8 @@ def generate(brand: str, industria: str, facts=None, seed: int = None) -> dict:
         stmt_style = rnd.choice(A["stmt"])
     list_anchor = "left" if left_anchored else "center"
     list_style = A["list_style"]
-    list_layout = "grid" if (A["grid_p"] > 0 and rnd.random() < A["grid_p"]) else "rows"
+    # la grilla de cards solo en OSCURO (en claro lee como placeholders grises); en claro, filas editoriales
+    list_layout = "grid" if (tone == "dark" and A["grid_p"] > 0 and rnd.random() < A["grid_p"]) else "rows"
     outro_comp = _OUTRO_BY_COMP.get(comp, "center")
     skel = rnd.choice(RUBRO_STRUCT.get(rubro, RUBRO_STRUCT["default"]))
     scenes = []

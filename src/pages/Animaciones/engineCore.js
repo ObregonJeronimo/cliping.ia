@@ -299,8 +299,8 @@ function _rgba(hex, a) {
   // la percepcion premium (textura analogica). Determinista: misma (seed, frame) => mismo grano.
   function _filmGrain(t) {
     const fr = mulberry32(((SEED || 1) ^ (Math.floor(t * 24) * 0x9E3779B1)) >>> 0);
-    ctx.save(); ctx.globalAlpha = TONE === 'light' ? 0.045 : 0.052;
-    for (let i = 0; i < 260; i++) { ctx.fillStyle = fr() < 0.5 ? '#fff' : '#000'; ctx.fillRect(fr() * W, fr() * H, 1.2, 1.2); }
+    ctx.save(); ctx.globalAlpha = TONE === 'light' ? 0.06 : 0.052;
+    for (let i = 0; i < 300; i++) { ctx.fillStyle = fr() < 0.5 ? '#fff' : '#000'; ctx.fillRect(fr() * W, fr() * H, 1.2, 1.2); }
     ctx.restore();
   }
   // FONDO CLARO (editorial): crema con tinte del acento (multiply, no aditivo) + grano papel + viñeta sutil.
@@ -823,24 +823,32 @@ function _rgba(hex, a) {
       ctx.save(); ctx.fillStyle = accent(bx - 60, 0, bx + 60, 0); ctx.beginPath();
       ctx.roundRect(align === 'left' ? bx : bx - bw / 2, byy, bw, 5, 3); ctx.fill(); ctx.restore();
     }
-    function ctaButton(anchorX, py, align, chip) {
+    // CTA TIPOGRAFICO sin caja: texto en acento + subrayado que crece + chevron. Lee de cine, no de UI
+    // (mata el tell "boton de landing"). Reemplaza la pildora en las composiciones center/left.
+    function ctaButton(anchorX, py, align) {
       const cta = inv(t, 1.1, 1.6); if (cta <= 0) return;
-      const pulse = 1 + Math.sin(t * 4) * 0.025 * clamp(inv(t, 1.6, 1.8), 0, 1), sc = eOutBack(clamp(cta, 0, 1)) * pulse;
       const ctaStr = (p.cta || 'Visita ahora');
-      ctx.font = `700 25px "Inter",system-ui,sans-serif`;
-      const w = Math.max(220, Math.min(360, ctx.measureText(ctaStr).width + 54)), h = 64, ctaSize = fitFont(ctaStr, 25, w - 40, 15, 700);
-      const px = align === 'left' ? anchorX + w / 2 : anchorX;
-      ctx.save(); ctx.translate(px, py); ctx.scale(sc, sc);
-      setShadow(_rgba(A1, 0.55), 30, 9);
-      const cg = ctx.createLinearGradient(-w / 2, -h / 2, w / 2, h / 2); cg.addColorStop(0, _accentInk(A1, 0.62)); cg.addColorStop(1, _accentInk(A2, 0.48));
-      ctx.fillStyle = cg; ctx.beginPath(); ctx.roundRect(-w / 2, -h / 2, w, h, chip ? 13 : h / 2); ctx.fill(); noShadow();
-      ctx.lineWidth = 1; ctx.strokeStyle = _rgba('#ffffff', 0.16); ctx.beginPath(); ctx.roundRect(-w / 2 + 1, -h / 2 + 1, w - 2, h * 0.5, chip ? 12 : h / 2); ctx.stroke();   // brillo superior sutil en vez de borde de boton
-      ctx.font = `700 ${ctaSize}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = TONE === 'light' ? '#fff' : '#14090e';
-      ctx.fillText(ctaStr, 0, 1); ctx.restore();
+      const fs = fitFont(ctaStr, 32, W * 0.74, 18, 800), isL = align === 'left';
+      const appear = eOutBack(clamp(cta, 0, 1));
+      ctx.save();
+      ctx.globalAlpha *= clamp(cta * 1.3, 0, 1);
+      ctx.translate(0, (1 - appear) * 12);
+      ctx.font = `800 ${fs}px "Inter",system-ui,sans-serif`;
+      ctx.textAlign = isL ? 'left' : 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = _accentInk(A1, 0.5);
+      if (TONE !== 'light') setShadow('rgba(0,0,0,0.4)', 6, 1);
+      ctx.fillText(ctaStr, anchorX, py); noShadow();
+      const tw = Math.min(W * 0.74, ctx.measureText(ctaStr).width), ux = isL ? anchorX : anchorX - tw / 2;
+      const up = eOutCubic(clamp(inv(t, 1.3, 1.85), 0, 1));
+      ctx.fillStyle = accent(ux, py, ux + tw, py);
+      ctx.beginPath(); ctx.roundRect(ux, py + fs * 0.62, tw * up, 4, 2); ctx.fill();
+      const ar = inv(t, 1.6, 2.0);
+      if (ar > 0) { ctx.save(); ctx.globalAlpha *= ar; ctx.strokeStyle = _accentInk(A1, 0.5); ctx.lineWidth = 3.5; ctx.lineCap = 'round'; const acx = isL ? ux + tw / 2 : anchorX, ay = py + fs * 0.62 + 22; ctx.beginPath(); ctx.moveTo(acx - 13, ay); ctx.lineTo(acx, ay + 11); ctx.lineTo(acx + 13, ay); ctx.stroke(); ctx.restore(); }
+      ctx.restore();
       const burst = inv(t, 1.1, 1.55);
       if (burst > 0 && burst < 1) {
-        ctx.save(); ctx.translate(px, py);
-        for (let i = 0; i < 10; i++) { const a = (i / 10) * TAU, d = lerp(20, 90, eOutCubic(burst)); ctx.globalAlpha = (1 - burst) * 0.9; ctx.fillStyle = i % 2 ? A1 : A2; ctx.beginPath(); ctx.arc(Math.cos(a) * d, Math.sin(a) * d, 3, 0, TAU); ctx.fill(); }
+        ctx.save(); ctx.translate(isL ? anchorX + 30 : anchorX, py);
+        for (let i = 0; i < 10; i++) { const a = (i / 10) * TAU, d = lerp(16, 78, eOutCubic(burst)); ctx.globalAlpha = (1 - burst) * 0.8; ctx.fillStyle = i % 2 ? A1 : A2; ctx.beginPath(); ctx.arc(Math.cos(a) * d, Math.sin(a) * d, 2.6, 0, TAU); ctx.fill(); }
         ctx.restore();
       }
     }
@@ -901,11 +909,11 @@ function _rgba(hex, a) {
       ctx.save();
       ctx.beginPath(); ctx.rect(ax - 6, ly - efs, (maxW + 14) * pr, efs * 1.34); ctx.clip();   // reveal por mascara (wipe)
       ctx.font = `800 ${efs}px "Inter",system-ui,sans-serif`; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
-      setShadow('rgba(0,0,0,0.38)', 6, 2);
+      setShadow(TONE === 'light' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.6)', 7, 2);   // halo del tono opuesto -> el titular se despega del fondo del mismo hue
       if (i === lastIdx) {
         const ws = ln.split(' '), last = ws.pop(), head = ws.join(' ') + (ws.length ? ' ' : '');
         ctx.fillStyle = INK; ctx.fillText(head, ax, ly);
-        ctx.fillStyle = _accentInk(A1, 0.5); ctx.fillText(last, ax + ctx.measureText(head).width, ly);
+        ctx.fillStyle = _accentInk(A1, 0.66); ctx.fillText(last, ax + ctx.measureText(head).width, ly);
       } else { ctx.fillStyle = INK; ctx.fillText(ln, ax, ly); }
       noShadow(); ctx.restore();
     });
