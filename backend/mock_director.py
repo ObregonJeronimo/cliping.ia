@@ -420,8 +420,14 @@ def generate(brand: str, industria: str, facts=None, seed: int = None, style: st
     list_style = S["list"]
     # la grilla de cards solo en OSCURO (en claro lee como placeholders grises); en claro, filas editoriales
     list_layout = "grid" if (tone == "dark" and S["grid_p"] > 0 and rnd.random() < S["grid_p"]) else "rows"
-    # el END-CARD lo elige el estilo -> el CIERRE tambien varia entre videos
-    outro_comp = rnd.choice(S["outro"])
+    # el END-CARD lo elige el estilo; pero si el hero ancla a la IZQUIERDA, el cierre tambien (left/diagonal)
+    # -> cada estilo es un SISTEMA espacial coherente de punta a punta, no hero-izq + cierre-centrado.
+    outro_pool = S["outro"]
+    if left_anchored:
+        _lo = [o for o in outro_pool if o in ("left", "diagonal")]
+        if _lo:
+            outro_pool = _lo
+    outro_comp = rnd.choice(outro_pool)
     # ESTRUCTURA NARRATIVA del estilo (no una sola coreografia para todos): conteo/orden/beats varian.
     skel = rnd.choice(S["structs"])
     scenes = []
