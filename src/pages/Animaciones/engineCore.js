@@ -111,6 +111,11 @@ function _rgba(hex, a) {
   function setTexture(n) { BG_TEX = (typeof n === 'string' && n) ? n : 'none'; }
   let BG_ENERGY = 1;     // energia/velocidad del mesh por rubro (rapido tech/fitness, sereno salud/inmob)
   function setEnergy(n) { BG_ENERGY = (typeof n === 'number' && isFinite(n)) ? clamp(n, 0.4, 2.2) : 1; }
+  // SISTEMA DE FONDO por marca: rompe el "todos los videos tienen el mismo mesh". Cada estilo es un mundo
+  // visual distinto. mesh (fluido Canva) | field (campo sobrio premium) | spotlight (luz de escenario,
+  // editorial) | bands (bloques de color geometricos, bold) | aurora (cintas verticales que fluyen).
+  let BG_STYLE = 'mesh';
+  function setBgStyle(n) { BG_STYLE = (typeof n === 'string' && n) ? n : 'mesh'; }
   // HSL <-> hex (para construir una paleta MULTI-COLOR a partir del acento de marca)
   function _hexToHsl(hex) {
     let r = 0, g = 0, b = 0;
@@ -188,28 +193,102 @@ function _rgba(hex, a) {
     if (s === SEED && blobs.length) return;   // ya construido para esta semilla
     SEED = s; _buildBg();
   }
+  // ---------- ESTILOS DE FONDO (cada uno un mundo visual; deterministas por SEED + t) ----------
+  // 'mesh': zonas de color que derivan y se funden de forma aditiva (look Canva, el original).
+  function _bgMesh(t, pal) {
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    for (const b of blobs) {
+      const cx = b.bx + Math.sin(t * b.fx * BG_ENERGY + b.px) * b.ax;
+      const cy = b.by + Math.cos(t * b.fy * BG_ENERGY + b.py) * b.ay;
+      const col = pal[b.pi % pal.length];
+      const gl = ctx.createRadialGradient(cx, cy, 0, cx, cy, b.rad);
+      gl.addColorStop(0, _rgba(col, b.a)); gl.addColorStop(0.55, _rgba(col, b.a * 0.4)); gl.addColorStop(1, _rgba(col, 0));
+      ctx.fillStyle = gl; ctx.fillRect(0, 0, W, H);
+    }
+    ctx.restore();
+  }
+  // 'field': premium sobrio -> un gran glow de acento a un lado + un analogo opuesto, muy suave.
+  function _bgField(t, pal) {
+    const rnd = mulberry32((SEED || 1) ^ 0x515);
+    const side = rnd() < 0.5 ? 0.26 : 0.74, top = 0.30 + rnd() * 0.22;
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    const gx = W * side + Math.sin(t * 0.06) * 22, gy = H * top + Math.cos(t * 0.05) * 18;
+    let gl = ctx.createRadialGradient(gx, gy, 0, gx, gy, H * 0.88);
+    gl.addColorStop(0, _rgba(pal[0], 0.30)); gl.addColorStop(0.5, _rgba(pal[0], 0.10)); gl.addColorStop(1, _rgba(pal[0], 0));
+    ctx.fillStyle = gl; ctx.fillRect(0, 0, W, H);
+    const hx = W * (1 - side), hy = H * (1.05 - top);
+    gl = ctx.createRadialGradient(hx, hy, 0, hx, hy, H * 0.52);
+    gl.addColorStop(0, _rgba(pal[1], 0.15)); gl.addColorStop(1, _rgba(pal[1], 0));
+    ctx.fillStyle = gl; ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+  }
+  // 'spotlight': editorial dramatico -> luz de escenario. Oscurece FUERTE alrededor y deja un cono
+  // brillante (centro casi blanco-acento) desde un borde. Maximo contraste = se siente "de autor".
+  function _bgSpotlight(t, pal) {
+    const rnd = mulberry32((SEED || 1) ^ 0x5907);
+    const fromTop = rnd() < 0.6;
+    const px = fromTop ? W * (0.28 + rnd() * 0.44) : (rnd() < 0.5 ? -W * 0.06 : W * 1.06);
+    const py = fromTop ? -H * 0.05 : H * (0.22 + rnd() * 0.3);
+    // 1) oscurecer todo menos el cono (antes de la luz) -> el cono va a resaltar de verdad
+    const dk = ctx.createRadialGradient(px, py, H * 0.04, px, py, H * 0.95);
+    dk.addColorStop(0, 'rgba(0,0,0,0)'); dk.addColorStop(0.55, 'rgba(0,0,0,0.34)'); dk.addColorStop(1, 'rgba(0,0,0,0.68)');
+    ctx.fillStyle = dk; ctx.fillRect(0, 0, W, H);
+    // 2) cono de luz: centro casi blanco-acento, cae rapido (no inunda)
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    const sw = 0.5 + Math.sin(t * 0.18) * 0.05;
+    const gl = ctx.createRadialGradient(px, py, 0, px, py, H * (0.62 + sw * 0.16));
+    gl.addColorStop(0, _rgba(_lighten(pal[0], 0.5), 0.5));
+    gl.addColorStop(0.26, _rgba(_lighten(pal[0], 0.12), 0.3));
+    gl.addColorStop(0.62, _rgba(pal[0], 0.08));
+    gl.addColorStop(1, _rgba(pal[0], 0));
+    ctx.fillStyle = gl; ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+  }
+  // 'bands': grafico/bold -> 3 bandas diagonales anchas de color que derivan lento.
+  function _bgBands(t, pal) {
+    const rnd = mulberry32((SEED || 1) ^ 0xBA2D);
+    const ang = (-0.5 + rnd()) * 0.5;
+    ctx.save();
+    ctx.translate(W / 2, H / 2); ctx.rotate(ang); ctx.translate(-W / 2, -H / 2);
+    ctx.globalCompositeOperation = 'lighter';
+    const n = 3, span = H * 1.5;
+    for (let i = 0; i < n; i++) {
+      const cy = ((i + 0.5) / n + Math.sin(t * 0.07 + i) * 0.04) * span - (span - H) / 2;
+      const bw = H * (0.15 + 0.06 * (((i * 53) % 7) / 7));
+      const col = pal[[0, 3, 1][i % 3]];
+      const gl = ctx.createLinearGradient(0, cy - bw, 0, cy + bw);
+      gl.addColorStop(0, _rgba(col, 0)); gl.addColorStop(0.5, _rgba(col, 0.36)); gl.addColorStop(1, _rgba(col, 0));
+      ctx.fillStyle = gl; ctx.fillRect(-W, cy - bw, W * 3, bw * 2);
+    }
+    ctx.restore();
+  }
+  // 'aurora': organico premium -> cintas verticales que ondulan (tipo aurora boreal).
+  function _bgAurora(t, pal) {
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    const n = 4;
+    for (let i = 0; i < n; i++) {
+      const baseX = (i + 0.5) / n * W + Math.sin(t * 0.12 + i * 1.7) * 58;
+      const w = W * (0.17 + 0.05 * (((i * 31) % 5) / 5));
+      const col = pal[[0, 1, 3, 2][i % 4]];
+      const gl = ctx.createLinearGradient(baseX - w, 0, baseX + w, 0);
+      gl.addColorStop(0, _rgba(col, 0)); gl.addColorStop(0.5, _rgba(col, 0.2)); gl.addColorStop(1, _rgba(col, 0));
+      ctx.fillStyle = gl; ctx.fillRect(baseX - w, 0, w * 2, H);
+    }
+    ctx.restore();
+  }
   function drawBg(t) {
     if (!blobs.length) _buildBg();
     // 1) base: gradiente radial del tema (oscuro, para que las zonas de color resalten)
     const g = ctx.createRadialGradient(W * 0.5, H * 0.36, 30, W * 0.5, H * 0.42, H * 0.95);
     g.addColorStop(0, BG[0]); g.addColorStop(0.5, BG[1]); g.addColorStop(1, BG[2]);
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-    // 2) mesh-gradient: zonas de color que derivan y se FUNDEN de forma aditiva ('lighter').
-    //    Sin ctx.filter (no es portable a Firefox); el blend aditivo da el look "Canva" y rasteriza igual.
-    ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
+    // 2) capa de COLOR segun el ESTILO de fondo de la marca -> cada video vive en un mundo visual distinto
     const pal = _meshPalette();
-    for (const b of blobs) {
-      const cx = b.bx + Math.sin(t * b.fx * BG_ENERGY + b.px) * b.ax;
-      const cy = b.by + Math.cos(t * b.fy * BG_ENERGY + b.py) * b.ay;
-      const col = pal[b.pi % pal.length];
-      const gl = ctx.createRadialGradient(cx, cy, 0, cx, cy, b.rad);
-      gl.addColorStop(0, _rgba(col, b.a));
-      gl.addColorStop(0.55, _rgba(col, b.a * 0.4));
-      gl.addColorStop(1, _rgba(col, 0));
-      ctx.fillStyle = gl; ctx.fillRect(0, 0, W, H);
-    }
-    ctx.restore();
+    if (BG_STYLE === 'field') _bgField(t, pal);
+    else if (BG_STYLE === 'spotlight') _bgSpotlight(t, pal);
+    else if (BG_STYLE === 'bands') _bgBands(t, pal);
+    else if (BG_STYLE === 'aurora') _bgAurora(t, pal);
+    else _bgMesh(t, pal);
     // 3) motes (polvo) con tinte del tema, deriva vertical sembrada
     ctx.save();
     for (const m of motes) {
@@ -1216,6 +1295,7 @@ function _rgba(hex, a) {
     setTheme(o.theme);
     setSeed((typeof o.seed === 'number' && isFinite(o.seed)) ? (o.seed >>> 0) : hashSeed(o.seed));
     setTexture(o.texture);
+    setBgStyle(o.bgStyle);
     ctx.clearRect(0, 0, W, H);
     drawBg(t);
   }
@@ -1228,6 +1308,7 @@ function _rgba(hex, a) {
     setSeed(_seedFor(tl));
     setTexture(tl.texture);
     setEnergy(tl.bgEnergy);
+    setBgStyle(tl.bgStyle);
     ctx.clearRect(0, 0, W, H);
     drawBg(t);
     const _scenes = layout(tl);

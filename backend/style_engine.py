@@ -172,6 +172,20 @@ _RUBRO_STMT = {
     "tech": "left", "finanzas": "left", "moda": "left", "inmobiliaria": "left", "educacion": "left",
     "gastronomia": "centered", "salud": "centered", "belleza": "centered", "fitness": "centered", "default": "centered",
 }
+# SISTEMA DE FONDO por rubro (la semilla elige uno del pool) -> dos marcas no comparten el mismo "mundo"
+# visual de fondo. mesh=fluido | field=sobrio | spotlight=editorial dramatico | bands=grafico | aurora=organico.
+_RUBRO_BGSTYLE = {
+    "tech":         ["bands", "spotlight", "mesh"],
+    "finanzas":     ["bands", "field", "spotlight"],
+    "salud":        ["field", "aurora", "mesh"],
+    "belleza":      ["aurora", "field", "spotlight"],
+    "moda":         ["spotlight", "bands", "aurora"],
+    "gastronomia":  ["field", "mesh", "aurora"],
+    "inmobiliaria": ["field", "spotlight", "mesh"],
+    "fitness":      ["spotlight", "bands", "mesh"],
+    "educacion":    ["mesh", "bands", "field"],
+    "default":      ["mesh", "field", "spotlight"],
+}
 
 
 def preset(industria: str = "", publico: str = "", energy: str = "medio", seed: int = 0) -> dict:
@@ -185,6 +199,7 @@ def preset(industria: str = "", publico: str = "", energy: str = "medio", seed: 
     light = _ENERGY_LIGHT.get((energy or "medio").lower(), 0.56)
     accent = _hsl_to_hex(hue, sat, light)
     theme = rnd.choice(p["themes"])
+    bg_style = rnd.choice(_RUBRO_BGSTYLE.get(canon, _RUBRO_BGSTYLE["default"]))
 
     # subconjunto DISJUNTO de formas/iconos para ESTA marca (de la familia del rubro)
     morphs = p["morphs"][:]
@@ -218,6 +233,7 @@ def preset(industria: str = "", publico: str = "", energy: str = "medio", seed: 
         "cta_style": _RUBRO_MARKER.get(canon, _RUBRO_MARKER["default"])[1],
         "bg_texture": _RUBRO_TEX.get(canon, _RUBRO_TEX["default"]),
         "bg_energy": _RUBRO_ENERGY.get(canon, 1.0),
+        "bg_style": bg_style,
         "stmt_style": _RUBRO_STMT.get(canon, "centered"),
         "bg_texture": _RUBRO_TEX.get(canon, _RUBRO_TEX["default"]),
         # String-Seed-of-Thought: cadena estable que el LLM usa como ancla de diversidad fiel a la marca

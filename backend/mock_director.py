@@ -285,6 +285,8 @@ def generate(brand: str, industria: str, facts=None, seed: int = None) -> dict:
     return {
         "brand": brand, "accent": pre["accent"], "theme": pre["theme"], "seed": pre["seed"],
         "texture": st["texture"], "bgEnergy": pre.get("bg_energy", 1.0), "rubro": rubro, "scenes": scenes,
+        # estilo de FONDO de la marca (mesh/field/spotlight/bands/aurora) -> cada video en un mundo distinto
+        "bgStyle": pre.get("bg_style", "mesh"),
         # forma FIRMA de la marca -> el motor la persiste como marca de agua viva en las escenas de contenido
         "signatureForm": f1,
         # metadatos de receta (como el director real)
