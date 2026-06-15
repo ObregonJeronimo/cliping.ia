@@ -1994,8 +1994,11 @@ function _rgba(hex, a) {
     ctx.clearRect(0, 0, W, H);
     // CAMARA COMPARTIDA (parallax + reloj unico): un solo vector continuo (global t, armonicos ENTEROS de _PHI
     // -> sin "beating") que mueve fondo y contenido juntos. El fondo a ~32% de profundidad; el contenido al 100%.
-    const _PHI = 0.42;
-    const _camPanX = Math.sin(t * _PHI) * 10, _camPanY = Math.sin(t * _PHI * 2) * 5, _camBreath = 1 + Math.cos(t * _PHI) * 0.006;
+    // la camara VARIA por marca (velocidad/amplitud/direccion/fase sembradas) -> el "feel" del movimiento no es
+    // identico en todos los videos. Armonicos enteros (1,2) por dentro -> sigue sin beating. Constante por video (re-seed por frame).
+    const _cr = mulberry32(((SEED || 1) ^ 0xCA3F1) >>> 0);
+    const _PHI = 0.34 + _cr() * 0.16, _dir = _cr() < 0.5 ? -1 : 1, _ph = _cr() * 6.28;
+    const _camPanX = Math.sin(t * _PHI + _ph) * (8 + _cr() * 7) * _dir, _camPanY = Math.sin(t * _PHI * 2 + _ph) * (4 + _cr() * 4), _camBreath = 1 + Math.cos(t * _PHI) * 0.006;
     drawBg(t, _camPanX * 0.32, _camPanY * 0.32, 1.045);
     const _scenes = layout(tl);
     const XF = 0.3; // cross-fade mas corto -> cortes mas agiles/punchy (menos "todo se funde lento")
@@ -2053,7 +2056,9 @@ function _rgba(hex, a) {
       const foDur = isLast ? 0.5 : XF;
       const renderEnd = isLast ? sc.e : sc.e + XF;
       if (t < sc.s || t >= renderEnd) return;
-      const fin = eInOutCubic(inv(t, sc.s, sc.s + 0.5));
+      // fade-in mas corto (~match del cross-fade saliente) -> entrante sube mientras la saliente baja
+      // de forma casi complementaria: el cruce no deja "valle de brillo" (el fondo no se asoma a mitad).
+      const fin = eInOutCubic(inv(t, sc.s, sc.s + (i === 0 ? 0.5 : XF + 0.06)));
       const fout = eInOutCubic(1 - inv(t, foStart, foStart + foDur));
       const a = clamp(Math.min(fin, fout), 0, 1);
       if (a <= 0) return;
