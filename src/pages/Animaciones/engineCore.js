@@ -1458,7 +1458,7 @@ function _rgba(hex, a) {
   // ESCENA: bigStat — un numero que cuenta de 0 al valor + label debajo. El beat de "dato que impacta".
   // Solo con un numero REAL del sitio. Nativo de Canvas, limpio.
   function sceneBigStat(t, p = {}) {
-    const cx = W / 2, cy = H * 0.44;
+    const cy = H * 0.44, al = p.align === 'left' ? 'left' : 'center', ax = al === 'left' ? W * 0.12 : W / 2;
     const value = Number(p.value) || 0;
     const prog = eOutCubic(inv(t, 0.2, 1.5));   // conteo mas agil (antes 1.7) -> menos hold muerto
     const shown = value * prog;
@@ -1466,28 +1466,26 @@ function _rgba(hex, a) {
     const fmt = (v) => v.toFixed(dec).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
     const full = (p.prefix || '') + fmt(value) + (p.suffix || '');
     const num = (p.prefix || '') + fmt(shown) + (p.suffix || '');
-    const fs = fitFont(full, 104, W * 0.86, 40, 800, 'd');
+    const fs = fitFont(full, 104, al === 'left' ? W * 0.78 : W * 0.86, 40, 800, 'd');
     const suf = p.suffix || '', pref = p.prefix || '';
-    // KICKER arriba (contexto) -> jerarquia, no un numero solo y centrado en el vacio
+    // KICKER arriba (contexto) -> jerarquia, no un numero solo y centrado en el vacio. Alineacion variable (left/center).
     const kick = (p.kicker || (/%/.test(suf) ? 'EN RESULTADOS' : (/m2|m²/i.test(suf) ? 'SUPERFICIE' : (/[$]|USD|ARS/.test(pref + suf) ? 'DESDE' : '')))).toUpperCase();
     const kp = inv(t, 0.15, 0.55);
-    if (kick && kp > 0) { ctx.save(); ctx.globalAlpha = kp; ctx.font = fontStr(700, 18, 'a'); ctx.fillStyle = _accentInk(A1, 0.42); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(kick, cx, cy - fs * 0.6 - 16); ctx.restore(); }
-    // NUMERO grande con pop + pulso
+    if (kick && kp > 0) { ctx.save(); ctx.globalAlpha = kp; ctx.font = fontStr(700, 18, 'a'); ctx.fillStyle = _accentInk(A1, 0.42); ctx.textAlign = al; ctx.textBaseline = 'middle'; ctx.fillText(kick, ax, cy - fs * 0.6 - 16); ctx.restore(); }
     const pop = lerp(0.74, 1, eOutCubic(inv(t, 0.1, 0.55))), pulse = 1 + Math.sin(_holdT * 2.1) * 0.012;
-    ctx.save(); ctx.globalAlpha = inv(t, 0.05, 0.38); ctx.translate(cx, cy); ctx.scale(pop * pulse, pop * pulse); ctx.translate(-cx, -cy);
-    ctx.font = fontStr(800, fs, 'd'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    const ng = ctx.createLinearGradient(cx - 130, cy, cx + 130, cy);
+    ctx.save(); ctx.globalAlpha = inv(t, 0.05, 0.38); ctx.translate(ax, cy); ctx.scale(pop * pulse, pop * pulse); ctx.translate(-ax, -cy);
+    ctx.font = fontStr(800, fs, 'd'); ctx.textAlign = al; ctx.textBaseline = 'middle';
+    const ng = ctx.createLinearGradient(ax - (al === 'left' ? 0 : 130), cy, ax + (al === 'left' ? 270 : 130), cy);
     ng.addColorStop(0, TONE === 'light' ? _accentInk(A1) : _accentPop(A1)); ng.addColorStop(1, TONE === 'light' ? _accentInk(A2) : _accentPop(A2));
-    ctx.fillStyle = ng; setShadow(_rgba(_accentPop(A1), 0.35), 18, 2); ctx.fillText(num, cx, cy); noShadow();
+    ctx.fillStyle = ng; setShadow(_rgba(_accentPop(A1), 0.35), 18, 2); ctx.fillText(num, ax, cy); noShadow();
     ctx.restore();
-    // BARRA que se llena con el conteo (llena el espacio + refuerza el dato). % -> proporcion real; cantidad -> barra de tally.
     const isPct = /%/.test(suf), barFill = (isPct ? clamp(value / 100, 0, 1) : 1) * clamp(prog, 0, 1);
-    const by = cy + fs * 0.5 + 28, bw = W * 0.58, bx = cx - bw / 2, bh = 9;
+    const by = cy + fs * 0.5 + 28, bw = al === 'left' ? W * 0.5 : W * 0.58, bx = al === 'left' ? ax : W / 2 - bw / 2, bh = 9;
     ctx.save();
     ctx.fillStyle = _rgba(INK, 0.13); ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 4.5); ctx.fill();
     ctx.fillStyle = _accentPop(A1); ctx.beginPath(); ctx.roundRect(bx, by, bw * barFill, bh, 4.5); ctx.fill();
     ctx.restore();
-    if (p.label) fxText(p.label, cx, by + 42, 23, inv(t, 1.0, 1.4), 600, DIM, W * 0.86);
+    if (p.label) { const lp = inv(t, 1.0, 1.4); if (lp > 0) { ctx.save(); ctx.globalAlpha = clamp(lp * 1.4, 0, 1); ctx.font = fontStr(600, fitFont(p.label, 23, W * 0.82, 14, 600, 't'), 't'); ctx.textAlign = al; ctx.textBaseline = 'middle'; ctx.fillStyle = DIM; ctx.fillText(p.label, ax, by + 30); ctx.restore(); } }
   }
 
   // =========================================================================
@@ -1845,30 +1843,33 @@ function _rgba(hex, a) {
   // REVEAL: gancho corto (1-4 palabras) a pantalla casi completa, apiladas y escalonadas, ultima en acento.
   function sceneReveal(t, p = {}) {
     const text = ((p.text || '').toString().trim()) || 'Mira esto';
-    const words = text.split(/\s+/).slice(0, 4), n = words.length, cx = W / 2, baseY = H * 0.46;
-    const fs = fitFont(text, 104, W * 0.86, 46, 800, 'd'), lh = fs * 1.04, startY = baseY - (n - 1) * lh / 2;
+    const words = text.split(/\s+/).slice(0, 4), n = words.length;
+    const al = p.align === 'left' ? 'left' : 'center', ax = al === 'left' ? W * 0.1 : W / 2, baseY = al === 'left' ? H * 0.58 : H * 0.46;
+    const fs = fitFont(text, al === 'left' ? 92 : 104, W * 0.82, 44, 800, 'd'), lh = fs * 1.04, startY = baseY - (n - 1) * lh / 2;
     const kick = (p.kicker || '').toUpperCase();
-    if (kick) { const kp = inv(t, 0.1, 0.5); if (kp > 0) { ctx.save(); ctx.globalAlpha = kp; ctx.font = fontStr(700, 18, 'a'); ctx.fillStyle = _accentInk(A1, 0.42); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(kick, cx, startY - fs * 0.74); ctx.restore(); } }
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = fontStr(800, fs, 'd');
+    if (kick) { const kp = inv(t, 0.1, 0.5); if (kp > 0) { ctx.save(); ctx.globalAlpha = kp; ctx.font = fontStr(700, 18, 'a'); ctx.fillStyle = _accentInk(A1, 0.42); ctx.textAlign = al; ctx.textBaseline = 'middle'; ctx.fillText(kick, ax, startY - fs * 0.74); ctx.restore(); } }
+    ctx.textAlign = al; ctx.textBaseline = 'middle'; ctx.font = fontStr(800, fs, 'd');
     words.forEach((wd, i) => {
       const lp = eOutBack(clamp(inv(t, 0.22 + i * 0.13, 0.22 + i * 0.13 + 0.5), 0, 1)); if (lp <= 0) return;
       ctx.save(); ctx.globalAlpha = clamp(lp * 1.5, 0, 1); const yy = startY + i * lh + (1 - lp) * 24;
       ctx.fillStyle = (i === n - 1) ? (TONE === 'light' ? _accentInk(A1) : _accentPop(A1)) : INK;
       if (i === n - 1) setShadow(_rgba(_accentPop(A1), 0.32), 16, 2);
-      ctx.fillText(wd, cx, yy); noShadow(); ctx.restore();
+      ctx.fillText(wd, ax, yy); noShadow(); ctx.restore();
     });
+    if (al === 'left') { const up = inv(t, 0.5, 0.95); if (up > 0) { ctx.save(); ctx.globalAlpha = up; ctx.fillStyle = _accentPop(A1); ctx.fillRect(ax, startY - fs * 0.55, 56 * eOutCubic(clamp(up, 0, 1)), 6); ctx.restore(); } }
   }
   // NUMBERSTACK: 2-3 numeros que cuentan, en cascada (vs bigStat que es UNO). Llena la pantalla con datos.
   function sceneNumberStack(t, p = {}) {
     const items = (p.items || []).slice(0, 3), n = items.length; if (!n) return;
-    const gap = H * (n === 3 ? 0.21 : 0.26), startY = H * 0.46 - (n - 1) * gap / 2, cx = W / 2;
+    const al = p.align === 'left' ? 'left' : 'center', tx = al === 'left' ? W * 0.12 : W / 2;
+    const gap = H * (n === 3 ? 0.21 : 0.26), startY = H * 0.46 - (n - 1) * gap / 2;
     items.forEach((it, i) => {
       const d = 0.18 + i * 0.42, ap = inv(t, d, d + 0.4); if (ap <= 0) return;
       const prog = eOutCubic(clamp(inv(t, d, d + 0.9), 0, 1)), y = startY + i * gap;
       const val = (it.prefix || '') + _fmtN((Number(it.value) || 0) * prog) + (it.suffix || '');
       const pop = lerp(0.8, 1, eOutBack(clamp(ap, 0, 1)));
-      ctx.save(); ctx.globalAlpha = clamp(ap * 1.4, 0, 1); ctx.translate(cx, y); ctx.scale(pop, pop);
-      ctx.font = fontStr(800, fitFont(val, 66, W * 0.8, 34, 800, 'd'), 'd'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.save(); ctx.globalAlpha = clamp(ap * 1.4, 0, 1); ctx.translate(tx, y); ctx.scale(pop, pop);
+      ctx.font = fontStr(800, fitFont(val, 66, W * 0.78, 34, 800, 'd'), 'd'); ctx.textAlign = al; ctx.textBaseline = 'middle';
       ctx.fillStyle = TONE === 'light' ? _accentInk(A1) : _accentPop(A1); setShadow(_rgba(_accentPop(A1), 0.3), 14, 2); ctx.fillText(val, 0, -10); noShadow();
       if (it.label) { ctx.font = fontStr(600, 19, 't'); ctx.fillStyle = DIM; ctx.fillText(String(it.label), 0, 30); }
       ctx.restore();
@@ -1876,19 +1877,20 @@ function _rgba(hex, a) {
   }
   // QUOTE: testimonio con comillas grandes + estrellas + autor (prueba social). Layout de "card", distinto.
   function sceneQuote(t, p = {}) {
-    const text = ((p.text || '').toString()) || 'Lo recomiendo 100%', cx = W / 2, cy = H * 0.42;
+    const text = ((p.text || '').toString()) || 'Lo recomiendo 100%', cy = H * 0.42;
+    const al = p.align === 'left' ? 'left' : 'center', ax = al === 'left' ? W * 0.1 : W / 2, maxw = W * 0.8;
     const qp = eOutBack(clamp(inv(t, 0.05, 0.5), 0, 1));
-    if (qp > 0) { ctx.save(); ctx.globalAlpha = 0.55 * qp; ctx.font = fontStr(800, Math.round(150 * qp), 'd'); ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = _lighten(A1, 0.4); ctx.fillText('“', cx, cy - 40); ctx.restore(); }
-    const fit = fitFont(text, text.length > 38 ? 34 : 42, W * 0.78, 24, 700, 't');
-    ctx.font = fontStr(700, fit, 't'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    if (qp > 0) { ctx.save(); ctx.globalAlpha = 0.55 * qp; ctx.font = fontStr(800, Math.round(150 * qp), 'd'); ctx.textAlign = al; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = _lighten(A1, 0.4); ctx.fillText('“', ax, cy - 40); ctx.restore(); }
+    const fit = fitFont(text, text.length > 38 ? 34 : 42, maxw, 24, 700, 't');
+    ctx.font = fontStr(700, fit, 't'); ctx.textAlign = al; ctx.textBaseline = 'middle';
     const words = text.split(/\s+/), lines = []; let ln = '';
-    for (const wd of words) { const tryl = ln ? ln + ' ' + wd : wd; if (ctx.measureText(tryl).width > W * 0.78 && ln) { lines.push(ln); ln = wd; } else ln = tryl; }
+    for (const wd of words) { const tryl = ln ? ln + ' ' + wd : wd; if (ctx.measureText(tryl).width > maxw && ln) { lines.push(ln); ln = wd; } else ln = tryl; }
     if (ln) lines.push(ln);
     const lh = fit * 1.22, top = cy - (lines.length - 1) * lh / 2;
-    lines.forEach((l, i) => { const lp = inv(t, 0.35 + i * 0.12, 0.35 + i * 0.12 + 0.5); if (lp <= 0) return; ctx.save(); ctx.globalAlpha = clamp(lp * 1.4, 0, 1); ctx.fillStyle = INK; ctx.fillText(l, cx, top + i * lh + (1 - eOutCubic(clamp(lp, 0, 1))) * 12); ctx.restore(); });
+    lines.forEach((l, i) => { const lp = inv(t, 0.35 + i * 0.12, 0.35 + i * 0.12 + 0.5); if (lp <= 0) return; ctx.save(); ctx.globalAlpha = clamp(lp * 1.4, 0, 1); ctx.fillStyle = INK; ctx.fillText(l, ax, top + i * lh + (1 - eOutCubic(clamp(lp, 0, 1))) * 12); ctx.restore(); });
     const stars = Math.max(0, Math.min(5, p.stars || 0)), sy = top + lines.length * lh + 6, sp = inv(t, 0.9, 1.3);
-    if (stars && sp > 0) { ctx.save(); ctx.globalAlpha = sp; ctx.fillStyle = _accentPop(A1); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = fontStr(700, 28, 'd'); ctx.fillText('★ '.repeat(stars).trim(), cx, sy + 18); ctx.restore(); }
-    if (p.author) fxText('— ' + p.author, cx, sy + (stars ? 58 : 30), 21, inv(t, 1.1, 1.5), 600, DIM, W * 0.8, 't');
+    if (stars && sp > 0) { ctx.save(); ctx.globalAlpha = sp; ctx.fillStyle = _accentPop(A1); ctx.textAlign = al; ctx.textBaseline = 'middle'; ctx.font = fontStr(700, 28, 'd'); ctx.fillText('★ '.repeat(stars).trim(), ax, sy + 18); ctx.restore(); }
+    if (p.author) { const aap = inv(t, 1.1, 1.5); if (aap > 0) { ctx.save(); ctx.globalAlpha = clamp(aap * 1.4, 0, 1); ctx.font = fontStr(600, 21, 't'); ctx.textAlign = al; ctx.textBaseline = 'middle'; ctx.fillStyle = DIM; ctx.fillText('— ' + p.author, ax, sy + (stars ? 58 : 30)); ctx.restore(); } }
   }
   // SPLIT: pantalla partida -> FOTO real una mitad (wipe-open) + panel de color de marca con titular/CTA en la otra.
   function sceneSplit(t, p = {}) {

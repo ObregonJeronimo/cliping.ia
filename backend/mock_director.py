@@ -286,18 +286,18 @@ def _checklist(brand, rubro, rnd, list_style, list_anchor="center", list_layout=
             "listAnchor": list_anchor, "listLayout": list_layout, "durationInFrames": 132 + (n - 3) * 10}
 
 
-def _reveal(rubro, rnd):
-    return {"type": "reveal", "text": rnd.choice(HOOKS.get(rubro, HOOKS["default"])),
+def _reveal(rubro, rnd, align="center"):
+    return {"type": "reveal", "text": rnd.choice(HOOKS.get(rubro, HOOKS["default"])), "align": align,
             "kicker": rnd.choice(["", "", "ESTO ES", "MIRA ESTO"]), "durationInFrames": rnd.choice([84, 90, 96])}
 
 
-def _quote(rubro, rnd):
+def _quote(rubro, rnd, align="center"):
     q, author = rnd.choice(TESTIMONIALS.get(rubro, TESTIMONIALS["default"]))
-    return {"type": "quote", "text": q, "author": author, "stars": rnd.choice([5, 5, 4]), "durationInFrames": rnd.choice([120, 132])}
+    return {"type": "quote", "text": q, "author": author, "stars": rnd.choice([5, 5, 4]), "align": align, "durationInFrames": rnd.choice([120, 132])}
 
 
-def _numberstack(rubro, rnd):
-    return {"type": "numberStack", "items": rnd.choice(STAT_SETS.get(rubro, STAT_SETS["default"])), "durationInFrames": rnd.choice([120, 132, 138])}
+def _numberstack(rubro, rnd, align="center"):
+    return {"type": "numberStack", "items": rnd.choice(STAT_SETS.get(rubro, STAT_SETS["default"])), "align": align, "durationInFrames": rnd.choice([120, 132, 138])}
 
 
 def _split(brand, rubro, rnd, images):
@@ -344,13 +344,13 @@ def _outro(brand, rubro, rnd, outro_comp):
             "outroComp": outro_comp, "durationInFrames": 104}
 
 
-def _bigstat(facts, rnd):
+def _bigstat(facts, rnd, align="center"):
     if not facts:
         return None
     for f in facts:
         if isinstance(f, dict) and f.get("value") is not None:
             return {"type": "bigStat", "value": f["value"], "prefix": f.get("prefix", ""), "suffix": f.get("suffix", ""),
-                    "label": f.get("label", ""), "durationInFrames": 96}
+                    "label": f.get("label", ""), "align": align, "durationInFrames": 96}
     return None
 
 
@@ -554,6 +554,7 @@ def generate(brand: str, industria: str, facts=None, seed: int = None, style: st
         _used_stmt.add(sc["text"])
         return sc
 
+    _va = rnd.choice(["center", "center", "left"])   # PERSONALIDAD DE LAYOUT del video (40% left) -> mismo tipo de escena se ve distinto entre videos
     for slot in skel:
         if slot == "hero":
             scenes.append(_hero_scene(brand, rubro, accent_light, rnd, comp, shape_blur, f1, f2, _hero_res, images))
@@ -562,14 +563,14 @@ def generate(brand: str, industria: str, facts=None, seed: int = None, style: st
         elif slot == "checklist":
             scenes.append(_checklist(brand, rubro, rnd, list_style, list_anchor, list_layout))
         elif slot == "bigStat":
-            bs = _bigstat(facts, rnd)
-            scenes.append(bs if bs else _numberstack(rubro, rnd))   # sin cifra real -> numberStack (datos del banco) en vez de statement
+            bs = _bigstat(facts, rnd, _va)
+            scenes.append(bs if bs else _numberstack(rubro, rnd, _va))   # sin cifra real -> numberStack (datos del banco) en vez de statement
         elif slot == "reveal":
-            scenes.append(_reveal(rubro, rnd))
+            scenes.append(_reveal(rubro, rnd, _va))
         elif slot == "numberStack":
-            scenes.append(_numberstack(rubro, rnd))
+            scenes.append(_numberstack(rubro, rnd, _va))
         elif slot == "quote":
-            scenes.append(_quote(rubro, rnd))
+            scenes.append(_quote(rubro, rnd, _va))
         elif slot == "split":
             sp = _split(brand, rubro, rnd, images)
             scenes.append(sp if sp else _fresh_statement())
