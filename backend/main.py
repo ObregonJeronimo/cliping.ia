@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import json
 import re
 import time
@@ -147,10 +148,34 @@ def _get_rating_bias(db, user_id: str) -> dict:
 
 
 def _brand_key(url: str) -> str:
-    """Clave estable por marca/dominio para el historial de estilos."""
+    """Clave estable por marca/dominio para el historial de estilos (rotacion de variedad por marca)."""
     host = _re.sub(r"^https?://(www\.)?", "", (url or "").strip().lower()).split("/")[0]
     key = _re.sub(r"[^a-z0-9]+", "_", host).strip("_")
     return key or "sin_url"
+
+
+def _brand_cache_key(url: str) -> str:
+    """Clave del CACHE de analisis POR URL (no por dominio): dominio + path normalizado. Asi dos paginas
+    distintas del mismo sitio (/, /precios, /producto-x) NO comparten el analisis cacheado (antes se pisaban)."""
+    u = _re.sub(r"^https?://(www\.)?", "", (url or "").strip().lower())
+    u = u.split("#")[0].split("?")[0].rstrip("/")   # ignora fragment/query/trailing slash
+    key = _re.sub(r"[^a-z0-9]+", "_", u).strip("_")
+    return key or "sin_url"
+
+
+def _content_fingerprint(site) -> str:
+    """Huella estable del CONTENIDO capturado (titulo + descripcion + texto). Si la pagina cambia, cambia la
+    huella -> el cache se invalida y se RE-ANALIZA aunque no hayan pasado los 14 dias. La captura corre fresca
+    en cada pedido, asi que comparar la huella es gratis (no gasta IA salvo cuando la pagina realmente cambio)."""
+    try:
+        c = (site or {}).get("content") if isinstance(site, dict) else None
+        if not c:
+            return ""
+        raw = json.dumps(c, ensure_ascii=False, sort_keys=True) if isinstance(c, (dict, list)) else str(c)
+        norm = _re.sub(r"\s+", " ", raw.lower()).strip()[:8000]
+        return hashlib.sha1(norm.encode("utf-8")).hexdigest()
+    except Exception:
+        return ""
 
 
 def _dominant_accent(image_path: str):
@@ -281,9 +306,10 @@ def _push_recent_profile(db, user_id: str, brand_key: str, spec: dict):
 _BRAND_CACHE_TTL = 14 * 24 * 3600  # 14 días: la identidad visual de un sitio casi nunca cambia
 
 
-def _get_brand_cache(db, user_id: str, brand_key: str):
-    """Análisis cacheado de una URL (ADN visual + hechos de marca). Devuelve dict o None si no hay/venció.
-    Evita re-analizar la misma página en cada video -> baja costos. El VIDEO igual sale distinto."""
+def _get_brand_cache(db, user_id: str, brand_key: str, fresh_hash: str = ""):
+    """Análisis cacheado de una URL (ADN visual + hechos de marca). Devuelve dict o None si no hay/venció/cambió.
+    Evita re-analizar la misma página en cada video -> baja costos. El VIDEO igual sale distinto.
+    Invalida si: pasó el TTL (14d) O la página cambió de contenido (fresh_hash != el guardado)."""
     if not (db and user_id):
         return None
     try:
@@ -293,23 +319,29 @@ def _get_brand_cache(db, user_id: str, brand_key: str):
         d = doc.to_dict() or {}
         if (time.time() - float(d.get("ts", 0))) > _BRAND_CACHE_TTL:
             return None
+        # Invalidación por CONTENIDO: si la página cambió (huella distinta), no reuses el análisis viejo.
+        stored = d.get("content_hash") or ""
+        if fresh_hash and stored and stored != fresh_hash:
+            print(f"[cache] '{brand_key}' cambió de contenido -> re-analizo ({stored[:8]} != {fresh_hash[:8]})")
+            return None
         return d
     except Exception as e:
         print(f"[cache] leer análisis falló: {e}")
         return None
 
 
-def _set_brand_cache(db, user_id: str, brand_key: str, dna: dict, brand: str):
-    """Guarda el análisis (ADN + hechos) de una URL. Best-effort. Multi-página: cada URL queda
-    cacheada por separado (se gestionan/borran desde la lista en Animaciones)."""
+def _set_brand_cache(db, user_id: str, brand_key: str, dna: dict, brand: str, content_hash: str = ""):
+    """Guarda el análisis (ADN + hechos + huella de contenido) de una URL. Best-effort. Multi-página: cada
+    URL queda cacheada por separado (clave con path; se gestionan/borran desde la lista en Animaciones)."""
     if not (db and user_id):
         return
     try:
         col = db.collection("users").document(user_id).collection("brand_cache")
         col.document(brand_key).set({
             "brand_key": brand_key, "dna": dna or {}, "brand": brand or "", "ts": time.time(),
+            "content_hash": content_hash or "",
         })
-        print(f"[cache] análisis guardado para {brand_key} (próximos videos de esta URL no re-analizan)")
+        print(f"[cache] análisis guardado para {brand_key} (se reusa salvo que la página cambie o pasen 14 días)")
     except Exception as e:
         print(f"[cache] guardar análisis falló: {e}")
 
@@ -488,9 +520,11 @@ async def _render_video_job(job_id: str, req: VideoGenRequest):
         else:
             _recent = _get_recent_profile(_db, req.userId, _bkey)
             _bias = _get_rating_bias(_db, req.userId)
-            # Cache de análisis por URL (ADN visual + hechos de marca): repetir la misma página NO
-            # re-analiza -> más barato. El VIDEO igual sale distinto (director + rotación de arte frescos).
-            _cache = None if req.refreshBrand else _get_brand_cache(_db, req.userId, _bkey)
+            # Cache de análisis POR URL (clave con path) + huella de contenido: repetir la MISMA página sin
+            # cambios NO re-analiza -> más barato; si la página cambió, se re-analiza sola. El VIDEO igual sale distinto.
+            _ckey = _brand_cache_key(req.url)
+            _chash = _content_fingerprint(_site)
+            _cache = None if req.refreshBrand else _get_brand_cache(_db, req.userId, _ckey, _chash)
             if _cache:
                 _dna = _cache.get("dna") or {}
                 _cached_brand = _cache.get("brand") or ""
@@ -516,7 +550,7 @@ async def _render_video_job(job_id: str, req: VideoGenRequest):
             if not _cache:
                 _facts = _brand_sink[0] if _brand_sink else ""
                 if _dna and (_dna.get("summary") or _dna.get("mood")) and _facts:
-                    _set_brand_cache(_db, req.userId, _bkey, _dna, _facts)
+                    _set_brand_cache(_db, req.userId, _ckey, _dna, _facts, _chash)
             _push_recent_profile(_db, req.userId, _bkey, spec)
         if req.theme in template_director.VALID_THEMES:
             spec["theme"] = req.theme
@@ -782,7 +816,9 @@ async def _render_timeline_job(job_id: str, req: TimelineGenRequest):
                 print(f"[timeline] capture_all fallo (sigo con scrape liviano): {ce}")
             _recent = _get_recent_profile(_db, req.userId, _bkey)
             _bias = _get_rating_bias(_db, req.userId)
-            _cache = None if req.refreshBrand else _get_brand_cache(_db, req.userId, _bkey)
+            _ckey = _brand_cache_key(req.url)
+            _chash = _content_fingerprint(_site)
+            _cache = None if req.refreshBrand else _get_brand_cache(_db, req.userId, _ckey, _chash)
             if _cache:
                 _dna = _cache.get("dna") or {}
                 _cached_brand = _cache.get("brand") or ""
@@ -812,7 +848,7 @@ async def _render_timeline_job(job_id: str, req: TimelineGenRequest):
             if not _cache:
                 _facts = _brand_sink[0] if _brand_sink else ""
                 if _dna and (_dna.get("summary") or _dna.get("mood")) and _facts:
-                    _set_brand_cache(_db, req.userId, _bkey, _dna, _facts)
+                    _set_brand_cache(_db, req.userId, _ckey, _dna, _facts, _chash)
             try:
                 _push_recent_profile(_db, req.userId, _bkey, timeline)
             except Exception as _pe:
@@ -942,7 +978,9 @@ async def _run_batch_job(batch_id: str, req: TimelineBatchRequest, n: int):
         except Exception as ce:
             print(f"[batch] capture_all fallo: {ce}")
         bias = _get_rating_bias(db, req.userId)
-        cache = None if req.refreshBrand else _get_brand_cache(db, req.userId, bkey)
+        ckey = _brand_cache_key(req.url)
+        chash = _content_fingerprint(site)
+        cache = None if req.refreshBrand else _get_brand_cache(db, req.userId, ckey, chash)
         reuse_dna = (cache.get("dna") or {}) if cache else None
         reuse_brand = (cache.get("brand") or "") if cache else None
 
@@ -976,7 +1014,7 @@ async def _run_batch_job(batch_id: str, req: TimelineBatchRequest, n: int):
                 if reuse_dna is None:
                     reuse_dna, reuse_brand = dna_for, facts
                     if dna_for and (dna_for.get("summary") or dna_for.get("mood")) and facts:
-                        _set_brand_cache(db, req.userId, bkey, dna_for, facts)
+                        _set_brand_cache(db, req.userId, ckey, dna_for, facts, chash)
                 try:
                     _push_recent_profile(db, req.userId, bkey, timeline)   # variedad dentro de la tanda
                 except Exception:
