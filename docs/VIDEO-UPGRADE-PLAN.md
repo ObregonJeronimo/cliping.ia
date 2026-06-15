@@ -86,3 +86,31 @@ PENDIENTE (siguiente batch, mejor DESPUES de que el usuario verifique la fluidez
 - PREDECIBILIDAD P1 (gramatica generativa en el director: conteo de beats 3-7 variable, sin repetir, no esqueletos
   fijos), P2 (mas drawers: reveal/split/quote-card/ticker/numberStack/fullPhoto -> mas combinaciones), P4 (ritmo por
   compases). "TODAS las escenas mas fuertes": layouts mas ricos por tipo (no solo hero).
+
+---
+## Batch CRAWL + AUDITORIA DEL ULTIMO VIDEO REAL (jun 15)
+Se analizo el MP4 REAL del usuario (backend/outputs/*_timeline.mp4) frame a frame con ffmpeg (no un mock).
+
+CAUSA RAIZ de "los titulos no fluyen sobre el fondo" = **CRAWL SUB-PIXEL del texto**. El contenido recibia el paneo
++ breath de camara cada frame -> el texto se re-muestreaba a offsets sub-pixel -> bordes titilaban contra un fondo
+suave. Medido (frame-diff 1080x1920 @30fps en un hold): la banda de texto cambiaba 2.15x la del fondo.
+- **FIX (commit 101f9a1)**: el contenido NO recibe el paneo (vive en el fondo, 32% parallax) y el breath paso al
+  fondo (drawBg) -> pasado el settle el transform del contenido es identidad -> texto clavado, mismo glifo cada frame.
+  Medido 2.15x -> 1.07x, sin saltos. ENTRADAS (reveal/kinetic) intactas. Herramienta nueva: `tools/fluidity-probe.mjs`
+  (MAD por banda en escala real = gate objetivo). DESCARTADO el snap a grilla de pixeles: agrega saltos de 1px porque
+  sceneSpec re-traslada por elemento (el snap del transform externo no alcanza). El fix correcto es transform constante.
+
+3 BUGS del video (commit 09e42f2, auditados con workflow multi-agente + verificacion adversarial; todos foreground
+-> bg-check 16/16 intacto):
+- **morph tapaba una palabra del headline** -> z-order ESTABLE en timeline_director._norm_scene_elements (sorted por
+  capa: photo/morph/shape < orbit < icon < text) -> el texto SIEMPRE encima sin importar lo que emita el LLM.
+- **label de numberStack cortado** ("...tarjet") -> cap [:22]->[:40] (timeline_director) + fitFont en el label (engine).
+- **subtitulo 'dim' de bajo contraste** -> halo opuesto al tono (setShadow blur 8) en sceneSpec + label de numberStack.
+
+OJO METODOLOGICO: el verificador adversarial REFUTO bugs REALES por (a) asumir el drawer equivocado (creyo 'statement'
+cuando la escena titulo es 'scene' con morph+texto) y (b) grep de strings literales (el copy es del LLM, no hardcodeado).
+Leccion: confiar en la EVIDENCIA DIRECTA de los frames del MP4, no solo en lectura de codigo.
+
+PENDIENTE design (NECESITA OK del usuario, cambia un look que ya gusta): statement con tercio superior vacio (subir
+bloque / eyebrow); checklist titulo centrado vs items a la izq (unificar eje); jerarquia de precios (3 planes mismo
+peso, sin foco -> destacar uno; requiere flag del director + schema + render).
