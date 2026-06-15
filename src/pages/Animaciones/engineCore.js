@@ -1166,9 +1166,12 @@ function _rgba(hex, a) {
   // marcador de item del checklist segun listStyle, RE-TENIDO al acento de marca (rompe el "check
   // verde universal" que delataba el molde). Estilos: check / number / bar / dash -> distinto por rubro.
   function _listMarker(style, i, t, d) {
+    // respiracion sutil del marcador circular durante el hold (idle-breath en la grilla de CLK, fase por fila
+    // -> no laten al unisono): mata el "frame muerto" de la lista despues de que todas las filas aparecieron.
+    const _bz = 1 + Math.sin(_holdT * CLK * 18 + i * 1.4) * 0.03;
     if (style === 'number') {
       setShadow(_rgba(A1, 0.4), 12, 3);
-      ctx.fillStyle = A1; ctx.beginPath(); ctx.arc(0, 0, 15, 0, TAU); ctx.fill(); noShadow();
+      ctx.fillStyle = A1; ctx.beginPath(); ctx.arc(0, 0, 15 * _bz, 0, TAU); ctx.fill(); noShadow();
       ctx.fillStyle = '#15100a'; ctx.font = fontStr(800, 17, 'a');
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(i + 1), 0, 1);
     } else if (style === 'bar') {
@@ -1177,7 +1180,7 @@ function _rgba(hex, a) {
       ctx.fillStyle = A1; ctx.beginPath(); ctx.roundRect(-14, -2.5, 28, 5, 2.5); ctx.fill();
     } else {
       setShadow(_rgba(A1, 0.45), 14, 4);
-      ctx.fillStyle = A1; ctx.beginPath(); ctx.arc(0, 0, 15, 0, TAU); ctx.fill(); noShadow();
+      ctx.fillStyle = A1; ctx.beginPath(); ctx.arc(0, 0, 15 * _bz, 0, TAU); ctx.fill(); noShadow();
       const ck = inv(t, d + 0.25, d + 0.6);
       ctx.strokeStyle = '#10100a'; ctx.lineWidth = 3.2; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
       ctx.beginPath(); const pts = [[-6, 0], [-2, 5], [7, -6]]; ctx.moveTo(pts[0][0], pts[0][1]);
