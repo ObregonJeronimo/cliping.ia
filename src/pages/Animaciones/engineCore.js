@@ -143,6 +143,25 @@ function _rgba(hex, a) {
   // determinista: nunca a mitad de carga). Si no hay logo (o es de baja calidad), queda el monograma/wordmark.
   let LOGO = null;
   function setLogo(img) { LOGO = (img && (img.width || img.naturalWidth)) ? img : null; }
+  // FOTOS REALES del sitio (mismo contrato que el logo: el renderer las PRECARGA y llama setPhotos antes de
+  // drawFrame -> determinista). Son la apuesta para que el video NO parezca plantilla: muestra el producto/
+  // propiedad/local real, distinto por marca. Sin fotos -> las escenas caen a su render vectorial.
+  let PHOTOS = [];
+  function setPhotos(arr) { PHOTOS = Array.isArray(arr) ? arr.filter(im => im && (im.width || im.naturalWidth)) : []; }
+  // cover-fit + Ken Burns determinista (zoom 1->1.1 + pan sembrado por SEED) -> dibuja la foto i llenando (x,y,w,h).
+  function _drawPhoto(img, x, y, w, h, t, salt) {
+    if (!img) return false;
+    const iw = img.width || img.naturalWidth, ih = img.height || img.naturalHeight; if (!iw || !ih) return false;
+    const r = mulberry32(((SEED || 1) ^ (salt | 0) ^ 0x9F0) >>> 0);
+    const dir = r() < 0.5 ? -1 : 1, ax = 0.5 + (r() - 0.5) * 0.3, ay = 0.42 + (r() - 0.5) * 0.2;   // ancla sembrada (sujeto seguro)
+    const zoom = 1.0 + 0.1 * clamp(t / 6, 0, 1);                                                    // Ken Burns lento
+    const cover = Math.max(w / iw, h / ih) * zoom, dw = iw * cover, dh = ih * cover;
+    const panX = dir * (dw - w) * 0.12 * Math.sin(t * 0.15);
+    const dx = x + (w - dw) * ax + panX, dy = y + (h - dh) * ay;
+    ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+    ctx.drawImage(img, dx, dy, dw, dh); ctx.restore();
+    return true;
+  }
   // MOTIVO CONTEXTUAL del fondo segun el rubro (skyline, sparkline, vapor, pulso, botanico, circuito...).
   // Hace que el fondo HABLE del dominio del link, no un gradiente generico. Se dibuja tenue, detras del contenido.
   let MOTIF = '';
@@ -1722,7 +1741,18 @@ function _rgba(hex, a) {
       const kind = el.kind || 'shape';
       ctx.save();
       ctx.globalAlpha *= op;
-      if (kind === 'text') {
+      if (kind === 'photo') {
+        // FOTO REAL del sitio (a sangre por defecto, o panel si trae w/h) + Ken Burns + scrim para legibilidad.
+        // Sin foto en ese indice -> no dibuja nada (la escena cae a su contenido vectorial).
+        const ow = el.w || W, oh = el.h || H, ox = el.w ? (x - ow / 2) : 0, oy = el.h ? (y - oh / 2) : 0;
+        const drew = _drawPhoto(PHOTOS[(el.photoIdx || 0) % Math.max(1, PHOTOS.length)], ox, oy, ow, oh, t, (el.photoIdx || 0) * 7 + 1);
+        if (drew && el.scrim !== false) {
+          const g = ctx.createLinearGradient(0, oy, 0, oy + oh);
+          g.addColorStop(0, 'rgba(8,10,16,0.30)'); g.addColorStop(0.42, 'rgba(8,10,16,0)'); g.addColorStop(1, 'rgba(8,10,16,0.92)');
+          ctx.fillStyle = g; ctx.fillRect(ox, oy, ow, oh);
+          if (el.accentEdge !== false) { ctx.fillStyle = _rgba(A1, 0.9); ctx.fillRect(ox, oy + oh - 4, ow, 4); }   // filo de acento abajo
+        }
+      } else if (kind === 'text') {
         const str = (el.text || '').toString();
         const size = _num(keys, t, 'size', el.size || 40), weight = el.weight || 800, maxW = el.maxW || W * 0.86;
         const fit = fitFont(str, size, maxW, 14, weight);
@@ -1986,4 +2016,4 @@ function _rgba(hex, a) {
     return cur.label || SCENE_LABELS[cur.type] || ('Escena · ' + cur.type);
   }
 
-export { drawFrame, beatAt, timelineDuration, setAccent, setTheme, setSeed, setLogo, drawBackground, DEMO_TIMELINE, THEME_NAMES };
+export { drawFrame, beatAt, timelineDuration, setAccent, setTheme, setSeed, setLogo, setPhotos, drawBackground, DEMO_TIMELINE, THEME_NAMES };
