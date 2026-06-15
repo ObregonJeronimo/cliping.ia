@@ -42,6 +42,9 @@ const STYLES = [
   { id: 'corporate', label: 'Corporate', vibe: 'profesional B2B, claro' },
   { id: 'broadcast', label: 'Breaking News', vibe: 'urgente, oferta' },
   { id: 'organic', label: 'Organic', vibe: 'natural, calmo, wellness' },
+  { id: 'cyber', label: 'Cyber', vibe: 'tech futurista, glitch' },
+  { id: 'surveillanceHUD', label: 'HUD / Data', vibe: 'dashboard, datos' },
+  { id: 'y2k', label: 'Y2K Chrome', vibe: 'retro 2000s, brillante' },
 ]
 
 function sceneSummary(s) {

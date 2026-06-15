@@ -457,6 +457,40 @@ function _rgba(hex, a) {
     ctx.beginPath(); ctx.arc(W - 42, H * 0.062, 5 + pulse * 1.5, 0, TAU); ctx.fill(); noShadow();
     ctx.restore();
   }
+  // 'cyber': grilla en perspectiva que fluye al horizonte + glow neon + scanlines. Tech/glitch.
+  function _bgCyber(t, pal) {
+    const horizon = H * 0.4, vp = W * 0.5, neon = _lighten(pal[0], 0.25);
+    ctx.save();
+    ctx.strokeStyle = _rgba(neon, 0.2); ctx.lineWidth = 1;
+    for (let i = 0; i < 18; i++) {                                   // lineas de piso que se acercan (flujo)
+      const f = (i + (t * 0.5) % 1) / 18, y = horizon + Math.pow(f, 2.3) * (H - horizon);
+      ctx.globalAlpha = 0.05 + 0.2 * f; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    }
+    ctx.globalAlpha = 0.16;
+    for (let gx = -6; gx <= 6; gx++) { ctx.beginPath(); ctx.moveTo(vp + gx * 13, horizon); ctx.lineTo(vp + gx * 96, H); ctx.stroke(); }   // radiales desde el VP
+    ctx.restore();
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';            // glow neon en el horizonte
+    const g = ctx.createLinearGradient(0, horizon - 90, 0, horizon + 50);
+    g.addColorStop(0, _rgba(pal[0], 0)); g.addColorStop(0.5, _rgba(neon, 0.24)); g.addColorStop(1, _rgba(pal[0], 0));
+    ctx.fillStyle = g; ctx.fillRect(0, horizon - 90, W, 140); ctx.restore();
+    ctx.save(); ctx.fillStyle = 'rgba(0,0,0,0.1)'; for (let y = 0; y < H; y += 4) ctx.fillRect(0, y, W, 1.4); ctx.restore();   // scanlines
+  }
+  // 'hud': dashboard de vigilancia -> grilla utilitaria + corner-brackets + scanline sweep + crosshair que ronda.
+  function _bgHud(t, pal) {
+    const neon = _lighten(pal[0], 0.28);
+    ctx.save();
+    ctx.strokeStyle = _rgba(pal[0], 0.1); ctx.lineWidth = 1; const step = 44; ctx.beginPath();
+    for (let x = 0; x <= W; x += step) { ctx.moveTo(x, 0); ctx.lineTo(x, H); } for (let y = 0; y <= H; y += step) { ctx.moveTo(0, y); ctx.lineTo(W, y); } ctx.stroke();
+    const m = 26, L = 34; ctx.strokeStyle = _rgba(neon, 0.6); ctx.lineWidth = 2.4;
+    const corner = (cx, cy, sx, sy) => { ctx.beginPath(); ctx.moveTo(cx + sx * L, cy); ctx.lineTo(cx, cy); ctx.lineTo(cx, cy + sy * L); ctx.stroke(); };
+    corner(m, m, 1, 1); corner(W - m, m, -1, 1); corner(m, H - m, 1, -1); corner(W - m, H - m, -1, -1);
+    const sy = ((t * 0.16) % 1) * H; ctx.fillStyle = _rgba(neon, 0.1); ctx.fillRect(0, sy, W, 38);   // sweep
+    const chx = W * (0.5 + Math.sin(t * 0.3) * 0.18), chy = H * (0.32 + Math.cos(t * 0.23) * 0.1);   // crosshair que ronda
+    ctx.strokeStyle = _rgba('#ff5a4d', 0.45); ctx.lineWidth = 1.3;
+    ctx.beginPath(); ctx.moveTo(chx - 13, chy); ctx.lineTo(chx + 13, chy); ctx.moveTo(chx, chy - 13); ctx.lineTo(chx, chy + 13); ctx.stroke();
+    ctx.beginPath(); ctx.arc(chx, chy, 9, 0, TAU); ctx.stroke();
+    ctx.restore();
+  }
   // CAPA CONTEXTUAL: motivo vectorial TENUE que evoca el rubro del link (no un gradiente generico). Detras
   // del contenido, baja opacidad, determinista por SEED + t. Esto hace que el fondo "hable" del dominio.
   function _drawMotif(rubro, t, pal) {
@@ -679,12 +713,30 @@ function _rgba(hex, a) {
         ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
       }
       ctx.restore();
+    } else if (BG_STYLE === 'y2k') {
+      // Y2K CHROME: degradado brillante aqua->lila (pisa la crema) + blobs cromados que orbitan + sparkles.
+      ctx.save(); const yg = ctx.createLinearGradient(0, 0, W, H);
+      yg.addColorStop(0, '#56e1ff'); yg.addColorStop(0.55, '#9b8cff'); yg.addColorStop(1, '#dca0ff');
+      ctx.fillStyle = yg; ctx.fillRect(0, 0, W, H);
+      const rnd = mulberry32((SEED || 1) ^ 0x42C);
+      for (let i = 0; i < 4; i++) {                                  // blobs cromados (radial + highlight especular)
+        const bx = W * (0.2 + 0.6 * rnd()) + Math.sin(t * 0.3 + i * 1.7) * 40, by = H * (0.2 + 0.6 * rnd()) + Math.cos(t * 0.26 + i) * 34, br = 50 + rnd() * 50;
+        const cg = ctx.createRadialGradient(bx - br * 0.3, by - br * 0.4, br * 0.1, bx, by, br);
+        cg.addColorStop(0, 'rgba(255,255,255,0.85)'); cg.addColorStop(0.4, 'rgba(190,200,220,0.5)'); cg.addColorStop(0.7, 'rgba(120,130,160,0.35)'); cg.addColorStop(1, 'rgba(120,130,160,0)');
+        ctx.fillStyle = cg; ctx.beginPath(); ctx.arc(bx, by, br, 0, TAU); ctx.fill();
+      }
+      for (let i = 0; i < 7; i++) {                                  // sparkles 4-puntas pulsando
+        const sx = rnd() * W, sy = rnd() * H, sp = 0.5 + 0.5 * Math.sin(t * 3 + i * 1.3), s = (6 + rnd() * 8) * (0.5 + sp);
+        ctx.save(); ctx.globalAlpha = 0.5 + 0.4 * sp; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.translate(sx, sy);
+        ctx.beginPath(); ctx.moveTo(-s, 0); ctx.lineTo(s, 0); ctx.moveTo(0, -s); ctx.lineTo(0, s); ctx.stroke(); ctx.restore();
+      }
+      ctx.restore();
     }
     ctx.save();
     for (const gp of grain) { ctx.globalAlpha = Math.min(0.05, (gp.a || 0.06) * 0.6); ctx.fillStyle = '#1c130c'; ctx.fillRect(gp.x, gp.y, gp.r || 1.3, gp.r || 1.3); }
     ctx.restore();
     if (MOTIF) _drawMotif(MOTIF, t, pal);   // motivo contextual tambien en tono claro
-    if (BG_STYLE !== 'speedlines' && BG_STYLE !== 'brutalist' && BG_STYLE !== 'broadcast') _drawFloaters(t);   // objetos flotantes que rellenan los vacios
+    if (BG_STYLE !== 'speedlines' && BG_STYLE !== 'brutalist' && BG_STYLE !== 'broadcast' && BG_STYLE !== 'cyber' && BG_STYLE !== 'hud') _drawFloaters(t);   // objetos flotantes que rellenan los vacios
     const v = ctx.createRadialGradient(W / 2, H * 0.46, H * 0.32, W / 2, H * 0.5, H * 0.82);
     v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(60,45,35,0.10)');
     ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
@@ -711,10 +763,12 @@ function _rgba(hex, a) {
     else if (BG_STYLE === 'paper') _bgField(t, pal);   // handmade en oscuro (raro): cae a field suave
     else if (BG_STYLE === 'typo') _bgField(t, pal);    // typographic: base sobria + wordmark fantasma (en drawFrame)
     else if (BG_STYLE === 'broadcast') _bgBroadcast(t, pal);
+    else if (BG_STYLE === 'cyber') _bgCyber(t, pal);
+    else if (BG_STYLE === 'hud') _bgHud(t, pal);
     else if (BG_STYLE === 'editorial' || BG_STYLE === 'corporate' || BG_STYLE === 'organic') _bgField(t, pal);  // estos son tono claro; en oscuro (raro) caen a field
     else _bgMesh(t, pal);
     if (MOTIF) _drawMotif(MOTIF, t, pal);   // capa CONTEXTUAL: motivo del rubro (skyline, sparkline, etc.)
-    if (BG_STYLE !== 'speedlines' && BG_STYLE !== 'brutalist' && BG_STYLE !== 'broadcast') _drawFloaters(t);   // objetos flotantes que rellenan los vacios
+    if (BG_STYLE !== 'speedlines' && BG_STYLE !== 'brutalist' && BG_STYLE !== 'broadcast' && BG_STYLE !== 'cyber' && BG_STYLE !== 'hud') _drawFloaters(t);   // objetos flotantes que rellenan los vacios
     // 3) motes (polvo) con tinte del tema, deriva vertical sembrada
     ctx.save();
     for (const m of motes) {

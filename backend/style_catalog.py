@@ -69,10 +69,20 @@ STYLE_PRESETS = {
     "organic":     {"nombre": "Organic Natural", "bg": "organic", "light_p": 0.9, "shadow": "soft", "tex": "grain",
                     "comps": ["typeStack", "cornerAnchor", "typeOnly"], "stmt": ["centered", "quote"], "list": "check", "grid_p": 0.0,
                     "outro": ["center", "left", "diagonal"], "rhythm": _RH_SLOW, "structs": _ST_PREMIUM},
+    # --- ESTILOS NUEVOS (tanda 2): nicho/tech para completar la variedad ---
+    "cyber":       {"nombre": "Cyber Glitch", "bg": "cyber", "light_p": 0.0, "shadow": "hard", "tex": "none",
+                    "comps": ["typeSlam", "typeOnly", "diagonal"], "stmt": ["editorial", "centered"], "list": "bar", "grid_p": 0.0,
+                    "outro": ["ctaOnly", "bigtype"], "rhythm": _RH_FAST, "structs": _ST_PUNCHY},
+    "surveillanceHUD": {"nombre": "Surveillance HUD", "bg": "hud", "light_p": 0.0, "shadow": "hard", "tex": "none",
+                    "comps": ["typeTop", "typeStack", "cornerAnchor"], "stmt": ["left", "editorial"], "list": "number", "grid_p": 0.0,
+                    "outro": ["left", "ctaOnly"], "rhythm": _RH_MED, "structs": _ST_FULL},
+    "y2k":         {"nombre": "Y2K Chrome", "bg": "y2k", "light_p": 1.0, "shadow": "soft", "tex": "none",
+                    "comps": ["typeSlam", "typeStack", "typeOnly"], "stmt": ["centered", "panel"], "list": "check", "grid_p": 0.0,
+                    "outro": ["center", "bigtype"], "rhythm": _RH_FAST, "structs": _ST_PUNCHY},
 }
 # orden seguro -> audaz (para la UI del selector) + sesgo de estilo recomendado por rubro (auto cuando el
 # usuario no elige). El usuario SIEMPRE puede pisar esto con su eleccion.
-STYLE_ORDER = ["blueprint", "swiss", "platinum", "obsidian", "meshflow", "aurora", "handmade", "typographic", "riso", "retro70s", "brutalist", "sport", "editorial", "corporate", "broadcast", "organic"]
+STYLE_ORDER = ["blueprint", "swiss", "platinum", "obsidian", "meshflow", "aurora", "handmade", "typographic", "riso", "retro70s", "brutalist", "sport", "editorial", "corporate", "broadcast", "organic", "cyber", "surveillanceHUD", "y2k"]
 # SISTEMA DE FUENTES por estilo (rompe el "Inter para todo"). display=titular/hero; text=cuerpo/listas
 # (caption-safe); accent=numeros/indices (mono). Familias = Google Fonts (cargadas en el motor por estilo).
 # Basado en la investigacion de tipografia para video marketing 2026. El motor lee fontDisplay/Text/Accent.
@@ -93,18 +103,21 @@ STYLE_FONTS = {
     "corporate":   {"display": "Plus Jakarta Sans", "text": "Inter", "accent": "JetBrains Mono"},
     "broadcast":   {"display": "Anton", "text": "Archivo", "accent": "JetBrains Mono"},
     "organic":     {"display": "Quicksand", "text": "Hanken Grotesk", "accent": "Caveat"},
+    "cyber":           {"display": "Chakra Petch", "text": "JetBrains Mono", "accent": "Space Mono"},
+    "surveillanceHUD": {"display": "Archivo", "text": "JetBrains Mono", "accent": "Space Mono"},
+    "y2k":             {"display": "Bagel Fat One", "text": "Space Grotesk", "accent": "JetBrains Mono"},
 }
 _DEFAULT_FONTS = {"display": "Space Grotesk", "text": "Inter", "accent": "JetBrains Mono"}
 RUBRO_STYLE_BIAS = {
-    "inmobiliaria": ["editorial", "blueprint", "swiss", "obsidian", "meshflow", "corporate"],
-    "finanzas":     ["corporate", "swiss", "blueprint", "obsidian", "broadcast"],
-    "tech":         ["corporate", "meshflow", "typographic", "brutalist"],
+    "inmobiliaria": ["editorial", "blueprint", "swiss", "obsidian", "meshflow", "corporate", "surveillanceHUD"],
+    "finanzas":     ["corporate", "swiss", "blueprint", "obsidian", "broadcast", "surveillanceHUD"],
+    "tech":         ["corporate", "cyber", "meshflow", "typographic", "surveillanceHUD", "brutalist"],
     "salud":        ["organic", "aurora", "swiss", "meshflow", "handmade"],
-    "belleza":      ["aurora", "editorial", "obsidian", "handmade", "riso"],
-    "gastronomia":  ["handmade", "retro70s", "riso", "organic", "editorial"],
-    "fitness":      ["sport", "brutalist", "broadcast", "typographic"],
+    "belleza":      ["aurora", "editorial", "y2k", "obsidian", "handmade", "riso"],
+    "gastronomia":  ["handmade", "retro70s", "riso", "organic", "editorial", "y2k"],
+    "fitness":      ["sport", "brutalist", "broadcast", "cyber", "typographic"],
     "educacion":    ["swiss", "corporate", "retro70s", "typographic"],
-    "moda":         ["editorial", "obsidian", "typographic", "riso"],
+    "moda":         ["editorial", "obsidian", "typographic", "riso", "y2k"],
     "default":      ["corporate", "meshflow", "swiss", "editorial", "typographic"],
 }
 
