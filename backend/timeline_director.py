@@ -157,7 +157,8 @@ TL_SCENE_CATALOG = """ESCENAS DISPONIBLES (motor Canvas) — agrupadas por CATEG
 
 REGLA DE DURACION: el motor anima la escena y CONGELA su frame final para dar tiempo de lectura.
 Por eso durationInFrames = animacion + lectura. Valores recomendados (30fps):
-paintTitle 234 · statement 150 · checklist 186 (3 items) a 198 (4) · bigStat 150 · scene 210 · outro 150."""
+paintTitle 200 · statement 110 · checklist 145 (3 items) a 160 (4) · bigStat 124 · scene 144 · outro 112.
+APUNTA A UN REEL DE 12-16s EN TOTAL (no mas): mejor corto y punchy que largo con holds muertos."""
 
 TL_DIRECTOR_SYSTEM = (
     "Sos director creativo de videos verticales (reels) de marketing/explainer para marcas. "
@@ -202,8 +203,8 @@ TL_CRITIC_SYSTEM = (
     "statement, paintTitle, checklist, bigStat, outro, scene. Si una escena es 'scene' (motion propio con elements/keys), "
     "NO la reestructures ni le toques los keys: respetala tal cual; como mucho afina el copy de sus elements 'text' si es generico. "
     "statement.text 4-9 palabras; checklist.items 3-4 strings cortos; "
-    "paintTitle.subtitles = 2 strings; bigStat.value numero real. durationInFrames: paintTitle 234, statement 150, "
-    "checklist 186-198, bigStat 150, outro 150. ANTES DE RESPONDER relee cada linea de copy del spec: si alguna es generica o no se siente de ESTA marca puntual, reescribila.\n\n"
+    "paintTitle.subtitles = 2 strings; bigStat.value numero real. durationInFrames: paintTitle 200, statement 110, "
+    "checklist 145-160, bigStat 124, scene 144, outro 112 (REEL de 12-16s total, no mas). ANTES DE RESPONDER relee cada linea de copy del spec: si alguna es generica o no se siente de ESTA marca puntual, reescribila.\n\n"
     "SALIDA: SOLO un JSON valido (sin markdown), con esta forma EXACTA:\n"
     '{"verdict":"ok"|"revisado","notas":"<1-2 frases concretas: que cambiaste y por que>","spec":{"brand":"<marca>","accent":"<#rrggbb>","scenes":[ ... ]}}\n'
     "Si ya esta bien, verdict='ok' y devolve el spec TAL CUAL. El campo 'spec' SIEMPRE va completo."

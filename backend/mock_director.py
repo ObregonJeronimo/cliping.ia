@@ -217,12 +217,12 @@ def _hero_scene(brand, rubro, accent_light, rnd, comp, blur, f1, f2):
     els.append({"kind": "text", "text": sub, "fill": "dim", "size": max(20, min(30, round(L["nsz"] * 0.42))), "weight": 600, "align": L["al"], "maxW": min(300, L.get("maxW", 300)), "keys": [
         {"t": ns + 0.9, "opacity": 0, "x": L["bx"], "y": L["by"] + 14},
         {"t": ns + 1.4, "opacity": 1, "x": L["bx"], "y": L["by"], "ease": "outCubic"}]})
-    return {"type": "scene", "durationInFrames": 210, "elements": els, "comp": comp}
+    return {"type": "scene", "durationInFrames": 126, "elements": els, "comp": comp}
 
 
 def _statement(rubro, rnd, stmt_style="centered"):
     return {"type": "statement", "text": rnd.choice(STATEMENTS.get(rubro, STATEMENTS["default"])),
-            "stmtStyle": stmt_style, "durationInFrames": 150}
+            "stmtStyle": stmt_style, "durationInFrames": 98}
 
 
 def _checklist(brand, rubro, rnd, list_style, list_anchor="center", list_layout="rows"):
@@ -230,12 +230,12 @@ def _checklist(brand, rubro, rnd, list_style, list_anchor="center", list_layout=
     rnd.shuffle(pool)
     n = 4 if list_layout == "grid" else rnd.choice([3, 3, 4])
     return {"type": "checklist", "title": f"Por que {brand}", "items": pool[:n], "listStyle": list_style,
-            "listAnchor": list_anchor, "listLayout": list_layout, "durationInFrames": 174 + (n - 3) * 12}
+            "listAnchor": list_anchor, "listLayout": list_layout, "durationInFrames": 132 + (n - 3) * 10}
 
 
 def _outro(brand, rubro, rnd, outro_comp):
     return {"type": "outro", "brand": brand, "cta": rnd.choice(CTAS.get(rubro, CTAS["default"])),
-            "outroComp": outro_comp, "durationInFrames": 150}
+            "outroComp": outro_comp, "durationInFrames": 104}
 
 
 def _bigstat(facts, rnd):
@@ -244,7 +244,7 @@ def _bigstat(facts, rnd):
     for f in facts:
         if isinstance(f, dict) and f.get("value") is not None:
             return {"type": "bigStat", "value": f["value"], "prefix": f.get("prefix", ""), "suffix": f.get("suffix", ""),
-                    "label": f.get("label", ""), "durationInFrames": 150}
+                    "label": f.get("label", ""), "durationInFrames": 118}
     return None
 
 
