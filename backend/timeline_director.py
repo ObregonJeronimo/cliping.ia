@@ -618,6 +618,11 @@ contexto, NO uses bigStat. Si hay un PEDIDO DEL USUARIO, cumplilo SÍ O SÍ por 
     tl.setdefault("texture", _preset.get("bg_texture", "none"))   # identidad del fondo por rubro
     tl.setdefault("motif", _preset.get("rubro", ""))              # fondo CONTEXTUAL por rubro (skyline / sparkline / vapor / pulso / botanico)
     tl.setdefault("bgEnergy", _preset.get("bg_energy", 1.0))      # energia/velocidad del fondo por rubro
+    # LOGO real (si el capture del sitio lo extrajo): el renderer lo precarga y el motor lo dibuja en el cierre;
+    # si no hay, el motor cae al monograma. Se pasa la URL aca (el server debe propagar capture.logo a dna/_preset).
+    _logo = (dna.get("logo") if isinstance(dna, dict) else "") or _preset.get("logo", "")
+    if _logo:
+        tl.setdefault("logo", _logo)
     # ESTILO VISUAL: lo ELIGE el usuario (dna['styleId']) o se recomienda por rubro. Aplica la direccion de
     # arte del catalogo compartido (bgStyle / tono / sombra / textura) -> el video toma el estilo elegido.
     try:

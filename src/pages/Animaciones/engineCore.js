@@ -139,6 +139,10 @@ function _rgba(hex, a) {
     const fb = role === 'a' ? 'ui-monospace,monospace' : 'system-ui,sans-serif';
     return `${weight} ${size}px "${f}",${fb}`;
   }
+  // LOGO real de la marca: el RENDERER lo precarga (imagen) y llama setLogo ANTES de drawFrame (sync ->
+  // determinista: nunca a mitad de carga). Si no hay logo (o es de baja calidad), queda el monograma/wordmark.
+  let LOGO = null;
+  function setLogo(img) { LOGO = (img && (img.width || img.naturalWidth)) ? img : null; }
   // MOTIVO CONTEXTUAL del fondo segun el rubro (skyline, sparkline, vapor, pulso, botanico, circuito...).
   // Hace que el fondo HABLE del dominio del link, no un gradiente generico. Se dibuja tenue, detras del contenido.
   let MOTIF = '';
@@ -1176,6 +1180,16 @@ function _rgba(hex, a) {
   function sceneOutro(t, p = {}) {
     const comp = p.outroComp || (p.ctaStyle === 'chip' ? 'left' : 'center');
     const cx = W / 2, cy = H * 0.42;
+    // LOGO de la marca arriba del cierre (si el renderer lo precargo). Aspect-ratio preservado, fade-in.
+    if (LOGO) {
+      const lp = eOutCubic(inv(t, 0.15, 0.9));
+      if (lp > 0) {
+        const lw0 = LOGO.width || LOGO.naturalWidth, lh0 = LOGO.height || LOGO.naturalHeight, ar = (lw0 && lh0) ? lw0 / lh0 : 1;
+        const lh = 78, lw = Math.min(W * 0.62, lh * ar);
+        ctx.save(); ctx.globalAlpha *= lp; ctx.translate(cx, cy - 104 - (1 - lp) * 10);
+        ctx.drawImage(LOGO, -lw / 2, -lh / 2, lw, lh); ctx.restore();
+      }
+    }
     function wordmark(wx, wy, align, size) {
       const bn = eOutCubic(inv(t, 0.2, 1.0)); if (bn <= 0) return;
       const _bn = p.brand || '', fs = fitFont(_bn, size || 56, W * 0.82, 28, 800, 'd'), top = wy - fs * 0.62, bot = wy + fs * 0.62;
@@ -1918,4 +1932,4 @@ function _rgba(hex, a) {
     return cur.label || SCENE_LABELS[cur.type] || ('Escena · ' + cur.type);
   }
 
-export { drawFrame, beatAt, timelineDuration, setAccent, setTheme, setSeed, drawBackground, DEMO_TIMELINE, THEME_NAMES };
+export { drawFrame, beatAt, timelineDuration, setAccent, setTheme, setSeed, setLogo, drawBackground, DEMO_TIMELINE, THEME_NAMES };

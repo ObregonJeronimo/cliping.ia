@@ -8,12 +8,12 @@
 //
 // OJO de honestidad: Skia ~= Chromium (Remotion), pero NO es identico (fuentes: sin Inter local usa
 // fallback sans). Sirve para juzgar composicion/color/movimiento/variedad. El MP4 final lo rinde Jero.
-import { createCanvas, GlobalFonts } from '@napi-rs/canvas'
+import { createCanvas, GlobalFonts, loadImage } from '@napi-rs/canvas'
 import { writeFileSync, mkdirSync, readFileSync, readdirSync, rmSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
-import { drawFrame, drawBackground, beatAt, timelineDuration, DEMO_TIMELINE, THEME_NAMES } from '../src/pages/Animaciones/engineCore.js'
+import { drawFrame, drawBackground, beatAt, timelineDuration, setLogo, DEMO_TIMELINE, THEME_NAMES } from '../src/pages/Animaciones/engineCore.js'
 import { drawMotionDemo } from '../src/pages/Animaciones/motionDemo.js'
 
 const W = 405, H = 720
@@ -165,6 +165,7 @@ if (mode === 'window') {
   const name = process.argv[4] || 'video'
   const n = parseInt(process.argv[5] || '12', 10)
   const tl = path ? JSON.parse(readFileSync(path, 'utf8')) : DEMO_TIMELINE
+  if (tl.logo) { try { setLogo(await loadImage(tl.logo)); console.log('(logo) cargado', tl.logo) } catch (e) { console.log('(logo) fallo:', e.message) } }
   videoStrip(tl, name, `Video · ${name}`, n)
 } else if (mode === 'gif') {
   gifExport(process.argv[3], process.argv[4] || 'video', parseInt(process.argv[5] || '14', 10))

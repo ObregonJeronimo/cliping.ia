@@ -1,6 +1,6 @@
 import { useCurrentFrame, useVideoConfig, delayRender, continueRender } from 'remotion'
 import { useLayoutEffect, useRef, useState } from 'react'
-import { W as LOGICAL_W, drawFrame } from '../../../src/pages/Animaciones/engineCore'
+import { W as LOGICAL_W, drawFrame, setLogo } from '../../../src/pages/Animaciones/engineCore'
 
 // FUENTES del sistema de estilos (display/text/accent). El MP4 final se renderiza en un Chromium aparte
 // (no usa index.html), asi que hay que cargar las familias aca o el video sale con fallback. MANTENER
@@ -32,6 +32,16 @@ export const TimelineVideo = ({ timeline = null }) => {
     const ready = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve()
     ready.then(() => continueRender(fontHandle)).catch(() => continueRender(fontHandle))
   }, [fontHandle])
+  // LOGO real (si el timeline lo trae): precargar la imagen ANTES de capturar frames -> determinista, no a medias.
+  const [logoHandle] = useState(() => delayRender('cargando logo'))
+  useLayoutEffect(() => {
+    const url = timeline && timeline.logo
+    if (!url || typeof Image === 'undefined') { setLogo(null); continueRender(logoHandle); return }
+    const img = new Image(); img.crossOrigin = 'anonymous'
+    img.onload = () => { setLogo(img); continueRender(logoHandle) }
+    img.onerror = () => { setLogo(null); continueRender(logoHandle) }
+    img.src = url
+  }, [logoHandle, timeline])
 
   useLayoutEffect(() => {
     const c = ref.current
