@@ -231,6 +231,13 @@ function _rgba(hex, a) {
       _hslToHex(th.h, clamp((th.s || 0.3) + 0.28, 0.4, 0.72), 0.5),
     ];
   }
+  // RELOJ LENTO COMPARTIDO (F1): una sola frecuencia base para TODA la deriva lenta (camara + blobs del mesh
+  // + marca de agua). Los osciladores lentos se snapean a ARMONICOS ENTEROS de CLK -> la diferencia entre dos
+  // armonicos es otro armonico, asi el campo de movimiento queda COHERENTE y periodico (no "bate"/se va de fase
+  // a la deriva, que era el micro-wobble que se leia como falta de fluidez). 0.025 rad/s = fundamental largo;
+  // los multiplos 2..16 cubren exactamente el rango lento que ya usaba el motor (la sparkle rapida queda libre).
+  const CLK = 0.025;
+  const _harm = (rnd, lo, hi) => CLK * (lo + Math.floor(rnd() * (hi - lo + 1)));   // frecuencia = armonico entero [lo..hi] de CLK
   function _buildBg() {
     const rnd = mulberry32(SEED || 1);
     // motes: polvo fino que flota (base sembrada; reemplaza el Math.random sin semilla original).
@@ -248,7 +255,7 @@ function _rgba(hex, a) {
         by: H / 2 + Math.sin(ang) * dist * H * 0.54,
         rad: H * (0.28 + 0.26 * rnd()),
         ax: 55 + rnd() * 120, ay: 70 + rnd() * 150,
-        fx: 0.05 + rnd() * 0.15, fy: 0.05 + rnd() * 0.14,
+        fx: _harm(rnd, 2, 8), fy: _harm(rnd, 2, 8),   // deriva en armonicos de CLK (antes continuo -> batia entre blobs y contra la camara)
         px: rnd() * TAU, py: rnd() * TAU,
         pi: Math.floor(rnd() * 5),   // indice de paleta (color resuelto al dibujar -> accent/tema en vivo)
         a: 0.17 + rnd() * 0.11,      // alpha mas contenido -> evita bandas demasiado brillantes (Aura)
@@ -282,7 +289,7 @@ function _rgba(hex, a) {
     const rnd = mulberry32((SEED || 1) ^ 0x515);
     const side = rnd() < 0.5 ? 0.26 : 0.74, top = 0.30 + rnd() * 0.22;
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
-    const gx = W * side + Math.sin(t * 0.06) * 22, gy = H * top + Math.cos(t * 0.05) * 18;
+    const gx = W * side + Math.sin(t * CLK * 3) * 22, gy = H * top + Math.cos(t * CLK * 2) * 18;   // deriva del glow en armonicos de CLK
     let gl = ctx.createRadialGradient(gx, gy, 0, gx, gy, H * 0.88);
     gl.addColorStop(0, _rgba(pal[0], 0.30)); gl.addColorStop(0.5, _rgba(pal[0], 0.10)); gl.addColorStop(1, _rgba(pal[0], 0));
     ctx.fillStyle = gl; ctx.fillRect(0, 0, W, H);
@@ -325,7 +332,7 @@ function _rgba(hex, a) {
     ctx.globalCompositeOperation = 'lighter';
     const n = 3, span = H * 1.5;
     for (let i = 0; i < n; i++) {
-      const cy = ((i + 0.5) / n + Math.sin(t * 0.07 + i) * 0.04) * span - (span - H) / 2;
+      const cy = ((i + 0.5) / n + Math.sin(t * CLK * 3 + i) * 0.04) * span - (span - H) / 2;   // vaiven de banda en armonico de CLK
       const bw = H * (0.15 + 0.06 * (((i * 53) % 7) / 7));
       const col = pal[[0, 3, 1][i % 3]];
       const gl = ctx.createLinearGradient(0, cy - bw, 0, cy + bw);
@@ -344,7 +351,7 @@ function _rgba(hex, a) {
     const hues = [aH.h, aH.h + 145, aH.h - 95, aH.h + 60, aH.h + 205];   // abanico tipo aurora boreal
     const n = 5;
     for (let i = 0; i < n; i++) {
-      const baseX = (i + 0.5) / n * W + Math.sin(t * 0.16 + i * 1.7) * 72;
+      const baseX = (i + 0.5) / n * W + Math.sin(t * CLK * 6 + i * 1.7) * 72;   // ondulacion de cortina en armonico de CLK
       const w = W * (0.20 + 0.06 * (((i * 31) % 5) / 5));
       const col = _hslToHex(hues[i % hues.length], 0.72, 0.56);
       const gl = ctx.createLinearGradient(baseX - w, 0, baseX + w, 0);
@@ -352,7 +359,7 @@ function _rgba(hex, a) {
       ctx.fillStyle = gl; ctx.fillRect(baseX - w, 0, w * 2, H);
     }
     // velo/arco horizontal en el tercio superior (la "cinta" que define la aurora boreal)
-    const ry = H * (0.26 + Math.sin(t * 0.1) * 0.03), rcol = _hslToHex(aH.h + 145, 0.7, 0.6);
+    const ry = H * (0.26 + Math.sin(t * CLK * 4) * 0.03), rcol = _hslToHex(aH.h + 145, 0.7, 0.6);   // velo en armonico de CLK
     const rg = ctx.createLinearGradient(0, ry - H * 0.12, 0, ry + H * 0.12);
     rg.addColorStop(0, _rgba(rcol, 0)); rg.addColorStop(0.5, _rgba(rcol, 0.16)); rg.addColorStop(1, _rgba(rcol, 0));
     ctx.fillStyle = rg; ctx.fillRect(0, ry - H * 0.12, W, H * 0.24);
@@ -601,7 +608,7 @@ function _rgba(hex, a) {
       const x0 = side * W, y0 = rnd() * (H + 60), sp = 4 + rnd() * 10, amp = 10 + rnd() * 20, ph = rnd() * TAU;
       const sz = 7 + rnd() * 15, a = (TONE === 'light' ? 0.07 : 0.09) + rnd() * 0.06;
       const sid = shapes[Math.floor(rnd() * shapes.length)], rs = (0.06 + rnd() * 0.18) * (i % 2 ? 1 : -1);
-      const x = x0 + Math.sin(t * 0.11 + ph) * amp;
+      const x = x0 + Math.sin(t * CLK * 4 + ph) * amp;   // vaiven horizontal del flotante en armonico de CLK
       const y = ((y0 - t * sp) % (H + 60) + (H + 60)) % (H + 60) - 30;   // deriva vertical lenta con wrap
       ctx.save(); ctx.globalAlpha = a; ctx.translate(x, y); ctx.rotate(t * rs + ph);
       _floaterShape(sid, sz, col); ctx.restore();
@@ -630,7 +637,7 @@ function _rgba(hex, a) {
     const spots = [[0.24, 0.28, pal[0], 0.20], [0.80, 0.70, pal[3], 0.14], [0.62, 0.16, pal[1], 0.11]];
     for (let i = 0; i < spots.length; i++) {
       const s = spots[i];
-      const cx = W * s[0] + Math.sin(t * 0.06 + i) * 20, cy = H * s[1] + Math.cos(t * 0.05 + i) * 16;
+      const cx = W * s[0] + Math.sin(t * CLK * 3 + i) * 20, cy = H * s[1] + Math.cos(t * CLK * 2 + i) * 16;   // spots claros en armonicos de CLK
       const gl = ctx.createRadialGradient(cx, cy, 0, cx, cy, H * 0.62);
       gl.addColorStop(0, _rgba(s[2], s[3])); gl.addColorStop(1, _rgba(s[2], 0));
       ctx.fillStyle = gl; ctx.fillRect(0, 0, W, H);
@@ -688,7 +695,7 @@ function _rgba(hex, a) {
       ctx.save(); ctx.globalCompositeOperation = 'multiply';
       const aH = _hexToHsl(A1 || '#3aa0ff'), hues = [aH.h, aH.h + 145, aH.h - 95, aH.h + 60, aH.h + 205], n = 5;
       for (let i = 0; i < n; i++) {
-        const baseX = (i + 0.5) / n * W + Math.sin(t * 0.16 + i * 1.7) * 72, w = W * (0.2 + 0.06 * (((i * 31) % 5) / 5));
+        const baseX = (i + 0.5) / n * W + Math.sin(t * CLK * 6 + i * 1.7) * 72, w = W * (0.2 + 0.06 * (((i * 31) % 5) / 5));   // aurora clara en armonico de CLK
         const col = _hslToHex(hues[i % hues.length], 0.6, 0.5), gl = ctx.createLinearGradient(baseX - w, 0, baseX + w, 0);
         gl.addColorStop(0, _rgba(col, 0)); gl.addColorStop(0.5, _rgba(col, 0.16)); gl.addColorStop(1, _rgba(col, 0));
         ctx.fillStyle = gl; ctx.fillRect(baseX - w, 0, w * 2, H);
@@ -728,7 +735,7 @@ function _rgba(hex, a) {
       for (let i = 0; i < 3; i++) {
         const baseY = H * (0.56 + i * 0.16); ctx.fillStyle = _rgba(ohues[i % ohues.length], 0.15 - i * 0.03);
         ctx.beginPath(); ctx.moveTo(0, H);
-        for (let x = 0; x <= W; x += 18) { const y = baseY + Math.sin(x * 0.012 + t * 0.4 + i * 1.3) * 22; ctx.lineTo(x, y); }
+        for (let x = 0; x <= W; x += 18) { const y = baseY + Math.sin(x * 0.012 + t * CLK * 16 + i * 1.3) * 22; ctx.lineTo(x, y); }   // ondas organicas en armonico de CLK
         ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
       }
       ctx.restore();
@@ -739,7 +746,7 @@ function _rgba(hex, a) {
       ctx.fillStyle = yg; ctx.fillRect(0, 0, W, H);
       const rnd = mulberry32((SEED || 1) ^ 0x42C);
       for (let i = 0; i < 4; i++) {                                  // blobs cromados (radial + highlight especular)
-        const bx = W * (0.2 + 0.6 * rnd()) + Math.sin(t * 0.3 + i * 1.7) * 40, by = H * (0.2 + 0.6 * rnd()) + Math.cos(t * 0.26 + i) * 34, br = 50 + rnd() * 50;
+        const bx = W * (0.2 + 0.6 * rnd()) + Math.sin(t * CLK * 12 + i * 1.7) * 40, by = H * (0.2 + 0.6 * rnd()) + Math.cos(t * CLK * 10 + i) * 34, br = 50 + rnd() * 50;   // blobs cromados en armonicos de CLK
         const cg = ctx.createRadialGradient(bx - br * 0.3, by - br * 0.4, br * 0.1, bx, by, br);
         cg.addColorStop(0, 'rgba(255,255,255,0.85)'); cg.addColorStop(0.4, 'rgba(190,200,220,0.5)'); cg.addColorStop(0.7, 'rgba(120,130,160,0.35)'); cg.addColorStop(1, 'rgba(120,130,160,0)');
         ctx.fillStyle = cg; ctx.beginPath(); ctx.arc(bx, by, br, 0, TAU); ctx.fill();
@@ -1997,7 +2004,7 @@ function _rgba(hex, a) {
     // la camara VARIA por marca (velocidad/amplitud/direccion/fase sembradas) -> el "feel" del movimiento no es
     // identico en todos los videos. Armonicos enteros (1,2) por dentro -> sigue sin beating. Constante por video (re-seed por frame).
     const _cr = mulberry32(((SEED || 1) ^ 0xCA3F1) >>> 0);
-    const _PHI = 0.34 + _cr() * 0.16, _dir = _cr() < 0.5 ? -1 : 1, _ph = _cr() * 6.28;
+    const _PHI = _harm(_cr, 13, 20), _dir = _cr() < 0.5 ? -1 : 1, _ph = _cr() * 6.28;   // camara snapeada a la grilla de CLK -> no bate contra la deriva del fondo (mismos armonicos)
     const _camPanX = Math.sin(t * _PHI + _ph) * (8 + _cr() * 7) * _dir, _camPanY = Math.sin(t * _PHI * 2 + _ph) * (4 + _cr() * 4), _camBreath = 1 + Math.cos(t * _PHI) * 0.006;
     drawBg(t, _camPanX * 0.32, _camPanY * 0.32, 1.045);
     const _scenes = layout(tl);
@@ -2039,7 +2046,7 @@ function _rgba(hex, a) {
         const mx = leftAnch ? W - (isChk ? 56 : 86) : (isChk ? 56 : 86), my = isChk ? 90 : H - 178;
         const fs = isChk ? 84 : 168;
         ctx.save(); ctx.globalAlpha = aa * (isChk ? 0.55 : 1);
-        ctx.translate(mx + Math.sin(t * 0.4 + _wph) * 6, my + Math.cos(t * 0.33 + _wph) * 6); ctx.rotate(Math.sin(t * 0.25 + _wph) * 0.05);   // vaiven minimo (un letra no se inclina mucho)
+        ctx.translate(mx + Math.sin(t * CLK * 16 + _wph) * 6, my + Math.cos(t * CLK * 13 + _wph) * 6); ctx.rotate(Math.sin(t * CLK * 10 + _wph) * 0.05);   // vaiven minimo en armonicos de CLK (la marca de agua co-aparece con texto+camara -> grilla compartida)
         ctx.font = fontStr(800, fs, 'd'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         setShadow(_rgba(_wac, 0.4), 14, 0); ctx.fillStyle = _wac; ctx.fillText(_mono, 0, 0); noShadow();   // MONOGRAMA: inicial de la marca como marca de agua (mas de marca que una figura)
         ctx.restore();
