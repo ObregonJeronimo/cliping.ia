@@ -2009,7 +2009,7 @@ function _rgba(hex, a) {
     const _cr = mulberry32(((SEED || 1) ^ 0xCA3F1) >>> 0);
     const _PHI = _harm(_cr, 13, 20), _dir = _cr() < 0.5 ? -1 : 1, _ph = _cr() * 6.28;   // camara snapeada a la grilla de CLK -> no bate contra la deriva del fondo (mismos armonicos)
     const _camPanX = Math.sin(t * _PHI + _ph) * (8 + _cr() * 7) * _dir, _camPanY = Math.sin(t * _PHI * 2 + _ph) * (4 + _cr() * 4), _camBreath = 1 + Math.cos(t * _PHI) * 0.006;
-    drawBg(t, _camPanX * 0.32, _camPanY * 0.32, 1.045);
+    drawBg(t, _camPanX * 0.32, _camPanY * 0.32, 1.045 * _camBreath);   // el "breath" (respiracion) vive en el FONDO, no en el texto -> el fondo tiene vida y el texto queda clavado
     const _scenes = layout(tl);
     const XF = 0.3; // cross-fade mas corto -> cortes mas agiles/punchy (menos "todo se funde lento")
     // FIRMA TYPOGRAPHIC: el wordmark de la marca GIGANTE y fantasma (sangra fuera de cuadro, 2 lineas que
@@ -2082,11 +2082,16 @@ function _rgba(hex, a) {
       // extremos -> sin tiron en el corte); el resto del movimiento es la camara COMPARTIDA (pan/breath continuos,
       // sin reset ni flip por escena). Antes: Math.min(push,zout) = kink de velocidad + panX (i%2) = flip al cortar.
       const _smoother = (p) => { p = clamp(p, 0, 1); return p * p * p * (p * (p * 6 - 15) + 10); };
-      const z = (1 + 0.04 * (1 - _smoother(inv(local, 0, Math.min(1.1, dur * 0.5))))) * _camBreath;
+      // FLUIDEZ DEL TEXTO (causa raiz MEDIDA: el texto "crawleaba" sub-pixel -> sus bordes titilaban contra un
+      // fondo suave = la falta de fluidez). El push de ENTRADA del 4% asienta a 1.0 (smootherstep, sin tiron) y el
+      // contenido NO recibe el paneo de camara ni breath -> pasado el settle su transform es EXACTAMENTE identidad,
+      // asi cada glifo se rasteriza IDENTICO frame a frame (cero crawl, cero saltos). El movimiento NO se pierde:
+      // vive en el FONDO (drawBg panea + respira + deriva, a 32% parallax) y en las ENTRADAS (reveal/kinetic/
+      // scale-in intactas). Resultado: texto NITIDO y clavado sobre un fondo VIVO (lo que se queria).
+      const z = 1 + 0.04 * (1 - _smoother(inv(local, 0, Math.min(1.1, dur * 0.5))));
       ctx.save();
       ctx.globalAlpha = a;
-      ctx.translate(W / 2, H / 2); ctx.scale(z, z); ctx.translate(-W / 2, -H / 2);
-      ctx.translate(_camPanX, _camPanY);   // paneo COMPARTIDO con el fondo (parallax) -> capas locked, sin desync
+      ctx.translate(W / 2, H / 2); ctx.scale(z, z); ctx.translate(-W / 2, -H / 2);   // sin paneo en el contenido (el paneo vive en el fondo)
       _holdT = local;   // expone el tiempo continuo de la escena (los drawers lo usan para latidos/shimmer durante el hold)
       drawer(tFed, sc);
       ctx.restore();
