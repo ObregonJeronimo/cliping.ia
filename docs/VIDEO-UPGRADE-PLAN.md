@@ -31,9 +31,14 @@
   grid perspectiva+scanlines+glitch RGB), corporate(PlusJakarta/Inter, claro+cards+mini-charts+KPI), organic(Fraunces/HankenGrotesk,
   terroso+formas organicas+grano calido), y2k(BagelFatOne/SpaceGrotesk, aqua->lila+blobs cromados+sparkles). Cubrir rubros: inversion/data,
   premium editorial, urgencia/news, tech/cyber, B2B, wellness/eco, joven/retail.
-- [ ] **Logo**: site_capture.py YA extrae logo URL (apple-touch-icon/og:image/icon) pero NO se usa en el video (el motor
-  dibuja monograma = inicial). PENDIENTE: pasar logo al timeline + dibujarlo en el motor (carga async de imagen, fallback a monograma
-  si falta/baja calidad). En Remotion preload con delayRender; en visor cargar la imagen.
+- [ ] **Logo** (proximo feature grande): site_capture.py YA extrae logo URL (apple-touch-icon/og:image/icon) pero NO se usa
+  en el video (el motor dibuja monograma = inicial). APPROACH (clave: NO romper determinismo): el motor es sync, asi que la
+  imagen del logo DEBE estar precargada ANTES de cualquier drawFrame (si algunos frames la tienen y otros no, el render
+  paralelo de Remotion sale no-determinista). Pasos: (1) engine `setLogo(img|null)` + dibujar el logo (en outro y/o hero) si
+  esta, con fallback al monograma; (2) cada renderer PRE-carga y luego setLogo: visor = `await loadImage(path)` antes del loop;
+  live preview = cargar Image, setLogo, redibujar; Remotion = `delayRender` hasta que la imagen cargue. (3) director pasa
+  `logo` (URL) al timeline desde site_capture. (4) validar calidad: si el logo es chico/feo (favicon 16px), preferir monograma.
+  Necesita un logo real para testear en el visor. Es multi-archivo -> hacerlo en una pasada dedicada.
 
 ## Reglas duras (legibilidad 9:16)
 - captions/bloques SOLO en Geometric/Grotesque/Rounded/Humanist. Display high-contrast (Fraunces/Playfair), condensed extremo,
