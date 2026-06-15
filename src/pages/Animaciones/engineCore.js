@@ -2007,22 +2007,33 @@ function _rgba(hex, a) {
       drawer(tFed, sc);
       ctx.restore();
     });
-    // TRANSICION encadenada: en cada corte BARRE un panel suave de acento (cubre el cross-fade ->
-    // el cambio de escena se siente como un swipe, no como un corte seco). Semitransparente.
-    for (let i = 0; i < _scenes.length - 1; i++) {
-      const wp = inv(t, _scenes[i].e - 0.12, _scenes[i].e + 0.34);
-      if (wp > 0 && wp < 1) {
-        const pw = W * 0.4, cxp = lerp(-pw, W + pw, eInOutCubic(wp)), fade = Math.sin(wp * Math.PI);
+    // BANCO DE TRANSICIONES: antes el corte era SIEMPRE el mismo wipe (un "tell" que hacia todo predecible).
+    // Ahora cada corte elige (sembrado por SEED^i, sesgado por dureza del estilo) entre wipe/flash/blinds/curtain.
+    const _transAt = (kind, wp) => {
+      const fade = Math.sin(wp * Math.PI);
+      if (kind === 'flash') { ctx.save(); ctx.fillStyle = _rgba(_lighten(A1, 0.55), 0.4 * fade); ctx.fillRect(0, 0, W, H); ctx.restore(); }
+      else if (kind === 'blinds') {
+        ctx.save(); const n = 7, bh = H / n, p = eInOutCubic(wp);
+        for (let k = 0; k < n; k++) { const bw = W * clamp(p * 1.45 - k * 0.06, 0, 1); ctx.fillStyle = _rgba(k % 2 ? A2 : A1, 0.42 * fade); ctx.fillRect(k % 2 ? W - bw : 0, k * bh, bw, bh + 1); }
+        ctx.restore();
+      } else if (kind === 'curtain') {
+        ctx.save(); const cw = W * 0.55 * eInOutCubic(wp); ctx.fillStyle = _rgba(A1, 0.42 * fade); ctx.fillRect(0, 0, cw, H); ctx.fillStyle = _rgba(A2, 0.42 * fade); ctx.fillRect(W - cw, 0, cw, H); ctx.restore();
+      } else {   // wipe (default): panel de acento que barre, con canto difuminado
+        const pw = W * 0.4, cxp = lerp(-pw, W + pw, eInOutCubic(wp));
         ctx.save();
         const g = ctx.createLinearGradient(cxp - pw, 0, cxp + pw, 0);
         g.addColorStop(0, _rgba(A1, 0)); g.addColorStop(0.7, _rgba(A1, 0.34 * fade)); g.addColorStop(1, _rgba(A2, 0.44 * fade));
         ctx.fillStyle = g; ctx.fillRect(cxp - pw, 0, pw * 2, H);
-        // canto del wipe DIFUMINADO (~26px) en vez de una linea dura de 5px -> el corte deja de leerse como tear/glitch
         const eg = ctx.createLinearGradient(cxp + pw - 24, 0, cxp + pw + 6, 0);
         eg.addColorStop(0, _rgba(_lighten(A1, 0.5), 0)); eg.addColorStop(0.72, _rgba(_lighten(A1, 0.5), 0.32 * fade)); eg.addColorStop(1, _rgba(_lighten(A1, 0.5), 0));
         ctx.fillStyle = eg; ctx.fillRect(cxp + pw - 24, 0, 30, H);
         ctx.restore();
       }
+    };
+    const _TRANS = SHADOW_MODE === 'hard' ? ['flash', 'wipe', 'blinds', 'flash'] : ['wipe', 'curtain', 'wipe', 'blinds'];
+    for (let i = 0; i < _scenes.length - 1; i++) {
+      const wp = inv(t, _scenes[i].e - 0.12, _scenes[i].e + 0.34);
+      if (wp > 0 && wp < 1) _transAt(_TRANS[(mulberry32((SEED ^ (i * 0x2545F491)) >>> 0)() * _TRANS.length) | 0], wp);
     }
   }
 
