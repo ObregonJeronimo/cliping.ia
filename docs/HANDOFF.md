@@ -105,7 +105,8 @@ monograma) -> pendiente cablearlo. NOTA: algunos videos mock salen largos (~20s)
    (galería realista) en vez del ciclo forzado.
 3. **Producción**: `/api/timeline/generate` acepta `styleId` -> `dna['styleId']` -> timeline_director aplica
    el estilo vía style_catalog + setea `motif`. Selector en TimelineStudio.jsx ("Estilo": 12 + Auto). FALTA
-   verificar el render REAL en la app viva (LLM + URL) — paso del usuario (skill `run-autoleads`). Riesgo no
+   verificar el render REAL en la app viva (LLM + URL) — paso del usuario: `npm run dev` (frontend Vite) +
+   backend FastAPI; ver `docs/COMO-PROBAR.md`. (OJO: cliping.ia NO es Autoleads; nada de `run-autoleads`.) Riesgo no
    verificado offline: tono claro en escenas que compone el LLM.
 4. **Decisión arquitectura** (usuario): producto por Animaciones vs portar estilos a Cinematicas.
 5. **Mejora profunda futura**: composición por estilo también en escenas de CONTENIDO (no solo hero);
