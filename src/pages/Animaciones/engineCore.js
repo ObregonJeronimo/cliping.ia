@@ -159,7 +159,7 @@ function _rgba(hex, a) {
     const panX = dir * (dw - w) * 0.12 * Math.sin(t * 0.15);
     const dx = x + (w - dw) * ax + panX, dy = y + (h - dh) * ay;
     ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
-    ctx.drawImage(img, dx, dy, dw, dh); ctx.restore();
+    ctx.drawImage(img, Math.round(dx), Math.round(dy), Math.ceil(dw), Math.ceil(dh)); ctx.restore();   // redondeo anti sub-pixel shimmer en el Ken Burns lento
     return true;
   }
   // MOTIVO CONTEXTUAL del fondo segun el rubro (skyline, sparkline, vapor, pulso, botanico, circuito...).
@@ -761,7 +761,16 @@ function _rgba(hex, a) {
     ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
     _filmGrain(t);
   }
-  function drawBg(t) {
+  // wrapper de CAMARA COMPARTIDA (parallax): el fondo se mueve con el MISMO vector que el contenido pero a
+  // menos profundidad (camX/camY ~30%) + leve overscan (camZ ~1.045) para que el paneo no muestre bordes.
+  // Asi fondo y texto se leen como UN plano filmado por la misma camara (mata la desincronizacion percibida).
+  function drawBg(t, camX = 0, camY = 0, camZ = 1) {
+    ctx.save();
+    if (camZ !== 1 || camX || camY) { ctx.translate(W / 2, H / 2); ctx.scale(camZ, camZ); ctx.translate(-W / 2 + camX, -H / 2 + camY); }
+    _drawBgInner(t);
+    ctx.restore();
+  }
+  function _drawBgInner(t) {
     if (TONE === 'light') { _bgLightFull(t); return; }
     if (!blobs.length) _buildBg();
     // 1) base: gradiente radial del tema (oscuro, para que las zonas de color resalten)
@@ -1914,7 +1923,11 @@ function _rgba(hex, a) {
     setMotif(tl.motif);
     setFonts(tl);
     ctx.clearRect(0, 0, W, H);
-    drawBg(t);
+    // CAMARA COMPARTIDA (parallax + reloj unico): un solo vector continuo (global t, armonicos ENTEROS de _PHI
+    // -> sin "beating") que mueve fondo y contenido juntos. El fondo a ~32% de profundidad; el contenido al 100%.
+    const _PHI = 0.42;
+    const _camPanX = Math.sin(t * _PHI) * 10, _camPanY = Math.sin(t * _PHI * 2) * 5, _camBreath = 1 + Math.cos(t * _PHI) * 0.006;
+    drawBg(t, _camPanX * 0.32, _camPanY * 0.32, 1.045);
     const _scenes = layout(tl);
     const XF = 0.3; // cross-fade mas corto -> cortes mas agiles/punchy (menos "todo se funde lento")
     // FIRMA TYPOGRAPHIC: el wordmark de la marca GIGANTE y fantasma (sangra fuera de cuadro, 2 lineas que
@@ -1981,16 +1994,15 @@ function _rgba(hex, a) {
       const tFed = Math.min(local, animLen);
       // CAMARA: push-in lento y CONTINUO durante toda la escena (Ken Burns) + paneo suave alterno por
       // escena -> cada beat se siente como un movimiento de camara, no un frame estatico que solo respira.
-      const camSpan = Math.max(1.5, dur);
-      const camPush = lerp(1.055, 1.0, eOutCubic(inv(local, 0, camSpan)));
-      const zout = lerp(1, 0.985, eInCubic(inv(local, dur - 0.5, dur)));
-      const z = Math.min(camPush, zout);
-      const panX = (i % 2 ? -1 : 1) * lerp(11, -5, eOutCubic(inv(local, 0, camSpan)));
+      // CAMARA C1-CONTINUA: entrada con push del 4% que ASIENTA a 1.0 via smootherstep (derivada 0 en ambos
+      // extremos -> sin tiron en el corte); el resto del movimiento es la camara COMPARTIDA (pan/breath continuos,
+      // sin reset ni flip por escena). Antes: Math.min(push,zout) = kink de velocidad + panX (i%2) = flip al cortar.
+      const _smoother = (p) => { p = clamp(p, 0, 1); return p * p * p * (p * (p * 6 - 15) + 10); };
+      const z = (1 + 0.04 * (1 - _smoother(inv(local, 0, Math.min(1.1, dur * 0.5))))) * _camBreath;
       ctx.save();
       ctx.globalAlpha = a;
-      const breath = 1 + Math.sin(t * 1.05 + i * 0.7) * 0.005;   // respiracion continua de escala -> ningun frame queda 100% congelado
-      ctx.translate(W / 2, H / 2); ctx.scale(z * breath, z * breath); ctx.translate(-W / 2, -H / 2);
-      ctx.translate(panX, Math.sin(t * 0.5 + i * 1.3) * 3.4);   // paneo de camara + float continuo
+      ctx.translate(W / 2, H / 2); ctx.scale(z, z); ctx.translate(-W / 2, -H / 2);
+      ctx.translate(_camPanX, _camPanY);   // paneo COMPARTIDO con el fondo (parallax) -> capas locked, sin desync
       _holdT = local;   // expone el tiempo continuo de la escena (los drawers lo usan para latidos/shimmer durante el hold)
       drawer(tFed, sc);
       ctx.restore();
