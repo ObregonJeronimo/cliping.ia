@@ -51,3 +51,28 @@
 - Carga de fuentes en 3 renderers (visor TTF / index.html / TimelineVideo MP4). MP4 sin verificar offline (paso del usuario).
 - ctx.filter (blur) no garantizado en @napi-rs/canvas -> el visor y el MP4 (Remotion, con blur) no son pixel-identicos; el visor es preview.
 - Variable fonts: Skia puede no aplicar ejes via CSS -> usar pesos estaticos discretos (ya se bajan asi).
+
+---
+## Batch FLUIDEZ + ANTI-PREDECIBILIDAD + bug fotos (sesion reciente)
+Quejas del usuario (videos terminados): (a) predecibles/mismo molde, escenas vacias, mejorar TODAS las escenas;
+(b) bug: Google Maps -> screenshot de su zona; (c) FALTA DE FLUIDEZ texto+fondo (micro-cortes/desync). Research
+multi-agente confirmo las causas raiz en el codigo.
+
+HECHO:
+- **Bug fotos**: site_capture._JS_IMAGES con FILTRO de calidad (rechaza mapas/staticmap/tiles/sprites/iconos/ads/
+  tracking + aspect extremo) -> no mas screenshots de Maps/basura.
+- **FLUIDEZ (causas raiz confirmadas + fixes):** (F2) CAMARA COMPARTIDA con parallax -> drawBg(t,camX,camY,camZ)
+  recibe el mismo vector que el contenido a ~32% profundidad + overscan 1.045 (fondo y texto se leen como UN plano);
+  (F3) camara C1-continua: zoom de entrada smootherstep que asienta + pan CONTINUO compartido (se quito el
+  Math.min(push,zout)=kink y el panX (i%2)=flip por escena); (F1 parcial) reloj de camara unico (_PHI con armonicos
+  ENTEROS 1,2 -> sin beating breath/float/pan); (F6) drawImage redondeado (anti sub-pixel en Ken Burns).
+- **Anti-predecibilidad (P3)**: BANCO DE TRANSICIONES (wipe/flash/blinds/curtain) elegido por SEED^i + sesgo por
+  dureza del estilo -> el corte ya no es siempre el mismo wipe.
+
+PENDIENTE (siguiente batch, mejor DESPUES de que el usuario verifique la fluidez EN VIVO -frames no muestran motion-):
+- FLUIDEZ F4 (no congelar en seco en animLen: settle-drift sub-pixel en fase con CLK usando _holdT), F5 (cross-fade
+  sin valle de brillo: aOut=1-aIn sobre fondo opaco), F7 (motion-blur por stamping solo en tramos rapidos; OJO Skia).
+- F1 completo: pasar TODOS los osciladores de bg (_bgMesh sin(t*0.07), _drawFloaters, watermark, etc.) al reloj CLK.
+- PREDECIBILIDAD P1 (gramatica generativa en el director: conteo de beats 3-7 variable, sin repetir, no esqueletos
+  fijos), P2 (mas drawers: reveal/split/quote-card/ticker/numberStack/fullPhoto -> mas combinaciones), P4 (ritmo por
+  compases). "TODAS las escenas mas fuertes": layouts mas ricos por tipo (no solo hero).
