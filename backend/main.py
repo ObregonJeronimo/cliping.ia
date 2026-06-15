@@ -798,6 +798,9 @@ async def _render_timeline_job(job_id: str, req: TimelineGenRequest):
             _brand_sink = []
             if req.styleId:
                 _dna["styleId"] = req.styleId   # el estilo elegido por el usuario -> el director lo aplica
+            _logo_url = (_site or {}).get("logo") or ""
+            if _logo_url:
+                _dna["logo"] = _logo_url   # logo extraido del sitio -> el motor lo dibuja en el cierre (fallback monograma)
             jobs[job_id].update({"step": "script", "progress": 32})
             timeline = await timeline_director.write_timeline(
                 req.url, req.desarrollo, req.proposito, idioma=req.idioma,
@@ -958,6 +961,8 @@ async def _run_batch_job(batch_id: str, req: TimelineBatchRequest, n: int):
                     except Exception as de:
                         print(f"[batch] dna error: {de}")
                         dna_for = {}
+                if isinstance(dna_for, dict) and (site or {}).get("logo"):
+                    dna_for["logo"] = site["logo"]   # logo del sitio -> el motor lo dibuja (fallback monograma)
                 timeline = await timeline_director.write_timeline(
                     req.url, req.desarrollo, req.proposito, idioma=req.idioma,
                     recent_profile=recent, rating_bias=bias, prefetched_site=site.get("content"),
