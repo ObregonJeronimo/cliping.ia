@@ -1367,14 +1367,16 @@ function _rgba(hex, a) {
     const prog = eOutCubic(inv(t, 0.2, 1.7));
     const shown = value * prog;
     const dec = (value % 1 !== 0) ? 1 : 0;
-    const body = shown.toFixed(dec).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-    const num = (p.prefix || '') + body + (p.suffix || '');
+    const fmt = (v) => v.toFixed(dec).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    const full = (p.prefix || '') + fmt(value) + (p.suffix || '');   // string FINAL (el mas ancho) -> tamano estable, no reflota
+    const num = (p.prefix || '') + fmt(shown) + (p.suffix || '');
+    const fs = fitFont(full, 100, W * 0.88, 36, 800, 'd');           // ENTRA en el frame (antes 92px fijo se cortaba)
     const pop = lerp(0.72, 1, eOutCubic(inv(t, 0.1, 0.6)));
     const pulse = 1 + Math.sin(_holdT * 2.1) * 0.012;   // latido sutil del numero durante la lectura -> el dato no queda plano
     ctx.save();
     ctx.globalAlpha = inv(t, 0.05, 0.4);
     ctx.translate(cx, cy); ctx.scale(pop * pulse, pop * pulse); ctx.translate(-cx, -cy);
-    ctx.font = fontStr(800, 92, 'd');
+    ctx.font = fontStr(800, fs, 'd');
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     const ng = ctx.createLinearGradient(cx - 130, cy, cx + 130, cy);   // acento POP -> el numero golpea aunque el rubro sea sobrio
     ng.addColorStop(0, TONE === 'light' ? _accentInk(A1) : _accentPop(A1)); ng.addColorStop(1, TONE === 'light' ? _accentInk(A2) : _accentPop(A2));

@@ -13,9 +13,11 @@ from __future__ import annotations
 _RH_SLOW = {"scene": 1.12, "statement": 1.0, "checklist": 1.02, "bigStat": 0.98, "outro": 1.06}
 _RH_MED = {"scene": 1.0, "statement": 0.95, "checklist": 1.0, "bigStat": 0.96, "outro": 1.0}
 _RH_FAST = {"scene": 0.95, "statement": 0.8, "checklist": 0.86, "bigStat": 0.84, "outro": 0.9}
-_ST_PREMIUM = [["hero", "statement", "outro"], ["statement", "hero", "outro"], ["hero", "statement", "checklist", "outro"]]
-_ST_PUNCHY = [["statement", "hero", "outro"], ["statement", "statement", "outro"], ["hero", "outro"], ["hero", "statement", "outro"]]
-_ST_FULL = [["hero", "statement", "checklist", "outro"], ["hero", "checklist", "outro"], ["statement", "hero", "checklist", "outro"], ["hero", "statement", "outro"]]
+# NOTA: las variantes con "bigStat" (numero que cuenta de 0) solo rinden el count-up si el director da un dato
+# numerico REAL (precio/m2/ROI); si no hay numero, el motor cae a statement (nunca inventa cifras).
+_ST_PREMIUM = [["hero", "statement", "outro"], ["statement", "hero", "outro"], ["hero", "statement", "checklist", "outro"], ["hero", "bigStat", "outro"]]
+_ST_PUNCHY = [["statement", "hero", "outro"], ["statement", "statement", "outro"], ["hero", "outro"], ["hero", "statement", "outro"], ["hero", "bigStat", "outro"]]
+_ST_FULL = [["hero", "statement", "checklist", "outro"], ["hero", "checklist", "outro"], ["statement", "hero", "checklist", "outro"], ["hero", "statement", "outro"], ["hero", "bigStat", "checklist", "outro"]]
 
 STYLE_PRESETS = {
     "blueprint":   {"nombre": "Blueprint", "bg": "blueprint", "light_p": 0.12, "shadow": "soft", "tex": "grid",
