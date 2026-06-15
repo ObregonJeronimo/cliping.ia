@@ -801,6 +801,9 @@ async def _render_timeline_job(job_id: str, req: TimelineGenRequest):
             _logo_url = (_site or {}).get("logo") or ""
             if _logo_url:
                 _dna["logo"] = _logo_url   # logo extraido del sitio -> el motor lo dibuja en el cierre (fallback monograma)
+            _imgs = (_site or {}).get("images") or []
+            if _imgs:
+                _dna["images"] = _imgs[:6]   # fotos reales del sitio -> hero/escenas fotograficas (kind:'photo')
             jobs[job_id].update({"step": "script", "progress": 32})
             timeline = await timeline_director.write_timeline(
                 req.url, req.desarrollo, req.proposito, idioma=req.idioma,
@@ -963,6 +966,8 @@ async def _run_batch_job(batch_id: str, req: TimelineBatchRequest, n: int):
                         dna_for = {}
                 if isinstance(dna_for, dict) and (site or {}).get("logo"):
                     dna_for["logo"] = site["logo"]   # logo del sitio -> el motor lo dibuja (fallback monograma)
+                if isinstance(dna_for, dict) and (site or {}).get("images"):
+                    dna_for["images"] = site["images"][:6]   # fotos reales -> escenas fotograficas
                 timeline = await timeline_director.write_timeline(
                     req.url, req.desarrollo, req.proposito, idioma=req.idioma,
                     recent_profile=recent, rating_bias=bias, prefetched_site=site.get("content"),

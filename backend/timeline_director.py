@@ -143,6 +143,10 @@ TL_SCENE_CATALOG = """ESCENAS DISPONIBLES (motor Canvas) — agrupadas por CATEG
        1-3 iconos relevantes al rubro, bien ubicados (no encimados, no tapando el texto).
     - "shape" -> token (dot, circle, pill, bar, box, card, line, square) + w/h/r; morphea entre tokens; label opcional.
     - "particles" -> count, spread; con un key burst de 0 a 1 = estallido (chispas / celebracion).
+    - "photo" -> FOTO REAL del sitio a sangre (lo que hace que el video NO parezca plantilla: se ve el producto/
+       propiedad/local real). props: photoIdx (0 = la mejor/mas grande). Default pantalla completa (o w/h+x/y para
+       panel/split). El motor le pone Ken Burns + un scrim oscuro abajo. El TEXTO encima va con fill "photoink"
+       (claro) o "photodim" para que se lea sobre la foto. SOLO si hay fotos disponibles (ver abajo).
   colores (tokens): accent (color de marca), accent2, ink (texto claro), dim (texto tenue), dark, o un #rrggbb.
   ease: outCubic, inCubic, inOutCubic, outBack (overshoot), spring, smooth, outQuint.
   EJEMPLO de hero (una semilla crece a hoja y aparece la marca; adaptalo al rubro, NO lo copies tal cual):
@@ -184,7 +188,7 @@ TL_DIRECTOR_SYSTEM = (
     "- PUBLICO (clave): infieri del sitio QUIEN compra/usa esto y escribi TODO hablandole a ESE publico, "
     "con su lenguaje y prioridades. Que el video se sienta hecho para la audiencia de ESTA pagina.\n"
     "- accent: un hex VIVO (saturado) acorde a la marca; si te paso uno sugerido, usalo.\n"
-    "- LIENZO (clave anti-patron): para la APERTURA/HERO, preferi una 'scene' DIRIGIDA que capte el alma de ESTA marca (un morph, iconos de biblioteca svgicon que llenen el cuadro, una forma que se construye) salvo que un statement crudo claramente pegue mas fuerte. Variá el recurso entre marcas: si dos marcas terminan con el mismo hero, fallaste. Las escenas enlatadas (statement/checklist/bigStat/paintTitle) siguen disponibles para los beats de apoyo.\n"
+    "- LIENZO (clave anti-patron): para la APERTURA/HERO usa el RECURSO PROTAGONISTA segun los assets (ver 'FOTOS REALES'): si hay foto del sitio -> hero FOTOGRAFICO (kind:'photo' a sangre); si NO hay foto -> tipografia de autor (palabra-heroe revelada) o, a veces, un morph/forma. El morph NO es el default universal: que NO aparezca la misma figura geometrica en todos los videos. Varia el recurso entre marcas: si dos marcas terminan con el mismo hero, fallaste. Las escenas enlatadas (statement/checklist/bigStat/paintTitle) siguen disponibles para los beats de apoyo.\n"
     "- El timeline cuenta una micro-historia coherente con el proposito y el arco indicado."
 )
 
@@ -214,7 +218,7 @@ _TL_VALID_TYPES = {"paintTitle", "statement", "checklist", "outro", "bigStat", "
 _TL_DEFAULT_DUR = {"paintTitle": 234, "statement": 150, "checklist": 192, "outro": 150, "bigStat": 150, "deliver": 204, "scene": 210}
 
 
-_SCENE_KINDS = {"text", "icon", "shape", "morph", "particles", "svgicon", "orbit"}
+_SCENE_KINDS = {"text", "icon", "shape", "morph", "particles", "svgicon", "orbit", "photo"}
 _SCENE_FORMS = {"circle", "ring", "square", "diamond", "triangle", "pentagon", "hexagon", "star", "plus", "heart", "leaf", "drop", "flower", "shield", "blob"}
 _SCENE_ICONS = {"box", "house", "cart", "check", "star", "leaf", "dot"}
 _SCENE_SHAPE_TOK = {"dot", "circle", "pill", "bar", "box", "card", "line", "square"}
@@ -344,6 +348,21 @@ def _norm_scene_elements(s: dict, dur_frames: int) -> list:
                         nel[f] = float(el[f])
                     except Exception:
                         pass
+        elif kind == "photo":
+            try:
+                nel["photoIdx"] = max(0, int(el.get("photoIdx", 0)))
+            except Exception:
+                nel["photoIdx"] = 0
+            for f in ("w", "h"):
+                if f in el:
+                    try:
+                        nel[f] = float(el[f])
+                    except Exception:
+                        pass
+            if el.get("scrim") is False:
+                nel["scrim"] = False
+            if el.get("accentEdge") is False:
+                nel["accentEdge"] = False
         out.append(nel)
     return out
 
@@ -532,6 +551,17 @@ async def write_timeline(url, desarrollo, proposito="marketing", idioma="",
     accent = (dna or {}).get("accent") or ""
     accent_hint = (f"\nACENTO sugerido (color real de la marca): {accent}"
                    if _bdna._hex_ok(accent) else "\nACENTO: elegí un hex VIVO acorde a la marca (saturado, no gris).")
+    # RECURSO PROTAGONISTA del hero: si hay fotos reales -> hero FOTOGRAFICO (no morph). Si no -> tipografia/morph.
+    # Esto mata el "misma figura geometrica en todos los videos": el morph deja de ser el default universal.
+    _n_imgs = len((dna.get("images") if isinstance(dna, dict) else None) or [])
+    if _n_imgs:
+        photo_hint = (f"\nFOTOS REALES: hay {_n_imgs} foto(s) del sitio (kind:'photo', photoIdx 0..{_n_imgs - 1}; 0 = la mejor). "
+                      f"EL HERO/APERTURA DEBE SER UNA FOTO a pantalla completa (kind:'photo') con el titular encima en fill "
+                      f"'photoink' — NO uses morph ni figura geometrica para el hero cuando hay foto (es lo que hace que "
+                      f"parezca un anuncio real). Podes reusar fotos en otras escenas (foto+panel, dato sobre foto).")
+    else:
+        photo_hint = ("\nSIN FOTOS del sitio: el hero va con TIPOGRAFIA de autor (palabra-heroe revelada) o, con moderacion, "
+                      "UN morph/forma. NO pongas figura geometrica en TODAS las escenas; varia el recurso protagonista.")
     extra = (f'\n\n>>> PEDIDO DEL USUARIO (PRIORIDAD ABSOLUTA, el video DEBE cumplirlo): "{desarrollo.strip()}"'
              if (desarrollo or "").strip() else "")
 
@@ -539,7 +569,7 @@ async def write_timeline(url, desarrollo, proposito="marketing", idioma="",
 URL: {url}
 
 CONTEXTO DEL SITIO (usalo para copy específico y real, no genérico):
-{contexto}{extra}{lang_hint}{accent_hint}
+{contexto}{extra}{lang_hint}{accent_hint}{photo_hint}
 
 BRIEF ESTRATÉGICO (la lectura de la marca, basate en esto):
 {brief_txt}
@@ -623,6 +653,10 @@ contexto, NO uses bigStat. Si hay un PEDIDO DEL USUARIO, cumplilo SÍ O SÍ por 
     _logo = (dna.get("logo") if isinstance(dna, dict) else "") or _preset.get("logo", "")
     if _logo:
         tl.setdefault("logo", _logo)
+    # FOTOS REALES del sitio (hasta 6) -> el motor las usa en heros/escenas fotograficas (kind:'photo').
+    _imgs = (dna.get("images") if isinstance(dna, dict) else None) or _preset.get("images") or []
+    if _imgs and not tl.get("images"):
+        tl["images"] = _imgs[:6]
     # ESTILO VISUAL: lo ELIGE el usuario (dna['styleId']) o se recomienda por rubro. Aplica la direccion de
     # arte del catalogo compartido (bgStyle / tono / sombra / textura) -> el video toma el estilo elegido.
     try:

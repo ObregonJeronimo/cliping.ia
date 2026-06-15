@@ -1,6 +1,6 @@
 import { useCurrentFrame, useVideoConfig, delayRender, continueRender } from 'remotion'
 import { useLayoutEffect, useRef, useState } from 'react'
-import { W as LOGICAL_W, drawFrame, setLogo } from '../../../src/pages/Animaciones/engineCore'
+import { W as LOGICAL_W, drawFrame, setLogo, setPhotos } from '../../../src/pages/Animaciones/engineCore'
 
 // FUENTES del sistema de estilos (display/text/accent). El MP4 final se renderiza en un Chromium aparte
 // (no usa index.html), asi que hay que cargar las familias aca o el video sale con fallback. MANTENER
@@ -42,6 +42,16 @@ export const TimelineVideo = ({ timeline = null }) => {
     img.onerror = () => { setLogo(null); continueRender(logoHandle) }
     img.src = url
   }, [logoHandle, timeline])
+  // FOTOS reales del sitio: precargar TODAS antes de capturar frames (determinista; onerror -> hueco -> fallback).
+  const [photosHandle] = useState(() => delayRender('cargando fotos'))
+  useLayoutEffect(() => {
+    const urls = (timeline && timeline.images) || []
+    if (!urls.length || typeof Image === 'undefined') { setPhotos([]); continueRender(photosHandle); return }
+    Promise.all(urls.map(u => new Promise(res => {
+      const im = new Image(); im.crossOrigin = 'anonymous'
+      im.onload = () => res(im); im.onerror = () => res(null); im.src = u
+    }))).then(imgs => { setPhotos(imgs); continueRender(photosHandle) })
+  }, [photosHandle, timeline])
 
   useLayoutEffect(() => {
     const c = ref.current
