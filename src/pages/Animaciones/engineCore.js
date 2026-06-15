@@ -1449,28 +1449,36 @@ function _rgba(hex, a) {
   // ESCENA: bigStat — un numero que cuenta de 0 al valor + label debajo. El beat de "dato que impacta".
   // Solo con un numero REAL del sitio. Nativo de Canvas, limpio.
   function sceneBigStat(t, p = {}) {
-    const cx = W / 2, cy = H * 0.46;
+    const cx = W / 2, cy = H * 0.44;
     const value = Number(p.value) || 0;
-    const prog = eOutCubic(inv(t, 0.2, 1.7));
+    const prog = eOutCubic(inv(t, 0.2, 1.5));   // conteo mas agil (antes 1.7) -> menos hold muerto
     const shown = value * prog;
     const dec = (value % 1 !== 0) ? 1 : 0;
     const fmt = (v) => v.toFixed(dec).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-    const full = (p.prefix || '') + fmt(value) + (p.suffix || '');   // string FINAL (el mas ancho) -> tamano estable, no reflota
+    const full = (p.prefix || '') + fmt(value) + (p.suffix || '');
     const num = (p.prefix || '') + fmt(shown) + (p.suffix || '');
-    const fs = fitFont(full, 100, W * 0.88, 36, 800, 'd');           // ENTRA en el frame (antes 92px fijo se cortaba)
-    const pop = lerp(0.72, 1, eOutCubic(inv(t, 0.1, 0.6)));
-    const pulse = 1 + Math.sin(_holdT * 2.1) * 0.012;   // latido sutil del numero durante la lectura -> el dato no queda plano
-    ctx.save();
-    ctx.globalAlpha = inv(t, 0.05, 0.4);
-    ctx.translate(cx, cy); ctx.scale(pop * pulse, pop * pulse); ctx.translate(-cx, -cy);
-    ctx.font = fontStr(800, fs, 'd');
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    const ng = ctx.createLinearGradient(cx - 130, cy, cx + 130, cy);   // acento POP -> el numero golpea aunque el rubro sea sobrio
+    const fs = fitFont(full, 104, W * 0.86, 40, 800, 'd');
+    const suf = p.suffix || '', pref = p.prefix || '';
+    // KICKER arriba (contexto) -> jerarquia, no un numero solo y centrado en el vacio
+    const kick = (p.kicker || (/%/.test(suf) ? 'EN RESULTADOS' : (/m2|m²/i.test(suf) ? 'SUPERFICIE' : (/[$]|USD|ARS/.test(pref + suf) ? 'DESDE' : '')))).toUpperCase();
+    const kp = inv(t, 0.15, 0.55);
+    if (kick && kp > 0) { ctx.save(); ctx.globalAlpha = kp; ctx.font = fontStr(700, 18, 'a'); ctx.fillStyle = _accentInk(A1, 0.42); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(kick, cx, cy - fs * 0.6 - 16); ctx.restore(); }
+    // NUMERO grande con pop + pulso
+    const pop = lerp(0.74, 1, eOutCubic(inv(t, 0.1, 0.55))), pulse = 1 + Math.sin(_holdT * 2.1) * 0.012;
+    ctx.save(); ctx.globalAlpha = inv(t, 0.05, 0.38); ctx.translate(cx, cy); ctx.scale(pop * pulse, pop * pulse); ctx.translate(-cx, -cy);
+    ctx.font = fontStr(800, fs, 'd'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const ng = ctx.createLinearGradient(cx - 130, cy, cx + 130, cy);
     ng.addColorStop(0, TONE === 'light' ? _accentInk(A1) : _accentPop(A1)); ng.addColorStop(1, TONE === 'light' ? _accentInk(A2) : _accentPop(A2));
-    ctx.fillStyle = ng; setShadow(_rgba(_accentPop(A1), 0.35), 18, 2);
-    ctx.fillText(num, cx, cy); noShadow();
+    ctx.fillStyle = ng; setShadow(_rgba(_accentPop(A1), 0.35), 18, 2); ctx.fillText(num, cx, cy); noShadow();
     ctx.restore();
-    if (p.label) fxText(p.label, cx, cy + 84, 24, inv(t, 1.8, 2.3), 600, DIM, W * 0.86);
+    // BARRA que se llena con el conteo (llena el espacio + refuerza el dato). % -> proporcion real; cantidad -> barra de tally.
+    const isPct = /%/.test(suf), barFill = (isPct ? clamp(value / 100, 0, 1) : 1) * clamp(prog, 0, 1);
+    const by = cy + fs * 0.5 + 28, bw = W * 0.58, bx = cx - bw / 2, bh = 9;
+    ctx.save();
+    ctx.fillStyle = _rgba(INK, 0.13); ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 4.5); ctx.fill();
+    ctx.fillStyle = _accentPop(A1); ctx.beginPath(); ctx.roundRect(bx, by, bw * barFill, bh, 4.5); ctx.fill();
+    ctx.restore();
+    if (p.label) fxText(p.label, cx, by + 42, 23, inv(t, 1.0, 1.4), 600, DIM, W * 0.86);
   }
 
   // =========================================================================
@@ -1826,7 +1834,7 @@ function _rgba(hex, a) {
   const DRAWERS = { paintTitle: sceneTitle, deliver: sceneCart, checklist: sceneList, outro: sceneOutro, statement: sceneStatement, bigStat: sceneBigStat, scene: sceneSpec };
   // Cuanto dura la COREOGRAFIA de cada escena (segundos). Pasado esto, el motor CONGELA el frame final
   // = tiempo de lectura. Asi: durationInFrames = animacion + lectura (mas largo = mas tiempo para leer).
-  const ANIM_LEN = { paintTitle: 6.0, deliver: 6.4, checklist: 3.9, outro: 3.2, statement: 2.6, bigStat: 2.6 };
+  const ANIM_LEN = { paintTitle: 6.0, deliver: 6.4, checklist: 3.9, outro: 3.2, statement: 2.6, bigStat: 1.9 };
   const SCENE_LABELS = {
     paintTitle: '<b>paintTitle</b> · puntito -> boton -> barra -> se derrite -> gota -> pinta el titulo',
     deliver: '<b>deliver</b> · carrito -> click -> caja -> le salen alas -> vuela -> cae en la casa',

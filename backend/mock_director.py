@@ -268,7 +268,7 @@ def _bigstat(facts, rnd):
     for f in facts:
         if isinstance(f, dict) and f.get("value") is not None:
             return {"type": "bigStat", "value": f["value"], "prefix": f.get("prefix", ""), "suffix": f.get("suffix", ""),
-                    "label": f.get("label", ""), "durationInFrames": 118}
+                    "label": f.get("label", ""), "durationInFrames": 96}
     return None
 
 
