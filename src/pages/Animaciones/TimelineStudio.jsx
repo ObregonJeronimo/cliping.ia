@@ -74,6 +74,7 @@ export default function TimelineStudio() {
   const [proposito, setProposito] = useState('marketing')
   const [formato, setFormato] = useState('vertical')
   const [styleId, setStyleId] = useState('')   // ESTILO visual elegido ('' = recomendado por rubro). Ver STYLES.
+  const [idioma, setIdioma] = useState('es')   // IDIOMA del anuncio (es/en). Default español SIEMPRE (no el de la pagina).
   const [gen, setGen] = useState(null)   // { status, step, progress, videoUrl, error, timeline }
   const [cached, setCached] = useState([])        // páginas cacheadas (ADN guardado por URL)
   const [cacheLoading, setCacheLoading] = useState(true)
@@ -137,7 +138,7 @@ export default function TimelineStudio() {
     try {
       const r = await fetch(`${API_URL}/api/timeline/batch`, {
         method: 'POST', headers: HEADERS,
-        body: JSON.stringify({ userId: user?.uid || '', url: u, desarrollo, proposito, formato: 'vertical', idioma: '', n: 5 }),
+        body: JSON.stringify({ userId: user?.uid || '', url: u, desarrollo, proposito, formato: 'vertical', idioma, n: 5 }),
       })
       const d = await r.json()
       if (d.error || !d.job_id) { setBatch(b => ({ ...b, status: 'error', error: d.error || 'No se pudo iniciar' })); return }
@@ -191,7 +192,7 @@ export default function TimelineStudio() {
     try {
       const r = await fetch(`${API_URL}/api/timeline/generate`, {
         method: 'POST', headers: HEADERS,
-        body: JSON.stringify({ userId: user?.uid || '', url: u, desarrollo, proposito, formato: 'vertical', idioma: '', styleId }),
+        body: JSON.stringify({ userId: user?.uid || '', url: u, desarrollo, proposito, formato: 'vertical', idioma, styleId }),
       })
       const d = await r.json()
       if (d.error || !d.job_id) { setGen(g => ({ ...g, status: 'error', error: d.error || 'No se pudo iniciar' })); return }
@@ -256,6 +257,15 @@ export default function TimelineStudio() {
                 {STYLES.map(s => (
                   <button key={s.id || 'auto'} className={`${styles.propBtn} ${styleId === s.id ? styles.propBtnActive : ''}`}
                     onClick={() => setStyleId(s.id)} disabled={generating} title={s.vibe}>{s.label}</button>
+                ))}
+              </div>
+            </div>
+            <div className={styles.cineSection}>
+              <div className={styles.cineSectionLabel}>Idioma del anuncio <span style={{ opacity: 0.5, fontWeight: 400 }}>· no depende del idioma de la página</span></div>
+              <div className={styles.propGrid}>
+                {[{ k: 'es', label: '🇦🇷 Español' }, { k: 'en', label: '🇺🇸 English' }].map(l => (
+                  <button key={l.k} className={`${styles.propBtn} ${idioma === l.k ? styles.propBtnActive : ''}`}
+                    onClick={() => setIdioma(l.k)} disabled={generating}>{l.label}</button>
                 ))}
               </div>
             </div>

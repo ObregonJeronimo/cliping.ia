@@ -522,13 +522,13 @@ async def write_timeline(url, desarrollo, proposito="marketing", idioma="",
           f"seed={_preset['seed']} formas={_preset['morphs']}")
 
     contexto = url_data.get("context") or f"Marca: {url_data.get('siteName') or 'desconocido'}"
-    _lang = (url_data.get("lang") or "").lower()
-    _LANG_NAME = {"es": "español rioplatense (voseo)", "en": "inglés", "pt": "portugués"}
-    if idioma:
-        lang_hint = f"\nIDIOMA OBLIGATORIO: escribí TODO el copy en {_LANG_NAME.get(idioma, idioma)}."
-    else:
-        lang_hint = (f"\nIDIOMA: el sitio está en '{_lang}' — escribí el copy en ese idioma."
-                     if _lang and not _lang.startswith("es") else "")
+    # IDIOMA del ANUNCIO: lo elige el USUARIO (solo es/en). DEFAULT = español SIEMPRE, sin importar el idioma
+    # de la pagina (ej: una web en ingles -> el anuncio igual sale en español salvo que el usuario pida 'en').
+    _LANG_NAME = {"es": "español rioplatense (voseo)", "en": "inglés (English)"}
+    _lang_sel = idioma if idioma in _LANG_NAME else "es"
+    lang_hint = (f"\nIDIOMA OBLIGATORIO: escribí ABSOLUTAMENTE TODO el copy en {_LANG_NAME[_lang_sel]} "
+                 f"(titulares, frases, items, CTA). NO mezcles idiomas ni copies texto del sitio en otro idioma; "
+                 f"si el sitio esta en otro idioma, TRADUCI las ideas al idioma pedido.")
     accent = (dna or {}).get("accent") or ""
     accent_hint = (f"\nACENTO sugerido (color real de la marca): {accent}"
                    if _bdna._hex_ok(accent) else "\nACENTO: elegí un hex VIVO acorde a la marca (saturado, no gris).")
