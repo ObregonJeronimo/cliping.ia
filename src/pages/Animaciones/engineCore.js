@@ -1790,7 +1790,7 @@ function _rgba(hex, a) {
         // tracking por rol: displays grandes apretados (-2%), kickers chicos abiertos (+6%) -> presencia de marca
         const _trk = el.track != null ? el.track : (fit > 44 ? Math.max(-1.2, -fit * 0.02) * (str.length > 8 ? 0.5 : 1) : (fit < 24 ? fit * 0.06 : 0));
         if (el.kinetic) _kineticDraw(str, _tcol, el.align || 'center', t, (keys[0] && keys[0].t) || 0, _trk);
-        else { ctx.fillStyle = _tcol; if (el.fill === 'dim') setShadow('rgba(0,0,0,0.5)', 6, 1); ctx.fillText(str, 0, 0); if (el.fill === 'dim') noShadow(); }
+        else { ctx.fillStyle = _tcol; if (el.fill === 'dim') setShadow(TONE === 'light' ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.6)', 8, 0); ctx.fillText(str, 0, 0); if (el.fill === 'dim') noShadow(); }   // halo de contraste opuesto al tono -> el subtitulo 'dim' se lee sobre fondos/figuras (no toca el color, mantiene jerarquia)
       } else if (kind === 'icon') {
         if (el.blur) for (let b = 3; b >= 1; b--) { const tb = Math.max(0, t - b * 0.022); const pb = _pos(keys, tb); const sb = Math.max(0, _num(keys, tb, 'scale', scale)); ctx.save(); ctx.globalAlpha *= 0.1; ctx.translate(pb[0], pb[1]); _drawIcon(el.icon || 'dot', sb, op, tb); ctx.restore(); }
         ctx.translate(x, y); if (rot) ctx.rotate(rot);
@@ -1881,7 +1881,7 @@ function _rgba(hex, a) {
       ctx.save(); ctx.globalAlpha = clamp(ap * 1.4, 0, 1); ctx.translate(tx, y); ctx.scale(pop, pop);
       ctx.font = fontStr(800, fitFont(val, 66, W * 0.78, 34, 800, 'd'), 'd'); ctx.textAlign = al; ctx.textBaseline = 'middle';
       ctx.fillStyle = TONE === 'light' ? _accentInk(A1) : _accentPop(A1); setShadow(_rgba(_accentPop(A1), 0.3), 14, 2); ctx.fillText(val, 0, -10); noShadow();
-      if (it.label) { ctx.font = fontStr(600, 19, 't'); ctx.fillStyle = DIM; ctx.fillText(String(it.label), 0, 30); }
+      if (it.label) { const _lb = String(it.label); ctx.font = fontStr(600, fitFont(_lb, 19, W * 0.74, 13, 600, 't'), 't'); ctx.fillStyle = DIM; setShadow(TONE === 'light' ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.6)', 8, 0); ctx.fillText(_lb, 0, 30); noShadow(); }   // fitFont -> el label nunca se corta ("...tarjeta" entero) + halo de contraste
       ctx.restore();
     });
   }

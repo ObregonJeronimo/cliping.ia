@@ -379,6 +379,12 @@ def _norm_scene_elements(s: dict, dur_frames: int) -> list:
             if el.get("accentEdge") is False:
                 nel["accentEdge"] = False
         out.append(nel)
+    # Z-ORDER ESTABLE del foreground: el TEXTO (e iconos) SIEMPRE por encima de figuras de fondo (morph/shape
+    # rellenos) sin importar el orden que emita la IA -> evita que un 'morph' (blob) tape una palabra del headline
+    # (bug visto en un video real). sorted() es ESTABLE: conserva el orden relativo dentro de cada capa.
+    # Determinista (sin azar ni reloj); no toca el render ni el fondo -> bg-check 16/16 intacto.
+    _Z = {"photo": 0, "morph": 1, "shape": 1, "particles": 1, "orbit": 2, "svgicon": 3, "icon": 3, "text": 4}
+    out = sorted(out, key=lambda e: _Z.get(e.get("kind"), 2))
     return out
 
 
@@ -443,7 +449,7 @@ def _normalize_timeline(tl: dict, dna: dict = None) -> dict:
             for it in (s.get("items") or [])[:3]:
                 if not isinstance(it, dict) or it.get("value") in (None, ""):
                     continue
-                items.append({"value": it["value"], "label": str(it.get("label") or "")[:22],
+                items.append({"value": it["value"], "label": str(it.get("label") or "")[:40],
                               "prefix": str(it.get("prefix") or "")[:3], "suffix": str(it.get("suffix") or "")[:5]})
             if len(items) < 2:
                 continue
