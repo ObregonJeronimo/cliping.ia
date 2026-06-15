@@ -69,10 +69,20 @@ HECHO:
 - **Anti-predecibilidad (P3)**: BANCO DE TRANSICIONES (wipe/flash/blinds/curtain) elegido por SEED^i + sesgo por
   dureza del estilo -> el corte ya no es siempre el mismo wipe.
 
+HECHO (continuacion):
+- **F1 COMPLETO (reloj lento compartido)**: se agrego la constante `CLK=0.025` (rad/s) + helper `_harm(rnd,lo,hi)`
+  en engineCore. Los DOS osciladores continuos por-video que batian (camara `_PHI` y los blobs del mesh `fx/fy`)
+  ahora se snapean a ARMONICOS ENTEROS de CLK -> la diferencia entre dos armonicos es otro armonico, el campo de
+  movimiento lento queda coherente y periodico (no wobble a la deriva). Tambien snapeadas las derivas lentas
+  visibles por estilo (field/bands/aurora claro+oscuro, organic, y2k, marca de agua, flotantes). La sparkle rapida
+  (twinkle/flap/pulse) queda libre (no bate perceptible). Mismos conteos de rnd() -> posiciones/colores intactos,
+  determinismo 16/16. (commit 0bc3c64)
+- **Checklist hold-life**: idle-breath ~3% en los marcadores circulares (check/number), fase por fila, en la grilla
+  de CLK -> la lista no queda congelada tras revelarse (paralelo al glint del statement). (commit 1be7348)
+
 PENDIENTE (siguiente batch, mejor DESPUES de que el usuario verifique la fluidez EN VIVO -frames no muestran motion-):
 - FLUIDEZ F4 (no congelar en seco en animLen: settle-drift sub-pixel en fase con CLK usando _holdT), F5 (cross-fade
   sin valle de brillo: aOut=1-aIn sobre fondo opaco), F7 (motion-blur por stamping solo en tramos rapidos; OJO Skia).
-- F1 completo: pasar TODOS los osciladores de bg (_bgMesh sin(t*0.07), _drawFloaters, watermark, etc.) al reloj CLK.
 - PREDECIBILIDAD P1 (gramatica generativa en el director: conteo de beats 3-7 variable, sin repetir, no esqueletos
   fijos), P2 (mas drawers: reveal/split/quote-card/ticker/numberStack/fullPhoto -> mas combinaciones), P4 (ritmo por
   compases). "TODAS las escenas mas fuertes": layouts mas ricos por tipo (no solo hero).
