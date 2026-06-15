@@ -122,8 +122,10 @@ TL_SCENE_CATALOG = """ESCENAS DISPONIBLES (motor Canvas) — agrupadas por CATEG
   props: photoIdx (0=mejor), title, sub?, cta?, side ("left"|"right"). Ideal para el CTA (panel limpio).
 
 [BENEFICIOS]
-- "checklist": lista de 3 o 4 beneficios concretos con tilde. props: title (string), items (array de 3-4
-  strings cortos, 1 a 4 palabras c/u). Para "3 razones" / features reales.
+- "checklist": lista de 3 o 4 beneficios concretos. props: title (string), items (array de 3-4 strings cortos,
+  1 a 4 palabras c/u). Para "3 razones" / features reales. props.listLayout OPCIONAL para VARIAR el look (no
+  siempre la columna vertical): "chips" (pildoras agrupadas, ideal para tags/features cortos), "grid" (2 columnas
+  de cards), "rows" (columna clasica). Si no lo pones, el motor elige uno por marca. VARIALO entre videos.
 
 [ENFASIS]
 - "statement": (ver arriba) tambien sirve en el medio para un remate o giro.
@@ -412,6 +414,8 @@ def _normalize_timeline(tl: dict, dna: dict = None) -> dict:
             if len(s["items"]) < 2:
                 continue
             s["title"] = str(s.get("title") or "")
+            if s.get("listLayout") not in ("rows", "grid", "chips"):
+                s.pop("listLayout", None)   # layout invalido/ausente -> el motor lo elige por semilla (variedad)
         if ty == "paintTitle":
             s["title"] = str(s.get("title") or tl.get("brand") or "")
             s["subtitles"] = [str(x) for x in (s.get("subtitles") or [])][:2]

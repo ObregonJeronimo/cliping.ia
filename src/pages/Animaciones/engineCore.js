@@ -1244,6 +1244,36 @@ function _rgba(hex, a) {
       ctx.restore();
     });
   }
+  // LAYOUT alternativo: CHIPS/tags -> items cortos como pildoras de acento agrupadas en filas centradas que
+  // envuelven (look "catalogo/features"). Rompe de raiz la columna vertical (la queja: "la misma lista siempre").
+  function _listChips(items, t) {
+    const cx = W / 2, padX = 24, chH = 46, gap = 12, rowGap = 16, maxRowW = W * 0.86;
+    ctx.font = fontStr(700, 22, 't');
+    const chips = items.map(s => { const str = String(s); return { str, w: Math.min(maxRowW, ctx.measureText(str).width + padX * 2 + 14) }; });
+    const rows = [[]]; let rw = 0;   // agrupar en filas que no excedan el ancho
+    for (const c of chips) { if (rw + c.w > maxRowW && rows[rows.length - 1].length) { rows.push([]); rw = 0; } rows[rows.length - 1].push(c); rw += c.w + gap; }
+    const totalH = rows.length * chH + (rows.length - 1) * rowGap;
+    let y = H * 0.47 - totalH / 2 + chH / 2, idx = 0;
+    for (const r of rows) {
+      const rowW = r.reduce((a, c) => a + c.w, 0) + (r.length - 1) * gap;
+      let x = cx - rowW / 2;
+      for (const c of r) {
+        const d = 0.42 + idx * 0.15, ap = eOutBack(clamp(inv(t, d, d + 0.5), 0, 1)); idx++;
+        if (ap > 0) {
+          const sc = lerp(0.72, 1, clamp(ap, 0, 1));
+          ctx.save(); ctx.globalAlpha *= clamp(ap * 1.4, 0, 1); ctx.translate(x + c.w / 2, y); ctx.scale(sc, sc);
+          ctx.fillStyle = _rgba(A1, TONE === 'light' ? 0.14 : 0.2); ctx.strokeStyle = _rgba(_accentInk(A1, 0.5), 0.5); ctx.lineWidth = 1.5;
+          ctx.beginPath(); ctx.roundRect(-c.w / 2, -chH / 2, c.w, chH, chH / 2); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = _accentInk(A1, 0.5); ctx.beginPath(); ctx.arc(-c.w / 2 + 17, 0, 4, 0, TAU); ctx.fill();   // punto de acento
+          ctx.font = fontStr(700, 22, 't'); ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = INK;
+          setShadow('rgba(0,0,0,0.4)', 4, 1); ctx.fillText(c.str, -c.w / 2 + 30, 0); noShadow();
+          ctx.restore();
+        }
+        x += c.w + gap;
+      }
+      y += chH + rowGap;
+    }
+  }
   function sceneList(t, p = {}) {
     const cx = W / 2, style = p.listStyle || 'check', lanchor = p.listAnchor === 'left';
     const rx = lanchor ? 53 : cx - 150, tp = inv(t, 0.1, 0.7);   // contrato sideLeft: MISMO margen izq
@@ -1254,7 +1284,12 @@ function _rgba(hex, a) {
     const ru = eOutCubic(inv(t, 0.3, 0.8));
     if (ru > 0) { const ry = H * 0.285, rxr = rx; ctx.save(); ctx.fillStyle = accent(rxr, ry, rxr + 52, ry); ctx.beginPath(); ctx.roundRect(rxr, ry, 52 * ru, 4, 2); ctx.fill(); ctx.restore(); }
     const items = (p.items || []).slice(0, 4);
-    if (p.listLayout === 'grid') { _listGrid(items, t, lanchor); return; }
+    // LAYOUT del checklist: explicito (p.listLayout) o ELEGIDO POR SEMILLA de marca -> cada video recibe un layout
+    // distinto (columna vertical / grilla de cards / chips) en vez de SIEMPRE la columna (la queja: "la misma lista").
+    let _lay = (p.listLayout === 'rows' || p.listLayout === 'grid' || p.listLayout === 'chips') ? p.listLayout : '';
+    if (!_lay) { const _lr = mulberry32(((SEED || 1) ^ 0x715709) >>> 0)(); _lay = _lr < 0.4 ? 'rows' : (_lr < 0.72 ? 'grid' : 'chips'); }
+    if (_lay === 'grid') { _listGrid(items, t, lanchor); return; }
+    if (_lay === 'chips') { _listChips(items, t); return; }
     const gap = (items.length >= 4 ? 58 : 70), startY = H * 0.46 - (items.length - 1) * gap / 2;
     const row = style === 'bar' ? _rowBar : style === 'number' ? _rowEditorial : style === 'dash' ? _rowPlain : _rowCard;
     items.forEach((label, i) => {

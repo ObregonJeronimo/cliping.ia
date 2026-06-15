@@ -529,8 +529,11 @@ def generate(brand: str, industria: str, facts=None, seed: int = None, style: st
         stmt_style = rnd.choice(S["stmt"])
     list_anchor = "left" if left_anchored else "center"
     list_style = S["list"]
-    # la grilla de cards solo en OSCURO (en claro lee como placeholders grises); en claro, filas editoriales
-    list_layout = "grid" if (tone == "dark" and S["grid_p"] > 0 and rnd.random() < S["grid_p"]) else "rows"
+    # LAYOUT del checklist rotado por marca -> NO siempre la columna vertical (queja: "la misma lista en casi todos").
+    # chips (pildoras) ~1/3 en cualquier tono; grilla de cards solo en OSCURO (en claro lee como placeholders grises);
+    # resto, filas. El motor igual rota por semilla si el director no lo fija (cubre el camino de la IA real).
+    _lr = rnd.random()
+    list_layout = "chips" if _lr < 0.34 else ("grid" if (tone == "dark" and S["grid_p"] > 0 and _lr < 0.62) else "rows")
     # el END-CARD lo elige el estilo; pero si el hero ancla a la IZQUIERDA, el cierre tambien (left/diagonal)
     # -> cada estilo es un SISTEMA espacial coherente de punta a punta, no hero-izq + cierre-centrado.
     outro_pool = S["outro"]
