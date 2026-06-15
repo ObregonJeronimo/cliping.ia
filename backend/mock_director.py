@@ -133,6 +133,35 @@ CTAS = {
     "belleza": ["Reserva tu turno", "Ver servicios", "Consultanos"],
     "default": ["Conoce mas", "Empeza ya", "Probalo"],
 }
+# Ganchos cortos (reveal): 1-4 palabras que frenan el scroll. Kicker opcional.
+HOOKS = {
+    "gastronomia": ["Probalo una vez", "Vas a volver", "Sabor de verdad"],
+    "tech": ["Adios al caos", "Mas rapido", "Sin vueltas"],
+    "salud": ["Cuidarte es facil", "Empeza hoy", "Tu salud primero"],
+    "moda": ["Tu estilo manda", "Lo que viene", "Animate"],
+    "inmobiliaria": ["Tu lugar existe", "Mudate ya", "Es el momento"],
+    "fitness": ["Sin excusas", "Empeza hoy", "Tu mejor version"],
+    "educacion": ["Aprende ya", "Tu proximo nivel", "Empeza gratis"],
+    "finanzas": ["Tu plata crece", "Decidi mejor", "Empeza simple"],
+    "belleza": ["Brilla mas", "Tu momento", "Realza lo tuyo"],
+    "default": ["Probalo ya", "Es momento", "Animate hoy"],
+}
+TESTIMONIALS = {
+    "gastronomia": [("El mejor del barrio, sin dudas", "Caro G."), ("Pedi y volvi al toque", "Marce")],
+    "salud": [("Me atendieron al instante", "Lucia P."), ("Profesionales de verdad", "Diego")],
+    "inmobiliaria": [("Encontre mi casa en una semana", "Flor"), ("Todo claro y rapido", "Juan M.")],
+    "fitness": [("Bajé 6 kilos en dos meses", "Pablo"), ("Las clases vuelan", "Sofi")],
+    "belleza": [("Salí renovada", "Vale"), ("Mi lugar fijo ya", "Romi")],
+    "default": [("Lo recomiendo 100%", "Ana"), ("Superó lo que esperaba", "Leo")],
+}
+# Sets de 2-3 numeros (numberStack). Datos plausibles SOLO para el banco de prueba (en prod los da el LLM con cifras reales).
+STAT_SETS = {
+    "gastronomia": [[{"value": 600, "prefix": "+", "label": "platos servidos"}, {"value": 4.8, "suffix": "★", "label": "valoracion"}, {"value": 30, "suffix": "min", "label": "envio"}]],
+    "inmobiliaria": [[{"value": 120, "prefix": "+", "label": "propiedades"}, {"value": 15, "suffix": " años", "label": "en el rubro"}, {"value": 4.9, "suffix": "★", "label": "clientes"}]],
+    "fitness": [[{"value": 500, "prefix": "+", "label": "socios"}, {"value": 40, "label": "clases x semana"}, {"value": 4.9, "suffix": "★", "label": "valoracion"}]],
+    "finanzas": [[{"value": 12, "suffix": "%", "label": "anual"}, {"value": 10000, "prefix": "+", "label": "usuarios"}, {"value": 0, "label": "comisiones"}]],
+    "default": [[{"value": 500, "prefix": "+", "label": "clientes"}, {"value": 4.8, "suffix": "★", "label": "valoracion"}, {"value": 24, "suffix": "h", "label": "respuesta"}]],
+}
 
 
 # COMPOSICIONES de HERO: rompen el molde "forma centrada + nombre debajo" (lo que hacia que TODOS se
@@ -255,6 +284,59 @@ def _checklist(brand, rubro, rnd, list_style, list_anchor="center", list_layout=
     n = 4 if list_layout == "grid" else rnd.choice([3, 3, 4])
     return {"type": "checklist", "title": f"Por que {brand}", "items": pool[:n], "listStyle": list_style,
             "listAnchor": list_anchor, "listLayout": list_layout, "durationInFrames": 132 + (n - 3) * 10}
+
+
+def _reveal(rubro, rnd):
+    return {"type": "reveal", "text": rnd.choice(HOOKS.get(rubro, HOOKS["default"])),
+            "kicker": rnd.choice(["", "", "ESTO ES", "MIRA ESTO"]), "durationInFrames": rnd.choice([84, 90, 96])}
+
+
+def _quote(rubro, rnd):
+    q, author = rnd.choice(TESTIMONIALS.get(rubro, TESTIMONIALS["default"]))
+    return {"type": "quote", "text": q, "author": author, "stars": rnd.choice([5, 5, 4]), "durationInFrames": rnd.choice([120, 132])}
+
+
+def _numberstack(rubro, rnd):
+    return {"type": "numberStack", "items": rnd.choice(STAT_SETS.get(rubro, STAT_SETS["default"])), "durationInFrames": rnd.choice([120, 132, 138])}
+
+
+def _split(brand, rubro, rnd, images):
+    if not images:
+        return None
+    return {"type": "split", "title": brand, "sub": "  ".join(rnd.choice(SUBTITLES.get(rubro, SUBTITLES["default"]))),
+            "cta": rnd.choice(CTAS.get(rubro, CTAS["default"])), "photoIdx": rnd.randrange(len(images)),
+            "side": rnd.choice(["left", "right"]), "durationInFrames": rnd.choice([108, 120])}
+
+
+def _gen_structure(rubro, has_photos, rnd):
+    """GRAMATICA GENERATIVA: en vez de elegir 1 de ~4 esqueletos fijos (el 'mismo molde'), construye una estructura
+    variada por marca: apertura diversa (no siempre hero), 1-4 beats de cuerpo sin repetir el anterior, tipos nuevos
+    (reveal/quote/numberStack/split), el hero puede ir al medio, cierre en outro. Determinista por rnd(seed)."""
+    open_pool = ["reveal", "statement", "hero", "reveal", "hero"]
+    if rnd.random() < 0.22:
+        open_pool.append("bigStat")
+    opening = rnd.choice(open_pool)
+    body_pool = ["statement", "checklist", "numberStack", "quote"]
+    if has_photos:
+        body_pool += ["split", "split", "fullPhoto"] if False else ["split", "split"]
+    if rubro in ("finanzas", "tech", "fitness", "inmobiliaria", "gastronomia"):
+        body_pool.append("bigStat")
+    if opening != "hero":
+        body_pool.append("hero")
+    nbody = rnd.choice([1, 2, 2, 3, 3, 4])
+    skel, prev = [opening], opening
+    for _ in range(nbody):
+        choices = [c for c in body_pool if c != prev] or body_pool
+        b = rnd.choice(choices)
+        skel.append(b)
+        prev = b
+    skel.append("outro")
+    out = []
+    for s in skel:
+        if out and out[-1] == s:
+            continue
+        out.append(s)
+    return out
 
 
 def _outro(brand, rubro, rnd, outro_comp):
@@ -458,7 +540,7 @@ def generate(brand: str, industria: str, facts=None, seed: int = None, style: st
             outro_pool = _lo
     outro_comp = rnd.choice(outro_pool)
     # ESTRUCTURA NARRATIVA del estilo (no una sola coreografia para todos): conteo/orden/beats varian.
-    skel = rnd.choice(S["structs"])
+    skel = _gen_structure(rubro, bool(images), rnd)   # estructura GENERATIVA por marca (no esqueleto fijo -> rompe el molde)
     _hero_res = _hero_resource(rubro, bool(images), rnd)   # recurso protagonista (foto/tipo/morph) -> no todos llevan figura
     scenes = []
     _used_stmt = set()
@@ -481,7 +563,16 @@ def generate(brand: str, industria: str, facts=None, seed: int = None, style: st
             scenes.append(_checklist(brand, rubro, rnd, list_style, list_anchor, list_layout))
         elif slot == "bigStat":
             bs = _bigstat(facts, rnd)
-            scenes.append(bs if bs else _fresh_statement())
+            scenes.append(bs if bs else _numberstack(rubro, rnd))   # sin cifra real -> numberStack (datos del banco) en vez de statement
+        elif slot == "reveal":
+            scenes.append(_reveal(rubro, rnd))
+        elif slot == "numberStack":
+            scenes.append(_numberstack(rubro, rnd))
+        elif slot == "quote":
+            scenes.append(_quote(rubro, rnd))
+        elif slot == "split":
+            sp = _split(brand, rubro, rnd, images)
+            scenes.append(sp if sp else _fresh_statement())
         elif slot == "outro":
             scenes.append(_outro(brand, rubro, rnd, outro_comp))
 

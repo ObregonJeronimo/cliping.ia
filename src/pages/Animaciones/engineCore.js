@@ -1840,10 +1840,77 @@ function _rgba(hex, a) {
     return m > 0 ? m : ((sc.e - sc.s) || 3);
   }
 
-  const DRAWERS = { paintTitle: sceneTitle, deliver: sceneCart, checklist: sceneList, outro: sceneOutro, statement: sceneStatement, bigStat: sceneBigStat, scene: sceneSpec };
+  // ===== TIPOS DE ESCENA NUEVOS (vocabulario ampliado -> mas combinaciones -> menos "mismo molde") =====
+  const _fmtN = (v) => String(Math.round(v)).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  // REVEAL: gancho corto (1-4 palabras) a pantalla casi completa, apiladas y escalonadas, ultima en acento.
+  function sceneReveal(t, p = {}) {
+    const text = ((p.text || '').toString().trim()) || 'Mira esto';
+    const words = text.split(/\s+/).slice(0, 4), n = words.length, cx = W / 2, baseY = H * 0.46;
+    const fs = fitFont(text, 104, W * 0.86, 46, 800, 'd'), lh = fs * 1.04, startY = baseY - (n - 1) * lh / 2;
+    const kick = (p.kicker || '').toUpperCase();
+    if (kick) { const kp = inv(t, 0.1, 0.5); if (kp > 0) { ctx.save(); ctx.globalAlpha = kp; ctx.font = fontStr(700, 18, 'a'); ctx.fillStyle = _accentInk(A1, 0.42); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(kick, cx, startY - fs * 0.74); ctx.restore(); } }
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = fontStr(800, fs, 'd');
+    words.forEach((wd, i) => {
+      const lp = eOutBack(clamp(inv(t, 0.22 + i * 0.13, 0.22 + i * 0.13 + 0.5), 0, 1)); if (lp <= 0) return;
+      ctx.save(); ctx.globalAlpha = clamp(lp * 1.5, 0, 1); const yy = startY + i * lh + (1 - lp) * 24;
+      ctx.fillStyle = (i === n - 1) ? (TONE === 'light' ? _accentInk(A1) : _accentPop(A1)) : INK;
+      if (i === n - 1) setShadow(_rgba(_accentPop(A1), 0.32), 16, 2);
+      ctx.fillText(wd, cx, yy); noShadow(); ctx.restore();
+    });
+  }
+  // NUMBERSTACK: 2-3 numeros que cuentan, en cascada (vs bigStat que es UNO). Llena la pantalla con datos.
+  function sceneNumberStack(t, p = {}) {
+    const items = (p.items || []).slice(0, 3), n = items.length; if (!n) return;
+    const gap = H * (n === 3 ? 0.21 : 0.26), startY = H * 0.46 - (n - 1) * gap / 2, cx = W / 2;
+    items.forEach((it, i) => {
+      const d = 0.18 + i * 0.42, ap = inv(t, d, d + 0.4); if (ap <= 0) return;
+      const prog = eOutCubic(clamp(inv(t, d, d + 0.9), 0, 1)), y = startY + i * gap;
+      const val = (it.prefix || '') + _fmtN((Number(it.value) || 0) * prog) + (it.suffix || '');
+      const pop = lerp(0.8, 1, eOutBack(clamp(ap, 0, 1)));
+      ctx.save(); ctx.globalAlpha = clamp(ap * 1.4, 0, 1); ctx.translate(cx, y); ctx.scale(pop, pop);
+      ctx.font = fontStr(800, fitFont(val, 66, W * 0.8, 34, 800, 'd'), 'd'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = TONE === 'light' ? _accentInk(A1) : _accentPop(A1); setShadow(_rgba(_accentPop(A1), 0.3), 14, 2); ctx.fillText(val, 0, -10); noShadow();
+      if (it.label) { ctx.font = fontStr(600, 19, 't'); ctx.fillStyle = DIM; ctx.fillText(String(it.label), 0, 30); }
+      ctx.restore();
+    });
+  }
+  // QUOTE: testimonio con comillas grandes + estrellas + autor (prueba social). Layout de "card", distinto.
+  function sceneQuote(t, p = {}) {
+    const text = ((p.text || '').toString()) || 'Lo recomiendo 100%', cx = W / 2, cy = H * 0.42;
+    const qp = eOutBack(clamp(inv(t, 0.05, 0.5), 0, 1));
+    if (qp > 0) { ctx.save(); ctx.globalAlpha = 0.55 * qp; ctx.font = fontStr(800, Math.round(150 * qp), 'd'); ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = _lighten(A1, 0.4); ctx.fillText('“', cx, cy - 40); ctx.restore(); }
+    const fit = fitFont(text, text.length > 38 ? 34 : 42, W * 0.78, 24, 700, 't');
+    ctx.font = fontStr(700, fit, 't'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const words = text.split(/\s+/), lines = []; let ln = '';
+    for (const wd of words) { const tryl = ln ? ln + ' ' + wd : wd; if (ctx.measureText(tryl).width > W * 0.78 && ln) { lines.push(ln); ln = wd; } else ln = tryl; }
+    if (ln) lines.push(ln);
+    const lh = fit * 1.22, top = cy - (lines.length - 1) * lh / 2;
+    lines.forEach((l, i) => { const lp = inv(t, 0.35 + i * 0.12, 0.35 + i * 0.12 + 0.5); if (lp <= 0) return; ctx.save(); ctx.globalAlpha = clamp(lp * 1.4, 0, 1); ctx.fillStyle = INK; ctx.fillText(l, cx, top + i * lh + (1 - eOutCubic(clamp(lp, 0, 1))) * 12); ctx.restore(); });
+    const stars = Math.max(0, Math.min(5, p.stars || 0)), sy = top + lines.length * lh + 6, sp = inv(t, 0.9, 1.3);
+    if (stars && sp > 0) { ctx.save(); ctx.globalAlpha = sp; ctx.fillStyle = _accentPop(A1); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = fontStr(700, 28, 'd'); ctx.fillText('★ '.repeat(stars).trim(), cx, sy + 18); ctx.restore(); }
+    if (p.author) fxText('— ' + p.author, cx, sy + (stars ? 58 : 30), 21, inv(t, 1.1, 1.5), 600, DIM, W * 0.8, 't');
+  }
+  // SPLIT: pantalla partida -> FOTO real una mitad (wipe-open) + panel de color de marca con titular/CTA en la otra.
+  function sceneSplit(t, p = {}) {
+    const right = p.side === 'right', halfW = W * 0.52, fx = right ? W - halfW : 0, panelX = right ? 0 : halfW, panelW = W - halfW;
+    const wp = eOutCubic(clamp(inv(t, 0.1, 0.75), 0, 1));
+    ctx.save(); ctx.beginPath(); ctx.rect(right ? W - halfW * wp : 0, 0, halfW * wp, H); ctx.clip();   // wipe-open de la foto
+    const drew = _drawPhoto(PHOTOS[(p.photoIdx || 0) % Math.max(1, PHOTOS.length)], fx, 0, halfW, H, t, 3);
+    ctx.restore();
+    if (!drew) { ctx.save(); ctx.fillStyle = _rgba(A1, 0.18); ctx.fillRect(fx, 0, halfW, H); ctx.restore(); }   // fallback: bloque de acento
+    const aH = _hexToHsl(A1 || '#3aa0ff'), pg = ctx.createLinearGradient(panelX, 0, panelX, H);   // panel de marca (dark)
+    pg.addColorStop(0, _hslToHex(aH.h, 0.5, 0.24)); pg.addColorStop(1, _hslToHex(aH.h, 0.55, 0.14));
+    ctx.save(); ctx.fillStyle = pg; ctx.fillRect(panelX, 0, panelW, H); ctx.restore();
+    const tcx = panelX + panelW / 2, ti = inv(t, 0.4, 0.9);
+    if (ti > 0 && p.title) { ctx.save(); ctx.globalAlpha = clamp(ti * 1.4, 0, 1); ctx.font = fontStr(800, fitFont(p.title, 40, panelW - 28, 22, 800, 'd'), 'd'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#f6f8fb'; ctx.fillText(p.title, tcx, H * 0.42 + (1 - eOutBack(clamp(ti, 0, 1))) * 14); ctx.restore(); }
+    if (p.sub) fxText(p.sub, tcx, H * 0.54, 20, inv(t, 0.8, 1.2), 600, '#c8d2de', panelW - 30, 't');
+    if (p.cta) { const cp = inv(t, 1.0, 1.4); if (cp > 0) { ctx.save(); ctx.globalAlpha = cp; ctx.font = fontStr(800, 20, 'd'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = _accentPop(A1); ctx.fillText(p.cta + '  ›', tcx, H * 0.66); ctx.restore(); } }
+  }
+
+  const DRAWERS = { paintTitle: sceneTitle, deliver: sceneCart, checklist: sceneList, outro: sceneOutro, statement: sceneStatement, bigStat: sceneBigStat, scene: sceneSpec, reveal: sceneReveal, numberStack: sceneNumberStack, quote: sceneQuote, split: sceneSplit };
   // Cuanto dura la COREOGRAFIA de cada escena (segundos). Pasado esto, el motor CONGELA el frame final
   // = tiempo de lectura. Asi: durationInFrames = animacion + lectura (mas largo = mas tiempo para leer).
-  const ANIM_LEN = { paintTitle: 6.0, deliver: 6.4, checklist: 3.9, outro: 3.2, statement: 2.6, bigStat: 1.9 };
+  const ANIM_LEN = { paintTitle: 6.0, deliver: 6.4, checklist: 3.9, outro: 3.2, statement: 2.6, bigStat: 1.9, reveal: 1.8, numberStack: 2.4, quote: 2.6, split: 2.0 };
   const SCENE_LABELS = {
     paintTitle: '<b>paintTitle</b> · puntito -> boton -> barra -> se derrite -> gota -> pinta el titulo',
     deliver: '<b>deliver</b> · carrito -> click -> caja -> le salen alas -> vuela -> cae en la casa',
