@@ -96,12 +96,17 @@ _JS_EXTRACT = r"""
 _JS_IMAGES = r"""
 () => {
   const abs = (u) => { try { return new URL(u, location.href).href } catch (e) { return null } };
+  // FILTRO DE CALIDAD/RELEVANCIA: descarta imagenes que NO son fotos de marca (mapas, sprites, iconos, ads,
+  // tracking, placeholders) -> evita el bug de "screenshot de Google Maps / mi zona" y basura generica.
+  const BAD = /staticmap|maps\.(googleapis|gstatic)|google\.com\/maps|\/maps[\/?]|mapbox|openstreetmap|tile(server)?s?[\/.]|\bsprite|favicon|apple-touch|\/icons?[\/_-]|[_-]icon\.|avatar|placeholder|spinner|loading|doubleclick|googlesyndication|google-analytics|\/ads?[\/_]|adservice|pixel\.|\/1x1|blank\.|spacer|logo[_-]?\d*\.(png|jpg|jpeg|webp)/i;
   const seen = new Set(); const out = [];
-  const push = (u, area) => {
+  const push = (u, area, w, h) => {
     if (!u) return;
     const a = abs(u); if (!a) return;
     if (a.startsWith('data:')) return;
     if (a.toLowerCase().split('?')[0].endsWith('.svg')) return;
+    if (BAD.test(a)) return;                                  // mapa/sprite/icono/ad/tracking
+    if (w && h) { const ar = w / h; if (ar > 3.2 || ar < 0.3) return; }   // banners/tiras finas, no fotos
     if (seen.has(a)) return;
     seen.add(a); out.push({ u: a, area });
   };
@@ -112,7 +117,7 @@ _JS_IMAGES = r"""
     if (w < 400 || h < 250) continue;
     const r = im.getBoundingClientRect();
     if (r.width < 160) continue;
-    push(im.currentSrc || im.src, w * h);
+    push(im.currentSrc || im.src, w * h, w, h);
   }
   const els = Array.from(document.querySelectorAll('section,header,div,figure,a')).slice(0, 250);
   for (const el of els) {
@@ -120,7 +125,7 @@ _JS_IMAGES = r"""
     if (r.width < 600 || r.height < 280) continue;
     const bg = getComputedStyle(el).backgroundImage;
     const m = bg && bg.match(/url\(["']?(.*?)["']?\)/);
-    if (m && m[1]) push(m[1], r.width * r.height);
+    if (m && m[1]) push(m[1], r.width * r.height, r.width, r.height);
   }
   return out.sort((a, b) => b.area - a.area).slice(0, 6).map(x => x.u);
 }
