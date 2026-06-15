@@ -454,6 +454,11 @@ def _normalize_timeline(tl: dict, dna: dict = None) -> dict:
             if len(items) < 2:
                 continue
             s["items"] = items
+            _f = s.get("focal")   # plan a destacar (indice); si no es valido, el motor usa 0 (el primero)
+            if isinstance(_f, int) and 0 <= _f < len(items):
+                s["focal"] = _f
+            else:
+                s.pop("focal", None)
         if ty == "split":
             s["title"] = str(s.get("title") or tl.get("brand") or "")
             s["sub"] = str(s.get("sub") or "")[:60]

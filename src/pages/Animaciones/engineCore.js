@@ -73,6 +73,7 @@ function _rgba(hex, a) {
   const smooth = t => t * t * (3 - 2 * t);
   const TAU = Math.PI * 2;
   let _holdT = 0;   // tiempo CONTINUO de la escena actual (para idle-loops durante el hold; el dibujo base usa tFed congelado)
+  let _BRAND = '';  // nombre de marca del timeline (lo usa el eyebrow del statement para anclar el tercio superior)
 
   // ---------- aleatoriedad SEMBRADA (determinista, reemplaza Math.random) ----------
   // mulberry32: PRNG rapido y determinista. Misma semilla => misma secuencia, en cada corrida
@@ -1246,12 +1247,12 @@ function _rgba(hex, a) {
   function sceneList(t, p = {}) {
     const cx = W / 2, style = p.listStyle || 'check', lanchor = p.listAnchor === 'left';
     const rx = lanchor ? 53 : cx - 150, tp = inv(t, 0.1, 0.7);   // contrato sideLeft: MISMO margen izq
-    if (lanchor) {
-      if (tp > 0) { ctx.save(); ctx.globalAlpha *= eOutCubic(clamp(tp, 0, 1)); ctx.font = fontStr(800, (p.title || '').length > 18 ? 24 : 30, 'd'); ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = INK; ctx.fillText(p.title || '', rx, H * 0.23); ctx.restore(); }
-    } else { fxText(p.title || '', cx, H * 0.23, (p.title || '').length > 18 ? 24 : 30, tp, 800, INK, W * 0.86); }
+    // TITULO + regla alineados al MISMO eje izquierdo que los items (rx) -> titulo, regla y lista comparten
+    // columna. Antes el modo no-lanchor dejaba el titulo CENTRADO sobre items a la izquierda = eje partido/descuidado.
+    if (tp > 0) { ctx.save(); ctx.globalAlpha *= eOutCubic(clamp(tp, 0, 1)); ctx.font = fontStr(800, fitFont(p.title || '', (p.title || '').length > 18 ? 26 : 30, W * 0.8, 18, 800, 'd'), 'd'); ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = INK; setShadow('rgba(0,0,0,0.4)', 5, 1); ctx.fillText(p.title || '', rx, H * 0.23); noShadow(); ctx.restore(); }
     // regla de acento bajo el titulo -> lo liga a la lista (proximidad Gestalt), no queda flotando aparte
     const ru = eOutCubic(inv(t, 0.3, 0.8));
-    if (ru > 0) { const ry = H * 0.285, rxr = lanchor ? rx : cx - 26; ctx.save(); ctx.fillStyle = accent(rxr, ry, rxr + 52, ry); ctx.beginPath(); ctx.roundRect(rxr, ry, 52 * ru, 4, 2); ctx.fill(); ctx.restore(); }
+    if (ru > 0) { const ry = H * 0.285, rxr = rx; ctx.save(); ctx.fillStyle = accent(rxr, ry, rxr + 52, ry); ctx.beginPath(); ctx.roundRect(rxr, ry, 52 * ru, 4, 2); ctx.fill(); ctx.restore(); }
     const items = (p.items || []).slice(0, 4);
     if (p.listLayout === 'grid') { _listGrid(items, t, lanchor); return; }
     const gap = (items.length >= 4 ? 58 : 70), startY = H * 0.46 - (items.length - 1) * gap / 2;
@@ -1422,9 +1423,23 @@ function _rgba(hex, a) {
     const words = text.split(' '); const lines = []; let cur = '';
     for (const w of words) { const test = cur ? cur + ' ' + w : w; if (ctx.measureText(test).width > maxW && cur) { lines.push(cur); cur = w; } else cur = test; }
     if (cur) lines.push(cur);
-    // anclar el centro de masa al TERCIO (no al 50% matematico) -> intencionalidad, libera el tercio inferior
-    const anchorY = (style === 'quote' || style === 'panel') ? 0.46 : (left ? 0.44 : 0.42);
+    // anclar el centro de masa al TERCIO SUPERIOR (no al 50% matematico) -> intencionalidad, rule-of-thirds; sube
+    // un poco el bloque para no dejar el tercio de arriba muerto (el eyebrow de marca termina de anclarlo).
+    const anchorY = (style === 'quote' || style === 'panel') ? 0.46 : (left ? 0.42 : 0.40);
     const lh = fs * 1.18, topY = H * anchorY - (lines.length * lh) / 2 + lh / 2;
+    // EYEBROW de marca arriba: ancla el tercio superior que quedaba vacio + sostiene identidad (la marca no
+    // muere a mitad del reel). Solo en centered/left (quote/panel tienen su propio marco). Halo para contraste.
+    if ((style === 'centered' || left) && _BRAND) {
+      const ep = eOutCubic(clamp(inv(t, 0.02, 0.5), 0, 1));
+      if (ep > 0) {
+        const eax = left ? W * 0.13 : W / 2, ey = H * 0.255;
+        ctx.save(); ctx.globalAlpha *= ep * 0.95;
+        ctx.font = fontStr(700, 18, 'a'); ctx.textAlign = left ? 'left' : 'center'; ctx.textBaseline = 'middle';
+        setShadow(TONE === 'light' ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.5)', 6, 0);
+        ctx.fillStyle = _accentInk(A1, 0.45); ctx.fillText(_BRAND.toUpperCase(), eax, ey); noShadow();
+        ctx.restore();
+      }
+    }
     function drawLines(ox, align, riseX) {
       ctx.font = fontStr(800, fs, 'd'); ctx.textBaseline = 'middle'; ctx.textAlign = align;
       lines.forEach((ln, i) => {
@@ -1872,16 +1887,24 @@ function _rgba(hex, a) {
   function sceneNumberStack(t, p = {}) {
     const items = (p.items || []).slice(0, 3), n = items.length; if (!n) return;
     const al = p.align === 'left' ? 'left' : 'center', tx = al === 'left' ? W * 0.12 : W / 2;
+    // PLAN FOCAL: un item DESTACADO (mas grande + acento + subrayado) y el resto subordinado (mas chico/tenue)
+    // -> jerarquia clara (antes los 3 pesaban igual, sin foco). Default = el primero (suele ser el gancho, p.ej. $0);
+    // el director puede mandar p.focal (indice). Determinista.
+    const focal = (Number.isInteger(p.focal) && p.focal >= 0 && p.focal < n) ? p.focal : 0;
     const gap = H * (n === 3 ? 0.21 : 0.26), startY = H * 0.46 - (n - 1) * gap / 2;
     items.forEach((it, i) => {
+      const isF = i === focal;
       const d = 0.18 + i * 0.42, ap = inv(t, d, d + 0.4); if (ap <= 0) return;
       const prog = eOutCubic(clamp(inv(t, d, d + 0.9), 0, 1)), y = startY + i * gap;
       const val = (it.prefix || '') + _fmtN((Number(it.value) || 0) * prog) + (it.suffix || '');
       const pop = lerp(0.8, 1, eOutBack(clamp(ap, 0, 1)));
-      ctx.save(); ctx.globalAlpha = clamp(ap * 1.4, 0, 1); ctx.translate(tx, y); ctx.scale(pop, pop);
-      ctx.font = fontStr(800, fitFont(val, 66, W * 0.78, 34, 800, 'd'), 'd'); ctx.textAlign = al; ctx.textBaseline = 'middle';
-      ctx.fillStyle = TONE === 'light' ? _accentInk(A1) : _accentPop(A1); setShadow(_rgba(_accentPop(A1), 0.3), 14, 2); ctx.fillText(val, 0, -10); noShadow();
-      if (it.label) { const _lb = String(it.label); ctx.font = fontStr(600, fitFont(_lb, 19, W * 0.74, 13, 600, 't'), 't'); ctx.fillStyle = DIM; setShadow(TONE === 'light' ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.6)', 8, 0); ctx.fillText(_lb, 0, 30); noShadow(); }   // fitFont -> el label nunca se corta ("...tarjeta" entero) + halo de contraste
+      ctx.save(); ctx.globalAlpha = clamp(ap * 1.4, 0, 1) * (isF ? 1 : 0.78); ctx.translate(tx, y); ctx.scale(pop, pop);
+      const nfs = fitFont(val, isF ? 80 : 54, W * 0.8, 30, 800, 'd');
+      ctx.font = fontStr(800, nfs, 'd'); ctx.textAlign = al; ctx.textBaseline = 'middle';
+      ctx.fillStyle = isF ? _accentPop(A1) : (TONE === 'light' ? _accentInk(A1) : _lighten(A1, 0.12));
+      setShadow(_rgba(_accentPop(A1), isF ? 0.4 : 0.2), isF ? 18 : 12, 2); ctx.fillText(val, 0, -10); noShadow();
+      if (isF) { const uw = nfs * 0.5, ux = al === 'left' ? 0 : -uw / 2; ctx.fillStyle = accent(ux, 0, ux + uw, 0); ctx.beginPath(); ctx.roundRect(ux, 20, uw * eOutCubic(clamp(ap, 0, 1)), 4, 2); ctx.fill(); }   // subrayado de acento bajo el plan focal (sin copy extra)
+      if (it.label) { const _lb = String(it.label); ctx.font = fontStr(isF ? 700 : 600, fitFont(_lb, isF ? 20 : 18, W * 0.74, 13, isF ? 700 : 600, 't'), 't'); ctx.fillStyle = isF ? INK : DIM; setShadow(TONE === 'light' ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.6)', 8, 0); ctx.fillText(_lb, 0, isF ? 40 : 30); noShadow(); }   // fitFont -> label entero; focal mas brillante/grande
       ctx.restore();
     });
   }
@@ -2001,6 +2024,7 @@ function _rgba(hex, a) {
     setShadowMode(tl.shadowMode);
     setMotif(tl.motif);
     setFonts(tl);
+    _BRAND = (tl.brand || '').toString();
     ctx.clearRect(0, 0, W, H);
     // CAMARA COMPARTIDA (parallax + reloj unico): un solo vector continuo (global t, armonicos ENTEROS de _PHI
     // -> sin "beating") que mueve fondo y contenido juntos. El fondo a ~32% de profundidad; el contenido al 100%.
