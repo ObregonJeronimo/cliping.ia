@@ -188,6 +188,8 @@ TL_DIRECTOR_SYSTEM = (
     "siempre hero->statement->checklist->outro. Mezcla los tipos (reveal/quote/numberStack/split/checklist/bigStat), "
     "varia el ORDEN y el CONTEO, y meti el hero/foto en el medio o el final a veces. Si dos marcas distintas tienen "
     "la misma estructura, fallaste. Cada tipo es OPCIONAL; elegi la combinacion que cuenta MEJOR a ESTA marca.\n"
+    "- COMPOSICION: reveal/bigStat/numberStack/quote aceptan align: 'left' o 'center'. Elegi UNA por video y usala "
+    "en esas escenas (coherencia) -> asi un video se ve left-aligned/editorial y otro centrado: mas variedad real.\n"
     "- HONESTIDAD numeros: 'bigStat'/'numberStack' muestran HECHOS. Los numeros TIENEN que estar en el CONTEXTO DEL "
     "SITIO. NUNCA inventes cifras; si no hay, conta el beneficio con statement/reveal/checklist. 'quote' solo con "
     "testimonio real/plausible.\n"
