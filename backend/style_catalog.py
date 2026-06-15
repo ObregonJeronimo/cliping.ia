@@ -54,10 +54,23 @@ STYLE_PRESETS = {
     "sport":       {"nombre": "Sport Velocity", "bg": "speedlines", "light_p": 0.05, "shadow": "hard", "tex": "none",
                     "comps": ["typeOnly", "typeSlam", "diagonal"], "stmt": ["editorial", "centered"], "list": "bar", "grid_p": 0.0,
                     "outro": ["ctaOnly", "bigtype"], "rhythm": _RH_FAST, "structs": _ST_PUNCHY},
+    # --- ESTILOS NUEVOS (tanda 1): cubren huecos del catalogo para mas opciones del usuario ---
+    "editorial":   {"nombre": "Editorial Magazine", "bg": "editorial", "light_p": 0.95, "shadow": "soft", "tex": "grain",
+                    "comps": ["typeStack", "typeOnly", "sideLeft"], "stmt": ["editorial", "quote"], "list": "number", "grid_p": 0.0,
+                    "outro": ["left", "center", "bigtype"], "rhythm": _RH_SLOW, "structs": _ST_PREMIUM},
+    "corporate":   {"nombre": "Corporate Modern", "bg": "corporate", "light_p": 0.95, "shadow": "soft", "tex": "none",
+                    "comps": ["typeStack", "typeTop", "sideLeft"], "stmt": ["centered", "panel"], "list": "check", "grid_p": 0.5,
+                    "outro": ["center", "ctaOnly", "bar"], "rhythm": _RH_MED, "structs": _ST_FULL},
+    "broadcast":   {"nombre": "Breaking News", "bg": "broadcast", "light_p": 0.0, "shadow": "hard", "tex": "none",
+                    "comps": ["typeTop", "typeSlam", "typeStack"], "stmt": ["left", "editorial"], "list": "bar", "grid_p": 0.0,
+                    "outro": ["bar", "ctaOnly", "bigtype"], "rhythm": _RH_FAST, "structs": _ST_PUNCHY},
+    "organic":     {"nombre": "Organic Natural", "bg": "organic", "light_p": 0.9, "shadow": "soft", "tex": "grain",
+                    "comps": ["typeStack", "cornerAnchor", "typeOnly"], "stmt": ["centered", "quote"], "list": "check", "grid_p": 0.0,
+                    "outro": ["center", "left", "diagonal"], "rhythm": _RH_SLOW, "structs": _ST_PREMIUM},
 }
 # orden seguro -> audaz (para la UI del selector) + sesgo de estilo recomendado por rubro (auto cuando el
 # usuario no elige). El usuario SIEMPRE puede pisar esto con su eleccion.
-STYLE_ORDER = ["blueprint", "swiss", "platinum", "obsidian", "meshflow", "aurora", "handmade", "typographic", "riso", "retro70s", "brutalist", "sport"]
+STYLE_ORDER = ["blueprint", "swiss", "platinum", "obsidian", "meshflow", "aurora", "handmade", "typographic", "riso", "retro70s", "brutalist", "sport", "editorial", "corporate", "broadcast", "organic"]
 # SISTEMA DE FUENTES por estilo (rompe el "Inter para todo"). display=titular/hero; text=cuerpo/listas
 # (caption-safe); accent=numeros/indices (mono). Familias = Google Fonts (cargadas en el motor por estilo).
 # Basado en la investigacion de tipografia para video marketing 2026. El motor lee fontDisplay/Text/Accent.
@@ -74,19 +87,23 @@ STYLE_FONTS = {
     "retro70s":    {"display": "Caprasimo", "text": "DM Sans", "accent": "Righteous"},
     "brutalist":   {"display": "Anton", "text": "Darker Grotesque", "accent": "Space Mono"},
     "sport":       {"display": "Oswald", "text": "Barlow", "accent": "Big Shoulders Display"},
+    "editorial":   {"display": "Fraunces", "text": "Newsreader", "accent": "Space Mono"},
+    "corporate":   {"display": "Plus Jakarta Sans", "text": "Inter", "accent": "JetBrains Mono"},
+    "broadcast":   {"display": "Anton", "text": "Archivo", "accent": "JetBrains Mono"},
+    "organic":     {"display": "Quicksand", "text": "Hanken Grotesk", "accent": "Caveat"},
 }
 _DEFAULT_FONTS = {"display": "Space Grotesk", "text": "Inter", "accent": "JetBrains Mono"}
 RUBRO_STYLE_BIAS = {
-    "inmobiliaria": ["blueprint", "swiss", "obsidian", "meshflow"],
-    "finanzas":     ["swiss", "blueprint", "obsidian", "platinum"],
-    "tech":         ["platinum", "meshflow", "typographic", "brutalist"],
-    "salud":        ["aurora", "swiss", "meshflow", "handmade"],
-    "belleza":      ["aurora", "obsidian", "handmade", "riso"],
-    "gastronomia":  ["handmade", "retro70s", "riso", "meshflow"],
-    "fitness":      ["sport", "brutalist", "typographic", "platinum"],
-    "educacion":    ["swiss", "retro70s", "typographic", "meshflow"],
-    "moda":         ["obsidian", "typographic", "riso", "brutalist"],
-    "default":      ["meshflow", "swiss", "typographic", "obsidian"],
+    "inmobiliaria": ["editorial", "blueprint", "swiss", "obsidian", "meshflow", "corporate"],
+    "finanzas":     ["corporate", "swiss", "blueprint", "obsidian", "broadcast"],
+    "tech":         ["corporate", "meshflow", "typographic", "brutalist"],
+    "salud":        ["organic", "aurora", "swiss", "meshflow", "handmade"],
+    "belleza":      ["aurora", "editorial", "obsidian", "handmade", "riso"],
+    "gastronomia":  ["handmade", "retro70s", "riso", "organic", "editorial"],
+    "fitness":      ["sport", "brutalist", "broadcast", "typographic"],
+    "educacion":    ["swiss", "corporate", "retro70s", "typographic"],
+    "moda":         ["editorial", "obsidian", "typographic", "riso"],
+    "default":      ["corporate", "meshflow", "swiss", "editorial", "typographic"],
 }
 
 

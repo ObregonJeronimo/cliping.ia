@@ -437,6 +437,22 @@ function _rgba(hex, a) {
     pass(_rgba(pal[0], 0.36), 0, 0, 1);
     pass(_rgba(pal[3], 0.32), 5, 5, 0.8);   // 2da tinta de otro hue, corrida = misregistro riso
   }
+  // 'broadcast': noticiero -> lower-third deslizante + ticker en loop + bug EN VIVO pulsante. MOTION incorporado
+  // (nunca frame muerto) -> ideal para ofertas/urgencia/lanzamientos.
+  function _bgBroadcast(t, pal) {
+    ctx.save();
+    const slide = clamp((t - 0.2) * 0.6, 0, 1);
+    ctx.fillStyle = _rgba(pal[0], 0.9); ctx.fillRect(0, H * 0.7, W * slide, 5);            // regla de lower-third
+    ctx.fillStyle = _rgba(pal[0], 0.14); ctx.fillRect(0, H * 0.928, W, 24);                // banda del ticker
+    ctx.save(); ctx.beginPath(); ctx.rect(0, H * 0.928, W, 24); ctx.clip();                // ticker en loop
+    ctx.fillStyle = _rgba(_lighten(pal[0], 0.3), 0.5); const tx = (t * 130) % 70;
+    for (let x = -tx; x < W + 70; x += 70) ctx.fillRect(x, H * 0.928 + 9, 42, 6);
+    ctx.restore();
+    const pulse = 0.5 + 0.5 * Math.sin(t * 4.2);                                           // bug EN VIVO arriba-derecha
+    setShadow(_rgba('#ff3b3b', 0.5), 10, 0); ctx.fillStyle = _rgba('#ff3b3b', 0.55 + 0.45 * pulse);
+    ctx.beginPath(); ctx.arc(W - 42, H * 0.062, 5 + pulse * 1.5, 0, TAU); ctx.fill(); noShadow();
+    ctx.restore();
+  }
   // CAPA CONTEXTUAL: motivo vectorial TENUE que evoca el rubro del link (no un gradiente generico). Detras
   // del contenido, baja opacidad, determinista por SEED + t. Esto hace que el fondo "hable" del dominio.
   function _drawMotif(rubro, t, pal) {
@@ -636,12 +652,35 @@ function _rgba(hex, a) {
       for (let c = 0; c < corners.length - 1; c++) { const x0 = corners[c][0], y0 = corners[c][1], x1 = corners[c + 1][0], y1 = corners[c + 1][1], seg = 12;
         for (let i = 0; i <= seg; i++) { const f = i / seg, x = lerp(x0, x1, f) + (rnd() - 0.5) * 5, y = lerp(y0, y1, f) + (rnd() - 0.5) * 5; (c === 0 && i === 0) ? ctx.moveTo(x, y) : ctx.lineTo(x, y); } }
       ctx.stroke(); ctx.restore();
+    } else if (BG_STYLE === 'editorial') {
+      // EDITORIAL: hairlines de cabecera/pie (regla de revista) + wash duotono quieto en una esquina.
+      ctx.save(); ctx.strokeStyle = _rgba(aink, 0.5); ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(W * 0.08, H * 0.085); ctx.lineTo(W * 0.92, H * 0.085); ctx.moveTo(W * 0.08, H * 0.93); ctx.lineTo(W * 0.92, H * 0.93); ctx.stroke();
+      ctx.globalCompositeOperation = 'multiply'; const eg = ctx.createRadialGradient(W * 0.85, H * 0.2, 0, W * 0.85, H * 0.2, H * 0.5);
+      eg.addColorStop(0, _rgba(pal[0], 0.1)); eg.addColorStop(1, _rgba(pal[0], 0)); ctx.fillStyle = eg; ctx.fillRect(0, 0, W, H); ctx.restore();
+    } else if (BG_STYLE === 'corporate') {
+      // CORPORATE: near-white + gradiente calmo en esquina + dot-grid UI muy tenue (look SaaS/B2B).
+      ctx.save(); ctx.globalCompositeOperation = 'multiply'; const cg = ctx.createRadialGradient(W * 0.9, H * 0.12, 0, W * 0.9, H * 0.12, H * 0.6);
+      cg.addColorStop(0, _rgba(pal[0], 0.12)); cg.addColorStop(1, _rgba(pal[0], 0)); ctx.fillStyle = cg; ctx.fillRect(0, 0, W, H); ctx.restore();
+      ctx.save(); ctx.fillStyle = _rgba(aink, 0.1); const cstep = 30, coff = (t * 3) % cstep;
+      for (let gy = -coff; gy < H; gy += cstep) for (let gx = -coff; gx < W; gx += cstep) { ctx.beginPath(); ctx.arc(gx, gy, 1, 0, TAU); ctx.fill(); }
+      ctx.restore();
+    } else if (BG_STYLE === 'organic') {
+      // ORGANIC: colinas/ondas organicas que ondulan lento (parallax) tintando el fondo terroso.
+      ctx.save(); ctx.globalCompositeOperation = 'multiply'; const ohues = [pal[0], pal[3], pal[1]];
+      for (let i = 0; i < 3; i++) {
+        const baseY = H * (0.56 + i * 0.16); ctx.fillStyle = _rgba(ohues[i % ohues.length], 0.15 - i * 0.03);
+        ctx.beginPath(); ctx.moveTo(0, H);
+        for (let x = 0; x <= W; x += 18) { const y = baseY + Math.sin(x * 0.012 + t * 0.4 + i * 1.3) * 22; ctx.lineTo(x, y); }
+        ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+      }
+      ctx.restore();
     }
     ctx.save();
     for (const gp of grain) { ctx.globalAlpha = Math.min(0.05, (gp.a || 0.06) * 0.6); ctx.fillStyle = '#1c130c'; ctx.fillRect(gp.x, gp.y, gp.r || 1.3, gp.r || 1.3); }
     ctx.restore();
     if (MOTIF) _drawMotif(MOTIF, t, pal);   // motivo contextual tambien en tono claro
-    if (BG_STYLE !== 'speedlines' && BG_STYLE !== 'brutalist') _drawFloaters(t);   // objetos flotantes que rellenan los vacios
+    if (BG_STYLE !== 'speedlines' && BG_STYLE !== 'brutalist' && BG_STYLE !== 'broadcast') _drawFloaters(t);   // objetos flotantes que rellenan los vacios
     const v = ctx.createRadialGradient(W / 2, H * 0.46, H * 0.32, W / 2, H * 0.5, H * 0.82);
     v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(60,45,35,0.10)');
     ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
@@ -667,9 +706,11 @@ function _rgba(hex, a) {
     else if (BG_STYLE === 'halftone') _bgHalftone(t, pal);
     else if (BG_STYLE === 'paper') _bgField(t, pal);   // handmade en oscuro (raro): cae a field suave
     else if (BG_STYLE === 'typo') _bgField(t, pal);    // typographic: base sobria + wordmark fantasma (en drawFrame)
+    else if (BG_STYLE === 'broadcast') _bgBroadcast(t, pal);
+    else if (BG_STYLE === 'editorial' || BG_STYLE === 'corporate' || BG_STYLE === 'organic') _bgField(t, pal);  // estos son tono claro; en oscuro (raro) caen a field
     else _bgMesh(t, pal);
     if (MOTIF) _drawMotif(MOTIF, t, pal);   // capa CONTEXTUAL: motivo del rubro (skyline, sparkline, etc.)
-    if (BG_STYLE !== 'speedlines' && BG_STYLE !== 'brutalist') _drawFloaters(t);   // objetos flotantes que rellenan los vacios
+    if (BG_STYLE !== 'speedlines' && BG_STYLE !== 'brutalist' && BG_STYLE !== 'broadcast') _drawFloaters(t);   // objetos flotantes que rellenan los vacios
     // 3) motes (polvo) con tinte del tema, deriva vertical sembrada
     ctx.save();
     for (const m of motes) {
