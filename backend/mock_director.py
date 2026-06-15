@@ -545,7 +545,14 @@ if __name__ == "__main__":
     # FOTOS de prueba (solo el banco): si existen, se pasan a todas las marcas y el decisor de recurso
     # protagonista decide por rubro si las usa (visual -> foto; abstracto -> tipo/morph). Generalas con:
     #   node tools/make-stock-photos.mjs   (deja PNGs en tools/_stock/). Sin ellas, el hero cae a tipo/morph.
-    _STOCK = [os.path.join("tools", "_stock", f) for f in sorted(os.listdir("tools/_stock"))] if os.path.isdir("tools/_stock") else []
+    _STOCK_BY_RUBRO = {
+        "gastronomia": ["food.png", "interior.png"], "inmobiliaria": ["interior.png", "storefront.png"],
+        "belleza": ["spa.png", "product.png"], "salud": ["spa.png", "interior.png"],
+        "moda": ["product.png", "people.png"], "fitness": ["people.png", "interior.png"],
+    }
+
+    def _stock_for(rubro):
+        return [p for p in (os.path.join("tools", "_stock", f) for f in _STOCK_BY_RUBRO.get(rubro, [])) if os.path.exists(p)]
 
     def _parts(tl):
         comp = next((s.get("comp") for s in tl["scenes"] if s.get("type") == "scene"), "")
@@ -581,7 +588,8 @@ if __name__ == "__main__":
         # el banco muestra los 12 ESTILOS (uno por marca) -> la galeria es un showcase del catalogo elegible
         sty = STYLE_ORDER[i % len(STYLE_ORDER)]
         seed = se.stable_seed(name, ind)
-        tl = generate(name, ind, seed=seed, style=sty, images=_STOCK)
+        _brand_imgs = _stock_for(se.preset(ind, "", "medio", seed)["rubro"])   # fotos por rubro (visual si; abstracto no)
+        tl = generate(name, ind, seed=seed, style=sty, images=_brand_imgs)
         tries, best = 0, None
         while tries < 20:
             sig_ok = _sig(tl) not in seen
@@ -593,7 +601,7 @@ if __name__ == "__main__":
             if sig_ok and best is None:
                 best = (seed, tl)  # cumple la garantia dura; lo guardo por si no logro evitar par/forma
             seed = (seed + 0x9E3779B9) & 0xFFFFFFFF
-            tl = generate(name, ind, seed=seed, style=sty, images=_STOCK)
+            tl = generate(name, ind, seed=seed, style=sty, images=_brand_imgs)
             tries += 1
         if best is not None and _sig(tl) in seen:
             seed, tl = best  # no se pudo evitar par/forma en N tiros -> uso la mejor carta-unica hallada
