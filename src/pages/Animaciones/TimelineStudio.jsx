@@ -38,6 +38,10 @@ const STYLES = [
   { id: 'retro70s', label: 'Retro 70s', vibe: 'sunburst nostálgico' },
   { id: 'brutalist', label: 'Brutalist', vibe: 'crudo, audaz' },
   { id: 'sport', label: 'Sport', vibe: 'velocidad, urgencia' },
+  { id: 'editorial', label: 'Editorial', vibe: 'revista premium, serif' },
+  { id: 'corporate', label: 'Corporate', vibe: 'profesional B2B, claro' },
+  { id: 'broadcast', label: 'Breaking News', vibe: 'urgente, oferta' },
+  { id: 'organic', label: 'Organic', vibe: 'natural, calmo, wellness' },
 ]
 
 function sceneSummary(s) {
