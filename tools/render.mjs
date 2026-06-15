@@ -155,8 +155,20 @@ function windowStrip(path, name, t0, t1) {
   sheet(name, `${name} · ventana densa t ${t0}-${t1}`, items, 4)
 }
 
+// precarga assets (logo + fotos reales) ANTES de renderizar -> el motor los dibuja determinista (igual que en produccion)
+async function _loadAssets(tl) {
+  try { if (tl && tl.logo) setLogo(await loadImage(tl.logo)) } catch (e) { console.log('(logo)', e.message) }
+  try {
+    if (tl && Array.isArray(tl.images) && tl.images.length) {
+      const imgs = await Promise.all(tl.images.map(u => loadImage(u).catch(() => null)))
+      setPhotos(imgs); console.log('(fotos) cargadas', imgs.filter(Boolean).length, 'de', tl.images.length)
+    }
+  } catch (e) { console.log('(fotos)', e.message) }
+}
+
 const mode = process.argv[2] || 'all'
 if (mode === 'window') {
+  { const p = process.argv[3]; const tl0 = JSON.parse(readFileSync(p, 'utf8')); await _loadAssets(tl0) }
   windowStrip(process.argv[3], process.argv[4] || 'window', parseFloat(process.argv[5] || '0'), parseFloat(process.argv[6] || '3'))
 } else if (mode === 'gallery') {
   galleryFromDir(process.argv[3] || 'tools/brands', parseFloat(process.argv[4] || '3.0'))
@@ -165,11 +177,7 @@ if (mode === 'window') {
   const name = process.argv[4] || 'video'
   const n = parseInt(process.argv[5] || '12', 10)
   const tl = path ? JSON.parse(readFileSync(path, 'utf8')) : DEMO_TIMELINE
-  if (tl.logo) { try { setLogo(await loadImage(tl.logo)); console.log('(logo) cargado', tl.logo) } catch (e) { console.log('(logo) fallo:', e.message) } }
-  if (Array.isArray(tl.images) && tl.images.length) {
-    const imgs = await Promise.all(tl.images.map(u => loadImage(u).catch(() => null)))
-    setPhotos(imgs); console.log('(fotos) cargadas', imgs.filter(Boolean).length, 'de', tl.images.length)
-  }
+  await _loadAssets(tl)
   videoStrip(tl, name, `Video · ${name}`, n)
 } else if (mode === 'gif') {
   gifExport(process.argv[3], process.argv[4] || 'video', parseInt(process.argv[5] || '14', 10))
