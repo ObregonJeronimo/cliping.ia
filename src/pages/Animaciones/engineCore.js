@@ -1498,7 +1498,9 @@ function _rgba(hex, a) {
     if (typeof tok === 'string') {
       if (tok === 'accent') return A1; if (tok === 'accent2') return A2;
       if (tok === 'ink' || tok === 'light') return INK; if (tok === 'dim') return DIM;
-      if (tok === 'dark') return '#1c140a'; if (/^#[0-9a-fA-F]{6}$/.test(tok)) return tok;
+      if (tok === 'dark') return '#1c140a';
+      if (tok === 'photoink') return '#f6f8fb'; if (tok === 'photodim') return '#c8d2de';   // texto claro SOBRE foto (scrim oscuro) -> legible sin importar el tono del video
+      if (/^#[0-9a-fA-F]{6}$/.test(tok)) return tok;
     }
     return INK;
   }

@@ -175,7 +175,20 @@ _OUTRO_BY_COMP = {"emblem": "center", "sideLeft": "left", "typeHero": "bigtype",
                   "topAnchor": "bar", "cornerAnchor": "left", "diagonal": "bar", "typeSlam": "bigtype"}
 
 
-def _hero_scene(brand, rubro, accent_light, rnd, comp, blur, f1, f2):
+_VISUAL_RUBROS = {"gastronomia", "inmobiliaria", "belleza", "moda", "fitness", "salud"}
+
+
+def _hero_resource(rubro, has_photos, rnd):
+    """RECURSO PROTAGONISTA del hero (mata 'la misma figura geometrica en TODOS los videos'): elige UNO -
+    foto real / tipografia pura / morph. Determinista por rnd(seed). Morph cae a ~1 de cada 3-4."""
+    if has_photos and rubro in _VISUAL_RUBROS:
+        return rnd.choice(["photo", "photo", "photo", "type"])   # rubro visual con fotos -> mayormente FOTO
+    if has_photos:
+        return rnd.choice(["photo", "type", "type", "morph"])
+    return rnd.choice(["type", "type", "morph"])                 # sin fotos: tipografia o morph (morph minoria)
+
+
+def _hero_scene(brand, rubro, accent_light, rnd, comp, blur, f1, f2, resource="morph", photos=None):
     """HERO con COMPOSICION variable (no siempre forma-centrada): la forma FIRMA del rubro (f1, elegida en
     generate y guardada en la marca) aparece YA en el arranque (t=0.42) y el morph la usa para un flourish
     corto + pulso/rotacion. f2 = excursion breve. blur/saturacion vienen de la energia del rubro."""
@@ -183,7 +196,18 @@ def _hero_scene(brand, rubro, accent_light, rnd, comp, blur, f1, f2):
     ease_in = rnd.choice(["outBack", "outElastic"])
     sub = "  ".join(rnd.choice(SUBTITLES.get(rubro, SUBTITLES["default"])))
     L = _HERO_LAYOUT[comp]
-    shape_mode = L.get("shape", "lead")
+    # RECURSO PROTAGONISTA: foto real a sangre (rubros visuales) -> NO morph. El texto va sobre el scrim.
+    if resource == "photo" and photos:
+        pidx = rnd.randrange(len(photos))
+        return {"type": "scene", "durationInFrames": 126, "comp": comp, "elements": [
+            {"kind": "photo", "photoIdx": pidx, "keys": [{"t": 0, "opacity": 0}, {"t": 0.35, "opacity": 1, "ease": "outCubic"}]},
+            {"kind": "text", "text": brand, "fill": "photoink", "size": 58, "weight": 800, "align": "center", "maxW": 360, "kinetic": True,
+             "keys": [{"t": 0.4, "opacity": 1, "x": 202, "y": 556}]},
+            {"kind": "text", "text": sub, "fill": "photodim", "size": 23, "weight": 600, "align": "center", "maxW": 330,
+             "keys": [{"t": 0.9, "opacity": 0, "x": 202, "y": 612}, {"t": 1.3, "opacity": 1, "x": 202, "y": 602, "ease": "outCubic"}]},
+        ]}
+    # TIPOGRAFIA pura -> sin figura (shape none); morph -> segun la comp. Asi NO todos llevan figura.
+    shape_mode = "none" if resource == "type" else L.get("shape", "lead")
     jx, jy = rnd.randint(-14, 14), rnd.randint(-14, 14)
     sx, sy, sr, sop, ns = L["sx"] + jx, L["sy"] + jy, L["sr"], L["sop"], L["ns"]
     els = []
@@ -387,7 +411,7 @@ RUBRO_STYLE_BIAS = {
 from style_catalog import STYLE_PRESETS, STYLE_ORDER, RUBRO_STYLE_BIAS, STYLE_FONTS, _DEFAULT_FONTS  # noqa: E402
 
 
-def generate(brand: str, industria: str, facts=None, seed: int = None, style: str = None) -> dict:
+def generate(brand: str, industria: str, facts=None, seed: int = None, style: str = None, images=None) -> dict:
     """Marca + rubro -> timeline COMPLETO (imita al LLM, determinista). Para test y fallback offline."""
     if seed is None:
         seed = se.stable_seed(brand, industria)
@@ -435,6 +459,7 @@ def generate(brand: str, industria: str, facts=None, seed: int = None, style: st
     outro_comp = rnd.choice(outro_pool)
     # ESTRUCTURA NARRATIVA del estilo (no una sola coreografia para todos): conteo/orden/beats varian.
     skel = rnd.choice(S["structs"])
+    _hero_res = _hero_resource(rubro, bool(images), rnd)   # recurso protagonista (foto/tipo/morph) -> no todos llevan figura
     scenes = []
     _used_stmt = set()
 
@@ -449,7 +474,7 @@ def generate(brand: str, industria: str, facts=None, seed: int = None, style: st
 
     for slot in skel:
         if slot == "hero":
-            scenes.append(_hero_scene(brand, rubro, accent_light, rnd, comp, shape_blur, f1, f2))
+            scenes.append(_hero_scene(brand, rubro, accent_light, rnd, comp, shape_blur, f1, f2, _hero_res, images))
         elif slot == "statement":
             scenes.append(_fresh_statement())
         elif slot == "checklist":
@@ -483,6 +508,8 @@ def generate(brand: str, industria: str, facts=None, seed: int = None, style: st
         "fontDisplay": STYLE_FONTS.get(style_id, _DEFAULT_FONTS)["display"],
         "fontText": STYLE_FONTS.get(style_id, _DEFAULT_FONTS)["text"],
         "fontAccent": STYLE_FONTS.get(style_id, _DEFAULT_FONTS)["accent"],
+        "images": images or [],
+        "heroResource": _hero_res,
         # MOTIVO contextual del fondo segun el rubro (skyline / sparkline / vapor / pulso / botanico...)
         "motif": rubro,
         # forma FIRMA de la marca -> el motor la persiste como marca de agua viva en las escenas de contenido
@@ -515,6 +542,10 @@ if __name__ == "__main__":
     if "--out" in sys.argv:
         out_dir = sys.argv[sys.argv.index("--out") + 1]
     os.makedirs(out_dir, exist_ok=True)
+    # FOTOS de prueba (solo el banco): si existen, se pasan a todas las marcas y el decisor de recurso
+    # protagonista decide por rubro si las usa (visual -> foto; abstracto -> tipo/morph). Generalas con:
+    #   node tools/make-stock-photos.mjs   (deja PNGs en tools/_stock/). Sin ellas, el hero cae a tipo/morph.
+    _STOCK = [os.path.join("tools", "_stock", f) for f in sorted(os.listdir("tools/_stock"))] if os.path.isdir("tools/_stock") else []
 
     def _parts(tl):
         comp = next((s.get("comp") for s in tl["scenes"] if s.get("type") == "scene"), "")
@@ -550,7 +581,7 @@ if __name__ == "__main__":
         # el banco muestra los 12 ESTILOS (uno por marca) -> la galeria es un showcase del catalogo elegible
         sty = STYLE_ORDER[i % len(STYLE_ORDER)]
         seed = se.stable_seed(name, ind)
-        tl = generate(name, ind, seed=seed, style=sty)
+        tl = generate(name, ind, seed=seed, style=sty, images=_STOCK)
         tries, best = 0, None
         while tries < 20:
             sig_ok = _sig(tl) not in seen
@@ -562,7 +593,7 @@ if __name__ == "__main__":
             if sig_ok and best is None:
                 best = (seed, tl)  # cumple la garantia dura; lo guardo por si no logro evitar par/forma
             seed = (seed + 0x9E3779B9) & 0xFFFFFFFF
-            tl = generate(name, ind, seed=seed, style=sty)
+            tl = generate(name, ind, seed=seed, style=sty, images=_STOCK)
             tries += 1
         if best is not None and _sig(tl) in seen:
             seed, tl = best  # no se pudo evitar par/forma en N tiros -> uso la mejor carta-unica hallada
