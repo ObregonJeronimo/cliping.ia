@@ -104,13 +104,22 @@ TL_SCENE_CATALOG = """ESCENAS DISPONIBLES (motor Canvas) — agrupadas por CATEG
 
 [APERTURA / HOOK]  (la 1ra escena: corta y filosa, frena el scroll)
 - "statement": una frase con gancho. props: text (string, 4-9 palabras, potente).
+- "reveal": GANCHO de 1-4 palabras a pantalla casi completa, apiladas, la ultima en acento. props: text (1-4
+  palabras), kicker? (etiqueta corta arriba, ej "ESTO ES"). El hook tipografico mas fuerte; alterna con statement/paintTitle.
 - "paintTitle": el nombre de la marca "pintado" con 2 subtitulos. props: title (string = marca),
   subtitles (array de exactamente 2 strings cortos). Es un reveal de marca; tambien sirve de cierre visual.
 
 [DATO / PRUEBA]
-- "bigStat": un numero que cuenta de 0 al valor (el beat de "dato que impacta"). props: value (numero),
-  prefix? ("+","$"), suffix? ("%","k","/5"), label (string corto debajo, que describe el numero).
-  USALA SOLO si hay un numero REAL en el contexto del sitio. NUNCA inventes la cifra.
+- "bigStat": UN numero que cuenta de 0 al valor. props: value (numero), prefix?, suffix?, label.
+  USALA SOLO si hay un numero REAL en el contexto. NUNCA inventes la cifra.
+- "numberStack": 2-3 numeros que cuentan en cascada (vs bigStat que es uno). props: items (array de 2-3 de
+  {value, label, prefix?, suffix?}). Todos los numeros REALES del sitio. Buena para "los numeros de la marca".
+- "quote": testimonio / prueba social. props: text (frase corta del cliente), author (nombre), stars (0-5).
+  USALA SOLO si hay un testimonio/review REAL o claramente plausible del sitio.
+
+[FOTO]  (solo si hay fotos del sitio, ver 'FOTOS REALES')
+- "split": pantalla partida -> FOTO real una mitad + panel de color de marca con titular/CTA en la otra.
+  props: photoIdx (0=mejor), title, sub?, cta?, side ("left"|"right"). Ideal para el CTA (panel limpio).
 
 [BENEFICIOS]
 - "checklist": lista de 3 o 4 beneficios concretos con tilde. props: title (string), items (array de 3-4
@@ -173,11 +182,15 @@ TL_DIRECTOR_SYSTEM = (
     '{ "brand": "<nombre de marca>", "accent": "<#rrggbb vivo de la marca>", '
     '"scenes": [ { "type": "...", "durationInFrames": 150, ...props } ] }\n\n'
     "REGLAS:\n"
-    "- 4 a 5 escenas. ABRI con un HOOK ('statement' o 'paintTitle'), NUNCA con 'checklist' ni 'bigStat'. "
-    "CERRA SIEMPRE con 'outro'.\n"
-    "- ANTI-FORMULA (critico): no armes siempre el mismo esqueleto. Pensa que combinacion cuenta MEJOR a "
-    "ESTA marca puntual. Si dos marcas distintas terminan con la misma estructura, fallaste. 'checklist' y "
-    "'bigStat' son OPCIONALES; muchos videos no llevan ninguna.\n"
+    "- 3 a 6 escenas (VARIA el numero entre marcas). ABRI con un HOOK distinto cada vez ('reveal', 'statement', "
+    "'paintTitle', un 'scene' fotografico, o un 'bigStat' si pega) — NO siempre el mismo. CERRA SIEMPRE con 'outro'.\n"
+    "- ANTI-MOLDE (LO MAS IMPORTANTE): el usuario se queja de que TODOS los videos siguen el MISMO patron. NO armes "
+    "siempre hero->statement->checklist->outro. Mezcla los tipos (reveal/quote/numberStack/split/checklist/bigStat), "
+    "varia el ORDEN y el CONTEO, y meti el hero/foto en el medio o el final a veces. Si dos marcas distintas tienen "
+    "la misma estructura, fallaste. Cada tipo es OPCIONAL; elegi la combinacion que cuenta MEJOR a ESTA marca.\n"
+    "- HONESTIDAD numeros: 'bigStat'/'numberStack' muestran HECHOS. Los numeros TIENEN que estar en el CONTEXTO DEL "
+    "SITIO. NUNCA inventes cifras; si no hay, conta el beneficio con statement/reveal/checklist. 'quote' solo con "
+    "testimonio real/plausible.\n"
     "- HONESTIDAD (critico): 'bigStat' muestra un HECHO. El numero TIENE que aparecer textualmente en el "
     "CONTEXTO DEL SITIO que te paso. NO uses datos que 'sabes' de memoria de marcas conocidas. Si no hay un "
     "numero real, NO uses bigStat: conta el beneficio con statement/checklist.\n"
@@ -214,8 +227,8 @@ TL_CRITIC_SYSTEM = (
     "Si ya esta bien, verdict='ok' y devolve el spec TAL CUAL. El campo 'spec' SIEMPRE va completo."
 )
 
-_TL_VALID_TYPES = {"paintTitle", "statement", "checklist", "outro", "bigStat", "deliver", "scene"}
-_TL_DEFAULT_DUR = {"paintTitle": 234, "statement": 150, "checklist": 192, "outro": 150, "bigStat": 150, "deliver": 204, "scene": 210}
+_TL_VALID_TYPES = {"paintTitle", "statement", "checklist", "outro", "bigStat", "deliver", "scene", "reveal", "numberStack", "quote", "split"}
+_TL_DEFAULT_DUR = {"paintTitle": 234, "statement": 150, "checklist": 192, "outro": 150, "bigStat": 150, "deliver": 204, "scene": 210, "reveal": 90, "numberStack": 132, "quote": 132, "split": 120}
 
 
 _SCENE_KINDS = {"text", "icon", "shape", "morph", "particles", "svgicon", "orbit", "photo"}
@@ -409,6 +422,40 @@ def _normalize_timeline(tl: dict, dna: dict = None) -> dict:
             if not els:
                 continue
             s["elements"] = els
+        if ty == "reveal":
+            s["text"] = str(s.get("text") or "").strip()
+            if not s["text"]:
+                continue
+            s["kicker"] = str(s.get("kicker") or "")[:24]
+        if ty == "quote":
+            s["text"] = str(s.get("text") or "").strip()
+            if not s["text"]:
+                continue
+            s["author"] = str(s.get("author") or "")[:40]
+            try:
+                s["stars"] = max(0, min(5, int(s.get("stars") or 0)))
+            except Exception:
+                s["stars"] = 0
+        if ty == "numberStack":
+            items = []
+            for it in (s.get("items") or [])[:3]:
+                if not isinstance(it, dict) or it.get("value") in (None, ""):
+                    continue
+                items.append({"value": it["value"], "label": str(it.get("label") or "")[:22],
+                              "prefix": str(it.get("prefix") or "")[:3], "suffix": str(it.get("suffix") or "")[:5]})
+            if len(items) < 2:
+                continue
+            s["items"] = items
+        if ty == "split":
+            s["title"] = str(s.get("title") or tl.get("brand") or "")
+            s["sub"] = str(s.get("sub") or "")[:60]
+            s["cta"] = str(s.get("cta") or "")[:30]
+            try:
+                s["photoIdx"] = max(0, int(s.get("photoIdx") or 0))
+            except Exception:
+                s["photoIdx"] = 0
+            if s.get("side") not in ("left", "right"):
+                s["side"] = "left"
         out_scenes.append(s)
     # cerrar SIEMPRE con outro
     if not out_scenes or out_scenes[-1].get("type") != "outro":
@@ -588,7 +635,7 @@ DIRECCIÓN DE ESTE VIDEO (hacelo único, no formulaico):
 EL HOOK MANDA (primeros 1-3s = la señal #1 del algoritmo): la PRIMERA escena usa este patrón,
 adaptado a la marca y su público:
 >> {hook['guide']} (ejemplo de FORMA, no de contenido: "{hook['ex']}")
-Abrí con 'statement' o 'paintTitle' (cortos y filosos). NUNCA arranques con 'checklist'.
+Abrí con un HOOK (varialo entre marcas: 'reveal', 'statement', 'paintTitle' o un 'scene' fotografico). NUNCA con 'checklist'.
 
 OBJETIVO ({proposito}): {_td.PURPOSE_GUIDE.get((proposito or '').lower(), _td.PURPOSE_GUIDE['marketing'])}
 
