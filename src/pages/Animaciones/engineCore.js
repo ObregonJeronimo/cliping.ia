@@ -1306,7 +1306,10 @@ function _rgba(hex, a) {
   // center (pildora centrada) · left (chip a la izquierda) · bar (barra full-width abajo) · bigtype
   // (el CTA como TIPOGRAFIA gigante). Asi el frame de cierre tambien cambia por marca.
   function sceneOutro(t, p = {}) {
-    const comp = p.outroComp || (p.ctaStyle === 'chip' ? 'left' : 'center');
+    // COMPOSICION del cierre: explicita (p.outroComp) o ELEGIDA POR SEMILLA -> el end-card NO es siempre centrado
+    // (antes default 'center'/'left' = casi todos los cierres iguales). 6 comps validas.
+    const _ocV = ['center', 'left', 'bar', 'bigtype', 'diagonal', 'ctaOnly'];
+    const comp = _ocV.indexOf(p.outroComp) >= 0 ? p.outroComp : _ocV[(mulberry32(((SEED || 1) ^ 0x0117C0) >>> 0)() * _ocV.length) | 0];
     const cx = W / 2, cy = H * 0.42;
     // LOGO de la marca arriba del cierre (si el renderer lo precargo). Aspect-ratio preservado, fade-in.
     if (LOGO) {
@@ -1448,7 +1451,10 @@ function _rgba(hex, a) {
   function sceneStatement(t, p = {}) {
     const text = p.text || '';
     if (!text) return;
-    const style = p.stmtStyle || 'centered';   // centered · left · quote · panel · editorial
+    // ESTILO del statement: explicito (p.stmtStyle) o ELEGIDO POR SEMILLA -> NO siempre 'centered' (antes el
+    // default forzaba centrado en casi todos los videos). 5 estilos validos (editorial cae a _stmtEditorial).
+    const _ssV = ['centered', 'left', 'quote', 'panel', 'editorial'];
+    const style = _ssV.indexOf(p.stmtStyle) >= 0 ? p.stmtStyle : _ssV[(mulberry32(((SEED || 1) ^ 0x57A7E) >>> 0)() * _ssV.length) | 0];
     if (style === 'editorial') { _stmtEditorial(t, text); return; }
     const left = style === 'left';
     // statement = unico beat 100% tipografico -> agrandado (no timido) para que tenga presencia

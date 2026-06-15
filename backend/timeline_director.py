@@ -695,16 +695,24 @@ contexto, NO uses bigStat. Si hay un PEDIDO DEL USUARIO, cumplilo SÍ O SÍ por 
         print(f"[tl-director] fallback ({e})")
         tl = _fallback_timeline(url_data, dna)
 
-    # POC 3 / unicidad: marcar las escenas enlatadas con el ESTILO por rubro (listStyle/ctaStyle) para que
-    # checklist y outro NO se vean iguales entre marcas (el motor los lee; si faltan, usa defaults).
+    # POC 3 / unicidad: marcar las escenas enlatadas con el ESTILO por rubro (listStyle/ctaStyle) y VARIAR la
+    # composicion del statement y del outro por semilla+indice -> no se ven iguales entre videos (el motor los lee).
+    _seed = int(_preset.get("seed", 1) or 1)
+    _comps = ["center", "left", "bar", "bigtype", "diagonal", "ctaOnly"]
+    _si = 0
     for _sc in tl.get("scenes", []):
         if isinstance(_sc, dict):
             if _sc.get("type") == "checklist":
                 _sc.setdefault("listStyle", _preset.get("list_style", "check"))
             elif _sc.get("type") == "outro":
                 _sc.setdefault("ctaStyle", _preset.get("cta_style", "pill"))
+                _sc.setdefault("outroComp", _comps[(_seed + _si) % len(_comps)])   # cierre variado (no siempre centrado)
             elif _sc.get("type") == "statement":
-                _sc.setdefault("stmtStyle", _preset.get("stmt_style", "centered"))
+                _stmts = _preset.get("stmt")   # OJO: la clave del preset es 'stmt' (lista), NO 'stmt_style' (bug: forzaba 'centered')
+                if not isinstance(_stmts, list) or not _stmts:
+                    _stmts = ["centered", "left", "panel", "editorial", "quote"]
+                _sc.setdefault("stmtStyle", _stmts[(_seed + _si) % len(_stmts)])
+            _si += 1
 
     # POC 3: fijar la SEMILLA del fondo (el fondo fluido varia por marca) y completar tema/acento
     # desde el preset si el ADN no los dio. El motor (engineCore._seedFor) usa tl["seed"].
