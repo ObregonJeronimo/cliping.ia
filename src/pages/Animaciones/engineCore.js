@@ -425,9 +425,14 @@ function _rgba(hex, a) {
     for (let gy = 0; gy <= H; gy += step) { ctx.moveTo(0, gy); ctx.lineTo(W, gy); }
     ctx.stroke();
     const sw = W * 0.18;   // slab MAS ancho (masa cruda brutalist) - antes 0.14 leia como SaaS minimal
+    // SOMBRA PROFUNDA del acento (on-brand) para el borde der + bloque: antes era pal[3] (contraste calido) que en
+    // marca fria (indigo) leia mostaza OFF-BRAND y pegado. Ahora mismo hue, mas oscuro -> two-tone brutalist on-brand.
+    const _bd = _hexToHsl(pal[0] || '#3aa0ff');
+    const _deep = _hslToHex(_bd.h, Math.min(0.95, (_bd.s || 0.5) + 0.08), Math.max(0.16, (_bd.l || 0.5) - 0.24));
     ctx.fillStyle = _rgba(pal[0], 0.95); ctx.fillRect(0, 0, sw, H);   // franja de acento solida al borde izq
-    ctx.fillStyle = _rgba(pal[3], 0.92); ctx.fillRect(W - 14, 0, 14, H);
-    ctx.fillStyle = _rgba(pal[3], 0.85); ctx.fillRect(W - W * 0.26, H - H * 0.09, W * 0.26, H * 0.09);   // bloque duro inf-der
+    ctx.fillStyle = _rgba(_deep, 0.9); ctx.fillRect(W - 14, 0, 14, H);
+    const _bh = H * (0.085 + 0.014 * Math.sin(t * CLK * 7));   // el bloque inf-der RESPIRA (deja de ser un slab muerto e identico en las 4 escenas); masa solida brutalist
+    ctx.fillStyle = _rgba(_deep, 0.85); ctx.fillRect(W - W * 0.26, H - _bh, W * 0.26, _bh);
     ctx.restore();
   }
   // 'sunburst': retro -> rayos radiales calidos que rotan lento desde un punto alto.
