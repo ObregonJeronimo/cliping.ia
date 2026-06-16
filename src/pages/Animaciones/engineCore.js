@@ -376,11 +376,15 @@ function _rgba(hex, a) {
     // como plano. El rubro sigue presente via el motivo contextual + un glow de acento chico.
     // source-over (no multiply): LAMINA navy translucida que RECOLOREA el base hacia azul (multiply solo
     // oscurecia y el calido seguia dominando -> seguia leyendo marron). Recubre ~75% -> azul dominante.
+    // ALMA: el substrato y la grilla toman el HUE DE LA MARCA (antes navy/cyan fijos -> una marca de comida
+    // leia como plano de ingenieria). Sigue siendo OSCURO (luminancia baja) para no romper el contraste del texto,
+    // y la GRILLA mantiene la identidad "blueprint"; solo cambia el color al del rubro.
+    const _bH = _hexToHsl(A1 || '#3aa0ff'), _bS = clamp((_bH.s || 0.5) * 0.7, 0.28, 0.6);
     ctx.save();
     const bw = ctx.createLinearGradient(0, 0, W * 0.35, H);
-    bw.addColorStop(0, 'rgba(13,46,84,0.78)'); bw.addColorStop(1, 'rgba(7,20,40,0.86)');
+    bw.addColorStop(0, _rgba(_hslToHex(_bH.h, _bS, 0.17), 0.80)); bw.addColorStop(1, _rgba(_hslToHex(_bH.h, _bS, 0.08), 0.88));
     ctx.fillStyle = bw; ctx.fillRect(0, 0, W, H); ctx.restore();
-    const CY = '#5fd0ff';
+    const CY = _hslToHex(_bH.h, clamp((_bH.s || 0.5), 0.45, 0.85), 0.66);   // lineas de la grilla en un tono claro del mismo hue
     ctx.save();
     ctx.strokeStyle = _rgba(CY, 0.1); ctx.lineWidth = 1;
     const step = 34, off = (t * 4) % step; ctx.beginPath();
@@ -538,7 +542,7 @@ function _rgba(hex, a) {
         ctx.fillStyle = col2; for (let wy = baseY - bh + 14; wy < baseY - 14; wy += 22) for (let wx = x + 7; wx < x + bw - 9; wx += 15) ctx.fillRect(wx, wy, 6, 10);
         x += bw + 9;
       }
-    } else if (rubro === 'finanzas' || rubro === 'tech' || rubro === 'educacion') {
+    } else if (rubro === 'finanzas' || rubro === 'tech') {
       const rnd = mulberry32((SEED || 1) ^ 0x5417); const n = 7, y0 = H * 0.72, pts = [];
       for (let i = 0; i < n; i++) pts.push([W * 0.1 + i * (W * 0.8 / (n - 1)), y0 - (i / (n - 1)) * H * 0.32 - rnd() * 36 + 18]);
       const dp = clamp((t - 0.3) * 0.45, 0, 1);
@@ -557,8 +561,16 @@ function _rgba(hex, a) {
       let by = y; for (let k = 1; k < seg.length; k++) { if (W * seg[k][0] >= bx) { const f = (bx - W * seg[k - 1][0]) / Math.max(1, W * (seg[k][0] - seg[k - 1][0])); by = y + lerp(seg[k - 1][1], seg[k][1], f); break; } }
       ctx.save(); ctx.globalAlpha *= 0.9; setShadow(col, 12, 0); ctx.fillStyle = _accentInk(_resolveColor('accent'), 0.5); ctx.beginPath(); ctx.arc(bx, by, 5, 0, TAU); ctx.fill(); noShadow(); ctx.restore();
     } else if (rubro === 'gastronomia') {
-      ctx.strokeStyle = col; ctx.lineWidth = 3.5; ctx.lineCap = 'round';
-      for (let i = 0; i < 3; i++) { const bx = W * (0.32 + i * 0.18); ctx.beginPath(); let first = true; for (let yy = H * 0.86; yy > H * 0.44; yy -= 7) { const xx = bx + Math.sin(yy * 0.045 + t * 1.1 + i * 1.7) * 17; if (first) { ctx.moveTo(xx, yy); first = false; } else ctx.lineTo(xx, yy); } ctx.stroke(); }
+      // PLATO + cubiertos + vapor que sube (LEE como comida). Anclado abajo, fuera de la columna de texto.
+      const cx = W * 0.5, cyP = H * 0.9, rp = H * 0.13;
+      ctx.strokeStyle = col; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      ctx.beginPath(); ctx.ellipse(cx, cyP, rp, rp * 0.34, 0, 0, TAU); ctx.stroke();                 // borde del plato
+      ctx.beginPath(); ctx.ellipse(cx, cyP, rp * 0.6, rp * 0.2, 0, 0, TAU); ctx.stroke();             // aro interno
+      ctx.beginPath(); ctx.moveTo(cx - rp - 18, cyP - 16); ctx.lineTo(cx - rp - 18, cyP + 16); ctx.stroke();   // cuchillo
+      ctx.beginPath(); ctx.moveTo(cx + rp + 18, cyP - 16); ctx.lineTo(cx + rp + 18, cyP + 16);                  // tenedor (mango)
+      for (let k = -1; k <= 1; k++) ctx.moveTo(cx + rp + 18 + k * 5, cyP - 16), ctx.lineTo(cx + rp + 18 + k * 5, cyP - 6); ctx.stroke();
+      ctx.strokeStyle = col2; ctx.lineWidth = 3; ctx.lineCap = 'round';   // vapor que sube del plato
+      for (let i = -1; i <= 1; i++) { const bx = cx + i * rp * 0.5; ctx.beginPath(); let first = true; for (let yy = cyP - rp * 0.4; yy > cyP - rp * 2.0; yy -= 7) { const xx = bx + Math.sin(yy * 0.05 + t * 1.0 + i * 1.7) * 10; first ? (ctx.moveTo(xx, yy), first = false) : ctx.lineTo(xx, yy); } ctx.stroke(); }
     } else if (rubro === 'belleza' || rubro === 'salud') {
       ctx.strokeStyle = col; ctx.lineWidth = 3; ctx.lineCap = 'round';
       const bx = W * 0.82, by = H * 0.95, topY = H * 0.5;
@@ -575,6 +587,17 @@ function _rgba(hex, a) {
         ctx.strokeStyle = i % 2 ? col2 : col; ctx.lineWidth = i % 2 ? 1.6 : 2.6;
         ctx.beginPath(); ctx.moveTo(-12, y); ctx.quadraticCurveTo(W * 0.5 + drift, y + sag, W + 12, y); ctx.stroke();
       }
+    } else if (rubro === 'educacion') {
+      // BIRRETE (graduation cap) anclado abajo -> "aprender / subir de nivel". Determinista, fuera del texto.
+      const cx = W * 0.8, cyP = H * 0.84, bw2 = 52, bh2 = 19;
+      ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(cx, cyP - bh2); ctx.lineTo(cx + bw2, cyP); ctx.lineTo(cx, cyP + bh2); ctx.lineTo(cx - bw2, cyP); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = col; ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(cx + bw2 * 0.5, cyP + bh2 * 0.5); ctx.lineTo(cx + bw2 * 0.5, cyP + bh2 + 18); ctx.stroke();
+      ctx.fillStyle = col; ctx.beginPath(); ctx.arc(cx + bw2 * 0.5, cyP + bh2 + 22, 4, 0, TAU); ctx.fill();
+      ctx.strokeStyle = col2; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(cx, cyP + bh2 + 12, bw2 * 0.5, Math.PI * 1.05, Math.PI * 1.95); ctx.stroke();
+    } else {
+      // DEFAULT (rubro no mapeado): lineas de contorno topografico tenues abajo -> identidad editorial sin gritar rubro.
+      ctx.strokeStyle = col2; ctx.lineWidth = 2; ctx.lineCap = 'round';
+      for (let k = 0; k < 3; k++) { const baseY = H * (0.82 + k * 0.06); ctx.beginPath(); let first = true; for (let x = -10; x <= W + 10; x += 12) { const yy = baseY + Math.sin(x * 0.012 + t * CLK * 8 + k * 1.3) * 14; first ? (ctx.moveTo(x, yy), first = false) : ctx.lineTo(x, yy); } ctx.stroke(); }
     }
     ctx.restore();
   }
@@ -1998,7 +2021,9 @@ function _rgba(hex, a) {
       const d = 0.18 + i * 0.42, ap = inv(t, d, d + 0.4); if (ap <= 0) return;
       const prog = eOutCubic(clamp(inv(t, d, d + 0.9), 0, 1)), y = startY + i * gap;
       const _suf = (it.suffix || ''), _isRating = /[★⭐]/.test(_suf), _sufC = _suf.replace(/[★⭐]/g, '');   // ★ -> estrella vectorial (no tofu)
-      const val = (it.prefix || '') + _fmtN((Number(it.value) || 0) * prog) + _sufC;
+      // decimales como bigStat: dec se deriva del valor COMPLETO (no del animado) -> sin parpadeo de decimales en el conteo.
+      const _nv = Number(it.value) || 0, _dec = (_nv % 1 !== 0) ? 1 : 0;
+      const val = (it.prefix || '') + (_nv * prog).toFixed(_dec).replace(/\B(?=(\d{3})+(?!\d))/g, '.') + _sufC;
       const pop = lerp(0.8, 1, eOutBack(clamp(ap, 0, 1)));
       ctx.save(); ctx.globalAlpha = clamp(ap * 1.4, 0, 1) * (isF ? 1 : 0.78); ctx.translate(tx, y); ctx.scale(pop, pop);
       const nfs = fitFont(val, isF ? 80 : 54, W * 0.8, 30, 800, 'd');
