@@ -59,6 +59,30 @@ Pegás un **link** → Urvid genera un **video vertical 9:16 de marketing** que:
 
 ---
 
+## 🔁 LOG DEL LOOP (urvid-loop)
+- **Iteración jun 16 #1** (HECHA): anti-sameness CONFIRMADO sano (la probe daba falsos positivos por fixtures de dev
+  con brand duplicado en tools/brands -> probe ahora filtra el banco canónico `^\d\d-` + avisa brands duplicados;
+  banco limpio = 0 pares sospechosos, más parecido Nimbus/Aula Viva 0.234). Fixes: numberStack con DECIMALES (4.8★ no "5"),
+  blueprint con HUE de la marca (Verdo gastronomía dejó de leer como plano de ingeniería navy), motivos: gastronomía
+  = plato+cubiertos+vapor, educación = birrete, DEFAULT = contornos (todo rubro tiene un cue). bg-check 16/16.
+
+### COLA (verificado por el loop, listo para implementar — próxima iteración)
+- **Legibilidad outro broadcast**: el CTA en estilo `hard`-shadow lee borroso/doble-expuesto. Fix LOCAL a sceneOutro
+  (fill más brillante / halo soft solo ahí; NO tocar setShadow global, es identidad de brutalist/sport/riso).
+- **Anti-sameness en PRODUCCIÓN (timeline_director)**: el LLM genera cada video aislado, sin memoria cross-marca.
+  Agregar un guard determinista post-LLM (firma por scene-types+comp+tone+bucket de accent con `_se.stable_seed(url)`;
+  si choca con una firma reciente persistida por brand_key, perturbar deterministicamente rotando opening/comp/align;
+  $0, sin re-llamar a la API). Re-correr bg-check si toca tone/seed.
+- **Técnicas NUEVAS (deterministas, sin IA generativa) — del agente investigador:**
+  1. **Tipografía de peso variable (weight-wave)**: glifos que "engordan" en la entrada vía strokeText creciente
+     (emula eje wght sin fuentes variables). Firma de entrada distinta por marca. OJO: clamp(lp,0,1) en el lineWidth.
+  2. **Grilla editorial + folio**: columnas/márgenes sembrados por marca + número de escena "01/05" + eyebrow rotado.
+     Solo en branches left/editorial; coordinar esquinas con el watermark.
+  3. **Transiciones overlay nuevas**: glyph-wipe (barrido pixelado tipográfico) + push-band (banda con ecos). Solo
+     overlay sobre wp∈(0,1); NO el push real (rompería bg-check/fluidez).
+  4. **Texturas de sustrato por rubro** (`setSubstrate`): scanlines / contour-topo / dot-grid en perspectiva, alpha
+     bajo detrás del contenido, frecuencia/fase por SEED. Aplicar en _drawBgInner Y _bgLightFull. Sube "alma" + unicidad.
+
 ## 🗺️ ROADMAP / PRÓXIMOS PASOS
 - **Anti-sameness más profundo** (prioridad del usuario): que la ESTRUCTURA, el RITMO, la PALETA y el LOOK varíen fuerte por marca. Ya rotan por semilla: checklist(rows/grid/chips), statement(5 estilos), outro(6 comps), bigStat(bar/ring/plain), align. Falta: medir similitud entre marcas (ver `similarity-probe`) y atacar lo que quede igual.
 - **"Alma de la página"**: que el video refleje de verdad el rubro/mensaje/marca (no genérico). Verificar que el director use bien las fotos + el copy específico.
