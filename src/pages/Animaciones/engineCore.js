@@ -2174,9 +2174,9 @@ function _rgba(hex, a) {
         // la legibilidad de los items (era el bug del panel: la "A" gigante DETRAS de la lista). En statement
         // queda grande y a la deriva abajo, donde hay aire.
         const isChk = sc.type === 'checklist';
-        const mx = leftAnch ? W - (isChk ? 56 : 86) : (isChk ? 56 : 86), my = isChk ? 90 : H - 178;
-        const fs = isChk ? 84 : 168;
-        ctx.save(); ctx.globalAlpha = aa * (isChk ? 0.55 : 1);
+        const mx = leftAnch ? W - (isChk ? 56 : 76) : (isChk ? 56 : 76), my = isChk ? 90 : H - 138;
+        const fs = isChk ? 84 : 122;   // statement: monograma MAS CHICO y a la esquina inferior -> textura, no "letra fantasma" que cruza el texto
+        ctx.save(); ctx.globalAlpha = aa * (isChk ? 0.55 : 0.42);   // mucho mas tenue en statement (antes 1) -> deja de leerse como artefacto/glitch
         ctx.translate(mx + Math.sin(t * CLK * 16 + _wph) * 6, my + Math.cos(t * CLK * 13 + _wph) * 6); ctx.rotate(Math.sin(t * CLK * 10 + _wph) * 0.05);   // vaiven minimo en armonicos de CLK (la marca de agua co-aparece con texto+camara -> grilla compartida)
         ctx.font = fontStr(800, fs, 'd'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         setShadow(_rgba(_wac, 0.4), 14, 0); ctx.fillStyle = _wac; ctx.fillText(_mono, 0, 0); noShadow();   // MONOGRAMA: inicial de la marca como marca de agua (mas de marca que una figura)
