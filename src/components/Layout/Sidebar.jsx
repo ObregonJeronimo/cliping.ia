@@ -23,7 +23,7 @@ export default function Sidebar() {
   return (
     <aside className={styles.sidebar}>
       <div className={styles.logo}>
-        cliping<span>.ia</span>
+        Ur<span>vid</span>
       </div>
 
       <button className={styles.newBtn} onClick={() => navigate('/studio')}>
