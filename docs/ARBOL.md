@@ -74,14 +74,21 @@ Pegás un **link** → Urvid genera un **video vertical 9:16 de marketing** que:
   si choca con una firma reciente persistida por brand_key, perturbar deterministicamente rotando opening/comp/align;
   $0, sin re-llamar a la API). Re-correr bg-check si toca tone/seed.
 - **Técnicas NUEVAS (deterministas, sin IA generativa) — del agente investigador:**
-  1. **Tipografía de peso variable (weight-wave)**: glifos que "engordan" en la entrada vía strokeText creciente
-     (emula eje wght sin fuentes variables). Firma de entrada distinta por marca. OJO: clamp(lp,0,1) en el lineWidth.
+  1. **Tipografía de peso variable (weight-wave)** [HECHO commit c8e9dda]: glifos que nacen gruesos (strokeText) y
+     adelgazan al asentarse; opt-in en _kineticDraw, ~40% de marcas por SEED, clamp(lp,0,1). bg-check 16/16.
   2. **Grilla editorial + folio**: columnas/márgenes sembrados por marca + número de escena "01/05" + eyebrow rotado.
      Solo en branches left/editorial; coordinar esquinas con el watermark.
   3. **Transiciones overlay nuevas** [HECHO commit 9f051e6]: glyph-wipe (barrido pixelado tipográfico) + push-band
      (banda con ecos). En el banco _TRANS -> 6 tipos de corte rotando por semilla. Determinista, bg-check 16/16.
-  4. **Texturas de sustrato por rubro** (`setSubstrate`): scanlines / contour-topo / dot-grid en perspectiva, alpha
-     bajo detrás del contenido, frecuencia/fase por SEED. Aplicar en _drawBgInner Y _bgLightFull. Sube "alma" + unicidad.
+  4. **Texturas de sustrato por rubro** (`setSubstrate`) [HECHO commit 2861d9c]: scanlines (tech/finanzas) / contour
+     (inmobiliaria/salud/belleza/gastro/fitness) / dotgrid (educacion/moda/default), alpha 0.05-0.06 detrás del
+     contenido, frecuencia/fase por SEED, en _drawBgInner Y _bgLightFull. Mock + director de prod lo asignan por rubro.
+
+### COLA RESTANTE (verificada, próxima iteración)
+- **Legibilidad outro broadcast** (CTA borroso en estilos `hard`-shadow; fix LOCAL a sceneOutro, soft-halo, sin tocar
+  setShadow global — cuidar de NO regresar brutalist/sport/riso).
+- **Grilla editorial + folio** (técnica nueva; MEDIO riesgo por colisión con eyebrow/watermark — solo branches left/editorial).
+- **Anti-sameness determinista en PRODUCCIÓN** (guard cross-marca post-LLM en timeline_director, sin re-llamar API).
 
 ## 🗺️ ROADMAP / PRÓXIMOS PASOS
 - **Anti-sameness más profundo** (prioridad del usuario): que la ESTRUCTURA, el RITMO, la PALETA y el LOOK varíen fuerte por marca. Ya rotan por semilla: checklist(rows/grid/chips), statement(5 estilos), outro(6 comps), bigStat(bar/ring/plain), align. Falta: medir similitud entre marcas (ver `similarity-probe`) y atacar lo que quede igual.
