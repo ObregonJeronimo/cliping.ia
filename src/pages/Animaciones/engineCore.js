@@ -683,6 +683,19 @@ function _rgba(hex, a) {
     } else if (SUBSTRATE === 'dotgrid') {
       ctx.fillStyle = _rgba(ink, a * 1.7); const step = 30;
       for (let y = step; y < H; y += step) for (let x = step; x < W; x += step) { ctx.beginPath(); ctx.arc(x, y, 1.2, 0, TAU); ctx.fill(); }
+    } else if (SUBSTRATE === 'crosshatch') {
+      // RAYADO CRUZADO (grabado/billete/editorial impreso): dos familias de lineas a +/-ang; angulo/densidad/fase
+      // por SEED y deriva en CLK (como contour -> no titila). Registro 'premium impreso' (finanzas/lujo). Alpha bajo
+      // por familia -> tenue incluso en los cruces. Material distinto por marca (nunca el mismo hatch dos veces).
+      const rnd = mulberry32(((SEED || 1) ^ 0x5C3055) >>> 0);
+      const ang = (18 + rnd() * 16) * Math.PI / 180, step = 12 + rnd() * 4, ph = rnd() * 6.28;
+      ctx.strokeStyle = _rgba(ink, a); ctx.lineWidth = 1;
+      for (const dir of [1, -1]) {
+        ctx.save(); ctx.translate(W / 2, H / 2); ctx.rotate(dir * ang); ctx.translate(-W / 2, -H / 2);
+        const drift = Math.sin(t * CLK * 5 + ph * dir) * 3; ctx.beginPath();
+        for (let y = -H * 0.5; y < H * 1.5; y += step) { ctx.moveTo(-W, y + drift); ctx.lineTo(W * 2, y + drift); }
+        ctx.stroke(); ctx.restore();
+      }
     }
     ctx.restore();
   }
