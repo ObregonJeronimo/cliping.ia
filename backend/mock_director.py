@@ -223,7 +223,7 @@ def _hero_scene(brand, rubro, accent_light, rnd, comp, blur, f1, f2, resource="m
     corto + pulso/rotacion. f2 = excursion breve. blur/saturacion vienen de la energia del rubro."""
     fx = RUBRO_FX.get(rubro, RUBRO_FX["default"])
     ease_in = rnd.choice(["outBack", "outElastic"])
-    sub = "  ".join(rnd.choice(SUBTITLES.get(rubro, SUBTITLES["default"])))
+    sub = " ".join(rnd.choice(SUBTITLES.get(rubro, SUBTITLES["default"])))
     L = _HERO_LAYOUT[comp]
     # RECURSO PROTAGONISTA: foto real a sangre (rubros visuales) -> NO morph. El texto va sobre el scrim.
     if resource == "photo" and photos:
@@ -303,7 +303,7 @@ def _numberstack(rubro, rnd, align="center"):
 def _split(brand, rubro, rnd, images):
     if not images:
         return None
-    return {"type": "split", "title": brand, "sub": "  ".join(rnd.choice(SUBTITLES.get(rubro, SUBTITLES["default"]))),
+    return {"type": "split", "title": brand, "sub": " ".join(rnd.choice(SUBTITLES.get(rubro, SUBTITLES["default"]))),
             "cta": rnd.choice(CTAS.get(rubro, CTAS["default"])), "photoIdx": rnd.randrange(len(images)),
             "side": rnd.choice(["left", "right"]), "durationInFrames": rnd.choice([108, 120])}
 

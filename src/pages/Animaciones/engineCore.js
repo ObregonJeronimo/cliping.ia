@@ -1949,6 +1949,23 @@ function _rgba(hex, a) {
     if (p && (p.align === 'left' || p.align === 'center')) return p.align;
     return mulberry32(((SEED || 1) ^ 0xA11C0) >>> 0)() < 0.42 ? 'left' : 'center';
   }
+  // ESTRELLA de 5 puntas VECTORIAL: el glifo ★ (U+2605) NO esta en las fuentes display -> se renderizaba como
+  // "tofu"/caja vacia en el render headless (Skia). Se dibuja por path (geometria pura, determinista). Color dorado
+  // por convencion de rating (legible y entendible en cualquier paleta). align ancla la FILA en (x,y).
+  const _STAR_GOLD = '#f3b13a';
+  function _starPath(cx, cy, r) {
+    ctx.beginPath();
+    for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rad = i % 2 === 0 ? r : r * 0.42; const px = cx + Math.cos(a) * rad, py = cy + Math.sin(a) * rad; i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py); }
+    ctx.closePath();
+  }
+  function _drawStarRow(n, x, y, r, align = 'center') {
+    n = Math.max(0, Math.min(5, Math.round(n))); if (!n) return;
+    const gap = r * 2.5, total = (n - 1) * gap;
+    let sx = align === 'left' ? x + r : align === 'right' ? x - total - r : x - total / 2;
+    ctx.save(); ctx.fillStyle = _STAR_GOLD; setShadow('rgba(0,0,0,0.25)', 4, 0);
+    for (let i = 0; i < n; i++) { _starPath(sx, y, r); ctx.fill(); sx += gap; }
+    noShadow(); ctx.restore();
+  }
   // REVEAL: gancho corto (1-4 palabras) a pantalla casi completa, apiladas y escalonadas, ultima en acento.
   function sceneReveal(t, p = {}) {
     const text = ((p.text || '').toString().trim()) || 'Mira esto';
@@ -1980,13 +1997,15 @@ function _rgba(hex, a) {
       const isF = i === focal;
       const d = 0.18 + i * 0.42, ap = inv(t, d, d + 0.4); if (ap <= 0) return;
       const prog = eOutCubic(clamp(inv(t, d, d + 0.9), 0, 1)), y = startY + i * gap;
-      const val = (it.prefix || '') + _fmtN((Number(it.value) || 0) * prog) + (it.suffix || '');
+      const _suf = (it.suffix || ''), _isRating = /[★⭐]/.test(_suf), _sufC = _suf.replace(/[★⭐]/g, '');   // ★ -> estrella vectorial (no tofu)
+      const val = (it.prefix || '') + _fmtN((Number(it.value) || 0) * prog) + _sufC;
       const pop = lerp(0.8, 1, eOutBack(clamp(ap, 0, 1)));
       ctx.save(); ctx.globalAlpha = clamp(ap * 1.4, 0, 1) * (isF ? 1 : 0.78); ctx.translate(tx, y); ctx.scale(pop, pop);
       const nfs = fitFont(val, isF ? 80 : 54, W * 0.8, 30, 800, 'd');
       ctx.font = fontStr(800, nfs, 'd'); ctx.textAlign = al; ctx.textBaseline = 'middle';
       ctx.fillStyle = isF ? _accentPop(A1) : (TONE === 'light' ? _accentInk(A1) : _lighten(A1, 0.12));
       setShadow(_rgba(_accentPop(A1), isF ? 0.4 : 0.2), isF ? 18 : 12, 2); ctx.fillText(val, 0, -10); noShadow();
+      if (_isRating) { ctx.font = fontStr(800, nfs, 'd'); const _w = ctx.measureText(val).width, _sx = (al === 'left' ? _w : _w / 2) + nfs * 0.44; _drawStarRow(1, _sx, -10, nfs * 0.34, 'left'); }   // estrella de rating al lado del numero
       if (isF) { const uw = nfs * 0.5, ux = al === 'left' ? 0 : -uw / 2; ctx.fillStyle = accent(ux, 0, ux + uw, 0); ctx.beginPath(); ctx.roundRect(ux, 20, uw * eOutCubic(clamp(ap, 0, 1)), 4, 2); ctx.fill(); }   // subrayado de acento bajo el plan focal (sin copy extra)
       if (it.label) { const _lb = String(it.label); ctx.font = fontStr(isF ? 700 : 600, fitFont(_lb, isF ? 20 : 18, W * 0.74, 13, isF ? 700 : 600, 't'), 't'); ctx.fillStyle = isF ? INK : DIM; setShadow(TONE === 'light' ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.6)', 8, 0); ctx.fillText(_lb, 0, isF ? 40 : 30); noShadow(); }   // fitFont -> label entero; focal mas brillante/grande
       ctx.restore();
@@ -2006,7 +2025,7 @@ function _rgba(hex, a) {
     const lh = fit * 1.22, top = cy - (lines.length - 1) * lh / 2;
     lines.forEach((l, i) => { const lp = inv(t, 0.35 + i * 0.12, 0.35 + i * 0.12 + 0.5); if (lp <= 0) return; ctx.save(); ctx.globalAlpha = clamp(lp * 1.4, 0, 1); ctx.fillStyle = INK; ctx.fillText(l, ax, top + i * lh + (1 - eOutCubic(clamp(lp, 0, 1))) * 12); ctx.restore(); });
     const stars = Math.max(0, Math.min(5, p.stars || 0)), sy = top + lines.length * lh + 6, sp = inv(t, 0.9, 1.3);
-    if (stars && sp > 0) { ctx.save(); ctx.globalAlpha = sp; ctx.fillStyle = _accentPop(A1); ctx.textAlign = al; ctx.textBaseline = 'middle'; ctx.font = fontStr(700, 28, 'd'); ctx.fillText('★ '.repeat(stars).trim(), ax, sy + 18); ctx.restore(); }
+    if (stars && sp > 0) { ctx.save(); ctx.globalAlpha = sp; _drawStarRow(stars, ax, sy + 18, 13, al); ctx.restore(); }   // estrellas VECTORIALES (antes el glifo ★ daba tofu)
     if (p.author) { const aap = inv(t, 1.1, 1.5); if (aap > 0) { ctx.save(); ctx.globalAlpha = clamp(aap * 1.4, 0, 1); ctx.font = fontStr(600, 21, 't'); ctx.textAlign = al; ctx.textBaseline = 'middle'; ctx.fillStyle = DIM; ctx.fillText('— ' + p.author, ax, sy + (stars ? 58 : 30)); ctx.restore(); } }
   }
   // SPLIT: pantalla partida -> FOTO real una mitad (wipe-open) + panel de color de marca con titular/CTA en la otra.
