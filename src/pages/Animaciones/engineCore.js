@@ -2034,7 +2034,11 @@ function _rgba(hex, a) {
   function sceneReveal(t, p = {}) {
     const text = ((p.text || '').toString().trim()) || 'Mira esto';
     const words = text.split(/\s+/).slice(0, 4), n = words.length;
-    const al = _pickAlign(p), ax = al === 'left' ? W * 0.1 : W / 2, baseY = al === 'left' ? H * 0.58 : H * 0.46;
+    // ANCLA VERTICAL sembrada: dos marcas con reveal centrado (misma apertura) se calcaban en el aHash gris.
+    // Un corrimiento por semilla (±H*0.06) hace que una abra alto y otra mas baja -> composicion distinta (real,
+    // no truco) y rompe la colision de layout. Banda chica -> el texto no toca eyebrow/watermark. Determinista.
+    const _vy = (mulberry32(((SEED || 1) ^ 0x5EED13) >>> 0)() - 0.5) * H * 0.12;
+    const al = _pickAlign(p), ax = al === 'left' ? W * 0.1 : W / 2, baseY = (al === 'left' ? H * 0.58 : H * 0.46) + _vy;
     const fs = fitFont(text, al === 'left' ? 92 : 104, W * 0.82, 44, 800, 'd'), lh = fs * 1.04, startY = baseY - (n - 1) * lh / 2;
     const kick = (p.kicker || '').toUpperCase();
     if (kick) { const kp = inv(t, 0.1, 0.5); if (kp > 0) { ctx.save(); ctx.globalAlpha = kp; ctx.font = fontStr(700, 18, 'a'); ctx.fillStyle = _accentInk(A1, 0.42); ctx.textAlign = al; ctx.textBaseline = 'middle'; ctx.fillText(kick, ax, startY - fs * 0.74); ctx.restore(); } }
