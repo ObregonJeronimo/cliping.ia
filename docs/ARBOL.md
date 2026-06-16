@@ -99,9 +99,15 @@ Pegás un **link** → Urvid genera un **video vertical 9:16 de marketing** que:
 - **Anti-sameness layout same-rubro** (PRÓXIMA): en el stress tech queda 1 par borderline (Nimbus/Sintra 0.175 vs umbral
   0.18): dos reveal-openers con aHash gris parecido. Lever: dar al opening un align/anchor distinto por semilla (hoy
   `_va` = center/center/left). Bajo riesgo; verificar que no regrese otros rubros + bg-check.
-- **Grilla editorial + folio** (técnica nueva; MEDIO riesgo por colisión con eyebrow/watermark — solo branches left/editorial).
+- **Folio editorial** [HECHO commit 00fbb4a]: "NN / NN" (escena/total) + filete que crece, arriba-izquierda del
+  estilo `editorial` del statement (título en H*0.45, watermark abajo -> franja superior vacía, sin colisión).
+  Plumbing: _sceneIdx/_sceneTot en el loop de dibujo. Tone-aware, fade-in. SOLO en _stmtEditorial (otros estilos
+  intactos). Verificado en Verdo (gastro) y Sonrisa (salud). 16/16. (La "grilla de columnas" se descartó: más
+  riesgo de colisión, menos valor que el folio.)
 - **Anti-sameness cross-marca PERSISTIDO en PRODUCCIÓN** (guard post-LLM con firma persistida por brand_key en
-  timeline_director; perturbar determinista si choca con una firma reciente, sin re-llamar API).
+  timeline_director; perturbar determinista si choca con una firma reciente, sin re-llamar API). OJO: difícil de
+  verificar offline (es el path de API); el stress-samerubro mostró que el riesgo real de color/estructura ya está
+  controlado -> baja prioridad salvo que el loop lo confirme como problema vivo.
 
 ## 🗺️ ROADMAP / PRÓXIMOS PASOS
 - **Anti-sameness más profundo** (prioridad del usuario): que la ESTRUCTURA, el RITMO, la PALETA y el LOOK varíen fuerte por marca. Ya rotan por semilla: checklist(rows/grid/chips), statement(5 estilos), outro(6 comps), bigStat(bar/ring/plain), align. Falta: medir similitud entre marcas (ver `similarity-probe`) y atacar lo que quede igual.
