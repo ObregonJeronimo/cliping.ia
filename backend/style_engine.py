@@ -210,7 +210,12 @@ def preset(industria: str = "", publico: str = "", energy: str = "medio", seed: 
 
     hue = rnd.uniform(*p["hue"])
     sat = rnd.uniform(*p["sat"])
-    light = _ENERGY_LIGHT.get((energy or "medio").lower(), 0.56)
+    # LIGHTNESS del acento VARIADA por semilla. Antes era FIJA por energia (0.52/0.56/0.60) -> dos marcas del
+    # MISMO rubro y energia salian con el MISMO color exacto (todos los inmobiliaria = el mismo azul, todos los
+    # tech = el mismo indigo). El rango de hue por rubro es angosto a proposito (rubros cromaticamente DISJUNTOS),
+    # asi que la variacion intra-rubro tiene que venir del BRILLO: una marca profunda/oscura, otra clara/brillante.
+    # Banda amplia clamped a [0.42,0.70] (legible y vivo). El hue NO se toca -> los rubros siguen disjuntos.
+    light = min(0.70, max(0.42, _ENERGY_LIGHT.get((energy or "medio").lower(), 0.56) + rnd.uniform(-0.15, 0.16)))
     accent = _hsl_to_hex(hue, sat, light)
     theme = rnd.choice(p["themes"])
     bg_style = rnd.choice(_RUBRO_BGSTYLE.get(canon, _RUBRO_BGSTYLE["default"]))
