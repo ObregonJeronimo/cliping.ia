@@ -110,6 +110,11 @@ function _rgba(hex, a) {
     else { ctx.shadowColor = color; ctx.shadowBlur = blur; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = dy; }
   }
   function noShadow() { ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0; }
+  // Halo SUAVE que IGNORA SHADOW_MODE -> siempre centrado y desenfocado. Para el TEXTO del cierre
+  // (wordmark/CTA): en modo 'hard' la sombra con offset+blur0 duplicaba el glifo (CTA borroso/doble-expuesto).
+  // El halo soft lo despega del fondo sin romper la identidad brutalist (que vive en el cuerpo del video,
+  // no en el end-card). En modo 'soft' es identico a setShadow -> los cierres soft NO cambian.
+  function _softShadow(color, blur, dy = 0) { ctx.shadowColor = color; ctx.shadowBlur = blur; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = dy; }
 
   // ---------- fondo FLUIDO (mesh-gradient + motes), SEMBRADO y determinista ----------
   // Toda la "materia prima" del fondo (posiciones, fases, frecuencias, amplitudes) sale de la SEMILLA
@@ -1383,7 +1388,7 @@ function _rgba(hex, a) {
       ctx.save(); ctx.globalAlpha *= bn; ctx.font = fontStr(800, fs, 'd');
       ctx.textAlign = align; ctx.textBaseline = 'middle';
       const wg = ctx.createLinearGradient(wx - 130, top, wx + 130, bot); wg.addColorStop(0, _accentInk(A1, 0.62)); wg.addColorStop(1, _accentInk(A2, 0.5));
-      ctx.fillStyle = wg; setShadow('rgba(0,0,0,0.5)', 8, 1);   // aclarado + sombra -> legible sobre el mismo color (Aura/Trama)
+      ctx.fillStyle = wg; _softShadow('rgba(0,0,0,0.5)', 8, 1);   // aclarado + halo soft (no offset duro) -> legible sobre el mismo color (Aura/Trama)
       ctx.fillText(_bn, wx, wy + (1 - bn) * 16); noShadow(); ctx.restore();
     }
     function accentBar(bx, byy, bw0, align) {
@@ -1404,7 +1409,7 @@ function _rgba(hex, a) {
       ctx.font = fontStr(800, fs, 'd');
       ctx.textAlign = isL ? 'left' : isR ? 'right' : 'center'; ctx.textBaseline = 'middle';
       ctx.fillStyle = _accentInk(A1, 0.5);
-      if (TONE !== 'light') setShadow('rgba(0,0,0,0.4)', 6, 1);
+      if (TONE !== 'light') _softShadow('rgba(0,0,0,0.4)', 6, 1);
       ctx.fillText(ctaStr, anchorX, py); noShadow();
       const tw = Math.min(W * 0.74, ctx.measureText(ctaStr).width), ux = isL ? anchorX : isR ? anchorX - tw : anchorX - tw / 2;
       const up = eOutCubic(clamp(inv(t, 1.3, 1.85), 0, 1));
@@ -1441,7 +1446,7 @@ function _rgba(hex, a) {
         ctx.save(); ctx.translate(cx, cy + 34); ctx.scale(0.92 + 0.08 * tg, 0.92 + 0.08 * tg);
         ctx.font = fontStr(800, fs, 'd'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         const _cg = ctx.createLinearGradient(-130, -fs * 0.6, 130, fs * 0.6); _cg.addColorStop(0, _accentInk(A1, 0.55)); _cg.addColorStop(1, _accentInk(A2, 0.42));
-        setShadow('rgba(0,0,0,0.4)', 8, 2); _kineticDraw(cta, _cg, 'center', t, 1.0, -fs * 0.02); noShadow(); ctx.restore();
+        _softShadow('rgba(0,0,0,0.4)', 8, 2); _kineticDraw(cta, _cg, 'center', t, 1.0, -fs * 0.02); noShadow(); ctx.restore();
         const ar = inv(t, 1.5, 1.9);
         if (ar > 0) { ctx.save(); ctx.globalAlpha = ar; ctx.strokeStyle = _lighten(A1, 0.4); ctx.lineWidth = 4; ctx.lineCap = 'round'; const ay = cy + 34 + fs * 0.7 + 20; ctx.beginPath(); ctx.moveTo(cx - 16, ay); ctx.lineTo(cx, ay + 14); ctx.lineTo(cx + 16, ay); ctx.stroke(); ctx.restore(); }
       }
@@ -1457,7 +1462,7 @@ function _rgba(hex, a) {
         ctx.save(); ctx.translate(cx, H * 0.45); ctx.scale(0.9 + 0.1 * tg, 0.9 + 0.1 * tg);
         ctx.font = fontStr(800, fs, 'd'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         const _cg = ctx.createLinearGradient(-130, -fs * 0.6, 130, fs * 0.6); _cg.addColorStop(0, _accentInk(A1, 0.55)); _cg.addColorStop(1, _accentInk(A2, 0.42));
-        setShadow(TONE === 'light' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.45)', 8, 2); _kineticDraw(cta, _cg, 'center', t, 0.5, -fs * 0.02); noShadow(); ctx.restore();
+        _softShadow(TONE === 'light' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.45)', 8, 2); _kineticDraw(cta, _cg, 'center', t, 0.5, -fs * 0.02); noShadow(); ctx.restore();
         const ar = inv(t, 1.0, 1.4);
         if (ar > 0) { ctx.save(); ctx.globalAlpha = ar; ctx.strokeStyle = _accentInk(A1, 0.5); ctx.lineWidth = 4; ctx.lineCap = 'round'; const ay = H * 0.45 + fs * 0.66 + 22; ctx.beginPath(); ctx.moveTo(cx - 15, ay); ctx.lineTo(cx, ay + 12); ctx.lineTo(cx + 15, ay); ctx.stroke(); ctx.restore(); }
       }
