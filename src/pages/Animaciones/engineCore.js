@@ -73,6 +73,7 @@ function _rgba(hex, a) {
   const smooth = t => t * t * (3 - 2 * t);
   const TAU = Math.PI * 2;
   let _holdT = 0;   // tiempo CONTINUO de la escena actual (para idle-loops durante el hold; el dibujo base usa tFed congelado)
+  let _sceneIdx = 0, _sceneTot = 0;   // posicion de la escena actual (1..N) + total -> folio editorial "NN / NN"
   let _BRAND = '';  // nombre de marca del timeline (lo usa el eyebrow del statement para anclar el tercio superior)
 
   // ---------- aleatoriedad SEMBRADA (determinista, reemplaza Math.random) ----------
@@ -1491,6 +1492,20 @@ function _rgba(hex, a) {
     for (const w of words) { const test = cur ? cur + ' ' + w : w; if (ctx.measureText(test).width > maxW && cur) { lines.push(cur); cur = w; } else cur = test; }
     if (cur) lines.push(cur);
     const lh = efs * 1.06, topY = H * 0.45 + efs * 0.36 - (lines.length - 1) * lh / 2;
+    // FOLIO editorial (estilo revista): "NN / NN" (escena/total) + filete fino que crece, arriba-izquierda.
+    // El titular vive en H*0.45 y el watermark abajo -> la franja superior esta vacia, sin colision. Refuerza la
+    // identidad EDITORIAL (este estilo) y agrega un detalle de posicion por escena. Determinista, tone-aware.
+    const fp = eOutCubic(clamp(inv(t, 0.05, 0.55), 0, 1));
+    if (fp > 0 && _sceneTot > 0) {
+      const fy = H * 0.13, folio = String(_sceneIdx).padStart(2, '0') + ' / ' + String(_sceneTot).padStart(2, '0');
+      ctx.save(); ctx.globalAlpha *= fp * 0.9;
+      ctx.font = fontStr(700, 17, 'a'); ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      const _fc = _accentInk(A1, 0.4); ctx.fillStyle = _fc; ctx.fillText(folio, ax, fy);
+      const rx0 = ax + ctx.measureText(folio).width + 12, rx1 = ax + maxW;
+      ctx.strokeStyle = _rgba(_fc, 0.5); ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(rx0, fy); ctx.lineTo(rx0 + (rx1 - rx0) * fp, fy); ctx.stroke();
+      ctx.restore();
+    }
     const mr = eOutCubic(clamp(inv(t, 0.05, 0.5), 0, 1));   // marca de acento sobre el titular (encuadre)
     if (mr > 0) { ctx.save(); ctx.fillStyle = _accentInk(A1, 0.5); ctx.beginPath(); ctx.roundRect(ax, topY - efs - 28, 66 * mr, 6, 3); ctx.fill(); ctx.restore(); }
     const lastIdx = lines.length - 1;
@@ -2293,6 +2308,7 @@ function _rgba(hex, a) {
       ctx.globalAlpha = a;
       ctx.translate(W / 2, H / 2); ctx.scale(z, z); ctx.translate(-W / 2, -H / 2);   // sin paneo en el contenido (el paneo vive en el fondo)
       _holdT = local;   // expone el tiempo continuo de la escena (los drawers lo usan para latidos/shimmer durante el hold)
+      _sceneIdx = i + 1; _sceneTot = _scenes.length;   // posicion para el folio editorial
       drawer(tFed, sc);
       ctx.restore();
     });
