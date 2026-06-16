@@ -78,8 +78,8 @@ Pegás un **link** → Urvid genera un **video vertical 9:16 de marketing** que:
      (emula eje wght sin fuentes variables). Firma de entrada distinta por marca. OJO: clamp(lp,0,1) en el lineWidth.
   2. **Grilla editorial + folio**: columnas/márgenes sembrados por marca + número de escena "01/05" + eyebrow rotado.
      Solo en branches left/editorial; coordinar esquinas con el watermark.
-  3. **Transiciones overlay nuevas**: glyph-wipe (barrido pixelado tipográfico) + push-band (banda con ecos). Solo
-     overlay sobre wp∈(0,1); NO el push real (rompería bg-check/fluidez).
+  3. **Transiciones overlay nuevas** [HECHO commit 9f051e6]: glyph-wipe (barrido pixelado tipográfico) + push-band
+     (banda con ecos). En el banco _TRANS -> 6 tipos de corte rotando por semilla. Determinista, bg-check 16/16.
   4. **Texturas de sustrato por rubro** (`setSubstrate`): scanlines / contour-topo / dot-grid en perspectiva, alpha
      bajo detrás del contenido, frecuencia/fase por SEED. Aplicar en _drawBgInner Y _bgLightFull. Sube "alma" + unicidad.
 
