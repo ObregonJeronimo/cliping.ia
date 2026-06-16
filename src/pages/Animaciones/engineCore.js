@@ -218,6 +218,9 @@ function _rgba(hex, a) {
   // tocar el fondo sobrio del rubro.
   function _accentPop(hex) {
     const a = _hexToHsl(hex);
+    // TONE-AWARE: en tono CLARO el "dato que golpea" (numero/CTA) iba claro -> bajo contraste sobre fondo claro.
+    // Ahora en claro devuelve un acento OSCURO+saturado (contrasta); en oscuro, el acento claro de siempre (pop).
+    if (TONE === 'light') return _hslToHex(a.h, Math.max(a.s, 0.72), clamp(Math.min(a.l, 0.4), 0.26, 0.4));
     return _hslToHex(a.h, Math.max(a.s, 0.62), clamp(Math.max(a.l, 0.55), 0, 0.64));
   }
   // paleta multi-hue ANCLADA en el acento de marca (generica para cualquier rubro): brand + analogos
@@ -832,9 +835,12 @@ function _rgba(hex, a) {
       for (let i = -H - off; i < W; i += step) { ctx.moveTo(i, 0); ctx.lineTo(i + H, H); }
       ctx.stroke(); ctx.restore();
     }
-    // 4) scrim central suave: baja un toque el brillo del centro para que el texto SIEMPRE se lea
-    const sc = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, H * 0.5);
-    sc.addColorStop(0, 'rgba(0,0,0,0.23)'); sc.addColorStop(1, 'rgba(0,0,0,0)');   // un poco mas de scrim -> el texto sobre fondos del mismo hue (Altos navy) se despega
+    // 4) scrim central TONE-AWARE: empuja el brillo del centro hacia el TONO (oscuro -> mas oscuro; claro -> mas
+    // claro) para que el texto SIEMPRE contraste, sin importar el fondo. Antes era negro fijo -> en tono claro
+    // grisaba el centro y el texto claro/cream sobre fondo claro NO se leia (bug del hero de WhatsApp).
+    const sc = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, H * 0.56);
+    if (TONE === 'light') { sc.addColorStop(0, 'rgba(250,250,252,0.46)'); sc.addColorStop(0.6, 'rgba(250,250,252,0.18)'); sc.addColorStop(1, 'rgba(250,250,252,0)'); }
+    else { sc.addColorStop(0, 'rgba(0,0,0,0.36)'); sc.addColorStop(0.6, 'rgba(0,0,0,0.14)'); sc.addColorStop(1, 'rgba(0,0,0,0)'); }
     ctx.fillStyle = sc; ctx.fillRect(0, 0, W, H);
     // 5) viñeta (oscurece bordes -> foco)
     const v = ctx.createRadialGradient(W / 2, H / 2, H * 0.30, W / 2, H / 2, H * 0.74);
@@ -2089,7 +2095,7 @@ function _rgba(hex, a) {
     drawBg(t);
   }
 
-  function drawFrame(c, t, timeline) {
+  function drawFrame(c, t, timeline, opts) {
     ctx = c;
     const tl = pickTimeline(timeline);
     setAccent(tl.accent);
@@ -2112,6 +2118,7 @@ function _rgba(hex, a) {
     const _PHI = _harm(_cr, 13, 20), _dir = _cr() < 0.5 ? -1 : 1, _ph = _cr() * 6.28;   // camara snapeada a la grilla de CLK -> no bate contra la deriva del fondo (mismos armonicos)
     const _camPanX = Math.sin(t * _PHI + _ph) * (8 + _cr() * 7) * _dir, _camPanY = Math.sin(t * _PHI * 2 + _ph) * (4 + _cr() * 4), _camBreath = 1 + Math.cos(t * _PHI) * 0.006;
     drawBg(t, _camPanX * 0.32, _camPanY * 0.32, 1.045 * _camBreath);   // el "breath" (respiracion) vive en el FONDO, no en el texto -> el fondo tiene vida y el texto queda clavado
+    if (opts && opts.bgOnly) return;   // modo "solo fondo" (para la sonda de legibilidad: full vs bg -> mascara de contenido)
     const _scenes = layout(tl);
     const XF = 0.3; // cross-fade mas corto -> cortes mas agiles/punchy (menos "todo se funde lento")
     // FIRMA TYPOGRAPHIC: el wordmark de la marca GIGANTE y fantasma (sangra fuera de cuadro, 2 lineas que
