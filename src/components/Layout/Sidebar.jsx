@@ -2,13 +2,11 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import styles from './Sidebar.module.css'
 
+// Nav real (las paginas "(lab)" eran POCs de desarrollo -> se ocultan del menu; sus rutas siguen
+// existiendo en App.jsx por si se necesitan, pero no confunden al usuario. Lo nuevo vive en "Animaciones".
 const NAV = [
   { to: '/studio',             icon: '⊞', label: 'Home' },
   { to: '/studio/animaciones', icon: '◆', label: 'Animaciones' },
-  { to: '/studio/fondo', icon: '◍', label: 'Fondo (lab)' },
-  { to: '/studio/motion', icon: '➿', label: 'Motion (lab)' },
-  { to: '/studio/direccion', icon: '✸', label: 'Direccion (lab)' },
-  { to: '/studio/lottie', icon: '❉', label: 'Acentos Lottie (lab)' },
   { to: '/studio/mis-animaciones', icon: '◇', label: 'Mis animaciones' },
   { to: '/studio/cinematicas', icon: '✦', label: 'Mis cinemáticas' },
 ]
