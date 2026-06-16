@@ -624,8 +624,10 @@ async def write_timeline(url, desarrollo, proposito="marketing", idioma="",
                       f"'photoink' — NO uses morph ni figura geometrica para el hero cuando hay foto (es lo que hace que "
                       f"parezca un anuncio real). Podes reusar fotos en otras escenas (foto+panel, dato sobre foto).")
     else:
-        photo_hint = ("\nSIN FOTOS del sitio: el hero va con TIPOGRAFIA de autor (palabra-heroe revelada) o, con moderacion, "
-                      "UN morph/forma. NO pongas figura geometrica en TODAS las escenas; varia el recurso protagonista.")
+        photo_hint = ("\nSIN FOTOS del sitio: el hero va con TIPOGRAFIA de autor (palabra-heroe revelada: el mensaje o la marca "
+                      "en grande, revelado con ritmo). NO uses 'morph' ni 'shape' (figuras geometricas) como elemento sobre o "
+                      "junto a los titulos: quedan como 'blobs'/gotas feas y el usuario las rechaza. Varia el recurso con "
+                      "tipografia, escala, color y composicion, NO con figuras.")
     extra = (f'\n\n>>> PEDIDO DEL USUARIO (PRIORIDAD ABSOLUTA, el video DEBE cumplirlo): "{desarrollo.strip()}"'
              if (desarrollo or "").strip() else "")
 

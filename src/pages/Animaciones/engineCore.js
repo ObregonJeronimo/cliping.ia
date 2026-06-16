@@ -1838,7 +1838,12 @@ function _rgba(hex, a) {
     ctx.globalAlpha = baseAlpha; ctx.textAlign = prevAlign;
   }
   function sceneSpec(t, p = {}) {
-    const els = Array.isArray(p.elements) ? p.elements : [];
+    let els = Array.isArray(p.elements) ? p.elements : [];
+    // El usuario NO quiere los "blobs"/figuras geometricas (morph/shape) sobre los titulos -> son las "gotas" feas.
+    // Si la escena tiene TEXTO (todo hero lo tiene), OMITIMOS morph/shape: el hero queda tipografico (palabra-heroe
+    // + wordmark fantasma + foto si hay), que es justo lo que gusta. Si la escena es SOLO forma (sin texto), se deja
+    // para no vaciarla. Cubre el camino de la IA y del mock en un solo lugar.
+    if (els.some(e => e && e.kind === 'text')) els = els.filter(e => e && e.kind !== 'morph' && e.kind !== 'shape');
     for (const el of els) {
       const keys = (Array.isArray(el.keys) && el.keys.length) ? el.keys.slice().sort((a, b) => (a.t || 0) - (b.t || 0)) : [{ t: 0 }];
       const op = clamp(_num(keys, t, 'opacity', 1), 0, 1);
