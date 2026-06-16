@@ -1878,17 +1878,25 @@ function _rgba(hex, a) {
   }
   // TIPOGRAFIA CINETICA: revela el texto LETRA POR LETRA con stagger (cada una entra desde abajo con un
   // leve overshoot). Asume ctx.font/translate ya seteados; dibuja alrededor del origen segun 'align'.
-  function _kineticDraw(str, col, align, t, start, track = 0) {
+  function _kineticDraw(str, col, align, t, start, track = 0, weightWave = false) {
     const chars = str.split('');
     const widths = chars.map(c => ctx.measureText(c).width);
     const total = widths.reduce((a, b) => a + b, 0) + track * Math.max(0, chars.length - 1);   // tracking por rol
     let xoff = align === 'center' ? -total / 2 : align === 'right' ? -total : 0;
     const prevAlign = ctx.textAlign; ctx.textAlign = 'left'; ctx.fillStyle = col;
     const each = Math.min(0.04, 0.4 / Math.max(1, chars.length)), baseAlpha = ctx.globalAlpha;
+    // WEIGHT-WAVE (tipografia "de peso variable" emulada): cada glifo nace GRUESO (strokeText del mismo color) y
+    // adelgaza a su fill al asentarse -> firma de entrada distinta por marca. clamp(lp,0,1) -> nunca lineWidth<0.
+    const maxLW = weightWave ? clamp((parseInt(ctx.font) || 40) * 0.045, 0.6, 3) : 0;
+    if (weightWave) { ctx.strokeStyle = col; ctx.lineJoin = 'round'; ctx.lineCap = 'round'; }
     for (let i = 0; i < chars.length; i++) {
       const lp = eOutBack(clamp((t - start - i * each) / 0.34, 0, 1));   // reveal mas rapido -> menos tiempo "medio tipeado"
       // rise mas corto (12) + curva de alpha mas agresiva (x1.6) -> menos "doble exposicion" en el frame intermedio
-      if (lp > 0.001) { ctx.globalAlpha = baseAlpha * clamp(lp * 1.6, 0, 1); ctx.fillText(chars[i], xoff, (1 - lp) * 12); }
+      if (lp > 0.001) {
+        ctx.globalAlpha = baseAlpha * clamp(lp * 1.6, 0, 1);
+        if (weightWave) { const lw = (1 - clamp(lp, 0, 1)) * maxLW; if (lw > 0.05) { ctx.lineWidth = lw; ctx.strokeText(chars[i], xoff, (1 - lp) * 12); } }
+        ctx.fillText(chars[i], xoff, (1 - lp) * 12);
+      }
       xoff += widths[i] + track;
     }
     ctx.globalAlpha = baseAlpha; ctx.textAlign = prevAlign;
@@ -1931,7 +1939,8 @@ function _rgba(hex, a) {
         const _tcol = _colorAt(keys, t, _resolveColor(el.fill || 'ink'));
         // tracking por rol: displays grandes apretados (-2%), kickers chicos abiertos (+6%) -> presencia de marca
         const _trk = el.track != null ? el.track : (fit > 44 ? Math.max(-1.2, -fit * 0.02) * (str.length > 8 ? 0.5 : 1) : (fit < 24 ? fit * 0.06 : 0));
-        if (el.kinetic) _kineticDraw(str, _tcol, el.align || 'center', t, (keys[0] && keys[0].t) || 0, _trk);
+        // weight-wave sembrado por marca (~40%) -> el hero tipografico tiene una firma de entrada distinta entre videos
+        if (el.kinetic) _kineticDraw(str, _tcol, el.align || 'center', t, (keys[0] && keys[0].t) || 0, _trk, el.weightWave != null ? el.weightWave : (mulberry32(((SEED || 1) ^ 0x77317) >>> 0)() < 0.4));
         else { ctx.fillStyle = _tcol; if (el.fill === 'dim') setShadow(TONE === 'light' ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.6)', 8, 0); ctx.fillText(str, 0, 0); if (el.fill === 'dim') noShadow(); }   // halo de contraste opuesto al tono -> el subtitulo 'dim' se lee sobre fondos/figuras (no toca el color, mantiene jerarquia)
       } else if (kind === 'icon') {
         if (el.blur) for (let b = 3; b >= 1; b--) { const tb = Math.max(0, t - b * 0.022); const pb = _pos(keys, tb); const sb = Math.max(0, _num(keys, tb, 'scale', scale)); ctx.save(); ctx.globalAlpha *= 0.1; ctx.translate(pb[0], pb[1]); _drawIcon(el.icon || 'dot', sb, op, tb); ctx.restore(); }
