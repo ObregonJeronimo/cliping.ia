@@ -1524,7 +1524,7 @@ function _rgba(hex, a) {
   // ESCENA: bigStat — un numero que cuenta de 0 al valor + label debajo. El beat de "dato que impacta".
   // Solo con un numero REAL del sitio. Nativo de Canvas, limpio.
   function sceneBigStat(t, p = {}) {
-    const cy = H * 0.44, al = p.align === 'left' ? 'left' : 'center', ax = al === 'left' ? W * 0.12 : W / 2;
+    const cy = H * 0.44, al = _pickAlign(p), ax = al === 'left' ? W * 0.12 : W / 2;
     const value = Number(p.value) || 0;
     const prog = eOutCubic(inv(t, 0.2, 1.5));   // conteo mas agil (antes 1.7) -> menos hold muerto
     const shown = value * prog;
@@ -1532,25 +1532,50 @@ function _rgba(hex, a) {
     const fmt = (v) => v.toFixed(dec).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
     const full = (p.prefix || '') + fmt(value) + (p.suffix || '');
     const num = (p.prefix || '') + fmt(shown) + (p.suffix || '');
-    const fs = fitFont(full, 104, al === 'left' ? W * 0.78 : W * 0.86, 40, 800, 'd');
     const suf = p.suffix || '', pref = p.prefix || '';
-    // KICKER arriba (contexto) -> jerarquia, no un numero solo y centrado en el vacio. Alineacion variable (left/center).
-    const kick = (p.kicker || (/%/.test(suf) ? 'EN RESULTADOS' : (/m2|m²/i.test(suf) ? 'SUPERFICIE' : (/[$]|USD|ARS/.test(pref + suf) ? 'DESDE' : '')))).toUpperCase();
+    const isPct = /%/.test(suf), barFill = (isPct ? clamp(value / 100, 0, 1) : 1) * clamp(prog, 0, 1);
+    // KICKER arriba (contexto) -> jerarquia, no un numero solo y centrado en el vacio.
+    const kick = (p.kicker || (isPct ? 'EN RESULTADOS' : (/m2|m²/i.test(suf) ? 'SUPERFICIE' : (/[$]|USD|ARS/.test(pref + suf) ? 'DESDE' : '')))).toUpperCase();
     const kp = inv(t, 0.15, 0.55);
-    if (kick && kp > 0) { ctx.save(); ctx.globalAlpha = kp; ctx.font = fontStr(700, 18, 'a'); ctx.fillStyle = _accentInk(A1, 0.42); ctx.textAlign = al; ctx.textBaseline = 'middle'; ctx.fillText(kick, ax, cy - fs * 0.6 - 16); ctx.restore(); }
     const pop = lerp(0.74, 1, eOutCubic(inv(t, 0.1, 0.55))), pulse = 1 + Math.sin(_holdT * 2.1) * 0.012;
+    // LAYOUT del bigStat (rompe "el mismo dato con barra siempre"): bar | ring (anillo, SOLO %) | plain (sin barra,
+    // regla de acento). Explicito (p.statLayout) o por SEMILLA de marca. ring requiere %.
+    const _blOpts = isPct ? ['bar', 'ring', 'plain'] : ['bar', 'plain', 'bar'];
+    const layout = (['bar', 'ring', 'plain'].indexOf(p.statLayout) >= 0 && (p.statLayout !== 'ring' || isPct))
+      ? p.statLayout : _blOpts[(mulberry32(((SEED || 1) ^ 0xB1A7E5) >>> 0)() * _blOpts.length) | 0];
+
+    if (layout === 'ring') {
+      // ANILLO de progreso: track + arco de acento que llena a value%; numero (mas chico) en el centro. Look "gauge".
+      const R = 116, lw = 14, ccx = al === 'left' ? W * 0.34 : W / 2, ccy = cy;
+      if (kick && kp > 0) { ctx.save(); ctx.globalAlpha = kp; ctx.font = fontStr(700, 18, 'a'); ctx.fillStyle = _accentInk(A1, 0.42); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(kick, ccx, ccy - R - 26); ctx.restore(); }
+      ctx.save(); ctx.lineCap = 'round';
+      ctx.strokeStyle = _rgba(INK, 0.13); ctx.lineWidth = lw; ctx.beginPath(); ctx.arc(ccx, ccy, R, 0, TAU); ctx.stroke();
+      ctx.strokeStyle = _accentPop(A1); setShadow(_rgba(_accentPop(A1), 0.4), 16, 0); ctx.beginPath(); ctx.arc(ccx, ccy, R, -Math.PI / 2, -Math.PI / 2 + TAU * barFill); ctx.stroke(); noShadow();
+      ctx.restore();
+      const rfs = fitFont(full, 62, R * 1.7, 26, 800, 'd');
+      ctx.save(); ctx.globalAlpha = inv(t, 0.05, 0.38); ctx.translate(ccx, ccy); ctx.scale(pop * pulse, pop * pulse);
+      ctx.font = fontStr(800, rfs, 'd'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = TONE === 'light' ? _accentInk(A1) : _accentPop(A1); ctx.fillText(num, 0, 0); ctx.restore();
+      if (p.label) { const lp = inv(t, 1.0, 1.4); if (lp > 0) { ctx.save(); ctx.globalAlpha = clamp(lp * 1.4, 0, 1); ctx.font = fontStr(600, fitFont(p.label, 23, W * 0.82, 14, 600, 't'), 't'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = DIM; ctx.fillText(p.label, ccx, ccy + R + 32); ctx.restore(); } }
+      return;
+    }
+    // bar / plain: numero grande (gradiente) + kicker arriba
+    const fs = fitFont(full, 104, al === 'left' ? W * 0.78 : W * 0.86, 40, 800, 'd');
+    if (kick && kp > 0) { ctx.save(); ctx.globalAlpha = kp; ctx.font = fontStr(700, 18, 'a'); ctx.fillStyle = _accentInk(A1, 0.42); ctx.textAlign = al; ctx.textBaseline = 'middle'; ctx.fillText(kick, ax, cy - fs * 0.6 - 16); ctx.restore(); }
     ctx.save(); ctx.globalAlpha = inv(t, 0.05, 0.38); ctx.translate(ax, cy); ctx.scale(pop * pulse, pop * pulse); ctx.translate(-ax, -cy);
     ctx.font = fontStr(800, fs, 'd'); ctx.textAlign = al; ctx.textBaseline = 'middle';
     const ng = ctx.createLinearGradient(ax - (al === 'left' ? 0 : 130), cy, ax + (al === 'left' ? 270 : 130), cy);
     ng.addColorStop(0, TONE === 'light' ? _accentInk(A1) : _accentPop(A1)); ng.addColorStop(1, TONE === 'light' ? _accentInk(A2) : _accentPop(A2));
     ctx.fillStyle = ng; setShadow(_rgba(_accentPop(A1), 0.35), 18, 2); ctx.fillText(num, ax, cy); noShadow();
     ctx.restore();
-    const isPct = /%/.test(suf), barFill = (isPct ? clamp(value / 100, 0, 1) : 1) * clamp(prog, 0, 1);
-    const by = cy + fs * 0.5 + 28, bw = al === 'left' ? W * 0.5 : W * 0.58, bx = al === 'left' ? ax : W / 2 - bw / 2, bh = 9;
-    ctx.save();
-    ctx.fillStyle = _rgba(INK, 0.13); ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 4.5); ctx.fill();
-    ctx.fillStyle = _accentPop(A1); ctx.beginPath(); ctx.roundRect(bx, by, bw * barFill, bh, 4.5); ctx.fill();
-    ctx.restore();
+    const by = cy + fs * 0.5 + 28;
+    if (layout === 'bar') {
+      const bw = al === 'left' ? W * 0.5 : W * 0.58, bx = al === 'left' ? ax : W / 2 - bw / 2, bh = 9;
+      ctx.save(); ctx.fillStyle = _rgba(INK, 0.13); ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 4.5); ctx.fill();
+      ctx.fillStyle = _accentPop(A1); ctx.beginPath(); ctx.roundRect(bx, by, bw * barFill, bh, 4.5); ctx.fill(); ctx.restore();
+    } else {   // plain: regla de acento corta (editorial, sin barra de progreso)
+      const rw = al === 'left' ? 92 : 120, rx = al === 'left' ? ax : W / 2 - rw / 2, rp = eOutCubic(clamp(inv(t, 0.6, 1.1), 0, 1));
+      ctx.save(); ctx.fillStyle = accent(rx, by, rx + rw, by); ctx.beginPath(); ctx.roundRect(rx, by, rw * rp, 5, 2.5); ctx.fill(); ctx.restore();
+    }
     if (p.label) { const lp = inv(t, 1.0, 1.4); if (lp > 0) { ctx.save(); ctx.globalAlpha = clamp(lp * 1.4, 0, 1); ctx.font = fontStr(600, fitFont(p.label, 23, W * 0.82, 14, 600, 't'), 't'); ctx.textAlign = al; ctx.textBaseline = 'middle'; ctx.fillStyle = DIM; ctx.fillText(p.label, ax, by + 30); ctx.restore(); } }
   }
 
@@ -1906,11 +1931,18 @@ function _rgba(hex, a) {
 
   // ===== TIPOS DE ESCENA NUEVOS (vocabulario ampliado -> mas combinaciones -> menos "mismo molde") =====
   const _fmtN = (v) => String(Math.round(v)).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  // ALIGN del contenido: explicito (p.align) o ELEGIDO POR SEMILLA de marca -> no SIEMPRE centrado cuando la IA no
+  // lo fija (mismo patron anti-repeticion que checklist/statement/outro). Una sola eleccion por video (SEED) ->
+  // consistente DENTRO del video, variada ENTRE videos. ~42% left.
+  function _pickAlign(p) {
+    if (p && (p.align === 'left' || p.align === 'center')) return p.align;
+    return mulberry32(((SEED || 1) ^ 0xA11C0) >>> 0)() < 0.42 ? 'left' : 'center';
+  }
   // REVEAL: gancho corto (1-4 palabras) a pantalla casi completa, apiladas y escalonadas, ultima en acento.
   function sceneReveal(t, p = {}) {
     const text = ((p.text || '').toString().trim()) || 'Mira esto';
     const words = text.split(/\s+/).slice(0, 4), n = words.length;
-    const al = p.align === 'left' ? 'left' : 'center', ax = al === 'left' ? W * 0.1 : W / 2, baseY = al === 'left' ? H * 0.58 : H * 0.46;
+    const al = _pickAlign(p), ax = al === 'left' ? W * 0.1 : W / 2, baseY = al === 'left' ? H * 0.58 : H * 0.46;
     const fs = fitFont(text, al === 'left' ? 92 : 104, W * 0.82, 44, 800, 'd'), lh = fs * 1.04, startY = baseY - (n - 1) * lh / 2;
     const kick = (p.kicker || '').toUpperCase();
     if (kick) { const kp = inv(t, 0.1, 0.5); if (kp > 0) { ctx.save(); ctx.globalAlpha = kp; ctx.font = fontStr(700, 18, 'a'); ctx.fillStyle = _accentInk(A1, 0.42); ctx.textAlign = al; ctx.textBaseline = 'middle'; ctx.fillText(kick, ax, startY - fs * 0.74); ctx.restore(); } }
@@ -1927,7 +1959,7 @@ function _rgba(hex, a) {
   // NUMBERSTACK: 2-3 numeros que cuentan, en cascada (vs bigStat que es UNO). Llena la pantalla con datos.
   function sceneNumberStack(t, p = {}) {
     const items = (p.items || []).slice(0, 3), n = items.length; if (!n) return;
-    const al = p.align === 'left' ? 'left' : 'center', tx = al === 'left' ? W * 0.12 : W / 2;
+    const al = _pickAlign(p), tx = al === 'left' ? W * 0.12 : W / 2;
     // PLAN FOCAL: un item DESTACADO (mas grande + acento + subrayado) y el resto subordinado (mas chico/tenue)
     // -> jerarquia clara (antes los 3 pesaban igual, sin foco). Default = el primero (suele ser el gancho, p.ej. $0);
     // el director puede mandar p.focal (indice). Determinista.
@@ -1952,7 +1984,7 @@ function _rgba(hex, a) {
   // QUOTE: testimonio con comillas grandes + estrellas + autor (prueba social). Layout de "card", distinto.
   function sceneQuote(t, p = {}) {
     const text = ((p.text || '').toString()) || 'Lo recomiendo 100%', cy = H * 0.42;
-    const al = p.align === 'left' ? 'left' : 'center', ax = al === 'left' ? W * 0.1 : W / 2, maxw = W * 0.8;
+    const al = _pickAlign(p), ax = al === 'left' ? W * 0.1 : W / 2, maxw = W * 0.8;
     const qp = eOutBack(clamp(inv(t, 0.05, 0.5), 0, 1));
     if (qp > 0) { ctx.save(); ctx.globalAlpha = 0.55 * qp; ctx.font = fontStr(800, Math.round(150 * qp), 'd'); ctx.textAlign = al; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = _lighten(A1, 0.4); ctx.fillText('“', ax, cy - 40); ctx.restore(); }
     const fit = fitFont(text, text.length > 38 ? 34 : 42, maxw, 24, 700, 't');
