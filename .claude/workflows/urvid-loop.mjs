@@ -25,8 +25,8 @@ await agent(`Prepara el banco de pruebas de Urvid (sin API, todo local), desde $
 1) python backend/mock_director.py --out tools/brands   (regenera marcas mock deterministas)
 2) node tools/bg-check.mjs   (DEBE dar 16/16; si no, REPORTALO)
 3) node tools/similarity-probe.mjs tools/brands   (anti-sameness)
-4) renderiza un pack de frames full-res por escena para ~6 marcas diversas en ${PK} (mkdir -p ${PK}); usa un node -e que importe src/pages/Animaciones/engineCore.js (drawFrame), cargue tools/fonts via GlobalFonts, y por cada escena de cada marca guarde PNG 1080x1920 (DSF=1080/405) a ${PK}/<marca>_<i>_<tipo>.png en el hold (t = inicio + dur*0.72).
-Devolve en texto: el output de similarity-probe, si bg-check dio 16/16, y la lista de PNGs creados.`, { label: 'prep', phase: 'Prep' })
+4) node tools/dump-pack.mjs   (renderiza un pack de frames full-res por escena de ~6 marcas a ${PK})
+Devolve en texto: el output de similarity-probe, si bg-check dio 16/16, y cuantos PNGs creo el pack.`, { label: 'prep', phase: 'Prep' })
 
 phase('Analizar')
 const groups = await parallel([
