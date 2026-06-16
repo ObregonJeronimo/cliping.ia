@@ -63,51 +63,42 @@ Pegás un **link** → Urvid genera un **video vertical 9:16 de marketing** que:
 ---
 
 ## 🔁 LOG DEL LOOP (urvid-loop)
-- **Iteración jun 16 #1** (HECHA): anti-sameness CONFIRMADO sano (la probe daba falsos positivos por fixtures de dev
-  con brand duplicado en tools/brands -> probe ahora filtra el banco canónico `^\d\d-` + avisa brands duplicados;
-  banco limpio = 0 pares sospechosos, más parecido Nimbus/Aula Viva 0.234). Fixes: numberStack con DECIMALES (4.8★ no "5"),
-  blueprint con HUE de la marca (Verdo gastronomía dejó de leer como plano de ingeniería navy), motivos: gastronomía
-  = plato+cubiertos+vapor, educación = birrete, DEFAULT = contornos (todo rubro tiene un cue). bg-check 16/16.
+- **Iteración jun 16 #1** (HECHA): anti-sameness CONFIRMADO sano (probe filtra el banco canónico `^\d\d-`). Fixes:
+  numberStack con DECIMALES, blueprint con HUE de marca, motivos por rubro (plato/birrete/contornos). bg-check 16/16.
+  Implementado además (cola verificada): weight-wave (c8e9dda), transiciones glyph-wipe+push-band (9f051e6), sustrato
+  por rubro (2861d9c), legibilidad outro `_softShadow` (e589a20), color same-rubro por lightness (c92d9ba),
+  reveal vertical-anchor (0a0f512), folio editorial (00fbb4a). Nueva QA: tools/stress-samerubro.mjs.
+- **Iteración jun 16 #2** (HECHA — 24 hallazgos, 10 alta, adversarialmente verificados; 2 REFUTADOS, ver abajo):
+  - numberStack = driver #1 de sameness: layout sembrado (ancla/gap/foco) + contraste tono-claro (c729c597);
+    STAT_SETS por rubro (tech/salud/educacion/moda/belleza + 2 variantes c/u) (19ace644).
+  - alma "foto real": el mock perdía la foto -> _hero_resource visual SIEMPRE 'photo' + _gen_structure(force_hero)
+    garantiza slot hero; educacion = rubro visual (19ace644). GUARD en PRODUCCIÓN: _normalize_timeline inyecta hero
+    fotográfico si dna.images y no hay foto/split (037ccea, idempotente, respeta cap+outro, $0 sin API).
+  - legibilidad: comilla de cierre del statement-quote se despegó del título (c729c597, era decoración-sobre-título).
+  - brutalist: bloque esquina mostaza off-brand -> sombra del acento (on-brand) + respira (8ed51ee).
+  - probe HONESTA: 5 muestras + umbral 0.20 + chequeo de CONTENIDO textual (numbers/frases/CTA, invisible al hash
+    gris); _sig del banco cubre contenido; classify suma meditacion/bienestar a salud (6bf100e). Banco: 0 visual + 0
+    contenido bajo el bar estricto. 16/16.
+  - **REFUTADOS** (NO tocar): (a) "sustrato denso de Aura" = capa mal identificada (Aura usa contour, no dotgrid; los
+    puntos densos son el halftone INTENCIONAL del estilo riso). (b) "chevron del CTA ctaOnly pisa el texto" = el render
+    real mide 29.6px de aire (fitFont nunca envuelve; el offset escala con fs). No son accionables.
 
-### COLA (verificado por el loop, listo para implementar — próxima iteración)
-- **Legibilidad outro broadcast**: el CTA en estilo `hard`-shadow lee borroso/doble-expuesto. Fix LOCAL a sceneOutro
-  (fill más brillante / halo soft solo ahí; NO tocar setShadow global, es identidad de brutalist/sport/riso).
-- **Anti-sameness en PRODUCCIÓN (timeline_director)**: el LLM genera cada video aislado, sin memoria cross-marca.
-  Agregar un guard determinista post-LLM (firma por scene-types+comp+tone+bucket de accent con `_se.stable_seed(url)`;
-  si choca con una firma reciente persistida por brand_key, perturbar deterministicamente rotando opening/comp/align;
-  $0, sin re-llamar a la API). Re-correr bg-check si toca tone/seed.
-- **Técnicas NUEVAS (deterministas, sin IA generativa) — del agente investigador:**
-  1. **Tipografía de peso variable (weight-wave)** [HECHO commit c8e9dda]: glifos que nacen gruesos (strokeText) y
-     adelgazan al asentarse; opt-in en _kineticDraw, ~40% de marcas por SEED, clamp(lp,0,1). bg-check 16/16.
-  2. **Grilla editorial + folio**: columnas/márgenes sembrados por marca + número de escena "01/05" + eyebrow rotado.
-     Solo en branches left/editorial; coordinar esquinas con el watermark.
-  3. **Transiciones overlay nuevas** [HECHO commit 9f051e6]: glyph-wipe (barrido pixelado tipográfico) + push-band
-     (banda con ecos). En el banco _TRANS -> 6 tipos de corte rotando por semilla. Determinista, bg-check 16/16.
-  4. **Texturas de sustrato por rubro** (`setSubstrate`) [HECHO commit 2861d9c]: scanlines (tech/finanzas) / contour
-     (inmobiliaria/salud/belleza/gastro/fitness) / dotgrid (educacion/moda/default), alpha 0.05-0.06 detrás del
-     contenido, frecuencia/fase por SEED, en _drawBgInner Y _bgLightFull. Mock + director de prod lo asignan por rubro.
-
-### COLA RESTANTE (verificada, próxima iteración)
-- **Legibilidad outro broadcast** [HECHO commit e589a20]: `_softShadow` (ignora SHADOW_MODE, halo centrado) para el
-  TEXTO del cierre (wordmark + CTA en center/left/bigtype/ctaOnly/diagonal). En modo `hard` el offset+blur0 duplicaba
-  el glifo (CTA borroso); ahora halo soft -> legible. Soft-mode idéntico (no cambia). Global setShadow intacto ->
-  cuerpo brutalist/sport/riso sin regresión. Verificado en vivo: DataFlow (ctaOnly) y Aura (diagonal) leen limpio. 16/16.
-- **Anti-sameness color same-rubro** [HECHO commit c92d9ba]: el `light` del acento era FIJO por energía -> dos marcas
-  del mismo rubro/energía = MISMO color (todos los inmobiliaria un azul, todos los tech un índigo). Ahora `light`
-  varía por semilla en [0.42,0.70] (hue intacto -> rubros siguen disjuntos). Stress 8-same-rubro: acentos van de
-  navy profundo a azul claro; inmobiliaria 0 pares flagged. Nueva QA: tools/stress-samerubro.mjs. 16/16.
-- **Anti-sameness layout same-rubro** (PRÓXIMA): en el stress tech queda 1 par borderline (Nimbus/Sintra 0.175 vs umbral
-  0.18): dos reveal-openers con aHash gris parecido. Lever: dar al opening un align/anchor distinto por semilla (hoy
-  `_va` = center/center/left). Bajo riesgo; verificar que no regrese otros rubros + bg-check.
-- **Folio editorial** [HECHO commit 00fbb4a]: "NN / NN" (escena/total) + filete que crece, arriba-izquierda del
-  estilo `editorial` del statement (título en H*0.45, watermark abajo -> franja superior vacía, sin colisión).
-  Plumbing: _sceneIdx/_sceneTot en el loop de dibujo. Tone-aware, fade-in. SOLO en _stmtEditorial (otros estilos
-  intactos). Verificado en Verdo (gastro) y Sonrisa (salud). 16/16. (La "grilla de columnas" se descartó: más
-  riesgo de colisión, menos valor que el folio.)
-- **Anti-sameness cross-marca PERSISTIDO en PRODUCCIÓN** (guard post-LLM con firma persistida por brand_key en
-  timeline_director; perturbar determinista si choca con una firma reciente, sin re-llamar API). OJO: difícil de
-  verificar offline (es el path de API); el stress-samerubro mostró que el riesgo real de color/estructura ya está
-  controlado -> baja prioridad salvo que el loop lo confirme como problema vivo.
+### COLA RESTANTE (verificada por el loop #2 — próxima iteración)
+- **Técnica: tracking cinético (line-settle kerning)** — animar el ESPACIADO de letras al entrar (nace ancho, cierra
+  con eOutCubic), sembrado por marca, en `_kineticDraw`. OJO del verificador: param nuevo `trackOpen` default 0 (NO
+  afectar los CTA de outro con track negativo); sembrar con `parseInt(ctx.font)` (no `fit`, fuera de scope); NO clampear
+  trackEff>=0 global (rompe el tracking negativo de displays). Opt-in ~45% por SEED, en paralelo al weight-wave. 16/16.
+- **Técnica: transición `colgrid` (split-flap editorial)** — 4-6 columnas con stagger + shift vertical sembrados por
+  (SEED^i), rama nueva en `_transAt` (pasar `i` como 3er param) + registrar en ambos `_TRANS`. Aditiva, bajo riesgo. 16/16.
+- **Técnica: sustrato `crosshatch`** — 4to modo de `_drawSubstrate` (rayado cruzado +/-ang, densidad/fase por SEED,
+  deriva en CLK como contour, alpha 0.05-0.06 tone-aware). Aditiva (else-if), exponer como valor de substrate. 16/16.
+- **Técnica: cinta cinética (kinetic strip)** [MEDIO riesgo] — banda de marquesina en el tercio muerto; guarda DURA
+  contra el watermark (statement solo tercio superior, nunca inferior; reveal inferior OK). Gate ~35% SEED, alpha bajo.
+- **Outro `diagonal` compartido** — 3 marcas oscuras caían en diagonal+dark+contour (end-card calcado en gris). El fix
+  de "firma anti-colisión" es INEFECTIVO (verificado); el real es variar el LAYOUT del end-card diagonal por marca, o
+  que estilos oscuros adyacentes en STYLE_ORDER no compartan diagonal. Pendiente de diseño.
+- **Anti-sameness cross-marca PERSISTIDO en PRODUCCIÓN** (guard post-LLM por brand_key en timeline_director, sin API).
+  Baja prioridad: el stress + la probe honesta muestran el riesgo real controlado.
 
 ## 🗺️ ROADMAP / PRÓXIMOS PASOS
 - **Anti-sameness más profundo** (prioridad del usuario): que la ESTRUCTURA, el RITMO, la PALETA y el LOOK varíen fuerte por marca. Ya rotan por semilla: checklist(rows/grid/chips), statement(5 estilos), outro(6 comps), bigStat(bar/ring/plain), align. Falta: medir similitud entre marcas (ver `similarity-probe`) y atacar lo que quede igual.
