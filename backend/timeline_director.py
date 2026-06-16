@@ -477,6 +477,24 @@ def _normalize_timeline(tl: dict, dna: dict = None) -> dict:
     # cerrar SIEMPRE con outro
     if not out_scenes or out_scenes[-1].get("type") != "outro":
         out_scenes.append({"type": "outro", "brand": tl.get("brand") or "", "cta": "Conoce mas", "durationInFrames": 150})
+    # GUARD DE FOTO (alma): si el sitio tiene fotos reales (dna.images) y el LLM no emitio NINGUNA escena con foto
+    # (kind 'photo') ni 'split', el video sale 100% texto = generico (mismo bug que arreglamos en el mock). Inyecta
+    # un hero fotografico al inicio (foto a sangre + wordmark en photoink). $0 (no re-llama API), determinista; el
+    # shape es identico al hero foto del mock -> _norm_scene_elements (re-normalizacion del critico) lo conserva.
+    # Lee dna.images (tl.images se adjunta despues, en write_timeline). Respeta el cap de 6 SIN perder el outro.
+    if (dna or {}).get("images"):
+        _has_photo = any(
+            sc.get("type") == "split" or (sc.get("type") == "scene" and any(
+                isinstance(e, dict) and e.get("kind") == "photo" for e in (sc.get("elements") or [])))
+            for sc in out_scenes)
+        if not _has_photo:
+            out_scenes.insert(0, {"type": "scene", "durationInFrames": 126, "comp": "emblem", "elements": [
+                {"kind": "photo", "photoIdx": 0, "keys": [{"t": 0, "opacity": 0}, {"t": 0.35, "opacity": 1, "ease": "outCubic"}]},
+                {"kind": "text", "text": str(tl.get("brand") or ""), "fill": "photoink", "size": 58, "weight": 800,
+                 "align": "center", "maxW": 360, "kinetic": True, "keys": [{"t": 0.4, "opacity": 1, "x": 202, "y": 556}]},
+            ]})
+            if len(out_scenes) > 6:
+                out_scenes = out_scenes[:5] + out_scenes[-1:]   # foto(0) + 4 escenas + outro -> nunca pierde el cierre
     tl["scenes"] = out_scenes[:6]
     # acento: ADN visual (real) > el que eligio la IA > default del motor
     acc = (dna or {}).get("accent") or tl.get("accent") or ""
