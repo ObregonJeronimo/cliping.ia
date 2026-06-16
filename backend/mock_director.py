@@ -156,11 +156,46 @@ TESTIMONIALS = {
 }
 # Sets de 2-3 numeros (numberStack). Datos plausibles SOLO para el banco de prueba (en prod los da el LLM con cifras reales).
 STAT_SETS = {
-    "gastronomia": [[{"value": 600, "prefix": "+", "label": "platos servidos"}, {"value": 4.8, "suffix": "★", "label": "valoracion"}, {"value": 30, "suffix": "min", "label": "envio"}]],
-    "inmobiliaria": [[{"value": 120, "prefix": "+", "label": "propiedades"}, {"value": 15, "suffix": " años", "label": "en el rubro"}, {"value": 4.9, "suffix": "★", "label": "clientes"}]],
-    "fitness": [[{"value": 500, "prefix": "+", "label": "socios"}, {"value": 40, "label": "clases x semana"}, {"value": 4.9, "suffix": "★", "label": "valoracion"}]],
-    "finanzas": [[{"value": 12, "suffix": "%", "label": "anual"}, {"value": 10000, "prefix": "+", "label": "usuarios"}, {"value": 0, "label": "comisiones"}]],
-    "default": [[{"value": 500, "prefix": "+", "label": "clientes"}, {"value": 4.8, "suffix": "★", "label": "valoracion"}, {"value": 24, "suffix": "h", "label": "respuesta"}]],
+    "gastronomia": [
+        [{"value": 600, "prefix": "+", "label": "platos servidos"}, {"value": 4.8, "suffix": "★", "label": "valoracion"}, {"value": 30, "suffix": "min", "label": "envio"}],
+        [{"value": 12, "label": "años cocinando"}, {"value": 4.9, "suffix": "★", "label": "resenas"}, {"value": 25, "prefix": "+", "label": "platos en carta"}],
+    ],
+    "inmobiliaria": [
+        [{"value": 120, "prefix": "+", "label": "propiedades"}, {"value": 15, "suffix": " años", "label": "en el rubro"}, {"value": 4.9, "suffix": "★", "label": "clientes"}],
+        [{"value": 98, "suffix": "%", "label": "operaciones cerradas"}, {"value": 30, "suffix": " dias", "label": "promedio de venta"}, {"value": 500, "prefix": "+", "label": "familias"}],
+    ],
+    "fitness": [
+        [{"value": 500, "prefix": "+", "label": "socios"}, {"value": 40, "label": "clases x semana"}, {"value": 4.9, "suffix": "★", "label": "valoracion"}],
+        [{"value": 8, "label": "kilos promedio"}, {"value": 60, "suffix": "min", "label": "por clase"}, {"value": 4.8, "suffix": "★", "label": "comunidad"}],
+    ],
+    "finanzas": [
+        [{"value": 12, "suffix": "%", "label": "anual"}, {"value": 10000, "prefix": "+", "label": "usuarios"}, {"value": 0, "label": "comisiones"}],
+        [{"value": 100000, "prefix": "+", "label": "inversiones"}, {"value": 4.9, "suffix": "★", "label": "en tiendas"}, {"value": 24, "suffix": "h", "label": "retiros"}],
+    ],
+    "tech": [
+        [{"value": 99.9, "suffix": "%", "label": "uptime"}, {"value": 40, "prefix": "-", "suffix": "%", "label": "tareas manuales"}, {"value": 3, "suffix": "x", "label": "mas rapido"}],
+        [{"value": 5000, "prefix": "+", "label": "equipos"}, {"value": 200, "prefix": "+", "label": "integraciones"}, {"value": 4.8, "suffix": "★", "label": "soporte"}],
+    ],
+    "salud": [
+        [{"value": 8000, "prefix": "+", "label": "pacientes"}, {"value": 15, "suffix": "min", "label": "de espera"}, {"value": 98, "suffix": "%", "label": "satisfaccion"}],
+        [{"value": 20, "prefix": "+", "label": "especialistas"}, {"value": 4.9, "suffix": "★", "label": "resenas"}, {"value": 24, "suffix": "h", "label": "turnos online"}],
+    ],
+    "educacion": [
+        [{"value": 2500, "prefix": "+", "label": "egresados"}, {"value": 12, "label": "cursos"}, {"value": 4.9, "suffix": "★", "label": "valoracion"}],
+        [{"value": 95, "suffix": "%", "label": "termina y trabaja"}, {"value": 40, "suffix": "h", "label": "de practica"}, {"value": 30, "prefix": "+", "label": "mentores"}],
+    ],
+    "moda": [
+        [{"value": 200, "prefix": "+", "label": "disenos"}, {"value": 48, "suffix": "h", "label": "envio"}, {"value": 4.8, "suffix": "★", "label": "clientas"}],
+        [{"value": 3, "label": "colecciones al año"}, {"value": 100, "suffix": "%", "label": "produccion local"}, {"value": 5000, "prefix": "+", "label": "pedidos"}],
+    ],
+    "belleza": [
+        [{"value": 4.9, "suffix": "★", "label": "valoracion"}, {"value": 3000, "prefix": "+", "label": "clientas"}, {"value": 12, "label": "servicios"}],
+        [{"value": 8, "label": "años de experiencia"}, {"value": 98, "suffix": "%", "label": "vuelven"}, {"value": 20, "prefix": "+", "label": "tratamientos"}],
+    ],
+    "default": [
+        [{"value": 500, "prefix": "+", "label": "clientes"}, {"value": 4.8, "suffix": "★", "label": "valoracion"}, {"value": 24, "suffix": "h", "label": "respuesta"}],
+        [{"value": 10, "prefix": "+", "label": "años"}, {"value": 4.9, "suffix": "★", "label": "resenas"}, {"value": 1000, "prefix": "+", "label": "proyectos"}],
+    ],
 }
 
 
@@ -204,14 +239,15 @@ _OUTRO_BY_COMP = {"emblem": "center", "sideLeft": "left", "typeHero": "bigtype",
                   "topAnchor": "bar", "cornerAnchor": "left", "diagonal": "bar", "typeSlam": "bigtype"}
 
 
-_VISUAL_RUBROS = {"gastronomia", "inmobiliaria", "belleza", "moda", "fitness", "salud"}
+_VISUAL_RUBROS = {"gastronomia", "inmobiliaria", "belleza", "moda", "fitness", "salud", "educacion"}
 
 
 def _hero_resource(rubro, has_photos, rnd):
     """RECURSO PROTAGONISTA del hero (mata 'la misma figura geometrica en TODOS los videos'): elige UNO -
     foto real / tipografia pura / morph. Determinista por rnd(seed). Morph cae a ~1 de cada 3-4."""
     if has_photos and rubro in _VISUAL_RUBROS:
-        return rnd.choice(["photo", "photo", "photo", "type"])   # rubro visual con fotos -> mayormente FOTO
+        rnd.random()   # consume 1 (mantiene la secuencia estable vs el choice anterior)
+        return "photo"   # rubro visual con fotos -> SIEMPRE foto: la foto del local/producto ES el anuncio (sin ella lee 'generico')
     if has_photos:
         return rnd.choice(["photo", "type", "type", "morph"])
     return rnd.choice(["type", "type", "morph"])                 # sin fotos: tipografia o morph (morph minoria)
@@ -308,10 +344,12 @@ def _split(brand, rubro, rnd, images):
             "side": rnd.choice(["left", "right"]), "durationInFrames": rnd.choice([108, 120])}
 
 
-def _gen_structure(rubro, has_photos, rnd):
+def _gen_structure(rubro, has_photos, rnd, force_hero=False):
     """GRAMATICA GENERATIVA: en vez de elegir 1 de ~4 esqueletos fijos (el 'mismo molde'), construye una estructura
     variada por marca: apertura diversa (no siempre hero), 1-4 beats de cuerpo sin repetir el anterior, tipos nuevos
-    (reveal/quote/numberStack/split), el hero puede ir al medio, cierre en outro. Determinista por rnd(seed)."""
+    (reveal/quote/numberStack/split), el hero puede ir al medio, cierre en outro. Determinista por rnd(seed).
+    force_hero: rubro visual con foto -> garantiza que exista un slot 'hero' (donde vive la FOTO) aunque la apertura
+    sea un hook tipografico; asi NUNCA un rubro visual con fotos sale 100% texto (era la causa #1 de 'generico')."""
     open_pool = ["reveal", "statement", "hero", "reveal", "hero"]
     if rnd.random() < 0.22:
         open_pool.append("bigStat")
@@ -336,6 +374,8 @@ def _gen_structure(rubro, has_photos, rnd):
         if out and out[-1] == s:
             continue
         out.append(s)
+    if force_hero and "hero" not in out:
+        out.insert(1, "hero")   # inserta el hero (foto) tras la apertura -> hook + foto, sin perder variedad de apertura
     return out
 
 
@@ -543,8 +583,9 @@ def generate(brand: str, industria: str, facts=None, seed: int = None, style: st
             outro_pool = _lo
     outro_comp = rnd.choice(outro_pool)
     # ESTRUCTURA NARRATIVA del estilo (no una sola coreografia para todos): conteo/orden/beats varian.
-    skel = _gen_structure(rubro, bool(images), rnd)   # estructura GENERATIVA por marca (no esqueleto fijo -> rompe el molde)
     _hero_res = _hero_resource(rubro, bool(images), rnd)   # recurso protagonista (foto/tipo/morph) -> no todos llevan figura
+    # estructura GENERATIVA por marca (no esqueleto fijo -> rompe el molde); si el hero es FOTO, garantiza el slot.
+    skel = _gen_structure(rubro, bool(images), rnd, force_hero=(_hero_res == "photo"))
     scenes = []
     _used_stmt = set()
 
@@ -648,6 +689,7 @@ if __name__ == "__main__":
         "gastronomia": ["food.png", "interior.png"], "inmobiliaria": ["interior.png", "storefront.png"],
         "belleza": ["spa.png", "product.png"], "salud": ["spa.png", "interior.png"],
         "moda": ["product.png", "people.png"], "fitness": ["people.png", "interior.png"],
+        "educacion": ["people.png", "interior.png"],
     }
 
     def _stock_for(rubro):
