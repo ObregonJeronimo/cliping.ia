@@ -1574,7 +1574,11 @@ function _rgba(hex, a) {
       if (qp > 0) { ctx.save(); ctx.globalAlpha *= 0.85 * qp; ctx.font = fontStr(800, Math.round(86 * qp), 'd'); ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = _lighten(A1, 0.5); setShadow('rgba(0,0,0,0.45)', 6, 1); ctx.fillText('“', cx, topY - lh * 0.18); noShadow(); ctx.restore(); }
       drawLines(cx, 'center', false);
       const qcp = eOutBack(clamp(inv(t, 0.55, 1.05), 0, 1));   // comilla de CIERRE espejada al final -> par completo, legible como la apertura
-      if (qcp > 0) { const ly = topY + (lines.length - 1) * lh; ctx.save(); ctx.globalAlpha *= 0.85 * qcp; ctx.font = fontStr(800, Math.round(86 * qcp), 'd'); ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = _lighten(A1, 0.5); setShadow('rgba(0,0,0,0.45)', 6, 1); ctx.fillText('”', cx, ly + lh * 0.7); noShadow(); ctx.restore(); }
+      if (qcp > 0) {   // baseline DEBAJO del borde inferior real del titulo + clearance -> el glifo (alto, sobre baseline) NO pisa la ultima linea (era el bug Aura "todos los dias")
+        const qfs = Math.round(86 * qcp), lastBottom = topY + (lines.length - 1) * lh + fs * 0.5;
+        ctx.save(); ctx.globalAlpha *= 0.85 * qcp; ctx.font = fontStr(800, qfs, 'd'); ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = _lighten(A1, 0.5); setShadow('rgba(0,0,0,0.45)', 6, 1);
+        ctx.fillText('”', cx, lastBottom + qfs * 0.62 + 14); noShadow(); ctx.restore();
+      }
     } else if (style === 'panel') {
       const cx = W / 2, longest = Math.max.apply(null, lines.map(l => ctx.measureText(l).width));
       const pw = Math.min(W * 0.86, longest + 56), ph = lines.length * lh + 40, py = topY - lh * 0.5 - 20;
@@ -2074,8 +2078,15 @@ function _rgba(hex, a) {
     // PLAN FOCAL: un item DESTACADO (mas grande + acento + subrayado) y el resto subordinado (mas chico/tenue)
     // -> jerarquia clara (antes los 3 pesaban igual, sin foco). Default = el primero (suele ser el gancho, p.ej. $0);
     // el director puede mandar p.focal (indice). Determinista.
-    const focal = (Number.isInteger(p.focal) && p.focal >= 0 && p.focal < n) ? p.focal : 0;
-    const gap = H * (n === 3 ? 0.21 : 0.26), startY = H * 0.46 - (n - 1) * gap / 2;
+    // LAYOUT sembrado por marca: ancla vertical + separacion + foco -> la SILUETA del numberStack (el driver #1
+    // de sameness que midio el loop: 5 numberStacks calcaban el mismo molde de 3 filas centradas) deja de ser
+    // identica entre marcas. Solo variantes VERTICALES (lienzo 9:16, 405 de ancho -> 3 numeros en fila no entran
+    // legibles). Determinista (SEED), igual patron que _pickAlign.
+    const _lr = mulberry32(((SEED || 1) ^ 0x57AC1D) >>> 0);
+    const _gapK = n === 3 ? [0.185, 0.21, 0.235][(_lr() * 3) | 0] : 0.26;
+    const _anchY = [0.34, 0.40, 0.46][(_lr() * 3) | 0];
+    const focal = (Number.isInteger(p.focal) && p.focal >= 0 && p.focal < n) ? p.focal : (_lr() * n | 0);   // foco sembrado -> no siempre la 1ra fila
+    const gap = H * _gapK, startY = H * _anchY - (n - 1) * gap / 2;
     items.forEach((it, i) => {
       const isF = i === focal;
       const d = 0.18 + i * 0.42, ap = inv(t, d, d + 0.4); if (ap <= 0) return;
@@ -2085,7 +2096,7 @@ function _rgba(hex, a) {
       const _nv = Number(it.value) || 0, _dec = (_nv % 1 !== 0) ? 1 : 0;
       const val = (it.prefix || '') + (_nv * prog).toFixed(_dec).replace(/\B(?=(\d{3})+(?!\d))/g, '.') + _sufC;
       const pop = lerp(0.8, 1, eOutBack(clamp(ap, 0, 1)));
-      ctx.save(); ctx.globalAlpha = clamp(ap * 1.4, 0, 1) * (isF ? 1 : 0.78); ctx.translate(tx, y); ctx.scale(pop, pop);
+      ctx.save(); ctx.globalAlpha = clamp(ap * 1.4, 0, 1) * (isF ? 1 : (TONE === 'light' ? 0.95 : 0.78)); ctx.translate(tx, y); ctx.scale(pop, pop);   // en tono CLARO NO atenuar filas 2/3 (perdian contraste); el foco se sostiene por tamano/acento/subrayado
       const nfs = fitFont(val, isF ? 80 : 54, W * 0.8, 30, 800, 'd');
       ctx.font = fontStr(800, nfs, 'd'); ctx.textAlign = al; ctx.textBaseline = 'middle';
       ctx.fillStyle = isF ? _accentPop(A1) : (TONE === 'light' ? _accentInk(A1) : _lighten(A1, 0.12));
