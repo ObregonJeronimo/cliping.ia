@@ -2343,7 +2343,7 @@ function _rgba(hex, a) {
     });
     // BANCO DE TRANSICIONES: antes el corte era SIEMPRE el mismo wipe (un "tell" que hacia todo predecible).
     // Ahora cada corte elige (sembrado por SEED^i, sesgado por dureza del estilo) entre wipe/flash/blinds/curtain.
-    const _transAt = (kind, wp) => {
+    const _transAt = (kind, wp, idx = 0) => {
       const fade = Math.sin(wp * Math.PI);
       if (kind === 'flash') { ctx.save(); ctx.fillStyle = _rgba(_lighten(A1, 0.55), 0.4 * fade); ctx.fillRect(0, 0, W, H); ctx.restore(); }
       else if (kind === 'blinds') {
@@ -2365,6 +2365,19 @@ function _rgba(hex, a) {
         ctx.save(); const bw = W * 0.5, cxp = lerp(-bw, W + bw, eInOutCubic(wp));
         for (let e = 2; e >= 0; e--) { ctx.fillStyle = _rgba(e ? A2 : A1, (e ? 0.14 : 0.5) * fade); ctx.fillRect(cxp - bw - e * 28, 0, bw, H); }
         ctx.restore();
+      } else if (kind === 'colgrid') {
+        // SPLIT-FLAP editorial: 4-6 columnas que barren con stagger + leve shift vertical (se "acomodan" como una
+        // maqueta de revista en movimiento, no un wipe plano). n/stagger/direccion sembrados por (SEED^idx) -> cada
+        // corte de cada marca es distinto. Determinista, sin estado.
+        ctx.save(); const r = mulberry32(((SEED || 1) ^ ((idx + 1) * 0x9E3779B9) ^ 0xC01D) >>> 0);
+        const n = 4 + ((r() * 3) | 0), stag = 0.10 + r() * 0.12, ctr = r() < 0.5, cw = W / n;
+        for (let c = 0; c < n; c++) {
+          const order = ctr ? Math.abs(c - (n - 1) / 2) / (((n - 1) / 2) || 1) : c / ((n - 1) || 1);
+          const p = eInOutCubic(clamp(wp * 1.4 - order * stag, 0, 1)); if (p <= 0) continue;
+          const sh = (1 - p) * H * 0.06 * (c % 2 ? 1 : -1);
+          ctx.fillStyle = _rgba(c % 2 ? A2 : A1, 0.42 * fade); ctx.fillRect(c * cw, -Math.abs(sh), cw + 1, H * p + Math.abs(sh));
+        }
+        ctx.restore();
       } else {   // wipe (default): panel de acento que barre, con canto difuminado
         const pw = W * 0.4, cxp = lerp(-pw, W + pw, eInOutCubic(wp));
         ctx.save();
@@ -2377,10 +2390,10 @@ function _rgba(hex, a) {
         ctx.restore();
       }
     };
-    const _TRANS = SHADOW_MODE === 'hard' ? ['flash', 'pushband', 'blinds', 'glyphwipe'] : ['wipe', 'curtain', 'glyphwipe', 'pushband'];
+    const _TRANS = SHADOW_MODE === 'hard' ? ['flash', 'pushband', 'blinds', 'glyphwipe', 'colgrid'] : ['wipe', 'curtain', 'glyphwipe', 'pushband', 'colgrid'];
     for (let i = 0; i < _scenes.length - 1; i++) {
       const wp = inv(t, _scenes[i].e - 0.12, _scenes[i].e + 0.34);
-      if (wp > 0 && wp < 1) _transAt(_TRANS[(mulberry32((SEED ^ (i * 0x2545F491)) >>> 0)() * _TRANS.length) | 0], wp);
+      if (wp > 0 && wp < 1) _transAt(_TRANS[(mulberry32((SEED ^ (i * 0x2545F491)) >>> 0)() * _TRANS.length) | 0], wp, i);
     }
   }
 
