@@ -124,7 +124,7 @@ PROFILES = {
 _KEYWORDS = {
     "gastronomia": ["restaurant", "comida", "food", "gastro", "cocina", "cafe", "panaderia", "dietetica", "almacen", "bebida", "menu", "delivery de comida", "pizzeria"],
     "tech": ["software", "saas", "tech", "plataforma", "startup", "datos", "cloud", "dev", "automatiz", "aplicacion"],
-    "salud": ["salud", "health", "clinica", "medic", "odonto", "dental", "psico", "terapia", "wellness", "farmacia", "nutri"],
+    "salud": ["salud", "health", "clinica", "medic", "odonto", "dental", "psico", "terapia", "wellness", "farmacia", "nutri", "meditacion", "bienestar", "mental", "mindfulness"],
     "moda": ["moda", "fashion", "ropa", "indumentaria", "boutique", "calzado", "accesorio", "marca de ropa"],
     "inmobiliaria": ["inmobili", "real estate", "propiedad", "alquiler", "venta de casas", "departamento", "remax", "broker"],
     "fitness": ["gym", "gimnasio", "fitness", "crossfit", "entrenamiento", "personal trainer", "deporte", "yoga"],

@@ -701,13 +701,22 @@ if __name__ == "__main__":
         ll = next((s.get("listLayout") for s in tl["scenes"] if s.get("type") == "checklist"), "")
         return comp, st, ll
 
+    def _content_sig(tl):
+        # CONTENIDO textual (numbers + CTA + reveal): dos marcas no comparten texto calcado -> mata la "colision
+        # de CONTENIDO" que la similarity-probe ahora detecta (invisible al hash gris). Era el agujero del _sig.
+        ns = next((tuple((i.get("prefix", ""), i.get("value"), i.get("suffix", ""), i.get("label", "")) for i in s.get("items", []))
+                   for s in tl["scenes"] if s.get("type") == "numberStack"), ())
+        cta = next((s.get("cta") for s in tl["scenes"] if s.get("type") == "outro"), "")
+        rev = next((s.get("text") for s in tl["scenes"] if s.get("type") == "reveal"), "")
+        return (ns, cta, rev)
+
     def _sig(tl):
         # "carta" exacta del video: hero + forma firma + layout de statement + layout de checklist + tema +
-        # FRASE del statement. Incluir la FORMA evita que dos marcas del mismo rubro (ej Nimbus/DataFlow,
-        # ambas tech, mismo rango de azul) colisionen en color Y silueta; incluir la frase evita texto calcado.
+        # FRASE del statement + CONTENIDO (numbers/CTA/reveal). Incluir la FORMA evita que dos marcas del mismo
+        # rubro colisionen en silueta; incluir frase+contenido evita texto calcado (Vibra/Raiz, ambas 'default').
         comp, st, ll = _parts(tl)
         stmt = next((s.get("text") for s in tl["scenes"] if s.get("type") == "statement"), "")
-        return (comp, tl.get("signatureForm"), st, ll, tl.get("theme"), stmt, tuple(tl.get("structure", [])))
+        return (comp, tl.get("signatureForm"), st, ll, tl.get("theme"), stmt, tuple(tl.get("structure", [])), _content_sig(tl))
 
     def _pair(tl):
         # arquitectura de layout (sin color/tema): hero + layout de checklist. Dos marcas con la
