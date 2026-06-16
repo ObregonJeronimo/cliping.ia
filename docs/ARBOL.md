@@ -34,6 +34,9 @@ Pegás un **link** → Urvid genera un **video vertical 9:16 de marketing** que:
   - `node tools/bg-check.mjs` → DEBE dar **16 pass, 0 fail** (determinismo; sin Math.random/Date.now).
   - `node tools/legibility-probe.mjs <json>` → contraste WCAG texto-vs-fondo por escena (ojo: sobre-cuenta bordes/acentos; el CUERPO de texto es lo que importa).
   - `node tools/fluidity-probe.mjs <json>` → "crawl" del texto en el hold (MAD por banda); texto clavado ≈ fondo.
+  - `node tools/similarity-probe.mjs [dir]` → anti-sameness: pares de marcas demasiado parecidos (estructura + aHash gris).
+  - `node tools/stress-samerubro.mjs <rubro>` → genera N marcas del MISMO rubro estilo PRODUCCIÓN (cada una su
+    stable_seed, SIN el re-roll del banco) y mide colisiones → ve el riesgo real de "dos videos parecidos" en prod.
 - `npx vite build` — que el front compile.
 
 ---
@@ -85,10 +88,20 @@ Pegás un **link** → Urvid genera un **video vertical 9:16 de marketing** que:
      contenido, frecuencia/fase por SEED, en _drawBgInner Y _bgLightFull. Mock + director de prod lo asignan por rubro.
 
 ### COLA RESTANTE (verificada, próxima iteración)
-- **Legibilidad outro broadcast** (CTA borroso en estilos `hard`-shadow; fix LOCAL a sceneOutro, soft-halo, sin tocar
-  setShadow global — cuidar de NO regresar brutalist/sport/riso).
+- **Legibilidad outro broadcast** [HECHO commit e589a20]: `_softShadow` (ignora SHADOW_MODE, halo centrado) para el
+  TEXTO del cierre (wordmark + CTA en center/left/bigtype/ctaOnly/diagonal). En modo `hard` el offset+blur0 duplicaba
+  el glifo (CTA borroso); ahora halo soft -> legible. Soft-mode idéntico (no cambia). Global setShadow intacto ->
+  cuerpo brutalist/sport/riso sin regresión. Verificado en vivo: DataFlow (ctaOnly) y Aura (diagonal) leen limpio. 16/16.
+- **Anti-sameness color same-rubro** [HECHO commit c92d9ba]: el `light` del acento era FIJO por energía -> dos marcas
+  del mismo rubro/energía = MISMO color (todos los inmobiliaria un azul, todos los tech un índigo). Ahora `light`
+  varía por semilla en [0.42,0.70] (hue intacto -> rubros siguen disjuntos). Stress 8-same-rubro: acentos van de
+  navy profundo a azul claro; inmobiliaria 0 pares flagged. Nueva QA: tools/stress-samerubro.mjs. 16/16.
+- **Anti-sameness layout same-rubro** (PRÓXIMA): en el stress tech queda 1 par borderline (Nimbus/Sintra 0.175 vs umbral
+  0.18): dos reveal-openers con aHash gris parecido. Lever: dar al opening un align/anchor distinto por semilla (hoy
+  `_va` = center/center/left). Bajo riesgo; verificar que no regrese otros rubros + bg-check.
 - **Grilla editorial + folio** (técnica nueva; MEDIO riesgo por colisión con eyebrow/watermark — solo branches left/editorial).
-- **Anti-sameness determinista en PRODUCCIÓN** (guard cross-marca post-LLM en timeline_director, sin re-llamar API).
+- **Anti-sameness cross-marca PERSISTIDO en PRODUCCIÓN** (guard post-LLM con firma persistida por brand_key en
+  timeline_director; perturbar determinista si choca con una firma reciente, sin re-llamar API).
 
 ## 🗺️ ROADMAP / PRÓXIMOS PASOS
 - **Anti-sameness más profundo** (prioridad del usuario): que la ESTRUCTURA, el RITMO, la PALETA y el LOOK varíen fuerte por marca. Ya rotan por semilla: checklist(rows/grid/chips), statement(5 estilos), outro(6 comps), bigStat(bar/ring/plain), align. Falta: medir similitud entre marcas (ver `similarity-probe`) y atacar lo que quede igual.
