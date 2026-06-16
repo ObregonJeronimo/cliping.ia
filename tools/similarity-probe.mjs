@@ -24,8 +24,13 @@ function aHashAt(tl, t) {
   return g.map(v => v > mean ? 1 : 0)
 }
 
-const files = readdirSync(dir).filter(f => f.endsWith('.json')).sort()
+// banco CANONICO (00-..11-): ignora fixtures de dev (bigstat-demo, new-*, etc.) que ensucian la medicion.
+// Si el dir no tiene canonicos (otro set a proposito), cae a todos los .json.
+let files = readdirSync(dir).filter(f => f.endsWith('.json'))
+const canon = files.filter(f => /^\d\d-.*\.json$/.test(f))
+files = (canon.length ? canon : files).sort()
 const brands = []
+const _seenBrand = new Set()
 for (const f of files) {
   const tl = JSON.parse(readFileSync(join(dir, f), 'utf8'))
   try { if (tl.logo) setLogo(await loadImage(tl.logo)) } catch { }
@@ -33,7 +38,10 @@ for (const f of files) {
   const dur = timelineDuration(tl) || 8
   const seq = (tl.scenes || []).map(s => s.type).join('-')
   const bits = [0.22, 0.5, 0.78].flatMap(p => Array.from(aHashAt(tl, dur * p)))   // 3 frames clave
-  brands.push({ name: tl.brand || f, seq, bits })
+  const nm = tl.brand || f
+  if (_seenBrand.has(nm)) console.log(`  (aviso) brand duplicado "${nm}" (${f}) -> se auto-compararia; revisar el banco`)
+  _seenBrand.add(nm)
+  brands.push({ name: nm, seq, bits })
   setLogo(null); setPhotos([])
 }
 
