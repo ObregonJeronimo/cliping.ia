@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { collection, getDocs, deleteDoc, doc, updateDoc } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
 import { useAuth } from '../../contexts/AuthContext'
-import styles from '../Cinematicas/MisCinematicas.module.css'
+import styles from './MisAnimaciones.module.css'
 
 const API_URL = import.meta.env.PROD ? '' : (import.meta.env.VITE_API_URL || 'http://localhost:8000')
 

@@ -2,13 +2,11 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import styles from './Sidebar.module.css'
 
-// Nav real (las paginas "(lab)" eran POCs de desarrollo -> se ocultan del menu; sus rutas siguen
-// existiendo en App.jsx por si se necesitan, pero no confunden al usuario. Lo nuevo vive en "Animaciones".
+// Urvid = el motor de Animaciones. El estudio es la pantalla principal (index de /studio);
+// Mis animaciones = los videos guardados. (Se removieron Cinematicas y los labs de desarrollo.)
 const NAV = [
-  { to: '/studio',             icon: '⊞', label: 'Home' },
-  { to: '/studio/animaciones', icon: '◆', label: 'Animaciones' },
+  { to: '/studio', icon: '◆', label: 'Animaciones' },
   { to: '/studio/mis-animaciones', icon: '◇', label: 'Mis animaciones' },
-  { to: '/studio/cinematicas', icon: '✦', label: 'Mis cinemáticas' },
 ]
 
 export default function Sidebar() {

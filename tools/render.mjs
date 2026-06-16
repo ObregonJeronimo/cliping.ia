@@ -14,7 +14,6 @@ import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { drawFrame, drawBackground, beatAt, timelineDuration, setLogo, setPhotos, DEMO_TIMELINE, THEME_NAMES } from '../src/pages/Animaciones/engineCore.js'
-import { drawMotionDemo } from '../src/pages/Animaciones/motionDemo.js'
 
 const W = 405, H = 720
 const SS = 2                          // supersample del frame fuente (nitidez)
@@ -110,18 +109,6 @@ function fondoThemes() {
   sheet('fondo-themes', 'Fondo · 10 temas de rubro (semilla 42, t=3s)', items, 5, 200)
 }
 
-function motionSheets(accent) {
-  const spans = { eases: 1.9, path: 4, morph: 8.05, stagger: 1.7 }
-  for (const kind of ['eases', 'path', 'morph', 'stagger']) {
-    const span = spans[kind]
-    const items = Array.from({ length: 8 }, (_, i) => {
-      const t = (i + 0.3) * span / 8
-      return { cv: frameCanvas(ctx => drawMotionDemo(ctx, t, kind, { accent })), label: `${kind} t=${t.toFixed(2)}` }
-    })
-    sheet('motion-' + kind, `Motion premium · ${kind} (accent ${accent})`, items, 4)
-  }
-}
-
 function rubroSheet() {
   const p = join(dirname(fileURLToPath(import.meta.url)), 'style-presets.json')
   const presets = JSON.parse(readFileSync(p, 'utf8'))
@@ -181,8 +168,6 @@ if (mode === 'window') {
   videoStrip(tl, name, `Video · ${name}`, n)
 } else if (mode === 'gif') {
   gifExport(process.argv[3], process.argv[4] || 'video', parseInt(process.argv[5] || '14', 10))
-} else if (mode === 'motion') {
-  motionSheets(process.argv[3] || '#5aa0ff')
 } else if (mode === 'rubros') {
   rubroSheet()
 } else {

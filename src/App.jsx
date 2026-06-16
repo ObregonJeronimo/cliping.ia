@@ -1,14 +1,8 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import AppLayout from './components/Layout/AppLayout'
-import VideoStudio from './pages/Cinematicas/VideoStudio'
-import MisCinematicas from './pages/Cinematicas/MisCinematicas'
 import TimelineStudio from './pages/Animaciones/TimelineStudio'
 import MisAnimaciones from './pages/Animaciones/MisAnimaciones'
-import FondoLab from './pages/Animaciones/FondoLab'
-import MotionLab from './pages/Animaciones/MotionLab'
-import DireccionLab from './pages/Animaciones/DireccionLab'
-import LottieLab from './pages/Animaciones/LottieLab'
 import Login from './pages/Login'
 import Landing from './pages/Landing'
 import Terminos from './pages/Legal/Terminos'
@@ -33,14 +27,9 @@ function AppRoutes() {
           <AppLayout />
         </PrivateRoute>
       }>
-        <Route index element={<VideoStudio />} />
-        <Route path="animaciones" element={<TimelineStudio />} />
-        <Route path="fondo" element={<FondoLab />} />
-        <Route path="motion" element={<MotionLab />} />
-        <Route path="direccion" element={<DireccionLab />} />
-        <Route path="lottie" element={<LottieLab />} />
+        <Route index element={<TimelineStudio />} />
+        <Route path="animaciones" element={<Navigate to="/studio" replace />} />
         <Route path="mis-animaciones" element={<MisAnimaciones />} />
-        <Route path="cinematicas" element={<MisCinematicas />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

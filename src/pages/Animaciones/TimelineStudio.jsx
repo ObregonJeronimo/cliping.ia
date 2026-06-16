@@ -2,7 +2,7 @@ import { useRef, useState, useEffect } from 'react'
 import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
 import { useAuth } from '../../contexts/AuthContext'
-import styles from '../Cinematicas/Cinematicas.module.css'
+import styles from './Studio.module.css'
 
 const API_URL = import.meta.env.PROD ? '' : (import.meta.env.VITE_API_URL || 'http://localhost:8000')
 const HEADERS = { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' }
