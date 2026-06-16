@@ -2260,6 +2260,19 @@ function _rgba(hex, a) {
         ctx.restore();
       } else if (kind === 'curtain') {
         ctx.save(); const cw = W * 0.55 * eInOutCubic(wp); ctx.fillStyle = _rgba(A1, 0.42 * fade); ctx.fillRect(0, 0, cw, H); ctx.fillStyle = _rgba(A2, 0.42 * fade); ctx.fillRect(W - cw, 0, cw, H); ctx.restore();
+      } else if (kind === 'glyphwipe') {
+        // barrido "tipografico/pixelado": celdas que se llenan de izq a der al pasar el corte (look editorial/tech)
+        ctx.save(); const cs = 26, p = eInOutCubic(wp);
+        for (let gy = 0; gy < H; gy += cs) for (let gx = 0; gx < W; gx += cs) {
+          const th = (gx / W) * 0.78 + (((gx * 31 + gy * 17) % 13) / 13) * 0.2;
+          if (p * 1.2 > th) { ctx.fillStyle = _rgba((((gx + gy) / cs) | 0) % 2 ? A1 : A2, 0.5 * fade); ctx.fillRect(gx, gy, cs - 2, cs - 2); }
+        }
+        ctx.restore();
+      } else if (kind === 'pushband') {
+        // banda solida con 2 ecos (motion-smear falso) que cruza -> lee como empuje de camara, sin mover el contenido
+        ctx.save(); const bw = W * 0.5, cxp = lerp(-bw, W + bw, eInOutCubic(wp));
+        for (let e = 2; e >= 0; e--) { ctx.fillStyle = _rgba(e ? A2 : A1, (e ? 0.14 : 0.5) * fade); ctx.fillRect(cxp - bw - e * 28, 0, bw, H); }
+        ctx.restore();
       } else {   // wipe (default): panel de acento que barre, con canto difuminado
         const pw = W * 0.4, cxp = lerp(-pw, W + pw, eInOutCubic(wp));
         ctx.save();
@@ -2272,7 +2285,7 @@ function _rgba(hex, a) {
         ctx.restore();
       }
     };
-    const _TRANS = SHADOW_MODE === 'hard' ? ['flash', 'wipe', 'blinds', 'flash'] : ['wipe', 'curtain', 'wipe', 'blinds'];
+    const _TRANS = SHADOW_MODE === 'hard' ? ['flash', 'pushband', 'blinds', 'glyphwipe'] : ['wipe', 'curtain', 'glyphwipe', 'pushband'];
     for (let i = 0; i < _scenes.length - 1; i++) {
       const wp = inv(t, _scenes[i].e - 0.12, _scenes[i].e + 0.34);
       if (wp > 0 && wp < 1) _transAt(_TRANS[(mulberry32((SEED ^ (i * 0x2545F491)) >>> 0)() * _TRANS.length) | 0], wp);
