@@ -118,6 +118,11 @@ function _rgba(hex, a) {
   let SEED = 0, motes = [], blobs = [], grain = [];
   let BG_TEX = 'none';   // textura del fondo por rubro: grain | grain2 | grid | lines | none
   function setTexture(n) { BG_TEX = (typeof n === 'string' && n) ? n : 'none'; }
+  // SUSTRATO por rubro: trama tenue de "materia" sobre TODO el lienzo (scanlines / contour-topo / dotgrid).
+  // Suma identidad de rubro + unicidad por marca (frecuencia/fase sembradas) sin pisar el contenido (alpha bajo,
+  // detras del texto). Determinista (SEED + CLK). 'none' = sin sustrato.
+  let SUBSTRATE = 'none';
+  function setSubstrate(n) { SUBSTRATE = (typeof n === 'string' && n) ? n : 'none'; }
   let BG_ENERGY = 1;     // energia/velocidad del mesh por rubro (rapido tech/fitness, sereno salud/inmob)
   function setEnergy(n) { BG_ENERGY = (typeof n === 'number' && isFinite(n)) ? clamp(n, 0.4, 2.2) : 1; }
   // SISTEMA DE FONDO por marca: rompe el "todos los videos tienen el mismo mesh". Cada estilo es un mundo
@@ -650,6 +655,26 @@ function _rgba(hex, a) {
     for (let i = 0; i < 300; i++) { ctx.fillStyle = fr() < 0.5 ? '#fff' : '#000'; ctx.fillRect(fr() * W, fr() * H, 1.2, 1.2); }
     ctx.restore();
   }
+  // SUSTRATO: trama de materia sobre todo el lienzo, alpha bajo, detras del contenido. Identidad de rubro +
+  // unicidad por marca (sembrado). Determinista (SEED + CLK). scanlines (tech/CRT) | contour (topo/organico) | dotgrid.
+  function _drawSubstrate(t) {
+    if (!SUBSTRATE || SUBSTRATE === 'none') return;
+    const ink = _accentInk(_resolveColor('accent'), 0.42), a = TONE === 'light' ? 0.05 : 0.06;
+    ctx.save();
+    if (SUBSTRATE === 'scanlines') {
+      ctx.strokeStyle = _rgba(ink, a); ctx.lineWidth = 1; ctx.beginPath();
+      for (let y = 0; y < H; y += 4) { ctx.moveTo(0, y); ctx.lineTo(W, y); }
+      ctx.stroke();
+    } else if (SUBSTRATE === 'contour') {
+      const rnd = mulberry32(((SEED || 1) ^ 0x5B57A) >>> 0);
+      ctx.strokeStyle = _rgba(ink, a * 1.3); ctx.lineWidth = 1.4; ctx.lineCap = 'round';
+      for (let k = 0; k < 6; k++) { const baseY = H * (0.1 + k * 0.16), amp = 16 + rnd() * 20, fr = 0.006 + rnd() * 0.006, ph = rnd() * 6.28; ctx.beginPath(); let first = true; for (let x = -10; x <= W + 10; x += 12) { const yy = baseY + Math.sin(x * fr + t * CLK * 6 + ph) * amp; first ? (ctx.moveTo(x, yy), first = false) : ctx.lineTo(x, yy); } ctx.stroke(); }
+    } else if (SUBSTRATE === 'dotgrid') {
+      ctx.fillStyle = _rgba(ink, a * 1.7); const step = 30;
+      for (let y = step; y < H; y += step) for (let x = step; x < W; x += step) { ctx.beginPath(); ctx.arc(x, y, 1.2, 0, TAU); ctx.fill(); }
+    }
+    ctx.restore();
+  }
   // FONDO CLARO (editorial): crema con tinte del acento (multiply, no aditivo) + grano papel + viñeta sutil.
   // Mundo visual opuesto al oscuro -> mitad de las marcas se sienten de otra liga.
   function _bgLightFull(t) {
@@ -793,6 +818,7 @@ function _rgba(hex, a) {
     const v = ctx.createRadialGradient(W / 2, H * 0.46, H * 0.32, W / 2, H * 0.5, H * 0.82);
     v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(60,45,35,0.10)');
     ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+    _drawSubstrate(t);
     _filmGrain(t);
   }
   // wrapper de CAMARA COMPARTIDA (parallax): el fondo se mueve con el MISMO vector que el contenido pero a
@@ -869,6 +895,7 @@ function _rgba(hex, a) {
     const v = ctx.createRadialGradient(W / 2, H / 2, H * 0.30, W / 2, H / 2, H * 0.74);
     v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,0.4)');
     ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+    _drawSubstrate(t);
     _filmGrain(t);
   }
 
@@ -2135,6 +2162,7 @@ function _rgba(hex, a) {
     setTone(o.tone);
     setShadowMode(o.shadowMode);
     setMotif(o.motif);
+    setSubstrate(o.substrate);
     ctx.clearRect(0, 0, W, H);
     drawBg(t);
   }
@@ -2151,6 +2179,7 @@ function _rgba(hex, a) {
     setTone(tl.tone);
     setShadowMode(tl.shadowMode);
     setMotif(tl.motif);
+    setSubstrate(tl.substrate);
     setFonts(tl);
     _BRAND = (tl.brand || '').toString();
     ctx.clearRect(0, 0, W, H);

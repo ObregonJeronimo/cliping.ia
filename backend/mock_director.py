@@ -607,6 +607,10 @@ def generate(brand: str, industria: str, facts=None, seed: int = None, style: st
         "heroResource": _hero_res,
         # MOTIVO contextual del fondo segun el rubro (skyline / sparkline / vapor / pulso / botanico...)
         "motif": rubro,
+        # SUSTRATO (trama de materia tenue sobre el lienzo) por rubro -> mas alma + unicidad (la frecuencia/fase es por semilla)
+        "substrate": {"tech": "scanlines", "finanzas": "scanlines", "inmobiliaria": "contour", "salud": "contour",
+                      "belleza": "contour", "gastronomia": "contour", "fitness": "contour", "educacion": "dotgrid",
+                      "moda": "dotgrid"}.get(rubro, "dotgrid"),
         # forma FIRMA de la marca -> el motor la persiste como marca de agua viva en las escenas de contenido
         "signatureForm": f1,
         # metadatos de receta (como el director real)
