@@ -79,10 +79,15 @@ STYLE_PRESETS = {
     "y2k":         {"nombre": "Y2K Chrome", "bg": "y2k", "light_p": 1.0, "shadow": "soft", "tex": "none",
                     "comps": ["typeSlam", "typeStack", "typeOnly"], "stmt": ["centered", "panel"], "list": "check", "grid_p": 0.0,
                     "outro": ["center", "bigtype"], "rhythm": _RH_FAST, "structs": _ST_PUNCHY},
+    # --- ESTILO NUEVO: MORPH protagonico (lo que pidio el usuario) -> gran silueta del rubro que morfea de continuo
+    # detras del texto, anclada al borde; el scrim tone-aware mantiene el titulo legible. Sirve dark o claro.
+    "morph":       {"nombre": "Morph Flow", "bg": "morphfield", "light_p": 0.4, "shadow": "soft", "tex": "none",
+                    "comps": ["typeStack", "typeSlam", "cornerAnchor"], "stmt": ["centered", "editorial"], "list": "check", "grid_p": 0.0,
+                    "outro": ["center", "bigtype", "diagonal"], "rhythm": _RH_MED, "structs": _ST_PREMIUM},
 }
 # orden seguro -> audaz (para la UI del selector) + sesgo de estilo recomendado por rubro (auto cuando el
 # usuario no elige). El usuario SIEMPRE puede pisar esto con su eleccion.
-STYLE_ORDER = ["blueprint", "swiss", "platinum", "obsidian", "meshflow", "aurora", "handmade", "typographic", "riso", "retro70s", "brutalist", "sport", "editorial", "corporate", "broadcast", "organic", "cyber", "surveillanceHUD", "y2k"]
+STYLE_ORDER = ["blueprint", "swiss", "platinum", "obsidian", "meshflow", "morph", "aurora", "handmade", "typographic", "riso", "retro70s", "brutalist", "sport", "editorial", "corporate", "broadcast", "organic", "cyber", "surveillanceHUD", "y2k"]
 # SISTEMA DE FUENTES por estilo (rompe el "Inter para todo"). display=titular/hero; text=cuerpo/listas
 # (caption-safe); accent=numeros/indices (mono). Familias = Google Fonts (cargadas en el motor por estilo).
 # Basado en la investigacion de tipografia para video marketing 2026. El motor lee fontDisplay/Text/Accent.
@@ -92,6 +97,7 @@ STYLE_FONTS = {
     "platinum":    {"display": "Fraunces", "text": "Hanken Grotesk", "accent": "Space Mono"},
     "obsidian":    {"display": "Sora", "text": "Inter Tight", "accent": "Space Mono"},
     "meshflow":    {"display": "Outfit", "text": "Plus Jakarta Sans", "accent": "Space Grotesk"},
+    "morph":       {"display": "Bricolage Grotesque", "text": "Plus Jakarta Sans", "accent": "Space Grotesk"},
     "aurora":      {"display": "Bricolage Grotesque", "text": "Onest", "accent": "Caveat"},
     "handmade":    {"display": "Caveat", "text": "Familjen Grotesk", "accent": "Caveat"},
     "typographic": {"display": "Big Shoulders Display", "text": "Newsreader", "accent": "Space Mono"},
@@ -109,11 +115,11 @@ STYLE_FONTS = {
 }
 _DEFAULT_FONTS = {"display": "Space Grotesk", "text": "Inter", "accent": "JetBrains Mono"}
 RUBRO_STYLE_BIAS = {
-    "inmobiliaria": ["editorial", "blueprint", "swiss", "obsidian", "meshflow", "corporate", "surveillanceHUD"],
+    "inmobiliaria": ["editorial", "blueprint", "swiss", "obsidian", "meshflow", "morph", "corporate", "surveillanceHUD"],
     "finanzas":     ["corporate", "swiss", "blueprint", "obsidian", "broadcast", "surveillanceHUD"],
-    "tech":         ["corporate", "cyber", "meshflow", "typographic", "surveillanceHUD", "brutalist"],
+    "tech":         ["corporate", "cyber", "meshflow", "morph", "typographic", "surveillanceHUD", "brutalist"],
     "salud":        ["organic", "aurora", "swiss", "meshflow", "handmade"],
-    "belleza":      ["aurora", "editorial", "y2k", "obsidian", "handmade", "riso"],
+    "belleza":      ["aurora", "editorial", "morph", "y2k", "obsidian", "handmade", "riso"],
     "gastronomia":  ["handmade", "retro70s", "riso", "organic", "editorial", "y2k"],
     "fitness":      ["sport", "brutalist", "broadcast", "cyber", "typographic"],
     "educacion":    ["swiss", "corporate", "retro70s", "typographic"],

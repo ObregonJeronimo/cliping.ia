@@ -640,6 +640,70 @@ function _rgba(hex, a) {
     ctx.fillStyle = gl; ctx.fillRect(0, 0, W, H);
     ctx.restore();
   }
+  // 'morphfield': FONDO PROTAGONICO con MORPH visible (lo que pide el usuario). UNA gran silueta del rubro que
+  // morfea de continuo entre TODAS las formas del pool (via _morphRing/_shapeRing) + 2-3 satelites menores. Va
+  // anclada a un BORDE/esquina (NUNCA sobre el bloque de texto): el scrim radial central + la viñeta (que corren
+  // DESPUES en _drawBgInner/_bgLightFull) la atenuan justo en la zona del titulo, asi el texto SIGUE legible.
+  // Opacidad MODERADA (mas visible que la marca de agua, sub-legibilidad). 100% determinista (CLK + mulberry32(SEED)).
+  function _bgMorphField(t, pal) {
+    const rnd = mulberry32(((SEED || 1) ^ 0x40A9F1E1) >>> 0);
+    const pool = _signatureShapePool(MOTIF);
+    const PL = Math.max(2, pool.length);
+    // tinta tone-aware (claro -> oscurece el acento; oscuro -> lo aclara) para que la silueta SIEMPRE contraste con el fondo.
+    const _wac = _accentInk(pal[0] || A1, 0.16), _wac2 = _accentInk(pal[1] || pal[0] || A1, 0.16);
+    // helper: anillo MORFEADO en fase 'ph' [0..1) recorriendo TODO el pool (ph*PL -> par de formas + sub-t). Es una
+    // transformacion INTENCIONAL y continua entre formas con sentido del rubro (anti-blob), no un blob aleatorio.
+    const morphPhase = (ph, r) => {
+      const f = ((ph % 1) + 1) % 1 * PL;
+      const i0 = Math.floor(f) % PL, i1 = (i0 + 1) % PL;
+      const _mt = f - Math.floor(f);
+      return _morphRing(_shapeRing(pool[i0], 0, 0, r), _shapeRing(pool[i1], 0, 0, r), _mt);
+    };
+    // anclaje: gran silueta hacia una ESQUINA/borde inferior (sembrada por marca) -> deja el centro libre para el texto.
+    // El centro se EMPUJA fuera de cuadro (1.02/-0.02) para que la silueta SANGRE por la esquina y su borde NO
+    // bisecte la composicion con una linea recta larga (leeria como costura). Asi entra como gran silueta de fondo.
+    const sideR = rnd() < 0.5;                       // izquierda vs derecha
+    const cx = (sideR ? W * 1.02 : W * -0.02) + Math.sin(t * CLK * 4) * 16;
+    const cy = H * 0.86 + Math.cos(t * CLK * 3) * 14;   // bien abajo, donde la viñeta/scrim ya pesan
+    const bigR = H * (0.42 + rnd() * 0.06) * (0.96 + Math.sin(t * CLK * 6) * 0.04);   // respiracion suave de escala
+    const bigSpeed = 0.10 + rnd() * 0.04;            // vueltas del morph (lento -> se LEE la transformacion)
+    const bigPh = rnd();
+    ctx.save();
+    ctx.globalCompositeOperation = TONE === 'light' ? 'multiply' : 'lighter';
+    // 1) GRAN SILUETA protagonica: relleno con gradiente (sheen) -> volumen, no figurita plana. Glow tenue.
+    {
+      const ring = morphPhase(t * CLK * bigSpeed * 6 + bigPh, bigR);
+      const pts = ring.map(p => ({ x: p[0] + cx, y: p[1] + cy }));
+      let mnY = 1e9, mxY = -1e9; for (const p of pts) { if (p.y < mnY) mnY = p.y; if (p.y > mxY) mxY = p.y; }
+      const fg = ctx.createLinearGradient(0, mnY, 0, mxY || mnY + 1);
+      const aBig = TONE === 'light' ? 0.16 : 0.20;   // MODERADA: mas que el watermark, el texto aun se lee por el scrim
+      fg.addColorStop(0, _rgba(_lighten(_wac, 0.22), aBig)); fg.addColorStop(1, _rgba(_wac, aBig));
+      ctx.fillStyle = fg;
+      _smoothPath(pts); ctx.fill();
+      // borde finito del mismo acento -> define el contorno sin endurecer (sigue siendo fondo)
+      ctx.strokeStyle = _rgba(_wac, TONE === 'light' ? 0.16 : 0.18); ctx.lineWidth = 1.4; ctx.stroke();
+    }
+    // 2) SATELITES menores (2-3) morfeando en otra fase -> el campo tiene profundidad y vida, sin tapar el texto.
+    const nSat = 2 + (rnd() < 0.5 ? 1 : 0);
+    for (let i = 0; i < nSat; i++) {
+      const ang = rnd() * TAU, dist = bigR * (0.7 + rnd() * 0.5);
+      const sx = cx + Math.cos(ang) * dist + Math.sin(t * CLK * (5 + i) + i) * 12;
+      const sy = cy + Math.sin(ang) * dist - dist * 0.35 + Math.cos(t * CLK * (4 + i) + i) * 10;   // un pelo hacia arriba/centro
+      const sr = bigR * (0.16 + rnd() * 0.14) * (0.95 + Math.sin(t * CLK * (8 + i)) * 0.05);
+      const ring = morphPhase(t * CLK * (bigSpeed * 1.6) * 6 + rnd(), sr);
+      const pts = ring.map(p => ({ x: p[0] + sx, y: p[1] + sy }));
+      ctx.fillStyle = _rgba(i % 2 ? _wac2 : _wac, (TONE === 'light' ? 0.10 : 0.13));
+      _smoothPath(pts); ctx.fill();
+    }
+    ctx.restore();
+    // 3) halo suave de acento del lado OPUESTO -> equilibra la composicion (no inunda, alpha minimo)
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    const hx = sideR ? W * 0.22 : W * 0.78, hy = H * 0.30 + Math.cos(t * CLK * 2) * 14;
+    const gl = ctx.createRadialGradient(hx, hy, 0, hx, hy, H * 0.5);
+    gl.addColorStop(0, _rgba(pal[0], TONE === 'light' ? 0.06 : 0.09)); gl.addColorStop(1, _rgba(pal[0], 0));
+    ctx.fillStyle = gl; ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+  }
   // 'broadcast': noticiero -> lower-third deslizante + ticker en loop + bug EN VIVO pulsante. MOTION incorporado
   // (nunca frame muerto) -> ideal para ofertas/urgencia/lanzamientos.
   function _bgBroadcast(t, pal) {
@@ -1036,6 +1100,8 @@ function _rgba(hex, a) {
         ctx.beginPath(); ctx.moveTo(-s, 0); ctx.lineTo(s, 0); ctx.moveTo(0, -s); ctx.lineTo(0, s); ctx.stroke(); ctx.restore();
       }
       ctx.restore();
+    } else if (BG_STYLE === 'morphfield') {
+      _bgMorphField(t, pal);   // misma silueta protagonica que morfea, tone-aware (en claro usa multiply); scrim/viñeta cuidan el texto
     }
     ctx.save();
     for (const gp of grain) { ctx.globalAlpha = Math.min(0.05, (gp.a || 0.06) * 0.6); ctx.fillStyle = '#1c130c'; ctx.fillRect(gp.x, gp.y, gp.r || 1.3, gp.r || 1.3); }
@@ -1077,6 +1143,7 @@ function _rgba(hex, a) {
     else if (BG_STYLE === 'speedlines') _bgSpeedlines(t, pal);
     else if (BG_STYLE === 'halftone') _bgHalftone(t, pal);
     else if (BG_STYLE === 'flowfield') _bgFlowField(t, pal);   // arte generativo: campo de lineas por value-noise seedeado
+    else if (BG_STYLE === 'morphfield') _bgMorphField(t, pal);   // morph protagonico: gran silueta del rubro que morfea de continuo (anclada al borde, scrim cuida el texto)
     else if (BG_STYLE === 'paper') _bgField(t, pal);   // handmade en oscuro (raro): cae a field suave
     else if (BG_STYLE === 'typo') _bgField(t, pal);    // typographic: base sobria + wordmark fantasma (en drawFrame)
     else if (BG_STYLE === 'broadcast') _bgBroadcast(t, pal);
