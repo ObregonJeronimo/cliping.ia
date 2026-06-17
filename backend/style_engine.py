@@ -97,6 +97,7 @@ def _weighted_pick(rng: random.Random, options, weights):
 #   aurora     organico (boreal)               | flowfield  campo de lineas generativo (Hobbs) -> oscuro
 #   morphfield gran silueta que morfea         | sunburst   rayos retro 70s
 #   halftone   trama riso de puntos            | brutalist  grilla cruda + slab (oscuro)
+#   fluid      fluido por noise multi-octava + ondas (port Scene2Fluid) -> oscuro
 _BG_SYSTEMS = {
     "mesh":       (0.15, ("dark", "light")),
     "field":      (0.15, ("dark", "light")),
@@ -105,6 +106,8 @@ _BG_SYSTEMS = {
     "aurora":     (0.11, ("dark", "light")),
     "flowfield":  (0.11, ("dark",)),            # campo de lineas: pide fondo oscuro (en claro lava -> blanco/blanco).
                                                 # subido (0.07->0.11): con peso ralo NUNCA salia en el banco -> no se auditaba.
+    "fluid":      (0.09, ("dark",)),            # fluido por noise (manchas de color que fluyen + ondas): mas rico que el
+                                                # gradiente plano. Pide oscuro (el campo aditivo 'lighter' brilla sobre dark).
     "halftone":   (0.08, ("dark", "light")),
     "sunburst":   (0.07, ("dark", "light")),
     "morphfield": (0.05, ("dark", "light")),    # protagonico: raro a proposito (no abruma la galeria)

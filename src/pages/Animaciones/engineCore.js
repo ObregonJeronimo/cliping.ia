@@ -826,6 +826,63 @@ function _rgba(hex, a) {
     ctx.fillStyle = gl; ctx.fillRect(0, 0, W, H);
     ctx.restore();
   }
+  // 'fluid': CAMPO DE FLUIDO por noise (port de YercoMasterpiece Scene2Fluid -> Canvas-2D determinista). La
+  // masterpiece usa un noise2 con Math.sin-hash SIN sembrar (no reproducible); aca usamos el _valueNoise2 SEEDEADO
+  // PURO (mismo ruido que flowfield) -> identico en Skia (QA) y Chromium (Remotion). Algoritmo: campo de noise
+  // MULTI-OCTAVA (3 octavas) sobre una grilla (40x70 celdas) con DERIVA en el tiempo (armonicos de CLK -> respira
+  // sin batir); la intensidad del noise modula alpha + brillo del acento/paleta -> manchas de color que fluyen.
+  // + ondas circulares que EXPANDEN desde el centro (anillos finos). Mas rico que el gradiente plano, pero TENUE
+  // detras del texto (alpha bajo + el scrim/viñeta posteriores cuidan el centro -> el titulo SIGUE legible).
+  // 100% determinista (SEED via _valueNoise2 + CLK + t). NADA de Math.random/Date.now.
+  function _bgFluid(t, pal) {
+    // base de color del fluido: acento del pal (clamp por tono para que SIEMPRE contraste con el fondo dark).
+    const baseC = _hexToHsl(pal[0] || A1 || '#3aa0ff');
+    const altC = _hexToHsl(pal[1] || pal[0] || A1 || '#3aa0ff');
+    const COLS = 40, ROWS = 70;
+    const cw = W / COLS, ch = H / ROWS;
+    // deriva: en X/Y a velocidades distintas (campo que "fluye" en diagonal) ancladas a CLK (no bate con la camara).
+    const dx = t * CLK * 16, dy = t * CLK * 12;
+    // energia -> contraste del fluido (mas energia = manchas mas marcadas). Alpha CONTENIDO (no compite con el texto).
+    const aGain = (0.16 + clamp((BG_ENERGY - 0.4) / 1.8, 0, 1) * 0.10);
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (let y = 0; y < ROWS; y++) {
+      for (let x = 0; x < COLS; x++) {
+        const nx = (x / COLS) * 3 + dx;
+        const ny = (y / ROWS) * 3 + dy;
+        // 3 octavas: la base manda la forma, las altas agregan detalle fino (fBm clasico). Pesos 0.5/0.3/0.2.
+        const n = _valueNoise2(nx, ny) * 0.5 +
+                  _valueNoise2(nx * 2.1 + 17.3, ny * 2.1 - 5.7) * 0.3 +
+                  _valueNoise2(nx * 4.2 + 3.1, ny * 4.2 + 9.4) * 0.2;
+        // realza el contraste del campo (gamma) -> manchas con cuerpo en vez de un lavado plano uniforme.
+        const inten = Math.pow(clamp(n, 0, 1), 1.5);
+        if (inten < 0.06) continue;   // celdas casi vacias: no dibujar (deja respirar -> el fondo no se inunda)
+        // hue ondula entre el acento y el analogo segun la intensidad -> el fluido tiene variacion de color, no monocromo.
+        const hue = baseC.h + (altC.h - baseC.h) * inten * 0.6;
+        const col = _hslToHex(hue, clamp(baseC.s * (0.7 + inten * 0.4), 0.3, 0.9), clamp(0.32 + inten * 0.34, 0.2, 0.7));
+        ctx.fillStyle = _rgba(col, inten * aGain);
+        ctx.fillRect(x * cw, y * ch, cw + 1, ch + 1);
+      }
+    }
+    ctx.restore();
+    // ONDAS CIRCULARES que expanden desde el centro (anillos finos del acento, alpha que cae con el radio -> se
+    // disuelven al llegar al borde). Periodo anclado a CLK -> sincronizadas con la deriva del campo.
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.lineWidth = 1.6;
+    const maxR = H * 0.92, period = maxR / 4;   // 4 anillos en vuelo, espaciados parejo
+    const phase = (t * CLK * 90) % period;       // velocidad de expansion (anclada a CLK)
+    for (let ring = 0; ring < 4; ring++) {
+      const radius = phase + ring * period;
+      if (radius < 1 || radius > maxR) continue;
+      const a = Math.max(0, 0.10 * (1 - radius / maxR));   // se desvanece hacia el borde
+      ctx.beginPath();
+      ctx.arc(W / 2, H * 0.5, radius, 0, TAU);
+      ctx.strokeStyle = _rgba(pal[0], a);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
   // 'morphfield': FONDO PROTAGONICO con MORPH visible (lo que pide el usuario). UNA gran silueta del rubro que
   // morfea de continuo entre TODAS las formas del pool (via _morphRing/_shapeRing) + 2-3 satelites menores. Va
   // anclada a un BORDE/esquina (NUNCA sobre el bloque de texto): el scrim radial central + la viñeta (que corren
@@ -1340,6 +1397,7 @@ function _rgba(hex, a) {
     else if (BG_STYLE === 'speedlines') _bgSpeedlines(t, pal);
     else if (BG_STYLE === 'halftone') _bgHalftone(t, pal);
     else if (BG_STYLE === 'flowfield') _bgFlowField(t, pal);   // arte generativo: campo de lineas por value-noise seedeado
+    else if (BG_STYLE === 'fluid') _bgFluid(t, pal);   // fluido por noise multi-octava + ondas (port Scene2Fluid, determinista)
     else if (BG_STYLE === 'morphfield') _bgMorphField(t, pal);   // morph protagonico: gran silueta del rubro que morfea de continuo (anclada al borde, scrim cuida el texto)
     else if (BG_STYLE === 'paper') _bgField(t, pal);   // handmade en oscuro (raro): cae a field suave
     else if (BG_STYLE === 'typo') _bgField(t, pal);    // typographic: base sobria + wordmark fantasma (en drawFrame)
