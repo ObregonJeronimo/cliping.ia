@@ -50,6 +50,101 @@ def stable_seed(*parts) -> int:
     return int(h[:8], 16)
 
 
+# ====================================================================================================
+# MOTOR DE UNICIDAD — parameter-space ORTOGONAL (ref docs/INVESTIGACION-MOTION.md, Tyler Hobbs/QQL).
+# El problema: preset() sacaba TODAS sus elecciones (theme/bg/tone/formas/hook/...) de UN solo
+# random.Random(seed) -> el stream es comun, asi que dos marcas con semillas cercanas (o el simple
+# orden de consumo) caen en combos CORRELACIONADOS: cambiar una decision desbarajusta las demas.
+# La solucion (fxhash/SFC32 + QQL): cada EJE deriva de su PROPIO sub-seed (hash de seed + nombre del
+# eje) -> ejes estadisticamente INDEPENDIENTES. Mover un eje no toca los otros, y dos marcas que
+# coinciden en un eje siguen divergiendo en los demas. Donde se puede, ejes CONTINUOS (0..1); para
+# discretos, distribuciones SESGADAS (weighted/gaussian con colas raras) en vez de uniforme plana.
+# ====================================================================================================
+def sub_seed(seed, axis: str) -> int:
+    """Sub-semilla INDEPENDIENTE por eje (namespace), estilo fxhash. hash(seed|axis) -> 32 bits.
+    Dos ejes del MISMO seed NO comparten stream -> descorrelacionados; iterar un eje no mueve los otros."""
+    h = hashlib.sha1(f"{int(seed) & 0xFFFFFFFF}:{axis}".encode("utf-8")).hexdigest()
+    return int(h[:8], 16)
+
+
+def _axis_rng(seed, axis: str) -> random.Random:
+    return random.Random(sub_seed(seed, axis))
+
+
+def _gauss01(rng: random.Random, mu: float = 0.5, sigma: float = 0.22) -> float:
+    """Float en 0..1 con distribucion GAUSSIANA (masa al centro, colas raras). Clamp a [0,1]."""
+    return min(1.0, max(0.0, rng.gauss(mu, sigma)))
+
+
+def _skew01(rng: random.Random, power: float = 1.8) -> float:
+    """Float 0..1 SESGADO hacia 0 (power>1) o hacia 1 (power<1). u**power -> cola larga del lado raro."""
+    return rng.random() ** power
+
+
+def _weighted_pick(rng: random.Random, options, weights):
+    """Eleccion DISCRETA con pesos (no uniforme): el comun sale seguido, el raro a veces. Determinista por rng."""
+    return rng.choices(list(options), weights=list(weights), k=1)[0]
+
+
+# Ejes del parameter-space. Cada uno es ORTOGONAL (su propio sub-seed). Los continuos (0..1) los lee el
+# motor/director para modular sin caer en enums; los discretos usan distribucion sesgada (no plana).
+_FEATURE_AXES = (
+    "bg_system", "color_mood", "tempo", "hero_layout", "energy",
+    "density", "asymmetry", "type_mood", "motion_signature",
+)
+
+
+def features(seed: int) -> dict:
+    """Deriva EJES ORTOGONALES e INDEPENDIENTES, cada uno de su PROPIO sub-seed (hashear seed+nombre del
+    eje). Cambiar un eje NO desbarajusta los otros; dos marcas que coinciden en un eje divergen en el resto.
+    Es la CAPA que alimenta y DESACOPLA las elecciones de preset() (el contrato de preset NO cambia)."""
+    seed = int(seed) & 0xFFFFFFFF
+
+    r_bg = _axis_rng(seed, "bg_system")
+    r_col = _axis_rng(seed, "color_mood")
+    r_tempo = _axis_rng(seed, "tempo")
+    r_hero = _axis_rng(seed, "hero_layout")
+    r_en = _axis_rng(seed, "energy")
+    r_den = _axis_rng(seed, "density")
+    r_asym = _axis_rng(seed, "asymmetry")
+    r_type = _axis_rng(seed, "type_mood")
+    r_mot = _axis_rng(seed, "motion_signature")
+
+    return {
+        # --- CONTINUOS (0..1): el motor/director los lee para modular finamente sin enums ---
+        "tempo": _gauss01(r_tempo, 0.5, 0.24),            # lento(0) <-> rapido(1); centro=medio, colas raras
+        "energy": _gauss01(r_en, 0.5, 0.24),              # sereno(0) <-> electrico(1)
+        "density": _gauss01(r_den, 0.5, 0.20),            # vacio/aireado(0) <-> denso/lleno(1)
+        "asymmetry": _skew01(r_asym, 1.5),                # centrado(0) <-> descentrado/editorial(1); sesgo al centro
+        "color_warmth": _gauss01(r_col, 0.5, 0.26),       # frio(0) <-> calido(1) (matiz fino, NO pisa el hue de rubro)
+        "color_pop": _skew01(r_col, 0.9),                 # apagado(0) <-> saturado/pop(1); del MISMO sub-seed de color (mood coherente)
+        # --- DISCRETOS con distribucion SESGADA (no uniforme): comun seguido, raro a veces ---
+        # indice ORTOGONAL al pool de fondos del estilo (lo aplica preset, ver abajo) -> descorrelaciona bg de theme/tone
+        "bg_index": _weighted_pick(r_bg, (0, 1, 2), (0.5, 0.32, 0.18)),
+        # sesgo de layout de hero: type-led(0) comun, shape-led(1) a veces, asimetrico-fuerte(2) raro
+        "hero_bias": _weighted_pick(r_hero, ("type", "shape", "edge"), (0.5, 0.3, 0.2)),
+        # caracter tipografico: 0..1 (condensado/display vs neutro); continuo para el director
+        "type_mood": _gauss01(r_type, 0.5, 0.25),
+        # firma de movimiento: que ease/recurso domina (sesgado -> no todos iguales)
+        "motion_signature": _weighted_pick(
+            r_mot, ("smooth", "snappy", "elastic", "mechanical"), (0.34, 0.3, 0.2, 0.16)),
+        # tono claro/oscuro como PROBABILIDAD independiente (la decide su propio sub-seed, ver preset)
+        "tone_light_bias": _gauss01(_axis_rng(seed, "tone"), 0.5, 0.26),
+        "tone_u": _axis_rng(seed, "tone_pick").random(),  # elige dentro del pool curado del rubro en el empate
+        # eleccion de tema dentro del pool del rubro, de su PROPIO sub-seed (descorrela theme de bg/tono)
+        "theme_u": _axis_rng(seed, "theme").random(),
+        # variante de hook, sub-seed propio (no comparte stream con formas/motion)
+        "hook_u": _axis_rng(seed, "hook").random(),
+        # u's para las formas/iconos/lightness: cada uno su sub-seed -> intra-rubro descorrelacionado
+        "morph_u": _axis_rng(seed, "morph").random(),
+        "icon_u": _axis_rng(seed, "icon").random(),
+        "light_u": _axis_rng(seed, "lightness").random(),
+        "hue_u": _axis_rng(seed, "hue").random(),
+        "sat_u": _axis_rng(seed, "sat").random(),
+        "_seed": seed,
+    }
+
+
 # ---------- gramatica por RUBRO ----------
 # Cada perfil define FAMILIAS DISJUNTAS de color (rango de hue), formas (morph), iconos, ritmo (pacing),
 # densidad y enfasis de movimiento. Es dato CURADO (tendencia, no taxonomia dura) -> se ajusta a mano.
@@ -202,39 +297,62 @@ _RUBRO_TONE = {
 }
 
 
+def _pick_u(pool, u: float):
+    """Elige un elemento del pool con un float 0..1 (uniforme) -> indexa sin consumir un stream compartido."""
+    pool = list(pool)
+    return pool[min(len(pool) - 1, int(u * len(pool)))]
+
+
+def _shuffle_u(items, rng: random.Random):
+    """Baraja una COPIA con un rng dedicado (sub-seed propio) -> no comparte stream con otras decisiones."""
+    out = list(items)
+    rng.shuffle(out)
+    return out
+
+
 def preset(industria: str = "", publico: str = "", energy: str = "medio", seed: int = 0) -> dict:
-    """rubro + publico + semilla -> preset de estilo determinista (tokens visuales DISJUNTOS por rubro)."""
+    """rubro + publico + semilla -> preset de estilo determinista (tokens visuales DISJUNTOS por rubro).
+
+    DESACOPLADO (motor de unicidad): cada eleccion (hue/sat/lightness/theme/bg/tono/formas/iconos/hook/motion)
+    se sortea de su PROPIO sub-seed via features(seed) -> ejes ORTOGONALES. Antes salian todas de un solo
+    random.Random(seed): el stream comun correlacionaba a dos marcas de semillas cercanas (cambiar una decision
+    movia todas). Ahora theme NO comparte stream con bg_style, ni bg_style con tone, etc. El CONTRATO (claves
+    devueltas) se preserva intacto: features es la CAPA que las alimenta y descorrelaciona."""
     canon = classify(industria)
     p = PROFILES[canon]
-    rnd = random.Random(int(seed) & 0xFFFFFFFF)
+    ft = features(seed)
 
-    hue = rnd.uniform(*p["hue"])
-    sat = rnd.uniform(*p["sat"])
-    # LIGHTNESS del acento VARIADA por semilla. Antes era FIJA por energia (0.52/0.56/0.60) -> dos marcas del
-    # MISMO rubro y energia salian con el MISMO color exacto (todos los inmobiliaria = el mismo azul, todos los
-    # tech = el mismo indigo). El rango de hue por rubro es angosto a proposito (rubros cromaticamente DISJUNTOS),
-    # asi que la variacion intra-rubro tiene que venir del BRILLO: una marca profunda/oscura, otra clara/brillante.
+    # COLOR: hue y sat de sub-seeds INDEPENDIENTES (antes consumian el stream comun, arrastrando theme/tono).
+    hlo, hhi = p["hue"]
+    hue = hlo + ft["hue_u"] * (hhi - hlo)
+    slo, shi = p["sat"]
+    sat = slo + ft["sat_u"] * (shi - slo)
+    # LIGHTNESS del acento VARIADA por semilla, de su PROPIO sub-seed (light_u) -> dos marcas del MISMO rubro y
+    # energia ya NO salen con el MISMO color (era el caso: todos los inmobiliaria = el mismo azul). El rango de hue
+    # por rubro es angosto a proposito (rubros cromaticamente DISJUNTOS); la variacion intra-rubro viene del BRILLO.
     # Banda amplia clamped a [0.42,0.70] (legible y vivo). El hue NO se toca -> los rubros siguen disjuntos.
-    light = min(0.70, max(0.42, _ENERGY_LIGHT.get((energy or "medio").lower(), 0.56) + rnd.uniform(-0.15, 0.16)))
+    light = min(0.70, max(0.42, _ENERGY_LIGHT.get((energy or "medio").lower(), 0.56) + (ft["light_u"] * 0.31 - 0.15)))
     accent = _hsl_to_hex(hue, sat, light)
-    theme = rnd.choice(p["themes"])
-    bg_style = rnd.choice(_RUBRO_BGSTYLE.get(canon, _RUBRO_BGSTYLE["default"]))
-    tone = rnd.choice(_RUBRO_TONE.get(canon, _RUBRO_TONE["default"]))
+    # theme / bg_style / tone: cada uno de su EJE ortogonal -> descorrelacionados entre si (auditoria de acoplamiento).
+    theme = _pick_u(p["themes"], ft["theme_u"])
+    _bg_pool = _RUBRO_BGSTYLE.get(canon, _RUBRO_BGSTYLE["default"])
+    bg_style = _bg_pool[min(len(_bg_pool) - 1, ft["bg_index"])]              # bg_index = eje propio (no el stream de theme)
+    _tone_pool = _RUBRO_TONE.get(canon, _RUBRO_TONE["default"])
+    tone = "light" if ft["tone_light_bias"] >= 0.5 else "dark"              # tono por su PROPIO sub-seed (no arrastrado)
+    # en el empate cercano respeto el sesgo curado por rubro (pool _RUBRO_TONE), via un sub-seed propio (tone_u)
+    if 0.42 < ft["tone_light_bias"] < 0.58:
+        tone = _pick_u(_tone_pool, ft["tone_u"])
 
-    # subconjunto DISJUNTO de formas/iconos para ESTA marca (de la familia del rubro)
-    morphs = p["morphs"][:]
-    rnd.shuffle(morphs)
+    # subconjunto DISJUNTO de formas/iconos para ESTA marca (de la familia del rubro), cada uno con su sub-seed
+    morphs = _shuffle_u(p["morphs"], _axis_rng(seed, "morph"))
     morphs = morphs[:max(2, min(3, len(morphs)))]
-    icons = p["icons"][:]
-    rnd.shuffle(icons)
-    icons = icons[:2]
+    icons = _shuffle_u(p["icons"], _axis_rng(seed, "icon"))[:2]
 
     # densidad -> cantidad de blobs del fondo + escenas; pacing -> velocidad de lectura
     blobs = {"baja": 5, "media": 7, "alta": 9}.get(p["density"], 7)
     n_scenes = {"baja": 4, "media": 4, "alta": 5}.get(p["density"], 4)
-    hook = rnd.choice(p["hooks"])
-    motion = p["motion"][:]
-    rnd.shuffle(motion)
+    hook = _pick_u(p["hooks"], ft["hook_u"])
+    motion = _shuffle_u(p["motion"], _axis_rng(seed, "motion_signature"))
 
     return {
         "rubro": canon,
@@ -256,7 +374,17 @@ def preset(industria: str = "", publico: str = "", energy: str = "medio", seed: 
         "bg_style": bg_style,
         "tone": tone,
         "stmt_style": _RUBRO_STMT.get(canon, "centered"),
+        # 'stmt' = POOL de estilos de statement (lista). El director (timeline_director) ya lee _preset.get("stmt")
+        # para variar la composicion del statement por seed+indice; antes no existia y caia siempre al default.
+        # Ahora se deriva del eje ortogonal asymmetry: descentrado -> mas editorial/left; centrado -> centered/panel.
+        "stmt": (["editorial", "left", "panel", "centered"] if ft["asymmetry"] >= 0.5
+                 else ["centered", "panel", "editorial", "left"]),
         "bg_texture": _RUBRO_TEX.get(canon, _RUBRO_TEX["default"]),
+        # EJES ORTOGONALES (parameter-space): expuestos para que el motor/director modulen sin enums. No pisan
+        # ninguna clave del contrato; son una CAPA extra. Continuos 0..1 + discretos sesgados (ver features()).
+        "features": {k: ft[k] for k in (
+            "tempo", "energy", "density", "asymmetry", "color_warmth", "color_pop",
+            "bg_index", "hero_bias", "type_mood", "motion_signature", "tone_light_bias")},
         # String-Seed-of-Thought: cadena estable que el LLM usa como ancla de diversidad fiel a la marca
         "style_seed": f"{canon}-{seed & 0xFFFF:04x}-{theme}",
     }
