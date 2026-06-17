@@ -84,16 +84,15 @@ Pegás un **link** → Urvid genera un **video vertical 9:16 de marketing** que:
     real mide 29.6px de aire (fitFont nunca envuelve; el offset escala con fs). No son accionables.
 
 ### COLA RESTANTE (verificada por el loop #2 — próxima iteración)
-- **Técnica: tracking cinético (line-settle kerning)** — animar el ESPACIADO de letras al entrar (nace ancho, cierra
-  con eOutCubic), sembrado por marca, en `_kineticDraw`. OJO del verificador: param nuevo `trackOpen` default 0 (NO
-  afectar los CTA de outro con track negativo); sembrar con `parseInt(ctx.font)` (no `fit`, fuera de scope); NO clampear
-  trackEff>=0 global (rompe el tracking negativo de displays). Opt-in ~45% por SEED, en paralelo al weight-wave. 16/16.
-- **Técnica: transición `colgrid` (split-flap editorial)** — 4-6 columnas con stagger + shift vertical sembrados por
-  (SEED^i), rama nueva en `_transAt` (pasar `i` como 3er param) + registrar en ambos `_TRANS`. Aditiva, bajo riesgo. 16/16.
-- **Técnica: sustrato `crosshatch`** — 4to modo de `_drawSubstrate` (rayado cruzado +/-ang, densidad/fase por SEED,
-  deriva en CLK como contour, alpha 0.05-0.06 tone-aware). Aditiva (else-if), exponer como valor de substrate. 16/16.
-- **Técnica: cinta cinética (kinetic strip)** [MEDIO riesgo] — banda de marquesina en el tercio muerto; guarda DURA
-  contra el watermark (statement solo tercio superior, nunca inferior; reveal inferior OK). Gate ~35% SEED, alpha bajo.
+- **Técnica: tracking cinético (line-settle kerning)** [HECHO commit 5472e7f]: `_kineticDraw` con param `trackOpen`
+  (default 0 -> CTAs de outro con track negativo intactos; trk NO clampeado). Display (fit>36) puede nacer ancho y
+  cerrar (eOutCubic). Opt-in ~45% SEED, aparte del weight-wave. Verificado Trama (hero) + DataFlow (CTA sin regresión). 16/16.
+- **Técnica: transición `colgrid` (split-flap editorial)** [HECHO commit dd8ce6b]: 4-6 columnas con stagger + shift
+  vertical sembrados por (SEED^idx), rama en `_transAt(kind,wp,idx)`, en ambos `_TRANS`. Verificado DataFlow. 16/16.
+- **Técnica: sustrato `crosshatch`** [HECHO commit 7187da9]: rayado cruzado +/-ang (densidad/fase por SEED, deriva CLK),
+  alpha tone-aware bajo; asignado a finanzas (mock + prod). Verificado Capitalia. 16/16.
+- **Técnica: cinta cinética (kinetic strip)** [MEDIO riesgo, PENDIENTE] — banda de marquesina en el tercio muerto;
+  guarda DURA contra el watermark (statement solo tercio superior, nunca inferior; reveal inferior OK). Gate ~35% SEED.
 - **Outro `diagonal` compartido** — 3 marcas oscuras caían en diagonal+dark+contour (end-card calcado en gris). El fix
   de "firma anti-colisión" es INEFECTIVO (verificado); el real es variar el LAYOUT del end-card diagonal por marca, o
   que estilos oscuros adyacentes en STYLE_ORDER no compartan diagonal. Pendiente de diseño.
