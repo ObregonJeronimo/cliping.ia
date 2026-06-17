@@ -270,16 +270,18 @@ _RUBRO_STMT = {
 # SISTEMA DE FONDO por rubro (la semilla elige uno del pool) -> dos marcas no comparten el mismo "mundo"
 # visual de fondo. mesh=fluido | field=sobrio | spotlight=editorial dramatico | bands=grafico | aurora=organico.
 _RUBRO_BGSTYLE = {
-    "tech":         ["bands", "spotlight", "mesh"],
-    "finanzas":     ["bands", "field", "spotlight"],
+    # flowfield = campo de lineas por value-noise seedeado (arte generativo, ref Tyler Hobbs). Sobrio/premium ->
+    # va como opcion RARA (indice 2, peso 0.18) en rubros que toleran un grafico tecnico-elegante.
+    "tech":         ["bands", "spotlight", "flowfield"],
+    "finanzas":     ["bands", "field", "flowfield"],
     "salud":        ["field", "aurora", "mesh"],
     "belleza":      ["aurora", "field", "spotlight"],
     "moda":         ["spotlight", "bands", "aurora"],
     "gastronomia":  ["field", "mesh", "aurora"],
-    "inmobiliaria": ["field", "spotlight", "mesh"],
+    "inmobiliaria": ["field", "spotlight", "flowfield"],
     "fitness":      ["spotlight", "bands", "mesh"],
     "educacion":    ["mesh", "bands", "field"],
-    "default":      ["mesh", "field", "spotlight"],
+    "default":      ["mesh", "field", "flowfield"],
 }
 # TONO por rubro (dark/light): rubros editoriales (moda/belleza/inmob/salud) tienden a CLARO; los bold/
 # tecnicos (fitness/tech/finanzas) tienden a OSCURO. ~45% claro -> mitad de los videos cambian de liga.

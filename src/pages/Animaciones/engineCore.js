@@ -346,6 +346,27 @@ function _rgba(hex, a) {
     if (s === SEED && blobs.length) return;   // ya construido para esta semilla
     SEED = s; _buildBg();
   }
+  // ---------- RUIDO SEEDEADO PURO (value-noise 2D, derivado de mulberry32(SEED); SIN Math.random ni libs) ----------
+  // Hash entero estable de (ix,iy): mezcla las coords con SEED via mulberry32 -> gradiente/valor REPRODUCIBLE en
+  // cada celda de la grilla. Misma (SEED, ix, iy) => mismo valor en Skia (QA) y Chromium (Remotion). Cero estado.
+  function _vnHash(ix, iy) {
+    // empaqueta (ix,iy) en un entero 32 bits con SEED y lo pasa por mulberry32 (una iteracion) -> [0,1)
+    let h = (SEED || 1) >>> 0;
+    h = (h ^ (Math.imul(ix | 0, 0x27d4eb2f) >>> 0)) >>> 0;
+    h = (h ^ (Math.imul(iy | 0, 0x165667b1) >>> 0)) >>> 0;
+    return mulberry32(h)();
+  }
+  // value-noise 2D suave: bilinear entre los valores de hash de las 4 esquinas de la celda, con fade Perlin
+  // (6t^5-15t^4+10t^3) -> derivada continua (sin "facetas"). Devuelve [0,1). Es PURO (solo SEED + x,y).
+  function _valueNoise2(x, y) {
+    const x0 = Math.floor(x), y0 = Math.floor(y), fx = x - x0, fy = y - y0;
+    const u = fx * fx * fx * (fx * (fx * 6 - 15) + 10);
+    const v = fy * fy * fy * (fy * (fy * 6 - 15) + 10);
+    const n00 = _vnHash(x0, y0), n10 = _vnHash(x0 + 1, y0);
+    const n01 = _vnHash(x0, y0 + 1), n11 = _vnHash(x0 + 1, y0 + 1);
+    const nx0 = n00 + (n10 - n00) * u, nx1 = n01 + (n11 - n01) * u;
+    return nx0 + (nx1 - nx0) * v;
+  }
   // ---------- ESTILOS DE FONDO (cada uno un mundo visual; deterministas por SEED + t) ----------
   // 'mesh': zonas de color que derivan y se funden de forma aditiva (look Canva, el original).
   function _bgMesh(t, pal) {
@@ -552,6 +573,72 @@ function _rgba(hex, a) {
     };
     pass(_rgba(pal[0], 0.36), 0, 0, 1);
     pass(_rgba(pal[3], 0.32), 5, 5, 0.8);   // 2da tinta de otro hue, corrida = misregistro riso
+  }
+  // 'flowfield': arte generativo PRO (ref docs/INVESTIGACION-MOTION.md flow-fields Tyler Hobbs/Fidenza).
+  // Un campo de angulos = value-noise SEEDEADO PURO (sin Math.random/libs); se trazan curvas finas que SIGUEN el
+  // campo, con grilla de OCUPACION anti-superposicion -> lineas elegantes que nunca se amontonan. Color del pal/
+  // acento a alpha BAJO (TENUE: no compite con el texto). Deriva LENTA en CLK (el campo respira sin titilar).
+  // ENERGIA/DUREZA = BG_ENERGY (proxy de features.energy en el motor, 0.4..2.2): mas energia -> mas CUANTIZADO el
+  // angulo (grafico/anguloso); menos -> angulo continuo (fluido). Determinista (SEED + CLK + t -> identico Skia/Chromium).
+  function _bgFlowField(t, pal) {
+    // dureza 0..1: BG_ENERGY normalizado (0.4..2.2 -> 0..1). Alto = grafico (angulo cuantizado a pocos pasos).
+    const hard = clamp((BG_ENERGY - 0.4) / 1.8, 0, 1);
+    const steps = Math.round(lerp(64, 5, hard));   // pasos de cuantizacion del angulo (muchos=fluido, pocos=grafico)
+    const drift = t * CLK * 1.2;                    // deriva lenta del campo (respira con el reloj compartido)
+    const NS = 0.0052;                              // escala espacial del ruido (suave a 405x720)
+    const turns = lerp(2.4, 1.0, hard) * TAU;       // cuanto barre el campo de angulos (mas fluido = mas giros)
+    // angulo del campo en (x,y): value-noise -> [0,1) -> escalado a 'turns', CUANTIZADO segun dureza, + deriva CLK.
+    const fieldAngle = (x, y) => {
+      let a = _valueNoise2(x * NS + 11.3, y * NS + 7.1) * turns + drift;
+      return Math.round(a / TAU * steps) / steps * TAU;   // snap a 'steps' angulos -> dureza grafica con energia alta
+    };
+    // GRILLA DE OCUPACION anti-superposicion: el lienzo se divide en celdas finas; una curva nueva no puede entrar
+    // a una celda ya ocupada -> las lineas se separan y el campo se lee limpio (la firma Fidenza/Hobbs). Celda chica
+    // = las curvas corren LARGO antes de chocar (campo coherente, no fragmentos sueltos).
+    const cell = 7, gw = Math.ceil(W / cell) + 2, gh = Math.ceil(H / cell) + 2;
+    const occ = new Uint8Array(gw * gh);
+    const occIdx = (x, y) => { const cx = Math.floor(x / cell) + 1, cy = Math.floor(y / cell) + 1; return (cx >= 0 && cx < gw && cy >= 0 && cy < gh) ? cy * gw + cx : -1; };
+    // semillas de arranque sembradas (puntos de partida de cada curva); recorre una grilla jittered por SEED.
+    const rnd = mulberry32(((SEED || 1) ^ 0xF10F1E1D) >>> 0);
+    const seeds = [];
+    const sg = 16;   // separacion nominal de semillas (mas semillas -> campo mas poblado)
+    for (let sy = sg * 0.5; sy < H; sy += sg) for (let sx = sg * 0.5; sx < W; sx += sg) {
+      seeds.push([sx + (rnd() - 0.5) * sg * 0.8, sy + (rnd() - 0.5) * sg * 0.8]);
+    }
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.lineCap = 'round'; ctx.lineWidth = 1.1;
+    const stepLen = 5.5, maxSteps = 150;   // paso de integracion + largo maximo de cada curva (mas largo = trazo elegante)
+    for (let s = 0; s < seeds.length; s++) {
+      let [x, y] = seeds[s];
+      const i0 = occIdx(x, y); if (i0 < 0 || occ[i0]) continue;   // ya ocupada -> no arrancar (anti-amontone)
+      // color/alpha por curva: alterna acento del pal a alpha BAJO -> tenue (no compite con el texto)
+      const col = pal[s % 2 ? 1 : 0];
+      const aBase = (TONE === 'light' ? 0.07 : 0.11) + (s % 3 === 0 ? 0.03 : 0);
+      ctx.strokeStyle = _rgba(col, aBase);
+      ctx.beginPath(); ctx.moveTo(x, y);
+      let drew = 0;
+      for (let k = 0; k < maxSteps; k++) {
+        const a = fieldAngle(x, y);
+        const nx = x + Math.cos(a) * stepLen, ny = y + Math.sin(a) * stepLen;
+        if (nx < -10 || nx > W + 10 || ny < -10 || ny > H + 10) break;   // se fue del lienzo
+        const ci = occIdx(nx, ny);
+        if (ci < 0) break;
+        if (occ[ci] && k > 2) break;   // choca con otra curva -> corta (deja respirar la grilla)
+        occ[ci] = 1;
+        ctx.lineTo(nx, ny); drew++;
+        x = nx; y = ny;
+      }
+      if (drew > 1) ctx.stroke();
+    }
+    ctx.restore();
+    // halo suave de acento a un lado -> profundidad (no inunda; muy bajo alpha)
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    const hx = W * 0.72, hy = H * 0.28 + Math.cos(t * CLK * 2) * 16;
+    const gl = ctx.createRadialGradient(hx, hy, 0, hx, hy, H * 0.6);
+    gl.addColorStop(0, _rgba(pal[0], 0.1)); gl.addColorStop(1, _rgba(pal[0], 0));
+    ctx.fillStyle = gl; ctx.fillRect(0, 0, W, H);
+    ctx.restore();
   }
   // 'broadcast': noticiero -> lower-third deslizante + ticker en loop + bug EN VIVO pulsante. MOTION incorporado
   // (nunca frame muerto) -> ideal para ofertas/urgencia/lanzamientos.
@@ -846,6 +933,31 @@ function _rgba(hex, a) {
       const pass = (col, ox, oy, mul) => { ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = col;
         for (let gy = -drift + oy; gy < H + step; gy += step) for (let gx = -drift + ox; gx < W + step; gx += step) { const d = Math.hypot(gx - fx, gy - fy) / H, r = clamp(6 * (1 - d) * mul, 0.5, 6); ctx.beginPath(); ctx.arc(gx, gy, r, 0, TAU); ctx.fill(); } ctx.restore(); };
       pass(_rgba(pal[0], 0.34), 0, 0, 1); pass(_rgba(pal[3], 0.3), 5, 5, 0.8);
+    } else if (BG_STYLE === 'flowfield') {
+      // flowfield CLARO: mismo campo de lineas por value-noise seedeado, pero tintando la crema (multiply) con la
+      // tinta OSCURA del acento -> el campo se ve sobre fondo claro sin tapar el texto (alpha bajo). Determinista.
+      const ink = _accentInk(pal[0], 0.4);
+      ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.lineCap = 'round'; ctx.lineWidth = 1.1;
+      ctx.strokeStyle = _rgba(ink, 0.08);
+      const hard = clamp((BG_ENERGY - 0.4) / 1.8, 0, 1), steps = Math.round(lerp(64, 5, hard));
+      const drift = t * CLK * 1.2, NS = 0.0052, turns = lerp(2.4, 1.0, hard) * TAU;
+      const fieldAngle = (x, y) => { let a = _valueNoise2(x * NS + 11.3, y * NS + 7.1) * turns + drift; return Math.round(a / TAU * steps) / steps * TAU; };
+      const cell = 7, gw = Math.ceil(W / cell) + 2, gh = Math.ceil(H / cell) + 2, occ = new Uint8Array(gw * gh);
+      const occIdx = (x, y) => { const cx = Math.floor(x / cell) + 1, cy = Math.floor(y / cell) + 1; return (cx >= 0 && cx < gw && cy >= 0 && cy < gh) ? cy * gw + cx : -1; };
+      const rnd = mulberry32(((SEED || 1) ^ 0xF10F1E1D) >>> 0), sg = 16, stepLen = 5.5, maxSteps = 150;
+      for (let sy = sg * 0.5; sy < H; sy += sg) for (let sx = sg * 0.5; sx < W; sx += sg) {
+        let x = sx + (rnd() - 0.5) * sg * 0.8, y = sy + (rnd() - 0.5) * sg * 0.8;
+        const i0 = occIdx(x, y); if (i0 < 0 || occ[i0]) continue;
+        ctx.beginPath(); ctx.moveTo(x, y); let drew = 0;
+        for (let k = 0; k < maxSteps; k++) {
+          const a = fieldAngle(x, y), nx = x + Math.cos(a) * stepLen, ny = y + Math.sin(a) * stepLen;
+          if (nx < -10 || nx > W + 10 || ny < -10 || ny > H + 10) break;
+          const ci = occIdx(nx, ny); if (ci < 0) break; if (occ[ci] && k > 2) break;
+          occ[ci] = 1; ctx.lineTo(nx, ny); drew++; x = nx; y = ny;
+        }
+        if (drew > 1) ctx.stroke();
+      }
+      ctx.restore();
     } else if (BG_STYLE === 'mesh') {
       // meshflow CLARO: zonas de color que derivan y tintan la crema (multiply) -> flujo visible, no cream plano.
       // antes el tono claro caia al gradiente crema generico (sin rama mesh) -> el panel lo leia monocromo.
@@ -964,6 +1076,7 @@ function _rgba(hex, a) {
     else if (BG_STYLE === 'sunburst') _bgSunburst(t, pal);
     else if (BG_STYLE === 'speedlines') _bgSpeedlines(t, pal);
     else if (BG_STYLE === 'halftone') _bgHalftone(t, pal);
+    else if (BG_STYLE === 'flowfield') _bgFlowField(t, pal);   // arte generativo: campo de lineas por value-noise seedeado
     else if (BG_STYLE === 'paper') _bgField(t, pal);   // handmade en oscuro (raro): cae a field suave
     else if (BG_STYLE === 'typo') _bgField(t, pal);    // typographic: base sobria + wordmark fantasma (en drawFrame)
     else if (BG_STYLE === 'broadcast') _bgBroadcast(t, pal);
