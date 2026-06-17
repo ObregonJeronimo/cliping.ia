@@ -742,7 +742,7 @@ contexto, NO uses bigStat. Si hay un PEDIDO DEL USUARIO, cumplilo SÍ O SÍ por 
     tl.setdefault("bgEnergy", _preset.get("bg_energy", 1.0))      # energia/velocidad del fondo por rubro
     _rub = (_preset.get("rubro") or "").lower()                   # SUSTRATO (trama de materia) por rubro -> mas alma + unicidad
     tl.setdefault("substrate", {"tech": "scanlines", "finanzas": "crosshatch", "inmobiliaria": "contour", "salud": "contour",
-                                "belleza": "contour", "gastronomia": "contour", "fitness": "contour", "educacion": "dotgrid", "moda": "dotgrid"}.get(_rub, "dotgrid"))
+                                "belleza": "contour", "gastronomia": "contour", "fitness": "contour", "educacion": "dotgrid", "moda": "editorialgrid"}.get(_rub, "dotgrid"))
     # LOGO real (si el capture del sitio lo extrajo): el renderer lo precarga y el motor lo dibuja en el cierre;
     # si no hay, el motor cae al monograma. Se pasa la URL aca (el server debe propagar capture.logo a dna/_preset).
     _logo = (dna.get("logo") if isinstance(dna, dict) else "") or _preset.get("logo", "")

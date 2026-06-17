@@ -707,6 +707,18 @@ function _rgba(hex, a) {
         for (let y = -H * 0.5; y < H * 1.5; y += step) { ctx.moveTo(-W, y + drift); ctx.lineTo(W * 2, y + drift); }
         ctx.stroke(); ctx.restore();
       }
+    } else if (SUBSTRATE === 'editorialgrid') {
+      // GRILLA DE MAQUETA DE REVISTA: hairlines de COLUMNA verticales (en ~1/3 y ~2/3) + reglas horizontales de
+      // baseline, finas y tenues, DETRAS del contenido. Registro 'editorial/magazine' (moda). Posiciones/cantidad
+      // sembradas por SEED, deriva minima en CLK -> no titila. Es trama, NO figuras sobre el titulo.
+      const rnd = mulberry32(((SEED || 1) ^ 0x3D170A) >>> 0);
+      ctx.strokeStyle = _rgba(ink, a * 1.15); ctx.lineWidth = 1;
+      const cols = 2 + ((rnd() * 2) | 0), drift = Math.sin(t * CLK * 4) * 2;   // 2-3 columnas
+      ctx.beginPath();
+      for (let c = 1; c <= cols; c++) { const cx = W * (c / (cols + 1)) + drift; ctx.moveTo(cx, 0); ctx.lineTo(cx, H); }
+      const rows = 3 + ((rnd() * 2) | 0);   // 3-4 reglas de baseline
+      for (let r = 1; r <= rows; r++) { const ry = H * (r / (rows + 1)) - drift; ctx.moveTo(0, ry); ctx.lineTo(W, ry); }
+      ctx.stroke();
     }
     ctx.restore();
   }
