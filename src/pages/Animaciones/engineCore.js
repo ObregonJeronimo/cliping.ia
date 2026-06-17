@@ -2569,8 +2569,13 @@ function _rgba(hex, a) {
       ctx.save(); ctx.scale(scale, scale);
       const nfs = fitFont(val, isF ? sizeF : sizeS, alignMode === 'self' ? W * 0.42 : W * 0.8, alignMode === 'self' ? 22 : 30, 800, 'd');   // clamps angostos en fila -> 2 numeros NO se recortan ni se pisan en 405px
       ctx.font = fontStr(800, nfs, 'd'); ctx.textAlign = ta; ctx.textBaseline = 'middle';
-      ctx.fillStyle = isF ? _accentPop(A1) : (TONE === 'light' ? _accentInk(A1) : _lighten(A1, 0.12));
-      setShadow(_rgba(_accentPop(A1), isF ? 0.4 : 0.2), isF ? 18 : 12, 2); ctx.fillText(val, 0, -10); noShadow();
+      // EL no-focal en OSCURO se hundia 'azul-sobre-azul' (numeral teal sobre mesh teal del mismo hue): _lighten(A1,0.12)
+      // apenas levantaba el MISMO hue. Ahora popea el acento ANTES de aclarar (_lighten(_accentPop(A1),0.20)) -> mas brillante
+      // y separado del fondo del mismo hue, pero sigue subordinado al focal (que lleva el _accentPop pleno + tamano/subrayado).
+      ctx.fillStyle = isF ? _accentPop(A1) : (TONE === 'light' ? _accentInk(A1) : _lighten(_accentPop(A1), 0.20));
+      // HALO de TONO OPUESTO en oscuro (negro), como sceneReveal (~2516): el glow same-hue (_accentPop) se perdia sobre el
+      // mesh del mismo hue -> no despegaba el numeral. En claro se mantiene el glow de acento (separa sobre fondo claro).
+      setShadow(TONE === 'light' ? _rgba(_accentPop(A1), isF ? 0.4 : 0.2) : 'rgba(0,0,0,0.55)', isF ? 18 : 12, 2); ctx.fillText(val, 0, -10); noShadow();
       if (_isRating) { ctx.font = fontStr(800, nfs, 'd'); const _w = ctx.measureText(val).width, _sx = (ta === 'left' ? _w : _w / 2) + nfs * 0.44; _drawStarRow(1, _sx, -10, nfs * 0.34, 'left'); }   // estrella de rating al lado del numero (x derivado del ancho del PROPIO item)
       if (isF) { const uw = nfs * 0.5, ux = ta === 'left' ? 0 : -uw / 2; ctx.fillStyle = accent(ux, 0, ux + uw, 0); ctx.beginPath(); ctx.roundRect(ux, 20, uw * eOutCubic(clamp(ap, 0, 1)), 4, 2); ctx.fill(); }   // subrayado de acento bajo el item focal (relativo a su origen)
       if (it.label) { const _lb = String(it.label); ctx.font = fontStr(isF ? 700 : 600, fitFont(_lb, isF ? 20 : 18, alignMode === 'self' ? W * 0.38 : W * 0.74, 13, isF ? 700 : 600, 't'), 't'); ctx.fillStyle = isF ? INK : DIM; setShadow(TONE === 'light' ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.6)', 8, 0); ctx.fillText(_lb, 0, isF ? 40 : 30); noShadow(); }   // fitFont -> label entero; focal mas brillante/grande
