@@ -30,6 +30,9 @@ Pegás un **link** → Urvid genera un **video vertical 9:16 de marketing** que:
 - `python backend/mock_director.py --out tools/brands` — genera marcas mock.
 - `node tools/render.mjs gallery|video <json> <name> <N>|window|gif` — rasteriza frames a `tools/out/` (abrir con Read).
 - **ffmpeg** — extraer TODOS los frames de un MP4 real (`ffmpeg -i video.mp4 -vf fps=N frames_%03d.png`) para auditar el último video del usuario.
+- `node tools/video-frames.mjs <mp4> [fps=3] [cols] [rows] [t0] [t1]` — MP4 -> CONTACT SHEETS (grillas) via ffmpeg:
+  un video de ~20s = 1-2 PNGs (barato en tokens, no cientos de lecturas). Overview a 3fps o "zoom" de fluidez
+  (ventana corta a 16fps). Los videos reales del usuario estan en `backend/outputs/*_timeline.mp4`.
 - **GATES determinísticos** (correr SIEMPRE tras un cambio del motor):
   - `node tools/bg-check.mjs` → DEBE dar **16 pass, 0 fail** (determinismo; sin Math.random/Date.now).
   - `node tools/legibility-probe.mjs <json>` → contraste WCAG texto-vs-fondo por escena (ojo: sobre-cuenta bordes/acentos; el CUERPO de texto es lo que importa).
@@ -125,6 +128,13 @@ Pegás un **link** → Urvid genera un **video vertical 9:16 de marketing** que:
 - **Anti-sameness más profundo** (prioridad del usuario): que la ESTRUCTURA, el RITMO, la PALETA y el LOOK varíen fuerte por marca. Ya rotan por semilla: checklist(rows/grid/chips), statement(5 estilos), outro(6 comps), bigStat(bar/ring/plain), align. Falta: medir similitud entre marcas (ver `similarity-probe`) y atacar lo que quede igual.
 - **"Alma de la página"**: que el video refleje de verdad el rubro/mensaje/marca (no genérico). Verificar que el director use bien las fotos + el copy específico.
 - **Nuevas técnicas (deterministas, sin IA generativa)**: motion premium, tipografía cinética, composición editorial, transiciones — investigar e integrar al motor.
+- **🔬 INVESTIGACION GRANDE (jun 17)**: ver `docs/INVESTIGACION-MOTION.md` — 22 hallazgos verificados con fuente +
+  roadmap de 12 pasos para subir UNICIDAD + motion PRO + morphs FLUIDOS. Quick wins: spring analitico, PRNG por
+  namespace, `features` ortogonal (motor de unicidad), paletas ColourLovers+WCAG, alineacion de anillo. Apuestas:
+  flubber (morph real), smin+metaballs+marching-squares (blob INTENCIONAL), tipografia draw-on. Biblioteca inmensa =
+  catalogo sembrable backgrounds/shapes/motion + blend-tree (patron Rive) + flow fields. NO adoptar Two.js/Lottie en
+  runtime (Cairo!=Skia) ni Theatre/studio (AGPL). Diagnostico de los ultimos 3 videos: fondo palido lavado, hero
+  estatico (motion solo de entrada), vocabulario compartido = sensacion de plantilla, cero morphs fluidos.
 - **Loop autónomo** (ver `docs/AGENTES.md`): equipo de agentes que mejora + testea en loop con el mock.
 
 ---
