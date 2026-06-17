@@ -762,8 +762,11 @@ contexto, NO uses bigStat. Si hay un PEDIDO DEL USUARIO, cumplilo SÍ O SÍ por 
         _sid = (dna.get("styleId") if isinstance(dna, dict) else None) or _sc.recommend_style(_rub, _sr)
         if _sid in _sc.STYLE_PRESETS:
             _ston = "light" if _sr.random() < _sc.STYLE_PRESETS[_sid]["light_p"] else "dark"
-            for _k, _v in _sc.style_fields(_sid, _ston).items():
-                tl[_k] = _v   # el estilo manda sobre los defaults de fondo/tono/textura
+            # SISTEMA DE FONDO ORTOGONAL: eje bg_system (sub-seed propio, coherente con el tono) -> desacopla la
+            # FAMILIA de fondo del estilo (style_fields lo pisa salvo en estilos de fondo-firma). Determinista por seed.
+            _bgsys = _se.bg_system_for(int(_preset.get("seed", 0) or 0), _ston)
+            for _k, _v in _sc.style_fields(_sid, _ston, bg_system=_bgsys).items():
+                tl[_k] = _v   # el estilo manda sobre los defaults; el eje ortogonal pisa la familia de fondo
     except Exception as _e:
         print(f"[tl-director] estilo no aplicado ({_e})")
     if not tl.get("theme"):

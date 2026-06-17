@@ -134,12 +134,38 @@ def recommend_style(rubro: str, rnd) -> str:
     return rnd.choice(pool)
 
 
-def style_fields(style_id: str, tone: str):
+# Estilos cuyo FONDO es parte INSEPARABLE de su identidad de marca: ahi el bgStyle NO se pisa con el eje
+# ortogonal (seria romper el estilo). El resto usa el fondo del estilo solo como DEFAULT y deja que el eje
+# bg_system (style_engine.features) elija una familia del pool completo -> dos marcas del mismo estilo/rubro
+# pueden tener fondos de familias distintas (lo que pide la unicidad), manteniendo el contrato (campo bgStyle).
+_BG_LOCKED_STYLES = {
+    "typographic",      # el wordmark fantasma ES el fondo (firma del estilo)
+    "brutalist",        # slab crudo = la identidad
+    "sport",            # speedlines = velocidad, sin ellas no es sport
+    "broadcast", "cyber", "surveillanceHUD", "y2k",   # fondos-firma de nicho
+    "morph",            # morphfield protagonico ES el estilo
+    "blueprint", "swiss",   # blueprint grid = la identidad del estilo
+    "riso",             # halftone = riso
+    "retro70s",         # sunburst 70s = la identidad
+}
+# Sistemas que el motor sabe dibujar (BG_STYLE en engineCore). Solo se pisa el fondo si el eje cae en uno valido.
+_RENDERABLE_BG = {"mesh", "field", "spotlight", "bands", "aurora", "halftone", "sunburst", "flowfield", "morphfield", "brutalist"}
+
+
+def style_fields(style_id: str, tone: str, bg_system: str = None):
     """Campos de timeline a NIVEL VIDEO que el motor lee para aplicar el estilo (bgStyle/shadowMode/texture).
-    El tono (dark/light) lo decide el llamador (suele venir de light_p del estilo)."""
+    El tono (dark/light) lo decide el llamador (suele venir de light_p del estilo).
+
+    bg_system: SISTEMA DE FONDO del eje ORTOGONAL (style_engine.features.bg_system) -> si el estilo NO bloquea
+    su fondo (ver _BG_LOCKED_STYLES) y el sistema es renderizable, PISA el bgStyle del estilo. Asi la FAMILIA de
+    fondo queda DESACOPLADA del theme/tono/estilo (dos marcas del mismo estilo/rubro pueden caer en familias
+    distintas) sin romper el contrato (sigue saliendo el campo bgStyle que el motor ya lee)."""
     s = STYLE_PRESETS.get(style_id, STYLE_PRESETS["meshflow"])
     f = STYLE_FONTS.get(style_id, _DEFAULT_FONTS)
-    return {"style": style_id, "bgStyle": s["bg"], "shadowMode": s["shadow"], "texture": s["tex"], "tone": tone,
+    bg = s["bg"]
+    if bg_system and style_id not in _BG_LOCKED_STYLES and bg_system in _RENDERABLE_BG:
+        bg = bg_system   # el eje ortogonal manda (familia de fondo desacoplada del estilo)
+    return {"style": style_id, "bgStyle": bg, "shadowMode": s["shadow"], "texture": s["tex"], "tone": tone,
             "fontDisplay": f["display"], "fontText": f["text"], "fontAccent": f["accent"]}
 
 

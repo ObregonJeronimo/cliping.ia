@@ -86,6 +86,41 @@ def _weighted_pick(rng: random.Random, options, weights):
     return rng.choices(list(options), weights=list(weights), k=1)[0]
 
 
+# ====================================================================================================
+# POOL COMPLETO de SISTEMAS DE FONDO (familias visuales que el motor sabe dibujar -> BG_STYLE en engineCore).
+# El eje ORTOGONAL bg_system elige UNO de aca por marca, DESACOPLADO del theme/tono/estilo: dos marcas del
+# mismo rubro/estilo pueden caer en familias distintas. Cada entrada lleva (peso, tonos_coherentes): el peso
+# sesga la frecuencia (mesh comun, morphfield raro) y los tonos evitan combos feos (flowfield no se elige en
+# claro -> evita el "blanco sobre blanco"; brutalist pide oscuro para el contraste de su slab). Determinista.
+#   mesh       fluido Canva (universal)        | field      campo sobrio premium (universal)
+#   spotlight  luz de escenario editorial      | bands      franjas graficas
+#   aurora     organico (boreal)               | flowfield  campo de lineas generativo (Hobbs) -> oscuro
+#   morphfield gran silueta que morfea         | sunburst   rayos retro 70s
+#   halftone   trama riso de puntos            | brutalist  grilla cruda + slab (oscuro)
+_BG_SYSTEMS = {
+    "mesh":       (0.16, ("dark", "light")),
+    "field":      (0.16, ("dark", "light")),
+    "spotlight":  (0.13, ("dark", "light")),
+    "bands":      (0.12, ("dark", "light")),
+    "aurora":     (0.11, ("dark", "light")),
+    "halftone":   (0.09, ("dark", "light")),
+    "sunburst":   (0.08, ("dark", "light")),
+    "flowfield":  (0.07, ("dark",)),            # campo de lineas: pide fondo oscuro (en claro lava -> blanco/blanco)
+    "morphfield": (0.05, ("dark", "light")),    # protagonico: raro a proposito (no abruma la galeria)
+    "brutalist":  (0.03, ("dark",)),            # slab crudo: el contraste vive en oscuro
+}
+
+
+def bg_system_for(seed, tone: str = "dark") -> str:
+    """Elige un SISTEMA DE FONDO del POOL completo, ORTOGONAL al theme/estilo (su propio sub-seed 'bg_system')
+    y COHERENTE con el tono (filtra los que se ven mal en ese tono -> nunca flowfield en claro). Determinista:
+    misma (seed, tono) => mismo sistema. Es lo que desacopla la FAMILIA de fondo de dos marcas iguales de rubro."""
+    tone = "light" if str(tone).lower() == "light" else "dark"
+    items = [(name, w) for name, (w, tones) in _BG_SYSTEMS.items() if tone in tones]
+    rng = _axis_rng(seed, "bg_system")
+    return _weighted_pick(rng, [n for n, _ in items], [w for _, w in items])
+
+
 # Ejes del parameter-space. Cada uno es ORTOGONAL (su propio sub-seed). Los continuos (0..1) los lee el
 # motor/director para modular sin caer en enums; los discretos usan distribucion sesgada (no plana).
 _FEATURE_AXES = (
@@ -121,6 +156,10 @@ def features(seed: int) -> dict:
         # --- DISCRETOS con distribucion SESGADA (no uniforme): comun seguido, raro a veces ---
         # indice ORTOGONAL al pool de fondos del estilo (lo aplica preset, ver abajo) -> descorrelaciona bg de theme/tone
         "bg_index": _weighted_pick(r_bg, (0, 1, 2), (0.5, 0.32, 0.18)),
+        # SISTEMA DE FONDO del POOL COMPLETO, eje ORTOGONAL (mismo sub-seed 'bg_system') -> la FAMILIA de fondo
+        # (mesh/sunburst/halftone/brutalist/flowfield/morphfield/...) se elige DESACOPLADA del theme/estilo. Esta es
+        # la version tono-agnostica (pool oscuro = el mas amplio); el director la re-resuelve por tono con bg_system_for.
+        "bg_system": bg_system_for(seed, "dark"),
         # sesgo de layout de hero: type-led(0) comun, shape-led(1) a veces, asimetrico-fuerte(2) raro
         "hero_bias": _weighted_pick(r_hero, ("type", "shape", "edge"), (0.5, 0.3, 0.2)),
         # caracter tipografico: 0..1 (condensado/display vs neutro); continuo para el director
@@ -374,6 +413,10 @@ def preset(industria: str = "", publico: str = "", energy: str = "medio", seed: 
         "bg_texture": _RUBRO_TEX.get(canon, _RUBRO_TEX["default"]),
         "bg_energy": _RUBRO_ENERGY.get(canon, 1.0),
         "bg_style": bg_style,
+        # SISTEMA DE FONDO ORTOGONAL (pool COMPLETO, eje propio bg_system) y COHERENTE con el tono ya elegido.
+        # Es lo que DESACOPLA la familia de fondo del theme/estilo: el director lo usa para pisar bg_style ->
+        # dos marcas del mismo rubro/estilo pueden tener fondos de familias distintas. Determinista por (seed, tono).
+        "bg_system": bg_system_for(seed, tone),
         "tone": tone,
         "stmt_style": _RUBRO_STMT.get(canon, "centered"),
         # 'stmt' = POOL de estilos de statement (lista). El director (timeline_director) ya lee _preset.get("stmt")
@@ -386,7 +429,7 @@ def preset(industria: str = "", publico: str = "", energy: str = "medio", seed: 
         # ninguna clave del contrato; son una CAPA extra. Continuos 0..1 + discretos sesgados (ver features()).
         "features": {k: ft[k] for k in (
             "tempo", "energy", "density", "asymmetry", "color_warmth", "color_pop",
-            "bg_index", "hero_bias", "type_mood", "motion_signature", "tone_light_bias")},
+            "bg_index", "bg_system", "hero_bias", "type_mood", "motion_signature", "tone_light_bias")},
         # String-Seed-of-Thought: cadena estable que el LLM usa como ancla de diversidad fiel a la marca
         "style_seed": f"{canon}-{seed & 0xFFFF:04x}-{theme}",
     }

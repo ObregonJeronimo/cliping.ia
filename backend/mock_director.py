@@ -531,6 +531,7 @@ RUBRO_STYLE_BIAS = {
 # timeline_director). Re-vinculamos aca -> el banco de prueba (mock) y produccion NUNCA se desincronizan.
 # (Las defs de arriba quedan como referencia; este import las pisa con las del modulo compartido.)
 from style_catalog import STYLE_PRESETS, STYLE_ORDER, RUBRO_STYLE_BIAS, STYLE_FONTS, _DEFAULT_FONTS  # noqa: E402
+from style_catalog import _BG_LOCKED_STYLES, _RENDERABLE_BG  # noqa: E402
 
 
 def generate(brand: str, industria: str, facts=None, seed: int = None, style: str = None, images=None) -> dict:
@@ -552,7 +553,13 @@ def generate(brand: str, industria: str, facts=None, seed: int = None, style: st
     S = STYLE_PRESETS[style_id]
     tone = "light" if rnd.random() < S["light_p"] else "dark"
     texture = S["tex"]
+    # SISTEMA DE FONDO: el del estilo es el DEFAULT, pero el eje ORTOGONAL bg_system (style_engine, sub-seed propio
+    # y coherente con el tono) lo PISA cuando el estilo no bloquea su fondo -> la familia de fondo queda DESACOPLADA
+    # del theme/tono/estilo (dos marcas del mismo estilo/rubro pueden caer en familias distintas). Determinista.
     bg_style = S["bg"]
+    _bgsys = se.bg_system_for(seed, tone)
+    if _bgsys and style_id not in _BG_LOCKED_STYLES and _bgsys in _RENDERABLE_BG:
+        bg_style = _bgsys
     shadow_mode = S["shadow"]
     # color + dureza de la forma firma derivan de la energia del rubro Y del tono del fondo
     accent_light, shape_blur = _shape_paint(pre["accent"], rubro, tone)
@@ -736,35 +743,38 @@ if __name__ == "__main__":
         # ambas default+cuadrado), aunque difieran en estructura.
         return (tl.get("rubro"), tl.get("signatureForm"))
 
-    written, seen, seen_pair, seen_rf = [], set(), set(), set()
+    written, seen, seen_pair, seen_rf, seen_bg = [], set(), set(), set(), set()
     for i, (name, ind) in enumerate(TEST_BRANDS):
         # ANTI-COLISION (solo en el banco de prueba): re-roll la semilla para que las 12 marcas nunca
-        # repitan carta. Intento evitar TAMBIEN la arquitectura de layout y que dos del mismo rubro
-        # compartan forma; si en N tiros no se puede, me conformo con que la carta exacta sea unica
-        # (garantia dura). En produccion cada marca se genera sola; esto es solo para la galeria de prueba.
+        # repitan carta. Intento evitar TAMBIEN la arquitectura de layout, que dos del mismo rubro
+        # compartan forma, y que se REPITA la FAMILIA DE FONDO (el eje bg_system ahora la desacopla del
+        # estilo -> la galeria debe lucir sistemas VARIADOS). Si en N tiros no se puede, me conformo con que
+        # la carta exacta sea unica (garantia dura). En produccion cada marca se genera sola; esto es solo banco.
         # el banco muestra los 12 ESTILOS (uno por marca) -> la galeria es un showcase del catalogo elegible
         sty = STYLE_ORDER[i % len(STYLE_ORDER)]
         seed = se.stable_seed(name, ind)
         _brand_imgs = _stock_for(se.preset(ind, "", "medio", seed)["rubro"])   # fotos por rubro (visual si; abstracto no)
         tl = generate(name, ind, seed=seed, style=sty, images=_brand_imgs)
         tries, best = 0, None
-        while tries < 20:
+        while tries < 28:
             sig_ok = _sig(tl) not in seen
             pair_ok = _pair(tl) not in seen_pair
             rf_ok = _rf(tl) not in seen_rf
-            if sig_ok and pair_ok and rf_ok:
+            bg_ok = tl.get("bgStyle") not in seen_bg   # familia de fondo no repetida (showcase de sistemas variados)
+            if sig_ok and pair_ok and rf_ok and bg_ok:
                 best = None
                 break
             if sig_ok and best is None:
-                best = (seed, tl)  # cumple la garantia dura; lo guardo por si no logro evitar par/forma
+                best = (seed, tl)  # cumple la garantia dura; lo guardo por si no logro evitar par/forma/fondo
             seed = (seed + 0x9E3779B9) & 0xFFFFFFFF
             tl = generate(name, ind, seed=seed, style=sty, images=_brand_imgs)
             tries += 1
         if best is not None and _sig(tl) in seen:
-            seed, tl = best  # no se pudo evitar par/forma en N tiros -> uso la mejor carta-unica hallada
+            seed, tl = best  # no se pudo evitar par/forma/fondo en N tiros -> uso la mejor carta-unica hallada
         seen.add(_sig(tl))
         seen_pair.add(_pair(tl))
         seen_rf.add(_rf(tl))
+        seen_bg.add(tl.get("bgStyle"))
         slug = "".join(c for c in name.lower().replace(" ", "-") if c.isalnum() or c == "-")
         path = os.path.join(out_dir, f"{i:02d}-{slug}.json")
         json.dump(tl, open(path, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
