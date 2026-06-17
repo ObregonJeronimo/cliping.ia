@@ -2262,7 +2262,9 @@ function _rgba(hex, a) {
       case 'fitness': return ['triangle', 'hexagon', 'plus'];
       case 'belleza': case 'salud': return ['flower', 'drop', 'leaf'];
       case 'moda': return ['diamond', 'star5', 'circle'];
-      default: return ['circle', 'triangle', 'hexagon', 'square'];
+      // default / mono-ink: SIN squircle. El cuadrado/hexagono con accent gris morfean a un rounded-square que
+      // lee como slot de imagen vacio. Usar formas ORGANICAS/redondas (blob + anillo) -> marca de agua de identidad.
+      default: return ['blob', 'circle', 'ring'];
     }
   }
   // dibujante GENERICO de escena por keyframes (la IA arma la historia con esto)
@@ -2792,7 +2794,12 @@ function _rgba(hex, a) {
     if (_sigOn) {
       const _wac = _accentInk(_resolveColor('accent'), 0.12);   // tone-aware: claro->oscurece, oscuro->aclara
       const _lAcc = _hexToHsl(_wac).l, _lBg = TONE === 'light' ? 0.92 : _hexToHsl((BG && BG[0]) ? BG[0] : '#223040').l;
-      const _wAlpha = lerp(0.30, 0.17, clamp(Math.abs(_lAcc - _lBg) / 0.34, 0, 1));   // bajo contraste con el fondo -> mas alpha (legible sobre fondos claros / verde-sobre-verde)
+      // (a) acento DESATURADO -> el watermark resuelve a gris plano y, sobre fondo casi-negro, _accentInk lo aclara
+      //     hasta leerse como un slot/placeholder roto. Bajar el techo de alpha proporcional a la saturacion del
+      //     accent (gris -> mucho mas tenue, color -> casi sin cambio) para que en mono-ink quede como marca de agua.
+      const _wSat = _hexToHsl(_resolveColor('accent')).s;
+      const _satK = clamp(_wSat / 0.4, 0.35, 1);
+      const _wAlpha = lerp(0.30, 0.17, clamp(Math.abs(_lAcc - _lBg) / 0.34, 0, 1)) * _satK;   // bajo contraste con el fondo -> mas alpha (legible sobre fondos claros / verde-sobre-verde); desaturado -> mas tenue
       const _wph = ((tl.seed || 1) % 997) / 158;   // fase de deriva SEMBRADA por marca -> cada watermark tiene su gesto propio
       // elige las DOS formas del pool del rubro de forma determinista (mulberry32(SEED)); si solo hay una, no morfea.
       const _pool = _signatureShapePool(MOTIF);
@@ -2815,7 +2822,7 @@ function _rgba(hex, a) {
         // ping-pong suave del morph derivado del reloj continuo: triangulo 0->1->0 sin saltos (loop, ida y vuelta).
         const _mt = Math.abs(((_holdT * CLK * 6 + _wph) % 2) - 1);   // _holdT = tiempo continuo de la escena -> morfea durante el hold
         const _ring = _morphRing(_shapeRing(_fA, 0, 0, _rad), _shapeRing(_fB, 0, 0, _rad), _mt);
-        ctx.save(); ctx.globalAlpha = aa * (isChk ? 0.55 : 0.42);   // mucho mas tenue (deja de leerse como artefacto)
+        ctx.save(); ctx.globalAlpha = aa * (isChk ? 0.32 : 0.28);   // mucho mas tenue (deja de leerse como artefacto/placeholder)
         ctx.translate(mx + Math.sin(t * CLK * 16 + _wph) * 6, my + Math.cos(t * CLK * 13 + _wph) * 6); ctx.rotate(Math.sin(t * CLK * 10 + _wph) * 0.05);   // vaiven minimo en armonicos de CLK (grilla compartida con texto+camara)
         // _ring viene como [x,y]; _smoothPath espera {x,y}: path CERRADO SUAVE (Catmull-Rom) -> sin kinks
         setShadow(_rgba(_wac, 0.4), 14, 0); ctx.fillStyle = _wac; _smoothPath(_ring.map(p => ({ x: p[0], y: p[1] }))); ctx.fill(); noShadow();
