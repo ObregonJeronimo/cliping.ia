@@ -2093,8 +2093,10 @@ function _rgba(hex, a) {
     words.forEach((wd, i) => {
       const lp = eOutBack(clamp(inv(t, 0.22 + i * 0.13, 0.22 + i * 0.13 + 0.5), 0, 1)); if (lp <= 0) return;
       ctx.save(); ctx.globalAlpha = clamp(lp * 1.5, 0, 1); const yy = startY + i * lh + (1 - lp) * 24;
-      ctx.fillStyle = (i === n - 1) ? (TONE === 'light' ? _accentInk(A1) : _accentPop(A1)) : INK;
-      if (i === n - 1) setShadow(_rgba(_accentPop(A1), 0.32), 16, 2);
+      // palabra-HEROE (ultima): mas brillante + halo de TONO OPUESTO (no el glow del acento, que se perdia
+      // azul-sobre-azul cuando el fondo comparte el hue del acento, ej DataFlow). Separa del fondo del mismo hue.
+      ctx.fillStyle = (i === n - 1) ? (TONE === 'light' ? _accentInk(A1) : _lighten(_accentPop(A1), 0.18)) : INK;
+      if (i === n - 1) setShadow(TONE === 'light' ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.55)', 10, 2);
       ctx.fillText(wd, ax, yy); noShadow(); ctx.restore();
     });
     if (al === 'left') { const up = inv(t, 0.5, 0.95); if (up > 0) { ctx.save(); ctx.globalAlpha = up; ctx.fillStyle = _accentPop(A1); ctx.fillRect(ax, startY - fs * 0.55, 56 * eOutCubic(clamp(up, 0, 1)), 6); ctx.restore(); } }
@@ -2402,6 +2404,15 @@ function _rgba(hex, a) {
           ctx.fillStyle = _rgba(c % 2 ? A2 : A1, 0.42 * fade); ctx.fillRect(c * cw, -Math.abs(sh), cw + 1, H * p + Math.abs(sh));
         }
         ctx.restore();
+      } else if (kind === 'rgbsplit') {
+        // ABERRACION CROMATICA / registro de imprenta: dos planos de acento (A1/A2) se SEPARAN y convergen en el
+        // corte (blend 'lighter'). Eje/desplazamiento sembrados por (SEED^idx). Transitorio (fade), alpha bajo.
+        ctx.save(); const r = mulberry32(((SEED || 1) ^ ((idx + 1) * 0x9E3779B9) ^ 0xD0AB) >>> 0);
+        const maxS = 16 + r() * 24, horiz = r() < 0.6, dx = lerp(maxS, 0, eInOutCubic(wp));
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.fillStyle = _rgba(A1, 0.16 * fade); ctx.fillRect(horiz ? -dx : 0, horiz ? 0 : -dx, W, H);
+        ctx.fillStyle = _rgba(A2, 0.16 * fade); ctx.fillRect(horiz ? dx : 0, horiz ? 0 : dx, W, H);
+        ctx.restore();
       } else {   // wipe (default): panel de acento que barre, con canto difuminado
         const pw = W * 0.4, cxp = lerp(-pw, W + pw, eInOutCubic(wp));
         ctx.save();
@@ -2414,7 +2425,7 @@ function _rgba(hex, a) {
         ctx.restore();
       }
     };
-    const _TRANS = SHADOW_MODE === 'hard' ? ['flash', 'pushband', 'blinds', 'glyphwipe', 'colgrid'] : ['wipe', 'curtain', 'glyphwipe', 'pushband', 'colgrid'];
+    const _TRANS = SHADOW_MODE === 'hard' ? ['flash', 'pushband', 'blinds', 'glyphwipe', 'colgrid', 'rgbsplit'] : ['wipe', 'curtain', 'glyphwipe', 'pushband', 'colgrid', 'rgbsplit'];
     for (let i = 0; i < _scenes.length - 1; i++) {
       const wp = inv(t, _scenes[i].e - 0.12, _scenes[i].e + 0.34);
       if (wp > 0 && wp < 1) _transAt(_TRANS[(mulberry32((SEED ^ (i * 0x2545F491)) >>> 0)() * _TRANS.length) | 0], wp, i);
