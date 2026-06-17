@@ -160,18 +160,29 @@ function _rgba(hex, a) {
   // propiedad/local real, distinto por marca. Sin fotos -> las escenas caen a su render vectorial.
   let PHOTOS = [];
   function setPhotos(arr) { PHOTOS = Array.isArray(arr) ? arr.filter(im => im && (im.width || im.naturalWidth)) : []; }
-  // cover-fit + Ken Burns determinista (zoom 1->1.1 + pan sembrado por SEED) -> dibuja la foto i llenando (x,y,w,h).
+  // cover-fit + Ken Burns determinista (zoom + pan sembrados por SEED) + DUOTONO sutil hacia el hue del acento ->
+  // dibuja la foto i llenando (x,y,w,h). Dos marcas con la MISMA foto la encuadran distinto Y la tinen con su color.
   function _drawPhoto(img, x, y, w, h, t, salt) {
     if (!img) return false;
     const iw = img.width || img.naturalWidth, ih = img.height || img.naturalHeight; if (!iw || !ih) return false;
     const r = mulberry32(((SEED || 1) ^ (salt | 0) ^ 0x9F0) >>> 0);
     const dir = r() < 0.5 ? -1 : 1, ax = 0.5 + (r() - 0.5) * 0.3, ay = 0.42 + (r() - 0.5) * 0.2;   // ancla sembrada (sujeto seguro)
-    const zoom = 1.0 + 0.1 * clamp(t / 6, 0, 1);                                                    // Ken Burns lento
+    // KEN BURNS sembrado: punto de partida del ENCUADRE distinto por marca. z0 = zoom base (parte ya algo cerca,
+    // no siempre en 1.0) + amplitud/fase de pan sembradas -> el crop INICIAL (y su deriva) no se calca entre videos.
+    const z0 = 1.0 + r() * 0.08, zoom = z0 + 0.1 * clamp(t / 6, 0, 1);                              // Ken Burns lento, base sembrada
+    const panAmp = 0.08 + r() * 0.08, panPh = r() * TAU;                                            // amplitud + fase de pan sembradas
     const cover = Math.max(w / iw, h / ih) * zoom, dw = iw * cover, dh = ih * cover;
-    const panX = dir * (dw - w) * 0.12 * Math.sin(t * 0.15);
+    const panX = dir * (dw - w) * panAmp * Math.sin(t * 0.15 + panPh);
     const dx = x + (w - dw) * ax + panX, dy = y + (h - dh) * ay;
     ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
-    ctx.drawImage(img, Math.round(dx), Math.round(dy), Math.ceil(dw), Math.ceil(dh)); ctx.restore();   // redondeo anti sub-pixel shimmer en el Ken Burns lento
+    ctx.drawImage(img, Math.round(dx), Math.round(dy), Math.ceil(dw), Math.ceil(dh));   // redondeo anti sub-pixel shimmer en el Ken Burns lento
+    // DUOTONO SUTIL hacia el acento de marca: capa 'overlay' del acento (alpha sembrado 0.12-0.18) -> la foto ADOPTA
+    // el color de la marca sin oscurecer (overlay aclara los claros y oscurece los oscuros parejo) y queda RECONOCIBLE;
+    // el scrim/photoink encima sigue legible. Confinado al clip de la foto -> no toca el resto del lienzo.
+    const tintA = 0.12 + r() * 0.06;
+    ctx.globalCompositeOperation = 'overlay';
+    ctx.fillStyle = _rgba(A1 || '#3aa0ff', tintA); ctx.fillRect(x, y, w, h);
+    ctx.restore();   // restore() devuelve globalCompositeOperation a 'source-over'
     return true;
   }
   // MOTIVO CONTEXTUAL del fondo segun el rubro (skyline, sparkline, vapor, pulso, botanico, circuito...).
