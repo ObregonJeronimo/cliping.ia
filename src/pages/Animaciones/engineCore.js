@@ -487,9 +487,9 @@ function _rgba(hex, a) {
     // al final del ensamblado, una pasada de "tinta" SUTIL une los huecos entre particulas -> el wordmark queda
     // NITIDO y legible, pero TENUE para que las particulas sigan siendo la textura dominante (no un bloque plano:
     // las particulas FORMAN la palabra, el sello solo cierra la legibilidad). Tinta = INK del tono de la marca.
-    if (eg > 0.86) {
-      const seal = clamp(inv(eg, 0.86, 1.0), 0, 1);
-      ctx.globalAlpha = seal * 0.5;                          // tenue: deja ver el grano de particulas
+    if (eg > 0.8) {
+      const seal = clamp(inv(eg, 0.8, 1.0), 0, 1);
+      ctx.globalAlpha = seal * 0.92;                         // al asentar el NOMBRE se vuelve NITIDO (legible) y las particulas quedan de textura detras; durante el gather (eg<0.8) sigue siendo solo nube
       ctx.font = fontStr(o.weight || 800, px * 1.16, 'd');   // px = cap-height aprox -> font-size un poco mayor
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       _softShadow(_rgba(A, 0.45), 12, 0);
