@@ -70,6 +70,17 @@ function _rgba(hex, a) {
   const eInOutCubic = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
   const eOutBack = (t, s = 2.0) => 1 + (s + 1) * Math.pow(t - 1, 3) + s * Math.pow(t - 1, 2);   // overshoot mas vivo
   const eOutElastic = t => (t === 0 || t === 1) ? t : Math.pow(2, -9 * t) * Math.sin((t - .1) * (2 * Math.PI) / .42) + 1;  // rebote mas lento/visible
+  // SPRING ANALITICO (forma cerrada, determinista, sin integrar): oscilador armonico SUBAMORTIGUADO normalizado.
+  // p en [0..1] (progreso normalizado de la entrada) -> arranca en 0, asienta en 1 con un overshoot suave.
+  // y(p)=1 - e^(-zeta*omega*p)*(cos(wd*p) + (zeta*omega/wd)*sin(wd*p)). zeta<1 (subamortiguado), omega=freq*2pi,
+  // wd=omega*sqrt(1-zeta^2). Mismo valor en Skia (QA) y Chromium (Remotion) -> motion unificado, sin Math.random/Date.
+  const _spring = (p, { zeta = 0.45, freq = 2.2 } = {}) => {
+    p = clamp(p, 0, 1);
+    const z = clamp(zeta, 0.01, 0.999);            // mantener subamortiguado (wd real)
+    const omega = freq * TAU;
+    const wd = omega * Math.sqrt(1 - z * z);
+    return 1 - Math.exp(-z * omega * p) * (Math.cos(wd * p) + (z * omega / wd) * Math.sin(wd * p));
+  };
   const smooth = t => t * t * (3 - 2 * t);
   const TAU = Math.PI * 2;
   let _holdT = 0;   // tiempo CONTINUO de la escena actual (para idle-loops durante el hold; el dibujo base usa tFed congelado)
@@ -1982,7 +1993,7 @@ function _rgba(hex, a) {
     const maxLW = weightWave ? clamp((parseInt(ctx.font) || 40) * 0.045, 0.6, 3) : 0;
     if (weightWave) { ctx.strokeStyle = col; ctx.lineJoin = 'round'; ctx.lineCap = 'round'; }
     for (let i = 0; i < chars.length; i++) {
-      const lp = eOutBack(clamp((t - start - i * each) / 0.34, 0, 1));   // reveal mas rapido -> menos tiempo "medio tipeado"
+      const lp = _spring(clamp((t - start - i * each) / 0.34, 0, 1), { zeta: 0.45, freq: 2.2 });   // SPRING analitico: asentamiento premium del wordmark/hero (overshoot suave, reemplaza eOutBack)
       // rise mas corto (12) + curva de alpha mas agresiva (x1.6) -> menos "doble exposicion" en el frame intermedio
       if (lp > 0.001) {
         ctx.globalAlpha = baseAlpha * clamp(lp * 1.6, 0, 1);
@@ -2210,7 +2221,7 @@ function _rgba(hex, a) {
       const heroY = H * (_anchY - 0.02), rowY = H * (_anchY + 0.21), colX = [W * 0.28, W * 0.72];   // 2 columnas para la fila inferior
       // HERO (item focal): cuenta primero, centrado.
       { const it = items[focal]; const d = 0.18, ap = inv(t, d, d + 0.4);
-        if (ap > 0) { const prog = eOutCubic(clamp(inv(t, d, d + 0.9), 0, 1)), pop = lerp(0.8, 1, eOutBack(clamp(ap, 0, 1)));
+        if (ap > 0) { const prog = eOutCubic(clamp(inv(t, d, d + 0.9), 0, 1)), pop = lerp(0.8, 1, _spring(clamp(ap, 0, 1), { zeta: 0.42, freq: 2.0 }));   // HERO focal -> SPRING analitico (settle premium)
           ctx.save(); ctx.globalAlpha = clamp(ap * 1.4, 0, 1); ctx.translate(W / 2, heroY); _drawItem(it, ap, prog, true, pop, 92, 0, 'self'); ctx.restore(); } }
       // FILA inferior: 2 items chicos, cada uno en su columna -> star/underline/label POR ITEM.
       others.forEach((o, k) => {
@@ -2226,7 +2237,8 @@ function _rgba(hex, a) {
       const isF = i === focal;
       const d = 0.18 + i * 0.42, ap = inv(t, d, d + 0.4); if (ap <= 0) return;
       const prog = eOutCubic(clamp(inv(t, d, d + 0.9), 0, 1)), y = startY + i * gap;
-      const pop = lerp(0.8, 1, eOutBack(clamp(ap, 0, 1)));
+      // foco -> SPRING analitico (settle mas rico); subordinados -> eOutBack (entran sin robar atencion).
+      const pop = lerp(0.8, 1, isF ? _spring(clamp(ap, 0, 1), { zeta: 0.42, freq: 2.0 }) : eOutBack(clamp(ap, 0, 1)));
       ctx.save(); ctx.globalAlpha = clamp(ap * 1.4, 0, 1) * (isF ? 1 : (TONE === 'light' ? 0.95 : 0.78)); ctx.translate(tx, y);   // en tono CLARO NO atenuar filas 2/3 (perdian contraste); el foco se sostiene por tamano/acento/subrayado
       _drawItem(it, ap, prog, isF, pop, 80, 54, 'al');
       ctx.restore();
