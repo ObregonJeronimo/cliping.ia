@@ -2117,7 +2117,7 @@ function _rgba(hex, a) {
   }
   // TIPOGRAFIA CINETICA: revela el texto LETRA POR LETRA con stagger (cada una entra desde abajo con un
   // leve overshoot). Asume ctx.font/translate ya seteados; dibuja alrededor del origen segun 'align'.
-  function _kineticDraw(str, col, align, t, start, track = 0, weightWave = false, trackOpen = 0) {
+  function _kineticDraw(str, col, align, t, start, track = 0, weightWave = false, trackOpen = 0, drawOn = false) {
     const chars = str.split('');
     const widths = chars.map(c => ctx.measureText(c).width);
     // TRACKING CINETICO (line-settle): el espaciado nace ancho (track+trackOpen) y CIERRA a 'track' al asentarse
@@ -2128,18 +2128,45 @@ function _rgba(hex, a) {
     const total = widths.reduce((a, b) => a + b, 0) + trk * Math.max(0, chars.length - 1);   // tracking por rol
     let xoff = align === 'center' ? -total / 2 : align === 'right' ? -total : 0;
     const prevAlign = ctx.textAlign; ctx.textAlign = 'left'; ctx.fillStyle = col;
-    const each = Math.min(0.04, 0.4 / Math.max(1, chars.length)), baseAlpha = ctx.globalAlpha;
+    const baseAlpha = ctx.globalAlpha;
+    // DRAW-ON (ref docs/INVESTIGACION-MOTION.md, Codrops "draw-on"): cada letra se DIBUJA de izq a der via un clip
+    // que barre su caja (clip-wipe), escalonado letra a letra. Robusto en Skia headless (no depende de stroke-dash
+    // sobre paths de glifos). Firma de entrada ALTERNATIVA a weight-wave/track-open (un hero usa una sola). El clip
+    // entra ANTES del rise (la letra se dibuja en su sitio); el barrido lleva un pelo de easing-in para que el "trazo"
+    // arranque rapido y desacelere. Stagger mas marcado (each x1.5) -> se aprecia el orden del dibujado.
+    const each = Math.min(drawOn ? 0.06 : 0.04, (drawOn ? 0.6 : 0.4) / Math.max(1, chars.length));
+    // ascendente/descendente aproximados para que el clip cubra el glifo entero (no recorta acentos ni colas)
+    const fsz = parseInt(ctx.font) || 40, padT = fsz * 0.95, padB = fsz * 0.55;
     // WEIGHT-WAVE (tipografia "de peso variable" emulada): cada glifo nace GRUESO (strokeText del mismo color) y
     // adelgaza a su fill al asentarse -> firma de entrada distinta por marca. clamp(lp,0,1) -> nunca lineWidth<0.
-    const maxLW = weightWave ? clamp((parseInt(ctx.font) || 40) * 0.045, 0.6, 3) : 0;
+    const maxLW = weightWave ? clamp(fsz * 0.045, 0.6, 3) : 0;
     if (weightWave) { ctx.strokeStyle = col; ctx.lineJoin = 'round'; ctx.lineCap = 'round'; }
     for (let i = 0; i < chars.length; i++) {
       const lp = _spring(clamp((t - start - i * each) / 0.34, 0, 1), { zeta: 0.45, freq: 2.2 });   // SPRING analitico: asentamiento premium del wordmark/hero (overshoot suave, reemplaza eOutBack)
       // rise mas corto (12) + curva de alpha mas agresiva (x1.6) -> menos "doble exposicion" en el frame intermedio
       if (lp > 0.001) {
-        ctx.globalAlpha = baseAlpha * clamp(lp * 1.6, 0, 1);
-        if (weightWave) { const lw = (1 - clamp(lp, 0, 1)) * maxLW; if (lw > 0.05) { ctx.lineWidth = lw; ctx.strokeText(chars[i], xoff, (1 - lp) * 12); } }
-        ctx.fillText(chars[i], xoff, (1 - lp) * 12);
+        if (drawOn) {
+          // WIPE lineal por letra: 0 -> ancho completo. Usa el avance LINEAL de la entrada (no el spring, que sobrepasa
+          // 1) para que el barrido sea monotono y no "des-dibuje" la letra al rebotar. Pelin de eInCubic -> arranca
+          // como un trazo. globalAlpha PLENO (no fade): el efecto es el barrido, no la opacidad -> queda nitido.
+          const wp = clamp((t - start - i * each) / 0.34, 0, 1);   // avance lineal de ESTA letra
+          const rev = eOutCubic(clamp(wp * 1.15, 0, 1));           // ancho revelado [0..1], easing-in suave del trazo
+          const cw = (widths[i] + Math.max(0, trk * 0.5)) * rev;   // un pelo extra para no cortar el filo derecho
+          if (rev < 0.999) {
+            ctx.save();
+            ctx.beginPath(); ctx.rect(xoff - 1, -padT, cw + 1, padT + padB); ctx.clip();
+            ctx.globalAlpha = baseAlpha;
+            ctx.fillText(chars[i], xoff, 0);
+            ctx.restore();
+          } else {
+            ctx.globalAlpha = baseAlpha;
+            ctx.fillText(chars[i], xoff, 0);
+          }
+        } else {
+          ctx.globalAlpha = baseAlpha * clamp(lp * 1.6, 0, 1);
+          if (weightWave) { const lw = (1 - clamp(lp, 0, 1)) * maxLW; if (lw > 0.05) { ctx.lineWidth = lw; ctx.strokeText(chars[i], xoff, (1 - lp) * 12); } }
+          ctx.fillText(chars[i], xoff, (1 - lp) * 12);
+        }
       }
       xoff += widths[i] + trk;
     }
@@ -2186,10 +2213,14 @@ function _rgba(hex, a) {
         // weight-wave (~40%) + tracking cinetico (~45%, line-settle) sembrados por marca -> el hero tipografico tiene
         // una firma de ENTRADA (peso y/o espaciado) distinta entre videos. Tracking solo en display (fit>36); el
         // resto del tracking por rol (_trk) sigue mandando el espaciado FINAL (incluido el negativo de displays).
-        const _ww = el.weightWave != null ? el.weightWave : (mulberry32(((SEED || 1) ^ 0x77317) >>> 0)() < 0.4);
+        // DRAW-ON (~40% por SEED, EN PARALELO a weight-wave/track-open): SOLO en texto display (fit>36) -> el hero se
+        // "dibuja" letra a letra (clip-wipe). Es una firma de ENTRADA mutuamente excluyente con weight-wave (uno strokea
+        // y el otro clipea -> chocarian): si sale draw-on, se APAGA el weight-wave. Determinista (mulberry32(SEED^const)).
+        const _don = el.drawOn != null ? el.drawOn : (fit > 36 && mulberry32(((SEED || 1) ^ 0x0D4A07) >>> 0)() < 0.4);
+        const _ww = (el.weightWave != null ? el.weightWave : (mulberry32(((SEED || 1) ^ 0x77317) >>> 0)() < 0.4)) && !_don;
         const _kr = mulberry32(((SEED || 1) ^ 0x7BACE) >>> 0);
         const _topen = (fit > 36 && _kr() < 0.45) ? fit * (0.05 + _kr() * 0.08) : 0;
-        if (el.kinetic) _kineticDraw(str, _tcol, el.align || 'center', t, (keys[0] && keys[0].t) || 0, _trk, _ww, _topen);
+        if (el.kinetic) _kineticDraw(str, _tcol, el.align || 'center', t, (keys[0] && keys[0].t) || 0, _trk, _ww, _topen, _don);
         else { ctx.fillStyle = _tcol; if (el.fill === 'dim') setShadow(TONE === 'light' ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.6)', 8, 0); ctx.fillText(str, 0, 0); if (el.fill === 'dim') noShadow(); }   // halo de contraste opuesto al tono -> el subtitulo 'dim' se lee sobre fondos/figuras (no toca el color, mantiene jerarquia)
       } else if (kind === 'icon') {
         if (el.blur) for (let b = 3; b >= 1; b--) { const tb = Math.max(0, t - b * 0.022); const pb = _pos(keys, tb); const sb = Math.max(0, _num(keys, tb, 'scale', scale)); ctx.save(); ctx.globalAlpha *= 0.1; ctx.translate(pb[0], pb[1]); _drawIcon(el.icon || 'dot', sb, op, tb); ctx.restore(); }
