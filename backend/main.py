@@ -330,16 +330,17 @@ def _get_brand_cache(db, user_id: str, brand_key: str, fresh_hash: str = ""):
         return None
 
 
-def _set_brand_cache(db, user_id: str, brand_key: str, dna: dict, brand: str, content_hash: str = ""):
+def _set_brand_cache(db, user_id: str, brand_key: str, dna: dict, brand: str, content_hash: str = "", url: str = ""):
     """Guarda el análisis (ADN + hechos + huella de contenido) de una URL. Best-effort. Multi-página: cada
-    URL queda cacheada por separado (clave con path; se gestionan/borran desde la lista en Animaciones)."""
+    URL queda cacheada por separado (clave con path; se gestionan/borran desde la lista en Animaciones).
+    Guarda también la URL ORIGINAL -> la lista de Animaciones muestra el link real, no el slug normalizado."""
     if not (db and user_id):
         return
     try:
         col = db.collection("users").document(user_id).collection("brand_cache")
         col.document(brand_key).set({
             "brand_key": brand_key, "dna": dna or {}, "brand": brand or "", "ts": time.time(),
-            "content_hash": content_hash or "",
+            "content_hash": content_hash or "", "url": (url or "").strip(),
         })
         print(f"[cache] análisis guardado para {brand_key} (se reusa salvo que la página cambie o pasen 14 días)")
     except Exception as e:
@@ -550,7 +551,7 @@ async def _render_video_job(job_id: str, req: VideoGenRequest):
             if not _cache:
                 _facts = _brand_sink[0] if _brand_sink else ""
                 if _dna and (_dna.get("summary") or _dna.get("mood")) and _facts:
-                    _set_brand_cache(_db, req.userId, _ckey, _dna, _facts, _chash)
+                    _set_brand_cache(_db, req.userId, _ckey, _dna, _facts, _chash, req.url)
             _push_recent_profile(_db, req.userId, _bkey, spec)
         if req.theme in template_director.VALID_THEMES:
             spec["theme"] = req.theme
@@ -848,7 +849,7 @@ async def _render_timeline_job(job_id: str, req: TimelineGenRequest):
             if not _cache:
                 _facts = _brand_sink[0] if _brand_sink else ""
                 if _dna and (_dna.get("summary") or _dna.get("mood")) and _facts:
-                    _set_brand_cache(_db, req.userId, _ckey, _dna, _facts, _chash)
+                    _set_brand_cache(_db, req.userId, _ckey, _dna, _facts, _chash, req.url)
             try:
                 _push_recent_profile(_db, req.userId, _bkey, timeline)
             except Exception as _pe:
@@ -1014,7 +1015,7 @@ async def _run_batch_job(batch_id: str, req: TimelineBatchRequest, n: int):
                 if reuse_dna is None:
                     reuse_dna, reuse_brand = dna_for, facts
                     if dna_for and (dna_for.get("summary") or dna_for.get("mood")) and facts:
-                        _set_brand_cache(db, req.userId, ckey, dna_for, facts, chash)
+                        _set_brand_cache(db, req.userId, ckey, dna_for, facts, chash, req.url)
                 try:
                     _push_recent_profile(db, req.userId, bkey, timeline)   # variedad dentro de la tanda
                 except Exception:

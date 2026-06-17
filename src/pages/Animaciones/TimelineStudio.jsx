@@ -104,7 +104,7 @@ export default function TimelineStudio() {
       const snap = await getDocs(collection(db, 'users', user.uid, 'brand_cache'))
       const list = snap.docs.map(d => {
         const x = d.data() || {}
-        return { id: d.id, accent: x.dna?.accent || '', summary: x.dna?.summary || '', ts: x.ts || 0 }
+        return { id: d.id, url: x.url || '', accent: x.dna?.accent || '', summary: x.dna?.summary || '', ts: x.ts || 0 }
       })
       list.sort((a, b) => (b.ts || 0) - (a.ts || 0))
       setCached(list)
@@ -309,7 +309,7 @@ export default function TimelineStudio() {
                 <div key={c.id} className={styles.selItem}>
                   <span style={{ width: 9, height: 9, borderRadius: '50%', flexShrink: 0, background: c.accent || '#ddd' }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.id}</div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={c.url || c.id}>{c.url ? c.url.replace(/^https?:\/\/(www\.)?/, '') : c.id}</div>
                     {c.summary && <div style={{ fontSize: 10, color: '#999', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.summary}</div>}
                   </div>
                   <button className={styles.delBtn} onClick={() => delCacheOne(c.id)} disabled={cacheDel === c.id}
