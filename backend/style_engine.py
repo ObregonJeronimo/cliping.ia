@@ -328,17 +328,20 @@ _RUBRO_BGSTYLE = {
 }
 # TONO por rubro (dark/light): rubros editoriales (moda/belleza/inmob/salud) tienden a CLARO; los bold/
 # tecnicos (fitness/tech/finanzas) tienden a OSCURO. ~45% claro -> mitad de los videos cambian de liga.
+# TONO por rubro. REBALANCEADO a DARK-DOMINANTE (queja del usuario: "palido lavado"): los reels premium son
+# mayormente OSCUROS (el glow/particulas/acento POPEAN sobre oscuro; sobre crema se lavan). Light queda como
+# MINORIA (~1/3) para variedad editorial (moda/belleza). Antes moda/belleza/inmob/salud eran 2/3 light -> palido.
 _RUBRO_TONE = {
-    "moda":         ["light", "dark", "light"],
-    "belleza":      ["light", "light", "dark"],
-    "inmobiliaria": ["light", "dark", "light"],
-    "salud":        ["light", "dark", "light"],
-    "educacion":    ["light", "dark", "dark"],
-    "gastronomia":  ["light", "dark", "dark"],
+    "moda":         ["dark", "light", "dark"],
+    "belleza":      ["dark", "light", "dark"],
+    "inmobiliaria": ["dark", "light", "dark"],
+    "salud":        ["dark", "light", "dark"],
+    "educacion":    ["dark", "dark", "light"],
+    "gastronomia":  ["dark", "dark", "light"],
     "tech":         ["dark", "dark", "light"],
-    "finanzas":     ["dark", "light", "dark"],
+    "finanzas":     ["dark", "dark", "light"],
     "fitness":      ["dark", "dark", "dark"],
-    "default":      ["dark", "light", "dark"],
+    "default":      ["dark", "dark", "light"],
 }
 
 
