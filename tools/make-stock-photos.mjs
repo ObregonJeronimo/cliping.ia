@@ -32,7 +32,13 @@ save('interior.png', 1280, 800, (x, w, h) => {
   x.save(); x.shadowColor = 'rgba(0,0,0,0.3)'; x.shadowBlur = 40; x.shadowOffsetY = 20
   x.fillStyle = '#7c5a48'; x.beginPath(); x.roundRect(w * 0.08, h * 0.5, w * 0.4, h * 0.3, 26); x.fill(); x.restore()      // sofa
   x.fillStyle = '#9a7361'; x.beginPath(); x.roundRect(w * 0.1, h * 0.42, w * 0.36, h * 0.16, 22); x.fill()                  // respaldo
-  x.fillStyle = '#3e6b3a'; for (let i = 0; i < 5; i++) { x.beginPath(); x.ellipse(w * 0.5, h * 0.4 - i * 30, 38, 60, i * 0.4, 0, TAU); x.fill() }   // planta
+  // lampara de pie GEOMETRICA (reemplaza la 'planta' de 5 elipses rotadas que leia como blob/gota organico ->
+  // el usuario rechaza esas figuras; ademas aparecia junto al wordmark en split/scene). Lineas rectas, no morph.
+  x.save(); x.translate(w * 0.52, 0)
+  x.strokeStyle = '#6b5847'; x.lineWidth = 7; x.beginPath(); x.moveTo(0, h * 0.66); x.lineTo(0, h * 0.30); x.stroke()   // pie
+  x.fillStyle = '#6b5847'; x.fillRect(-26, h * 0.652, 52, 12)                                                            // base
+  x.fillStyle = '#d9c98f'; x.beginPath(); x.moveTo(-44, h * 0.30); x.lineTo(44, h * 0.30); x.lineTo(30, h * 0.16); x.lineTo(-30, h * 0.16); x.closePath(); x.fill()   // pantalla (trapecio)
+  x.restore()
 })
 // PRODUCTO: frasco/botella con etiqueta + reflejo (belleza/retail)
 save('product.png', 860, 1180, (x, w, h) => {

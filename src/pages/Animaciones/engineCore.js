@@ -2137,10 +2137,19 @@ function _rgba(hex, a) {
   }
   // QUOTE: testimonio con comillas grandes + estrellas + autor (prueba social). Layout de "card", distinto.
   function sceneQuote(t, p = {}) {
-    const text = ((p.text || '').toString()) || 'Lo recomiendo 100%', cy = H * 0.42;
+    const text = ((p.text || '').toString()) || 'Lo recomiendo 100%';
+    // LAYOUT sembrado por marca (era card FIJA, 4 marcas calcadas): ancla vertical + estilo de la marca de cita.
+    const _qr = mulberry32(((SEED || 1) ^ 0x90A7E) >>> 0);
+    const cy = H * [0.36, 0.42, 0.48][(_qr() * 3) | 0], _qStyle = ['big', 'tenue', 'bar'][(_qr() * 3) | 0];
     const al = _pickAlign(p), ax = al === 'left' ? W * 0.1 : W / 2, maxw = W * 0.8;
     const qp = eOutBack(clamp(inv(t, 0.05, 0.5), 0, 1));
-    if (qp > 0) { ctx.save(); ctx.globalAlpha = 0.55 * qp; ctx.font = fontStr(800, Math.round(150 * qp), 'd'); ctx.textAlign = al; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = _lighten(A1, 0.4); ctx.fillText('“', ax, cy - 40); ctx.restore(); }
+    if (qp > 0) {
+      ctx.save(); ctx.textAlign = al; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = _lighten(A1, 0.4);
+      if (_qStyle === 'big') { ctx.globalAlpha = 0.55 * qp; ctx.font = fontStr(800, Math.round(150 * qp), 'd'); ctx.fillText('“', ax, cy - 40); }
+      else if (_qStyle === 'tenue') { ctx.globalAlpha = 0.10 * qp; ctx.font = fontStr(800, Math.round(220 * qp), 'd'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('“', W / 2, cy); }   // comilla GIGANTE tenue detras del texto
+      else { ctx.globalAlpha = qp; ctx.fillStyle = _accentPop(A1); const bw = 56 * eOutCubic(qp), bx = al === 'left' ? ax : ax - bw / 2; ctx.beginPath(); ctx.roundRect(bx, cy - 86, bw, 5, 2.5); ctx.fill(); }   // sin comilla -> barra de acento (encuadre editorial)
+      ctx.restore();
+    }
     const fit = fitFont(text, text.length > 38 ? 34 : 42, maxw, 24, 700, 't');
     ctx.font = fontStr(700, fit, 't'); ctx.textAlign = al; ctx.textBaseline = 'middle';
     const words = text.split(/\s+/), lines = []; let ln = '';
@@ -2154,7 +2163,11 @@ function _rgba(hex, a) {
   }
   // SPLIT: pantalla partida -> FOTO real una mitad (wipe-open) + panel de color de marca con titular/CTA en la otra.
   function sceneSplit(t, p = {}) {
-    const right = p.side === 'right', halfW = W * 0.52, fx = right ? W - halfW : 0, panelX = right ? 0 : halfW, panelW = W - halfW;
+    // COMPOSICION sembrada por marca (era plantilla FIJA 52/48): proporcion de corte + ancla del texto del panel +
+    // barra de acento opcional -> dos marcas con split ya no se calcan. Determinista (SEED), como reveal/numberStack.
+    const _sr = mulberry32(((SEED || 1) ^ 0x5217B) >>> 0);
+    const _ratio = [0.45, 0.52, 0.6][(_sr() * 3) | 0], _ty = [0.36, 0.42, 0.5][(_sr() * 3) | 0], _bar = _sr() < 0.5;
+    const right = p.side === 'right', halfW = W * _ratio, fx = right ? W - halfW : 0, panelX = right ? 0 : halfW, panelW = W - halfW;
     const wp = eOutCubic(clamp(inv(t, 0.1, 0.75), 0, 1));
     ctx.save(); ctx.beginPath(); ctx.rect(right ? W - halfW * wp : 0, 0, halfW * wp, H); ctx.clip();   // wipe-open de la foto
     const drew = _drawPhoto(PHOTOS[(p.photoIdx || 0) % Math.max(1, PHOTOS.length)], fx, 0, halfW, H, t, 3);
@@ -2163,10 +2176,11 @@ function _rgba(hex, a) {
     const aH = _hexToHsl(A1 || '#3aa0ff'), pg = ctx.createLinearGradient(panelX, 0, panelX, H);   // panel de marca (dark)
     pg.addColorStop(0, _hslToHex(aH.h, 0.5, 0.24)); pg.addColorStop(1, _hslToHex(aH.h, 0.55, 0.14));
     ctx.save(); ctx.fillStyle = pg; ctx.fillRect(panelX, 0, panelW, H); ctx.restore();
-    const tcx = panelX + panelW / 2, ti = inv(t, 0.4, 0.9);
-    if (ti > 0 && p.title) { ctx.save(); ctx.globalAlpha = clamp(ti * 1.4, 0, 1); ctx.font = fontStr(800, fitFont(p.title, 40, panelW - 28, 22, 800, 'd'), 'd'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#f6f8fb'; ctx.fillText(p.title, tcx, H * 0.42 + (1 - eOutBack(clamp(ti, 0, 1))) * 14); ctx.restore(); }
-    if (p.sub) fxText(p.sub, tcx, H * 0.54, 20, inv(t, 0.8, 1.2), 600, '#c8d2de', panelW - 30, 't');
-    if (p.cta) { const cp = inv(t, 1.0, 1.4); if (cp > 0) { ctx.save(); ctx.globalAlpha = cp; ctx.font = fontStr(800, 20, 'd'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = _accentPop(A1); ctx.fillText(p.cta + '  ›', tcx, H * 0.66); ctx.restore(); } }
+    const tcx = panelX + panelW / 2, ti = inv(t, 0.4, 0.9), _tyy = H * _ty;
+    if (_bar) { const br = eOutCubic(clamp(inv(t, 0.5, 1.0), 0, 1)); if (br > 0) { ctx.save(); ctx.fillStyle = _accentPop(A1); ctx.beginPath(); ctx.roundRect(tcx - 28 * br, _tyy - H * 0.085, 56 * br, 5, 2.5); ctx.fill(); ctx.restore(); } }   // barra de acento sobre el titulo (encuadre) en ~50% de marcas
+    if (ti > 0 && p.title) { ctx.save(); ctx.globalAlpha = clamp(ti * 1.4, 0, 1); ctx.font = fontStr(800, fitFont(p.title, 40, panelW - 28, 22, 800, 'd'), 'd'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#f6f8fb'; ctx.fillText(p.title, tcx, _tyy + (1 - eOutBack(clamp(ti, 0, 1))) * 14); ctx.restore(); }
+    if (p.sub) fxText(p.sub, tcx, _tyy + H * 0.12, 20, inv(t, 0.8, 1.2), 600, '#c8d2de', panelW - 30, 't');
+    if (p.cta) { const cp = inv(t, 1.0, 1.4); if (cp > 0) { ctx.save(); ctx.globalAlpha = cp; ctx.font = fontStr(800, 20, 'd'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = _accentPop(A1); ctx.fillText(p.cta + '  ›', tcx, _tyy + H * 0.24); ctx.restore(); } }
   }
 
   const DRAWERS = { paintTitle: sceneTitle, deliver: sceneCart, checklist: sceneList, outro: sceneOutro, statement: sceneStatement, bigStat: sceneBigStat, scene: sceneSpec, reveal: sceneReveal, numberStack: sceneNumberStack, quote: sceneQuote, split: sceneSplit };
