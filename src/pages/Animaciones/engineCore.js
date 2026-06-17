@@ -1481,9 +1481,31 @@ function _rgba(hex, a) {
         if (ar > 0) { ctx.save(); ctx.globalAlpha = ar; ctx.strokeStyle = _lighten(A1, 0.4); ctx.lineWidth = 4; ctx.lineCap = 'round'; const ay = cy + 34 + fs * 0.7 + 20; ctx.beginPath(); ctx.moveTo(cx - 16, ay); ctx.lineTo(cx, ay + 14); ctx.lineTo(cx + 16, ay); ctx.stroke(); ctx.restore(); }
       }
     } else if (comp === 'diagonal') {
-      // end-card DIAGONAL: marca arriba-izquierda + CTA abajo-derecha (rompe el cierre centrado)
-      wordmark(W * 0.1, H * 0.27, 'left', 48); accentBar(W * 0.1, H * 0.27 + 42, 96, 'left');
-      ctaButton(W * 0.9, H * 0.7, 'right');
+      // end-card DIAGONAL: marca en una esquina superior + CTA en la inferior OPUESTA (rompe el cierre centrado).
+      // SUB-VARIANTE por SEMILLA -> dos marcas 'diagonal' NO comparten el mismo esqueleto: la marca cae arriba-izq o
+      // arriba-der, el CTA en la inferior opuesta (siempre cruzado, nunca alineado vertical con la marca -> no chocan),
+      // y el filete de acento cruza la tarjeta por el lado/angulo de la diagonal. Determinista (mulberry32(SEED^const)).
+      const dv = (mulberry32(((SEED || 1) ^ 0xD1A60) >>> 0)() * 3) | 0;   // 0,1,2 -> 3 esqueletos distintos
+      const brandLeft = dv !== 1;          // dv 0/2 = marca arriba-izquierda; dv 1 = arriba-derecha
+      const brandX = brandLeft ? W * 0.1 : W * 0.9;
+      const brandY = dv === 2 ? H * 0.23 : H * 0.27;   // dv 2 sube un poco la marca (otra silueta)
+      const brandAlign = brandLeft ? 'left' : 'right';
+      wordmark(brandX, brandY, brandAlign, 48); accentBar(brandX, brandY + 42, 96, brandAlign);
+      // CTA en la esquina INFERIOR OPUESTA en horizontal -> cruzado respecto de la marca (jamas en la misma columna).
+      const ctaX = brandLeft ? W * 0.9 : W * 0.1;
+      const ctaY = dv === 2 ? H * 0.74 : H * 0.7;
+      ctaButton(ctaX, ctaY, brandLeft ? 'right' : 'left');
+      // FILETE de acento: una hairline diagonal que une (aprox) la esquina de la marca con la del CTA. El lado/angulo
+      // sale del esqueleto -> refuerza la diagonal sin pisar el texto (vive en el centro muerto de la tarjeta).
+      const fp = eOutCubic(clamp(inv(t, 0.55, 1.3), 0, 1));
+      if (fp > 0) {
+        const fx0 = brandLeft ? W * 0.16 : W * 0.84, fy0 = brandY + 78;
+        const fx1 = brandLeft ? W * 0.84 : W * 0.16, fy1 = ctaY - 64;
+        ctx.save(); ctx.globalAlpha *= 0.55 * fp; ctx.strokeStyle = _accentInk(A1, 0.5);
+        ctx.lineWidth = 3; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(fx0, fy0); ctx.lineTo(lerp(fx0, fx1, fp), lerp(fy0, fy1, fp)); ctx.stroke();
+        ctx.restore();
+      }
     } else if (comp === 'ctaOnly') {
       // end-card CTA-PROTAGONISTA: el CTA gigante es el cierre; la marca firma chica al pie (ya cerro antes)
       const tg = eOutBack(clamp(inv(t, 0.45, 1.15), 0, 1));
