@@ -685,11 +685,18 @@ if __name__ == "__main__":
     # FOTOS de prueba (solo el banco): si existen, se pasan a todas las marcas y el decisor de recurso
     # protagonista decide por rubro si las usa (visual -> foto; abstracto -> tipo/morph). Generalas con:
     #   node tools/make-stock-photos.mjs   (deja PNGs en tools/_stock/). Sin ellas, el hero cae a tipo/morph.
+    # Stock disponible por rubro (el decisor _hero_resource decide si lo usa: solo _VISUAL_RUBROS van a foto;
+    # tech/finanzas/default siguen pudiendo ser tipograficos -> tener stock NO los vuelve visuales). DEDUP por
+    # rubros vecinos: cada rubro tiene un archivo PRIMARIO propio (no compartido con su vecino) cuando se puede,
+    # para que dos videos de rubros adyacentes no calquen la misma foto.
     _STOCK_BY_RUBRO = {
         "gastronomia": ["food.png", "interior.png"], "inmobiliaria": ["interior.png", "storefront.png"],
         "belleza": ["spa.png", "product.png"], "salud": ["spa.png", "interior.png"],
         "moda": ["product.png", "people.png"], "fitness": ["people.png", "interior.png"],
         "educacion": ["people.png", "interior.png"],
+        # nuevos placeholders geometricos: primario distinto por rubro (office / screenshot / team)
+        "tech": ["office.png", "screenshot.png"], "finanzas": ["screenshot.png", "team.png"],
+        "default": ["team.png", "office.png"],
     }
 
     def _stock_for(rubro):
