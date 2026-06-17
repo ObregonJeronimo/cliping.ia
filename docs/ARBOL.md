@@ -79,7 +79,11 @@ Capas implementadas por workflows secuenciales (impl + gate-keeper adversarial),
 - **Capa D** (loop audit+fix): el paso "distribuir bg-systems" LANDEO (9d6eb1e); el resto del workflow (auditoria
   vision + fixes + gate-keeper) **SE COLGO** (~31min sin actividad, server flaky/agente trabado). El estado quedo
   SANO igual (16/16, build, similarity 0/0; galeria rica y variada; morphfield+texto legible verificado a mano).
-  PENDIENTE: re-correr una iteracion de auditoria+fix LEANER (workflow chico o directo) para pulir lo que quede.
+- **Pulido LEAN (reemplazo de la D colgada, CERRO verde)**: auditor verificado + 4 fixes (de8eca3 watermark tenue en
+  mono-ink/default; 125919b numberStack azul-sobre-azul -> acento+halo; b9f3499 chips con pill solido sobre halftone;
+  779f4d9 outro motif fuera del CTA + acento calido sobre sunburst). 16/16, similarity 0/0.
+  PENDIENTE (baja, proxima iteracion): par intra-tipo Nimbus vs Aula Viva (outro 0.128 + numberStack 0.160) comparten
+  molde (ambas saas-explainer-ish) -> variar outro/numberStack para esos. Y la VERIFICACION EN VIVO de fluidez (MP4 real).
 Resultado vs baseline ("palido lavado / hero estatico / todos iguales / cero morphs"): paleta con profundidad y mezcla
 clara/oscura, motion con spring+stagger+draw-on, morphs fluidos (ambiental + morphfield), y unicidad por features
 ortogonal + pool de fondos. Verificado en galeria + escenas. Determinismo 16/16 de punta a punta.
