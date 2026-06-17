@@ -65,6 +65,25 @@ Pegás un **link** → Urvid genera un **video vertical 9:16 de marketing** que:
 
 ---
 
+## 🚀 CAMPAÑA MOTION/UNICIDAD (jun 17) — implementacion de docs/INVESTIGACION-MOTION.md
+Capas implementadas por workflows secuenciales (impl + gate-keeper adversarial), cada paso 16/16 + similarity 0/0 + commit:
+- **Capa A** (motion+morph+color): `_spring` analitico (settle premium en hero/numberStack) + `_morphRing` primitivo de
+  morph PURO (resample+winding+rotacion de anillo, sin deps, anti-blob) usado en la firma ambiental + fondo claro
+  enriquecido (`_wcagInk`, crema tintada al acento + vinieta). Commits 9a119f0/70e95fb/8698bff.
+- **Capa B** (unicidad+motion vivo): `features()` ORTOGONAL en style_engine.py (sub-seeds por eje + distribuciones
+  sesgadas, modelo QQL/fxhash; desacopla theme/tono/bg) + choreography (stagger sembrado + spring + FLIP) + tipografia
+  draw-on (clip-wipe por letra). El par mas cercano se ALEJO (~0.31 -> 0.328). Commits 0c76155/cade2a9/fac355d.
+- **Capa C** (combinar + biblioteca de fondos): `_bgFlowField` (campo de lineas por ruido seedeado, tipo Fidenza) +
+  `_bgMorphField` (gran silueta del rubro que morfea, protagonica, detras del scrim, NUNCA sobre el titulo) + wiring
+  del eje `bg_system` -> cada marca combina un sistema de fondo distinto del pool. Commits 9505eb6/79037a8/d56bfe2.
+- **Capa D** (loop audit+fix): el paso "distribuir bg-systems" LANDEO (9d6eb1e); el resto del workflow (auditoria
+  vision + fixes + gate-keeper) **SE COLGO** (~31min sin actividad, server flaky/agente trabado). El estado quedo
+  SANO igual (16/16, build, similarity 0/0; galeria rica y variada; morphfield+texto legible verificado a mano).
+  PENDIENTE: re-correr una iteracion de auditoria+fix LEANER (workflow chico o directo) para pulir lo que quede.
+Resultado vs baseline ("palido lavado / hero estatico / todos iguales / cero morphs"): paleta con profundidad y mezcla
+clara/oscura, motion con spring+stagger+draw-on, morphs fluidos (ambiental + morphfield), y unicidad por features
+ortogonal + pool de fondos. Verificado en galeria + escenas. Determinismo 16/16 de punta a punta.
+
 ## 🔁 LOG DEL LOOP (urvid-loop)
 - **Iteración jun 16 #1** (HECHA): anti-sameness CONFIRMADO sano (probe filtra el banco canónico `^\d\d-`). Fixes:
   numberStack con DECIMALES, blueprint con HUE de marca, motivos por rubro (plato/birrete/contornos). bg-check 16/16.
