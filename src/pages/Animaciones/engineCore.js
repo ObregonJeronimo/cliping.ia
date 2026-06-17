@@ -1920,10 +1920,15 @@ function _rgba(hex, a) {
   }
   // TIPOGRAFIA CINETICA: revela el texto LETRA POR LETRA con stagger (cada una entra desde abajo con un
   // leve overshoot). Asume ctx.font/translate ya seteados; dibuja alrededor del origen segun 'align'.
-  function _kineticDraw(str, col, align, t, start, track = 0, weightWave = false) {
+  function _kineticDraw(str, col, align, t, start, track = 0, weightWave = false, trackOpen = 0) {
     const chars = str.split('');
     const widths = chars.map(c => ctx.measureText(c).width);
-    const total = widths.reduce((a, b) => a + b, 0) + track * Math.max(0, chars.length - 1);   // tracking por rol
+    // TRACKING CINETICO (line-settle): el espaciado nace ancho (track+trackOpen) y CIERRA a 'track' al asentarse
+    // (eOutCubic sobre la entrada) -> firma de MOVIMIENTO por marca, distinta del weight-wave. trackOpen default 0
+    // -> calls existentes (CTA de outro con track NEGATIVO) intactos; 'trk' NO se clampea (conserva el tracking
+    // negativo intencional de los displays grandes).
+    const trk = track + (1 - eOutCubic(clamp((t - start) / 0.5, 0, 1))) * trackOpen;
+    const total = widths.reduce((a, b) => a + b, 0) + trk * Math.max(0, chars.length - 1);   // tracking por rol
     let xoff = align === 'center' ? -total / 2 : align === 'right' ? -total : 0;
     const prevAlign = ctx.textAlign; ctx.textAlign = 'left'; ctx.fillStyle = col;
     const each = Math.min(0.04, 0.4 / Math.max(1, chars.length)), baseAlpha = ctx.globalAlpha;
@@ -1939,7 +1944,7 @@ function _rgba(hex, a) {
         if (weightWave) { const lw = (1 - clamp(lp, 0, 1)) * maxLW; if (lw > 0.05) { ctx.lineWidth = lw; ctx.strokeText(chars[i], xoff, (1 - lp) * 12); } }
         ctx.fillText(chars[i], xoff, (1 - lp) * 12);
       }
-      xoff += widths[i] + track;
+      xoff += widths[i] + trk;
     }
     ctx.globalAlpha = baseAlpha; ctx.textAlign = prevAlign;
   }
@@ -1981,8 +1986,13 @@ function _rgba(hex, a) {
         const _tcol = _colorAt(keys, t, _resolveColor(el.fill || 'ink'));
         // tracking por rol: displays grandes apretados (-2%), kickers chicos abiertos (+6%) -> presencia de marca
         const _trk = el.track != null ? el.track : (fit > 44 ? Math.max(-1.2, -fit * 0.02) * (str.length > 8 ? 0.5 : 1) : (fit < 24 ? fit * 0.06 : 0));
-        // weight-wave sembrado por marca (~40%) -> el hero tipografico tiene una firma de entrada distinta entre videos
-        if (el.kinetic) _kineticDraw(str, _tcol, el.align || 'center', t, (keys[0] && keys[0].t) || 0, _trk, el.weightWave != null ? el.weightWave : (mulberry32(((SEED || 1) ^ 0x77317) >>> 0)() < 0.4));
+        // weight-wave (~40%) + tracking cinetico (~45%, line-settle) sembrados por marca -> el hero tipografico tiene
+        // una firma de ENTRADA (peso y/o espaciado) distinta entre videos. Tracking solo en display (fit>36); el
+        // resto del tracking por rol (_trk) sigue mandando el espaciado FINAL (incluido el negativo de displays).
+        const _ww = el.weightWave != null ? el.weightWave : (mulberry32(((SEED || 1) ^ 0x77317) >>> 0)() < 0.4);
+        const _kr = mulberry32(((SEED || 1) ^ 0x7BACE) >>> 0);
+        const _topen = (fit > 36 && _kr() < 0.45) ? fit * (0.05 + _kr() * 0.08) : 0;
+        if (el.kinetic) _kineticDraw(str, _tcol, el.align || 'center', t, (keys[0] && keys[0].t) || 0, _trk, _ww, _topen);
         else { ctx.fillStyle = _tcol; if (el.fill === 'dim') setShadow(TONE === 'light' ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.6)', 8, 0); ctx.fillText(str, 0, 0); if (el.fill === 'dim') noShadow(); }   // halo de contraste opuesto al tono -> el subtitulo 'dim' se lee sobre fondos/figuras (no toca el color, mantiene jerarquia)
       } else if (kind === 'icon') {
         if (el.blur) for (let b = 3; b >= 1; b--) { const tb = Math.max(0, t - b * 0.022); const pb = _pos(keys, tb); const sb = Math.max(0, _num(keys, tb, 'scale', scale)); ctx.save(); ctx.globalAlpha *= 0.1; ctx.translate(pb[0], pb[1]); _drawIcon(el.icon || 'dot', sb, op, tb); ctx.restore(); }
