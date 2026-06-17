@@ -91,13 +91,15 @@ Pegás un **link** → Urvid genera un **video vertical 9:16 de marketing** que:
   - **reveal hero-word** azul-sobre-azul (DataFlow "caos") -> más brillante + halo de tono opuesto (e3a7947).
   - **técnica nueva rgbsplit** (7º corte): aberración cromática sembrada por (SEED^idx), transitoria (e3a7947).
   - Banco: 0 visual + 0 contenido. 16/16 en todo.
-  - **PENDIENTE de #3** (verificado, próxima): (a) numberStack tiene SILUETA de columna siempre (sembra gap/ancla
-    pero no la ORIENTACIÓN) -> sumar eje no-vertical (hero+fila) SOLO n===3, recalcular x de estrella/subrayado/label
-    por-item [ALTA, medio]. (b) tratamiento de foto por marca (duotono al hue del acento + Ken-Burns sembrado) -> dos
-    marcas con la misma foto no se calcan [MEDIO]. (c) outro 'diagonal' compartido por marcas oscuras -> variar el
-    LAYOUT del end-card por SEED [MEDIO]. (d) probe: hashear POR TIPO de escena (split-vs-split, quote-vs-quote) para
-    no quedar ciega a la sameness de una escena [BAJO]. (e) banco: dar stock a tech/finanzas/default + dedup de archivos
-    por rubro adyacente [BAJO]. (f) técnica: grid editorial 'magazine' (hairlines de columna) [media].
+  - **Cola de #3 IMPLEMENTADA** (workflow urvid-finish-queue, secuencial + gate-keeper adversarial, verdict ok):
+    (a) numberStack orientación columna|heroRow sembrada SOLO n===3, x por-item (aaf375d). (b) tratamiento de foto
+    por marca: Ken-Burns sembrado + duotono al acento (945cacf). (c) outro 'diagonal' con 3 sub-variantes de layout
+    por SEED (fef07a2). (d) probe intra-tipo: 1ra escena de cada tipo a su t-MEDIO, split-vs-split/quote/outro/numberStack
+    (35c035c). (e) stock geométrico para tech/finanzas/default + dedup (cb0ce90). Banco: 0 visual + 0 contenido, 16/16.
+  - **PENDIENTE de #3** (próxima iteración): (f) técnica grid editorial 'magazine' (hairlines de columna) [media,
+    diferida: pisa folio/substrate existentes]. La NUEVA categoría intra-tipo del probe marcó 2 pares informativos
+    (split Altos del Sur vs Vibra 0.127; outro Verdo vs Sonrisa 0.158 -> verificado que SI difieren visualmente);
+    revisar el par de SPLIT si reaparece (puede compartir molde aún tras el sembrado).
 
 ### COLA RESTANTE (verificada por el loop #2 — próxima iteración)
 - **Técnica: tracking cinético (line-settle kerning)** [HECHO commit 5472e7f]: `_kineticDraw` con param `trackOpen`
