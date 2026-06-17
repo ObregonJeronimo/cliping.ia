@@ -2145,6 +2145,23 @@ function _rgba(hex, a) {
       ctx.fillText(wd, ax, yy); noShadow(); ctx.restore();
     });
     if (al === 'left') { const up = inv(t, 0.5, 0.95); if (up > 0) { ctx.save(); ctx.globalAlpha = up; ctx.fillStyle = _accentPop(A1); ctx.fillRect(ax, startY - fs * 0.55, 56 * eOutCubic(clamp(up, 0, 1)), 6); ctx.restore(); } }
+    // CINTA CINETICA (marquesina): banda fina en el tercio INFERIOR del reveal (zona libre: el reveal NO lleva
+    // watermark abajo) con el kicker/marca en loop -> motion continuo + presencia de marca. Sembrada ~35% por SEED.
+    // GUARDA: solo aca (NUNCA en statement, cuyo tercio inferior tiene el monograma fs~122). Alpha bajo, tone-aware.
+    if (mulberry32(((SEED || 1) ^ 0x57819) >>> 0)() < 0.35) _kineticStrip(kick || (_BRAND || '').toUpperCase(), H * 0.91);
+  }
+  // marquesina: texto en loop dentro de una banda fina (ticker). Usa _holdT (tiempo continuo) -> scrollea en el hold.
+  function _kineticStrip(text, bandY) {
+    if (!text) return;
+    const bh = 22;
+    ctx.save();
+    ctx.beginPath(); ctx.rect(0, bandY - bh / 2, W, bh); ctx.clip();
+    ctx.font = fontStr(700, 13, 'a'); ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+    const seg = text + '   /   ', segW = ctx.measureText(seg).width || 1;
+    let off = (_holdT * 16) % segW; if (off > 0) off -= segW;
+    ctx.globalAlpha *= TONE === 'light' ? 0.42 : 0.5; ctx.fillStyle = _accentInk(_resolveColor('accent'), 0.42);
+    for (let x = off; x < W + segW; x += segW) ctx.fillText(seg, x, bandY);
+    ctx.restore();
   }
   // NUMBERSTACK: 2-3 numeros que cuentan, en cascada (vs bigStat que es UNO). Llena la pantalla con datos.
   function sceneNumberStack(t, p = {}) {
