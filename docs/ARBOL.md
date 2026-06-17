@@ -96,10 +96,14 @@ Pegás un **link** → Urvid genera un **video vertical 9:16 de marketing** que:
     por marca: Ken-Burns sembrado + duotono al acento (945cacf). (c) outro 'diagonal' con 3 sub-variantes de layout
     por SEED (fef07a2). (d) probe intra-tipo: 1ra escena de cada tipo a su t-MEDIO, split-vs-split/quote/outro/numberStack
     (35c035c). (e) stock geométrico para tech/finanzas/default + dedup (cb0ce90). Banco: 0 visual + 0 contenido, 16/16.
-  - **PENDIENTE de #3** (próxima iteración): (f) técnica grid editorial 'magazine' (hairlines de columna) [media,
-    diferida: pisa folio/substrate existentes]. La NUEVA categoría intra-tipo del probe marcó 2 pares informativos
-    (split Altos del Sur vs Vibra 0.127; outro Verdo vs Sonrisa 0.158 -> verificado que SI difieren visualmente);
-    revisar el par de SPLIT si reaparece (puede compartir molde aún tras el sembrado).
+  - **Cola de #3 (cola fina) IMPLEMENTADA** (directo, tras caer agentes por 529): split con corte HORIZONTAL sembrado
+    ~40% -> separó el par intra-tipo Altos del Sur vs Vibra (85a8924, intra-tipo split = 0); sustrato 'editorialgrid'
+    (hairlines de columna + reglas de baseline) asignado a moda (eace756); 'kinetic strip' (marquesina) en el tercio
+    inferior del reveal, ~35% SEED, con guarda de watermark (e4ae0e3). bg-check 16/16, 0 visual + 0 contenido.
+  - **DIFERIDO a conciencia** (NO es deuda olvidada): guard anti-sameness PERSISTIDO cross-marca en producción
+    (timeline_director) -> baja prioridad: es path de API (no se verifica offline) y el stress + la probe honesta
+    muestran el riesgo real controlado. Único intra-tipo restante: [outro] Verdo vs Sonrisa 0.158 (borderline,
+    verificado que difieren en color/CTA/dirección del filete -> informativo, no rompe gate).
 
 ### COLA RESTANTE (verificada por el loop #2 — próxima iteración)
 - **Técnica: tracking cinético (line-settle kerning)** [HECHO commit 5472e7f]: `_kineticDraw` con param `trackOpen`
