@@ -244,13 +244,21 @@ _VISUAL_RUBROS = {"gastronomia", "inmobiliaria", "belleza", "moda", "fitness", "
 
 def _hero_resource(rubro, has_photos, rnd):
     """RECURSO PROTAGONISTA del hero (mata 'la misma figura geometrica en TODOS los videos'): elige UNO -
-    foto real / tipografia pura / morph. Determinista por rnd(seed). Morph cae a ~1 de cada 3-4."""
+    foto real / tipografia pura / morph / PARTICULAS. Determinista por rnd(seed).
+    SIN fotos (hero tipografico) -> 'particles' es el tratamiento DOMINANTE (~60%): el nombre se ENSAMBLA
+    con una nube de particulas que glow-ean (el momento WOW); 'type'/'morph' el resto. NO toca el caso con
+    fotos (rubros visuales siguen a 'photo')."""
     if has_photos and rubro in _VISUAL_RUBROS:
         rnd.random()   # consume 1 (mantiene la secuencia estable vs el choice anterior)
         return "photo"   # rubro visual con fotos -> SIEMPRE foto: la foto del local/producto ES el anuncio (sin ella lee 'generico')
     if has_photos:
-        return rnd.choice(["photo", "type", "type", "morph"])
-    return rnd.choice(["type", "type", "morph"])                 # sin fotos: tipografia o morph (morph minoria)
+        # rubro NO-VISUAL (tech/finanzas/default) con stock disponible: el hero es tipografico la mayoria de las
+        # veces -> 'particles' DOMINA el tratamiento tipografico (el WOW), 'photo' sigue posible, 'morph' minoria.
+        return rnd.choice(["particles", "particles", "particles", "particles",
+                           "photo", "photo", "type", "morph"])
+    # sin fotos -> particulas la MAYORIA (6 de 10 ~= 60%); tipografia pura + morph el resto.
+    return rnd.choice(["particles", "particles", "particles", "particles", "particles", "particles",
+                       "type", "type", "morph", "morph"])
 
 
 def _hero_scene(brand, rubro, accent_light, rnd, comp, blur, f1, f2, resource="morph", photos=None):
@@ -271,8 +279,9 @@ def _hero_scene(brand, rubro, accent_light, rnd, comp, blur, f1, f2, resource="m
             {"kind": "text", "text": sub, "fill": "photodim", "size": 23, "weight": 600, "align": "center", "maxW": 330,
              "keys": [{"t": 0.9, "opacity": 0, "x": 202, "y": 612}, {"t": 1.3, "opacity": 1, "x": 202, "y": 602, "ease": "outCubic"}]},
         ]}
-    # TIPOGRAFIA pura -> sin figura (shape none); morph -> segun la comp. Asi NO todos llevan figura.
-    shape_mode = "none" if resource == "type" else L.get("shape", "lead")
+    # TIPOGRAFIA pura / PARTICULAS -> sin figura (shape none); morph -> segun la comp. Asi NO todos llevan figura.
+    # ('particles' se construye igual que 'type': solo texto; el motor convierte el wordmark display en la nube.)
+    shape_mode = "none" if resource in ("type", "particles") else L.get("shape", "lead")
     jx, jy = rnd.randint(-14, 14), rnd.randint(-14, 14)
     sx, sy, sr, sop, ns = L["sx"] + jx, L["sy"] + jy, L["sr"], L["sop"], L["ns"]
     els = []
@@ -590,7 +599,17 @@ def generate(brand: str, industria: str, facts=None, seed: int = None, style: st
             outro_pool = _lo
     outro_comp = rnd.choice(outro_pool)
     # ESTRUCTURA NARRATIVA del estilo (no una sola coreografia para todos): conteo/orden/beats varian.
-    _hero_res = _hero_resource(rubro, bool(images), rnd)   # recurso protagonista (foto/tipo/morph) -> no todos llevan figura
+    _hero_res = _hero_resource(rubro, bool(images), rnd)   # recurso protagonista (foto/tipo/morph/particles) -> no todos llevan figura
+    # EMPAREJAR particulas con OSCURO: el glow de la nube popea sobre fondo oscuro y se LAVA sobre claro -> si el
+    # hero es 'particles', forzamos tono dark (y recalculamos lo que depende del tono: pintura de la forma firma +
+    # familia de fondo coherente con el tono). No reordena el consumo de rnd -> determinismo intacto del resto.
+    if _hero_res == "particles" and tone != "dark":
+        tone = "dark"
+        accent_light, shape_blur = _shape_paint(pre["accent"], rubro, tone)
+        bg_style = S["bg"]
+        _bgsys = se.bg_system_for(seed, tone)
+        if _bgsys and style_id not in _BG_LOCKED_STYLES and _bgsys in _RENDERABLE_BG:
+            bg_style = _bgsys
     # estructura GENERATIVA por marca (no esqueleto fijo -> rompe el molde); si el hero es FOTO, garantiza el slot.
     skel = _gen_structure(rubro, bool(images), rnd, force_hero=(_hero_res == "photo"))
     scenes = []
