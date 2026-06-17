@@ -1944,6 +1944,77 @@ function _rgba(hex, a) {
     }
     ctx.closePath();
   }
+  // ---------- MORPH FLUIDO de FORMA (anillos [x,y]): puro, anti-blob, sin dependencias ----------
+  // Portado de flubber (docs/INVESTIGACION-MOTION.md): resamplear por arco -> normalizar winding -> rotar al
+  // mejor offset (minimiza sumatoria de distancia^2) -> lerp lineal. Trabaja con anillos de pares [x,y].
+  // area FIRMADA de un anillo [x,y] (shoelace): el signo da el sentido de giro (winding) -> normalizable.
+  function _ringSignedArea(ring) {
+    let a = 0; const n = ring.length;
+    for (let i = 0; i < n; i++) { const p = ring[i], q = ring[(i + 1) % n]; a += p[0] * q[1] - q[0] * p[1]; }
+    return a / 2;
+  }
+  // resamplea un anillo [x,y] CERRADO a n puntos equiespaciados por LONGITUD DE ARCO (gemelo de _resample, formato [x,y]).
+  function _ringResample(ring, n) {
+    if (!ring || ring.length < 2) return Array.from({ length: n }, () => [0, 0]);
+    const segs = []; let total = 0;
+    for (let i = 0; i < ring.length; i++) { const a = ring[i], b = ring[(i + 1) % ring.length]; const d = Math.hypot(b[0] - a[0], b[1] - a[1]); segs.push(d); total += d; }
+    if (total < 1e-6) return Array.from({ length: n }, () => [ring[0][0], ring[0][1]]);
+    const out = []; const step = total / n; let si = 0, sacc = 0;
+    for (let k = 0; k < n; k++) { const target = k * step; while (si < segs.length - 1 && sacc + segs[si] < target) { sacc += segs[si]; si++; } const a = ring[si], b = ring[(si + 1) % ring.length]; const f = clamp((target - sacc) / (segs[si] || 1), 0, 1); out.push([lerp(a[0], b[0], f), lerp(a[1], b[1], f)]); }
+    return out;
+  }
+  // MORPH puro entre dos anillos [x,y]: devuelve los puntos interpolados (lista de [x,y]) en t (0..1).
+  // (a) resamplear ambos a N=64 por arco; (b) normalizar winding (invierte B si su area firmada difiere en signo
+  // de A); (c) rotar B al offset que minimiza Sum|A_i-B_i|^2 (prueba los 64 offsets, O(N^2), determinista);
+  // (d) lerp lineal A->B por t. Dibujar el resultado con _smoothPath -> path cerrado suave, sin kinks.
+  function _morphRing(ringA, ringB, t) {
+    const N = 64;
+    const A = _ringResample(ringA, N);
+    let B = _ringResample(ringB, N);
+    // (b) normalizar winding: si los sentidos difieren, invertir B (asi los puntos no "cruzan" el centro al morphear)
+    if (_ringSignedArea(A) * _ringSignedArea(B) < 0) B = B.slice().reverse();
+    // (c) rotar B al offset ciclico que minimiza la energia Sum|A_i - B_i|^2 (O(N^2), todos los offsets, determinista)
+    let best = 0, bestD = Infinity;
+    for (let r = 0; r < N; r++) {
+      let d = 0;
+      for (let i = 0; i < N; i++) { const a = A[i], b = B[(i + r) % N]; const dx = a[0] - b[0], dy = a[1] - b[1]; d += dx * dx + dy * dy; if (d >= bestD) break; }
+      if (d < bestD) { bestD = d; best = r; }
+    }
+    // (d) lerp lineal A->B en el offset ganador
+    const u = clamp(t, 0, 1), out = new Array(N);
+    for (let i = 0; i < N; i++) { const a = A[i], b = B[(i + best) % N]; out[i] = [lerp(a[0], b[0], u), lerp(a[1], b[1], u)]; }
+    return out;
+  }
+  // anillo [x,y] de una FORMA con sentido por rubro, centrado en (cx,cy) y de radio r. 100% determinista.
+  // Reutiliza la geometria de _formPoints (las mismas siluetas que el motor ya morphea) y suma 'house'/'star5'.
+  function _shapeRing(token, cx, cy, r) {
+    r = Math.max(1, r || 60);
+    let pts;
+    if (token === 'house') {
+      // casita: igual gesto que el floater 7 (cuerpo + techo a dos aguas), como anillo cerrado
+      const w = r * 0.78, b = r * 0.62, e = r * 0.2;
+      pts = [[-w, e], [-w, -e], [0, -r], [w, -e], [w, e], [w, b], [-w, b]].map(p => ({ x: p[0], y: p[1] }));
+    } else if (token === 'star5') {
+      const a = []; for (let i = 0; i < 10; i++) { const an = -Math.PI / 2 + i / 10 * TAU; const rr = i % 2 ? r * 0.45 : r; a.push({ x: Math.cos(an) * rr, y: Math.sin(an) * rr }); } pts = a;
+    } else {
+      pts = _formPoints(token, r);   // circle, square, triangle, hexagon, leaf, drop, star, plus, diamond, blob, flower...
+    }
+    return pts.map(p => [p.x + cx, p.y + cy]);
+  }
+  // POOL de formas con SENTIDO por rubro para la firma ambiental que morfea (reusa el vocabulario de _floaterShapes
+  // pero en formas NOMBRADAS, morpheables). Cada par es una transformacion intencional (no un blob aleatorio).
+  function _signatureShapePool(rubro) {
+    switch (rubro) {
+      case 'inmobiliaria': return ['house', 'square', 'diamond'];
+      case 'finanzas': case 'tech': return ['hexagon', 'diamond', 'plus', 'circle'];
+      case 'educacion': return ['square', 'plus', 'circle'];
+      case 'gastronomia': return ['circle', 'drop', 'leaf'];
+      case 'fitness': return ['triangle', 'hexagon', 'plus'];
+      case 'belleza': case 'salud': return ['flower', 'drop', 'leaf'];
+      case 'moda': return ['diamond', 'star5', 'circle'];
+      default: return ['circle', 'triangle', 'hexagon', 'square'];
+    }
+  }
   // dibujante GENERICO de escena por keyframes (la IA arma la historia con esto)
   // ---------- ICONOS DE BIBLIOTECA (Iconify) en Canvas via Path2D ----------
   // El backend resuelve un CONCEPTO ("shopping cart") -> {body,width,height} de Iconify y lo embebe
@@ -2416,16 +2487,24 @@ function _rgba(hex, a) {
         ctx.restore();
       }
     }
-    // FIRMA AMBIENTAL: la forma firma de la marca persiste como marca de agua viva (a la deriva, en la
+    // FIRMA AMBIENTAL: la FORMA firma de la marca persiste como marca de agua viva (a la deriva, en la
     // esquina OPUESTA al texto -> tambien hace contrapeso compositivo) durante el bloque de contenido
     // (statement/checklist). Asi la identidad NO se muere a mitad del reel. Se dibuja DETRAS del contenido.
     // En 'typo' se omite (el wordmark fantasma ya es la firma ambiental -> evita doble texto tenue).
-    const _mono = BG_STYLE === 'typo' ? '' : (tl.brand || '').trim().charAt(0).toUpperCase();
-    if (_mono) {
+    // MORPH LENTO: la forma MORFEA entre DOS formas del pool del rubro (elegidas por mulberry32(SEED)), con t en
+    // ping-pong derivado del reloj CLK/_holdT -> transformacion INTENCIONAL entre formas con sentido (anti-blob),
+    // no un blob aleatorio. Va SIEMPRE en la esquina ambiental (NUNCA sobre el titulo), alpha tenue como antes.
+    const _sigOn = BG_STYLE !== 'typo';
+    if (_sigOn) {
       const _wac = _accentInk(_resolveColor('accent'), 0.12);   // tone-aware: claro->oscurece, oscuro->aclara
       const _lAcc = _hexToHsl(_wac).l, _lBg = TONE === 'light' ? 0.92 : _hexToHsl((BG && BG[0]) ? BG[0] : '#223040').l;
       const _wAlpha = lerp(0.30, 0.17, clamp(Math.abs(_lAcc - _lBg) / 0.34, 0, 1));   // bajo contraste con el fondo -> mas alpha (legible sobre fondos claros / verde-sobre-verde)
       const _wph = ((tl.seed || 1) % 997) / 158;   // fase de deriva SEMBRADA por marca -> cada watermark tiene su gesto propio
+      // elige las DOS formas del pool del rubro de forma determinista (mulberry32(SEED)); si solo hay una, no morfea.
+      const _pool = _signatureShapePool(MOTIF);
+      const _sr = mulberry32(((SEED || 1) ^ 0x516A) >>> 0);
+      const _fA = _pool[(_sr() * _pool.length) | 0];
+      let _fB = _pool[(_sr() * _pool.length) | 0]; if (_fB === _fA && _pool.length > 1) _fB = _pool[(_pool.indexOf(_fA) + 1) % _pool.length];
       for (let si = 0; si < _scenes.length; si++) {
         const sc = _scenes[si];
         if (sc.type !== 'statement' && sc.type !== 'checklist') continue;
@@ -2434,16 +2513,18 @@ function _rgba(hex, a) {
         const aa = clamp(Math.min(inv(t, sc.s, sc.s + 0.5), 1 - inv(t, sc.e - tail, sc.e)), 0, 1) * _wAlpha;
         if (aa <= 0) continue;
         const leftAnch = sc.listAnchor === 'left' || sc.stmtStyle === 'left';
-        // en CHECKLIST el monograma va CHICO a la esquina superior-externa (fuera de las filas) -> no se come
-        // la legibilidad de los items (era el bug del panel: la "A" gigante DETRAS de la lista). En statement
-        // queda grande y a la deriva abajo, donde hay aire.
+        // en CHECKLIST la firma va CHICA a la esquina superior-externa (fuera de las filas) -> no se come la
+        // legibilidad de los items. En statement queda mas grande y a la deriva abajo, donde hay aire.
         const isChk = sc.type === 'checklist';
         const mx = leftAnch ? W - (isChk ? 56 : 76) : (isChk ? 56 : 76), my = isChk ? 90 : H - 138;
-        const fs = isChk ? 84 : 122;   // statement: monograma MAS CHICO y a la esquina inferior -> textura, no "letra fantasma" que cruza el texto
-        ctx.save(); ctx.globalAlpha = aa * (isChk ? 0.55 : 0.42);   // mucho mas tenue en statement (antes 1) -> deja de leerse como artefacto/glitch
-        ctx.translate(mx + Math.sin(t * CLK * 16 + _wph) * 6, my + Math.cos(t * CLK * 13 + _wph) * 6); ctx.rotate(Math.sin(t * CLK * 10 + _wph) * 0.05);   // vaiven minimo en armonicos de CLK (la marca de agua co-aparece con texto+camara -> grilla compartida)
-        ctx.font = fontStr(800, fs, 'd'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        setShadow(_rgba(_wac, 0.4), 14, 0); ctx.fillStyle = _wac; ctx.fillText(_mono, 0, 0); noShadow();   // MONOGRAMA: inicial de la marca como marca de agua (mas de marca que una figura)
+        const _rad = isChk ? 42 : 60;   // radio de la firma (antes era el tamano de fuente del monograma)
+        // ping-pong suave del morph derivado del reloj continuo: triangulo 0->1->0 sin saltos (loop, ida y vuelta).
+        const _mt = Math.abs(((_holdT * CLK * 6 + _wph) % 2) - 1);   // _holdT = tiempo continuo de la escena -> morfea durante el hold
+        const _ring = _morphRing(_shapeRing(_fA, 0, 0, _rad), _shapeRing(_fB, 0, 0, _rad), _mt);
+        ctx.save(); ctx.globalAlpha = aa * (isChk ? 0.55 : 0.42);   // mucho mas tenue (deja de leerse como artefacto)
+        ctx.translate(mx + Math.sin(t * CLK * 16 + _wph) * 6, my + Math.cos(t * CLK * 13 + _wph) * 6); ctx.rotate(Math.sin(t * CLK * 10 + _wph) * 0.05);   // vaiven minimo en armonicos de CLK (grilla compartida con texto+camara)
+        // _ring viene como [x,y]; _smoothPath espera {x,y}: path CERRADO SUAVE (Catmull-Rom) -> sin kinks
+        setShadow(_rgba(_wac, 0.4), 14, 0); ctx.fillStyle = _wac; _smoothPath(_ring.map(p => ({ x: p[0], y: p[1] }))); ctx.fill(); noShadow();
         ctx.restore();
       }
     }
