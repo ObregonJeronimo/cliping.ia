@@ -1614,8 +1614,19 @@ function _rgba(hex, a) {
         if (ap > 0) {
           const sc = lerp(0.72, 1, clamp(ap, 0, 1));
           ctx.save(); ctx.globalAlpha *= clamp(ap * 1.4, 0, 1); ctx.translate(x + c.w / 2, y); ctx.scale(sc, sc);
-          ctx.fillStyle = _rgba(A1, TONE === 'light' ? 0.14 : 0.2); ctx.strokeStyle = _rgba(_accentInk(A1, 0.5), 0.5); ctx.lineWidth = 1.5;
-          ctx.beginPath(); ctx.roundRect(-c.w / 2, -chH / 2, c.w, chH, chH / 2); ctx.fill(); ctx.stroke();
+          ctx.beginPath(); ctx.roundRect(-c.w / 2, -chH / 2, c.w, chH, chH / 2);
+          if (TONE === 'light') {
+            // PILL CASI SOLIDO en tono claro: base OPACA (crema del fondo, hue del acento) + tinte de acento
+            // encima -> el patron del fondo (halftone/dots) NO atraviesa el chip (antes 0.14 = translucido, el
+            // halftone competia DENTRO del pill). Base solida garantizada con halftone (el fondo que mas compite).
+            const _ah = _hexToHsl(A1);
+            ctx.fillStyle = _hslToHex(_ah.h, Math.min(0.5, _ah.s * 0.5), 0.965); ctx.fill();   // base opaca
+            ctx.fillStyle = _rgba(A1, BG_STYLE === 'halftone' ? 0.2 : 0.16); ctx.fill();          // tinte de acento
+          } else {
+            ctx.fillStyle = _rgba(A1, 0.2); ctx.fill();
+          }
+          ctx.strokeStyle = _rgba(_accentInk(A1, 0.5), TONE === 'light' ? 0.7 : 0.5); ctx.lineWidth = 2;
+          ctx.stroke();
           ctx.fillStyle = _accentInk(A1, 0.5); ctx.beginPath(); ctx.arc(-c.w / 2 + 17, 0, 4, 0, TAU); ctx.fill();   // punto de acento
           ctx.font = fontStr(700, 22, 't'); ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = INK;
           setShadow('rgba(0,0,0,0.4)', 4, 1); ctx.fillText(c.str, -c.w / 2 + 30, 0); noShadow();
