@@ -83,6 +83,22 @@ Pegás un **link** → Urvid genera un **video vertical 9:16 de marketing** que:
     puntos densos son el halftone INTENCIONAL del estilo riso). (b) "chevron del CTA ctaOnly pisa el texto" = el render
     real mide 29.6px de aire (fitFont nunca envuelve; el offset escala con fs). No son accionables.
 
+- **Iteración jun 17 #3** (HECHA — 21 hallazgos, 8 alta; 4 REFUTADOS por premisa falsa sobre strokeText/weights):
+  - los drawers que faltaba SEMBRAR eran el driver de sameness: **sceneSplit** (ratio/ancla/barra) + **sceneQuote**
+    (ancla + estilo de comilla big/tenue/bar) ahora varían por marca (6c7fd3e).
+  - **blob orgánico** (la "planta" de 5 elipses en interior.png) junto al wordmark -> reemplazada por una lámpara de
+    pie GEOMÉTRICA (6c7fd3e). Era el look rechazado (regla 4).
+  - **reveal hero-word** azul-sobre-azul (DataFlow "caos") -> más brillante + halo de tono opuesto (e3a7947).
+  - **técnica nueva rgbsplit** (7º corte): aberración cromática sembrada por (SEED^idx), transitoria (e3a7947).
+  - Banco: 0 visual + 0 contenido. 16/16 en todo.
+  - **PENDIENTE de #3** (verificado, próxima): (a) numberStack tiene SILUETA de columna siempre (sembra gap/ancla
+    pero no la ORIENTACIÓN) -> sumar eje no-vertical (hero+fila) SOLO n===3, recalcular x de estrella/subrayado/label
+    por-item [ALTA, medio]. (b) tratamiento de foto por marca (duotono al hue del acento + Ken-Burns sembrado) -> dos
+    marcas con la misma foto no se calcan [MEDIO]. (c) outro 'diagonal' compartido por marcas oscuras -> variar el
+    LAYOUT del end-card por SEED [MEDIO]. (d) probe: hashear POR TIPO de escena (split-vs-split, quote-vs-quote) para
+    no quedar ciega a la sameness de una escena [BAJO]. (e) banco: dar stock a tech/finanzas/default + dedup de archivos
+    por rubro adyacente [BAJO]. (f) técnica: grid editorial 'magazine' (hairlines de columna) [media].
+
 ### COLA RESTANTE (verificada por el loop #2 — próxima iteración)
 - **Técnica: tracking cinético (line-settle kerning)** [HECHO commit 5472e7f]: `_kineticDraw` con param `trackOpen`
   (default 0 -> CTAs de outro con track negativo intactos; trk NO clampeado). Display (fit>36) puede nacer ancho y
