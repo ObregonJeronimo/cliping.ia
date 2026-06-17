@@ -2116,24 +2116,57 @@ function _rgba(hex, a) {
     const _gapK = n === 3 ? [0.185, 0.21, 0.235][(_lr() * 3) | 0] : 0.26;
     const _anchY = [0.34, 0.40, 0.46][(_lr() * 3) | 0];
     const focal = (Number.isInteger(p.focal) && p.focal >= 0 && p.focal < n) ? p.focal : (_lr() * n | 0);   // foco sembrado -> no siempre la 1ra fila
+    // EJE DE ORIENTACION sembrado (SOLO n===3): la silueta del numberStack era SIEMPRE una columna vertical
+    // (el loop midio que aun sembrando gap/ancla/foco seguia siendo el driver #1 de sameness). Ahora una variante
+    // por SEED: 'columna' (3 filas, como siempre) | 'heroRow' (1 HERO grande arriba centrado + 2 chicos en FILA
+    // debajo). n===2 queda intacto (en columna; 2 numeros en fila legibles serian otro caso). En heroRow el HERO
+    // es el item focal. Determinista (el mismo _lr).
+    const _orient = (n === 3) ? (['columna', 'heroRow'][(_lr() * 2) | 0]) : 'columna';
+    // dibuja UN item completo (numero + rating + subrayado focal + label) centrado en el origen del ctx actual.
+    // 'self' = textAlign forzado center (cada item tiene su PROPIA x via translate; usado en heroRow/fila) o
+    // 'al' = la alineacion de escena (columna). El subrayado/estrella/label se calculan RELATIVOS al origen del
+    // item -> en fila cada uno cae bajo SU numero (no asume una sola x de escena).
+    const _drawItem = (it, ap, prog, isF, scale, sizeF, sizeS, alignMode) => {
+      const _suf = (it.suffix || ''), _isRating = /[★⭐]/.test(_suf), _sufC = _suf.replace(/[★⭐]/g, '');   // ★ -> estrella vectorial (no tofu)
+      // decimales como bigStat: dec se deriva del valor COMPLETO (no del animado) -> sin parpadeo de decimales en el conteo.
+      const _nv = Number(it.value) || 0, _dec = (_nv % 1 !== 0) ? 1 : 0;
+      const val = (it.prefix || '') + (_nv * prog).toFixed(_dec).replace(/\B(?=(\d{3})+(?!\d))/g, '.') + _sufC;
+      const ta = alignMode === 'self' ? 'center' : al;
+      ctx.save(); ctx.scale(scale, scale);
+      const nfs = fitFont(val, isF ? sizeF : sizeS, alignMode === 'self' ? W * 0.42 : W * 0.8, alignMode === 'self' ? 22 : 30, 800, 'd');   // clamps angostos en fila -> 2 numeros NO se recortan ni se pisan en 405px
+      ctx.font = fontStr(800, nfs, 'd'); ctx.textAlign = ta; ctx.textBaseline = 'middle';
+      ctx.fillStyle = isF ? _accentPop(A1) : (TONE === 'light' ? _accentInk(A1) : _lighten(A1, 0.12));
+      setShadow(_rgba(_accentPop(A1), isF ? 0.4 : 0.2), isF ? 18 : 12, 2); ctx.fillText(val, 0, -10); noShadow();
+      if (_isRating) { ctx.font = fontStr(800, nfs, 'd'); const _w = ctx.measureText(val).width, _sx = (ta === 'left' ? _w : _w / 2) + nfs * 0.44; _drawStarRow(1, _sx, -10, nfs * 0.34, 'left'); }   // estrella de rating al lado del numero (x derivado del ancho del PROPIO item)
+      if (isF) { const uw = nfs * 0.5, ux = ta === 'left' ? 0 : -uw / 2; ctx.fillStyle = accent(ux, 0, ux + uw, 0); ctx.beginPath(); ctx.roundRect(ux, 20, uw * eOutCubic(clamp(ap, 0, 1)), 4, 2); ctx.fill(); }   // subrayado de acento bajo el item focal (relativo a su origen)
+      if (it.label) { const _lb = String(it.label); ctx.font = fontStr(isF ? 700 : 600, fitFont(_lb, isF ? 20 : 18, alignMode === 'self' ? W * 0.38 : W * 0.74, 13, isF ? 700 : 600, 't'), 't'); ctx.fillStyle = isF ? INK : DIM; setShadow(TONE === 'light' ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.6)', 8, 0); ctx.fillText(_lb, 0, isF ? 40 : 30); noShadow(); }   // fitFont -> label entero; focal mas brillante/grande
+      ctx.restore();
+    };
+    if (_orient === 'heroRow') {
+      // HERO focal grande arriba + los otros 2 en fila debajo, cada uno con SU x -> silueta NO-columna.
+      const others = items.map((it, i) => ({ it, i })).filter((o) => o.i !== focal);
+      const heroY = H * (_anchY - 0.02), rowY = H * (_anchY + 0.21), colX = [W * 0.28, W * 0.72];   // 2 columnas para la fila inferior
+      // HERO (item focal): cuenta primero, centrado.
+      { const it = items[focal]; const d = 0.18, ap = inv(t, d, d + 0.4);
+        if (ap > 0) { const prog = eOutCubic(clamp(inv(t, d, d + 0.9), 0, 1)), pop = lerp(0.8, 1, eOutBack(clamp(ap, 0, 1)));
+          ctx.save(); ctx.globalAlpha = clamp(ap * 1.4, 0, 1); ctx.translate(W / 2, heroY); _drawItem(it, ap, prog, true, pop, 92, 0, 'self'); ctx.restore(); } }
+      // FILA inferior: 2 items chicos, cada uno en su columna -> star/underline/label POR ITEM.
+      others.forEach((o, k) => {
+        const d = 0.42 + k * 0.34, ap = inv(t, d, d + 0.4); if (ap <= 0) return;
+        const prog = eOutCubic(clamp(inv(t, d, d + 0.9), 0, 1)), pop = lerp(0.8, 1, eOutBack(clamp(ap, 0, 1)));
+        ctx.save(); ctx.globalAlpha = clamp(ap * 1.4, 0, 1) * (TONE === 'light' ? 0.95 : 0.82); ctx.translate(colX[k], rowY); _drawItem(o.it, ap, prog, false, pop, 0, 46, 'self'); ctx.restore();   // fila: numeros chicos (46), clamp angosto -> no se pisan en 405px
+      });
+      return;
+    }
+    // 'columna' (comportamiento historico): 3 filas centradas/izquierda, una sola x de escena.
     const gap = H * _gapK, startY = H * _anchY - (n - 1) * gap / 2;
     items.forEach((it, i) => {
       const isF = i === focal;
       const d = 0.18 + i * 0.42, ap = inv(t, d, d + 0.4); if (ap <= 0) return;
       const prog = eOutCubic(clamp(inv(t, d, d + 0.9), 0, 1)), y = startY + i * gap;
-      const _suf = (it.suffix || ''), _isRating = /[★⭐]/.test(_suf), _sufC = _suf.replace(/[★⭐]/g, '');   // ★ -> estrella vectorial (no tofu)
-      // decimales como bigStat: dec se deriva del valor COMPLETO (no del animado) -> sin parpadeo de decimales en el conteo.
-      const _nv = Number(it.value) || 0, _dec = (_nv % 1 !== 0) ? 1 : 0;
-      const val = (it.prefix || '') + (_nv * prog).toFixed(_dec).replace(/\B(?=(\d{3})+(?!\d))/g, '.') + _sufC;
       const pop = lerp(0.8, 1, eOutBack(clamp(ap, 0, 1)));
-      ctx.save(); ctx.globalAlpha = clamp(ap * 1.4, 0, 1) * (isF ? 1 : (TONE === 'light' ? 0.95 : 0.78)); ctx.translate(tx, y); ctx.scale(pop, pop);   // en tono CLARO NO atenuar filas 2/3 (perdian contraste); el foco se sostiene por tamano/acento/subrayado
-      const nfs = fitFont(val, isF ? 80 : 54, W * 0.8, 30, 800, 'd');
-      ctx.font = fontStr(800, nfs, 'd'); ctx.textAlign = al; ctx.textBaseline = 'middle';
-      ctx.fillStyle = isF ? _accentPop(A1) : (TONE === 'light' ? _accentInk(A1) : _lighten(A1, 0.12));
-      setShadow(_rgba(_accentPop(A1), isF ? 0.4 : 0.2), isF ? 18 : 12, 2); ctx.fillText(val, 0, -10); noShadow();
-      if (_isRating) { ctx.font = fontStr(800, nfs, 'd'); const _w = ctx.measureText(val).width, _sx = (al === 'left' ? _w : _w / 2) + nfs * 0.44; _drawStarRow(1, _sx, -10, nfs * 0.34, 'left'); }   // estrella de rating al lado del numero
-      if (isF) { const uw = nfs * 0.5, ux = al === 'left' ? 0 : -uw / 2; ctx.fillStyle = accent(ux, 0, ux + uw, 0); ctx.beginPath(); ctx.roundRect(ux, 20, uw * eOutCubic(clamp(ap, 0, 1)), 4, 2); ctx.fill(); }   // subrayado de acento bajo el plan focal (sin copy extra)
-      if (it.label) { const _lb = String(it.label); ctx.font = fontStr(isF ? 700 : 600, fitFont(_lb, isF ? 20 : 18, W * 0.74, 13, isF ? 700 : 600, 't'), 't'); ctx.fillStyle = isF ? INK : DIM; setShadow(TONE === 'light' ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.6)', 8, 0); ctx.fillText(_lb, 0, isF ? 40 : 30); noShadow(); }   // fitFont -> label entero; focal mas brillante/grande
+      ctx.save(); ctx.globalAlpha = clamp(ap * 1.4, 0, 1) * (isF ? 1 : (TONE === 'light' ? 0.95 : 0.78)); ctx.translate(tx, y);   // en tono CLARO NO atenuar filas 2/3 (perdian contraste); el foco se sostiene por tamano/acento/subrayado
+      _drawItem(it, ap, prog, isF, pop, 80, 54, 'al');
       ctx.restore();
     });
   }
