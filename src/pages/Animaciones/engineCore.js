@@ -224,6 +224,10 @@ function _rgba(hex, a) {
   // Hace que el fondo HABLE del dominio del link, no un gradiente generico. Se dibuja tenue, detras del contenido.
   let MOTIF = '';
   function setMotif(n) { MOTIF = (typeof n === 'string' && n) ? n : ''; }
+  // OUTRO ACTIVO: lo setea drawFrame cuando la escena vigente en t es un 'outro'. El motivo de fondo lo usa para
+  // NO trazarse sobre la franja vertical central donde vive el bloque marca+CTA (clip-out) + bajar su alpha ->
+  // evita que el motif (ej. el line-graph de DataFlow) cruce/pise el CTA. Determinista (depende solo del timeline).
+  let _OUTRO_ACTIVE = false;
   // TONO del video: 'dark' (texto claro sobre fondo oscuro) | 'light' (editorial: texto oscuro sobre fondo
   // claro). Que ~parte de las marcas sean claras rompe fuerte el "todos los videos se parecen". INK/DIM =
   // colores de texto que se invierten; _accentInk = el acento usado como TEXTO, legible segun el tono.
@@ -239,6 +243,18 @@ function _rgba(hex, a) {
     const a = _hexToHsl(hex || A1 || '#3aa0ff');
     if (TONE === 'light') return _hslToHex(a.h, Math.min(0.94, a.s + 0.16), Math.max(0.3, Math.min(a.l, 0.4)));
     return _lighten(hex || A1, (amt == null ? 0.55 : amt) * 0.85);   // un punto menos pastel -> color mas rico (no "candy")
+  }
+  // TINTA del CTA del cierre: igual que _accentInk salvo cuando el fondo es SUNBURST (calido, naranja) y el acento
+  // es FRIO (azul/cian ~190-280) -> ahi el acento frio sobre el naranja es un choque complementario estridente.
+  // En ese caso giro el hue del CTA hacia AMBAR calido (armoniza con el sol) y lo resuelvo con _accentInk -> legible
+  // y sin estridencia. En cualquier otro caso = _accentInk (no toca el resto de las marcas). Determinista.
+  function _ctaInk(hex, amt) {
+    const a = _hexToHsl(hex || A1 || '#3aa0ff');
+    if (BG_STYLE === 'sunburst' && a.h >= 190 && a.h <= 280 && a.s > 0.18) {
+      const warm = _hslToHex(40, clamp(a.s + 0.08, 0.5, 0.9), clamp(a.l, 0.46, 0.62));   // ambar calido en el mismo registro que el sunburst
+      return _accentInk(warm, amt);
+    }
+    return _accentInk(hex, amt);
   }
   // luminancia relativa WCAG (sRGB linearizado). 0=negro, 1=blanco.
   function _luminance(hex) {
@@ -760,9 +776,20 @@ function _rgba(hex, a) {
     // mas presencia + CONTRASTE: el color del motivo se aclara sobre fondo oscuro y se oscurece sobre claro
     // (antes era el acento al mismo hue que el fondo -> invisible: verde/verde, rojo/rojo). Tiene que LEERSE.
     const _mc = _accentInk(_resolveColor('accent'), 0.42);
-    const col = _rgba(_mc, TONE === 'light' ? 0.2 : 0.24);
-    const col2 = _rgba(_mc, TONE === 'light' ? 0.1 : 0.12);
+    const _oa = _OUTRO_ACTIVE ? 0.5 : 1;   // en el cierre el motivo baja ~50% -> deja de competir con el bloque marca+CTA
+    const col = _rgba(_mc, (TONE === 'light' ? 0.2 : 0.24) * _oa);
+    const col2 = _rgba(_mc, (TONE === 'light' ? 0.1 : 0.12) * _oa);
     ctx.save();
+    // CLIP-OUT del CTA en el cierre: el bloque marca+CTA del outro vive en la columna vertical central; recortamos
+    // esa franja del trazado del motivo (rect exterior + rect interior, regla even-odd) -> el motivo NO cruza ni
+    // cae sobre el CTA/chevron (ej. el line-graph de DataFlow). Geometrico/determinista; el motif sigue a los lados.
+    if (_OUTRO_ACTIVE) {
+      const cxg = W / 2, halfW = W * 0.31, gx0 = cxg - halfW, gx1 = cxg + halfW, gy0 = H * 0.3, gy1 = H * 0.88;
+      ctx.beginPath();
+      ctx.rect(-30, -30, W + 60, H + 60);
+      ctx.rect(gx0, gy0, gx1 - gx0, gy1 - gy0);
+      ctx.clip('evenodd');
+    }
     if (rubro === 'inmobiliaria') {
       const rnd = mulberry32((SEED || 1) ^ 0x5417); const baseY = H * 0.99; let x = -24;
       while (x < W + 24) {
@@ -1707,6 +1734,7 @@ function _rgba(hex, a) {
     function ctaButton(anchorX, py, align) {
       const cta = inv(t, 1.1, 1.6); if (cta <= 0) return;
       const ctaStr = (p.cta || 'Visita ahora');
+      const cInk = _ctaInk(A1, 0.5);   // acento del CTA, calentado si choca con el sunburst frio
       const fs = fitFont(ctaStr, 32, W * 0.74, 18, 800), isL = align === 'left', isR = align === 'right';
       const appear = eOutBack(clamp(cta, 0, 1));
       ctx.save();
@@ -1714,15 +1742,15 @@ function _rgba(hex, a) {
       ctx.translate(0, (1 - appear) * 12);
       ctx.font = fontStr(800, fs, 'd');
       ctx.textAlign = isL ? 'left' : isR ? 'right' : 'center'; ctx.textBaseline = 'middle';
-      ctx.fillStyle = _accentInk(A1, 0.5);
+      ctx.fillStyle = cInk;
       if (TONE !== 'light') _softShadow('rgba(0,0,0,0.4)', 6, 1);
       ctx.fillText(ctaStr, anchorX, py); noShadow();
       const tw = Math.min(W * 0.74, ctx.measureText(ctaStr).width), ux = isL ? anchorX : isR ? anchorX - tw : anchorX - tw / 2;
       const up = eOutCubic(clamp(inv(t, 1.3, 1.85), 0, 1));
-      ctx.fillStyle = _accentInk(A1, 0.5);   // subrayado tan brillante como el texto (legible en oscuro)
+      ctx.fillStyle = cInk;   // subrayado tan brillante como el texto (legible en oscuro)
       ctx.beginPath(); ctx.roundRect(ux, py + fs * 0.62, tw * up, 5, 2.5); ctx.fill();
       const ar = inv(t, 1.6, 2.0);
-      if (ar > 0) { ctx.save(); ctx.globalAlpha *= ar; ctx.strokeStyle = _accentInk(A1, 0.5); ctx.lineWidth = 4; ctx.lineCap = 'round'; const acx = isL ? ux + tw / 2 : isR ? anchorX - tw / 2 : anchorX, ay = py + fs * 0.62 + 22; ctx.beginPath(); ctx.moveTo(acx - 13, ay); ctx.lineTo(acx, ay + 11); ctx.lineTo(acx + 13, ay); ctx.stroke(); ctx.restore(); }
+      if (ar > 0) { ctx.save(); ctx.globalAlpha *= ar; ctx.strokeStyle = cInk; ctx.lineWidth = 4; ctx.lineCap = 'round'; const acx = isL ? ux + tw / 2 : isR ? anchorX - tw / 2 : anchorX, ay = py + fs * 0.62 + 22; ctx.beginPath(); ctx.moveTo(acx - 13, ay); ctx.lineTo(acx, ay + 11); ctx.lineTo(acx + 13, ay); ctx.stroke(); ctx.restore(); }
       ctx.restore();
       const burst = inv(t, 1.1, 1.55);
       if (burst > 0 && burst < 1) {
@@ -1751,10 +1779,10 @@ function _rgba(hex, a) {
         const cta = p.cta || 'Visita ahora', fs = fitFont(cta, 72, W * 0.86, 34, 800);
         ctx.save(); ctx.translate(cx, cy + 34); ctx.scale(0.92 + 0.08 * tg, 0.92 + 0.08 * tg);
         ctx.font = fontStr(800, fs, 'd'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        const _cg = ctx.createLinearGradient(-130, -fs * 0.6, 130, fs * 0.6); _cg.addColorStop(0, _accentInk(A1, 0.55)); _cg.addColorStop(1, _accentInk(A2, 0.42));
+        const _cg = ctx.createLinearGradient(-130, -fs * 0.6, 130, fs * 0.6); _cg.addColorStop(0, _ctaInk(A1, 0.55)); _cg.addColorStop(1, _ctaInk(A2, 0.42));
         _softShadow('rgba(0,0,0,0.4)', 8, 2); _kineticDraw(cta, _cg, 'center', t, 1.0, -fs * 0.02); noShadow(); ctx.restore();
         const ar = inv(t, 1.5, 1.9);
-        if (ar > 0) { ctx.save(); ctx.globalAlpha = ar; ctx.strokeStyle = _lighten(A1, 0.4); ctx.lineWidth = 4; ctx.lineCap = 'round'; const ay = cy + 34 + fs * 0.7 + 20; ctx.beginPath(); ctx.moveTo(cx - 16, ay); ctx.lineTo(cx, ay + 14); ctx.lineTo(cx + 16, ay); ctx.stroke(); ctx.restore(); }
+        if (ar > 0) { ctx.save(); ctx.globalAlpha = ar; ctx.strokeStyle = _ctaInk(A1, 0.4); ctx.lineWidth = 4; ctx.lineCap = 'round'; const ay = cy + 34 + fs * 0.7 + 20; ctx.beginPath(); ctx.moveTo(cx - 16, ay); ctx.lineTo(cx, ay + 14); ctx.lineTo(cx + 16, ay); ctx.stroke(); ctx.restore(); }
       }
     } else if (comp === 'diagonal') {
       // end-card DIAGONAL: marca en una esquina superior + CTA en la inferior OPUESTA (rompe el cierre centrado).
@@ -1789,10 +1817,10 @@ function _rgba(hex, a) {
         const cta = p.cta || 'Visita ahora', fs = fitFont(cta, 80, W * 0.88, 36, 800);
         ctx.save(); ctx.translate(cx, H * 0.45); ctx.scale(0.9 + 0.1 * tg, 0.9 + 0.1 * tg);
         ctx.font = fontStr(800, fs, 'd'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        const _cg = ctx.createLinearGradient(-130, -fs * 0.6, 130, fs * 0.6); _cg.addColorStop(0, _accentInk(A1, 0.55)); _cg.addColorStop(1, _accentInk(A2, 0.42));
+        const _cg = ctx.createLinearGradient(-130, -fs * 0.6, 130, fs * 0.6); _cg.addColorStop(0, _ctaInk(A1, 0.55)); _cg.addColorStop(1, _ctaInk(A2, 0.42));
         _softShadow(TONE === 'light' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.45)', 8, 2); _kineticDraw(cta, _cg, 'center', t, 0.5, -fs * 0.02); noShadow(); ctx.restore();
         const ar = inv(t, 1.0, 1.4);
-        if (ar > 0) { ctx.save(); ctx.globalAlpha = ar; ctx.strokeStyle = _accentInk(A1, 0.5); ctx.lineWidth = 4; ctx.lineCap = 'round'; const ay = H * 0.45 + fs * 0.66 + 22; ctx.beginPath(); ctx.moveTo(cx - 15, ay); ctx.lineTo(cx, ay + 12); ctx.lineTo(cx + 15, ay); ctx.stroke(); ctx.restore(); }
+        if (ar > 0) { ctx.save(); ctx.globalAlpha = ar; ctx.strokeStyle = _ctaInk(A1, 0.5); ctx.lineWidth = 4; ctx.lineCap = 'round'; const ay = H * 0.45 + fs * 0.66 + 22; ctx.beginPath(); ctx.moveTo(cx - 15, ay); ctx.lineTo(cx, ay + 12); ctx.lineTo(cx + 15, ay); ctx.stroke(); ctx.restore(); }
       }
       const bn = clamp(inv(t, 1.1, 1.6), 0, 1);
       if (bn > 0) { ctx.save(); ctx.globalAlpha *= bn; const bfs = fitFont(p.brand || '', 24, W * 0.6, 14, 700, 'd'); ctx.font = fontStr(700, bfs, 'd'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = DIM; ctx.fillText(p.brand || '', cx, H * 0.84); ctx.restore(); }
@@ -2756,6 +2784,7 @@ function _rgba(hex, a) {
     setShadowMode(o.shadowMode);
     setMotif(o.motif);
     setSubstrate(o.substrate);
+    _OUTRO_ACTIVE = false;   // el lab de fondo no tiene timeline -> nunca recorta como outro
     ctx.clearRect(0, 0, W, H);
     drawBg(t);
   }
@@ -2783,6 +2812,9 @@ function _rgba(hex, a) {
     const _cr = mulberry32(((SEED || 1) ^ 0xCA3F1) >>> 0);
     const _PHI = _harm(_cr, 13, 20), _dir = _cr() < 0.5 ? -1 : 1, _ph = _cr() * 6.28;   // camara snapeada a la grilla de CLK -> no bate contra la deriva del fondo (mismos armonicos)
     const _camPanX = Math.sin(t * _PHI + _ph) * (8 + _cr() * 7) * _dir, _camPanY = Math.sin(t * _PHI * 2 + _ph) * (4 + _cr() * 4), _camBreath = 1 + Math.cos(t * _PHI) * 0.006;
+    // OUTRO vigente en t (incluye un margen de cross-fade hacia adelante) -> el motivo de fondo se aparta del CTA.
+    _OUTRO_ACTIVE = false;
+    for (const _sc of layout(tl)) { if (_sc.type === 'outro' && t >= _sc.s - 0.3 && t < _sc.e) { _OUTRO_ACTIVE = true; break; } }
     drawBg(t, _camPanX * 0.32, _camPanY * 0.32, 1.045 * _camBreath);   // el "breath" (respiracion) vive en el FONDO, no en el texto -> el fondo tiene vida y el texto queda clavado
     if (opts && opts.bgOnly) return;   // modo "solo fondo" (para la sonda de legibilidad: full vs bg -> mascara de contenido)
     const _scenes = layout(tl);
