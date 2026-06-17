@@ -744,6 +744,24 @@ if __name__ == "__main__":
         return (tl.get("rubro"), tl.get("signatureForm"))
 
     written, seen, seen_pair, seen_rf, seen_bg = [], set(), set(), set(), set()
+    # COBERTURA DE SISTEMAS DE FONDO (solo banco): el banco es la auditoria visual del catalogo de fondos, asi
+    # que la galeria DEBE mostrar cada familia renderizable al menos una vez. Antes el eje bg_system con peso
+    # ralo (flowfield/bands) NUNCA aparecia -> esos sistemas no se auditaban. Solo las marcas con ESTILO NO
+    # bloqueado pueden cambiar de familia (en las bloqueadas el bgStyle ES la firma del estilo); ademas son
+    # POCAS. Asi que NO desperdiciamos esos slots: la cobertura apunta solo a las familias que NINGUN estilo
+    # bloqueado del banco ya garantiza (las "ortogonales-solo"), y dentro de esas PRIORIZA las que pide la
+    # auditoria (flowfield/morphfield primero). Determinista: el re-roll avanza la semilla por la constante aurea.
+    _n_styles = len(STYLE_ORDER)
+    _locked_provided = {STYLE_PRESETS[STYLE_ORDER[j % _n_styles]]["bg"]
+                        for j in range(len(TEST_BRANDS))
+                        if STYLE_ORDER[j % _n_styles] in _BG_LOCKED_STYLES} & _RENDERABLE_BG
+    bg_targets = set(_RENDERABLE_BG) - _locked_provided   # familias que SOLO el eje ortogonal puede aportar
+    # rango de prioridad para desempatar cobertura: lo que la auditoria pide primero al frente (rank bajo gana).
+    # Hay 5 slots ortogonales para 6 familias ortogonales-solo -> una queda afuera; que sea de las "nice-to-have"
+    # (bands/aurora/spotlight/field), NUNCA flowfield ni mesh (ambas en la lista dura de la auditoria).
+    _BG_PRIORITY = ("flowfield", "mesh", "bands", "aurora", "spotlight", "field")
+    def _bg_rank(b):
+        return _BG_PRIORITY.index(b) if b in _BG_PRIORITY else len(_BG_PRIORITY)
     for i, (name, ind) in enumerate(TEST_BRANDS):
         # ANTI-COLISION (solo en el banco de prueba): re-roll la semilla para que las 12 marcas nunca
         # repitan carta. Intento evitar TAMBIEN la arquitectura de layout, que dos del mismo rubro
@@ -755,26 +773,41 @@ if __name__ == "__main__":
         seed = se.stable_seed(name, ind)
         _brand_imgs = _stock_for(se.preset(ind, "", "medio", seed)["rubro"])   # fotos por rubro (visual si; abstracto no)
         tl = generate(name, ind, seed=seed, style=sty, images=_brand_imgs)
-        tries, best = 0, None
+        # Escaneo el re-roll guardando el MEJOR candidato por TIER de prioridad (todo determinista). Tiers, de
+        # mejor a peor: (1) carta unica + cubre familia faltante + par/forma/fondo distintos; (2) unica + cubre
+        # familia faltante; (3) totalmente distinta (sig+par+forma+fondo); (4) solo carta unica. La cobertura
+        # (tiers 1-2) es lo que mete flowfield/bands en la galeria sin tocar produccion ni romper la unicidad.
+        # En los tiers de cobertura, entre varios alcanzables gana la familia de menor rank (_BG_PRIORITY).
+        cand = {}   # tier -> (rank, seed, tl). tiers 1-2: gana rank bajo; tiers 3-4: 1ro que aparece (rank fijo).
+        tries = 0
         while tries < 28:
             sig_ok = _sig(tl) not in seen
             pair_ok = _pair(tl) not in seen_pair
             rf_ok = _rf(tl) not in seen_rf
             bg_ok = tl.get("bgStyle") not in seen_bg   # familia de fondo no repetida (showcase de sistemas variados)
-            if sig_ok and pair_ok and rf_ok and bg_ok:
-                best = None
+            covers_new = sig_ok and tl.get("bgStyle") in bg_targets   # unica Y aporta una familia aun no vista
+            all_distinct = sig_ok and pair_ok and rf_ok and bg_ok
+            tier = (1 if (covers_new and all_distinct) else 2 if covers_new
+                    else 3 if all_distinct else 4 if sig_ok else None)
+            if tier is not None:
+                rank = _bg_rank(tl.get("bgStyle")) if tier in (1, 2) else 0
+                if tier not in cand or rank < cand[tier][0]:
+                    cand[tier] = (rank, seed, tl)
+            # corto apenas tengo tier-1 cubriendo la familia de MAXIMA prioridad faltante (no se puede mejorar)
+            if 1 in cand and cand[1][0] == min((_bg_rank(b) for b in bg_targets), default=0):
                 break
-            if sig_ok and best is None:
-                best = (seed, tl)  # cumple la garantia dura; lo guardo por si no logro evitar par/forma/fondo
             seed = (seed + 0x9E3779B9) & 0xFFFFFFFF
             tl = generate(name, ind, seed=seed, style=sty, images=_brand_imgs)
             tries += 1
-        if best is not None and _sig(tl) in seen:
-            seed, tl = best  # no se pudo evitar par/forma/fondo en N tiros -> uso la mejor carta-unica hallada
+        for tier in (1, 2, 3, 4):
+            if tier in cand:
+                _, seed, tl = cand[tier]
+                break
         seen.add(_sig(tl))
         seen_pair.add(_pair(tl))
         seen_rf.add(_rf(tl))
         seen_bg.add(tl.get("bgStyle"))
+        bg_targets.discard(tl.get("bgStyle"))   # familia cubierta -> ya no la perseguimos
         slug = "".join(c for c in name.lower().replace(" ", "-") if c.isalnum() or c == "-")
         path = os.path.join(out_dir, f"{i:02d}-{slug}.json")
         json.dump(tl, open(path, "w", encoding="utf-8"), ensure_ascii=False, indent=2)

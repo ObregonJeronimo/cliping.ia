@@ -98,16 +98,17 @@ def _weighted_pick(rng: random.Random, options, weights):
 #   morphfield gran silueta que morfea         | sunburst   rayos retro 70s
 #   halftone   trama riso de puntos            | brutalist  grilla cruda + slab (oscuro)
 _BG_SYSTEMS = {
-    "mesh":       (0.16, ("dark", "light")),
-    "field":      (0.16, ("dark", "light")),
-    "spotlight":  (0.13, ("dark", "light")),
+    "mesh":       (0.15, ("dark", "light")),
+    "field":      (0.15, ("dark", "light")),
+    "spotlight":  (0.12, ("dark", "light")),
     "bands":      (0.12, ("dark", "light")),
     "aurora":     (0.11, ("dark", "light")),
-    "halftone":   (0.09, ("dark", "light")),
-    "sunburst":   (0.08, ("dark", "light")),
-    "flowfield":  (0.07, ("dark",)),            # campo de lineas: pide fondo oscuro (en claro lava -> blanco/blanco)
+    "flowfield":  (0.11, ("dark",)),            # campo de lineas: pide fondo oscuro (en claro lava -> blanco/blanco).
+                                                # subido (0.07->0.11): con peso ralo NUNCA salia en el banco -> no se auditaba.
+    "halftone":   (0.08, ("dark", "light")),
+    "sunburst":   (0.07, ("dark", "light")),
     "morphfield": (0.05, ("dark", "light")),    # protagonico: raro a proposito (no abruma la galeria)
-    "brutalist":  (0.03, ("dark",)),            # slab crudo: el contraste vive en oscuro
+    "brutalist":  (0.04, ("dark",)),            # slab crudo: el contraste vive en oscuro
 }
 
 
