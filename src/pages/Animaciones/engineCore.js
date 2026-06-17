@@ -216,6 +216,22 @@ function _rgba(hex, a) {
     if (TONE === 'light') return _hslToHex(a.h, Math.min(0.94, a.s + 0.16), Math.max(0.3, Math.min(a.l, 0.4)));
     return _lighten(hex || A1, (amt == null ? 0.55 : amt) * 0.85);   // un punto menos pastel -> color mas rico (no "candy")
   }
+  // luminancia relativa WCAG (sRGB linearizado). 0=negro, 1=blanco.
+  function _luminance(hex) {
+    let r = 1, g = 1, b = 1;
+    if (typeof hex === 'string' && /^#[0-9a-fA-F]{6}$/.test(hex)) {
+      const n = parseInt(hex.slice(1), 16); r = ((n >> 16) & 255) / 255; g = ((n >> 8) & 255) / 255; b = (n & 255) / 255;
+    }
+    const lin = (c) => (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+    return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+  }
+  // tinta del CUERPO segun el fondo: elige oscura/clara por luminancia para que el texto SIEMPRE contraste
+  // sobre el fondo enriquecido (la crema tintada baja la luminancia -> el negro editorial calido sigue
+  // legible; si el fondo se oscureciera mucho, devuelve la tinta clara). Reusa los tokens INK/DIM de la marca.
+  function _wcagInk(bgHex) {
+    // umbral 0.42: por encima -> fondo claro -> tinta oscura; por debajo -> tinta clara. (negro editorial L~0.018)
+    return _luminance(bgHex) > 0.42 ? '#1c1510' : '#fbf6ec';
+  }
   // relleno/borde de cards y paneles segun el tono (blanco translucido en oscuro, negro translucido en claro)
   function _panelFill() { return TONE === 'light' ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.10)'; }
   function _panelStroke() { return TONE === 'light' ? 'rgba(0,0,0,0.13)' : 'rgba(255,255,255,0.20)'; }
@@ -739,12 +755,25 @@ function _rgba(hex, a) {
     if (!blobs.length) _buildBg();
     const pal = _meshPalette();
     const aH = _hexToHsl(A1 || '#3aa0ff');
-    const c0 = _hslToHex(aH.h, 0.16, 0.955), c1 = _hslToHex(aH.h, 0.12, 0.90);
-    const g = ctx.createLinearGradient(0, 0, W * 0.3, H);
-    g.addColorStop(0, c0); g.addColorStop(1, c1);
+    // CREMA TINTADA (no blanco-PowerPoint): el tinte va HACIA EL HUE DEL ACENTO a baja saturacion y la
+    // luminancia baja un escalon (papel premium tintado, no near-white plano). 3 stops en diagonal -> mas
+    // "materia" (contraste de material) que el degradado de 2 stops casi-uniforme anterior. Determinista
+    // (mulberry32(SEED)); el angulo de la diagonal varia por marca para que no compartan el mismo lavado.
+    const _cr = mulberry32((SEED || 1) ^ 0x11A7E);
+    const c0 = _hslToHex(aH.h, 0.26, 0.928), c1 = _hslToHex(aH.h - 8, 0.22, 0.882), c2 = _hslToHex(aH.h + 10, 0.30, 0.842);
+    const ga = 0.18 + _cr() * 0.5;   // direccion de la diagonal sembrada por marca
+    const g = ctx.createLinearGradient(W * (0.5 - 0.5 * Math.cos(ga)), 0, W * (0.5 + 0.7 * Math.cos(ga)), H);
+    g.addColorStop(0, c0); g.addColorStop(0.55, c1); g.addColorStop(1, c2);
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    // VINIETA/GRADIENTE RADIAL del acento (muy sutil, multiply) -> profundidad: el centro queda luminoso
+    // para el texto y los bordes ganan riqueza cromatica del rubro. Off-center sembrado, deriva en CLK.
     ctx.save(); ctx.globalCompositeOperation = 'multiply';
-    const spots = [[0.24, 0.28, pal[0], 0.20], [0.80, 0.70, pal[3], 0.14], [0.62, 0.16, pal[1], 0.11]];
+    const vink = _hslToHex(aH.h, clamp(aH.s + 0.1, 0.4, 0.8), 0.5);
+    const vcx = W * (0.34 + 0.32 * _cr()) + Math.sin(t * CLK * 2) * 14, vcy = H * (0.3 + 0.28 * _cr()) + Math.cos(t * CLK * 2) * 12;
+    const vg = ctx.createRadialGradient(vcx, vcy, H * 0.2, vcx, vcy, H * 0.95);
+    vg.addColorStop(0, _rgba(vink, 0)); vg.addColorStop(0.62, _rgba(vink, 0.05)); vg.addColorStop(1, _rgba(vink, 0.13));
+    ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+    const spots = [[0.24, 0.28, pal[0], 0.22], [0.80, 0.70, pal[3], 0.16], [0.62, 0.16, pal[1], 0.13]];
     for (let i = 0; i < spots.length; i++) {
       const s = spots[i];
       const cx = W * s[0] + Math.sin(t * CLK * 3 + i) * 20, cy = H * s[1] + Math.cos(t * CLK * 2 + i) * 16;   // spots claros en armonicos de CLK
@@ -753,6 +782,10 @@ function _rgba(hex, a) {
       ctx.fillStyle = gl; ctx.fillRect(0, 0, W, H);
     }
     ctx.restore();
+    // GARANTIA DE CONTRASTE DEL CUERPO: tras enriquecer la crema, fija la tinta por luminancia del fondo
+    // (la crema tintada baja la L pero sigue clara -> negro editorial). Si algun rubro tintara muy oscuro,
+    // _wcagInk salta a tinta clara. No oscurece tanto como para perder el texto claro.
+    INK = _wcagInk(c1); DIM = INK === '#1c1510' ? '#564a3e' : '#efe6d6';
     // tratamiento estructural del ESTILO adaptado a tono CLARO (grilla / franja / rayos / lineas / puntos)
     // -> los estilos claros (swiss, handmade, brutalist-claro, etc.) dejan de compartir el mismo fondo.
     const aink = _accentInk(pal[0], 0.5);
@@ -874,7 +907,8 @@ function _rgba(hex, a) {
     if (MOTIF) _drawMotif(MOTIF, t, pal);   // motivo contextual tambien en tono claro
     if (BG_STYLE !== 'speedlines' && BG_STYLE !== 'brutalist' && BG_STYLE !== 'broadcast' && BG_STYLE !== 'cyber' && BG_STYLE !== 'hud') _drawFloaters(t);   // objetos flotantes que rellenan los vacios
     const v = ctx.createRadialGradient(W / 2, H * 0.46, H * 0.32, W / 2, H * 0.5, H * 0.82);
-    v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(60,45,35,0.10)');
+    const vedge = _hslToHex(aH.h, clamp(aH.s * 0.6, 0.18, 0.42), 0.22);   // borde tintado al acento (no marron generico) -> mas premium
+    v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(0.7, _rgba(vedge, 0.05)); v.addColorStop(1, _rgba(vedge, 0.16));
     ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
     _drawSubstrate(t);
     _filmGrain(t);
