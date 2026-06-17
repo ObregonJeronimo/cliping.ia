@@ -83,6 +83,30 @@ function _rgba(hex, a) {
   };
   const smooth = t => t * t * (3 - 2 * t);
   const TAU = Math.PI * 2;
+  // COREOGRAFIA de entrada multi-elemento (ref docs/INVESTIGACION-MOTION.md "choreography"): que las
+  // entradas NO caigan todas a la vez ni con el mismo gesto. Un STAGGER sembrado por SEED elige, por escena
+  // (salt distinto -> el checklist y el numberStack de la MISMA marca no comparten ritmo), un paso entre items
+  // (step ~0.06-0.12s) y una DIRECCION del gesto de entrada (desde arriba / desde abajo / desde el lateral /
+  // alterna lado por fila / desde el centro hacia afuera). El asentamiento de cada item usa _spring (overshoot
+  // premium). Determinista (mulberry32/SEED, sin Math.random/Date.now). Reproducible en Skia (QA) y Chromium.
+  const _STAGGER_DIRS = ['down', 'up', 'side', 'altSide', 'center'];
+  function _staggerPlan(salt) {
+    const r = mulberry32(((SEED || 1) ^ (salt >>> 0)) >>> 0);
+    const step = 0.06 + r() * 0.06;                              // 0.06..0.12s entre items (sembrado)
+    const dir = _STAGGER_DIRS[(r() * _STAGGER_DIRS.length) | 0];  // gesto de entrada sembrado
+    return { step, dir };
+  }
+  // Offset de entrada (dx,dy) de un item segun la direccion del plan y su progreso de asentamiento sp (0->1, ya
+  // pasado por _spring). amt = magnitud en px. i/n posicionan al item para 'altSide'/'center'. En el asentamiento
+  // sp->1 el offset -> 0 (con el leve overshoot del spring): el elemento "aterriza" en su lugar.
+  function _staggerOffset(dir, i, n, sp, amt) {
+    const k = (1 - sp) * amt;
+    if (dir === 'up') return [0, -k];
+    if (dir === 'side') return [-k, 0];
+    if (dir === 'altSide') return [(i % 2 ? -1 : 1) * k, 0];
+    if (dir === 'center') { const mid = (n - 1) / 2; const s = i < mid ? -1 : (i > mid ? 1 : 0); return [0, s * k]; }
+    return [0, k];   // 'down' (default): cae desde arriba
+  }
   let _holdT = 0;   // tiempo CONTINUO de la escena actual (para idle-loops durante el hold; el dibujo base usa tFed congelado)
   let _sceneIdx = 0, _sceneTot = 0;   // posicion de la escena actual (1..N) + total -> folio editorial "NN / NN"
   let _BRAND = '';  // nombre de marca del timeline (lo usa el eyebrow del statement para anclar el tercio superior)
@@ -1440,11 +1464,15 @@ function _rgba(hex, a) {
     if (_lay === 'chips') { _listChips(items, t); return; }
     const gap = (items.length >= 4 ? 58 : 70), startY = H * 0.46 - (items.length - 1) * gap / 2;
     const row = style === 'bar' ? _rowBar : style === 'number' ? _rowEditorial : style === 'dash' ? _rowPlain : _rowCard;
+    // STAGGER coreografiado: paso entre filas + direccion del gesto sembrados por SEED (el checklist NO entra
+    // todo junto ni siempre deslizando desde el mismo lado). Asentamiento por _spring (overshoot premium).
+    const { step, dir } = _staggerPlan(0xC4EC15);
     items.forEach((label, i) => {
-      const d = 0.5 + i * 0.42, rin = inv(t, d, d + 0.55);
+      const d = 0.5 + i * step, rin = inv(t, d, d + 0.55);
       if (rin <= 0) return;
-      const x = rx, y = startY + i * gap, slide = lerp(46, 0, eOutBack(rin));
-      ctx.save(); ctx.globalAlpha *= clamp(rin * 1.5, 0, 1); ctx.translate(slide, 0);
+      const x = rx, sp = _spring(clamp(rin, 0, 1), { zeta: 0.5, freq: 2.1 }), y = startY + i * gap;
+      const [ox, oy] = _staggerOffset(dir, i, items.length, sp, 46);
+      ctx.save(); ctx.globalAlpha *= clamp(rin * 1.5, 0, 1); ctx.translate(ox, oy);
       row(label, x, y, i, t, d);
       ctx.restore();
     });
@@ -1616,9 +1644,12 @@ function _rgba(hex, a) {
     }
     const mr = eOutCubic(clamp(inv(t, 0.05, 0.5), 0, 1));   // marca de acento sobre el titular (encuadre)
     if (mr > 0) { ctx.save(); ctx.fillStyle = _accentInk(A1, 0.5); ctx.beginPath(); ctx.roundRect(ax, topY - efs - 28, 66 * mr, 6, 3); ctx.fill(); ctx.restore(); }
+    // STAGGER sembrado del wipe por linea (paso entre lineas via SEED -> dos statements editoriales NO comparten
+    // la misma cadencia de revelado). El reveal por mascara (firma editorial) se mantiene.
+    const _edStep = 0.16 + _staggerPlan(0xED17A1).step;
     const lastIdx = lines.length - 1;
     lines.forEach((ln, i) => {
-      const pr = eOutCubic(inv(t, 0.14 + i * 0.16, 0.14 + i * 0.16 + 0.5)); if (pr <= 0) return;
+      const pr = eOutCubic(inv(t, 0.14 + i * _edStep, 0.14 + i * _edStep + 0.5)); if (pr <= 0) return;
       const ly = topY + i * lh;
       ctx.save();
       ctx.beginPath(); ctx.rect(ax - 6, ly - efs, (maxW + 14) * pr, efs * 1.34); ctx.clip();   // reveal por mascara (wipe)
@@ -1665,12 +1696,17 @@ function _rgba(hex, a) {
         ctx.restore();
       }
     }
+    // STAGGER coreografiado de las lineas: paso sembrado por SEED + asentamiento por _spring (overshoot premium)
+    // en vez del eOutCubic plano. El gesto de entrada sigue el eje natural del estilo (riseX = empuje lateral para
+    // 'left'; vertical para los centrados) -> las lineas no aparecen todas con el mismo timing/curva.
+    const _stStep = _staggerPlan(0x57A7E2).step;
     function drawLines(ox, align, riseX) {
       ctx.font = fontStr(800, fs, 'd'); ctx.textBaseline = 'middle'; ctx.textAlign = align;
       lines.forEach((ln, i) => {
-        const pr = eOutCubic(inv(t, 0.16 + i * 0.24, 0.16 + i * 0.24 + 0.55)); if (pr <= 0) return;
-        ctx.save(); ctx.globalAlpha *= pr; ctx.fillStyle = INK; setShadow('rgba(0,0,0,0.5)', 6, 2);   // sombra -> legible sobre fondos calidos/ocupados
-        ctx.fillText(ln, ox + (riseX ? (1 - pr) * 18 : 0), topY + i * lh + (riseX ? 0 : (1 - pr) * 24)); noShadow(); ctx.restore();
+        const d = 0.16 + i * (0.16 + _stStep), raw = inv(t, d, d + 0.55); if (raw <= 0) return;
+        const sp = _spring(clamp(raw, 0, 1), { zeta: 0.5, freq: 2.1 });
+        ctx.save(); ctx.globalAlpha *= clamp(raw * 1.3, 0, 1); ctx.fillStyle = INK; setShadow('rgba(0,0,0,0.5)', 6, 2);   // sombra -> legible sobre fondos calidos/ocupados
+        ctx.fillText(ln, ox + (riseX ? (1 - sp) * 18 : 0), topY + i * lh + (riseX ? 0 : (1 - sp) * 24)); noShadow(); ctx.restore();
       });
     }
     if (left) {
@@ -2251,14 +2287,21 @@ function _rgba(hex, a) {
     const kick = (p.kicker || '').toUpperCase();
     if (kick) { const kp = inv(t, 0.1, 0.5); if (kp > 0) { ctx.save(); ctx.globalAlpha = kp; ctx.font = fontStr(700, 18, 'a'); ctx.fillStyle = _accentInk(A1, 0.42); ctx.textAlign = al; ctx.textBaseline = 'middle'; ctx.fillText(kick, ax, startY - fs * 0.74); ctx.restore(); } }
     ctx.textAlign = al; ctx.textBaseline = 'middle'; ctx.font = fontStr(800, fs, 'd');
+    // STAGGER coreografiado (afinado): paso entre palabras + direccion del gesto sembrados por SEED; asentamiento
+    // por _spring (overshoot premium) en vez de eOutBack. La palabra aterriza desde el eje del plan (arriba/abajo/
+    // lateral/centro) -> el apilado se siente compuesto, no mecanico.
+    const { step: _rvStep, dir: _rvDir } = _staggerPlan(0x5EE7A1);
     words.forEach((wd, i) => {
-      const lp = eOutBack(clamp(inv(t, 0.22 + i * 0.13, 0.22 + i * 0.13 + 0.5), 0, 1)); if (lp <= 0) return;
-      ctx.save(); ctx.globalAlpha = clamp(lp * 1.5, 0, 1); const yy = startY + i * lh + (1 - lp) * 24;
+      const raw = inv(t, 0.22 + i * (0.07 + _rvStep), 0.22 + i * (0.07 + _rvStep) + 0.5); if (raw <= 0) return;
+      const lp = _spring(clamp(raw, 0, 1), { zeta: 0.46, freq: 2.1 });
+      ctx.save(); ctx.globalAlpha = clamp(raw * 1.5, 0, 1);
+      const [ox, oy] = _staggerOffset(_rvDir, i, n, lp, 24);
+      const yy = startY + i * lh + oy, ax2 = ax + ox;
       // palabra-HEROE (ultima): mas brillante + halo de TONO OPUESTO (no el glow del acento, que se perdia
       // azul-sobre-azul cuando el fondo comparte el hue del acento, ej DataFlow). Separa del fondo del mismo hue.
       ctx.fillStyle = (i === n - 1) ? (TONE === 'light' ? _accentInk(A1) : _lighten(_accentPop(A1), 0.18)) : INK;
       if (i === n - 1) setShadow(TONE === 'light' ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.55)', 10, 2);
-      ctx.fillText(wd, ax, yy); noShadow(); ctx.restore();
+      ctx.fillText(wd, ax2, yy); noShadow(); ctx.restore();
     });
     if (al === 'left') { const up = inv(t, 0.5, 0.95); if (up > 0) { ctx.save(); ctx.globalAlpha = up; ctx.fillStyle = _accentPop(A1); ctx.fillRect(ax, startY - fs * 0.55, 56 * eOutCubic(clamp(up, 0, 1)), 6); ctx.restore(); } }
     // CINTA CINETICA (marquesina): banda fina en el tercio INFERIOR del reveal (zona libre: el reveal NO lleva
@@ -2337,14 +2380,20 @@ function _rgba(hex, a) {
       return;
     }
     // 'columna' (comportamiento historico): 3 filas centradas/izquierda, una sola x de escena.
+    // STAGGER coreografiado: paso entre filas + direccion del gesto sembrados por SEED (salt distinto al del
+    // checklist -> distinto ritmo en la misma marca). Cada fila ASIENTA con _spring (overshoot premium); el foco
+    // con un spring mas rico, las subordinadas mas amortiguado (entran sin robar atencion). El offset de entrada
+    // sale del plan sembrado (desde arriba/abajo/lateral/centro) -> las filas no caen todas juntas ni iguales.
     const gap = H * _gapK, startY = H * _anchY - (n - 1) * gap / 2;
+    const { step: _nsStep, dir: _nsDir } = _staggerPlan(0x57AC5);
     items.forEach((it, i) => {
       const isF = i === focal;
-      const d = 0.18 + i * 0.42, ap = inv(t, d, d + 0.4); if (ap <= 0) return;
+      const d = 0.18 + i * _nsStep, ap = inv(t, d, d + 0.4); if (ap <= 0) return;
       const prog = eOutCubic(clamp(inv(t, d, d + 0.9), 0, 1)), y = startY + i * gap;
-      // foco -> SPRING analitico (settle mas rico); subordinados -> eOutBack (entran sin robar atencion).
-      const pop = lerp(0.8, 1, isF ? _spring(clamp(ap, 0, 1), { zeta: 0.42, freq: 2.0 }) : eOutBack(clamp(ap, 0, 1)));
-      ctx.save(); ctx.globalAlpha = clamp(ap * 1.4, 0, 1) * (isF ? 1 : (TONE === 'light' ? 0.95 : 0.78)); ctx.translate(tx, y);   // en tono CLARO NO atenuar filas 2/3 (perdian contraste); el foco se sostiene por tamano/acento/subrayado
+      const sp = _spring(clamp(ap, 0, 1), { zeta: isF ? 0.42 : 0.55, freq: isF ? 2.0 : 2.1 });
+      const pop = lerp(0.8, 1, sp);
+      const [ox, oy] = _staggerOffset(_nsDir, i, n, sp, 36);
+      ctx.save(); ctx.globalAlpha = clamp(ap * 1.4, 0, 1) * (isF ? 1 : (TONE === 'light' ? 0.95 : 0.78)); ctx.translate(tx + ox, y + oy);   // en tono CLARO NO atenuar filas 2/3 (perdian contraste); el foco se sostiene por tamano/acento/subrayado
       _drawItem(it, ap, prog, isF, pop, 80, 54, 'al');
       ctx.restore();
     });
