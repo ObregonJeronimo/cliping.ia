@@ -110,6 +110,7 @@ function _rgba(hex, a) {
   let _holdT = 0;   // tiempo CONTINUO de la escena actual (para idle-loops durante el hold; el dibujo base usa tFed congelado)
   let _sceneIdx = 0, _sceneTot = 0;   // posicion de la escena actual (1..N) + total -> folio editorial "NN / NN"
   let _BRAND = '';  // nombre de marca del timeline (lo usa el eyebrow del statement para anclar el tercio superior)
+  let _HERO_RES = '';   // tratamiento de hero del timeline (heroResource): '' | 'particles' (nube que se ensambla en la marca)
 
   // ---------- aleatoriedad SEMBRADA (determinista, reemplaza Math.random) ----------
   // mulberry32: PRNG rapido y determinista. Misma semilla => misma secuencia, en cada corrida
@@ -331,6 +332,175 @@ function _rgba(hex, a) {
   // los multiplos 2..16 cubren exactamente el rango lento que ya usaba el motor (la sparkle rapida queda libre).
   const CLK = 0.025;
   const _harm = (rnd, lo, hi) => CLK * (lo + Math.floor(rnd() * (hi - lo + 1)));   // frecuencia = armonico entero [lo..hi] de CLK
+
+  // ---------- HERO DE PARTICULAS QUE SE ENSAMBLAN EN LA MARCA (port de Scene1Particles -> Canvas-2D determinista) ----------
+  // La masterpiece (remotion/.../YercoMasterpiece.jsx Scene1Particles) usa Three.js + Math.random + una grilla de
+  // letras HARDCODEADA para "YERCO". Aca portamos la TECNICA, sin Three.js y 100% determinista:
+  //   (1) renderizamos el WORDMARK en un canvas OFFSCREEN, leemos sus pixeles y MUESTREAMOS los puntos-objetivo
+  //       (donde hay tinta) -> sirve para CUALQUIER nombre de marca, no una grilla fija.
+  //   (2) cada particula nace DISPERSA (anillo/orbita caotica) sembrada por mulberry32(SEED) + su punto-objetivo.
+  //   (3) gather = ease(t/dur): por frame, lerp de la posicion hacia el objetivo + orbita que DECAE con gather.
+  //   (4) dibujamos cada particula como un circulo chico con glow del acento.
+  // Resultado: nube -> se ensambla en el nombre, NITIDO al final. Las particulas FORMAN el texto (no es figura
+  // sobre titulo -> cumple la regla anti-blob). Sin Math.random/Date.now (mulberry32 + t). Reproducible Skia/Chromium.
+
+  // canvas OFFSCREEN portatil: en el navegador document.createElement('canvas'); en el render headless (@napi-rs/canvas)
+  // clonamos el constructor del canvas activo (ctx.canvas.constructor). Determinista (no depende del entorno).
+  function _makeOffscreen(w, h) {
+    try { if (typeof document !== 'undefined' && document.createElement) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; } } catch (e) {}
+    try { if (typeof OffscreenCanvas !== 'undefined') return new OffscreenCanvas(w, h); } catch (e) {}
+    try { const Cv = ctx && ctx.canvas && ctx.canvas.constructor; if (Cv) return new Cv(w, h); } catch (e) {}
+    return null;
+  }
+  // muestrea los puntos-objetivo del wordmark: dibuja el texto en offscreen y recorre los pixeles con tinta.
+  // Devuelve { pts:[[x,y]...], w, h } en el espacio del offscreen (luego se escala/centra al lienzo). El muestreo es
+  // DETERMINISTA (orden por grilla + jitter sembrado por SEED, nunca Math.random) y se cachea por (texto|font|target).
+  let _wmCache = null;
+  function _sampleWordmark(text, fontWeight, target) {
+    const want = (text || '').toString();
+    const key = want + '|' + FONT_DISPLAY + '|' + fontWeight + '|' + (target | 0);
+    if (_wmCache && _wmCache.key === key) return _wmCache;
+    // canvas de muestreo: ancho generoso para el nombre, baja resolucion (la nube no necesita pixel-perfect).
+    const ow = 560, oh = 200, off = _makeOffscreen(ow, oh);
+    if (!off) { _wmCache = { key, pts: [], w: ow, h: oh, fontPx: 0 }; return _wmCache; }
+    const octx = off.getContext('2d');
+    octx.clearRect(0, 0, ow, oh);
+    // tamano de fuente que LLENA el ancho del offscreen (deja margen) -> mas pixeles de tinta = mejor muestreo.
+    let fpx = 150;
+    octx.font = `${fontWeight} ${fpx}px "${FONT_DISPLAY}",system-ui,sans-serif`;
+    let tw = octx.measureText(want).width || 1;
+    fpx = Math.max(40, Math.min(fpx, fpx * (ow * 0.9) / tw));
+    octx.font = `${fontWeight} ${fpx}px "${FONT_DISPLAY}",system-ui,sans-serif`;
+    octx.textAlign = 'center'; octx.textBaseline = 'middle';
+    octx.fillStyle = '#fff';
+    octx.fillText(want, ow / 2, oh / 2);
+    let data;
+    try { data = octx.getImageData(0, 0, ow, oh).data; } catch (e) { _wmCache = { key, pts: [], w: ow, h: oh, fontPx: fpx }; return _wmCache; }
+    // recorrer en GRILLA (paso adaptativo) los pixeles con tinta; jitter sembrado por SEED para que la nube no quede
+    // "cuadriculada". Ajustamos el paso para caer cerca de 'target' puntos (clamp 360..1000).
+    const jit = mulberry32(((SEED || 1) ^ 0x9A12CE) >>> 0);
+    let step = 6, pts = [], guard = 0;
+    do {
+      pts = [];
+      for (let y = 0; y < oh; y += step) {
+        for (let x = 0; x < ow; x += step) {
+          if (data[(y * ow + x) * 4 + 3] > 80) {
+            pts.push([x + (jit() - 0.5) * step * 0.8, y + (jit() - 0.5) * step * 0.8]);
+          }
+        }
+      }
+      if (pts.length > (target || 700) * 1.25 && step < 14) step++;
+      else if (pts.length < (target || 700) * 0.6 && step > 3) step--;
+      else break;
+    } while (++guard < 8);
+    // medir el bounding box real de la tinta -> luego centramos el wordmark exacto en el lienzo.
+    let mnx = 1e9, mny = 1e9, mxx = -1e9, mxy = -1e9;
+    for (const p of pts) { if (p[0] < mnx) mnx = p[0]; if (p[0] > mxx) mxx = p[0]; if (p[1] < mny) mny = p[1]; if (p[1] > mxy) mxy = p[1]; }
+    _wmCache = { key, pts, w: ow, h: oh, fontPx: fpx, bbox: pts.length ? [mnx, mny, mxx, mxy] : [0, 0, ow, oh] };
+    return _wmCache;
+  }
+  // dibuja el wordmark ENSAMBLANDOSE: cx/cy = centro del bloque de texto en el lienzo; px = altura de cap deseada
+  // (lo que mediria el texto display). t0 = inicio (s), dur = duracion del gather (s). El asentamiento usa _spring
+  // (overshoot premium) sobre el progreso -> se "clava" nitido. col = color del acento para el glow.
+  function _drawParticleWordmark(text, cx, cy, px, t, t0, dur, opts) {
+    const o = opts || {};
+    const wm = _sampleWordmark(text, o.weight || 800, o.target || 760);
+    const N = wm.pts.length;
+    if (!N) return false;
+    const bb = wm.bbox, bw = (bb[2] - bb[0]) || 1, bh = (bb[3] - bb[1]) || 1;
+    // escala: que la ALTURA de la tinta ocupe px (cap-height objetivo del hero) y el bloque quede centrado en cx,cy.
+    const sc = px / bh, bcx = (bb[0] + bb[2]) / 2, bcy = (bb[1] + bb[3]) / 2;
+    // ALIGN: el hero suele venir left-aligned (x = borde izq). Corremos cx para que el wordmark ENSAMBLADO arranque
+    // en x (left) / termine en x (right); 'center' deja x como centro. Asi respeta la composicion del hero.
+    const scaledW = bw * sc;
+    if (o.align === 'left') cx = cx + scaledW / 2;
+    else if (o.align === 'right') cx = cx - scaledW / 2;
+    const A = o.accent || A1, A2c = _lighten(A, 0.32);
+    // progreso de ensamblado: 0=disperso, 1=ensamblado nitido. Como la masterpiece (ease inOutSine LENTO en TODA la
+    // duracion -> la nube se ve y viaja), pero le sumamos un micro-overshoot SOLO al final (_spring en el ultimo 18%)
+    // para que el wordmark "se clave" premium. Un spring sobre toda la duracion colapsaba la nube en ~0.5s (no se veia).
+    const raw = clamp((t - t0) / Math.max(0.0001, dur), 0, 1);
+    const base = raw < 0.5 ? 4 * raw * raw * raw : 1 - Math.pow(-2 * raw + 2, 3) / 2;   // eInOutCubic: viaje lento y visible
+    const snap = raw > 0.82 ? (_spring(inv(raw, 0.82, 1), { zeta: 0.5, freq: 1.6 }) - 1) * 0.05 : 0;  // overshoot final sutil
+    const gather = base + snap;
+    const eg = clamp(gather, 0, 1.05);                       // permite el leve overshoot del cierre
+    // re-seed por video (NO por frame): la nube inicial es estable -> el ensamblado es continuo, no titila.
+    const seedRnd = mulberry32(((SEED || 1) ^ 0xCA11F0A7) >>> 0);
+    // precomputar la "firma" inicial de cada particula una sola vez (cacheada con el muestreo).
+    if (!wm.init || wm.initN !== N) {
+      const arr = new Array(N);
+      for (let i = 0; i < N; i++) {
+        const ang = (i / N) * TAU + seedRnd() * 0.9;        // anillo + dispersion sembrada (orbita caotica como la masterpiece)
+        const rad = 90 + seedRnd() * 150;                   // radio disperso ACOTADO (px) -> nube DELIBERADA en cuadro, no ruido full-canvas
+        arr[i] = {
+          ang, rad,
+          ox: Math.cos(ang) * rad + (seedRnd() - 0.5) * 70,  // ruido extra de dispersion (achicado)
+          oy: Math.sin(ang) * rad * 0.78 + (seedRnd() - 0.5) * 70,  // elipse vertical mas compacta (entra en 405x720)
+          osp: 0.5 + seedRnd() * 1.1,                        // velocidad de orbita propia
+          oph: seedRnd() * TAU,                              // fase de orbita
+          dl: seedRnd() * 0.18,                              // stagger: cada particula arranca su gather con un leve delay
+          sz: 0.8 + seedRnd() * 0.9,                         // tamano de la particula (variado)
+          tw: 0.4 + seedRnd() * 0.6                          // factor de twinkle
+        };
+      }
+      wm.init = arr; wm.initN = N;
+    }
+    const init = wm.init;
+    const tt = t;                                            // tiempo continuo (orbita caotica que decae con gather)
+    // CONTRASTE tone-aware: en tono CLARO las particulas verdes claras se perdian sobre la crema -> usamos el acento
+    // OSCURECIDO/saturado como nucleo y el acento normal como glow. En tono OSCURO, nucleo claro + glow del acento.
+    const aHsl = _hexToHsl(A);
+    const coreLight = _lighten(A, 0.34);
+    const coreDark = _hslToHex(aHsl.h, Math.min(0.95, aHsl.s + 0.12), Math.max(0.22, aHsl.l - 0.18));
+    const isLight = (TONE === 'light');
+    const core = isLight ? coreDark : coreLight;
+    const corePeak = isLight ? _hslToHex(aHsl.h, Math.min(0.98, aHsl.s + 0.2), Math.max(0.16, aHsl.l - 0.26)) : '#fbf6ec';
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-over';
+    for (let i = 0; i < N; i++) {
+      const it = init[i];
+      // gather individual con stagger -> no llegan todas a la vez (coreografia, como _stagger del resto del motor).
+      const gi = clamp((eg - it.dl) / Math.max(0.0001, 1 - it.dl), 0, 1.05);
+      const tp = wm.pts[i];
+      // punto-objetivo en el lienzo (centra el bbox de la tinta en cx,cy y escala a cap-height px)
+      const txp = cx + (tp[0] - bcx) * sc, typ = cy + (tp[1] - bcy) * sc;
+      // posicion inicial dispersa (centro del bloque + offset disperso)
+      const sx = cx + it.ox, sy = cy + it.oy;
+      // orbita caotica que DECAE con gather (al final ~0 -> nitido). Igual espiritu que la masterpiece.
+      const decay = (1 - clamp(gi, 0, 1));
+      const orbX = Math.cos(tt * it.osp * 0.9 + it.oph) * 26 * decay;
+      const orbY = Math.sin(tt * it.osp * 0.7 + it.oph) * 20 * decay;
+      // lerp posicion: de disperso (sx,sy) -> objetivo (txp,typ) por el gather individual + orbita decreciente
+      const x = lerp(sx, txp + orbX, gi);
+      const y = lerp(sy, typ + orbY, gi);
+      // twinkle sutil + crecimiento al asentar; opacidad sube con el gather (al principio tenue/nube, NUNCA invisible)
+      const tw = 0.82 + 0.18 * Math.sin(tt * (2 + it.tw * 3) + it.oph) * (1 - clamp(gi, 0, 1) * 0.6);
+      const r = (1.7 + it.sz * 2.1) * (0.78 + 0.34 * clamp(gi, 0, 1));
+      const a = clamp((0.5 + 0.5 * clamp(gi, 0, 1)) * tw, 0, 1);
+      ctx.globalAlpha = a;
+      // glow del acento + nucleo (oscuro en claro / claro en oscuro) -> "premium" y LEGIBLE al asentar
+      ctx.shadowColor = _rgba(A, 0.6 * (0.5 + 0.5 * clamp(gi, 0, 1))); ctx.shadowBlur = (4 + 9 * clamp(gi, 0, 1));
+      ctx.fillStyle = gi > 0.6 ? corePeak : core;
+      ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill();
+    }
+    ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0;
+    // al final del ensamblado, una pasada de "tinta" SUTIL une los huecos entre particulas -> el wordmark queda
+    // NITIDO y legible, pero TENUE para que las particulas sigan siendo la textura dominante (no un bloque plano:
+    // las particulas FORMAN la palabra, el sello solo cierra la legibilidad). Tinta = INK del tono de la marca.
+    if (eg > 0.86) {
+      const seal = clamp(inv(eg, 0.86, 1.0), 0, 1);
+      ctx.globalAlpha = seal * 0.5;                          // tenue: deja ver el grano de particulas
+      ctx.font = fontStr(o.weight || 800, px * 1.16, 'd');   // px = cap-height aprox -> font-size un poco mayor
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      _softShadow(_rgba(A, 0.45), 12, 0);
+      ctx.fillStyle = INK;
+      ctx.fillText(text, cx, cy);
+      noShadow();
+    }
+    ctx.restore();
+    return true;
+  }
+
   function _buildBg() {
     const rnd = mulberry32(SEED || 1);
     // motes: polvo fino que flota (base sembrada; reemplaza el Math.random sin semilla original).
@@ -2400,6 +2570,22 @@ function _rgba(hex, a) {
     // + wordmark fantasma + foto si hay), que es justo lo que gusta. Si la escena es SOLO forma (sin texto), se deja
     // para no vaciarla. Cubre el camino de la IA y del mock en un solo lugar.
     if (els.some(e => e && e.kind === 'text')) els = els.filter(e => e && e.kind !== 'morph' && e.kind !== 'shape');
+    // heroResource:'particles' -> el wordmark display del hero se ENSAMBLA con una nube de particulas (port de la
+    // masterpiece). Detectamos el texto display mas grande (el "palabra-heroe" = el nombre de marca) y lo convertimos
+    // en un elemento particles/assemble; la foto/eyebrow/subtitulo quedan igual. Las particulas FORMAN el texto, no
+    // lo tapan (regla anti-blob). Un solo lugar -> cubre el camino de la IA y del mock.
+    if (_HERO_RES === 'particles' && els.length) {
+      let hi = -1, hsz = 0;
+      for (let i = 0; i < els.length; i++) {
+        const e = els[i];
+        if (e && e.kind === 'text' && (e.size || 0) >= 40 && (e.size || 0) > hsz && (e.text || '').toString().trim().length <= 22) { hi = i; hsz = e.size || 0; }
+      }
+      if (hi >= 0) {
+        const e = els[hi];
+        els = els.slice();
+        els[hi] = { kind: 'particles', mode: 'assemble', text: e.text, fill: 'accent', weight: e.weight || 800, size: e.size, cap: (e.size || 58) * 0.74, gather: e.gather || 1.7, target: e.particleCount || 760, align: e.align || 'center', maxW: e.maxW, keys: e.keys };
+      }
+    }
     for (const el of els) {
       const keys = (Array.isArray(el.keys) && el.keys.length) ? el.keys.slice().sort((a, b) => (a.t || 0) - (b.t || 0)) : [{ t: 0 }];
       const op = clamp(_num(keys, t, 'opacity', 1), 0, 1);
@@ -2452,9 +2638,18 @@ function _rgba(hex, a) {
         if (el.svg && el.svg.body) _drawSvgIcon(el.svg, (el.size || 56) * scale, _resolveColor(el.fill || 'accent'));
         else _drawIcon(el.icon || 'dot', scale, op, t);
       } else if (kind === 'particles') {
-        const n = Math.max(1, el.count || 10), prog = clamp(_num(keys, t, 'burst', clamp(t, 0, 1)), 0, 1);
-        ctx.translate(x, y);
-        for (let i = 0; i < n; i++) { const a = (i / n) * TAU + (el.phase || 0), d = lerp(10, el.spread || 90, eOutCubic(prog)) * (0.7 + 0.6 * ((i * 2654435761 % 97) / 97)); ctx.globalAlpha = op * (1 - prog) * 0.9; ctx.fillStyle = i % 2 ? A2 : A1; ctx.beginPath(); ctx.arc(Math.cos(a) * d, Math.sin(a) * d, el.dotR || 3, 0, TAU); ctx.fill(); }
+        if (el.mode === 'assemble' && el.text) {
+          // HERO de particulas que se ENSAMBLAN en la marca (port determinista de Scene1Particles). Las particulas
+          // FORMAN el texto -> NO es figura sobre titulo (cumple la regla anti-blob). El kinetic del texto display
+          // se reemplaza por este tratamiento via heroResource:'particles'.
+          ctx.restore(); ctx.save(); ctx.globalAlpha = 1;   // este tratamiento maneja su propia opacidad/gather
+          const t0 = (keys[0] && keys[0].t) || 0;
+          _drawParticleWordmark(el.text.toString(), x, y, el.cap || (el.size || 58) * 0.74, t, t0, el.gather || 1.7, { accent: _resolveColor(el.fill || 'accent'), weight: el.weight || 800, target: el.target || 760, align: el.align || 'center' });
+        } else {
+          const n = Math.max(1, el.count || 10), prog = clamp(_num(keys, t, 'burst', clamp(t, 0, 1)), 0, 1);
+          ctx.translate(x, y);
+          for (let i = 0; i < n; i++) { const a = (i / n) * TAU + (el.phase || 0), d = lerp(10, el.spread || 90, eOutCubic(prog)) * (0.7 + 0.6 * ((i * 2654435761 % 97) / 97)); ctx.globalAlpha = op * (1 - prog) * 0.9; ctx.fillStyle = i % 2 ? A2 : A1; ctx.beginPath(); ctx.arc(Math.cos(a) * d, Math.sin(a) * d, el.dotR || 3, 0, TAU); ctx.fill(); }
+        }
       } else if (kind === 'orbit') {
         // satelites que ORBITAN el centro (x,y) -> da complejidad y vida al hero. ry<1 = orbita eliptica.
         const n = Math.max(1, el.count || 3), rr = el.r || 120, sp = el.speed || 1.1, ph = el.phase || 0;
@@ -2804,6 +2999,7 @@ function _rgba(hex, a) {
     setSubstrate(tl.substrate);
     setFonts(tl);
     _BRAND = (tl.brand || '').toString();
+    _HERO_RES = (typeof tl.heroResource === 'string') ? tl.heroResource : '';
     ctx.clearRect(0, 0, W, H);
     // CAMARA COMPARTIDA (parallax + reloj unico): un solo vector continuo (global t, armonicos ENTEROS de _PHI
     // -> sin "beating") que mueve fondo y contenido juntos. El fondo a ~32% de profundidad; el contenido al 100%.
