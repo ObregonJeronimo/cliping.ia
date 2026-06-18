@@ -106,6 +106,40 @@ ortogonal + pool de fondos. Verificado en galeria + escenas. Determinismo 16/16 
   si el LLM no emite una 'scene' con display, las particulas no disparan (el engine convierte el display mas grande).
   Reforzar el prompt o un guard en _normalize_timeline. Y la VERIFICACION EN VIVO del MP4 real del usuario.
 
+## 🔎 AUDITORIA DE 9 PAGINAS REALES (jun 18) — faithful mock + verificacion adversarial
+Metodo FIEL (memoria feedback-faithful-api-testing): por cada pagina `mock.generate(brand, industria)` (rubro
+inferido de la pagina, SIN override de copy, SIN imagenes) -> render contact-sheet -> auditoria. Workflow de 18
+agentes (critico + verificador adversarial que MIDE pixeles/edges con zoom) sobre xataka/france24/espn/cookpad/elle/
+educ.ar/last.fm/despegar/ciencia.unam. Hallazgos confirmados (no solo afirmados) -> 4 fixes (commits 51bc81d /
+501cab8 / a1827cf / 89ffc6c), bg-check 16/16, similarity 0/0, build OK:
+- **#1 sistemico: hero de particulas ILEGIBLE al asentar** (confirmado por edge-stddev en France24/ESPN/educ.ar/
+  Last.fm/Despegar; Despegar ademas con DOBLE-TRAZO fantasma). Causa triple: sello px*1.16 (letras < nube -> halo),
+  particulas disueltas solo a 0.3 (fuzz), y gather que arrancaba en ns -> en heroes CORTOS terminaba tras el corte.
+  Fix (a1827cf): sello px*1.42 cap-matcheado + entra en eg>0.62 + glow 6px; disuelve a 0.12; arranca cerca del
+  inicio de escena. Re-render: los 6 heroes muestran el nombre NITIDO (ventanas densas para ESPN/educ.ar).
+- **alma/palido por mal rubro**: el clasificador era English-centric -> "tecnologia" caia en default (gris
+  desaturado, sat 0.10-0.22) -> Xataka salia palido-mauve sin identidad. Fix (51bc81d): keywords ES/expandidas.
+  Xataka -> tech (azul vivo, verificado). [El default es gris a proposito; el fix ataca la causa = clasificar bien.]
+- **marca ausente hasta el outro**: Cookpad (morph) salia sin escena hero. Fix (501cab8): force_hero para todo
+  heroResource -> ahora "Cookpad" aparece a mitad (verificado).
+- **labels QA con `<b>` crudo** (visor, no el reel) -> strip (89ffc6c).
+- REFUTADOS por el verificador (NO tocar): el titulo "momento" de Xataka es azul saturado (no gris); las particulas
+  de Xataka SI asientan nitidas (hero largo); el watermark "DES" de Despegar es sutil (~8 RGB, no compite).
+
+### COLA VERIFICADA (proxima iteracion / requiere MP4 real — los frames NO muestran motion)
+- **ESPN**: hexagono (pool de forma-firma de fitness incluye 'hexagon') queda como figura solida cerca/arriba del
+  titulo del checklist -> near-miss de la regla 4 (hay GAP, no pegado). Alejar/translucentar el floater de la franja del titulo.
+- **educ.ar**: fondo `aurora` es un degrade ARCOIRIS (purpura-teal-verde-magenta) -> diluye el acento unico y lava en
+  transiciones. Tintar la aurora hacia el acento (mono-hue).
+- **Last.fm/Despegar**: wordmark + acento del OUTRO desaturados (sceneOutro usa `_accentInk(A1, 0.62)` -> lava el hue);
+  idem 2da palabra del reveal. Tradeoff con legibilidad-sobre-mismo-hue (Aura/Trama) -> revisar con cuidado.
+- **Elle (moda/light)**: riso rosa pastel sin ancla oscura = palido. Bajar light_p de riso o meter ancla oscura.
+- **Ciencia UNAM**: el sunburst se lava a rosa casi-blanco en algunos frames (sat 0.17) -> clamp de lightness del fondo.
+- **transiciones**: cross-fade deja 2 titulos legibles a la vez en un frame muestreado (educ.ar/ESPN). Verificar en
+  MP4 (puede ser artefacto de muestreo); si el overlap dura, achicar la ventana para escenas con titulo.
+- **alma profunda**: rubros sin hogar (noticias/deportes-media/musica/viajes) caen en default/fitness/tech -> copy
+  generico (ESPN=gym, Last.fm=SaaS, France24/Despegar=default). Mejor inferencia + pools de copy por sub-tipo de medio.
+
 ## 🔁 LOG DEL LOOP (urvid-loop)
 - **Iteración jun 16 #1** (HECHA): anti-sameness CONFIRMADO sano (probe filtra el banco canónico `^\d\d-`). Fixes:
   numberStack con DECIMALES, blueprint con HUE de marca, motivos por rubro (plato/birrete/contornos). bg-check 16/16.
