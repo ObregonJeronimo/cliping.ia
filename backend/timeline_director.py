@@ -752,6 +752,29 @@ contexto, NO uses bigStat. Si hay un PEDIDO DEL USUARIO, cumplilo SÍ O SÍ por 
     _imgs = (dna.get("images") if isinstance(dna, dict) else None) or _preset.get("images") or []
     if _imgs and not tl.get("images"):
         tl["images"] = _imgs[:6]
+    # HERO RESOURCE (el momento WOW): produccion NO seteaba heroResource -> los videos REALES nunca recibian el hero
+    # de PARTICULAS (la marca se ENSAMBLA con particulas, port de la masterpiece); el wow vivia SOLO en el mock. Si NO
+    # hay fotos reales del sitio, asignar 'particles' la mayoria de las veces. Con fotos, el hero es la FOTO real (no se
+    # pisa). Determinista por la semilla del preset.
+    if not _imgs and not tl.get("heroResource"):
+        _hrr = _random.Random((int(_preset.get("seed", 0) or 1) ^ 0x9A271C1E) & 0xFFFFFFFF)
+        tl["heroResource"] = "particles" if _hrr.random() < 0.6 else ""
+    # GARANTIA del wow (como el force_hero del mock): si el hero es particulas pero el LLM no emitio una 'scene' con
+    # texto display grande para ensamblar, inyectar un hero 'scene' con el wordmark de la marca al inicio (el motor lo
+    # convierte en la nube de particulas). Respeta el cap de 6 escenas SIN perder el outro.
+    if tl.get("heroResource") == "particles" and tl.get("brand"):
+        _scs = list(tl.get("scenes") or [])
+        _has_disp = any(s.get("type") == "scene" and any(
+            isinstance(e, dict) and e.get("kind") == "text" and float(e.get("size") or 0) >= 40 for e in (s.get("elements") or []))
+            for s in _scs)
+        if not _has_disp and _scs:
+            _hero = {"type": "scene", "durationInFrames": 126, "comp": "emblem", "elements": [
+                {"kind": "text", "text": str(tl["brand"]), "fill": "accent", "size": 76, "weight": 800, "align": "center",
+                 "kinetic": True, "keys": [{"t": 0.0, "opacity": 0}, {"t": 0.4, "opacity": 1, "x": 202, "y": 300}]}]}
+            _scs.insert(1 if len(_scs) > 1 else 0, _hero)
+            if len(_scs) > 6:
+                _scs = _scs[:5] + _scs[-1:]
+            tl["scenes"] = _scs
     # ESTILO VISUAL: lo ELIGE el usuario (dna['styleId']) o se recomienda por rubro. Aplica la direccion de
     # arte del catalogo compartido (bgStyle / tono / sombra / textura) -> el video toma el estilo elegido.
     try:
