@@ -64,7 +64,7 @@ function videoStrip(tl, name, title, n = 12) {
   const cols = n > 16 ? 6 : 4
   const items = Array.from({ length: n }, (_, i) => {
     const t = (i + 0.5) * dur / n
-    return { cv: frameCanvas((ctx) => drawFrame(ctx, t, tl)), label: `${t.toFixed(1)}s · ${beatAt(t, tl)}`.slice(0, 30) }
+    return { cv: frameCanvas((ctx) => drawFrame(ctx, t, tl)), label: `${t.toFixed(1)}s · ${beatAt(t, tl)}`.replace(/<[^>]*>/g, '').slice(0, 30) }
   })
   sheet(name, title, items, cols, cols > 4 ? 150 : 232)
 }
