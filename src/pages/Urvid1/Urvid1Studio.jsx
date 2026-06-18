@@ -15,7 +15,10 @@ export default function Urvid1Studio() {
   const { user } = useAuth()
   const [brief, setBrief] = useState({ brand: 'Nodo', rubro: 'tech', tone: 'dark', brandColor: '#22e06a', tagline: 'Automatiza lo aburrido y enfocate en lo que importa', claim: 'Menos tareas repetitivas, mas resultados reales', cta: 'Probalo gratis' })
   const [seed, setSeed] = useState(0)
-  const video = useMemo(() => makeVideo({ ...brief, seed: seed || undefined }), [brief, seed])
+  // TONO = SOLO COLOR: al togglear claro/oscuro bloqueamos la receta (lockRecipe) -> el director reusa los mismos
+  // modulos y solo re-deriva la paleta. Cualquier otro cambio (marca/rubro/texto/semilla) LIBERA el lock -> build fresco.
+  const [lock, setLock] = useState(null)
+  const video = useMemo(() => makeVideo({ ...brief, seed: seed || undefined, lockRecipe: lock || undefined }), [brief, seed, lock])
   const [playing, setPlaying] = useState(true)
   const [speed, setSpeed] = useState(1)
   const [head, setHead] = useState(0)
@@ -59,7 +62,7 @@ export default function Urvid1Studio() {
         tagline: b.tagline || '', claim: b.claim || '', cta: b.cta || '',
         bullets: Array.isArray(b.bullets) ? b.bullets : [], stats: Array.isArray(b.stats) ? b.stats : [], proof: b.proof || '',
       })
-      setSeed(0); headRef.current = 0; setAnalyzing('')
+      setLock(null); setSeed(0); headRef.current = 0; setAnalyzing('')
     } catch {
       setAnalyzing('Backend no disponible — abri "start.bat" (corre en localhost:8000)')
     }
@@ -79,10 +82,12 @@ export default function Urvid1Studio() {
     setTimeout(() => setShared(''), 7000)
   }
 
-  const up = (k, v) => setBrief(b => ({ ...b, [k]: v }))
-  const reroll = () => setSeed(s => ((s || 1) + 0x9e3779b1) >>> 0 || 1)
+  const up = (k, v) => { setLock(null); setBrief(b => ({ ...b, [k]: v })) }
+  // toggle de tono: NO libera el lock -> congela la receta actual y solo recolorea al otro tono.
+  const setTone = (tn) => { if (tn === brief.tone) return; setLock(video.recipe); setBrief(b => ({ ...b, tone: tn })) }
+  const reroll = () => { setLock(null); setSeed(s => ((s || 1) + 0x9e3779b1) >>> 0 || 1) }
   const save = () => { const next = [{ ...brief, seed, ts: Date.now() }, ...saved].slice(0, 24); setSaved(next); localStorage.setItem('urvid1.saved', JSON.stringify(next)) }
-  const load = (it) => { setBrief({ brand: it.brand, rubro: it.rubro, tone: it.tone, brandColor: it.brandColor, tagline: it.tagline, claim: it.claim, cta: it.cta, bullets: it.bullets || [], stats: it.stats || [], proof: it.proof || '' }); setSeed(it.seed || 0); headRef.current = 0 }
+  const load = (it) => { setLock(null); setBrief({ brand: it.brand, rubro: it.rubro, tone: it.tone, brandColor: it.brandColor, tagline: it.tagline, claim: it.claim, cta: it.cta, bullets: it.bullets || [], stats: it.stats || [], proof: it.proof || '' }); setSeed(it.seed || 0); headRef.current = 0 }
   const del = (i) => { const next = saved.filter((_, j) => j !== i); setSaved(next); localStorage.setItem('urvid1.saved', JSON.stringify(next)) }
 
   return (
@@ -113,7 +118,7 @@ export default function Urvid1Studio() {
             <label className={styles.field}>Color<input type="color" value={brief.brandColor} onChange={e => up('brandColor', e.target.value)} /></label>
             <label className={styles.field}>Rubro<select value={brief.rubro} onChange={e => up('rubro', e.target.value)}>{RUBROS.map(r => <option key={r}>{r}</option>)}</select></label>
           </div>
-          <label className={styles.field}>Tono<div className={styles.seg}>{['dark', 'light'].map(tn => <button key={tn} className={brief.tone === tn ? styles.on : ''} onClick={() => up('tone', tn)}>{tn === 'dark' ? 'oscuro' : 'claro'}</button>)}</div></label>
+          <label className={styles.field}>Tono<div className={styles.seg}>{['dark', 'light'].map(tn => <button key={tn} className={brief.tone === tn ? styles.on : ''} onClick={() => setTone(tn)}>{tn === 'dark' ? 'oscuro' : 'claro'}</button>)}</div></label>
           <label className={styles.field}>Gancho<input value={brief.tagline} onChange={e => up('tagline', e.target.value)} /></label>
           <label className={styles.field}>Claim<input value={brief.claim} onChange={e => up('claim', e.target.value)} /></label>
           <label className={styles.field}>CTA<input value={brief.cta} onChange={e => up('cta', e.target.value)} /></label>

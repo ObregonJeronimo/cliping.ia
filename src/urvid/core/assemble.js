@@ -1,12 +1,17 @@
-// urvid 1.0 · ASSEMBLE — el DIRECTOR (esqueleto). Dado un BRIEF (lo que el analisis de la pagina + el LLM producen),
-// arma el VIDEO eligiendo de las bibliotecas: paleta, fuentes, un fondo, y una secuencia de escenas por BEAT narrativo.
-// Determinista por semilla. Devuelve un objeto VIDEO que render.js dibuja. (El director real —strategy/director libs—
-// sera mas listo: ejes ortogonales, sesgos por publico/seriedad, anti-sameness; este prueba el ensamblaje de punta a punta.)
+// urvid 1.0 · ASSEMBLE — el DIRECTOR. Dado un BRIEF (lo que el analisis de la pagina + el LLM producen), arma el
+// VIDEO eligiendo de las bibliotecas: paleta, fuentes, un fondo, capas y una secuencia de escenas por BEAT narrativo.
+// Determinista por semilla. Devuelve un objeto VIDEO que render.js dibuja.
+// SELECCION (v3): el rubro YA NO es un filtro DURO (dejaba modulos de nicho muertos y colaba '*' en briefs serios);
+// ahora cada slot se ELIGE con un SCORER SUAVE (core/fit.js) que matchea rubro + register(vibe) + intensity contra el
+// brief. El unico filtro duro es el TONO. Asi deja de usar piezas que no pegan sin perder variedad.
+// TONO = SOLO COLOR: si el brief trae lockRecipe (el toggle claro/oscuro del estudio), se REUSA la receta y solo se
+// re-deriva la paleta; un slot se re-elige unicamente si su modulo no soporta el tono nuevo.
 import { derivePalette } from './palette.js'
-import { query } from './registry.js'
+import { query, get } from './registry.js'
 import { seedFor, weightedPick, hashStr, stableSeed, pick, shuffled } from './prng.js'
 import { deriveFonts } from './fonts.js'
 import { analyzeContent, buildArcSmart, sceneBias } from './strategy.js'
+import { fitWeight } from './fit.js'
 
 // ARCO narrativo VARIADO por semilla: apertura (hook|hero) -> 1-3 beats de cuerpo SIN repetir -> cierre. Usa todas
 // las categorias de escena disponibles -> dos videos no comparten estructura (no siempre hero->statement->outro).
@@ -39,51 +44,64 @@ export function makeVideo(brief = {}) {
   // prueba), no solo del azar. Un brief con un dato abre con numero; una pregunta con un hook de pregunta; etc.
   const sig = analyzeContent(content, rubro)
   const arc = brief.arc || buildArcSmart(seed, sig).map(c => ({ category: c, dur: _DUR[c] || 3.4 }))
-  // CEREBRO v1 · SERIEDAD: brief.seriousness o default por rubro -> sesga AWAY de lo "jugado" en contenido serio
-  // (un consultorio NO sale cyber/y2k). wadj ajusta el peso de cada modulo segun sus tags.
+  // CEREBRO v1 · SERIEDAD: brief.seriousness o default por rubro -> alimenta el scorer de fit (register/intensity).
+  // Un consultorio (0.85) desfavorece lo jugado/fuerte; una gastronomia (0.35) lo deja brillar.
   const seriousness = brief.seriousness != null ? brief.seriousness : ({ salud: 0.85, finanzas: 0.8, inmobiliaria: 0.7, educacion: 0.55, tech: 0.5, default: 0.5, gastronomia: 0.35, moda: 0.4, belleza: 0.35, fitness: 0.35 }[rubro] ?? 0.5)
-  const PLAYFUL = new Set(['y2k', 'cyber', 'glitch', 'retro', 'joven', 'pop', 'vibrante', 'energico', 'chrome', 'neon'])
-  const wadj = (m) => m.weight * (seriousness > 0.62 && (m.tags || []).some(t => PLAYFUL.has(t)) ? 0.2 : 1)
+  // SCORER de fit: peso × afinidad-rubro × match-seriedad(register) × match-intensidad. Reemplaza al viejo wadj.
+  const fitCtx = { rubro, seriousness }
+  const score = (m) => fitWeight(m, fitCtx)
+
+  // TONO = SOLO COLOR. Con lockRecipe (toggle claro/oscuro), se reusa cada slot salvo que su modulo no soporte el tono.
+  const lock = brief.lockRecipe || null
+  const toneOk = (m) => m && m.tones.indexOf(tone) >= 0
+  // slot REQUERIDO: bajo lock reusa el id si soporta el tono, si no re-elige del pool de ESE tono.
+  const required = (lockId, prng, pool) => {
+    if (lock) { const m = lockId ? get(lockId) : null; if (toneOk(m)) return m }
+    return pool.length ? weightedPick(prng, pool, score) : null
+  }
+  // slot OPCIONAL (~prob): SIN lock hace el sorteo de probabilidad; CON lock preserva presencia/ausencia de la receta.
+  const optional = (lockId, prng, prob, pool) => {
+    if (lock) { if (!lockId) return null; const m = get(lockId); return toneOk(m) ? m : (pool.length ? weightedPick(prng, pool, score) : null) }
+    return (pool.length && prng() < prob) ? weightedPick(prng, pool, score) : null
+  }
+
   // COLOR (esquema/mood) + TIPOGRAFIA (pairing) de sus bibliotecas; fallback a los derivadores base
-  const cols = query('color', { tone, rubro }), colMod = cols.length ? weightedPick(seedFor(seed, 'colorpick'), cols, wadj) : null
+  const colMod = required(lock && lock.color, seedFor(seed, 'colorpick'), query('color', { tone }))
   const palette = colMod ? colMod.derive(brandColor, { tone, rubro, seed }) : derivePalette(brandColor, { tone, rubro, seed })
-  const typs = query('typography', { tone, rubro }), typMod = typs.length ? weightedPick(seedFor(seed, 'typepick'), typs, wadj) : null
+  const typMod = required(lock && lock.type, seedFor(seed, 'typepick'), query('typography', { tone }))
   const fonts = typMod ? typMod.fonts : deriveFonts(rubro, style, seed)
-  // MOTION: personalidad de movimiento (entrada/asentamiento/stagger/drift) -> env.motion. Sesgo de seriedad via wadj.
-  const mots = query('motion', { tone, rubro }), motMod = mots.length ? weightedPick(seedFor(seed, 'motionpick'), mots, wadj) : null
+  // MOTION: personalidad de movimiento (entrada/asentamiento/stagger/drift) -> env.motion.
+  const motMod = required(lock && lock.motion, seedFor(seed, 'motionpick'), query('motion', { tone }))
   // TYPEKIT: efecto de texto cinetico para los titulos -> env.typekit. ~30% sin efecto (plain) para no saturar.
-  const tkPrng = seedFor(seed, 'typekit'), tks = query('typekit', { tone, rubro })
-  const tkMod = (tks.length && tkPrng() < 0.7) ? weightedPick(tkPrng, tks, wadj) : null
+  const tkMod = optional(lock && lock.typekit, seedFor(seed, 'typekit'), 0.7, query('typekit', { tone }))
   // MARKKIT garnish: un ICONO (por rubro) en una esquina, chico y tenue, opcional (~50%). Solo iconos
   // (NUNCA un blob/forma centrada detras del titulo). Los divisores/marcos quedan para composicion per-escena.
   const MARK_GARNISH_CATS = new Set(['iconos-rubro', 'iconos-animados'])
-  const mkPrng = seedFor(seed, 'markgarnish')
-  const markPool = query('markkit', { tone, rubro }).filter(m => MARK_GARNISH_CATS.has(m.category))
-  const markMod = (markPool.length && mkPrng() < 0.5) ? weightedPick(mkPrng, markPool, wadj) : null
-  // TRANSICION escena-a-escena (wipe/slide/iris/bars/cut) -> video.transitionId. Sesgo de seriedad via wadj.
-  const trs = query('transitions', { tone, rubro }), trMod = trs.length ? weightedPick(seedFor(seed, 'transition'), trs, wadj) : null
-  // POST: acabado (grano/vignette/leak/grade/scanlines) -> video.postId. Opcional (~58%); sesgo de seriedad (fx fuertes pesan menos).
-  const postPrng = seedFor(seed, 'post'), posts = query('post', { tone, rubro })
-  const postMod = (posts.length && postPrng() < 0.58) ? weightedPick(postPrng, posts, wadj) : null
+  const markPool = query('markkit', { tone }).filter(m => MARK_GARNISH_CATS.has(m.category))
+  const markMod = optional(lock && lock.mark, seedFor(seed, 'markgarnish'), 0.5, markPool)
+  // TRANSICION escena-a-escena (wipe/slide/iris/bars/cut) -> video.transitionId.
+  const trMod = required(lock && lock.transition, seedFor(seed, 'transition'), query('transitions', { tone }))
+  // POST: acabado (grano/vignette/leak/grade/scanlines) -> video.postId. Opcional (~58%).
+  const postMod = optional(lock && lock.post, seedFor(seed, 'post'), 0.58, query('post', { tone }))
 
-  // FONDO: query de la biblioteca por tono/rubro -> pick por peso (ajustado por seriedad)
-  const bgs = query('backgrounds', { tone, rubro })
-  const bg = bgs.length ? weightedPick(seedFor(seed, 'bg'), bgs, wadj) : null
-  // SUBSTRATE (textura tenue, opcional ~65%) + ATMOSPHERE (luz, opcional ~55%) -> mas unicidad por capas
-  const subPrng = seedFor(seed, 'substrate'), subs = query('substrates', { tone, rubro })
-  const sub = (subs.length && subPrng() < 0.65) ? weightedPick(subPrng, subs, wadj) : null
-  const atmPrng = seedFor(seed, 'atmosphere'), atms = query('atmosphere', { tone, rubro })
-  const atm = (atms.length && atmPrng() < 0.55) ? weightedPick(atmPrng, atms, wadj) : null
+  // FONDO: query por tono -> pick por fit. SUBSTRATE (~65%) + ATMOSPHERE (~55%) opcionales -> mas unicidad por capas.
+  const bg = required(lock && lock.bg, seedFor(seed, 'bg'), query('backgrounds', { tone }))
+  const sub = optional(lock && lock.sub, seedFor(seed, 'substrate'), 0.65, query('substrates', { tone }))
+  const atm = optional(lock && lock.atm, seedFor(seed, 'atmosphere'), 0.55, query('atmosphere', { tone }))
 
-  // ESCENAS: por cada beat del arco, query de scene-layouts de esa categoria -> pick por peso
+  // ESCENAS: por cada beat del arco, query de scene-layouts de esa categoria -> pick por fit × sesgo de contenido.
+  // Bajo lock se reusa el sceneId del mismo beat (el arco es identico: mismo seed+content) salvo incompat. de tono.
   const scenes = []; let start = 0
   arc.forEach((beat, i) => {
-    let opts = query('scene-layouts', { tone, rubro, category: beat.category })
+    let opts = query('scene-layouts', { tone, category: beat.category })
     // las escenas de DATA tambien pueden ser charts DATAKIT, PERO datakit fabrica numeros por seed -> si la
     // perception trajo STATS REALES, usamos solo las escenas que muestran ESE numero real (statAt), no datakit.
-    if (beat.category.indexOf('data/') === 0 && !(Array.isArray(content.stats) && content.stats.length)) opts = opts.concat(query('datakit', { tone, rubro }))
-    // eleccion sesgada por el CONTENIDO (sceneBias) ademas de la seriedad (wadj).
-    const mod = opts.length ? weightedPick(seedFor(seed ^ hashStr('arc' + i), 'scene'), opts, m => wadj(m) * sceneBias(m, sig)) : null
+    if (beat.category.indexOf('data/') === 0 && !(Array.isArray(content.stats) && content.stats.length)) opts = opts.concat(query('datakit', { tone }))
+    const prng = seedFor(seed ^ hashStr('arc' + i), 'scene')
+    let mod = null
+    const lockId = lock && lock.scenes && lock.scenes[i]
+    if (lock) { const lm = lockId ? get(lockId) : null; if (toneOk(lm)) mod = lm }
+    if (!mod) mod = opts.length ? weightedPick(prng, opts, m => score(m) * sceneBias(m, sig)) : null
     if (mod) { scenes.push({ start, dur: beat.dur, sceneId: mod.id, seed: (seed ^ hashStr('s' + i)) >>> 0 }); start += beat.dur }
   })
 
