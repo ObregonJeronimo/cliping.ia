@@ -14,7 +14,9 @@ const ZERO = { x: 0, y: 0, scale: 0, rot: 0 }
 //   stagger   -> segundos de delay base entre items de una lista/grilla
 //   enter     -> { dx, dy, scale, rotate } offset de entrada de CADA escena (lo aplica render.js)
 //   enterDur  -> segundos que dura la entrada
-//   ambient(t, seed) -> { x, y, scale, rot } drift idle sutil (vida); cero = quieto
+//   life      -> 0..1 FLUIDEZ: intensidad del ken-burns (zoom lento cinematografico) que render.js aplica
+//                sobre toda la escena -> nada queda muerto-estatico. Calmo/cine alto, snappy/punch bajo.
+//   ambient(t, seed) -> { x, y, scale, rot } micro-vida continua (respiracion + flote sutil). NUNCA cero por defecto.
 export function defaultMotion() {
   return {
     id: 'default',
@@ -23,8 +25,9 @@ export function defaultMotion() {
     settle: p => spring(clamp(p, 0, 1), { zeta: 0.5, freq: 2.0 }),
     stagger: 0.18,
     enter: { dx: 0, dy: 0, scale: 0.03, rotate: 0 },   // micro-zoom de entrada actual
-    enterDur: 0.5,
-    ambient: () => ZERO,
+    enterDur: 0.55,
+    life: 0.6,
+    ambient: (t, seed) => ({ x: Math.sin(t * 0.5 + (seed % 7)) * 0.8, y: Math.sin(t * 0.7 + (seed % 5)) * 1.0, scale: Math.sin(t * 0.6) * 0.0035, rot: 0 }),
   }
 }
 
