@@ -610,8 +610,9 @@ def generate(brand: str, industria: str, facts=None, seed: int = None, style: st
         _bgsys = se.bg_system_for(seed, tone)
         if _bgsys and style_id not in _BG_LOCKED_STYLES and _bgsys in _RENDERABLE_BG:
             bg_style = _bgsys
-    # estructura GENERATIVA por marca (no esqueleto fijo -> rompe el molde); si el hero es FOTO, garantiza el slot.
-    skel = _gen_structure(rubro, bool(images), rnd, force_hero=(_hero_res == "photo"))
+    # estructura GENERATIVA por marca (no esqueleto fijo -> rompe el molde); si el hero es FOTO o PARTICULAS,
+    # garantiza un slot 'hero' -> el wow de particulas (ensamblado de la marca) NUNCA se pierde por falta de escena.
+    skel = _gen_structure(rubro, bool(images), rnd, force_hero=(_hero_res in ("photo", "particles")))
     scenes = []
     _used_stmt = set()
 
