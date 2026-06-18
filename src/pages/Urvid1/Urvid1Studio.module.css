@@ -63,6 +63,8 @@
 .ghost { appearance: none; border: 1px solid var(--line2); background: var(--ink2); color: var(--text); border-radius: 11px; padding: 11px 15px; font-size: 13px; font-weight: 700; cursor: pointer; transition: border-color .12s, background .12s; }
 .ghost:hover { border-color: var(--acc); background: #211a38; }
 .note { margin: 0; font-size: 11px; color: var(--faint); line-height: 1.55; }
+.share { width: 100%; appearance: none; border: 1px dashed var(--line2); background: transparent; color: var(--dim); border-radius: 11px; padding: 9px; font-size: 12.5px; font-weight: 700; cursor: pointer; transition: border-color .12s, color .12s, background .12s; }
+.share:hover { border-color: var(--acc); color: var(--text); background: var(--ink2); }
 
 /* semilla: la firma de determinismo (mismo seed -> mismo video) */
 .seedpill { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; font-family: var(--mono); font-size: 11px; color: var(--dim); background: var(--ink2); border: 1px solid var(--line); border-radius: 999px; padding: 5px 10px; }

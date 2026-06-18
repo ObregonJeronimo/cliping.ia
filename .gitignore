@@ -14,6 +14,7 @@ backend/firebase-service-account.json
 tools/out/
 tools/brands/
 tools/style-presets.json
+tools/urvid-shared.json
 remotion/props-*.json
 *.mp4
 

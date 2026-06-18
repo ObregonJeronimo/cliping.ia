@@ -1424,7 +1424,7 @@ register({
   tags: ['lista', 'pasos', 'linea-tiempo', 'proceso'], beat: 'value',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, mx = W * 0.14
-    const items = splitItems(content.claim || content.tagline || 'Conecta · Configura · Lanza · Crece', 4)
+    const items = listFrom(content, 'Conecta · Configura · Lanza · Crece', 4)
     if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), mx, H * 0.22, { size: 16, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, align: 'left', maxW: W * 0.74, alpha: inv(t, 0.05, 0.35) })
     const y0 = H * 0.34, gap = Math.min(96, (H * 0.5) / Math.max(1, items.length)), railX = mx + 2
     const rail = M.ease(inv(t, 0.2, 1.0))
@@ -1455,7 +1455,7 @@ register({
   tags: ['comparacion', 'tabla', 'features', 'check-cruz'], beat: 'value',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK
-    const rows = splitItems(content.claim || content.tagline || 'Sin comisiones · Soporte 24/7 · Setup en minutos', 3)
+    const rows = listFrom(content, 'Sin comisiones · Soporte 24/7 · Setup en minutos', 3)
     const lx = W * 0.1, c1 = W * 0.66, c2 = W * 0.86, y0 = H * 0.32, gap = Math.min(84, (H * 0.46) / Math.max(1, rows.length))
     drawText(ctx, 'OTROS', c1, H * 0.24, { size: 14, weight: 700, family: fonts.accent || fonts.text, color: pal.dim, maxW: W * 0.18, alpha: inv(t, 0.05, 0.4) })
     drawText(ctx, (content.brand || 'NOSOTROS').toUpperCase(), c2, H * 0.24, { size: 14, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, maxW: W * 0.22, alpha: inv(t, 0.05, 0.4) })

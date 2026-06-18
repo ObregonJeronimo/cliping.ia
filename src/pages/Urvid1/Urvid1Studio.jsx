@@ -24,6 +24,7 @@ export default function Urvid1Studio() {
   const [saved, setSaved] = useState(() => { try { return JSON.parse(localStorage.getItem('urvid1.saved') || '[]') } catch { return [] } })
   const [url, setUrl] = useState('')
   const [analyzing, setAnalyzing] = useState('')   // '' | 'loading' | mensaje de error
+  const [shared, setShared] = useState('')         // estado del boton "Compartir con Claude"
 
   useEffect(() => {
     const cv = cvRef.current; if (!cv) return
@@ -62,6 +63,20 @@ export default function Urvid1Studio() {
     } catch {
       setAnalyzing('Backend no disponible — abri "start.bat" (corre en localhost:8000)')
     }
+  }
+
+  // Comparte el {brief, seed, recipe} del video actual con el backend -> Claude lo regenera exacto y lo ve.
+  const share = async () => {
+    if (shared === '...') return
+    setShared('...')
+    try {
+      const r = await fetch(`${API_URL}/api/urvid/share`, { method: 'POST', headers: HEADERS, body: JSON.stringify({ brief, seed, recipe: video.recipe }) })
+      const j = await r.json()
+      setShared(j && j.ok ? 'Compartido ✓ — pedile a Claude que lo vea' : ((j && j.error) || 'No se pudo compartir'))
+    } catch {
+      setShared('Backend apagado — abri "start.bat" (localhost:8000)')
+    }
+    setTimeout(() => setShared(''), 7000)
   }
 
   const up = (k, v) => setBrief(b => ({ ...b, [k]: v }))
@@ -107,6 +122,8 @@ export default function Urvid1Studio() {
             <button className={styles.ghost} onClick={save}>★ Guardar</button>
           </div>
           <span className={styles.seedpill}><i>semilla</i>{seed ? '#' + (seed >>> 0).toString(16).slice(0, 6) : 'auto (marca + rubro)'}</span>
+          <button className={styles.share} onClick={share} title="Manda este video a Claude para que lo vea">{shared === '...' ? 'Compartiendo…' : '↗ Compartir con Claude'}</button>
+          {shared && shared !== '...' && <p style={{ margin: 0, fontSize: 12, color: shared.indexOf('✓') >= 0 ? '#8fe0a8' : '#e08a8a' }}>{shared}</p>}
           <p className={styles.note}>Cada "otra variante" cambia la semilla → el director ensambla una carta distinta. Misma semilla = mismo video, siempre.</p>
         </div>
 

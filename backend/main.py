@@ -374,6 +374,41 @@ async def brand_cache_clear(req: ClearBrandCacheRequest):
         return {"deleted": 0, "error": str(e)}
 
 
+# ─── URVID 1.0 — SHARE (puente para que Claude vea el video). El estudio manda el {brief, seed, recipe} del
+#     video que el usuario esta viendo; lo guardamos en un archivo del repo (tools/urvid-shared.json). Como el
+#     motor es DETERMINISTA, Claude regenera el video EXACTO desde ahi (node tools/urvid1-shot.mjs) y lo ve. ──
+class UrvidShareRequest(BaseModel):
+    brief: dict | None = None
+    seed: int = 0
+    recipe: dict | None = None
+    note: str = ""
+
+
+@app.post("/api/urvid/share")
+async def urvid_share(req: UrvidShareRequest):
+    if not req.brief:
+        return {"ok": False, "error": "falta el brief"}
+    p = Path(__file__).parent.parent / "tools" / "urvid-shared.json"   # raiz del repo cliping.ia/tools/
+    try:
+        prev = []
+        if p.exists():
+            try:
+                prev = json.loads(p.read_text(encoding="utf-8")) or []
+            except Exception:
+                prev = []
+            if not isinstance(prev, list):
+                prev = []
+        entry = {"brief": req.brief, "seed": int(req.seed or 0), "recipe": req.recipe or {},
+                 "note": req.note or "", "ts": datetime.utcnow().isoformat()}
+        prev = ([entry] + prev)[:20]   # ultimos 20, mas nuevo primero
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(json.dumps(prev, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(f"[share] urvid video compartido: {req.brief.get('brand')} (seed {req.seed}) -> {p.name}")
+        return {"ok": True, "count": len(prev)}
+    except Exception as e:
+        return {"ok": False, "error": str(e)[:200]}
+
+
 # ─── URVID 1.0 — PERCEPTION (URL -> brief). El front (Urvid1Studio) hace makeVideo(brief) en el navegador ───
 class PerceiveRequest(BaseModel):
     url: str = ""
