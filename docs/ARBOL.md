@@ -47,6 +47,11 @@ Pegás un **link** → Urvid genera un **video vertical 9:16 de marketing** que:
 - `node tools/render.mjs video tools/torture-fixture.json torture 18` — FIXTURE DE DESBORDE: copy absurdamente largo en
   cada tipo de escena + cada layout de lista. Tras tocar texto/layout, renderizar y confirmar que NADA se sale de su caja
   (clip/fitWrap). Es la garantia "no desborda en ningun video" (regla fix-the-class). Helpers: `clip` (ellipsis) + `fitWrap` (2 lineas).
+- **GATE de desborde** `node tools/bounds-check.mjs [dirs/files...]` — hookea ctx.fillText, calcula la caja real del
+  texto y FALLA si sale de 405x720 (garantia dura, no a ojo). Bleed intencional declarado con ctx._bleedText.
+- **Verificar TODA la biblioteca**: `node tools/stresslib-gen.mjs && node tools/bounds-check.mjs tools/_stresslib`
+  -> ejerce cada variante de cada escena (statement x5, checklist x layouts/markers, bigStat x3, outro x6, numberStack,
+  reveal, quote, split) con copy LARGO en dark+light. Si pasa, ninguna pieza desborda al usarla en un video.
 - `npx vite build` — que el front compile.
 
 ---

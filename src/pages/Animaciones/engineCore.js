@@ -1587,7 +1587,7 @@ function _rgba(hex, a) {
     ctx.font = fontStr(weight, size, role);
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillStyle = col;
-    ctx.fillText(str, 0, 0);
+    ctx.fillText(maxW > 0 ? clip(str, maxW) : str, 0, 0);   // red de seguridad: si el copy no entra ni al min, ellipsis (no se sale)
     ctx.restore();
   }
 
@@ -2011,7 +2011,7 @@ function _rgba(hex, a) {
       ctx.textAlign = isL ? 'left' : isR ? 'right' : 'center'; ctx.textBaseline = 'middle';
       ctx.fillStyle = cInk;
       if (TONE !== 'light') _softShadow('rgba(0,0,0,0.4)', 6, 1);
-      ctx.fillText(ctaStr, anchorX, py); noShadow();
+      ctx.fillText(clip(ctaStr, W * 0.74), anchorX, py); noShadow();
       const tw = Math.min(W * 0.74, ctx.measureText(ctaStr).width), ux = isL ? anchorX : isR ? anchorX - tw : anchorX - tw / 2;
       const up = eOutCubic(clamp(inv(t, 1.3, 1.85), 0, 1));
       ctx.fillStyle = cInk;   // subrayado tan brillante como el texto (legible en oscuro)
@@ -2036,18 +2036,18 @@ function _rgba(hex, a) {
         ctx.save(); setShadow(_rgba(A1, 0.5), 26, 8);
         const g = ctx.createLinearGradient(24, by, 24 + bw, by); g.addColorStop(0, _lighten(A1, 0.5)); g.addColorStop(1, _lighten(A2, 0.36));
         ctx.fillStyle = g; ctx.beginPath(); ctx.roundRect(24, by - bh / 2, bw, bh, 14); ctx.fill(); noShadow();
-        if (br > 0.55) { ctx.globalAlpha = clamp((br - 0.55) / 0.45, 0, 1); const _bs = fitFont((p.cta || 'Visita ahora'), 26, W - 92, 14, 800, 'd'); ctx.font = fontStr(800, _bs, 'd'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = TONE === 'light' ? '#fff' : '#14090e'; ctx.fillText((p.cta || 'Visita ahora'), W / 2, by); }
+        if (br > 0.55) { ctx.globalAlpha = clamp((br - 0.55) / 0.45, 0, 1); const _bs = fitFont((p.cta || 'Visita ahora'), 26, W - 92, 14, 800, 'd'); ctx.font = fontStr(800, _bs, 'd'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = TONE === 'light' ? '#fff' : '#14090e'; ctx.fillText(clip(p.cta || 'Visita ahora', W - 92), W / 2, by); }
         ctx.restore();
       }
     } else if (comp === 'bigtype') {
       wordmark(cx, cy - 88, 'center', 42);
       const tg = eOutBack(clamp(inv(t, 1.0, 1.6), 0, 1));
       if (tg > 0) {
-        const cta = p.cta || 'Visita ahora', fs = fitFont(cta, 72, W * 0.86, 34, 800);
+        const cta = p.cta || 'Visita ahora', fs = fitFont(cta, 72, W * 0.86, 18, 800);
         ctx.save(); ctx.translate(cx, cy + 34); ctx.scale(0.92 + 0.08 * tg, 0.92 + 0.08 * tg);
         ctx.font = fontStr(800, fs, 'd'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         const _cg = ctx.createLinearGradient(-130, -fs * 0.6, 130, fs * 0.6); _cg.addColorStop(0, _ctaInk(A1, 0.55)); _cg.addColorStop(1, _ctaInk(A2, 0.42));
-        _softShadow('rgba(0,0,0,0.4)', 8, 2); _kineticDraw(cta, _cg, 'center', t, 1.0, -fs * 0.02); noShadow(); ctx.restore();
+        _softShadow('rgba(0,0,0,0.4)', 8, 2); _kineticDraw(clip(cta, W * 0.86), _cg, 'center', t, 1.0, -fs * 0.02); noShadow(); ctx.restore();
         const ar = inv(t, 1.5, 1.9);
         if (ar > 0) { ctx.save(); ctx.globalAlpha = ar; ctx.strokeStyle = _ctaInk(A1, 0.4); ctx.lineWidth = 4; ctx.lineCap = 'round'; const ay = cy + 34 + fs * 0.7 + 20; ctx.beginPath(); ctx.moveTo(cx - 16, ay); ctx.lineTo(cx, ay + 14); ctx.lineTo(cx + 16, ay); ctx.stroke(); ctx.restore(); }
       }
@@ -2081,16 +2081,16 @@ function _rgba(hex, a) {
       // end-card CTA-PROTAGONISTA: el CTA gigante es el cierre; la marca firma chica al pie (ya cerro antes)
       const tg = eOutBack(clamp(inv(t, 0.45, 1.15), 0, 1));
       if (tg > 0) {
-        const cta = p.cta || 'Visita ahora', fs = fitFont(cta, 80, W * 0.88, 36, 800);
+        const cta = p.cta || 'Visita ahora', fs = fitFont(cta, 80, W * 0.88, 18, 800);
         ctx.save(); ctx.translate(cx, H * 0.45); ctx.scale(0.9 + 0.1 * tg, 0.9 + 0.1 * tg);
         ctx.font = fontStr(800, fs, 'd'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         const _cg = ctx.createLinearGradient(-130, -fs * 0.6, 130, fs * 0.6); _cg.addColorStop(0, _ctaInk(A1, 0.55)); _cg.addColorStop(1, _ctaInk(A2, 0.42));
-        _softShadow(TONE === 'light' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.45)', 8, 2); _kineticDraw(cta, _cg, 'center', t, 0.5, -fs * 0.02); noShadow(); ctx.restore();
+        _softShadow(TONE === 'light' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.45)', 8, 2); _kineticDraw(clip(cta, W * 0.88), _cg, 'center', t, 0.5, -fs * 0.02); noShadow(); ctx.restore();
         const ar = inv(t, 1.0, 1.4);
         if (ar > 0) { ctx.save(); ctx.globalAlpha = ar; ctx.strokeStyle = _ctaInk(A1, 0.5); ctx.lineWidth = 4; ctx.lineCap = 'round'; const ay = H * 0.45 + fs * 0.66 + 22; ctx.beginPath(); ctx.moveTo(cx - 15, ay); ctx.lineTo(cx, ay + 12); ctx.lineTo(cx + 15, ay); ctx.stroke(); ctx.restore(); }
       }
       const bn = clamp(inv(t, 1.1, 1.6), 0, 1);
-      if (bn > 0) { ctx.save(); ctx.globalAlpha *= bn; const bfs = fitFont(p.brand || '', 24, W * 0.6, 14, 700, 'd'); ctx.font = fontStr(700, bfs, 'd'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = DIM; ctx.fillText(p.brand || '', cx, H * 0.84); ctx.restore(); }
+      if (bn > 0) { ctx.save(); ctx.globalAlpha *= bn; const bfs = fitFont(p.brand || '', 24, W * 0.6, 14, 700, 'd'); ctx.font = fontStr(700, bfs, 'd'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = DIM; ctx.fillText(clip(p.brand || '', W * 0.6), cx, H * 0.84); ctx.restore(); }
     } else {
       wordmark(cx, cy, 'center'); accentBar(cx, cy + 44, 120, 'center'); ctaButton(cx, cy + 110, 'center', false);
     }
@@ -2178,7 +2178,7 @@ function _rgba(hex, a) {
         ctx.save(); ctx.globalAlpha *= ep * 0.95;
         ctx.font = fontStr(700, 18, 'a'); ctx.textAlign = left ? 'left' : 'center'; ctx.textBaseline = 'middle';
         setShadow(TONE === 'light' ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.5)', 6, 0);
-        ctx.fillStyle = _accentInk(A1, 0.45); ctx.fillText(_BRAND.toUpperCase(), eax, ey); noShadow();
+        ctx.fillStyle = _accentInk(A1, 0.45); ctx.fillText(clip(_BRAND.toUpperCase(), W * 0.8), eax, ey); noShadow();
         ctx.restore();
       }
     }
@@ -2257,7 +2257,7 @@ function _rgba(hex, a) {
     if (layout === 'ring') {
       // ANILLO de progreso: track + arco de acento que llena a value%; numero (mas chico) en el centro. Look "gauge".
       const R = 116, lw = 14, ccx = al === 'left' ? W * 0.34 : W / 2, ccy = cy;
-      if (kick && kp > 0) { ctx.save(); ctx.globalAlpha = kp; ctx.font = fontStr(700, 18, 'a'); ctx.fillStyle = _accentInk(A1, 0.42); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(kick, ccx, ccy - R - 26); ctx.restore(); }
+      if (kick && kp > 0) { ctx.save(); ctx.globalAlpha = kp; ctx.font = fontStr(700, 18, 'a'); ctx.fillStyle = _accentInk(A1, 0.42); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(clip(kick, W * 0.8), ccx, ccy - R - 26); ctx.restore(); }
       ctx.save(); ctx.lineCap = 'round';
       ctx.strokeStyle = _rgba(INK, 0.13); ctx.lineWidth = lw; ctx.beginPath(); ctx.arc(ccx, ccy, R, 0, TAU); ctx.stroke();
       ctx.strokeStyle = _accentPop(A1); setShadow(_rgba(_accentPop(A1), 0.4), 16, 0); ctx.beginPath(); ctx.arc(ccx, ccy, R, -Math.PI / 2, -Math.PI / 2 + TAU * barFill); ctx.stroke(); noShadow();
@@ -2270,7 +2270,7 @@ function _rgba(hex, a) {
     }
     // bar / plain: numero grande (gradiente) + kicker arriba
     const fs = fitFont(full, 104, al === 'left' ? W * 0.78 : W * 0.86, 40, 800, 'd');
-    if (kick && kp > 0) { ctx.save(); ctx.globalAlpha = kp; ctx.font = fontStr(700, 18, 'a'); ctx.fillStyle = _accentInk(A1, 0.42); ctx.textAlign = al; ctx.textBaseline = 'middle'; ctx.fillText(kick, ax, cy - fs * 0.6 - 16); ctx.restore(); }
+    if (kick && kp > 0) { ctx.save(); ctx.globalAlpha = kp; ctx.font = fontStr(700, 18, 'a'); ctx.fillStyle = _accentInk(A1, 0.42); ctx.textAlign = al; ctx.textBaseline = 'middle'; ctx.fillText(clip(kick, W * 0.8), ax, cy - fs * 0.6 - 16); ctx.restore(); }
     ctx.save(); ctx.globalAlpha = inv(t, 0.05, 0.38); ctx.translate(ax, cy); ctx.scale(pop * pulse, pop * pulse); ctx.translate(-ax, -cy);
     ctx.font = fontStr(800, fs, 'd'); ctx.textAlign = al; ctx.textBaseline = 'middle';
     const ng = ctx.createLinearGradient(ax - (al === 'left' ? 0 : 130), cy, ax + (al === 'left' ? 270 : 130), cy);
@@ -2833,7 +2833,7 @@ function _rgba(hex, a) {
     const al = _pickAlign(p), ax = al === 'left' ? W * 0.1 : W / 2, baseY = (al === 'left' ? H * 0.58 : H * 0.46) + _vy;
     const fs = fitFont(text, al === 'left' ? 92 : 104, W * 0.82, 44, 800, 'd'), lh = fs * 1.04, startY = baseY - (n - 1) * lh / 2;
     const kick = (p.kicker || '').toUpperCase();
-    if (kick) { const kp = inv(t, 0.1, 0.5); if (kp > 0) { ctx.save(); ctx.globalAlpha = kp; ctx.font = fontStr(700, 18, 'a'); ctx.fillStyle = _accentInk(A1, 0.42); ctx.textAlign = al; ctx.textBaseline = 'middle'; ctx.fillText(kick, ax, startY - fs * 0.74); ctx.restore(); } }
+    if (kick) { const kp = inv(t, 0.1, 0.5); if (kp > 0) { ctx.save(); ctx.globalAlpha = kp; ctx.font = fontStr(700, 18, 'a'); ctx.fillStyle = _accentInk(A1, 0.42); ctx.textAlign = al; ctx.textBaseline = 'middle'; ctx.fillText(clip(kick, W * 0.84), ax, startY - fs * 0.74); ctx.restore(); } }
     ctx.textAlign = al; ctx.textBaseline = 'middle'; ctx.font = fontStr(800, fs, 'd');
     // STAGGER coreografiado (afinado): paso entre palabras + direccion del gesto sembrados por SEED; asentamiento
     // por _spring (overshoot premium) en vez de eOutBack. La palabra aterriza desde el eje del plan (arriba/abajo/
@@ -3011,9 +3011,9 @@ function _rgba(hex, a) {
     ctx.save(); ctx.fillStyle = pg; ctx.fillRect(panelX, panelY, panelW, panelH); ctx.restore();
     const ti = inv(t, 0.4, 0.9), _barY = _horiz ? 44 : H * 0.085, _subY = _horiz ? 42 : H * 0.12, _ctaY = _horiz ? 82 : H * 0.24;
     if (_bar) { const br = eOutCubic(clamp(inv(t, 0.5, 1.0), 0, 1)); if (br > 0) { ctx.save(); ctx.fillStyle = _accentPop(A1); ctx.beginPath(); ctx.roundRect(tcx - 28 * br, tcy - _barY, 56 * br, 5, 2.5); ctx.fill(); ctx.restore(); } }   // barra de acento sobre el titulo
-    if (ti > 0 && p.title) { ctx.save(); ctx.globalAlpha = clamp(ti * 1.4, 0, 1); ctx.font = fontStr(800, fitFont(p.title, 40, panelW - 28, 22, 800, 'd'), 'd'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#f6f8fb'; ctx.fillText(p.title, tcx, tcy + (1 - eOutBack(clamp(ti, 0, 1))) * 14); ctx.restore(); }
+    if (ti > 0 && p.title) { ctx.save(); ctx.globalAlpha = clamp(ti * 1.4, 0, 1); ctx.font = fontStr(800, fitFont(p.title, 40, panelW - 28, 22, 800, 'd'), 'd'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#f6f8fb'; ctx.fillText(clip(p.title, panelW - 28), tcx, tcy + (1 - eOutBack(clamp(ti, 0, 1))) * 14); ctx.restore(); }
     if (p.sub) fxText(p.sub, tcx, tcy + _subY, 20, inv(t, 0.8, 1.2), 600, '#c8d2de', panelW - 30, 't');
-    if (p.cta) { const cp = inv(t, 1.0, 1.4); if (cp > 0) { ctx.save(); ctx.globalAlpha = cp; ctx.font = fontStr(800, 20, 'd'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = _accentPop(A1); ctx.fillText(p.cta + '  ›', tcx, tcy + _ctaY); ctx.restore(); } }
+    if (p.cta) { const cp = inv(t, 1.0, 1.4); if (cp > 0) { ctx.save(); ctx.globalAlpha = cp; ctx.font = fontStr(800, 20, 'd'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = _accentPop(A1); ctx.fillText(clip(p.cta + '  ›', panelW - 20), tcx, tcy + _ctaY); ctx.restore(); } }
   }
 
   const DRAWERS = { paintTitle: sceneTitle, deliver: sceneCart, checklist: sceneList, outro: sceneOutro, statement: sceneStatement, bigStat: sceneBigStat, scene: sceneSpec, reveal: sceneReveal, numberStack: sceneNumberStack, quote: sceneQuote, split: sceneSplit };
