@@ -58,6 +58,11 @@ ahora, encuadrar mentalmente o pedir un crop puntual.)
 - Para varios videos: Capa 0 de todos (gratis) → decidir cuáles ameritan sondas. El overview a ~1fps de muchos
   es barato (en la auditoría fueron 9 sin drama).
 
+## Para que el USUARIO juzgue la FLUIDEZ (lo unico que el agente no puede)
+`node tools/render.mjs mp4 <json> <nombre> [fps=30]` -> MP4 h264 reproducible (810x1440) de TODO el timeline.
+Motion/timing IDENTICOS al final (determinista); difiere solo en que las fuentes las rinde Skia, no Chromium. Es el
+artefacto para que el usuario MIRE el movimiento y de el OK. El agente lo genera en cada milestone y pasa la ruta exacta.
+
 ## Bonus de Urvid (determinista)
 No hace falta grabar un MP4 y extraer frames: el motor (`drawFrame`) renderiza CUALQUIER t/región/composición
 on-demand y exacto. Se puede aislar UN elemento (solo partículas, solo texto) para ver su movimiento limpio —

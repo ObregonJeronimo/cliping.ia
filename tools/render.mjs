@@ -88,6 +88,25 @@ function gifExport(path, name, fps = 14) {
   console.log('wrote', outGif, `(${total} frames @ ${fps}fps, ${dur.toFixed(1)}s)`)
 }
 
+// MP4 (h264): rasteriza TODO el timeline a 30fps y lo arma con ffmpeg -> video REPRODUCIBLE para que el usuario
+// JUZGUE LA FLUIDEZ. Motion/timing identicos al final (determinista, frame/fps); difiere solo en que las fuentes
+// las rinde Skia y no Chromium. 810x1440 (2x). Uso: node tools/render.mjs mp4 <timeline.json> <nombre> [fps=30]
+function mp4Export(tl, name, fps = 30) {
+  const dur = timelineDuration(tl) || 8
+  const tmp = join(OUT, '_mp4frames'); rmSync(tmp, { recursive: true, force: true }); mkdirSync(tmp, { recursive: true })
+  const total = Math.max(1, Math.round(dur * fps)), MS = 2   // 810x1440 (par -> yuv420p ok)
+  for (let i = 0; i < total; i++) {
+    const t = (i + 0.5) / fps
+    const cv = createCanvas(W * MS, H * MS); const ctx = cv.getContext('2d'); ctx.setTransform(MS, 0, 0, MS, 0, 0)
+    drawFrame(ctx, t, tl)
+    writeFileSync(join(tmp, `f${String(i).padStart(4, '0')}.png`), cv.toBuffer('image/png'))
+  }
+  const outMp4 = join(OUT, name + '.mp4')
+  execFileSync('ffmpeg', ['-y', '-framerate', String(fps), '-i', join(tmp, 'f%04d.png'), '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '20', '-movflags', '+faststart', outMp4], { stdio: 'ignore' })
+  rmSync(tmp, { recursive: true, force: true })
+  console.log('wrote', outMp4, `(${total} frames @ ${fps}fps, ${dur.toFixed(1)}s, ${W * MS}x${H * MS})`)
+}
+
 const SHOW_ACCENT = {
   'ocean-deep': '#3aa0ff', 'organic-natural': '#7cc04a', 'sunset-warm': '#ff7847',
   'crimson-bold': '#ff4d5e', 'gold-lux': '#f5c451', 'berry-glow': '#c879ff',
@@ -220,6 +239,9 @@ if (mode === 'window') {
   videoStrip(tl, name, `Video · ${name}`, n)
 } else if (mode === 'gif') {
   gifExport(process.argv[3], process.argv[4] || 'video', parseInt(process.argv[5] || '14', 10))
+} else if (mode === 'mp4') {
+  const p = process.argv[3]; const tl = p ? JSON.parse(readFileSync(p, 'utf8')) : DEMO_TIMELINE; await _loadAssets(tl)
+  mp4Export(tl, process.argv[4] || 'video', parseInt(process.argv[5] || '30', 10))
 } else if (mode === 'trail') {
   const p = process.argv[3]; const tl = JSON.parse(readFileSync(p, 'utf8')); await _loadAssets(tl)
   trailComposite(tl, process.argv[4] || 'trail', parseFloat(process.argv[5] || '0'), parseFloat(process.argv[6] || '2'), parseInt(process.argv[7] || '7', 10))
