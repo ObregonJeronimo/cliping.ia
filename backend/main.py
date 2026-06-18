@@ -430,7 +430,9 @@ async def urvid_perceive(req: PerceiveRequest):
                 req.url.strip(), str(OUTPUTS_DIR / f"perceive_{uuid.uuid4().hex[:8]}.png"))
         except Exception as e:
             print(f"[perceive] capture_all fallo (sigo con lo que haya): {e}")
-    ckey = _brand_cache_key(req.url)
+    # "v2-": version del SCHEMA del brief (claim/tagline/cta + bullets/stats/proof). Bumpear si cambia el shape ->
+    # invalida cache vieja (no servir briefs sin el material nuevo). El cache por URL sigue evitando re-llamar a Claude.
+    ckey = "v2-" + _brand_cache_key(req.url)
     chash = _content_fingerprint(site)
     memkey = ckey + "|" + chash
     db = get_firestore()
