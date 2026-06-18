@@ -1922,3 +1922,497 @@ register({
     ctx.restore()
   },
 })
+
+// ============================================================ OLA 6 ============================================================
+// Ampliacion: mas grain (silver-halide/poisson), mas trama (linocut/spiral-rosette), mas grid (golden/tick-rulers),
+// mas fabric (felt/satin), mas glass (prism-edge/water-caustic), mas light (duotone-wash/edge-glow),
+// mas distress (coffee-stain/crease), mas topographic (dunes/reaction).
+// TODOS tenues + tone-aware + deterministas (mulberry32(env.seed)). ALPHA BAJO: la textura se SIENTE, no tapa.
+
+// ------------------------------------------------------------ grain-noise (Ola 6) ------------------------------------------------------------
+
+register({
+  id: 'sub.grain.silver-halide', lib: 'substrates', category: 'grain-noise', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
+  tags: ['grano', 'pelicula', 'plata', 'clumpy', 'analogico'],
+  render(ctx, t, env) {
+    const { pal } = env, r = mulberry32(env.seed ^ 0x3f9a7c11)
+    // grano de haluro de plata: cristales agrupados (clumps) de tamano IRREGULAR, no puntos parejos como el film
+    // clasico -> el grano "real" de una emulsion empujada. Centellea por bloque temporal. Tone-aware, alpha bajo.
+    const ink = inkOf(pal), anti = antiInkOf(pal)
+    const clumps = 240, base = pal.tone === 'light' ? 0.045 : 0.065
+    ctx.save()
+    for (let i = 0; i < clumps; i++) {
+      const cx = r() * W, cy = r() * H
+      const grains = 2 + (r() * 4 | 0)                  // cada clump = 2-5 cristales pegados
+      const ph = r()
+      const flick = 0.4 + 0.6 * ((i * 0.017 + t * 0.6 + ph) % 1)
+      const dark = r() < 0.55
+      for (let g = 0; g < grains; g++) {
+        const gx = cx + range(r, -2.4, 2.4), gy = cy + range(r, -2.4, 2.4)
+        const s = 0.6 + r() * 1.5
+        ctx.fillStyle = rgba(dark ? ink : anti, base * flick * (0.5 + r() * 0.5))
+        ctx.fillRect(gx, gy, s, s)
+      }
+    }
+    ctx.restore()
+  },
+})
+
+register({
+  id: 'sub.grain.poisson', lib: 'substrates', category: 'grain-noise', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
+  tags: ['grano', 'sensor', 'shot-noise', 'iso-alto', 'digital'],
+  render(ctx, t, env) {
+    const { pal } = env, r = mulberry32(env.seed ^ 0x52d1b6e7)
+    // ruido de sensor (shot/Poisson): ruido fino MAS denso en las zonas oscuras del encuadre (parte inferior),
+    // como el ISO alto digital. Probabilidad de dibujar cae hacia arriba. Centelleo rapido por bloque. Tone-aware.
+    const ink = inkOf(pal), anti = antiInkOf(pal)
+    const N = 2200, base = pal.tone === 'light' ? 0.04 : 0.06
+    const breath = 0.7 + 0.3 * Math.sin(t * 2.1)
+    ctx.save()
+    for (let i = 0; i < N; i++) {
+      const x = r() * W, y = r() * H
+      const shadow = clamp(y / H + 0.15, 0, 1)          // mas ruido abajo (sombras)
+      if (r() > shadow * breath) continue
+      const dark = r() < 0.5
+      ctx.fillStyle = rgba(dark ? ink : anti, base * (0.4 + r() * 0.6) * shadow)
+      ctx.fillRect(x, y, 1, 1)
+    }
+    ctx.restore()
+  },
+})
+
+// ------------------------------------------------------------ print-trama (Ola 6) ------------------------------------------------------------
+
+register({
+  id: 'sub.trama.linocut', lib: 'substrates', category: 'print-trama', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
+  tags: ['print', 'linograbado', 'tallado', 'organico', 'rayado'],
+  render(ctx, t, env) {
+    const { pal } = env, r = mulberry32(env.seed ^ 0x6ab30f55)
+    // linograbado/woodcut: surcos de gubia -> lineas paralelas ONDULADAS con grosor que arranca y termina en punta
+    // (entrada/salida de la herramienta). Look tallado a mano. Casi inmovil (microderiva). Tone-aware, alpha bajo.
+    const ink = inkOf(pal)
+    const step = 9, baseA = pal.tone === 'light' ? 0.05 : 0.07
+    const drift = Math.sin(t * 0.4) * 2
+    ctx.save()
+    ctx.lineCap = 'round'
+    for (let y = -step; y < H + step; y += step) {
+      const amp = 2.5 + r() * 4, freq = range(r, 0.012, 0.026), ph = r() * TAU
+      const segs = 30
+      for (let s = 0; s < segs; s++) {
+        const x0 = (s / segs) * W, x1 = ((s + 1) / segs) * W
+        const ce = Math.sin((s / segs) * Math.PI)        // grosor en punta (0 en extremos, max al medio)
+        ctx.lineWidth = 0.4 + ce * 1.6
+        ctx.strokeStyle = rgba(ink, baseA * (0.35 + 0.65 * ce))
+        ctx.beginPath()
+        ctx.moveTo(x0, y + Math.sin(x0 * freq + ph) * amp + drift)
+        ctx.lineTo(x1, y + Math.sin(x1 * freq + ph) * amp + drift)
+        ctx.stroke()
+      }
+    }
+    ctx.restore()
+  },
+})
+
+register({
+  id: 'sub.trama.spiral-rosette', lib: 'substrates', category: 'print-trama', tones: ['dark', 'light'], rubros: ['finanzas', 'legal', 'default', 'tech', 'lujo'], weight: 0.8,
+  tags: ['print', 'guilloche', 'espiral', 'seguridad', 'billete'],
+  render(ctx, t, env) {
+    const { pal } = env
+    // roseta de seguridad (guilloche en espiral): una espiral logaritmica modulada por un seno -> el ornamento de
+    // billetes/diplomas. Una sola hebra larga, hairline de acento. Rota muy lento con t. Tone-aware, alpha bajo.
+    const cx = W / 2, cy = H * 0.42
+    ctx.save()
+    ctx.translate(cx, cy); ctx.rotate(t * 0.05)
+    ctx.lineWidth = 0.7
+    ctx.strokeStyle = rgba(pal.accent, pal.tone === 'light' ? 0.06 : 0.08)
+    ctx.beginPath()
+    const turns = 7, petals = 9, maxR = H * 0.46
+    const steps = turns * 180
+    for (let i = 0; i <= steps; i++) {
+      const u = i / steps
+      const ang = u * turns * TAU
+      const rr = maxR * u * (1 + 0.12 * Math.sin(ang * petals))   // espiral + ondulacion de petalos
+      const x = Math.cos(ang) * rr, y = Math.sin(ang) * rr
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
+    }
+    ctx.stroke()
+    ctx.restore()
+  },
+})
+
+// ------------------------------------------------------------ editorial-grid (Ola 6) ------------------------------------------------------------
+
+register({
+  id: 'sub.grid.golden', lib: 'substrates', category: 'editorial-grid', tones: ['dark', 'light'], rubros: ['editorial', 'lujo', 'inmobiliaria', 'default', 'finanzas', 'arte'], weight: 1,
+  tags: ['editorial', 'aureo', 'phi', 'espiral', 'composicion'],
+  render(ctx, t, env) {
+    const { pal } = env
+    // grilla de proporcion aurea: rectangulos anidados por phi + la espiral aurea (cuartos de arco) -> guia de
+    // composicion clasica. Hairlines de tinta + espiral de acento que respira. Tone-aware, alpha bajo.
+    const ink = inkOf(pal), phi = 1.618
+    const aInk = pal.tone === 'light' ? 0.05 : 0.07
+    ctx.save()
+    let x = 18, y = 30, w = W - 36, h = H - 60
+    ctx.lineWidth = 0.8
+    ctx.strokeStyle = rgba(ink, aInk)
+    ctx.strokeRect(x, y, w, h)
+    // cortar el cuadrado mayor recursivamente y trazar el cuarto de arco en cada uno
+    ctx.strokeStyle = rgba(pal.accent, aInk * (0.8 + 0.4 * Math.sin(t * 0.6)))
+    let dir = 0
+    for (let i = 0; i < 7; i++) {
+      const sq = (w > h) ? h : w
+      let ax, ay, sa
+      if (w >= h) {                                  // cuadrado a la izquierda, recortar ancho
+        ctx.beginPath(); ctx.moveTo(x + sq, y); ctx.lineTo(x + sq, y + h); ctx.stroke()
+        ax = x + sq; ay = y + sq; sa = Math.PI; // arco esquina
+        ctx.beginPath(); ctx.arc(x + sq, y + sq, sq, Math.PI, Math.PI * 1.5); ctx.stroke()
+        x += sq; w -= sq
+      } else {                                       // cuadrado arriba, recortar alto
+        ctx.beginPath(); ctx.moveTo(x, y + sq); ctx.lineTo(x + w, y + sq); ctx.stroke()
+        ctx.beginPath(); ctx.arc(x, y + sq, sq, Math.PI * 1.5, TAU); ctx.stroke()
+        y += sq; h -= sq
+      }
+      if (w < 6 || h < 6) break
+      dir++
+    }
+    ctx.restore()
+  },
+})
+
+register({
+  id: 'sub.grid.tick-rulers', lib: 'substrates', category: 'editorial-grid', tones: ['dark', 'light'], rubros: ['tech', 'finanzas', 'default', 'editorial', 'construccion'], weight: 0.9,
+  tags: ['editorial', 'reglas', 'medicion', 'tecnico', 'marcas'],
+  render(ctx, t, env) {
+    const { pal } = env
+    // reglas/escalas en los cuatro bordes: marcas de medicion (minor/major como una regla) + un par de hairlines
+    // guia que cruzan -> look de tablero CAD/tecnico. La marca activa (cursor) corre lento con t. Tone-aware.
+    const ink = inkOf(pal), step = 12
+    const aMinor = pal.tone === 'light' ? 0.05 : 0.07, aMajor = pal.tone === 'light' ? 0.09 : 0.12
+    ctx.save()
+    ctx.lineWidth = 1
+    // regla superior + inferior (ticks verticales)
+    for (let x = step; x < W; x += step) {
+      const major = Math.round(x / step) % 5 === 0
+      const len = major ? 10 : 5
+      ctx.strokeStyle = rgba(ink, major ? aMajor : aMinor)
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, len); ctx.moveTo(x, H); ctx.lineTo(x, H - len); ctx.stroke()
+    }
+    // regla izquierda + derecha (ticks horizontales)
+    for (let y = step; y < H; y += step) {
+      const major = Math.round(y / step) % 5 === 0
+      const len = major ? 10 : 5
+      ctx.strokeStyle = rgba(ink, major ? aMajor : aMinor)
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(len, y); ctx.moveTo(W, y); ctx.lineTo(W - len, y); ctx.stroke()
+    }
+    // cursor de medicion: cruz de acento que recorre la diagonal lentamente
+    const u = (t * 0.05) % 1
+    const cx = u * W, cy = u * H
+    ctx.strokeStyle = rgba(pal.accent, aMajor * 0.9); ctx.lineWidth = 0.8
+    ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, H); ctx.moveTo(0, cy); ctx.lineTo(W, cy); ctx.stroke()
+    ctx.restore()
+  },
+})
+
+// ------------------------------------------------------------ fabric-material (Ola 6) ------------------------------------------------------------
+
+register({
+  id: 'sub.fabric.felt', lib: 'substrates', category: 'fabric-material', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
+  tags: ['tela', 'fieltro', 'mota', 'lana-prensada', 'mate'],
+  render(ctx, t, env) {
+    const { pal } = env, r = mulberry32(env.seed ^ 0x4c0ffe21)
+    // fieltro/paño: una nube densa de micropuntos y pelusas cortas en angulos aleatorios -> superficie mate prensada.
+    // Sin direccion clara (a diferencia del denim). Casi inmovil. Doble tono via ink/anti. Alpha bajo.
+    const ink = inkOf(pal), anti = antiInkOf(pal)
+    ctx.save()
+    // mota base
+    for (let i = 0; i < 900; i++) {
+      const x = r() * W, y = r() * H
+      ctx.fillStyle = rgba(r() < 0.5 ? ink : anti, (pal.tone === 'light' ? 0.025 : 0.045) * r())
+      ctx.fillRect(x, y, 1, 1)
+    }
+    // pelusas cortas (fibras enmaranadas)
+    ctx.lineWidth = 0.6
+    for (let i = 0; i < 260; i++) {
+      const x = r() * W, y = r() * H, ang = r() * TAU, len = 1.5 + r() * 3.5
+      ctx.strokeStyle = rgba(r() < 0.5 ? ink : anti, (pal.tone === 'light' ? 0.03 : 0.05) * (0.4 + r() * 0.6))
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(ang) * len, y + Math.sin(ang) * len); ctx.stroke()
+    }
+    ctx.restore()
+  },
+})
+
+register({
+  id: 'sub.fabric.satin', lib: 'substrates', category: 'fabric-material', tones: ['dark', 'light'], rubros: ['lujo', 'moda', 'default', 'belleza', 'arte'], weight: 0.8,
+  tags: ['tela', 'satin', 'seda', 'pliegues', 'premium', 'brillo'],
+  render(ctx, t, env) {
+    const { pal } = env
+    // satin/seda: bandas suaves de luz onduladas (pliegues de tela brillante) que se deslizan lentamente -> el
+    // highlight rasante sobre seda. Highlight blanco + sombra negra muy tenues. Funciona en ambos tonos.
+    ctx.save()
+    const bands = 9
+    for (let i = 0; i < bands; i++) {
+      const phase = i / bands
+      const cy = ((phase + t * 0.04) % 1) * (H + 120) - 60
+      const wob = Math.sin(t * 0.5 + i) * 14
+      // highlight
+      const gh = ctx.createLinearGradient(0, cy + wob - 36, 0, cy + wob + 36)
+      gh.addColorStop(0, rgba('#ffffff', 0))
+      gh.addColorStop(0.5, rgba('#ffffff', pal.tone === 'light' ? 0.04 : 0.06))
+      gh.addColorStop(1, rgba('#ffffff', 0))
+      ctx.fillStyle = gh; ctx.fillRect(0, cy + wob - 36, W, 72)
+      // sombra justo debajo (da el relieve del pliegue)
+      const gs = ctx.createLinearGradient(0, cy + wob + 24, 0, cy + wob + 70)
+      gs.addColorStop(0, rgba('#000000', 0))
+      gs.addColorStop(0.5, rgba('#000000', pal.tone === 'light' ? 0.035 : 0.06))
+      gs.addColorStop(1, rgba('#000000', 0))
+      ctx.fillStyle = gs; ctx.fillRect(0, cy + wob + 24, W, 46)
+    }
+    ctx.restore()
+  },
+})
+
+// ------------------------------------------------------------ glass-acrylic (Ola 6) ------------------------------------------------------------
+
+register({
+  id: 'sub.glass.prism-edge', lib: 'substrates', category: 'glass-acrylic', tones: ['dark', 'light'], rubros: ['*'], weight: 0.8,
+  tags: ['vidrio', 'prisma', 'dispersion', 'arcoiris', 'cromatico'],
+  render(ctx, t, env) {
+    const { pal } = env, r = mulberry32(env.seed ^ 0x70157aab)
+    // borde de prisma: pocas franjas finas donde la luz se DESCOMPONE -> tres lineas paralelas (acento, acento2,
+    // ink) muy juntas y desfasadas = aberracion cromatica de un canto de vidrio. Diagonal, deriva lenta. Ambos tonos.
+    const ink = inkOf(pal)
+    ctx.save()
+    ctx.translate(W / 2, H / 2); ctx.rotate(-0.7); ctx.translate(-W / 2, -H / 2)
+    const edges = 5
+    for (let i = 0; i < edges; i++) {
+      const cx = range(r, -W * 0.2, W * 1.2) + Math.sin(t * 0.3 + i) * 6
+      const a = (pal.tone === 'light' ? 0.05 : 0.07) * (0.5 + r() * 0.5)
+      const chans = [{ c: pal.accent, dx: -2 }, { c: ink, dx: 0 }, { c: pal.accent2, dx: 2 }]
+      for (const ch of chans) {
+        ctx.strokeStyle = rgba(ch.c, a); ctx.lineWidth = 1.1
+        ctx.beginPath(); ctx.moveTo(cx + ch.dx, -H); ctx.lineTo(cx + ch.dx, H * 2); ctx.stroke()
+      }
+    }
+    ctx.restore()
+  },
+})
+
+register({
+  id: 'sub.glass.water-caustic', lib: 'substrates', category: 'glass-acrylic', tones: ['dark', 'light'], rubros: ['*'], weight: 0.8,
+  tags: ['vidrio', 'agua', 'causticas', 'piscina', 'ondulado'],
+  render(ctx, t, env) {
+    const { pal } = env
+    // causticas de agua vistas a traves de vidrio mojado: red de lineas curvas brillantes que forman celdas
+    // irregulares (como el fondo de una pileta). Dos campos seno cruzados -> contornos de luz. Ondulan con t. Ambos tonos.
+    ctx.save()
+    ctx.globalCompositeOperation = pal.tone === 'light' ? 'source-over' : 'lighter'
+    const lineCol = pal.tone === 'light' ? '#ffffff' : '#ffffff'
+    const a = pal.tone === 'light' ? 0.05 : 0.07
+    ctx.strokeStyle = rgba(lineCol, a); ctx.lineWidth = 1
+    const cell = 46
+    for (let oy = 0; oy < H + cell; oy += cell) {
+      ctx.beginPath()
+      for (let x = -10; x <= W + 10; x += 6) {
+        const y = oy + Math.sin(x * 0.05 + t * 0.8) * 9 + Math.sin(x * 0.021 - t * 0.5) * 7
+        x === -10 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
+      }
+      ctx.stroke()
+    }
+    // segunda familia (vertical-ish) para cerrar celdas
+    for (let ox = 0; ox < W + cell; ox += cell) {
+      ctx.beginPath()
+      for (let y = -10; y <= H + 10; y += 6) {
+        const x = ox + Math.sin(y * 0.05 - t * 0.7) * 9 + Math.cos(y * 0.023 + t * 0.4) * 7
+        y === -10 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
+      }
+      ctx.stroke()
+    }
+    ctx.restore()
+  },
+})
+
+// ------------------------------------------------------------ overlay-light (Ola 6) ------------------------------------------------------------
+
+register({
+  id: 'sub.light.duotone-wash', lib: 'substrates', category: 'overlay-light', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
+  tags: ['lavado', 'duotono', 'gradiente', 'tinte', 'editorial'],
+  render(ctx, t, env) {
+    const { pal } = env
+    // lavado duotono: un gradiente diagonal de acento -> acento2 a alpha MUY bajo, que tiñe levemente el encuadre
+    // (calido en una esquina, frio en la opuesta). El angulo del barrido gira muy lento con t. Tone-aware.
+    const ang = t * 0.06
+    const dx = Math.cos(ang), dy = Math.sin(ang)
+    const x0 = W / 2 - dx * W, y0 = H / 2 - dy * H, x1 = W / 2 + dx * W, y1 = H / 2 + dy * H
+    const a = pal.tone === 'light' ? 0.05 : 0.08
+    const g = ctx.createLinearGradient(x0, y0, x1, y1)
+    g.addColorStop(0, rgba(pal.accent, a))
+    g.addColorStop(0.5, rgba(pal.accent, 0))
+    g.addColorStop(1, rgba(pal.accent2, a))
+    ctx.save(); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); ctx.restore()
+  },
+})
+
+register({
+  id: 'sub.light.edge-glow', lib: 'substrates', category: 'overlay-light', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
+  tags: ['borde', 'glow', 'inner-shadow', 'marco', 'foco'],
+  render(ctx, t, env) {
+    const { pal } = env
+    // glow de borde / inner-frame: un halo de acento muy tenue PEGADO a los cuatro bordes (cuatro gradientes lineales
+    // hacia adentro) -> enmarca el contenido sin tocar el centro. Late suave con t. Tone-aware (acento en glow + scrim).
+    const a = pal.tone === 'light' ? 0.05 : 0.09
+    const breath = 0.75 + 0.25 * Math.sin(t * 0.7)
+    const band = 70
+    ctx.save()
+    const col = pal.accent
+    const edges = [
+      { g: ctx.createLinearGradient(0, 0, 0, band), x: 0, y: 0, w: W, h: band },          // top
+      { g: ctx.createLinearGradient(0, H, 0, H - band), x: 0, y: H - band, w: W, h: band }, // bottom
+      { g: ctx.createLinearGradient(0, 0, band, 0), x: 0, y: 0, w: band, h: H },          // left
+      { g: ctx.createLinearGradient(W, 0, W - band, 0), x: W - band, y: 0, w: band, h: H }, // right
+    ]
+    for (const e of edges) {
+      e.g.addColorStop(0, rgba(col, a * breath))
+      e.g.addColorStop(1, rgba(col, 0))
+      ctx.fillStyle = e.g; ctx.fillRect(e.x, e.y, e.w, e.h)
+    }
+    ctx.restore()
+  },
+})
+
+// ------------------------------------------------------------ damage-distress (Ola 6) ------------------------------------------------------------
+
+register({
+  id: 'sub.distress.coffee-stain', lib: 'substrates', category: 'damage-distress', tones: ['dark', 'light'], rubros: ['*'], weight: 0.7,
+  tags: ['mancha', 'cafe', 'anillo', 'vintage', 'papel'],
+  render(ctx, t, env) {
+    const { pal } = env, r = mulberry32(env.seed ^ 0x6cf3ee01)
+    // marcas de taza de cafe: 1-2 anillos irregulares (mas oscuros en el borde que en el centro, como una mancha que
+    // se secó) en una esquina sembrada. Tinte de tinta. Casi inmovil (microrespiracion). Tone-aware, alpha bajo.
+    const ink = inkOf(pal)
+    ctx.save()
+    const rings = 1 + (r() < 0.5 ? 1 : 0)
+    for (let k = 0; k < rings; k++) {
+      const cx = r() < 0.5 ? range(r, W * 0.1, W * 0.35) : range(r, W * 0.65, W * 0.9)
+      const cy = r() < 0.5 ? range(r, H * 0.1, H * 0.3) : range(r, H * 0.7, H * 0.9)
+      const rad = 34 + r() * 26
+      const breath = 0.9 + 0.1 * Math.sin(t * 0.4 + k)
+      // borde del anillo (mas marcado) con grosor irregular
+      const segs = 60
+      ctx.lineWidth = 2.4
+      ctx.beginPath()
+      for (let i = 0; i <= segs; i++) {
+        const ang = (i / segs) * TAU
+        const wob = 1 + Math.sin(ang * 5 + r() * 0) * 0.06 + Math.sin(ang * 9) * 0.04
+        const rr = rad * wob * breath
+        const x = cx + Math.cos(ang) * rr, y = cy + Math.sin(ang) * rr
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
+      }
+      ctx.closePath()
+      ctx.strokeStyle = rgba(ink, pal.tone === 'light' ? 0.06 : 0.08)
+      ctx.stroke()
+      // relleno tenue (mancha interior)
+      const g = ctx.createRadialGradient(cx, cy, rad * 0.3, cx, cy, rad)
+      g.addColorStop(0, rgba(ink, pal.tone === 'light' ? 0.012 : 0.02))
+      g.addColorStop(1, rgba(ink, pal.tone === 'light' ? 0.035 : 0.05))
+      ctx.fillStyle = g; ctx.fill()
+    }
+    ctx.restore()
+  },
+})
+
+register({
+  id: 'sub.distress.crease', lib: 'substrates', category: 'damage-distress', tones: ['dark', 'light'], rubros: ['*'], weight: 0.8,
+  tags: ['pliegue', 'arruga', 'papel-doblado', 'sombra', 'vintage'],
+  render(ctx, t, env) {
+    const { pal } = env, r = mulberry32(env.seed ^ 0x71ab09cd)
+    // papel arrugado: pliegues como pares sombra+luz a lo largo de lineas quebradas que cruzan el lienzo -> el relieve
+    // de una hoja que estuvo doblada. Pocas lineas, finas. Casi inmovil. Funciona en ambos tonos (luz blanca/sombra negra).
+    ctx.save()
+    const creases = 5
+    for (let k = 0; k < creases; k++) {
+      // linea quebrada de borde a borde
+      const vertical = r() < 0.5
+      const pts = []
+      const segs = 4 + (r() * 3 | 0)
+      for (let i = 0; i <= segs; i++) {
+        const u = i / segs
+        if (vertical) pts.push([range(r, W * 0.1, W * 0.9) * 0 + (W * 0.2 + W * 0.6 * (k / creases)) + range(r, -30, 30), u * H])
+        else pts.push([u * W, (H * 0.2 + H * 0.6 * (k / creases)) + range(r, -28, 28)])
+      }
+      const drift = Math.sin(t * 0.3 + k) * 0.5
+      // sombra (un lado)
+      ctx.lineWidth = 1.4
+      ctx.strokeStyle = rgba('#000000', pal.tone === 'light' ? 0.045 : 0.07)
+      ctx.beginPath()
+      pts.forEach((p, i) => i ? ctx.lineTo(p[0] + 0.8, p[1] + drift) : ctx.moveTo(p[0] + 0.8, p[1] + drift))
+      ctx.stroke()
+      // luz (el otro lado, pegada)
+      ctx.lineWidth = 1
+      ctx.strokeStyle = rgba('#ffffff', pal.tone === 'light' ? 0.05 : 0.08)
+      ctx.beginPath()
+      pts.forEach((p, i) => i ? ctx.lineTo(p[0] - 0.8, p[1] + drift) : ctx.moveTo(p[0] - 0.8, p[1] + drift))
+      ctx.stroke()
+    }
+    ctx.restore()
+  },
+})
+
+// ------------------------------------------------------------ topographic-organic (Ola 6) ------------------------------------------------------------
+
+register({
+  id: 'sub.topo.dunes', lib: 'substrates', category: 'topographic-organic', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
+  tags: ['dunas', 'arena', 'capas', 'ondulado', 'paisaje'],
+  render(ctx, t, env) {
+    const { pal } = env, r = mulberry32(env.seed ^ 0x2d0e511f)
+    // dunas/capas sedimentarias: lineas de cresta apiladas que se ondulan suavemente como crestas de arena vistas de
+    // perfil. Cada capa con su fase -> sensacion de profundidad/estratos. Las ondas avanzan muy lento con t. Ambos tonos.
+    const ink = inkOf(pal)
+    const layers = 14
+    ctx.save()
+    ctx.lineWidth = 1
+    for (let i = 0; i < layers; i++) {
+      const baseY = H * 0.12 + (i / layers) * H * 0.86
+      const amp = 6 + r() * 12, freq = range(r, 0.006, 0.014), ph = r() * TAU
+      const depth = i / layers                         // mas marcadas las de "adelante" (abajo)
+      ctx.strokeStyle = rgba(ink, (pal.tone === 'light' ? 0.03 : 0.05) * (0.5 + depth))
+      ctx.beginPath()
+      for (let x = 0; x <= W; x += 5) {
+        const y = baseY + Math.sin(x * freq + ph + t * 0.2) * amp
+        x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
+      }
+      ctx.stroke()
+    }
+    ctx.restore()
+  },
+})
+
+register({
+  id: 'sub.topo.reaction', lib: 'substrates', category: 'topographic-organic', tones: ['dark', 'light'], rubros: ['*'], weight: 0.8,
+  tags: ['reaccion-difusion', 'laberinto', 'organico', 'turing', 'celular'],
+  render(ctx, t, env) {
+    const { pal } = env, r = mulberry32(env.seed ^ 0x51b2c3a9)
+    // patron reaccion-difusion (Turing): trazos curvos cortos que serpentean siguiendo un campo de angulo de dos senos
+    // cruzados, sembrados en grilla jitter -> el look "laberinto/coral" organico. Microderiva con t. Tone-aware, alpha bajo.
+    const ink = inkOf(pal)
+    const fld = (x, y) => Math.sin(x * 0.03 + Math.cos(y * 0.025) * 2 + t * 0.15) * Math.PI
+    ctx.save()
+    ctx.lineWidth = 1.3
+    ctx.lineCap = 'round'
+    const gx = 22, gy = 22
+    for (let iy = 0; iy < H + gy; iy += gy) {
+      for (let ix = 0; ix < W + gx; ix += gx) {
+        let x = ix + range(r, -8, 8), y = iy + range(r, -8, 8)
+        ctx.strokeStyle = rgba(ink, (pal.tone === 'light' ? 0.045 : 0.07) * (0.5 + r() * 0.5))
+        ctx.beginPath(); ctx.moveTo(x, y)
+        const steps = 6
+        for (let s = 0; s < steps; s++) {
+          const a = fld(x, y)
+          x += Math.cos(a) * 5; y += Math.sin(a) * 5
+          ctx.lineTo(x, y)
+        }
+        ctx.stroke()
+      }
+    }
+    ctx.restore()
+  },
+})

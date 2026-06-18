@@ -2207,3 +2207,531 @@ register({
     scrim(ctx, pal, { centerClear: 0.36, strength: pal.tone === 'light' ? 0.18 : 0.3 })
   },
 })
+
+// ============================================================================
+// OLA 6 — mas fondos full-canvas nuevos. Reusa rampBg/makeNoise/scrim/roundRect/shuffledLocal/CLK (ya en scope).
+// Categorias: gradient-fields, geometric-graphic, generative-art, retro-print, tech-hud, spatial-depth,
+// atmospheric-organic, chrome-y2k. Todos puros + deterministas (mulberry32/seedFor + t). Sutiles (texto encima).
+// ============================================================================
+
+// ---- gradient-fields ----
+
+register({
+  id: 'bg.gradient.silkfold', lib: 'backgrounds', category: 'gradient-fields', tones: ['dark', 'light'], rubros: ['*', 'moda', 'arte', 'salud'], weight: 1,
+  tags: ['calmo', 'seda', 'pliegues', 'premium', 'editorial'],
+  render(ctx, t, env) {
+    const { pal } = env, r = seedFor(env.seed, 'silk')
+    rampBg(ctx, pal)
+    // pliegues de seda: franjas diagonales de luz/sombra moduladas por suma de senos -> tela tornasolada suave.
+    const ang = range(r, -0.6, 0.6), ux = Math.cos(ang), uy = Math.sin(ang)
+    const span = Math.abs(W * ux) + Math.abs(H * uy)
+    const ph = r() * TAU
+    // en claro 'multiply' (oscurece los valles -> pliegues VISIBLES); en oscuro 'screen' (brillo en crestas)
+    ctx.save(); ctx.globalCompositeOperation = pal.tone === 'light' ? 'multiply' : 'screen'
+    const step = 6
+    for (let p = -span; p <= span; p += step) {
+      const u = (p + span) / (2 * span)
+      // perfil de pliegue: varias frecuencias -> tela.
+      const fold = 0.5 + 0.5 * Math.sin(u * 22 + Math.sin(u * 5 + ph) * 1.4 + t * CLK * 0.25 + ph)
+      const col = (u + 0.5 * Math.sin(u * 3)) % 1 < 0.5 ? pal.accent : pal.accent2
+      // claro: pintar los VALLES (1-hot) con tinte oscuro -> contraste; oscuro: pintar CRESTAS (hot) con tinte claro.
+      const hot = Math.pow(fold, 2.4)
+      const amt = pal.tone === 'light' ? Math.pow(1 - fold, 1.8) : hot
+      const a = (pal.tone === 'light' ? 0.24 : 0.18) * amt
+      ctx.fillStyle = rgba(pal.tone === 'light' ? darken(col, 0.25) : lighten(col, 0.4), a)
+      const cx = (W / 2) + (p) * ux
+      const cy = (H / 2) + (p) * uy
+      // dibujar una banda perpendicular ancha que cubre el canvas
+      ctx.save(); ctx.translate(cx, cy); ctx.rotate(ang + Math.PI / 2)
+      ctx.fillRect(-span, -step, span * 2, step + 1)
+      ctx.restore()
+    }
+    ctx.restore()
+    scrim(ctx, pal, { centerClear: 0.4, strength: pal.tone === 'light' ? 0.1 : 0.24 })
+  },
+})
+
+register({
+  id: 'bg.gradient.glowmesh', lib: 'backgrounds', category: 'gradient-fields', tones: ['dark', 'light'], rubros: ['*', 'tech', 'salud', 'educacion'], weight: 1.05,
+  tags: ['calmo', 'mesh', 'gradiente', 'universal', 'moderno'],
+  render(ctx, t, env) {
+    const { pal } = env, r = seedFor(env.seed, 'gmesh')
+    rampBg(ctx, pal)
+    // mesh-gradient moderno: 5 nodos de color en una grilla irregular, blobs radiales grandes que se mecen
+    // muy lento -> degrade rico tipo Stripe/Linear. Opacidad contenida + scrim central.
+    const nodes = []
+    const gx = [0.16, 0.84, 0.5, 0.2, 0.8], gy = [0.16, 0.2, 0.5, 0.84, 0.82]
+    for (let i = 0; i < 5; i++) {
+      const ph = r() * TAU
+      nodes.push({ x: gx[i] * W + Math.sin(t * CLK * 0.22 + ph) * 28, y: gy[i] * H + Math.cos(t * CLK * 0.19 + ph) * 30, col: i % 2 ? pal.accent2 : pal.accent })
+    }
+    ctx.save(); ctx.globalCompositeOperation = pal.tone === 'light' ? 'multiply' : 'lighter'
+    for (const n of nodes) {
+      const rad = H * (0.4 + r() * 0.18)
+      const gr = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, rad)
+      gr.addColorStop(0, rgba(n.col, pal.tone === 'light' ? 0.13 : 0.2)); gr.addColorStop(1, rgba(n.col, 0))
+      ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H)
+    }
+    ctx.restore()
+    scrim(ctx, pal, { centerClear: 0.42, strength: pal.tone === 'light' ? 0.08 : 0.2 })
+  },
+})
+
+// ---- geometric-graphic ----
+
+register({
+  id: 'bg.geometric.stripewave', lib: 'backgrounds', category: 'geometric-graphic', tones: ['dark', 'light'], rubros: ['*', 'moda', 'eventos', 'deportes'], weight: 0.85,
+  tags: ['geometrico', 'rayas', 'onda', 'movimiento', 'optico'],
+  render(ctx, t, env) {
+    const { pal } = env, r = seedFor(env.seed, 'stripew')
+    rampBg(ctx, pal)
+    // rayas verticales gruesas cuya base ondula horizontal (efecto op-art suave). Alternan acento/fondo translucido.
+    const cols = 16, cw = W / cols
+    const ph = r() * TAU
+    ctx.save(); ctx.globalCompositeOperation = pal.tone === 'light' ? 'multiply' : 'screen'
+    for (let i = 0; i < cols; i++) {
+      if (i % 2) continue
+      const col = (i / 2) % 3 === 0 ? pal.accent2 : pal.accent
+      ctx.fillStyle = rgba(col, pal.tone === 'light' ? 0.14 : 0.16)
+      ctx.beginPath()
+      const x0 = i * cw
+      ctx.moveTo(x0, -10)
+      for (let y = -10; y <= H + 10; y += 14) {
+        const sway = Math.sin(y * 0.012 + i * 0.5 + t * CLK * 0.4 + ph) * 12
+        ctx.lineTo(x0 + sway, y)
+      }
+      for (let y = H + 10; y >= -10; y -= 14) {
+        const sway = Math.sin(y * 0.012 + i * 0.5 + t * CLK * 0.4 + ph) * 12
+        ctx.lineTo(x0 + cw + sway, y)
+      }
+      ctx.closePath(); ctx.fill()
+    }
+    ctx.restore()
+    scrim(ctx, pal, { centerClear: 0.36, strength: pal.tone === 'light' ? 0.16 : 0.28 })
+  },
+})
+
+register({
+  id: 'bg.geometric.triangulation', lib: 'backgrounds', category: 'geometric-graphic', tones: ['dark', 'light'], rubros: ['*', 'tech', 'finanzas', 'arte'], weight: 0.8,
+  tags: ['geometrico', 'lowpoly', 'triangulos', 'facetado', 'cristal'],
+  render(ctx, t, env) {
+    const { pal } = env, r = seedFor(env.seed, 'trig')
+    rampBg(ctx, pal)
+    // malla low-poly: grilla de vertices jiggleados (deterministas) -> triangulos planos con tinte variable.
+    const cols = 7, rows = 12
+    const cw = W / cols, ch = H / rows
+    // posiciones de vertices estables + un leve idle por t (mismo offset por vertice)
+    const vx = (i, j) => i * cw + (i > 0 && i < cols ? (mulberry32((env.seed ^ (i * 73856093) ^ (j * 19349663)) >>> 0)() - 0.5) * cw * 0.6 + Math.sin(t * CLK * 0.2 + i + j) * 3 : 0)
+    const vy = (i, j) => j * ch + (j > 0 && j < rows ? (mulberry32((env.seed ^ (i * 19349663) ^ (j * 83492791)) >>> 0)() - 0.5) * ch * 0.6 + Math.cos(t * CLK * 0.2 + i - j) * 3 : 0)
+    ctx.lineWidth = 1
+    for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
+      const ax = vx(i, j), ay = vy(i, j)
+      const bx = vx(i + 1, j), by = vy(i + 1, j)
+      const cx = vx(i, j + 1), cy = vy(i, j + 1)
+      const dx = vx(i + 1, j + 1), dy = vy(i + 1, j + 1)
+      const tone1 = ((i * 7 + j * 13) % 6) / 6, tone2 = ((i * 11 + j * 5 + 3) % 6) / 6
+      const fill1 = rgba((i + j) % 2 ? pal.accent : pal.accent2, (pal.tone === 'light' ? 0.05 : 0.07) + tone1 * (pal.tone === 'light' ? 0.08 : 0.1))
+      const fill2 = rgba((i + j) % 2 ? pal.accent2 : pal.accent, (pal.tone === 'light' ? 0.05 : 0.07) + tone2 * (pal.tone === 'light' ? 0.08 : 0.1))
+      ctx.fillStyle = fill1; ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.lineTo(cx, cy); ctx.closePath(); ctx.fill()
+      ctx.fillStyle = fill2; ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(dx, dy); ctx.lineTo(cx, cy); ctx.closePath(); ctx.fill()
+      ctx.strokeStyle = rgba(pal.accent, pal.tone === 'light' ? 0.06 : 0.09)
+      ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.lineTo(cx, cy); ctx.lineTo(ax, ay); ctx.moveTo(bx, by); ctx.lineTo(dx, dy); ctx.lineTo(cx, cy); ctx.stroke()
+    }
+    scrim(ctx, pal, { centerClear: 0.36, strength: pal.tone === 'light' ? 0.16 : 0.28 })
+  },
+})
+
+// ---- generative-art ----
+
+register({
+  id: 'bg.generative.spirograph', lib: 'backgrounds', category: 'generative-art', tones: ['dark', 'light'], rubros: ['*', 'arte', 'educacion', 'tech'], weight: 0.75,
+  tags: ['generativo', 'espirografo', 'lineas', 'matematico', 'hipnotico'],
+  render(ctx, t, env) {
+    const { pal } = env, r = seedFor(env.seed, 'spiro')
+    rampBg(ctx, pal)
+    // curvas tipo espirografo (epicicloides): radios/razon sembrados -> rosetones distintos por semilla. Rotan lento.
+    const cx = W / 2, cy = H * 0.46
+    const R = H * 0.34
+    const curves = 2
+    ctx.save(); ctx.globalCompositeOperation = pal.tone === 'light' ? 'multiply' : 'screen'
+    for (let c = 0; c < curves; c++) {
+      const k = 0.2 + r() * 0.5            // razon de radios
+      const l = 0.4 + r() * 0.5            // distancia del trazador
+      const lobes = 3 + ((r() * 5) | 0)
+      const rot = t * CLK * 0.06 * (c ? -1 : 1)
+      const col = c ? pal.accent2 : pal.accent
+      ctx.strokeStyle = rgba(col, pal.tone === 'light' ? 0.22 : 0.3); ctx.lineWidth = 1.2
+      ctx.beginPath()
+      const turns = lobes, N = 360 * 2
+      for (let i = 0; i <= N; i++) {
+        const th = (i / N) * TAU * turns
+        const x = cx + R * ((1 - k) * Math.cos(th) + l * k * Math.cos((1 - k) / k * th) + rot * 0)
+        const y = cy + R * ((1 - k) * Math.sin(th) - l * k * Math.sin((1 - k) / k * th))
+        // rotacion global
+        const dx = x - cx, dy = y - cy
+        const rx = cx + dx * Math.cos(rot) - dy * Math.sin(rot)
+        const ry = cy + dx * Math.sin(rot) + dy * Math.cos(rot)
+        i === 0 ? ctx.moveTo(rx, ry) : ctx.lineTo(rx, ry)
+      }
+      ctx.stroke()
+    }
+    ctx.restore()
+    scrim(ctx, pal, { centerClear: 0.32, strength: pal.tone === 'light' ? 0.18 : 0.32 })
+  },
+})
+
+register({
+  id: 'bg.generative.driftparticles', lib: 'backgrounds', category: 'generative-art', tones: ['dark', 'light'], rubros: ['*', 'tech', 'salud', 'eventos'], weight: 0.85,
+  tags: ['generativo', 'particulas', 'red', 'constelacion', 'flotante'],
+  render(ctx, t, env) {
+    const { pal } = env, r = seedFor(env.seed, 'drift')
+    rampBg(ctx, pal)
+    // particulas que derivan en orbitas suaves; lineas a vecinos -> red viva (plexus). Determinista por fase.
+    const N = 34
+    const pts = []
+    for (let i = 0; i < N; i++) {
+      const bx = r() * W, by = r() * H, ph = r() * TAU, sp = range(r, 0.2, 0.6), rad = 16 + r() * 26
+      pts.push({ x: bx + Math.cos(t * CLK * sp + ph) * rad, y: by + Math.sin(t * CLK * sp * 0.9 + ph) * rad, big: r() < 0.2 })
+    }
+    ctx.lineWidth = 1
+    for (let a = 0; a < N; a++) for (let b = a + 1; b < N; b++) {
+      const dx = pts[a].x - pts[b].x, dy = pts[a].y - pts[b].y, d2 = dx * dx + dy * dy
+      const lim = 78
+      if (d2 < lim * lim) {
+        const al = (1 - Math.sqrt(d2) / lim) * (pal.tone === 'light' ? 0.16 : 0.2)
+        ctx.strokeStyle = rgba(pal.accent, al)
+        ctx.beginPath(); ctx.moveTo(pts[a].x, pts[a].y); ctx.lineTo(pts[b].x, pts[b].y); ctx.stroke()
+      }
+    }
+    for (const p of pts) {
+      ctx.fillStyle = rgba(p.big ? pal.accent2 : pal.accent, p.big ? 0.6 : 0.4)
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.big ? 3.4 : 1.8, 0, TAU); ctx.fill()
+    }
+    scrim(ctx, pal, { centerClear: 0.34, strength: pal.tone === 'light' ? 0.16 : 0.28 })
+  },
+})
+
+// ---- retro-print ----
+
+register({
+  id: 'bg.retroprint.memphis', lib: 'backgrounds', category: 'retro-print', tones: ['dark', 'light'], rubros: ['*', 'arte', 'eventos', 'moda', 'educacion'], weight: 0.8,
+  tags: ['retro', 'memphis', '80s', 'formas', 'patron', 'ludico'],
+  render(ctx, t, env) {
+    const { pal } = env, r = seedFor(env.seed, 'memph')
+    ctx.fillStyle = pal.tone === 'light' ? pal.bg0 : pal.bg1; ctx.fillRect(0, 0, W, H)
+    // patron memphis: zigzags, puntos, squiggles y triangulitos sembrados, planos, con un idle de rotacion minimo.
+    const drift = Math.sin(t * CLK * 0.3) * 0.06
+    const kinds = ['zig', 'dots', 'tri', 'ring', 'squig']
+    const M = 16
+    for (let i = 0; i < M; i++) {
+      const x = r() * W, y = r() * H, s = 16 + r() * 22
+      const kind = kinds[(r() * kinds.length) | 0]
+      const col = [pal.accent, pal.accent2, pal.tone === 'light' ? darken(pal.accent, 0.3) : lighten(pal.accent2, 0.3)][(r() * 3) | 0]
+      const a = pal.tone === 'light' ? 0.32 : 0.3
+      ctx.save(); ctx.translate(x, y); ctx.rotate(range(r, 0, TAU) + drift)
+      ctx.strokeStyle = rgba(col, a); ctx.fillStyle = rgba(col, a); ctx.lineWidth = 3; ctx.lineCap = 'round'
+      if (kind === 'zig') { ctx.beginPath(); for (let k = 0; k < 4; k++) { ctx.lineTo(k * s * 0.5, (k % 2 ? -1 : 1) * s * 0.3) } ctx.stroke() }
+      else if (kind === 'dots') { for (let a2 = 0; a2 < 3; a2++) for (let b2 = 0; b2 < 3; b2++) { ctx.beginPath(); ctx.arc(a2 * 9, b2 * 9, 2, 0, TAU); ctx.fill() } }
+      else if (kind === 'tri') { ctx.beginPath(); ctx.moveTo(0, -s * 0.6); ctx.lineTo(s * 0.5, s * 0.4); ctx.lineTo(-s * 0.5, s * 0.4); ctx.closePath(); ctx.stroke() }
+      else if (kind === 'ring') { ctx.beginPath(); ctx.arc(0, 0, s * 0.5, 0, TAU); ctx.stroke() }
+      else { ctx.beginPath(); for (let xx = -s; xx <= s; xx += 4) ctx.lineTo(xx, Math.sin(xx * 0.4) * 6); ctx.stroke() }
+      ctx.restore()
+    }
+    scrim(ctx, pal, { centerClear: 0.36, strength: pal.tone === 'light' ? 0.14 : 0.26 })
+  },
+})
+
+register({
+  id: 'bg.retroprint.stamp', lib: 'backgrounds', category: 'retro-print', tones: ['dark', 'light'], rubros: ['*', 'gastronomia', 'arte', 'eventos'], weight: 0.7,
+  tags: ['retro', 'sello', 'grunge', 'tinta', 'vintage'],
+  render(ctx, t, env) {
+    const { pal } = env, r = seedFor(env.seed, 'stamp')
+    ctx.fillStyle = pal.tone === 'light' ? pal.bg0 : pal.bg1; ctx.fillRect(0, 0, W, H)
+    // marco postal punteado + arcos de "sello" concentricos que respiran, con textura de grano.
+    const m = 26
+    ctx.strokeStyle = rgba(pal.accent, pal.tone === 'light' ? 0.3 : 0.34); ctx.lineWidth = 2
+    ctx.setLineDash([2, 8]); ctx.strokeRect(m, m, W - m * 2, H - m * 2); ctx.setLineDash([])
+    ctx.strokeStyle = rgba(pal.ink, pal.tone === 'light' ? 0.14 : 0.2); ctx.lineWidth = 1
+    ctx.strokeRect(m + 8, m + 8, W - (m + 8) * 2, H - (m + 8) * 2)
+    // sello circular arriba (cancelacion postal) que respira
+    const cx = W * 0.5, cy = H * 0.34, breathe = 1 + 0.02 * Math.sin(t * CLK * 0.5)
+    ctx.strokeStyle = rgba(pal.accent2, pal.tone === 'light' ? 0.3 : 0.36); ctx.lineWidth = 2.4
+    for (let k = 0; k < 2; k++) { ctx.beginPath(); ctx.arc(cx, cy, (52 - k * 12) * breathe, 0, TAU); ctx.stroke() }
+    // rayos de cancelacion
+    ctx.lineWidth = 2; ctx.strokeStyle = rgba(pal.accent2, pal.tone === 'light' ? 0.24 : 0.3)
+    for (let i = 0; i < 9; i++) { const yy = cy - 16 + i * 4; ctx.beginPath(); ctx.moveTo(cx - 44, yy); ctx.lineTo(cx + 44, yy); ctx.stroke() }
+    // grano vintage
+    ctx.fillStyle = rgba(pal.tone === 'light' ? '#000' : '#fff', 0.03)
+    for (let i = 0; i < 600; i++) ctx.fillRect((r() * W) | 0, (r() * H) | 0, 1, 1)
+    scrim(ctx, pal, { centerClear: 0.32, strength: pal.tone === 'light' ? 0.12 : 0.24 })
+  },
+})
+
+// ---- tech-hud ----
+
+register({
+  id: 'bg.techhud.matrixrain', lib: 'backgrounds', category: 'tech-hud', tones: ['dark'], rubros: ['*', 'tech', 'gaming', 'educacion'], weight: 0.72,
+  tags: ['tech', 'matrix', 'lluvia', 'codigo', 'columnas'],
+  render(ctx, t, env) {
+    const { pal } = env, r = seedFor(env.seed, 'mrain')
+    ctx.fillStyle = darken(pal.bg0, 0.12); ctx.fillRect(0, 0, W, H)
+    // lluvia de glifos (representados por celdas) cayendo por columnas; la cabeza brilla con acento, la cola se apaga.
+    const cellW = 17, cellH = 17
+    const cols = Math.ceil(W / cellW), rows = Math.ceil(H / cellH) + 1
+    for (let c = 0; c < cols; c++) {
+      const sp = 4 + (mulberry32((env.seed ^ (c * 2654435761)) >>> 0)() * 8)
+      const len = 6 + ((mulberry32((env.seed ^ (c * 40503)) >>> 0)() * 10) | 0)
+      const startPh = mulberry32((env.seed ^ (c * 22699)) >>> 0)() * rows
+      const head = ((t * CLK * sp + startPh) % (rows + len))
+      for (let k = 0; k < len; k++) {
+        const rowI = Math.floor(head) - k
+        if (rowI < 0 || rowI >= rows) continue
+        const fade = 1 - k / len
+        const isHead = k === 0
+        // glifo aleatorio estable por celda+rowI (no por frame) -> sin parpadeo no-determinista
+        const lit = mulberry32((env.seed ^ (c * 92837) ^ (rowI * 689287)) >>> 0)() < 0.85
+        if (!lit) continue
+        const col = isHead ? lighten(pal.accent, 0.4) : pal.accent
+        ctx.fillStyle = rgba(col, (isHead ? 0.8 : 0.4) * fade)
+        ctx.fillRect(c * cellW + 3, rowI * cellH + 3, cellW - 6, cellH - 6)
+      }
+    }
+    scrim(ctx, pal, { centerClear: 0.34, strength: 0.3 })
+  },
+})
+
+register({
+  id: 'bg.techhud.circuitboard', lib: 'backgrounds', category: 'tech-hud', tones: ['dark', 'light'], rubros: ['*', 'tech', 'finanzas', 'educacion'], weight: 0.78,
+  tags: ['tech', 'pcb', 'circuito', 'nodos', 'trazas'],
+  render(ctx, t, env) {
+    const { pal } = env, r = seedFor(env.seed, 'pcb')
+    rampBg(ctx, pal)
+    // placa PCB: trazas ortogonales con pads en los extremos; pulsos de acento que recorren algunas trazas.
+    const traces = 16
+    const lines = []
+    for (let i = 0; i < traces; i++) {
+      const horiz = r() < 0.5
+      const a = horiz ? { x: 0, y: (0.08 + r() * 0.84) * H } : { x: (0.08 + r() * 0.84) * W, y: 0 }
+      const midF = 0.3 + r() * 0.4
+      const turn = horiz ? { x: midF * W, y: a.y } : { x: a.x, y: midF * H }
+      const end = horiz ? { x: turn.x, y: (0.08 + r() * 0.84) * H } : { x: (0.08 + r() * 0.84) * W, y: turn.y }
+      const end2 = horiz ? { x: W, y: end.y } : { x: end.x, y: H }
+      lines.push({ pts: [a, turn, end, end2], ph: r() })
+    }
+    ctx.lineWidth = 1.4; ctx.lineCap = 'square'
+    const traceCol = pal.tone === 'light' ? rgba(pal.accent, 0.14) : rgba(pal.accent, 0.16)
+    for (const L of lines) {
+      ctx.strokeStyle = traceCol
+      ctx.beginPath(); L.pts.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)); ctx.stroke()
+      // pads en los nodos
+      for (const p of L.pts) { ctx.fillStyle = rgba(pal.accent, pal.tone === 'light' ? 0.2 : 0.26); ctx.beginPath(); ctx.arc(p.x, p.y, 2.4, 0, TAU); ctx.fill() }
+    }
+    // pulsos que viajan por las trazas (glow)
+    ctx.save(); ctx.globalCompositeOperation = pal.tone === 'light' ? 'source-over' : 'lighter'
+    for (let i = 0; i < lines.length; i++) {
+      if (i % 3) continue
+      const L = lines[i]
+      // longitud total + interpolacion por segmentos
+      let total = 0; const segs = []
+      for (let s = 0; s < L.pts.length - 1; s++) { const dx = L.pts[s + 1].x - L.pts[s].x, dy = L.pts[s + 1].y - L.pts[s].y, d = Math.hypot(dx, dy); segs.push(d); total += d }
+      let dist = ((t * CLK * 0.18 + L.ph) % 1) * total
+      let px = L.pts[0].x, py = L.pts[0].y
+      for (let s = 0; s < segs.length; s++) {
+        if (dist <= segs[s]) { const f = dist / (segs[s] || 1); px = lerp(L.pts[s].x, L.pts[s + 1].x, f); py = lerp(L.pts[s].y, L.pts[s + 1].y, f); break }
+        dist -= segs[s]
+      }
+      const col = i % 2 ? pal.accent2 : pal.accent
+      const gr = ctx.createRadialGradient(px, py, 0, px, py, 9)
+      gr.addColorStop(0, rgba(col, pal.tone === 'light' ? 0.7 : 0.9)); gr.addColorStop(1, rgba(col, 0))
+      ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(px, py, 9, 0, TAU); ctx.fill()
+    }
+    ctx.restore()
+    scrim(ctx, pal, { centerClear: 0.34, strength: pal.tone === 'light' ? 0.14 : 0.28 })
+  },
+})
+
+// ---- spatial-depth ----
+
+register({
+  id: 'bg.spatial.isocity', lib: 'backgrounds', category: 'spatial-depth', tones: ['dark', 'light'], rubros: ['*', 'inmobiliaria', 'tech', 'finanzas'], weight: 0.82,
+  tags: ['profundidad', 'isometrico', 'ciudad', 'edificios', 'skyline'],
+  render(ctx, t, env) {
+    const { pal } = env, r = seedFor(env.seed, 'isocity')
+    rampBg(ctx, pal)
+    // skyline isometrico de prismas (edificios) de alturas sembradas, anclados abajo; uno o dos con ventana de acento.
+    const base = H * 0.92
+    const bw = 34, depth = 16
+    const n = 9
+    const startX = (W - n * bw) / 2
+    for (let i = 0; i < n; i++) {
+      const hgt = H * (0.14 + mulberry32((env.seed ^ (i * 374761393)) >>> 0)() * 0.34)
+      const x = startX + i * bw
+      const yTop = base - hgt
+      const sway = Math.sin(t * CLK * 0.2 + i) * 1.5
+      // cara frontal
+      const faceCol = pal.tone === 'light' ? darken(pal.bg1, 0.1 + (i % 3) * 0.08) : lighten(pal.bg0, 0.04 + (i % 3) * 0.05)
+      ctx.fillStyle = rgba(faceCol, pal.tone === 'light' ? 0.7 : 0.85)
+      ctx.fillRect(x, yTop + sway, bw - 2, hgt)
+      // cara lateral (mas oscura) -> volumen iso
+      ctx.fillStyle = rgba(pal.tone === 'light' ? darken(faceCol, 0.18) : darken(faceCol, 0.4), pal.tone === 'light' ? 0.6 : 0.85)
+      ctx.beginPath()
+      ctx.moveTo(x + bw - 2, yTop + sway); ctx.lineTo(x + bw - 2 + depth, yTop - depth * 0.5 + sway)
+      ctx.lineTo(x + bw - 2 + depth, base - depth * 0.5); ctx.lineTo(x + bw - 2, base); ctx.closePath(); ctx.fill()
+      // techo
+      ctx.fillStyle = rgba(pal.tone === 'light' ? lighten(faceCol, 0.3) : lighten(faceCol, 0.18), 0.8)
+      ctx.beginPath()
+      ctx.moveTo(x, yTop + sway); ctx.lineTo(x + bw - 2, yTop + sway); ctx.lineTo(x + bw - 2 + depth, yTop - depth * 0.5 + sway); ctx.lineTo(x + depth, yTop - depth * 0.5 + sway); ctx.closePath(); ctx.fill()
+      // ventanas de acento (algunas encendidas)
+      for (let wy = yTop + 10; wy < base - 8; wy += 14) for (let wx = x + 4; wx < x + bw - 8; wx += 10) {
+        const lit = mulberry32((env.seed ^ (i * 6151) ^ ((wy | 0) * 31)) >>> 0)() < 0.3
+        ctx.fillStyle = rgba(lit ? pal.accent : pal.ink, lit ? (pal.tone === 'light' ? 0.45 : 0.6) : (pal.tone === 'light' ? 0.06 : 0.1))
+        ctx.fillRect(wx, wy + sway, 5, 6)
+      }
+    }
+    // bruma inferior
+    const hz = ctx.createLinearGradient(0, base - 30, 0, H)
+    hz.addColorStop(0, rgba(pal.bg1, 0)); hz.addColorStop(1, rgba(pal.tone === 'light' ? pal.bg1 : darken(pal.bg1, 0.3), 0.6))
+    ctx.fillStyle = hz; ctx.fillRect(0, base - 30, W, H - base + 30)
+    scrim(ctx, pal, { centerClear: 0.34, strength: pal.tone === 'light' ? 0.12 : 0.22 })
+  },
+})
+
+register({
+  id: 'bg.spatial.depthdots', lib: 'backgrounds', category: 'spatial-depth', tones: ['dark', 'light'], rubros: ['*', 'tech', 'salud', 'arte'], weight: 0.8,
+  tags: ['profundidad', 'puntos', 'campo', '3d-falso', 'parallax'],
+  render(ctx, t, env) {
+    const { pal } = env, r = seedFor(env.seed, 'ddots')
+    rampBg(ctx, pal)
+    // campo de puntos en profundidad: cada punto tiene z, deriva hacia la camara (crece/aclara) y reaparece al fondo.
+    const N = 80
+    const cx = W / 2, cyc = H * 0.46
+    for (let i = 0; i < N; i++) {
+      const ang = r() * TAU, baseR = 0.05 + r() * 0.95
+      const z = ((r() + t * CLK * 0.06) % 1)          // 0 lejos -> 1 cerca
+      const ez = z * z
+      const spread = lerp(0.3, 1.25, ez)
+      const x = cx + Math.cos(ang) * baseR * W * 0.6 * spread
+      const y = cyc + Math.sin(ang) * baseR * H * 0.55 * spread
+      const rad = 0.6 + ez * 3.4
+      const col = i % 5 === 0 ? pal.accent2 : pal.accent
+      ctx.fillStyle = rgba(col, (pal.tone === 'light' ? 0.12 : 0.16) + ez * (pal.tone === 'light' ? 0.18 : 0.3))
+      ctx.beginPath(); ctx.arc(x, y, rad, 0, TAU); ctx.fill()
+    }
+    scrim(ctx, pal, { centerClear: 0.38, strength: pal.tone === 'light' ? 0.12 : 0.24 })
+  },
+})
+
+// ---- atmospheric-organic ----
+
+register({
+  id: 'bg.atmospheric.inkdiffuse', lib: 'backgrounds', category: 'atmospheric-organic', tones: ['dark', 'light'], rubros: ['*', 'arte', 'moda', 'salud'], weight: 0.85,
+  tags: ['atmosferico', 'tinta', 'acuarela', 'difusion', 'organico'],
+  render(ctx, t, env) {
+    const { pal } = env, r = seedFor(env.seed, 'ink')
+    rampBg(ctx, pal)
+    // tinta difundida en agua: lobulos radiales irregulares (multiples radiales con bordes blandos) que respiran.
+    ctx.save(); ctx.globalCompositeOperation = pal.tone === 'light' ? 'multiply' : 'screen'
+    const blooms = 4
+    for (let b = 0; b < blooms; b++) {
+      const cx = W * (0.2 + r() * 0.6), cy = H * (0.15 + r() * 0.65)
+      const col = b % 2 ? pal.accent2 : pal.accent
+      const lobes = 7 + ((r() * 5) | 0)
+      const baseR = H * (0.16 + r() * 0.14)
+      const breathe = 1 + 0.05 * Math.sin(t * CLK * 0.4 + b)
+      // dibujar la mancha como poligono lobulado relleno con gradiente
+      ctx.beginPath()
+      for (let i = 0; i <= 80; i++) {
+        const a = (i / 80) * TAU
+        const wob = 1 + 0.32 * Math.sin(a * lobes + r() * TAU * 0) + 0.16 * Math.sin(a * (lobes + 3) + b)
+        const rad = baseR * wob * breathe
+        const x = cx + Math.cos(a) * rad, y = cy + Math.sin(a) * rad
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
+      }
+      ctx.closePath()
+      const gr = ctx.createRadialGradient(cx, cy, 0, cx, cy, baseR * 1.4 * breathe)
+      gr.addColorStop(0, rgba(col, pal.tone === 'light' ? 0.16 : 0.2)); gr.addColorStop(0.6, rgba(col, pal.tone === 'light' ? 0.07 : 0.09)); gr.addColorStop(1, rgba(col, 0))
+      ctx.fillStyle = gr; ctx.fill()
+    }
+    ctx.restore()
+    scrim(ctx, pal, { centerClear: 0.36, strength: pal.tone === 'light' ? 0.12 : 0.24 })
+  },
+})
+
+register({
+  id: 'bg.atmospheric.rainglass', lib: 'backgrounds', category: 'atmospheric-organic', tones: ['dark', 'light'], rubros: ['*', 'moda', 'arte', 'eventos'], weight: 0.75,
+  tags: ['atmosferico', 'lluvia', 'vidrio', 'gotas', 'melancolico'],
+  render(ctx, t, env) {
+    const { pal } = env, r = seedFor(env.seed, 'rain')
+    // fondo: rampa + tinte de acento para que el vidrio tenga color (no gris)
+    rampBg(ctx, pal)
+    const tint = ctx.createRadialGradient(W * 0.5, H * 0.3, 0, W * 0.5, H * 0.5, H * 0.9)
+    tint.addColorStop(0, rgba(pal.accent, pal.tone === 'light' ? 0.08 : 0.16)); tint.addColorStop(1, rgba(pal.accent2, pal.tone === 'light' ? 0.05 : 0.1))
+    ctx.fillStyle = tint; ctx.fillRect(0, 0, W, H)
+    // gotas estaticas sembradas: sombra + cuerpo + highlight -> volumen claro sobre el vidrio
+    for (let i = 0; i < 80; i++) {
+      const x = r() * W, y = r() * H, rad = 3 + r() * 7
+      // sombra inferior
+      ctx.fillStyle = rgba(pal.tone === 'light' ? '#000' : '#000', pal.tone === 'light' ? 0.08 : 0.18)
+      ctx.beginPath(); ctx.arc(x + rad * 0.18, y + rad * 0.22, rad, 0, TAU); ctx.fill()
+      // cuerpo de la gota (refraccion -> tinte de acento mas claro)
+      ctx.fillStyle = rgba(pal.tone === 'light' ? lighten(pal.accent, 0.5) : lighten(pal.accent, 0.3), pal.tone === 'light' ? 0.16 : 0.2)
+      ctx.beginPath(); ctx.arc(x, y, rad, 0, TAU); ctx.fill()
+      // highlight especular
+      ctx.fillStyle = rgba('#ffffff', pal.tone === 'light' ? 0.55 : 0.45)
+      ctx.beginPath(); ctx.arc(x - rad * 0.32, y - rad * 0.34, rad * 0.32, 0, TAU); ctx.fill()
+    }
+    // regueros que caen (rayas que se desplazan vertical), con una gota-cabeza al final
+    const streaks = 20
+    for (let i = 0; i < streaks; i++) {
+      const x = r() * W, len = 40 + r() * 110, sp = 0.3 + r() * 0.9
+      const y = ((t * CLK * sp * 70 + r() * H) % (H + 160)) - 80
+      const accent = i % 3 === 0
+      const col = accent ? lighten(pal.accent, 0.2) : (pal.tone === 'light' ? '#7a8aa0' : '#ffffff')
+      const g = ctx.createLinearGradient(0, y, 0, y + len)
+      g.addColorStop(0, rgba(col, 0)); g.addColorStop(0.6, rgba(col, pal.tone === 'light' ? 0.18 : 0.22)); g.addColorStop(1, rgba(col, 0))
+      ctx.strokeStyle = g; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + len); ctx.stroke()
+      // gota-cabeza
+      ctx.fillStyle = rgba(col, pal.tone === 'light' ? 0.28 : 0.3)
+      ctx.beginPath(); ctx.arc(x, y + len, 3, 0, TAU); ctx.fill()
+    }
+    scrim(ctx, pal, { centerClear: 0.34, strength: pal.tone === 'light' ? 0.14 : 0.28 })
+  },
+})
+
+// ---- chrome-y2k ----
+
+register({
+  id: 'bg.chromey2k.vaporsun', lib: 'backgrounds', category: 'chrome-y2k', tones: ['dark', 'light'], rubros: ['*', 'arte', 'moda', 'gaming', 'eventos'], weight: 0.78,
+  tags: ['y2k', 'vaporwave', 'sol', 'gradiente', 'retro', 'sintetico'],
+  render(ctx, t, env) {
+    const { pal } = env, r = seedFor(env.seed, 'vapor')
+    // cielo vaporwave: rampa vertical caliente->fria entre los acentos
+    const g = ctx.createLinearGradient(0, 0, 0, H)
+    if (pal.tone === 'light') { g.addColorStop(0, lighten(pal.accent2, 0.5)); g.addColorStop(0.5, lighten(pal.accent, 0.45)); g.addColorStop(1, lighten(pal.accent2, 0.3)) }
+    else { g.addColorStop(0, darken(pal.accent2, 0.4)); g.addColorStop(0.5, darken(pal.accent, 0.35)); g.addColorStop(1, darken(pal.bg1, 0.1)) }
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H)
+    // sol con bandas horizontales (gap creciente hacia abajo) -> sol retro clasico
+    const cx = W / 2, cy = H * 0.4, R = H * 0.2
+    ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, R, 0, TAU); ctx.clip()
+    const sg = ctx.createLinearGradient(0, cy - R, 0, cy + R)
+    sg.addColorStop(0, rgba(lighten(pal.accent, 0.4), pal.tone === 'light' ? 0.5 : 0.7)); sg.addColorStop(1, rgba(pal.accent2, pal.tone === 'light' ? 0.4 : 0.6))
+    ctx.fillStyle = sg; ctx.fillRect(cx - R, cy - R, R * 2, R * 2)
+    // cortes (bandas) en la mitad inferior del sol
+    ctx.fillStyle = pal.tone === 'light' ? rgba(lighten(pal.accent2, 0.5), 0.9) : rgba(darken(pal.bg1, 0.1), 0.85)
+    let gap = 4
+    for (let yy = cy; yy < cy + R; yy += gap, gap += 1.6) ctx.fillRect(cx - R, yy, R * 2, gap * 0.5)
+    ctx.restore()
+    // halo del sol
+    const halo = ctx.createRadialGradient(cx, cy, R * 0.7, cx, cy, R * 2)
+    halo.addColorStop(0, rgba(pal.accent, pal.tone === 'light' ? 0.18 : 0.28)); halo.addColorStop(1, rgba(pal.accent, 0))
+    ctx.fillStyle = halo; ctx.fillRect(0, 0, W, H)
+    // grilla de piso synthwave abajo
+    const horizon = H * 0.62
+    ctx.strokeStyle = rgba(pal.accent, pal.tone === 'light' ? 0.3 : 0.4); ctx.lineWidth = 1
+    const vp = cx
+    for (let i = -7; i <= 7; i++) { ctx.beginPath(); ctx.moveTo(vp, horizon); ctx.lineTo(vp + i * (W / 4), H); ctx.stroke() }
+    const scroll = (t * CLK * 0.5) % 1
+    for (let j = 0; j < 12; j++) { const p = (j + scroll) / 12, y = horizon + (H - horizon) * (p * p); ctx.strokeStyle = rgba(pal.accent, (pal.tone === 'light' ? 0.3 : 0.4) * (1 - p) + 0.05); ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke() }
+    scrim(ctx, pal, { centerClear: 0.34, strength: pal.tone === 'light' ? 0.14 : 0.26 })
+  },
+})

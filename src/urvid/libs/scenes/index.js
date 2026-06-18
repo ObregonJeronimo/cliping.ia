@@ -1655,6 +1655,478 @@ register({
 
 // ---- spec/slots (mas · OLA5) -----------------------------------------------
 
+// ============================================================================
+// EXPANSION (ronda fill · OLA 6) — layouts NUEVOS no vistos en olas previas:
+// hero con grilla de fondo + esquina anclada, hook de "completa el blanco",
+// statement entre corchetes (bookend) y con barra-marcador lateral (callout),
+// checklist de badges en wrap horizontal, comparacion tipo slider antes/despues,
+// dato con delta (flecha sube/baja), pictografo de puntos (fraccion), cita
+// centrada sin tarjeta + metrica de comunidad, cierre con flecha-CTA, bisagra
+// con numero rotando, etiqueta de precio (pricetag) y fila de tarjetas de spec.
+// Contrato intacto: texto en TINTA via core/text, acento SOLO DECO, PURO +
+// DETERMINISTA (mulberry32(seed); t solo motion) + PARAMETRIZADO, tone-aware.
+// ============================================================================
+
+// helper local OLA6: flecha (linea + cabeza) horizontal de (x0,y) a (x1,y), trazo p [0..1].
+function arrowH(ctx, x0, x1, y, color, lw = 4, p = 1) {
+  const q = clamp(p, 0, 1), xe = lerp(x0, x1, q)
+  ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.lineCap = 'round'; ctx.lineJoin = 'round'
+  ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(xe, y); ctx.stroke()
+  if (q > 0.85) { const h = 9; ctx.beginPath(); ctx.moveTo(xe - h, y - h); ctx.lineTo(xe, y); ctx.lineTo(xe - h, y + h); ctx.stroke() }
+  ctx.restore()
+}
+
+// ---- openers/hero (mas · OLA6) ---------------------------------------------
+
+// hero "grid": claim grande centrado sobre una grilla tenue de fondo (DECO en tinta
+// muy baja) que se dibuja en cascada + marca chica arriba. Aire de "blueprint/planos".
+register({
+  id: 'scene.hero.grid', lib: 'scene-layouts', category: 'openers/hero', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
+  tags: ['apertura', 'grilla', 'blueprint', 'tecnico'], beat: 'hook',
+  render(ctx, t, env) {
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
+    // grilla de fondo: lineas verticales+horizontales que aparecen en cascada (DECO tinta tenue)
+    const gp = M.ease(inv(t, 0.0, 0.7)), cols = 5, rowsN = 8
+    ctx.save(); ctx.strokeStyle = rgba(pal.ink, pal.tone === 'light' ? 0.06 : 0.08); ctx.lineWidth = 1
+    for (let i = 1; i < cols; i++) { const x = (W / cols) * i; const up = clamp(gp * cols - i + 1, 0, 1); ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H * up); ctx.stroke() }
+    for (let j = 1; j < rowsN; j++) { const y = (H / rowsN) * j; const up = clamp(gp * rowsN - j + 1, 0, 1); ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W * up, y); ctx.stroke() }
+    ctx.restore()
+    // marca chica arriba en mono-acento
+    drawText(ctx, (content.brand || 'Marca').toUpperCase(), cx, H * 0.3, { size: 17, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, maxW: W * 0.8, alpha: inv(t, 0.2, 0.55) })
+    // claim grande centrado, sube y se asienta
+    const rise = M.settle(inv(t, 0.25, 1.05), 1.2)
+    ctx.save(); ctx.globalAlpha = inv(t, 0.25, 0.75); ctx.translate(0, (1 - rise) * 30)
+    drawWrapped(ctx, content.claim || content.tagline || content.brand || 'Construilo bien', cx, H * 0.48, { size: 50, weight: 800, family: fonts.display, maxW: W * 0.84, color: pal.ink, maxLines: 3, lh: 1.08, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.45)' : null })
+    ctx.restore()
+    // cruz de registro de acento bajo el claim (DECO)
+    const cu = M.ease(inv(t, 0.6, 1.2))
+    if (cu > 0) { ctx.save(); ctx.strokeStyle = pal.accent; ctx.lineWidth = 3; ctx.lineCap = 'round'; const cyx = H * 0.62, r = 10 * cu; ctx.beginPath(); ctx.moveTo(cx - r, cyx); ctx.lineTo(cx + r, cyx); ctx.moveTo(cx, cyx - r); ctx.lineTo(cx, cyx + r); ctx.stroke(); ctx.restore() }
+  },
+})
+
+// hero "corner": marca/kicker anclado arriba-derecha + claim gigante anclado abajo-izq,
+// con un angulo de acento (esquina) en la esquina inferior izquierda. Composicion de poster.
+register({
+  id: 'scene.hero.corner', lib: 'scene-layouts', category: 'openers/hero', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
+  tags: ['apertura', 'poster', 'esquina', 'asimetrico'], beat: 'hook',
+  render(ctx, t, env) {
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, mx = W * 0.1
+    // kicker arriba-derecha
+    drawText(ctx, (content.brand || 'Marca').toUpperCase(), W - mx, H * 0.18, { size: 16, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, align: 'right', maxW: W * 0.7, alpha: inv(t, 0.05, 0.45) })
+    // angulo de acento en la esquina inferior izquierda (dos trazos en L que crecen)
+    const lu = M.ease(inv(t, 0.1, 0.8)), len = 64 * lu, ex = mx - 6, ey = H * 0.86
+    ctx.save(); ctx.strokeStyle = pal.accent; ctx.lineWidth = 5; ctx.lineCap = 'round'
+    ctx.beginPath(); ctx.moveTo(ex, ey - len); ctx.lineTo(ex, ey); ctx.lineTo(ex + len, ey); ctx.stroke(); ctx.restore()
+    // claim gigante anclado abajo-izquierda, lineas con stagger
+    const src = content.claim || content.tagline || content.brand || 'Lo importante primero'
+    const L = wrapLinesLocal(ctx, src, 54, W - 2 * mx, 30, 800, fonts.display, 3)
+    const lineH = L.size * 1.05, y1 = H * 0.78, y0 = y1 - (L.lines.length - 1) * lineH
+    L.lines.forEach((ln, i) => {
+      const tin = inv(t, 0.25 + i * 0.14, 0.75 + i * 0.14); if (tin <= 0) return
+      ctx.save(); ctx.globalAlpha = tin; ctx.translate((1 - M.ease(tin)) * -24, 0)
+      ctx.font = `800 ${L.size}px "${fonts.display}"`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = pal.ink
+      if (pal.tone === 'dark') { ctx.shadowColor = 'rgba(0,0,0,0.45)'; ctx.shadowBlur = 6 }
+      ctx.fillText(ln, mx, y0 + i * lineH)
+      ctx.restore()
+    })
+  },
+})
+
+// ---- openers/hook (mas · OLA6) ---------------------------------------------
+
+// hook "fillblank": frase con un "blanco" (raya de acento) que se rellena con la palabra
+// clave. Gancho de "completa la frase". Distinto a redacted (tapa) y strike (tacha).
+register({
+  id: 'scene.hook.fillblank', lib: 'scene-layouts', category: 'openers/hook', tones: ['dark', 'light'], rubros: ['*'], weight: 0.95,
+  tags: ['hook', 'completar', 'blanco', 'gancho'], beat: 'hook',
+  render(ctx, t, env) {
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
+    // frase de contexto arriba
+    ctx.save(); ctx.globalAlpha = inv(t, 0.1, 0.5)
+    drawWrapped(ctx, content.tagline || content.claim || 'Lo que te falta es', cx, H * 0.34, { size: 28, weight: 700, family: fonts.display, maxW: W * 0.82, color: pal.ink, maxLines: 3, lh: 1.16, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.4)' : null })
+    ctx.restore()
+    const word = firstStrong(content.claim || content.brand || content.cta, 'METODO').toUpperCase()
+    // la raya/blanco aparece primero; luego la palabra "cae" sobre ella
+    const blankU = M.ease(inv(t, 0.25, 0.6))
+    ctx.font = `800 52px "${fonts.display}"`
+    const tw = Math.min(W * 0.84, ctx.measureText(word).width), by = H * 0.56
+    ctx.save(); ctx.fillStyle = pal.accent; ctx.globalAlpha = inv(t, 0.25, 0.55)
+    ctx.beginPath(); ctx.roundRect(cx - tw / 2 - 6, by + 32, (tw + 12) * blankU, 6, 3); ctx.fill(); ctx.restore()
+    const wa = inv(t, 0.55, 0.95), drop = M.settle(wa, { zeta: 0.5, freq: 2.1 })
+    ctx.save(); ctx.globalAlpha = wa; ctx.translate(0, (1 - drop) * -26)
+    drawText(ctx, word, cx, by, { size: 52, weight: 800, family: fonts.display, maxW: W * 0.84, color: pal.ink, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.45)' : null })
+    ctx.restore()
+  },
+})
+
+// ---- statements/editorial (mas · OLA6) -------------------------------------
+
+// statement "bookend": claim centrado enmarcado por dos reglas de acento (arriba/abajo)
+// que se abren como corchetes horizontales. Distinto a panel/underline/index.
+register({
+  id: 'scene.statement.bookend', lib: 'scene-layouts', category: 'statements/editorial', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
+  tags: ['claim', 'corchetes', 'centrado', 'editorial'], beat: 'value',
+  render(ctx, t, env) {
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
+    const src = content.claim || content.tagline || content.brand || 'Sin vueltas'
+    const L = wrapLinesLocal(ctx, src, 40, W * 0.8, 24, 800, fonts.display, 4)
+    const lineH = L.size * 1.18, blockH = (L.lines.length - 1) * lineH, cyc = H * 0.46, y0 = cyc - blockH / 2
+    // regla superior e inferior de acento que crecen desde el centro
+    const ru = M.ease(inv(t, 0.05, 0.65)), rw = W * 0.42 * ru
+    ctx.save(); ctx.fillStyle = pal.accent
+    ctx.beginPath(); ctx.roundRect(cx - rw / 2, y0 - L.size * 0.85, rw, 5, 2.5); ctx.fill()
+    ctx.beginPath(); ctx.roundRect(cx - rw / 2, y0 + blockH + L.size * 0.85, rw, 5, 2.5); ctx.fill(); ctx.restore()
+    // claim centrado, lineas con stagger
+    L.lines.forEach((ln, i) => {
+      const tin = inv(t, 0.25 + i * 0.12, 0.78 + i * 0.12); if (tin <= 0) return
+      ctx.save(); ctx.globalAlpha = tin; ctx.translate(0, (1 - M.ease(tin)) * 14)
+      ctx.font = `800 ${L.size}px "${fonts.display}"`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = pal.ink
+      if (pal.tone === 'dark') { ctx.shadowColor = 'rgba(0,0,0,0.4)'; ctx.shadowBlur = 5 }
+      ctx.fillText(ln, cx, y0 + i * lineH)
+      ctx.restore()
+    })
+    if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), cx, H * 0.74, { size: 15, weight: 700, family: fonts.accent || fonts.text, color: pal.dim, maxW: W * 0.7, alpha: inv(t, 0.7, 1.2) })
+  },
+})
+
+// statement "callout": barra-marcador de acento vertical a la izquierda (full-alto del
+// bloque) + claim a su derecha, alineado izquierda. Distinto a editorial/boxed (panel).
+register({
+  id: 'scene.statement.callout', lib: 'scene-layouts', category: 'statements/editorial', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
+  tags: ['claim', 'marcador', 'barra-lateral', 'editorial'], beat: 'value',
+  render(ctx, t, env) {
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, mx = W * 0.12
+    const src = content.claim || content.tagline || 'Esto cambia todo'
+    const bodyX = mx + 20
+    const L = wrapLinesLocal(ctx, src, 40, W - bodyX - W * 0.08, 26, 800, fonts.display, 4)
+    const lineH = L.size * 1.18, blockH = (L.lines.length - 1) * lineH, cyc = H * 0.46, y0 = cyc - blockH / 2
+    // barra vertical de acento que crece desde arriba (alto del bloque)
+    const bu = M.ease(inv(t, 0.05, 0.7)), bh = (blockH + L.size * 1.2)
+    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(mx, y0 - L.size * 0.6, 6, bh * bu, 3); ctx.fill()
+    // claim alineado a izquierda
+    L.lines.forEach((ln, i) => {
+      const tin = inv(t, 0.25 + i * 0.12, 0.78 + i * 0.12); if (tin <= 0) return
+      ctx.save(); ctx.globalAlpha = tin; ctx.translate((1 - M.ease(tin)) * 16, 0)
+      ctx.font = `800 ${L.size}px "${fonts.display}"`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = pal.ink
+      if (pal.tone === 'dark') { ctx.shadowColor = 'rgba(0,0,0,0.4)'; ctx.shadowBlur = 5 }
+      ctx.fillText(ln, bodyX, y0 + i * lineH)
+      ctx.restore()
+    })
+    if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), bodyX, y0 + blockH + L.size * 1.1, { size: 15, weight: 700, family: fonts.accent || fonts.text, color: pal.dim, align: 'left', maxW: W * 0.7, alpha: inv(t, 0.7, 1.2) })
+  },
+})
+
+// ---- lists/checklist (mas · OLA6) ------------------------------------------
+
+// checklist "badges": items como pildoras con tilde, fluyendo en filas centradas (wrap).
+// Distinto a ticks/numbered (filas), grid (2x2), timeline (riel vertical).
+register({
+  id: 'scene.checklist.badges', lib: 'scene-layouts', category: 'lists/checklist', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
+  tags: ['lista', 'badges', 'pildoras', 'wrap'], beat: 'value',
+  render(ctx, t, env) {
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
+    const items = splitItems(content.claim || content.tagline || 'Rapido · Seguro · Simple · Sin limites', 5)
+    if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), cx, H * 0.3, { size: 16, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, maxW: W * 0.78, alpha: inv(t, 0.05, 0.4) })
+    // layout en filas: mide cada badge (tilde + texto) y los acomoda centrados con wrap
+    ctx.font = `700 20px "${fonts.text}"`
+    const chipH = 46, padX = 18, tickW = 26, gap = 12, maxRowW = W * 0.86
+    const meas = items.map(it => Math.min(maxRowW - padX * 2 - tickW, ctx.measureText(it).width) + padX * 2 + tickW)
+    const rowsArr = []; let row = [], rw = 0
+    items.forEach((it, i) => { const w = meas[i]; if (rw + w + (row.length ? gap : 0) > maxRowW && row.length) { rowsArr.push({ row, rw }); row = []; rw = 0 } rw += w + (row.length ? gap : 0); row.push({ it, w }) })
+    if (row.length) rowsArr.push({ row, rw })
+    const totalH = rowsArr.length * chipH + (rowsArr.length - 1) * gap, y0 = H * 0.5 - totalH / 2
+    let ci = 0
+    rowsArr.forEach((rowObj, ri) => {
+      let cxx = cx - rowObj.rw / 2
+      const cyr = y0 + ri * (chipH + gap)
+      rowObj.row.forEach(({ it, w }) => {
+        const tin = inv(t, 0.25 + ci * 0.12, 0.78 + ci * 0.12); ci++
+        if (tin <= 0) { cxx += w + gap; return }
+        const sp = M.settle(tin, { zeta: 0.5, freq: 2 })
+        ctx.save(); ctx.globalAlpha = tin; ctx.translate(cxx + w / 2, cyr + chipH / 2); ctx.scale(0.85 + 0.15 * sp, 0.85 + 0.15 * sp); ctx.translate(-(cxx + w / 2), -(cyr + chipH / 2))
+        ctx.fillStyle = pal.tone === 'light' ? 'rgba(20,16,24,0.05)' : 'rgba(255,255,255,0.06)'
+        ctx.beginPath(); ctx.roundRect(cxx, cyr, w, chipH, chipH / 2); ctx.fill()
+        ctx.restore()
+        // tilde de acento (DECO) a la izquierda
+        tick(ctx, cxx + padX + 4, cyr + chipH / 2, 9, M.ease(tin), pal.accent, 3)
+        drawText(ctx, it, cxx + padX + tickW, cyr + chipH / 2, { size: 20, weight: 700, family: fonts.text, color: pal.ink, align: 'left', maxW: w - padX * 2 - tickW, alpha: tin })
+        cxx += w + gap
+      })
+    })
+  },
+})
+
+// ---- lists/comparison (mas · OLA6) -----------------------------------------
+
+// comparison "slider": una barra horizontal partida por un "handle" que se desliza,
+// revelando el lado bueno (acento) sobre el viejo (dim). Distinto a vs/split/scale/table.
+register({
+  id: 'scene.comparison.slider', lib: 'scene-layouts', category: 'lists/comparison', tones: ['dark', 'light'], rubros: ['*'], weight: 0.95,
+  tags: ['comparacion', 'slider', 'antes-despues', 'revelado'], beat: 'value',
+  render(ctx, t, env) {
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
+    const parts = splitItems(content.claim || content.tagline || 'Antes · Despues', 2)
+    const left = parts[0] || 'Antes', right = parts[1] || 'Despues'
+    const bw = W * 0.78, bx = (W - bw) / 2, by = H * 0.4, bh = H * 0.2, rad = 18
+    const slide = M.ease(inv(t, 0.2, 1.05)), hx = bx + bw * slide
+    // base: panel viejo (surface tenue, todo el ancho)
+    ctx.save(); ctx.globalAlpha = inv(t, 0.05, 0.4)
+    ctx.fillStyle = pal.tone === 'light' ? 'rgba(20,16,24,0.06)' : 'rgba(255,255,255,0.07)'
+    ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, rad); ctx.fill(); ctx.restore()
+    // panel nuevo (acento) recortado hasta el handle
+    ctx.save(); ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, rad); ctx.clip()
+    ctx.globalAlpha = inv(t, 0.15, 0.5); ctx.fillStyle = pal.accent; ctx.fillRect(bx, by, bw * slide, bh); ctx.restore()
+    // handle vertical (linea + circulo) en hx
+    ctx.save(); ctx.strokeStyle = pal.tone === 'light' ? '#ffffff' : pal.ink; ctx.lineWidth = 3
+    ctx.beginPath(); ctx.moveTo(hx, by); ctx.lineTo(hx, by + bh); ctx.stroke()
+    ctx.fillStyle = pal.tone === 'light' ? '#ffffff' : pal.ink; ctx.beginPath(); ctx.arc(hx, by + bh / 2, 13, 0, TAU); ctx.fill()
+    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.arc(hx, by + bh / 2, 5, 0, TAU); ctx.fill(); ctx.restore()
+    // etiquetas debajo: izquierda (dim, viejo) y derecha (tinta, nuevo)
+    ctx.save(); ctx.globalAlpha = inv(t, 0.5, 1.0)
+    drawWrapped(ctx, left, bx + bw * 0.25, by + bh + 44, { size: 20, weight: 700, family: fonts.display, maxW: bw * 0.46, color: pal.dim, maxLines: 2, lh: 1.12 })
+    drawWrapped(ctx, right, bx + bw * 0.75, by + bh + 44, { size: 22, weight: 800, family: fonts.display, maxW: bw * 0.46, color: pal.ink, maxLines: 2, lh: 1.12 })
+    ctx.restore()
+    if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), cx, H * 0.74, { size: 15, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, maxW: W * 0.8, alpha: inv(t, 0.7, 1.2) })
+  },
+})
+
+// ---- data/single (mas · OLA6) ----------------------------------------------
+
+// data "counter": numero grande + chip de delta (flecha arriba/abajo segun signo) +
+// caption. Distinto a single (anillo), bar, dial, donut. Para KPIs con tendencia.
+register({
+  id: 'scene.data.counter', lib: 'scene-layouts', category: 'data/single', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
+  tags: ['dato', 'contador', 'delta', 'tendencia', 'kpi'], beat: 'data',
+  render(ctx, t, env) {
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
+    const num = bigNumber(content.claim || content.tagline, '+128%')
+    const down = /^-/.test(num.trim())
+    // numero grande centrado con asentamiento
+    const sp = M.settle(inv(t, 0.1, 0.95), { zeta: 0.5, freq: 2 })
+    ctx.save(); ctx.globalAlpha = inv(t, 0.05, 0.4); ctx.translate(cx, H * 0.4); ctx.scale(0.82 + 0.18 * sp, 0.82 + 0.18 * sp)
+    drawText(ctx, num, 0, 0, { size: 104, weight: 800, family: fonts.display, maxW: W * 0.9, color: pal.ink, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.45)' : null })
+    ctx.restore()
+    // chip de delta: pildora de acento con flecha (arriba si sube, abajo si baja)
+    const dp = M.settle(inv(t, 0.45, 1.1), { zeta: 0.5, freq: 2 })
+    if (dp > 0) {
+      const cw = 64, ch = 36, dy = H * 0.55
+      ctx.save(); ctx.globalAlpha = inv(t, 0.45, 0.9); ctx.translate(cx, dy); ctx.scale(0.8 + 0.2 * dp, 0.8 + 0.2 * dp)
+      ctx.fillStyle = rgba(pal.accent, pal.tone === 'light' ? 0.18 : 0.26); ctx.beginPath(); ctx.roundRect(-cw / 2, -ch / 2, cw, ch, ch / 2); ctx.fill()
+      // triangulo (DECO en acento)
+      ctx.fillStyle = pal.accent; const ar = 8
+      ctx.beginPath()
+      if (down) { ctx.moveTo(-ar, -ar * 0.6); ctx.lineTo(ar, -ar * 0.6); ctx.lineTo(0, ar * 0.8) } else { ctx.moveTo(-ar, ar * 0.6); ctx.lineTo(ar, ar * 0.6); ctx.lineTo(0, -ar * 0.8) }
+      ctx.closePath(); ctx.fill(); ctx.restore()
+    }
+    drawWrapped(ctx, content.tagline || content.brand || 'vs el mes pasado', cx, H * 0.65, { size: 22, weight: 700, family: fonts.text, maxW: W * 0.78, color: pal.dim, maxLines: 2, alpha: inv(t, 0.6, 1.1) })
+  },
+})
+
+// ---- data/multi (mas · OLA6) -----------------------------------------------
+
+// data "pictograph": grilla de puntos (ej 10x5) donde una fraccion (del % del numero) se
+// pinta en acento. "X de cada Y". Distinto a multi/bars/stack.
+register({
+  id: 'scene.data.pictograph', lib: 'scene-layouts', category: 'data/multi', tones: ['dark', 'light'], rubros: ['*'], weight: 0.95,
+  tags: ['datos', 'pictografo', 'puntos', 'fraccion'], beat: 'data',
+  render(ctx, t, env) {
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
+    const num = bigNumber(content.claim || content.tagline, '70%')
+    const pct = (() => { const m = num.match(/(\d[\d.,]*)/); let v = m ? parseFloat(m[1].replace(/,/g, '')) : 70; if (num.indexOf('%') < 0) v = clamp(v, 0, 100); return clamp(v / 100, 0.04, 1) })()
+    const cols = 10, rowsN = 5, total = cols * rowsN, on = Math.round(total * pct)
+    const dotR = 9, gx = W * 0.13, gw = W * 0.74, gy = H * 0.32, gh = H * 0.34
+    const sx = gw / (cols - 1), sy = gh / (rowsN - 1)
+    if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), cx, H * 0.24, { size: 16, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, maxW: W * 0.78, alpha: inv(t, 0.05, 0.35) })
+    // los puntos aparecen en cascada por indice; los "on" en acento, el resto tinta tenue
+    const prog = M.ease(inv(t, 0.2, 1.15))
+    for (let i = 0; i < total; i++) {
+      const r = Math.floor(i / cols), c = i % cols
+      const x = gx + c * sx, y = gy + r * sy
+      const ap = clamp(prog * total - i, 0, 1); if (ap <= 0) continue
+      ctx.save(); ctx.globalAlpha = ap
+      ctx.fillStyle = i < on ? pal.accent : rgba(pal.ink, 0.16)
+      ctx.beginPath(); ctx.arc(x, y, dotR * (0.6 + 0.4 * ap), 0, TAU); ctx.fill(); ctx.restore()
+    }
+    // caption con el numero
+    drawWrapped(ctx, content.tagline || (num + ' lo logra'), cx, H * 0.78, { size: 22, weight: 700, family: fonts.text, maxW: W * 0.8, color: pal.dim, maxLines: 2, alpha: inv(t, 0.7, 1.2) })
+  },
+})
+
+// ---- social/proof (mas · OLA6) ---------------------------------------------
+
+// social "quotemark": cita grande centrada SIN tarjeta, entre comillas de acento gigantes
+// (apertura arriba-izq, cierre abajo-der) + atribucion. Distinto a quotecard (panel).
+register({
+  id: 'scene.social.quotemark', lib: 'scene-layouts', category: 'social/proof', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
+  tags: ['prueba-social', 'cita', 'comillas', 'testimonio'], beat: 'proof',
+  render(ctx, t, env) {
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
+    // comillas de acento gigantes en diagonal (DECO)
+    ctx.save(); ctx.globalAlpha = (pal.tone === 'light' ? 0.16 : 0.22) * inv(t, 0.0, 0.5)
+    drawText(ctx, '“', W * 0.16, H * 0.32, { size: 150, weight: 800, family: fonts.display, color: pal.accent, align: 'left', maxW: 120 })
+    drawText(ctx, '”', W * 0.84, H * 0.66, { size: 150, weight: 800, family: fonts.display, color: pal.accent, align: 'right', maxW: 120 })
+    ctx.restore()
+    // cita centrada en tinta
+    ctx.save(); ctx.globalAlpha = inv(t, 0.25, 0.8)
+    TK.drawWrapped(ctx, content.claim || content.tagline || 'La mejor decision del ano', cx, H * 0.48, { reveal: inv(t, 0.25, 1.05), size: 32, weight: 700, family: fonts.display, maxW: W * 0.74, color: pal.ink, maxLines: 4, lh: 1.22, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.4)' : null })
+    ctx.restore()
+    // atribucion: regla de acento + marca
+    if (content.brand) {
+      const ap = inv(t, 0.7, 1.2)
+      ctx.fillStyle = pal.accent; ctx.globalAlpha = ap
+      ctx.beginPath(); ctx.roundRect(cx - 18, H * 0.66, 36 * M.ease(ap), 3, 1.5); ctx.fill(); ctx.globalAlpha = 1
+      drawText(ctx, '— ' + content.brand, cx, H * 0.71, { size: 18, weight: 700, family: fonts.accent || fonts.text, color: pal.dim, maxW: W * 0.7, alpha: ap })
+    }
+  },
+})
+
+// social "metric": metrica de comunidad gigante (ej "+10k") + etiqueta, con un cluster de
+// puntos de acento (DECO). "miembros / usuarios / descargas". Distinta a avatars/rating.
+register({
+  id: 'scene.social.metric', lib: 'scene-layouts', category: 'social/proof', tones: ['dark', 'light'], rubros: ['*'], weight: 0.95,
+  tags: ['prueba-social', 'metrica', 'comunidad', 'numero'], beat: 'proof',
+  render(ctx, t, env) {
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
+    const num = bigNumber(content.claim || content.tagline, '+10k')
+    // cluster de puntos de acento arriba (DECO, estable por seed)
+    const r = mulberry32((env.seed >>> 0) ^ 0xb16)
+    const cu = M.ease(inv(t, 0.1, 0.8))
+    for (let i = 0; i < 7; i++) {
+      const ang = r() * TAU, rad = 20 + r() * 56, px = cx + Math.cos(ang) * rad, py = H * 0.28 + Math.sin(ang) * rad * 0.7
+      const ap = clamp(cu * 7 - i, 0, 1); if (ap <= 0) continue
+      ctx.save(); ctx.globalAlpha = ap * 0.8; ctx.fillStyle = pal.accent
+      ctx.beginPath(); ctx.arc(px, py, (2 + r() * 3) * ap, 0, TAU); ctx.fill(); ctx.restore()
+    }
+    // numero gigante centrado
+    const sp = M.settle(inv(t, 0.2, 1.0), { zeta: 0.45, freq: 2.1 })
+    ctx.save(); ctx.globalAlpha = inv(t, 0.15, 0.5); ctx.translate(cx, H * 0.48); ctx.scale(0.78 + 0.22 * sp, 0.78 + 0.22 * sp)
+    drawText(ctx, num, 0, 0, { size: 116, weight: 800, family: fonts.display, maxW: W * 0.9, color: pal.ink, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.45)' : null })
+    ctx.restore()
+    // etiqueta debajo
+    drawWrapped(ctx, content.tagline || content.brand || 'personas ya confian', cx, H * 0.63, { size: 24, weight: 700, family: fonts.text, maxW: W * 0.8, color: pal.dim, maxLines: 2, alpha: inv(t, 0.55, 1.05) })
+  },
+})
+
+// ---- closers/outro (mas · OLA6) --------------------------------------------
+
+// outro "arrowcta": marca arriba + CTA a la derecha con una flecha larga de acento que
+// barre desde la izquierda hasta apuntarla. Cierre con direccion. Distinto a cta/handle/diagonal.
+register({
+  id: 'scene.outro.arrowcta', lib: 'scene-layouts', category: 'closers/outro', tones: ['dark', 'light'], rubros: ['*'], weight: 0.95,
+  tags: ['cierre', 'cta', 'flecha', 'direccion'], beat: 'close',
+  render(ctx, t, env) {
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
+    // marca centrada arriba
+    drawWrapped(ctx, content.brand || 'Marca', cx, H * 0.36, { size: 48, weight: 800, family: fonts.display, maxW: W * 0.86, color: pal.ink, maxLines: 2, lh: 1.04, alpha: inv(t, 0.15, 0.7), shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.4)' : null })
+    const cta = content.cta || content.tagline || 'Empeza hoy'
+    // flecha larga de acento que barre y termina apuntando a la pildora del CTA
+    const ay = H * 0.56
+    arrowH(ctx, W * 0.12, W * 0.46, ay, pal.accent, 5, M.ease(inv(t, 0.4, 1.0)))
+    // pildora CTA a la derecha de la flecha, entra con spring
+    const gp = M.settle(inv(t, 0.6, 1.25), { zeta: 0.5, freq: 2 })
+    ctx.save(); ctx.font = `800 24px "${fonts.display}"`
+    const tw = Math.min(W * 0.44, ctx.measureText(cta).width), pw = tw + 44, ph = 50, px = W * 0.5
+    ctx.translate(px + pw / 2, ay); ctx.scale(0.8 + 0.2 * gp, 0.8 + 0.2 * gp); ctx.globalAlpha = inv(t, 0.6, 1.0)
+    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(-pw / 2, -ph / 2, pw, ph, ph / 2); ctx.fill()
+    drawText(ctx, cta, 0, 1, { size: 24, weight: 800, family: fonts.display, maxW: pw - 30, color: pal.onAccent })
+    ctx.restore()
+    if (content.tagline && content.cta) drawText(ctx, content.tagline, cx, H * 0.7, { size: 18, weight: 600, family: fonts.text, maxW: W * 0.8, color: pal.dim, alpha: inv(t, 0.85, 1.3) })
+  },
+})
+
+// ---- connectors/interstitial (mas · OLA6) ----------------------------------
+
+// interstitial "ringnum": numero de capitulo centrado dentro de un anillo de acento que
+// se dibuja (draw-on) + palabra de bisagra debajo. Distinto a count/rule (planos).
+register({
+  id: 'scene.interstitial.ringnum', lib: 'scene-layouts', category: 'connectors/interstitial', tones: ['dark', 'light'], rubros: ['*'], weight: 0.85,
+  tags: ['transicion', 'capitulo', 'anillo', 'bisagra'], beat: 'context',
+  render(ctx, t, env) {
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2, cy = H * 0.4
+    const r = mulberry32((env.seed >>> 0) ^ 0x4e2)
+    const idx = String(1 + ((r() * 5) | 0))
+    const word = firstStrong(content.tagline || content.claim || content.brand, 'PARTE').toUpperCase()
+    const R = 70
+    // anillo de acento que se dibuja
+    const ringP = M.ease(inv(t, 0.1, 1.0))
+    ctx.save(); ctx.strokeStyle = rgba(pal.ink, 0.1); ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(cx, cy, R, 0, TAU); ctx.stroke()
+    ctx.strokeStyle = pal.accent; ctx.lineWidth = 5; ctx.lineCap = 'round'
+    ctx.beginPath(); ctx.arc(cx, cy, R, -TAU / 4, -TAU / 4 + TAU * ringP); ctx.stroke(); ctx.restore()
+    // numero centrado con asentamiento
+    const sp = M.settle(inv(t, 0.25, 1.0), { zeta: 0.5, freq: 2 })
+    ctx.save(); ctx.translate(cx, cy); ctx.scale(0.8 + 0.2 * sp, 0.8 + 0.2 * sp)
+    drawText(ctx, idx, 0, 0, { size: 64, weight: 800, family: fonts.display, maxW: R * 1.6, color: pal.ink, alpha: inv(t, 0.2, 0.6) })
+    ctx.restore()
+    // palabra de bisagra debajo
+    const rise = M.settle(inv(t, 0.4, 1.1), 1.2)
+    ctx.save(); ctx.globalAlpha = inv(t, 0.4, 0.85); ctx.translate(0, (1 - rise) * 22)
+    drawText(ctx, word, cx, cy + R + 46, { size: 38, weight: 800, family: fonts.display, maxW: W * 0.8, color: pal.ink })
+    ctx.restore()
+  },
+})
+
+// ---- spec/slots (mas · OLA6) -----------------------------------------------
+
+// spec "pricetag": etiqueta de precio (forma de tag con muesca + agujero) con el valor
+// destacado + sub-spec. Para producto/inmueble/plan. Distinto a feature/detail/ribbon.
+register({
+  id: 'scene.spec.pricetag', lib: 'scene-layouts', category: 'spec/slots', tones: ['dark', 'light'], rubros: ['*'], weight: 0.95,
+  tags: ['ficha', 'precio', 'etiqueta', 'tag', 'producto'], beat: 'data',
+  render(ctx, t, env) {
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
+    const items = splitItems(content.claim || content.tagline || 'USD 120k · 3 amb · 80 m2 · Apto credito', 4)
+    let priceIdx = items.findIndex(it => /\$|usd|ars|€|\d/i.test(it)); if (priceIdx < 0) priceIdx = 0
+    const price = (items[priceIdx] || items[0] || 'Consultar').trim()
+    const subs = items.filter((_, i) => i !== priceIdx).slice(0, 3)
+    if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), cx, H * 0.22, { size: 16, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, maxW: W * 0.78, alpha: inv(t, 0.05, 0.35) })
+    // forma de tag (rectangulo con muesca triangular a la izquierda + agujero), entra con spring + leve giro
+    const sp = M.settle(inv(t, 0.1, 1.0), { zeta: 0.45, freq: 2.1 })
+    const tw = W * 0.7, th = 120, tx = cx - tw / 2, ty = H * 0.33, notch = 34, rot = (1 - M.ease(inv(t, 0.1, 0.9))) * -0.06
+    ctx.save(); ctx.globalAlpha = inv(t, 0.05, 0.45); ctx.translate(cx, ty + th / 2); ctx.rotate(rot); ctx.scale(0.85 + 0.15 * sp, 0.85 + 0.15 * sp); ctx.translate(-cx, -(ty + th / 2))
+    ctx.fillStyle = pal.accent; ctx.beginPath()
+    ctx.moveTo(tx + notch, ty); ctx.lineTo(tx + tw, ty); ctx.lineTo(tx + tw, ty + th); ctx.lineTo(tx + notch, ty + th); ctx.lineTo(tx, ty + th / 2); ctx.closePath(); ctx.fill()
+    // agujero del tag
+    ctx.fillStyle = pal.tone === 'light' ? '#ffffff' : (pal.bg1 || '#161018'); ctx.beginPath(); ctx.arc(tx + notch + 18, ty + th / 2, 8, 0, TAU); ctx.fill()
+    ctx.restore()
+    // precio en onAccent dentro del tag
+    drawText(ctx, price, cx + notch / 2, ty + th / 2, { size: 46, weight: 800, family: fonts.display, maxW: tw - notch - 60, color: pal.onAccent, alpha: inv(t, 0.35, 0.85) })
+    // sub-specs como linea de items separados por punto, debajo
+    if (subs.length) drawWrapped(ctx, subs.join('  ·  '), cx, H * 0.6, { size: 22, weight: 700, family: fonts.text, maxW: W * 0.82, color: pal.ink, maxLines: 2, lh: 1.2, alpha: inv(t, 0.6, 1.1) })
+  },
+})
+
+// spec "cards": fila de N tarjetas (panel surface) cada una con un valor grande en tinta
+// + etiqueta; barra de acento arriba de cada card. Distinto a detail (grilla 2x2) y feature (filas).
+register({
+  id: 'scene.spec.cards', lib: 'scene-layouts', category: 'spec/slots', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
+  tags: ['ficha', 'tarjetas', 'fila', 'specs', 'producto'], beat: 'data',
+  render(ctx, t, env) {
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
+    const items = splitItems(content.claim || content.tagline || '3 amb · 80 m2 · 2 banos', 3)
+    const n = Math.min(3, Math.max(2, items.length))
+    if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), cx, H * 0.28, { size: 16, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, maxW: W * 0.78, alpha: inv(t, 0.05, 0.35) })
+    const gw = W * 0.84, gx = (W - gw) / 2, gap = 12, cw = (gw - (n - 1) * gap) / n, ch = H * 0.26, cy = H * 0.38
+    for (let i = 0; i < n; i++) {
+      const it = items[i] || ''
+      const tin = inv(t, 0.2 + i * 0.14, 0.74 + i * 0.14); if (tin <= 0) continue
+      const cxx = gx + i * (cw + gap), sp = M.settle(tin, { zeta: 0.5, freq: 2 })
+      ctx.save(); ctx.globalAlpha = tin; ctx.translate(cxx + cw / 2, cy + ch / 2); ctx.scale(0.88 + 0.12 * sp, 0.88 + 0.12 * sp); ctx.translate(-(cxx + cw / 2), -(cy + ch / 2))
+      ctx.fillStyle = pal.tone === 'light' ? 'rgba(20,16,24,0.05)' : 'rgba(255,255,255,0.06)'
+      ctx.beginPath(); ctx.roundRect(cxx, cy, cw, ch, 14); ctx.fill()
+      // barra de acento arriba de la card
+      ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(cxx, cy, cw, 4, 2); ctx.fill()
+      ctx.restore()
+      // valor (numero) + etiqueta
+      const num = (it.match(/([+\-]?\$?\s?\d[\d.,]*\s?[%xXmMkK²m2]*)/) || [])[1]
+      const label = shortLabel(num ? it.replace(num, '') : it, 2)
+      ctx.save(); ctx.globalAlpha = tin
+      drawText(ctx, (num || it).trim(), cxx + cw / 2, cy + ch * 0.42, { size: 30, weight: 800, family: fonts.display, color: pal.ink, maxW: cw - 16 })
+      if (num && label) drawText(ctx, label, cxx + cw / 2, cy + ch * 0.72, { size: 15, weight: 700, family: fonts.text, color: pal.dim, maxW: cw - 14 })
+      ctx.restore()
+    }
+  },
+})
+
 // spec "ribbon": precio/valor destacado arriba + cinta de chips (pildoras) de spec en
 // filas centradas. Para inmueble/producto. Distinto a feature (filas) y detail (grilla 2x2).
 register({

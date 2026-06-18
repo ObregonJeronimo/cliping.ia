@@ -1732,3 +1732,496 @@ function flechaUp(ctx, cx, cy, s, color) {
   ctx.moveTo(cx - s * 0.7, cy - s * 0.3); ctx.lineTo(cx, cy - s); ctx.lineTo(cx + s * 0.7, cy - s * 0.3)
   ctx.stroke(); ctx.restore()
 }
+
+// =====================================================================================================
+// =================================== OLA 6 — mas data-viz ============================================
+// =====================================================================================================
+// Mismas REGLAS DURAS: numero en MONO via fonts.accent; en claro el numero va en TINTA (numColor); el
+// acento queda para barra/arco/regla/aguja/punto/marco (DECO). Valores estables por seedFor(seed,'data');
+// t SOLO anima la entrada. Puro y determinista (cero Math.random/Date.now). Reusa helpers existentes
+// (fmtInt, countTo, numColor, hairline, shortLabel, checkPath, eOutBack01, pick, starPath, flechaUp).
+// Helpers nuevos (puros) al final del bloque: roundRectPath, chip.
+
+// ====================================================================== numeros-animados (mas)
+register({
+  id: 'data.number.percentcircle', lib: 'datakit', category: 'numeros-animados', tones: ['dark', 'light'], rubros: ['*'], weight: 1.1,
+  tags: ['hero', 'porcentaje', 'marco', 'mono'],
+  render(ctx, t, env) {
+    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
+    // % GRANDE centrado dentro de un MARCO circular fino de acento (deco), con dos rulos cortos a los lados.
+    const cx = W / 2, cy = H * 0.42, rad = W * 0.36
+    const pct = range(r, 0.6, 0.98)
+    const ap = eOutCubic(inv(t, 0.1, 1.2))
+    // marco circular tenue (riel)
+    ctx.lineWidth = 2; ctx.strokeStyle = hairline(pal, 0.14)
+    ctx.beginPath(); ctx.arc(cx, cy, rad, 0, TAU); ctx.stroke()
+    // dos arcos cortos de acento arriba y abajo que crecen (deco)
+    const arcAp = eOutCubic(inv(t, 0.3, 1.1))
+    ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.strokeStyle = pal.accent
+    ctx.beginPath(); ctx.arc(cx, cy, rad, -TAU / 4 - 0.45 * arcAp, -TAU / 4 + 0.45 * arcAp); ctx.stroke()
+    ctx.beginPath(); ctx.arc(cx, cy, rad, TAU / 4 - 0.45 * arcAp, TAU / 4 + 0.45 * arcAp); ctx.stroke()
+    // numero grande
+    drawText(ctx, Math.round(pct * 100 * ap) + '%', cx, cy - 6, { size: 96, weight: 700, family: fonts.accent, maxW: rad * 1.7, color: numColor(pal), shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.3)' : null })
+    // etiqueta corta dentro del marco
+    drawText(ctx, shortLabel(content.tagline, 3) || 'de satisfaccion', cx, cy + 44, { size: 17, weight: 600, family: fonts.text, maxW: rad * 1.5, color: pal.dim, alpha: inv(t, 0.5, 1) })
+    // claim debajo del marco
+    const lab = content.claim
+    if (lab && lab !== content.tagline) drawText(ctx, lab, cx, cy + rad + 50, { size: 18, weight: 600, family: fonts.text, maxW: W * 0.8, color: pal.dim, alpha: inv(t, 0.7, 1.2) })
+  },
+})
+
+register({
+  id: 'data.number.cardstat', lib: 'datakit', category: 'numeros-animados', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
+  tags: ['hero', 'tarjeta', 'kpi', 'mono'],
+  render(ctx, t, env) {
+    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
+    // numero hero DENTRO de una tarjeta de superficie con titulo arriba y chip de delta abajo-derecha. Limpio.
+    const cardX = W * 0.1, cardW = W * 0.8, cardY = H * 0.28, cardH = H * 0.42
+    const cAp = spring(inv(t, 0.1, 0.8), { zeta: 0.55, freq: 1.8 })
+    ctx.save(); ctx.globalAlpha = clamp(cAp, 0, 1)
+    ctx.fillStyle = pal.surface; roundRectPath(ctx, cardX, cardY, cardW, cardH, 20); ctx.fill()
+    ctx.strokeStyle = hairline(pal, 0.16); ctx.lineWidth = 1.5; roundRectPath(ctx, cardX, cardY, cardW, cardH, 20); ctx.stroke()
+    // barra de acento superior (deco)
+    ctx.fillStyle = pal.accent; roundRectPath(ctx, cardX, cardY, cardW, 6, [20, 20, 0, 0]); ctx.fill()
+    ctx.restore()
+    // titulo
+    drawText(ctx, shortLabel(content.tagline, 3) || 'Este mes', W / 2, cardY + 46, { size: 16, weight: 600, family: fonts.text, maxW: cardW * 0.8, color: pal.dim, alpha: inv(t, 0.3, 0.9) })
+    // numero grande
+    const target = range(r, 1200, 96000)
+    const val = countTo(target, t, 0.2, 1.2)
+    drawText(ctx, fmtInt(val), W / 2, cardY + cardH * 0.5, { size: 72, weight: 700, family: fonts.accent, maxW: cardW * 0.86, color: numColor(pal) })
+    // chip de delta abajo (flecha + %)
+    const dAp = inv(t, 0.5, 1.1)
+    if (dAp > 0) {
+      const delta = Math.round(range(r, 6, 38))
+      const txt = '+' + delta + '%'
+      ctx.font = `700 16px "${fonts.accent}"`; const tw = ctx.measureText(txt).width
+      const cw = tw + 46, cxp = W / 2 - cw / 2, cyp = cardY + cardH - 50
+      ctx.save(); ctx.globalAlpha = dAp
+      ctx.fillStyle = rgba(pal.accent, 0.16); roundRectPath(ctx, cxp, cyp, cw, 32, 16); ctx.fill()
+      flechaUp(ctx, cxp + 20, cyp + 16, 7, pal.accent)
+      drawText(ctx, txt, cxp + 32, cyp + 16, { size: 16, weight: 700, family: fonts.accent, align: 'left', maxW: tw + 4, color: numColor(pal) })
+      ctx.restore()
+    }
+    const lab = content.claim
+    if (lab) drawText(ctx, lab, W / 2, cardY + cardH + 40, { size: 18, weight: 600, family: fonts.text, maxW: W * 0.82, color: pal.dim, alpha: inv(t, 0.7, 1.2) })
+  },
+})
+
+// ====================================================================== barras (mas)
+register({
+  id: 'data.bars.range', lib: 'datakit', category: 'barras', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
+  tags: ['barras', 'rango', 'min-max', 'flotante'],
+  render(ctx, t, env) {
+    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
+    // 4 barras de RANGO (min..max flotantes) sobre un eje comun -> "de X a Y". Punto-marca en cada extremo.
+    const n = 4, x0 = W * 0.16, span = W * 0.72, top = H * 0.32, gap = H * 0.11, bh = 14
+    const labels = [content.brand, content.tagline, content.claim, content.cta]
+    const def = ['Lun', 'Mar', 'Mie', 'Jue']
+    const titulo = content.tagline || content.claim
+    if (titulo) drawText(ctx, titulo, W / 2, H * 0.22, { size: 21, weight: 700, family: fonts.display, maxW: W * 0.84, color: pal.ink, alpha: inv(t, 0.1, 0.55) })
+    for (let i = 0; i < n; i++) {
+      const y = top + i * gap
+      const lo = range(r, 0.08, 0.4), hi = clamp(lo + range(r, 0.25, 0.55), 0, 1)
+      const ap = eOutCubic(inv(t, 0.12 + i * 0.1, 0.9 + i * 0.1))
+      // etiqueta
+      drawText(ctx, shortLabel(labels[i], 1) || def[i], x0 - 12, y + bh / 2, { size: 14, weight: 600, family: fonts.text, align: 'right', maxW: W * 0.12, color: pal.dim, alpha: ap })
+      // eje tenue
+      ctx.fillStyle = hairline(pal, 0.07); roundRectPath(ctx, x0, y + bh / 2 - 1, span, 2, 1); ctx.fill()
+      // barra de rango (acento, crece desde lo hacia hi)
+      const xLo = x0 + span * lo, xHi = x0 + span * (lo + (hi - lo) * ap)
+      ctx.fillStyle = i === 0 ? pal.accent : rgba(pal.accent, 0.55)
+      roundRectPath(ctx, xLo, y, Math.max(bh, xHi - xLo), bh, bh / 2); ctx.fill()
+      // puntos en extremos
+      ctx.fillStyle = numColor(pal); ctx.globalAlpha = ap
+      ctx.beginPath(); ctx.arc(xLo, y + bh / 2, 3.5, 0, TAU); ctx.fill()
+      ctx.beginPath(); ctx.arc(xHi, y + bh / 2, 3.5, 0, TAU); ctx.fill(); ctx.globalAlpha = 1
+      // valor del rango a la derecha
+      drawText(ctx, Math.round(hi * 100 * ap) + '', x0 + span + 14, y + bh / 2, { size: 15, weight: 700, family: fonts.accent, align: 'left', maxW: W * 0.1, color: numColor(pal), alpha: ap })
+    }
+  },
+})
+
+register({
+  id: 'data.bars.heatcol', lib: 'datakit', category: 'barras', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
+  tags: ['barras', 'columnas', 'intensidad', 'serie'],
+  render(ctx, t, env) {
+    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
+    // 8 columnas cuya OPACIDAD de acento crece con el valor (intensidad) -> mapa de calor en columnas. Pico solido.
+    const n = 8, base = H * 0.66, maxH = H * 0.36, x0 = W * 0.12, span = W * 0.76
+    const slot = span / n, bw = slot * 0.66
+    const vals = Array.from({ length: n }, () => range(r, 0.22, 1))
+    let peak = 0; for (let i = 0; i < n; i++) if (vals[i] > vals[peak]) peak = i
+    const titulo = content.tagline || content.claim
+    if (titulo) drawText(ctx, titulo, W / 2, H * 0.2, { size: 21, weight: 700, family: fonts.display, maxW: W * 0.84, color: pal.ink, alpha: inv(t, 0.1, 0.55) })
+    // base
+    ctx.strokeStyle = hairline(pal, 0.1); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x0, base + 1); ctx.lineTo(x0 + span, base + 1); ctx.stroke()
+    for (let i = 0; i < n; i++) {
+      const ap = eOutBack01(inv(t, 0.1 + i * 0.06, 0.7 + i * 0.06))
+      const bx = x0 + i * slot + (slot - bw) / 2
+      const hh = maxH * vals[i] * ap
+      // opacidad por intensidad (0.3..1) -> heat
+      ctx.fillStyle = i === peak ? pal.accent : rgba(pal.accent, 0.3 + 0.55 * vals[i])
+      roundRectPath(ctx, bx, base - hh, bw, hh, [5, 5, 0, 0]); ctx.fill()
+    }
+    // valor pico
+    const pAp = inv(t, 0.7, 1.1)
+    if (pAp > 0) {
+      const bx = x0 + peak * slot + slot / 2
+      drawText(ctx, Math.round(vals[peak] * 100) + '', bx, base - maxH * vals[peak] - 14, { size: 16, weight: 700, family: fonts.accent, maxW: slot * 2, color: numColor(pal), alpha: pAp })
+    }
+    const lab = content.claim
+    if (lab && lab !== content.tagline) drawText(ctx, lab, W / 2, base + 40, { size: 18, weight: 600, family: fonts.text, maxW: W * 0.8, color: pal.dim, alpha: inv(t, 0.7, 1.2) })
+  },
+})
+
+// ====================================================================== anillos / radiales (mas)
+register({
+  id: 'data.ring.activity', lib: 'datakit', category: 'anillos/radiales', tones: ['dark', 'light'], rubros: ['*'], weight: 1.1,
+  tags: ['anillos', 'actividad', 'concentrico', 'mono'],
+  render(ctx, t, env) {
+    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
+    // 2 anillos de ACTIVIDAD concentricos (estilo "rings") con cap redondeado; 2 metricas + leyenda debajo.
+    const cx = W / 2, cy = H * 0.4, lws = 22
+    const rads = [W * 0.3, W * 0.3 - lws - 8]
+    const pcts = [range(r, 0.6, 0.98), range(r, 0.45, 0.85)]
+    const cols = [pal.accent, pal.accent2]
+    const start = -TAU / 4
+    ctx.lineCap = 'round'
+    for (let i = 0; i < 2; i++) {
+      const ap = eOutCubic(inv(t, 0.1 + i * 0.14, 1.1 + i * 0.14))
+      ctx.lineWidth = lws
+      ctx.strokeStyle = hairline(pal, 0.09); ctx.beginPath(); ctx.arc(cx, cy, rads[i], 0, TAU); ctx.stroke()
+      ctx.strokeStyle = cols[i]; ctx.beginPath(); ctx.arc(cx, cy, rads[i], start, start + TAU * pcts[i] * ap); ctx.stroke()
+    }
+    // numero principal (anillo externo) al centro
+    drawText(ctx, Math.round(pcts[0] * 100 * eOutCubic(inv(t, 0.1, 1.1))) + '%', cx, cy, { size: 50, weight: 700, family: fonts.accent, maxW: rads[1] * 1.4, color: numColor(pal) })
+    // leyenda debajo (2 filas: punto + etiqueta + %)
+    const labs = [shortLabel(content.tagline, 2) || 'Alcance', shortLabel(content.claim, 2) || 'Interaccion']
+    const ly0 = cy + rads[0] + 44, rowH = 38
+    for (let i = 0; i < 2; i++) {
+      const ly = ly0 + i * rowH
+      const la = inv(t, 0.6 + i * 0.12, 1.1 + i * 0.12)
+      ctx.save(); ctx.globalAlpha = la
+      ctx.fillStyle = cols[i]; ctx.beginPath(); ctx.arc(W * 0.22, ly, 8, 0, TAU); ctx.fill()
+      drawText(ctx, labs[i], W * 0.22 + 18, ly, { size: 15, weight: 600, family: fonts.text, align: 'left', maxW: W * 0.4, color: pal.ink })
+      drawText(ctx, Math.round(pcts[i] * 100) + '%', W * 0.82, ly, { size: 18, weight: 700, family: fonts.accent, align: 'right', maxW: W * 0.18, color: numColor(pal) })
+      ctx.restore()
+    }
+  },
+})
+
+// ====================================================================== donut (mas)
+register({
+  id: 'data.donut.gauge270', lib: 'datakit', category: 'donut', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
+  tags: ['donut', 'gauge', '270', 'porcentaje', 'mono'],
+  render(ctx, t, env) {
+    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
+    // gauge de 270 grados (3/4 de vuelta, hueco abajo) con numero grande al centro y etiquetas min/max. Limpio.
+    const cx = W / 2, cy = H * 0.44, rad = W * 0.32, lw = 22
+    const pct = range(r, 0.4, 0.95)
+    const ap = eOutCubic(inv(t, 0.1, 1.2))
+    const a0 = Math.PI * 0.75, total = Math.PI * 1.5   // 270 grados, hueco abajo
+    ctx.lineCap = 'round'; ctx.lineWidth = lw
+    ctx.strokeStyle = hairline(pal, 0.1); ctx.beginPath(); ctx.arc(cx, cy, rad, a0, a0 + total); ctx.stroke()
+    ctx.strokeStyle = pal.accent; ctx.beginPath(); ctx.arc(cx, cy, rad, a0, a0 + total * pct * ap); ctx.stroke()
+    // punto cabeza
+    const ha = a0 + total * pct * ap
+    ctx.fillStyle = lighten(pal.accent, 0.3); ctx.beginPath(); ctx.arc(cx + Math.cos(ha) * rad, cy + Math.sin(ha) * rad, lw * 0.42, 0, TAU); ctx.fill()
+    // numero grande centro
+    drawText(ctx, Math.round(pct * 100 * ap) + '%', cx, cy - 4, { size: 64, weight: 700, family: fonts.accent, maxW: rad * 1.5, color: numColor(pal) })
+    drawText(ctx, shortLabel(content.tagline, 3) || 'del objetivo', cx, cy + 40, { size: 16, weight: 600, family: fonts.text, maxW: rad * 1.5, color: pal.dim, alpha: inv(t, 0.5, 1) })
+    // min / max en las puntas inferiores
+    const mAp = inv(t, 0.6, 1.1)
+    drawText(ctx, '0', cx + Math.cos(a0) * (rad + 4), cy + Math.sin(a0) * (rad + 4) + 16, { size: 13, weight: 700, family: fonts.accent, maxW: 40, color: pal.dim, alpha: mAp })
+    drawText(ctx, '100', cx + Math.cos(a0 + total) * (rad + 4), cy + Math.sin(a0 + total) * (rad + 4) + 16, { size: 13, weight: 700, family: fonts.accent, maxW: 50, color: pal.dim, alpha: mAp })
+  },
+})
+
+// ====================================================================== series / tendencia (mas)
+register({
+  id: 'data.series.areaglow', lib: 'datakit', category: 'series/tendencia', tones: ['dark', 'light'], rubros: ['*'], weight: 1.1,
+  tags: ['serie', 'area', 'grilla', 'tendencia'],
+  render(ctx, t, env) {
+    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
+    // serie de area suave con GRILLA de fondo (3 lineas h) + etiquetas de eje + valor final. Limpio "dashboard".
+    const n = 10, x0 = W * 0.14, x1 = W * 0.9, yTop = H * 0.34, yBot = H * 0.62
+    const pts = []
+    let acc = 0.22
+    for (let i = 0; i < n; i++) { acc = clamp(acc + range(r, -0.06, 0.18), 0.08, 1); pts.push({ x: lerp(x0, x1, i / (n - 1)), y: lerp(yBot, yTop, acc), v: acc }) }
+    // grilla (3 lineas horizontales)
+    for (let g = 0; g <= 2; g++) {
+      const gy = lerp(yTop, yBot, g / 2)
+      ctx.strokeStyle = hairline(pal, 0.07); ctx.lineWidth = 1
+      ctx.beginPath(); ctx.moveTo(x0, gy); ctx.lineTo(x1, gy); ctx.stroke()
+    }
+    const draw = eOutCubic(inv(t, 0.1, 1.3))
+    const shown = clamp(draw * (n - 1), 0, n - 1), li = Math.floor(shown), fr = shown - li
+    const ex = li < n - 1 ? lerp(pts[li].x, pts[li + 1].x, fr) : pts[n - 1].x
+    const ey = li < n - 1 ? lerp(pts[li].y, pts[li + 1].y, fr) : pts[n - 1].y
+    // area
+    ctx.save(); ctx.beginPath(); ctx.moveTo(pts[0].x, yBot)
+    for (let i = 0; i <= li; i++) ctx.lineTo(pts[i].x, pts[i].y)
+    ctx.lineTo(ex, ey); ctx.lineTo(ex, yBot); ctx.closePath()
+    const ag = ctx.createLinearGradient(0, yTop, 0, yBot)
+    ag.addColorStop(0, rgba(pal.accent, 0.3)); ag.addColorStop(1, rgba(pal.accent, 0))
+    ctx.fillStyle = ag; ctx.fill(); ctx.restore()
+    // linea
+    ctx.strokeStyle = pal.accent; ctx.lineWidth = 3; ctx.lineJoin = 'round'; ctx.lineCap = 'round'
+    ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y)
+    for (let i = 1; i <= li; i++) ctx.lineTo(pts[i].x, pts[i].y)
+    ctx.lineTo(ex, ey); ctx.stroke()
+    // punto cabeza
+    ctx.fillStyle = lighten(pal.accent, 0.3); ctx.beginPath(); ctx.arc(ex, ey, 5, 0, TAU); ctx.fill()
+    // valor final grande arriba
+    drawText(ctx, Math.round(pts[n - 1].v * 100) + '%', W / 2, H * 0.24, { size: 42, weight: 700, family: fonts.accent, maxW: W * 0.5, color: numColor(pal), alpha: inv(t, 0.4, 1) })
+    const lab = content.tagline || content.claim
+    if (lab) drawText(ctx, lab, W / 2, H * 0.7, { size: 18, weight: 600, family: fonts.text, maxW: W * 0.8, color: pal.dim, alpha: inv(t, 0.7, 1.2) })
+  },
+})
+
+register({
+  id: 'data.series.candles', lib: 'datakit', category: 'series/tendencia', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
+  tags: ['serie', 'velas', 'mercado', 'tendencia'],
+  render(ctx, t, env) {
+    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
+    // mini-velas (8) estilo mercado: cuerpo + mecha; alcistas en acento, bajistas atenuadas. Tendencia al alza.
+    const n = 8, x0 = W * 0.14, span = W * 0.72, base = H * 0.62, area = H * 0.32
+    const slot = span / n, bw = slot * 0.46
+    let lvl = 0.3
+    const titulo = content.tagline || content.claim
+    if (titulo) drawText(ctx, titulo, W / 2, H * 0.2, { size: 21, weight: 700, family: fonts.display, maxW: W * 0.84, color: pal.ink, alpha: inv(t, 0.1, 0.55) })
+    for (let i = 0; i < n; i++) {
+      const open = lvl
+      const drift = range(r, -0.05, 0.2)               // sesgo al alza claro
+      const close = clamp(open + drift, 0.08, 1)
+      const hi = clamp(Math.max(open, close) + range(r, 0.03, 0.1), 0, 1)
+      const lo = clamp(Math.min(open, close) - range(r, 0.03, 0.1), 0, 1)
+      lvl = close
+      const up = close >= open
+      const ap = eOutCubic(inv(t, 0.1 + i * 0.08, 0.7 + i * 0.08))
+      const cx = x0 + i * slot + slot / 2
+      const yOf = v => base - area * v * ap
+      // mecha
+      ctx.strokeStyle = up ? pal.accent : rgba(pal.accent, 0.4); ctx.lineWidth = 2; ctx.lineCap = 'round'
+      ctx.beginPath(); ctx.moveTo(cx, yOf(hi)); ctx.lineTo(cx, yOf(lo)); ctx.stroke()
+      // cuerpo
+      const yTopB = yOf(Math.max(open, close)), yBotB = yOf(Math.min(open, close))
+      ctx.fillStyle = up ? pal.accent : rgba(pal.accent, 0.4)
+      roundRectPath(ctx, cx - bw / 2, yTopB, bw, Math.max(3, yBotB - yTopB), 3); ctx.fill()
+    }
+    // base
+    ctx.strokeStyle = hairline(pal, 0.1); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x0, base + 1); ctx.lineTo(x0 + span, base + 1); ctx.stroke()
+    // delta total
+    const delta = Math.round((lvl - 0.3) * 100)
+    drawText(ctx, (delta >= 0 ? '+' : '') + delta + '%', W / 2, H * 0.7, { size: 28, weight: 700, family: fonts.accent, maxW: W * 0.5, color: numColor(pal), alpha: inv(t, 0.7, 1.2) })
+  },
+})
+
+// ====================================================================== comparacion / proporcion (mas)
+register({
+  id: 'data.compare.tugofwar', lib: 'datakit', category: 'comparacion/proporcion', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
+  tags: ['comparacion', 'balance', 'cuota', 'mono'],
+  render(ctx, t, env) {
+    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
+    // barra unica balance A|B con marcador que se asienta segun la cuota (la nuestra gana). % a cada lado.
+    const x0 = W * 0.1, bw = W * 0.8, y = H * 0.46, bh = 46
+    const share = range(r, 0.56, 0.8)                  // cuota de A (nosotros)
+    const ap = eOutExpo(inv(t, 0.1, 1))
+    const cut = bw * (0.5 + (share - 0.5) * ap)        // arranca al medio, se asienta en la cuota
+    const titulo = content.tagline || content.claim
+    if (titulo) drawText(ctx, titulo, W / 2, H * 0.26, { size: 22, weight: 700, family: fonts.display, maxW: W * 0.84, color: pal.ink, alpha: inv(t, 0.1, 0.55) })
+    // lado B (resto, atenuado)
+    ctx.fillStyle = rgba(pal.accent, 0.18); roundRectPath(ctx, x0, y, bw, bh, bh / 2); ctx.fill()
+    // lado A (acento, clip a la barra)
+    ctx.save(); roundRectPath(ctx, x0, y, bw, bh, bh / 2); ctx.clip()
+    ctx.fillStyle = pal.accent; ctx.fillRect(x0, y, cut, bh); ctx.restore()
+    // marcador (linea + circulo)
+    const mx = x0 + cut
+    ctx.strokeStyle = pal.bg0; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(mx, y - 6); ctx.lineTo(mx, y + bh + 6); ctx.stroke()
+    ctx.fillStyle = numColor(pal); ctx.beginPath(); ctx.arc(mx, y + bh / 2, 8, 0, TAU); ctx.fill()
+    // % a cada lado (dentro)
+    drawText(ctx, Math.round(share * 100 * ap) + '%', x0 + 18, y + bh / 2, { size: 22, weight: 700, family: fonts.accent, align: 'left', maxW: cut - 24, color: pal.onAccent, alpha: inv(t, 0.4, 1) })
+    drawText(ctx, Math.round((1 - share) * 100 * ap) + '%', x0 + bw - 18, y + bh / 2, { size: 20, weight: 700, family: fonts.accent, align: 'right', maxW: bw - cut - 24, color: numColor(pal), alpha: inv(t, 0.4, 1) })
+    // etiquetas debajo
+    const lAp = inv(t, 0.6, 1.1)
+    drawText(ctx, shortLabel(content.brand, 2) || 'Nosotros', x0, y + bh + 26, { size: 15, weight: 700, family: fonts.text, align: 'left', maxW: bw * 0.5, color: numColor(pal), alpha: lAp })
+    drawText(ctx, 'Resto', x0 + bw, y + bh + 26, { size: 15, weight: 600, family: fonts.text, align: 'right', maxW: bw * 0.4, color: pal.dim, alpha: lAp })
+  },
+})
+
+register({
+  id: 'data.compare.dumbbell', lib: 'datakit', category: 'comparacion/proporcion', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
+  tags: ['comparacion', 'dumbbell', 'antes-despues', 'mono'],
+  render(ctx, t, env) {
+    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
+    // filas "dumbbell": 2 puntos unidos por una linea (antes atenuado -> despues acento) -> brecha visible.
+    const n = 4, x0 = W * 0.16, span = W * 0.62, top = H * 0.32, gap = H * 0.11
+    const labels = [content.brand, content.tagline, content.claim, content.cta]
+    const def = ['Q1', 'Q2', 'Q3', 'Q4']
+    const titulo = content.tagline || content.claim
+    if (titulo) drawText(ctx, titulo, W / 2, H * 0.22, { size: 21, weight: 700, family: fonts.display, maxW: W * 0.84, color: pal.ink, alpha: inv(t, 0.1, 0.55) })
+    for (let i = 0; i < n; i++) {
+      const y = top + i * gap
+      const a = range(r, 0.15, 0.45), b = clamp(a + range(r, 0.2, 0.5), 0, 1)
+      const ap = eOutCubic(inv(t, 0.12 + i * 0.1, 0.9 + i * 0.1))
+      const xa = x0 + span * a, xb = x0 + span * (a + (b - a) * ap)
+      // etiqueta
+      drawText(ctx, shortLabel(labels[i], 1) || def[i], x0 - 12, y, { size: 14, weight: 600, family: fonts.text, align: 'right', maxW: W * 0.12, color: pal.dim, alpha: ap })
+      // linea conectora
+      ctx.strokeStyle = rgba(pal.accent, 0.4); ctx.lineWidth = 4; ctx.lineCap = 'round'
+      ctx.beginPath(); ctx.moveTo(xa, y); ctx.lineTo(xb, y); ctx.stroke()
+      // punto antes (atenuado, hueco)
+      ctx.fillStyle = pal.bg0; ctx.beginPath(); ctx.arc(xa, y, 8, 0, TAU); ctx.fill()
+      ctx.strokeStyle = rgba(pal.accent, 0.5); ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(xa, y, 8, 0, TAU); ctx.stroke()
+      // punto despues (acento, lleno)
+      ctx.fillStyle = pal.accent; ctx.globalAlpha = ap; ctx.beginPath(); ctx.arc(xb, y, 9, 0, TAU); ctx.fill(); ctx.globalAlpha = 1
+      // valor despues a la derecha
+      drawText(ctx, Math.round(b * 100 * ap) + '', x0 + span + 18, y, { size: 15, weight: 700, family: fonts.accent, align: 'left', maxW: W * 0.12, color: numColor(pal), alpha: ap })
+    }
+  },
+})
+
+// ====================================================================== rating / prueba-social (mas)
+register({
+  id: 'data.rating.nps', lib: 'datakit', category: 'rating/prueba-social', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
+  tags: ['rating', 'nps', 'gauge', 'mono'],
+  render(ctx, t, env) {
+    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
+    // medidor NPS: semicirculo de 3 tramos (detractores/pasivos/promotores) + aguja al score. Numero NPS al centro.
+    const cx = W / 2, cy = H * 0.52, rad = W * 0.34, lw = 24
+    const score = range(r, 0.55, 0.92)                 // posicion 0..1 en el arco
+    const npsVal = Math.round(range(r, 42, 88))        // valor NPS mostrado
+    const ap = eOutCubic(inv(t, 0.1, 1.2))
+    const a0 = Math.PI, total = Math.PI                 // semicirculo superior
+    // 3 tramos del arco
+    const segs = [0.34, 0.33, 0.33]
+    const cols = [rgba(pal.accent, 0.25), rgba(pal.accent, 0.5), pal.accent]
+    ctx.lineCap = 'butt'; ctx.lineWidth = lw
+    let aa = a0
+    for (let i = 0; i < 3; i++) {
+      const seg = total * segs[i]
+      ctx.strokeStyle = cols[i]; ctx.beginPath(); ctx.arc(cx, cy, rad, aa + 0.015, aa + seg - 0.015); ctx.stroke()
+      aa += seg
+    }
+    // aguja al score
+    const na = a0 + total * score * ap
+    const nx = cx + Math.cos(na) * (rad - 2), ny = cy + Math.sin(na) * (rad - 2)
+    ctx.strokeStyle = numColor(pal); ctx.lineWidth = 4; ctx.lineCap = 'round'
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(nx, ny); ctx.stroke()
+    ctx.fillStyle = numColor(pal); ctx.beginPath(); ctx.arc(cx, cy, 8, 0, TAU); ctx.fill()
+    // numero NPS bajo el centro
+    drawText(ctx, 'NPS', cx, cy + 32, { size: 14, weight: 700, family: fonts.accent, maxW: rad, color: pal.dim, alpha: inv(t, 0.5, 1) })
+    drawText(ctx, String(Math.round(npsVal * ap)), cx, cy + 70, { size: 56, weight: 700, family: fonts.accent, maxW: rad * 1.4, color: numColor(pal) })
+    const lab = content.tagline || content.claim
+    if (lab) drawText(ctx, lab, cx, cy + 120, { size: 17, weight: 600, family: fonts.text, maxW: W * 0.8, color: pal.dim, alpha: inv(t, 0.7, 1.2) })
+  },
+})
+
+// ====================================================================== timeline / proceso (mas)
+register({
+  id: 'data.timeline.zigzag', lib: 'datakit', category: 'timeline/proceso', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
+  tags: ['timeline', 'alternado', 'pasos', 'mono'],
+  render(ctx, t, env) {
+    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
+    // timeline vertical ALTERNADO: linea central + nodos numerados; etiqueta a izq/der alternando. La linea se dibuja.
+    const n = 4, cx = W / 2, top = H * 0.22, gap = H * 0.16, nodeR = 16
+    const yEnd = top + (n - 1) * gap
+    const labels = [content.brand, content.tagline, content.claim, content.cta]
+    const def = ['Importas', 'Generas', 'Lanzas', 'Afinas']
+    // riel + progreso
+    ctx.lineCap = 'round'; ctx.lineWidth = 4
+    ctx.strokeStyle = hairline(pal, 0.12); ctx.beginPath(); ctx.moveTo(cx, top); ctx.lineTo(cx, yEnd); ctx.stroke()
+    const prog = eOutCubic(inv(t, 0.1, 1.1))
+    ctx.strokeStyle = pal.accent; ctx.beginPath(); ctx.moveTo(cx, top); ctx.lineTo(cx, lerp(top, yEnd, prog)); ctx.stroke()
+    for (let i = 0; i < n; i++) {
+      const y = top + i * gap
+      const reach = inv(prog, i / (n - 1) - 0.02, i / (n - 1) + 0.12)
+      const ap = eOutBack01(reach)
+      const left = i % 2 === 0
+      // conector corto al rotulo
+      const cxe = left ? cx - nodeR - 8 : cx + nodeR + 8
+      const lblX = left ? cx - nodeR - 18 : cx + nodeR + 18
+      ctx.strokeStyle = reach > 0.5 ? rgba(pal.accent, 0.6) : hairline(pal, 0.14); ctx.lineWidth = 2
+      ctx.beginPath(); ctx.moveTo(left ? cx - nodeR : cx + nodeR, y); ctx.lineTo(cxe, y); ctx.stroke()
+      // nodo
+      ctx.save(); ctx.translate(cx, y)
+      ctx.fillStyle = reach > 0.5 ? pal.accent : pal.bg0; ctx.beginPath(); ctx.arc(0, 0, nodeR, 0, TAU); ctx.fill()
+      ctx.lineWidth = 3; ctx.strokeStyle = reach > 0.5 ? pal.accent : hairline(pal, 0.25); ctx.beginPath(); ctx.arc(0, 0, nodeR, 0, TAU); ctx.stroke()
+      drawText(ctx, String(i + 1), 0, 1, { size: 15, weight: 700, family: fonts.accent, maxW: nodeR * 1.6, color: reach > 0.5 ? pal.onAccent : pal.dim })
+      ctx.restore()
+      // rotulo alternado
+      const lab = shortLabel(labels[i], 3) || def[i]
+      drawText(ctx, lab, lblX, y, { size: 17, weight: 600, family: fonts.text, align: left ? 'right' : 'left', maxW: W * 0.34, color: reach > 0.5 ? pal.ink : pal.dim, alpha: clamp(0.4 + ap * 0.6, 0, 1) })
+    }
+  },
+})
+
+// ====================================================================== numberStack (mas)
+register({
+  id: 'data.stack.bigsmall', lib: 'datakit', category: 'numberStack', tones: ['dark', 'light'], rubros: ['*'], weight: 1.1,
+  tags: ['kpi', 'hero', 'jerarquia', 'mono'],
+  render(ctx, t, env) {
+    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
+    // 1 numero HERO arriba + 2 stats chicos lado a lado debajo (jerarquia). Regla de acento separa.
+    const cx = W / 2
+    const heroT = range(r, 1.2, 9.6)
+    const heroVal = (heroT * eOutExpo(inv(t, 0.1, 1.1))).toFixed(1)
+    // hero
+    drawText(ctx, shortLabel(content.tagline, 3) || 'Ingresos', cx, H * 0.24, { size: 16, weight: 600, family: fonts.text, maxW: W * 0.8, color: pal.dim, alpha: inv(t, 0.2, 0.8) })
+    drawText(ctx, '$' + heroVal + 'M', cx, H * 0.36, { size: 84, weight: 700, family: fonts.accent, maxW: W * 0.86, color: numColor(pal), shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.3)' : null })
+    // regla de acento
+    const ru = eOutCubic(inv(t, 0.4, 1)), rw = 90 * ru
+    ctx.fillStyle = pal.accent; roundRectPath(ctx, cx - rw / 2, H * 0.43, rw, 5, 2.5); ctx.fill()
+    // 2 stats chicos
+    const xs = [W * 0.3, W * 0.7]
+    const subT = [range(r, 12, 96), range(r, 120, 980)]
+    const subU = ['%', '+']
+    const subL = [shortLabel(content.claim, 2) || 'Conversion', shortLabel(content.cta, 2) || 'Clientes']
+    for (let i = 0; i < 2; i++) {
+      const ap = inv(t, 0.5 + i * 0.12, 1.1 + i * 0.12)
+      const v = subT[i] * eOutExpo(ap)
+      drawText(ctx, (i === 0 ? Math.round(v) : fmtInt(v)) + subU[i], xs[i], H * 0.56, { size: 40, weight: 700, family: fonts.accent, maxW: W * 0.34, color: numColor(pal), alpha: clamp(ap * 1.3, 0, 1) })
+      drawText(ctx, subL[i], xs[i], H * 0.62, { size: 14, weight: 600, family: fonts.text, maxW: W * 0.34, color: pal.dim, alpha: clamp(ap * 1.2, 0, 1) })
+    }
+    // divisor vertical entre los 2 chicos
+    const dh = eOutCubic(inv(t, 0.6, 1)) * 50
+    ctx.fillStyle = hairline(pal, 0.18); roundRectPath(ctx, cx - 1, H * 0.56 - dh / 2, 2, dh, 1); ctx.fill()
+  },
+})
+
+// ====================================================================== progreso (mas)
+register({
+  id: 'data.progress.dialarc', lib: 'datakit', category: 'progreso', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
+  tags: ['progreso', 'arco', 'escala', 'mono'],
+  render(ctx, t, env) {
+    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
+    // arco de progreso (3/4) con ESCALA de puntos alrededor (12 ticks que se encienden) + numero central. Premium.
+    const cx = W / 2, cy = H * 0.42, rad = W * 0.3, lw = 16, nTicks = 12
+    const pct = range(r, 0.5, 0.95)
+    const ap = eOutCubic(inv(t, 0.1, 1.2))
+    const a0 = Math.PI * 0.75, total = Math.PI * 1.5
+    // arco riel + acento
+    ctx.lineCap = 'round'; ctx.lineWidth = lw
+    ctx.strokeStyle = hairline(pal, 0.1); ctx.beginPath(); ctx.arc(cx, cy, rad, a0, a0 + total); ctx.stroke()
+    ctx.strokeStyle = pal.accent; ctx.beginPath(); ctx.arc(cx, cy, rad, a0, a0 + total * pct * ap); ctx.stroke()
+    // ticks de escala fuera del arco
+    const litTicks = nTicks * pct * ap
+    for (let i = 0; i <= nTicks; i++) {
+      const a = a0 + total * (i / nTicks)
+      const on = i < litTicks
+      const r1 = rad + lw * 0.7, r2 = rad + lw * 0.95
+      ctx.strokeStyle = on ? pal.accent : hairline(pal, 0.18); ctx.lineWidth = on ? 3 : 2
+      ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1); ctx.lineTo(cx + Math.cos(a) * r2, cy + Math.sin(a) * r2); ctx.stroke()
+    }
+    // numero central
+    drawText(ctx, Math.round(pct * 100 * ap) + '%', cx, cy - 4, { size: 58, weight: 700, family: fonts.accent, maxW: rad * 1.4, color: numColor(pal) })
+    drawText(ctx, shortLabel(content.tagline, 3) || 'completado', cx, cy + 38, { size: 16, weight: 600, family: fonts.text, maxW: rad * 1.5, color: pal.dim, alpha: inv(t, 0.5, 1) })
+    const lab = content.claim
+    if (lab && lab !== content.tagline) drawText(ctx, lab, cx, cy + rad + 56, { size: 18, weight: 600, family: fonts.text, maxW: W * 0.8, color: pal.dim, alpha: inv(t, 0.7, 1.2) })
+  },
+})
+
+// ---- helpers OLA 6 (puros) ----
+// roundRect como PATH (sin fill/stroke) -> el caller decide; acepta radio numero o array [tl,tr,br,bl].
+function roundRectPath(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r) }
