@@ -1748,3 +1748,462 @@ register({
     scrim(ctx, pal, { centerClear: 0.34, strength: pal.tone === 'light' ? 0.12 : 0.28 })
   },
 })
+
+// ============================================================================
+// OLA 5 — fondos nuevos. Reusa rampBg/makeNoise/scrim/CLK ya definidos arriba.
+// ============================================================================
+
+// ---- gradient-fields ----
+
+register({
+  id: 'bg.gradient.cornerglow', lib: 'backgrounds', category: 'gradient-fields', tones: ['dark', 'light'], rubros: ['*'], weight: 1.1,
+  tags: ['calmo', 'universal', 'esquinas', 'suave'],
+  render(ctx, t, env) {
+    const { pal } = env, r = seedFor(env.seed, 'cglow')
+    // base diagonal
+    const g = ctx.createLinearGradient(0, 0, W, H)
+    g.addColorStop(0, pal.bg0); g.addColorStop(1, pal.bg1)
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H)
+    // dos resplandores anclados a esquinas OPUESTAS (sembradas), respirando lento -> textura limpia para texto
+    const pair = (r() * 2) | 0
+    const corners = pair === 0 ? [[0, 0], [W, H]] : [[W, 0], [0, H]]
+    const cols = [pal.accent, pal.accent2]
+    ctx.save(); ctx.globalCompositeOperation = pal.tone === 'light' ? 'multiply' : 'lighter'
+    for (let i = 0; i < 2; i++) {
+      const [cx, cy] = corners[i]
+      const breath = 0.85 + 0.15 * Math.sin(t * CLK * 0.4 + i * Math.PI)
+      const rad = H * 0.66 * breath
+      const gr = ctx.createRadialGradient(cx, cy, 0, cx, cy, rad)
+      gr.addColorStop(0, rgba(cols[i], pal.tone === 'light' ? 0.16 : 0.24)); gr.addColorStop(1, rgba(cols[i], 0))
+      ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H)
+    }
+    ctx.restore()
+    scrim(ctx, pal, { centerClear: 0.4, strength: pal.tone === 'light' ? 0.1 : 0.22 })
+  },
+})
+
+register({
+  id: 'bg.gradient.bandlayers', lib: 'backgrounds', category: 'gradient-fields', tones: ['dark', 'light'], rubros: ['*', 'moda', 'arte', 'eventos'], weight: 0.9,
+  tags: ['bandas', 'capas', 'horizonte', 'editorial'],
+  render(ctx, t, env) {
+    const { pal } = env
+    rampBg(ctx, pal)
+    // tres franjas horizontales suaves con bordes difusos que se deslizan vertical muy lento (paisaje abstracto)
+    const drift = (t * CLK * 6)
+    const stops = [
+      { y: 0.3, h: 0.22, col: pal.accent },
+      { y: 0.55, h: 0.26, col: pal.accent2 },
+      { y: 0.82, h: 0.2, col: pal.accent },
+    ]
+    ctx.save(); ctx.globalCompositeOperation = pal.tone === 'light' ? 'multiply' : 'screen'
+    for (let i = 0; i < stops.length; i++) {
+      const s = stops[i]
+      const cy = ((s.y * H + Math.sin(t * CLK * 0.3 + i) * 10 + drift) % (H + 200)) - 100
+      const half = s.h * H
+      const g = ctx.createLinearGradient(0, cy - half, 0, cy + half)
+      g.addColorStop(0, rgba(s.col, 0)); g.addColorStop(0.5, rgba(s.col, pal.tone === 'light' ? 0.16 : 0.22)); g.addColorStop(1, rgba(s.col, 0))
+      ctx.fillStyle = g; ctx.fillRect(0, cy - half, W, half * 2)
+    }
+    ctx.restore()
+    scrim(ctx, pal, { centerClear: 0.36, strength: pal.tone === 'light' ? 0.14 : 0.26 })
+  },
+})
+
+// ---- geometric-graphic ----
+
+register({
+  id: 'bg.geometric.chevrons', lib: 'backgrounds', category: 'geometric-graphic', tones: ['dark', 'light'], rubros: ['*', 'moda', 'deportes', 'eventos'], weight: 0.85,
+  tags: ['geometrico', 'chevron', 'flechas', 'movimiento'],
+  render(ctx, t, env) {
+    const { pal } = env
+    rampBg(ctx, pal)
+    // filas de chevrones (>>>) que avanzan; alternan acento/acento2; sutiles para no competir con el texto
+    const rowH = 56, half = rowH / 2
+    const cw = 40
+    const scroll = (t * CLK * 14) % (cw * 2)
+    ctx.lineWidth = 6; ctx.lineCap = 'round'; ctx.lineJoin = 'round'
+    let row = 0
+    for (let y = -rowH; y < H + rowH; y += rowH, row++) {
+      const dir = row % 2 ? 1 : -1
+      const col = row % 2 ? pal.accent2 : pal.accent
+      ctx.strokeStyle = rgba(col, pal.tone === 'light' ? 0.26 : 0.2)
+      const off = dir * scroll
+      for (let x = -cw * 2 + off; x < W + cw; x += cw * 2) {
+        ctx.beginPath()
+        ctx.moveTo(x, y + half - 12)
+        ctx.lineTo(x + cw * 0.5 * dir, y + half)
+        ctx.lineTo(x, y + half + 12)
+        ctx.stroke()
+      }
+    }
+    scrim(ctx, pal, { centerClear: 0.34, strength: pal.tone === 'light' ? 0.18 : 0.3 })
+  },
+})
+
+register({
+  id: 'bg.geometric.concentric', lib: 'backgrounds', category: 'geometric-graphic', tones: ['dark', 'light'], rubros: ['*', 'tech', 'arte', 'eventos'], weight: 0.8,
+  tags: ['geometrico', 'anillos', 'concentrico', 'radar', 'hipnotico'],
+  render(ctx, t, env) {
+    const { pal } = env, r = seedFor(env.seed, 'conc')
+    rampBg(ctx, pal)
+    // anillos concentricos desde una esquina sembrada, expandiendose lento (ondas)
+    const anchors = [[0, 0], [W, 0], [W, H], [0, H], [W / 2, H * 0.5]]
+    const [cx, cy] = anchors[(r() * anchors.length) | 0]
+    const gap = 34
+    const grow = (t * CLK * 5) % gap
+    const maxR = Math.hypot(W, H) * 1.05
+    ctx.lineWidth = 2
+    for (let rad = grow + gap; rad < maxR; rad += gap) {
+      const k = rad / maxR
+      const col = (Math.round(rad / gap) % 3 === 0) ? pal.accent2 : pal.accent
+      ctx.strokeStyle = rgba(col, (pal.tone === 'light' ? 0.14 : 0.2) * (1 - k * 0.6))
+      ctx.beginPath(); ctx.arc(cx, cy, rad, 0, TAU); ctx.stroke()
+    }
+    scrim(ctx, pal, { centerClear: 0.34, strength: pal.tone === 'light' ? 0.16 : 0.28 })
+  },
+})
+
+register({
+  id: 'bg.geometric.diamondtile', lib: 'backgrounds', category: 'geometric-graphic', tones: ['dark', 'light'], rubros: ['*', 'moda', 'gastronomia', 'arte'], weight: 0.8,
+  tags: ['geometrico', 'rombos', 'argyle', 'mosaico'],
+  render(ctx, t, env) {
+    const { pal } = env, r = seedFor(env.seed, 'diam')
+    rampBg(ctx, pal)
+    // grilla de rombos; algunos rellenos (sembrados) con leve titileo de brillo -> patron argyle/mosaico
+    const cw = 52, chh = 46
+    ctx.lineWidth = 1
+    for (let gy = -1, j = 0; gy * chh < H + chh; gy++, j++) {
+      for (let gx = -1, i = 0; gx * cw < W + cw; gx++, i++) {
+        const cx = gx * cw + (j % 2 ? cw / 2 : 0)
+        const cy = gy * chh
+        const seed = ((i * 73856093) ^ (j * 19349663)) >>> 0
+        const filled = (seed % 5) === 0
+        ctx.beginPath()
+        ctx.moveTo(cx, cy - chh / 2); ctx.lineTo(cx + cw / 2, cy); ctx.lineTo(cx, cy + chh / 2); ctx.lineTo(cx - cw / 2, cy); ctx.closePath()
+        if (filled) {
+          const tw = 0.5 + 0.5 * Math.sin(t * CLK * 0.8 + seed * 0.01)
+          const col = (seed % 2) ? pal.accent2 : pal.accent
+          ctx.fillStyle = rgba(col, (pal.tone === 'light' ? 0.1 : 0.14) + tw * (pal.tone === 'light' ? 0.08 : 0.12))
+          ctx.fill()
+        } else {
+          ctx.strokeStyle = rgba(pal.accent, pal.tone === 'light' ? 0.07 : 0.1); ctx.stroke()
+        }
+      }
+    }
+    scrim(ctx, pal, { centerClear: 0.36, strength: pal.tone === 'light' ? 0.16 : 0.28 })
+  },
+})
+
+// ---- generative-art ----
+
+register({
+  id: 'bg.generative.flowribbons', lib: 'backgrounds', category: 'generative-art', tones: ['dark', 'light'], rubros: ['*', 'arte', 'moda', 'tech'], weight: 0.8,
+  tags: ['generativo', 'flowfield', 'cintas', 'organico'],
+  render(ctx, t, env) {
+    const { pal } = env, r = seedFor(env.seed, 'fribbon')
+    rampBg(ctx, pal)
+    const noise = makeNoise(env.seed ^ 0x77a3, 2)
+    // pocas cintas anchas que siguen el campo (no lineas finas): trazos gruesos translucidos -> fluido elegante
+    const N = 10, steps = 46, dt = 9
+    ctx.save(); ctx.globalCompositeOperation = pal.tone === 'light' ? 'multiply' : 'screen'
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round'
+    for (let i = 0; i < N; i++) {
+      let x = r() * W, y = r() * H * 0.4 - 20
+      const col = i % 3 === 0 ? pal.accent2 : pal.accent
+      ctx.lineWidth = 8 + r() * 12
+      ctx.strokeStyle = rgba(col, pal.tone === 'light' ? 0.16 : 0.14)
+      ctx.beginPath(); ctx.moveTo(x, y)
+      for (let s = 0; s < steps; s++) {
+        const ang = noise(x, y) * TAU * 1.6 + Math.PI * 0.5 + t * CLK * 0.12
+        x += Math.cos(ang) * dt; y += Math.sin(ang) * dt + 2
+        if (y > H + 20) break
+        ctx.lineTo(x, y)
+      }
+      ctx.stroke()
+    }
+    ctx.restore()
+    scrim(ctx, pal, { centerClear: 0.34, strength: pal.tone === 'light' ? 0.16 : 0.3 })
+  },
+})
+
+register({
+  id: 'bg.generative.cellpack', lib: 'backgrounds', category: 'generative-art', tones: ['dark', 'light'], rubros: ['*', 'tech', 'salud', 'educacion'], weight: 0.75,
+  tags: ['generativo', 'celdas', 'circulos', 'packing', 'organico'],
+  render(ctx, t, env) {
+    const { pal } = env, r = seedFor(env.seed, 'cellp')
+    rampBg(ctx, pal)
+    // circulos sembrados de varios radios (circle-packing aproximado) que laten suave; algunos rellenos, otros aro
+    const M = 38
+    ctx.save(); ctx.globalCompositeOperation = pal.tone === 'light' ? 'multiply' : 'screen'
+    for (let i = 0; i < M; i++) {
+      const x = r() * W, y = r() * H
+      const base = 8 + r() * 36
+      const pulse = 1 + 0.08 * Math.sin(t * CLK * 0.6 + i * 0.9)
+      const rad = base * pulse
+      const col = i % 3 === 0 ? pal.accent2 : pal.accent
+      if (r() < 0.45) {
+        const gr = ctx.createRadialGradient(x, y, 0, x, y, rad)
+        gr.addColorStop(0, rgba(col, pal.tone === 'light' ? 0.12 : 0.16)); gr.addColorStop(1, rgba(col, 0))
+        ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(x, y, rad, 0, TAU); ctx.fill()
+      } else {
+        ctx.lineWidth = 1.4; ctx.strokeStyle = rgba(col, pal.tone === 'light' ? 0.16 : 0.22)
+        ctx.beginPath(); ctx.arc(x, y, rad, 0, TAU); ctx.stroke()
+      }
+    }
+    ctx.restore()
+    scrim(ctx, pal, { centerClear: 0.34, strength: pal.tone === 'light' ? 0.16 : 0.3 })
+  },
+})
+
+// ---- atmospheric-organic ----
+
+register({
+  id: 'bg.atmospheric.bokeh', lib: 'backgrounds', category: 'atmospheric-organic', tones: ['dark', 'light'], rubros: ['*', 'eventos', 'moda', 'gastronomia'], weight: 0.9,
+  tags: ['atmosferico', 'bokeh', 'luces', 'desenfoque', 'festivo'],
+  render(ctx, t, env) {
+    const { pal } = env, r = seedFor(env.seed, 'bokeh')
+    rampBg(ctx, pal)
+    // circulos de luz desenfocados (bokeh) flotando lento, distintos tamanos/profundidad
+    const M = 22
+    ctx.save(); ctx.globalCompositeOperation = pal.tone === 'light' ? 'screen' : 'lighter'
+    for (let i = 0; i < M; i++) {
+      const ph = r() * TAU, sp = range(r, 0.1, 0.4)
+      const depth = r()
+      const rad = (10 + depth * 46)
+      const bx = r() * W + Math.cos(t * CLK * sp + ph) * 18
+      const by = (r() * H + t * CLK * (4 + depth * 8)) % (H + 120) - 60
+      const col = i % 3 === 0 ? pal.accent2 : pal.accent
+      const a = (pal.tone === 'light' ? 0.08 : 0.12) * (0.4 + depth * 0.6)
+      const gr = ctx.createRadialGradient(bx, by, 0, bx, by, rad)
+      gr.addColorStop(0, rgba(col, a * 1.6)); gr.addColorStop(0.7, rgba(col, a * 0.5)); gr.addColorStop(1, rgba(col, 0))
+      ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(bx, by, rad, 0, TAU); ctx.fill()
+    }
+    ctx.restore()
+    scrim(ctx, pal, { centerClear: 0.38, strength: pal.tone === 'light' ? 0.12 : 0.24 })
+  },
+})
+
+register({
+  id: 'bg.atmospheric.mistlayers', lib: 'backgrounds', category: 'atmospheric-organic', tones: ['dark', 'light'], rubros: ['*', 'inmobiliaria', 'salud', 'arte'], weight: 0.95,
+  tags: ['atmosferico', 'niebla', 'capas', 'calmo', 'montanas'],
+  render(ctx, t, env) {
+    const { pal } = env, r = seedFor(env.seed, 'mist')
+    rampBg(ctx, pal)
+    // capas de niebla/cordillera apiladas que se deslizan horizontal a distintas velocidades (parallax suave)
+    const layers = 5
+    ctx.save(); ctx.globalCompositeOperation = pal.tone === 'light' ? 'multiply' : 'screen'
+    for (let l = 0; l < layers; l++) {
+      const u = l / (layers - 1)
+      const baseY = H * (0.45 + u * 0.5)
+      const amp = 14 + u * 30
+      const sp = (0.04 + u * 0.06)
+      const off = t * CLK * sp * 30 + r() * 100
+      const col = l % 2 ? pal.accent2 : pal.accent
+      ctx.fillStyle = rgba(col, pal.tone === 'light' ? 0.08 + u * 0.06 : 0.1 + u * 0.08)
+      ctx.beginPath(); ctx.moveTo(0, H)
+      for (let x = 0; x <= W; x += 12) {
+        const y = baseY + Math.sin((x + off) * 0.012 + l) * amp + Math.sin((x + off) * 0.03 + l * 2) * (amp * 0.4)
+        ctx.lineTo(x, y)
+      }
+      ctx.lineTo(W, H); ctx.closePath(); ctx.fill()
+    }
+    ctx.restore()
+    scrim(ctx, pal, { centerClear: 0.36, strength: pal.tone === 'light' ? 0.12 : 0.24 })
+  },
+})
+
+// ---- retro-print ----
+
+register({
+  id: 'bg.retroprint.checker', lib: 'backgrounds', category: 'retro-print', tones: ['dark', 'light'], rubros: ['*', 'gastronomia', 'eventos', 'arte'], weight: 0.75,
+  tags: ['retro', 'damero', 'perspectiva', 'print'],
+  render(ctx, t, env) {
+    const { pal } = env
+    rampBg(ctx, pal)
+    // damero en perspectiva que se aleja hacia el horizonte y scrollea (piso retro/diner)
+    const horizon = H * 0.42
+    ctx.fillStyle = rgba(pal.accent, pal.tone === 'light' ? 0.12 : 0.16)
+    const rows = 18
+    const scroll = (t * CLK * 0.5) % 1
+    for (let j = 0; j < rows; j++) {
+      const p0 = (j + scroll) / rows, p1 = (j + 1 + scroll) / rows
+      const y0 = horizon + (H - horizon) * (p0 * p0)
+      const y1 = horizon + (H - horizon) * (p1 * p1)
+      const cells = 8
+      const cellW = W / cells
+      for (let c = 0; c < cells; c++) {
+        if ((c + j) % 2) continue
+        ctx.beginPath(); ctx.moveTo(c * cellW, y0); ctx.lineTo((c + 1) * cellW, y0); ctx.lineTo((c + 1) * cellW, y1); ctx.lineTo(c * cellW, y1); ctx.closePath(); ctx.fill()
+      }
+    }
+    // bruma del horizonte
+    const hg = ctx.createLinearGradient(0, horizon - 40, 0, horizon + 30)
+    hg.addColorStop(0, rgba(pal.bg0, 0)); hg.addColorStop(1, rgba(pal.accent2, pal.tone === 'light' ? 0.2 : 0.28))
+    ctx.fillStyle = hg; ctx.fillRect(0, horizon - 40, W, 70)
+    scrim(ctx, pal, { centerClear: 0.3, strength: pal.tone === 'light' ? 0.14 : 0.26 })
+  },
+})
+
+// ---- tech-hud ----
+
+register({
+  id: 'bg.techhud.waveform', lib: 'backgrounds', category: 'tech-hud', tones: ['dark', 'light'], rubros: ['*', 'tech', 'gaming', 'arte', 'educacion'], weight: 0.8,
+  tags: ['tech', 'audio', 'onda', 'ecualizador', 'datos'],
+  render(ctx, t, env) {
+    const { pal } = env, r = seedFor(env.seed, 'wform')
+    rampBg(ctx, pal)
+    // grilla fina + dos ondas tipo osciloscopio/ecualizador, deterministas por sumas de senos sembradas
+    ctx.strokeStyle = rgba(pal.accent, pal.tone === 'light' ? 0.05 : 0.07); ctx.lineWidth = 1
+    for (let y = 0; y < H; y += 36) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke() }
+    const drawWave = (yc, amp, fr, ph, col, a, lw) => {
+      ctx.strokeStyle = rgba(col, a); ctx.lineWidth = lw; ctx.lineCap = 'round'
+      ctx.beginPath()
+      for (let x = 0; x <= W; x += 5) {
+        const env1 = 0.5 + 0.5 * Math.sin(x * 0.012 + ph)
+        const y = yc + Math.sin(x * fr + t * CLK * 0.9 + ph) * amp * env1 + Math.sin(x * fr * 2.3 + ph * 2) * amp * 0.3 * env1
+        x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
+      }
+      ctx.stroke()
+    }
+    drawWave(H * 0.34, 34, 0.05 + r() * 0.02, r() * TAU, pal.accent, pal.tone === 'light' ? 0.4 : 0.55, 2)
+    drawWave(H * 0.66, 30, 0.06 + r() * 0.02, r() * TAU, pal.accent2, pal.tone === 'light' ? 0.32 : 0.45, 1.6)
+    // barras de ecualizador abajo
+    const bars = 28, bw = W / bars
+    for (let i = 0; i < bars; i++) {
+      const h = (0.2 + 0.8 * Math.abs(Math.sin(i * 0.7 + t * CLK * 1.2 + r() * 0.0))) * 60
+      ctx.fillStyle = rgba(i % 2 ? pal.accent2 : pal.accent, pal.tone === 'light' ? 0.16 : 0.22)
+      ctx.fillRect(i * bw + 2, H - h, bw - 4, h)
+    }
+    scrim(ctx, pal, { centerClear: 0.34, strength: pal.tone === 'light' ? 0.14 : 0.28 })
+  },
+})
+
+register({
+  id: 'bg.techhud.terminal', lib: 'backgrounds', category: 'tech-hud', tones: ['dark', 'light'], rubros: ['*', 'tech', 'educacion', 'finanzas'], weight: 0.7,
+  tags: ['tech', 'terminal', 'codigo', 'matrix', 'consola'],
+  render(ctx, t, env) {
+    const { pal } = env, r = seedFor(env.seed, 'term')
+    // fondo consola
+    if (pal.tone === 'light') { ctx.fillStyle = pal.bg0 } else { ctx.fillStyle = darken(pal.bg0, 0.15) }
+    ctx.fillRect(0, 0, W, H)
+    // "lineas de codigo": rectangulos de ancho variable (tokens) sembrados, indentados, que aparecen de a poco
+    const lineH = 22, pad = 24
+    const reveal = (t * CLK * 0.5) % 1.2
+    let li = 0
+    for (let y = pad; y < H - pad; y += lineH, li++) {
+      const indent = pad + ((li * 2654435761 >>> 0) % 4) * 16
+      const tokens = 2 + ((li * 40503 >>> 0) % 4)
+      let x = indent
+      const appear = clamp((reveal * (H - pad * 2) / lineH) - li + 6, 0, 1)
+      if (appear <= 0) continue
+      for (let k = 0; k < tokens; k++) {
+        const w = 18 + ((((li * 31 + k * 17) * 2246822519) >>> 0) % 60)
+        if (x + w > W - pad) break
+        const isKw = ((li * 7 + k) % 5) === 0
+        const col = isKw ? pal.accent2 : (k === 0 ? pal.accent : (pal.tone === 'light' ? 'rgba(0,0,0,0.18)' : 'rgba(255,255,255,0.16)'))
+        ctx.fillStyle = typeof col === 'string' && col.startsWith('rgba') ? col : rgba(col, pal.tone === 'light' ? 0.4 : 0.5)
+        ctx.fillRect(x, y, w * appear, 8)
+        x += w + 8
+      }
+    }
+    // cursor parpadeante al final de una linea
+    const blink = (Math.sin(t * CLK * 6) > 0) ? 1 : 0
+    if (blink) { ctx.fillStyle = rgba(pal.accent, 0.7); ctx.fillRect(pad, H - pad - lineH, 9, 14) }
+    scrim(ctx, pal, { centerClear: 0.34, strength: pal.tone === 'light' ? 0.14 : 0.3 })
+  },
+})
+
+// ---- spatial-depth ----
+
+register({
+  id: 'bg.spatial.starwarp', lib: 'backgrounds', category: 'spatial-depth', tones: ['dark'], rubros: ['*', 'tech', 'gaming', 'eventos'], weight: 0.8,
+  tags: ['profundidad', 'estrellas', 'warp', 'hiperespacio', 'velocidad'],
+  render(ctx, t, env) {
+    const { pal } = env, r = seedFor(env.seed, 'warp')
+    // campo de estrellas saliendo desde el centro (efecto warp), trazos radiales segun profundidad
+    ctx.fillStyle = darken(pal.bg1, 0.2); ctx.fillRect(0, 0, W, H)
+    const cx = W / 2, cy = H * 0.46
+    const N = 90
+    ctx.lineCap = 'round'
+    for (let i = 0; i < N; i++) {
+      const ang = r() * TAU
+      const speed = 0.1 + r() * 0.5
+      const z = (t * CLK * speed + r()) % 1            // 0 centro -> 1 borde
+      const ez = z * z
+      const maxD = Math.hypot(W, H) * 0.6
+      const d = ez * maxD
+      const d2 = Math.max(0, d - (8 + ez * 26))
+      const x1 = cx + Math.cos(ang) * d, y1 = cy + Math.sin(ang) * d
+      const x2 = cx + Math.cos(ang) * d2, y2 = cy + Math.sin(ang) * d2
+      const col = i % 7 === 0 ? pal.accent2 : (i % 3 === 0 ? pal.accent : '#ffffff')
+      ctx.strokeStyle = rgba(col, 0.15 + ez * 0.6)
+      ctx.lineWidth = 0.6 + ez * 2
+      ctx.beginPath(); ctx.moveTo(x2, y2); ctx.lineTo(x1, y1); ctx.stroke()
+    }
+    // nucleo brillante
+    const gl = ctx.createRadialGradient(cx, cy, 0, cx, cy, H * 0.3)
+    gl.addColorStop(0, rgba(pal.accent, 0.2)); gl.addColorStop(1, rgba(pal.accent, 0))
+    ctx.fillStyle = gl; ctx.fillRect(0, 0, W, H)
+    scrim(ctx, pal, { centerClear: 0.3, strength: 0.34 })
+  },
+})
+
+register({
+  id: 'bg.spatial.layeredpanes', lib: 'backgrounds', category: 'spatial-depth', tones: ['dark', 'light'], rubros: ['*', 'inmobiliaria', 'tech', 'finanzas'], weight: 0.85,
+  tags: ['profundidad', 'paneles', 'glass', 'parallax', 'capas'],
+  render(ctx, t, env) {
+    const { pal } = env, r = seedFor(env.seed, 'panes')
+    rampBg(ctx, pal)
+    // paneles redondeados translucidos apilados a distintas profundidades, deriva con parallax -> tarjetas de vidrio
+    const M = 6
+    const panes = Array.from({ length: M }, (_, i) => {
+      const depth = (i + 1) / M
+      return { depth, x: range(r, 0.1, 0.7) * W, y: range(r, 0.1, 0.7) * H, w: range(r, 0.3, 0.5) * W, h: range(r, 0.18, 0.34) * H, ph: r() * TAU, col: i % 2 ? pal.accent2 : pal.accent }
+    }).sort((a, b) => a.depth - b.depth)
+    const rr = (x, y, w, h, rad) => { ctx.beginPath(); ctx.moveTo(x + rad, y); ctx.arcTo(x + w, y, x + w, y + h, rad); ctx.arcTo(x + w, y + h, x, y + h, rad); ctx.arcTo(x, y + h, x, y, rad); ctx.arcTo(x, y, x + w, y, rad); ctx.closePath() }
+    for (const p of panes) {
+      const dx = Math.sin(t * CLK * 0.3 + p.ph) * (8 + p.depth * 16)
+      const dy = Math.cos(t * CLK * 0.25 + p.ph) * (6 + p.depth * 12)
+      const x = p.x + dx, y = p.y + dy
+      rr(x, y, p.w, p.h, 16)
+      ctx.fillStyle = rgba(p.col, (pal.tone === 'light' ? 0.06 : 0.08) * (0.5 + p.depth))
+      ctx.fill()
+      ctx.lineWidth = 1.2; ctx.strokeStyle = rgba(pal.tone === 'light' ? darken(p.col, 0.1) : lighten(p.col, 0.3), (pal.tone === 'light' ? 0.16 : 0.22) * (0.5 + p.depth))
+      ctx.stroke()
+    }
+    scrim(ctx, pal, { centerClear: 0.36, strength: pal.tone === 'light' ? 0.14 : 0.26 })
+  },
+})
+
+// ---- chrome-y2k ----
+
+register({
+  id: 'bg.chromey2k.lavalamp', lib: 'backgrounds', category: 'chrome-y2k', tones: ['dark', 'light'], rubros: ['*', 'moda', 'arte', 'gaming', 'eventos'], weight: 0.75,
+  tags: ['y2k', 'metaballs', 'gradient', 'lava', 'organico'],
+  render(ctx, t, env) {
+    const { pal } = env, r = seedFor(env.seed, 'lava')
+    // base con rampa fria/calida segun marca
+    const g = ctx.createLinearGradient(0, 0, 0, H)
+    if (pal.tone === 'light') { g.addColorStop(0, lighten(pal.accent2, 0.6)); g.addColorStop(1, lighten(pal.accent, 0.55)) }
+    else { g.addColorStop(0, darken(pal.accent2, 0.5)); g.addColorStop(1, darken(pal.accent, 0.55)) }
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H)
+    // gotas grandes que suben/bajan lento con halo brillante (lava lamp y2k)
+    const M = 6
+    ctx.save(); ctx.globalCompositeOperation = pal.tone === 'light' ? 'screen' : 'lighter'
+    for (let i = 0; i < M; i++) {
+      const ph = r() * TAU, sp = range(r, 0.12, 0.34)
+      const bx = W * (0.2 + r() * 0.6) + Math.sin(t * CLK * sp + ph) * 30
+      const cycle = (t * CLK * sp * 0.5 + r()) % 1
+      const by = H * (0.1 + 0.8 * (0.5 - 0.5 * Math.cos(cycle * TAU)))
+      const rad = H * (0.1 + r() * 0.12)
+      const col = i % 2 ? pal.accent2 : pal.accent
+      const gr = ctx.createRadialGradient(bx, by, 0, bx, by, rad)
+      gr.addColorStop(0, rgba(lighten(col, 0.4), pal.tone === 'light' ? 0.28 : 0.4))
+      gr.addColorStop(0.6, rgba(col, pal.tone === 'light' ? 0.16 : 0.22))
+      gr.addColorStop(1, rgba(col, 0))
+      ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(bx, by, rad, 0, TAU); ctx.fill()
+    }
+    ctx.restore()
+    scrim(ctx, pal, { centerClear: 0.36, strength: pal.tone === 'light' ? 0.18 : 0.3 })
+  },
+})

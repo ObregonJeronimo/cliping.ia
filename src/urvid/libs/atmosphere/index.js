@@ -1067,3 +1067,380 @@ register({
     ctx.restore()
   },
 })
+
+// ══════════════════════════════════════════════════════════════════════════════════════
+// ░░ OLA 5 ░░  mas glow · vignette · light-rays · depth-haze · lens · color-grade · shadow ·
+// scrim. Mismas reglas DURAS: alpha contenido, HUECO en el centro (texto en H*0.4..0.55),
+// tone-aware honesto (luz ADITIVA en oscuro / tinta SUSTRACTIVA en claro). Puro + determinista.
+// ══════════════════════════════════════════════════════════════════════════════════════
+
+// ════════════════════════════ GLOW-BLOOM (extra) ════════════════════════════
+
+register({
+  id: 'atmo.glow.rim-arc', lib: 'atmosphere', category: 'glow-bloom', tones: ['dark'], rubros: ['*'], weight: 0.85,
+  tags: ['arco', 'borde', 'luz', 'enmarque'],
+  render(ctx, t, env) {
+    const { pal } = env
+    // arco de luz superior: un trazo curvo aditivo y difuso que abraza el borde de arriba (como el rim-light de un
+    // halo) -> enmarca sin tocar el centro. Respira en brillo. Acento -> acento2 a lo largo del arco.
+    const cx = W / 2, cy = -H * 0.18, rad = H * 0.5
+    const a = 0.1 + 0.05 * breath(t, 0.6, 0.5)
+    ctx.save(); add(ctx)
+    for (let pass = 0; pass < 3; pass++) {
+      const lw = 26 - pass * 7
+      ctx.lineWidth = lw
+      const g = ctx.createLinearGradient(0, 0, W, 0)
+      g.addColorStop(0, rgba(pal.accent, 0)); g.addColorStop(0.5, rgba(pass % 2 ? pal.accent2 : pal.accent, a * (1 - pass * 0.25))); g.addColorStop(1, rgba(pal.accent, 0))
+      ctx.strokeStyle = g
+      ctx.beginPath(); ctx.arc(cx, cy, rad + pass * 4, Math.PI * 0.12, Math.PI * 0.88); ctx.stroke()
+    }
+    ctx.restore()
+  },
+})
+
+register({
+  id: 'atmo.glow.under-light', lib: 'atmosphere', category: 'glow-bloom', tones: ['dark'], rubros: ['*'], weight: 0.8,
+  tags: ['contraluz', 'piso', 'luz', 'escenario'],
+  render(ctx, t, env) {
+    const { pal } = env, r = seedFor(env.seed, 'under')
+    // luz desde abajo (footlights / contraluz de escenario): 2-3 manchas de luz que emergen del borde inferior y
+    // suben difusas, deteniendose ANTES de la franja de texto. Da un brillo de "abajo hacia arriba", aditivo.
+    const spots = [{ x: 0.28, c: pal.accent }, { x: 0.72, c: pal.accent2 }, { x: 0.5, c: pal.accent }]
+    ctx.save(); add(ctx)
+    spots.forEach((s, i) => {
+      const ph = r() * TAU
+      const cx = s.x * W + Math.sin(t * CLK * 0.3 + ph) * 10
+      const cy = H * (1.02 + 0.01 * Math.sin(t * CLK * 0.4 + ph))
+      const rad = H * (0.32 + 0.03 * breath(t, ph, 0.5))
+      const a = (i === 2 ? 0.05 : 0.08) + 0.03 * breath(t, ph, 0.6)
+      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, rad)
+      g.addColorStop(0, rgba(s.c, a)); g.addColorStop(0.55, rgba(s.c, a * 0.35)); g.addColorStop(1, rgba(s.c, 0))
+      ctx.fillStyle = g; ctx.fillRect(0, H * 0.55, W, H * 0.45)
+    })
+    ctx.restore()
+  },
+})
+
+// ════════════════════════════ VIGNETTE (extra) ════════════════════════════
+
+register({
+  id: 'atmo.vignette.pillarbox', lib: 'atmosphere', category: 'vignette', tones: ['dark', 'light'], rubros: ['*'], weight: 0.8,
+  tags: ['pillarbox', 'lateral', 'cinematico', 'universal'],
+  render(ctx, t, env) {
+    const { pal } = env, light = pal.tone === 'light'
+    // vineta LATERAL (pillarbox): oscurece/aclara solo las dos columnas de los costados con gradientes horizontales,
+    // estrechando el cuadro hacia el centro vertical donde vive el texto. Complemento horizontal de cinema-bars.
+    const dk = light ? 'rgba(30,22,16,0.10)' : 'rgba(0,0,0,0.5)'
+    const wEdge = W * 0.26
+    let g = ctx.createLinearGradient(0, 0, wEdge, 0)
+    g.addColorStop(0, dk); g.addColorStop(1, 'rgba(0,0,0,0)')
+    ctx.fillStyle = g; ctx.fillRect(0, 0, wEdge, H)
+    g = ctx.createLinearGradient(W, 0, W - wEdge, 0)
+    g.addColorStop(0, dk); g.addColorStop(1, 'rgba(0,0,0,0)')
+    ctx.fillStyle = g; ctx.fillRect(W - wEdge, 0, wEdge, H)
+  },
+})
+
+register({
+  id: 'atmo.vignette.breathing-iris', lib: 'atmosphere', category: 'vignette', tones: ['dark'], rubros: ['*'], weight: 0.75,
+  tags: ['iris', 'foco', 'respiracion', 'organico'],
+  render(ctx, t, env) {
+    // iris que respira: una vineta radial cuyo RADIO interior late suave (el "ojo" se abre y cierra apenas) -> da
+    // vida organica al encuadre sin distraer. Centro siempre despejado. Solo oscuro (negro puro).
+    const p = breath(t, 0.3, 0.45)
+    const inner = H * (0.30 + 0.04 * p)
+    const g = ctx.createRadialGradient(W / 2, H * 0.47, inner, W / 2, H * 0.5, H * 0.82)
+    g.addColorStop(0, 'rgba(0,0,0,0)')
+    g.addColorStop(0.7, 'rgba(0,0,0,0.2)')
+    g.addColorStop(1, 'rgba(0,0,0,0.58)')
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H)
+  },
+})
+
+// ════════════════════════════ LIGHT-RAYS (extra) ════════════════════════════
+
+register({
+  id: 'atmo.rays.spotlight-cone', lib: 'atmosphere', category: 'light-rays', tones: ['dark'], rubros: ['*'], weight: 0.8,
+  tags: ['cono', 'spotlight', 'volumetrico', 'teatro'],
+  render(ctx, t, env) {
+    const { pal } = env
+    // cono de spotlight volumetrico que barre suave de lado a lado desde un foco arriba-centro -> luz teatral en
+    // movimiento. El cono pasa por el centro pero con alpha bajisimo (no tapa), nucleo blanco arriba.
+    const fx = W / 2, fy = -H * 0.06
+    const swing = Math.sin(t * CLK * 0.18) * 0.22
+    const ang = Math.PI / 2 + swing
+    const half = 0.34
+    ctx.save(); add(ctx); ctx.translate(fx, fy); ctx.rotate(ang - Math.PI / 2)
+    const len = H * 1.25
+    const a = 0.06 + 0.02 * breath(t, 0.4, 0.5)
+    const g = ctx.createLinearGradient(0, 0, 0, len)
+    g.addColorStop(0, rgba('#ffffff', a)); g.addColorStop(0.4, rgba(pal.accent, a * 0.5)); g.addColorStop(1, rgba(pal.accent, 0))
+    ctx.fillStyle = g
+    ctx.beginPath(); ctx.moveTo(-10, 0); ctx.lineTo(10, 0); ctx.lineTo(len * half, len); ctx.lineTo(-len * half, len); ctx.closePath(); ctx.fill()
+    ctx.restore()
+  },
+})
+
+register({
+  id: 'atmo.rays.caustics-floor', lib: 'atmosphere', category: 'light-rays', tones: ['dark'], rubros: ['*'], weight: 0.7,
+  tags: ['causticas', 'agua', 'piso', 'organico'],
+  render(ctx, t, env) {
+    const { pal } = env, r = seedFor(env.seed, 'caustics')
+    // causticas de agua proyectadas en el PISO (reflejo de pileta/mar): manchas de luz onduladas que se deslizan
+    // por la franja inferior, nunca el centro. Lineas finas curvas aditivas, frias. Da un mood acuatico premium.
+    const N = 9
+    ctx.save(); add(ctx)
+    for (let i = 0; i < N; i++) {
+      const ph = r() * TAU
+      const baseX = r() * W
+      const x = (baseX + t * 6 * (0.3 + r() * 0.5)) % (W + 80) - 40
+      const y = H * (0.8 + r() * 0.18)
+      const wob = Math.sin(t * CLK * 0.5 + ph) * 8
+      const len = 30 + r() * 50
+      const a = (0.06 + 0.06 * r()) * (0.5 + 0.5 * breath(t, ph, 0.9))
+      ctx.strokeStyle = rgba(i % 3 === 0 ? pal.accent2 : pal.accent, a)
+      ctx.lineWidth = 1.5 + r() * 1.5
+      ctx.beginPath()
+      ctx.moveTo(x - len, y + wob)
+      ctx.quadraticCurveTo(x, y - 10 + wob, x + len, y + wob)
+      ctx.stroke()
+    }
+    ctx.restore()
+  },
+})
+
+// ════════════════════════════ DEPTH-HAZE (extra) ════════════════════════════
+
+register({
+  id: 'atmo.haze.rolling-fog', lib: 'atmosphere', category: 'depth-haze', tones: ['dark', 'light'], rubros: ['*'], weight: 0.85,
+  tags: ['niebla', 'rodante', 'profundidad', 'organico'],
+  render(ctx, t, env) {
+    const { pal } = env, light = pal.tone === 'light', r = seedFor(env.seed, 'rollfog')
+    // niebla rodante de bordes: bancos de bruma que entran desde las 4 esquinas hacia adentro y se mecen, dejando
+    // un claro central. Da una atmosfera densa/misteriosa. En oscuro screen, en claro multiply muy suave de blanco.
+    const fog = light ? '#ffffff' : lighten(pal.bg1, 0.4)
+    const corners = [[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [1.0, 1.0]]
+    ctx.save(); if (!light) screen(ctx)
+    corners.forEach(([cx, cy], i) => {
+      const ph = r() * TAU
+      const x = (cx + (cx < 0.5 ? 1 : -1) * 0.04 * (0.5 + 0.5 * Math.sin(t * CLK * 0.3 + ph))) * W
+      const y = (cy + (cy < 0.5 ? 1 : -1) * 0.03 * (0.5 + 0.5 * Math.cos(t * CLK * 0.25 + ph))) * H
+      const rad = H * (0.4 + 0.04 * breath(t, ph, 0.4))
+      const a = light ? 0.16 : 0.1
+      const g = ctx.createRadialGradient(x, y, 0, x, y, rad)
+      g.addColorStop(0, rgba(fog, a)); g.addColorStop(0.55, rgba(fog, a * 0.4)); g.addColorStop(1, rgba(fog, 0))
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H)
+    })
+    ctx.restore()
+  },
+})
+
+// ════════════════════════════ LENS-FX (extra) ════════════════════════════
+
+register({
+  id: 'atmo.lens.rain-streaks', lib: 'atmosphere', category: 'lens-fx', tones: ['dark'], rubros: ['*'], weight: 0.65,
+  tags: ['lluvia', 'lente', 'gotas', 'cinematico'],
+  render(ctx, t, env) {
+    const { pal } = env, r = seedFor(env.seed, 'rain')
+    // gotas/regueros de lluvia sobre el lente: vetas verticales translucidas que caen y refractan luz de acento,
+    // mas un par de gotas estaticas. Por los bordes; se atenuan hacia el centro. Aditivo, frio, look noir/urbano.
+    const N = 14
+    ctx.save(); add(ctx)
+    for (let i = 0; i < N; i++) {
+      const ph = r() * TAU
+      const x = r() * W
+      const sp = 0.6 + r() * 0.8
+      const y = ((r() * H) + t * 60 * sp) % (H + 120) - 60
+      const len = 24 + r() * 60
+      const dC = Math.abs(x - W / 2) / W
+      const fade = clamp(dC * 2.0 + 0.15, 0.2, 1)
+      const a = (0.05 + 0.06 * r()) * fade
+      const g = ctx.createLinearGradient(x, y, x, y + len)
+      g.addColorStop(0, rgba(pal.accent, 0)); g.addColorStop(0.6, rgba(pal.accent2, a)); g.addColorStop(1, rgba('#ffffff', a * 0.8))
+      ctx.strokeStyle = g; ctx.lineWidth = 1 + r() * 1.4
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + len); ctx.stroke()
+    }
+    ctx.restore()
+  },
+})
+
+register({
+  id: 'atmo.lens.smudge-bloom', lib: 'atmosphere', category: 'lens-fx', tones: ['dark'], rubros: ['*'], weight: 0.6,
+  tags: ['smudge', 'difuso', 'organico', 'suave'],
+  render(ctx, t, env) {
+    const { pal } = env, r = seedFor(env.seed, 'smudge')
+    // manchas de "lente sucio" (smudge bloom): florecimientos suaves y deformados de luz en los margenes, como
+    // huellas en el cristal que difunden el brillo. Elipses difusas aditivas, baja opacidad. Lejos del centro.
+    const N = 6
+    ctx.save(); add(ctx)
+    for (let i = 0; i < N; i++) {
+      const ph = r() * TAU
+      const onEdge = r() < 0.5
+      const bx = (onEdge ? (r() < 0.5 ? 0.12 : 0.88) : 0.1 + r() * 0.8) * W
+      const by = (onEdge ? 0.1 + r() * 0.8 : (r() < 0.5 ? 0.14 : 0.86)) * H
+      const rx = 40 + r() * 70, ry = (24 + r() * 50)
+      const rot = r() * TAU
+      const a = (0.03 + 0.04 * r()) * (0.6 + 0.4 * breath(t, ph, 0.6))
+      const col = i % 2 ? pal.accent2 : pal.accent
+      ctx.save(); ctx.translate(bx, by); ctx.rotate(rot + Math.sin(t * CLK * 0.2 + ph) * 0.06); ctx.scale(rx / ry, 1)
+      const g = ctx.createRadialGradient(0, 0, 0, 0, 0, ry)
+      g.addColorStop(0, rgba(col, a)); g.addColorStop(0.6, rgba(col, a * 0.4)); g.addColorStop(1, rgba(col, 0))
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, ry, 0, TAU); ctx.fill()
+      ctx.restore()
+    }
+    ctx.restore()
+  },
+})
+
+// ════════════════════════════ COLOR-GRADE (extra) ════════════════════════════
+
+register({
+  id: 'atmo.grade.golden-hour', lib: 'atmosphere', category: 'color-grade', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
+  tags: ['dorado', 'atardecer', 'grade', 'calido'],
+  render(ctx, t, env) {
+    const { pal } = env, light = pal.tone === 'light'
+    // "golden hour" direccional: la luz calida entra desde una esquina superior (amanecer/atardecer) y vira a sombra
+    // fria en la esquina opuesta -> profundidad y hora del dia. Hue FIJOS (ambar / azul) para honestidad del look.
+    const amber = hslToHex(36, 0.85, light ? 0.6 : 0.55)
+    const cool = hslToHex(220, 0.5, light ? 0.5 : 0.3)
+    ctx.save(); ctx.globalCompositeOperation = light ? 'multiply' : 'soft-light'
+    const g = ctx.createLinearGradient(W, 0, 0, H)   // de sup-der (calido) a inf-izq (frio)
+    g.addColorStop(0, rgba(amber, light ? 0.07 : 0.2))
+    g.addColorStop(0.45, 'rgba(128,128,128,0)')
+    g.addColorStop(0.55, 'rgba(128,128,128,0)')
+    g.addColorStop(1, rgba(cool, light ? 0.05 : 0.16))
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H)
+    ctx.restore()
+  },
+})
+
+register({
+  id: 'atmo.grade.noir-mono', lib: 'atmosphere', category: 'color-grade', tones: ['dark', 'light'], rubros: ['*'], weight: 0.7,
+  tags: ['noir', 'mono', 'desaturado', 'contraste', 'editorial'],
+  render(ctx, t, env) {
+    const { pal } = env, light = pal.tone === 'light'
+    // grade NOIR: desatura tirando a gris de marca y profundiza las sombras de los bordes (alto contraste, look de
+    // cine negro). Centro intacto. Un toque del acento en la zona alta para que no quede 100% plano. Sutil.
+    const grayHsl = hexToHsl(pal.accent)
+    const gray = hslToHex(grayHsl.h, 0.06, light ? 0.7 : 0.3)
+    ctx.save()
+    ctx.globalCompositeOperation = light ? 'multiply' : 'soft-light'
+    let g = ctx.createRadialGradient(W / 2, H * 0.47, H * 0.22, W / 2, H * 0.5, H * 0.85)
+    g.addColorStop(0, 'rgba(128,128,128,0)'); g.addColorStop(1, rgba(gray, light ? 0.14 : 0.28))
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H)
+    // chispa fria de marca arriba para que no sea gris muerto
+    ctx.globalCompositeOperation = light ? 'multiply' : 'screen'
+    g = ctx.createLinearGradient(0, 0, 0, H * 0.34)
+    g.addColorStop(0, rgba(pal.accent, light ? 0.04 : 0.08)); g.addColorStop(1, rgba(pal.accent, 0))
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H * 0.34)
+    ctx.restore()
+  },
+})
+
+// ════════════════════════════ SHADOW-SYSTEMS (extra) ════════════════════════════
+
+register({
+  id: 'atmo.shadow.grid-cast', lib: 'atmosphere', category: 'shadow-systems', tones: ['dark', 'light'], rubros: ['*'], weight: 0.7,
+  tags: ['sombra', 'reja', 'grid', 'arquitectura', 'gobo'],
+  render(ctx, t, env) {
+    const { pal } = env, light = pal.tone === 'light'
+    // gobo de REJA/ventana cuadriculada: sombra de una grilla en perspectiva proyectada desde un costado, que se
+    // desliza muy lento -> mood arquitectonico. El centro se PROTEGE (guard atenua donde vive el texto). Sustractivo.
+    const scol = light ? darken(pal.accent, 0.55) : '#000000'
+    const gap = 78, wbar = 16
+    const slideX = (t * 6) % gap, slideY = (t * 4) % gap
+    ctx.save(); ctx.globalCompositeOperation = 'multiply'
+    ctx.translate(W / 2, H / 2); ctx.rotate(-0.18); ctx.translate(-W / 2, -H / 2)
+    // verticales
+    for (let x = -gap; x < W + gap; x += gap) {
+      const xx = x + slideX
+      const guardX = clamp(Math.abs(xx - W / 2) / (W * 0.28), 0.25, 1)
+      const a = (light ? 0.07 : 0.16) * guardX
+      const g = ctx.createLinearGradient(xx, 0, xx + wbar, 0)
+      g.addColorStop(0, rgba(scol, 0)); g.addColorStop(0.5, rgba(scol, a)); g.addColorStop(1, rgba(scol, 0))
+      ctx.fillStyle = g; ctx.fillRect(xx, -H * 0.5, wbar, H * 2)
+    }
+    // horizontales
+    for (let y = -gap; y < H + gap; y += gap) {
+      const yy = y + slideY
+      const guardY = clamp(Math.abs(yy - H * 0.47) / (H * 0.2), 0.25, 1)
+      const a = (light ? 0.07 : 0.16) * guardY
+      const g = ctx.createLinearGradient(0, yy, 0, yy + wbar)
+      g.addColorStop(0, rgba(scol, 0)); g.addColorStop(0.5, rgba(scol, a)); g.addColorStop(1, rgba(scol, 0))
+      ctx.fillStyle = g; ctx.fillRect(-W * 0.5, yy, W * 2, wbar)
+    }
+    ctx.restore()
+  },
+})
+
+register({
+  id: 'atmo.shadow.corner-drape', lib: 'atmosphere', category: 'shadow-systems', tones: ['dark', 'light'], rubros: ['*'], weight: 0.8,
+  tags: ['sombra', 'esquinas', 'profundidad', 'enmarque', 'grounding'],
+  render(ctx, t, env) {
+    const { pal } = env, light = pal.tone === 'light'
+    // sombras de esquina (corner drape): cuatro radiales suaves en las esquinas que las hunden en penumbra ->
+    // enmarcan el centro con peso, como un libro abierto. Estaticas con micro-respiracion. Sustractivo.
+    const scol = light ? darken(pal.accent, 0.5) : '#000000'
+    const p = 0.85 + 0.15 * breath(t, 0.4, 0.4)
+    const corners = [[0, 0], [1, 0], [0, 1], [1, 1]]
+    ctx.save(); if (light) mult(ctx)
+    for (const [cx, cy] of corners) {
+      const x = cx * W, y = cy * H
+      const rad = H * 0.4 * p
+      const g = ctx.createRadialGradient(x, y, 0, x, y, rad)
+      g.addColorStop(0, rgba(scol, light ? 0.12 : 0.34)); g.addColorStop(0.55, rgba(scol, light ? 0.05 : 0.14)); g.addColorStop(1, rgba(scol, 0))
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H)
+    }
+    ctx.restore()
+  },
+})
+
+// ════════════════════════════ SCRIM-LEGIBILITY (extra) ════════════════════════════
+
+register({
+  id: 'atmo.scrim.soft-panel', lib: 'atmosphere', category: 'scrim-legibility', tones: ['dark', 'light'], rubros: ['*'], weight: 1.0,
+  tags: ['legibilidad', 'panel', 'tarjeta', 'guard', 'universal'],
+  render(ctx, t, env) {
+    const { pal } = env, light = pal.tone === 'light'
+    // panel SUAVE rectangular detras del bloque de texto (tarjeta sin bordes): un rectangulo de esquinas redondeadas
+    // con relleno radial que oscurece (oscuro) o aclara (claro) la zona de texto y se desvanece en los bordes.
+    const bx = W * 0.1, by = H * 0.33, bw = W * 0.8, bh = H * 0.3
+    const cx = bx + bw / 2, cy = by + bh / 2
+    const g = ctx.createRadialGradient(cx, cy, Math.min(bw, bh) * 0.1, cx, cy, Math.max(bw, bh) * 0.62)
+    if (light) { g.addColorStop(0, 'rgba(255,255,255,0.4)'); g.addColorStop(0.7, 'rgba(255,255,255,0.18)'); g.addColorStop(1, 'rgba(255,255,255,0)') }
+    else { g.addColorStop(0, 'rgba(0,0,0,0.46)'); g.addColorStop(0.7, 'rgba(0,0,0,0.2)'); g.addColorStop(1, 'rgba(0,0,0,0)') }
+    ctx.save()
+    // rounded-rect clip para que la placa no invada todo el cuadro
+    const rr = 28
+    ctx.beginPath()
+    ctx.moveTo(bx + rr, by); ctx.arcTo(bx + bw, by, bx + bw, by + bh, rr); ctx.arcTo(bx + bw, by + bh, bx, by + bh, rr)
+    ctx.arcTo(bx, by + bh, bx, by, rr); ctx.arcTo(bx, by, bx + bw, by, rr); ctx.closePath(); ctx.clip()
+    ctx.fillStyle = g; ctx.fillRect(bx, by, bw, bh)
+    ctx.restore()
+  },
+})
+
+register({
+  id: 'atmo.scrim.duo-thirds', lib: 'atmosphere', category: 'scrim-legibility', tones: ['dark', 'light'], rubros: ['*'], weight: 0.85,
+  tags: ['legibilidad', 'titulo', 'caption', 'doble', 'universal'],
+  render(ctx, t, env) {
+    const { pal } = env, light = pal.tone === 'light'
+    // doble scrim (upper-third + lower-third) en una sola capa: protege titulo arriba Y caption/CTA abajo, dejando
+    // un claro central. Util cuando el texto se reparte arriba y abajo. Mas suave que cada banda por separado.
+    if (light) {
+      let g = ctx.createLinearGradient(0, 0, 0, H * 0.3)
+      g.addColorStop(0, 'rgba(255,255,255,0.42)'); g.addColorStop(1, 'rgba(255,255,255,0)')
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H * 0.3)
+      g = ctx.createLinearGradient(0, H, 0, H * 0.68)
+      g.addColorStop(0, 'rgba(255,255,255,0.46)'); g.addColorStop(1, 'rgba(255,255,255,0)')
+      ctx.fillStyle = g; ctx.fillRect(0, H * 0.68, W, H * 0.32)
+    } else {
+      let g = ctx.createLinearGradient(0, 0, 0, H * 0.3)
+      g.addColorStop(0, 'rgba(0,0,0,0.5)'); g.addColorStop(1, 'rgba(0,0,0,0)')
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H * 0.3)
+      g = ctx.createLinearGradient(0, H, 0, H * 0.68)
+      g.addColorStop(0, 'rgba(0,0,0,0.54)'); g.addColorStop(1, 'rgba(0,0,0,0)')
+      ctx.fillStyle = g; ctx.fillRect(0, H * 0.68, W, H * 0.32)
+    }
+  },
+})
