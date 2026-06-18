@@ -6,6 +6,7 @@ import { derivePalette } from './palette.js'
 import { query } from './registry.js'
 import { seedFor, weightedPick, hashStr, stableSeed, pick, shuffled } from './prng.js'
 import { deriveFonts } from './fonts.js'
+import { analyzeContent, buildArcSmart, sceneBias } from './strategy.js'
 
 // ARCO narrativo VARIADO por semilla: apertura (hook|hero) -> 1-3 beats de cuerpo SIN repetir -> cierre. Usa todas
 // las categorias de escena disponibles -> dos videos no comparten estructura (no siempre hero->statement->outro).
@@ -22,7 +23,10 @@ function buildArc(seed) {
 export function makeVideo(brief = {}) {
   const { brand = 'Marca', rubro = 'default', tone = 'dark', brandColor = '#5b8cff', style = null, content = {} } = brief
   const seed = brief.seed != null ? (brief.seed >>> 0) : stableSeed(brand, rubro)
-  const arc = brief.arc || buildArc(seed)
+  // CEREBRO v2 · STRATEGY: el arco y las escenas salen de SEÑALES del contenido (numeros/pregunta/lista/comparacion/
+  // prueba), no solo del azar. Un brief con un dato abre con numero; una pregunta con un hook de pregunta; etc.
+  const sig = analyzeContent(content, rubro)
+  const arc = brief.arc || buildArcSmart(seed, sig).map(c => ({ category: c, dur: _DUR[c] || 3.4 }))
   // CEREBRO v1 · SERIEDAD: brief.seriousness o default por rubro -> sesga AWAY de lo "jugado" en contenido serio
   // (un consultorio NO sale cyber/y2k). wadj ajusta el peso de cada modulo segun sus tags.
   const seriousness = brief.seriousness != null ? brief.seriousness : ({ salud: 0.85, finanzas: 0.8, inmobiliaria: 0.7, educacion: 0.55, tech: 0.5, default: 0.5, gastronomia: 0.35, moda: 0.4, belleza: 0.35, fitness: 0.35 }[rubro] ?? 0.5)
@@ -62,7 +66,8 @@ export function makeVideo(brief = {}) {
     let opts = query('scene-layouts', { tone, rubro, category: beat.category })
     // las escenas de DATA tambien pueden ser modulos DATAKIT (charts full-frame: barras/anillos/donut/timeline/...).
     if (beat.category.indexOf('data/') === 0) opts = opts.concat(query('datakit', { tone, rubro }))
-    const mod = opts.length ? weightedPick(seedFor(seed ^ hashStr('arc' + i), 'scene'), opts, wadj) : null
+    // eleccion sesgada por el CONTENIDO (sceneBias) ademas de la seriedad (wadj).
+    const mod = opts.length ? weightedPick(seedFor(seed ^ hashStr('arc' + i), 'scene'), opts, m => wadj(m) * sceneBias(m, sig)) : null
     if (mod) { scenes.push({ start, dur: beat.dur, sceneId: mod.id, seed: (seed ^ hashStr('s' + i)) >>> 0 }); start += beat.dur }
   })
 
