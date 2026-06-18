@@ -1861,7 +1861,7 @@ function _rgba(hex, a) {
   function _rowEditorial(label, x, y, i, t, d) { // moda/inmob: numero grande, sin caja, regla fina
     const np = clamp(inv(t, d + 0.05, d + 0.5), 0, 1);
     ctx.save(); ctx.globalAlpha *= np; ctx.font = fontStr(800, 33, 'a');
-    ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = _accentInk(A1); ctx.fillText(String(i + 1).padStart(2, '0'), x, y - 1); ctx.restore();   // acento LEGIBLE segun tono (el crudo se lavaba en claro)
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = TONE === 'light' ? INK : _accentInk(A1); ctx.fillText(String(i + 1).padStart(2, '0'), x, y - 1); ctx.restore();   // CLARO: numero en tinta (texto en tinta, acento en deco)
     ctx.font = fontStr(600, fitFont(label, 20, 206, 13, 600, 't'), 't');
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = INK; setShadow('rgba(0,0,0,0.5)', 5, 1); ctx.fillText(clip(label, 206), x + 56, y); noShadow();
     const lp = clamp(inv(t, d + 0.15, d + 0.7), 0, 1);
@@ -2009,7 +2009,7 @@ function _rgba(hex, a) {
       ctx.translate(0, (1 - appear) * 12);
       ctx.font = fontStr(800, fs, 'd');
       ctx.textAlign = isL ? 'left' : isR ? 'right' : 'center'; ctx.textBaseline = 'middle';
-      ctx.fillStyle = cInk;
+      ctx.fillStyle = TONE === 'light' ? INK : cInk;   // CLARO: CTA en TINTA (el subrayado + chevron de abajo van en acento)
       if (TONE !== 'light') _softShadow('rgba(0,0,0,0.4)', 6, 1);
       ctx.fillText(clip(ctaStr, W * 0.74), anchorX, py); noShadow();
       const tw = Math.min(W * 0.74, ctx.measureText(ctaStr).width), ux = isL ? anchorX : isR ? anchorX - tw : anchorX - tw / 2;
@@ -2047,7 +2047,7 @@ function _rgba(hex, a) {
         ctx.save(); ctx.translate(cx, cy + 34); ctx.scale(0.92 + 0.08 * tg, 0.92 + 0.08 * tg);
         ctx.font = fontStr(800, fs, 'd'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         const _cg = ctx.createLinearGradient(-130, -fs * 0.6, 130, fs * 0.6); _cg.addColorStop(0, _ctaInk(A1, 0.55)); _cg.addColorStop(1, _ctaInk(A2, 0.42));
-        _softShadow('rgba(0,0,0,0.4)', 8, 2); _kineticDraw(clip(cta, W * 0.86), _cg, 'center', t, 1.0, -fs * 0.02); noShadow(); ctx.restore();
+        _softShadow('rgba(0,0,0,0.4)', 8, 2); _kineticDraw(clip(cta, W * 0.86), TONE === 'light' ? INK : _cg, 'center', t, 1.0, -fs * 0.02); noShadow(); ctx.restore();
         const ar = inv(t, 1.5, 1.9);
         if (ar > 0) { ctx.save(); ctx.globalAlpha = ar; ctx.strokeStyle = _ctaInk(A1, 0.4); ctx.lineWidth = 4; ctx.lineCap = 'round'; const ay = cy + 34 + fs * 0.7 + 20; ctx.beginPath(); ctx.moveTo(cx - 16, ay); ctx.lineTo(cx, ay + 14); ctx.lineTo(cx + 16, ay); ctx.stroke(); ctx.restore(); }
       }
@@ -2085,7 +2085,7 @@ function _rgba(hex, a) {
         ctx.save(); ctx.translate(cx, H * 0.45); ctx.scale(0.9 + 0.1 * tg, 0.9 + 0.1 * tg);
         ctx.font = fontStr(800, fs, 'd'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         const _cg = ctx.createLinearGradient(-130, -fs * 0.6, 130, fs * 0.6); _cg.addColorStop(0, _ctaInk(A1, 0.55)); _cg.addColorStop(1, _ctaInk(A2, 0.42));
-        _softShadow(TONE === 'light' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.45)', 8, 2); _kineticDraw(clip(cta, W * 0.88), _cg, 'center', t, 0.5, -fs * 0.02); noShadow(); ctx.restore();
+        _softShadow(TONE === 'light' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.45)', 8, 2); _kineticDraw(clip(cta, W * 0.88), TONE === 'light' ? INK : _cg, 'center', t, 0.5, -fs * 0.02); noShadow(); ctx.restore();
         const ar = inv(t, 1.0, 1.4);
         if (ar > 0) { ctx.save(); ctx.globalAlpha = ar; ctx.strokeStyle = _ctaInk(A1, 0.5); ctx.lineWidth = 4; ctx.lineCap = 'round'; const ay = H * 0.45 + fs * 0.66 + 22; ctx.beginPath(); ctx.moveTo(cx - 15, ay); ctx.lineTo(cx, ay + 12); ctx.lineTo(cx + 15, ay); ctx.stroke(); ctx.restore(); }
       }
@@ -2264,7 +2264,7 @@ function _rgba(hex, a) {
       ctx.restore();
       const rfs = fitFont(full, 62, R * 1.7, 26, 800, 'd');
       ctx.save(); ctx.globalAlpha = inv(t, 0.05, 0.38); ctx.translate(ccx, ccy); ctx.scale(pop * pulse, pop * pulse);
-      ctx.font = fontStr(800, rfs, 'd'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = TONE === 'light' ? _accentInk(A1) : _accentPop(A1); ctx.fillText(num, 0, 0); ctx.restore();
+      ctx.font = fontStr(800, rfs, 'd'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = TONE === 'light' ? INK : _accentPop(A1); ctx.fillText(num, 0, 0); ctx.restore();
       if (p.label) { const lp = inv(t, 1.0, 1.4); if (lp > 0) { ctx.save(); ctx.globalAlpha = clamp(lp * 1.4, 0, 1); const _wr = fitWrap(p.label, 23, W * 0.82, 13, 600, 't', 2); ctx.font = fontStr(600, _wr.size, 't'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = DIM; const _lh = _wr.size * 1.2; _wr.lines.forEach((ln, i) => ctx.fillText(ln, ccx, ccy + R + 32 + i * _lh)); ctx.restore(); } }
       return;
     }
@@ -2274,7 +2274,7 @@ function _rgba(hex, a) {
     ctx.save(); ctx.globalAlpha = inv(t, 0.05, 0.38); ctx.translate(ax, cy); ctx.scale(pop * pulse, pop * pulse); ctx.translate(-ax, -cy);
     ctx.font = fontStr(800, fs, 'd'); ctx.textAlign = al; ctx.textBaseline = 'middle';
     const ng = ctx.createLinearGradient(ax - (al === 'left' ? 0 : 130), cy, ax + (al === 'left' ? 270 : 130), cy);
-    ng.addColorStop(0, TONE === 'light' ? _accentInk(A1) : _accentPop(A1)); ng.addColorStop(1, TONE === 'light' ? _accentInk(A2) : _accentPop(A2));
+    ng.addColorStop(0, TONE === 'light' ? INK : _accentPop(A1)); ng.addColorStop(1, TONE === 'light' ? INK : _accentPop(A2));   // CLARO: numero grande en TINTA (la barra/regla de abajo lleva el acento)
     ctx.fillStyle = ng; setShadow(_rgba(_accentPop(A1), 0.35), 18, 2); ctx.fillText(num, ax, cy); noShadow();
     ctx.restore();
     const by = cy + fs * 0.5 + 28;
@@ -2909,7 +2909,7 @@ function _rgba(hex, a) {
       // EL no-focal en OSCURO se hundia 'azul-sobre-azul' (numeral teal sobre mesh teal del mismo hue): _lighten(A1,0.12)
       // apenas levantaba el MISMO hue. Ahora popea el acento ANTES de aclarar (_lighten(_accentPop(A1),0.20)) -> mas brillante
       // y separado del fondo del mismo hue, pero sigue subordinado al focal (que lleva el _accentPop pleno + tamano/subrayado).
-      ctx.fillStyle = (TONE === 'light') ? _accentInk(A1) : (isF ? _accentPop(A1) : _lighten(_accentPop(A1), 0.20));   // en CLARO el numero usa el acento LEGIBLE (no el pop brillante que se lava sobre crema)
+      ctx.fillStyle = (TONE === 'light') ? INK : (isF ? _accentPop(A1) : _lighten(_accentPop(A1), 0.20));   // CLARO: numero en TINTA (legible); el acento vive en el subrayado/estrella (texto en tinta, acento en deco)
       // HALO de TONO OPUESTO en oscuro (negro), como sceneReveal (~2516): el glow same-hue (_accentPop) se perdia sobre el
       // mesh del mismo hue -> no despegaba el numeral. En claro se mantiene el glow de acento (separa sobre fondo claro).
       setShadow(TONE === 'light' ? _rgba(_accentPop(A1), isF ? 0.4 : 0.2) : 'rgba(0,0,0,0.55)', isF ? 18 : 12, 2); ctx.fillText(val, 0, -10); noShadow();
