@@ -38,6 +38,12 @@ export function makeVideo(brief = {}) {
   // TYPEKIT: efecto de texto cinetico para los titulos -> env.typekit. ~30% sin efecto (plain) para no saturar.
   const tkPrng = seedFor(seed, 'typekit'), tks = query('typekit', { tone, rubro })
   const tkMod = (tks.length && tkPrng() < 0.7) ? weightedPick(tkPrng, tks, wadj) : null
+  // MARKKIT garnish: un ICONO (por rubro) en una esquina, chico y tenue, opcional (~50%). Solo iconos
+  // (NUNCA un blob/forma centrada detras del titulo). Los divisores/marcos quedan para composicion per-escena.
+  const MARK_GARNISH_CATS = new Set(['iconos-rubro', 'iconos-animados'])
+  const mkPrng = seedFor(seed, 'markgarnish')
+  const markPool = query('markkit', { tone, rubro }).filter(m => MARK_GARNISH_CATS.has(m.category))
+  const markMod = (markPool.length && mkPrng() < 0.5) ? weightedPick(mkPrng, markPool, wadj) : null
 
   // FONDO: query de la biblioteca por tono/rubro -> pick por peso (ajustado por seriedad)
   const bgs = query('backgrounds', { tone, rubro })
@@ -51,7 +57,9 @@ export function makeVideo(brief = {}) {
   // ESCENAS: por cada beat del arco, query de scene-layouts de esa categoria -> pick por peso
   const scenes = []; let start = 0
   arc.forEach((beat, i) => {
-    const opts = query('scene-layouts', { tone, rubro, category: beat.category })
+    let opts = query('scene-layouts', { tone, rubro, category: beat.category })
+    // las escenas de DATA tambien pueden ser modulos DATAKIT (charts full-frame: barras/anillos/donut/timeline/...).
+    if (beat.category.indexOf('data/') === 0) opts = opts.concat(query('datakit', { tone, rubro }))
     const mod = opts.length ? weightedPick(seedFor(seed ^ hashStr('arc' + i), 'scene'), opts, wadj) : null
     if (mod) { scenes.push({ start, dur: beat.dur, sceneId: mod.id, seed: (seed ^ hashStr('s' + i)) >>> 0 }); start += beat.dur }
   })
@@ -63,8 +71,9 @@ export function makeVideo(brief = {}) {
     atmId: atm ? atm.id : null, atmSeed: (seed ^ hashStr('atm')) >>> 0,
     motionId: motMod ? motMod.id : null,
     typekitId: tkMod ? tkMod.id : null,
+    markId: markMod ? markMod.id : null, markSeed: (seed ^ hashStr('mark')) >>> 0,
     content: { brand, ...content },
     scenes, duration: start || 8,
-    recipe: { color: colMod ? colMod.id : null, type: typMod ? typMod.id : null, bg: bg ? bg.id : null, sub: sub ? sub.id : null, atm: atm ? atm.id : null, motion: motMod ? motMod.id : null, typekit: tkMod ? tkMod.id : null, scenes: scenes.map(s => s.sceneId) },   // la "carta" del video
+    recipe: { color: colMod ? colMod.id : null, type: typMod ? typMod.id : null, bg: bg ? bg.id : null, sub: sub ? sub.id : null, atm: atm ? atm.id : null, motion: motMod ? motMod.id : null, typekit: tkMod ? tkMod.id : null, mark: markMod ? markMod.id : null, scenes: scenes.map(s => s.sceneId) },   // la "carta" del video
   }
 }

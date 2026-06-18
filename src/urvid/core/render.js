@@ -16,6 +16,19 @@ export function drawFrame(ctx, t, video) {
   if (video.bgId) { const m = get(video.bgId); if (m) m.render(ctx, t, { ...base, seed: video.bgSeed }) }
   if (video.subId) { const m = get(video.subId); if (m) m.render(ctx, t, { ...base, seed: video.subSeed }) }
   if (video.atmId) { const m = get(video.atmId); if (m) m.render(ctx, t, { ...base, seed: video.atmSeed }) }
+  // GARNISH markkit (persistente): un icono chico en una ESQUINA, tenue, detras del contenido. NUNCA centrado
+  // (no compite con el titulo; la regla "nada de blobs/formas sobre el titulo"). Solo iconos (ver assemble.js).
+  if (video.markId) {
+    const m = get(video.markId)
+    if (m) {
+      const corners = [[W * 0.82, H * 0.14], [W * 0.82, H * 0.86], [W * 0.18, H * 0.86]]   // TR / BR / BL
+      const [gx, gy] = corners[(video.markSeed >>> 0) % corners.length], s = 0.2
+      ctx.save(); ctx.globalAlpha = video.tone === 'light' ? 0.5 : 0.62
+      ctx.translate(gx, gy); ctx.scale(s, s); ctx.translate(-W / 2, -H / 2)
+      m.render(ctx, t, { ...base, seed: video.markSeed })
+      ctx.restore()
+    }
+  }
   // ESCENA activa (+ la entrante en el cross-fade) — el CONTENIDO va ENCIMA de las capas (texto siempre legible)
   for (const sc of video.scenes) {
     const s = sc.start, e = sc.start + sc.dur
