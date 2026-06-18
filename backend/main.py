@@ -378,13 +378,48 @@ async def brand_cache_clear(req: ClearBrandCacheRequest):
 class PerceiveRequest(BaseModel):
     url: str = ""
     desarrollo: str = ""
+    userId: str = ""
+    refresh: bool = False   # True = ignora el cache y re-analiza
+
+
+_urvid_brief_cache: dict = {}   # in-memory: "ckey|chash" -> brief (rapido; se pierde al reiniciar el backend)
+
+
+def _get_urvid_brief_fs(db, uid, ckey, chash):
+    """Brief cacheado de una URL en Firestore. None si no hay / vencio (14d) / la pagina cambio de contenido."""
+    if not (db and uid):
+        return None
+    try:
+        doc = db.collection("users").document(uid).collection("urvid_briefs").document(ckey).get()
+        if not doc.exists:
+            return None
+        d = doc.to_dict() or {}
+        if (time.time() - float(d.get("ts", 0))) > _BRAND_CACHE_TTL:
+            return None
+        if chash and d.get("content_hash") and d["content_hash"] != chash:
+            return None
+        return d.get("brief")
+    except Exception as e:
+        print(f"[perceive] cache leer fallo: {e}")
+        return None
+
+
+def _set_urvid_brief_fs(db, uid, ckey, brief, chash, url):
+    if not (db and uid):
+        return
+    try:
+        db.collection("users").document(uid).collection("urvid_briefs").document(ckey).set({
+            "brief": brief, "content_hash": chash or "", "ts": time.time(), "url": (url or "").strip()})
+    except Exception as e:
+        print(f"[perceive] cache guardar fallo: {e}")
 
 
 @app.post("/api/urvid/perceive")
 async def urvid_perceive(req: PerceiveRequest):
-    """Analiza una pagina/URL y devuelve el BRIEF de urvid 1.0 ({brand,rubro,tone,brandColor,tagline,claim,cta,seriousness}).
-    UNA carga del sitio (texto + screenshot) -> Claude arma el brief; el color de marca sale del theme-color o, si no,
-    del color dominante del screenshot. Best-effort: si algo falla, devuelve un brief con defaults sensatos."""
+    """Analiza una pagina/URL (como el motor viejo: brand_dna lee el screenshot + el texto capturado) y devuelve el
+    BRIEF de urvid 1.0 ({brand,rubro,tone,brandColor,tagline,claim,cta,seriousness}). CACHE por URL (in-memory +
+    Firestore, invalida si la pagina cambia o pasan 14 dias) -> la MISMA pagina NO re-llama a Claude. La captura NO
+    se dibuja en el video (el video es generado); el screenshot solo se usa para leer color/mood. Best-effort."""
     if not req.url.strip() and not req.desarrollo.strip():
         return {"error": "Necesitas una URL o una descripcion"}
     site = {"screenshot": None, "content": None, "logo": "", "images": []}
@@ -395,9 +430,24 @@ async def urvid_perceive(req: PerceiveRequest):
                 req.url.strip(), str(OUTPUTS_DIR / f"perceive_{uuid.uuid4().hex[:8]}.png"))
         except Exception as e:
             print(f"[perceive] capture_all fallo (sigo con lo que haya): {e}")
+    ckey = _brand_cache_key(req.url)
+    chash = _content_fingerprint(site)
+    memkey = ckey + "|" + chash
+    db = get_firestore()
+    if not req.refresh:
+        cached = _urvid_brief_cache.get(memkey) or _get_urvid_brief_fs(db, req.userId, ckey, chash)
+        if cached:
+            print(f"[perceive] '{req.url}' desde CACHE")
+            return {"brief": cached, "source": {}, "cost": {}, "cached": True}
     usage = []
-    brief = await perception.analyze_to_brief(req.url.strip(), req.desarrollo.strip(), site=site, usage=usage)
-    # Si no salio un brandColor de marca (themeColor), derivamos el dominante vibrante del screenshot.
+    # ADN VISUAL (como Animaciones): brand_dna lee el screenshot -> mood + colores REALES de la marca.
+    dna = {}
+    try:
+        dna = await brand_dna.analyze_brand_dna(site.get("screenshot"), theme_options=template_director.THEME_VIBES, usage=usage)
+    except Exception as e:
+        print(f"[perceive] brand_dna fallo (sigo): {e}")
+    brief = await perception.analyze_to_brief(req.url.strip(), req.desarrollo.strip(), site=site, dna=dna, usage=usage)
+    # ultimo fallback de color: dominante vibrante del screenshot.
     if site.get("screenshot") and brief.get("brandColor", "#5b8cff") == "#5b8cff":
         try:
             col = _dominant_accent(site["screenshot"])
@@ -405,11 +455,14 @@ async def urvid_perceive(req: PerceiveRequest):
                 brief["brandColor"] = col
         except Exception as e:
             print(f"[perceive] accent desde screenshot fallo: {e}")
+    if chash:   # solo cacheamos cuando hubo captura real (no un brief flojo de URL sin contenido)
+        _urvid_brief_cache[memkey] = brief
+        _set_urvid_brief_fs(db, req.userId, ckey, brief, chash, req.url)
     cost = template_director.usage_cost(usage) if usage else {}
     src = {"title": (site.get("content") or {}).get("title", "") if isinstance(site.get("content"), dict) else "",
-           "logo": site.get("logo", ""), "images": (site.get("images") or [])[:6]}
+           "logo": site.get("logo", "")}
     print(f"[perceive] '{req.url}' -> {brief.get('brand')} / {brief.get('rubro')} / {brief.get('brandColor')}")
-    return {"brief": brief, "source": src, "cost": cost}
+    return {"brief": brief, "source": src, "cost": cost, "cached": False}
 
 
 class VideoGenRequest(BaseModel):

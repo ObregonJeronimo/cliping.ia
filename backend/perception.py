@@ -88,19 +88,32 @@ def _normalize(b, url, content):
     return out
 
 
-async def analyze_to_brief(url, desarrollo="", site=None, usage=None):
-    """Devuelve el brief para makeVideo. `site` = resultado de site_capture.capture_all (para no recapturar)."""
+async def analyze_to_brief(url, desarrollo="", site=None, dna=None, usage=None):
+    """Devuelve el brief para makeVideo. `site` = resultado de site_capture.capture_all (para no recapturar).
+    `dna` = lectura VISUAL de brand_dna (summary/mood/primary/accent/theme) -> analiza como el motor viejo (Animaciones)."""
     content = (site or {}).get("content") if isinstance(site, dict) else None
+    dna = dna if isinstance(dna, dict) else {}
     brief = {}
     if _client is not None:
         facts = json.dumps(content, ensure_ascii=False)[:6000] if content else ""
+        # ADN visual (lo que brand_dna VE en el screenshot): le da a Claude el alma visual de la marca.
+        dnabits = []
+        if dna.get("summary"):
+            dnabits.append("resumen visual: " + str(dna["summary"])[:300])
+        if dna.get("mood"):
+            dnabits.append("mood: " + str(dna["mood"]))
+        for k in ("primary", "accent"):
+            if _safe_hex(dna.get(k)):
+                dnabits.append(f"color {k} visto: {_safe_hex(dna[k])}")
         user = f"URL: {url}\n"
         if desarrollo:
             user += f"Notas del usuario (priorizalas): {desarrollo}\n"
+        if dnabits:
+            user += "Lectura visual de la pagina (ADN de marca): " + " · ".join(dnabits) + "\n"
         if facts:
             user += f"Contenido capturado de la pagina (JSON):\n{facts}\n"
         else:
-            user += "(No se pudo capturar la pagina; infiere lo razonable desde la URL y las notas.)\n"
+            user += "(No se pudo capturar la pagina; infiere lo razonable desde la URL, el ADN visual y las notas.)\n"
         user += "\nDevolve SOLO el JSON del brief."
         try:
             resp = await _client.messages.create(
@@ -120,8 +133,12 @@ async def analyze_to_brief(url, desarrollo="", site=None, usage=None):
         print("[perceive] anthropic no disponible -> brief con defaults")
 
     out = _normalize(brief, url, content)
-    # color de marca: el theme-color real de la pagina pisa al LLM si existe (mas fiel a la identidad).
+    # color de marca (mas fiel a la identidad): el acento/primary que brand_dna VE en el screenshot pisa al LLM;
+    # si no hay, el theme-color de la pagina.
+    visual = _safe_hex(dna.get("accent")) or _safe_hex(dna.get("primary"))
     tc = _safe_hex((content or {}).get("themeColor")) if isinstance(content, dict) else None
-    if tc:
+    if visual:
+        out["brandColor"] = visual
+    elif tc:
         out["brandColor"] = tc
     return out

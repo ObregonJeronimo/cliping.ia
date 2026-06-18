@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useMemo } from 'react'
 import { makeVideo, drawFrame, beatAt, W, H } from '../../urvid/index.js'
+import { useAuth } from '../../contexts/AuthContext'
 import styles from './Urvid1Studio.module.css'
 
 const RUBROS = ['default', 'tech', 'finanzas', 'moda', 'gastronomia', 'educacion', 'salud', 'fitness', 'inmobiliaria', 'belleza']
@@ -11,6 +12,7 @@ const HEADERS = { 'Content-Type': 'application/json', 'ngrok-skip-browser-warnin
 // urvid 1.0 · estudio. Arma un video con el motor de bibliotecas (determinista) y lo reproduce EN VIVO (transport).
 // El almacen de videos vive aca mismo (localStorage) — no hay item aparte. NO toca "Animaciones".
 export default function Urvid1Studio() {
+  const { user } = useAuth()
   const [brief, setBrief] = useState({ brand: 'Nodo', rubro: 'tech', tone: 'dark', brandColor: '#22e06a', tagline: 'Automatiza lo aburrido y enfocate en lo que importa', claim: 'Menos tareas repetitivas, mas resultados reales', cta: 'Probalo gratis' })
   const [seed, setSeed] = useState(0)
   const video = useMemo(() => makeVideo({ ...brief, seed: seed || undefined }), [brief, seed])
@@ -46,7 +48,7 @@ export default function Urvid1Studio() {
     if (!url.trim() || analyzing === 'loading') return
     setAnalyzing('loading')
     try {
-      const r = await fetch(`${API_URL}/api/urvid/perceive`, { method: 'POST', headers: HEADERS, body: JSON.stringify({ url: url.trim() }) })
+      const r = await fetch(`${API_URL}/api/urvid/perceive`, { method: 'POST', headers: HEADERS, body: JSON.stringify({ url: url.trim(), userId: user?.uid || '' }) })
       const j = await r.json()
       const b = j && j.brief
       if (!b || j.error) { setAnalyzing(j && j.error ? j.error : 'No se pudo analizar la pagina'); return }
