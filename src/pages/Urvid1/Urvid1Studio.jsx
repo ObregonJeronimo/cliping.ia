@@ -72,7 +72,15 @@ export default function Urvid1Studio() {
   return (
     <div className={styles.wrap}>
       <header className={styles.head}>
-        <div><h1>urvid <span>1.0</span></h1><p>motor de bibliotecas · ensamblaje determinista · <b>{video.recipe.bg}</b> → {video.recipe.scenes.join(' · ')}</p></div>
+        <div className={styles.brand}>
+          <h1>urvid <span>1.0</span></h1>
+          <p>Motor de bibliotecas · ensamblaje determinista</p>
+        </div>
+        <div className={styles.recipe}>
+          {[['color', video.recipe.color], ['tipo', video.recipe.type], ['fondo', video.recipe.bg], ['motion', video.recipe.motion], ['trans', video.recipe.transition], ['post', video.recipe.post]]
+            .filter(([, v]) => v).map(([k, v]) => <span key={k} className={styles.chip}><i>{k}</i>{v.replace(/^[^.]+\./, '')}</span>)}
+        </div>
+        <p className={styles.flow}>{video.recipe.scenes.map(s => s.replace(/^[^.]+\./, '')).join('  →  ')}</p>
       </header>
 
       <div className={styles.cols}>
@@ -97,7 +105,8 @@ export default function Urvid1Studio() {
             <button className={styles.primary} onClick={reroll}>↻ Otra variante</button>
             <button className={styles.ghost} onClick={save}>★ Guardar</button>
           </div>
-          <p className={styles.note}>Cada "otra variante" cambia la semilla → el director elige distinto de las bibliotecas.</p>
+          <span className={styles.seedpill}><i>semilla</i>{seed ? '#' + (seed >>> 0).toString(16).slice(0, 6) : 'auto (marca + rubro)'}</span>
+          <p className={styles.note}>Cada "otra variante" cambia la semilla → el director ensambla una carta distinta. Misma semilla = mismo video, siempre.</p>
         </div>
 
         <div className={styles.stage}>
@@ -113,7 +122,7 @@ export default function Urvid1Studio() {
 
         <div className={styles.panel}>
           <h3 className={styles.h3}>Mis videos</h3>
-          {saved.length === 0 && <p className={styles.note}>Guardá un video para tenerlo acá.</p>}
+          {saved.length === 0 && <div className={styles.empty}><b>Sin videos guardados</b>Tocá ★ Guardar y tus variantes quedan acá.</div>}
           <div className={styles.gallery}>
             {saved.map((it, i) => (
               <div key={i} className={styles.card} style={{ '--c': it.brandColor }}>
