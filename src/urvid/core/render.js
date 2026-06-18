@@ -1,16 +1,33 @@
-// urvid 1.0 · RENDER — compositor. drawFrame(ctx, t, video): dibuja el FONDO (continuo) + la ESCENA activa (con
-// cross-fade corto + micro-zoom de entrada). El ctx espera el espacio logico 405x720 (el caller escala a 1080x1920).
+// urvid 1.0 · RENDER — compositor. drawFrame(ctx, t, video): dibuja el FONDO (continuo) + la ESCENA activa, con
+// TRANSICIONES reales entre escenas (la lib transitions compone A saliente + B entrante via clip/transform, sin
+// buffers -> nitido y cross-env). El ctx espera el espacio logico 405x720 (el caller escala a 1080x1920).
 import { get } from './registry.js'
-import { W, H, inv, clamp } from './util.js'
+import { W, H, inv } from './util.js'
 import { resolveMotion } from './motion.js'
 import { resolveTypekit } from './typekit.js'
+import { resolveTransition } from './transitions.js'
 
-const XF = 0.4   // cross-fade entre escenas
+const XF = 0.5   // ventana de transicion entre escenas (s)
+
+// pinta UNA escena (contenido) con la ENTRADA de la personalidad (offset/zoom/rotacion + drift ambiente). Coords logicas.
+function paintScene(ctx, sc, t, video, motion, typekit) {
+  const mod = get(sc.sceneId); if (!mod) return
+  const ts = t - sc.start
+  const ep = motion.ease(inv(ts, 0, motion.enterDur || 0.5)), k = 1 - ep
+  const en = motion.enter || {}, amb = (motion.ambient ? motion.ambient(ts, sc.seed >>> 0) : null) || {}
+  const z = 1 + (en.scale || 0) * k + (amb.scale || 0)
+  const ox = (en.dx || 0) * k + (amb.x || 0), oy = (en.dy || 0) * k + (amb.y || 0), rot = (en.rotate || 0) * k + (amb.rot || 0)
+  ctx.save()
+  ctx.translate(W / 2 + ox, H / 2 + oy); ctx.rotate(rot); ctx.scale(z, z); ctx.translate(-W / 2, -H / 2)
+  mod.render(ctx, ts, { pal: video.palette, content: video.content, fonts: video.fonts, seed: sc.seed, energy: 1, sceneDur: sc.dur, motion, typekit })
+  ctx.restore()
+}
 
 export function drawFrame(ctx, t, video) {
   ctx.clearRect(0, 0, W, H)
   const motion = resolveMotion(video)   // personalidad de movimiento del video (o default)
   const typekit = resolveTypekit(video) // efecto de texto cinetico del video (o plain)
+  const transition = resolveTransition(video) // transicion entre escenas (o cut)
   // CAPAS DE FONDO (viven todo el video): fondo -> textura/substrate -> atmosfera/luz -> (contenido encima)
   const base = { pal: video.palette, content: video.content, energy: 1 }
   if (video.bgId) { const m = get(video.bgId); if (m) m.render(ctx, t, { ...base, seed: video.bgSeed }) }
@@ -29,24 +46,27 @@ export function drawFrame(ctx, t, video) {
       ctx.restore()
     }
   }
-  // ESCENA activa (+ la entrante en el cross-fade) — el CONTENIDO va ENCIMA de las capas (texto siempre legible)
-  for (const sc of video.scenes) {
-    const s = sc.start, e = sc.start + sc.dur
-    if (t < s - XF || t > e) continue
-    const a = Math.min(inv(t, s - XF, s + 0.1), 1 - inv(t, e - XF, e))
-    if (a <= 0) continue
-    const mod = get(sc.sceneId)
-    if (!mod) continue
-    ctx.save(); ctx.globalAlpha = clamp(a, 0, 1)
-    // ENTRADA segun la personalidad: offset (dx/dy), micro-zoom (scale), rotacion, que se resuelven hacia 0
-    // a medida que avanza la entrada; + drift ambiente sutil que vive toda la escena.
-    const ep = motion.ease(inv(t - s, 0, motion.enterDur || 0.5)), k = 1 - ep
-    const en = motion.enter || {}, amb = (motion.ambient ? motion.ambient(t - s, sc.seed >>> 0) : null) || {}
-    const z = 1 + (en.scale || 0) * k + (amb.scale || 0)
-    const ox = (en.dx || 0) * k + (amb.x || 0), oy = (en.dy || 0) * k + (amb.y || 0), rot = (en.rotate || 0) * k + (amb.rot || 0)
-    ctx.translate(W / 2 + ox, H / 2 + oy); ctx.rotate(rot); ctx.scale(z, z); ctx.translate(-W / 2, -H / 2)
-    mod.render(ctx, t - s, { pal: video.palette, content: video.content, fonts: video.fonts, seed: sc.seed, energy: 1, sceneDur: sc.dur, motion, typekit })
-    ctx.restore()
+  // ESCENA + TRANSICIONES — el CONTENIDO va ENCIMA de las capas (texto siempre legible).
+  // Ventana de transicion [B.start, B.start+XF): A (saliente, ya asentada) + B (entrante, recien arrancando su
+  // entrada) -> la lib transitions compone (wipe/slide/iris/bars/cut). Asi B SI es visible durante la transicion
+  // (con la ventana vieja [B.start-XF, B.start) B salia en scene-time negativo = invisible). Fuera de ventana: 1 escena.
+  const scenes = video.scenes
+  if (!scenes || !scenes.length) return
+  let trans = null
+  for (let i = 1; i < scenes.length; i++) {
+    const b = scenes[i].start
+    if (t >= b && t < b + XF) { trans = { A: scenes[i - 1], B: scenes[i], p: (t - b) / XF }; break }
+  }
+  if (trans) {
+    transition.render(ctx, inv(trans.p, 0, 1),
+      c => paintScene(c, trans.A, t, video, motion, typekit),
+      c => paintScene(c, trans.B, t, video, motion, typekit),
+      { W, H })
+  } else {
+    let act = null
+    for (const sc of scenes) if (t >= sc.start && t < sc.start + sc.dur) { act = sc; break }
+    if (!act) act = t < scenes[0].start ? scenes[0] : scenes[scenes.length - 1]
+    paintScene(ctx, act, t, video, motion, typekit)
   }
 }
 

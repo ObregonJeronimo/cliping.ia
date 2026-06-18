@@ -10,5 +10,6 @@ import './markkit/index.js'       // graficos/formas/iconos/decoradores
 import './datakit/index.js'       // data-viz: numeros/barras/anillos
 import './motion/index.js'        // personalidades de movimiento (el director elige una -> env.motion)
 import './typekit/index.js'       // efectos de texto cinetico (el director elige uno -> env.typekit)
+import './transitions/index.js'   // transiciones escena-a-escena (el director elige una -> video.transitionId)
 // PENDIENTES (proximas rondas, ver docs/URVID-1.0-BLUEPRINT.md): photokit, narrative, composition,
-//   transitions, audio, post.*, perception, strategy, brief, director, critique, audience.
+//   scene-buffering (dissolve/glitch/morph reales), audio, post.*, perception, strategy, brief, director, critique, audience.
