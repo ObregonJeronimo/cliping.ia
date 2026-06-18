@@ -142,6 +142,58 @@ function windowStrip(path, name, t0, t1) {
   sheet(name, `${name} · ventana densa t ${t0}-${t1}`, items, 4)
 }
 
+// ESTELA (long-exposure): compone K frames de [t0,t1] en UNA imagen -> lo que se MUEVE deja rastro, lo quieto
+// queda nitido. Mete el tiempo en el espacio: 1 imagen = la trayectoria de una rafaga. ~6-8 ecos es el punto justo
+// (mas = puré). Brilla con elementos discretos (texto/forma); con particulas queda algo mushy. blend: screen sobre
+// oscuro (acumula brillo), multiply sobre claro (acumula tinta).
+function trailComposite(tl, name, t0, t1, K = 7) {
+  const light = tl.tone === 'light', blend = light ? 'multiply' : 'screen'
+  const cv = createCanvas(W * SS, H * SS), ctx = cv.getContext('2d')
+  ctx.setTransform(SS, 0, 0, SS, 0, 0)
+  ctx.fillStyle = light ? '#ffffff' : '#05060a'; ctx.fillRect(0, 0, W, H)
+  for (let i = 0; i < K; i++) {
+    const t = t0 + (t1 - t0) * (i / (K - 1)), a = 0.22 + 0.78 * (i / (K - 1))   // viejo tenue -> nuevo pleno (cabeza del rastro = estado final)
+    const tmp = createCanvas(W * SS, H * SS), tc = tmp.getContext('2d'); tc.setTransform(SS, 0, 0, SS, 0, 0)
+    drawFrame(tc, t, tl)
+    ctx.globalAlpha = a; ctx.globalCompositeOperation = blend
+    ctx.drawImage(tmp, 0, 0, W * SS, H * SS, 0, 0, W, H)
+  }
+  ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'
+  const p = join(OUT, name + '.png'); writeFileSync(p, cv.toBuffer('image/png'))
+  console.log('wrote', p, `(estela: ${K} ecos, t ${t0}-${t1}s, blend ${blend})`)
+}
+
+// MAPA DE MOVIMIENTO (CERO tokens de vision): renderiza el timeline a 'fps' a BAJA resolucion, mide el diff de
+// pixeles entre frames consecutivos y devuelve un sparkline + las VENTANAS CALIENTES (donde gastar imagenes). El
+// resto es hold/estatico = NO vale la pena mirarlo. Es la Capa 0 del metodo (ver docs/ANALISIS-VIDEO.md).
+function motionMap(tl, fps = 24) {
+  const dur = timelineDuration(tl) || 8, n = Math.max(2, Math.round(dur * fps))
+  const mw = 203, mh = 360   // baja resolucion -> rapido; alcanza para energia de movimiento
+  let prev = null; const energy = []
+  for (let i = 0; i < n; i++) {
+    const t = (i + 0.5) * dur / n
+    const cv = createCanvas(mw, mh), ctx = cv.getContext('2d'); ctx.setTransform(mw / W, 0, 0, mh / H, 0, 0)
+    drawFrame(ctx, t, tl)
+    const d = ctx.getImageData(0, 0, mw, mh).data
+    if (prev) { let s = 0; for (let k = 0; k < d.length; k += 4) s += Math.abs(d[k] - prev[k]) + Math.abs(d[k + 1] - prev[k + 1]) + Math.abs(d[k + 2] - prev[k + 2]); energy.push({ t, e: s / (d.length / 4 * 3) }) }
+    prev = d
+  }
+  const max = Math.max(...energy.map(x => x.e), 1e-6), blocks = '_.:-=+*#'
+  const spark = energy.map(x => blocks[Math.min(7, Math.floor(x.e / max * 7.999))]).join('')
+  const mean = energy.reduce((a, x) => a + x.e, 0) / energy.length
+  const sd = Math.sqrt(energy.reduce((a, x) => a + (x.e - mean) ** 2, 0) / energy.length), thr = mean + 0.4 * sd
+  const hot = []; let run = null
+  for (const x of energy) {
+    if (x.e >= thr) run = run ? { t0: run.t0, t1: x.t, peak: Math.max(run.peak, x.e) } : { t0: x.t, t1: x.t, peak: x.e }
+    else if (run) { hot.push(run); run = null }
+  }
+  if (run) hot.push(run); hot.sort((a, b) => b.peak - a.peak)
+  console.log(`MOTION MAP  ${tl.brand || ''}  dur ${dur.toFixed(1)}s @ ${fps}fps  (${n} frames, 0 tokens de vision)`)
+  console.log('[' + spark + ']  (_ quieto ... # mucho movimiento)')
+  console.log(`\nVentanas calientes (gasta imagenes ACA; el resto es hold):`)
+  hot.slice(0, 6).forEach((h, i) => console.log(`  ${i + 1}. t ${h.t0.toFixed(2)}-${h.t1.toFixed(2)}s  pico ${(h.peak / max * 100) | 0}%  ->  node tools/render.mjs window <json> probe ${Math.max(0, h.t0 - 0.1).toFixed(2)} ${(h.t1 + 0.15).toFixed(2)}`))
+}
+
 // precarga assets (logo + fotos reales) ANTES de renderizar -> el motor los dibuja determinista (igual que en produccion)
 async function _loadAssets(tl) {
   try { if (tl && tl.logo) setLogo(await loadImage(tl.logo)) } catch (e) { console.log('(logo)', e.message) }
@@ -168,6 +220,12 @@ if (mode === 'window') {
   videoStrip(tl, name, `Video · ${name}`, n)
 } else if (mode === 'gif') {
   gifExport(process.argv[3], process.argv[4] || 'video', parseInt(process.argv[5] || '14', 10))
+} else if (mode === 'trail') {
+  const p = process.argv[3]; const tl = JSON.parse(readFileSync(p, 'utf8')); await _loadAssets(tl)
+  trailComposite(tl, process.argv[4] || 'trail', parseFloat(process.argv[5] || '0'), parseFloat(process.argv[6] || '2'), parseInt(process.argv[7] || '7', 10))
+} else if (mode === 'motionmap') {
+  const p = process.argv[3]; const tl = JSON.parse(readFileSync(p, 'utf8')); await _loadAssets(tl)
+  motionMap(tl, parseInt(process.argv[4] || '24', 10))
 } else if (mode === 'rubros') {
   rubroSheet()
 } else {

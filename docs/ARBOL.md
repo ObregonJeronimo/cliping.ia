@@ -29,6 +29,10 @@ Pegás un **link** → Urvid genera un **video vertical 9:16 de marketing** que:
 - `node tools/make-stock-photos.mjs` — fotos fake por rubro (`tools/_stock/`).
 - `python backend/mock_director.py --out tools/brands` — genera marcas mock.
 - `node tools/render.mjs gallery|video <json> <name> <N>|window|gif` — rasteriza frames a `tools/out/` (abrir con Read).
+- **ANALISIS DE MOVIMIENTO** (ver `docs/ANALISIS-VIDEO.md`): `render.mjs motionmap <json>` = mapa de movimiento (0 tokens,
+  marca las ventanas calientes; correr SIEMPRE primero); `render.mjs window <json> probe <t0> <t1>` = tira densa ~6-10fps
+  (timing); `render.mjs trail <json> <name> <t0> <t1> [K=7]` = estela/long-exposure (1 img = trayectoria de la rafaga).
+  Regla: NUNCA barrer a fps alto (mas fps = mas ciego al movimiento); ~4-5 imagenes por video alcanzan. Fluidez = juez el usuario.
 - **ffmpeg** — extraer TODOS los frames de un MP4 real (`ffmpeg -i video.mp4 -vf fps=N frames_%03d.png`) para auditar el último video del usuario.
 - `node tools/video-frames.mjs <mp4> [fps=3] [cols] [rows] [t0] [t1]` — MP4 -> CONTACT SHEETS (grillas) via ffmpeg:
   un video de ~20s = 1-2 PNGs (barato en tokens, no cientos de lecturas). Overview a 3fps o "zoom" de fluidez
