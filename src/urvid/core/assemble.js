@@ -33,6 +33,8 @@ export function makeVideo(brief = {}) {
   const palette = colMod ? colMod.derive(brandColor, { tone, rubro, seed }) : derivePalette(brandColor, { tone, rubro, seed })
   const typs = query('typography', { tone, rubro }), typMod = typs.length ? weightedPick(seedFor(seed, 'typepick'), typs, wadj) : null
   const fonts = typMod ? typMod.fonts : deriveFonts(rubro, style, seed)
+  // MOTION: personalidad de movimiento (entrada/asentamiento/stagger/drift) -> env.motion. Sesgo de seriedad via wadj.
+  const mots = query('motion', { tone, rubro }), motMod = mots.length ? weightedPick(seedFor(seed, 'motionpick'), mots, wadj) : null
 
   // FONDO: query de la biblioteca por tono/rubro -> pick por peso (ajustado por seriedad)
   const bgs = query('backgrounds', { tone, rubro })
@@ -56,8 +58,9 @@ export function makeVideo(brief = {}) {
     bgId: bg ? bg.id : null, bgSeed: (seed ^ hashStr('bg')) >>> 0,
     subId: sub ? sub.id : null, subSeed: (seed ^ hashStr('sub')) >>> 0,
     atmId: atm ? atm.id : null, atmSeed: (seed ^ hashStr('atm')) >>> 0,
+    motionId: motMod ? motMod.id : null,
     content: { brand, ...content },
     scenes, duration: start || 8,
-    recipe: { color: colMod ? colMod.id : null, type: typMod ? typMod.id : null, bg: bg ? bg.id : null, sub: sub ? sub.id : null, atm: atm ? atm.id : null, scenes: scenes.map(s => s.sceneId) },   // la "carta" del video
+    recipe: { color: colMod ? colMod.id : null, type: typMod ? typMod.id : null, bg: bg ? bg.id : null, sub: sub ? sub.id : null, atm: atm ? atm.id : null, motion: motMod ? motMod.id : null, scenes: scenes.map(s => s.sceneId) },   // la "carta" del video
   }
 }

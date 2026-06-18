@@ -8,5 +8,6 @@ import './atmosphere/index.js'    // capas de luz/atmosfera
 import './scenes/index.js'        // scene-layouts: contenido por beat
 import './markkit/index.js'       // graficos/formas/iconos/decoradores
 import './datakit/index.js'       // data-viz: numeros/barras/anillos
+import './motion/index.js'        // personalidades de movimiento (el director elige una -> env.motion)
 // PENDIENTES (proximas rondas, ver docs/URVID-1.0-BLUEPRINT.md): typekit, photokit, narrative, composition,
-//   motion.*, transitions, audio, post.*, perception, strategy, brief, director, critique, audience.
+//   transitions, audio, post.*, perception, strategy, brief, director, critique, audience.
