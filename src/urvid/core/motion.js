@@ -26,8 +26,8 @@ export function defaultMotion() {
     stagger: 0.18,
     enter: { dx: 0, dy: 0, scale: 0.03, rotate: 0 },   // micro-zoom de entrada actual
     enterDur: 0.55,
-    life: 0.6,
-    ambient: (t, seed) => ({ x: Math.sin(t * 0.5 + (seed % 7)) * 0.8, y: Math.sin(t * 0.7 + (seed % 5)) * 1.0, scale: Math.sin(t * 0.6) * 0.0035, rot: 0 }),
+    life: 0.7,
+    ambient: (t, seed) => ({ x: Math.sin(t * 0.5 + (seed % 7)) * 1.1, y: Math.sin(t * 0.7 + (seed % 5)) * 1.4, scale: Math.sin(t * 0.6) * 0.005, rot: 0 }),
   }
 }
 

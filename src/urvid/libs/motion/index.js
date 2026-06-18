@@ -11,10 +11,10 @@ const eOutQuint = p => 1 - Math.pow(1 - p, 5)
 const eOutQuart = p => 1 - Math.pow(1 - p, 4)
 // FLUIDEZ · ambients (micro-vida continua, amplitudes MINIMAS: dan vida sin marear ni romper legibilidad).
 // BASE es el default de toda personalidad (respiracion + flote sutil) -> ninguna escena queda muerto-estatica.
-const BASE = (t, seed) => ({ x: Math.sin(t * 0.5 + (seed % 7)) * 0.8, y: Math.sin(t * 0.7 + (seed % 5)) * 1.0, scale: Math.sin(t * 0.6) * 0.0035, rot: 0 })
-const breathe = (t, seed) => ({ x: 0, y: Math.sin(t * 0.6 + (seed % 5)) * 0.6, scale: Math.sin(t * 0.7 + (seed % 7)) * 0.006, rot: 0 })   // mas respiracion (calmo/cine)
-const driftAmb = (t, seed) => ({ x: Math.sin(t * 0.55 + (seed % 11)) * 1.8, y: Math.cos(t * 0.5 + (seed % 5)) * 1.4, scale: Math.sin(t * 0.45) * 0.004, rot: 0 })   // flota (organico/drift)
-const swayX = (t, seed) => ({ x: Math.sin(t * 0.55 + (seed % 6)) * 2.0, y: Math.sin(t * 0.4) * 0.5, scale: 0, rot: 0 })   // vaiven lateral (glide)
+const BASE = (t, seed) => ({ x: Math.sin(t * 0.5 + (seed % 7)) * 1.1, y: Math.sin(t * 0.7 + (seed % 5)) * 1.4, scale: Math.sin(t * 0.6) * 0.005, rot: 0 })
+const breathe = (t, seed) => ({ x: 0, y: Math.sin(t * 0.6 + (seed % 5)) * 0.9, scale: Math.sin(t * 0.7 + (seed % 7)) * 0.008, rot: 0 })   // mas respiracion (calmo/cine)
+const driftAmb = (t, seed) => ({ x: Math.sin(t * 0.55 + (seed % 11)) * 2.2, y: Math.cos(t * 0.5 + (seed % 5)) * 1.7, scale: Math.sin(t * 0.45) * 0.005, rot: 0 })   // flota (organico/drift)
+const swayX = (t, seed) => ({ x: Math.sin(t * 0.55 + (seed % 6)) * 2.6, y: Math.sin(t * 0.4) * 0.6, scale: 0, rot: 0 })   // vaiven lateral (glide)
 const tiltAmb = (t, seed) => ({ x: 0, y: Math.sin(t * 0.6) * 0.7, scale: Math.sin(t * 0.5) * 0.002, rot: Math.sin(t * 0.5 + (seed % 4)) * 0.005 })   // leve cabeceo (tilt)
 const calm = (t, seed) => ({ x: 0, y: 0, scale: Math.sin(t * 0.45 + (seed % 7)) * 0.0025, rot: 0 })   // casi imperceptible (preciso/tecnico)
 

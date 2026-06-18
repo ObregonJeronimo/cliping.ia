@@ -18,7 +18,7 @@ function paintScene(ctx, sc, t, video, motion, typekit) {
   const en = motion.enter || {}, amb = (motion.ambient ? motion.ambient(ts, sc.seed >>> 0) : null) || {}
   // FLUIDEZ: ken-burns = zoom lento (<=2%) sobre toda la escena, MONOTONICO (cinematografico, no marea). Intensidad
   // = motion.life. + ambient (respiracion/flote continuo). Asi el contenido NUNCA queda muerto-estatico tras entrar.
-  const sp = inv(ts, 0, sc.dur || 4), kb = (motion.life || 0) * 0.02 * sp
+  const sp = inv(ts, 0, sc.dur || 4), kb = (motion.life || 0) * 0.03 * sp
   const z = 1 + (en.scale || 0) * k + (amb.scale || 0) + kb
   const ox = (en.dx || 0) * k + (amb.x || 0), oy = (en.dy || 0) * k + (amb.y || 0), rot = (en.rotate || 0) * k + (amb.rot || 0)
   ctx.save()
