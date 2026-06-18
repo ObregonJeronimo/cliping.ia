@@ -58,6 +58,9 @@ export function makeVideo(brief = {}) {
   const markMod = (markPool.length && mkPrng() < 0.5) ? weightedPick(mkPrng, markPool, wadj) : null
   // TRANSICION escena-a-escena (wipe/slide/iris/bars/cut) -> video.transitionId. Sesgo de seriedad via wadj.
   const trs = query('transitions', { tone, rubro }), trMod = trs.length ? weightedPick(seedFor(seed, 'transition'), trs, wadj) : null
+  // POST: acabado (grano/vignette/leak/grade/scanlines) -> video.postId. Opcional (~58%); sesgo de seriedad (fx fuertes pesan menos).
+  const postPrng = seedFor(seed, 'post'), posts = query('post', { tone, rubro })
+  const postMod = (posts.length && postPrng() < 0.58) ? weightedPick(postPrng, posts, wadj) : null
 
   // FONDO: query de la biblioteca por tono/rubro -> pick por peso (ajustado por seriedad)
   const bgs = query('backgrounds', { tone, rubro })
@@ -88,8 +91,9 @@ export function makeVideo(brief = {}) {
     typekitId: tkMod ? tkMod.id : null,
     markId: markMod ? markMod.id : null, markSeed: (seed ^ hashStr('mark')) >>> 0,
     transitionId: trMod ? trMod.id : null,
+    postId: postMod ? postMod.id : null, postSeed: (seed ^ hashStr('post')) >>> 0,
     content: { brand, ...content },
     scenes, duration: start || 8,
-    recipe: { color: colMod ? colMod.id : null, type: typMod ? typMod.id : null, bg: bg ? bg.id : null, sub: sub ? sub.id : null, atm: atm ? atm.id : null, motion: motMod ? motMod.id : null, typekit: tkMod ? tkMod.id : null, mark: markMod ? markMod.id : null, transition: trMod ? trMod.id : null, scenes: scenes.map(s => s.sceneId) },   // la "carta" del video
+    recipe: { color: colMod ? colMod.id : null, type: typMod ? typMod.id : null, bg: bg ? bg.id : null, sub: sub ? sub.id : null, atm: atm ? atm.id : null, motion: motMod ? motMod.id : null, typekit: tkMod ? tkMod.id : null, mark: markMod ? markMod.id : null, transition: trMod ? trMod.id : null, post: postMod ? postMod.id : null, scenes: scenes.map(s => s.sceneId) },   // la "carta" del video
   }
 }

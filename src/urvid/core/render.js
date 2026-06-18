@@ -6,6 +6,7 @@ import { W, H, inv } from './util.js'
 import { resolveMotion } from './motion.js'
 import { resolveTypekit } from './typekit.js'
 import { resolveTransition } from './transitions.js'
+import { resolvePost } from './post.js'
 
 const XF = 0.5   // ventana de transicion entre escenas (s)
 
@@ -71,6 +72,8 @@ export function drawFrame(ctx, t, video) {
     if (!act) act = t < scenes[0].start ? scenes[0] : scenes[scenes.length - 1]
     paintScene(ctx, act, t, video, motion, typekit)
   }
+  // POST: acabado (grano/vignette/leak/grade/scanlines) SOBRE todo el cuadro -> el "film look" que une el frame.
+  if (video.postId) { const post = resolvePost(video); post.render(ctx, t, { pal: video.palette, content: video.content, energy: 1, seed: video.postSeed >>> 0 }) }
 }
 
 export const beatAt = (t, video) => { const sc = video.scenes.find(s => t >= s.start && t < s.start + s.dur); return sc ? sc.sceneId : '' }
