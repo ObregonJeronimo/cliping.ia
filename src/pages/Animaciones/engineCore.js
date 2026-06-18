@@ -409,7 +409,7 @@ function _rgba(hex, a) {
     if (!N) return false;
     const bb = wm.bbox, bw = (bb[2] - bb[0]) || 1, bh = (bb[3] - bb[1]) || 1;
     // escala: que la ALTURA de la tinta ocupe px (cap-height objetivo del hero) y el bloque quede centrado en cx,cy.
-    const sc = px / bh, bcx = (bb[0] + bb[2]) / 2, bcy = (bb[1] + bb[3]) / 2;
+    const sc = Math.min(px / bh, (W * 0.9) / bw), bcx = (bb[0] + bb[2]) / 2, bcy = (bb[1] + bb[3]) / 2;   // escala acotada por el ANCHO del cuadro -> nombres largos NO se salen (la nube Y el sello entran)
     // ALIGN: el hero suele venir left-aligned (x = borde izq). Corremos cx para que el wordmark ENSAMBLADO arranque
     // en x (left) / termine en x (right); 'center' deja x como centro. Asi respeta la composicion del hero.
     const scaledW = bw * sc;
@@ -497,7 +497,9 @@ function _rgba(hex, a) {
       // particulas (ya disueltas a ~0.12 al asentar) quedan de chispa/aura. Glow de acento CHICO (6px) -> bordes nitidos.
       const seal = clamp(inv(eg, 0.62, 0.92), 0, 1);
       ctx.globalAlpha = Math.min(1, seal * 1.04);
-      ctx.font = fontStr(o.weight || 800, px * 1.42, 'd');   // cap-height ~= px -> matchea las letras de la nube
+      const _availW = Math.max(60, 2 * Math.min(cx, W - cx) - 14);   // ancho disponible centrado en cx (dentro del cuadro)
+      let _sfs = bh * sc * 1.42; ctx.font = fontStr(o.weight || 800, _sfs, 'd');
+      while (_sfs > 12 && ctx.measureText(text).width > _availW) { _sfs -= 1; ctx.font = fontStr(o.weight || 800, _sfs, 'd'); }   // fitea el SELLO REAL al cuadro (medido) -> el nombre NUNCA se corta, ancho o no
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       _softShadow(_rgba(A, 0.4), 6, 0);
       ctx.fillStyle = INK;
@@ -1987,7 +1989,7 @@ function _rgba(hex, a) {
       ctx.textAlign = align; ctx.textBaseline = 'middle';
       const wg = ctx.createLinearGradient(wx - 130, top, wx + 130, bot); wg.addColorStop(0, _accentInk(A1, 0.62)); wg.addColorStop(1, _accentInk(A2, 0.5));
       ctx.fillStyle = wg; _softShadow('rgba(0,0,0,0.5)', 8, 1);   // aclarado + halo soft (no offset duro) -> legible sobre el mismo color (Aura/Trama)
-      ctx.fillText(_bn, wx, wy + (1 - bn) * 16); noShadow(); ctx.restore();
+      ctx.fillText(clip(_bn, W * 0.82), wx, wy + (1 - bn) * 16); noShadow(); ctx.restore();
     }
     function accentBar(bx, byy, bw0, align) {
       const bar = inv(t, 0.9, 1.4); if (bar <= 0) return; const bw = bw0 * eOutCubic(bar);
@@ -2860,6 +2862,7 @@ function _rgba(hex, a) {
     if (!text) return;
     const bh = 22;
     ctx.save();
+    ctx._bleedText = true;   // marquesina CLIPEADA a la banda (0..W): el bbox del texto excede a proposito, los pixeles NO (bounds-check lo ignora)
     ctx.beginPath(); ctx.rect(0, bandY - bh / 2, W, bh); ctx.clip();
     ctx.font = fontStr(700, 13, 'a'); ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
     const seg = text + '   /   ', segW = ctx.measureText(seg).width || 1;
@@ -2867,6 +2870,7 @@ function _rgba(hex, a) {
     ctx.globalAlpha *= TONE === 'light' ? 0.42 : 0.5; ctx.fillStyle = _accentInk(_resolveColor('accent'), 0.42);
     for (let x = off; x < W + segW; x += segW) ctx.fillText(seg, x, bandY);
     ctx.restore();
+    ctx._bleedText = false;
   }
   // NUMBERSTACK: 2-3 numeros que cuentan, en cascada (vs bigStat que es UNO). Llena la pantalla con datos.
   function sceneNumberStack(t, p = {}) {
@@ -2973,7 +2977,7 @@ function _rgba(hex, a) {
     lines.forEach((l, i) => { const lp = inv(t, 0.35 + i * 0.12, 0.35 + i * 0.12 + 0.5); if (lp <= 0) return; ctx.save(); ctx.globalAlpha = clamp(lp * 1.4, 0, 1); ctx.fillStyle = INK; ctx.fillText(l, ax, top + i * lh + (1 - eOutCubic(clamp(lp, 0, 1))) * 12); ctx.restore(); });
     const stars = Math.max(0, Math.min(5, p.stars || 0)), sy = top + lines.length * lh + 6, sp = inv(t, 0.9, 1.3);
     if (stars && sp > 0) { ctx.save(); ctx.globalAlpha = sp; _drawStarRow(stars, ax, sy + 18, 13, al); ctx.restore(); }   // estrellas VECTORIALES (antes el glifo ★ daba tofu)
-    if (p.author) { const aap = inv(t, 1.1, 1.5); if (aap > 0) { ctx.save(); ctx.globalAlpha = clamp(aap * 1.4, 0, 1); ctx.font = fontStr(600, 21, 't'); ctx.textAlign = al; ctx.textBaseline = 'middle'; ctx.fillStyle = DIM; ctx.fillText('— ' + p.author, ax, sy + (stars ? 58 : 30)); ctx.restore(); } }
+    if (p.author) { const aap = inv(t, 1.1, 1.5); if (aap > 0) { ctx.save(); ctx.globalAlpha = clamp(aap * 1.4, 0, 1); ctx.font = fontStr(600, 21, 't'); ctx.textAlign = al; ctx.textBaseline = 'middle'; ctx.fillStyle = DIM; ctx.fillText(clip('— ' + p.author, maxw), ax, sy + (stars ? 58 : 30)); ctx.restore(); } }
   }
   // SPLIT: pantalla partida -> FOTO real una mitad (wipe-open) + panel de color de marca con titular/CTA en la otra.
   function sceneSplit(t, p = {}) {
@@ -3119,11 +3123,11 @@ function _rgba(hex, a) {
     if (BG_STYLE === 'typo') {
       const _word = (tl.brand || '').trim().toUpperCase();
       if (_word) {
-        ctx.save(); ctx.font = fontStr(900, 300, 'd');
+        ctx.save(); ctx._bleedText = true; ctx.font = fontStr(900, 300, 'd');   // wordmark fantasma GIGANTE: sangra fuera de cuadro a proposito (firma del estilo, alpha bajo) -> bounds-check lo ignora
         ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.globalAlpha = TONE === 'light' ? 0.06 : 0.075; ctx.fillStyle = INK;
         const _gd = (t * 8) % 380;
         ctx.fillText(_word, -_gd, H * 0.31); ctx.fillText(_word, -_gd + 64, H * 0.63);
-        ctx.restore();
+        ctx.restore(); ctx._bleedText = false;
       }
     }
     // FIRMA AMBIENTAL: la FORMA firma de la marca persiste como marca de agua viva (a la deriva, en la
