@@ -35,6 +35,9 @@ export function makeVideo(brief = {}) {
   const fonts = typMod ? typMod.fonts : deriveFonts(rubro, style, seed)
   // MOTION: personalidad de movimiento (entrada/asentamiento/stagger/drift) -> env.motion. Sesgo de seriedad via wadj.
   const mots = query('motion', { tone, rubro }), motMod = mots.length ? weightedPick(seedFor(seed, 'motionpick'), mots, wadj) : null
+  // TYPEKIT: efecto de texto cinetico para los titulos -> env.typekit. ~30% sin efecto (plain) para no saturar.
+  const tkPrng = seedFor(seed, 'typekit'), tks = query('typekit', { tone, rubro })
+  const tkMod = (tks.length && tkPrng() < 0.7) ? weightedPick(tkPrng, tks, wadj) : null
 
   // FONDO: query de la biblioteca por tono/rubro -> pick por peso (ajustado por seriedad)
   const bgs = query('backgrounds', { tone, rubro })
@@ -59,8 +62,9 @@ export function makeVideo(brief = {}) {
     subId: sub ? sub.id : null, subSeed: (seed ^ hashStr('sub')) >>> 0,
     atmId: atm ? atm.id : null, atmSeed: (seed ^ hashStr('atm')) >>> 0,
     motionId: motMod ? motMod.id : null,
+    typekitId: tkMod ? tkMod.id : null,
     content: { brand, ...content },
     scenes, duration: start || 8,
-    recipe: { color: colMod ? colMod.id : null, type: typMod ? typMod.id : null, bg: bg ? bg.id : null, sub: sub ? sub.id : null, atm: atm ? atm.id : null, motion: motMod ? motMod.id : null, scenes: scenes.map(s => s.sceneId) },   // la "carta" del video
+    recipe: { color: colMod ? colMod.id : null, type: typMod ? typMod.id : null, bg: bg ? bg.id : null, sub: sub ? sub.id : null, atm: atm ? atm.id : null, motion: motMod ? motMod.id : null, typekit: tkMod ? tkMod.id : null, scenes: scenes.map(s => s.sceneId) },   // la "carta" del video
   }
 }

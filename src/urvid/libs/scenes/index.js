@@ -7,11 +7,15 @@ import { drawText, drawWrapped } from '../../core/text.js'
 import { W, H, TAU, inv, lerp, clamp, eOutCubic, eOutBack, eInOutCubic, spring, smooth, rgba } from '../../core/util.js'
 import { mulberry32 } from '../../core/prng.js'
 import { defaultMotion } from '../../core/motion.js'
+import { defaultTypekit } from '../../core/typekit.js'
 
 // Motion: cada escena usa env.motion (la personalidad elegida por el director) en lugar de eases hardcodeados:
 // M.ease = monotonico (reglas/barras/reveals), M.settle = overshoot (pops/escala). _DM = fallback si se renderiza
 // una escena suelta sin env.motion (ej en un test aislado). El feel del default == el de antes del cableado.
+// Typekit: TK = env.typekit -> TK.draw/TK.drawWrapped dibujan el TITULO con efecto cinetico cuando se les pasa
+// opts.reveal (el progreso de entrada de la escena); sin reveal o reveal>=1 == drawText (estado final identico).
 const _DM = defaultMotion()
+const _DTK = defaultTypekit()
 
 // helper local: divide un texto largo en frases/items por separadores comunes (·, •, |, /, coma, salto).
 // devuelve hasta `max` items limpios; si no hay separador, cae a 1 item con el string entero.
@@ -57,7 +61,7 @@ register({
   id: 'scene.hero.center', lib: 'scene-layouts', category: 'openers/hero', tones: ['dark', 'light'], rubros: ['*'], weight: 1.3,
   tags: ['apertura', 'tipografico'], beat: 'hook',
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, M = env.motion || _DM, cx = W / 2
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     // wordmark con asentamiento spring
     const ap = M.settle(inv(t, 0.15, 1.1), { zeta: 0.5, freq: 2.0 })
     const sc = 0.92 + 0.08 * ap
@@ -76,7 +80,7 @@ register({
   id: 'scene.statement.editorial', lib: 'scene-layouts', category: 'statements/editorial', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
   tags: ['claim', 'editorial'], beat: 'value',
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, M = env.motion || _DM, ax = W * 0.12
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, ax = W * 0.12
     // barra de acento sobre el titular (DECO)
     const mr = M.ease(inv(t, 0.05, 0.5))
     ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(ax, H * 0.34, 66 * mr, 6, 3); ctx.fill()
@@ -91,7 +95,7 @@ register({
   id: 'scene.outro.cta', lib: 'scene-layouts', category: 'closers/outro', tones: ['dark', 'light'], rubros: ['*'], weight: 1.2,
   tags: ['cierre', 'cta'], beat: 'close',
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, M = env.motion || _DM, cx = W / 2, cy = H * 0.42
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2, cy = H * 0.42
     drawText(ctx, content.brand || 'Marca', cx, cy, { size: 54, weight: 800, family: fonts.display, maxW: W * 0.82, color: pal.ink, alpha: inv(t, 0.2, 0.9) })
     const bar = M.ease(inv(t, 0.5, 1.1))
     ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(cx - 60 * bar, cy + 42, 120 * bar, 5, 3); ctx.fill()
@@ -120,7 +124,7 @@ register({
   id: 'scene.hero.stacked', lib: 'scene-layouts', category: 'openers/hero', tones: ['dark', 'light'], rubros: ['*'], weight: 1.1,
   tags: ['apertura', 'editorial', 'masivo'], beat: 'hook',
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, M = env.motion || _DM, ax = W * 0.1
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, ax = W * 0.1
     // marca chica arriba (kicker en acento)
     drawText(ctx, (content.brand || 'Marca').toUpperCase(), ax, H * 0.3, { size: 18, weight: 700, family: fonts.accent || fonts.text, maxW: W * 0.8, color: pal.inkText, align: 'left', alpha: inv(t, 0.05, 0.4) })
     // claim grande, izquierda, en 2-3 lineas, stagger por subida
@@ -138,7 +142,7 @@ register({
   id: 'scene.hero.framed', lib: 'scene-layouts', category: 'openers/hero', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
   tags: ['apertura', 'marco', 'premium'], beat: 'hook',
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, M = env.motion || _DM, cx = W / 2, cy = H * 0.42
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2, cy = H * 0.42
     // marco rectangular que se dibuja (draw-on por perimetro)
     const m = 46, x0 = m, y0 = H * 0.24, x1 = W - m, y1 = H * 0.6
     const dp = M.ease(inv(t, 0.1, 0.9)), perim = 2 * ((x1 - x0) + (y1 - y0)), seg = perim * dp
@@ -161,7 +165,7 @@ register({
   id: 'scene.hook.question', lib: 'scene-layouts', category: 'openers/hook', tones: ['dark', 'light'], rubros: ['*'], weight: 1.2,
   tags: ['hook', 'pregunta', 'gancho'], beat: 'hook',
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, M = env.motion || _DM, cx = W / 2
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     // signo de pregunta gigante de fondo (DECO en acento tenue)
     ctx.save(); ctx.globalAlpha = (pal.tone === 'light' ? 0.07 : 0.12) * inv(t, 0.0, 0.5)
     const qScale = lerp(0.9, 1, M.ease(inv(t, 0, 0.8)))
@@ -169,7 +173,7 @@ register({
     ctx.restore()
     // pregunta real, envuelta, en tinta
     ctx.save(); ctx.globalAlpha = inv(t, 0.25, 0.75)
-    drawWrapped(ctx, content.tagline || content.claim || '¿Y si fuera mas facil?', cx, H * 0.5, { size: 38, weight: 800, family: fonts.display, maxW: W * 0.82, color: pal.ink, maxLines: 3, lh: 1.14, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.5)' : null })
+    TK.drawWrapped(ctx, content.tagline || content.claim || '¿Y si fuera mas facil?', cx, H * 0.5, { reveal: inv(t, 0.25, 1.05), size: 38, weight: 800, family: fonts.display, maxW: W * 0.82, color: pal.ink, maxLines: 3, lh: 1.14, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.5)' : null })
     ctx.restore()
     // cursor/linea de respuesta que parpadea por t (determinista)
     const blink = (Math.sin(t * 6) > 0) ? 1 : 0.25
@@ -182,7 +186,7 @@ register({
   id: 'scene.hook.bignum', lib: 'scene-layouts', category: 'openers/hook', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
   tags: ['hook', 'dato', 'impacto'], beat: 'hook',
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, M = env.motion || _DM, cx = W / 2
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     const num = bigNumber(content.claim || content.tagline, '3x')
     // numero gigante que entra con spring de escala
     const sp = M.settle(inv(t, 0.1, 1.0), { zeta: 0.45, freq: 2.1 }), sc = 0.7 + 0.3 * sp
@@ -200,7 +204,7 @@ register({
   id: 'scene.statement.quoted', lib: 'scene-layouts', category: 'statements/editorial', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
   tags: ['claim', 'cita', 'editorial'], beat: 'value',
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, M = env.motion || _DM, ax = W * 0.14
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, ax = W * 0.14
     // comilla gigante de apertura (DECO)
     ctx.save(); ctx.globalAlpha = (pal.tone === 'light' ? 0.16 : 0.22) * inv(t, 0.0, 0.5)
     drawText(ctx, '“', ax + 4, H * 0.3, { size: 150, weight: 800, family: fonts.display, color: pal.accent, align: 'left' })
@@ -218,7 +222,7 @@ register({
   id: 'scene.statement.boxed', lib: 'scene-layouts', category: 'statements/editorial', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
   tags: ['claim', 'panel', 'destacado'], beat: 'value',
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, M = env.motion || _DM, cx = W / 2
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     // panel surface centrado que crece
     const gp = M.ease(inv(t, 0.1, 0.8)), pw = W * 0.78, ph = H * 0.3, py = H * 0.36
     ctx.save(); ctx.translate(cx, py + ph / 2); ctx.scale(lerp(0.9, 1, gp), lerp(0.9, 1, gp)); ctx.translate(-cx, -(py + ph / 2))
@@ -229,7 +233,7 @@ register({
     ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(cx - pw / 2, py, 6, ph, 3); ctx.fill()
     ctx.restore()
     // claim dentro
-    drawWrapped(ctx, content.claim || content.tagline || 'Tu mensaje, claro', cx, py + ph / 2, { size: 32, weight: 800, family: fonts.display, maxW: pw - 48, color: pal.ink, maxLines: 4, lh: 1.16, alpha: inv(t, 0.4, 0.9) })
+    TK.drawWrapped(ctx, content.claim || content.tagline || 'Tu mensaje, claro', cx, py + ph / 2, { reveal: inv(t, 0.4, 1.05), size: 32, weight: 800, family: fonts.display, maxW: pw - 48, color: pal.ink, maxLines: 4, lh: 1.16, alpha: inv(t, 0.4, 0.9) })
   },
 })
 
@@ -239,7 +243,7 @@ register({
   id: 'scene.checklist.ticks', lib: 'scene-layouts', category: 'lists/checklist', tones: ['dark', 'light'], rubros: ['*'], weight: 1.2,
   tags: ['lista', 'checklist', 'beneficios'], beat: 'value',
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, M = env.motion || _DM, ax = W * 0.13
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, ax = W * 0.13
     const items = splitItems(content.claim || content.tagline || 'Rapido · Simple · Confiable', 4)
     if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), ax, H * 0.26, { size: 16, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, align: 'left', maxW: W * 0.74, alpha: inv(t, 0.05, 0.35) })
     const y0 = H * 0.36, gap = Math.min(78, (H * 0.46) / Math.max(1, items.length))
@@ -265,7 +269,7 @@ register({
   id: 'scene.checklist.numbered', lib: 'scene-layouts', category: 'lists/checklist', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
   tags: ['lista', 'pasos', 'numerada'], beat: 'value',
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, M = env.motion || _DM, ax = W * 0.13
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, ax = W * 0.13
     const items = splitItems(content.claim || content.tagline || 'Conecta · Configura · Lanza', 4)
     drawText(ctx, content.brand ? (content.brand + '').toUpperCase() : 'COMO FUNCIONA', ax, H * 0.25, { size: 16, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, align: 'left', maxW: W * 0.74, alpha: inv(t, 0.05, 0.35) })
     const y0 = H * 0.35, gap = Math.min(82, (H * 0.48) / Math.max(1, items.length))
@@ -291,7 +295,7 @@ register({
   id: 'scene.comparison.vs', lib: 'scene-layouts', category: 'lists/comparison', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
   tags: ['comparacion', 'antes-despues', 'vs'], beat: 'value',
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, M = env.motion || _DM
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK
     const parts = splitItems(content.claim || content.tagline || 'Antes · Despues', 2)
     const left = parts[0] || 'Antes', right = parts[1] || 'Despues'
     const midX = W / 2, colX = W * 0.25, colW = W * 0.3
@@ -325,7 +329,7 @@ register({
   id: 'scene.data.single', lib: 'scene-layouts', category: 'data/single', tones: ['dark', 'light'], rubros: ['*'], weight: 1.1,
   tags: ['dato', 'numero', 'kpi'], beat: 'data',
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, M = env.motion || _DM, cx = W / 2
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     const num = bigNumber(content.claim || content.tagline, '100%')
     // anillo de acento que se dibuja alrededor del numero
     const ringP = M.ease(inv(t, 0.2, 1.1)), R = 118
@@ -350,7 +354,7 @@ register({
   id: 'scene.data.multi', lib: 'scene-layouts', category: 'data/multi', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
   tags: ['datos', 'stats', 'kpis'], beat: 'data',
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, M = env.motion || _DM
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK
     // genera 3 stats a partir del contenido (numero de claim/tagline + items para etiquetas)
     const labels = splitItems(content.claim || content.tagline || 'Clientes · Proyectos · Anos', 3).map(l => shortLabel(l, 3))
     const r = mulberry32((env.seed >>> 0) ^ 0x515)
@@ -377,13 +381,13 @@ register({
   id: 'scene.social.proof', lib: 'scene-layouts', category: 'social/proof', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
   tags: ['prueba-social', 'cita', 'estrellas', 'rating'], beat: 'proof',
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, M = env.motion || _DM, cx = W / 2
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     // 5 estrellas que se llenan de izq a der (DECO)
     const fillP = M.ease(inv(t, 0.2, 1.0)) * 5, sr = 15, gap = 40, x0 = cx - gap * 2
     for (let i = 0; i < 5; i++) { const f = clamp(fillP - i, 0, 1); star(ctx, x0 + i * gap, H * 0.32, sr, f, pal.accent, rgba(pal.ink, 0.14)) }
     // cita/testimonio en tinta
     ctx.save(); ctx.globalAlpha = inv(t, 0.35, 0.85)
-    drawWrapped(ctx, content.claim || content.tagline || 'Cambio como trabajamos', cx, H * 0.5, { size: 30, weight: 700, family: fonts.display, maxW: W * 0.8, color: pal.ink, maxLines: 4, lh: 1.2 })
+    TK.drawWrapped(ctx, content.claim || content.tagline || 'Cambio como trabajamos', cx, H * 0.5, { reveal: inv(t, 0.35, 1.05), size: 30, weight: 700, family: fonts.display, maxW: W * 0.8, color: pal.ink, maxLines: 4, lh: 1.2 })
     ctx.restore()
     // atribucion
     if (content.brand) {
@@ -401,7 +405,7 @@ register({
   id: 'scene.outro.lockup', lib: 'scene-layouts', category: 'closers/outro', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
   tags: ['cierre', 'marca', 'lockup'], beat: 'close',
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, M = env.motion || _DM, cx = W / 2, cy = H * 0.44
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2, cy = H * 0.44
     // monograma: inicial de la marca en un cuadro de acento
     const init = (content.brand || 'M').trim().charAt(0).toUpperCase()
     const sp = M.settle(inv(t, 0.1, 0.9), { zeta: 0.5, freq: 2 }), s = 0.8 + 0.2 * sp
@@ -421,7 +425,7 @@ register({
   id: 'scene.outro.handle', lib: 'scene-layouts', category: 'closers/outro', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
   tags: ['cierre', 'cta', 'pildora'], beat: 'close',
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, M = env.motion || _DM, cx = W / 2
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     drawText(ctx, content.brand || 'Marca', cx, H * 0.4, { size: 46, weight: 800, family: fonts.display, maxW: W * 0.84, color: pal.ink, alpha: inv(t, 0.15, 0.7) })
     // pildora CTA rellena de acento que crece
     const cta = content.cta || 'Sumate hoy'
@@ -458,7 +462,7 @@ register({
   id: 'scene.interstitial.word', lib: 'scene-layouts', category: 'connectors/interstitial', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
   tags: ['transicion', 'bisagra', 'una-palabra'], beat: 'context',
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, M = env.motion || _DM, cx = W / 2, cy = H * 0.42
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2, cy = H * 0.42
     const word = firstStrong(content.tagline || content.claim || content.cta, 'ASI').toUpperCase()
     // dos reglas de acento que cierran como parentesis hacia la palabra (DECO)
     const cl = M.ease(inv(t, 0.05, 0.7)), gap = lerp(W * 0.42, 18, cl)
@@ -479,7 +483,7 @@ register({
   id: 'scene.interstitial.sweep', lib: 'scene-layouts', category: 'connectors/interstitial', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
   tags: ['transicion', 'barrido', 'kicker'], beat: 'context',
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, M = env.motion || _DM, cy = H * 0.44
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cy = H * 0.44
     const word = firstStrong(content.tagline || content.claim, 'LISTO').toUpperCase()
     // banda de acento que barre de izq a der detras de la palabra (DECO)
     const sw = M.ease(inv(t, 0.1, 0.85)), bh = 64
@@ -499,7 +503,7 @@ register({
   id: 'scene.interstitial.count', lib: 'scene-layouts', category: 'connectors/interstitial', tones: ['dark', 'light'], rubros: ['*'], weight: 0.85,
   tags: ['transicion', 'capitulo', 'indice'], beat: 'context',
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, M = env.motion || _DM, cx = W / 2
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     // indice de capitulo gigante de fondo (DECO en acento tenue) + palabra de bisagra
     const r = mulberry32((env.seed >>> 0) ^ 0x21a)
     const idx = '0' + (1 + ((r() * 3) | 0))   // 01..03, estable por seed
@@ -527,7 +531,7 @@ register({
   id: 'scene.spec.feature', lib: 'scene-layouts', category: 'spec/slots', tones: ['dark', 'light'], rubros: ['*'], weight: 1.1,
   tags: ['ficha', 'specs', 'atributos', 'inmueble', 'producto'], beat: 'data',
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, M = env.motion || _DM
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK
     const items = splitItems(content.claim || content.tagline || '3 ambientes · 80 m2 · Cochera · Apto credito', 4)
     // titulo / marca arriba
     drawText(ctx, content.brand ? (content.brand + '').toUpperCase() : 'FICHA', W * 0.12, H * 0.22, { size: 16, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, align: 'left', maxW: W * 0.76, alpha: inv(t, 0.0, 0.3) })
@@ -562,7 +566,7 @@ register({
   id: 'scene.spec.detail', lib: 'scene-layouts', category: 'spec/slots', tones: ['dark', 'light'], rubros: ['*'], weight: 0.95,
   tags: ['ficha', 'destacado', 'precio', 'spec-grid'], beat: 'data',
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, M = env.motion || _DM
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK
     // grilla 2x2 de chips de spec; cada chip = panel surface con valor en tinta
     const items = splitItems(content.claim || content.tagline || '80 m2 · 3 amb · 2 banos · Cochera', 4)
     while (items.length < Math.min(4, Math.max(2, items.length))) items.push('')
@@ -599,7 +603,7 @@ register({
   id: 'scene.hook.shockstat', lib: 'scene-layouts', category: 'openers/hook', tones: ['dark', 'light'], rubros: ['*'], weight: 1.1,
   tags: ['hook', 'estadistica', 'shock', 'dato'], beat: 'hook',
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, M = env.motion || _DM, cx = W / 2
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     const num = bigNumber(content.claim || content.tagline, '73%')
     // numero gigante que "cuenta" hacia su tamano (escala desde abajo) + reveal por mascara que sube
     const grow = eOutExpoLocal(inv(t, 0.05, 0.85))
@@ -618,7 +622,7 @@ register({
   id: 'scene.hook.binary', lib: 'scene-layouts', category: 'openers/hook', tones: ['dark', 'light'], rubros: ['*'], weight: 0.95,
   tags: ['hook', 'pregunta', 'binaria', 'eleccion'], beat: 'hook',
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, M = env.motion || _DM, cx = W / 2
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     // pregunta arriba, en tinta
     ctx.save(); ctx.globalAlpha = inv(t, 0.1, 0.5)
     drawWrapped(ctx, content.tagline || content.claim || '¿Seguis perdiendo tiempo?', cx, H * 0.32, { size: 32, weight: 800, family: fonts.display, maxW: W * 0.82, color: pal.ink, maxLines: 3, lh: 1.14, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.45)' : null })
@@ -647,7 +651,7 @@ register({
   id: 'scene.statement.panel', lib: 'scene-layouts', category: 'statements/editorial', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
   tags: ['claim', 'panel', 'full-bleed', 'editorial'], beat: 'value',
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, M = env.motion || _DM, cx = W / 2
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     // panel de acento full-width que baja desde arriba; claim en color onAccent encima
     const drop = M.ease(inv(t, 0.05, 0.8)), ph = H * 0.34, py = H * 0.33
     ctx.save(); ctx.globalAlpha = inv(t, 0.0, 0.4)
@@ -658,7 +662,7 @@ register({
     // claim dentro del panel en onAccent (alto contraste garantizado por la paleta)
     if (drop > 0.35) {
       ctx.save(); ctx.globalAlpha = inv(t, 0.4, 0.9)
-      drawWrapped(ctx, content.claim || content.tagline || 'Una idea que no se discute', cx, py + ph / 2, { size: 34, weight: 800, family: fonts.display, maxW: W * 0.82, color: pal.onAccent, maxLines: 4, lh: 1.16 })
+      TK.drawWrapped(ctx, content.claim || content.tagline || 'Una idea que no se discute', cx, py + ph / 2, { reveal: inv(t, 0.45, 1.05), size: 34, weight: 800, family: fonts.display, maxW: W * 0.82, color: pal.onAccent, maxLines: 4, lh: 1.16 })
       ctx.restore()
     }
   },
@@ -668,7 +672,7 @@ register({
   id: 'scene.statement.mega', lib: 'scene-layouts', category: 'statements/editorial', tones: ['dark', 'light'], rubros: ['*'], weight: 1.05,
   tags: ['claim', 'mega-tipografia', 'masivo', 'impacto'], beat: 'value',
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, M = env.motion || _DM, ax = W * 0.09
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, ax = W * 0.09
     // mega-tipografia: claim a maxima escala posible, izquierda, reveal por linea (stagger).
     const src = content.claim || content.tagline || content.brand || 'Hacelo simple'
     // calculamos wrap a un tamano grande y dibujamos linea por linea con stagger
@@ -695,7 +699,7 @@ register({
   id: 'scene.outro.bigtype', lib: 'scene-layouts', category: 'closers/outro', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
   tags: ['cierre', 'mega-tipografia', 'marca'], beat: 'close',
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, M = env.motion || _DM, cx = W / 2
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     // marca a maxima escala (1-2 lineas), centrada, con asentamiento spring + regla acento
     const sp = M.settle(inv(t, 0.1, 1.0), { zeta: 0.5, freq: 2.0 }), sc = 0.86 + 0.14 * sp
     ctx.save(); ctx.globalAlpha = inv(t, 0.05, 0.45); ctx.translate(cx, H * 0.42); ctx.scale(sc, sc); ctx.translate(-cx, -H * 0.42)
@@ -714,7 +718,7 @@ register({
   id: 'scene.outro.diagonal', lib: 'scene-layouts', category: 'closers/outro', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
   tags: ['cierre', 'diagonal', 'dinamico', 'cta'], beat: 'close',
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, M = env.motion || _DM, cx = W / 2, cy = H * 0.42
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2, cy = H * 0.42
     // banda diagonal de acento que barre la pantalla (DECO) — energia de cierre
     const sw = M.ease(inv(t, 0.05, 0.8))
     ctx.save(); ctx.globalAlpha = (pal.tone === 'light' ? 0.16 : 0.22) * inv(t, 0.0, 0.4)
@@ -741,7 +745,7 @@ register({
   id: 'scene.comparison.split', lib: 'scene-layouts', category: 'lists/comparison', tones: ['dark', 'light'], rubros: ['*'], weight: 0.95,
   tags: ['comparacion', 'split', 'mitad-mitad', 'antes-despues'], beat: 'value',
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, M = env.motion || _DM
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK
     const parts = splitItems(content.claim || content.tagline || 'Lento y caro · Rapido y simple', 2)
     const left = parts[0] || 'Antes', right = parts[1] || 'Ahora'
     // mitad superior (problema, dim) baja desde arriba; mitad inferior (solucion, acento) sube
@@ -777,7 +781,7 @@ register({
   id: 'scene.data.bar', lib: 'scene-layouts', category: 'data/single', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
   tags: ['dato', 'barra', 'progreso', 'kpi'], beat: 'data',
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, M = env.motion || _DM, cx = W / 2
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     const num = bigNumber(content.claim || content.tagline, '80%')
     // numero grande arriba
     const sp = M.settle(inv(t, 0.15, 0.95), { zeta: 0.5, freq: 2 })
@@ -844,7 +848,7 @@ register({
   id: 'scene.hero.sidebar', lib: 'scene-layouts', category: 'openers/hero', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
   tags: ['apertura', 'editorial', 'asimetrico', 'rotulo-vertical'], beat: 'hook',
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, M = env.motion || _DM, mx = W * 0.13
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, mx = W * 0.13
     // regla vertical de acento en el margen + rotulo de marca girado
     const vu = M.ease(inv(t, 0.05, 0.7))
     ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(mx - 18, H * 0.28, 5, (H * 0.4) * vu, 2.5); ctx.fill()
@@ -865,7 +869,7 @@ register({
   id: 'scene.hero.punch', lib: 'scene-layouts', category: 'openers/hero', tones: ['dark', 'light'], rubros: ['*'], weight: 1.05,
   tags: ['apertura', 'highlight', 'masivo', 'editorial'], beat: 'hook',
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, M = env.motion || _DM, mx = W * 0.1
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, mx = W * 0.1
     drawText(ctx, (content.brand || 'Marca').toUpperCase(), mx, H * 0.26, { size: 17, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, align: 'left', maxW: W * 0.8, alpha: inv(t, 0.05, 0.4) })
     const src = content.claim || content.tagline || content.brand || 'Mas claro imposible'
     const L = wrapLinesLocal(ctx, src, 56, W - 2 * mx, 30, 800, fonts.display, 3)
@@ -896,7 +900,7 @@ register({
   id: 'scene.hook.strike', lib: 'scene-layouts', category: 'openers/hook', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
   tags: ['hook', 'tachado', 'contraste', 'gancho'], beat: 'hook',
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, M = env.motion || _DM, mx = W * 0.12
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, mx = W * 0.12
     const parts = splitItems(content.claim || content.tagline || 'No mas planillas · Solo resultados', 2)
     const bad = parts[0] || 'No mas vueltas', good = parts[1] || 'Solo resultados'
     // idea negada arriba, en dim, con tachado de acento que se traza
@@ -925,7 +929,7 @@ register({
   id: 'scene.hook.marginnum', lib: 'scene-layouts', category: 'openers/hook', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
   tags: ['hook', 'dato', 'recorte', 'asimetrico'], beat: 'hook',
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, M = env.motion || _DM, mx = W * 0.1
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, mx = W * 0.1
     const num = bigNumber(content.claim || content.tagline, '9/10')
     // numero gigante anclado al margen derecho, dominante arriba (recorte editorial)
     const grow = eOutExpoLocal(inv(t, 0.05, 0.85))
@@ -948,7 +952,7 @@ register({
   id: 'scene.statement.index', lib: 'scene-layouts', category: 'statements/editorial', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
   tags: ['claim', 'editorial', 'indice', 'aire'], beat: 'value',
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, M = env.motion || _DM, mx = W * 0.12
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, mx = W * 0.12
     // indice de seccion estable por seed (00..04) en acento, arriba-izquierda
     const r = mulberry32((env.seed >>> 0) ^ 0x9e1)
     const idx = '0' + ((r() * 5) | 0)
@@ -976,7 +980,7 @@ register({
   id: 'scene.checklist.grid', lib: 'scene-layouts', category: 'lists/checklist', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
   tags: ['lista', 'grilla', 'beneficios', 'dos-columnas'], beat: 'value',
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, M = env.motion || _DM, mx = W * 0.1
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, mx = W * 0.1
     const items = splitItems(content.claim || content.tagline || 'Rapido · Seguro · Simple · Sin limites', 4)
     if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), mx, H * 0.22, { size: 16, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, align: 'left', maxW: W * 0.78, alpha: inv(t, 0.05, 0.35) })
     const cols = 2, colW = (W - 2 * mx) / cols, rowH = 96, y0 = H * 0.34
@@ -1006,7 +1010,7 @@ register({
   id: 'scene.comparison.scale', lib: 'scene-layouts', category: 'lists/comparison', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
   tags: ['comparacion', 'balanza', 'peso', 'editorial'], beat: 'value',
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, M = env.motion || _DM, cx = W / 2
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     const parts = splitItems(content.claim || content.tagline || 'Lo de siempre · Lo nuevo', 2)
     const left = parts[0] || 'Antes', right = parts[1] || 'Ahora'
     const pivX = cx, pivY = H * 0.34
@@ -1052,7 +1056,7 @@ register({
   id: 'scene.data.dial', lib: 'scene-layouts', category: 'data/single', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
   tags: ['dato', 'gauge', 'semicirculo', 'kpi'], beat: 'data',
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, M = env.motion || _DM, cx = W / 2, cy = H * 0.5
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2, cy = H * 0.5
     const num = bigNumber(content.claim || content.tagline, '85%')
     const pct = (() => { const m = num.match(/(\d[\d.,]*)/); let v = m ? parseFloat(m[1].replace(/,/g, '')) : 75; if (num.indexOf('%') < 0) v = clamp(v, 0, 100); return clamp(v / 100, 0.06, 1) })()
     const R = 130, lw = 16
@@ -1087,7 +1091,7 @@ register({
   id: 'scene.data.bars', lib: 'scene-layouts', category: 'data/multi', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
   tags: ['datos', 'barras', 'grafico', 'comparativa'], beat: 'data',
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, M = env.motion || _DM
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK
     const labels = splitItems(content.claim || content.tagline || 'Lun · Mar · Mie', 3).map(l => shortLabel(l, 2))
     const n = Math.min(3, Math.max(2, labels.length || 3))
     const r = mulberry32((env.seed >>> 0) ^ 0x6a7)
@@ -1121,7 +1125,7 @@ register({
   id: 'scene.social.logos', lib: 'scene-layouts', category: 'social/proof', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
   tags: ['prueba-social', 'logos', 'confianza', 'cascada'], beat: 'proof',
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, M = env.motion || _DM, cx = W / 2
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     // titular de confianza
     drawWrapped(ctx, content.claim || content.tagline || 'Equipos que ya confian', cx, H * 0.3, { size: 30, weight: 800, family: fonts.display, maxW: W * 0.82, color: pal.ink, maxLines: 2, lh: 1.14, alpha: inv(t, 0.1, 0.6) })
     // N chips con iniciales estables por seed (placeholders de logo). El ancho del chip
@@ -1152,7 +1156,7 @@ register({
   id: 'scene.social.rating', lib: 'scene-layouts', category: 'social/proof', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
   tags: ['prueba-social', 'rating', 'nota', 'asimetrico'], beat: 'proof',
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, M = env.motion || _DM, mx = W * 0.12
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, mx = W * 0.12
     // nota grande (extrae numero decimal del claim, o 4.9)
     const note = (() => { const m = String(content.claim || content.tagline || '').match(/(\d(?:[.,]\d)?)/); return m ? m[1].replace(',', '.') : '4.9' })()
     const sp = M.settle(inv(t, 0.15, 1.0), { zeta: 0.5, freq: 2 })
@@ -1177,7 +1181,7 @@ register({
   id: 'scene.outro.split', lib: 'scene-layouts', category: 'closers/outro', tones: ['dark', 'light'], rubros: ['*'], weight: 0.95,
   tags: ['cierre', 'split', 'asimetrico', 'cta'], beat: 'close',
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, M = env.motion || _DM
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK
     // panel de acento que entra desde la izquierda (ocupa ~38% del ancho)
     const pw = W * 0.38, slide = M.ease(inv(t, 0.05, 0.75))
     ctx.save(); ctx.globalAlpha = inv(t, 0.0, 0.4); ctx.translate((1 - slide) * -pw, 0)
@@ -1208,7 +1212,7 @@ register({
   id: 'scene.interstitial.rule', lib: 'scene-layouts', category: 'connectors/interstitial', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
   tags: ['transicion', 'capitulo', 'regla', 'editorial'], beat: 'context',
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, M = env.motion || _DM, mx = W * 0.1
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, mx = W * 0.1
     const r = mulberry32((env.seed >>> 0) ^ 0x3c4)
     const idx = '0' + (1 + ((r() * 4) | 0))
     const word = firstStrong(content.tagline || content.claim || content.brand, 'AHORA').toUpperCase()
@@ -1231,7 +1235,7 @@ register({
   id: 'scene.interstitial.arrows', lib: 'scene-layouts', category: 'connectors/interstitial', tones: ['dark', 'light'], rubros: ['*'], weight: 0.85,
   tags: ['transicion', 'flechas', 'avance', 'bisagra'], beat: 'context',
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, M = env.motion || _DM, cx = W / 2, cy = H * 0.42
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2, cy = H * 0.42
     const word = firstStrong(content.tagline || content.claim || content.cta, 'SEGUIMOS').toUpperCase()
     // palabra centrada que entra con spring
     const sp = M.settle(inv(t, 0.15, 1.0), { zeta: 0.5, freq: 2.1 }), sc = 0.82 + 0.18 * sp

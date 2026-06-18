@@ -3,12 +3,14 @@
 import { get } from './registry.js'
 import { W, H, inv, clamp } from './util.js'
 import { resolveMotion } from './motion.js'
+import { resolveTypekit } from './typekit.js'
 
 const XF = 0.4   // cross-fade entre escenas
 
 export function drawFrame(ctx, t, video) {
   ctx.clearRect(0, 0, W, H)
   const motion = resolveMotion(video)   // personalidad de movimiento del video (o default)
+  const typekit = resolveTypekit(video) // efecto de texto cinetico del video (o plain)
   // CAPAS DE FONDO (viven todo el video): fondo -> textura/substrate -> atmosfera/luz -> (contenido encima)
   const base = { pal: video.palette, content: video.content, energy: 1 }
   if (video.bgId) { const m = get(video.bgId); if (m) m.render(ctx, t, { ...base, seed: video.bgSeed }) }
@@ -30,7 +32,7 @@ export function drawFrame(ctx, t, video) {
     const z = 1 + (en.scale || 0) * k + (amb.scale || 0)
     const ox = (en.dx || 0) * k + (amb.x || 0), oy = (en.dy || 0) * k + (amb.y || 0), rot = (en.rotate || 0) * k + (amb.rot || 0)
     ctx.translate(W / 2 + ox, H / 2 + oy); ctx.rotate(rot); ctx.scale(z, z); ctx.translate(-W / 2, -H / 2)
-    mod.render(ctx, t - s, { pal: video.palette, content: video.content, fonts: video.fonts, seed: sc.seed, energy: 1, sceneDur: sc.dur, motion })
+    mod.render(ctx, t - s, { pal: video.palette, content: video.content, fonts: video.fonts, seed: sc.seed, energy: 1, sceneDur: sc.dur, motion, typekit })
     ctx.restore()
   }
 }

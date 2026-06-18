@@ -9,5 +9,6 @@ import './scenes/index.js'        // scene-layouts: contenido por beat
 import './markkit/index.js'       // graficos/formas/iconos/decoradores
 import './datakit/index.js'       // data-viz: numeros/barras/anillos
 import './motion/index.js'        // personalidades de movimiento (el director elige una -> env.motion)
-// PENDIENTES (proximas rondas, ver docs/URVID-1.0-BLUEPRINT.md): typekit, photokit, narrative, composition,
+import './typekit/index.js'       // efectos de texto cinetico (el director elige uno -> env.typekit)
+// PENDIENTES (proximas rondas, ver docs/URVID-1.0-BLUEPRINT.md): photokit, narrative, composition,
 //   transitions, audio, post.*, perception, strategy, brief, director, critique, audience.
