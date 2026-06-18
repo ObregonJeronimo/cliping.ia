@@ -1152,3 +1152,599 @@ register({
     scrim(ctx, pal, { centerClear: 0.3 })
   },
 })
+
+// ============================================================================
+// Ola 3 — MAS variedad en cada categoria existente + seasonal/event opt-in.
+// Todo reusa rampBg/scrim/roundRect/makeNoise (en scope). Puro + determinista.
+// ============================================================================
+
+// ---- gradient-fields ----
+
+register({
+  id: 'bg.gradient.duotonesweep', lib: 'backgrounds', category: 'gradient-fields', tones: ['dark', 'light'], rubros: ['*', 'moda', 'arte', 'tech'], weight: 1.1,
+  tags: ['calmo', 'duotono', 'editorial', 'sweep'],
+  render(ctx, t, env) {
+    const { pal } = env, r = seedFor(env.seed, 'duosweep')
+    // base duotono en diagonal: acento -> acento2 mezclados con los fondos del tono
+    const ang = range(r, -0.5, 0.5)
+    const dx = Math.cos(ang), dy = Math.sin(ang)
+    const g = ctx.createLinearGradient(W / 2 - dx * H, H / 2 - dy * H, W / 2 + dx * H, H / 2 + dy * H)
+    const a0 = pal.tone === 'light' ? lighten(pal.accent, 0.62) : darken(pal.accent, 0.42)
+    const a1 = pal.tone === 'light' ? lighten(pal.accent2, 0.58) : darken(pal.accent2, 0.38)
+    g.addColorStop(0, a0); g.addColorStop(0.5, pal.tone === 'light' ? pal.bg0 : pal.bg1); g.addColorStop(1, a1)
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H)
+    // banda de luz suave que barre lento en diagonal (sheen premium)
+    const sweep = ((t * CLK * 0.16) % 1.4) - 0.2     // -0.2 .. 1.2
+    const cx = lerp(-W * 0.3, W * 1.3, sweep), cy = H * 0.5
+    ctx.save(); ctx.globalCompositeOperation = pal.tone === 'light' ? 'soft-light' : 'screen'
+    const band = ctx.createLinearGradient(cx - 140, cy - 140, cx + 140, cy + 140)
+    band.addColorStop(0, rgba('#ffffff', 0)); band.addColorStop(0.5, rgba('#ffffff', pal.tone === 'light' ? 0.5 : 0.12)); band.addColorStop(1, rgba('#ffffff', 0))
+    ctx.fillStyle = band; ctx.fillRect(0, 0, W, H)
+    ctx.restore()
+    scrim(ctx, pal, { centerClear: 0.34, strength: pal.tone === 'light' ? 0.14 : 0.34 })
+  },
+})
+
+register({
+  id: 'bg.gradient.radialbloom', lib: 'backgrounds', category: 'gradient-fields', tones: ['dark', 'light'], rubros: ['*', 'salud', 'educacion', 'eventos'], weight: 1,
+  tags: ['calmo', 'radial', 'bloom', 'concentrico', 'sereno'],
+  render(ctx, t, env) {
+    const { pal } = env, r = seedFor(env.seed, 'rbloom')
+    rampBg(ctx, pal)
+    // centro de floracion sembrado (arriba del centro -> deja respirar el texto abajo)
+    const cx = W * (0.4 + r() * 0.2), cy = H * (0.3 + r() * 0.12)
+    // anillos concentricos de acento que respiran (escala lenta), opacidad decreciente
+    const rings = 6
+    ctx.save(); ctx.globalCompositeOperation = pal.tone === 'light' ? 'multiply' : 'lighter'
+    for (let i = rings; i >= 0; i--) {
+      const breathe = 0.5 + 0.5 * Math.sin(t * CLK * 0.4 + i * 0.6)
+      const rad = H * (0.12 + i * 0.11) * (0.94 + breathe * 0.08)
+      const col = i % 2 ? pal.accent2 : pal.accent
+      const gr = ctx.createRadialGradient(cx, cy, rad * 0.7, cx, cy, rad)
+      const a = (pal.tone === 'light' ? 0.09 : 0.14) * (1 - i / (rings + 1))
+      gr.addColorStop(0, rgba(col, 0)); gr.addColorStop(0.85, rgba(col, a)); gr.addColorStop(1, rgba(col, 0))
+      ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(cx, cy, rad, 0, TAU); ctx.fill()
+    }
+    ctx.restore()
+    // nucleo calido
+    const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, H * 0.16)
+    core.addColorStop(0, rgba(pal.accent, pal.tone === 'light' ? 0.16 : 0.24)); core.addColorStop(1, rgba(pal.accent, 0))
+    ctx.fillStyle = core; ctx.fillRect(0, 0, W, H)
+    scrim(ctx, pal, { centerClear: 0.36, strength: pal.tone === 'light' ? 0.12 : 0.3 })
+  },
+})
+
+// ---- geometric-graphic ----
+
+register({
+  id: 'bg.geometric.isogrid', lib: 'backgrounds', category: 'geometric-graphic', tones: ['dark', 'light'], rubros: ['*', 'tech', 'inmobiliaria', 'finanzas', 'gaming'], weight: 0.85,
+  tags: ['tecnico', 'isometrico', 'cubos', '3d-falso'],
+  render(ctx, t, env) {
+    const { pal } = env, r = seedFor(env.seed, 'iso')
+    rampBg(ctx, pal)
+    // grilla isometrica de rombos; algunas celdas se "encienden" (cubo de acento) con ritmo sembrado
+    const s = 34
+    const ux = s, uy = s * 0.5                 // vector iso
+    const lineCol = pal.tone === 'light' ? 'rgba(0,0,0,0.06)' : rgba(pal.accent, 0.08)
+    ctx.strokeStyle = lineCol; ctx.lineWidth = 1
+    // dibujar rombos cubriendo el canvas con offset
+    const cols = Math.ceil(W / ux) + 2, rows = Math.ceil(H / uy) + 4
+    for (let j = -2; j < rows; j++) for (let i = -1; i < cols; i++) {
+      const cx = i * ux + (j % 2 ? ux / 2 : 0)
+      const cy = j * uy
+      ctx.beginPath()
+      ctx.moveTo(cx, cy - uy); ctx.lineTo(cx + ux / 2, cy); ctx.lineTo(cx, cy + uy); ctx.lineTo(cx - ux / 2, cy); ctx.closePath()
+      ctx.stroke()
+      // encender celda: hash determinista por (i,j) + fase temporal
+      const lit = (Math.sin((i * 12.9 + j * 7.3) + t * CLK * 0.6) > 0.86)
+      if (lit) {
+        ctx.fillStyle = rgba((i + j) % 2 ? pal.accent2 : pal.accent, pal.tone === 'light' ? 0.16 : 0.22)
+        ctx.fill()
+      }
+    }
+    scrim(ctx, pal, { centerClear: 0.3, strength: pal.tone === 'light' ? 0.18 : 0.34 })
+  },
+})
+
+register({
+  id: 'bg.geometric.bauhaus', lib: 'backgrounds', category: 'geometric-graphic', tones: ['dark', 'light'], rubros: ['*', 'arte', 'educacion', 'moda', 'eventos'], weight: 0.8,
+  tags: ['swiss', 'bauhaus', 'formas', 'primario', 'editorial'],
+  render(ctx, t, env) {
+    const { pal } = env, r = seedFor(env.seed, 'bauhaus')
+    ctx.fillStyle = pal.tone === 'light' ? pal.bg0 : pal.bg1; ctx.fillRect(0, 0, W, H)
+    // composicion de formas primarias (circulo / semicirculo / triangulo / barra) ancladas a bordes,
+    // grandes y planas, con un respiro central para el texto. Rotacion idle muy leve.
+    const cols = [pal.accent, pal.accent2, pal.tone === 'light' ? darken(pal.accent, 0.4) : lighten(pal.accent2, 0.3)]
+    const shapes = ['circle', 'half', 'tri', 'bar']
+    const anchors = [[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [1.0, 1.0], [0.5, 0.0], [0.5, 1.0]]
+    const N = 4
+    const used = shuffledLocal(r, anchors).slice(0, N)
+    const breathe = Math.sin(t * CLK * 0.3) * 0.04
+    for (let i = 0; i < N; i++) {
+      const [ax, ay] = used[i]
+      const col = cols[(r() * cols.length) | 0]
+      const sh = shapes[(r() * shapes.length) | 0]
+      const size = H * (0.18 + r() * 0.12)
+      const cx = ax * W + (ax === 0 ? size * 0.2 : ax === 1 ? -size * 0.2 : 0)
+      const cy = ay * H + (ay === 0 ? size * 0.2 : ay === 1 ? -size * 0.2 : 0)
+      const a = pal.tone === 'light' ? 0.9 : 0.82
+      ctx.save(); ctx.translate(cx, cy); ctx.rotate(range(r, 0, TAU) + breathe)
+      ctx.fillStyle = rgba(col, a)
+      ctx.beginPath()
+      if (sh === 'circle') { ctx.arc(0, 0, size * 0.5, 0, TAU) }
+      else if (sh === 'half') { ctx.arc(0, 0, size * 0.5, 0, Math.PI); ctx.closePath() }
+      else if (sh === 'tri') { ctx.moveTo(0, -size * 0.55); ctx.lineTo(size * 0.5, size * 0.4); ctx.lineTo(-size * 0.5, size * 0.4); ctx.closePath() }
+      else { ctx.rect(-size * 0.6, -size * 0.12, size * 1.2, size * 0.24) }
+      ctx.fill(); ctx.restore()
+    }
+    scrim(ctx, pal, { centerClear: 0.32, strength: pal.tone === 'light' ? 0.16 : 0.3 })
+  },
+})
+
+// shuffled local (no toca prng.js): Fisher-Yates con un prng en scope
+function shuffledLocal(r, arr) { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = (r() * (i + 1)) | 0;[a[i], a[j]] = [a[j], a[i]] } return a }
+
+// ---- atmospheric-organic ----
+
+register({
+  id: 'bg.atmospheric.starfield', lib: 'backgrounds', category: 'atmospheric-organic', tones: ['dark'], rubros: ['*', 'tech', 'gaming', 'eventos', 'arte'], weight: 0.85,
+  tags: ['atmosfera', 'estrellas', 'profundidad', 'noche', 'particulas'],
+  render(ctx, t, env) {
+    const { pal } = env, r = seedFor(env.seed, 'stars')
+    // cielo nocturno: rampa profunda hacia el acento oscuro
+    const g = ctx.createLinearGradient(0, 0, 0, H)
+    g.addColorStop(0, darken(pal.accent, 0.62)); g.addColorStop(0.5, pal.bg1); g.addColorStop(1, darken(pal.bg1, 0.25))
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H)
+    // nebulosa tenue de acento
+    const nx = W * (0.3 + r() * 0.4), ny = H * (0.25 + r() * 0.3)
+    const neb = ctx.createRadialGradient(nx, ny, 0, nx, ny, H * 0.5)
+    neb.addColorStop(0, rgba(pal.accent, 0.16)); neb.addColorStop(0.6, rgba(pal.accent2, 0.06)); neb.addColorStop(1, rgba(pal.accent2, 0))
+    ctx.fillStyle = neb; ctx.fillRect(0, 0, W, H)
+    // 3 capas de estrellas: las cercanas mas grandes/brillan, drift de parallax lento por t
+    const layers = [{ n: 90, sz: 0.7, par: 4, tw: 0.0 }, { n: 50, sz: 1.2, par: 9, tw: 1.0 }, { n: 22, sz: 1.9, par: 16, tw: 1.0 }]
+    for (let li = 0; li < layers.length; li++) {
+      const L = layers[li]
+      for (let i = 0; i < L.n; i++) {
+        const bx = r() * W, by = r() * H, ph = r() * TAU
+        const x = (bx + Math.sin(t * CLK * 0.12 + ph) * L.par + W) % W
+        const y = by
+        const tw = L.tw ? 0.55 + 0.45 * Math.sin(t * CLK * 1.1 + ph) : 0.85
+        ctx.fillStyle = rgba(i % 7 === 0 ? pal.accent : '#ffffff', (0.5 + li * 0.18) * tw)
+        ctx.beginPath(); ctx.arc(x, y, L.sz * (0.7 + tw * 0.5), 0, TAU); ctx.fill()
+      }
+    }
+  },
+})
+
+register({
+  id: 'bg.atmospheric.smoke', lib: 'backgrounds', category: 'atmospheric-organic', tones: ['dark', 'light'], rubros: ['*', 'moda', 'arte', 'gastronomia'], weight: 0.75,
+  tags: ['atmosfera', 'humo', 'niebla', 'volumetrico', 'organico'],
+  render(ctx, t, env) {
+    const { pal } = env, r = seedFor(env.seed, 'smoke')
+    rampBg(ctx, pal)
+    const noise = makeNoise(env.seed ^ 0x51a0, 3)
+    // wisps de humo: blobs radiales suaves a lo largo de columnas, ondulando con ruido + t
+    ctx.save(); ctx.globalCompositeOperation = pal.tone === 'light' ? 'multiply' : 'screen'
+    const wisps = 7
+    for (let i = 0; i < wisps; i++) {
+      const baseX = (i + 0.5) / wisps * W + range(r, -30, 30)
+      const ph = r() * TAU
+      const col = i % 3 === 0 ? pal.accent2 : pal.accent
+      const puffs = 8
+      for (let j = 0; j < puffs; j++) {
+        const fy = j / (puffs - 1)
+        const y = H * (1.05 - fy * 1.1)          // sube de abajo hacia arriba
+        const sway = (noise(baseX, y * 0.5) - 0.5) * 120 + Math.sin(t * CLK * 0.3 + ph + fy * 3) * 40
+        const x = baseX + sway
+        const rad = lerp(50, 150, fy)
+        const a = (pal.tone === 'light' ? 0.14 : 0.16) * (1 - fy * 0.45)
+        const gr = ctx.createRadialGradient(x, y, 0, x, y, rad)
+        gr.addColorStop(0, rgba(col, a)); gr.addColorStop(0.6, rgba(col, a * 0.5)); gr.addColorStop(1, rgba(col, 0))
+        ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(x, y, rad, 0, TAU); ctx.fill()
+      }
+    }
+    ctx.restore()
+    scrim(ctx, pal, { centerClear: 0.32, strength: pal.tone === 'light' ? 0.14 : 0.28 })
+  },
+})
+
+// ---- retro-print ----
+
+register({
+  id: 'bg.retroprint.risoribbon', lib: 'backgrounds', category: 'retro-print', tones: ['dark', 'light'], rubros: ['*', 'arte', 'eventos', 'gastronomia', 'moda'], weight: 0.8,
+  tags: ['retro', 'riso', 'duotono', 'ondas', 'misregister'],
+  render(ctx, t, env) {
+    const { pal } = env, r = seedFor(env.seed, 'riso')
+    // papel plano
+    ctx.fillStyle = pal.tone === 'light' ? pal.bg0 : pal.bg1; ctx.fillRect(0, 0, W, H)
+    // bandas onduladas tipo cinta riso en dos tintas, con leve "misregister" (offset entre planchas)
+    function ribbons(col, offX, offY, phBias, alpha) {
+      ctx.save(); ctx.globalCompositeOperation = pal.tone === 'light' ? 'multiply' : 'screen'
+      ctx.fillStyle = rgba(col, alpha)
+      const bands = 5, bh = H / bands
+      for (let b = 0; b < bands; b++) {
+        const ph = r() * TAU + phBias
+        const baseY = b * bh + bh * 0.5 + offY
+        ctx.beginPath(); ctx.moveTo(-10, baseY)
+        for (let x = -10; x <= W + 10; x += 10) {
+          const y = baseY + Math.sin(x * 0.012 + ph + t * CLK * 0.25) * (bh * 0.32) + Math.sin(x * 0.03 + ph) * 8 + offX * 0
+          ctx.lineTo(x + offX, y)
+        }
+        for (let x = W + 10; x >= -10; x -= 10) {
+          const y = baseY + bh * 0.42 + Math.sin(x * 0.012 + ph + t * CLK * 0.25) * (bh * 0.32)
+          ctx.lineTo(x + offX, y)
+        }
+        ctx.closePath(); ctx.fill()
+      }
+      ctx.restore()
+    }
+    ribbons(pal.accent, 0, 0, 0, pal.tone === 'light' ? 0.4 : 0.42)
+    ribbons(pal.accent2, 4, 6, 1.3, pal.tone === 'light' ? 0.3 : 0.32)   // plancha desfasada (misregister)
+    // textura de grano de print
+    ctx.fillStyle = rgba(pal.tone === 'light' ? '#000' : '#fff', 0.025)
+    for (let i = 0; i < 700; i++) { const x = r() * W, y = r() * H; ctx.fillRect(x, y, 1, 1) }
+  },
+})
+
+// ---- tech-hud ----
+
+register({
+  id: 'bg.techhud.radar', lib: 'backgrounds', category: 'tech-hud', tones: ['dark'], rubros: ['*', 'tech', 'finanzas', 'gaming', 'salud'], weight: 0.8,
+  tags: ['tech', 'radar', 'hud', 'concentrico', 'barrido'],
+  render(ctx, t, env) {
+    const { pal } = env, r = seedFor(env.seed, 'radar')
+    const g = ctx.createRadialGradient(W / 2, H * 0.5, 0, W / 2, H * 0.5, H * 0.7)
+    g.addColorStop(0, lighten(pal.bg0, 0.05)); g.addColorStop(1, darken(pal.bg1, 0.18))
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H)
+    const cx = W / 2, cy = H * 0.46, R = H * 0.42
+    // anillos concentricos + cruz
+    ctx.strokeStyle = rgba(pal.accent, 0.22); ctx.lineWidth = 1
+    for (let i = 1; i <= 4; i++) { ctx.beginPath(); ctx.arc(cx, cy, R * i / 4, 0, TAU); ctx.stroke() }
+    ctx.beginPath(); ctx.moveTo(cx - R, cy); ctx.lineTo(cx + R, cy); ctx.moveTo(cx, cy - R); ctx.lineTo(cx, cy + R); ctx.stroke()
+    // barrido: cuna de luz que rota (con estela)
+    const sweep = t * CLK * 0.6
+    ctx.save(); ctx.translate(cx, cy)
+    const segs = 30, arc = 0.9
+    for (let s = 0; s < segs; s++) {
+      const a0 = sweep - (s / segs) * arc
+      ctx.beginPath(); ctx.moveTo(0, 0)
+      ctx.arc(0, 0, R, a0, a0 + arc / segs + 0.02)
+      ctx.closePath()
+      ctx.fillStyle = rgba(pal.accent, 0.16 * (1 - s / segs))
+      ctx.fill()
+    }
+    ctx.restore()
+    // "contactos" (puntos sembrados) que parpadean cuando el barrido pasa cerca
+    for (let i = 0; i < 7; i++) {
+      const ang = r() * TAU, dist = r() * R * 0.92
+      const px = cx + Math.cos(ang) * dist, py = cy + Math.sin(ang) * dist
+      let da = ((sweep - ang) % TAU + TAU) % TAU
+      const fresh = da < 1.2 ? 1 - da / 1.2 : 0
+      ctx.fillStyle = rgba(i % 2 ? pal.accent2 : pal.accent, 0.25 + 0.6 * fresh)
+      ctx.beginPath(); ctx.arc(px, py, 2.5 + 2 * fresh, 0, TAU); ctx.fill()
+    }
+    scrim(ctx, pal, { centerClear: 0.34, strength: 0.32 })
+  },
+})
+
+register({
+  id: 'bg.techhud.dataflow', lib: 'backgrounds', category: 'tech-hud', tones: ['dark', 'light'], rubros: ['*', 'tech', 'finanzas', 'educacion'], weight: 0.8,
+  tags: ['tech', 'circuito', 'datos', 'paquetes', 'lineas'],
+  render(ctx, t, env) {
+    const { pal } = env, r = seedFor(env.seed, 'dataflow')
+    rampBg(ctx, pal)
+    // trazas tipo circuito: caminos ortogonales (manhattan) sembrados; paquetes de acento que corren por ellos
+    const lanes = 7
+    const paths = []
+    for (let i = 0; i < lanes; i++) {
+      const horiz = r() < 0.5
+      const fixed = horiz ? (0.1 + r() * 0.8) * H : (0.1 + r() * 0.8) * W
+      const bendAt = 0.25 + r() * 0.5
+      const bendTo = horiz ? (0.1 + r() * 0.8) * H : (0.1 + r() * 0.8) * W
+      paths.push({ horiz, fixed, bendAt, bendTo, ph: r() })
+    }
+    // dibujar trazas tenues
+    ctx.lineWidth = 1.4; ctx.lineCap = 'round'
+    const traceCol = pal.tone === 'light' ? 'rgba(0,0,0,0.08)' : rgba(pal.accent, 0.12)
+    for (const p of paths) {
+      ctx.strokeStyle = traceCol; ctx.beginPath()
+      if (p.horiz) {
+        const bx = p.bendAt * W
+        ctx.moveTo(0, p.fixed); ctx.lineTo(bx, p.fixed); ctx.lineTo(bx, p.bendTo); ctx.lineTo(W, p.bendTo)
+      } else {
+        const by = p.bendAt * H
+        ctx.moveTo(p.fixed, 0); ctx.lineTo(p.fixed, by); ctx.lineTo(p.bendTo, by); ctx.lineTo(p.bendTo, H)
+      }
+      ctx.stroke()
+    }
+    // paquetes que corren (posicion por fase + t), con glow
+    ctx.save(); ctx.globalCompositeOperation = pal.tone === 'light' ? 'source-over' : 'lighter'
+    for (let i = 0; i < paths.length; i++) {
+      const p = paths[i]
+      const prog = ((t * CLK * 0.12 + p.ph) % 1)
+      let x, y
+      if (p.horiz) {
+        const bx = p.bendAt * W
+        if (prog < p.bendAt) { x = prog * W; y = p.fixed }
+        else { const seg = (prog - p.bendAt); x = bx; y = p.fixed + (p.bendTo - p.fixed) * Math.min(1, seg * 3); if (seg > 0.33) { x = bx + (W - bx) * ((prog - (p.bendAt + 0.11)) / (1 - p.bendAt - 0.11)); y = p.bendTo } }
+      } else {
+        const by = p.bendAt * H
+        if (prog < p.bendAt) { y = prog * H; x = p.fixed }
+        else { const seg = (prog - p.bendAt); y = by; x = p.fixed + (p.bendTo - p.fixed) * Math.min(1, seg * 3); if (seg > 0.33) { y = by + (H - by) * ((prog - (p.bendAt + 0.11)) / (1 - p.bendAt - 0.11)); x = p.bendTo } }
+      }
+      const col = i % 2 ? pal.accent2 : pal.accent
+      const gr = ctx.createRadialGradient(x, y, 0, x, y, 10)
+      gr.addColorStop(0, rgba(col, pal.tone === 'light' ? 0.7 : 0.9)); gr.addColorStop(1, rgba(col, 0))
+      ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(x, y, 10, 0, TAU); ctx.fill()
+    }
+    ctx.restore()
+    scrim(ctx, pal, { centerClear: 0.3, strength: pal.tone === 'light' ? 0.14 : 0.3 })
+  },
+})
+
+// ---- broadcast-news ----
+
+register({
+  id: 'bg.broadcast.scoreboard', lib: 'backgrounds', category: 'broadcast-news', tones: ['dark', 'light'], rubros: ['*', 'eventos', 'gaming', 'finanzas'], weight: 0.75,
+  tags: ['broadcast', 'deportes', 'marco', 'tira', 'en-vivo'],
+  render(ctx, t, env) {
+    const { pal } = env
+    rampBg(ctx, pal)
+    // marco de transmision: barra superior + tira inferior con bloques de acento (estilo scoreboard)
+    const topH = 54, botH = 70
+    // top bar
+    const tg = ctx.createLinearGradient(0, 0, W, 0)
+    tg.addColorStop(0, rgba(pal.accent, 0.9)); tg.addColorStop(1, rgba(pal.accent2, 0.9))
+    ctx.fillStyle = tg; ctx.fillRect(0, 0, W, topH)
+    // bloque "LIVE" pulsante
+    const pulse = 0.55 + 0.45 * Math.sin(t * CLK * 1.4)
+    ctx.fillStyle = rgba('#ff3b30', 0.5 + 0.5 * pulse); ctx.beginPath(); ctx.arc(22, topH / 2, 6, 0, TAU); ctx.fill()
+    ctx.fillStyle = rgba('#ffffff', 0.18); ctx.fillRect(40, topH / 2 - 9, 70, 18)
+    // bottom strip
+    ctx.fillStyle = pal.tone === 'light' ? 'rgba(20,16,24,0.9)' : 'rgba(0,0,0,0.7)'
+    ctx.fillRect(0, H - botH, W, botH)
+    // filete de acento sobre la tira
+    ctx.fillStyle = rgba(pal.accent, 0.95); ctx.fillRect(0, H - botH - 3, W, 3)
+    // bloques tipo "marcador" en la tira
+    const blocks = 3
+    for (let i = 0; i < blocks; i++) {
+      const bw = (W - 40) / blocks, x = 20 + i * bw
+      ctx.fillStyle = rgba(i === 1 ? pal.accent2 : pal.accent, 0.85)
+      roundRect(ctx, x + 6, H - botH + 16, bw - 12, botH - 32, 6); ctx.fill()
+    }
+    // ticker que se desliza en la zona media-baja (sutil)
+    const tickerY = H - botH - 22
+    ctx.fillStyle = rgba(pal.accent, 0.4)
+    const seg = 60, off = (t * CLK * 26) % seg
+    for (let x = -off; x < W; x += seg) ctx.fillRect(x, tickerY, seg * 0.5, 3)
+  },
+})
+
+// ---- chrome-y2k ----
+
+register({
+  id: 'bg.chromey2k.aurorafoil', lib: 'backgrounds', category: 'chrome-y2k', tones: ['dark', 'light'], rubros: ['*', 'moda', 'arte', 'tech', 'eventos'], weight: 0.8,
+  tags: ['y2k', 'aurora', 'holografico', 'iridiscente', 'premium'],
+  render(ctx, t, env) {
+    const { pal } = env, r = seedFor(env.seed, 'aurora')
+    rampBg(ctx, pal)
+    // cintas de aurora iridiscente: gradientes diagonales animados que mezclan acento/acento2 + tintes de hue rotado
+    const accHsl = hexToHsl(pal.accent)
+    ctx.save(); ctx.globalCompositeOperation = pal.tone === 'light' ? 'soft-light' : 'screen'
+    const ribbons = 5
+    for (let i = 0; i < ribbons; i++) {
+      const ph = r() * TAU
+      const cy = H * ((i + 0.5) / ribbons) + Math.sin(t * CLK * 0.3 + ph) * 60
+      const hueShift = (i - ribbons / 2) * 36
+      const c1 = hslToHex(accHsl.h + hueShift, clamp(accHsl.s + 0.15, 0.4, 0.95), pal.tone === 'light' ? 0.62 : 0.58)
+      const c2 = hslToHex(accHsl.h + hueShift + 60, clamp(accHsl.s + 0.1, 0.4, 0.95), pal.tone === 'light' ? 0.66 : 0.6)
+      const g = ctx.createLinearGradient(0, cy - 120, W, cy + 120)
+      g.addColorStop(0, rgba(c1, 0)); g.addColorStop(0.5, rgba(c1, pal.tone === 'light' ? 0.4 : 0.34)); g.addColorStop(0.5, rgba(c2, pal.tone === 'light' ? 0.4 : 0.34)); g.addColorStop(1, rgba(c2, 0))
+      ctx.fillStyle = g
+      ctx.beginPath(); ctx.moveTo(0, cy - 150)
+      for (let x = 0; x <= W; x += 12) ctx.lineTo(x, cy - 80 + Math.sin(x * 0.02 + ph + t * CLK * 0.4) * 50)
+      for (let x = W; x >= 0; x -= 12) ctx.lineTo(x, cy + 80 + Math.sin(x * 0.02 + ph + t * CLK * 0.4) * 50)
+      ctx.closePath(); ctx.fill()
+    }
+    ctx.restore()
+    // sheen especular fino que cruza
+    const sx = ((t * CLK * 0.2) % 1.3 - 0.15) * W
+    const sh = ctx.createLinearGradient(sx - 60, 0, sx + 60, H)
+    sh.addColorStop(0, rgba('#ffffff', 0)); sh.addColorStop(0.5, rgba('#ffffff', pal.tone === 'light' ? 0.3 : 0.14)); sh.addColorStop(1, rgba('#ffffff', 0))
+    ctx.fillStyle = sh; ctx.fillRect(0, 0, W, H)
+    scrim(ctx, pal, { centerClear: 0.34, strength: pal.tone === 'light' ? 0.14 : 0.3 })
+  },
+})
+
+// ---- morph-protagonist ----
+
+register({
+  id: 'bg.morphhero.ribbonband', lib: 'backgrounds', category: 'morph-protagonist', tones: ['dark', 'light'], rubros: ['*', 'moda', 'arte', 'eventos', 'tech'], weight: 0.8,
+  tags: ['protagonista', 'cinta', 'flujo', 'editorial', 'duotono'],
+  render(ctx, t, env) {
+    const { pal } = env, r = seedFor(env.seed, 'ribbon')
+    rampBg(ctx, pal)
+    // una cinta protagonista que cruza el canvas en diagonal, con grosor variable y degrade de marca.
+    // ancla sembrada (sube de izq-abajo a der-arriba, o al reves) -> deja un lado libre para el texto.
+    const flip = r() < 0.5 ? 1 : -1
+    const y0 = flip > 0 ? H * 0.82 : H * 0.18
+    const y1 = flip > 0 ? H * 0.18 : H * 0.82
+    const ph = r() * TAU
+    const steps = 48
+    // borde superior e inferior de la cinta (banda con grosor que ondula). Gruesa -> protagonista.
+    const top = [], bot = []
+    for (let i = 0; i <= steps; i++) {
+      const f = i / steps
+      const x = f * W
+      const yc = lerp(y0, y1, f) + Math.sin(f * 5 + ph + t * CLK * 0.3) * 30
+      const thick = lerp(95, 190, 0.5 + 0.5 * Math.sin(f * 3 + ph))
+      top.push([x, yc - thick]); bot.push([x, yc + thick])
+    }
+    const g = ctx.createLinearGradient(0, y0, W, y1)
+    g.addColorStop(0, rgba(pal.accent, pal.tone === 'light' ? 0.3 : 0.4))
+    g.addColorStop(1, rgba(pal.accent2, pal.tone === 'light' ? 0.3 : 0.4))
+    ctx.fillStyle = g
+    ctx.beginPath(); ctx.moveTo(top[0][0], top[0][1])
+    for (const p of top) ctx.lineTo(p[0], p[1])
+    for (let i = bot.length - 1; i >= 0; i--) ctx.lineTo(bot[i][0], bot[i][1])
+    ctx.closePath(); ctx.fill()
+    // contorno fino superior (define la cinta)
+    ctx.strokeStyle = rgba(pal.tone === 'light' ? darken(pal.accent, 0.15) : lighten(pal.accent, 0.35), 0.4); ctx.lineWidth = 1.5
+    ctx.beginPath(); top.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.stroke()
+    scrim(ctx, pal, { centerClear: 0.3, strength: pal.tone === 'light' ? 0.14 : 0.28 })
+  },
+})
+
+// ---- light-substrate-paper ----
+
+register({
+  id: 'bg.lightpaper.blueprintlight', lib: 'backgrounds', category: 'light-substrate-paper', tones: ['light'], rubros: ['*', 'inmobiliaria', 'tech', 'educacion', 'finanzas'], weight: 0.85,
+  tags: ['claro', 'blueprint', 'tecnico', 'arquitectura', 'serio'],
+  render(ctx, t, env) {
+    const { pal } = env, r = seedFor(env.seed, 'bplight')
+    // papel tecnico claro (azulado muy leve)
+    const hue = hexToHsl(pal.accent).h
+    const paper = hslToHex(hue, 0.08, 0.96)
+    ctx.fillStyle = paper; ctx.fillRect(0, 0, W, H)
+    // grilla de ingenieria: fina + gruesa cada 5
+    const step = 22
+    for (let pass = 0; pass < 2; pass++) {
+      const major = pass === 1
+      ctx.strokeStyle = rgba(pal.accent, major ? 0.18 : 0.08); ctx.lineWidth = major ? 1.2 : 0.7
+      const gs = major ? step * 5 : step
+      ctx.beginPath()
+      for (let x = 0; x <= W; x += gs) { ctx.moveTo(x, 0); ctx.lineTo(x, H) }
+      for (let y = 0; y <= H; y += gs) { ctx.moveTo(0, y); ctx.lineTo(W, y) }
+      ctx.stroke()
+    }
+    // un "plano" tecnico: rectangulos con cotas, sembrados, dibujados con linea de acento
+    ctx.strokeStyle = rgba(darken(pal.accent, 0.1), 0.4); ctx.lineWidth = 1.5
+    const px = W * (0.12 + r() * 0.1), py = H * (0.14 + r() * 0.1)
+    const pw = W * (0.4 + r() * 0.2), ph2 = H * (0.2 + r() * 0.15)
+    ctx.strokeRect(px, py, pw, ph2)
+    // lineas de cota
+    ctx.beginPath(); ctx.moveTo(px, py - 12); ctx.lineTo(px + pw, py - 12)
+    ctx.moveTo(px, py - 16); ctx.lineTo(px, py - 8); ctx.moveTo(px + pw, py - 16); ctx.lineTo(px + pw, py - 8)
+    ctx.stroke()
+    // un nodo de acento que "barre" un eje (vida tecnica)
+    const sweepX = px + ((t * CLK * 0.1) % 1) * pw
+    ctx.strokeStyle = rgba(pal.accent2, 0.5); ctx.beginPath(); ctx.moveTo(sweepX, py); ctx.lineTo(sweepX, py + ph2); ctx.stroke()
+    // marco editorial
+    const m = 24
+    ctx.strokeStyle = rgba(pal.ink, 0.16); ctx.lineWidth = 1; ctx.strokeRect(m, m, W - m * 2, H - m * 2)
+  },
+})
+
+// ---- spatial-depth ----
+
+register({
+  id: 'bg.spatial.gridfloor', lib: 'backgrounds', category: 'spatial-depth', tones: ['dark', 'light'], rubros: ['*', 'tech', 'gaming', 'finanzas', 'eventos'], weight: 0.85,
+  tags: ['profundidad', 'piso', 'perspectiva', 'horizonte', 'synthwave'],
+  render(ctx, t, env) {
+    const { pal } = env, r = seedFor(env.seed, 'gridfloor')
+    const horizon = H * 0.44
+    // cielo arriba del horizonte
+    const sky = ctx.createLinearGradient(0, 0, 0, horizon)
+    if (pal.tone === 'light') { sky.addColorStop(0, lighten(pal.bg0, 0.2)); sky.addColorStop(1, lighten(pal.accent, 0.5)) }
+    else { sky.addColorStop(0, darken(pal.bg1, 0.2)); sky.addColorStop(1, darken(pal.accent, 0.35)) }
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, W, horizon)
+    // glow del horizonte (sol detras)
+    const sunX = W * (0.35 + r() * 0.3)
+    const hg = ctx.createRadialGradient(sunX, horizon, 0, sunX, horizon, H * 0.4)
+    hg.addColorStop(0, rgba(pal.accent2, pal.tone === 'light' ? 0.35 : 0.5)); hg.addColorStop(1, rgba(pal.accent2, 0))
+    ctx.fillStyle = hg; ctx.fillRect(0, 0, W, H)
+    // piso abajo del horizonte
+    ctx.fillStyle = pal.tone === 'light' ? pal.bg1 : darken(pal.bg1, 0.3); ctx.fillRect(0, horizon, W, H - horizon)
+    const vp = W / 2
+    ctx.strokeStyle = rgba(pal.accent, pal.tone === 'light' ? 0.3 : 0.42); ctx.lineWidth = 1
+    // lineas que convergen al punto de fuga
+    for (let i = -8; i <= 8; i++) {
+      ctx.beginPath(); ctx.moveTo(vp, horizon); ctx.lineTo(vp + i * (W / 4), H); ctx.stroke()
+    }
+    // lineas horizontales que se acercan (scroll perspectivo con t)
+    const scroll = (t * CLK * 0.5) % 1
+    for (let j = 0; j < 16; j++) {
+      const p = (j + scroll) / 16
+      const y = horizon + (H - horizon) * (p * p)
+      ctx.strokeStyle = rgba(pal.accent, (pal.tone === 'light' ? 0.3 : 0.42) * (1 - p) + 0.04)
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke()
+    }
+    scrim(ctx, pal, { centerClear: 0.32, strength: pal.tone === 'light' ? 0.16 : 0.3 })
+  },
+})
+
+// ---- generative-art ----
+
+register({
+  id: 'bg.generative.wovenlines', lib: 'backgrounds', category: 'generative-art', tones: ['dark', 'light'], rubros: ['*', 'arte', 'moda', 'educacion', 'tech'], weight: 0.8,
+  tags: ['generativo', 'lineas', 'tejido', 'lattice', 'sinusoidal'],
+  render(ctx, t, env) {
+    const { pal } = env
+    rampBg(ctx, pal)
+    const noise = makeNoise(env.seed ^ 0x4f1d, 2)
+    // dos familias de lineas (horizontales onduladas + verticales onduladas) que se "tejen" -> celosia organica
+    ctx.save(); ctx.globalCompositeOperation = pal.tone === 'light' ? 'multiply' : 'screen'
+    ctx.lineWidth = 1.3
+    const rows = 16, cols = 11
+    for (let i = 0; i < rows; i++) {
+      const baseY = (i + 0.5) / rows * H
+      const col = i % 3 === 0 ? pal.accent2 : pal.accent
+      ctx.strokeStyle = rgba(col, pal.tone === 'light' ? 0.22 : 0.28)
+      ctx.beginPath()
+      for (let x = 0; x <= W; x += 8) {
+        const amp = 10 + noise(x, baseY) * 24
+        const y = baseY + Math.sin(x * 0.02 + i * 0.5 + t * CLK * 0.2) * amp
+        x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
+      }
+      ctx.stroke()
+    }
+    for (let i = 0; i < cols; i++) {
+      const baseX = (i + 0.5) / cols * W
+      ctx.strokeStyle = rgba(pal.accent, pal.tone === 'light' ? 0.14 : 0.18)
+      ctx.beginPath()
+      for (let y = 0; y <= H; y += 8) {
+        const amp = 8 + noise(baseX, y) * 18
+        const x = baseX + Math.cos(y * 0.018 + i * 0.6 - t * CLK * 0.18) * amp
+        y === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
+      }
+      ctx.stroke()
+    }
+    ctx.restore()
+    scrim(ctx, pal, { centerClear: 0.32, strength: pal.tone === 'light' ? 0.2 : 0.34 })
+  },
+})
+
+// ---- seasonal / event (opt-in: rubros explicitos, NO '*' -> el director no lo elige por defecto) ----
+
+register({
+  id: 'bg.seasonal.confetti', lib: 'backgrounds', category: 'seasonal-event', tones: ['dark', 'light'], rubros: ['eventos', 'gastronomia', 'educacion', 'moda'], weight: 0.6,
+  tags: ['seasonal', 'celebracion', 'confeti', 'festivo', 'opt-in'],
+  render(ctx, t, env) {
+    const { pal } = env, r = seedFor(env.seed, 'confetti')
+    rampBg(ctx, pal)
+    // halo festivo suave
+    const gl = ctx.createRadialGradient(W / 2, H * 0.4, 0, W / 2, H * 0.4, H * 0.6)
+    gl.addColorStop(0, rgba(pal.accent, pal.tone === 'light' ? 0.1 : 0.16)); gl.addColorStop(1, rgba(pal.accent, 0))
+    ctx.fillStyle = gl; ctx.fillRect(0, 0, W, H)
+    // confeti cayendo: piezas rectangulares que rotan y derivan, loop temporal por pieza (determinista)
+    const N = 70
+    const cols = [pal.accent, pal.accent2, pal.tone === 'light' ? darken(pal.accent, 0.3) : lighten(pal.accent2, 0.3), '#ffffff']
+    for (let i = 0; i < N; i++) {
+      const x0 = r() * W
+      const speed = 0.06 + r() * 0.1
+      const sway = 20 + r() * 40
+      const ph = r() * TAU
+      const fall = (t * CLK * speed + r()) % 1            // 0..1 de arriba a abajo
+      const y = fall * (H + 40) - 20
+      const x = x0 + Math.sin(fall * TAU * 1.5 + ph) * sway
+      const sz = 4 + r() * 6
+      const rot = ph + t * CLK * (1 + r()) + fall * 8
+      const col = cols[(r() * cols.length) | 0]
+      ctx.save(); ctx.translate(x, y); ctx.rotate(rot)
+      ctx.fillStyle = rgba(col, pal.tone === 'light' ? 0.85 : 0.9)
+      ctx.fillRect(-sz / 2, -sz / 4, sz, sz * 0.5)
+      ctx.restore()
+    }
+    scrim(ctx, pal, { centerClear: 0.34, strength: pal.tone === 'light' ? 0.12 : 0.28 })
+  },
+})

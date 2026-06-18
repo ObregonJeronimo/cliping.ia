@@ -836,3 +836,445 @@ register({
     if (lab) drawText(ctx, lab, W / 2, H * 0.72, { size: 18, weight: 600, family: fonts.text, maxW: W * 0.78, color: pal.dim, alpha: inv(t, 0.7, 1.2) })
   },
 })
+
+// =====================================================================================================
+// =================================== OLA 3 — mas data-viz ============================================
+// =====================================================================================================
+// Mismas REGLAS: numero en MONO via fonts.accent; en claro el numero va en TINTA (numColor); el acento queda
+// para barra/arco/regla/aguja. Valores estables por seedFor(seed,'data'); t solo anima la entrada. Puro.
+// Helpers nuevos (puros) abajo del bloque.
+
+// ====================================================================== numeros-animados (mas)
+register({
+  id: 'data.number.unit', lib: 'datakit', category: 'numeros-animados', tones: ['dark', 'light'], rubros: ['*'], weight: 1.1,
+  tags: ['hero', 'stat', 'unidad', 'mono'],
+  render(ctx, t, env) {
+    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
+    // numero hero con UNIDAD/prefijo en linea aparte (ej "$" + "2.4M") -> moneda/escala. El simbolo en acento-tinta.
+    const cx = W / 2, cy = H * 0.44
+    const scales = [{ s: 1e6, suf: 'M' }, { s: 1e3, suf: 'k' }, { s: 1, suf: '' }]
+    const sc = pick(r, scales)
+    const target = range(r, 1.6, 9.4)              // 1.6..9.4 -> con sufijo M/k da impacto
+    const val = target * eOutExpo(inv(t, 0.1, 1.2))
+    const sym = pick(r, ['$', '+', ''])
+    const shown = (sc.suf ? val.toFixed(1) : fmtInt(val)) + sc.suf
+    // simbolo arriba-izquierda del numero (acento como deco, chico)
+    if (sym) drawText(ctx, sym, cx - W * 0.3, cy - 30, { size: 40, weight: 700, family: fonts.accent, color: pal.accent, alpha: inv(t, 0.3, 0.9) })
+    drawText(ctx, shown, cx, cy, { size: 100, weight: 700, family: fonts.accent, maxW: W * 0.82, color: numColor(pal), shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.35)' : null })
+    // regla de acento bajo el numero
+    const ru = eOutCubic(inv(t, 0.5, 1.2)), rw = 110 * ru
+    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(cx - rw / 2, cy + 62, rw, 6, 3); ctx.fill()
+    const label = content.tagline || content.claim || content.brand || ''
+    if (label) drawText(ctx, label, cx, cy + 100, { size: 21, weight: 600, family: fonts.text, maxW: W * 0.78, color: pal.dim, alpha: inv(t, 0.7, 1.2) })
+  },
+})
+
+register({
+  id: 'data.number.odometer', lib: 'datakit', category: 'numeros-animados', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
+  tags: ['contador', 'odometro', 'mono'],
+  render(ctx, t, env) {
+    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
+    // contador estilo odometro: cada digito en su "celda" con marco fino. Numero entero grande (ej visitas).
+    const target = Math.round(range(r, 10000, 998000))
+    const val = Math.round(countTo(target, t, 0.1, 1.3))
+    const str = fmtInt(val)
+    // medir celdas: digitos en celda, separadores (.) sin celda
+    const cellW = 46, cellH = 70, gap = 6, sepW = 16, cy = H * 0.42
+    let totalW = 0
+    for (const ch of str) totalW += (ch === '.' ? sepW : cellW + gap)
+    totalW -= gap
+    let x = W / 2 - totalW / 2
+    const ap = inv(t, 0.1, 0.6)
+    for (const ch of str) {
+      if (ch === '.') { x += sepW; continue }
+      // celda
+      ctx.save(); ctx.globalAlpha = clamp(ap * 1.4, 0, 1)
+      ctx.fillStyle = pal.surface; ctx.beginPath(); ctx.roundRect(x, cy - cellH / 2, cellW, cellH, 8); ctx.fill()
+      ctx.strokeStyle = hairline(pal, 0.16); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.roundRect(x, cy - cellH / 2, cellW, cellH, 8); ctx.stroke()
+      // linea media del odometro (deco)
+      ctx.strokeStyle = hairline(pal, 0.08); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + 4, cy); ctx.lineTo(x + cellW - 4, cy); ctx.stroke()
+      ctx.restore()
+      drawText(ctx, ch, x + cellW / 2, cy, { size: 44, weight: 700, family: fonts.accent, maxW: cellW, color: numColor(pal), alpha: clamp(ap * 1.4, 0, 1) })
+      x += cellW + gap
+    }
+    // regla de acento debajo
+    const rw = eOutCubic(inv(t, 0.5, 1.1)) * totalW
+    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(W / 2 - rw / 2, cy + cellH / 2 + 16, rw, 4, 2); ctx.fill()
+    const lab = content.tagline || content.claim
+    if (lab) drawText(ctx, lab, W / 2, cy + cellH / 2 + 50, { size: 19, weight: 600, family: fonts.text, maxW: W * 0.8, color: pal.dim, alpha: inv(t, 0.7, 1.2) })
+  },
+})
+
+// ====================================================================== barras (mas)
+register({
+  id: 'data.bars.progressrows', lib: 'datakit', category: 'barras', tones: ['dark', 'light'], rubros: ['*'], weight: 1.1,
+  tags: ['barras', 'progreso', 'skills'],
+  render(ctx, t, env) {
+    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
+    // 4 barras de progreso etiqueta-arriba + % al final del riel (estilo "skills/cobertura"). Riel redondeado.
+    const n = 4, x0 = W * 0.14, bw = W * 0.62, bh = 12, top = H * 0.3, gap = H * 0.12
+    const labels = [content.brand, content.tagline, content.claim, content.cta]
+    const def = ['Alcance', 'Interaccion', 'Mensajes', 'Cierres']
+    const vals = Array.from({ length: n }, () => range(r, 0.45, 0.97))
+    for (let i = 0; i < n; i++) {
+      const y = top + i * gap
+      const ap = eOutCubic(inv(t, 0.12 + i * 0.12, 0.9 + i * 0.12))
+      drawText(ctx, shortLabel(labels[i], 2) || def[i], x0, y - 14, { size: 15, weight: 600, family: fonts.text, align: 'left', maxW: bw, color: pal.dim, alpha: ap })
+      // riel
+      ctx.fillStyle = hairline(pal, 0.09); ctx.beginPath(); ctx.roundRect(x0, y, bw, bh, bh / 2); ctx.fill()
+      // relleno
+      ctx.fillStyle = i === 0 ? pal.accent : rgba(pal.accent, 0.6 + 0.1 * (n - i) / n)
+      ctx.beginPath(); ctx.roundRect(x0, y, Math.max(bh, bw * vals[i] * ap), bh, bh / 2); ctx.fill()
+      // % al final
+      drawText(ctx, Math.round(vals[i] * 100 * ap) + '%', x0 + bw + 12, y + bh / 2, { size: 15, weight: 700, family: fonts.accent, align: 'left', maxW: W * 0.14, color: numColor(pal), alpha: ap })
+    }
+  },
+})
+
+register({
+  id: 'data.bars.diverging', lib: 'datakit', category: 'barras', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
+  tags: ['barras', 'divergente', 'balance'],
+  render(ctx, t, env) {
+    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
+    // barras divergentes desde un eje central: positivo (acento, derecha) vs negativo (atenuado, izquierda).
+    const n = 4, cxAxis = W * 0.52, top = H * 0.32, gap = H * 0.12, bh = 16, half = W * 0.32
+    const labels = [content.brand, content.tagline, content.claim, content.cta]
+    const def = ['Lun', 'Mar', 'Mie', 'Jue']
+    const titulo = content.tagline || content.claim
+    if (titulo) drawText(ctx, titulo, W / 2, H * 0.2, { size: 21, weight: 700, family: fonts.display, maxW: W * 0.84, color: pal.ink, alpha: inv(t, 0.1, 0.55) })
+    // eje central
+    ctx.strokeStyle = hairline(pal, 0.18); ctx.lineWidth = 1.5
+    ctx.beginPath(); ctx.moveTo(cxAxis, top - 14); ctx.lineTo(cxAxis, top + (n - 1) * gap + bh + 14); ctx.stroke()
+    for (let i = 0; i < n; i++) {
+      const y = top + i * gap
+      const ap = eOutCubic(inv(t, 0.12 + i * 0.1, 0.85 + i * 0.1))
+      const pos = r() < 0.6                       // estable por seed
+      const v = range(r, 0.35, 1)
+      const len = half * v * ap
+      ctx.fillStyle = pos ? pal.accent : rgba(pal.accent, 0.4)
+      if (pos) { ctx.beginPath(); ctx.roundRect(cxAxis, y, len, bh, [0, bh / 2, bh / 2, 0]); ctx.fill() }
+      else { ctx.beginPath(); ctx.roundRect(cxAxis - len, y, len, bh, [bh / 2, 0, 0, bh / 2]); ctx.fill() }
+      // etiqueta del lado opuesto al valor
+      drawText(ctx, shortLabel(labels[i], 1) || def[i], pos ? cxAxis - 10 : cxAxis + 10, y + bh / 2, { size: 13, weight: 600, family: fonts.text, align: pos ? 'right' : 'left', maxW: W * 0.16, color: pal.dim, alpha: ap })
+      // valor en la punta
+      const vx = pos ? cxAxis + len + 8 : cxAxis - len - 8
+      drawText(ctx, (pos ? '+' : '-') + Math.round(v * 40 * ap), vx, y + bh / 2, { size: 13, weight: 700, family: fonts.accent, align: pos ? 'left' : 'right', maxW: W * 0.14, color: pos ? numColor(pal) : pal.dim, alpha: ap })
+    }
+  },
+})
+
+// ====================================================================== anillos / radiales (mas)
+register({
+  id: 'data.ring.dial', lib: 'datakit', category: 'anillos/radiales', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
+  tags: ['gauge', 'aguja', 'medidor'],
+  render(ctx, t, env) {
+    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
+    // medidor de medio arco (180) con AGUJA que barre 0..max. Arco riel + arco de acento + aguja.
+    const cx = W / 2, cy = H * 0.5, rad = W * 0.32, lw = 16
+    const pct = range(r, 0.45, 0.95)
+    const ap = eOutCubic(inv(t, 0.1, 1.2))
+    const a0 = Math.PI, a1 = TAU                    // semicirculo superior (de 180 a 360)
+    ctx.lineCap = 'round'; ctx.lineWidth = lw
+    // riel
+    ctx.strokeStyle = hairline(pal, 0.1); ctx.beginPath(); ctx.arc(cx, cy, rad, a0, a1); ctx.stroke()
+    // arco de acento
+    const sweep = (a1 - a0) * pct * ap
+    ctx.strokeStyle = pal.accent; ctx.beginPath(); ctx.arc(cx, cy, rad, a0, a0 + sweep); ctx.stroke()
+    // aguja
+    const na = a0 + sweep
+    const nx = cx + Math.cos(na) * (rad - lw), ny = cy + Math.sin(na) * (rad - lw)
+    ctx.strokeStyle = numColor(pal); ctx.lineWidth = 4; ctx.lineCap = 'round'
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(nx, ny); ctx.stroke()
+    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.arc(cx, cy, 9, 0, TAU); ctx.fill()
+    // numero (mono) bajo el centro
+    drawText(ctx, Math.round(pct * 100 * ap) + '%', cx, cy + 44, { size: 48, weight: 700, family: fonts.accent, maxW: rad * 1.6, color: numColor(pal) })
+    const lab = content.tagline || content.claim
+    if (lab) drawText(ctx, lab, cx, cy + 92, { size: 18, weight: 600, family: fonts.text, maxW: W * 0.78, color: pal.dim, alpha: inv(t, 0.7, 1.2) })
+  },
+})
+
+register({
+  id: 'data.ring.dots', lib: 'datakit', category: 'anillos/radiales', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
+  tags: ['anillo', 'puntos', 'progreso'],
+  render(ctx, t, env) {
+    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
+    // anillo de PUNTOS (24): N llenos de acento segun %, el resto en riel. Numero al centro.
+    const cx = W / 2, cy = H * 0.42, rad = W * 0.3, nDots = 24
+    const pct = range(r, 0.5, 0.92)
+    const ap = inv(t, 0.1, 1.1)
+    const filled = nDots * pct
+    for (let i = 0; i < nDots; i++) {
+      const ang = -TAU / 4 + i * TAU / nDots
+      const x = cx + Math.cos(ang) * rad, y = cy + Math.sin(ang) * rad
+      const on = i < filled * ap
+      const dap = spring(inv(t, 0.1 + i * 0.018, 0.6 + i * 0.018), { zeta: 0.5, freq: 2 })
+      ctx.save(); ctx.translate(x, y); ctx.scale(clamp(dap, 0, 1.1), clamp(dap, 0, 1.1))
+      if (on) { ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.arc(0, 0, 7, 0, TAU); ctx.fill() }
+      else { ctx.fillStyle = hairline(pal, 0.16); ctx.beginPath(); ctx.arc(0, 0, 5, 0, TAU); ctx.fill() }
+      ctx.restore()
+    }
+    drawText(ctx, Math.round(pct * 100 * ap) + '%', cx, cy - 2, { size: 50, weight: 700, family: fonts.accent, maxW: rad * 1.4, color: numColor(pal) })
+    const lab = shortLabel(content.tagline, 3) || 'completado'
+    drawText(ctx, lab, cx, cy + 38, { size: 16, weight: 600, family: fonts.text, maxW: rad * 1.6, color: pal.dim, alpha: inv(t, 0.6, 1.1) })
+  },
+})
+
+// ====================================================================== donut (mas)
+register({
+  id: 'data.donut.dual', lib: 'datakit', category: 'donut', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
+  tags: ['donut', 'doble', 'comparacion'],
+  render(ctx, t, env) {
+    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
+    // dos donuts chicos lado a lado (metrica A vs B), cada uno con su % y etiqueta. Comparacion compacta.
+    const cyc = H * 0.42, rad = W * 0.16, lw = 18
+    const cxs = [W * 0.3, W * 0.7]
+    const pcts = [range(r, 0.5, 0.85), range(r, 0.55, 0.92)]
+    const cols = [pal.accent, pal.accent2]
+    const labs = [shortLabel(content.brand, 1) || 'Antes', shortLabel(content.cta, 1) || 'Ahora']
+    const ap = eOutCubic(inv(t, 0.1, 1.1)), start = -TAU / 4
+    const titulo = content.tagline || content.claim
+    if (titulo) drawText(ctx, titulo, W / 2, H * 0.2, { size: 21, weight: 700, family: fonts.display, maxW: W * 0.84, color: pal.ink, alpha: inv(t, 0.1, 0.55) })
+    for (let k = 0; k < 2; k++) {
+      const cx = cxs[k]
+      ctx.lineCap = 'round'; ctx.lineWidth = lw
+      ctx.strokeStyle = hairline(pal, 0.1); ctx.beginPath(); ctx.arc(cx, cyc, rad, 0, TAU); ctx.stroke()
+      ctx.strokeStyle = cols[k]; ctx.beginPath(); ctx.arc(cx, cyc, rad, start, start + TAU * pcts[k] * ap); ctx.stroke()
+      drawText(ctx, Math.round(pcts[k] * 100 * ap) + '%', cx, cyc, { size: 30, weight: 700, family: fonts.accent, maxW: rad * 1.6, color: numColor(pal) })
+      drawText(ctx, labs[k], cx, cyc + rad + 30, { size: 16, weight: 600, family: fonts.text, maxW: W * 0.32, color: pal.dim, alpha: inv(t, 0.6, 1.1) })
+    }
+  },
+})
+
+// ====================================================================== series / tendencia (mas)
+register({
+  id: 'data.series.dualline', lib: 'datakit', category: 'series/tendencia', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
+  tags: ['serie', 'doble-linea', 'comparacion'],
+  render(ctx, t, env) {
+    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
+    // dos lineas (la nuestra en acento sube; la otra atenuada plana) -> contraste de tendencia. Leyenda abajo.
+    const n = 12, x0 = W * 0.12, x1 = W * 0.88, yTop = H * 0.3, yBot = H * 0.56
+    const mk = (slope, jitter) => { const p = []; for (let i = 0; i < n; i++) { const tr = i / (n - 1); const v = clamp(0.25 + tr * slope + (r() - 0.5) * jitter, 0.05, 1); p.push({ x: lerp(x0, x1, tr), y: lerp(yBot, yTop, v), v }) } return p }
+    const a = mk(0.6, 0.16)      // la nuestra (sube fuerte)
+    const b = mk(0.12, 0.14)     // la otra (casi plana)
+    const draw = eOutCubic(inv(t, 0.1, 1.3))
+    const drawLine = (pts, col, wlw) => {
+      const shown = clamp(draw * (n - 1), 0, n - 1), li = Math.floor(shown), fr = shown - li
+      ctx.strokeStyle = col; ctx.lineWidth = wlw; ctx.lineJoin = 'round'; ctx.lineCap = 'round'
+      ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y)
+      for (let i = 1; i <= li; i++) ctx.lineTo(pts[i].x, pts[i].y)
+      if (li < n - 1) ctx.lineTo(lerp(pts[li].x, pts[li + 1].x, fr), lerp(pts[li].y, pts[li + 1].y, fr))
+      ctx.stroke()
+      return { hx: li < n - 1 ? lerp(pts[li].x, pts[li + 1].x, fr) : pts[n - 1].x, hy: li < n - 1 ? lerp(pts[li].y, pts[li + 1].y, fr) : pts[n - 1].y }
+    }
+    const titulo = content.tagline || content.claim
+    if (titulo) drawText(ctx, titulo, W / 2, H * 0.2, { size: 21, weight: 700, family: fonts.display, maxW: W * 0.84, color: pal.ink, alpha: inv(t, 0.1, 0.55) })
+    drawLine(b, rgba(pal.accent2 || pal.accent, 0.45), 2.5)
+    const ha = drawLine(a, pal.accent, 3.5)
+    ctx.fillStyle = lighten(pal.accent, 0.3); ctx.beginPath(); ctx.arc(ha.hx, ha.hy, 5, 0, TAU); ctx.fill()
+    // leyenda abajo
+    const lAp = inv(t, 0.7, 1.2)
+    if (lAp > 0) {
+      ctx.save(); ctx.globalAlpha = lAp
+      const ly = H * 0.66, lx = W / 2 - 110
+      ctx.strokeStyle = pal.accent; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(lx + 22, ly); ctx.stroke()
+      drawText(ctx, shortLabel(content.brand, 1) || 'Nosotros', lx + 30, ly, { size: 13, weight: 600, family: fonts.text, align: 'left', maxW: W * 0.24, color: pal.dim })
+      ctx.strokeStyle = rgba(pal.accent2 || pal.accent, 0.45); ctx.beginPath(); ctx.moveTo(lx + 130, ly); ctx.lineTo(lx + 152, ly); ctx.stroke()
+      drawText(ctx, 'Resto', lx + 160, ly, { size: 13, weight: 600, family: fonts.text, align: 'left', maxW: W * 0.2, color: pal.dim })
+      ctx.restore()
+    }
+  },
+})
+
+// ====================================================================== comparacion / proporcion (mas)
+register({
+  id: 'data.compare.battery', lib: 'datakit', category: 'comparacion/proporcion', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
+  tags: ['proporcion', 'segmentos', 'meta'],
+  render(ctx, t, env) {
+    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
+    // barra "bateria" segmentada (10 celdas): N llenas de acento = progreso hacia la meta. % grande arriba.
+    const cells = 10, x0 = W * 0.12, bw = W * 0.76, bh = 44, y = H * 0.46
+    const gap = 4, cw = (bw - gap * (cells - 1)) / cells
+    const pct = range(r, 0.4, 0.9)
+    const ap = eOutCubic(inv(t, 0.1, 1.1))
+    const filled = cells * pct * ap
+    // % grande
+    drawText(ctx, Math.round(pct * 100 * ap) + '%', W / 2, y - 56, { size: 56, weight: 700, family: fonts.accent, maxW: bw, color: numColor(pal), alpha: inv(t, 0.3, 0.9) })
+    for (let i = 0; i < cells; i++) {
+      const cx = x0 + i * (cw + gap)
+      const frac = clamp(filled - i, 0, 1)
+      // celda riel
+      ctx.fillStyle = hairline(pal, 0.09); ctx.beginPath(); ctx.roundRect(cx, y, cw, bh, 5); ctx.fill()
+      if (frac > 0) {
+        ctx.save(); ctx.beginPath(); ctx.roundRect(cx, y, cw, bh, 5); ctx.clip()
+        ctx.fillStyle = pal.accent; ctx.fillRect(cx, y + bh * (1 - frac), cw, bh * frac)
+        ctx.restore()
+      }
+    }
+    // etiqueta
+    drawText(ctx, shortLabel(content.tagline, 4) || 'hacia la meta', W / 2, y + bh + 34, { size: 18, weight: 600, family: fonts.text, maxW: W * 0.8, color: pal.dim, alpha: inv(t, 0.6, 1.1) })
+  },
+})
+
+register({
+  id: 'data.compare.vsbar', lib: 'datakit', category: 'comparacion/proporcion', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
+  tags: ['versus', 'comparacion', 'cuota'],
+  render(ctx, t, env) {
+    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
+    // dos barras horizontales encontradas (A vs B) con un "VS" al medio. La nuestra (acento) gana.
+    const cxc = W / 2, top = H * 0.4, gap = H * 0.13, bh = 30, maxL = W * 0.34
+    const vA = range(r, 0.72, 1), vB = range(r, 0.35, 0.62)
+    const apA = eOutCubic(inv(t, 0.15, 0.9)), apB = eOutCubic(inv(t, 0.3, 1.05))
+    const titulo = content.tagline || content.claim
+    if (titulo) drawText(ctx, titulo, W / 2, H * 0.22, { size: 21, weight: 700, family: fonts.display, maxW: W * 0.84, color: pal.ink, alpha: inv(t, 0.1, 0.55) })
+    // A (arriba, acento, crece a la derecha desde el centro-izq)
+    const yA = top
+    const lA = maxL * vA * apA
+    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(cxc - lA, yA, lA, bh, [bh / 2, 0, 0, bh / 2]); ctx.fill()
+    drawText(ctx, shortLabel(content.brand, 2) || 'Nosotros', cxc - lA - 10, yA + bh / 2, { size: 14, weight: 700, family: fonts.text, align: 'right', maxW: W * 0.3, color: numColor(pal), alpha: apA })
+    drawText(ctx, Math.round(vA * 100 * apA) + '%', cxc - 10, yA + bh / 2, { size: 16, weight: 700, family: fonts.accent, align: 'right', maxW: lA, color: pal.onAccent, alpha: apA })
+    // B (abajo, atenuado, crece a la derecha)
+    const yB = top + gap
+    const lB = maxL * vB * apB
+    ctx.fillStyle = rgba(pal.accent, 0.35); ctx.beginPath(); ctx.roundRect(cxc, yB, lB, bh, [0, bh / 2, bh / 2, 0]); ctx.fill()
+    drawText(ctx, 'Resto', cxc + lB + 10, yB + bh / 2, { size: 14, weight: 600, family: fonts.text, align: 'left', maxW: W * 0.3, color: pal.dim, alpha: apB })
+    drawText(ctx, Math.round(vB * 100 * apB) + '%', cxc + 10, yB + bh / 2, { size: 16, weight: 700, family: fonts.accent, align: 'left', maxW: lB, color: numColor(pal), alpha: apB })
+    // VS al medio
+    const vAp = spring(inv(t, 0.1, 0.7), { zeta: 0.45, freq: 2.2 })
+    ctx.save(); ctx.globalAlpha = clamp(vAp, 0, 1); ctx.translate(cxc, (yA + yB + bh) / 2); ctx.scale(clamp(vAp, 0, 1.1), clamp(vAp, 0, 1.1))
+    ctx.fillStyle = pal.bg0; ctx.beginPath(); ctx.arc(0, 0, 22, 0, TAU); ctx.fill()
+    ctx.strokeStyle = pal.accent; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(0, 0, 22, 0, TAU); ctx.stroke()
+    drawText(ctx, 'VS', 0, 1, { size: 16, weight: 700, family: fonts.accent, maxW: 40, color: numColor(pal) })
+    ctx.restore()
+  },
+})
+
+// ====================================================================== rating / prueba-social (mas)
+register({
+  id: 'data.rating.bar', lib: 'datakit', category: 'rating/prueba-social', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
+  tags: ['rating', 'distribucion', 'reviews'],
+  render(ctx, t, env) {
+    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
+    // distribucion de reviews: filas de 5 a 1 estrellas, barra por fila (la de 5 domina). Score grande a la izq.
+    const score = range(r, 4.3, 4.95)
+    const reviews = Math.round(range(r, 120, 2400))
+    // score + estrellitas a la izquierda
+    drawText(ctx, score.toFixed(1), W * 0.24, H * 0.34, { size: 64, weight: 700, family: fonts.accent, maxW: W * 0.4, color: numColor(pal), alpha: inv(t, 0.2, 0.8) })
+    const sAp = inv(t, 0.3, 0.9)
+    for (let i = 0; i < 5; i++) {
+      const sx = W * 0.12 + i * 22
+      ctx.save(); ctx.translate(sx, H * 0.42); ctx.scale(0.34, 0.34); ctx.globalAlpha = sAp
+      starPath(ctx, W * 0.05); ctx.fillStyle = i < Math.round(score) ? pal.accent : hairline(pal, 0.2); ctx.fill()
+      ctx.restore()
+    }
+    drawText(ctx, fmtInt(reviews) + ' reviews', W * 0.24, H * 0.47, { size: 14, weight: 600, family: fonts.text, maxW: W * 0.4, color: pal.dim, alpha: inv(t, 0.5, 1) })
+    // distribucion a la derecha
+    const x0 = W * 0.5, bw = W * 0.32, bh = 9, top = H * 0.3, gap = H * 0.045
+    const dist = [0.72, 0.18, 0.06, 0.02, 0.02]   // forma estable (5★ domina)
+    for (let i = 0; i < 5; i++) {
+      const y = top + i * gap
+      const ap = eOutCubic(inv(t, 0.2 + i * 0.08, 0.9 + i * 0.08))
+      drawText(ctx, String(5 - i), x0 - 16, y + bh / 2, { size: 12, weight: 700, family: fonts.accent, align: 'right', maxW: 16, color: pal.dim, alpha: ap })
+      ctx.fillStyle = hairline(pal, 0.1); ctx.beginPath(); ctx.roundRect(x0, y, bw, bh, bh / 2); ctx.fill()
+      ctx.fillStyle = i === 0 ? pal.accent : rgba(pal.accent, 0.45)
+      ctx.beginPath(); ctx.roundRect(x0, y, Math.max(bh, bw * dist[i] * ap), bh, bh / 2); ctx.fill()
+    }
+    const lab = content.tagline || content.claim
+    if (lab) drawText(ctx, lab, W / 2, H * 0.62, { size: 18, weight: 600, family: fonts.text, maxW: W * 0.8, color: pal.dim, alpha: inv(t, 0.7, 1.2) })
+  },
+})
+
+// ====================================================================== timeline / proceso (mas)
+register({
+  id: 'data.timeline.milestones', lib: 'datakit', category: 'timeline/proceso', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
+  tags: ['timeline', 'hitos', 'horizontal'],
+  render(ctx, t, env) {
+    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
+    // linea de tiempo HORIZONTAL con 4 hitos (punto + fecha-mono arriba + etiqueta abajo). La linea se dibuja.
+    const n = 4, cy = H * 0.46, x0 = W * 0.14, x1 = W * 0.86, span = x1 - x0
+    const labels = [content.brand, content.tagline, content.claim, content.cta]
+    const def = ['Inicio', 'Prueba', 'Ajuste', 'Escala']
+    const titulo = content.tagline || ''
+    if (titulo) drawText(ctx, titulo, W / 2, H * 0.24, { size: 21, weight: 700, family: fonts.display, maxW: W * 0.84, color: pal.ink, alpha: inv(t, 0.1, 0.55) })
+    // riel + progreso
+    ctx.lineCap = 'round'; ctx.lineWidth = 4
+    ctx.strokeStyle = hairline(pal, 0.12); ctx.beginPath(); ctx.moveTo(x0, cy); ctx.lineTo(x1, cy); ctx.stroke()
+    const prog = eOutCubic(inv(t, 0.1, 1.1))
+    ctx.strokeStyle = pal.accent; ctx.beginPath(); ctx.moveTo(x0, cy); ctx.lineTo(lerp(x0, x1, prog), cy); ctx.stroke()
+    for (let i = 0; i < n; i++) {
+      const x = x0 + (span * i) / (n - 1)
+      const reach = inv(prog, i / (n - 1) - 0.02, i / (n - 1) + 0.1)
+      const ap = eOutBack01(reach)
+      const week = (i + 1) * 2     // "Sem 2/4/6/8"
+      // fecha-mono arriba
+      drawText(ctx, 'Sem ' + week, x, cy - 38, { size: 13, weight: 700, family: fonts.accent, maxW: span / n, color: reach > 0.5 ? numColor(pal) : pal.dim, alpha: clamp(0.4 + ap * 0.6, 0, 1) })
+      // nodo
+      ctx.save(); ctx.translate(x, cy)
+      ctx.fillStyle = pal.bg0; ctx.beginPath(); ctx.arc(0, 0, 11, 0, TAU); ctx.fill()
+      ctx.lineWidth = 3; ctx.strokeStyle = reach > 0.5 ? pal.accent : hairline(pal, 0.25); ctx.beginPath(); ctx.arc(0, 0, 11, 0, TAU); ctx.stroke()
+      if (reach > 0.5) { ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.arc(0, 0, 5 * clamp(ap, 0, 1), 0, TAU); ctx.fill() }
+      ctx.restore()
+      // etiqueta abajo
+      drawText(ctx, shortLabel(labels[i], 1) || def[i], x, cy + 38, { size: 14, weight: 600, family: fonts.text, maxW: span / n + 10, color: reach > 0.5 ? pal.ink : pal.dim, alpha: clamp(0.4 + ap * 0.6, 0, 1) })
+    }
+  },
+})
+
+// ====================================================================== progreso
+register({
+  id: 'data.progress.radialsteps', lib: 'datakit', category: 'progreso', tones: ['dark', 'light'], rubros: ['*'], weight: 1.1,
+  tags: ['progreso', 'anillo', 'pasos'],
+  render(ctx, t, env) {
+    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
+    // anillo de progreso por PASOS (5 segmentos SEPARADOS): los completados en acento, el resto en riel.
+    // target estable por seed (cuantos pasos van); t anima cuantos se "encienden". Paso N/5 al centro.
+    const cx = W / 2, cy = H * 0.42, rad = W * 0.3, lw = 18, steps = 5
+    const target = 3 + Math.floor(r() * 2)          // 3 o 4 de 5 (estable por seed)
+    const prog = eOutCubic(inv(t, 0.1, 1.1))
+    const lit = target * prog                         // 0..target, animado
+    const start = -TAU / 4, segGap = 0.16             // hueco GRANDE entre segmentos -> stepping legible
+    const segArc = (TAU - segGap * steps) / steps
+    ctx.lineCap = 'round'; ctx.lineWidth = lw
+    for (let i = 0; i < steps; i++) {
+      const a0 = start + i * (segArc + segGap)
+      // riel del segmento
+      ctx.strokeStyle = hairline(pal, 0.1); ctx.beginPath(); ctx.arc(cx, cy, rad, a0, a0 + segArc); ctx.stroke()
+      // relleno: completo si i<floor(lit), parcial si es el que esta encendiendo
+      const fill = clamp(lit - i, 0, 1)
+      if (fill > 0.02) { ctx.strokeStyle = i < target ? pal.accent : hairline(pal, 0.1); ctx.beginPath(); ctx.arc(cx, cy, rad, a0, a0 + segArc * fill); ctx.stroke() }
+    }
+    // centro: paso actual / total (cuenta hasta target)
+    const cur = Math.round(lit)
+    drawText(ctx, cur + '/' + steps, cx, cy - 6, { size: 52, weight: 700, family: fonts.accent, maxW: rad * 1.4, color: numColor(pal) })
+    drawText(ctx, 'pasos', cx, cy + 34, { size: 16, weight: 600, family: fonts.text, maxW: rad * 1.4, color: pal.dim, alpha: inv(t, 0.5, 1) })
+    const lab = content.tagline || content.claim
+    if (lab) drawText(ctx, lab, cx, cy + rad + 50, { size: 18, weight: 600, family: fonts.text, maxW: W * 0.8, color: pal.dim, alpha: inv(t, 0.7, 1.2) })
+  },
+})
+
+register({
+  id: 'data.progress.ringpct', lib: 'datakit', category: 'progreso', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
+  tags: ['progreso', 'anillo', 'porcentaje'],
+  render(ctx, t, env) {
+    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
+    // anillo de progreso fino con punto-cabeza + numero grande contando. Limpio, foco en el %.
+    const cx = W / 2, cy = H * 0.42, rad = W * 0.31, lw = 12
+    const pct = range(r, 0.55, 0.96)
+    const ap = eOutCubic(inv(t, 0.1, 1.2))
+    const start = -TAU / 4, sweep = TAU * pct * ap
+    ctx.lineCap = 'round'; ctx.lineWidth = lw
+    ctx.strokeStyle = hairline(pal, 0.1); ctx.beginPath(); ctx.arc(cx, cy, rad, 0, TAU); ctx.stroke()
+    ctx.strokeStyle = pal.accent; ctx.beginPath(); ctx.arc(cx, cy, rad, start, start + sweep); ctx.stroke()
+    // punto-cabeza
+    const hx = cx + Math.cos(start + sweep) * rad, hy = cy + Math.sin(start + sweep) * rad
+    ctx.fillStyle = lighten(pal.accent, 0.3); ctx.beginPath(); ctx.arc(hx, hy, lw * 0.5, 0, TAU); ctx.fill()
+    ctx.fillStyle = pal.bg0; ctx.beginPath(); ctx.arc(hx, hy, lw * 0.2, 0, TAU); ctx.fill()
+    // numero grande contando (mono)
+    drawText(ctx, Math.round(pct * 100 * ap) + '%', cx, cy - 2, { size: 60, weight: 700, family: fonts.accent, maxW: rad * 1.5, color: numColor(pal) })
+    drawText(ctx, shortLabel(content.tagline, 3) || 'logrado', cx, cy + 42, { size: 17, weight: 600, family: fonts.text, maxW: rad * 1.6, color: pal.dim, alpha: inv(t, 0.5, 1) })
+    const lab = content.claim
+    if (lab && lab !== content.tagline) drawText(ctx, lab, cx, cy + rad + 52, { size: 18, weight: 600, family: fonts.text, maxW: W * 0.8, color: pal.dim, alpha: inv(t, 0.7, 1.2) })
+  },
+})
+
+// ---- helpers OLA 3 (puros) ----
+// (sin helpers nuevos: reusa fmtInt, countTo, numColor, hairline, shortLabel, checkPath, eOutBack01, pick, starPath)

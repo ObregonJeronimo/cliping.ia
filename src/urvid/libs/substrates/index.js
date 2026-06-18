@@ -875,3 +875,535 @@ register({
     ctx.restore()
   },
 })
+
+// ============================================================ OLA 3 ============================================================
+// Ampliacion: mas grain (perlin-ish/speckle), mas trama (woodgrain/mesh-moire), mas grid (perspectiva/isometrico-3d),
+// mas scanlines (vhs/interlace), mas fabric (corduroy/herringbone), mas glass (rain-track/lens-spots),
+// mas light (caustics/spotlight-soft), mas distress (foxing/halftone-erosion), mas topographic (ridges/voronoi-cells).
+// TODOS tenues + tone-aware + deterministas (mulberry32(env.seed)). ALPHA BAJO: la textura se SIENTE, no tapa.
+
+// ------------------------------------------------------------ grain-noise (Ola 3) ------------------------------------------------------------
+
+register({
+  id: 'sub.grain.speckle', lib: 'substrates', category: 'grain-noise', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
+  tags: ['grano', 'sal-pimienta', 'estatica'],
+  render(ctx, t, env) {
+    const { pal } = env, r = mulberry32(env.seed ^ 0x3f8aa1d7)
+    // sal y pimienta: micropuntos de tinta Y anti-tinta en densidad media, con un "twinkle" por bloque temporal
+    // (sin Math.random; el centelleo viene de un seno por indice). Mas grueso que grain.film -> textura de estatica fina.
+    const ink = inkOf(pal), anti = antiInkOf(pal)
+    const N = 900, baseA = pal.tone === 'light' ? 0.05 : 0.075
+    ctx.save()
+    for (let i = 0; i < N; i++) {
+      const x = r() * W, y = r() * H, s = 0.7 + r() * 1.3
+      const tw = 0.45 + 0.55 * (0.5 + 0.5 * Math.sin(t * 2.2 + i * 0.7))
+      const dark = r() < 0.5
+      ctx.fillStyle = rgba(dark ? ink : anti, baseA * tw)
+      ctx.fillRect(x, y, s, s)
+    }
+    ctx.restore()
+  },
+})
+
+register({
+  id: 'sub.grain.clouds', lib: 'substrates', category: 'grain-noise', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
+  tags: ['grano', 'nube', 'perlin', 'organico'],
+  render(ctx, t, env) {
+    const { pal } = env, r = mulberry32(env.seed ^ 0x77ce11a3)
+    // ruido tipo "nubes" (valor-noise barato): manchones suaves de luz/sombra construidos por blobs radiales
+    // sembrados en una grilla floja con jitter -> textura granulada de baja frecuencia que respira. Tone-aware.
+    const ink = inkOf(pal), anti = antiInkOf(pal)
+    const cells = 7, cw = W / cells, ch = H / (cells * 2)
+    ctx.save()
+    for (let gy = 0; gy < cells * 2; gy++) {
+      for (let gx = 0; gx < cells; gx++) {
+        const jx = (r() - 0.5) * cw, jy = (r() - 0.5) * ch
+        const cx = gx * cw + cw / 2 + jx, cy = gy * ch + ch / 2 + jy
+        const rad = (cw * 0.7) * (0.7 + 0.3 * r())
+        const up = r() < 0.5
+        const a = (pal.tone === 'light' ? 0.03 : 0.05) * (0.5 + 0.5 * Math.sin(t * 0.4 + gx * 0.6 + gy * 0.3))
+        const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, rad)
+        g.addColorStop(0, rgba(up ? anti : ink, a)); g.addColorStop(1, rgba(up ? anti : ink, 0))
+        ctx.fillStyle = g; ctx.fillRect(cx - rad, cy - rad, rad * 2, rad * 2)
+      }
+    }
+    ctx.restore()
+  },
+})
+
+// ------------------------------------------------------------ print-trama (Ola 3) ------------------------------------------------------------
+
+register({
+  id: 'sub.trama.woodgrain', lib: 'substrates', category: 'print-trama', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
+  tags: ['print', 'madera', 'veta', 'xilografia'],
+  render(ctx, t, env) {
+    const { pal } = env, r = mulberry32(env.seed ^ 0x1d77beef)
+    // veta de madera / xilografia: lineas horizontales largas que ondulan en fase, agrupadas, con "nudos" elipticos
+    // sembrados donde las lineas se curvan alrededor. Look de grabado en madera. Tenue, ink-aware. Microderiva.
+    const ink = inkOf(pal)
+    const knots = []
+    const nk = 3
+    for (let i = 0; i < nk; i++) knots.push({ x: range(r, W * 0.15, W * 0.85), y: range(r, H * 0.1, H * 0.9), s: range(r, 18, 40) })
+    ctx.save()
+    ctx.lineWidth = 0.8
+    const step = 7, drift = Math.sin(t * 0.3) * 2
+    for (let y = 0; y < H + step; y += step) {
+      const a = (pal.tone === 'light' ? 0.035 : 0.06) * (0.6 + 0.4 * Math.sin(y * 0.05))
+      ctx.strokeStyle = rgba(ink, a)
+      ctx.beginPath()
+      for (let x = 0; x <= W; x += 6) {
+        // deformacion base + repulsion alrededor de nudos (las lineas "abrazan" el nudo)
+        let dy = Math.sin(x * 0.018 + y * 0.06 + drift) * 3
+        for (const k of knots) {
+          const dx = x - k.x, dyy = y - k.y, d = Math.hypot(dx, dyy)
+          if (d < k.s * 2.4) dy += (dyy / (d || 1)) * (k.s * 1.6) * Math.exp(-(d * d) / (k.s * k.s * 1.6))
+        }
+        x === 0 ? ctx.moveTo(x, y + dy) : ctx.lineTo(x, y + dy)
+      }
+      ctx.stroke()
+    }
+    ctx.restore()
+  },
+})
+
+register({
+  id: 'sub.trama.moire', lib: 'substrates', category: 'print-trama', tones: ['dark', 'light'], rubros: ['*'], weight: 0.8,
+  tags: ['print', 'moire', 'interferencia', 'optico'],
+  render(ctx, t, env) {
+    const { pal } = env
+    // patron de moire: dos rejillas de lineas finas casi-paralelas (angulos minimamente distintos) que al superponerse
+    // generan franjas de interferencia. El angulo relativo respira muy lento con t -> el moire "viaja". Tenue, ink-aware.
+    const ink = inkOf(pal), step = 4
+    const diag = Math.hypot(W, H)
+    const baseAng = 0.04, delta = 0.05 + 0.03 * Math.sin(t * 0.35)
+    ctx.save()
+    ctx.lineWidth = 0.7
+    for (const ang of [baseAng, baseAng + delta]) {
+      ctx.save()
+      ctx.translate(W / 2, H / 2); ctx.rotate(ang); ctx.translate(-W / 2, -H / 2)
+      ctx.strokeStyle = rgba(ink, pal.tone === 'light' ? 0.04 : 0.055)
+      for (let i = -diag; i < diag * 2; i += step) {
+        ctx.beginPath(); ctx.moveTo(i, -diag); ctx.lineTo(i, diag * 2); ctx.stroke()
+      }
+      ctx.restore()
+    }
+    ctx.restore()
+  },
+})
+
+// ------------------------------------------------------------ editorial-grid (Ola 3) ------------------------------------------------------------
+
+register({
+  id: 'sub.grid.perspective', lib: 'substrates', category: 'editorial-grid', tones: ['dark', 'light'], rubros: ['tech', 'gaming', 'musica', 'default', 'inmobiliaria'], weight: 1,
+  tags: ['perspectiva', 'horizonte', 'retrowave', 'piso'],
+  render(ctx, t, env) {
+    const { pal } = env
+    // grilla en perspectiva (piso retrowave/synthwave): lineas que convergen a un punto de fuga central + travesanos
+    // horizontales que se densifican hacia el horizonte. Las horizontales "fluyen" hacia el espectador con t. Tone-aware.
+    const horizon = H * 0.5, vpx = W / 2
+    const ink = inkOf(pal)
+    ctx.save()
+    // lineas radiales (verticales convergiendo al punto de fuga)
+    ctx.strokeStyle = rgba(pal.accent, pal.tone === 'light' ? 0.06 : 0.09); ctx.lineWidth = 0.8
+    const rays = 14
+    for (let i = 0; i <= rays; i++) {
+      const fx = (i / rays - 0.5) * W * 2.4
+      ctx.beginPath(); ctx.moveTo(vpx, horizon); ctx.lineTo(vpx + fx, H); ctx.stroke()
+    }
+    // travesanos horizontales que se acercan (densidad exponencial hacia el horizonte)
+    ctx.strokeStyle = rgba(ink, pal.tone === 'light' ? 0.05 : 0.08)
+    const flow = (t * 0.25) % 1
+    for (let i = 0; i < 16; i++) {
+      const p = ((i + flow) / 16)
+      const y = horizon + (H - horizon) * (p * p)   // ease cuadratica -> juntas arriba, separadas abajo
+      ctx.lineWidth = 0.5 + p * 1.1
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke()
+    }
+    // linea de horizonte tenue
+    ctx.strokeStyle = rgba(pal.accent, pal.tone === 'light' ? 0.07 : 0.12); ctx.lineWidth = 1
+    ctx.beginPath(); ctx.moveTo(0, horizon); ctx.lineTo(W, horizon); ctx.stroke()
+    ctx.restore()
+  },
+})
+
+register({
+  id: 'sub.grid.iso3d', lib: 'substrates', category: 'editorial-grid', tones: ['dark', 'light'], rubros: ['tech', 'construccion', 'inmobiliaria', 'default'], weight: 0.9,
+  tags: ['isometrico', '3d', 'cubos', 'tecnico'],
+  render(ctx, t, env) {
+    const { pal } = env
+    // papel isometrico (ilusion 3D de cubos): TRES familias de lineas paralelas que TAPIZAN el lienzo -> +30deg, -30deg
+    // y verticales. Su interseccion da rombos que el ojo lee como cubos. Cada familia con su alpha (relieve por cara).
+    // Cada familia se rota y se dibuja como rejilla de paralelas que cubre la diagonal completa. Microderiva con t.
+    const ink = inkOf(pal), anti = antiInkOf(pal)
+    const step = 22, off = (t * 1.5) % step
+    const diag = Math.hypot(W, H)
+    const baseA = pal.tone === 'light' ? 0.045 : 0.075
+    // familia = { rot, col, a }: dos diagonales (caras top) + verticales (caras laterales, highlight)
+    const fams = [
+      { rot: 0.5236, col: ink, a: 1.0 },     // +30deg
+      { rot: -0.5236, col: ink, a: 0.85 },   // -30deg
+      { rot: 0, col: anti, a: 0.55 },        // vertical (highlight de la cara lateral)
+    ]
+    ctx.save()
+    ctx.lineWidth = 0.7
+    for (const f of fams) {
+      ctx.save()
+      ctx.translate(W / 2, H / 2); ctx.rotate(f.rot); ctx.translate(-W / 2, -H / 2)
+      ctx.strokeStyle = rgba(f.col, baseA * f.a)
+      for (let i = -diag; i < diag * 2; i += step) {
+        ctx.beginPath(); ctx.moveTo(i + off, -diag); ctx.lineTo(i + off, diag * 2); ctx.stroke()
+      }
+      ctx.restore()
+    }
+    ctx.restore()
+  },
+})
+
+// ------------------------------------------------------------ scanlines (Ola 3) ------------------------------------------------------------
+
+register({
+  id: 'sub.scan.vhs', lib: 'substrates', category: 'scanlines', tones: ['dark'], rubros: ['tech', 'gaming', 'musica', 'default'], weight: 1,
+  tags: ['vhs', 'retro', 'tracking', 'analogico'],
+  render(ctx, t, env) {
+    const { pal } = env, r = mulberry32(env.seed ^ 0x5ca7711e)
+    // VHS: scanlines suaves + bandas de "tracking" (ruido horizontal que salta a alturas sembradas) + un leve
+    // desplazamiento cromatico (chroma shift) en una franja. Solo dark (look de cinta de video vieja).
+    ctx.save()
+    // scanlines base
+    ctx.strokeStyle = rgba('#000000', 0.12); ctx.lineWidth = 1
+    for (let y = 0; y < H; y += 3) { ctx.beginPath(); ctx.moveTo(0, y + 0.5); ctx.lineTo(W, y + 0.5); ctx.stroke() }
+    // bandas de tracking que suben/bajan con el tiempo
+    const bands = 4
+    for (let i = 0; i < bands; i++) {
+      const phase = r()
+      const by = ((t * (20 + i * 12) + phase * H) % (H + 30)) - 15
+      const bh = 4 + r() * 10
+      // ruido horizontal dentro de la banda
+      ctx.fillStyle = rgba('#ffffff', 0.05)
+      for (let x = 0; x < W; x += 2) {
+        if (r() < 0.5) continue
+        ctx.fillRect(x, by + r() * bh, 1 + r() * 3, 1)
+      }
+      // tinte de chroma shift (acento) en el borde de la banda
+      ctx.fillStyle = rgba(pal.accent, 0.04); ctx.fillRect(0, by, W, 1.2)
+      ctx.fillStyle = rgba(pal.accent2, 0.035); ctx.fillRect(2, by + bh, W, 1)
+    }
+    ctx.restore()
+  },
+})
+
+register({
+  id: 'sub.scan.interlace', lib: 'substrates', category: 'scanlines', tones: ['dark', 'light'], rubros: ['tech', 'gaming', 'default'], weight: 0.8,
+  tags: ['interlace', 'campos', 'digital', 'flicker'],
+  render(ctx, t, env) {
+    const { pal } = env
+    // entrelazado (interlace): dos campos (lineas pares e impares) que alternan su tenue oscurecimiento por frame
+    // -> el "shimmer" del video entrelazado. Muy regular, tenue. Doble tono via ink. El flicker viene de t (no random).
+    const ink = inkOf(pal)
+    const odd = Math.sin(t * 6) > 0 ? 0 : 1   // alterna campo por bloque temporal
+    ctx.save()
+    ctx.strokeStyle = rgba(ink, pal.tone === 'light' ? 0.04 : 0.07); ctx.lineWidth = 1
+    for (let y = 0; y < H; y += 2) {
+      if ((Math.floor(y / 2) % 2) !== odd) continue
+      ctx.beginPath(); ctx.moveTo(0, y + 0.5); ctx.lineTo(W, y + 0.5); ctx.stroke()
+    }
+    // el otro campo, mas suave
+    ctx.strokeStyle = rgba(ink, pal.tone === 'light' ? 0.02 : 0.035)
+    for (let y = 0; y < H; y += 2) {
+      if ((Math.floor(y / 2) % 2) === odd) continue
+      ctx.beginPath(); ctx.moveTo(0, y + 0.5); ctx.lineTo(W, y + 0.5); ctx.stroke()
+    }
+    ctx.restore()
+  },
+})
+
+// ------------------------------------------------------------ fabric-material (Ola 3) ------------------------------------------------------------
+
+register({
+  id: 'sub.fabric.corduroy', lib: 'substrates', category: 'fabric-material', tones: ['dark', 'light'], rubros: ['*'], weight: 0.8,
+  tags: ['tela', 'pana', 'corduroy', 'acanalado'],
+  render(ctx, t, env) {
+    const { pal } = env
+    // pana / corduroy: canaletas verticales con relieve (cada cordon = una banda con highlight a un lado y sombra al otro).
+    // Sensacion de tela acanalada. Casi inmovil (microvaiven del highlight). Doble tono via ink/anti.
+    const ink = inkOf(pal), anti = antiInkOf(pal)
+    const wale = 8                          // ancho del cordon
+    const sway = Math.sin(t * 0.4) * 0.5
+    ctx.save()
+    for (let x = 0; x < W; x += wale) {
+      // sombra a la izquierda del cordon
+      ctx.fillStyle = rgba(ink, pal.tone === 'light' ? 0.03 : 0.06)
+      ctx.fillRect(x, 0, wale * 0.4, H)
+      // highlight a la derecha
+      ctx.fillStyle = rgba(anti, pal.tone === 'light' ? 0.025 : 0.05)
+      ctx.fillRect(x + wale * 0.6 + sway, 0, wale * 0.3, H)
+    }
+    // micro-vetas horizontales (textura del hilo) muy tenues
+    ctx.strokeStyle = rgba(ink, pal.tone === 'light' ? 0.015 : 0.03); ctx.lineWidth = 0.5
+    for (let y = 0; y < H; y += 5) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke() }
+    ctx.restore()
+  },
+})
+
+register({
+  id: 'sub.fabric.herringbone', lib: 'substrates', category: 'fabric-material', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
+  tags: ['tela', 'espiga', 'herringbone', 'sastreria'],
+  render(ctx, t, env) {
+    const { pal } = env
+    // espiga / herringbone (tweed de sastreria): bloques de lineas diagonales que alternan +45/-45 por columna
+    // -> el clasico zig-zag de espiga. Tenue, ink-aware. Casi inmovil (microderiva). Look elegante/textil.
+    const ink = inkOf(pal)
+    const blockW = 16, step = 4, drift = (t * 1.2) % step
+    ctx.save()
+    ctx.lineWidth = 1
+    ctx.strokeStyle = rgba(ink, pal.tone === 'light' ? 0.035 : 0.06)
+    for (let bx = 0; bx < W; bx += blockW) {
+      const dir = (Math.floor(bx / blockW) % 2) ? 1 : -1   // alterna la pendiente
+      for (let i = -blockW; i < H + blockW; i += step) {
+        ctx.beginPath()
+        const y0 = i + drift
+        ctx.moveTo(bx, y0); ctx.lineTo(bx + blockW, y0 + dir * blockW)
+        ctx.stroke()
+      }
+    }
+    ctx.restore()
+  },
+})
+
+// ------------------------------------------------------------ glass-acrylic (Ola 3) ------------------------------------------------------------
+
+register({
+  id: 'sub.glass.raintrack', lib: 'substrates', category: 'glass-acrylic', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
+  tags: ['vidrio', 'lluvia', 'reguero', 'ventana'],
+  render(ctx, t, env) {
+    const { pal } = env, r = mulberry32(env.seed ^ 0x4a17d09f)
+    // regueros de lluvia en vidrio: hilos verticales que serpentean hacia abajo con una "cabeza" de gota brillante
+    // que cae. La estela queda translucida. Tenue. Funciona en ambos tonos (highlight blanco + sombra suave).
+    ctx.save()
+    const tracks = 16
+    for (let i = 0; i < tracks; i++) {
+      const x0 = r() * W
+      const speed = 30 + r() * 70
+      const headY = ((r() * H) + t * speed) % (H + 60) - 30
+      const len = 40 + r() * 120
+      // estela (reguero): linea serpenteante con leve sombra
+      ctx.strokeStyle = rgba('#000000', pal.tone === 'light' ? 0.025 : 0.05); ctx.lineWidth = 1.4
+      ctx.beginPath()
+      let x = x0
+      for (let yy = headY - len; yy <= headY; yy += 6) {
+        x = x0 + Math.sin(yy * 0.08 + i) * 2
+        yy === headY - len ? ctx.moveTo(x, yy) : ctx.lineTo(x, yy)
+      }
+      ctx.stroke()
+      // highlight de la estela
+      ctx.strokeStyle = rgba('#ffffff', pal.tone === 'light' ? 0.04 : 0.07); ctx.lineWidth = 0.7
+      ctx.stroke()
+      // cabeza de la gota
+      const hr = 1.8 + r() * 2
+      ctx.fillStyle = rgba('#ffffff', pal.tone === 'light' ? 0.06 : 0.1)
+      ctx.beginPath(); ctx.arc(x, headY, hr, 0, TAU); ctx.fill()
+    }
+    ctx.restore()
+  },
+})
+
+register({
+  id: 'sub.glass.lensbokeh', lib: 'substrates', category: 'glass-acrylic', tones: ['dark'], rubros: ['*'], weight: 0.8,
+  tags: ['vidrio', 'bokeh', 'lente', 'flare', 'circulos'],
+  render(ctx, t, env) {
+    const { pal } = env, r = mulberry32(env.seed ^ 0x6b0be401)
+    // bokeh de lente: circulos suaves desenfocados (anillos huecos de luz) de tamanos varios a la deriva lenta,
+    // como puntos fuera de foco / lens flare. Solo dark (brilla sobre fondo oscuro). Acentos + blanco. Lighter blend.
+    ctx.save()
+    ctx.globalCompositeOperation = 'lighter'
+    const N = 14
+    for (let i = 0; i < N; i++) {
+      const ph = r() * TAU
+      const bx = r() * W + Math.sin(t * 0.2 + ph) * 18
+      const by = r() * H + Math.cos(t * 0.17 + ph) * 16
+      const rad = 8 + r() * 34
+      const col = i % 3 === 0 ? pal.accent2 : (i % 3 === 1 ? pal.accent : '#ffffff')
+      const a = 0.04 + 0.03 * (0.5 + 0.5 * Math.sin(t * 0.5 + i))
+      // anillo: relleno suave + borde mas marcado (look de bokeh con borde)
+      const g = ctx.createRadialGradient(bx, by, rad * 0.3, bx, by, rad)
+      g.addColorStop(0, rgba(col, a * 0.5)); g.addColorStop(0.75, rgba(col, a)); g.addColorStop(1, rgba(col, 0))
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(bx, by, rad, 0, TAU); ctx.fill()
+    }
+    ctx.restore()
+  },
+})
+
+// ------------------------------------------------------------ overlay-light (Ola 3) ------------------------------------------------------------
+
+register({
+  id: 'sub.light.caustics', lib: 'substrates', category: 'overlay-light', tones: ['dark'], rubros: ['*'], weight: 0.9,
+  tags: ['caustics', 'agua', 'reflejos', 'piscina'],
+  render(ctx, t, env) {
+    const { pal } = env
+    // caustics (reflejos de agua): malla de luz ondulante que dibuja celdas brillantes irregulares como el fondo
+    // de una pileta. Construida por interferencia de senos en 2 ejes -> filamentos de luz que se mueven. Solo dark.
+    ctx.save()
+    ctx.globalCompositeOperation = 'lighter'
+    const cell = 26
+    for (let y = 0; y < H; y += cell) {
+      for (let x = 0; x < W; x += cell) {
+        // brillo = producto de ondas desfasadas -> nodos brillantes que migran con t
+        const v = Math.sin(x * 0.06 + t * 0.8) * Math.cos(y * 0.05 - t * 0.6) +
+          Math.sin((x + y) * 0.04 + t * 0.5)
+        const b = Math.max(0, v)        // solo crestas
+        if (b < 0.4) continue
+        const a = 0.05 * Math.min(1, (b - 0.4) * 1.5)
+        const cx = x + cell / 2, cy = y + cell / 2
+        const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, cell * 0.8)
+        g.addColorStop(0, rgba(pal.accent, a)); g.addColorStop(1, rgba(pal.accent, 0))
+        ctx.fillStyle = g; ctx.fillRect(x - cell / 2, y - cell / 2, cell * 2, cell * 2)
+      }
+    }
+    ctx.restore()
+  },
+})
+
+register({
+  id: 'sub.light.spotlight', lib: 'substrates', category: 'overlay-light', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
+  tags: ['spotlight', 'foco', 'escenario', 'realce'],
+  render(ctx, t, env) {
+    const { pal } = env
+    // spotlight suave: un foco circular de luz que realza el centro-superior (donde suele ir el titulo) y deja caer
+    // el resto. En dark = halo de luz aditivo; en light = scrim invertido (apenas baja el resto para destacar el foco).
+    const cx = W / 2, cy = H * (0.4 + 0.02 * Math.sin(t * 0.4))
+    const rad = H * (0.36 + 0.03 * Math.sin(t * 0.5))
+    ctx.save()
+    if (pal.tone === 'light') {
+      // scrim radial inverso muy tenue (oscurece afuera del foco)
+      const g = ctx.createRadialGradient(cx, cy, rad * 0.4, cx, cy, rad * 1.6)
+      g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,0.06)')
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H)
+    } else {
+      ctx.globalCompositeOperation = 'lighter'
+      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, rad)
+      g.addColorStop(0, rgba('#ffffff', 0.05)); g.addColorStop(0.6, rgba(pal.accent, 0.02)); g.addColorStop(1, rgba('#ffffff', 0))
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H)
+    }
+    ctx.restore()
+  },
+})
+
+// ------------------------------------------------------------ damage-distress (Ola 3) ------------------------------------------------------------
+
+register({
+  id: 'sub.distress.foxing', lib: 'substrates', category: 'damage-distress', tones: ['dark', 'light'], rubros: ['*'], weight: 0.8,
+  tags: ['manchas', 'envejecido', 'papel-viejo', 'oxido'],
+  render(ctx, t, env) {
+    const { pal } = env, r = mulberry32(env.seed ^ 0x0f1a9301)
+    // "foxing": manchas de envejecimiento de papel viejo -> pequenos discos teñidos (calidos en dark via acento,
+    // sepia/tinta en light) con borde difuso, dispersos. Casi inmovil (respiran apenas). Tenue.
+    const stainCol = pal.tone === 'light' ? '#6b4a2a' : pal.accent2
+    ctx.save()
+    const N = 26
+    for (let i = 0; i < N; i++) {
+      const x = r() * W, y = r() * H
+      const rad = 3 + r() * 12
+      const a = (pal.tone === 'light' ? 0.04 : 0.06) * (0.4 + 0.6 * r()) * (0.85 + 0.15 * Math.sin(t * 0.3 + i))
+      const g = ctx.createRadialGradient(x, y, 0, x, y, rad)
+      g.addColorStop(0, rgba(stainCol, a)); g.addColorStop(0.6, rgba(stainCol, a * 0.5)); g.addColorStop(1, rgba(stainCol, 0))
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, rad, 0, TAU); ctx.fill()
+    }
+    ctx.restore()
+  },
+})
+
+register({
+  id: 'sub.distress.erosion', lib: 'substrates', category: 'damage-distress', tones: ['dark', 'light'], rubros: ['*'], weight: 0.8,
+  tags: ['erosion', 'desgaste', 'estarcido', 'stencil'],
+  render(ctx, t, env) {
+    const { pal } = env, r = mulberry32(env.seed ^ 0x33e7051a)
+    // erosion / desgaste tipo stencil: motas ANTI-tinta (huecos) que "comen" la superficie -> sensacion de pintura
+    // descascarada / tinta gastada. Densidad mayor en franjas sembradas. Casi inmovil. Tenue, tone-aware.
+    const anti = antiInkOf(pal)
+    ctx.save()
+    const N = 700
+    // dos franjas erosionadas sembradas (donde se concentra el desgaste)
+    const b1 = range(r, 0, H), b2 = range(r, 0, H)
+    for (let i = 0; i < N; i++) {
+      const x = r() * W, y = r() * H
+      // probabilidad de aparecer mayor cerca de las franjas
+      const near = Math.min(Math.abs(y - b1), Math.abs(y - b2))
+      if (r() > Math.exp(-near / 90)) continue
+      const s = 0.6 + r() * 2
+      ctx.fillStyle = rgba(anti, (pal.tone === 'light' ? 0.04 : 0.06) * r())
+      ctx.fillRect(x, y, s, s)
+    }
+    ctx.restore()
+  },
+})
+
+// ------------------------------------------------------------ topographic-organic (Ola 3) ------------------------------------------------------------
+
+register({
+  id: 'sub.topo.ridges', lib: 'substrates', category: 'topographic-organic', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
+  tags: ['duna', 'cordillera', 'estratos', 'capas'],
+  render(ctx, t, env) {
+    const { pal } = env, r = mulberry32(env.seed ^ 0x5e21ce0d)
+    // estratos / dunas: capas horizontales de crestas onduladas apiladas (como cortes geologicos o dunas vistas de lado).
+    // Cada capa = una curva suave con fase propia; el relleno entre capas es un degrade tenue. Microderiva con t.
+    const ink = inkOf(pal)
+    ctx.save()
+    const layers = 11
+    for (let L = 0; L < layers; L++) {
+      const baseY = (L / layers) * H * 1.05 + 10
+      const amp = 10 + r() * 22, ph = r() * TAU, freq = 0.006 + r() * 0.01
+      const drift = Math.sin(t * 0.22 + L) * 3
+      const a = (pal.tone === 'light' ? 0.04 : 0.07) * (0.5 + 0.5 * (L / layers))
+      ctx.strokeStyle = rgba(ink, a); ctx.lineWidth = 0.9
+      ctx.beginPath()
+      for (let x = 0; x <= W; x += 6) {
+        const y = baseY + Math.sin(x * freq + ph + drift) * amp + Math.sin(x * freq * 2.3 + ph) * amp * 0.3
+        x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
+      }
+      ctx.stroke()
+    }
+    ctx.restore()
+  },
+})
+
+register({
+  id: 'sub.topo.voronoi', lib: 'substrates', category: 'topographic-organic', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
+  tags: ['voronoi', 'celdas', 'craquelado', 'cuero', 'organico'],
+  render(ctx, t, env) {
+    const { pal } = env, r = mulberry32(env.seed ^ 0x71a0cce5)
+    // celdas de Voronoi (aprox): bordes entre regiones de sitios sembrados -> red organica de celdas como cuero
+    // agrietado / piel de jirafa / mosaico. Se aproxima dibujando, por cada sitio, segmentos a sus vecinos cercanos
+    // (mediatrices implicitas). Tenue, ink-aware. Sitios microderivan con t.
+    const ink = inkOf(pal)
+    const sites = []
+    const N = 24
+    for (let i = 0; i < N; i++) sites.push({ x: r() * W, y: r() * H, px: r() * TAU })
+    // posiciones animadas
+    const pos = sites.map(s => ({ x: s.x + Math.sin(t * 0.25 + s.px) * 6, y: s.y + Math.cos(t * 0.2 + s.px) * 6 }))
+    ctx.save()
+    ctx.strokeStyle = rgba(ink, pal.tone === 'light' ? 0.045 : 0.07); ctx.lineWidth = 0.8
+    // por cada par cercano, dibujar la mediatriz recortada (segmento perpendicular al punto medio) -> red de bordes
+    for (let i = 0; i < N; i++) {
+      // ordenar vecinos por distancia y conectar a los 3 mas cercanos con su mediatriz
+      const ds = []
+      for (let j = 0; j < N; j++) if (j !== i) ds.push({ j, d: Math.hypot(pos[i].x - pos[j].x, pos[i].y - pos[j].y) })
+      ds.sort((a, b) => a.d - b.d)
+      for (let k = 0; k < 3 && k < ds.length; k++) {
+        const j = ds[k].j
+        const mx = (pos[i].x + pos[j].x) / 2, my = (pos[i].y + pos[j].y) / 2
+        const dx = pos[j].x - pos[i].x, dy = pos[j].y - pos[i].y, len = Math.hypot(dx, dy) || 1
+        // direccion perpendicular
+        const nx = -dy / len, ny = dx / len
+        const half = Math.min(len * 0.55, 26)
+        ctx.beginPath()
+        ctx.moveTo(mx - nx * half, my - ny * half)
+        ctx.lineTo(mx + nx * half, my + ny * half)
+        ctx.stroke()
+      }
+    }
+    // puntitos en los sitios (nucleos de celda)
+    ctx.fillStyle = rgba(pal.accent, pal.tone === 'light' ? 0.06 : 0.09)
+    for (const p of pos) { ctx.beginPath(); ctx.arc(p.x, p.y, 1.1, 0, TAU); ctx.fill() }
+    ctx.restore()
+  },
+})

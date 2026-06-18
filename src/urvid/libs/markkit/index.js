@@ -6,7 +6,7 @@
 // reubica/escala segun el slot. Texto (cuando hay) via core/text.js -> nunca desborda.
 import { register } from '../../core/registry.js'
 import { mulberry32, range, pick } from '../../core/prng.js'
-import { drawText } from '../../core/text.js'
+import { drawText, drawWrapped } from '../../core/text.js'
 import { W, H, TAU, rgba, lighten, darken, clamp, inv, eOutCubic, eOutBack, spring, lerp } from '../../core/util.js'
 
 const CX = W / 2, CY = H / 2
@@ -974,6 +974,520 @@ register({
     ctx.globalAlpha = 1
     ctx.fillStyle = pal.accent2 || pal.accent
     ctx.beginPath(); ctx.arc(0, 0, W * 0.05 * burst, 0, TAU); ctx.fill()
+    ctx.restore()
+  },
+})
+
+// ============================================================================
+// OLA 3 — mas iconos por rubro + animados, morphs, marcos/contenedores, divisores, decoradores, badges.
+// Todos centrados via env (CX,CY), PUROS + DETERMINISTAS (mulberry32(env.seed)), tono-honestos, color de la paleta.
+// ============================================================================
+
+// helper local: corazon (path centrado en 0,0, radio s). Reusado por iconos de afinidad.
+function heartPath(ctx, s) {
+  ctx.beginPath()
+  ctx.moveTo(0, s * 0.95)
+  ctx.bezierCurveTo(-s * 1.5, -s * 0.15, -s * 0.55, -s * 1.15, 0, -s * 0.4)
+  ctx.bezierCurveTo(s * 0.55, -s * 1.15, s * 1.5, -s * 0.15, 0, s * 0.95)
+  ctx.closePath()
+}
+// helper local: gota redondeada apuntando hacia ARRIBA (radio s, punta en -1.5s). Pin/gota generica.
+function teardropUp(ctx, s) {
+  ctx.beginPath()
+  ctx.arc(0, 0, s, Math.PI * 0.75, Math.PI * 0.25)
+  ctx.lineTo(0, s * 1.6)
+  ctx.closePath()
+}
+
+// ---------- iconos por dominio (nuevos rubros: gastronomia, fitness, transporte, finanzas, legal) ----------
+
+register({
+  id: 'mark.icon.cutlery', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['gastronomia', 'eventos', 'turismo', 'default'], weight: 0.95,
+  tags: ['icono', 'gastronomia', 'tenedor', 'cuchillo', 'comida'],
+  render(ctx, t, env) {
+    const { pal } = env
+    const s = W * 0.17, ap = spring(inv(t, 0, 0.8), { zeta: 0.5, freq: 2.0 })
+    const sep = 1 + 0.06 * Math.sin(t * 1.6)   // los cubiertos respiran apartandose
+    ctx.save(); ctx.translate(CX, CY); ctx.scale(ap, ap)
+    ctx.strokeStyle = pal.accent; ctx.fillStyle = pal.accent; ctx.lineWidth = s * 0.16; ctx.lineCap = 'round'; ctx.lineJoin = 'round'
+    // tenedor (izquierda)
+    ctx.save(); ctx.translate(-s * 0.55 * sep, 0)
+    for (let i = -1; i <= 1; i++) { ctx.beginPath(); ctx.moveTo(i * s * 0.22, -s * 1.05); ctx.lineTo(i * s * 0.22, -s * 0.4); ctx.stroke() }
+    ctx.beginPath(); ctx.moveTo(-s * 0.32, -s * 0.4); ctx.lineTo(s * 0.32, -s * 0.4); ctx.stroke()          // base de las puas
+    ctx.beginPath(); ctx.moveTo(0, -s * 0.4); ctx.lineTo(0, s * 1.05); ctx.stroke()                          // mango
+    ctx.restore()
+    // cuchillo (derecha)
+    ctx.save(); ctx.translate(s * 0.55 * sep, 0)
+    ctx.beginPath()
+    ctx.moveTo(0, -s * 1.05); ctx.quadraticCurveTo(s * 0.3, -s * 0.55, s * 0.12, -s * 0.1)
+    ctx.lineTo(-s * 0.05, -s * 0.1); ctx.lineTo(-s * 0.05, -s * 1.0); ctx.closePath()
+    ctx.fill()
+    ctx.lineWidth = s * 0.16
+    ctx.beginPath(); ctx.moveTo(0, -s * 0.1); ctx.lineTo(0, s * 1.05); ctx.stroke()                          // mango
+    ctx.restore()
+    ctx.restore()
+  },
+})
+
+register({
+  id: 'mark.icon.dumbbell', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['fitness', 'salud', 'deporte', 'default'], weight: 0.9,
+  tags: ['icono', 'fitness', 'mancuerna', 'gimnasio', 'fuerza'],
+  render(ctx, t, env) {
+    const { pal } = env
+    const s = W * 0.18, ap = eOutBack(inv(t, 0, 0.7))
+    const lift = Math.abs(Math.sin(t * 2.2)) * s * 0.12   // levanta (rebote vertical)
+    ctx.save(); ctx.translate(CX, CY - lift); ctx.rotate(-0.12 + Math.sin(t * 1.4) * 0.04); ctx.scale(ap, ap)
+    const onAcc = pal.onAccent || (pal.tone === 'light' ? '#fff' : '#0a0a0f')
+    // barra central
+    ctx.fillStyle = pal.accent
+    ctx.beginPath(); ctx.roundRect(-s * 0.7, -s * 0.16, s * 1.4, s * 0.32, s * 0.16); ctx.fill()
+    // discos (2 por lado, con sombrita interna)
+    for (const sx of [-1, 1]) {
+      ctx.fillStyle = pal.accent
+      ctx.beginPath(); ctx.roundRect(sx * s * 0.7 - (sx > 0 ? 0 : s * 0.5), -s * 0.55, s * 0.5, s * 1.1, s * 0.14); ctx.fill()
+      ctx.fillStyle = pal.accent2 || pal.accent
+      ctx.beginPath(); ctx.roundRect(sx * s * 1.0 - (sx > 0 ? 0 : s * 0.36), -s * 0.7, s * 0.36, s * 1.4, s * 0.12); ctx.fill()
+    }
+    // brillo del agarre
+    ctx.fillStyle = rgba(onAcc, 0.5)
+    ctx.beginPath(); ctx.roundRect(-s * 0.4, -s * 0.06, s * 0.8, s * 0.05, s * 0.025); ctx.fill()
+    ctx.restore()
+  },
+})
+
+register({
+  id: 'mark.icon.car', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['automotor', 'transporte', 'logistica', 'default'], weight: 0.9,
+  tags: ['icono', 'auto', 'vehiculo', 'transporte', 'automotor'],
+  render(ctx, t, env) {
+    const { pal } = env
+    const s = W * 0.16, ap = eOutBack(inv(t, 0, 0.7)), bob = Math.sin(t * 3.2) * s * 0.04
+    ctx.save(); ctx.translate(CX, CY + bob); ctx.scale(ap, ap)
+    const onAcc = pal.onAccent || (pal.tone === 'light' ? '#fff' : '#0a0a0f')
+    // carroceria (cuerpo + techo)
+    ctx.fillStyle = pal.accent
+    ctx.beginPath()
+    ctx.moveTo(-s * 1.3, s * 0.35)
+    ctx.lineTo(-s * 1.3, -s * 0.1)
+    ctx.lineTo(-s * 0.75, -s * 0.1)
+    ctx.quadraticCurveTo(-s * 0.55, -s * 0.7, s * 0.0, -s * 0.7)
+    ctx.lineTo(s * 0.55, -s * 0.7)
+    ctx.quadraticCurveTo(s * 0.85, -s * 0.7, s * 1.0, -s * 0.1)
+    ctx.lineTo(s * 1.3, s * 0.0)
+    ctx.lineTo(s * 1.3, s * 0.35)
+    ctx.closePath(); ctx.fill()
+    // ventanas
+    ctx.fillStyle = rgba(onAcc, 0.85)
+    ctx.beginPath(); ctx.moveTo(-s * 0.6, -s * 0.12); ctx.quadraticCurveTo(-s * 0.45, -s * 0.55, -s * 0.05, -s * 0.55); ctx.lineTo(-s * 0.05, -s * 0.12); ctx.closePath(); ctx.fill()
+    ctx.beginPath(); ctx.moveTo(s * 0.1, -s * 0.55); ctx.lineTo(s * 0.5, -s * 0.55); ctx.quadraticCurveTo(s * 0.72, -s * 0.55, s * 0.82, -s * 0.12); ctx.lineTo(s * 0.1, -s * 0.12); ctx.closePath(); ctx.fill()
+    // ruedas que giran (radio que aparece)
+    ctx.fillStyle = pal.accent2 || pal.accent
+    for (const wx of [-0.7, 0.7]) {
+      ctx.save(); ctx.translate(wx * s, s * 0.4); ctx.rotate(t * 4 * (wx > 0 ? 1 : 1))
+      ctx.beginPath(); ctx.arc(0, 0, s * 0.34, 0, TAU); ctx.fill()
+      ctx.fillStyle = rgba(onAcc, 0.9); ctx.beginPath(); ctx.arc(0, 0, s * 0.12, 0, TAU); ctx.fill()
+      ctx.strokeStyle = rgba(onAcc, 0.6); ctx.lineWidth = s * 0.05
+      for (let k = 0; k < 4; k++) { ctx.save(); ctx.rotate(k * Math.PI / 2); ctx.beginPath(); ctx.moveTo(0, s * 0.12); ctx.lineTo(0, s * 0.3); ctx.stroke(); ctx.restore() }
+      ctx.fillStyle = pal.accent2 || pal.accent
+      ctx.restore()
+    }
+    ctx.restore()
+  },
+})
+
+register({
+  id: 'mark.icon.coins-stack', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['finanzas', 'inmobiliaria', 'retail', 'seguros', 'default'], weight: 0.95,
+  tags: ['icono', 'monedas', 'dinero', 'finanzas', 'ahorro'],
+  render(ctx, t, env) {
+    const { pal } = env
+    const s = W * 0.16, ap = eOutCubic(inv(t, 0, 0.5))
+    const onAcc = pal.onAccent || (pal.tone === 'light' ? '#fff' : '#0a0a0f')
+    ctx.save(); ctx.translate(CX, CY)
+    // pila de 4 monedas que se apilan en secuencia (de abajo hacia arriba)
+    const coins = 4, eh = s * 0.34   // alto de cada moneda (elipse)
+    for (let i = 0; i < coins; i++) {
+      const settle = spring(inv(t, i * 0.12, i * 0.12 + 0.45), { zeta: 0.5, freq: 2.2 })
+      if (settle <= 0.001) continue
+      const cy = s * 0.95 - i * (eh * 0.78)
+      const drop = (1 - settle) * -s * 0.6
+      ctx.save(); ctx.translate(0, cy + drop)
+      // canto
+      ctx.fillStyle = darken(pal.accent, 0.18)
+      ctx.beginPath(); ctx.ellipse(0, eh * 0.22, s * 0.9, eh, 0, 0, TAU); ctx.fill()
+      // cara
+      ctx.fillStyle = pal.accent
+      ctx.beginPath(); ctx.ellipse(0, 0, s * 0.9, eh, 0, 0, TAU); ctx.fill()
+      // signo $ en la moneda de arriba
+      if (i === coins - 1) drawText(ctx, '$', 0, 1, { size: eh * 1.6, weight: 800, family: (env.fonts && env.fonts.accent) || 'Inter', color: onAcc })
+      ctx.restore()
+    }
+    // destello arriba (brilla cuando termino de apilar)
+    const shine = clamp(inv(t, 0.6, 0.9), 0, 1) * (0.5 + 0.5 * Math.sin(t * 3))
+    ctx.globalAlpha = shine * 0.8
+    starPath(ctx, s * 0.55, -s * 1.35, s * 0.3, 4, 0.2, 0); ctx.fillStyle = pal.accent2 || pal.accent; ctx.fill()
+    ctx.restore()
+  },
+})
+
+register({
+  id: 'mark.icon.scale-justice', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['legal', 'finanzas', 'seguros', 'servicios', 'default'], weight: 0.85,
+  tags: ['icono', 'balanza', 'justicia', 'legal', 'equilibrio'],
+  render(ctx, t, env) {
+    const { pal } = env
+    const s = W * 0.17, ap = spring(inv(t, 0, 0.8), { zeta: 0.5, freq: 1.9 })
+    const tilt = Math.sin(t * 1.3) * 0.06   // oscila buscando el equilibrio
+    ctx.save(); ctx.translate(CX, CY); ctx.scale(ap, ap)
+    ctx.strokeStyle = pal.accent; ctx.fillStyle = pal.accent; ctx.lineWidth = s * 0.12; ctx.lineCap = 'round'; ctx.lineJoin = 'round'
+    // mastil + base
+    ctx.beginPath(); ctx.moveTo(0, -s * 1.05); ctx.lineTo(0, s * 0.9); ctx.stroke()
+    ctx.beginPath(); ctx.moveTo(-s * 0.5, s * 0.95); ctx.lineTo(s * 0.5, s * 0.95); ctx.stroke()
+    // viga (rota levemente)
+    ctx.save(); ctx.translate(0, -s * 0.9); ctx.rotate(tilt)
+    ctx.beginPath(); ctx.moveTo(-s * 0.85, 0); ctx.lineTo(s * 0.85, 0); ctx.stroke()
+    // platillos colgando (verticales, compensan la rotacion para colgar a plomo)
+    for (const px of [-0.85, 0.85]) {
+      ctx.save(); ctx.translate(px * s, 0); ctx.rotate(-tilt)
+      ctx.beginPath(); ctx.moveTo(-s * 0.25, 0); ctx.lineTo(0, s * 0.4); ctx.lineTo(s * 0.25, 0); ctx.stroke()
+      ctx.beginPath(); ctx.arc(0, s * 0.45, s * 0.28, 0, Math.PI); ctx.stroke()
+      ctx.restore()
+    }
+    ctx.restore()
+    // nodo central
+    ctx.beginPath(); ctx.arc(0, -s * 0.9, s * 0.1, 0, TAU); ctx.fill()
+    ctx.restore()
+  },
+})
+
+// ---------- iconos-animados (protagonistas que laten/giran/escriben) ----------
+
+register({
+  id: 'mark.anim.thumbs-up', lib: 'markkit', category: 'iconos-animados', tones: ['dark', 'light'], rubros: ['social', 'retail', 'servicios', 'default'], weight: 0.95,
+  tags: ['icono', 'pulgar', 'me-gusta', 'aprobacion', 'social'],
+  render(ctx, t, env) {
+    const { pal } = env
+    const s = W * 0.16, ap = eOutBack(inv(t, 0, 0.55))
+    // "tap" cada ~1s: salta y rota un toque
+    const ph = t % 1.0
+    const pop = 1 + 0.16 * Math.exp(-Math.pow((ph - 0.12) / 0.07, 2))
+    const tilt = -0.12 + 0.1 * Math.exp(-Math.pow((ph - 0.12) / 0.09, 2))
+    ctx.save(); ctx.translate(CX, CY); ctx.rotate(tilt); ctx.scale(ap * pop, ap * pop)
+    const onAcc = pal.onAccent || (pal.tone === 'light' ? '#fff' : '#0a0a0f')
+    // puño (rectangulo redondeado) + pulgar
+    ctx.fillStyle = pal.accent
+    ctx.beginPath(); ctx.roundRect(-s * 0.95, -s * 0.15, s * 0.55, s * 1.0, s * 0.12); ctx.fill()  // muñeca
+    ctx.beginPath()
+    ctx.moveTo(-s * 0.4, s * 0.85)
+    ctx.lineTo(-s * 0.4, -s * 0.05)
+    ctx.lineTo(s * 0.1, -s * 0.55)
+    ctx.quadraticCurveTo(s * 0.35, -s * 0.85, s * 0.45, -s * 0.5)
+    ctx.lineTo(s * 0.32, -s * 0.05)
+    ctx.lineTo(s * 0.85, -s * 0.05)
+    ctx.quadraticCurveTo(s * 1.0, -s * 0.05, s * 0.95, s * 0.2)
+    ctx.quadraticCurveTo(s * 1.0, s * 0.85, s * 0.7, s * 0.85)
+    ctx.closePath(); ctx.fill()
+    // lineas de dedos
+    ctx.strokeStyle = rgba(onAcc, 0.5); ctx.lineWidth = s * 0.05
+    for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.moveTo(s * 0.3, s * 0.05 + i * s * 0.26); ctx.lineTo(s * 0.78, s * 0.05 + i * s * 0.26); ctx.stroke() }
+    ctx.restore()
+  },
+})
+
+register({
+  id: 'mark.anim.clock-tick', lib: 'markkit', category: 'iconos-animados', tones: ['dark', 'light'], rubros: ['servicios', 'logistica', 'eventos', 'tech', 'default'], weight: 0.9,
+  tags: ['icono', 'reloj', 'tiempo', 'urgencia', 'rapido'],
+  render(ctx, t, env) {
+    const { pal } = env
+    const s = W * 0.18, ap = spring(inv(t, 0, 0.8), { zeta: 0.5, freq: 2.0 })
+    ctx.save(); ctx.translate(CX, CY); ctx.scale(ap, ap)
+    const onAcc = pal.onAccent || (pal.tone === 'light' ? '#fff' : '#0a0a0f')
+    // esfera
+    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.arc(0, 0, s, 0, TAU); ctx.fill()
+    ctx.fillStyle = rgba(onAcc, 0.12); ctx.beginPath(); ctx.arc(0, 0, s * 0.82, 0, TAU); ctx.fill()
+    // marcas horarias
+    ctx.strokeStyle = rgba(onAcc, 0.85); ctx.lineWidth = s * 0.05; ctx.lineCap = 'round'
+    for (let i = 0; i < 12; i++) { const a = i / 12 * TAU; const r0 = i % 3 === 0 ? s * 0.66 : s * 0.74; ctx.beginPath(); ctx.moveTo(Math.cos(a) * r0, Math.sin(a) * r0); ctx.lineTo(Math.cos(a) * s * 0.82, Math.sin(a) * s * 0.82); ctx.stroke() }
+    // botones arriba (estilo despertador)
+    ctx.fillStyle = pal.accent
+    for (const bx of [-0.45, 0.45]) { ctx.beginPath(); ctx.roundRect(bx * s - s * 0.1, -s * 1.22, s * 0.2, s * 0.22, s * 0.06); ctx.fill() }
+    // agujas: minutero avanza 12x mas rapido (gira), horario lento. Pasos discretos (tick) para el segundero.
+    ctx.strokeStyle = onAcc; ctx.lineCap = 'round'
+    const hh = t * 0.5, mm = t * 6
+    ctx.lineWidth = s * 0.1; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(hh - Math.PI / 2) * s * 0.4, Math.sin(hh - Math.PI / 2) * s * 0.4); ctx.stroke()
+    ctx.lineWidth = s * 0.07; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(mm - Math.PI / 2) * s * 0.62, Math.sin(mm - Math.PI / 2) * s * 0.62); ctx.stroke()
+    // segundero a saltos (acento2)
+    const sec = (Math.floor(t * 8) / 8) * TAU
+    ctx.strokeStyle = pal.accent2 || pal.accent; ctx.lineWidth = s * 0.04
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(sec - Math.PI / 2) * s * 0.7, Math.sin(sec - Math.PI / 2) * s * 0.7); ctx.stroke()
+    ctx.fillStyle = pal.accent2 || pal.accent; ctx.beginPath(); ctx.arc(0, 0, s * 0.08, 0, TAU); ctx.fill()
+    ctx.restore()
+  },
+})
+
+register({
+  id: 'mark.anim.chart-grow', lib: 'markkit', category: 'iconos-animados', tones: ['dark', 'light'], rubros: ['finanzas', 'tech', 'startup', 'retail', 'default'], weight: 0.95,
+  tags: ['icono', 'grafico', 'crecimiento', 'ventas', 'tendencia'],
+  render(ctx, t, env) {
+    const { pal } = env, r = mulberry32(env.seed ^ 0xc44)
+    const s = W * 0.2
+    const heights = [0.35, 0.6, 0.48, 0.85]   // base; ultima es la mas alta (crecimiento)
+    const jitter = heights.map(() => 0.9 + r() * 0.2)
+    ctx.save(); ctx.translate(CX, CY)
+    // ejes
+    ctx.strokeStyle = rgba(pal.ink || '#fff', 0.3); ctx.lineWidth = 3; ctx.lineCap = 'round'
+    ctx.beginPath(); ctx.moveTo(-s * 1.1, -s * 1.1); ctx.lineTo(-s * 1.1, s); ctx.lineTo(s * 1.1, s); ctx.stroke()
+    // barras que crecen en secuencia
+    const bw = s * 0.42, gap = s * 0.6
+    heights.forEach((h, i) => {
+      const grow = eOutCubic(inv(t, i * 0.12, i * 0.12 + 0.5))
+      const bh = s * 1.7 * h * jitter[i] * grow
+      const x = -s * 0.75 + i * gap
+      ctx.fillStyle = i === heights.length - 1 ? (pal.accent2 || pal.accent) : pal.accent
+      ctx.beginPath(); ctx.roundRect(x - bw / 2, s - bh, bw, bh, [bw * 0.2, bw * 0.2, 0, 0]); ctx.fill()
+    })
+    // flecha de tendencia que se dibuja por encima
+    const dp = eOutCubic(inv(t, 0.4, 1.0))
+    ctx.strokeStyle = pal.accent2 || pal.accent; ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.lineJoin = 'round'
+    const ax0 = -s * 0.85, ay0 = s * 0.2, ax1 = s * 0.85, ay1 = -s * 0.9
+    ctx.beginPath(); ctx.moveTo(ax0, ay0); ctx.lineTo(lerp(ax0, ax1, dp), lerp(ay0, ay1, dp)); ctx.stroke()
+    if (dp > 0.9) { const hp = eOutBack(inv(t, 0.92, 1.05)); ctx.save(); ctx.translate(ax1, ay1); ctx.scale(hp, hp); ctx.beginPath(); ctx.moveTo(-18, 2); ctx.lineTo(2, 2); ctx.lineTo(2, 22); ctx.stroke(); ctx.restore() }
+    ctx.restore()
+  },
+})
+
+// ---------- formas/morphs ----------
+
+register({
+  id: 'mark.morph.orbit-dots', lib: 'markkit', category: 'formas-morphs', tones: ['dark', 'light'], rubros: ['tech', 'startup', 'educacion', 'finanzas', 'default'], weight: 0.9,
+  tags: ['orbita', 'satelites', 'tech', 'rotacion', 'sistema'],
+  render(ctx, t, env) {
+    const { pal } = env, r = mulberry32(env.seed ^ 0xd55)
+    const ap = spring(inv(t, 0, 0.85), { zeta: 0.55, freq: 1.9 })
+    const rings = 3
+    ctx.save(); ctx.translate(CX, CY); ctx.scale(ap, ap)
+    // nucleo
+    const pulse = 1 + 0.08 * Math.sin(t * 2.2)
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, W * 0.1)
+    g.addColorStop(0, lighten(pal.accent, 0.3)); g.addColorStop(1, pal.accent)
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, W * 0.075 * pulse, 0, TAU); ctx.fill()
+    // anillos elipticos inclinados con un satelite cada uno
+    for (let i = 0; i < rings; i++) {
+      const rad = W * (0.16 + i * 0.085)
+      const tiltA = r() * Math.PI, squash = 0.32 + r() * 0.18
+      const speed = (0.6 + i * 0.25) * (i % 2 ? -1 : 1)
+      ctx.save(); ctx.rotate(tiltA)
+      ctx.strokeStyle = rgba(pal.accent, 0.35 - i * 0.06); ctx.lineWidth = 2
+      ctx.beginPath(); ctx.ellipse(0, 0, rad, rad * squash, 0, 0, TAU); ctx.stroke()
+      // satelite recorre la elipse
+      const a = t * speed + r() * TAU
+      const px = Math.cos(a) * rad, py = Math.sin(a) * rad * squash
+      ctx.fillStyle = i === rings - 1 ? (pal.accent2 || pal.accent) : pal.accent
+      ctx.beginPath(); ctx.arc(px, py, 7 - i, 0, TAU); ctx.fill()
+      ctx.restore()
+    }
+    ctx.restore()
+  },
+})
+
+register({
+  id: 'mark.morph.liquid-merge', lib: 'markkit', category: 'formas-morphs', tones: ['dark', 'light'], rubros: ['belleza', 'salud', 'gastronomia', 'creatividad', 'default'], weight: 0.85,
+  tags: ['metaball', 'liquido', 'organico', 'fusion', 'latido'],
+  render(ctx, t, env) {
+    const { pal } = env
+    const ap = eOutCubic(inv(t, 0, 0.5))
+    ctx.save(); ctx.translate(CX, CY); ctx.scale(ap, ap)
+    // dos circulos que se acercan y "fusionan" via un puente (gooey) -> deliberado, geometrico, no gota al azar
+    const sep = (1 - 0.55 * (0.5 + 0.5 * Math.sin(t * 1.1))) * W * 0.22
+    const ra = W * 0.13, rb = W * 0.11
+    const g = ctx.createLinearGradient(-sep, 0, sep, 0)
+    g.addColorStop(0, pal.accent); g.addColorStop(1, lighten(pal.accent, 0.22))
+    ctx.fillStyle = g
+    ctx.beginPath(); ctx.arc(-sep, 0, ra, 0, TAU); ctx.fill()
+    ctx.beginPath(); ctx.arc(sep, 0, rb, 0, TAU); ctx.fill()
+    // puente metaball: cintura proporcional a la cercania
+    const close = clamp(1 - sep / (W * 0.22), 0, 1)
+    if (close > 0.05) {
+      const waist = lerp(ra * 0.15, ra * 0.92, close)
+      ctx.beginPath()
+      ctx.moveTo(-sep, -ra); ctx.quadraticCurveTo(0, -waist, sep, -rb)
+      ctx.lineTo(sep, rb); ctx.quadraticCurveTo(0, waist, -sep, ra)
+      ctx.closePath(); ctx.fill()
+    }
+    // brillo flotante
+    ctx.globalCompositeOperation = 'lighter'
+    ctx.fillStyle = rgba('#ffffff', pal.tone === 'light' ? 0.14 : 0.22)
+    ctx.beginPath(); ctx.arc(-sep - ra * 0.3, -ra * 0.35, ra * 0.3, 0, TAU); ctx.fill()
+    ctx.restore()
+  },
+})
+
+// ---------- marcos/contenedores ----------
+
+register({
+  id: 'mark.frame.polaroid', lib: 'markkit', category: 'marcos-contenedores', tones: ['dark', 'light'], rubros: ['turismo', 'gastronomia', 'social', 'creatividad', 'default'], weight: 0.9,
+  tags: ['marco', 'polaroid', 'foto', 'recuerdo', 'foco'],
+  render(ctx, t, env) {
+    const { pal, content, fonts } = env
+    const cw = W * 0.5, ch = cw * 1.18
+    const ap = spring(inv(t, 0, 0.9), { zeta: 0.55, freq: 1.7 })
+    const tilt = -0.06 + Math.sin(t * 1.2) * 0.025
+    ctx.save(); ctx.translate(CX, CY); ctx.rotate(tilt); ctx.scale(ap, ap)
+    // sombra + papel
+    ctx.save(); ctx.shadowColor = rgba('#000', pal.tone === 'light' ? 0.2 : 0.5); ctx.shadowBlur = 24; ctx.shadowOffsetY = 12
+    ctx.fillStyle = pal.tone === 'light' ? '#ffffff' : '#f4f1ec'
+    ctx.beginPath(); ctx.roundRect(-cw / 2, -ch / 2, cw, ch, 8); ctx.fill()
+    ctx.restore()
+    // ventana de la "foto" (acento, ocupa arriba; el borde inferior grueso es el sello polaroid)
+    const iw = cw * 0.86, ih = cw * 0.86, iy = -ch / 2 + cw * 0.07
+    const g = ctx.createLinearGradient(0, iy, 0, iy + ih)
+    g.addColorStop(0, lighten(pal.accent, 0.18)); g.addColorStop(1, darken(pal.accent2 || pal.accent, 0.05))
+    ctx.fillStyle = g
+    ctx.beginPath(); ctx.rect(-iw / 2, iy, iw, ih); ctx.fill()
+    // leyenda manuscrita en el margen inferior
+    const fam = (fonts && fonts.display) || 'Inter'
+    const cap = (content && (content.brand || content.tagline)) ? String(content.brand || content.tagline) : 'recuerdo'
+    drawText(ctx, cap, 0, ch / 2 - cw * 0.13, { size: 24, weight: 600, family: fam, maxW: cw * 0.84, color: pal.tone === 'light' ? '#2a2430' : '#2a2430' })
+    ctx.restore()
+  },
+})
+
+register({
+  id: 'mark.frame.speech-callout', lib: 'markkit', category: 'marcos-contenedores', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
+  tags: ['marco', 'globo', 'cita', 'contenedor', 'mensaje'],
+  render(ctx, t, env) {
+    const { pal, content, fonts } = env
+    const cw = W * 0.7, ch = H * 0.22
+    const ap = spring(inv(t, 0, 0.85), { zeta: 0.55, freq: 1.9 }), ry = (1 - ap) * 26
+    ctx.save(); ctx.translate(CX, CY - H * 0.02 + ry); ctx.globalAlpha = clamp(inv(t, 0, 0.4), 0, 1); ctx.scale(ap, ap)
+    // globo
+    ctx.fillStyle = pal.surface && pal.surface.startsWith('rgba') ? lighten(pal.bg0 || (pal.tone === 'light' ? '#fff' : '#16121e'), pal.tone === 'light' ? -0.02 : 0.1) : (pal.surface || pal.accent)
+    ctx.save(); ctx.shadowColor = rgba('#000', pal.tone === 'light' ? 0.14 : 0.45); ctx.shadowBlur = 22; ctx.shadowOffsetY = 10
+    ctx.beginPath(); ctx.roundRect(-cw / 2, -ch / 2, cw, ch, 22); ctx.fill()
+    ctx.restore()
+    // cola (apunta abajo-izquierda)
+    ctx.beginPath(); ctx.moveTo(-cw * 0.18, ch / 2 - 2); ctx.lineTo(-cw * 0.28, ch / 2 + 28); ctx.lineTo(-cw * 0.04, ch / 2 - 2); ctx.closePath(); ctx.fill()
+    // barra de acento + texto del contenido (1-2 lineas, sin desbordar)
+    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(-cw / 2 + 18, -ch / 2 + 16, 40, 6, 3); ctx.fill()
+    const fam = (fonts && fonts.text) || 'Inter'
+    const txt = (content && (content.claim || content.tagline || content.brand)) ? String(content.claim || content.tagline || content.brand) : 'Tu mensaje aca'
+    const ink = pal.ink || (pal.tone === 'light' ? '#1a1620' : '#f4f1fb')
+    drawWrapped(ctx, txt, 0, 6, { size: 26, weight: 600, family: fam, maxW: cw - 56, min: 16, color: ink, maxLines: 2, lh: 1.18 })
+    ctx.restore()
+  },
+})
+
+// ---------- divisores/conectores ----------
+
+register({
+  id: 'mark.divider.zigzag', lib: 'markkit', category: 'divisores-conectores', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
+  tags: ['divisor', 'zigzag', 'energico', 'separador'],
+  render(ctx, t, env) {
+    const { pal } = env
+    const w = W * 0.66, amp = 12, n = 8
+    const grow = eOutCubic(inv(t, 0.1, 0.9)), drawn = Math.max(2, Math.round(n * 2 * grow))
+    ctx.save(); ctx.translate(CX - w / 2, CY)
+    ctx.strokeStyle = pal.accent; ctx.lineWidth = 6; ctx.lineCap = 'round'; ctx.lineJoin = 'round'
+    const step = w / (n * 2)
+    ctx.beginPath()
+    for (let i = 0; i <= drawn; i++) {
+      const x = i * step
+      const y = (i % 2 ? amp : -amp) * (0.85 + 0.15 * Math.sin(t * 2 + i))   // leve respiracion
+      i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)
+    }
+    ctx.stroke()
+    // remate de acento2 en la punta que avanza
+    const hp = eOutBack(inv(t, 0.7, 1.05))
+    const lx = Math.min(drawn, n * 2) * step
+    ctx.fillStyle = pal.accent2 || pal.accent
+    ctx.save(); ctx.translate(lx, (Math.min(drawn, n * 2) % 2 ? amp : -amp)); ctx.scale(hp, hp); ctx.beginPath(); ctx.arc(0, 0, 7, 0, TAU); ctx.fill(); ctx.restore()
+    ctx.restore()
+  },
+})
+
+register({
+  id: 'mark.divider.ornament', lib: 'markkit', category: 'divisores-conectores', tones: ['dark', 'light'], rubros: ['belleza', 'gastronomia', 'eventos', 'turismo', 'default'], weight: 0.9,
+  tags: ['divisor', 'ornamento', 'elegante', 'filigrana', 'editorial'],
+  render(ctx, t, env) {
+    const { pal } = env
+    const full = W * 0.6, grow = eOutCubic(inv(t, 0.1, 0.9)), w = full * grow
+    ctx.save(); ctx.translate(CX, CY)
+    ctx.strokeStyle = pal.accent; ctx.lineWidth = 2.5; ctx.lineCap = 'round'
+    // dos lineas finas que crecen desde el centro hacia afuera
+    ctx.beginPath(); ctx.moveTo(-18, 0); ctx.lineTo(-w / 2, 0); ctx.moveTo(18, 0); ctx.lineTo(w / 2, 0); ctx.stroke()
+    // rombo central (diamante) que pulsa
+    const pop = eOutBack(inv(t, 0, 0.6)), breathe = 1 + 0.08 * Math.sin(t * 1.8)
+    ctx.save(); ctx.scale(pop * breathe, pop * breathe)
+    polyPath(ctx, 0, 0, 13, 4, 0); ctx.fillStyle = pal.accent; ctx.fill()
+    polyPath(ctx, 0, 0, 6, 4, 0); ctx.fillStyle = pal.accent2 || pal.accent; ctx.fill()
+    ctx.restore()
+    // pequeños puntos en las puntas (aparecen al final)
+    const dp = clamp(inv(t, 0.6, 1.0), 0, 1)
+    ctx.globalAlpha = dp
+    ctx.fillStyle = pal.accent2 || pal.accent
+    for (const sx of [-1, 1]) { ctx.beginPath(); ctx.arc(sx * (w / 2 + 12), 0, 3.5, 0, TAU); ctx.fill() }
+    ctx.restore()
+  },
+})
+
+// ---------- decoradores/badges ----------
+
+register({
+  id: 'mark.badge.starburst', lib: 'markkit', category: 'decoradores-acentos', tones: ['dark', 'light'], rubros: ['retail', 'ecommerce', 'eventos', 'gastronomia', 'default'], weight: 1,
+  tags: ['badge', 'sello', 'oferta', 'estallido', 'promo'],
+  render(ctx, t, env) {
+    const { pal, content, fonts } = env
+    const ap = eOutBack(inv(t, 0, 0.65)), rot = Math.sin(t * 1.2) * 0.06
+    const spikes = 14, ro = W * 0.2, ri = W * 0.165
+    ctx.save(); ctx.translate(CX, CY); ctx.rotate(rot); ctx.scale(ap, ap)
+    // sello dentado (starburst)
+    ctx.beginPath()
+    for (let i = 0; i < spikes * 2; i++) { const a = (i / (spikes * 2)) * TAU - Math.PI / 2; const rr = i % 2 ? ri : ro; const x = Math.cos(a) * rr, y = Math.sin(a) * rr; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y) }
+    ctx.closePath()
+    ctx.fillStyle = pal.accent; ctx.fill()
+    // anillo interior
+    ctx.strokeStyle = rgba(pal.onAccent || (pal.tone === 'light' ? '#fff' : '#0a0a0f'), 0.5); ctx.lineWidth = 2.5
+    ctx.beginPath(); ctx.arc(0, 0, ri * 0.8, 0, TAU); ctx.stroke()
+    // texto del badge (kicker/cta -> default OFERTA), pop al final
+    const onAcc = pal.onAccent || (pal.tone === 'light' ? '#fff' : '#0a0a0f')
+    const fam = (fonts && fonts.display) || 'Inter'
+    const label = (content && (content.kicker || content.cta)) ? String(content.kicker || content.cta) : 'OFERTA'
+    const tp = eOutBack(inv(t, 0.35, 0.8))
+    ctx.save(); ctx.scale(tp, tp)
+    drawText(ctx, label.toUpperCase(), 0, 1, { size: 30, weight: 800, family: fam, maxW: ri * 1.3, min: 14, color: onAcc })
+    ctx.restore()
+    ctx.restore()
+  },
+})
+
+register({
+  id: 'mark.badge.ribbon-corner', lib: 'markkit', category: 'decoradores-acentos', tones: ['dark', 'light'], rubros: ['retail', 'ecommerce', 'eventos', 'servicios', 'default'], weight: 0.9,
+  tags: ['badge', 'cinta', 'ribbon', 'esquina', 'destacado'],
+  render(ctx, t, env) {
+    const { pal, content, fonts } = env
+    // cinta diagonal centrada (atraviesa el centro a 45 grados) con texto -> "destacado"/"nuevo"
+    const slide = eOutBack(inv(t, 0, 0.7))
+    const bandW = W * 0.2
+    ctx.save(); ctx.translate(CX, CY); ctx.rotate(-Math.PI / 4)
+    // sombra de la cinta
+    ctx.save(); ctx.shadowColor = rgba('#000', pal.tone === 'light' ? 0.16 : 0.45); ctx.shadowBlur = 14; ctx.shadowOffsetY = 6
+    const len = W * 1.2 * slide
+    // cinta con muescas en las puntas (estilo banderin)
+    const onAcc = pal.onAccent || (pal.tone === 'light' ? '#fff' : '#0a0a0f')
+    const notch = bandW * 0.4
+    ctx.fillStyle = pal.accent
+    ctx.beginPath()
+    ctx.moveTo(-len / 2, -bandW / 2); ctx.lineTo(len / 2, -bandW / 2)
+    ctx.lineTo(len / 2 - notch, 0); ctx.lineTo(len / 2, bandW / 2)
+    ctx.lineTo(-len / 2, bandW / 2)
+    ctx.lineTo(-len / 2 + notch, 0); ctx.closePath()
+    ctx.fill()
+    ctx.restore()
+    // doble linea + texto
+    ctx.strokeStyle = rgba(onAcc, 0.5); ctx.lineWidth = 2
+    ctx.beginPath(); ctx.moveTo(-len / 2 + 10, -bandW / 2 + 6); ctx.lineTo(len / 2 - 10, -bandW / 2 + 6); ctx.moveTo(-len / 2 + 10, bandW / 2 - 6); ctx.lineTo(len / 2 - 10, bandW / 2 - 6); ctx.stroke()
+    const fam = (fonts && fonts.accent) || (fonts && fonts.display) || 'Inter'
+    const label = (content && (content.kicker || content.cta || content.tagline)) ? String(content.kicker || content.cta || content.tagline) : 'DESTACADO'
+    const tp = clamp(inv(t, 0.5, 0.85), 0, 1)
+    ctx.globalAlpha = tp
+    drawText(ctx, label.toUpperCase(), 0, 1, { size: 26, weight: 800, family: fam, maxW: W * 0.78, min: 13, color: onAcc })
     ctx.restore()
   },
 })
