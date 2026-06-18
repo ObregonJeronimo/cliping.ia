@@ -478,7 +478,7 @@ function _rgba(hex, a) {
       const r = (1.7 + it.sz * 2.1) * (0.78 + 0.34 * clamp(gi, 0, 1));
       // al ASENTAR, las particulas SE DISUELVEN (bajan a ~0.3) -> el wordmark nitido (seal) domina y el nombre se LEE
       // (antes quedaban densas y cream-sobre-cream daba un BLOB). Durante el gather siguen plenas (la nube se ve).
-      const a = clamp((0.5 + 0.5 * clamp(gi, 0, 1)) * tw, 0, 1) * (eg > 0.85 ? (1 - 0.7 * clamp(inv(eg, 0.85, 1.02), 0, 1)) : 1);
+      const a = clamp((0.5 + 0.5 * clamp(gi, 0, 1)) * tw, 0, 1) * (eg > 0.82 ? (1 - 0.88 * clamp(inv(eg, 0.82, 1.0), 0, 1)) : 1);
       ctx.globalAlpha = a;
       // glow del acento + nucleo (oscuro en claro / claro en oscuro) -> "premium" y LEGIBLE al asentar
       ctx.shadowColor = _rgba(A, 0.6 * (0.5 + 0.5 * clamp(gi, 0, 1))); ctx.shadowBlur = (4 + 9 * clamp(gi, 0, 1));
@@ -489,12 +489,17 @@ function _rgba(hex, a) {
     // al final del ensamblado, una pasada de "tinta" SUTIL une los huecos entre particulas -> el wordmark queda
     // NITIDO y legible, pero TENUE para que las particulas sigan siendo la textura dominante (no un bloque plano:
     // las particulas FORMAN la palabra, el sello solo cierra la legibilidad). Tinta = INK del tono de la marca.
-    if (eg > 0.8) {
-      const seal = clamp(inv(eg, 0.8, 1.0), 0, 1);
-      ctx.globalAlpha = seal * 0.96;                         // al asentar el NOMBRE se vuelve NITIDO (legible) y las particulas (ya disueltas a ~0.3) quedan de aura; durante el gather (eg<0.8) sigue siendo solo nube
-      ctx.font = fontStr(o.weight || 800, px * 1.16, 'd');   // px = cap-height aprox -> font-size un poco mayor
+    if (eg > 0.62) {
+      // SELLO del wordmark: al asentar, el NOMBRE se vuelve NITIDO y LEGIBLE (regla dura #6). Entra ANTES (eg>0.62)
+      // -> los heroes CORTOS (1ra escena breve, ej fitness) tienen tiempo de leerse antes del corte. font px*1.42
+      // (cap-height ~= px) MATCHEA el alto de las letras formadas por particulas: el sello las REFUERZA en vez de
+      // dejar un halo (antes px*1.16 = letras del sello mas chicas que la nube -> aura difusa = "borron"). Las
+      // particulas (ya disueltas a ~0.12 al asentar) quedan de chispa/aura. Glow de acento CHICO (6px) -> bordes nitidos.
+      const seal = clamp(inv(eg, 0.62, 0.92), 0, 1);
+      ctx.globalAlpha = Math.min(1, seal * 1.04);
+      ctx.font = fontStr(o.weight || 800, px * 1.42, 'd');   // cap-height ~= px -> matchea las letras de la nube
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      _softShadow(_rgba(A, 0.45), 12, 0);
+      _softShadow(_rgba(A, 0.4), 6, 0);
       ctx.fillStyle = INK;
       ctx.fillText(text, cx, cy);
       noShadow();
@@ -2703,7 +2708,11 @@ function _rgba(hex, a) {
           // FORMAN el texto -> NO es figura sobre titulo (cumple la regla anti-blob). El kinetic del texto display
           // se reemplaza por este tratamiento via heroResource:'particles'.
           ctx.restore(); ctx.save(); ctx.globalAlpha = 1;   // este tratamiento maneja su propia opacidad/gather
-          const t0 = (keys[0] && keys[0].t) || 0;
+          // El ENSAMBLADO arranca cerca del INICIO de la escena (no en el ns del wordmark): asi en heroes CORTOS
+          // (rubros rapidos fitness/tech) la nube tiene tiempo de asentarse Y de leerse el sello antes del corte.
+          // Antes t0=ns (~0.7-2.2s) -> el gather de 1.7s terminaba DESPUES de que la escena corta ya habia cortado,
+          // y la nube nunca llegaba a formar el nombre (verificado en ventanas densas de ESPN/educ.ar).
+          const t0 = Math.min(0.4, (keys[0] && keys[0].t) || 0);
           _drawParticleWordmark(el.text.toString(), x, y, el.cap || (el.size || 58) * 0.74, t, t0, el.gather || 1.7, { accent: _resolveColor(el.fill || 'accent'), weight: el.weight || 800, target: el.target || 760, align: el.align || 'center' });
         } else {
           const n = Math.max(1, el.count || 10), prog = clamp(_num(keys, t, 'burst', clamp(t, 0, 1)), 0, 1);
