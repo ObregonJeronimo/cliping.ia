@@ -5,6 +5,12 @@ import { register } from '../../core/registry.js'
 import { finalize, tonedBg } from '../../core/palette.js'
 import { hexToHsl, hslToHex, lighten, darken, clamp } from '../../core/util.js'
 import { seedFor, range } from '../../core/prng.js'
+// sub-bibliotecas de color (cada archivo es DUENIO de su categoria; se registran al importar). Ola 4.
+import './harmony.js'   // harmony-schemes: rotaciones de matiz (analoga/triada/tetrada/complementaria/mono)
+import './grade.js'     // mood-grading: moods cinematograficos (noir/teal-orange/pastel/neon/...)
+import './named.js'     // named-palettes: paletas curadas a mano estilo Coolors
+import './tone.js'      // tone-systems: duotono/tritono/mono/neutral+acento/high-key/low-key
+import './temp.js'      // color-temperature: calido (golden-hour) vs frio (blue-hour)
 
 register({
   id: 'color.scheme.brand-classic', lib: 'color', category: 'harmony-schemes', tones: ['dark', 'light'], rubros: ['*'], weight: 1.4, tags: ['universal', 'seguro'],
