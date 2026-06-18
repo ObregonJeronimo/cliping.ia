@@ -118,6 +118,7 @@ forge_jobs: dict = {}
 import template_director
 import timeline_director
 import brand_dna
+import perception
 import re as _re
 
 
@@ -371,6 +372,44 @@ async def brand_cache_clear(req: ClearBrandCacheRequest):
     except Exception as e:
         print(f"[cache] borrado manual falló: {e}")
         return {"deleted": 0, "error": str(e)}
+
+
+# ─── URVID 1.0 — PERCEPTION (URL -> brief). El front (Urvid1Studio) hace makeVideo(brief) en el navegador ───
+class PerceiveRequest(BaseModel):
+    url: str = ""
+    desarrollo: str = ""
+
+
+@app.post("/api/urvid/perceive")
+async def urvid_perceive(req: PerceiveRequest):
+    """Analiza una pagina/URL y devuelve el BRIEF de urvid 1.0 ({brand,rubro,tone,brandColor,tagline,claim,cta,seriousness}).
+    UNA carga del sitio (texto + screenshot) -> Claude arma el brief; el color de marca sale del theme-color o, si no,
+    del color dominante del screenshot. Best-effort: si algo falla, devuelve un brief con defaults sensatos."""
+    if not req.url.strip() and not req.desarrollo.strip():
+        return {"error": "Necesitas una URL o una descripcion"}
+    site = {"screenshot": None, "content": None, "logo": "", "images": []}
+    if req.url.strip():
+        try:
+            import site_capture
+            site = await site_capture.capture_all(
+                req.url.strip(), str(OUTPUTS_DIR / f"perceive_{uuid.uuid4().hex[:8]}.png"))
+        except Exception as e:
+            print(f"[perceive] capture_all fallo (sigo con lo que haya): {e}")
+    usage = []
+    brief = await perception.analyze_to_brief(req.url.strip(), req.desarrollo.strip(), site=site, usage=usage)
+    # Si no salio un brandColor de marca (themeColor), derivamos el dominante vibrante del screenshot.
+    if site.get("screenshot") and brief.get("brandColor", "#5b8cff") == "#5b8cff":
+        try:
+            col = _dominant_accent(site["screenshot"])
+            if col:
+                brief["brandColor"] = col
+        except Exception as e:
+            print(f"[perceive] accent desde screenshot fallo: {e}")
+    cost = template_director.usage_cost(usage) if usage else {}
+    src = {"title": (site.get("content") or {}).get("title", "") if isinstance(site.get("content"), dict) else "",
+           "logo": site.get("logo", ""), "images": (site.get("images") or [])[:6]}
+    print(f"[perceive] '{req.url}' -> {brief.get('brand')} / {brief.get('rubro')} / {brief.get('brandColor')}")
+    return {"brief": brief, "source": src, "cost": cost}
 
 
 class VideoGenRequest(BaseModel):

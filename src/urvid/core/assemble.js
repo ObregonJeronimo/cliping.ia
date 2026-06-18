@@ -21,7 +21,15 @@ function buildArc(seed) {
 }
 
 export function makeVideo(brief = {}) {
-  const { brand = 'Marca', rubro = 'default', tone = 'dark', brandColor = '#5b8cff', style = null, content = {} } = brief
+  const { brand = 'Marca', rubro = 'default', tone = 'dark', brandColor = '#5b8cff', style = null } = brief
+  // CONTENT puede venir ANIDADO (brief.content = {tagline,claim,cta}) o SUELTO en el brief (brief.tagline/claim/cta,
+  // como lo arma el estudio y la perception). Unimos ambos -> el anidado gana. Asi el texto SIEMPRE llega a las escenas.
+  const content = {
+    ...(brief.tagline != null ? { tagline: brief.tagline } : {}),
+    ...(brief.claim != null ? { claim: brief.claim } : {}),
+    ...(brief.cta != null ? { cta: brief.cta } : {}),
+    ...(brief.content || {}),
+  }
   const seed = brief.seed != null ? (brief.seed >>> 0) : stableSeed(brand, rubro)
   // CEREBRO v2 · STRATEGY: el arco y las escenas salen de SEÑALES del contenido (numeros/pregunta/lista/comparacion/
   // prueba), no solo del azar. Un brief con un dato abre con numero; una pregunta con un hook de pregunta; etc.

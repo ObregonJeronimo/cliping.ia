@@ -4,6 +4,10 @@ import styles from './Urvid1Studio.module.css'
 
 const RUBROS = ['default', 'tech', 'finanzas', 'moda', 'gastronomia', 'educacion', 'salud', 'fitness', 'inmobiliaria', 'belleza']
 
+// Backend (perception): mismo patron que el resto del front. En dev pega a localhost:8000 (start.bat).
+const API_URL = import.meta.env.PROD ? '' : (import.meta.env.VITE_API_URL || 'http://localhost:8000')
+const HEADERS = { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' }
+
 // urvid 1.0 · estudio. Arma un video con el motor de bibliotecas (determinista) y lo reproduce EN VIVO (transport).
 // El almacen de videos vive aca mismo (localStorage) — no hay item aparte. NO toca "Animaciones".
 export default function Urvid1Studio() {
@@ -16,6 +20,8 @@ export default function Urvid1Studio() {
   const headRef = useRef(0)
   const cvRef = useRef(null)
   const [saved, setSaved] = useState(() => { try { return JSON.parse(localStorage.getItem('urvid1.saved') || '[]') } catch { return [] } })
+  const [url, setUrl] = useState('')
+  const [analyzing, setAnalyzing] = useState('')   // '' | 'loading' | mensaje de error
 
   useEffect(() => {
     const cv = cvRef.current; if (!cv) return
@@ -35,6 +41,26 @@ export default function Urvid1Studio() {
     return () => cancelAnimationFrame(raf)
   }, [video, playing, speed])
 
+  // PERCEPTION: pega una URL -> el backend analiza la pagina y arma el brief -> lo cargamos al estudio.
+  const analyze = async () => {
+    if (!url.trim() || analyzing === 'loading') return
+    setAnalyzing('loading')
+    try {
+      const r = await fetch(`${API_URL}/api/urvid/perceive`, { method: 'POST', headers: HEADERS, body: JSON.stringify({ url: url.trim() }) })
+      const j = await r.json()
+      const b = j && j.brief
+      if (!b || j.error) { setAnalyzing(j && j.error ? j.error : 'No se pudo analizar la pagina'); return }
+      setBrief({
+        brand: b.brand || 'Marca', rubro: RUBROS.includes(b.rubro) ? b.rubro : 'default',
+        tone: b.tone === 'light' ? 'light' : 'dark', brandColor: b.brandColor || '#5b8cff',
+        tagline: b.tagline || '', claim: b.claim || '', cta: b.cta || '',
+      })
+      setSeed(0); headRef.current = 0; setAnalyzing('')
+    } catch {
+      setAnalyzing('Backend no disponible — abri "start.bat" (corre en localhost:8000)')
+    }
+  }
+
   const up = (k, v) => setBrief(b => ({ ...b, [k]: v }))
   const reroll = () => setSeed(s => ((s || 1) + 0x9e3779b1) >>> 0 || 1)
   const save = () => { const next = [{ ...brief, seed, ts: Date.now() }, ...saved].slice(0, 24); setSaved(next); localStorage.setItem('urvid1.saved', JSON.stringify(next)) }
@@ -49,6 +75,13 @@ export default function Urvid1Studio() {
 
       <div className={styles.cols}>
         <div className={styles.panel}>
+          <label className={styles.field}>Analizar pagina (IA)
+            <div className={styles.row}>
+              <input placeholder="https://tu-sitio.com" value={url} onChange={e => setUrl(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') analyze() }} />
+              <button className={styles.primary} onClick={analyze} disabled={analyzing === 'loading'}>{analyzing === 'loading' ? 'Analizando…' : '✨ Analizar'}</button>
+            </div>
+          </label>
+          {analyzing && analyzing !== 'loading' && <p style={{ margin: '0 0 6px', fontSize: 12, color: '#e08a8a' }}>{analyzing}</p>}
           <label className={styles.field}>Marca<input value={brief.brand} onChange={e => up('brand', e.target.value)} /></label>
           <div className={styles.two}>
             <label className={styles.field}>Color<input type="color" value={brief.brandColor} onChange={e => up('brandColor', e.target.value)} /></label>
