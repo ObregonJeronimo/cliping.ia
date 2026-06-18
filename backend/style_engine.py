@@ -261,12 +261,12 @@ PROFILES = {
 # clasificador rubro: free-text (es/en) -> clave canonica, por keywords.
 _KEYWORDS = {
     "gastronomia": ["restaurant", "comida", "food", "gastro", "cocina", "cafe", "panaderia", "dietetica", "almacen", "bebida", "menu", "delivery de comida", "pizzeria"],
-    "tech": ["software", "saas", "tech", "plataforma", "startup", "datos", "cloud", "dev", "automatiz", "aplicacion"],
+    "tech": ["software", "saas", "tech", "tecnolog", "gadget", "plataforma", "startup", "datos", "cloud", "dev", "automatiz", "aplicacion", "videojuego", "gaming", "informatica", "robotica", "inteligencia artificial", "ciberseguridad", "streaming", "internet"],
     "salud": ["salud", "health", "clinica", "medic", "odonto", "dental", "psico", "terapia", "wellness", "farmacia", "nutri", "meditacion", "bienestar", "mental", "mindfulness"],
     "moda": ["moda", "fashion", "ropa", "indumentaria", "boutique", "calzado", "accesorio", "marca de ropa"],
     "inmobiliaria": ["inmobili", "real estate", "propiedad", "alquiler", "venta de casas", "departamento", "remax", "broker"],
     "fitness": ["gym", "gimnasio", "fitness", "crossfit", "entrenamiento", "personal trainer", "deporte", "yoga"],
-    "educacion": ["educa", "curso", "academia", "escuela", "universidad", "ensen", "learning", "capacitacion", "bootcamp"],
+    "educacion": ["educa", "curso", "academia", "escuela", "universidad", "ensen", "learning", "capacitacion", "bootcamp", "ciencia", "cientific", "divulgacion"],
     "finanzas": ["finanz", "fintech", "banco", "credito", "inversion", "seguro", "contab", "prestamo", "cripto"],
     "belleza": ["belleza", "beauty", "estetica", "spa", "peluqueria", "cosmetic", "maquillaje", "skincare", "uñas", "barberia"],
 }
