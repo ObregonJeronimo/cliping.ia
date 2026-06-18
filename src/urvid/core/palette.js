@@ -2,7 +2,7 @@
 // finalize() es el FINALIZADOR compartido: dado accent/accent2/bg0/bg1 + tono, computa los roles de texto legibles.
 // Los modulos de la biblioteca color/ deciden accent/accent2/bg0/bg1 (el "esquema") y llaman finalize -> el motor
 // garantiza legibilidad sin que cada esquema repita la logica. derivePalette = el esquema por defecto (back-compat).
-import { hexToHsl, hslToHex, lighten, darken, clamp, contrast } from './util.js'
+import { hexToHsl, hslToHex, lighten, darken, clamp, contrast, legibleOn } from './util.js'
 import { seedFor, range } from './prng.js'
 
 // acento usable COMO texto, legible segun tono (verde/amarillo de alta luminancia caen a tinta en claro).
@@ -12,15 +12,19 @@ function accentAsText(accent, tone) {
 }
 
 // FINALIZER compartido: roles de texto/superficie legibles para CUALQUIER esquema.
+// onAccent (texto SOBRE el chip de acento) se elige por CONTRASTE REAL via legibleOn, NO por umbral de luminancia HSL:
+// la luminancia HSL no es la perceptual, asi que un corte .l>0.6 dejaba a hues luminosos (verde/ambar) con texto
+// ilegible (la "banda muerta"). Elegir el mejor de off-white/near-black por contraste garantiza >=~4.2 para todo hue.
 export function finalize(accent, accent2, bg0, bg1, tone) {
   if (tone === 'light') return {
     tone, accent, accent2, bg0, bg1, surface: 'rgba(20,16,24,0.05)',
-    ink: '#1c1510', dim: '#564a3e', inkText: accentAsText(accent, 'light'), onAccent: '#ffffff',
+    ink: '#1c1510', dim: '#564a3e', inkText: accentAsText(accent, 'light'),
+    onAccent: legibleOn(accent, '#ffffff', '#1c1510'),
   }
   return {
     tone, accent, accent2, bg0, bg1, surface: 'rgba(255,255,255,0.05)',
     ink: '#fbf6ec', dim: '#cfc6d6', inkText: accentAsText(accent, 'dark'),
-    onAccent: hexToHsl(accent).l > 0.6 ? '#14090e' : '#fbf6ec',
+    onAccent: legibleOn(accent, '#fbf6ec', '#14090e'),
   }
 }
 
