@@ -15,6 +15,13 @@ const screen = ctx => { ctx.globalCompositeOperation = 'screen' }
 const mult = ctx => { ctx.globalCompositeOperation = 'multiply' }    // tinta sustractiva (claro)
 // respiracion 0..1 suave, fase por semilla -> nunca todas las capas laten igual
 const breath = (t, ph = 0, sp = 1) => 0.5 + 0.5 * Math.sin(t * CLK * sp + ph)
+// ---- vida continua: helpers de movimiento secundario (todos puros, solo por t) ----
+// onda suave -1..1 (deriva organica). Doble seno desfasado -> no es un seno plano, respira mas natural.
+const wave = (t, ph = 0, sp = 1) => 0.65 * Math.sin(t * CLK * sp + ph) + 0.35 * Math.sin(t * CLK * sp * 0.53 + ph * 1.7)
+// pulso 0..1 con valle suave (glow que late, mas "vivo" que un seno: pasa mas tiempo tenue, destella corto)
+const pulse = (t, ph = 0, sp = 1) => { const s = 0.5 + 0.5 * Math.sin(t * CLK * sp + ph); return s * s * (3 - 2 * s) }
+// fase de barrido 0..1 suavizada en los extremos (smoothstep) -> el sheen entra/sale sin corte duro
+const sweepPhase = p => { const x = clamp(p, 0, 1); return x * x * (3 - 2 * x) }
 
 // ════════════════════════════ GLOW-BLOOM ════════════════════════════
 
@@ -31,10 +38,10 @@ register({
     ]
     ctx.save(); add(ctx)
     for (const s of spots) {
-      const br = 0.10 + 0.06 * breath(t, s.ph, 0.7)
-      const cx = s.x * W + Math.sin(t * CLK * 0.4 + s.ph) * 14
-      const cy = s.y * H + Math.cos(t * CLK * 0.3 + s.ph) * 12
-      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, H * s.rad)
+      const br = 0.10 + 0.06 * pulse(t, s.ph, 0.7)
+      const cx = s.x * W + wave(t, s.ph, 0.4) * 16
+      const cy = s.y * H + wave(t, s.ph + 1.6, 0.3) * 13
+      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, H * (s.rad + 0.015 * breath(t, s.ph, 0.5)))
       g.addColorStop(0, rgba(s.c, br)); g.addColorStop(0.5, rgba(s.c, br * 0.4)); g.addColorStop(1, rgba(s.c, 0))
       ctx.fillStyle = g; ctx.fillRect(0, 0, W, H)
     }
@@ -47,17 +54,22 @@ register({
   tags: ['cinematico', 'halacion'],
   render(ctx, t, env) {
     const { pal } = env
-    // halacion de borde: la luz se acumula en los margenes (como un lente sangrando), centro limpio
-    const bloom = 0.13 + 0.05 * breath(t, 1.2, 0.5)
+    // halacion de borde: la luz se acumula en los margenes (como un lente sangrando), centro limpio.
+    // Top y bottom laten en CONTRAFASE (uno sube mientras el otro baja) + la altura del sangrado deriva
+    // suave -> la halacion nunca queda congelada, parece luz real palpitando en los bordes.
+    const bloomT = 0.13 + 0.05 * pulse(t, 1.2, 0.5)
+    const bloomB = 0.11 + 0.045 * pulse(t, 1.2 + Math.PI, 0.5)
+    const hT = H * (0.34 + 0.03 * wave(t, 0.4, 0.4))
+    const hB = H * (0.34 + 0.03 * wave(t, 0.4 + Math.PI, 0.4))
     ctx.save(); add(ctx)
     // top
-    let g = ctx.createLinearGradient(0, 0, 0, H * 0.34)
-    g.addColorStop(0, rgba(pal.accent, bloom)); g.addColorStop(1, rgba(pal.accent, 0))
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H * 0.34)
+    let g = ctx.createLinearGradient(0, 0, 0, hT)
+    g.addColorStop(0, rgba(pal.accent, bloomT)); g.addColorStop(1, rgba(pal.accent, 0))
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, hT)
     // bottom
-    g = ctx.createLinearGradient(0, H, 0, H * 0.66)
-    g.addColorStop(0, rgba(pal.accent2, bloom * 0.85)); g.addColorStop(1, rgba(pal.accent2, 0))
-    ctx.fillStyle = g; ctx.fillRect(0, H * 0.66, W, H * 0.34)
+    g = ctx.createLinearGradient(0, H, 0, H - hB)
+    g.addColorStop(0, rgba(pal.accent2, bloomB)); g.addColorStop(1, rgba(pal.accent2, 0))
+    ctx.fillStyle = g; ctx.fillRect(0, H - hB, W, hB)
     ctx.restore()
   },
 })
@@ -67,12 +79,13 @@ register({
   tags: ['hero', 'foco'],
   render(ctx, t, env) {
     const { pal } = env
-    // un orbe central tenue DETRAS del texto (alpha bajisimo) -> halo de foco sin tapar
-    const p = breath(t, 0, 0.6)
-    const cx = W / 2, cy = H * 0.42
+    // un orbe central tenue DETRAS del texto (alpha bajisimo) -> halo de foco sin tapar. Late (pulse) y
+    // deriva con una micro-orbita lentisima -> el halo "respira" como una brasa viva, nunca queda quieto.
+    const p = pulse(t, 0, 0.6)
+    const cx = W / 2 + wave(t, 0.5, 0.32) * 7, cy = H * 0.42 + wave(t, 1.3, 0.27) * 6
     ctx.save(); add(ctx)
-    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, H * (0.30 + 0.04 * p))
-    g.addColorStop(0, rgba(pal.accent, 0.07 + 0.03 * p)); g.addColorStop(0.55, rgba(pal.accent, 0.03)); g.addColorStop(1, rgba(pal.accent, 0))
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, H * (0.30 + 0.045 * p))
+    g.addColorStop(0, rgba(pal.accent, 0.06 + 0.035 * p)); g.addColorStop(0.55, rgba(pal.accent, 0.03)); g.addColorStop(1, rgba(pal.accent, 0))
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H)
     ctx.restore()
   },
@@ -86,10 +99,15 @@ register({
   render(ctx, t, env) {
     const { pal } = env, light = pal.tone === 'light'
     // oscurecido radial clasico que cae a los bordes -> empuja el ojo al centro. En claro, muy sutil.
-    const g = ctx.createRadialGradient(W / 2, H * 0.46, H * 0.28, W / 2, H * 0.52, H * 0.78)
+    // VIDA: el radio interior (el "ojo" limpio) y la densidad del borde laten apenas (iris que respira) ->
+    // la vineta nunca queda 100% congelada, sin tocar la zona de texto.
+    const br = breath(t, 0.3, 0.4)
+    const inner = H * (0.28 + 0.015 * br)
+    const edge = (light ? 0.6 : 0.6) + (light ? 0 : 0.04) * (br - 0.5)
+    const g = ctx.createRadialGradient(W / 2, H * 0.46, inner, W / 2, H * 0.52, H * 0.78)
     g.addColorStop(0, 'rgba(0,0,0,0)')
-    g.addColorStop(0.7, light ? 'rgba(0,0,0,0.02)' : 'rgba(0,0,0,0.22)')
-    g.addColorStop(1, light ? 'rgba(40,30,20,0.08)' : 'rgba(0,0,0,0.6)')
+    g.addColorStop(0.7, light ? 'rgba(0,0,0,0.02)' : `rgba(0,0,0,${0.22 + 0.02 * (br - 0.5)})`)
+    g.addColorStop(1, light ? 'rgba(40,30,20,0.08)' : `rgba(0,0,0,${edge})`)
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H)
   },
 })
@@ -99,14 +117,18 @@ register({
   tags: ['cinematico', 'editorial'],
   render(ctx, t, env) {
     const { pal } = env, light = pal.tone === 'light'
-    // gradiente vertical top+bottom (vineta direccional) -> sensacion cine, centro despejado
-    const dk = light ? 'rgba(30,22,16,0.10)' : 'rgba(0,0,0,0.55)'
-    let g = ctx.createLinearGradient(0, 0, 0, H * 0.28)
+    // gradiente vertical top+bottom (vineta direccional) -> sensacion cine, centro despejado.
+    // VIDA: las dos barras "respiran" su altura en contrafase (como un encuadre que se asienta) muy leve.
+    const a = light ? 0.10 : 0.55
+    const dk = `rgba(${light ? '30,22,16' : '0,0,0'},${a})`
+    const hT = H * (0.28 + 0.012 * wave(t, 0.5, 0.38))
+    const hB = H * (0.28 + 0.012 * wave(t, 0.5 + Math.PI, 0.38))
+    let g = ctx.createLinearGradient(0, 0, 0, hT)
     g.addColorStop(0, dk); g.addColorStop(1, 'rgba(0,0,0,0)')
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H * 0.28)
-    g = ctx.createLinearGradient(0, H, 0, H * 0.72)
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, hT)
+    g = ctx.createLinearGradient(0, H, 0, H - hB)
     g.addColorStop(0, dk); g.addColorStop(1, 'rgba(0,0,0,0)')
-    ctx.fillStyle = g; ctx.fillRect(0, H * 0.72, W, H * 0.28)
+    ctx.fillStyle = g; ctx.fillRect(0, H - hB, W, hB)
   },
 })
 
@@ -115,10 +137,13 @@ register({
   tags: ['marca', 'color'],
   render(ctx, t, env) {
     const { pal } = env
-    // vineta TENIDA con el acento (no negra) -> el borde se oscurece hacia el color de marca
+    // vineta TENIDA con el acento (no negra) -> el borde se oscurece hacia el color de marca.
+    // VIDA: la intensidad del tinte de marca late suave (pulse) -> el color del borde palpita apenas.
     const edge = darken(pal.accent, 0.7)
-    const g = ctx.createRadialGradient(W / 2, H * 0.46, H * 0.3, W / 2, H * 0.5, H * 0.82)
-    g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(0.72, rgba(edge, 0.18)); g.addColorStop(1, rgba(edge, 0.5))
+    const br = pulse(t, 0.6, 0.7)
+    const inner = H * (0.3 + 0.025 * breath(t, 0.6, 0.5))
+    const g = ctx.createRadialGradient(W / 2, H * 0.46, inner, W / 2, H * 0.5, H * 0.82)
+    g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(0.72, rgba(edge, 0.16 + 0.04 * br)); g.addColorStop(1, rgba(edge, 0.46 + 0.06 * br))
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H)
     // negra encima para profundidad
     const g2 = ctx.createRadialGradient(W / 2, H * 0.5, H * 0.4, W / 2, H * 0.5, H * 0.85)
@@ -140,10 +165,12 @@ register({
     ctx.save(); add(ctx)
     for (let i = 0; i < n; i++) {
       const base = (i / (n - 1) - 0.5)
-      const ang = Math.PI / 2 + base * 0.62 + Math.sin(t * CLK * 0.2 + i) * 0.015
+      // cada rayo se mece en abanico (sway suave) y su brillo late en fase propia -> el haz "vive" como
+      // luz volumetrica con polvo cruzando, nunca un grupo de cunas congeladas.
+      const ang = Math.PI / 2 + base * 0.62 + wave(t, i * 1.1, 0.22) * 0.03
       const wRay = 18 + r() * 26
       const len = H * 1.25
-      const a = (0.05 + 0.05 * breath(t, i * 1.3, 0.5)) * (1 - Math.abs(base) * 0.5)
+      const a = (0.05 + 0.055 * pulse(t, i * 1.3, 0.5)) * (1 - Math.abs(base) * 0.5)
       ctx.save(); ctx.translate(ox, oy); ctx.rotate(ang - Math.PI / 2)
       const g = ctx.createLinearGradient(0, 0, 0, len)
       g.addColorStop(0, rgba(pal.accent, a)); g.addColorStop(0.6, rgba(pal.accent, a * 0.35)); g.addColorStop(1, rgba(pal.accent, 0))
@@ -162,11 +189,12 @@ register({
     const { pal } = env
     // abanico de rayos finos desde un foco bajo (efecto amanecer detras del contenido)
     const fx = W / 2, fy = H * 1.02, n = 13
-    const rot = t * CLK * 0.04
+    // rotacion idle lentisima del abanico + cada rayo titila en fase propia (pulse) -> amanecer que palpita.
+    const rot = wave(t, 0, 0.18) * 0.06
     ctx.save(); add(ctx); ctx.translate(fx, fy)
     for (let i = 0; i < n; i++) {
       const ang = -Math.PI / 2 + (i / (n - 1) - 0.5) * 1.5 + rot
-      const a = 0.04 + 0.03 * breath(t, i * 0.9, 0.6)
+      const a = 0.04 + 0.035 * pulse(t, i * 0.9, 0.6)
       ctx.save(); ctx.rotate(ang)
       const g = ctx.createLinearGradient(0, 0, 0, -H * 1.2)
       g.addColorStop(0, rgba(pal.accent, a)); g.addColorStop(1, rgba(pal.accent, 0))
@@ -187,10 +215,13 @@ register({
     const { pal } = env, light = pal.tone === 'light'
     // niebla que sube del piso (atmosphere perspective): bruma clara en claro, neblina luminosa en oscuro
     const fog = light ? '#ffffff' : lighten(pal.bg0, 0.4)
-    const drift = Math.sin(t * CLK * 0.25) * 0.02
+    // la altura de la niebla SUBE Y BAJA (marea lenta) y su densidad late apenas -> el banco de bruma
+    // nunca queda quieto, como aire real moviendose sobre el piso.
+    const drift = wave(t, 0, 0.25) * 0.03
+    const dens = 1 + 0.1 * (breath(t, 0.8, 0.3) - 0.5)
     ctx.save(); if (!light) screen(ctx)
     const g = ctx.createLinearGradient(0, H, 0, H * (0.5 + drift))
-    g.addColorStop(0, rgba(fog, light ? 0.5 : 0.16)); g.addColorStop(0.5, rgba(fog, light ? 0.18 : 0.06)); g.addColorStop(1, rgba(fog, 0))
+    g.addColorStop(0, rgba(fog, (light ? 0.5 : 0.16) * dens)); g.addColorStop(0.5, rgba(fog, (light ? 0.18 : 0.06) * dens)); g.addColorStop(1, rgba(fog, 0))
     ctx.fillStyle = g; ctx.fillRect(0, H * 0.45, W, H * 0.55)
     ctx.restore()
   },
@@ -207,10 +238,10 @@ register({
     for (let i = 0; i < 4; i++) {
       const baseY = (i < 2 ? 0.1 + i * 0.12 : 0.72 + (i - 2) * 0.13) * H
       const ph = r() * TAU
-      const cy = baseY + Math.sin(t * CLK * 0.3 + ph) * 16
-      const h = 70 + r() * 50
+      const cy = baseY + wave(t, ph, 0.3) * 18
+      const h = (70 + r() * 50) * (1 + 0.06 * wave(t, ph + 1.0, 0.22))   // la banda se ensancha/afina al derivar
       const g = ctx.createLinearGradient(0, cy - h, 0, cy + h)
-      g.addColorStop(0, rgba(fog, 0)); g.addColorStop(0.5, rgba(fog, 0.05 + 0.02 * breath(t, ph, 0.4))); g.addColorStop(1, rgba(fog, 0))
+      g.addColorStop(0, rgba(fog, 0)); g.addColorStop(0.5, rgba(fog, 0.05 + 0.025 * pulse(t, ph, 0.4))); g.addColorStop(1, rgba(fog, 0))
       ctx.fillStyle = g; ctx.fillRect(0, cy - h, W, h * 2)
     }
     ctx.restore()
@@ -251,9 +282,10 @@ register({
   tags: ['flare', 'cinematico'],
   render(ctx, t, env) {
     const { pal } = env
-    // flare anamorfico: una linea horizontal de luz + un nucleo, deriva suave arriba a la derecha
-    const fx = W * (0.7 + 0.06 * Math.sin(t * CLK * 0.3)), fy = H * 0.22
-    const a = 0.12 + 0.05 * breath(t, 0.5, 0.7)
+    // flare anamorfico: una linea horizontal de luz + un nucleo, deriva suave arriba a la derecha.
+    // El nucleo titila (pulse) y la raya respira su largo -> destello vivo de lente, no un trazo fijo.
+    const fx = W * (0.7 + 0.06 * wave(t, 0, 0.3)), fy = H * (0.22 + 0.01 * wave(t, 1.2, 0.25))
+    const a = 0.11 + 0.06 * pulse(t, 0.5, 0.7)
     ctx.save(); add(ctx)
     // raya horizontal (anamorfica)
     const g = ctx.createLinearGradient(fx - W * 0.6, fy, fx + W * 0.6, fy)
@@ -300,11 +332,15 @@ register({
   render(ctx, t, env) {
     const { pal } = env, light = pal.tone === 'light'
     // split-tone cinematografico: sombras al acento frio (arriba), luces al acento calido (abajo). Muy sutil.
+    // VIDA: los dos tonos "respiran" en contrafase (uno gana mientras el otro cede) -> el grade ondula como
+    // luz cambiante, sin mover nada ni tocar el centro neutro.
+    const sw = 0.5 + 0.5 * wave(t, 0.4, 0.6)   // 0..1 balance que oscila
+    const top = light ? 0.06 : 0.16, bot = light ? 0.06 : 0.16
     ctx.save(); ctx.globalCompositeOperation = light ? 'multiply' : 'soft-light'
     const g = ctx.createLinearGradient(0, 0, 0, H)
-    g.addColorStop(0, rgba(pal.accent, light ? 0.06 : 0.16))
+    g.addColorStop(0, rgba(pal.accent, top * (0.74 + 0.52 * sw)))
     g.addColorStop(0.5, 'rgba(128,128,128,0)')
-    g.addColorStop(1, rgba(pal.accent2, light ? 0.06 : 0.16))
+    g.addColorStop(1, rgba(pal.accent2, bot * (0.74 + 0.52 * (1 - sw))))
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H)
     ctx.restore()
   },
@@ -317,9 +353,12 @@ register({
     const { pal } = env
     // lavado calido global (oro/ambar) tipo "golden hour" + leve viraje frio en sombras de los bordes
     const warm = hslToHex((hexToHsl(pal.accent).h * 0 + 32), 0.8, 0.55)   // ambar fijo derivado
+    // VIDA: el foco calido deriva apenas y su calor late (pulse) -> "golden hour" que respira como sol vivo.
+    const cx = W / 2 + wave(t, 0.3, 0.22) * 12, cy = H * (0.4 + 0.01 * wave(t, 1.1, 0.2))
+    const warmth = 0.2 + 0.04 * pulse(t, 0.5, 0.4)
     ctx.save(); ctx.globalCompositeOperation = 'soft-light'
-    const g = ctx.createRadialGradient(W / 2, H * 0.4, 0, W / 2, H * 0.5, H * 0.9)
-    g.addColorStop(0, rgba(warm, 0.22)); g.addColorStop(0.6, rgba(warm, 0.08)); g.addColorStop(1, rgba('#0a1830', 0.14))
+    const g = ctx.createRadialGradient(cx, cy, 0, W / 2, H * 0.5, H * 0.9)
+    g.addColorStop(0, rgba(warm, warmth)); g.addColorStop(0.6, rgba(warm, 0.08)); g.addColorStop(1, rgba('#0a1830', 0.14))
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H)
     ctx.restore()
   },
@@ -334,10 +373,13 @@ register({
     const { pal } = env, light = pal.tone === 'light'
     // scrim de legibilidad: una placa SUAVE detras del centro -> oscurece (oscuro) o aclara (claro) SOLO donde
     // vive el texto, para garantizar contraste sin un panel duro. Centro al 90% de la fuerza, bordes a 0.
+    // VIDA (minima, legibilidad ante todo): la placa solo respira su fuerza HACIA ARRIBA desde el piso base
+    // (nunca baja del contraste garantizado) -> el guard "vive" sin perder cobertura del texto.
+    const k = 0.06 * breath(t, 0.4, 0.35)   // 0..0.06 que se SUMA
     const cy = H * 0.47
     const g = ctx.createRadialGradient(W / 2, cy, H * 0.04, W / 2, cy, H * 0.42)
-    if (light) { g.addColorStop(0, 'rgba(255,255,255,0.34)'); g.addColorStop(0.7, 'rgba(255,255,255,0.14)'); g.addColorStop(1, 'rgba(255,255,255,0)') }
-    else { g.addColorStop(0, 'rgba(0,0,0,0.4)'); g.addColorStop(0.7, 'rgba(0,0,0,0.16)'); g.addColorStop(1, 'rgba(0,0,0,0)') }
+    if (light) { g.addColorStop(0, `rgba(255,255,255,${0.34 + k})`); g.addColorStop(0.7, 'rgba(255,255,255,0.14)'); g.addColorStop(1, 'rgba(255,255,255,0)') }
+    else { g.addColorStop(0, `rgba(0,0,0,${0.4 + k})`); g.addColorStop(0.7, 'rgba(0,0,0,0.16)'); g.addColorStop(1, 'rgba(0,0,0,0)') }
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H)
   },
 })
@@ -348,10 +390,13 @@ register({
   render(ctx, t, env) {
     const { pal } = env, light = pal.tone === 'light'
     // scrim inferior (estilo lower-third): asegura legibilidad de un caption/CTA al pie. Clasico de reels.
-    const g = ctx.createLinearGradient(0, H, 0, H * 0.5)
+    // VIDA (minima): el ALTO del scrim sube/baja apenas como marea, anclado al pie -> respira sin descubrir
+    // el caption (la fuerza en el borde inferior no cambia).
+    const top = H * (0.5 - 0.015 * breath(t, 0.5, 0.32))
+    const g = ctx.createLinearGradient(0, H, 0, top)
     if (light) { g.addColorStop(0, 'rgba(255,255,255,0.55)'); g.addColorStop(0.6, 'rgba(255,255,255,0.16)'); g.addColorStop(1, 'rgba(255,255,255,0)') }
     else { g.addColorStop(0, 'rgba(0,0,0,0.62)'); g.addColorStop(0.6, 'rgba(0,0,0,0.2)'); g.addColorStop(1, 'rgba(0,0,0,0)') }
-    ctx.fillStyle = g; ctx.fillRect(0, H * 0.5, W, H * 0.5)
+    ctx.fillStyle = g; ctx.fillRect(0, top, W, H - top)
   },
 })
 
@@ -571,9 +616,12 @@ register({
     // lavado FRIO global (azul/cian nocturno), contraparte de warm-wash. Sombras viran a azul profundo, leve
     // realce frio en el centro-alto. Sutil, soft-light/multiply segun tono.
     const cool = hslToHex(212, 0.7, light ? 0.5 : 0.45)
+    // VIDA: el realce frio del centro-alto late (pulse) y deriva -> noche que respira, no un filtro fijo.
+    const cy = H * (0.42 + 0.03 * wave(t, 0.7, 0.45))
+    const k = 0.72 + 0.56 * pulse(t, 0.9, 0.6)
     ctx.save(); ctx.globalCompositeOperation = light ? 'multiply' : 'soft-light'
-    const g = ctx.createRadialGradient(W / 2, H * 0.42, 0, W / 2, H * 0.5, H * 0.95)
-    g.addColorStop(0, rgba(cool, light ? 0.05 : 0.18)); g.addColorStop(0.55, rgba(cool, light ? 0.03 : 0.08)); g.addColorStop(1, rgba(hslToHex(224, 0.6, 0.18), light ? 0.06 : 0.2))
+    const g = ctx.createRadialGradient(W / 2, cy, 0, W / 2, H * 0.5, H * 0.95)
+    g.addColorStop(0, rgba(cool, (light ? 0.05 : 0.18) * k)); g.addColorStop(0.55, rgba(cool, light ? 0.03 : 0.08)); g.addColorStop(1, rgba(hslToHex(224, 0.6, 0.18), light ? 0.06 : 0.2))
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H)
     ctx.restore()
   },
@@ -588,12 +636,16 @@ register({
     // split-tone). Da el look hollywoodense. Hue fijos para honestidad del look, intensidad por tono.
     const teal = hslToHex(184, 0.65, light ? 0.45 : 0.42)
     const orange = hslToHex(26, 0.85, light ? 0.55 : 0.55)
+    // VIDA: teal y naranja respiran en contrafase a lo largo de la diagonal + el eje de la diagonal deriva
+    // -> el look blockbuster ondula como luz cambiante, centro neutro intacto.
+    const sw = 0.5 + 0.5 * wave(t, 0.6, 0.6)
+    const ex = W + wave(t, 0.9, 0.4) * 26, ey = wave(t, 1.7, 0.35) * 22
     ctx.save(); ctx.globalCompositeOperation = light ? 'multiply' : 'soft-light'
-    const g = ctx.createLinearGradient(0, 0, W, H)   // diagonal
-    g.addColorStop(0, rgba(teal, light ? 0.06 : 0.18))
+    const g = ctx.createLinearGradient(0, 0, ex, ey + H)   // diagonal que oscila
+    g.addColorStop(0, rgba(teal, (light ? 0.06 : 0.18) * (0.75 + 0.5 * sw)))
     g.addColorStop(0.48, 'rgba(128,128,128,0)')
     g.addColorStop(0.52, 'rgba(128,128,128,0)')
-    g.addColorStop(1, rgba(orange, light ? 0.05 : 0.16))
+    g.addColorStop(1, rgba(orange, (light ? 0.05 : 0.16) * (0.75 + 0.5 * (1 - sw))))
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H)
     ctx.restore()
   },
@@ -675,11 +727,14 @@ register({
     const p = ((t % period) / period)   // 0..1
     const cx = (-0.3 + p * 1.6) * W      // centro de la banda barriendo
     const ang = -0.5
+    // el brillo del barrido entra y sale suave (smoothstep en los extremos) -> sin corte duro al reciclar.
+    const edgeFade = sweepPhase(p / 0.12) * sweepPhase((1 - p) / 0.12)
+    const a = 0.07 * (0.5 + 0.5 * edgeFade)
     ctx.save(); add(ctx)
     ctx.translate(W / 2, H / 2); ctx.rotate(ang); ctx.translate(-W / 2, -H / 2)
     const half = W * 0.34
     const g = ctx.createLinearGradient(cx - half, 0, cx + half, 0)
-    g.addColorStop(0, rgba(pal.accent, 0)); g.addColorStop(0.5, rgba(pal.accent, 0.07)); g.addColorStop(1, rgba(pal.accent, 0))
+    g.addColorStop(0, rgba(pal.accent, 0)); g.addColorStop(0.5, rgba(pal.accent, a)); g.addColorStop(1, rgba(pal.accent, 0))
     ctx.fillStyle = g; ctx.fillRect(cx - half, -H * 0.6, half * 2, H * 2.2)
     ctx.restore()
   },
@@ -778,7 +833,8 @@ register({
     const { pal } = env, light = pal.tone === 'light'
     // vineta de MARCO (4 lados, no radial): oscurece/aclara solo un anillo en el perimetro con gradientes lineales
     // por lado -> sensacion de borde impreso/editorial, centro 100% intacto. Espesor fijo, muy estable.
-    const inset = Math.round(W * 0.16)
+    // VIDA (minima): el grosor del marco respira como una marea muy lenta -> el borde editorial vive.
+    const inset = Math.round(W * (0.16 + 0.008 * breath(t, 0.4, 0.3)))
     const col = light ? 'rgba(250,248,244,' : 'rgba(0,0,0,'
     const a = light ? 0.34 : 0.46
     ctx.save()
@@ -908,19 +964,22 @@ register({
     // aberracion cromatica de borde (lente real): franjas rojo/cian muy finas y desplazadas en los margenes del
     // cuadro -> el clasico "fringe" de las esquinas de un lente. Centro intacto. Hue FIJOS (honestidad del efecto).
     const red = '#ff3a3a', cyan = '#27e0e0'
-    const a = 0.10 + 0.03 * breath(t, 0.4, 0.5)
-    const band = W * 0.1
+    // VIDA: los dos lados titilan en contrafase (la aberracion "vibra" como un lente real) y el ancho del fringe
+    // deriva apenas -> nunca queda congelado, centro intacto.
+    const aL = 0.10 + 0.035 * pulse(t, 0.4, 0.5)
+    const aR = 0.10 + 0.035 * pulse(t, 0.4 + Math.PI, 0.5)
+    const band = W * (0.1 + 0.008 * wave(t, 0.9, 0.25))
     ctx.save(); ctx.globalCompositeOperation = 'screen'
     // izquierda: rojo afuera, cian adentro
     let g = ctx.createLinearGradient(0, 0, band, 0)
-    g.addColorStop(0, rgba(red, a)); g.addColorStop(1, rgba(red, 0)); ctx.fillStyle = g; ctx.fillRect(0, 0, band, H)
+    g.addColorStop(0, rgba(red, aL)); g.addColorStop(1, rgba(red, 0)); ctx.fillStyle = g; ctx.fillRect(0, 0, band, H)
     g = ctx.createLinearGradient(band * 0.4, 0, band * 1.4, 0)
-    g.addColorStop(0, rgba(cyan, a * 0.7)); g.addColorStop(1, rgba(cyan, 0)); ctx.fillStyle = g; ctx.fillRect(band * 0.4, 0, band, H)
+    g.addColorStop(0, rgba(cyan, aL * 0.7)); g.addColorStop(1, rgba(cyan, 0)); ctx.fillStyle = g; ctx.fillRect(band * 0.4, 0, band, H)
     // derecha: cian afuera, rojo adentro
     g = ctx.createLinearGradient(W, 0, W - band, 0)
-    g.addColorStop(0, rgba(cyan, a)); g.addColorStop(1, rgba(cyan, 0)); ctx.fillStyle = g; ctx.fillRect(W - band, 0, band, H)
+    g.addColorStop(0, rgba(cyan, aR)); g.addColorStop(1, rgba(cyan, 0)); ctx.fillStyle = g; ctx.fillRect(W - band, 0, band, H)
     g = ctx.createLinearGradient(W - band * 0.4, 0, W - band * 1.4, 0)
-    g.addColorStop(0, rgba(red, a * 0.7)); g.addColorStop(1, rgba(red, 0)); ctx.fillStyle = g; ctx.fillRect(W - band * 1.4, 0, band, H)
+    g.addColorStop(0, rgba(red, aR * 0.7)); g.addColorStop(1, rgba(red, 0)); ctx.fillStyle = g; ctx.fillRect(W - band * 1.4, 0, band, H)
     ctx.restore()
   },
 })
@@ -965,17 +1024,20 @@ register({
     const { pal } = env, light = pal.tone === 'light'
     // "bleach bypass": look de alto contraste y bajo croma (plata retenida). Lo emulamos con un overlay gris
     // direccional que sube el contraste en los bordes (sombras mas densas, luces mas duras) dejando el centro neutro.
+    // VIDA: el contraste de bordes y el brillo plateado alto laten en contrafase -> el "bleach" palpita.
+    const kEdge = 0.88 + 0.24 * pulse(t, 0.3, 0.3)
+    const kHi = 0.88 + 0.24 * pulse(t, 0.3 + Math.PI, 0.3)
     ctx.save()
     // capa de contraste: oscurece bordes (multiply) -> sombras profundas tipo bleach
     ctx.globalCompositeOperation = 'multiply'
     let g = ctx.createRadialGradient(W / 2, H * 0.47, H * 0.22, W / 2, H * 0.5, H * 0.8)
     const gray = light ? '#b8b4ae' : '#3a3640'
-    g.addColorStop(0, 'rgba(128,128,128,0)'); g.addColorStop(1, rgba(gray, light ? 0.12 : 0.3))
+    g.addColorStop(0, 'rgba(128,128,128,0)'); g.addColorStop(1, rgba(gray, (light ? 0.12 : 0.3) * kEdge))
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H)
     // capa de luces duras (screen) en la zona alta -> brillo lavado plateado
     ctx.globalCompositeOperation = 'screen'
     g = ctx.createLinearGradient(0, 0, 0, H * 0.4)
-    g.addColorStop(0, rgba('#d8d4cc', light ? 0.1 : 0.16)); g.addColorStop(1, rgba('#d8d4cc', 0))
+    g.addColorStop(0, rgba('#d8d4cc', (light ? 0.1 : 0.16) * kHi)); g.addColorStop(1, rgba('#d8d4cc', 0))
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H * 0.4)
     ctx.restore()
   },
@@ -1043,10 +1105,12 @@ register({
     const { pal } = env, light = pal.tone === 'light'
     // scrim SUPERIOR (upper-third): asegura legibilidad de un titulo/kicker en lo alto del cuadro. Espejo del
     // bottom-gradient. Se disuelve antes de la franja de texto central -> no compite con el cuerpo.
-    const g = ctx.createLinearGradient(0, 0, 0, H * 0.42)
+    // VIDA (minima): el alcance del scrim respira anclado al techo -> aire vivo sin descubrir el titulo.
+    const bot = H * (0.42 + 0.015 * breath(t, 0.7, 0.32))
+    const g = ctx.createLinearGradient(0, 0, 0, bot)
     if (light) { g.addColorStop(0, 'rgba(255,255,255,0.5)'); g.addColorStop(0.6, 'rgba(255,255,255,0.14)'); g.addColorStop(1, 'rgba(255,255,255,0)') }
     else { g.addColorStop(0, 'rgba(0,0,0,0.58)'); g.addColorStop(0.6, 'rgba(0,0,0,0.18)'); g.addColorStop(1, 'rgba(0,0,0,0)') }
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H * 0.42)
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, bot)
   },
 })
 
@@ -1057,12 +1121,14 @@ register({
     const { pal } = env, light = pal.tone === 'light'
     // scrim en CUNA diagonal: una banda de oscurecido/aclarado que cruza el cuadro de la esquina inf-izq a la
     // media-derecha, asegurando contraste para texto alineado en esa diagonal (look editorial). Suave en los bordes.
+    // VIDA (minima): la cuna diagonal respira su fuerza HACIA ARRIBA del piso -> el guard editorial vive.
+    const k = 0.05 * breath(t, 0.6, 0.3)
     ctx.save()
     ctx.translate(W / 2, H / 2); ctx.rotate(-0.32); ctx.translate(-W / 2, -H / 2)
     const cy = H * 0.6, half = H * 0.26
     const g = ctx.createLinearGradient(0, cy - half, 0, cy + half)
-    if (light) { g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(0.5, 'rgba(255,255,255,0.34)'); g.addColorStop(1, 'rgba(255,255,255,0)') }
-    else { g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(0.5, 'rgba(0,0,0,0.44)'); g.addColorStop(1, 'rgba(0,0,0,0)') }
+    if (light) { g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(0.5, `rgba(255,255,255,${0.34 + k})`); g.addColorStop(1, 'rgba(255,255,255,0)') }
+    else { g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(0.5, `rgba(0,0,0,${0.44 + k})`); g.addColorStop(1, 'rgba(0,0,0,0)') }
     ctx.fillStyle = g; ctx.fillRect(-W * 0.5, cy - half, W * 2, half * 2)
     ctx.restore()
   },
@@ -1130,14 +1196,16 @@ register({
     const { pal } = env, light = pal.tone === 'light'
     // vineta LATERAL (pillarbox): oscurece/aclara solo las dos columnas de los costados con gradientes horizontales,
     // estrechando el cuadro hacia el centro vertical donde vive el texto. Complemento horizontal de cinema-bars.
+    // VIDA (minima): las dos columnas respiran su ancho en contrafase, ancladas a los costados -> pillarbox vivo.
     const dk = light ? 'rgba(30,22,16,0.10)' : 'rgba(0,0,0,0.5)'
-    const wEdge = W * 0.26
-    let g = ctx.createLinearGradient(0, 0, wEdge, 0)
+    const wL = W * (0.26 + 0.012 * breath(t, 0.5, 0.3))
+    const wR = W * (0.26 + 0.012 * breath(t, 0.5 + Math.PI, 0.3))
+    let g = ctx.createLinearGradient(0, 0, wL, 0)
     g.addColorStop(0, dk); g.addColorStop(1, 'rgba(0,0,0,0)')
-    ctx.fillStyle = g; ctx.fillRect(0, 0, wEdge, H)
-    g = ctx.createLinearGradient(W, 0, W - wEdge, 0)
+    ctx.fillStyle = g; ctx.fillRect(0, 0, wL, H)
+    g = ctx.createLinearGradient(W, 0, W - wR, 0)
     g.addColorStop(0, dk); g.addColorStop(1, 'rgba(0,0,0,0)')
-    ctx.fillStyle = g; ctx.fillRect(W - wEdge, 0, wEdge, H)
+    ctx.fillStyle = g; ctx.fillRect(W - wR, 0, wR, H)
   },
 })
 
@@ -1303,9 +1371,12 @@ register({
     // fria en la esquina opuesta -> profundidad y hora del dia. Hue FIJOS (ambar / azul) para honestidad del look.
     const amber = hslToHex(36, 0.85, light ? 0.6 : 0.55)
     const cool = hslToHex(220, 0.5, light ? 0.5 : 0.3)
+    // VIDA: el calor de la "hora dorada" late (pulse) y el eje de la diagonal deriva -> sol que baja, vivo.
+    const warm = (light ? 0.07 : 0.2) * (0.74 + 0.52 * pulse(t, 0.4, 0.55))
+    const dx = W + wave(t, 0.8, 0.4) * 30, dy = wave(t, 1.5, 0.35) * 24
     ctx.save(); ctx.globalCompositeOperation = light ? 'multiply' : 'soft-light'
-    const g = ctx.createLinearGradient(W, 0, 0, H)   // de sup-der (calido) a inf-izq (frio)
-    g.addColorStop(0, rgba(amber, light ? 0.07 : 0.2))
+    const g = ctx.createLinearGradient(dx, dy, 0, H)   // de sup-der (calido) a inf-izq (frio)
+    g.addColorStop(0, rgba(amber, warm))
     g.addColorStop(0.45, 'rgba(128,128,128,0)')
     g.addColorStop(0.55, 'rgba(128,128,128,0)')
     g.addColorStop(1, rgba(cool, light ? 0.05 : 0.16))
@@ -1323,6 +1394,10 @@ register({
     // cine negro). Centro intacto. Un toque del acento en la zona alta para que no quede 100% plano. Sutil.
     const grayHsl = hexToHsl(pal.accent)
     const gray = hslToHex(grayHsl.h, 0.06, light ? 0.7 : 0.3)
+    // VIDA: la chispa fria de marca arriba late (pulse, marcado) y deriva su foco -> el gris noir nunca queda
+    // muerto, respira un destello frio.
+    const spark = 0.7 + 0.6 * pulse(t, 0.6, 0.7)
+    const cx = W * (0.5 + 0.06 * wave(t, 0.4, 0.4))
     ctx.save()
     ctx.globalCompositeOperation = light ? 'multiply' : 'soft-light'
     let g = ctx.createRadialGradient(W / 2, H * 0.47, H * 0.22, W / 2, H * 0.5, H * 0.85)
@@ -1330,9 +1405,9 @@ register({
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H)
     // chispa fria de marca arriba para que no sea gris muerto
     ctx.globalCompositeOperation = light ? 'multiply' : 'screen'
-    g = ctx.createLinearGradient(0, 0, 0, H * 0.34)
-    g.addColorStop(0, rgba(pal.accent, light ? 0.04 : 0.08)); g.addColorStop(1, rgba(pal.accent, 0))
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H * 0.34)
+    g = ctx.createRadialGradient(cx, -H * 0.02, 0, cx, -H * 0.02, H * 0.42)
+    g.addColorStop(0, rgba(pal.accent, (light ? 0.05 : 0.1) * spark)); g.addColorStop(1, rgba(pal.accent, 0))
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H * 0.42)
     ctx.restore()
   },
 })
@@ -1404,11 +1479,15 @@ register({
     const { pal } = env, light = pal.tone === 'light'
     // panel SUAVE rectangular detras del bloque de texto (tarjeta sin bordes): un rectangulo de esquinas redondeadas
     // con relleno radial que oscurece (oscuro) o aclara (claro) la zona de texto y se desvanece en los bordes.
+    // VIDA (minima): el centro de la tarjeta respira su fuerza HACIA ARRIBA del piso + el radio del nucleo
+    // late -> el panel vive sin achicar su cobertura del bloque de texto.
+    const k = 0.06 * breath(t, 0.5, 0.5)
+    const rk = 1 + 0.06 * wave(t, 0.9, 0.4)
     const bx = W * 0.1, by = H * 0.33, bw = W * 0.8, bh = H * 0.3
     const cx = bx + bw / 2, cy = by + bh / 2
-    const g = ctx.createRadialGradient(cx, cy, Math.min(bw, bh) * 0.1, cx, cy, Math.max(bw, bh) * 0.62)
-    if (light) { g.addColorStop(0, 'rgba(255,255,255,0.4)'); g.addColorStop(0.7, 'rgba(255,255,255,0.18)'); g.addColorStop(1, 'rgba(255,255,255,0)') }
-    else { g.addColorStop(0, 'rgba(0,0,0,0.46)'); g.addColorStop(0.7, 'rgba(0,0,0,0.2)'); g.addColorStop(1, 'rgba(0,0,0,0)') }
+    const g = ctx.createRadialGradient(cx, cy, Math.min(bw, bh) * 0.1, cx, cy, Math.max(bw, bh) * 0.62 * rk)
+    if (light) { g.addColorStop(0, `rgba(255,255,255,${0.4 + k})`); g.addColorStop(0.7, 'rgba(255,255,255,0.18)'); g.addColorStop(1, 'rgba(255,255,255,0)') }
+    else { g.addColorStop(0, `rgba(0,0,0,${0.46 + k})`); g.addColorStop(0.7, 'rgba(0,0,0,0.2)'); g.addColorStop(1, 'rgba(0,0,0,0)') }
     ctx.save()
     // rounded-rect clip para que la placa no invada todo el cuadro
     const rr = 28
@@ -1427,20 +1506,24 @@ register({
     const { pal } = env, light = pal.tone === 'light'
     // doble scrim (upper-third + lower-third) en una sola capa: protege titulo arriba Y caption/CTA abajo, dejando
     // un claro central. Util cuando el texto se reparte arriba y abajo. Mas suave que cada banda por separado.
+    // VIDA (minima): las dos bandas respiran su alcance en contrafase, ancladas a sus bordes -> doble guard
+    // vivo sin descubrir titulo ni caption.
+    const tH = H * (0.3 + 0.012 * breath(t, 0.4, 0.3))
+    const bH = H * (0.32 + 0.012 * breath(t, 0.4 + Math.PI, 0.3))
     if (light) {
-      let g = ctx.createLinearGradient(0, 0, 0, H * 0.3)
+      let g = ctx.createLinearGradient(0, 0, 0, tH)
       g.addColorStop(0, 'rgba(255,255,255,0.42)'); g.addColorStop(1, 'rgba(255,255,255,0)')
-      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H * 0.3)
-      g = ctx.createLinearGradient(0, H, 0, H * 0.68)
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, tH)
+      g = ctx.createLinearGradient(0, H, 0, H - bH)
       g.addColorStop(0, 'rgba(255,255,255,0.46)'); g.addColorStop(1, 'rgba(255,255,255,0)')
-      ctx.fillStyle = g; ctx.fillRect(0, H * 0.68, W, H * 0.32)
+      ctx.fillStyle = g; ctx.fillRect(0, H - bH, W, bH)
     } else {
-      let g = ctx.createLinearGradient(0, 0, 0, H * 0.3)
+      let g = ctx.createLinearGradient(0, 0, 0, tH)
       g.addColorStop(0, 'rgba(0,0,0,0.5)'); g.addColorStop(1, 'rgba(0,0,0,0)')
-      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H * 0.3)
-      g = ctx.createLinearGradient(0, H, 0, H * 0.68)
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, tH)
+      g = ctx.createLinearGradient(0, H, 0, H - bH)
       g.addColorStop(0, 'rgba(0,0,0,0.54)'); g.addColorStop(1, 'rgba(0,0,0,0)')
-      ctx.fillStyle = g; ctx.fillRect(0, H * 0.68, W, H * 0.32)
+      ctx.fillStyle = g; ctx.fillRect(0, H - bH, W, bH)
     }
   },
 })
@@ -1510,7 +1593,9 @@ register({
     const { pal } = env, light = pal.tone === 'light'
     // vineta MUY plumeada (feathered): caida larguisima y gradual del centro al borde, sin un anillo marcado ->
     // oscurece/aclara apenas el perimetro para dar cuerpo sin que se note el efecto. La mas discreta del set.
-    const g = ctx.createRadialGradient(W / 2, H * 0.47, H * 0.12, W / 2, H * 0.5, H * 0.95)
+    // VIDA (minima): el radio limpio interior respira (iris suavisimo) -> la vineta mas discreta igual vive.
+    const inner = H * (0.12 + 0.025 * breath(t, 0.3, 0.45))
+    const g = ctx.createRadialGradient(W / 2, H * 0.47, inner, W / 2, H * 0.5, H * 0.95)
     g.addColorStop(0, 'rgba(0,0,0,0)')
     g.addColorStop(0.55, light ? 'rgba(0,0,0,0.01)' : 'rgba(0,0,0,0.08)')
     g.addColorStop(0.85, light ? 'rgba(30,22,16,0.05)' : 'rgba(0,0,0,0.28)')
@@ -1526,7 +1611,9 @@ register({
     const { pal } = env, light = pal.tone === 'light'
     // vineta ASIMETRICA pesada abajo: la penumbra se concentra en la mitad inferior (centro de gravedad bajo, tipo
     // poster) y se aligera arriba -> ancla el contenido y deja respirar el cielo. Radial descentrado hacia abajo.
-    const g = ctx.createRadialGradient(W / 2, H * 0.4, H * 0.22, W / 2, H * 0.72, H * 0.95)
+    // VIDA (minima): el centro de gravedad bajo oscila apenas en vertical -> el peso inferior respira.
+    const cy = H * (0.72 + 0.01 * breath(t, 0.5, 0.28))
+    const g = ctx.createRadialGradient(W / 2, H * 0.4, H * 0.22, W / 2, cy, H * 0.95)
     g.addColorStop(0, 'rgba(0,0,0,0)')
     g.addColorStop(0.6, light ? 'rgba(0,0,0,0.02)' : 'rgba(0,0,0,0.2)')
     g.addColorStop(1, light ? 'rgba(30,22,16,0.12)' : 'rgba(0,0,0,0.62)')
@@ -1673,13 +1760,15 @@ register({
     const fx = W * (r() < 0.5 ? 0.1 : 0.9), fy = H * 0.86
     const dir = fx < W / 2 ? 1 : -1
     const N = 7
-    const a = 0.07 + 0.02 * breath(t, 0.4, 0.5)
+    const a = 0.07 + 0.025 * pulse(t, 0.4, 0.5)
+    // el abanico se abre/cierra apenas (dispersion respirando) y cada franja titila en fase propia -> prisma vivo.
+    const spread = 1 + 0.08 * wave(t, 0.6, 0.22)
     ctx.save(); add(ctx); ctx.translate(fx, fy)
     for (let i = 0; i < N; i++) {
       const hue = 360 * (i / N)
       const col = hslToHex(hue, 0.85, 0.6)
-      const ang = dir * (-Math.PI * 0.45 + (i / (N - 1)) * Math.PI * 0.32)
-      const len = H * 0.42
+      const ang = dir * (-Math.PI * 0.45 + (i / (N - 1)) * Math.PI * 0.32 * spread)
+      const len = H * 0.42 * (1 + 0.04 * wave(t, i * 0.8, 0.3))
       ctx.save(); ctx.rotate(ang)
       const g = ctx.createLinearGradient(0, 0, len, 0)
       g.addColorStop(0, rgba(col, a)); g.addColorStop(0.7, rgba(col, a * 0.3)); g.addColorStop(1, rgba(col, 0))
@@ -1701,17 +1790,19 @@ register({
     // look "faded film" (matte): SUBE las sombras (negros lavados) con un velo gris-verdoso suave -> ese aire vintage
     // de pelicula vieja. En oscuro un screen tenue levanta los negros; en claro un multiply muy leve apaga las luces.
     const tintHsl = hexToHsl(pal.accent)
+    // VIDA: el velo matte respira su densidad (pulse) -> el aire vintage palpita levisimo, como film viejo.
+    const k = 0.88 + 0.24 * pulse(t, 0.5, 0.3)
     if (light) {
       ctx.save(); ctx.globalCompositeOperation = 'multiply'
       const matte = hslToHex(tintHsl.h, 0.08, 0.82)
       const g = ctx.createLinearGradient(0, 0, 0, H)
-      g.addColorStop(0, rgba(matte, 0.1)); g.addColorStop(0.5, rgba(matte, 0.04)); g.addColorStop(1, rgba(matte, 0.1))
+      g.addColorStop(0, rgba(matte, 0.1 * k)); g.addColorStop(0.5, rgba(matte, 0.04)); g.addColorStop(1, rgba(matte, 0.1 * k))
       ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); ctx.restore()
     } else {
       ctx.save(); ctx.globalCompositeOperation = 'screen'
       const lift = hslToHex((tintHsl.h + 40) % 360, 0.25, 0.3)   // velo verde-oliva tenue
       const g = ctx.createLinearGradient(0, 0, 0, H)
-      g.addColorStop(0, rgba(lift, 0.1)); g.addColorStop(0.5, rgba(lift, 0.05)); g.addColorStop(1, rgba(lift, 0.12))
+      g.addColorStop(0, rgba(lift, 0.1 * k)); g.addColorStop(0.5, rgba(lift, 0.05)); g.addColorStop(1, rgba(lift, 0.12 * k))
       ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); ctx.restore()
     }
   },
@@ -1726,12 +1817,17 @@ register({
     // Hue FIJOS (honestidad del look). Centro neutro (hueco). Solo oscuro: la luz neon necesita fondo profundo.
     const magenta = hslToHex(312, 0.8, 0.55)
     const cyan = hslToHex(186, 0.85, 0.55)
+    // VIDA: el neon magenta y cian laten en contrafase (parpadeo de letrero) + el eje de la diagonal deriva
+    // apenas -> noche urbana viva, centro neutro intacto.
+    const m = 0.2 * (0.78 + 0.44 * pulse(t, 0.2, 0.5))
+    const c = 0.18 * (0.78 + 0.44 * pulse(t, 0.2 + Math.PI, 0.5))
+    const ex = W * 0.4 + wave(t, 0.7, 0.22) * 18
     ctx.save(); ctx.globalCompositeOperation = 'soft-light'
-    const g = ctx.createLinearGradient(0, 0, W * 0.4, H)
-    g.addColorStop(0, rgba(magenta, 0.2))
+    const g = ctx.createLinearGradient(0, 0, ex, H)
+    g.addColorStop(0, rgba(magenta, m))
     g.addColorStop(0.44, 'rgba(128,128,128,0)')
     g.addColorStop(0.56, 'rgba(128,128,128,0)')
-    g.addColorStop(1, rgba(cyan, 0.18))
+    g.addColorStop(1, rgba(cyan, c))
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H)
     ctx.restore()
   },
@@ -1794,10 +1890,13 @@ register({
     const { pal } = env, light = pal.tone === 'light'
     // guard radial AMPLIO y suave centrado en el bloque de texto: mas extendido que center-plate (cubre mejor titulos
     // largos a varias lineas) y con caida muy gradual -> contraste asegurado sin un borde visible. El workhorse.
+    // VIDA (minima): el nucleo del guard respira su fuerza solo HACIA ARRIBA del piso base -> vive sin perder
+    // contraste. El workhorse se queda quieto en cobertura, vivo en intensidad.
+    const k = 0.05 * breath(t, 0.3, 0.33)
     const cx = W / 2, cy = H * 0.47
     const g = ctx.createRadialGradient(cx, cy, H * 0.02, cx, cy, H * 0.5)
-    if (light) { g.addColorStop(0, 'rgba(255,255,255,0.3)'); g.addColorStop(0.45, 'rgba(255,255,255,0.18)'); g.addColorStop(0.8, 'rgba(255,255,255,0.05)'); g.addColorStop(1, 'rgba(255,255,255,0)') }
-    else { g.addColorStop(0, 'rgba(0,0,0,0.36)'); g.addColorStop(0.45, 'rgba(0,0,0,0.22)'); g.addColorStop(0.8, 'rgba(0,0,0,0.07)'); g.addColorStop(1, 'rgba(0,0,0,0)') }
+    if (light) { g.addColorStop(0, `rgba(255,255,255,${0.3 + k})`); g.addColorStop(0.45, 'rgba(255,255,255,0.18)'); g.addColorStop(0.8, 'rgba(255,255,255,0.05)'); g.addColorStop(1, 'rgba(255,255,255,0)') }
+    else { g.addColorStop(0, `rgba(0,0,0,${0.36 + k})`); g.addColorStop(0.45, 'rgba(0,0,0,0.22)'); g.addColorStop(0.8, 'rgba(0,0,0,0.07)'); g.addColorStop(1, 'rgba(0,0,0,0)') }
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H)
   },
 })
@@ -1809,17 +1908,21 @@ register({
     const { pal } = env, light = pal.tone === 'light'
     // scrim en forma de L anclado en la esquina INFERIOR-IZQUIERDA: combina una banda inferior + una lateral
     // izquierda -> asegura contraste para un titulo/kicker alineado a esa esquina (look editorial). Centro libre.
+    // VIDA (minima): banda inferior y lateral respiran su alcance en contrafase, ancladas a la esquina ->
+    // la L editorial vive sin perder contraste.
+    const top = H * (0.62 - 0.012 * breath(t, 0.5, 0.3))
+    const lw = W * (0.4 + 0.02 * breath(t, 0.5 + Math.PI, 0.3))
     ctx.save()
     // banda inferior
-    let g = ctx.createLinearGradient(0, H, 0, H * 0.62)
+    let g = ctx.createLinearGradient(0, H, 0, top)
     if (light) { g.addColorStop(0, 'rgba(255,255,255,0.46)'); g.addColorStop(1, 'rgba(255,255,255,0)') }
     else { g.addColorStop(0, 'rgba(0,0,0,0.52)'); g.addColorStop(1, 'rgba(0,0,0,0)') }
-    ctx.fillStyle = g; ctx.fillRect(0, H * 0.62, W, H * 0.38)
+    ctx.fillStyle = g; ctx.fillRect(0, top, W, H - top)
     // banda lateral izquierda (se suma a la de abajo para reforzar la esquina)
-    g = ctx.createLinearGradient(0, 0, W * 0.4, 0)
+    g = ctx.createLinearGradient(0, 0, lw, 0)
     if (light) { g.addColorStop(0, 'rgba(255,255,255,0.3)'); g.addColorStop(1, 'rgba(255,255,255,0)') }
     else { g.addColorStop(0, 'rgba(0,0,0,0.36)'); g.addColorStop(1, 'rgba(0,0,0,0)') }
-    ctx.fillStyle = g; ctx.fillRect(0, H * 0.5, W * 0.4, H * 0.5)
+    ctx.fillStyle = g; ctx.fillRect(0, H * 0.5, lw, H * 0.5)
     ctx.restore()
   },
 })

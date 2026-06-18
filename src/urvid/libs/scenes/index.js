@@ -70,6 +70,41 @@ function star(ctx, cx, cy, r, fill, color, track) {
   ctx.restore()
 }
 
+// ============================================================================
+// VIDA CONTINUA (helpers de fluidez) — micro-movimiento SECUNDARIO via t para que la DECO/acento NUNCA quede
+// muerta-estatica tras la entrada. Sutil y CONTINUO (sin(t*0.5..1.4)). El TEXTO no se mueve: estos helpers son
+// para barras/reglas/arcos/iconos/chips (acento). DETERMINISTA: solo t (cero random/Date.now).
+// ============================================================================
+// pulso suave 0..1 (respiracion): centrado en 1, amplitud `amp`, periodo via `sp` (rad/s), fase `ph`.
+const breathe = (t, sp = 1.0, amp = 0.012, ph = 0) => 1 + amp * Math.sin(t * sp + ph)
+// oscilacion -1..1 (deriva/parpadeo): amplitud `amp`, periodo via `sp`, fase `ph`.
+const drift = (t, sp = 0.9, amp = 1, ph = 0) => amp * Math.sin(t * sp + ph)
+// sheen: posicion 0..1 de un brillo que RECORRE de izq a der en loop (triangular suave, periodo `per` seg, fase `ph`).
+function sheenPos(t, per = 3.0, ph = 0) { const u = (((t / per) + ph) % 1 + 1) % 1; return u }
+// dibuja un SHEEN (banda de brillo) que recorre una barra/regla horizontal redondeada (x,y,w,h).
+// color = el del acento; el brillo es un blanco translucido que se desplaza. CONTINUO via t. Sutil.
+function rrSheen(ctx, x, y, w, h, t, { per = 3.2, ph = 0, strength = 0.5, tone = 'dark' } = {}) {
+  if (w <= 2) return
+  const u = sheenPos(t, per, ph), bandW = Math.max(18, w * 0.28), cxp = x - bandW + (w + bandW * 2) * u
+  ctx.save(); ctx.beginPath(); ctx.roundRect(x, y, w, h, Math.min(h / 2, h)); ctx.clip()
+  const g = ctx.createLinearGradient(cxp - bandW / 2, 0, cxp + bandW / 2, 0)
+  const a = strength * (tone === 'light' ? 0.5 : 1)
+  g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(0.5, `rgba(255,255,255,${clamp(a, 0, 1)})`); g.addColorStop(1, 'rgba(255,255,255,0)')
+  ctx.fillStyle = g; ctx.fillRect(x, y, w, h); ctx.restore()
+}
+// glow pulsante para un trazo (set shadow). Devuelve; el caller debe envolver en save/restore.
+function pulseGlow(ctx, color, t, { sp = 1.1, base = 4, amp = 5, ph = 0 } = {}) {
+  ctx.shadowColor = color; ctx.shadowBlur = base + amp * (0.5 + 0.5 * Math.sin(t * sp + ph))
+}
+// punto de brillo que ORBITA un arco (cx,cy,R) recorriendo el rango [a0, a0+span] en loop (continuo via t).
+// Para dar vida a anillos/donuts/dials/gauges ya dibujados. dotR pequeno, blanco/acento translucido.
+function arcSheenDot(ctx, cx, cy, R, a0, span, t, { per = 4.0, dotR = 3.2, color = '#fff', tone = 'dark' } = {}) {
+  const u = sheenPos(t, per), ang = a0 + span * u
+  ctx.save(); ctx.globalAlpha = tone === 'light' ? 0.6 : 0.9; ctx.fillStyle = color
+  ctx.shadowColor = color; ctx.shadowBlur = 6
+  ctx.beginPath(); ctx.arc(cx + Math.cos(ang) * R, cy + Math.sin(ang) * R, dotR, 0, TAU); ctx.fill(); ctx.restore()
+}
+
 register({
   id: 'scene.hero.center', lib: 'scene-layouts', category: 'openers/hero', tones: ['dark', 'light'], rubros: ['*'], weight: 1.3,
   tags: ['apertura', 'tipografico'], beat: 'hook',
@@ -81,9 +116,11 @@ register({
     ctx.save(); ctx.globalAlpha = inv(t, 0.1, 0.4); ctx.translate(cx, H * 0.4); ctx.scale(sc, sc)
     drawText(ctx, content.brand || 'Marca', 0, 0, { size: 64, weight: 800, family: fonts.display, maxW: W * 0.86, color: pal.ink, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.4)' : null })
     ctx.restore()
-    // regla de acento que crece (DECO en acento)
-    const ru = M.ease(inv(t, 0.5, 1.1)), rw = 80 * ru
-    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(cx - rw / 2, H * 0.4 + 50, rw, 5, 2.5); ctx.fill()
+    // regla de acento que crece (DECO en acento) + VIDA: respira de ancho y un sheen la recorre en loop
+    const ru = M.ease(inv(t, 0.5, 1.1)), rw = 80 * ru * breathe(t, 0.9, 0.02)
+    const ry = H * 0.4 + 50
+    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(cx - rw / 2, ry, rw, 5, 2.5); ctx.fill()
+    if (ru > 0.9) rrSheen(ctx, cx - rw / 2, ry, rw, 5, t, { per: 3.0, strength: 0.55, tone: pal.tone })
     // tagline
     if (content.tagline) drawWrapped(ctx, content.tagline, cx, H * 0.47, { size: 24, weight: 600, family: fonts.text, maxW: W * 0.7, color: pal.dim, alpha: inv(t, 0.7, 1.3), maxLines: 2 })
   },
@@ -94,9 +131,10 @@ register({
   tags: ['claim', 'editorial'], beat: 'value',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, ax = W * 0.12
-    // barra de acento sobre el titular (DECO)
-    const mr = M.ease(inv(t, 0.05, 0.5))
-    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(ax, H * 0.34, 66 * mr, 6, 3); ctx.fill()
+    // barra de acento sobre el titular (DECO) + VIDA: respira de ancho y un sheen la recorre
+    const mr = M.ease(inv(t, 0.05, 0.5)), mbw = 66 * mr * breathe(t, 1.0, 0.022)
+    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(ax, H * 0.34, mbw, 6, 3); ctx.fill()
+    if (mr > 0.9) rrSheen(ctx, ax, H * 0.34, mbw, 6, t, { per: 2.8, strength: 0.55, tone: pal.tone })
     // claim, izquierda, en tinta, envuelto
     ctx.save(); ctx.globalAlpha = inv(t, 0.15, 0.6); ctx.translate((1 - M.ease(inv(t, 0.15, 0.7))) * 24, 0)
     drawWrapped(ctx, content.claim || content.tagline || 'Un mensaje claro', ax, H * 0.46, { size: 42, weight: 800, family: fonts.display, maxW: W * 0.78, color: pal.ink, align: 'left', maxLines: 4, lh: 1.16, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.5)' : null })
@@ -110,8 +148,9 @@ register({
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2, cy = H * 0.42
     drawText(ctx, content.brand || 'Marca', cx, cy, { size: 54, weight: 800, family: fonts.display, maxW: W * 0.82, color: pal.ink, alpha: inv(t, 0.2, 0.9) })
-    const bar = M.ease(inv(t, 0.5, 1.1))
-    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(cx - 60 * bar, cy + 42, 120 * bar, 5, 3); ctx.fill()
+    const bar = M.ease(inv(t, 0.5, 1.1)), bw = 120 * bar * breathe(t, 0.85, 0.02)
+    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(cx - bw / 2, cy + 42, bw, 5, 3); ctx.fill()
+    if (bar > 0.9) rrSheen(ctx, cx - bw / 2, cy + 42, bw, 5, t, { per: 3.0, strength: 0.55, tone: pal.tone })
     // CTA: texto en TINTA-acento (legible) + subrayado en acento (DECO) + chevron
     const cta = inv(t, 1.0, 1.6)
     if (cta > 0 && content.cta) {
@@ -121,7 +160,7 @@ register({
       ctx.font = `800 ${fs}px "${fonts.display}"`; const tw = Math.min(W * 0.7, ctx.measureText(content.cta).width)
       const up = M.ease(inv(t, 1.3, 1.9))
       ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(-tw / 2, fs * 0.62, tw * up, 5, 2.5); ctx.fill()
-      if (inv(t, 1.6, 2.0) > 0) { ctx.strokeStyle = pal.accent; ctx.lineWidth = 4; ctx.lineCap = 'round'; const ay = fs * 0.62 + 22; ctx.beginPath(); ctx.moveTo(-13, ay); ctx.lineTo(0, ay + 11); ctx.lineTo(13, ay); ctx.stroke() }
+      if (inv(t, 1.6, 2.0) > 0) { ctx.save(); ctx.strokeStyle = pal.accent; ctx.lineWidth = 4; ctx.lineCap = 'round'; pulseGlow(ctx, pal.accent, t, { sp: 1.3, base: 2, amp: 6 }); const ay = fs * 0.62 + 22 + drift(t, 1.1, 1.2); ctx.beginPath(); ctx.moveTo(-13, ay); ctx.lineTo(0, ay + 11); ctx.lineTo(13, ay); ctx.stroke(); ctx.restore() }
       ctx.restore()
     }
   },
@@ -145,9 +184,10 @@ register({
     ctx.save(); ctx.globalAlpha = inv(t, 0.2, 0.7); ctx.translate(0, (1 - rise) * 40)
     drawWrapped(ctx, content.claim || content.tagline || content.brand || 'Una idea grande', ax, H * 0.46, { size: 50, weight: 800, family: fonts.display, maxW: W * 0.82, color: pal.ink, align: 'left', maxLines: 3, lh: 1.08, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.45)' : null })
     ctx.restore()
-    // regla inferior que barre
-    const ru = M.ease(inv(t, 0.7, 1.3))
-    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(ax, H * 0.62, (W - 2 * ax) * ru, 5, 2.5); ctx.fill()
+    // regla inferior que barre + VIDA: sheen recorriendola en loop
+    const ru = M.ease(inv(t, 0.7, 1.3)), rw = (W - 2 * ax) * ru
+    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(ax, H * 0.62, rw, 5, 2.5); ctx.fill()
+    if (ru > 0.9) rrSheen(ctx, ax, H * 0.62, rw, 5, t, { per: 3.4, strength: 0.5, tone: pal.tone })
   },
 })
 
@@ -160,12 +200,21 @@ register({
     const m = 46, x0 = m, y0 = H * 0.24, x1 = W - m, y1 = H * 0.6
     const dp = M.ease(inv(t, 0.1, 0.9)), perim = 2 * ((x1 - x0) + (y1 - y0)), seg = perim * dp
     ctx.save(); ctx.strokeStyle = pal.accent; ctx.lineWidth = 2.5; ctx.lineJoin = 'round'
+    if (dp > 0.95) pulseGlow(ctx, pal.accent, t, { sp: 1.0, base: 2, amp: 5 })   // VIDA: glow que respira en el marco ya cerrado
     ctx.beginPath()
     let rem = seg
     const edges = [[x0, y0, x1, y0], [x1, y0, x1, y1], [x1, y1, x0, y1], [x0, y1, x0, y0]]
     ctx.moveTo(x0, y0)
     for (const [ax, ay, bx, by] of edges) { const len = Math.hypot(bx - ax, by - ay); const f = clamp(rem / len, 0, 1); ctx.lineTo(lerp(ax, bx, f), lerp(ay, by, f)); rem -= len; if (rem <= 0) break }
     ctx.stroke(); ctx.restore()
+    // VIDA: un punto de brillo que recorre el perimetro del marco en loop continuo (DECO)
+    if (dp > 0.95) {
+      const u = sheenPos(t, 5.0), edges2 = [[x0, y0, x1, y0], [x1, y0, x1, y1], [x1, y1, x0, y1], [x0, y1, x0, y0]]
+      let acc = u * perim, dx = x0, dy = y0
+      for (const [ax, ay, bx, by] of edges2) { const len = Math.hypot(bx - ax, by - ay); if (acc <= len) { const f = acc / len; dx = lerp(ax, bx, f); dy = lerp(ay, by, f); break } acc -= len }
+      ctx.save(); ctx.fillStyle = pal.accent; pulseGlow(ctx, pal.accent, t, { sp: 1.0, base: 4, amp: 4 })
+      ctx.beginPath(); ctx.arc(dx, dy, 3.2, 0, TAU); ctx.fill(); ctx.restore()
+    }
     // marca centrada dentro
     drawText(ctx, content.brand || 'Marca', cx, cy - 8, { size: 46, weight: 800, family: fonts.display, maxW: (x1 - x0) - 24, color: pal.ink, alpha: inv(t, 0.45, 0.95) })
     if (content.tagline) drawWrapped(ctx, content.tagline, cx, cy + 34, { size: 18, weight: 600, family: fonts.text, maxW: (x1 - x0) - 30, color: pal.dim, alpha: inv(t, 0.7, 1.2), maxLines: 2 })
@@ -179,17 +228,17 @@ register({
   tags: ['hook', 'pregunta', 'gancho'], beat: 'hook',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
-    // signo de pregunta gigante de fondo (DECO en acento tenue)
-    ctx.save(); ctx.globalAlpha = (pal.tone === 'light' ? 0.07 : 0.12) * inv(t, 0.0, 0.5)
-    const qScale = lerp(0.9, 1, M.ease(inv(t, 0, 0.8)))
+    // signo de pregunta gigante de fondo (DECO en acento tenue) + VIDA: respira de escala/opacidad
+    ctx.save(); ctx.globalAlpha = (pal.tone === 'light' ? 0.07 : 0.12) * inv(t, 0.0, 0.5) * breathe(t, 0.7, 0.12)
+    const qScale = lerp(0.9, 1, M.ease(inv(t, 0, 0.8))) * breathe(t, 0.6, 0.012)
     drawText(ctx, '?', cx, H * 0.34, { size: 300 * qScale, weight: 800, family: fonts.display, color: pal.accent })
     ctx.restore()
     // pregunta real, envuelta, en tinta
     ctx.save(); ctx.globalAlpha = inv(t, 0.25, 0.75)
     TK.drawWrapped(ctx, content.tagline || content.claim || '¿Y si fuera mas facil?', cx, H * 0.5, { reveal: inv(t, 0.25, 1.05), size: 38, weight: 800, family: fonts.display, maxW: W * 0.82, color: pal.ink, maxLines: 3, lh: 1.14, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.5)' : null })
     ctx.restore()
-    // cursor/linea de respuesta que parpadea por t (determinista)
-    const blink = (Math.sin(t * 6) > 0) ? 1 : 0.25
+    // cursor/linea de respuesta que parpadea por t (determinista) — pulso SUAVE (no on/off abrupto)
+    const blink = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(t * 4.2))
     ctx.fillStyle = pal.accent; ctx.globalAlpha = inv(t, 0.9, 1.2) * blink
     ctx.beginPath(); ctx.roundRect(cx - 26, H * 0.66, 52, 4, 2); ctx.fill(); ctx.globalAlpha = 1
   },
@@ -201,13 +250,17 @@ register({
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     const num = statAt(content, 0, '3x').value
-    // numero gigante que entra con spring de escala
-    const sp = M.settle(inv(t, 0.1, 1.0), { zeta: 0.45, freq: 2.1 }), sc = 0.7 + 0.3 * sp
+    // numero gigante que entra con spring de escala (micro-respiracion <=0.6% post-entrada, no se mueve de lugar)
+    const sp = M.settle(inv(t, 0.1, 1.0), { zeta: 0.45, freq: 2.1 }), sc = (0.7 + 0.3 * sp) * breathe(t, 0.6, 0.006)
     ctx.save(); ctx.globalAlpha = inv(t, 0.05, 0.4); ctx.translate(cx, H * 0.4); ctx.scale(sc, sc)
     drawText(ctx, num, 0, 0, { size: 150, weight: 800, family: fonts.display, maxW: W * 0.9, color: pal.inkText, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.5)' : null })
     ctx.restore()
+    // VIDA: regla de acento bajo el numero, respira + sheen (DECO, continua)
+    const ru = M.ease(inv(t, 0.45, 1.0)), rw = 70 * ru * breathe(t, 0.9, 0.025), ry = H * 0.49
+    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(cx - rw / 2, ry, rw, 5, 2.5); ctx.fill()
+    if (ru > 0.9) rrSheen(ctx, cx - rw / 2, ry, rw, 5, t, { per: 3.0, strength: 0.5, tone: pal.tone })
     // contexto debajo
-    drawWrapped(ctx, content.tagline || content.claim || 'el cambio que importa', cx, H * 0.57, { size: 24, weight: 700, family: fonts.text, maxW: W * 0.78, color: pal.ink, alpha: inv(t, 0.5, 1.0), maxLines: 2 })
+    drawWrapped(ctx, content.tagline || content.claim || 'el cambio que importa', cx, H * 0.58, { size: 24, weight: 700, family: fonts.text, maxW: W * 0.78, color: pal.ink, alpha: inv(t, 0.5, 1.0), maxLines: 2 })
   },
 })
 
@@ -218,9 +271,10 @@ register({
   tags: ['claim', 'cita', 'editorial'], beat: 'value',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, ax = W * 0.14
-    // comilla gigante de apertura (DECO)
-    ctx.save(); ctx.globalAlpha = (pal.tone === 'light' ? 0.16 : 0.22) * inv(t, 0.0, 0.5)
-    drawText(ctx, '“', ax + 4, H * 0.3, { size: 150, weight: 800, family: fonts.display, color: pal.accent, align: 'left' })
+    // comilla gigante de apertura (DECO) + VIDA: respira de escala/opacidad continua
+    ctx.save(); ctx.globalAlpha = (pal.tone === 'light' ? 0.16 : 0.22) * inv(t, 0.0, 0.5) * breathe(t, 0.7, 0.08)
+    ctx.translate(ax + 4, H * 0.3); ctx.scale(breathe(t, 0.6, 0.015), breathe(t, 0.6, 0.015))
+    drawText(ctx, '“', 0, 0, { size: 150, weight: 800, family: fonts.display, color: pal.accent, align: 'left' })
     ctx.restore()
     // claim, izquierda, reveal por linea (mascara que sube)
     ctx.save(); ctx.globalAlpha = inv(t, 0.2, 0.7); ctx.translate((1 - M.ease(inv(t, 0.2, 0.85))) * 22, 0)
@@ -242,9 +296,12 @@ register({
     ctx.globalAlpha = gp
     ctx.fillStyle = pal.tone === 'light' ? 'rgba(20,16,24,0.04)' : 'rgba(255,255,255,0.05)'
     ctx.beginPath(); ctx.roundRect(cx - pw / 2, py, pw, ph, 18); ctx.fill()
-    // borde de acento a la izquierda del panel
-    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(cx - pw / 2, py, 6, ph, 3); ctx.fill()
+    // borde de acento a la izquierda del panel + VIDA: glow que respira en el borde
+    ctx.save(); if (gp > 0.9) pulseGlow(ctx, pal.accent, t, { sp: 1.0, base: 2, amp: 5 })
+    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(cx - pw / 2, py, 6, ph, 3); ctx.fill(); ctx.restore()
     ctx.restore()
+    // VIDA: punto de brillo que recorre el borde de acento de arriba a abajo en loop (DECO)
+    if (gp > 0.95) { const u = sheenPos(t, 3.6), dy = py + 8 + (ph - 16) * u; ctx.save(); ctx.fillStyle = 'rgba(255,255,255,' + (pal.tone === 'light' ? 0.5 : 0.85) + ')'; ctx.beginPath(); ctx.arc(cx - pw / 2 + 3, dy, 2.6, 0, TAU); ctx.fill(); ctx.restore() }
     // claim dentro
     TK.drawWrapped(ctx, content.claim || content.tagline || 'Tu mensaje, claro', cx, py + ph / 2, { reveal: inv(t, 0.4, 1.05), size: 32, weight: 800, family: fonts.display, maxW: pw - 48, color: pal.ink, maxLines: 4, lh: 1.16, alpha: inv(t, 0.4, 0.9) })
   },
@@ -264,11 +321,12 @@ register({
       const tin = inv(t, 0.2 + i * 0.18, 0.7 + i * 0.18)
       if (tin <= 0) return
       const y = y0 + i * gap
-      // circulo de check
+      // circulo de check + VIDA: respiracion suave del disco de acento (fase por item)
       ctx.save(); ctx.globalAlpha = tin
-      const cr = 17
-      ctx.fillStyle = rgba(pal.accent, pal.tone === 'light' ? 0.16 : 0.22); ctx.beginPath(); ctx.arc(ax + cr, y, cr, 0, TAU); ctx.fill()
-      tick(ctx, ax + cr, y, cr, M.ease(tin), pal.inkText, 3.2)
+      const cr = 17, pb = breathe(t, 1.1, 0.03, i * 1.3)
+      ctx.translate(ax + cr, y); ctx.scale(pb, pb)
+      ctx.fillStyle = rgba(pal.accent, pal.tone === 'light' ? 0.16 : 0.22); ctx.beginPath(); ctx.arc(0, 0, cr, 0, TAU); ctx.fill()
+      tick(ctx, 0, 0, cr, M.ease(tin), pal.inkText, 3.2)
       ctx.restore()
       // texto del item
       ctx.save(); ctx.globalAlpha = tin; ctx.translate((1 - M.ease(tin)) * 16, 0)
@@ -290,9 +348,11 @@ register({
       const tin = inv(t, 0.2 + i * 0.2, 0.7 + i * 0.2)
       if (tin <= 0) return
       const y = y0 + i * gap, sp = M.settle(tin, { zeta: 0.5, freq: 2 })
-      // numero en pildora de acento
-      ctx.save(); ctx.globalAlpha = tin; ctx.translate(ax + 20, y); ctx.scale(0.8 + 0.2 * sp, 0.8 + 0.2 * sp)
-      ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.arc(0, 0, 20, 0, TAU); ctx.fill()
+      // numero en pildora de acento + VIDA: la pildora respira (fase por item), el numero no se mueve
+      ctx.save(); ctx.globalAlpha = tin; ctx.translate(ax + 20, y)
+      ctx.save(); ctx.scale((0.8 + 0.2 * sp) * breathe(t, 1.0, 0.03, i * 1.1), (0.8 + 0.2 * sp) * breathe(t, 1.0, 0.03, i * 1.1))
+      ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.arc(0, 0, 20, 0, TAU); ctx.fill(); ctx.restore()
+      ctx.scale(0.8 + 0.2 * sp, 0.8 + 0.2 * sp)
       drawText(ctx, String(i + 1), 0, 1, { size: 22, weight: 800, family: fonts.display, color: pal.onAccent })
       ctx.restore()
       ctx.save(); ctx.globalAlpha = tin; ctx.translate((1 - M.ease(tin)) * 16, 0)
@@ -329,8 +389,11 @@ register({
     ctx.save(); ctx.strokeStyle = rgba(pal.ink, 0.18); ctx.lineWidth = 1.5
     ctx.beginPath(); ctx.moveTo(midX, H * 0.3 + (1 - dh) * 60); ctx.lineTo(midX, H * 0.6 - (1 - dh) * 60); ctx.stroke(); ctx.restore()
     const vp = M.settle(inv(t, 0.4, 1.1), { zeta: 0.5, freq: 2 })
-    ctx.save(); ctx.translate(midX, H * 0.45); ctx.scale(vp, vp)
-    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.arc(0, 0, 22, 0, TAU); ctx.fill()
+    ctx.save(); ctx.translate(midX, H * 0.45)
+    // VIDA: el disco "vs" respira + glow pulsante (el texto "vs" queda fijo)
+    ctx.save(); ctx.scale(vp * breathe(t, 1.1, 0.035), vp * breathe(t, 1.1, 0.035)); if (vp > 0.9) pulseGlow(ctx, pal.accent, t, { sp: 1.2, base: 3, amp: 6 })
+    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.arc(0, 0, 22, 0, TAU); ctx.fill(); ctx.restore()
+    ctx.scale(vp, vp)
     drawText(ctx, 'vs', 0, 1, { size: 18, weight: 800, family: fonts.display, color: pal.onAccent })
     ctx.restore()
   },
@@ -344,12 +407,14 @@ register({
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     const num = statAt(content, 0, '100%').value
-    // anillo de acento que se dibuja alrededor del numero
+    // anillo de acento que se dibuja alrededor del numero + VIDA: glow pulsante + punto que orbita el arco
     const ringP = M.ease(inv(t, 0.2, 1.1)), R = 118
     ctx.save(); ctx.translate(cx, H * 0.42)
     ctx.strokeStyle = rgba(pal.ink, 0.1); ctx.lineWidth = 9; ctx.beginPath(); ctx.arc(0, 0, R, 0, TAU); ctx.stroke()
-    ctx.strokeStyle = pal.accent; ctx.lineWidth = 9; ctx.lineCap = 'round'
-    ctx.beginPath(); ctx.arc(0, 0, R, -TAU / 4, -TAU / 4 + TAU * ringP); ctx.stroke()
+    ctx.save(); ctx.strokeStyle = pal.accent; ctx.lineWidth = 9; ctx.lineCap = 'round'
+    if (ringP > 0.95) pulseGlow(ctx, pal.accent, t, { sp: 1.0, base: 2, amp: 6 })
+    ctx.beginPath(); ctx.arc(0, 0, R, -TAU / 4, -TAU / 4 + TAU * ringP); ctx.stroke(); ctx.restore()
+    if (ringP > 0.95) arcSheenDot(ctx, 0, 0, R, -TAU / 4, TAU * ringP, t, { per: 4.5, color: pal.tone === 'light' ? pal.accent : '#fff', tone: pal.tone })
     ctx.restore()
     // numero grande centrado (count-style: aparece con escala)
     const sp = M.settle(inv(t, 0.25, 1.0), { zeta: 0.5, freq: 2 })
@@ -378,13 +443,17 @@ register({
     if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), W / 2, H * 0.24, { size: 16, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, maxW: W * 0.8, alpha: inv(t, 0.05, 0.35) })
     for (let i = 0; i < n; i++) {
       const tin = inv(t, 0.25 + i * 0.18, 0.8 + i * 0.18); if (tin <= 0) continue
-      const x = colW * (i + 0.5), sp = M.settle(tin, { zeta: 0.5, freq: 2 })
-      ctx.save(); ctx.globalAlpha = tin; ctx.translate(x, cy); ctx.scale(0.85 + 0.15 * sp, 0.85 + 0.15 * sp)
+      const x = colW * (i + 0.5), sp = M.settle(tin, { zeta: 0.5, freq: 2 }), nb = breathe(t, 0.7, 0.006, i * 1.2)
+      ctx.save(); ctx.globalAlpha = tin; ctx.translate(x, cy); ctx.scale((0.85 + 0.15 * sp) * nb, (0.85 + 0.15 * sp) * nb)
       drawText(ctx, nums[i] || '—', 0, -8, { size: 52, weight: 800, family: fonts.display, maxW: colW - 16, color: pal.ink })
       ctx.restore()
       drawWrapped(ctx, labels[i] || '', x, cy + 44, { size: 16, weight: 700, family: fonts.text, maxW: colW - 18, color: pal.dim, maxLines: 2, alpha: tin })
-      // separador vertical entre columnas
-      if (i < n - 1) { const dh = M.ease(inv(t, 0.2, 0.9)); ctx.save(); ctx.strokeStyle = rgba(pal.ink, 0.12); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(colW * (i + 1), cy - 40 * dh); ctx.lineTo(colW * (i + 1), cy + 50 * dh); ctx.stroke(); ctx.restore() }
+      // separador vertical entre columnas + VIDA: punto de acento que recorre el separador (DECO)
+      if (i < n - 1) {
+        const dh = M.ease(inv(t, 0.2, 0.9)), sepX = colW * (i + 1), y0 = cy - 40 * dh, y1 = cy + 50 * dh
+        ctx.save(); ctx.strokeStyle = rgba(pal.ink, 0.12); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(sepX, y0); ctx.lineTo(sepX, y1); ctx.stroke(); ctx.restore()
+        if (dh > 0.95) { const u = sheenPos(t, 3.2, i * 0.3); ctx.save(); ctx.fillStyle = pal.accent; ctx.globalAlpha = 0.8; ctx.beginPath(); ctx.arc(sepX, lerp(y0, y1, u), 2.4, 0, TAU); ctx.fill(); ctx.restore() }
+      }
     }
   },
 })
@@ -396,9 +465,14 @@ register({
   tags: ['prueba-social', 'cita', 'estrellas', 'rating'], beat: 'proof',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
-    // 5 estrellas que se llenan de izq a der (DECO)
+    // 5 estrellas que se llenan de izq a der (DECO) + VIDA: titilan (escala+glow, fase por estrella)
     const fillP = M.ease(inv(t, 0.2, 1.0)) * 5, sr = 15, gap = 40, x0 = cx - gap * 2
-    for (let i = 0; i < 5; i++) { const f = clamp(fillP - i, 0, 1); star(ctx, x0 + i * gap, H * 0.32, sr, f, pal.accent, rgba(pal.ink, 0.14)) }
+    for (let i = 0; i < 5; i++) {
+      const f = clamp(fillP - i, 0, 1), tw = f >= 1 ? breathe(t, 1.4, 0.05, i * 1.7) : 1
+      ctx.save(); ctx.translate(x0 + i * gap, H * 0.32); ctx.scale(tw, tw)
+      if (f >= 1) pulseGlow(ctx, pal.accent, t, { sp: 1.4, base: 1, amp: 4, ph: i * 1.7 })
+      star(ctx, 0, 0, sr, f, pal.accent, rgba(pal.ink, 0.14)); ctx.restore()
+    }
     // cita/testimonio en tinta
     ctx.save(); ctx.globalAlpha = inv(t, 0.35, 0.85)
     TK.drawWrapped(ctx, proofFrom(content, 'Cambio como trabajamos'), cx, H * 0.5, { reveal: inv(t, 0.35, 1.05), size: 30, weight: 700, family: fonts.display, maxW: W * 0.8, color: pal.ink, maxLines: 4, lh: 1.2 })
@@ -424,7 +498,9 @@ register({
     const init = (content.brand || 'M').trim().charAt(0).toUpperCase()
     const sp = M.settle(inv(t, 0.1, 0.9), { zeta: 0.5, freq: 2 }), s = 0.8 + 0.2 * sp
     ctx.save(); ctx.globalAlpha = inv(t, 0.05, 0.4); ctx.translate(cx, cy - 40); ctx.scale(s, s)
-    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(-34, -34, 68, 68, 16); ctx.fill()
+    // VIDA: el cuadro de acento respira + glow pulsante (la inicial queda fija)
+    ctx.save(); ctx.scale(breathe(t, 0.9, 0.02), breathe(t, 0.9, 0.02)); if (sp > 0.9) pulseGlow(ctx, pal.accent, t, { sp: 1.0, base: 2, amp: 6 })
+    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(-34, -34, 68, 68, 16); ctx.fill(); ctx.restore()
     drawText(ctx, init, 0, 2, { size: 44, weight: 800, family: fonts.display, color: pal.onAccent })
     ctx.restore()
     // marca
@@ -446,8 +522,10 @@ register({
     const gp = M.settle(inv(t, 0.5, 1.2), { zeta: 0.5, freq: 2 })
     ctx.save(); ctx.font = `800 26px "${fonts.display}"`
     const tw = Math.min(W * 0.7, ctx.measureText(cta).width), pw = tw + 56, ph = 56, py = H * 0.52
-    ctx.translate(cx, py + ph / 2); ctx.scale(0.85 + 0.15 * gp, 0.85 + 0.15 * gp); ctx.globalAlpha = inv(t, 0.5, 0.9)
+    ctx.translate(cx, py + ph / 2); ctx.scale((0.85 + 0.15 * gp) * breathe(t, 0.9, 0.012), (0.85 + 0.15 * gp) * breathe(t, 0.9, 0.012)); ctx.globalAlpha = inv(t, 0.5, 0.9)
     ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(-pw / 2, -ph / 2, pw, ph, ph / 2); ctx.fill()
+    // VIDA: sheen recorre la pildora (DECO, continuo)
+    if (gp > 0.9) rrSheen(ctx, -pw / 2, -ph / 2, pw, ph, t, { per: 3.4, strength: 0.4, tone: pal.tone })
     drawText(ctx, cta, 0, 1, { size: 26, weight: 800, family: fonts.display, maxW: pw - 36, color: pal.onAccent })
     ctx.restore()
     if (content.tagline) drawText(ctx, content.tagline, cx, H * 0.66, { size: 18, weight: 600, family: fonts.text, maxW: W * 0.78, color: pal.dim, alpha: inv(t, 0.8, 1.3) })
@@ -499,10 +577,12 @@ register({
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cy = H * 0.44
     const word = firstStrong(content.tagline || content.claim, 'LISTO').toUpperCase()
-    // banda de acento que barre de izq a der detras de la palabra (DECO)
+    // banda de acento que barre de izq a der detras de la palabra (DECO) + VIDA: respira + sheen
     const sw = M.ease(inv(t, 0.1, 0.85)), bh = 64
-    ctx.save(); ctx.globalAlpha = (pal.tone === 'light' ? 0.14 : 0.2) * inv(t, 0.05, 0.4)
-    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.rect(0, cy - bh / 2, W * sw, bh); ctx.fill(); ctx.restore()
+    ctx.save(); ctx.globalAlpha = (pal.tone === 'light' ? 0.14 : 0.2) * inv(t, 0.05, 0.4) * breathe(t, 0.7, 0.08)
+    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.rect(0, cy - bh / 2, W * sw, bh); ctx.fill()
+    if (sw > 0.95) { ctx.globalAlpha = 0.4; rrSheen(ctx, 0, cy - bh / 2, W * sw, bh, t, { per: 3.6, strength: 0.3, tone: pal.tone }) }
+    ctx.restore()
     // palabra alineada a izquierda, entra desde la izquierda con la banda
     const enter = M.ease(inv(t, 0.25, 0.9))
     ctx.save(); ctx.globalAlpha = inv(t, 0.2, 0.6); ctx.translate((1 - enter) * -30, 0)
@@ -522,8 +602,8 @@ register({
     const r = mulberry32((env.seed >>> 0) ^ 0x21a)
     const idx = '0' + (1 + ((r() * 3) | 0))   // 01..03, estable por seed
     const word = firstStrong(content.tagline || content.claim || content.brand, 'PARTE').toUpperCase()
-    const sc = lerp(0.94, 1, M.ease(inv(t, 0.05, 0.8)))
-    ctx.save(); ctx.globalAlpha = (pal.tone === 'light' ? 0.08 : 0.14) * inv(t, 0.0, 0.5); ctx.translate(cx, H * 0.4); ctx.scale(sc, sc)
+    const sc = lerp(0.94, 1, M.ease(inv(t, 0.05, 0.8))) * breathe(t, 0.6, 0.01)   // VIDA: el indice de fondo respira
+    ctx.save(); ctx.globalAlpha = (pal.tone === 'light' ? 0.08 : 0.14) * inv(t, 0.0, 0.5) * breathe(t, 0.5, 0.1); ctx.translate(cx, H * 0.4); ctx.scale(sc, sc)
     drawText(ctx, idx, 0, 0, { size: 240, weight: 800, family: fonts.display, color: pal.accent })
     ctx.restore()
     // palabra en tinta encima, sube y se asienta
@@ -531,9 +611,10 @@ register({
     ctx.save(); ctx.globalAlpha = inv(t, 0.25, 0.7); ctx.translate(0, (1 - rise) * 26)
     drawText(ctx, word, cx, H * 0.52, { size: 46, weight: 800, family: fonts.display, maxW: W * 0.78, color: pal.ink })
     ctx.restore()
-    // regla corta bajo la palabra
-    const ru = M.ease(inv(t, 0.5, 1.1))
-    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(cx - 30 * ru, H * 0.58, 60 * ru, 4, 2); ctx.fill()
+    // regla corta bajo la palabra + VIDA: respira + sheen
+    const ru = M.ease(inv(t, 0.5, 1.1)), crw = 60 * ru * breathe(t, 0.9, 0.03)
+    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(cx - crw / 2, H * 0.58, crw, 4, 2); ctx.fill()
+    if (ru > 0.9) rrSheen(ctx, cx - crw / 2, H * 0.58, crw, 4, t, { per: 3.0, strength: 0.5, tone: pal.tone })
   },
 })
 
@@ -556,9 +637,9 @@ register({
       // separa "valor : etiqueta" si hay numero; si no, item plano con marca de acento
       const num = (it.match(/([+\-]?\$?\s?\d[\d.,]*\s?[%xXmMkK²m2]*)/) || [])[1]
       ctx.save(); ctx.globalAlpha = tin
-      // marca de slot: cuadradito de acento a la izquierda (DECO)
-      const mk = M.ease(tin)
-      ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(x0, y - 7, 14 * mk, 14, 3); ctx.fill()
+      // marca de slot: cuadradito de acento a la izquierda (DECO) + VIDA: respira (fase por fila)
+      const mk = M.ease(tin), mkb = tin >= 1 ? breathe(t, 1.1, 0.06, i * 1.3) : 1, mkS = 14 * mk * mkb
+      ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(x0 + (14 - mkS) / 2, y - mkS / 2, mkS, mkS, 3); ctx.fill()
       ctx.restore()
       // valor (en tinta, fuerte) + etiqueta (dim) si se pudo partir
       ctx.save(); ctx.globalAlpha = tin; ctx.translate((1 - M.ease(tin)) * 14, 0)
@@ -601,6 +682,8 @@ register({
       // barra de acento arriba del chip
       ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(cellX, cellY, cw, 4, 2); ctx.fill()
       ctx.restore()
+      // VIDA: sheen recorre la barra de acento del chip (fase por celda, continuo)
+      if (sp > 0.9) rrSheen(ctx, cellX, cellY, cw, 4, t, { per: 3.2, ph: i * 0.25, strength: 0.5, tone: pal.tone })
       const num = (it.match(/([+\-]?\$?\s?\d[\d.,]*\s?[%xXmMkK²m2]*)/) || [])[1]
       const label = shortLabel(num ? it.replace(num, '') : it, 2)
       ctx.save(); ctx.globalAlpha = tin
@@ -624,9 +707,10 @@ register({
     ctx.save(); ctx.globalAlpha = inv(t, 0.0, 0.35); ctx.translate(cx, H * 0.36); ctx.scale(0.6 + 0.4 * grow, 0.6 + 0.4 * grow)
     drawText(ctx, num, 0, 0, { size: 172, weight: 800, family: fonts.display, maxW: W * 0.94, color: pal.inkText, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.5)' : null })
     ctx.restore()
-    // regla de acento bajo el numero
-    const ru = M.ease(inv(t, 0.45, 1.0))
-    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(cx - 46 * ru, H * 0.49, 92 * ru, 5, 2.5); ctx.fill()
+    // regla de acento bajo el numero + VIDA: respira + sheen
+    const ru = M.ease(inv(t, 0.45, 1.0)), srw = 92 * ru * breathe(t, 0.9, 0.022)
+    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(cx - srw / 2, H * 0.49, srw, 5, 2.5); ctx.fill()
+    if (ru > 0.9) rrSheen(ctx, cx - srw / 2, H * 0.49, srw, 5, t, { per: 3.0, strength: 0.55, tone: pal.tone })
     // contexto que explica la estadistica (lo que la vuelve shock)
     drawWrapped(ctx, content.tagline || content.claim || 'de la gente se rinde antes de empezar', cx, H * 0.6, { size: 25, weight: 700, family: fonts.text, maxW: W * 0.82, color: pal.ink, maxLines: 3, lh: 1.18, alpha: inv(t, 0.55, 1.05) })
   },
@@ -651,9 +735,11 @@ register({
     ctx.strokeStyle = rgba(pal.ink, 0.28); ctx.lineWidth = 1.8; ctx.beginPath(); ctx.roundRect(x0, y, cw, ch, 14); ctx.stroke()
     drawText(ctx, a, x0 + cw / 2, y + ch / 2, { size: 22, weight: 700, family: fonts.display, color: pal.dim, maxW: cw - 20 })
     ctx.restore()
-    // chip derecho (la opcion buena, acento relleno)
-    ctx.save(); ctx.globalAlpha = inv(t, 0.5, 0.95); ctx.translate(x0 + cw + gap + cw / 2, y + ch / 2); ctx.scale(0.88 + 0.12 * inB, 0.88 + 0.12 * inB); ctx.translate(-(x0 + cw + gap + cw / 2), -(y + ch / 2))
+    // chip derecho (la opcion buena, acento relleno) + VIDA: respira suave + sheen lo recorre
+    const bsc = (0.88 + 0.12 * inB) * breathe(t, 1.0, 0.012)
+    ctx.save(); ctx.globalAlpha = inv(t, 0.5, 0.95); ctx.translate(x0 + cw + gap + cw / 2, y + ch / 2); ctx.scale(bsc, bsc); ctx.translate(-(x0 + cw + gap + cw / 2), -(y + ch / 2))
     ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(x0 + cw + gap, y, cw, ch, 14); ctx.fill()
+    if (inB > 0.9) rrSheen(ctx, x0 + cw + gap, y, cw, ch, t, { per: 3.6, strength: 0.4, tone: pal.tone })
     drawText(ctx, b, x0 + cw + gap + cw / 2, y + ch / 2, { size: 23, weight: 800, family: fonts.display, color: pal.onAccent, maxW: cw - 20 })
     ctx.restore()
   },
@@ -671,6 +757,8 @@ register({
     ctx.save(); ctx.globalAlpha = inv(t, 0.0, 0.4)
     ctx.fillStyle = pal.accent
     ctx.beginPath(); ctx.rect(0, py, W, ph * drop); ctx.fill(); ctx.restore()
+    // VIDA: sheen suave que cruza el panel de acento (DECO continuo, no toca el texto)
+    if (drop > 0.95) { ctx.save(); ctx.globalAlpha = 0.45; rrSheen(ctx, 0, py, W, ph, t, { per: 4.2, strength: 0.3, tone: pal.tone }); ctx.restore() }
     // kicker chico arriba del panel
     if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), cx, py - 22, { size: 15, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, maxW: W * 0.8, alpha: inv(t, 0.0, 0.35) })
     // claim dentro del panel en onAccent (alto contraste garantizado por la paleta)
@@ -701,9 +789,10 @@ register({
       ctx.fillText(ln, ax, y0 + i * lineH)
       ctx.restore()
     })
-    // ultima palabra/regla en acento bajo el bloque
-    const ru = M.ease(inv(t, 0.6, 1.2))
-    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(ax, y0 + blockH - lineH / 2 + 26, 92 * ru, 6, 3); ctx.fill()
+    // ultima palabra/regla en acento bajo el bloque + VIDA: respira + sheen
+    const ru = M.ease(inv(t, 0.6, 1.2)), mrw = 92 * ru * breathe(t, 0.85, 0.022), mry = y0 + blockH - lineH / 2 + 26
+    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(ax, mry, mrw, 6, 3); ctx.fill()
+    if (ru > 0.9) rrSheen(ctx, ax, mry, mrw, 6, t, { per: 3.0, strength: 0.55, tone: pal.tone })
   },
 })
 
@@ -719,9 +808,10 @@ register({
     ctx.save(); ctx.globalAlpha = inv(t, 0.05, 0.45); ctx.translate(cx, H * 0.42); ctx.scale(sc, sc); ctx.translate(-cx, -H * 0.42)
     drawWrapped(ctx, content.brand || 'Marca', cx, H * 0.42, { size: 72, weight: 800, family: fonts.display, maxW: W * 0.88, color: pal.ink, maxLines: 2, lh: 1.0, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.45)' : null })
     ctx.restore()
-    // regla ancha de acento
-    const ru = M.ease(inv(t, 0.5, 1.1))
-    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(cx - 70 * ru, H * 0.55, 140 * ru, 6, 3); ctx.fill()
+    // regla ancha de acento + VIDA: respira + sheen
+    const ru = M.ease(inv(t, 0.5, 1.1)), brw = 140 * ru * breathe(t, 0.85, 0.02)
+    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(cx - brw / 2, H * 0.55, brw, 6, 3); ctx.fill()
+    if (ru > 0.9) rrSheen(ctx, cx - brw / 2, H * 0.55, brw, 6, t, { per: 3.2, strength: 0.55, tone: pal.tone })
     // cta o tagline debajo, en mono-acento
     const sub = content.cta || content.tagline
     if (sub) drawText(ctx, sub, cx, H * 0.62, { size: 22, weight: 700, family: fonts.text, maxW: W * 0.82, color: pal.inkText, alpha: inv(t, 0.75, 1.25) })
@@ -733,11 +823,12 @@ register({
   tags: ['cierre', 'diagonal', 'dinamico', 'cta'], beat: 'close',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2, cy = H * 0.42
-    // banda diagonal de acento que barre la pantalla (DECO) — energia de cierre
+    // banda diagonal de acento que barre la pantalla (DECO) — energia de cierre + VIDA: respira de opacidad
     const sw = M.ease(inv(t, 0.05, 0.8))
-    ctx.save(); ctx.globalAlpha = (pal.tone === 'light' ? 0.16 : 0.22) * inv(t, 0.0, 0.4)
+    ctx.save(); ctx.globalAlpha = (pal.tone === 'light' ? 0.16 : 0.22) * inv(t, 0.0, 0.4) * breathe(t, 0.7, 0.1)
     ctx.translate(cx, cy); ctx.rotate(-0.18)
     ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.rect(-W * 0.7, -42, W * 1.4 * sw, 84); ctx.fill()
+    if (sw > 0.95) { ctx.globalAlpha = 0.5; rrSheen(ctx, -W * 0.7, -42, W * 1.4, 84, t, { per: 4.0, strength: 0.3, tone: pal.tone }) }
     ctx.restore()
     // marca centrada en tinta
     drawText(ctx, content.brand || 'Marca', cx, cy, { size: 50, weight: 800, family: fonts.display, maxW: W * 0.84, color: pal.ink, alpha: inv(t, 0.2, 0.75), shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.4)' : null })
@@ -746,8 +837,9 @@ register({
     const gp = M.settle(inv(t, 0.5, 1.2), { zeta: 0.5, freq: 2 })
     ctx.save(); ctx.font = `800 24px "${fonts.display}"`
     const tw = Math.min(W * 0.7, ctx.measureText(cta).width), pw = tw + 50, ph = 52, py = cy + 96
-    ctx.translate(cx, py + ph / 2); ctx.scale(0.85 + 0.15 * gp, 0.85 + 0.15 * gp); ctx.globalAlpha = inv(t, 0.5, 0.95)
+    ctx.translate(cx, py + ph / 2); ctx.scale((0.85 + 0.15 * gp) * breathe(t, 0.9, 0.012), (0.85 + 0.15 * gp) * breathe(t, 0.9, 0.012)); ctx.globalAlpha = inv(t, 0.5, 0.95)
     ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(-pw / 2, -ph / 2, pw, ph, ph / 2); ctx.fill()
+    if (gp > 0.9) rrSheen(ctx, -pw / 2, -ph / 2, pw, ph, t, { per: 3.4, strength: 0.4, tone: pal.tone })
     drawText(ctx, cta, 0, 1, { size: 24, weight: 800, family: fonts.display, maxW: pw - 34, color: pal.onAccent })
     ctx.restore()
   },
@@ -773,18 +865,21 @@ register({
     drawText(ctx, 'ANTES', W * 0.12, topY + 30, { size: 14, weight: 700, family: fonts.accent || fonts.text, color: pal.dim, align: 'left', maxW: W * 0.7 })
     drawWrapped(ctx, left, W / 2, topY + halfH / 2 + 8, { size: 27, weight: 700, family: fonts.display, maxW: W * 0.78, color: pal.dim, maxLines: 3, lh: 1.16 })
     ctx.restore()
-    // panel inferior: banda de acento
+    // panel inferior: banda de acento + VIDA: sheen suave cruzandola
     ctx.save(); ctx.globalAlpha = dB; ctx.translate(0, (1 - dB) * 20)
     ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.rect(0, botY, W, halfH); ctx.fill()
+    if (dB > 0.95) { ctx.save(); ctx.globalAlpha = 0.4; rrSheen(ctx, 0, botY, W, halfH, t, { per: 4.2, strength: 0.28, tone: pal.tone }); ctx.restore() }
     drawText(ctx, 'AHORA', W * 0.12, botY + 30, { size: 14, weight: 700, family: fonts.accent || fonts.text, color: pal.onAccent, align: 'left', maxW: W * 0.7 })
     drawWrapped(ctx, right, W / 2, botY + halfH / 2 + 8, { size: 30, weight: 800, family: fonts.display, maxW: W * 0.8, color: pal.onAccent, maxLines: 3, lh: 1.16 })
     ctx.restore()
-    // flecha que cruza el limite (DECO en acento sobre el panel claro de arriba)
+    // flecha que cruza el limite (DECO) + VIDA: el disco respira + flecha deriva sutil vertical
     const ap = M.settle(inv(t, 0.55, 1.2), { zeta: 0.5, freq: 2 })
-    ctx.save(); ctx.translate(W / 2, botY); ctx.scale(ap, ap)
-    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.arc(0, 0, 22, 0, TAU); ctx.fill()
+    ctx.save(); ctx.translate(W / 2, botY); ctx.scale(ap * breathe(t, 1.1, 0.03), ap * breathe(t, 1.1, 0.03))
+    if (ap > 0.9) pulseGlow(ctx, pal.accent, t, { sp: 1.2, base: 2, amp: 5 })
+    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.arc(0, 0, 22, 0, TAU); ctx.fill(); ctx.shadowBlur = 0
+    const ady = ap >= 1 ? drift(t, 1.3, 1.0) : 0
     ctx.strokeStyle = pal.onAccent; ctx.lineWidth = 3.4; ctx.lineCap = 'round'; ctx.lineJoin = 'round'
-    ctx.beginPath(); ctx.moveTo(0, -8); ctx.lineTo(0, 8); ctx.moveTo(-7, 1); ctx.lineTo(0, 9); ctx.lineTo(7, 1); ctx.stroke()
+    ctx.beginPath(); ctx.moveTo(0, -8 + ady); ctx.lineTo(0, 8 + ady); ctx.moveTo(-7, 1 + ady); ctx.lineTo(0, 9 + ady); ctx.lineTo(7, 1 + ady); ctx.stroke()
     ctx.restore()
   },
 })
@@ -805,11 +900,13 @@ register({
     // barra de progreso horizontal que se llena segun el % del numero (o un default)
     const pct = (() => { const m = num.match(/(\d[\d.,]*)/); let v = m ? parseFloat(m[1].replace(/,/g, '')) : 75; if (num.indexOf('%') < 0) v = clamp(v, 0, 100); return clamp(v / 100, 0.08, 1) })()
     const fill = M.ease(inv(t, 0.3, 1.2)) * pct
-    const bw = W * 0.76, bx = (W - bw) / 2, by = H * 0.52, bh = 18
+    const bw = W * 0.76, bx = (W - bw) / 2, by = H * 0.52, bh = 18, fw = bw * fill
     ctx.save()
     ctx.fillStyle = rgba(pal.ink, 0.12); ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, bh / 2); ctx.fill()
-    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(bx, by, bw * fill, bh, bh / 2); ctx.fill()
+    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(bx, by, fw, bh, bh / 2); ctx.fill()
     ctx.restore()
+    // VIDA: sheen recorre la parte llena de la barra (DECO continuo)
+    if (fill > pct * 0.95 && fw > 24) rrSheen(ctx, bx, by, fw, bh, t, { per: 2.8, strength: 0.5, tone: pal.tone })
     // etiqueta debajo
     drawWrapped(ctx, content.tagline || content.brand || 'resultado medido', cx, H * 0.62, { size: 22, weight: 700, family: fonts.text, maxW: W * 0.78, color: pal.dim, maxLines: 2, alpha: inv(t, 0.6, 1.1) })
   },
@@ -863,9 +960,10 @@ register({
   tags: ['apertura', 'editorial', 'asimetrico', 'rotulo-vertical'], beat: 'hook',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, mx = W * 0.13
-    // regla vertical de acento en el margen + rotulo de marca girado
-    const vu = M.ease(inv(t, 0.05, 0.7))
-    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(mx - 18, H * 0.28, 5, (H * 0.4) * vu, 2.5); ctx.fill()
+    // regla vertical de acento en el margen + rotulo de marca girado + VIDA: punto que recorre la regla
+    const vu = M.ease(inv(t, 0.05, 0.7)), vh = (H * 0.4) * vu, vry = H * 0.28
+    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(mx - 18, vry, 5, vh, 2.5); ctx.fill()
+    if (vu > 0.95) { const u = sheenPos(t, 3.4), dy = vry + 6 + (vh - 12) * u; ctx.save(); ctx.fillStyle = 'rgba(255,255,255,' + (pal.tone === 'light' ? 0.5 : 0.85) + ')'; ctx.beginPath(); ctx.arc(mx - 15.5, dy, 2.6, 0, TAU); ctx.fill(); ctx.restore() }
     vLabel(ctx, (content.brand || 'Marca').toUpperCase(), mx - 26, H * 0.68, { size: 16, weight: 800, family: fonts.accent || fonts.text, color: pal.inkText, maxW: H * 0.36, alpha: inv(t, 0.2, 0.6) })
     // claim grande, izquierda, anclado abajo (sube y se asienta)
     const rise = M.settle(inv(t, 0.2, 1.0), 1.2)
@@ -891,9 +989,11 @@ register({
     // highlight de acento detras de la 1ra linea (crece de izq a der)
     ctx.font = `800 ${L.size}px "${fonts.display}"`
     const w0 = Math.min(W - 2 * mx, ctx.measureText(L.lines[0] || '').width)
-    const hl = M.ease(inv(t, 0.25, 0.95))
-    ctx.save(); ctx.globalAlpha = (pal.tone === 'light' ? 0.18 : 0.26) * inv(t, 0.2, 0.5)
-    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(mx - 6, y0 - L.size * 0.62, (w0 + 12) * hl, L.size * 1.12, 6); ctx.fill(); ctx.restore()
+    const hl = M.ease(inv(t, 0.25, 0.95)), hlw = (w0 + 12) * hl, hlx = mx - 6, hly = y0 - L.size * 0.62, hlh = L.size * 1.12
+    ctx.save(); ctx.globalAlpha = (pal.tone === 'light' ? 0.18 : 0.26) * inv(t, 0.2, 0.5) * breathe(t, 0.8, 0.1)
+    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(hlx, hly, hlw, hlh, 6); ctx.fill(); ctx.restore()
+    // VIDA: sheen sutil recorre el highlight (DECO continuo)
+    if (hl > 0.95) { ctx.save(); ctx.globalAlpha = 0.5; rrSheen(ctx, hlx, hly, hlw, hlh, t, { per: 4.0, strength: 0.35, tone: pal.tone }); ctx.restore() }
     // lineas en tinta con stagger
     L.lines.forEach((ln, i) => {
       const tin = inv(t, 0.2 + i * 0.14, 0.7 + i * 0.14); if (tin <= 0) return
@@ -932,8 +1032,10 @@ register({
     ctx.save(); ctx.globalAlpha = ga; ctx.translate(0, (1 - rise) * 26)
     drawWrapped(ctx, good, mx, H * 0.56, { size: 42, weight: 800, family: fonts.display, maxW: W * 0.8, color: pal.ink, align: 'left', maxLines: 3, lh: 1.08, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.45)' : null })
     ctx.restore()
-    // chevron de acento que apunta a la idea buena
-    chevron(ctx, mx + 12, H * 0.47, 16, pal.accent, 4.5, M.ease(inv(t, 0.5, 0.95)))
+    // chevron de acento que apunta a la idea buena + VIDA: deriva + glow pulsante (continuo)
+    const chp = M.ease(inv(t, 0.5, 0.95))
+    ctx.save(); if (chp > 0.95) pulseGlow(ctx, pal.accent, t, { sp: 1.5, base: 1, amp: 5 })
+    chevron(ctx, mx + 12 + (chp >= 1 ? drift(t, 1.4, 2.2) : 0), H * 0.47, 16, pal.accent, 4.5, chp); ctx.restore()
   },
 })
 
@@ -950,9 +1052,10 @@ register({
     ctx.save(); ctx.globalAlpha = inv(t, 0.0, 0.4); ctx.translate(W * 0.96, H * 0.38); ctx.scale(0.7 + 0.3 * grow, 0.7 + 0.3 * grow)
     drawText(ctx, num, 0, 0, { size: 140, weight: 800, family: fonts.display, maxW: W * 1.04, color: pal.inkText, align: 'right', shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.5)' : null })
     ctx.restore()
-    // barra vertical de acento separando la cifra del texto
-    const vu = M.ease(inv(t, 0.3, 0.9))
-    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(mx - 4, H * 0.5, 5, (H * 0.22) * vu, 2.5); ctx.fill()
+    // barra vertical de acento separando la cifra del texto + VIDA: punto que la recorre
+    const vu = M.ease(inv(t, 0.3, 0.9)), vbh = (H * 0.22) * vu, vby = H * 0.5
+    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(mx - 4, vby, 5, vbh, 2.5); ctx.fill()
+    if (vu > 0.95) { const u = sheenPos(t, 3.0), dy = vby + 5 + (vbh - 10) * u; ctx.save(); ctx.fillStyle = 'rgba(255,255,255,' + (pal.tone === 'light' ? 0.5 : 0.85) + ')'; ctx.beginPath(); ctx.arc(mx - 1.5, dy, 2.4, 0, TAU); ctx.fill(); ctx.restore() }
     // texto/pregunta abajo-izquierda, confronta la cifra
     drawWrapped(ctx, content.tagline || content.claim || 'el resto se queda atras', mx + 12, H * 0.62, { size: 27, weight: 700, family: fonts.display, maxW: W * 0.66, color: pal.ink, align: 'left', maxLines: 3, lh: 1.16, alpha: inv(t, 0.5, 1.0) })
   },
@@ -972,11 +1075,13 @@ register({
     const idx = '0' + ((r() * 5) | 0)
     drawText(ctx, idx, mx, H * 0.24, { size: 30, weight: 800, family: fonts.display, color: pal.inkText, align: 'left', maxW: W * 0.3, alpha: inv(t, 0.05, 0.4) })
     // regla larga horizontal que cruza desde el indice hasta el margen derecho
-    const ru = M.ease(inv(t, 0.15, 0.85))
+    const ru = M.ease(inv(t, 0.15, 0.85)), rx0 = mx + 56, rx1 = W * 0.88, rxe = rx0 + (rx1 - rx0) * ru
     ctx.save(); ctx.strokeStyle = rgba(pal.ink, 0.22); ctx.lineWidth = 1.4
-    ctx.beginPath(); ctx.moveTo(mx + 56, H * 0.24); ctx.lineTo(mx + 56 + (W * 0.88 - mx - 56) * ru, H * 0.24); ctx.stroke(); ctx.restore()
-    // tic de acento al final de la regla
-    if (ru > 0.9) { ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.arc(W * 0.88, H * 0.24, 4, 0, TAU); ctx.fill() }
+    ctx.beginPath(); ctx.moveTo(rx0, H * 0.24); ctx.lineTo(rxe, H * 0.24); ctx.stroke(); ctx.restore()
+    // VIDA: punto de acento que recorre la regla en loop continuo
+    if (ru > 0.95) { const u = sheenPos(t, 3.6); ctx.save(); ctx.fillStyle = pal.accent; ctx.globalAlpha = 0.85; ctx.beginPath(); ctx.arc(lerp(rx0, rx1, u), H * 0.24, 2.6, 0, TAU); ctx.fill(); ctx.restore() }
+    // tic de acento al final de la regla + VIDA: respira + glow
+    if (ru > 0.9) { ctx.save(); pulseGlow(ctx, pal.accent, t, { sp: 1.3, base: 1, amp: 4 }); ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.arc(rx1, H * 0.24, 4 * breathe(t, 1.3, 0.1), 0, TAU); ctx.fill(); ctx.restore() }
     // claim grande, izquierda, mucho aire arriba
     ctx.save(); ctx.globalAlpha = inv(t, 0.25, 0.75); ctx.translate((1 - M.ease(inv(t, 0.25, 0.9))) * 20, 0)
     drawWrapped(ctx, content.claim || content.tagline || 'La claridad gana', mx, H * 0.52, { size: 40, weight: 800, family: fonts.display, maxW: W * 0.78, color: pal.ink, align: 'left', maxLines: 4, lh: 1.18 })
@@ -1003,8 +1108,9 @@ register({
       const r = Math.floor(i / cols), c = i % cols
       const x = mx + c * colW, y = y0 + r * rowH
       const sp = M.settle(tin, { zeta: 0.5, freq: 2 })
-      // marca: pildora de acento con tilde
-      ctx.save(); ctx.globalAlpha = tin; ctx.translate(x + 14, y); ctx.scale(0.8 + 0.2 * sp, 0.8 + 0.2 * sp)
+      // marca: pildora de acento con tilde + VIDA: respira (fase por celda)
+      const gpb = breathe(t, 1.1, 0.03, i * 1.4)
+      ctx.save(); ctx.globalAlpha = tin; ctx.translate(x + 14, y); ctx.scale((0.8 + 0.2 * sp) * gpb, (0.8 + 0.2 * sp) * gpb)
       ctx.fillStyle = rgba(pal.accent, pal.tone === 'light' ? 0.16 : 0.24); ctx.beginPath(); ctx.arc(0, 0, 15, 0, TAU); ctx.fill()
       tick(ctx, 0, 0, 15, M.ease(tin), pal.inkText, 3)
       ctx.restore()
@@ -1030,17 +1136,20 @@ register({
     const pivX = cx, pivY = H * 0.34
     // inclinacion: el plato derecho baja (gana peso)
     const tilt = lerp(0, 0.16, M.ease(inv(t, 0.25, 1.0))) * (M.settle(inv(t, 0.3, 1.1), { zeta: 0.4, freq: 2.2 }))
+    // VIDA: balanceo continuo MUY sutil del brazo/platos tras asentarse (la balanza "respira"); las etiquetas
+    // se anclan al tilt ASENTADO (no al visual) -> el texto no se mueve, solo el brazo/bandejas de acento.
+    const settled = inv(t, 0.3, 1.3), tiltVisual = tilt + drift(t, 0.9, 0.012) * settled
     // poste central
     ctx.save(); ctx.strokeStyle = rgba(pal.ink, 0.3); ctx.lineWidth = 3; ctx.lineCap = 'round'
     ctx.beginPath(); ctx.moveTo(pivX, pivY); ctx.lineTo(pivX, H * 0.7); ctx.stroke(); ctx.restore()
     // brazo (rota desde el pivote)
     const armW = W * 0.34
-    ctx.save(); ctx.translate(pivX, pivY); ctx.rotate(tilt); ctx.globalAlpha = inv(t, 0.1, 0.5)
+    ctx.save(); ctx.translate(pivX, pivY); ctx.rotate(tiltVisual); ctx.globalAlpha = inv(t, 0.1, 0.5)
     ctx.strokeStyle = pal.accent; ctx.lineWidth = 4; ctx.lineCap = 'round'
     ctx.beginPath(); ctx.moveTo(-armW, 0); ctx.lineTo(armW, 0); ctx.stroke()
     // platos (bandejas) colgando de cada punta: cuelgan rectos hacia abajo del brazo
     const tray = (px, full) => {
-      ctx.save(); ctx.translate(px, 0); ctx.rotate(-tilt)   // la bandeja cuelga vertical (compensa la inclinacion)
+      ctx.save(); ctx.translate(px, 0); ctx.rotate(-tiltVisual)   // la bandeja cuelga vertical (compensa la inclinacion)
       ctx.strokeStyle = rgba(pal.ink, 0.3); ctx.lineWidth = 1.5
       ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, 22); ctx.stroke()
       ctx.lineWidth = full ? 4 : 2.5; ctx.strokeStyle = full ? pal.accent : rgba(pal.ink, 0.32)
@@ -1078,15 +1187,18 @@ register({
     ctx.save(); ctx.lineCap = 'round'
     ctx.strokeStyle = rgba(pal.ink, 0.12); ctx.lineWidth = lw
     ctx.beginPath(); ctx.arc(cx, cy, R, Math.PI, TAU); ctx.stroke()
-    // relleno de acento segun pct
+    // relleno de acento segun pct + VIDA: glow pulsante
     const fill = M.ease(inv(t, 0.25, 1.2)) * pct
+    if (fill > pct * 0.95) pulseGlow(ctx, pal.accent, t, { sp: 1.0, base: 2, amp: 5 })
     ctx.strokeStyle = pal.accent; ctx.lineWidth = lw
     ctx.beginPath(); ctx.arc(cx, cy, R, Math.PI, Math.PI + Math.PI * fill); ctx.stroke()
     ctx.restore()
-    // aguja chica al final del relleno (DECO)
-    const ang = Math.PI + Math.PI * fill
+    // VIDA: punto de brillo que recorre el arco lleno en loop
+    if (fill > pct * 0.95) arcSheenDot(ctx, cx, cy, R, Math.PI, Math.PI * fill, t, { per: 4.5, dotR: 3, color: pal.tone === 'light' ? pal.accent : '#fff', tone: pal.tone })
+    // aguja chica al final del relleno (DECO) + VIDA: respira
+    const ang = Math.PI + Math.PI * fill, ndb = fill > pct * 0.95 ? breathe(t, 1.4, 0.08) : 1
     ctx.save(); ctx.fillStyle = pal.inkText
-    ctx.beginPath(); ctx.arc(cx + Math.cos(ang) * R, cy + Math.sin(ang) * R, 7, 0, TAU); ctx.fill(); ctx.restore()
+    ctx.beginPath(); ctx.arc(cx + Math.cos(ang) * R, cy + Math.sin(ang) * R, 7 * ndb, 0, TAU); ctx.fill(); ctx.restore()
     // numero grande dentro del arco
     const sp = M.settle(inv(t, 0.3, 1.0), { zeta: 0.5, freq: 2 })
     ctx.save(); ctx.translate(cx, cy - 22); ctx.scale(0.85 + 0.15 * sp, 0.85 + 0.15 * sp)
@@ -1121,8 +1233,10 @@ register({
     for (let i = 0; i < n; i++) {
       const tin = inv(t, 0.25 + i * 0.15, 0.85 + i * 0.15); if (tin <= 0) continue
       const grow = M.settle(tin, 1.1)
-      const bx = gx + slot * (i + 0.5) - bw / 2, bh = maxH * hs[i] * clamp(grow, 0, 1)
+      const settledB = grow > 1.0 || tin > 0.95, lifeB = i === win && settledB ? breathe(t, 1.0, 0.02) : 1
+      const bx = gx + slot * (i + 0.5) - bw / 2, bh = maxH * hs[i] * clamp(grow, 0, 1) * lifeB
       ctx.save(); ctx.globalAlpha = tin
+      if (i === win && settledB) pulseGlow(ctx, pal.accent, t, { sp: 1.1, base: 2, amp: 5 })
       ctx.fillStyle = i === win ? pal.accent : rgba(pal.ink, 0.18)
       ctx.beginPath(); ctx.roundRect(bx, baseY - bh, bw, bh, 6); ctx.fill(); ctx.restore()
       // etiqueta bajo la barra
@@ -1157,9 +1271,10 @@ register({
       drawText(ctx, a + b, 0, 1, { size: 22, weight: 800, family: fonts.display, color: pal.dim, maxW: cw - 14 })
       ctx.restore()
     }
-    // regla de acento bajo la franja
-    const ru = M.ease(inv(t, 0.6, 1.2))
-    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(cx - 50 * ru, H * 0.62, 100 * ru, 4, 2); ctx.fill()
+    // regla de acento bajo la franja + VIDA: respira + sheen
+    const ru = M.ease(inv(t, 0.6, 1.2)), lrw = 100 * ru * breathe(t, 0.9, 0.025)
+    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(cx - lrw / 2, H * 0.62, lrw, 4, 2); ctx.fill()
+    if (ru > 0.9) rrSheen(ctx, cx - lrw / 2, H * 0.62, lrw, 4, t, { per: 3.0, strength: 0.5, tone: pal.tone })
     if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), cx, H * 0.68, { size: 15, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, maxW: W * 0.7, alpha: inv(t, 0.75, 1.25) })
   },
 })
@@ -1179,9 +1294,14 @@ register({
     ctx.restore()
     // "de 5" chico al lado
     drawText(ctx, '/5', mx + W * 0.28, H * 0.46, { size: 26, weight: 700, family: fonts.text, color: pal.dim, align: 'left', maxW: W * 0.2, alpha: inv(t, 0.4, 0.9) })
-    // 5 estrellas en fila bajo la nota
+    // 5 estrellas en fila bajo la nota + VIDA: titilan (escala+glow, fase por estrella)
     const fillP = M.ease(inv(t, 0.35, 1.1)) * 5, sr = 13, gap = 34
-    for (let i = 0; i < 5; i++) { const f = clamp(fillP - i, 0, 1); star(ctx, mx + 13 + i * gap, H * 0.56, sr, f, pal.accent, rgba(pal.ink, 0.14)) }
+    for (let i = 0; i < 5; i++) {
+      const f = clamp(fillP - i, 0, 1), tw = f >= 1 ? breathe(t, 1.4, 0.05, i * 1.7) : 1
+      ctx.save(); ctx.translate(mx + 13 + i * gap, H * 0.56); ctx.scale(tw, tw)
+      if (f >= 1) pulseGlow(ctx, pal.accent, t, { sp: 1.4, base: 1, amp: 3.5, ph: i * 1.7 })
+      star(ctx, 0, 0, sr, f, pal.accent, rgba(pal.ink, 0.14)); ctx.restore()
+    }
     // testimonio/conteo a la derecha-abajo
     drawWrapped(ctx, content.tagline || content.brand || 'sobre miles de opiniones reales', mx, H * 0.66, { size: 20, weight: 700, family: fonts.text, maxW: W * 0.74, color: pal.dim, align: 'left', maxLines: 2, alpha: inv(t, 0.55, 1.05) })
   },
@@ -1200,6 +1320,8 @@ register({
     const pw = W * 0.38, slide = M.ease(inv(t, 0.05, 0.75))
     ctx.save(); ctx.globalAlpha = inv(t, 0.0, 0.4); ctx.translate((1 - slide) * -pw, 0)
     ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.rect(0, 0, pw, H); ctx.fill()
+    // VIDA: sheen vertical-ish suave que cruza el panel de acento (DECO continuo)
+    if (slide > 0.95) { ctx.save(); ctx.globalAlpha = 0.4; rrSheen(ctx, 0, 0, pw, H, t, { per: 4.4, strength: 0.28, tone: pal.tone }); ctx.restore() }
     // monograma en onAccent dentro del panel
     const init = (content.brand || 'M').trim().charAt(0).toUpperCase()
     drawText(ctx, init, pw / 2, H * 0.46, { size: 96, weight: 800, family: fonts.display, color: pal.onAccent, maxW: pw - 20, alpha: inv(t, 0.3, 0.8) })
@@ -1207,13 +1329,16 @@ register({
     // lado derecho: marca + cta, alineado a izquierda dentro del area
     const rx = pw + W * 0.07
     drawWrapped(ctx, content.brand || 'Marca', rx, H * 0.4, { size: 38, weight: 800, family: fonts.display, maxW: W - rx - W * 0.06, color: pal.ink, align: 'left', maxLines: 2, lh: 1.04, alpha: inv(t, 0.4, 0.9) })
-    // regla de acento
-    const ru = M.ease(inv(t, 0.55, 1.1))
-    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(rx, H * 0.5, 70 * ru, 5, 2.5); ctx.fill()
+    // regla de acento + VIDA: respira + sheen
+    const ru = M.ease(inv(t, 0.55, 1.1)), srw = 70 * ru * breathe(t, 0.9, 0.025)
+    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(rx, H * 0.5, srw, 5, 2.5); ctx.fill()
+    if (ru > 0.9) rrSheen(ctx, rx, H * 0.5, srw, 5, t, { per: 3.0, strength: 0.5, tone: pal.tone })
     const cta = content.cta || content.tagline
     if (cta) {
       drawWrapped(ctx, cta, rx, H * 0.58, { size: 22, weight: 700, family: fonts.text, maxW: W - rx - W * 0.06, color: pal.inkText, align: 'left', maxLines: 2, lh: 1.16, alpha: inv(t, 0.7, 1.2) })
-      chevron(ctx, rx + 6, H * 0.66, 13, pal.accent, 4, M.ease(inv(t, 0.9, 1.4)))
+      const chp = M.ease(inv(t, 0.9, 1.4))
+      ctx.save(); if (chp > 0.95) pulseGlow(ctx, pal.accent, t, { sp: 1.5, base: 1, amp: 4 })
+      chevron(ctx, rx + 6 + (chp >= 1 ? drift(t, 1.5, 1.8) : 0), H * 0.66, 13, pal.accent, 4, chp); ctx.restore()
     }
   },
 })
@@ -1237,9 +1362,10 @@ register({
     ctx.save(); ctx.globalAlpha = inv(t, 0.2, 0.65); ctx.translate((1 - enter) * -28, 0)
     drawText(ctx, word, mx, H * 0.5, { size: 48, weight: 800, family: fonts.display, color: pal.ink, align: 'left', maxW: W * 0.8, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.4)' : null })
     ctx.restore()
-    // regla larga de acento que cruza bajo la palabra
-    const ru = M.ease(inv(t, 0.45, 1.1))
-    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(mx, H * 0.57, (W * 0.9 - mx) * ru, 5, 2.5); ctx.fill()
+    // regla larga de acento que cruza bajo la palabra + VIDA: respira + sheen
+    const ru = M.ease(inv(t, 0.45, 1.1)), irw = (W * 0.9 - mx) * ru * breathe(t, 0.85, 0.015)
+    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(mx, H * 0.57, irw, 5, 2.5); ctx.fill()
+    if (ru > 0.9) rrSheen(ctx, mx, H * 0.57, irw, 5, t, { per: 3.2, strength: 0.5, tone: pal.tone })
   },
 })
 
@@ -1257,10 +1383,13 @@ register({
     drawText(ctx, word, 0, 0, { size: 50, weight: 800, family: fonts.display, color: pal.ink, maxW: W * 0.78, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.4)' : null })
     ctx.restore()
     // tres chevrones bajo la palabra, en cascada (cada uno con su delay)
+    // VIDA: tras entrar, una onda de brillo "avanza" recorriendo los chevrones en loop (sensacion de seguir)
     const gx = cx - 28, gap = 28, by = cy + 70
     for (let i = 0; i < 3; i++) {
       const tin = inv(t, 0.4 + i * 0.14, 0.9 + i * 0.14); if (tin <= 0) continue
-      ctx.save(); ctx.globalAlpha = tin * (0.5 + 0.5 * i / 2)
+      const settled = tin >= 1
+      const wave = settled ? 0.6 + 0.4 * (0.5 + 0.5 * Math.sin(t * 2.4 - i * 1.1)) : (0.5 + 0.5 * i / 2)
+      ctx.save(); ctx.globalAlpha = tin * wave
       chevron(ctx, gx + i * gap, by, 14, pal.accent, 4.5, M.ease(tin))
       ctx.restore()
     }
@@ -1310,6 +1439,7 @@ register({
     const lw = Math.min(W * 0.6, ctx.measureText(label).width), pw = lw + 28
     ctx.globalAlpha = inv(t, 0.05, 0.4); ctx.translate(mx + pw / 2, H * 0.26); ctx.scale(0.85 + 0.15 * kp, 0.85 + 0.15 * kp)
     ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(-pw / 2, -16, pw, 32, 16); ctx.fill()
+    if (kp > 0.9) rrSheen(ctx, -pw / 2, -16, pw, 32, t, { per: 3.4, strength: 0.4, tone: pal.tone })   // VIDA: sheen en el kicker
     drawText(ctx, label, 0, 1, { size: 14, weight: 700, family: fonts.accent || fonts.text, color: pal.onAccent, maxW: lw })
     ctx.restore()
     const rise = M.settle(inv(t, 0.2, 1.0), 1.2)
@@ -1319,11 +1449,15 @@ register({
     const ty = H * 0.72, x1 = W - mx, lu = M.ease(inv(t, 0.5, 1.15))
     ctx.save(); ctx.strokeStyle = rgba(pal.ink, 0.2); ctx.lineWidth = 2
     ctx.beginPath(); ctx.moveTo(mx, ty); ctx.lineTo(mx + (x1 - mx) * lu, ty); ctx.stroke(); ctx.restore()
+    // VIDA: punto de acento que recorre la linea de tiempo en loop
+    if (lu > 0.95) { const u = sheenPos(t, 3.8); ctx.save(); ctx.fillStyle = pal.accent; ctx.globalAlpha = 0.7; ctx.beginPath(); ctx.arc(lerp(mx, x1, u), ty, 2.6, 0, TAU); ctx.fill(); ctx.restore() }
     for (let i = 0; i < 3; i++) {
       const nx = mx + (x1 - mx) * (i / 2), np = M.settle(inv(t, 0.7 + i * 0.12, 1.2 + i * 0.12), { zeta: 0.5, freq: 2 })
       if (np <= 0) continue
-      ctx.save(); ctx.translate(nx, ty); ctx.scale(np, np)
-      ctx.fillStyle = i === 2 ? pal.accent : rgba(pal.ink, 0.4); ctx.beginPath(); ctx.arc(0, 0, i === 2 ? 7 : 5, 0, TAU); ctx.fill(); ctx.restore()
+      const isAcc = i === 2, nb = isAcc && np > 0.9 ? breathe(t, 1.2, 0.06) : 1   // VIDA: el nodo de acento late
+      ctx.save(); ctx.translate(nx, ty); ctx.scale(np * nb, np * nb)
+      if (isAcc && np > 0.9) pulseGlow(ctx, pal.accent, t, { sp: 1.2, base: 1, amp: 5 })
+      ctx.fillStyle = isAcc ? pal.accent : rgba(pal.ink, 0.4); ctx.beginPath(); ctx.arc(0, 0, isAcc ? 7 : 5, 0, TAU); ctx.fill(); ctx.restore()
     }
   },
 })
@@ -1353,8 +1487,9 @@ register({
       const coverX = cx - tw / 2 + tw * rev
       ctx.beginPath(); ctx.roundRect(coverX, H * 0.54 - fs * 0.6, tw * (1 - rev), fs * 1.2, 6); ctx.fill(); ctx.restore()
     }
-    const ru = M.ease(inv(t, 0.9, 1.4))
-    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(cx - (tw / 2) * ru, H * 0.62, tw * ru, 4, 2); ctx.fill()
+    const ru = M.ease(inv(t, 0.9, 1.4)), rdw = tw * ru * breathe(t, 0.9, 0.02)
+    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(cx - rdw / 2, H * 0.62, rdw, 4, 2); ctx.fill()
+    if (ru > 0.9) rrSheen(ctx, cx - rdw / 2, H * 0.62, rdw, 4, t, { per: 3.0, strength: 0.5, tone: pal.tone })
   },
 })
 
@@ -1377,7 +1512,10 @@ register({
     ctx.font = `800 ${capSize}px "${fonts.display}"`
     const capW = ctx.measureText(cap).width
     const bodyX = capX + capW + 16
-    ctx.save(); ctx.globalAlpha = inv(t, 0.05, 0.45); ctx.translate(capX + capW / 2, capY + capSize * 0.34); ctx.scale(0.8 + 0.2 * sp, 0.8 + 0.2 * sp)
+    // VIDA: la capitular de acento respira suave + glow pulsante (es DECO; el cuerpo no se mueve)
+    const capB = sp > 0.9 ? breathe(t, 0.7, 0.012) : 1
+    ctx.save(); ctx.globalAlpha = inv(t, 0.05, 0.45); ctx.translate(capX + capW / 2, capY + capSize * 0.34); ctx.scale((0.8 + 0.2 * sp) * capB, (0.8 + 0.2 * sp) * capB)
+    if (sp > 0.9) pulseGlow(ctx, pal.accent, t, { sp: 0.8, base: 0, amp: 6 })
     drawText(ctx, cap, 0, 0, { size: capSize, weight: 800, family: fonts.display, color: pal.accent, maxW: capW + 4, baseline: 'middle' })
     ctx.restore()
     // cuerpo del claim arrancando a la derecha de la capitular, alineado a la altura de la cap
@@ -1410,8 +1548,11 @@ register({
     ctx.font = `800 ${L.size}px "${fonts.display}"`
     const lw = Math.min(W * 0.82, ctx.measureText(last).width)
     const hu = M.ease(inv(t, 0.45 + (L.lines.length - 1) * 0.12, 1.1 + (L.lines.length - 1) * 0.12))
-    ctx.save(); ctx.globalAlpha = (pal.tone === 'light' ? 0.22 : 0.3)
-    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(cx - lw / 2 - 4, y0 + (L.lines.length - 1) * lineH + L.size * 0.2, (lw + 8) * hu, L.size * 0.42, 4); ctx.fill(); ctx.restore()
+    const uw = (lw + 8) * hu, ux = cx - lw / 2 - 4, uy = y0 + (L.lines.length - 1) * lineH + L.size * 0.2, uh = L.size * 0.42
+    ctx.save(); ctx.globalAlpha = (pal.tone === 'light' ? 0.22 : 0.3) * breathe(t, 0.8, 0.06)
+    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(ux, uy, uw, uh, 4); ctx.fill(); ctx.restore()
+    // VIDA: sheen recorre la banda-marcador (DECO continuo, detras del texto)
+    if (hu > 0.95) { ctx.save(); ctx.globalAlpha = 0.5; rrSheen(ctx, ux, uy, uw, uh, t, { per: 3.4, strength: 0.3, tone: pal.tone }); ctx.restore() }
   },
 })
 
@@ -1427,16 +1568,20 @@ register({
     const items = listFrom(content, 'Conecta · Configura · Lanza · Crece', 4)
     if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), mx, H * 0.22, { size: 16, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, align: 'left', maxW: W * 0.74, alpha: inv(t, 0.05, 0.35) })
     const y0 = H * 0.34, gap = Math.min(96, (H * 0.5) / Math.max(1, items.length)), railX = mx + 2
-    const rail = M.ease(inv(t, 0.2, 1.0))
+    const rail = M.ease(inv(t, 0.2, 1.0)), railBot = y0 + (items.length - 1) * gap * rail
     if (items.length > 1) {
       ctx.save(); ctx.strokeStyle = rgba(pal.ink, 0.18); ctx.lineWidth = 2.5
-      ctx.beginPath(); ctx.moveTo(railX, y0); ctx.lineTo(railX, y0 + (items.length - 1) * gap * rail); ctx.stroke(); ctx.restore()
+      ctx.beginPath(); ctx.moveTo(railX, y0); ctx.lineTo(railX, railBot); ctx.stroke(); ctx.restore()
+      // VIDA: pulso de acento que baja por el riel en loop (sensacion de proceso vivo)
+      if (rail > 0.95) { const u = sheenPos(t, 4.0), dy = y0 + (railBot - y0) * u; ctx.save(); ctx.fillStyle = pal.accent; ctx.globalAlpha = 0.6; ctx.beginPath(); ctx.arc(railX, dy, 3, 0, TAU); ctx.fill(); ctx.restore() }
     }
     items.forEach((it, i) => {
       const tin = inv(t, 0.2 + i * 0.16, 0.72 + i * 0.16); if (tin <= 0) return
-      const y = y0 + i * gap, sp = M.settle(tin, { zeta: 0.5, freq: 2 })
-      ctx.save(); ctx.globalAlpha = tin; ctx.translate(railX, y); ctx.scale(0.8 + 0.2 * sp, 0.8 + 0.2 * sp)
-      ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.arc(0, 0, 16, 0, TAU); ctx.fill()
+      const y = y0 + i * gap, sp = M.settle(tin, { zeta: 0.5, freq: 2 }), nb = tin >= 1 ? breathe(t, 1.0, 0.025, i * 1.2) : 1
+      ctx.save(); ctx.globalAlpha = tin; ctx.translate(railX, y)
+      ctx.save(); ctx.scale((0.8 + 0.2 * sp) * nb, (0.8 + 0.2 * sp) * nb)
+      ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.arc(0, 0, 16, 0, TAU); ctx.fill(); ctx.restore()
+      ctx.scale(0.8 + 0.2 * sp, 0.8 + 0.2 * sp)
       drawText(ctx, String(i + 1), 0, 1, { size: 18, weight: 800, family: fonts.display, color: pal.onAccent })
       ctx.restore()
       ctx.save(); ctx.globalAlpha = tin; ctx.translate((1 - M.ease(tin)) * 14, 0)
@@ -1469,9 +1614,10 @@ register({
       ctx.save(); ctx.globalAlpha = tin; ctx.strokeStyle = rgba(pal.ink, 0.34); ctx.lineWidth = 3; ctx.lineCap = 'round'
       const cr = 8 * cp
       ctx.beginPath(); ctx.moveTo(c1 - cr, y - cr); ctx.lineTo(c1 + cr, y + cr); ctx.moveTo(c1 + cr, y - cr); ctx.lineTo(c1 - cr, y + cr); ctx.stroke(); ctx.restore()
-      ctx.save(); ctx.globalAlpha = tin
-      ctx.fillStyle = rgba(pal.accent, pal.tone === 'light' ? 0.16 : 0.24); ctx.beginPath(); ctx.arc(c2, y, 14, 0, TAU); ctx.fill()
-      tick(ctx, c2, y, 14, cp, pal.inkText, 3)
+      const tb = cp >= 1 ? breathe(t, 1.1, 0.035, i * 1.3) : 1   // VIDA: el disco-tilde respira (fase por fila)
+      ctx.save(); ctx.globalAlpha = tin; ctx.translate(c2, y); ctx.scale(tb, tb)
+      ctx.fillStyle = rgba(pal.accent, pal.tone === 'light' ? 0.16 : 0.24); ctx.beginPath(); ctx.arc(0, 0, 14, 0, TAU); ctx.fill()
+      tick(ctx, 0, 0, 14, cp, pal.inkText, 3)
       ctx.restore()
       if (i < rows.length - 1) { const dl = M.ease(inv(t, 0.25 + i * 0.16, 0.95 + i * 0.16)); ctx.save(); ctx.strokeStyle = rgba(pal.ink, 0.1); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(lx, y + gap / 2); ctx.lineTo(lx + (W * 0.9 - lx) * dl, y + gap / 2); ctx.stroke(); ctx.restore() }
     })
@@ -1494,9 +1640,12 @@ register({
     ctx.strokeStyle = rgba(pal.ink, 0.1); ctx.lineWidth = lw
     ctx.beginPath(); ctx.arc(cx, cy, R, 0, TAU); ctx.stroke()
     const fill = M.ease(inv(t, 0.2, 1.2)) * pct
+    if (fill > pct * 0.95) pulseGlow(ctx, pal.accent, t, { sp: 1.0, base: 2, amp: 6 })
     ctx.strokeStyle = pal.accent; ctx.lineWidth = lw
     ctx.beginPath(); ctx.arc(cx, cy, R, -TAU / 4, -TAU / 4 + TAU * fill); ctx.stroke()
     ctx.restore()
+    // VIDA: punto de brillo que recorre el segmento de acento en loop
+    if (fill > pct * 0.95) arcSheenDot(ctx, cx, cy, R, -TAU / 4, TAU * fill, t, { per: 4.5, dotR: 4, color: pal.tone === 'light' ? '#fff' : '#fff', tone: pal.tone })
     const sp = M.settle(inv(t, 0.3, 1.0), { zeta: 0.5, freq: 2 })
     ctx.save(); ctx.translate(cx, cy); ctx.scale(0.85 + 0.15 * sp, 0.85 + 0.15 * sp)
     drawText(ctx, num, 0, 0, { size: 64, weight: 800, family: fonts.display, maxW: (R - lw) * 1.7, color: pal.ink, alpha: inv(t, 0.25, 0.7) })
@@ -1521,16 +1670,20 @@ register({
     const props = raw.map(v => v / sum), win = props.indexOf(Math.max(...props))
     if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), W / 2, H * 0.26, { size: 16, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, maxW: W * 0.8, alpha: inv(t, 0.05, 0.35) })
     const bw = W * 0.8, bx = (W - bw) / 2, by = H * 0.44, bh = 44, grow = M.ease(inv(t, 0.25, 1.15))
-    let cur = bx
+    let cur = bx, winX = bx, winW = 0
     ctx.save()
     for (let i = 0; i < n; i++) {
       const segW = bw * props[i] * grow
       ctx.fillStyle = i === win ? pal.accent : rgba(pal.ink, 0.16 + 0.08 * i)
       const rad = i === 0 ? [bh / 2, 0, 0, bh / 2] : (i === n - 1 ? [0, bh / 2, bh / 2, 0] : 0)
-      ctx.beginPath(); ctx.roundRect(cur, by, Math.max(0, segW - (i < n - 1 ? 2 : 0)), bh, rad); ctx.fill()
+      const drawW = Math.max(0, segW - (i < n - 1 ? 2 : 0))
+      ctx.beginPath(); ctx.roundRect(cur, by, drawW, bh, rad); ctx.fill()
+      if (i === win) { winX = cur; winW = drawW }
       cur += bw * props[i] * grow
     }
     ctx.restore()
+    // VIDA: sheen recorre el segmento ganador (acento) en loop continuo
+    if (grow > 0.95 && winW > 24) rrSheen(ctx, winX, by, winW, bh, t, { per: 3.2, strength: 0.45, tone: pal.tone })
     const ly = H * 0.6, lgap = Math.min(56, (H * 0.3) / n)
     for (let i = 0; i < n; i++) {
       const tin = inv(t, 0.4 + i * 0.12, 0.9 + i * 0.12); if (tin <= 0) continue
@@ -1558,7 +1711,11 @@ register({
     ctx.save(); ctx.globalAlpha = inv(t, 0.05, 0.45); ctx.translate(cx, py + ph / 2); ctx.scale(0.9 + 0.1 * gp, 0.9 + 0.1 * gp); ctx.translate(-cx, -(py + ph / 2))
     ctx.fillStyle = pal.tone === 'light' ? 'rgba(20,16,24,0.05)' : 'rgba(255,255,255,0.06)'
     ctx.beginPath(); ctx.roundRect(px, py, pw, ph, 18); ctx.fill()
-    drawText(ctx, '“', px + 28, py + 30, { size: 70, weight: 800, family: fonts.display, color: pal.accent, align: 'left', maxW: 80 })
+    ctx.restore()
+    // VIDA: la comilla de acento respira de escala/opacidad (DECO continuo)
+    ctx.save(); ctx.globalAlpha = inv(t, 0.05, 0.45) * breathe(t, 0.7, 0.07); const qb = gp > 0.9 ? breathe(t, 0.6, 0.02) : 1
+    ctx.translate(px + 28, py + 30); ctx.scale(qb, qb)
+    drawText(ctx, '“', 0, 0, { size: 70, weight: 800, family: fonts.display, color: pal.accent, align: 'left', maxW: 80 })
     ctx.restore()
     ctx.save(); ctx.globalAlpha = inv(t, 0.35, 0.85)
     drawWrapped(ctx, content.claim || content.tagline || 'Cambio como trabajamos cada dia', cx, py + ph * 0.42, { size: 24, weight: 700, family: fonts.display, maxW: pw - 56, color: pal.ink, maxLines: 4, lh: 1.2 })
@@ -1588,8 +1745,14 @@ register({
     const n = 5, rad = 26, overlap = rad * 1.3, rowW = (n - 1) * overlap + rad * 2
     avatarRow(ctx, cx - rowW / 2 + rad, H * 0.36, rad, n, r, M, t, pal, fonts, 0.2, 0.09)
     drawWrapped(ctx, content.claim || content.tagline || 'Miles ya se sumaron esta semana', cx, H * 0.54, { size: 28, weight: 800, family: fonts.display, maxW: W * 0.82, color: pal.ink, maxLines: 2, lh: 1.14, alpha: inv(t, 0.45, 0.95), shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.4)' : null })
+    // 5 estrellas + VIDA: titilan (escala+glow, fase por estrella)
     const fillP = M.ease(inv(t, 0.65, 1.25)) * 5, sr = 11, gap = 30, x0 = cx - gap * 2
-    for (let i = 0; i < 5; i++) { const f = clamp(fillP - i, 0, 1); star(ctx, x0 + i * gap, H * 0.64, sr, f, pal.accent, rgba(pal.ink, 0.14)) }
+    for (let i = 0; i < 5; i++) {
+      const f = clamp(fillP - i, 0, 1), tw = f >= 1 ? breathe(t, 1.4, 0.06, i * 1.7) : 1
+      ctx.save(); ctx.translate(x0 + i * gap, H * 0.64); ctx.scale(tw, tw)
+      if (f >= 1) pulseGlow(ctx, pal.accent, t, { sp: 1.4, base: 1, amp: 3, ph: i * 1.7 })
+      star(ctx, 0, 0, sr, f, pal.accent, rgba(pal.ink, 0.14)); ctx.restore()
+    }
     if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), cx, H * 0.71, { size: 15, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, maxW: W * 0.7, alpha: inv(t, 0.8, 1.3) })
   },
 })
@@ -1604,8 +1767,11 @@ register({
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2, cy = H * 0.42
     const sp = M.settle(inv(t, 0.1, 1.0), { zeta: 0.45, freq: 2.1 })
-    const R = 118, rot = (1 - M.ease(inv(t, 0.1, 0.9))) * -0.12
-    ctx.save(); ctx.globalAlpha = inv(t, 0.05, 0.45); ctx.translate(cx, cy); ctx.rotate(rot); ctx.scale(0.8 + 0.2 * sp, 0.8 + 0.2 * sp)
+    const R = 118, entered = inv(t, 0.1, 1.0)
+    // VIDA: tras entrar, el sello gira muy lento de forma continua (idle) + glow pulsante (anillo simetrico -> el giro no afecta legibilidad)
+    const rot = (1 - M.ease(inv(t, 0.1, 0.9))) * -0.12 + drift(t, 0.18, 0.05) * entered
+    ctx.save(); ctx.globalAlpha = inv(t, 0.05, 0.45); ctx.translate(cx, cy); ctx.rotate(rot); ctx.scale((0.8 + 0.2 * sp) * (entered > 0.9 ? breathe(t, 0.8, 0.01) : 1), (0.8 + 0.2 * sp) * (entered > 0.9 ? breathe(t, 0.8, 0.01) : 1))
+    if (entered > 0.9) pulseGlow(ctx, pal.accent, t, { sp: 0.9, base: 2, amp: 5 })
     ctx.strokeStyle = pal.accent; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(0, 0, R, 0, TAU); ctx.stroke()
     ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, R - 12, 0, TAU); ctx.stroke()
     ctx.restore()
@@ -1615,7 +1781,14 @@ register({
     if (sub) drawText(ctx, sub, 0, 34, { size: 15, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, maxW: R * 1.4, alpha: inv(t, 0.6, 1.1) })
     ctx.restore()
     const stp = M.ease(inv(t, 0.6, 1.2))
-    if (stp > 0.4) { star(ctx, cx - R - 4, cy, 9, 1, pal.accent, rgba(pal.ink, 0.1)); star(ctx, cx + R + 4, cy, 9, 1, pal.accent, rgba(pal.ink, 0.1)) }
+    if (stp > 0.4) {
+      // VIDA: las estrellas laterales titilan (escala+glow, en contrafase)
+      for (const [sx2, ph] of [[cx - R - 4, 0], [cx + R + 4, Math.PI]]) {
+        const sb = stp >= 1 ? breathe(t, 1.3, 0.08, ph) : 1
+        ctx.save(); ctx.translate(sx2, cy); ctx.scale(sb, sb); if (stp >= 1) pulseGlow(ctx, pal.accent, t, { sp: 1.3, base: 0, amp: 3, ph })
+        star(ctx, 0, 0, 9, 1, pal.accent, rgba(pal.ink, 0.1)); ctx.restore()
+      }
+    }
   },
 })
 
@@ -1638,9 +1811,18 @@ register({
     const gap = 26, x0 = cx - gap * (total - 1) / 2, dy = cy + 64
     for (let i = 0; i < total; i++) {
       const tin = inv(t, 0.4 + i * 0.08, 0.9 + i * 0.08); if (tin <= 0) continue
+      const settled = tin >= 1
       ctx.save(); ctx.globalAlpha = tin
-      if (i === active) { ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(x0 + i * gap - 9, dy - 4, 18 * M.ease(tin), 8, 4); ctx.fill() }
-      else { ctx.fillStyle = rgba(pal.ink, 0.28); ctx.beginPath(); ctx.arc(x0 + i * gap, dy, 4, 0, TAU); ctx.fill() }
+      if (i === active) {
+        // VIDA: el dot activo respira de largo + glow pulsante
+        if (settled) pulseGlow(ctx, pal.accent, t, { sp: 1.2, base: 1, amp: 4 })
+        const aw = 18 * M.ease(tin) * (settled ? breathe(t, 1.1, 0.08) : 1)
+        ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(x0 + i * gap - aw / 2, dy - 4, aw, 8, 4); ctx.fill()
+      } else {
+        // VIDA: los dots inactivos parpadean en secuencia (onda sutil)
+        ctx.globalAlpha = tin * (settled ? 0.7 + 0.3 * (0.5 + 0.5 * Math.sin(t * 2.0 - i * 0.9)) : 1)
+        ctx.fillStyle = rgba(pal.ink, 0.28); ctx.beginPath(); ctx.arc(x0 + i * gap, dy, 4, 0, TAU); ctx.fill()
+      }
       ctx.restore()
     }
   },
@@ -1656,10 +1838,13 @@ register({
     const word = firstStrong(content.tagline || content.claim || content.cta, 'ATENCION').toUpperCase()
     const bh = 18
     const su = M.ease(inv(t, 0.05, 0.7)), sd = M.ease(inv(t, 0.15, 0.8))
-    ctx.save(); ctx.globalAlpha = inv(t, 0.05, 0.4); ctx.fillStyle = pal.accent
+    ctx.save(); ctx.globalAlpha = inv(t, 0.05, 0.4) * breathe(t, 0.8, 0.06); ctx.fillStyle = pal.accent
     ctx.beginPath(); ctx.rect(0, cy - 58, W * su, bh); ctx.fill()
     ctx.beginPath(); ctx.rect(W * (1 - sd), cy + 40, W * sd, bh); ctx.fill()
     ctx.restore()
+    // VIDA: sheen recorre cada banda en sentidos opuestos (energia continua de noticiero)
+    if (su > 0.95) rrSheen(ctx, 0, cy - 58, W * su, bh, t, { per: 2.6, strength: 0.45, tone: pal.tone })
+    if (sd > 0.95) rrSheen(ctx, W * (1 - sd), cy + 40, W * sd, bh, t, { per: 2.6, ph: 0.5, strength: 0.45, tone: pal.tone })
     const sp = M.settle(inv(t, 0.3, 1.05), { zeta: 0.5, freq: 2.1 }), sc = 0.85 + 0.15 * sp
     ctx.save(); ctx.globalAlpha = inv(t, 0.25, 0.65); ctx.translate(cx, cy); ctx.scale(sc, sc)
     drawText(ctx, word, 0, 0, { size: 48, weight: 800, family: fonts.display, color: pal.ink, maxW: W * 0.84, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.4)' : null })
@@ -1701,7 +1886,8 @@ register({
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     // grilla de fondo: lineas verticales+horizontales que aparecen en cascada (DECO tinta tenue)
     const gp = M.ease(inv(t, 0.0, 0.7)), cols = 5, rowsN = 8
-    ctx.save(); ctx.strokeStyle = rgba(pal.ink, pal.tone === 'light' ? 0.06 : 0.08); ctx.lineWidth = 1
+    // VIDA: la grilla de fondo respira de opacidad muy sutil (blueprint que late)
+    ctx.save(); ctx.strokeStyle = rgba(pal.ink, (pal.tone === 'light' ? 0.06 : 0.08) * breathe(t, 0.5, 0.14)); ctx.lineWidth = 1
     for (let i = 1; i < cols; i++) { const x = (W / cols) * i; const up = clamp(gp * cols - i + 1, 0, 1); ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H * up); ctx.stroke() }
     for (let j = 1; j < rowsN; j++) { const y = (H / rowsN) * j; const up = clamp(gp * rowsN - j + 1, 0, 1); ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W * up, y); ctx.stroke() }
     ctx.restore()
@@ -1712,9 +1898,9 @@ register({
     ctx.save(); ctx.globalAlpha = inv(t, 0.25, 0.75); ctx.translate(0, (1 - rise) * 30)
     drawWrapped(ctx, content.claim || content.tagline || content.brand || 'Construilo bien', cx, H * 0.48, { size: 50, weight: 800, family: fonts.display, maxW: W * 0.84, color: pal.ink, maxLines: 3, lh: 1.08, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.45)' : null })
     ctx.restore()
-    // cruz de registro de acento bajo el claim (DECO)
+    // cruz de registro de acento bajo el claim (DECO) + VIDA: gira lentisimo + glow pulsante
     const cu = M.ease(inv(t, 0.6, 1.2))
-    if (cu > 0) { ctx.save(); ctx.strokeStyle = pal.accent; ctx.lineWidth = 3; ctx.lineCap = 'round'; const cyx = H * 0.62, r = 10 * cu; ctx.beginPath(); ctx.moveTo(cx - r, cyx); ctx.lineTo(cx + r, cyx); ctx.moveTo(cx, cyx - r); ctx.lineTo(cx, cyx + r); ctx.stroke(); ctx.restore() }
+    if (cu > 0) { ctx.save(); const cyx = H * 0.62, r = 10 * cu * (cu >= 1 ? breathe(t, 1.0, 0.05) : 1); ctx.translate(cx, cyx); ctx.rotate(cu >= 1 ? drift(t, 0.4, 0.18) : 0); ctx.strokeStyle = pal.accent; ctx.lineWidth = 3; ctx.lineCap = 'round'; if (cu >= 1) pulseGlow(ctx, pal.accent, t, { sp: 1.1, base: 1, amp: 4 }); ctx.beginPath(); ctx.moveTo(-r, 0); ctx.lineTo(r, 0); ctx.moveTo(0, -r); ctx.lineTo(0, r); ctx.stroke(); ctx.restore() }
   },
 })
 
@@ -1727,10 +1913,16 @@ register({
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, mx = W * 0.1
     // kicker arriba-derecha
     drawText(ctx, (content.brand || 'Marca').toUpperCase(), W - mx, H * 0.18, { size: 16, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, align: 'right', maxW: W * 0.7, alpha: inv(t, 0.05, 0.45) })
-    // angulo de acento en la esquina inferior izquierda (dos trazos en L que crecen)
+    // angulo de acento en la esquina inferior izquierda (dos trazos en L que crecen) + VIDA: glow + punto que recorre la L
     const lu = M.ease(inv(t, 0.1, 0.8)), len = 64 * lu, ex = mx - 6, ey = H * 0.86
     ctx.save(); ctx.strokeStyle = pal.accent; ctx.lineWidth = 5; ctx.lineCap = 'round'
+    if (lu > 0.95) pulseGlow(ctx, pal.accent, t, { sp: 1.0, base: 1, amp: 5 })
     ctx.beginPath(); ctx.moveTo(ex, ey - len); ctx.lineTo(ex, ey); ctx.lineTo(ex + len, ey); ctx.stroke(); ctx.restore()
+    if (lu > 0.95) {
+      const u = sheenPos(t, 3.2), seg = u * (2 * len)   // recorre el vertical (bajada) y luego el horizontal (salida)
+      const dx = seg <= len ? ex : ex + (seg - len), dy = seg <= len ? ey - len + seg : ey
+      ctx.save(); ctx.fillStyle = 'rgba(255,255,255,' + (pal.tone === 'light' ? 0.55 : 0.9) + ')'; ctx.beginPath(); ctx.arc(dx, dy, 3, 0, TAU); ctx.fill(); ctx.restore()
+    }
     // claim gigante anclado abajo-izquierda, lineas con stagger
     const src = content.claim || content.tagline || content.brand || 'Lo importante primero'
     const L = wrapLinesLocal(ctx, src, 54, W - 2 * mx, 30, 800, fonts.display, 3)
@@ -1764,8 +1956,11 @@ register({
     const blankU = M.ease(inv(t, 0.25, 0.6))
     ctx.font = `800 52px "${fonts.display}"`
     const tw = Math.min(W * 0.84, ctx.measureText(word).width), by = H * 0.56
+    const blw = (tw + 12) * blankU * breathe(t, 0.9, 0.018), blx = cx - blw / 2
     ctx.save(); ctx.fillStyle = pal.accent; ctx.globalAlpha = inv(t, 0.25, 0.55)
-    ctx.beginPath(); ctx.roundRect(cx - tw / 2 - 6, by + 32, (tw + 12) * blankU, 6, 3); ctx.fill(); ctx.restore()
+    ctx.beginPath(); ctx.roundRect(blx, by + 32, blw, 6, 3); ctx.fill(); ctx.restore()
+    // VIDA: sheen recorre la raya/blanco de acento (DECO continuo)
+    if (blankU > 0.95) rrSheen(ctx, blx, by + 32, blw, 6, t, { per: 3.0, strength: 0.5, tone: pal.tone })
     const wa = inv(t, 0.55, 0.95), drop = M.settle(wa, { zeta: 0.5, freq: 2.1 })
     ctx.save(); ctx.globalAlpha = wa; ctx.translate(0, (1 - drop) * -26)
     drawText(ctx, word, cx, by, { size: 52, weight: 800, family: fonts.display, maxW: W * 0.84, color: pal.ink, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.45)' : null })
@@ -1785,11 +1980,13 @@ register({
     const src = content.claim || content.tagline || content.brand || 'Sin vueltas'
     const L = wrapLinesLocal(ctx, src, 40, W * 0.8, 24, 800, fonts.display, 4)
     const lineH = L.size * 1.18, blockH = (L.lines.length - 1) * lineH, cyc = H * 0.46, y0 = cyc - blockH / 2
-    // regla superior e inferior de acento que crecen desde el centro
-    const ru = M.ease(inv(t, 0.05, 0.65)), rw = W * 0.42 * ru
+    // regla superior e inferior de acento que crecen desde el centro + VIDA: respira + sheen (contrafase)
+    const ru = M.ease(inv(t, 0.05, 0.65)), rw = W * 0.42 * ru * breathe(t, 0.85, 0.02)
+    const byT = y0 - L.size * 0.85, byB = y0 + blockH + L.size * 0.85
     ctx.save(); ctx.fillStyle = pal.accent
-    ctx.beginPath(); ctx.roundRect(cx - rw / 2, y0 - L.size * 0.85, rw, 5, 2.5); ctx.fill()
-    ctx.beginPath(); ctx.roundRect(cx - rw / 2, y0 + blockH + L.size * 0.85, rw, 5, 2.5); ctx.fill(); ctx.restore()
+    ctx.beginPath(); ctx.roundRect(cx - rw / 2, byT, rw, 5, 2.5); ctx.fill()
+    ctx.beginPath(); ctx.roundRect(cx - rw / 2, byB, rw, 5, 2.5); ctx.fill(); ctx.restore()
+    if (ru > 0.9) { rrSheen(ctx, cx - rw / 2, byT, rw, 5, t, { per: 3.2, strength: 0.5, tone: pal.tone }); rrSheen(ctx, cx - rw / 2, byB, rw, 5, t, { per: 3.2, ph: 0.5, strength: 0.5, tone: pal.tone }) }
     // claim centrado, lineas con stagger
     L.lines.forEach((ln, i) => {
       const tin = inv(t, 0.25 + i * 0.12, 0.78 + i * 0.12); if (tin <= 0) return
@@ -1814,9 +2011,11 @@ register({
     const bodyX = mx + 20
     const L = wrapLinesLocal(ctx, src, 40, W - bodyX - W * 0.08, 26, 800, fonts.display, 4)
     const lineH = L.size * 1.18, blockH = (L.lines.length - 1) * lineH, cyc = H * 0.46, y0 = cyc - blockH / 2
-    // barra vertical de acento que crece desde arriba (alto del bloque)
-    const bu = M.ease(inv(t, 0.05, 0.7)), bh = (blockH + L.size * 1.2)
-    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(mx, y0 - L.size * 0.6, 6, bh * bu, 3); ctx.fill()
+    // barra vertical de acento que crece desde arriba (alto del bloque) + VIDA: punto que la recorre + glow
+    const bu = M.ease(inv(t, 0.05, 0.7)), bh = (blockH + L.size * 1.2), bvy = y0 - L.size * 0.6, bvh = bh * bu
+    ctx.save(); if (bu > 0.95) pulseGlow(ctx, pal.accent, t, { sp: 0.9, base: 1, amp: 4 })
+    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(mx, bvy, 6, bvh, 3); ctx.fill(); ctx.restore()
+    if (bu > 0.95) { const u = sheenPos(t, 3.6), dy = bvy + 6 + (bvh - 12) * u; ctx.save(); ctx.fillStyle = 'rgba(255,255,255,' + (pal.tone === 'light' ? 0.5 : 0.85) + ')'; ctx.beginPath(); ctx.arc(mx + 3, dy, 2.6, 0, TAU); ctx.fill(); ctx.restore() }
     // claim alineado a izquierda
     L.lines.forEach((ln, i) => {
       const tin = inv(t, 0.25 + i * 0.12, 0.78 + i * 0.12); if (tin <= 0) return
@@ -1861,8 +2060,17 @@ register({
         ctx.fillStyle = pal.tone === 'light' ? 'rgba(20,16,24,0.05)' : 'rgba(255,255,255,0.06)'
         ctx.beginPath(); ctx.roundRect(cxx, cyr, w, chipH, chipH / 2); ctx.fill()
         ctx.restore()
-        // tilde de acento (DECO) a la izquierda
-        tick(ctx, cxx + padX + 4, cyr + chipH / 2, 9, M.ease(tin), pal.accent, 3)
+        // VIDA: un brillo de acento recorre el borde inferior del badge (fase por badge, continuo)
+        if (tin >= 1) {
+          const u = sheenPos(t, 3.4, ci * 0.18), dx = cxx + 8 + (w - 16) * u
+          ctx.save(); ctx.globalAlpha = 0.6; ctx.fillStyle = pal.accent
+          ctx.beginPath(); ctx.roundRect(dx - 7, cyr + chipH - 4, 14, 3, 1.5); ctx.fill(); ctx.restore()
+        }
+        // tilde de acento (DECO) a la izquierda + VIDA: respira (fase por badge)
+        const tkb = tin >= 1 ? breathe(t, 1.2, 0.1, ci * 1.3) : 1
+        ctx.save(); ctx.translate(cxx + padX + 4, cyr + chipH / 2); ctx.scale(tkb, tkb)
+        if (tin >= 1) pulseGlow(ctx, pal.accent, t, { sp: 1.3, base: 0, amp: 3, ph: ci * 1.3 })
+        tick(ctx, 0, 0, 9, M.ease(tin), pal.accent, 3); ctx.restore()
         drawText(ctx, it, cxx + padX + tickW, cyr + chipH / 2, { size: 20, weight: 700, family: fonts.text, color: pal.ink, align: 'left', maxW: w - padX * 2 - tickW, alpha: tin })
         cxx += w + gap
       })
@@ -1882,14 +2090,17 @@ register({
     const parts = splitItems(content.claim || content.tagline || 'Antes · Despues', 2)
     const left = parts[0] || 'Antes', right = parts[1] || 'Despues'
     const bw = W * 0.78, bx = (W - bw) / 2, by = H * 0.4, bh = H * 0.2, rad = 18
-    const slide = M.ease(inv(t, 0.2, 1.05)), hx = bx + bw * slide
+    // VIDA: tras asentar, el handle oscila MUY sutil de izq a der (el slider "vive"); las etiquetas son fijas
+    const settledSl = inv(t, 0.2, 1.15), slide = clamp(M.ease(inv(t, 0.2, 1.05)) + drift(t, 0.7, 0.02) * settledSl, 0.04, 0.98), hx = bx + bw * slide
     // base: panel viejo (surface tenue, todo el ancho)
     ctx.save(); ctx.globalAlpha = inv(t, 0.05, 0.4)
     ctx.fillStyle = pal.tone === 'light' ? 'rgba(20,16,24,0.06)' : 'rgba(255,255,255,0.07)'
     ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, rad); ctx.fill(); ctx.restore()
-    // panel nuevo (acento) recortado hasta el handle
+    // panel nuevo (acento) recortado hasta el handle + VIDA: sheen recorre el area revelada
     ctx.save(); ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, rad); ctx.clip()
-    ctx.globalAlpha = inv(t, 0.15, 0.5); ctx.fillStyle = pal.accent; ctx.fillRect(bx, by, bw * slide, bh); ctx.restore()
+    ctx.globalAlpha = inv(t, 0.15, 0.5); ctx.fillStyle = pal.accent; ctx.fillRect(bx, by, bw * slide, bh)
+    if (settledSl > 0.95) { ctx.globalAlpha = 0.4; rrSheen(ctx, bx, by, bw * slide, bh, t, { per: 3.6, strength: 0.3, tone: pal.tone }) }
+    ctx.restore()
     // handle vertical (linea + circulo) en hx
     ctx.save(); ctx.strokeStyle = pal.tone === 'light' ? '#ffffff' : pal.ink; ctx.lineWidth = 3
     ctx.beginPath(); ctx.moveTo(hx, by); ctx.lineTo(hx, by + bh); ctx.stroke()
@@ -1923,13 +2134,15 @@ register({
     // chip de delta: pildora de acento con flecha (arriba si sube, abajo si baja)
     const dp = M.settle(inv(t, 0.45, 1.1), { zeta: 0.5, freq: 2 })
     if (dp > 0) {
-      const cw = 64, ch = 36, dy = H * 0.55
-      ctx.save(); ctx.globalAlpha = inv(t, 0.45, 0.9); ctx.translate(cx, dy); ctx.scale(0.8 + 0.2 * dp, 0.8 + 0.2 * dp)
+      const cw = 64, ch = 36, dy = H * 0.55, settledD = dp > 0.9
+      ctx.save(); ctx.globalAlpha = inv(t, 0.45, 0.9); ctx.translate(cx, dy); ctx.scale((0.8 + 0.2 * dp) * (settledD ? breathe(t, 1.0, 0.02) : 1), (0.8 + 0.2 * dp) * (settledD ? breathe(t, 1.0, 0.02) : 1))
       ctx.fillStyle = rgba(pal.accent, pal.tone === 'light' ? 0.18 : 0.26); ctx.beginPath(); ctx.roundRect(-cw / 2, -ch / 2, cw, ch, ch / 2); ctx.fill()
-      // triangulo (DECO en acento)
+      // triangulo (DECO en acento) + VIDA: bob continuo en su sentido (sube si crece, baja si cae) + glow
+      const bob = settledD ? drift(t, 1.6, 1.4) * (down ? 1 : -1) : 0
+      if (settledD) pulseGlow(ctx, pal.accent, t, { sp: 1.4, base: 0, amp: 3 })
       ctx.fillStyle = pal.accent; const ar = 8
       ctx.beginPath()
-      if (down) { ctx.moveTo(-ar, -ar * 0.6); ctx.lineTo(ar, -ar * 0.6); ctx.lineTo(0, ar * 0.8) } else { ctx.moveTo(-ar, ar * 0.6); ctx.lineTo(ar, ar * 0.6); ctx.lineTo(0, -ar * 0.8) }
+      if (down) { ctx.moveTo(-ar, -ar * 0.6 + bob); ctx.lineTo(ar, -ar * 0.6 + bob); ctx.lineTo(0, ar * 0.8 + bob) } else { ctx.moveTo(-ar, ar * 0.6 + bob); ctx.lineTo(ar, ar * 0.6 + bob); ctx.lineTo(0, -ar * 0.8 + bob) }
       ctx.closePath(); ctx.fill(); ctx.restore()
     }
     drawWrapped(ctx, content.tagline || content.brand || 'vs el mes pasado', cx, H * 0.65, { size: 22, weight: 700, family: fonts.text, maxW: W * 0.78, color: pal.dim, maxLines: 2, alpha: inv(t, 0.6, 1.1) })
@@ -1953,13 +2166,16 @@ register({
     if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), cx, H * 0.24, { size: 16, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, maxW: W * 0.78, alpha: inv(t, 0.05, 0.35) })
     // los puntos aparecen en cascada por indice; los "on" en acento, el resto tinta tenue
     const prog = M.ease(inv(t, 0.2, 1.15))
+    const settledP = prog >= 1
     for (let i = 0; i < total; i++) {
       const r = Math.floor(i / cols), c = i % cols
       const x = gx + c * sx, y = gy + r * sy
       const ap = clamp(prog * total - i, 0, 1); if (ap <= 0) continue
-      ctx.save(); ctx.globalAlpha = ap
-      ctx.fillStyle = i < on ? pal.accent : rgba(pal.ink, 0.16)
-      ctx.beginPath(); ctx.arc(x, y, dotR * (0.6 + 0.4 * ap), 0, TAU); ctx.fill(); ctx.restore()
+      // VIDA: onda de brillo que recorre los puntos "on" en acento (continua); el resto queda quieto
+      const isOn = i < on, life = isOn && settledP ? 1 + 0.12 * Math.sin(t * 2.2 - i * 0.35) : 1
+      ctx.save(); ctx.globalAlpha = ap * (isOn && settledP ? 0.85 + 0.15 * Math.sin(t * 2.2 - i * 0.35) : 1)
+      ctx.fillStyle = isOn ? pal.accent : rgba(pal.ink, 0.16)
+      ctx.beginPath(); ctx.arc(x, y, dotR * (0.6 + 0.4 * ap) * life, 0, TAU); ctx.fill(); ctx.restore()
     }
     // caption con el numero
     drawWrapped(ctx, content.tagline || (num + ' lo logra'), cx, H * 0.78, { size: 22, weight: 700, family: fonts.text, maxW: W * 0.8, color: pal.dim, maxLines: 2, alpha: inv(t, 0.7, 1.2) })
@@ -1975,11 +2191,14 @@ register({
   tags: ['prueba-social', 'cita', 'comillas', 'testimonio'], beat: 'proof',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
-    // comillas de acento gigantes en diagonal (DECO)
-    ctx.save(); ctx.globalAlpha = (pal.tone === 'light' ? 0.16 : 0.22) * inv(t, 0.0, 0.5)
-    drawText(ctx, '“', W * 0.16, H * 0.32, { size: 150, weight: 800, family: fonts.display, color: pal.accent, align: 'left', maxW: 120 })
-    drawText(ctx, '”', W * 0.84, H * 0.66, { size: 150, weight: 800, family: fonts.display, color: pal.accent, align: 'right', maxW: 120 })
-    ctx.restore()
+    // comillas de acento gigantes en diagonal (DECO) + VIDA: respiran en contrafase (escala/opacidad)
+    const qa = (pal.tone === 'light' ? 0.16 : 0.22) * inv(t, 0.0, 0.5)
+    ctx.save(); ctx.globalAlpha = qa * breathe(t, 0.7, 0.1, 0)
+    ctx.translate(W * 0.16, H * 0.32); ctx.scale(breathe(t, 0.6, 0.02, 0), breathe(t, 0.6, 0.02, 0))
+    drawText(ctx, '“', 0, 0, { size: 150, weight: 800, family: fonts.display, color: pal.accent, align: 'left', maxW: 120 }); ctx.restore()
+    ctx.save(); ctx.globalAlpha = qa * breathe(t, 0.7, 0.1, Math.PI)
+    ctx.translate(W * 0.84, H * 0.66); ctx.scale(breathe(t, 0.6, 0.02, Math.PI), breathe(t, 0.6, 0.02, Math.PI))
+    drawText(ctx, '”', 0, 0, { size: 150, weight: 800, family: fonts.display, color: pal.accent, align: 'right', maxW: 120 }); ctx.restore()
     // cita centrada en tinta
     ctx.save(); ctx.globalAlpha = inv(t, 0.25, 0.8)
     TK.drawWrapped(ctx, content.claim || content.tagline || 'La mejor decision del ano', cx, H * 0.48, { reveal: inv(t, 0.25, 1.05), size: 32, weight: 700, family: fonts.display, maxW: W * 0.74, color: pal.ink, maxLines: 4, lh: 1.22, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.4)' : null })
@@ -2005,11 +2224,15 @@ register({
     // cluster de puntos de acento arriba (DECO, estable por seed)
     const r = mulberry32((env.seed >>> 0) ^ 0xb16)
     const cu = M.ease(inv(t, 0.1, 0.8))
+    const settledM = cu >= 1
     for (let i = 0; i < 7; i++) {
       const ang = r() * TAU, rad = 20 + r() * 56, px = cx + Math.cos(ang) * rad, py = H * 0.28 + Math.sin(ang) * rad * 0.7
+      const baseR = 2 + r() * 3
       const ap = clamp(cu * 7 - i, 0, 1); if (ap <= 0) continue
-      ctx.save(); ctx.globalAlpha = ap * 0.8; ctx.fillStyle = pal.accent
-      ctx.beginPath(); ctx.arc(px, py, (2 + r() * 3) * ap, 0, TAU); ctx.fill(); ctx.restore()
+      // VIDA: cada punto del cluster titila (escala+opacidad, fase por indice) de forma continua
+      const tw = settledM ? breathe(t, 1.3, 0.18, i * 1.9) : 1, ta = settledM ? 0.6 + 0.4 * (0.5 + 0.5 * Math.sin(t * 1.6 + i * 1.9)) : 0.8
+      ctx.save(); ctx.globalAlpha = ap * ta; ctx.fillStyle = pal.accent
+      ctx.beginPath(); ctx.arc(px, py, baseR * ap * tw, 0, TAU); ctx.fill(); ctx.restore()
     }
     // numero gigante centrado
     const sp = M.settle(inv(t, 0.2, 1.0), { zeta: 0.45, freq: 2.1 })
@@ -2034,14 +2257,17 @@ register({
     drawWrapped(ctx, content.brand || 'Marca', cx, H * 0.36, { size: 48, weight: 800, family: fonts.display, maxW: W * 0.86, color: pal.ink, maxLines: 2, lh: 1.04, alpha: inv(t, 0.15, 0.7), shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.4)' : null })
     const cta = content.cta || content.tagline || 'Empeza hoy'
     // flecha larga de acento que barre y termina apuntando a la pildora del CTA
-    const ay = H * 0.56
-    arrowH(ctx, W * 0.12, W * 0.46, ay, pal.accent, 5, M.ease(inv(t, 0.4, 1.0)))
-    // pildora CTA a la derecha de la flecha, entra con spring
-    const gp = M.settle(inv(t, 0.6, 1.25), { zeta: 0.5, freq: 2 })
+    const ay = H * 0.56, arrP = M.ease(inv(t, 0.4, 1.0))
+    // VIDA: la punta de la flecha "empuja" hacia la pildora de forma continua (deriva sutil) tras llegar
+    const arrEnd = W * 0.46 + (arrP >= 1 ? drift(t, 1.2, 4) : 0)
+    arrowH(ctx, W * 0.12, arrEnd, ay, pal.accent, 5, arrP)
+    // pildora CTA a la derecha de la flecha, entra con spring + VIDA: respira + sheen
+    const gp = M.settle(inv(t, 0.6, 1.25), { zeta: 0.5, freq: 2 }), settledC = gp > 0.9
     ctx.save(); ctx.font = `800 24px "${fonts.display}"`
     const tw = Math.min(W * 0.44, ctx.measureText(cta).width), pw = tw + 44, ph = 50, px = W * 0.5
-    ctx.translate(px + pw / 2, ay); ctx.scale(0.8 + 0.2 * gp, 0.8 + 0.2 * gp); ctx.globalAlpha = inv(t, 0.6, 1.0)
+    ctx.translate(px + pw / 2, ay); ctx.scale((0.8 + 0.2 * gp) * (settledC ? breathe(t, 0.9, 0.012) : 1), (0.8 + 0.2 * gp) * (settledC ? breathe(t, 0.9, 0.012) : 1)); ctx.globalAlpha = inv(t, 0.6, 1.0)
     ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(-pw / 2, -ph / 2, pw, ph, ph / 2); ctx.fill()
+    if (settledC) rrSheen(ctx, -pw / 2, -ph / 2, pw, ph, t, { per: 3.4, strength: 0.4, tone: pal.tone })
     drawText(ctx, cta, 0, 1, { size: 24, weight: 800, family: fonts.display, maxW: pw - 30, color: pal.onAccent })
     ctx.restore()
     if (content.tagline && content.cta) drawText(ctx, content.tagline, cx, H * 0.7, { size: 18, weight: 600, family: fonts.text, maxW: W * 0.8, color: pal.dim, alpha: inv(t, 0.85, 1.3) })
@@ -2061,11 +2287,13 @@ register({
     const idx = String(1 + ((r() * 5) | 0))
     const word = firstStrong(content.tagline || content.claim || content.brand, 'PARTE').toUpperCase()
     const R = 70
-    // anillo de acento que se dibuja
+    // anillo de acento que se dibuja + VIDA: glow pulsante + punto que orbita
     const ringP = M.ease(inv(t, 0.1, 1.0))
     ctx.save(); ctx.strokeStyle = rgba(pal.ink, 0.1); ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(cx, cy, R, 0, TAU); ctx.stroke()
     ctx.strokeStyle = pal.accent; ctx.lineWidth = 5; ctx.lineCap = 'round'
+    if (ringP > 0.95) pulseGlow(ctx, pal.accent, t, { sp: 1.0, base: 2, amp: 5 })
     ctx.beginPath(); ctx.arc(cx, cy, R, -TAU / 4, -TAU / 4 + TAU * ringP); ctx.stroke(); ctx.restore()
+    if (ringP > 0.95) arcSheenDot(ctx, cx, cy, R, -TAU / 4, TAU, t, { per: 4.5, dotR: 3, color: pal.tone === 'light' ? pal.accent : '#fff', tone: pal.tone })
     // numero centrado con asentamiento
     const sp = M.settle(inv(t, 0.25, 1.0), { zeta: 0.5, freq: 2 })
     ctx.save(); ctx.translate(cx, cy); ctx.scale(0.8 + 0.2 * sp, 0.8 + 0.2 * sp)
@@ -2095,15 +2323,21 @@ register({
     if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), cx, H * 0.22, { size: 16, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, maxW: W * 0.78, alpha: inv(t, 0.05, 0.35) })
     // forma de tag (rectangulo con muesca triangular a la izquierda + agujero), entra con spring + leve giro
     const sp = M.settle(inv(t, 0.1, 1.0), { zeta: 0.45, freq: 2.1 })
-    const tw = W * 0.7, th = 120, tx = cx - tw / 2, ty = H * 0.33, notch = 34, rot = (1 - M.ease(inv(t, 0.1, 0.9))) * -0.06
-    ctx.save(); ctx.globalAlpha = inv(t, 0.05, 0.45); ctx.translate(cx, ty + th / 2); ctx.rotate(rot); ctx.scale(0.85 + 0.15 * sp, 0.85 + 0.15 * sp); ctx.translate(-cx, -(ty + th / 2))
+    const tw = W * 0.7, th = 120, tx = cx - tw / 2, ty = H * 0.33, notch = 34
+    // VIDA: tras entrar, la etiqueta cuelga y se balancea MUY sutil desde su agujero (price + tag se mueven juntos)
+    const enteredT = inv(t, 0.1, 1.0)
+    const rot = (1 - M.ease(inv(t, 0.1, 0.9))) * -0.06 + drift(t, 0.8, 0.014) * enteredT
+    const pivX = tx + notch + 18, pivY = ty + th / 2   // pivote en el agujero del tag
+    ctx.save(); ctx.globalAlpha = inv(t, 0.05, 0.45); ctx.translate(pivX, pivY); ctx.rotate(rot); ctx.scale(0.85 + 0.15 * sp, 0.85 + 0.15 * sp); ctx.translate(-pivX, -pivY)
     ctx.fillStyle = pal.accent; ctx.beginPath()
     ctx.moveTo(tx + notch, ty); ctx.lineTo(tx + tw, ty); ctx.lineTo(tx + tw, ty + th); ctx.lineTo(tx + notch, ty + th); ctx.lineTo(tx, ty + th / 2); ctx.closePath(); ctx.fill()
+    if (enteredT > 0.9) rrSheen(ctx, tx + notch, ty, tw - notch, th, t, { per: 3.6, strength: 0.35, tone: pal.tone })   // VIDA: sheen recorre el tag
     // agujero del tag
-    ctx.fillStyle = pal.tone === 'light' ? '#ffffff' : (pal.bg1 || '#161018'); ctx.beginPath(); ctx.arc(tx + notch + 18, ty + th / 2, 8, 0, TAU); ctx.fill()
+    ctx.fillStyle = pal.tone === 'light' ? '#ffffff' : (pal.bg1 || '#161018'); ctx.beginPath(); ctx.arc(pivX, pivY, 8, 0, TAU); ctx.fill()
+    // precio en onAccent dentro del tag (dentro del grupo que se balancea -> queda solidario)
+    ctx.globalAlpha = inv(t, 0.35, 0.85)
+    drawText(ctx, price, cx + notch / 2, pivY, { size: 46, weight: 800, family: fonts.display, maxW: tw - notch - 60, color: pal.onAccent })
     ctx.restore()
-    // precio en onAccent dentro del tag
-    drawText(ctx, price, cx + notch / 2, ty + th / 2, { size: 46, weight: 800, family: fonts.display, maxW: tw - notch - 60, color: pal.onAccent, alpha: inv(t, 0.35, 0.85) })
     // sub-specs como linea de items separados por punto, debajo
     if (subs.length) drawWrapped(ctx, subs.join('  ·  '), cx, H * 0.6, { size: 22, weight: 700, family: fonts.text, maxW: W * 0.82, color: pal.ink, maxLines: 2, lh: 1.2, alpha: inv(t, 0.6, 1.1) })
   },
@@ -2130,6 +2364,8 @@ register({
       // barra de acento arriba de la card
       ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(cxx, cy, cw, 4, 2); ctx.fill()
       ctx.restore()
+      // VIDA: sheen recorre la barra de acento de la card (fase por card, continuo)
+      if (sp > 0.9) rrSheen(ctx, cxx, cy, cw, 4, t, { per: 3.2, ph: i * 0.3, strength: 0.5, tone: pal.tone })
       // valor (numero) + etiqueta
       const num = (it.match(/([+\-]?\$?\s?\d[\d.,]*\s?[%xXmMkK²m2]*)/) || [])[1]
       const label = shortLabel(num ? it.replace(num, '') : it, 2)
@@ -2158,8 +2394,9 @@ register({
     ctx.save(); ctx.globalAlpha = inv(t, 0.05, 0.45); ctx.translate(cx, H * 0.36); ctx.scale(0.85 + 0.15 * sp, 0.85 + 0.15 * sp)
     drawText(ctx, price.trim(), 0, 0, { size: 56, weight: 800, family: fonts.display, maxW: W * 0.86, color: pal.ink, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.4)' : null })
     ctx.restore()
-    const ru = M.ease(inv(t, 0.4, 1.0))
-    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(cx - 50 * ru, H * 0.45, 100 * ru, 4, 2); ctx.fill()
+    const ru = M.ease(inv(t, 0.4, 1.0)), rrw = 100 * ru * breathe(t, 0.9, 0.025)
+    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(cx - rrw / 2, H * 0.45, rrw, 4, 2); ctx.fill()
+    if (ru > 0.9) rrSheen(ctx, cx - rrw / 2, H * 0.45, rrw, 4, t, { per: 3.0, strength: 0.5, tone: pal.tone })
     ctx.font = `700 18px "${fonts.text}"`
     const chipH = 40, padX = 18, gap = 12, maxRowW = W * 0.86
     const meas = chips.map(c => Math.min(maxRowW - padX * 2, ctx.measureText(c).width) + padX * 2)
@@ -2177,7 +2414,9 @@ register({
         ctx.save(); ctx.globalAlpha = tin; ctx.translate(cxx + w / 2, cy2 + chipH / 2); ctx.scale(0.85 + 0.15 * cpsp, 0.85 + 0.15 * cpsp); ctx.translate(-(cxx + w / 2), -(cy2 + chipH / 2))
         ctx.fillStyle = pal.tone === 'light' ? 'rgba(20,16,24,0.05)' : 'rgba(255,255,255,0.06)'
         ctx.beginPath(); ctx.roundRect(cxx, cy2, w, chipH, chipH / 2); ctx.fill()
-        ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.arc(cxx + 14, cy2 + chipH / 2, 4, 0, TAU); ctx.fill()
+        // VIDA: el punto de acento del chip late (fase por chip)
+        const dotB = cpsp > 0.9 ? breathe(t, 1.3, 0.18, ci * 1.4) : 1
+        ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.arc(cxx + 14, cy2 + chipH / 2, 4 * dotB, 0, TAU); ctx.fill()
         ctx.restore()
         drawText(ctx, c, cxx + w / 2 + 6, cy2 + chipH / 2, { size: 18, weight: 700, family: fonts.text, color: pal.ink, maxW: w - padX * 2 })
         cxx += w + gap

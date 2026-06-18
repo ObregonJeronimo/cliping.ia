@@ -4,7 +4,7 @@
 // ESTE archivo es la PLANTILLA que los agentes siguen para llenar las ~11 categorias con cientos de modulos.
 import { register } from '../../core/registry.js'
 import { mulberry32, range, seedFor } from '../../core/prng.js'
-import { W, H, TAU, rgba, lighten, darken, clamp, lerp, mix, hexToHsl, hslToHex } from '../../core/util.js'
+import { W, H, TAU, rgba, lighten, darken, clamp, lerp, mix, hexToHsl, hslToHex, eOutCubic, eInOutCubic } from '../../core/util.js'
 
 const CLK = 0.6
 
@@ -226,18 +226,22 @@ register({
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'god')
     rampBg(ctx, pal)
-    const ox = W * (0.3 + r() * 0.4), oy = -H * 0.12   // origen arriba
+    // origen que deriva lento -> los rayos barren el plano (no quedan clavados)
+    const ox = W * (0.3 + r() * 0.4) + Math.sin(t * CLK * 0.14) * 26, oy = -H * 0.12
     const rays = 14
     ctx.globalCompositeOperation = pal.tone === 'light' ? 'multiply' : 'screen'
     const baseA = r() * TAU
     for (let i = 0; i < rays; i++) {
       const spread = Math.PI * 0.9
       const ang = (Math.PI / 2) - spread / 2 + (i / (rays - 1)) * spread
-      const wob = Math.sin(t * CLK * 0.3 + i) * 0.012
+      // abanico de rayos que se abre/cierra suave (oscilacion mayor y perceptible, pero tenue)
+      const wob = Math.sin(t * CLK * 0.4 + i * 0.5) * 0.05
       const a1 = ang + wob - 0.018, a2 = ang + wob + 0.018
       const L = H * 1.4
       const col = i % 5 === 0 ? pal.accent : (pal.tone === 'light' ? darken(pal.accent, 0.15) : lighten(pal.accent, 0.2))
-      const alpha = (pal.tone === 'light' ? 0.1 : 0.06) * (0.5 + 0.5 * Math.sin(i * 1.7 + baseA))
+      // brillo de cada rayo respira con fase propia -> luz volumetrica que titila lento
+      const flick = 0.5 + 0.5 * Math.sin(i * 1.7 + baseA + t * CLK * 0.6)
+      const alpha = (pal.tone === 'light' ? 0.1 : 0.06) * flick
       const grad = ctx.createLinearGradient(ox, oy, ox + Math.cos(ang) * L, oy + Math.sin(ang) * L)
       grad.addColorStop(0, rgba(col, alpha * 2)); grad.addColorStop(1, rgba(col, 0))
       ctx.fillStyle = grad
@@ -247,8 +251,9 @@ register({
       ctx.closePath(); ctx.fill()
     }
     ctx.globalCompositeOperation = 'source-over'
-    // halo en el origen
-    const gl = ctx.createRadialGradient(ox, oy, 0, ox, oy, H * 0.5)
+    // halo en el origen que respira con la luz
+    const haloR = H * 0.5 * (0.94 + 0.06 * Math.sin(t * CLK * 0.6))
+    const gl = ctx.createRadialGradient(ox, oy, 0, ox, oy, haloR)
     gl.addColorStop(0, rgba(pal.accent, pal.tone === 'light' ? 0.1 : 0.16)); gl.addColorStop(1, rgba(pal.accent, 0))
     ctx.fillStyle = gl; ctx.fillRect(0, 0, W, H)
   },
@@ -460,16 +465,27 @@ register({
     ctx.strokeStyle = rgba(lineCol, pal.tone === 'light' ? 0.22 : 0.28)
     for (let x = 0; x <= W; x += major) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke() }
     for (let y = 0; y <= H; y += major) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke() }
-    // un par de "figuras tecnicas": circulos con cruz + rectangulos acotados, en posiciones sembradas
+    // VIDA: linea de medicion que recorre el plano de arriba a abajo (escaneo de blueprint), tinte de acento2
+    const scanY = ((t * CLK * 0.12) % 1) * H
+    ctx.strokeStyle = rgba(pal.accent2, pal.tone === 'light' ? 0.3 : 0.4); ctx.lineWidth = 1
+    ctx.setLineDash([6, 6]); ctx.beginPath(); ctx.moveTo(0, scanY); ctx.lineTo(W, scanY); ctx.stroke(); ctx.setLineDash([])
+    // un par de "figuras tecnicas": circulos con cruz giratoria + rectangulos acotados, posiciones sembradas
     ctx.strokeStyle = rgba(lineCol, pal.tone === 'light' ? 0.4 : 0.5); ctx.lineWidth = 1.4
     const drift = Math.sin(t * CLK * 0.2) * 4
     for (let i = 0; i < 3; i++) {
       const cx = W * (0.2 + r() * 0.6), cy = H * (0.15 + r() * 0.7) + drift, rad = 26 + r() * 30
       ctx.beginPath(); ctx.arc(cx, cy, rad, 0, TAU); ctx.stroke()
-      ctx.beginPath(); ctx.moveTo(cx - rad - 8, cy); ctx.lineTo(cx + rad + 8, cy); ctx.moveTo(cx, cy - rad - 8); ctx.lineTo(cx, cy + rad + 8); ctx.stroke()
+      // cruz que rota muy lento (idle continuo) + marcador angular en el anillo
+      const rot = t * CLK * 0.12 * (i % 2 ? 1 : -1)
+      ctx.save(); ctx.translate(cx, cy); ctx.rotate(rot)
+      ctx.beginPath(); ctx.moveTo(-rad - 8, 0); ctx.lineTo(rad + 8, 0); ctx.moveTo(0, -rad - 8); ctx.lineTo(0, rad + 8); ctx.stroke()
+      const mAng = t * CLK * 0.5 + i
+      ctx.fillStyle = rgba(pal.accent2, pal.tone === 'light' ? 0.5 : 0.6)
+      ctx.beginPath(); ctx.arc(Math.cos(mAng) * rad, Math.sin(mAng) * rad, 2.4, 0, TAU); ctx.fill()
+      ctx.restore()
     }
     for (let i = 0; i < 2; i++) {
-      const x = W * (0.1 + r() * 0.5), y = H * (0.2 + r() * 0.6), w = 50 + r() * 60, h = 36 + r() * 40
+      const x = W * (0.1 + r() * 0.5), y = H * (0.2 + r() * 0.6) + drift * 0.6, w = 50 + r() * 60, h = 36 + r() * 40
       ctx.strokeRect(x, y, w, h)
     }
   },
@@ -814,14 +830,25 @@ register({
     const v = ctx.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, H * 0.75)
     v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, rgba(darken(paper, 0.12), 0.5))
     ctx.fillStyle = v; ctx.fillRect(0, 0, W, H)
+    // VIDA: luz de pagina que recorre suave en diagonal (sheen tenue de papel, soft-light) -> el plano nunca esta muerto
+    const sweep = 0.5 + 0.5 * Math.sin(t * CLK * 0.18)
+    const lx = lerp(-W * 0.2, W * 1.2, sweep)
+    ctx.save(); ctx.globalCompositeOperation = 'soft-light'
+    const sg = ctx.createLinearGradient(lx - 200, 0, lx + 200, H)
+    sg.addColorStop(0, 'rgba(255,255,255,0)'); sg.addColorStop(0.5, 'rgba(255,255,255,0.5)'); sg.addColorStop(1, 'rgba(255,255,255,0)')
+    ctx.fillStyle = sg; ctx.fillRect(0, 0, W, H); ctx.restore()
     // marco editorial fino + filete de acento (swiss)
     const m = 26
     ctx.strokeStyle = rgba(pal.ink, 0.18); ctx.lineWidth = 1
     ctx.strokeRect(m, m, W - m * 2, H - m * 2)
-    // filete superior de acento que respira
-    const breathe = 0.7 + 0.3 * (0.5 + 0.5 * Math.sin(t * CLK * 0.5))
-    ctx.fillStyle = rgba(pal.accent, 0.85 * breathe)
-    ctx.fillRect(m, m, (W - m * 2) * 0.34, 3)
+    // filete superior de acento: su ANCHO crece/decrece suave (eInOutCubic) -> movimiento real, no solo alpha
+    const fw = (W - m * 2)
+    const grow = eInOutCubic(0.5 + 0.5 * Math.sin(t * CLK * 0.4))
+    ctx.fillStyle = rgba(pal.accent, 0.85)
+    ctx.fillRect(m, m, fw * (0.22 + grow * 0.2), 3)
+    // punto de acento que se desliza por el filete (vida puntual continua)
+    const dotX = m + fw * (0.5 + 0.42 * Math.sin(t * CLK * 0.5))
+    ctx.fillStyle = rgba(pal.accent2, 0.7); ctx.beginPath(); ctx.arc(dotX, H - m, 2.6, 0, TAU); ctx.fill()
     // grano de papel ligero (puntos sembrados, estaticos -> textura)
     ctx.fillStyle = rgba(pal.ink, 0.03)
     for (let i = 0; i < 380; i++) ctx.fillRect((r() * W) | 0, (r() * H) | 0, 1, 1)
@@ -848,19 +875,29 @@ register({
     const gg = ctx.createLinearGradient(gx - 14, 0, gx + 14, 0)
     gg.addColorStop(0, rgba(pal.ink, 0)); gg.addColorStop(0.5, rgba(pal.ink, 0.08)); gg.addColorStop(1, rgba(pal.ink, 0))
     ctx.fillStyle = gg; ctx.fillRect(gx - 14, 0, 28, H)
-    // lineas de "texto" tenues en la columna de papel (baseline grid) -> aire editorial
+    // VIDA: luz de pagina que baja suave por la columna de color (sheen vertical lento)
+    ctx.save(); ctx.globalCompositeOperation = pal.tone === 'light' ? 'soft-light' : 'screen'
+    const ly = (0.5 + 0.5 * Math.sin(t * CLK * 0.2)) * H
+    const cg = ctx.createLinearGradient(0, ly - 180, 0, ly + 180)
+    cg.addColorStop(0, 'rgba(255,255,255,0)'); cg.addColorStop(0.5, rgba('#ffffff', 0.4)); cg.addColorStop(1, 'rgba(255,255,255,0)')
+    ctx.fillStyle = cg; ctx.fillRect(bx, 0, cw, H); ctx.restore()
+    // lineas de "texto" tenues en la columna de papel (baseline grid) -> aire editorial.
+    // VIDA: una onda de "lectura" baja por las lineas (cada linea resalta al pasar) -> movimiento continuo sutil.
     const tx = left ? cw + 24 : 24, tw = W - cw - 48
     const baseY = H * 0.18, lineGap = 16
-    ctx.fillStyle = rgba(pal.ink, 0.08)
+    const readHead = ((t * CLK * 0.4) % 1.4) * 18   // posicion de la onda en indice de linea
     for (let i = 0; i < 18; i++) {
       const y = baseY + i * lineGap
       if (y > H * 0.85) break
       const w = tw * (0.55 + 0.4 * Math.abs(Math.sin(i * 1.3 + r() * 6)))
+      const near = clamp(1 - Math.abs(i - readHead) / 2.5, 0, 1)
+      ctx.fillStyle = rgba(near > 0.05 ? pal.accent : pal.ink, 0.08 + near * 0.12)
       ctx.fillRect(tx, y, w, 4)
     }
-    // numero de folio que parpadea muy lento (vida minima)
+    // numero de folio: parpadeo lento + leve deriva horizontal (vida continua)
+    const folX = (left ? W - 40 : 28) + Math.sin(t * CLK * 0.4) * 3
     ctx.fillStyle = rgba(pal.accent, 0.5 + 0.2 * Math.sin(t * CLK * 0.4))
-    ctx.fillRect(left ? W - 40 : 28, H - 34, 16, 3)
+    ctx.fillRect(folX, H - 34, 16, 3)
   },
 })
 
@@ -880,19 +917,31 @@ register({
       { x: 0.62, y: 0.5, w: 0.3, h: 0.2 },
       { x: 0.08, y: 0.74, w: 0.84, h: 0.16 },
     ]
-    const float = Math.sin(t * CLK * 0.4) * 3
+    // sheen suave que recorre el dashboard en diagonal -> luz viva sobre las tarjetas
+    const shY = ((t * CLK * 0.16) % 1.3 - 0.15) * H
     cards.forEach((c, i) => {
-      const x = c.x * W, y = c.y * H + Math.sin(t * CLK * 0.4 + i) * 2, w = c.w * W, h = c.h * H
-      // sombra
+      // flote mas perceptible y con deriva horizontal leve (parallax suave entre tarjetas)
+      const bob = Math.sin(t * CLK * 0.4 + i * 0.9)
+      const x = c.x * W + Math.cos(t * CLK * 0.3 + i) * 3, y = c.y * H + bob * 5, w = c.w * W, h = c.h * H
+      // sombra que respira con el flote (mas alta = sombra mas larga -> sensacion de profundidad)
       ctx.save()
-      ctx.shadowColor = 'rgba(20,16,24,0.12)'; ctx.shadowBlur = 16; ctx.shadowOffsetY = 6
+      ctx.shadowColor = 'rgba(20,16,24,0.12)'; ctx.shadowBlur = 14 + bob * 5; ctx.shadowOffsetY = 6 + bob * 3
       roundRect(ctx, x, y, w, h, 12)
       ctx.fillStyle = '#ffffff'; ctx.fill()
       ctx.restore()
-      // detalle en la tarjeta: barra de acento + lineas
+      // brillo de luz que cruza la tarjeta cuando la franja pasa por su altura
+      const near = clamp(1 - Math.abs((y + h / 2) - shY) / (H * 0.4), 0, 1)
+      if (near > 0.02) {
+        ctx.save(); roundRect(ctx, x, y, w, h, 12); ctx.clip()
+        const lg = ctx.createLinearGradient(x, y, x + w, y + h)
+        lg.addColorStop(0, 'rgba(255,255,255,0)'); lg.addColorStop(0.5, rgba(pal.accent, 0.06 * near)); lg.addColorStop(1, 'rgba(255,255,255,0)')
+        ctx.fillStyle = lg; ctx.fillRect(x, y, w, h); ctx.restore()
+      }
+      // detalle: barra de acento que se alarga suave (vida) + lineas
       const accent = i % 3 === 0
+      const barPulse = 0.85 + 0.15 * Math.sin(t * CLK * 0.6 + i)
       ctx.fillStyle = rgba(accent ? pal.accent : pal.accent2, accent ? 0.85 : 0.5)
-      ctx.fillRect(x + 12, y + 12, accent ? 28 : 18, 6)
+      ctx.fillRect(x + 12, y + 12, (accent ? 28 : 18) * barPulse, 6)
       ctx.fillStyle = rgba(pal.ink, 0.1)
       ctx.fillRect(x + 12, y + h - 18, w * 0.6, 4)
     })
@@ -928,11 +977,17 @@ register({
       ctx.strokeStyle = rgba(dark ? darken(paper, 0.18) : lighten(paper, 0.5), 0.18)
       ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(a) * len, y + Math.sin(a) * len); ctx.stroke()
     }
-    // mancha de tinta de acento (sello) que respira muy leve
-    const sx = W * (0.2 + r() * 0.6), sy = H * (0.15 + r() * 0.7), sr = 40 + r() * 30
-    const breathe = 1 + 0.03 * Math.sin(t * CLK * 0.5)
+    // VIDA: cono de luz calida que recorre el papel lento (sol entrando por la ventana) -> el plano respira
+    const lsx = W * (0.5 + 0.45 * Math.sin(t * CLK * 0.16)), lsy = H * (0.4 + 0.2 * Math.cos(t * CLK * 0.13))
+    ctx.save(); ctx.globalCompositeOperation = 'soft-light'
+    const lg = ctx.createRadialGradient(lsx, lsy, 0, lsx, lsy, H * 0.6)
+    lg.addColorStop(0, 'rgba(255,244,220,0.55)'); lg.addColorStop(1, 'rgba(255,244,220,0)')
+    ctx.fillStyle = lg; ctx.fillRect(0, 0, W, H); ctx.restore()
+    // mancha de tinta de acento (sello): respira + deriva suave (la tinta "vive" en el papel)
+    const sx = W * (0.2 + r() * 0.6) + Math.sin(t * CLK * 0.3) * 5, sy = H * (0.15 + r() * 0.7) + Math.cos(t * CLK * 0.26) * 4, sr = 40 + r() * 30
+    const breathe = 1 + 0.05 * Math.sin(t * CLK * 0.5)
     const st = ctx.createRadialGradient(sx, sy, 0, sx, sy, sr * breathe)
-    st.addColorStop(0, rgba(pal.accent, 0.14)); st.addColorStop(0.7, rgba(pal.accent, 0.06)); st.addColorStop(1, rgba(pal.accent, 0))
+    st.addColorStop(0, rgba(pal.accent, 0.14 + 0.04 * Math.sin(t * CLK * 0.5))); st.addColorStop(0.7, rgba(pal.accent, 0.06)); st.addColorStop(1, rgba(pal.accent, 0))
     ctx.fillStyle = st; ctx.beginPath(); ctx.arc(sx, sy, sr * breathe, 0, TAU); ctx.fill()
     // vineta de pagina
     const v = ctx.createRadialGradient(W / 2, H / 2, H * 0.32, W / 2, H / 2, H * 0.78)
@@ -955,18 +1010,20 @@ register({
     if (pal.tone === 'light') { sky.addColorStop(0, lighten(pal.accent, 0.7)); sky.addColorStop(1, pal.bg0) }
     else { sky.addColorStop(0, pal.bg1); sky.addColorStop(1, darken(pal.accent, 0.5)) }
     ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H)
-    // sol/luna detras de las capas
+    // sol/luna detras de las capas: brillo que respira lento (vida en el cielo)
     const sunX = W * (0.3 + r() * 0.4), sunY = H * 0.34
-    const sun = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, 90)
-    sun.addColorStop(0, rgba(pal.accent2, pal.tone === 'light' ? 0.4 : 0.5)); sun.addColorStop(1, rgba(pal.accent2, 0))
+    const sunBr = 0.92 + 0.08 * Math.sin(t * CLK * 0.4)
+    const sun = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, 90 * sunBr)
+    sun.addColorStop(0, rgba(pal.accent2, (pal.tone === 'light' ? 0.4 : 0.5) * sunBr)); sun.addColorStop(1, rgba(pal.accent2, 0))
     ctx.fillStyle = sun; ctx.fillRect(0, 0, W, H)
-    // capas de colinas: cada una mas oscura/clara y desplazada (parallax con t)
+    // capas de colinas: cada una se DESPLAZA horizontal a distinta velocidad (parallax real y continuo) + leve sube/baja
     const layers = 4
     for (let l = 0; l < layers; l++) {
       const depth = l / (layers - 1)              // 0 = lejos, 1 = cerca
-      const baseY = H * (0.46 + depth * 0.32)
+      const scrollX = t * CLK * (3 + depth * 11)  // las cercanas corren mas -> profundidad
+      const bob = Math.sin(t * CLK * 0.22 * (1 + depth)) * (3 + depth * 7)
+      const baseY = H * (0.46 + depth * 0.32) + bob
       const amp = 22 + depth * 30
-      const drift = Math.sin(t * CLK * 0.18 * (1 + depth)) * (6 + depth * 16)
       const ph = r() * TAU, freq = 0.006 + depth * 0.004
       const col = pal.tone === 'light'
         ? darken(pal.accent, 0.1 + depth * 0.45)
@@ -974,7 +1031,8 @@ register({
       ctx.fillStyle = rgba(col, pal.tone === 'light' ? 0.55 + depth * 0.35 : 0.7)
       ctx.beginPath(); ctx.moveTo(0, H)
       for (let x = 0; x <= W; x += 8) {
-        const y = baseY + Math.sin(x * freq + ph + drift * 0.02) * amp + Math.sin(x * freq * 2.3 + ph) * amp * 0.3
+        const xs = x + scrollX
+        const y = baseY + Math.sin(xs * freq + ph) * amp + Math.sin(xs * freq * 2.3 + ph) * amp * 0.3
         ctx.lineTo(x, y)
       }
       ctx.lineTo(W, H); ctx.closePath(); ctx.fill()
@@ -1097,11 +1155,13 @@ register({
     const pts = []
     const minD = 30, tries = 900
     for (let k = 0; k < tries && pts.length < 90; k++) {
-      const x = r() * W, y = r() * H
+      const bx = r() * W, by = r() * H
       let ok = true
-      for (const p of pts) { const dx = x - p.x, dy = y - p.y; if (dx * dx + dy * dy < minD * minD) { ok = false; break } }
-      if (ok) pts.push({ x, y, ph: r() * TAU, big: r() < 0.18 })
+      for (const p of pts) { const dx = bx - p.bx, dy = by - p.by; if (dx * dx + dy * dy < minD * minD) { ok = false; break } }
+      // cada punto deriva en una pequena orbita (la constelacion respira y las lineas se re-tejen) -> vida continua
+      if (ok) pts.push({ bx, by, ph: r() * TAU, sp: range(r, 0.3, 0.7), orb: 4 + r() * 7, big: r() < 0.18, x: 0, y: 0 })
     }
+    for (const p of pts) { p.x = p.bx + Math.cos(t * CLK * p.sp + p.ph) * p.orb; p.y = p.by + Math.sin(t * CLK * p.sp * 0.85 + p.ph) * p.orb }
     // conexiones cortas entre vecinos (red)
     ctx.lineWidth = 1
     for (let a = 0; a < pts.length; a++) for (let b = a + 1; b < pts.length; b++) {
@@ -1259,16 +1319,21 @@ register({
     const anchors = [[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [1.0, 1.0], [0.5, 0.0], [0.5, 1.0]]
     const N = 4
     const used = shuffledLocal(r, anchors).slice(0, N)
-    const breathe = Math.sin(t * CLK * 0.3) * 0.04
     for (let i = 0; i < N; i++) {
       const [ax, ay] = used[i]
       const col = cols[(r() * cols.length) | 0]
       const sh = shapes[(r() * shapes.length) | 0]
       const size = H * (0.18 + r() * 0.12)
-      const cx = ax * W + (ax === 0 ? size * 0.2 : ax === 1 ? -size * 0.2 : 0)
-      const cy = ay * H + (ay === 0 ? size * 0.2 : ay === 1 ? -size * 0.2 : 0)
+      const baseRot = range(r, 0, TAU)
+      const rotSpd = range(r, 0.05, 0.12) * (r() < 0.5 ? 1 : -1)   // rotacion idle lenta por forma (sembrada)
+      const phase = r() * TAU
+      // deriva sutil hacia/desde la esquina + respiracion de escala (cada forma vive distinto)
+      const drift = Math.sin(t * CLK * 0.3 + phase) * 6
+      const cx = ax * W + (ax === 0 ? size * 0.2 : ax === 1 ? -size * 0.2 : 0) + (ax === 0.5 ? drift : 0)
+      const cy = ay * H + (ay === 0 ? size * 0.2 : ay === 1 ? -size * 0.2 : 0) + (ay === 0 ? drift : ay === 1 ? -drift : 0)
+      const scl = 1 + 0.025 * Math.sin(t * CLK * 0.4 + phase)
       const a = pal.tone === 'light' ? 0.9 : 0.82
-      ctx.save(); ctx.translate(cx, cy); ctx.rotate(range(r, 0, TAU) + breathe)
+      ctx.save(); ctx.translate(cx, cy); ctx.rotate(baseRot + t * CLK * rotSpd); ctx.scale(scl, scl)
       ctx.fillStyle = rgba(col, a)
       ctx.beginPath()
       if (sh === 'circle') { ctx.arc(0, 0, size * 0.5, 0, TAU) }
@@ -1496,8 +1561,16 @@ register({
     const tg = ctx.createLinearGradient(0, 0, W, 0)
     tg.addColorStop(0, rgba(pal.accent, 0.9)); tg.addColorStop(1, rgba(pal.accent2, 0.9))
     ctx.fillStyle = tg; ctx.fillRect(0, 0, W, topH)
-    // bloque "LIVE" pulsante
+    // sheen que recorre la barra superior (brillo de transmision en vivo)
+    const topShx = ((t * CLK * 0.5) % 1.4 - 0.2) * W
+    const tsh = ctx.createLinearGradient(topShx - 50, 0, topShx + 50, 0)
+    tsh.addColorStop(0, 'rgba(255,255,255,0)'); tsh.addColorStop(0.5, 'rgba(255,255,255,0.22)'); tsh.addColorStop(1, 'rgba(255,255,255,0)')
+    ctx.fillStyle = tsh; ctx.fillRect(0, 0, W, topH)
+    // bloque "LIVE" pulsante (con halo que late)
     const pulse = 0.55 + 0.45 * Math.sin(t * CLK * 1.4)
+    const lh = ctx.createRadialGradient(22, topH / 2, 0, 22, topH / 2, 14)
+    lh.addColorStop(0, rgba('#ff3b30', 0.4 * pulse)); lh.addColorStop(1, rgba('#ff3b30', 0))
+    ctx.fillStyle = lh; ctx.beginPath(); ctx.arc(22, topH / 2, 14, 0, TAU); ctx.fill()
     ctx.fillStyle = rgba('#ff3b30', 0.5 + 0.5 * pulse); ctx.beginPath(); ctx.arc(22, topH / 2, 6, 0, TAU); ctx.fill()
     ctx.fillStyle = rgba('#ffffff', 0.18); ctx.fillRect(40, topH / 2 - 9, 70, 18)
     // bottom strip
@@ -1505,18 +1578,24 @@ register({
     ctx.fillRect(0, H - botH, W, botH)
     // filete de acento sobre la tira
     ctx.fillStyle = rgba(pal.accent, 0.95); ctx.fillRect(0, H - botH - 3, W, 3)
-    // bloques tipo "marcador" en la tira
+    // bloques tipo "marcador" en la tira: un glint recorre los bloques en secuencia (vida continua)
     const blocks = 3
+    const glintT = (t * CLK * 0.4) % blocks
     for (let i = 0; i < blocks; i++) {
       const bw = (W - 40) / blocks, x = 20 + i * bw
       ctx.fillStyle = rgba(i === 1 ? pal.accent2 : pal.accent, 0.85)
       roundRect(ctx, x + 6, H - botH + 16, bw - 12, botH - 32, 6); ctx.fill()
+      const lit = clamp(1 - Math.abs(glintT - i), 0, 1)
+      if (lit > 0.02) { ctx.fillStyle = rgba('#ffffff', 0.18 * lit); roundRect(ctx, x + 6, H - botH + 16, bw - 12, botH - 32, 6); ctx.fill() }
     }
-    // ticker que se desliza en la zona media-baja (sutil)
+    // dos tickers que se deslizan en la zona media-baja (sutil, distintas velocidades)
     const tickerY = H - botH - 22
     ctx.fillStyle = rgba(pal.accent, 0.4)
     const seg = 60, off = (t * CLK * 26) % seg
     for (let x = -off; x < W; x += seg) ctx.fillRect(x, tickerY, seg * 0.5, 3)
+    ctx.fillStyle = rgba(pal.accent2, 0.25)
+    const off2 = (t * CLK * 40) % 44
+    for (let x = -off2 + 30; x < W; x += 44) ctx.fillRect(x, tickerY + 8, 20, 2)
   },
 })
 
@@ -1626,9 +1705,16 @@ register({
     ctx.beginPath(); ctx.moveTo(px, py - 12); ctx.lineTo(px + pw, py - 12)
     ctx.moveTo(px, py - 16); ctx.lineTo(px, py - 8); ctx.moveTo(px + pw, py - 16); ctx.lineTo(px + pw, py - 8)
     ctx.stroke()
-    // un nodo de acento que "barre" un eje (vida tecnica)
+    // VIDA: linea de escaneo que recorre TODO el plano de izq a der (vaiven suave eased), tinta de acento tenue
+    const scan = eInOutCubic(0.5 + 0.5 * Math.sin(t * CLK * 0.2)) * W
+    const sgrad = ctx.createLinearGradient(scan - 30, 0, scan + 30, 0)
+    sgrad.addColorStop(0, rgba(pal.accent, 0)); sgrad.addColorStop(0.5, rgba(pal.accent, 0.08)); sgrad.addColorStop(1, rgba(pal.accent, 0))
+    ctx.fillStyle = sgrad; ctx.fillRect(scan - 30, 0, 60, H)
+    // nodo de acento que "barre" el eje del plano (vida tecnica) + cabezal pulsante
     const sweepX = px + ((t * CLK * 0.1) % 1) * pw
     ctx.strokeStyle = rgba(pal.accent2, 0.5); ctx.beginPath(); ctx.moveTo(sweepX, py); ctx.lineTo(sweepX, py + ph2); ctx.stroke()
+    const np = 0.6 + 0.4 * Math.sin(t * CLK * 1.0)
+    ctx.fillStyle = rgba(pal.accent2, 0.5 + 0.4 * np); ctx.beginPath(); ctx.arc(sweepX, py, 2 + np * 1.5, 0, TAU); ctx.fill()
     // marco editorial
     const m = 24
     ctx.strokeStyle = rgba(pal.ink, 0.16); ctx.lineWidth = 1; ctx.strokeRect(m, m, W - m * 2, H - m * 2)
@@ -1994,9 +2080,10 @@ register({
     ctx.save(); ctx.globalCompositeOperation = pal.tone === 'light' ? 'multiply' : 'screen'
     for (let l = 0; l < layers; l++) {
       const u = l / (layers - 1)
-      const baseY = H * (0.45 + u * 0.5)
+      // sube/baja lento por capa (la niebla respira en vertical) + scroll horizontal mas vivo
+      const baseY = H * (0.45 + u * 0.5) + Math.sin(t * CLK * 0.18 + l * 0.8) * (4 + u * 8)
       const amp = 14 + u * 30
-      const sp = (0.04 + u * 0.06)
+      const sp = (0.12 + u * 0.16)               // mas rapido -> deriva perceptible (sigue calmo)
       const off = t * CLK * sp * 30 + r() * 100
       const col = l % 2 ? pal.accent2 : pal.accent
       ctx.fillStyle = rgba(col, pal.tone === 'light' ? 0.08 + u * 0.06 : 0.1 + u * 0.08)
@@ -2419,22 +2506,26 @@ register({
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'memph')
     ctx.fillStyle = pal.tone === 'light' ? pal.bg0 : pal.bg1; ctx.fillRect(0, 0, W, H)
-    // patron memphis: zigzags, puntos, squiggles y triangulitos sembrados, planos, con un idle de rotacion minimo.
-    const drift = Math.sin(t * CLK * 0.3) * 0.06
+    // patron memphis: zigzags, puntos, squiggles y triangulitos sembrados, planos. Cada uno con idle propio (rotacion
+    // lenta + flote) -> patron ludico SIEMPRE vivo, sin un solo movimiento global.
     const kinds = ['zig', 'dots', 'tri', 'ring', 'squig']
     const M = 16
     for (let i = 0; i < M; i++) {
-      const x = r() * W, y = r() * H, s = 16 + r() * 22
+      const bx = r() * W, by = r() * H, s = 16 + r() * 22
       const kind = kinds[(r() * kinds.length) | 0]
       const col = [pal.accent, pal.accent2, pal.tone === 'light' ? darken(pal.accent, 0.3) : lighten(pal.accent2, 0.3)][(r() * 3) | 0]
       const a = pal.tone === 'light' ? 0.32 : 0.3
-      ctx.save(); ctx.translate(x, y); ctx.rotate(range(r, 0, TAU) + drift)
+      const baseRot = range(r, 0, TAU)
+      const rotSpd = range(r, 0.08, 0.2) * (r() < 0.5 ? 1 : -1)
+      const ph = r() * TAU
+      const x = bx + Math.cos(t * CLK * 0.3 + ph) * 5, y = by + Math.sin(t * CLK * 0.26 + ph) * 5
+      ctx.save(); ctx.translate(x, y); ctx.rotate(baseRot + t * CLK * rotSpd)
       ctx.strokeStyle = rgba(col, a); ctx.fillStyle = rgba(col, a); ctx.lineWidth = 3; ctx.lineCap = 'round'
       if (kind === 'zig') { ctx.beginPath(); for (let k = 0; k < 4; k++) { ctx.lineTo(k * s * 0.5, (k % 2 ? -1 : 1) * s * 0.3) } ctx.stroke() }
       else if (kind === 'dots') { for (let a2 = 0; a2 < 3; a2++) for (let b2 = 0; b2 < 3; b2++) { ctx.beginPath(); ctx.arc(a2 * 9, b2 * 9, 2, 0, TAU); ctx.fill() } }
       else if (kind === 'tri') { ctx.beginPath(); ctx.moveTo(0, -s * 0.6); ctx.lineTo(s * 0.5, s * 0.4); ctx.lineTo(-s * 0.5, s * 0.4); ctx.closePath(); ctx.stroke() }
       else if (kind === 'ring') { ctx.beginPath(); ctx.arc(0, 0, s * 0.5, 0, TAU); ctx.stroke() }
-      else { ctx.beginPath(); for (let xx = -s; xx <= s; xx += 4) ctx.lineTo(xx, Math.sin(xx * 0.4) * 6); ctx.stroke() }
+      else { ctx.beginPath(); for (let xx = -s; xx <= s; xx += 4) ctx.lineTo(xx, Math.sin(xx * 0.4 + t * CLK * 0.8 + ph) * 6); ctx.stroke() }
       ctx.restore()
     }
     scrim(ctx, pal, { centerClear: 0.36, strength: pal.tone === 'light' ? 0.14 : 0.26 })
@@ -2447,19 +2538,29 @@ register({
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'stamp')
     ctx.fillStyle = pal.tone === 'light' ? pal.bg0 : pal.bg1; ctx.fillRect(0, 0, W, H)
-    // marco postal punteado + arcos de "sello" concentricos que respiran, con textura de grano.
+    // marco postal punteado (perforacion que "avanza": marching-ants suave) + arcos de "sello" que giran/respiran.
     const m = 26
     ctx.strokeStyle = rgba(pal.accent, pal.tone === 'light' ? 0.3 : 0.34); ctx.lineWidth = 2
-    ctx.setLineDash([2, 8]); ctx.strokeRect(m, m, W - m * 2, H - m * 2); ctx.setLineDash([])
+    ctx.setLineDash([2, 8]); ctx.lineDashOffset = -(t * CLK * 8) % 10
+    ctx.strokeRect(m, m, W - m * 2, H - m * 2); ctx.setLineDash([]); ctx.lineDashOffset = 0
     ctx.strokeStyle = rgba(pal.ink, pal.tone === 'light' ? 0.14 : 0.2); ctx.lineWidth = 1
     ctx.strokeRect(m + 8, m + 8, W - (m + 8) * 2, H - (m + 8) * 2)
-    // sello circular arriba (cancelacion postal) que respira
-    const cx = W * 0.5, cy = H * 0.34, breathe = 1 + 0.02 * Math.sin(t * CLK * 0.5)
+    // sello circular arriba (cancelacion postal) que respira + gira muy lento
+    const cx = W * 0.5, cy = H * 0.34, breathe = 1 + 0.03 * Math.sin(t * CLK * 0.5)
+    const seal = t * CLK * 0.1
     ctx.strokeStyle = rgba(pal.accent2, pal.tone === 'light' ? 0.3 : 0.36); ctx.lineWidth = 2.4
     for (let k = 0; k < 2; k++) { ctx.beginPath(); ctx.arc(cx, cy, (52 - k * 12) * breathe, 0, TAU); ctx.stroke() }
-    // rayos de cancelacion
+    // marcas en el anillo (datestamp) que giran con el sello -> rotacion legible y continua
+    ctx.lineWidth = 2.4
+    for (let i = 0; i < 8; i++) {
+      const ang = seal + (i / 8) * TAU
+      const r0 = 52 * breathe, r1 = r0 + 5
+      ctx.beginPath(); ctx.moveTo(cx + Math.cos(ang) * r0, cy + Math.sin(ang) * r0); ctx.lineTo(cx + Math.cos(ang) * r1, cy + Math.sin(ang) * r1); ctx.stroke()
+    }
+    // rayos de cancelacion que se desplazan lento (la tinta "corre")
     ctx.lineWidth = 2; ctx.strokeStyle = rgba(pal.accent2, pal.tone === 'light' ? 0.24 : 0.3)
-    for (let i = 0; i < 9; i++) { const yy = cy - 16 + i * 4; ctx.beginPath(); ctx.moveTo(cx - 44, yy); ctx.lineTo(cx + 44, yy); ctx.stroke() }
+    const rayOff = Math.sin(t * CLK * 0.4) * 6
+    for (let i = 0; i < 9; i++) { const yy = cy - 16 + i * 4; ctx.beginPath(); ctx.moveTo(cx - 44 + rayOff, yy); ctx.lineTo(cx + 44 + rayOff, yy); ctx.stroke() }
     // grano vintage
     ctx.fillStyle = rgba(pal.tone === 'light' ? '#000' : '#fff', 0.03)
     for (let i = 0; i < 600; i++) ctx.fillRect((r() * W) | 0, (r() * H) | 0, 1, 1)
@@ -2581,10 +2682,16 @@ register({
       ctx.fillStyle = rgba(pal.tone === 'light' ? lighten(faceCol, 0.3) : lighten(faceCol, 0.18), 0.8)
       ctx.beginPath()
       ctx.moveTo(x, yTop + sway); ctx.lineTo(x + bw - 2, yTop + sway); ctx.lineTo(x + bw - 2 + depth, yTop - depth * 0.5 + sway); ctx.lineTo(x + depth, yTop - depth * 0.5 + sway); ctx.closePath(); ctx.fill()
-      // ventanas de acento (algunas encendidas)
+      // ventanas de acento: las encendidas TITILAN con fase propia (la ciudad esta viva de noche)
       for (let wy = yTop + 10; wy < base - 8; wy += 14) for (let wx = x + 4; wx < x + bw - 8; wx += 10) {
-        const lit = mulberry32((env.seed ^ (i * 6151) ^ ((wy | 0) * 31)) >>> 0)() < 0.3
-        ctx.fillStyle = rgba(lit ? pal.accent : pal.ink, lit ? (pal.tone === 'light' ? 0.45 : 0.6) : (pal.tone === 'light' ? 0.06 : 0.1))
+        const h = mulberry32((env.seed ^ (i * 6151) ^ ((wy | 0) * 31) ^ ((wx | 0) * 7)) >>> 0)
+        const lit = h() < 0.3
+        if (lit) {
+          const tw = 0.6 + 0.4 * Math.sin(t * CLK * 0.9 + h() * TAU)
+          ctx.fillStyle = rgba(pal.accent, (pal.tone === 'light' ? 0.45 : 0.6) * tw)
+        } else {
+          ctx.fillStyle = rgba(pal.ink, pal.tone === 'light' ? 0.06 : 0.1)
+        }
         ctx.fillRect(wx, wy + sway, 5, 6)
       }
     }
@@ -2633,16 +2740,19 @@ register({
     ctx.save(); ctx.globalCompositeOperation = pal.tone === 'light' ? 'multiply' : 'screen'
     const blooms = 4
     for (let b = 0; b < blooms; b++) {
-      const cx = W * (0.2 + r() * 0.6), cy = H * (0.15 + r() * 0.65)
+      const bcx = W * (0.2 + r() * 0.6), bcy = H * (0.15 + r() * 0.65)
+      const phB = r() * TAU
+      // la mancha deriva lenta en el agua (la tinta nunca queda quieta)
+      const cx = bcx + Math.cos(t * CLK * 0.22 + phB) * 10, cy = bcy + Math.sin(t * CLK * 0.18 + phB) * 9
       const col = b % 2 ? pal.accent2 : pal.accent
       const lobes = 7 + ((r() * 5) | 0)
       const baseR = H * (0.16 + r() * 0.14)
-      const breathe = 1 + 0.05 * Math.sin(t * CLK * 0.4 + b)
-      // dibujar la mancha como poligono lobulado relleno con gradiente
+      const breathe = 1 + 0.06 * Math.sin(t * CLK * 0.4 + b)
+      // dibujar la mancha como poligono lobulado relleno con gradiente; los lobulos ondulan por t (difusion viva)
       ctx.beginPath()
       for (let i = 0; i <= 80; i++) {
         const a = (i / 80) * TAU
-        const wob = 1 + 0.32 * Math.sin(a * lobes + r() * TAU * 0) + 0.16 * Math.sin(a * (lobes + 3) + b)
+        const wob = 1 + 0.32 * Math.sin(a * lobes + t * CLK * 0.3 + phB) + 0.16 * Math.sin(a * (lobes + 3) - t * CLK * 0.2 + b)
         const rad = baseR * wob * breathe
         const x = cx + Math.cos(a) * rad, y = cy + Math.sin(a) * rad
         i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)

@@ -134,16 +134,18 @@ register({
     const { pal } = env
     const s = W * 0.2, ap = spring(inv(t, 0, 0.8), { zeta: 0.5, freq: 2.0 })
     const drawn = eOutCubic(inv(t, 0.1, 1.0))
-    ctx.save(); ctx.translate(CX, CY); ctx.scale(ap, ap)
+    const breathe = 1 + 0.012 * Math.sin(t * 1.1)   // respiracion idle continua
+    ctx.save(); ctx.translate(CX, CY); ctx.scale(ap * breathe, ap * breathe)
     ctx.strokeStyle = pal.accent; ctx.lineWidth = 6; ctx.lineJoin = 'round'; ctx.lineCap = 'round'
     // techo + cuerpo
     ctx.beginPath()
     ctx.moveTo(-s, -s * 0.05); ctx.lineTo(0, -s * 0.85); ctx.lineTo(s, -s * 0.05)
     ctx.lineTo(s, s * 0.8); ctx.lineTo(-s, s * 0.8); ctx.closePath()
     ctx.stroke()
-    // puerta que "crece" desde el piso
+    // puerta que "crece" desde el piso, con brillo que late (luz de adentro)
     const dh = s * 0.6 * drawn
-    ctx.fillStyle = rgba(pal.accent2 || pal.accent, 0.85)
+    const warm = 0.7 + 0.3 * (0.5 + 0.5 * Math.sin(t * 1.6))
+    ctx.fillStyle = rgba(pal.accent2 || pal.accent, 0.55 + 0.3 * warm)
     ctx.beginPath(); ctx.rect(-s * 0.22, s * 0.8 - dh, s * 0.44, dh); ctx.fill()
     ctx.restore()
   },
@@ -248,7 +250,13 @@ register({
   render(ctx, t, env) {
     const { pal } = env
     const s = W * 0.2, ap = spring(inv(t, 0, 0.8), { zeta: 0.45, freq: 2.2 })
-    ctx.save(); ctx.translate(CX, CY); ctx.scale(ap, ap)
+    const breathe = 1 + 0.015 * Math.sin(t * 1.5)   // late suave tras entrar
+    ctx.save(); ctx.translate(CX, CY); ctx.scale(ap * breathe, ap * breathe)
+    // halo de aprobacion que pulsa (idle continuo)
+    const glow = 0.5 + 0.5 * Math.sin(t * 1.8)
+    const hg = ctx.createRadialGradient(0, 0, s * 0.8, 0, 0, s * 1.7)
+    hg.addColorStop(0, rgba(pal.accent, 0.22 * glow)); hg.addColorStop(1, rgba(pal.accent, 0))
+    ctx.fillStyle = hg; ctx.beginPath(); ctx.arc(0, 0, s * 1.7, 0, TAU); ctx.fill()
     // disco
     ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.arc(0, 0, s, 0, TAU); ctx.fill()
     // tilde dibujado por progreso (draw-on)
@@ -277,10 +285,21 @@ register({
     ctx.save(); ctx.translate(CX, CY)
     // regla central
     ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(-w / 2, -3, w, 6, 3); ctx.fill()
-    // dos diamantes en las puntas (aparecen al final)
+    // sheen que recorre la regla de izq a der (vida continua tras crecer)
+    if (w > 8) {
+      const sweep = ((t * 0.4) % 1)
+      const sx0 = -w / 2 + sweep * w
+      const sg = ctx.createLinearGradient(sx0 - 36, 0, sx0 + 36, 0)
+      sg.addColorStop(0, rgba(pal.accent2 || pal.accent, 0)); sg.addColorStop(0.5, rgba('#ffffff', pal.tone === 'light' ? 0.35 : 0.5)); sg.addColorStop(1, rgba(pal.accent2 || pal.accent, 0))
+      ctx.save(); ctx.beginPath(); ctx.roundRect(-w / 2, -3, w, 6, 3); ctx.clip()
+      ctx.fillStyle = sg; ctx.fillRect(-w / 2, -3, w, 6)
+      ctx.restore()
+    }
+    // dos diamantes en las puntas (aparecen al final, laten suave)
     const dp = eOutBack(inv(t, 0.7, 1.1))
-    ctx.save(); ctx.scale(dp, dp)
-    for (const sx of [-1, 1]) { polyPath(ctx, sx * (full / 2 / dp + 10), 0, 9, 4, Math.PI / 4); ctx.fillStyle = pal.accent2 || pal.accent; ctx.fill() }
+    const breathe = 1 + 0.1 * Math.sin(t * 1.7)
+    ctx.save(); ctx.scale(dp * breathe, dp * breathe)
+    for (const sx of [-1, 1]) { polyPath(ctx, sx * (full / 2 / (dp * breathe) + 10), 0, 9, 4, Math.PI / 4); ctx.fillStyle = pal.accent2 || pal.accent; ctx.fill() }
     ctx.restore()
     ctx.restore()
   },
@@ -316,9 +335,19 @@ register({
     ctx.strokeStyle = pal.accent; ctx.lineWidth = 6; ctx.lineCap = 'round'; ctx.lineJoin = 'round'
     // linea
     ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(w, 0); ctx.stroke()
-    // punta (aparece cuando la linea casi termino)
+    // pulso de energia que viaja hacia la punta (vida continua, sentido de avance)
+    if (w > 12) {
+      const pk = ((t * 0.6) % 1)
+      const px = pk * w
+      ctx.save(); ctx.globalAlpha = clamp(Math.sin(pk * Math.PI), 0, 1) * 0.9
+      ctx.fillStyle = pal.accent2 || pal.accent
+      ctx.beginPath(); ctx.arc(px, 0, 5, 0, TAU); ctx.fill()
+      ctx.restore()
+    }
+    // punta (aparece cuando la linea casi termino, luego empuja suave hacia adelante)
     const hp = eOutBack(inv(t, 0.7, 1.05))
-    ctx.save(); ctx.translate(full, 0); ctx.scale(hp, hp)
+    const nudge = 3 * (0.5 + 0.5 * Math.sin(t * 2.2))
+    ctx.save(); ctx.translate(full + nudge, 0); ctx.scale(hp, hp)
     ctx.beginPath(); ctx.moveTo(-22, -16); ctx.lineTo(2, 0); ctx.lineTo(-22, 16); ctx.stroke()
     ctx.restore()
     ctx.restore()
@@ -336,13 +365,20 @@ register({
     const { pal } = env
     const bw = W * 0.62, bh = H * 0.42, len = Math.min(bw, bh) * 0.32
     const ap = eOutCubic(inv(t, 0.1, 0.8))
-    const x0 = CX - bw / 2, y0 = CY - bh / 2, x1 = CX + bw / 2, y1 = CY + bh / 2
+    // "respiracion de encuadre": las esquinas se acercan/alejan apenas, como una camara que enfoca
+    const focus = Math.sin(t * 1.2) * 3
+    const x0 = CX - bw / 2 - focus, y0 = CY - bh / 2 - focus, x1 = CX + bw / 2 + focus, y1 = CY + bh / 2 + focus
     ctx.save()
     ctx.strokeStyle = pal.accent; ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.lineJoin = 'round'
     ctx.globalAlpha = ap
-    const L = len * ap
+    const L = len * ap * (1 + 0.04 * Math.sin(t * 1.6))
     const corner = (cx, cy, dx, dy) => { ctx.beginPath(); ctx.moveTo(cx + dx * L, cy); ctx.lineTo(cx, cy); ctx.lineTo(cx, cy + dy * L); ctx.stroke() }
     corner(x0, y0, 1, 1); corner(x1, y0, -1, 1); corner(x0, y1, 1, -1); corner(x1, y1, -1, -1)
+    // puntos de acento en las esquinas que titilan (vida continua)
+    const tw = 0.4 + 0.6 * (0.5 + 0.5 * Math.sin(t * 2.4))
+    ctx.globalAlpha = ap * tw
+    ctx.fillStyle = pal.accent2 || pal.accent
+    for (const [cx, cy] of [[x0, y0], [x1, y0], [x0, y1], [x1, y1]]) { ctx.beginPath(); ctx.arc(cx, cy, 3, 0, TAU); ctx.fill() }
     ctx.restore()
   },
 })
@@ -354,18 +390,29 @@ register({
     const { pal } = env
     const cw = W * 0.66, ch = H * 0.4
     const ap = spring(inv(t, 0, 0.9), { zeta: 0.6, freq: 1.8 })
-    const ry = (1 - ap) * 40
+    // tras asentar, flota apenas (idle continuo) -> la card "respira"
+    const settled = clamp(inv(t, 0.7, 1.1), 0, 1)
+    const ry = (1 - ap) * 40 + settled * Math.sin(t * 1.1) * 3
     ctx.save(); ctx.translate(CX, CY + ry); ctx.globalAlpha = clamp(inv(t, 0, 0.5), 0, 1)
-    // sombra
-    ctx.save(); ctx.shadowColor = rgba('#000', pal.tone === 'light' ? 0.18 : 0.5); ctx.shadowBlur = 28; ctx.shadowOffsetY = 14
+    // sombra (el blur late con la flotacion)
+    ctx.save(); ctx.shadowColor = rgba('#000', pal.tone === 'light' ? 0.18 : 0.5); ctx.shadowBlur = 28 + settled * 4 * Math.sin(t * 1.1); ctx.shadowOffsetY = 14
     ctx.fillStyle = pal.surface || lighten(pal.bg0 || '#1a1a22', pal.tone === 'light' ? -0.02 : 0.08)
     ctx.beginPath(); ctx.roundRect(-cw / 2, -ch / 2, cw, ch, 20); ctx.fill()
     ctx.restore()
-    // borde sutil + barra de acento arriba
+    // sheen diagonal que cruza la superficie (vida continua, premium)
+    ctx.save(); ctx.beginPath(); ctx.roundRect(-cw / 2, -ch / 2, cw, ch, 20); ctx.clip()
+    const sweep = ((t * 0.22) % 1) * 1.6 - 0.3
+    const sx = -cw / 2 + sweep * cw
+    const sg = ctx.createLinearGradient(sx - 60, -ch / 2, sx + 60, ch / 2)
+    sg.addColorStop(0, rgba('#ffffff', 0)); sg.addColorStop(0.5, rgba('#ffffff', pal.tone === 'light' ? 0.07 : 0.05)); sg.addColorStop(1, rgba('#ffffff', 0))
+    ctx.fillStyle = sg; ctx.fillRect(-cw / 2, -ch / 2, cw, ch)
+    ctx.restore()
+    // borde sutil + barra de acento arriba (ancho pulsa suave)
     ctx.strokeStyle = rgba(pal.ink || '#fff', 0.08); ctx.lineWidth = 1
     ctx.beginPath(); ctx.roundRect(-cw / 2, -ch / 2, cw, ch, 20); ctx.stroke()
     ctx.fillStyle = pal.accent
-    ctx.beginPath(); ctx.roundRect(-cw / 2 + 18, -ch / 2 + 18, 54, 7, 3.5); ctx.fill()
+    const barW = 54 * (1 + 0.06 * Math.sin(t * 2.0))
+    ctx.beginPath(); ctx.roundRect(-cw / 2 + 18, -ch / 2 + 18, barW, 7, 3.5); ctx.fill()
     ctx.restore()
   },
 })
@@ -377,7 +424,8 @@ register({
     const { pal, content, fonts } = env
     const label = (content && (content.kicker || content.cta || content.tagline)) ? String(content.kicker || content.cta || content.tagline) : 'NOVEDAD'
     const ap = eOutBack(inv(t, 0, 0.7))
-    ctx.save(); ctx.translate(CX, CY); ctx.scale(ap, ap)
+    const breathe = 1 + 0.012 * Math.sin(t * 1.6)   // late suave (idle)
+    ctx.save(); ctx.translate(CX, CY); ctx.scale(ap * breathe, ap * breathe)
     const fam = (fonts && fonts.text) || 'Inter'
     ctx.font = `700 22px "${fam}"`
     const txt = label.toUpperCase().slice(0, 22)
@@ -386,7 +434,15 @@ register({
     // pill relleno acento
     ctx.fillStyle = pal.accent
     ctx.beginPath(); ctx.roundRect(-w / 2, -h / 2, w, h, h / 2); ctx.fill()
-    // punto vivo a la izquierda
+    // sheen que recorre la pill (vida continua)
+    ctx.save(); ctx.beginPath(); ctx.roundRect(-w / 2, -h / 2, w, h, h / 2); ctx.clip()
+    const sweep = ((t * 0.5) % 1.4) - 0.2
+    const sx = -w / 2 + sweep * w
+    const sg = ctx.createLinearGradient(sx - 28, 0, sx + 28, 0)
+    sg.addColorStop(0, rgba('#ffffff', 0)); sg.addColorStop(0.5, rgba('#ffffff', pal.tone === 'light' ? 0.18 : 0.22)); sg.addColorStop(1, rgba('#ffffff', 0))
+    ctx.fillStyle = sg; ctx.fillRect(-w / 2, -h / 2, w, h)
+    ctx.restore()
+    // texto
     const onAcc = pal.onAccent || (pal.tone === 'light' ? '#fff' : '#0a0a0f')
     drawText(ctx, txt, 0, 1, { size: 22, weight: 700, family: fam, maxW: tw + 2, color: onAcc })
     ctx.restore()
@@ -464,7 +520,8 @@ register({
     const { pal } = env
     const w = W * 0.56, dp = eOutCubic(inv(t, 0.1, 0.9))
     ctx.save(); ctx.translate(CX - w / 2, CY)
-    ctx.strokeStyle = pal.accent; ctx.lineWidth = 12; ctx.lineCap = 'round'
+    // grosor late suave tras dibujarse (tinta que respira)
+    ctx.strokeStyle = pal.accent; ctx.lineWidth = 12 * (1 + 0.05 * Math.sin(t * 1.8)); ctx.lineCap = 'round'
     // trazo tipo marcador con leve curva, dibujado por progreso
     ctx.beginPath()
     const STEP = 40, end = Math.max(1, Math.round(STEP * dp))
@@ -475,6 +532,14 @@ register({
       i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)
     }
     ctx.stroke()
+    // destello que recorre el trazo una vez dibujado (vida continua)
+    if (dp > 0.6) {
+      const pk = ((t * 0.45) % 1)
+      const px = pk * w, py = Math.sin(pk * Math.PI) * 6 - 2
+      ctx.globalAlpha = clamp(Math.sin(pk * Math.PI), 0, 1) * 0.7
+      ctx.fillStyle = rgba('#ffffff', pal.tone === 'light' ? 0.5 : 0.7)
+      ctx.beginPath(); ctx.arc(px, py, 5, 0, TAU); ctx.fill()
+    }
     ctx.restore()
   },
 })
@@ -631,7 +696,8 @@ register({
   render(ctx, t, env) {
     const { pal } = env
     const s = W * 0.18, ap = spring(inv(t, 0, 0.8), { zeta: 0.5, freq: 2.0 })
-    ctx.save(); ctx.translate(CX, CY); ctx.scale(ap, ap)
+    const breathe = 1 + 0.012 * Math.sin(t * 1.3)   // idle continuo
+    ctx.save(); ctx.translate(CX, CY); ctx.scale(ap * breathe, ap * breathe)
     const onAcc = pal.onAccent || (pal.tone === 'light' ? '#fff' : '#0a0a0f')
     // cuerpo
     ctx.fillStyle = pal.accent
@@ -642,6 +708,12 @@ register({
     // anillas
     ctx.fillStyle = onAcc
     for (const sx of [-0.5, 0.5]) { ctx.beginPath(); ctx.roundRect(sx * s - s * 0.07, -s * 0.95, s * 0.14, s * 0.3, s * 0.07); ctx.fill() }
+    // resaltado del dia que late detras del check (vida continua)
+    const hl = 0.5 + 0.5 * Math.sin(t * 2.2)
+    ctx.globalAlpha = 0.18 + 0.22 * hl
+    ctx.fillStyle = pal.accent2 || pal.accent
+    ctx.beginPath(); ctx.arc(0, s * 0.18, s * 0.5, 0, TAU); ctx.fill()
+    ctx.globalAlpha = 1
     // dia marcado (check que aparece)
     const dp = eOutBack(inv(t, 0.4, 0.95))
     ctx.save(); ctx.translate(0, s * 0.18); ctx.scale(dp, dp)
@@ -706,7 +778,13 @@ register({
   render(ctx, t, env) {
     const { pal } = env
     const s = W * 0.18, ap = spring(inv(t, 0, 0.8), { zeta: 0.48, freq: 2.1 })
-    ctx.save(); ctx.translate(CX, CY); ctx.scale(ap, ap)
+    const breathe = 1 + 0.014 * Math.sin(t * 1.4)   // late suave (idle)
+    ctx.save(); ctx.translate(CX, CY); ctx.scale(ap * breathe, ap * breathe)
+    // aura protectora que pulsa (vida continua)
+    const glow = 0.5 + 0.5 * Math.sin(t * 1.7)
+    const ag = ctx.createRadialGradient(0, 0, s * 0.9, 0, 0, s * 1.8)
+    ag.addColorStop(0, rgba(pal.accent2 || pal.accent, 0.2 * glow)); ag.addColorStop(1, rgba(pal.accent2 || pal.accent, 0))
+    ctx.fillStyle = ag; ctx.beginPath(); ctx.arc(0, 0, s * 1.8, 0, TAU); ctx.fill()
     // escudo
     ctx.beginPath()
     ctx.moveTo(0, -s * 1.1)
@@ -874,8 +952,11 @@ register({
   render(ctx, t, env) {
     const { pal } = env
     const cw = W * 0.66, ch = H * 0.26
-    const ap = spring(inv(t, 0, 0.85), { zeta: 0.6, freq: 1.8 }), ry = (1 - ap) * 30
-    ctx.save(); ctx.translate(CX, CY + ry); ctx.globalAlpha = clamp(inv(t, 0, 0.5), 0, 1)
+    const ap = spring(inv(t, 0, 0.85), { zeta: 0.6, freq: 1.8 })
+    const settled = clamp(inv(t, 0.7, 1.1), 0, 1)
+    const ry = (1 - ap) * 30 + settled * Math.sin(t * 1.0) * 2.5   // flota apenas tras asentar
+    const tilt = settled * Math.sin(t * 0.9) * 0.012
+    ctx.save(); ctx.translate(CX, CY + ry); ctx.rotate(tilt); ctx.globalAlpha = clamp(inv(t, 0, 0.5), 0, 1)
     // cuerpo del ticket con muescas a los lados (perforado)
     const notch = 14
     ctx.fillStyle = pal.surface || lighten(pal.bg0 || '#1a1a22', pal.tone === 'light' ? -0.02 : 0.09)
@@ -884,13 +965,14 @@ register({
     ctx.fillStyle = pal.bg0 || (pal.tone === 'light' ? '#fff' : '#0a0a0f')
     ctx.beginPath(); ctx.arc(-cw / 2 + cw * 0.66, -ch / 2, notch, 0, TAU); ctx.fill()
     ctx.beginPath(); ctx.arc(-cw / 2 + cw * 0.66, ch / 2, notch, 0, TAU); ctx.fill()
-    // linea perforada vertical
-    ctx.strokeStyle = rgba(pal.ink || '#fff', 0.25); ctx.lineWidth = 2; ctx.setLineDash([5, 6])
+    // linea perforada vertical (las rayas reptan suave -> vida continua)
+    ctx.strokeStyle = rgba(pal.ink || '#fff', 0.25); ctx.lineWidth = 2; ctx.setLineDash([5, 6]); ctx.lineDashOffset = -((t * 6) % 11)
     ctx.beginPath(); ctx.moveTo(-cw / 2 + cw * 0.66, -ch / 2 + notch); ctx.lineTo(-cw / 2 + cw * 0.66, ch / 2 - notch); ctx.stroke()
-    ctx.setLineDash([])
-    // sello de acento (stub izquierdo)
+    ctx.setLineDash([]); ctx.lineDashOffset = 0
+    // sello de acento (stub izquierdo) que late
     ctx.fillStyle = pal.accent
-    ctx.beginPath(); ctx.roundRect(-cw / 2 + 16, -10, 40, 20, 5); ctx.fill()
+    const stubW = 40 * (1 + 0.06 * Math.sin(t * 2.1))
+    ctx.beginPath(); ctx.roundRect(-cw / 2 + 16, -10, stubW, 20, 5); ctx.fill()
     ctx.restore()
   },
 })
@@ -901,7 +983,9 @@ register({
   render(ctx, t, env) {
     const { pal } = env
     const cw = W * 0.66, ch = H * 0.36, bar = 26
-    const ap = spring(inv(t, 0, 0.9), { zeta: 0.6, freq: 1.8 }), ry = (1 - ap) * 34
+    const ap = spring(inv(t, 0, 0.9), { zeta: 0.6, freq: 1.8 })
+    const settled = clamp(inv(t, 0.7, 1.1), 0, 1)
+    const ry = (1 - ap) * 34 + settled * Math.sin(t * 1.05) * 3   // flota apenas tras asentar
     ctx.save(); ctx.translate(CX, CY + ry); ctx.globalAlpha = clamp(inv(t, 0, 0.45), 0, 1)
     // ventana con barra superior tipo navegador
     ctx.save(); ctx.shadowColor = rgba('#000', pal.tone === 'light' ? 0.16 : 0.5); ctx.shadowBlur = 26; ctx.shadowOffsetY = 12
@@ -923,6 +1007,11 @@ register({
     // lineas de contenido fantasma
     ctx.fillStyle = rgba(pal.ink || '#fff', 0.14)
     for (let i = 0; i < 3; i++) { const w = cw * (0.7 - i * 0.16); ctx.beginPath(); ctx.roundRect(-cw / 2 + 20, -ch / 2 + bar + 24 + i * 22, w, 9, 4.5); ctx.fill() }
+    // cursor que titila al final de la 1ra linea (vida continua, sensacion de "escribiendo")
+    const blink = clamp(Math.sin(t * 3.4) * 0.5 + 0.5, 0, 1)
+    ctx.globalAlpha = clamp(inv(t, 0, 0.45), 0, 1) * blink
+    ctx.fillStyle = pal.accent
+    ctx.beginPath(); ctx.roundRect(-cw / 2 + 20 + cw * 0.7 + 4, -ch / 2 + bar + 22, 4, 13, 2); ctx.fill()
     ctx.restore()
   },
 })
@@ -936,8 +1025,10 @@ register({
     const { pal } = env
     const w = W * 0.58, h = 38, dp = eOutCubic(inv(t, 0.1, 0.85))
     ctx.save(); ctx.translate(CX - w / 2, CY)
-    // trazo de resaltador (rectangulo translucido con bordes irregulares) que crece de izq a der
-    ctx.globalAlpha = pal.tone === 'light' ? 0.5 : 0.42
+    // trazo de resaltador (rectangulo translucido con bordes irregulares) que crece de izq a der.
+    // la tinta "rehumedece" suave -> la opacidad late (vida continua)
+    const base = pal.tone === 'light' ? 0.5 : 0.42
+    ctx.globalAlpha = base * (0.9 + 0.1 * Math.sin(t * 1.6))
     ctx.fillStyle = pal.accent
     const cw = w * dp
     ctx.beginPath()
@@ -946,6 +1037,17 @@ register({
     ctx.lineTo(cw, h / 2 + 2)
     ctx.lineTo(0, h / 2 - 3)
     ctx.closePath(); ctx.fill()
+    // brillo humedo que recorre el resaltado una vez pintado
+    if (dp > 0.6) {
+      ctx.save(); ctx.beginPath()
+      ctx.moveTo(0, -h / 2 + 3); ctx.lineTo(cw, -h / 2 - 2); ctx.lineTo(cw, h / 2 + 2); ctx.lineTo(0, h / 2 - 3); ctx.closePath(); ctx.clip()
+      const pk = ((t * 0.4) % 1.3) - 0.15
+      const sx = pk * cw
+      const sg = ctx.createLinearGradient(sx - 30, 0, sx + 30, 0)
+      sg.addColorStop(0, rgba('#ffffff', 0)); sg.addColorStop(0.5, rgba('#ffffff', 0.22)); sg.addColorStop(1, rgba('#ffffff', 0))
+      ctx.globalAlpha = 1; ctx.fillStyle = sg; ctx.fillRect(0, -h / 2 - 2, cw, h + 4)
+      ctx.restore()
+    }
     ctx.restore()
   },
 })
@@ -1107,7 +1209,9 @@ register({
     for (let i = 0; i < coins; i++) {
       const settle = spring(inv(t, i * 0.12, i * 0.12 + 0.45), { zeta: 0.5, freq: 2.2 })
       if (settle <= 0.001) continue
-      const cy = s * 0.95 - i * (eh * 0.78)
+      // tras asentar, cada moneda bobea apenas con leve desfase -> la pila "respira" (vida continua)
+      const idle = clamp(inv(t, i * 0.12 + 0.45, i * 0.12 + 0.8), 0, 1) * Math.sin(t * 1.6 - i * 0.5) * s * 0.018
+      const cy = s * 0.95 - i * (eh * 0.78) + idle
       const drop = (1 - settle) * -s * 0.6
       ctx.save(); ctx.translate(0, cy + drop)
       // canto
@@ -1234,11 +1338,13 @@ register({
     // ejes
     ctx.strokeStyle = rgba(pal.ink || '#fff', 0.3); ctx.lineWidth = 3; ctx.lineCap = 'round'
     ctx.beginPath(); ctx.moveTo(-s * 1.1, -s * 1.1); ctx.lineTo(-s * 1.1, s); ctx.lineTo(s * 1.1, s); ctx.stroke()
-    // barras que crecen en secuencia
+    // barras que crecen en secuencia, luego respiran en altura (vida continua tipo "datos vivos")
     const bw = s * 0.42, gap = s * 0.6
     heights.forEach((h, i) => {
       const grow = eOutCubic(inv(t, i * 0.12, i * 0.12 + 0.5))
-      const bh = s * 1.7 * h * jitter[i] * grow
+      const idle = clamp(inv(t, i * 0.12 + 0.5, i * 0.12 + 0.85), 0, 1)
+      const wob = 1 + idle * 0.04 * Math.sin(t * 2.0 + i * 0.9)
+      const bh = s * 1.7 * h * jitter[i] * grow * wob
       const x = -s * 0.75 + i * gap
       ctx.fillStyle = i === heights.length - 1 ? (pal.accent2 || pal.accent) : pal.accent
       ctx.beginPath(); ctx.roundRect(x - bw / 2, s - bh, bw, bh, [bw * 0.2, bw * 0.2, 0, 0]); ctx.fill()
@@ -1248,7 +1354,14 @@ register({
     ctx.strokeStyle = pal.accent2 || pal.accent; ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.lineJoin = 'round'
     const ax0 = -s * 0.85, ay0 = s * 0.2, ax1 = s * 0.85, ay1 = -s * 0.9
     ctx.beginPath(); ctx.moveTo(ax0, ay0); ctx.lineTo(lerp(ax0, ax1, dp), lerp(ay0, ay1, dp)); ctx.stroke()
-    if (dp > 0.9) { const hp = eOutBack(inv(t, 0.92, 1.05)); ctx.save(); ctx.translate(ax1, ay1); ctx.scale(hp, hp); ctx.beginPath(); ctx.moveTo(-18, 2); ctx.lineTo(2, 2); ctx.lineTo(2, 22); ctx.stroke(); ctx.restore() }
+    if (dp > 0.9) {
+      const hp = eOutBack(inv(t, 0.92, 1.05))
+      // glow que late en la punta de la tendencia (vida continua, "sigue subiendo")
+      const gl = 0.4 + 0.6 * (0.5 + 0.5 * Math.sin(t * 2.4))
+      ctx.save(); ctx.globalAlpha = gl * 0.6; ctx.fillStyle = pal.accent2 || pal.accent
+      ctx.beginPath(); ctx.arc(ax1, ay1, 7 + 3 * gl, 0, TAU); ctx.fill(); ctx.restore()
+      ctx.save(); ctx.translate(ax1, ay1); ctx.scale(hp, hp); ctx.beginPath(); ctx.moveTo(-18, 2); ctx.lineTo(2, 2); ctx.lineTo(2, 22); ctx.stroke(); ctx.restore()
+    }
     ctx.restore()
   },
 })
@@ -1355,7 +1468,9 @@ register({
   render(ctx, t, env) {
     const { pal, content, fonts } = env
     const cw = W * 0.7, ch = H * 0.22
-    const ap = spring(inv(t, 0, 0.85), { zeta: 0.55, freq: 1.9 }), ry = (1 - ap) * 26
+    const ap = spring(inv(t, 0, 0.85), { zeta: 0.55, freq: 1.9 })
+    const settled = clamp(inv(t, 0.7, 1.05), 0, 1)
+    const ry = (1 - ap) * 26 + settled * Math.sin(t * 1.1) * 3   // flota apenas (idle)
     ctx.save(); ctx.translate(CX, CY - H * 0.02 + ry); ctx.globalAlpha = clamp(inv(t, 0, 0.4), 0, 1); ctx.scale(ap, ap)
     // globo
     ctx.fillStyle = pal.surface && pal.surface.startsWith('rgba') ? lighten(pal.bg0 || (pal.tone === 'light' ? '#fff' : '#16121e'), pal.tone === 'light' ? -0.02 : 0.1) : (pal.surface || pal.accent)
@@ -1364,8 +1479,8 @@ register({
     ctx.restore()
     // cola (apunta abajo-izquierda)
     ctx.beginPath(); ctx.moveTo(-cw * 0.18, ch / 2 - 2); ctx.lineTo(-cw * 0.28, ch / 2 + 28); ctx.lineTo(-cw * 0.04, ch / 2 - 2); ctx.closePath(); ctx.fill()
-    // barra de acento + texto del contenido (1-2 lineas, sin desbordar)
-    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(-cw / 2 + 18, -ch / 2 + 16, 40, 6, 3); ctx.fill()
+    // barra de acento (ancho late) + texto del contenido (1-2 lineas, sin desbordar)
+    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(-cw / 2 + 18, -ch / 2 + 16, 40 * (1 + 0.08 * Math.sin(t * 2.0)), 6, 3); ctx.fill()
     const fam = (fonts && fonts.text) || 'Inter'
     const txt = (content && (content.claim || content.tagline || content.brand)) ? String(content.claim || content.tagline || content.brand) : 'Tu mensaje aca'
     const ink = pal.ink || (pal.tone === 'light' ? '#1a1620' : '#f4f1fb')
@@ -1480,6 +1595,20 @@ register({
     ctx.lineTo(-len / 2 + notch, 0); ctx.closePath()
     ctx.fill()
     ctx.restore()
+    // sheen que recorre la cinta tras desplegarse (vida continua, satinado)
+    if (slide > 0.7) {
+      ctx.save()
+      ctx.beginPath()
+      ctx.moveTo(-len / 2, -bandW / 2); ctx.lineTo(len / 2, -bandW / 2)
+      ctx.lineTo(len / 2 - notch, 0); ctx.lineTo(len / 2, bandW / 2)
+      ctx.lineTo(-len / 2, bandW / 2); ctx.lineTo(-len / 2 + notch, 0); ctx.closePath(); ctx.clip()
+      const sweep = ((t * 0.35) % 1.4) - 0.2
+      const sx = -len / 2 + sweep * len
+      const sg = ctx.createLinearGradient(sx - 50, 0, sx + 50, 0)
+      sg.addColorStop(0, rgba('#ffffff', 0)); sg.addColorStop(0.5, rgba('#ffffff', 0.16)); sg.addColorStop(1, rgba('#ffffff', 0))
+      ctx.fillStyle = sg; ctx.fillRect(-len / 2, -bandW / 2, len, bandW)
+      ctx.restore()
+    }
     // doble linea + texto
     ctx.strokeStyle = rgba(onAcc, 0.5); ctx.lineWidth = 2
     ctx.beginPath(); ctx.moveTo(-len / 2 + 10, -bandW / 2 + 6); ctx.lineTo(len / 2 - 10, -bandW / 2 + 6); ctx.moveTo(-len / 2 + 10, bandW / 2 - 6); ctx.lineTo(len / 2 - 10, bandW / 2 - 6); ctx.stroke()
@@ -1806,11 +1935,15 @@ register({
     const pcs = []
     for (let i = 0; i < N; i++) pcs.push({ a: r() * TAU, v: 0.7 + r() * 0.6, rot: r() * TAU, spin: (r() - 0.5) * 6, kind: (r() * 3) | 0, col: r() < 0.5 })
     const burst = eOutCubic(inv(t, 0, 0.9))
+    const done = clamp(inv(t, 0.9, 1.2), 0, 1)   // tras estallar, las piezas siguen flotando (vida continua)
     ctx.save(); ctx.translate(CX, CY)
     for (const p of pcs) {
       const dist = W * 0.32 * p.v * burst
       const fall = Math.pow(burst, 2) * H * 0.12   // gravedad leve
-      const x = Math.cos(p.a) * dist, y = Math.sin(p.a) * dist + fall
+      // deriva continua: vaiven horizontal + caida lenta sostenida
+      const driftX = done * Math.sin(t * 1.2 + p.a * 4) * W * 0.02
+      const driftY = done * (Math.sin(t * 1.0 + p.a * 2) * H * 0.012 + ((t * 4) % 1) * 0)
+      const x = Math.cos(p.a) * dist + driftX, y = Math.sin(p.a) * dist + fall + driftY
       const flutter = Math.sin(t * 4 + p.a * 3)
       ctx.save(); ctx.translate(x, y); ctx.rotate(p.rot + p.spin * t)
       ctx.globalAlpha = clamp(1 - (burst - 0.6) / 0.4, 0.3, 1)
@@ -1852,10 +1985,15 @@ register({
       ctx.restore()
     }
     flourish(x0, y0, 1, 1); flourish(x1, y0, -1, 1); flourish(x0, y1, 1, -1); flourish(x1, y1, -1, -1)
-    // puntito de acento2 en cada esquina (aparece al final)
-    const dp = clamp(inv(t, 0.6, 1.0), 0, 1); ctx.globalAlpha = ap * dp
+    // puntito de acento2 en cada esquina (aparece al final y titila en secuencia -> vida continua)
+    const dp = clamp(inv(t, 0.6, 1.0), 0, 1)
     ctx.fillStyle = pal.accent2 || pal.accent
-    for (const [cx, cy] of [[x0, y0], [x1, y0], [x0, y1], [x1, y1]]) { ctx.beginPath(); ctx.arc(cx, cy, 3.2, 0, TAU); ctx.fill() }
+    const corners = [[x0, y0], [x1, y0], [x0, y1], [x1, y1]]
+    corners.forEach(([cx, cy], i) => {
+      const tw = 0.45 + 0.55 * (0.5 + 0.5 * Math.sin(t * 2.6 - i * 0.8))
+      ctx.globalAlpha = ap * dp * tw
+      ctx.beginPath(); ctx.arc(cx, cy, 3.2 * (0.85 + 0.3 * tw), 0, TAU); ctx.fill()
+    })
     ctx.restore()
   },
 })
@@ -1931,7 +2069,9 @@ register({
   render(ctx, t, env) {
     const { pal } = env
     const ph = H * 0.5, pw = ph * 0.5
-    const ap = spring(inv(t, 0, 0.9), { zeta: 0.6, freq: 1.8 }), ry = (1 - ap) * 36
+    const ap = spring(inv(t, 0, 0.9), { zeta: 0.6, freq: 1.8 })
+    const settled = clamp(inv(t, 0.7, 1.1), 0, 1)
+    const ry = (1 - ap) * 36 + settled * Math.sin(t * 1.0) * 3   // flota apenas tras asentar
     ctx.save(); ctx.translate(CX, CY + ry); ctx.globalAlpha = clamp(inv(t, 0, 0.45), 0, 1)
     const onAcc = pal.onAccent || (pal.tone === 'light' ? '#fff' : '#0a0a0f')
     // chasis
@@ -1957,6 +2097,13 @@ register({
       const cy = -ph * 0.18 + i * ph * 0.16
       ctx.beginPath(); ctx.roundRect(-pw * 0.34, cy, (pw * 0.68) * clamp(pop, 0, 1), ph * 0.1, 8); ctx.fill()
     }
+    // reflejo que barre la pantalla en diagonal (vida continua)
+    const sweep = ((t * 0.2) % 1.5) - 0.25
+    const sx = -pw / 2 + sweep * pw
+    ctx.globalAlpha = clamp(inv(t, 0, 0.45), 0, 1)
+    const sg = ctx.createLinearGradient(sx - 40, -ph / 2, sx + 40, ph / 2)
+    sg.addColorStop(0, rgba('#ffffff', 0)); sg.addColorStop(0.5, rgba('#ffffff', 0.1)); sg.addColorStop(1, rgba('#ffffff', 0))
+    ctx.fillStyle = sg; ctx.fillRect(-pw / 2, -ph / 2, pw, ph)
     ctx.restore()
     ctx.restore()
   },
@@ -2454,6 +2601,7 @@ register({
     const span = W * 0.66, n = 4, gap = span / (n - 1)
     ctx.save(); ctx.translate(CX - span / 2, CY)
     const onAcc = pal.onAccent || (pal.tone === 'light' ? '#fff' : '#0a0a0f')
+    const loaded = clamp(inv(t, (n - 1) * 0.22, (n - 1) * 0.22 + 0.5), 0, 1)
     // segmentos que se "cargan" en secuencia (energia viaja por la linea)
     for (let i = 0; i < n - 1; i++) {
       const fill = clamp(inv(t, i * 0.22, i * 0.22 + 0.4), 0, 1)
@@ -2465,13 +2613,23 @@ register({
       ctx.strokeStyle = pal.accent; ctx.lineWidth = 5
       ctx.beginPath(); ctx.moveTo(x0, 0); ctx.lineTo(lerp(x0, x1, fill), 0); ctx.stroke()
     }
-    // nodos (aparecen en secuencia, late el activo)
+    // tras cargar, un pulso de energia recorre toda la red en loop (vida continua)
+    if (loaded > 0.01) {
+      const pk = ((t * 0.5) % 1)
+      const px = pk * span
+      ctx.save(); ctx.globalAlpha = loaded * clamp(Math.sin(pk * Math.PI), 0, 1) * 0.9
+      ctx.fillStyle = pal.accent2 || pal.accent
+      ctx.beginPath(); ctx.arc(px, 0, 5, 0, TAU); ctx.fill()
+      ctx.restore()
+    }
+    // nodos (aparecen en secuencia, late el activo; el ultimo sigue latiendo tras cargar)
     for (let i = 0; i < n; i++) {
       const pop = spring(inv(t, i * 0.22, i * 0.22 + 0.4), { zeta: 0.45, freq: 2.4 })
       if (pop <= 0.001) continue
       const x = i * gap
       const active = clamp(inv(t, i * 0.22, i * 0.22 + 0.4), 0, 1) >= 1 && clamp(inv(t, (i + 1) * 0.22, (i + 1) * 0.22 + 0.4), 0, 1) < 1
-      const breathe = active ? 1 + 0.18 * Math.sin(t * 4) : 1
+      const finalPulse = (i === n - 1) ? loaded * 0.16 * Math.sin(t * 3) : 0
+      const breathe = active ? 1 + 0.18 * Math.sin(t * 4) : 1 + finalPulse
       ctx.save(); ctx.translate(x, 0); ctx.scale(pop * breathe, pop * breathe)
       ctx.fillStyle = i === n - 1 ? (pal.accent2 || pal.accent) : pal.accent
       ctx.beginPath(); ctx.arc(0, 0, 11, 0, TAU); ctx.fill()
@@ -2527,7 +2685,10 @@ register({
     const { pal, content, fonts } = env
     const w = W * 0.66, h = H * 0.13
     const unroll = eOutCubic(inv(t, 0.1, 0.85))
-    ctx.save(); ctx.translate(CX, CY)
+    // tras desplegarse, el estandarte ondea apenas como tela al viento (vida continua)
+    const settled = clamp(inv(t, 0.85, 1.2), 0, 1)
+    const wave = settled * Math.sin(t * 1.3) * 0.02
+    ctx.save(); ctx.translate(CX, CY); ctx.rotate(wave)
     const onAcc = pal.onAccent || (pal.tone === 'light' ? '#fff' : '#0a0a0f')
     // pliegues laterales (sombra) detras
     const tab = h * 0.55
@@ -2597,13 +2758,17 @@ register({
     const jit = []
     for (let i = 0; i < 64; i++) jit.push((r() - 0.5) * 8)
     ctx.save(); ctx.translate(CX, CY)
-    ctx.strokeStyle = pal.accent; ctx.lineWidth = 7; ctx.lineCap = 'round'; ctx.lineJoin = 'round'
+    // grosor late suave tras dibujarse (tinta viva)
+    ctx.strokeStyle = pal.accent; ctx.lineWidth = 7 * (1 + 0.05 * Math.sin(t * 1.8)); ctx.lineCap = 'round'; ctx.lineJoin = 'round'
+    // tras cerrarse, el trazo "vibra" apenas como dibujo a mano que respira (vida continua, sutil)
+    const live = clamp(inv(t, 0.95, 1.3), 0, 1) * 0.6
     const turns = 1.18, STEP = 60, end = Math.max(1, Math.round(STEP * dp))
     ctx.beginPath()
     for (let i = 0; i <= end; i++) {
       const k = i / STEP
       const a = -Math.PI / 2 + k * turns * TAU
-      const wob = 1 + (jit[i % jit.length]) / 100
+      const breath = 1 + live * 0.012 * Math.sin(t * 1.6 + i * 0.4)
+      const wob = (1 + (jit[i % jit.length]) / 100) * breath
       const x = Math.cos(a) * rx * wob + jit[(i * 3) % jit.length] * 0.4
       const y = Math.sin(a) * ry * wob + jit[(i * 5) % jit.length] * 0.4
       i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)

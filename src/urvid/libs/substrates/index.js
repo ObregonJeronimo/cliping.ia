@@ -5,7 +5,7 @@
 // scanlines · overlay-light. Regla de oro: ALPHA BAJO -> la textura se SIENTE, no tapa. El director la pone arriba.
 import { register } from '../../core/registry.js'
 import { mulberry32, range, irange } from '../../core/prng.js'
-import { W, H, TAU, rgba, lighten, darken, clamp } from '../../core/util.js'
+import { W, H, TAU, rgba, lighten, darken, clamp, smooth } from '../../core/util.js'
 
 // ink util: color de la "tinta" de la textura segun tono (oscuro sobre claro, claro sobre oscuro)
 const inkOf = pal => (pal.tone === 'light' ? '#000000' : '#ffffff')
@@ -235,11 +235,18 @@ register({
   render(ctx, t, env) {
     const { pal } = env
     // rejilla LCD: lineas verticales sutiles + horizontales -> "subpixel grid". Doble tono via acento.
+    // VIDA: una banda de "refresco" vertical recorre la pantalla (como el barrido de un panel) realzando las
+    // columnas que cruza + microlatido global de la rejilla -> nunca queda congelada.
     const ink = inkOf(pal), step = 4
+    const breath = 0.85 + 0.15 * Math.sin(t * 0.9)           // microlatido continuo del subpixel
+    const sweepX = ((t * 0.12) % 1) * (W + 80) - 40          // banda de refresco que recorre el ancho
     ctx.save()
-    ctx.strokeStyle = rgba(ink, pal.tone === 'light' ? 0.03 : 0.05); ctx.lineWidth = 1
-    for (let x = 0; x < W; x += step) { ctx.beginPath(); ctx.moveTo(x + 0.5, 0); ctx.lineTo(x + 0.5, H); ctx.stroke() }
-    ctx.strokeStyle = rgba(ink, pal.tone === 'light' ? 0.04 : 0.06)
+    for (let x = 0; x < W; x += step) {
+      const near = 1 - Math.min(1, Math.abs(x - sweepX) / 70) // realce suave bajo la banda
+      ctx.strokeStyle = rgba(ink, (pal.tone === 'light' ? 0.03 : 0.05) * breath * (1 + near * 0.8))
+      ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + 0.5, 0); ctx.lineTo(x + 0.5, H); ctx.stroke()
+    }
+    ctx.strokeStyle = rgba(ink, (pal.tone === 'light' ? 0.04 : 0.06) * breath)
     for (let y = 0; y < H; y += step) { ctx.beginPath(); ctx.moveTo(0, y + 0.5); ctx.lineTo(W, y + 0.5); ctx.stroke() }
     ctx.restore()
   },
@@ -277,22 +284,38 @@ register({
   tags: ['lienzo', 'tejido', 'trama'],
   render(ctx, t, env) {
     const { pal } = env
-    // tejido de lienzo: hilos verticales y horizontales entrelazados (lineas onduladas suaves) -> textura de tela
+    // tejido de lienzo: hilos verticales y horizontales entrelazados (lineas onduladas suaves) -> textura de tela.
+    // VIDA: la ondulacion de los hilos respira con t (fase que avanza lentisima) + un highlight rasante diagonal que
+    // recorre la tela realzando los cruces que toca -> el tejido "vibra" suave, nunca queda muerto. Tenue, doble tono.
     const ink = inkOf(pal), anti = antiInkOf(pal), step = 6
+    const ph = t * 0.6, sway = Math.sin(t * 0.35) * 0.4       // fase de la ondulacion + microvaiven
+    const sweep = ((t * 0.07) % 1) * (W + H) - H * 0.5        // highlight rasante diagonal (x+y)
     ctx.save()
     ctx.lineWidth = 1.2
     // urdimbre (vertical)
-    ctx.strokeStyle = rgba(ink, pal.tone === 'light' ? 0.03 : 0.04)
     for (let x = 0; x < W; x += step) {
+      ctx.strokeStyle = rgba(ink, pal.tone === 'light' ? 0.03 : 0.04)
       ctx.beginPath()
-      for (let y = 0; y <= H; y += 3) ctx.lineTo(x + Math.sin(y * 0.5) * 0.8, y)
+      for (let y = 0; y <= H; y += 3) ctx.lineTo(x + Math.sin(y * 0.5 + ph) * 0.8 + sway, y)
       ctx.stroke()
     }
     // trama (horizontal), leve highlight para dar relieve
-    ctx.strokeStyle = rgba(anti, pal.tone === 'light' ? 0.025 : 0.035)
     for (let y = 0; y < H; y += step) {
+      ctx.strokeStyle = rgba(anti, pal.tone === 'light' ? 0.025 : 0.035)
       ctx.beginPath()
-      for (let x = 0; x <= W; x += 3) ctx.lineTo(x, y + Math.sin(x * 0.5) * 0.8)
+      for (let x = 0; x <= W; x += 3) ctx.lineTo(x, y + Math.sin(x * 0.5 + ph) * 0.8)
+      ctx.stroke()
+    }
+    // highlight rasante: una banda diagonal (x+y) de luz que recorre la tela y realza el relieve por donde pasa
+    ctx.strokeStyle = rgba(anti, pal.tone === 'light' ? 0.03 : 0.05); ctx.lineWidth = 1
+    for (let y = 0; y < H; y += step) {
+      ctx.beginPath(); let started = false
+      for (let x = 0; x <= W; x += 4) {
+        const near = 1 - Math.min(1, Math.abs((x + y) - sweep) / 140)
+        if (near <= 0.04) { started = false; continue }
+        const px = x, py = y + Math.sin(x * 0.5 + ph) * 0.8
+        started ? ctx.lineTo(px, py) : (ctx.moveTo(px, py), started = true)
+      }
       ctx.stroke()
     }
     ctx.restore()
@@ -439,7 +462,9 @@ register({
   tags: ['grunge', 'desgaste', 'manchas'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x71fe4d29)
-    // grunge: manchas irregulares (clusters de puntos de tamano variado) en los bordes -> desgaste/suciedad
+    // grunge: manchas irregulares (clusters de puntos de tamano variado) en los bordes -> desgaste/suciedad.
+    // VIDA: cada cluster RESPIRA con su propia fase (la suciedad se "asienta y aclara" muy despacio) -> los bordes
+    // nunca quedan congelados. Las posiciones de los puntos son fijas (seed); solo modula la intensidad. Tenue.
     const ink = inkOf(pal)
     ctx.save()
     const clusters = 6
@@ -449,10 +474,11 @@ register({
       const cx = edge < 0.5 ? r() * W * 0.3 + (r() < 0.5 ? 0 : W * 0.7) : r() * W
       const cy = edge < 0.5 ? r() * H : (r() < 0.5 ? r() * H * 0.25 : H * 0.75 + r() * H * 0.25)
       const spread = 30 + r() * 50, dots = 40 + (r() * 50 | 0)
+      const breath = 0.7 + 0.3 * Math.sin(t * 0.35 + c * 1.7)   // respiracion por cluster
       for (let i = 0; i < dots; i++) {
         const a = r() * TAU, rr = Math.pow(r(), 1.6) * spread
         const x = cx + Math.cos(a) * rr, y = cy + Math.sin(a) * rr, s = 0.6 + r() * 1.8
-        ctx.fillStyle = rgba(ink, (pal.tone === 'light' ? 0.03 : 0.05) * (1 - rr / spread))
+        ctx.fillStyle = rgba(ink, (pal.tone === 'light' ? 0.03 : 0.05) * (1 - rr / spread) * breath)
         ctx.fillRect(x, y, s, s)
       }
     }
@@ -719,16 +745,20 @@ register({
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x4d3b9af1)
     // tejido de sarga/denim: lineas diagonales cortas y densas (el tipico patron en escalera del jean) + micromota.
-    // Casi inmovil. Tenue. Doble tono via ink/anti para el relieve.
+    // VIDA: una luz rasante recorre la sarga (a lo largo de su propio eje diagonal) realzando los cordones por donde
+    // pasa + microlatido global -> el jean "vibra" suave, nunca queda muerto. Tenue, doble tono via ink/anti.
     const ink = inkOf(pal), anti = antiInkOf(pal)
+    const breath = 0.9 + 0.1 * Math.sin(t * 0.5)
     ctx.save()
     // capa diagonal de sarga (en su propio save para deshacer la rotacion)
     ctx.save()
     ctx.translate(W / 2, H / 2); ctx.rotate(0.62); ctx.translate(-W / 2, -H / 2)
     ctx.lineWidth = 1.4
     const step = 5
+    const sweepY = ((t * 0.09) % 1) * (H + 60) - 30           // luz que recorre el eje de la sarga
     for (let y = -10; y < H + 10; y += step) {
-      ctx.strokeStyle = rgba(ink, pal.tone === 'light' ? 0.03 : 0.07)
+      const lit = 1 + 0.8 * Math.max(0, 1 - Math.abs(y - sweepY) / 90)
+      ctx.strokeStyle = rgba(ink, (pal.tone === 'light' ? 0.03 : 0.07) * breath * lit)
       ctx.beginPath()
       for (let x = -10; x <= W + 10; x += 8) ctx.lineTo(x, y + (x % (step * 2) === 0 ? 1 : -1))
       ctx.stroke()
@@ -737,7 +767,7 @@ register({
     // micromota de hilos rotos (ya sin rotacion)
     for (let i = 0; i < 200; i++) {
       const x = r() * W, y = r() * H
-      ctx.fillStyle = rgba(r() < 0.5 ? ink : anti, (pal.tone === 'light' ? 0.025 : 0.06) * r())
+      ctx.fillStyle = rgba(r() < 0.5 ? ink : anti, (pal.tone === 'light' ? 0.025 : 0.06) * r() * breath)
       ctx.fillRect(x, y, 1, 1)
     }
     ctx.restore()
@@ -1097,20 +1127,20 @@ register({
   tags: ['interlace', 'campos', 'digital', 'flicker'],
   render(ctx, t, env) {
     const { pal } = env
-    // entrelazado (interlace): dos campos (lineas pares e impares) que alternan su tenue oscurecimiento por frame
-    // -> el "shimmer" del video entrelazado. Muy regular, tenue. Doble tono via ink. El flicker viene de t (no random).
+    // entrelazado (interlace): dos campos (lineas pares e impares) que alternan su tenue oscurecimiento -> el "shimmer"
+    // del video entrelazado. VIDA: el peso entre campos OSCILA SUAVE (no salta binario) -> el shimmer late continuo;
+    // ademas una franja de "tracking" baja despacio realzando las lineas que cruza. Tenue, doble tono via ink. Todo por t.
     const ink = inkOf(pal)
-    const odd = Math.sin(t * 6) > 0 ? 0 : 1   // alterna campo por bloque temporal
-    ctx.save()
-    ctx.strokeStyle = rgba(ink, pal.tone === 'light' ? 0.04 : 0.07); ctx.lineWidth = 1
+    // cross-fade continuo entre los dos campos (en vez del flip duro Math.sin>0)
+    const phase = 0.5 + 0.5 * Math.sin(t * 2.2)              // 0..1 suave: pondera campo par/impar
+    const trackY = ((t * 0.16) % 1) * (H + 40) - 20          // franja de tracking que baja lento
+    const baseA = pal.tone === 'light' ? 0.055 : 0.085
+    ctx.save(); ctx.lineWidth = 1
     for (let y = 0; y < H; y += 2) {
-      if ((Math.floor(y / 2) % 2) !== odd) continue
-      ctx.beginPath(); ctx.moveTo(0, y + 0.5); ctx.lineTo(W, y + 0.5); ctx.stroke()
-    }
-    // el otro campo, mas suave
-    ctx.strokeStyle = rgba(ink, pal.tone === 'light' ? 0.02 : 0.035)
-    for (let y = 0; y < H; y += 2) {
-      if ((Math.floor(y / 2) % 2) === odd) continue
+      const isEven = (Math.floor(y / 2) % 2) === 0
+      const w = isEven ? phase : (1 - phase)                  // 0.35..1 de peso, nunca apagado del todo
+      const near = 1 - Math.min(1, Math.abs(y - trackY) / 90) // realce bajo la franja
+      ctx.strokeStyle = rgba(ink, baseA * (0.4 + 0.6 * w) * (1 + near * 0.7))
       ctx.beginPath(); ctx.moveTo(0, y + 0.5); ctx.lineTo(W, y + 0.5); ctx.stroke()
     }
     ctx.restore()
@@ -1319,18 +1349,23 @@ register({
     const { pal } = env, r = mulberry32(env.seed ^ 0x33e7051a)
     // erosion / desgaste tipo stencil: motas ANTI-tinta (huecos) que "comen" la superficie -> sensacion de pintura
     // descascarada / tinta gastada. Densidad mayor en franjas sembradas. Casi inmovil. Tenue, tone-aware.
+    // VIDA: las franjas de desgaste DERIVAN muy lento (la erosion "avanza/retrocede" como tinta que se gasta) y su
+    // intensidad respira -> nunca queda congelada. Las posiciones de las motas son fijas (seed); solo modula el alpha
+    // segun la cercania a las franjas moviles. Tenue, tone-aware.
     const anti = antiInkOf(pal)
     ctx.save()
     const N = 700
-    // dos franjas erosionadas sembradas (donde se concentra el desgaste)
-    const b1 = range(r, 0, H), b2 = range(r, 0, H)
+    // dos franjas erosionadas sembradas que derivan despacio con t
+    const b1 = range(r, 0, H) + Math.sin(t * 0.22) * 28
+    const b2 = range(r, 0, H) + Math.cos(t * 0.18) * 28
+    const breath = 0.7 + 0.3 * Math.sin(t * 0.4)
     for (let i = 0; i < N; i++) {
       const x = r() * W, y = r() * H
-      // probabilidad de aparecer mayor cerca de las franjas
+      // probabilidad de aparecer mayor cerca de las franjas (ahora moviles)
       const near = Math.min(Math.abs(y - b1), Math.abs(y - b2))
       if (r() > Math.exp(-near / 90)) continue
       const s = 0.6 + r() * 2
-      ctx.fillStyle = rgba(anti, (pal.tone === 'light' ? 0.04 : 0.06) * r())
+      ctx.fillStyle = rgba(anti, (pal.tone === 'light' ? 0.04 : 0.06) * r() * breath)
       ctx.fillRect(x, y, s, s)
     }
     ctx.restore()
@@ -1537,12 +1572,17 @@ register({
     // marco
     ctx.strokeStyle = rgba(ink, pal.tone === 'light' ? 0.06 : 0.09); ctx.lineWidth = 1
     ctx.strokeRect(mx, my, innerW, innerH)
-    // celda activa que recorre (relleno de acento muy tenue)
+    // celda activa que recorre el tablero: en vez de SALTAR de celda en celda (abrupto), hace CROSS-FADE suave entre
+    // la celda actual y la siguiente -> el realce "fluye" por el tablero. Acento muy tenue.
     const total = cols * rows
-    const idx = Math.floor(((t * 0.6) % 1) * total) % total
-    const ci = idx % cols, cj = (idx / cols) | 0
-    ctx.fillStyle = rgba(pal.accent, (pal.tone === 'light' ? 0.05 : 0.07))
-    ctx.fillRect(mx + ci * cw, my + cj * chh, cw, chh)
+    const u = (t * 0.6) % 1
+    const fpos = u * total
+    const idx = Math.floor(fpos) % total, frac = fpos - Math.floor(fpos)
+    const fade = smooth(frac)                                  // ease entre celda actual y siguiente
+    const baseA = pal.tone === 'light' ? 0.05 : 0.07
+    const drawCell = (k, a) => { const ci = k % cols, cj = (k / cols | 0) % rows; ctx.fillStyle = rgba(pal.accent, a); ctx.fillRect(mx + ci * cw, my + cj * chh, cw, chh) }
+    drawCell(idx, baseA * (1 - fade))
+    drawCell((idx + 1) % total, baseA * fade)
     ctx.restore()
   },
 })
@@ -1584,24 +1624,29 @@ register({
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x6e2af913)
     // grano de cuero: poros (puntitos hundidos) + microarrugas cortas en angulos varios -> textura de piel curtida.
-    // Sensacion premium/material. Casi inmovil. Doble tono via ink (poro) / anti (highlight del relieve).
+    // Sensacion premium/material. VIDA: una luz rasante DIAGONAL recorre la piel despacio -> los poros/highlight que
+    // toca brillan mas (el cuero "se gira a la luz"); los poros NO se mueven de lugar (solo modulan su brillo). Doble tono.
     const ink = inkOf(pal), anti = antiInkOf(pal)
+    // luz rasante AMPLIA que barre toda la diagonal (siempre cruza el cuadro) + microlatido global del poro
+    const sweep = ((t * 0.08) % 1) * (W + H + 240) - 120      // banda (x+y) que entra y sale del cuadro
+    const breath = 0.85 + 0.15 * Math.sin(t * 0.6)
+    const sheenAt = (x, y) => Math.max(0, 1 - Math.abs((x + y) - sweep) / 240)
     ctx.save()
     // poros
     const N = 650
     for (let i = 0; i < N; i++) {
-      const x = r() * W, y = r() * H, s = 0.6 + r() * 1.6
-      ctx.fillStyle = rgba(ink, (pal.tone === 'light' ? 0.03 : 0.055) * (0.4 + 0.6 * r()))
+      const x = r() * W, y = r() * H, s = 0.6 + r() * 1.6, lit = sheenAt(x, y)
+      ctx.fillStyle = rgba(ink, (pal.tone === 'light' ? 0.03 : 0.055) * (0.4 + 0.6 * r()) * breath)
       ctx.beginPath(); ctx.arc(x, y, s, 0, TAU); ctx.fill()
-      // pequeno highlight contiguo (relieve del poro)
-      ctx.fillStyle = rgba(anti, (pal.tone === 'light' ? 0.02 : 0.04) * r())
+      // highlight contiguo (relieve del poro): brilla mas bajo la luz rasante
+      ctx.fillStyle = rgba(anti, (pal.tone === 'light' ? 0.02 : 0.04) * r() * (0.5 + 1.1 * lit))
       ctx.beginPath(); ctx.arc(x - 0.7, y - 0.7, s * 0.55, 0, TAU); ctx.fill()
     }
     // microarrugas
     ctx.lineWidth = 0.6
     for (let i = 0; i < 90; i++) {
       const x = r() * W, y = r() * H, ang = r() * TAU, len = 4 + r() * 12
-      ctx.strokeStyle = rgba(ink, (pal.tone === 'light' ? 0.025 : 0.045) * r())
+      ctx.strokeStyle = rgba(ink, (pal.tone === 'light' ? 0.025 : 0.045) * r() * (0.7 + 0.6 * sheenAt(x, y)))
       ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(ang) * len, y + Math.sin(ang) * len); ctx.stroke()
     }
     ctx.restore()
@@ -1614,13 +1659,17 @@ register({
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x1f7b3ca9)
     // lino: trama plana de hilos horizontales y verticales de grosor/espaciado LEVEMENTE irregular (a diferencia del
-    // canvas perfecto) -> tela natural rustica. Casi inmovil. Doble tono para el cruce de hilos. Tenue.
+    // canvas perfecto) -> tela natural rustica. VIDA: un sheen rasante DIAGONAL recorre la tela despacio realzando los
+    // hilos por donde pasa la "luz" + un microlatido global de la trama -> nunca queda muerta. Tenue, doble tono.
     const ink = inkOf(pal), anti = antiInkOf(pal)
+    const breath = 0.88 + 0.12 * Math.sin(t * 0.5)
+    const sweep = ((t * 0.06) % 1) * (W + H) - H * 0.5        // banda de luz que cruza (x+y)
+    const sheenAt = (cx, cy) => 1 + 0.9 * Math.max(0, 1 - Math.abs((cx + cy) - sweep) / 150)
     ctx.save()
     // hilos verticales (urdimbre) con espaciado jitter
     let x = 0
     while (x < W) {
-      const a = (pal.tone === 'light' ? 0.03 : 0.05) * (0.6 + 0.4 * r())
+      const a = (pal.tone === 'light' ? 0.03 : 0.05) * (0.6 + 0.4 * r()) * breath * sheenAt(x, H / 2)
       ctx.strokeStyle = rgba(ink, a); ctx.lineWidth = 0.7 + r() * 0.7
       ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke()
       x += 4 + r() * 3
@@ -1628,7 +1677,7 @@ register({
     // hilos horizontales (trama) con highlight para el cruce
     let y = 0
     while (y < H) {
-      const a = (pal.tone === 'light' ? 0.025 : 0.045) * (0.6 + 0.4 * r())
+      const a = (pal.tone === 'light' ? 0.025 : 0.045) * (0.6 + 0.4 * r()) * breath * sheenAt(W / 2, y)
       ctx.strokeStyle = rgba(anti, a); ctx.lineWidth = 0.7 + r() * 0.7
       ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke()
       y += 4 + r() * 3
@@ -1786,8 +1835,13 @@ register({
       else { x = W - 24 - r() * 24; y = r() * H }
       const w = 40 + r() * 60, h = 14 + r() * 8
       const rot = range(r, -0.5, 0.5)
+      // VIDA: microbalanceo idle (la cinta "respira" como si estuviera apenas despegada) + el highlight especular
+      // se desliza por la tira -> nunca queda muerta. Sutil: rotacion <=0.012rad. Cada tira con su fase.
+      const ph = r() * TAU
+      const idle = Math.sin(t * 0.5 + ph) * 0.012
+      const shine = 0.7 + 0.3 * Math.sin(t * 0.8 + ph)
       ctx.save()
-      ctx.translate(x, y); ctx.rotate(rot)
+      ctx.translate(x, y); ctx.rotate(rot + idle)
       // sombra
       ctx.fillStyle = rgba('#000000', pal.tone === 'light' ? 0.04 : 0.07)
       ctx.fillRect(-w / 2 + 1.5, -h / 2 + 1.5, w, h)
@@ -1798,9 +1852,11 @@ register({
       ctx.strokeStyle = rgba(ink, pal.tone === 'light' ? 0.04 : 0.06); ctx.lineWidth = 0.6
       ctx.beginPath(); ctx.moveTo(-w / 2, -h / 2); ctx.lineTo(-w / 2, h / 2)
       ctx.moveTo(w / 2, -h / 2); ctx.lineTo(w / 2, h / 2); ctx.stroke()
-      // highlight
-      ctx.fillStyle = rgba('#ffffff', pal.tone === 'light' ? 0.05 : 0.07)
-      ctx.fillRect(-w / 2, -h / 2, w, h * 0.28)
+      // highlight especular que recorre la tira a lo largo
+      const hx = -w / 2 + ((Math.sin(t * 0.6 + ph) * 0.5 + 0.5)) * w * 0.6
+      const gh = ctx.createLinearGradient(hx, 0, hx + w * 0.4, 0)
+      gh.addColorStop(0, rgba('#ffffff', 0)); gh.addColorStop(0.5, rgba('#ffffff', (pal.tone === 'light' ? 0.06 : 0.085) * shine)); gh.addColorStop(1, rgba('#ffffff', 0))
+      ctx.fillStyle = gh; ctx.fillRect(-w / 2, -h / 2, w, h * 0.32)
       ctx.restore()
     }
     ctx.restore()
@@ -1814,25 +1870,30 @@ register({
     const { pal } = env, r = mulberry32(env.seed ^ 0x55c10fd3)
     // pliegues de papel (creases): unas pocas lineas de doblez (una sombra + un highlight contiguo) que cruzan el lienzo
     // -> sensacion de hoja doblada/desplegada. Casi inmovil. Tenue. Doble tono via ink (valle) / anti (cresta).
+    // VIDA: cada pliegue RESPIRA en su par sombra/luz (como si la hoja se asentara con la luz cambiante) -> el relieve
+    // late suave y el separador sombra/luz se abre/cierra apenas. Las lineas NO se trasladan de lugar (fase por pliegue).
     const ink = inkOf(pal), anti = antiInkOf(pal)
     ctx.save()
     const N = 5
     for (let i = 0; i < N; i++) {
       const horiz = r() < 0.5
-      const a = (pal.tone === 'light' ? 0.035 : 0.06) * (0.6 + 0.4 * r())
+      const ph = r() * TAU
+      const breath = 0.7 + 0.3 * Math.sin(t * 0.4 + ph)        // intensidad del pliegue
+      const sep = 1.4 + 0.5 * Math.sin(t * 0.5 + ph)           // apertura sombra<->luz (relieve "vivo")
+      const a = (pal.tone === 'light' ? 0.035 : 0.06) * (0.6 + 0.4 * r()) * breath
       ctx.lineWidth = 1
       if (horiz) {
-        const y = range(r, H * 0.1, H * 0.9), wob = range(r, -10, 10)
+        const y = range(r, H * 0.1, H * 0.9), wob = range(r, -10, 10), end = range(r, -6, 6)
         ctx.strokeStyle = rgba(ink, a)
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.quadraticCurveTo(W / 2, y + wob, W, y + range(r, -6, 6)); ctx.stroke()
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.quadraticCurveTo(W / 2, y + wob, W, y + end); ctx.stroke()
         ctx.strokeStyle = rgba(anti, a * 0.7)
-        ctx.beginPath(); ctx.moveTo(0, y + 1.4); ctx.quadraticCurveTo(W / 2, y + wob + 1.4, W, y + range(r, -6, 6) + 1.4); ctx.stroke()
+        ctx.beginPath(); ctx.moveTo(0, y + sep); ctx.quadraticCurveTo(W / 2, y + wob + sep, W, y + end + sep); ctx.stroke()
       } else {
-        const x = range(r, W * 0.1, W * 0.9), wob = range(r, -10, 10)
+        const x = range(r, W * 0.1, W * 0.9), wob = range(r, -10, 10), end = range(r, -6, 6)
         ctx.strokeStyle = rgba(ink, a)
-        ctx.beginPath(); ctx.moveTo(x, 0); ctx.quadraticCurveTo(x + wob, H / 2, x + range(r, -6, 6), H); ctx.stroke()
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.quadraticCurveTo(x + wob, H / 2, x + end, H); ctx.stroke()
         ctx.strokeStyle = rgba(anti, a * 0.7)
-        ctx.beginPath(); ctx.moveTo(x + 1.4, 0); ctx.quadraticCurveTo(x + wob + 1.4, H / 2, x + range(r, -6, 6) + 1.4, H); ctx.stroke()
+        ctx.beginPath(); ctx.moveTo(x + sep, 0); ctx.quadraticCurveTo(x + wob + sep, H / 2, x + end + sep, H); ctx.stroke()
       }
     }
     ctx.restore()
@@ -2121,20 +2182,25 @@ register({
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x4c0ffe21)
     // fieltro/paño: una nube densa de micropuntos y pelusas cortas en angulos aleatorios -> superficie mate prensada.
-    // Sin direccion clara (a diferencia del denim). Casi inmovil. Doble tono via ink/anti. Alpha bajo.
+    // Sin direccion clara (a diferencia del denim). VIDA: un parche suave de luz prensada DERIVA lentisimo por el paño
+    // (como cuando pasas la mano por fieltro y el pelo cambia de tono) realzando la mota que cubre + microlatido global.
+    // Las motas/pelusas NO cambian de lugar (solo su brillo). Doble tono, alpha bajo. Todo por t.
     const ink = inkOf(pal), anti = antiInkOf(pal)
+    const breath = 0.9 + 0.1 * Math.sin(t * 0.6)
+    const px = W * (0.5 + 0.32 * Math.sin(t * 0.18)), py = H * (0.5 + 0.32 * Math.cos(t * 0.14))  // parche a la deriva
+    const litAt = (x, y) => 1 + 0.7 * Math.max(0, 1 - Math.hypot(x - px, y - py) / 230)
     ctx.save()
     // mota base
     for (let i = 0; i < 900; i++) {
       const x = r() * W, y = r() * H
-      ctx.fillStyle = rgba(r() < 0.5 ? ink : anti, (pal.tone === 'light' ? 0.025 : 0.045) * r())
+      ctx.fillStyle = rgba(r() < 0.5 ? ink : anti, (pal.tone === 'light' ? 0.025 : 0.045) * r() * breath * litAt(x, y))
       ctx.fillRect(x, y, 1, 1)
     }
     // pelusas cortas (fibras enmaranadas)
     ctx.lineWidth = 0.6
     for (let i = 0; i < 260; i++) {
       const x = r() * W, y = r() * H, ang = r() * TAU, len = 1.5 + r() * 3.5
-      ctx.strokeStyle = rgba(r() < 0.5 ? ink : anti, (pal.tone === 'light' ? 0.03 : 0.05) * (0.4 + r() * 0.6))
+      ctx.strokeStyle = rgba(r() < 0.5 ? ink : anti, (pal.tone === 'light' ? 0.03 : 0.05) * (0.4 + r() * 0.6) * litAt(x, y))
       ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(ang) * len, y + Math.sin(ang) * len); ctx.stroke()
     }
     ctx.restore()
