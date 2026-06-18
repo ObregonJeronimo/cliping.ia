@@ -88,6 +88,24 @@ Resultado vs baseline ("palido lavado / hero estatico / todos iguales / cero mor
 clara/oscura, motion con spring+stagger+draw-on, morphs fluidos (ambiental + morphfield), y unicidad por features
 ortogonal + pool de fondos. Verificado en galeria + escenas. Determinismo 16/16 de punta a punta.
 
+## 🎬 WOW (masterpiece -> motor generico) + ANTI-PALIDO + LOOP DE PAGINAS REALES (jun 17, lo mas reciente)
+- DIAGNOSTICO: el ultimo video real del usuario (yerco) se veia IGUAL/palido. Causa: (a) mis cambios eran pulido
+  sutil, no el "wow" cinematografico de remotion/src/compositions/YercoMasterpiece.jsx (one-off HECHO A MANO con
+  Three.js, NO lo genera el pipeline; el pipeline usa el motor generico TimelineVideo + timeline JSON); (b) demasiados
+  rolls en TONO CLARO -> palido lavado (el wow/glow popea sobre OSCURO).
+- HECHO: (1) HERO DE PARTICULAS que ensambla la marca (port determinista de Scene1Particles, sin Three.js) -> COMUN
+  (~60% en heroes tipograficos) + emparejado a dark; particulas SE DISUELVEN al asentar -> el nombre se LEE (no blob).
+  (2) FONDO FLUID (port Scene2Fluid: noise multi-octava + ondas). (3) ANTI-PALIDO: baje light_p de los estilos claros
+  por accidente (riso/meshflow/typographic/morph 0.25, aurora 0.4, retro70s 0.45) + _RUBRO_TONE dark-dominante ->
+  galeria 9/12 oscuras. (4) force_hero ahora incluye 'particles' -> el wow nunca se pierde por falta de escena hero.
+- HERRAMIENTA + METODO NUEVO: tools/video-frames.mjs (MP4 real -> contact sheets). Y el LOOP correcto: "simular la
+  API" (yo de director: WebFetch de paginas reales NO cacheadas -> override del copy real en mock.generate -> render ->
+  audit frame a frame), SIN gastar saldo. Probado en 5 paginas reales (Cal/Oatly/Gymshark/Glossier/Airbnb): oscuras,
+  color de marca real popeando, particulas legibles, sin palido. Convergio.
+- PENDIENTE (menor): el guard force_hero=particles es del MOCK; el director de PRODUCCION (LLM) no lo garantiza ->
+  si el LLM no emite una 'scene' con display, las particulas no disparan (el engine convierte el display mas grande).
+  Reforzar el prompt o un guard en _normalize_timeline. Y la VERIFICACION EN VIVO del MP4 real del usuario.
+
 ## 🔁 LOG DEL LOOP (urvid-loop)
 - **Iteración jun 16 #1** (HECHA): anti-sameness CONFIRMADO sano (probe filtra el banco canónico `^\d\d-`). Fixes:
   numberStack con DECIMALES, blueprint con HUE de marca, motivos por rubro (plato/birrete/contornos). bg-check 16/16.
