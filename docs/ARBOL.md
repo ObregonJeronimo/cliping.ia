@@ -44,6 +44,9 @@ Pegás un **link** → Urvid genera un **video vertical 9:16 de marketing** que:
   - `node tools/similarity-probe.mjs [dir]` → anti-sameness: pares de marcas demasiado parecidos (estructura + aHash gris).
   - `node tools/stress-samerubro.mjs <rubro>` → genera N marcas del MISMO rubro estilo PRODUCCIÓN (cada una su
     stable_seed, SIN el re-roll del banco) y mide colisiones → ve el riesgo real de "dos videos parecidos" en prod.
+- `node tools/render.mjs video tools/torture-fixture.json torture 18` — FIXTURE DE DESBORDE: copy absurdamente largo en
+  cada tipo de escena + cada layout de lista. Tras tocar texto/layout, renderizar y confirmar que NADA se sale de su caja
+  (clip/fitWrap). Es la garantia "no desborda en ningun video" (regla fix-the-class). Helpers: `clip` (ellipsis) + `fitWrap` (2 lineas).
 - `npx vite build` — que el front compile.
 
 ---

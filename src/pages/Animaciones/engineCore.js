@@ -1544,6 +1544,36 @@ function _rgba(hex, a) {
     }
     return s;
   }
+  // clip: RED DE SEGURIDAD contra el desborde. fitFont achica el font hasta su minimo y si el copy AUN no entra
+  // lo dibuja igual (se sale del contenedor: el bug de las cards/labels). clip recorta el string con ellipsis para
+  // que SIEMPRE entre en maxW con el ctx.font ACTUAL. Regla dura: ningun texto del cuerpo se sale de su caja.
+  // Uso: tras fijar el font (fitFont), envolver el string -> ctx.fillText(clip(str, maxW), x, y).
+  function clip(str, maxW) {
+    str = (str == null) ? '' : String(str);
+    if (!(maxW > 0) || ctx.measureText(str).width <= maxW) return str;
+    let lo = 0, hi = str.length;
+    while (lo < hi) { const m = (lo + hi + 1) >> 1; if (ctx.measureText(str.slice(0, m).replace(/\s+$/, '') + '…').width <= maxW) lo = m; else hi = m - 1; }
+    return (str.slice(0, lo).replace(/\s+$/, '') || str.slice(0, 1)) + '…';
+  }
+  // fitWrap: para FRASES largas con aire vertical (label de bigStat, etc.) -> en vez de cortar, ENVUELVE en
+  // <= maxLines lineas que entren en maxW (bajando el font si hace falta); si ni a min entra, recorta la ultima
+  // con ellipsis. Devuelve {size, lines}; NO dibuja (el caller elige y/align/color y dibuja linea por linea).
+  function fitWrap(str, base, maxW, min, weight, role, maxLines) {
+    str = ((str == null) ? '' : String(str)).replace(/\s+/g, ' ').trim();
+    maxLines = maxLines || 2;
+    const words = str.split(' ');
+    const wrapAt = (s) => {
+      ctx.font = fontStr(weight, s, role);
+      const ls = []; let cur = '';
+      for (const w of words) { const tt = cur ? cur + ' ' + w : w; if (ctx.measureText(tt).width <= maxW || !cur) cur = tt; else { ls.push(cur); cur = w; } }
+      if (cur) ls.push(cur);
+      return ls;
+    };
+    for (let s = base; s >= min; s--) { const ls = wrapAt(s); if (ls.length <= maxLines) return { size: s, lines: ls.map(l => clip(l, maxW)) }; }
+    const full = wrapAt(min), ls = full.slice(0, maxLines);
+    if (ls.length) ls[ls.length - 1] = full.slice(ls.length - 1).join(' ');   // junta el sobrante en la ultima linea visible -> el ellipsis cae al final real
+    return { size: min, lines: (ls.length ? ls : [str]).map(l => clip(l, maxW)) };
+  }
   // texto con entrada suave (scale + fade, leve overshoot) + auto-ajuste de tamaño si se pasa maxW
   function fxText(str, x, y, size, p, weight = 700, col = INK, maxW = 0, role = 'd') {
     if (p <= 0) return;
@@ -1816,13 +1846,13 @@ function _rgba(hex, a) {
     const ms = eOutBack(clamp(inv(t, d + 0.1, d + 0.5), 0, 1));
     ctx.save(); ctx.translate(x + 30, y); ctx.scale(ms, ms); _listMarker('check', i, t, d); ctx.restore();
     ctx.font = fontStr(600, fitFont(label, 21, 224, 13, 600, 't'), 't');
-    ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = INK; ctx.fillText(label, x + 58, y);
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = INK; ctx.fillText(clip(label, 224), x + 58, y);
   }
   function _rowPlain(label, x, y, i, t, d) {     // tech: sin caja, guion + linea fina (drawing/CAD)
     const ms = eOutBack(clamp(inv(t, d + 0.1, d + 0.5), 0, 1));
     ctx.save(); ctx.translate(x + 14, y); ctx.scale(ms, ms); ctx.fillStyle = A1; ctx.beginPath(); ctx.roundRect(-13, -2, 26, 4, 2); ctx.fill(); ctx.restore();
     ctx.font = fontStr(600, fitFont(label, 21, 240, 13, 600, 't'), 't');
-    ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = INK; setShadow('rgba(0,0,0,0.5)', 5, 1); ctx.fillText(label, x + 44, y); noShadow();
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = INK; setShadow('rgba(0,0,0,0.5)', 5, 1); ctx.fillText(clip(label, 240), x + 44, y); noShadow();
     const lp = clamp(inv(t, d + 0.15, d + 0.7), 0, 1);
     ctx.strokeStyle = 'rgba(255,255,255,0.11)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + 44, y + 19); ctx.lineTo(x + 44 + 256 * lp, y + 19); ctx.stroke();
   }
@@ -1831,7 +1861,7 @@ function _rgba(hex, a) {
     ctx.save(); ctx.globalAlpha *= np; ctx.font = fontStr(800, 33, 'a');
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = A1; ctx.fillText(String(i + 1).padStart(2, '0'), x, y - 1); ctx.restore();
     ctx.font = fontStr(600, fitFont(label, 20, 206, 13, 600, 't'), 't');
-    ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = INK; setShadow('rgba(0,0,0,0.5)', 5, 1); ctx.fillText(label, x + 56, y); noShadow();
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = INK; setShadow('rgba(0,0,0,0.5)', 5, 1); ctx.fillText(clip(label, 206), x + 56, y); noShadow();
     const lp = clamp(inv(t, d + 0.15, d + 0.7), 0, 1);
     ctx.strokeStyle = 'rgba(255,255,255,0.13)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, y + 21); ctx.lineTo(x + 300 * lp, y + 21); ctx.stroke();
   }
@@ -1840,7 +1870,7 @@ function _rgba(hex, a) {
     ctx.fillStyle = _rgba(A1, 0.16); ctx.beginPath(); ctx.roundRect(x, y - 21, 300 * fp, 42, 9); ctx.fill();
     ctx.fillStyle = A1; ctx.beginPath(); ctx.roundRect(x, y - 21, 8 * fp, 42, 3); ctx.fill();
     ctx.font = fontStr(700, fitFont(label, 20, 250, 13, 700, 't'), 't');
-    ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = INK; ctx.globalAlpha *= clamp(fp * 1.4, 0, 1); setShadow('rgba(0,0,0,0.45)', 4, 1); ctx.fillText(label, x + 24, y); noShadow();
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = INK; ctx.globalAlpha *= clamp(fp * 1.4, 0, 1); setShadow('rgba(0,0,0,0.45)', 4, 1); ctx.fillText(clip(label, 250), x + 24, y); noShadow();
   }
   // LAYOUT alternativo: grilla de 2 columnas (stat-cards) -> variedad estructural vs la lista vertical.
   function _listGrid(items, t, lanchor) {
@@ -1854,7 +1884,7 @@ function _rgba(hex, a) {
       ctx.fillStyle = _panelFill(); ctx.strokeStyle = _panelStroke(); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.roundRect(x, y, cw, ch, 12); ctx.fill(); ctx.stroke();
       setShadow(_rgba(A1, 0.4), 10, 2); ctx.fillStyle = A1; ctx.beginPath(); ctx.arc(x + 18, y + 20, 6, 0, TAU); ctx.fill(); noShadow();
       ctx.font = fontStr(700, fitFont(label, 19, cw - 22, 13, 700, 't'), 't'); ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = INK; setShadow('rgba(0,0,0,0.5)', 4, 1);
-      ctx.fillText(label, x + 14, y + ch - 26); noShadow();
+      ctx.fillText(clip(label, cw - 22), x + 14, y + ch - 26); noShadow();
       ctx.restore();
     });
   }
@@ -1891,7 +1921,7 @@ function _rgba(hex, a) {
           ctx.stroke();
           ctx.fillStyle = _accentInk(A1, 0.5); ctx.beginPath(); ctx.arc(-c.w / 2 + 17, 0, 4, 0, TAU); ctx.fill();   // punto de acento
           ctx.font = fontStr(700, 22, 't'); ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = INK;
-          setShadow('rgba(0,0,0,0.4)', 4, 1); ctx.fillText(c.str, -c.w / 2 + 30, 0); noShadow();
+          setShadow('rgba(0,0,0,0.4)', 4, 1); ctx.fillText(clip(c.str, c.w - 44), -c.w / 2 + 30, 0); noShadow();
           ctx.restore();
         }
         x += c.w + gap;
@@ -1904,7 +1934,7 @@ function _rgba(hex, a) {
     const rx = lanchor ? 53 : cx - 150, tp = inv(t, 0.1, 0.7);   // contrato sideLeft: MISMO margen izq
     // TITULO + regla alineados al MISMO eje izquierdo que los items (rx) -> titulo, regla y lista comparten
     // columna. Antes el modo no-lanchor dejaba el titulo CENTRADO sobre items a la izquierda = eje partido/descuidado.
-    if (tp > 0) { ctx.save(); ctx.globalAlpha *= eOutCubic(clamp(tp, 0, 1)); ctx.font = fontStr(800, fitFont(p.title || '', (p.title || '').length > 18 ? 26 : 30, W * 0.8, 18, 800, 'd'), 'd'); ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = INK; setShadow('rgba(0,0,0,0.4)', 5, 1); ctx.fillText(p.title || '', rx, H * 0.23); noShadow(); ctx.restore(); }
+    if (tp > 0) { ctx.save(); ctx.globalAlpha *= eOutCubic(clamp(tp, 0, 1)); ctx.font = fontStr(800, fitFont(p.title || '', (p.title || '').length > 18 ? 26 : 30, W * 0.8, 18, 800, 'd'), 'd'); ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = INK; setShadow('rgba(0,0,0,0.4)', 5, 1); ctx.fillText(clip(p.title || '', W * 0.8), rx, H * 0.23); noShadow(); ctx.restore(); }
     // regla de acento bajo el titulo -> lo liga a la lista (proximidad Gestalt), no queda flotando aparte
     const ru = eOutCubic(inv(t, 0.3, 0.8));
     if (ru > 0) { const ry = H * 0.285, rxr = rx; ctx.save(); ctx.fillStyle = accent(rxr, ry, rxr + 52, ry); ctx.beginPath(); ctx.roundRect(rxr, ry, 52 * ru, 4, 2); ctx.fill(); ctx.restore(); }
@@ -2233,7 +2263,7 @@ function _rgba(hex, a) {
       const rfs = fitFont(full, 62, R * 1.7, 26, 800, 'd');
       ctx.save(); ctx.globalAlpha = inv(t, 0.05, 0.38); ctx.translate(ccx, ccy); ctx.scale(pop * pulse, pop * pulse);
       ctx.font = fontStr(800, rfs, 'd'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = TONE === 'light' ? _accentInk(A1) : _accentPop(A1); ctx.fillText(num, 0, 0); ctx.restore();
-      if (p.label) { const lp = inv(t, 1.0, 1.4); if (lp > 0) { ctx.save(); ctx.globalAlpha = clamp(lp * 1.4, 0, 1); ctx.font = fontStr(600, fitFont(p.label, 23, W * 0.82, 14, 600, 't'), 't'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = DIM; ctx.fillText(p.label, ccx, ccy + R + 32); ctx.restore(); } }
+      if (p.label) { const lp = inv(t, 1.0, 1.4); if (lp > 0) { ctx.save(); ctx.globalAlpha = clamp(lp * 1.4, 0, 1); const _wr = fitWrap(p.label, 23, W * 0.82, 13, 600, 't', 2); ctx.font = fontStr(600, _wr.size, 't'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = DIM; const _lh = _wr.size * 1.2; _wr.lines.forEach((ln, i) => ctx.fillText(ln, ccx, ccy + R + 32 + i * _lh)); ctx.restore(); } }
       return;
     }
     // bar / plain: numero grande (gradiente) + kicker arriba
@@ -2254,7 +2284,7 @@ function _rgba(hex, a) {
       const rw = al === 'left' ? 92 : 120, rx = al === 'left' ? ax : W / 2 - rw / 2, rp = eOutCubic(clamp(inv(t, 0.6, 1.1), 0, 1));
       ctx.save(); ctx.fillStyle = accent(rx, by, rx + rw, by); ctx.beginPath(); ctx.roundRect(rx, by, rw * rp, 5, 2.5); ctx.fill(); ctx.restore();
     }
-    if (p.label) { const lp = inv(t, 1.0, 1.4); if (lp > 0) { ctx.save(); ctx.globalAlpha = clamp(lp * 1.4, 0, 1); ctx.font = fontStr(600, fitFont(p.label, 23, W * 0.82, 14, 600, 't'), 't'); ctx.textAlign = al; ctx.textBaseline = 'middle'; ctx.fillStyle = DIM; ctx.fillText(p.label, ax, by + 30); ctx.restore(); } }
+    if (p.label) { const lp = inv(t, 1.0, 1.4); if (lp > 0) { ctx.save(); ctx.globalAlpha = clamp(lp * 1.4, 0, 1); const _wr = fitWrap(p.label, 23, W * 0.82, 13, 600, 't', 2); ctx.font = fontStr(600, _wr.size, 't'); ctx.textAlign = al; ctx.textBaseline = 'middle'; ctx.fillStyle = DIM; const _lh = _wr.size * 1.2; _wr.lines.forEach((ln, i) => ctx.fillText(ln, ax, by + 30 + i * _lh)); ctx.restore(); } }
   }
 
   // =========================================================================
@@ -2881,7 +2911,7 @@ function _rgba(hex, a) {
       setShadow(TONE === 'light' ? _rgba(_accentPop(A1), isF ? 0.4 : 0.2) : 'rgba(0,0,0,0.55)', isF ? 18 : 12, 2); ctx.fillText(val, 0, -10); noShadow();
       if (_isRating) { ctx.font = fontStr(800, nfs, 'd'); const _w = ctx.measureText(val).width, _sx = (ta === 'left' ? _w : _w / 2) + nfs * 0.44; _drawStarRow(1, _sx, -10, nfs * 0.34, 'left'); }   // estrella de rating al lado del numero (x derivado del ancho del PROPIO item)
       if (isF) { const uw = nfs * 0.5, ux = ta === 'left' ? 0 : -uw / 2; ctx.fillStyle = accent(ux, 0, ux + uw, 0); ctx.beginPath(); ctx.roundRect(ux, 20, uw * eOutCubic(clamp(ap, 0, 1)), 4, 2); ctx.fill(); }   // subrayado de acento bajo el item focal (relativo a su origen)
-      if (it.label) { const _lb = String(it.label); ctx.font = fontStr(isF ? 700 : 600, fitFont(_lb, isF ? 20 : 18, alignMode === 'self' ? W * 0.38 : W * 0.74, 13, isF ? 700 : 600, 't'), 't'); ctx.fillStyle = isF ? INK : DIM; setShadow(TONE === 'light' ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.6)', 8, 0); ctx.fillText(_lb, 0, isF ? 40 : 30); noShadow(); }   // fitFont -> label entero; focal mas brillante/grande
+      if (it.label) { const _lb = String(it.label), _lmw = alignMode === 'self' ? W * 0.38 : W * 0.74; ctx.font = fontStr(isF ? 700 : 600, fitFont(_lb, isF ? 20 : 18, _lmw, 13, isF ? 700 : 600, 't'), 't'); ctx.fillStyle = isF ? INK : DIM; setShadow(TONE === 'light' ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.6)', 8, 0); ctx.fillText(clip(_lb, _lmw), 0, isF ? 40 : 30); noShadow(); }   // fitFont -> label entero; focal mas brillante/grande
       ctx.restore();
     };
     if (_orient === 'heroRow') {

@@ -1,0 +1,31 @@
+{
+  "brand": "Mi Medio De Tecnologia",
+  "accent": "#22e06a",
+  "theme": "saas-explainer",
+  "seed": 4242,
+  "texture": "none",
+  "rubro": "tech",
+  "tone": "dark",
+  "style": "corporate",
+  "bgStyle": "corporate",
+  "shadowMode": "soft",
+  "fontDisplay": "Plus Jakarta Sans",
+  "fontText": "Inter",
+  "fontAccent": "JetBrains Mono",
+  "heroResource": "type",
+  "motif": "tech",
+  "substrate": "scanlines",
+  "signatureForm": "hexagon",
+  "images": [],
+  "scenes": [
+    {"type": "checklist", "title": "Por que leer este medio de tecnologia en espanol", "items": ["Analisis propios y profundos, nunca copypaste de las gacetillas", "Sin ruido editorial: solo lo que de verdad importa hoy", "Todo el ecosistema tech en un unico lugar y sin vueltas", "Cobertura de hardware, software, ciencia y cultura digital"], "listStyle": "bar", "listLayout": "grid", "listAnchor": "center", "durationInFrames": 150},
+    {"type": "checklist", "title": "Razones de peso para quedarte con nosotros hoy", "items": ["Analisis propios y profundos, nunca copypaste de gacetillas", "Sin ruido editorial: solo lo que de verdad importa", "Todo el ecosistema tecnologico en un unico lugar", "Novedades cada dia sin ninguna excepcion posible"], "listLayout": "chips", "durationInFrames": 150},
+    {"type": "checklist", "title": "Beneficios del servicio premium mas completo del mercado", "items": ["Analisis propios y profundos, nunca copypaste de las gacetillas oficiales", "Sin ruido editorial constante todos los dias del ano", "Todo el ecosistema tecnologico cubierto sin excepcion", "Cobertura total garantizada de punta a punta siempre"], "listStyle": "bar", "listLayout": "rows", "durationInFrames": 150},
+    {"type": "bigStat", "value": 14000, "suffix": "M", "prefix": "", "label": "paginas vistas al ano. El medio de tecnologia en espanol mas grande del mundo entero", "durationInFrames": 150},
+    {"type": "numberStack", "items": [{"value": 14000, "suffix": "M", "label": "paginas vistas al ano en todo el mundo hispanohablante"}, {"value": 4.9, "suffix": "★", "label": "valoracion promedio de nuestra enorme comunidad lectora"}, {"value": 25, "prefix": "+", "label": "anos cubriendo la actualidad tecnologica sin parar nunca"}], "align": "center", "durationInFrames": 150},
+    {"type": "statement", "text": "El medio de tecnologia en espanol mas grande del mundo, con analisis propios que no vas a encontrar en ningun otro lado", "stmtStyle": "centered", "durationInFrames": 150},
+    {"type": "reveal", "text": "Seguis el tech o el tech te sigue a vos", "kicker": "MIRA ESTO QUE TE INTERESA", "align": "center", "durationInFrames": 120},
+    {"type": "quote", "text": "El unico medio de tecnologia que leo todos los dias sin falta porque siempre aporta algo nuevo y bien explicado para todos", "author": "Un lector muy fiel desde hace ya muchisimos anos", "stars": 5, "align": "center", "durationInFrames": 150},
+    {"type": "outro", "brand": "Mi Medio De Tecnologia En Espanol", "cta": "Suscribite ahora mismo totalmente gratis", "outroComp": "center", "durationInFrames": 120}
+  ]
+}
