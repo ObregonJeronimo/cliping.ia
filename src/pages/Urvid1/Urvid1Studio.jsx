@@ -56,6 +56,7 @@ export default function Urvid1Studio() {
         brand: b.brand || 'Marca', rubro: RUBROS.includes(b.rubro) ? b.rubro : 'default',
         tone: b.tone === 'light' ? 'light' : 'dark', brandColor: b.brandColor || '#5b8cff',
         tagline: b.tagline || '', claim: b.claim || '', cta: b.cta || '',
+        bullets: Array.isArray(b.bullets) ? b.bullets : [], stats: Array.isArray(b.stats) ? b.stats : [], proof: b.proof || '',
       })
       setSeed(0); headRef.current = 0; setAnalyzing('')
     } catch {
@@ -66,7 +67,7 @@ export default function Urvid1Studio() {
   const up = (k, v) => setBrief(b => ({ ...b, [k]: v }))
   const reroll = () => setSeed(s => ((s || 1) + 0x9e3779b1) >>> 0 || 1)
   const save = () => { const next = [{ ...brief, seed, ts: Date.now() }, ...saved].slice(0, 24); setSaved(next); localStorage.setItem('urvid1.saved', JSON.stringify(next)) }
-  const load = (it) => { setBrief({ brand: it.brand, rubro: it.rubro, tone: it.tone, brandColor: it.brandColor, tagline: it.tagline, claim: it.claim, cta: it.cta }); setSeed(it.seed || 0); headRef.current = 0 }
+  const load = (it) => { setBrief({ brand: it.brand, rubro: it.rubro, tone: it.tone, brandColor: it.brandColor, tagline: it.tagline, claim: it.claim, cta: it.cta, bullets: it.bullets || [], stats: it.stats || [], proof: it.proof || '' }); setSeed(it.seed || 0); headRef.current = 0 }
   const del = (i) => { const next = saved.filter((_, j) => j !== i); setSaved(next); localStorage.setItem('urvid1.saved', JSON.stringify(next)) }
 
   return (

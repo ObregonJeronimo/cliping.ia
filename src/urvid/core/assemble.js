@@ -28,6 +28,10 @@ export function makeVideo(brief = {}) {
     ...(brief.tagline != null ? { tagline: brief.tagline } : {}),
     ...(brief.claim != null ? { claim: brief.claim } : {}),
     ...(brief.cta != null ? { cta: brief.cta } : {}),
+    // material SELECCIONADO por la perception (si viene): props reales, datos reales, prueba social.
+    ...(Array.isArray(brief.bullets) && brief.bullets.length ? { bullets: brief.bullets } : {}),
+    ...(Array.isArray(brief.stats) && brief.stats.length ? { stats: brief.stats } : {}),
+    ...(brief.proof ? { proof: brief.proof } : {}),
     ...(brief.content || {}),
   }
   const seed = brief.seed != null ? (brief.seed >>> 0) : stableSeed(brand, rubro)
@@ -75,8 +79,9 @@ export function makeVideo(brief = {}) {
   const scenes = []; let start = 0
   arc.forEach((beat, i) => {
     let opts = query('scene-layouts', { tone, rubro, category: beat.category })
-    // las escenas de DATA tambien pueden ser modulos DATAKIT (charts full-frame: barras/anillos/donut/timeline/...).
-    if (beat.category.indexOf('data/') === 0) opts = opts.concat(query('datakit', { tone, rubro }))
+    // las escenas de DATA tambien pueden ser charts DATAKIT, PERO datakit fabrica numeros por seed -> si la
+    // perception trajo STATS REALES, usamos solo las escenas que muestran ESE numero real (statAt), no datakit.
+    if (beat.category.indexOf('data/') === 0 && !(Array.isArray(content.stats) && content.stats.length)) opts = opts.concat(query('datakit', { tone, rubro }))
     // eleccion sesgada por el CONTENIDO (sceneBias) ademas de la seriedad (wadj).
     const mod = opts.length ? weightedPick(seedFor(seed ^ hashStr('arc' + i), 'scene'), opts, m => wadj(m) * sceneBias(m, sig)) : null
     if (mod) { scenes.push({ start, dur: beat.dur, sceneId: mod.id, seed: (seed ^ hashStr('s' + i)) >>> 0 }); start += beat.dur }

@@ -440,13 +440,8 @@ async def urvid_perceive(req: PerceiveRequest):
             print(f"[perceive] '{req.url}' desde CACHE")
             return {"brief": cached, "source": {}, "cost": {}, "cached": True}
     usage = []
-    # ADN VISUAL (como Animaciones): brand_dna lee el screenshot -> mood + colores REALES de la marca.
-    dna = {}
-    try:
-        dna = await brand_dna.analyze_brand_dna(site.get("screenshot"), theme_options=template_director.THEME_VIBES, usage=usage)
-    except Exception as e:
-        print(f"[perceive] brand_dna fallo (sigo): {e}")
-    brief = await perception.analyze_to_brief(req.url.strip(), req.desarrollo.strip(), site=site, dna=dna, usage=usage)
+    # UNA sola llamada multimodal (texto + screenshot juntos) -> brief rico. Mas robusto Y mas barato que 2 llamadas.
+    brief = await perception.analyze_to_brief(req.url.strip(), req.desarrollo.strip(), site=site, usage=usage)
     # ultimo fallback de color: dominante vibrante del screenshot.
     if site.get("screenshot") and brief.get("brandColor", "#5b8cff") == "#5b8cff":
         try:

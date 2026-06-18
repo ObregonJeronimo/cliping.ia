@@ -9,16 +9,21 @@ const NUM = /(?:^|[^\w])([+\-]?\$?\s?\d[\d.,]*\s?(?:%|x|k|mil|millones)?)/i
 
 // analiza el contenido -> señales booleanas/numericas que guian la estructura.
 export function analyzeContent(content = {}, rubro = 'default') {
-  const claim = String(content.claim || '') , tag = String(content.tagline || ''), cta = String(content.cta || '')
+  const claim = String(content.claim || ''), tag = String(content.tagline || ''), cta = String(content.cta || '')
   const all = [claim, tag, cta].filter(Boolean).join('  ')
   const head = claim || tag
-  const items = head.split(/\s*[·•|\/\n]\s*|\s*,\s+/).map(s => s.trim()).filter(Boolean).length
+  // material SELECCIONADO por la perception (mas confiable que partir el texto): bullets/stats/proof.
+  const bullets = Array.isArray(content.bullets) ? content.bullets.filter(Boolean) : []
+  const stats = Array.isArray(content.stats) ? content.stats.filter(Boolean) : []
+  const proof = String(content.proof || '')
+  const split = head.split(/\s*[·•|\/\n]\s*|\s*,\s+/).map(s => s.trim()).filter(Boolean).length
+  const items = bullets.length || split
   return {
-    hasData: NUM.test(all),
+    hasData: stats.length > 0 || NUM.test(all),
     isQuestion: /\?|¿/.test(tag || claim),
-    hasList: items >= 2,
+    hasList: bullets.length >= 2 || split >= 2,
     hasCompare: /\bvs\.?\b|antes|despu[eé]s|mejor que|m[aá]s que|menos que/i.test(all),
-    hasProof: /opini[oó]n|estrella|clientes|rese[nñ]|rating|confian|recomien|\b[45][.,]\d\b|\b5\s*\/\s*5\b/i.test(all),
+    hasProof: !!proof || /opini[oó]n|estrella|clientes|rese[nñ]|rating|confian|recomien|\b[45][.,]\d\b|\b5\s*\/\s*5\b/i.test(all),
     longClaim: head.length > 42,
     items,
   }

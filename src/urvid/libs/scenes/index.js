@@ -38,6 +38,19 @@ function shortLabel(str, maxWords = 2) {
   const words = raw.filter(w => !/^[+\-$]?\d/.test(w) && w.length > 1 && !STOP.has(w.toLowerCase()))
   return (words.length ? words : raw).slice(0, maxWords).join(' ')
 }
+// SELECCION de contenido: usa el material REAL que la perception extrajo (bullets/stats/proof) si viene;
+// si no, cae a la heuristica sobre el claim/tagline. Asi las listas/datos del video son fieles a la pagina.
+function listFrom(content, fb, max = 4) {
+  const b = content && content.bullets
+  if (Array.isArray(b) && b.length) return b.slice(0, max)
+  return splitItems((content && (content.claim || content.tagline)) || fb, max)
+}
+function statAt(content, i, fb) {
+  const s = content && Array.isArray(content.stats) ? content.stats[i] : null
+  if (s && (s.value || s.value === 0)) return { value: String(s.value), label: shortLabel(s.label || (content && content.tagline) || '', 3) }
+  return { value: bigNumber((content && (content.claim || content.tagline)), fb), label: shortLabel((content && (content.tagline || content.brand)) || '', 3) }
+}
+function proofFrom(content, fb) { return (content && content.proof) || (content && (content.claim || content.tagline)) || fb }
 // helper: dibuja un check de tilde (DECO) en (cx,cy) con radio r y progreso p [0..1].
 function tick(ctx, cx, cy, r, p, color, lw = 3.4) {
   ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.lineCap = 'round'; ctx.lineJoin = 'round'
@@ -187,7 +200,7 @@ register({
   tags: ['hook', 'dato', 'impacto'], beat: 'hook',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
-    const num = bigNumber(content.claim || content.tagline, '3x')
+    const num = statAt(content, 0, '3x').value
     // numero gigante que entra con spring de escala
     const sp = M.settle(inv(t, 0.1, 1.0), { zeta: 0.45, freq: 2.1 }), sc = 0.7 + 0.3 * sp
     ctx.save(); ctx.globalAlpha = inv(t, 0.05, 0.4); ctx.translate(cx, H * 0.4); ctx.scale(sc, sc)
@@ -244,7 +257,7 @@ register({
   tags: ['lista', 'checklist', 'beneficios'], beat: 'value',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, ax = W * 0.13
-    const items = splitItems(content.claim || content.tagline || 'Rapido · Simple · Confiable', 4)
+    const items = listFrom(content, 'Rapido · Simple · Confiable', 4)
     if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), ax, H * 0.26, { size: 16, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, align: 'left', maxW: W * 0.74, alpha: inv(t, 0.05, 0.35) })
     const y0 = H * 0.36, gap = Math.min(78, (H * 0.46) / Math.max(1, items.length))
     items.forEach((it, i) => {
@@ -270,7 +283,7 @@ register({
   tags: ['lista', 'pasos', 'numerada'], beat: 'value',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, ax = W * 0.13
-    const items = splitItems(content.claim || content.tagline || 'Conecta · Configura · Lanza', 4)
+    const items = listFrom(content, 'Conecta · Configura · Lanza', 4)
     drawText(ctx, content.brand ? (content.brand + '').toUpperCase() : 'COMO FUNCIONA', ax, H * 0.25, { size: 16, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, align: 'left', maxW: W * 0.74, alpha: inv(t, 0.05, 0.35) })
     const y0 = H * 0.35, gap = Math.min(82, (H * 0.48) / Math.max(1, items.length))
     items.forEach((it, i) => {
@@ -330,7 +343,7 @@ register({
   tags: ['dato', 'numero', 'kpi'], beat: 'data',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
-    const num = bigNumber(content.claim || content.tagline, '100%')
+    const num = statAt(content, 0, '100%').value
     // anillo de acento que se dibuja alrededor del numero
     const ringP = M.ease(inv(t, 0.2, 1.1)), R = 118
     ctx.save(); ctx.translate(cx, H * 0.42)
@@ -356,9 +369,10 @@ register({
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK
     // genera 3 stats a partir del contenido (numero de claim/tagline + items para etiquetas)
-    const labels = splitItems(content.claim || content.tagline || 'Clientes · Proyectos · Anos', 3).map(l => shortLabel(l, 3))
     const r = mulberry32((env.seed >>> 0) ^ 0x515)
-    const nums = [bigNumber(content.claim, ''), '', ''].map((n, i) => n || ['+' + (10 + ((r() * 90) | 0)), (1 + ((r() * 9) | 0)) + 'x', '99%'][i])
+    const stats = Array.isArray(content.stats) ? content.stats.slice(0, 3) : []
+    const labels = stats.length ? stats.map(s => shortLabel(s.label || '', 3)) : splitItems(content.claim || content.tagline || 'Clientes · Proyectos · Anos', 3).map(l => shortLabel(l, 3))
+    const nums = stats.length ? stats.map(s => String(s.value)) : [bigNumber(content.claim, ''), '', ''].map((n, i) => n || ['+' + (10 + ((r() * 90) | 0)), (1 + ((r() * 9) | 0)) + 'x', '99%'][i])
     const n = Math.min(3, labels.length || 3), cy = H * 0.44, colW = W / n
     // titulo opcional
     if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), W / 2, H * 0.24, { size: 16, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, maxW: W * 0.8, alpha: inv(t, 0.05, 0.35) })
@@ -387,7 +401,7 @@ register({
     for (let i = 0; i < 5; i++) { const f = clamp(fillP - i, 0, 1); star(ctx, x0 + i * gap, H * 0.32, sr, f, pal.accent, rgba(pal.ink, 0.14)) }
     // cita/testimonio en tinta
     ctx.save(); ctx.globalAlpha = inv(t, 0.35, 0.85)
-    TK.drawWrapped(ctx, content.claim || content.tagline || 'Cambio como trabajamos', cx, H * 0.5, { reveal: inv(t, 0.35, 1.05), size: 30, weight: 700, family: fonts.display, maxW: W * 0.8, color: pal.ink, maxLines: 4, lh: 1.2 })
+    TK.drawWrapped(ctx, proofFrom(content, 'Cambio como trabajamos'), cx, H * 0.5, { reveal: inv(t, 0.35, 1.05), size: 30, weight: 700, family: fonts.display, maxW: W * 0.8, color: pal.ink, maxLines: 4, lh: 1.2 })
     ctx.restore()
     // atribucion
     if (content.brand) {
@@ -532,7 +546,7 @@ register({
   tags: ['ficha', 'specs', 'atributos', 'inmueble', 'producto'], beat: 'data',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK
-    const items = splitItems(content.claim || content.tagline || '3 ambientes · 80 m2 · Cochera · Apto credito', 4)
+    const items = listFrom(content, '3 ambientes · 80 m2 · Cochera · Apto credito', 4)
     // titulo / marca arriba
     drawText(ctx, content.brand ? (content.brand + '').toUpperCase() : 'FICHA', W * 0.12, H * 0.22, { size: 16, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, align: 'left', maxW: W * 0.76, alpha: inv(t, 0.0, 0.3) })
     const x0 = W * 0.12, x1 = W * 0.88, y0 = H * 0.32, gap = Math.min(74, (H * 0.5) / Math.max(1, items.length))
@@ -568,7 +582,7 @@ register({
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK
     // grilla 2x2 de chips de spec; cada chip = panel surface con valor en tinta
-    const items = splitItems(content.claim || content.tagline || '80 m2 · 3 amb · 2 banos · Cochera', 4)
+    const items = listFrom(content, '80 m2 · 3 amb · 2 banos · Cochera', 4)
     while (items.length < Math.min(4, Math.max(2, items.length))) items.push('')
     const n = Math.min(4, items.length)
     const cols = n <= 2 ? n : 2, rows = Math.ceil(n / cols)
@@ -604,7 +618,7 @@ register({
   tags: ['hook', 'estadistica', 'shock', 'dato'], beat: 'hook',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
-    const num = bigNumber(content.claim || content.tagline, '73%')
+    const num = statAt(content, 0, '73%').value
     // numero gigante que "cuenta" hacia su tamano (escala desde abajo) + reveal por mascara que sube
     const grow = eOutExpoLocal(inv(t, 0.05, 0.85))
     ctx.save(); ctx.globalAlpha = inv(t, 0.0, 0.35); ctx.translate(cx, H * 0.36); ctx.scale(0.6 + 0.4 * grow, 0.6 + 0.4 * grow)
@@ -782,7 +796,7 @@ register({
   tags: ['dato', 'barra', 'progreso', 'kpi'], beat: 'data',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
-    const num = bigNumber(content.claim || content.tagline, '80%')
+    const num = statAt(content, 0, '80%').value
     // numero grande arriba
     const sp = M.settle(inv(t, 0.15, 0.95), { zeta: 0.5, freq: 2 })
     ctx.save(); ctx.globalAlpha = inv(t, 0.05, 0.4); ctx.translate(cx, H * 0.38); ctx.scale(0.85 + 0.15 * sp, 0.85 + 0.15 * sp)
@@ -930,7 +944,7 @@ register({
   tags: ['hook', 'dato', 'recorte', 'asimetrico'], beat: 'hook',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, mx = W * 0.1
-    const num = bigNumber(content.claim || content.tagline, '9/10')
+    const num = statAt(content, 0, '9/10').value
     // numero gigante anclado al margen derecho, dominante arriba (recorte editorial)
     const grow = eOutExpoLocal(inv(t, 0.05, 0.85))
     ctx.save(); ctx.globalAlpha = inv(t, 0.0, 0.4); ctx.translate(W * 0.96, H * 0.38); ctx.scale(0.7 + 0.3 * grow, 0.7 + 0.3 * grow)
@@ -981,7 +995,7 @@ register({
   tags: ['lista', 'grilla', 'beneficios', 'dos-columnas'], beat: 'value',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, mx = W * 0.1
-    const items = splitItems(content.claim || content.tagline || 'Rapido · Seguro · Simple · Sin limites', 4)
+    const items = listFrom(content, 'Rapido · Seguro · Simple · Sin limites', 4)
     if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), mx, H * 0.22, { size: 16, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, align: 'left', maxW: W * 0.78, alpha: inv(t, 0.05, 0.35) })
     const cols = 2, colW = (W - 2 * mx) / cols, rowH = 96, y0 = H * 0.34
     items.forEach((it, i) => {
@@ -1057,7 +1071,7 @@ register({
   tags: ['dato', 'gauge', 'semicirculo', 'kpi'], beat: 'data',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2, cy = H * 0.5
-    const num = bigNumber(content.claim || content.tagline, '85%')
+    const num = statAt(content, 0, '85%').value
     const pct = (() => { const m = num.match(/(\d[\d.,]*)/); let v = m ? parseFloat(m[1].replace(/,/g, '')) : 75; if (num.indexOf('%') < 0) v = clamp(v, 0, 100); return clamp(v / 100, 0.06, 1) })()
     const R = 130, lw = 16
     // track del semicirculo (180°, de izq a der por arriba)

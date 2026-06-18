@@ -1,35 +1,42 @@
-# perception.py - urvid 1.0 · PERCEPTION (analisis REAL de una pagina/URL -> BRIEF del motor urvid 1.0).
-# Toma lo que captura site_capture (titulo/descripcion/texto + themeColor + screenshot) y, con Claude, produce el
-# brief que el motor del front consume: { brand, rubro, tone, brandColor, tagline, claim, cta, seriousness }.
-# El front llama makeVideo(brief) en el navegador; aca SOLO producimos el brief. Cierra el ciclo "pego una URL -> sale el video".
+# perception.py - urvid 1.0 · PERCEPTION (analisis REAL de una pagina/URL -> BRIEF rico del motor urvid 1.0).
+# UNA SOLA llamada multimodal a Sonnet 4.6 (texto curado de la pagina + screenshot juntos) -> brief con el material
+# YA SELECCIONADO para el video: que decir (claim/tagline/cta), que props mostrar (bullets), que datos (stats) y la
+# prueba social. Reemplaza las 2 llamadas anteriores (vision + texto) por 1 -> mas robusto Y mas barato.
+# Cache POR URL (lo hace main.py) -> la misma pagina NO re-llama. Input acotado + max_tokens chico = bajo gasto.
 # Best-effort: si la captura o el LLM fallan, devuelve un brief con defaults sensatos (no rompe).
+import base64
 import json
+import os
 import re
 
 try:
     from anthropic import AsyncAnthropic
     _client = AsyncAnthropic()
-except Exception:  # pragma: no cover - sin anthropic -> degradamos a defaults
+except Exception:  # pragma: no cover
     _client = None
 
-BRIEF_MODEL = "claude-sonnet-4-6"   # mismo tier que el director; soporta temperature
+BRIEF_MODEL = "claude-sonnet-4-6"
 
-# rubros que el motor urvid 1.0 conoce (deben matchear los rubros de las bibliotecas/escenas).
 RUBROS = ["tech", "finanzas", "inmobiliaria", "salud", "educacion", "gastronomia",
           "moda", "belleza", "fitness", "eventos", "default"]
 
 _SYS = (
-    "Sos un director creativo de reels verticales. A partir de la informacion de una pagina, devolves el BRIEF para "
-    "un video corto (reel 9:16) de esa marca. Respondes SOLO con un objeto JSON (sin texto antes ni despues), con EXACTAMENTE estas claves:\n"
-    '- "brand": nombre corto de la marca (string)\n'
+    "Sos director creativo de reels verticales (9:16) + analista de marca. Te paso lo que se capturo de una pagina "
+    "(texto real + un screenshot) y devolves el BRIEF para un reel corto de esa marca, con el material YA SELECCIONADO "
+    "(elegis lo mejor, descartas relleno/nav/legales). Respondes SOLO un objeto JSON (sin texto afuera) con estas claves:\n"
+    '- "brand": nombre corto y real de la marca\n'
     '- "rubro": UNO EXACTO de: tech, finanzas, inmobiliaria, salud, educacion, gastronomia, moda, belleza, fitness, eventos, default\n'
-    '- "tone": "dark" o "light" (segun la identidad visual de la marca; si dudas, "dark")\n'
-    '- "brandColor": color de acento de la marca en hex "#rrggbb"\n'
-    '- "tagline": gancho corto, maximo 6 palabras\n'
-    '- "claim": mensaje principal, maximo 12 palabras, concreto; INCLUI un numero/dato si la pagina lo tiene\n'
-    '- "cta": llamado a la accion corto, maximo 4 palabras\n'
-    '- "seriousness": numero 0 a 1 (que tan sobrio/serio es el rubro: salud/finanzas alto ~0.8, gastronomia/moda bajo ~0.35)\n'
-    "Reglas: espanol rioplatense (voseo), fiel a la pagina (NO inventes datos ni cifras que no esten), conciso, sin comillas tipograficas. SOLO el JSON."
+    '- "tone": "dark" o "light" segun la identidad visual del screenshot (si dudas, "dark")\n'
+    '- "brandColor": color de acento de la marca en hex "#rrggbb" — el que REALMENTE ves dominante/vivido en el screenshot\n'
+    '- "tagline": gancho corto, MAX 6 palabras\n'
+    '- "claim": el mensaje principal del reel, MAX 12 palabras, concreto y fiel a la pagina\n'
+    '- "cta": llamado a la accion corto, MAX 4 palabras (preferi el CTA real de la pagina si hay)\n'
+    '- "bullets": 2 a 4 props/beneficios CORTOS (cada uno MAX 5 palabras), sacados de los titulos/contenido reales. [] si no hay claros.\n'
+    '- "stats": 0 a 3 datos numericos REALES de la pagina, cada uno {"value": "600" | "+10" | "98%", "label": "etiqueta corta"}. SOLO numeros que figuren; [] si no hay.\n'
+    '- "proof": una linea de prueba social REAL (rating, cant. de clientes, premio) o "" si no hay\n'
+    '- "seriousness": numero 0 a 1 (salud/finanzas alto ~0.8; gastronomia/moda bajo ~0.35)\n'
+    "REGLAS: espanol rioplatense (voseo), FIEL a la pagina (NO inventes datos, cifras, premios ni features que no esten; "
+    "si no hay, deja [] o \"\"), conciso, sin comillas tipograficas. SOLO el JSON."
 )
 
 
@@ -39,7 +46,6 @@ def _safe_hex(s):
 
 
 def _extract_json(text):
-    """Primer objeto {...} balanceado del texto (tolerante a preambulos)."""
     s = str(text or "")
     i = s.find("{")
     if i < 0:
@@ -65,6 +71,61 @@ def _brand_from_url(url):
     return part.capitalize() if part else None
 
 
+def _clip(s, n):
+    s = re.sub(r"\s+", " ", str(s or "")).strip()
+    return s[:n]
+
+
+def _page_digest(content):
+    """Resumen CURADO y compacto de la captura para el prompt (señal alta, pocos tokens). Evita dumpear bodyText crudo."""
+    c = content if isinstance(content, dict) else {}
+    parts = []
+    if c.get("title"): parts.append("Titulo: " + _clip(c["title"], 120))
+    if c.get("siteName"): parts.append("Sitio: " + _clip(c["siteName"], 60))
+    if c.get("description"): parts.append("Descripcion: " + _clip(c["description"], 260))
+    H = [x for x in (c.get("headings") or []) if isinstance(x, str)][:12]
+    if H: parts.append("Titulos de la pagina: " + " | ".join(_clip(h, 80) for h in H))
+    CTA = [x for x in (c.get("ctas") or []) if isinstance(x, str)][:8]
+    if CTA: parts.append("Botones/CTA: " + " | ".join(_clip(x, 30) for x in CTA))
+    P = [x for x in (c.get("paragraphs") or []) if isinstance(x, str)][:8]
+    if P: parts.append("Parrafos: " + " || ".join(_clip(p, 180) for p in P))
+    if not parts and c.get("bodyText"): parts.append("Texto: " + _clip(c["bodyText"], 1500))
+    return "\n".join(parts)[:5000]
+
+
+def _shot_b64(path):
+    try:
+        if path and os.path.exists(path):
+            with open(path, "rb") as f:
+                return base64.standard_b64encode(f.read()).decode("utf-8")
+    except Exception as e:
+        print(f"[perceive] no se pudo leer el screenshot ({e})")
+    return None
+
+
+def _norm_list(v, n, maxlen):
+    out = []
+    if isinstance(v, list):
+        for it in v:
+            s = _clip(it, maxlen)
+            if s:
+                out.append(s)
+            if len(out) >= n:
+                break
+    return out
+
+
+def _norm_stats(v):
+    out = []
+    if isinstance(v, list):
+        for it in v:
+            if isinstance(it, dict) and (it.get("value") not in (None, "")):
+                out.append({"value": _clip(it.get("value"), 12), "label": _clip(it.get("label"), 24)})
+            if len(out) >= 3:
+                break
+    return out
+
+
 def _normalize(b, url, content):
     b = b if isinstance(b, dict) else {}
     content = content if isinstance(content, dict) else {}
@@ -72,54 +133,44 @@ def _normalize(b, url, content):
     tone = b.get("tone") if b.get("tone") in ("dark", "light") else "dark"
     brand = (b.get("brand") or content.get("siteName") or content.get("title")
              or _brand_from_url(url) or "Marca")
-    brand = str(brand).strip()[:40] or "Marca"
-    color = _safe_hex(b.get("brandColor")) or "#5b8cff"
     out = {
-        "brand": brand, "rubro": rubro, "tone": tone, "brandColor": color,
-        "tagline": str(b.get("tagline") or "").strip()[:80],
-        "claim": str(b.get("claim") or "").strip()[:120],
-        "cta": str(b.get("cta") or "").strip()[:40],
+        "brand": _clip(brand, 40) or "Marca", "rubro": rubro, "tone": tone,
+        "brandColor": _safe_hex(b.get("brandColor")) or "#5b8cff",
+        "tagline": _clip(b.get("tagline"), 80), "claim": _clip(b.get("claim"), 120), "cta": _clip(b.get("cta"), 40),
+        "bullets": _norm_list(b.get("bullets"), 4, 40),
+        "stats": _norm_stats(b.get("stats")),
+        "proof": _clip(b.get("proof"), 90),
     }
     try:
-        s = float(b.get("seriousness"))
-        out["seriousness"] = max(0.0, min(1.0, s))
+        out["seriousness"] = max(0.0, min(1.0, float(b.get("seriousness"))))
     except Exception:
         pass
     return out
 
 
-async def analyze_to_brief(url, desarrollo="", site=None, dna=None, usage=None):
-    """Devuelve el brief para makeVideo. `site` = resultado de site_capture.capture_all (para no recapturar).
-    `dna` = lectura VISUAL de brand_dna (summary/mood/primary/accent/theme) -> analiza como el motor viejo (Animaciones)."""
+async def analyze_to_brief(url, desarrollo="", site=None, usage=None):
+    """UNA llamada multimodal (texto + screenshot) -> brief rico. `site` = resultado de site_capture.capture_all."""
     content = (site or {}).get("content") if isinstance(site, dict) else None
-    dna = dna if isinstance(dna, dict) else {}
+    shot = (site or {}).get("screenshot") if isinstance(site, dict) else None
     brief = {}
     if _client is not None:
-        facts = json.dumps(content, ensure_ascii=False)[:6000] if content else ""
-        # ADN visual (lo que brand_dna VE en el screenshot): le da a Claude el alma visual de la marca.
-        dnabits = []
-        if dna.get("summary"):
-            dnabits.append("resumen visual: " + str(dna["summary"])[:300])
-        if dna.get("mood"):
-            dnabits.append("mood: " + str(dna["mood"]))
-        for k in ("primary", "accent"):
-            if _safe_hex(dna.get(k)):
-                dnabits.append(f"color {k} visto: {_safe_hex(dna[k])}")
-        user = f"URL: {url}\n"
+        digest = _page_digest(content)
+        b64 = _shot_b64(shot)
+        text = f"URL: {url}\n"
         if desarrollo:
-            user += f"Notas del usuario (priorizalas): {desarrollo}\n"
-        if dnabits:
-            user += "Lectura visual de la pagina (ADN de marca): " + " · ".join(dnabits) + "\n"
-        if facts:
-            user += f"Contenido capturado de la pagina (JSON):\n{facts}\n"
-        else:
-            user += "(No se pudo capturar la pagina; infiere lo razonable desde la URL, el ADN visual y las notas.)\n"
-        user += "\nDevolve SOLO el JSON del brief."
+            text += f"Notas del usuario (priorizalas): {desarrollo}\n"
+        text += ("Contenido capturado de la pagina:\n" + digest + "\n") if digest else "(No se pudo capturar texto; usa el screenshot, la URL y las notas.)\n"
+        text += ("Tambien te paso el screenshot (para tono y colores reales).\n" if b64 else "")
+        text += "\nDevolve SOLO el JSON del brief, eligiendo lo mejor y mas fiel."
+        blocks = []
+        if b64:
+            blocks.append({"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": b64}})
+        blocks.append({"type": "text", "text": text})
         try:
             resp = await _client.messages.create(
-                model=BRIEF_MODEL, max_tokens=500, temperature=0.4,
-                system=_SYS, messages=[{"role": "user", "content": user}])
-            txt = "".join(getattr(b, "text", "") for b in resp.content if getattr(b, "type", "") == "text")
+                model=BRIEF_MODEL, max_tokens=750, temperature=0.4,
+                system=_SYS, messages=[{"role": "user", "content": blocks}])
+            txt = "".join(getattr(x, "text", "") for x in resp.content if getattr(x, "type", "") == "text")
             brief = _extract_json(txt) or {}
             if usage is not None:
                 try:
@@ -133,12 +184,9 @@ async def analyze_to_brief(url, desarrollo="", site=None, dna=None, usage=None):
         print("[perceive] anthropic no disponible -> brief con defaults")
 
     out = _normalize(brief, url, content)
-    # color de marca (mas fiel a la identidad): el acento/primary que brand_dna VE en el screenshot pisa al LLM;
-    # si no hay, el theme-color de la pagina.
-    visual = _safe_hex(dna.get("accent")) or _safe_hex(dna.get("primary"))
-    tc = _safe_hex((content or {}).get("themeColor")) if isinstance(content, dict) else None
-    if visual:
-        out["brandColor"] = visual
-    elif tc:
-        out["brandColor"] = tc
+    # fallback de color: si el modelo no dio uno usable, el theme-color de la pagina.
+    if out["brandColor"] == "#5b8cff":
+        tc = _safe_hex((content or {}).get("themeColor")) if isinstance(content, dict) else None
+        if tc:
+            out["brandColor"] = tc
     return out
