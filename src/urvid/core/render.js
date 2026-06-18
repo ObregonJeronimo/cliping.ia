@@ -7,12 +7,12 @@ const XF = 0.4   // cross-fade entre escenas
 
 export function drawFrame(ctx, t, video) {
   ctx.clearRect(0, 0, W, H)
-  // FONDO (vive todo el video)
-  if (video.bgId) {
-    const bg = get(video.bgId)
-    if (bg) bg.render(ctx, t, { pal: video.palette, content: video.content, seed: video.bgSeed, energy: 1 })
-  }
-  // ESCENA activa (+ la entrante en el cross-fade)
+  // CAPAS DE FONDO (viven todo el video): fondo -> textura/substrate -> atmosfera/luz -> (contenido encima)
+  const base = { pal: video.palette, content: video.content, energy: 1 }
+  if (video.bgId) { const m = get(video.bgId); if (m) m.render(ctx, t, { ...base, seed: video.bgSeed }) }
+  if (video.subId) { const m = get(video.subId); if (m) m.render(ctx, t, { ...base, seed: video.subSeed }) }
+  if (video.atmId) { const m = get(video.atmId); if (m) m.render(ctx, t, { ...base, seed: video.atmSeed }) }
+  // ESCENA activa (+ la entrante en el cross-fade) — el CONTENIDO va ENCIMA de las capas (texto siempre legible)
   for (const sc of video.scenes) {
     const s = sc.start, e = sc.start + sc.dur
     if (t < s - XF || t > e) continue

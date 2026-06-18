@@ -23,6 +23,11 @@ export function makeVideo(brief = {}) {
   // FONDO: query de la biblioteca por tono/rubro -> pick por peso
   const bgs = query('backgrounds', { tone, rubro })
   const bg = bgs.length ? weightedPick(seedFor(seed, 'bg'), bgs, m => m.weight) : null
+  // SUBSTRATE (textura tenue, opcional ~65%) + ATMOSPHERE (luz, opcional ~55%) -> mas unicidad por capas
+  const subPrng = seedFor(seed, 'substrate'), subs = query('substrates', { tone, rubro })
+  const sub = (subs.length && subPrng() < 0.65) ? weightedPick(subPrng, subs, m => m.weight) : null
+  const atmPrng = seedFor(seed, 'atmosphere'), atms = query('atmosphere', { tone, rubro })
+  const atm = (atms.length && atmPrng() < 0.55) ? weightedPick(atmPrng, atms, m => m.weight) : null
 
   // ESCENAS: por cada beat del arco, query de scene-layouts de esa categoria -> pick por peso
   const scenes = []; let start = 0
@@ -35,8 +40,10 @@ export function makeVideo(brief = {}) {
   return {
     brand, rubro, tone, seed, palette, fonts,
     bgId: bg ? bg.id : null, bgSeed: (seed ^ hashStr('bg')) >>> 0,
+    subId: sub ? sub.id : null, subSeed: (seed ^ hashStr('sub')) >>> 0,
+    atmId: atm ? atm.id : null, atmSeed: (seed ^ hashStr('atm')) >>> 0,
     content: { brand, ...content },
     scenes, duration: start || 8,
-    recipe: { bg: bg ? bg.id : null, scenes: scenes.map(s => s.sceneId) },   // la "carta" del video (para mostrar/auditar)
+    recipe: { bg: bg ? bg.id : null, sub: sub ? sub.id : null, atm: atm ? atm.id : null, scenes: scenes.map(s => s.sceneId) },   // la "carta" del video (para mostrar/auditar)
   }
 }
