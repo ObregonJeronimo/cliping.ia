@@ -1861,7 +1861,7 @@ function _rgba(hex, a) {
   function _rowEditorial(label, x, y, i, t, d) { // moda/inmob: numero grande, sin caja, regla fina
     const np = clamp(inv(t, d + 0.05, d + 0.5), 0, 1);
     ctx.save(); ctx.globalAlpha *= np; ctx.font = fontStr(800, 33, 'a');
-    ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = A1; ctx.fillText(String(i + 1).padStart(2, '0'), x, y - 1); ctx.restore();
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = _accentInk(A1); ctx.fillText(String(i + 1).padStart(2, '0'), x, y - 1); ctx.restore();   // acento LEGIBLE segun tono (el crudo se lavaba en claro)
     ctx.font = fontStr(600, fitFont(label, 20, 206, 13, 600, 't'), 't');
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = INK; setShadow('rgba(0,0,0,0.5)', 5, 1); ctx.fillText(clip(label, 206), x + 56, y); noShadow();
     const lp = clamp(inv(t, d + 0.15, d + 0.7), 0, 1);
@@ -2909,7 +2909,7 @@ function _rgba(hex, a) {
       // EL no-focal en OSCURO se hundia 'azul-sobre-azul' (numeral teal sobre mesh teal del mismo hue): _lighten(A1,0.12)
       // apenas levantaba el MISMO hue. Ahora popea el acento ANTES de aclarar (_lighten(_accentPop(A1),0.20)) -> mas brillante
       // y separado del fondo del mismo hue, pero sigue subordinado al focal (que lleva el _accentPop pleno + tamano/subrayado).
-      ctx.fillStyle = isF ? _accentPop(A1) : (TONE === 'light' ? _accentInk(A1) : _lighten(_accentPop(A1), 0.20));
+      ctx.fillStyle = (TONE === 'light') ? _accentInk(A1) : (isF ? _accentPop(A1) : _lighten(_accentPop(A1), 0.20));   // en CLARO el numero usa el acento LEGIBLE (no el pop brillante que se lava sobre crema)
       // HALO de TONO OPUESTO en oscuro (negro), como sceneReveal (~2516): el glow same-hue (_accentPop) se perdia sobre el
       // mesh del mismo hue -> no despegaba el numeral. En claro se mantiene el glow de acento (separa sobre fondo claro).
       setShadow(TONE === 'light' ? _rgba(_accentPop(A1), isF ? 0.4 : 0.2) : 'rgba(0,0,0,0.55)', isF ? 18 : 12, 2); ctx.fillText(val, 0, -10); noShadow();

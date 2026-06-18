@@ -40,6 +40,9 @@ Pegás un **link** → Urvid genera un **video vertical 9:16 de marketing** que:
 - **GATES determinísticos** (correr SIEMPRE tras un cambio del motor):
   - `node tools/bg-check.mjs` → DEBE dar **16 pass, 0 fail** (determinismo; sin Math.random/Date.now).
   - `node tools/legibility-probe.mjs <json>` → contraste WCAG texto-vs-fondo por escena (ojo: sobre-cuenta bordes/acentos; el CUERPO de texto es lo que importa).
+- **GATE de legibilidad** `node tools/legibility-check.mjs [dirs/files...]` → hookea fillText y mide el contraste WCAG SOLO
+  del cuerpo de texto (dentro de la caja del glifo; excluye particulas/barras/acentos). Hallazgo abierto: el acento como
+  TEXTO sobre fondo CLARO queda palido (verde/amarillo son de alta luminancia) -> tradeoff legibilidad vs vibracion (decision de diseno).
   - `node tools/fluidity-probe.mjs <json>` → "crawl" del texto en el hold (MAD por banda); texto clavado ≈ fondo.
   - `node tools/similarity-probe.mjs [dir]` → anti-sameness: pares de marcas demasiado parecidos (estructura + aHash gris).
   - `node tools/stress-samerubro.mjs <rubro>` → genera N marcas del MISMO rubro estilo PRODUCCIÓN (cada una su
