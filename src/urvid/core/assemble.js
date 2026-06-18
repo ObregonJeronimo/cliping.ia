@@ -4,19 +4,25 @@
 // sera mas listo: ejes ortogonales, sesgos por publico/seriedad, anti-sameness; este prueba el ensamblaje de punta a punta.)
 import { derivePalette } from './palette.js'
 import { query } from './registry.js'
-import { seedFor, weightedPick, hashStr, stableSeed } from './prng.js'
+import { seedFor, weightedPick, hashStr, stableSeed, pick, shuffled } from './prng.js'
 import { deriveFonts } from './fonts.js'
 
-// arco narrativo por defecto (hook -> value -> close). El director real elige el arco segun objetivo/mensaje.
-const DEFAULT_ARC = [
-  { category: 'openers/hero', dur: 4.2 },
-  { category: 'statements/editorial', dur: 3.4 },
-  { category: 'closers/outro', dur: 3.6 },
-]
+// ARCO narrativo VARIADO por semilla: apertura (hook|hero) -> 1-3 beats de cuerpo SIN repetir -> cierre. Usa todas
+// las categorias de escena disponibles -> dos videos no comparten estructura (no siempre hero->statement->outro).
+const _DUR = { 'openers/hero': 4.0, 'openers/hook': 3.2, 'statements/editorial': 3.4, 'lists/checklist': 3.9, 'lists/comparison': 3.6, 'data/single': 3.0, 'data/multi': 3.6, 'social/proof': 3.4, 'closers/outro': 3.6 }
+function buildArc(seed) {
+  const r = seedFor(seed, 'arc')
+  const open = pick(r, ['openers/hero', 'openers/hero', 'openers/hook'])
+  const body = ['statements/editorial', 'lists/checklist', 'lists/comparison', 'data/single', 'data/multi', 'social/proof']
+  const n = 1 + (r() * 3 | 0)
+  const cats = [open, ...shuffled(r, body).slice(0, n), 'closers/outro']
+  return cats.map(c => ({ category: c, dur: _DUR[c] || 3.4 }))
+}
 
 export function makeVideo(brief = {}) {
-  const { brand = 'Marca', rubro = 'default', tone = 'dark', brandColor = '#5b8cff', style = null, content = {}, arc = DEFAULT_ARC } = brief
+  const { brand = 'Marca', rubro = 'default', tone = 'dark', brandColor = '#5b8cff', style = null, content = {} } = brief
   const seed = brief.seed != null ? (brief.seed >>> 0) : stableSeed(brand, rubro)
+  const arc = brief.arc || buildArc(seed)
   const palette = derivePalette(brandColor, { tone, rubro, seed })
   const fonts = deriveFonts(rubro, style, seed)
 
