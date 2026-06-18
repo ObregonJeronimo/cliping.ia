@@ -86,7 +86,7 @@ export default function Urvid1Studio() {
       <div className={styles.cols}>
         <div className={styles.panel}>
           <label className={styles.field}>Analizar pagina (IA)
-            <div className={styles.row}>
+            <div className={`${styles.row} ${styles.analyze}`}>
               <input placeholder="https://tu-sitio.com" value={url} onChange={e => setUrl(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') analyze() }} />
               <button className={styles.primary} onClick={analyze} disabled={analyzing === 'loading'}>{analyzing === 'loading' ? 'Analizando…' : '✨ Analizar'}</button>
             </div>
@@ -120,7 +120,7 @@ export default function Urvid1Studio() {
           </div>
         </div>
 
-        <div className={styles.panel}>
+        <div className={`${styles.panel} ${styles.side}`}>
           <h3 className={styles.h3}>Mis videos</h3>
           {saved.length === 0 && <div className={styles.empty}><b>Sin videos guardados</b>Tocá ★ Guardar y tus variantes quedan acá.</div>}
           <div className={styles.gallery}>
