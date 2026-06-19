@@ -5,6 +5,18 @@
 import { register } from '../../core/registry.js'
 import { mulberry32, range, seedFor } from '../../core/prng.js'
 import { W, H, TAU, rgba, lighten, darken, clamp, lerp, mix, hexToHsl, hslToHex, eOutCubic, eInOutCubic } from '../../core/util.js'
+// FONDOS POR RUBRO (jun 2026): +155 fondos especificos por rubro (x2 tonos), un archivo por rubro -> el director
+// los prefiere por fit (rubroAffinity) sobre los genericos, asi cada rubro tiene su identidad de fondo en dark Y light.
+import './r-tech.js'
+import './r-finanzas.js'
+import './r-inmobiliaria.js'
+import './r-salud.js'
+import './r-educacion.js'
+import './r-gastronomia.js'
+import './r-moda.js'
+import './r-belleza.js'
+import './r-fitness.js'
+import './r-default.js'
 
 const CLK = 0.6
 

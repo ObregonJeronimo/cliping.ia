@@ -12,7 +12,7 @@ import { query, get } from './registry.js'
 import { seedFor, weightedPick, hashStr, stableSeed, pick, shuffled } from './prng.js'
 import { deriveFonts } from './fonts.js'
 import { analyzeContent, buildArcSmart, sceneBias } from './strategy.js'
-import { fitWeight } from './fit.js'
+import { fitWeight, canonRubro } from './fit.js'
 
 // ARCO narrativo VARIADO por semilla: apertura (hook|hero) -> 1-3 beats de cuerpo SIN repetir -> cierre. Usa todas
 // las categorias de escena disponibles -> dos videos no comparten estructura (no siempre hero->statement->outro).
@@ -101,8 +101,18 @@ export function makeVideo(brief = {}) {
   // las escenas piden slots y el solver (core/layout.js) los ubica. Tono-agnostico -> filtra solo por fit.
   const layMod = required(lock && lock.layout, keep && keep.layout, seedFor(seed, 'layout'), query('layouts', { tone }))
 
-  // FONDO: query por tono -> pick por fit. SUBSTRATE (~65%) + ATMOSPHERE (~55%) opcionales -> mas unicidad por capas.
-  const bg = required(lock && lock.bg, keep && keep.bg, seedFor(seed, 'bg'), query('backgrounds', { tone }))
+  // FONDO: IDENTIDAD POR RUBRO. Si el rubro tiene fondos PROPIOS suficientes, el pool = los propios + una MINORIA
+  // de universales (cantidad pareja) y se descartan los de OTROS rubros. Asi un brief tech usa fondos tech (no
+  // genericos ni de otro rubro), con algo de universal para variar. Sin rubro claro -> pool completo de siempre.
+  let bgPool = query('backgrounds', { tone })
+  if (rubro && rubro !== 'default') {
+    const own = bgPool.filter(m => { const rs = (m.rubros && m.rubros.length) ? m.rubros : ['*']; return rs[0] !== '*' && rs.some(r => canonRubro(r) === rubro) })
+    if (own.length >= 6) {
+      const univ = shuffled(seedFor(seed, 'bgpool'), bgPool.filter(m => ((m.rubros && m.rubros[0]) || '*') === '*')).slice(0, Math.max(3, Math.ceil(own.length * 0.4)))
+      bgPool = own.concat(univ)   // ~75% fondo propio del rubro, ~25% universal para variar
+    }
+  }
+  const bg = required(lock && lock.bg, keep && keep.bg, seedFor(seed, 'bg'), bgPool)
   const sub = optional(lock && lock.sub, keep && keep.sub, seedFor(seed, 'substrate'), 0.65, query('substrates', { tone }))
   const atm = optional(lock && lock.atm, keep && keep.atm, seedFor(seed, 'atmosphere'), 0.55, query('atmosphere', { tone }))
 
