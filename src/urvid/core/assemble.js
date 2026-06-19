@@ -53,41 +53,48 @@ export function makeVideo(brief = {}) {
 
   // TONO = SOLO COLOR. Con lockRecipe (toggle claro/oscuro), se reusa cada slot salvo que su modulo no soporte el tono.
   const lock = brief.lockRecipe || null
+  // KEEP (variante que RESPETA el estilo): pin PARCIAL. "Otra variante" fija la IDENTIDAD de la pagina (color +
+  // tipografia) y RE-ROLEA el resto (fondo, escenas, motion, transicion, post...) con la semilla nueva -> mismo
+  // look, video distinto. Distinto del lock (que reusa TODO). Un slot sin keepId se elige NORMAL (los opcionales
+  // conservan su sorteo de probabilidad), asi la variante mantiene variedad real sin cambiar de "marca".
+  const keep = brief.keepRecipe || null
   const toneOk = (m) => m && m.tones.indexOf(tone) >= 0
-  // slot REQUERIDO: bajo lock reusa el id si soporta el tono, si no re-elige del pool de ESE tono.
-  const required = (lockId, prng, pool) => {
+  // slot REQUERIDO: lock reusa su id; si no, keep lo fija si vino; si no, re-elige del pool de ESE tono.
+  const required = (lockId, keepId, prng, pool) => {
     if (lock) { const m = lockId ? get(lockId) : null; if (toneOk(m)) return m }
+    else if (keepId) { const m = get(keepId); if (toneOk(m)) return m }
     return pool.length ? weightedPick(prng, pool, score) : null
   }
-  // slot OPCIONAL (~prob): SIN lock hace el sorteo de probabilidad; CON lock preserva presencia/ausencia de la receta.
-  const optional = (lockId, prng, prob, pool) => {
+  // slot OPCIONAL (~prob): lock preserva presencia/ausencia; keep fija el id que vino; si no, sorteo de probabilidad.
+  const optional = (lockId, keepId, prng, prob, pool) => {
     if (lock) { if (!lockId) return null; const m = get(lockId); return toneOk(m) ? m : (pool.length ? weightedPick(prng, pool, score) : null) }
+    if (keepId) { const m = get(keepId); if (toneOk(m)) return m }
     return (pool.length && prng() < prob) ? weightedPick(prng, pool, score) : null
   }
 
   // COLOR (esquema/mood) + TIPOGRAFIA (pairing) de sus bibliotecas; fallback a los derivadores base
-  const colMod = required(lock && lock.color, seedFor(seed, 'colorpick'), query('color', { tone }))
+  const colMod = required(lock && lock.color, keep && keep.color, seedFor(seed, 'colorpick'), query('color', { tone }))
   const palette = colMod ? colMod.derive(brandColor, { tone, rubro, seed }) : derivePalette(brandColor, { tone, rubro, seed })
-  const typMod = required(lock && lock.type, seedFor(seed, 'typepick'), query('typography', { tone }))
+  const typMod = required(lock && lock.type, keep && keep.type, seedFor(seed, 'typepick'), query('typography', { tone }))
   const fonts = typMod ? typMod.fonts : deriveFonts(rubro, style, seed)
   // MOTION: personalidad de movimiento (entrada/asentamiento/stagger/drift) -> env.motion.
-  const motMod = required(lock && lock.motion, seedFor(seed, 'motionpick'), query('motion', { tone }))
+  const motMod = required(lock && lock.motion, keep && keep.motion, seedFor(seed, 'motionpick'), query('motion', { tone }))
   // TYPEKIT: efecto de texto cinetico para los titulos -> env.typekit. ~30% sin efecto (plain) para no saturar.
-  const tkMod = optional(lock && lock.typekit, seedFor(seed, 'typekit'), 0.7, query('typekit', { tone }))
+  const tkMod = optional(lock && lock.typekit, keep && keep.typekit, seedFor(seed, 'typekit'), 0.7, query('typekit', { tone }))
   // MARKKIT garnish: un ICONO (por rubro) en una esquina, chico y tenue, opcional (~50%). Solo iconos
   // (NUNCA un blob/forma centrada detras del titulo). Los divisores/marcos quedan para composicion per-escena.
   const MARK_GARNISH_CATS = new Set(['iconos-rubro', 'iconos-animados'])
   const markPool = query('markkit', { tone }).filter(m => MARK_GARNISH_CATS.has(m.category))
-  const markMod = optional(lock && lock.mark, seedFor(seed, 'markgarnish'), 0.5, markPool)
+  const markMod = optional(lock && lock.mark, keep && keep.mark, seedFor(seed, 'markgarnish'), 0.5, markPool)
   // TRANSICION escena-a-escena (wipe/slide/iris/bars/cut) -> video.transitionId.
-  const trMod = required(lock && lock.transition, seedFor(seed, 'transition'), query('transitions', { tone }))
+  const trMod = required(lock && lock.transition, keep && keep.transition, seedFor(seed, 'transition'), query('transitions', { tone }))
   // POST: acabado (grano/vignette/leak/grade/scanlines) -> video.postId. Opcional (~58%).
-  const postMod = optional(lock && lock.post, seedFor(seed, 'post'), 0.58, query('post', { tone }))
+  const postMod = optional(lock && lock.post, keep && keep.post, seedFor(seed, 'post'), 0.58, query('post', { tone }))
 
   // FONDO: query por tono -> pick por fit. SUBSTRATE (~65%) + ATMOSPHERE (~55%) opcionales -> mas unicidad por capas.
-  const bg = required(lock && lock.bg, seedFor(seed, 'bg'), query('backgrounds', { tone }))
-  const sub = optional(lock && lock.sub, seedFor(seed, 'substrate'), 0.65, query('substrates', { tone }))
-  const atm = optional(lock && lock.atm, seedFor(seed, 'atmosphere'), 0.55, query('atmosphere', { tone }))
+  const bg = required(lock && lock.bg, keep && keep.bg, seedFor(seed, 'bg'), query('backgrounds', { tone }))
+  const sub = optional(lock && lock.sub, keep && keep.sub, seedFor(seed, 'substrate'), 0.65, query('substrates', { tone }))
+  const atm = optional(lock && lock.atm, keep && keep.atm, seedFor(seed, 'atmosphere'), 0.55, query('atmosphere', { tone }))
 
   // ESCENAS: por cada beat del arco, query de scene-layouts de esa categoria -> pick por fit × sesgo de contenido.
   // Bajo lock se reusa el sceneId del mismo beat (el arco es identico: mismo seed+content) salvo incompat. de tono.

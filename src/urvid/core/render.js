@@ -1,26 +1,41 @@
 // urvid 1.0 · RENDER — compositor. drawFrame(ctx, t, video): dibuja el FONDO (continuo) + la ESCENA activa, con
-// TRANSICIONES reales entre escenas (la lib transitions compone A saliente + B entrante via clip/transform, sin
-// buffers -> nitido y cross-env). El ctx espera el espacio logico 405x720 (el caller escala a 1080x1920).
+// TRANSICIONES entre escenas. En la ventana de transicion A y B se pintan cada una a un BUFFER offscreen y la lib
+// transitions compone los buffers (clip/transform); ademas A se DISUELVE (alpha 1->0) para que su texto no quede
+// pisando a B. Sin buffer disponible (Node pelado) cae al modo directo previo. ctx en espacio logico 405x720.
 import { get } from './registry.js'
-import { W, H, inv } from './util.js'
+import { W, H, inv, clamp, eOutCubic } from './util.js'
 import { resolveMotion } from './motion.js'
 import { resolveTypekit } from './typekit.js'
 import { resolveTransition } from './transitions.js'
 import { resolvePost } from './post.js'
 
-const XF = 0.5   // ventana de transicion entre escenas (s)
+const XF = 0.4   // ventana de transicion entre escenas (s) — corta = snappy, menos tiempo de solape
 
-// pinta UNA escena (contenido) con la ENTRADA de la personalidad (offset/zoom/rotacion + drift ambiente). Coords logicas.
+// SCRATCH (buffer offscreen) para componer escenas en la transicion. En browser/Remotion (Chromium) hay
+// OffscreenCanvas; los tools Node (napi-canvas) inyectan su createCanvas con setScratchFactory. Sin ninguno
+// (Node pelado) -> null -> la transicion cae al modo directo previo (sin crossfade, comportamiento intacto).
+let _scratchFactory = null
+export function setScratchFactory(fn) { _scratchFactory = fn }
+function makeScratch(w, h) {
+  if (_scratchFactory) return _scratchFactory(w, h)
+  if (typeof OffscreenCanvas !== 'undefined') return new OffscreenCanvas(w, h)
+  if (typeof document !== 'undefined') { const c = document.createElement('canvas'); c.width = w; c.height = h; return c }
+  return null
+}
+
+// pinta UNA escena (contenido) con la ENTRADA de la personalidad (offset/zoom/rotacion de entrada). Coords logicas.
 function paintScene(ctx, sc, t, video, motion, typekit) {
   const mod = get(sc.sceneId); if (!mod) return
   const ts = t - sc.start
   const ep = motion.ease(inv(ts, 0, motion.enterDur || 0.5)), k = 1 - ep
-  const en = motion.enter || {}, amb = (motion.ambient ? motion.ambient(ts, sc.seed >>> 0) : null) || {}
-  // FLUIDEZ: ken-burns = zoom lento (<=2%) sobre toda la escena, MONOTONICO (cinematografico, no marea). Intensidad
-  // = motion.life. + ambient (respiracion/flote continuo). Asi el contenido NUNCA queda muerto-estatico tras entrar.
-  const sp = inv(ts, 0, sc.dur || 4), kb = (motion.life || 0) * 0.03 * sp
-  const z = 1 + (en.scale || 0) * k + (amb.scale || 0) + kb
-  const ox = (en.dx || 0) * k + (amb.x || 0), oy = (en.dy || 0) * k + (amb.y || 0), rot = (en.rotate || 0) * k + (amb.rot || 0)
+  const en = motion.enter || {}
+  // FLUIDEZ vs LEGIBILIDAD: ken-burns = zoom MUY lento (<=1.2%) y MONOTONICO sobre la escena (cine, no marea).
+  // NO se aplica la deriva sinusoidal `ambient` (x/y/rot/scale) al CONTENIDO: hacer temblar el cuadro de texto
+  // de ida y vuelta por sub-pixeles hace "shimmer"/crawl en los bordes -> se ve TOSCO. El texto queda QUIETO; la
+  // vida continua la ponen los propios modulos en su DECO (barras/sheen/glow), no el frame entero.
+  const sp = inv(ts, 0, sc.dur || 4), kb = (motion.life || 0) * 0.012 * sp
+  const z = 1 + (en.scale || 0) * k + kb
+  const ox = (en.dx || 0) * k, oy = (en.dy || 0) * k, rot = (en.rotate || 0) * k
   ctx.save()
   ctx.translate(W / 2 + ox, H / 2 + oy); ctx.rotate(rot); ctx.scale(z, z); ctx.translate(-W / 2, -H / 2)
   mod.render(ctx, ts, { pal: video.palette, content: video.content, fonts: video.fonts, seed: sc.seed, energy: 1, sceneDur: sc.dur, motion, typekit })
@@ -62,10 +77,26 @@ export function drawFrame(ctx, t, video) {
     if (t >= b && t < b + XF) { trans = { A: scenes[i - 1], B: scenes[i], p: (t - b) / XF }; break }
   }
   if (trans) {
-    transition.render(ctx, inv(trans.p, 0, 1),
-      c => paintScene(c, trans.A, t, video, motion, typekit),
-      c => paintScene(c, trans.B, t, video, motion, typekit),
-      { W, H })
+    const p = inv(trans.p, 0, 1)
+    // BUFFERS: pintamos A y B cada una en su propio canvas (a resolucion del device) y la transicion compone los
+    // buffers. CLAVE para el solape de textos: A se DISUELVE (alpha 1->0) mientras B entra -> el texto saliente
+    // DESAPARECE en vez de quedar a opacidad plena debajo del reveal (lo que hacia que "se pisaran" por ~0.5s).
+    const ss = (ctx.getTransform && ctx.getTransform().a) || 1
+    const bw = Math.ceil(W * ss), bh = Math.ceil(H * ss)
+    const bufA = makeScratch(bw, bh), bufB = bufA ? makeScratch(bw, bh) : null
+    if (bufA && bufB) {
+      const ca = bufA.getContext('2d'); ca.setTransform(ss, 0, 0, ss, 0, 0); paintScene(ca, trans.A, t, video, motion, typekit)
+      const cb = bufB.getContext('2d'); cb.setTransform(ss, 0, 0, ss, 0, 0); paintScene(cb, trans.B, t, video, motion, typekit)
+      const aFade = 1 - eOutCubic(p)   // A se va; B llega entera (el reveal lo da la geometria de la transicion)
+      const blit = (c, buf, a) => { c.save(); c.globalAlpha *= clamp(a, 0, 1); c.drawImage(buf, 0, 0, W, H); c.restore() }
+      transition.render(ctx, p, c => blit(c, bufA, aFade), c => blit(c, bufB, 1), { W, H })
+    } else {
+      // fallback sin buffers (Node pelado): modo directo previo (sin crossfade) -> determinismo/tests intactos.
+      transition.render(ctx, p,
+        c => paintScene(c, trans.A, t, video, motion, typekit),
+        c => paintScene(c, trans.B, t, video, motion, typekit),
+        { W, H })
+    }
   } else {
     let act = null
     for (const sc of scenes) if (t >= sc.start && t < sc.start + sc.dur) { act = sc; break }

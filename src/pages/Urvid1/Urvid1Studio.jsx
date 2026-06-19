@@ -18,7 +18,10 @@ export default function Urvid1Studio() {
   // TONO = SOLO COLOR: al togglear claro/oscuro bloqueamos la receta (lockRecipe) -> el director reusa los mismos
   // modulos y solo re-deriva la paleta. Cualquier otro cambio (marca/rubro/texto/semilla) LIBERA el lock -> build fresco.
   const [lock, setLock] = useState(null)
-  const video = useMemo(() => makeVideo({ ...brief, seed: seed || undefined, lockRecipe: lock || undefined }), [brief, seed, lock])
+  // KEEP: "otra variante" mantiene la IDENTIDAD de la pagina (color + tipografia) y re-rolea el resto. Se limpia
+  // ante cualquier cambio del brief (marca/color/rubro/texto) o al analizar/cargar otro -> ahi el estilo se re-elige.
+  const [keep, setKeep] = useState(null)
+  const video = useMemo(() => makeVideo({ ...brief, seed: seed || undefined, lockRecipe: lock || undefined, keepRecipe: keep || undefined }), [brief, seed, lock, keep])
   const [playing, setPlaying] = useState(true)
   const [speed, setSpeed] = useState(1)
   const [head, setHead] = useState(0)
@@ -62,7 +65,7 @@ export default function Urvid1Studio() {
         tagline: b.tagline || '', claim: b.claim || '', cta: b.cta || '',
         bullets: Array.isArray(b.bullets) ? b.bullets : [], stats: Array.isArray(b.stats) ? b.stats : [], proof: b.proof || '',
       })
-      setLock(null); setSeed(0); headRef.current = 0; setAnalyzing('')
+      setLock(null); setKeep(null); setSeed(0); headRef.current = 0; setHead(0); setAnalyzing('')
     } catch {
       setAnalyzing('Backend no disponible — abri "start.bat" (corre en localhost:8000)')
     }
@@ -82,12 +85,15 @@ export default function Urvid1Studio() {
     setTimeout(() => setShared(''), 7000)
   }
 
-  const up = (k, v) => { setLock(null); setBrief(b => ({ ...b, [k]: v })) }
+  const up = (k, v) => { setLock(null); setKeep(null); setBrief(b => ({ ...b, [k]: v })) }
   // toggle de tono: NO libera el lock -> congela la receta actual y solo recolorea al otro tono.
-  const setTone = (tn) => { if (tn === brief.tone) return; setLock(video.recipe); setBrief(b => ({ ...b, tone: tn })) }
-  const reroll = () => { setLock(null); setSeed(s => ((s || 1) + 0x9e3779b1) >>> 0 || 1) }
+  const setTone = (tn) => { if (tn === brief.tone) return; setKeep(null); setLock(video.recipe); setBrief(b => ({ ...b, tone: tn })) }
+  // OTRA VARIANTE: nueva semilla PERO conserva color+tipografia (la identidad de la pagina) -> mismo estilo,
+  // composicion distinta (fondo/escenas/motion/transicion). Y REINICIA el reproductor a 0 (antes seguia en el
+  // segundo donde estabas y habia que rebobinar a mano).
+  const reroll = () => { setLock(null); setKeep({ color: video.recipe.color, type: video.recipe.type }); setSeed(s => ((s || 1) + 0x9e3779b1) >>> 0 || 1); headRef.current = 0; setHead(0) }
   const save = () => { const next = [{ ...brief, seed, ts: Date.now() }, ...saved].slice(0, 24); setSaved(next); localStorage.setItem('urvid1.saved', JSON.stringify(next)) }
-  const load = (it) => { setLock(null); setBrief({ brand: it.brand, rubro: it.rubro, tone: it.tone, brandColor: it.brandColor, tagline: it.tagline, claim: it.claim, cta: it.cta, bullets: it.bullets || [], stats: it.stats || [], proof: it.proof || '' }); setSeed(it.seed || 0); headRef.current = 0 }
+  const load = (it) => { setLock(null); setKeep(null); setBrief({ brand: it.brand, rubro: it.rubro, tone: it.tone, brandColor: it.brandColor, tagline: it.tagline, claim: it.claim, cta: it.cta, bullets: it.bullets || [], stats: it.stats || [], proof: it.proof || '' }); setSeed(it.seed || 0); headRef.current = 0; setHead(0) }
   const del = (i) => { const next = saved.filter((_, j) => j !== i); setSaved(next); localStorage.setItem('urvid1.saved', JSON.stringify(next)) }
 
   return (
@@ -129,7 +135,7 @@ export default function Urvid1Studio() {
           <span className={styles.seedpill}><i>semilla</i>{seed ? '#' + (seed >>> 0).toString(16).slice(0, 6) : 'auto (marca + rubro)'}</span>
           <button className={styles.share} onClick={share} title="Manda este video a Claude para que lo vea">{shared === '...' ? 'Compartiendo…' : '↗ Compartir con Claude'}</button>
           {shared && shared !== '...' && <p style={{ margin: 0, fontSize: 12, color: shared.indexOf('✓') >= 0 ? '#8fe0a8' : '#e08a8a' }}>{shared}</p>}
-          <p className={styles.note}>Cada "otra variante" cambia la semilla → el director ensambla una carta distinta. Misma semilla = mismo video, siempre.</p>
+          <p className={styles.note}>"Otra variante" mantiene el color y la tipografía de la página y varía la composición (fondo, escenas, movimiento). Cambiá la marca, el color o el rubro para un estilo nuevo.</p>
         </div>
 
         <div className={styles.stage}>
