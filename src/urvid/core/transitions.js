@@ -9,14 +9,16 @@ export function defaultTransition() {
   return { id: 'cut', render(ctx, p, drawA, drawB) { if (p < 0.5) drawA(ctx); else drawB(ctx) } }
 }
 
+const _cache = new WeakMap()   // memo NO-mutante (no estampa el video)
 export function resolveTransition(video) {
-  if (video && video._transition) return video._transition
+  if (!video) return defaultTransition()
+  const hit = _cache.get(video); if (hit) return hit
   let tr = null
   try {
-    const mod = video && video.transitionId ? get(video.transitionId) : null
+    const mod = video.transitionId ? get(video.transitionId) : null
     if (mod && typeof mod.make === 'function') tr = mod.make()
   } catch { tr = null }
   tr = tr || defaultTransition()
-  if (video) video._transition = tr
+  _cache.set(video, tr)
   return tr
 }

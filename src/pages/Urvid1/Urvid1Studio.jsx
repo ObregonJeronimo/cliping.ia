@@ -27,10 +27,12 @@ export default function Urvid1Studio() {
   const [head, setHead] = useState(0)
   const headRef = useRef(0)
   const cvRef = useRef(null)
+  const recRef = useRef(null)
   const [saved, setSaved] = useState(() => { try { return JSON.parse(localStorage.getItem('urvid1.saved') || '[]') } catch { return [] } })
   const [url, setUrl] = useState('')
   const [analyzing, setAnalyzing] = useState('')   // '' | 'loading' | mensaje de error
   const [shared, setShared] = useState('')         // estado del boton "Compartir con Claude"
+  const [exporting, setExporting] = useState('')   // '' | 'NN%' | mensaje de error
 
   useEffect(() => {
     const cv = cvRef.current; if (!cv) return
@@ -85,6 +87,42 @@ export default function Urvid1Studio() {
     setTimeout(() => setShared(''), 7000)
   }
 
+  // EXPORT: graba el canvas (que ya se dibuja en vivo) con MediaRecorder -> baja un archivo de video. El motor corre
+  // en el browser, asi que esto no necesita backend. Graba UNA vuelta exacta (de 0 a video.duration) y lo descarga.
+  const exportVideo = () => {
+    const cv = cvRef.current
+    if (!cv || exporting) return
+    if (typeof cv.captureStream !== 'function' || typeof window.MediaRecorder === 'undefined') {
+      setExporting('Tu navegador no soporta exportar'); setTimeout(() => setExporting(''), 5000); return
+    }
+    const types = ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm']
+    const mime = types.find(t => { try { return MediaRecorder.isTypeSupported(t) } catch { return false } }) || ''
+    const ext = mime.indexOf('mp4') >= 0 ? 'mp4' : 'webm'
+    let rec
+    try { rec = new MediaRecorder(cv.captureStream(30), mime ? { mimeType: mime, videoBitsPerSecond: 8e6 } : { videoBitsPerSecond: 8e6 }) }
+    catch { setExporting('No se pudo iniciar la grabacion'); setTimeout(() => setExporting(''), 5000); return }
+    const chunks = []
+    rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data) }
+    rec.onstop = () => {
+      const blob = new Blob(chunks, { type: mime || 'video/webm' }), href = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = href; a.download = `${(brief.brand || 'urvid').replace(/\s+/g, '-')}-${(brief.format || '9-16').replace(':', 'x')}.${ext}`
+      document.body.appendChild(a); a.click(); a.remove()
+      setTimeout(() => URL.revokeObjectURL(href), 4000); setExporting('')
+    }
+    headRef.current = 0; setHead(0); setPlaying(true)
+    recRef.current = rec; rec.start()
+    const dur = video.duration, t0 = performance.now()
+    const tick = () => {
+      if (!recRef.current) return
+      const el = (performance.now() - t0) / 1000, pct = Math.min(100, Math.round(el / dur * 100))
+      setExporting(pct + '%')
+      if (el >= dur + 0.1) { try { rec.stop() } catch { /* noop */ } recRef.current = null }
+      else requestAnimationFrame(tick)
+    }
+    requestAnimationFrame(tick)
+  }
+
   const up = (k, v) => { setLock(null); setKeep(null); setBrief(b => ({ ...b, [k]: v })) }
   // toggle de tono: NO libera el lock -> congela la receta actual y solo recolorea al otro tono.
   const setTone = (tn) => { if (tn === brief.tone) return; setKeep(null); setLock(video.recipe); setBrief(b => ({ ...b, tone: tn })) }
@@ -133,6 +171,8 @@ export default function Urvid1Studio() {
             <button className={styles.primary} onClick={reroll}>↻ Otra variante</button>
             <button className={styles.ghost} onClick={save}>★ Guardar</button>
           </div>
+          <button className={styles.primary} onClick={exportVideo} disabled={!!exporting} style={{ width: '100%' }}>{exporting ? `Exportando ${exporting}` : '⬇ Descargar video'}</button>
+          {exporting && exporting.indexOf('%') < 0 && <p style={{ margin: 0, fontSize: 12, color: '#e08a8a' }}>{exporting}</p>}
           <span className={styles.seedpill}><i>semilla</i>{seed ? '#' + (seed >>> 0).toString(16).slice(0, 6) : 'auto (marca + rubro)'}</span>
           <button className={styles.share} onClick={share} title="Manda este video a Claude para que lo vea">{shared === '...' ? 'Compartiendo…' : '↗ Compartir con Claude'}</button>
           {shared && shared !== '...' && <p style={{ margin: 0, fontSize: 12, color: shared.indexOf('✓') >= 0 ? '#8fe0a8' : '#e08a8a' }}>{shared}</p>}

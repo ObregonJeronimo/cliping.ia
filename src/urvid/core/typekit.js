@@ -14,14 +14,16 @@ export function defaultTypekit() {
   }
 }
 
+const _cache = new WeakMap()   // memo NO-mutante (no estampa el video)
 export function resolveTypekit(video) {
-  if (video && video._typekit) return video._typekit
+  if (!video) return defaultTypekit()
+  const hit = _cache.get(video); if (hit) return hit
   let tk = null
   try {
-    const mod = video && video.typekitId ? get(video.typekitId) : null
+    const mod = video.typekitId ? get(video.typekitId) : null
     if (mod && typeof mod.make === 'function') tk = mod.make()
   } catch { tk = null }
   tk = tk || defaultTypekit()
-  if (video) video._typekit = tk
+  _cache.set(video, tk)
   return tk
 }

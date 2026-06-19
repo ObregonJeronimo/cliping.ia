@@ -33,14 +33,16 @@ export function defaultMotion() {
 
 // Resuelve (y memoiza en video._motion) la personalidad elegida; cae al default si no hay / si falla.
 // Determinista: la personalidad es codigo puro; memoizar no introduce estado observable entre videos.
+const _cache = new WeakMap()   // memo NO-mutante: no estampa el video (queda inmutable -> congelable/serializable a worker)
 export function resolveMotion(video) {
-  if (video && video._motion) return video._motion
+  if (!video) return defaultMotion()
+  const hit = _cache.get(video); if (hit) return hit
   let m = null
   try {
-    const mod = video && video.motionId ? get(video.motionId) : null
+    const mod = video.motionId ? get(video.motionId) : null
     if (mod && typeof mod.make === 'function') m = mod.make()
   } catch { m = null }
   m = m || defaultMotion()
-  if (video) video._motion = m
+  _cache.set(video, m)
   return m
 }

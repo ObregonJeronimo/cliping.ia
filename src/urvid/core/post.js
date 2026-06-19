@@ -8,14 +8,16 @@ export function defaultPost() {
   return { id: 'none', render() {} }
 }
 
+const _cache = new WeakMap()   // memo NO-mutante (no estampa el video)
 export function resolvePost(video) {
-  if (video && video._post) return video._post
+  if (!video) return defaultPost()
+  const hit = _cache.get(video); if (hit) return hit
   let p = null
   try {
-    const mod = video && video.postId ? get(video.postId) : null
+    const mod = video.postId ? get(video.postId) : null
     if (mod && typeof mod.render === 'function') p = mod
   } catch { p = null }
   p = p || defaultPost()
-  if (video) video._post = p
+  _cache.set(video, p)
   return p
 }
