@@ -12,7 +12,10 @@ Setup en el backend (una vez):
 
 from __future__ import annotations
 
+import ipaddress
+import socket
 from pathlib import Path
+from urllib.parse import urlparse
 
 try:
     from playwright.async_api import async_playwright
@@ -22,13 +25,65 @@ except Exception as _e:  # pragma: no cover
     print(f"[capture] Playwright no disponible: {_e}")
 
 
+# ---- SSRF GUARD --------------------------------------------------------------
+# El backend abre Chromium contra una URL que viene del cliente, y corre detras de un tunel publico
+# (ngrok/cloudflared) con CORS *. Sin validar, cualquiera puede apuntar a 169.254.169.254 (metadata de
+# la nube), localhost, rangos RFC1918 o file:// y exfiltrar via screenshot/texto. Validamos ANTES de
+# cargar: solo http/https, puerto estandar, y TODAS las IPs resueltas del host deben ser publicas.
+_ALLOWED_SCHEMES = {"http", "https"}
+_ALLOWED_PORTS = {80, 443, None}
+
+
+def url_is_safe(url: str) -> tuple[bool, str]:
+    """Devuelve (ok, motivo). Rechaza schemes raros, puertos no estandar y hosts que resuelven a IPs
+    internas/no-ruteables (loopback/privadas/link-local/metadata/reservadas). Best-effort anti-SSRF."""
+    try:
+        u = urlparse((url or "").strip())
+    except Exception:
+        return False, "url ilegible"
+    if u.scheme not in _ALLOWED_SCHEMES:
+        return False, f"scheme no permitido: {u.scheme!r} (solo http/https)"
+    host = u.hostname
+    if not host:
+        return False, "sin host"
+    try:
+        if u.port not in _ALLOWED_PORTS:
+            return False, f"puerto no permitido: {u.port}"
+    except ValueError:
+        return False, "puerto invalido"
+    default_port = 443 if u.scheme == "https" else 80
+    try:
+        infos = socket.getaddrinfo(host, u.port or default_port, proto=socket.IPPROTO_TCP)
+    except Exception as e:
+        return False, f"no resuelve el host: {e}"
+    for info in infos:
+        ip_str = info[4][0]
+        try:
+            ip = ipaddress.ip_address(ip_str)
+        except Exception:
+            return False, f"ip invalida: {ip_str}"
+        if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped:
+            ip = ip.ipv4_mapped   # ::ffff:127.0.0.1 -> 127.0.0.1
+        if (ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved
+                or ip.is_multicast or ip.is_unspecified):
+            return False, f"ip interna/no-ruteable ({ip_str})"
+    return True, "ok"
+
+
+def _guard(url: str) -> bool:
+    ok, why = url_is_safe(url)
+    if not ok:
+        print(f"[capture] URL rechazada (SSRF guard): {why} :: {url!r}")
+    return ok
+
+
 async def capture_site(url: str, out_path: str,
                        width: int = 1280, height: int = 900) -> str | None:
     """
     Captura el viewport superior del sitio (no la página entera, para que se vea
     como un 'hero' de la app). Devuelve out_path si salió bien, None si no.
     """
-    if not _PW_OK or not url:
+    if not _PW_OK or not url or not _guard(url):
         return None
     try:
         async with async_playwright() as p:
@@ -138,7 +193,7 @@ async def extract_content(url: str) -> dict | None:
     React/Vue/Next que devuelven HTML vacío en un GET crudo) + señales para el director:
     headings, nav, párrafos, CTAs, logo, theme-color e idioma. Best-effort: None si falla.
     """
-    if not _PW_OK or not url:
+    if not _PW_OK or not url or not _guard(url):
         return None
     try:
         async with async_playwright() as p:
@@ -162,7 +217,7 @@ async def capture_all(url: str, out_path: str, width: int = 1280, height: int = 
     en vez de abrir el navegador dos veces por video. Devuelve {'screenshot': path|None,
     'content': dict|None}. Best-effort: cualquier parte que falle vuelve None, no rompe."""
     out = {"screenshot": None, "content": None, "images": []}
-    if not _PW_OK or not url:
+    if not _PW_OK or not url or not _guard(url):
         return out
     try:
         async with async_playwright() as p:

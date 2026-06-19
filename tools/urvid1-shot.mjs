@@ -11,10 +11,12 @@ import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { makeVideo, drawFrame, beatAt } from '../src/urvid/index.js'
+import { setScratchFactory } from '../src/urvid/core/render.js'
 import { W, H } from '../src/urvid/core/util.js'
 
 const HERE = dirname(fileURLToPath(import.meta.url)), OUT = join(HERE, 'out'); mkdirSync(OUT, { recursive: true })
 try { GlobalFonts.loadFontsFromDir(join(HERE, 'fonts')) } catch {}
+setScratchFactory((w, h) => createCanvas(w, h))   // crossfade de transicion tambien en el render Node
 
 const arg = process.argv[2]
 let brief, seed = 0, note = '', ts = ''

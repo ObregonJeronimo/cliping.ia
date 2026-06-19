@@ -6,10 +6,13 @@ import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { makeVideo, drawFrame, beatAt, stats } from '../src/urvid/index.js'
+import { setScratchFactory } from '../src/urvid/core/render.js'
 import { W, H } from '../src/urvid/core/util.js'
 
 const HERE = dirname(fileURLToPath(import.meta.url)), OUT = join(HERE, 'out'); mkdirSync(OUT, { recursive: true })
 try { GlobalFonts.loadFontsFromDir(join(HERE, 'fonts')) } catch {}
+// buffer offscreen para el crossfade de transicion (browser/Remotion usan OffscreenCanvas; en Node lo inyectamos)
+setScratchFactory((w, h) => createCanvas(w, h))
 
 const brief = {
   brand: 'Nodo', rubro: 'tech', tone: 'dark', brandColor: '#22e06a',
@@ -36,6 +39,12 @@ writeFileSync(join(OUT, 'urvid1-demo.png'), sheet.toBuffer('image/png')); consol
 // ---- determinismo: render del mismo frame dos veces -> buffers identicos ----
 const a = frame(2.0).toBuffer('image/png'), b = frame(2.0).toBuffer('image/png')
 console.log(a.equals(b) ? 'DETERMINISMO: OK (frame identico)' : 'DETERMINISMO: FALLA (frame difiere!)')
+// determinismo DENTRO de la ventana de transicion (donde se usan los buffers offscreen + crossfade)
+if (video.scenes[1]) {
+  const tt = video.scenes[1].start + 0.2
+  const ta = frame(tt).toBuffer('image/png'), tb = frame(tt).toBuffer('image/png')
+  console.log(ta.equals(tb) ? 'DETERMINISMO (transicion/crossfade): OK' : 'DETERMINISMO (transicion): FALLA!')
+}
 
 // ---- MP4 (para ver la fluidez) ----
 const fps = 30, MS = 2, total = Math.round(video.duration * fps), tmp = join(OUT, '_u1frames')

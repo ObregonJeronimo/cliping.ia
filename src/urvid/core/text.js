@@ -15,14 +15,26 @@ export function clip(ctx, str, maxW) {
   while (lo < hi) { const m = (lo + hi + 1) >> 1; if (ctx.measureText(str.slice(0, m).replace(/\s+$/, '') + '…').width <= maxW) lo = m; else hi = m - 1 }
   return (str.slice(0, lo).replace(/\s+$/, '') || str.slice(0, 1)) + '…'
 }
-// envuelve en <= maxLines lineas (baja el font si hace falta; ellipsis en la ultima). Devuelve {size, lines}.
+// envuelve en <= maxLines lineas. ACHICA el font hasta que entre SIN desborde horizontal (no elide); ellipsis solo
+// como ultimo recurso si ni en el `min` entra. Devuelve {size, lines}.
 export function wrap(ctx, str, base, maxW, min, weight, family, maxLines = 2) {
   str = String(str == null ? '' : str).replace(/\s+/g, ' ').trim()
   const words = str.split(' ')
-  const at = s => { ctx.font = fontStr(weight, s, family); const ls = []; let cur = ''; for (const w of words) { const tt = cur ? cur + ' ' + w : w; if (ctx.measureText(tt).width <= maxW || !cur) cur = tt; else { ls.push(cur); cur = w } } if (cur) ls.push(cur); return ls }
-  for (let s = base; s >= min; s--) { const ls = at(s); if (ls.length <= maxLines) return { size: s, lines: ls.map(l => clip(ctx, l, maxW)) } }
-  const full = at(min), ls = full.slice(0, maxLines); if (ls.length) ls[ls.length - 1] = full.slice(ls.length - 1).join(' ')
-  return { size: min, lines: (ls.length ? ls : [str]).map(l => clip(ctx, l, maxW)) }
+  // arma las lineas a tamano s y reporta si ALGUNA linea aun desborda maxW (p.ej. una palabra inquebrable mas ancha
+  // que la caja: el wrap la mete igual por `!cur`, pero entonces el tamano NO sirve y hay que seguir achicando).
+  const at = s => {
+    ctx.font = fontStr(weight, s, family)
+    const ls = []; let cur = ''
+    for (const w of words) { const tt = cur ? cur + ' ' + w : w; if (ctx.measureText(tt).width <= maxW || !cur) cur = tt; else { ls.push(cur); cur = w } }
+    if (cur) ls.push(cur)
+    const overflow = ls.some(l => ctx.measureText(l).width > maxW + 0.5)
+    return { ls, overflow }
+  }
+  // acepta un tamano SOLO si entra en <=maxLines lineas Y ninguna linea desborda -> achica en vez de cortar con "...".
+  for (let s = base; s >= min; s--) { const { ls, overflow } = at(s); if (ls.length <= maxLines && !overflow) return { size: s, lines: ls } }
+  // ultimo recurso (ni en el min entra): arma al min, junta el sobrante en la ultima linea y deja que clip elida.
+  const { ls } = at(min), kept = ls.slice(0, maxLines); if (kept.length) kept[kept.length - 1] = ls.slice(maxLines - 1).join(' ')
+  return { size: min, lines: (kept.length ? kept : [str]).map(l => clip(ctx, l, maxW)) }
 }
 
 // dibuja UNA linea fiteada+clipeada. Devuelve el tamano usado.
