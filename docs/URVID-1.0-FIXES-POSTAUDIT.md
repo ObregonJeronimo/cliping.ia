@@ -19,8 +19,8 @@
 
 ## FALTA (del roadmap del audit, en orden sugerido)
 
-- **#6 Solver de composicion** (`core/layout.js` + lib `layouts`, API de slots) — LA apuesta #1 (5/7 audits). Grande.
-- **#7 Migrar las 73 escenas al sistema de slots** — depende de #6. Fan-out por workflow.
+- **#6 [HECHO, commit e096b25]** Solver de composicion (`core/layout.js` arranger greedy + lib `layouts` 6 presets + place(env,req); el director elige video.layoutId; render pasa env.layout). `scene.hero.center` migrada como referencia. Verificado.
+- **#7 Migrar las 72 escenas restantes al sistema de slots** — depende de #6. OJO: NO se puede paralelizar por workflow (las 73 escenas estan en UN solo archivo `libs/scenes/index.js` -> agentes en paralelo se pisan). Se hace en TANDAS secuenciales (inline o 1 agente solo), verificando cada escena (render dark/light bajo 2-3 layouts + determinismo + no-overflow) y REVIRTIENDO la que empeore. Las no-migradas andan igual (ignoran env.layout). Patron de referencia: `scene.hero.center`.
 - **#13 Routear markkit/datakit a la composicion** — depende de #6.
 - **#9 Variantes rankeadas (3-5 comps para elegir)** — ranker liviano sobre `fit.js` + grilla en el studio.
 - **#11 (resto) Persistir "Mis videos" en Firestore** (hoy localStorage; uid disponible) + thumbnail real.

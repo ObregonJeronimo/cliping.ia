@@ -150,14 +150,17 @@ register({
   id: 'scene.statement.editorial', lib: 'scene-layouts', category: 'statements/editorial', tones: ['dark', 'light'], rubros: ['moda', 'belleza', 'inmobiliaria', 'default'], weight: 1,
   register: 'editorial', intensity: 'medium', tags: ['claim', 'editorial', 'izquierda'], beat: 'value',
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, ax = W * 0.12
-    // barra de acento sobre el titular (DECO) + VIDA: respira de ancho y un sheen la recorre
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK
+    // SLOT: el claim como titular, ubicado por el layout (llena + se adapta; antes ax=W*0.12 / H*0.46 fijos)
+    const L = place(env, [{ id: 'claim', kind: 'title', text: content.claim || content.tagline || 'Un mensaje claro' }]), c = L.claim
+    // barra de acento SOBRE el titular (DECO) + VIDA: respira de ancho y un sheen la recorre
     const mr = M.ease(inv(t, 0.05, 0.5)), mbw = 66 * mr * breathe(t, 1.0, 0.022)
-    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(ax, H * 0.34, mbw, 6, 3); ctx.fill()
-    if (mr > 0.9) rrSheen(ctx, ax, H * 0.34, mbw, 6, t, { per: 2.8, strength: 0.55, tone: pal.tone })
-    // claim, izquierda, en tinta, envuelto
+    const bx = c.align === 'left' ? c.x : c.cx - mbw / 2, by = c.y - c.h / 2 - 16
+    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(bx, by, mbw, 6, 3); ctx.fill()
+    if (mr > 0.9) rrSheen(ctx, bx, by, mbw, 6, t, { per: 2.8, strength: 0.55, tone: pal.tone })
+    // claim en su slot, envuelto, con slide-in
     ctx.save(); ctx.globalAlpha = inv(t, 0.15, 0.6); ctx.translate((1 - M.ease(inv(t, 0.15, 0.7))) * 24, 0)
-    drawWrapped(ctx, content.claim || content.tagline || 'Un mensaje claro', ax, H * 0.46, { size: 42, weight: 800, family: fonts.display, maxW: W * 0.78, color: pal.ink, align: 'left', maxLines: 4, lh: 1.16, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.5)' : null })
+    drawWrapped(ctx, content.claim || content.tagline || 'Un mensaje claro', c.cx, c.cy, { size: c.size, weight: 800, family: fonts.display, maxW: c.w, color: pal.ink, align: c.align, maxLines: 4, lh: 1.16, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.5)' : null })
     ctx.restore()
   },
 })
