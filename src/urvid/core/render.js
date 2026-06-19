@@ -92,24 +92,26 @@ export function drawFrame(ctx, t, video) {
   }
   if (trans) {
     const p = inv(trans.p, 0, 1)
-    // BUFFERS: pintamos A y B cada una en su propio canvas (a resolucion del device) y la transicion compone los
-    // buffers. CLAVE para el solape de textos: A se DISUELVE (alpha 1->0) mientras B entra -> el texto saliente
-    // DESAPARECE en vez de quedar a opacidad plena debajo del reveal (lo que hacia que "se pisaran" por ~0.5s).
+    // TRANSICION SECUENCIADA (no simultanea): el CONTENIDO de A y B NUNCA se ve a la vez. El fondo/sub/atm son
+    // continuos (ya dibujados), asi que el contenido "dipea" a traves del fondo, no a negro.
+    //   fase 1 [0, .5]: A (saliente) se DISUELVE sobre el fondo. B todavia NO aparece.
+    //   fase 2 [.5, 1]: A ya se fue; B ENTRA con la geometria de la transicion (wipe/slide/iris/bars) sobre el fondo.
+    // Antes A y B se cruzaban medio-visibles -> "se pisaban por medio segundo" (texto Y efectos). Ahora cero solape.
     const ss = (ctx.getTransform && ctx.getTransform().a) || 1
     const bw = Math.ceil(W * ss), bh = Math.ceil(H * ss)
     const bufA = makeScratch(bw, bh), bufB = bufA ? makeScratch(bw, bh) : null
+    const blit = (c, buf, a) => { c.save(); c.globalAlpha *= clamp(a, 0, 1); c.drawImage(buf, 0, 0, W, H); c.restore() }
     if (bufA && bufB) {
-      const ca = bufA.getContext('2d'); ca.setTransform(ss, 0, 0, ss, 0, 0); paintScene(ca, trans.A, t, video, motion, typekit, layout)
-      const cb = bufB.getContext('2d'); cb.setTransform(ss, 0, 0, ss, 0, 0); paintScene(cb, trans.B, t, video, motion, typekit, layout)
-      const aFade = 1 - eOutCubic(p)   // A se va; B llega entera (el reveal lo da la geometria de la transicion)
-      const blit = (c, buf, a) => { c.save(); c.globalAlpha *= clamp(a, 0, 1); c.drawImage(buf, 0, 0, W, H); c.restore() }
-      transition.render(ctx, p, c => blit(c, bufA, aFade), c => blit(c, bufB, 1), { W, H })
+      if (p < 0.5) {
+        const ca = bufA.getContext('2d'); ca.setTransform(ss, 0, 0, ss, 0, 0); paintScene(ca, trans.A, t, video, motion, typekit, layout)
+        blit(ctx, bufA, 1 - eOutCubic(p / 0.5))   // A se disuelve sobre el fondo
+      } else {
+        const cb = bufB.getContext('2d'); cb.setTransform(ss, 0, 0, ss, 0, 0); paintScene(cb, trans.B, t, video, motion, typekit, layout)
+        transition.render(ctx, eOutCubic((p - 0.5) / 0.5), () => {}, c => blit(c, bufB, 1), { W, H })   // A ya no esta; B entra
+      }
     } else {
-      // fallback sin buffers (Node pelado): modo directo previo (sin crossfade) -> determinismo/tests intactos.
-      transition.render(ctx, p,
-        c => paintScene(c, trans.A, t, video, motion, typekit, layout),
-        c => paintScene(c, trans.B, t, video, motion, typekit, layout),
-        { W, H })
+      // fallback sin buffers (Node pelado): corte seco a mitad de ventana (sin solape, determinismo intacto).
+      paintScene(ctx, p < 0.5 ? trans.A : trans.B, t, video, motion, typekit, layout)
     }
   } else {
     let act = null
