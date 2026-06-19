@@ -25,7 +25,19 @@
 - **#9 [d710fa8]** Variantes para elegir: botón "Ver variantes" → 6 recetas en miniatura, click para adoptar (sin ranking falso; el scoring espera una métrica de calidad).
 - **#7 [e82b0d4,7c36046]** EN CURSO: 3 escenas migradas inline + un agente en segundo plano migrando el resto (verifica + revierte regresiones).
 
-## FALTA (del roadmap del audit, en orden sugerido)
+## HECHO (tanda 3)
+- **#7 [19c5490]** 20/73 escenas migradas al solver (3 inline + 17 por agente); el resto son contenedores/charts/grillas con geometria integral -> a proposito NO se migran (andan igual). 1 revertida (hook.strike).
+- **#15 [66432a3]** Brand-kit: logo subido (downscale 256px) -> dibujado en esquina + persistido en users/{uid}/urvid_profile.
+
+## QUEDA — con criterio (no todo conviene hacerse)
+- **#13 routear markkit/datakit**: OJO — datakit FABRICA numeros (lo que #4 justamente evita). Routearlo re-introduce el problema salvo que se reescriba datakit para leer stats REALES (trabajo grande). Markkit (iconos/deco) si se podria routear mas, pero bajo valor. => reframe: primero datakit-real, despues routear. NO hacer tal cual.
+- **#16 intensity/rubros/tipografia**: el grueso es CHURN (re-taggear intensity ya elegida; 79% rubros '*' es CORRECTO — son universales). Lo unico de valor real: CRECER tipografia (23->~60 pairings) = una "ola" de contenido (1 archivo, no paralelizable). Hacer SOLO la tipografia si se quiere mas variedad de fuentes.
+- **#17 captions animados**: el typekit YA hace texto cinetico (char-rise/typewriter/word-rise...). El gap real (captions tipo TikTok sincronizados) se luce CON audio, que el usuario dejo para el final. => va junto con audio, no ahora.
+- **#14 OKLCH (derivacion)**: la legibilidad ya se resolvio con APCA. Migrar la derivacion de paleta a OKLCH es un refactor grande de palette.js + los 141 modulos con beneficio incremental MODESTO (palettes algo mas suaves). Bajo ROI ahora.
+
+CONCLUSION: el roadmap de ALTO valor del audit esta hecho (P0 + las 3 apuestas + casi todo P1/P2). Lo que queda es polish de bajo ROI o pide audio/refactor. Recomendacion: cerrar aca; retomar tipografia (ola) o datakit-real si se busca mas variedad, y OKLCH/captions con audio.
+
+## (referencia) roadmap original restante
 
 - **#6 [HECHO, commit e096b25]** Solver de composicion (`core/layout.js` arranger greedy + lib `layouts` 6 presets + place(env,req); el director elige video.layoutId; render pasa env.layout). `scene.hero.center` migrada como referencia. Verificado.
 - **#7 Migrar las 72 escenas restantes al sistema de slots** — depende de #6. OJO: NO se puede paralelizar por workflow (las 73 escenas estan en UN solo archivo `libs/scenes/index.js` -> agentes en paralelo se pisan). Se hace en TANDAS secuenciales (inline o 1 agente solo), verificando cada escena (render dark/light bajo 2-3 layouts + determinismo + no-overflow) y REVIRTIENDO la que empeore. Las no-migradas andan igual (ignoran env.layout). Patron de referencia: `scene.hero.center`.
