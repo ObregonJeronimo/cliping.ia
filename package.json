@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "qa": "node tools/urvid1-qa.mjs",
+    "qa:full": "node tools/urvid1-qa.mjs full",
+    "gates": "node tools/urvid1-test.mjs && node tools/urvid1-text-check.mjs && node tools/urvid1-apca-check.mjs && node tools/urvid1-qa.mjs && vite build"
   },
   "dependencies": {
     "firebase": "^10.13.0",

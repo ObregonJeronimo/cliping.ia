@@ -59,6 +59,13 @@ CONCLUSION: TODO el roadmap de valor del audit esta hecho (P0 + las 3 apuestas +
 - **#16 Tapar el eje intensity (53% 'medium') + normalizar rubros (79% '*') + crecer tipografia (23->~60)** — mecanico/olas.
 - **#17 Captions animados (timing cinetico formalizado en `core/typekit.js`)** — antes que audio.
 
+## GATE DE QA VISUAL (correr SIEMPRE tras tocar escenas/texto/layout)
+`npm run qa` (140 videos) / `npm run qa:full` (320) / `npm run gates` (todos). Es `tools/urvid1-qa.mjs`: codigo puro
+SIN API/LLM. Genera rubros x tonos x semillas y detecta por telemetria de texto (core/text.js telStart/Stop/Tag):
+tamanos disparejos en listas, ellipsis (texto cortado) y solape de tiempos en transiciones. Dejar en 0 defectos
+duros. Helpers de fix: `fitUniform()` (un tamano por lista), bajar min + mas maxLines (cajas chicas), degradar a
+texto. Ver memoria [[feedback-visual-qa-gate]].
+
 ## Gates para verificar (recordatorio)
 `node tools/urvid1-test.mjs` (determinismo + transicion), `node tools/urvid1-text-check.mjs` (fitter),
 `node tools/urvid1-motion-check.mjs`, `node tools/urvid1-color-check.mjs`, `npx vite build`, `python -m py_compile backend/site_capture.py`.
