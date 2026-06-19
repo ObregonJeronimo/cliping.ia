@@ -175,8 +175,8 @@ export default function Urvid1Studio() {
           <button className={styles.primary} onClick={exportVideo} disabled={!!exporting} style={{ width: '100%' }}>{exporting ? `Exportando ${exporting}` : '⬇ Descargar video'}</button>
           {exporting && exporting.indexOf('%') < 0 && <p style={{ margin: 0, fontSize: 12, color: '#e08a8a' }}>{exporting}</p>}
           <span className={styles.seedpill}><i>semilla</i>{seed ? '#' + (seed >>> 0).toString(16).slice(0, 6) : 'auto (marca + rubro)'}</span>
-          <button className={styles.share} onClick={share} title="Manda este video a Claude para que lo vea">{shared === '...' ? 'Compartiendo…' : '↗ Compartir con Claude'}</button>
-          {shared && shared !== '...' && <p style={{ margin: 0, fontSize: 12, color: shared.indexOf('✓') >= 0 ? '#8fe0a8' : '#e08a8a' }}>{shared}</p>}
+          {import.meta.env.DEV && <button className={styles.share} onClick={share} title="Manda este video a Claude para que lo vea (solo dev)">{shared === '...' ? 'Compartiendo…' : '↗ Compartir con Claude'}</button>}
+          {import.meta.env.DEV && shared && shared !== '...' && <p style={{ margin: 0, fontSize: 12, color: shared.indexOf('✓') >= 0 ? '#8fe0a8' : '#e08a8a' }}>{shared}</p>}
           <p className={styles.note}>"Otra variante" mantiene el color y la tipografía de la página y varía la composición (fondo, escenas, movimiento). Cambiá la marca, el color o el rubro para un estilo nuevo.</p>
         </div>
 

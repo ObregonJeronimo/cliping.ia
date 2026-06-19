@@ -1,0 +1,456 @@
+[
+ {
+  "area": "Core engine architecture (src/urvid/core/ + index.js)",
+  "summary": "The core is a genuinely well-engineered MAP-of-libraries director: a clean registry/query/weighted-pick pipeline, strict determinism via namespaced PRNG sub-seeds, a defensible env/module contract, and a soft fit-scorer (fit.js) that — together with strategy.js — makes selection content-aware rather than pure lucky-dip. Within its chosen design it is coherent and the abstractions are clean. BUT the design has a hard ceiling that the rendered output makes obvious: there is NO layout/composition solver. Every scene is a hand-coded absolute-position template (title at H*0.4, bar at H*0.34, etc.), so the director only ever picks-and-stacks LAYERS (bg/sub/atm/scene/post). The contact sheet (tools/out/urvid1-demo.png) shows the consequence directly: text floats in a near-empty 1080x1920 frame, ~60% dead space, no compositional relationship between the type block and the rest of the canvas. That is the gap between this and \"Canva or better\" — Canva-grade output comes from composition (grids, balance, hierarchy, anchoring to safe areas), which this architecture cannot express. Secondary but real: the buffer-crossfade path in render.js is effectively unverified (setScratchFactory is never called anywhere; the test tool always hits the no-crossfade fallback), and there is NO MP4 export path for urvid 1.0 at all (the \"Remotion final\" in the handoff belongs to the OLD Animaciones engine; the studio is a live-canvas preview only). For a product whose deliverable is a video file, that is a structural hole, not a polish item.",
+  "strengths": [
+   "Determinism design is excellent and disciplined: prng.js mulberry32 + seedFor(seed, namespace) gives ORTHOGONAL axes (iterating 'color' never disturbs 'motion'); stableSeed makes URL->same-video; verified OK by the test harness. The no-Math.random/Date.now rule is actually honored across core.",
+   "The env/module CONTRACT (render(ctx,t,env) | derive() | data) is clean, uniform, and well-documented; registry.js register/query/get is a tidy plug-in seam — adding a module is pure data, never touches the engine. This is the right backbone for scaling to hundreds of modules.",
+   "fit.js is a thoughtful selection model: three orthogonal soft axes (rubroAffinity / registerFit / intensityFit), never hard-zero, with tone as the only hard filter and tag-inference fallback for un-audited modules (back-compat). This is genuinely better than the old hard rubro filter and demonstrably produces non-random, on-brand variety (variety.mjs shows distinct bg/sub/atm/scene combos per seed).",
+   "strategy.js (cerebro v2) makes the ARC content-driven, not just seed-driven: analyzeContent extracts signals (number/question/list/compare/proof) and buildArcSmart + sceneBias bias structure and scene choice toward them. Real coupling of content->structure.",
+   "Color/legibility core is solid: palette.finalize picks onAccent by REAL WCAG contrast (legibleOn) not an HSL-luminance threshold — a correct fix for the luminous-hue dead-band — and text.js bakes no-overflow (fitFont/clip/wrap) so the dura rule 'text never overflows' actually holds.",
+   "Layer separation in render.js is clean and correct ordering: bg -> sub -> atm -> garnish -> content -> post, with content always above decorative layers (keeps text legible by construction)."
+  ],
+  "weaknesses": [
+   "NO layout/composition solver — the single biggest ceiling. Scenes hardcode absolute positions (scene.hero.center: drawText at H*0.4, rule at H*0.4+50; scene.statement.editorial: ax=W*0.12, claim at H*0.46). The director composes LAYERS but never composes SPACE. Rendered output (tools/out/urvid1-demo.png) is centered text in ~60% empty frame across nearly every beat — a slideshow, not a designed layout. This is why it reads below Canva.",
+   "The buffer-based crossfade in render.js is unverified and likely dead in two of the (claimed) output paths. setScratchFactory is never called by ANY caller (grep across src/tools): the test tool, the studio, and there is no Remotion comp. So in Node tools the code ALWAYS takes the fallback branch (no crossfade, the text-overlap bug the buffers were meant to fix is NOT exercised). In the browser it works only because OffscreenCanvas happens to be global. The determinism check at frame(2.0) doesn't land in a transition window, so the buffer path has essentially no test coverage.",
+   "There is NO MP4/video export for urvid 1.0. Urvid1Studio.jsx only drives a live <canvas> RAF loop; grep for download/toBlob/MediaRecorder/captureStream/Remotion in the studio = nothing. The only MP4 is tools/urvid1-test.mjs via ffmpeg (a dev artifact). The handoff's 'MP4 final via Remotion' refers to the OLD engineCore (Animaciones). The product's actual deliverable doesn't exist yet.",
+   "Memoization mutates the input video object (render.js resolveMotion/typekit/transition/post stash video._motion etc.). It's deterministic so harmless for output, but it's a side-effect on a value the caller owns, and it silently breaks if a video object is ever frozen or structurally-cloned/serialized between frames (e.g. sent to a worker) — the cached function won't survive JSON, so it re-resolves, which is fine, but a frozen object throws.",
+   "Selection distribution is skewed by pool size, not just fit. weightedPick samples proportional to score, but a category with many modules and another with few will surface very differently; variety.mjs shows checklist as the first body beat in ~7/9 seeds. The scorer has no notion of 'don't always reach for the biggest pool', so coherence-per-seed is good but cross-seed structural diversity of BODY beats is narrower than the layer diversity suggests.",
+   "Arc length / pacing is unmanaged: buildArc/buildArcSmart can emit up to 3 body beats; the tech demo came out 14.9s for a short promo. _DUR is a flat per-category table with no global target-duration budget, so duration is an emergent side effect of beat count rather than a directed choice.",
+   "Transitions are clip/transform only (transitions.js + render.js comment): real dissolve/glitch/morph are explicitly not supported without scene-buffering, and since the buffer path is itself unwired, even the crossfade-assisted text handoff is fragile. XF=0.4 is a single global constant, not chosen per transition/pacing.",
+   "markkit garnish corners (render.js corners TR/BR/BL at H*0.14/0.86) are placed blind to scene content — outro/social scenes draw CTAs and handles in the lower-third, so a BR/BL garnish can sit under live text. There's no collision awareness because there's no layout model that knows where content actually is."
+  ],
+  "improvements": [
+   {
+    "title": "Introduce a LAYOUT/COMPOSITION solver as a first-class library + env contract change",
+    "why": "This is the single change that most raises the quality ceiling. Today scenes own absolute coordinates and the frame is mostly empty; Canva-grade output requires composed space (grid, hierarchy, balance, safe-area anchoring). A solver lets the director compose SPACE the way it already composes layers.",
+    "how": "Add core/layout.js + libs/layouts/ (registry lib 'layouts'). A layout module is pure: given {content, safeArea, energy, seed} it returns named SLOTS (e.g. {title:{x,y,w,maxLines,align}, support:{...}, mark:{...}, deco:[...]}) sized to the 1080x1920 safe area. Change the scene contract so render(ctx,t,env) receives env.slots and DRAWS INTO slots instead of hardcoding H*0.4. Pick one layout per video in assemble.js via the same fitWeight scorer. Migrate scenes incrementally (default slot = current absolute positions for back-compat). Bonus: garnish/markkit becomes a real slot, killing the blind-corner overlap.",
+    "impact": "high",
+    "effort": "high"
+   },
+   {
+    "title": "Wire setScratchFactory in every host and add a transition-window test",
+    "why": "The crossfade buffer path (the fix for text-overlap during transitions) is unverified and silently disabled in Node tools; relying on a global OffscreenCanvas is implicit and brittle.",
+    "how": "In tools/urvid1-test.mjs and urvid1-shot.mjs call setScratchFactory((w,h)=>createCanvas(w,h)) from @napi-rs/canvas; in the studio call it once with an OffscreenCanvas/document.createElement factory. Add a determinism+visual assertion at a t that lands inside [B.start, B.start+XF) so the buffer branch is actually exercised by the gate.",
+    "impact": "medium",
+    "effort": "low"
+   },
+   {
+    "title": "Build the actual MP4 export path for urvid 1.0",
+    "why": "The product's deliverable is a video file and it does not exist outside a dev script; the studio is preview-only and the 'Remotion final' is the old engine.",
+    "how": "Either (a) a deterministic headless renderer (reuse the urvid1-test frame loop -> ffmpeg) behind a backend endpoint that takes {brief,seed,recipe} (you already serialize exactly this for 'Compartir con Claude'), or (b) a real Remotion composition that calls drawFrame(ctx,frame/FPS,video) per frame. (a) reuses 100% of existing deterministic code and is lower-risk.",
+    "impact": "high",
+    "effort": "medium"
+   },
+   {
+    "title": "Add a global duration/pacing budget to the director",
+    "why": "Duration is currently an emergent side effect (14.9s for a short promo); product videos need a target length (e.g. 8-12s).",
+    "how": "In assemble.js, after buildArcSmart, fit beats to a target duration: cap body beats by a budget and scale _DUR per beat to hit ~target. Make XF and per-beat dur a function of the chosen motion personality (snappy=shorter) instead of the flat _DUR table + single XF constant.",
+    "impact": "medium",
+    "effort": "low"
+   },
+   {
+    "title": "Add pool-size normalization / diversity pressure to selection",
+    "why": "weightedPick is biased toward large pools, narrowing body-beat structural diversity (checklist dominates ~7/9 seeds) even though layer diversity looks healthy.",
+    "how": "In fitWeight or the scene pick, normalize by per-category pool size, or add a mild novelty term so the director doesn't always reach for the most-populated category. Cheap to try and directly visible in variety.mjs.",
+    "impact": "medium",
+    "effort": "low"
+   },
+   {
+    "title": "Make memoization non-mutating",
+    "why": "render.js writes video._motion/_typekit/_transition/_post onto a caller-owned object; harmless today but breaks on frozen/serialized video objects (e.g. worker handoff).",
+    "how": "Hold the resolved instances in a WeakMap keyed by video (or resolve once in makeVideo and store under a clearly-owned field), instead of stamping underscore fields onto the input.",
+    "impact": "low",
+    "effort": "low"
+   }
+  ],
+  "risks": [
+   "The 'hundreds of modules per category' strategy compounds the layout problem rather than solving it: more scenes = more hand-placed absolute layouts to author and maintain, all sharing the same empty-frame ceiling. Module count is being treated as the quality lever when COMPOSITION is the real one.",
+   "Determinism is the load-bearing invariant for the whole 'Compartir con Claude' bridge and any future server-side render. Any module that sneaks in Math.random/Date.now (the gate only checks the demo brief at fixed frames, not every module under transition windows) silently desyncs the asistente's regeneration from the user's video.",
+   "fit.js correctness depends on HONEST tones/rubros/register/intensity metadata across 676 modules; un-audited modules fall back to tag inference. As the library grows, mislabeled metadata degrades selection quietly with no gate catching it.",
+   "The studio preview (DPR-capped live canvas) and the eventual export renderer can diverge (DPR, font loading, OffscreenCanvas availability for crossfade) so 'what the user sees' != 'what gets exported' — exactly the trap that bit the old engine with file:// vs localhost."
+  ],
+  "evidence": "assemble.js (buildArc/buildArcSmart, fitWeight scorer, layer slots, lock/keep logic); fit.js (rubroAffinity/registerFit/intensityFit, tone-only hard filter); render.js L17-24 setScratchFactory + L84-99 buffer-vs-fallback crossfade; strategy.js (analyzeContent/buildArcSmart/sceneBias); prng.js (seedFor namespacing); palette.js finalize (onAccent via legibleOn/WCAG); scenes/index.js L130-170 (scene.hero.center/statement.editorial/outro.cta absolute coords H*0.4, W*0.12); grep: setScratchFactory has ZERO callers, no download/toBlob/MediaRecorder/Remotion in Urvid1Studio.jsx; ran node tools/urvid1-test.mjs -> 14.9s, determinism OK; tools/out/urvid1-demo.png (empty-frame floating text) and urvid1-variety.png (checklist dominates body beats, real layer variety)."
+ },
+ {
+  "area": "The libraries (676 modules across 12 libs) + the fit/taxonomy/selection system",
+  "summary": "The library system is genuinely well-engineered at the per-module level: 676 pure/deterministic/parameterized modules, a clean register/query API, and a soft fit-scorer that produces real, high-variety assembly (53-67 distinct backgrounds and 81-94 distinct color schemes across 200 seeds, with a flat distribution and no catastrophic skew). Every module I sampled respects the contract (palette-driven color, text via the no-overflow primitive, ink-for-text/accent-for-deco, continuous-life motion). But the strategy of \"hundreds of tiny modules\" has hit a ceiling that more modules won't break: the architecture is layer-STACKING, not composition. The render pipeline is a fixed sandwich (bg -> sub -> atm -> corner icon -> ONE full-frame scene -> post) where each scene module owns the entire 405x720 canvas and lays out its own text from hardcoded vertical fractions. There is no shared composition grammar, no layout solver, and no awareness between scene and background. The visible result (variety sheet) is high skin-variety but monotonous COMPOSITION: nearly every frame is the same centered/left text block on a backdrop. The taxonomy is honestly applied for rubro and register but the intensity axis is nearly degenerate (53% of modules are \"medium\"). To beat Canva, effort is best spent on a composition layer and on the missing scene archetypes (image-region layouts, asymmetric editorial multi-element frames), NOT on another wave of more-of-the-same modules.",
+  "strengths": [
+   "Real assembly variety, measured not assumed: 200 seeds for one brief yield 53-67 distinct backgrounds and 81-94 distinct color schemes with a near-flat distribution (top pick only ~5-10/200). Two videos rarely share a recipe. This is the core promise of the map-of-libraries strategy and it delivers.",
+   "Per-module quality bar is consistently met across libs. Sampled scenes, backgrounds (bg.generative.flowfield/contours with real deterministic noise fields), motion (12 hand-tuned personalities with monotonic ease + bounded settle), and transitions (clip/transform, A dissolves so text never double-stacks) are all clean, legible, and determinism-verified.",
+   "The fit.js scorer is a thoughtful design: three orthogonal SOFT axes (rubro affinity / register vs seriousness / intensity vs seriousness), tone as the only hard filter, and graceful inference from tags when register/intensity are absent (back-compat). The seriousness gate works directionally (loud-tag share 1.4% for a serious health brief vs 4.0% for a playful gastro brief, ~3x).",
+   "Strong engineering discipline: every module deterministic (no Math.random/Date.now), text always through core/text.js (no overflow), color always from env.pal. Gates exist (color-check 1672 combos, motion-check, determinism check) and pass.",
+   "cerebro v2 (strategy.js) picks the arc and biases scenes from real content signals (hasData/isQuestion/hasList/hasCompare/hasProof), so structure is content-aware, not pure chance."
+  ],
+  "weaknesses": [
+   "No composition grammar - the single biggest gap. render.js (lines 50-107) is a fixed layer sandwich; each scene module is a full-frame monolith that hardcodes its own anchors (grep shows 18x 'H*0.42', 11x 'H*0.34', 11x 'H*0.32'... a sprawl of magic fractions with zero shared layout constants). There is no grid, no layout solver, no slotting. The blueprint's 'composition' module is still 'not started' - that is the real bottleneck.",
+   "Modules are TOO independent - they share helpers (breathe/drift/rrSheen) but not a layout language, so quality and spacing are re-implemented per module and cannot be improved centrally. A fix to vertical rhythm or safe-margins must be applied 73 times by hand.",
+   "Compositional monotony despite skin variety. The variety contact sheet shows nearly every frame is a centered or left-aligned text block on a backdrop. Missing archetypes that real ads need: image/photo-region layouts, split-screen content, asymmetric editorial multi-element frames, product/price cards, before/after with real media, captioned-clip looks. (photokit was explicitly cut, which forecloses the most common ad composition entirely.)",
+   "The intensity axis is nearly degenerate: 355/676 modules (53%) are 'medium' (and inferIntensity defaults all untagged modules to 'medium'), with only 34 'loud' and 57 'calm'. So intensityFit barely discriminates - one of the three 'orthogonal' axes is mostly a constant. The library is also globally tilted calm/neutral, so even a playful brief can only reach 4% loud content - the playful end of the taxonomy is thinly stocked.",
+   "markkit and datakit are under-leveraged by the director: 87 markkit modules exist but only iconos-rubro/iconos-animados are used, and only as a tiny 20%-scale CORNER garnish (render.js line 60); divisores/marcos/formas are dead in production. datakit (66 modules) is only reachable as a full-frame data scene AND is excluded whenever real stats exist (assemble.js line 106) - so with good perception data, most of datakit never renders.",
+   "Volume is starting to outrun usefulness: typography has 23 pairings vs color's 141 (lopsided), and many rubro tokens in metadata are non-canonical (eventos/gaming/arte/corporativo/joyeria/infantil) - query() filters on raw m.rubros while fit canonicalizes, so a module tagged only 'eventos' is invisible to query({rubro:'default'}) yet the director never passes rubro to query anyway (only tone), so the rubro tags only act through the scorer. 79% of modules are rubros:['*'], so rubroAffinity returns ~1.0 for most of the library and barely differentiates."
+  ],
+  "improvements": [
+   {
+    "title": "Build the composition layer before any more module waves",
+    "why": "This is where Canva-or-better is won or lost. Right now every scene is a full-frame monolith with hand-placed text; that caps the ceiling no matter how many backgrounds you add. A layout system lets ONE scene's content be arranged many ways and lets scenes share rhythm/margins centrally.",
+    "how": "Add core/composition.js: a small set of named layout regions (e.g. anchor bands, a 4-8 col grid, safe margins) returning {x,y,w,align} slots. Refactor scenes to request a slot ('title','kicker','media','footnote') instead of hardcoding H*0.42. Register layout modules as a 13th lib the director picks per video (like motion). This turns 73 fixed scenes into 73 templates x N layouts of real compositional variety.",
+    "impact": "high",
+    "effort": "high"
+   },
+   {
+    "title": "Add image/media-region scene archetypes (reconsider the no-photo decision for ads)",
+    "why": "Real marketing ads are mostly photo+text. The variety sheet shows the engine can only make typographic title cards. This is the most visible quality gap vs Canva, and it is a coverage hole no module count fixes.",
+    "how": "Even without real photos, add scenes with a defined MEDIA region filled by a generated/branded treatment (duotone block, product-card frame, mockup silhouette), plus split-screen and asymmetric editorial layouts. If the perception screenshot can be reused as a masked media block, that single change unlocks the dominant ad composition.",
+    "impact": "high",
+    "effort": "high"
+   },
+   {
+    "title": "Fix the intensity axis so it actually discriminates",
+    "why": "53% of modules are 'medium' and inferIntensity defaults untagged ones to medium, making intensityFit nearly a no-op - one of three core scoring axes is wasted. The library is also globally too calm to ever feel energetic for playful rubros.",
+    "how": "Audit and explicitly tag intensity on the ~212 modules currently relying on inference; deliberately seed the calm and loud ends (today 57 and 34). Then verify discrimination by re-running the loud-share probe (serious vs playful should diverge much more than 1.4% vs 4.0%).",
+    "impact": "medium",
+    "effort": "medium"
+   },
+   {
+    "title": "Route markkit/datakit into composition instead of leaving them stranded",
+    "why": "153 modules (87 markkit + 66 datakit) are largely dead in production: markkit is a tiny corner icon only, datakit is excluded exactly when real data exists. That is a big chunk of the 676 doing little work.",
+    "how": "With the composition layer, let markkit divisores/marcos/decoradores fill DECO slots inside scenes, and let datakit charts occupy a MEDIA region of a normal scene (not only a full-frame takeover) - and feed datakit the REAL stats from the brief (statAt) instead of fabricating, so it no longer has to be excluded at assemble.js:106.",
+    "impact": "medium",
+    "effort": "medium"
+   },
+   {
+    "title": "Normalize rubro metadata and rebalance lib sizes; pause volume-for-volume waves",
+    "why": "79% rubros:['*'] means rubroAffinity barely differentiates; non-canonical tokens (eventos/gaming/arte) add noise; typography (23) is starved relative to color (141). More duplicate-shaped modules now yields diminishing returns vs better-distributed and better-tagged ones.",
+    "how": "Run a one-time pass to canonicalize all rubros via canonRubro and assign honest specific rubros where modules truly favor one; grow typography pairings toward ~60; and redirect agent waves from 'more backgrounds' to the gap categories (layouts, media scenes, calm/loud intensity, more typography).",
+    "impact": "medium",
+    "effort": "low"
+   }
+  ],
+  "risks": [
+   "Adding modules without a composition layer increases combinatorial variety of SKINS but not of LAYOUTS - the engine will keep producing the same centered-title-card shape and plateau below the Canva bar.",
+   "intensityFit is effectively inert today (medium-heavy + inferred default), so the seriousness 'cerebro' is weaker than the code implies; serious vs relaxed briefs differ less than intended.",
+   "Per-module hardcoded coordinates make any global aesthetic improvement (spacing, vertical rhythm, safe-area) an O(73) manual edit - maintenance cost grows linearly with the library and invites drift between modules.",
+   "The cut of photokit/real media means the engine structurally cannot produce the most common ad format; this is a product-scope risk, not a code bug, but it directly limits the 'better than Canva' goal.",
+   "datakit's exclude-when-real-stats rule (assemble.js:106) means the better the perception data, the more of the data library goes unused - effort invested there is partly stranded."
+  ],
+  "evidence": "registry stats (node): 676 modules; intensity {medium:355, soft:163, bold:67, calm:57, loud:34}; register {neutral:261, editorial:146, friendly:104, corporate:84, playful:81}; rubros: 533/676 (79%) are ['*']. Variety probe (200 seeds): salud/light -> 53 distinct bg, 81 distinct color, top pick 7-10/200; gastronomia/dark -> 67 bg, 94 color. Loud-tag share probe: serious health 1.4% vs playful gastro 4.0%. Layout: grep on libs/scenes/index.js shows magic vertical fractions (18x H*0.42, 11x H*0.34, etc.) and no shared layout helper in core/ (only assemble/render). render.js lines 50-107 = fixed bg->sub->atm->corner-mark->one-full-frame-scene->post sandwich; markkit garnish forced to 0.2 scale in a corner (line 60-64); assemble.js:106 excludes datakit when content.stats present. Visual: tools/out/urvid1-variety.png (9 seeds) shows high skin variety, uniform centered/left text-block composition. fit.js: rubroAffinity returns 1.0 for '*', 0.9 for default brief, so most modules are undifferentiated by rubro; director passes only {tone} to query (assemble.js bg/sub/atm/scene calls), so rubro acts only through the scorer. Determinism + 676-module registry verified via tools/urvid1-test.mjs."
+ },
+ {
+  "area": "Perception / Backend (URL → brief) — urvid 1.0",
+  "summary": "The single multimodal Sonnet 4.6 call in perception.py is a genuinely good design: it collapses the old 2-call (vision + text) pipeline into one, the prompt is well-engineered (strict JSON schema, \"no inventes\" rule, capture digest curated to high-signal fields), and the Python side is hardened with brace-matching JSON extraction (_extract_json), per-field clamping/normalization (_normalize), and best-effort fallbacks at every layer (LLM down → defaults; no screenshot → text-only; no color → themeColor → PIL dominant accent). The brief schema is rich (bullets/stats/proof/seriousness) AND the engine actually consumes it (listFrom/statAt/proofFrom, datakit excluded when real stats exist, seriousness feeds the fit scorer). The two biggest problems are: (1) perception is honest about empty data but the engine downstream FABRICATES numbers and fake social proof anyway, undoing the whole \"faithful to the page\" guarantee at render time; and (2) capture_all does page.goto(user_url) with zero validation behind a public ngrok tunnel — a textbook SSRF. Caching is mostly correct but the in-memory layer leaks across users and the UI can never force a refresh. For messy real sites it's brittle in predictable ways (SPA timing, hero-only viewport, no retry/repair on malformed JSON).",
+  "strengths": [
+   "Single multimodal call is the right call: text digest + screenshot in one request is cheaper and more coherent than the old brand_dna(vision)+text(copy) split, and it lets the model pick brandColor by actually seeing the page (perception.py _SYS + analyze_to_brief).",
+   "Robust JSON handling: _extract_json walks braces with depth counting instead of a naive regex, tolerating prose around the object; _normalize clamps every field (lengths, rubro whitelist, tone enum, seriousness 0..1, hex validation via _safe_hex) so a malformed model reply can never produce an invalid brief.",
+   "Layered, honest fallbacks: brand from siteName/title/URL, color from model→themeColor→PIL _dominant_accent (saturation/brightness filtered), and the whole thing is best-effort (LLM exception → defaults, no crash). max_tokens=750 + curated _page_digest (5k char cap, headings/CTAs/paragraphs not raw bodyText) keeps cost/latency bounded.",
+   "The brief is genuinely USED, not decorative: scenes/index.js listFrom/statAt/proofFrom read real bullets/stats/proof; assemble.js excludes datakit from the data pool when real stats exist (lines 104-106) precisely because datakit fabricates numbers; seriousness flows into the fit scorer (assemble.js line 49-51).",
+   "Cache invalidation is content-aware, not just time-based: _content_fingerprint (sha1 of normalized captured content) means an edited page re-analyzes before the 14d TTL, and the schema version prefix 'v2-' correctly busts stale briefs when the shape changes.",
+   "Service-account secret is correctly gitignored (backend/firebase-service-account.json + *service-account*.json in .gitignore; git ls-files confirms it is NOT tracked) — the prompt's worry about it being in the repo tree is a non-issue."
+  ],
+  "weaknesses": [
+   "FABRICATION LEAK: perception faithfully returns stats:[] / proof:\"\" per the 'no inventes' rule, but the engine invents data anyway. statAt() falls back to bigNumber(claim) or hardcoded '3x'/'100%'; the data scene (scenes/index.js ~438-440) manufactures '+10..99', '1-9x', '99%' from seed when stats is empty; proofFrom() returns the claim/tagline AS social proof when proof is empty; checklist scenes hardcode domain lies like '3 ambientes · 80 m2 · Cochera · Apto credito'. The honest brief is undone at render — a health/finance site (high seriousness) can still show invented stats and fake testimonials.",
+   "SSRF: capture_all/extract_content/capture_site do page.goto(url) with NO scheme/host validation. Behind the public ngrok tunnel (main.py CORS allow_origins=['*']) anyone can POST /api/urvid/perceive with url=http://169.254.169.254/latest/meta-data/, http://localhost:8000/, internal RFC1918 IPs, or file:// — and the screenshot/extracted text comes back in the brief. Chromium launches with --no-sandbox, widening blast radius.",
+   "In-memory cache is NOT user-scoped: _urvid_brief_cache key is ckey+'|'+chash (main.py ~470-475) with no userId, while the Firestore cache IS per-uid. Two users analyzing the same URL share the in-process brief — minor for a shared brief, but inconsistent with the per-user Firestore design and a latent privacy smell if briefs ever carry user notes (desarrollo is fed into the prompt).",
+   "No JSON repair / retry: if _extract_json returns None (truncated at max_tokens=750, or model wraps weirdly), analyze_to_brief silently yields {} → a generic default brief with brand-from-URL and #5b8cff. There's no second attempt, no 'continue' on truncation, no log of the raw text, so a near-miss reply is indistinguishable from total failure.",
+   "The studio never exposes refresh: PerceiveRequest.refresh exists and works, but Urvid1Studio.analyze() never sends it (only url+userId). A user who edits their page or got a bad analysis is stuck with the cached brief for up to 14 days with no UI escape (the only bust is the global /api/brand-cache/clear, which is for the OTHER pipeline's brand_cache, not urvid_briefs).",
+   "SPA/messy-site fragility: capture_all waits networkidle(9s)+scroll+img-complete, which is decent, but the screenshot is a fixed 1280x900 top-viewport clip — for long landing pages the model sees only the hero, missing pricing/stats/proof lower down. extract_content caps headings at 12 and paragraphs at 8; sites that put their real value below the fold lose it. No language detection is passed to perception even though site_capture extracts content.lang.",
+   "desarrollo (user notes) is interpolated into the prompt as 'priorizalas' with no length cap or sanitization — a long or adversarial desarrollo can blow the token budget or steer the model off-page (mild prompt-injection surface, low severity since output is schema-clamped)."
+  ],
+  "improvements": [
+   {
+    "title": "Stop the engine from fabricating data the brief left empty",
+    "why": "This is the single biggest trust gap: perception is faithful, but statAt/proofFrom/data-scene fallbacks invent numbers and fake testimonials, so the rendered video lies even when the brief is honest. For health/finance (high seriousness) this is reputationally dangerous.",
+    "how": "In src/urvid/libs/scenes/index.js make statAt return null (not a fabricated number) when content.stats is empty, and have assemble.js (already aware via lines 104-106) bias the arc AWAY from data/proof beats when stats:[]/proof:'' rather than letting scenes synthesize. proofFrom should return '' (and the proof scene should be skippable) instead of recycling the claim as a quote. Replace hardcoded domain strings ('3 ambientes · 80 m2...') with brand/claim-derived text only. Gate fabrication on a brief flag, e.g. allowSynthetic=false when seriousness>0.6.",
+    "impact": "high",
+    "effort": "medium"
+   },
+   {
+    "title": "Validate/allowlist the URL before goto() to close SSRF",
+    "why": "capture_all behind a public ngrok tunnel with no host validation lets attackers hit cloud metadata, localhost, and internal IPs, and exfiltrate the response via the screenshot/extracted text. --no-sandbox makes it worse.",
+    "how": "Add a guard in main.py urvid_perceive (and the other capture call sites) before site_capture: require http/https scheme, resolve the host and reject loopback/link-local/RFC1918/metadata ranges (use ipaddress on socket.getaddrinfo results), reject file:// and non-standard ports. Optionally drop --no-sandbox or run Chromium with a network egress allowlist. Reject early with {'error':'URL no permitida'}.",
+    "impact": "high",
+    "effort": "low"
+   },
+   {
+    "title": "Add JSON-repair + one retry on truncation/parse failure",
+    "why": "max_tokens=750 plus rich bullets/stats can truncate; today a near-miss reply collapses to a generic default brief indistinguishable from a hard failure, silently degrading quality.",
+    "how": "In perception.analyze_to_brief: if _extract_json returns None, log the raw txt (truncated), and retry once with max_tokens raised (~1100) and temperature 0.2; if stop_reason=='max_tokens', send a 'continue the JSON' follow-up. Surface a parse_ok:false signal in the /perceive response so the studio can warn the user instead of silently showing defaults.",
+    "impact": "medium",
+    "effort": "low"
+   },
+   {
+    "title": "User-scope the in-memory cache and wire a Refresh button",
+    "why": "In-memory cache crosses users (inconsistent with per-uid Firestore) and the studio can never force re-analyze, so stale/bad briefs persist up to 14 days.",
+    "how": "Make _urvid_brief_cache key include req.userId. In Urvid1Studio.analyze() add a 'Re-analizar' affordance that POSTs refresh:true (the backend already honors it). Add a small per-user/day call counter on /api/urvid/perceive using the usage[] already collected to cap cost abuse via the public tunnel.",
+    "impact": "medium",
+    "effort": "low"
+   },
+   {
+    "title": "Capture more than the hero: full-page (or stitched) screenshot + below-fold text, and pass page language",
+    "why": "A 1280x900 top clip + 12 headings/8 paragraphs means the model never sees pricing/stats/proof on long landing pages — the richest brief fields (stats/proof) are exactly what's below the fold.",
+    "how": "In site_capture.capture_all, take full_page=True (or 2-3 stacked viewport clips) and either downscale before base64 or send the most informative section; raise heading/paragraph caps modestly. Pass content.lang (already extracted) into perception so _SYS can honor the page's language instead of always voseo. Trim/cap desarrollo before interpolating into the prompt.",
+    "impact": "medium",
+    "effort": "medium"
+   }
+  ],
+  "risks": [
+   "SSRF via unvalidated page.goto behind a public ngrok tunnel with --no-sandbox Chromium (capture_all) — internal-network/metadata exposure.",
+   "Fabricated stats/proof on high-seriousness rubros (health/finance) is a real-world trust/liability problem: the app advertises 'fiel a la pagina, no inventa' but the engine does.",
+   "Cost abuse: /api/urvid/perceive is anonymous-from-the-internet, runs Chromium + a Sonnet call per uncached URL, and has no per-user rate limit or billing gate (usage[] is measured but never enforced).",
+   "Cache staleness with no UI escape (refresh unused) means a bad first analysis sticks for 14 days; combined with content_fingerprint only catching text changes (not visual redesigns that keep text) some look/color drift won't invalidate.",
+   "Silent quality degradation: parse failures and LLM exceptions both fall through to a generic default brief with no signal to the user, so 'it analyzed' can mean 'it gave up'."
+  ],
+  "evidence": "backend/perception.py (_SYS schema + 'no inventes' rule; _extract_json brace-walk lines 48-65; _normalize clamps 129-148; analyze_to_brief single call max_tokens=750 lines 170-192; color fallback chain 186-191). backend/main.py (CORS allow_origins=['*'] lines 22-29; _urvid_brief_cache key 'ckey|chash' no userId lines 470-475; refresh honored 474; _content_fingerprint 167-179; v2- schema prefix 470; /api/brand-cache/clear targets brand_cache not urvid_briefs 355-374). backend/site_capture.py (capture_all/extract_content page.goto(url) no validation, --no-sandbox lines 35/146/169; fixed 1280x900 clip lines 51/220; networkidle+scroll+img wait 186-206). src/pages/Urvid1/Urvid1Studio.jsx (analyze() sends only url+userId, never refresh, lines 58). src/urvid/libs/scenes/index.js (statAt fabricates via bigNumber lines 48-52; proofFrom recycles claim line 53; data scene synthesizes '+10/99%' lines 438-440; hardcoded '3 ambientes · 80 m2 · Cochera' line 630; bigNumber 30-33). src/urvid/core/assemble.js (seriousness default-by-rubro + fit ctx 47-51; datakit excluded when real stats 104-106; stats passed through 38). .gitignore + git ls-files: service-account correctly untracked."
+ },
+ {
+  "area": "Actual output quality (the rendered pixels) of the urvid 1.0 video engine",
+  "summary": "The engine is real and genuinely impressive in places: the light belleza video (display-serif, split-comp-cool palette) and the dark tech \"Nodo\" video both produce frames that would pass as competent Canva templates - clean type pairing, sane hierarchy, numbered checklists with accent chips, a nicely angled outro lockup. But it is NOT \"Canva or better\" yet, and the gap is concentrated in a few recurring, amateur-grade defects rather than overall ugliness. The two worst: (1) a text-fitting bug where scene.hero.grid ellipsizes an unbreakable word (\"Automatizacion\" rendered as \"Automatiza...\") instead of shrinking the font - a thing no professional template ever does; (2) scene.data.bars fabricates bar heights from the PRNG and derives axis labels by chopping the claim (\"Hecha a mano esta manana\" -> a bar labeled \"Hecha mano\"), presenting pure noise as a data chart. Backgrounds are also frequently too busy/low-contrast (techhud grid behind text, retroprint checker behind the gastro hero), which reads as templated rather than art-directed. Fix the fitter, stop fabricating data, and calm the backgrounds and this clears the Canva bar; right now a sharp art director would reject specific scenes on sight.",
+  "strengths": [
+   "Light belleza video is genuinely good: type.pair.display-serif over a soft voronoi bg, clean 92% hook, well-spaced checklist with check chips, and a tasteful magenta CTA pill on the outro - hierarchy and whitespace are correct and it does not look broken.",
+   "Dark tech Nodo checklist + outro: numbered accent circles, even baseline rhythm, and the diagonal accent band on scene.outro.diagonal with the 'Nodo' wordmark + 'Probalo gratis' pill is a confident, on-brand composition.",
+   "Real variety per seed: variety.png and the seed-6/seed-8 renders show meaningfully different bg/sub/atm/scene combinations from the same brief - the director is not producing one look in a costume.",
+   "Determinism holds (test reports identical frames) and text wrapping works correctly in most scenes (statement.callout, hero.corner, comparison) - 'Automatizacion absurda' wraps fine there, proving the fitter regression is isolated to a couple of scenes.",
+   "Brand-color-driven palettes are tasteful and tone-appropriate: the finanzas dark blue (midnight) and gastro warm teal-orange grade both feel deliberate, and onAccent contrast on the CTA pills is legible."
+  ],
+  "weaknesses": [
+   "TEXT FITTER BUG (most damaging): scene.hero.grid (src/urvid/libs/scenes/index.js:1899) calls drawWrapped for the claim with no min override, so core/text.js wrap() (line 22-23) keeps an unbreakable long word as its own line via the `!cur` clause, accepts it as a valid line because count<=maxLines, and clip() ellipsizes it. Result in the demo: 'Automatiza...' for 'Automatizacion'. wrap() never shrinks the font to make a long single word fit.",
+   "FABRICATED DATA: scene.data.bars (index.js:1225) invents bar heights with mulberry32 (0.45+0.5*r()) and builds labels by splitting content.claim into 3 chunks (line 1221, shortLabel(...,2)). In the gastro video this produced a fake bar chart with a 'Hecha mano' label from 'Hecha a mano esta manana'. Even with a real stat (4.9) present, a data scene was chosen that fabricates - the handoff's 'exclude datakit when real stats exist' rule does not cover these scene-layout data scenes.",
+   "Busy / low-contrast backgrounds undercut legibility and taste: bg.techhud.dataflow (Nodo) puts a glowing node grid directly behind body text; bg.retroprint.checker (gastro) puts a high-frequency checker behind a hero claim and a near-black gastro frame where the bar chart almost disappears. These read as 'templated background slapped on' not composed.",
+   "Hero claim sizing is timid relative to Canva ad templates: 50px claims sit mid-frame with lots of dead space above/below in hero.grid; the type does not command the frame the way a pro vertical ad hero does. Composition is centered-and-safe rather than asymmetric/poster-like (hero.corner is better but rarely picked).",
+   "Decorative noise can dominate: the dataflow node dots and the floating chrome rectangles (seed 8) compete with the message; markkit garnish icons (the envelope in gastro) sit in corners reading as random clip-art rather than meaningful.",
+   "Brand wordmark treatment is inconsistent: sometimes just uppercase mono text ('DONNA PASTA'), sometimes a big 'D' monogram + stacked name - fine individually but there is no consistent brand-mark system, which keeps it feeling templated."
+  ],
+  "improvements": [
+   {
+    "title": "Fix wrap() so it shrinks to fit unbreakable words instead of ellipsizing",
+    "why": "The 'Automatiza...' truncation is the single most amateur thing in the whole demo - it instantly signals 'broken template'. It is a root-cause bug in shared code (core/text.js), so fixing it lifts every scene at once.",
+    "how": "In core/text.js wrap() (line 22-23), make at(s) report whether any produced line still overflows maxW (the `!cur` long-word case). In the size loop, only accept a size when lines.length<=maxLines AND no line overflows; keep shrinking otherwise. Lower the effective min for single-word claims, or break the long word with a soft hyphen as a last resort, before ever calling clip(). Add a torture fixture (e.g. claim='Automatizacion'/'Infraestructura') to tools/urvid1-test and assert no '...' appears in any hero/statement scene.",
+    "impact": "high",
+    "effort": "low"
+   },
+   {
+    "title": "Stop data scenes from fabricating numbers; gate them on real stats",
+    "why": "A chart with invented heights and a label chopped from the tagline ('Hecha mano') is dishonest and obviously fake - it destroys credibility for a real-estate/marketing tool. Pros never show meaningless bars.",
+    "how": "Apply the same rule already used for datakit to scene-layout data scenes (scene.data.bars/ring/compare/pictograph): in assemble.js/strategy.js, only allow a data beat when content.stats has >=2 (bars/compare) or >=1 (ring/bignum) real entries, and feed real values+labels into the scene (use statAt) instead of mulberry32 heights and splitItems(claim). If no real stats, bias the data beat to a non-numeric scene (statement/checklist).",
+    "impact": "high",
+    "effort": "medium"
+   },
+   {
+    "title": "Calm and rank backgrounds for legibility behind text",
+    "why": "The techhud grid and retroprint checker behind body copy are the main reason otherwise-good frames look templated/cheap; Canva's edge is restraint and contrast.",
+    "how": "Add a per-scene 'text safe area' scrim in render.js (subtle radial/linear darken or lighten behind the title/list region, tied to pal.tone) and/or down-weight high-frequency bg modules (techhud.dataflow, retroprint.checker) when the chosen scene carries heavy body text. Run a quick legibility pass: render each bg x each text-heavy scene and reject combos where contrast(text,bg-at-text-region) < 4.5, similar to the existing color gate but spatial.",
+    "impact": "medium",
+    "effort": "medium"
+   }
+  ],
+  "risks": [
+   "Determinism constraint means any fitter fix must stay pure (no Date.now); the soft-hyphen/shrink path must be deterministic per seed or the determinism check will fail.",
+   "Gating data scenes on real stats could starve the arc of a 'data' beat for briefs with no numbers (common for real-estate listings) - need a graceful fallback scene or the videos get monotonous.",
+   "Spatial legibility gating across bg x scene x tone x palette is a large combinatorial space; doing it naively at render time is expensive - precompute/approximate or it slows generation.",
+   "The handoff claims fluidity is 'pulled in all libs / 0 frozen', but I judged static frames + strips only; the motion strips I read (forest gastro) were dominated by the checker bg and hard to assess for text-element life - worth a dedicated motion audit before claiming polish."
+  ],
+  "evidence": "Ran tools/urvid1-test.mjs (recipe: hero.grid/checklist.numbered/statement.dropcap/outro.lockup) and Read tools/out/urvid1-demo.png; tools/urvid1-variety.mjs -> urvid1-variety.png; urvid1-motionstrip.mjs 3 and 11 -> strip-entry/strip-trans.png. Generated inline briefs via urvid1-shot.mjs (belleza/light, finanzas/dark, gastronomia/dark) and rendered full-size per-scene sheets with a temp tools/_fill/_frames.mjs -> tools/out/xl-belleza.png, xl-finanzas.png, xl-gastro.png, xl-nodo.png, xl-v6.png, xl-v8.png. Bug confirmed in src/urvid/libs/scenes/index.js:1899 (hero.grid drawWrapped, no min) + core/text.js:18-26 (wrap accepts overflowing long word, line 23 clip ellipsis). Fabricated data confirmed in src/urvid/libs/scenes/index.js:1221-1225 (labels from splitItems(claim), heights from mulberry32). 'Automatiza...' visible in xl-nodo.png; fake 'Hecha mano' bar in xl-gastro.png; clean wrapping in xl-v6/v8.png proves the fitter regression is isolated."
+ },
+ {
+  "area": "STUDIO / PRODUCT-UX (src/pages/Urvid1/Urvid1Studio.jsx + .module.css)",
+  "summary": "The studio is a polished, well-built *engine demo*, not yet a *product*. The URL->analyze->brief->live-preview loop is genuinely good: one input, one \"Analizar\" button, a brief that auto-populates and stays editable, a real-time canvas transport, and a \"recipe\" readout that makes the deterministic assembler legible. The dark console design is cohesive and responsive. But the single fact that blocks shippability is brutal: **a user cannot get a video out.** There is no export, no download, no MP4, no share-link, nothing but a canvas the user watches in the browser. The handoff says \"MP4 final via Remotion,\" but the only MP4 path in the repo (tools/render.mjs) renders the OLD Animaciones engine via napi-rs PNG sheets, and the urvid 1.0 CLI tools (urvid1-test/shot) emit PNG contact sheets only — none of it is wired to the studio UI. The \"Compartir con Claude\" button is the only output affordance, and it exports to the *developer*, not the user. On top of that, \"Mis videos\" is localStorage-only (lost on cache clear / not portable), the control surface for \"otra variante\" is too coarse for the SMB/real-estate user who wants to tweak one word not reroll the whole composition, and there is zero brand-kit (logo upload), aspect-ratio choice, duration control, or onboarding. For the \"Canva or better\" bar, the gap is not engine quality — it's that Canva lets you leave with a file and this doesn't.",
+  "strengths": [
+   "The core loop is the right one and is genuinely lean: paste URL -> '✨ Analizar' (POST /api/urvid/perceive with userId) -> brief auto-fills (brand/rubro/tone/brandColor/tagline/claim/cta + bullets/stats/proof) -> live preview updates via useMemo on makeVideo. This is the hard part and it works end-to-end.",
+   "The brief stays fully editable after analysis (every field is a controlled input), so the AI does the heavy lift and the human corrects — exactly the right division of labor for non-designers.",
+   "The 'recipe' chips + scene-flow line in the header (lines 106-110) make a deterministic black box legible: the user sees color/tipo/fondo/motion/trans/post and the scene arc. This is a real trust/transparency signal most generators lack.",
+   "The transport (play/pause, restart, seek slider bound to head/duration, 0.5x/1x speed) is a proper player, and reroll correctly resets the playhead to 0 (line 94) — a detail many would miss.",
+   "The dark-console visual identity is cohesive and intentional (urvid gradient #ff8a4c->#ff4f8b, mono chips for the deterministic 'signature'), and the CSS is genuinely responsive with sane breakpoints (1240px->2col, 760px->1col) and a width-capped player (min(100%,410px)) that never overflows."
+  ],
+  "weaknesses": [
+   "NO EXPORT — the showstopper. Urvid1Studio.jsx has zero references to mp4/download/export/MediaRecorder/toBlob/Remotion (grep confirmed). The user can watch the canvas but cannot save, download, or post the video anywhere. A marketing-video tool you can't get the video out of is not shippable, full stop.",
+   "The MP4 story is a phantom. tools/render.mjs imports from src/pages/Animaciones/engineCore.js (the OLD engine) and only writes PNG contact sheets; urvid1-test.mjs/urvid1-shot.mjs also emit PNGs. There is no code path that renders the urvid 1.0 engine to an actual playable video file for a user.",
+   "'Compartir con Claude' is dev-facing infrastructure surfaced as if it were a user feature. It writes tools/urvid-shared.json for the assistant to regenerate — meaningless and confusing to a real estate agent, who will click it expecting to share with a *client*.",
+   "'Mis videos' is localStorage-only (line 30/95): not synced to the logged-in account (user.uid is available but unused for storage), lost on cache clear, not portable across devices. It also stores only the brief+seed, so it's a 'my settings' list, not 'my videos' — there are no thumbnails, just colored text cards.",
+   "The control surface is mismatched to the target user. 'Otra variante' rerolls the whole composition while keeping only color+type (line 94). An SMB/real-estate user typically wants to fix ONE thing (a typo in the claim, swap one scene, shorten it) — they get either full edit of brief text OR a slot-machine reroll, with nothing in between. No per-scene text editing, no scene reorder/remove, no 'lock this scene, reroll the rest'.",
+   "Hard-coded format: engine is W=405/H=720 only (util.js), duration = start||8 (assemble.js). No aspect-ratio choice (feed 1:1 / story 9:16 / reel), no duration control. Real estate agents post to IG feed AND stories AND WhatsApp status — one ratio won't cut it.",
+   "No brand kit: brandColor is a single color picker; there is no logo upload, no font choice, no saved brand profile. For RE/MAX-style agents, the agency logo + agent photo are table stakes and the handoff explicitly defers photokit/brand-kit.",
+   "Onboarding/empty-state is thin: on first load the brief is pre-filled with the 'Nodo' demo (line 16), so a new user sees a fake brand's video with no guidance that the intended flow is 'paste your URL first'. The only empty-state is in 'Mis videos'.",
+   "Error UX is ad-hoc inline styles with raw color hex (lines 121/137) instead of the design tokens, and analyze() swallows distinct failures into one generic catch; the backend-down message leaks dev jargon ('abri start.bat', 'localhost:8000') to end users.",
+   "No audio at all (deferred by design) — but for the 'Canva or better' bar on social video, a silent clip reads as unfinished to most viewers."
+  ],
+  "improvements": [
+   {
+    "title": "Ship a real in-browser MP4/WebM export button",
+    "why": "This is the single change that turns a demo into a product. Without a file to download/post, nothing else matters.",
+    "how": "Add an 'Exportar' primary button next to 'Otra variante'. Cheapest path: capture the existing canvas with MediaRecorder (canvas.captureStream(30) -> webm) for an instant MVP. Better path: render frames offscreen at 1080x1920 (scale the 405x720 draw via ctx transform) and pipe to a real MP4 encoder (ffmpeg.wasm in-browser, or a backend /api/urvid/render endpoint that reuses the deterministic recipe+seed already sent to /share — the infra to regenerate exactly exists in urvid1-shot.mjs). Show a progress bar driven by video.duration.",
+    "impact": "high",
+    "effort": "high"
+   },
+   {
+    "title": "Add aspect-ratio selection (story 9:16, feed 1:1, reel 4:5)",
+    "why": "Real estate/SMB users post to multiple placements; a single 9:16 forces manual cropping and kills the 'one-click' promise.",
+    "how": "Parameterize W/H in util.js (or pass a {w,h} into makeVideo); add a segmented control in the panel like the tone toggle. Scene modules already draw into a normalized 405x720 space, so the main work is letterbox/safe-area handling in render.js and verifying scene layouts at non-9:16 ratios. Default to 9:16 (current).",
+    "impact": "high",
+    "effort": "medium"
+   },
+   {
+    "title": "Replace dev-facing 'Compartir con Claude' with a user share/export, and persist 'Mis videos' to the account",
+    "why": "The current button exports to the developer; the gallery is device-bound localStorage. Both break trust and portability for a logged-in product.",
+    "how": "Move 'Compartir con Claude' behind a dev flag (import.meta.env.DEV) or remove from prod. Persist saved videos to Firestore under users/{uid}/urvid_videos (user.uid already in scope via useAuth) and render a real thumbnail per card by drawing one frame to a small offscreen canvas instead of the colored text card.",
+    "impact": "high",
+    "effort": "medium"
+   },
+   {
+    "title": "Add per-scene control: lock/reroll/remove individual beats, not just whole-video reroll",
+    "why": "The SMB user wants to fix one thing. Today the only granular control is editing brief text; composition is all-or-nothing (line 94).",
+    "how": "The recipe already lists scenes (video.recipe.scenes). Render the scene-flow line as interactive chips: click a scene to lock it (excluded from reroll), or reroll just that slot's seed. Extend keepRecipe to carry per-slot locks (assemble.js already reuses slots from keep/lock — generalize from {color,type} to an arbitrary slot set).",
+    "impact": "medium",
+    "effort": "high"
+   },
+   {
+    "title": "Add a brand kit: logo upload + saved brand profile",
+    "why": "Agency/agent logo is table stakes for branded marketing video; brandColor alone isn't a brand.",
+    "how": "Add a logo upload (store dataURL in the brief + Firestore brand profile keyed by uid). Draw it as a persistent corner mark via the existing markkit garnish path (handoff notes markkit already does corner icons). Persist {brandColor, logo, font preference} as a reusable profile so returning users skip re-entry. (Note: handoff says no real *photos* in scenes by user decision — a logo mark is distinct and lower-risk.)",
+    "impact": "medium",
+    "effort": "medium"
+   },
+   {
+    "title": "Fix onboarding + error UX for real users",
+    "why": "First-load shows a fake 'Nodo' demo with no instruction; backend-down errors leak 'start.bat/localhost:8000' jargon.",
+    "how": "On empty/first load, show a one-line guide ('Pegá el link de tu propiedad o sitio y tocá Analizar') and consider starting with an empty brand. Replace inline hex error styling (lines 121,137) with design tokens (--acc / a success token) and map backend-unavailable to a user-friendly 'El servicio no está disponible, probá de nuevo' in prod (keep the dev hint behind import.meta.env.DEV).",
+    "impact": "medium",
+    "effort": "low"
+   },
+   {
+    "title": "Add duration control (or at least short/standard/long presets)",
+    "why": "duration is hard-coded to start||8 (assemble.js); platforms and attention spans differ, and agents may want a 6s teaser vs a 15s walkthrough.",
+    "how": "Expose a target-duration preset that biases buildArc scene count/beat durations in assemble.js, surfaced as a small segmented control. Even 3 presets (corto/medio/largo) is a meaningful product lever.",
+    "impact": "low",
+    "effort": "medium"
+   }
+  ],
+  "risks": [
+   "The 'MP4 via Remotion' claim in the handoff is not backed by any user-reachable code path; anyone building on this assuming export exists will discover the gap late. The deterministic recipe+seed share infra de-risks a backend renderer, but it still has to be built.",
+   "localStorage 'Mis videos' will silently lose users' work on cache clear or device switch — a real trust-killer once people start relying on it.",
+   "Engine canvas is fixed at 405x720; bolting on aspect ratios later risks breaking scene-layout modules that may assume the 9:16 proportion — needs a verification pass (time-strips per ratio) across the 73 scene modules.",
+   "Shipping 'Compartir con Claude' to end users as-is is a credibility risk: it does nothing they understand and exposes internal tooling.",
+   "Silent video (audio deferred) caps perceived quality vs Canva for social placements regardless of how good the visuals are."
+  ],
+  "evidence": "Urvid1Studio.jsx: grep for mp4/export/download/MediaRecorder/toBlob/Remotion returned zero matches (no export anywhere). share() lines 75-86 + button line 136 = only output affordance, writes tools/urvid-shared.json for the assistant. saved state line 30 + save/load/del lines 95-97 = localStorage only; user.uid (useAuth line 15) used for perceive but NOT for storage. reroll line 94 keeps only {color,type}. brief default 'Nodo' line 16 = demo on first load. inline error styles lines 121,137 use raw hex not tokens; analyze() catch line 70 leaks 'start.bat'/'localhost:8000'. util.js: W=405,H=720,FPS=30 (only canvas size). assemble.js line 126: duration = start||8 (no user control); lockRecipe/keepRecipe only generalize {color,type}. tools/render.mjs imports src/pages/Animaciones/engineCore.js (OLD engine) and writes PNG sheets; comment line ~17 'El MP4 final lo rinde Jero' — confirms no automated user MP4. urvid1-test/shot.mjs emit PNG contact sheets per handoff §4."
+ },
+ {
+  "area": "Research — Comparable products: auto-generated marketing/ad video & design from minimal input",
+  "summary": "The market splits into three architectures, and urvid sits in a rare, defensible quadrant. (1) TEMPLATE engines (Canva Magic Design, Creatopy/\"The Brief\", AdCreative.ai) — prompt/asset -> pick + fill a human-authored template library, with an LLM for copy and resizing. They win on template DEPTH (100M+ assets), brand kits, and format coverage; they lose because a human still authored every template, so the \"design intelligence\" is curation, not generation, and output converges on recognizable Canva-looks. (2) PROGRAMMATIC video (Remotion, MOGRT/Dynamic Graphics Render API, Lottie Motion Tokens) — code/React or AE templates parameterized by props/data, rendered deterministically to MP4. This is EXACTLY urvid's substrate (frame-as-function-of-time, deterministic, data-bound, render via FFmpeg/Remotion). urvid already does this AND adds an automatic director that assembles a unique template per video — Remotion gives you the renderer but YOU must hand-build each template; urvid generates the composition. (3) GENERATIVE video (Veo 3.1, Sora 2) — text->pixels. Stunning motion but the wrong tool for brand ads: 8-sec clips, 3-5/day caps, ~$0.40/sec, unreliable on-screen TEXT, weak brand-color/logo fidelity, fabricates content, non-deterministic. urvid's edge (deterministic, brand-faithful, real-data, cheap, no generative-image cost) is precisely the set of weaknesses of the most-hyped category. The single biggest gap vs Canva is NOT the engine — it's the asset/brand-kit layer, format versatility (urvid is vertical-only 1080x1920), and a layout solver; the biggest validated trend to adopt is \"structured variation systems\" (generate many, score, iterate) which urvid is well-positioned for because variations are cheap and deterministic.",
+  "findings": [
+   {
+    "name": "Canva Magic Design / Magic Studio",
+    "what": "Prompt-to-design template engine. Pairs OpenAI's API (copy + intent) with Canva's own design engine and a library of 100M+ assets/templates. From one prompt it returns several editable layout options with suggested palettes; Magic Switch reformats/translates a design into other formats; AI Template Variants give same-vibe alternate comps. 20+ AI features, used 5B+ times.",
+    "relevance": "This is the bar ('Canva or better'). Its real moat is the ASSET + BRAND-KIT + format-coverage layer and the 'multiple comps, same vibe' UX — NOT raw design intelligence (a human authored every template; the AI curates and fills). urvid's director already does the 'one prompt -> assembled layout' that Canva fakes via curation, and can produce 'AI Template Variants' for free via seed (urvid1-variety.mjs proves it). DIFFERENTIATE: brand-faithful from a real URL + real on-page data, not generic stock. ADOPT: the brand-kit concept (blueprint item #8) and the 'give me 3-5 comps, I pick' presentation as the core UX, since urvid's variations are deterministic and near-zero-cost.",
+    "url": "https://openai.com/index/canva/"
+   },
+   {
+    "name": "Remotion",
+    "what": "Programmatic video framework: 'a video is a function of images over time.' useCurrentFrame()/useVideoConfig() give a frame number + blank canvas; interpolate/spring drive animation; compositions = React component + {width,height,durationInFrames,fps}; input props parameterize ONE template into unlimited variations; renders deterministically (same frame = same pixels) to MP4 via FFmpeg, client-side preview or headless server render. 81 free templates exist, each a self-contained component using only Remotion hooks (no CSS keyframes).",
+    "relevance": "This is urvid's exact architectural philosophy and validates every core choice: frame-as-fn-of-time, deterministic render, parameterization, MP4 via Remotion (urvid already uses Remotion for final MP4). KEY INSIGHT: Remotion gives the RENDERER and the contract, but a human must hand-author each template and pick props. urvid's differentiator over Remotion-the-ecosystem is the DIRECTOR (assemble.js + fit.js) that auto-selects one module per library to compose a NEW template every time. urvid should frame itself as 'Remotion + an automatic art director.' ADOPT: nothing to change — confirms the substrate. Consider exposing urvid recipes as Remotion input-props so power users can tweak, mirroring Remotion's 'expose props for app UIs/automations' pattern.",
+    "url": "https://www.remotion.dev/docs/the-fundamentals"
+   },
+   {
+    "name": "Adobe MOGRT + Dynamic Graphics Render API / Lottie Motion Tokens",
+    "what": "Data-driven versioning of motion templates. MOGRTs = After Effects templates with customizable text/color/image; the Dynamic Graphics Render API binds a structured source (CSV) to a MOGRT for scaled, brand-consistent rendering. Lottie Motion Tokens bundle animations + themes + states into a versioned dotLottie file and inject LIVE DATA, switch themes, personalize text without re-rendering in AE.",
+    "relevance": "This is the closest philosophical cousin to urvid's 'real-data, brand-faithful, deterministic' pitch, and the sources explicitly contrast it against generative (Sora/Runway) as 'fundamentally different approaches.' Validates urvid's bet that brands want data-bound versioning, not hallucinated pixels. DIFFERENTIATE: MOGRT/Lottie still require a designer to author the template in AE first; urvid generates the template. ADOPT: the 'themes/states/tokens' framing is a clean model for a future brand-kit (lock brand color/fonts/logo as tokens, swap the rest) — directly supports blueprint item #8.",
+    "url": "https://helpx.adobe.com/firefly/web/work-with-audio-and-video/work-with-video/dynamic-graphics-render-overview.html"
+   },
+   {
+    "name": "AdCreative.ai",
+    "what": "Generative ad-creative + copy at scale from a large high-conversion creative DB. Detects color/design patterns from uploaded assets; AdLLM Spark for copy; Creative Scoring AI predicts performance BEFORE launch from patterns in high-performing campaigns; product-image background removal/enhancement. Currently limited mostly to common square/portrait sizes (landscape 'coming soon').",
+    "relevance": "Two things to steal conceptually: (1) CREATIVE SCORING — predicting which variation will perform, which turns urvid's cheap deterministic variations into a ranked shortlist instead of dumping N options on the user; this is the validated 2025 trend ('generate options, learn from performance, iterate' vs one big idea). (2) Their weakness is format coverage and that outputs look 'templated.' urvid can differentiate on brand-faithfulness (real URL/colors, not pattern-guessed) and on motion (they're mostly static). NOTE its honest limitation re: formats mirrors urvid's vertical-only constraint — fix that.",
+    "url": "https://www.adcreative.ai/ad-creatives"
+   },
+   {
+    "name": "Creatopy (now 'The Brief')",
+    "what": "Display-ad automation rebranded (2026) into a full AI campaign platform (discover->create->launch->optimize). Deep template library optimized for ad-network specs; AI suggests layouts, AUTO-RESIZES creatives across formats, and generates copy variations while the user keeps manual control + brand governance.",
+    "relevance": "Best-in-class at the two things urvid most lacks: (1) MULTI-FORMAT auto-resize (urvid is locked to 1080x1920 — a real competitive gap for an ad tool; Meta/IG need feed 1:1, story/reel 9:16, etc.). (2) Brand governance/control. ADOPT: a responsive layout solver so one recipe re-flows into 1:1 / 4:5 / 9:16 — this is the 'composition (layout solver)' already on urvid's blueprint (item #8) and should be prioritized; it's table-stakes for an ad product, not a nice-to-have. DIFFERENTIATE: Creatopy still needs human template selection; urvid auto-composes.",
+    "url": "https://www.toolify.ai/alternative/creatopy"
+   },
+   {
+    "name": "Pencil AI",
+    "what": "Generative AI for ad creatives, both static AND video variations across platforms; pitch is 'twice as fast, half the cost, double performance,' built around generating + testing many variations.",
+    "relevance": "Confirms the market is moving to AI VIDEO ad variations (not just static) and to a generate-test-iterate loop — exactly urvid's wheelhouse and roadmap. urvid's deterministic, near-free variations are a structural cost advantage over Pencil's generative approach. Watch their video output quality as the practical 'good enough' bar for motion polish.",
+    "url": "https://rocketium.ai/academy/all/pencil-ai-alternatives"
+   },
+   {
+    "name": "Revid.ai / Pictory / Vidyo.ai / Steve.ai",
+    "what": "Text/script/blog/URL -> stock-footage-assembled video: pull relevant clips/images, add transitions, AI voiceover, captions, branding (Pictory: paste a blog, it assembles a branded video). Revid imports videos by URL; the category overlaps clip-repurposing (Opus) and avatars (Synthesia).",
+    "relevance": "These are urvid's nearest 'URL/text -> video' competitors but they rely on STOCK FOOTAGE + AI VOICEOVER, which is generic and not brand-faithful (same stock clips everyone uses). urvid's deterministic typographic/data-driven motion is a cleaner brand match and avoids stock-licensing cost. GAP TO NOTE: they all ship AUDIO + voiceover + captions, which urvid has deliberately deferred to last — audio/captions are the single most-common feature in this category and likely the biggest perceived-quality gap for end users once visuals are solid.",
+    "url": "https://zapier.com/blog/best-ai-video-generator/"
+   },
+   {
+    "name": "Google Veo 3.1 / OpenAI Sora 2 (generative-video contrast)",
+    "what": "Text/image-to-video diffusion. Veo 3.1: up to 4K, ~8-sec clips, 3-5 generations/day caps, ~$0.40/sec API w/ audio, up to 3 reference images for consistency; Sora 2 ~$200/mo. Audio treated as 'first draft, polish in a DAW.' Non-deterministic; brand color/logo only loosely steerable via reference images; on-screen text rendering unreliable.",
+    "relevance": "The PERFECT foil for urvid's positioning. Every Veo/Sora weakness is a urvid strength: deterministic (same brief = same video) vs random; reliable crisp TEXT (urvid's whole engine is typographic via core/text.js) vs garbled text; exact brand color (brandColor from perception) vs drift; real on-page data/claims vs hallucination; cheap (one ~$ cents Sonnet call, then free deterministic renders) vs $0.40/sec; arbitrary length/format vs 8-sec clips. Use this contrast explicitly in product messaging. ADOPT NOTHING from the diffusion approach for ad creatives; the only place generative could ever help urvid is optional B-roll texture, which conflicts with the user's 'no real photos / no generative images' decision — keep it out.",
+    "url": "https://aimlapi.com/blog/google-veo-3-1"
+   }
+  ],
+  "recommendations": [
+   "DIFFERENTIATE, don't chase generative: urvid's deterministic + brand-faithful + real-data + cheap quadrant is precisely the weakness set of Veo/Sora (garbled text, brand drift, 8-sec, ~$0.40/sec, hallucinated content) AND of stock-footage tools (Pictory/Revid: generic clips, no brand fidelity). Lead product messaging with 'same brief = same crisp, on-brand video, for cents' — this is a real, defensible edge, not marketing.",
+   "PRIORITIZE the layout solver / multi-format output (urvid blueprint item #8 'composition'). Vertical-only 1080x1920 is a genuine competitive gap for an AD tool — Creatopy's core value is auto-resize and Meta/IG need 1:1 feed, 4:5, and 9:16. One recipe should re-flow across aspect ratios deterministically. This is table-stakes for ads, above 'more module waves.'",
+   "ADOPT the validated 2025 trend of STRUCTURED VARIATION + SCORING (AdCreative, Pencil, Canva Template Variants). urvid already generates unique variations per seed near-free (urvid1-variety.mjs); add a lightweight fit/quality ranker (extend core/fit.js) so the user gets a ranked shortlist of 3-5 comps to pick from — Canva's exact winning UX — instead of one video or an unranked dump.",
+   "FRAME urvid as 'Remotion + an automatic art director.' Remotion (which urvid already uses for MP4) proves the substrate but requires a human to hand-author each template + pick props; urvid's director (assemble.js/fit.js) is the missing piece the whole programmatic-video ecosystem lacks. Consider exposing recipes as tweakable input-props for power users, mirroring Remotion's 'expose props for app UIs/automations' pattern.",
+   "BUILD the brand-kit layer next after layout (blueprint item #8). Canva's and Creatopy's real moat is brand governance + asset library, and Lottie 'Motion Tokens' / MOGRT data-binding show the clean model: lock brandColor/fonts/logo as tokens, let the director vary everything else. urvid's perception already extracts brandColor/tagline/claim — promote these to persisted, user-editable brand tokens.",
+   "RE-EVALUATE the 'audio last' decision sooner. Every URL/text-to-video competitor (Pictory, Revid, Vidyo, Steve) ships AI voiceover + captions as a headline feature; it is the most common capability in the category and likely the biggest end-user-perceived quality gap once visuals are polished. At minimum, prioritize ANIMATED CAPTIONS (already on the blueprint, item #8) since they 'pega fuerte' and don't strictly require VO; treat full audio/VO as the next milestone rather than the final one.",
+   "HOLD THE LINE on no-generative-images/no-real-photos for now — it's a coherent cost+determinism stance and the diffusion route (Veo/Sora) buys nothing for brand-faithful text/data ads. But note the trade-off: stock/photo-driven competitors look 'richer' to lay users, so the typographic/data engine must keep raising motion polish (the fluidity rule) and add the layout-solver depth to compensate visually."
+  ]
+ },
+ {
+  "area": "Research — Techniques & Methods (constraint/auto-layout, color theory, kinetic typography, generative design, canvas->MP4)",
+  "summary": "urvid is a deterministic, parameterized Canvas-2D engine (676 pure modules + a soft fit-scorer director) that already nails the hard parts most \"AI video\" tools fake: seeded determinism (core/prng.js), WCAG-guarded legibility (core/util.js, palette.js), and a fit-scorer that is genuinely a \"design grammar lite\" (core/fit.js). The five biggest leverage points to push past Canva, in priority order: (1) LAYOUT is urvid's weakest link — every scene module hand-places absolute coords in a 405x720 box, so spacing/alignment quality depends on each author's eye and can't adapt to variable text length. A small deterministic layout solver (grid + box-packing in the GRIDS/MILP or simpler greedy-grid spirit) shared by scenes would make EVERY module crisper and let copy length vary without breaking. (2) COLOR is already strong but built in sRGB/HSL; moving palette math to OKLCH would make harmony rotations and lightness scales perceptually even, and adopting APCA (not just WCAG 2) would fix the dark-mode \"near-black crush\" that WCAG silently passes — urvid runs dark by default, exactly where WCAG 2 is least reliable. (3) KINETIC TYPOGRAPHY has principled timing rules (per-char stagger ~40-60ms, two-level easing recipe vs selector, \"every unit legible before the next arrives\") that urvid's typekit can encode as parameters rather than per-effect guesses. (4) GENERATIVE-design practice confirms urvid's seeded-determinism architecture is the correct, professional one; the gap is exploration UX (seed navigation / variant grids) and avoiding \"noise without meaning.\" (5) The Remotion pipeline is fine, but the industry pattern for preview==export is \"fake the clock\" (drive every frame from a virtual time t, never wall-clock) — urvid already does this (motion = t, zero Date.now), so the main risk is font/Canvas parity between browser preview and the @napi-rs/canvas render path.",
+  "findings": [
+   {
+    "name": "GRIDS — Interactive Layout Design with Integer Programming (Dayama/Todi/Oulasvirta, Aalto, CHI 2020)",
+    "what": "A mixed-integer linear program (MILP) generates grid layouts by optimizing a cost function over discrete placements. It guarantees packing (all elements fit, no overflow, no overlap) and encodes design goals as linear terms: alignment (shared edges/columns), grouping (minimize distance between semantically related elements, e.g. a label and its button), preferential/locked placement (force an element to a side or fixed point), rectangular outer hull, and 'no holes'. Branch-and-bound makes it fast enough for interactive suggestions, and it can complete partial layouts and produce diverse alternatives.",
+    "relevance": "This is the textbook answer to urvid's single biggest weakness. Today each scene in libs/scenes/index.js hand-places absolute x/y in the 405x720 box, so alignment/spacing is per-author craft and breaks when bullets[]/claim text vary in length. urvid does NOT need a full MILP — a small deterministic layout helper (a 'composition' lib, already named as unbuilt in the HANDOFF blueprint item #8) that does greedy grid placement with alignment+grouping+padding rules would let scenes declare slots ('hero title spans cols 1-4, stat block below, CTA pinned bottom') instead of pixels. Seed it from env.seed for variety; it stays pure/deterministic. Result: every module gets crisper and adapts to real copy length.",
+    "url": "https://arxiv.org/pdf/2001.02921"
+   },
+   {
+    "name": "Cassowary incremental constraint solver (cassowary.js)",
+    "what": "Linear constraint solver behind Apple Auto Layout and Android ConstraintLayout. Expresses layout as weighted/prioritized linear equalities+inequalities ('A right-of B', 'gap >= 16', priority 750) and solves incrementally. Pure-JS port exists (slightlyoff/cassowary.js).",
+    "relevance": "An alternative to a custom grid solver if urvid wants relational constraints rather than a fixed grid. Heavier than needed for a 405x720 single-screen layout and adds a dependency that must stay deterministic, so it's the fallback, not the recommendation — but the priority/weight model maps cleanly onto urvid's existing soft-weight philosophy in core/fit.js. Mentioned for completeness; a hand-rolled greedy-grid is lower-risk for a pure deterministic engine.",
+    "url": "https://github.com/slightlyoff/cassowary.js/"
+   },
+   {
+    "name": "APCA (Accessible Perceptual Contrast Algorithm) vs WCAG 2",
+    "what": "WCAG 2 uses only (L1+0.05)/(L2+0.05) on relative luminance and ignores font size, weight and polarity. It demonstrably fails: a 'near-black crush' where once the lighter color is darker than ~#a0a0a0 the prediction degrades (e.g. #797979 on #110402 'passes' 4.5:1 yet is hard to read), and it mis-rates white-on-orange. APCA instead returns an Lc (lightness-contrast) value that is perceptually uniform across the range and factors in font size+weight and dark-vs-light polarity: body text wants ~Lc 60-75, large/bold elements are fine at Lc 45 or even 30. APCA is the contrast model being explored for WCAG 3 (Silver).",
+    "relevance": "urvid's legibility guard (luminance/contrast/legibleOn in core/util.js, used by finalize() in core/palette.js and the gates ink/bg>=4.5, inkText>=3, onAccent>=3 in urvid1-color-check.mjs) is pure WCAG 2 — and urvid runs DARK by default, precisely the regime where WCAG 2 is least reliable. Adding an apcaLc(text,bg) function next to contrast() and a legibleOnAPCA() that also takes font size/weight would (a) catch dark-mode combos WCAG passes but humans can't read, and (b) safely ALLOW some accent-as-text and large-display combos WCAG over-rejects, unlocking bolder type. Keep WCAG as the compliance floor; use APCA as the perceptual gate. Low risk: it's one more pure function and one more gate column.",
+    "url": "https://gist.github.com/Myndex/069a4079b0de2930e72d5401bde9af98"
+   },
+   {
+    "name": "OKLCH / HSLuv perceptual color spaces for palette generation",
+    "what": "OKLCH (and HSLuv) are perceptually uniform: equal numeric steps = equal perceived steps in lightness/chroma/hue. Building a lightness ramp or rotating hue for harmonies (complementary/analogous/triadic) in OKLCH yields evenly-weighted, non-muddy results without per-hue manual correction; doing the same in HSL produces 'wonky' steps because HSL lightness is screen-geometry, not perceptual. Modern pickers (oklch.net) and palette tools expose harmony+contrast directly in OKLCH/LCh.",
+    "relevance": "urvid's color math (hexToHsl/hslToHex/lighten/darken/tonedBg in core/util.js + palette.js) is all HSL. The symptom is visible in the code: accentAsText() in palette.js has to special-case 'high-luminance green/yellow' because HSL lightness lies about perceived brightness; the finalize() comment even calls out the 'banda muerta' (dead band). Moving derive()/finalize()/tonedBg to OKLCH would make accent2 hue-shifts (currently +-18..42 deg in HSL in derivePalette) and the dark/light bg ramps perceptually even, and would let the 141 color modules generate harmonies that look intentional. This also pairs naturally with APCA (both perceptual). Medium effort (rewrite ~5 helpers + re-run the color gate), high payoff for the 'better than Canva' bar.",
+    "url": "https://colorarchive.org/guides/oklch-perceptual-color-design-guide/"
+   },
+   {
+    "name": "Kinetic typography timing/easing/stagger principles",
+    "what": "Concrete, codifiable rules: (1) per-character stagger ~40-60ms for body so each unit is legible before the next arrives; (2) TWO levels of easing — a 'recipe' ease shaping the whole clip's temporal arc, and a 'selector/distribution' ease shaping how the wave of reveals accelerates across units; (3) a 'window' parameter controls how spread vs overlapped the stagger is; (4) hold long enough to READ before transitioning; (5) text must come to rest and stay still while readable — motion that doesn't serve the content is noise.",
+    "relevance": "urvid already separates motion personalities (core/motion.js: ease/settle/stagger/enter) from text effects (typekit, env.typekit, TK.draw with opts.reveal). These rules say the right model is: typekit should expose stagger-per-unit (ms->frames at FPS=30), a window param, and a SELECTOR ease distinct from the scene's recipe ease — instead of each of the 6 typekit effects hardcoding its own feel. And the rule 'every unit legible before the next + then hold still' is exactly urvid's existing invariant that text settles to drawText (no-overflow) at reveal>=1; formalize it as: reveal must reach 1 with >=X seconds of still hold given sceneDur. This deepens the typekit (HANDOFF 'deepen-ear typekit') with principled numbers rather than taste.",
+    "url": "https://www.linearity.io/blog/kinetic-typography/"
+   },
+   {
+    "name": "Seeded deterministic generative-design practice (p5.js / Processing / Anthropic algorithmic-art skill)",
+    "what": "Professional generative systems are built on: same seed -> identical output (randomSeed/noiseSeed), a small set of parameters exposed for exploration, seed-navigation UI to cycle variants, and an explicit aesthetic 'philosophy' that balances complexity against visual noise (order without rigidity). The recurring warning: reproducibility and curation matter more than raw randomness; cull noise.",
+    "relevance": "This validates urvid's core architecture (mulberry32/seedFor in core/prng.js, zero Math.random/Date.now, the determinism gate in urvid1-test.mjs) as the correct professional approach — urvid is already doing what p5 generative artists do, at engine scale. The gap is EXPLORATION UX: the practice says expose seed-navigation and parameter sliders. urvid already has urvid1-variety.mjs (9 seeds) for the author; the user-facing studio (Urvid1Studio.jsx) should offer 'reroll seed / show N variants' so the agent picks from a curated grid — turning determinism into a product feature, matching the 'every artifact unique' positioning.",
+    "url": "https://github.com/anthropics/skills/blob/main/skills/algorithmic-art/SKILL.md"
+   },
+   {
+    "name": "Deterministic browser/canvas->MP4 rendering ('fake the clock'; Remotion vs headless ffmpeg vs WebCodecs)",
+    "what": "The core technique for preview==export and frame-stable output is to drive EVERY frame from a virtual clock (a frame index / time t), never wall-clock — browsers skip/duplicate frames under load otherwise. Remotion does this (bundle() + renderMedia() emit deterministic PNG-per-frame then ffmpeg muxes; supports H.264/HEVC/VP9/AV1/ProRes) but imposes a React timeline. Headless-ffmpeg + WebCodecs/mp4box pipelines (HyperFrames, the Replit engine) render arbitrary canvas by pinning library timelines to a virtual clock to get hash-stable files identical across OSes/CI.",
+    "relevance": "urvid already follows the winning pattern: drawFrame(ctx,t,video) is a pure function of t with no Date.now (HANDOFF gate #2), so preview (browser canvas) and export (Remotion/@napi-rs/canvas in urvid1-test.mjs/urvid1-shot.mjs) are driven by the same t. So the rendering MODEL is right; the real preview!=export risks are environmental, not temporal: (a) FONT parity — the browser uses system/Google fonts while the node render uses GlobalFonts.loadFontsFromDir('tools/fonts'); any missing/substituted face shifts metrics and (since text.js bakes no-overflow via measureText) wrapping. (b) Canvas-2D feature parity between browser and @napi-rs/canvas (filters, shadow, gradient edge cases) used in libs/post. Recommendation: a 'parity gate' that renders the SAME seed in browser-canvas and node-canvas and diffs frames; and pin the exact font files used in BOTH paths. Staying engine-native (current approach) over adopting Remotion-React is correct given urvid's pure Canvas design.",
+    "url": "https://blog.replit.com/browsers-dont-want-to-be-cameras"
+   }
+  ],
+  "recommendations": [
+   "ADOPT a small deterministic layout solver as the unbuilt 'composition' lib (HANDOFF item #8). Scenes in libs/scenes/index.js should declare slots on a grid (col-span/row, alignment, grouping, padding, pin-to-edge) instead of absolute x/y; a pure helper resolves slots->pixels in the 405x720 box, seeded by env.seed. This is the highest-leverage change because it improves EVERY scene at once and makes layout robust to variable bullets[]/claim length. Model it on GRIDS' goals (packing without overlap, alignment, grouping = minimize distance between related items, preferential/locked placement) but implement greedy-grid, not a full MILP — keep it deterministic and dependency-free. Cassowary.js is the fallback only if relational constraints become necessary.",
+   "ADD APCA alongside WCAG 2, do not replace it. Implement apcaLc(text,bg) and legibleOnAPCA(bg,inkCandidates,{sizePx,weight}) in core/util.js; have finalize() in palette.js pick onAccent/inkText via APCA Lc thresholds (body ~Lc60, large/display ~Lc45) and add an APCA column to the gate in tools/urvid1-color-check.mjs. urvid is dark-by-default, exactly where WCAG 2's near-black crush silently passes unreadable combos — APCA closes that hole AND lets bolder large-type/accent-as-text through that WCAG over-rejects. Keep WCAG>=4.5 as the hard compliance floor.",
+   "MIGRATE color math from HSL to OKLCH in core/util.js + core/palette.js (derive/finalize/tonedBg/lighten/darken + the +-18..42deg accent2 hue shift in derivePalette). Perceptual uniformity removes the special-casing already hacked into accentAsText() and the documented 'banda muerta', makes lightness ramps and harmony rotations across the 141 color modules look intentional, and composes with APCA. Re-run urvid1-color-check.mjs (1672 combos) as the regression gate.",
+   "FORMALIZE kinetic-typography parameters in core/typekit.js instead of per-effect taste: expose per-unit stagger in ms converted via FPS=30, a 'window' (spread vs overlap), and a SELECTOR/distribution ease distinct from the scene recipe ease (core/motion.js). Enforce the legibility invariant numerically: reveal must reach 1 (== drawText no-overflow) with a minimum still-hold relative to sceneDur so users can READ. This turns 'deepen-ear typekit' from more effects into better-tuned ones.",
+   "KEEP the seeded-deterministic architecture (core/prng.js, the determinism gate) — research confirms it's the professional standard for generative design and is urvid's real moat vs prompt-to-pixels tools. Surface it as product: add 'reroll seed' / 'show N variants' to Urvid1Studio.jsx (reuse the logic in tools/urvid1-variety.mjs) so the user/agent curates from a grid. Determinism + curation, not raw randomness, is the recipe everyone recommends.",
+   "KEEP the Canvas-native + Remotion export (do NOT rewrite into Remotion-React): urvid already uses the winning 'virtual clock' pattern (drawFrame(ctx,t,video) pure in t, zero Date.now), so preview and export share the same timeline. Instead invest in a PARITY GATE: render the same seed in browser-canvas and in node @napi-rs/canvas and diff frames, and pin the EXACT font files in both paths (browser preview vs tools/fonts loaded by GlobalFonts). The preview!=export risk here is font-metric/Canvas-feature drift (affecting text.js wrapping and libs/post finishes), not timing.",
+   "AVOID over-engineering: do not pull in a full MILP solver or Cassowary unless the greedy grid proves insufficient, and do not chase 'every effect impressive' kinetic type — the cited motion-design consensus is that motion which doesn't serve the content is noise, which aligns with urvid's existing 'text stays still and legible' rule. Bias new modules toward restraint, gated by the legibility checks."
+  ]
+ }
+]
