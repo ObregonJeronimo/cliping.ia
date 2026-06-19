@@ -2,7 +2,7 @@
 // finalize() es el FINALIZADOR compartido: dado accent/accent2/bg0/bg1 + tono, computa los roles de texto legibles.
 // Los modulos de la biblioteca color/ deciden accent/accent2/bg0/bg1 (el "esquema") y llaman finalize -> el motor
 // garantiza legibilidad sin que cada esquema repita la logica. derivePalette = el esquema por defecto (back-compat).
-import { hexToHsl, hslToHex, lighten, darken, clamp, contrast, legibleOn } from './util.js'
+import { hexToHsl, hslToHex, lighten, darken, clamp, contrast, legibleOn, legibleOnBest } from './util.js'
 import { seedFor, range } from './prng.js'
 
 // acento usable COMO texto, legible segun tono (verde/amarillo de alta luminancia caen a tinta en claro).
@@ -19,12 +19,12 @@ export function finalize(accent, accent2, bg0, bg1, tone) {
   if (tone === 'light') return {
     tone, accent, accent2, bg0, bg1, surface: 'rgba(20,16,24,0.05)',
     ink: '#1c1510', dim: '#564a3e', inkText: accentAsText(accent, 'light'),
-    onAccent: legibleOn(accent, '#ffffff', '#1c1510'),
+    onAccent: legibleOnBest(accent, '#ffffff', '#1c1510'),   // APCA + piso WCAG (mata la "banda muerta")
   }
   return {
     tone, accent, accent2, bg0, bg1, surface: 'rgba(255,255,255,0.05)',
     ink: '#fbf6ec', dim: '#cfc6d6', inkText: accentAsText(accent, 'dark'),
-    onAccent: legibleOn(accent, '#fbf6ec', '#14090e'),
+    onAccent: legibleOnBest(accent, '#fbf6ec', '#14090e'),   // APCA + piso WCAG (perceptual, mejor en oscuro)
   }
 }
 

@@ -69,6 +69,32 @@ export function contrast(a, b) { const la = luminance(a), lb = luminance(b), hi 
 // devuelve el color (de 'ink' u 'onLight') que mejor contrasta con bg -> texto SIEMPRE legible (regla dura)
 export function legibleOn(bg, ink = '#fbf6ec', dark = '#161018') { return contrast(ink, bg) >= contrast(dark, bg) ? ink : dark }
 
+// ---- APCA (contraste PERCEPTUAL) — mas fiel que WCAG2, sobre todo en modo OSCURO (el "near-black crush" de WCAG2).
+// Lc firmado ~[-108..106]; |Lc|>=75 muy fuerte, >=60 titulos, >=45 cuerpo, >=30 texto grande. Constantes APCA 0.98G-4g.
+function _apcaY(hex) {
+  let h = (hex || '#000').replace('#', ''); if (h.length === 3) h = h.split('').map(c => c + c).join('')
+  const r = parseInt(h.slice(0, 2), 16) / 255, g = parseInt(h.slice(2, 4), 16) / 255, b = parseInt(h.slice(4, 6), 16) / 255
+  return 0.2126729 * Math.pow(r, 2.4) + 0.7151522 * Math.pow(g, 2.4) + 0.0721750 * Math.pow(b, 2.4)
+}
+export function apcaLc(textHex, bgHex) {
+  let Yt = _apcaY(textHex), Yb = _apcaY(bgHex)
+  const th = 0.022, cl = 1.414
+  Yt = Yt > th ? Yt : Yt + Math.pow(th - Yt, cl)
+  Yb = Yb > th ? Yb : Yb + Math.pow(th - Yb, cl)
+  if (Math.abs(Yb - Yt) < 0.0005) return 0
+  let Lc
+  if (Yb > Yt) { const s = (Math.pow(Yb, 0.56) - Math.pow(Yt, 0.57)) * 1.14; Lc = s < 0.1 ? 0 : s - 0.027 }
+  else { const s = (Math.pow(Yb, 0.65) - Math.pow(Yt, 0.62)) * 1.14; Lc = s > -0.1 ? 0 : s + 0.027 }
+  return Lc * 100
+}
+// elige el texto (entre 2 candidatos) MAS legible sobre bg: maximiza |APCA| exigiendo un piso WCAG (minW). Asi el
+// chip de acento (la "banda muerta" de hues luminosos verde/ambar) siempre queda con el texto perceptualmente correcto.
+export function legibleOnBest(bg, light = '#fbf6ec', dark = '#161018', minW = 3) {
+  let best = null, bestA = -1
+  for (const c of [light, dark]) { if (contrast(c, bg) < minW) continue; const a = Math.abs(apcaLc(c, bg)); if (a > bestA) { bestA = a; best = c } }
+  return best || (contrast(light, bg) >= contrast(dark, bg) ? light : dark)
+}
+
 // ---- fuentes ----
 const FALLBACK = 'system-ui,-apple-system,Segoe UI,Roboto,sans-serif'
 export function fontStr(weight, size, family) { return `${weight} ${Math.round(size)}px "${family || 'Inter'}",${FALLBACK}` }
