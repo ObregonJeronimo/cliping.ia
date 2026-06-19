@@ -35,6 +35,7 @@ export default function Urvid1Studio() {
   const [analyzing, setAnalyzing] = useState('')   // '' | 'loading' | mensaje de error
   const [shared, setShared] = useState('')         // estado del boton "Compartir con Claude"
   const [exporting, setExporting] = useState('')   // '' | 'NN%' | mensaje de error
+  const [variants, setVariants] = useState([])     // [{seed, url}] miniaturas de variantes para elegir
 
   useEffect(() => {
     const cv = cvRef.current; if (!cv) return
@@ -137,6 +138,22 @@ export default function Urvid1Studio() {
     requestAnimationFrame(tick)
   }
 
+  // VARIANTES: genera N recetas distintas (N semillas) y las muestra como miniaturas para ELEGIR (en vez de un reroll
+  // a ciegas). Cada miniatura es 1 frame representativo. Click -> adopta esa semilla (receta completa). Determinista.
+  const genVariants = () => {
+    const out = []
+    for (let k = 0; k < 6; k++) {
+      const s = (((seed || 1) + (k + 1) * 0x9e3779b1) >>> 0) || 1
+      const v = makeVideo({ ...brief, seed: s })
+      const cv = document.createElement('canvas'); cv.width = Math.round(v.W * 1.1); cv.height = Math.round(v.H * 1.1)
+      const c = cv.getContext('2d'); c.setTransform(1.1, 0, 0, 1.1, 0, 0)
+      try { drawFrame(c, v.duration * 0.35, v) } catch { /* skip */ }
+      out.push({ seed: s, url: cv.toDataURL('image/png') })
+    }
+    setVariants(out)
+  }
+  const pickVariant = (s) => { setLock(null); setKeep(null); setSeed(s); headRef.current = 0; setHead(0); setVariants([]) }
+
   const up = (k, v) => { setLock(null); setKeep(null); setBrief(b => ({ ...b, [k]: v })) }
   // toggle de tono: NO libera el lock -> congela la receta actual y solo recolorea al otro tono.
   const setTone = (tn) => { if (tn === brief.tone) return; setKeep(null); setLock(video.recipe); setBrief(b => ({ ...b, tone: tn })) }
@@ -201,6 +218,16 @@ export default function Urvid1Studio() {
           </div>
           <button className={styles.primary} onClick={exportVideo} disabled={!!exporting} style={{ width: '100%' }}>{exporting ? `Exportando ${exporting}` : '⬇ Descargar video'}</button>
           {exporting && exporting.indexOf('%') < 0 && <p style={{ margin: 0, fontSize: 12, color: '#e08a8a' }}>{exporting}</p>}
+          <button className={styles.ghost} onClick={genVariants} style={{ width: '100%' }} title="Genera 6 variantes para elegir">⊞ Ver variantes</button>
+          {variants.length > 0 && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6 }}>
+              {variants.map(v => (
+                <button key={v.seed} onClick={() => pickVariant(v.seed)} title="Usar esta variante" style={{ padding: 0, border: '1px solid var(--line2)', borderRadius: 8, overflow: 'hidden', cursor: 'pointer', background: '#000', aspectRatio: `${video.W} / ${video.H}` }}>
+                  <img src={v.url} alt="variante" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                </button>
+              ))}
+            </div>
+          )}
           <span className={styles.seedpill}><i>semilla</i>{seed ? '#' + (seed >>> 0).toString(16).slice(0, 6) : 'auto (marca + rubro)'}</span>
           {import.meta.env.DEV && <button className={styles.share} onClick={share} title="Manda este video a Claude para que lo vea (solo dev)">{shared === '...' ? 'Compartiendo…' : '↗ Compartir con Claude'}</button>}
           {import.meta.env.DEV && shared && shared !== '...' && <p style={{ margin: 0, fontSize: 12, color: shared.indexOf('✓') >= 0 ? '#8fe0a8' : '#e08a8a' }}>{shared}</p>}
