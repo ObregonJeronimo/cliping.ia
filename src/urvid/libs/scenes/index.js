@@ -60,6 +60,12 @@ function numFrom(content) {
   if (s) return String(s.value)
   return bigNumber(content && (content.claim || content.tagline), '')
 }
+// statLabel: la ETIQUETA real del dato (que SIGNIFICA el numero). La bajada de un "92%" deberia ser "satisfaccion",
+// no el tagline suelto que no explica el numero (por eso una escena de dato "no decia nada", era cifra + frase aparte).
+function statLabel(content) {
+  const s = content && Array.isArray(content.stats) ? content.stats.find(x => x && (x.value || x.value === 0)) : null
+  return (s && s.label) ? String(s.label) : ''
+}
 // proofFrom: SOLO el testimonio REAL de la perception ('' si no hay). NO recicla el claim como si fuera una resena.
 function proofFrom(content) { return (content && content.proof) || '' }
 // bigText: fallback honesto cuando no hay numero/dato real -> dibuja el gancho de texto en grande (el fitter achica).
@@ -479,7 +485,7 @@ register({
     drawText(ctx, num, 0, 0, { size: 86, weight: 800, family: fonts.display, maxW: R * 1.8, color: pal.ink })
     ctx.restore()
     // etiqueta debajo
-    drawWrapped(ctx, content.tagline || content.brand || 'resultado', cx, H * 0.66, { size: 22, weight: 700, family: fonts.text, maxW: W * 0.74, color: pal.dim, maxLines: 2, alpha: inv(t, 0.6, 1.1) })
+    drawWrapped(ctx, statLabel(content) || content.tagline || content.brand || 'resultado', cx, H * 0.66, { size: 22, weight: 700, family: fonts.text, maxW: W * 0.74, color: pal.dim, maxLines: 2, alpha: inv(t, 0.6, 1.1) })
   },
 })
 
@@ -995,7 +1001,7 @@ register({
     // VIDA: sheen recorre la parte llena de la barra (DECO continuo)
     if (fill > pct * 0.95 && fw > 24) rrSheen(ctx, bx, by, fw, bh, t, { per: 2.8, strength: 0.5, tone: pal.tone })
     // etiqueta debajo
-    drawWrapped(ctx, content.tagline || content.brand || 'resultado medido', cx, H * 0.62, { size: 22, weight: 700, family: fonts.text, maxW: W * 0.78, color: pal.dim, maxLines: 2, alpha: inv(t, 0.6, 1.1) })
+    drawWrapped(ctx, statLabel(content) || content.tagline || content.brand || 'resultado medido', cx, H * 0.62, { size: 22, weight: 700, family: fonts.text, maxW: W * 0.78, color: pal.dim, maxLines: 2, alpha: inv(t, 0.6, 1.1) })
   },
 })
 
@@ -1294,7 +1300,7 @@ register({
     drawText(ctx, num, 0, 0, { size: 72, weight: 800, family: fonts.display, maxW: R * 1.7, color: pal.ink, alpha: inv(t, 0.2, 0.7) })
     ctx.restore()
     // etiqueta debajo del arco
-    drawWrapped(ctx, content.tagline || content.brand || 'completado', cx, cy + 50, { size: 21, weight: 700, family: fonts.text, maxW: W * 0.74, color: pal.dim, maxLines: 2, alpha: inv(t, 0.6, 1.1) })
+    drawWrapped(ctx, statLabel(content) || content.tagline || content.brand || 'completado', cx, cy + 50, { size: 21, weight: 700, family: fonts.text, maxW: W * 0.74, color: pal.dim, maxLines: 2, alpha: inv(t, 0.6, 1.1) })
   },
 })
 
@@ -1741,7 +1747,7 @@ register({
     ctx.save(); ctx.translate(cx, cy); ctx.scale(0.85 + 0.15 * sp, 0.85 + 0.15 * sp)
     drawText(ctx, num, 0, 0, { size: 64, weight: 800, family: fonts.display, maxW: (R - lw) * 1.7, color: pal.ink, alpha: inv(t, 0.25, 0.7) })
     ctx.restore()
-    drawWrapped(ctx, content.tagline || content.brand || 'del total', cx, H * 0.68, { size: 22, weight: 700, family: fonts.text, maxW: W * 0.74, color: pal.dim, maxLines: 2, alpha: inv(t, 0.6, 1.1) })
+    drawWrapped(ctx, statLabel(content) || content.tagline || content.brand || 'del total', cx, H * 0.68, { size: 22, weight: 700, family: fonts.text, maxW: W * 0.74, color: pal.dim, maxLines: 2, alpha: inv(t, 0.6, 1.1) })
   },
 })
 
@@ -2240,7 +2246,7 @@ register({
       if (down) { ctx.moveTo(-ar, -ar * 0.6 + bob); ctx.lineTo(ar, -ar * 0.6 + bob); ctx.lineTo(0, ar * 0.8 + bob) } else { ctx.moveTo(-ar, ar * 0.6 + bob); ctx.lineTo(ar, ar * 0.6 + bob); ctx.lineTo(0, -ar * 0.8 + bob) }
       ctx.closePath(); ctx.fill(); ctx.restore()
     }
-    drawWrapped(ctx, content.tagline || content.brand || 'vs el mes pasado', cx, H * 0.65, { size: 22, weight: 700, family: fonts.text, maxW: W * 0.78, color: pal.dim, maxLines: 2, alpha: inv(t, 0.6, 1.1) })
+    drawWrapped(ctx, statLabel(content) || content.tagline || content.brand || 'vs el mes pasado', cx, H * 0.65, { size: 22, weight: 700, family: fonts.text, maxW: W * 0.78, color: pal.dim, maxLines: 2, alpha: inv(t, 0.6, 1.1) })
   },
 })
 
@@ -2273,7 +2279,7 @@ register({
       ctx.beginPath(); ctx.arc(x, y, dotR * (0.6 + 0.4 * ap) * life, 0, TAU); ctx.fill(); ctx.restore()
     }
     // caption con el numero
-    drawWrapped(ctx, content.tagline || (num + ' lo logra'), cx, H * 0.78, { size: 22, weight: 700, family: fonts.text, maxW: W * 0.8, color: pal.dim, maxLines: 2, alpha: inv(t, 0.7, 1.2) })
+    drawWrapped(ctx, statLabel(content) || content.tagline || (num + ' lo logra'), cx, H * 0.78, { size: 22, weight: 700, family: fonts.text, maxW: W * 0.8, color: pal.dim, maxLines: 2, alpha: inv(t, 0.7, 1.2) })
   },
 })
 

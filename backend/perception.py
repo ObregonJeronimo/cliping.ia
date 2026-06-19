@@ -32,7 +32,7 @@ _SYS = (
     '- "claim": el mensaje principal del reel, MAX 12 palabras, concreto y fiel a la pagina\n'
     '- "cta": llamado a la accion corto, MAX 4 palabras (preferi el CTA real de la pagina si hay)\n'
     '- "bullets": 2 a 4 props/beneficios CORTOS (cada uno MAX 5 palabras), sacados de los titulos/contenido reales. [] si no hay claros.\n'
-    '- "stats": 0 a 3 datos numericos REALES de la pagina, cada uno {"value": "600" | "+10" | "98%", "label": "etiqueta corta"}. SOLO numeros que figuren; [] si no hay.\n'
+    '- "stats": 0 a 2 datos numericos REALES que COMUNIQUEN un logro/beneficio, cada uno {"value": "92%" | "+600" | "4.9", "label": "etiqueta DESCRIPTIVA de 3 a 6 palabras: QUE es el numero"} (ej {"value":"92%","label":"de clientes lo recomienda"}). El value es la cifra; el label explica que significa para que la escena DIGA algo (no un numero suelto). NO incluyas precios sueltos, anios/fechas, telefonos ni codigos. [] si no hay datos que digan algo.\n'
     '- "proof": una linea de prueba social REAL (rating, cant. de clientes, premio) o "" si no hay\n'
     '- "seriousness": numero 0 a 1 (salud/finanzas alto ~0.8; gastronomia/moda bajo ~0.35)\n'
     "REGLAS: espanol rioplatense (voseo), FIEL a la pagina (NO inventes datos, cifras, premios ni features que no esten; "
@@ -120,7 +120,7 @@ def _norm_stats(v):
     if isinstance(v, list):
         for it in v:
             if isinstance(it, dict) and (it.get("value") not in (None, "")):
-                out.append({"value": _clip(it.get("value"), 12), "label": _clip(it.get("label"), 24)})
+                out.append({"value": _clip(it.get("value"), 12), "label": _clip(it.get("label"), 38)})
             if len(out) >= 3:
                 break
     return out

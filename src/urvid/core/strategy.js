@@ -43,7 +43,10 @@ export function buildArcSmart(seed, sig) {
   if (sig.hasCompare) want.push('lists/comparison')
   if (sig.hasList && !sig.hasCompare) want.push('lists/checklist')
   if (sig.hasProof) want.push('social/proof')
-  if (sig.longClaim || !want.length) want.push('statements/editorial')
+  // SIEMPRE garantizar un beat de MENSAJE (statement/checklist): un video no puede ser SOLO numeros/datos/proof
+  // (eso se veia como "una escena con un numero y nada mas"). Si no hay beat de texto, anteponemos el statement.
+  const hasText = c => c === 'statements/editorial' || c === 'lists/checklist'
+  if (sig.longClaim || !want.length || !want.some(hasText)) want.unshift('statements/editorial')
   const body = []
   for (const c of want) if (body.indexOf(c) < 0 && body.length < 3) body.push(c)
   // completar hasta 1-3 beats con cuerpo variado. SOLO beats de TEXTO (derivan del claim/tagline real): los beats
