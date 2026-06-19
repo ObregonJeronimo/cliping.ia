@@ -336,10 +336,16 @@ register({
   id: 'scene.checklist.ticks', lib: 'scene-layouts', category: 'lists/checklist', tones: ['dark', 'light'], rubros: ['*'], weight: 1.2,
   register: 'neutral', intensity: 'medium', tags: ['lista', 'checklist', 'beneficios'], beat: 'value',
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, ax = W * 0.13
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK
     const items = listFrom(content, 'Rapido · Simple · Confiable', 4)
-    if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), ax, H * 0.26, { size: 16, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, align: 'left', maxW: W * 0.74, alpha: inv(t, 0.05, 0.35) })
-    const y0 = H * 0.36, gap = Math.min(78, (H * 0.46) / Math.max(1, items.length))
+    // SLOTS: kicker (marca) arriba + region de lista; los items se centran en la region (antes y0/ax fijos)
+    const L = place(env, [
+      content.brand ? { id: 'kick', kind: 'kicker', text: content.brand } : null,
+      { id: 'list', kind: 'list', text: items.join(' · ') },
+    ])
+    if (content.brand && L.kick) drawText(ctx, (content.brand || '').toUpperCase(), L.kick.cx, L.kick.cy, { size: Math.min(L.kick.size, 18), weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, align: L.kick.align, maxW: L.kick.w, alpha: inv(t, 0.05, 0.35) })
+    const lr = L.list, ax = lr.x, n = Math.max(1, items.length)
+    const gap = Math.min(78, lr.h / n), y0 = lr.cy - (n - 1) * gap / 2
     items.forEach((it, i) => {
       const tin = inv(t, 0.2 + i * 0.18, 0.7 + i * 0.18)
       if (tin <= 0) return
@@ -353,7 +359,7 @@ register({
       ctx.restore()
       // texto del item
       ctx.save(); ctx.globalAlpha = tin; ctx.translate((1 - M.ease(tin)) * 16, 0)
-      drawText(ctx, it, ax + cr * 2 + 14, y, { size: 26, weight: 700, family: fonts.text, maxW: W - (ax + cr * 2 + 14) - W * 0.08, color: pal.ink, align: 'left' })
+      drawText(ctx, it, ax + cr * 2 + 14, y, { size: 26, weight: 700, family: fonts.text, maxW: lr.w - (cr * 2 + 14), color: pal.ink, align: 'left' })
       ctx.restore()
     })
   },
