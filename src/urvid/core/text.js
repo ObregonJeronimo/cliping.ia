@@ -2,9 +2,28 @@
 // Toda la biblioteca de tipografia/escenas dibuja texto por aca -> ningun texto se sale de su caja, nunca (regla dura).
 import { fontStr, clamp } from './util.js'
 
+// TELEMETRIA opcional para el GATE de QA visual (tools/urvid1-qa.mjs): cuando esta prendida, registra cada linea de
+// texto dibujada (string, caja, tamano, ancho medido) -> el gate detecta por CODIGO defectos como tamanos disparejos
+// en una lista, desborde/ellipsis, o texto fuera del cuadro. Apagada (default) = un solo if por llamada, costo ~0.
+let _tel = null
+export function telStart() { _tel = []; return _tel }
+export function telStop() { const t = _tel; _tel = null; return t }
+export function telTag(tag) { if (_tel) _tel._tag = tag }
+function _rec(ctx, drawn, raw, x, y, s, maxW, align, baseline, weight) {
+  if (!_tel) return
+  _tel.push({ str: drawn, raw: String(raw), x, y, size: s, maxW, align, baseline, weight, w: ctx.measureText(drawn).width, ellip: drawn.indexOf('…') >= 0 && String(raw).indexOf('…') < 0, ...(_tel._tag || {}) })
+}
+
 export function fitFont(ctx, str, base, maxW, min, weight, family) {
   let s = base; ctx.font = fontStr(weight, s, family)
   while (s > min && ctx.measureText(str).width > maxW) { s -= 1; ctx.font = fontStr(weight, s, family) }
+  return s
+}
+// fitUniform: el tamano de fuente que entra para TODOS los items (el del mas ancho) -> una lista se dibuja con UN
+// tamano unico, no cada item fiteado por su cuenta (eso daba items de tamanos distintos en la misma lista).
+export function fitUniform(ctx, items, base, maxW, min, weight, family) {
+  let s = base
+  for (const it of (items || [])) { const f = fitFont(ctx, String(it == null ? '' : it), s, maxW, min, weight, family); if (f < s) s = f }
   return s
 }
 // recorta con ellipsis al ancho actual del ctx.font (red de seguridad cuando ni en el min entra)
@@ -45,7 +64,9 @@ export function drawText(ctx, str, x, y, opts = {}) {
   if (maxW > 0) s = fitFont(ctx, String(str), size, maxW, min, weight, family)
   ctx.font = fontStr(weight, s, family); ctx.textAlign = align; ctx.textBaseline = baseline; ctx.fillStyle = color
   if (shadow) { ctx.shadowColor = shadow; ctx.shadowBlur = opts.shadowBlur || 6 }
-  ctx.fillText(maxW > 0 ? clip(ctx, String(str), maxW) : String(str), x, y)
+  const drawn = maxW > 0 ? clip(ctx, String(str), maxW) : String(str)
+  _rec(ctx, drawn, str, x, y, s, maxW, align, baseline, weight)
+  ctx.fillText(drawn, x, y)
   ctx.restore()
   return s
 }
@@ -57,7 +78,7 @@ export function drawWrapped(ctx, str, x, y, opts = {}) {
   ctx.save(); ctx.globalAlpha *= clamp(alpha, 0, 1)
   ctx.font = fontStr(weight, w.size, family); ctx.textAlign = align; ctx.textBaseline = 'middle'; ctx.fillStyle = color
   if (shadow) { ctx.shadowColor = shadow; ctx.shadowBlur = opts.shadowBlur || 6 }
-  w.lines.forEach((ln, i) => ctx.fillText(ln, x, y - total / 2 + i * lineH))
+  w.lines.forEach((ln, i) => { const yy = y - total / 2 + i * lineH; _rec(ctx, ln, str, x, yy, w.size, maxW, align, 'middle', weight); ctx.fillText(ln, x, yy) })
   ctx.restore()
   return total + w.size
 }

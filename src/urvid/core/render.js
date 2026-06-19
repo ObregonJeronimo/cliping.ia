@@ -103,10 +103,10 @@ export function drawFrame(ctx, t, video) {
     const blit = (c, buf, a) => { c.save(); c.globalAlpha *= clamp(a, 0, 1); c.drawImage(buf, 0, 0, W, H); c.restore() }
     if (bufA && bufB) {
       if (p < 0.5) {
-        const ca = bufA.getContext('2d'); ca.setTransform(ss, 0, 0, ss, 0, 0); paintScene(ca, trans.A, t, video, motion, typekit, layout)
+        const ca = bufA.getContext('2d'); ca.setTransform(1, 0, 0, 1, 0, 0); ca.clearRect(0, 0, bufA.width, bufA.height); ca.setTransform(ss, 0, 0, ss, 0, 0); paintScene(ca, trans.A, t, video, motion, typekit, layout)
         blit(ctx, bufA, 1 - eOutCubic(p / 0.5))   // A se disuelve sobre el fondo
       } else {
-        const cb = bufB.getContext('2d'); cb.setTransform(ss, 0, 0, ss, 0, 0); paintScene(cb, trans.B, t, video, motion, typekit, layout)
+        const cb = bufB.getContext('2d'); cb.setTransform(1, 0, 0, 1, 0, 0); cb.clearRect(0, 0, bufB.width, bufB.height); cb.setTransform(ss, 0, 0, ss, 0, 0); paintScene(cb, trans.B, t, video, motion, typekit, layout)
         transition.render(ctx, eOutCubic((p - 0.5) / 0.5), () => {}, c => blit(c, bufB, 1), { W, H })   // A ya no esta; B entra
       }
     } else {

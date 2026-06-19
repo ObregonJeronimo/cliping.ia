@@ -3,7 +3,7 @@
 // Usan la PALETA + la primitiva de texto (no-desborde garantizado) + motion. REGLA: texto en tinta (ink/inkText),
 // acento para DECO (barras/reglas). El director elige la escena segun el beat narrativo (hook/value/proof/close).
 import { register } from '../../core/registry.js'
-import { drawText, drawWrapped } from '../../core/text.js'
+import { drawText, drawWrapped, fitUniform } from '../../core/text.js'
 import { W, H, TAU, inv, lerp, clamp, eOutCubic, eOutBack, eInOutCubic, spring, smooth, rgba } from '../../core/util.js'
 import { mulberry32 } from '../../core/prng.js'
 import { defaultMotion } from '../../core/motion.js'
@@ -380,6 +380,7 @@ register({
     if (content.brand && L.kick) drawText(ctx, (content.brand || '').toUpperCase(), L.kick.cx, L.kick.cy, { size: Math.min(L.kick.size, 18), weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, align: L.kick.align, maxW: L.kick.w, alpha: inv(t, 0.05, 0.35) })
     const lr = L.list, ax = lr.x, n = Math.max(1, items.length)
     const gap = Math.min(78, lr.h / n), y0 = lr.cy - (n - 1) * gap / 2
+    const fs = fitUniform(ctx, items, 26, lr.w - 48, 14, 700, fonts.text)   // UN tamano para toda la lista (no disparejo)
     items.forEach((it, i) => {
       const tin = inv(t, 0.2 + i * 0.18, 0.7 + i * 0.18)
       if (tin <= 0) return
@@ -393,7 +394,7 @@ register({
       ctx.restore()
       // texto del item
       ctx.save(); ctx.globalAlpha = tin; ctx.translate((1 - M.ease(tin)) * 16, 0)
-      drawText(ctx, it, ax + cr * 2 + 14, y, { size: 26, weight: 700, family: fonts.text, maxW: lr.w - (cr * 2 + 14), color: pal.ink, align: 'left' })
+      drawText(ctx, it, ax + cr * 2 + 14, y, { size: fs, weight: 700, family: fonts.text, maxW: lr.w - (cr * 2 + 14), color: pal.ink, align: 'left' })
       ctx.restore()
     })
   },
@@ -407,6 +408,7 @@ register({
     const items = listFrom(content, 'Conecta · Configura · Lanza', 4)
     drawText(ctx, content.brand ? (content.brand + '').toUpperCase() : 'COMO FUNCIONA', ax, H * 0.25, { size: 16, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, align: 'left', maxW: W * 0.74, alpha: inv(t, 0.05, 0.35) })
     const y0 = H * 0.35, gap = Math.min(82, (H * 0.48) / Math.max(1, items.length))
+    const fs = fitUniform(ctx, items, 25, W - (ax + 50) - W * 0.08, 14, 700, fonts.text)   // UN tamano para toda la lista
     items.forEach((it, i) => {
       const tin = inv(t, 0.2 + i * 0.2, 0.7 + i * 0.2)
       if (tin <= 0) return
@@ -419,7 +421,7 @@ register({
       drawText(ctx, String(i + 1), 0, 1, { size: 22, weight: 800, family: fonts.display, color: pal.onAccent })
       ctx.restore()
       ctx.save(); ctx.globalAlpha = tin; ctx.translate((1 - M.ease(tin)) * 16, 0)
-      drawText(ctx, it, ax + 50, y, { size: 25, weight: 700, family: fonts.text, maxW: W - (ax + 50) - W * 0.08, color: pal.ink, align: 'left' })
+      drawText(ctx, it, ax + 50, y, { size: fs, weight: 700, family: fonts.text, maxW: W - (ax + 50) - W * 0.08, color: pal.ink, align: 'left' })
       ctx.restore()
     })
   },
@@ -812,21 +814,23 @@ register({
     drawWrapped(ctx, content.tagline || content.claim || '¿Seguis perdiendo tiempo?', cx, H * 0.32, { size: 32, weight: 800, family: fonts.display, maxW: W * 0.82, color: pal.ink, maxLines: 3, lh: 1.14, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.45)' : null })
     ctx.restore()
     // dos opciones tipo "si / no" como chips contrapuestos (uno acento, uno dim)
-    const labels = splitItems(content.claim || 'Antes · Ahora', 2)
-    const a = labels[0] || 'NO', b = labels[1] || 'SI'
+    let labels = splitItems(content.claim || content.tagline || '', 2)
+    if (labels.length < 2) labels = ['Antes', 'Ahora']   // sin un contraste real en el texto -> framing generico antes/ahora
+    const a = labels[0], b = labels[1]
     const cw = W * 0.34, ch = 64, gap = 18, totW = cw * 2 + gap, x0 = cx - totW / 2, y = H * 0.56
+    const fs = fitUniform(ctx, [a, b], 22, cw - 24, 12, 700, fonts.display)   // mismo tamano en ambos chips, sin elidir
     const inA = M.settle(inv(t, 0.35, 1.0), { zeta: 0.5, freq: 2 }), inB = M.settle(inv(t, 0.5, 1.15), { zeta: 0.5, freq: 2 })
     // chip izquierdo (la opcion vieja, dim, contorno)
     ctx.save(); ctx.globalAlpha = inv(t, 0.35, 0.8); ctx.translate(x0 + cw / 2, y + ch / 2); ctx.scale(0.9 + 0.1 * inA, 0.9 + 0.1 * inA); ctx.translate(-(x0 + cw / 2), -(y + ch / 2))
     ctx.strokeStyle = rgba(pal.ink, 0.28); ctx.lineWidth = 1.8; ctx.beginPath(); ctx.roundRect(x0, y, cw, ch, 14); ctx.stroke()
-    drawText(ctx, a, x0 + cw / 2, y + ch / 2, { size: 22, weight: 700, family: fonts.display, color: pal.dim, maxW: cw - 20 })
+    drawWrapped(ctx, a, x0 + cw / 2, y + ch / 2, { size: fs, min: 12, weight: 700, family: fonts.display, color: pal.dim, maxW: cw - 20, maxLines: 2, lh: 1.05 })
     ctx.restore()
     // chip derecho (la opcion buena, acento relleno) + VIDA: respira suave + sheen lo recorre
     const bsc = (0.88 + 0.12 * inB) * breathe(t, 1.0, 0.012)
     ctx.save(); ctx.globalAlpha = inv(t, 0.5, 0.95); ctx.translate(x0 + cw + gap + cw / 2, y + ch / 2); ctx.scale(bsc, bsc); ctx.translate(-(x0 + cw + gap + cw / 2), -(y + ch / 2))
     ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(x0 + cw + gap, y, cw, ch, 14); ctx.fill()
     if (inB > 0.9) rrSheen(ctx, x0 + cw + gap, y, cw, ch, t, { per: 3.6, strength: 0.4, tone: pal.tone })
-    drawText(ctx, b, x0 + cw + gap + cw / 2, y + ch / 2, { size: 23, weight: 800, family: fonts.display, color: pal.onAccent, maxW: cw - 20 })
+    drawWrapped(ctx, b, x0 + cw + gap + cw / 2, y + ch / 2, { size: fs, min: 12, weight: 800, family: fonts.display, color: pal.onAccent, maxW: cw - 20, maxLines: 2, lh: 1.05 })
     ctx.restore()
   },
 })
@@ -1211,7 +1215,7 @@ register({
       ctx.restore()
       // texto del item (envuelto a 2 lineas dentro de su columna)
       ctx.save(); ctx.globalAlpha = tin; ctx.translate((1 - M.ease(tin)) * 12, 0)
-      drawWrapped(ctx, it, x + 38, y, { size: 21, weight: 700, family: fonts.text, maxW: colW - 52, color: pal.ink, align: 'left', maxLines: 2, lh: 1.1 })
+      drawWrapped(ctx, it, x + 38, y, { size: 21, min: 12, weight: 700, family: fonts.text, maxW: colW - 52, color: pal.ink, align: 'left', maxLines: 3, lh: 1.08 })
       ctx.restore()
     })
   },
