@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useMemo } from 'react'
-import { collection, getDocs, doc, setDoc, deleteDoc } from 'firebase/firestore'
+import { collection, getDocs, doc, getDoc, setDoc, deleteDoc } from 'firebase/firestore'
 import { makeVideo, drawFrame, beatAt, W, H } from '../../urvid/index.js'
 import { useAuth } from '../../contexts/AuthContext'
 import { db } from '../../lib/firebase'
@@ -64,6 +64,14 @@ export default function Urvid1Studio() {
       const items = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.ts || 0) - (a.ts || 0)).slice(0, 24)
       if (items.length) { setSaved(items); localStorage.setItem('urvid1.saved', JSON.stringify(items)) }
     }).catch(() => { /* offline -> localStorage */ })
+    return () => { alive = false }
+  }, [user?.uid])
+
+  // BRAND-KIT: al loguearse trae el logo guardado del perfil (users/{uid}/urvid_profile/main).
+  useEffect(() => {
+    if (!user?.uid) return
+    let alive = true
+    getDoc(doc(db, 'users', user.uid, 'urvid_profile', 'main')).then(s => { if (alive && s.exists() && s.data().logo) setBrief(b => ({ ...b, logo: s.data().logo })) }).catch(() => { /* noop */ })
     return () => { alive = false }
   }, [user?.uid])
 
@@ -154,6 +162,27 @@ export default function Urvid1Studio() {
   }
   const pickVariant = (s) => { setLock(null); setKeep(null); setSeed(s); headRef.current = 0; setHead(0); setVariants([]) }
 
+  // BRAND-KIT: sube un logo, lo DOWNSCALEA a <=256px (para no inflar el doc de Firestore), lo guarda en el brief
+  // (-> se dibuja en una esquina) y lo persiste en el perfil. Un logo NO es "foto real" -> respeta la decision no-fotos.
+  const onLogo = (e) => {
+    const file = e.target.files && e.target.files[0]; if (!file) return
+    const fr = new FileReader()
+    fr.onload = () => {
+      const img = new Image()
+      img.onload = () => {
+        const max = 256, sc = Math.min(1, max / Math.max(img.width, img.height))
+        const cv = document.createElement('canvas'); cv.width = Math.max(1, Math.round(img.width * sc)); cv.height = Math.max(1, Math.round(img.height * sc))
+        cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height)
+        const url = cv.toDataURL('image/png')
+        setBrief(b => ({ ...b, logo: url }))
+        if (user?.uid) { try { setDoc(doc(db, 'users', user.uid, 'urvid_profile', 'main'), { logo: url, brandColor: brief.brandColor, ts: Date.now() }) } catch { /* noop */ } }
+      }
+      img.src = fr.result
+    }
+    fr.readAsDataURL(file)
+  }
+  const clearLogo = () => { setBrief(b => ({ ...b, logo: null })); if (user?.uid) { try { setDoc(doc(db, 'users', user.uid, 'urvid_profile', 'main'), { logo: '', brandColor: brief.brandColor, ts: Date.now() }) } catch { /* noop */ } } }
+
   const up = (k, v) => { setLock(null); setKeep(null); setBrief(b => ({ ...b, [k]: v })) }
   // toggle de tono: NO libera el lock -> congela la receta actual y solo recolorea al otro tono.
   const setTone = (tn) => { if (tn === brief.tone) return; setKeep(null); setLock(video.recipe); setBrief(b => ({ ...b, tone: tn })) }
@@ -206,6 +235,9 @@ export default function Urvid1Studio() {
             <label className={styles.field}>Color<input type="color" value={brief.brandColor} onChange={e => up('brandColor', e.target.value)} /></label>
             <label className={styles.field}>Rubro<select value={brief.rubro} onChange={e => up('rubro', e.target.value)}>{RUBROS.map(r => <option key={r}>{r}</option>)}</select></label>
           </div>
+          <label className={styles.field}>Logo (marca){brief.logo
+            ? <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><img src={brief.logo} alt="logo" style={{ height: 28, maxWidth: 100, objectFit: 'contain', background: 'rgba(0,0,0,.2)', borderRadius: 6, padding: 3 }} /><button className={styles.ghost} onClick={clearLogo} style={{ padding: '4px 8px', fontSize: 12 }}>Quitar</button></span>
+            : <input type="file" accept="image/*" onChange={onLogo} />}</label>
           <label className={styles.field}>Tono<div className={styles.seg}>{['dark', 'light'].map(tn => <button key={tn} className={brief.tone === tn ? styles.on : ''} onClick={() => setTone(tn)}>{tn === 'dark' ? 'oscuro' : 'claro'}</button>)}</div></label>
           <label className={styles.field}>Formato<div className={styles.seg}>{[['9:16', 'Reel'], ['4:5', 'Feed'], ['1:1', 'Cuadr.']].map(([f, lbl]) => <button key={f} className={(brief.format || '9:16') === f ? styles.on : ''} onClick={() => up('format', f)}>{lbl} {f}</button>)}</div></label>
           <label className={styles.field}>Duración<div className={styles.seg}>{[['corto', 'Corto'], ['medio', 'Medio'], ['largo', 'Largo']].map(([d, lbl]) => <button key={d} className={(brief.duration || 'medio') === d ? styles.on : ''} onClick={() => up('duration', d)}>{lbl}</button>)}</div></label>

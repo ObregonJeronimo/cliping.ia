@@ -17,6 +17,16 @@ const XF = 0.4   // ventana de transicion entre escenas (s) — corta = snappy, 
 // (Node pelado) -> null -> la transicion cae al modo directo previo (sin crossfade, comportamiento intacto).
 let _scratchFactory = null
 export function setScratchFactory(fn) { _scratchFactory = fn }
+
+// LOGO (brand-kit): se decodifica una vez por dataURL y se cachea. En browser/Remotion usa Image(); en Node pelado
+// (sin Image) NO dibuja logo (los tools no lo necesitan). Mientras decodifica, se saltea (cuando esta listo, aparece).
+const _logoCache = new Map()
+function _getLogo(src) {
+  if (!src || typeof Image === 'undefined') return null
+  let e = _logoCache.get(src)
+  if (!e) { const img = new Image(); e = { img, ready: false }; try { img.onload = () => { e.ready = true } } catch { /* noop */ } img.src = src; _logoCache.set(src, e) }
+  return e.ready && e.img.width ? e.img : null
+}
 function makeScratch(w, h) {
   if (_scratchFactory) return _scratchFactory(w, h)
   if (typeof OffscreenCanvas !== 'undefined') return new OffscreenCanvas(w, h)
@@ -109,6 +119,14 @@ export function drawFrame(ctx, t, video) {
   }
   // POST: acabado (grano/vignette/leak/grade/scanlines) SOBRE todo el cuadro -> el "film look" que une el frame.
   if (video.postId) { const post = resolvePost(video); post.render(ctx, t, { pal: video.palette, content: video.content, energy: 1, seed: video.postSeed >>> 0 }) }
+  // LOGO de marca (brand-kit) en una esquina, chico y nitido (despues del post). Un logo NO es "foto real" -> ok.
+  if (video.logo) {
+    const img = _getLogo(video.logo)
+    if (img) {
+      const hh = H * 0.06, ww = hh * (img.width / img.height), m = W * 0.05, ap = inv(t, 0.2, 0.7)
+      ctx.save(); ctx.globalAlpha = 0.92 * ap; ctx.drawImage(img, m, m, ww, hh); ctx.restore()
+    }
+  }
 }
 
 export const beatAt = (t, video) => { const sc = video.scenes.find(s => t >= s.start && t < s.start + s.dur); return sc ? sc.sceneId : '' }
