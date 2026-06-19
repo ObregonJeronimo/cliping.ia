@@ -44,3 +44,29 @@ P('type.pair.tech-editorial', 'pairings', { display: 'Outfit', text: 'Newsreader
 P('type.pair.boutique-chic', 'pairings', { display: 'Spectral', text: 'Plus Jakarta Sans', accent: 'Caveat' }, ['*', 'belleza', 'moda', 'gastronomia'], ['boutique', 'chic', 'elegante', 'suave'], 0.8)
 // Statement bold: grotesk geometrico ultra + neutro + mono -> claim potente.
 P('type.pair.statement-bold', 'pairings', { display: 'Plus Jakarta Sans', text: 'Sora', accent: 'IBM Plex Mono' }, ['*', 'fitness', 'tech', 'default'], ['bold', 'statement', 'punchy', 'moderno'], 1)
+
+// --- OLA tipografica (jun 2026): +20 pairings con register/intensity explicitos (alimentan el selector v3).
+// Solo familias REALMENTE cargadas (tools/fonts + index.html) -> sin tofu en la app ni en el render Node.
+const P2 = (id, fonts, rubros, reg, intensity, tags, weight = 1) =>
+  register({ id, lib: 'typography', category: 'pairings', tones: ['dark', 'light'], rubros, weight, register: reg, intensity, tags, fonts })
+
+P2('type.pair.caprasimo-fun', { display: 'Caprasimo', text: 'DM Sans', accent: 'Caveat' }, ['*', 'gastronomia', 'eventos', 'belleza'], 'playful', 'bold', ['divertido', 'chunky', 'calido'], 0.8)
+P2('type.pair.tight-modern', { display: 'Inter Tight', text: 'Inter', accent: 'JetBrains Mono' }, ['*', 'tech', 'default', 'finanzas'], 'neutral', 'medium', ['moderno', 'limpio', 'tight'], 1.1)
+P2('type.pair.serif-drama', { display: 'Playfair Display', text: 'Spectral', accent: 'Space Mono' }, ['*', 'moda', 'educacion', 'belleza'], 'editorial', 'bold', ['serif', 'dramatico', 'editorial'], 0.9)
+P2('type.pair.anton-news', { display: 'Anton', text: 'Barlow', accent: 'Oswald' }, ['*', 'fitness', 'eventos', 'deportes'], 'neutral', 'loud', ['poster', 'condensado', 'impacto', 'news'], 0.9)
+P2('type.pair.onest-quiet', { display: 'Onest', text: 'Onest', accent: 'IBM Plex Mono' }, ['*', 'finanzas', 'tech', 'salud'], 'corporate', 'calm', ['sobrio', 'neutro', 'prolijo'], 1)
+P2('type.pair.unbounded-pop', { display: 'Unbounded', text: 'Hanken Grotesk', accent: 'Space Mono' }, ['*', 'tech', 'eventos', 'gaming'], 'playful', 'bold', ['futurista', 'pop', 'redondo'], 0.8)
+P2('type.pair.dmserif-editorial', { display: 'DM Serif Display', text: 'Inter', accent: 'JetBrains Mono' }, ['*', 'moda', 'inmobiliaria', 'educacion'], 'editorial', 'medium', ['serif', 'editorial', 'elegante'], 0.95)
+P2('type.pair.bricolage-warm', { display: 'Bricolage Grotesque', text: 'DM Sans', accent: 'Caveat' }, ['*', 'gastronomia', 'salud', 'educacion'], 'friendly', 'medium', ['calido', 'humano', 'amigable'], 1)
+P2('type.pair.oswald-stack', { display: 'Oswald', text: 'Inter', accent: 'Barlow' }, ['*', 'fitness', 'default', 'deportes'], 'neutral', 'bold', ['condensado', 'deportivo', 'stack'], 0.9)
+P2('type.pair.darker-fashion', { display: 'Darker Grotesque', text: 'Onest', accent: 'Space Mono' }, ['*', 'moda', 'belleza', 'default'], 'editorial', 'bold', ['fashion', 'display', 'dramatico'], 0.8)
+P2('type.pair.sora-saas', { display: 'Sora', text: 'DM Sans', accent: 'IBM Plex Mono' }, ['*', 'tech', 'finanzas', 'startup'], 'corporate', 'medium', ['saas', 'geometrico', 'startup'], 1.1)
+P2('type.pair.fraunces-boutique', { display: 'Fraunces', text: 'Hanken Grotesk', accent: 'Caveat' }, ['*', 'belleza', 'moda', 'gastronomia'], 'editorial', 'soft', ['boutique', 'organico', 'suave'], 0.9)
+P2('type.pair.outfit-clean', { display: 'Outfit', text: 'Inter', accent: 'JetBrains Mono' }, ['*', 'tech', 'default', 'finanzas'], 'neutral', 'medium', ['limpio', 'moderno', 'geometrico'], 1.05)
+P2('type.pair.righteous-retro', { display: 'Righteous', text: 'Barlow', accent: 'Permanent Marker' }, ['*', 'eventos', 'gastronomia', 'musica'], 'playful', 'loud', ['retro', 'funk', 'vintage'], 0.7)
+P2('type.pair.newsreader-read', { display: 'Newsreader', text: 'Newsreader', accent: 'Space Mono' }, ['*', 'educacion', 'default', 'finanzas'], 'editorial', 'calm', ['serif', 'lectura', 'editorial'], 0.85)
+P2('type.pair.chakra-cyber', { display: 'Chakra Petch', text: 'DM Sans', accent: 'JetBrains Mono' }, ['*', 'tech', 'gaming'], 'playful', 'bold', ['cyber', 'tecnico', 'gaming'], 0.8)
+P2('type.pair.jakarta-trust', { display: 'Plus Jakarta Sans', text: 'Hanken Grotesk', accent: 'IBM Plex Mono' }, ['*', 'salud', 'finanzas', 'inmobiliaria'], 'corporate', 'calm', ['confianza', 'sobrio', 'prolijo'], 1)
+P2('type.pair.bigshoulders-impact', { display: 'Big Shoulders Display', text: 'Inter Tight', accent: 'Oswald' }, ['*', 'fitness', 'deportes', 'eventos'], 'neutral', 'loud', ['impacto', 'condensado', 'poster'], 0.85)
+P2('type.pair.bagel-playful', { display: 'Bagel Fat One', text: 'DM Sans', accent: 'Permanent Marker' }, ['*', 'gastronomia', 'infantil', 'belleza'], 'playful', 'bold', ['redondo', 'divertido', 'goloso'], 0.7)
+P2('type.pair.familjen-editorial', { display: 'Familjen Grotesk', text: 'Onest', accent: 'Space Mono' }, ['*', 'finanzas', 'inmobiliaria', 'tech'], 'corporate', 'medium', ['swiss', 'neutro', 'corporativo'], 1)
