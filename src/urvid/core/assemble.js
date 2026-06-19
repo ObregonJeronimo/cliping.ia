@@ -97,6 +97,9 @@ export function makeVideo(brief = {}) {
   const xf = /snappy|punch|rebote|elastic|kinetic|arcade/.test(motId) ? 0.3 : /glide|calm|slow|cine|drift|float/.test(motId) ? 0.5 : 0.4
   // POST: acabado (grano/vignette/leak/grade/scanlines) -> video.postId. Opcional (~58%).
   const postMod = optional(lock && lock.post, keep && keep.post, seedFor(seed, 'post'), 0.58, query('post', { tone }))
+  // LAYOUT: arquitectura de composicion (centrado/editorial/poster/anclado...). El director elige UNA por video;
+  // las escenas piden slots y el solver (core/layout.js) los ubica. Tono-agnostico -> filtra solo por fit.
+  const layMod = required(lock && lock.layout, keep && keep.layout, seedFor(seed, 'layout'), query('layouts', { tone }))
 
   // FONDO: query por tono -> pick por fit. SUBSTRATE (~65%) + ATMOSPHERE (~55%) opcionales -> mas unicidad por capas.
   const bg = required(lock && lock.bg, keep && keep.bg, seedFor(seed, 'bg'), query('backgrounds', { tone }))
@@ -134,8 +137,9 @@ export function makeVideo(brief = {}) {
     markId: markMod ? markMod.id : null, markSeed: (seed ^ hashStr('mark')) >>> 0,
     transitionId: trMod ? trMod.id : null,
     postId: postMod ? postMod.id : null, postSeed: (seed ^ hashStr('post')) >>> 0,
+    layoutId: layMod ? layMod.id : null,
     content: { brand, ...content },
     scenes, duration: start || 8,
-    recipe: { color: colMod ? colMod.id : null, type: typMod ? typMod.id : null, bg: bg ? bg.id : null, sub: sub ? sub.id : null, atm: atm ? atm.id : null, motion: motMod ? motMod.id : null, typekit: tkMod ? tkMod.id : null, mark: markMod ? markMod.id : null, transition: trMod ? trMod.id : null, post: postMod ? postMod.id : null, scenes: scenes.map(s => s.sceneId) },   // la "carta" del video
+    recipe: { color: colMod ? colMod.id : null, type: typMod ? typMod.id : null, bg: bg ? bg.id : null, sub: sub ? sub.id : null, atm: atm ? atm.id : null, motion: motMod ? motMod.id : null, typekit: tkMod ? tkMod.id : null, mark: markMod ? markMod.id : null, transition: trMod ? trMod.id : null, post: postMod ? postMod.id : null, layout: layMod ? layMod.id : null, scenes: scenes.map(s => s.sceneId) },   // la "carta" del video
   }
 }

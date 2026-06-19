@@ -8,6 +8,7 @@ import { resolveMotion } from './motion.js'
 import { resolveTypekit } from './typekit.js'
 import { resolveTransition } from './transitions.js'
 import { resolvePost } from './post.js'
+import { resolveLayout } from './layout.js'
 
 const XF = 0.4   // ventana de transicion entre escenas (s) — corta = snappy, menos tiempo de solape
 
@@ -24,7 +25,7 @@ function makeScratch(w, h) {
 }
 
 // pinta UNA escena (contenido) con la ENTRADA de la personalidad (offset/zoom/rotacion de entrada). Coords logicas.
-function paintScene(ctx, sc, t, video, motion, typekit) {
+function paintScene(ctx, sc, t, video, motion, typekit, layout) {
   const mod = get(sc.sceneId); if (!mod) return
   const ts = t - sc.start
   const ep = motion.ease(inv(ts, 0, motion.enterDur || 0.5)), k = 1 - ep
@@ -38,7 +39,7 @@ function paintScene(ctx, sc, t, video, motion, typekit) {
   const ox = (en.dx || 0) * k, oy = (en.dy || 0) * k, rot = (en.rotate || 0) * k
   ctx.save()
   ctx.translate(W / 2 + ox, H / 2 + oy); ctx.rotate(rot); ctx.scale(z, z); ctx.translate(-W / 2, -H / 2)
-  mod.render(ctx, ts, { pal: video.palette, content: video.content, fonts: video.fonts, seed: sc.seed, energy: 1, sceneDur: sc.dur, motion, typekit })
+  mod.render(ctx, ts, { pal: video.palette, content: video.content, fonts: video.fonts, seed: sc.seed, energy: 1, sceneDur: sc.dur, motion, typekit, layout })
   ctx.restore()
 }
 
@@ -48,6 +49,7 @@ export function drawFrame(ctx, t, video) {
   const motion = resolveMotion(video)   // personalidad de movimiento del video (o default)
   const typekit = resolveTypekit(video) // efecto de texto cinetico del video (o plain)
   const transition = resolveTransition(video) // transicion entre escenas (o cut)
+  const layout = resolveLayout(video)   // arquitectura de composicion (slots) del video (o default centrado)
   // CAPAS DE FONDO (viven todo el video): fondo -> textura/substrate -> atmosfera/luz -> (contenido encima)
   const base = { pal: video.palette, content: video.content, energy: 1 }
   if (video.bgId) { const m = get(video.bgId); if (m) m.render(ctx, t, { ...base, seed: video.bgSeed }) }
@@ -87,23 +89,23 @@ export function drawFrame(ctx, t, video) {
     const bw = Math.ceil(W * ss), bh = Math.ceil(H * ss)
     const bufA = makeScratch(bw, bh), bufB = bufA ? makeScratch(bw, bh) : null
     if (bufA && bufB) {
-      const ca = bufA.getContext('2d'); ca.setTransform(ss, 0, 0, ss, 0, 0); paintScene(ca, trans.A, t, video, motion, typekit)
-      const cb = bufB.getContext('2d'); cb.setTransform(ss, 0, 0, ss, 0, 0); paintScene(cb, trans.B, t, video, motion, typekit)
+      const ca = bufA.getContext('2d'); ca.setTransform(ss, 0, 0, ss, 0, 0); paintScene(ca, trans.A, t, video, motion, typekit, layout)
+      const cb = bufB.getContext('2d'); cb.setTransform(ss, 0, 0, ss, 0, 0); paintScene(cb, trans.B, t, video, motion, typekit, layout)
       const aFade = 1 - eOutCubic(p)   // A se va; B llega entera (el reveal lo da la geometria de la transicion)
       const blit = (c, buf, a) => { c.save(); c.globalAlpha *= clamp(a, 0, 1); c.drawImage(buf, 0, 0, W, H); c.restore() }
       transition.render(ctx, p, c => blit(c, bufA, aFade), c => blit(c, bufB, 1), { W, H })
     } else {
       // fallback sin buffers (Node pelado): modo directo previo (sin crossfade) -> determinismo/tests intactos.
       transition.render(ctx, p,
-        c => paintScene(c, trans.A, t, video, motion, typekit),
-        c => paintScene(c, trans.B, t, video, motion, typekit),
+        c => paintScene(c, trans.A, t, video, motion, typekit, layout),
+        c => paintScene(c, trans.B, t, video, motion, typekit, layout),
         { W, H })
     }
   } else {
     let act = null
     for (const sc of scenes) if (t >= sc.start && t < sc.start + sc.dur) { act = sc; break }
     if (!act) act = t < scenes[0].start ? scenes[0] : scenes[scenes.length - 1]
-    paintScene(ctx, act, t, video, motion, typekit)
+    paintScene(ctx, act, t, video, motion, typekit, layout)
   }
   // POST: acabado (grano/vignette/leak/grade/scanlines) SOBRE todo el cuadro -> el "film look" que une el frame.
   if (video.postId) { const post = resolvePost(video); post.render(ctx, t, { pal: video.palette, content: video.content, energy: 1, seed: video.postSeed >>> 0 }) }

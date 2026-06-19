@@ -8,6 +8,7 @@ import { W, H, TAU, inv, lerp, clamp, eOutCubic, eOutBack, eInOutCubic, spring, 
 import { mulberry32 } from '../../core/prng.js'
 import { defaultMotion } from '../../core/motion.js'
 import { defaultTypekit } from '../../core/typekit.js'
+import { place } from '../../core/layout.js'
 
 // Motion: cada escena usa env.motion (la personalidad elegida por el director) en lugar de eases hardcodeados:
 // M.ease = monotonico (reglas/barras/reveals), M.settle = overshoot (pops/escala). _DM = fallback si se renderiza
@@ -123,20 +124,25 @@ register({
   id: 'scene.hero.center', lib: 'scene-layouts', category: 'openers/hero', tones: ['dark', 'light'], rubros: ['*'], weight: 1.3,
   register: 'neutral', intensity: 'medium', tags: ['apertura', 'tipografico', 'centrado'], beat: 'hook',
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
-    // wordmark con asentamiento spring
-    const ap = M.settle(inv(t, 0.15, 1.1), { zeta: 0.5, freq: 2.0 })
-    const sc = 0.92 + 0.08 * ap
-    ctx.save(); ctx.globalAlpha = inv(t, 0.1, 0.4); ctx.translate(cx, H * 0.4); ctx.scale(sc, sc)
-    drawText(ctx, content.brand || 'Marca', 0, 0, { size: 64, weight: 800, family: fonts.display, maxW: W * 0.86, color: pal.ink, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.4)' : null })
+    const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK
+    // SLOTS: el solver de layout ubica la marca (titulo) y el tagline (subtitulo) llenando el area segura
+    // segun el layout elegido (centrado/editorial/poster/anclado) y el formato. Antes era H*0.4 fijo.
+    const L = place(env, [
+      { id: 'brand', kind: 'title', text: content.brand || 'Marca' },
+      content.tagline ? { id: 'tag', kind: 'subtitle', text: content.tagline } : null,
+    ]), b = L.brand
+    // wordmark con asentamiento spring, anclado a su slot
+    const ap = M.settle(inv(t, 0.15, 1.1), { zeta: 0.5, freq: 2.0 }), sc = 0.92 + 0.08 * ap
+    ctx.save(); ctx.globalAlpha = inv(t, 0.1, 0.4); ctx.translate(b.cx, b.cy); ctx.scale(sc, sc)
+    drawText(ctx, content.brand || 'Marca', 0, 0, { size: b.size, weight: 800, family: fonts.display, maxW: b.w, align: b.align, color: pal.ink, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.4)' : null })
     ctx.restore()
-    // regla de acento que crece (DECO en acento) + VIDA: respira de ancho y un sheen la recorre en loop
+    // regla de acento bajo el wordmark (DECO) + VIDA: respira de ancho y un sheen la recorre en loop
     const ru = M.ease(inv(t, 0.5, 1.1)), rw = 80 * ru * breathe(t, 0.9, 0.02)
-    const ry = H * 0.4 + 50
-    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(cx - rw / 2, ry, rw, 5, 2.5); ctx.fill()
-    if (ru > 0.9) rrSheen(ctx, cx - rw / 2, ry, rw, 5, t, { per: 3.0, strength: 0.55, tone: pal.tone })
-    // tagline
-    if (content.tagline) drawWrapped(ctx, content.tagline, cx, H * 0.47, { size: 24, weight: 600, family: fonts.text, maxW: W * 0.7, color: pal.dim, alpha: inv(t, 0.7, 1.3), maxLines: 2 })
+    const rx = b.align === 'left' ? b.x : b.cx - rw / 2, ry = b.y + b.h + 6
+    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(rx, ry, rw, 5, 2.5); ctx.fill()
+    if (ru > 0.9) rrSheen(ctx, rx, ry, rw, 5, t, { per: 3.0, strength: 0.55, tone: pal.tone })
+    // tagline en su slot
+    if (content.tagline && L.tag) drawWrapped(ctx, content.tagline, L.tag.cx, L.tag.cy, { size: Math.min(L.tag.size, 26), weight: 600, family: fonts.text, maxW: L.tag.w, align: L.tag.align, color: pal.dim, alpha: inv(t, 0.7, 1.3), maxLines: 2 })
   },
 })
 
