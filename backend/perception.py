@@ -153,9 +153,11 @@ async def analyze_to_brief(url, desarrollo="", site=None, usage=None):
     content = (site or {}).get("content") if isinstance(site, dict) else None
     shot = (site or {}).get("screenshot") if isinstance(site, dict) else None
     brief = {}
+    parse_ok = False
     if _client is not None:
         digest = _page_digest(content)
         b64 = _shot_b64(shot)
+        desarrollo = _clip(desarrollo, 500)   # cap: limita tokens y la superficie de prompt-injection de input del usuario
         text = f"URL: {url}\n"
         if desarrollo:
             text += f"Notas del usuario (priorizalas): {desarrollo}\n"
@@ -166,24 +168,40 @@ async def analyze_to_brief(url, desarrollo="", site=None, usage=None):
         if b64:
             blocks.append({"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": b64}})
         blocks.append({"type": "text", "text": text})
-        try:
+
+        async def _call(max_toks, temp):
             resp = await _client.messages.create(
-                model=BRIEF_MODEL, max_tokens=750, temperature=0.4,
+                model=BRIEF_MODEL, max_tokens=max_toks, temperature=temp,
                 system=_SYS, messages=[{"role": "user", "content": blocks}])
-            txt = "".join(getattr(x, "text", "") for x in resp.content if getattr(x, "type", "") == "text")
-            brief = _extract_json(txt) or {}
             if usage is not None:
                 try:
                     usage.append({"stage": "perceive", "model": BRIEF_MODEL,
                                   "in": resp.usage.input_tokens, "out": resp.usage.output_tokens})
                 except Exception:
                     pass
+            return "".join(getattr(x, "text", "") for x in resp.content if getattr(x, "type", "") == "text")
+
+        try:
+            txt = await _call(750, 0.4)
+            parsed = _extract_json(txt)
+            # REPAIR: si el JSON no parseo (p.ej. se trunco en 750 tokens), reintenta UNA vez con mas tokens y menos
+            # temperatura. Solo cuando falla -> no agrega costo en el caso normal. Antes un near-miss caia a un brief
+            # generico SIN señal -> indistinguible de una falla total.
+            if not parsed:
+                print(f"[perceive] JSON no parseo, reintento. raw[:200]={txt[:200]!r}")
+                txt2 = await _call(1200, 0.2)
+                parsed = _extract_json(txt2)
+                if not parsed:
+                    print(f"[perceive] reintento tampoco parseo. raw2[:200]={txt2[:200]!r}")
+            brief = parsed or {}
+            parse_ok = bool(parsed)
         except Exception as e:
             print(f"[perceive] LLM fallo (sigo con defaults): {e}")
     else:
         print("[perceive] anthropic no disponible -> brief con defaults")
 
     out = _normalize(brief, url, content)
+    out["_parse_ok"] = parse_ok   # señal interna para el caller (decidir si cachear); se saca antes de cachear/enviar
     # fallback de color: si el modelo no dio uno usable, el theme-color de la pagina.
     if out["brandColor"] == "#5b8cff":
         tc = _safe_hex((content or {}).get("themeColor")) if isinstance(content, dict) else None

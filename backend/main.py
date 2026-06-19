@@ -469,7 +469,9 @@ async def urvid_perceive(req: PerceiveRequest):
     # invalida cache vieja (no servir briefs sin el material nuevo). El cache por URL sigue evitando re-llamar a Claude.
     ckey = "v2-" + _brand_cache_key(req.url)
     chash = _content_fingerprint(site)
-    memkey = ckey + "|" + chash
+    # memkey scopeado POR USUARIO: antes el cache in-memory cruzaba usuarios (el analisis de A se servia a B). El de
+    # Firestore ya era por uid; ahora el in-memory tambien.
+    memkey = (req.userId or "") + "|" + ckey + "|" + chash
     db = get_firestore()
     if not req.refresh:
         cached = _urvid_brief_cache.get(memkey) or _get_urvid_brief_fs(db, req.userId, ckey, chash)
@@ -487,14 +489,15 @@ async def urvid_perceive(req: PerceiveRequest):
                 brief["brandColor"] = col
         except Exception as e:
             print(f"[perceive] accent desde screenshot fallo: {e}")
-    if chash:   # solo cacheamos cuando hubo captura real (no un brief flojo de URL sin contenido)
+    parse_ok = brief.pop("_parse_ok", True)   # señal interna; no se cachea ni se envia al cliente
+    if chash and parse_ok:   # solo cacheamos con captura real Y JSON valido (un brief que fallo no queda pegado 14 dias)
         _urvid_brief_cache[memkey] = brief
         _set_urvid_brief_fs(db, req.userId, ckey, brief, chash, req.url)
     cost = template_director.usage_cost(usage) if usage else {}
     src = {"title": (site.get("content") or {}).get("title", "") if isinstance(site.get("content"), dict) else "",
            "logo": site.get("logo", "")}
-    print(f"[perceive] '{req.url}' -> {brief.get('brand')} / {brief.get('rubro')} / {brief.get('brandColor')}")
-    return {"brief": brief, "source": src, "cost": cost, "cached": False}
+    print(f"[perceive] '{req.url}' -> {brief.get('brand')} / {brief.get('rubro')} / {brief.get('brandColor')} (parse_ok={parse_ok})")
+    return {"brief": brief, "source": src, "cost": cost, "cached": False, "parse_ok": parse_ok}
 
 
 class VideoGenRequest(BaseModel):
