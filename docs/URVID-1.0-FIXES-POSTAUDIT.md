@@ -33,6 +33,12 @@
 - **#16 (valor) [73ac068]** +20 pairings de tipografia (23->43, con register/intensity) + FIX: index.html no cargaba Oswald/DM Serif Display/Permanent Marker/Bagel Fat One que varios pairings usaban (tofu en la app). (re-tag de intensity / normalizar rubros '*' = omitido a proposito, churn.)
 - **#13 [397bef9]** datakit FABRICANTE excluido del pool (cierra el ultimo hueco de honestidad: brief con numero-en-claim sin stats ya no saca chart inventado). Routear datakit real = futuro (reescritura de 66 modulos).
 
+## HECHO (tanda 5 — feedback en vivo del usuario)
+- **Timing/solape [166abcb]**: el crossfade simultaneo seguia "pisando" texto Y efectos ~0.4s. Ahora la transicion es SECUENCIADA (fase 1: A se disuelve sobre el fondo; fase 2: A ya no esta, B entra con la geometria). Cero solape de contenido. (render.js)
+- **"Solo un numero, no dice nada" [ceebd7f]**: (1) las 6 escenas de dato subtitulan con la ETIQUETA del dato (statLabel) -> "92% / de clientes lo recomienda" (antes el tagline suelto, inconexo); (2) strategy garantiza un beat de MENSAJE en TODO video (0/40 sin texto); (3) perception _SYS pide labels descriptivos (3-6 palabras) + filtra ruido (precios/fechas/telefonos).
+- **+155 fondos por rubro x2 tonos [fe83f44]**: workflow de 10 agentes (1 por rubro), 10 archivos r-<rubro>.js (14-19 c/u), todos dark+light sin lavarse, deterministas. 857 modulos.
+- **Identidad de fondo por rubro [fe83f44]**: assemble.js arma el pool de fondo = propios del rubro (>=6) + ~40% universales, descartando otros rubros -> un brief tech usa fondos tech ~60-70% (antes ~13%). Arregla "el fondo no pega con el rubro" (incluido al togglear tono).
+
 ## QUEDA (deferrals con criterio — NO conviene forzarlos)
 - **#14 OKLCH (derivacion de paleta)**: la LEGIBILIDAD ya se resolvio con APCA [905f413]. Migrar la derivacion HSL->OKLCH toca palette.js + los 141 modulos de color con beneficio MODESTO (palettes algo mas suaves) y riesgo alto. Bajo ROI -> deferred.
 - **#17 captions animados**: el typekit YA hace texto cinetico (char-rise/typewriter/word-rise). El gap real (captions tipo TikTok) se luce CON audio, que el usuario dejo para el FINAL -> va junto con audio.
