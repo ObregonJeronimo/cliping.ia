@@ -116,9 +116,11 @@ export function makeVideo(brief = {}) {
   const scenes = []; let start = 0
   arc.forEach((beat, i) => {
     let opts = query('scene-layouts', { tone, category: beat.category })
-    // las escenas de DATA tambien pueden ser charts DATAKIT, PERO datakit fabrica numeros por seed -> si la
-    // perception trajo STATS REALES, usamos solo las escenas que muestran ESE numero real (statAt), no datakit.
-    if (beat.category.indexOf('data/') === 0 && !(Array.isArray(content.stats) && content.stats.length)) opts = opts.concat(query('datakit', { tone }))
+    // DATAKIT queda FUERA del pool: sus charts FABRICAN los numeros (mulberry32 por seed) -> contradice la
+    // honestidad de datos (no inventar). Las escenas data/* honestas ya cubren 1 numero REAL (statAt/numFrom) y
+    // scene.data.multi cubre 2-3 stats reales; sin datos reales el beat degrada a texto. (Antes datakit entraba
+    // justo cuando NO habia stats -> grafico inventado.) Reactivar datakit recien cuando lea content.stats reales
+    // (pendiente: reescritura de los 66 modulos para que rendericen datos reales y se salteen si no alcanzan).
     const prng = seedFor(seed ^ hashStr('arc' + i), 'scene')
     let mod = null
     const lockId = lock && lock.scenes && lock.scenes[i]
