@@ -23,7 +23,7 @@ export function analyzeContent(content = {}, rubro = 'default') {
     isQuestion: /\?|¿/.test(tag || claim),
     hasList: bullets.length >= 2 || split >= 2,
     hasCompare: /\bvs\.?\b|antes|despu[eé]s|mejor que|m[aá]s que|menos que/i.test(all),
-    hasProof: !!proof || /opini[oó]n|estrella|clientes|rese[nñ]|rating|confian|recomien|\b[45][.,]\d\b|\b5\s*\/\s*5\b/i.test(all),
+    hasProof: !!proof,   // SOLO con testimonio real de la perception. El heuristico por texto invitaba a reciclar el claim como "resena" (falso).
     longClaim: head.length > 42,
     items,
   }
@@ -46,8 +46,10 @@ export function buildArcSmart(seed, sig) {
   if (sig.longClaim || !want.length) want.push('statements/editorial')
   const body = []
   for (const c of want) if (body.indexOf(c) < 0 && body.length < 3) body.push(c)
-  // completar hasta 1-3 beats con cuerpo variado (para que no sea siempre lo mismo)
-  const filler = shuffled(r, ['statements/editorial', 'lists/checklist', 'data/single', 'social/proof', 'lists/comparison', 'data/multi'])
+  // completar hasta 1-3 beats con cuerpo variado. SOLO beats de TEXTO (derivan del claim/tagline real): los beats
+  // de data/proof/comparison salen UNICAMENTE de `want` (señales reales) -> el director nunca rellena con un grafico
+  // o un testimonio cuando no hay datos que mostrar (eso obligaba a las escenas a fabricar numeros/citas).
+  const filler = shuffled(r, ['statements/editorial', 'lists/checklist'])
   const target = Math.max(body.length, 1 + (r() * 3 | 0))
   for (const c of filler) { if (body.length >= target || body.length >= 3) break; if (body.indexOf(c) < 0) body.push(c) }
   return [open, ...body.slice(0, 3), 'closers/outro']

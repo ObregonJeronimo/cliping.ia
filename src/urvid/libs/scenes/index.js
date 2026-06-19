@@ -27,7 +27,9 @@ function splitItems(str, max = 4) {
   return parts.slice(0, max)
 }
 // helper: extrae el primer numero "grande" de un texto (ej claim "Ahorra hasta 40% de tiempo" -> "40%").
-function bigNumber(str, fallback = '100%') {
+// fallback '' = NO inventa: antes devolvia '100%'/'64%'/etc -> una cifra FALSA con la marca encima (riesgo en
+// salud/finanzas, y desmiente el pitch "fiel a la pagina"). Los llamadores honestos pasan '' y degradan a texto.
+function bigNumber(str, fallback = '') {
   const m = String(str == null ? '' : str).match(/([+\-]?\$?\s?\d[\d.,]*\s?[%xX+kKmM]?)/)
   return m ? m[1].replace(/\s/g, '') : fallback
 }
@@ -45,12 +47,24 @@ function listFrom(content, fb, max = 4) {
   if (Array.isArray(b) && b.length) return b.slice(0, max)
   return splitItems((content && (content.claim || content.tagline)) || fb, max)
 }
-function statAt(content, i, fb) {
+function statAt(content, i, fb = '') {
   const s = content && Array.isArray(content.stats) ? content.stats[i] : null
   if (s && (s.value || s.value === 0)) return { value: String(s.value), label: shortLabel(s.label || (content && content.tagline) || '', 3) }
   return { value: bigNumber((content && (content.claim || content.tagline)), fb), label: shortLabel((content && (content.tagline || content.brand)) || '', 3) }
 }
-function proofFrom(content, fb) { return (content && content.proof) || (content && (content.claim || content.tagline)) || fb }
+// numFrom: el numero REAL a destacar (1ra stat real de la perception, o una cifra REAL del claim/tagline) o ''
+// si no hay ninguno. NUNCA inventa -> el llamador, si recibe '', degrada a un gancho de TEXTO (bigText).
+function numFrom(content) {
+  const s = content && Array.isArray(content.stats) ? content.stats.find(x => x && (x.value || x.value === 0)) : null
+  if (s) return String(s.value)
+  return bigNumber(content && (content.claim || content.tagline), '')
+}
+// proofFrom: SOLO el testimonio REAL de la perception ('' si no hay). NO recicla el claim como si fuera una resena.
+function proofFrom(content) { return (content && content.proof) || '' }
+// bigText: fallback honesto cuando no hay numero/dato real -> dibuja el gancho de texto en grande (el fitter achica).
+function bigText(ctx, str, cx, cy, fonts, pal, alpha = 1) {
+  drawWrapped(ctx, str || '', cx, cy, { size: 62, weight: 800, family: fonts.display, maxW: W * 0.84, color: pal.ink, maxLines: 3, lh: 1.12, alpha, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.4)' : null })
+}
 // helper: dibuja un check de tilde (DECO) en (cx,cy) con radio r y progreso p [0..1].
 function tick(ctx, cx, cy, r, p, color, lw = 3.4) {
   ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.lineCap = 'round'; ctx.lineJoin = 'round'
@@ -249,7 +263,7 @@ register({
   register: 'neutral', intensity: 'bold', tags: ['hook', 'dato', 'impacto', 'numero'], beat: 'hook',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
-    const num = statAt(content, 0, '3x').value
+    const num = numFrom(content); if (!num) { bigText(ctx, content.tagline || content.claim || content.brand, cx, H * 0.42, fonts, pal, inv(t, 0.1, 0.5)); return }
     // numero gigante que entra con spring de escala (micro-respiracion <=0.6% post-entrada, no se mueve de lugar)
     const sp = M.settle(inv(t, 0.1, 1.0), { zeta: 0.45, freq: 2.1 }), sc = (0.7 + 0.3 * sp) * breathe(t, 0.6, 0.006)
     ctx.save(); ctx.globalAlpha = inv(t, 0.05, 0.4); ctx.translate(cx, H * 0.4); ctx.scale(sc, sc)
@@ -406,7 +420,7 @@ register({
   register: 'corporate', intensity: 'medium', tags: ['dato', 'numero', 'kpi', 'anillo'], beat: 'data',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
-    const num = statAt(content, 0, '100%').value
+    const num = numFrom(content); if (!num) { bigText(ctx, content.tagline || content.claim || content.brand, cx, H * 0.42, fonts, pal, inv(t, 0.1, 0.5)); return }
     // anillo de acento que se dibuja alrededor del numero + VIDA: glow pulsante + punto que orbita el arco
     const ringP = M.ease(inv(t, 0.2, 1.1)), R = 118
     ctx.save(); ctx.translate(cx, H * 0.42)
@@ -433,12 +447,14 @@ register({
   register: 'corporate', intensity: 'medium', tags: ['datos', 'stats', 'kpis', 'columnas'], beat: 'data',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK
-    // genera 3 stats a partir del contenido (numero de claim/tagline + items para etiquetas)
-    const r = mulberry32((env.seed >>> 0) ^ 0x515)
-    const stats = Array.isArray(content.stats) ? content.stats.slice(0, 3) : []
-    const labels = stats.length ? stats.map(s => shortLabel(s.label || '', 3)) : splitItems(content.claim || content.tagline || 'Clientes · Proyectos · Anos', 3).map(l => shortLabel(l, 3))
-    const nums = stats.length ? stats.map(s => String(s.value)) : [bigNumber(content.claim, ''), '', ''].map((n, i) => n || ['+' + (10 + ((r() * 90) | 0)), (1 + ((r() * 9) | 0)) + 'x', '99%'][i])
-    const n = Math.min(3, labels.length || 3), cy = H * 0.44, colW = W / n
+    // SOLO datos REALES: las stats de la perception (hasta 3), o si no hay, UN numero real del claim. Antes
+    // fabricaba 3 columnas con mulberry32 ('+47','3x','99%') -> grafico FALSO. Sin datos reales -> degrada a texto.
+    const realStats = (Array.isArray(content.stats) ? content.stats : []).filter(s => s && (s.value || s.value === 0)).slice(0, 3)
+    let pairs = realStats.map(s => ({ num: String(s.value), label: shortLabel(s.label || '', 3) }))
+    if (!pairs.length) { const n0 = numFrom(content); if (n0) pairs = [{ num: n0, label: shortLabel(content.tagline || content.brand || '', 3) }] }
+    if (!pairs.length) { bigText(ctx, content.claim || content.tagline || content.brand, W / 2, H * 0.44, fonts, pal, inv(t, 0.1, 0.5)); return }
+    const labels = pairs.map(p => p.label), nums = pairs.map(p => p.num)
+    const n = pairs.length, cy = H * 0.44, colW = W / n
     // titulo opcional
     if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), W / 2, H * 0.24, { size: 16, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, maxW: W * 0.8, alpha: inv(t, 0.05, 0.35) })
     for (let i = 0; i < n; i++) {
@@ -475,7 +491,7 @@ register({
     }
     // cita/testimonio en tinta
     ctx.save(); ctx.globalAlpha = inv(t, 0.35, 0.85)
-    TK.drawWrapped(ctx, proofFrom(content, 'Cambio como trabajamos'), cx, H * 0.5, { reveal: inv(t, 0.35, 1.05), size: 30, weight: 700, family: fonts.display, maxW: W * 0.8, color: pal.ink, maxLines: 4, lh: 1.2 })
+    TK.drawWrapped(ctx, proofFrom(content) || content.claim || content.tagline || '', cx, H * 0.5, { reveal: inv(t, 0.35, 1.05), size: 30, weight: 700, family: fonts.display, maxW: W * 0.8, color: pal.ink, maxLines: 4, lh: 1.2 })
     ctx.restore()
     // atribucion
     if (content.brand) {
@@ -627,7 +643,7 @@ register({
   register: 'corporate', intensity: 'medium', tags: ['ficha', 'specs', 'atributos', 'inmueble'], beat: 'data',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK
-    const items = listFrom(content, '3 ambientes · 80 m2 · Cochera · Apto credito', 4)
+    const items = listFrom(content, 'Calidad · Confianza · Cercania · Compromiso', 4)
     // titulo / marca arriba
     drawText(ctx, content.brand ? (content.brand + '').toUpperCase() : 'FICHA', W * 0.12, H * 0.22, { size: 16, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, align: 'left', maxW: W * 0.76, alpha: inv(t, 0.0, 0.3) })
     const x0 = W * 0.12, x1 = W * 0.88, y0 = H * 0.32, gap = Math.min(74, (H * 0.5) / Math.max(1, items.length))
@@ -663,7 +679,7 @@ register({
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK
     // grilla 2x2 de chips de spec; cada chip = panel surface con valor en tinta
-    const items = listFrom(content, '80 m2 · 3 amb · 2 banos · Cochera', 4)
+    const items = listFrom(content, 'Calidad · Confianza · Cercania · Compromiso', 4)
     while (items.length < Math.min(4, Math.max(2, items.length))) items.push('')
     const n = Math.min(4, items.length)
     const cols = n <= 2 ? n : 2, rows = Math.ceil(n / cols)
@@ -701,7 +717,7 @@ register({
   register: 'neutral', intensity: 'loud', tags: ['hook', 'estadistica', 'shock', 'dato'], beat: 'hook',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
-    const num = statAt(content, 0, '73%').value
+    const num = numFrom(content); if (!num) { bigText(ctx, content.tagline || content.claim || content.brand, cx, H * 0.4, fonts, pal, inv(t, 0.0, 0.4)); return }
     // numero gigante que "cuenta" hacia su tamano (escala desde abajo) + reveal por mascara que sube
     const grow = eOutExpoLocal(inv(t, 0.05, 0.85))
     ctx.save(); ctx.globalAlpha = inv(t, 0.0, 0.35); ctx.translate(cx, H * 0.36); ctx.scale(0.6 + 0.4 * grow, 0.6 + 0.4 * grow)
@@ -891,7 +907,7 @@ register({
   register: 'corporate', intensity: 'medium', tags: ['dato', 'barra', 'progreso', 'kpi'], beat: 'data',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
-    const num = statAt(content, 0, '80%').value
+    const num = numFrom(content); if (!num) { bigText(ctx, content.tagline || content.claim || content.brand, cx, H * 0.42, fonts, pal, inv(t, 0.05, 0.4)); return }
     // numero grande arriba
     const sp = M.settle(inv(t, 0.15, 0.95), { zeta: 0.5, freq: 2 })
     ctx.save(); ctx.globalAlpha = inv(t, 0.05, 0.4); ctx.translate(cx, H * 0.38); ctx.scale(0.85 + 0.15 * sp, 0.85 + 0.15 * sp)
@@ -1046,7 +1062,7 @@ register({
   register: 'editorial', intensity: 'bold', tags: ['hook', 'dato', 'recorte', 'asimetrico'], beat: 'hook',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, mx = W * 0.1
-    const num = statAt(content, 0, '9/10').value
+    const num = numFrom(content); if (!num) { bigText(ctx, content.tagline || content.claim || content.brand, W / 2, H * 0.42, fonts, pal, inv(t, 0.0, 0.4)); return }
     // numero gigante anclado al margen derecho, dominante arriba (recorte editorial)
     const grow = eOutExpoLocal(inv(t, 0.05, 0.85))
     ctx.save(); ctx.globalAlpha = inv(t, 0.0, 0.4); ctx.translate(W * 0.96, H * 0.38); ctx.scale(0.7 + 0.3 * grow, 0.7 + 0.3 * grow)
@@ -1180,7 +1196,7 @@ register({
   register: 'corporate', intensity: 'medium', tags: ['dato', 'gauge', 'semicirculo', 'kpi'], beat: 'data',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2, cy = H * 0.5
-    const num = statAt(content, 0, '85%').value
+    const num = numFrom(content); if (!num) { bigText(ctx, content.tagline || content.claim || content.brand, cx, H * 0.42, fonts, pal, inv(t, 0.05, 0.4)); return }
     const pct = (() => { const m = num.match(/(\d[\d.,]*)/); let v = m ? parseFloat(m[1].replace(/,/g, '')) : 75; if (num.indexOf('%') < 0) v = clamp(v, 0, 100); return clamp(v / 100, 0.06, 1) })()
     const R = 130, lw = 16
     // track del semicirculo (180°, de izq a der por arriba)
@@ -1633,7 +1649,7 @@ register({
   register: 'corporate', intensity: 'medium', tags: ['dato', 'donut', 'porcentaje', 'kpi'], beat: 'data',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2, cy = H * 0.42
-    const num = bigNumber(content.claim || content.tagline, '64%')
+    const num = numFrom(content); if (!num) { bigText(ctx, content.tagline || content.claim || content.brand, cx, H * 0.42, fonts, pal, inv(t, 0.05, 0.4)); return }
     const pct = (() => { const m = num.match(/(\d[\d.,]*)/); let v = m ? parseFloat(m[1].replace(/,/g, '')) : 60; if (num.indexOf('%') < 0) v = clamp(v, 0, 100); return clamp(v / 100, 0.05, 1) })()
     const R = 116, lw = 30
     ctx.save(); ctx.lineCap = 'butt'
@@ -2124,7 +2140,7 @@ register({
   register: 'corporate', intensity: 'medium', tags: ['dato', 'contador', 'delta', 'tendencia', 'kpi'], beat: 'data',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
-    const num = bigNumber(content.claim || content.tagline, '+128%')
+    const num = numFrom(content); if (!num) { bigText(ctx, content.tagline || content.claim || content.brand, cx, H * 0.42, fonts, pal, inv(t, 0.05, 0.4)); return }
     const down = /^-/.test(num.trim())
     // numero grande centrado con asentamiento
     const sp = M.settle(inv(t, 0.1, 0.95), { zeta: 0.5, freq: 2 })
@@ -2158,7 +2174,7 @@ register({
   register: 'corporate', intensity: 'medium', tags: ['datos', 'pictografo', 'puntos', 'fraccion'], beat: 'data',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
-    const num = bigNumber(content.claim || content.tagline, '70%')
+    const num = numFrom(content); if (!num) { bigText(ctx, content.tagline || content.claim || content.brand, cx, H * 0.44, fonts, pal, inv(t, 0.05, 0.4)); return }
     const pct = (() => { const m = num.match(/(\d[\d.,]*)/); let v = m ? parseFloat(m[1].replace(/,/g, '')) : 70; if (num.indexOf('%') < 0) v = clamp(v, 0, 100); return clamp(v / 100, 0.04, 1) })()
     const cols = 10, rowsN = 5, total = cols * rowsN, on = Math.round(total * pct)
     const dotR = 9, gx = W * 0.13, gw = W * 0.74, gy = H * 0.32, gh = H * 0.34
@@ -2201,7 +2217,7 @@ register({
     drawText(ctx, '”', 0, 0, { size: 150, weight: 800, family: fonts.display, color: pal.accent, align: 'right', maxW: 120 }); ctx.restore()
     // cita centrada en tinta
     ctx.save(); ctx.globalAlpha = inv(t, 0.25, 0.8)
-    TK.drawWrapped(ctx, content.claim || content.tagline || 'La mejor decision del ano', cx, H * 0.48, { reveal: inv(t, 0.25, 1.05), size: 32, weight: 700, family: fonts.display, maxW: W * 0.74, color: pal.ink, maxLines: 4, lh: 1.22, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.4)' : null })
+    TK.drawWrapped(ctx, proofFrom(content) || content.claim || content.tagline || '', cx, H * 0.48, { reveal: inv(t, 0.25, 1.05), size: 32, weight: 700, family: fonts.display, maxW: W * 0.74, color: pal.ink, maxLines: 4, lh: 1.22, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.4)' : null })
     ctx.restore()
     // atribucion: regla de acento + marca
     if (content.brand) {
@@ -2220,7 +2236,7 @@ register({
   register: 'friendly', intensity: 'bold', tags: ['prueba-social', 'metrica', 'comunidad', 'numero'], beat: 'proof',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
-    const num = bigNumber(content.claim || content.tagline, '+10k')
+    const num = numFrom(content); if (!num) { bigText(ctx, content.proof || content.tagline || content.claim || content.brand, cx, H * 0.46, fonts, pal, inv(t, 0.15, 0.5)); return }
     // cluster de puntos de acento arriba (DECO, estable por seed)
     const r = mulberry32((env.seed >>> 0) ^ 0xb16)
     const cu = M.ease(inv(t, 0.1, 0.8))
@@ -2316,7 +2332,7 @@ register({
   register: 'corporate', intensity: 'medium', tags: ['ficha', 'precio', 'etiqueta', 'tag', 'producto'], beat: 'data',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
-    const items = splitItems(content.claim || content.tagline || 'USD 120k · 3 amb · 80 m2 · Apto credito', 4)
+    const items = splitItems(content.claim || content.tagline || 'Calidad · Confianza · Cercania · Compromiso', 4)
     let priceIdx = items.findIndex(it => /\$|usd|ars|€|\d/i.test(it)); if (priceIdx < 0) priceIdx = 0
     const price = (items[priceIdx] || items[0] || 'Consultar').trim()
     const subs = items.filter((_, i) => i !== priceIdx).slice(0, 3)
@@ -2350,7 +2366,7 @@ register({
   register: 'corporate', intensity: 'medium', tags: ['ficha', 'tarjetas', 'fila', 'specs', 'producto'], beat: 'data',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
-    const items = splitItems(content.claim || content.tagline || '3 amb · 80 m2 · 2 banos', 3)
+    const items = splitItems(content.claim || content.tagline || 'Calidad · Confianza · Cercania', 3)
     const n = Math.min(3, Math.max(2, items.length))
     if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), cx, H * 0.28, { size: 16, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, maxW: W * 0.78, alpha: inv(t, 0.05, 0.35) })
     const gw = W * 0.84, gx = (W - gw) / 2, gap = 12, cw = (gw - (n - 1) * gap) / n, ch = H * 0.26, cy = H * 0.38
@@ -2384,7 +2400,7 @@ register({
   register: 'corporate', intensity: 'medium', tags: ['ficha', 'cinta', 'chips', 'precio', 'inmueble', 'producto'], beat: 'data',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
-    const items = splitItems(content.claim || content.tagline || 'USD 120k · 3 amb · 80 m2 · Cochera · Apto credito', 5)
+    const items = splitItems(content.claim || content.tagline || 'Calidad · Confianza · Cercania · Compromiso · Resultados', 5)
     let priceIdx = items.findIndex(it => /\$|usd|ars|€/i.test(it))
     if (priceIdx < 0) priceIdx = 0
     const price = items[priceIdx] || items[0] || ''
