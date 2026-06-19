@@ -13,7 +13,7 @@ const HEADERS = { 'Content-Type': 'application/json', 'ngrok-skip-browser-warnin
 // El almacen de videos vive aca mismo (localStorage) — no hay item aparte. NO toca "Animaciones".
 export default function Urvid1Studio() {
   const { user } = useAuth()
-  const [brief, setBrief] = useState({ brand: 'Nodo', rubro: 'tech', tone: 'dark', brandColor: '#22e06a', format: '9:16', tagline: 'Automatiza lo aburrido y enfocate en lo que importa', claim: 'Menos tareas repetitivas, mas resultados reales', cta: 'Probalo gratis' })
+  const [brief, setBrief] = useState({ brand: 'Nodo', rubro: 'tech', tone: 'dark', brandColor: '#22e06a', format: '9:16', duration: 'medio', tagline: 'Automatiza lo aburrido y enfocate en lo que importa', claim: 'Menos tareas repetitivas, mas resultados reales', cta: 'Probalo gratis' })
   const [seed, setSeed] = useState(0)
   // TONO = SOLO COLOR: al togglear claro/oscuro bloqueamos la receta (lockRecipe) -> el director reusa los mismos
   // modulos y solo re-deriva la paleta. Cualquier otro cambio (marca/rubro/texto/semilla) LIBERA el lock -> build fresco.
@@ -164,6 +164,7 @@ export default function Urvid1Studio() {
           </div>
           <label className={styles.field}>Tono<div className={styles.seg}>{['dark', 'light'].map(tn => <button key={tn} className={brief.tone === tn ? styles.on : ''} onClick={() => setTone(tn)}>{tn === 'dark' ? 'oscuro' : 'claro'}</button>)}</div></label>
           <label className={styles.field}>Formato<div className={styles.seg}>{[['9:16', 'Reel'], ['4:5', 'Feed'], ['1:1', 'Cuadr.']].map(([f, lbl]) => <button key={f} className={(brief.format || '9:16') === f ? styles.on : ''} onClick={() => up('format', f)}>{lbl} {f}</button>)}</div></label>
+          <label className={styles.field}>Duración<div className={styles.seg}>{[['corto', 'Corto'], ['medio', 'Medio'], ['largo', 'Largo']].map(([d, lbl]) => <button key={d} className={(brief.duration || 'medio') === d ? styles.on : ''} onClick={() => up('duration', d)}>{lbl}</button>)}</div></label>
           <label className={styles.field}>Gancho<input value={brief.tagline} onChange={e => up('tagline', e.target.value)} /></label>
           <label className={styles.field}>Claim<input value={brief.claim} onChange={e => up('claim', e.target.value)} /></label>
           <label className={styles.field}>CTA<input value={brief.cta} onChange={e => up('cta', e.target.value)} /></label>

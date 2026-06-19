@@ -7,7 +7,7 @@
 // TONO = SOLO COLOR: si el brief trae lockRecipe (el toggle claro/oscuro del estudio), se REUSA la receta y solo se
 // re-deriva la paleta; un slot se re-elige unicamente si su modulo no soporta el tono nuevo.
 import { derivePalette } from './palette.js'
-import { FORMATS } from './util.js'
+import { FORMATS, clamp } from './util.js'
 import { query, get } from './registry.js'
 import { seedFor, weightedPick, hashStr, stableSeed, pick, shuffled } from './prng.js'
 import { deriveFonts } from './fonts.js'
@@ -92,6 +92,9 @@ export function makeVideo(brief = {}) {
   const markMod = optional(lock && lock.mark, keep && keep.mark, seedFor(seed, 'markgarnish'), 0.5, markPool)
   // TRANSICION escena-a-escena (wipe/slide/iris/bars/cut) -> video.transitionId.
   const trMod = required(lock && lock.transition, keep && keep.transition, seedFor(seed, 'transition'), query('transitions', { tone }))
+  // PACING: la ventana de transicion (XF) sale de la PERSONALIDAD de movimiento (snappy corta, calmo larga).
+  const motId = (motMod && motMod.id) || ''
+  const xf = /snappy|punch|rebote|elastic|kinetic|arcade/.test(motId) ? 0.3 : /glide|calm|slow|cine|drift|float/.test(motId) ? 0.5 : 0.4
   // POST: acabado (grano/vignette/leak/grade/scanlines) -> video.postId. Opcional (~58%).
   const postMod = optional(lock && lock.post, keep && keep.post, seedFor(seed, 'post'), 0.58, query('post', { tone }))
 
@@ -102,6 +105,11 @@ export function makeVideo(brief = {}) {
 
   // ESCENAS: por cada beat del arco, query de scene-layouts de esa categoria -> pick por fit × sesgo de contenido.
   // Bajo lock se reusa el sceneId del mismo beat (el arco es identico: mismo seed+content) salvo incompat. de tono.
+  // PRESUPUESTO DE DURACION: escala los beats para acercarse a un target segun brief.duration (corto/medio/largo).
+  // Antes la duracion era emergente (sumaba los _DUR -> hasta ~15s para un promo corto). Cada beat queda en [2.2, 6]s.
+  const DUR_TARGET = { corto: 8, medio: 12, largo: 18 }
+  const rawTotal = arc.reduce((s, b) => s + (b.dur || 3.4), 0)
+  const durK = clamp((DUR_TARGET[brief.duration] || DUR_TARGET.medio) / (rawTotal || 1), 0.55, 1.7)
   const scenes = []; let start = 0
   arc.forEach((beat, i) => {
     let opts = query('scene-layouts', { tone, category: beat.category })
@@ -113,11 +121,11 @@ export function makeVideo(brief = {}) {
     const lockId = lock && lock.scenes && lock.scenes[i]
     if (lock) { const lm = lockId ? get(lockId) : null; if (toneOk(lm)) mod = lm }
     if (!mod) mod = opts.length ? weightedPick(prng, opts, m => score(m) * sceneBias(m, sig)) : null
-    if (mod) { scenes.push({ start, dur: beat.dur, sceneId: mod.id, seed: (seed ^ hashStr('s' + i)) >>> 0 }); start += beat.dur }
+    if (mod) { const dur = clamp((beat.dur || 3.4) * durK, 2.2, 6); scenes.push({ start, dur, sceneId: mod.id, seed: (seed ^ hashStr('s' + i)) >>> 0 }); start += dur }
   })
 
   return {
-    brand, rubro, tone, seed, palette, fonts, format, W: dims.w, H: dims.h,
+    brand, rubro, tone, seed, palette, fonts, format, W: dims.w, H: dims.h, xf,
     bgId: bg ? bg.id : null, bgSeed: (seed ^ hashStr('bg')) >>> 0,
     subId: sub ? sub.id : null, subSeed: (seed ^ hashStr('sub')) >>> 0,
     atmId: atm ? atm.id : null, atmSeed: (seed ^ hashStr('atm')) >>> 0,

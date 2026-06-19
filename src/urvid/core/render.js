@@ -72,10 +72,11 @@ export function drawFrame(ctx, t, video) {
   // (con la ventana vieja [B.start-XF, B.start) B salia en scene-time negativo = invisible). Fuera de ventana: 1 escena.
   const scenes = video.scenes
   if (!scenes || !scenes.length) return
+  const xf = (video && video.xf) || XF   // ventana de transicion por personalidad de movimiento
   let trans = null
   for (let i = 1; i < scenes.length; i++) {
     const b = scenes[i].start
-    if (t >= b && t < b + XF) { trans = { A: scenes[i - 1], B: scenes[i], p: (t - b) / XF }; break }
+    if (t >= b && t < b + xf) { trans = { A: scenes[i - 1], B: scenes[i], p: (t - b) / xf }; break }
   }
   if (trans) {
     const p = inv(trans.p, 0, 1)
