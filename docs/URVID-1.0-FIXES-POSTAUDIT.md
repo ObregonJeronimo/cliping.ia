@@ -29,13 +29,16 @@
 - **#7 [19c5490]** 20/73 escenas migradas al solver (3 inline + 17 por agente); el resto son contenedores/charts/grillas con geometria integral -> a proposito NO se migran (andan igual). 1 revertida (hook.strike).
 - **#15 [66432a3]** Brand-kit: logo subido (downscale 256px) -> dibujado en esquina + persistido en users/{uid}/urvid_profile.
 
-## QUEDA — con criterio (no todo conviene hacerse)
-- **#13 routear markkit/datakit**: OJO — datakit FABRICA numeros (lo que #4 justamente evita). Routearlo re-introduce el problema salvo que se reescriba datakit para leer stats REALES (trabajo grande). Markkit (iconos/deco) si se podria routear mas, pero bajo valor. => reframe: primero datakit-real, despues routear. NO hacer tal cual.
-- **#16 intensity/rubros/tipografia**: el grueso es CHURN (re-taggear intensity ya elegida; 79% rubros '*' es CORRECTO — son universales). Lo unico de valor real: CRECER tipografia (23->~60 pairings) = una "ola" de contenido (1 archivo, no paralelizable). Hacer SOLO la tipografia si se quiere mas variedad de fuentes.
-- **#17 captions animados**: el typekit YA hace texto cinetico (char-rise/typewriter/word-rise...). El gap real (captions tipo TikTok sincronizados) se luce CON audio, que el usuario dejo para el final. => va junto con audio, no ahora.
-- **#14 OKLCH (derivacion)**: la legibilidad ya se resolvio con APCA. Migrar la derivacion de paleta a OKLCH es un refactor grande de palette.js + los 141 modulos con beneficio incremental MODESTO (palettes algo mas suaves). Bajo ROI ahora.
+## HECHO (tanda 4)
+- **#16 (valor) [73ac068]** +20 pairings de tipografia (23->43, con register/intensity) + FIX: index.html no cargaba Oswald/DM Serif Display/Permanent Marker/Bagel Fat One que varios pairings usaban (tofu en la app). (re-tag de intensity / normalizar rubros '*' = omitido a proposito, churn.)
+- **#13 [397bef9]** datakit FABRICANTE excluido del pool (cierra el ultimo hueco de honestidad: brief con numero-en-claim sin stats ya no saca chart inventado). Routear datakit real = futuro (reescritura de 66 modulos).
 
-CONCLUSION: el roadmap de ALTO valor del audit esta hecho (P0 + las 3 apuestas + casi todo P1/P2). Lo que queda es polish de bajo ROI o pide audio/refactor. Recomendacion: cerrar aca; retomar tipografia (ola) o datakit-real si se busca mas variedad, y OKLCH/captions con audio.
+## QUEDA (deferrals con criterio — NO conviene forzarlos)
+- **#14 OKLCH (derivacion de paleta)**: la LEGIBILIDAD ya se resolvio con APCA [905f413]. Migrar la derivacion HSL->OKLCH toca palette.js + los 141 modulos de color con beneficio MODESTO (palettes algo mas suaves) y riesgo alto. Bajo ROI -> deferred.
+- **#17 captions animados**: el typekit YA hace texto cinetico (char-rise/typewriter/word-rise). El gap real (captions tipo TikTok) se luce CON audio, que el usuario dejo para el FINAL -> va junto con audio.
+- **datakit-real**: reescribir los 66 modulos de datakit para que lean content.stats reales (y se salteen si no alcanzan) -> reactiva charts honestos. Trabajo grande, futuro.
+
+CONCLUSION: TODO el roadmap de valor del audit esta hecho (P0 + las 3 apuestas + P1 + el P2 con ROI). Lo unico sin hacer son 2 deferrals con razon (OKLCH = bajo ROI vs APCA ya hecho; captions = con audio). Sesion cerrada en un punto solido.
 
 ## (referencia) roadmap original restante
 
