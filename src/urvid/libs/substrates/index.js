@@ -15,7 +15,7 @@ const antiInkOf = pal => (pal.tone === 'light' ? '#ffffff' : '#000000')
 
 register({
   id: 'sub.grain.film', lib: 'substrates', category: 'grain-noise', tones: ['dark', 'light'], rubros: ['*'], weight: 1.4,
-  tags: ['universal', 'analogico', 'sutil'],
+  register: 'neutral', intensity: 'soft', tags: ['universal', 'analogico', 'sutil', 'grano'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x9e3779b1)
     // grano por puntos: muchos micropuntos sembrados; "centellean" en bloques temporales (sin Math.random)
@@ -37,7 +37,7 @@ register({
 
 register({
   id: 'sub.grain.dust', lib: 'substrates', category: 'grain-noise', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  tags: ['analogico', 'organico', 'mota'],
+  register: 'neutral', intensity: 'soft', tags: ['analogico', 'organico', 'mota'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x1b56c4e9)
     // motas grandes de polvo + pelusas: pocas, dispersas, a la deriva muy lenta
@@ -64,7 +64,7 @@ register({
 
 register({
   id: 'sub.trama.halftone', lib: 'substrates', category: 'print-trama', tones: ['dark', 'light'], rubros: ['*'], weight: 1.2,
-  tags: ['print', 'editorial', 'puntos'],
+  register: 'editorial', intensity: 'soft', tags: ['print', 'editorial', 'puntos'],
   render(ctx, t, env) {
     const { pal } = env
     // trama de puntos en grilla rotada ~15deg, radio modulado por un gradiente diagonal -> sensacion de impresion
@@ -88,8 +88,8 @@ register({
 })
 
 register({
-  id: 'sub.trama.cmyk-dots', lib: 'substrates', category: 'print-trama', tones: ['light'], rubros: ['*'], weight: 0.8,
-  tags: ['print', 'retro', 'color'],
+  id: 'sub.trama.cmyk-dots', lib: 'substrates', category: 'print-trama', tones: ['light'], rubros: ['moda', 'tech', 'default'], weight: 0.8,
+  register: 'playful', intensity: 'medium', tags: ['print', 'retro', 'color'],
   render(ctx, t, env) {
     const { pal } = env
     // mini-rosetas de impresion: dos tramas (acento + acento2) levemente desfasadas/rotadas (mis-registro)
@@ -114,7 +114,7 @@ register({
 
 register({
   id: 'sub.trama.lines', lib: 'substrates', category: 'print-trama', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['print', 'grabado', 'rayado'],
+  register: 'editorial', intensity: 'soft', tags: ['print', 'grabado', 'rayado'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x33aa55cc)
     // trama de lineas (estilo grabado/engraving): lineas paralelas finas con grosor modulado -> sombreado de impresion
@@ -136,8 +136,8 @@ register({
 // ============================================================ editorial-grid ============================================================
 
 register({
-  id: 'sub.grid.swiss', lib: 'substrates', category: 'editorial-grid', tones: ['dark', 'light'], rubros: ['tech', 'finanzas', 'inmobiliaria', 'educacion', 'default', 'legal', 'salud'], weight: 1.1,
-  tags: ['swiss', 'editorial', 'hairline'],
+  id: 'sub.grid.swiss', lib: 'substrates', category: 'editorial-grid', tones: ['dark', 'light'], rubros: ['tech', 'finanzas', 'inmobiliaria', 'educacion', 'default'], weight: 1.1,
+  register: 'corporate', intensity: 'soft', tags: ['swiss', 'editorial', 'hairline'],
   render(ctx, t, env) {
     const { pal } = env
     // grilla editorial de columnas + margenes + lineas guia (hairlines de acento muy tenue) — look de revista/Swiss
@@ -170,8 +170,8 @@ register({
 })
 
 register({
-  id: 'sub.grid.blueprint', lib: 'substrates', category: 'editorial-grid', tones: ['dark', 'light'], rubros: ['tech', 'inmobiliaria', 'default', 'construccion'], weight: 0.9,
-  tags: ['tecnico', 'plano', 'milimetrado'],
+  id: 'sub.grid.blueprint', lib: 'substrates', category: 'editorial-grid', tones: ['dark', 'light'], rubros: ['tech', 'inmobiliaria', 'default'], weight: 0.9,
+  register: 'corporate', intensity: 'soft', tags: ['tecnico', 'plano', 'milimetrado'],
   render(ctx, t, env) {
     const { pal } = env
     // papel milimetrado: grilla fina + grilla mayor cada 5 — tono "blueprint" en acento
@@ -192,7 +192,7 @@ register({
 
 register({
   id: 'sub.grid.dotmatrix', lib: 'substrates', category: 'editorial-grid', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['editorial', 'puntos', 'minimal'],
+  register: 'neutral', intensity: 'calm', tags: ['editorial', 'puntos', 'minimal'],
   render(ctx, t, env) {
     const { pal } = env
     // matriz de puntos de guia (como un cuaderno dotted): regular, muy tenue, microflota
@@ -212,8 +212,8 @@ register({
 // ============================================================ scanlines ============================================================
 
 register({
-  id: 'sub.scan.crt', lib: 'substrates', category: 'scanlines', tones: ['dark'], rubros: ['tech', 'gaming', 'musica', 'default'], weight: 1,
-  tags: ['retro', 'crt', 'tv'],
+  id: 'sub.scan.crt', lib: 'substrates', category: 'scanlines', tones: ['dark'], rubros: ['tech', 'moda', 'default'], weight: 1,
+  register: 'playful', intensity: 'medium', tags: ['retro', 'crt', 'tv'],
   render(ctx, t, env) {
     const { pal } = env
     // scanlines horizontales (CRT) + una banda de "roll" que baja lentamente -> textura de pantalla vieja. Solo dark.
@@ -230,8 +230,8 @@ register({
 })
 
 register({
-  id: 'sub.scan.lcd', lib: 'substrates', category: 'scanlines', tones: ['dark', 'light'], rubros: ['tech', 'gaming', 'default'], weight: 0.8,
-  tags: ['digital', 'pixel', 'matriz'],
+  id: 'sub.scan.lcd', lib: 'substrates', category: 'scanlines', tones: ['dark', 'light'], rubros: ['tech', 'default'], weight: 0.8,
+  register: 'playful', intensity: 'soft', tags: ['digital', 'pixel', 'matriz'],
   render(ctx, t, env) {
     const { pal } = env
     // rejilla LCD: lineas verticales sutiles + horizontales -> "subpixel grid". Doble tono via acento.
@@ -256,7 +256,7 @@ register({
 
 register({
   id: 'sub.fabric.paper', lib: 'substrates', category: 'fabric-material', tones: ['dark', 'light'], rubros: ['*'], weight: 1.1,
-  tags: ['papel', 'organico', 'fibra'],
+  register: 'friendly', intensity: 'calm', tags: ['papel', 'organico', 'fibra'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x77c1e3a5)
     // fibras de papel: muchos segmentos cortos en angulos aleatorios -> textura de papel/cartulina. Casi inmovil.
@@ -281,7 +281,7 @@ register({
 
 register({
   id: 'sub.fabric.canvas', lib: 'substrates', category: 'fabric-material', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  tags: ['lienzo', 'tejido', 'trama'],
+  register: 'friendly', intensity: 'soft', tags: ['lienzo', 'tejido', 'trama'],
   render(ctx, t, env) {
     const { pal } = env
     // tejido de lienzo: hilos verticales y horizontales entrelazados (lineas onduladas suaves) -> textura de tela.
@@ -326,7 +326,7 @@ register({
 
 register({
   id: 'sub.glass.frost', lib: 'substrates', category: 'glass-acrylic', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['vidrio', 'frost', 'premium'],
+  register: 'editorial', intensity: 'soft', tags: ['vidrio', 'frost', 'premium'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x5a17bd03)
     // vidrio esmerilado: brillo difuso diagonal + microsalpicado de luz -> sensacion frosted sobre el contenido
@@ -349,7 +349,7 @@ register({
 
 register({
   id: 'sub.glass.streaks', lib: 'substrates', category: 'glass-acrylic', tones: ['dark', 'light'], rubros: ['*'], weight: 0.8,
-  tags: ['vidrio', 'reflejo', 'acrilico'],
+  register: 'editorial', intensity: 'soft', tags: ['vidrio', 'reflejo', 'acrilico'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x2c9f01ab)
     // vetas de acrilico: bandas diagonales largas de brillo, anchos variados -> plastico/acrilico pulido
@@ -372,7 +372,7 @@ register({
 
 register({
   id: 'sub.light.vignette', lib: 'substrates', category: 'overlay-light', tones: ['dark', 'light'], rubros: ['*'], weight: 1.3,
-  tags: ['vineta', 'foco', 'universal'],
+  register: 'neutral', intensity: 'soft', tags: ['vineta', 'foco', 'universal'],
   render(ctx, t, env) {
     const { pal } = env
     // vineta que respira + un sutil "lift" central: oscurece bordes (dark) o agrega scrim suave (light) para legibilidad
@@ -387,7 +387,7 @@ register({
 
 register({
   id: 'sub.light.rays', lib: 'substrates', category: 'overlay-light', tones: ['dark'], rubros: ['*'], weight: 0.9,
-  tags: ['rayos', 'godrays', 'dramatico'],
+  register: 'editorial', intensity: 'bold', tags: ['rayos', 'godrays', 'dramatico'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x4f2a8c17)
     // god-rays: abanico de rayos de luz de acento desde un foco superior, alpha bajo, leve barrido. Solo dark.
@@ -411,7 +411,7 @@ register({
 
 register({
   id: 'sub.light.bloom', lib: 'substrates', category: 'overlay-light', tones: ['dark'], rubros: ['*'], weight: 0.8,
-  tags: ['bloom', 'glow', 'haze'],
+  register: 'editorial', intensity: 'soft', tags: ['bloom', 'glow', 'haze'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x6db3a90f)
     // bloom/haze: 3 halos suaves de acento a la deriva + niebla global que sube el negro un toque. Solo dark.
@@ -435,7 +435,7 @@ register({
 
 register({
   id: 'sub.distress.scratches', lib: 'substrates', category: 'damage-distress', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  tags: ['rayado', 'film', 'vintage'],
+  register: 'friendly', intensity: 'soft', tags: ['rayado', 'film', 'vintage'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x13d7f2bb)
     // rayas verticales de film (scratches) que parpadean por bloque temporal + algun "pelo" diagonal
@@ -459,7 +459,7 @@ register({
 
 register({
   id: 'sub.distress.grunge', lib: 'substrates', category: 'damage-distress', tones: ['dark', 'light'], rubros: ['*'], weight: 0.8,
-  tags: ['grunge', 'desgaste', 'manchas'],
+  register: 'friendly', intensity: 'soft', tags: ['grunge', 'desgaste', 'manchas'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x71fe4d29)
     // grunge: manchas irregulares (clusters de puntos de tamano variado) en los bordes -> desgaste/suciedad.
@@ -494,7 +494,7 @@ register({
 
 register({
   id: 'sub.topo.contours', lib: 'substrates', category: 'topographic-organic', tones: ['dark', 'light'], rubros: ['*'], weight: 1.1,
-  tags: ['mapa', 'curvas-nivel', 'organico'],
+  register: 'neutral', intensity: 'soft', tags: ['mapa', 'curvas-nivel', 'organico'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x0a17c3f5)
     // curvas de nivel tipo mapa topografico: anillos concentricos deformados por ruido seno de 2-3 focos sembrados.
@@ -533,7 +533,7 @@ register({
 
 register({
   id: 'sub.topo.flowlines', lib: 'substrates', category: 'topographic-organic', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  tags: ['flowfield', 'corrientes', 'organico'],
+  register: 'friendly', intensity: 'soft', tags: ['flowfield', 'corrientes', 'organico'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x5b21d70b)
     // lineas de flujo (flowfield): muchas hebras que siguen un campo de angulo seno-suave -> corrientes organicas
@@ -561,8 +561,8 @@ register({
 })
 
 register({
-  id: 'sub.topo.marble', lib: 'substrates', category: 'topographic-organic', tones: ['dark', 'light'], rubros: ['*'], weight: 0.8,
-  tags: ['marmol', 'veteado', 'premium'],
+  id: 'sub.topo.marble', lib: 'substrates', category: 'topographic-organic', tones: ['dark', 'light'], rubros: ['moda', 'belleza', 'inmobiliaria', 'default'], weight: 0.8,
+  register: 'editorial', intensity: 'soft', tags: ['marmol', 'veteado', 'premium'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x2e8fa401)
     // vetas de marmol: pocas curvas largas (beziers) ramificadas, finas, que cruzan el lienzo en diagonal.
@@ -592,8 +592,8 @@ register({
 // ------------------------------------------------------------ print-trama (Ola 2) ------------------------------------------------------------
 
 register({
-  id: 'sub.trama.misregister', lib: 'substrates', category: 'print-trama', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  tags: ['print', 'cmyk', 'desfase', 'riso'],
+  id: 'sub.trama.misregister', lib: 'substrates', category: 'print-trama', tones: ['dark', 'light'], rubros: ['moda', 'tech', 'default'], weight: 0.9,
+  register: 'playful', intensity: 'soft', tags: ['print', 'cmyk', 'desfase', 'riso'],
   render(ctx, t, env) {
     const { pal } = env
     // mis-registro CMYK/riso: TRES capas de la misma trama de lineas finas (acento, acento2, tinta) desplazadas
@@ -621,7 +621,7 @@ register({
 
 register({
   id: 'sub.trama.screentone', lib: 'substrates', category: 'print-trama', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['print', 'manga', 'screentone', 'puntos-finos'],
+  register: 'editorial', intensity: 'soft', tags: ['print', 'manga', 'screentone', 'puntos-finos'],
   render(ctx, t, env) {
     const { pal } = env
     // screentone (trama manga): puntos UNIFORMES y muy finos en grilla densa rotada 45deg, radio constante.
@@ -643,7 +643,7 @@ register({
 
 register({
   id: 'sub.trama.benday', lib: 'substrates', category: 'print-trama', tones: ['light'], rubros: ['*'], weight: 0.8,
-  tags: ['print', 'pop-art', 'benday', 'lichtenstein'],
+  register: 'playful', intensity: 'medium', tags: ['print', 'pop-art', 'benday', 'lichtenstein'],
   render(ctx, t, env) {
     const { pal } = env
     // Ben-Day dots (pop-art / Lichtenstein): puntos GRANDES de acento en grilla recta amplia, alpha bajo.
@@ -667,7 +667,7 @@ register({
 
 register({
   id: 'sub.grid.baseline', lib: 'substrates', category: 'editorial-grid', tones: ['dark', 'light'], rubros: ['tech', 'finanzas', 'inmobiliaria', 'educacion', 'default', 'legal', 'salud', 'editorial'], weight: 1,
-  tags: ['editorial', 'baseline', 'reglones', 'tipografico'],
+  register: 'corporate', intensity: 'calm', tags: ['editorial', 'baseline', 'reglones', 'tipografico'],
   render(ctx, t, env) {
     const { pal } = env
     // grilla de baseline (reglones de tipografia): lineas horizontales finas y regulares, cada 4ta mas marcada.
@@ -690,7 +690,7 @@ register({
 
 register({
   id: 'sub.grid.columns', lib: 'substrates', category: 'editorial-grid', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['editorial', 'columnas', 'gutter', 'maquetacion'],
+  register: 'editorial', intensity: 'soft', tags: ['editorial', 'columnas', 'gutter', 'maquetacion'],
   render(ctx, t, env) {
     const { pal } = env
     // columnas de maquetacion con GUTTER visible: N columnas como bandas de acento muy tenue separadas por canaletas.
@@ -714,7 +714,7 @@ register({
 
 register({
   id: 'sub.grid.crosshatch', lib: 'substrates', category: 'editorial-grid', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  tags: ['editorial', 'isometrico', 'tecnico', 'rombos'],
+  register: 'corporate', intensity: 'soft', tags: ['editorial', 'isometrico', 'tecnico', 'rombos'],
   render(ctx, t, env) {
     const { pal } = env
     // grilla isometrica/diagonal (crosshatch tecnico): dos familias de lineas a +-30deg -> red de rombos.
@@ -741,7 +741,7 @@ register({
 
 register({
   id: 'sub.fabric.denim', lib: 'substrates', category: 'fabric-material', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  tags: ['tela', 'denim', 'twill', 'sarga'],
+  register: 'friendly', intensity: 'soft', tags: ['tela', 'denim', 'twill', 'sarga'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x4d3b9af1)
     // tejido de sarga/denim: lineas diagonales cortas y densas (el tipico patron en escalera del jean) + micromota.
@@ -776,7 +776,7 @@ register({
 
 register({
   id: 'sub.fabric.knit', lib: 'substrates', category: 'fabric-material', tones: ['dark', 'light'], rubros: ['*'], weight: 0.8,
-  tags: ['tela', 'tejido', 'punto', 'lana'],
+  register: 'friendly', intensity: 'soft', tags: ['tela', 'tejido', 'punto', 'lana'],
   render(ctx, t, env) {
     const { pal } = env
     // tejido de punto (knit/lana): pequenos chevrons "V" apilados en grilla -> el patron de un sueter tejido.
@@ -804,7 +804,7 @@ register({
 
 register({
   id: 'sub.glass.droplets', lib: 'substrates', category: 'glass-acrylic', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  tags: ['vidrio', 'gotas', 'lluvia', 'condensacion'],
+  register: 'editorial', intensity: 'soft', tags: ['vidrio', 'gotas', 'lluvia', 'condensacion'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x6f1ad44b)
     // condensacion / gotas en vidrio: gotitas con highlight (luna brillante) + sombra suave, sembradas.
@@ -832,7 +832,7 @@ register({
 
 register({
   id: 'sub.glass.crackle', lib: 'substrates', category: 'glass-acrylic', tones: ['dark', 'light'], rubros: ['*'], weight: 0.7,
-  tags: ['vidrio', 'roto', 'craquelado', 'shatter'],
+  register: 'editorial', intensity: 'medium', tags: ['vidrio', 'roto', 'craquelado', 'shatter'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x71c0ffee)
     // vidrio craquelado / shatter: red de fracturas radiales desde 1-2 puntos de impacto + anillos concentricos.
@@ -876,7 +876,7 @@ register({
 
 register({
   id: 'sub.light.vignette-grain', lib: 'substrates', category: 'overlay-light', tones: ['dark', 'light'], rubros: ['*'], weight: 1.1,
-  tags: ['vineta', 'textura', 'foto', 'lomo'],
+  register: 'neutral', intensity: 'soft', tags: ['vineta', 'textura', 'foto', 'lomo'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x1ce7a005)
     // vignette CON TEXTURA (no un degrade liso): borde oscurecido construido por densidad de micropuntos hacia
@@ -916,7 +916,7 @@ register({
 
 register({
   id: 'sub.grain.speckle', lib: 'substrates', category: 'grain-noise', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['grano', 'sal-pimienta', 'estatica'],
+  register: 'neutral', intensity: 'medium', tags: ['grano', 'sal-pimienta', 'estatica'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x3f8aa1d7)
     // sal y pimienta: micropuntos de tinta Y anti-tinta en densidad media, con un "twinkle" por bloque temporal
@@ -937,7 +937,7 @@ register({
 
 register({
   id: 'sub.grain.clouds', lib: 'substrates', category: 'grain-noise', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  tags: ['grano', 'nube', 'perlin', 'organico'],
+  register: 'neutral', intensity: 'soft', tags: ['grano', 'nube', 'perlin', 'organico'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x77ce11a3)
     // ruido tipo "nubes" (valor-noise barato): manchones suaves de luz/sombra construidos por blobs radiales
@@ -965,7 +965,7 @@ register({
 
 register({
   id: 'sub.trama.woodgrain', lib: 'substrates', category: 'print-trama', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  tags: ['print', 'madera', 'veta', 'xilografia'],
+  register: 'friendly', intensity: 'soft', tags: ['print', 'madera', 'veta', 'xilografia'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x1d77beef)
     // veta de madera / xilografia: lineas horizontales largas que ondulan en fase, agrupadas, con "nudos" elipticos
@@ -998,7 +998,7 @@ register({
 
 register({
   id: 'sub.trama.moire', lib: 'substrates', category: 'print-trama', tones: ['dark', 'light'], rubros: ['*'], weight: 0.8,
-  tags: ['print', 'moire', 'interferencia', 'optico'],
+  register: 'neutral', intensity: 'soft', tags: ['print', 'moire', 'interferencia', 'optico'],
   render(ctx, t, env) {
     const { pal } = env
     // patron de moire: dos rejillas de lineas finas casi-paralelas (angulos minimamente distintos) que al superponerse
@@ -1025,7 +1025,7 @@ register({
 
 register({
   id: 'sub.grid.perspective', lib: 'substrates', category: 'editorial-grid', tones: ['dark', 'light'], rubros: ['tech', 'gaming', 'musica', 'default', 'inmobiliaria'], weight: 1,
-  tags: ['perspectiva', 'horizonte', 'retrowave', 'piso'],
+  register: 'playful', intensity: 'bold', tags: ['perspectiva', 'horizonte', 'retrowave', 'piso'],
   render(ctx, t, env) {
     const { pal } = env
     // grilla en perspectiva (piso retrowave/synthwave): lineas que convergen a un punto de fuga central + travesanos
@@ -1058,7 +1058,7 @@ register({
 
 register({
   id: 'sub.grid.iso3d', lib: 'substrates', category: 'editorial-grid', tones: ['dark', 'light'], rubros: ['tech', 'construccion', 'inmobiliaria', 'default'], weight: 0.9,
-  tags: ['isometrico', '3d', 'cubos', 'tecnico'],
+  register: 'corporate', intensity: 'soft', tags: ['isometrico', '3d', 'cubos', 'tecnico'],
   render(ctx, t, env) {
     const { pal } = env
     // papel isometrico (ilusion 3D de cubos): TRES familias de lineas paralelas que TAPIZAN el lienzo -> +30deg, -30deg
@@ -1093,7 +1093,7 @@ register({
 
 register({
   id: 'sub.scan.vhs', lib: 'substrates', category: 'scanlines', tones: ['dark'], rubros: ['tech', 'gaming', 'musica', 'default'], weight: 1,
-  tags: ['vhs', 'retro', 'tracking', 'analogico'],
+  register: 'playful', intensity: 'medium', tags: ['vhs', 'retro', 'tracking', 'analogico'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x5ca7711e)
     // VHS: scanlines suaves + bandas de "tracking" (ruido horizontal que salta a alturas sembradas) + un leve
@@ -1124,7 +1124,7 @@ register({
 
 register({
   id: 'sub.scan.interlace', lib: 'substrates', category: 'scanlines', tones: ['dark', 'light'], rubros: ['tech', 'gaming', 'default'], weight: 0.8,
-  tags: ['interlace', 'campos', 'digital', 'flicker'],
+  register: 'playful', intensity: 'soft', tags: ['interlace', 'campos', 'digital', 'flicker'],
   render(ctx, t, env) {
     const { pal } = env
     // entrelazado (interlace): dos campos (lineas pares e impares) que alternan su tenue oscurecimiento -> el "shimmer"
@@ -1151,7 +1151,7 @@ register({
 
 register({
   id: 'sub.fabric.corduroy', lib: 'substrates', category: 'fabric-material', tones: ['dark', 'light'], rubros: ['*'], weight: 0.8,
-  tags: ['tela', 'pana', 'corduroy', 'acanalado'],
+  register: 'friendly', intensity: 'soft', tags: ['tela', 'pana', 'corduroy', 'acanalado'],
   render(ctx, t, env) {
     const { pal } = env
     // pana / corduroy: canaletas verticales con relieve (cada cordon = una banda con highlight a un lado y sombra al otro).
@@ -1177,7 +1177,7 @@ register({
 
 register({
   id: 'sub.fabric.herringbone', lib: 'substrates', category: 'fabric-material', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  tags: ['tela', 'espiga', 'herringbone', 'sastreria'],
+  register: 'editorial', intensity: 'soft', tags: ['tela', 'espiga', 'herringbone', 'sastreria'],
   render(ctx, t, env) {
     const { pal } = env
     // espiga / herringbone (tweed de sastreria): bloques de lineas diagonales que alternan +45/-45 por columna
@@ -1204,7 +1204,7 @@ register({
 
 register({
   id: 'sub.glass.raintrack', lib: 'substrates', category: 'glass-acrylic', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  tags: ['vidrio', 'lluvia', 'reguero', 'ventana'],
+  register: 'neutral', intensity: 'soft', tags: ['vidrio', 'lluvia', 'reguero', 'ventana'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x4a17d09f)
     // regueros de lluvia en vidrio: hilos verticales que serpentean hacia abajo con una "cabeza" de gota brillante
@@ -1239,7 +1239,7 @@ register({
 
 register({
   id: 'sub.glass.lensbokeh', lib: 'substrates', category: 'glass-acrylic', tones: ['dark'], rubros: ['*'], weight: 0.8,
-  tags: ['vidrio', 'bokeh', 'lente', 'flare', 'circulos'],
+  register: 'editorial', intensity: 'medium', tags: ['vidrio', 'bokeh', 'lente', 'flare', 'circulos'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x6b0be401)
     // bokeh de lente: circulos suaves desenfocados (anillos huecos de luz) de tamanos varios a la deriva lenta,
@@ -1267,7 +1267,7 @@ register({
 
 register({
   id: 'sub.light.caustics', lib: 'substrates', category: 'overlay-light', tones: ['dark'], rubros: ['*'], weight: 0.9,
-  tags: ['caustics', 'agua', 'reflejos', 'piscina'],
+  register: 'editorial', intensity: 'medium', tags: ['caustics', 'agua', 'reflejos', 'piscina'],
   render(ctx, t, env) {
     const { pal } = env
     // caustics (reflejos de agua): malla de luz ondulante que dibuja celdas brillantes irregulares como el fondo
@@ -1295,7 +1295,7 @@ register({
 
 register({
   id: 'sub.light.spotlight', lib: 'substrates', category: 'overlay-light', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['spotlight', 'foco', 'escenario', 'realce'],
+  register: 'editorial', intensity: 'soft', tags: ['spotlight', 'foco', 'escenario', 'realce'],
   render(ctx, t, env) {
     const { pal } = env
     // spotlight suave: un foco circular de luz que realza el centro-superior (donde suele ir el titulo) y deja caer
@@ -1322,7 +1322,7 @@ register({
 
 register({
   id: 'sub.distress.foxing', lib: 'substrates', category: 'damage-distress', tones: ['dark', 'light'], rubros: ['*'], weight: 0.8,
-  tags: ['manchas', 'envejecido', 'papel-viejo', 'oxido'],
+  register: 'friendly', intensity: 'soft', tags: ['manchas', 'envejecido', 'papel-viejo', 'oxido'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x0f1a9301)
     // "foxing": manchas de envejecimiento de papel viejo -> pequenos discos teñidos (calidos en dark via acento,
@@ -1344,7 +1344,7 @@ register({
 
 register({
   id: 'sub.distress.erosion', lib: 'substrates', category: 'damage-distress', tones: ['dark', 'light'], rubros: ['*'], weight: 0.8,
-  tags: ['erosion', 'desgaste', 'estarcido', 'stencil'],
+  register: 'friendly', intensity: 'soft', tags: ['erosion', 'desgaste', 'estarcido', 'stencil'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x33e7051a)
     // erosion / desgaste tipo stencil: motas ANTI-tinta (huecos) que "comen" la superficie -> sensacion de pintura
@@ -1376,7 +1376,7 @@ register({
 
 register({
   id: 'sub.topo.ridges', lib: 'substrates', category: 'topographic-organic', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['duna', 'cordillera', 'estratos', 'capas'],
+  register: 'neutral', intensity: 'soft', tags: ['duna', 'cordillera', 'estratos', 'capas'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x5e21ce0d)
     // estratos / dunas: capas horizontales de crestas onduladas apiladas (como cortes geologicos o dunas vistas de lado).
@@ -1403,7 +1403,7 @@ register({
 
 register({
   id: 'sub.topo.voronoi', lib: 'substrates', category: 'topographic-organic', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  tags: ['voronoi', 'celdas', 'craquelado', 'cuero', 'organico'],
+  register: 'friendly', intensity: 'soft', tags: ['voronoi', 'celdas', 'craquelado', 'cuero', 'organico'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x71a0cce5)
     // celdas de Voronoi (aprox): bordes entre regiones de sitios sembrados -> red organica de celdas como cuero
@@ -1453,7 +1453,7 @@ register({
 
 register({
   id: 'sub.grain.tv-snow', lib: 'substrates', category: 'grain-noise', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['estatica', 'tv', 'nieve', 'ruido'],
+  register: 'playful', intensity: 'medium', tags: ['estatica', 'tv', 'nieve', 'ruido'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x2af19c63)
     // nieve de TV (static snow): muchos pixeles ANTI-tinta/tinta en grilla floja que "centellean" por bloque temporal
@@ -1477,7 +1477,7 @@ register({
 
 register({
   id: 'sub.grain.chroma-grain', lib: 'substrates', category: 'grain-noise', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  tags: ['grano', 'color', 'iso-alto', 'fotografia'],
+  register: 'neutral', intensity: 'soft', tags: ['grano', 'color', 'iso-alto', 'fotografia'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x5d0c7af1)
     // grano de color (chroma grain de ISO alto): micropuntos teñidos de acento/acento2 mezclados con tinta neutra
@@ -1501,7 +1501,7 @@ register({
 
 register({
   id: 'sub.trama.guilloche', lib: 'substrates', category: 'print-trama', tones: ['dark', 'light'], rubros: ['finanzas', 'legal', 'default', 'lujo', 'inmobiliaria'], weight: 0.9,
-  tags: ['print', 'guilloche', 'billete', 'seguridad', 'espirograf'],
+  register: 'corporate', intensity: 'soft', tags: ['print', 'guilloche', 'billete', 'seguridad', 'espirograf'],
   render(ctx, t, env) {
     const { pal } = env
     // guilloche (filigrana de billete / sello de seguridad): curva de espirografo (hipotrocoide) que teje un patron
@@ -1528,7 +1528,7 @@ register({
 
 register({
   id: 'sub.trama.stipple', lib: 'substrates', category: 'print-trama', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['print', 'puntillismo', 'grabado', 'stipple', 'dotwork'],
+  register: 'editorial', intensity: 'soft', tags: ['print', 'puntillismo', 'grabado', 'stipple', 'dotwork'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x3c9e0d17)
     // puntillismo / stipple (grabado a punta seca): puntos finos SEMBRADOS cuya densidad sigue un gradiente diagonal
@@ -1555,7 +1555,7 @@ register({
 
 register({
   id: 'sub.grid.modular', lib: 'substrates', category: 'editorial-grid', tones: ['dark', 'light'], rubros: ['tech', 'finanzas', 'inmobiliaria', 'educacion', 'default', 'editorial', 'legal'], weight: 1,
-  tags: ['editorial', 'modular', 'celdas', 'bento', 'maquetacion'],
+  register: 'corporate', intensity: 'soft', tags: ['editorial', 'modular', 'celdas', 'bento', 'maquetacion'],
   render(ctx, t, env) {
     const { pal } = env
     // grilla modular (estilo bento / sistema modular suizo): celdas rectangulares de tamanos varios apiladas con
@@ -1589,7 +1589,7 @@ register({
 
 register({
   id: 'sub.grid.radial', lib: 'substrates', category: 'editorial-grid', tones: ['dark', 'light'], rubros: ['tech', 'gaming', 'musica', 'default', 'salud'], weight: 0.9,
-  tags: ['radial', 'polar', 'diana', 'radar', 'concentrico'],
+  register: 'corporate', intensity: 'soft', tags: ['radial', 'polar', 'diana', 'radar', 'concentrico'],
   render(ctx, t, env) {
     const { pal } = env
     // grilla polar / radar: anillos concentricos + radios desde un centro, como una mira/diana o un sonar tecnico.
@@ -1620,7 +1620,7 @@ register({
 
 register({
   id: 'sub.fabric.leather', lib: 'substrates', category: 'fabric-material', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  tags: ['cuero', 'piel', 'grano', 'lujo', 'material'],
+  register: 'editorial', intensity: 'soft', tags: ['cuero', 'piel', 'grano', 'lujo', 'material'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x6e2af913)
     // grano de cuero: poros (puntitos hundidos) + microarrugas cortas en angulos varios -> textura de piel curtida.
@@ -1655,7 +1655,7 @@ register({
 
 register({
   id: 'sub.fabric.linen', lib: 'substrates', category: 'fabric-material', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['tela', 'lino', 'trama-irregular', 'natural'],
+  register: 'friendly', intensity: 'soft', tags: ['tela', 'lino', 'trama-irregular', 'natural'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x1f7b3ca9)
     // lino: trama plana de hilos horizontales y verticales de grosor/espaciado LEVEMENTE irregular (a diferencia del
@@ -1690,7 +1690,7 @@ register({
 
 register({
   id: 'sub.glass.fresnel', lib: 'substrates', category: 'glass-acrylic', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  tags: ['vidrio', 'borde', 'fresnel', 'edge-light', 'premium'],
+  register: 'editorial', intensity: 'soft', tags: ['vidrio', 'borde', 'fresnel', 'edge-light', 'premium'],
   render(ctx, t, env) {
     const { pal } = env
     // brillo de borde (Fresnel / edge-light de panel de vidrio): los bordes del lienzo se iluminan suavemente
@@ -1721,7 +1721,7 @@ register({
 
 register({
   id: 'sub.glass.smudge', lib: 'substrates', category: 'glass-acrylic', tones: ['dark', 'light'], rubros: ['*'], weight: 0.8,
-  tags: ['vidrio', 'huella', 'mancha', 'grasa', 'pantalla'],
+  register: 'neutral', intensity: 'soft', tags: ['vidrio', 'huella', 'mancha', 'grasa', 'pantalla'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x42d9af07)
     // huellas / smudges en una pantalla de vidrio: manchones ovalados translucidos (grasa de dedo) con highlight tenue
@@ -1749,7 +1749,7 @@ register({
 
 register({
   id: 'sub.light.lensflare', lib: 'substrates', category: 'overlay-light', tones: ['dark'], rubros: ['*'], weight: 0.8,
-  tags: ['flare', 'lente', 'destello', 'cinematografico'],
+  register: 'editorial', intensity: 'bold', tags: ['flare', 'lente', 'destello', 'cinematografico'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32((env.seed ^ 0x7a0ff13e) >>> 0)
     // lens flare anamorfico: un foco brillante sembrado + una linea de destellos (ghosts) alineados hacia el centro
@@ -1786,7 +1786,7 @@ register({
 
 register({
   id: 'sub.light.scrim-gradient', lib: 'substrates', category: 'overlay-light', tones: ['dark', 'light'], rubros: ['*'], weight: 1.3,
-  tags: ['scrim', 'gradiente', 'legibilidad', 'cine', 'universal'],
+  register: 'neutral', intensity: 'soft', tags: ['scrim', 'gradiente', 'legibilidad', 'cine', 'universal'],
   render(ctx, t, env) {
     const { pal } = env
     // scrim de legibilidad (lower-third de cine): degrade que oscurece (dark) o aclara/scrim (light) la franja
@@ -1817,7 +1817,7 @@ register({
 
 register({
   id: 'sub.distress.tape', lib: 'substrates', category: 'damage-distress', tones: ['dark', 'light'], rubros: ['*'], weight: 0.8,
-  tags: ['cinta', 'collage', 'pegado', 'washi', 'scrapbook'],
+  register: 'friendly', intensity: 'soft', tags: ['cinta', 'collage', 'pegado', 'washi', 'scrapbook'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x2bda4f17)
     // tiras de cinta adhesiva (collage / scrapbook): 3-4 rectangulos translucidos semi-mate pegados en angulos varios
@@ -1865,7 +1865,7 @@ register({
 
 register({
   id: 'sub.distress.fold', lib: 'substrates', category: 'damage-distress', tones: ['dark', 'light'], rubros: ['*'], weight: 0.8,
-  tags: ['pliegue', 'doblez', 'papel-arrugado', 'crease'],
+  register: 'friendly', intensity: 'soft', tags: ['pliegue', 'doblez', 'papel-arrugado', 'crease'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x55c10fd3)
     // pliegues de papel (creases): unas pocas lineas de doblez (una sombra + un highlight contiguo) que cruzan el lienzo
@@ -1904,7 +1904,7 @@ register({
 
 register({
   id: 'sub.topo.rings', lib: 'substrates', category: 'topographic-organic', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  tags: ['anillos', 'arbol', 'tronco', 'concentrico', 'organico'],
+  register: 'friendly', intensity: 'soft', tags: ['anillos', 'arbol', 'tronco', 'concentrico', 'organico'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x6c0a17d9)
     // anillos de tronco (tree rings): anillos concentricos LIGERAMENTE excentricos y de espaciado irregular alrededor
@@ -1941,7 +1941,7 @@ register({
 
 register({
   id: 'sub.topo.cells-hex', lib: 'substrates', category: 'topographic-organic', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  tags: ['hexagonos', 'panal', 'celdas', 'organico', 'molecular'],
+  register: 'neutral', intensity: 'soft', tags: ['hexagonos', 'panal', 'celdas', 'organico', 'molecular'],
   render(ctx, t, env) {
     const { pal } = env
     // panal de hexagonos (honeycomb): teselado regular de hexagonos hairline -> red molecular/organica. Cada celda
@@ -1994,7 +1994,7 @@ register({
 
 register({
   id: 'sub.grain.silver-halide', lib: 'substrates', category: 'grain-noise', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['grano', 'pelicula', 'plata', 'clumpy', 'analogico'],
+  register: 'neutral', intensity: 'soft', tags: ['grano', 'pelicula', 'plata', 'clumpy', 'analogico'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x3f9a7c11)
     // grano de haluro de plata: cristales agrupados (clumps) de tamano IRREGULAR, no puntos parejos como el film
@@ -2021,7 +2021,7 @@ register({
 
 register({
   id: 'sub.grain.poisson', lib: 'substrates', category: 'grain-noise', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  tags: ['grano', 'sensor', 'shot-noise', 'iso-alto', 'digital'],
+  register: 'neutral', intensity: 'soft', tags: ['grano', 'sensor', 'shot-noise', 'iso-alto', 'digital'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x52d1b6e7)
     // ruido de sensor (shot/Poisson): ruido fino MAS denso en las zonas oscuras del encuadre (parte inferior),
@@ -2046,7 +2046,7 @@ register({
 
 register({
   id: 'sub.trama.linocut', lib: 'substrates', category: 'print-trama', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  tags: ['print', 'linograbado', 'tallado', 'organico', 'rayado'],
+  register: 'friendly', intensity: 'soft', tags: ['print', 'linograbado', 'tallado', 'organico', 'rayado'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x6ab30f55)
     // linograbado/woodcut: surcos de gubia -> lineas paralelas ONDULADAS con grosor que arranca y termina en punta
@@ -2076,7 +2076,7 @@ register({
 
 register({
   id: 'sub.trama.spiral-rosette', lib: 'substrates', category: 'print-trama', tones: ['dark', 'light'], rubros: ['finanzas', 'legal', 'default', 'tech', 'lujo'], weight: 0.8,
-  tags: ['print', 'guilloche', 'espiral', 'seguridad', 'billete'],
+  register: 'corporate', intensity: 'soft', tags: ['print', 'guilloche', 'espiral', 'seguridad', 'billete'],
   render(ctx, t, env) {
     const { pal } = env
     // roseta de seguridad (guilloche en espiral): una espiral logaritmica modulada por un seno -> el ornamento de
@@ -2105,7 +2105,7 @@ register({
 
 register({
   id: 'sub.grid.golden', lib: 'substrates', category: 'editorial-grid', tones: ['dark', 'light'], rubros: ['editorial', 'lujo', 'inmobiliaria', 'default', 'finanzas', 'arte'], weight: 1,
-  tags: ['editorial', 'aureo', 'phi', 'espiral', 'composicion'],
+  register: 'editorial', intensity: 'soft', tags: ['editorial', 'aureo', 'phi', 'espiral', 'composicion'],
   render(ctx, t, env) {
     const { pal } = env
     // grilla de proporcion aurea: rectangulos anidados por phi + la espiral aurea (cuartos de arco) -> guia de
@@ -2142,7 +2142,7 @@ register({
 
 register({
   id: 'sub.grid.tick-rulers', lib: 'substrates', category: 'editorial-grid', tones: ['dark', 'light'], rubros: ['tech', 'finanzas', 'default', 'editorial', 'construccion'], weight: 0.9,
-  tags: ['editorial', 'reglas', 'medicion', 'tecnico', 'marcas'],
+  register: 'corporate', intensity: 'soft', tags: ['editorial', 'reglas', 'medicion', 'tecnico', 'marcas'],
   render(ctx, t, env) {
     const { pal } = env
     // reglas/escalas en los cuatro bordes: marcas de medicion (minor/major como una regla) + un par de hairlines
@@ -2178,7 +2178,7 @@ register({
 
 register({
   id: 'sub.fabric.felt', lib: 'substrates', category: 'fabric-material', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  tags: ['tela', 'fieltro', 'mota', 'lana-prensada', 'mate'],
+  register: 'friendly', intensity: 'soft', tags: ['tela', 'fieltro', 'mota', 'lana-prensada', 'mate'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x4c0ffe21)
     // fieltro/paño: una nube densa de micropuntos y pelusas cortas en angulos aleatorios -> superficie mate prensada.
@@ -2209,7 +2209,7 @@ register({
 
 register({
   id: 'sub.fabric.satin', lib: 'substrates', category: 'fabric-material', tones: ['dark', 'light'], rubros: ['lujo', 'moda', 'default', 'belleza', 'arte'], weight: 0.8,
-  tags: ['tela', 'satin', 'seda', 'pliegues', 'premium', 'brillo'],
+  register: 'editorial', intensity: 'soft', tags: ['tela', 'satin', 'seda', 'pliegues', 'premium', 'brillo'],
   render(ctx, t, env) {
     const { pal } = env
     // satin/seda: bandas suaves de luz onduladas (pliegues de tela brillante) que se deslizan lentamente -> el
@@ -2241,7 +2241,7 @@ register({
 
 register({
   id: 'sub.glass.prism-edge', lib: 'substrates', category: 'glass-acrylic', tones: ['dark', 'light'], rubros: ['*'], weight: 0.8,
-  tags: ['vidrio', 'prisma', 'dispersion', 'arcoiris', 'cromatico'],
+  register: 'editorial', intensity: 'soft', tags: ['vidrio', 'prisma', 'dispersion', 'arcoiris', 'cromatico'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x70157aab)
     // borde de prisma: pocas franjas finas donde la luz se DESCOMPONE -> tres lineas paralelas (acento, acento2,
@@ -2265,7 +2265,7 @@ register({
 
 register({
   id: 'sub.glass.water-caustic', lib: 'substrates', category: 'glass-acrylic', tones: ['dark', 'light'], rubros: ['*'], weight: 0.8,
-  tags: ['vidrio', 'agua', 'causticas', 'piscina', 'ondulado'],
+  register: 'editorial', intensity: 'medium', tags: ['vidrio', 'agua', 'causticas', 'piscina', 'ondulado'],
   render(ctx, t, env) {
     const { pal } = env
     // causticas de agua vistas a traves de vidrio mojado: red de lineas curvas brillantes que forman celdas
@@ -2301,7 +2301,7 @@ register({
 
 register({
   id: 'sub.light.duotone-wash', lib: 'substrates', category: 'overlay-light', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['lavado', 'duotono', 'gradiente', 'tinte', 'editorial'],
+  register: 'editorial', intensity: 'soft', tags: ['lavado', 'duotono', 'gradiente', 'tinte', 'editorial'],
   render(ctx, t, env) {
     const { pal } = env
     // lavado duotono: un gradiente diagonal de acento -> acento2 a alpha MUY bajo, que tiñe levemente el encuadre
@@ -2320,7 +2320,7 @@ register({
 
 register({
   id: 'sub.light.edge-glow', lib: 'substrates', category: 'overlay-light', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['borde', 'glow', 'inner-shadow', 'marco', 'foco'],
+  register: 'neutral', intensity: 'soft', tags: ['borde', 'glow', 'inner-shadow', 'marco', 'foco'],
   render(ctx, t, env) {
     const { pal } = env
     // glow de borde / inner-frame: un halo de acento muy tenue PEGADO a los cuatro bordes (cuatro gradientes lineales
@@ -2349,7 +2349,7 @@ register({
 
 register({
   id: 'sub.distress.coffee-stain', lib: 'substrates', category: 'damage-distress', tones: ['dark', 'light'], rubros: ['*'], weight: 0.7,
-  tags: ['mancha', 'cafe', 'anillo', 'vintage', 'papel'],
+  register: 'friendly', intensity: 'soft', tags: ['mancha', 'cafe', 'anillo', 'vintage', 'papel'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x6cf3ee01)
     // marcas de taza de cafe: 1-2 anillos irregulares (mas oscuros en el borde que en el centro, como una mancha que
@@ -2388,7 +2388,7 @@ register({
 
 register({
   id: 'sub.distress.crease', lib: 'substrates', category: 'damage-distress', tones: ['dark', 'light'], rubros: ['*'], weight: 0.8,
-  tags: ['pliegue', 'arruga', 'papel-doblado', 'sombra', 'vintage'],
+  register: 'friendly', intensity: 'soft', tags: ['pliegue', 'arruga', 'papel-doblado', 'sombra', 'vintage'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x71ab09cd)
     // papel arrugado: pliegues como pares sombra+luz a lo largo de lineas quebradas que cruzan el lienzo -> el relieve
@@ -2427,7 +2427,7 @@ register({
 
 register({
   id: 'sub.topo.dunes', lib: 'substrates', category: 'topographic-organic', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  tags: ['dunas', 'arena', 'capas', 'ondulado', 'paisaje'],
+  register: 'neutral', intensity: 'soft', tags: ['dunas', 'arena', 'capas', 'ondulado', 'paisaje'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x2d0e511f)
     // dunas/capas sedimentarias: lineas de cresta apiladas que se ondulan suavemente como crestas de arena vistas de
@@ -2454,7 +2454,7 @@ register({
 
 register({
   id: 'sub.topo.reaction', lib: 'substrates', category: 'topographic-organic', tones: ['dark', 'light'], rubros: ['*'], weight: 0.8,
-  tags: ['reaccion-difusion', 'laberinto', 'organico', 'turing', 'celular'],
+  register: 'neutral', intensity: 'soft', tags: ['reaccion-difusion', 'laberinto', 'organico', 'turing', 'celular'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x51b2c3a9)
     // patron reaccion-difusion (Turing): trazos curvos cortos que serpentean siguiendo un campo de angulo de dos senos

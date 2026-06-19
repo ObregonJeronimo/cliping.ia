@@ -107,7 +107,7 @@ function arcSheenDot(ctx, cx, cy, R, a0, span, t, { per = 4.0, dotR = 3.2, color
 
 register({
   id: 'scene.hero.center', lib: 'scene-layouts', category: 'openers/hero', tones: ['dark', 'light'], rubros: ['*'], weight: 1.3,
-  tags: ['apertura', 'tipografico'], beat: 'hook',
+  register: 'neutral', intensity: 'medium', tags: ['apertura', 'tipografico', 'centrado'], beat: 'hook',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     // wordmark con asentamiento spring
@@ -127,8 +127,8 @@ register({
 })
 
 register({
-  id: 'scene.statement.editorial', lib: 'scene-layouts', category: 'statements/editorial', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['claim', 'editorial'], beat: 'value',
+  id: 'scene.statement.editorial', lib: 'scene-layouts', category: 'statements/editorial', tones: ['dark', 'light'], rubros: ['moda', 'belleza', 'inmobiliaria', 'default'], weight: 1,
+  register: 'editorial', intensity: 'medium', tags: ['claim', 'editorial', 'izquierda'], beat: 'value',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, ax = W * 0.12
     // barra de acento sobre el titular (DECO) + VIDA: respira de ancho y un sheen la recorre
@@ -144,7 +144,7 @@ register({
 
 register({
   id: 'scene.outro.cta', lib: 'scene-layouts', category: 'closers/outro', tones: ['dark', 'light'], rubros: ['*'], weight: 1.2,
-  tags: ['cierre', 'cta'], beat: 'close',
+  register: 'neutral', intensity: 'medium', tags: ['cierre', 'cta', 'chevron'], beat: 'close',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2, cy = H * 0.42
     drawText(ctx, content.brand || 'Marca', cx, cy, { size: 54, weight: 800, family: fonts.display, maxW: W * 0.82, color: pal.ink, alpha: inv(t, 0.2, 0.9) })
@@ -173,8 +173,8 @@ register({
 // ---- openers/hero ----------------------------------------------------------
 
 register({
-  id: 'scene.hero.stacked', lib: 'scene-layouts', category: 'openers/hero', tones: ['dark', 'light'], rubros: ['*'], weight: 1.1,
-  tags: ['apertura', 'editorial', 'masivo'], beat: 'hook',
+  id: 'scene.hero.stacked', lib: 'scene-layouts', category: 'openers/hero', tones: ['dark', 'light'], rubros: ['moda', 'belleza', 'inmobiliaria', 'default'], weight: 1.1,
+  register: 'editorial', intensity: 'bold', tags: ['apertura', 'editorial', 'masivo', 'izquierda'], beat: 'hook',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, ax = W * 0.1
     // marca chica arriba (kicker en acento)
@@ -192,8 +192,8 @@ register({
 })
 
 register({
-  id: 'scene.hero.framed', lib: 'scene-layouts', category: 'openers/hero', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['apertura', 'marco', 'premium'], beat: 'hook',
+  id: 'scene.hero.framed', lib: 'scene-layouts', category: 'openers/hero', tones: ['dark', 'light'], rubros: ['moda', 'belleza', 'inmobiliaria', 'default'], weight: 1,
+  register: 'editorial', intensity: 'medium', tags: ['apertura', 'marco', 'premium', 'centrado'], beat: 'hook',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2, cy = H * 0.42
     // marco rectangular que se dibuja (draw-on por perimetro)
@@ -225,7 +225,7 @@ register({
 
 register({
   id: 'scene.hook.question', lib: 'scene-layouts', category: 'openers/hook', tones: ['dark', 'light'], rubros: ['*'], weight: 1.2,
-  tags: ['hook', 'pregunta', 'gancho'], beat: 'hook',
+  register: 'friendly', intensity: 'medium', tags: ['hook', 'pregunta', 'gancho'], beat: 'hook',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     // signo de pregunta gigante de fondo (DECO en acento tenue) + VIDA: respira de escala/opacidad
@@ -245,8 +245,8 @@ register({
 })
 
 register({
-  id: 'scene.hook.bignum', lib: 'scene-layouts', category: 'openers/hook', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['hook', 'dato', 'impacto'], beat: 'hook',
+  id: 'scene.hook.bignum', lib: 'scene-layouts', category: 'openers/hook', tones: ['dark', 'light'], rubros: ['tech', 'finanzas', 'fitness', 'default'], weight: 1,
+  register: 'neutral', intensity: 'bold', tags: ['hook', 'dato', 'impacto', 'numero'], beat: 'hook',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     const num = statAt(content, 0, '3x').value
@@ -267,8 +267,8 @@ register({
 // ---- statements/editorial --------------------------------------------------
 
 register({
-  id: 'scene.statement.quoted', lib: 'scene-layouts', category: 'statements/editorial', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['claim', 'cita', 'editorial'], beat: 'value',
+  id: 'scene.statement.quoted', lib: 'scene-layouts', category: 'statements/editorial', tones: ['dark', 'light'], rubros: ['moda', 'belleza', 'inmobiliaria', 'default'], weight: 1,
+  register: 'editorial', intensity: 'medium', tags: ['claim', 'cita', 'editorial'], beat: 'value',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, ax = W * 0.14
     // comilla gigante de apertura (DECO) + VIDA: respira de escala/opacidad continua
@@ -287,7 +287,7 @@ register({
 
 register({
   id: 'scene.statement.boxed', lib: 'scene-layouts', category: 'statements/editorial', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  tags: ['claim', 'panel', 'destacado'], beat: 'value',
+  register: 'neutral', intensity: 'medium', tags: ['claim', 'panel', 'destacado'], beat: 'value',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     // panel surface centrado que crece
@@ -311,7 +311,7 @@ register({
 
 register({
   id: 'scene.checklist.ticks', lib: 'scene-layouts', category: 'lists/checklist', tones: ['dark', 'light'], rubros: ['*'], weight: 1.2,
-  tags: ['lista', 'checklist', 'beneficios'], beat: 'value',
+  register: 'neutral', intensity: 'medium', tags: ['lista', 'checklist', 'beneficios'], beat: 'value',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, ax = W * 0.13
     const items = listFrom(content, 'Rapido · Simple · Confiable', 4)
@@ -338,7 +338,7 @@ register({
 
 register({
   id: 'scene.checklist.numbered', lib: 'scene-layouts', category: 'lists/checklist', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['lista', 'pasos', 'numerada'], beat: 'value',
+  register: 'neutral', intensity: 'medium', tags: ['lista', 'pasos', 'numerada'], beat: 'value',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, ax = W * 0.13
     const items = listFrom(content, 'Conecta · Configura · Lanza', 4)
@@ -366,7 +366,7 @@ register({
 
 register({
   id: 'scene.comparison.vs', lib: 'scene-layouts', category: 'lists/comparison', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['comparacion', 'antes-despues', 'vs'], beat: 'value',
+  register: 'neutral', intensity: 'medium', tags: ['comparacion', 'antes-despues', 'vs'], beat: 'value',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK
     const parts = splitItems(content.claim || content.tagline || 'Antes · Despues', 2)
@@ -402,8 +402,8 @@ register({
 // ---- data/single -----------------------------------------------------------
 
 register({
-  id: 'scene.data.single', lib: 'scene-layouts', category: 'data/single', tones: ['dark', 'light'], rubros: ['*'], weight: 1.1,
-  tags: ['dato', 'numero', 'kpi'], beat: 'data',
+  id: 'scene.data.single', lib: 'scene-layouts', category: 'data/single', tones: ['dark', 'light'], rubros: ['tech', 'finanzas', 'fitness', 'default'], weight: 1.1,
+  register: 'corporate', intensity: 'medium', tags: ['dato', 'numero', 'kpi', 'anillo'], beat: 'data',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     const num = statAt(content, 0, '100%').value
@@ -429,8 +429,8 @@ register({
 // ---- data/multi ------------------------------------------------------------
 
 register({
-  id: 'scene.data.multi', lib: 'scene-layouts', category: 'data/multi', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['datos', 'stats', 'kpis'], beat: 'data',
+  id: 'scene.data.multi', lib: 'scene-layouts', category: 'data/multi', tones: ['dark', 'light'], rubros: ['tech', 'finanzas', 'fitness', 'default'], weight: 1,
+  register: 'corporate', intensity: 'medium', tags: ['datos', 'stats', 'kpis', 'columnas'], beat: 'data',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK
     // genera 3 stats a partir del contenido (numero de claim/tagline + items para etiquetas)
@@ -462,7 +462,7 @@ register({
 
 register({
   id: 'scene.social.proof', lib: 'scene-layouts', category: 'social/proof', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['prueba-social', 'cita', 'estrellas', 'rating'], beat: 'proof',
+  register: 'friendly', intensity: 'medium', tags: ['prueba-social', 'cita', 'estrellas', 'rating'], beat: 'proof',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     // 5 estrellas que se llenan de izq a der (DECO) + VIDA: titilan (escala+glow, fase por estrella)
@@ -491,7 +491,7 @@ register({
 
 register({
   id: 'scene.outro.lockup', lib: 'scene-layouts', category: 'closers/outro', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['cierre', 'marca', 'lockup'], beat: 'close',
+  register: 'neutral', intensity: 'medium', tags: ['cierre', 'marca', 'lockup', 'monograma'], beat: 'close',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2, cy = H * 0.44
     // monograma: inicial de la marca en un cuadro de acento
@@ -513,7 +513,7 @@ register({
 
 register({
   id: 'scene.outro.handle', lib: 'scene-layouts', category: 'closers/outro', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  tags: ['cierre', 'cta', 'pildora'], beat: 'close',
+  register: 'friendly', intensity: 'medium', tags: ['cierre', 'cta', 'pildora'], beat: 'close',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     drawText(ctx, content.brand || 'Marca', cx, H * 0.4, { size: 46, weight: 800, family: fonts.display, maxW: W * 0.84, color: pal.ink, alpha: inv(t, 0.15, 0.7) })
@@ -552,7 +552,7 @@ function firstStrong(str, fallback = 'AHORA') {
 
 register({
   id: 'scene.interstitial.word', lib: 'scene-layouts', category: 'connectors/interstitial', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['transicion', 'bisagra', 'una-palabra'], beat: 'context',
+  register: 'neutral', intensity: 'medium', tags: ['transicion', 'bisagra', 'una-palabra'], beat: 'context',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2, cy = H * 0.42
     const word = firstStrong(content.tagline || content.claim || content.cta, 'ASI').toUpperCase()
@@ -573,7 +573,7 @@ register({
 
 register({
   id: 'scene.interstitial.sweep', lib: 'scene-layouts', category: 'connectors/interstitial', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  tags: ['transicion', 'barrido', 'kicker'], beat: 'context',
+  register: 'neutral', intensity: 'medium', tags: ['transicion', 'barrido', 'kicker'], beat: 'context',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cy = H * 0.44
     const word = firstStrong(content.tagline || content.claim, 'LISTO').toUpperCase()
@@ -595,7 +595,7 @@ register({
 
 register({
   id: 'scene.interstitial.count', lib: 'scene-layouts', category: 'connectors/interstitial', tones: ['dark', 'light'], rubros: ['*'], weight: 0.85,
-  tags: ['transicion', 'capitulo', 'indice'], beat: 'context',
+  register: 'editorial', intensity: 'soft', tags: ['transicion', 'capitulo', 'indice'], beat: 'context',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     // indice de capitulo gigante de fondo (DECO en acento tenue) + palabra de bisagra
@@ -623,8 +623,8 @@ register({
 // inmueble, plan: "3 amb · 80 m2 · USD 120k". Lee items separados del claim.
 
 register({
-  id: 'scene.spec.feature', lib: 'scene-layouts', category: 'spec/slots', tones: ['dark', 'light'], rubros: ['*'], weight: 1.1,
-  tags: ['ficha', 'specs', 'atributos', 'inmueble', 'producto'], beat: 'data',
+  id: 'scene.spec.feature', lib: 'scene-layouts', category: 'spec/slots', tones: ['dark', 'light'], rubros: ['inmobiliaria', 'tech', 'default'], weight: 1.1,
+  register: 'corporate', intensity: 'medium', tags: ['ficha', 'specs', 'atributos', 'inmueble'], beat: 'data',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK
     const items = listFrom(content, '3 ambientes · 80 m2 · Cochera · Apto credito', 4)
@@ -658,8 +658,8 @@ register({
 })
 
 register({
-  id: 'scene.spec.detail', lib: 'scene-layouts', category: 'spec/slots', tones: ['dark', 'light'], rubros: ['*'], weight: 0.95,
-  tags: ['ficha', 'destacado', 'precio', 'spec-grid'], beat: 'data',
+  id: 'scene.spec.detail', lib: 'scene-layouts', category: 'spec/slots', tones: ['dark', 'light'], rubros: ['inmobiliaria', 'tech', 'default'], weight: 0.95,
+  register: 'corporate', intensity: 'medium', tags: ['ficha', 'destacado', 'precio', 'spec-grid'], beat: 'data',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK
     // grilla 2x2 de chips de spec; cada chip = panel surface con valor en tinta
@@ -698,7 +698,7 @@ register({
 
 register({
   id: 'scene.hook.shockstat', lib: 'scene-layouts', category: 'openers/hook', tones: ['dark', 'light'], rubros: ['*'], weight: 1.1,
-  tags: ['hook', 'estadistica', 'shock', 'dato'], beat: 'hook',
+  register: 'neutral', intensity: 'loud', tags: ['hook', 'estadistica', 'shock', 'dato'], beat: 'hook',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     const num = statAt(content, 0, '73%').value
@@ -718,7 +718,7 @@ register({
 
 register({
   id: 'scene.hook.binary', lib: 'scene-layouts', category: 'openers/hook', tones: ['dark', 'light'], rubros: ['*'], weight: 0.95,
-  tags: ['hook', 'pregunta', 'binaria', 'eleccion'], beat: 'hook',
+  register: 'friendly', intensity: 'bold', tags: ['hook', 'pregunta', 'binaria', 'eleccion'], beat: 'hook',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     // pregunta arriba, en tinta
@@ -749,7 +749,7 @@ register({
 
 register({
   id: 'scene.statement.panel', lib: 'scene-layouts', category: 'statements/editorial', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['claim', 'panel', 'full-bleed', 'editorial'], beat: 'value',
+  register: 'editorial', intensity: 'bold', tags: ['claim', 'panel', 'full-bleed', 'editorial'], beat: 'value',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     // panel de acento full-width que baja desde arriba; claim en color onAccent encima
@@ -772,7 +772,7 @@ register({
 
 register({
   id: 'scene.statement.mega', lib: 'scene-layouts', category: 'statements/editorial', tones: ['dark', 'light'], rubros: ['*'], weight: 1.05,
-  tags: ['claim', 'mega-tipografia', 'masivo', 'impacto'], beat: 'value',
+  register: 'editorial', intensity: 'loud', tags: ['claim', 'mega-tipografia', 'masivo', 'impacto'], beat: 'value',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, ax = W * 0.09
     // mega-tipografia: claim a maxima escala posible, izquierda, reveal por linea (stagger).
@@ -800,7 +800,7 @@ register({
 
 register({
   id: 'scene.outro.bigtype', lib: 'scene-layouts', category: 'closers/outro', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['cierre', 'mega-tipografia', 'marca'], beat: 'close',
+  register: 'editorial', intensity: 'bold', tags: ['cierre', 'mega-tipografia', 'marca'], beat: 'close',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     // marca a maxima escala (1-2 lineas), centrada, con asentamiento spring + regla acento
@@ -820,7 +820,7 @@ register({
 
 register({
   id: 'scene.outro.diagonal', lib: 'scene-layouts', category: 'closers/outro', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  tags: ['cierre', 'diagonal', 'dinamico', 'cta'], beat: 'close',
+  register: 'playful', intensity: 'bold', tags: ['cierre', 'diagonal', 'dinamico', 'cta'], beat: 'close',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2, cy = H * 0.42
     // banda diagonal de acento que barre la pantalla (DECO) — energia de cierre + VIDA: respira de opacidad
@@ -849,7 +849,7 @@ register({
 
 register({
   id: 'scene.comparison.split', lib: 'scene-layouts', category: 'lists/comparison', tones: ['dark', 'light'], rubros: ['*'], weight: 0.95,
-  tags: ['comparacion', 'split', 'mitad-mitad', 'antes-despues'], beat: 'value',
+  register: 'neutral', intensity: 'bold', tags: ['comparacion', 'split', 'mitad-mitad', 'antes-despues'], beat: 'value',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK
     const parts = splitItems(content.claim || content.tagline || 'Lento y caro · Rapido y simple', 2)
@@ -888,7 +888,7 @@ register({
 
 register({
   id: 'scene.data.bar', lib: 'scene-layouts', category: 'data/single', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['dato', 'barra', 'progreso', 'kpi'], beat: 'data',
+  register: 'corporate', intensity: 'medium', tags: ['dato', 'barra', 'progreso', 'kpi'], beat: 'data',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     const num = statAt(content, 0, '80%').value
@@ -957,7 +957,7 @@ function vLabel(ctx, str, x, y, opts = {}) {
 // a la derecha, anclado abajo. Composicion editorial tipo tapa de revista.
 register({
   id: 'scene.hero.sidebar', lib: 'scene-layouts', category: 'openers/hero', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['apertura', 'editorial', 'asimetrico', 'rotulo-vertical'], beat: 'hook',
+  register: 'editorial', intensity: 'medium', tags: ['apertura', 'editorial', 'asimetrico', 'rotulo-vertical'], beat: 'hook',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, mx = W * 0.13
     // regla vertical de acento en el margen + rotulo de marca girado + VIDA: punto que recorre la regla
@@ -979,7 +979,7 @@ register({
 // con un bloque de acento detras de la primera linea (highlight tipo marcador).
 register({
   id: 'scene.hero.punch', lib: 'scene-layouts', category: 'openers/hero', tones: ['dark', 'light'], rubros: ['*'], weight: 1.05,
-  tags: ['apertura', 'highlight', 'masivo', 'editorial'], beat: 'hook',
+  register: 'editorial', intensity: 'bold', tags: ['apertura', 'highlight', 'masivo', 'editorial'], beat: 'hook',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, mx = W * 0.1
     drawText(ctx, (content.brand || 'Marca').toUpperCase(), mx, H * 0.26, { size: 17, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, align: 'left', maxW: W * 0.8, alpha: inv(t, 0.05, 0.4) })
@@ -1012,7 +1012,7 @@ register({
 // Editorial, alto contraste conceptual. Lee 2 items del claim ("no esto · si aquello").
 register({
   id: 'scene.hook.strike', lib: 'scene-layouts', category: 'openers/hook', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['hook', 'tachado', 'contraste', 'gancho'], beat: 'hook',
+  register: 'editorial', intensity: 'bold', tags: ['hook', 'tachado', 'contraste', 'gancho'], beat: 'hook',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, mx = W * 0.12
     const parts = splitItems(content.claim || content.tagline || 'No mas planillas · Solo resultados', 2)
@@ -1043,7 +1043,7 @@ register({
 // izquierda. Composicion de tapa: la cifra invade el borde, el texto la confronta.
 register({
   id: 'scene.hook.marginnum', lib: 'scene-layouts', category: 'openers/hook', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['hook', 'dato', 'recorte', 'asimetrico'], beat: 'hook',
+  register: 'editorial', intensity: 'bold', tags: ['hook', 'dato', 'recorte', 'asimetrico'], beat: 'hook',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, mx = W * 0.1
     const num = statAt(content, 0, '9/10').value
@@ -1067,7 +1067,7 @@ register({
 // arriba en acento y una regla larga que cruza. Aire editorial, mucho margen.
 register({
   id: 'scene.statement.index', lib: 'scene-layouts', category: 'statements/editorial', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['claim', 'editorial', 'indice', 'aire'], beat: 'value',
+  register: 'editorial', intensity: 'soft', tags: ['claim', 'editorial', 'indice', 'aire'], beat: 'value',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, mx = W * 0.12
     // indice de seccion estable por seed (00..04) en acento, arriba-izquierda
@@ -1097,7 +1097,7 @@ register({
 // Layout de grilla, distinto a la lista vertical clasica. Cada item entra por su celda.
 register({
   id: 'scene.checklist.grid', lib: 'scene-layouts', category: 'lists/checklist', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['lista', 'grilla', 'beneficios', 'dos-columnas'], beat: 'value',
+  register: 'neutral', intensity: 'medium', tags: ['lista', 'grilla', 'beneficios', 'dos-columnas'], beat: 'value',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, mx = W * 0.1
     const items = listFrom(content, 'Rapido · Seguro · Simple · Sin limites', 4)
@@ -1128,7 +1128,7 @@ register({
 // Dos platos unidos por un fiel; el plato del lado bueno baja con spring. DECO en acento.
 register({
   id: 'scene.comparison.scale', lib: 'scene-layouts', category: 'lists/comparison', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  tags: ['comparacion', 'balanza', 'peso', 'editorial'], beat: 'value',
+  register: 'editorial', intensity: 'medium', tags: ['comparacion', 'balanza', 'peso', 'editorial'], beat: 'value',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     const parts = splitItems(content.claim || content.tagline || 'Lo de siempre · Lo nuevo', 2)
@@ -1177,7 +1177,7 @@ register({
 // distinto al anillo completo y a la barra. Numero centrado bajo el arco.
 register({
   id: 'scene.data.dial', lib: 'scene-layouts', category: 'data/single', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['dato', 'gauge', 'semicirculo', 'kpi'], beat: 'data',
+  register: 'corporate', intensity: 'medium', tags: ['dato', 'gauge', 'semicirculo', 'kpi'], beat: 'data',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2, cy = H * 0.5
     const num = statAt(content, 0, '85%').value
@@ -1215,7 +1215,7 @@ register({
 // por seed, la "ganadora" en acento. Editorial dashboard, distinto a data.multi (cifras).
 register({
   id: 'scene.data.bars', lib: 'scene-layouts', category: 'data/multi', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['datos', 'barras', 'grafico', 'comparativa'], beat: 'data',
+  register: 'corporate', intensity: 'medium', tags: ['datos', 'barras', 'grafico', 'comparativa'], beat: 'data',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK
     const labels = splitItems(content.claim || content.tagline || 'Lun · Mar · Mie', 3).map(l => shortLabel(l, 2))
@@ -1251,7 +1251,7 @@ register({
 // que entran en cascada, sobre una linea. Prueba social tipo wall-of-logos, sin foto.
 register({
   id: 'scene.social.logos', lib: 'scene-layouts', category: 'social/proof', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  tags: ['prueba-social', 'logos', 'confianza', 'cascada'], beat: 'proof',
+  register: 'corporate', intensity: 'soft', tags: ['prueba-social', 'logos', 'confianza', 'cascada'], beat: 'proof',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     // titular de confianza
@@ -1283,7 +1283,7 @@ register({
 // derecha. Layout asimetrico de rating, distinto a social.proof (estrellas centradas).
 register({
   id: 'scene.social.rating', lib: 'scene-layouts', category: 'social/proof', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['prueba-social', 'rating', 'nota', 'asimetrico'], beat: 'proof',
+  register: 'friendly', intensity: 'medium', tags: ['prueba-social', 'rating', 'nota', 'asimetrico'], beat: 'proof',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, mx = W * 0.12
     // nota grande (extrae numero decimal del claim, o 4.9)
@@ -1313,7 +1313,7 @@ register({
 // monograma, marca + CTA a la derecha. Cierre editorial asimetrico.
 register({
   id: 'scene.outro.split', lib: 'scene-layouts', category: 'closers/outro', tones: ['dark', 'light'], rubros: ['*'], weight: 0.95,
-  tags: ['cierre', 'split', 'asimetrico', 'cta'], beat: 'close',
+  register: 'editorial', intensity: 'bold', tags: ['cierre', 'split', 'asimetrico', 'cta'], beat: 'close',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK
     // panel de acento que entra desde la izquierda (ocupa ~38% del ancho)
@@ -1349,7 +1349,7 @@ register({
 // capitulo gigante y una regla larga que la subraya cruzando la pantalla. Editorial.
 register({
   id: 'scene.interstitial.rule', lib: 'scene-layouts', category: 'connectors/interstitial', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  tags: ['transicion', 'capitulo', 'regla', 'editorial'], beat: 'context',
+  register: 'editorial', intensity: 'soft', tags: ['transicion', 'capitulo', 'regla', 'editorial'], beat: 'context',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, mx = W * 0.1
     const r = mulberry32((env.seed >>> 0) ^ 0x3c4)
@@ -1373,7 +1373,7 @@ register({
 // palabra de transicion centrada. Sensacion de "seguimos" / "siguiente". DECO en acento.
 register({
   id: 'scene.interstitial.arrows', lib: 'scene-layouts', category: 'connectors/interstitial', tones: ['dark', 'light'], rubros: ['*'], weight: 0.85,
-  tags: ['transicion', 'flechas', 'avance', 'bisagra'], beat: 'context',
+  register: 'neutral', intensity: 'medium', tags: ['transicion', 'flechas', 'avance', 'bisagra'], beat: 'context',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2, cy = H * 0.42
     const word = firstStrong(content.tagline || content.claim || content.cta, 'SEGUIMOS').toUpperCase()
@@ -1430,7 +1430,7 @@ function avatarRow(ctx, x0, y, r, n, prng, M, t, pal, fonts, t0 = 0.3, step = 0.
 // izquierda + linea de tiempo con 3 nodos abajo (DECO). Editorial dinamico.
 register({
   id: 'scene.hero.ticker', lib: 'scene-layouts', category: 'openers/hero', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['apertura', 'kicker', 'linea-tiempo', 'editorial'], beat: 'hook',
+  register: 'editorial', intensity: 'medium', tags: ['apertura', 'kicker', 'linea-tiempo', 'editorial'], beat: 'hook',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, mx = W * 0.1
     const kp = M.settle(inv(t, 0.05, 0.7), { zeta: 0.5, freq: 2 })
@@ -1468,7 +1468,7 @@ register({
 // desliza para descubrirla). Gancho de intriga, distinto a strike/marginnum.
 register({
   id: 'scene.hook.redacted', lib: 'scene-layouts', category: 'openers/hook', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  tags: ['hook', 'intriga', 'revelado', 'gancho'], beat: 'hook',
+  register: 'editorial', intensity: 'bold', tags: ['hook', 'intriga', 'revelado', 'gancho'], beat: 'hook',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     ctx.save(); ctx.globalAlpha = inv(t, 0.1, 0.5)
@@ -1499,7 +1499,7 @@ register({
 // del claim envuelto a su derecha. Editorial de revista, distinto a quoted/index.
 register({
   id: 'scene.statement.dropcap', lib: 'scene-layouts', category: 'statements/editorial', tones: ['dark', 'light'], rubros: ['*'], weight: 0.95,
-  tags: ['claim', 'capitular', 'editorial', 'revista'], beat: 'value',
+  register: 'editorial', intensity: 'medium', tags: ['claim', 'capitular', 'editorial', 'revista'], beat: 'value',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, mx = W * 0.12
     const src = String(content.claim || content.tagline || 'Lo simple siempre gana al final').trim()
@@ -1530,7 +1530,7 @@ register({
 // acento tipo marcador. Distinto a mega (stagger izq) y panel (banda full).
 register({
   id: 'scene.statement.underline', lib: 'scene-layouts', category: 'statements/editorial', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['claim', 'subrayado', 'marcador', 'centrado'], beat: 'value',
+  register: 'editorial', intensity: 'medium', tags: ['claim', 'subrayado', 'marcador', 'centrado'], beat: 'value',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     const src = content.claim || content.tagline || content.brand || 'Resultados que se notan'
@@ -1562,7 +1562,7 @@ register({
 // Layout de "pasos en linea de tiempo", distinto a ticks/numbered/grid.
 register({
   id: 'scene.checklist.timeline', lib: 'scene-layouts', category: 'lists/checklist', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['lista', 'pasos', 'linea-tiempo', 'proceso'], beat: 'value',
+  register: 'neutral', intensity: 'medium', tags: ['lista', 'pasos', 'linea-tiempo', 'proceso'], beat: 'value',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, mx = W * 0.14
     const items = listFrom(content, 'Conecta · Configura · Lanza · Crece', 4)
@@ -1597,7 +1597,7 @@ register({
 // Layout de tabla de features, distinto a vs/split/scale.
 register({
   id: 'scene.comparison.table', lib: 'scene-layouts', category: 'lists/comparison', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['comparacion', 'tabla', 'features', 'check-cruz'], beat: 'value',
+  register: 'corporate', intensity: 'medium', tags: ['comparacion', 'tabla', 'features', 'check-cruz'], beat: 'value',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK
     const rows = listFrom(content, 'Sin comisiones · Soporte 24/7 · Setup en minutos', 3)
@@ -1630,7 +1630,7 @@ register({
 // el hueco central. Distinto a single (anillo fino) y dial (semicirculo).
 register({
   id: 'scene.data.donut', lib: 'scene-layouts', category: 'data/single', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['dato', 'donut', 'porcentaje', 'kpi'], beat: 'data',
+  register: 'corporate', intensity: 'medium', tags: ['dato', 'donut', 'porcentaje', 'kpi'], beat: 'data',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2, cy = H * 0.42
     const num = bigNumber(content.claim || content.tagline, '64%')
@@ -1660,7 +1660,7 @@ register({
 // seed) + leyenda con porcentajes. Distinto a multi (cifras) y bars (verticales).
 register({
   id: 'scene.data.stack', lib: 'scene-layouts', category: 'data/multi', tones: ['dark', 'light'], rubros: ['*'], weight: 0.95,
-  tags: ['datos', 'apilado', 'distribucion', 'grafico'], beat: 'data',
+  register: 'corporate', intensity: 'medium', tags: ['datos', 'apilado', 'distribucion', 'grafico'], beat: 'data',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK
     const labels = splitItems(content.claim || content.tagline || 'Ventas · Soporte · Marketing', 3).map(l => shortLabel(l, 2))
@@ -1703,7 +1703,7 @@ register({
 // Distinto a proof (estrellas), logos (chips), rating (nota).
 register({
   id: 'scene.social.quotecard', lib: 'scene-layouts', category: 'social/proof', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['prueba-social', 'testimonio', 'tarjeta', 'avatar'], beat: 'proof',
+  register: 'friendly', intensity: 'soft', tags: ['prueba-social', 'testimonio', 'tarjeta', 'avatar'], beat: 'proof',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     const gp = M.settle(inv(t, 0.1, 0.9), { zeta: 0.5, freq: 2 })
@@ -1738,7 +1738,7 @@ register({
 // Prueba social tipo "community", distinta a quotecard/logos/rating.
 register({
   id: 'scene.social.avatars', lib: 'scene-layouts', category: 'social/proof', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  tags: ['prueba-social', 'avatares', 'comunidad', 'fila'], beat: 'proof',
+  register: 'friendly', intensity: 'medium', tags: ['prueba-social', 'avatares', 'comunidad', 'fila'], beat: 'proof',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     const r = mulberry32((env.seed >>> 0) ^ 0xa11)
@@ -1763,7 +1763,7 @@ register({
 // que entra rotando y se asienta. Cierre tipo "garantia/sello". Distinto a lockup/split.
 register({
   id: 'scene.outro.stamp', lib: 'scene-layouts', category: 'closers/outro', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  tags: ['cierre', 'sello', 'garantia', 'marca'], beat: 'close',
+  register: 'editorial', intensity: 'medium', tags: ['cierre', 'sello', 'garantia', 'marca'], beat: 'close',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2, cy = H * 0.42
     const sp = M.settle(inv(t, 0.1, 1.0), { zeta: 0.45, freq: 2.1 })
@@ -1798,7 +1798,7 @@ register({
 // acento "activo", alargado). Sensacion de "paso N". Distinto a word/sweep/count/rule/arrows.
 register({
   id: 'scene.interstitial.dots', lib: 'scene-layouts', category: 'connectors/interstitial', tones: ['dark', 'light'], rubros: ['*'], weight: 0.85,
-  tags: ['transicion', 'progreso', 'dots', 'bisagra'], beat: 'context',
+  register: 'neutral', intensity: 'soft', tags: ['transicion', 'progreso', 'dots', 'bisagra'], beat: 'context',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2, cy = H * 0.42
     const word = firstStrong(content.tagline || content.claim || content.brand, 'AHORA').toUpperCase()
@@ -1832,7 +1832,7 @@ register({
 // opuestos enmarcando una palabra. Energia de "ultimo momento". Distinto a sweep.
 register({
   id: 'scene.interstitial.marquee', lib: 'scene-layouts', category: 'connectors/interstitial', tones: ['dark', 'light'], rubros: ['*'], weight: 0.8,
-  tags: ['transicion', 'bandas', 'noticia', 'energia'], beat: 'context',
+  register: 'playful', intensity: 'bold', tags: ['transicion', 'bandas', 'noticia', 'energia'], beat: 'context',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2, cy = H * 0.42
     const word = firstStrong(content.tagline || content.claim || content.cta, 'ATENCION').toUpperCase()
@@ -1881,7 +1881,7 @@ function arrowH(ctx, x0, x1, y, color, lw = 4, p = 1) {
 // muy baja) que se dibuja en cascada + marca chica arriba. Aire de "blueprint/planos".
 register({
   id: 'scene.hero.grid', lib: 'scene-layouts', category: 'openers/hero', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['apertura', 'grilla', 'blueprint', 'tecnico'], beat: 'hook',
+  register: 'corporate', intensity: 'medium', tags: ['apertura', 'grilla', 'blueprint', 'tecnico'], beat: 'hook',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     // grilla de fondo: lineas verticales+horizontales que aparecen en cascada (DECO tinta tenue)
@@ -1908,7 +1908,7 @@ register({
 // con un angulo de acento (esquina) en la esquina inferior izquierda. Composicion de poster.
 register({
   id: 'scene.hero.corner', lib: 'scene-layouts', category: 'openers/hero', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['apertura', 'poster', 'esquina', 'asimetrico'], beat: 'hook',
+  register: 'editorial', intensity: 'bold', tags: ['apertura', 'poster', 'esquina', 'asimetrico'], beat: 'hook',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, mx = W * 0.1
     // kicker arriba-derecha
@@ -1944,7 +1944,7 @@ register({
 // clave. Gancho de "completa la frase". Distinto a redacted (tapa) y strike (tacha).
 register({
   id: 'scene.hook.fillblank', lib: 'scene-layouts', category: 'openers/hook', tones: ['dark', 'light'], rubros: ['*'], weight: 0.95,
-  tags: ['hook', 'completar', 'blanco', 'gancho'], beat: 'hook',
+  register: 'friendly', intensity: 'medium', tags: ['hook', 'completar', 'blanco', 'gancho'], beat: 'hook',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     // frase de contexto arriba
@@ -1974,7 +1974,7 @@ register({
 // que se abren como corchetes horizontales. Distinto a panel/underline/index.
 register({
   id: 'scene.statement.bookend', lib: 'scene-layouts', category: 'statements/editorial', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['claim', 'corchetes', 'centrado', 'editorial'], beat: 'value',
+  register: 'editorial', intensity: 'medium', tags: ['claim', 'corchetes', 'centrado', 'editorial'], beat: 'value',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     const src = content.claim || content.tagline || content.brand || 'Sin vueltas'
@@ -2004,7 +2004,7 @@ register({
 // bloque) + claim a su derecha, alineado izquierda. Distinto a editorial/boxed (panel).
 register({
   id: 'scene.statement.callout', lib: 'scene-layouts', category: 'statements/editorial', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['claim', 'marcador', 'barra-lateral', 'editorial'], beat: 'value',
+  register: 'editorial', intensity: 'medium', tags: ['claim', 'marcador', 'barra-lateral', 'editorial'], beat: 'value',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, mx = W * 0.12
     const src = content.claim || content.tagline || 'Esto cambia todo'
@@ -2035,7 +2035,7 @@ register({
 // Distinto a ticks/numbered (filas), grid (2x2), timeline (riel vertical).
 register({
   id: 'scene.checklist.badges', lib: 'scene-layouts', category: 'lists/checklist', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['lista', 'badges', 'pildoras', 'wrap'], beat: 'value',
+  register: 'friendly', intensity: 'medium', tags: ['lista', 'badges', 'pildoras', 'wrap'], beat: 'value',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     const items = splitItems(content.claim || content.tagline || 'Rapido · Seguro · Simple · Sin limites', 5)
@@ -2084,7 +2084,7 @@ register({
 // revelando el lado bueno (acento) sobre el viejo (dim). Distinto a vs/split/scale/table.
 register({
   id: 'scene.comparison.slider', lib: 'scene-layouts', category: 'lists/comparison', tones: ['dark', 'light'], rubros: ['*'], weight: 0.95,
-  tags: ['comparacion', 'slider', 'antes-despues', 'revelado'], beat: 'value',
+  register: 'neutral', intensity: 'medium', tags: ['comparacion', 'slider', 'antes-despues', 'revelado'], beat: 'value',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     const parts = splitItems(content.claim || content.tagline || 'Antes · Despues', 2)
@@ -2121,7 +2121,7 @@ register({
 // caption. Distinto a single (anillo), bar, dial, donut. Para KPIs con tendencia.
 register({
   id: 'scene.data.counter', lib: 'scene-layouts', category: 'data/single', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['dato', 'contador', 'delta', 'tendencia', 'kpi'], beat: 'data',
+  register: 'corporate', intensity: 'medium', tags: ['dato', 'contador', 'delta', 'tendencia', 'kpi'], beat: 'data',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     const num = bigNumber(content.claim || content.tagline, '+128%')
@@ -2155,7 +2155,7 @@ register({
 // pinta en acento. "X de cada Y". Distinto a multi/bars/stack.
 register({
   id: 'scene.data.pictograph', lib: 'scene-layouts', category: 'data/multi', tones: ['dark', 'light'], rubros: ['*'], weight: 0.95,
-  tags: ['datos', 'pictografo', 'puntos', 'fraccion'], beat: 'data',
+  register: 'corporate', intensity: 'medium', tags: ['datos', 'pictografo', 'puntos', 'fraccion'], beat: 'data',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     const num = bigNumber(content.claim || content.tagline, '70%')
@@ -2188,7 +2188,7 @@ register({
 // (apertura arriba-izq, cierre abajo-der) + atribucion. Distinto a quotecard (panel).
 register({
   id: 'scene.social.quotemark', lib: 'scene-layouts', category: 'social/proof', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['prueba-social', 'cita', 'comillas', 'testimonio'], beat: 'proof',
+  register: 'editorial', intensity: 'medium', tags: ['prueba-social', 'cita', 'comillas', 'testimonio'], beat: 'proof',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     // comillas de acento gigantes en diagonal (DECO) + VIDA: respiran en contrafase (escala/opacidad)
@@ -2217,7 +2217,7 @@ register({
 // puntos de acento (DECO). "miembros / usuarios / descargas". Distinta a avatars/rating.
 register({
   id: 'scene.social.metric', lib: 'scene-layouts', category: 'social/proof', tones: ['dark', 'light'], rubros: ['*'], weight: 0.95,
-  tags: ['prueba-social', 'metrica', 'comunidad', 'numero'], beat: 'proof',
+  register: 'friendly', intensity: 'bold', tags: ['prueba-social', 'metrica', 'comunidad', 'numero'], beat: 'proof',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     const num = bigNumber(content.claim || content.tagline, '+10k')
@@ -2250,7 +2250,7 @@ register({
 // barre desde la izquierda hasta apuntarla. Cierre con direccion. Distinto a cta/handle/diagonal.
 register({
   id: 'scene.outro.arrowcta', lib: 'scene-layouts', category: 'closers/outro', tones: ['dark', 'light'], rubros: ['*'], weight: 0.95,
-  tags: ['cierre', 'cta', 'flecha', 'direccion'], beat: 'close',
+  register: 'neutral', intensity: 'bold', tags: ['cierre', 'cta', 'flecha', 'direccion'], beat: 'close',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     // marca centrada arriba
@@ -2280,7 +2280,7 @@ register({
 // se dibuja (draw-on) + palabra de bisagra debajo. Distinto a count/rule (planos).
 register({
   id: 'scene.interstitial.ringnum', lib: 'scene-layouts', category: 'connectors/interstitial', tones: ['dark', 'light'], rubros: ['*'], weight: 0.85,
-  tags: ['transicion', 'capitulo', 'anillo', 'bisagra'], beat: 'context',
+  register: 'editorial', intensity: 'medium', tags: ['transicion', 'capitulo', 'anillo', 'bisagra'], beat: 'context',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2, cy = H * 0.4
     const r = mulberry32((env.seed >>> 0) ^ 0x4e2)
@@ -2312,8 +2312,8 @@ register({
 // spec "pricetag": etiqueta de precio (forma de tag con muesca + agujero) con el valor
 // destacado + sub-spec. Para producto/inmueble/plan. Distinto a feature/detail/ribbon.
 register({
-  id: 'scene.spec.pricetag', lib: 'scene-layouts', category: 'spec/slots', tones: ['dark', 'light'], rubros: ['*'], weight: 0.95,
-  tags: ['ficha', 'precio', 'etiqueta', 'tag', 'producto'], beat: 'data',
+  id: 'scene.spec.pricetag', lib: 'scene-layouts', category: 'spec/slots', tones: ['dark', 'light'], rubros: ['inmobiliaria', 'default'], weight: 0.95,
+  register: 'corporate', intensity: 'medium', tags: ['ficha', 'precio', 'etiqueta', 'tag', 'producto'], beat: 'data',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     const items = splitItems(content.claim || content.tagline || 'USD 120k · 3 amb · 80 m2 · Apto credito', 4)
@@ -2346,8 +2346,8 @@ register({
 // spec "cards": fila de N tarjetas (panel surface) cada una con un valor grande en tinta
 // + etiqueta; barra de acento arriba de cada card. Distinto a detail (grilla 2x2) y feature (filas).
 register({
-  id: 'scene.spec.cards', lib: 'scene-layouts', category: 'spec/slots', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['ficha', 'tarjetas', 'fila', 'specs', 'producto'], beat: 'data',
+  id: 'scene.spec.cards', lib: 'scene-layouts', category: 'spec/slots', tones: ['dark', 'light'], rubros: ['inmobiliaria', 'tech', 'default'], weight: 1,
+  register: 'corporate', intensity: 'medium', tags: ['ficha', 'tarjetas', 'fila', 'specs', 'producto'], beat: 'data',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     const items = splitItems(content.claim || content.tagline || '3 amb · 80 m2 · 2 banos', 3)
@@ -2380,8 +2380,8 @@ register({
 // spec "ribbon": precio/valor destacado arriba + cinta de chips (pildoras) de spec en
 // filas centradas. Para inmueble/producto. Distinto a feature (filas) y detail (grilla 2x2).
 register({
-  id: 'scene.spec.ribbon', lib: 'scene-layouts', category: 'spec/slots', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['ficha', 'cinta', 'chips', 'precio', 'inmueble', 'producto'], beat: 'data',
+  id: 'scene.spec.ribbon', lib: 'scene-layouts', category: 'spec/slots', tones: ['dark', 'light'], rubros: ['inmobiliaria', 'default'], weight: 1,
+  register: 'corporate', intensity: 'medium', tags: ['ficha', 'cinta', 'chips', 'precio', 'inmueble', 'producto'], beat: 'data',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     const items = splitItems(content.claim || content.tagline || 'USD 120k · 3 amb · 80 m2 · Cochera · Apto credito', 5)

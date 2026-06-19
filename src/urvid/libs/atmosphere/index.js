@@ -27,7 +27,7 @@ const sweepPhase = p => { const x = clamp(p, 0, 1); return x * x * (3 - 2 * x) }
 
 register({
   id: 'atmo.glow.bloom-soft', lib: 'atmosphere', category: 'glow-bloom', tones: ['dark'], rubros: ['*'], weight: 1.2,
-  tags: ['premium', 'calido', 'luz'],
+  register: 'editorial', intensity: 'soft', tags: ['premium', 'calido', 'luz', 'glow'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'glow')
     // 3 florecimientos de acento que respiran arriba/abajo, NUNCA sobre el centro (el texto vive en H*0.4..0.55)
@@ -51,7 +51,7 @@ register({
 
 register({
   id: 'atmo.glow.halation-edge', lib: 'atmosphere', category: 'glow-bloom', tones: ['dark'], rubros: ['*'], weight: 0.9,
-  tags: ['cinematico', 'halacion'],
+  register: 'editorial', intensity: 'soft', tags: ['cinematico', 'halacion', 'borde', 'luz'],
   render(ctx, t, env) {
     const { pal } = env
     // halacion de borde: la luz se acumula en los margenes (como un lente sangrando), centro limpio.
@@ -76,7 +76,7 @@ register({
 
 register({
   id: 'atmo.glow.pulse-orb', lib: 'atmosphere', category: 'glow-bloom', tones: ['dark'], rubros: ['*'], weight: 0.8,
-  tags: ['hero', 'foco'],
+  register: 'neutral', intensity: 'calm', tags: ['hero', 'foco', 'orbe', 'glow'],
   render(ctx, t, env) {
     const { pal } = env
     // un orbe central tenue DETRAS del texto (alpha bajisimo) -> halo de foco sin tapar. Late (pulse) y
@@ -95,7 +95,7 @@ register({
 
 register({
   id: 'atmo.vignette.classic', lib: 'atmosphere', category: 'vignette', tones: ['dark', 'light'], rubros: ['*'], weight: 1.3,
-  tags: ['universal', 'foco'],
+  register: 'neutral', intensity: 'soft', tags: ['universal', 'foco', 'vineta', 'radial'],
   render(ctx, t, env) {
     const { pal } = env, light = pal.tone === 'light'
     // oscurecido radial clasico que cae a los bordes -> empuja el ojo al centro. En claro, muy sutil.
@@ -114,7 +114,7 @@ register({
 
 register({
   id: 'atmo.vignette.cinema-bars', lib: 'atmosphere', category: 'vignette', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  tags: ['cinematico', 'editorial'],
+  register: 'editorial', intensity: 'soft', tags: ['cinematico', 'editorial', 'barras', 'encuadre'],
   render(ctx, t, env) {
     const { pal } = env, light = pal.tone === 'light'
     // gradiente vertical top+bottom (vineta direccional) -> sensacion cine, centro despejado.
@@ -134,7 +134,7 @@ register({
 
 register({
   id: 'atmo.vignette.tinted-accent', lib: 'atmosphere', category: 'vignette', tones: ['dark'], rubros: ['*'], weight: 0.8,
-  tags: ['marca', 'color'],
+  register: 'editorial', intensity: 'medium', tags: ['marca', 'color', 'vineta', 'tenida'],
   render(ctx, t, env) {
     const { pal } = env
     // vineta TENIDA con el acento (no negra) -> el borde se oscurece hacia el color de marca.
@@ -156,7 +156,7 @@ register({
 
 register({
   id: 'atmo.rays.godrays-top', lib: 'atmosphere', category: 'light-rays', tones: ['dark'], rubros: ['*'], weight: 1,
-  tags: ['volumetrico', 'dramatico'],
+  register: 'editorial', intensity: 'bold', tags: ['volumetrico', 'dramatico', 'rayos', 'godrays'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'rays')
     // rayos volumetricos desde una fuente arriba; cada uno es una cuna fina de luz aditiva que respira
@@ -184,7 +184,7 @@ register({
 
 register({
   id: 'atmo.rays.fan-burst', lib: 'atmosphere', category: 'light-rays', tones: ['dark'], rubros: ['*'], weight: 0.7,
-  tags: ['radial', 'celebracion'],
+  register: 'friendly', intensity: 'medium', tags: ['radial', 'celebracion', 'amanecer', 'abanico'],
   render(ctx, t, env) {
     const { pal } = env
     // abanico de rayos finos desde un foco bajo (efecto amanecer detras del contenido)
@@ -210,7 +210,7 @@ register({
 
 register({
   id: 'atmo.haze.depth-floor', lib: 'atmosphere', category: 'depth-haze', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['profundidad', 'niebla'],
+  register: 'neutral', intensity: 'soft', tags: ['profundidad', 'niebla', 'piso', 'bruma'],
   render(ctx, t, env) {
     const { pal } = env, light = pal.tone === 'light'
     // niebla que sube del piso (atmosphere perspective): bruma clara en claro, neblina luminosa en oscuro
@@ -229,7 +229,7 @@ register({
 
 register({
   id: 'atmo.haze.drift-bands', lib: 'atmosphere', category: 'depth-haze', tones: ['dark'], rubros: ['*'], weight: 0.85,
-  tags: ['niebla', 'organico'],
+  register: 'neutral', intensity: 'soft', tags: ['niebla', 'organico', 'bandas', 'deriva'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'haze')
     // bandas de bruma horizontales suaves a la deriva -> profundidad atmosferica, evita el centro
@@ -252,7 +252,7 @@ register({
 
 register({
   id: 'atmo.lens.bokeh-drift', lib: 'atmosphere', category: 'lens-fx', tones: ['dark'], rubros: ['*'], weight: 1,
-  tags: ['bokeh', 'profundidad', 'premium'],
+  register: 'editorial', intensity: 'soft', tags: ['bokeh', 'profundidad', 'premium', 'lente'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'bokeh')
     // discos de bokeh desenfocados (anillo mas brillante que el centro, como lente real) a la deriva lenta
@@ -279,7 +279,7 @@ register({
 
 register({
   id: 'atmo.lens.flare-anamorphic', lib: 'atmosphere', category: 'lens-fx', tones: ['dark'], rubros: ['*'], weight: 0.75,
-  tags: ['flare', 'cinematico'],
+  register: 'editorial', intensity: 'bold', tags: ['flare', 'cinematico', 'anamorfico', 'destello'],
   render(ctx, t, env) {
     const { pal } = env
     // flare anamorfico: una linea horizontal de luz + un nucleo, deriva suave arriba a la derecha.
@@ -301,8 +301,8 @@ register({
 })
 
 register({
-  id: 'atmo.lens.glints', lib: 'atmosphere', category: 'lens-fx', tones: ['dark'], rubros: ['*'], weight: 0.7,
-  tags: ['destello', 'estrella'],
+  id: 'atmo.lens.glints', lib: 'atmosphere', category: 'lens-fx', tones: ['dark'], rubros: ['belleza', 'moda', 'default'], weight: 0.7,
+  register: 'editorial', intensity: 'medium', tags: ['destello', 'estrella', 'brillo', 'joya'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'glint')
     // destellos en cruz (sparkle de 4 puntas) que titilan en los margenes -> brillo de joya
@@ -328,7 +328,7 @@ register({
 
 register({
   id: 'atmo.grade.split-tone', lib: 'atmosphere', category: 'color-grade', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['grade', 'teal-orange', 'cine'],
+  register: 'editorial', intensity: 'soft', tags: ['grade', 'teal-orange', 'cine', 'split-tone'],
   render(ctx, t, env) {
     const { pal } = env, light = pal.tone === 'light'
     // split-tone cinematografico: sombras al acento frio (arriba), luces al acento calido (abajo). Muy sutil.
@@ -347,8 +347,8 @@ register({
 })
 
 register({
-  id: 'atmo.grade.warm-wash', lib: 'atmosphere', category: 'color-grade', tones: ['dark'], rubros: ['*'], weight: 0.85,
-  tags: ['calido', 'grade', 'atardecer'],
+  id: 'atmo.grade.warm-wash', lib: 'atmosphere', category: 'color-grade', tones: ['dark'], rubros: ['gastronomia', 'belleza', 'salud', 'default'], weight: 0.85,
+  register: 'friendly', intensity: 'soft', tags: ['calido', 'grade', 'atardecer', 'ambar'],
   render(ctx, t, env) {
     const { pal } = env
     // lavado calido global (oro/ambar) tipo "golden hour" + leve viraje frio en sombras de los bordes
@@ -368,7 +368,7 @@ register({
 
 register({
   id: 'atmo.scrim.center-plate', lib: 'atmosphere', category: 'scrim-legibility', tones: ['dark', 'light'], rubros: ['*'], weight: 1.2,
-  tags: ['legibilidad', 'guard', 'universal'],
+  register: 'neutral', intensity: 'calm', tags: ['legibilidad', 'guard', 'universal', 'placa'],
   render(ctx, t, env) {
     const { pal } = env, light = pal.tone === 'light'
     // scrim de legibilidad: una placa SUAVE detras del centro -> oscurece (oscuro) o aclara (claro) SOLO donde
@@ -386,7 +386,7 @@ register({
 
 register({
   id: 'atmo.scrim.bottom-gradient', lib: 'atmosphere', category: 'scrim-legibility', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['legibilidad', 'lower-third', 'caption'],
+  register: 'neutral', intensity: 'calm', tags: ['legibilidad', 'lower-third', 'caption', 'gradiente'],
   render(ctx, t, env) {
     const { pal } = env, light = pal.tone === 'light'
     // scrim inferior (estilo lower-third): asegura legibilidad de un caption/CTA al pie. Clasico de reels.
@@ -409,7 +409,7 @@ register({
 
 register({
   id: 'atmo.shadow.long-cast', lib: 'atmosphere', category: 'shadow-systems', tones: ['dark', 'light'], rubros: ['*'], weight: 1.05,
-  tags: ['sombra', 'direccional', 'hora-dorada'],
+  register: 'editorial', intensity: 'soft', tags: ['sombra', 'direccional', 'hora-dorada', 'diagonal'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'shadow-cast'), light = pal.tone === 'light'
     // sombras largas oblicuas (luz rasante de atardecer): franjas diagonales suaves que cruzan desde los bordes
@@ -440,7 +440,7 @@ register({
 
 register({
   id: 'atmo.shadow.blinds-gobo', lib: 'atmosphere', category: 'shadow-systems', tones: ['dark', 'light'], rubros: ['*'], weight: 0.85,
-  tags: ['sombra', 'persiana', 'gobo', 'cinematico'],
+  register: 'editorial', intensity: 'medium', tags: ['sombra', 'persiana', 'gobo', 'cinematico'],
   render(ctx, t, env) {
     const { pal } = env, light = pal.tone === 'light'
     // gobo de persiana (window blinds): franjas paralelas de sombra inclinadas que se deslizan despacio.
@@ -467,7 +467,7 @@ register({
 
 register({
   id: 'atmo.shadow.contact-floor', lib: 'atmosphere', category: 'shadow-systems', tones: ['dark', 'light'], rubros: ['*'], weight: 0.95,
-  tags: ['sombra', 'piso', 'profundidad', 'grounding'],
+  register: 'neutral', intensity: 'soft', tags: ['sombra', 'piso', 'profundidad', 'grounding'],
   render(ctx, t, env) {
     const { pal } = env, light = pal.tone === 'light'
     // sombra de contacto: una elipse oscura difusa contra el borde inferior (ancla el contenido al "piso") +
@@ -488,7 +488,7 @@ register({
 
 register({
   id: 'atmo.rays.window-shaft', lib: 'atmosphere', category: 'light-rays', tones: ['dark'], rubros: ['*'], weight: 0.85,
-  tags: ['volumetrico', 'ventana', 'lateral'],
+  register: 'editorial', intensity: 'medium', tags: ['volumetrico', 'ventana', 'lateral', 'polvo'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'shaft')
     // haz de ventana: 3-4 columnas anchas de luz que entran en diagonal desde arriba-izquierda, polvo flotando.
@@ -521,7 +521,7 @@ register({
 
 register({
   id: 'atmo.rays.crepuscular-edge', lib: 'atmosphere', category: 'light-rays', tones: ['dark'], rubros: ['*'], weight: 0.7,
-  tags: ['volumetrico', 'crepuscular', 'esquina'],
+  register: 'editorial', intensity: 'soft', tags: ['volumetrico', 'crepuscular', 'esquina', 'rayos'],
   render(ctx, t, env) {
     const { pal } = env
     // rayos crepusculares desde una esquina superior derecha (sol oculto): abanico estrecho que abraza el borde,
@@ -548,7 +548,7 @@ register({
 
 register({
   id: 'atmo.lens.flare-chain', lib: 'atmosphere', category: 'lens-fx', tones: ['dark'], rubros: ['*'], weight: 0.7,
-  tags: ['flare', 'ghost', 'cinematico'],
+  register: 'editorial', intensity: 'bold', tags: ['flare', 'ghost', 'cinematico'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'flarechain')
     // cadena de "ghosts" de lente: discos/anillos translucidos alineados sobre la diagonal fuente->centro,
@@ -580,7 +580,7 @@ register({
 
 register({
   id: 'atmo.lens.bokeh-corner', lib: 'atmosphere', category: 'lens-fx', tones: ['dark'], rubros: ['*'], weight: 0.85,
-  tags: ['bokeh', 'esquina', 'festivo', 'premium'],
+  register: 'editorial', intensity: 'medium', tags: ['bokeh', 'esquina', 'festivo', 'premium'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'bokeh-corner')
     // bokeh denso AGRUPADO en dos esquinas (sup-izq + inf-der), out-of-focus grande -> profundidad festiva
@@ -610,7 +610,7 @@ register({
 
 register({
   id: 'atmo.grade.cool-wash', lib: 'atmosphere', category: 'color-grade', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  tags: ['frio', 'grade', 'azul', 'nocturno'],
+  register: 'editorial', intensity: 'soft', tags: ['frio', 'grade', 'azul', 'nocturno'],
   render(ctx, t, env) {
     const { pal } = env, light = pal.tone === 'light'
     // lavado FRIO global (azul/cian nocturno), contraparte de warm-wash. Sombras viran a azul profundo, leve
@@ -629,7 +629,7 @@ register({
 
 register({
   id: 'atmo.grade.teal-orange', lib: 'atmosphere', category: 'color-grade', tones: ['dark', 'light'], rubros: ['*'], weight: 1.0,
-  tags: ['teal-orange', 'blockbuster', 'grade', 'cine'],
+  register: 'editorial', intensity: 'medium', tags: ['teal-orange', 'blockbuster', 'grade', 'cine'],
   render(ctx, t, env) {
     const { pal } = env, light = pal.tone === 'light'
     // el grade "blockbuster" mas usado: sombras a TEAL, luces a NARANJA, en diagonal (no solo top/bottom como
@@ -653,7 +653,7 @@ register({
 
 register({
   id: 'atmo.grade.duotone-wash', lib: 'atmosphere', category: 'color-grade', tones: ['dark', 'light'], rubros: ['*'], weight: 0.8,
-  tags: ['duotone', 'editorial', 'grade', 'marca'],
+  register: 'editorial', intensity: 'soft', tags: ['duotone', 'editorial', 'grade', 'marca'],
   render(ctx, t, env) {
     const { pal } = env, light = pal.tone === 'light'
     // duotono editorial: mapea sombras->acento, luces->acento2 con un wash de marca direccional (top-left a
@@ -674,7 +674,7 @@ register({
 
 register({
   id: 'atmo.haze.top-mist', lib: 'atmosphere', category: 'depth-haze', tones: ['dark', 'light'], rubros: ['*'], weight: 0.85,
-  tags: ['niebla', 'cielo', 'profundidad'],
+  register: 'neutral', intensity: 'soft', tags: ['niebla', 'cielo', 'profundidad'],
   render(ctx, t, env) {
     const { pal } = env, light = pal.tone === 'light'
     // bruma alta que baja del techo (cielo/atmosfera lejana), espejo de depth-floor: aclara la parte superior y
@@ -691,7 +691,7 @@ register({
 
 register({
   id: 'atmo.haze.volumetric-puffs', lib: 'atmosphere', category: 'depth-haze', tones: ['dark'], rubros: ['*'], weight: 0.7,
-  tags: ['niebla', 'nubes', 'volumetrico', 'organico'],
+  register: 'neutral', intensity: 'soft', tags: ['niebla', 'nubes', 'volumetrico', 'organico'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'puffs')
     // bocanadas de niebla volumetrica (cumulos suaves) a la deriva por los bordes sup/inf -> nubosidad luminosa
@@ -718,7 +718,7 @@ register({
 
 register({
   id: 'atmo.glow.sweep-band', lib: 'atmosphere', category: 'glow-bloom', tones: ['dark'], rubros: ['*'], weight: 0.7,
-  tags: ['barrido', 'luz', 'diagonal'],
+  register: 'neutral', intensity: 'medium', tags: ['barrido', 'luz', 'diagonal'],
   render(ctx, t, env) {
     const { pal } = env
     // barrido de luz: una banda diagonal aditiva que recorre la pantalla en loop lento (specular sweep tipo
@@ -750,7 +750,7 @@ register({
 
 register({
   id: 'atmo.glow.corner-pools', lib: 'atmosphere', category: 'glow-bloom', tones: ['dark'], rubros: ['*'], weight: 0.9,
-  tags: ['esquinas', 'luz', 'enmarque'],
+  register: 'neutral', intensity: 'medium', tags: ['esquinas', 'luz', 'enmarque'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'corner-pools')
     // pozos de luz en las 4 esquinas (enmarque luminoso): cada esquina respira en fase distinta, el centro
@@ -773,7 +773,7 @@ register({
 
 register({
   id: 'atmo.glow.ember-rise', lib: 'atmosphere', category: 'glow-bloom', tones: ['dark'], rubros: ['*'], weight: 0.75,
-  tags: ['brasas', 'calido', 'organico', 'partculas'],
+  register: 'friendly', intensity: 'medium', tags: ['brasas', 'calido', 'organico', 'partculas'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'ember')
     // brasas de luz que ascienden lentas desde el borde inferior (chimenea/forja): puntos calidos difusos que
@@ -805,7 +805,7 @@ register({
 
 register({
   id: 'atmo.vignette.spotlight', lib: 'atmosphere', category: 'vignette', tones: ['dark', 'light'], rubros: ['*'], weight: 1.05,
-  tags: ['spotlight', 'foco', 'teatro', 'universal'],
+  register: 'editorial', intensity: 'bold', tags: ['spotlight', 'foco', 'teatro', 'universal'],
   render(ctx, t, env) {
     const { pal } = env, light = pal.tone === 'light'
     // foco de teatro: una elipse de luz clara enmarca el centro y TODO lo de afuera cae a oscuro (oscuro) o a
@@ -828,7 +828,7 @@ register({
 
 register({
   id: 'atmo.vignette.frame-edge', lib: 'atmosphere', category: 'vignette', tones: ['dark', 'light'], rubros: ['*'], weight: 0.85,
-  tags: ['marco', 'editorial', 'borde', 'universal'],
+  register: 'editorial', intensity: 'soft', tags: ['marco', 'editorial', 'borde', 'universal'],
   render(ctx, t, env) {
     const { pal } = env, light = pal.tone === 'light'
     // vineta de MARCO (4 lados, no radial): oscurece/aclara solo un anillo en el perimetro con gradientes lineales
@@ -857,8 +857,8 @@ register({
 // ════════════════════════════ LIGHT-RAYS (extra) ════════════════════════════
 
 register({
-  id: 'atmo.rays.scanline-sweep', lib: 'atmosphere', category: 'light-rays', tones: ['dark'], rubros: ['*'], weight: 0.7,
-  tags: ['scan', 'tech', 'horizontal', 'futurista'],
+  id: 'atmo.rays.scanline-sweep', lib: 'atmosphere', category: 'light-rays', tones: ['dark'], rubros: ['tech', 'default'], weight: 0.7,
+  register: 'playful', intensity: 'bold', tags: ['scan', 'tech', 'horizontal', 'futurista'],
   render(ctx, t, env) {
     const { pal } = env
     // barrido de LINEA horizontal (scanner tech): una banda fina de luz recorre la pantalla de arriba a abajo en
@@ -883,7 +883,7 @@ register({
 
 register({
   id: 'atmo.rays.aurora-veil', lib: 'atmosphere', category: 'light-rays', tones: ['dark'], rubros: ['*'], weight: 0.7,
-  tags: ['aurora', 'cortina', 'organico', 'nocturno'],
+  register: 'editorial', intensity: 'medium', tags: ['aurora', 'cortina', 'organico', 'nocturno'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'aurora')
     // cortinas de aurora boreal: bandas verticales onduladas de luz translucida en la parte ALTA del cuadro
@@ -912,7 +912,7 @@ register({
 
 register({
   id: 'atmo.haze.dust-motes', lib: 'atmosphere', category: 'depth-haze', tones: ['dark'], rubros: ['*'], weight: 0.8,
-  tags: ['polvo', 'partculas', 'profundidad', 'ambiente'],
+  register: 'neutral', intensity: 'soft', tags: ['polvo', 'partculas', 'profundidad', 'ambiente'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'motes')
     // motas de polvo flotando en el aire (depth particles): puntos diminutos que derivan en parallax suave por
@@ -936,7 +936,7 @@ register({
 
 register({
   id: 'atmo.haze.gradient-fog-side', lib: 'atmosphere', category: 'depth-haze', tones: ['dark', 'light'], rubros: ['*'], weight: 0.8,
-  tags: ['niebla', 'lateral', 'profundidad'],
+  register: 'neutral', intensity: 'soft', tags: ['niebla', 'lateral', 'profundidad'],
   render(ctx, t, env) {
     const { pal } = env, light = pal.tone === 'light'
     // bruma que entra desde los LADOS (izq+der) hacia adentro y se disuelve antes del centro -> estrecha el foco
@@ -959,7 +959,7 @@ register({
 
 register({
   id: 'atmo.lens.chromatic-fringe', lib: 'atmosphere', category: 'lens-fx', tones: ['dark'], rubros: ['*'], weight: 0.65,
-  tags: ['aberracion', 'cromatico', 'borde', 'lente'],
+  register: 'playful', intensity: 'bold', tags: ['aberracion', 'cromatico', 'borde', 'lente'],
   render(ctx, t, env) {
     // aberracion cromatica de borde (lente real): franjas rojo/cian muy finas y desplazadas en los margenes del
     // cuadro -> el clasico "fringe" de las esquinas de un lente. Centro intacto. Hue FIJOS (honestidad del efecto).
@@ -986,7 +986,7 @@ register({
 
 register({
   id: 'atmo.lens.starburst-core', lib: 'atmosphere', category: 'lens-fx', tones: ['dark'], rubros: ['*'], weight: 0.7,
-  tags: ['estrella', 'destello', 'diafragma', 'cinematico'],
+  register: 'editorial', intensity: 'bold', tags: ['estrella', 'destello', 'diafragma', 'cinematico'],
   render(ctx, t, env) {
     const { pal } = env
     // estrella de diafragma (sunstar) de un punto de luz unico en una esquina superior: nucleo brillante + puntas
@@ -1019,7 +1019,7 @@ register({
 
 register({
   id: 'atmo.grade.bleach-bypass', lib: 'atmosphere', category: 'color-grade', tones: ['dark', 'light'], rubros: ['*'], weight: 0.8,
-  tags: ['bleach', 'contraste', 'desaturado', 'cine'],
+  register: 'editorial', intensity: 'medium', tags: ['bleach', 'contraste', 'desaturado', 'cine'],
   render(ctx, t, env) {
     const { pal } = env, light = pal.tone === 'light'
     // "bleach bypass": look de alto contraste y bajo croma (plata retenida). Lo emulamos con un overlay gris
@@ -1045,7 +1045,7 @@ register({
 
 register({
   id: 'atmo.grade.crossfade-vhs', lib: 'atmosphere', category: 'color-grade', tones: ['dark'], rubros: ['*'], weight: 0.65,
-  tags: ['vhs', 'retro', 'magenta', 'analogico'],
+  register: 'playful', intensity: 'loud', tags: ['vhs', 'retro', 'magenta', 'analogico'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'vhs')
     // grade analogico VHS: viraje magenta/verde cruzado + bandas tracking horizontales muy tenues que se deslizan.
@@ -1073,7 +1073,7 @@ register({
 
 register({
   id: 'atmo.shadow.foliage-gobo', lib: 'atmosphere', category: 'shadow-systems', tones: ['dark', 'light'], rubros: ['*'], weight: 0.8,
-  tags: ['sombra', 'follaje', 'gobo', 'organico', 'natural'],
+  register: 'friendly', intensity: 'soft', tags: ['sombra', 'follaje', 'gobo', 'organico', 'natural'],
   render(ctx, t, env) {
     const { pal } = env, light = pal.tone === 'light', r = seedFor(env.seed, 'foliage')
     // gobo de FOLLAJE (luz filtrada entre hojas): manchas organicas de sombra dispersas por los bordes que se
@@ -1100,7 +1100,7 @@ register({
 
 register({
   id: 'atmo.scrim.top-banner', lib: 'atmosphere', category: 'scrim-legibility', tones: ['dark', 'light'], rubros: ['*'], weight: 0.95,
-  tags: ['legibilidad', 'upper-third', 'titulo', 'banner'],
+  register: 'neutral', intensity: 'calm', tags: ['legibilidad', 'upper-third', 'titulo', 'banner'],
   render(ctx, t, env) {
     const { pal } = env, light = pal.tone === 'light'
     // scrim SUPERIOR (upper-third): asegura legibilidad de un titulo/kicker en lo alto del cuadro. Espejo del
@@ -1116,7 +1116,7 @@ register({
 
 register({
   id: 'atmo.scrim.diagonal-wedge', lib: 'atmosphere', category: 'scrim-legibility', tones: ['dark', 'light'], rubros: ['*'], weight: 0.75,
-  tags: ['legibilidad', 'diagonal', 'editorial', 'cuna'],
+  register: 'editorial', intensity: 'soft', tags: ['legibilidad', 'diagonal', 'editorial', 'cuna'],
   render(ctx, t, env) {
     const { pal } = env, light = pal.tone === 'light'
     // scrim en CUNA diagonal: una banda de oscurecido/aclarado que cruza el cuadro de la esquina inf-izq a la
@@ -1144,7 +1144,7 @@ register({
 
 register({
   id: 'atmo.glow.rim-arc', lib: 'atmosphere', category: 'glow-bloom', tones: ['dark'], rubros: ['*'], weight: 0.85,
-  tags: ['arco', 'borde', 'luz', 'enmarque'],
+  register: 'editorial', intensity: 'soft', tags: ['arco', 'borde', 'luz', 'enmarque'],
   render(ctx, t, env) {
     const { pal } = env
     // arco de luz superior: un trazo curvo aditivo y difuso que abraza el borde de arriba (como el rim-light de un
@@ -1166,7 +1166,7 @@ register({
 
 register({
   id: 'atmo.glow.under-light', lib: 'atmosphere', category: 'glow-bloom', tones: ['dark'], rubros: ['*'], weight: 0.8,
-  tags: ['contraluz', 'piso', 'luz', 'escenario'],
+  register: 'editorial', intensity: 'medium', tags: ['contraluz', 'piso', 'luz', 'escenario'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'under')
     // luz desde abajo (footlights / contraluz de escenario): 2-3 manchas de luz que emergen del borde inferior y
@@ -1191,7 +1191,7 @@ register({
 
 register({
   id: 'atmo.vignette.pillarbox', lib: 'atmosphere', category: 'vignette', tones: ['dark', 'light'], rubros: ['*'], weight: 0.8,
-  tags: ['pillarbox', 'lateral', 'cinematico', 'universal'],
+  register: 'editorial', intensity: 'soft', tags: ['pillarbox', 'lateral', 'cinematico', 'universal'],
   render(ctx, t, env) {
     const { pal } = env, light = pal.tone === 'light'
     // vineta LATERAL (pillarbox): oscurece/aclara solo las dos columnas de los costados con gradientes horizontales,
@@ -1211,7 +1211,7 @@ register({
 
 register({
   id: 'atmo.vignette.breathing-iris', lib: 'atmosphere', category: 'vignette', tones: ['dark'], rubros: ['*'], weight: 0.75,
-  tags: ['iris', 'foco', 'respiracion', 'organico'],
+  register: 'neutral', intensity: 'soft', tags: ['iris', 'foco', 'respiracion', 'organico'],
   render(ctx, t, env) {
     // iris que respira: una vineta radial cuyo RADIO interior late suave (el "ojo" se abre y cierra apenas) -> da
     // vida organica al encuadre sin distraer. Centro siempre despejado. Solo oscuro (negro puro).
@@ -1229,7 +1229,7 @@ register({
 
 register({
   id: 'atmo.rays.spotlight-cone', lib: 'atmosphere', category: 'light-rays', tones: ['dark'], rubros: ['*'], weight: 0.8,
-  tags: ['cono', 'spotlight', 'volumetrico', 'teatro'],
+  register: 'editorial', intensity: 'medium', tags: ['cono', 'spotlight', 'volumetrico', 'teatro'],
   render(ctx, t, env) {
     const { pal } = env
     // cono de spotlight volumetrico que barre suave de lado a lado desde un foco arriba-centro -> luz teatral en
@@ -1251,7 +1251,7 @@ register({
 
 register({
   id: 'atmo.rays.caustics-floor', lib: 'atmosphere', category: 'light-rays', tones: ['dark'], rubros: ['*'], weight: 0.7,
-  tags: ['causticas', 'agua', 'piso', 'organico'],
+  register: 'editorial', intensity: 'soft', tags: ['causticas', 'agua', 'piso', 'organico'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'caustics')
     // causticas de agua proyectadas en el PISO (reflejo de pileta/mar): manchas de luz onduladas que se deslizan
@@ -1281,7 +1281,7 @@ register({
 
 register({
   id: 'atmo.haze.rolling-fog', lib: 'atmosphere', category: 'depth-haze', tones: ['dark', 'light'], rubros: ['*'], weight: 0.85,
-  tags: ['niebla', 'rodante', 'profundidad', 'organico'],
+  register: 'editorial', intensity: 'medium', tags: ['niebla', 'rodante', 'profundidad', 'organico'],
   render(ctx, t, env) {
     const { pal } = env, light = pal.tone === 'light', r = seedFor(env.seed, 'rollfog')
     // niebla rodante de bordes: bancos de bruma que entran desde las 4 esquinas hacia adentro y se mecen, dejando
@@ -1307,7 +1307,7 @@ register({
 
 register({
   id: 'atmo.lens.rain-streaks', lib: 'atmosphere', category: 'lens-fx', tones: ['dark'], rubros: ['*'], weight: 0.65,
-  tags: ['lluvia', 'lente', 'gotas', 'cinematico'],
+  register: 'editorial', intensity: 'medium', tags: ['lluvia', 'lente', 'gotas', 'cinematico'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'rain')
     // gotas/regueros de lluvia sobre el lente: vetas verticales translucidas que caen y refractan luz de acento,
@@ -1334,7 +1334,7 @@ register({
 
 register({
   id: 'atmo.lens.smudge-bloom', lib: 'atmosphere', category: 'lens-fx', tones: ['dark'], rubros: ['*'], weight: 0.6,
-  tags: ['smudge', 'difuso', 'organico', 'suave'],
+  register: 'neutral', intensity: 'soft', tags: ['smudge', 'difuso', 'organico', 'suave'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'smudge')
     // manchas de "lente sucio" (smudge bloom): florecimientos suaves y deformados de luz en los margenes, como
@@ -1364,7 +1364,7 @@ register({
 
 register({
   id: 'atmo.grade.golden-hour', lib: 'atmosphere', category: 'color-grade', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  tags: ['dorado', 'atardecer', 'grade', 'calido'],
+  register: 'friendly', intensity: 'medium', tags: ['dorado', 'atardecer', 'grade', 'calido'],
   render(ctx, t, env) {
     const { pal } = env, light = pal.tone === 'light'
     // "golden hour" direccional: la luz calida entra desde una esquina superior (amanecer/atardecer) y vira a sombra
@@ -1387,7 +1387,7 @@ register({
 
 register({
   id: 'atmo.grade.noir-mono', lib: 'atmosphere', category: 'color-grade', tones: ['dark', 'light'], rubros: ['*'], weight: 0.7,
-  tags: ['noir', 'mono', 'desaturado', 'contraste', 'editorial'],
+  register: 'editorial', intensity: 'medium', tags: ['noir', 'mono', 'desaturado', 'contraste', 'editorial'],
   render(ctx, t, env) {
     const { pal } = env, light = pal.tone === 'light'
     // grade NOIR: desatura tirando a gris de marca y profundiza las sombras de los bordes (alto contraste, look de
@@ -1416,7 +1416,7 @@ register({
 
 register({
   id: 'atmo.shadow.grid-cast', lib: 'atmosphere', category: 'shadow-systems', tones: ['dark', 'light'], rubros: ['*'], weight: 0.7,
-  tags: ['sombra', 'reja', 'grid', 'arquitectura', 'gobo'],
+  register: 'corporate', intensity: 'medium', tags: ['sombra', 'reja', 'grid', 'arquitectura', 'gobo'],
   render(ctx, t, env) {
     const { pal } = env, light = pal.tone === 'light'
     // gobo de REJA/ventana cuadriculada: sombra de una grilla en perspectiva proyectada desde un costado, que se
@@ -1450,7 +1450,7 @@ register({
 
 register({
   id: 'atmo.shadow.corner-drape', lib: 'atmosphere', category: 'shadow-systems', tones: ['dark', 'light'], rubros: ['*'], weight: 0.8,
-  tags: ['sombra', 'esquinas', 'profundidad', 'enmarque', 'grounding'],
+  register: 'editorial', intensity: 'soft', tags: ['sombra', 'esquinas', 'profundidad', 'enmarque', 'grounding'],
   render(ctx, t, env) {
     const { pal } = env, light = pal.tone === 'light'
     // sombras de esquina (corner drape): cuatro radiales suaves en las esquinas que las hunden en penumbra ->
@@ -1474,7 +1474,7 @@ register({
 
 register({
   id: 'atmo.scrim.soft-panel', lib: 'atmosphere', category: 'scrim-legibility', tones: ['dark', 'light'], rubros: ['*'], weight: 1.0,
-  tags: ['legibilidad', 'panel', 'tarjeta', 'guard', 'universal'],
+  register: 'neutral', intensity: 'calm', tags: ['legibilidad', 'panel', 'tarjeta', 'guard', 'universal'],
   render(ctx, t, env) {
     const { pal } = env, light = pal.tone === 'light'
     // panel SUAVE rectangular detras del bloque de texto (tarjeta sin bordes): un rectangulo de esquinas redondeadas
@@ -1501,7 +1501,7 @@ register({
 
 register({
   id: 'atmo.scrim.duo-thirds', lib: 'atmosphere', category: 'scrim-legibility', tones: ['dark', 'light'], rubros: ['*'], weight: 0.85,
-  tags: ['legibilidad', 'titulo', 'caption', 'doble', 'universal'],
+  register: 'neutral', intensity: 'calm', tags: ['legibilidad', 'titulo', 'caption', 'doble', 'universal'],
   render(ctx, t, env) {
     const { pal } = env, light = pal.tone === 'light'
     // doble scrim (upper-third + lower-third) en una sola capa: protege titulo arriba Y caption/CTA abajo, dejando
@@ -1538,7 +1538,7 @@ register({
 
 register({
   id: 'atmo.glow.streak-rays', lib: 'atmosphere', category: 'glow-bloom', tones: ['dark'], rubros: ['*'], weight: 0.75,
-  tags: ['radial', 'destello', 'luz', 'estrella'],
+  register: 'editorial', intensity: 'bold', tags: ['radial', 'destello', 'luz', 'estrella'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'streak')
     // estrellado de rayos FINOS que irradian desde un foco alto-lateral (no el centro): muchas vetas de luz delgadas
@@ -1564,7 +1564,7 @@ register({
 
 register({
   id: 'atmo.glow.twin-suns', lib: 'atmosphere', category: 'glow-bloom', tones: ['dark'], rubros: ['*'], weight: 0.8,
-  tags: ['simetria', 'soles', 'luz', 'enmarque'],
+  register: 'editorial', intensity: 'medium', tags: ['simetria', 'soles', 'luz', 'enmarque'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'twin')
     // dos "soles" suaves simetricos en las esquinas superiores que respiran en contrafase -> un enmarque luminoso
@@ -1588,7 +1588,7 @@ register({
 
 register({
   id: 'atmo.vignette.soft-feather', lib: 'atmosphere', category: 'vignette', tones: ['dark', 'light'], rubros: ['*'], weight: 1.1,
-  tags: ['suave', 'plumeado', 'foco', 'universal', 'sutil'],
+  register: 'neutral', intensity: 'calm', tags: ['suave', 'plumeado', 'foco', 'universal', 'sutil'],
   render(ctx, t, env) {
     const { pal } = env, light = pal.tone === 'light'
     // vineta MUY plumeada (feathered): caida larguisima y gradual del centro al borde, sin un anillo marcado ->
@@ -1606,7 +1606,7 @@ register({
 
 register({
   id: 'atmo.vignette.bottom-weight', lib: 'atmosphere', category: 'vignette', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  tags: ['inferior', 'peso', 'grounding', 'editorial'],
+  register: 'editorial', intensity: 'soft', tags: ['inferior', 'peso', 'grounding', 'editorial'],
   render(ctx, t, env) {
     const { pal } = env, light = pal.tone === 'light'
     // vineta ASIMETRICA pesada abajo: la penumbra se concentra en la mitad inferior (centro de gravedad bajo, tipo
@@ -1625,7 +1625,7 @@ register({
 
 register({
   id: 'atmo.rays.cathedral', lib: 'atmosphere', category: 'light-rays', tones: ['dark'], rubros: ['*'], weight: 0.78,
-  tags: ['catedral', 'vertical', 'volumetrico', 'solemne'],
+  register: 'editorial', intensity: 'medium', tags: ['catedral', 'vertical', 'volumetrico', 'solemne'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'cathedral')
     // haces de "ventanal de catedral": columnas verticales anchas de luz que bajan rectas desde el techo, separadas
@@ -1650,7 +1650,7 @@ register({
 
 register({
   id: 'atmo.rays.lighthouse', lib: 'atmosphere', category: 'light-rays', tones: ['dark'], rubros: ['*'], weight: 0.65,
-  tags: ['faro', 'barrido', 'haz', 'cinematico'],
+  register: 'editorial', intensity: 'medium', tags: ['faro', 'barrido', 'haz', 'cinematico'],
   render(ctx, t, env) {
     const { pal } = env
     // haz de FARO: un cono ancho de luz que barre lento en pendulo desde un foco alto-derecha hacia el cielo, como
@@ -1673,7 +1673,7 @@ register({
 
 register({
   id: 'atmo.haze.steam-rise', lib: 'atmosphere', category: 'depth-haze', tones: ['dark', 'light'], rubros: ['*'], weight: 0.75,
-  tags: ['vapor', 'columnas', 'niebla', 'organico'],
+  register: 'friendly', intensity: 'soft', tags: ['vapor', 'columnas', 'niebla', 'organico'],
   render(ctx, t, env) {
     const { pal } = env, light = pal.tone === 'light', r = seedFor(env.seed, 'steam')
     // columnas de VAPOR que ascienden ondulando desde el borde inferior (cafe/calle mojada): bocanadas verticales
@@ -1703,7 +1703,7 @@ register({
 
 register({
   id: 'atmo.haze.smoke-curl', lib: 'atmosphere', category: 'depth-haze', tones: ['dark'], rubros: ['*'], weight: 0.7,
-  tags: ['humo', 'rizos', 'organico', 'ambiente', 'misterio'],
+  register: 'editorial', intensity: 'medium', tags: ['humo', 'rizos', 'organico', 'ambiente', 'misterio'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'smoke')
     // rizos de HUMO a la deriva por los bordes laterales: trazos curvos translucidos (lineas anchas con quadratic)
@@ -1735,7 +1735,7 @@ register({
 
 register({
   id: 'atmo.lens.veiling-glare', lib: 'atmosphere', category: 'lens-fx', tones: ['dark'], rubros: ['*'], weight: 0.7,
-  tags: ['veiling', 'glare', 'lavado', 'suave', 'cinematico'],
+  register: 'editorial', intensity: 'soft', tags: ['veiling', 'glare', 'lavado', 'suave', 'cinematico'],
   render(ctx, t, env) {
     const { pal } = env
     // "veiling glare": el velo de luz difusa que una fuente brillante derrama sobre TODO el cuadro (baja el contraste
@@ -1752,7 +1752,7 @@ register({
 
 register({
   id: 'atmo.lens.prism-split', lib: 'atmosphere', category: 'lens-fx', tones: ['dark'], rubros: ['*'], weight: 0.6,
-  tags: ['prisma', 'arcoiris', 'dispersion', 'borde', 'lente'],
+  register: 'playful', intensity: 'medium', tags: ['prisma', 'arcoiris', 'dispersion', 'borde', 'lente'],
   render(ctx, t, env) {
     const r = seedFor(env.seed, 'prism')
     // dispersion prismatica: un abanico CORTO de franjas arcoiris en una esquina (como la luz partida por el borde
@@ -1784,7 +1784,7 @@ register({
 
 register({
   id: 'atmo.grade.faded-film', lib: 'atmosphere', category: 'color-grade', tones: ['dark', 'light'], rubros: ['*'], weight: 0.8,
-  tags: ['faded', 'analogico', 'matte', 'vintage', 'sombras-levantadas'],
+  register: 'editorial', intensity: 'soft', tags: ['faded', 'analogico', 'matte', 'vintage', 'sombras-levantadas'],
   render(ctx, t, env) {
     const { pal } = env, light = pal.tone === 'light'
     // look "faded film" (matte): SUBE las sombras (negros lavados) con un velo gris-verdoso suave -> ese aire vintage
@@ -1810,7 +1810,7 @@ register({
 
 register({
   id: 'atmo.grade.neon-night', lib: 'atmosphere', category: 'color-grade', tones: ['dark'], rubros: ['*'], weight: 0.72,
-  tags: ['neon', 'cyber', 'magenta', 'cian', 'nocturno', 'urbano'],
+  register: 'playful', intensity: 'loud', tags: ['neon', 'cyber', 'magenta', 'cian', 'nocturno', 'urbano'],
   render(ctx, t, env) {
     const { pal } = env
     // grade "neon night" (cyberpunk): magenta caliente arriba, cian frio abajo, en diagonal -> mood urbano nocturno.
@@ -1837,7 +1837,7 @@ register({
 
 register({
   id: 'atmo.shadow.venetian-soft', lib: 'atmosphere', category: 'shadow-systems', tones: ['dark', 'light'], rubros: ['*'], weight: 0.78,
-  tags: ['sombra', 'persiana', 'vertical', 'gobo', 'estatico'],
+  register: 'editorial', intensity: 'soft', tags: ['sombra', 'persiana', 'vertical', 'gobo', 'estatico'],
   render(ctx, t, env) {
     const { pal } = env, light = pal.tone === 'light'
     // persiana VERTICAL (venetian) suave y casi estatica: franjas verticales de sombra inclinadas levemente, con
@@ -1862,7 +1862,7 @@ register({
 
 register({
   id: 'atmo.shadow.archway-cast', lib: 'atmosphere', category: 'shadow-systems', tones: ['dark', 'light'], rubros: ['*'], weight: 0.75,
-  tags: ['sombra', 'arco', 'arquitectura', 'enmarque', 'top'],
+  register: 'corporate', intensity: 'medium', tags: ['sombra', 'arco', 'arquitectura', 'enmarque', 'top'],
   render(ctx, t, env) {
     const { pal } = env, light = pal.tone === 'light'
     // sombra de ARCO (archway): dos cunas curvas oscuras en las esquinas SUPERIORES que sugieren un arco/portico
@@ -1885,7 +1885,7 @@ register({
 
 register({
   id: 'atmo.scrim.radial-guard', lib: 'atmosphere', category: 'scrim-legibility', tones: ['dark', 'light'], rubros: ['*'], weight: 1.05,
-  tags: ['legibilidad', 'guard', 'radial', 'amplio', 'universal'],
+  register: 'neutral', intensity: 'calm', tags: ['legibilidad', 'guard', 'radial', 'amplio', 'universal'],
   render(ctx, t, env) {
     const { pal } = env, light = pal.tone === 'light'
     // guard radial AMPLIO y suave centrado en el bloque de texto: mas extendido que center-plate (cubre mejor titulos
@@ -1903,7 +1903,7 @@ register({
 
 register({
   id: 'atmo.scrim.corner-anchor', lib: 'atmosphere', category: 'scrim-legibility', tones: ['dark', 'light'], rubros: ['*'], weight: 0.78,
-  tags: ['legibilidad', 'esquina', 'L', 'lower-left', 'editorial'],
+  register: 'editorial', intensity: 'soft', tags: ['legibilidad', 'esquina', 'L', 'lower-left', 'editorial'],
   render(ctx, t, env) {
     const { pal } = env, light = pal.tone === 'light'
     // scrim en forma de L anclado en la esquina INFERIOR-IZQUIERDA: combina una banda inferior + una lateral

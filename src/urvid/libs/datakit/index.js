@@ -85,8 +85,8 @@ function sheenArc(ctx, cx, cy, rad, lw, t, col, { period = 4, phase = 0, span = 
 
 // ====================================================================== numeros-animados
 register({
-  id: 'data.number.bigcount', lib: 'datakit', category: 'numeros-animados', tones: ['dark', 'light'], rubros: ['*'], weight: 1.3,
-  tags: ['hero', 'stat', 'mono'],
+  id: 'data.number.bigcount', lib: 'datakit', category: 'numeros-animados', tones: ['dark', 'light'], rubros: ['finanzas', 'tech', 'default'], weight: 1.3,
+  register: 'neutral', intensity: 'medium', tags: ['hero', 'stat', 'mono'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     const cx = W / 2, cy = H * 0.44
@@ -112,8 +112,8 @@ register({
 })
 
 register({
-  id: 'data.number.statgrid', lib: 'datakit', category: 'numeros-animados', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['stats', 'kpi', 'mono'],
+  id: 'data.number.statgrid', lib: 'datakit', category: 'numeros-animados', tones: ['dark', 'light'], rubros: ['finanzas', 'tech', 'default'], weight: 1,
+  register: 'neutral', intensity: 'medium', tags: ['stats', 'kpi', 'mono'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // 3 KPIs apilados: numero mono + etiqueta corta. Valores estables, sufijos variados.
@@ -141,8 +141,8 @@ register({
 
 // ====================================================================== barras
 register({
-  id: 'data.bars.hfill', lib: 'datakit', category: 'barras', tones: ['dark', 'light'], rubros: ['*'], weight: 1.2,
-  tags: ['barras', 'ranking'],
+  id: 'data.bars.hfill', lib: 'datakit', category: 'barras', tones: ['dark', 'light'], rubros: ['finanzas', 'tech', 'default'], weight: 1.2,
+  register: 'neutral', intensity: 'medium', tags: ['barras', 'ranking'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     const n = 4, top = H * 0.28, gap = H * 0.11, x0 = W * 0.12, bw = W * 0.76, bh = 16
@@ -171,8 +171,8 @@ register({
 })
 
 register({
-  id: 'data.bars.vgroup', lib: 'datakit', category: 'barras', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['barras', 'columnas', 'serie'],
+  id: 'data.bars.vgroup', lib: 'datakit', category: 'barras', tones: ['dark', 'light'], rubros: ['finanzas', 'tech', 'default'], weight: 1,
+  register: 'neutral', intensity: 'medium', tags: ['barras', 'columnas', 'serie'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     const n = 6, base = H * 0.7, maxH = H * 0.4, x0 = W * 0.14, span = W * 0.72
@@ -205,8 +205,8 @@ register({
 
 // ====================================================================== anillos / radiales
 register({
-  id: 'data.ring.gauge', lib: 'datakit', category: 'anillos/radiales', tones: ['dark', 'light'], rubros: ['*'], weight: 1.2,
-  tags: ['gauge', 'porcentaje', 'anillo'],
+  id: 'data.ring.gauge', lib: 'datakit', category: 'anillos/radiales', tones: ['dark', 'light'], rubros: ['finanzas', 'tech', 'fitness'], weight: 1.2,
+  register: 'neutral', intensity: 'medium', tags: ['gauge', 'porcentaje', 'anillo'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     const cx = W / 2, cy = H * 0.42, rad = W * 0.3, lw = 18
@@ -239,8 +239,8 @@ register({
 })
 
 register({
-  id: 'data.ring.segments', lib: 'datakit', category: 'anillos/radiales', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  tags: ['donut', 'proporcion', 'anillo'],
+  id: 'data.ring.segments', lib: 'datakit', category: 'anillos/radiales', tones: ['dark', 'light'], rubros: ['finanzas', 'tech', 'default'], weight: 0.9,
+  register: 'neutral', intensity: 'medium', tags: ['donut', 'proporcion', 'anillo'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     const cx = W / 2, cy = H * 0.42, rad = W * 0.28, lw = 26
@@ -270,8 +270,8 @@ register({
 
 // ====================================================================== series / tendencia
 register({
-  id: 'data.series.sparkline', lib: 'datakit', category: 'series/tendencia', tones: ['dark', 'light'], rubros: ['*'], weight: 1.1,
-  tags: ['sparkline', 'serie', 'tendencia'],
+  id: 'data.series.sparkline', lib: 'datakit', category: 'series/tendencia', tones: ['dark', 'light'], rubros: ['finanzas', 'tech', 'default'], weight: 1.1,
+  register: 'neutral', intensity: 'medium', tags: ['sparkline', 'serie', 'tendencia'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     const n = 14, x0 = W * 0.12, x1 = W * 0.88, yTop = H * 0.32, yBot = H * 0.58
@@ -319,8 +319,8 @@ register({
 
 // ====================================================================== comparacion / proporcion
 register({
-  id: 'data.compare.duo', lib: 'datakit', category: 'comparacion/proporcion', tones: ['dark', 'light'], rubros: ['*'], weight: 1.1,
-  tags: ['comparacion', 'antes-despues', 'barras'],
+  id: 'data.compare.duo', lib: 'datakit', category: 'comparacion/proporcion', tones: ['dark', 'light'], rubros: ['finanzas', 'fitness', 'default'], weight: 1.1,
+  register: 'neutral', intensity: 'medium', tags: ['comparacion', 'antes-despues', 'barras'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // dos columnas: "antes" (atenuado) vs "despues" (acento, mas alto) -> mejora visible
@@ -352,8 +352,8 @@ register({
 })
 
 register({
-  id: 'data.compare.split', lib: 'datakit', category: 'comparacion/proporcion', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['proporcion', 'split', 'share'],
+  id: 'data.compare.split', lib: 'datakit', category: 'comparacion/proporcion', tones: ['dark', 'light'], rubros: ['finanzas', 'tech', 'default'], weight: 1,
+  register: 'neutral', intensity: 'medium', tags: ['proporcion', 'split', 'share'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // barra unica partida en 2 proporciones (market share). accent vs atenuado.
@@ -385,8 +385,8 @@ register({
 
 // ====================================================================== rating / prueba social
 register({
-  id: 'data.rating.stars', lib: 'datakit', category: 'rating/prueba-social', tones: ['dark', 'light'], rubros: ['*'], weight: 1.1,
-  tags: ['rating', 'estrellas', 'review'],
+  id: 'data.rating.stars', lib: 'datakit', category: 'rating/prueba-social', tones: ['dark', 'light'], rubros: ['gastronomia', 'belleza', 'default'], weight: 1.1,
+  register: 'friendly', intensity: 'medium', tags: ['rating', 'estrellas', 'review'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     const cx = W / 2, cy = H * 0.42
@@ -451,8 +451,8 @@ function checkPath(ctx, s) {
 
 // ====================================================================== timeline / proceso
 register({
-  id: 'data.timeline.steps', lib: 'datakit', category: 'timeline/proceso', tones: ['dark', 'light'], rubros: ['*'], weight: 1.2,
-  tags: ['timeline', 'pasos', 'proceso'],
+  id: 'data.timeline.steps', lib: 'datakit', category: 'timeline/proceso', tones: ['dark', 'light'], rubros: ['tech', 'educacion', 'default'], weight: 1.2,
+  register: 'neutral', intensity: 'medium', tags: ['timeline', 'pasos', 'proceso'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // 4 pasos verticales conectados por una linea que se "dibuja"; el nodo activo avanza con t.
@@ -507,8 +507,8 @@ register({
 })
 
 register({
-  id: 'data.timeline.flowh', lib: 'datakit', category: 'timeline/proceso', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['proceso', 'flujo', 'horizontal'],
+  id: 'data.timeline.flowh', lib: 'datakit', category: 'timeline/proceso', tones: ['dark', 'light'], rubros: ['tech', 'educacion', 'default'], weight: 1,
+  register: 'neutral', intensity: 'medium', tags: ['proceso', 'flujo', 'horizontal'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // 3 etapas horizontales, chips conectados por flechas; cada chip aparece en secuencia.
@@ -547,8 +547,8 @@ register({
 
 // ====================================================================== numberStack
 register({
-  id: 'data.stack.trio', lib: 'datakit', category: 'numberStack', tones: ['dark', 'light'], rubros: ['*'], weight: 1.2,
-  tags: ['kpi', 'stack', 'mono'],
+  id: 'data.stack.trio', lib: 'datakit', category: 'numberStack', tones: ['dark', 'light'], rubros: ['finanzas', 'tech', 'default'], weight: 1.2,
+  register: 'neutral', intensity: 'medium', tags: ['kpi', 'stack', 'mono'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // 3 datos apilados con DESTACADO: el del medio mas grande (foco), divisores entre filas.
@@ -574,8 +574,8 @@ register({
 })
 
 register({
-  id: 'data.stack.rowduo', lib: 'datakit', category: 'numberStack', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['kpi', 'fila', 'mono'],
+  id: 'data.stack.rowduo', lib: 'datakit', category: 'numberStack', tones: ['dark', 'light'], rubros: ['finanzas', 'tech', 'default'], weight: 1,
+  register: 'neutral', intensity: 'medium', tags: ['kpi', 'fila', 'mono'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // 2 datos lado a lado en una fila, separados por un divisor vertical de acento. Foco compartido.
@@ -598,8 +598,8 @@ register({
 
 // ====================================================================== barras (mas)
 register({
-  id: 'data.bars.stacked', lib: 'datakit', category: 'barras', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['barras', 'apiladas', 'composicion'],
+  id: 'data.bars.stacked', lib: 'datakit', category: 'barras', tones: ['dark', 'light'], rubros: ['finanzas', 'tech', 'default'], weight: 1,
+  register: 'corporate', intensity: 'medium', tags: ['barras', 'apiladas', 'composicion'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // 3 columnas apiladas (2 segmentos c/u): accent abajo, accent2/atenuado arriba -> composicion.
@@ -641,8 +641,8 @@ register({
 })
 
 register({
-  id: 'data.bars.lollipop', lib: 'datakit', category: 'barras', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  tags: ['barras', 'lollipop', 'ranking'],
+  id: 'data.bars.lollipop', lib: 'datakit', category: 'barras', tones: ['dark', 'light'], rubros: ['finanzas', 'tech', 'default'], weight: 0.9,
+  register: 'neutral', intensity: 'soft', tags: ['barras', 'lollipop', 'ranking'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // ranking horizontal estilo "lollipop": linea fina + circulo al final, valor en el circulo. Mas aireado.
@@ -672,8 +672,8 @@ register({
 
 // ====================================================================== anillos / radiales (mas)
 register({
-  id: 'data.ring.multi', lib: 'datakit', category: 'anillos/radiales', tones: ['dark', 'light'], rubros: ['*'], weight: 1.1,
-  tags: ['anillos', 'concentrico', 'multi'],
+  id: 'data.ring.multi', lib: 'datakit', category: 'anillos/radiales', tones: ['dark', 'light'], rubros: ['finanzas', 'tech', 'fitness'], weight: 1.1,
+  register: 'corporate', intensity: 'medium', tags: ['anillos', 'concentrico', 'multi'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // 3 arcos concentricos (radial multi-metrica): cada anillo su % y su color, leyenda a la derecha.
@@ -714,8 +714,8 @@ register({
 
 // ====================================================================== donut
 register({
-  id: 'data.donut.share', lib: 'datakit', category: 'donut', tones: ['dark', 'light'], rubros: ['*'], weight: 1.1,
-  tags: ['donut', 'porcentaje', 'share'],
+  id: 'data.donut.share', lib: 'datakit', category: 'donut', tones: ['dark', 'light'], rubros: ['finanzas', 'tech', 'default'], weight: 1.1,
+  register: 'neutral', intensity: 'medium', tags: ['donut', 'porcentaje', 'share'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // donut de 1 valor (share dominante) con el hueco grande y el % grande adentro. Limpio.
@@ -742,8 +742,8 @@ register({
 })
 
 register({
-  id: 'data.donut.breakdown', lib: 'datakit', category: 'donut', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['donut', 'desglose', 'proporcion'],
+  id: 'data.donut.breakdown', lib: 'datakit', category: 'donut', tones: ['dark', 'light'], rubros: ['finanzas', 'tech', 'default'], weight: 1,
+  register: 'corporate', intensity: 'medium', tags: ['donut', 'desglose', 'proporcion'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // donut de 4 segmentos (desglose) con leyenda en lista debajo. Total al centro.
@@ -788,8 +788,8 @@ register({
 
 // ====================================================================== comparacion / proporcion (mas)
 register({
-  id: 'data.compare.beforeafter', lib: 'datakit', category: 'comparacion/proporcion', tones: ['dark', 'light'], rubros: ['*'], weight: 1.1,
-  tags: ['antes-despues', 'comparacion', 'mejora'],
+  id: 'data.compare.beforeafter', lib: 'datakit', category: 'comparacion/proporcion', tones: ['dark', 'light'], rubros: ['finanzas', 'fitness', 'default'], weight: 1.1,
+  register: 'neutral', intensity: 'medium', tags: ['antes-despues', 'comparacion', 'mejora'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // ANTES vs DESPUES en dos barras horizontales apiladas (misma escala) + delta de mejora destacado.
@@ -828,8 +828,8 @@ register({
 })
 
 register({
-  id: 'data.compare.icongrid', lib: 'datakit', category: 'comparacion/proporcion', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  tags: ['proporcion', 'pictograma', 'fraccion'],
+  id: 'data.compare.icongrid', lib: 'datakit', category: 'comparacion/proporcion', tones: ['dark', 'light'], rubros: ['salud', 'educacion', 'default'], weight: 0.9,
+  register: 'friendly', intensity: 'medium', tags: ['proporcion', 'pictograma', 'fraccion'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // pictograma: grilla de 10 puntos, N llenos de acento (fraccion "N de cada 10"). Lectura intuitiva.
@@ -860,8 +860,8 @@ register({
 })
 
 register({
-  id: 'data.progress.checklist', lib: 'datakit', category: 'timeline/proceso', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['checklist', 'proceso', 'completado'],
+  id: 'data.progress.checklist', lib: 'datakit', category: 'timeline/proceso', tones: ['dark', 'light'], rubros: ['tech', 'educacion', 'default'], weight: 1,
+  register: 'friendly', intensity: 'medium', tags: ['checklist', 'proceso', 'completado'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // checklist de 4 items que se van tildando en secuencia (proceso completado). Barra de progreso arriba.
@@ -901,7 +901,7 @@ register({
 
 register({
   id: 'data.stack.deltacol', lib: 'datakit', category: 'numberStack', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  tags: ['kpi', 'delta', 'tendencia'],
+  register: 'neutral', intensity: 'medium', tags: ['kpi', 'delta', 'tendencia'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // 3 KPIs en columna, cada uno con su DELTA (flecha arriba + % chico de acento). Tablero de metricas.
@@ -943,7 +943,7 @@ register({
 
 register({
   id: 'data.series.bars30', lib: 'datakit', category: 'series/tendencia', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['serie', 'columnas', 'tendencia'],
+  register: 'neutral', intensity: 'medium', tags: ['serie', 'columnas', 'tendencia'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // mini-histograma de 12 columnas finas con tendencia ascendente (serie temporal). Pico destacado.
@@ -985,7 +985,7 @@ register({
 // ====================================================================== numeros-animados (mas)
 register({
   id: 'data.number.unit', lib: 'datakit', category: 'numeros-animados', tones: ['dark', 'light'], rubros: ['*'], weight: 1.1,
-  tags: ['hero', 'stat', 'unidad', 'mono'],
+  register: 'neutral', intensity: 'bold', tags: ['hero', 'stat', 'unidad', 'mono'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // numero hero con UNIDAD/prefijo en linea aparte (ej "$" + "2.4M") -> moneda/escala. El simbolo en acento-tinta.
@@ -1011,7 +1011,7 @@ register({
 
 register({
   id: 'data.number.odometer', lib: 'datakit', category: 'numeros-animados', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['contador', 'odometro', 'mono'],
+  register: 'neutral', intensity: 'medium', tags: ['contador', 'odometro', 'mono'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // contador estilo odometro: cada digito en su "celda" con marco fino. Numero entero grande (ej visitas).
@@ -1054,7 +1054,7 @@ register({
 // ====================================================================== barras (mas)
 register({
   id: 'data.bars.progressrows', lib: 'datakit', category: 'barras', tones: ['dark', 'light'], rubros: ['*'], weight: 1.1,
-  tags: ['barras', 'progreso', 'skills'],
+  register: 'neutral', intensity: 'medium', tags: ['barras', 'progreso', 'skills'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // 4 barras de progreso etiqueta-arriba + % al final del riel (estilo "skills/cobertura"). Riel redondeado.
@@ -1081,7 +1081,7 @@ register({
 
 register({
   id: 'data.bars.diverging', lib: 'datakit', category: 'barras', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  tags: ['barras', 'divergente', 'balance'],
+  register: 'neutral', intensity: 'medium', tags: ['barras', 'divergente', 'balance'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // barras divergentes desde un eje central: positivo (acento, derecha) vs negativo (atenuado, izquierda).
@@ -1116,7 +1116,7 @@ register({
 // ====================================================================== anillos / radiales (mas)
 register({
   id: 'data.ring.dial', lib: 'datakit', category: 'anillos/radiales', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['gauge', 'aguja', 'medidor'],
+  register: 'neutral', intensity: 'medium', tags: ['gauge', 'aguja', 'medidor'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // medidor de medio arco (180) con AGUJA que barre 0..max. Arco riel + arco de acento + aguja.
@@ -1145,7 +1145,7 @@ register({
 
 register({
   id: 'data.ring.dots', lib: 'datakit', category: 'anillos/radiales', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  tags: ['anillo', 'puntos', 'progreso'],
+  register: 'neutral', intensity: 'soft', tags: ['anillo', 'puntos', 'progreso'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // anillo de PUNTOS (24): N llenos de acento segun %, el resto en riel. Numero al centro.
@@ -1176,7 +1176,7 @@ register({
 // ====================================================================== donut (mas)
 register({
   id: 'data.donut.dual', lib: 'datakit', category: 'donut', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['donut', 'doble', 'comparacion'],
+  register: 'neutral', intensity: 'medium', tags: ['donut', 'doble', 'comparacion'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // dos donuts chicos lado a lado (metrica A vs B), cada uno con su % y etiqueta. Comparacion compacta.
@@ -1207,7 +1207,7 @@ register({
 // ====================================================================== series / tendencia (mas)
 register({
   id: 'data.series.dualline', lib: 'datakit', category: 'series/tendencia', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['serie', 'doble-linea', 'comparacion'],
+  register: 'neutral', intensity: 'medium', tags: ['serie', 'doble-linea', 'comparacion'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // dos lineas (la nuestra en acento sube; la otra atenuada plana) -> contraste de tendencia. Leyenda abajo.
@@ -1248,7 +1248,7 @@ register({
 // ====================================================================== comparacion / proporcion (mas)
 register({
   id: 'data.compare.battery', lib: 'datakit', category: 'comparacion/proporcion', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['proporcion', 'segmentos', 'meta'],
+  register: 'neutral', intensity: 'medium', tags: ['proporcion', 'segmentos', 'meta'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // barra "bateria" segmentada (10 celdas): N llenas de acento = progreso hacia la meta. % grande arriba.
@@ -1280,7 +1280,7 @@ register({
 
 register({
   id: 'data.compare.vsbar', lib: 'datakit', category: 'comparacion/proporcion', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['versus', 'comparacion', 'cuota'],
+  register: 'neutral', intensity: 'medium', tags: ['versus', 'comparacion', 'cuota'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // dos barras horizontales encontradas (A vs B) con un "VS" al medio. La nuestra (acento) gana.
@@ -1316,7 +1316,7 @@ register({
 // ====================================================================== rating / prueba-social (mas)
 register({
   id: 'data.rating.bar', lib: 'datakit', category: 'rating/prueba-social', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['rating', 'distribucion', 'reviews'],
+  register: 'friendly', intensity: 'medium', tags: ['rating', 'distribucion', 'reviews'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // distribucion de reviews: filas de 5 a 1 estrellas, barra por fila (la de 5 domina). Score grande a la izq.
@@ -1355,7 +1355,7 @@ register({
 // ====================================================================== timeline / proceso (mas)
 register({
   id: 'data.timeline.milestones', lib: 'datakit', category: 'timeline/proceso', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['timeline', 'hitos', 'horizontal'],
+  register: 'neutral', intensity: 'medium', tags: ['timeline', 'hitos', 'horizontal'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // linea de tiempo HORIZONTAL con 4 hitos (punto + fecha-mono arriba + etiqueta abajo). La linea se dibuja.
@@ -1397,7 +1397,7 @@ register({
 // ====================================================================== progreso
 register({
   id: 'data.progress.radialsteps', lib: 'datakit', category: 'progreso', tones: ['dark', 'light'], rubros: ['*'], weight: 1.1,
-  tags: ['progreso', 'anillo', 'pasos'],
+  register: 'neutral', intensity: 'medium', tags: ['progreso', 'anillo', 'pasos'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // anillo de progreso por PASOS (5 segmentos SEPARADOS): los completados en acento, el resto en riel.
@@ -1433,7 +1433,7 @@ register({
 
 register({
   id: 'data.progress.ringpct', lib: 'datakit', category: 'progreso', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['progreso', 'anillo', 'porcentaje'],
+  register: 'neutral', intensity: 'soft', tags: ['progreso', 'anillo', 'porcentaje'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // anillo de progreso fino con punto-cabeza + numero grande contando. Limpio, foco en el %.
@@ -1475,7 +1475,7 @@ register({
 // ====================================================================== numeros-animados (mas)
 register({
   id: 'data.number.plusminus', lib: 'datakit', category: 'numeros-animados', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['hero', 'delta', 'tendencia', 'mono'],
+  register: 'neutral', intensity: 'bold', tags: ['hero', 'delta', 'tendencia', 'mono'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // numero hero con DELTA: gran % central + chip de tendencia (flecha + delta) arriba. Foco en la mejora.
@@ -1505,7 +1505,7 @@ register({
 
 register({
   id: 'data.number.fraction', lib: 'datakit', category: 'numeros-animados', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  tags: ['hero', 'fraccion', 'ratio', 'mono'],
+  register: 'neutral', intensity: 'bold', tags: ['hero', 'fraccion', 'ratio', 'mono'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // fraccion grande "N / M" (ej "9 / 10", "3 de cada 4"). Numerador grande de acento-tinta, barra divisoria.
@@ -1530,7 +1530,7 @@ register({
 // ====================================================================== barras (mas)
 register({
   id: 'data.bars.racetrack', lib: 'datakit', category: 'barras', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['barras', 'pista', 'ranking', 'rotulo'],
+  register: 'neutral', intensity: 'medium', tags: ['barras', 'pista', 'ranking', 'rotulo'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // 4 "pistas" (rieles full-width) con el rotulo DENTRO del riel a la izq + valor mono a la derecha del relleno.
@@ -1557,7 +1557,7 @@ register({
 
 register({
   id: 'data.bars.target', lib: 'datakit', category: 'barras', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  tags: ['barras', 'meta', 'bullet', 'kpi'],
+  register: 'neutral', intensity: 'soft', tags: ['barras', 'meta', 'bullet', 'kpi'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // bullet chart: 1 barra de avance + marcador de META (linea vertical) -> "vamos por X de la meta Y". Limpio.
@@ -1590,7 +1590,7 @@ register({
 // ====================================================================== anillos / radiales (mas)
 register({
   id: 'data.ring.halfgauge', lib: 'datakit', category: 'anillos/radiales', tones: ['dark', 'light'], rubros: ['*'], weight: 1.1,
-  tags: ['gauge', 'semi', 'porcentaje', 'mono'],
+  register: 'neutral', intensity: 'medium', tags: ['gauge', 'semi', 'porcentaje', 'mono'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // medidor SEMICIRCULAR (180 abajo) con relleno grueso + numero grande en el hueco. Ticks finos de escala.
@@ -1624,7 +1624,7 @@ register({
 // ====================================================================== donut (mas)
 register({
   id: 'data.donut.legendrows', lib: 'datakit', category: 'donut', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['donut', 'leyenda', 'desglose', 'mono'],
+  register: 'neutral', intensity: 'medium', tags: ['donut', 'leyenda', 'desglose', 'mono'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // donut de 3 segmentos a la IZQ + leyenda en filas a la DER (punto + etiqueta + % mono). Composicion clara.
@@ -1665,7 +1665,7 @@ register({
 // ====================================================================== series / tendencia (mas)
 register({
   id: 'data.series.stepline', lib: 'datakit', category: 'series/tendencia', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['serie', 'escalonada', 'tendencia', 'mono'],
+  register: 'neutral', intensity: 'medium', tags: ['serie', 'escalonada', 'tendencia', 'mono'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // serie escalonada (step) ascendente con marcadores en cada nivel + valor final grande. Estilo "milestones".
@@ -1700,7 +1700,7 @@ register({
 // ====================================================================== comparacion / proporcion (mas)
 register({
   id: 'data.compare.scalecols', lib: 'datakit', category: 'comparacion/proporcion', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['comparacion', 'columnas', 'escala', 'mono'],
+  register: 'neutral', intensity: 'medium', tags: ['comparacion', 'columnas', 'escala', 'mono'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // 3 columnas a misma escala (chico/medio/grande) -> "X veces mas". El mayor en acento, valor mono encima.
@@ -1732,7 +1732,7 @@ register({
 // ====================================================================== rating / prueba-social (mas)
 register({
   id: 'data.rating.bignum', lib: 'datakit', category: 'rating/prueba-social', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['rating', 'score', 'estrellas', 'mono'],
+  register: 'friendly', intensity: 'bold', tags: ['rating', 'score', 'estrellas', 'mono'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // score gigante (ej "4.9") + fila de estrellas debajo + cantidad de reviews mono. Prueba social directa.
@@ -1760,7 +1760,7 @@ register({
 // ====================================================================== timeline / proceso (mas)
 register({
   id: 'data.timeline.numbered', lib: 'datakit', category: 'timeline/proceso', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['proceso', 'pasos', 'numerado', 'mono'],
+  register: 'neutral', intensity: 'medium', tags: ['proceso', 'pasos', 'numerado', 'mono'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // 3 pasos numerados en tarjetas verticales (numero grande mono + titulo + linea). Cada tarjeta entra en orden.
@@ -1791,7 +1791,7 @@ register({
 // ====================================================================== numberStack (mas)
 register({
   id: 'data.stack.cards', lib: 'datakit', category: 'numberStack', tones: ['dark', 'light'], rubros: ['*'], weight: 1.1,
-  tags: ['kpi', 'tarjetas', 'grid', 'mono'],
+  register: 'neutral', intensity: 'medium', tags: ['kpi', 'tarjetas', 'grid', 'mono'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // 4 KPIs en grid 2x2 de tarjetas (numero mono grande + etiqueta). Dashboard compacto. La 1ra destacada.
@@ -1825,7 +1825,7 @@ register({
 // ====================================================================== progreso (mas)
 register({
   id: 'data.progress.barbig', lib: 'datakit', category: 'progreso', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['progreso', 'barra', 'porcentaje', 'mono'],
+  register: 'neutral', intensity: 'bold', tags: ['progreso', 'barra', 'porcentaje', 'mono'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // % GIGANTE arriba + barra de progreso gruesa con punto-cabeza debajo. Foco maximo en el numero.
@@ -1848,7 +1848,7 @@ register({
 
 register({
   id: 'data.progress.stepbar', lib: 'datakit', category: 'progreso', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  tags: ['progreso', 'pasos', 'stepper', 'mono'],
+  register: 'neutral', intensity: 'medium', tags: ['progreso', 'pasos', 'stepper', 'mono'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // stepper horizontal: 5 nodos numerados conectados; los completados en acento con tilde, el activo numerado.
@@ -1887,7 +1887,7 @@ register({
 // ====================================================================== comparacion / proporcion (mas)
 register({
   id: 'data.compare.stack100', lib: 'datakit', category: 'comparacion/proporcion', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['proporcion', 'apilada', '100%', 'mono'],
+  register: 'neutral', intensity: 'medium', tags: ['proporcion', 'apilada', '100%', 'mono'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // barra horizontal 100% apilada (3 segmentos) con % DENTRO de cada segmento + leyenda debajo. Composicion.
@@ -1958,7 +1958,7 @@ function flechaUp(ctx, cx, cy, s, color) {
 // ====================================================================== numeros-animados (mas)
 register({
   id: 'data.number.percentcircle', lib: 'datakit', category: 'numeros-animados', tones: ['dark', 'light'], rubros: ['*'], weight: 1.1,
-  tags: ['hero', 'porcentaje', 'marco', 'mono'],
+  register: 'neutral', intensity: 'bold', tags: ['hero', 'porcentaje', 'marco', 'mono'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // % GRANDE centrado dentro de un MARCO circular fino de acento (deco), con dos rulos cortos a los lados.
@@ -1988,7 +1988,7 @@ register({
 
 register({
   id: 'data.number.cardstat', lib: 'datakit', category: 'numeros-animados', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['hero', 'tarjeta', 'kpi', 'mono'],
+  register: 'neutral', intensity: 'medium', tags: ['hero', 'tarjeta', 'kpi', 'mono'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // numero hero DENTRO de una tarjeta de superficie con titulo arriba y chip de delta abajo-derecha. Limpio.
@@ -2028,7 +2028,7 @@ register({
 // ====================================================================== barras (mas)
 register({
   id: 'data.bars.range', lib: 'datakit', category: 'barras', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['barras', 'rango', 'min-max', 'flotante'],
+  register: 'neutral', intensity: 'soft', tags: ['barras', 'rango', 'min-max', 'flotante'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // 4 barras de RANGO (min..max flotantes) sobre un eje comun -> "de X a Y". Punto-marca en cada extremo.
@@ -2062,7 +2062,7 @@ register({
 
 register({
   id: 'data.bars.heatcol', lib: 'datakit', category: 'barras', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  tags: ['barras', 'columnas', 'intensidad', 'serie'],
+  register: 'neutral', intensity: 'medium', tags: ['barras', 'columnas', 'intensidad', 'serie'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // 8 columnas cuya OPACIDAD de acento crece con el valor (intensidad) -> mapa de calor en columnas. Pico solido.
@@ -2097,7 +2097,7 @@ register({
 // ====================================================================== anillos / radiales (mas)
 register({
   id: 'data.ring.activity', lib: 'datakit', category: 'anillos/radiales', tones: ['dark', 'light'], rubros: ['*'], weight: 1.1,
-  tags: ['anillos', 'actividad', 'concentrico', 'mono'],
+  register: 'neutral', intensity: 'medium', tags: ['anillos', 'actividad', 'concentrico', 'mono'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // 2 anillos de ACTIVIDAD concentricos (estilo "rings") con cap redondeado; 2 metricas + leyenda debajo.
@@ -2138,7 +2138,7 @@ register({
 // ====================================================================== donut (mas)
 register({
   id: 'data.donut.gauge270', lib: 'datakit', category: 'donut', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['donut', 'gauge', '270', 'porcentaje', 'mono'],
+  register: 'neutral', intensity: 'medium', tags: ['donut', 'gauge', '270', 'porcentaje', 'mono'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // gauge de 270 grados (3/4 de vuelta, hueco abajo) con numero grande al centro y etiquetas min/max. Limpio.
@@ -2170,7 +2170,7 @@ register({
 // ====================================================================== series / tendencia (mas)
 register({
   id: 'data.series.areaglow', lib: 'datakit', category: 'series/tendencia', tones: ['dark', 'light'], rubros: ['*'], weight: 1.1,
-  tags: ['serie', 'area', 'grilla', 'tendencia'],
+  register: 'neutral', intensity: 'medium', tags: ['serie', 'area', 'grilla', 'tendencia'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // serie de area suave con GRILLA de fondo (3 lineas h) + etiquetas de eje + valor final. Limpio "dashboard".
@@ -2212,7 +2212,7 @@ register({
 
 register({
   id: 'data.series.candles', lib: 'datakit', category: 'series/tendencia', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  tags: ['serie', 'velas', 'mercado', 'tendencia'],
+  register: 'neutral', intensity: 'medium', tags: ['serie', 'velas', 'mercado', 'tendencia'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // mini-velas (8) estilo mercado: cuerpo + mecha; alcistas en acento, bajistas atenuadas. Tendencia al alza.
@@ -2254,7 +2254,7 @@ register({
 // ====================================================================== comparacion / proporcion (mas)
 register({
   id: 'data.compare.tugofwar', lib: 'datakit', category: 'comparacion/proporcion', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['comparacion', 'balance', 'cuota', 'mono'],
+  register: 'neutral', intensity: 'medium', tags: ['comparacion', 'balance', 'cuota', 'mono'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // barra unica balance A|B con marcador que se asienta segun la cuota (la nuestra gana). % a cada lado.
@@ -2287,7 +2287,7 @@ register({
 
 register({
   id: 'data.compare.dumbbell', lib: 'datakit', category: 'comparacion/proporcion', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  tags: ['comparacion', 'dumbbell', 'antes-despues', 'mono'],
+  register: 'neutral', intensity: 'soft', tags: ['comparacion', 'dumbbell', 'antes-despues', 'mono'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // filas "dumbbell": 2 puntos unidos por una linea (antes atenuado -> despues acento) -> brecha visible.
@@ -2320,7 +2320,7 @@ register({
 // ====================================================================== rating / prueba-social (mas)
 register({
   id: 'data.rating.nps', lib: 'datakit', category: 'rating/prueba-social', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['rating', 'nps', 'gauge', 'mono'],
+  register: 'friendly', intensity: 'medium', tags: ['rating', 'nps', 'gauge', 'mono'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // medidor NPS: semicirculo de 3 tramos (detractores/pasivos/promotores) + aguja al score. Numero NPS al centro.
@@ -2358,7 +2358,7 @@ register({
 // ====================================================================== timeline / proceso (mas)
 register({
   id: 'data.timeline.zigzag', lib: 'datakit', category: 'timeline/proceso', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['timeline', 'alternado', 'pasos', 'mono'],
+  register: 'neutral', intensity: 'medium', tags: ['timeline', 'alternado', 'pasos', 'mono'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // timeline vertical ALTERNADO: linea central + nodos numerados; etiqueta a izq/der alternando. La linea se dibuja.
@@ -2403,7 +2403,7 @@ register({
 // ====================================================================== numberStack (mas)
 register({
   id: 'data.stack.bigsmall', lib: 'datakit', category: 'numberStack', tones: ['dark', 'light'], rubros: ['*'], weight: 1.1,
-  tags: ['kpi', 'hero', 'jerarquia', 'mono'],
+  register: 'neutral', intensity: 'bold', tags: ['kpi', 'hero', 'jerarquia', 'mono'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // 1 numero HERO arriba + 2 stats chicos lado a lado debajo (jerarquia). Regla de acento separa.
@@ -2437,7 +2437,7 @@ register({
 // ====================================================================== progreso (mas)
 register({
   id: 'data.progress.dialarc', lib: 'datakit', category: 'progreso', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['progreso', 'arco', 'escala', 'mono'],
+  register: 'neutral', intensity: 'medium', tags: ['progreso', 'arco', 'escala', 'mono'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
     // arco de progreso (3/4) con ESCALA de puntos alrededor (12 ticks que se encienden) + numero central. Premium.

@@ -10,7 +10,7 @@ const CLK = 0.6
 
 register({
   id: 'bg.gradient.mesh', lib: 'backgrounds', category: 'gradient-fields', tones: ['dark', 'light'], rubros: ['*'], weight: 1.4,
-  tags: ['calmo', 'universal'],
+  register: 'neutral', intensity: 'calm', tags: ['calmo', 'universal', 'gradiente'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed)
     const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, pal.bg0); g.addColorStop(1, pal.bg1)
@@ -36,7 +36,7 @@ register({
 
 register({
   id: 'bg.spotlight.stage', lib: 'backgrounds', category: 'gradient-fields', tones: ['dark'], rubros: ['*'], weight: 1,
-  tags: ['editorial', 'dramatico'],
+  register: 'editorial', intensity: 'soft', tags: ['editorial', 'dramatico', 'spotlight'],
   render(ctx, t, env) {
     const { pal } = env
     ctx.fillStyle = pal.bg1; ctx.fillRect(0, 0, W, H)
@@ -52,7 +52,7 @@ register({
 
 register({
   id: 'bg.geometric.grid', lib: 'backgrounds', category: 'geometric-graphic', tones: ['dark', 'light'], rubros: ['tech', 'finanzas', 'inmobiliaria', 'educacion', 'default'], weight: 0.9,
-  tags: ['tecnico', 'swiss'],
+  register: 'corporate', intensity: 'calm', tags: ['tecnico', 'swiss', 'grilla'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed)
     const g = ctx.createLinearGradient(0, 0, W, H); g.addColorStop(0, pal.bg0); g.addColorStop(1, pal.bg1)
@@ -89,7 +89,7 @@ function makeNoise(seed, oct = 3) {
 
 register({
   id: 'bg.generative.flowfield', lib: 'backgrounds', category: 'generative-art', tones: ['dark', 'light'], rubros: ['*'], weight: 0.8,
-  tags: ['generativo', 'organico', 'lineas'],
+  register: 'neutral', intensity: 'soft', tags: ['generativo', 'organico', 'lineas'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'flow')
     rampBg(ctx, pal)
@@ -120,8 +120,8 @@ register({
 })
 
 register({
-  id: 'bg.generative.contours', lib: 'backgrounds', category: 'generative-art', tones: ['dark', 'light'], rubros: ['*', 'inmobiliaria', 'finanzas', 'tech'], weight: 0.9,
-  tags: ['generativo', 'topografico', 'mapa'],
+  id: 'bg.generative.contours', lib: 'backgrounds', category: 'generative-art', tones: ['dark', 'light'], rubros: ['inmobiliaria', 'finanzas', 'tech'], weight: 0.9,
+  register: 'corporate', intensity: 'soft', tags: ['generativo', 'topografico', 'mapa'],
   render(ctx, t, env) {
     const { pal } = env
     rampBg(ctx, pal)
@@ -150,8 +150,8 @@ register({
 })
 
 register({
-  id: 'bg.generative.voronoi', lib: 'backgrounds', category: 'generative-art', tones: ['dark', 'light'], rubros: ['*', 'tech', 'arte'], weight: 0.7,
-  tags: ['generativo', 'celdas', 'cristal'],
+  id: 'bg.generative.voronoi', lib: 'backgrounds', category: 'generative-art', tones: ['dark', 'light'], rubros: ['tech', 'moda'], weight: 0.7,
+  register: 'neutral', intensity: 'soft', tags: ['generativo', 'celdas', 'cristal', 'facetado'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'voro')
     rampBg(ctx, pal)
@@ -186,7 +186,7 @@ register({
 
 register({
   id: 'bg.atmospheric.aurora', lib: 'backgrounds', category: 'atmospheric-organic', tones: ['dark'], rubros: ['*'], weight: 1.1,
-  tags: ['atmosferico', 'premium', 'aurora'],
+  register: 'editorial', intensity: 'soft', tags: ['atmosferico', 'premium', 'aurora'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'aur')
     ctx.fillStyle = pal.bg1; ctx.fillRect(0, 0, W, H)
@@ -222,7 +222,7 @@ register({
 
 register({
   id: 'bg.atmospheric.godrays', lib: 'backgrounds', category: 'atmospheric-organic', tones: ['dark', 'light'], rubros: ['*'], weight: 0.85,
-  tags: ['atmosferico', 'dramatico', 'luz'],
+  register: 'editorial', intensity: 'medium', tags: ['atmosferico', 'dramatico', 'luz'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'god')
     rampBg(ctx, pal)
@@ -261,7 +261,7 @@ register({
 
 register({
   id: 'bg.atmospheric.fluid', lib: 'backgrounds', category: 'atmospheric-organic', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['atmosferico', 'fluido', 'organico'],
+  register: 'friendly', intensity: 'soft', tags: ['atmosferico', 'fluido', 'organico'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'fluid')
     rampBg(ctx, pal)
@@ -290,8 +290,8 @@ register({
 // ============================================================================
 
 register({
-  id: 'bg.retroprint.halftone', lib: 'backgrounds', category: 'retro-print', tones: ['dark', 'light'], rubros: ['*', 'arte', 'gastronomia'], weight: 0.9,
-  tags: ['retro', 'print', 'puntos'],
+  id: 'bg.retroprint.halftone', lib: 'backgrounds', category: 'retro-print', tones: ['dark', 'light'], rubros: ['moda', 'gastronomia', 'arte'], weight: 0.9,
+  register: 'playful', intensity: 'bold', tags: ['retro', 'print', 'puntos', 'duotono'],
   render(ctx, t, env) {
     const { pal } = env
     // fondo plano de papel/tinta
@@ -323,8 +323,8 @@ register({
 })
 
 register({
-  id: 'bg.retroprint.sunburst', lib: 'backgrounds', category: 'retro-print', tones: ['dark', 'light'], rubros: ['*', 'gastronomia', 'eventos'], weight: 0.85,
-  tags: ['retro', '70s', 'rayos'],
+  id: 'bg.retroprint.sunburst', lib: 'backgrounds', category: 'retro-print', tones: ['dark', 'light'], rubros: ['gastronomia', 'default', 'moda'], weight: 0.85,
+  register: 'playful', intensity: 'medium', tags: ['retro', '70s', 'rayos'],
   render(ctx, t, env) {
     const { pal } = env
     const cx = W / 2, cy = H * 0.42
@@ -351,8 +351,8 @@ register({
 })
 
 register({
-  id: 'bg.retroprint.benday', lib: 'backgrounds', category: 'retro-print', tones: ['light'], rubros: ['*', 'arte'], weight: 0.7,
-  tags: ['retro', 'comic', 'benday'],
+  id: 'bg.retroprint.benday', lib: 'backgrounds', category: 'retro-print', tones: ['light'], rubros: ['moda', 'arte', 'default'], weight: 0.7,
+  register: 'playful', intensity: 'bold', tags: ['retro', 'comic', 'benday', 'pop'],
   render(ctx, t, env) {
     const { pal } = env
     ctx.fillStyle = pal.bg0; ctx.fillRect(0, 0, W, H)
@@ -380,8 +380,8 @@ register({
 // ============================================================================
 
 register({
-  id: 'bg.techhud.cybergrid', lib: 'backgrounds', category: 'tech-hud', tones: ['dark'], rubros: ['tech', 'finanzas', 'gaming', 'default', '*'], weight: 0.9,
-  tags: ['tech', 'cyber', 'perspectiva'],
+  id: 'bg.techhud.cybergrid', lib: 'backgrounds', category: 'tech-hud', tones: ['dark'], rubros: ['tech', 'moda', 'gaming'], weight: 0.9,
+  register: 'playful', intensity: 'bold', tags: ['tech', 'cyber', 'perspectiva', 'synthwave'],
   render(ctx, t, env) {
     const { pal } = env
     const g = ctx.createLinearGradient(0, 0, 0, H)
@@ -414,8 +414,8 @@ register({
 })
 
 register({
-  id: 'bg.techhud.hud', lib: 'backgrounds', category: 'tech-hud', tones: ['dark'], rubros: ['tech', 'gaming', 'default', '*'], weight: 0.8,
-  tags: ['tech', 'hud', 'interfaz'],
+  id: 'bg.techhud.hud', lib: 'backgrounds', category: 'tech-hud', tones: ['dark'], rubros: ['tech', 'gaming'], weight: 0.8,
+  register: 'playful', intensity: 'medium', tags: ['tech', 'hud', 'interfaz'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'hud')
     ctx.fillStyle = pal.bg1; ctx.fillRect(0, 0, W, H)
@@ -448,8 +448,8 @@ register({
 })
 
 register({
-  id: 'bg.techhud.blueprint', lib: 'backgrounds', category: 'tech-hud', tones: ['dark', 'light'], rubros: ['inmobiliaria', 'tech', 'construccion', 'default', '*'], weight: 0.85,
-  tags: ['tech', 'plano', 'blueprint'],
+  id: 'bg.techhud.blueprint', lib: 'backgrounds', category: 'tech-hud', tones: ['dark', 'light'], rubros: ['inmobiliaria', 'tech', 'construccion'], weight: 0.85,
+  register: 'corporate', intensity: 'soft', tags: ['tech', 'plano', 'blueprint'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'blue')
     // fondo tipo plano: en dark un azul de marca; en light papel
@@ -492,8 +492,8 @@ register({
 })
 
 register({
-  id: 'bg.techhud.crt', lib: 'backgrounds', category: 'tech-hud', tones: ['dark'], rubros: ['*', 'tech', 'gaming', 'arte'], weight: 0.7,
-  tags: ['tech', 'crt', 'scanlines', 'retro'],
+  id: 'bg.techhud.crt', lib: 'backgrounds', category: 'tech-hud', tones: ['dark'], rubros: ['tech', 'gaming', 'moda'], weight: 0.7,
+  register: 'playful', intensity: 'bold', tags: ['tech', 'crt', 'scanlines', 'retro'],
   render(ctx, t, env) {
     const { pal } = env
     const g = ctx.createRadialGradient(W / 2, H / 2, H * 0.1, W / 2, H / 2, H * 0.8)
@@ -522,7 +522,7 @@ register({
 
 register({
   id: 'bg.broadcast.lowerthird', lib: 'backgrounds', category: 'broadcast-news', tones: ['dark', 'light'], rubros: ['*', 'finanzas', 'deportes', 'default'], weight: 0.8,
-  tags: ['broadcast', 'noticiero', 'lower-third'],
+  register: 'corporate', intensity: 'medium', tags: ['broadcast', 'noticiero', 'lower-third'],
   render(ctx, t, env) {
     const { pal } = env
     rampBg(ctx, pal)
@@ -556,7 +556,7 @@ register({
 
 register({
   id: 'bg.broadcast.ticker', lib: 'backgrounds', category: 'broadcast-news', tones: ['dark', 'light'], rubros: ['*', 'finanzas', 'deportes', 'default'], weight: 0.7,
-  tags: ['broadcast', 'ticker', 'cinta'],
+  register: 'corporate', intensity: 'medium', tags: ['broadcast', 'ticker', 'cinta'],
   render(ctx, t, env) {
     const { pal } = env
     rampBg(ctx, pal)
@@ -605,7 +605,7 @@ function scrim(ctx, pal, { centerClear = 0.34, strength = null } = {}) {
 
 register({
   id: 'bg.chromey2k.liquidchrome', lib: 'backgrounds', category: 'chrome-y2k', tones: ['dark', 'light'], rubros: ['*', 'tech', 'gaming', 'arte', 'moda'], weight: 0.8,
-  tags: ['y2k', 'cromo', 'metalico', 'premium'],
+  register: 'playful', intensity: 'loud', tags: ['y2k', 'cromo', 'metalico', 'premium'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'chrome')
     // base oscura/clara
@@ -638,7 +638,7 @@ register({
 
 register({
   id: 'bg.chromey2k.frutigerglass', lib: 'backgrounds', category: 'chrome-y2k', tones: ['dark', 'light'], rubros: ['*', 'tech', 'salud', 'moda'], weight: 0.85,
-  tags: ['y2k', 'frutiger', 'glass', 'aqua', 'optimista'],
+  register: 'playful', intensity: 'bold', tags: ['y2k', 'frutiger', 'glass', 'aqua', 'optimista'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'frut')
     // cielo aqua suave (frutiger aero): rampa fria luminosa
@@ -680,7 +680,7 @@ register({
 
 register({
   id: 'bg.chromey2k.holofoil', lib: 'backgrounds', category: 'chrome-y2k', tones: ['dark', 'light'], rubros: ['*', 'arte', 'moda', 'gaming', 'eventos'], weight: 0.75,
-  tags: ['y2k', 'holografico', 'iridiscente', 'foil'],
+  register: 'playful', intensity: 'loud', tags: ['y2k', 'holografico', 'iridiscente', 'foil'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'holo')
     // base: gris cromo neutro oscuro/claro para que el iris de color destaque (no se mezcla con un bg del mismo hue)
@@ -760,7 +760,7 @@ function rubroBlob(ctx, cx, cy, baseR, rubro, t, r, phase) {
 
 register({
   id: 'bg.morphhero.cornerblob', lib: 'backgrounds', category: 'morph-protagonist', tones: ['dark', 'light'], rubros: ['*', 'inmobiliaria', 'gastronomia', 'tech', 'salud', 'finanzas', 'moda'], weight: 1,
-  tags: ['protagonista', 'morph', 'silueta', 'editorial'],
+  register: 'editorial', intensity: 'medium', tags: ['protagonista', 'morph', 'silueta', 'editorial'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'morphhero')
     const rubro = (env.content && env.content.rubro) || (env.rubro) || 'default'
@@ -789,7 +789,7 @@ register({
 
 register({
   id: 'bg.morphhero.duoblob', lib: 'backgrounds', category: 'morph-protagonist', tones: ['dark', 'light'], rubros: ['*', 'tech', 'finanzas', 'arte', 'moda'], weight: 0.85,
-  tags: ['protagonista', 'morph', 'duotono', 'contorno'],
+  register: 'editorial', intensity: 'medium', tags: ['protagonista', 'morph', 'duotono', 'contorno'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'duoblob')
     const rubro = (env.content && env.content.rubro) || (env.rubro) || 'default'
@@ -819,7 +819,7 @@ register({
 
 register({
   id: 'bg.lightpaper.creameditorial', lib: 'backgrounds', category: 'light-substrate-paper', tones: ['light'], rubros: ['*', 'moda', 'arte', 'gastronomia', 'inmobiliaria', 'educacion'], weight: 1.1,
-  tags: ['claro', 'editorial', 'crema', 'minimal', 'serio'],
+  register: 'editorial', intensity: 'calm', tags: ['claro', 'editorial', 'crema', 'minimal', 'serio'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'cream')
     // papel crema calido (no blanco puro): toma el hue de marca a baja saturacion, alta luminancia
@@ -857,7 +857,7 @@ register({
 
 register({
   id: 'bg.lightpaper.magazinespread', lib: 'backgrounds', category: 'light-substrate-paper', tones: ['light'], rubros: ['*', 'moda', 'arte', 'eventos', 'gastronomia'], weight: 0.9,
-  tags: ['claro', 'revista', 'spread', 'columnas', 'editorial'],
+  register: 'editorial', intensity: 'soft', tags: ['claro', 'revista', 'spread', 'columnas', 'editorial'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'mag')
     const hue = hexToHsl(pal.accent).h
@@ -903,7 +903,7 @@ register({
 
 register({
   id: 'bg.lightpaper.corpcards', lib: 'backgrounds', category: 'light-substrate-paper', tones: ['light'], rubros: ['*', 'finanzas', 'tech', 'inmobiliaria', 'salud', 'educacion'], weight: 0.95,
-  tags: ['claro', 'corporativo', 'tarjetas', 'limpio', 'serio'],
+  register: 'corporate', intensity: 'calm', tags: ['claro', 'corporativo', 'tarjetas', 'limpio', 'serio'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'cards')
     const hue = hexToHsl(pal.accent).h
@@ -962,7 +962,7 @@ function roundRect(ctx, x, y, w, h, rad) {
 
 register({
   id: 'bg.lightpaper.fiberkraft', lib: 'backgrounds', category: 'light-substrate-paper', tones: ['light'], rubros: ['*', 'gastronomia', 'arte', 'moda', 'eventos'], weight: 0.85,
-  tags: ['claro', 'papel', 'fibra', 'kraft', 'organico'],
+  register: 'friendly', intensity: 'soft', tags: ['claro', 'papel', 'fibra', 'kraft', 'organico'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'fiber')
     const hue = hexToHsl(pal.accent).h
@@ -1002,7 +1002,7 @@ register({
 
 register({
   id: 'bg.spatial.parallaxhills', lib: 'backgrounds', category: 'spatial-depth', tones: ['dark', 'light'], rubros: ['*', 'inmobiliaria', 'eventos', 'educacion'], weight: 0.9,
-  tags: ['profundidad', 'parallax', 'horizonte', 'capas'],
+  register: 'editorial', intensity: 'soft', tags: ['profundidad', 'parallax', 'horizonte', 'capas'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'hills')
     // cielo: rampa con horizonte
@@ -1046,7 +1046,7 @@ register({
 
 register({
   id: 'bg.spatial.tunnel', lib: 'backgrounds', category: 'spatial-depth', tones: ['dark', 'light'], rubros: ['*', 'tech', 'gaming', 'finanzas'], weight: 0.85,
-  tags: ['profundidad', 'tunel', 'faux-3d', 'punto-de-fuga'],
+  register: 'playful', intensity: 'bold', tags: ['profundidad', 'tunel', 'faux-3d', 'punto-de-fuga'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'tunnel')
     rampBg(ctx, pal)
@@ -1076,7 +1076,7 @@ register({
 
 register({
   id: 'bg.spatial.floatcards', lib: 'backgrounds', category: 'spatial-depth', tones: ['dark', 'light'], rubros: ['*', 'tech', 'finanzas', 'inmobiliaria'], weight: 0.8,
-  tags: ['profundidad', 'parallax', 'tarjetas', 'faux-3d'],
+  register: 'corporate', intensity: 'soft', tags: ['profundidad', 'parallax', 'tarjetas', 'faux-3d'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'floatc')
     rampBg(ctx, pal)
@@ -1112,7 +1112,7 @@ register({
 
 register({
   id: 'bg.generative.truchet', lib: 'backgrounds', category: 'generative-art', tones: ['dark', 'light'], rubros: ['*', 'tech', 'arte', 'educacion'], weight: 0.85,
-  tags: ['generativo', 'truchet', 'laberinto', 'geometrico'],
+  register: 'neutral', intensity: 'medium', tags: ['generativo', 'truchet', 'laberinto', 'geometrico'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'truchet')
     rampBg(ctx, pal)
@@ -1147,7 +1147,7 @@ register({
 
 register({
   id: 'bg.generative.poissondots', lib: 'backgrounds', category: 'generative-art', tones: ['dark', 'light'], rubros: ['*', 'tech', 'salud', 'arte'], weight: 0.8,
-  tags: ['generativo', 'packing', 'constelacion', 'puntos'],
+  register: 'neutral', intensity: 'soft', tags: ['generativo', 'packing', 'constelacion', 'puntos'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'poisson')
     rampBg(ctx, pal)
@@ -1185,7 +1185,7 @@ register({
 
 register({
   id: 'bg.generative.reactiondiff', lib: 'backgrounds', category: 'generative-art', tones: ['dark', 'light'], rubros: ['*', 'arte', 'salud', 'tech'], weight: 0.7,
-  tags: ['generativo', 'reaction-diffusion', 'organico', 'coral'],
+  register: 'editorial', intensity: 'medium', tags: ['generativo', 'reaction-diffusion', 'organico', 'coral'],
   render(ctx, t, env) {
     const { pal } = env
     rampBg(ctx, pal)
@@ -1222,7 +1222,7 @@ register({
 
 register({
   id: 'bg.gradient.duotonesweep', lib: 'backgrounds', category: 'gradient-fields', tones: ['dark', 'light'], rubros: ['*', 'moda', 'arte', 'tech'], weight: 1.1,
-  tags: ['calmo', 'duotono', 'editorial', 'sweep'],
+  register: 'editorial', intensity: 'soft', tags: ['calmo', 'duotono', 'editorial', 'sweep'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'duosweep')
     // base duotono en diagonal: acento -> acento2 mezclados con los fondos del tono
@@ -1247,7 +1247,7 @@ register({
 
 register({
   id: 'bg.gradient.radialbloom', lib: 'backgrounds', category: 'gradient-fields', tones: ['dark', 'light'], rubros: ['*', 'salud', 'educacion', 'eventos'], weight: 1,
-  tags: ['calmo', 'radial', 'bloom', 'concentrico', 'sereno'],
+  register: 'friendly', intensity: 'soft', tags: ['calmo', 'radial', 'bloom', 'concentrico', 'sereno'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'rbloom')
     rampBg(ctx, pal)
@@ -1278,7 +1278,7 @@ register({
 
 register({
   id: 'bg.geometric.isogrid', lib: 'backgrounds', category: 'geometric-graphic', tones: ['dark', 'light'], rubros: ['*', 'tech', 'inmobiliaria', 'finanzas', 'gaming'], weight: 0.85,
-  tags: ['tecnico', 'isometrico', 'cubos', '3d-falso'],
+  register: 'corporate', intensity: 'medium', tags: ['tecnico', 'isometrico', 'cubos', '3d-falso'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'iso')
     rampBg(ctx, pal)
@@ -1308,7 +1308,7 @@ register({
 
 register({
   id: 'bg.geometric.bauhaus', lib: 'backgrounds', category: 'geometric-graphic', tones: ['dark', 'light'], rubros: ['*', 'arte', 'educacion', 'moda', 'eventos'], weight: 0.8,
-  tags: ['swiss', 'bauhaus', 'formas', 'primario', 'editorial'],
+  register: 'editorial', intensity: 'bold', tags: ['swiss', 'bauhaus', 'formas', 'primario', 'editorial'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'bauhaus')
     ctx.fillStyle = pal.tone === 'light' ? pal.bg0 : pal.bg1; ctx.fillRect(0, 0, W, H)
@@ -1353,7 +1353,7 @@ function shuffledLocal(r, arr) { const a = arr.slice(); for (let i = a.length - 
 
 register({
   id: 'bg.atmospheric.starfield', lib: 'backgrounds', category: 'atmospheric-organic', tones: ['dark'], rubros: ['*', 'tech', 'gaming', 'eventos', 'arte'], weight: 0.85,
-  tags: ['atmosfera', 'estrellas', 'profundidad', 'noche', 'particulas'],
+  register: 'editorial', intensity: 'soft', tags: ['atmosfera', 'estrellas', 'profundidad', 'noche', 'particulas'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'stars')
     // cielo nocturno: rampa profunda hacia el acento oscuro
@@ -1383,7 +1383,7 @@ register({
 
 register({
   id: 'bg.atmospheric.smoke', lib: 'backgrounds', category: 'atmospheric-organic', tones: ['dark', 'light'], rubros: ['*', 'moda', 'arte', 'gastronomia'], weight: 0.75,
-  tags: ['atmosfera', 'humo', 'niebla', 'volumetrico', 'organico'],
+  register: 'editorial', intensity: 'soft', tags: ['atmosfera', 'humo', 'niebla', 'volumetrico', 'organico'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'smoke')
     rampBg(ctx, pal)
@@ -1417,7 +1417,7 @@ register({
 
 register({
   id: 'bg.retroprint.risoribbon', lib: 'backgrounds', category: 'retro-print', tones: ['dark', 'light'], rubros: ['*', 'arte', 'eventos', 'gastronomia', 'moda'], weight: 0.8,
-  tags: ['retro', 'riso', 'duotono', 'ondas', 'misregister'],
+  register: 'playful', intensity: 'bold', tags: ['retro', 'riso', 'duotono', 'ondas', 'misregister'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'riso')
     // papel plano
@@ -1455,7 +1455,7 @@ register({
 
 register({
   id: 'bg.techhud.radar', lib: 'backgrounds', category: 'tech-hud', tones: ['dark'], rubros: ['*', 'tech', 'finanzas', 'gaming', 'salud'], weight: 0.8,
-  tags: ['tech', 'radar', 'hud', 'concentrico', 'barrido'],
+  register: 'playful', intensity: 'bold', tags: ['tech', 'radar', 'hud', 'concentrico', 'barrido'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'radar')
     const g = ctx.createRadialGradient(W / 2, H * 0.5, 0, W / 2, H * 0.5, H * 0.7)
@@ -1494,7 +1494,7 @@ register({
 
 register({
   id: 'bg.techhud.dataflow', lib: 'backgrounds', category: 'tech-hud', tones: ['dark', 'light'], rubros: ['*', 'tech', 'finanzas', 'educacion'], weight: 0.8,
-  tags: ['tech', 'circuito', 'datos', 'paquetes', 'lineas'],
+  register: 'corporate', intensity: 'medium', tags: ['tech', 'circuito', 'datos', 'paquetes', 'lineas'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'dataflow')
     rampBg(ctx, pal)
@@ -1551,7 +1551,7 @@ register({
 
 register({
   id: 'bg.broadcast.scoreboard', lib: 'backgrounds', category: 'broadcast-news', tones: ['dark', 'light'], rubros: ['*', 'eventos', 'gaming', 'finanzas'], weight: 0.75,
-  tags: ['broadcast', 'deportes', 'marco', 'tira', 'en-vivo'],
+  register: 'playful', intensity: 'bold', tags: ['broadcast', 'deportes', 'marco', 'tira', 'en-vivo'],
   render(ctx, t, env) {
     const { pal } = env
     rampBg(ctx, pal)
@@ -1603,7 +1603,7 @@ register({
 
 register({
   id: 'bg.chromey2k.aurorafoil', lib: 'backgrounds', category: 'chrome-y2k', tones: ['dark', 'light'], rubros: ['*', 'moda', 'arte', 'tech', 'eventos'], weight: 0.8,
-  tags: ['y2k', 'aurora', 'holografico', 'iridiscente', 'premium'],
+  register: 'playful', intensity: 'loud', tags: ['y2k', 'aurora', 'holografico', 'iridiscente', 'premium'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'aurora')
     rampBg(ctx, pal)
@@ -1639,7 +1639,7 @@ register({
 
 register({
   id: 'bg.morphhero.ribbonband', lib: 'backgrounds', category: 'morph-protagonist', tones: ['dark', 'light'], rubros: ['*', 'moda', 'arte', 'eventos', 'tech'], weight: 0.8,
-  tags: ['protagonista', 'cinta', 'flujo', 'editorial', 'duotono'],
+  register: 'editorial', intensity: 'medium', tags: ['protagonista', 'cinta', 'flujo', 'editorial', 'duotono'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'ribbon')
     rampBg(ctx, pal)
@@ -1678,7 +1678,7 @@ register({
 
 register({
   id: 'bg.lightpaper.blueprintlight', lib: 'backgrounds', category: 'light-substrate-paper', tones: ['light'], rubros: ['*', 'inmobiliaria', 'tech', 'educacion', 'finanzas'], weight: 0.85,
-  tags: ['claro', 'blueprint', 'tecnico', 'arquitectura', 'serio'],
+  register: 'corporate', intensity: 'soft', tags: ['claro', 'blueprint', 'tecnico', 'arquitectura', 'serio'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'bplight')
     // papel tecnico claro (azulado muy leve)
@@ -1725,7 +1725,7 @@ register({
 
 register({
   id: 'bg.spatial.gridfloor', lib: 'backgrounds', category: 'spatial-depth', tones: ['dark', 'light'], rubros: ['*', 'tech', 'gaming', 'finanzas', 'eventos'], weight: 0.85,
-  tags: ['profundidad', 'piso', 'perspectiva', 'horizonte', 'synthwave'],
+  register: 'playful', intensity: 'bold', tags: ['profundidad', 'piso', 'perspectiva', 'horizonte', 'synthwave'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'gridfloor')
     const horizon = H * 0.44
@@ -1763,7 +1763,7 @@ register({
 
 register({
   id: 'bg.generative.wovenlines', lib: 'backgrounds', category: 'generative-art', tones: ['dark', 'light'], rubros: ['*', 'arte', 'moda', 'educacion', 'tech'], weight: 0.8,
-  tags: ['generativo', 'lineas', 'tejido', 'lattice', 'sinusoidal'],
+  register: 'neutral', intensity: 'soft', tags: ['generativo', 'lineas', 'tejido', 'lattice', 'sinusoidal'],
   render(ctx, t, env) {
     const { pal } = env
     rampBg(ctx, pal)
@@ -1804,7 +1804,7 @@ register({
 
 register({
   id: 'bg.seasonal.confetti', lib: 'backgrounds', category: 'seasonal-event', tones: ['dark', 'light'], rubros: ['eventos', 'gastronomia', 'educacion', 'moda'], weight: 0.6,
-  tags: ['seasonal', 'celebracion', 'confeti', 'festivo', 'opt-in'],
+  register: 'playful', intensity: 'bold', tags: ['seasonal', 'celebracion', 'confeti', 'festivo', 'opt-in'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'confetti')
     rampBg(ctx, pal)
@@ -1843,7 +1843,7 @@ register({
 
 register({
   id: 'bg.gradient.cornerglow', lib: 'backgrounds', category: 'gradient-fields', tones: ['dark', 'light'], rubros: ['*'], weight: 1.1,
-  tags: ['calmo', 'universal', 'esquinas', 'suave'],
+  register: 'neutral', intensity: 'calm', tags: ['calmo', 'universal', 'esquinas', 'suave'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'cglow')
     // base diagonal
@@ -1870,7 +1870,7 @@ register({
 
 register({
   id: 'bg.gradient.bandlayers', lib: 'backgrounds', category: 'gradient-fields', tones: ['dark', 'light'], rubros: ['*', 'moda', 'arte', 'eventos'], weight: 0.9,
-  tags: ['bandas', 'capas', 'horizonte', 'editorial'],
+  register: 'editorial', intensity: 'soft', tags: ['bandas', 'capas', 'horizonte', 'editorial'],
   render(ctx, t, env) {
     const { pal } = env
     rampBg(ctx, pal)
@@ -1899,7 +1899,7 @@ register({
 
 register({
   id: 'bg.geometric.chevrons', lib: 'backgrounds', category: 'geometric-graphic', tones: ['dark', 'light'], rubros: ['*', 'moda', 'deportes', 'eventos'], weight: 0.85,
-  tags: ['geometrico', 'chevron', 'flechas', 'movimiento'],
+  register: 'playful', intensity: 'bold', tags: ['geometrico', 'chevron', 'flechas', 'movimiento'],
   render(ctx, t, env) {
     const { pal } = env
     rampBg(ctx, pal)
@@ -1928,7 +1928,7 @@ register({
 
 register({
   id: 'bg.geometric.concentric', lib: 'backgrounds', category: 'geometric-graphic', tones: ['dark', 'light'], rubros: ['*', 'tech', 'arte', 'eventos'], weight: 0.8,
-  tags: ['geometrico', 'anillos', 'concentrico', 'radar', 'hipnotico'],
+  register: 'playful', intensity: 'bold', tags: ['geometrico', 'anillos', 'concentrico', 'radar', 'hipnotico'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'conc')
     rampBg(ctx, pal)
@@ -1951,7 +1951,7 @@ register({
 
 register({
   id: 'bg.geometric.diamondtile', lib: 'backgrounds', category: 'geometric-graphic', tones: ['dark', 'light'], rubros: ['*', 'moda', 'gastronomia', 'arte'], weight: 0.8,
-  tags: ['geometrico', 'rombos', 'argyle', 'mosaico'],
+  register: 'neutral', intensity: 'medium', tags: ['geometrico', 'rombos', 'argyle', 'mosaico'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'diam')
     rampBg(ctx, pal)
@@ -1984,7 +1984,7 @@ register({
 
 register({
   id: 'bg.generative.flowribbons', lib: 'backgrounds', category: 'generative-art', tones: ['dark', 'light'], rubros: ['*', 'arte', 'moda', 'tech'], weight: 0.8,
-  tags: ['generativo', 'flowfield', 'cintas', 'organico'],
+  register: 'editorial', intensity: 'soft', tags: ['generativo', 'flowfield', 'cintas', 'organico'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'fribbon')
     rampBg(ctx, pal)
@@ -2014,7 +2014,7 @@ register({
 
 register({
   id: 'bg.generative.cellpack', lib: 'backgrounds', category: 'generative-art', tones: ['dark', 'light'], rubros: ['*', 'tech', 'salud', 'educacion'], weight: 0.75,
-  tags: ['generativo', 'celdas', 'circulos', 'packing', 'organico'],
+  register: 'neutral', intensity: 'soft', tags: ['generativo', 'celdas', 'circulos', 'packing', 'organico'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'cellp')
     rampBg(ctx, pal)
@@ -2045,7 +2045,7 @@ register({
 
 register({
   id: 'bg.atmospheric.bokeh', lib: 'backgrounds', category: 'atmospheric-organic', tones: ['dark', 'light'], rubros: ['*', 'eventos', 'moda', 'gastronomia'], weight: 0.9,
-  tags: ['atmosferico', 'bokeh', 'luces', 'desenfoque', 'festivo'],
+  register: 'friendly', intensity: 'soft', tags: ['atmosferico', 'bokeh', 'luces', 'desenfoque', 'festivo'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'bokeh')
     rampBg(ctx, pal)
@@ -2071,7 +2071,7 @@ register({
 
 register({
   id: 'bg.atmospheric.mistlayers', lib: 'backgrounds', category: 'atmospheric-organic', tones: ['dark', 'light'], rubros: ['*', 'inmobiliaria', 'salud', 'arte'], weight: 0.95,
-  tags: ['atmosferico', 'niebla', 'capas', 'calmo', 'montanas'],
+  register: 'editorial', intensity: 'calm', tags: ['atmosferico', 'niebla', 'capas', 'calmo', 'montanas'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'mist')
     rampBg(ctx, pal)
@@ -2103,7 +2103,7 @@ register({
 
 register({
   id: 'bg.retroprint.checker', lib: 'backgrounds', category: 'retro-print', tones: ['dark', 'light'], rubros: ['*', 'gastronomia', 'eventos', 'arte'], weight: 0.75,
-  tags: ['retro', 'damero', 'perspectiva', 'print'],
+  register: 'playful', intensity: 'bold', tags: ['retro', 'damero', 'perspectiva', 'print'],
   render(ctx, t, env) {
     const { pal } = env
     rampBg(ctx, pal)
@@ -2135,7 +2135,7 @@ register({
 
 register({
   id: 'bg.techhud.waveform', lib: 'backgrounds', category: 'tech-hud', tones: ['dark', 'light'], rubros: ['*', 'tech', 'gaming', 'arte', 'educacion'], weight: 0.8,
-  tags: ['tech', 'audio', 'onda', 'ecualizador', 'datos'],
+  register: 'playful', intensity: 'bold', tags: ['tech', 'audio', 'onda', 'ecualizador', 'datos'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'wform')
     rampBg(ctx, pal)
@@ -2167,7 +2167,7 @@ register({
 
 register({
   id: 'bg.techhud.terminal', lib: 'backgrounds', category: 'tech-hud', tones: ['dark', 'light'], rubros: ['*', 'tech', 'educacion', 'finanzas'], weight: 0.7,
-  tags: ['tech', 'terminal', 'codigo', 'matrix', 'consola'],
+  register: 'corporate', intensity: 'medium', tags: ['tech', 'terminal', 'codigo', 'matrix', 'consola'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'term')
     // fondo consola
@@ -2204,7 +2204,7 @@ register({
 
 register({
   id: 'bg.spatial.starwarp', lib: 'backgrounds', category: 'spatial-depth', tones: ['dark'], rubros: ['*', 'tech', 'gaming', 'eventos'], weight: 0.8,
-  tags: ['profundidad', 'estrellas', 'warp', 'hiperespacio', 'velocidad'],
+  register: 'playful', intensity: 'loud', tags: ['profundidad', 'estrellas', 'warp', 'hiperespacio', 'velocidad'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'warp')
     // campo de estrellas saliendo desde el centro (efecto warp), trazos radiales segun profundidad
@@ -2237,7 +2237,7 @@ register({
 
 register({
   id: 'bg.spatial.layeredpanes', lib: 'backgrounds', category: 'spatial-depth', tones: ['dark', 'light'], rubros: ['*', 'inmobiliaria', 'tech', 'finanzas'], weight: 0.85,
-  tags: ['profundidad', 'paneles', 'glass', 'parallax', 'capas'],
+  register: 'corporate', intensity: 'soft', tags: ['profundidad', 'paneles', 'glass', 'parallax', 'capas'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'panes')
     rampBg(ctx, pal)
@@ -2266,7 +2266,7 @@ register({
 
 register({
   id: 'bg.chromey2k.lavalamp', lib: 'backgrounds', category: 'chrome-y2k', tones: ['dark', 'light'], rubros: ['*', 'moda', 'arte', 'gaming', 'eventos'], weight: 0.75,
-  tags: ['y2k', 'metaballs', 'gradient', 'lava', 'organico'],
+  register: 'playful', intensity: 'bold', tags: ['y2k', 'metaballs', 'gradient', 'lava', 'organico'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'lava')
     // base con rampa fria/calida segun marca
@@ -2305,7 +2305,7 @@ register({
 
 register({
   id: 'bg.gradient.silkfold', lib: 'backgrounds', category: 'gradient-fields', tones: ['dark', 'light'], rubros: ['*', 'moda', 'arte', 'salud'], weight: 1,
-  tags: ['calmo', 'seda', 'pliegues', 'premium', 'editorial'],
+  register: 'editorial', intensity: 'soft', tags: ['calmo', 'seda', 'pliegues', 'premium', 'editorial'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'silk')
     rampBg(ctx, pal)
@@ -2340,7 +2340,7 @@ register({
 
 register({
   id: 'bg.gradient.glowmesh', lib: 'backgrounds', category: 'gradient-fields', tones: ['dark', 'light'], rubros: ['*', 'tech', 'salud', 'educacion'], weight: 1.05,
-  tags: ['calmo', 'mesh', 'gradiente', 'universal', 'moderno'],
+  register: 'neutral', intensity: 'soft', tags: ['calmo', 'mesh', 'gradiente', 'universal', 'moderno'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'gmesh')
     rampBg(ctx, pal)
@@ -2368,7 +2368,7 @@ register({
 
 register({
   id: 'bg.geometric.stripewave', lib: 'backgrounds', category: 'geometric-graphic', tones: ['dark', 'light'], rubros: ['*', 'moda', 'eventos', 'deportes'], weight: 0.85,
-  tags: ['geometrico', 'rayas', 'onda', 'movimiento', 'optico'],
+  register: 'playful', intensity: 'bold', tags: ['geometrico', 'rayas', 'onda', 'movimiento', 'optico'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'stripew')
     rampBg(ctx, pal)
@@ -2400,7 +2400,7 @@ register({
 
 register({
   id: 'bg.geometric.triangulation', lib: 'backgrounds', category: 'geometric-graphic', tones: ['dark', 'light'], rubros: ['*', 'tech', 'finanzas', 'arte'], weight: 0.8,
-  tags: ['geometrico', 'lowpoly', 'triangulos', 'facetado', 'cristal'],
+  register: 'neutral', intensity: 'medium', tags: ['geometrico', 'lowpoly', 'triangulos', 'facetado', 'cristal'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'trig')
     rampBg(ctx, pal)
@@ -2432,7 +2432,7 @@ register({
 
 register({
   id: 'bg.generative.spirograph', lib: 'backgrounds', category: 'generative-art', tones: ['dark', 'light'], rubros: ['*', 'arte', 'educacion', 'tech'], weight: 0.75,
-  tags: ['generativo', 'espirografo', 'lineas', 'matematico', 'hipnotico'],
+  register: 'playful', intensity: 'medium', tags: ['generativo', 'espirografo', 'lineas', 'matematico', 'hipnotico'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'spiro')
     rampBg(ctx, pal)
@@ -2469,7 +2469,7 @@ register({
 
 register({
   id: 'bg.generative.driftparticles', lib: 'backgrounds', category: 'generative-art', tones: ['dark', 'light'], rubros: ['*', 'tech', 'salud', 'eventos'], weight: 0.85,
-  tags: ['generativo', 'particulas', 'red', 'constelacion', 'flotante'],
+  register: 'neutral', intensity: 'soft', tags: ['generativo', 'particulas', 'red', 'constelacion', 'flotante'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'drift')
     rampBg(ctx, pal)
@@ -2502,7 +2502,7 @@ register({
 
 register({
   id: 'bg.retroprint.memphis', lib: 'backgrounds', category: 'retro-print', tones: ['dark', 'light'], rubros: ['*', 'arte', 'eventos', 'moda', 'educacion'], weight: 0.8,
-  tags: ['retro', 'memphis', '80s', 'formas', 'patron', 'ludico'],
+  register: 'playful', intensity: 'loud', tags: ['retro', 'memphis', '80s', 'formas', 'patron', 'ludico'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'memph')
     ctx.fillStyle = pal.tone === 'light' ? pal.bg0 : pal.bg1; ctx.fillRect(0, 0, W, H)
@@ -2534,7 +2534,7 @@ register({
 
 register({
   id: 'bg.retroprint.stamp', lib: 'backgrounds', category: 'retro-print', tones: ['dark', 'light'], rubros: ['*', 'gastronomia', 'arte', 'eventos'], weight: 0.7,
-  tags: ['retro', 'sello', 'grunge', 'tinta', 'vintage'],
+  register: 'playful', intensity: 'medium', tags: ['retro', 'sello', 'grunge', 'tinta', 'vintage'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'stamp')
     ctx.fillStyle = pal.tone === 'light' ? pal.bg0 : pal.bg1; ctx.fillRect(0, 0, W, H)
@@ -2572,7 +2572,7 @@ register({
 
 register({
   id: 'bg.techhud.matrixrain', lib: 'backgrounds', category: 'tech-hud', tones: ['dark'], rubros: ['*', 'tech', 'gaming', 'educacion'], weight: 0.72,
-  tags: ['tech', 'matrix', 'lluvia', 'codigo', 'columnas'],
+  register: 'playful', intensity: 'bold', tags: ['tech', 'matrix', 'lluvia', 'codigo', 'columnas'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'mrain')
     ctx.fillStyle = darken(pal.bg0, 0.12); ctx.fillRect(0, 0, W, H)
@@ -2603,7 +2603,7 @@ register({
 
 register({
   id: 'bg.techhud.circuitboard', lib: 'backgrounds', category: 'tech-hud', tones: ['dark', 'light'], rubros: ['*', 'tech', 'finanzas', 'educacion'], weight: 0.78,
-  tags: ['tech', 'pcb', 'circuito', 'nodos', 'trazas'],
+  register: 'corporate', intensity: 'medium', tags: ['tech', 'pcb', 'circuito', 'nodos', 'trazas'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'pcb')
     rampBg(ctx, pal)
@@ -2655,7 +2655,7 @@ register({
 
 register({
   id: 'bg.spatial.isocity', lib: 'backgrounds', category: 'spatial-depth', tones: ['dark', 'light'], rubros: ['*', 'inmobiliaria', 'tech', 'finanzas'], weight: 0.82,
-  tags: ['profundidad', 'isometrico', 'ciudad', 'edificios', 'skyline'],
+  register: 'corporate', intensity: 'medium', tags: ['profundidad', 'isometrico', 'ciudad', 'edificios', 'skyline'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'isocity')
     rampBg(ctx, pal)
@@ -2705,7 +2705,7 @@ register({
 
 register({
   id: 'bg.spatial.depthdots', lib: 'backgrounds', category: 'spatial-depth', tones: ['dark', 'light'], rubros: ['*', 'tech', 'salud', 'arte'], weight: 0.8,
-  tags: ['profundidad', 'puntos', 'campo', '3d-falso', 'parallax'],
+  register: 'neutral', intensity: 'soft', tags: ['profundidad', 'puntos', 'campo', '3d-falso', 'parallax'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'ddots')
     rampBg(ctx, pal)
@@ -2732,7 +2732,7 @@ register({
 
 register({
   id: 'bg.atmospheric.inkdiffuse', lib: 'backgrounds', category: 'atmospheric-organic', tones: ['dark', 'light'], rubros: ['*', 'arte', 'moda', 'salud'], weight: 0.85,
-  tags: ['atmosferico', 'tinta', 'acuarela', 'difusion', 'organico'],
+  register: 'editorial', intensity: 'soft', tags: ['atmosferico', 'tinta', 'acuarela', 'difusion', 'organico'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'ink')
     rampBg(ctx, pal)
@@ -2769,7 +2769,7 @@ register({
 
 register({
   id: 'bg.atmospheric.rainglass', lib: 'backgrounds', category: 'atmospheric-organic', tones: ['dark', 'light'], rubros: ['*', 'moda', 'arte', 'eventos'], weight: 0.75,
-  tags: ['atmosferico', 'lluvia', 'vidrio', 'gotas', 'melancolico'],
+  register: 'editorial', intensity: 'soft', tags: ['atmosferico', 'lluvia', 'vidrio', 'gotas', 'melancolico'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'rain')
     // fondo: rampa + tinte de acento para que el vidrio tenga color (no gris)
@@ -2812,7 +2812,7 @@ register({
 
 register({
   id: 'bg.chromey2k.vaporsun', lib: 'backgrounds', category: 'chrome-y2k', tones: ['dark', 'light'], rubros: ['*', 'arte', 'moda', 'gaming', 'eventos'], weight: 0.78,
-  tags: ['y2k', 'vaporwave', 'sol', 'gradiente', 'retro', 'sintetico'],
+  register: 'playful', intensity: 'loud', tags: ['y2k', 'vaporwave', 'sol', 'gradiente', 'retro', 'sintetico'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'vapor')
     // cielo vaporwave: rampa vertical caliente->fria entre los acentos

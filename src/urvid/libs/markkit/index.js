@@ -56,8 +56,8 @@ function starPath(ctx, cx, cy, rad, m = 4, k = 0.38, rot = 0) {
 // ============================================================================
 
 register({
-  id: 'mark.morph.blob', lib: 'markkit', category: 'formas-morphs', tones: ['dark', 'light'], rubros: ['*'], weight: 1.1,
-  tags: ['organico', 'latido', 'acento'],
+  id: 'mark.morph.blob', lib: 'markkit', category: 'formas-morphs', tones: ['dark', 'light'], rubros: ['belleza', 'salud', 'gastronomia', 'default'], weight: 1.1,
+  register: 'friendly', intensity: 'medium', tags: ['organico', 'latido', 'acento', 'blob'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x10a)
     const rad = W * 0.26, breathe = 1 + 0.04 * Math.sin(t * 1.1)
@@ -77,8 +77,8 @@ register({
 })
 
 register({
-  id: 'mark.morph.ring-pulse', lib: 'markkit', category: 'formas-morphs', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['anillo', 'pulso', 'tech'],
+  id: 'mark.morph.ring-pulse', lib: 'markkit', category: 'formas-morphs', tones: ['dark', 'light'], rubros: ['tech', 'fitness', 'finanzas', 'default'], weight: 1,
+  register: 'neutral', intensity: 'medium', tags: ['anillo', 'pulso', 'tech'],
   render(ctx, t, env) {
     const { pal } = env
     ctx.save(); ctx.translate(CX, CY)
@@ -104,8 +104,8 @@ register({
 })
 
 register({
-  id: 'mark.morph.poly-spin', lib: 'markkit', category: 'formas-morphs', tones: ['dark', 'light'], rubros: ['tech', 'finanzas', 'default', 'industria'], weight: 0.9,
-  tags: ['geometrico', 'rotacion', 'tech'],
+  id: 'mark.morph.poly-spin', lib: 'markkit', category: 'formas-morphs', tones: ['dark', 'light'], rubros: ['tech', 'finanzas', 'default'], weight: 0.9,
+  register: 'corporate', intensity: 'medium', tags: ['geometrico', 'rotacion', 'tech'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x5e1)
     const n = 3 + (r() * 4 | 0)  // 3..6 lados, estable por seed
@@ -128,8 +128,8 @@ register({
 // ============================================================================
 
 register({
-  id: 'mark.icon.home', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['inmobiliaria', 'construccion', 'default'], weight: 1.1,
-  tags: ['icono', 'inmobiliaria', 'casa'],
+  id: 'mark.icon.home', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['inmobiliaria', 'default'], weight: 1.1,
+  register: 'friendly', intensity: 'medium', tags: ['icono', 'casa', 'inmobiliaria'],
   render(ctx, t, env) {
     const { pal } = env
     const s = W * 0.2, ap = spring(inv(t, 0, 0.8), { zeta: 0.5, freq: 2.0 })
@@ -153,7 +153,7 @@ register({
 
 register({
   id: 'mark.icon.chat', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['icono', 'mensaje', 'contacto', 'whatsapp'],
+  register: 'friendly', intensity: 'medium', tags: ['icono', 'mensaje', 'contacto', 'burbuja'],
   render(ctx, t, env) {
     const { pal } = env
     const s = W * 0.2, ap = eOutBack(inv(t, 0, 0.7))
@@ -175,8 +175,8 @@ register({
 })
 
 register({
-  id: 'mark.icon.spark-idea', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['educacion', 'tech', 'creatividad', 'default'], weight: 0.9,
-  tags: ['icono', 'idea', 'bombilla'],
+  id: 'mark.icon.spark-idea', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['educacion', 'tech', 'default'], weight: 0.9,
+  register: 'friendly', intensity: 'medium', tags: ['icono', 'idea', 'bombilla'],
   render(ctx, t, env) {
     const { pal } = env
     const s = W * 0.16, ap = spring(inv(t, 0, 0.8), { zeta: 0.5, freq: 2.0 })
@@ -201,8 +201,8 @@ register({
 })
 
 register({
-  id: 'mark.icon.tag-price', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['retail', 'inmobiliaria', 'finanzas', 'default'], weight: 0.9,
-  tags: ['icono', 'precio', 'etiqueta', 'oferta'],
+  id: 'mark.icon.tag-price', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['inmobiliaria', 'finanzas', 'default'], weight: 0.9,
+  register: 'friendly', intensity: 'medium', tags: ['icono', 'precio', 'etiqueta', 'oferta'],
   render(ctx, t, env) {
     const { pal } = env
     const s = W * 0.18, ap = eOutBack(inv(t, 0, 0.7)), sway = Math.sin(t * 1.6) * 0.08
@@ -221,8 +221,8 @@ register({
 })
 
 register({
-  id: 'mark.icon.pin-loc', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['inmobiliaria', 'turismo', 'gastronomia', 'default'], weight: 0.9,
-  tags: ['icono', 'ubicacion', 'mapa', 'pin'],
+  id: 'mark.icon.pin-loc', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['inmobiliaria', 'gastronomia', 'default'], weight: 0.9,
+  register: 'neutral', intensity: 'medium', tags: ['icono', 'ubicacion', 'mapa', 'pin'],
   render(ctx, t, env) {
     const { pal } = env
     const s = W * 0.16
@@ -246,7 +246,7 @@ register({
 
 register({
   id: 'mark.icon.check-seal', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['icono', 'check', 'aprobado', 'confianza'],
+  register: 'neutral', intensity: 'medium', tags: ['icono', 'check', 'aprobado', 'confianza'],
   render(ctx, t, env) {
     const { pal } = env
     const s = W * 0.2, ap = spring(inv(t, 0, 0.8), { zeta: 0.45, freq: 2.2 })
@@ -278,7 +278,7 @@ register({
 
 register({
   id: 'mark.divider.rule-grow', lib: 'markkit', category: 'divisores-conectores', tones: ['dark', 'light'], rubros: ['*'], weight: 1.2,
-  tags: ['regla', 'divisor', 'minimal'],
+  register: 'neutral', intensity: 'soft', tags: ['regla', 'divisor', 'minimal'],
   render(ctx, t, env) {
     const { pal } = env
     const full = W * 0.62, grow = eOutCubic(inv(t, 0.1, 0.9)), w = full * grow
@@ -306,8 +306,8 @@ register({
 })
 
 register({
-  id: 'mark.divider.dotted-flow', lib: 'markkit', category: 'divisores-conectores', tones: ['dark', 'light'], rubros: ['tech', 'logistica', 'default', 'educacion'], weight: 0.9,
-  tags: ['conector', 'puntos', 'flujo'],
+  id: 'mark.divider.dotted-flow', lib: 'markkit', category: 'divisores-conectores', tones: ['dark', 'light'], rubros: ['tech', 'educacion', 'default'], weight: 0.9,
+  register: 'neutral', intensity: 'soft', tags: ['conector', 'puntos', 'flujo'],
   render(ctx, t, env) {
     const { pal } = env
     const span = W * 0.66, n = 11, gap = span / (n - 1)
@@ -327,7 +327,7 @@ register({
 
 register({
   id: 'mark.connector.arrow', lib: 'markkit', category: 'divisores-conectores', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  tags: ['flecha', 'direccion', 'cta'],
+  register: 'neutral', intensity: 'medium', tags: ['flecha', 'direccion', 'cta'],
   render(ctx, t, env) {
     const { pal } = env
     const full = W * 0.5, grow = eOutCubic(inv(t, 0.1, 0.85)), w = full * grow
@@ -360,7 +360,7 @@ register({
 
 register({
   id: 'mark.frame.brackets', lib: 'markkit', category: 'marcos-contenedores', tones: ['dark', 'light'], rubros: ['*'], weight: 1.1,
-  tags: ['marco', 'corchetes', 'foco', 'editorial'],
+  register: 'editorial', intensity: 'soft', tags: ['marco', 'corchetes', 'foco', 'editorial'],
   render(ctx, t, env) {
     const { pal } = env
     const bw = W * 0.62, bh = H * 0.42, len = Math.min(bw, bh) * 0.32
@@ -385,7 +385,7 @@ register({
 
 register({
   id: 'mark.frame.card-rise', lib: 'markkit', category: 'marcos-contenedores', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['card', 'contenedor', 'superficie'],
+  register: 'neutral', intensity: 'soft', tags: ['card', 'contenedor', 'superficie'],
   render(ctx, t, env) {
     const { pal } = env
     const cw = W * 0.66, ch = H * 0.4
@@ -419,7 +419,7 @@ register({
 
 register({
   id: 'mark.frame.badge-pill', lib: 'markkit', category: 'marcos-contenedores', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['badge', 'pill', 'etiqueta', 'kicker'],
+  register: 'neutral', intensity: 'medium', tags: ['badge', 'pill', 'etiqueta', 'kicker'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env
     const label = (content && (content.kicker || content.cta || content.tagline)) ? String(content.kicker || content.cta || content.tagline) : 'NOVEDAD'
@@ -454,8 +454,8 @@ register({
 // ============================================================================
 
 register({
-  id: 'mark.accent.quote', lib: 'markkit', category: 'decoradores-acentos', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['comillas', 'cita', 'editorial'],
+  id: 'mark.accent.quote', lib: 'markkit', category: 'decoradores-acentos', tones: ['dark', 'light'], rubros: ['moda', 'belleza', 'default'], weight: 1,
+  register: 'editorial', intensity: 'soft', tags: ['comillas', 'cita', 'editorial'],
   render(ctx, t, env) {
     const { pal, fonts } = env
     const ap = eOutBack(inv(t, 0, 0.6)), drift = Math.sin(t * 1.2) * 4
@@ -471,7 +471,7 @@ register({
 
 register({
   id: 'mark.accent.chevrons', lib: 'markkit', category: 'decoradores-acentos', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['chevron', 'avanzar', 'ritmo'],
+  register: 'neutral', intensity: 'medium', tags: ['chevron', 'avanzar', 'ritmo'],
   render(ctx, t, env) {
     const { pal } = env
     ctx.save(); ctx.translate(CX, CY)
@@ -489,8 +489,8 @@ register({
 })
 
 register({
-  id: 'mark.accent.sparkles', lib: 'markkit', category: 'decoradores-acentos', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  tags: ['sparkle', 'destello', 'magia', 'premium'],
+  id: 'mark.accent.sparkles', lib: 'markkit', category: 'decoradores-acentos', tones: ['dark', 'light'], rubros: ['moda', 'belleza', 'default'], weight: 0.9,
+  register: 'playful', intensity: 'bold', tags: ['sparkle', 'destello', 'premium'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x59a)
     ctx.save(); ctx.translate(CX, CY)
@@ -515,7 +515,7 @@ register({
 
 register({
   id: 'mark.accent.underline-swash', lib: 'markkit', category: 'decoradores-acentos', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['subrayado', 'enfasis', 'trazo'],
+  register: 'friendly', intensity: 'medium', tags: ['subrayado', 'enfasis', 'trazo'],
   render(ctx, t, env) {
     const { pal } = env
     const w = W * 0.56, dp = eOutCubic(inv(t, 0.1, 0.9))
@@ -549,8 +549,8 @@ register({
 // ============================================================================
 
 register({
-  id: 'mark.substrate.dot-matrix', lib: 'markkit', category: 'sustratos-grillas', tones: ['dark', 'light'], rubros: ['tech', 'finanzas', 'default', 'industria'], weight: 0.8,
-  tags: ['puntos', 'grilla', 'tech', 'sustrato'],
+  id: 'mark.substrate.dot-matrix', lib: 'markkit', category: 'sustratos-grillas', tones: ['dark', 'light'], rubros: ['tech', 'finanzas', 'default'], weight: 0.8,
+  register: 'corporate', intensity: 'soft', tags: ['puntos', 'grilla', 'tech', 'sustrato'],
   render(ctx, t, env) {
     const { pal } = env
     const bw = W * 0.7, bh = H * 0.46, step = 26
@@ -571,8 +571,8 @@ register({
 })
 
 register({
-  id: 'mark.substrate.concentric', lib: 'markkit', category: 'sustratos-grillas', tones: ['dark', 'light'], rubros: ['*'], weight: 0.8,
-  tags: ['concentrico', 'radar', 'foco', 'sustrato'],
+  id: 'mark.substrate.concentric', lib: 'markkit', category: 'sustratos-grillas', tones: ['dark', 'light'], rubros: ['tech', 'fitness', 'default'], weight: 0.8,
+  register: 'neutral', intensity: 'soft', tags: ['concentrico', 'radar', 'foco', 'sustrato'],
   render(ctx, t, env) {
     const { pal } = env
     ctx.save(); ctx.translate(CX, CY)
@@ -618,8 +618,8 @@ function squirclePath(ctx, cx, cy, rx, ry, n = 4) {
 // ---------- formas/morphs (anti-blob: deliberadas, geometricas-organicas) ----------
 
 register({
-  id: 'mark.morph.squircle-morph', lib: 'markkit', category: 'formas-morphs', tones: ['dark', 'light'], rubros: ['tech', 'finanzas', 'default', 'retail'], weight: 1,
-  tags: ['squircle', 'morph', 'geometrico', 'premium'],
+  id: 'mark.morph.squircle-morph', lib: 'markkit', category: 'formas-morphs', tones: ['dark', 'light'], rubros: ['tech', 'finanzas', 'default'], weight: 1,
+  register: 'editorial', intensity: 'medium', tags: ['squircle', 'morph', 'geometrico', 'premium'],
   render(ctx, t, env) {
     const { pal } = env
     const ap = spring(inv(t, 0, 0.85), { zeta: 0.55, freq: 1.9 })
@@ -640,8 +640,8 @@ register({
 })
 
 register({
-  id: 'mark.morph.petal-rosette', lib: 'markkit', category: 'formas-morphs', tones: ['dark', 'light'], rubros: ['salud', 'belleza', 'gastronomia', 'default', 'creatividad'], weight: 0.9,
-  tags: ['rosetón', 'petalos', 'organico', 'rotacion'],
+  id: 'mark.morph.petal-rosette', lib: 'markkit', category: 'formas-morphs', tones: ['dark', 'light'], rubros: ['belleza', 'salud', 'gastronomia', 'default'], weight: 0.9,
+  register: 'friendly', intensity: 'medium', tags: ['roseton', 'petalos', 'organico', 'rotacion'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x9e7)
     const petals = 5 + (r() * 3 | 0)  // 5..7, estable por seed
@@ -667,8 +667,8 @@ register({
 })
 
 register({
-  id: 'mark.morph.wave-bars', lib: 'markkit', category: 'formas-morphs', tones: ['dark', 'light'], rubros: ['musica', 'podcast', 'tech', 'default'], weight: 0.9,
-  tags: ['ondas', 'ecualizador', 'audio', 'latido'],
+  id: 'mark.morph.wave-bars', lib: 'markkit', category: 'formas-morphs', tones: ['dark', 'light'], rubros: ['moda', 'tech', 'default'], weight: 0.9,
+  register: 'playful', intensity: 'bold', tags: ['ondas', 'ecualizador', 'audio', 'latido'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0xa17)
     const N = 7, gap = W * 0.07, ph = []
@@ -691,8 +691,8 @@ register({
 // ---------- iconos por dominio (nuevos rubros) ----------
 
 register({
-  id: 'mark.icon.calendar', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['eventos', 'educacion', 'servicios', 'default'], weight: 0.9,
-  tags: ['icono', 'calendario', 'fecha', 'agenda'],
+  id: 'mark.icon.calendar', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['educacion', 'default'], weight: 0.9,
+  register: 'neutral', intensity: 'medium', tags: ['icono', 'calendario', 'fecha', 'agenda'],
   render(ctx, t, env) {
     const { pal } = env
     const s = W * 0.18, ap = spring(inv(t, 0, 0.8), { zeta: 0.5, freq: 2.0 })
@@ -725,8 +725,8 @@ register({
 })
 
 register({
-  id: 'mark.icon.cart', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['retail', 'ecommerce', 'gastronomia', 'default'], weight: 0.9,
-  tags: ['icono', 'carrito', 'compra', 'tienda'],
+  id: 'mark.icon.cart', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['gastronomia', 'default'], weight: 0.9,
+  register: 'friendly', intensity: 'medium', tags: ['icono', 'carrito', 'compra', 'tienda'],
   render(ctx, t, env) {
     const { pal } = env
     const s = W * 0.16, ap = eOutBack(inv(t, 0, 0.7)), roll = Math.sin(t * 1.8) * s * 0.06
@@ -747,8 +747,8 @@ register({
 })
 
 register({
-  id: 'mark.icon.gear', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['tech', 'industria', 'servicios', 'logistica', 'default'], weight: 0.9,
-  tags: ['icono', 'engranaje', 'ajustes', 'mecanico'],
+  id: 'mark.icon.gear', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['tech', 'default'], weight: 0.9,
+  register: 'corporate', intensity: 'medium', tags: ['icono', 'engranaje', 'ajustes', 'mecanico'],
   render(ctx, t, env) {
     const { pal } = env
     const teeth = 9, s = W * 0.18, ap = spring(inv(t, 0, 0.8), { zeta: 0.5, freq: 1.9 })
@@ -773,8 +773,8 @@ register({
 })
 
 register({
-  id: 'mark.icon.shield', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['seguros', 'finanzas', 'legal', 'salud', 'default'], weight: 0.9,
-  tags: ['icono', 'escudo', 'seguridad', 'confianza'],
+  id: 'mark.icon.shield', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['finanzas', 'salud', 'default'], weight: 0.9,
+  register: 'corporate', intensity: 'medium', tags: ['icono', 'escudo', 'seguridad', 'confianza'],
   render(ctx, t, env) {
     const { pal } = env
     const s = W * 0.18, ap = spring(inv(t, 0, 0.8), { zeta: 0.48, freq: 2.1 })
@@ -809,8 +809,8 @@ register({
 })
 
 register({
-  id: 'mark.icon.key', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['inmobiliaria', 'seguros', 'servicios', 'default'], weight: 0.85,
-  tags: ['icono', 'llave', 'acceso', 'entrega'],
+  id: 'mark.icon.key', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['inmobiliaria', 'default'], weight: 0.85,
+  register: 'neutral', intensity: 'medium', tags: ['icono', 'llave', 'acceso', 'entrega'],
   render(ctx, t, env) {
     const { pal } = env
     const s = W * 0.16, ap = eOutBack(inv(t, 0, 0.7)), sway = Math.sin(t * 1.5) * 0.1
@@ -832,8 +832,8 @@ register({
 // ---------- iconos-animados (laten/giran como protagonistas) ----------
 
 register({
-  id: 'mark.anim.heart-beat', lib: 'markkit', category: 'iconos-animados', tones: ['dark', 'light'], rubros: ['salud', 'belleza', 'social', 'gastronomia', 'default'], weight: 1,
-  tags: ['icono', 'corazon', 'latido', 'me-gusta'],
+  id: 'mark.anim.heart-beat', lib: 'markkit', category: 'iconos-animados', tones: ['dark', 'light'], rubros: ['salud', 'belleza', 'gastronomia', 'default'], weight: 1,
+  register: 'friendly', intensity: 'bold', tags: ['icono', 'corazon', 'latido', 'me-gusta'],
   render(ctx, t, env) {
     const { pal } = env
     const s = W * 0.16, ap = eOutBack(inv(t, 0, 0.6))
@@ -859,8 +859,8 @@ register({
 })
 
 register({
-  id: 'mark.anim.bell-ring', lib: 'markkit', category: 'iconos-animados', tones: ['dark', 'light'], rubros: ['eventos', 'social', 'servicios', 'retail', 'default'], weight: 0.9,
-  tags: ['icono', 'campana', 'notificacion', 'aviso'],
+  id: 'mark.anim.bell-ring', lib: 'markkit', category: 'iconos-animados', tones: ['dark', 'light'], rubros: ['default'], weight: 0.9,
+  register: 'friendly', intensity: 'medium', tags: ['icono', 'campana', 'notificacion', 'aviso'],
   render(ctx, t, env) {
     const { pal } = env
     const s = W * 0.16, ap = eOutBack(inv(t, 0, 0.7))
@@ -889,8 +889,8 @@ register({
 })
 
 register({
-  id: 'mark.anim.rocket-launch', lib: 'markkit', category: 'iconos-animados', tones: ['dark', 'light'], rubros: ['tech', 'startup', 'finanzas', 'educacion', 'default'], weight: 0.9,
-  tags: ['icono', 'cohete', 'lanzamiento', 'crecimiento'],
+  id: 'mark.anim.rocket-launch', lib: 'markkit', category: 'iconos-animados', tones: ['dark', 'light'], rubros: ['tech', 'finanzas', 'educacion', 'default'], weight: 0.9,
+  register: 'playful', intensity: 'bold', tags: ['icono', 'cohete', 'lanzamiento', 'crecimiento'],
   render(ctx, t, env) {
     const { pal } = env
     const s = W * 0.15, ap = eOutBack(inv(t, 0, 0.6))
@@ -923,8 +923,8 @@ register({
 })
 
 register({
-  id: 'mark.anim.star-rate', lib: 'markkit', category: 'iconos-animados', tones: ['dark', 'light'], rubros: ['retail', 'gastronomia', 'turismo', 'servicios', 'default'], weight: 0.95,
-  tags: ['icono', 'estrellas', 'rating', 'prueba-social'],
+  id: 'mark.anim.star-rate', lib: 'markkit', category: 'iconos-animados', tones: ['dark', 'light'], rubros: ['gastronomia', 'default'], weight: 0.95,
+  register: 'friendly', intensity: 'medium', tags: ['icono', 'estrellas', 'rating', 'prueba-social'],
   render(ctx, t, env) {
     const { pal } = env
     const N = 5, gap = W * 0.15, s = W * 0.06
@@ -947,8 +947,8 @@ register({
 // ---------- marcos/contenedores ----------
 
 register({
-  id: 'mark.frame.ticket', lib: 'markkit', category: 'marcos-contenedores', tones: ['dark', 'light'], rubros: ['eventos', 'retail', 'turismo', 'default'], weight: 0.9,
-  tags: ['marco', 'ticket', 'cupon', 'oferta'],
+  id: 'mark.frame.ticket', lib: 'markkit', category: 'marcos-contenedores', tones: ['dark', 'light'], rubros: ['default'], weight: 0.9,
+  register: 'friendly', intensity: 'medium', tags: ['marco', 'ticket', 'cupon', 'oferta'],
   render(ctx, t, env) {
     const { pal } = env
     const cw = W * 0.66, ch = H * 0.26
@@ -978,8 +978,8 @@ register({
 })
 
 register({
-  id: 'mark.frame.tab-window', lib: 'markkit', category: 'marcos-contenedores', tones: ['dark', 'light'], rubros: ['tech', 'educacion', 'default', 'servicios'], weight: 0.9,
-  tags: ['marco', 'ventana', 'browser', 'card', 'tech'],
+  id: 'mark.frame.tab-window', lib: 'markkit', category: 'marcos-contenedores', tones: ['dark', 'light'], rubros: ['tech', 'educacion', 'default'], weight: 0.9,
+  register: 'corporate', intensity: 'soft', tags: ['marco', 'ventana', 'browser', 'tech'],
   render(ctx, t, env) {
     const { pal } = env
     const cw = W * 0.66, ch = H * 0.36, bar = 26
@@ -1020,7 +1020,7 @@ register({
 
 register({
   id: 'mark.accent.highlight-marker', lib: 'markkit', category: 'decoradores-acentos', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['resaltador', 'marcador', 'enfasis', 'editorial'],
+  register: 'friendly', intensity: 'medium', tags: ['resaltador', 'marcador', 'enfasis', 'editorial'],
   render(ctx, t, env) {
     const { pal } = env
     const w = W * 0.58, h = 38, dp = eOutCubic(inv(t, 0.1, 0.85))
@@ -1054,7 +1054,7 @@ register({
 
 register({
   id: 'mark.accent.tick-burst', lib: 'markkit', category: 'decoradores-acentos', tones: ['dark', 'light'], rubros: ['*'], weight: 0.85,
-  tags: ['destello', 'rayos', 'celebracion', 'enfasis'],
+  register: 'playful', intensity: 'bold', tags: ['destello', 'rayos', 'celebracion', 'enfasis'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0xb33)
     const N = 12, len0 = []
@@ -1104,8 +1104,8 @@ function teardropUp(ctx, s) {
 // ---------- iconos por dominio (nuevos rubros: gastronomia, fitness, transporte, finanzas, legal) ----------
 
 register({
-  id: 'mark.icon.cutlery', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['gastronomia', 'eventos', 'turismo', 'default'], weight: 0.95,
-  tags: ['icono', 'gastronomia', 'tenedor', 'cuchillo', 'comida'],
+  id: 'mark.icon.cutlery', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['gastronomia', 'default'], weight: 0.95,
+  register: 'friendly', intensity: 'medium', tags: ['icono', 'gastronomia', 'tenedor', 'comida'],
   render(ctx, t, env) {
     const { pal } = env
     const s = W * 0.17, ap = spring(inv(t, 0, 0.8), { zeta: 0.5, freq: 2.0 })
@@ -1132,8 +1132,8 @@ register({
 })
 
 register({
-  id: 'mark.icon.dumbbell', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['fitness', 'salud', 'deporte', 'default'], weight: 0.9,
-  tags: ['icono', 'fitness', 'mancuerna', 'gimnasio', 'fuerza'],
+  id: 'mark.icon.dumbbell', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['fitness', 'salud', 'default'], weight: 0.9,
+  register: 'friendly', intensity: 'bold', tags: ['icono', 'fitness', 'mancuerna', 'gimnasio'],
   render(ctx, t, env) {
     const { pal } = env
     const s = W * 0.18, ap = eOutBack(inv(t, 0, 0.7))
@@ -1158,8 +1158,8 @@ register({
 })
 
 register({
-  id: 'mark.icon.car', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['automotor', 'transporte', 'logistica', 'default'], weight: 0.9,
-  tags: ['icono', 'auto', 'vehiculo', 'transporte', 'automotor'],
+  id: 'mark.icon.car', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['default'], weight: 0.9,
+  register: 'neutral', intensity: 'medium', tags: ['icono', 'auto', 'vehiculo', 'transporte'],
   render(ctx, t, env) {
     const { pal } = env
     const s = W * 0.16, ap = eOutBack(inv(t, 0, 0.7)), bob = Math.sin(t * 3.2) * s * 0.04
@@ -1197,8 +1197,8 @@ register({
 })
 
 register({
-  id: 'mark.icon.coins-stack', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['finanzas', 'inmobiliaria', 'retail', 'seguros', 'default'], weight: 0.95,
-  tags: ['icono', 'monedas', 'dinero', 'finanzas', 'ahorro'],
+  id: 'mark.icon.coins-stack', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['finanzas', 'inmobiliaria', 'default'], weight: 0.95,
+  register: 'corporate', intensity: 'medium', tags: ['icono', 'monedas', 'dinero', 'finanzas'],
   render(ctx, t, env) {
     const { pal } = env
     const s = W * 0.16, ap = eOutCubic(inv(t, 0, 0.5))
@@ -1233,8 +1233,8 @@ register({
 })
 
 register({
-  id: 'mark.icon.scale-justice', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['legal', 'finanzas', 'seguros', 'servicios', 'default'], weight: 0.85,
-  tags: ['icono', 'balanza', 'justicia', 'legal', 'equilibrio'],
+  id: 'mark.icon.scale-justice', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['finanzas', 'default'], weight: 0.85,
+  register: 'corporate', intensity: 'medium', tags: ['icono', 'balanza', 'justicia', 'equilibrio'],
   render(ctx, t, env) {
     const { pal } = env
     const s = W * 0.17, ap = spring(inv(t, 0, 0.8), { zeta: 0.5, freq: 1.9 })
@@ -1264,8 +1264,8 @@ register({
 // ---------- iconos-animados (protagonistas que laten/giran/escriben) ----------
 
 register({
-  id: 'mark.anim.thumbs-up', lib: 'markkit', category: 'iconos-animados', tones: ['dark', 'light'], rubros: ['social', 'retail', 'servicios', 'default'], weight: 0.95,
-  tags: ['icono', 'pulgar', 'me-gusta', 'aprobacion', 'social'],
+  id: 'mark.anim.thumbs-up', lib: 'markkit', category: 'iconos-animados', tones: ['dark', 'light'], rubros: ['default'], weight: 0.95,
+  register: 'friendly', intensity: 'medium', tags: ['icono', 'pulgar', 'me-gusta', 'aprobacion'],
   render(ctx, t, env) {
     const { pal } = env
     const s = W * 0.16, ap = eOutBack(inv(t, 0, 0.55))
@@ -1296,8 +1296,8 @@ register({
 })
 
 register({
-  id: 'mark.anim.clock-tick', lib: 'markkit', category: 'iconos-animados', tones: ['dark', 'light'], rubros: ['servicios', 'logistica', 'eventos', 'tech', 'default'], weight: 0.9,
-  tags: ['icono', 'reloj', 'tiempo', 'urgencia', 'rapido'],
+  id: 'mark.anim.clock-tick', lib: 'markkit', category: 'iconos-animados', tones: ['dark', 'light'], rubros: ['tech', 'default'], weight: 0.9,
+  register: 'neutral', intensity: 'medium', tags: ['icono', 'reloj', 'tiempo', 'urgencia'],
   render(ctx, t, env) {
     const { pal } = env
     const s = W * 0.18, ap = spring(inv(t, 0, 0.8), { zeta: 0.5, freq: 2.0 })
@@ -1327,8 +1327,8 @@ register({
 })
 
 register({
-  id: 'mark.anim.chart-grow', lib: 'markkit', category: 'iconos-animados', tones: ['dark', 'light'], rubros: ['finanzas', 'tech', 'startup', 'retail', 'default'], weight: 0.95,
-  tags: ['icono', 'grafico', 'crecimiento', 'ventas', 'tendencia'],
+  id: 'mark.anim.chart-grow', lib: 'markkit', category: 'iconos-animados', tones: ['dark', 'light'], rubros: ['finanzas', 'tech', 'default'], weight: 0.95,
+  register: 'corporate', intensity: 'bold', tags: ['icono', 'grafico', 'crecimiento', 'tendencia'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0xc44)
     const s = W * 0.2
@@ -1369,8 +1369,8 @@ register({
 // ---------- formas/morphs ----------
 
 register({
-  id: 'mark.morph.orbit-dots', lib: 'markkit', category: 'formas-morphs', tones: ['dark', 'light'], rubros: ['tech', 'startup', 'educacion', 'finanzas', 'default'], weight: 0.9,
-  tags: ['orbita', 'satelites', 'tech', 'rotacion', 'sistema'],
+  id: 'mark.morph.orbit-dots', lib: 'markkit', category: 'formas-morphs', tones: ['dark', 'light'], rubros: ['tech', 'finanzas', 'educacion', 'default'], weight: 0.9,
+  register: 'corporate', intensity: 'medium', tags: ['orbita', 'satelites', 'tech', 'rotacion'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0xd55)
     const ap = spring(inv(t, 0, 0.85), { zeta: 0.55, freq: 1.9 })
@@ -1401,8 +1401,8 @@ register({
 })
 
 register({
-  id: 'mark.morph.liquid-merge', lib: 'markkit', category: 'formas-morphs', tones: ['dark', 'light'], rubros: ['belleza', 'salud', 'gastronomia', 'creatividad', 'default'], weight: 0.85,
-  tags: ['metaball', 'liquido', 'organico', 'fusion', 'latido'],
+  id: 'mark.morph.liquid-merge', lib: 'markkit', category: 'formas-morphs', tones: ['dark', 'light'], rubros: ['belleza', 'salud', 'gastronomia', 'default'], weight: 0.85,
+  register: 'friendly', intensity: 'medium', tags: ['metaball', 'liquido', 'organico', 'latido'],
   render(ctx, t, env) {
     const { pal } = env
     const ap = eOutCubic(inv(t, 0, 0.5))
@@ -1435,8 +1435,8 @@ register({
 // ---------- marcos/contenedores ----------
 
 register({
-  id: 'mark.frame.polaroid', lib: 'markkit', category: 'marcos-contenedores', tones: ['dark', 'light'], rubros: ['turismo', 'gastronomia', 'social', 'creatividad', 'default'], weight: 0.9,
-  tags: ['marco', 'polaroid', 'foto', 'recuerdo', 'foco'],
+  id: 'mark.frame.polaroid', lib: 'markkit', category: 'marcos-contenedores', tones: ['dark', 'light'], rubros: ['gastronomia', 'moda', 'default'], weight: 0.9,
+  register: 'friendly', intensity: 'soft', tags: ['marco', 'polaroid', 'foto', 'recuerdo'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env
     const cw = W * 0.5, ch = cw * 1.18
@@ -1464,7 +1464,7 @@ register({
 
 register({
   id: 'mark.frame.speech-callout', lib: 'markkit', category: 'marcos-contenedores', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['marco', 'globo', 'cita', 'contenedor', 'mensaje'],
+  register: 'friendly', intensity: 'soft', tags: ['marco', 'globo', 'cita', 'mensaje'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env
     const cw = W * 0.7, ch = H * 0.22
@@ -1493,7 +1493,7 @@ register({
 
 register({
   id: 'mark.divider.zigzag', lib: 'markkit', category: 'divisores-conectores', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['divisor', 'zigzag', 'energico', 'separador'],
+  register: 'playful', intensity: 'medium', tags: ['divisor', 'zigzag', 'energico', 'separador'],
   render(ctx, t, env) {
     const { pal } = env
     const w = W * 0.66, amp = 12, n = 8
@@ -1518,8 +1518,8 @@ register({
 })
 
 register({
-  id: 'mark.divider.ornament', lib: 'markkit', category: 'divisores-conectores', tones: ['dark', 'light'], rubros: ['belleza', 'gastronomia', 'eventos', 'turismo', 'default'], weight: 0.9,
-  tags: ['divisor', 'ornamento', 'elegante', 'filigrana', 'editorial'],
+  id: 'mark.divider.ornament', lib: 'markkit', category: 'divisores-conectores', tones: ['dark', 'light'], rubros: ['belleza', 'moda', 'gastronomia', 'default'], weight: 0.9,
+  register: 'editorial', intensity: 'soft', tags: ['divisor', 'ornamento', 'elegante', 'editorial'],
   render(ctx, t, env) {
     const { pal } = env
     const full = W * 0.6, grow = eOutCubic(inv(t, 0.1, 0.9)), w = full * grow
@@ -1545,8 +1545,8 @@ register({
 // ---------- decoradores/badges ----------
 
 register({
-  id: 'mark.badge.starburst', lib: 'markkit', category: 'decoradores-acentos', tones: ['dark', 'light'], rubros: ['retail', 'ecommerce', 'eventos', 'gastronomia', 'default'], weight: 1,
-  tags: ['badge', 'sello', 'oferta', 'estallido', 'promo'],
+  id: 'mark.badge.starburst', lib: 'markkit', category: 'decoradores-acentos', tones: ['dark', 'light'], rubros: ['gastronomia', 'default'], weight: 1,
+  register: 'playful', intensity: 'bold', tags: ['badge', 'sello', 'oferta', 'promo'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env
     const ap = eOutBack(inv(t, 0, 0.65)), rot = Math.sin(t * 1.2) * 0.06
@@ -1573,8 +1573,8 @@ register({
 })
 
 register({
-  id: 'mark.badge.ribbon-corner', lib: 'markkit', category: 'decoradores-acentos', tones: ['dark', 'light'], rubros: ['retail', 'ecommerce', 'eventos', 'servicios', 'default'], weight: 0.9,
-  tags: ['badge', 'cinta', 'ribbon', 'esquina', 'destacado'],
+  id: 'mark.badge.ribbon-corner', lib: 'markkit', category: 'decoradores-acentos', tones: ['dark', 'light'], rubros: ['default'], weight: 0.9,
+  register: 'playful', intensity: 'bold', tags: ['badge', 'cinta', 'ribbon', 'destacado'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env
     // cinta diagonal centrada (atraviesa el centro a 45 grados) con texto -> "destacado"/"nuevo"
@@ -1629,8 +1629,8 @@ register({
 // ---------- iconos por dominio (nuevos rubros: educacion, viajes, belleza, mascotas, construccion, agro) ----------
 
 register({
-  id: 'mark.icon.graduation', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['educacion', 'servicios', 'default'], weight: 0.95,
-  tags: ['icono', 'educacion', 'birrete', 'graduacion', 'academia'],
+  id: 'mark.icon.graduation', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['educacion', 'default'], weight: 0.95,
+  register: 'friendly', intensity: 'medium', tags: ['icono', 'educacion', 'birrete', 'graduacion'],
   render(ctx, t, env) {
     const { pal } = env
     const s = W * 0.18, ap = eOutBack(inv(t, 0, 0.7))
@@ -1660,8 +1660,8 @@ register({
 })
 
 register({
-  id: 'mark.icon.plane', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['turismo', 'viajes', 'logistica', 'default'], weight: 0.9,
-  tags: ['icono', 'avion', 'viaje', 'turismo', 'vuelo'],
+  id: 'mark.icon.plane', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['default'], weight: 0.9,
+  register: 'friendly', intensity: 'medium', tags: ['icono', 'avion', 'viaje', 'vuelo'],
   render(ctx, t, env) {
     const { pal } = env
     const s = W * 0.18, ap = eOutBack(inv(t, 0, 0.7))
@@ -1693,8 +1693,8 @@ register({
 })
 
 register({
-  id: 'mark.icon.scissors', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['belleza', 'peluqueria', 'servicios', 'default'], weight: 0.85,
-  tags: ['icono', 'tijera', 'belleza', 'peluqueria', 'corte'],
+  id: 'mark.icon.scissors', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['belleza', 'default'], weight: 0.85,
+  register: 'friendly', intensity: 'medium', tags: ['icono', 'tijera', 'belleza', 'corte'],
   render(ctx, t, env) {
     const { pal } = env
     const s = W * 0.16, ap = spring(inv(t, 0, 0.8), { zeta: 0.5, freq: 2.0 })
@@ -1720,8 +1720,8 @@ register({
 })
 
 register({
-  id: 'mark.icon.paw', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['mascotas', 'veterinaria', 'salud', 'default'], weight: 0.85,
-  tags: ['icono', 'huella', 'pata', 'mascotas', 'veterinaria'],
+  id: 'mark.icon.paw', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['salud', 'default'], weight: 0.85,
+  register: 'friendly', intensity: 'medium', tags: ['icono', 'huella', 'pata', 'mascotas'],
   render(ctx, t, env) {
     const { pal } = env
     const s = W * 0.16, ap = eOutBack(inv(t, 0, 0.6))
@@ -1751,8 +1751,8 @@ register({
 })
 
 register({
-  id: 'mark.icon.wrench', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['construccion', 'servicios', 'industria', 'automotor', 'default'], weight: 0.9,
-  tags: ['icono', 'llave', 'herramienta', 'construccion', 'reparacion'],
+  id: 'mark.icon.wrench', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['inmobiliaria', 'tech', 'default'], weight: 0.9,
+  register: 'corporate', intensity: 'medium', tags: ['icono', 'herramienta', 'reparacion', 'construccion'],
   render(ctx, t, env) {
     const { pal } = env
     const s = W * 0.16, ap = spring(inv(t, 0, 0.8), { zeta: 0.5, freq: 2.0 })
@@ -1791,8 +1791,8 @@ register({
 })
 
 register({
-  id: 'mark.icon.leaf', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['agro', 'salud', 'belleza', 'gastronomia', 'default'], weight: 0.9,
-  tags: ['icono', 'hoja', 'natural', 'eco', 'agro', 'organico'],
+  id: 'mark.icon.leaf', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['salud', 'belleza', 'gastronomia', 'default'], weight: 0.9,
+  register: 'friendly', intensity: 'soft', tags: ['icono', 'hoja', 'natural', 'eco'],
   render(ctx, t, env) {
     const { pal } = env
     const s = W * 0.18, ap = eOutBack(inv(t, 0, 0.7))
@@ -1825,8 +1825,8 @@ register({
 })
 
 register({
-  id: 'mark.icon.camera', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['creatividad', 'social', 'turismo', 'servicios', 'default'], weight: 0.85,
-  tags: ['icono', 'camara', 'foto', 'fotografia', 'creatividad'],
+  id: 'mark.icon.camera', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['moda', 'default'], weight: 0.85,
+  register: 'friendly', intensity: 'medium', tags: ['icono', 'camara', 'foto', 'fotografia'],
   render(ctx, t, env) {
     const { pal } = env
     const s = W * 0.18, ap = spring(inv(t, 0, 0.8), { zeta: 0.5, freq: 2.0 })
@@ -1856,8 +1856,8 @@ register({
 // ---------- iconos-animados (protagonistas) ----------
 
 register({
-  id: 'mark.anim.envelope-open', lib: 'markkit', category: 'iconos-animados', tones: ['dark', 'light'], rubros: ['servicios', 'social', 'retail', 'default'], weight: 0.9,
-  tags: ['icono', 'sobre', 'mail', 'newsletter', 'mensaje'],
+  id: 'mark.anim.envelope-open', lib: 'markkit', category: 'iconos-animados', tones: ['dark', 'light'], rubros: ['default'], weight: 0.9,
+  register: 'friendly', intensity: 'medium', tags: ['icono', 'sobre', 'mail', 'mensaje'],
   render(ctx, t, env) {
     const { pal } = env
     const s = W * 0.18, ap = eOutBack(inv(t, 0, 0.6))
@@ -1891,8 +1891,8 @@ register({
 })
 
 register({
-  id: 'mark.anim.flame-flicker', lib: 'markkit', category: 'iconos-animados', tones: ['dark', 'light'], rubros: ['gastronomia', 'eventos', 'retail', 'default'], weight: 0.85,
-  tags: ['icono', 'fuego', 'llama', 'hot', 'tendencia', 'oferta'],
+  id: 'mark.anim.flame-flicker', lib: 'markkit', category: 'iconos-animados', tones: ['dark', 'light'], rubros: ['gastronomia', 'default'], weight: 0.85,
+  register: 'playful', intensity: 'bold', tags: ['icono', 'fuego', 'llama', 'tendencia'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0xf17)
     const s = W * 0.16, ap = eOutBack(inv(t, 0, 0.55))
@@ -1926,8 +1926,8 @@ register({
 // ---------- decoradores/acentos ----------
 
 register({
-  id: 'mark.accent.confetti-burst', lib: 'markkit', category: 'decoradores-acentos', tones: ['dark', 'light'], rubros: ['eventos', 'social', 'retail', 'gastronomia', 'default'], weight: 0.9,
-  tags: ['confeti', 'celebracion', 'festejo', 'lanzamiento'],
+  id: 'mark.accent.confetti-burst', lib: 'markkit', category: 'decoradores-acentos', tones: ['dark', 'light'], rubros: ['default'], weight: 0.9,
+  register: 'playful', intensity: 'loud', tags: ['confeti', 'celebracion', 'festejo', 'lanzamiento'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x1c0)
     const N = 18
@@ -1958,8 +1958,8 @@ register({
 })
 
 register({
-  id: 'mark.accent.corner-flourish', lib: 'markkit', category: 'decoradores-acentos', tones: ['dark', 'light'], rubros: ['belleza', 'eventos', 'turismo', 'gastronomia', 'default'], weight: 0.9,
-  tags: ['ornamento', 'esquinas', 'filigrana', 'elegante', 'editorial'],
+  id: 'mark.accent.corner-flourish', lib: 'markkit', category: 'decoradores-acentos', tones: ['dark', 'light'], rubros: ['belleza', 'moda', 'gastronomia', 'default'], weight: 0.9,
+  register: 'editorial', intensity: 'soft', tags: ['ornamento', 'esquinas', 'filigrana', 'editorial'],
   render(ctx, t, env) {
     const { pal } = env
     const bw = W * 0.62, bh = H * 0.4
@@ -2002,7 +2002,7 @@ register({
 
 register({
   id: 'mark.divider.wave-line', lib: 'markkit', category: 'divisores-conectores', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['divisor', 'onda', 'fluido', 'separador'],
+  register: 'friendly', intensity: 'soft', tags: ['divisor', 'onda', 'fluido', 'separador'],
   render(ctx, t, env) {
     const { pal } = env
     const w = W * 0.66, amp = 9, cycles = 3
@@ -2029,8 +2029,8 @@ register({
 })
 
 register({
-  id: 'mark.connector.dotted-arc', lib: 'markkit', category: 'divisores-conectores', tones: ['dark', 'light'], rubros: ['tech', 'logistica', 'educacion', 'turismo', 'default'], weight: 0.85,
-  tags: ['conector', 'arco', 'ruta', 'flujo', 'puntos'],
+  id: 'mark.connector.dotted-arc', lib: 'markkit', category: 'divisores-conectores', tones: ['dark', 'light'], rubros: ['tech', 'educacion', 'default'], weight: 0.85,
+  register: 'neutral', intensity: 'soft', tags: ['conector', 'arco', 'ruta', 'flujo'],
   render(ctx, t, env) {
     const { pal } = env
     const span = W * 0.6, lift = H * 0.1, n = 9
@@ -2064,8 +2064,8 @@ register({
 // ---------- marcos/contenedores ----------
 
 register({
-  id: 'mark.frame.phone-mockup', lib: 'markkit', category: 'marcos-contenedores', tones: ['dark', 'light'], rubros: ['tech', 'startup', 'social', 'servicios', 'default'], weight: 0.9,
-  tags: ['marco', 'celular', 'mockup', 'app', 'pantalla', 'tech'],
+  id: 'mark.frame.phone-mockup', lib: 'markkit', category: 'marcos-contenedores', tones: ['dark', 'light'], rubros: ['tech', 'default'], weight: 0.9,
+  register: 'corporate', intensity: 'soft', tags: ['marco', 'celular', 'mockup', 'app', 'tech'],
   render(ctx, t, env) {
     const { pal } = env
     const ph = H * 0.5, pw = ph * 0.5
@@ -2112,8 +2112,8 @@ register({
 // ---------- sustratos/grillas ----------
 
 register({
-  id: 'mark.substrate.iso-grid', lib: 'markkit', category: 'sustratos-grillas', tones: ['dark', 'light'], rubros: ['tech', 'industria', 'construccion', 'logistica', 'default'], weight: 0.8,
-  tags: ['grilla', 'isometrico', 'tech', 'blueprint', 'sustrato'],
+  id: 'mark.substrate.iso-grid', lib: 'markkit', category: 'sustratos-grillas', tones: ['dark', 'light'], rubros: ['tech', 'inmobiliaria', 'default'], weight: 0.8,
+  register: 'corporate', intensity: 'soft', tags: ['grilla', 'isometrico', 'tech', 'blueprint'],
   render(ctx, t, env) {
     const { pal } = env
     const bw = W * 0.72, bh = H * 0.46, step = 34
@@ -2163,8 +2163,8 @@ function roundedBar(ctx, x, y, w, h, col) { ctx.fillStyle = col; ctx.beginPath()
 // ---------- iconos por dominio (rubros NUEVOS) ----------
 
 register({
-  id: 'mark.icon.coffee', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['cafe', 'gastronomia', 'turismo', 'default'], weight: 0.9,
-  tags: ['icono', 'cafe', 'taza', 'bar', 'desayuno'],
+  id: 'mark.icon.coffee', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['gastronomia', 'default'], weight: 0.9,
+  register: 'friendly', intensity: 'medium', tags: ['icono', 'cafe', 'taza', 'bar'],
   render(ctx, t, env) {
     const { pal } = env
     const s = W * 0.17, ap = spring(inv(t, 0, 0.8), { zeta: 0.5, freq: 2.0 })
@@ -2201,8 +2201,8 @@ register({
 })
 
 register({
-  id: 'mark.icon.book-open', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['educacion', 'lectura', 'editorial', 'servicios', 'default'], weight: 0.9,
-  tags: ['icono', 'libro', 'lectura', 'educacion', 'editorial'],
+  id: 'mark.icon.book-open', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['educacion', 'default'], weight: 0.9,
+  register: 'editorial', intensity: 'soft', tags: ['icono', 'libro', 'lectura', 'educacion'],
   render(ctx, t, env) {
     const { pal } = env
     const s = W * 0.2, ap = spring(inv(t, 0, 0.8), { zeta: 0.5, freq: 1.9 })
@@ -2241,8 +2241,8 @@ register({
 })
 
 register({
-  id: 'mark.icon.music-note', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['musica', 'podcast', 'eventos', 'creatividad', 'default'], weight: 0.9,
-  tags: ['icono', 'musica', 'nota', 'audio', 'evento'],
+  id: 'mark.icon.music-note', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['moda', 'default'], weight: 0.9,
+  register: 'playful', intensity: 'medium', tags: ['icono', 'musica', 'nota', 'audio'],
   render(ctx, t, env) {
     const { pal } = env
     const s = W * 0.16, ap = eOutBack(inv(t, 0, 0.65))
@@ -2272,8 +2272,8 @@ register({
 })
 
 register({
-  id: 'mark.icon.controller', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['gaming', 'tech', 'entretenimiento', 'default'], weight: 0.85,
-  tags: ['icono', 'gaming', 'joystick', 'control', 'videojuegos'],
+  id: 'mark.icon.controller', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['tech', 'default'], weight: 0.85,
+  register: 'playful', intensity: 'bold', tags: ['icono', 'gaming', 'joystick', 'videojuegos'],
   render(ctx, t, env) {
     const { pal } = env
     const s = W * 0.18, ap = spring(inv(t, 0, 0.8), { zeta: 0.5, freq: 2.0 })
@@ -2309,8 +2309,8 @@ register({
 })
 
 register({
-  id: 'mark.icon.wifi', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['tech', 'telecom', 'servicios', 'default'], weight: 0.85,
-  tags: ['icono', 'wifi', 'señal', 'internet', 'conexion'],
+  id: 'mark.icon.wifi', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['tech', 'default'], weight: 0.85,
+  register: 'neutral', intensity: 'medium', tags: ['icono', 'wifi', 'senal', 'conexion'],
   render(ctx, t, env) {
     const { pal } = env
     const s = W * 0.2, ap = eOutBack(inv(t, 0, 0.6))
@@ -2336,8 +2336,8 @@ register({
 })
 
 register({
-  id: 'mark.icon.sofa', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['hogar', 'inmobiliaria', 'retail', 'default'], weight: 0.85,
-  tags: ['icono', 'sofa', 'hogar', 'mueble', 'deco'],
+  id: 'mark.icon.sofa', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['inmobiliaria', 'default'], weight: 0.85,
+  register: 'friendly', intensity: 'soft', tags: ['icono', 'sofa', 'hogar', 'mueble'],
   render(ctx, t, env) {
     const { pal } = env
     const s = W * 0.17, ap = eOutBack(inv(t, 0, 0.7)), settle = Math.sin(t * 1.6) * s * 0.03
@@ -2363,8 +2363,8 @@ register({
 })
 
 register({
-  id: 'mark.icon.battery-charge', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['energia', 'tech', 'automotor', 'industria', 'default'], weight: 0.85,
-  tags: ['icono', 'bateria', 'energia', 'carga', 'eco'],
+  id: 'mark.icon.battery-charge', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['tech', 'default'], weight: 0.85,
+  register: 'neutral', intensity: 'medium', tags: ['icono', 'bateria', 'energia', 'carga'],
   render(ctx, t, env) {
     const { pal } = env
     const s = W * 0.2, ap = spring(inv(t, 0, 0.8), { zeta: 0.5, freq: 1.9 })
@@ -2395,8 +2395,8 @@ register({
 })
 
 register({
-  id: 'mark.icon.washer', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['lavanderia', 'hogar', 'servicios', 'default'], weight: 0.8,
-  tags: ['icono', 'lavarropas', 'lavanderia', 'hogar', 'limpieza'],
+  id: 'mark.icon.washer', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['default'], weight: 0.8,
+  register: 'neutral', intensity: 'medium', tags: ['icono', 'lavarropas', 'hogar', 'limpieza'],
   render(ctx, t, env) {
     const { pal } = env
     const s = W * 0.18, ap = spring(inv(t, 0, 0.8), { zeta: 0.5, freq: 2.0 })
@@ -2426,8 +2426,8 @@ register({
 })
 
 register({
-  id: 'mark.icon.plant-pot', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['jardineria', 'agro', 'hogar', 'belleza', 'default'], weight: 0.85,
-  tags: ['icono', 'planta', 'maceta', 'jardineria', 'verde'],
+  id: 'mark.icon.plant-pot', lib: 'markkit', category: 'iconos-rubro', tones: ['dark', 'light'], rubros: ['inmobiliaria', 'belleza', 'default'], weight: 0.85,
+  register: 'friendly', intensity: 'soft', tags: ['icono', 'planta', 'maceta', 'verde'],
   render(ctx, t, env) {
     const { pal } = env
     const s = W * 0.16, ap = spring(inv(t, 0, 0.8), { zeta: 0.5, freq: 2.0 })
@@ -2464,8 +2464,8 @@ register({
 // ---------- iconos-animados (protagonistas que laten/giran/cuentan) ----------
 
 register({
-  id: 'mark.anim.lock-unlock', lib: 'markkit', category: 'iconos-animados', tones: ['dark', 'light'], rubros: ['seguros', 'tech', 'finanzas', 'servicios', 'default'], weight: 0.9,
-  tags: ['icono', 'candado', 'seguridad', 'acceso', 'desbloqueo'],
+  id: 'mark.anim.lock-unlock', lib: 'markkit', category: 'iconos-animados', tones: ['dark', 'light'], rubros: ['finanzas', 'tech', 'default'], weight: 0.9,
+  register: 'corporate', intensity: 'medium', tags: ['icono', 'candado', 'seguridad', 'acceso'],
   render(ctx, t, env) {
     const { pal } = env
     const s = W * 0.17, ap = spring(inv(t, 0, 0.8), { zeta: 0.5, freq: 2.0 })
@@ -2493,8 +2493,8 @@ register({
 })
 
 register({
-  id: 'mark.anim.megaphone', lib: 'markkit', category: 'iconos-animados', tones: ['dark', 'light'], rubros: ['marketing', 'social', 'retail', 'eventos', 'default'], weight: 0.9,
-  tags: ['icono', 'megafono', 'anuncio', 'promo', 'marketing'],
+  id: 'mark.anim.megaphone', lib: 'markkit', category: 'iconos-animados', tones: ['dark', 'light'], rubros: ['tech', 'default'], weight: 0.9,
+  register: 'playful', intensity: 'bold', tags: ['icono', 'megafono', 'anuncio', 'promo'],
   render(ctx, t, env) {
     const { pal } = env
     const s = W * 0.17, ap = eOutBack(inv(t, 0, 0.6))
@@ -2528,8 +2528,8 @@ register({
 })
 
 register({
-  id: 'mark.anim.target-hit', lib: 'markkit', category: 'iconos-animados', tones: ['dark', 'light'], rubros: ['marketing', 'finanzas', 'startup', 'deporte', 'default'], weight: 0.9,
-  tags: ['icono', 'diana', 'objetivo', 'meta', 'precision'],
+  id: 'mark.anim.target-hit', lib: 'markkit', category: 'iconos-animados', tones: ['dark', 'light'], rubros: ['finanzas', 'fitness', 'default'], weight: 0.9,
+  register: 'neutral', intensity: 'bold', tags: ['icono', 'diana', 'objetivo', 'meta'],
   render(ctx, t, env) {
     const { pal } = env
     const s = W * 0.2, ap = spring(inv(t, 0, 0.8), { zeta: 0.5, freq: 1.9 })
@@ -2567,8 +2567,8 @@ register({
 // ---------- divisores/conectores ----------
 
 register({
-  id: 'mark.divider.beads', lib: 'markkit', category: 'divisores-conectores', tones: ['dark', 'light'], rubros: ['belleza', 'eventos', 'turismo', 'default'], weight: 0.95,
-  tags: ['divisor', 'cuentas', 'rosario', 'elegante', 'separador'],
+  id: 'mark.divider.beads', lib: 'markkit', category: 'divisores-conectores', tones: ['dark', 'light'], rubros: ['belleza', 'moda', 'default'], weight: 0.95,
+  register: 'editorial', intensity: 'soft', tags: ['divisor', 'cuentas', 'elegante', 'separador'],
   render(ctx, t, env) {
     const { pal } = env
     const w = W * 0.62, grow = eOutCubic(inv(t, 0.1, 0.9))
@@ -2594,8 +2594,8 @@ register({
 })
 
 register({
-  id: 'mark.connector.node-link', lib: 'markkit', category: 'divisores-conectores', tones: ['dark', 'light'], rubros: ['tech', 'logistica', 'finanzas', 'startup', 'default'], weight: 0.9,
-  tags: ['conector', 'nodos', 'red', 'flujo', 'pasos'],
+  id: 'mark.connector.node-link', lib: 'markkit', category: 'divisores-conectores', tones: ['dark', 'light'], rubros: ['tech', 'finanzas', 'default'], weight: 0.9,
+  register: 'corporate', intensity: 'medium', tags: ['conector', 'nodos', 'red', 'flujo'],
   render(ctx, t, env) {
     const { pal } = env
     const span = W * 0.66, n = 4, gap = span / (n - 1)
@@ -2643,8 +2643,8 @@ register({
 // ---------- marcos/contenedores ----------
 
 register({
-  id: 'mark.frame.note-pin', lib: 'markkit', category: 'marcos-contenedores', tones: ['dark', 'light'], rubros: ['educacion', 'creatividad', 'social', 'servicios', 'default'], weight: 0.9,
-  tags: ['marco', 'nota', 'postit', 'recordatorio', 'card'],
+  id: 'mark.frame.note-pin', lib: 'markkit', category: 'marcos-contenedores', tones: ['dark', 'light'], rubros: ['educacion', 'default'], weight: 0.9,
+  register: 'friendly', intensity: 'soft', tags: ['marco', 'nota', 'postit', 'recordatorio'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env
     const sz = W * 0.5
@@ -2679,8 +2679,8 @@ register({
 })
 
 register({
-  id: 'mark.frame.banner-fold', lib: 'markkit', category: 'marcos-contenedores', tones: ['dark', 'light'], rubros: ['eventos', 'retail', 'servicios', 'default'], weight: 0.9,
-  tags: ['marco', 'banner', 'estandarte', 'titulo', 'kicker'],
+  id: 'mark.frame.banner-fold', lib: 'markkit', category: 'marcos-contenedores', tones: ['dark', 'light'], rubros: ['default'], weight: 0.9,
+  register: 'friendly', intensity: 'medium', tags: ['marco', 'banner', 'estandarte', 'kicker'],
   render(ctx, t, env) {
     const { pal, content, fonts } = env
     const w = W * 0.66, h = H * 0.13
@@ -2723,8 +2723,8 @@ register({
 // ---------- decoradores/acentos ----------
 
 register({
-  id: 'mark.accent.asterisk-spin', lib: 'markkit', category: 'decoradores-acentos', tones: ['dark', 'light'], rubros: ['creatividad', 'retail', 'social', 'default'], weight: 0.9,
-  tags: ['asterisco', 'estrella', 'acento', 'rotacion', 'y2k'],
+  id: 'mark.accent.asterisk-spin', lib: 'markkit', category: 'decoradores-acentos', tones: ['dark', 'light'], rubros: ['moda', 'tech', 'default'], weight: 0.9,
+  register: 'playful', intensity: 'bold', tags: ['asterisco', 'estrella', 'rotacion', 'y2k'],
   render(ctx, t, env) {
     const { pal } = env
     const ap = eOutBack(inv(t, 0, 0.6))
@@ -2749,7 +2749,7 @@ register({
 
 register({
   id: 'mark.accent.scribble-circle', lib: 'markkit', category: 'decoradores-acentos', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
-  tags: ['circulo', 'marcador', 'enfasis', 'doodle', 'editorial'],
+  register: 'friendly', intensity: 'medium', tags: ['circulo', 'marcador', 'enfasis', 'doodle'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x2e9)
     const rx = W * 0.32, ry = H * 0.13
@@ -2779,8 +2779,8 @@ register({
 })
 
 register({
-  id: 'mark.accent.plus-grid', lib: 'markkit', category: 'decoradores-acentos', tones: ['dark', 'light'], rubros: ['tech', 'creatividad', 'retail', 'default'], weight: 0.85,
-  tags: ['cruces', 'plus', 'acento', 'patron', 'y2k', 'sustrato'],
+  id: 'mark.accent.plus-grid', lib: 'markkit', category: 'decoradores-acentos', tones: ['dark', 'light'], rubros: ['tech', 'moda', 'default'], weight: 0.85,
+  register: 'playful', intensity: 'medium', tags: ['cruces', 'plus', 'patron', 'y2k'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x3f1)
     // dispersion de cruces (+) que titilan y rotan suave -> acento tipo "destellos tecnicos"
