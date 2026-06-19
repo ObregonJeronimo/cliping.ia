@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, useMemo } from 'react'
+import { collection, getDocs, doc, setDoc, deleteDoc } from 'firebase/firestore'
 import { makeVideo, drawFrame, beatAt, W, H } from '../../urvid/index.js'
 import { useAuth } from '../../contexts/AuthContext'
+import { db } from '../../lib/firebase'
 import styles from './Urvid1Studio.module.css'
 
 const RUBROS = ['default', 'tech', 'finanzas', 'moda', 'gastronomia', 'educacion', 'salud', 'fitness', 'inmobiliaria', 'belleza']
@@ -52,12 +54,24 @@ export default function Urvid1Studio() {
     return () => cancelAnimationFrame(raf)
   }, [video, playing, speed])
 
+  // al loguearse, trae "Mis videos" de Firestore (fuente de verdad); si no hay sesion, queda el cache de localStorage.
+  useEffect(() => {
+    if (!user?.uid) return
+    let alive = true
+    getDocs(collection(db, 'users', user.uid, 'urvid_videos')).then(snap => {
+      if (!alive) return
+      const items = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.ts || 0) - (a.ts || 0)).slice(0, 24)
+      if (items.length) { setSaved(items); localStorage.setItem('urvid1.saved', JSON.stringify(items)) }
+    }).catch(() => { /* offline -> localStorage */ })
+    return () => { alive = false }
+  }, [user?.uid])
+
   // PERCEPTION: pega una URL -> el backend analiza la pagina y arma el brief -> lo cargamos al estudio.
-  const analyze = async () => {
+  const analyze = async (refresh = false) => {
     if (!url.trim() || analyzing === 'loading') return
     setAnalyzing('loading')
     try {
-      const r = await fetch(`${API_URL}/api/urvid/perceive`, { method: 'POST', headers: HEADERS, body: JSON.stringify({ url: url.trim(), userId: user?.uid || '' }) })
+      const r = await fetch(`${API_URL}/api/urvid/perceive`, { method: 'POST', headers: HEADERS, body: JSON.stringify({ url: url.trim(), userId: user?.uid || '', refresh }) })
       const j = await r.json()
       const b = j && j.brief
       if (!b || j.error) { setAnalyzing(j && j.error ? j.error : 'No se pudo analizar la pagina'); return }
@@ -130,9 +144,21 @@ export default function Urvid1Studio() {
   // composicion distinta (fondo/escenas/motion/transicion). Y REINICIA el reproductor a 0 (antes seguia en el
   // segundo donde estabas y habia que rebobinar a mano).
   const reroll = () => { setLock(null); setKeep({ color: video.recipe.color, type: video.recipe.type }); setSeed(s => ((s || 1) + 0x9e3779b1) >>> 0 || 1); headRef.current = 0; setHead(0) }
-  const save = () => { const next = [{ ...brief, seed, ts: Date.now() }, ...saved].slice(0, 24); setSaved(next); localStorage.setItem('urvid1.saved', JSON.stringify(next)) }
-  const load = (it) => { setLock(null); setKeep(null); setBrief({ brand: it.brand, rubro: it.rubro, tone: it.tone, brandColor: it.brandColor, tagline: it.tagline, claim: it.claim, cta: it.cta, bullets: it.bullets || [], stats: it.stats || [], proof: it.proof || '' }); setSeed(it.seed || 0); headRef.current = 0; setHead(0) }
-  const del = (i) => { const next = saved.filter((_, j) => j !== i); setSaved(next); localStorage.setItem('urvid1.saved', JSON.stringify(next)) }
+  // "Mis videos" persiste en Firestore (users/{uid}/urvid_videos) cuando hay sesion; localStorage es el cache local
+  // inmediato + fallback offline. Antes era SOLO localStorage (se perdia al limpiar cache; el uid no se usaba).
+  const save = async () => {
+    const id = 'v' + Date.now().toString(36)
+    const item = { id, brand: brief.brand, rubro: brief.rubro, tone: brief.tone, brandColor: brief.brandColor, format: brief.format || '9:16', duration: brief.duration || 'medio', tagline: brief.tagline || '', claim: brief.claim || '', cta: brief.cta || '', bullets: brief.bullets || [], stats: brief.stats || [], proof: brief.proof || '', seed, ts: Date.now() }
+    const next = [item, ...saved].slice(0, 24)
+    setSaved(next); localStorage.setItem('urvid1.saved', JSON.stringify(next))
+    if (user?.uid) { try { await setDoc(doc(db, 'users', user.uid, 'urvid_videos', id), item) } catch { /* offline -> queda en localStorage */ } }
+  }
+  const load = (it) => { setLock(null); setKeep(null); setBrief({ brand: it.brand, rubro: it.rubro, tone: it.tone, brandColor: it.brandColor, format: it.format || '9:16', duration: it.duration || 'medio', tagline: it.tagline, claim: it.claim, cta: it.cta, bullets: it.bullets || [], stats: it.stats || [], proof: it.proof || '' }); setSeed(it.seed || 0); headRef.current = 0; setHead(0) }
+  const del = async (it) => {
+    const next = saved.filter(s => s !== it)
+    setSaved(next); localStorage.setItem('urvid1.saved', JSON.stringify(next))
+    if (user?.uid && it.id) { try { await deleteDoc(doc(db, 'users', user.uid, 'urvid_videos', it.id)) } catch { /* noop */ } }
+  }
 
   return (
     <div className={styles.wrap}>
@@ -152,10 +178,11 @@ export default function Urvid1Studio() {
         <div className={styles.panel}>
           <label className={styles.field}>Analizar pagina (IA)
             <div className={`${styles.row} ${styles.analyze}`}>
-              <input placeholder="https://tu-sitio.com" value={url} onChange={e => setUrl(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') analyze() }} />
-              <button className={styles.primary} onClick={analyze} disabled={analyzing === 'loading'}>{analyzing === 'loading' ? 'Analizando…' : '✨ Analizar'}</button>
+              <input placeholder="https://tu-sitio.com" value={url} onChange={e => setUrl(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') analyze(false) }} />
+              <button className={styles.primary} onClick={() => analyze(false)} disabled={analyzing === 'loading'}>{analyzing === 'loading' ? 'Analizando…' : '✨ Analizar'}</button>
             </div>
           </label>
+          <button className={styles.ghost} onClick={() => analyze(true)} disabled={analyzing === 'loading' || !url.trim()} title="Ignora el cache y vuelve a analizar la pagina">↻ Re-analizar</button>
           {analyzing && analyzing !== 'loading' && <p style={{ margin: '0 0 6px', fontSize: 12, color: '#e08a8a' }}>{analyzing}</p>}
           <label className={styles.field}>Marca<input value={brief.brand} onChange={e => up('brand', e.target.value)} /></label>
           <div className={styles.two}>
@@ -198,7 +225,7 @@ export default function Urvid1Studio() {
             {saved.map((it, i) => (
               <div key={i} className={styles.card} style={{ '--c': it.brandColor }}>
                 <button className={styles.cardBtn} onClick={() => load(it)}><b>{it.brand}</b><span>{it.rubro} · {it.tone === 'dark' ? 'oscuro' : 'claro'}</span></button>
-                <button className={styles.del} onClick={() => del(i)} title="Borrar">×</button>
+                <button className={styles.del} onClick={() => del(it)} title="Borrar">×</button>
               </div>
             ))}
           </div>
