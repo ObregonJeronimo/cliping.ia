@@ -7,6 +7,7 @@
 // TONO = SOLO COLOR: si el brief trae lockRecipe (el toggle claro/oscuro del estudio), se REUSA la receta y solo se
 // re-deriva la paleta; un slot se re-elige unicamente si su modulo no soporta el tono nuevo.
 import { derivePalette } from './palette.js'
+import { FORMATS } from './util.js'
 import { query, get } from './registry.js'
 import { seedFor, weightedPick, hashStr, stableSeed, pick, shuffled } from './prng.js'
 import { deriveFonts } from './fonts.js'
@@ -27,6 +28,9 @@ function buildArc(seed) {
 
 export function makeVideo(brief = {}) {
   const { brand = 'Marca', rubro = 'default', tone = 'dark', brandColor = '#5b8cff', style = null } = brief
+  // FORMATO (aspect-ratio). No afecta la receta (mismo seed -> misma carta), solo la forma del lienzo.
+  const format = FORMATS[brief.format] ? brief.format : '9:16'
+  const dims = FORMATS[format]
   // CONTENT puede venir ANIDADO (brief.content = {tagline,claim,cta}) o SUELTO en el brief (brief.tagline/claim/cta,
   // como lo arma el estudio y la perception). Unimos ambos -> el anidado gana. Asi el texto SIEMPRE llega a las escenas.
   const content = {
@@ -113,7 +117,7 @@ export function makeVideo(brief = {}) {
   })
 
   return {
-    brand, rubro, tone, seed, palette, fonts,
+    brand, rubro, tone, seed, palette, fonts, format, W: dims.w, H: dims.h,
     bgId: bg ? bg.id : null, bgSeed: (seed ^ hashStr('bg')) >>> 0,
     subId: sub ? sub.id : null, subSeed: (seed ^ hashStr('sub')) >>> 0,
     atmId: atm ? atm.id : null, atmSeed: (seed ^ hashStr('atm')) >>> 0,

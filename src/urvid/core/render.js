@@ -3,7 +3,7 @@
 // transitions compone los buffers (clip/transform); ademas A se DISUELVE (alpha 1->0) para que su texto no quede
 // pisando a B. Sin buffer disponible (Node pelado) cae al modo directo previo. ctx en espacio logico 405x720.
 import { get } from './registry.js'
-import { W, H, inv, clamp, eOutCubic } from './util.js'
+import { W, H, inv, clamp, eOutCubic, setFormat } from './util.js'
 import { resolveMotion } from './motion.js'
 import { resolveTypekit } from './typekit.js'
 import { resolveTransition } from './transitions.js'
@@ -43,6 +43,7 @@ function paintScene(ctx, sc, t, video, motion, typekit) {
 }
 
 export function drawFrame(ctx, t, video) {
+  setFormat(video.format)   // sincroniza W/H al formato del video (live binding que leen todos los modulos)
   ctx.clearRect(0, 0, W, H)
   const motion = resolveMotion(video)   // personalidad de movimiento del video (o default)
   const typekit = resolveTypekit(video) // efecto de texto cinetico del video (o plain)

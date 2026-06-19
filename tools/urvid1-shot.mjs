@@ -37,8 +37,8 @@ console.log('MARCA:', brief.brand, '· seed:', seed || '(auto)', note ? '· nota
 console.log('BRIEF:', JSON.stringify({ rubro: brief.rubro, tone: brief.tone, brandColor: brief.brandColor, tagline: brief.tagline, claim: brief.claim, cta: brief.cta, bullets: brief.bullets, stats: brief.stats, proof: brief.proof }))
 console.log('CARTA:', JSON.stringify(video.recipe))
 
-function frame(t, ss = 2) { const cv = createCanvas(W * ss, H * ss), ctx = cv.getContext('2d'); ctx.setTransform(ss, 0, 0, ss, 0, 0); drawFrame(ctx, t, video); return cv }
-const n = 12, cols = 4, tileW = 232, tileH = Math.round(tileW * H / W), pad = 10, top = 28
+function frame(t, ss = 2) { const cv = createCanvas(video.W * ss, video.H * ss), ctx = cv.getContext('2d'); ctx.setTransform(ss, 0, 0, ss, 0, 0); drawFrame(ctx, t, video); return cv }
+const n = 12, cols = 4, tileW = 232, tileH = Math.round(tileW * video.H / video.W), pad = 10, top = 28
 const rows = Math.ceil(n / cols), cw = cols * tileW + (cols + 1) * pad, ch = top + rows * (tileH + 18) + (rows + 1) * pad
 const sheet = createCanvas(cw, ch), sx = sheet.getContext('2d')
 sx.fillStyle = '#0a0a0f'; sx.fillRect(0, 0, cw, ch); sx.fillStyle = '#fff'; sx.font = 'bold 14px sans-serif'

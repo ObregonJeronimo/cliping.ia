@@ -1,7 +1,14 @@
 // urvid 1.0 · util — math + color + fuentes. Puro, sin estado, sin DOM (solo el ctx que le pasen).
 // Base compartida por TODOS los modulos de las bibliotecas. No depende de engineCore (urvid 1.0 vive aparte).
 
-export const W = 405, H = 720, FPS = 30, TAU = Math.PI * 2
+// W/H son MUTABLES (let) para soportar varios formatos: el ancho logico W queda fijo y H cambia segun el aspect-ratio.
+// Las escenas posicionan con fracciones de H (H*0.42...) -> se adaptan; el solver de layout lo hara fino. Son live
+// bindings: drawFrame llama setFormat(video.format) antes de dibujar y todos los modulos leen el W/H actualizado.
+export let W = 405, H = 720
+export const FPS = 30, TAU = Math.PI * 2
+// FORMATOS soportados. 9:16 = reels/stories/estado WhatsApp (default); 4:5 = feed alto; 1:1 = feed cuadrado.
+export const FORMATS = { '9:16': { w: 405, h: 720 }, '4:5': { w: 405, h: 506 }, '1:1': { w: 405, h: 405 } }
+export function setFormat(fmt) { const f = FORMATS[fmt] || FORMATS['9:16']; W = f.w; H = f.h; return f }
 
 // ---- math ----
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v))
