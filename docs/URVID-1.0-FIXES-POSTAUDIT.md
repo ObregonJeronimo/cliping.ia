@@ -17,6 +17,14 @@
 10. **Anotacion register/intensity completa** [fda0101] — las 6 libs (676 modulos) alimentan el selector v3.
 11. **Ocultar "Compartir con Claude" fuera de dev** [pendiente de commit junto a este doc] — era infra de dev.
 
+## HECHO (tanda 2 — "completá todo")
+
+- **#12 [91267cf,6bd1337]** Percepción robusta: repair de JSON (1 reintento al fallar, sin costo extra normal) + cap de `desarrollo` (anti prompt-injection); cache in-memory POR USUARIO; no cachea brief que falló; botón "Re-analizar" (refresh). (full-page capture + multi-idioma: a propósito NO — el digest ya cubre la página, el voseo es decisión de producto.)
+- **#14 (APCA) [905f413]** Contraste PERCEPTUAL: `apcaLc`/`legibleOnBest` en util.js; `finalize` elige `onAccent` por APCA + piso WCAG → mata la "banda muerta" para todo hue, heredado por los 141 módulos de color. Gate aislado `tools/urvid1-apca-check.mjs` (1881 combos, 0 fails, avg |Lc| 73.5). OKLCH de la DERIVACIÓN = pendiente (refactor grande, beneficio modesto vs APCA para legibilidad).
+- **#11 [6bd1337]** "Mis videos" en Firestore (users/{uid}/urvid_videos) + localStorage fallback; guarda format+duration. "Compartir con Claude" ya oculto fuera de dev.
+- **#9 [d710fa8]** Variantes para elegir: botón "Ver variantes" → 6 recetas en miniatura, click para adoptar (sin ranking falso; el scoring espera una métrica de calidad).
+- **#7 [e82b0d4,7c36046]** EN CURSO: 3 escenas migradas inline + un agente en segundo plano migrando el resto (verifica + revierte regresiones).
+
 ## FALTA (del roadmap del audit, en orden sugerido)
 
 - **#6 [HECHO, commit e096b25]** Solver de composicion (`core/layout.js` arranger greedy + lib `layouts` 6 presets + place(env,req); el director elige video.layoutId; render pasa env.layout). `scene.hero.center` migrada como referencia. Verificado.
