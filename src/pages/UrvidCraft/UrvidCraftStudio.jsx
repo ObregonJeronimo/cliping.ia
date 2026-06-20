@@ -3,6 +3,8 @@ import { doc, setDoc } from 'firebase/firestore'
 import { makeVideo, drawFrame } from '../../urvid/index.js'
 import { useAuth } from '../../contexts/AuthContext'
 import { db } from '../../lib/firebase'
+import OptionGrid from './OptionGrid.jsx'
+import { optionsFor, sceneOptionsFor, categoryOf } from './craftLib.js'
 import styles from './UrvidCraftStudio.module.css'
 
 // Urvid CRAFT — arma el video PASO A PASO. El usuario pega un link, lo analizamos (perception) y va eligiendo de cada
@@ -22,7 +24,9 @@ const BRIEF0 = { brand: '', rubro: 'default', tone: 'dark', brandColor: '#5b8cff
 export default function UrvidCraftStudio() {
   const { user } = useAuth()
   const [brief, setBrief] = useState(BRIEF0)
-  const [recipe, setRecipe] = useState({})        // receta PARCIAL (keepRecipe): lo elegido se fija; el resto se auto-sortea
+  // picks = elecciones EXPLICITAS del usuario por slot ({color, type, bg, ...}, null = quitar opcional) + scenes:{[beat]:id}.
+  // La receta AUTO de base se MERGEA con los picks -> receta COMPLETA, que se pasa como lockRecipe (pinea TODO, incl. escenas).
+  const [picks, setPicks] = useState({})
   const [seed] = useState(() => (Math.floor((typeof performance !== 'undefined' ? performance.now() : 1) * 1000) >>> 0) || 1)  // FIJO toda la sesion -> ir/volver estable
   const [step, setStep] = useState(0)
   const [url, setUrl] = useState('')
@@ -31,11 +35,24 @@ export default function UrvidCraftStudio() {
   const [exporting, setExporting] = useState('')  // '' | 'NN%' | error
   const [savedMsg, setSavedMsg] = useState('')
 
-  // VIDEO en vivo: brief + receta parcial (keepRecipe) + seed fijo. Determinista.
-  const video = useMemo(
-    () => makeVideo({ ...brief, brand: brief.brand || 'Tu marca', seed, keepRecipe: Object.keys(recipe).length ? recipe : undefined }),
-    [brief, seed, recipe],
-  )
+  // receta AUTO de base (deterministica por brief+seed). El usuario la edita con `picks`; el resto queda auto y ESTABLE.
+  const baseRecipe = useMemo(() => makeVideo({ ...brief, brand: brief.brand || 'Tu marca', seed }).recipe, [brief, seed])
+  const fullRecipe = useMemo(() => {
+    const r = { ...baseRecipe }
+    for (const k of Object.keys(picks)) { if (k !== 'scenes') r[k] = picks[k] }   // null = quitar un opcional
+    if (picks.scenes) r.scenes = baseRecipe.scenes.map((s, i) => (picks.scenes[i] || s))
+    return r
+  }, [baseRecipe, picks])
+  // VIDEO en vivo: receta completa LOCKEADA (pinea cada slot elegido + los auto). Determinista.
+  const video = useMemo(() => makeVideo({ ...brief, brand: brief.brand || 'Tu marca', seed, lockRecipe: fullRecipe }), [brief, seed, fullRecipe])
+
+  // opciones por slot (lista completa ordenada por afinidad; la grilla capea el display). Recalcula al cambiar tono/rubro.
+  const opts = useMemo(() => ({
+    color: optionsFor('color', brief), type: optionsFor('type', brief),
+    bg: optionsFor('bg', brief), transition: optionsFor('transition', brief), post: optionsFor('post', brief),
+  }), [brief.tone, brief.rubro, brief.seriousness])
+  const pick = (slot, id) => setPicks(p => ({ ...p, [slot]: id }))
+  const pickScene = (i, id) => setPicks(p => ({ ...p, scenes: { ...(p.scenes || {}), [i]: id } }))
 
   // ---- mini-player (client-side, sin backend) -------------------------------------------------
   const cvRef = useRef(null)
@@ -80,7 +97,7 @@ export default function UrvidCraftStudio() {
         tagline: b.tagline || '', claim: b.claim || '', cta: b.cta || '',
         bullets: Array.isArray(b.bullets) ? b.bullets : [], stats: Array.isArray(b.stats) ? b.stats : [], proof: b.proof || '',
       })
-      setRecipe({}); headRef.current = 0; setHead(0); setAnalyzed(true); setAnalyzing('')
+      setPicks({}); headRef.current = 0; setHead(0); setAnalyzed(true); setAnalyzing('')
     } catch {
       setAnalyzing('Backend no disponible — abri "start.bat" (corre en localhost:8000)')
     }
@@ -140,12 +157,17 @@ export default function UrvidCraftStudio() {
     setSavedMsg('Guardado en Mis videos ✓'); setTimeout(() => setSavedMsg(''), 4000)
   }
 
-  // ---- pasos (FASE A: Datos + Crear; FASE B insertara estilo/fondo/escenas/cierre/avanzado) ----
-  const STEPS = useMemo(() => [
+  // ---- pasos: Datos -> Estilo -> Fondo -> Escenas -> Cierre -> Crear. (FASE C agregara "Avanzado" plegable.) ----
+  // NO memoizar con [] (capturaria closures viejos del estado): array fresco cada render, las funciones cierran sobre el estado actual.
+  const STEPS = [
     { key: 'datos', label: 'Datos', eyebrow: 'Tu pagina', render: renderDatos },
+    { key: 'estilo', label: 'Estilo', eyebrow: 'Identidad', render: renderEstilo },
+    { key: 'fondo', label: 'Fondo', eyebrow: 'Escenario', render: renderFondo },
+    { key: 'escenas', label: 'Escenas', eyebrow: 'El arco', render: renderEscenas },
+    { key: 'cierre', label: 'Cierre', eyebrow: 'Movimiento', render: renderCierre },
     { key: 'revision', label: 'Crear', eyebrow: 'Revision', render: renderRevision },
-  ], [])
-  const cur = STEPS[step]
+  ]
+  const cur = STEPS[Math.min(step, STEPS.length - 1)]
   const canNext = step < STEPS.length - 1
   const canPrev = step > 0
   const next = () => setStep(s => Math.min(STEPS.length - 1, s + 1))
@@ -247,6 +269,61 @@ export default function UrvidCraftStudio() {
         </div>
         {savedMsg && <p className={styles.ok}>{savedMsg}</p>}
         {exporting && exporting.indexOf('%') < 0 && <p className={styles.err}>{exporting}</p>}
+      </div>
+    )
+  }
+
+  function renderEstilo() {
+    return (
+      <div className={styles.stepBody}>
+        <p className={styles.lead}>La identidad de tu marca: el esquema de color y la tipografia.</p>
+        <div className={styles.libSection}>
+          <span className={styles.eyebrowSm}>Color</span>
+          <OptionGrid slot="color" options={opts.color} selectedId={fullRecipe.color} onPick={id => pick('color', id)} brief={brief} seed={seed} fullRecipe={fullRecipe} />
+        </div>
+        <div className={styles.libSection}>
+          <span className={styles.eyebrowSm}>Tipografia</span>
+          <OptionGrid slot="type" options={opts.type} selectedId={fullRecipe.type} onPick={id => pick('type', id)} brief={brief} seed={seed} fullRecipe={fullRecipe} />
+        </div>
+      </div>
+    )
+  }
+
+  function renderFondo() {
+    return (
+      <div className={styles.stepBody}>
+        <p className={styles.lead}>El escenario del video. Te mostramos los mas afines a tu rubro primero.</p>
+        <OptionGrid slot="bg" options={opts.bg} selectedId={fullRecipe.bg} onPick={id => pick('bg', id)} brief={brief} seed={seed} fullRecipe={fullRecipe} />
+      </div>
+    )
+  }
+
+  function renderEscenas() {
+    return (
+      <div className={styles.stepBody}>
+        <p className={styles.lead}>El arco lo armamos por vos desde tu contenido. Cambia cualquier escena si querés (o dejalo asi).</p>
+        {video.scenes.map((sc, i) => (
+          <div key={i} className={styles.beatRow}>
+            <span className={styles.eyebrowSm}>Beat {i + 1} · {categoryOf(sc.sceneId)}</span>
+            <OptionGrid slot="scenes" beat={i} options={sceneOptionsFor(sc.sceneId, brief)} selectedId={sc.sceneId} onPick={id => pickScene(i, id)} brief={brief} seed={seed} fullRecipe={fullRecipe} />
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  function renderCierre() {
+    return (
+      <div className={styles.stepBody}>
+        <p className={styles.lead}>Como pasan las escenas y el acabado final del video.</p>
+        <div className={styles.libSection}>
+          <span className={styles.eyebrowSm}>Transicion</span>
+          <OptionGrid slot="transition" options={opts.transition} selectedId={fullRecipe.transition} onPick={id => pick('transition', id)} brief={brief} seed={seed} fullRecipe={fullRecipe} />
+        </div>
+        <div className={styles.libSection}>
+          <span className={styles.eyebrowSm}>Acabado</span>
+          <OptionGrid slot="post" options={opts.post} selectedId={fullRecipe.post} onPick={id => pick('post', id)} brief={brief} seed={seed} fullRecipe={fullRecipe} optional />
+        </div>
       </div>
     )
   }

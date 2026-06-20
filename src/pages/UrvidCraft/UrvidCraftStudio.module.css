@@ -106,6 +106,29 @@ select.input { appearance: none; cursor: pointer; background-image: linear-gradi
 .time { font-family: var(--fmono); font-size: 12px; color: var(--muted); }
 .miniNote { font-size: 12px; color: var(--faint); line-height: 1.5; margin: 4px 0 0; }
 
+/* ---- pasos de libreria: grilla de opciones (gif/swatch/type) ---- */
+.libSection { display: flex; flex-direction: column; gap: 12px; }
+.libSection + .libSection { margin-top: 20px; padding-top: 22px; border-top: 1px solid var(--border); }
+.beatRow { display: flex; flex-direction: column; gap: 10px; }
+.beatRow + .beatRow { margin-top: 16px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(106px, 1fr)); gap: 12px; }
+.opt { display: flex; flex-direction: column; gap: 7px; padding: 0; background: transparent; border: none; cursor: pointer; text-align: left; }
+.optThumb { width: 100%; aspect-ratio: 405 / 720; background: #0a0a0f; border: 1.5px solid var(--border); border-radius: 11px; overflow: hidden; transition: border-color .15s, transform .08s, box-shadow .15s; }
+.opt:hover .optThumb { border-color: var(--border2); }
+.opt:active .optThumb { transform: scale(.98); }
+.optOn .optThumb { border-color: var(--ink); box-shadow: 0 0 0 2px var(--ink); }
+.optThumb canvas { width: 100%; height: 100%; display: block; }
+.optLabel { font-family: var(--fmono); font-size: 10px; letter-spacing: .02em; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.optOn .optLabel { color: var(--ink); }
+.swatch { display: flex; flex-direction: column; width: 100%; height: 100%; }
+.swatch span { flex: 1; display: block; }
+.typeSample { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; width: 100%; height: 100%; padding: 8px; }
+.typeSample b { font-size: 38px; font-weight: 700; line-height: 1; }
+.typeSample span { font-size: 12px; opacity: .8; white-space: nowrap; overflow: hidden; max-width: 100%; }
+.optNone { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; background: var(--hover); color: var(--muted); font-size: 12px; }
+.gridMore { margin-top: 12px; background: transparent; border: 1px dashed var(--border2); color: var(--muted); border-radius: var(--rbtn); padding: 9px 16px; font-family: var(--fbody); font-size: 13px; cursor: pointer; }
+.gridMore:hover { border-color: var(--ink); color: var(--ink); }
+
 /* ---- responsive ---- */
 @media (max-width: 980px) {
   .cols { grid-template-columns: 1fr; }

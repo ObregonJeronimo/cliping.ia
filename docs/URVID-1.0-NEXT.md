@@ -125,9 +125,22 @@ frame y NO loopea; reproduciendo throttlea el setState de la hora a ~8/s). VERIF
 DUMMY temporal (no hay .env real local -> el front corre en Vercel; firebase.js tira sin env y deja el root vacio) se
 levanto el dev (vite --prefix), se monto una ruta publica temporal y se confirmo por screenshot + getComputedStyle:
 tema papel correcto, ambos pasos renderizan, mini-player dibuja frame real. Ruta temporal + .env.local YA removidos.
-FALTA: FASE B (mini-canvas gif/estatico por opcion + IntersectionObserver + rAF maestro + pasos Estilo/Fondo/Escenas/
-Cierre; usar query(lib,{tone}) + ordenar por fitWeight de core/fit.js, NO pasar rubro a query) y FASE C (acordeon
-avanzado sub/atm/motion/typekit/layout/mark + responsive + persistencia/retomar + animaciones de la landing).
+**FASE B HECHA** (commit local SIN push): motor de previews por opcion + pasos de libreria. Archivos nuevos en
+src/pages/UrvidCraft/: `craftLib.js` (optionsFor/sceneOptionsFor por query(lib,{tone}) ordenado por fitWeight, NO pasa
+rubro a query; previewMode), `previewLoop.js` (UN rAF maestro throttleado ~24fps + cap 16 draws/tick; cards .active via
+IntersectionObserver -> solo lo visible anima; client-side, 0 backend), `OptionCard.jsx` (3 modos: canvas=gif del modulo
+EN CONTEXTO via makeVideo lockRecipe override + drawFrame escena aislada/transicion entera; swatch=paleta via mod.derive;
+type=muestra Aa+marca con mod.fonts), `OptionGrid.jsx` (cap 24 + "Ver mas" + "Ninguno" para opcionales + la opcion ACTIVA
+siempre visible). Estudio refactor: estado picks{slot:id|null, scenes:{beat:id}} -> baseRecipe (auto) MERGE picks ->
+fullRecipe -> makeVideo lockRecipe (pinea TODO incl. escenas; keepRecipe NO pinea escenas, por eso lock). Pasos nuevos
+Estilo(color+type)/Fondo(bg)/Escenas(swap por beat de su categoria)/Cierre(transition+post opcional). FIX: STEPS dejo de
+memoizarse con [] (capturaba closures viejos del estado). VERIFICADO EN VIVO (env dummy + ruta temporal, ya removidos):
+Estilo screenshot OK (swatches + muestras de tipo); Fondo 24 canvas con frames REALES (getImageData: 40-57 colores
+distintos, no-blank) + seleccion -> receta (chip "fondo: educacion.gridpaper" tras click); Escenas 4 beats por categoria
+(31 canvas); Cierre transition+post+Ninguno (30 canvas); 0 errores de consola. (Los gif en pantalla NO se pueden
+screenshotear -> el tool espera idle y el rAF anima; se verifico por pixeles/DOM.)
+FALTA: FASE C (acordeon "Avanzado" plegable: substrate/atmosfera/motion/typekit/layout/mark; responsive fino;
+persistencia/retomar el wizard; animaciones discretas de la landing; "datos que se usaran" mas pulido).
 
 ## ORDEN SUGERIDO
 1) Fluidez del texto (#1) — chico, alto impacto, recurrente. 2) Director/crítico del guión (#3) — mejora todos los
