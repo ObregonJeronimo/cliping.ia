@@ -301,8 +301,9 @@ register({
       { id: 'num', kind: 'stat', text: num },
       { id: 'ctx', kind: 'subtitle', text: ctxSrc },
     ]), nS = L.num, cS = L.ctx
-    // numero gigante que entra con spring de escala (micro-respiracion <=0.6% post-entrada, no se mueve de lugar)
-    const sp = M.settle(inv(t, 0.1, 1.0), { zeta: 0.45, freq: 2.1 }), sc = (0.7 + 0.3 * sp) * breathe(t, 0.6, 0.006)
+    // numero gigante: entra con spring de escala y luego queda PIXEL-ESTABLE (sin breathe -> no shimmer en el glifo);
+    // la vida continua la da la regla de acento de abajo (DECO que respira + sheen)
+    const sp = M.settle(inv(t, 0.1, 1.0), { zeta: 0.45, freq: 2.1 }), sc = 0.7 + 0.3 * sp
     ctx.save(); ctx.globalAlpha = inv(t, 0.05, 0.4); ctx.translate(nS.cx, nS.cy); ctx.scale(sc, sc)
     drawText(ctx, num, 0, 0, { size: Math.min(nS.size, 150), weight: 800, family: fonts.display, maxW: nS.w, color: pal.inkText, align: nS.align, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.5)' : null })
     ctx.restore()
@@ -510,8 +511,9 @@ register({
     if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), W / 2, H * 0.24, { size: 16, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, maxW: W * 0.8, alpha: inv(t, 0.05, 0.35) })
     for (let i = 0; i < n; i++) {
       const tin = inv(t, 0.25 + i * 0.18, 0.8 + i * 0.18); if (tin <= 0) continue
-      const x = colW * (i + 0.5), sp = M.settle(tin, { zeta: 0.5, freq: 2 }), nb = breathe(t, 0.7, 0.006, i * 1.2)
-      ctx.save(); ctx.globalAlpha = tin; ctx.translate(x, cy); ctx.scale((0.85 + 0.15 * sp) * nb, (0.85 + 0.15 * sp) * nb)
+      // el numero entra con spring y queda PIXEL-ESTABLE (sin breathe -> no shimmer); el separador da la vida (DECO)
+      const x = colW * (i + 0.5), sp = M.settle(tin, { zeta: 0.5, freq: 2 })
+      ctx.save(); ctx.globalAlpha = tin; ctx.translate(x, cy); ctx.scale(0.85 + 0.15 * sp, 0.85 + 0.15 * sp)
       drawText(ctx, nums[i] || '—', 0, -8, { size: 52, weight: 800, family: fonts.display, maxW: colW - 16, color: pal.ink })
       ctx.restore()
       drawWrapped(ctx, labels[i] || '', x, cy + 44, { size: 16, weight: 700, family: fonts.text, maxW: colW - 18, color: pal.dim, maxLines: 2, alpha: tin })
@@ -595,7 +597,7 @@ register({
     const gp = M.settle(inv(t, 0.5, 1.2), { zeta: 0.5, freq: 2 })
     ctx.save(); ctx.font = `800 26px "${fonts.display}"`
     const tw = Math.min(ct.w, ctx.measureText(cta).width), pw = tw + 56, ph = 56
-    ctx.translate(ct.cx, ct.cy); ctx.scale((0.85 + 0.15 * gp) * breathe(t, 0.9, 0.012), (0.85 + 0.15 * gp) * breathe(t, 0.9, 0.012)); ctx.globalAlpha = inv(t, 0.5, 0.9)
+    ctx.translate(ct.cx, ct.cy); ctx.scale(0.85 + 0.15 * gp, 0.85 + 0.15 * gp); ctx.globalAlpha = inv(t, 0.5, 0.9)   // entra y queda quieta (sheen = vida; sin breathe -> el CTA no shimmerea)
     ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(-pw / 2, -ph / 2, pw, ph, ph / 2); ctx.fill()
     // VIDA: sheen recorre la pildora (DECO, continuo)
     if (gp > 0.9) rrSheen(ctx, -pw / 2, -ph / 2, pw, ph, t, { per: 3.4, strength: 0.4, tone: pal.tone })
@@ -825,8 +827,8 @@ register({
     ctx.strokeStyle = rgba(pal.ink, 0.28); ctx.lineWidth = 1.8; ctx.beginPath(); ctx.roundRect(x0, y, cw, ch, 14); ctx.stroke()
     drawWrapped(ctx, a, x0 + cw / 2, y + ch / 2, { size: fs, min: 12, weight: 700, family: fonts.display, color: pal.dim, maxW: cw - 20, maxLines: 2, lh: 1.05 })
     ctx.restore()
-    // chip derecho (la opcion buena, acento relleno) + VIDA: respira suave + sheen lo recorre
-    const bsc = (0.88 + 0.12 * inB) * breathe(t, 1.0, 0.012)
+    // chip derecho (la opcion buena, acento relleno) + VIDA: el sheen lo recorre (sin breathe -> el texto del chip no shimmerea)
+    const bsc = 0.88 + 0.12 * inB
     ctx.save(); ctx.globalAlpha = inv(t, 0.5, 0.95); ctx.translate(x0 + cw + gap + cw / 2, y + ch / 2); ctx.scale(bsc, bsc); ctx.translate(-(x0 + cw + gap + cw / 2), -(y + ch / 2))
     ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(x0 + cw + gap, y, cw, ch, 14); ctx.fill()
     if (inB > 0.9) rrSheen(ctx, x0 + cw + gap, y, cw, ch, t, { per: 3.6, strength: 0.4, tone: pal.tone })
@@ -934,7 +936,7 @@ register({
     const gp = M.settle(inv(t, 0.5, 1.2), { zeta: 0.5, freq: 2 })
     ctx.save(); ctx.font = `800 24px "${fonts.display}"`
     const tw = Math.min(W * 0.7, ctx.measureText(cta).width), pw = tw + 50, ph = 52, py = cy + 96
-    ctx.translate(cx, py + ph / 2); ctx.scale((0.85 + 0.15 * gp) * breathe(t, 0.9, 0.012), (0.85 + 0.15 * gp) * breathe(t, 0.9, 0.012)); ctx.globalAlpha = inv(t, 0.5, 0.95)
+    ctx.translate(cx, py + ph / 2); ctx.scale(0.85 + 0.15 * gp, 0.85 + 0.15 * gp); ctx.globalAlpha = inv(t, 0.5, 0.95)   // entra y queda quieta (sheen = vida; sin breathe -> el CTA no shimmerea)
     ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(-pw / 2, -ph / 2, pw, ph, ph / 2); ctx.fill()
     if (gp > 0.9) rrSheen(ctx, -pw / 2, -ph / 2, pw, ph, t, { per: 3.4, strength: 0.4, tone: pal.tone })
     drawText(ctx, cta, 0, 1, { size: 24, weight: 800, family: fonts.display, maxW: pw - 34, color: pal.onAccent })

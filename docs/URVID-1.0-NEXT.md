@@ -24,14 +24,20 @@
 
 ## PENDIENTE — 4 pedidos nuevos del usuario (en orden sugerido)
 
-### 1. FLUIDEZ del texto (recurrente, prioridad alta)
-El texto tiene un movimiento de "respiración"/agrandamiento lento que se usa en TODOS los videos y se ve TOSCO, no
-fluido. Causa probable: el ken-burns (`render.js` paintScene `kb = motion.life*0.012*sp`, zoom lento del cuadro
-INCLUYE el texto) y/o `breathe()` en contenedores de texto en escenas. Re-rasterizar el glifo a escala sub-pixel
-cuadro a cuadro = shimmer/tosco. PLAN: ver con time-strip fino (no adivinar); o (a) sacar el ken-burns del CONTENIDO
-(que el texto quede 100% quieto; la vida la dan bg/deco), o (b) reemplazar el zoom por algo que no re-rasterice
-(opacidad/posición suaves). Verificar con `node tools/urvid1-motionstrip.mjs` y comparar antes/después. NO romper
-el QA. (Ojo: ya se intentó 1 vez sacando la deriva sinusoidal; falta el zoom/breathe sobre el texto.)
+### 1. FLUIDEZ del texto (recurrente, prioridad alta) — [HECHO]
+El texto tenia un movimiento de "respiración"/agrandamiento lento que se usaba en TODOS los videos y se veia TOSCO.
+Causa confirmada (diagnostico, no adivinanza): el ken-burns global (`render.js` paintScene `kb = motion.life*0.012*sp`,
+zoom lento del cuadro que INCLUIA el texto) re-rasterizaba el glifo a escala sub-pixel cuadro a cuadro = shimmer; +
+5 sitios en escenas donde `breathe()` escalaba TEXTO legible (numero gigante de hook.bignum, numeros de data.multi,
+2 pildoras CTA, chip de comparacion). SOLUCION (opcion a del plan): el CONTENIDO ya NO se escala/deriva de forma
+continua -> tras la ENTRADA (offset/zoom que decae, leido como "pop") el texto queda 100% PIXEL-ESTABLE; la vida la
+ponen el fondo/sub/atm (sin texto) y la DECO de cada modulo (barras/sheen/glow). `motion.life` sigue en el contrato
+de las personalidades pero ya NO mueve el contenido (a proposito; si se quiere push cinematografico va sobre el FONDO).
+DIAGNOSTICO NUEVO: `node tools/urvid1-textstill.mjs [seeds]` = difiere 2 frames consecutivos en ventana ASENTADA;
+metrica "band" = movimiento residual en la banda de texto. `FOCUS=<substr>` agranda tiles; `STRIP=1` anula fondo
+para AISLAR el contenido. RESULTADOS (metrica aislada STRIP): AVG band 0.129 -> 0.047 (-64%); la peor escena de puro
+texto (hero.center) 0.607 -> 0.013 (-98%). Visual: cuerpo del glifo NEGRO en el diff (estable); solo deco/fondo se
+enciende. Gates OK (QA 0, determinismo, motion, build). Commit local; SIN push (pendiente OK del usuario).
 
 ### 2. BIBLIOTECA DE ANIMACIONES pre-hechas (miles, categorizadas)
 Buscar e implementar animaciones YA hechas, categorizadas, con descripción de qué hacen (ej: "un carrito clickeado

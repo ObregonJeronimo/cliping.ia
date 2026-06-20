@@ -40,12 +40,14 @@ function paintScene(ctx, sc, t, video, motion, typekit, layout) {
   const ts = t - sc.start
   const ep = motion.ease(inv(ts, 0, motion.enterDur || 0.5)), k = 1 - ep
   const en = motion.enter || {}
-  // FLUIDEZ vs LEGIBILIDAD: ken-burns = zoom MUY lento (<=1.2%) y MONOTONICO sobre la escena (cine, no marea).
-  // NO se aplica la deriva sinusoidal `ambient` (x/y/rot/scale) al CONTENIDO: hacer temblar el cuadro de texto
-  // de ida y vuelta por sub-pixeles hace "shimmer"/crawl en los bordes -> se ve TOSCO. El texto queda QUIETO; la
-  // vida continua la ponen los propios modulos en su DECO (barras/sheen/glow), no el frame entero.
-  const sp = inv(ts, 0, sc.dur || 4), kb = (motion.life || 0) * 0.012 * sp
-  const z = 1 + (en.scale || 0) * k + kb
+  // FLUIDEZ vs LEGIBILIDAD: el CONTENIDO (texto incluido) NO se escala ni deriva de forma CONTINUA. El ken-burns
+  // (zoom lento <=1.2% sobre toda la escena) re-rasterizaba el glifo a escala sub-pixel cuadro a cuadro -> shimmer/
+  // crawl en los bordes = se veia TOSCO en TODOS los videos. Tampoco la deriva sinusoidal `ambient`. Ahora la unica
+  // transformacion del frame es la ENTRADA (offset/zoom que DECAE en enterDur y se lee como "pop", no como shimmer):
+  // una vez asentado, el texto queda 100% PIXEL-ESTABLE. La vida continua la ponen el fondo/sub/atm (sin texto) y la
+  // DECO de cada modulo (barras/sheen/glow). `motion.life` sigue en el contrato de las personalidades pero ya NO
+  // mueve el contenido, a proposito (si en el futuro se quiere un push cinematografico, va sobre el FONDO, no el texto).
+  const z = 1 + (en.scale || 0) * k
   const ox = (en.dx || 0) * k, oy = (en.dy || 0) * k, rot = (en.rotate || 0) * k
   ctx.save()
   ctx.translate(W / 2 + ox, H / 2 + oy); ctx.rotate(rot); ctx.scale(z, z); ctx.translate(-W / 2, -H / 2)
