@@ -8,6 +8,7 @@ const NAV = [
   { to: '/studio', icon: '◆', label: 'Animaciones' },
   { to: '/studio/mis-animaciones', icon: '◇', label: 'Mis animaciones' },
   { to: '/studio/urvid', icon: '●', label: 'urvid 1.0' },
+  { to: '/studio/craft', icon: '✦', label: 'Urvid Craft' },
 ]
 
 export default function Sidebar() {

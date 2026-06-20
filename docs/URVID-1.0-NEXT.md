@@ -107,6 +107,27 @@ CLARIFICACIONES (RESUELTAS por el usuario, jun 2026):
   la OPCION que el usuario toca (los gifs/estaticos de arriba) y el VIDEO completo recien al FINAL. (El usuario
   penso que el live-render costaba plata; aclarado que es client-side/gratis, pero igual prefiere no re-renderizar
   todo el video constantemente -> mas limpio.)
+- ESCENAS/ARCO: arco AUTO desde el contenido (#3 strategy) + el usuario puede CAMBIAR cada beat (opcional, defaults
+  pre-cargados). NO tedioso.
+- MINI-PLAYER "como va quedando": SI, chico y siempre visible (el usuario lo pidio); es client-side (Canvas) -> CERO
+  costo de backend en la nube.
+- SIDEBAR: item "Urvid Craft" debajo de "urvid 1.0".
+
+CONSTRUCCION EN 3 FASES (para que el usuario vea avances): A esqueleto end-to-end; B motor de previews + pasos curados;
+C avanzado + pulido.
+ESTADO (commit local, SIN push): **FASE A HECHA** = ruta `/studio/craft` (App.jsx, BrowserRouter, hija de /studio) +
+item en Sidebar.jsx (debajo de urvid 1.0) + `src/pages/UrvidCraft/UrvidCraftStudio.jsx` + `.module.css` (TEMA PAPEL de
+la landing: #f3f2ee/#16150f, Bricolage Grotesque + DM Sans + JetBrains Mono, OJO la landing NO usa las vars del studio
+gris). Framework de pasos data-driven (STEPS extensible) + estado (recipe parcial via keepRecipe + seed FIJO) + paso
+Datos (perception reusada + "lo que va a usar el video" + campos editables incl. bullets/stats) + paso Revision (chips
+de receta + Crear/guardar en Mis videos + Descargar via MediaRecorder) + MINI-PLAYER en vivo (rAF: en pausa dibuja 1
+frame y NO loopea; reproduciendo throttlea el setState de la hora a ~8/s). VERIFICADO EN VIVO: build OK; con un .env.local
+DUMMY temporal (no hay .env real local -> el front corre en Vercel; firebase.js tira sin env y deja el root vacio) se
+levanto el dev (vite --prefix), se monto una ruta publica temporal y se confirmo por screenshot + getComputedStyle:
+tema papel correcto, ambos pasos renderizan, mini-player dibuja frame real. Ruta temporal + .env.local YA removidos.
+FALTA: FASE B (mini-canvas gif/estatico por opcion + IntersectionObserver + rAF maestro + pasos Estilo/Fondo/Escenas/
+Cierre; usar query(lib,{tone}) + ordenar por fitWeight de core/fit.js, NO pasar rubro a query) y FASE C (acordeon
+avanzado sub/atm/motion/typekit/layout/mark + responsive + persistencia/retomar + animaciones de la landing).
 
 ## ORDEN SUGERIDO
 1) Fluidez del texto (#1) — chico, alto impacto, recurrente. 2) Director/crítico del guión (#3) — mejora todos los
