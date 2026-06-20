@@ -27,6 +27,36 @@ function buildArc(seed) {
   return cats.map(c => ({ category: c, dur: _DUR[c] || 3.4 }))
 }
 
+// RUTEO de ANIM por concepto: mapea palabras-clave del contenido (es) + el rubro -> set de conceptos candidatos.
+// Asi el director elige una animacion por NECESIDAD (un brief de compras -> carrito; de finanzas -> crecimiento).
+const _ANIM_KW = {
+  cart: ['compr', 'carrito', 'tienda', 'pedido', 'ecommerce', 'shop', 'venta'],
+  rating: ['recomien', 'estrella', 'resena', 'reseña', 'review', 'valora', 'rating', 'punta'],
+  growth: ['crec', 'aument', 'result', 'mejora', 'productiv', 'ahorr', 'escala', 'mas resultados'],
+  trend: ['tendenc', 'subir', 'sube', 'rendi', 'invers', 'gana', 'roi'],
+  chat: ['chat', 'mensaj', 'conversa', 'consulta', 'contact', 'hablar', 'respond', 'whatsapp'],
+  send: ['envi', 'manda', 'entrega', 'rapido', 'al instante'],
+  notify: ['avis', 'novedad', 'noticia', 'alert', 'recorda', 'enterate'],
+  search: ['busc', 'encontr', 'descubr', 'explora', 'filtr'],
+  secure: ['segur', 'proteg', 'privac', 'confia', 'garant', 'encript', 'respald'],
+  toggle: ['activ', 'encend', 'automat', 'configura', 'simple'],
+  network: ['conect', 'integra', 'equipo', ' red ', 'colabora', 'sincron', 'plataforma'],
+  check: ['list', 'confirm', 'complet', 'verifica', 'aprob', 'check', 'sin vueltas'],
+}
+const _RUBRO_CONCEPTS = {
+  finanzas: ['growth', 'trend', 'secure', 'check'], tech: ['network', 'toggle', 'growth', 'search'],
+  inmobiliaria: ['search', 'check', 'secure'], salud: ['check', 'secure', 'chat'],
+  educacion: ['check', 'search', 'growth'], gastronomia: ['rating', 'cart', 'send'],
+  moda: ['cart', 'rating', 'send'], belleza: ['rating', 'cart', 'check'], fitness: ['growth', 'check', 'rating'],
+  default: ['check', 'chat', 'growth'],
+}
+function routeAnimConcepts(content, rubro) {
+  const text = [content.tagline, content.claim, content.cta, ...(Array.isArray(content.bullets) ? content.bullets : [])].filter(Boolean).join(' ').toLowerCase()
+  const hits = []
+  for (const concept in _ANIM_KW) if (_ANIM_KW[concept].some(k => text.indexOf(k) >= 0)) hits.push(concept)
+  return new Set(hits.length ? hits : (_RUBRO_CONCEPTS[rubro] || _RUBRO_CONCEPTS.default))
+}
+
 export function makeVideo(brief = {}) {
   const { brand = 'Marca', rubro = 'default', tone = 'dark', brandColor = '#5b8cff', style = null } = brief
   // FORMATO (aspect-ratio). No afecta la receta (mismo seed -> misma carta), solo la forma del lienzo.
@@ -93,6 +123,13 @@ export function makeVideo(brief = {}) {
   const MARK_GARNISH_CATS = new Set(['iconos-rubro', 'iconos-animados'])
   const markPool = query('markkit', { tone }).filter(m => MARK_GARNISH_CATS.has(m.category))
   const markMod = optional(lock && lock.mark, keep && keep.mark, seedFor(seed, 'markgarnish'), 0.5, markPool)
+  // ANIM: micro-animacion ruteada por CONCEPTO del brief (no al azar). Se mapea el contenido + rubro a conceptos
+  // candidatos y se elige el anim mas afin (weightedPick por fit) dentro de ese subconjunto. Optional (~45%).
+  const animPoolAll = query('anim', { tone })
+  const wantConcepts = routeAnimConcepts(content, rubro)
+  let animPool = animPoolAll.filter(m => wantConcepts.has(m.concept) || (m.tags || []).some(tg => wantConcepts.has(tg)))
+  if (!animPool.length) animPool = animPoolAll
+  const animMod = optional(lock && lock.anim, keep && keep.anim, seedFor(seed, 'anim'), 0.45, animPool)
   // TRANSICION escena-a-escena (wipe/slide/iris/bars/cut) -> video.transitionId.
   const trMod = required(lock && lock.transition, keep && keep.transition, seedFor(seed, 'transition'), query('transitions', { tone }))
   // PACING: la ventana de transicion (XF) sale de la PERSONALIDAD de movimiento (snappy corta, calmo larga).
@@ -150,11 +187,12 @@ export function makeVideo(brief = {}) {
     motionId: motMod ? motMod.id : null,
     typekitId: tkMod ? tkMod.id : null,
     markId: markMod ? markMod.id : null, markSeed: (seed ^ hashStr('mark')) >>> 0,
+    animId: animMod ? animMod.id : null, animSeed: (seed ^ hashStr('anim')) >>> 0,
     transitionId: trMod ? trMod.id : null,
     postId: postMod ? postMod.id : null, postSeed: (seed ^ hashStr('post')) >>> 0,
     layoutId: layMod ? layMod.id : null,
     content: { brand, ...content },
     scenes, duration: start || 8,
-    recipe: { color: colMod ? colMod.id : null, type: typMod ? typMod.id : null, bg: bg ? bg.id : null, sub: sub ? sub.id : null, atm: atm ? atm.id : null, motion: motMod ? motMod.id : null, typekit: tkMod ? tkMod.id : null, mark: markMod ? markMod.id : null, transition: trMod ? trMod.id : null, post: postMod ? postMod.id : null, layout: layMod ? layMod.id : null, scenes: scenes.map(s => s.sceneId) },   // la "carta" del video
+    recipe: { color: colMod ? colMod.id : null, type: typMod ? typMod.id : null, bg: bg ? bg.id : null, sub: sub ? sub.id : null, atm: atm ? atm.id : null, motion: motMod ? motMod.id : null, typekit: tkMod ? tkMod.id : null, mark: markMod ? markMod.id : null, anim: animMod ? animMod.id : null, transition: trMod ? trMod.id : null, post: postMod ? postMod.id : null, layout: layMod ? layMod.id : null, scenes: scenes.map(s => s.sceneId) },   // la "carta" del video
   }
 }

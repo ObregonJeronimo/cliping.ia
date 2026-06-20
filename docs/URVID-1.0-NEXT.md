@@ -39,7 +39,23 @@ para AISLAR el contenido. RESULTADOS (metrica aislada STRIP): AVG band 0.129 -> 
 texto (hero.center) 0.607 -> 0.013 (-98%). Visual: cuerpo del glifo NEGRO en el diff (estable); solo deco/fondo se
 enciende. Gates OK (QA 0, determinismo, motion, build). Commit local; SIN push (pendiente OK del usuario).
 
-### 2. BIBLIOTECA DE ANIMACIONES pre-hechas (miles, categorizadas)
+### 2. BIBLIOTECA DE ANIMACIONES pre-hechas (miles, categorizadas) — [FUNDACION HECHA]
+> DECISION (usuario, "toma la mejor decision"): lib PROPIA `anim/` VECTORIAL determinista (NO Lottie; Lottie queda como
+> posible 2da fuente futura). HECHO (commit local SIN push): `src/urvid/libs/anim/index.js` = contrato + helpers (loop/
+> pulse/ink/spark/starShape) + **12 animaciones** line-art deterministas, pintadas con la paleta (ink + accent), que
+> LOOPEAN suave: commerce.cart-tap, feedback.check-pop, rating.stars-fill, growth.bars-rise, growth.arrow-trend,
+> comm.chat-pop, comm.send-plane, notify.bell-ring, search.scan, secure.lock, action.toggle-on, tech.network. Cada una
+> con metadata extra `concept` + `describe` para el RUTEO. RUTEO en assemble.js: `routeAnimConcepts(content, rubro)`
+> mapea palabras-clave del contenido (es) + rubro -> conceptos candidatos -> elige el anim mas afin (weightedPick por
+> fit), OPTIONAL ~45% -> `video.animId`/`recipe.anim`. RENDER en render.js: accent animado en una ESQUINA (no TL=marca),
+> escala 0.5, DETRAS del contenido (no compite con el titulo), alpha ~0.6 con ramp-in. Gate `tools/urvid1-anim-check.mjs`
+> (`npm run anim`, sumado a `gates`): renderiza cada anim dark+light a varios t, determinismo + no-blank + contact-sheet
+> (FIX cazado: stars-fill llamaba starPath(ctx,sr) a una fn de 1 arg -> NaN -> blank; reescrito con starShape modular).
+> Expuesto en URVID CRAFT (slot 'anim' en el paso Avanzado, opcional). VERIFICADO: 869 modulos, anim gate 0, QA 0,
+> prefit 0, determinismo OK, build OK. FALTA: ESCALAR a cientos por OLAS de agentes (1 archivo por concepto/categoria,
+> ej anim/a-commerce.js... como backgrounds con r-<rubro>.js, para paralelizar sin pisarse) + mas conceptos (location/
+> calendar/play/download/heart/gear...) + (futuro) evaluar Lottie como 2da fuente.
+> --- detalle original abajo ---
 Buscar e implementar animaciones YA hechas, categorizadas, con descripción de qué hacen (ej: "un carrito clickeado
 por un mouse que cambia de color"). Miles. Categorizar + testear que estén bien + aplicarlas según haga falta (a
 veces simples, suman profesionalismo). NOTAS/INVESTIGAR: el backend ya tiene `backend/lottie_search.py` y

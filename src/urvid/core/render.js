@@ -80,6 +80,19 @@ export function drawFrame(ctx, t, video) {
       ctx.restore()
     }
   }
+  // ANIM (micro-animacion ruteada por concepto): accent VECTORIAL animado en una esquina, DETRAS del contenido (no
+  // compite con el titulo). Loopea por `t`, pintado con la paleta. Aparece tras un breve delay. Suma "profesionalismo".
+  if (video.animId) {
+    const m = get(video.animId)
+    if (m) {
+      const corners = [[W * 0.74, H * 0.2], [W * 0.74, H * 0.8], [W * 0.26, H * 0.8]]   // TR / BR / BL (evita TL = marca)
+      const [gx, gy] = corners[(video.animSeed >>> 0) % corners.length], s = 0.5
+      ctx.save(); ctx.globalAlpha = (video.tone === 'light' ? 0.5 : 0.6) * inv(t, 0.4, 1.1)
+      ctx.translate(gx, gy); ctx.scale(s, s); ctx.translate(-W / 2, -H / 2)
+      m.render(ctx, t, { pal: video.palette, content: video.content, energy: 1, seed: video.animSeed })
+      ctx.restore()
+    }
+  }
   // ESCENA + TRANSICIONES — el CONTENIDO va ENCIMA de las capas (texto siempre legible).
   // Ventana de transicion [B.start, B.start+XF): A (saliente, ya asentada) + B (entrante, recien arrancando su
   // entrada) -> la lib transitions compone (wipe/slide/iris/bars/cut). Asi B SI es visible durante la transicion

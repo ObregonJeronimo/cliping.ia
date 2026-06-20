@@ -57,6 +57,7 @@ export default function UrvidCraftStudio() {
     bg: optionsFor('bg', brief), transition: optionsFor('transition', brief), post: optionsFor('post', brief),
     sub: optionsFor('sub', brief), atm: optionsFor('atm', brief), motion: optionsFor('motion', brief),
     typekit: optionsFor('typekit', brief), layout: optionsFor('layout', brief), mark: optionsFor('mark', brief),
+    anim: optionsFor('anim', brief),
   }), [brief.tone, brief.rubro, brief.seriousness])
   const pick = (slot, id) => setPicks(p => ({ ...p, [slot]: id }))
   const pickScene = (i, id) => setPicks(p => ({ ...p, scenes: { ...(p.scenes || {}), [i]: id } }))
@@ -339,6 +340,7 @@ export default function UrvidCraftStudio() {
       { slot: 'typekit', title: 'Texto cinetico', optional: true },
       { slot: 'layout', title: 'Composicion (layout)', optional: false },
       { slot: 'mark', title: 'Icono de marca', optional: true },
+      { slot: 'anim', title: 'Animacion', optional: true },
     ]
     return (
       <div className={styles.stepBody}>

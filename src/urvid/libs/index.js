@@ -13,5 +13,6 @@ import './typekit/index.js'       // efectos de texto cinetico (el director elig
 import './transitions/index.js'   // transiciones escena-a-escena (el director elige una -> video.transitionId)
 import './post/index.js'          // ACABADO (grano/vignette/leak/grade/scanlines) aplicado ULTIMO sobre el cuadro
 import './layouts/index.js'       // COMPOSICION: presets de slots (el director elige uno -> env.layout); core/layout.js
+import './anim/index.js'          // ANIM: micro-animaciones vectoriales con accion (cart/check/growth...); el director rutea por concepto -> video.animId
 // PENDIENTES (proximas rondas, ver docs/URVID-1.0-BLUEPRINT.md): photokit, narrative, composition,
 //   scene-buffering (dissolve/glitch/morph reales), audio, captions animados.
