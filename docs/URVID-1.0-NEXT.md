@@ -139,8 +139,15 @@ Estilo screenshot OK (swatches + muestras de tipo); Fondo 24 canvas con frames R
 distintos, no-blank) + seleccion -> receta (chip "fondo: educacion.gridpaper" tras click); Escenas 4 beats por categoria
 (31 canvas); Cierre transition+post+Ninguno (30 canvas); 0 errores de consola. (Los gif en pantalla NO se pueden
 screenshotear -> el tool espera idle y el rAF anima; se verifico por pixeles/DOM.)
-FALTA: FASE C (acordeon "Avanzado" plegable: substrate/atmosfera/motion/typekit/layout/mark; responsive fino;
-persistencia/retomar el wizard; animaciones discretas de la landing; "datos que se usaran" mas pulido).
+**FASE C HECHA -> #4 COMPLETO** (commit local SIN push): `Collapsible.jsx` (seccion plegable que monta el contenido SOLO
+al abrir -> no instancia decenas de canvas de golpe). Paso nuevo "Avanzado" (acordeon, 6 secciones: substrate/atmosfera/
+motion/typekit/layout/mark; cada una con su valor actual como hint; cerrado por defecto). PERSISTENCIA: el wizard guarda
+el borrador en localStorage `urvidcraft.draft` (brief+picks+seed+paso) -> retoma donde quedaste; "Empezar de nuevo" lo
+descarta (semilla nueva). Animacion de entrada por paso (craftFade, easing de la landing, guarda prefers-reduced-motion).
+Responsive afinado. VERIFICADO EN VIVO: 7 pasos; acordeon lazy (0 canvas cerrado, 12 al abrir Movimiento, frames reales);
+persistencia (reload -> retoma en paso 6); restart (vuelve a paso 1, limpia). Screenshot del acordeon OK (tema papel).
+NOTA: el wizard NO esta cableado a credito/cobro (es local + "Mis videos" compartido con el estudio). FALTA solo pulido
+opcional (mas previews aplicados para motion/typekit/layout, "datos que se usaran" mas rico). #4 funcionalmente COMPLETO.
 
 ## ORDEN SUGERIDO
 1) Fluidez del texto (#1) — chico, alto impacto, recurrente. 2) Director/crítico del guión (#3) — mejora todos los

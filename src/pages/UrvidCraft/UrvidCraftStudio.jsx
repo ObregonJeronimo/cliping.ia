@@ -4,7 +4,8 @@ import { makeVideo, drawFrame } from '../../urvid/index.js'
 import { useAuth } from '../../contexts/AuthContext'
 import { db } from '../../lib/firebase'
 import OptionGrid from './OptionGrid.jsx'
-import { optionsFor, sceneOptionsFor, categoryOf } from './craftLib.js'
+import Collapsible from './Collapsible.jsx'
+import { optionsFor, sceneOptionsFor, categoryOf, shortId } from './craftLib.js'
 import styles from './UrvidCraftStudio.module.css'
 
 // Urvid CRAFT — arma el video PASO A PASO. El usuario pega un link, lo analizamos (perception) y va eligiendo de cada
@@ -20,18 +21,22 @@ const API_URL = import.meta.env.PROD ? '' : (import.meta.env.VITE_API_URL || 'ht
 const HEADERS = { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' }
 
 const BRIEF0 = { brand: '', rubro: 'default', tone: 'dark', brandColor: '#5b8cff', format: '9:16', duration: 'medio', tagline: '', claim: '', cta: '', bullets: [], stats: [], proof: '' }
+const DRAFT_KEY = 'urvidcraft.draft'   // el wizard PERSISTE (brief+picks+seed+paso) -> retoma donde quedaste. Solo datos, re-renderiza determinista.
+const newSeed = () => (Math.floor((typeof performance !== 'undefined' ? performance.now() : 1) * 1000) >>> 0) || 1
 
 export default function UrvidCraftStudio() {
   const { user } = useAuth()
-  const [brief, setBrief] = useState(BRIEF0)
+  // BORRADOR persistido (se lee UNA vez): retoma brief+picks+seed+paso si volves al wizard.
+  const [d0] = useState(() => { try { return JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null') } catch { return null } })
+  const [brief, setBrief] = useState(() => (d0 && d0.brief ? { ...BRIEF0, ...d0.brief } : BRIEF0))
   // picks = elecciones EXPLICITAS del usuario por slot ({color, type, bg, ...}, null = quitar opcional) + scenes:{[beat]:id}.
   // La receta AUTO de base se MERGEA con los picks -> receta COMPLETA, que se pasa como lockRecipe (pinea TODO, incl. escenas).
-  const [picks, setPicks] = useState({})
-  const [seed] = useState(() => (Math.floor((typeof performance !== 'undefined' ? performance.now() : 1) * 1000) >>> 0) || 1)  // FIJO toda la sesion -> ir/volver estable
-  const [step, setStep] = useState(0)
-  const [url, setUrl] = useState('')
+  const [picks, setPicks] = useState(() => (d0 && d0.picks) || {})
+  const [seed, setSeed] = useState(() => (d0 && d0.seed) || newSeed())  // FIJO toda la sesion -> ir/volver estable
+  const [step, setStep] = useState(() => (d0 && d0.step) || 0)
+  const [url, setUrl] = useState(() => (d0 && d0.url) || '')
   const [analyzing, setAnalyzing] = useState('')  // '' | 'loading' | mensaje de error
-  const [analyzed, setAnalyzed] = useState(false)
+  const [analyzed, setAnalyzed] = useState(() => !!(d0 && d0.analyzed))
   const [exporting, setExporting] = useState('')  // '' | 'NN%' | error
   const [savedMsg, setSavedMsg] = useState('')
 
@@ -50,9 +55,22 @@ export default function UrvidCraftStudio() {
   const opts = useMemo(() => ({
     color: optionsFor('color', brief), type: optionsFor('type', brief),
     bg: optionsFor('bg', brief), transition: optionsFor('transition', brief), post: optionsFor('post', brief),
+    sub: optionsFor('sub', brief), atm: optionsFor('atm', brief), motion: optionsFor('motion', brief),
+    typekit: optionsFor('typekit', brief), layout: optionsFor('layout', brief), mark: optionsFor('mark', brief),
   }), [brief.tone, brief.rubro, brief.seriousness])
   const pick = (slot, id) => setPicks(p => ({ ...p, [slot]: id }))
   const pickScene = (i, id) => setPicks(p => ({ ...p, scenes: { ...(p.scenes || {}), [i]: id } }))
+
+  // PERSISTENCIA: guarda el borrador ante cualquier cambio (solo datos -> el video se re-renderiza determinista al retomar).
+  useEffect(() => {
+    try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ brief, picks, seed, step, url, analyzed })) } catch { /* noop */ }
+  }, [brief, picks, seed, step, url, analyzed])
+  // EMPEZAR DE NUEVO: descarta el borrador y vuelve al estado inicial (semilla nueva).
+  const restart = () => {
+    try { localStorage.removeItem(DRAFT_KEY) } catch { /* noop */ }
+    setBrief(BRIEF0); setPicks({}); setUrl(''); setAnalyzed(false); setStep(0); setSeed(newSeed())
+    headRef.current = 0; setHead(0)
+  }
 
   // ---- mini-player (client-side, sin backend) -------------------------------------------------
   const cvRef = useRef(null)
@@ -165,6 +183,7 @@ export default function UrvidCraftStudio() {
     { key: 'fondo', label: 'Fondo', eyebrow: 'Escenario', render: renderFondo },
     { key: 'escenas', label: 'Escenas', eyebrow: 'El arco', render: renderEscenas },
     { key: 'cierre', label: 'Cierre', eyebrow: 'Movimiento', render: renderCierre },
+    { key: 'avanzado', label: 'Avanzado', eyebrow: 'Ajuste fino', render: renderAvanzado },
     { key: 'revision', label: 'Crear', eyebrow: 'Revision', render: renderRevision },
   ]
   const cur = STEPS[Math.min(step, STEPS.length - 1)]
@@ -312,6 +331,27 @@ export default function UrvidCraftStudio() {
     )
   }
 
+  function renderAvanzado() {
+    const adv = [
+      { slot: 'sub', title: 'Textura (substrate)', optional: true },
+      { slot: 'atm', title: 'Atmosfera', optional: true },
+      { slot: 'motion', title: 'Movimiento', optional: false },
+      { slot: 'typekit', title: 'Texto cinetico', optional: true },
+      { slot: 'layout', title: 'Composicion (layout)', optional: false },
+      { slot: 'mark', title: 'Icono de marca', optional: true },
+    ]
+    return (
+      <div className={styles.stepBody}>
+        <p className={styles.lead}>Ajustes finos, todos opcionales. Esta en automatico — abri solo lo que quieras tocar.</p>
+        {adv.map(a => (
+          <Collapsible key={a.slot} title={a.title} hint={shortId(fullRecipe[a.slot]) || 'ninguno'}>
+            <OptionGrid slot={a.slot} options={opts[a.slot]} selectedId={fullRecipe[a.slot]} onPick={id => pick(a.slot, id)} brief={brief} seed={seed} fullRecipe={fullRecipe} optional={a.optional} />
+          </Collapsible>
+        ))}
+      </div>
+    )
+  }
+
   function renderCierre() {
     return (
       <div className={styles.stepBody}>
@@ -346,7 +386,7 @@ export default function UrvidCraftStudio() {
           <section className={styles.main}>
             <span className={styles.eyebrow}>{cur.eyebrow} · paso {step + 1} de {STEPS.length}</span>
             <h2 className={styles.title}>{cur.label}</h2>
-            {cur.render()}
+            <div key={cur.key} className={styles.stepAnim}>{cur.render()}</div>
             <div className={styles.nav}>
               <button className={styles.ghost} onClick={prev} disabled={!canPrev}>← Atras</button>
               {canNext
@@ -366,6 +406,7 @@ export default function UrvidCraftStudio() {
               <span className={styles.time}>{head.toFixed(1)} / {video.duration.toFixed(1)}s</span>
             </div>
             <p className={styles.miniNote}>Preview en tu navegador — no consume nada del servidor.</p>
+            {(analyzed || step > 0) && <button className={styles.restart} onClick={restart} title="Descarta todo y vuelve a empezar">↺ Empezar de nuevo</button>}
           </aside>
         </div>
       </div>
