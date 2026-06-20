@@ -52,9 +52,15 @@ enciende. Gates OK (QA 0, determinismo, motion, build). Commit local; SIN push (
 > (`npm run anim`, sumado a `gates`): renderiza cada anim dark+light a varios t, determinismo + no-blank + contact-sheet
 > (FIX cazado: stars-fill llamaba starPath(ctx,sr) a una fn de 1 arg -> NaN -> blank; reescrito con starShape modular).
 > Expuesto en URVID CRAFT (slot 'anim' en el paso Avanzado, opcional). VERIFICADO: 869 modulos, anim gate 0, QA 0,
-> prefit 0, determinismo OK, build OK. FALTA: ESCALAR a cientos por OLAS de agentes (1 archivo por concepto/categoria,
-> ej anim/a-commerce.js... como backgrounds con r-<rubro>.js, para paralelizar sin pisarse) + mas conceptos (location/
-> calendar/play/download/heart/gear...) + (futuro) evaluar Lottie como 2da fuente.
+> prefit 0, determinismo OK, build OK.
+> OLA 1 HECHA (commit local SIN push): refactor helpers a `anim/_shared.js` (para paralelizar) + verificador por-archivo
+> `tools/urvid1-anim-one.mjs` + WORKFLOW de 8 agentes (1 archivo de concepto cada uno) -> **+80 anims, 0 descartadas**
+> (commerce/media/time/finance/social/location/techui/wellness, 10 c/u). Cada agente autoverifico (determinismo +
+> no-blank + chequeo de COSTURA de loop pixel-identico t0==tPer + QA visual del contact-sheet, con fixes propios:
+> bag/volume/gallery/cloud-sync/plug/api/grow/book/reactions/approve/alarm/checklist/signpost). Integrado (imports en
+> index.js) + GATE GLOBAL `npm run anim` 0 sobre las **92** + spot-check visual (commerce + techui = profesional) +
+> determinismo/QA/prefit/build OK. **949 modulos** (anim 12->92). FALTA: mas OLAS hacia cientos/miles (mismo patron,
+> nuevas familias: weather/food/transport/people/security/comms2/ui-states/emoji...) + (futuro) evaluar Lottie 2da fuente.
 > --- detalle original abajo ---
 Buscar e implementar animaciones YA hechas, categorizadas, con descripción de qué hacen (ej: "un carrito clickeado
 por un mouse que cambia de color"). Miles. Categorizar + testear que estén bien + aplicarlas según haga falta (a

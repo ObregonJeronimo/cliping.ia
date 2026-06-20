@@ -12,7 +12,15 @@ import { register } from '../../core/registry.js'
 import { W, H, TAU, rgba, clamp, inv, lerp, eOutCubic, eInOutCubic, eOutBack, spring } from '../../core/util.js'
 import { CX, CY, R, LW, loop, pulse, ink, spark, rr, starShape } from './_shared.js'
 // helpers compartidos viven en ./_shared.js -> varios archivos de anim/ (un concepto cada uno) se llenan en paralelo.
-// Archivos de concepto adicionales se importan al final de este archivo (los agrega el orquestador al integrar olas).
+// OLA 1 (8 archivos de concepto, +80 anims): cada uno se auto-registra al importarse.
+import './commerce.js'
+import './media.js'
+import './time.js'
+import './finance.js'
+import './social.js'
+import './location.js'
+import './techui.js'
+import './wellness.js'
 
 // =============================================================================
 // COMMERCE — comprar / carrito / tienda
