@@ -10,27 +10,9 @@
 // El contrato base (id/lib/category/tones/rubros/weight/tags/register/intensity/render) es el de siempre.
 import { register } from '../../core/registry.js'
 import { W, H, TAU, rgba, clamp, inv, lerp, eOutCubic, eInOutCubic, eOutBack, spring } from '../../core/util.js'
-
-const CX = W / 2, CY = H / 2
-const R = W * 0.17                    // radio base de la pieza (el director la escala)
-const LW = Math.max(2.5, W * 0.013)   // grosor de linea base
-
-// fase 0..1 de un loop de periodo `per` segundos (con offset opcional)
-const loop = (t, per, off = 0) => (((t + off) % per) + per) % per / per
-// pulso suave 0..1 (respiracion) centrado, amplitud amp
-const pulse = (t, per, amp = 1, off = 0) => 0.5 + 0.5 * Math.sin((loop(t, per, off)) * TAU) * amp
-// estilo de trazo comun (linea redondeada en tinta)
-function ink(ctx, pal, w = LW) { ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = w; ctx.strokeStyle = pal.ink }
-// brillo puntual de acento (glow suave) en (x,y)
-function spark(ctx, pal, x, y, r, a = 1) { ctx.save(); ctx.globalAlpha = a; ctx.fillStyle = pal.accent; ctx.shadowColor = pal.accent; ctx.shadowBlur = r * 2; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill(); ctx.restore() }
-// rect redondeado helper
-function rr(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r) }
-// estrella de 5 puntas centrada en (cx,cy), radio rad -> arma el path (sin dibujar)
-function starShape(ctx, cx, cy, rad) {
-  ctx.beginPath()
-  for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i / 10 * TAU, rr2 = i % 2 ? rad * 0.42 : rad; const px = cx + Math.cos(a) * rr2, py = cy + Math.sin(a) * rr2; i ? ctx.lineTo(px, py) : ctx.moveTo(px, py) }
-  ctx.closePath()
-}
+import { CX, CY, R, LW, loop, pulse, ink, spark, rr, starShape } from './_shared.js'
+// helpers compartidos viven en ./_shared.js -> varios archivos de anim/ (un concepto cada uno) se llenan en paralelo.
+// Archivos de concepto adicionales se importan al final de este archivo (los agrega el orquestador al integrar olas).
 
 // =============================================================================
 // COMMERCE — comprar / carrito / tienda
