@@ -28,15 +28,18 @@ _SYS = (
     '- "rubro": UNO EXACTO de: tech, finanzas, inmobiliaria, salud, educacion, gastronomia, moda, belleza, fitness, eventos, default\n'
     '- "tone": "dark" o "light" segun la identidad visual del screenshot (si dudas, "dark")\n'
     '- "brandColor": color de acento de la marca en hex "#rrggbb" — el que REALMENTE ves dominante/vivido en el screenshot\n'
-    '- "tagline": gancho corto, MAX 6 palabras\n'
-    '- "claim": el mensaje principal del reel, MAX 12 palabras, concreto y fiel a la pagina\n'
-    '- "cta": llamado a la accion corto, MAX 4 palabras (preferi el CTA real de la pagina si hay)\n'
-    '- "bullets": 2 a 4 props/beneficios CORTOS (cada uno MAX 5 palabras), sacados de los titulos/contenido reales. [] si no hay claros.\n'
-    '- "stats": 0 a 2 datos numericos REALES que COMUNIQUEN un logro/beneficio, cada uno {"value": "92%" | "+600" | "4.9", "label": "etiqueta DESCRIPTIVA de 3 a 6 palabras: QUE es el numero"} (ej {"value":"92%","label":"de clientes lo recomienda"}). El value es la cifra; el label explica que significa para que la escena DIGA algo (no un numero suelto). NO incluyas precios sueltos, anios/fechas, telefonos ni codigos. [] si no hay datos que digan algo.\n'
+    '- "tagline": gancho corto, MAX 6 palabras y <=42 caracteres\n'
+    '- "claim": el mensaje principal del reel, una frase COMPLETA, MAX 12 palabras y <=76 caracteres, concreto y fiel a la pagina\n'
+    '- "cta": llamado a la accion corto, MAX 4 palabras y <=22 caracteres (preferi el CTA real de la pagina si hay)\n'
+    '- "bullets": 2 a 4 props/beneficios CORTOS (cada uno MAX 5 palabras y <=30 caracteres), sacados de los titulos/contenido reales. [] si no hay claros.\n'
+    '- "stats": 0 a 2 datos numericos REALES que COMUNIQUEN un logro/beneficio, cada uno {"value": "92%" | "+600" | "4.9", "label": "etiqueta DESCRIPTIVA de 3 a 6 palabras y <=28 caracteres: QUE es el numero"} (ej {"value":"92%","label":"de clientes lo recomienda"}). El value es la cifra; el label explica que significa para que la escena DIGA algo (no un numero suelto). NO incluyas precios sueltos, anios/fechas, telefonos ni codigos. [] si no hay datos que digan algo.\n'
     '- "proof": una linea de prueba social REAL (rating, cant. de clientes, premio) o "" si no hay\n'
     '- "seriousness": numero 0 a 1 (salud/finanzas alto ~0.8; gastronomia/moda bajo ~0.35)\n'
     "REGLAS: espanol rioplatense (voseo), FIEL a la pagina (NO inventes datos, cifras, premios ni features que no esten; "
-    "si no hay, deja [] o \"\"), conciso, sin comillas tipograficas. SOLO el JSON."
+    "si no hay, deja [] o \"\"), conciso, sin comillas tipograficas. "
+    "COMPLETITUD: cada texto debe estar ENTERO y entrar en su largo (el reel lo muestra tal cual, sin '...'); si una idea "
+    "no entra, REESCRIBILA mas corta manteniendo el sentido — NUNCA la cortes a la mitad ni la dejes incompleta. "
+    "Antes de responder, RELEE cada texto y verifica: completo, concreto, fiel a la pagina y dentro del largo. SOLO el JSON."
 )
 
 
@@ -76,6 +79,17 @@ def _clip(s, n):
     return s[:n]
 
 
+def _clip_words(s, n):
+    """Recorta a <= n chars SIN cortar palabras (corta en el ultimo espacio que entra). Evita 'Automatiza lo aburri'.
+    Espeja core/script.js clipWords -> los caps de salida coinciden con los BUDGETS del motor (fitContent)."""
+    s = re.sub(r"\s+", " ", str(s or "")).strip()
+    if len(s) <= n:
+        return s
+    cut = s[:n]
+    k = cut.rfind(" ")
+    return (cut[:k] if k > 0 else s.split(" ")[0]).strip()
+
+
 def _page_digest(content):
     """Resumen CURADO y compacto de la captura para el prompt (señal alta, pocos tokens). Evita dumpear bodyText crudo."""
     c = content if isinstance(content, dict) else {}
@@ -107,7 +121,7 @@ def _norm_list(v, n, maxlen):
     out = []
     if isinstance(v, list):
         for it in v:
-            s = _clip(it, maxlen)
+            s = _clip_words(it, maxlen)
             if s:
                 out.append(s)
             if len(out) >= n:
@@ -120,7 +134,7 @@ def _norm_stats(v):
     if isinstance(v, list):
         for it in v:
             if isinstance(it, dict) and (it.get("value") not in (None, "")):
-                out.append({"value": _clip(it.get("value"), 12), "label": _clip(it.get("label"), 38)})
+                out.append({"value": _clip(it.get("value"), 12), "label": _clip_words(it.get("label"), 28)})
             if len(out) >= 3:
                 break
     return out
@@ -133,13 +147,15 @@ def _normalize(b, url, content):
     tone = b.get("tone") if b.get("tone") in ("dark", "light") else "dark"
     brand = (b.get("brand") or content.get("siteName") or content.get("title")
              or _brand_from_url(url) or "Marca")
+    # CAPS de salida = los BUDGETS del motor (core/script.js): recorte por PALABRA (nunca a la mitad). El motor
+    # vuelve a aplicar fitContent como red de seguridad -> el texto se ve COMPLETO en cualquier escena.
     out = {
-        "brand": _clip(brand, 40) or "Marca", "rubro": rubro, "tone": tone,
+        "brand": _clip_words(brand, 32) or "Marca", "rubro": rubro, "tone": tone,
         "brandColor": _safe_hex(b.get("brandColor")) or "#5b8cff",
-        "tagline": _clip(b.get("tagline"), 80), "claim": _clip(b.get("claim"), 120), "cta": _clip(b.get("cta"), 40),
-        "bullets": _norm_list(b.get("bullets"), 4, 40),
+        "tagline": _clip_words(b.get("tagline"), 42), "claim": _clip_words(b.get("claim"), 76), "cta": _clip_words(b.get("cta"), 22),
+        "bullets": _norm_list(b.get("bullets"), 4, 30),
         "stats": _norm_stats(b.get("stats")),
-        "proof": _clip(b.get("proof"), 90),
+        "proof": _clip_words(b.get("proof"), 90),
     }
     try:
         out["seriousness"] = max(0.0, min(1.0, float(b.get("seriousness"))))

@@ -13,6 +13,7 @@ import { seedFor, weightedPick, hashStr, stableSeed, pick, shuffled } from './pr
 import { deriveFonts } from './fonts.js'
 import { analyzeContent, buildArcSmart, sceneBias } from './strategy.js'
 import { fitWeight, canonRubro } from './fit.js'
+import { fitContent } from './script.js'
 
 // ARCO narrativo VARIADO por semilla: apertura (hook|hero) -> 1-3 beats de cuerpo SIN repetir -> cierre. Usa todas
 // las categorias de escena disponibles -> dos videos no comparten estructura (no siempre hero->statement->outro).
@@ -33,7 +34,9 @@ export function makeVideo(brief = {}) {
   const dims = FORMATS[format]
   // CONTENT puede venir ANIDADO (brief.content = {tagline,claim,cta}) o SUELTO en el brief (brief.tagline/claim/cta,
   // como lo arma el estudio y la perception). Unimos ambos -> el anidado gana. Asi el texto SIEMPRE llega a las escenas.
-  const content = {
+  // fitContent (core/script.js) = RED DE SEGURIDAD del guion: ata cada campo a su presupuesto y recorta en limite de
+  // palabra (nunca a la mitad) -> el texto se muestra COMPLETO en cualquier escena (no se corta con "..."). Determinista.
+  const content = fitContent({
     ...(brief.tagline != null ? { tagline: brief.tagline } : {}),
     ...(brief.claim != null ? { claim: brief.claim } : {}),
     ...(brief.cta != null ? { cta: brief.cta } : {}),
@@ -42,7 +45,7 @@ export function makeVideo(brief = {}) {
     ...(Array.isArray(brief.stats) && brief.stats.length ? { stats: brief.stats } : {}),
     ...(brief.proof ? { proof: brief.proof } : {}),
     ...(brief.content || {}),
-  }
+  })
   const seed = brief.seed != null ? (brief.seed >>> 0) : stableSeed(brand, rubro)
   // CEREBRO v2 · STRATEGY: el arco y las escenas salen de SEÑALES del contenido (numeros/pregunta/lista/comparacion/
   // prueba), no solo del azar. Un brief con un dato abre con numero; una pregunta con un hook de pregunta; etc.

@@ -52,7 +52,22 @@ metadata: categoría, descripción, rubros, cuándo usar); (c) ola(s) de agentes
 elige por NECESIDAD (mapear concepto del brief -> animación). Categorización MUY detallada para no errar qué anim va
 en qué video. Es trabajo grande -> empezar por el contrato + 20-30 ejemplos + el ruteo, después escalar.
 
-### 3. DIRECTOR/CRÍTICO del guión (verificar el texto ANTES de renderizar)
+### 3. DIRECTOR/CRÍTICO del guión (verificar el texto ANTES de renderizar) — [HECHO]
+> ENFOQUE (usuario, jun 2026 — "haz lo que recomiendes"): opcion 1 = pre-fit por CODIGO + auto-chequeo en la MISMA
+> llamada (cero llamadas extra, cero costo). NO se agrego 2da llamada LLM.
+> HECHO (commit local, sin push):
+> - **`src/urvid/core/script.js`** nuevo: `fitContent(content)` + `BUDGETS` (chars por campo, calibrados al peor slot)
+>   + `clipWords` (recorte SIEMPRE en limite de palabra -> nunca "aburri…"). Descarta bullets vacios/imposibles y
+>   stats sin value. Puro/determinista. **Cableado en `assemble.js` makeVideo** = un solo choke point (estudio+tests+
+>   share) -> el texto se ve COMPLETO en cualquier escena.
+> - **`backend/perception.py`**: `_clip_words` (espeja clipWords) en `_normalize` -> caps de salida = BUDGETS del motor
+>   (tagline 42 / claim 76 / cta 22 / bullet 30 / label 28 / proof 90 / brand 32), recorte por palabra. `_SYS` con
+>   limites de chars por campo + regla de COMPLETITUD + auto-chequeo ("relee cada texto: completo/concreto/fiel/largo").
+> - **Fix de escena**: `scene.outro.stamp` cortaba el sub-label (cta/tagline) en su slot chico de 1 linea -> ahora
+>   `min:9` (achica en vez de elidir) + maxW un poco mas ancho.
+> - **GATE nuevo `tools/urvid1-prefit-check.mjs`** (`npm run prefit`, sumado a `gates`): mete contenido ADVERSARIAL
+>   (largo, palabras reales) -> fitContent -> render por rubro x tono x semilla con telemetria -> exige 0 ellipsis.
+>   Modo `sweep` para calibrar. VERIFICADO: prefit 0 (320 videos), QA 0, determinismo OK, py_compile OK, build OK.
 Mejorar QUÉ se dice + auto-verificar que se MUESTRA completo (a veces los textos salen incompletos/cortados). Un
 "director" que CRITICA lo escrito ANTES de aplicarlo al video, para no rehacer videos. La IA del guión re-verifica
 cada cosa que va a mostrar + que el texto se vea bien (no cortado). PLAN: (a) en `backend/perception.py`, después del
@@ -81,9 +96,17 @@ el `recipe`, y al final `makeVideo({...brief, lockRecipe: recipe})`. Ir/volver =
 UX/UI **exquisita**: usar la skill `frontend-design` (y/o buscar un enfoque de UI exitoso) + **mismo estilo que el
 front de la landing page** (revisar la landing actual para igualar tipografías/colores/espaciado). Ruta nueva en
 `src/App.jsx` + item en `src/components/Layout/Sidebar.jsx` + página `src/pages/UrvidCraft/`.
-CLARIFICACIONES a confirmar con el usuario al arrancar #4: ¿"todas las bibliotecas" incluye color+tipo+fondo+sub+atm+
-motion+typekit+transición+post+layout+ESCENAS (arco)? ¿o un subconjunto curado para no abrumar? ¿el preview se
-actualiza en vivo en cada paso? (recomendado sí).
+CLARIFICACIONES (RESUELTAS por el usuario, jun 2026):
+- ALCANCE: exponer TODAS las bibliotecas pero SIN abrumar -> pasos principales curados (estilo/color/tipo/fondo/
+  escenas-arco/transicion-post) + un paso/acordeon "AVANZADO" plegable con el resto (substrate/atmosfera/motion/
+  typekit/layout). Todas presentes, pero la complejidad esta escondida por defecto.
+- PREVIEWS POR OPCION: cada opcion de biblioteca se muestra como **GIF si el modulo TIENE movimiento** y como
+  **ejemplo ESTATICO si NO tiene movimiento**. (El render del preview por modulo es CLIENT-SIDE/Canvas = GRATIS,
+  no gasta API; se puede animar en loop = "gif" sin costo de LLM.)
+- PREVIEW DEL VIDEO COMPLETO: NO se re-renderiza el video entero en cada paso (opcion 2). Se muestra el preview de
+  la OPCION que el usuario toca (los gifs/estaticos de arriba) y el VIDEO completo recien al FINAL. (El usuario
+  penso que el live-render costaba plata; aclarado que es client-side/gratis, pero igual prefiere no re-renderizar
+  todo el video constantemente -> mas limpio.)
 
 ## ORDEN SUGERIDO
 1) Fluidez del texto (#1) — chico, alto impacto, recurrente. 2) Director/crítico del guión (#3) — mejora todos los

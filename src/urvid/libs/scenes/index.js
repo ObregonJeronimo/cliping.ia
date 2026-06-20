@@ -1881,7 +1881,9 @@ register({
     ctx.save(); ctx.translate(cx, cy)
     drawWrapped(ctx, content.brand || 'Marca', 0, -6, { size: 40, weight: 800, family: fonts.display, maxW: R * 1.5, color: pal.ink, maxLines: 2, lh: 1.02, alpha: inv(t, 0.35, 0.85) })
     const sub = content.cta || content.tagline
-    if (sub) drawText(ctx, sub, 0, 34, { size: 15, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, maxW: R * 1.4, alpha: inv(t, 0.6, 1.1) })
+    // sub-label chico dentro del sello: min bajo -> si el texto es largo ACHICA en vez de cortar con "..." (un CTA
+    // corto queda a 15px; uno largo baja hasta 9px pero se ve COMPLETO). maxW un poco mas ancho que el disco interior.
+    if (sub) drawText(ctx, sub, 0, 34, { size: 15, min: 9, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, maxW: R * 1.55, alpha: inv(t, 0.6, 1.1) })
     ctx.restore()
     const stp = M.ease(inv(t, 0.6, 1.2))
     if (stp > 0.4) {
