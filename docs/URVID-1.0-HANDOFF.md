@@ -1,5 +1,12 @@
 # 🔌 URVID 1.0 — HANDOFF (cómo retomar con contexto completo)
 
+> **ESTADO ACTUAL (jun 2026, pusheado hasta `5d6dd7a`): 857 módulos + toda la post-auditoría.** Antes de tocar nada
+> leé, EN ESTE ORDEN: `docs/URVID-1.0-AUDITORIA.md` (la crítica/roadmap), `docs/URVID-1.0-FIXES-POSTAUDIT.md` (TODO lo
+> que se hizo: solver de layout, multi-formato, export, honestidad de datos, +155 fondos por rubro, APCA, gate de QA
+> visual `npm run qa`, transición secuenciada, etc.) y `docs/URVID-1.0-NEXT.md` (lo que SIGUE: fluidez del texto,
+> biblioteca de animaciones pre-hechas, director/crítico del guión, y "Urvid Craft"). Lo de ACÁ ABAJO describe la base
+> hasta `adf105d` (676 módulos) — sigue válido como mapa del motor, pero el estado real es el de esos 3 docs.
+
 > Leer ESTO primero al retomar. Estado al commit `adf105d` (jun 2026; 676 modulos: color + motion + typekit + markkit/datakit + transiciones + cerebro v2 + Olas 4/5/6 + PERCEPTION v3 URL->brief (1 llamada multimodal Sonnet 4.6 + brief rico + cache) + FLUIDEZ PULIDA en TODAS las libs (0 escenas congeladas) + POST (acabado) + estudio REDISENADO/responsive + PUENTE para que el asistente VEA los videos del estudio). Complementa: `docs/URVID-1.0-BLUEPRINT.md`
 > (el mapa de bibliotecas) y `docs/ARBOL.md` (estado del motor VIEJO/Animaciones). El objetivo: el chat nuevo sigue
 > haciendo EXACTAMENTE lo de ahora — llenar bibliotecas con módulos verificados + cablear uso — sin perder contexto.
