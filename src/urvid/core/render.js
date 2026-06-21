@@ -85,11 +85,11 @@ export function drawFrame(ctx, t, video) {
   // el titulo). Se rendea con lottie-web por `t` -> determinista; SOLO en browser (en Node drawLottie es no-op, asi los
   // gates no dependen de lottie). Aparece tras un breve delay (carga async; mientras tanto no dibuja). Conserva sus
   // colores de diseno (acento pro). El espacio del titulo nunca lo pisa porque va detras del contenido.
-  if (video.animFile) {
+  if (video.animUrl) {
     const corners = [[W * 0.74, H * 0.2], [W * 0.74, H * 0.8], [W * 0.26, H * 0.8]]   // TR / BR / BL (evita TL = marca)
     const [gx, gy] = corners[(video.animSeed >>> 0) % corners.length], sz = W * 0.34
     const a = (video.tone === 'light' ? 0.92 : 1) * inv(t, 0.4, 1.1)
-    if (a > 0) { ctx.save(); ctx.globalAlpha = a; drawLottie(ctx, video.animId, video.animFile, t, gx - sz / 2, gy - sz / 2, sz, sz); ctx.restore() }
+    if (a > 0) { ctx.save(); ctx.globalAlpha = a; drawLottie(ctx, video.animId, video.animUrl, t, gx - sz / 2, gy - sz / 2, sz, sz); ctx.restore() }
   }
   // ESCENA + TRANSICIONES — el CONTENIDO va ENCIMA de las capas (texto siempre legible).
   // Ventana de transicion [B.start, B.start+XF): A (saliente, ya asentada) + B (entrante, recien arrancando su

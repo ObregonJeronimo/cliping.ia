@@ -194,7 +194,7 @@ export function makeVideo(brief = {}) {
     motionId: motMod ? motMod.id : null,
     typekitId: tkMod ? tkMod.id : null,
     markId: markMod ? markMod.id : null, markSeed: (seed ^ hashStr('mark')) >>> 0,
-    animId: animPick ? animPick.id : null, animFile: animPick ? animPick.file : null, animSeed: (seed ^ hashStr('anim')) >>> 0,
+    animId: animPick ? animPick.id : null, animUrl: animPick ? animPick.url : null, animSeed: (seed ^ hashStr('anim')) >>> 0,
     transitionId: trMod ? trMod.id : null,
     postId: postMod ? postMod.id : null, postSeed: (seed ^ hashStr('post')) >>> 0,
     layoutId: layMod ? layMod.id : null,

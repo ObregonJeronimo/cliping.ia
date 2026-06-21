@@ -3,6 +3,11 @@
 // SOLO BROWSER: lottie-web necesita DOM. En Node (los gates) -> no-op: el anim es decoracion, los gates no lo testean,
 // asi el determinismo del MOTOR (texto/timing) se verifica igual sin lottie. Carga ASYNC (fetch JSON + init); mientras
 // carga no dibuja (aparece cuando esta listo), como el cache del logo en render.js. Cache por id (una sola init).
+// GATE de determinismo (mirror de backend has_expressions): las Lotties con expresiones/efectos NO renderizan igual
+// frame a frame -> se descartan (el anim es opcional; si una falla el gate, no se dibuja). El manifiesto NO viene
+// pre-gateado (escala a miles sin bajar todo), asi que se gatea aca al cargar.
+function hasExpressions(json) { try { const b = JSON.stringify(json); return b.indexOf('"ef":') >= 0 || b.indexOf('"x":"') >= 0 } catch { return true } }
+
 let _libP = null
 function ensureLib() {
   if (_libP) return _libP
@@ -21,7 +26,7 @@ function load(id, fileUrl) {
     const lib = await ensureLib(); if (!lib) { e.dead = true; return }
     let json
     try { const r = await fetch(fileUrl); json = await r.json() } catch { e.dead = true; return }
-    if (!json || !json.w || !json.h) { e.dead = true; return }
+    if (!json || !json.w || !json.h || hasExpressions(json)) { e.dead = true; return }   // gate de determinismo
     // lottie-web (canvas) crea su PROPIO canvas dentro de un container adjunto + dimensionado. Lo copiamos al ctx del
     // motor con drawImage. (Pasarle un context externo no rendea bien; el container propio si.) El div va fuera de pantalla.
     const div = document.createElement('div')

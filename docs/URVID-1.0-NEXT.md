@@ -61,11 +61,18 @@ enciende. Gates OK (QA 0, determinismo, motion, build). Commit local; SIN push (
 > - VERIFICADO: render probado EN VIVO por PIXELES (canvas interno de lottie 12306px no-blank, copiado 2734px, 15/16 en
 >   una grilla de prueba) -> el player anda; determinismo OK, QA 0, prefit 0, build OK. (El screenshot del tool colgaba
 >   por el rAF global de lottie + peso de la pagina; validado por pixeles en su lugar.)
-> FALTA / TRADEOFF A DEFINIR: "cientos POR RUBRO" = miles de Lotties = BUNDLE impractico (202=13MB -> miles=100s MB).
-> Para escalar a miles: pasar de BUNDLE a MANIFIESTO + FETCH del CDN de LottieFiles en runtime (metadata chica, JSON on-
-> demand; ojo CORS -> quiza proxy por el backend). Tambien: RECOLOR a la marca (hoy conservan sus colores; remapear c.k
-> -> paleta es posible para mono/duotono), preview/picker de Lotties en Urvid Craft, y placement (hoy esquina; podrian
-> ir mas protagonicas). LICENCIA: LottieFiles pool gratis -> revisar terminos/atribucion para uso comercial.
+> ESCALADO A MILES — HECHO (usuario eligio "escalar ya a miles via manifiesto + CDN"): se PASO de bundle a MANIFIESTO +
+> FETCH del CDN en runtime. `tools/lottie_manifest.py` ahora SOLO busca (no baja JSON) -> rapido + manifiesto chico aun
+> con miles. **2050 Lotties: 250 universales + 200 por cada uno de los 9 rubros** (manifest.js ~451KB, solo metadata +
+> url del CDN). El bundle `public/lottie/` se BORRO. El gate de determinismo se movio a RUNTIME (player.js `hasExpressions`,
+> mirror del python): el JSON se fetchea del CDN al usarse y si trae expresiones se descarta (anim opcional; ~30% se
+> saltean -> el anim aparece en ~30% de los videos). CORS del CDN de LottieFiles: VERIFICADO OK (fetch client-side directo,
+> sin proxy). Render validado por pixeles con urls del CDN (default/finanzas/inmobiliaria ok; 1 moda descartada por el gate
+> = correcto). build/determinismo/QA/prefit OK.
+> FALTA (refinamientos, NO bloqueantes): RECOLOR a la marca (hoy conservan sus colores de diseno; remapear c.k -> paleta
+> para mono/duotono), preview/picker de Lotties en Urvid Craft, placement (hoy esquina; podrian ir mas protagonicas),
+> cachear el resultado del gate para subir el hit-rate, y el manifiesto de 451KB podria lazy-loadearse si molesta el bundle.
+> LICENCIA: LottieFiles pool gratis -> revisar terminos/atribucion para uso comercial (el manifiesto guarda `author`).
 > --- (lo de abajo es la nota ORIGINAL de investigacion, ya superada por el pivote) ---
 Buscar e implementar animaciones YA hechas, categorizadas, con descripción de qué hacen (ej: "un carrito clickeado
 por un mouse que cambia de color"). Miles. Categorizar + testear que estén bien + aplicarlas según haga falta (a
