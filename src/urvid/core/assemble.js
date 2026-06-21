@@ -14,6 +14,7 @@ import { deriveFonts } from './fonts.js'
 import { analyzeContent, buildArcSmart, sceneBias } from './strategy.js'
 import { fitWeight, canonRubro } from './fit.js'
 import { fitContent } from './script.js'
+import LOTTIE from '../lottie/manifest.js'
 
 // ARCO narrativo VARIADO por semilla: apertura (hook|hero) -> 1-3 beats de cuerpo SIN repetir -> cierre. Usa todas
 // las categorias de escena disponibles -> dos videos no comparten estructura (no siempre hero->statement->outro).
@@ -123,13 +124,19 @@ export function makeVideo(brief = {}) {
   const MARK_GARNISH_CATS = new Set(['iconos-rubro', 'iconos-animados'])
   const markPool = query('markkit', { tone }).filter(m => MARK_GARNISH_CATS.has(m.category))
   const markMod = optional(lock && lock.mark, keep && keep.mark, seedFor(seed, 'markgarnish'), 0.5, markPool)
-  // ANIM: micro-animacion ruteada por CONCEPTO del brief (no al azar). Se mapea el contenido + rubro a conceptos
-  // candidatos y se elige el anim mas afin (weightedPick por fit) dentro de ese subconjunto. Optional (~45%).
-  const animPoolAll = query('anim', { tone })
+  // ANIM (Lottie PRE-HECHA): elige una animacion del MANIFIESTO por concepto del brief + rubro (no al azar). Optional ~45%.
+  // El manifiesto (gateado por determinismo, categorizado) vive en ../lottie/manifest.js; el JSON crudo se fetchea en
+  // runtime y se rendea con lottie-web por t (player.js, solo browser; en Node es no-op -> los gates no lo testean).
   const wantConcepts = routeAnimConcepts(content, rubro)
-  let animPool = animPoolAll.filter(m => wantConcepts.has(m.concept) || (m.tags || []).some(tg => wantConcepts.has(tg)))
-  if (!animPool.length) animPool = animPoolAll
-  const animMod = optional(lock && lock.anim, keep && keep.anim, seedFor(seed, 'anim'), 0.45, animPool)
+  const animItems = (LOTTIE && LOTTIE.items) || []
+  let animPool = animItems.filter(it => it.rubro === rubro)
+  if (animPool.length < 4) animPool = animPool.concat(animItems.filter(it => it.rubro === 'default'))   // suma universales
+  const animByConcept = animPool.filter(it => wantConcepts.has(it.concept))
+  if (animByConcept.length) animPool = animByConcept
+  let animPick = null
+  if (lock) animPick = lock.anim ? animItems.find(it => it.id === lock.anim) : null
+  else if (keep && keep.anim) animPick = animItems.find(it => it.id === keep.anim)
+  else if (animPool.length && seedFor(seed, 'anim')() < 0.45) animPick = pick(seedFor(seed, 'animpick'), animPool)
   // TRANSICION escena-a-escena (wipe/slide/iris/bars/cut) -> video.transitionId.
   const trMod = required(lock && lock.transition, keep && keep.transition, seedFor(seed, 'transition'), query('transitions', { tone }))
   // PACING: la ventana de transicion (XF) sale de la PERSONALIDAD de movimiento (snappy corta, calmo larga).
@@ -187,12 +194,12 @@ export function makeVideo(brief = {}) {
     motionId: motMod ? motMod.id : null,
     typekitId: tkMod ? tkMod.id : null,
     markId: markMod ? markMod.id : null, markSeed: (seed ^ hashStr('mark')) >>> 0,
-    animId: animMod ? animMod.id : null, animSeed: (seed ^ hashStr('anim')) >>> 0,
+    animId: animPick ? animPick.id : null, animFile: animPick ? animPick.file : null, animSeed: (seed ^ hashStr('anim')) >>> 0,
     transitionId: trMod ? trMod.id : null,
     postId: postMod ? postMod.id : null, postSeed: (seed ^ hashStr('post')) >>> 0,
     layoutId: layMod ? layMod.id : null,
     content: { brand, ...content },
     scenes, duration: start || 8,
-    recipe: { color: colMod ? colMod.id : null, type: typMod ? typMod.id : null, bg: bg ? bg.id : null, sub: sub ? sub.id : null, atm: atm ? atm.id : null, motion: motMod ? motMod.id : null, typekit: tkMod ? tkMod.id : null, mark: markMod ? markMod.id : null, anim: animMod ? animMod.id : null, transition: trMod ? trMod.id : null, post: postMod ? postMod.id : null, layout: layMod ? layMod.id : null, scenes: scenes.map(s => s.sceneId) },   // la "carta" del video
+    recipe: { color: colMod ? colMod.id : null, type: typMod ? typMod.id : null, bg: bg ? bg.id : null, sub: sub ? sub.id : null, atm: atm ? atm.id : null, motion: motMod ? motMod.id : null, typekit: tkMod ? tkMod.id : null, mark: markMod ? markMod.id : null, anim: animPick ? animPick.id : null, transition: trMod ? trMod.id : null, post: postMod ? postMod.id : null, layout: layMod ? layMod.id : null, scenes: scenes.map(s => s.sceneId) },   // la "carta" del video
   }
 }

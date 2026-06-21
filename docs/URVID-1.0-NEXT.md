@@ -39,29 +39,34 @@ para AISLAR el contenido. RESULTADOS (metrica aislada STRIP): AVG band 0.129 -> 
 texto (hero.center) 0.607 -> 0.013 (-98%). Visual: cuerpo del glifo NEGRO en el diff (estable); solo deco/fondo se
 enciende. Gates OK (QA 0, determinismo, motion, build). Commit local; SIN push (pendiente OK del usuario).
 
-### 2. BIBLIOTECA DE ANIMACIONES pre-hechas (miles, categorizadas) — [FUNDACION HECHA]
-> DECISION (usuario, "toma la mejor decision"): lib PROPIA `anim/` VECTORIAL determinista (NO Lottie; Lottie queda como
-> posible 2da fuente futura). HECHO (commit local SIN push): `src/urvid/libs/anim/index.js` = contrato + helpers (loop/
-> pulse/ink/spark/starShape) + **12 animaciones** line-art deterministas, pintadas con la paleta (ink + accent), que
-> LOOPEAN suave: commerce.cart-tap, feedback.check-pop, rating.stars-fill, growth.bars-rise, growth.arrow-trend,
-> comm.chat-pop, comm.send-plane, notify.bell-ring, search.scan, secure.lock, action.toggle-on, tech.network. Cada una
-> con metadata extra `concept` + `describe` para el RUTEO. RUTEO en assemble.js: `routeAnimConcepts(content, rubro)`
-> mapea palabras-clave del contenido (es) + rubro -> conceptos candidatos -> elige el anim mas afin (weightedPick por
-> fit), OPTIONAL ~45% -> `video.animId`/`recipe.anim`. RENDER en render.js: accent animado en una ESQUINA (no TL=marca),
-> escala 0.5, DETRAS del contenido (no compite con el titulo), alpha ~0.6 con ramp-in. Gate `tools/urvid1-anim-check.mjs`
-> (`npm run anim`, sumado a `gates`): renderiza cada anim dark+light a varios t, determinismo + no-blank + contact-sheet
-> (FIX cazado: stars-fill llamaba starPath(ctx,sr) a una fn de 1 arg -> NaN -> blank; reescrito con starShape modular).
-> Expuesto en URVID CRAFT (slot 'anim' en el paso Avanzado, opcional). VERIFICADO: 869 modulos, anim gate 0, QA 0,
-> prefit 0, determinismo OK, build OK.
-> OLA 1 HECHA (commit local SIN push): refactor helpers a `anim/_shared.js` (para paralelizar) + verificador por-archivo
-> `tools/urvid1-anim-one.mjs` + WORKFLOW de 8 agentes (1 archivo de concepto cada uno) -> **+80 anims, 0 descartadas**
-> (commerce/media/time/finance/social/location/techui/wellness, 10 c/u). Cada agente autoverifico (determinismo +
-> no-blank + chequeo de COSTURA de loop pixel-identico t0==tPer + QA visual del contact-sheet, con fixes propios:
-> bag/volume/gallery/cloud-sync/plug/api/grow/book/reactions/approve/alarm/checklist/signpost). Integrado (imports en
-> index.js) + GATE GLOBAL `npm run anim` 0 sobre las **92** + spot-check visual (commerce + techui = profesional) +
-> determinismo/QA/prefit/build OK. **949 modulos** (anim 12->92). FALTA: mas OLAS hacia cientos/miles (mismo patron,
-> nuevas familias: weather/food/transport/people/security/comms2/ui-states/emoji...) + (futuro) evaluar Lottie 2da fuente.
-> --- detalle original abajo ---
+### 2. BIBLIOTECA DE ANIMACIONES pre-hechas — [PIVOTE A LOTTIE · FUNDACION HECHA]
+> DECISION FINAL (usuario): las vectoriales propias se veian FLOJAS ("anim food se ven feas") -> **BORRADAS** y se
+> PIVOTO a **LOTTIE** (animaciones pre-hechas de disenadores, pro). El usuario quiere: ya creadas+buenas, 100+ min,
+> categorizadas, meta = cientos por rubro.
+> HECHO (commit local SIN push):
+> - **BORRADO** todo `src/urvid/libs/anim/` (las 92 vectoriales: 12 base + 80 de la ola) + `tools/urvid1-anim-check.mjs`
+>   + `urvid1-anim-one.mjs` + el slot 'anim' de Urvid Craft + `npm run anim`. (La ola de escalado de libs >50 que corria
+>   se aborto/no se integro; solo quedo el verificador `tools/urvid1-lib-check.mjs` como infra reusable.)
+> - **ADQUISICION** `tools/lottie_manifest.py`: busca en la API publica de LottieFiles (via `backend/lottie_search.py`,
+>   sin auth) por una matriz concepto x rubro, FILTRA por el gate de determinismo (`has_expressions` -> descarta las que
+>   traen expresiones/efectos no reproducibles; ~70% pasan), deduplica, guarda cada JSON en `public/lottie/<id>.json` y
+>   escribe el indice `src/urvid/lottie/manifest.js` (modulo JS, no .json, p/ importar igual en Vite y Node). **202
+>   Lotties, BALANCEADAS: 40 universales (default) + 18 por cada uno de los 9 rubros**, 13MB.
+> - **RENDER** `src/urvid/lottie/player.js`: `drawLottie(ctx,id,file,t,...)` con lottie-web (`goToAndStop(frame)` = f(t)
+>   -> DETERMINISTA), carga async (fetch + container propio adjunto/dimensionado; copia con drawImage). SOLO BROWSER; en
+>   Node es no-op (el anim es decoracion -> los gates de Node NO dependen de lottie). Conserva los colores de diseno.
+> - **RUTEO** en assemble.js: `routeAnimConcepts` (palabras-clave + rubro) elige del manifiesto (filtra por rubro+concepto,
+>   suma universales) -> `video.animId`/`animFile`/`recipe.anim`, optional ~45%. RENDER en render.js: drawLottie en una
+>   esquina (no TL=marca), DETRAS del contenido, ramp-in.
+> - VERIFICADO: render probado EN VIVO por PIXELES (canvas interno de lottie 12306px no-blank, copiado 2734px, 15/16 en
+>   una grilla de prueba) -> el player anda; determinismo OK, QA 0, prefit 0, build OK. (El screenshot del tool colgaba
+>   por el rAF global de lottie + peso de la pagina; validado por pixeles en su lugar.)
+> FALTA / TRADEOFF A DEFINIR: "cientos POR RUBRO" = miles de Lotties = BUNDLE impractico (202=13MB -> miles=100s MB).
+> Para escalar a miles: pasar de BUNDLE a MANIFIESTO + FETCH del CDN de LottieFiles en runtime (metadata chica, JSON on-
+> demand; ojo CORS -> quiza proxy por el backend). Tambien: RECOLOR a la marca (hoy conservan sus colores; remapear c.k
+> -> paleta es posible para mono/duotono), preview/picker de Lotties en Urvid Craft, y placement (hoy esquina; podrian
+> ir mas protagonicas). LICENCIA: LottieFiles pool gratis -> revisar terminos/atribucion para uso comercial.
+> --- (lo de abajo es la nota ORIGINAL de investigacion, ya superada por el pivote) ---
 Buscar e implementar animaciones YA hechas, categorizadas, con descripción de qué hacen (ej: "un carrito clickeado
 por un mouse que cambia de color"). Miles. Categorizar + testear que estén bien + aplicarlas según haga falta (a
 veces simples, suman profesionalismo). NOTAS/INVESTIGAR: el backend ya tiene `backend/lottie_search.py` y
