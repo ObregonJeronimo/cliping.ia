@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
-import { makeVideo, drawFrame } from '../../urvid/index.js'
+import { makeVideo, drawFrame, get } from '../../urvid/index.js'
 import { registerPreview, wakePreview } from './previewLoop.js'
 import { shortId } from './craftLib.js'
 import styles from './UrvidCraftStudio.module.css'
@@ -38,7 +38,14 @@ export default function OptionCard({ slot, beat, mod, mode, selected, onSelect, 
     let base, span, solo
     if (slot === 'transition' && video.scenes[1]) { solo = video; const t1 = video.scenes[1].start; base = Math.max(0, t1 - 0.7); span = 1.4 }
     else { const i = slot === 'scenes' ? Math.min(beat, video.scenes.length - 1) : 0; const sc = video.scenes[i]; solo = { ...video, scenes: [{ ...sc, start: 0 }], duration: sc.dur }; base = 0; span = sc.dur || 4 }
-    const drawAt = (local) => { ctx.setTransform(sx, 0, 0, sx, 0, 0); drawFrame(ctx, base + (((local % span) + span) % span), solo) }
+    // FONDO: la opcion muestra SOLO la capa de fondo (sin texto/escena encima) -> es el fondo de verdad, no un preview real.
+    const bgMod = slot === 'bg' ? get(video.bgId) : null
+    const drawAt = (local) => {
+      const t = base + (((local % span) + span) % span)
+      ctx.setTransform(sx, 0, 0, sx, 0, 0)
+      if (bgMod) { ctx.clearRect(0, 0, W, H); bgMod.render(ctx, t, { pal: video.palette, content: video.content, seed: video.bgSeed, energy: 1 }) }
+      else drawFrame(ctx, t, solo)
+    }
     const entry = { active: false, t0: 0, draw: (t) => drawAt(t - entry.t0), drawStatic: () => drawAt(span * (slot === 'transition' ? 0.5 : 0.35)) }
     entry.drawStatic()   // thumbnail estatico (NO auto-play)
     entryRef.current = entry

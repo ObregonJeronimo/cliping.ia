@@ -10,10 +10,15 @@ const CAP0 = 24, CAP_STEP = 36
 const RUBRO_LBL = { default: 'General', tech: 'Tech', finanzas: 'Finanzas', moda: 'Moda', gastronomia: 'Gastro', educacion: 'Educacion', salud: 'Salud', fitness: 'Fitness', inmobiliaria: 'Inmob.', belleza: 'Belleza' }
 const rubrosOf = (m) => ((m.rubros && m.rubros.length) ? m.rubros : ['*'])
 const rubroMatch = (m, r) => { const rs = rubrosOf(m); return rs[0] === '*' || rs.includes(r) }
+// filtro por categoria de escena (por beat): label legible + categoria de nivel superior (openers/hero -> openers)
+const CAT_LBL = { openers: 'Aperturas', statements: 'Frases', lists: 'Listas', data: 'Datos', social: 'Prueba', closers: 'Cierres', connectors: 'Conectores', spec: 'Especiales' }
+const CAT_ORDER = ['openers', 'statements', 'lists', 'data', 'social', 'closers', 'connectors', 'spec']
+const catOf = (m) => String(m.category || '').split('/')[0]
 
-export default function OptionGrid({ slot, beat, options, selectedId, onPick, brief, seed, fullRecipe, optional, withRubro }) {
+export default function OptionGrid({ slot, beat, options, selectedId, onPick, brief, seed, fullRecipe, optional, withRubro, withCategory, defaultCategory }) {
   const [cap, setCap] = useState(CAP0)
   const [rubro, setRubro] = useState(() => (withRubro && (brief.rubro || 'todos')) || 'todos')
+  const [cat, setCat] = useState(() => (withCategory && (defaultCategory || 'todos')) || 'todos')
   const mode = previewMode(slot)
 
   // rubros presentes en las opciones (para los chips del filtro)
@@ -24,7 +29,20 @@ export default function OptionGrid({ slot, beat, options, selectedId, onPick, br
     return [...s]
   }, [options, withRubro])
 
-  const filtered = useMemo(() => (withRubro && rubro !== 'todos' ? options.filter(m => rubroMatch(m, rubro)) : options), [options, withRubro, rubro])
+  // categorias presentes en las opciones (para el filtro por beat en Escenas)
+  const presentCats = useMemo(() => {
+    if (!withCategory) return []
+    const s = new Set()
+    for (const m of options) { const c = catOf(m); if (c) s.add(c) }
+    return [...s].sort((a, b) => CAT_ORDER.indexOf(a) - CAT_ORDER.indexOf(b))
+  }, [options, withCategory])
+
+  const filtered = useMemo(() => {
+    let list = options
+    if (withRubro && rubro !== 'todos') list = list.filter(m => rubroMatch(m, rubro))
+    if (withCategory && cat !== 'todos') list = list.filter(m => catOf(m) === cat)
+    return list
+  }, [options, withRubro, rubro, withCategory, cat])
 
   const shown = useMemo(() => {
     const list = filtered.slice(0, cap)
@@ -42,6 +60,14 @@ export default function OptionGrid({ slot, beat, options, selectedId, onPick, br
           <button type="button" className={`${styles.rubroChip} ${rubro === 'todos' ? styles.rubroChipOn : ''}`} onClick={() => { setRubro('todos'); setCap(CAP0) }}>Todos</button>
           {present.map(r => (
             <button key={r} type="button" className={`${styles.rubroChip} ${rubro === r ? styles.rubroChipOn : ''}`} onClick={() => { setRubro(r); setCap(CAP0) }}>{RUBRO_LBL[r] || r}</button>
+          ))}
+        </div>
+      )}
+      {withCategory && presentCats.length > 1 && (
+        <div className={styles.rubroBar}>
+          <button type="button" className={`${styles.rubroChip} ${cat === 'todos' ? styles.rubroChipOn : ''}`} onClick={() => { setCat('todos'); setCap(CAP0) }}>Todos</button>
+          {presentCats.map(c => (
+            <button key={c} type="button" className={`${styles.rubroChip} ${cat === c ? styles.rubroChipOn : ''}`} onClick={() => { setCat(c); setCap(CAP0) }}>{CAT_LBL[c] || c}</button>
           ))}
         </div>
       )}

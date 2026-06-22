@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { db } from '../../lib/firebase'
 import OptionGrid from './OptionGrid.jsx'
 import Collapsible from './Collapsible.jsx'
-import { optionsFor, sceneOptionsFor, categoryOf, shortId } from './craftLib.js'
+import { optionsFor, allSceneOptions, categoryOf, topCategoryOfScene, shortId } from './craftLib.js'
 import styles from './UrvidCraftStudio.module.css'
 
 // Urvid CRAFT — arma el video PASO A PASO. El usuario pega un link, lo analizamos (perception) y va eligiendo de cada
@@ -362,11 +362,11 @@ export default function UrvidCraftStudio() {
   function renderEscenas() {
     return (
       <div className={styles.stepBody}>
-        <p className={styles.lead}>El arco lo armamos por vos desde tu contenido. Cambia cualquier escena si querés (o dejalo asi).</p>
+        <p className={styles.lead}>El arco lo armamos por vos desde tu contenido. Cambiá cualquier escena: filtrá por tipo y elegí de cualquier categoria.</p>
         {video.scenes.map((sc, i) => (
           <div key={i} className={styles.beatRow}>
             <span className={styles.eyebrowSm}>Beat {i + 1} · {categoryOf(sc.sceneId)}</span>
-            <OptionGrid slot="scenes" beat={i} options={sceneOptionsFor(sc.sceneId, brief)} selectedId={sc.sceneId} onPick={id => pickScene(i, id)} brief={brief} seed={seed} fullRecipe={fullRecipe} />
+            <OptionGrid slot="scenes" beat={i} options={allSceneOptions(brief)} selectedId={sc.sceneId} onPick={id => pickScene(i, id)} brief={brief} seed={seed} fullRecipe={fullRecipe} withCategory defaultCategory={topCategoryOfScene(sc.sceneId)} />
           </div>
         ))}
       </div>
@@ -380,7 +380,7 @@ export default function UrvidCraftStudio() {
       { slot: 'motion', title: 'Movimiento', optional: false },
       { slot: 'typekit', title: 'Texto cinetico', optional: true },
       { slot: 'layout', title: 'Composicion (layout)', optional: false },
-      { slot: 'mark', title: 'Icono de marca', optional: true },
+      { slot: 'mark', title: 'Icono', optional: true },
     ]
     return (
       <div className={styles.stepBody}>

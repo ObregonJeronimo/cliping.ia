@@ -33,5 +33,15 @@ export function sceneOptionsFor(sceneId, brief) {
 }
 
 export const categoryOf = (sceneId) => (get(sceneId)?.category || '').replace(/\//g, ' · ')
+
+// TODAS las escenas del tono (cualquier categoria), ordenadas por afinidad -> el picker por beat las filtra por categoria.
+export function allSceneOptions(brief) {
+  const pool = query('scene-layouts', { tone: brief.tone })
+  const ctx = { rubro: brief.rubro, seriousness: seriousnessFor(brief) }
+  return pool.slice().sort((a, b) => fitWeight(b, ctx) - fitWeight(a, ctx))
+}
+// categoria de nivel superior de una escena (openers/hero -> openers) para los filtros por beat.
+export const sceneTopCategory = (m) => String((m && m.category) || '').split('/')[0]
+export const topCategoryOfScene = (sceneId) => sceneTopCategory(get(sceneId))
 // como se previsualiza cada slot: color=swatches, typography=muestra de texto, el resto=canvas (gif).
 export const previewMode = (slot) => (slot === 'color' ? 'swatch' : slot === 'type' ? 'type' : 'canvas')
