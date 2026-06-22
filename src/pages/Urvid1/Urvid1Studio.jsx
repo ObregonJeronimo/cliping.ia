@@ -229,14 +229,14 @@ export default function Urvid1Studio() {
             </div>
           </label>
           <button className={styles.ghost} onClick={() => analyze(true)} disabled={analyzing === 'loading' || !url.trim()} title="Ignora el cache y vuelve a analizar la pagina">↻ Re-analizar</button>
-          {analyzing && analyzing !== 'loading' && <p style={{ margin: '0 0 6px', fontSize: 12, color: '#e08a8a' }}>{analyzing}</p>}
+          {analyzing && analyzing !== 'loading' && <p style={{ margin: '0 0 6px', fontSize: 12, color: 'var(--red)' }}>{analyzing}</p>}
           <label className={styles.field}>Marca<input value={brief.brand} onChange={e => up('brand', e.target.value)} /></label>
           <div className={styles.two}>
             <label className={styles.field}>Color<input type="color" value={brief.brandColor} onChange={e => up('brandColor', e.target.value)} /></label>
             <label className={styles.field}>Rubro<select value={brief.rubro} onChange={e => up('rubro', e.target.value)}>{RUBROS.map(r => <option key={r}>{r}</option>)}</select></label>
           </div>
           <label className={styles.field}>Logo (marca){brief.logo
-            ? <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><img src={brief.logo} alt="logo" style={{ height: 28, maxWidth: 100, objectFit: 'contain', background: 'rgba(0,0,0,.2)', borderRadius: 6, padding: 3 }} /><button className={styles.ghost} onClick={clearLogo} style={{ padding: '4px 8px', fontSize: 12 }}>Quitar</button></span>
+            ? <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><img src={brief.logo} alt="logo" style={{ height: 28, maxWidth: 100, objectFit: 'contain', background: 'var(--surface2)', borderRadius: 6, padding: 3 }} /><button className={styles.ghost} onClick={clearLogo} style={{ padding: '4px 8px', fontSize: 12 }}>Quitar</button></span>
             : <input type="file" accept="image/*" onChange={onLogo} />}</label>
           <label className={styles.field}>Tono<div className={styles.seg}>{['dark', 'light'].map(tn => <button key={tn} className={brief.tone === tn ? styles.on : ''} onClick={() => setTone(tn)}>{tn === 'dark' ? 'oscuro' : 'claro'}</button>)}</div></label>
           <label className={styles.field}>Formato<div className={styles.seg}>{[['9:16', 'Reel'], ['4:5', 'Feed'], ['1:1', 'Cuadr.']].map(([f, lbl]) => <button key={f} className={(brief.format || '9:16') === f ? styles.on : ''} onClick={() => up('format', f)}>{lbl} {f}</button>)}</div></label>
@@ -249,12 +249,12 @@ export default function Urvid1Studio() {
             <button className={styles.ghost} onClick={save}>★ Guardar</button>
           </div>
           <button className={styles.primary} onClick={exportVideo} disabled={!!exporting} style={{ width: '100%' }}>{exporting ? `Exportando ${exporting}` : '⬇ Descargar video'}</button>
-          {exporting && exporting.indexOf('%') < 0 && <p style={{ margin: 0, fontSize: 12, color: '#e08a8a' }}>{exporting}</p>}
+          {exporting && exporting.indexOf('%') < 0 && <p style={{ margin: 0, fontSize: 12, color: 'var(--red)' }}>{exporting}</p>}
           <button className={styles.ghost} onClick={genVariants} style={{ width: '100%' }} title="Genera 6 variantes para elegir">⊞ Ver variantes</button>
           {variants.length > 0 && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6 }}>
               {variants.map(v => (
-                <button key={v.seed} onClick={() => pickVariant(v.seed)} title="Usar esta variante" style={{ padding: 0, border: '1px solid var(--line2)', borderRadius: 8, overflow: 'hidden', cursor: 'pointer', background: '#000', aspectRatio: `${video.W} / ${video.H}` }}>
+                <button key={v.seed} onClick={() => pickVariant(v.seed)} title="Usar esta variante" style={{ padding: 0, border: '1px solid var(--border2)', borderRadius: 8, overflow: 'hidden', cursor: 'pointer', background: '#0a0a0f', aspectRatio: `${video.W} / ${video.H}` }}>
                   <img src={v.url} alt="variante" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                 </button>
               ))}
@@ -262,7 +262,7 @@ export default function Urvid1Studio() {
           )}
           <span className={styles.seedpill}><i>semilla</i>{seed ? '#' + (seed >>> 0).toString(16).slice(0, 6) : 'auto (marca + rubro)'}</span>
           {import.meta.env.DEV && <button className={styles.share} onClick={share} title="Manda este video a Claude para que lo vea (solo dev)">{shared === '...' ? 'Compartiendo…' : '↗ Compartir con Claude'}</button>}
-          {import.meta.env.DEV && shared && shared !== '...' && <p style={{ margin: 0, fontSize: 12, color: shared.indexOf('✓') >= 0 ? '#8fe0a8' : '#e08a8a' }}>{shared}</p>}
+          {import.meta.env.DEV && shared && shared !== '...' && <p style={{ margin: 0, fontSize: 12, color: shared.indexOf('✓') >= 0 ? 'var(--green)' : 'var(--red)' }}>{shared}</p>}
           <p className={styles.note}>"Otra variante" mantiene el color y la tipografía de la página y varía la composición (fondo, escenas, movimiento). Cambiá la marca, el color o el rubro para un estilo nuevo.</p>
         </div>
 
