@@ -4,6 +4,7 @@ import { makeVideo, drawFrame } from '../../urvid/index.js'
 import { useAuth } from '../../contexts/AuthContext'
 import { db } from '../../lib/firebase'
 import OptionGrid from './OptionGrid.jsx'
+import EffectPreview from './EffectPreview.jsx'
 import Collapsible from './Collapsible.jsx'
 import { optionsFor, allSceneOptions, categoryOf, topCategoryOfScene, shortId } from './craftLib.js'
 import styles from './UrvidCraftStudio.module.css'
@@ -387,7 +388,7 @@ export default function UrvidCraftStudio() {
         <p className={styles.lead}>Ajustes finos, todos opcionales. Esta en automatico — abri solo lo que quieras tocar.</p>
         {adv.map(a => (
           <Collapsible key={a.slot} title={a.title} hint={shortId(fullRecipe[a.slot]) || 'ninguno'}>
-            <OptionGrid slot={a.slot} options={opts[a.slot]} selectedId={fullRecipe[a.slot]} onPick={id => pick(a.slot, id)} brief={brief} seed={seed} fullRecipe={fullRecipe} optional={a.optional} />
+            <EffectPreview slot={a.slot} options={opts[a.slot]} selectedId={fullRecipe[a.slot]} onPick={id => pick(a.slot, id)} brief={brief} seed={seed} fullRecipe={fullRecipe} optional={a.optional} />
           </Collapsible>
         ))}
       </div>
@@ -397,14 +398,14 @@ export default function UrvidCraftStudio() {
   function renderCierre() {
     return (
       <div className={styles.stepBody}>
-        <p className={styles.lead}>Como pasan las escenas y el acabado final del video.</p>
+        <p className={styles.lead}>Como pasan las escenas y el acabado final. El preview grande reproduce la opcion elegida; en el acabado, la mitad izquierda es SIN efecto y la derecha CON.</p>
         <div className={styles.libSection}>
           <span className={styles.eyebrowSm}>Transicion</span>
-          <OptionGrid slot="transition" options={opts.transition} selectedId={fullRecipe.transition} onPick={id => pick('transition', id)} brief={brief} seed={seed} fullRecipe={fullRecipe} />
+          <EffectPreview slot="transition" options={opts.transition} selectedId={fullRecipe.transition} onPick={id => pick('transition', id)} brief={brief} seed={seed} fullRecipe={fullRecipe} />
         </div>
         <div className={styles.libSection}>
           <span className={styles.eyebrowSm}>Acabado</span>
-          <OptionGrid slot="post" options={opts.post} selectedId={fullRecipe.post} onPick={id => pick('post', id)} brief={brief} seed={seed} fullRecipe={fullRecipe} optional />
+          <EffectPreview slot="post" options={opts.post} selectedId={fullRecipe.post} onPick={id => pick('post', id)} brief={brief} seed={seed} fullRecipe={fullRecipe} optional />
         </div>
       </div>
     )
