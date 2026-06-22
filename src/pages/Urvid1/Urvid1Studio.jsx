@@ -210,14 +210,9 @@ export default function Urvid1Studio() {
     <div className={styles.wrap}>
       <header className={styles.head}>
         <div className={styles.brand}>
-          <h1>urvid <span>1.0</span></h1>
+          <h1 className="urvidTitleIn">urvid <span className="urvidIA">IA</span></h1>
           <p>Motor de bibliotecas · ensamblaje determinista</p>
         </div>
-        <div className={styles.recipe}>
-          {[['color', video.recipe.color], ['tipo', video.recipe.type], ['fondo', video.recipe.bg], ['motion', video.recipe.motion], ['trans', video.recipe.transition], ['post', video.recipe.post]]
-            .filter(([, v]) => v).map(([k, v]) => <span key={k} className={styles.chip}><i>{k}</i>{v.replace(/^[^.]+\./, '')}</span>)}
-        </div>
-        <p className={styles.flow}>{video.recipe.scenes.map(s => s.replace(/^[^.]+\./, '')).join('  →  ')}</p>
       </header>
 
       <div className={styles.cols}>
@@ -290,6 +285,15 @@ export default function Urvid1Studio() {
           </div>
         </div>
       </div>
+
+      <footer className={styles.recipeBar}>
+        <span className={styles.recipeBarLabel}>receta</span>
+        <div className={styles.recipe}>
+          {[['color', video.recipe.color], ['tipo', video.recipe.type], ['fondo', video.recipe.bg], ['motion', video.recipe.motion], ['trans', video.recipe.transition], ['post', video.recipe.post]]
+            .filter(([, v]) => v).map(([k, v]) => <span key={k} className={styles.chip}><i>{k}</i>{v.replace(/^[^.]+\./, '')}</span>)}
+        </div>
+        <p className={styles.flow}>{video.recipe.scenes.map(s => s.replace(/^[^.]+\./, '')).join('  →  ')}</p>
+      </footer>
     </div>
   )
 }

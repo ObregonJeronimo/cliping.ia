@@ -381,7 +381,7 @@ export default function UrvidCraftStudio() {
     <div className={styles.wrap}>
       <div className={styles.inner} ref={topRef}>
         <header className={styles.header}>
-          <div className={styles.logo}>Ur<span>vid</span> Craft</div>
+          <div className={`${styles.logo} urvidTitleIn`}>urvid <span className="urvidIA">IA</span> advanced</div>
           <div className={styles.steps}>
             {STEPS.map((s, i) => (
               <button key={s.key} className={`${styles.stepTab} ${i === step ? styles.stepOn : ''} ${i < step ? styles.stepDone : ''}`} onClick={() => setStep(i)}>

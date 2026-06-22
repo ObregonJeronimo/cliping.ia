@@ -12,13 +12,36 @@
 }
 
 .logo {
-  font-size: 16px;
-  font-weight: 700;
-  letter-spacing: -.01em;
-  padding: 4px 8px 20px;
-  color: var(--text);
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -.02em;
+  padding: 6px 8px 22px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  user-select: none;
 }
-.logo span { color: var(--muted); }
+/* wordmark con un "sheen" iridiscente lento sobre el negro (estilo IA, no generico) */
+.logoMark {
+  background: linear-gradient(105deg, var(--text) 0%, var(--text) 30%, #7048e8 46%, #1098ad 56%, var(--text) 72%, var(--text) 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+  animation: logoSheen 6s ease-in-out infinite;
+}
+@keyframes logoSheen { 0% { background-position: 130% 50%; } 100% { background-position: -30% 50%; } }
+/* punto vivo (indicador "encendido") con glow */
+.logoDot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #6ee7ff, #7048e8);
+  box-shadow: 0 0 8px rgba(112, 72, 232, .55);
+  animation: logoDot 2.6s ease-in-out infinite;
+}
+@keyframes logoDot { 0%, 100% { opacity: .65; transform: scale(.9); } 50% { opacity: 1; transform: scale(1.2); } }
+@media (prefers-reduced-motion: reduce) {
+  .logoMark { animation: none; }
+  .logoDot { animation: none; }
+}
 
 .nav {
   display: flex;

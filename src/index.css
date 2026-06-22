@@ -43,3 +43,29 @@ button { cursor: pointer; }
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+
+/* ===== urvid: identidad animada compartida por los estudios (urvid IA / urvid IA advanced) ===== */
+
+/* Entrada del titulo al cambiar de seccion (el remount por ruta la dispara). */
+@keyframes urvidTitleIn {
+  from { opacity: 0; transform: translateY(7px) scale(.99); filter: blur(5px); }
+  to   { opacity: 1; transform: none; filter: blur(0); }
+}
+.urvidTitleIn { animation: urvidTitleIn .5s cubic-bezier(.2, .75, .2, 1) both; }
+
+/* "IA": arcoiris OSCURO, levemente brillante, en movimiento lento constante (degrade iridiscente animado sobre las letras). */
+@keyframes urvidIAShift { to { background-position: 200% 50%; } }
+.urvidIA {
+  background: linear-gradient(100deg, #3b5bdb, #7048e8, #ae3ec9, #d6336c, #1098ad, #3b5bdb);
+  background-size: 200% 100%;
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+  animation: urvidIAShift 7s linear infinite;
+  filter: drop-shadow(0 0 7px rgba(112, 72, 232, .28));
+  font-weight: 900; font-style: normal;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .urvidTitleIn { animation: none; }
+  .urvidIA { animation: none; }
+}

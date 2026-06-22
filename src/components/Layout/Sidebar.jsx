@@ -21,7 +21,8 @@ export default function Sidebar() {
   return (
     <aside className={styles.sidebar}>
       <div className={styles.logo}>
-        Ur<span>vid</span>
+        <span className={styles.logoMark}>Urvid</span>
+        <span className={styles.logoDot} />
       </div>
 
       <nav className={styles.nav}>
