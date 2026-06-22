@@ -31,6 +31,8 @@
 .stepOn { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 .stepOn .stepNum { color: var(--bg); opacity: .7; }
 .stepDone { color: var(--ink); border-color: var(--border2); }
+.restartTop { margin-left: 6px; background: transparent; border: 1px solid var(--border2); color: var(--muted); border-radius: 100px; padding: 8px 14px; font-family: var(--fbody); font-size: 12px; cursor: pointer; }
+.restartTop:hover { border-color: var(--ink); color: var(--ink); }
 
 /* ---- columnas: main + aside (preview sticky) ---- */
 .cols { display: grid; grid-template-columns: 1fr 340px; gap: 40px; align-items: start; }
@@ -111,6 +113,12 @@ select.input { appearance: none; cursor: pointer; background-image: linear-gradi
 .libSection + .libSection { margin-top: 20px; padding-top: 22px; border-top: 1px solid var(--border); }
 .beatRow { display: flex; flex-direction: column; gap: 10px; }
 .beatRow + .beatRow { margin-top: 16px; }
+/* filtro por rubro (Fondo): chips arriba de la grilla */
+.rubroBar { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.rubroChip { background: var(--surface); border: 1px solid var(--border); color: var(--muted); border-radius: 100px; padding: 6px 12px; font-family: var(--fbody); font-size: 12px; font-weight: 500; cursor: pointer; transition: border-color .15s, color .15s, background .15s; }
+.rubroChip:hover { border-color: var(--border2); color: var(--ink); }
+.rubroChipOn { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(106px, 1fr)); gap: 12px; }
 .opt { display: flex; flex-direction: column; gap: 7px; padding: 0; background: transparent; border: none; cursor: pointer; text-align: left; }
 .optThumb { width: 100%; aspect-ratio: 405 / 720; background: #0a0a0f; border: 1.5px solid var(--border); border-radius: 11px; overflow: hidden; transition: border-color .15s, transform .08s, box-shadow .15s; }

@@ -58,8 +58,10 @@ export default function UrvidCraftStudio() {
     sub: optionsFor('sub', brief), atm: optionsFor('atm', brief), motion: optionsFor('motion', brief),
     typekit: optionsFor('typekit', brief), layout: optionsFor('layout', brief), mark: optionsFor('mark', brief),
   }), [brief.tone, brief.rubro, brief.seriousness])
-  const pick = (slot, id) => setPicks(p => ({ ...p, [slot]: id }))
-  const pickScene = (i, id) => setPicks(p => ({ ...p, scenes: { ...(p.scenes || {}), [i]: id } }))
+  // al ELEGIR una opcion, reinicia el mini-player a 0 -> el usuario ve el resultado desde el principio (no a mitad del loop).
+  const restartPreview = () => { headRef.current = 0; setHead(0); setPlaying(true) }
+  const pick = (slot, id) => { setPicks(p => ({ ...p, [slot]: id })); restartPreview() }
+  const pickScene = (i, id) => { setPicks(p => ({ ...p, scenes: { ...(p.scenes || {}), [i]: id } })); restartPreview() }
 
   // PERSISTENCIA: guarda el borrador ante cualquier cambio (solo datos -> el video se re-renderiza determinista al retomar).
   useEffect(() => {
@@ -71,6 +73,10 @@ export default function UrvidCraftStudio() {
     setBrief(BRIEF0); setPicks({}); setUrl(''); setAnalyzed(false); setStep(0); setSeed(newSeed())
     headRef.current = 0; setHead(0)
   }
+
+  // al CAMBIAR de paso, sube el scroll arriba de todo (antes quedaba abajo donde estabas).
+  const topRef = useRef(null)
+  useEffect(() => { topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }, [step])
 
   // ---- mini-player (client-side, sin backend) -------------------------------------------------
   const cvRef = useRef(null)
@@ -129,18 +135,21 @@ export default function UrvidCraftStudio() {
   const addStat = () => setBrief(b => ({ ...b, stats: [...(b.stats || []), { value: '', label: '' }] }))
   const delStat = (i) => setBrief(b => ({ ...b, stats: b.stats.filter((_, j) => j !== i) }))
 
-  // ---- export (MediaRecorder sobre el canvas; client-side) ------------------------------------
+  // ---- export en ALTA CALIDAD (client-side) ---------------------------------------------------
+  // No graba el canvas chico del preview: renderiza a un canvas OFFSCREEN a resolucion REAL (1080 de ancho ->
+  // 1080x1920 en 9:16) y graba ESE con MediaRecorder. Una vuelta exacta (0..duration). Cero costo de servidor.
   const exportVideo = () => {
-    const cv = cvRef.current
-    if (!cv || exporting) return
-    if (typeof cv.captureStream !== 'function' || typeof window.MediaRecorder === 'undefined') {
-      setExporting('Tu navegador no soporta exportar'); setTimeout(() => setExporting(''), 5000); return
-    }
+    if (exporting) return
+    if (typeof window.MediaRecorder === 'undefined') { setExporting('Tu navegador no soporta exportar'); setTimeout(() => setExporting(''), 5000); return }
+    const scale = 1080 / video.W
+    const ecv = document.createElement('canvas'); ecv.width = Math.round(video.W * scale); ecv.height = Math.round(video.H * scale)
+    if (typeof ecv.captureStream !== 'function') { setExporting('Tu navegador no soporta exportar'); setTimeout(() => setExporting(''), 5000); return }
+    const ectx = ecv.getContext('2d')
     const types = ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm']
     const mime = types.find(t => { try { return MediaRecorder.isTypeSupported(t) } catch { return false } }) || ''
     const ext = mime.indexOf('mp4') >= 0 ? 'mp4' : 'webm'
     let rec
-    try { rec = new MediaRecorder(cv.captureStream(30), mime ? { mimeType: mime, videoBitsPerSecond: 8e6 } : { videoBitsPerSecond: 8e6 }) }
+    try { rec = new MediaRecorder(ecv.captureStream(30), mime ? { mimeType: mime, videoBitsPerSecond: 12e6 } : { videoBitsPerSecond: 12e6 }) }
     catch { setExporting('No se pudo iniciar la grabacion'); setTimeout(() => setExporting(''), 5000); return }
     const chunks = []
     rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data) }
@@ -151,11 +160,11 @@ export default function UrvidCraftStudio() {
       document.body.appendChild(a); a.click(); a.remove()
       setTimeout(() => URL.revokeObjectURL(href), 4000); setExporting('')
     }
-    headRef.current = 0; setHead(0); setPlaying(true)
     rec.start()
     const dur = video.duration, t0 = performance.now()
     const tick = () => {
       const el = (performance.now() - t0) / 1000, pct = Math.min(100, Math.round(el / dur * 100))
+      ectx.setTransform(scale, 0, 0, scale, 0, 0); drawFrame(ectx, Math.min(el, dur), video)
       setExporting(pct + '%')
       if (el >= dur + 0.1) { try { rec.stop() } catch { /* noop */ } }
       else requestAnimationFrame(tick)
@@ -172,7 +181,7 @@ export default function UrvidCraftStudio() {
       localStorage.setItem('urvid1.saved', JSON.stringify([item, ...prev].slice(0, 24)))
     } catch { /* noop */ }
     if (user?.uid) { try { await setDoc(doc(db, 'users', user.uid, 'urvid_videos', id), item) } catch { /* offline -> localStorage */ } }
-    setSavedMsg('Guardado en Mis videos ✓'); setTimeout(() => setSavedMsg(''), 4000)
+    setSavedMsg('Guardado ✓ — lo encontras en el menu "urvid 1.0" › panel "Mis videos" (a la derecha).'); setTimeout(() => setSavedMsg(''), 8000)
   }
 
   // ---- pasos: Datos -> Estilo -> Fondo -> Escenas -> Cierre -> Crear. (FASE C agregara "Avanzado" plegable.) ----
@@ -311,8 +320,8 @@ export default function UrvidCraftStudio() {
   function renderFondo() {
     return (
       <div className={styles.stepBody}>
-        <p className={styles.lead}>El escenario del video. Te mostramos los mas afines a tu rubro primero.</p>
-        <OptionGrid slot="bg" options={opts.bg} selectedId={fullRecipe.bg} onPick={id => pick('bg', id)} brief={brief} seed={seed} fullRecipe={fullRecipe} />
+        <p className={styles.lead}>El escenario del video. Filtra por rubro (arranca en el tuyo) y pasa el mouse para ver el movimiento.</p>
+        <OptionGrid slot="bg" options={opts.bg} selectedId={fullRecipe.bg} onPick={id => pick('bg', id)} brief={brief} seed={seed} fullRecipe={fullRecipe} withRubro />
       </div>
     )
   }
@@ -370,7 +379,7 @@ export default function UrvidCraftStudio() {
 
   return (
     <div className={styles.wrap}>
-      <div className={styles.inner}>
+      <div className={styles.inner} ref={topRef}>
         <header className={styles.header}>
           <div className={styles.logo}>Ur<span>vid</span> Craft</div>
           <div className={styles.steps}>
@@ -379,6 +388,7 @@ export default function UrvidCraftStudio() {
                 <span className={styles.stepNum}>{String(i + 1).padStart(2, '0')}</span>{s.label}
               </button>
             ))}
+            {(analyzed || step > 0) && <button className={styles.restartTop} onClick={restart} title="Descarta este video y empeza uno desde cero">↺ Empezar de cero</button>}
           </div>
         </header>
 
@@ -406,7 +416,6 @@ export default function UrvidCraftStudio() {
               <span className={styles.time}>{head.toFixed(1)} / {video.duration.toFixed(1)}s</span>
             </div>
             <p className={styles.miniNote}>Preview en tu navegador — no consume nada del servidor.</p>
-            {(analyzed || step > 0) && <button className={styles.restart} onClick={restart} title="Descarta todo y vuelve a empezar">↺ Empezar de nuevo</button>}
           </aside>
         </div>
       </div>

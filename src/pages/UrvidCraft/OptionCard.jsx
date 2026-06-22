@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { makeVideo, drawFrame } from '../../urvid/index.js'
-import { registerPreview } from './previewLoop.js'
+import { registerPreview, wakePreview } from './previewLoop.js'
 import { shortId } from './craftLib.js'
 import styles from './UrvidCraftStudio.module.css'
 
 const TARGET_W = 190   // ancho del backing del mini-canvas (chico = barato; se escala a 100% en CSS)
 
-// Una opcion de biblioteca. 3 modos: 'canvas' (gif del modulo en contexto), 'swatch' (paleta de color), 'type' (muestra
-// de tipografia). El gif usa el rAF MAESTRO (previewLoop) + IntersectionObserver -> solo anima si esta visible.
+// Una opcion de biblioteca. Modos: 'canvas' (modulo en contexto), 'swatch' (paleta), 'type' (muestra de tipografia).
+// HOVER-PLAY: el canvas muestra un frame ESTATICO; solo ANIMA mientras el mouse esta encima (y arranca desde 0 al entrar).
 export default function OptionCard({ slot, beat, mod, mode, selected, onSelect, brief, seed, fullRecipe }) {
   // receta de ESTA opcion = la receta actual con el slot (o el beat de escena) sobreescrito -> se ve EN CONTEXTO.
   const lockForOption = useMemo(() => {
@@ -15,7 +15,6 @@ export default function OptionCard({ slot, beat, mod, mode, selected, onSelect, 
     return { ...fullRecipe, [slot]: mod.id }
   }, [slot, mod.id, beat, fullRecipe])
 
-  // SWATCH (color): deriva la paleta directo (sin armar video).
   const pal = useMemo(() => {
     if (mode !== 'swatch' || typeof mod.derive !== 'function') return null
     try { return mod.derive(brief.brandColor, { tone: brief.tone, rubro: brief.rubro, seed }) } catch { return null }
@@ -23,36 +22,35 @@ export default function OptionCard({ slot, beat, mod, mode, selected, onSelect, 
 
   const fonts = mode === 'type' ? (mod.fonts || {}) : null
 
-  // CANVAS (gif): arma el video de la opcion y registra un draw(t) en el rAF maestro.
   const cvRef = useRef(null)
-  const wrapRef = useRef(null)
+  const entryRef = useRef(null)   // { active, t0, draw(t), drawStatic() }
   useEffect(() => {
     if (mode !== 'canvas') return
-    const cv = cvRef.current, wrap = wrapRef.current; if (!cv || !wrap) return
+    const cv = cvRef.current; if (!cv) return
     let video
     try { video = makeVideo({ ...brief, brand: brief.brand || 'Tu marca', seed, lockRecipe: lockForOption }) } catch { return }
     if (!video.scenes || !video.scenes.length) return
-    // que mostrar: transicion -> el video entero (la transicion vive entre escenas); escena -> ese beat; resto -> escena 0.
-    const scIdx = slot === 'scenes' ? Math.min(beat, video.scenes.length - 1) : 0
-    const sc = video.scenes[scIdx]
-    const solo = slot === 'transition' ? video : { ...video, scenes: [{ ...sc, start: 0 }], duration: sc.dur }
-    const dur = (slot === 'transition' ? video.duration : sc.dur) || 4
-    const W = video.W, H = video.H
-    const DPR = Math.min(window.devicePixelRatio || 1, 2)
-    const bw = Math.round(TARGET_W * DPR), bh = Math.round(TARGET_W * (H / W) * DPR)
-    cv.width = bw; cv.height = bh
-    const ctx = cv.getContext('2d')
-    const sx = bw / W
-    const entry = { active: false, draw: (t) => { ctx.setTransform(sx, 0, 0, sx, 0, 0); drawFrame(ctx, t % dur, solo) } }
-    entry.draw(dur * 0.4)   // 1 frame inmediato (no queda en blanco antes de ser visible)
+    const W = video.W, H = video.H, DPR = Math.min(window.devicePixelRatio || 1, 2)
+    cv.width = Math.round(TARGET_W * DPR); cv.height = Math.round(TARGET_W * (H / W) * DPR)
+    const ctx = cv.getContext('2d'), sx = cv.width / W
+    // que mostrar + ventana de loop. transicion -> ventana centrada en el PASO entre escenas (asi SE VE el wipe/slide);
+    // escena -> ese beat aislado; resto (fondo/sub/atm/post/etc) -> escena 0.
+    let base, span, solo
+    if (slot === 'transition' && video.scenes[1]) { solo = video; const t1 = video.scenes[1].start; base = Math.max(0, t1 - 0.7); span = 1.4 }
+    else { const i = slot === 'scenes' ? Math.min(beat, video.scenes.length - 1) : 0; const sc = video.scenes[i]; solo = { ...video, scenes: [{ ...sc, start: 0 }], duration: sc.dur }; base = 0; span = sc.dur || 4 }
+    const drawAt = (local) => { ctx.setTransform(sx, 0, 0, sx, 0, 0); drawFrame(ctx, base + (((local % span) + span) % span), solo) }
+    const entry = { active: false, t0: 0, draw: (t) => drawAt(t - entry.t0), drawStatic: () => drawAt(span * (slot === 'transition' ? 0.5 : 0.35)) }
+    entry.drawStatic()   // thumbnail estatico (NO auto-play)
+    entryRef.current = entry
     const unreg = registerPreview(entry)
-    const io = new IntersectionObserver(es => { entry.active = es[0].isIntersecting }, { threshold: 0.15 })
-    io.observe(wrap)
-    return () => { io.disconnect(); unreg() }
+    return () => { unreg(); entryRef.current = null }
   }, [mode, slot, beat, brief, seed, lockForOption])
 
+  const onEnter = () => { const e = entryRef.current; if (e) { e.t0 = performance.now() / 1000; e.active = true; wakePreview() } }
+  const onLeave = () => { const e = entryRef.current; if (e) { e.active = false; e.drawStatic() } }
+
   return (
-    <button ref={wrapRef} type="button" className={`${styles.opt} ${selected ? styles.optOn : ''}`} onClick={() => onSelect(mod.id)} title={shortId(mod.id)}>
+    <button type="button" className={`${styles.opt} ${selected ? styles.optOn : ''}`} onClick={() => onSelect(mod.id)} onMouseEnter={onEnter} onMouseLeave={onLeave} title={shortId(mod.id)}>
       <div className={styles.optThumb}>
         {mode === 'canvas' && <canvas ref={cvRef} />}
         {mode === 'swatch' && pal && (
