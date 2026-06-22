@@ -24,14 +24,6 @@ export function optionsFor(slot, brief) {
   return pool.slice().sort((a, b) => fitWeight(b, ctx) - fitWeight(a, ctx))
 }
 
-// opciones de escena para un beat: scenes de la MISMA categoria que la escena actual, ordenadas por afinidad.
-export function sceneOptionsFor(sceneId, brief) {
-  const m = get(sceneId); if (!m) return []
-  const pool = query('scene-layouts', { tone: brief.tone, category: m.category })
-  const ctx = { rubro: brief.rubro, seriousness: seriousnessFor(brief) }
-  return pool.slice().sort((a, b) => fitWeight(b, ctx) - fitWeight(a, ctx))
-}
-
 export const categoryOf = (sceneId) => (get(sceneId)?.category || '').replace(/\//g, ' · ')
 
 // TODAS las escenas del tono (cualquier categoria), ordenadas por afinidad -> el picker por beat las filtra por categoria.

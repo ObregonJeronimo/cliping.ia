@@ -23,7 +23,6 @@
 /* ---- header ---- */
 .header { display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap; padding-bottom: 28px; border-bottom: 1px solid var(--border); margin-bottom: 32px; }
 .logo { font-family: var(--fdisplay); font-weight: 600; font-size: 22px; letter-spacing: -0.03em; }
-.logo span { color: var(--muted); }
 .steps { display: flex; gap: 6px; flex-wrap: wrap; }
 .stepTab { display: inline-flex; align-items: center; gap: 8px; background: transparent; border: 1px solid var(--border); color: var(--muted); border-radius: 100px; padding: 8px 16px 8px 10px; font-family: var(--fbody); font-size: 13px; font-weight: 500; cursor: pointer; transition: border-color .15s, color .15s, background .15s; }
 .stepTab:hover { border-color: var(--border2); color: var(--ink); }
@@ -195,4 +194,6 @@ select.input { appearance: none; cursor: pointer; background-image: linear-gradi
   .grid2 { grid-template-columns: 1fr; }
   .grid { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 10px; }
   .header { gap: 14px; }
+  .effectWrap { flex-direction: column; }
+  .effectChips { max-height: none; }
 }

@@ -11,13 +11,12 @@
 .head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 18px; }
 .brand { display: flex; align-items: baseline; gap: 12px; }
 .brand h1 { margin: 0; font-size: 25px; font-weight: 800; letter-spacing: -.03em; color: var(--text); }
-.brand h1 span { color: var(--muted); }
 .brand p { margin: 0; font-size: 12px; color: var(--muted2); letter-spacing: .01em; }
 
 .recipe { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 
 /* receta al PIE de la pagina: atenuada (sutil) y se realza al pasar el mouse */
-.recipeBar { margin-top: 6px; padding: 13px 2px 0; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; align-items: center; gap: 7px 12px; opacity: .6; transition: opacity .18s; }
+.recipeBar { margin-top: auto; padding: 13px 2px 0; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; align-items: center; gap: 7px 12px; opacity: .6; transition: opacity .18s; }
 .recipeBar:hover { opacity: 1; }
 .recipeBarLabel { font-family: var(--mono); font-size: 9px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--muted2); }
 .recipeBar .flow { width: 100%; margin-top: 4px; }

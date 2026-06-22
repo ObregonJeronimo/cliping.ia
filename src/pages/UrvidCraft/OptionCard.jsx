@@ -43,7 +43,7 @@ export default function OptionCard({ slot, beat, mod, mode, selected, onSelect, 
     const drawAt = (local) => {
       const t = base + (((local % span) + span) % span)
       ctx.setTransform(sx, 0, 0, sx, 0, 0)
-      if (bgMod) { ctx.clearRect(0, 0, W, H); bgMod.render(ctx, t, { pal: video.palette, content: video.content, seed: video.bgSeed, energy: 1 }) }
+      if (bgMod && typeof bgMod.render === 'function') { ctx.clearRect(0, 0, W, H); bgMod.render(ctx, t, { pal: video.palette, content: video.content, seed: video.bgSeed, energy: 1 }) }
       else drawFrame(ctx, t, solo)
     }
     const entry = { active: false, t0: 0, draw: (t) => drawAt(t - entry.t0), drawStatic: () => drawAt(span * (slot === 'transition' ? 0.5 : 0.35)) }

@@ -6,7 +6,7 @@ import { db } from '../../lib/firebase'
 import OptionGrid from './OptionGrid.jsx'
 import EffectPreview from './EffectPreview.jsx'
 import Collapsible from './Collapsible.jsx'
-import { optionsFor, allSceneOptions, categoryOf, topCategoryOfScene, shortId } from './craftLib.js'
+import { optionsFor, allSceneOptions, categoryOf, topCategoryOfScene, shortId, SLOT_LIB } from './craftLib.js'
 import styles from './UrvidCraftStudio.module.css'
 
 // Urvid CRAFT — arma el video PASO A PASO. El usuario pega un link, lo analizamos (perception) y va eligiendo de cada
@@ -205,7 +205,7 @@ export default function UrvidCraftStudio() {
     setSeed(it.seed || newSeed())
     const r = it.recipe || {}
     const p = {}
-    for (const k of ['color', 'type', 'bg', 'sub', 'atm', 'motion', 'typekit', 'layout', 'mark', 'transition', 'post']) { if (r[k] != null) p[k] = r[k] }
+    for (const k of Object.keys(SLOT_LIB)) { if (r[k] != null) p[k] = r[k] }   // todos los slots del recipe (auto-incluye futuros)
     if (Array.isArray(r.scenes)) p.scenes = Object.fromEntries(r.scenes.map((s, i) => [i, s]))
     setPicks(p)
     setAnalyzed(true); setStep(6)   // salta a "Crear" (revision) para ver el preview armado
