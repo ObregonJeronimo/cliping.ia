@@ -1,11 +1,13 @@
 """
-lottie_manifest.py — construye la BIBLIOTECA (indice) de animaciones Lottie de urvid 1.0, ESCALABLE A MILES.
-Solo BUSCA en LottieFiles (matriz concepto x rubro) y guarda METADATA + la URL del CDN (jsonUrl). NO baja los JSON:
-el front los fetchea on-demand del CDN y los GATEA por determinismo en runtime (player.js, mirror de has_expressions).
-Asi el build es rapido y el manifiesto chico aunque haya miles. Escribe src/urvid/lottie/manifest.js (modulo JS).
-Uso: python tools/lottie_manifest.py [porRubro]   (default 200; 'default'/universales lleva mas)
+lottie_manifest.py — construye la BIBLIOTECA (indice) de animaciones Lottie de urvid 1.0.
+1) BUSCA en LottieFiles (matriz concepto x rubro) -> candidatos por rubro (rapido, sin bajar).
+2) FETCH EN PARALELO + GATEA (determinismo: has_expressions) + FILTRO DE CALIDAD (tamano/dims/frames sanos) ->
+   se queda con N BUENAS por rubro, enriquecidas con w/h/fps/frames. Asi el ruteo elige siempre una buena (la anim
+   aparece CONFIABLE, no ~30% como con gate-en-runtime). El JSON igual se fetchea del CDN on-demand (manifiesto = metadata + url).
+Escribe src/urvid/lottie/manifest.js (modulo JS). Uso: python tools/lottie_manifest.py [porRubro]
 """
 import json, os, re, sys
+from concurrent.futures import ThreadPoolExecutor
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 import backend.lottie_search as L
@@ -15,8 +17,8 @@ os.makedirs(os.path.dirname(MANIFEST), exist_ok=True)
 PER = int(sys.argv[1]) if len(sys.argv) > 1 else 200
 DEFAULT_PER = max(PER, 250)
 FIRST = 40
+CAND_CAP = 460   # candidatos a fetchear/gatear por rubro (cap p/ acotar la red; ~70% pasan gate + filtro)
 
-# matriz concepto x rubro. Muchos conceptos por rubro -> mas variedad/unicos. 'default' = universales ('*').
 QUERIES = {
     "default": ["check mark success", "loading spinner", "arrow up", "star rating", "like heart", "notification bell",
                  "search find", "settings gear", "rocket launch", "thumbs up", "share", "message chat", "email send",
@@ -66,35 +68,61 @@ def slug(s):
     return re.sub(r"[^a-z0-9]+", "-", (s or "").lower()).strip("-")[:56]
 
 
+# fetch + gate + filtro de calidad de UN candidato. Devuelve el item enriquecido o None.
+def vet(c):
+    j = L.fetch_json(c["url"])
+    if not j:
+        return None
+    if L.has_expressions(j):                                  # gate de determinismo
+        return None
+    w, h, fr = j.get("w"), j.get("h"), j.get("fr") or 30
+    frames = (j.get("op") or 0) - (j.get("ip") or 0)
+    if not (w and h):
+        return None
+    blob = json.dumps(j, separators=(",", ":"))
+    if not (1500 < len(blob) < 320_000):                      # ni triviales ni pesadisimas
+        return None
+    if not (6 <= frames <= 360):                              # largo de loop sano
+        return None
+    ar = w / h
+    if not (0.35 <= ar <= 3.2):                               # descarta muy panoramicas/altas (no encajan en el acento)
+        return None
+    return {**c, "w": w, "h": h, "fps": fr, "frames": round(frames, 1)}
+
+
 seen, manifest, per = set(), [], {}
 for rubro, qs in QUERIES.items():
-    target = DEFAULT_PER if rubro == "default" else PER
+    # 1) juntar candidatos del rubro (search, rapido)
+    cands = []
     for q in qs:
-        if per.get(rubro, 0) >= target:
+        if len(cands) >= CAND_CAP:
             break
         try:
             res = L.search(q, FIRST)
         except Exception as e:
             print("search err", q, e); continue
         for r in res:
-            if per.get(rubro, 0) >= target:
-                break
             rid = r.get("id") or r.get("jsonUrl")
             url = r.get("jsonUrl")
             if not rid or not url or rid in seen:
                 continue
             seen.add(rid)
-            manifest.append({
-                "id": slug((r.get("name") or "anim") + "-" + str(rid)),
-                "name": (r.get("name") or "").strip()[:60], "concept": slug(q.split()[0]),
-                "rubro": rubro, "url": url, "author": r.get("author"),
-            })
-            per[rubro] = per.get(rubro, 0) + 1
-    print(f"  {rubro:14} {per.get(rubro,0)}  (acumulado {len(manifest)})")
+            cands.append({"id": slug((r.get("name") or "anim") + "-" + str(rid)), "name": (r.get("name") or "").strip()[:60],
+                          "concept": slug(q.split()[0]), "rubro": rubro, "url": url, "author": r.get("author")})
+            if len(cands) >= CAND_CAP:
+                break
+    # 2) fetch + gate + filtro EN PARALELO
+    target = DEFAULT_PER if rubro == "default" else PER
+    kept = 0
+    with ThreadPoolExecutor(max_workers=24) as ex:
+        for item in ex.map(vet, cands):
+            if item and kept < target:
+                manifest.append(item); kept += 1
+    per[rubro] = kept
+    print(f"  {rubro:14} {kept}/{len(cands)} candidatos  (acumulado {len(manifest)})")
 
 with open(MANIFEST, "w", encoding="utf-8") as f:
-    f.write("// GENERADO por tools/lottie_manifest.py — no editar a mano. El JSON se fetchea del CDN en runtime (player.js).\nexport default ")
-    json.dump({"version": 2, "count": len(manifest), "items": manifest}, f, ensure_ascii=False)
+    f.write("// GENERADO por tools/lottie_manifest.py — no editar a mano. Pre-gateado (determinismo+calidad); JSON via CDN en runtime.\nexport default ")
+    json.dump({"version": 3, "count": len(manifest), "items": manifest}, f, ensure_ascii=False)
     f.write("\n")
-
-print(f"\nTOTAL: {len(manifest)} animaciones (metadata + url del CDN) -> {MANIFEST}")
+print(f"\nTOTAL: {len(manifest)} Lotties BUENAS (gateadas + filtradas) -> {MANIFEST}")

@@ -136,7 +136,7 @@ export function makeVideo(brief = {}) {
   let animPick = null
   if (lock) animPick = lock.anim ? animItems.find(it => it.id === lock.anim) : null
   else if (keep && keep.anim) animPick = animItems.find(it => it.id === keep.anim)
-  else if (animPool.length && seedFor(seed, 'anim')() < 0.45) animPick = pick(seedFor(seed, 'animpick'), animPool)
+  else if (animPool.length && seedFor(seed, 'anim')() < 0.6) animPick = pick(seedFor(seed, 'animpick'), animPool)   // manifiesto PRE-gateado -> la anim aparece confiable
   // TRANSICION escena-a-escena (wipe/slide/iris/bars/cut) -> video.transitionId.
   const trMod = required(lock && lock.transition, keep && keep.transition, seedFor(seed, 'transition'), query('transitions', { tone }))
   // PACING: la ventana de transicion (XF) sale de la PERSONALIDAD de movimiento (snappy corta, calmo larga).

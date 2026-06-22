@@ -69,9 +69,14 @@ enciende. Gates OK (QA 0, determinismo, motion, build). Commit local; SIN push (
 > saltean -> el anim aparece en ~30% de los videos). CORS del CDN de LottieFiles: VERIFICADO OK (fetch client-side directo,
 > sin proxy). Render validado por pixeles con urls del CDN (default/finanzas/inmobiliaria ok; 1 moda descartada por el gate
 > = correcto). build/determinismo/QA/prefit OK.
+> PULIDO (HECHO): el manifiesto ahora esta PRE-GATEADO + filtrado por calidad (lottie_manifest.py fetchea EN PARALELO
+> + has_expressions + filtro tamano/dims/frames/aspecto) -> 2050 Lotties BUENAS (200/rubro + 250 universal), enriquecidas
+> con w/h/fps/frames (manifest.js ~555KB). Asi el ruteo SIEMPRE elige una que pasa el gate -> la anim aparece CONFIABLE
+> (antes ~30% se saltaban en runtime). Probabilidad de ruteo subida 45%->60%. (El gate de runtime en player.js queda de
+> red de seguridad.) Spot-check in-browser: ~6-8/8 renderizan (los pocos ceros = carga lenta / off-topic del search).
 > FALTA (refinamientos, NO bloqueantes): RECOLOR a la marca (hoy conservan sus colores de diseno; remapear c.k -> paleta
 > para mono/duotono), preview/picker de Lotties en Urvid Craft, placement (hoy esquina; podrian ir mas protagonicas),
-> cachear el resultado del gate para subir el hit-rate, y el manifiesto de 451KB podria lazy-loadearse si molesta el bundle.
+> y el manifiesto de ~555KB podria lazy-loadearse si molesta el bundle.
 > LICENCIA: LottieFiles pool gratis -> revisar terminos/atribucion para uso comercial (el manifiesto guarda `author`).
 > --- (lo de abajo es la nota ORIGINAL de investigacion, ya superada por el pivote) ---
 Buscar e implementar animaciones YA hechas, categorizadas, con descripción de qué hacen (ej: "un carrito clickeado
