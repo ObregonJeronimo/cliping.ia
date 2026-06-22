@@ -108,6 +108,19 @@ select.input { appearance: none; cursor: pointer; background-image: linear-gradi
 .time { font-family: var(--fmono); font-size: 12px; color: var(--muted); }
 .miniNote { font-size: 12px; color: var(--faint); line-height: 1.5; margin: 4px 0 0; }
 
+/* "Mis videos" de advanced (en el aside, almacen SEPARADO de urvid IA) */
+.myVideos { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; padding-top: 16px; border-top: 1px solid var(--border); }
+.myEmpty { border: 1px dashed var(--border2); border-radius: 12px; padding: 14px; text-align: center; color: var(--faint); font-size: 12px; line-height: 1.55; margin: 0; }
+.myEmpty b { color: var(--muted); font-weight: 600; }
+.myList { display: flex; flex-direction: column; gap: 8px; max-height: 280px; overflow: auto; }
+.myCard { display: flex; align-items: stretch; border: 1px solid var(--border); border-radius: 11px; overflow: hidden; border-left: 3px solid var(--c, var(--ink)); background: var(--surface); transition: border-color .12s, transform .1s; }
+.myCard:hover { transform: translateX(2px); border-color: var(--border2); }
+.myCardBtn { flex: 1; border: none; background: var(--surface); color: var(--ink); padding: 9px 12px; cursor: pointer; text-align: left; display: flex; flex-direction: column; gap: 2px; font-family: var(--fbody); }
+.myCardBtn b { font-size: 13px; font-weight: 600; }
+.myCardBtn span { font-size: 11px; color: var(--muted); }
+.myDel { border: none; background: var(--surface); color: var(--faint); width: 30px; cursor: pointer; font-size: 16px; transition: color .12s; }
+.myDel:hover { color: var(--ink); }
+
 /* ---- pasos de libreria: grilla de opciones (gif/swatch/type) ---- */
 .libSection { display: flex; flex-direction: column; gap: 12px; }
 .libSection + .libSection { margin-top: 20px; padding-top: 22px; border-top: 1px solid var(--border); }

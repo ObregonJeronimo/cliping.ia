@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { doc, setDoc } from 'firebase/firestore'
+import { collection, doc, getDocs, setDoc, deleteDoc } from 'firebase/firestore'
 import { makeVideo, drawFrame } from '../../urvid/index.js'
 import { useAuth } from '../../contexts/AuthContext'
 import { db } from '../../lib/firebase'
@@ -22,6 +22,8 @@ const HEADERS = { 'Content-Type': 'application/json', 'ngrok-skip-browser-warnin
 
 const BRIEF0 = { brand: '', rubro: 'default', tone: 'dark', brandColor: '#5b8cff', format: '9:16', duration: 'medio', tagline: '', claim: '', cta: '', bullets: [], stats: [], proof: '' }
 const DRAFT_KEY = 'urvidcraft.draft'   // el wizard PERSISTE (brief+picks+seed+paso) -> retoma donde quedaste. Solo datos, re-renderiza determinista.
+const SAVED_KEY = 'urvidcraft.saved'   // "Mis videos" de advanced — SEPARADO de urvid IA (que usa urvid1.saved)
+const SAVED_COL = 'urvidcraft_videos'  // coleccion Firestore propia de advanced (urvid IA usa urvid_videos)
 const newSeed = () => (Math.floor((typeof performance !== 'undefined' ? performance.now() : 1) * 1000) >>> 0) || 1
 
 export default function UrvidCraftStudio() {
@@ -39,6 +41,8 @@ export default function UrvidCraftStudio() {
   const [analyzed, setAnalyzed] = useState(() => !!(d0 && d0.analyzed))
   const [exporting, setExporting] = useState('')  // '' | 'NN%' | error
   const [savedMsg, setSavedMsg] = useState('')
+  // "Mis videos" de advanced (almacen propio). Cache local inmediato + Firestore (coleccion separada) como fuente de verdad.
+  const [saved, setSaved] = useState(() => { try { return JSON.parse(localStorage.getItem(SAVED_KEY) || '[]') } catch { return [] } })
 
   // receta AUTO de base (deterministica por brief+seed). El usuario la edita con `picks`; el resto queda auto y ESTABLE.
   const baseRecipe = useMemo(() => makeVideo({ ...brief, brand: brief.brand || 'Tu marca', seed }).recipe, [brief, seed])
@@ -67,6 +71,18 @@ export default function UrvidCraftStudio() {
   useEffect(() => {
     try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ brief, picks, seed, step, url, analyzed })) } catch { /* noop */ }
   }, [brief, picks, seed, step, url, analyzed])
+
+  // al loguearse, trae "Mis videos" de advanced de Firestore (coleccion propia); sin sesion queda el cache de localStorage.
+  useEffect(() => {
+    if (!user?.uid) return
+    let alive = true
+    getDocs(collection(db, 'users', user.uid, SAVED_COL)).then(snap => {
+      if (!alive) return
+      const items = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.ts || 0) - (a.ts || 0)).slice(0, 24)
+      if (items.length) { setSaved(items); localStorage.setItem(SAVED_KEY, JSON.stringify(items)) }
+    }).catch(() => { /* offline -> localStorage */ })
+    return () => { alive = false }
+  }, [user?.uid])
   // EMPEZAR DE NUEVO: descarta el borrador y vuelve al estado inicial (semilla nueva).
   const restart = () => {
     try { localStorage.removeItem(DRAFT_KEY) } catch { /* noop */ }
@@ -176,12 +192,29 @@ export default function UrvidCraftStudio() {
   const save = async () => {
     const id = 'v' + Date.now().toString(36)
     const item = { id, brand: brief.brand || 'Marca', rubro: brief.rubro, tone: brief.tone, brandColor: brief.brandColor, format: brief.format || '9:16', duration: brief.duration || 'medio', tagline: brief.tagline || '', claim: brief.claim || '', cta: brief.cta || '', bullets: brief.bullets || [], stats: brief.stats || [], proof: brief.proof || '', recipe: video.recipe, seed, ts: Date.now() }
-    try {
-      const prev = JSON.parse(localStorage.getItem('urvid1.saved') || '[]')
-      localStorage.setItem('urvid1.saved', JSON.stringify([item, ...prev].slice(0, 24)))
-    } catch { /* noop */ }
-    if (user?.uid) { try { await setDoc(doc(db, 'users', user.uid, 'urvid_videos', id), item) } catch { /* offline -> localStorage */ } }
-    setSavedMsg('Guardado ✓ — lo encontras en el menu "urvid 1.0" › panel "Mis videos" (a la derecha).'); setTimeout(() => setSavedMsg(''), 8000)
+    const next = [item, ...saved].slice(0, 24)
+    setSaved(next)
+    try { localStorage.setItem(SAVED_KEY, JSON.stringify(next)) } catch { /* noop */ }
+    if (user?.uid) { try { await setDoc(doc(db, 'users', user.uid, SAVED_COL, id), item) } catch { /* offline -> localStorage */ } }
+    setSavedMsg('Guardado ✓ — lo tenes abajo en "Mis videos".'); setTimeout(() => setSavedMsg(''), 8000)
+  }
+  // cargar un guardado de vuelta al wizard: restaura brief+seed y RECONSTRUYE los picks desde la receta -> reproduce ese video.
+  const loadSaved = (it) => {
+    setBrief({ ...BRIEF0, brand: it.brand || '', rubro: it.rubro || 'default', tone: it.tone || 'dark', brandColor: it.brandColor || BRIEF0.brandColor, format: it.format || '9:16', duration: it.duration || 'medio', tagline: it.tagline || '', claim: it.claim || '', cta: it.cta || '', bullets: it.bullets || [], stats: it.stats || [], proof: it.proof || '' })
+    setSeed(it.seed || newSeed())
+    const r = it.recipe || {}
+    const p = {}
+    for (const k of ['color', 'type', 'bg', 'sub', 'atm', 'motion', 'typekit', 'layout', 'mark', 'transition', 'post']) { if (r[k] != null) p[k] = r[k] }
+    if (Array.isArray(r.scenes)) p.scenes = Object.fromEntries(r.scenes.map((s, i) => [i, s]))
+    setPicks(p)
+    setAnalyzed(true); setStep(6)   // salta a "Crear" (revision) para ver el preview armado
+    headRef.current = 0; setHead(0); setPlaying(true)
+  }
+  const delSaved = async (it) => {
+    const next = saved.filter(s => s !== it)
+    setSaved(next)
+    try { localStorage.setItem(SAVED_KEY, JSON.stringify(next)) } catch { /* noop */ }
+    if (user?.uid && it.id) { try { await deleteDoc(doc(db, 'users', user.uid, SAVED_COL, it.id)) } catch { /* noop */ } }
   }
 
   // ---- pasos: Datos -> Estilo -> Fondo -> Escenas -> Cierre -> Crear. (FASE C agregara "Avanzado" plegable.) ----
@@ -416,6 +449,20 @@ export default function UrvidCraftStudio() {
               <span className={styles.time}>{head.toFixed(1)} / {video.duration.toFixed(1)}s</span>
             </div>
             <p className={styles.miniNote}>Preview en tu navegador — no consume nada del servidor.</p>
+
+            <div className={styles.myVideos}>
+              <span className={styles.eyebrowSm}>Mis videos</span>
+              {saved.length === 0
+                ? <p className={styles.myEmpty}>Todavia no guardaste ninguno. Tocá <b>★ Crear y guardar</b> y aparecen acá.</p>
+                : <div className={styles.myList}>
+                    {saved.map((it, i) => (
+                      <div key={it.id || i} className={styles.myCard} style={{ '--c': it.brandColor }}>
+                        <button className={styles.myCardBtn} onClick={() => loadSaved(it)}><b>{it.brand || 'Marca'}</b><span>{RUBRO_LBL[it.rubro] || it.rubro} · {it.tone === 'dark' ? 'oscuro' : 'claro'}</span></button>
+                        <button className={styles.myDel} onClick={() => delSaved(it)} title="Borrar">×</button>
+                      </div>
+                    ))}
+                  </div>}
+            </div>
           </aside>
         </div>
       </div>

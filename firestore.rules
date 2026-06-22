@@ -3,16 +3,12 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Perfil del usuario
+    // El usuario es dueno de su documento y de TODO su subarbol
+    // (videos, urvid_videos, urvidcraft_videos, urvid_profile, etc.). Solo el dueno lee/escribe.
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
-
-      // Sub-coleccion de videos del usuario
-      // read y delete: solo el dueño
-      // create: el frontend puede crear (mientras no haya backend con Admin SDK)
-      match /videos/{videoId} {
-        allow read, create, delete: if request.auth != null && request.auth.uid == userId;
-        allow update: if request.auth != null && request.auth.uid == userId;
+      match /{document=**} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
       }
     }
 
