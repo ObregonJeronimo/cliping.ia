@@ -20,21 +20,6 @@
 }
 .logo span { color: var(--muted); }
 
-.newBtn {
-  width: 100%;
-  padding: 9px 14px;
-  background: var(--accent);
-  color: var(--accent-text);
-  border: none;
-  border-radius: var(--radius-sm);
-  font-weight: 600;
-  font-size: 13px;
-  margin-bottom: 24px;
-  transition: background .15s;
-  text-align: left;
-}
-.newBtn:hover { background: var(--accent-hover); }
-
 .nav {
   display: flex;
   flex-direction: column;

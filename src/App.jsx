@@ -1,8 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import AppLayout from './components/Layout/AppLayout'
-import TimelineStudio from './pages/Animaciones/TimelineStudio'
-import MisAnimaciones from './pages/Animaciones/MisAnimaciones'
 import Urvid1Studio from './pages/Urvid1/Urvid1Studio'
 import UrvidCraftStudio from './pages/UrvidCraft/UrvidCraftStudio'
 import Login from './pages/Login'
@@ -29,10 +27,8 @@ function AppRoutes() {
           <AppLayout />
         </PrivateRoute>
       }>
-        <Route index element={<TimelineStudio />} />
-        <Route path="animaciones" element={<Navigate to="/studio" replace />} />
-        <Route path="mis-animaciones" element={<MisAnimaciones />} />
-        <Route path="urvid" element={<Urvid1Studio />} />
+        <Route index element={<Urvid1Studio />} />
+        <Route path="urvid" element={<Navigate to="/studio" replace />} />
         <Route path="craft" element={<UrvidCraftStudio />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

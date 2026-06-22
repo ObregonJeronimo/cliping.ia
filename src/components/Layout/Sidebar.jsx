@@ -2,13 +2,11 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import styles from './Sidebar.module.css'
 
-// Urvid = el motor de Animaciones. El estudio es la pantalla principal (index de /studio);
-// Mis animaciones = los videos guardados. (Se removieron Cinematicas y los labs de desarrollo.)
+// Dos estudios urvid: "urvid IA" (simple, index de /studio) y "urvid IA advanced" (wizard, /studio/craft).
+// El motor viejo "Animaciones" fue eliminado por completo.
 const NAV = [
-  { to: '/studio', icon: '◆', label: 'Animaciones' },
-  { to: '/studio/mis-animaciones', icon: '◇', label: 'Mis animaciones' },
-  { to: '/studio/urvid', icon: '●', label: 'urvid 1.0' },
-  { to: '/studio/craft', icon: '✦', label: 'Urvid Craft' },
+  { to: '/studio', icon: '●', label: 'urvid IA' },
+  { to: '/studio/craft', icon: '✦', label: 'urvid IA advanced' },
 ]
 
 export default function Sidebar() {
@@ -25,10 +23,6 @@ export default function Sidebar() {
       <div className={styles.logo}>
         Ur<span>vid</span>
       </div>
-
-      <button className={styles.newBtn} onClick={() => navigate('/studio')}>
-        + Nuevo video
-      </button>
 
       <nav className={styles.nav}>
         {NAV.map(item => (

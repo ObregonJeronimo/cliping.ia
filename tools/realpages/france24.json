@@ -1,0 +1,119 @@
+{
+  "brand": "France 24",
+  "accent": "#65718e",
+  "theme": "clinical-formal",
+  "seed": 1614618824,
+  "texture": "grid",
+  "bgEnergy": 1.0,
+  "rubro": "default",
+  "scenes": [
+    {
+      "type": "scene",
+      "durationInFrames": 118,
+      "elements": [
+        {
+          "kind": "shape",
+          "fill": "accent",
+          "glow": false,
+          "keys": [
+            {
+              "t": 1.95,
+              "w": 0,
+              "h": 6,
+              "r": 3,
+              "x": 249,
+              "y": 267,
+              "opacity": 0
+            },
+            {
+              "t": 2.4,
+              "w": 74,
+              "h": 6,
+              "r": 3,
+              "x": 249,
+              "y": 267,
+              "opacity": 1,
+              "ease": "outCubic"
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "text": "France 24",
+          "fill": "ink",
+          "size": 46,
+          "weight": 800,
+          "align": "left",
+          "maxW": 178,
+          "kinetic": true,
+          "keys": [
+            {
+              "t": 2.0,
+              "opacity": 1,
+              "x": 212,
+              "y": 300
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "text": "Simple, y bien",
+          "fill": "dim",
+          "size": 20,
+          "weight": 600,
+          "align": "left",
+          "maxW": 178,
+          "keys": [
+            {
+              "t": 2.9,
+              "opacity": 0,
+              "x": 212,
+              "y": 364
+            },
+            {
+              "t": 3.4,
+              "opacity": 1,
+              "x": 212,
+              "y": 350,
+              "ease": "outCubic"
+            }
+          ]
+        }
+      ],
+      "comp": "sideLeft"
+    },
+    {
+      "type": "quote",
+      "text": "Superó lo que esperaba",
+      "author": "Leo",
+      "stars": 5,
+      "align": "center",
+      "durationInFrames": 132
+    },
+    {
+      "type": "outro",
+      "brand": "France 24",
+      "cta": "Empeza ya",
+      "outroComp": "diagonal",
+      "durationInFrames": 110
+    }
+  ],
+  "style": "swiss",
+  "bgStyle": "blueprint",
+  "tone": "dark",
+  "shadowMode": "soft",
+  "fontDisplay": "Archivo",
+  "fontText": "Inter",
+  "fontAccent": "Archivo",
+  "images": [],
+  "heroResource": "particles",
+  "motif": "default",
+  "substrate": "dotgrid",
+  "signatureForm": "blob",
+  "hookName": "promesa",
+  "structure": [
+    "hero",
+    "quote",
+    "outro"
+  ]
+}

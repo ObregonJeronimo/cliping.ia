@@ -1,0 +1,149 @@
+{
+  "brand": "Despegar",
+  "accent": "#5a628c",
+  "theme": "clinical-formal",
+  "seed": 181997014,
+  "texture": "none",
+  "bgEnergy": 1.0,
+  "rubro": "default",
+  "scenes": [
+    {
+      "type": "numberStack",
+      "items": [
+        {
+          "value": 10,
+          "prefix": "+",
+          "label": "años"
+        },
+        {
+          "value": 4.9,
+          "suffix": "★",
+          "label": "resenas"
+        },
+        {
+          "value": 1000,
+          "prefix": "+",
+          "label": "proyectos"
+        }
+      ],
+      "align": "center",
+      "durationInFrames": 112
+    },
+    {
+      "type": "statement",
+      "text": "Pensado para que te resulte facil",
+      "stmtStyle": "editorial",
+      "durationInFrames": 87
+    },
+    {
+      "type": "quote",
+      "text": "Lo recomiendo 100%",
+      "author": "Ana",
+      "stars": 5,
+      "align": "center",
+      "durationInFrames": 131
+    },
+    {
+      "type": "scene",
+      "durationInFrames": 138,
+      "elements": [
+        {
+          "kind": "shape",
+          "fill": "accent",
+          "glow": false,
+          "keys": [
+            {
+              "t": 0.6499999999999999,
+              "w": 0,
+              "h": 6,
+              "r": 3,
+              "x": 77,
+              "y": 256,
+              "opacity": 0
+            },
+            {
+              "t": 1.1,
+              "w": 74,
+              "h": 6,
+              "r": 3,
+              "x": 77,
+              "y": 256,
+              "opacity": 1,
+              "ease": "outCubic"
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "text": "Despegar",
+          "fill": "ink",
+          "size": 86,
+          "weight": 800,
+          "align": "left",
+          "maxW": 336,
+          "kinetic": true,
+          "keys": [
+            {
+              "t": 0.7,
+              "opacity": 1,
+              "x": 40,
+              "y": 318
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "text": "Hecho para vos",
+          "fill": "dim",
+          "size": 30,
+          "weight": 600,
+          "align": "left",
+          "maxW": 300,
+          "keys": [
+            {
+              "t": 1.6,
+              "opacity": 0,
+              "x": 40,
+              "y": 406
+            },
+            {
+              "t": 2.0999999999999996,
+              "opacity": 1,
+              "x": 40,
+              "y": 392,
+              "ease": "outCubic"
+            }
+          ]
+        }
+      ],
+      "comp": "typeStack"
+    },
+    {
+      "type": "outro",
+      "brand": "Despegar",
+      "cta": "Probalo",
+      "outroComp": "ctaOnly",
+      "durationInFrames": 108
+    }
+  ],
+  "style": "typographic",
+  "bgStyle": "typo",
+  "tone": "dark",
+  "shadowMode": "soft",
+  "fontDisplay": "Big Shoulders Display",
+  "fontText": "Newsreader",
+  "fontAccent": "Space Mono",
+  "images": [],
+  "heroResource": "particles",
+  "motif": "default",
+  "substrate": "dotgrid",
+  "signatureForm": "blob",
+  "hookName": "dolor",
+  "structure": [
+    "bigStat",
+    "statement",
+    "quote",
+    "hero",
+    "outro"
+  ]
+}

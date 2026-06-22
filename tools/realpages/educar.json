@@ -1,0 +1,132 @@
+{
+  "brand": "educ.ar",
+  "accent": "#b753d8",
+  "theme": "clinical-formal",
+  "seed": 3249462952,
+  "texture": "none",
+  "bgEnergy": 1.2,
+  "rubro": "educacion",
+  "scenes": [
+    {
+      "type": "scene",
+      "durationInFrames": 94,
+      "elements": [
+        {
+          "kind": "shape",
+          "fill": "accent",
+          "glow": false,
+          "keys": [
+            {
+              "t": 1.95,
+              "w": 0,
+              "h": 6,
+              "r": 3,
+              "x": 249,
+              "y": 267,
+              "opacity": 0
+            },
+            {
+              "t": 2.4,
+              "w": 74,
+              "h": 6,
+              "r": 3,
+              "x": 249,
+              "y": 267,
+              "opacity": 1,
+              "ease": "outCubic"
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "text": "educ.ar",
+          "fill": "ink",
+          "size": 46,
+          "weight": 800,
+          "align": "left",
+          "maxW": 178,
+          "kinetic": true,
+          "keys": [
+            {
+              "t": 2.0,
+              "opacity": 1,
+              "x": 212,
+              "y": 300
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "text": "Conocimiento que se usa",
+          "fill": "dim",
+          "size": 20,
+          "weight": 600,
+          "align": "left",
+          "maxW": 178,
+          "keys": [
+            {
+              "t": 2.9,
+              "opacity": 0,
+              "x": 212,
+              "y": 364
+            },
+            {
+              "t": 3.4,
+              "opacity": 1,
+              "x": 212,
+              "y": 350,
+              "ease": "outCubic"
+            }
+          ]
+        }
+      ],
+      "comp": "sideLeft"
+    },
+    {
+      "type": "statement",
+      "text": "Aprende algo que vas a usar manana",
+      "stmtStyle": "left",
+      "durationInFrames": 78
+    },
+    {
+      "type": "checklist",
+      "title": "Por que educ.ar",
+      "items": [
+        "Comunidad",
+        "Mentores reales",
+        "A tu ritmo",
+        "Certificado"
+      ],
+      "listStyle": "check",
+      "listAnchor": "left",
+      "listLayout": "rows",
+      "durationInFrames": 133
+    },
+    {
+      "type": "outro",
+      "brand": "educ.ar",
+      "cta": "Ver el programa",
+      "outroComp": "center",
+      "durationInFrames": 87
+    }
+  ],
+  "style": "corporate",
+  "bgStyle": "aurora",
+  "tone": "dark",
+  "shadowMode": "soft",
+  "fontDisplay": "Plus Jakarta Sans",
+  "fontText": "Inter",
+  "fontAccent": "JetBrains Mono",
+  "images": [],
+  "heroResource": "particles",
+  "motif": "educacion",
+  "substrate": "dotgrid",
+  "signatureForm": "plus",
+  "hookName": "promesa",
+  "structure": [
+    "hero",
+    "statement",
+    "checklist",
+    "outro"
+  ]
+}

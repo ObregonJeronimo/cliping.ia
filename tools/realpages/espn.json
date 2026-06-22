@@ -1,0 +1,133 @@
+{
+  "brand": "ESPN",
+  "accent": "#f6775a",
+  "theme": "cyber-neon",
+  "seed": 2339331643,
+  "texture": "none",
+  "bgEnergy": 1.6,
+  "rubro": "fitness",
+  "scenes": [
+    {
+      "type": "scene",
+      "durationInFrames": 74,
+      "elements": [
+        {
+          "kind": "shape",
+          "fill": "accent",
+          "glow": false,
+          "keys": [
+            {
+              "t": 1.75,
+              "w": 0,
+              "h": 6,
+              "r": 3,
+              "x": 397,
+              "y": 213,
+              "opacity": 0
+            },
+            {
+              "t": 2.2,
+              "w": 74,
+              "h": 6,
+              "r": 3,
+              "x": 397,
+              "y": 213,
+              "opacity": 1,
+              "ease": "outCubic"
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "text": "ESPN",
+          "fill": "ink",
+          "size": 52,
+          "weight": 800,
+          "align": "right",
+          "maxW": 300,
+          "kinetic": true,
+          "keys": [
+            {
+              "t": 1.8,
+              "opacity": 1,
+              "x": 360,
+              "y": 250
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "text": "Tu mejor version",
+          "fill": "dim",
+          "size": 22,
+          "weight": 600,
+          "align": "right",
+          "maxW": 300,
+          "keys": [
+            {
+              "t": 2.7,
+              "opacity": 0,
+              "x": 360,
+              "y": 314
+            },
+            {
+              "t": 3.2,
+              "opacity": 1,
+              "x": 360,
+              "y": 300,
+              "ease": "outCubic"
+            }
+          ]
+        }
+      ],
+      "comp": "diagonal"
+    },
+    {
+      "type": "quote",
+      "text": "Las clases vuelan",
+      "author": "Sofi",
+      "stars": 5,
+      "align": "center",
+      "durationInFrames": 105
+    },
+    {
+      "type": "checklist",
+      "title": "Por que ESPN",
+      "items": [
+        "Horarios flexibles",
+        "Comunidad activa",
+        "Planes a medida"
+      ],
+      "listStyle": "bar",
+      "listAnchor": "center",
+      "listLayout": "rows",
+      "durationInFrames": 93
+    },
+    {
+      "type": "outro",
+      "brand": "ESPN",
+      "cta": "Probá una clase",
+      "outroComp": "ctaOnly",
+      "durationInFrames": 71
+    }
+  ],
+  "style": "sport",
+  "bgStyle": "speedlines",
+  "tone": "dark",
+  "shadowMode": "hard",
+  "fontDisplay": "Oswald",
+  "fontText": "Barlow",
+  "fontAccent": "Big Shoulders Display",
+  "images": [],
+  "heroResource": "particles",
+  "motif": "fitness",
+  "substrate": "contour",
+  "signatureForm": "triangle",
+  "hookName": "reto",
+  "structure": [
+    "hero",
+    "quote",
+    "checklist",
+    "outro"
+  ]
+}

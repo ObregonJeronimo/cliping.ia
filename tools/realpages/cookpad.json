@@ -1,0 +1,195 @@
+{
+  "brand": "Cookpad",
+  "accent": "#dd9722",
+  "theme": "crimson-bold",
+  "seed": 3930303083,
+  "texture": "grain",
+  "bgEnergy": 1.0,
+  "rubro": "gastronomia",
+  "scenes": [
+    {
+      "type": "reveal",
+      "text": "Vas a volver",
+      "align": "left",
+      "kicker": "",
+      "durationInFrames": 88
+    },
+    {
+      "type": "scene",
+      "durationInFrames": 132,
+      "elements": [
+        {
+          "kind": "morph",
+          "fill": "#e5af57",
+          "blur": false,
+          "keys": [
+            {
+              "t": 0.0,
+              "form": "circle",
+              "r": 4.8,
+              "opacity": 0,
+              "x": 331,
+              "y": 143
+            },
+            {
+              "t": 0.42,
+              "form": "blob",
+              "r": 24.7,
+              "opacity": 1.0,
+              "x": 331,
+              "y": 143,
+              "ease": "outElastic"
+            },
+            {
+              "t": 1.1,
+              "form": "leaf",
+              "r": 40.0,
+              "opacity": 1.0,
+              "x": 331,
+              "y": 143,
+              "rot": 7,
+              "ease": "inOutCubic"
+            },
+            {
+              "t": 2.0,
+              "form": "blob",
+              "r": 45.7,
+              "opacity": 1.0,
+              "x": 331,
+              "y": 143,
+              "rot": -6,
+              "ease": "inOutCubic"
+            },
+            {
+              "t": 3.2,
+              "form": "blob",
+              "r": 47.6,
+              "opacity": 1.0,
+              "x": 331,
+              "y": 143,
+              "rot": -11,
+              "ease": "inOutCubic"
+            },
+            {
+              "t": 4.6,
+              "form": "blob",
+              "r": 50.9,
+              "opacity": 1.0,
+              "x": 331,
+              "y": 143,
+              "rot": 2,
+              "ease": "inOutCubic"
+            },
+            {
+              "t": 7.0,
+              "form": "blob",
+              "r": 47.6,
+              "opacity": 1.0,
+              "x": 331,
+              "y": 143,
+              "rot": 13,
+              "ease": "inOutCubic"
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "text": "Cookpad",
+          "fill": "ink",
+          "size": 58,
+          "weight": 800,
+          "align": "left",
+          "maxW": 320,
+          "kinetic": true,
+          "keys": [
+            {
+              "t": 1.8,
+              "opacity": 1,
+              "x": 44,
+              "y": 470
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "text": "Hecho con ganas",
+          "fill": "dim",
+          "size": 24,
+          "weight": 600,
+          "align": "left",
+          "maxW": 300,
+          "keys": [
+            {
+              "t": 2.7,
+              "opacity": 0,
+              "x": 44,
+              "y": 526
+            },
+            {
+              "t": 3.2,
+              "opacity": 1,
+              "x": 44,
+              "y": 512,
+              "ease": "outCubic"
+            }
+          ]
+        }
+      ],
+      "comp": "cornerAnchor"
+    },
+    {
+      "type": "numberStack",
+      "items": [
+        {
+          "value": 12,
+          "label": "años cocinando"
+        },
+        {
+          "value": 4.9,
+          "suffix": "★",
+          "label": "resenas"
+        },
+        {
+          "value": 25,
+          "prefix": "+",
+          "label": "platos en carta"
+        }
+      ],
+      "align": "left",
+      "durationInFrames": 143
+    },
+    {
+      "type": "statement",
+      "text": "Frescura que se siente en cada bocado",
+      "stmtStyle": "left",
+      "durationInFrames": 103
+    },
+    {
+      "type": "outro",
+      "brand": "Cookpad",
+      "cta": "Probalo hoy",
+      "outroComp": "diagonal",
+      "durationInFrames": 103
+    }
+  ],
+  "style": "organic",
+  "bgStyle": "bands",
+  "tone": "dark",
+  "shadowMode": "soft",
+  "fontDisplay": "Quicksand",
+  "fontText": "Hanken Grotesk",
+  "fontAccent": "Caveat",
+  "images": [],
+  "heroResource": "morph",
+  "motif": "gastronomia",
+  "substrate": "contour",
+  "signatureForm": "blob",
+  "hookName": "antojo",
+  "structure": [
+    "reveal",
+    "hero",
+    "numberStack",
+    "statement",
+    "outro"
+  ]
+}

@@ -1,0 +1,154 @@
+{
+  "brand": "Elle",
+  "accent": "#ac34b6",
+  "theme": "crimson-bold",
+  "seed": 1559477625,
+  "texture": "none",
+  "bgEnergy": 1.1,
+  "rubro": "moda",
+  "scenes": [
+    {
+      "type": "scene",
+      "durationInFrames": 102,
+      "elements": [
+        {
+          "kind": "shape",
+          "fill": "accent",
+          "glow": false,
+          "keys": [
+            {
+              "t": 0.6499999999999999,
+              "w": 0,
+              "h": 6,
+              "r": 3,
+              "x": 239,
+              "y": 268,
+              "opacity": 0
+            },
+            {
+              "t": 1.1,
+              "w": 74,
+              "h": 6,
+              "r": 3,
+              "x": 239,
+              "y": 268,
+              "opacity": 1,
+              "ease": "outCubic"
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "text": "Elle",
+          "fill": "ink",
+          "size": 94,
+          "weight": 800,
+          "align": "center",
+          "maxW": 384,
+          "kinetic": true,
+          "keys": [
+            {
+              "t": 0.7,
+              "opacity": 1,
+              "x": 202,
+              "y": 336
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "text": "Lo que viene, primero",
+          "fill": "dim",
+          "size": 30,
+          "weight": 600,
+          "align": "center",
+          "maxW": 300,
+          "keys": [
+            {
+              "t": 1.6,
+              "opacity": 0,
+              "x": 202,
+              "y": 428
+            },
+            {
+              "t": 2.0999999999999996,
+              "opacity": 1,
+              "x": 202,
+              "y": 414,
+              "ease": "outCubic"
+            }
+          ]
+        }
+      ],
+      "comp": "typeOnly"
+    },
+    {
+      "type": "checklist",
+      "title": "Por que Elle",
+      "items": [
+        "Edicion limitada",
+        "Diseno propio",
+        "Cambios faciles"
+      ],
+      "listStyle": "number",
+      "listAnchor": "center",
+      "listLayout": "rows",
+      "durationInFrames": 118
+    },
+    {
+      "type": "statement",
+      "text": "Piezas que duran mas que la tendencia",
+      "stmtStyle": "editorial",
+      "durationInFrames": 83
+    },
+    {
+      "type": "numberStack",
+      "items": [
+        {
+          "value": 200,
+          "prefix": "+",
+          "label": "disenos"
+        },
+        {
+          "value": 48,
+          "suffix": "h",
+          "label": "envio"
+        },
+        {
+          "value": 4.8,
+          "suffix": "★",
+          "label": "clientas"
+        }
+      ],
+      "align": "left",
+      "durationInFrames": 137
+    },
+    {
+      "type": "outro",
+      "brand": "Elle",
+      "cta": "Compra ahora",
+      "outroComp": "diagonal",
+      "durationInFrames": 102
+    }
+  ],
+  "style": "riso",
+  "bgStyle": "halftone",
+  "tone": "light",
+  "shadowMode": "hard",
+  "fontDisplay": "Space Grotesk",
+  "fontText": "Space Grotesk",
+  "fontAccent": "Space Mono",
+  "images": [],
+  "heroResource": "type",
+  "motif": "moda",
+  "substrate": "editorialgrid",
+  "signatureForm": "blob",
+  "hookName": "aspiracional",
+  "structure": [
+    "hero",
+    "checklist",
+    "statement",
+    "numberStack",
+    "outro"
+  ]
+}

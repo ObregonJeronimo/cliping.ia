@@ -1,0 +1,125 @@
+{
+  "brand": "Ciencia UNAM",
+  "accent": "#a22cd3",
+  "theme": "saas-explainer",
+  "seed": 1306854547,
+  "texture": "grain",
+  "bgEnergy": 1.2,
+  "rubro": "educacion",
+  "scenes": [
+    {
+      "type": "reveal",
+      "text": "Empeza gratis",
+      "align": "center",
+      "kicker": "MIRA ESTO",
+      "durationInFrames": 83
+    },
+    {
+      "type": "scene",
+      "durationInFrames": 126,
+      "elements": [
+        {
+          "kind": "shape",
+          "fill": "accent",
+          "glow": false,
+          "keys": [
+            {
+              "t": 0.6499999999999999,
+              "w": 0,
+              "h": 6,
+              "r": 3,
+              "x": 77,
+              "y": 256,
+              "opacity": 0
+            },
+            {
+              "t": 1.1,
+              "w": 74,
+              "h": 6,
+              "r": 3,
+              "x": 77,
+              "y": 256,
+              "opacity": 1,
+              "ease": "outCubic"
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "text": "Ciencia UNAM",
+          "fill": "ink",
+          "size": 86,
+          "weight": 800,
+          "align": "left",
+          "maxW": 336,
+          "kinetic": true,
+          "keys": [
+            {
+              "t": 0.7,
+              "opacity": 1,
+              "x": 40,
+              "y": 318
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "text": "Aprende haciendo",
+          "fill": "dim",
+          "size": 30,
+          "weight": 600,
+          "align": "left",
+          "maxW": 300,
+          "keys": [
+            {
+              "t": 1.6,
+              "opacity": 0,
+              "x": 40,
+              "y": 406
+            },
+            {
+              "t": 2.0999999999999996,
+              "opacity": 1,
+              "x": 40,
+              "y": 392,
+              "ease": "outCubic"
+            }
+          ]
+        }
+      ],
+      "comp": "typeStack"
+    },
+    {
+      "type": "statement",
+      "text": "Tu tiempo invertido, no perdido",
+      "stmtStyle": "left",
+      "durationInFrames": 94
+    },
+    {
+      "type": "outro",
+      "brand": "Ciencia UNAM",
+      "cta": "Empeza gratis",
+      "outroComp": "center",
+      "durationInFrames": 88
+    }
+  ],
+  "style": "retro70s",
+  "bgStyle": "sunburst",
+  "tone": "light",
+  "shadowMode": "soft",
+  "fontDisplay": "Caprasimo",
+  "fontText": "DM Sans",
+  "fontAccent": "Righteous",
+  "images": [],
+  "heroResource": "morph",
+  "motif": "educacion",
+  "substrate": "dotgrid",
+  "signatureForm": "star",
+  "hookName": "promesa",
+  "structure": [
+    "reveal",
+    "hero",
+    "statement",
+    "outro"
+  ]
+}
