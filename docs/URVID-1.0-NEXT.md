@@ -77,6 +77,13 @@ enciende. Gates OK (QA 0, determinismo, motion, build). Commit local; SIN push (
 > FALTA (refinamientos, NO bloqueantes): RECOLOR a la marca (hoy conservan sus colores de diseno; remapear c.k -> paleta
 > para mono/duotono), preview/picker de Lotties en Urvid Craft, placement (hoy esquina; podrian ir mas protagonicas),
 > y el manifiesto de ~555KB podria lazy-loadearse si molesta el bundle.
+> LICENCIA — DECISION DEL USUARIO (producto pago, cobro mensual): SEGUIR con las Lotties de LottieFiles bajo la **Lottie
+> Simple License** (uso comercial OK, SIN atribucion obligatoria). Verificado (jun 2026): el `searchPublicAnimations`
+> devuelve las PUBLICAS (pool gratis = Lottie Simple License; las Premium van por catalogo aparte, NO entran). Caveats de
+> la licencia que NO aplican a urvid: (a) no usar los archivos para construir un servicio SIMILAR/COMPETIDOR de Lotties
+> (urvid es generador de VIDEO, no aplica); (b) al DISTRIBUIR los archivos hay que pasar la licencia (la salida de urvid
+> es VIDEO rasterizado MP4, no archivos .json, no aplica). El manifiesto guarda `author` por las dudas. Alternativa de
+> riesgo CERO si algun dia se quiere: CC0 (IconScout dominio publico ~6300, necesita API key) o licencia comercial paga.
 > LICENCIA: LottieFiles pool gratis -> revisar terminos/atribucion para uso comercial (el manifiesto guarda `author`).
 > --- (lo de abajo es la nota ORIGINAL de investigacion, ya superada por el pivote) ---
 Buscar e implementar animaciones YA hechas, categorizadas, con descripción de qué hacen (ej: "un carrito clickeado
