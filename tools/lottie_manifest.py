@@ -14,6 +14,13 @@ import backend.lottie_search as L
 
 MANIFEST = os.path.join(ROOT, "src", "urvid", "lottie", "manifest.js")
 os.makedirs(os.path.dirname(MANIFEST), exist_ok=True)
+
+# BLOCKLIST: ids curados a mano (visor "Lotties") que NO deben volver al regenerar. Ver tools/lottie_blocklist.txt.
+_BL = os.path.join(ROOT, "tools", "lottie_blocklist.txt")
+BLOCK = set()
+if os.path.exists(_BL):
+    with open(_BL, encoding="utf-8") as _f:
+        BLOCK = {ln.strip() for ln in _f if ln.strip() and not ln.startswith("#")}
 PER = int(sys.argv[1]) if len(sys.argv) > 1 else 200
 DEFAULT_PER = max(PER, 250)
 FIRST = 40
@@ -116,7 +123,7 @@ for rubro, qs in QUERIES.items():
     kept = 0
     with ThreadPoolExecutor(max_workers=24) as ex:
         for item in ex.map(vet, cands):
-            if item and kept < target:
+            if item and item["id"] not in BLOCK and kept < target:
                 manifest.append(item); kept += 1
     per[rubro] = kept
     print(f"  {rubro:14} {kept}/{len(cands)} candidatos  (acumulado {len(manifest)})")
