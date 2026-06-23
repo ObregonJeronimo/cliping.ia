@@ -7,8 +7,14 @@ import styles from './Sidebar.module.css'
 const NAV = [
   { to: '/studio', icon: '●', label: 'urvid IA' },
   { to: '/studio/craft', icon: '✦', label: 'urvid IA advanced' },
+  { to: '/studio/anim', icon: '➤', label: 'Animaciones IA' },
   { to: '/studio/lotties', icon: '✶', label: 'Lotties' },
 ]
+
+// pinta el token "IA" del label con el gradiente iridiscente (igual que los titulos de pagina)
+const renderLabel = (label) => label.split(/(\bIA\b)/).map((part, i) =>
+  part === 'IA' ? <span key={i} className="urvidIA">IA</span> : part
+)
 
 export default function Sidebar() {
   const { user, profile, logout } = useAuth()
@@ -37,7 +43,7 @@ export default function Sidebar() {
             }
           >
             <span className={styles.navIcon}>{item.icon}</span>
-            {item.label}
+            {renderLabel(item.label)}
           </NavLink>
         ))}
       </nav>

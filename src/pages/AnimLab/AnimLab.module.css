@@ -1,0 +1,48 @@
+/* Animaciones IA (prototipo) · tema claro del app (variables de index.css). */
+.wrap { display: flex; flex-direction: column; gap: 16px; padding: 4px 2px 40px; min-height: 100%; color: var(--text); }
+
+.head h1 { margin: 0; font-size: 25px; font-weight: 800; letter-spacing: -.03em; color: var(--text); display: inline-flex; align-items: center; gap: 10px; }
+.head p { margin: 6px 0 0; font-size: 13px; color: var(--muted); max-width: 640px; line-height: 1.5; }
+.beta { font-family: "JetBrains Mono", monospace; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--border2); border-radius: 100px; padding: 3px 8px; }
+
+.cols { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 22px; align-items: start; }
+@media (max-width: 880px) { .cols { grid-template-columns: 1fr; } }
+
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 14px; box-shadow: 0 1px 2px rgba(0, 0, 0, .04); }
+.field { display: flex; flex-direction: column; gap: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.field input[type=file] { font-size: 12px; font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--text); }
+.field input[type=range] { accent-color: var(--accent); }
+
+.block { display: flex; flex-direction: column; gap: 8px; padding-top: 12px; border-top: 1px solid var(--border); }
+.blockTitle { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.ok { font-size: 12px; color: var(--green); font-weight: 600; }
+
+.btn { appearance: none; border: 1px solid var(--border2); background: var(--surface); color: var(--text); border-radius: 10px; padding: 10px 13px; font-size: 13px; font-weight: 700; cursor: pointer; transition: border-color .12s; }
+.btn:hover:not(:disabled) { border-color: var(--accent); }
+.btn:disabled { opacity: .5; cursor: default; }
+.row { display: flex; gap: 8px; }
+.row .btn { flex: 1; }
+
+.shortcuts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 11px; color: var(--muted2); }
+.mini { appearance: none; border: 1px dashed var(--border2); background: transparent; color: var(--muted); border-radius: 8px; padding: 6px 10px; font-size: 12px; font-weight: 600; cursor: pointer; }
+.mini:hover:not(:disabled) { border-color: var(--accent); color: var(--text); }
+.mini:disabled { opacity: .45; cursor: default; }
+
+.seg { display: flex; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--surface2); padding: 3px; gap: 3px; }
+.seg button { flex: 1; appearance: none; border: none; background: transparent; color: var(--muted); padding: 8px; font-size: 12px; font-weight: 700; cursor: pointer; border-radius: 7px; }
+.seg button.on { background: var(--accent); color: var(--accent-text); }
+.check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text); }
+
+.objs { display: flex; flex-direction: column; gap: 6px; }
+.obj { display: flex; align-items: stretch; border: 1px solid var(--border); border-radius: 9px; overflow: hidden; }
+.objOn { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.objSel { flex: 1; appearance: none; border: none; background: var(--surface); color: var(--text); padding: 8px 11px; cursor: pointer; text-align: left; font-size: 12.5px; font-weight: 600; }
+.objDel { appearance: none; border: none; background: var(--surface); color: var(--muted2); width: 30px; cursor: pointer; font-size: 16px; }
+.objDel:hover { color: var(--red); }
+
+.status { margin: 0; font-size: 12px; color: var(--text); background: var(--surface2); border-radius: 8px; padding: 9px 11px; line-height: 1.45; }
+.note { margin: 0; font-size: 11px; color: var(--muted2); line-height: 1.5; }
+
+.stageWrap { display: flex; justify-content: center; align-items: flex-start; }
+.stage { border-radius: 14px; border: 1px solid var(--border2); background: #0a0a0f; box-shadow: 0 16px 40px -28px rgba(0, 0, 0, .4); display: block; }
+.empty { width: 100%; min-height: 300px; display: flex; align-items: center; justify-content: center; border: 1px dashed var(--border2); border-radius: 14px; color: var(--muted2); font-size: 13px; }
