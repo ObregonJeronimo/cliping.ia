@@ -48,6 +48,20 @@ LICENSES = {
                  "REDISTRIBUIR conservando el aviso de licencia en la fuente; no exige atribucion por render. "
                  "Autoria Google -> sin logos/marcas de terceros (riesgo IP minimo)."),
     },
+    "airbnb-lottie-samples": {
+        "source": "airbnb-lottie-samples",
+        "title": "Airbnb Lottie sample animations (lottie-android)",
+        "license": "Apache-2.0",
+        "spdx": "Apache-2.0",
+        "redistributable": True,
+        "attribution_per_render": False,
+        "home": "https://github.com/airbnb/lottie-android",
+        "license_url": "https://github.com/airbnb/lottie-android/blob/master/LICENSE",
+        "note": ("Repo Apache-2.0 (permite redistribuir). Son demos SUBIDOS POR LA COMUNIDAD: la licencia del repo es "
+                 "Apache, pero el ARTE subyacente puede tener IP del autor. Por eso se incluyen SOLO por ALLOWLIST "
+                 "curada (sin logos/marcas/personajes: se excluyen bb8, deadpool, lightsaber, logos de empresas, etc.) "
+                 "+ verificacion estatica de IP + revision visual de sospechosos."),
+    },
 }
 
 
@@ -243,6 +257,73 @@ def noto_candidates():
             "license": "Apache-2.0",
             "tag": tag,
             "codepoint": cp,
+        })
+    return out
+
+
+# ------------------------------------------------------------------ FUENTE: Airbnb Lottie samples (lottie-android)
+# ALLOWLIST CURADA (default-deny): solo archivos que JUZGUE IP-limpios + utiles para marketing, mapeados a (rubro,
+# concepto). Se EXCLUYE todo lo demas (logos de empresas, personajes/marcas: bb8, deadpool, lightsaber, coding_ape,
+# emoji_* -> ya cubiertos por Noto, demos random). El gate (expresiones/efectos/calidad) y ip_suspect filtran ademas.
+AIRBNB_RAW = "https://raw.githubusercontent.com/airbnb/lottie-android/master/snapshot-tests/src/main/assets/lottiefiles/{f}.json"
+AIRBNB_ALLOW = {
+    # finanzas
+    "atm_link": ("finanzas", "bank"), "cash": ("finanzas", "money"), "coinfall": ("finanzas", "coins"),
+    "credit_card": ("finanzas", "card"), "credit_level": ("finanzas", "card"), "finance_animation": ("finanzas", "growth"),
+    "money": ("finanzas", "money"), "payme": ("finanzas", "money"), "plane_to_dollar": ("finanzas", "money"),
+    "estimate": ("finanzas", "finance"), "in-app_purchasing": ("finanzas", "card"),
+    # tech
+    "animated_laptop_": ("tech", "code"), "browser": ("tech", "code"), "code_invite_success": ("tech", "code"),
+    "cloud_disconnection": ("tech", "cloud"), "downloader": ("tech", "loading"), "fingerprint_scanner": ("tech", "secure"),
+    "gears": ("tech", "automation"), "hardware": ("tech", "cpu"), "scan": ("tech", "search"),
+    "scan_qr_code_success": ("tech", "search"), "video_cam": ("tech", "automation"), "vr_animation": ("tech", "ai"),
+    "autoconnect_loading": ("tech", "network"), "no_internet_connection": ("tech", "network"),
+    # salud
+    "blood_transfusion_kawaii": ("salud", "health"), "brain__": ("salud", "health"),
+    "patient_successfully_added": ("salud", "health"), "mindful": ("salud", "wellness"), "dna_loader": ("salud", "dna"),
+    # educacion
+    "books": ("educacion", "book"), "pencil_write": ("educacion", "pencil"), "pen_tool_loop": ("educacion", "pencil"),
+    # inmobiliaria
+    "building_evolution_animation": ("inmobiliaria", "building"), "construction_site": ("inmobiliaria", "moving"),
+    "location": ("inmobiliaria", "location"), "location_marker": ("inmobiliaria", "location"),
+    "location_pin": ("inmobiliaria", "location"), "map_animation": ("inmobiliaria", "location"),
+    "updating_map": ("inmobiliaria", "location"),
+    # gastronomia
+    "cooking_app": ("gastronomia", "chef"), "soda_loader": ("gastronomia", "food"), "pink_drink_machine": ("gastronomia", "food"),
+    # moda
+    "delivery_van": ("moda", "send"),
+    # fitness
+    "yoga_carpet": ("fitness", "yoga"), "medal": ("fitness", "sports"), "trophy": ("fitness", "trophy"),
+    "walking_arrow": ("fitness", "running"),
+    # default / UI universal
+    "100_percent": ("default", "growth"), "accept_arrows": ("default", "check"), "bell": ("default", "notification"),
+    "camera": ("default", "object"), "check_pop": ("default", "check"), "clock": ("default", "clock"),
+    "countdown": ("default", "clock"), "done": ("default", "check"), "drop_to_refresh": ("default", "loading"),
+    "fab_animate": ("default", "object"), "favourite_app_icon": ("default", "star"), "loading": ("default", "loading"),
+    "notification_request": ("default", "notification"), "pagination": ("default", "object"),
+    "play_button": ("default", "object"), "point": ("default", "target"), "preloader": ("default", "loading"),
+    "progress_bar": ("default", "loading"), "rating": ("default", "star"), "rocket": ("default", "rocket"),
+    "search_button": ("default", "search"), "switch_loop": ("default", "toggle"), "toggle": ("default", "toggle"),
+    "toggle_switch": ("default", "toggle"), "touch_id": ("default", "secure"), "volume_indicator": ("default", "object"),
+    "win_result_2": ("default", "trophy"), "x_pop": ("default", "object"), "mailsent": ("default", "email"),
+    "on_off_settings_switch": ("default", "toggle"), "change_to_search_bar": ("default", "search"),
+    "download": ("default", "loading"),
+}
+
+
+def airbnb_candidates():
+    """Candidatos airbnb (allowlist curada). {id, name, concept, rubro, url, source, license}. Sin bajar el JSON."""
+    out = []
+    for f, (rubro, concept) in AIRBNB_ALLOW.items():
+        nm = f.strip("_").replace("_", " ").replace("-", " ")
+        out.append({
+            "id": "air-" + slug(f),
+            "name": nm[:60],
+            "concept": concept,
+            "rubro": rubro,
+            "url": AIRBNB_RAW.format(f=f),
+            "source": "airbnb-lottie-samples",
+            "license": "Apache-2.0",
         })
     return out
 

@@ -1,7 +1,19 @@
 {
   "generated_for": "urvid lottie library",
-  "items": 580,
+  "items": 631,
   "sources": [
+    {
+      "source": "airbnb-lottie-samples",
+      "title": "Airbnb Lottie sample animations (lottie-android)",
+      "license": "Apache-2.0",
+      "spdx": "Apache-2.0",
+      "redistributable": true,
+      "attribution_per_render": false,
+      "home": "https://github.com/airbnb/lottie-android",
+      "license_url": "https://github.com/airbnb/lottie-android/blob/master/LICENSE",
+      "note": "Repo Apache-2.0 (permite redistribuir). Son demos SUBIDOS POR LA COMUNIDAD: la licencia del repo es Apache, pero el ARTE subyacente puede tener IP del autor. Por eso se incluyen SOLO por ALLOWLIST curada (sin logos/marcas/personajes: se excluyen bb8, deadpool, lightsaber, logos de empresas, etc.) + verificacion estatica de IP + revision visual de sospechosos.",
+      "items": 51
+    },
     {
       "source": "noto-animated-emoji",
       "title": "Google Noto Animated Emoji",

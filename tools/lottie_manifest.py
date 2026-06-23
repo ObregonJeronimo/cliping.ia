@@ -81,6 +81,9 @@ def vet(c):
         return None, None
 
     ip = CC0.ip_suspect(j, c.get("name", ""))            # P2: senal de IP/marca ajena (vacio = limpio)
+    if "capa-de-texto" in ip:                            # un acento NO debe traer texto (calidad + IP) -> rechazo duro
+        return None, None
+    ip = [r for r in ip if r != "capa-de-texto"]         # el resto (imagen-embebida/marca) queda como flag a revisar
 
     if not os.path.exists(local_path):                   # persistir self-host (JSON compacto)
         with open(local_path, "w", encoding="utf-8") as f:
@@ -96,6 +99,7 @@ def gather():
     """Candidatos de TODAS las fuentes CC0. (Hoy: Noto. Agregar fuentes nuevas = otra funcion candidates() aca.)"""
     cands = []
     cands += CC0.noto_candidates()
+    cands += CC0.airbnb_candidates()
     return cands
 
 
