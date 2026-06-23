@@ -1,0 +1,1 @@
+# Sospechosos de IP (parseo estatico). Revisar visualmente antes de confiar. id<TAB>razones

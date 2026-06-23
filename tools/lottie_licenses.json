@@ -1,0 +1,18 @@
+{
+  "generated_for": "urvid lottie library",
+  "items": 580,
+  "sources": [
+    {
+      "source": "noto-animated-emoji",
+      "title": "Google Noto Animated Emoji",
+      "license": "Apache-2.0",
+      "spdx": "Apache-2.0",
+      "redistributable": true,
+      "attribution_per_render": false,
+      "home": "https://googlefonts.github.io/noto-emoji-animation/",
+      "license_url": "https://github.com/googlefonts/noto-emoji/blob/main/LICENSE",
+      "note": "Apache-2.0 (image resources del repo googlefonts/noto-emoji). Permite usar, modificar y REDISTRIBUIR conservando el aviso de licencia en la fuente; no exige atribucion por render. Autoria Google -> sin logos/marcas de terceros (riesgo IP minimo).",
+      "items": 580
+    }
+  ]
+}
