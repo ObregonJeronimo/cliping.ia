@@ -21,12 +21,17 @@
 .btn:hover:not(:disabled) { border-color: var(--accent); }
 .btn:disabled { opacity: .5; cursor: default; }
 .row { display: flex; gap: 8px; }
-.row .btn { flex: 1; }
+.row .btn, .row .mini { flex: 1; }
 
 .shortcuts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 11px; color: var(--muted2); }
 .mini { appearance: none; border: 1px dashed var(--border2); background: transparent; color: var(--muted); border-radius: 8px; padding: 6px 10px; font-size: 12px; font-weight: 600; cursor: pointer; }
 .mini:hover:not(:disabled) { border-color: var(--accent); color: var(--text); }
 .mini:disabled { opacity: .45; cursor: default; }
+
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.fieldSm { display: flex; flex-direction: column; gap: 5px; font-size: 11px; font-weight: 600; color: var(--muted); }
+.fieldSm select { background: var(--surface); border: 1px solid var(--border2); border-radius: 8px; padding: 7px 9px; font-size: 12px; color: var(--text); cursor: pointer; }
+.fieldSm input[type=range] { accent-color: var(--accent); }
 
 .seg { display: flex; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--surface2); padding: 3px; gap: 3px; }
 .seg button { flex: 1; appearance: none; border: none; background: transparent; color: var(--muted); padding: 8px; font-size: 12px; font-weight: 700; cursor: pointer; border-radius: 7px; }
