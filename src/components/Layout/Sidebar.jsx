@@ -7,6 +7,7 @@ import styles from './Sidebar.module.css'
 const NAV = [
   { to: '/studio', icon: '●', label: 'urvid IA' },
   { to: '/studio/craft', icon: '✦', label: 'urvid IA advanced' },
+  { to: '/studio/lotties', icon: '✶', label: 'Lotties' },
 ]
 
 export default function Sidebar() {
