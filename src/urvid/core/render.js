@@ -91,6 +91,19 @@ export function drawFrame(ctx, t, video) {
     const a = (video.tone === 'light' ? 0.92 : 1) * inv(t, 0.4, 1.1)
     if (a > 0) { ctx.save(); ctx.globalAlpha = a; drawLottie(ctx, video.animId, video.animUrl, t, gx - sz / 2, gy - sz / 2, sz, sz); ctx.restore() }
   }
+  // ANIM POR ESCENA (urvid IA): 1-3 Lotties de la escena ACTIVA, ruteadas por lo que dice esa escena. Detras del contenido,
+  // en esquinas (evita TL=marca y el centro=titulo). Browser-only (drawLottie no-op en Node). Fade por tiempo de escena.
+  const actAnim = video.scenes && video.scenes.find(s => t >= s.start && t < s.start + s.dur)
+  if (actAnim && actAnim.anims && actAnim.anims.length) {
+    const slots = [[W * 0.78, H * 0.2], [W * 0.22, H * 0.8], [W * 0.78, H * 0.8]]
+    const n = Math.min(actAnim.anims.length, 3), sz = W * (n >= 3 ? 0.22 : n === 2 ? 0.26 : 0.3), lt = t - actAnim.start
+    for (let k = 0; k < n; k++) {
+      const an = actAnim.anims[k]; if (!an || !an.url) continue
+      const [gx, gy] = slots[k % slots.length]
+      const a = (video.tone === 'light' ? 0.9 : 1) * inv(lt, 0.2 + k * 0.12, 0.9 + k * 0.12)
+      if (a > 0) { ctx.save(); ctx.globalAlpha = a; drawLottie(ctx, an.id, an.url, lt, gx - sz / 2, gy - sz / 2, sz, sz); ctx.restore() }
+    }
+  }
   // ESCENA + TRANSICIONES — el CONTENIDO va ENCIMA de las capas (texto siempre legible).
   // Ventana de transicion [B.start, B.start+XF): A (saliente, ya asentada) + B (entrante, recien arrancando su
   // entrada) -> la lib transitions compone (wipe/slide/iris/bars/cut). Asi B SI es visible durante la transicion

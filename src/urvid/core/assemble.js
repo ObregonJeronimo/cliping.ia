@@ -58,8 +58,71 @@ function routeAnimConcepts(content, rubro) {
   return new Set(hits.length ? hits : (_RUBRO_CONCEPTS[rubro] || _RUBRO_CONCEPTS.default))
 }
 
+// ANIM POR ESCENA (urvid IA): cada beat muestra 1-3 Lotties ruteadas por LO QUE DICE ESA ESCENA, usando TODA la
+// biblioteca (no solo el rubro). Si una escena de un video de dietetica habla de ecommerce, igual sale una de ecommerce.
+// Cada route = un TEMA: kw que lo detectan en el texto del beat + `pool` (el rubro cuya biblioteca cubre ese vocabulario,
+// asi un tema "ecommerce" tira de la libreria de moda aunque el video sea de salud = cross-rubro real) + `c` (conceptos
+// finos p/ refinar dentro de ese pool).
+const ANIM_ROUTES = [
+  { id: 'compra', pool: 'moda', kw: ['compr', 'tienda', 'carrito', 'ecommerce', 'pedido', 'online', 'envio', 'envia', 'delivery', 'venta', 'vende', 'producto', 'catalog', 'shop', 'market'], c: ['shopping', 'ecommerce', 'online', 'sale', 'bag', 'store', 'add', 'cart', 'buy', 'shoes'] },
+  { id: 'dinero', pool: 'finanzas', kw: ['precio', 'plan', 'pago', 'pagar', 'dinero', 'plata', 'ahorr', 'invers', 'financ', 'cuota', 'tarjeta', 'credito', 'factura', 'presupuesto', 'cobr', 'ingreso', 'rentab'], c: ['money', 'dollar', 'coins', 'wallet', 'credit', 'card', 'savings', 'finance', 'investment', 'percent', 'bank', 'profit'] },
+  { id: 'rating', pool: 'default', kw: ['recomien', 'estrella', 'resena', 'review', 'valora', 'rating', 'puntu', 'opinion', 'satisf'], c: ['star', 'like', 'heart', 'thumbs', 'verified', 'trophy'] },
+  { id: 'crece', pool: 'default', kw: ['crec', 'aument', 'mejora', 'result', 'escala', 'productiv', 'rendi', 'impuls', 'exito', 'logr'], c: ['growth', 'trending', 'rocket', 'trophy', 'target', 'up'] },
+  { id: 'contacto', pool: 'default', kw: ['chat', 'mensaj', 'consult', 'contact', 'hablar', 'respond', 'whatsapp', 'atenci', 'soporte', 'escrib'], c: ['message', 'chat', 'phone', 'email', 'bell', 'notification', 'share'] },
+  { id: 'rapido', pool: 'tech', kw: ['rapido', 'instant', 'agil', 'veloz', 'minuto', 'enseguida', 'automat'], c: ['automation', 'loading', 'sync', 'rocket', 'api'] },
+  { id: 'seguro', pool: 'tech', kw: ['segur', 'proteg', 'privac', 'confia', 'garant', 'encript', 'respald', 'protec'], c: ['cyber', 'shield', 'secure', 'lock', 'encryption', 'database'] },
+  { id: 'busca', pool: 'default', kw: ['busc', 'encontr', 'descubr', 'explor', 'filtr', 'elegi', 'compar'], c: ['search', 'filter', 'target', 'eye'] },
+  { id: 'salud', pool: 'salud', kw: ['salud', 'medic', 'clinic', 'bienestar', 'cuidado', 'paciente', 'doctor', 'farmac', 'tratamiento', 'sintoma'], c: ['heartbeat', 'medical', 'health', 'doctor', 'pill', 'stethoscope', 'hospital', 'heart'] },
+  { id: 'natural', pool: 'salud', kw: ['dieta', 'nutri', 'saludable', 'natural', 'organic', 'peso', 'vitamin', 'suplement', 'energi', 'fibra', 'proteina'], c: ['health', 'healthy', 'heart', 'wellness', 'vaccine', 'dna'] },
+  { id: 'fit', pool: 'fitness', kw: ['entren', 'ejercicio', 'gym', 'fitness', 'musculo', 'rutina', 'fuerza', 'cardio', 'deport'], c: ['dumbbell', 'running', 'gym', 'muscle', 'training', 'sports', 'yoga', 'cycling'] },
+  { id: 'casa', pool: 'inmobiliaria', kw: ['hogar', 'propiedad', 'depto', 'departament', 'alquil', 'inmueble', 'metros', 'llave', 'ambiente', 'barrio', 'casa'], c: ['house', 'key', 'building', 'property', 'for', 'location', 'door', 'moving'] },
+  { id: 'estudia', pool: 'educacion', kw: ['estudi', 'aprend', 'curso', 'clase', 'educ', 'capacit', 'ensena', 'alumno', 'profe', 'certific', 'titulo'], c: ['graduation', 'book', 'education', 'school', 'brain', 'study', 'pencil', 'online'] },
+  { id: 'comida', pool: 'gastronomia', kw: ['plato', 'menu', 'restaurant', 'cafe', 'bebida', 'postre', 'sabor', 'receta', 'cocina', 'rico', 'delicios'], c: ['coffee', 'food', 'restaurant', 'burger', 'wine', 'cake', 'menu', 'chef', 'ice', 'pizza'] },
+  { id: 'belleza', pool: 'belleza', kw: ['belleza', 'piel', 'maquillaj', 'cosmet', 'spa', 'cabello', 'peluqu', 'perfum', 'crema', 'rostro'], c: ['cosmetics', 'spa', 'skincare', 'makeup', 'salon', 'beauty', 'face', 'lipstick', 'perfume'] },
+  { id: 'tech', pool: 'tech', kw: ['tecnolog', 'app', 'software', 'digital', 'plataforma', 'sistema', 'dato', 'nube', 'integr', 'automatiz', 'web'], c: ['cloud', 'code', 'data', 'ai', 'network', 'mobile', 'automation', 'analytics', 'api', 'database', 'cpu'] },
+  { id: 'oferta', pool: 'moda', kw: ['descuent', 'oferta', 'promo', 'rebaja', 'liquidacion', 'gratis', 'regalo'], c: ['discount', 'sale', 'percent'] },
+  { id: 'agenda', pool: 'default', kw: ['evento', 'fiesta', 'celebr', 'festej', 'agenda', 'cita', 'reserva', 'turno', 'fecha'], c: ['calendar', 'clock', 'confetti', 'gift'] },
+]
+
+// el TEXTO que muestra cada beat (segun su categoria) -> es lo que rutea su animacion.
+function _beatText(category, c) {
+  const top = String(category || '').split('/')[0], j = (...xs) => xs.filter(Boolean).join(' ')
+  const bl = (Array.isArray(c.bullets) ? c.bullets : []).join(' ')
+  const st = (Array.isArray(c.stats) ? c.stats : []).map(s => (s && s.label) || '').join(' ')
+  if (top === 'openers') return j(c.tagline, c.claim, c.brand)
+  if (top === 'statements') return j(c.claim, c.tagline)
+  if (top === 'lists') return j(bl, c.claim)
+  if (top === 'data') return j(st, c.claim)
+  if (top === 'social') return j(c.proof, c.claim)
+  if (top === 'closers') return j(c.cta, c.claim)
+  return j(c.claim, c.tagline, bl)
+}
+// 1-3 Lotties para un beat: temas (routes) que matchean su texto -> 1 Lottie por tema, de la biblioteca de ESE tema
+// (cross-rubro real: un tema ecommerce tira de la libreria de moda aunque el video sea de salud). Sin match -> rubro del video.
+function pickSceneAnims(category, content, rubro, seed, i, items) {
+  if (!items || !items.length) return []
+  const lo = _beatText(category, content).toLowerCase()
+  let routes = ANIM_ROUTES.filter(r => r.kw.some(k => lo.indexOf(k) >= 0))
+  if (!routes.length) routes = [{ id: 'rubro', pool: rubro, c: [] }]   // sin tema claro -> anim del rubro del video
+  const prng = seedFor(seed ^ hashStr('sanim' + i), 'sanim')
+  const out = [], used = new Set()
+  for (const r of routes) {
+    if (out.length >= 3) break
+    let pool = items.filter(it => it.rubro === r.pool && !used.has(it.id))
+    if (!pool.length && r.pool !== 'default') pool = items.filter(it => it.rubro === 'default' && !used.has(it.id))   // back-up universal
+    const fine = r.c.length ? pool.filter(it => r.c.indexOf(it.concept) >= 0) : pool
+    const src = fine.length ? fine : pool                                  // si el filtro fino vacia, cualquiera del tema
+    if (!src.length) continue
+    const p = src[(prng() * src.length) | 0]
+    out.push({ id: p.id, url: p.url, seed: (seed ^ hashStr('a' + i + r.id)) >>> 0 }); used.add(p.id)
+  }
+  if (!out.length) { let pool = items.filter(it => it.rubro === rubro); if (!pool.length) pool = items; const p = pool[(prng() * pool.length) | 0]; if (p) out.push({ id: p.id, url: p.url, seed: (seed ^ hashStr('af' + i)) >>> 0 }) }
+  return out
+}
+
 export function makeVideo(brief = {}) {
   const { brand = 'Marca', rubro = 'default', tone = 'dark', brandColor = '#5b8cff', style = null } = brief
+  const perScene = !!brief.perSceneAnims   // urvid IA: 1-3 Lotties POR ESCENA (ruteadas por lo que dice esa escena), no 1 por video
   // FORMATO (aspect-ratio). No afecta la receta (mismo seed -> misma carta), solo la forma del lienzo.
   const format = FORMATS[brief.format] ? brief.format : '9:16'
   const dims = FORMATS[format]
@@ -127,16 +190,19 @@ export function makeVideo(brief = {}) {
   // ANIM (Lottie PRE-HECHA): elige una animacion del MANIFIESTO por concepto del brief + rubro (no al azar). Optional ~45%.
   // El manifiesto (gateado por determinismo, categorizado) vive en ../lottie/manifest.js; el JSON crudo se fetchea en
   // runtime y se rendea con lottie-web por t (player.js, solo browser; en Node es no-op -> los gates no lo testean).
-  const wantConcepts = routeAnimConcepts(content, rubro)
   const animItems = (LOTTIE && LOTTIE.items) || []
-  let animPool = animItems.filter(it => it.rubro === rubro)
-  if (animPool.length < 4) animPool = animPool.concat(animItems.filter(it => it.rubro === 'default'))   // suma universales
-  const animByConcept = animPool.filter(it => wantConcepts.has(it.concept))
-  if (animByConcept.length) animPool = animByConcept
+  // ANIM A NIVEL VIDEO (1 en una esquina) — SOLO cuando NO es perScene (advanced y back-compat). urvid IA usa per-escena.
   let animPick = null
-  if (lock) animPick = lock.anim ? animItems.find(it => it.id === lock.anim) : null
-  else if (keep && keep.anim) animPick = animItems.find(it => it.id === keep.anim)
-  else if (animPool.length && seedFor(seed, 'anim')() < 0.6) animPick = pick(seedFor(seed, 'animpick'), animPool)   // manifiesto PRE-gateado -> la anim aparece confiable
+  if (!perScene) {
+    const wantConcepts = routeAnimConcepts(content, rubro)
+    let animPool = animItems.filter(it => it.rubro === rubro)
+    if (animPool.length < 4) animPool = animPool.concat(animItems.filter(it => it.rubro === 'default'))   // suma universales
+    const animByConcept = animPool.filter(it => wantConcepts.has(it.concept))
+    if (animByConcept.length) animPool = animByConcept
+    if (lock) animPick = lock.anim ? animItems.find(it => it.id === lock.anim) : null
+    else if (keep && keep.anim) animPick = animItems.find(it => it.id === keep.anim)
+    else if (animPool.length && seedFor(seed, 'anim')() < 0.6) animPick = pick(seedFor(seed, 'animpick'), animPool)   // manifiesto PRE-gateado
+  }
   // TRANSICION escena-a-escena (wipe/slide/iris/bars/cut) -> video.transitionId.
   const trMod = required(lock && lock.transition, keep && keep.transition, seedFor(seed, 'transition'), query('transitions', { tone }))
   // PACING: la ventana de transicion (XF) sale de la PERSONALIDAD de movimiento (snappy corta, calmo larga).
@@ -183,7 +249,12 @@ export function makeVideo(brief = {}) {
     const lockId = lock && lock.scenes && lock.scenes[i]
     if (lock) { const lm = lockId ? get(lockId) : null; if (toneOk(lm)) mod = lm }
     if (!mod) mod = opts.length ? weightedPick(prng, opts, m => score(m) * sceneBias(m, sig)) : null
-    if (mod) { const dur = clamp((beat.dur || 3.4) * durK, 2.2, 6); scenes.push({ start, dur, sceneId: mod.id, seed: (seed ^ hashStr('s' + i)) >>> 0 }); start += dur }
+    if (mod) {
+      const dur = clamp((beat.dur || 3.4) * durK, 2.2, 6)
+      const sc = { start, dur, sceneId: mod.id, seed: (seed ^ hashStr('s' + i)) >>> 0 }
+      if (perScene) sc.anims = pickSceneAnims(beat.category, { ...content, brand }, rubro, seed, i, animItems)   // 1-3 Lotties por lo que dice ESTA escena
+      scenes.push(sc); start += dur
+    }
   })
 
   return {
