@@ -1,30 +1,16 @@
 {
   "generated_for": "urvid lottie library",
-  "items": 631,
+  "items": 333,
   "sources": [
     {
-      "source": "airbnb-lottie-samples",
-      "title": "Airbnb Lottie sample animations (lottie-android)",
-      "license": "Apache-2.0",
-      "spdx": "Apache-2.0",
+      "source": "urvid-scene",
+      "title": "urvid - animaciones propias",
+      "license": "urvid-own (CC0 / dominio propio)",
+      "spdx": "CC0-1.0",
       "redistributable": true,
       "attribution_per_render": false,
-      "home": "https://github.com/airbnb/lottie-android",
-      "license_url": "https://github.com/airbnb/lottie-android/blob/master/LICENSE",
-      "note": "Repo Apache-2.0 (permite redistribuir). Son demos SUBIDOS POR LA COMUNIDAD: la licencia del repo es Apache, pero el ARTE subyacente puede tener IP del autor. Por eso se incluyen SOLO por ALLOWLIST curada (sin logos/marcas/personajes: se excluyen bb8, deadpool, lightsaber, logos de empresas, etc.) + verificacion estatica de IP + revision visual de sospechosos.",
-      "items": 51
-    },
-    {
-      "source": "noto-animated-emoji",
-      "title": "Google Noto Animated Emoji",
-      "license": "Apache-2.0",
-      "spdx": "Apache-2.0",
-      "redistributable": true,
-      "attribution_per_render": false,
-      "home": "https://googlefonts.github.io/noto-emoji-animation/",
-      "license_url": "https://github.com/googlefonts/noto-emoji/blob/main/LICENSE",
-      "note": "Apache-2.0 (image resources del repo googlefonts/noto-emoji). Permite usar, modificar y REDISTRIBUIR conservando el aviso de licencia en la fuente; no exige atribucion por render. Autoria Google -> sin logos/marcas de terceros (riesgo IP minimo).",
-      "items": 580
+      "note": "Motion-graphics disenadas y animadas POR urvid (shapes + keyframes, sin arte de terceros ni emoji). 100% propias, sin problemas de licencia.",
+      "items": 333
     }
   ]
 }
