@@ -466,6 +466,15 @@ async def urvid_perceive(req: PerceiveRequest):
                 req.url.strip(), str(OUTPUTS_DIR / f"perceive_{uuid.uuid4().hex[:8]}.png"))
         except Exception as e:
             print(f"[perceive] capture_all fallo (sigo con lo que haya): {e}")
+    # SCREENSHOT del HERO (HD, 2x) -> Cloudinary. Lo usa Cine IA como semilla del fondo de IA cuando la pagina NO tiene
+    # imagenes de producto usables (asi NO depende solo de fotos del sitio). Best-effort (si falla, screenshotUrl = "").
+    screenshot_url = ""
+    if site.get("screenshot"):
+        try:
+            from cloudinary_upload import upload_image
+            screenshot_url = await upload_image(site["screenshot"], f"shot_{uuid.uuid4().hex[:8]}") or ""
+        except Exception as e:
+            print(f"[perceive] upload screenshot fallo: {e}")
     # "v2-": version del SCHEMA del brief (claim/tagline/cta + bullets/stats/proof). Bumpear si cambia el shape ->
     # invalida cache vieja (no servir briefs sin el material nuevo). El cache por URL sigue evitando re-llamar a Claude.
     ckey = "v2-" + _brand_cache_key(req.url)
@@ -478,7 +487,7 @@ async def urvid_perceive(req: PerceiveRequest):
         cached = _urvid_brief_cache.get(memkey) or _get_urvid_brief_fs(db, req.userId, ckey, chash)
         if cached:
             print(f"[perceive] '{req.url}' desde CACHE")
-            return {"brief": cached, "source": {}, "cost": {}, "cached": True, "images": site.get("images") or []}
+            return {"brief": cached, "source": {}, "cost": {}, "cached": True, "images": site.get("images") or [], "screenshotUrl": screenshot_url}
     usage = []
     # UNA sola llamada multimodal (texto + screenshot juntos) -> brief rico. Mas robusto Y mas barato que 2 llamadas.
     brief = await perception.analyze_to_brief(req.url.strip(), req.desarrollo.strip(), site=site, usage=usage)
@@ -498,7 +507,7 @@ async def urvid_perceive(req: PerceiveRequest):
     src = {"title": (site.get("content") or {}).get("title", "") if isinstance(site.get("content"), dict) else "",
            "logo": site.get("logo", "")}
     print(f"[perceive] '{req.url}' -> {brief.get('brand')} / {brief.get('rubro')} / {brief.get('brandColor')} (parse_ok={parse_ok})")
-    return {"brief": brief, "source": src, "cost": cost, "cached": False, "parse_ok": parse_ok, "images": site.get("images") or []}
+    return {"brief": brief, "source": src, "cost": cost, "cached": False, "parse_ok": parse_ok, "images": site.get("images") or [], "screenshotUrl": screenshot_url}
 
 
 # ─── SEEDANCE — video generativo IA (fal.ai) desde las imagenes reales del sitio + prompt por beats ──────────

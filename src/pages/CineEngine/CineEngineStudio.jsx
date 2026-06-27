@@ -19,8 +19,9 @@ export default function CineEngineStudio() {
   const { user } = useAuth()
   const [url, setUrl] = useState('')
   const [analyzing, setAnalyzing] = useState('')
-  const [brief, setBrief] = useState({ brand: 'Nodo', rubro: 'tech', tone: 'dark', brandColor: '#22e06a', format: '9:16', duration: 'medio', tagline: 'Automatiza lo aburrido', claim: 'Menos tareas repetitivas, mas resultados reales', cta: 'Probalo gratis' })
+  const [brief, setBrief] = useState({ brand: 'Nodo', rubro: 'tech', tone: 'dark', brandColor: '#22e06a', format: '9:16', duration: 'corto', tagline: 'Automatiza lo aburrido', claim: 'Menos tareas repetitivas, mas resultados reales', cta: 'Probalo gratis' })
   const [images, setImages] = useState([])
+  const [screenshotUrl, setScreenshotUrl] = useState('')   // screenshot HD del sitio (fallback del fondo IA si no hay fotos)
   const [seed, setSeed] = useState(0)
 
   // FONDO IA
@@ -54,6 +55,14 @@ export default function CineEngineStudio() {
   }, [])
   useEffect(() => () => clearInterval(aiPoll.current), [])
 
+  // La DURACIÓN del clip de IA se ata al video, sin pasar el MÁXIMO del modelo (si el video es más largo, se loopea).
+  useEffect(() => {
+    const m = models.find(x => x.id === modelId)
+    const ds = (m?.durations || [5]).slice().sort((a, b) => a - b)
+    const need = Math.ceil(video.duration || 0)
+    setSeconds(ds.find(d => d >= need) ?? ds[ds.length - 1])
+  }, [video.duration, modelId, models])
+
   // preview loop (canvas)
   useEffect(() => {
     const cv = cvRef.current; if (!cv) return
@@ -85,11 +94,12 @@ export default function CineEngineStudio() {
       setBrief({
         brand: b.brand || 'Marca', rubro: RUBROS.includes(b.rubro) ? b.rubro : 'default',
         tone: b.tone === 'light' ? 'light' : 'dark', brandColor: b.brandColor || '#5b8cff',
-        format: '9:16', duration: 'medio',
+        format: '9:16', duration: 'corto',
         tagline: b.tagline || '', claim: b.claim || '', cta: b.cta || '',
         bullets: Array.isArray(b.bullets) ? b.bullets : [], stats: Array.isArray(b.stats) ? b.stats : [], proof: b.proof || '',
       })
       setImages(j.images || [])
+      setScreenshotUrl(j.screenshotUrl || '')
       setAiGen(''); setSeed(0); headRef.current = 0; setHead(0); setAnalyzing('')
     } catch { setAnalyzing('Backend apagado — abri "start.bat"') }
   }
@@ -97,12 +107,13 @@ export default function CineEngineStudio() {
   // GENERAR FONDO IA: anima la 1ra imagen del sitio con el modelo elegido (fal) -> el videoUrl pasa a ser el fondo.
   const genAiBg = async () => {
     if (aiBusy) return
-    if (!images.length) { setAiGen('Analizá una página con imágenes primero (o pegá una URL abajo).'); return }
+    const seedImg = images[0] || screenshotUrl   // si no hay fotos de producto, anima el SCREENSHOT del sitio
+    if (!seedImg) { setAiGen('Analizá una página primero (o pegá una URL de video abajo).'); return }
     setAiGen('Iniciando…'); setAiBusy(true)
     try {
       const d = await (await fetch(`${API_URL}/api/seedance/generate`, {
         method: 'POST', headers: HEADERS,
-        body: JSON.stringify({ images: [images[0]], brief, desarrollo: '', prompt: '', model: modelId, seconds: Number(seconds), resolution: '', userId: user?.uid || '' }),
+        body: JSON.stringify({ images: [seedImg], brief, desarrollo: '', prompt: '', model: modelId, seconds: Number(seconds), resolution: '', userId: user?.uid || '' }),
       })).json()
       if (d.error || !d.job_id) { setAiGen(d.error || 'no se pudo iniciar'); setAiBusy(false); return }
       clearInterval(aiPoll.current)
@@ -164,7 +175,9 @@ export default function CineEngineStudio() {
             <button style={btn} onClick={() => analyze(false)} disabled={analyzing === 'loading'}>{analyzing === 'loading' ? '…' : 'Analizar'}</button>
           </div>
           {analyzing && analyzing !== 'loading' && <p style={{ color: '#e0708a', fontSize: 12, margin: '6px 0 0' }}>{analyzing}</p>}
-          {images.length > 0 && <p style={{ color: '#8a93a6', fontSize: 12, margin: '6px 0 0' }}>{images.length} imágenes encontradas (para el fondo IA)</p>}
+          {images.length > 0
+            ? <p style={{ color: '#8a93a6', fontSize: 12, margin: '6px 0 0' }}>{images.length} imágenes encontradas (se anima la 1ra de fondo)</p>
+            : (screenshotUrl ? <p style={{ color: '#8a93a6', fontSize: 12, margin: '6px 0 0' }}>Sin fotos de producto → se anima el <b>screenshot HD</b> del sitio.</p> : null)}
         </div>
 
         <div style={card}>
@@ -180,16 +193,21 @@ export default function CineEngineStudio() {
           <label style={{ ...lbl, marginTop: 10 }}>Gancho</label><input style={inp} value={brief.tagline} onChange={e => up('tagline', e.target.value)} />
           <label style={{ ...lbl, marginTop: 8 }}>Claim</label><input style={inp} value={brief.claim} onChange={e => up('claim', e.target.value)} />
           <label style={{ ...lbl, marginTop: 8 }}>CTA</label><input style={inp} value={brief.cta} onChange={e => up('cta', e.target.value)} />
+          <div style={{ marginTop: 10 }}><label style={lbl}>Duración del video</label>
+            <div style={{ display: 'flex', gap: 8 }}>{[['corto', 'Corto'], ['medio', 'Medio'], ['largo', 'Largo']].map(([d, l]) => <button key={d} style={(brief.duration || 'corto') === d ? btn : ghost} onClick={() => up('duration', d)}>{l}</button>)}</div>
+          </div>
           <button style={{ ...ghost, marginTop: 10, width: '100%' }} onClick={() => setSeed(s => ((s || 1) + 0x9e3779b1) >>> 0 || 1)}>↻ Otra variante</button>
         </div>
 
         <div style={card}>
           <label style={{ ...lbl, color: '#cfd6e6', fontWeight: 600 }}>Fondo de IA (opcional)</label>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-            <select style={inp} value={modelId} onChange={e => setModelId(e.target.value)}>
-              {models.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
-            </select>
-            <select style={{ ...inp, width: 80 }} value={seconds} onChange={e => setSeconds(Number(e.target.value))}>{(model?.durations || [5]).map(n => <option key={n} value={n}>{n}s</option>)}</select>
+          <select style={{ ...inp, marginBottom: 8 }} value={modelId} onChange={e => setModelId(e.target.value)}>
+            {models.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
+          </select>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+            <label style={{ ...lbl, margin: 0 }}>Clip IA</label>
+            <select style={{ ...inp, width: 84 }} value={seconds} onChange={e => setSeconds(Number(e.target.value))}>{(model?.durations || [5]).map(n => <option key={n} value={n}>{n}s</option>)}</select>
+            <span style={{ color: '#8a93a6', fontSize: 11.5 }}>el video dura {video.duration.toFixed(0)}s{Number(seconds) < video.duration ? ' → el fondo se loopea' : ''}</span>
           </div>
           <button style={{ ...btn, width: '100%', opacity: aiBusy ? 0.6 : 1 }} onClick={genAiBg} disabled={aiBusy}>{aiBusy ? `Generando… ${aiGen}` : `Generar fondo IA (≈ $${estCost.toFixed(2)})`}</button>
           {!aiBusy && aiGen && <p style={{ color: '#e0708a', fontSize: 12, margin: '6px 0 0' }}>{aiGen}</p>}
