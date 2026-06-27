@@ -589,7 +589,6 @@ class VideoGenRequest(BaseModel):
     refreshBrand: bool = False  # True = ignora el cache de análisis de la URL y re-analiza
     styleId: str = ""      # ESTILO visual elegido por el usuario ('' = recomendado por rubro). Ver style_catalog.
     spec: dict | None = None  # variante ya elegida: si viene, se renderiza sin pasar por el director
-    engine: str = "templates"  # motor de render: "templates" (urvid IA/Advanced) | "cine" (fork mejorado de Cine IA)
 
 
 @app.post("/api/video/generate")
@@ -866,7 +865,7 @@ async def _render_video_job(job_id: str, req: VideoGenRequest):
         # 2. Construir los archivos del render
         jobs[job_id].update({"step": "build", "progress": 40})
         entry, comp_id, total_frames, temp_files = template_director.build_video_files(
-            job_id, spec, REMOTION_DIR, engine=("cine" if req.engine == "cine" else "templates")
+            job_id, spec, REMOTION_DIR
         )
 
         # 3. Render con Remotion
