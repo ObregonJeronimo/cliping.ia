@@ -27,6 +27,7 @@ export function VideoJobProvider({ children }) {
   const [idioma, setIdioma] = useState('')      // idioma del video elegido por el usuario ('' = auto/según la página)
   const [formato, setFormato] = useState('vertical')  // vertical (9:16) | square (1:1) | wide (16:9)
   const [useCache, setUseCache] = useState(true)    // testing: usar el análisis de marca guardado vs reanalizar
+  const [engine, setEngine] = useState('templates') // motor de render: 'templates' (base) | 'cine' (fork mejorado, beta)
   const [cacheMsg, setCacheMsg] = useState('')      // feedback del borrado de caché (testing)
   const [submitted, setSubmitted] = useState(null)  // snapshot de lo usado en el último video
 
@@ -71,8 +72,8 @@ export function VideoJobProvider({ children }) {
     // (si el usuario edita la URL para el próximo, el "Video listo" no debe cambiar).
     setSubmitted({ url: url.trim(), seconds, mode, idioma, formato })
     const body = mode === 'simple'
-      ? { url: url.trim(), desarrollo: desarrollo.trim(), proposito: 'marketing', seconds, idioma, formato, refreshBrand: !useCache, userId: user?.uid || '' }
-      : { url: url.trim(), desarrollo: desarrollo.trim(), proposito, theme, tone: tono, seconds, idioma, formato, refreshBrand: !useCache, userId: user?.uid || '' }
+      ? { url: url.trim(), desarrollo: desarrollo.trim(), proposito: 'marketing', seconds, idioma, formato, refreshBrand: !useCache, engine, userId: user?.uid || '' }
+      : { url: url.trim(), desarrollo: desarrollo.trim(), proposito, theme, tone: tono, seconds, idioma, formato, refreshBrand: !useCache, engine, userId: user?.uid || '' }
     try {
       const r = await fetch(`${API_URL}/api/video/generate`, { method: 'POST', headers: HEADERS, body: JSON.stringify(body) })
       const d = await r.json()
@@ -97,7 +98,7 @@ export function VideoJobProvider({ children }) {
     mode, setMode, url, setUrl, desarrollo, setDesarrollo, theme, setTheme,
     proposito, setProposito, tono, setTono, seconds, setSeconds,
     idioma, setIdioma, formato, setFormato, submitted,
-    useCache, setUseCache, cacheMsg, clearBrandCache,
+    useCache, setUseCache, cacheMsg, clearBrandCache, engine, setEngine,
     generating, status, spec, videoUrl, error, generate, reset,
   }
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
