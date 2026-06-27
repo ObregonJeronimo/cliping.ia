@@ -34,27 +34,51 @@ def fal_key() -> str:
 # dur_caps {res: maxseg}  -> a esa resolucion la duracion no puede superar maxseg (combo invalido en fal).
 # img_field               -> nombre del campo de la imagen de entrada (default "image_url"; Kling I2V usa "start_image_url").
 # extra {..}              -> params fijos extra del modelo (ej. Sora delete_video=false para que fal no borre el output).
-# CINE IA — modelos VERIFICADOS contra fal (jun-2026). Son cinema/realismo: lo mejor es ANIMAR EL PRODUCTO (I2V de la
-# imagen real del sitio). El fondo abstracto premium lo hace el motor procedural (fork remotion/src/cine), NO la IA.
-# OJO: en la mayoria el I2V NO tiene param aspect -> el 9:16 sale de la imagen de entrada (hay que pasar una 9:16).
-# Los nombres/formatos exactos de algunos campos se confirman en la 1ra llamada real (generate() devuelve el error de fal).
+# CINE IA — MENU de modelos de fal, de MAS BARATO a MAS CARO (survey verificado contra fal, jun-2026). Sirven para
+# animar el producto (I2V de la imagen real) o un fondo abstracto. Precios reales. Los marcados (nuevo) tienen el
+# precio confirmado pero el schema exacto de inputs se confirma en la 1ra llamada (generate() devuelve el error de fal).
+# OJO: en varios el I2V NO tiene param aspect -> el 9:16 sale de la imagen de entrada.
 MODELS = [
-    # --- baratos / para iterar ---
-    {"id": "pixverse55", "label": "PixVerse v5.5 (barato, animar producto)", "desc": "Animar el producto, look estilizado. Barato: 1080p 5s $0.40, 8s $0.80 (1080p NO en 10s; 10s solo <=720p).",
-     "slug": "fal-ai/pixverse/v5.5/image-to-video", "price_s": 0.08, "price": {"mode": "pixverse", "base": {"540p": 0.15, "720p": 0.20, "1080p": 0.40}, "mult": {"5": 1, "8": 2, "10": 2.2}}, "dur_caps": {"1080p": 8}, "max_images": 1, "img_mode": "single",
-     "resolutions": ["540p", "720p", "1080p"], "res_field": "resolution", "durations": [5, 8, 10], "dur_fmt": "int", "aspect": False, "audio_field": "generate_audio_switch"},
-    {"id": "hunyuan15", "label": "Hunyuan 1.5 (muy barato, 480p)", "desc": "Movimiento barato 480p ($0.075/s, ~5s). Blando para overlay premium; sirve de relleno.",
+    # ───────── BARATOS ─────────
+    {"id": "longcat-d720", "label": "LongCat distilled 720p — $0.01/s (lo más barato)", "desc": "El más barato creíble. 720p, $0.01/s plano (10s=$0.10). Pans suaves de producto, para iterar/volumen.",
+     "slug": "fal-ai/longcat-video/distilled/image-to-video/720p", "price_s": 0.01, "price": {"mode": "per_s", "rate": 0.01}, "max_images": 1, "img_mode": "single",
+     "resolutions": [], "res_field": None, "durations": [5, 8, 10], "dur_fmt": "frames", "fps": 30, "aspect": False, "audio_field": None},
+    {"id": "wan22-turbo", "label": "Wan 2.2 Turbo — desde $0.05 (estilizado) (nuevo)", "desc": "Movimiento estilizado barato por VIDEO: $0.05 480p / $0.075 580p / $0.10 720p (~5s). Bueno para motion-graphics.",
+     "slug": "fal-ai/wan/v2.2-a14b/image-to-video/turbo", "price_s": 0.02, "price": {"mode": "per_s_res", "rates": {"480p": 0.01, "580p": 0.015, "720p": 0.02}}, "max_images": 1, "img_mode": "single",
+     "resolutions": ["480p", "580p", "720p"], "res_field": "resolution", "durations": [5], "dur_fmt": "frames", "fps": 16, "aspect": True, "audio_field": None},
+    {"id": "hunyuan15", "label": "Hunyuan 1.5 — $0.075/s (480p)", "desc": "Movimiento barato 480p ($0.075/s, ~5s = $0.375). Blando para overlay premium; relleno.",
      "slug": "fal-ai/hunyuan-video-v1.5/image-to-video", "price_s": 0.075, "price": {"mode": "per_s", "rate": 0.075}, "max_images": 1, "img_mode": "single",
      "resolutions": [], "res_field": None, "durations": [5], "dur_fmt": "frames", "fps": 24, "aspect": True, "audio_field": None},
-    # --- product-motion realista (recomendado) ---
-    {"id": "kling-v3-pro", "label": "Kling v3 pro (recomendado, product-motion)", "desc": "Anima el producto realista. $0.112/s sin audio (10s=$1.12). 9:16 = pasar imagen 9:16. Acepta frame final.",
+    {"id": "ltx23-fast", "label": "LTX-2.3 Fast — $0.04/s 1080p (motion-graphics ⭐)", "desc": "El mejor barato para MOTION-GRAPHICS: 1080p nativo $0.04/s (10s=$0.40), 1440p $0.08/s, 4K $0.16/s. 9:16 + audio. Acepta frame final.",
+     "slug": "fal-ai/ltx-2.3/image-to-video/fast", "price_s": 0.04, "price": {"mode": "per_s_res", "rates": {"1080p": 0.04, "1440p": 0.08, "2160p": 0.16}}, "max_images": 2, "img_mode": "startend", "end_field": "end_image_url",
+     "resolutions": ["1080p", "1440p", "2160p"], "res_field": "resolution", "durations": [6, 8, 10], "dur_fmt": "int", "aspect": True, "audio_field": "generate_audio"},
+    {"id": "pixverse55", "label": "PixVerse v5.5 — 1080p 5s $0.40 (animado)", "desc": "Look estilizado/animado. 1080p 5s $0.40, 8s $0.80 (1080p NO en 10s; 10s solo <=720p).",
+     "slug": "fal-ai/pixverse/v5.5/image-to-video", "price_s": 0.08, "price": {"mode": "pixverse", "base": {"540p": 0.15, "720p": 0.20, "1080p": 0.40}, "mult": {"5": 1, "8": 2, "10": 2.2}}, "dur_caps": {"1080p": 8}, "max_images": 1, "img_mode": "single",
+     "resolutions": ["540p", "720p", "1080p"], "res_field": "resolution", "durations": [5, 8, 10], "dur_fmt": "int", "aspect": False, "audio_field": "generate_audio_switch"},
+    {"id": "seedance1-pro-fast", "label": "Seedance v1 Pro Fast — 1080p $0.0486/s", "desc": "Camino barato a 1080p nítido: $0.0486/s (10s=$0.49); 720p la mitad. Buena adherencia.",
+     "slug": "fal-ai/bytedance/seedance/v1/pro/fast/image-to-video", "price_s": 0.0486, "price": {"mode": "per_s_res", "rates": {"480p": 0.0096, "720p": 0.0216, "1080p": 0.0486}}, "max_images": 1, "img_mode": "single",
+     "resolutions": ["480p", "720p", "1080p"], "res_field": "resolution", "durations": [4, 5, 6, 8, 10], "dur_fmt": "str", "aspect": True, "audio_field": None},
+    # ───────── MEDIOS ─────────
+    {"id": "kling25-turbo-pro", "label": "Kling 2.5 Turbo Pro — 10s $0.70 (recomendado calidad/precio) (nuevo)", "desc": "Gran relación calidad/precio: 1080p ~$0.07/s (10s=$0.70). Movimiento premium fluido. 9:16 por imagen.",
+     "slug": "fal-ai/kling-video/v2.5-turbo/pro/image-to-video", "price_s": 0.07, "price": {"mode": "per_s", "rate": 0.07}, "max_images": 1, "img_mode": "single",
+     "resolutions": [], "res_field": None, "durations": [5, 10], "dur_fmt": "int", "aspect": False, "audio_field": "generate_audio"},
+    {"id": "pika22", "label": "Pika v2.2 — 10s $0.90 (efectos) (nuevo)", "desc": "Bueno para efectos creativos/transiciones. ~$0.09/s (10s=$0.90). 720p/1080p.",
+     "slug": "fal-ai/pika/v2.2/image-to-video", "price_s": 0.09, "price": {"mode": "per_s", "rate": 0.09}, "max_images": 1, "img_mode": "single",
+     "resolutions": ["720p", "1080p"], "res_field": "resolution", "durations": [5], "dur_fmt": "int", "aspect": True, "audio_field": None},
+    {"id": "kling-v3-pro", "label": "Kling v3 pro — $0.112/s (product-motion)", "desc": "Anima el producto realista. $0.112/s sin audio (10s=$1.12). 9:16 = imagen 9:16. Acepta frame final.",
      "slug": "fal-ai/kling-video/v3/pro/image-to-video", "price_s": 0.112, "price": {"mode": "per_s", "rate": 0.112}, "max_images": 2, "img_mode": "startend", "end_field": "end_image_url", "img_field": "start_image_url",
      "resolutions": [], "res_field": None, "durations": [5, 8, 10], "dur_fmt": "int", "aspect": False, "audio_field": "generate_audio"},
-    # --- hero premium (caros) ---
-    {"id": "sora2-pro", "label": "Sora 2 pro (hero, caro)", "desc": "Top realismo. true_1080p $0.70/s (8s=$5.60). Sin 10s (4/8/12). Modera marcas/personas (riesgo).",
+    {"id": "wan25", "label": "Wan 2.5 — 10s $1.50 (estilizado premium) (nuevo)", "desc": "Estilizado premium con muy buena estética. ~$0.15/s (10s=$1.50). 9:16.",
+     "slug": "fal-ai/wan-25-preview/image-to-video", "price_s": 0.15, "price": {"mode": "per_s", "rate": 0.15}, "max_images": 1, "img_mode": "single",
+     "resolutions": ["480p", "720p", "1080p"], "res_field": "resolution", "durations": [5, 10], "dur_fmt": "int", "aspect": True, "audio_field": None},
+    # ───────── PREMIUM (caros) ─────────
+    {"id": "kling21-master", "label": "Kling 2.1 Master — 10s $2.80 (hero)", "desc": "Calidad alta, movimiento muy fluido. ~$0.28/s (10s=$2.80). 9:16 por imagen.",
+     "slug": "fal-ai/kling-video/v2.1/master/image-to-video", "price_s": 0.28, "price": {"mode": "per_s", "rate": 0.28}, "max_images": 1, "img_mode": "single",
+     "resolutions": [], "res_field": None, "durations": [5, 10], "dur_fmt": "int", "aspect": False, "audio_field": "generate_audio"},
+    {"id": "sora2-pro", "label": "Sora 2 pro — true_1080p $0.70/s (8s=$5.60)", "desc": "Top realismo. true_1080p $0.70/s; 1080p $0.50/s; 720p $0.30/s. Sin 10s (4/8/12). Modera marcas/personas (riesgo).",
      "slug": "fal-ai/sora-2/image-to-video/pro", "price_s": 0.70, "price": {"mode": "per_s_res", "rates": {"720p": 0.30, "1080p": 0.50, "true_1080p": 0.70}}, "max_images": 1, "img_mode": "single",
      "resolutions": ["720p", "1080p", "true_1080p"], "res_field": "resolution", "durations": [4, 8, 12], "dur_fmt": "int", "aspect": True, "audio_field": None, "extra": {"delete_video": False}},
-    {"id": "seedance2", "label": "Seedance 2.0 (hero, muy caro)", "desc": "Calidad tope. 1080p $0.682/s (10s ~$6.80!). 720p $0.30/s. Solo para hero shots.",
+    {"id": "seedance2", "label": "Seedance 2.0 — 1080p $0.682/s (10s ~$6.80, el más caro)", "desc": "Calidad tope. 1080p $0.682/s (10s ~$6.80!); 720p $0.30/s. Solo para hero shots.",
      "slug": "bytedance/seedance-2.0/image-to-video", "price_s": 0.682, "price": {"mode": "per_s_res", "rates": {"720p": 0.30, "1080p": 0.682}}, "max_images": 1, "img_mode": "single",
      "resolutions": ["720p", "1080p"], "res_field": "resolution", "durations": [5, 8, 10], "dur_fmt": "int", "aspect": True, "audio_field": None},
 ]
