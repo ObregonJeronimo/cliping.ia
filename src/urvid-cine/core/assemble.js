@@ -259,6 +259,7 @@ export function makeVideo(brief = {}) {
 
   return {
     brand, rubro, tone, seed, palette, fonts, format, W: dims.w, H: dims.h, xf, logo: brief.logo || null,
+    aiBgUrl: brief.aiBgUrl || null, aiBgIntensity: brief.aiBgIntensity != null ? brief.aiBgIntensity : 0.5,  // Cine: fondo de IA opcional + su intensidad
     bgId: bg ? bg.id : null, bgSeed: (seed ^ hashStr('bg')) >>> 0,
     subId: sub ? sub.id : null, subSeed: (seed ^ hashStr('sub')) >>> 0,
     atmId: atm ? atm.id : null, atmSeed: (seed ^ hashStr('atm')) >>> 0,

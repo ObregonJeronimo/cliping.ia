@@ -9,6 +9,7 @@ const NAV = [
   { to: '/studio/craft', icon: '✦', label: 'urvid IA advanced' },
   { to: '/studio/anim', icon: '➤', label: 'Animaciones IA' },
   { to: '/studio/cine', icon: '◆', label: 'Cine IA' },
+  { to: '/studio/cine-motor', icon: '◈', label: 'Cine IA (motor)' },
   { to: '/studio/lotties', icon: '✶', label: 'Lotties' },
 ]
 
