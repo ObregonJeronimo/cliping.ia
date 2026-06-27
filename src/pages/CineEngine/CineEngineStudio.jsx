@@ -29,7 +29,8 @@ export default function CineEngineStudio() {
   const [models, setModels] = useState([])
   const [modelId, setModelId] = useState('pixverse55')
   const [seconds, setSeconds] = useState(5)
-  const [aiGen, setAiGen] = useState('')
+  const [aiGen, setAiGen] = useState('')      // mensaje (progreso, aviso o error)
+  const [aiBusy, setAiBusy] = useState(false) // generando de verdad (deshabilita el boton) — separado del mensaje
   const aiPoll = useRef(null)
 
   // preview / transport
@@ -89,30 +90,31 @@ export default function CineEngineStudio() {
         bullets: Array.isArray(b.bullets) ? b.bullets : [], stats: Array.isArray(b.stats) ? b.stats : [], proof: b.proof || '',
       })
       setImages(j.images || [])
-      setSeed(0); headRef.current = 0; setHead(0); setAnalyzing('')
+      setAiGen(''); setSeed(0); headRef.current = 0; setHead(0); setAnalyzing('')
     } catch { setAnalyzing('Backend apagado — abri "start.bat"') }
   }
 
   // GENERAR FONDO IA: anima la 1ra imagen del sitio con el modelo elegido (fal) -> el videoUrl pasa a ser el fondo.
   const genAiBg = async () => {
-    if (!images.length) { setAiGen('Analiza una pagina con imagenes primero (o pega una URL abajo)'); return }
-    setAiGen('Iniciando…')
+    if (aiBusy) return
+    if (!images.length) { setAiGen('Analizá una página con imágenes primero (o pegá una URL abajo).'); return }
+    setAiGen('Iniciando…'); setAiBusy(true)
     try {
       const d = await (await fetch(`${API_URL}/api/seedance/generate`, {
         method: 'POST', headers: HEADERS,
         body: JSON.stringify({ images: [images[0]], brief, desarrollo: '', prompt: '', model: modelId, seconds: Number(seconds), resolution: '', userId: user?.uid || '' }),
       })).json()
-      if (d.error || !d.job_id) { setAiGen(d.error || 'no se pudo iniciar'); return }
+      if (d.error || !d.job_id) { setAiGen(d.error || 'no se pudo iniciar'); setAiBusy(false); return }
       clearInterval(aiPoll.current)
       aiPoll.current = setInterval(async () => {
         try {
           const j = await (await fetch(`${API_URL}/api/jobs/${d.job_id}`, { headers: HEADERS })).json()
-          if (j.status === 'done') { clearInterval(aiPoll.current); setAiGen(''); setAiBgUrl(j.videoUrl || '') }
-          else if (j.status === 'error') { clearInterval(aiPoll.current); setAiGen('Error: ' + (j.error || '')) }
+          if (j.status === 'done') { clearInterval(aiPoll.current); setAiBusy(false); setAiGen(''); setAiBgUrl(j.videoUrl || '') }
+          else if (j.status === 'error') { clearInterval(aiPoll.current); setAiBusy(false); setAiGen('Error: ' + (j.error || '')) }
           else setAiGen(`${j.step || 'generando'}${j.progress ? ` · ${j.progress}%` : ''}`)
         } catch { /* sigue */ }
       }, 3000)
-    } catch { setAiGen('Backend apagado — abri "start.bat"') }
+    } catch { setAiGen('Backend apagado — abrí "start.bat"'); setAiBusy(false) }
   }
 
   const model = models.find(m => m.id === modelId)
@@ -189,7 +191,8 @@ export default function CineEngineStudio() {
             </select>
             <select style={{ ...inp, width: 80 }} value={seconds} onChange={e => setSeconds(Number(e.target.value))}>{(model?.durations || [5]).map(n => <option key={n} value={n}>{n}s</option>)}</select>
           </div>
-          <button style={{ ...btn, width: '100%' }} onClick={genAiBg} disabled={!!aiGen}>{aiGen ? `Generando: ${aiGen}` : `Generar fondo IA (≈ $${estCost.toFixed(2)})`}</button>
+          <button style={{ ...btn, width: '100%', opacity: aiBusy ? 0.6 : 1 }} onClick={genAiBg} disabled={aiBusy}>{aiBusy ? `Generando… ${aiGen}` : `Generar fondo IA (≈ $${estCost.toFixed(2)})`}</button>
+          {!aiBusy && aiGen && <p style={{ color: '#e0708a', fontSize: 12, margin: '6px 0 0' }}>{aiGen}</p>}
           <label style={{ ...lbl, marginTop: 10 }}>…o pegá la URL de un video (mp4/webm)</label>
           <input style={inp} placeholder="https://…/clip.mp4" value={aiBgUrl} onChange={e => setAiBgUrl(e.target.value)} />
           <label style={{ ...lbl, marginTop: 10 }}>Intensidad del fondo: {Math.round(aiBgIntensity * 100)}%</label>
