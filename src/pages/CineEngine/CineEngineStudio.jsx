@@ -15,6 +15,58 @@ const ghost = { background: '#0f1320', color: '#cfd6e6', border: '1px solid #2a3
 const inp = { background: '#0f1320', border: '1px solid #2a3350', borderRadius: 10, padding: '9px 11px', color: '#e8ecf6', width: '100%', fontSize: 14 }
 const lbl = { fontSize: 12.5, color: '#8a93a6', display: 'block', marginBottom: 4 }
 
+// ── modo Cine: el video de IA es el protagonista; nuestro motor le pone el texto del brief en los BEATS analizados ──
+// material del brief (gancho/claim/features/CTA) -> textos a repartir en los beats.
+function briefTexts(b) {
+  const out = []
+  if (b.tagline) out.push(b.tagline)
+  if (b.claim && b.claim !== b.tagline) out.push(b.claim)
+  ;(b.bullets || []).slice(0, 3).forEach(x => { const t = typeof x === 'string' ? x : (x?.title || ''); if (t) out.push(t) })
+  if (b.cta) out.push(b.cta)
+  return out.filter(Boolean)
+}
+// reparte los textos sobre los beats: gancho al 1ro, CTA al último, el resto al medio.
+function captionBeats(beats, texts) {
+  const n = beats.length
+  if (!n) return []
+  const res = beats.map(b => ({ ...b, text: '' }))
+  if (!texts.length) return res
+  res[0].text = texts[0]
+  if (texts.length > 1) res[n - 1].text = texts[texts.length - 1]
+  texts.slice(1, -1).forEach((t, k) => { if (res[k + 1] && k + 1 < n - 1) res[k + 1].text = t })
+  return res
+}
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r)
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath()
+}
+function wrapText(ctx, text, maxW) {
+  const words = String(text).split(/\s+/), lines = []; let line = ''
+  for (const w of words) { const test = line ? line + ' ' + w : w; if (ctx.measureText(test).width > maxW && line) { lines.push(line); line = w } else line = test }
+  if (line) lines.push(line); return lines.slice(0, 3)
+}
+function drawCover(ctx, vid, W, H) {
+  const vr = vid.videoWidth / vid.videoHeight, cr = W / H
+  let dw = W, dh = H
+  if (vr > cr) { dh = H; dw = H * vr } else { dw = W; dh = W / vr }
+  ctx.drawImage(vid, (W - dw) / 2, (H - dh) / 2, dw, dh)
+}
+function drawCaption(ctx, beat, t, W, H) {
+  if (!beat.text) return
+  const r = beat.calmRegion, x = r.x * W, y = r.y * H, w = r.w * W, h = r.h * H
+  const fade = Math.min(1, Math.max(0, (t - beat.start) / 0.35))
+  ctx.save(); ctx.globalAlpha = fade
+  const dark = beat.textColor === '#FFFFFF'
+  ctx.fillStyle = dark ? 'rgba(8,12,20,0.46)' : 'rgba(245,247,252,0.58)'
+  roundRect(ctx, x, y, w, h, Math.min(18, h * 0.3)); ctx.fill()
+  const fs = Math.min(h * 0.42, w * 0.09)
+  ctx.font = `700 ${Math.round(fs)}px Inter, system-ui, sans-serif`
+  ctx.fillStyle = beat.textColor; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+  const lines = wrapText(ctx, beat.text, w * 0.9), lh = fs * 1.18, total = lines.length * lh
+  lines.forEach((ln, i) => ctx.fillText(ln, x + w / 2, y + h / 2 - total / 2 + lh * (i + 0.5)))
+  ctx.restore()
+}
+
 export default function CineEngineStudio() {
   const { user } = useAuth()
   const [url, setUrl] = useState('')
@@ -33,6 +85,14 @@ export default function CineEngineStudio() {
   const [aiGen, setAiGen] = useState('')      // mensaje (progreso, aviso o error)
   const [aiBusy, setAiBusy] = useState(false) // generando de verdad (deshabilita el boton) — separado del mensaje
   const aiPoll = useRef(null)
+
+  // ANALISIS del video -> beats (modo Cine)
+  const [beats, setBeats] = useState([])
+  const [anStatus, setAnStatus] = useState('')
+  const [anDuration, setAnDuration] = useState(0)
+  const aiVidRef = useRef(null)
+  const capBeats = useMemo(() => captionBeats(beats, briefTexts(brief)), [beats, brief])
+  const cineMode = !!aiBgUrl && capBeats.length > 0
 
   // preview / transport
   const [playing, setPlaying] = useState(true)
@@ -55,6 +115,23 @@ export default function CineEngineStudio() {
   }, [])
   useEffect(() => () => clearInterval(aiPoll.current), [])
 
+  // al tener un video de IA (generado o pegado): ANALIZARLO -> beats (cortes/movimiento/zonas) para colocar el texto.
+  useEffect(() => {
+    if (!aiBgUrl) { setBeats([]); setAnDuration(0); setAnStatus(''); return }
+    let alive = true
+    setAnStatus('Analizando el video…')
+    fetch(`${API_URL}/api/cine/analyze`, { method: 'POST', headers: HEADERS, body: JSON.stringify({ url: aiBgUrl }) })
+      .then(r => r.json()).then(d => {
+        if (!alive) return
+        if (d.error || !d.beats) { setAnStatus(d.error || 'no se pudo analizar el video'); setBeats([]); return }
+        setBeats(d.beats); setAnDuration(d.duration || 0); setAnStatus(`${d.beats.length} beats · ${(d.cuts || []).length} cortes detectados`)
+      }).catch(() => { if (alive) setAnStatus('backend apagado (análisis)') })
+    return () => { alive = false }
+  }, [aiBgUrl])
+
+  // en modo Cine el <video> manda la reproducción: play/pause segun transport.
+  useEffect(() => { const v = aiVidRef.current; if (!v) return; if (playing) v.play?.().catch(() => {}); else v.pause?.() }, [playing, aiBgUrl, cineMode])
+
   // La DURACIÓN del clip de IA se ata al video, sin pasar el MÁXIMO del modelo (si el video es más largo, se loopea).
   useEffect(() => {
     const m = models.find(x => x.id === modelId)
@@ -72,15 +149,28 @@ export default function CineEngineStudio() {
     let raf, last = performance.now()
     const loop = (now) => {
       const dt = Math.min((now - last) / 1000, 0.05) * speed; last = now
-      if (playing) { headRef.current += dt; if (headRef.current >= video.duration) headRef.current -= video.duration }
       ctx.setTransform(DPR, 0, 0, DPR, 0, 0)
-      drawFrame(ctx, headRef.current, video)
-      setHead(headRef.current)
+      const vid = aiVidRef.current
+      if (cineMode && vid && vid.readyState >= 2 && vid.videoWidth) {
+        // MODO CINE: el video de IA es el protagonista + texto del brief en los beats analizados.
+        const W = video.W, H = video.H
+        ctx.clearRect(0, 0, W, H)
+        try { drawCover(ctx, vid, W, H) } catch { /* CORS: el preview puede fallar de leer, igual reproduce */ }
+        const t = vid.currentTime || 0
+        const beat = capBeats.find(b => t >= b.start && t < b.end)
+        if (beat) drawCaption(ctx, beat, t, W, H)
+        setHead(t)
+      } else {
+        // sin video de IA: motor procedural de urvid-cine (preview de siempre).
+        if (playing) { headRef.current += dt; if (headRef.current >= video.duration) headRef.current -= video.duration }
+        drawFrame(ctx, headRef.current, video)
+        setHead(headRef.current)
+      }
       raf = requestAnimationFrame(loop)
     }
     raf = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(raf)
-  }, [video, playing, speed])
+  }, [video, playing, speed, cineMode, capBeats])
 
   const up = (k, v) => setBrief(b => ({ ...b, [k]: v }))
 
@@ -150,8 +240,11 @@ export default function CineEngineStudio() {
       const a = document.createElement('a'); a.href = href; a.download = `${(brief.brand || 'cine').replace(/\s+/g, '-')}-cine.${ext}`
       document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(href), 4000); setExporting('')
     }
-    headRef.current = 0; setHead(0); setPlaying(true); recRef.current = rec; rec.start()
-    const dur = video.duration, t0 = performance.now()
+    headRef.current = 0; setHead(0); setPlaying(true)
+    if (cineMode && aiVidRef.current) { try { aiVidRef.current.currentTime = 0; aiVidRef.current.play?.() } catch { /* noop */ } }
+    recRef.current = rec; rec.start()
+    const dur = cineMode ? (anDuration || aiVidRef.current?.duration || video.duration) : video.duration
+    const t0 = performance.now()
     const tick = () => {
       if (!recRef.current) return
       const el = (performance.now() - t0) / 1000
@@ -213,9 +306,8 @@ export default function CineEngineStudio() {
           {!aiBusy && aiGen && <p style={{ color: '#e0708a', fontSize: 12, margin: '6px 0 0' }}>{aiGen}</p>}
           <label style={{ ...lbl, marginTop: 10 }}>…o pegá la URL de un video (mp4/webm)</label>
           <input style={inp} placeholder="https://…/clip.mp4" value={aiBgUrl} onChange={e => setAiBgUrl(e.target.value)} />
-          <label style={{ ...lbl, marginTop: 10 }}>Intensidad del fondo: {Math.round(aiBgIntensity * 100)}%</label>
-          <input type="range" min="0" max="1" step="0.05" value={aiBgIntensity} onChange={e => setAiBgIntensity(Number(e.target.value))} style={{ width: '100%' }} />
-          {aiBgUrl && <button style={{ ...ghost, marginTop: 8 }} onClick={() => setAiBgUrl('')}>Quitar fondo IA</button>}
+          {aiBgUrl && anStatus && <p style={{ color: anStatus.includes('beats') ? '#3ad29f' : '#8a93a6', fontSize: 12, margin: '8px 0 0' }}>🎬 {anStatus} — el texto del brief se coloca en los beats.</p>}
+          {aiBgUrl && <button style={{ ...ghost, marginTop: 8 }} onClick={() => setAiBgUrl('')}>Quitar video IA</button>}
         </div>
 
         <button style={{ ...btn, width: '100%' }} onClick={exportVideo} disabled={!!exporting}>{exporting ? `Exportando ${exporting}` : '⬇ Descargar video'}</button>
@@ -223,15 +315,18 @@ export default function CineEngineStudio() {
       </div>
 
       <div>
+        {aiBgUrl && <video ref={aiVidRef} key={aiBgUrl} src={aiBgUrl} muted loop autoPlay playsInline crossOrigin="anonymous" style={{ display: 'none' }} />}
         <div style={{ aspectRatio: `${video.W} / ${video.H}`, maxHeight: '78vh', margin: '0 auto', borderRadius: 14, overflow: 'hidden', background: '#0a0a0f', border: '1px solid #232a42' }}>
           <canvas ref={cvRef} style={{ width: '100%', height: '100%', display: 'block' }} />
         </div>
+        {(() => { const dispDur = cineMode ? (anDuration || video.duration) : video.duration; return (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10, justifyContent: 'center' }}>
           <button style={ghost} onClick={() => setPlaying(p => !p)}>{playing ? '⏸' : '▶'}</button>
-          <button style={ghost} onClick={() => { headRef.current = 0 }}>↺</button>
-          <input type="range" min="0" max="1000" value={Math.round(head / video.duration * 1000) || 0} onChange={e => { headRef.current = (Number(e.target.value) / 1000) * video.duration }} style={{ flex: 1, maxWidth: 360 }} />
-          <span style={{ color: '#8a93a6', fontSize: 12, fontFamily: 'monospace' }}>{head.toFixed(1)} / {video.duration.toFixed(1)}</span>
+          <button style={ghost} onClick={() => { headRef.current = 0; if (aiVidRef.current) aiVidRef.current.currentTime = 0 }}>↺</button>
+          <input type="range" min="0" max="1000" value={Math.round(head / (dispDur || 1) * 1000) || 0} onChange={e => { const tt = (Number(e.target.value) / 1000) * dispDur; headRef.current = tt; if (cineMode && aiVidRef.current) aiVidRef.current.currentTime = tt }} style={{ flex: 1, maxWidth: 360 }} />
+          <span style={{ color: '#8a93a6', fontSize: 12, fontFamily: 'monospace' }}>{head.toFixed(1)} / {dispDur.toFixed(1)}</span>
         </div>
+        ) })()}
       </div>
     </div>
   )
