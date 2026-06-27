@@ -24,44 +24,71 @@ def fal_key() -> str:
     return ""
 
 
-# REGISTRY (precios reales de fal). img_mode: single (1) | startend (1 + frame final) | multi (array, @ImageN).
+# REGISTRY (precios REALES verificados contra las paginas de fal, jun-2026). img_mode: single (1) | startend (1 + frame final) | multi (array, @ImageN).
 # dur_fmt: int (10) | str ("10") | veo ("10s") | frames (num_frames = fps*seg). res_field None = la resolucion va en el slug.
+# price = costo REAL (casi todos son tiered por resolucion, NO plano por segundo):
+#   {"mode":"per_s","rate":r}            -> r * seg                          (mismo a toda resolucion)
+#   {"mode":"per_s_res","rates":{...}}   -> rates[res] * seg                 (+ "img_fee" opcional por request)
+#   {"mode":"flat","usd":x}              -> x fijo por video
+#   {"mode":"pixverse","base":{...},"mult":{seg:m}} -> base[res] * mult[seg]
+# dur_caps {res: maxseg}  -> a esa resolucion la duracion no puede superar maxseg (combo invalido en fal).
+# params "image_only"     -> el modelo SOLO acepta prompt + image_url (sin duration/resolution/aspect/audio).
 MODELS = [
     # --- cinematografico / realista, barato ---
-    {"id": "longcat-d720", "label": "LongCat distilled 720p", "desc": "El mas barato creible ($0.01/s). Pans suaves de producto, para volumen.",
-     "slug": "fal-ai/longcat-video/distilled/image-to-video/720p", "price_s": 0.01, "max_images": 1, "img_mode": "single",
-     "resolutions": [], "res_field": None, "durations": [5, 6, 8], "dur_fmt": "frames", "fps": 30, "aspect": True, "audio_field": None},
-    {"id": "ltx23-fast", "label": "LTX-2.3 Fast (recomendado)", "desc": "El mejor todoterreno: 9:16 nativo + audio + hasta 20s, realista O estilizado. $0.04/s.",
-     "slug": "fal-ai/ltx-2.3/image-to-video/fast", "price_s": 0.04, "max_images": 2, "img_mode": "startend", "end_field": "end_image_url",
+    {"id": "longcat-d720", "label": "LongCat distilled 720p", "desc": "El mas barato creible ($0.01/s, plano). Pans suaves de producto, para volumen. 720p.",
+     "slug": "fal-ai/longcat-video/distilled/image-to-video/720p", "price_s": 0.01, "price": {"mode": "per_s", "rate": 0.01}, "max_images": 1, "img_mode": "single",
+     "resolutions": [], "res_field": None, "durations": [5, 6, 8, 10], "dur_fmt": "frames", "fps": 30, "aspect": False, "audio_field": None},
+    {"id": "ltx23-fast", "label": "LTX-2.3 Fast (recomendado)", "desc": "El mejor todoterreno: 9:16 nativo + audio, realista O estilizado. 1080p $0.04/s; 1440p $0.08/s; 4K $0.16/s.",
+     "slug": "fal-ai/ltx-2.3/image-to-video/fast", "price_s": 0.04, "price": {"mode": "per_s_res", "rates": {"1080p": 0.04, "1440p": 0.08, "2160p": 0.16}}, "max_images": 2, "img_mode": "startend", "end_field": "end_image_url",
      "resolutions": ["1080p", "1440p", "2160p"], "res_field": "resolution", "durations": [6, 8, 10], "dur_fmt": "int", "aspect": True, "audio_field": "generate_audio"},
-    {"id": "seedance1-lite", "label": "Seedance v1 lite", "desc": "Mejor fidelidad por dolar, adherencia confiable ($0.036/s). (Puede estar deprecado en fal.)",
-     "slug": "fal-ai/bytedance/seedance/v1/lite/image-to-video", "price_s": 0.036, "max_images": 1, "img_mode": "single",
+    {"id": "seedance1-lite", "label": "Seedance v1 lite", "desc": "Fidelidad por dolar (720p ~$0.036/s, 1080p ~$0.08/s; sube con la resolucion). DEPRECADO en fal (re-rutea a Pro Fast).",
+     "slug": "fal-ai/bytedance/seedance/v1/lite/image-to-video", "price_s": 0.036, "price": {"mode": "per_s_res", "rates": {"480p": 0.016, "720p": 0.036, "1080p": 0.081}}, "max_images": 1, "img_mode": "single",
      "resolutions": ["480p", "720p", "1080p"], "res_field": "resolution", "durations": [4, 5, 6, 8, 10], "dur_fmt": "str", "aspect": True, "audio_field": None},
-    {"id": "seedance1-pro-fast", "label": "Seedance v1 Pro Fast", "desc": "Camino barato a 1080p nitido (~$0.05/s).",
-     "slug": "fal-ai/bytedance/seedance/v1/pro/fast/image-to-video", "price_s": 0.05, "max_images": 1, "img_mode": "single",
+    {"id": "seedance1-pro-fast", "label": "Seedance v1 Pro Fast", "desc": "1080p nitido: $0.0486/s (10s ~$0.49); 720p la mitad. Sube con la resolucion.",
+     "slug": "fal-ai/bytedance/seedance/v1/pro/fast/image-to-video", "price_s": 0.0486, "price": {"mode": "per_s_res", "rates": {"480p": 0.0096, "720p": 0.0216, "1080p": 0.0486}}, "max_images": 1, "img_mode": "single",
      "resolutions": ["480p", "720p", "1080p"], "res_field": "resolution", "durations": [4, 5, 6, 8, 10], "dur_fmt": "str", "aspect": True, "audio_field": None},
-    {"id": "hailuo23-fast-pro", "label": "Hailuo 2.3 Fast Pro", "desc": "Realismo photoreal 1080p, 10s (~$0.33/video). El vertical sale del recorte de la imagen (no controla aspecto).",
-     "slug": "fal-ai/minimax/hailuo-2.3-fast/pro/image-to-video", "price_s": 0.033, "max_images": 1, "img_mode": "single",
-     "resolutions": [], "res_field": None, "durations": [6, 10], "dur_fmt": "int", "aspect": False, "audio_field": None},
+    {"id": "hailuo23-fast-pro", "label": "Hailuo 2.3 Fast Pro", "desc": "Photoreal 1080p. FIJO: 1080p / 6s / $0.33 por video (sin opciones de duracion ni aspecto; el vertical sale del recorte).",
+     "slug": "fal-ai/minimax/hailuo-2.3-fast/pro/image-to-video", "price_s": 0.055, "price": {"mode": "flat", "usd": 0.33}, "max_images": 1, "img_mode": "single", "params": "image_only",
+     "resolutions": [], "res_field": None, "durations": [6], "dur_fmt": "int", "aspect": False, "audio_field": None},
     # --- animado / estilizado (no photoreal) ---
-    {"id": "pixverse55", "label": "PixVerse v5.5 (recomendado, animado)", "desc": "Look ANIMADO/estilizado (anime, 3D, clay, comic, cyberpunk). El mejor para no-photoreal.",
-     "slug": "fal-ai/pixverse/v5.5/image-to-video", "price_s": 0.04, "max_images": 1, "img_mode": "single",
-     "resolutions": ["540p", "720p", "1080p"], "res_field": "resolution", "durations": [5, 8, 10], "dur_fmt": "int", "aspect": True, "audio_field": "generate_audio_switch"},
-    {"id": "kandinsky5", "label": "Kandinsky 5 Pro", "desc": "Artistico/ilustrado (~$0.04/s @512p). No controla 9:16 (sale del recorte de la imagen).",
-     "slug": "fal-ai/kandinsky5-pro/image-to-video", "price_s": 0.04, "max_images": 1, "img_mode": "single",
-     "resolutions": ["512P", "1024P"], "res_field": "resolution", "durations": [5, 10], "dur_fmt": "veo", "aspect": False, "audio_field": None},
-    {"id": "grok", "label": "Grok Imagine", "desc": "Movimiento creativo, aspectos flexibles ($0.05/s @480p).",
-     "slug": "xai/grok-imagine-video/image-to-video", "price_s": 0.05, "max_images": 1, "img_mode": "single",
+    {"id": "pixverse55", "label": "PixVerse v5.5 (recomendado, animado)", "desc": "Look ANIMADO (anime, 3D, clay, comic). Tiered: 1080p 5s $0.40, 8s ~$0.80 (1080p NO permite 10s; 10s solo hasta 720p).",
+     "slug": "fal-ai/pixverse/v5.5/image-to-video", "price_s": 0.08, "price": {"mode": "pixverse", "base": {"540p": 0.15, "720p": 0.20, "1080p": 0.40}, "mult": {"5": 1, "8": 2, "10": 2.2}}, "dur_caps": {"1080p": 8}, "max_images": 1, "img_mode": "single",
+     "resolutions": ["540p", "720p", "1080p"], "res_field": "resolution", "durations": [5, 8, 10], "dur_fmt": "int", "aspect": False, "audio_field": "generate_audio_switch"},
+    {"id": "kandinsky5", "label": "Kandinsky 5 Pro", "desc": "Artistico/ilustrado. FIJO 5s: 512P $0.20, 1024P $0.60. No hay 1080p ni 10s. No controla 9:16.",
+     "slug": "fal-ai/kandinsky5-pro/image-to-video", "price_s": 0.04, "price": {"mode": "per_s_res", "rates": {"512P": 0.04, "1024P": 0.12}}, "max_images": 1, "img_mode": "single",
+     "resolutions": ["512P", "1024P"], "res_field": "resolution", "durations": [5], "dur_fmt": "veo", "aspect": False, "audio_field": None},
+    {"id": "grok", "label": "Grok Imagine", "desc": "Movimiento creativo. 480p $0.05/s, 720p $0.07/s (+$0.002/img). Sin 1080p.",
+     "slug": "xai/grok-imagine-video/image-to-video", "price_s": 0.05, "price": {"mode": "per_s_res", "rates": {"480p": 0.05, "720p": 0.07}, "img_fee": 0.002}, "max_images": 1, "img_mode": "single",
      "resolutions": ["480p", "720p"], "res_field": "resolution", "durations": [5, 6, 8, 10], "dur_fmt": "int", "aspect": True, "audio_field": None},
 ]
 MODELS_BY_ID = {m["id"]: m for m in MODELS}
 
 
 def public_models():
-    """Lo que el frontend muestra para elegir (sin detalles internos del schema)."""
-    return [{"id": m["id"], "label": m["label"], "desc": m["desc"], "price_s": m["price_s"],
-             "max_images": m["max_images"], "img_mode": m["img_mode"],
+    """Lo que el frontend muestra para elegir (sin detalles internos del schema). Incluye `price` para estimar el costo REAL por resolucion."""
+    return [{"id": m["id"], "label": m["label"], "desc": m["desc"], "price_s": m["price_s"], "price": m.get("price"),
+             "max_images": m["max_images"], "img_mode": m["img_mode"], "dur_caps": m.get("dur_caps", {}),
              "resolutions": m.get("resolutions", []), "durations": m["durations"]} for m in MODELS]
+
+
+def estimate_cost(model_id: str, resolution: str = "", seconds: int = 10) -> float:
+    """Costo REAL estimado (la misma logica que el frontend, para validar server-side)."""
+    m = MODELS_BY_ID.get(model_id) or MODELS[0]
+    p = m.get("price") or {"mode": "per_s", "rate": m.get("price_s", 0.04)}
+    s = int(seconds or 0)
+    if p["mode"] == "flat":
+        return float(p["usd"])
+    if p["mode"] == "per_s":
+        return p["rate"] * s
+    if p["mode"] == "per_s_res":
+        rates = p["rates"]
+        r = rates.get(resolution) or next(iter(rates.values()))
+        return r * s + p.get("img_fee", 0.0)
+    if p["mode"] == "pixverse":
+        base = p["base"].get(resolution) or p["base"].get("720p")
+        mult = p["mult"].get(str(s)) or (s / 5.0)
+        return base * mult
+    return m.get("price_s", 0.04) * s
 
 
 # rubro -> (sujeto, lugar, mood) en ingles para un prompt CONCRETO.
@@ -130,6 +157,13 @@ async def generate(model_id: str, images, prompt: str, seconds: int = 10, resolu
     if not imgs:
         return {"ok": False, "error": "no hay imagenes"}
 
+    # resolucion elegida (o la primera del modelo) y duracion ya CLAMPEADA por los limites del combo (ej. pixverse 1080p max 8s)
+    res_sel = resolution if (m.get("res_field") and resolution in m.get("resolutions", [])) else (m.get("resolutions") or [None])[0]
+    secs = int(seconds or 10)
+    cap = (m.get("dur_caps") or {}).get(res_sel)
+    if cap and secs > cap:
+        secs = cap
+
     inp = {"prompt": prompt}
     if m["img_mode"] == "multi":
         inp[m.get("images_field", "image_urls")] = imgs[:m["max_images"]]
@@ -137,14 +171,15 @@ async def generate(model_id: str, images, prompt: str, seconds: int = 10, resolu
         inp["image_url"] = imgs[0]
         if m["img_mode"] == "startend" and len(imgs) > 1 and m.get("end_field"):
             inp[m["end_field"]] = imgs[1]
-    if m.get("res_field") and m.get("resolutions"):
-        inp[m["res_field"]] = resolution if resolution in m["resolutions"] else m["resolutions"][0]
-    if m.get("aspect"):
-        inp["aspect_ratio"] = "9:16"
-    dk, dv = _duration(m, seconds)
-    inp[dk] = dv
-    if m.get("audio_field"):
-        inp[m["audio_field"]] = False
+    if m.get("params") != "image_only":          # algunos modelos (Hailuo) SOLO aceptan prompt + image_url
+        if m.get("res_field") and res_sel:
+            inp[m["res_field"]] = res_sel
+        if m.get("aspect"):
+            inp["aspect_ratio"] = "9:16"
+        dk, dv = _duration(m, secs)
+        inp[dk] = dv
+        if m.get("audio_field"):
+            inp[m["audio_field"]] = False
 
     headers = {"Authorization": f"Key {key}", "Content-Type": "application/json"}
     try:

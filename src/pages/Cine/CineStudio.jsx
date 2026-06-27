@@ -7,6 +7,23 @@ import { useAuth } from '../../contexts/AuthContext'
 const API_URL = import.meta.env.PROD ? '' : (import.meta.env.VITE_API_URL || 'http://localhost:8000')
 const HEADERS = { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' }
 
+// costo REAL estimado (casi todos los modelos de fal cobran por RESOLUCION, no plano por segundo)
+function estCost(model, resolution, seconds) {
+  const s = Number(seconds) || 0
+  const p = model?.price
+  if (!p) return (model?.price_s || 0.04) * s
+  if (p.mode === 'flat') return p.usd
+  if (p.mode === 'per_s') return p.rate * s
+  if (p.mode === 'per_s_res') { const r = p.rates[resolution] ?? Object.values(p.rates)[0]; return r * s + (p.img_fee || 0) }
+  if (p.mode === 'pixverse') { const base = p.base[resolution] ?? p.base['720p']; const m = p.mult[String(s)] ?? (s / 5); return base * m }
+  return (model?.price_s || 0.04) * s
+}
+// duraciones validas para la resolucion elegida (ej. pixverse 1080p no permite 10s)
+function availDurations(model, resolution) {
+  const cap = (model?.dur_caps || {})[resolution]
+  return (model?.durations || [5, 10]).filter(n => !cap || n <= cap)
+}
+
 const card = { background: '#161b2e', border: '1px solid #232a42', borderRadius: 14, padding: 16 }
 const btn = { background: '#5b8cff', color: '#fff', border: 0, borderRadius: 10, padding: '10px 18px', fontWeight: 600, cursor: 'pointer' }
 const inp = { background: '#0f1320', border: '1px solid #2a3350', borderRadius: 10, padding: '10px 12px', color: '#e8ecf6', width: '100%', fontSize: 14 }
@@ -47,6 +64,13 @@ export default function CineStudio() {
     setResolution(model.resolutions?.[0] || '')
     setSeconds(s => model.durations?.includes(Number(s)) ? s : (model.durations?.[model.durations.length - 1] || 10))
   }, [modelId, models])
+
+  // si la resolucion elegida no admite la duracion actual (ej. pixverse 1080p max 8s), bajarla al maximo valido
+  useEffect(() => {
+    if (!model) return
+    const ok = availDurations(model, resolution)
+    if (ok.length && !ok.includes(Number(seconds))) setSeconds(ok[ok.length - 1])
+  }, [resolution, modelId])
 
   useEffect(() => () => clearInterval(pollRef.current), [])
 
@@ -104,7 +128,7 @@ export default function CineStudio() {
     }, 3000)
   }
 
-  const est = (model?.price_s || 0.04) * Number(seconds)
+  const est = estCost(model, resolution, seconds)
 
   return (
     <div style={{ maxWidth: 920, margin: '0 auto', padding: '24px 20px', color: '#e8ecf6' }}>
@@ -157,8 +181,8 @@ export default function CineStudio() {
             <textarea style={{ ...inp, marginTop: 8, minHeight: 72, resize: 'vertical' }} value={desarrollo} onChange={e => setDesarrollo(e.target.value)} placeholder="ej: enfocar el producto en una cocina natural con luz de mañana, ritmo calmo, primer plano del frasco, terminar con una mano poniéndolo en una caja de envío" />
             <div style={{ display: 'flex', gap: 14, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' }}>
               <label style={{ fontSize: 13, color: '#8a93a6' }}>Duracion
-                <select style={{ ...inp, width: 'auto', marginLeft: 6 }} value={seconds} onChange={e => setSeconds(e.target.value)}>
-                  {(model?.durations || [5, 10]).map(n => <option key={n} value={n}>{n}s</option>)}
+                <select style={{ ...inp, width: 'auto', marginLeft: 6 }} value={seconds} onChange={e => setSeconds(e.target.value)} disabled={availDurations(model, resolution).length <= 1}>
+                  {availDurations(model, resolution).map(n => <option key={n} value={n}>{n}s</option>)}
                 </select>
               </label>
               {model?.resolutions?.length > 0 && (
