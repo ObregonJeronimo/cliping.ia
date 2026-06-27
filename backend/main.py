@@ -510,6 +510,20 @@ async def urvid_perceive(req: PerceiveRequest):
     return {"brief": brief, "source": src, "cost": cost, "cached": False, "parse_ok": parse_ok, "images": site.get("images") or [], "screenshotUrl": screenshot_url}
 
 
+class CineAnalyzeRequest(BaseModel):
+    url: str = ""   # URL del video (mp4) de IA a analizar
+
+
+@app.post("/api/cine/analyze")
+async def cine_analyze(req: CineAnalyzeRequest):
+    """Cine IA: analiza un clip de IA -> beats (timings, cortes, zona legible, color) para que el motor coloque el
+    texto del brief en los momentos/zonas correctos. Backend: ffmpeg (cortes+frames) + numpy/Pillow. Sin deps nuevas."""
+    if not req.url.strip():
+        return {"error": "falta la URL del video"}
+    import video_analyze
+    return await video_analyze.analyze(req.url.strip())
+
+
 # ─── SEEDANCE — video generativo IA (fal.ai) desde las imagenes reales del sitio + prompt por beats ──────────
 class SeedanceRequest(BaseModel):
     images: list[str] = []        # URLs de imagenes REALES del sitio elegidas por el usuario (1a = primer frame)
