@@ -23,6 +23,7 @@ export default function CineStudio() {
   const [seconds, setSeconds] = useState(10)
   const [resolution, setResolution] = useState('')
   const [prompt, setPrompt] = useState('')
+  const [promptEdited, setPromptEdited] = useState(false)
   const [analyzing, setAnalyzing] = useState('')
   const [gen, setGen] = useState('')
   const [video, setVideo] = useState(null)
@@ -56,16 +57,24 @@ export default function CineStudio() {
       if (d.error) { setAnalyzing(d.error); return }
       setBrief(d.brief); setImages(d.images || [])
       setAnalyzing(`${d.brief?.brand || '?'} · ${d.brief?.rubro || '?'} · ${(d.images || []).length} imagenes encontradas`)
-      buildPrompt(d.brief, 1)
+      setPromptEdited(false)
     } catch { setAnalyzing('Backend apagado — abri "start.bat" (corre en localhost:8000)') }
   }
 
-  async function buildPrompt(b = brief, n = sel.length) {
+  async function buildPrompt() {
+    if (!brief) return
     try {
-      const d = await (await fetch(`${API_URL}/api/seedance/prompt`, { method: 'POST', headers: HEADERS, body: JSON.stringify({ brief: b, model: modelId, images: Math.max(1, n), desarrollo, seconds: Number(seconds) }) })).json()
+      const d = await (await fetch(`${API_URL}/api/seedance/prompt`, { method: 'POST', headers: HEADERS, body: JSON.stringify({ brief, model: modelId, images: Math.max(1, sel.length), desarrollo, seconds: Number(seconds) }) })).json()
       if (d.prompt) setPrompt(d.prompt)
     } catch { /* backend apagado */ }
   }
+
+  // arma el prompt EN VIVO desde el analisis + lo que escribis en "desarrollo" (a menos que lo edites a mano). $0, determinista.
+  useEffect(() => {
+    if (!brief || promptEdited) return
+    const t = setTimeout(buildPrompt, 500)
+    return () => clearTimeout(t)
+  }, [brief, desarrollo, modelId, seconds, promptEdited])
 
   const toggle = (u) => setSel(s => s.includes(u) ? s.filter(x => x !== u) : (s.length >= maxImg ? (maxImg === 1 ? [u] : s) : [...s, u]))
 
@@ -162,9 +171,9 @@ export default function CineStudio() {
             <div style={{ marginTop: 14 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                 <label style={{ fontSize: 13, color: '#8a93a6' }}>Prompt (generado del analisis — editable)</label>
-                <button onClick={() => buildPrompt()} style={{ background: 'none', border: 0, color: '#5b8cff', cursor: 'pointer', fontSize: 12, padding: 0 }}>↻ regenerar desde el analisis</button>
+                <button onClick={() => { setPromptEdited(false); buildPrompt() }} style={{ background: 'none', border: 0, color: '#5b8cff', cursor: 'pointer', fontSize: 12, padding: 0 }}>↻ regenerar desde el analisis</button>
               </div>
-              <textarea style={{ ...inp, marginTop: 6, minHeight: 110, resize: 'vertical', fontSize: 12.5, lineHeight: 1.5 }} value={prompt} onChange={e => setPrompt(e.target.value)} placeholder="Se arma del analisis al apretar Analizar. Editalo para controlar cada toma." />
+              <textarea style={{ ...inp, marginTop: 6, minHeight: 110, resize: 'vertical', fontSize: 12.5, lineHeight: 1.5 }} value={prompt} onChange={e => { setPrompt(e.target.value); setPromptEdited(true) }} placeholder="Se arma solo del analisis + lo que pongas en Desarrollo. Editalo para controlar cada toma." />
             </div>
           </div>
 
