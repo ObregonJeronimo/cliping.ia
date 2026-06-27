@@ -36,7 +36,7 @@ export default function CineStudio() {
   const [images, setImages] = useState([])
   const [sel, setSel] = useState([])
   const [models, setModels] = useState([])
-  const [modelId, setModelId] = useState('ltx23-fast')
+  const [modelId, setModelId] = useState('kling-v3-pro')
   const [desarrollo, setDesarrollo] = useState('')
   const [seconds, setSeconds] = useState(10)
   const [resolution, setResolution] = useState('')
