@@ -182,7 +182,7 @@ _JS_IMAGES = r"""
     const m = bg && bg.match(/url\(["']?(.*?)["']?\)/);
     if (m && m[1]) push(m[1], r.width * r.height, r.width, r.height);
   }
-  return out.sort((a, b) => b.area - a.area).slice(0, 6).map(x => x.u);
+  return out.sort((a, b) => b.area - a.area).slice(0, 16).map(x => x.u);
 }
 """
 

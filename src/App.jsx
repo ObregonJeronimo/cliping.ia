@@ -5,6 +5,7 @@ import Urvid1Studio from './pages/Urvid1/Urvid1Studio'
 import UrvidCraftStudio from './pages/UrvidCraft/UrvidCraftStudio'
 import LottieGallery from './pages/Lotties/LottieGallery'
 import AnimLab from './pages/AnimLab/AnimLab'
+import CineStudio from './pages/Cine/CineStudio'
 import Login from './pages/Login'
 import Landing from './pages/Landing'
 import Terminos from './pages/Legal/Terminos'
@@ -34,6 +35,7 @@ function AppRoutes() {
         <Route path="craft" element={<UrvidCraftStudio />} />
         <Route path="lotties" element={<LottieGallery />} />
         <Route path="anim" element={<AnimLab />} />
+        <Route path="cine" element={<CineStudio />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

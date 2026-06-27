@@ -119,6 +119,7 @@ import template_director
 import timeline_director
 import brand_dna
 import perception
+import seedance
 import re as _re
 
 
@@ -477,7 +478,7 @@ async def urvid_perceive(req: PerceiveRequest):
         cached = _urvid_brief_cache.get(memkey) or _get_urvid_brief_fs(db, req.userId, ckey, chash)
         if cached:
             print(f"[perceive] '{req.url}' desde CACHE")
-            return {"brief": cached, "source": {}, "cost": {}, "cached": True}
+            return {"brief": cached, "source": {}, "cost": {}, "cached": True, "images": site.get("images") or []}
     usage = []
     # UNA sola llamada multimodal (texto + screenshot juntos) -> brief rico. Mas robusto Y mas barato que 2 llamadas.
     brief = await perception.analyze_to_brief(req.url.strip(), req.desarrollo.strip(), site=site, usage=usage)
@@ -497,7 +498,62 @@ async def urvid_perceive(req: PerceiveRequest):
     src = {"title": (site.get("content") or {}).get("title", "") if isinstance(site.get("content"), dict) else "",
            "logo": site.get("logo", "")}
     print(f"[perceive] '{req.url}' -> {brief.get('brand')} / {brief.get('rubro')} / {brief.get('brandColor')} (parse_ok={parse_ok})")
-    return {"brief": brief, "source": src, "cost": cost, "cached": False, "parse_ok": parse_ok}
+    return {"brief": brief, "source": src, "cost": cost, "cached": False, "parse_ok": parse_ok, "images": site.get("images") or []}
+
+
+# ─── SEEDANCE — video generativo IA (fal.ai) desde las imagenes reales del sitio + prompt por beats ──────────
+class SeedanceRequest(BaseModel):
+    images: list[str] = []        # URLs de imagenes REALES del sitio elegidas por el usuario (1a = primer frame)
+    brief: dict | None = None     # brief de la perception (para armar el prompt si no viene uno)
+    desarrollo: str = ""          # notas del usuario que priorizan el prompt
+    prompt: str = ""              # prompt explicito; si viene se usa tal cual, si no se arma del brief
+    model: str = "ltx23-fast"     # id del modelo de seedance.MODELS (LTX-2.3 Fast por defecto = barato + 9:16)
+    seconds: int = 10
+    resolution: str = ""          # resolucion elegida; vacio = el default del modelo
+    userId: str = ""
+
+
+@app.get("/api/seedance/models")
+def seedance_models():
+    """Lista de modelos de video IA (Cine IA) para que el front muestre el selector: id, label, desc, precio,
+    cuantas imagenes acepta, resoluciones y duraciones."""
+    return {"models": seedance.public_models()}
+
+
+@app.post("/api/seedance/generate")
+async def seedance_generate(req: SeedanceRequest):
+    """Genera UN clip con Seedance (I2V) desde la(s) imagen(es) elegida(s) + prompt detallado. Job-based: el front
+    pollea /api/jobs/{job_id} y lee videoUrl al terminar. El costo lo paga la FAL_KEY (.env); extraer imagenes = $0."""
+    if not req.images:
+        return {"error": "Elegi al menos una imagen del sitio"}
+    job_id = str(uuid.uuid4())
+    jobs[job_id] = {"id": job_id, "status": "queued", "step": "seedance", "progress": 5,
+                    "videoUrl": "", "cloudinaryUrl": "", "prompt": "", "error": None,
+                    "createdAt": datetime.utcnow().isoformat()}
+    asyncio.create_task(_run_seedance(job_id, req))
+    return {"job_id": job_id}
+
+
+async def _run_seedance(job_id: str, req: SeedanceRequest):
+    try:
+        m = seedance.MODELS_BY_ID.get(req.model) or seedance.MODELS[0]
+        prompt = (req.prompt or "").strip() or seedance.build_prompt(
+            req.brief or {}, m["img_mode"], len(req.images), req.desarrollo, req.seconds)
+        jobs[job_id].update({"status": "processing", "step": f"generando con {m['label']}",
+                             "progress": 25, "prompt": prompt})
+        print(f"[seedance] job {job_id[:8]} -> {m['id']}, {len(req.images)} img, {req.seconds}s {req.resolution}")
+        res = await seedance.generate(req.model, req.images, prompt, req.seconds, req.resolution)
+        if res.get("ok"):
+            jobs[job_id].update({"status": "done", "step": "done", "progress": 100,
+                                 "videoUrl": res["videoUrl"], "cloudinaryUrl": res["videoUrl"],
+                                 "prompt": prompt, "seed": res.get("seed")})
+            print(f"[seedance] OK -> {res['videoUrl']}")
+        else:
+            jobs[job_id].update({"status": "error", "error": res.get("error", "fallo desconocido")})
+            print(f"[seedance] ERROR: {res.get('error')}")
+    except Exception as e:
+        jobs[job_id].update({"status": "error", "error": str(e)[:300]})
+        print(f"[seedance] EXCEPTION: {e}")
 
 
 class VideoGenRequest(BaseModel):
