@@ -35,6 +35,47 @@ function makeScratch(w, h) {
   return null
 }
 
+// ── FONDO DE IA (Cine) ───────────────────────────────────────────────────────────────────────────────────────
+// Si el video trae `aiBgUrl`, se dibuja el frame del <video> de IA a pantalla completa (cover) como CAPA BASE, con un
+// SCRIM (oscurecido radial, claro/oscuro segun tone) para que el TEXTO de nuestro motor se lea. Reemplaza al fondo
+// procedural; las texturas/atmosfera/contenido van ENCIMA. Browser-only (necesita <video>); en Node/SSR = no-op (no
+// rompe los gates). El clip se loopea solo (loop) y se reproduce en vivo -> se captura con MediaRecorder al exportar.
+const _aiBgCache = new Map()
+function _getAiBg(url) {
+  if (!url || typeof document === 'undefined') return null
+  let e = _aiBgCache.get(url)
+  if (!e) {
+    e = { vid: null, ready: false }
+    try {
+      const v = document.createElement('video')
+      v.src = url; v.muted = true; v.loop = true; v.crossOrigin = 'anonymous'; v.playsInline = true
+      v.oncanplay = () => { e.ready = true }
+      if (v.play) v.play().catch(() => { /* autoplay puede requerir gesto; igual se dibuja al estar ready */ })
+      e.vid = v
+    } catch { /* noop */ }
+    _aiBgCache.set(url, e)
+  }
+  return e.ready && e.vid && e.vid.videoWidth ? e.vid : null
+}
+// dibuja el fondo de IA + scrim. Devuelve true si lo dibujo (para saltear el fondo procedural). aiBgIntensity 0..1.
+function drawAiBg(ctx, t, video) {
+  const vid = _getAiBg(video.aiBgUrl)
+  if (!vid) return false
+  const intensity = clamp(video.aiBgIntensity != null ? video.aiBgIntensity : 0.5, 0, 1)
+  try {
+    const vr = vid.videoWidth / vid.videoHeight, cr = W / H   // cover: llena W×H conservando aspecto
+    let dw = W, dh = H
+    if (vr > cr) { dh = H; dw = H * vr } else { dw = W; dh = W / vr }
+    ctx.save(); ctx.globalAlpha = 1; ctx.drawImage(vid, (W - dw) / 2, (H - dh) / 2, dw, dh); ctx.restore()
+  } catch { return false }   // canvas tainted (CORS) u otro -> no rompe el render, cae al fondo procedural
+  const a = 0.15 + 0.35 * intensity
+  const col = video.tone === 'light' ? '255,255,255' : '0,0,0'
+  const g = ctx.createRadialGradient(W / 2, H * 0.46, 0, W / 2, H * 0.5, Math.max(W, H) * 0.62)
+  g.addColorStop(0, `rgba(${col},${a * 0.45})`); g.addColorStop(1, `rgba(${col},${a})`)
+  ctx.save(); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); ctx.restore()
+  return true
+}
+
 // pinta UNA escena (contenido) con la ENTRADA de la personalidad (offset/zoom/rotacion de entrada). Coords logicas.
 function paintScene(ctx, sc, t, video, motion, typekit, layout) {
   const mod = get(sc.sceneId); if (!mod) return
@@ -63,9 +104,12 @@ export function drawFrame(ctx, t, video) {
   const typekit = resolveTypekit(video) // efecto de texto cinetico del video (o plain)
   const transition = resolveTransition(video) // transicion entre escenas (o cut)
   const layout = resolveLayout(video)   // arquitectura de composicion (slots) del video (o default centrado)
-  // CAPAS DE FONDO (viven todo el video): fondo -> textura/substrate -> atmosfera/luz -> (contenido encima)
+  // CAPAS DE FONDO (viven todo el video): [fondo IA opcional] -> fondo procedural -> textura/substrate -> atmosfera -> (contenido encima)
   const base = { pal: video.palette, content: video.content, energy: 1 }
-  if (video.bgId) { const m = get(video.bgId); if (m) m.render(ctx, t, { ...base, seed: video.bgSeed }) }
+  // Cine: si hay fondo de IA y se pudo dibujar, REEMPLAZA al fondo procedural (las texturas/atmosfera/texto van encima).
+  // Si todavia no cargo (o es Node), aiBg=false -> cae al fondo procedural de siempre (cero regresion para urvid base).
+  const aiBg = video.aiBgUrl ? drawAiBg(ctx, t, video) : false
+  if (!aiBg && video.bgId) { const m = get(video.bgId); if (m) m.render(ctx, t, { ...base, seed: video.bgSeed }) }
   if (video.subId) { const m = get(video.subId); if (m) m.render(ctx, t, { ...base, seed: video.subSeed }) }
   if (video.atmId) { const m = get(video.atmId); if (m) m.render(ctx, t, { ...base, seed: video.atmSeed }) }
   // GARNISH markkit (persistente): un icono chico en una ESQUINA, tenue, detras del contenido. NUNCA centrado
