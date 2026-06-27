@@ -520,6 +520,21 @@ def seedance_models():
     return {"models": seedance.public_models()}
 
 
+class PromptPreviewRequest(BaseModel):
+    brief: dict | None = None
+    model: str = "ltx23-fast"
+    images: int = 1
+    desarrollo: str = ""
+    seconds: int = 10
+
+
+@app.post("/api/seedance/prompt")
+def seedance_prompt(req: PromptPreviewRequest):
+    """Devuelve el prompt por beats armado del analisis -> el front lo muestra EDITABLE antes de generar."""
+    m = seedance.MODELS_BY_ID.get(req.model) or seedance.MODELS[0]
+    return {"prompt": seedance.build_prompt(req.brief or {}, m["img_mode"], max(1, int(req.images or 1)), req.desarrollo, req.seconds)}
+
+
 @app.post("/api/seedance/generate")
 async def seedance_generate(req: SeedanceRequest):
     """Genera UN clip con Seedance (I2V) desde la(s) imagen(es) elegida(s) + prompt detallado. Job-based: el front

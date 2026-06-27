@@ -161,28 +161,36 @@ _JS_IMAGES = r"""
     if (a.startsWith('data:')) return;
     if (a.toLowerCase().split('?')[0].endsWith('.svg')) return;
     if (BAD.test(a)) return;                                  // mapa/sprite/icono/ad/tracking
-    if (w && h) { const ar = w / h; if (ar > 3.2 || ar < 0.3) return; }   // banners/tiras finas, no fotos
+    if (w && h) { const ar = w / h; if (ar > 3.5 || ar < 0.25) return; }   // banners/tiras finas, no fotos
     if (seen.has(a)) return;
     seen.add(a); out.push({ u: a, area });
+  };
+  // de un srcset, la URL de mayor ancho declarado (suele ser la mejor calidad)
+  const fromSrcset = (ss) => {
+    if (!ss) return null; let best = null, bw = -1;
+    ss.split(',').forEach(p => { const m = p.trim().split(/\s+/); const w = parseInt(m[1]) || 0; if (m[0] && w >= bw) { best = m[0]; bw = w; } });
+    return best;
   };
   const og = document.querySelector('meta[property="og:image"], meta[name="og:image"]');
   if (og && og.content) push(og.content, 5e9);            // suele ser la mejor foto de marca
   for (const im of Array.from(document.images)) {
     const w = im.naturalWidth || im.width, h = im.naturalHeight || im.height;
-    if (w < 400 || h < 250) continue;
     const r = im.getBoundingClientRect();
-    if (r.width < 160) continue;
-    push(im.currentSrc || im.src, w * h, w, h);
+    if (w >= 300 && h >= 200 && r.width >= 110) push(im.currentSrc || im.src, w * h, w, h);
+    // candidatos LAZY (fotos de producto servidas por Firebase suelen estar en srcset/data-src, aun SIN renderizar)
+    push(fromSrcset(im.getAttribute('srcset') || im.getAttribute('data-srcset')), 9e5);
+    for (const at of ['data-src', 'data-original', 'data-lazy-src', 'data-lazy', 'data-image', 'data-bg']) push(im.getAttribute(at), 9e5);
   }
-  const els = Array.from(document.querySelectorAll('section,header,div,figure,a')).slice(0, 250);
+  for (const s of Array.from(document.querySelectorAll('picture source'))) push(fromSrcset(s.getAttribute('srcset')), 9e5);
+  const els = Array.from(document.querySelectorAll('section,header,div,figure,a,li,article')).slice(0, 500);
   for (const el of els) {
     const r = el.getBoundingClientRect();
-    if (r.width < 600 || r.height < 280) continue;
+    if (r.width < 200 || r.height < 150) continue;
     const bg = getComputedStyle(el).backgroundImage;
     const m = bg && bg.match(/url\(["']?(.*?)["']?\)/);
     if (m && m[1]) push(m[1], r.width * r.height, r.width, r.height);
   }
-  return out.sort((a, b) => b.area - a.area).slice(0, 16).map(x => x.u);
+  return out.sort((a, b) => b.area - a.area).slice(0, 18).map(x => x.u);
 }
 """
 
@@ -242,12 +250,18 @@ async def capture_all(url: str, out_path: str, width: int = 1280, height: int = 
                 await page.wait_for_load_state("networkidle", timeout=9000)
             except Exception:
                 pass
-            # Forzar lazy-load: muchos heroes cargan recién al entrar al viewport.
+            # Forzar lazy-load de TODA la pagina: recorre el alto en pasos (asi cargan las fotos de producto
+            # lazy/servidas por Firebase que estan fuera del primer viewport), despues vuelve arriba.
             try:
-                await page.evaluate("window.scrollTo(0, Math.round(document.body.scrollHeight*0.4))")
-                await page.wait_for_timeout(700)
-                await page.evaluate("window.scrollTo(0, 0)")
-                await page.wait_for_timeout(500)
+                await page.evaluate(
+                    "async () => { const step = Math.max(500, Math.round(window.innerHeight * 0.85));"
+                    " for (let y = 0; y <= document.body.scrollHeight; y += step) { window.scrollTo(0, y);"
+                    " await new Promise(r => setTimeout(r, 350)); } window.scrollTo(0, 0); }")
+                await page.wait_for_timeout(900)
+                try:
+                    await page.wait_for_load_state("networkidle", timeout=6000)
+                except Exception:
+                    pass
             except Exception:
                 pass
             # Esperar a que las <img> grandes (hero incluido) estén realmente cargadas.

@@ -22,8 +22,7 @@ export default function CineStudio() {
   const [desarrollo, setDesarrollo] = useState('')
   const [seconds, setSeconds] = useState(10)
   const [resolution, setResolution] = useState('')
-  const [override, setOverride] = useState('')
-  const [showAdv, setShowAdv] = useState(false)
+  const [prompt, setPrompt] = useState('')
   const [analyzing, setAnalyzing] = useState('')
   const [gen, setGen] = useState('')
   const [video, setVideo] = useState(null)
@@ -57,7 +56,15 @@ export default function CineStudio() {
       if (d.error) { setAnalyzing(d.error); return }
       setBrief(d.brief); setImages(d.images || [])
       setAnalyzing(`${d.brief?.brand || '?'} · ${d.brief?.rubro || '?'} · ${(d.images || []).length} imagenes encontradas`)
+      buildPrompt(d.brief, 1)
     } catch { setAnalyzing('Backend apagado — abri "start.bat" (corre en localhost:8000)') }
+  }
+
+  async function buildPrompt(b = brief, n = sel.length) {
+    try {
+      const d = await (await fetch(`${API_URL}/api/seedance/prompt`, { method: 'POST', headers: HEADERS, body: JSON.stringify({ brief: b, model: modelId, images: Math.max(1, n), desarrollo, seconds: Number(seconds) }) })).json()
+      if (d.prompt) setPrompt(d.prompt)
+    } catch { /* backend apagado */ }
   }
 
   const toggle = (u) => setSel(s => s.includes(u) ? s.filter(x => x !== u) : (s.length >= maxImg ? (maxImg === 1 ? [u] : s) : [...s, u]))
@@ -68,7 +75,7 @@ export default function CineStudio() {
     try {
       const d = await (await fetch(`${API_URL}/api/seedance/generate`, {
         method: 'POST', headers: HEADERS,
-        body: JSON.stringify({ images: sel, brief, desarrollo, prompt: override.trim(), model: modelId, seconds: Number(seconds), resolution, userId: user?.uid || '' }),
+        body: JSON.stringify({ images: sel, brief, desarrollo, prompt: prompt.trim(), model: modelId, seconds: Number(seconds), resolution, userId: user?.uid || '' }),
       })).json()
       if (d.error || !d.job_id) { setGen(d.error || 'no se pudo iniciar'); return }
       poll(d.job_id)
@@ -152,8 +159,13 @@ export default function CineStudio() {
               )}
               <span style={{ color: '#8a93a6', fontSize: 12 }}>≈ ${est.toFixed(2)} este video</span>
             </div>
-            <button onClick={() => setShowAdv(v => !v)} style={{ background: 'none', border: 0, color: '#5b8cff', cursor: 'pointer', fontSize: 12, marginTop: 10, padding: 0 }}>{showAdv ? '− ' : '+ '}prompt avanzado (override)</button>
-            {showAdv && <textarea style={{ ...inp, marginTop: 6, minHeight: 80, resize: 'vertical', fontFamily: 'monospace', fontSize: 12 }} value={override} onChange={e => setOverride(e.target.value)} placeholder="Vacio = urvid arma el prompt por beats desde el analisis. Escribi aca para controlar cada toma. En modelos multi-imagen referencia con @Image1, @Image2..." />}
+            <div style={{ marginTop: 14 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                <label style={{ fontSize: 13, color: '#8a93a6' }}>Prompt (generado del analisis — editable)</label>
+                <button onClick={() => buildPrompt()} style={{ background: 'none', border: 0, color: '#5b8cff', cursor: 'pointer', fontSize: 12, padding: 0 }}>↻ regenerar desde el analisis</button>
+              </div>
+              <textarea style={{ ...inp, marginTop: 6, minHeight: 110, resize: 'vertical', fontSize: 12.5, lineHeight: 1.5 }} value={prompt} onChange={e => setPrompt(e.target.value)} placeholder="Se arma del analisis al apretar Analizar. Editalo para controlar cada toma." />
+            </div>
           </div>
 
           <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16 }}>
