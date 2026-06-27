@@ -67,6 +67,14 @@ export const floatY = (frame, amp = 6, period = 120, phase = 0) =>
 export const breathe = (frame, amp = 0.012, period = 160) =>
   1 + Math.sin((frame / period) * Math.PI * 2) * amp
 
+// ── Glow pulse (ingrediente Cine): multiplicador para la opacidad del glow, modulado por INTENSIDAD. ──
+// intensity 0 = casi plano (sin latido); 1 = late notorio; >1 = fuerte. Mezcla 2 senoides => pulso vivo, no metrónomo.
+// Es la perilla theme.art.glowIntensity la que decide cuánto late: varía por público/seriedad, no es fijo.
+export const glowPulse = (frame, intensity = 1, base = 1) => {
+  const i = Math.max(0, intensity)
+  return base * (1 + (0.16 * i) * Math.sin(frame / 22) + (0.08 * i) * Math.sin(frame / 41 + 1.7))
+}
+
 /**
  * Deriva de cámara: leve zoom + paneo a lo largo de toda la escena.
  * total = durationInFrames de la escena. Devuelve { scale, x, y }.

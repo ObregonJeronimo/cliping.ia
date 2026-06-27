@@ -39,7 +39,9 @@ loadFont('normal', { weights: ['400', '600', '700'], subsets: ['latin'], ignoreT
 
 const REGISTRY = { KineticStatement, IntegrationCluster, MockupShowcase, CtaOutro, IconTransform, StatReveal, Comparison, Testimonial, SocialProof, FeatureList, LogoReveal, IllustrationScene, ProcessSteps, OfferPrice, MapLocation, ProductShowcase }
 const TDUR = 14
-const DEFAULT_ART = { camera: 'drift', entrance: 'rise', motif: 'none', decor: 'pills' }
+// Perillas de INTENSIDAD del "dial" de variedad de Cine (0..1, el director las dosifica por publico/seriedad).
+// Defaults neutros -> specs sin estos campos renderizan como siempre. glowIntensity ya la usa ContinuousBg.
+const DEFAULT_ART = { camera: 'drift', entrance: 'rise', motif: 'none', decor: 'pills', glowIntensity: 1, glassDensity: 0.5, decorIntensity: 1 }
 
 // Transición única: crossfade entre escenas sobre el fondo continuo (sensación fusionada).
 // Duración fija TDUR (para que el cálculo de total sea exacto) y easing suave (no lineal).

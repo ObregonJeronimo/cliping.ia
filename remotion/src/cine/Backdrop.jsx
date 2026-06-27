@@ -142,24 +142,28 @@ const MOTIFS = { particles: Particles, bokeh: Bokeh, aurora: Aurora, rays: Rays,
  */
 export const ContinuousBg = ({ theme }) => {
   const frame = useCurrentFrame()
-  // Glow principal (base, igual que antes -> no cambia el carácter).
+  // INGREDIENTE Cine: el glow LATE segun la perilla glowIntensity (gi). gi=0 -> casi como antes (latido suave);
+  // gi alto -> respira/late mas fuerte. La perilla la dosifica el director por publico/seriedad (corporativo bajo, casual alto).
+  const gi = Math.max(0, (theme.art && theme.art.glowIntensity != null) ? theme.art.glowIntensity : 1)
+  // Glow principal.
   const gx = 50 + Math.sin(frame / 150) * 12
   const gy = 36 + Math.cos(frame / 190) * 9
-  const breath = 0.55 + 0.10 * Math.sin(frame / 80)
-  // Blob de acento 1 (accentFrom).
+  const breath = 0.55 + (0.10 + 0.10 * gi) * Math.sin(frame / 80) + (0.05 * gi) * Math.sin(frame / 31 + 1.1)
+  // Blob de acento 1 (accentFrom): mas presente a mayor intensidad.
   const ax = 50 + Math.cos(frame / 220) * 22
   const ay = 60 + Math.sin(frame / 180) * 16
+  const aOp = 0.18 + 0.08 * gi
   // Blob de acento 2 (accentTo) en otra fase -> profundidad de color tipo gradient-mesh.
   const bx = 30 + Math.sin(frame / 260 + 1.3) * 20
   const by = 30 + Math.cos(frame / 240 + 0.7) * 18
-  const bBreath = 0.16 + 0.06 * Math.sin(frame / 110 + 2)
+  const bBreath = 0.16 + (0.06 + 0.05 * gi) * Math.sin(frame / 110 + 2)
   return (
     <AbsoluteFill style={{ background: theme.bg, pointerEvents: 'none' }}>
       <div style={{ position: 'absolute', left: `${gx}%`, top: `${gy}%`, width: 1500, height: 1500,
         transform: 'translate(-50%,-50%)', opacity: breath,
         background: `radial-gradient(circle, ${theme.glow}, rgba(0,0,0,0) 60%)` }} />
       <div style={{ position: 'absolute', left: `${ax}%`, top: `${ay}%`, width: 1000, height: 1000,
-        transform: 'translate(-50%,-50%)', opacity: 0.22, mixBlendMode: 'screen',
+        transform: 'translate(-50%,-50%)', opacity: aOp, mixBlendMode: 'screen',
         background: `radial-gradient(circle, ${theme.accentFrom}55, rgba(0,0,0,0) 65%)` }} />
       <div style={{ position: 'absolute', left: `${bx}%`, top: `${by}%`, width: 1180, height: 1180,
         transform: 'translate(-50%,-50%)', opacity: bBreath, mixBlendMode: 'screen',
