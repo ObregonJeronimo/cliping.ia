@@ -23,6 +23,7 @@ function availDurations(model, resolution) {
   const cap = (model?.dur_caps || {})[resolution]
   return (model?.durations || [5, 10]).filter(n => !cap || n <= cap)
 }
+const fmtTime = (s) => `${Math.floor(s / 60)}:${String(Math.max(0, s) % 60).padStart(2, '0')}`
 
 const card = { background: '#161b2e', border: '1px solid #232a42', borderRadius: 14, padding: 16 }
 const btn = { background: '#5b8cff', color: '#fff', border: 0, borderRadius: 10, padding: '10px 18px', fontWeight: 600, cursor: 'pointer' }
@@ -45,8 +46,13 @@ export default function CineStudio() {
   const [analyzing, setAnalyzing] = useState('')
   const [gen, setGen] = useState('')
   const [busy, setBusy] = useState(false)   // generando de verdad (deshabilita el boton); separado del mensaje `gen`
+  const [genLog, setGenLog] = useState([])  // [{t: segundos, msg}] historial de pasos para ver si avanza o se clavo
+  const [elapsed, setElapsed] = useState(0) // cronometro en segundos
   const [video, setVideo] = useState(null)
   const pollRef = useRef(null)
+  const timerRef = useRef(null)
+  const startRef = useRef(0)
+  const lastStepRef = useRef('')
 
   const model = models.find(m => m.id === modelId) || null
   const maxImg = model?.max_images || 1
@@ -73,7 +79,16 @@ export default function CineStudio() {
     if (ok.length && !ok.includes(Number(seconds))) setSeconds(ok[ok.length - 1])
   }, [resolution, modelId])
 
-  useEffect(() => () => clearInterval(pollRef.current), [])
+  useEffect(() => () => { clearInterval(pollRef.current); clearInterval(timerRef.current) }, [])
+
+  // agrega una linea al log (con el segundo en que paso) solo cuando el paso CAMBIA
+  function pushLog(msg) {
+    if (!msg || msg === lastStepRef.current) return
+    lastStepRef.current = msg
+    const t = Math.floor((Date.now() - startRef.current) / 1000)
+    setGenLog(l => [...l, { t, msg }])
+  }
+  const stopTimer = () => clearInterval(timerRef.current)
 
   async function analyze() {
     if (!url.trim()) return
@@ -106,15 +121,20 @@ export default function CineStudio() {
 
   async function generate() {
     if (!sel.length) { setGen('Elegi al menos 1 imagen'); return }
-    setBusy(true); setGen('Iniciando...'); setVideo(null)
+    setBusy(true); setVideo(null)
+    startRef.current = Date.now(); lastStepRef.current = ''
+    setElapsed(0); setGenLog([]); pushLog('Enviando el pedido a fal…'); setGen('Iniciando…')
+    clearInterval(timerRef.current)
+    timerRef.current = setInterval(() => setElapsed(Math.floor((Date.now() - startRef.current) / 1000)), 1000)
     try {
       const d = await (await fetch(`${API_URL}/api/seedance/generate`, {
         method: 'POST', headers: HEADERS,
         body: JSON.stringify({ images: sel, brief, desarrollo, prompt: prompt.trim(), model: modelId, seconds: Number(seconds), resolution, userId: user?.uid || '' }),
       })).json()
-      if (d.error || !d.job_id) { setGen(d.error || 'no se pudo iniciar'); setBusy(false); return }
+      if (d.error || !d.job_id) { stopTimer(); pushLog('✗ ' + (d.error || 'no se pudo iniciar')); setGen(d.error || 'no se pudo iniciar'); setBusy(false); return }
+      pushLog('Pedido aceptado, esperando a fal…')
       poll(d.job_id)
-    } catch { setGen('Backend apagado — abri "start.bat"'); setBusy(false) }
+    } catch { stopTimer(); pushLog('✗ Backend apagado'); setGen('Backend apagado — abri "start.bat"'); setBusy(false) }
   }
 
   function poll(jobId) {
@@ -122,9 +142,9 @@ export default function CineStudio() {
     pollRef.current = setInterval(async () => {
       try {
         const j = await (await fetch(`${API_URL}/api/jobs/${jobId}`, { headers: HEADERS })).json()
-        if (j.status === 'done') { clearInterval(pollRef.current); setBusy(false); setGen(''); setVideo({ url: j.videoUrl, prompt: j.prompt }) }
-        else if (j.status === 'error') { clearInterval(pollRef.current); setBusy(false); setGen('Error: ' + (j.error || '')) }
-        else setGen(`${j.step || 'generando'}... ${j.progress || 0}%`)
+        if (j.status === 'done') { clearInterval(pollRef.current); stopTimer(); pushLog('✓ Video listo'); setBusy(false); setGen(''); setVideo({ url: j.videoUrl, prompt: j.prompt }) }
+        else if (j.status === 'error') { clearInterval(pollRef.current); stopTimer(); pushLog('✗ ' + (j.error || 'error')); setBusy(false); setGen('Error: ' + (j.error || '')) }
+        else { const step = j.step || 'generando'; pushLog(step); setGen(`${step}${j.progress ? ` · ${j.progress}%` : ''}`) }
       } catch { /* sigue */ }
     }, 3000)
   }
@@ -133,6 +153,7 @@ export default function CineStudio() {
 
   return (
     <div style={{ maxWidth: 920, margin: '0 auto', padding: '24px 20px', color: '#e8ecf6' }}>
+      <style>{`@keyframes cineBlink{0%,100%{opacity:1}50%{opacity:.2}} .cineBlink{color:#3ad29f;animation:cineBlink 1s infinite;margin-right:6px}`}</style>
       <h1 className="urvidTitleIn" style={{ marginBottom: 4 }}>Cine <span className="urvidIA">IA</span></h1>
       <p style={{ color: '#8a93a6', marginTop: 0, fontSize: 14 }}>Video generativo desde las imagenes reales de tu pagina. Extraer imagenes = $0; solo paga la generacion.</p>
 
@@ -215,8 +236,31 @@ export default function CineStudio() {
 
           {promptReady && (
             <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16 }}>
-              <button style={{ ...btn, opacity: busy ? 0.6 : 1 }} onClick={generate} disabled={busy}>Generar video IA</button>
-              {gen && <span style={{ color: '#8a93a6', fontSize: 13 }}>{gen}</span>}
+              <button style={{ ...btn, opacity: busy ? 0.6 : 1 }} onClick={generate} disabled={busy}>{busy ? 'Generando…' : 'Generar video IA'}</button>
+              {!busy && gen && <span style={{ color: '#8a93a6', fontSize: 13 }}>{gen}</span>}
+            </div>
+          )}
+
+          {/* consola de progreso: cronometro + log de pasos, para saber si avanza o se clavo */}
+          {(busy || genLog.length > 0) && (
+            <div style={{ ...card, marginBottom: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <b style={{ fontSize: 13 }}>{busy ? 'Generando video' : (video ? 'Listo' : 'Generación')}</b>
+                <span style={{ fontFamily: 'monospace', fontVariantNumeric: 'tabular-nums', color: busy ? '#5b8cff' : '#8a93a6', fontSize: 14 }}>⏱ {fmtTime(elapsed)}</span>
+              </div>
+              <div style={{ maxHeight: 170, overflowY: 'auto', fontSize: 12.5, lineHeight: 1.8, fontFamily: 'monospace' }}>
+                {genLog.map((e, i) => (
+                  <div key={i} style={{ color: i === genLog.length - 1 ? '#e8ecf6' : '#7e879c' }}>
+                    <span style={{ color: '#5b8cff' }}>{fmtTime(e.t)}</span> · {e.msg}
+                  </div>
+                ))}
+                {busy && <div style={{ color: '#8a93a6' }}><span className="cineBlink">●</span> consultando a fal cada 3s… (la generación puede tardar varios minutos en silencio — eso es normal)</div>}
+              </div>
+              {busy && (
+                <p style={{ color: '#8a93a6', fontSize: 11.5, margin: '10px 0 0' }}>
+                  Mientras el cronómetro avance y veas “●”, sigue vivo. Si pasa de ~15 min sin terminar, probablemente quedó clavado en cola: pará, reintentá, o probá un modelo @480p.
+                </p>
+              )}
             </div>
           )}
         </>
