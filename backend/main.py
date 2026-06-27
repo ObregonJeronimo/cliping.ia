@@ -554,10 +554,16 @@ async def _run_seedance(job_id: str, req: SeedanceRequest):
         m = seedance.MODELS_BY_ID.get(req.model) or seedance.MODELS[0]
         prompt = (req.prompt or "").strip() or seedance.build_prompt(
             req.brief or {}, m["img_mode"], len(req.images), req.desarrollo, req.seconds)
-        jobs[job_id].update({"status": "processing", "step": f"generando con {m['label']}",
-                             "progress": 25, "prompt": prompt})
+        jobs[job_id].update({"status": "processing", "step": f"enviando a {m['label']}",
+                             "progress": 20, "prompt": prompt})
         print(f"[seedance] job {job_id[:8]} -> {m['id']}, {len(req.images)} img, {req.seconds}s {req.resolution}")
-        res = await seedance.generate(req.model, req.images, prompt, req.seconds, req.resolution)
+
+        def _on_status(st, qpos=None):                    # refleja el estado de la cola de fal en el job
+            human = {"IN_QUEUE": "en cola en fal" + (f" (#{qpos})" if qpos is not None else ""),
+                     "IN_PROGRESS": "generando en fal"}.get(st, st or "procesando")
+            jobs[job_id].update({"step": human, "progress": 45 if st == "IN_PROGRESS" else 30})
+
+        res = await seedance.generate(req.model, req.images, prompt, req.seconds, req.resolution, on_status=_on_status)
         if res.get("ok"):
             jobs[job_id].update({"status": "done", "step": "done", "progress": 100,
                                  "videoUrl": res["videoUrl"], "cloudinaryUrl": res["videoUrl"],

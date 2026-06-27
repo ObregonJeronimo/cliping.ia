@@ -147,8 +147,9 @@ def _duration(m, seconds):
     return "duration", int(s)
 
 
-async def generate(model_id: str, images, prompt: str, seconds: int = 10, resolution: str = None) -> dict:
-    """Genera con el modelo elegido. Arma el input segun su schema. Devuelve {ok, videoUrl, prompt, model}."""
+async def generate(model_id: str, images, prompt: str, seconds: int = 10, resolution: str = None, on_status=None) -> dict:
+    """Genera con el modelo elegido. Arma el input segun su schema. Devuelve {ok, videoUrl, prompt, model}.
+    on_status(status, queue_position) se llama cuando cambia el estado en fal (IN_QUEUE/IN_PROGRESS/...) para reportar progreso."""
     key = fal_key()
     if not key:
         return {"ok": False, "error": "FAL_KEY no configurada (backend/.env)"}
@@ -192,14 +193,35 @@ async def generate(model_id: str, images, prompt: str, seconds: int = 10, resolu
             status_url, resp_url = sub.get("status_url"), sub.get("response_url")
             if not (status_url and resp_url):
                 return {"ok": False, "error": f"respuesta fal sin urls: {str(sub)[:200]}"}
-            for _ in range(160):                          # ~8 min
+            req_id = sub.get("request_id", "?")
+            last = ""
+            for _ in range(300):                          # ~15 min (la cola de fal puede demorar, sobre todo el 1er pedido)
                 await asyncio.sleep(3)
-                st = (await c.get(status_url, headers=headers)).json().get("status", "")
+                try:
+                    sj = (await c.get(status_url, headers=headers)).json()
+                except Exception:
+                    continue                              # un GET que falla no aborta la espera
+                st = sj.get("status", "")
+                if st and st != last:                     # avisar progreso solo cuando cambia el estado
+                    last = st
+                    if on_status:
+                        try:
+                            on_status(st, sj.get("queue_position"))
+                        except Exception:
+                            pass
                 if st == "COMPLETED":
                     break
                 if st in ("FAILED", "ERROR"):
-                    return {"ok": False, "error": f"fal status: {st}"}
-            data = (await c.get(resp_url, headers=headers)).json()
+                    return {"ok": False, "error": f"fal status {st}: {str(sj)[:160]}"}
+            else:                                          # el for termino sin 'break' = timeout
+                return {"ok": False, "error": f"fal tardo demasiado (sigue en cola/procesando ~15 min). La generacion puede seguir en fal; proba de nuevo en un rato. request_id={req_id}"}
+            # COMPLETED: traer el resultado (con reintentos por si tarda un instante en publicarse)
+            data = {}
+            for _ in range(4):
+                data = (await c.get(resp_url, headers=headers)).json()
+                if data.get("video"):
+                    break
+                await asyncio.sleep(2)
             vid = (data.get("video") or {}).get("url") or (data.get("video") if isinstance(data.get("video"), str) else None)
             if not vid:
                 return {"ok": False, "error": f"fal sin video: {str(data)[:200]}"}
