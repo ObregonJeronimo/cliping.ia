@@ -51,19 +51,37 @@ function drawCover(ctx, vid, W, H) {
   if (vr > cr) { dh = H; dw = H * vr } else { dw = W; dh = W / vr }
   ctx.drawImage(vid, (W - dw) / 2, (H - dh) / 2, dw, dh)
 }
-function drawCaption(ctx, beat, t, W, H) {
+function drawCaption(ctx, beat, t, W, H, accent) {
   if (!beat.text) return
   const r = beat.calmRegion, x = r.x * W, y = r.y * H, w = r.w * W, h = r.h * H
-  const fade = Math.min(1, Math.max(0, (t - beat.start) / 0.35))
-  ctx.save(); ctx.globalAlpha = fade
+  const fin = Math.min(1, Math.max(0, (t - beat.start) / 0.35))
+  const fout = Math.min(1, Math.max(0, (beat.end - t) / 0.35))
+  const a = Math.min(fin, fout); if (a <= 0) return
+  const yo = (1 - fin) * 18   // entra subiendo un toque
+  ctx.save(); ctx.globalAlpha = a
   const dark = beat.textColor === '#FFFFFF'
-  ctx.fillStyle = dark ? 'rgba(8,12,20,0.46)' : 'rgba(245,247,252,0.58)'
-  roundRect(ctx, x, y, w, h, Math.min(18, h * 0.3)); ctx.fill()
-  const fs = Math.min(h * 0.42, w * 0.09)
+  ctx.fillStyle = dark ? 'rgba(8,12,20,0.5)' : 'rgba(245,247,252,0.62)'
+  roundRect(ctx, x, y - yo, w, h, Math.min(20, h * 0.32)); ctx.fill()
+  if (accent) { ctx.fillStyle = accent; roundRect(ctx, x + w / 2 - 26, y - yo + h - 8, 52, 4, 2); ctx.fill() }   // barra de marca
+  const fs = Math.min(h * 0.42, w * 0.092)
   ctx.font = `700 ${Math.round(fs)}px Inter, system-ui, sans-serif`
   ctx.fillStyle = beat.textColor; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+  ctx.shadowColor = dark ? 'rgba(0,0,0,0.55)' : 'rgba(255,255,255,0.4)'; ctx.shadowBlur = fs * 0.22
   const lines = wrapText(ctx, beat.text, w * 0.9), lh = fs * 1.18, total = lines.length * lh
-  lines.forEach((ln, i) => ctx.fillText(ln, x + w / 2, y + h / 2 - total / 2 + lh * (i + 0.5)))
+  lines.forEach((ln, i) => ctx.fillText(ln, x + w / 2, y - yo + h / 2 - total / 2 + lh * (i + 0.5) - h * 0.05))
+  ctx.restore()
+}
+// marca persistente (recordacion): punto de acento + nombre, arriba a la izquierda, en zona segura.
+function drawBrandMark(ctx, brand, accent, W, H, t) {
+  if (!brand) return
+  const a = Math.min(1, Math.max(0, (t - 0.2) / 0.5)) * 0.95; if (a <= 0) return
+  ctx.save(); ctx.globalAlpha = a
+  const fs = Math.round(W * 0.038), pad = W * 0.055, cy = H * 0.065, dot = fs * 0.55
+  ctx.fillStyle = accent || '#5b8cff'
+  ctx.beginPath(); ctx.arc(pad + dot / 2, cy, dot / 2, 0, Math.PI * 2); ctx.fill()
+  ctx.font = `700 ${fs}px Inter, system-ui, sans-serif`; ctx.textBaseline = 'middle'; ctx.textAlign = 'left'
+  ctx.fillStyle = '#fff'; ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 7
+  ctx.fillText(brand, pad + dot + 9, cy)
   ctx.restore()
 }
 
@@ -73,7 +91,8 @@ export default function CineEngineStudio() {
   const [analyzing, setAnalyzing] = useState('')
   const [brief, setBrief] = useState({ brand: 'Nodo', rubro: 'tech', tone: 'dark', brandColor: '#22e06a', format: '9:16', duration: 'corto', tagline: 'Automatiza lo aburrido', claim: 'Menos tareas repetitivas, mas resultados reales', cta: 'Probalo gratis' })
   const [images, setImages] = useState([])
-  const [screenshotUrl, setScreenshotUrl] = useState('')   // screenshot HD del sitio (fallback del fondo IA si no hay fotos)
+  const [screenshotUrl, setScreenshotUrl] = useState('')   // screenshot HD del sitio (siempre disponible para animar)
+  const [sel, setSel] = useState([])                       // imagenes elegidas para generar el video (hasta el max del modelo)
   const [seed, setSeed] = useState(0)
 
   // FONDO IA
@@ -158,7 +177,8 @@ export default function CineEngineStudio() {
         try { drawCover(ctx, vid, W, H) } catch { /* CORS: el preview puede fallar de leer, igual reproduce */ }
         const t = vid.currentTime || 0
         const beat = capBeats.find(b => t >= b.start && t < b.end)
-        if (beat) drawCaption(ctx, beat, t, W, H)
+        if (beat) drawCaption(ctx, beat, t, W, H, brief.brandColor)
+        drawBrandMark(ctx, brief.brand, brief.brandColor, W, H, t)
         setHead(t)
       } else {
         // sin video de IA: motor procedural de urvid-cine (preview de siempre).
@@ -190,6 +210,7 @@ export default function CineEngineStudio() {
       })
       setImages(j.images || [])
       setScreenshotUrl(j.screenshotUrl || '')
+      setSel((j.images || [])[0] ? [(j.images || [])[0]] : (j.screenshotUrl ? [j.screenshotUrl] : []))
       setAiGen(''); setSeed(0); headRef.current = 0; setHead(0); setAnalyzing('')
     } catch { setAnalyzing('Backend apagado — abri "start.bat"') }
   }
@@ -197,13 +218,13 @@ export default function CineEngineStudio() {
   // GENERAR FONDO IA: anima la 1ra imagen del sitio con el modelo elegido (fal) -> el videoUrl pasa a ser el fondo.
   const genAiBg = async () => {
     if (aiBusy) return
-    const seedImg = images[0] || screenshotUrl   // si no hay fotos de producto, anima el SCREENSHOT del sitio
-    if (!seedImg) { setAiGen('Analizá una página primero (o pegá una URL de video abajo).'); return }
+    const imgs = sel.length ? sel : (imgPool[0] ? [imgPool[0]] : [])   // las imagenes ELEGIDAS (o la 1ra/screenshot)
+    if (!imgs.length) { setAiGen('Analizá una página primero (o pegá una URL de video abajo).'); return }
     setAiGen('Iniciando…'); setAiBusy(true)
     try {
       const d = await (await fetch(`${API_URL}/api/seedance/generate`, {
         method: 'POST', headers: HEADERS,
-        body: JSON.stringify({ images: [seedImg], brief, desarrollo: '', prompt: '', model: modelId, seconds: Number(seconds), resolution: '', userId: user?.uid || '' }),
+        body: JSON.stringify({ images: imgs, brief, desarrollo: '', prompt: '', model: modelId, seconds: Number(seconds), resolution: '', userId: user?.uid || '' }),
       })).json()
       if (d.error || !d.job_id) { setAiGen(d.error || 'no se pudo iniciar'); setAiBusy(false); return }
       clearInterval(aiPoll.current)
@@ -220,6 +241,10 @@ export default function CineEngineStudio() {
 
   const model = models.find(m => m.id === modelId)
   const estCost = model ? ((model.price?.mode === 'flat' ? model.price.usd : (model.price_s || 0.05) * Number(seconds))) : 0
+  // pool de imagenes para elegir = fotos del sitio + screenshot HD (siempre). El usuario elige hasta el max del modelo.
+  const imgPool = useMemo(() => { const p = [...images]; if (screenshotUrl && !p.includes(screenshotUrl)) p.push(screenshotUrl); return p }, [images, screenshotUrl])
+  const maxImg = model?.max_images || 1
+  const toggleImg = (u) => setSel(s => s.includes(u) ? s.filter(x => x !== u) : (s.length >= maxImg ? (maxImg === 1 ? [u] : s) : [...s, u]))
 
   // EXPORT (MediaRecorder, igual que urvid IA). Si el fondo IA es cross-origin sin CORS, el canvas queda "tainted" y la
   // grabacion puede fallar -> se avisa.
@@ -292,8 +317,27 @@ export default function CineEngineStudio() {
           <button style={{ ...ghost, marginTop: 10, width: '100%' }} onClick={() => setSeed(s => ((s || 1) + 0x9e3779b1) >>> 0 || 1)}>↻ Otra variante</button>
         </div>
 
+        {imgPool.length > 0 && (
+          <div style={card}>
+            <label style={{ ...lbl, color: '#cfd6e6', fontWeight: 600 }}>Imágenes a animar ({sel.length}/{maxImg})</label>
+            <p style={{ color: '#8a93a6', fontSize: 11.5, margin: '0 0 8px' }}>{maxImg > 1 ? `elegí hasta ${maxImg}` : 'este modelo usa 1 imagen'} · el screenshot del sitio también sirve</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(62px, 1fr))', gap: 6 }}>
+              {imgPool.map((u) => {
+                const k = sel.indexOf(u)
+                return (
+                  <button key={u} onClick={() => toggleImg(u)} style={{ position: 'relative', padding: 0, border: k >= 0 ? '2px solid #5b8cff' : '2px solid #232a42', borderRadius: 8, overflow: 'hidden', cursor: 'pointer', background: '#0a0a0f', aspectRatio: '1' }}>
+                    <img src={u} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                    {u === screenshotUrl && <span style={{ position: 'absolute', bottom: 2, left: 2, background: 'rgba(0,0,0,0.65)', color: '#fff', fontSize: 8, padding: '1px 3px', borderRadius: 3 }}>sitio</span>}
+                    {k >= 0 && <span style={{ position: 'absolute', top: 2, left: 2, background: '#5b8cff', color: '#fff', borderRadius: 999, width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700 }}>{k + 1}</span>}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
         <div style={card}>
-          <label style={{ ...lbl, color: '#cfd6e6', fontWeight: 600 }}>Fondo de IA (opcional)</label>
+          <label style={{ ...lbl, color: '#cfd6e6', fontWeight: 600 }}>Generar video con IA</label>
           <select style={{ ...inp, marginBottom: 8 }} value={modelId} onChange={e => setModelId(e.target.value)}>
             {models.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
           </select>
@@ -302,7 +346,7 @@ export default function CineEngineStudio() {
             <select style={{ ...inp, width: 84 }} value={seconds} onChange={e => setSeconds(Number(e.target.value))}>{(model?.durations || [5]).map(n => <option key={n} value={n}>{n}s</option>)}</select>
             <span style={{ color: '#8a93a6', fontSize: 11.5 }}>el video dura {video.duration.toFixed(0)}s{Number(seconds) < video.duration ? ' → el fondo se loopea' : ''}</span>
           </div>
-          <button style={{ ...btn, width: '100%', opacity: aiBusy ? 0.6 : 1 }} onClick={genAiBg} disabled={aiBusy}>{aiBusy ? `Generando… ${aiGen}` : `Generar fondo IA (≈ $${estCost.toFixed(2)})`}</button>
+          <button style={{ ...btn, width: '100%', opacity: aiBusy ? 0.6 : 1 }} onClick={genAiBg} disabled={aiBusy}>{aiBusy ? `Generando… ${aiGen}` : `Generar video IA (≈ $${estCost.toFixed(2)})`}</button>
           {!aiBusy && aiGen && <p style={{ color: '#e0708a', fontSize: 12, margin: '6px 0 0' }}>{aiGen}</p>}
           <label style={{ ...lbl, marginTop: 10 }}>…o pegá la URL de un video (mp4/webm)</label>
           <input style={inp} placeholder="https://…/clip.mp4" value={aiBgUrl} onChange={e => setAiBgUrl(e.target.value)} />
