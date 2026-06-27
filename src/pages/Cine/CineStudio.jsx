@@ -44,6 +44,7 @@ export default function CineStudio() {
   const [promptReady, setPromptReady] = useState(false)
   const [analyzing, setAnalyzing] = useState('')
   const [gen, setGen] = useState('')
+  const [busy, setBusy] = useState(false)   // generando de verdad (deshabilita el boton); separado del mensaje `gen`
   const [video, setVideo] = useState(null)
   const pollRef = useRef(null)
 
@@ -101,19 +102,19 @@ export default function CineStudio() {
     return () => clearTimeout(t)
   }, [brief, desarrollo, modelId, seconds, promptReady, promptEdited])
 
-  const toggle = (u) => setSel(s => s.includes(u) ? s.filter(x => x !== u) : (s.length >= maxImg ? (maxImg === 1 ? [u] : s) : [...s, u]))
+  const toggle = (u) => { if (!busy) setGen(''); setSel(s => s.includes(u) ? s.filter(x => x !== u) : (s.length >= maxImg ? (maxImg === 1 ? [u] : s) : [...s, u])) }
 
   async function generate() {
     if (!sel.length) { setGen('Elegi al menos 1 imagen'); return }
-    setGen('Iniciando...'); setVideo(null)
+    setBusy(true); setGen('Iniciando...'); setVideo(null)
     try {
       const d = await (await fetch(`${API_URL}/api/seedance/generate`, {
         method: 'POST', headers: HEADERS,
         body: JSON.stringify({ images: sel, brief, desarrollo, prompt: prompt.trim(), model: modelId, seconds: Number(seconds), resolution, userId: user?.uid || '' }),
       })).json()
-      if (d.error || !d.job_id) { setGen(d.error || 'no se pudo iniciar'); return }
+      if (d.error || !d.job_id) { setGen(d.error || 'no se pudo iniciar'); setBusy(false); return }
       poll(d.job_id)
-    } catch { setGen('Backend apagado — abri "start.bat"') }
+    } catch { setGen('Backend apagado — abri "start.bat"'); setBusy(false) }
   }
 
   function poll(jobId) {
@@ -121,8 +122,8 @@ export default function CineStudio() {
     pollRef.current = setInterval(async () => {
       try {
         const j = await (await fetch(`${API_URL}/api/jobs/${jobId}`, { headers: HEADERS })).json()
-        if (j.status === 'done') { clearInterval(pollRef.current); setGen(''); setVideo({ url: j.videoUrl, prompt: j.prompt }) }
-        else if (j.status === 'error') { clearInterval(pollRef.current); setGen('Error: ' + (j.error || '')) }
+        if (j.status === 'done') { clearInterval(pollRef.current); setBusy(false); setGen(''); setVideo({ url: j.videoUrl, prompt: j.prompt }) }
+        else if (j.status === 'error') { clearInterval(pollRef.current); setBusy(false); setGen('Error: ' + (j.error || '')) }
         else setGen(`${j.step || 'generando'}... ${j.progress || 0}%`)
       } catch { /* sigue */ }
     }, 3000)
@@ -214,7 +215,7 @@ export default function CineStudio() {
 
           {promptReady && (
             <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16 }}>
-              <button style={{ ...btn, opacity: gen ? 0.6 : 1 }} onClick={generate} disabled={!!gen}>Generar video IA</button>
+              <button style={{ ...btn, opacity: busy ? 0.6 : 1 }} onClick={generate} disabled={busy}>Generar video IA</button>
               {gen && <span style={{ color: '#8a93a6', fontSize: 13 }}>{gen}</span>}
             </div>
           )}
