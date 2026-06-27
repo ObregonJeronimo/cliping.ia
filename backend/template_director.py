@@ -1472,7 +1472,7 @@ def compute_total(scenes: list) -> int:
 
 
 _ROOT_TEMPLATE = """import { Composition } from 'remotion'
-import VideoFromSpec from './templates/VideoFromSpec'
+import VideoFromSpec from '__ENGINE_PATH__'
 
 const SPEC = __SPEC_JSON__
 
@@ -1495,10 +1495,12 @@ registerRoot(RemotionRoot)
 """
 
 
-def build_video_files(job_id: str, spec: dict, remotion_dir):
+def build_video_files(job_id: str, spec: dict, remotion_dir, engine: str = "templates"):
     """
     Escribe el Root + entry que renderizan el spec con VideoFromSpec.
-    Las escenas viven fijas en remotion/src/templates/ (no son temporales).
+    Las escenas viven fijas en remotion/src/<engine>/ (no son temporales).
+    engine: "templates" (motor base, urvid IA / urvid IA Advanced) | "cine" (fork de Cine IA).
+            El default deja el comportamiento de siempre INTACTO; "cine" usa la replica mejorada.
     Devuelve (entry_file, comp_id, total_frames, temp_files).
     """
     remotion_dir = Path(remotion_dir)
@@ -1506,12 +1508,14 @@ def build_video_files(job_id: str, spec: dict, remotion_dir):
     comp_id = f"MarketingVideo-{short}"
     total = compute_total(spec.get("scenes", []))
     temp_files = []
+    engine_path = "./cine/VideoFromSpec" if engine == "cine" else "./templates/VideoFromSpec"
 
     # Formato de salida (9:16 vertical por defecto, 1:1 cuadrado, 16:9 horizontal).
     FORMATS = {"vertical": (1080, 1920), "square": (1080, 1080), "wide": (1920, 1080)}
     w, h = FORMATS.get(spec.get("format", "vertical"), FORMATS["vertical"])
 
     root_src = (_ROOT_TEMPLATE
+                .replace("__ENGINE_PATH__", engine_path)
                 .replace("__SPEC_JSON__", json.dumps(spec, ensure_ascii=False))
                 .replace("__TOTAL__", str(total))
                 .replace("__COMPID__", comp_id)
