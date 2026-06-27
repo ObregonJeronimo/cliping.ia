@@ -65,23 +65,9 @@ MODELS = [
     {"id": "pika22", "label": "Pika v2.2 — 10s $0.90 (efectos) (nuevo)", "desc": "Bueno para efectos creativos/transiciones. ~$0.09/s (10s=$0.90). 720p/1080p.",
      "slug": "fal-ai/pika/v2.2/image-to-video", "price_s": 0.09, "price": {"mode": "per_s", "rate": 0.09}, "max_images": 1, "img_mode": "single",
      "resolutions": ["720p", "1080p"], "res_field": "resolution", "durations": [5], "dur_fmt": "int", "aspect": True, "audio_field": None},
-    {"id": "kling-v3-pro", "label": "Kling v3 pro — $0.112/s (product-motion)", "desc": "Anima el producto realista. $0.112/s sin audio (10s=$1.12). 9:16 = imagen 9:16. Acepta frame final.",
-     "slug": "fal-ai/kling-video/v3/pro/image-to-video", "price_s": 0.112, "price": {"mode": "per_s", "rate": 0.112}, "max_images": 2, "img_mode": "startend", "end_field": "end_image_url", "img_field": "start_image_url",
-     "resolutions": [], "res_field": None, "durations": [5, 8, 10], "dur_fmt": "int", "aspect": False, "audio_field": "generate_audio"},
-    {"id": "wan25", "label": "Wan 2.5 — 10s $1.50 (estilizado premium) (nuevo)", "desc": "Estilizado premium con muy buena estética. ~$0.15/s (10s=$1.50). 9:16.",
-     "slug": "fal-ai/wan-25-preview/image-to-video", "price_s": 0.15, "price": {"mode": "per_s", "rate": 0.15}, "max_images": 1, "img_mode": "single",
-     "resolutions": ["480p", "720p", "1080p"], "res_field": "resolution", "durations": [5, 10], "dur_fmt": "int", "aspect": True, "audio_field": None},
-    # ───────── PREMIUM (caros) ─────────
-    {"id": "kling21-master", "label": "Kling 2.1 Master — 10s $2.80 (hero)", "desc": "Calidad alta, movimiento muy fluido. ~$0.28/s (10s=$2.80). 9:16 por imagen.",
-     "slug": "fal-ai/kling-video/v2.1/master/image-to-video", "price_s": 0.28, "price": {"mode": "per_s", "rate": 0.28}, "max_images": 1, "img_mode": "single",
-     "resolutions": [], "res_field": None, "durations": [5, 10], "dur_fmt": "int", "aspect": False, "audio_field": "generate_audio"},
-    {"id": "sora2-pro", "label": "Sora 2 pro — true_1080p $0.70/s (8s=$5.60)", "desc": "Top realismo. true_1080p $0.70/s; 1080p $0.50/s; 720p $0.30/s. Sin 10s (4/8/12). Modera marcas/personas (riesgo).",
-     "slug": "fal-ai/sora-2/image-to-video/pro", "price_s": 0.70, "price": {"mode": "per_s_res", "rates": {"720p": 0.30, "1080p": 0.50, "true_1080p": 0.70}}, "max_images": 1, "img_mode": "single",
-     "resolutions": ["720p", "1080p", "true_1080p"], "res_field": "resolution", "durations": [4, 8, 12], "dur_fmt": "int", "aspect": True, "audio_field": None, "extra": {"delete_video": False}},
-    {"id": "seedance2", "label": "Seedance 2.0 — 1080p $0.682/s (10s ~$6.80, el más caro)", "desc": "Calidad tope. 1080p $0.682/s (10s ~$6.80!); 720p $0.30/s. Solo para hero shots.",
-     "slug": "bytedance/seedance-2.0/image-to-video", "price_s": 0.682, "price": {"mode": "per_s_res", "rates": {"720p": 0.30, "1080p": 0.682}}, "max_images": 1, "img_mode": "single",
-     "resolutions": ["720p", "1080p"], "res_field": "resolution", "durations": [5, 8, 10], "dur_fmt": "int", "aspect": True, "audio_field": None},
 ]
+# (quitados los que pasan de $1 por 10s: Kling v3 pro $1.12, Wan 2.5 $1.50, Kling 2.1 Master $2.80, Sora 2 pro $5.60,
+#  Seedance 2.0 $6.82. Si en algun momento se quiere un "hero" caro, se re-agregan.)
 MODELS_BY_ID = {m["id"]: m for m in MODELS}
 
 
