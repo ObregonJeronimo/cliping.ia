@@ -100,10 +100,11 @@ def build_prompt(brief: dict, img_mode: str, n_images: int, desarrollo: str = ""
         f"Shot 2 ({min(3, mid)}-{mid + 2}s): a slow gentle pan reveals more of {subj} arranged neatly in {place}.",
         f"Shot 3 ({mid + 2}-{s}s): a hand gently reaches in and presents the product, one calm satisfying final beat.",
     ]
-    notes = f" Brand emphasis: {re.sub(r'[\r\n]+', ' ', desarrollo).strip()[:240]}." if (desarrollo or "").strip() else ""
-    glob = (f"{light}; {mood} mood; shallow depth of field, photoreal product texture.{notes} "
+    d = re.sub(r'[\r\n]+', ' ', desarrollo or '').strip()[:300]
+    lead = f"Creative direction (top priority): {d} " if d else ""   # lo que escribe el usuario va PRIMERO = el modelo lo pesa mas
+    glob = (f"{light}; {mood} mood; shallow depth of field, photoreal product texture. "
             f"Vertical 9:16, slow and smooth, seamless. No fast motion, no on-screen text, no captions, no logos, no words.")
-    return " ".join(shots) + " " + glob
+    return lead + " ".join(shots) + " " + glob
 
 
 def _duration(m, seconds):

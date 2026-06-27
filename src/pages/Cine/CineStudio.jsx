@@ -24,6 +24,7 @@ export default function CineStudio() {
   const [resolution, setResolution] = useState('')
   const [prompt, setPrompt] = useState('')
   const [promptEdited, setPromptEdited] = useState(false)
+  const [promptReady, setPromptReady] = useState(false)
   const [analyzing, setAnalyzing] = useState('')
   const [gen, setGen] = useState('')
   const [video, setVideo] = useState(null)
@@ -57,7 +58,7 @@ export default function CineStudio() {
       if (d.error) { setAnalyzing(d.error); return }
       setBrief(d.brief); setImages(d.images || [])
       setAnalyzing(`${d.brief?.brand || '?'} · ${d.brief?.rubro || '?'} · ${(d.images || []).length} imagenes encontradas`)
-      setPromptEdited(false)
+      setPromptEdited(false); setPromptReady(false); setPrompt('')
     } catch { setAnalyzing('Backend apagado — abri "start.bat" (corre en localhost:8000)') }
   }
 
@@ -69,12 +70,12 @@ export default function CineStudio() {
     } catch { /* backend apagado */ }
   }
 
-  // arma el prompt EN VIVO desde el analisis + lo que escribis en "desarrollo" (a menos que lo edites a mano). $0, determinista.
+  // una vez creado el prompt, se mantiene EN VIVO con el "desarrollo" (a menos que lo edites a mano). $0, determinista.
   useEffect(() => {
-    if (!brief || promptEdited) return
+    if (!brief || !promptReady || promptEdited) return
     const t = setTimeout(buildPrompt, 500)
     return () => clearTimeout(t)
-  }, [brief, desarrollo, modelId, seconds, promptEdited])
+  }, [brief, desarrollo, modelId, seconds, promptReady, promptEdited])
 
   const toggle = (u) => setSel(s => s.includes(u) ? s.filter(x => x !== u) : (s.length >= maxImg ? (maxImg === 1 ? [u] : s) : [...s, u]))
 
@@ -151,8 +152,9 @@ export default function CineStudio() {
 
           {/* desarrollo + opciones */}
           <div style={{ ...card, marginBottom: 16 }}>
-            <label style={{ fontSize: 13, color: '#8a93a6' }}>Desarrollo (que querés mostrar / enfatizar)</label>
-            <textarea style={{ ...inp, marginTop: 6, minHeight: 64, resize: 'vertical' }} value={desarrollo} onChange={e => setDesarrollo(e.target.value)} placeholder="ej: enfocar el producto en cocina natural, ritmo calmo, terminar en una caja de envio" />
+            <label style={{ fontSize: 13, color: '#cfd6e6', fontWeight: 600 }}>Desarrollo — escribí primero qué querés mostrar</label>
+            <p style={{ color: '#8a93a6', fontSize: 12, margin: '4px 0 0' }}>Escena · mood/luz · ritmo · dónde termina · qué evitar. Esto manda en el prompt.</p>
+            <textarea style={{ ...inp, marginTop: 8, minHeight: 72, resize: 'vertical' }} value={desarrollo} onChange={e => setDesarrollo(e.target.value)} placeholder="ej: enfocar el producto en una cocina natural con luz de mañana, ritmo calmo, primer plano del frasco, terminar con una mano poniéndolo en una caja de envío" />
             <div style={{ display: 'flex', gap: 14, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' }}>
               <label style={{ fontSize: 13, color: '#8a93a6' }}>Duracion
                 <select style={{ ...inp, width: 'auto', marginLeft: 6 }} value={seconds} onChange={e => setSeconds(e.target.value)}>
@@ -168,19 +170,30 @@ export default function CineStudio() {
               )}
               <span style={{ color: '#8a93a6', fontSize: 12 }}>≈ ${est.toFixed(2)} este video</span>
             </div>
-            <div style={{ marginTop: 14 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                <label style={{ fontSize: 13, color: '#8a93a6' }}>Prompt (generado del analisis — editable)</label>
-                <button onClick={() => { setPromptEdited(false); buildPrompt() }} style={{ background: 'none', border: 0, color: '#5b8cff', cursor: 'pointer', fontSize: 12, padding: 0 }}>↻ regenerar desde el analisis</button>
+
+            {!promptReady ? (
+              <div style={{ marginTop: 16 }}>
+                <button onClick={() => { setPromptEdited(false); setPromptReady(true); buildPrompt() }} style={btn}>Crear prompt con el análisis + tu desarrollo</button>
+                <p style={{ color: '#8a93a6', fontSize: 12, margin: '8px 0 0' }}>Se arma con lo que escribiste arriba. Gratis, no usa IA — y lo vas a poder editar.</p>
               </div>
-              <textarea style={{ ...inp, marginTop: 6, minHeight: 110, resize: 'vertical', fontSize: 12.5, lineHeight: 1.5 }} value={prompt} onChange={e => { setPrompt(e.target.value); setPromptEdited(true) }} placeholder="Se arma solo del analisis + lo que pongas en Desarrollo. Editalo para controlar cada toma." />
-            </div>
+            ) : (
+              <div style={{ marginTop: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                  <label style={{ fontSize: 13, color: '#8a93a6' }}>Prompt (tu desarrollo + análisis — editable)</label>
+                  <button onClick={() => { setPromptEdited(false); buildPrompt() }} style={{ background: 'none', border: 0, color: '#5b8cff', cursor: 'pointer', fontSize: 12, padding: 0 }}>↻ regenerar</button>
+                </div>
+                <textarea style={{ ...inp, marginTop: 6, minHeight: 110, resize: 'vertical', fontSize: 12.5, lineHeight: 1.5 }} value={prompt} onChange={e => { setPrompt(e.target.value); setPromptEdited(true) }} placeholder="Se arma del Desarrollo + análisis. Editalo para controlar cada toma." />
+                <p style={{ color: '#8a93a6', fontSize: 12, margin: '6px 0 0' }}>Mientras no lo edites a mano, se actualiza solo cuando cambiás el Desarrollo.</p>
+              </div>
+            )}
           </div>
 
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16 }}>
-            <button style={{ ...btn, opacity: gen ? 0.6 : 1 }} onClick={generate} disabled={!!gen}>Generar video IA</button>
-            {gen && <span style={{ color: '#8a93a6', fontSize: 13 }}>{gen}</span>}
-          </div>
+          {promptReady && (
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16 }}>
+              <button style={{ ...btn, opacity: gen ? 0.6 : 1 }} onClick={generate} disabled={!!gen}>Generar video IA</button>
+              {gen && <span style={{ color: '#8a93a6', fontSize: 13 }}>{gen}</span>}
+            </div>
+          )}
         </>
       )}
 
