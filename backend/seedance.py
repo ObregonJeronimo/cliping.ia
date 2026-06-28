@@ -117,28 +117,27 @@ TONE = {"dark": "warm side rim light with deep soft shadows, premium moody key l
 
 
 def build_prompt(brief: dict, img_mode: str, n_images: int, desarrollo: str = "", seconds: int = 10) -> str:
-    """Prompt MULTI-SHOT por beats (Subject->Action->Env->Camera->Lighting->Style->Constraints). Si el modelo es
-    'multi' referencia las fotos como @Image1..@ImageN; si no, el producto = la imagen frame."""
+    """Prompt de MOTION GRAPHICS (NO foto-realismo, NO personas/manos, NO escenas de la vida real). El producto es un
+    HERO flotante rodeado de formas/gradientes/particulas en los colores de la marca. La 'desarrollo' del usuario manda.
+    OJO: en I2V el modelo arranca de la FOTO del producto -> no sale 100% plano; los negativos empujan a lo grafico."""
     b = brief or {}
-    subj, place, mood = WORLD.get(b.get("rubro"), WORLD["default"])
-    light = TONE.get(b.get("tone"), TONE["dark"])
     if img_mode == "multi" and n_images:
         tags = ", ".join(f"@Image{i + 1}" for i in range(min(n_images, 9)))
-        hero = f"the product from {tags}"
+        hero = f"the product ({tags})"
     else:
         hero = "the product"
-    s = int(seconds)
-    mid = max(3, s // 2)
-    shots = [
-        f"Shot 1 (0-{min(3, mid)}s): {hero} — {subj} — sits on a clean surface in {place}; the camera slowly pushes in toward it in one smooth continuous move.",
-        f"Shot 2 ({min(3, mid)}-{mid + 2}s): a slow gentle pan reveals more of {subj} arranged neatly in {place}.",
-        f"Shot 3 ({mid + 2}-{s}s): a hand gently reaches in and presents the product, one calm satisfying final beat.",
-    ]
+    acc = (b.get("brandColor") or "").strip()
+    palette = f"in the brand color palette ({acc})" if re.match(r'^#?[0-9A-Fa-f]{6}$', acc) else "in a cohesive premium color palette"
     d = re.sub(r'[\r\n]+', ' ', desarrollo or '').strip()[:300]
-    lead = f"Creative direction (top priority): {d} " if d else ""   # lo que escribe el usuario va PRIMERO = el modelo lo pesa mas
-    glob = (f"{light}; {mood} mood; shallow depth of field, photoreal product texture. "
-            f"Vertical 9:16, slow and smooth, seamless. No fast motion, no on-screen text, no captions, no logos, no words.")
-    return lead + " ".join(shots) + " " + glob
+    lead = f"Creative direction (top priority): {d} " if d else ""   # lo que escribe el usuario va PRIMERO = pesa mas
+    body = (f"Motion graphics animation {palette}. {hero} as a clean floating hero element that slowly rotates and "
+            "drifts, surrounded by flowing abstract geometric shapes, smooth color gradients, glowing light streaks and "
+            "floating particles. Kinetic premium branded-explainer / After Effects aesthetic, flat 2D-3D motion design, "
+            "soft glow, smooth continuous camera, seamless loop. ")
+    neg = ("STRICT NEGATIVE: no people, no hands, no human body parts, no realistic kitchen/room/office, no photographic "
+           "real-world environment, no live-action footage, no on-screen text, no logos, no words. Pure graphic motion "
+           "design. Vertical 9:16.")
+    return lead + body + neg
 
 
 def _duration(m, seconds):
