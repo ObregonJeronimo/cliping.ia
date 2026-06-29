@@ -2,6 +2,13 @@
 
 Guía para correr el proyecto en una PC nueva y trabajar entre varios sin pisarnos.
 
+> **Thiago, empezá acá (orden):**
+> 1. Instalá los programas y cloná el repo → **"Setup en una PC nueva"** (abajo).
+> 2. Pedile a Jero el `backend/.env` (secrets) y, si vas a hostear la demo en vivo, su **authtoken de ngrok**.
+> 3. Corré `npm install` (raíz) + las deps del backend, y probá `npm run gates` → debe dar **todo verde**.
+> 4. Abrí **[`THIAGO-IA-CONTEXTO.md`](THIAGO-IA-CONTEXTO.md)** y pegá su contenido como **primer mensaje** en tu Claude Code: pone a tu IA al día del proyecto y le marca las reglas (gates, determinismo, qué NO romper).
+> 5. Antes de tocar `main`: **`git pull`**. Al terminar el día: **commit + push**. Nunca los dos el mismo día.
+
 ## Qué es
 **urvid** convierte una URL en un **reel vertical de marketing (9:16)**. Productos:
 - **urvid IA** (`/studio`) y **urvid IA Advanced** (`/studio/craft`): generan el video con un **motor de CANVAS que corre en el navegador** (`src/urvid/`, `makeVideo()` + `drawFrame()`), determinista y **$0** (no usa servidor para renderizar; exporta con MediaRecorder).
@@ -20,18 +27,19 @@ Guía para correr el proyecto en una PC nueva y trabajar entre varios sin pisarn
 - **Proxy:** `vercel.json` reenvía `/api/*` a **un dominio ngrok fijo (el de Jero)**. Por eso la página de Vercel **solo llega al backend de quien tenga ese dominio**. Para desarrollar, usá **local** (ver abajo).
 
 ## Setup en una PC nueva (Windows)
-1. Instalá **Python 3.12**, **Node 20+**, **git**, **ngrok** (cuenta propia) y **Windows Terminal**.
+1. Instalá **Python 3.12**, **Node 20+**, **git** y **Windows Terminal**. (**ngrok** solo si vas a **hostear la demo en vivo** — ver paso 6.)
 2. Cloná el repo en una ruta **SIN espacios** (ej. `C:\Users\<vos>\Documents\cliping.ia`).
-3. Pedí a Jero el `backend/.env` y guardalo en `backend/.env`.
+3. Pedí a Jero el `backend/.env` y guardalo en `backend/.env`. **Nunca** lo subas al repo ni lo pegues en chats.
 4. Backend (una vez): `python -m pip install -r backend/requirements.txt` y `python -m playwright install chromium`.
 5. Frontend (una vez): en la raíz del repo, `npm install`.
-6. `start.bat`: **editá la ruta hardcodeada** (`cd /d C:\Users\Usuario\...` y la del panel del backend) por la tuya.
+6. `start.bat` ya es **portable** (usa `%~dp0`, no hace falta editar rutas). **Solo si vas a hostear la demo en vivo**: instalá ngrok y cargá el **authtoken de Jero** una sola vez → `ngrok config add-authtoken <token-de-jero>`. Así tu túnel sirve el dominio FIJO `draw-overturn-backpack.ngrok-free.dev` que usa la página de Vercel (ese dominio está reservado en la cuenta de Jero; por eso necesitás su token, no el tuyo).
 
 ## Cómo correr y testear
 - **Para desarrollar/testear tus cambios (RECOMENDADO):** corré los dos local:
   - Backend: `cd backend && python run.py` (o el `start.bat`).
   - Frontend: `npm run dev` → abrí `http://localhost:5173`. El front pega a `localhost:8000` (tu backend local). No necesitás ngrok ni Vercel.
-- **`start.bat`** hace `git pull` + instala deps + abre backend + **ngrok** (para la demo vía la página de Vercel). Ojo: la página de Vercel apunta al ngrok **de Jero**, no al tuyo. Para que la Vercel use TU backend tendrías que cambiar el dominio en `vercel.json` (avanzado; para dev normal alcanza el local).
+- **`start.bat`** hace `git pull` + instala deps del backend + abre el **backend** + **ngrok con el dominio fijo** de Vercel. Con el authtoken de Jero cargado (paso 6), tu `start.bat` sirve el **mismo** dominio → en **tus días** la página de Vercel usa **tu** backend, sin tocar `vercel.json`. Para dev normal NO hace falta: alcanza con correr local (`npm run dev` + `python run.py`).
+- **Regla de oro del ngrok:** **solo UNO corre el backend a la vez** (es el mismo dominio). Por eso el modelo "un día cada uno" — nunca los dos `start.bat` prendidos juntos.
 - **QA antes de pushear:** `npm run gates` (corre los chequeos del motor + build).
 
 ## Flujo de trabajo entre dos (importante)
