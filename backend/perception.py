@@ -110,6 +110,8 @@ def _page_digest(content):
     if CTA: parts.append("Botones/CTA: " + " | ".join(_clip(x, 30) for x in CTA))
     P = [x for x in (c.get("paragraphs") or []) if isinstance(x, str)][:8]
     if P: parts.append("Parrafos: " + " || ".join(_clip(p, 180) for p in P))
+    T = [x for x in (c.get("testimonials") or []) if isinstance(x, str)][:5]
+    if T: parts.append("Voz del cliente (testimonios reales, usalos para el TONO y los DOLORES del publico): " + " || ".join(_clip(t, 180) for t in T))
     # DATOS DECLARADOS (structured data de la captura): anclan la AUDIENCIA en hechos, no en adivinanza.
     s = c.get("structured") if isinstance(c.get("structured"), dict) else {}
     decl = []

@@ -126,6 +126,11 @@ _JS_EXTRACT = r"""
     .filter(t => t.length >= 2 && t.length <= 32)).slice(0, 10);
   const paragraphs = uniq([...document.querySelectorAll('p, li')].map(txt)
     .filter(t => t.length >= 30 && t.length <= 240)).slice(0, 14);
+  // VOZ DEL CLIENTE: testimonios/reseñas reales -> dan el tono y los DOLORES del publico (no la voz de marketing de la
+  // marca). Perception los usa para escribir un copy que suene como su cliente. Selectores semanticos + schema.org.
+  const testimonials = uniq([...document.querySelectorAll(
+    '[class*="testimonial" i], [class*="review" i], [class*="opinion" i], [class*="quote" i], blockquote, [itemprop="reviewBody" i]'
+  )].map(txt).filter(t => t.length >= 20 && t.length <= 240)).slice(0, 6);
   let logoRaw = '';
   const ico = document.querySelector('link[rel*="apple-touch-icon" i]')
     || document.querySelector('meta[property="og:image"]')
@@ -201,7 +206,7 @@ _JS_EXTRACT = r"""
     description: clean(meta('meta[name="description"]', 'content') || meta('meta[property="og:description"]', 'content')).slice(0, 300),
     themeColor: meta('meta[name="theme-color"]', 'content'),
     accentCss,
-    logo, headings, nav, ctas, paragraphs, structured,
+    logo, headings, nav, ctas, paragraphs, testimonials, structured,
     bodyText: clean(document.body && document.body.innerText).slice(0, 4000),
   };
 }
