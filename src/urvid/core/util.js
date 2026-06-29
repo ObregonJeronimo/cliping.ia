@@ -97,4 +97,25 @@ export function legibleOnBest(bg, light = '#fbf6ec', dark = '#161018', minW = 3)
 
 // ---- fuentes ----
 const FALLBACK = 'system-ui,-apple-system,Segoe UI,Roboto,sans-serif'
-export function fontStr(weight, size, family) { return `${weight} ${Math.round(size)}px "${family || 'Inter'}",${FALLBACK}` }
+// Pesos REALMENTE cargados por familia (de index.html <link> de Google Fonts). Pedir un peso NO cargado hace que el
+// browser sintetice negrita falsa (faux-bold: smear del glifo regular) -> abarata la marca al instante. Snapeamos al
+// peso cargado mas cercano (empate -> el mas pesado, para no perder jerarquia en titulos). FUENTE DE VERDAD: index.html
+// (mantener en sync con backend/style_catalog.py). Familia sin entry = no se clampea (back-compat).
+const FONT_WEIGHTS = {
+  'Bricolage Grotesque': [400, 500, 600, 700], 'JetBrains Mono': [400, 500], 'DM Sans': [300, 400, 500, 600], 'DM Mono': [400, 500],
+  'Anton': [400], 'Archivo': [400, 600, 900], 'Barlow': [400, 600], 'Big Shoulders Display': [700, 900], 'Caprasimo': [400],
+  'Caveat': [600, 700], 'Chakra Petch': [500, 700], 'Darker Grotesque': [700, 900], 'Familjen Grotesk': [500, 700],
+  'Fraunces': [600, 900], 'Hanken Grotesk': [400, 700], 'IBM Plex Mono': [400, 600], 'Inter': [400, 600, 800],
+  'Inter Tight': [500, 700], 'Newsreader': [400, 600], 'Onest': [400, 600], 'Outfit': [400, 700, 800],
+  'Playfair Display': [700, 900], 'Plus Jakarta Sans': [400, 700, 800], 'Quicksand': [500, 700], 'Righteous': [400],
+  'Sora': [600, 700, 800], 'Space Grotesk': [500, 700], 'Space Mono': [400, 700], 'Spectral': [400], 'Unbounded': [600, 800],
+  'Bagel Fat One': [400], 'DM Serif Display': [400], 'Oswald': [500, 700], 'Permanent Marker': [400],
+}
+function snapWeight(weight, family) {
+  const avail = FONT_WEIGHTS[family]
+  if (!avail) return weight
+  let best = avail[0], bd = Infinity
+  for (const w of avail) { const d = Math.abs(w - weight); if (d < bd || (d === bd && w > best)) { bd = d; best = w } }
+  return best
+}
+export function fontStr(weight, size, family) { return `${snapWeight(weight, family)} ${Math.round(size)}px "${family || 'Inter'}",${FALLBACK}` }
