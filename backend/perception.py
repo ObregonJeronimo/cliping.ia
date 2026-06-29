@@ -36,8 +36,11 @@ _SYS = (
     '- "proof": una linea de prueba social REAL (rating, cant. de clientes, premio) o "" si no hay\n'
     '- "seriousness": numero 0 a 1 (salud/finanzas alto ~0.8; gastronomia/moda bajo ~0.35)\n'
     '- "audience": objeto con A QUIEN le habla el reel, inferido de la pagina: {"who": "el publico objetivo en 2-5 palabras (ej: duenos de PyMEs, madres jovenes, gamers, profesionales de la salud)", "register": "formal" | "casual" | "warm" (como hablarle a ese publico), "awareness": UNA de "unaware" | "problem" | "solution" | "product" | "most" = la ETAPA DE CONSCIENCIA del comprador: unaware (no sabe que tiene el problema), problem (siente el problema pero no busca solucion), solution (busca soluciones), product (compara productos/marcas), most (listo para comprar, solo necesita el empujon)}. Es CLAVE: define el gancho y el tono del reel.\n'
-    "REGLAS: espanol rioplatense (voseo), FIEL a la pagina (NO inventes datos, cifras, premios ni features que no esten; "
+    "REGLAS: FIEL a la pagina (NO inventes datos, cifras, premios ni features que no esten; "
     "si no hay, deja [] o \"\"), conciso, sin comillas tipograficas. "
+    "IDIOMA: escribi el copy en el IDIOMA de la pagina (ver 'Idioma de la pagina' en el resumen). Si es espanol o no se "
+    "sabe -> espanol rioplatense (voseo). Si la pagina esta en OTRO idioma (ingles, portugues, etc.) -> escribi TODO el "
+    "copy (tagline/claim/cta/bullets/...) en ESE idioma: el reel le habla al publico en SU idioma, no traducido. "
     "COPY SEGUN AWARENESS (clave para que le hable a SU publico): escribi tagline/claim/cta acorde a la etapa: "
     "unaware -> el gancho EDUCA sobre el problema/oportunidad (sin nombrar el producto); "
     "problem -> nombra el DOLOR concreto que ese publico siente; "
@@ -103,6 +106,7 @@ def _page_digest(content):
     parts = []
     if c.get("title"): parts.append("Titulo: " + _clip(c["title"], 120))
     if c.get("siteName"): parts.append("Sitio: " + _clip(c["siteName"], 60))
+    if c.get("lang"): parts.append("Idioma de la pagina: " + _clip(c["lang"], 8))
     if c.get("description"): parts.append("Descripcion: " + _clip(c["description"], 260))
     H = [x for x in (c.get("headings") or []) if isinstance(x, str)][:12]
     if H: parts.append("Titulos de la pagina: " + " | ".join(_clip(h, 80) for h in H))
