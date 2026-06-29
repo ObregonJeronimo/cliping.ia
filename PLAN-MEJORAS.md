@@ -16,7 +16,14 @@
 - **[audiencia] rubros reconciliados** — `eventos` ahora canónico en fit.js (era alias→default); `ctx.rubro` canonizado; perception y motor = 11 rubros idénticos.
 - **[audiencia] captura de señales declaradas** — JSON-LD/OG product/keywords (tipo, precio, moneda, rating, región) + testimonios (voz del cliente) + accent por computed-style del CTA → todo al digest de perception para anclar la audiencia en hechos.
 - **[calidad] imágenes rankeadas por aptitud-9:16 × relevancia** (retrato/contenido sube, banner ancho baja) y captura espera `document.fonts.ready` (tipografía real en el screenshot).
-- _Próximo (fase 2, high/M-L): HOOK garantizado en ~2.5s, duración 'corto' alcanzable, eje psicología-de-color, typekit para TODO el display, safe-area asimétrica, atmósfera/fondo rubro-aware, cablear playbooks/datakit/markkit/slot-media. Pendiente lateral: overflow en scene.social.* (tarea spawn)._
+- **[fase 2] tanda vetada por workflow design+audit** (10 ítems diseñados, 6 greenlit, auditoría adversarial cazó el re-roll del PRNG en hook):
+  - **HOOK garantizado ~2.5s** — un dato siempre abre con número + promesa/dolor sube prob de gancho (override sin re-roll); openers _DUR más cortos.
+  - **Duración 'corto' alcanzable** — bodyCap=1 (era ~10-12s, ahora 8s exacto; medio/largo byte-idénticos).
+  - **Safe-area asimétrica** de reels (reelBias: más margen abajo en 9:16).
+  - **finalize() guardrail accent2** — separa por luminancia (preserva hue: mono/grises ok) + contraste mínimo vs bg.
+  - **Psicología de color** (hue↔rubro) en el scorer — hueAffinity suave; 34 named-palettes auto-anotan su hue. Validado top-5.
+  - **Fix bug latente** scene.hook.strike (achica, no elide claim largo).
+- _Próximo: brand-fidelity (DIFERIDO: trade-off estético en 18 temp-moods, necesita tu ojo — los gates no miden "se ve de la marca"). Y los 3 ítems cuya auditoría cayó por límite de sesión (typekit-all-display, scrim-bbox, analyze-enrich) → re-auditar. Lateral: overflow scene.social.* (tarea spawn)._
 
 ---
 
@@ -58,7 +65,7 @@
   - El register visual (paleta, tipo, motion, intensidad) matchea el tono REAL de la marca/pagina, no el cliche del rubro -> el publico percibe un video que 'suena' como la marca que ya conoce, mejorando…
 - [x] **finalize() debe garantizar accent2-vs-bg y accent-vs-accent2 (no solo ink/dim/onAccent)** ✅ separateAccent2(): separa por luminancia (preserva hue: mono/grises ok) + contraste minimo vs bg peor · _Paleta y color_ · (high/M · calidad-visual)
   - Los datos, iconos y segundos titulos del video SIEMPRE se leen sobre el fondo y se distinguen del acento principal, sin importar el color de marca de la pagina -> el mensaje al publico nunca se pierde…
-- [ ] **Eje de psicologia de color (afinidad hue<->rubro) en el scorer del director** · _Paleta y color_ · (high/M · audiencia)
+- [x] **Eje de psicologia de color (afinidad hue<->rubro) en el scorer del director** ✅ hueAffinity x fitWeight + RUBRO_HUE; 34 named-palettes auto-anotan su hue. Validado top-5. [temp/grade overlays diferidos] · _Paleta y color_ · (high/M · audiencia)
   - El color del video EMPIEZA a hablarle al publico correcto: una clinica recibe azules/verdes confiables, una fintech azul corporativo, una gastronomia calidos apetecibles -> el subsistema cumple su obj…
 - [ ] **Guardrail de fidelidad de marca: respetar/anclar el brandColor en los modulos de hue fijo** · _Paleta y color_ · (high/M · audiencia)
   - El publico que ya conoce la marca de la pagina la RECONOCE en el video (el azul sigue siendo azul) -> coherencia de marca = mas confianza y recordacion, sin perder los moods cinematograficos cuando si…
