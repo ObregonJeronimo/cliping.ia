@@ -35,6 +35,7 @@ _SYS = (
     '- "stats": 0 a 2 datos numericos REALES que COMUNIQUEN un logro/beneficio, cada uno {"value": "92%" | "+600" | "4.9", "label": "etiqueta DESCRIPTIVA de 3 a 6 palabras y <=28 caracteres: QUE es el numero"} (ej {"value":"92%","label":"de clientes lo recomienda"}). El value es la cifra; el label explica que significa para que la escena DIGA algo (no un numero suelto). NO incluyas precios sueltos, anios/fechas, telefonos ni codigos. [] si no hay datos que digan algo.\n'
     '- "proof": una linea de prueba social REAL (rating, cant. de clientes, premio) o "" si no hay\n'
     '- "seriousness": numero 0 a 1 (salud/finanzas alto ~0.8; gastronomia/moda bajo ~0.35)\n'
+    '- "audience": objeto con A QUIEN le habla el reel, inferido de la pagina: {"who": "el publico objetivo en 2-5 palabras (ej: duenos de PyMEs, madres jovenes, gamers, profesionales de la salud)", "register": "formal" | "casual" | "warm" (como hablarle a ese publico), "awareness": UNA de "unaware" | "problem" | "solution" | "product" | "most" = la ETAPA DE CONSCIENCIA del comprador: unaware (no sabe que tiene el problema), problem (siente el problema pero no busca solucion), solution (busca soluciones), product (compara productos/marcas), most (listo para comprar, solo necesita el empujon)}. Es CLAVE: define el gancho y el tono del reel.\n'
     "REGLAS: espanol rioplatense (voseo), FIEL a la pagina (NO inventes datos, cifras, premios ni features que no esten; "
     "si no hay, deja [] o \"\"), conciso, sin comillas tipograficas. "
     "COMPLETITUD: cada texto debe estar ENTERO y entrar en su largo (el reel lo muestra tal cual, sin '...'); si una idea "
@@ -161,6 +162,12 @@ def _normalize(b, url, content):
         out["seriousness"] = max(0.0, min(1.0, float(b.get("seriousness"))))
     except Exception:
         pass
+    # AUDIENCIA de primera clase: a quien le habla el reel (who), como hablarle (register) y la ETAPA DE CONSCIENCIA
+    # (awareness, Eugene Schwartz) que decide el gancho/copy. Defaults sensatos (casual/solution) si el modelo no la dio.
+    aud = b.get("audience") if isinstance(b.get("audience"), dict) else {}
+    reg = aud.get("register") if aud.get("register") in ("formal", "casual", "warm") else None
+    aw = aud.get("awareness") if aud.get("awareness") in ("unaware", "problem", "solution", "product", "most") else None
+    out["audience"] = {"who": _clip_words(aud.get("who"), 40), "register": reg or "casual", "awareness": aw or "solution"}
     return out
 
 
