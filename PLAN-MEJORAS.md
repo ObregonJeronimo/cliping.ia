@@ -24,7 +24,9 @@
   - **Psicología de color** (hue↔rubro) en el scorer — hueAffinity suave; 34 named-palettes auto-anotan su hue. Validado top-5.
   - **Fix bug latente** scene.hook.strike (achica, no elide claim largo).
   - **Brand-fidelity** — brandAccent() ancla el hue del acento a la marca en 18 temp-moods (conserva S/L → APCA ok); el mood térmico vive en accent2+bg. Verificado: brand azul→acento azul, rojo→rojo.
-- _Próximo: los 3 ítems cuya auditoría cayó por límite de sesión (typekit-all-display, scrim-bbox, analyze-enrich) → re-auditar + implementar. Lateral: overflow scene.social.* (tarea spawn ya creada)._
+- **[fase 2] analyze-enrich** — urgencia/naming/valencia detectadas y consumidas (arco + selección de escena). Cierra el cluster de audiencia.
+- **[verificación visual]** hoja de contacto renderizada (tools/urvid1-shot.mjs, fuentes reales) → la tanda se ve limpia: abre con hook, brand color consistente, pesos reales sin faux-bold, safe-area con aire abajo.
+- _Diferidos (diseño VETADO guardado en docs/DEFERRED-typekit-scrim-specs.md): typekit-all-display + scrim-bbox — su valor es VISUAL y los gates no lo miden; hacerlos en sesión con preview en vivo. Lateral: overflow scene.social.* (tarea spawn). Pendientes restantes del plan: mayormente med/low + arquitectónicos high/L (OKLCH, WebCodecs, unificar export, slot-media, datakit, markkit, playbooks)._
 
 ---
 
@@ -70,7 +72,7 @@
   - El color del video EMPIEZA a hablarle al publico correcto: una clinica recibe azules/verdes confiables, una fintech azul corporativo, una gastronomia calidos apetecibles -> el subsistema cumple su obj…
 - [x] **Guardrail de fidelidad de marca: respetar/anclar el brandColor en los modulos de hue fijo** ✅ brandAccent() ancla el hue del acento a la marca en 18 temp-moods (conserva S/L -> APCA ok); mood vive en accent2+bg. Verificado: azul->azul, rojo->rojo · _Paleta y color_ · (high/M · audiencia)
   - El publico que ya conoce la marca de la pagina la RECONOCE en el video (el azul sigue siendo azul) -> coherencia de marca = mas confianza y recordacion, sin perder los moods cinematograficos cuando si…
-- [ ] **Enrutar TODO el texto display por el typekit (no solo 6 de 92 draws)** · _Tipografia_ · (high/M · motion-graphics)
+- [ ] **Enrutar TODO el texto display por el typekit (no solo 6 de 92 draws)** ⏸️ DISEÑO VETADO (greenlight) en docs/DEFERRED-typekit-scrim-specs.md — diferido: valor VISUAL (cinético) no medible por gates, ~20 sitios, requiere preview en vivo · _Tipografia_ · (high/M · motion-graphics)
   - Un video dirigido a un publico joven/dinamico (gastronomia, moda, fitness) finalmente SE MUEVE como su audiencia espera (char-pop, word-rise), mientras que un brief serio (salud/finanzas, seriousness…
 - [ ] **Tracking (letter-spacing) por rol tipografico en el motor de texto** · _Tipografia_ · (high/M · tipografia)
   - El tracking negativo en titulos grandes da el look 'editorial premium' que espera una audiencia de moda/belleza/lujo; el tracking positivo en kickers MAYUSCULA mejora la legibilidad para audiencias qu…
@@ -94,7 +96,7 @@
   - Una marca cálida (gastronomía artesanal, fitness energético) atrae fondos de brasa/vapor; una fría (clínica, banca) atrae auras menta/grillas institucionales. El público percibe coherencia emocional c…
 - [ ] **Variar el fondo (o su intensidad) por categoría de beat, no UN fondo fijo para todo el vid…** · _Fondos por rubro_ · (high/M · arquitectura)
   - El público ve el fondo 'argumentar' con cada beat: números sobre grilla/barras (confianza cuantitativa), mensaje sobre campo sereno (claridad). El video deja de tener una sola textura plana y gana rit…
-- [ ] **Scrim consciente del layout real del texto (bbox), no franja central fija** · _Fondos por rubro_ · (high/M · ux)
+- [ ] **Scrim consciente del layout real del texto (bbox), no franja central fija** ⏸️ DISEÑO VETADO (greenlight) en docs/DEFERRED-typekit-scrim-specs.md — diferido: legibilidad NO verificable por gates (audit pide muestreo manual de contraste), 114 sitios · _Fondos por rubro_ · (high/M · ux)
   - El texto siempre se lee, en cualquier layout. El público recibe el mensaje sin esfuerzo, que es la única función no-negociable de un video de marketing; protege la conversión del CTA.
 - [ ] **Atmosfera REALMENTE rubro-aware (pre-filtro de pool + metadata por rubro)** · _Substrates y atmosfera_ · (high/M · audiencia)
   - Una pagina de fintech recibe teal-orange/noir frio y sobrio; una de gastronomia recibe golden-hour/brasas calidas; una de belleza recibe glints/bokeh joya. El mood deja de ser aleatorio y empieza a HA…
