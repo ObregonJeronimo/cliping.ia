@@ -9,7 +9,8 @@
 ## ✅ Hecho (log)
 - **[audiencia] `audience` de 1ra clase en el brief** — perception.py infiere y emite `audience{who, register(formal/casual/warm), awareness(unaware/problem/solution/product/most)}`; cache v2→v3.
 - **[copy] copy según awareness** — el tagline/claim/cta se escriben según la etapa del comprador + tono por register.
-- _Próximo: que el MOTOR consuma la audiencia (awareness→arco/gancho, register→motion/tipografía)._
+- **[audiencia] el MOTOR consume la audiencia** — `buildArcSmart` abre con HOOK cuando el público está unaware/problem (engancha/nombra el dolor); `register` nudgea la seriedad efectiva (formal +0.15 sobrio / casual −0.12 relajado / warm −0.05) que rige TODA la selección de módulos (`fitWeight`). Gates QA OK.
+- _Próximo: declarar register/intensity EXPLÍCITOS en personalidades de motion + transiciones + post (hoy el eje seriedad no discrimina del todo)._
 
 ---
 

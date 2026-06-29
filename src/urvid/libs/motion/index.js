@@ -24,6 +24,7 @@ function P(id, opts, meta = {}) {
   register({
     id, lib: 'motion', category: 'personalities',
     tones: meta.tones || ['dark', 'light'], rubros: meta.rubros || ['*'], weight: meta.weight || 1, tags: meta.tags || [],
+    register: meta.register, intensity: meta.intensity,   // EJES EXPLICITOS (vibe/peso): el scorer los usa directo en vez de inferir de tags (mas preciso para el match con la seriedad+audiencia).
     make() {
       return {
         id,
@@ -41,59 +42,59 @@ function P(id, opts, meta = {}) {
 P('motion.personality.clean', {
   ease: eOutCubic, settle: p => spring(p, { zeta: 0.6, freq: 2.0 }), smooth: eInOutCubic,
   stagger: 0.16, enter: { dx: 0, dy: 14, scale: 0.02, rotate: 0 }, enterDur: 0.5,
-}, { weight: 1.3, tags: ['limpio', 'sobrio', 'universal'] })
+}, { weight: 1.3, register: 'neutral', intensity: 'soft', tags: ['limpio', 'sobrio', 'universal'] })
 
 P('motion.personality.snappy', {
   ease: eOutQuint, settle: p => eOutBack(p, 2.2),
   stagger: 0.1, enter: { dx: 0, dy: 20, scale: 0.03, rotate: 0 }, enterDur: 0.42, life: 0.35,
-}, { weight: 1.1, tags: ['rapido', 'energico', 'snappy'] })
+}, { weight: 1.1, register: 'friendly', intensity: 'bold', tags: ['rapido', 'energico', 'snappy'] })
 
 P('motion.personality.bouncy', {
   ease: eOutCubic, settle: p => spring(p, { zeta: 0.32, freq: 2.4 }),
   stagger: 0.12, enter: { dx: 0, dy: 10, scale: 0.06, rotate: 0 }, enterDur: 0.5,
-}, { weight: 0.9, rubros: ['*', 'gastronomia', 'fitness', 'educacion', 'eventos'], tags: ['jugado', 'divertido', 'rebote'] })
+}, { weight: 0.9, register: 'playful', intensity: 'bold', rubros: ['*', 'gastronomia', 'fitness', 'educacion', 'eventos'], tags: ['jugado', 'divertido', 'rebote'] })
 
 P('motion.personality.cine', {
   ease: eInOutCubic, settle: p => spring(p, { zeta: 0.72, freq: 1.6 }), smooth: eInOutCubic,
   stagger: 0.2, enter: { dx: 0, dy: 0, scale: 0.04, rotate: 0 }, enterDur: 0.72, ambient: breathe, life: 1.0,
-}, { weight: 1, tags: ['cinematografico', 'calmo', 'premium'] })
+}, { weight: 1, register: 'editorial', intensity: 'calm', tags: ['cinematografico', 'calmo', 'premium'] })
 
 P('motion.personality.precise', {
   ease: eOutExpo, settle: p => spring(p, { zeta: 0.85, freq: 2.2 }),
   stagger: 0.08, enter: { dx: 0, dy: 8, scale: 0.012, rotate: 0 }, enterDur: 0.4, ambient: calm, life: 0.32,
-}, { weight: 1, rubros: ['*', 'finanzas', 'inmobiliaria', 'tech', 'salud'], tags: ['preciso', 'tecnico', 'corporativo'] })
+}, { weight: 1, register: 'corporate', intensity: 'calm', rubros: ['*', 'finanzas', 'inmobiliaria', 'tech', 'salud'], tags: ['preciso', 'tecnico', 'corporativo'] })
 
 P('motion.personality.elastic', {
   ease: eOutQuint, settle: p => spring(p, { zeta: 0.26, freq: 2.6 }),
   stagger: 0.14, enter: { dx: 0, dy: 8, scale: 0.05, rotate: 0 }, enterDur: 0.55,
-}, { weight: 0.85, rubros: ['*', 'gastronomia', 'fitness', 'moda', 'eventos'], tags: ['elastico', 'jugado'] })
+}, { weight: 0.85, register: 'playful', intensity: 'bold', rubros: ['*', 'gastronomia', 'fitness', 'moda', 'eventos'], tags: ['elastico', 'jugado'] })
 
 P('motion.personality.drift', {
   ease: eOutCubic, settle: p => spring(p, { zeta: 0.75, freq: 1.7 }),
   stagger: 0.22, enter: { dx: 0, dy: 18, scale: 0.02, rotate: 0 }, enterDur: 0.8, ambient: driftAmb, life: 0.95,
-}, { weight: 0.9, tags: ['organico', 'suave', 'calmo'] })
+}, { weight: 0.9, register: 'friendly', intensity: 'calm', tags: ['organico', 'suave', 'calmo'] })
 
 P('motion.personality.punch', {
   ease: eOutExpo, settle: p => eOutBack(p, 3.0),
   stagger: 0.09, enter: { dx: 0, dy: 24, scale: 0.08, rotate: 0 }, enterDur: 0.38, life: 0.3,
-}, { weight: 1, rubros: ['*', 'fitness', 'eventos', 'tech'], tags: ['impacto', 'potente', 'bold'] })
+}, { weight: 1, register: 'friendly', intensity: 'loud', rubros: ['*', 'fitness', 'eventos', 'tech'], tags: ['impacto', 'potente', 'bold'] })
 
 P('motion.personality.glide', {
   ease: eOutQuart, settle: p => spring(p, { zeta: 0.6, freq: 2.0 }),
   stagger: 0.12, enter: { dx: 34, dy: 0, scale: 0, rotate: 0 }, enterDur: 0.55, ambient: swayX, life: 0.7,
-}, { weight: 0.95, tags: ['lateral', 'editorial', 'fluido'] })
+}, { weight: 0.95, register: 'editorial', intensity: 'soft', tags: ['lateral', 'editorial', 'fluido'] })
 
 P('motion.personality.soft', {
   ease: eOutCubic, settle: p => spring(p, { zeta: 0.78, freq: 1.8 }),
   stagger: 0.18, enter: { dx: 0, dy: 10, scale: 0.015, rotate: 0 }, enterDur: 0.55, ambient: breathe, life: 0.75,
-}, { weight: 1, rubros: ['*', 'salud', 'belleza', 'educacion', 'gastronomia'], tags: ['suave', 'amigable', 'calido'] })
+}, { weight: 1, register: 'friendly', intensity: 'soft', rubros: ['*', 'salud', 'belleza', 'educacion', 'gastronomia'], tags: ['suave', 'amigable', 'calido'] })
 
 P('motion.personality.kinetic', {
   ease: eOutQuint, settle: p => eOutBack(p, 2.0),
   stagger: 0.07, enter: { dx: 0, dy: 16, scale: 0.03, rotate: 0 }, enterDur: 0.4, life: 0.4,
-}, { weight: 0.95, tags: ['kinetico', 'rapido', 'energico'] })
+}, { weight: 0.95, register: 'friendly', intensity: 'bold', tags: ['kinetico', 'rapido', 'energico'] })
 
 P('motion.personality.tilt', {
   ease: eOutCubic, settle: p => spring(p, { zeta: 0.5, freq: 2.0 }),
   stagger: 0.13, enter: { dx: 10, dy: 8, scale: 0.03, rotate: 0.03 }, enterDur: 0.5, ambient: tiltAmb, life: 0.6,
-}, { weight: 0.8, rubros: ['*', 'moda', 'eventos', 'default'], tags: ['dinamico', 'editorial', 'tilt'] })
+}, { weight: 0.8, register: 'editorial', intensity: 'medium', rubros: ['*', 'moda', 'eventos', 'default'], tags: ['dinamico', 'editorial', 'tilt'] })
