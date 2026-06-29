@@ -133,13 +133,47 @@ _JS_EXTRACT = r"""
   if (ico) logoRaw = ico.getAttribute('href') || ico.getAttribute('content') || '';
   let logo = '';
   try { logo = logoRaw ? new URL(logoRaw, location.href).href : ''; } catch (e) { logo = ''; }
+  // DATOS DECLARADOS por la marca (structured data): JSON-LD + OpenGraph product + meta keywords. Definen con precision
+  // rubro/precio/moneda/rating/region/B2B-B2C SIN que el modelo adivine -> mejor inferencia de AUDIENCIA (gama, poder
+  // adquisitivo, region=moneda). Best-effort: cada parse va en try, una pagina sin structured data devuelve campos "".
+  const ld = [];
+  for (const s of document.querySelectorAll('script[type="application/ld+json" i]')) {
+    try {
+      const j = JSON.parse(s.textContent);
+      const arr = Array.isArray(j) ? j : (j && j['@graph'] ? j['@graph'] : [j]);
+      for (const o of arr) if (o && typeof o === 'object') ld.push(o);
+    } catch (e) {}
+    if (ld.length > 40) break;
+  }
+  const ldTypes = uniq([].concat(...ld.map(o => Array.isArray(o['@type']) ? o['@type'] : [o['@type']]))
+    .filter(t => typeof t === 'string').map(t => t.toLowerCase())).slice(0, 8);
+  let price = '', currency = '', priceRange = '', ratingVal = '', ratingCount = '', region = '';
+  for (const o of ld) {
+    const off = o.offers && (Array.isArray(o.offers) ? o.offers[0] : o.offers);
+    if (!price && off && (off.price || off.lowPrice)) { price = String(off.price || off.lowPrice).slice(0, 16); currency = String(off.priceCurrency || '').slice(0, 6); }
+    if (!priceRange && o.priceRange) priceRange = String(o.priceRange).slice(0, 16);
+    const ar = o.aggregateRating;
+    if (!ratingVal && ar && ar.ratingValue != null) { ratingVal = String(ar.ratingValue).slice(0, 6); ratingCount = String(ar.reviewCount || ar.ratingCount || '').slice(0, 8); }
+    const addr = o.address && (Array.isArray(o.address) ? o.address[0] : o.address);
+    if (!region && addr && typeof addr === 'object') region = clean([addr.addressLocality, addr.addressRegion, addr.addressCountry].filter(Boolean).join(', ')).slice(0, 50);
+    if (!region && typeof o.areaServed === 'string') region = clean(o.areaServed).slice(0, 50);
+  }
+  if (!price) { price = clean(meta('meta[property="product:price:amount"]', 'content') || meta('meta[property="og:price:amount"]', 'content')).slice(0, 16); }
+  if (!currency) { currency = clean(meta('meta[property="product:price:currency"]', 'content') || meta('meta[property="og:price:currency"]', 'content')).slice(0, 6); }
+  const structured = {
+    types: ldTypes,
+    keywords: clean(meta('meta[name="keywords"]', 'content')).slice(0, 200),
+    ogType: clean(meta('meta[property="og:type"]', 'content')).slice(0, 40),
+    locale: clean(meta('meta[property="og:locale"]', 'content') || document.documentElement.lang).slice(0, 12),
+    price, currency, priceRange, ratingValue: ratingVal, ratingCount, region,
+  };
   return {
     lang: clean(document.documentElement.lang).slice(0, 5),
     title: clean(document.title),
     siteName: meta('meta[property="og:site_name"]', 'content'),
     description: clean(meta('meta[name="description"]', 'content') || meta('meta[property="og:description"]', 'content')).slice(0, 300),
     themeColor: meta('meta[name="theme-color"]', 'content'),
-    logo, headings, nav, ctas, paragraphs,
+    logo, headings, nav, ctas, paragraphs, structured,
     bodyText: clean(document.body && document.body.innerText).slice(0, 4000),
   };
 }

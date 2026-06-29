@@ -110,6 +110,22 @@ def _page_digest(content):
     if CTA: parts.append("Botones/CTA: " + " | ".join(_clip(x, 30) for x in CTA))
     P = [x for x in (c.get("paragraphs") or []) if isinstance(x, str)][:8]
     if P: parts.append("Parrafos: " + " || ".join(_clip(p, 180) for p in P))
+    # DATOS DECLARADOS (structured data de la captura): anclan la AUDIENCIA en hechos, no en adivinanza.
+    s = c.get("structured") if isinstance(c.get("structured"), dict) else {}
+    decl = []
+    types = [t for t in (s.get("types") or []) if isinstance(t, str)][:6]
+    if types: decl.append("tipo schema.org: " + ", ".join(types))
+    if s.get("ogType"): decl.append("og:type: " + _clip(s["ogType"], 30))
+    pr = (str(s.get("price") or "") + " " + str(s.get("currency") or "")).strip()
+    if pr: decl.append("precio: " + _clip(pr, 24))
+    elif s.get("priceRange"): decl.append("rango precio: " + _clip(s["priceRange"], 24))
+    if s.get("ratingValue"):
+        rc = _clip(str(s.get("ratingCount") or ""), 8)
+        decl.append("rating: " + _clip(str(s["ratingValue"]), 8) + (f" ({rc} reseñas)" if rc else ""))
+    if s.get("region"): decl.append("region/zona: " + _clip(s["region"], 50))
+    if s.get("keywords"): decl.append("keywords: " + _clip(s["keywords"], 160))
+    if decl:
+        parts.append("DATOS DECLARADOS por la marca (usalos para inferir AUDIENCIA: gama/poder adquisitivo, region=moneda, B2B vs B2C): " + " | ".join(decl))
     if not parts and c.get("bodyText"): parts.append("Texto: " + _clip(c["bodyText"], 1500))
     return "\n".join(parts)[:5000]
 
