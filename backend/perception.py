@@ -32,7 +32,7 @@ _SYS = (
     '- "claim": el mensaje principal del reel, una frase COMPLETA, MAX 12 palabras y <=76 caracteres, concreto y fiel a la pagina\n'
     '- "cta": llamado a la accion corto, MAX 4 palabras y <=22 caracteres (preferi el CTA real de la pagina si hay)\n'
     '- "bullets": 2 a 4 props/beneficios CORTOS y COMPLETOS (cada uno MAX 5 palabras y <=30 caracteres, una FRASE CON SENTIDO). Es un LIMITE DURO: si la idea no entra, REESCRIBILA mas corta (no la recortes) manteniendo el sentido; NUNCA dejes un fragmento sin su sustantivo (MAL: "Tienda online de alto", "PDV integrado al digital"; BIEN: "Alto rendimiento", "PDV integrado"). [] si no hay claros.\n'
-    '- "stats": 0 a 2 datos numericos REALES que COMUNIQUEN un logro/beneficio, cada uno {"value": "92%" | "+600" | "4.9", "label": "etiqueta DESCRIPTIVA de 3 a 6 palabras y <=28 caracteres: QUE es el numero"} (ej {"value":"92%","label":"de clientes lo recomienda"}). El value es la cifra; el label explica que significa para que la escena DIGA algo (no un numero suelto). NO incluyas precios sueltos, anios/fechas, telefonos ni codigos. [] si no hay datos que digan algo.\n'
+    '- "stats": 0 a 2 datos numericos REALES que COMUNIQUEN un logro/beneficio, cada uno {"value": "92%" | "+600" | "4.9", "label": "etiqueta DESCRIPTIVA de 3 a 6 palabras y <=28 caracteres: QUE es el numero"} (ej {"value":"92%","label":"de clientes lo recomienda"}). El value es SOLO la cifra con su unidad (92%, +600, £12B, 4.9) — SIN simbolos decorativos como estrellas (★), flechas (->), checks (✓) ni emojis: el motor dibuja estrellas e iconos como graficos aparte. El label explica que significa para que la escena DIGA algo (no un numero suelto). NO incluyas precios sueltos, anios/fechas, telefonos ni codigos. [] si no hay datos que digan algo.\n'
     '- "proof": una linea de prueba social REAL (rating, cant. de clientes, premio) o "" si no hay\n'
     '- "seriousness": numero 0 a 1 (salud/finanzas alto ~0.8; gastronomia/moda bajo ~0.35)\n'
     '- "audience": objeto con A QUIEN le habla el reel, inferido de la pagina: {"who": "el publico objetivo en 2-5 palabras (ej: duenos de PyMEs, madres jovenes, gamers, profesionales de la salud)", "register": "formal" | "casual" | "warm" (como hablarle a ese publico), "awareness": UNA de "unaware" | "problem" | "solution" | "product" | "most" = la ETAPA DE CONSCIENCIA del comprador: unaware (no sabe que tiene el problema), problem (siente el problema pero no busca solucion), solution (busca soluciones), product (compara productos/marcas), most (listo para comprar, solo necesita el empujon)}. Es CLAVE: define el gancho y el tono del reel.\n'
@@ -158,12 +158,18 @@ def _norm_list(v, n, maxlen):
     return out
 
 
+# quita simbolos DECORATIVOS (estrellas/flechas/checks/emojis) que el LLM a veces mete en cifras/copy: las fuentes
+# display del motor pueden no tenerlos -> renderizan como caja (tofu). El motor dibuja estrellas/iconos como VECTORES.
+_DECOR = re.compile("[\u2022\u2190-\u21ff\u2300-\u27bf\u2b00-\u2bff\ufe0f]|[\U0001f000-\U0001faff]")
+def _no_decor(s):
+    return re.sub(r"\s{2,}", " ", _DECOR.sub("", str(s or ""))).strip()
+
 def _norm_stats(v):
     out = []
     if isinstance(v, list):
         for it in v:
             if isinstance(it, dict) and (it.get("value") not in (None, "")):
-                out.append({"value": _clip(it.get("value"), 12), "label": _clip_words(it.get("label"), 28)})
+                out.append({"value": _no_decor(_clip(it.get("value"), 12)), "label": _clip_words(it.get("label"), 28)})
             if len(out) >= 3:
                 break
     return out

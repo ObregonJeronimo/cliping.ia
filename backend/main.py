@@ -477,7 +477,7 @@ async def urvid_perceive(req: PerceiveRequest):
             print(f"[perceive] upload screenshot fallo: {e}")
     # "v2-": version del SCHEMA del brief (claim/tagline/cta + bullets/stats/proof). Bumpear si cambia el shape ->
     # invalida cache vieja (no servir briefs sin el material nuevo). El cache por URL sigue evitando re-llamar a Claude.
-    ckey = "v5-" + _brand_cache_key(req.url)   # v5: bullets completos (prompt: frase con sentido, no fragmentos) + copy en el IDIOMA de la pagina (content.lang) + audience (who/register/awareness)
+    ckey = "v6-" + _brand_cache_key(req.url)   # v6: stats sin simbolos decorativos (tofu) + bullets completos (prompt: frase con sentido, no fragmentos) + copy en el IDIOMA de la pagina (content.lang) + audience (who/register/awareness)
     chash = _content_fingerprint(site)
     # memkey scopeado POR USUARIO: antes el cache in-memory cruzaba usuarios (el analisis de A se servia a B). El de
     # Firestore ya era por uid; ahora el in-memory tambien.
