@@ -18,6 +18,15 @@ import { place } from '../../core/layout.js'
 const _DM = defaultMotion()
 const _DTK = defaultTypekit()
 
+// DISPLAY -> typekit. dWrap/dDraw enrutan el texto DISPLAY (titulos/claims/taglines) por env.typekit en vez de drawText
+// directo -> el efecto cinetico elegido por el director alcanza TODO el display, no solo las ~6 escenas que ya lo usaban.
+// MISMO fitting/medicion que core (el typekit fitea con fitFont/wrap/clip y, con reveal>=1 o sin reveal, delega 1:1 a
+// drawWrapped/drawText). REGLAS: (1) NO dentro de un ctx.scale/translate de entrada (el efecto se sumaria -> doble-anim):
+// ahi pasar SIN reveal. (2) NO para body/parrafos (fonts.text), kickers/labels (fonts.accent), numeros gigantes en scale,
+// ni items de lista (fitUniform). Solo copy-display. Sin reveal == drawText (estado final identico -> gates intactos).
+function dWrap(env, ctx, str, x, y, opts = {}) { return (env.typekit || _DTK).drawWrapped(ctx, str, x, y, opts) }
+function dDraw(env, ctx, str, x, y, opts = {}) { return (env.typekit || _DTK).draw(ctx, str, x, y, opts) }
+
 // helper local: divide un texto largo en frases/items por separadores comunes (·, •, |, /, coma, salto).
 // devuelve hasta `max` items limpios; si no hay separador, cae a 1 item con el string entero.
 function splitItems(str, max = 4) {
@@ -813,7 +822,7 @@ register({
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     // pregunta arriba, en tinta
     ctx.save(); ctx.globalAlpha = inv(t, 0.1, 0.5)
-    drawWrapped(ctx, content.tagline || content.claim || '¿Seguis perdiendo tiempo?', cx, H * 0.32, { size: 32, weight: 800, family: fonts.display, maxW: W * 0.82, color: pal.ink, maxLines: 3, lh: 1.14, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.45)' : null })
+    dWrap(env, ctx, content.tagline || content.claim || '¿Seguis perdiendo tiempo?', cx, H * 0.32, { reveal: inv(t, 0.1, 0.55), size: 32, weight: 800, family: fonts.display, maxW: W * 0.82, color: pal.ink, maxLines: 3, lh: 1.14, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.45)' : null })
     ctx.restore()
     // dos opciones tipo "si / no" como chips contrapuestos (uno acento, uno dim)
     let labels = splitItems(content.claim || content.tagline || '', 2)
