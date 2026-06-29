@@ -6,6 +6,12 @@
 import { seedFor, shuffled } from './prng.js'
 
 const NUM = /(?:^|[^\w])([+\-]?\$?\s?\d[\d.,]*\s?(?:%|x|k|mil|millones)?)/i
+// SEÑALES de AUDIENCIA en el copy (es-AR): URGENCIA/escasez (mueve el arco al gancho y favorece CTA), NAMING explicito
+// del publico (habla directo -> favorece statement editorial), y VALENCIA (un dolor nombrado tambien es gancho).
+const URGENCY = /\b(ya|ahora|hoy|urgent|aprovech|[uú]ltim[oa]s?|qued[ae]n|cupos?|vence|solo por|solo hoy|por tiempo|no te lo pierdas|apur|oferta|descuent|promo|rebaja|liquidaci|gratis|antes de que|termina)\b/i
+const AUD_NAMED = /\b(para vos|para ti|para tu|para empresas|para pymes|para profesionales|para mam[aá]s|para emprendedores|pensado para|dise[nñ]ad[oa] para|ideal para|si sos|si ten[eé]s|para due[nñ]os|para tu negocio)\b/i
+const POS = /\b(mejor|f[aá]cil|r[aá]pid|gratis|incre[ií]ble|[eé]xito|libre|feliz|ahorr|simpl|disfrut|crec[eé])\b/i
+const NEG = /\b(problema|dolor|cansad|hart[oa]|perd[eé]?s?|error|dif[ií]cil|estr[eé]s|complic|frustr|miedo|riesgo|basta de|deja de|olvidate de|sin m[aá]s vueltas)\b/i
 
 // analiza el contenido -> señales booleanas/numericas que guian la estructura.
 export function analyzeContent(content = {}, rubro = 'default') {
@@ -25,6 +31,9 @@ export function analyzeContent(content = {}, rubro = 'default') {
     hasCompare: /\bvs\.?\b|antes|despu[eé]s|mejor que|m[aá]s que|menos que/i.test(all),
     hasProof: !!proof,   // SOLO con testimonio real de la perception. El heuristico por texto invitaba a reciclar el claim como "resena" (falso).
     longClaim: head.length > 42,
+    urgency: URGENCY.test(all),               // oferta/escasez -> abre con gancho y favorece la escena de CTA/cierre
+    audienceNamed: AUD_NAMED.test(all),       // "para vos/empresas/..." -> habla directo, favorece statement editorial
+    valence: NEG.test(all) ? 'neg' : (POS.test(all) ? 'pos' : 'neu'),   // un DOLOR nombrado (neg) tambien es gancho
     items,
   }
 }
@@ -37,7 +46,7 @@ export function buildArcSmart(seed, sig, awareness = 'solution', seriousness = 0
   // GARANTIA hook-2.5s + dirigido al publico: la SERIEDAD modula cuanto se arriesga a abrir con gancho (serio->hero
   // medido/creible; relajado->gancho directo). Promesa/dolor (claim con cuerpo o comparacion) sube la prob de gancho aun
   // en rubros serios REUSANDO el mismo draw del else-if final (no consume PRNG extra -> el cuerpo del arco queda IGUAL).
-  const hookProb = Math.max(0.5 * (1 - seriousness), (sig.hasCompare || sig.longClaim) ? 0.5 : 0)
+  const hookProb = Math.max(0.5 * (1 - seriousness), (sig.hasCompare || sig.longClaim || sig.urgency || sig.valence === 'neg') ? 0.5 : 0)
   if (sig.isQuestion) open = 'openers/hook'
   // AUDIENCIA: si el publico aun NO busca (unaware) o recien SIENTE el problema, hay que ENGANCHAR fuerte / nombrar el dolor -> hook.
   else if (awareness === 'unaware' || awareness === 'problem') open = 'openers/hook'
@@ -78,6 +87,8 @@ const RULES = [
   { on: s => s.hasList, tags: ['lista', 'checklist', 'pasos', 'grilla'], boost: 2 },
   { on: s => s.hasProof, tags: ['prueba-social', 'rating', 'estrellas', 'cita', 'logos'], boost: 2.4 },
   { on: s => s.longClaim, tags: ['mega-tipografia', 'editorial', 'masivo'], boost: 1.6 },
+  { on: s => s.urgency, tags: ['cta', 'cierre', 'gancho', 'oferta', 'urgencia', 'ya', 'promo', 'descuento'], boost: 1.8 },   // oferta/escasez -> escenas de CTA/cierre fuertes
+  { on: s => s.audienceNamed, tags: ['editorial', 'mensaje', 'masivo', 'mega-tipografia', 'statement'], boost: 1.4 },        // habla directo al publico -> statement editorial
 ]
 export function sceneBias(mod, sig) {
   let b = 1
