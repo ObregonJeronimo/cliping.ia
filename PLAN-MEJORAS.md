@@ -7,7 +7,9 @@
 **Totales:** 127 mejoras · por impacto: {'high': 47, 'med': 59, 'low': 21} · por categoría: {'audiencia': 37, 'copy': 5, 'calidad-visual': 17, 'motion-graphics': 14, 'color': 9, 'performance': 7, 'ux': 14, 'tipografia': 3, 'arquitectura': 21}.
 
 ## ✅ Hecho (log)
-- **[audiencia] `audience` de 1ra clase en el brief** — perception.py infiere y emite `audience{who, register(formal/casual/warm), awareness(unaware/problem/solution/product/most)}`; cache v2→v3. _Falta: que el motor lo CONSUMA (próximo)._
+- **[audiencia] `audience` de 1ra clase en el brief** — perception.py infiere y emite `audience{who, register(formal/casual/warm), awareness(unaware/problem/solution/product/most)}`; cache v2→v3.
+- **[copy] copy según awareness** — el tagline/claim/cta se escriben según la etapa del comprador + tono por register.
+- _Próximo: que el MOTOR consuma la audiencia (awareness→arco/gancho, register→motion/tipografía)._
 
 ---
 
@@ -15,7 +17,7 @@
 
 - [ ] **Cosechar datos estructurados JSON-LD / OpenGraph product / meta keywords (la senal de publ…** · _Captura del sitio_ · (high/S · audiencia)
   - Obtiene rubro, precio, moneda, rating y zona DECLARADOS por la marca en formato limpio: define con precision si el publico es premium/masivo, local/global, B2B/B2C, sin que el modelo adivine. Es la me…
-- [ ] **Reescribir el copy hablandole a la persona, con few-shot por awareness-stage en el prompt** · _Percepcion y brief (inferencia de marca y AUDIENCIA)_ · (high/S · copy)
+- [x] **Reescribir el copy hablandole a la persona, con few-shot por awareness-stage en el prompt** ✅ regla COPY-SEGUN-AWARENESS + tono por register · _Percepcion y brief (inferencia de marca y AUDIENCIA)_ · (high/S · copy)
   - El texto que se ve en el reel pasa de 'fiel a la marca' a 'relevante para el lector': usa su jerga, nombra su dolor y promete su resultado. Es lo que hace que el publico de la pagina sienta que el vid…
 - [ ] **Normalizar diacriticos/sinonimos en el ruteo de animacion y escena por contenido** · _Director / ensamblado (makeVideo)_ · (high/S · audiencia)
   - Las animaciones e iconos que ve el publico corresponden de verdad a lo que ofrece la pagina (carrito para ecommerce, estrella para reseñas), reforzando el mensaje en vez de mostrar un icono generico d…
@@ -310,7 +312,7 @@ El subsistema de targeting de audiencia es un pipeline transversal que atraviesa
 
 **Top 3:** Agregar un objeto `audience` REAL al brief de perception (persona + jo… · Hacer que el motor vivo CONSUMA la audiencia: pasar `audience` por mak… · Reescribir el copy del brief (tagline/claim/cta/bullets) HABLANDOLE a…
 
-- [ ] **Reescribir el copy hablandole a la persona, con few-shot por awareness-stage en el prompt** _(high/S · copy)_
+- [x] **Reescribir el copy hablandole a la persona, con few-shot por awareness-stage en el prompt** ✅ regla COPY-SEGUN-AWARENESS + tono por register _(high/S · copy)_
   - **Por qué:** El prompt actual pide 'el mensaje principal del reel, fiel a la pagina' y 'props/beneficios sacados de los titulos reales'. Es fidelidad a la MARCA, no relevancia para el PUBLICO. Best-practice 2026 (…
   - **Cómo:** En perception._SYS: tras inferir audience, instruir explicitamente: 'ESCRIBI tagline/claim/cta/bullets HABLANDOLE a audience.persona, usando audience.lexicon, atacando audience.pain y prometiendo audience.desire. El claim debe ser un hook que frene el scroll d… `perception.py`
   - **Audiencia:** El texto que se ve en el reel pasa de 'fiel a la marca' a 'relevante para el lector': usa su jerga, nombra su dolor y promete su resultado. Es lo que hace que e…
