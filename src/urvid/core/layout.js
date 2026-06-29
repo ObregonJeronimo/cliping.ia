@@ -27,8 +27,11 @@ const KIND = {
 // ARRANGER generico: apila los slots en una columna dentro del area segura, repartiendo el alto por peso para LLENAR.
 // preset = { align:'left'|'center'|'right', anchor:'top'|'center'|'bottom', side, gap, topPad, botPad }. Puro.
 export function arrange(request, preset = {}) {
-  const { align = 'center', anchor = 'center', side = 0.1, gap = 0.035, topPad = 0.12, botPad = 0.13 } = preset
-  const sideM = W * side, topM = H * topPad, botM = H * botPad
+  const { align = 'center', anchor = 'center', side = 0.1, gap = 0.035, topPad = 0.12, botPad = 0.13, reelBias = 1 } = preset
+  const tall = clamp((H / W - 1) / (16 / 9 - 1), 0, 1) * reelBias
+  const botBias = 0.07 * tall
+  const topBias = 0.02 * tall
+  const sideM = W * side, topM = H * (topPad + topBias), botM = H * (botPad + botBias)
   const availW = W - sideM * 2, availH = H - topM - botM
   const slots = (request || []).filter(Boolean)
   const n = slots.length || 1

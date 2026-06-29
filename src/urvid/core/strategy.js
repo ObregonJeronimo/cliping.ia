@@ -31,17 +31,20 @@ export function analyzeContent(content = {}, rubro = 'default') {
 
 // ARCO CONSCIENTE del contenido: apertura segun la señal dominante, 1-3 beats de cuerpo que matchean las señales
 // (sin repetir), cierre. El seed desempata y agrega variedad cuando faltan señales.
-export function buildArcSmart(seed, sig, awareness = 'solution', seriousness = 0.5) {
+export function buildArcSmart(seed, sig, awareness = 'solution', seriousness = 0.5, duration = 'medio') {
   const r = seedFor(seed, 'arc')
   let open = 'openers/hero'
-  // La SERIEDAD del publico modula cuanto se arriesga el arco a abrir con gancho: un publico serio (salud/finanzas, 0.85)
-  // abre MEDIDO (hero, marca-forward, creible); uno relajado (gastronomia/moda/eventos, 0.3) admite mas gancho directo.
-  const hookProb = 0.5 * (1 - seriousness)                 // serio ~0.07 ; relajado ~0.35
+  // GARANTIA hook-2.5s + dirigido al publico: la SERIEDAD modula cuanto se arriesga a abrir con gancho (serio->hero
+  // medido/creible; relajado->gancho directo). Promesa/dolor (claim con cuerpo o comparacion) sube la prob de gancho aun
+  // en rubros serios REUSANDO el mismo draw del else-if final (no consume PRNG extra -> el cuerpo del arco queda IGUAL).
+  const hookProb = Math.max(0.5 * (1 - seriousness), (sig.hasCompare || sig.longClaim) ? 0.5 : 0)
   if (sig.isQuestion) open = 'openers/hook'
   // AUDIENCIA: si el publico aun NO busca (unaware) o recien SIENTE el problema, hay que ENGANCHAR fuerte / nombrar el dolor -> hook.
   else if (awareness === 'unaware' || awareness === 'problem') open = 'openers/hook'
   else if (sig.hasData && r() < 0.7) open = 'openers/hook'
   else if (r() < hookProb) open = 'openers/hook'
+  // Un DATO SIEMPRE abre con numero (gran gancho): override de la DECISION, no de la secuencia -> no re-rollea el cuerpo.
+  if (sig.hasData) open = 'openers/hook'
   // beats que pide el contenido (en orden de prioridad), sin repetir
   const want = []
   if (sig.hasData) want.push(r() < 0.5 ? 'data/single' : 'data/multi')
@@ -57,10 +60,13 @@ export function buildArcSmart(seed, sig, awareness = 'solution', seriousness = 0
   // completar hasta 1-3 beats con cuerpo variado. SOLO beats de TEXTO (derivan del claim/tagline real): los beats
   // de data/proof/comparison salen UNICAMENTE de `want` (señales reales) -> el director nunca rellena con un grafico
   // o un testimonio cuando no hay datos que mostrar (eso obligaba a las escenas a fabricar numeros/citas).
+  // DURACION 'corto' alcanzable: el cuerpo se acota a 1 beat (arco de 3: opener+1+outro -> el target ~8s se logra).
+  // bodyCap se aplica DESPUES de consumir los mismos draws de r() (shuffled/target abajo) -> medio/largo byte-identicos.
+  const bodyCap = duration === 'corto' ? 1 : 3
   const filler = shuffled(r, ['statements/editorial', 'lists/checklist'])
-  const target = Math.max(body.length, 1 + (r() * 3 | 0))
-  for (const c of filler) { if (body.length >= target || body.length >= 3) break; if (body.indexOf(c) < 0) body.push(c) }
-  return [open, ...body.slice(0, 3), 'closers/outro']
+  const target = Math.min(bodyCap, Math.max(body.length, 1 + (r() * 3 | 0)))
+  for (const c of filler) { if (body.length >= target || body.length >= bodyCap) break; if (body.indexOf(c) < 0) body.push(c) }
+  return [open, ...body.slice(0, bodyCap), 'closers/outro']
 }
 
 // SESGO de eleccion de escena por señales: boost a los modulos cuyos tags matchean el contenido (un beat de hook

@@ -1121,7 +1121,7 @@ register({
     // idea negada arriba, en dim, con tachado de acento que se traza
     const ba = inv(t, 0.1, 0.55)
     ctx.save(); ctx.globalAlpha = ba
-    drawWrapped(ctx, bad, mx, H * 0.36, { size: 30, weight: 700, family: fonts.display, maxW: W * 0.76, color: pal.dim, align: 'left', maxLines: 2, lh: 1.12 })
+    drawWrapped(ctx, bad, mx, H * 0.36, { size: 30, weight: 700, family: fonts.display, maxW: W * 0.76, color: pal.dim, align: 'left', maxLines: 3, min: 13, lh: 1.12 })
     ctx.restore()
     ctx.font = `700 30px "${fonts.display}"`
     const bw = Math.min(W * 0.76, ctx.measureText(bad).width)
@@ -1131,7 +1131,7 @@ register({
     // idea buena abajo, en tinta, fuerte, sube
     const ga = inv(t, 0.55, 1.05), rise = M.settle(ga, 1.2)
     ctx.save(); ctx.globalAlpha = ga; ctx.translate(0, (1 - rise) * 26)
-    drawWrapped(ctx, good, mx, H * 0.56, { size: 42, weight: 800, family: fonts.display, maxW: W * 0.8, color: pal.ink, align: 'left', maxLines: 3, lh: 1.08, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.45)' : null })
+    drawWrapped(ctx, good, mx, H * 0.56, { size: 42, weight: 800, family: fonts.display, maxW: W * 0.8, color: pal.ink, align: 'left', maxLines: 3, min: 13, lh: 1.08, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.45)' : null })
     ctx.restore()
     // chevron de acento que apunta a la idea buena + VIDA: deriva + glow pulsante (continuo)
     const chp = M.ease(inv(t, 0.5, 0.95))

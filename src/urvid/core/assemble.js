@@ -18,7 +18,7 @@ import LOTTIE from '../lottie/manifest.js'
 
 // ARCO narrativo VARIADO por semilla: apertura (hook|hero) -> 1-3 beats de cuerpo SIN repetir -> cierre. Usa todas
 // las categorias de escena disponibles -> dos videos no comparten estructura (no siempre hero->statement->outro).
-const _DUR = { 'openers/hero': 4.0, 'openers/hook': 3.2, 'statements/editorial': 3.4, 'lists/checklist': 3.9, 'lists/comparison': 3.6, 'data/single': 3.0, 'data/multi': 3.6, 'social/proof': 3.4, 'closers/outro': 3.6 }
+const _DUR = { 'openers/hero': 3.0, 'openers/hook': 2.6, 'statements/editorial': 3.4, 'lists/checklist': 3.9, 'lists/comparison': 3.6, 'data/single': 3.0, 'data/multi': 3.6, 'social/proof': 3.4, 'closers/outro': 3.6 }   // openers cortos -> el gancho/mensaje cae <=2.5s tras el scaling de durK (garantia hook-2.5s)
 function buildArc(seed) {
   const r = seedFor(seed, 'arc')
   const open = pick(r, ['openers/hero', 'openers/hero', 'openers/hook'])
@@ -159,7 +159,7 @@ export function makeVideo(brief = {}) {
   // El REGISTER del publico nudgea la seriedad EFECTIVA: formal = mas sobrio; casual/warm = mas relajado (clamp 0..1).
   const _regNudge = { formal: 0.15, warm: -0.05, casual: -0.12 }[audience.register] || 0
   const seriousness = Math.max(0, Math.min(1, seriousness0 + _regNudge))
-  const arc = brief.arc || buildArcSmart(seed, sig, audience.awareness, seriousness).map(c => ({ category: c, dur: _DUR[c] || 3.4 }))
+  const arc = brief.arc || buildArcSmart(seed, sig, audience.awareness, seriousness, brief.duration || 'medio').map(c => ({ category: c, dur: _DUR[c] || 3.4 }))
   // SCORER de fit: peso × afinidad-rubro × match-seriedad(register) × match-intensidad. Reemplaza al viejo wadj.
   const fitCtx = { rubro, seriousness }
   const score = (m) => fitWeight(m, fitCtx)
