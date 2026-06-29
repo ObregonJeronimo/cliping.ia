@@ -11,7 +11,7 @@ import { FORMATS, clamp, hexToHsl } from './util.js'
 import { query, get } from './registry.js'
 import { seedFor, weightedPick, hashStr, stableSeed, pick, shuffled } from './prng.js'
 import { deriveFonts } from './fonts.js'
-import { analyzeContent, buildArcSmart, sceneBias } from './strategy.js'
+import { analyzeContent, buildArcSmart, sceneBias, atmoSubBias } from './strategy.js'
 import { fitWeight, canonRubro } from './fit.js'
 import { fitContent } from './script.js'
 import LOTTIE from '../lottie/manifest.js'
@@ -179,10 +179,10 @@ export function makeVideo(brief = {}) {
     return pool.length ? weightedPick(prng, pool, score) : null
   }
   // slot OPCIONAL (~prob): lock preserva presencia/ausencia; keep fija el id que vino; si no, sorteo de probabilidad.
-  const optional = (lockId, keepId, prng, prob, pool) => {
-    if (lock) { if (!lockId) return null; const m = get(lockId); return toneOk(m) ? m : (pool.length ? weightedPick(prng, pool, score) : null) }
+  const optional = (lockId, keepId, prng, prob, pool, scoreFn = score) => {
+    if (lock) { if (!lockId) return null; const m = get(lockId); return toneOk(m) ? m : (pool.length ? weightedPick(prng, pool, scoreFn) : null) }
     if (keepId) { const m = get(keepId); if (toneOk(m)) return m }
-    return (pool.length && prng() < prob) ? weightedPick(prng, pool, score) : null
+    return (pool.length && prng() < prob) ? weightedPick(prng, pool, scoreFn) : null
   }
 
   // COLOR (esquema/mood) + TIPOGRAFIA (pairing) de sus bibliotecas; fallback a los derivadores base
@@ -241,8 +241,8 @@ export function makeVideo(brief = {}) {
     }
   }
   const bg = required(lock && lock.bg, keep && keep.bg, seedFor(seed, 'bg'), bgPool)
-  const sub = optional(lock && lock.sub, keep && keep.sub, seedFor(seed, 'substrate'), 0.65, query('substrates', { tone }))
-  const atm = optional(lock && lock.atm, keep && keep.atm, seedFor(seed, 'atmosphere'), 0.55, query('atmosphere', { tone }))
+  const sub = optional(lock && lock.sub, keep && keep.sub, seedFor(seed, 'substrate'), 0.65, query('substrates', { tone }), m => score(m) * atmoSubBias(m, sig))
+  const atm = optional(lock && lock.atm, keep && keep.atm, seedFor(seed, 'atmosphere'), 0.55, query('atmosphere', { tone }), m => score(m) * atmoSubBias(m, sig))
 
   // ESCENAS: por cada beat del arco, query de scene-layouts de esa categoria -> pick por fit × sesgo de contenido.
   // Bajo lock se reusa el sceneId del mismo beat (el arco es identico: mismo seed+content) salvo incompat. de tono.

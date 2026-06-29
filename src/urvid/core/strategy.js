@@ -102,3 +102,23 @@ export function sceneBias(mod, sig) {
   for (const rule of RULES) if (rule.on(sig) && tags.some(t => rule.tags.indexOf(t) >= 0)) b *= rule.boost
   return b
 }
+
+// SESGO de ATMOSFERA/SUBSTRATE por señales del contenido (analogo a sceneBias, sobre las capas de fondo). Urgencia ->
+// mas ENERGICO; dolor(neg) -> sombrio; positivo -> calido; dato -> tecnico/editorial; audiencia-nombrada/claim-largo ->
+// editorial + LEGIBILIDAD (que se boostea TAMBIEN con urgencia -> el CTA urgente no pierde el scrim). SOLO boosts (>=1):
+// nunca penaliza, asi los guards de legibilidad jamas pierden peso relativo (APCA intacto). Tags REALES de las libs.
+const ATMO_SUB_RULES = [
+  { on: s => s.urgency, tags: ['volumetrico', 'destello', 'rayos', 'flare', 'barrido', 'spotlight', 'teal-orange', 'glow', 'estrella', 'tv', 'estatica'], boost: 1.7 },
+  { on: s => s.valence === 'neg', tags: ['sombra', 'nocturno', 'desaturado', 'contraste', 'gobo', 'craquelado', 'desgaste', 'manchas', 'grabado'], boost: 1.6 },
+  { on: s => s.valence === 'pos', tags: ['calido', 'bokeh', 'glow', 'destello', 'premium', 'vintage', 'analogico', 'cuero'], boost: 1.5 },
+  { on: s => s.hasData, tags: ['enmarque', 'grounding', 'piso', 'tecnico', 'digital', 'celdas', 'maquetacion', 'isometrico', 'guilloche', 'billete', 'seguridad'], boost: 1.5 },
+  { on: s => s.hasCompare, tags: ['lateral', 'vertical', 'diagonal', 'persiana', 'celdas', 'isometrico', 'maquetacion'], boost: 1.3 },
+  { on: s => s.valence === 'pos' || s.audienceNamed, tags: ['premium', 'cuero', 'tela', 'print', 'papel'], boost: 1.25 },
+  { on: s => s.urgency || s.longClaim || s.audienceNamed, tags: ['legibilidad', 'guard', 'vineta', 'foco', 'titulo', 'caption', 'editorial'], boost: 1.35 },
+]
+export function atmoSubBias(mod, sig) {
+  let b = 1
+  const tags = mod.tags || []
+  for (const rule of ATMO_SUB_RULES) if (rule.on(sig) && tags.some(t => rule.tags.indexOf(t) >= 0)) b *= rule.boost
+  return b
+}
