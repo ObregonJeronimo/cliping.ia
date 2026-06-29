@@ -353,6 +353,15 @@ async def capture_all(url: str, out_path: str, width: int = 1280, height: int = 
                     timeout=5000)
             except Exception:
                 pass
+            # SEÑAL CONCRETA (mejor que networkidle): esperar a que las WEBFONTS estén listas y APLICADAS antes del
+            # screenshot. Si no, la foto sale con la fuente de fallback -> el modelo multimodal lee mal la tipografia
+            # (y el FOUT cambia el layout del hero). document.fonts.ready es el gate real; va acotado por timeout.
+            try:
+                await page.evaluate(
+                    "async () => { try { if (document.fonts && document.fonts.ready) "
+                    "await Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 3000))]); } catch (e) {} }")
+            except Exception:
+                pass
             await page.wait_for_timeout(900)
             try:
                 data = await page.evaluate(_JS_EXTRACT)
