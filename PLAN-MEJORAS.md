@@ -6,6 +6,9 @@
 
 **Totales:** 127 mejoras · por impacto: {'high': 47, 'med': 59, 'low': 21} · por categoría: {'audiencia': 37, 'copy': 5, 'calidad-visual': 17, 'motion-graphics': 14, 'color': 9, 'performance': 7, 'ux': 14, 'tipografia': 3, 'arquitectura': 21}.
 
+## ✅ Hecho (log)
+- **[audiencia] `audience` de 1ra clase en el brief** — perception.py infiere y emite `audience{who, register(formal/casual/warm), awareness(unaware/problem/solution/product/most)}`; cache v2→v3. _Falta: que el motor lo CONSUMA (próximo)._
+
 ---
 
 ## ⭐ Prioridades — alto impacto
@@ -34,7 +37,7 @@
   - El reel hereda el ADN visual EXACTO de la marca (acento real del CTA + paleta) en vez de un color aproximado de un screenshot. La pieza se ve 'de la marca', lo que importa al publico que ya reconoce e…
 - [ ] **Rankear imagenes por relevancia de producto/publico y aptitud 9:16, no solo por area** · _Captura del sitio_ · (high/M · calidad-visual)
   - El primer frame / showcase muestra el PRODUCTO o servicio que le importa a ese publico, no un fondo decorativo. La imagen se vuelve relevante para el comprador en vez de relleno estetico.
-- [ ] **Inferir AUDIENCIA explicita (persona + JTBD + awareness-stage) como objeto del brief** · _Percepcion y brief (inferencia de marca y AUDIENCIA)_ · (high/M · audiencia)
+- [x] **Inferir AUDIENCIA explicita (persona + JTBD + awareness-stage) como objeto del brief** ✅ perception emite `audience{who,register,awareness}` (commit posterior) · _Percepcion y brief (inferencia de marca y AUDIENCIA)_ · (high/M · audiencia)
   - Es la pieza que convierte 'video de la industria X' en 'video para ESTE publico': sin un objeto audience explicito, todo el resto del pipeline no tiene a quien apuntarle. Habilita copy, arco y escenas…
 - [ ] **Que el motor VIVO consuma la audiencia (awareness-stage -> arco; emotional-driver -> sesgo…** · _Percepcion y brief (inferencia de marca y AUDIENCIA)_ · (high/M · audiencia)
   - El ARCO narrativo se adapta al estado mental del publico: a quien no conoce el problema se le abre con el dolor; a quien ya compara productos se le abre con la oferta. La misma marca genera videos dis…
@@ -311,7 +314,7 @@ El subsistema de targeting de audiencia es un pipeline transversal que atraviesa
   - **Por qué:** El prompt actual pide 'el mensaje principal del reel, fiel a la pagina' y 'props/beneficios sacados de los titulos reales'. Es fidelidad a la MARCA, no relevancia para el PUBLICO. Best-practice 2026 (…
   - **Cómo:** En perception._SYS: tras inferir audience, instruir explicitamente: 'ESCRIBI tagline/claim/cta/bullets HABLANDOLE a audience.persona, usando audience.lexicon, atacando audience.pain y prometiendo audience.desire. El claim debe ser un hook que frene el scroll d… `perception.py`
   - **Audiencia:** El texto que se ve en el reel pasa de 'fiel a la marca' a 'relevante para el lector': usa su jerga, nombra su dolor y promete su resultado. Es lo que hace que e…
-- [ ] **Inferir AUDIENCIA explicita (persona + JTBD + awareness-stage) como objeto del brief** _(high/M · audiencia)_
+- [x] **Inferir AUDIENCIA explicita (persona + JTBD + awareness-stage) como objeto del brief** ✅ perception emite `audience{who,register,awareness}` (commit posterior) _(high/M · audiencia)_
   - **Por qué:** El subsistema se llama 'inferencia de marca y AUDIENCIA' pero el brief NO emite ningun campo de audiencia. Hoy emite brand/rubro/tone/color/tagline/claim/cta/bullets/stats/proof/seriousness. El unico…
   - **Cómo:** En perception.py: agregar al _SYS un sub-objeto obligatorio "audience": {"persona":"quien compra/usa, 4-7 palabras (ej 'duenios de PyME sin equipo tecnico')", "job":"el job-to-be-done en 1 frase (que progreso busca)", "pain":"dolor concreto que frena", "desire… `perception.py`, `main.py`
   - **Audiencia:** Es la pieza que convierte 'video de la industria X' en 'video para ESTE publico': sin un objeto audience explicito, todo el resto del pipeline no tiene a quien…
