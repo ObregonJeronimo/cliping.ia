@@ -152,13 +152,14 @@ export function makeVideo(brief = {}) {
   // CEREBRO v2 · STRATEGY: el arco y las escenas salen de SEÑALES del contenido (numeros/pregunta/lista/comparacion/
   // prueba), no solo del azar. Un brief con un dato abre con numero; una pregunta con un hook de pregunta; etc.
   const sig = analyzeContent(content, rubro)
-  const arc = brief.arc || buildArcSmart(seed, sig, audience.awareness).map(c => ({ category: c, dur: _DUR[c] || 3.4 }))
   // CEREBRO v1 · SERIEDAD: brief.seriousness o default por rubro -> alimenta el scorer de fit (register/intensity).
-  // Un consultorio (0.85) desfavorece lo jugado/fuerte; una gastronomia (0.35) lo deja brillar.
+  // Un consultorio (0.85) desfavorece lo jugado/fuerte; una gastronomia (0.35) lo deja brillar. Se calcula ANTES del
+  // arco porque el ARCO tambien se dirige al publico (un publico serio abre medido/hero; uno relajado, con mas gancho).
   const seriousness0 = brief.seriousness != null ? brief.seriousness : ({ salud: 0.85, finanzas: 0.8, inmobiliaria: 0.7, educacion: 0.55, tech: 0.5, default: 0.5, gastronomia: 0.35, moda: 0.4, belleza: 0.35, fitness: 0.35, eventos: 0.3 }[rubro] ?? 0.5)
   // El REGISTER del publico nudgea la seriedad EFECTIVA: formal = mas sobrio; casual/warm = mas relajado (clamp 0..1).
   const _regNudge = { formal: 0.15, warm: -0.05, casual: -0.12 }[audience.register] || 0
   const seriousness = Math.max(0, Math.min(1, seriousness0 + _regNudge))
+  const arc = brief.arc || buildArcSmart(seed, sig, audience.awareness, seriousness).map(c => ({ category: c, dur: _DUR[c] || 3.4 }))
   // SCORER de fit: peso × afinidad-rubro × match-seriedad(register) × match-intensidad. Reemplaza al viejo wadj.
   const fitCtx = { rubro, seriousness }
   const score = (m) => fitWeight(m, fitCtx)

@@ -31,14 +31,17 @@ export function analyzeContent(content = {}, rubro = 'default') {
 
 // ARCO CONSCIENTE del contenido: apertura segun la señal dominante, 1-3 beats de cuerpo que matchean las señales
 // (sin repetir), cierre. El seed desempata y agrega variedad cuando faltan señales.
-export function buildArcSmart(seed, sig, awareness = 'solution') {
+export function buildArcSmart(seed, sig, awareness = 'solution', seriousness = 0.5) {
   const r = seedFor(seed, 'arc')
   let open = 'openers/hero'
+  // La SERIEDAD del publico modula cuanto se arriesga el arco a abrir con gancho: un publico serio (salud/finanzas, 0.85)
+  // abre MEDIDO (hero, marca-forward, creible); uno relajado (gastronomia/moda/eventos, 0.3) admite mas gancho directo.
+  const hookProb = 0.5 * (1 - seriousness)                 // serio ~0.07 ; relajado ~0.35
   if (sig.isQuestion) open = 'openers/hook'
   // AUDIENCIA: si el publico aun NO busca (unaware) o recien SIENTE el problema, hay que ENGANCHAR fuerte / nombrar el dolor -> hook.
   else if (awareness === 'unaware' || awareness === 'problem') open = 'openers/hook'
   else if (sig.hasData && r() < 0.7) open = 'openers/hook'
-  else if (r() < 0.28) open = 'openers/hook'
+  else if (r() < hookProb) open = 'openers/hook'
   // beats que pide el contenido (en orden de prioridad), sin repetir
   const want = []
   if (sig.hasData) want.push(r() < 0.5 ? 'data/single' : 'data/multi')
