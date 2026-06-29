@@ -43,7 +43,7 @@ function softBlend(pal) { return pal.tone === 'light' ? 'multiply' : 'lighter' }
 
 register({
   id: 'bg.belleza.rosequartz', lib: 'backgrounds', category: 'gradient-fields', tones: ['dark', 'light'], rubros: ['belleza', 'default'], weight: 1.1,
-  register: 'editorial', intensity: 'calm', tags: ['belleza', 'pastel', 'rosa', 'glow', 'suave'],
+  register: 'editorial', intensity: 'calm', temp: 'warm', tags: ['belleza', 'pastel', 'rosa', 'glow', 'suave'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'rosequartz')
     bzBg(ctx, pal)
@@ -77,7 +77,7 @@ register({
 
 register({
   id: 'bg.belleza.peachglow', lib: 'backgrounds', category: 'gradient-fields', tones: ['dark', 'light'], rubros: ['belleza', 'default'], weight: 1,
-  register: 'friendly', intensity: 'soft', tags: ['belleza', 'durazno', 'glow', 'calido', 'luminoso'],
+  register: 'friendly', intensity: 'soft', temp: 'warm', tags: ['belleza', 'durazno', 'glow', 'calido', 'luminoso'],
   render(ctx, t, env) {
     const { pal } = env
     bzBg(ctx, pal)
@@ -103,7 +103,7 @@ register({
 
 register({
   id: 'bg.belleza.silkdrape', lib: 'backgrounds', category: 'gradient-fields', tones: ['dark', 'light'], rubros: ['belleza', 'default'], weight: 0.95,
-  register: 'editorial', intensity: 'soft', tags: ['belleza', 'seda', 'pliegues', 'satin', 'elegante'],
+  register: 'editorial', intensity: 'soft', temp: 'warm', tags: ['belleza', 'seda', 'pliegues', 'satin', 'elegante'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'silk')
     bzBg(ctx, pal)
@@ -135,7 +135,7 @@ register({
 
 register({
   id: 'bg.belleza.bokeh', lib: 'backgrounds', category: 'atmospheric-organic', tones: ['dark', 'light'], rubros: ['belleza', 'default'], weight: 1,
-  register: 'friendly', intensity: 'soft', tags: ['belleza', 'bokeh', 'glow', 'particulas', 'luminoso'],
+  register: 'friendly', intensity: 'soft', temp: 'warm', tags: ['belleza', 'bokeh', 'glow', 'particulas', 'luminoso'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'bokeh')
     bzBg(ctx, pal)
@@ -162,7 +162,7 @@ register({
 
 register({
   id: 'bg.belleza.mistveil', lib: 'backgrounds', category: 'atmospheric-organic', tones: ['dark', 'light'], rubros: ['belleza', 'default'], weight: 0.95,
-  register: 'editorial', intensity: 'calm', tags: ['belleza', 'niebla', 'velo', 'pastel', 'etereo'],
+  register: 'editorial', intensity: 'calm', temp: 'warm', tags: ['belleza', 'niebla', 'velo', 'pastel', 'etereo'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'mist')
     bzBg(ctx, pal)
@@ -189,7 +189,7 @@ register({
 
 register({
   id: 'bg.belleza.golddust', lib: 'backgrounds', category: 'atmospheric-organic', tones: ['dark', 'light'], rubros: ['belleza', 'default'], weight: 0.85,
-  register: 'editorial', intensity: 'soft', tags: ['belleza', 'polvo', 'shimmer', 'particulas', 'glam'],
+  register: 'editorial', intensity: 'soft', temp: 'warm', tags: ['belleza', 'polvo', 'shimmer', 'particulas', 'glam'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'gold')
     bzBg(ctx, pal)
@@ -222,7 +222,7 @@ register({
 
 register({
   id: 'bg.belleza.petals', lib: 'backgrounds', category: 'atmospheric-organic', tones: ['dark', 'light'], rubros: ['belleza', 'default'], weight: 0.9,
-  register: 'friendly', intensity: 'soft', tags: ['belleza', 'petalos', 'flores', 'organico', 'delicado'],
+  register: 'friendly', intensity: 'soft', temp: 'warm', tags: ['belleza', 'petalos', 'flores', 'organico', 'delicado'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'petals')
     bzBg(ctx, pal)
@@ -255,7 +255,7 @@ register({
 
 register({
   id: 'bg.belleza.bloomwaves', lib: 'backgrounds', category: 'gradient-fields', tones: ['dark', 'light'], rubros: ['belleza', 'default'], weight: 0.9,
-  register: 'editorial', intensity: 'soft', tags: ['belleza', 'ondas', 'organico', 'pastel', 'fluido'],
+  register: 'editorial', intensity: 'soft', temp: 'warm', tags: ['belleza', 'ondas', 'organico', 'pastel', 'fluido'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'bloom')
     bzBg(ctx, pal)
@@ -297,7 +297,7 @@ register({
 
 register({
   id: 'bg.belleza.archframe', lib: 'backgrounds', category: 'geometric-graphic', tones: ['dark', 'light'], rubros: ['belleza', 'default'], weight: 0.85,
-  register: 'editorial', intensity: 'calm', tags: ['belleza', 'arco', 'spa', 'minimal', 'elegante'],
+  register: 'editorial', intensity: 'calm', temp: 'warm', tags: ['belleza', 'arco', 'spa', 'minimal', 'elegante'],
   render(ctx, t, env) {
     const { pal } = env
     bzBg(ctx, pal)
@@ -329,7 +329,7 @@ register({
 
 register({
   id: 'bg.belleza.thinlines', lib: 'backgrounds', category: 'geometric-graphic', tones: ['dark', 'light'], rubros: ['belleza', 'default'], weight: 0.8,
-  register: 'editorial', intensity: 'calm', tags: ['belleza', 'lineas', 'minimal', 'lujo', 'editorial'],
+  register: 'editorial', intensity: 'calm', temp: 'warm', tags: ['belleza', 'lineas', 'minimal', 'lujo', 'editorial'],
   render(ctx, t, env) {
     const { pal } = env
     bzBg(ctx, pal)
@@ -361,7 +361,7 @@ register({
 
 register({
   id: 'bg.belleza.pearl', lib: 'backgrounds', category: 'chrome-y2k', tones: ['dark', 'light'], rubros: ['belleza', 'default'], weight: 0.85,
-  register: 'editorial', intensity: 'soft', tags: ['belleza', 'perla', 'nacar', 'iridiscente', 'premium'],
+  register: 'editorial', intensity: 'soft', temp: 'warm', tags: ['belleza', 'perla', 'nacar', 'iridiscente', 'premium'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'pearl')
     bzBg(ctx, pal)
@@ -407,7 +407,7 @@ register({
 
 register({
   id: 'bg.belleza.glassorbs', lib: 'backgrounds', category: 'chrome-y2k', tones: ['dark', 'light'], rubros: ['belleza', 'default'], weight: 0.8,
-  register: 'friendly', intensity: 'soft', tags: ['belleza', 'glass', 'burbujas', 'glow', 'glam'],
+  register: 'friendly', intensity: 'soft', temp: 'warm', tags: ['belleza', 'glass', 'burbujas', 'glow', 'glam'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'glassorbs')
     bzBg(ctx, pal)
@@ -445,7 +445,7 @@ register({
 
 register({
   id: 'bg.belleza.softpaper', lib: 'backgrounds', category: 'light-substrate-paper', tones: ['dark', 'light'], rubros: ['belleza', 'default'], weight: 0.95,
-  register: 'editorial', intensity: 'calm', tags: ['belleza', 'papel', 'editorial', 'minimal', 'crema'],
+  register: 'editorial', intensity: 'calm', temp: 'warm', tags: ['belleza', 'papel', 'editorial', 'minimal', 'crema'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'softpaper')
     // papel teñido al hue de marca, muy claro en light / superficie suave en dark
@@ -480,7 +480,7 @@ register({
 
 register({
   id: 'bg.belleza.ribbonsheen', lib: 'backgrounds', category: 'gradient-fields', tones: ['dark', 'light'], rubros: ['belleza', 'default'], weight: 0.85,
-  register: 'editorial', intensity: 'soft', tags: ['belleza', 'cinta', 'satin', 'fluido', 'elegante'],
+  register: 'editorial', intensity: 'soft', temp: 'warm', tags: ['belleza', 'cinta', 'satin', 'fluido', 'elegante'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'ribbon')
     bzBg(ctx, pal)

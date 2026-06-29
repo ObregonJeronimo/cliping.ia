@@ -70,7 +70,7 @@ function g_steam(ctx, pal, t, x, baseY, w, h, col, ph, alpha) {
 
 register({
   id: 'bg.gastrogradient.emberglow', lib: 'backgrounds', category: 'gradient-fields', tones: ['dark', 'light'], rubros: ['gastronomia', 'default'], weight: 1.05,
-  register: 'friendly', intensity: 'soft', tags: ['gastronomia', 'calido', 'brasa', 'gradiente'],
+  register: 'friendly', intensity: 'soft', temp: 'warm', tags: ['gastronomia', 'calido', 'brasa', 'gradiente'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'ember')
     g_warmBg(ctx, pal)
@@ -104,7 +104,7 @@ register({
 
 register({
   id: 'bg.gastrogradient.saucepour', lib: 'backgrounds', category: 'gradient-fields', tones: ['dark', 'light'], rubros: ['gastronomia', 'default'], weight: 0.95,
-  register: 'editorial', intensity: 'soft', tags: ['gastronomia', 'salsa', 'apetitoso', 'gradiente'],
+  register: 'editorial', intensity: 'soft', temp: 'warm', tags: ['gastronomia', 'salsa', 'apetitoso', 'gradiente'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'sauce')
     // base + dos manchas calidas grandes (tomate/miel) que se mezclan lento como salsa
@@ -133,7 +133,7 @@ register({
 
 register({
   id: 'bg.gastroatmos.kitchensteam', lib: 'backgrounds', category: 'atmospheric-organic', tones: ['dark', 'light'], rubros: ['gastronomia', 'default'], weight: 1.0,
-  register: 'editorial', intensity: 'soft', tags: ['gastronomia', 'vapor', 'plato-caliente', 'atmosferico'],
+  register: 'editorial', intensity: 'soft', temp: 'warm', tags: ['gastronomia', 'vapor', 'plato-caliente', 'atmosferico'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'steam')
     g_warmBg(ctx, pal)
@@ -162,7 +162,7 @@ register({
 
 register({
   id: 'bg.gastroatmos.grillsmoke', lib: 'backgrounds', category: 'atmospheric-organic', tones: ['dark', 'light'], rubros: ['gastronomia', 'default'], weight: 0.9,
-  register: 'editorial', intensity: 'medium', tags: ['gastronomia', 'humo', 'parrilla', 'ahumado'],
+  register: 'editorial', intensity: 'medium', temp: 'warm', tags: ['gastronomia', 'humo', 'parrilla', 'ahumado'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'smoke')
     // base mas oscura/contrastada para el humo
@@ -212,7 +212,7 @@ function g_leaf(ctx, x, y, s, rot, col, a) {
 
 register({
   id: 'bg.gastroorganic.herbscatter', lib: 'backgrounds', category: 'organic-natural', tones: ['dark', 'light'], rubros: ['gastronomia', 'default'], weight: 0.95,
-  register: 'friendly', intensity: 'soft', tags: ['gastronomia', 'hierbas', 'ingredientes', 'organico', 'fresco'],
+  register: 'friendly', intensity: 'soft', temp: 'warm', tags: ['gastronomia', 'hierbas', 'ingredientes', 'organico', 'fresco'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'herb')
     g_warmBg(ctx, pal)
@@ -239,7 +239,7 @@ register({
 
 register({
   id: 'bg.gastroorganic.woodgrain', lib: 'backgrounds', category: 'organic-natural', tones: ['dark', 'light'], rubros: ['gastronomia', 'default'], weight: 0.9,
-  register: 'editorial', intensity: 'calm', tags: ['gastronomia', 'madera', 'tabla', 'rustico', 'textura'],
+  register: 'editorial', intensity: 'calm', temp: 'warm', tags: ['gastronomia', 'madera', 'tabla', 'rustico', 'textura'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'wood')
     // tabla de madera: rampa + vetas onduladas verticales que derivan apenas
@@ -271,7 +271,7 @@ register({
 
 register({
   id: 'bg.gastroorganic.honeydrip', lib: 'backgrounds', category: 'organic-natural', tones: ['dark', 'light'], rubros: ['gastronomia', 'default'], weight: 0.85,
-  register: 'friendly', intensity: 'soft', tags: ['gastronomia', 'miel', 'dulce', 'goteo', 'organico'],
+  register: 'friendly', intensity: 'soft', temp: 'warm', tags: ['gastronomia', 'miel', 'dulce', 'goteo', 'organico'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'honey')
     g_warmBg(ctx, pal)
@@ -312,7 +312,7 @@ register({
 
 register({
   id: 'bg.gastrogeo.gingham', lib: 'backgrounds', category: 'geometric-graphic', tones: ['dark', 'light'], rubros: ['gastronomia', 'default'], weight: 0.9,
-  register: 'friendly', intensity: 'soft', tags: ['gastronomia', 'mantel', 'cuadrille', 'picnic', 'trattoria'],
+  register: 'friendly', intensity: 'soft', temp: 'warm', tags: ['gastronomia', 'mantel', 'cuadrille', 'picnic', 'trattoria'],
   render(ctx, t, env) {
     const { pal } = env
     g_warmBg(ctx, pal)
@@ -334,7 +334,7 @@ register({
 
 register({
   id: 'bg.gastrogeo.bistrotile', lib: 'backgrounds', category: 'geometric-graphic', tones: ['dark', 'light'], rubros: ['gastronomia', 'default'], weight: 0.85,
-  register: 'editorial', intensity: 'calm', tags: ['gastronomia', 'baldosa', 'bistro', 'cafe', 'patron'],
+  register: 'editorial', intensity: 'calm', temp: 'warm', tags: ['gastronomia', 'baldosa', 'bistro', 'cafe', 'patron'],
   render(ctx, t, env) {
     const { pal } = env
     g_warmBg(ctx, pal)
@@ -365,7 +365,7 @@ register({
 
 register({
   id: 'bg.gastrogeo.menustripes', lib: 'backgrounds', category: 'geometric-graphic', tones: ['dark', 'light'], rubros: ['gastronomia', 'default'], weight: 0.85,
-  register: 'corporate', intensity: 'soft', tags: ['gastronomia', 'menu', 'rayas', 'toldo', 'awning'],
+  register: 'corporate', intensity: 'soft', temp: 'warm', tags: ['gastronomia', 'menu', 'rayas', 'toldo', 'awning'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'menu')
     g_warmBg(ctx, pal)
@@ -402,7 +402,7 @@ register({
 
 register({
   id: 'bg.gastroretro.chalkboard', lib: 'backgrounds', category: 'retro-print', tones: ['dark', 'light'], rubros: ['gastronomia', 'default'], weight: 1.0,
-  register: 'friendly', intensity: 'medium', tags: ['gastronomia', 'pizarra', 'tiza', 'menu-del-dia', 'hand-drawn'],
+  register: 'friendly', intensity: 'medium', temp: 'warm', tags: ['gastronomia', 'pizarra', 'tiza', 'menu-del-dia', 'hand-drawn'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'chalk')
     // pizarra: base oscura aun en tono claro (un verde/marron muy oscuro derivado del bg)
@@ -449,7 +449,7 @@ register({
 
 register({
   id: 'bg.gastroretro.deliveryriso', lib: 'backgrounds', category: 'retro-print', tones: ['dark', 'light'], rubros: ['gastronomia', 'default'], weight: 0.85,
-  register: 'playful', intensity: 'bold', tags: ['gastronomia', 'riso', 'delivery', 'duotono', 'puntos'],
+  register: 'playful', intensity: 'bold', temp: 'warm', tags: ['gastronomia', 'riso', 'delivery', 'duotono', 'puntos'],
   render(ctx, t, env) {
     const { pal } = env
     ctx.fillStyle = pal.tone === 'light' ? pal.bg0 : pal.bg1; ctx.fillRect(0, 0, W, H)
@@ -481,7 +481,7 @@ register({
 
 register({
   id: 'bg.gastroretro.stampbadge', lib: 'backgrounds', category: 'retro-print', tones: ['dark', 'light'], rubros: ['gastronomia', 'default'], weight: 0.8,
-  register: 'editorial', intensity: 'soft', tags: ['gastronomia', 'sello', 'organico', 'artesanal', 'badge'],
+  register: 'editorial', intensity: 'soft', temp: 'warm', tags: ['gastronomia', 'sello', 'organico', 'artesanal', 'badge'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'stamp')
     g_warmBg(ctx, pal)
@@ -529,7 +529,7 @@ register({
 
 register({
   id: 'bg.gastrolines.pastaswirl', lib: 'backgrounds', category: 'generative-art', tones: ['dark', 'light'], rubros: ['gastronomia', 'default'], weight: 0.9,
-  register: 'friendly', intensity: 'soft', tags: ['gastronomia', 'pasta', 'fideos', 'lineas', 'organico'],
+  register: 'friendly', intensity: 'soft', temp: 'warm', tags: ['gastronomia', 'pasta', 'fideos', 'lineas', 'organico'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'pasta')
     g_warmBg(ctx, pal)
@@ -564,7 +564,7 @@ register({
 
 register({
   id: 'bg.gastrolines.steamcurls', lib: 'backgrounds', category: 'generative-art', tones: ['dark', 'light'], rubros: ['gastronomia', 'default'], weight: 0.85,
-  register: 'editorial', intensity: 'calm', tags: ['gastronomia', 'vapor', 'lineas', 'cafe', 'aroma'],
+  register: 'editorial', intensity: 'calm', temp: 'warm', tags: ['gastronomia', 'vapor', 'lineas', 'cafe', 'aroma'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'curl')
     g_warmBg(ctx, pal)
@@ -607,7 +607,7 @@ register({
 
 register({
   id: 'bg.gastroabundance.platering', lib: 'backgrounds', category: 'geometric-graphic', tones: ['dark', 'light'], rubros: ['gastronomia', 'default'], weight: 0.9,
-  register: 'editorial', intensity: 'soft', tags: ['gastronomia', 'plato', 'cenital', 'circular', 'abundancia'],
+  register: 'editorial', intensity: 'soft', temp: 'warm', tags: ['gastronomia', 'plato', 'cenital', 'circular', 'abundancia'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'plate')
     g_warmBg(ctx, pal)
@@ -642,7 +642,7 @@ register({
 
 register({
   id: 'bg.gastroabundance.foodconfetti', lib: 'backgrounds', category: 'seasonal', tones: ['dark', 'light'], rubros: ['gastronomia', 'default'], weight: 0.85,
-  register: 'playful', intensity: 'medium', tags: ['gastronomia', 'confeti', 'celebracion', 'abundancia', 'fiesta'],
+  register: 'playful', intensity: 'medium', temp: 'warm', tags: ['gastronomia', 'confeti', 'celebracion', 'abundancia', 'fiesta'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'conf')
     g_warmBg(ctx, pal)

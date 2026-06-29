@@ -29,7 +29,7 @@ const blend = pal => (pal.tone === 'light' ? 'multiply' : 'screen')
 
 register({
   id: 'bg.fitness.diagonalsurge', lib: 'backgrounds', category: 'gradient-fields', tones: ['dark', 'light'], rubros: ['fitness', 'default'], weight: 1.1,
-  register: 'corporate', intensity: 'bold', tags: ['fitness', 'diagonal', 'gradiente', 'energico'],
+  register: 'corporate', intensity: 'bold', temp: 'warm', tags: ['fitness', 'diagonal', 'gradiente', 'energico'],
   render(ctx, t, env) {
     const { pal } = env
     rampDiag(ctx, pal)
@@ -54,7 +54,7 @@ register({
 
 register({
   id: 'bg.fitness.speedlines', lib: 'backgrounds', category: 'gradient-fields', tones: ['dark', 'light'], rubros: ['fitness', 'default'], weight: 1,
-  register: 'playful', intensity: 'loud', tags: ['fitness', 'velocidad', 'lineas', 'movimiento'],
+  register: 'playful', intensity: 'loud', temp: 'warm', tags: ['fitness', 'velocidad', 'lineas', 'movimiento'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'speed')
     rampDiag(ctx, pal)
@@ -82,7 +82,7 @@ register({
 
 register({
   id: 'bg.fitness.heatcorner', lib: 'backgrounds', category: 'gradient-fields', tones: ['dark', 'light'], rubros: ['fitness', 'default'], weight: 0.95,
-  register: 'editorial', intensity: 'medium', tags: ['fitness', 'calor', 'gradiente', 'esquina'],
+  register: 'editorial', intensity: 'medium', temp: 'warm', tags: ['fitness', 'calor', 'gradiente', 'esquina'],
   render(ctx, t, env) {
     const { pal } = env
     rampDiag(ctx, pal)
@@ -108,7 +108,7 @@ register({
 
 register({
   id: 'bg.fitness.chevronrun', lib: 'backgrounds', category: 'geometric-graphic', tones: ['dark', 'light'], rubros: ['fitness', 'default'], weight: 1,
-  register: 'corporate', intensity: 'bold', tags: ['fitness', 'chevron', 'flechas', 'avance'],
+  register: 'corporate', intensity: 'bold', temp: 'warm', tags: ['fitness', 'chevron', 'flechas', 'avance'],
   render(ctx, t, env) {
     const { pal } = env
     rampDiag(ctx, pal)
@@ -134,7 +134,7 @@ register({
 
 register({
   id: 'bg.fitness.wedgesplit', lib: 'backgrounds', category: 'geometric-graphic', tones: ['dark', 'light'], rubros: ['fitness', 'default'], weight: 0.95,
-  register: 'editorial', intensity: 'bold', tags: ['fitness', 'cuna', 'split', 'dinamico'],
+  register: 'editorial', intensity: 'bold', temp: 'warm', tags: ['fitness', 'cuna', 'split', 'dinamico'],
   render(ctx, t, env) {
     const { pal } = env
     ctx.fillStyle = pal.bg1; ctx.fillRect(0, 0, W, H)
@@ -157,7 +157,7 @@ register({
 
 register({
   id: 'bg.fitness.barstack', lib: 'backgrounds', category: 'geometric-graphic', tones: ['dark', 'light'], rubros: ['fitness', 'default'], weight: 0.9,
-  register: 'corporate', intensity: 'medium', tags: ['fitness', 'barras', 'ecualizador', 'ritmo'],
+  register: 'corporate', intensity: 'medium', temp: 'warm', tags: ['fitness', 'barras', 'ecualizador', 'ritmo'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'bars')
     rampDiag(ctx, pal)
@@ -187,7 +187,7 @@ register({
 
 register({
   id: 'bg.fitness.tracklanes', lib: 'backgrounds', category: 'geometric-graphic', tones: ['dark', 'light'], rubros: ['fitness', 'default'], weight: 0.9,
-  register: 'corporate', intensity: 'medium', tags: ['fitness', 'pista', 'carriles', 'perspectiva'],
+  register: 'corporate', intensity: 'medium', temp: 'warm', tags: ['fitness', 'pista', 'carriles', 'perspectiva'],
   render(ctx, t, env) {
     const { pal } = env
     rampDiag(ctx, pal)
@@ -221,7 +221,7 @@ register({
 
 register({
   id: 'bg.fitness.pulsewave', lib: 'backgrounds', category: 'energetic-motion', tones: ['dark', 'light'], rubros: ['fitness', 'default'], weight: 1,
-  register: 'editorial', intensity: 'medium', tags: ['fitness', 'pulso', 'cardio', 'onda'],
+  register: 'editorial', intensity: 'medium', temp: 'warm', tags: ['fitness', 'pulso', 'cardio', 'onda'],
   render(ctx, t, env) {
     const { pal } = env
     rampDiag(ctx, pal)
@@ -250,7 +250,7 @@ register({
 
 register({
   id: 'bg.fitness.sheenstreaks', lib: 'backgrounds', category: 'energetic-motion', tones: ['dark', 'light'], rubros: ['fitness', 'default'], weight: 0.95,
-  register: 'editorial', intensity: 'soft', tags: ['fitness', 'sheen', 'brillo', 'diagonal'],
+  register: 'editorial', intensity: 'soft', temp: 'warm', tags: ['fitness', 'sheen', 'brillo', 'diagonal'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'sheen')
     rampDiag(ctx, pal)
@@ -277,7 +277,7 @@ register({
 
 register({
   id: 'bg.fitness.kinetictri', lib: 'backgrounds', category: 'energetic-motion', tones: ['dark', 'light'], rubros: ['fitness', 'default'], weight: 0.85,
-  register: 'playful', intensity: 'bold', tags: ['fitness', 'triangulos', 'cinetico', 'shards'],
+  register: 'playful', intensity: 'bold', temp: 'warm', tags: ['fitness', 'triangulos', 'cinetico', 'shards'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'tri')
     rampDiag(ctx, pal)
@@ -309,7 +309,7 @@ register({
 
 register({
   id: 'bg.fitness.carbonweave', lib: 'backgrounds', category: 'texture-material', tones: ['dark', 'light'], rubros: ['fitness', 'default'], weight: 0.85,
-  register: 'corporate', intensity: 'soft', tags: ['fitness', 'carbono', 'textura', 'tecnico'],
+  register: 'corporate', intensity: 'soft', temp: 'warm', tags: ['fitness', 'carbono', 'textura', 'tecnico'],
   render(ctx, t, env) {
     const { pal } = env
     rampDiag(ctx, pal)
@@ -339,7 +339,7 @@ register({
 
 register({
   id: 'bg.fitness.meshgridtilt', lib: 'backgrounds', category: 'texture-material', tones: ['dark', 'light'], rubros: ['fitness', 'default'], weight: 0.85,
-  register: 'corporate', intensity: 'soft', tags: ['fitness', 'malla', 'grilla', 'inclinada'],
+  register: 'corporate', intensity: 'soft', temp: 'warm', tags: ['fitness', 'malla', 'grilla', 'inclinada'],
   render(ctx, t, env) {
     const { pal } = env
     rampDiag(ctx, pal)
@@ -368,7 +368,7 @@ register({
 
 register({
   id: 'bg.fitness.energyarcs', lib: 'backgrounds', category: 'atmospheric-organic', tones: ['dark', 'light'], rubros: ['fitness', 'default'], weight: 0.9,
-  register: 'editorial', intensity: 'bold', tags: ['fitness', 'arcos', 'energia', 'potente'],
+  register: 'editorial', intensity: 'bold', temp: 'warm', tags: ['fitness', 'arcos', 'energia', 'potente'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'arc')
     rampDiag(ctx, pal)
@@ -398,7 +398,7 @@ register({
 
 register({
   id: 'bg.fitness.smokeplume', lib: 'backgrounds', category: 'atmospheric-organic', tones: ['dark', 'light'], rubros: ['fitness', 'default'], weight: 0.8,
-  register: 'editorial', intensity: 'soft', tags: ['fitness', 'humo', 'vapor', 'atmosferico'],
+  register: 'editorial', intensity: 'soft', temp: 'warm', tags: ['fitness', 'humo', 'vapor', 'atmosferico'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'smoke')
     rampDiag(ctx, pal)

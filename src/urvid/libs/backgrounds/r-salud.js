@@ -50,7 +50,7 @@ function calmTint(hex, tone, toward = 175) {
 
 register({
   id: 'bg.salud.calmwash', lib: 'backgrounds', category: 'gradient-fields', tones: ['dark', 'light'], rubros: ['salud', 'default'], weight: 1.05,
-  register: 'friendly', intensity: 'calm', tags: ['salud', 'calmo', 'gradiente', 'sereno', 'aire'],
+  register: 'friendly', intensity: 'calm', temp: 'cool', tags: ['salud', 'calmo', 'gradiente', 'sereno', 'aire'],
   render(ctx, t, env) {
     const { pal } = env
     rampBg(ctx, pal)
@@ -71,7 +71,7 @@ register({
 
 register({
   id: 'bg.salud.mintdawn', lib: 'backgrounds', category: 'gradient-fields', tones: ['dark', 'light'], rubros: ['salud', 'default'], weight: 1,
-  register: 'editorial', intensity: 'calm', tags: ['salud', 'menta', 'amanecer', 'gradiente', 'limpio'],
+  register: 'editorial', intensity: 'calm', temp: 'cool', tags: ['salud', 'menta', 'amanecer', 'gradiente', 'limpio'],
   render(ctx, t, env) {
     const { pal } = env
     // amanecer vertical sereno: base del tono arriba, velo menta abajo
@@ -94,7 +94,7 @@ register({
 
 register({
   id: 'bg.salud.breathorbs', lib: 'backgrounds', category: 'gradient-fields', tones: ['dark', 'light'], rubros: ['salud', 'default'], weight: 0.95,
-  register: 'friendly', intensity: 'soft', tags: ['salud', 'respiracion', 'orbes', 'bienestar', 'calmo'],
+  register: 'friendly', intensity: 'soft', temp: 'cool', tags: ['salud', 'respiracion', 'orbes', 'bienestar', 'calmo'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'breath')
     rampBg(ctx, pal)
@@ -122,7 +122,7 @@ register({
 
 register({
   id: 'bg.salud.softmist', lib: 'backgrounds', category: 'atmospheric-organic', tones: ['dark', 'light'], rubros: ['salud', 'default'], weight: 0.95,
-  register: 'editorial', intensity: 'calm', tags: ['salud', 'niebla', 'capas', 'sereno', 'aire'],
+  register: 'editorial', intensity: 'calm', temp: 'cool', tags: ['salud', 'niebla', 'capas', 'sereno', 'aire'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'mist')
     rampBg(ctx, pal)
@@ -145,7 +145,7 @@ register({
 
 register({
   id: 'bg.salud.pulsewave', lib: 'backgrounds', category: 'atmospheric-organic', tones: ['dark', 'light'], rubros: ['salud', 'default'], weight: 0.9,
-  register: 'corporate', intensity: 'soft', tags: ['salud', 'pulso', 'ecg', 'onda', 'vital'],
+  register: 'corporate', intensity: 'soft', temp: 'cool', tags: ['salud', 'pulso', 'ecg', 'onda', 'vital'],
   render(ctx, t, env) {
     const { pal } = env
     rampBg(ctx, pal)
@@ -182,7 +182,7 @@ register({
 
 register({
   id: 'bg.salud.ripplecalm', lib: 'backgrounds', category: 'atmospheric-organic', tones: ['dark', 'light'], rubros: ['salud', 'default'], weight: 0.88,
-  register: 'friendly', intensity: 'calm', tags: ['salud', 'ondas', 'agua', 'concentrico', 'sereno'],
+  register: 'friendly', intensity: 'calm', temp: 'cool', tags: ['salud', 'ondas', 'agua', 'concentrico', 'sereno'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'ripple')
     rampBg(ctx, pal)
@@ -211,7 +211,7 @@ register({
 
 register({
   id: 'bg.salud.plusgrid', lib: 'backgrounds', category: 'geometric-graphic', tones: ['dark', 'light'], rubros: ['salud', 'default'], weight: 0.92,
-  register: 'corporate', intensity: 'calm', tags: ['salud', 'cruz', 'plus', 'grilla', 'clinico', 'limpio'],
+  register: 'corporate', intensity: 'calm', temp: 'cool', tags: ['salud', 'cruz', 'plus', 'grilla', 'clinico', 'limpio'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'plusgrid')
     rampBg(ctx, pal)
@@ -238,7 +238,7 @@ register({
 
 register({
   id: 'bg.salud.softpanels', lib: 'backgrounds', category: 'geometric-graphic', tones: ['dark', 'light'], rubros: ['salud', 'default'], weight: 0.88,
-  register: 'corporate', intensity: 'calm', tags: ['salud', 'paneles', 'redondeado', 'limpio', 'cards'],
+  register: 'corporate', intensity: 'calm', temp: 'cool', tags: ['salud', 'paneles', 'redondeado', 'limpio', 'cards'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'panels')
     rampBg(ctx, pal)
@@ -271,7 +271,7 @@ register({
 
 register({
   id: 'bg.salud.heartline', lib: 'backgrounds', category: 'geometric-graphic', tones: ['dark', 'light'], rubros: ['salud', 'default'], weight: 0.85,
-  register: 'friendly', intensity: 'soft', tags: ['salud', 'corazon', 'linea', 'cuidado', 'sutil'],
+  register: 'friendly', intensity: 'soft', temp: 'cool', tags: ['salud', 'corazon', 'linea', 'cuidado', 'sutil'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'heart')
     rampBg(ctx, pal)
@@ -305,7 +305,7 @@ register({
 
 register({
   id: 'bg.salud.organicwaves', lib: 'backgrounds', category: 'generative-art', tones: ['dark', 'light'], rubros: ['salud', 'default'], weight: 0.9,
-  register: 'editorial', intensity: 'calm', tags: ['salud', 'curvas', 'organico', 'ondas', 'sereno'],
+  register: 'editorial', intensity: 'calm', temp: 'cool', tags: ['salud', 'curvas', 'organico', 'ondas', 'sereno'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'owaves')
     rampBg(ctx, pal)
@@ -331,7 +331,7 @@ register({
 
 register({
   id: 'bg.salud.dnastrand', lib: 'backgrounds', category: 'generative-art', tones: ['dark', 'light'], rubros: ['salud', 'default'], weight: 0.82,
-  register: 'corporate', intensity: 'soft', tags: ['salud', 'adn', 'helix', 'ciencia', 'sutil'],
+  register: 'corporate', intensity: 'soft', temp: 'cool', tags: ['salud', 'adn', 'helix', 'ciencia', 'sutil'],
   render(ctx, t, env) {
     const { pal } = env
     rampBg(ctx, pal)
@@ -368,7 +368,7 @@ register({
 
 register({
   id: 'bg.salud.cellfloat', lib: 'backgrounds', category: 'generative-art', tones: ['dark', 'light'], rubros: ['salud', 'default'], weight: 0.84,
-  register: 'friendly', intensity: 'soft', tags: ['salud', 'celulas', 'puntos', 'flotante', 'organico'],
+  register: 'friendly', intensity: 'soft', temp: 'cool', tags: ['salud', 'celulas', 'puntos', 'flotante', 'organico'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'cells')
     rampBg(ctx, pal)
@@ -399,7 +399,7 @@ register({
 
 register({
   id: 'bg.salud.contourcalm', lib: 'backgrounds', category: 'generative-art', tones: ['dark', 'light'], rubros: ['salud', 'default'], weight: 0.8,
-  register: 'editorial', intensity: 'calm', tags: ['salud', 'contornos', 'lineas', 'topografico', 'sereno'],
+  register: 'editorial', intensity: 'calm', temp: 'cool', tags: ['salud', 'contornos', 'lineas', 'topografico', 'sereno'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'contour')
     rampBg(ctx, pal)
@@ -433,7 +433,7 @@ register({
 
 register({
   id: 'bg.salud.cleanpaper', lib: 'backgrounds', category: 'light-substrate-paper', tones: ['light'], rubros: ['salud', 'default'], weight: 0.9,
-  register: 'editorial', intensity: 'calm', tags: ['salud', 'papel', 'claro', 'limpio', 'consultorio'],
+  register: 'editorial', intensity: 'calm', temp: 'cool', tags: ['salud', 'papel', 'claro', 'limpio', 'consultorio'],
   render(ctx, t, env) {
     const { pal } = env
     // papel claro con leve velo frio en una esquina + una cruz medica gigante muy tenue
@@ -454,7 +454,7 @@ register({
 
 register({
   id: 'bg.salud.wellnesscard', lib: 'backgrounds', category: 'light-substrate-paper', tones: ['light'], rubros: ['salud', 'default'], weight: 0.85,
-  register: 'corporate', intensity: 'calm', tags: ['salud', 'card', 'claro', 'bienestar', 'app'],
+  register: 'corporate', intensity: 'calm', temp: 'cool', tags: ['salud', 'card', 'claro', 'bienestar', 'app'],
   render(ctx, t, env) {
     const { pal } = env
     // tarjeta central flotante muy suave sobre papel (estetica de app de bienestar), borde frio
@@ -484,7 +484,7 @@ register({
 
 register({
   id: 'bg.salud.depthrings', lib: 'backgrounds', category: 'spatial-depth', tones: ['dark', 'light'], rubros: ['salud', 'default'], weight: 0.82,
-  register: 'editorial', intensity: 'soft', tags: ['salud', 'anillos', 'profundidad', 'tunel', 'sereno'],
+  register: 'editorial', intensity: 'soft', temp: 'cool', tags: ['salud', 'anillos', 'profundidad', 'tunel', 'sereno'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'depth')
     rampBg(ctx, pal)

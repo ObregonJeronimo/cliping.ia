@@ -35,7 +35,7 @@ const hair = (pal, a) => rgba(isLight(pal) ? '#000000' : '#ffffff', a)
 
 register({
   id: 'bg.moda.runwayfade', lib: 'backgrounds', category: 'gradient-fields', tones: ['dark', 'light'], rubros: ['moda', 'default'], weight: 1.05,
-  register: 'editorial', intensity: 'calm', tags: ['moda', 'editorial', 'gradiente', 'pasarela'],
+  register: 'editorial', intensity: 'calm', temp: 'warm', tags: ['moda', 'editorial', 'gradiente', 'pasarela'],
   render(ctx, t, env) {
     const { pal } = env
     // degrade vertical alto: piso oscuro/claro -> cielo, con una franja de luz a media altura (la "pasarela")
@@ -61,7 +61,7 @@ register({
 
 register({
   id: 'bg.moda.duotonesplit', lib: 'backgrounds', category: 'gradient-fields', tones: ['dark', 'light'], rubros: ['moda', 'default'], weight: 1,
-  register: 'editorial', intensity: 'medium', tags: ['moda', 'duotono', 'split', 'dramatico'],
+  register: 'editorial', intensity: 'medium', temp: 'warm', tags: ['moda', 'duotono', 'split', 'dramatico'],
   render(ctx, t, env) {
     const { pal } = env
     // diagonal duotono: dos campos accent/accent2 separados por una linea limpia que respira
@@ -95,7 +95,7 @@ register({
 
 register({
   id: 'bg.moda.satinsheen', lib: 'backgrounds', category: 'gradient-fields', tones: ['dark', 'light'], rubros: ['moda', 'default'], weight: 0.95,
-  register: 'editorial', intensity: 'soft', tags: ['moda', 'satin', 'sheen', 'lujo'],
+  register: 'editorial', intensity: 'soft', temp: 'warm', tags: ['moda', 'satin', 'sheen', 'lujo'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'satin')
     rampBg(ctx, pal, 110)
@@ -127,7 +127,7 @@ register({
 
 register({
   id: 'bg.moda.spotlightcouture', lib: 'backgrounds', category: 'gradient-fields', tones: ['dark', 'light'], rubros: ['moda', 'default'], weight: 0.9,
-  register: 'editorial', intensity: 'soft', tags: ['moda', 'spotlight', 'dramatico', 'aire'],
+  register: 'editorial', intensity: 'soft', temp: 'warm', tags: ['moda', 'spotlight', 'dramatico', 'aire'],
   render(ctx, t, env) {
     const { pal } = env
     // foco superior dramatico (vidriera/estudio): luz que cae desde arriba, mucho aire al centro
@@ -155,7 +155,7 @@ register({
 
 register({
   id: 'bg.moda.editorialframe', lib: 'backgrounds', category: 'geometric-graphic', tones: ['dark', 'light'], rubros: ['moda', 'default'], weight: 1,
-  register: 'editorial', intensity: 'calm', tags: ['moda', 'editorial', 'marco', 'minimal', 'swiss'],
+  register: 'editorial', intensity: 'calm', temp: 'warm', tags: ['moda', 'editorial', 'marco', 'minimal', 'swiss'],
   render(ctx, t, env) {
     const { pal } = env
     rampBg(ctx, pal, 90)
@@ -179,7 +179,7 @@ register({
 
 register({
   id: 'bg.moda.columnsgrid', lib: 'backgrounds', category: 'geometric-graphic', tones: ['dark', 'light'], rubros: ['moda', 'default'], weight: 0.9,
-  register: 'corporate', intensity: 'calm', tags: ['moda', 'columnas', 'grilla', 'editorial', 'swiss'],
+  register: 'corporate', intensity: 'calm', temp: 'warm', tags: ['moda', 'columnas', 'grilla', 'editorial', 'swiss'],
   render(ctx, t, env) {
     const { pal } = env
     rampBg(ctx, pal, 90)
@@ -206,7 +206,7 @@ register({
 
 register({
   id: 'bg.moda.diagonalbars', lib: 'backgrounds', category: 'geometric-graphic', tones: ['dark', 'light'], rubros: ['moda', 'default'], weight: 0.85,
-  register: 'editorial', intensity: 'medium', tags: ['moda', 'diagonal', 'barras', 'dinamico'],
+  register: 'editorial', intensity: 'medium', temp: 'warm', tags: ['moda', 'diagonal', 'barras', 'dinamico'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'diag')
     rampBg(ctx, pal, 60)
@@ -229,7 +229,7 @@ register({
 
 register({
   id: 'bg.moda.bauhausmod', lib: 'backgrounds', category: 'geometric-graphic', tones: ['dark', 'light'], rubros: ['moda', 'default'], weight: 0.8,
-  register: 'playful', intensity: 'bold', tags: ['moda', 'bauhaus', 'formas', 'editorial', 'arte'],
+  register: 'playful', intensity: 'bold', temp: 'warm', tags: ['moda', 'bauhaus', 'formas', 'editorial', 'arte'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'bau')
     rampBg(ctx, pal, 90)
@@ -257,7 +257,7 @@ register({
 
 register({
   id: 'bg.moda.contourlines', lib: 'backgrounds', category: 'linework', tones: ['dark', 'light'], rubros: ['moda', 'default'], weight: 0.9,
-  register: 'editorial', intensity: 'soft', tags: ['moda', 'lineas', 'curvas', 'organico', 'elegante'],
+  register: 'editorial', intensity: 'soft', temp: 'warm', tags: ['moda', 'lineas', 'curvas', 'organico', 'elegante'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'cont')
     rampBg(ctx, pal, 90)
@@ -282,7 +282,7 @@ register({
 
 register({
   id: 'bg.moda.threadweave', lib: 'backgrounds', category: 'linework', tones: ['dark', 'light'], rubros: ['moda', 'default'], weight: 0.8,
-  register: 'editorial', intensity: 'soft', tags: ['moda', 'hilos', 'textura', 'tejido', 'minimal'],
+  register: 'editorial', intensity: 'soft', temp: 'warm', tags: ['moda', 'hilos', 'textura', 'tejido', 'minimal'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'thread')
     rampBg(ctx, pal, 80)
@@ -311,7 +311,7 @@ register({
 
 register({
   id: 'bg.moda.arcsuite', lib: 'backgrounds', category: 'linework', tones: ['dark', 'light'], rubros: ['moda', 'default'], weight: 0.85,
-  register: 'editorial', intensity: 'soft', tags: ['moda', 'arcos', 'lineas', 'elegante', 'aire'],
+  register: 'editorial', intensity: 'soft', temp: 'warm', tags: ['moda', 'arcos', 'lineas', 'elegante', 'aire'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'arc')
     rampBg(ctx, pal, 100)
@@ -336,7 +336,7 @@ register({
 
 register({
   id: 'bg.moda.halftonefade', lib: 'backgrounds', category: 'retro-print', tones: ['dark', 'light'], rubros: ['moda', 'default'], weight: 0.95,
-  register: 'editorial', intensity: 'medium', tags: ['moda', 'halftone', 'print', 'puntos', 'editorial'],
+  register: 'editorial', intensity: 'medium', temp: 'warm', tags: ['moda', 'halftone', 'print', 'puntos', 'editorial'],
   render(ctx, t, env) {
     const { pal } = env
     // halftone que se densifica desde abajo (degrade de puntos), centro/arriba limpio para el texto
@@ -359,7 +359,7 @@ register({
 
 register({
   id: 'bg.moda.risoribbon', lib: 'backgrounds', category: 'retro-print', tones: ['dark', 'light'], rubros: ['moda', 'default'], weight: 0.8,
-  register: 'playful', intensity: 'bold', tags: ['moda', 'riso', 'cinta', 'duotono', 'print'],
+  register: 'playful', intensity: 'bold', temp: 'warm', tags: ['moda', 'riso', 'cinta', 'duotono', 'print'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'riso')
     rampBg(ctx, pal, 90)
@@ -394,7 +394,7 @@ function ribbonPath(ctx, yc, h, dir, phase, dx, dy) {
 
 register({
   id: 'bg.moda.papergrain', lib: 'backgrounds', category: 'retro-print', tones: ['dark', 'light'], rubros: ['moda', 'default'], weight: 0.85,
-  register: 'editorial', intensity: 'calm', tags: ['moda', 'papel', 'grano', 'textura', 'minimal'],
+  register: 'editorial', intensity: 'calm', temp: 'warm', tags: ['moda', 'papel', 'grano', 'textura', 'minimal'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x9e3779b9)
     rampBg(ctx, pal, 95)
@@ -424,7 +424,7 @@ register({
 
 register({
   id: 'bg.moda.silkfold', lib: 'backgrounds', category: 'atmospheric-organic', tones: ['dark', 'light'], rubros: ['moda', 'default'], weight: 1,
-  register: 'editorial', intensity: 'soft', tags: ['moda', 'seda', 'pliegues', 'lujo', 'fluido'],
+  register: 'editorial', intensity: 'soft', temp: 'warm', tags: ['moda', 'seda', 'pliegues', 'lujo', 'fluido'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'silk')
     rampBg(ctx, pal, 115)
@@ -449,7 +449,7 @@ register({
 
 register({
   id: 'bg.moda.runwaysmoke', lib: 'backgrounds', category: 'atmospheric-organic', tones: ['dark'], rubros: ['moda', 'default'], weight: 0.85,
-  register: 'editorial', intensity: 'medium', tags: ['moda', 'humo', 'dramatico', 'pasarela', 'oscuro'],
+  register: 'editorial', intensity: 'medium', temp: 'warm', tags: ['moda', 'humo', 'dramatico', 'pasarela', 'oscuro'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'smk')
     ctx.fillStyle = pal.bg1; ctx.fillRect(0, 0, W, H)
@@ -476,7 +476,7 @@ register({
 
 register({
   id: 'bg.moda.glamourbokeh', lib: 'backgrounds', category: 'atmospheric-organic', tones: ['dark', 'light'], rubros: ['moda', 'default'], weight: 0.85,
-  register: 'friendly', intensity: 'soft', tags: ['moda', 'bokeh', 'brillo', 'glamour', 'fiesta'],
+  register: 'friendly', intensity: 'soft', temp: 'warm', tags: ['moda', 'bokeh', 'brillo', 'glamour', 'fiesta'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'bok')
     rampBg(ctx, pal, 110)
@@ -505,7 +505,7 @@ register({
 
 register({
   id: 'bg.moda.coutureblob', lib: 'backgrounds', category: 'morph-hero', tones: ['dark', 'light'], rubros: ['moda', 'default'], weight: 0.9,
-  register: 'editorial', intensity: 'medium', tags: ['moda', 'forma', 'organico', 'editorial', 'lateral'],
+  register: 'editorial', intensity: 'medium', temp: 'warm', tags: ['moda', 'forma', 'organico', 'editorial', 'lateral'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'blob')
     rampBg(ctx, pal, 90)
@@ -538,7 +538,7 @@ register({
 
 register({
   id: 'bg.moda.ribbondrape', lib: 'backgrounds', category: 'morph-hero', tones: ['dark', 'light'], rubros: ['moda', 'default'], weight: 0.85,
-  register: 'editorial', intensity: 'medium', tags: ['moda', 'cinta', 'drapeado', 'fluido', 'elegante'],
+  register: 'editorial', intensity: 'medium', temp: 'warm', tags: ['moda', 'cinta', 'drapeado', 'fluido', 'elegante'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'drape')
     rampBg(ctx, pal, 120)

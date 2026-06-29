@@ -41,7 +41,7 @@ const acc2Detail = pal => (pal.tone === 'light' ? darken(pal.accent2, 0.32) : li
 
 register({
   id: 'bg.tech.tracecircuit', lib: 'backgrounds', category: 'circuitry', tones: ['dark', 'light'], rubros: ['tech', 'default'], weight: 1.0,
-  register: 'corporate', intensity: 'soft', tags: ['tech', 'circuito', 'trazas', 'pcb', 'preciso'],
+  register: 'corporate', intensity: 'soft', temp: 'cool', tags: ['tech', 'circuito', 'trazas', 'pcb', 'preciso'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'trace')
     rampBg(ctx, pal)
@@ -81,7 +81,7 @@ register({
 
 register({
   id: 'bg.tech.chipdie', lib: 'backgrounds', category: 'circuitry', tones: ['dark', 'light'], rubros: ['tech', 'default'], weight: 0.85,
-  register: 'corporate', intensity: 'calm', tags: ['tech', 'chip', 'die', 'silicio', 'simetrico'],
+  register: 'corporate', intensity: 'calm', temp: 'cool', tags: ['tech', 'chip', 'die', 'silicio', 'simetrico'],
   render(ctx, t, env) {
     const { pal } = env
     rampBg(ctx, pal)
@@ -118,7 +118,7 @@ register({
 
 register({
   id: 'bg.tech.datastream', lib: 'backgrounds', category: 'data-lines', tones: ['dark', 'light'], rubros: ['tech', 'default'], weight: 1.0,
-  register: 'corporate', intensity: 'soft', tags: ['tech', 'datos', 'flujo', 'lineas', 'paquetes'],
+  register: 'corporate', intensity: 'soft', temp: 'cool', tags: ['tech', 'datos', 'flujo', 'lineas', 'paquetes'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'stream')
     rampBg(ctx, pal)
@@ -150,7 +150,7 @@ register({
 
 register({
   id: 'bg.tech.telemetry', lib: 'backgrounds', category: 'data-lines', tones: ['dark', 'light'], rubros: ['tech', 'default'], weight: 0.85,
-  register: 'neutral', intensity: 'soft', tags: ['tech', 'telemetria', 'onda', 'señal', 'oscilo'],
+  register: 'neutral', intensity: 'soft', temp: 'cool', tags: ['tech', 'telemetria', 'onda', 'señal', 'oscilo'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'telem')
     rampBg(ctx, pal)
@@ -184,7 +184,7 @@ register({
 
 register({
   id: 'bg.tech.nodemesh', lib: 'backgrounds', category: 'mesh-network', tones: ['dark', 'light'], rubros: ['tech', 'default'], weight: 1.0,
-  register: 'corporate', intensity: 'soft', tags: ['tech', 'red', 'nodos', 'malla', 'conexiones'],
+  register: 'corporate', intensity: 'soft', temp: 'cool', tags: ['tech', 'red', 'nodos', 'malla', 'conexiones'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'mesh')
     rampBg(ctx, pal)
@@ -217,7 +217,7 @@ register({
 
 register({
   id: 'bg.tech.constellation', lib: 'backgrounds', category: 'mesh-network', tones: ['dark', 'light'], rubros: ['tech', 'default'], weight: 0.8,
-  register: 'editorial', intensity: 'calm', tags: ['tech', 'constelacion', 'red', 'puntos', 'orbital'],
+  register: 'editorial', intensity: 'calm', temp: 'cool', tags: ['tech', 'constelacion', 'red', 'puntos', 'orbital'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'const')
     rampBg(ctx, pal)
@@ -251,7 +251,7 @@ register({
 
 register({
   id: 'bg.tech.blueprintgrid', lib: 'backgrounds', category: 'blueprint', tones: ['dark', 'light'], rubros: ['tech', 'default'], weight: 0.9,
-  register: 'corporate', intensity: 'calm', tags: ['tech', 'blueprint', 'plano', 'grilla', 'cad'],
+  register: 'corporate', intensity: 'calm', temp: 'cool', tags: ['tech', 'blueprint', 'plano', 'grilla', 'cad'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'blue')
     rampBg(ctx, pal)
@@ -278,7 +278,7 @@ register({
 
 register({
   id: 'bg.tech.schematic', lib: 'backgrounds', category: 'blueprint', tones: ['dark', 'light'], rubros: ['tech', 'default'], weight: 0.8,
-  register: 'editorial', intensity: 'calm', tags: ['tech', 'esquematico', 'circulos', 'cad', 'tecnico'],
+  register: 'editorial', intensity: 'calm', temp: 'cool', tags: ['tech', 'esquematico', 'circulos', 'cad', 'tecnico'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'schem')
     rampBg(ctx, pal)
@@ -319,7 +319,7 @@ register({
 
 register({
   id: 'bg.tech.hologrid', lib: 'backgrounds', category: 'gradient-mesh', tones: ['dark', 'light'], rubros: ['tech', 'default'], weight: 1.0,
-  register: 'corporate', intensity: 'medium', tags: ['tech', 'holografico', 'mesh', 'perspectiva', 'moderno'],
+  register: 'corporate', intensity: 'medium', temp: 'cool', tags: ['tech', 'holografico', 'mesh', 'perspectiva', 'moderno'],
   render(ctx, t, env) {
     const { pal } = env
     rampBg(ctx, pal)
@@ -351,7 +351,7 @@ register({
 
 register({
   id: 'bg.tech.spectrumwash', lib: 'backgrounds', category: 'gradient-mesh', tones: ['dark', 'light'], rubros: ['tech', 'default'], weight: 0.9,
-  register: 'neutral', intensity: 'soft', tags: ['tech', 'mesh', 'gradiente', 'aurora', 'suave'],
+  register: 'neutral', intensity: 'soft', temp: 'cool', tags: ['tech', 'mesh', 'gradiente', 'aurora', 'suave'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'spec')
     rampBg(ctx, pal)
@@ -382,7 +382,7 @@ register({
 
 register({
   id: 'bg.tech.hexlattice', lib: 'backgrounds', category: 'geometric', tones: ['dark', 'light'], rubros: ['tech', 'default'], weight: 0.9,
-  register: 'corporate', intensity: 'calm', tags: ['tech', 'hexagonos', 'panal', 'lattice', 'geometrico'],
+  register: 'corporate', intensity: 'calm', temp: 'cool', tags: ['tech', 'hexagonos', 'panal', 'lattice', 'geometrico'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'hex')
     rampBg(ctx, pal)
@@ -421,7 +421,7 @@ register({
 
 register({
   id: 'bg.tech.isoblocks', lib: 'backgrounds', category: 'geometric', tones: ['dark', 'light'], rubros: ['tech', 'default'], weight: 0.8,
-  register: 'corporate', intensity: 'soft', tags: ['tech', 'isometrico', 'cubos', 'datacenter', '3d'],
+  register: 'corporate', intensity: 'soft', temp: 'cool', tags: ['tech', 'isometrico', 'cubos', 'datacenter', '3d'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'iso')
     rampBg(ctx, pal)
@@ -465,7 +465,7 @@ register({
 
 register({
   id: 'bg.tech.scanfield', lib: 'backgrounds', category: 'scanlines', tones: ['dark', 'light'], rubros: ['tech', 'default'], weight: 0.85,
-  register: 'editorial', intensity: 'soft', tags: ['tech', 'scan', 'pantalla', 'barrido', 'hud'],
+  register: 'editorial', intensity: 'soft', temp: 'cool', tags: ['tech', 'scan', 'pantalla', 'barrido', 'hud'],
   render(ctx, t, env) {
     const { pal } = env
     rampBg(ctx, pal)
@@ -486,7 +486,7 @@ register({
 
 register({
   id: 'bg.tech.dotmatrix', lib: 'backgrounds', category: 'scanlines', tones: ['dark', 'light'], rubros: ['tech', 'default'], weight: 0.8,
-  register: 'neutral', intensity: 'calm', tags: ['tech', 'matriz', 'puntos', 'led', 'display'],
+  register: 'neutral', intensity: 'calm', temp: 'cool', tags: ['tech', 'matriz', 'puntos', 'led', 'display'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'dot')
     rampBg(ctx, pal)
@@ -512,7 +512,7 @@ register({
 
 register({
   id: 'bg.tech.datarise', lib: 'backgrounds', category: 'particles', tones: ['dark', 'light'], rubros: ['tech', 'default'], weight: 0.85,
-  register: 'editorial', intensity: 'soft', tags: ['tech', 'particulas', 'ascenso', 'datos', 'upload'],
+  register: 'editorial', intensity: 'soft', temp: 'cool', tags: ['tech', 'particulas', 'ascenso', 'datos', 'upload'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'rise')
     rampBg(ctx, pal)
@@ -540,7 +540,7 @@ register({
 
 register({
   id: 'bg.tech.glasspanels', lib: 'backgrounds', category: 'glass-panels', tones: ['dark', 'light'], rubros: ['tech', 'default'], weight: 0.8,
-  register: 'corporate', intensity: 'calm', tags: ['tech', 'cristal', 'paneles', 'ui', 'glassmorphism'],
+  register: 'corporate', intensity: 'calm', temp: 'cool', tags: ['tech', 'cristal', 'paneles', 'ui', 'glassmorphism'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'glass')
     rampBg(ctx, pal)

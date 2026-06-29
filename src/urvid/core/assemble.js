@@ -7,7 +7,7 @@
 // TONO = SOLO COLOR: si el brief trae lockRecipe (el toggle claro/oscuro del estudio), se REUSA la receta y solo se
 // re-deriva la paleta; un slot se re-elige unicamente si su modulo no soporta el tono nuevo.
 import { derivePalette } from './palette.js'
-import { FORMATS, clamp } from './util.js'
+import { FORMATS, clamp, hexToHsl } from './util.js'
 import { query, get } from './registry.js'
 import { seedFor, weightedPick, hashStr, stableSeed, pick, shuffled } from './prng.js'
 import { deriveFonts } from './fonts.js'
@@ -188,6 +188,9 @@ export function makeVideo(brief = {}) {
   // COLOR (esquema/mood) + TIPOGRAFIA (pairing) de sus bibliotecas; fallback a los derivadores base
   const colMod = required(lock && lock.color, keep && keep.color, seedFor(seed, 'colorpick'), query('color', { tone }))
   const palette = colMod ? colMod.derive(brandColor, { tone, rubro, seed }) : derivePalette(brandColor, { tone, rubro, seed })
+  // HUE del acento de la paleta -> temperatura para la afinidad de fondo (bgTempAffinity). Solo afecta backgrounds con
+  // mod.temp; todo otro slot queda 1.0 (identico). Se setea aca (post-paleta) -> el pick de color de arriba no lo ve.
+  fitCtx.paletteHue = (palette && palette.accent) ? hexToHsl(palette.accent).h : null
   const typMod = required(lock && lock.type, keep && keep.type, seedFor(seed, 'typepick'), query('typography', { tone }))
   const fonts = typMod ? typMod.fonts : deriveFonts(rubro, style, seed)
   // MOTION: personalidad de movimiento (entrada/asentamiento/stagger/drift) -> env.motion.

@@ -40,7 +40,7 @@ function detail(pal, useAccent2 = false) {
 
 register({
   id: 'bg.finanzas.ledgersheen', lib: 'backgrounds', category: 'gradient-fields', tones: ['dark', 'light'], rubros: RUBROS, weight: 1.0,
-  register: 'corporate', intensity: 'calm', tags: ['finanzas', 'gradiente', 'sobrio', 'institucional'],
+  register: 'corporate', intensity: 'calm', temp: 'cool', tags: ['finanzas', 'gradiente', 'sobrio', 'institucional'],
   render(ctx, t, env) {
     const { pal } = env
     rampBg(ctx, pal)
@@ -61,7 +61,7 @@ register({
 
 register({
   id: 'bg.finanzas.cornerwedge', lib: 'backgrounds', category: 'gradient-fields', tones: ['dark', 'light'], rubros: RUBROS, weight: 0.95,
-  register: 'corporate', intensity: 'soft', tags: ['finanzas', 'gradiente', 'diagonal', 'corporativo'],
+  register: 'corporate', intensity: 'soft', temp: 'cool', tags: ['finanzas', 'gradiente', 'diagonal', 'corporativo'],
   render(ctx, t, env) {
     const { pal } = env
     rampBg(ctx, pal)
@@ -83,7 +83,7 @@ register({
 
 register({
   id: 'bg.finanzas.horizonband', lib: 'backgrounds', category: 'gradient-fields', tones: ['dark', 'light'], rubros: RUBROS, weight: 0.9,
-  register: 'editorial', intensity: 'calm', tags: ['finanzas', 'gradiente', 'horizonte', 'minimal'],
+  register: 'editorial', intensity: 'calm', temp: 'cool', tags: ['finanzas', 'gradiente', 'horizonte', 'minimal'],
   render(ctx, t, env) {
     const { pal } = env
     rampBg(ctx, pal)
@@ -108,7 +108,7 @@ register({
 
 register({
   id: 'bg.finanzas.columns', lib: 'backgrounds', category: 'geometric-graphic', tones: ['dark', 'light'], rubros: RUBROS, weight: 1.0,
-  register: 'corporate', intensity: 'soft', tags: ['finanzas', 'barras', 'columnas', 'grafico'],
+  register: 'corporate', intensity: 'soft', temp: 'cool', tags: ['finanzas', 'barras', 'columnas', 'grafico'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x4f1a)
     rampBg(ctx, pal)
@@ -135,7 +135,7 @@ register({
 
 register({
   id: 'bg.finanzas.finegrid', lib: 'backgrounds', category: 'geometric-graphic', tones: ['dark', 'light'], rubros: RUBROS, weight: 1.05,
-  register: 'corporate', intensity: 'calm', tags: ['finanzas', 'grilla', 'swiss', 'tecnico'],
+  register: 'corporate', intensity: 'calm', temp: 'cool', tags: ['finanzas', 'grilla', 'swiss', 'tecnico'],
   render(ctx, t, env) {
     const { pal } = env
     rampBg(ctx, pal)
@@ -160,7 +160,7 @@ register({
 
 register({
   id: 'bg.finanzas.pillars', lib: 'backgrounds', category: 'geometric-graphic', tones: ['dark', 'light'], rubros: RUBROS, weight: 0.85,
-  register: 'corporate', intensity: 'soft', tags: ['finanzas', 'columnas', 'arquitectura', 'banca'],
+  register: 'corporate', intensity: 'soft', temp: 'cool', tags: ['finanzas', 'columnas', 'arquitectura', 'banca'],
   render(ctx, t, env) {
     const { pal } = env
     rampBg(ctx, pal)
@@ -186,7 +186,7 @@ register({
 
 register({
   id: 'bg.finanzas.dotmatrix', lib: 'backgrounds', category: 'geometric-graphic', tones: ['dark', 'light'], rubros: RUBROS, weight: 0.8,
-  register: 'neutral', intensity: 'calm', tags: ['finanzas', 'puntos', 'matriz', 'minimal'],
+  register: 'neutral', intensity: 'calm', temp: 'cool', tags: ['finanzas', 'puntos', 'matriz', 'minimal'],
   render(ctx, t, env) {
     const { pal } = env
     rampBg(ctx, pal)
@@ -224,7 +224,7 @@ function chartPath(r, points, baseY, amp) {
 
 register({
   id: 'bg.finanzas.uptrend', lib: 'backgrounds', category: 'chart-lines', tones: ['dark', 'light'], rubros: RUBROS, weight: 1.05,
-  register: 'corporate', intensity: 'soft', tags: ['finanzas', 'grafico', 'linea', 'tendencia'],
+  register: 'corporate', intensity: 'soft', temp: 'cool', tags: ['finanzas', 'grafico', 'linea', 'tendencia'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'up')
     rampBg(ctx, pal)
@@ -250,7 +250,7 @@ register({
 
 register({
   id: 'bg.finanzas.candles', lib: 'backgrounds', category: 'chart-lines', tones: ['dark', 'light'], rubros: RUBROS, weight: 0.95,
-  register: 'corporate', intensity: 'medium', tags: ['finanzas', 'velas', 'trading', 'mercado'],
+  register: 'corporate', intensity: 'medium', temp: 'cool', tags: ['finanzas', 'velas', 'trading', 'mercado'],
   render(ctx, t, env) {
     const { pal } = env, r = mulberry32(env.seed ^ 0x9c3d)
     rampBg(ctx, pal)
@@ -280,7 +280,7 @@ register({
 
 register({
   id: 'bg.finanzas.pulseline', lib: 'backgrounds', category: 'chart-lines', tones: ['dark', 'light'], rubros: RUBROS, weight: 0.85,
-  register: 'editorial', intensity: 'soft', tags: ['finanzas', 'pulso', 'linea', 'monitor'],
+  register: 'editorial', intensity: 'soft', temp: 'cool', tags: ['finanzas', 'pulso', 'linea', 'monitor'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'pulse')
     rampBg(ctx, pal)
@@ -313,7 +313,7 @@ register({
 
 register({
   id: 'bg.finanzas.vaultglow', lib: 'backgrounds', category: 'atmospheric-organic', tones: ['dark', 'light'], rubros: RUBROS, weight: 0.85,
-  register: 'editorial', intensity: 'soft', tags: ['finanzas', 'bloom', 'premium', 'oro'],
+  register: 'editorial', intensity: 'soft', temp: 'cool', tags: ['finanzas', 'bloom', 'premium', 'oro'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'vault')
     rampBg(ctx, pal)
@@ -341,7 +341,7 @@ register({
 
 register({
   id: 'bg.finanzas.guilloche', lib: 'backgrounds', category: 'generative-art', tones: ['dark', 'light'], rubros: RUBROS, weight: 0.8,
-  register: 'editorial', intensity: 'soft', tags: ['finanzas', 'guilloche', 'billete', 'seguridad'],
+  register: 'editorial', intensity: 'soft', temp: 'cool', tags: ['finanzas', 'guilloche', 'billete', 'seguridad'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'guil')
     rampBg(ctx, pal)
@@ -370,7 +370,7 @@ register({
 
 register({
   id: 'bg.finanzas.streamlines', lib: 'backgrounds', category: 'generative-art', tones: ['dark', 'light'], rubros: RUBROS, weight: 0.85,
-  register: 'neutral', intensity: 'soft', tags: ['finanzas', 'flujo', 'lineas', 'capital'],
+  register: 'neutral', intensity: 'soft', temp: 'cool', tags: ['finanzas', 'flujo', 'lineas', 'capital'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'stream')
     rampBg(ctx, pal)
@@ -397,7 +397,7 @@ register({
 
 register({
   id: 'bg.finanzas.coinscatter', lib: 'backgrounds', category: 'generative-art', tones: ['dark', 'light'], rubros: RUBROS, weight: 0.75,
-  register: 'friendly', intensity: 'soft', tags: ['finanzas', 'monedas', 'circulos', 'ahorro'],
+  register: 'friendly', intensity: 'soft', temp: 'cool', tags: ['finanzas', 'monedas', 'circulos', 'ahorro'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'coin')
     rampBg(ctx, pal)
@@ -429,7 +429,7 @@ register({
 
 register({
   id: 'bg.finanzas.tickerwall', lib: 'backgrounds', category: 'tech-hud', tones: ['dark', 'light'], rubros: RUBROS, weight: 0.8,
-  register: 'neutral', intensity: 'medium', tags: ['finanzas', 'ticker', 'fintech', 'tablero'],
+  register: 'neutral', intensity: 'medium', temp: 'cool', tags: ['finanzas', 'ticker', 'fintech', 'tablero'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'tick')
     rampBg(ctx, pal)

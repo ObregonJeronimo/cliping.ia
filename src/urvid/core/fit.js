@@ -81,6 +81,16 @@ export function hueAffinity(mod, rubro) {
   if (target == null) return 1.0
   return 1.25 - 0.7 * (_hueDist(mod.hue, target) / 180)
 }
+// TEMPERATURA del fondo vs HUE de la paleta del video. Solo los backgrounds que portan mod.temp declaran su temperatura
+// ('warm'|'cool'); el resto -> 1.0 (back-compat: no son temp-aware). Un fondo calido pega con paleta calida y el frio con
+// frio -> coherencia cromatica. SUAVE (1.18 match .. 0.6 opuesto, nunca 0): desempate fino, no domina la seleccion.
+export const TEMP_HUE = { warm: 35, cool: 210 }   // centro calido (ambar/rojo) y frio (azul/cian) en grados HSL
+export function bgTempAffinity(mod, paletteHue) {
+  if (mod.temp == null || mod.temp === 'neutral' || paletteHue == null) return 1.0
+  const center = TEMP_HUE[mod.temp]
+  if (center == null) return 1.0
+  return 1.18 - 0.58 * (_hueDist(paletteHue, center) / 180)
+}
 // register: cercania entre la seriedad del brief y la que le sienta al modulo. Cae fuerte pero nunca a 0.
 export function registerFit(mod, seriousness) {
   const s = seriousness == null ? 0.5 : seriousness
@@ -100,5 +110,5 @@ export function intensityFit(mod, seriousness) {
 // ctx = { rubro, seriousness }. Las escenas multiplican ademas por sceneBias (señal de contenido).
 export function fitWeight(mod, ctx = {}) {
   const w = mod.weight == null ? 1 : mod.weight
-  return Math.max(0, w) * rubroAffinity(mod, ctx.rubro) * hueAffinity(mod, ctx.rubro) * registerFit(mod, ctx.seriousness) * intensityFit(mod, ctx.seriousness)
+  return Math.max(0, w) * rubroAffinity(mod, ctx.rubro) * hueAffinity(mod, ctx.rubro) * bgTempAffinity(mod, ctx.paletteHue) * registerFit(mod, ctx.seriousness) * intensityFit(mod, ctx.seriousness)
 }
