@@ -9,8 +9,14 @@
 ## ✅ Hecho (log)
 - **[audiencia] `audience` de 1ra clase en el brief** — perception.py infiere y emite `audience{who, register(formal/casual/warm), awareness(unaware/problem/solution/product/most)}`; cache v2→v3.
 - **[copy] copy según awareness** — el tagline/claim/cta se escriben según la etapa del comprador + tono por register.
-- **[audiencia] el MOTOR consume la audiencia** — `buildArcSmart` abre con HOOK cuando el público está unaware/problem (engancha/nombra el dolor); `register` nudgea la seriedad efectiva (formal +0.15 sobrio / casual −0.12 relajado / warm −0.05) que rige TODA la selección de módulos (`fitWeight`). Gates QA OK.
-- _Próximo: declarar register/intensity EXPLÍCITOS en personalidades de motion + transiciones + post (hoy el eje seriedad no discrimina del todo)._
+- **[audiencia] el MOTOR consume la audiencia** — `buildArcSmart` abre con HOOK cuando el público está unaware/problem; `register` nudgea la seriedad efectiva (formal +0.15 / casual −0.12 / warm −0.05) que rige TODA la selección (`fitWeight`); `seriousness` modula además la prob de gancho del opener.
+- **[audiencia] register/intensity EXPLÍCITOS** — 12 personalidades de motion + 16 transiciones + 14 módulos de post declaran sus ejes (vibe/peso) → el eje seriedad+audiencia ahora discrimina de verdad (sobrio↔vistoso, clínico↔cálido).
+- **[audiencia] ruteo por contenido robusto** — `_deburr` (NFD + ñ→n) en el ruteo de anim/escena → el brief acentuado (reseña/envío) cae al ícono correcto, no a genérico.
+- **[calidad] faux-bold muerto** — `fontStr` snapea el peso pedido al realmente cargado por familia (mapa de 33 familias) → negrita real, no sintetizada.
+- **[audiencia] rubros reconciliados** — `eventos` ahora canónico en fit.js (era alias→default); `ctx.rubro` canonizado; perception y motor = 11 rubros idénticos.
+- **[audiencia] captura de señales declaradas** — JSON-LD/OG product/keywords (tipo, precio, moneda, rating, región) + testimonios (voz del cliente) + accent por computed-style del CTA → todo al digest de perception para anclar la audiencia en hechos.
+- **[calidad] imágenes rankeadas por aptitud-9:16 × relevancia** (retrato/contenido sube, banner ancho baja) y captura espera `document.fonts.ready` (tipografía real en el screenshot).
+- _Próximo (fase 2, high/M-L): HOOK garantizado en ~2.5s, duración 'corto' alcanzable, eje psicología-de-color, typekit para TODO el display, safe-area asimétrica, atmósfera/fondo rubro-aware, cablear playbooks/datakit/markkit/slot-media. Pendiente lateral: overflow en scene.social.* (tarea spawn)._
 
 ---
 
@@ -68,7 +74,7 @@
   - El publico ve el mensaje dirigido a el SIN que los botones de la red social tapen el titulo o el CTA; el video se lee igual de bien en el feed que en el preview, que es donde realmente decide la audie…
 - [ ] **Cerrar el loop maxLines<->slot (el solver manda, la escena obedece)** · _Layout / composicion_ · (high/M · arquitectura)
   - El titular dirigido a la audiencia ocupa el frame de forma optima en CUALQUIER formato (la pagina puede pedir 4:5 para feed o 9:16 para stories) sin texto diminuto ni aire muerto, manteniendo la jerar…
-- [ ] **Cablear seriousness y rubro DENTRO de buildArcSmart (arco dirigido al publico)** · _Escenas / guion visual_ · (high/M · audiencia)
+- [x] **Cablear seriousness y rubro DENTRO de buildArcSmart (arco dirigido al publico)** ✅ seriousness modula hookProb del opener (serio->hero medido; relajado->gancho). [proof-lidera revertido: dispara overflow latente en scene.social.* -> tarea aparte] · _Escenas / guion visual_ · (high/M · audiencia)
   - El RITMO y la sobriedad del guion se ajustan a quien visita la pagina: un publico de salud/finanzas recibe un arco mas calmo y de confianza; un publico de moda/gastronomia uno mas punchy. La estructur…
 - [ ] **Activar categorias muertas: connectors/interstitial y spec/slots en el arco** · _Escenas / guion visual_ · (high/M · arquitectura)
   - Desbloquea un beat de FICHA (specs reales de la pagina) que es exactamente lo que busca un comprador de inmueble/producto/plan, y bisagras de ritmo que retienen mejor. El video usa el 100% de la bibli…
