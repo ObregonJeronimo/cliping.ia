@@ -18,7 +18,7 @@ import LOTTIE from '../lottie/manifest.js'
 
 // ARCO narrativo VARIADO por semilla: apertura (hook|hero) -> 1-3 beats de cuerpo SIN repetir -> cierre. Usa todas
 // las categorias de escena disponibles -> dos videos no comparten estructura (no siempre hero->statement->outro).
-const _DUR = { 'openers/hero': 3.0, 'openers/hook': 2.6, 'statements/editorial': 3.4, 'lists/checklist': 3.9, 'lists/comparison': 3.6, 'data/single': 3.0, 'data/multi': 3.6, 'social/proof': 3.4, 'closers/outro': 3.6 }   // openers cortos -> el gancho/mensaje cae <=2.5s tras el scaling de durK (garantia hook-2.5s)
+const _DUR = { 'openers/hero': 3.0, 'openers/hook': 2.6, 'statements/editorial': 3.4, 'lists/checklist': 3.9, 'lists/comparison': 3.6, 'data/single': 3.0, 'data/multi': 3.6, 'social/proof': 3.4, 'connectors/interstitial': 2.4, 'closers/outro': 3.6 }   // interstitial = beat-puente corto   // openers cortos -> el gancho/mensaje cae <=2.5s tras el scaling de durK (garantia hook-2.5s)
 function buildArc(seed) {
   const r = seedFor(seed, 'arc')
   const open = pick(r, ['openers/hero', 'openers/hero', 'openers/hook'])

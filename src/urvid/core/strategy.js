@@ -75,10 +75,17 @@ export function buildArcSmart(seed, sig, awareness = 'solution', seriousness = 0
   const filler = shuffled(r, ['statements/editorial', 'lists/checklist'])
   const target = Math.min(bodyCap, Math.max(body.length, 1 + (r() * 3 | 0)))
   for (const c of filler) { if (body.length >= target || body.length >= bodyCap) break; if (body.indexOf(c) < 0) body.push(c) }
-  const seq = [open, ...body.slice(0, bodyCap)]
+  const finalBody = body.slice(0, bodyCap)
+  // CONNECTOR/INTERSTITIAL: un beat-PUENTE de una palabra entre dos beats de cuerpo (activa una categoria que existia
+  // pero el arco nunca usaba). PRNG de NAMESPACE separado ('arc-conn') -> sus draws NO mueven la secuencia 'arc' (el
+  // cuerpo NO se re-rollea, mismo brief+seed = mismo arco). Solo con >=2 body y duracion != corto (no infla el corto).
+  if (finalBody.length >= 2 && duration !== 'corto') {
+    const conn = seedFor(seed, 'arc-conn')
+    if (conn() < 0.5) { const at = 1 + (conn() * (finalBody.length - 1) | 0); finalBody.splice(at, 0, 'connectors/interstitial') }
+  }
+  const seq = [open, ...finalBody]
   // MID-ROLL CTA: para publico con URGENCIA o muy consciente (most/product), un empujon de CTA ANTES del cierre final.
-  // ADITIVO (no reemplaza beats de texto) y SIN consumir r() (decision pura sobre booleanos) -> el cuerpo del arco queda
-  // byte-identico y el PRNG no se re-rollea. Solo con >=2 beats de cuerpo (hay distancia al cierre) y duracion != corto.
+  // ADITIVO (no reemplaza beats de texto) y SIN consumir r() (decision pura sobre booleanos) -> no re-rollea el cuerpo.
   const ctaUrgent = sig.urgency || awareness === 'most' || awareness === 'product'
   if (ctaUrgent && duration !== 'corto' && seq.length >= 3) seq.push('closers/outro')
   return [...seq, 'closers/outro']
