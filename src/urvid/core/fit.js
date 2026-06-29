@@ -67,6 +67,20 @@ export function rubroAffinity(mod, rubro) {
   for (const r of rs) if (canonRubro(r) === rubro) return 1.3   // hace match -> favorito
   return 0.45                                            // tiene vibe de otro rubro -> baja, no se prohibe
 }
+// PSICOLOGIA DE COLOR: hue PREFERIDO por rubro (grados HSL 0..360). Suave, nunca filtro duro.
+// finanzas->azul/confianza · salud->verde-teal · gastronomia->calido rojo-ambar · belleza->rosa-violeta · tech->azul-cian
+// educacion->azul-amistoso · fitness->naranja-energia · inmobiliaria->verde-tierra · moda->magenta · eventos->violeta-fiesta.
+export const RUBRO_HUE = { finanzas: 215, salud: 165, gastronomia: 25, belleza: 330, tech: 200, educacion: 220, fitness: 30, inmobiliaria: 150, moda: 320, eventos: 285, default: null }
+const _hueDist = (a, b) => Math.abs(((a - b) % 360 + 540) % 360 - 180)   // 0..180, distancia angular mas corta
+// hue: SOLO los modulos de color que portan un hue de acento legible declaran mod.hue (grados). Sin hue -> 1.0 (neutro,
+// back-compat: el resto de las libs no son color). Misma forma SUAVE que rubroAffinity: cae con la distancia hue<->rubro
+// pero NUNCA a 0 (afinidad, no exclusion). dist 0 -> 1.25 (match); 180 -> 0.55 (opuesto). Es un desempate fino, no domina.
+export function hueAffinity(mod, rubro) {
+  if (mod.hue == null || !rubro || rubro === 'default') return 1.0
+  const target = RUBRO_HUE[rubro]
+  if (target == null) return 1.0
+  return 1.25 - 0.7 * (_hueDist(mod.hue, target) / 180)
+}
 // register: cercania entre la seriedad del brief y la que le sienta al modulo. Cae fuerte pero nunca a 0.
 export function registerFit(mod, seriousness) {
   const s = seriousness == null ? 0.5 : seriousness
@@ -86,5 +100,5 @@ export function intensityFit(mod, seriousness) {
 // ctx = { rubro, seriousness }. Las escenas multiplican ademas por sceneBias (señal de contenido).
 export function fitWeight(mod, ctx = {}) {
   const w = mod.weight == null ? 1 : mod.weight
-  return Math.max(0, w) * rubroAffinity(mod, ctx.rubro) * registerFit(mod, ctx.seriousness) * intensityFit(mod, ctx.seriousness)
+  return Math.max(0, w) * rubroAffinity(mod, ctx.rubro) * hueAffinity(mod, ctx.rubro) * registerFit(mod, ctx.seriousness) * intensityFit(mod, ctx.seriousness)
 }

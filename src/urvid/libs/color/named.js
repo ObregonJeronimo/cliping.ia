@@ -5,6 +5,7 @@
 // para elegir cual de los dos hexes va a accent vs accent2 (sin romper el contraste, que ya esta validado).
 import { register } from '../../core/registry.js'
 import { finalize } from '../../core/palette.js'
+import { hexToHsl } from '../../core/util.js'
 
 // Helper: registra una paleta curada. `p` = { accent, accent2, bg0, bg1 } (hexes FIJOS).
 // El tono se declara segun el fondo real (lo verifica el script de contraste). brandColor se IGNORA a proposito:
@@ -14,6 +15,7 @@ import { finalize } from '../../core/palette.js'
 function named(name, tone, p, { rubros = ['*'], weight = 1, tags = [] } = {}) {
   register({
     id: 'color.named.' + name, lib: 'color', category: 'named-palettes', tones: [tone], rubros, weight, tags: ['curada', ...tags],
+    hue: hexToHsl(p.accent).h,   // PSICOLOGIA DE COLOR: el hue del acento curado (fijo) -> el scorer lo matchea al rubro del brief
     derive(_brandColor, { tone: _t, seed: _seed }) {
       return finalize(p.accent, p.accent2, p.bg0, p.bg1, tone)
     },
