@@ -56,6 +56,18 @@ export function tonedBg(brandHsl, tone, satMul = 1, lightL = 0.07, darkL = 0.03)
   return [hslToHex(brandHsl.h, clamp(brandHsl.s * 0.5 * satMul, 0.2, 0.55), lightL), hslToHex(brandHsl.h, clamp(brandHsl.s * 0.45 * satMul, 0.18, 0.5), darkL)]
 }
 
+// FIDELIDAD DE MARCA: ancla el HUE del acento al de la marca por `blend` (0 = acento del mood puro, 1 = hue de marca),
+// conservando la S y la L del mood -> el CONTRASTE (onAccent/APCA) no cambia y el acento queda al brillo/saturacion del
+// esquema. Default 1 (ancla completa): el acento PROTAGONISTA lee como la marca; el MOOD termico se preserva en accent2
+// y el bg (que NO se anclan). Un blend parcial daria un hue intermedio turbio cuando marca y mood son opuestos (azul en
+// dorado -> verde), por eso anclamos full. PURO/determinista (sin PRNG/Date). Lo usan los moods de temperatura fuertes.
+export function brandAccent(brandColor, accentHex, blend = 1) {
+  if (!brandColor) return accentHex
+  const a = hexToHsl(accentHex), b = hexToHsl(brandColor)
+  const d = ((b.h - a.h + 540) % 360) - 180
+  return hslToHex((a.h + d * blend + 360) % 360, a.s, a.l)
+}
+
 // esquema POR DEFECTO (back-compat: lo usa el motor si no hay biblioteca color/ o como fallback).
 export function derivePalette(brandColor, { tone = 'dark', rubro = 'default', seed = 1 } = {}) {
   const prng = seedFor(seed, 'color')
