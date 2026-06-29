@@ -23,7 +23,8 @@
   - **finalize() guardrail accent2** — separa por luminancia (preserva hue: mono/grises ok) + contraste mínimo vs bg.
   - **Psicología de color** (hue↔rubro) en el scorer — hueAffinity suave; 34 named-palettes auto-anotan su hue. Validado top-5.
   - **Fix bug latente** scene.hook.strike (achica, no elide claim largo).
-- _Próximo: brand-fidelity (DIFERIDO: trade-off estético en 18 temp-moods, necesita tu ojo — los gates no miden "se ve de la marca"). Y los 3 ítems cuya auditoría cayó por límite de sesión (typekit-all-display, scrim-bbox, analyze-enrich) → re-auditar. Lateral: overflow scene.social.* (tarea spawn)._
+  - **Brand-fidelity** — brandAccent() ancla el hue del acento a la marca en 18 temp-moods (conserva S/L → APCA ok); el mood térmico vive en accent2+bg. Verificado: brand azul→acento azul, rojo→rojo.
+- _Próximo: los 3 ítems cuya auditoría cayó por límite de sesión (typekit-all-display, scrim-bbox, analyze-enrich) → re-auditar + implementar. Lateral: overflow scene.social.* (tarea spawn ya creada)._
 
 ---
 
@@ -67,7 +68,7 @@
   - Los datos, iconos y segundos titulos del video SIEMPRE se leen sobre el fondo y se distinguen del acento principal, sin importar el color de marca de la pagina -> el mensaje al publico nunca se pierde…
 - [x] **Eje de psicologia de color (afinidad hue<->rubro) en el scorer del director** ✅ hueAffinity x fitWeight + RUBRO_HUE; 34 named-palettes auto-anotan su hue. Validado top-5. [temp/grade overlays diferidos] · _Paleta y color_ · (high/M · audiencia)
   - El color del video EMPIEZA a hablarle al publico correcto: una clinica recibe azules/verdes confiables, una fintech azul corporativo, una gastronomia calidos apetecibles -> el subsistema cumple su obj…
-- [ ] **Guardrail de fidelidad de marca: respetar/anclar el brandColor en los modulos de hue fijo** · _Paleta y color_ · (high/M · audiencia)
+- [x] **Guardrail de fidelidad de marca: respetar/anclar el brandColor en los modulos de hue fijo** ✅ brandAccent() ancla el hue del acento a la marca en 18 temp-moods (conserva S/L -> APCA ok); mood vive en accent2+bg. Verificado: azul->azul, rojo->rojo · _Paleta y color_ · (high/M · audiencia)
   - El publico que ya conoce la marca de la pagina la RECONOCE en el video (el azul sigue siendo azul) -> coherencia de marca = mas confianza y recordacion, sin perder los moods cinematograficos cuando si…
 - [ ] **Enrutar TODO el texto display por el typekit (no solo 6 de 92 draws)** · _Tipografia_ · (high/M · motion-graphics)
   - Un video dirigido a un publico joven/dinamico (gastronomia, moda, fitness) finalmente SE MUEVE como su audiencia espera (char-pop, word-rise), mientras que un brief serio (salud/finanzas, seriousness…
