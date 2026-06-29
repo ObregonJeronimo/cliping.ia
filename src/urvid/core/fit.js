@@ -9,7 +9,7 @@
 // INFIEREN de los tags (back-compat -> el motor anda igual aunque un modulo no este auditado todavia).
 
 // rubros canonicos = los unicos que conocen el estudio + la perception. Toda la metadata se normaliza a estos.
-export const RUBROS = ['default', 'tech', 'finanzas', 'moda', 'gastronomia', 'educacion', 'salud', 'fitness', 'inmobiliaria', 'belleza']
+export const RUBROS = ['default', 'tech', 'finanzas', 'moda', 'gastronomia', 'educacion', 'salud', 'fitness', 'inmobiliaria', 'belleza', 'eventos']
 
 // register -> la SERIEDAD que le sienta (0..1). El director compara con brief.seriousness.
 export const REGISTERS = { corporate: 0.85, editorial: 0.65, neutral: 0.5, friendly: 0.4, playful: 0.2 }
@@ -18,7 +18,7 @@ export const INTENSITIES = { calm: 0.2, soft: 0.4, medium: 0.6, bold: 0.8, loud:
 
 // alias de tokens de rubro viejos/no-canonicos -> canonico (normaliza la metadata historica + sirve de hint a los agentes).
 const RUBRO_ALIAS = {
-  eventos: 'default', arte: 'moda', gaming: 'tech', legal: 'finanzas', corporativo: 'finanzas',
+  arte: 'moda', gaming: 'tech', legal: 'finanzas', corporativo: 'finanzas',
   servicios: 'default', retail: 'default', turismo: 'default', social: 'default', creatividad: 'moda',
   musica: 'moda', logistica: 'tech', startup: 'tech', construccion: 'inmobiliaria', industria: 'tech',
   editorial: 'default', seguros: 'finanzas', deportes: 'fitness', deporte: 'fitness', hogar: 'inmobiliaria',

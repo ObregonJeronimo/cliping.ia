@@ -54,7 +54,7 @@ const _RUBRO_CONCEPTS = {
   inmobiliaria: ['search', 'check', 'secure'], salud: ['check', 'secure', 'chat'],
   educacion: ['check', 'search', 'growth'], gastronomia: ['rating', 'cart', 'send'],
   moda: ['cart', 'rating', 'send'], belleza: ['rating', 'cart', 'check'], fitness: ['growth', 'check', 'rating'],
-  default: ['check', 'chat', 'growth'],
+  eventos: ['notify', 'send', 'check'], default: ['check', 'chat', 'growth'],
 }
 function routeAnimConcepts(content, rubro) {
   const text = _deburr([content.tagline, content.claim, content.cta, ...(Array.isArray(content.bullets) ? content.bullets : [])].filter(Boolean).join(' '))
@@ -126,7 +126,8 @@ function pickSceneAnims(category, content, rubro, seed, i, items) {
 }
 
 export function makeVideo(brief = {}) {
-  const { brand = 'Marca', rubro = 'default', tone = 'dark', brandColor = '#5b8cff', style = null } = brief
+  const { brand = 'Marca', rubro: _rubroRaw = 'default', tone = 'dark', brandColor = '#5b8cff', style = null } = brief
+  const rubro = canonRubro(_rubroRaw)   // normaliza al set canonico de fit.js (perception y motor ya comparten 11 rubros, incl. eventos) -> el scorer matchea sin degradar.
   const perScene = !!brief.perSceneAnims   // urvid IA: 1-3 Lotties POR ESCENA (ruteadas por lo que dice esa escena), no 1 por video
   // FORMATO (aspect-ratio). No afecta la receta (mismo seed -> misma carta), solo la forma del lienzo.
   const format = FORMATS[brief.format] ? brief.format : '9:16'
@@ -154,7 +155,7 @@ export function makeVideo(brief = {}) {
   const arc = brief.arc || buildArcSmart(seed, sig, audience.awareness).map(c => ({ category: c, dur: _DUR[c] || 3.4 }))
   // CEREBRO v1 · SERIEDAD: brief.seriousness o default por rubro -> alimenta el scorer de fit (register/intensity).
   // Un consultorio (0.85) desfavorece lo jugado/fuerte; una gastronomia (0.35) lo deja brillar.
-  const seriousness0 = brief.seriousness != null ? brief.seriousness : ({ salud: 0.85, finanzas: 0.8, inmobiliaria: 0.7, educacion: 0.55, tech: 0.5, default: 0.5, gastronomia: 0.35, moda: 0.4, belleza: 0.35, fitness: 0.35 }[rubro] ?? 0.5)
+  const seriousness0 = brief.seriousness != null ? brief.seriousness : ({ salud: 0.85, finanzas: 0.8, inmobiliaria: 0.7, educacion: 0.55, tech: 0.5, default: 0.5, gastronomia: 0.35, moda: 0.4, belleza: 0.35, fitness: 0.35, eventos: 0.3 }[rubro] ?? 0.5)
   // El REGISTER del publico nudgea la seriedad EFECTIVA: formal = mas sobrio; casual/warm = mas relajado (clamp 0..1).
   const _regNudge = { formal: 0.15, warm: -0.05, casual: -0.12 }[audience.register] || 0
   const seriousness = Math.max(0, Math.min(1, seriousness0 + _regNudge))
