@@ -31,7 +31,7 @@ _SYS = (
     '- "tagline": gancho corto, MAX 6 palabras y <=42 caracteres\n'
     '- "claim": el mensaje principal del reel, una frase COMPLETA, MAX 12 palabras y <=76 caracteres, concreto y fiel a la pagina\n'
     '- "cta": llamado a la accion corto, MAX 4 palabras y <=22 caracteres (preferi el CTA real de la pagina si hay)\n'
-    '- "bullets": 2 a 4 props/beneficios CORTOS (cada uno MAX 5 palabras y <=30 caracteres), sacados de los titulos/contenido reales. [] si no hay claros.\n'
+    '- "bullets": 2 a 4 props/beneficios CORTOS y COMPLETOS (cada uno MAX 5 palabras y <=30 caracteres, una FRASE CON SENTIDO). Es un LIMITE DURO: si la idea no entra, REESCRIBILA mas corta (no la recortes) manteniendo el sentido; NUNCA dejes un fragmento sin su sustantivo (MAL: "Tienda online de alto", "PDV integrado al digital"; BIEN: "Alto rendimiento", "PDV integrado"). [] si no hay claros.\n'
     '- "stats": 0 a 2 datos numericos REALES que COMUNIQUEN un logro/beneficio, cada uno {"value": "92%" | "+600" | "4.9", "label": "etiqueta DESCRIPTIVA de 3 a 6 palabras y <=28 caracteres: QUE es el numero"} (ej {"value":"92%","label":"de clientes lo recomienda"}). El value es la cifra; el label explica que significa para que la escena DIGA algo (no un numero suelto). NO incluyas precios sueltos, anios/fechas, telefonos ni codigos. [] si no hay datos que digan algo.\n'
     '- "proof": una linea de prueba social REAL (rating, cant. de clientes, premio) o "" si no hay\n'
     '- "seriousness": numero 0 a 1 (salud/finanzas alto ~0.8; gastronomia/moda bajo ~0.35)\n'
