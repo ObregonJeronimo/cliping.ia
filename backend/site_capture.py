@@ -133,6 +133,33 @@ _JS_EXTRACT = r"""
   if (ico) logoRaw = ico.getAttribute('href') || ico.getAttribute('content') || '';
   let logo = '';
   try { logo = logoRaw ? new URL(logoRaw, location.href).href : ''; } catch (e) { logo = ''; }
+  // ACENTO REAL por COMPUTED-STYLE: el color de marca VERDADERO suele ser el fill del CTA principal (no el theme-color,
+  // que falta o es generico, ni el promedio del screenshot, que es ruidoso). Muestreamos botones/CTA, descartamos
+  // gris/blanco/negro y elegimos el color mas saturado (el fill del boton pesa mas que su borde/texto). "" si no hay.
+  let accentCss = '';
+  try {
+    const toHex = (rgb) => {
+      const m = (rgb || '').match(/rgba?\(([^)]+)\)/); if (!m) return '';
+      const p = m[1].split(',').map(x => parseFloat(x)); const a = p[3] == null ? 1 : p[3];
+      if (a < 0.5 || p.length < 3) return '';
+      return '#' + p.slice(0, 3).map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('');
+    };
+    const cand = [...document.querySelectorAll('button, a.btn, a[class*="button" i], [role="button"], a[class*="cta" i], [class*="primary" i]')].slice(0, 60);
+    const score = {};
+    for (const el of cand) {
+      const r = el.getBoundingClientRect(); if (r.width < 40 || r.height < 16) continue;
+      const cs = getComputedStyle(el);
+      const bg = cs.backgroundColor;
+      for (const col of [bg, cs.borderColor, cs.color]) {
+        const hex = toHex(col); if (!hex) continue;
+        const rr = parseInt(hex.slice(1, 3), 16), gg = parseInt(hex.slice(3, 5), 16), bb = parseInt(hex.slice(5, 7), 16);
+        const mx = Math.max(rr, gg, bb), mn = Math.min(rr, gg, bb), chroma = (mx - mn) / 255, lum = (mx + mn) / 510;
+        if (chroma < 0.18 || lum < 0.12 || lum > 0.92) continue;   // gris/blanco/negro -> no es acento de marca
+        score[hex] = (score[hex] || 0) + chroma * (col === bg ? 2 : 1);   // el FILL del CTA pesa mas que borde/texto
+      }
+    }
+    let best = -1; for (const h in score) if (score[h] > best) { best = score[h]; accentCss = h; }
+  } catch (e) { accentCss = ''; }
   // DATOS DECLARADOS por la marca (structured data): JSON-LD + OpenGraph product + meta keywords. Definen con precision
   // rubro/precio/moneda/rating/region/B2B-B2C SIN que el modelo adivine -> mejor inferencia de AUDIENCIA (gama, poder
   // adquisitivo, region=moneda). Best-effort: cada parse va en try, una pagina sin structured data devuelve campos "".
@@ -173,6 +200,7 @@ _JS_EXTRACT = r"""
     siteName: meta('meta[property="og:site_name"]', 'content'),
     description: clean(meta('meta[name="description"]', 'content') || meta('meta[property="og:description"]', 'content')).slice(0, 300),
     themeColor: meta('meta[name="theme-color"]', 'content'),
+    accentCss,
     logo, headings, nav, ctas, paragraphs, structured,
     bodyText: clean(document.body && document.body.innerText).slice(0, 4000),
   };

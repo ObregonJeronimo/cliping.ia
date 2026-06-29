@@ -247,7 +247,12 @@ async def analyze_to_brief(url, desarrollo="", site=None, usage=None):
 
     out = _normalize(brief, url, content)
     out["_parse_ok"] = parse_ok   # señal interna para el caller (decidir si cachear); se saca antes de cachear/enviar
-    # fallback de color: si el modelo no dio uno usable, el theme-color de la pagina.
+    # fallback de color (en orden de FIDELIDAD): 1) el acento REAL del CTA por computed-style (verdad de la marca),
+    # 2) el theme-color declarado, 3) (en main.py) el dominante del screenshot. Solo si el modelo no dio uno usable.
+    if out["brandColor"] == "#5b8cff":
+        ac = _safe_hex((content or {}).get("accentCss")) if isinstance(content, dict) else None
+        if ac:
+            out["brandColor"] = ac
     if out["brandColor"] == "#5b8cff":
         tc = _safe_hex((content or {}).get("themeColor")) if isinstance(content, dict) else None
         if tc:

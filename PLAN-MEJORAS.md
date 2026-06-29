@@ -16,7 +16,7 @@
 
 ## ⭐ Prioridades — alto impacto
 
-- [ ] **Cosechar datos estructurados JSON-LD / OpenGraph product / meta keywords (la senal de publ…** · _Captura del sitio_ · (high/S · audiencia)
+- [x] **Cosechar datos estructurados JSON-LD / OpenGraph product / meta keywords (la senal de publ…** ✅ structured{types,price,currency,rating,region,keywords} en _JS_EXTRACT -> digest de perception · _Captura del sitio_ · (high/S · audiencia)
   - Obtiene rubro, precio, moneda, rating y zona DECLARADOS por la marca en formato limpio: define con precision si el publico es premium/masivo, local/global, B2B/B2C, sin que el modelo adivine. Es la me…
 - [x] **Reescribir el copy hablandole a la persona, con few-shot por awareness-stage en el prompt** ✅ regla COPY-SEGUN-AWARENESS + tono por register · _Percepcion y brief (inferencia de marca y AUDIENCIA)_ · (high/S · copy)
   - El texto que se ve en el reel pasa de 'fiel a la marca' a 'relevante para el lector': usa su jerga, nombra su dolor y promete su resultado. Es lo que hace que el publico de la pagina sienta que el vid…
