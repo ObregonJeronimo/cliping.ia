@@ -11,11 +11,33 @@ function accentAsText(accent, tone) {
   return lighten(accent, 0.2)
 }
 
+// GUARDRAIL determinista de accent2: debe (a) distinguirse de accent y (b) no perderse contra el bg. PURO (sin PRNG/
+// Date). NO toca accent/ink/dim/onAccent (accent2 es relleno/stroke/gradiente, nunca texto). Separa por LUMINANCIA
+// (preserva el hue) -> esquemas monocromaticos y marcas grises siguen coherentes, no se inventa un hue nuevo.
+function separateAccent2(accent, accent2, bg0, bg1, tone) {
+  const aH = hexToHsl(accent), cH = hexToHsl(accent2)
+  // (a) accent2 casi identico a accent (mismo hue Y misma luminancia) -> empujar su L lejos de la de accent.
+  const hueGap = Math.abs(((cH.h - aH.h) % 360 + 540) % 360 - 180)   // 0..180 distancia angular real
+  if (hueGap < 24 && Math.abs(cH.l - aH.l) < 0.10) {
+    const dir = aH.l < 0.5 ? 1 : -1                                   // accent oscuro -> accent2 mas claro (y viceversa)
+    accent2 = hslToHex(cH.h, cH.s, clamp(aH.l + dir * 0.18, 0.18, 0.82))
+  }
+  // (b) contraste minimo contra el bg PEOR (asi se garantizan ambos fondos): empuja la L lejos del fondo por pasos fijos.
+  const MIN = 1.6                                                     // accent2 es acento, no texto -> piso suave
+  let worstBg = contrast(accent2, bg0) <= contrast(accent2, bg1) ? bg0 : bg1
+  for (let i = 0; i < 8 && contrast(accent2, worstBg) < MIN; i++) {
+    accent2 = tone === 'light' ? darken(accent2, 0.12) : lighten(accent2, 0.12)
+    worstBg = contrast(accent2, bg0) <= contrast(accent2, bg1) ? bg0 : bg1
+  }
+  return accent2
+}
+
 // FINALIZER compartido: roles de texto/superficie legibles para CUALQUIER esquema.
 // onAccent (texto SOBRE el chip de acento) se elige por CONTRASTE REAL via legibleOn, NO por umbral de luminancia HSL:
 // la luminancia HSL no es la perceptual, asi que un corte .l>0.6 dejaba a hues luminosos (verde/ambar) con texto
 // ilegible (la "banda muerta"). Elegir el mejor de off-white/near-black por contraste garantiza >=~4.2 para todo hue.
 export function finalize(accent, accent2, bg0, bg1, tone) {
+  accent2 = separateAccent2(accent, accent2, bg0, bg1, tone)   // garantiza accent2 distinguible de accent y visible sobre el bg
   if (tone === 'light') return {
     tone, accent, accent2, bg0, bg1, surface: 'rgba(20,16,24,0.05)',
     ink: '#1c1510', dim: '#564a3e', inkText: accentAsText(accent, 'light'),
