@@ -75,7 +75,13 @@ export function buildArcSmart(seed, sig, awareness = 'solution', seriousness = 0
   const filler = shuffled(r, ['statements/editorial', 'lists/checklist'])
   const target = Math.min(bodyCap, Math.max(body.length, 1 + (r() * 3 | 0)))
   for (const c of filler) { if (body.length >= target || body.length >= bodyCap) break; if (body.indexOf(c) < 0) body.push(c) }
-  return [open, ...body.slice(0, bodyCap), 'closers/outro']
+  const seq = [open, ...body.slice(0, bodyCap)]
+  // MID-ROLL CTA: para publico con URGENCIA o muy consciente (most/product), un empujon de CTA ANTES del cierre final.
+  // ADITIVO (no reemplaza beats de texto) y SIN consumir r() (decision pura sobre booleanos) -> el cuerpo del arco queda
+  // byte-identico y el PRNG no se re-rollea. Solo con >=2 beats de cuerpo (hay distancia al cierre) y duracion != corto.
+  const ctaUrgent = sig.urgency || awareness === 'most' || awareness === 'product'
+  if (ctaUrgent && duration !== 'corto' && seq.length >= 3) seq.push('closers/outro')
+  return [...seq, 'closers/outro']
 }
 
 // SESGO de eleccion de escena por señales: boost a los modulos cuyos tags matchean el contenido (un beat de hook

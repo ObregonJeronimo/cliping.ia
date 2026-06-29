@@ -27,6 +27,14 @@ const _DTK = defaultTypekit()
 function dWrap(env, ctx, str, x, y, opts = {}) { return (env.typekit || _DTK).drawWrapped(ctx, str, x, y, opts) }
 function dDraw(env, ctx, str, x, y, opts = {}) { return (env.typekit || _DTK).draw(ctx, str, x, y, opts) }
 
+// STAGGER REAL: el delay POR-ITEM del reveal de listas/grillas/stats sale de la PERSONALIDAD de movimiento (motion.stagger)
+// en vez de una constante hardcodeada. kRef = el delay original de la escena (== cuando la personalidad es la default).
+// Se escala proporcional a M.stagger/_BASE -> con el default reproduce kRef EXACTO (frame identico, gates intactos);
+// snappy (0.07) acelera la cascada, calmo/drift (0.22) la dilata. Clamp [0.05,0.26] para que el ultimo item (i<=3) quede
+// revelado antes del muestreo del gate QA (t=dur*0.7). DETERMINISTA (solo deriva de la personalidad elegida por seed).
+const _BASE_STAGGER = _DM.stagger || 0.18
+function staggerK(M, kRef) { const s = (M && M.stagger) || _BASE_STAGGER; return clamp(kRef * (s / _BASE_STAGGER), 0.05, 0.26) }
+
 // helper local: divide un texto largo en frases/items por separadores comunes (·, •, |, /, coma, salto).
 // devuelve hasta `max` items limpios; si no hay separador, cae a 1 item con el string entero.
 function splitItems(str, max = 4) {
@@ -391,8 +399,9 @@ register({
     const lr = L.list, ax = lr.x, n = Math.max(1, items.length)
     const gap = Math.min(78, lr.h / n), y0 = lr.cy - (n - 1) * gap / 2
     const fs = fitUniform(ctx, items, 26, lr.w - 48, 14, 700, fonts.text)   // UN tamano para toda la lista (no disparejo)
+    const k = staggerK(M, 0.18)
     items.forEach((it, i) => {
-      const tin = inv(t, 0.2 + i * 0.18, 0.7 + i * 0.18)
+      const tin = inv(t, 0.2 + i * k, 0.7 + i * k)
       if (tin <= 0) return
       const y = y0 + i * gap
       // circulo de check + VIDA: respiracion suave del disco de acento (fase por item)
@@ -419,8 +428,9 @@ register({
     drawText(ctx, content.brand ? (content.brand + '').toUpperCase() : 'COMO FUNCIONA', ax, H * 0.25, { size: 16, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, align: 'left', maxW: W * 0.74, alpha: inv(t, 0.05, 0.35) })
     const y0 = H * 0.35, gap = Math.min(82, (H * 0.48) / Math.max(1, items.length))
     const fs = fitUniform(ctx, items, 25, W - (ax + 50) - W * 0.08, 14, 700, fonts.text)   // UN tamano para toda la lista
+    const k = staggerK(M, 0.2)
     items.forEach((it, i) => {
-      const tin = inv(t, 0.2 + i * 0.2, 0.7 + i * 0.2)
+      const tin = inv(t, 0.2 + i * k, 0.7 + i * k)
       if (tin <= 0) return
       const y = y0 + i * gap, sp = M.settle(tin, { zeta: 0.5, freq: 2 })
       // numero en pildora de acento + VIDA: la pildora respira (fase por item), el numero no se mueve
@@ -518,8 +528,9 @@ register({
     const n = pairs.length, cy = H * 0.44, colW = W / n
     // titulo opcional
     if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), W / 2, H * 0.24, { size: 16, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, maxW: W * 0.8, alpha: inv(t, 0.05, 0.35) })
+    const k = staggerK(M, 0.18)
     for (let i = 0; i < n; i++) {
-      const tin = inv(t, 0.25 + i * 0.18, 0.8 + i * 0.18); if (tin <= 0) continue
+      const tin = inv(t, 0.25 + i * k, 0.8 + i * k); if (tin <= 0) continue
       // el numero entra con spring y queda PIXEL-ESTABLE (sin breathe -> no shimmer); el separador da la vida (DECO)
       const x = colW * (i + 0.5), sp = M.settle(tin, { zeta: 0.5, freq: 2 })
       ctx.save(); ctx.globalAlpha = tin; ctx.translate(x, cy); ctx.scale(0.85 + 0.15 * sp, 0.85 + 0.15 * sp)
@@ -1213,8 +1224,9 @@ register({
     const items = listFrom(content, 'Rapido · Seguro · Simple · Sin limites', 4)
     if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), mx, H * 0.22, { size: 16, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, align: 'left', maxW: W * 0.78, alpha: inv(t, 0.05, 0.35) })
     const cols = 2, colW = (W - 2 * mx) / cols, rowH = 96, y0 = H * 0.34
+    const k = staggerK(M, 0.14)
     items.forEach((it, i) => {
-      const tin = inv(t, 0.2 + i * 0.14, 0.7 + i * 0.14); if (tin <= 0) return
+      const tin = inv(t, 0.2 + i * k, 0.7 + i * k); if (tin <= 0) return
       const r = Math.floor(i / cols), c = i % cols
       const x = mx + c * colW, y = y0 + r * rowH
       const sp = M.settle(tin, { zeta: 0.5, freq: 2 })
@@ -1340,8 +1352,9 @@ register({
     const bu = M.ease(inv(t, 0.1, 0.7))
     ctx.save(); ctx.strokeStyle = rgba(pal.ink, 0.2); ctx.lineWidth = 1.5
     ctx.beginPath(); ctx.moveTo(gx, baseY); ctx.lineTo(gx + gw * bu, baseY); ctx.stroke(); ctx.restore()
+    const k = staggerK(M, 0.15)
     for (let i = 0; i < n; i++) {
-      const tin = inv(t, 0.25 + i * 0.15, 0.85 + i * 0.15); if (tin <= 0) continue
+      const tin = inv(t, 0.25 + i * k, 0.85 + i * k); if (tin <= 0) continue
       const grow = M.settle(tin, 1.1)
       const settledB = grow > 1.0 || tin > 0.95, lifeB = i === win && settledB ? breathe(t, 1.0, 0.02) : 1
       const bx = gx + slot * (i + 0.5) - bw / 2, bh = maxH * hs[i] * clamp(grow, 0, 1) * lifeB
@@ -1687,8 +1700,9 @@ register({
       // VIDA: pulso de acento que baja por el riel en loop (sensacion de proceso vivo)
       if (rail > 0.95) { const u = sheenPos(t, 4.0), dy = y0 + (railBot - y0) * u; ctx.save(); ctx.fillStyle = pal.accent; ctx.globalAlpha = 0.6; ctx.beginPath(); ctx.arc(railX, dy, 3, 0, TAU); ctx.fill(); ctx.restore() }
     }
+    const k = staggerK(M, 0.16)
     items.forEach((it, i) => {
-      const tin = inv(t, 0.2 + i * 0.16, 0.72 + i * 0.16); if (tin <= 0) return
+      const tin = inv(t, 0.2 + i * k, 0.72 + i * k); if (tin <= 0) return
       const y = y0 + i * gap, sp = M.settle(tin, { zeta: 0.5, freq: 2 }), nb = tin >= 1 ? breathe(t, 1.0, 0.025, i * 1.2) : 1
       ctx.save(); ctx.globalAlpha = tin; ctx.translate(railX, y)
       ctx.save(); ctx.scale((0.8 + 0.2 * sp) * nb, (0.8 + 0.2 * sp) * nb)
@@ -1716,8 +1730,9 @@ register({
     const lx = W * 0.1, c1 = W * 0.66, c2 = W * 0.86, y0 = H * 0.32, gap = Math.min(84, (H * 0.46) / Math.max(1, rows.length))
     drawText(ctx, 'OTROS', c1, H * 0.24, { size: 14, weight: 700, family: fonts.accent || fonts.text, color: pal.dim, maxW: W * 0.18, alpha: inv(t, 0.05, 0.4) })
     drawText(ctx, (content.brand || 'NOSOTROS').toUpperCase(), c2, H * 0.24, { size: 14, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, maxW: W * 0.22, alpha: inv(t, 0.05, 0.4) })
+    const k = staggerK(M, 0.16)
     rows.forEach((it, i) => {
-      const tin = inv(t, 0.2 + i * 0.16, 0.72 + i * 0.16); if (tin <= 0) return
+      const tin = inv(t, 0.2 + i * k, 0.72 + i * k); if (tin <= 0) return
       const y = y0 + i * gap
       ctx.save(); ctx.globalAlpha = tin; ctx.translate((1 - M.ease(tin)) * 12, 0)
       drawWrapped(ctx, shortLabel(it, 4) || it, lx, y, { size: 21, weight: 700, family: fonts.text, maxW: c1 - lx - W * 0.06, color: pal.ink, align: 'left', maxLines: 2, lh: 1.08 })
@@ -1731,7 +1746,7 @@ register({
       ctx.fillStyle = rgba(pal.accent, pal.tone === 'light' ? 0.16 : 0.24); ctx.beginPath(); ctx.arc(0, 0, 14, 0, TAU); ctx.fill()
       tick(ctx, 0, 0, 14, cp, pal.inkText, 3)
       ctx.restore()
-      if (i < rows.length - 1) { const dl = M.ease(inv(t, 0.25 + i * 0.16, 0.95 + i * 0.16)); ctx.save(); ctx.strokeStyle = rgba(pal.ink, 0.1); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(lx, y + gap / 2); ctx.lineTo(lx + (W * 0.9 - lx) * dl, y + gap / 2); ctx.stroke(); ctx.restore() }
+      if (i < rows.length - 1) { const dl = M.ease(inv(t, 0.25 + i * k, 0.95 + i * k)); ctx.save(); ctx.strokeStyle = rgba(pal.ink, 0.1); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(lx, y + gap / 2); ctx.lineTo(lx + (W * 0.9 - lx) * dl, y + gap / 2); ctx.stroke(); ctx.restore() }
     })
   },
 })
