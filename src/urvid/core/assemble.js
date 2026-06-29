@@ -28,6 +28,11 @@ function buildArc(seed) {
   return cats.map(c => ({ category: c, dur: _DUR[c] || 3.4 }))
 }
 
+// NORMALIZA diacriticos (vocales con tilde, ñ->n) para que el texto del brief (acentuado: "reseña","envío","atención")
+// matchee los stems de keyword (escritos sin tilde). Sin esto el ruteo caia a generico y el publico veia un icono que NO
+// correspondia a la oferta. NFD descompone y se quitan los combining marks (incluye la tilde de la ñ) -> determinista.
+const _deburr = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+
 // RUTEO de ANIM por concepto: mapea palabras-clave del contenido (es) + el rubro -> set de conceptos candidatos.
 // Asi el director elige una animacion por NECESIDAD (un brief de compras -> carrito; de finanzas -> crecimiento).
 const _ANIM_KW = {
@@ -52,9 +57,9 @@ const _RUBRO_CONCEPTS = {
   default: ['check', 'chat', 'growth'],
 }
 function routeAnimConcepts(content, rubro) {
-  const text = [content.tagline, content.claim, content.cta, ...(Array.isArray(content.bullets) ? content.bullets : [])].filter(Boolean).join(' ').toLowerCase()
+  const text = _deburr([content.tagline, content.claim, content.cta, ...(Array.isArray(content.bullets) ? content.bullets : [])].filter(Boolean).join(' '))
   const hits = []
-  for (const concept in _ANIM_KW) if (_ANIM_KW[concept].some(k => text.indexOf(k) >= 0)) hits.push(concept)
+  for (const concept in _ANIM_KW) if (_ANIM_KW[concept].some(k => text.indexOf(_deburr(k)) >= 0)) hits.push(concept)
   return new Set(hits.length ? hits : (_RUBRO_CONCEPTS[rubro] || _RUBRO_CONCEPTS.default))
 }
 
@@ -101,8 +106,8 @@ function _beatText(category, c) {
 // (cross-rubro real: un tema ecommerce tira de la libreria de moda aunque el video sea de salud). Sin match -> rubro del video.
 function pickSceneAnims(category, content, rubro, seed, i, items) {
   if (!items || !items.length) return []
-  const lo = _beatText(category, content).toLowerCase()
-  let routes = ANIM_ROUTES.filter(r => r.kw.some(k => lo.indexOf(k) >= 0))
+  const lo = _deburr(_beatText(category, content))
+  let routes = ANIM_ROUTES.filter(r => r.kw.some(k => lo.indexOf(_deburr(k)) >= 0))
   if (!routes.length) routes = [{ id: 'rubro', pool: rubro, c: [] }]   // sin tema claro -> anim del rubro del video
   const prng = seedFor(seed ^ hashStr('sanim' + i), 'sanim')
   const out = [], used = new Set()
