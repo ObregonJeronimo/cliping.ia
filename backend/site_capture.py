@@ -88,8 +88,10 @@ async def capture_site(url: str, out_path: str,
     try:
         async with async_playwright() as p:
             browser = await p.chromium.launch(args=["--no-sandbox"])
+            # ignore_https_errors: muchos sitios legitimos tienen el cert vencido/mal (ERR_CERT_*); sin esto goto FALLA
+            # y la captura vuelve vacia -> el brief se inventaria desde el nombre de marca (viola "fiel a la pagina").
             page = await browser.new_page(viewport={"width": width, "height": height},
-                                          device_scale_factor=2)
+                                          device_scale_factor=2, ignore_https_errors=True)
             try:
                 await page.goto(url, wait_until="domcontentloaded", timeout=30000)
             except Exception as ge:
@@ -287,7 +289,7 @@ async def extract_content(url: str) -> dict | None:
     try:
         async with async_playwright() as p:
             browser = await p.chromium.launch(args=["--no-sandbox"])
-            page = await browser.new_page(viewport={"width": 1280, "height": 900})
+            page = await browser.new_page(viewport={"width": 1280, "height": 900}, ignore_https_errors=True)
             try:
                 await page.goto(url, wait_until="domcontentloaded", timeout=30000)
             except Exception as ge:
@@ -311,8 +313,10 @@ async def capture_all(url: str, out_path: str, width: int = 1280, height: int = 
     try:
         async with async_playwright() as p:
             browser = await p.chromium.launch(args=["--no-sandbox"])
+            # ignore_https_errors: muchos sitios legitimos tienen el cert vencido/mal (ERR_CERT_*); sin esto goto FALLA
+            # y la captura vuelve vacia -> el brief se inventaria desde el nombre de marca (viola "fiel a la pagina").
             page = await browser.new_page(viewport={"width": width, "height": height},
-                                          device_scale_factor=2)
+                                          device_scale_factor=2, ignore_https_errors=True)
             try:
                 await page.goto(url, wait_until="domcontentloaded", timeout=30000)
             except Exception as ge:
