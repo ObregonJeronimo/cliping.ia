@@ -38,6 +38,12 @@ _SYS = (
     '- "audience": objeto con A QUIEN le habla el reel, inferido de la pagina: {"who": "el publico objetivo en 2-5 palabras (ej: duenos de PyMEs, madres jovenes, gamers, profesionales de la salud)", "register": "formal" | "casual" | "warm" (como hablarle a ese publico), "awareness": UNA de "unaware" | "problem" | "solution" | "product" | "most" = la ETAPA DE CONSCIENCIA del comprador: unaware (no sabe que tiene el problema), problem (siente el problema pero no busca solucion), solution (busca soluciones), product (compara productos/marcas), most (listo para comprar, solo necesita el empujon)}. Es CLAVE: define el gancho y el tono del reel.\n'
     "REGLAS: espanol rioplatense (voseo), FIEL a la pagina (NO inventes datos, cifras, premios ni features que no esten; "
     "si no hay, deja [] o \"\"), conciso, sin comillas tipograficas. "
+    "COPY SEGUN AWARENESS (clave para que le hable a SU publico): escribi tagline/claim/cta acorde a la etapa: "
+    "unaware -> el gancho EDUCA sobre el problema/oportunidad (sin nombrar el producto); "
+    "problem -> nombra el DOLOR concreto que ese publico siente; "
+    "solution -> presenta la solucion/categoria como respuesta; "
+    "product -> resalta el DIFERENCIAL frente a alternativas; "
+    "most -> va directo a la oferta y un CTA fuerte. El TONO sigue el register (formal=preciso/sobrio, casual=directo/cercano, warm=calido/empatico). "
     "COMPLETITUD: cada texto debe estar ENTERO y entrar en su largo (el reel lo muestra tal cual, sin '...'); si una idea "
     "no entra, REESCRIBILA mas corta manteniendo el sentido — NUNCA la cortes a la mitad ni la dejes incompleta. "
     "Antes de responder, RELEE cada texto y verifica: completo, concreto, fiel a la pagina y dentro del largo. SOLO el JSON."
