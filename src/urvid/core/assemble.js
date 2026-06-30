@@ -179,10 +179,11 @@ export function makeVideo(brief = {}) {
     else if (keepId) { const m = get(keepId); if (toneOk(m)) return m }
     return pool.length ? weightedPick(prng, pool, score) : null
   }
-  // slot OPCIONAL (~prob): lock preserva presencia/ausencia; keep fija el id que vino; si no, sorteo de probabilidad.
+  // slot OPCIONAL (~prob): lock preserva presencia/ausencia; keep PRESERVA presencia/ausencia del original (re-rolea CUAL
+  // modulo si lo tenia, sigue ausente si no) -> nunca AGREGA una capa que el original no tenia; si no hay keep, sorteo de prob.
   const optional = (lockId, keepId, prng, prob, pool, scoreFn = score) => {
     if (lock) { if (!lockId) return null; const m = get(lockId); return toneOk(m) ? m : (pool.length ? weightedPick(prng, pool, scoreFn) : null) }
-    if (keepId) { const m = get(keepId); if (toneOk(m)) return m }
+    if (keep) { return keepId ? (pool.length ? weightedPick(prng, pool, scoreFn) : null) : null }   // keepId truthy = el original tenia la capa -> re-rolea identidad; falsy = no la tenia -> queda ausente
     return (pool.length && prng() < prob) ? weightedPick(prng, pool, scoreFn) : null
   }
 
