@@ -119,6 +119,14 @@ export function drawFrame(ctx, t, video) {
       if (a > 0) { ctx.save(); ctx.globalAlpha = a; drawLottie(ctx, an.id, an.url, lt, gx - sz / 2, gy - sz / 2, sz, sz); ctx.restore() }
     }
   }
+  // GUARD de texto CENTRALIZADO: scrim radial SUAVE en la zona del titulo (~centro), alpha BAJO -> legibilidad
+  // consistente sin que cada fondo lo reimplemente y sin enturbiar fondos ya limpios. Debajo del texto. Determinista.
+  {
+    const light = video.tone === 'light', a = light ? 0.08 : 0.14
+    const g = ctx.createRadialGradient(W / 2, H * 0.47, W * 0.22, W / 2, H * 0.47, W * 0.68)
+    g.addColorStop(0, light ? 'rgba(255,255,255,' + a + ')' : 'rgba(0,0,0,' + a + ')'); g.addColorStop(1, 'rgba(0,0,0,0)')
+    ctx.save(); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); ctx.restore()
+  }
   // ESCENA + TRANSICIONES — el CONTENIDO va ENCIMA de las capas (texto siempre legible).
   // Ventana de transicion [B.start, B.start+XF): A (saliente, ya asentada) + B (entrante, recien arrancando su
   // entrada) -> la lib transitions compone (wipe/slide/iris/bars/cut). Asi B SI es visible durante la transicion
