@@ -81,7 +81,9 @@ def has_expressions(lottie: dict) -> bool:
     Esas NO son reproducibles frame-a-frame en Remotion -> se descartan."""
     # compacto (sin espacios) para que el match '"x":"' funcione (json.dumps por defecto pone espacios)
     blob = json.dumps(lottie, separators=(",", ":"))
-    if '"ef":' in blob or '"x":"' in blob:   # 'ef' = effects; 'x' string = expresion en una prop
+    # 'ef' = array de EFECTOS. FALSO POSITIVO arreglado: '"ef":' tambien matchea '"ef":[]' (efectos VACIOS = deterministas)
+    # -> rechazaba Lotties sanas. Ahora '"ef":[{' = solo efectos NO vacios (el array arranca con un objeto). 'x' string = expresion.
+    if '"ef":[{' in blob or '"x":"' in blob:
         return True
     return False
 

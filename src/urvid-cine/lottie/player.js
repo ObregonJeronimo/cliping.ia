@@ -6,7 +6,7 @@
 // GATE de determinismo (mirror de backend has_expressions): las Lotties con expresiones/efectos NO renderizan igual
 // frame a frame -> se descartan (el anim es opcional; si una falla el gate, no se dibuja). El manifiesto NO viene
 // pre-gateado (escala a miles sin bajar todo), asi que se gatea aca al cargar.
-function hasExpressions(json) { try { const b = JSON.stringify(json); return b.indexOf('"ef":') >= 0 || b.indexOf('"x":"') >= 0 } catch { return true } }
+function hasExpressions(json) { try { const b = JSON.stringify(json); return b.indexOf('"ef":[{') >= 0 || b.indexOf('"x":"') >= 0 } catch { return true } }
 
 let _libP = null
 function ensureLib() {
