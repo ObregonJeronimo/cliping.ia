@@ -35,6 +35,16 @@ function dDraw(env, ctx, str, x, y, opts = {}) { return (env.typekit || _DTK).dr
 const _BASE_STAGGER = _DM.stagger || 0.18
 function staggerK(M, kRef) { const s = (M && M.stagger) || _BASE_STAGGER; return clamp(kRef * (s / _BASE_STAGGER), 0.05, 0.26) }
 
+// EYEBROW: el kicker/label usa la fuente ACCENT como 3er eje tipografico. PERO si accent es script/marker (Caveat,
+// Permanent Marker) en MAYUS chico queda ilegible, y si accent==text no aporta un 3er eje -> en esos casos cae a text.
+// Determinista (solo deriva del pairing). Para los demas accents (grotesk/mono/condensada) devuelve accent = sin cambio.
+const _NOEYEBROW = new Set(['Caveat', 'Permanent Marker'])
+function eyebrowFamily(fonts) {
+  const a = fonts && fonts.accent
+  if (!a || a === (fonts && fonts.text) || _NOEYEBROW.has(a)) return (fonts && fonts.text) || 'Inter'
+  return a
+}
+
 // helper local: divide un texto largo en frases/items por separadores comunes (·, •, |, /, coma, salto).
 // devuelve hasta `max` items limpios; si no hay separador, cae a 1 item con el string entero.
 function splitItems(str, max = 4) {
@@ -236,7 +246,7 @@ register({
       { id: 'claim', kind: 'title', text: claimSrc },
     ]), k = L.kick, c = L.claim
     // marca chica arriba (kicker en acento), en su slot
-    drawText(ctx, (content.brand || 'Marca').toUpperCase(), k.cx, k.cy, { size: Math.min(k.size, 18), weight: 700, family: fonts.accent || fonts.text, maxW: k.w, color: pal.inkText, align: k.align, alpha: inv(t, 0.04, 0.34) })
+    drawText(ctx, (content.brand || 'Marca').toUpperCase(), k.cx, k.cy, { size: Math.min(k.size, 18), weight: 700, family: eyebrowFamily(fonts), maxW: k.w, color: pal.inkText, align: k.align, alpha: inv(t, 0.04, 0.34) })
     // claim grande, en su slot, en 2-3 lineas, stagger por subida. ARRANCA cuando el kicker ya asento (~0.34) -> orden de lectura kicker->titulo sin solape (ambos completos << t=dur*0.7s del muestreo QA)
     const rise = M.settle(inv(t, 0.38, 1.05), 1.3)
     ctx.save(); ctx.globalAlpha = inv(t, 0.4, 0.85); ctx.translate(0, (1 - rise) * 40)
@@ -356,7 +366,7 @@ register({
     drawWrapped(ctx, claimSrc, c.cx, c.cy, { size: Math.min(c.size, 40), weight: 800, family: fonts.display, maxW: c.w, color: pal.ink, align: c.align, maxLines: 4, lh: 1.18 })
     ctx.restore()
     // firma de marca, en su slot
-    if (content.brand && L.sig) drawText(ctx, '— ' + content.brand, L.sig.cx, L.sig.cy, { size: Math.min(L.sig.size, 18), weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, align: L.sig.align, maxW: L.sig.w, alpha: inv(t, 0.7, 1.2) })
+    if (content.brand && L.sig) drawText(ctx, '— ' + content.brand, L.sig.cx, L.sig.cy, { size: Math.min(L.sig.size, 18), weight: 700, family: eyebrowFamily(fonts), color: pal.inkText, align: L.sig.align, maxW: L.sig.w, alpha: inv(t, 0.7, 1.2) })
   },
 })
 
@@ -395,7 +405,7 @@ register({
       content.brand ? { id: 'kick', kind: 'kicker', text: content.brand } : null,
       { id: 'list', kind: 'list', text: items.join(' · ') },
     ])
-    if (content.brand && L.kick) drawText(ctx, (content.brand || '').toUpperCase(), L.kick.cx, L.kick.cy, { size: Math.min(L.kick.size, 18), weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, align: L.kick.align, maxW: L.kick.w, alpha: inv(t, 0.05, 0.35) })
+    if (content.brand && L.kick) drawText(ctx, (content.brand || '').toUpperCase(), L.kick.cx, L.kick.cy, { size: Math.min(L.kick.size, 18), weight: 700, family: eyebrowFamily(fonts), color: pal.inkText, align: L.kick.align, maxW: L.kick.w, alpha: inv(t, 0.05, 0.35) })
     const lr = L.list, ax = lr.x, n = Math.max(1, items.length)
     const gap = Math.min(78, lr.h / n), y0 = lr.cy - (n - 1) * gap / 2
     const fs = fitUniform(ctx, items, 26, lr.w - 48, 14, 700, fonts.text)   // UN tamano para toda la lista (no disparejo)
@@ -425,7 +435,7 @@ register({
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, ax = W * 0.13
     const items = listFrom(content, 'Conecta · Configura · Lanza', 4)
-    drawText(ctx, content.brand ? (content.brand + '').toUpperCase() : 'COMO FUNCIONA', ax, H * 0.25, { size: 16, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, align: 'left', maxW: W * 0.74, alpha: inv(t, 0.05, 0.35) })
+    drawText(ctx, content.brand ? (content.brand + '').toUpperCase() : 'COMO FUNCIONA', ax, H * 0.25, { size: 16, weight: 700, family: eyebrowFamily(fonts), color: pal.inkText, align: 'left', maxW: W * 0.74, alpha: inv(t, 0.05, 0.35) })
     const y0 = H * 0.35, gap = Math.min(82, (H * 0.48) / Math.max(1, items.length))
     const fs = fitUniform(ctx, items, 25, W - (ax + 50) - W * 0.08, 14, 700, fonts.text)   // UN tamano para toda la lista
     const k = staggerK(M, 0.2)
@@ -461,12 +471,12 @@ register({
     const la = M.ease(inv(t, 0.15, 0.7)), ra = M.ease(inv(t, 0.3, 0.85))
     // panel izquierdo (dim/tachado conceptual)
     ctx.save(); ctx.globalAlpha = la; ctx.translate((1 - la) * -40, 0)
-    drawText(ctx, 'ANTES', colX, H * 0.32, { size: 15, weight: 700, family: fonts.accent || fonts.text, color: pal.dim, maxW: colW })
+    drawText(ctx, 'ANTES', colX, H * 0.32, { size: 15, weight: 700, family: eyebrowFamily(fonts), color: pal.dim, maxW: colW })
     drawWrapped(ctx, left, colX, H * 0.46, { size: 24, weight: 700, family: fonts.display, maxW: colW, color: pal.dim, maxLines: 4, lh: 1.16 })
     ctx.restore()
     // panel derecho (ink/acento)
     ctx.save(); ctx.globalAlpha = ra; ctx.translate((1 - ra) * 40, 0)
-    drawText(ctx, 'DESPUES', W - colX, H * 0.32, { size: 15, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, maxW: colW })
+    drawText(ctx, 'DESPUES', W - colX, H * 0.32, { size: 15, weight: 700, family: eyebrowFamily(fonts), color: pal.inkText, maxW: colW })
     drawWrapped(ctx, right, W - colX, H * 0.46, { size: 26, weight: 800, family: fonts.display, maxW: colW, color: pal.ink, maxLines: 4, lh: 1.16 })
     ctx.restore()
     // divisor central con pildora "vs"
@@ -527,7 +537,7 @@ register({
     const labels = pairs.map(p => p.label), nums = pairs.map(p => p.num)
     const n = pairs.length, cy = H * 0.44, colW = W / n
     // titulo opcional
-    if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), W / 2, H * 0.24, { size: 16, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, maxW: W * 0.8, alpha: inv(t, 0.05, 0.35) })
+    if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), W / 2, H * 0.24, { size: 16, weight: 700, family: eyebrowFamily(fonts), color: pal.inkText, maxW: W * 0.8, alpha: inv(t, 0.05, 0.35) })
     const k = staggerK(M, 0.18)
     for (let i = 0; i < n; i++) {
       const tin = inv(t, 0.25 + i * k, 0.8 + i * k); if (tin <= 0) continue
@@ -571,7 +581,7 @@ register({
       const ap = inv(t, 0.7, 1.2)
       ctx.fillStyle = pal.accent; ctx.globalAlpha = ap
       ctx.beginPath(); ctx.roundRect(cx - 16, H * 0.64, 32 * M.ease(ap), 3, 1.5); ctx.fill(); ctx.globalAlpha = 1
-      drawText(ctx, content.brand, cx, H * 0.68, { size: 18, weight: 700, family: fonts.accent || fonts.text, color: pal.dim, maxW: W * 0.7, alpha: ap })
+      drawText(ctx, content.brand, cx, H * 0.68, { size: 18, weight: 700, family: eyebrowFamily(fonts), color: pal.dim, maxW: W * 0.7, alpha: ap })
     }
   },
 })
@@ -691,7 +701,7 @@ register({
     drawText(ctx, word, wS.align === 'center' ? wS.cx : wS.x, cy, { size: Math.min(wS.size, 52), weight: 800, family: fonts.display, maxW: wS.w, color: pal.ink, align: wS.align, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.4)' : null })
     ctx.restore()
     // numero/kicker de paso opcional arriba (si la marca existe), en su slot, en mono-acento
-    if (content.brand && L.kick) drawText(ctx, (content.brand || '').toUpperCase(), L.kick.align === 'center' ? L.kick.cx : L.kick.x, L.kick.cy, { size: Math.min(L.kick.size, 15), weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, align: L.kick.align, maxW: L.kick.w, alpha: inv(t, 0.0, 0.35) })
+    if (content.brand && L.kick) drawText(ctx, (content.brand || '').toUpperCase(), L.kick.align === 'center' ? L.kick.cx : L.kick.x, L.kick.cy, { size: Math.min(L.kick.size, 15), weight: 700, family: eyebrowFamily(fonts), color: pal.inkText, align: L.kick.align, maxW: L.kick.w, alpha: inv(t, 0.0, 0.35) })
   },
 })
 
@@ -733,7 +743,7 @@ register({
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK
     const items = listFrom(content, 'Calidad · Confianza · Cercania · Compromiso', 4)
     // titulo / marca arriba
-    drawText(ctx, content.brand ? (content.brand + '').toUpperCase() : 'FICHA', W * 0.12, H * 0.22, { size: 16, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, align: 'left', maxW: W * 0.76, alpha: inv(t, 0.0, 0.3) })
+    drawText(ctx, content.brand ? (content.brand + '').toUpperCase() : 'FICHA', W * 0.12, H * 0.22, { size: 16, weight: 700, family: eyebrowFamily(fonts), color: pal.inkText, align: 'left', maxW: W * 0.76, alpha: inv(t, 0.0, 0.3) })
     const x0 = W * 0.12, x1 = W * 0.88, y0 = H * 0.32, gap = Math.min(74, (H * 0.5) / Math.max(1, items.length))
     items.forEach((it, i) => {
       const tin = inv(t, 0.18 + i * 0.16, 0.68 + i * 0.16); if (tin <= 0) return
@@ -772,7 +782,7 @@ register({
     const n = Math.min(4, items.length)
     const cols = n <= 2 ? n : 2, rows = Math.ceil(n / cols)
     const gw = W * 0.76, gx = (W - gw) / 2, cellW = gw / cols, cellH = 92, gy = H * (rows > 1 ? 0.3 : 0.4)
-    if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), W / 2, H * 0.2, { size: 16, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, maxW: W * 0.78, alpha: inv(t, 0.0, 0.3) })
+    if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), W / 2, H * 0.2, { size: 16, weight: 700, family: eyebrowFamily(fonts), color: pal.inkText, maxW: W * 0.78, alpha: inv(t, 0.0, 0.3) })
     for (let i = 0; i < n; i++) {
       const it = items[i]; if (!it) continue
       const r = Math.floor(i / cols), c = i % cols
@@ -872,7 +882,7 @@ register({
     // VIDA: sheen suave que cruza el panel de acento (DECO continuo, no toca el texto)
     if (drop > 0.95) { ctx.save(); ctx.globalAlpha = 0.45; rrSheen(ctx, 0, py, W, ph, t, { per: 4.2, strength: 0.3, tone: pal.tone }); ctx.restore() }
     // kicker chico arriba del panel
-    if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), cx, py - 22, { size: 15, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, maxW: W * 0.8, alpha: inv(t, 0.0, 0.35) })
+    if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), cx, py - 22, { size: 15, weight: 700, family: eyebrowFamily(fonts), color: pal.inkText, maxW: W * 0.8, alpha: inv(t, 0.0, 0.35) })
     // claim dentro del panel en onAccent (alto contraste garantizado por la paleta)
     if (drop > 0.35) {
       ctx.save(); ctx.globalAlpha = inv(t, 0.4, 0.9)
@@ -981,14 +991,14 @@ register({
     ctx.fillStyle = pal.tone === 'light' ? 'rgba(20,16,24,0.04)' : 'rgba(255,255,255,0.04)'
     ctx.beginPath(); ctx.rect(0, topY, W, halfH); ctx.fill(); ctx.restore()
     ctx.save(); ctx.globalAlpha = dT; ctx.translate(0, (1 - dT) * -20)
-    drawText(ctx, 'ANTES', W * 0.12, topY + 30, { size: 14, weight: 700, family: fonts.accent || fonts.text, color: pal.dim, align: 'left', maxW: W * 0.7 })
+    drawText(ctx, 'ANTES', W * 0.12, topY + 30, { size: 14, weight: 700, family: eyebrowFamily(fonts), color: pal.dim, align: 'left', maxW: W * 0.7 })
     drawWrapped(ctx, left, W / 2, topY + halfH / 2 + 8, { size: 27, weight: 700, family: fonts.display, maxW: W * 0.78, color: pal.dim, maxLines: 3, lh: 1.16 })
     ctx.restore()
     // panel inferior: banda de acento + VIDA: sheen suave cruzandola
     ctx.save(); ctx.globalAlpha = dB; ctx.translate(0, (1 - dB) * 20)
     ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.rect(0, botY, W, halfH); ctx.fill()
     if (dB > 0.95) { ctx.save(); ctx.globalAlpha = 0.4; rrSheen(ctx, 0, botY, W, halfH, t, { per: 4.2, strength: 0.28, tone: pal.tone }); ctx.restore() }
-    drawText(ctx, 'AHORA', W * 0.12, botY + 30, { size: 14, weight: 700, family: fonts.accent || fonts.text, color: pal.onAccent, align: 'left', maxW: W * 0.7 })
+    drawText(ctx, 'AHORA', W * 0.12, botY + 30, { size: 14, weight: 700, family: eyebrowFamily(fonts), color: pal.onAccent, align: 'left', maxW: W * 0.7 })
     drawWrapped(ctx, right, W / 2, botY + halfH / 2 + 8, { size: 30, weight: 800, family: fonts.display, maxW: W * 0.8, color: pal.onAccent, maxLines: 3, lh: 1.16 })
     ctx.restore()
     // flecha que cruza el limite (DECO) + VIDA: el disco respira + flecha deriva sutil vertical
@@ -1083,7 +1093,7 @@ register({
     const vu = M.ease(inv(t, 0.05, 0.7)), vh = (H * 0.4) * vu, vry = H * 0.28
     ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(mx - 18, vry, 5, vh, 2.5); ctx.fill()
     if (vu > 0.95) { const u = sheenPos(t, 3.4), dy = vry + 6 + (vh - 12) * u; ctx.save(); ctx.fillStyle = 'rgba(255,255,255,' + (pal.tone === 'light' ? 0.5 : 0.85) + ')'; ctx.beginPath(); ctx.arc(mx - 15.5, dy, 2.6, 0, TAU); ctx.fill(); ctx.restore() }
-    vLabel(ctx, (content.brand || 'Marca').toUpperCase(), mx - 26, H * 0.68, { size: 16, weight: 800, family: fonts.accent || fonts.text, color: pal.inkText, maxW: H * 0.36, alpha: inv(t, 0.2, 0.6) })
+    vLabel(ctx, (content.brand || 'Marca').toUpperCase(), mx - 26, H * 0.68, { size: 16, weight: 800, family: eyebrowFamily(fonts), color: pal.inkText, maxW: H * 0.36, alpha: inv(t, 0.2, 0.6) })
     // claim grande, izquierda, anclado abajo (sube y se asienta)
     const rise = M.settle(inv(t, 0.2, 1.0), 1.2)
     ctx.save(); ctx.globalAlpha = inv(t, 0.2, 0.7); ctx.translate(0, (1 - rise) * 36)
@@ -1101,7 +1111,7 @@ register({
   register: 'editorial', intensity: 'bold', tags: ['apertura', 'highlight', 'masivo', 'editorial'], beat: 'hook',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, mx = W * 0.1
-    drawText(ctx, (content.brand || 'Marca').toUpperCase(), mx, H * 0.26, { size: 17, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, align: 'left', maxW: W * 0.8, alpha: inv(t, 0.05, 0.4) })
+    drawText(ctx, (content.brand || 'Marca').toUpperCase(), mx, H * 0.26, { size: 17, weight: 700, family: eyebrowFamily(fonts), color: pal.inkText, align: 'left', maxW: W * 0.8, alpha: inv(t, 0.05, 0.4) })
     const src = content.claim || content.tagline || content.brand || 'Mas claro imposible'
     const L = wrapLinesLocal(ctx, src, 56, W - 2 * mx, 30, 800, fonts.display, 3)
     const lineH = L.size * 1.06, y0 = H * 0.42
@@ -1208,7 +1218,7 @@ register({
     drawWrapped(ctx, content.claim || content.tagline || 'La claridad gana', mx, H * 0.52, { size: 40, weight: 800, family: fonts.display, maxW: W * 0.78, color: pal.ink, align: 'left', maxLines: 4, lh: 1.18 })
     ctx.restore()
     // firma de marca abajo
-    if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), mx, H * 0.78, { size: 15, weight: 700, family: fonts.accent || fonts.text, color: pal.dim, align: 'left', maxW: W * 0.7, alpha: inv(t, 0.7, 1.2) })
+    if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), mx, H * 0.78, { size: 15, weight: 700, family: eyebrowFamily(fonts), color: pal.dim, align: 'left', maxW: W * 0.7, alpha: inv(t, 0.7, 1.2) })
   },
 })
 
@@ -1222,7 +1232,7 @@ register({
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, mx = W * 0.1
     const items = listFrom(content, 'Rapido · Seguro · Simple · Sin limites', 4)
-    if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), mx, H * 0.22, { size: 16, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, align: 'left', maxW: W * 0.78, alpha: inv(t, 0.05, 0.35) })
+    if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), mx, H * 0.22, { size: 16, weight: 700, family: eyebrowFamily(fonts), color: pal.inkText, align: 'left', maxW: W * 0.78, alpha: inv(t, 0.05, 0.35) })
     const cols = 2, colW = (W - 2 * mx) / cols, rowH = 96, y0 = H * 0.34
     const k = staggerK(M, 0.14)
     items.forEach((it, i) => {
@@ -1289,7 +1299,7 @@ register({
     drawWrapped(ctx, right, pivX + armW, ry, { size: 22, weight: 800, family: fonts.display, maxW: W * 0.38, color: pal.ink, maxLines: 2, lh: 1.12 })
     ctx.restore()
     // caption inferior con la marca
-    if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), cx, H * 0.78, { size: 15, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, maxW: W * 0.8, alpha: inv(t, 0.7, 1.2) })
+    if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), cx, H * 0.78, { size: 15, weight: 700, family: eyebrowFamily(fonts), color: pal.inkText, maxW: W * 0.8, alpha: inv(t, 0.7, 1.2) })
   },
 })
 
@@ -1346,7 +1356,7 @@ register({
     // alturas relativas estables; la ultima (o la mayor) es la ganadora -> acento
     const hs = []; for (let i = 0; i < n; i++) hs.push(0.45 + 0.5 * r())
     const win = hs.indexOf(Math.max(...hs))
-    if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), W * 0.5, H * 0.22, { size: 16, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, maxW: W * 0.8, alpha: inv(t, 0.05, 0.35) })
+    if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), W * 0.5, H * 0.22, { size: 16, weight: 700, family: eyebrowFamily(fonts), color: pal.inkText, maxW: W * 0.8, alpha: inv(t, 0.05, 0.35) })
     const baseY = H * 0.66, maxH = H * 0.32, gw = W * 0.7, gx = (W - gw) / 2, slot = gw / n, bw = slot * 0.5
     // linea base
     const bu = M.ease(inv(t, 0.1, 0.7))
@@ -1398,7 +1408,7 @@ register({
     const ru = M.ease(inv(t, 0.6, 1.2)), lrw = 100 * ru * breathe(t, 0.9, 0.025)
     ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(cx - lrw / 2, H * 0.62, lrw, 4, 2); ctx.fill()
     if (ru > 0.9) rrSheen(ctx, cx - lrw / 2, H * 0.62, lrw, 4, t, { per: 3.0, strength: 0.5, tone: pal.tone })
-    if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), cx, H * 0.68, { size: 15, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, maxW: W * 0.7, alpha: inv(t, 0.75, 1.25) })
+    if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), cx, H * 0.68, { size: 15, weight: 700, family: eyebrowFamily(fonts), color: pal.inkText, maxW: W * 0.7, alpha: inv(t, 0.75, 1.25) })
   },
 })
 
@@ -1560,12 +1570,12 @@ register({
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, mx = W * 0.1
     const kp = M.settle(inv(t, 0.05, 0.7), { zeta: 0.5, freq: 2 })
     const label = (content.brand || 'Marca').toUpperCase()
-    ctx.save(); ctx.font = `700 14px "${fonts.accent || fonts.text}"`
+    ctx.save(); ctx.font = `700 14px "${eyebrowFamily(fonts)}"`
     const lw = Math.min(W * 0.6, ctx.measureText(label).width), pw = lw + 28
     ctx.globalAlpha = inv(t, 0.05, 0.4); ctx.translate(mx + pw / 2, H * 0.26); ctx.scale(0.85 + 0.15 * kp, 0.85 + 0.15 * kp)
     ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(-pw / 2, -16, pw, 32, 16); ctx.fill()
     if (kp > 0.9) rrSheen(ctx, -pw / 2, -16, pw, 32, t, { per: 3.4, strength: 0.4, tone: pal.tone })   // VIDA: sheen en el kicker
-    drawText(ctx, label, 0, 1, { size: 14, weight: 700, family: fonts.accent || fonts.text, color: pal.onAccent, maxW: lw })
+    drawText(ctx, label, 0, 1, { size: 14, weight: 700, family: eyebrowFamily(fonts), color: pal.onAccent, maxW: lw })
     ctx.restore()
     const rise = M.settle(inv(t, 0.2, 1.0), 1.2)
     ctx.save(); ctx.globalAlpha = inv(t, 0.2, 0.7); ctx.translate(0, (1 - rise) * 32)
@@ -1647,7 +1657,7 @@ register({
     ctx.save(); ctx.globalAlpha = inv(t, 0.3, 0.85); ctx.translate((1 - M.ease(inv(t, 0.3, 0.95))) * 18, 0)
     drawWrapped(ctx, rest, bodyX, capY + capSize * 0.32, { size: 30, weight: 700, family: fonts.display, maxW: W - bodyX - W * 0.08, color: pal.ink, align: 'left', maxLines: 5, lh: 1.18 })
     ctx.restore()
-    if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), mx, H * 0.74, { size: 15, weight: 700, family: fonts.accent || fonts.text, color: pal.dim, align: 'left', maxW: W * 0.7, alpha: inv(t, 0.7, 1.2) })
+    if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), mx, H * 0.74, { size: 15, weight: 700, family: eyebrowFamily(fonts), color: pal.dim, align: 'left', maxW: W * 0.7, alpha: inv(t, 0.7, 1.2) })
   },
 })
 
@@ -1691,7 +1701,7 @@ register({
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, mx = W * 0.14
     const items = listFrom(content, 'Conecta · Configura · Lanza · Crece', 4)
-    if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), mx, H * 0.22, { size: 16, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, align: 'left', maxW: W * 0.74, alpha: inv(t, 0.05, 0.35) })
+    if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), mx, H * 0.22, { size: 16, weight: 700, family: eyebrowFamily(fonts), color: pal.inkText, align: 'left', maxW: W * 0.74, alpha: inv(t, 0.05, 0.35) })
     const y0 = H * 0.34, gap = Math.min(96, (H * 0.5) / Math.max(1, items.length)), railX = mx + 2
     const rail = M.ease(inv(t, 0.2, 1.0)), railBot = y0 + (items.length - 1) * gap * rail
     if (items.length > 1) {
@@ -1728,8 +1738,8 @@ register({
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK
     const rows = listFrom(content, 'Sin comisiones · Soporte 24/7 · Setup en minutos', 3)
     const lx = W * 0.1, c1 = W * 0.66, c2 = W * 0.86, y0 = H * 0.32, gap = Math.min(84, (H * 0.46) / Math.max(1, rows.length))
-    drawText(ctx, 'OTROS', c1, H * 0.24, { size: 14, weight: 700, family: fonts.accent || fonts.text, color: pal.dim, maxW: W * 0.18, alpha: inv(t, 0.05, 0.4) })
-    drawText(ctx, (content.brand || 'NOSOTROS').toUpperCase(), c2, H * 0.24, { size: 14, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, maxW: W * 0.22, alpha: inv(t, 0.05, 0.4) })
+    drawText(ctx, 'OTROS', c1, H * 0.24, { size: 14, weight: 700, family: eyebrowFamily(fonts), color: pal.dim, maxW: W * 0.18, alpha: inv(t, 0.05, 0.4) })
+    drawText(ctx, (content.brand || 'NOSOTROS').toUpperCase(), c2, H * 0.24, { size: 14, weight: 700, family: eyebrowFamily(fonts), color: pal.inkText, maxW: W * 0.22, alpha: inv(t, 0.05, 0.4) })
     const k = staggerK(M, 0.16)
     rows.forEach((it, i) => {
       const tin = inv(t, 0.2 + i * k, 0.72 + i * k); if (tin <= 0) return
@@ -1795,7 +1805,7 @@ register({
     const r = mulberry32((env.seed >>> 0) ^ 0x57a)
     const raw = []; for (let i = 0; i < n; i++) raw.push(0.4 + 0.6 * r()); const sum = raw.reduce((a, b) => a + b, 0)
     const props = raw.map(v => v / sum), win = props.indexOf(Math.max(...props))
-    if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), W / 2, H * 0.26, { size: 16, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, maxW: W * 0.8, alpha: inv(t, 0.05, 0.35) })
+    if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), W / 2, H * 0.26, { size: 16, weight: 700, family: eyebrowFamily(fonts), color: pal.inkText, maxW: W * 0.8, alpha: inv(t, 0.05, 0.35) })
     const bw = W * 0.8, bx = (W - bw) / 2, by = H * 0.44, bh = 44, grow = M.ease(inv(t, 0.25, 1.15))
     let cur = bx, winX = bx, winW = 0
     ctx.save()
@@ -1880,7 +1890,7 @@ register({
       if (f >= 1) pulseGlow(ctx, pal.accent, t, { sp: 1.4, base: 1, amp: 3, ph: i * 1.7 })
       star(ctx, 0, 0, sr, f, pal.accent, rgba(pal.ink, 0.14)); ctx.restore()
     }
-    if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), cx, H * 0.71, { size: 15, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, maxW: W * 0.7, alpha: inv(t, 0.8, 1.3) })
+    if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), cx, H * 0.71, { size: 15, weight: 700, family: eyebrowFamily(fonts), color: pal.inkText, maxW: W * 0.7, alpha: inv(t, 0.8, 1.3) })
   },
 })
 
@@ -1907,7 +1917,7 @@ register({
     const sub = content.cta || content.tagline
     // sub-label chico dentro del sello: min bajo -> si el texto es largo ACHICA en vez de cortar con "..." (un CTA
     // corto queda a 15px; uno largo baja hasta 9px pero se ve COMPLETO). maxW un poco mas ancho que el disco interior.
-    if (sub) drawText(ctx, sub, 0, 34, { size: 15, min: 9, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, maxW: R * 1.55, alpha: inv(t, 0.6, 1.1) })
+    if (sub) drawText(ctx, sub, 0, 34, { size: 15, min: 9, weight: 700, family: eyebrowFamily(fonts), color: pal.inkText, maxW: R * 1.55, alpha: inv(t, 0.6, 1.1) })
     ctx.restore()
     const stp = M.ease(inv(t, 0.6, 1.2))
     if (stp > 0.4) {
@@ -2025,7 +2035,7 @@ register({
     for (let j = 1; j < rowsN; j++) { const y = (H / rowsN) * j; const up = clamp(gp * rowsN - j + 1, 0, 1); ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W * up, y); ctx.stroke() }
     ctx.restore()
     // marca chica arriba en mono-acento
-    drawText(ctx, (content.brand || 'Marca').toUpperCase(), cx, H * 0.3, { size: 17, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, maxW: W * 0.8, alpha: inv(t, 0.2, 0.55) })
+    drawText(ctx, (content.brand || 'Marca').toUpperCase(), cx, H * 0.3, { size: 17, weight: 700, family: eyebrowFamily(fonts), color: pal.inkText, maxW: W * 0.8, alpha: inv(t, 0.2, 0.55) })
     // claim grande centrado, sube y se asienta
     const rise = M.settle(inv(t, 0.25, 1.05), 1.2)
     ctx.save(); ctx.globalAlpha = inv(t, 0.25, 0.75); ctx.translate(0, (1 - rise) * 30)
@@ -2045,7 +2055,7 @@ register({
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, mx = W * 0.1
     // kicker arriba-derecha
-    drawText(ctx, (content.brand || 'Marca').toUpperCase(), W - mx, H * 0.18, { size: 16, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, align: 'right', maxW: W * 0.7, alpha: inv(t, 0.05, 0.45) })
+    drawText(ctx, (content.brand || 'Marca').toUpperCase(), W - mx, H * 0.18, { size: 16, weight: 700, family: eyebrowFamily(fonts), color: pal.inkText, align: 'right', maxW: W * 0.7, alpha: inv(t, 0.05, 0.45) })
     // angulo de acento en la esquina inferior izquierda (dos trazos en L que crecen) + VIDA: glow + punto que recorre la L
     const lu = M.ease(inv(t, 0.1, 0.8)), len = 64 * lu, ex = mx - 6, ey = H * 0.86
     ctx.save(); ctx.strokeStyle = pal.accent; ctx.lineWidth = 5; ctx.lineCap = 'round'
@@ -2129,7 +2139,7 @@ register({
       ctx.fillText(ln, cx, y0 + i * lineH)
       ctx.restore()
     })
-    if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), cx, H * 0.74, { size: 15, weight: 700, family: fonts.accent || fonts.text, color: pal.dim, maxW: W * 0.7, alpha: inv(t, 0.7, 1.2) })
+    if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), cx, H * 0.74, { size: 15, weight: 700, family: eyebrowFamily(fonts), color: pal.dim, maxW: W * 0.7, alpha: inv(t, 0.7, 1.2) })
   },
 })
 
@@ -2158,7 +2168,7 @@ register({
       ctx.fillText(ln, bodyX, y0 + i * lineH)
       ctx.restore()
     })
-    if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), bodyX, y0 + blockH + L.size * 1.1, { size: 15, weight: 700, family: fonts.accent || fonts.text, color: pal.dim, align: 'left', maxW: W * 0.7, alpha: inv(t, 0.7, 1.2) })
+    if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), bodyX, y0 + blockH + L.size * 1.1, { size: 15, weight: 700, family: eyebrowFamily(fonts), color: pal.dim, align: 'left', maxW: W * 0.7, alpha: inv(t, 0.7, 1.2) })
   },
 })
 
@@ -2172,7 +2182,7 @@ register({
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     const items = splitItems(content.claim || content.tagline || 'Rapido · Seguro · Simple · Sin limites', 5)
-    if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), cx, H * 0.3, { size: 16, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, maxW: W * 0.78, alpha: inv(t, 0.05, 0.4) })
+    if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), cx, H * 0.3, { size: 16, weight: 700, family: eyebrowFamily(fonts), color: pal.inkText, maxW: W * 0.78, alpha: inv(t, 0.05, 0.4) })
     // layout en filas: mide cada badge (tilde + texto) y los acomoda centrados con wrap
     ctx.font = `700 20px "${fonts.text}"`
     const chipH = 46, padX = 18, tickW = 26, gap = 12, maxRowW = W * 0.86
@@ -2244,7 +2254,7 @@ register({
     drawWrapped(ctx, left, bx + bw * 0.25, by + bh + 44, { size: 20, weight: 700, family: fonts.display, maxW: bw * 0.46, color: pal.dim, maxLines: 2, lh: 1.12 })
     drawWrapped(ctx, right, bx + bw * 0.75, by + bh + 44, { size: 22, weight: 800, family: fonts.display, maxW: bw * 0.46, color: pal.ink, maxLines: 2, lh: 1.12 })
     ctx.restore()
-    if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), cx, H * 0.74, { size: 15, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, maxW: W * 0.8, alpha: inv(t, 0.7, 1.2) })
+    if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), cx, H * 0.74, { size: 15, weight: 700, family: eyebrowFamily(fonts), color: pal.inkText, maxW: W * 0.8, alpha: inv(t, 0.7, 1.2) })
   },
 })
 
@@ -2296,7 +2306,7 @@ register({
     const cols = 10, rowsN = 5, total = cols * rowsN, on = Math.round(total * pct)
     const dotR = 9, gx = W * 0.13, gw = W * 0.74, gy = H * 0.32, gh = H * 0.34
     const sx = gw / (cols - 1), sy = gh / (rowsN - 1)
-    if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), cx, H * 0.24, { size: 16, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, maxW: W * 0.78, alpha: inv(t, 0.05, 0.35) })
+    if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), cx, H * 0.24, { size: 16, weight: 700, family: eyebrowFamily(fonts), color: pal.inkText, maxW: W * 0.78, alpha: inv(t, 0.05, 0.35) })
     // los puntos aparecen en cascada por indice; los "on" en acento, el resto tinta tenue
     const prog = M.ease(inv(t, 0.2, 1.15))
     const settledP = prog >= 1
@@ -2348,7 +2358,7 @@ register({
       const a = L.attr, acx = a.align === 'left' ? a.x + 18 : a.cx, ap = inv(t, 0.7, 1.2)
       ctx.fillStyle = pal.accent; ctx.globalAlpha = ap
       ctx.beginPath(); ctx.roundRect(acx - 18, a.cy - a.h / 2 - 6, 36 * M.ease(ap), 3, 1.5); ctx.fill(); ctx.globalAlpha = 1
-      drawText(ctx, '— ' + content.brand, a.cx, a.cy, { size: Math.min(a.size, 18), weight: 700, family: fonts.accent || fonts.text, color: pal.dim, align: a.align, maxW: a.w, alpha: ap })
+      drawText(ctx, '— ' + content.brand, a.cx, a.cy, { size: Math.min(a.size, 18), weight: 700, family: eyebrowFamily(fonts), color: pal.dim, align: a.align, maxW: a.w, alpha: ap })
     }
   },
 })
@@ -2467,7 +2477,7 @@ register({
     let priceIdx = items.findIndex(it => /\$|usd|ars|€|\d/i.test(it)); if (priceIdx < 0) priceIdx = 0
     const price = (items[priceIdx] || items[0] || 'Consultar').trim()
     const subs = items.filter((_, i) => i !== priceIdx).slice(0, 3)
-    if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), cx, H * 0.22, { size: 16, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, maxW: W * 0.78, alpha: inv(t, 0.05, 0.35) })
+    if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), cx, H * 0.22, { size: 16, weight: 700, family: eyebrowFamily(fonts), color: pal.inkText, maxW: W * 0.78, alpha: inv(t, 0.05, 0.35) })
     // forma de tag (rectangulo con muesca triangular a la izquierda + agujero), entra con spring + leve giro
     const sp = M.settle(inv(t, 0.1, 1.0), { zeta: 0.45, freq: 2.1 })
     const tw = W * 0.7, th = 120, tx = cx - tw / 2, ty = H * 0.33, notch = 34
@@ -2499,7 +2509,7 @@ register({
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     const items = splitItems(content.claim || content.tagline || 'Calidad · Confianza · Cercania', 3)
     const n = Math.min(3, Math.max(2, items.length))
-    if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), cx, H * 0.28, { size: 16, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, maxW: W * 0.78, alpha: inv(t, 0.05, 0.35) })
+    if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), cx, H * 0.28, { size: 16, weight: 700, family: eyebrowFamily(fonts), color: pal.inkText, maxW: W * 0.78, alpha: inv(t, 0.05, 0.35) })
     const gw = W * 0.84, gx = (W - gw) / 2, gap = 12, cw = (gw - (n - 1) * gap) / n, ch = H * 0.26, cy = H * 0.38
     for (let i = 0; i < n; i++) {
       const it = items[i] || ''
@@ -2536,7 +2546,7 @@ register({
     if (priceIdx < 0) priceIdx = 0
     const price = items[priceIdx] || items[0] || ''
     const chips = items.filter((_, i) => i !== priceIdx).slice(0, 4)
-    if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), cx, H * 0.22, { size: 16, weight: 700, family: fonts.accent || fonts.text, color: pal.inkText, maxW: W * 0.78, alpha: inv(t, 0.05, 0.35) })
+    if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), cx, H * 0.22, { size: 16, weight: 700, family: eyebrowFamily(fonts), color: pal.inkText, maxW: W * 0.78, alpha: inv(t, 0.05, 0.35) })
     const sp = M.settle(inv(t, 0.1, 0.95), { zeta: 0.5, freq: 2 })
     ctx.save(); ctx.globalAlpha = inv(t, 0.05, 0.45); ctx.translate(cx, H * 0.36); ctx.scale(0.85 + 0.15 * sp, 0.85 + 0.15 * sp)
     drawText(ctx, price.trim(), 0, 0, { size: 56, weight: 800, family: fonts.display, maxW: W * 0.86, color: pal.ink, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.4)' : null })
