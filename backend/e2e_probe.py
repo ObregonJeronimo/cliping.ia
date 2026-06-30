@@ -1,6 +1,10 @@
 # e2e: captura una URL real -> perception -> brief. Imprime el brief y lo guarda para renderizar contact-sheet.
 # Uso: python e2e_probe.py <url> [<url> ...]   (corre desde backend/, carga .env)
 import asyncio, json, sys, os, uuid, urllib.parse
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")   # Windows cp1252 no codifica cirilico/CJK -> evita crash del print
+except Exception:
+    pass
 from dotenv import load_dotenv
 load_dotenv()
 import site_capture, perception

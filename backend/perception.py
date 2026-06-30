@@ -44,6 +44,8 @@ _SYS = (
     "PERO si la pagina esta en un idioma de ESCRITURA NO-LATINA (japones, chino, coreano, arabe, ruso, hebreo, hindi, "
     "tailandes, griego, etc.) -> escribi el copy en ESPAÑOL: el motor de video SOLO renderiza alfabeto latino, en esos "
     "alfabetos saldria como cajitas ilegibles. (El resumen te avisa cuando es no-latino.) "
+    "El 'brand' SIEMPRE en alfabeto latino: si la marca es no-latina, usa su nombre latino oficial o transliteralo "
+    "(Яндекс -> Yandex; 楽天 -> Rakuten; 三星 -> Samsung). Un wordmark no-latino saldria como cajitas. "
     "COPY SEGUN AWARENESS (clave para que le hable a SU publico): escribi tagline/claim/cta acorde a la etapa: "
     "unaware -> el gancho EDUCA sobre el problema/oportunidad (sin nombrar el producto); "
     "problem -> nombra el DOLOR concreto que ese publico siente; "
@@ -85,6 +87,16 @@ def _brand_from_url(url):
     host = re.sub(r"^https?://(www\.)?", "", (url or "").strip().lower()).split("/")[0]
     part = host.split(".")[0] if host else ""
     return part.capitalize() if part else None
+
+
+# el motor de video solo renderiza ALFABETO LATINO: un brand en cirilico/CJK/arabe/griego/etc. saldria TOFU en el
+# wordmark/outro. Red DETERMINISTA: si el brand perceptado es no-latino, caer al nombre del DOMINIO (siempre latino:
+# yandex.ru -> Yandex). Cubre griego/cirilico/hebreo/arabe/siriaco/thai/kana/CJK/hangul.
+_BRAND_NONLATIN = re.compile("[Ͱ-ϿЀ-ӿ֐-׿؀-ۿ܀-ݏ฀-๿぀-ヿ㐀-鿿가-힯]")
+def _latin_brand(brand, url):
+    if brand and _BRAND_NONLATIN.search(str(brand)):
+        return _brand_from_url(url) or "Marca"
+    return brand
 
 
 def _clip(s, n):
@@ -237,6 +249,7 @@ def _normalize(b, url, content):
     tone = b.get("tone") if b.get("tone") in ("dark", "light") else "dark"
     brand = (b.get("brand") or content.get("siteName") or content.get("title")
              or _brand_from_url(url) or "Marca")
+    brand = _latin_brand(brand, url)   # el motor solo renderiza latino -> un brand no-latino (Яндекс) cae al dominio (Yandex)
     # CAPS de salida = los BUDGETS del motor (core/script.js): recorte por PALABRA (nunca a la mitad). El motor
     # vuelve a aplicar fitContent como red de seguridad -> el texto se ve COMPLETO en cualquier escena.
     out = {
