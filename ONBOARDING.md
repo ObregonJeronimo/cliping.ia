@@ -9,6 +9,13 @@ Guía para correr el proyecto en una PC nueva y trabajar entre varios sin pisarn
 > 4. Abrí **[`THIAGO-IA-CONTEXTO.md`](THIAGO-IA-CONTEXTO.md)** y pegá su contenido como **primer mensaje** en tu Claude Code: pone a tu IA al día del proyecto y le marca las reglas (gates, determinismo, qué NO romper).
 > 5. Antes de tocar `main`: **`git pull`**. Al terminar el día: **commit + push**. Nunca los dos el mismo día.
 
+> **Para Jero — sumar a Thiago (una sola vez):**
+> 1. Mandale el **`backend/.env`** por un canal privado (NO chat público, NO al repo). Lleva las API keys: `ANTHROPIC_API_KEY`, `FAL_KEY`, `GROQ_API_KEY`, `CLOUDINARY_*`. *(Ojo: comparte tu gasto de API — Anthropic/fal cobran por uso.)*
+> 2. *(Solo si Thiago va a hostear la demo en vivo)* Mandale tu **authtoken de ngrok** (dashboard.ngrok.com → "Your Authtoken"). Sin esto NO puede servir el dominio fijo `draw-overturn-backpack.ngrok-free.dev`. Para que solo desarrolle/testee local, no hace falta.
+> 3. Decile que clone el repo (ruta SIN espacios) y siga el bloque "Thiago, empezá acá".
+> 4. Acuerden el **calendario** (qué días cada uno) para no pisarse en `main`.
+> 5. *(Higiene, recomendado)* rotá la `FAL_KEY` antes de compartir el `.env`, y consideralo el momento de revisar qué keys realmente necesita.
+
 ## Qué es
 **urvid** convierte una URL en un **reel vertical de marketing (9:16)**. Productos:
 - **urvid IA** (`/studio`) y **urvid IA Advanced** (`/studio/craft`): generan el video con un **motor de CANVAS que corre en el navegador** (`src/urvid/`, `makeVideo()` + `drawFrame()`), determinista y **$0** (no usa servidor para renderizar; exporta con MediaRecorder).
