@@ -266,7 +266,7 @@ export function makeVideo(brief = {}) {
     if (!mod) mod = opts.length ? weightedPick(prng, opts, m => score(m) * sceneBias(m, sig)) : null
     if (mod) {
       const dur = clamp((beat.dur || 3.4) * durK, 2.2, 6)
-      const sc = { start, dur, sceneId: mod.id, seed: (seed ^ hashStr('s' + i)) >>> 0 }
+      const sc = { start, dur, sceneId: mod.id, seed: (seed ^ hashStr('s' + i)) >>> 0, bgSeed: (seed ^ hashStr('bg|' + beat.category + '|' + i)) >>> 0 }   // variante de fondo por beat (mismo eje 'bg' que video.bgSeed)
       if (perScene) sc.anims = pickSceneAnims(beat.category, { ...content, brand }, rubro, seed, i, animItems)   // 1-3 Lotties por lo que dice ESTA escena
       scenes.push(sc); start += dur
     }

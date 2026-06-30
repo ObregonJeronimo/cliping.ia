@@ -80,7 +80,7 @@ export function drawFrame(ctx, t, video) {
   const layout = resolveLayout(video)   // arquitectura de composicion (slots) del video (o default centrado)
   // CAPAS DE FONDO (viven todo el video): fondo -> textura/substrate -> atmosfera/luz -> (contenido encima)
   const base = { pal: video.palette, content: video.content, energy: 1 }
-  if (video.bgId) { const m = get(video.bgId); if (m) { bgPush(ctx, t, motion, video.bgSeed); m.render(ctx, t, { ...base, seed: video.bgSeed }); ctx.restore() } }
+  if (video.bgId) { const m = get(video.bgId); if (m) { const _sc = video.scenes && video.scenes.find(s => t >= s.start && t < s.start + s.dur); const _bs = (_sc && _sc.bgSeed != null) ? _sc.bgSeed : video.bgSeed; bgPush(ctx, t, motion, _bs); m.render(ctx, t, { ...base, seed: _bs }); ctx.restore() } }
   if (video.subId) { const m = get(video.subId); if (m) { bgPush(ctx, t, motion, video.subSeed); m.render(ctx, t, { ...base, seed: video.subSeed }); ctx.restore() } }
   if (video.atmId) { const m = get(video.atmId); if (m) m.render(ctx, t, { ...base, seed: video.atmSeed }) }   // atm SIN push (rays/glints crawlean)
   // GARNISH markkit (persistente): un icono chico en una ESQUINA, tenue, detras del contenido. NUNCA centrado
