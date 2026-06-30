@@ -161,6 +161,14 @@ export function makeVideo(brief = {}) {
   const _regNudge = { formal: 0.15, warm: -0.05, casual: -0.12 }[audience.register] || 0
   const seriousness = Math.max(0, Math.min(1, seriousness0 + _regNudge))
   const arc = brief.arc || buildArcSmart(seed, sig, audience.awareness, seriousness, brief.duration || 'medio').map(c => ({ category: c, dur: _DUR[c] || 3.4 }))
+  // CAP de bullets por DURACION (puro, sin PRNG): en videos cortos 4 bullets saturan y el ojo no los lee. Se aplica
+  // DESPUES de analyzeContent(L155) y buildArcSmart(L163) -> el arco y la deteccion de señales ven SIEMPRE el set
+  // COMPLETO (seleccion de escena byte-identica a hoy); solo el render y las Lotties por-escena ven el set capado.
+  // Descarta items ENTEROS (fitContent ya recorto en limite de palabra) -> nunca a media palabra. Min 2 (no flipea hasList).
+  if (Array.isArray(content.bullets) && content.bullets.length) {
+    const bcap = { corto: 2, medio: 3, largo: 4 }[brief.duration] || 3
+    if (content.bullets.length > bcap) content.bullets = content.bullets.slice(0, bcap)
+  }
   // SCORER de fit: peso × afinidad-rubro × match-seriedad(register) × match-intensidad. Reemplaza al viejo wadj.
   const fitCtx = { rubro, seriousness }
   const score = (m) => fitWeight(m, fitCtx)
