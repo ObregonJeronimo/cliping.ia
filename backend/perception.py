@@ -39,8 +39,11 @@ _SYS = (
     "REGLAS: FIEL a la pagina (NO inventes datos, cifras, premios ni features que no esten; "
     "si no hay, deja [] o \"\"), conciso, sin comillas tipograficas. "
     "IDIOMA: escribi el copy en el IDIOMA de la pagina (ver 'Idioma de la pagina' en el resumen). Si es espanol o no se "
-    "sabe -> espanol rioplatense (voseo). Si la pagina esta en OTRO idioma (ingles, portugues, etc.) -> escribi TODO el "
-    "copy (tagline/claim/cta/bullets/...) en ESE idioma: el reel le habla al publico en SU idioma, no traducido. "
+    "sabe -> espanol rioplatense (voseo). Si la pagina esta en OTRO idioma de ALFABETO LATINO (ingles, portugues, italiano, "
+    "frances, aleman, etc.) -> escribi TODO el copy en ESE idioma (el reel le habla al publico en SU idioma, no traducido). "
+    "PERO si la pagina esta en un idioma de ESCRITURA NO-LATINA (japones, chino, coreano, arabe, ruso, hebreo, hindi, "
+    "tailandes, griego, etc.) -> escribi el copy en ESPAÑOL: el motor de video SOLO renderiza alfabeto latino, en esos "
+    "alfabetos saldria como cajitas ilegibles. (El resumen te avisa cuando es no-latino.) "
     "COPY SEGUN AWARENESS (clave para que le hable a SU publico): escribi tagline/claim/cta acorde a la etapa: "
     "unaware -> el gancho EDUCA sobre el problema/oportunidad (sin nombrar el producto); "
     "problem -> nombra el DOLOR concreto que ese publico siente; "
@@ -115,6 +118,22 @@ def _is_botwall(content):
     return bool(_BOTWALL.search(blob))
 
 
+# idiomas de ESCRITURA NO-LATINA: el motor de video solo renderiza alfabeto latino -> el copy se escribe en español igual
+# (en estos alfabetos saldria como cajitas). Deteccion por codigo de lang + backup por chars (titulo/headings no-latinos).
+_NONLATIN_LANG = {"ja", "zh", "ko", "ar", "he", "iw", "fa", "ur", "ru", "uk", "be", "bg", "sr", "mk", "el", "hi", "bn",
+                  "pa", "gu", "ta", "te", "kn", "ml", "th", "lo", "km", "my", "ka", "hy", "am", "yi", "ps", "sd", "dv"}
+def _is_nonlatin(content):
+    c = content if isinstance(content, dict) else {}
+    base = str(c.get("lang") or "").split("-")[0].lower()
+    if base in _NONLATIN_LANG:
+        return True
+    t = (str(c.get("title") or "") + " " + " ".join(x for x in (c.get("headings") or []) if isinstance(x, str)))[:200]
+    if t:
+        nl = sum(1 for ch in t if ord(ch) > 0x2c0)   # > Latin/IPA/spacing-mods -> CJK/cirilico/arabe/griego/etc.
+        return nl > len(t) * 0.25
+    return False
+
+
 def _page_digest(content):
     """Resumen CURADO y compacto de la captura para el prompt (señal alta, pocos tokens). Evita dumpear bodyText crudo."""
     c = content if isinstance(content, dict) else {}
@@ -123,7 +142,11 @@ def _page_digest(content):
     parts = []
     if c.get("title"): parts.append("Titulo: " + _clip(c["title"], 120))
     if c.get("siteName"): parts.append("Sitio: " + _clip(c["siteName"], 60))
-    if c.get("lang"): parts.append("Idioma de la pagina: " + _clip(c["lang"], 8))
+    if c.get("lang"):
+        if _is_nonlatin(c):
+            parts.append("Idioma de la pagina: " + _clip(c["lang"], 8) + " (ALFABETO NO-LATINO -> escribi el copy en ESPAÑOL; el motor no renderiza este alfabeto)")
+        else:
+            parts.append("Idioma de la pagina: " + _clip(c["lang"], 8))
     if c.get("description"): parts.append("Descripcion: " + _clip(c["description"], 260))
     H = [x for x in (c.get("headings") or []) if isinstance(x, str)][:12]
     if H: parts.append("Titulos de la pagina: " + " | ".join(_clip(h, 80) for h in H))
