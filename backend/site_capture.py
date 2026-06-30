@@ -234,7 +234,7 @@ _JS_IMAGES = r"""
   // tracking, placeholders) -> evita el bug de "screenshot de Google Maps / mi zona" y basura generica.
   const BAD = /staticmap|maps\.(googleapis|gstatic)|google\.com\/maps|\/maps[\/?]|mapbox|openstreetmap|tile(server)?s?[\/.]|\bsprite|favicon|apple-touch|\/icons?[\/_-]|[_-]icon\.|avatar|placeholder|spinner|loading|doubleclick|googlesyndication|google-analytics|\/ads?[\/_]|adservice|pixel\.|\/1x1|blank\.|spacer|logo[_-]?\d*\.(png|jpg|jpeg|webp)/i;
   const seen = new Set(); const out = [];
-  const push = (u, area, w, h, rel) => {
+  const push = (u, area, w, h, rel, alt) => {
     if (!u) return;
     const a = abs(u); if (!a) return;
     if (a.startsWith('data:')) return;
@@ -242,7 +242,7 @@ _JS_IMAGES = r"""
     if (BAD.test(a)) return;                                  // mapa/sprite/icono/ad/tracking
     if (w && h) { const ar = w / h; if (ar > 3.5 || ar < 0.25) return; }   // banners/tiras finas, no fotos
     if (seen.has(a)) return;
-    seen.add(a); out.push({ u: a, area, ar: (w && h) ? w / h : null, rel: rel || 0 });
+    seen.add(a); out.push({ u: a, area, ar: (w && h) ? w / h : null, rel: rel || 0, alt: (alt || '').toLowerCase() });
   };
   // de un srcset, la URL de mayor ancho declarado (suele ser la mejor calidad)
   const fromSrcset = (ss) => {
@@ -261,11 +261,11 @@ _JS_IMAGES = r"""
     return rel;
   };
   const og = document.querySelector('meta[property="og:image"], meta[name="og:image"]');
-  if (og && og.content) push(og.content, 5e9, 0, 0, 2);            // suele ser la mejor foto de marca (curada)
+  if (og && og.content) push(og.content, 9e5, 0, 0, 1.2);          // og suele ser curada PERO a veces es un logo/social-card -> area moderada (no inalcanzable) para que una foto real de producto la pueda superar
   for (const im of Array.from(document.images)) {
     const w = im.naturalWidth || im.width, h = im.naturalHeight || im.height;
     const r = im.getBoundingClientRect(); const rel = relevance(im);
-    if (w >= 300 && h >= 200 && r.width >= 110) push(im.currentSrc || im.src, w * h, w, h, rel);
+    if (w >= 300 && h >= 200 && r.width >= 110) push(im.currentSrc || im.src, w * h, w, h, rel, im.alt);
     // candidatos LAZY (fotos de producto servidas por Firebase suelen estar en srcset/data-src, aun SIN renderizar)
     push(fromSrcset(im.getAttribute('srcset') || im.getAttribute('data-srcset')), 9e5, 0, 0, rel);
     for (const at of ['data-src', 'data-original', 'data-lazy-src', 'data-lazy', 'data-image', 'data-bg']) push(im.getAttribute(at), 9e5, 0, 0, rel);
@@ -282,7 +282,16 @@ _JS_IMAGES = r"""
   // RANKING final = area × aptitud-9:16 × (1 + relevancia). El retrato/cuadrado (no se recorta feo en vertical) sube;
   // el banner ancho baja. Asi el primer frame muestra el PRODUCTO relevante, no un fondo decorativo apaisado.
   const aspectFactor = (ar) => ar == null ? 1.0 : (ar <= 0.85 ? 1.35 : (ar <= 1.25 ? 1.12 : (ar <= 2.0 ? 0.8 : 0.5)));
-  const rank = (x) => x.area * aspectFactor(x.ar) * (1 + 0.35 * x.rel);
+  // DEMOTE suave de LOGOS / og-social-cards (no exclusion: si es el unico candidato igual se usa). Asi el showcase
+  // (slot-media) muestra una FOTO de producto, no el logo. (favicon/sprite/apple-touch ya los excluye BAD arriba.)
+  const LOGOISH = /logo|brandmark|wordmark|\bog[-_]|opengraph|social[-_]?card|\bshare\b|badge|\bseal\b/i;
+  const logoFactor = (x) => {
+    let f = 1;
+    if (LOGOISH.test(x.u + ' ' + (x.alt || ''))) f *= 0.18;
+    if (x.ar != null && x.ar > 0.85 && x.ar < 1.18) f *= 0.8;   // cuadrado-chico tiende a logo/icono
+    return f;
+  };
+  const rank = (x) => x.area * aspectFactor(x.ar) * (1 + 0.35 * x.rel) * logoFactor(x);
   return out.sort((a, b) => rank(b) - rank(a)).slice(0, 18).map(x => x.u);
 }
 """
