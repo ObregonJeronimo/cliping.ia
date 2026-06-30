@@ -154,3 +154,27 @@ inv/clamp/lerp/rgba/setFormat ya existen (L11-16,61) -> el scrim nuevo se arma c
 - En la ventana de transicion: que NO se vea desfase scrim/texto — el scrim debe seguir el esquema SECUENCIADO de render.js (A en p<0.5, B en p>=0.5), no un lerp lineal continuo A->B
 - Auditar los strengths reales por call-site antes de Opcion B (rg 'scrim\(' / 'g_scrim\(' en libs/backgrounds: 114 ocurrencias, 5 archivos, valores heterogeneos 0.16-0.42) — NO asumir 0.22/0.42 uniforme
 - Confirmar que sc.scrimBox se precomputa en makeVideo (build-time) y en render.js solo se denormaliza+lerp (puro), sin recalcular layout por-frame ni mutar el objeto video (WeakMap _cache en layout.js)
+
+---
+
+## Cohesion del gradiente de fondo (`bg-cohesion`) — DIFERIDO / RECORTAR ALCANCE
+
+- verdict: **needs-mitigation** — pero la auditoria lo objeto con **3 breakers de likelihood HIGH** -> NO se implemento.
+
+La idea era canonizar el par de fondos en `core/palette.js finalize()` (bg0=claro, bg1=profundo, paso de luminancia FIJO, hue unico). La auditoria adversarial encontro:
+
+1. **[high] Premisa parcialmente FALSA**: la "direccion inconsistente del gradiente" que el item asumia no existe en la data; el unico cambio real seria (a) paso de luminancia fijo y (b) hue unico. Si solo se buscaba "direccion", es un no-op.
+2. **[high] Aplana 199 grades cinematograficos de doble-hue** (`grade.js`): forzar `out1 = hslToHex(s0.h, ...)` (hue de bg0) sobre bg1 mata el dual-hue deliberado (teal-orange, split-tone, etc.). Mitigacion seria preservar el hue de bg1 (`s1.h`) y normalizar solo luminancia — pero aun asi un paso FIJO override-ea la variedad intencional de profundidad de gradiente.
+3. **[high] Cambia el color del 88% de los esquemas** (1647/1881): superficie gigante que **los gates NO pueden verificar** (determinismo/texto/APCA no miden si el gradiente "se ve mejor"); exige revision visual de contact-sheet de `named.js` (curadas) + grades dual-hue + opt-out para named/grade.
+
+**Decision**: no shippear una transformacion de color a 88% de los esquemas basada en una premisa parcialmente falsa, que arriesga regresar 199 grades cinematograficos + esquemas curados, sin verificacion de gates. Si se retoma: alcance MINIMO = solo el paso de luminancia parejo en el path procedural `tonedBg` (NO named, NO grade), preservando `s1.h` de cada bg, con revision ocular de contact-sheet antes de merge.
+
+---
+
+## Optical sizing dinamico (`optical-sizing`) — NO-CODIGO (infeasible en canvas)
+
+- verdict: **safe** pero **feasible: FALSE** -> sin cambio de codigo, solo nota.
+
+`core/util.js fontStr()` emite SOLO el shorthand CSS `font` ('weight px family'); el spec de canvas IGNORA `font-variation-settings`/`opsz` (algunos motores tiran el set entero como invalido -> texto en fallback). El gate (`@napi-rs/canvas`/Skia) renderea TTFs estaticos instanciados sin eje opsz en runtime. Un opsz aplicado solo en el browser (DOM `font-optical-sizing:auto`) **divergeria** de `measureText` del gate -> rompe la garantia de fit (prefit verde, browser desborda) y el determinismo app-vs-render.
+
+**Decision**: mantener `fontStr` como UNICA fuente de `ctx.font` (mismo corte estatico en ambos paths). El browser ya carga las variables con eje opsz para el DOM (landing CSS) via `index.html`; eso NO afecta el canvas del motor y esta bien asi. Si en el futuro se quisiera un corte display dedicado, habria que bajar la instancia (no el eje runtime) y re-correr TODO el gate con la fuente nueva en sync (`get-fonts.mjs` + `index.html`).
