@@ -56,6 +56,17 @@ function makeScratch(w, h) {
 // scratch portatil para hornear tiles/patrones (mismo canvas inyectado: napi en gates/shot, OffscreenCanvas en browser).
 // Sin factory ni OffscreenCanvas (Node pelado) devuelve null -> el consumidor degrada a no-op.
 export function getScratch(w, h) { return makeScratch(w, h) }
+// BUFFERS DE TRANSICION REUSADOS: en la ventana de transicion se pintan A y B a sendos buffers offscreen, UNA VEZ POR
+// FRAME. Alocar 2 canvas nuevos por frame es churn de GC que el export real-time (MediaRecorder) paga como dropped frames.
+// Aca los cacheamos por slot (0=A, 1=B) y los reusamos mientras el tamano (bw,bh) coincida; si cambia (otro ss/scale) o
+// si makeScratch devuelve null (Node pelado), se realoca/queda null. El consumidor SIEMPRE limpia con clearRect antes de
+// pintar -> reuso byte-identico a buffer nuevo (determinismo intacto). null-safe igual que makeScratch.
+const _xbuf = [null, null]
+function transitionBuf(slot, w, h) {
+  let cv = _xbuf[slot]
+  if (!cv || cv.width !== w || cv.height !== h) cv = (_xbuf[slot] = makeScratch(w, h))
+  return cv
+}
 
 // PUSH CINEMATOGRAFICO DE FONDO (no del texto): zoom+deriva LENTOS y MINIMOS sobre las capas bg/sub. Deriva de
 // motion.life (0..1 fluidez) * motion.ambient(t,seed) (oscilacion PURA de t+seed -> DETERMINISTA). z>=1 SIEMPRE (zoom-in
@@ -180,7 +191,7 @@ export function drawFrame(ctx, t, video) {
     // Antes A y B se cruzaban medio-visibles -> "se pisaban por medio segundo" (texto Y efectos). Ahora cero solape.
     const ss = (ctx.getTransform && ctx.getTransform().a) || 1
     const bw = Math.ceil(W * ss), bh = Math.ceil(H * ss)
-    const bufA = makeScratch(bw, bh), bufB = bufA ? makeScratch(bw, bh) : null
+    const bufA = transitionBuf(0, bw, bh), bufB = bufA ? transitionBuf(1, bw, bh) : null
     const blit = (c, buf, a) => { c.save(); c.globalAlpha *= clamp(a, 0, 1); c.drawImage(buf, 0, 0, W, H); c.restore() }
     if (bufA && bufB) {
       if (p < 0.5) {
