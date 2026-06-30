@@ -54,6 +54,10 @@ export function buildArcSmart(seed, sig, awareness = 'solution', seriousness = 0
   else if (r() < hookProb) open = 'openers/hook'
   // Un DATO SIEMPRE abre con numero (gran gancho): override de la DECISION, no de la secuencia -> no re-rollea el cuerpo.
   if (sig.hasData) open = 'openers/hook'
+  // OPENER editorial (PURO, sin r() -> no re-rollea el cuerpo): claim editorial fuerte para publico que YA conoce la marca
+  // (most/product) o nombrado explicito -> abrir con STATEMENT en vez de hero generico. Solo re-proposita el HERO default
+  // (nunca roba un hook: question/data/unaware/problem/urgency conservan prioridad).
+  if (open === 'openers/hero' && sig.longClaim && (awareness === 'most' || awareness === 'product' || sig.audienceNamed)) open = 'statements/editorial'
   // beats que pide el contenido (en orden de prioridad), sin repetir
   const want = []
   if (sig.hasData) want.push(r() < 0.5 ? 'data/single' : 'data/multi')
@@ -83,7 +87,10 @@ export function buildArcSmart(seed, sig, awareness = 'solution', seriousness = 0
     const conn = seedFor(seed, 'arc-conn')
     if (conn() < 0.5) { const at = 1 + (conn() * (finalBody.length - 1) | 0); finalBody.splice(at, 0, 'connectors/interstitial') }
   }
-  const seq = [open, ...finalBody]
+  // si el opener se volvio statement, sacar el editorial REDUNDANTE que want.unshift agrego al cuerpo (finalBody tiene a lo
+  // sumo UN editorial por los guards body.indexOf<0) -> el filter quita exactamente ese 1 lider. Op pura post-r() (sin re-roll).
+  const ob = (open === 'statements/editorial') ? finalBody.filter((c, i, a) => !(c === 'statements/editorial' && a.indexOf(c) === i)) : finalBody
+  const seq = [open, ...ob]
   // MID-ROLL CTA: para publico con URGENCIA o muy consciente (most/product), un empujon de CTA ANTES del cierre final.
   // ADITIVO (no reemplaza beats de texto) y SIN consumir r() (decision pura sobre booleanos) -> no re-rollea el cuerpo.
   const ctaUrgent = sig.urgency || awareness === 'most' || awareness === 'product'
@@ -142,4 +149,14 @@ export function colorEnergyBias(mod, sig) {
   const energetic = sig.urgency || sig.valence === 'pos' || sig.valence === 'neg'
   const want = energetic ? COLOR_ENERGY_TAGS : COLOR_SOBER_TAGS
   return tags.some(t => want.indexOf(t) >= 0) ? (energetic ? 1.5 : 1.3) : 1
+}
+
+// SESGO de color/tipografia por REGISTER 'warm': warm es ORTOGONAL a la seriedad, pero el nudge register->seriousness lo
+// COLAPSA con casual (ambos solo bajan seriousness) -> se pierde la calidez humanista. Este bias rescata esa calidez
+// (esquemas/pairings calidos/humanos) SOLO para register warm. Solo-boost (>=1, techo 1.4 como colorEnergyBias). PURO.
+const WARM_TAGS = ['calido', 'humano', 'amigable', 'organico', 'terroso', 'suave', 'redondo']
+export function audienceWarmBias(mod, register) {
+  if (register !== 'warm') return 1
+  const tags = (mod && mod.tags) || []
+  return tags.some(t => WARM_TAGS.indexOf(t) >= 0) ? 1.4 : 1
 }

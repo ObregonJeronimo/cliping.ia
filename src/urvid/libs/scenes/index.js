@@ -33,7 +33,7 @@ function dDraw(env, ctx, str, x, y, opts = {}) { return (env.typekit || _DTK).dr
 // snappy (0.07) acelera la cascada, calmo/drift (0.22) la dilata. Clamp [0.05,0.26] para que el ultimo item (i<=3) quede
 // revelado antes del muestreo del gate QA (t=dur*0.7). DETERMINISTA (solo deriva de la personalidad elegida por seed).
 const _BASE_STAGGER = _DM.stagger || 0.18
-function staggerK(M, kRef) { const s = (M && M.stagger) || _BASE_STAGGER; return clamp(kRef * (s / _BASE_STAGGER), 0.05, 0.26) }
+function staggerK(M, kRef) { const s = (M && M.stagger) || _BASE_STAGGER; const e = (M && M.energy) || 0; const eK = 1 - 0.35 * e; return clamp(kRef * (s / _BASE_STAGGER) * eK, 0.05, 0.26) }   // ENERGIA del copy comprime el delay (cascada mas rapida); e=0 -> eK=1 byte-identico
 
 // EYEBROW: el kicker/label usa la fuente ACCENT como 3er eje tipografico. PERO si accent es script/marker (Caveat,
 // Permanent Marker) en MAYUS chico queda ilegible, y si accent==text no aporta un 3er eje -> en esos casos cae a text.
@@ -248,8 +248,8 @@ register({
     // marca chica arriba (kicker en acento), en su slot
     drawText(ctx, (content.brand || 'Marca').toUpperCase(), k.cx, k.cy, { size: Math.min(k.size, 18), weight: 700, family: eyebrowFamily(fonts), maxW: k.w, color: pal.inkText, align: k.align, alpha: inv(t, 0.04, 0.34) })
     // claim grande, en su slot, en 2-3 lineas, stagger por subida. ARRANCA cuando el kicker ya asento (~0.34) -> orden de lectura kicker->titulo sin solape (ambos completos << t=dur*0.7s del muestreo QA)
-    const rise = M.settle(inv(t, 0.38, 1.05), 1.3)
-    ctx.save(); ctx.globalAlpha = inv(t, 0.4, 0.85); ctx.translate(0, (1 - rise) * 40)
+    const rise = M.settle(inv(t, 0.24, 0.9), 1.3)   // FRONT-LOAD: el claim (mensaje principal del opener) revela ~0.14s antes -> el gancho llega mas rapido
+    ctx.save(); ctx.globalAlpha = inv(t, 0.26, 0.7); ctx.translate(0, (1 - rise) * 40)
     drawWrapped(ctx, claimSrc, c.cx, c.cy, { size: Math.min(c.size, 50), weight: 800, family: fonts.display, maxW: c.w, color: pal.ink, align: c.align, maxLines: 3, lh: 1.08, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.45)' : null })
     ctx.restore()
     // regla inferior que barre, anclada bajo el slot del claim + VIDA: sheen recorriendola en loop
@@ -284,8 +284,8 @@ register({
       ctx.beginPath(); ctx.arc(dx, dy, 3.2, 0, TAU); ctx.fill(); ctx.restore()
     }
     // marca centrada dentro
-    drawText(ctx, content.brand || 'Marca', cx, cy - 8, { size: 46, weight: 800, family: fonts.display, maxW: (x1 - x0) - 24, color: pal.ink, alpha: inv(t, 0.45, 0.95) })
-    if (content.tagline) drawWrapped(ctx, content.tagline, cx, cy + 34, { size: 18, weight: 600, family: fonts.text, maxW: (x1 - x0) - 30, color: pal.dim, alpha: inv(t, 0.7, 1.2), maxLines: 2 })
+    drawText(ctx, content.brand || 'Marca', cx, cy - 8, { size: 46, weight: 800, family: fonts.display, maxW: (x1 - x0) - 24, color: pal.ink, alpha: inv(t, 0.24, 0.7) })   // FRONT-LOAD: la marca aparece mientras el marco aun traza (no espera a que cierre)
+    if (content.tagline) drawWrapped(ctx, content.tagline, cx, cy + 34, { size: 18, weight: 600, family: fonts.text, maxW: (x1 - x0) - 30, color: pal.dim, alpha: inv(t, 0.5, 1.0), maxLines: 2 })
   },
 })
 

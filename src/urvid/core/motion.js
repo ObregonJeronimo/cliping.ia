@@ -48,6 +48,7 @@ export function resolveMotion(video) {
     if (mod && typeof mod.make === 'function') m = mod.make()
   } catch { m = null }
   m = m || defaultMotion()
+  m = { ...m, energy: (video.energy != null ? video.energy : 0) }   // ENERGIA del copy estampada en la personalidad (la usa staggerK); default 0 -> byte-identico
   _cache.set(video, m)
   return m
 }

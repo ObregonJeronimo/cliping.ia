@@ -11,7 +11,7 @@ import { FORMATS, clamp, hexToHsl } from './util.js'
 import { query, get } from './registry.js'
 import { seedFor, weightedPick, hashStr, stableSeed, pick, shuffled } from './prng.js'
 import { deriveFonts } from './fonts.js'
-import { analyzeContent, buildArcSmart, sceneBias, atmoSubBias, colorEnergyBias } from './strategy.js'
+import { analyzeContent, buildArcSmart, sceneBias, atmoSubBias, colorEnergyBias, audienceWarmBias } from './strategy.js'
 import { fitWeight, canonRubro, layoutBias } from './fit.js'
 import { fitContent } from './script.js'
 import LOTTIE from '../lottie/manifest.js'
@@ -160,6 +160,9 @@ export function makeVideo(brief = {}) {
   // El REGISTER del publico nudgea la seriedad EFECTIVA: formal = mas sobrio; casual/warm = mas relajado (clamp 0..1).
   const _regNudge = { formal: 0.15, warm: -0.05, casual: -0.12 }[audience.register] || 0
   const seriousness = Math.max(0, Math.min(1, seriousness0 + _regNudge))
+  // ENERGIA del copy (urgency/valence) — ORTOGONAL a seriousness (un brief puede ser serio Y urgente). Hoy mueve el COLOR
+  // (colorEnergyBias); aca alimenta el MOVIMIENTO (stagger mas rapido con energia alta). PURO (sin r() -> no re-rollea).
+  const energy = Math.max(0, Math.min(1, (sig.urgency ? 0.55 : 0) + (sig.valence !== 'neu' ? 0.45 : 0)))
   const arc = brief.arc || buildArcSmart(seed, sig, audience.awareness, seriousness, brief.duration || 'medio').map(c => ({ category: c, dur: _DUR[c] || 3.4 }))
   // CAP de bullets por DURACION (puro, sin PRNG): en videos cortos 4 bullets saturan y el ojo no los lee. Se aplica
   // DESPUES de analyzeContent(L155) y buildArcSmart(L163) -> el arco y la deteccion de señales ven SIEMPRE el set
@@ -199,12 +202,12 @@ export function makeVideo(brief = {}) {
   }
 
   // COLOR (esquema/mood) + TIPOGRAFIA (pairing) de sus bibliotecas; fallback a los derivadores base
-  const colMod = required(lock && lock.color, keep && keep.color, seedFor(seed, 'colorpick'), query('color', { tone }), m => score(m) * colorEnergyBias(m, sig))
+  const colMod = required(lock && lock.color, keep && keep.color, seedFor(seed, 'colorpick'), query('color', { tone }), m => score(m) * colorEnergyBias(m, sig) * audienceWarmBias(m, audience.register))
   const palette = colMod ? colMod.derive(brandColor, { tone, rubro, seed }) : derivePalette(brandColor, { tone, rubro, seed })
   // HUE del acento de la paleta -> temperatura para la afinidad de fondo (bgTempAffinity). Solo afecta backgrounds con
   // mod.temp; todo otro slot queda 1.0 (identico). Se setea aca (post-paleta) -> el pick de color de arriba no lo ve.
   fitCtx.paletteHue = (palette && palette.accent) ? hexToHsl(palette.accent).h : null
-  const typMod = required(lock && lock.type, keep && keep.type, seedFor(seed, 'typepick'), query('typography', { tone }))
+  const typMod = required(lock && lock.type, keep && keep.type, seedFor(seed, 'typepick'), query('typography', { tone }), m => score(m) * audienceWarmBias(m, audience.register))
   const fonts = typMod ? typMod.fonts : deriveFonts(rubro, style, seed)
   // MOTION: personalidad de movimiento (entrada/asentamiento/stagger/drift) -> env.motion.
   const motMod = required(lock && lock.motion, keep && keep.motion, seedFor(seed, 'motionpick'), query('motion', { tone }))
@@ -296,7 +299,7 @@ export function makeVideo(brief = {}) {
   })
 
   return {
-    brand, rubro, tone, seed, seriousness, palette, fonts, format, W: dims.w, H: dims.h, xf, logo: brief.logo || null,
+    brand, rubro, tone, seed, seriousness, energy, palette, fonts, format, W: dims.w, H: dims.h, xf, logo: brief.logo || null,
     bgId: bg ? bg.id : null, bgSeed: (seed ^ hashStr('bg')) >>> 0,
     subId: sub ? sub.id : null, subSeed: (seed ^ hashStr('sub')) >>> 0,
     atmId: atm ? atm.id : null, atmSeed: (seed ^ hashStr('atm')) >>> 0,
