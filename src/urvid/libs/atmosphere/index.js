@@ -155,7 +155,7 @@ register({
 // ════════════════════════════ LIGHT-RAYS (godrays) ════════════════════════════
 
 register({
-  id: 'atmo.rays.godrays-top', lib: 'atmosphere', category: 'light-rays', tones: ['dark'], rubros: ['*'], weight: 1,
+  id: 'atmo.rays.godrays-top', lib: 'atmosphere', category: 'light-rays', tones: ['dark'], rubros: ['inmobiliaria', 'finanzas', 'educacion', 'eventos', 'default'], weight: 1,
   register: 'editorial', intensity: 'bold', tags: ['volumetrico', 'dramatico', 'rayos', 'godrays'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'rays')
@@ -183,7 +183,7 @@ register({
 })
 
 register({
-  id: 'atmo.rays.fan-burst', lib: 'atmosphere', category: 'light-rays', tones: ['dark'], rubros: ['*'], weight: 0.7,
+  id: 'atmo.rays.fan-burst', lib: 'atmosphere', category: 'light-rays', tones: ['dark'], rubros: ['gastronomia', 'eventos', 'moda', 'belleza', 'default'], weight: 0.7,
   register: 'friendly', intensity: 'medium', tags: ['radial', 'celebracion', 'amanecer', 'abanico'],
   render(ctx, t, env) {
     const { pal } = env
@@ -278,7 +278,7 @@ register({
 })
 
 register({
-  id: 'atmo.lens.flare-anamorphic', lib: 'atmosphere', category: 'lens-fx', tones: ['dark'], rubros: ['*'], weight: 0.75,
+  id: 'atmo.lens.flare-anamorphic', lib: 'atmosphere', category: 'lens-fx', tones: ['dark'], rubros: ['gastronomia', 'eventos', 'moda', 'belleza', 'default'], weight: 0.75,
   register: 'editorial', intensity: 'bold', tags: ['flare', 'cinematico', 'anamorfico', 'destello'],
   render(ctx, t, env) {
     const { pal } = env
@@ -327,7 +327,7 @@ register({
 // ════════════════════════════ COLOR-GRADE (overlay) ════════════════════════════
 
 register({
-  id: 'atmo.grade.split-tone', lib: 'atmosphere', category: 'color-grade', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
+  id: 'atmo.grade.split-tone', lib: 'atmosphere', category: 'color-grade', tones: ['dark', 'light'], rubros: ['gastronomia', 'eventos', 'moda', 'tech', 'default'], weight: 1,
   register: 'editorial', intensity: 'soft', tags: ['grade', 'teal-orange', 'cine', 'split-tone'],
   render(ctx, t, env) {
     const { pal } = env, light = pal.tone === 'light'
@@ -487,7 +487,7 @@ register({
 // ════════════════════════════ LIGHT-RAYS (mas godrays) ════════════════════════════
 
 register({
-  id: 'atmo.rays.window-shaft', lib: 'atmosphere', category: 'light-rays', tones: ['dark'], rubros: ['*'], weight: 0.85,
+  id: 'atmo.rays.window-shaft', lib: 'atmosphere', category: 'light-rays', tones: ['dark'], rubros: ['inmobiliaria', 'finanzas', 'educacion', 'eventos', 'default'], weight: 0.85,
   register: 'editorial', intensity: 'medium', tags: ['volumetrico', 'ventana', 'lateral', 'polvo'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'shaft')
@@ -547,7 +547,7 @@ register({
 // ════════════════════════════ LENS-FX (mas flares / glints / bokeh) ════════════════════════════
 
 register({
-  id: 'atmo.lens.flare-chain', lib: 'atmosphere', category: 'lens-fx', tones: ['dark'], rubros: ['*'], weight: 0.7,
+  id: 'atmo.lens.flare-chain', lib: 'atmosphere', category: 'lens-fx', tones: ['dark'], rubros: ['gastronomia', 'eventos', 'moda', 'belleza', 'default'], weight: 0.7,
   register: 'editorial', intensity: 'bold', tags: ['flare', 'ghost', 'cinematico'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'flarechain')
@@ -579,7 +579,7 @@ register({
 })
 
 register({
-  id: 'atmo.lens.bokeh-corner', lib: 'atmosphere', category: 'lens-fx', tones: ['dark'], rubros: ['*'], weight: 0.85,
+  id: 'atmo.lens.bokeh-corner', lib: 'atmosphere', category: 'lens-fx', tones: ['dark'], rubros: ['gastronomia', 'eventos', 'moda', 'belleza', 'default'], weight: 0.85,
   register: 'editorial', intensity: 'medium', tags: ['bokeh', 'esquina', 'festivo', 'premium'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'bokeh-corner')
@@ -609,7 +609,7 @@ register({
 // ════════════════════════════ COLOR-GRADE (frio · teal-orange · duotone-wash) ════════════════════════════
 
 register({
-  id: 'atmo.grade.cool-wash', lib: 'atmosphere', category: 'color-grade', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
+  id: 'atmo.grade.cool-wash', lib: 'atmosphere', category: 'color-grade', tones: ['dark', 'light'], rubros: ['finanzas', 'salud', 'tech', 'default'], weight: 0.9,
   register: 'editorial', intensity: 'soft', tags: ['frio', 'grade', 'azul', 'nocturno'],
   render(ctx, t, env) {
     const { pal } = env, light = pal.tone === 'light'
@@ -628,7 +628,7 @@ register({
 })
 
 register({
-  id: 'atmo.grade.teal-orange', lib: 'atmosphere', category: 'color-grade', tones: ['dark', 'light'], rubros: ['*'], weight: 1.0,
+  id: 'atmo.grade.teal-orange', lib: 'atmosphere', category: 'color-grade', tones: ['dark', 'light'], rubros: ['gastronomia', 'eventos', 'moda', 'tech', 'default'], weight: 1.0,
   register: 'editorial', intensity: 'medium', tags: ['teal-orange', 'blockbuster', 'grade', 'cine'],
   render(ctx, t, env) {
     const { pal } = env, light = pal.tone === 'light'
@@ -772,7 +772,7 @@ register({
 })
 
 register({
-  id: 'atmo.glow.ember-rise', lib: 'atmosphere', category: 'glow-bloom', tones: ['dark'], rubros: ['*'], weight: 0.75,
+  id: 'atmo.glow.ember-rise', lib: 'atmosphere', category: 'glow-bloom', tones: ['dark'], rubros: ['gastronomia', 'eventos', 'moda', 'belleza', 'default'], weight: 0.75,
   register: 'friendly', intensity: 'medium', tags: ['brasas', 'calido', 'organico', 'partculas'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'ember')
@@ -958,7 +958,7 @@ register({
 // ════════════════════════════ LENS-FX (extra) ════════════════════════════
 
 register({
-  id: 'atmo.lens.chromatic-fringe', lib: 'atmosphere', category: 'lens-fx', tones: ['dark'], rubros: ['*'], weight: 0.65,
+  id: 'atmo.lens.chromatic-fringe', lib: 'atmosphere', category: 'lens-fx', tones: ['dark'], rubros: ['tech', 'eventos', 'moda', 'default'], weight: 0.65,
   register: 'playful', intensity: 'bold', tags: ['aberracion', 'cromatico', 'borde', 'lente'],
   render(ctx, t, env) {
     // aberracion cromatica de borde (lente real): franjas rojo/cian muy finas y desplazadas en los margenes del
@@ -985,7 +985,7 @@ register({
 })
 
 register({
-  id: 'atmo.lens.starburst-core', lib: 'atmosphere', category: 'lens-fx', tones: ['dark'], rubros: ['*'], weight: 0.7,
+  id: 'atmo.lens.starburst-core', lib: 'atmosphere', category: 'lens-fx', tones: ['dark'], rubros: ['gastronomia', 'eventos', 'moda', 'belleza', 'default'], weight: 0.7,
   register: 'editorial', intensity: 'bold', tags: ['estrella', 'destello', 'diafragma', 'cinematico'],
   render(ctx, t, env) {
     const { pal } = env
@@ -1018,7 +1018,7 @@ register({
 // ════════════════════════════ COLOR-GRADE (extra) ════════════════════════════
 
 register({
-  id: 'atmo.grade.bleach-bypass', lib: 'atmosphere', category: 'color-grade', tones: ['dark', 'light'], rubros: ['*'], weight: 0.8,
+  id: 'atmo.grade.bleach-bypass', lib: 'atmosphere', category: 'color-grade', tones: ['dark', 'light'], rubros: ['finanzas', 'salud', 'tech', 'default'], weight: 0.8,
   register: 'editorial', intensity: 'medium', tags: ['bleach', 'contraste', 'desaturado', 'cine'],
   render(ctx, t, env) {
     const { pal } = env, light = pal.tone === 'light'
@@ -1044,7 +1044,7 @@ register({
 })
 
 register({
-  id: 'atmo.grade.crossfade-vhs', lib: 'atmosphere', category: 'color-grade', tones: ['dark'], rubros: ['*'], weight: 0.65,
+  id: 'atmo.grade.crossfade-vhs', lib: 'atmosphere', category: 'color-grade', tones: ['dark'], rubros: ['eventos', 'moda', 'tech', 'default'], weight: 0.65,
   register: 'playful', intensity: 'loud', tags: ['vhs', 'retro', 'magenta', 'analogico'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'vhs')
@@ -1072,7 +1072,7 @@ register({
 // ════════════════════════════ SHADOW-SYSTEMS (extra) ════════════════════════════
 
 register({
-  id: 'atmo.shadow.foliage-gobo', lib: 'atmosphere', category: 'shadow-systems', tones: ['dark', 'light'], rubros: ['*'], weight: 0.8,
+  id: 'atmo.shadow.foliage-gobo', lib: 'atmosphere', category: 'shadow-systems', tones: ['dark', 'light'], rubros: ['gastronomia', 'salud', 'inmobiliaria', 'default'], weight: 0.8,
   register: 'friendly', intensity: 'soft', tags: ['sombra', 'follaje', 'gobo', 'organico', 'natural'],
   render(ctx, t, env) {
     const { pal } = env, light = pal.tone === 'light', r = seedFor(env.seed, 'foliage')
@@ -1228,7 +1228,7 @@ register({
 // ════════════════════════════ LIGHT-RAYS (extra) ════════════════════════════
 
 register({
-  id: 'atmo.rays.spotlight-cone', lib: 'atmosphere', category: 'light-rays', tones: ['dark'], rubros: ['*'], weight: 0.8,
+  id: 'atmo.rays.spotlight-cone', lib: 'atmosphere', category: 'light-rays', tones: ['dark'], rubros: ['inmobiliaria', 'finanzas', 'educacion', 'eventos', 'default'], weight: 0.8,
   register: 'editorial', intensity: 'medium', tags: ['cono', 'spotlight', 'volumetrico', 'teatro'],
   render(ctx, t, env) {
     const { pal } = env
@@ -1250,7 +1250,7 @@ register({
 })
 
 register({
-  id: 'atmo.rays.caustics-floor', lib: 'atmosphere', category: 'light-rays', tones: ['dark'], rubros: ['*'], weight: 0.7,
+  id: 'atmo.rays.caustics-floor', lib: 'atmosphere', category: 'light-rays', tones: ['dark'], rubros: ['gastronomia', 'salud', 'inmobiliaria', 'default'], weight: 0.7,
   register: 'editorial', intensity: 'soft', tags: ['causticas', 'agua', 'piso', 'organico'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'caustics')
@@ -1306,7 +1306,7 @@ register({
 // ════════════════════════════ LENS-FX (extra) ════════════════════════════
 
 register({
-  id: 'atmo.lens.rain-streaks', lib: 'atmosphere', category: 'lens-fx', tones: ['dark'], rubros: ['*'], weight: 0.65,
+  id: 'atmo.lens.rain-streaks', lib: 'atmosphere', category: 'lens-fx', tones: ['dark'], rubros: ['moda', 'eventos', 'tech', 'default'], weight: 0.65,
   register: 'editorial', intensity: 'medium', tags: ['lluvia', 'lente', 'gotas', 'cinematico'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'rain')
@@ -1363,7 +1363,7 @@ register({
 // ════════════════════════════ COLOR-GRADE (extra) ════════════════════════════
 
 register({
-  id: 'atmo.grade.golden-hour', lib: 'atmosphere', category: 'color-grade', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
+  id: 'atmo.grade.golden-hour', lib: 'atmosphere', category: 'color-grade', tones: ['dark', 'light'], rubros: ['gastronomia', 'eventos', 'moda', 'default'], weight: 0.9,
   register: 'friendly', intensity: 'medium', tags: ['dorado', 'atardecer', 'grade', 'calido'],
   render(ctx, t, env) {
     const { pal } = env, light = pal.tone === 'light'
@@ -1386,7 +1386,7 @@ register({
 })
 
 register({
-  id: 'atmo.grade.noir-mono', lib: 'atmosphere', category: 'color-grade', tones: ['dark', 'light'], rubros: ['*'], weight: 0.7,
+  id: 'atmo.grade.noir-mono', lib: 'atmosphere', category: 'color-grade', tones: ['dark', 'light'], rubros: ['finanzas', 'salud', 'tech', 'default'], weight: 0.7,
   register: 'editorial', intensity: 'medium', tags: ['noir', 'mono', 'desaturado', 'contraste', 'editorial'],
   render(ctx, t, env) {
     const { pal } = env, light = pal.tone === 'light'
@@ -1415,7 +1415,7 @@ register({
 // ════════════════════════════ SHADOW-SYSTEMS (extra) ════════════════════════════
 
 register({
-  id: 'atmo.shadow.grid-cast', lib: 'atmosphere', category: 'shadow-systems', tones: ['dark', 'light'], rubros: ['*'], weight: 0.7,
+  id: 'atmo.shadow.grid-cast', lib: 'atmosphere', category: 'shadow-systems', tones: ['dark', 'light'], rubros: ['finanzas', 'inmobiliaria', 'tech', 'default'], weight: 0.7,
   register: 'corporate', intensity: 'medium', tags: ['sombra', 'reja', 'grid', 'arquitectura', 'gobo'],
   render(ctx, t, env) {
     const { pal } = env, light = pal.tone === 'light'
@@ -1624,7 +1624,7 @@ register({
 // ════════════════════════════ LIGHT-RAYS (extra) ════════════════════════════
 
 register({
-  id: 'atmo.rays.cathedral', lib: 'atmosphere', category: 'light-rays', tones: ['dark'], rubros: ['*'], weight: 0.78,
+  id: 'atmo.rays.cathedral', lib: 'atmosphere', category: 'light-rays', tones: ['dark'], rubros: ['inmobiliaria', 'finanzas', 'educacion', 'eventos', 'default'], weight: 0.78,
   register: 'editorial', intensity: 'medium', tags: ['catedral', 'vertical', 'volumetrico', 'solemne'],
   render(ctx, t, env) {
     const { pal } = env, r = seedFor(env.seed, 'cathedral')
@@ -1649,7 +1649,7 @@ register({
 })
 
 register({
-  id: 'atmo.rays.lighthouse', lib: 'atmosphere', category: 'light-rays', tones: ['dark'], rubros: ['*'], weight: 0.65,
+  id: 'atmo.rays.lighthouse', lib: 'atmosphere', category: 'light-rays', tones: ['dark'], rubros: ['inmobiliaria', 'finanzas', 'educacion', 'eventos', 'default'], weight: 0.65,
   register: 'editorial', intensity: 'medium', tags: ['faro', 'barrido', 'haz', 'cinematico'],
   render(ctx, t, env) {
     const { pal } = env
@@ -1672,7 +1672,7 @@ register({
 // ════════════════════════════ DEPTH-HAZE (extra) ════════════════════════════
 
 register({
-  id: 'atmo.haze.steam-rise', lib: 'atmosphere', category: 'depth-haze', tones: ['dark', 'light'], rubros: ['*'], weight: 0.75,
+  id: 'atmo.haze.steam-rise', lib: 'atmosphere', category: 'depth-haze', tones: ['dark', 'light'], rubros: ['gastronomia', 'salud', 'inmobiliaria', 'default'], weight: 0.75,
   register: 'friendly', intensity: 'soft', tags: ['vapor', 'columnas', 'niebla', 'organico'],
   render(ctx, t, env) {
     const { pal } = env, light = pal.tone === 'light', r = seedFor(env.seed, 'steam')
@@ -1751,7 +1751,7 @@ register({
 })
 
 register({
-  id: 'atmo.lens.prism-split', lib: 'atmosphere', category: 'lens-fx', tones: ['dark'], rubros: ['*'], weight: 0.6,
+  id: 'atmo.lens.prism-split', lib: 'atmosphere', category: 'lens-fx', tones: ['dark'], rubros: ['gastronomia', 'eventos', 'moda', 'belleza', 'default'], weight: 0.6,
   register: 'playful', intensity: 'medium', tags: ['prisma', 'arcoiris', 'dispersion', 'borde', 'lente'],
   render(ctx, t, env) {
     const r = seedFor(env.seed, 'prism')
@@ -1783,7 +1783,7 @@ register({
 // ════════════════════════════ COLOR-GRADE (extra) ════════════════════════════
 
 register({
-  id: 'atmo.grade.faded-film', lib: 'atmosphere', category: 'color-grade', tones: ['dark', 'light'], rubros: ['*'], weight: 0.8,
+  id: 'atmo.grade.faded-film', lib: 'atmosphere', category: 'color-grade', tones: ['dark', 'light'], rubros: ['moda', 'gastronomia', 'eventos', 'default'], weight: 0.8,
   register: 'editorial', intensity: 'soft', tags: ['faded', 'analogico', 'matte', 'vintage', 'sombras-levantadas'],
   render(ctx, t, env) {
     const { pal } = env, light = pal.tone === 'light'
@@ -1809,7 +1809,7 @@ register({
 })
 
 register({
-  id: 'atmo.grade.neon-night', lib: 'atmosphere', category: 'color-grade', tones: ['dark'], rubros: ['*'], weight: 0.72,
+  id: 'atmo.grade.neon-night', lib: 'atmosphere', category: 'color-grade', tones: ['dark'], rubros: ['eventos', 'moda', 'tech', 'default'], weight: 0.72,
   register: 'playful', intensity: 'loud', tags: ['neon', 'cyber', 'magenta', 'cian', 'nocturno', 'urbano'],
   render(ctx, t, env) {
     const { pal } = env
@@ -1861,7 +1861,7 @@ register({
 })
 
 register({
-  id: 'atmo.shadow.archway-cast', lib: 'atmosphere', category: 'shadow-systems', tones: ['dark', 'light'], rubros: ['*'], weight: 0.75,
+  id: 'atmo.shadow.archway-cast', lib: 'atmosphere', category: 'shadow-systems', tones: ['dark', 'light'], rubros: ['finanzas', 'inmobiliaria', 'tech', 'default'], weight: 0.75,
   register: 'corporate', intensity: 'medium', tags: ['sombra', 'arco', 'arquitectura', 'enmarque', 'top'],
   render(ctx, t, env) {
     const { pal } = env, light = pal.tone === 'light'
