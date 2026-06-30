@@ -31,6 +31,40 @@ _UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
        "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
 _CTX = dict(user_agent=_UA, locale="es-AR", timezone_id="America/Argentina/Buenos_Aires")
 
+# JS heuristico: encuentra y clickea el boton de ACEPTAR cookies/consent por TEXTO (cubre banners NO listados que
+# tapan el hero al screenshot). Prefiere botones dentro de un contenedor cookie/consent/gdpr. Best-effort, idempotente.
+_JS_CONSENT = r"""
+() => {
+  const RX = /^(aceptar|acepto|aceptar todo|aceptar y cerrar|aceptar cookies|accept|accept all|allow all|entendido|de acuerdo|got it|ok|permitir|continuar|continue|estoy de acuerdo|i agree|i accept|agree|consent)$/i;
+  const CONT = /cookie|consent|gdpr|privacy|banner|onetrust|cmp|didomi|cookiebot|truste/i;
+  const els = [...document.querySelectorAll('button, a, [role="button"], input[type="button"], input[type="submit"]')];
+  let best = null, bs = -1;
+  for (const el of els) {
+    const t = (el.innerText || el.value || el.getAttribute('aria-label') || '').trim();
+    if (!t || t.length > 26 || !RX.test(t)) continue;
+    const r = el.getBoundingClientRect(); if (r.width < 20 || r.height < 12) continue;
+    let s = 1, p = el;
+    for (let i = 0; i < 6 && p; i++) { const id = (p.id || '') + ' ' + (p.className || ''); if (CONT.test(id)) { s += 3; break; } p = p.parentElement; }
+    if (s > bs) { bs = s; best = el; }
+  }
+  if (best) { best.click(); return true; }
+  return false;
+}
+"""
+async def _dismiss_consent(page):
+    """Cierra el banner de cookies/consent (best-effort): selectores conocidos -> heuristica GENERICA por texto."""
+    for sel in ["#onetrust-accept-btn-handler", "button:has-text('Aceptar')",
+                "button:has-text('Accept')", "[aria-label*='accept' i]"]:
+        try:
+            await page.click(sel, timeout=600)
+            return
+        except Exception:
+            pass
+    try:
+        await page.evaluate(_JS_CONSENT)
+    except Exception:
+        pass
+
 
 # ---- SSRF GUARD --------------------------------------------------------------
 # El backend abre Chromium contra una URL que viene del cliente, y corre detras de un tunel publico
@@ -105,13 +139,7 @@ async def capture_site(url: str, out_path: str,
                 print(f"[capture] goto lento ({ge}); capturo lo que haya")
             await page.wait_for_timeout(2200)
             # Cerrar banners de cookies comunes (best-effort)
-            for sel in ["#onetrust-accept-btn-handler", "button:has-text('Aceptar')",
-                        "button:has-text('Accept')", "[aria-label*='accept' i]"]:
-                try:
-                    await page.click(sel, timeout=800)
-                    break
-                except Exception:
-                    pass
+            await _dismiss_consent(page)
             await page.screenshot(path=out_path, clip={"x": 0, "y": 0, "width": width, "height": height})
             await browser.close()
         return out_path if Path(out_path).exists() else None
@@ -329,13 +357,7 @@ async def capture_all(url: str, out_path: str, width: int = 1280, height: int = 
             except Exception as ge:
                 print(f"[capture_all] goto lento ({ge}); sigo con lo que haya")
             # Cerrar cookies temprano (si las hay) para no taparle el hero al screenshot.
-            for sel in ["#onetrust-accept-btn-handler", "button:has-text('Aceptar')",
-                        "button:has-text('Accept')", "[aria-label*='accept' i]"]:
-                try:
-                    await page.click(sel, timeout=800)
-                    break
-                except Exception:
-                    pass
+            await _dismiss_consent(page)
             # Esperar a que la red se calme: hero, imágenes y FONDOS CSS terminan de cargar.
             # (Antes sacábamos la foto apenas cargaba el DOM y el hero salía vacío.)
             try:
