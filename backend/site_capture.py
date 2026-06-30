@@ -118,34 +118,9 @@ def _guard(url: str) -> bool:
     return ok
 
 
-async def capture_site(url: str, out_path: str,
-                       width: int = 1280, height: int = 900) -> str | None:
-    """
-    Captura el viewport superior del sitio (no la página entera, para que se vea
-    como un 'hero' de la app). Devuelve out_path si salió bien, None si no.
-    """
-    if not _PW_OK or not url or not _guard(url):
-        return None
-    try:
-        async with async_playwright() as p:
-            browser = await p.chromium.launch(args=["--no-sandbox"])
-            # ignore_https_errors: muchos sitios legitimos tienen el cert vencido/mal (ERR_CERT_*); sin esto goto FALLA
-            # y la captura vuelve vacia -> el brief se inventaria desde el nombre de marca (viola "fiel a la pagina").
-            page = await browser.new_page(viewport={"width": width, "height": height},
-                                          device_scale_factor=2, ignore_https_errors=True, **_CTX)
-            try:
-                await page.goto(url, wait_until="domcontentloaded", timeout=30000)
-            except Exception as ge:
-                print(f"[capture] goto lento ({ge}); capturo lo que haya")
-            await page.wait_for_timeout(2200)
-            # Cerrar banners de cookies comunes (best-effort)
-            await _dismiss_consent(page)
-            await page.screenshot(path=out_path, clip={"x": 0, "y": 0, "width": width, "height": height})
-            await browser.close()
-        return out_path if Path(out_path).exists() else None
-    except Exception as e:
-        print(f"[capture] error: {e}")
-        return None
+# NOTA: capture_site (screenshot-only) se ELIMINO por codigo muerto (0 callers; el pipeline vivo usa capture_all, que
+# captura screenshot+contenido+imagenes en UNA sola carga). extract_content (content-only) queda porque lo usa el
+# pipeline Remotion LEGACY (template_director.py). Si se retira ese legacy, extract_content tambien puede borrarse.
 
 
 # JS que corre EN la página ya renderizada: junta texto visible + señales para el director.
