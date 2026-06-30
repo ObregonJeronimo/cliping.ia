@@ -10,7 +10,6 @@ import { derivePalette } from './palette.js'
 import { FORMATS, clamp, hexToHsl, hslToHex } from './util.js'
 import { query, get } from './registry.js'
 import { seedFor, weightedPick, hashStr, stableSeed, pick, shuffled } from './prng.js'
-import { deriveFonts } from './fonts.js'
 import { analyzeContent, buildArcSmart, sceneBias, atmoSubBias, colorEnergyBias, audienceWarmBias } from './strategy.js'
 import { fitWeight, canonRubro, layoutBias, RUBRO_HUE } from './fit.js'
 import { fitContent } from './script.js'
@@ -214,7 +213,7 @@ export function makeVideo(brief = {}) {
   // mod.temp; todo otro slot queda 1.0 (identico). Se setea aca (post-paleta) -> el pick de color de arriba no lo ve.
   fitCtx.paletteHue = (palette && palette.accent) ? hexToHsl(palette.accent).h : null
   const typMod = required(lock && lock.type, keep && keep.type, seedFor(seed, 'typepick'), query('typography', { tone }), m => score(m) * audienceWarmBias(m, audience.register))
-  const fonts = typMod ? typMod.fonts : deriveFonts(rubro, style, seed)
+  const fonts = typMod ? typMod.fonts : { display: 'Space Grotesk', text: 'Inter', accent: 'JetBrains Mono' }   // typMod SIEMPRE gana (typography no queda vacio para dark/light); fallback estatico sano (= pairing grotesk-clean, el de mayor weight) por defensa
   // MOTION: personalidad de movimiento (entrada/asentamiento/stagger/drift) -> env.motion.
   const motMod = required(lock && lock.motion, keep && keep.motion, seedFor(seed, 'motionpick'), query('motion', { tone }))
   // TYPEKIT: efecto de texto cinetico para los titulos -> env.typekit. ~30% sin efecto (plain) para no saturar.

@@ -10,7 +10,6 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { dirname, join, resolve } from 'node:path'
 import { query, get } from '../src/urvid/core/registry.js'
 import { derivePalette } from '../src/urvid/core/palette.js'
-import { deriveFonts } from '../src/urvid/core/fonts.js'
 import { defaultMotion } from '../src/urvid/core/motion.js'
 import { defaultTypekit } from '../src/urvid/core/typekit.js'
 import { defaultLayout } from '../src/urvid/core/layout.js'
@@ -27,7 +26,7 @@ setFormat('9:16')
 const TS = [0.4, 1.4, 2.6]
 const content = { brand: 'Marca', tagline: 'Busca por voz o imagen', claim: 'Resultados visibles en dos semanas', cta: 'Probalo gratis', bullets: ['Rapido y simple', 'Soporte real', 'Sin vueltas'], stats: [{ value: '92%', label: 'lo recomienda' }], proof: 'Cambio como trabajamos' }
 function envFor(seed, tone, pal) {
-  const fonts = deriveFonts('default', null, seed)
+  const fonts = { display: 'Space Grotesk', text: 'Inter', accent: 'JetBrains Mono' }   // fallback estatico (deriveFonts eliminado: era codigo muerto, typMod siempre gana en el motor)
   return { pal, content, fonts, seed, energy: 1, sceneDur: 4, motion: defaultMotion(), typekit: defaultTypekit(), layout: defaultLayout() }
 }
 function tile(mod, t, tone) {
