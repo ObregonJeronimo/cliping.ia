@@ -218,7 +218,11 @@ async def analyze_to_brief(url, desarrollo="", site=None, usage=None):
         text = f"URL: {url}\n"
         if desarrollo:
             text += f"Notas del usuario (priorizalas): {desarrollo}\n"
-        text += ("Contenido capturado de la pagina:\n" + digest + "\n") if digest else "(No se pudo capturar texto; usa el screenshot, la URL y las notas.)\n"
+        text += ("Contenido capturado de la pagina:\n" + digest + "\n") if digest else (
+            "(ADVERTENCIA: la pagina casi NO devolvio texto -> puede no haber cargado (cert/timeout/bloqueo anti-bot). "
+            "Basate SOLO en lo que REALMENTE veas en el screenshot. El brand puede salir del nombre del dominio, pero el "
+            "RESTO solo de lo visible. NO inventes claims, cifras, features, premios ni bullets que no veas: es preferible "
+            "un brief GENERICO y honesto (tagline/claim suaves, stats [], proof \"\") que uno inventado.)\n")
         text += ("Tambien te paso el screenshot (para tono y colores reales).\n" if b64 else "")
         text += "\nDevolve SOLO el JSON del brief, eligiendo lo mejor y mas fiel."
         blocks = []
