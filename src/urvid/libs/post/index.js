@@ -81,13 +81,13 @@ P('post.glow.halation', 'fx-bloom', (ctx, t, env) => {
 P('post.scan.lines', 'fx-scan', (ctx, t, env) => {
   const off = (t * 14) % 4, a = env.pal.tone === 'light' ? 0.05 : 0.1
   layer(ctx, 1, null, (c) => { c.fillStyle = rgba('#000', a); for (let y = (off | 0); y < H; y += 4) c.fillRect(0, y, W, 1.4) })
-}, { register: 'playful', intensity: 'bold', tags: ['scanlines', 'crt', 'retro'], weight: 0.7, rubros: ['*', 'tech', 'gaming', 'eventos', 'musica'] })
+}, { register: 'playful', intensity: 'bold', tags: ['scanlines', 'crt', 'retro'], weight: 0.7, rubros: ['tech', 'gaming', 'eventos', 'musica'] })   // sin '*': rubroAffinity baja scanlines a 0.45 fuera de nicho (un brief serio dark ya no recibe CRT)
 
 P('post.scan.crt', 'fx-scan', (ctx, t, env) => {
   const flick = 0.9 + 0.1 * Math.sin(t * 30)
   layer(ctx, 0.1 * flick, null, (c) => { c.fillStyle = rgba('#000', 1); for (let y = 0; y < H; y += 3) c.fillRect(0, y, W, 1.2) })
   layer(ctx, env.pal.tone === 'light' ? 0.12 : 0.26, null, (c) => { c.fillStyle = radial(c, W / 2, H / 2, W * 0.3, W * 0.85, [[0, 'rgba(0,0,0,0)'], [1, rgba('#000', 1)]]); c.fillRect(0, 0, W, H) })
-}, { register: 'playful', intensity: 'loud', tags: ['crt', 'retro', 'tv'], weight: 0.6, rubros: ['*', 'tech', 'gaming', 'musica'] })
+}, { register: 'playful', intensity: 'loud', tags: ['crt', 'retro', 'tv'], weight: 0.6, rubros: ['tech', 'gaming', 'musica'] })   // sin '*': el CRT (lo mas ruidoso) queda acotado a su nicho, no entra en salud/finanzas/legal dark
 
 // ---- grade (tinte global LEVE; preserva contraste -> alpha bajo + overlay) ----
 P('post.grade.warm', 'grade', (ctx, t, env) => {
