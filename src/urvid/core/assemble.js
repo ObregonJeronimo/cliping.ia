@@ -96,15 +96,24 @@ function _beatText(category, c) {
 }
 // 1-3 Lotties para un beat: temas (routes) que matchean su texto -> 1 Lottie por tema, de la biblioteca de ESE tema
 // (cross-rubro real: un tema ecommerce tira de la libreria de moda aunque el video sea de salud). Sin match -> rubro del video.
-function pickSceneAnims(category, content, rubro, seed, i, items) {
+function pickSceneAnims(category, content, rubro, seed, i, items, seriousness = 0.5) {
   if (!items || !items.length) return []
   const lo = _deburr(_beatText(category, content))
   let routes = ANIM_ROUTES.filter(r => r.kw.some(k => lo.indexOf(_deburr(k)) >= 0))
   if (!routes.length) routes = [{ id: 'rubro', pool: rubro, c: [] }]   // sin tema claro -> anim del rubro del video
+  // CAP dinamico de Lotties por escena (puro, sin PRNG): mas serio o mas DENSO de texto -> MENOS adornos (no competir con la lectura).
+  const top = String(category || '').split('/')[0]
+  const nBul = Array.isArray(content.bullets) ? content.bullets.filter(Boolean).length : 0
+  const nSt = Array.isArray(content.stats) ? content.stats.filter(Boolean).length : 0
+  const dense = (top === 'lists' || top === 'data') || (nBul >= 3) || (nSt >= 2) || (lo.length > 140)
+  let cap = 3
+  if (seriousness >= 0.7) cap = 1; else if (seriousness >= 0.55 || dense) cap = 2
+  if ((nBul >= 4) || (nSt >= 3)) cap = Math.min(cap, 1)
+  cap = Math.max(1, Math.min(3, cap))
   const prng = seedFor(seed ^ hashStr('sanim' + i), 'sanim')
   const out = [], used = new Set()
   for (const r of routes) {
-    if (out.length >= 3) break
+    if (out.length >= cap) break
     let pool = items.filter(it => it.rubro === r.pool && !used.has(it.id))
     if (!pool.length && r.pool !== 'default') pool = items.filter(it => it.rubro === 'default' && !used.has(it.id))   // back-up universal
     const fine = r.c.length ? pool.filter(it => r.c.indexOf(it.concept) >= 0) : pool
@@ -259,7 +268,7 @@ export function makeVideo(brief = {}) {
     if (mod) {
       const dur = clamp((beat.dur || 3.4) * durK, 2.2, 6)
       const sc = { start, dur, sceneId: mod.id, seed: (seed ^ hashStr('s' + i)) >>> 0, bgSeed: (seed ^ hashStr('bg|' + beat.category + '|' + i)) >>> 0 }   // variante de fondo por beat (mismo eje 'bg' que video.bgSeed)
-      if (perScene) sc.anims = pickSceneAnims(beat.category, { ...content, brand }, rubro, seed, i, animItems)   // 1-3 Lotties por lo que dice ESTA escena
+      if (perScene) sc.anims = pickSceneAnims(beat.category, { ...content, brand }, rubro, seed, i, animItems, seriousness)   // 1-3 Lotties por lo que dice ESTA escena (cap por seriedad/densidad)
       scenes.push(sc); start += dur
     }
   })

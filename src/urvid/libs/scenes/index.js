@@ -165,7 +165,7 @@ register({
     ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(rx, ry, rw, 5, 2.5); ctx.fill()
     if (ru > 0.9) rrSheen(ctx, rx, ry, rw, 5, t, { per: 3.0, strength: 0.55, tone: pal.tone })
     // tagline en su slot
-    if (content.tagline && L.tag) drawWrapped(ctx, content.tagline, L.tag.cx, L.tag.cy, { size: Math.min(L.tag.size, 26), weight: 600, family: fonts.text, maxW: L.tag.w, align: L.tag.align, color: pal.dim, alpha: inv(t, 0.7, 1.3), maxLines: 2 })
+    if (content.tagline && L.tag) drawWrapped(ctx, content.tagline, L.tag.cx, L.tag.cy, { size: Math.min(L.tag.size, 26), weight: 600, family: fonts.text, maxW: L.tag.w, align: L.tag.align, color: pal.dim, alpha: inv(t, 0.62, 1.05), maxLines: 2 })
   },
 })
 
@@ -236,10 +236,10 @@ register({
       { id: 'claim', kind: 'title', text: claimSrc },
     ]), k = L.kick, c = L.claim
     // marca chica arriba (kicker en acento), en su slot
-    drawText(ctx, (content.brand || 'Marca').toUpperCase(), k.cx, k.cy, { size: Math.min(k.size, 18), weight: 700, family: fonts.accent || fonts.text, maxW: k.w, color: pal.inkText, align: k.align, alpha: inv(t, 0.05, 0.4) })
-    // claim grande, en su slot, en 2-3 lineas, stagger por subida
-    const rise = M.settle(inv(t, 0.2, 0.95), 1.3)
-    ctx.save(); ctx.globalAlpha = inv(t, 0.2, 0.7); ctx.translate(0, (1 - rise) * 40)
+    drawText(ctx, (content.brand || 'Marca').toUpperCase(), k.cx, k.cy, { size: Math.min(k.size, 18), weight: 700, family: fonts.accent || fonts.text, maxW: k.w, color: pal.inkText, align: k.align, alpha: inv(t, 0.04, 0.34) })
+    // claim grande, en su slot, en 2-3 lineas, stagger por subida. ARRANCA cuando el kicker ya asento (~0.34) -> orden de lectura kicker->titulo sin solape (ambos completos << t=dur*0.7s del muestreo QA)
+    const rise = M.settle(inv(t, 0.38, 1.05), 1.3)
+    ctx.save(); ctx.globalAlpha = inv(t, 0.4, 0.85); ctx.translate(0, (1 - rise) * 40)
     drawWrapped(ctx, claimSrc, c.cx, c.cy, { size: Math.min(c.size, 50), weight: 800, family: fonts.display, maxW: c.w, color: pal.ink, align: c.align, maxLines: 3, lh: 1.08, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.45)' : null })
     ctx.restore()
     // regla inferior que barre, anclada bajo el slot del claim + VIDA: sheen recorriendola en loop
