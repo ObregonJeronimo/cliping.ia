@@ -186,11 +186,26 @@ def _shot_b64(path):
     return None
 
 
+# quita palabras-FUNCION colgadas al final de un bullet (conjuncion/preposicion/articulo) que dejan la frase a medias:
+# "Restaurantes, super y" -> "Restaurantes, super"; "Pago facil con" -> "Pago facil". Garantia determinista (el prompt
+# pide frases completas pero el LLM a veces corta una enumeracion en la conjuncion).
+_DANGLING = {"y", "e", "o", "u", "de", "del", "al", "a", "con", "en", "para", "por", "la", "el", "lo", "los", "las",
+             "un", "una", "unos", "unas", "que", "su", "tu", "mi", "sin", "sobre", "entre", "desde", "hasta", "como",
+             "and", "or", "the", "of", "to", "for", "with", "in", "on", "your", "our", "an", "&"}
+def _no_dangling(s):
+    s = re.sub(r"[\s,;:·•/\-]+$", "", str(s or "")).strip()
+    words = s.split()
+    while len(words) > 1 and words[-1].lower().strip(".,;:") in _DANGLING:
+        words.pop()
+    out = re.sub(r"[\s,;:·•/\-]+$", "", " ".join(words)).strip()
+    return out or s   # si quedara vacio, devolver el original (no romper)
+
+
 def _norm_list(v, n, maxlen):
     out = []
     if isinstance(v, list):
         for it in v:
-            s = _clip_words(it, maxlen)
+            s = _no_dangling(_clip_words(it, maxlen))
             if s:
                 out.append(s)
             if len(out) >= n:
