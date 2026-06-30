@@ -7,12 +7,12 @@
 // TONO = SOLO COLOR: si el brief trae lockRecipe (el toggle claro/oscuro del estudio), se REUSA la receta y solo se
 // re-deriva la paleta; un slot se re-elige unicamente si su modulo no soporta el tono nuevo.
 import { derivePalette } from './palette.js'
-import { FORMATS, clamp, hexToHsl } from './util.js'
+import { FORMATS, clamp, hexToHsl, hslToHex } from './util.js'
 import { query, get } from './registry.js'
 import { seedFor, weightedPick, hashStr, stableSeed, pick, shuffled } from './prng.js'
 import { deriveFonts } from './fonts.js'
 import { analyzeContent, buildArcSmart, sceneBias, atmoSubBias, colorEnergyBias, audienceWarmBias } from './strategy.js'
-import { fitWeight, canonRubro, layoutBias } from './fit.js'
+import { fitWeight, canonRubro, layoutBias, RUBRO_HUE } from './fit.js'
 import { fitContent } from './script.js'
 import LOTTIE from '../lottie/manifest.js'
 
@@ -127,8 +127,14 @@ function pickSceneAnims(category, content, rubro, seed, i, items, seriousness = 
 }
 
 export function makeVideo(brief = {}) {
-  const { brand = 'Marca', rubro: _rubroRaw = 'default', tone = 'dark', brandColor = '#5b8cff', style = null } = brief
+  const { brand = 'Marca', rubro: _rubroRaw = 'default', tone = 'dark', brandColor: _brandColorRaw = '#5b8cff', style = null } = brief
   const rubro = canonRubro(_rubroRaw)   // normaliza al set canonico de fit.js (perception y motor ya comparten 11 rubros, incl. eventos) -> el scorer matchea sin degradar.
+  // brandColor ACROMATICO (negro/blanco/gris puro, S~0): hexToHsl da hue=0 -> TODOS los esquemas (incl. los mono) derivan
+  // un ROJO/granate ARBITRARIO (off-brand para marcas minimalistas negro/blanco: Notion, Sephora, Apple-like). Lo
+  // normalizamos al hue del RUBRO (sobrio y coherente: tech->azul, belleza->rosa; default->slate 220) con S moderada -> el
+  // motor produce una paleta coherente, no un rojo random. Determinista (puro). e2e: cazado en Notion/Sephora (#000000).
+  const _bcHsl = hexToHsl(_brandColorRaw)
+  const brandColor = (_bcHsl.s < 0.12) ? hslToHex(RUBRO_HUE[rubro] != null ? RUBRO_HUE[rubro] : 220, 0.34, clamp(_bcHsl.l, 0.34, 0.6)) : _brandColorRaw
   const perScene = !!brief.perSceneAnims   // urvid IA: 1-3 Lotties POR ESCENA (ruteadas por lo que dice esa escena), no 1 por video
   // FORMATO (aspect-ratio). No afecta la receta (mismo seed -> misma carta), solo la forma del lienzo.
   const format = FORMATS[brief.format] ? brief.format : '9:16'
