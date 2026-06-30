@@ -38,7 +38,17 @@ rem Backend (puerto 8000) + ngrok con el dominio FIJO que usa vercel.json (asi l
 rem El dominio 'draw-overturn-backpack.ngrok-free.dev' esta RESERVADO en la cuenta ngrok de Jero: para hostearlo,
 rem Thiago debe cargar el authtoken de Jero UNA sola vez:  ngrok config add-authtoken ^<token-de-jero^>
 rem Solo UNO corre el backend por dia (dia de Jero / dia de Thiago) -> nunca dos ngrok con el mismo dominio a la vez.
+rem Windows Terminal (wt) da paneles lindos PERO en Windows 10 NO viene instalado -> si no esta, abrimos 2 ventanas cmd
+rem normales (andan en cualquier Windows). Sin esto, en la PC Win10 de Thiago el .bat se cerraba SIN levantar el backend.
+where wt >nul 2>&1
+if errorlevel 1 goto launch_cmd
 wt --title "cliping.ia" --tabColor #6366f1 ^
   cmd /k "cd /d %~dp0backend && python run.py" ^
   ; split-pane --horizontal --size 0.4 ^
   cmd /k "ngrok http --domain=draw-overturn-backpack.ngrok-free.dev 8000"
+goto end
+:launch_cmd
+echo Windows Terminal no esta -> abriendo backend y ngrok en ventanas cmd...
+start "cliping.ia - backend :8000" cmd /k "cd /d %~dp0backend && python run.py"
+start "cliping.ia - ngrok" cmd /k "ngrok http --domain=draw-overturn-backpack.ngrok-free.dev 8000"
+:end
