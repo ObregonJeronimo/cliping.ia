@@ -252,7 +252,7 @@ export function makeVideo(brief = {}) {
     if (lock) { const lm = lockId ? get(lockId) : null; if (toneOk(lm)) mod = lm }
     if (!mod) mod = opts.length ? weightedPick(prng, opts, m => score(m) * sceneBias(m, sig)) : null
     // SLOT-MEDIA (ESPEJO de src/urvid): 1er opener -> showcase a sangre SOLO con brief.mediaImage, tras el weightedPick (prng identico), sin pisar lock.
-    if (brief.mediaImage && mod && !lockId && i === 0 && String(beat.category).split('/')[0] === 'openers') mod = get('scene.showcase.fullbleed') || mod
+    if (brief.mediaImage && mod && !lockId && i === 0) mod = get('scene.showcase.fullbleed') || mod   // i===0 es SIEMPRE el opener -> la foto ES el opener, sea cual sea su categoria (ESPEJO de urvid)
     if (mod) {
       const dur = clamp((beat.dur || 3.4) * durK, 2.2, 6)
       const sc = { start, dur, sceneId: mod.id, seed: (seed ^ hashStr('s' + i)) >>> 0 }

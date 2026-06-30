@@ -299,7 +299,7 @@ export function makeVideo(brief = {}) {
     // SLOT-MEDIA: si el brief trae la FOTO real del producto, el PRIMER opener se sustituye por la escena showcase a
     // sangre (foto cover-crop + scrim + texto). DESPUES del weightedPick (el prng del arco ya avanzo identico) y SOLO con
     // brief.mediaImage -> los briefs sin foto (los 9 gates) corren byte-identico. No pisa una escena lockeada (!lockId).
-    if (brief.mediaImage && mod && !lockId && i === 0 && String(beat.category).split('/')[0] === 'openers') mod = get('scene.showcase.fullbleed') || mod
+    if (brief.mediaImage && mod && !lockId && i === 0) mod = get('scene.showcase.fullbleed') || mod   // i===0 es SIEMPRE el opener (hero/hook/statement) -> la foto ES el opener (como los competidores), sea cual sea su categoria
     if (mod) {
       const dur = clamp((beat.dur || 3.4) * durK, 2.2, 6)
       const sc = { start, dur, sceneId: mod.id, seed: (seed ^ hashStr('s' + i)) >>> 0, bgSeed: (seed ^ hashStr('bg|' + beat.category + '|' + i)) >>> 0 }   // variante de fondo por beat (mismo eje 'bg' que video.bgSeed)

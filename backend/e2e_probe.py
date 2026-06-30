@@ -29,6 +29,12 @@ async def probe(url):
     # saca señales internas
     for k in ("_parse_ok", "_low_confidence"):
         brief.pop(k, None)
+    # SLOT-MEDIA: la imagen TOP del ranking de site_capture (mejor-primero) -> foto del showcase
+    imgs = site.get("images") or []
+    top = imgs[0] if imgs else None
+    media = (top if isinstance(top, str) else (top.get("url") or top.get("src"))) if top else None
+    if media:
+        brief["mediaImage"] = media
     path = os.path.join(OUT, f"e2e_{host}.json")
     with open(path, "w", encoding="utf-8") as f:
         json.dump(brief, f, ensure_ascii=False)
