@@ -318,6 +318,9 @@ async def analyze_to_brief(url, desarrollo="", site=None, usage=None):
 
     out = _normalize(brief, url, content)
     out["_parse_ok"] = parse_ok   # señal interna para el caller (decidir si cachear); se saca antes de cachear/enviar
+    # CALIDAD de captura: si la pagina vino VACIA o como bot-wall, el brief se baso solo en el screenshot/nombre (baja
+    # confianza). El caller NO debe cachearlo (un bloqueo transitorio no debe quedar pegado; un reintento puede capturar bien).
+    out["_low_confidence"] = bool(_is_botwall(content) or not (isinstance(content, dict) and (content.get("headings") or content.get("bodyText") or content.get("title"))))
     # fallback de color (en orden de FIDELIDAD): 1) el acento REAL del CTA por computed-style (verdad de la marca),
     # 2) el theme-color declarado, 3) (en main.py) el dominante del screenshot. Solo si el modelo no dio uno usable.
     if out["brandColor"] == "#5b8cff":

@@ -500,7 +500,8 @@ async def urvid_perceive(req: PerceiveRequest):
         except Exception as e:
             print(f"[perceive] accent desde screenshot fallo: {e}")
     parse_ok = brief.pop("_parse_ok", True)   # señal interna; no se cachea ni se envia al cliente
-    if chash and parse_ok:   # solo cacheamos con captura real Y JSON valido (un brief que fallo no queda pegado 14 dias)
+    low_conf = brief.pop("_low_confidence", False)   # captura vacia/bot-wall -> baja confianza, no pegar 14 dias
+    if chash and parse_ok and not low_conf:   # solo cacheamos con captura REAL Y JSON valido (un reintento puede capturar mejor)
         _urvid_brief_cache[memkey] = brief
         _set_urvid_brief_fs(db, req.userId, ckey, brief, chash, req.url)
     cost = template_director.usage_cost(usage) if usage else {}
