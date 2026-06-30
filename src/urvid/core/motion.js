@@ -10,6 +10,11 @@ const ZERO = { x: 0, y: 0, scale: 0, rot: 0 }
 // Contrato del objeto motion (lo que recibe env.motion):
 //   ease(p)   -> [0,1] MONOTONICO (reglas/barras/progreso/reveals: nunca debe pasarse de 1)
 //   settle(p) -> overshoot OK (pops/escala/asentamiento: spring/back; vuelve a 1 en p=1)
+//                CONTRATO: settle toma UN solo argumento. Algunas escenas pasan un 2do arg ({zeta,freq} o un numero)
+//                pensando que ajusta el resorte -> se IGNORA A PROPOSITO: el caracter del spring (rebote/frecuencia) lo
+//                fija la PERSONALIDAD elegida por el director (cada una con su zeta/freq), no la escena. Honrarlo
+//                aplanaria las 12 personalidades a un resorte generico. Si una escena necesita otro asentamiento, debe
+//                elegirse via personalidad, no override local. (No remover los 2dos args existentes: son no-ops inertes.)
 //   smooth(p) -> [0,1] monotonico in-out (entrada global, micro-zoom)
 //   stagger   -> segundos de delay base entre items de una lista/grilla
 //   enter     -> { dx, dy, scale, rotate } offset de entrada de CADA escena (lo aplica render.js)
