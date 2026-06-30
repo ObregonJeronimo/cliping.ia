@@ -28,6 +28,21 @@ function _getLogo(src) {
   if (!e) { const img = new Image(); e = { img, ready: false }; try { img.onload = () => { e.ready = true } } catch { /* noop */ } img.src = src; _logoCache.set(src, e) }
   return e.ready && e.img.width ? e.img : null
 }
+// FOTO real del producto (slot-media) — ESPEJO de src/urvid. Mismo patron que el logo + crossOrigin + hook setImageLoader.
+let _imageLoader = null
+export function setImageLoader(fn) { _imageLoader = fn }
+const _imgCache = new Map()
+function _getImg(src) {
+  if (!src) return null
+  let e = _imgCache.get(src)
+  if (!e) {
+    if (_imageLoader) { e = { img: _imageLoader(src) || null, ready: true } }
+    else if (typeof Image !== 'undefined') { const img = new Image(); try { img.crossOrigin = 'anonymous' } catch { /* noop */ } e = { img, ready: false }; try { img.onload = () => { e.ready = true } } catch { /* noop */ } img.src = src }
+    else { e = { img: null, ready: false } }
+    _imgCache.set(src, e)
+  }
+  return e.ready && e.img && e.img.width ? e.img : null
+}
 function makeScratch(w, h) {
   if (_scratchFactory) return _scratchFactory(w, h)
   if (typeof OffscreenCanvas !== 'undefined') return new OffscreenCanvas(w, h)
@@ -93,7 +108,7 @@ function paintScene(ctx, sc, t, video, motion, typekit, layout) {
   const ox = (en.dx || 0) * k, oy = (en.dy || 0) * k, rot = (en.rotate || 0) * k
   ctx.save()
   ctx.translate(W / 2 + ox, H / 2 + oy); ctx.rotate(rot); ctx.scale(z, z); ctx.translate(-W / 2, -H / 2)
-  mod.render(ctx, ts, { pal: video.palette, content: video.content, fonts: video.fonts, seed: sc.seed, energy: 1, sceneDur: sc.dur, motion, typekit, layout })
+  mod.render(ctx, ts, { pal: video.palette, content: video.content, fonts: video.fonts, seed: sc.seed, energy: 1, sceneDur: sc.dur, motion, typekit, layout, mediaImage: video.mediaImage, getImg: _getImg })
   ctx.restore()
 }
 

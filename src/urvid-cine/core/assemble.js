@@ -251,6 +251,8 @@ export function makeVideo(brief = {}) {
     const lockId = lock && lock.scenes && lock.scenes[i]
     if (lock) { const lm = lockId ? get(lockId) : null; if (toneOk(lm)) mod = lm }
     if (!mod) mod = opts.length ? weightedPick(prng, opts, m => score(m) * sceneBias(m, sig)) : null
+    // SLOT-MEDIA (ESPEJO de src/urvid): 1er opener -> showcase a sangre SOLO con brief.mediaImage, tras el weightedPick (prng identico), sin pisar lock.
+    if (brief.mediaImage && mod && !lockId && i === 0 && String(beat.category).split('/')[0] === 'openers') mod = get('scene.showcase.fullbleed') || mod
     if (mod) {
       const dur = clamp((beat.dur || 3.4) * durK, 2.2, 6)
       const sc = { start, dur, sceneId: mod.id, seed: (seed ^ hashStr('s' + i)) >>> 0 }
@@ -260,7 +262,7 @@ export function makeVideo(brief = {}) {
   })
 
   return {
-    brand, rubro, tone, seed, palette, fonts, format, W: dims.w, H: dims.h, xf, logo: brief.logo || null,
+    brand, rubro, tone, seed, palette, fonts, format, W: dims.w, H: dims.h, xf, logo: brief.logo || null, mediaImage: brief.mediaImage || null,
     aiBgUrl: brief.aiBgUrl || null, aiBgIntensity: brief.aiBgIntensity != null ? brief.aiBgIntensity : 0.5,  // Cine: fondo de IA opcional + su intensidad
     bgId: bg ? bg.id : null, bgSeed: (seed ^ hashStr('bg')) >>> 0,
     subId: sub ? sub.id : null, subSeed: (seed ^ hashStr('sub')) >>> 0,
