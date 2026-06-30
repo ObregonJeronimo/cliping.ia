@@ -4,7 +4,10 @@
 // (mulberry32(env.seed); cero Math.random/Date.now). Color de env.pal.* (los tintes calido/frio son hues honestos).
 import { register } from '../../core/registry.js'
 import { mulberry32 } from '../../core/prng.js'
-import { W, H, TAU, rgba, clamp } from '../../core/util.js'
+import { W, H, TAU, rgba, clamp, hexToHsl, hslToHex } from '../../core/util.js'
+
+// tintHue: lleva el HUE de un hex hacia un anchor con peso w (preserva S/L del que lo llama). PURO. ESPEJO de src/urvid (grade-to-palette).
+const tintHue = (hex, anchor, w) => { const a = hexToHsl(hex || '#888888'); const dh = ((anchor - a.h + 540) % 360) - 180; return a.h + dh * w }
 
 // helper: overlay con composite + alpha, restaura siempre.
 function layer(ctx, alpha, comp, draw) {
@@ -82,11 +85,13 @@ P('post.scan.crt', 'fx-scan', (ctx, t, env) => {
 
 // ---- grade (tinte global LEVE; preserva contraste -> alpha bajo + overlay) ----
 P('post.grade.warm', 'grade', (ctx, t, env) => {
-  layer(ctx, 0.1, 'overlay', (c) => { const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, rgba('#ffb070', 1)); g.addColorStop(1, rgba('#7a4a2a', 1)); c.fillStyle = g; c.fillRect(0, 0, W, H) })
+  const hw = tintHue(env.pal.accent, 30, 0.7)   // hue del acento empujado a CALIDO; S/L pin de #ffb070/#7a4a2a (grade-to-palette)
+  layer(ctx, 0.1, 'overlay', (c) => { const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, rgba(hslToHex(hw, 1.0, 0.72), 1)); g.addColorStop(1, rgba(hslToHex(hw, 0.49, 0.32), 1)); c.fillStyle = g; c.fillRect(0, 0, W, H) })
 }, { tags: ['grade', 'calido', 'dorado'], weight: 1, rubros: ['*', 'gastronomia', 'moda', 'belleza', 'inmobiliaria'] })
 
 P('post.grade.cool', 'grade', (ctx, t, env) => {
-  layer(ctx, 0.1, 'overlay', (c) => { const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, rgba('#7fd0ff', 1)); g.addColorStop(1, rgba('#243a6a', 1)); c.fillStyle = g; c.fillRect(0, 0, W, H) })
+  const hc = tintHue(env.pal.accent, 210, 0.7)   // hue del acento empujado a FRIO; S/L pin de #7fd0ff/#243a6a (grade-to-palette)
+  layer(ctx, 0.1, 'overlay', (c) => { const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, rgba(hslToHex(hc, 1.0, 0.75), 1)); g.addColorStop(1, rgba(hslToHex(hc, 0.49, 0.28), 1)); c.fillStyle = g; c.fillRect(0, 0, W, H) })
 }, { tags: ['grade', 'frio', 'clinico'], weight: 1, rubros: ['*', 'tech', 'finanzas', 'salud'] })
 
 P('post.grade.fade', 'grade', (ctx, t, env) => {
