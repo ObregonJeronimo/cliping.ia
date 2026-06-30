@@ -104,6 +104,12 @@ P('post.grade.teal-orange', 'grade', (ctx, t, env) => {
   layer(ctx, 0.09, 'overlay', (c) => { const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, rgba('#1fb6c9', 1)); g.addColorStop(0.5, 'rgba(128,128,128,1)'); g.addColorStop(1, rgba('#ff8a3d', 1)); c.fillStyle = g; c.fillRect(0, 0, W, H) })
 }, { tags: ['grade', 'teal-orange', 'cine'], weight: 0.85 })
 
+P('post.grade.neutral', 'grade', (ctx, t, env) => {
+  // contrast-lift NEUTRO (sin tinte): overlay gris PURO -> profundiza negros y levanta blancos SIN desviar el hue. ESPEJO de src/urvid.
+  layer(ctx, env.pal.tone === 'light' ? 0.07 : 0.11, 'overlay', (c) => { const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#c8c8c8'); g.addColorStop(0.5, '#808080'); g.addColorStop(1, '#3c3c3c'); c.fillStyle = g; c.fillRect(0, 0, W, H) })
+  layer(ctx, env.pal.tone === 'light' ? 0.08 : 0.16, null, (c) => { c.fillStyle = radial(c, W / 2, H * 0.46, W * 0.4, W * 0.92, [[0, 'rgba(0,0,0,0)'], [1, rgba('#000', 1)]]); c.fillRect(0, 0, W, H) })
+}, { register: 'corporate', intensity: 'calm', tags: ['grade', 'neutro', 'contraste', 'corporativo', 'sobrio'], weight: 1, rubros: ['*', 'finanzas', 'legal', 'tech', 'salud'] })
+
 // ---- dust (motas que derivan lento; analogico) ----
 P('post.dust.motes', 'fx-grano', (ctx, t, env) => {
   const r = mulberry32((env.seed >>> 0) ^ 0xd05), n = 14

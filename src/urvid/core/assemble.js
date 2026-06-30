@@ -235,7 +235,11 @@ export function makeVideo(brief = {}) {
   const trMod = required(lock && lock.transition, keep && keep.transition, seedFor(seed, 'transition'), query('transitions', { tone }))
   // PACING: la ventana de transicion (XF) sale de la PERSONALIDAD de movimiento (snappy corta, calmo larga).
   const motId = (motMod && motMod.id) || ''
-  const xf = /snappy|punch|rebote|elastic|kinetic|arcade/.test(motId) ? 0.3 : /glide|calm|slow|cine|drift|float/.test(motId) ? 0.5 : 0.4
+  const baseXf = /snappy|punch|rebote|elastic|kinetic|arcade/.test(motId) ? 0.3 : /glide|calm|slow|cine|drift|float/.test(motId) ? 0.5 : 0.4
+  // PACING content-aware: publico serio lee mejor con XF mas larga/suave; energico con cortes mas snappy. PURO (sin PRNG).
+  // Centrado en seriousness=0.5 -> seriousK=1 -> xf===baseXf (back-compat byte-identico). Banda [0.24,0.6]: tope 0.6 << dur
+  // minima de escena (2.2s) -> ventanas separadas >=1.6s, sin solape (el gate qa de coexistencia A/B sigue inmune).
+  const xf = clamp(baseXf * clamp(1 + (seriousness - 0.5) * 0.5, 0.8, 1.25), 0.24, 0.6)
   // POST: acabado (grano/vignette/leak/grade/scanlines) -> video.postId. Opcional (~58%).
   const postMod = optional(lock && lock.post, keep && keep.post, seedFor(seed, 'post'), 0.58, query('post', { tone }))
   // LAYOUT: arquitectura de composicion (centrado/editorial/poster/anclado...). El director elige UNA por video;

@@ -136,7 +136,7 @@ register({
 // ============================================================ editorial-grid ============================================================
 
 register({
-  id: 'sub.grid.swiss', lib: 'substrates', category: 'editorial-grid', tones: ['dark', 'light'], rubros: ['tech', 'finanzas', 'inmobiliaria', 'educacion', 'default'], weight: 1.1,
+  id: 'sub.grid.swiss', lib: 'substrates', category: 'editorial-grid', tones: ['dark', 'light'], rubros: ['tech', 'finanzas', 'salud', 'inmobiliaria', 'educacion', 'default'], weight: 1.1,
   register: 'corporate', intensity: 'soft', tags: ['swiss', 'editorial', 'hairline'],
   render(ctx, t, env) {
     const { pal } = env
@@ -1500,7 +1500,7 @@ register({
 // ------------------------------------------------------------ print-trama (Ola 5) ------------------------------------------------------------
 
 register({
-  id: 'sub.trama.guilloche', lib: 'substrates', category: 'print-trama', tones: ['dark', 'light'], rubros: ['finanzas', 'legal', 'default', 'lujo', 'inmobiliaria'], weight: 0.9,
+  id: 'sub.trama.guilloche', lib: 'substrates', category: 'print-trama', tones: ['dark', 'light'], rubros: ['finanzas', 'legal', 'default', 'lujo', 'belleza', 'inmobiliaria'], weight: 0.9,
   register: 'corporate', intensity: 'soft', tags: ['print', 'guilloche', 'billete', 'seguridad', 'espirograf'],
   render(ctx, t, env) {
     const { pal } = env
@@ -1554,7 +1554,7 @@ register({
 // ------------------------------------------------------------ editorial-grid (Ola 5) ------------------------------------------------------------
 
 register({
-  id: 'sub.grid.modular', lib: 'substrates', category: 'editorial-grid', tones: ['dark', 'light'], rubros: ['tech', 'finanzas', 'inmobiliaria', 'educacion', 'default', 'editorial', 'legal'], weight: 1,
+  id: 'sub.grid.modular', lib: 'substrates', category: 'editorial-grid', tones: ['dark', 'light'], rubros: ['tech', 'finanzas', 'salud', 'inmobiliaria', 'educacion', 'default', 'editorial', 'legal'], weight: 1,
   register: 'corporate', intensity: 'soft', tags: ['editorial', 'modular', 'celdas', 'bento', 'maquetacion'],
   render(ctx, t, env) {
     const { pal } = env
@@ -2104,7 +2104,7 @@ register({
 // ------------------------------------------------------------ editorial-grid (Ola 6) ------------------------------------------------------------
 
 register({
-  id: 'sub.grid.golden', lib: 'substrates', category: 'editorial-grid', tones: ['dark', 'light'], rubros: ['editorial', 'lujo', 'inmobiliaria', 'default', 'finanzas', 'arte'], weight: 1,
+  id: 'sub.grid.golden', lib: 'substrates', category: 'editorial-grid', tones: ['dark', 'light'], rubros: ['editorial', 'lujo', 'belleza', 'inmobiliaria', 'default', 'finanzas', 'arte'], weight: 1,
   register: 'editorial', intensity: 'soft', tags: ['editorial', 'aureo', 'phi', 'espiral', 'composicion'],
   render(ctx, t, env) {
     const { pal } = env

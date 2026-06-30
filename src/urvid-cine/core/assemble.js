@@ -207,7 +207,9 @@ export function makeVideo(brief = {}) {
   const trMod = required(lock && lock.transition, keep && keep.transition, seedFor(seed, 'transition'), query('transitions', { tone }))
   // PACING: la ventana de transicion (XF) sale de la PERSONALIDAD de movimiento (snappy corta, calmo larga).
   const motId = (motMod && motMod.id) || ''
-  const xf = /snappy|punch|rebote|elastic|kinetic|arcade/.test(motId) ? 0.3 : /glide|calm|slow|cine|drift|float/.test(motId) ? 0.5 : 0.4
+  const baseXf = /snappy|punch|rebote|elastic|kinetic|arcade/.test(motId) ? 0.3 : /glide|calm|slow|cine|drift|float/.test(motId) ? 0.5 : 0.4
+  // PACING content-aware por seriousness (ESPEJO de src/urvid). PURO. Banda [0.24,0.6] << dur min -> sin solape. s=0.5->xf=baseXf.
+  const xf = clamp(baseXf * clamp(1 + (seriousness - 0.5) * 0.5, 0.8, 1.25), 0.24, 0.6)
   // POST: acabado (grano/vignette/leak/grade/scanlines) -> video.postId. Opcional (~58%).
   const postMod = optional(lock && lock.post, keep && keep.post, seedFor(seed, 'post'), 0.58, query('post', { tone }))
   // LAYOUT: arquitectura de composicion (centrado/editorial/poster/anclado...). El director elige UNA por video;

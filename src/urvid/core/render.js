@@ -99,7 +99,11 @@ export function drawFrame(ctx, t, video) {
     if (m) {
       const corners = [[W * 0.82, H * 0.14], [W * 0.82, H * 0.86], [W * 0.18, H * 0.86]]   // TR / BR / BL
       const [gx, gy] = corners[(video.markSeed >>> 0) % corners.length], s = 0.2
-      ctx.save(); ctx.globalAlpha = video.tone === 'light' ? 0.5 : 0.62
+      // GARNISH-BY-SERIOUSNESS: brief serio -> adorno mas tenue (menos competencia con la lectura); relajado -> mas presente.
+      // PURO (sin PRNG). Centrado en s=0.5 = alpha de hoy (sin video.seriousness -> 0.5 -> byte-identico).
+      const _gs = video.seriousness != null ? video.seriousness : 0.5
+      const _gK = clamp(1 - 0.5 * (_gs - 0.5), 0.7, 1.3)   // s=0.85->0.825 ; s=0.5->1.0 ; s=0.2->1.15
+      ctx.save(); ctx.globalAlpha = (video.tone === 'light' ? 0.5 : 0.62) * _gK
       ctx.translate(gx, gy); ctx.scale(s, s); ctx.translate(-W / 2, -H / 2)
       m.render(ctx, t, { ...base, seed: video.markSeed })
       ctx.restore()
