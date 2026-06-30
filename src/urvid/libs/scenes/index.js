@@ -170,7 +170,7 @@ register({
     drawText(ctx, content.brand || 'Marca', 0, 0, { size: b.size, weight: 800, family: fonts.display, maxW: b.w, align: b.align, color: pal.ink, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.4)' : null })
     ctx.restore()
     // regla de acento bajo el wordmark (DECO) + VIDA: respira de ancho y un sheen la recorre en loop
-    const ru = M.ease(inv(t, 0.5, 1.1)), rw = 80 * ru * breathe(t, 0.9, 0.02)
+    const ru = M.ease(inv(t, 0.5, 1.1)), rw = clamp(b.w * 0.22, 40, 120) * ru * breathe(t, 0.9, 0.02)   // ancho ANCLADO al slot del wordmark (no px fijo) -> se adapta al ancho real y al formato (4:5/1:1)
     const rx = b.align === 'left' ? b.x : b.cx - rw / 2, ry = b.y + b.h + 6
     ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(rx, ry, rw, 5, 2.5); ctx.fill()
     if (ru > 0.9) rrSheen(ctx, rx, ry, rw, 5, t, { per: 3.0, strength: 0.55, tone: pal.tone })
@@ -227,7 +227,7 @@ register({
     // SLOT: el claim como titular, ubicado por el layout (llena + se adapta; antes ax=W*0.12 / H*0.46 fijos)
     const L = place(env, [{ id: 'claim', kind: 'title', text: content.claim || content.tagline || 'Un mensaje claro' }]), c = L.claim
     // barra de acento SOBRE el titular (DECO) + VIDA: respira de ancho y un sheen la recorre
-    const mr = M.ease(inv(t, 0.05, 0.5)), mbw = 66 * mr * breathe(t, 1.0, 0.022)
+    const mr = M.ease(inv(t, 0.05, 0.5)), mbw = clamp(c.w * 0.20, 36, 90) * mr * breathe(t, 1.0, 0.022)   // ancho ANCLADO al slot del claim (no px fijo)
     const bx = c.align === 'left' ? c.x : c.cx - mbw / 2, by = c.y - c.h / 2 - 16
     ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(bx, by, mbw, 6, 3); ctx.fill()
     if (mr > 0.9) rrSheen(ctx, bx, by, mbw, 6, t, { per: 2.8, strength: 0.55, tone: pal.tone })
@@ -250,7 +250,7 @@ register({
     ]), b = L.brand
     drawText(ctx, content.brand || 'Marca', b.cx, b.cy, { size: Math.min(b.size, 54), weight: 800, family: fonts.display, maxW: b.w, color: pal.ink, align: b.align, alpha: inv(t, 0.2, 0.9) })
     // regla de acento bajo la marca + VIDA: respira + sheen
-    const barY = b.y + b.h + 6, bar = M.ease(inv(t, 0.5, 1.1)), bw = 120 * bar * breathe(t, 0.85, 0.02)
+    const barY = b.y + b.h + 6, bar = M.ease(inv(t, 0.5, 1.1)), bw = clamp(b.w * 0.34, 70, 160) * bar * breathe(t, 0.85, 0.02)   // ancho ANCLADO al slot de marca (no px fijo)
     ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(b.cx - bw / 2, barY, bw, 5, 3); ctx.fill()
     if (bar > 0.9) rrSheen(ctx, b.cx - bw / 2, barY, bw, 5, t, { per: 3.0, strength: 0.55, tone: pal.tone })
     // CTA: texto en TINTA-acento (legible) + subrayado en acento (DECO) + chevron, en su slot
