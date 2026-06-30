@@ -4,8 +4,17 @@
 // REGLA: core NO importa libs -> la personalidad se resuelve del REGISTRO (get) por id, no por import directo.
 import { get } from './registry.js'
 import { eOutCubic, eInOutCubic, spring, clamp } from './util.js'
+import { reduceMotion } from './a11y.js'
 
 const ZERO = { x: 0, y: 0, scale: 0, rot: 0 }
+
+// ACCESIBILIDAD (prefers-reduced-motion): neutraliza el MOVIMIENTO ESPACIAL de la personalidad preservando el contrato y
+// los reveals (ease/smooth = fades/progreso, permitidos). settle pierde el overshoot (curva monotonica, sin rebote); la
+// entrada de escena pierde offset/zoom/rotacion; stagger, ken-burns (life) y micro-vida (ambient) van a cero. Resultado:
+// el contenido aparece por cambio de estado, sin parallax/zoom. Headless (sin window) nunca entra aca -> byte-identico.
+function reducedMotion(m) {
+  return { ...m, settle: m.smooth, stagger: 0, enter: { dx: 0, dy: 0, scale: 0, rotate: 0 }, life: 0, ambient: () => ZERO }
+}
 
 // Contrato del objeto motion (lo que recibe env.motion):
 //   ease(p)   -> [0,1] MONOTONICO (reglas/barras/progreso/reveals: nunca debe pasarse de 1)
@@ -36,19 +45,26 @@ export function defaultMotion() {
   }
 }
 
-// Resuelve (y memoiza en video._motion) la personalidad elegida; cae al default si no hay / si falla.
-// Determinista: la personalidad es codigo puro; memoizar no introduce estado observable entre videos.
-const _cache = new WeakMap()   // memo NO-mutante: no estampa el video (queda inmutable -> congelable/serializable a worker)
-export function resolveMotion(video) {
-  if (!video) return defaultMotion()
-  const hit = _cache.get(video); if (hit) return hit
+// Resolucion BASE (determinista): personalidad elegida del registro (o default) + energia del copy estampada.
+function resolveBase(video) {
   let m = null
   try {
     const mod = video.motionId ? get(video.motionId) : null
     if (mod && typeof mod.make === 'function') m = mod.make()
   } catch { m = null }
   m = m || defaultMotion()
-  m = { ...m, energy: (video.energy != null ? video.energy : 0) }   // ENERGIA del copy estampada en la personalidad (la usa staggerK); default 0 -> byte-identico
+  return { ...m, energy: (video.energy != null ? video.energy : 0) }   // ENERGIA del copy (la usa staggerK); default 0 -> byte-identico
+}
+// Resuelve (y memoiza) la personalidad; cae al default si no hay / si falla. Memoizar no introduce estado observable.
+// a11y: con prefers-reduced-motion devuelve la personalidad NEUTRALIZADA (reactivo, sin cachear -> respeta cambios en vivo;
+// headless sin window nunca entra -> byte-identico). El cache memoiza solo el caso normal (NO-mutante, congelable a worker).
+const _cache = new WeakMap()
+export function resolveMotion(video) {
+  const rm = reduceMotion()
+  if (!video) return rm ? reducedMotion(defaultMotion()) : defaultMotion()
+  if (rm) return reducedMotion(resolveBase(video))
+  const hit = _cache.get(video); if (hit) return hit
+  const m = resolveBase(video)
   _cache.set(video, m)
   return m
 }

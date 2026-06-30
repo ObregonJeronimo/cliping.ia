@@ -5,6 +5,7 @@
 // core NO importa libs: resuelve el efecto del REGISTRO por id (memoizado en el video).
 import { get } from './registry.js'
 import { drawText, drawWrapped } from './text.js'
+import { reduceMotion } from './a11y.js'
 
 export function defaultTypekit() {
   return {
@@ -14,23 +15,13 @@ export function defaultTypekit() {
   }
 }
 
-// ACCESIBILIDAD (prefers-reduced-motion): el typekit es kinetic typography. Si el usuario pide menos movimiento (requisito
-// a11y), degradamos a entrada PLANA (defaultTypekit) ignorando video.typekitId. El estado final del texto ya es identico a
-// plano (reveal>=1) -> solo se elimina la ANIMACION de entrada, nada de legibilidad. Cacheamos el MediaQueryList UNA vez
-// (matchMedia es relativamente caro) y leemos .matches por llamada -> reactivo y barato. En el motor headless (Node/gates/
-// Remotion) no hay window -> _mql queda null -> false -> comportamiento IDENTICO (frames byte-identicos, determinismo intacto).
-let _mql, _mqlTried = false
-function reduceMotion() {
-  try {
-    if (!_mqlTried) { _mqlTried = true; _mql = (typeof window !== 'undefined' && window.matchMedia) ? window.matchMedia('(prefers-reduced-motion: reduce)') : null }
-    return _mql ? _mql.matches : false
-  } catch { return false }
-}
-
 const _cache = new WeakMap()   // memo NO-mutante (no estampa el video)
 export function resolveTypekit(video) {
   if (!video) return defaultTypekit()
-  if (reduceMotion()) return defaultTypekit()   // a11y: entrada plana (reactivo; NO cachea -> respeta cambios de preferencia)
+  // ACCESIBILIDAD: el typekit es kinetic typography. Con prefers-reduced-motion degradamos a entrada PLANA ignorando
+  // video.typekitId. El estado final del texto ya es identico a plano (reveal>=1) -> solo se quita la ANIMACION de entrada,
+  // cero legibilidad. Short-circuit ANTES de la cache -> no la contamina y respeta cambios de preferencia en vivo (ver a11y.js).
+  if (reduceMotion()) return defaultTypekit()
   const hit = _cache.get(video); if (hit) return hit
   let tk = null
   try {
