@@ -42,9 +42,9 @@ Guía para correr el proyecto en una PC nueva y trabajar entre varios sin pisarn
 6. `start.bat` ya es **portable** (usa `%~dp0`, no hace falta editar rutas). **Solo si vas a hostear la demo en vivo**: instalá ngrok y cargá el **authtoken de Jero** una sola vez → `ngrok config add-authtoken <token-de-jero>`. Así tu túnel sirve el dominio FIJO `draw-overturn-backpack.ngrok-free.dev` que usa la página de Vercel (ese dominio está reservado en la cuenta de Jero; por eso necesitás su token, no el tuyo).
 
 ## Cómo correr y testear
-- **Para desarrollar/testear tus cambios (RECOMENDADO):** corré los dos local:
-  - Backend: `cd backend && python run.py` (o el `start.bat`).
-  - Frontend: `npm run dev` → abrí `http://localhost:5173`. El front pega a `localhost:8000` (tu backend local). No necesitás ngrok ni Vercel.
+- **Para desarrollar/testear tus cambios (RECOMENDADO) — un solo doble-clic:** `dev.bat` levanta backend (8000) + frontend Vite (5173) en local, sin ngrok. Abrí `http://localhost:5173`. Es lo que más vas a usar día a día.
+  - *(A mano si preferís:* Backend `cd backend && python run.py`, Frontend `npm run dev`.)*
+  - El front pega a `localhost:8000` (tu backend local). No necesitás ngrok ni Vercel para programar.
 - **`start.bat`** hace `git pull` + instala deps del backend + abre el **backend** + **ngrok con el dominio fijo** de Vercel. Con el authtoken de Jero cargado (paso 6), tu `start.bat` sirve el **mismo** dominio → en **tus días** la página de Vercel usa **tu** backend, sin tocar `vercel.json`. Para dev normal NO hace falta: alcanza con correr local (`npm run dev` + `python run.py`).
 - **Regla de oro del ngrok:** **solo UNO corre el backend a la vez** (es el mismo dominio). Por eso el modelo "un día cada uno" — nunca los dos `start.bat` prendidos juntos.
 - **QA antes de pushear:** `npm run gates` (corre los chequeos del motor + build).
