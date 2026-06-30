@@ -11,6 +11,13 @@ import { W, H, TAU, rgba, lighten, darken, clamp, inv, eOutCubic, eOutBack, spri
 
 const CX = W / 2, CY = H / 2
 
+// SHEEN tone-aware: el barrido de brillo sobre el RELLENO DE ACENTO. pal.onAccent tiene CONTRASTE garantizado sobre el
+// acento en AMBOS tonos (best de off-white/near-black) -> el sheen siempre se ve (en light, acento claro -> tinta; en
+// dark -> near-white). Mata el bug 'sheen blanco invisible sobre acento claro' sin oscurecer de mas en dark.
+const sheenAcc = (pal) => pal.onAccent || (pal.tone === 'light' ? '#1c1510' : '#ffffff')
+// SHEEN sobre la SUPERFICIE de card (pal.surface, un velo): en light usa tinta; en dark sigue blanco.
+const sheenSurf = (pal) => pal.tone === 'light' ? (pal.ink || '#1c1510') : '#ffffff'
+
 // ---------- helpers locales (puros) ----------
 // poligono regular de n lados centrado en (cx,cy), radio rad, rotacion rot. Devuelve sin dibujar (para path custom).
 function polyPath(ctx, cx, cy, rad, n, rot = 0) {
@@ -290,7 +297,7 @@ register({
       const sweep = ((t * 0.4) % 1)
       const sx0 = -w / 2 + sweep * w
       const sg = ctx.createLinearGradient(sx0 - 36, 0, sx0 + 36, 0)
-      sg.addColorStop(0, rgba(pal.accent2 || pal.accent, 0)); sg.addColorStop(0.5, rgba('#ffffff', pal.tone === 'light' ? 0.35 : 0.5)); sg.addColorStop(1, rgba(pal.accent2 || pal.accent, 0))
+      sg.addColorStop(0, rgba(pal.accent2 || pal.accent, 0)); sg.addColorStop(0.5, rgba(sheenAcc(pal), pal.tone === 'light' ? 0.35 : 0.5)); sg.addColorStop(1, rgba(pal.accent2 || pal.accent, 0))
       ctx.save(); ctx.beginPath(); ctx.roundRect(-w / 2, -3, w, 6, 3); ctx.clip()
       ctx.fillStyle = sg; ctx.fillRect(-w / 2, -3, w, 6)
       ctx.restore()
@@ -404,7 +411,7 @@ register({
     const sweep = ((t * 0.22) % 1) * 1.6 - 0.3
     const sx = -cw / 2 + sweep * cw
     const sg = ctx.createLinearGradient(sx - 60, -ch / 2, sx + 60, ch / 2)
-    sg.addColorStop(0, rgba('#ffffff', 0)); sg.addColorStop(0.5, rgba('#ffffff', pal.tone === 'light' ? 0.07 : 0.05)); sg.addColorStop(1, rgba('#ffffff', 0))
+    sg.addColorStop(0, rgba(sheenSurf(pal), 0)); sg.addColorStop(0.5, rgba(sheenSurf(pal), pal.tone === 'light' ? 0.07 : 0.05)); sg.addColorStop(1, rgba(sheenSurf(pal), 0))
     ctx.fillStyle = sg; ctx.fillRect(-cw / 2, -ch / 2, cw, ch)
     ctx.restore()
     // borde sutil + barra de acento arriba (ancho pulsa suave)
@@ -439,7 +446,7 @@ register({
     const sweep = ((t * 0.5) % 1.4) - 0.2
     const sx = -w / 2 + sweep * w
     const sg = ctx.createLinearGradient(sx - 28, 0, sx + 28, 0)
-    sg.addColorStop(0, rgba('#ffffff', 0)); sg.addColorStop(0.5, rgba('#ffffff', pal.tone === 'light' ? 0.18 : 0.22)); sg.addColorStop(1, rgba('#ffffff', 0))
+    sg.addColorStop(0, rgba(sheenAcc(pal), 0)); sg.addColorStop(0.5, rgba(sheenAcc(pal), pal.tone === 'light' ? 0.18 : 0.22)); sg.addColorStop(1, rgba(sheenAcc(pal), 0))
     ctx.fillStyle = sg; ctx.fillRect(-w / 2, -h / 2, w, h)
     ctx.restore()
     // texto
@@ -537,7 +544,7 @@ register({
       const pk = ((t * 0.45) % 1)
       const px = pk * w, py = Math.sin(pk * Math.PI) * 6 - 2
       ctx.globalAlpha = clamp(Math.sin(pk * Math.PI), 0, 1) * 0.7
-      ctx.fillStyle = rgba('#ffffff', pal.tone === 'light' ? 0.5 : 0.7)
+      ctx.fillStyle = rgba(sheenAcc(pal), pal.tone === 'light' ? 0.5 : 0.7)
       ctx.beginPath(); ctx.arc(px, py, 5, 0, TAU); ctx.fill()
     }
     ctx.restore()
@@ -1044,7 +1051,7 @@ register({
       const pk = ((t * 0.4) % 1.3) - 0.15
       const sx = pk * cw
       const sg = ctx.createLinearGradient(sx - 30, 0, sx + 30, 0)
-      sg.addColorStop(0, rgba('#ffffff', 0)); sg.addColorStop(0.5, rgba('#ffffff', 0.22)); sg.addColorStop(1, rgba('#ffffff', 0))
+      sg.addColorStop(0, rgba(sheenAcc(pal), 0)); sg.addColorStop(0.5, rgba(sheenAcc(pal), 0.22)); sg.addColorStop(1, rgba(sheenAcc(pal), 0))
       ctx.globalAlpha = 1; ctx.fillStyle = sg; ctx.fillRect(0, -h / 2 - 2, cw, h + 4)
       ctx.restore()
     }
@@ -1605,7 +1612,7 @@ register({
       const sweep = ((t * 0.35) % 1.4) - 0.2
       const sx = -len / 2 + sweep * len
       const sg = ctx.createLinearGradient(sx - 50, 0, sx + 50, 0)
-      sg.addColorStop(0, rgba('#ffffff', 0)); sg.addColorStop(0.5, rgba('#ffffff', 0.16)); sg.addColorStop(1, rgba('#ffffff', 0))
+      sg.addColorStop(0, rgba(sheenAcc(pal), 0)); sg.addColorStop(0.5, rgba(sheenAcc(pal), 0.16)); sg.addColorStop(1, rgba(sheenAcc(pal), 0))
       ctx.fillStyle = sg; ctx.fillRect(-len / 2, -bandW / 2, len, bandW)
       ctx.restore()
     }
@@ -2102,7 +2109,7 @@ register({
     const sx = -pw / 2 + sweep * pw
     ctx.globalAlpha = clamp(inv(t, 0, 0.45), 0, 1)
     const sg = ctx.createLinearGradient(sx - 40, -ph / 2, sx + 40, ph / 2)
-    sg.addColorStop(0, rgba('#ffffff', 0)); sg.addColorStop(0.5, rgba('#ffffff', 0.1)); sg.addColorStop(1, rgba('#ffffff', 0))
+    sg.addColorStop(0, rgba(sheenAcc(pal), 0)); sg.addColorStop(0.5, rgba(sheenAcc(pal), 0.1)); sg.addColorStop(1, rgba(sheenAcc(pal), 0))
     ctx.fillStyle = sg; ctx.fillRect(-pw / 2, -ph / 2, pw, ph)
     ctx.restore()
     ctx.restore()
