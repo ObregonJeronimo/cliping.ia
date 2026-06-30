@@ -22,5 +22,3 @@ remotion/props-*.json
 tools/fonts/
 tools/_*
 
-# marcador local del OWNER de Firebase (solo en la PC de Jero) -> start.bat publica reglas solo si existe. NO commitear.
-.firebase-owner
