@@ -100,9 +100,26 @@ def _clip_words(s, n):
     return (cut[:k] if k > 0 else s.split(" ")[0]).strip()
 
 
+# detecta paginas-MURO (Cloudflare/challenge/captcha/JS-required): la captura trae el texto del MURO, no el de la marca.
+# Si no se detecta, perception usaria esa basura como contenido real. Tratarlo como captura VACIA -> el guardrail
+# anti-alucinacion (basate solo en el screenshot, no inventes) se ocupa.
+_BOTWALL = re.compile(
+    r"just a moment|performing security verification|checking (your browser|if the site connection)|"
+    r"enable javascript|attention required|access denied|are you (a )?human|verifica que (eres|sos) human|"
+    r"cloudflare|ddos protection|please (verify|enable)|unusual traffic|complete the (security )?check|captcha",
+    re.I)
+def _is_botwall(content):
+    c = content if isinstance(content, dict) else {}
+    blob = " ".join([str(c.get("title") or ""), " ".join(x for x in (c.get("headings") or []) if isinstance(x, str)),
+                     str(c.get("bodyText") or "")[:500]])
+    return bool(_BOTWALL.search(blob))
+
+
 def _page_digest(content):
     """Resumen CURADO y compacto de la captura para el prompt (señal alta, pocos tokens). Evita dumpear bodyText crudo."""
     c = content if isinstance(content, dict) else {}
+    if _is_botwall(c):
+        return ""   # MURO de bot-detection -> sin contenido util -> que actue el guardrail anti-alucinacion
     parts = []
     if c.get("title"): parts.append("Titulo: " + _clip(c["title"], 120))
     if c.get("siteName"): parts.append("Sitio: " + _clip(c["siteName"], 60))
