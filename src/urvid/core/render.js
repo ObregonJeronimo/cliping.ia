@@ -67,6 +67,12 @@ function transitionBuf(slot, w, h) {
   if (!cv || cv.width !== w || cv.height !== h) cv = (_xbuf[slot] = makeScratch(w, h))
   return cv
 }
+// NITIDEZ de imagenes rasterizadas (logo de marca + foto showcase): el default del canvas es imageSmoothingQuality 'low'.
+// Al downscalear el PNG/foto a su tamano en pantalla y exportar a 1080+ el ctx la remuestrea pobre -> se ve BLANDA. Forzamos
+// 'high' en cada ctx que dibuja imagenes escaladas. Solo afecta drawImage con escala (logo + scene.showcase); los gradientes,
+// el dither (fillRect) y los blits 1:1 de transicion NO cambian -> los gates (sin logo/mediaImage) quedan byte-identicos.
+// Guard 'in' por si un backend no expone la propiedad. Idempotente y barato (solo asigna props).
+function smooth(c) { c.imageSmoothingEnabled = true; if ('imageSmoothingQuality' in c) c.imageSmoothingQuality = 'high' }
 
 // PUSH CINEMATOGRAFICO DE FONDO (no del texto): zoom+deriva LENTOS y MINIMOS sobre las capas bg/sub. Deriva de
 // motion.life (0..1 fluidez) * motion.ambient(t,seed) (oscilacion PURA de t+seed -> DETERMINISTA). z>=1 SIEMPRE (zoom-in
@@ -86,6 +92,7 @@ function bgPush(ctx, t, motion, seed) {
 // pinta UNA escena (contenido) con la ENTRADA de la personalidad (offset/zoom/rotacion de entrada). Coords logicas.
 function paintScene(ctx, sc, t, video, motion, typekit, layout) {
   const mod = get(sc.sceneId); if (!mod) return
+  smooth(ctx)   // foto showcase nitida en cualquier ctx (principal o buffer de transicion)
   const ts = t - sc.start
   // ENTRADA modulada por SERIEDAD: publico serio (salud/finanzas) -> entrada mas SUTIL y corta; relajado -> mas expresiva.
   // PURA (sin r()). Back-compat: sin seriousness -> dev=0 -> intK=1, factor-dur=1 -> BYTE-IDENTICO. El clamp superior de
@@ -113,6 +120,7 @@ function paintScene(ctx, sc, t, video, motion, typekit, layout) {
 export function drawFrame(ctx, t, video) {
   setFormat(video.format)   // sincroniza W/H al formato del video (live binding que leen todos los modulos)
   ctx.clearRect(0, 0, W, H)
+  smooth(ctx)   // logo de marca nitido al exportar a alta (default 'low' lo deja blando)
   const motion = resolveMotion(video)   // personalidad de movimiento del video (o default)
   const typekit = resolveTypekit(video) // efecto de texto cinetico del video (o plain)
   const transition = resolveTransition(video) // transicion entre escenas (o cut)
