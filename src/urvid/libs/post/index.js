@@ -6,9 +6,14 @@ import { register } from '../../core/registry.js'
 import { mulberry32 } from '../../core/prng.js'
 import { W, H, TAU, rgba, clamp } from '../../core/util.js'
 
-// helper: overlay con composite + alpha, restaura siempre.
+// INTENSIDAD GLOBAL del pase de post, modulada por seriousness en render-time (la setea urvid/index.js antes de drawFrame).
+// Escala el alpha de TODAS las capas por igual -> serio = acabado mas tenue; relajado = mas presente. NO toca los hues
+// internos de los grades (teal-orange/golden siguen siendo su LUT) -> solo la PRESENCIA del acabado. Default 1 = no-op.
+let _postK = 1
+export function setPostIntensity(k) { _postK = (typeof k === 'number' && isFinite(k)) ? k : 1 }
+// helper: overlay con composite + alpha (escalado por _postK), restaura siempre.
 function layer(ctx, alpha, comp, draw) {
-  ctx.save(); ctx.globalAlpha = clamp(alpha, 0, 1); if (comp) ctx.globalCompositeOperation = comp
+  ctx.save(); ctx.globalAlpha = clamp(alpha * _postK, 0, 1); if (comp) ctx.globalCompositeOperation = comp
   draw(ctx); ctx.restore()
 }
 // helper: gradiente radial centrado (para vignette/halacion/leak).

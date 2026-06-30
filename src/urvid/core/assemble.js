@@ -255,7 +255,13 @@ export function makeVideo(brief = {}) {
   }
   const bg = required(lock && lock.bg, keep && keep.bg, seedFor(seed, 'bg'), bgPool)
   const sub = optional(lock && lock.sub, keep && keep.sub, seedFor(seed, 'substrate'), 0.65, query('substrates', { tone }), m => score(m) * atmoSubBias(m, sig))
-  const atm = optional(lock && lock.atm, keep && keep.atm, seedFor(seed, 'atmosphere'), 0.55, query('atmosphere', { tone }), m => score(m) * atmoSubBias(m, sig))
+  // COORDINACION sub<->atm: si el SUB ya es de familia 'overlay-light' (pinta luz atmosferica) y el ATM cae en la MISMA
+  // familia de luz (vignette/glow-bloom/light-rays/lens-fx/depth-haze) -> DOS capas redundantes (render apila sub->atm
+  // sin dedup). Desfavorece (x0.45, nunca prohibe) esa colision; scrim-legibility/color-grade/shadow NO entran -> APCA
+  // intacto. PURO sobre el `sub` ya resuelto (0 PRNG; weightedPick consume 1 prng() sin importar pesos -> determinista).
+  const _SUB_LIGHT_CLASH = new Set(['vignette', 'glow-bloom', 'light-rays', 'lens-fx', 'depth-haze'])
+  const subAtmGuard = (sm, am) => (sm && sm.category === 'overlay-light' && am && _SUB_LIGHT_CLASH.has(am.category)) ? 0.45 : 1
+  const atm = optional(lock && lock.atm, keep && keep.atm, seedFor(seed, 'atmosphere'), 0.55, query('atmosphere', { tone }), m => score(m) * atmoSubBias(m, sig) * subAtmGuard(sub, m))
 
   // ESCENAS: por cada beat del arco, query de scene-layouts de esa categoria -> pick por fit × sesgo de contenido.
   // Bajo lock se reusa el sceneId del mismo beat (el arco es identico: mismo seed+content) salvo incompat. de tono.
