@@ -11,8 +11,8 @@ import { FORMATS, clamp, hexToHsl } from './util.js'
 import { query, get } from './registry.js'
 import { seedFor, weightedPick, hashStr, stableSeed, pick, shuffled } from './prng.js'
 import { deriveFonts } from './fonts.js'
-import { analyzeContent, buildArcSmart, sceneBias, atmoSubBias } from './strategy.js'
-import { fitWeight, canonRubro } from './fit.js'
+import { analyzeContent, buildArcSmart, sceneBias, atmoSubBias, colorEnergyBias } from './strategy.js'
+import { fitWeight, canonRubro, layoutBias } from './fit.js'
 import { fitContent } from './script.js'
 import LOTTIE from '../lottie/manifest.js'
 
@@ -185,10 +185,10 @@ export function makeVideo(brief = {}) {
   const keep = brief.keepRecipe || null
   const toneOk = (m) => m && m.tones.indexOf(tone) >= 0
   // slot REQUERIDO: lock reusa su id; si no, keep lo fija si vino; si no, re-elige del pool de ESE tono.
-  const required = (lockId, keepId, prng, pool) => {
+  const required = (lockId, keepId, prng, pool, scoreFn = score) => {
     if (lock) { const m = lockId ? get(lockId) : null; if (toneOk(m)) return m }
     else if (keepId) { const m = get(keepId); if (toneOk(m)) return m }
-    return pool.length ? weightedPick(prng, pool, score) : null
+    return pool.length ? weightedPick(prng, pool, scoreFn) : null   // scoreFn opcional (sesgo por contenido); default=score -> los callers de 4 args quedan byte-identicos
   }
   // slot OPCIONAL (~prob): lock preserva presencia/ausencia; keep PRESERVA presencia/ausencia del original (re-rolea CUAL
   // modulo si lo tenia, sigue ausente si no) -> nunca AGREGA una capa que el original no tenia; si no hay keep, sorteo de prob.
@@ -199,7 +199,7 @@ export function makeVideo(brief = {}) {
   }
 
   // COLOR (esquema/mood) + TIPOGRAFIA (pairing) de sus bibliotecas; fallback a los derivadores base
-  const colMod = required(lock && lock.color, keep && keep.color, seedFor(seed, 'colorpick'), query('color', { tone }))
+  const colMod = required(lock && lock.color, keep && keep.color, seedFor(seed, 'colorpick'), query('color', { tone }), m => score(m) * colorEnergyBias(m, sig))
   const palette = colMod ? colMod.derive(brandColor, { tone, rubro, seed }) : derivePalette(brandColor, { tone, rubro, seed })
   // HUE del acento de la paleta -> temperatura para la afinidad de fondo (bgTempAffinity). Solo afecta backgrounds con
   // mod.temp; todo otro slot queda 1.0 (identico). Se setea aca (post-paleta) -> el pick de color de arriba no lo ve.
@@ -240,7 +240,7 @@ export function makeVideo(brief = {}) {
   const postMod = optional(lock && lock.post, keep && keep.post, seedFor(seed, 'post'), 0.58, query('post', { tone }))
   // LAYOUT: arquitectura de composicion (centrado/editorial/poster/anclado...). El director elige UNA por video;
   // las escenas piden slots y el solver (core/layout.js) los ubica. Tono-agnostico -> filtra solo por fit.
-  const layMod = required(lock && lock.layout, keep && keep.layout, seedFor(seed, 'layout'), query('layouts', { tone }))
+  const layMod = required(lock && lock.layout, keep && keep.layout, seedFor(seed, 'layout'), query('layouts', { tone }), m => score(m) * layoutBias(m, sig))
 
   // FONDO: IDENTIDAD POR RUBRO. Si el rubro tiene fondos PROPIOS suficientes, el pool = los propios + una MINORIA
   // de universales (cantidad pareja) y se descartan los de OTROS rubros. Asi un brief tech usa fondos tech (no
@@ -286,7 +286,7 @@ export function makeVideo(brief = {}) {
   })
 
   return {
-    brand, rubro, tone, seed, palette, fonts, format, W: dims.w, H: dims.h, xf, logo: brief.logo || null,
+    brand, rubro, tone, seed, seriousness, palette, fonts, format, W: dims.w, H: dims.h, xf, logo: brief.logo || null,
     bgId: bg ? bg.id : null, bgSeed: (seed ^ hashStr('bg')) >>> 0,
     subId: sub ? sub.id : null, subSeed: (seed ^ hashStr('sub')) >>> 0,
     atmId: atm ? atm.id : null, atmSeed: (seed ^ hashStr('atm')) >>> 0,

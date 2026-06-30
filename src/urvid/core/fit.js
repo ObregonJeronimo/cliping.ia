@@ -128,6 +128,23 @@ export function legibilityFit(mod, density) {
   return Math.max(0.7, 1 + density * 0.27 * c)
 }
 
+// SESGO de LAYOUT por la FORMA del contenido (no solo rubro/seriedad): una lista larga encaja en un preset aireado;
+// un dato gigante en uno centrado; un claim editorial en editorial.left. Solo-boost (>=1, nunca penaliza), PURO sobre
+// sig (sin r()). Tags TEXTUALES de libs/layouts/index.js. Se pasa como scoreFn del pick de layout -> mismo consumo PRNG.
+const LAYOUT_RULES = [
+  { on: s => s.hasList || s.items >= 3, tags: ['aireado', 'espaciado', 'respira', 'arriba'], boost: 1.5 },
+  { on: s => s.hasData, tags: ['centrado', 'simetrico', 'compacto', 'universal'], boost: 1.4 },
+  { on: s => s.hasCompare, tags: ['centrado', 'simetrico', 'compacto'], boost: 1.3 },
+  { on: s => s.longClaim || s.audienceNamed, tags: ['editorial', 'izquierda', 'poster', 'masivo', 'tapa', 'asimetrico'], boost: 1.5 },
+  { on: s => s.isQuestion, tags: ['poster', 'masivo', 'arriba', 'editorial'], boost: 1.3 },
+]
+export function layoutBias(mod, sig) {
+  if (!sig) return 1
+  let b = 1; const tags = mod.tags || []
+  for (const rule of LAYOUT_RULES) if (rule.on(sig) && tags.some(t => rule.tags.indexOf(t) >= 0)) b *= rule.boost
+  return b
+}
+
 // SCORER unico que el director usa como weightOf de weightedPick (reemplaza al viejo wadj de seriedad).
 // ctx = { rubro, seriousness, paletteHue, density }. Las escenas multiplican ademas por sceneBias (señal de contenido).
 export function fitWeight(mod, ctx = {}) {

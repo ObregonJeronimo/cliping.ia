@@ -57,7 +57,13 @@ function bgPush(ctx, t, motion, seed) {
 function paintScene(ctx, sc, t, video, motion, typekit, layout) {
   const mod = get(sc.sceneId); if (!mod) return
   const ts = t - sc.start
-  const ep = motion.ease(inv(ts, 0, motion.enterDur || 0.5)), k = 1 - ep
+  // ENTRADA modulada por SERIEDAD: publico serio (salud/finanzas) -> entrada mas SUTIL y corta; relajado -> mas expresiva.
+  // PURA (sin r()). Back-compat: sin seriousness -> dev=0 -> intK=1, factor-dur=1 -> BYTE-IDENTICO. El clamp superior de
+  // eDur (0.9s) mantiene la entrada << 0.7*dur_min (=1.54s, piso 2.2s) -> toda escena ASENTADA (k=0) en el muestreo de prefit/qa.
+  const s = video.seriousness != null ? video.seriousness : 0.5, dev = 0.5 - s
+  const intK = clamp(1 + dev * 0.6, 0.7, 1.3)
+  const eDur = clamp((motion.enterDur || 0.5) * clamp(1 + dev * 0.5, 0.75, 1.25), 0.2, 0.9)
+  const ep = motion.ease(inv(ts, 0, eDur)), k = 1 - ep
   const en = motion.enter || {}
   // FLUIDEZ vs LEGIBILIDAD: el CONTENIDO (texto incluido) NO se escala ni deriva de forma CONTINUA. El ken-burns
   // (zoom lento <=1.2% sobre toda la escena) re-rasterizaba el glifo a escala sub-pixel cuadro a cuadro -> shimmer/
@@ -66,8 +72,8 @@ function paintScene(ctx, sc, t, video, motion, typekit, layout) {
   // una vez asentado, el texto queda 100% PIXEL-ESTABLE. La vida continua la ponen el fondo/sub/atm (sin texto) y la
   // DECO de cada modulo (barras/sheen/glow). `motion.life` sigue en el contrato de las personalidades pero ya NO
   // mueve el contenido, a proposito (si en el futuro se quiere un push cinematografico, va sobre el FONDO, no el texto).
-  const z = 1 + (en.scale || 0) * k
-  const ox = (en.dx || 0) * k, oy = (en.dy || 0) * k, rot = (en.rotate || 0) * k
+  const z = 1 + (en.scale || 0) * k * intK
+  const ox = (en.dx || 0) * k * intK, oy = (en.dy || 0) * k * intK, rot = (en.rotate || 0) * k * intK
   ctx.save()
   ctx.translate(W / 2 + ox, H / 2 + oy); ctx.rotate(rot); ctx.scale(z, z); ctx.translate(-W / 2, -H / 2)
   mod.render(ctx, ts, { pal: video.palette, content: video.content, fonts: video.fonts, seed: sc.seed, energy: 1, sceneDur: sc.dur, motion, typekit, layout })

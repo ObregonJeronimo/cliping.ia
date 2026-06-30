@@ -129,3 +129,17 @@ export function atmoSubBias(mod, sig) {
   for (const rule of ATMO_SUB_RULES) if (rule.on(sig) && tags.some(t => rule.tags.indexOf(t) >= 0)) b *= rule.boost
   return b
 }
+
+// SESGO de COLOR por la ENERGIA del copy: dos marcas del mismo rubro+brandColor parecido pero con copy de energia
+// OPUESTA (urgencia/oferta vs sobrio) divergen su esquema de color -> diferenciacion CORRELACIONADA con el contenido,
+// no solo ruido de semilla. Solo-boost (>=1, finalize() sigue gateando onAccent), PURO sobre sig (sin r()). Tags reales
+// de libs/color/*. Desempate fino (<=1.5) como hueAffinity/bgTempAffinity, no un rediseño del scorer.
+const COLOR_ENERGY_TAGS = ['vibrante', 'contraste', 'audaz', 'colorido', 'complementario', 'pop', 'energico', 'neon', 'electrico']
+const COLOR_SOBER_TAGS = ['suave', 'sobrio', 'minimal', 'neutro', 'mono', 'cohesivo', 'calmo', 'tonal']
+export function colorEnergyBias(mod, sig) {
+  if (!sig) return 1
+  const tags = mod.tags || []
+  const energetic = sig.urgency || sig.valence === 'pos' || sig.valence === 'neg'
+  const want = energetic ? COLOR_ENERGY_TAGS : COLOR_SOBER_TAGS
+  return tags.some(t => want.indexOf(t) >= 0) ? (energetic ? 1.5 : 1.3) : 1
+}
