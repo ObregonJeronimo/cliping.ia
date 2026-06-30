@@ -178,3 +178,17 @@ La idea era canonizar el par de fondos en `core/palette.js finalize()` (bg0=clar
 `core/util.js fontStr()` emite SOLO el shorthand CSS `font` ('weight px family'); el spec de canvas IGNORA `font-variation-settings`/`opsz` (algunos motores tiran el set entero como invalido -> texto en fallback). El gate (`@napi-rs/canvas`/Skia) renderea TTFs estaticos instanciados sin eje opsz en runtime. Un opsz aplicado solo en el browser (DOM `font-optical-sizing:auto`) **divergeria** de `measureText` del gate -> rompe la garantia de fit (prefit verde, browser desborda) y el determinismo app-vs-render.
 
 **Decision**: mantener `fontStr` como UNICA fuente de `ctx.font` (mismo corte estatico en ambos paths). El browser ya carga las variables con eje opsz para el DOM (landing CSS) via `index.html`; eso NO afecta el canvas del motor y esta bien asi. Si en el futuro se quisiera un corte display dedicado, habria que bajar la instancia (no el eje runtime) y re-correr TODO el gate con la fuente nueva en sync (`get-fonts.mjs` + `index.html`).
+
+---
+
+## Migrar el motor de color de HSL a OKLCH (`oklch-migration`) — DIFERIDO (all-or-nothing, gates no verifican)
+
+- verdict: **needs-mitigation** — greenlight: **false** (fase 11, wbmaxg3p0).
+
+OKLCH daria balance perceptual (el amarillo no quema, el azul no se apaga) para cualquier marca. PERO el audit lo evaluo como **cambio masivo todo-o-nada**:
+
+1. **~40 esquemas hand-tuned en HSL-L** across 6 archivos (`libs/color/harmony.js, temp.js, tone.js, grade.js, named.js, index.js`) — cada `derive()` ajusta L (0.62-0.70 dark / 0.22-0.34 light) y clamps de S a mano. Migrar a OKLCH cambiaria TODAS las paletas.
+2. **APCA NO verifica la mejora perceptual** — el gate solo chequea legibilidad (ink≥4.5, onAccent≥3) + determinismo; un cambio de color masivo pasa verde este o feo (la **lección bg-cohesion**: cambiar 88% de esquemas a ciegas = regresion visual que ningun gate caza). Requeriria re-vetar 100+ combos a ojo en contact-sheet.
+3. **Sub-cambio seguro** (lo unico greenlight-able): migrar SOLO `clampGamut` a un soft-knee de CHROMA OKLCH (preserva L/h, mismo guard de onAccent → APCA garantizado). PERO: el chroma OKLCH es otra escala que S-HSL → CK/CMAX deben elegirse EMPIRICAMENTE del contact-sheet (no traducir 0.82/0.92); y el valor es **marginal** (el clampGamut HSL ya doma el neon bien — verificado e2e en Ramp #c8f000 / Mailchimp #ffe01b). No vale el tuning + verify-visual.
+
+**Decision**: NO migrar (ni el full ni el sub-cambio clampGamut-OKLCH). El sistema de color HSL actual + clampGamut + brandAccent + achromatic-fix ya da resultados sobrios y APCA-seguros en marcas reales (validado e2e en ~30 paginas). Retomar OKLCH solo en una sesion dedicada con revision visual sistematica de los ~40 esquemas. (Nota: la migracion tocaria `core/util.js` srgb↔oklch + los 6 archivos `libs/color/`, NO "~100 modulos" — ese conteo del plan era stale.)
