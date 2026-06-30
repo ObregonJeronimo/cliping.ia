@@ -89,9 +89,9 @@ P('motion.personality.soft', {
   stagger: 0.18, enter: { dx: 0, dy: 10, scale: 0.015, rotate: 0 }, enterDur: 0.55, ambient: breathe, life: 0.75,
 }, { weight: 1, register: 'friendly', intensity: 'soft', rubros: ['*', 'salud', 'belleza', 'educacion', 'gastronomia'], tags: ['suave', 'amigable', 'calido'] })
 
-P('motion.personality.kinetic', {
+P('motion.personality.kinetic', {   // MICRO-KINETICO: cascada veloz de MUCHOS items con desplazamiento minimo (vs snappy = pocos items con entrada marcada)
   ease: eOutQuint, settle: p => eOutBack(p, 2.0),
-  stagger: 0.07, enter: { dx: 0, dy: 16, scale: 0.03, rotate: 0 }, enterDur: 0.4, life: 0.4,
+  stagger: 0.04, enter: { dx: 0, dy: 10, scale: 0.014, rotate: 0 }, enterDur: 0.34, life: 0.4,
 }, { weight: 0.95, register: 'friendly', intensity: 'bold', tags: ['kinetico', 'rapido', 'energico'] })
 
 P('motion.personality.tilt', {

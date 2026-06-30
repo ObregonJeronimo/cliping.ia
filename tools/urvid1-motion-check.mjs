@@ -49,6 +49,33 @@ for (const m of mods) {
   for (let i = 0; i <= 8; i++) { const p = i / 8; if (M.ease(p) !== M2.ease(p) || M.settle(p) !== M2.settle(p)) { fails.push(`${m.id}: NO determinista`); break } }
 }
 
+// DISCRIMINANTE: ninguna personalidad debe ser casi-clon de otra (cada una le ofrece un FEEL distinto al publico).
+// Para cada par contamos en cuantos ejes de feel difieren significativamente; <3 ejes = casi-clon = FALLO.
+const sumAbs = (a, b) => a.reduce((s, v, i) => s + Math.abs(v - b[i]), 0)
+const feats = (M) => ({
+  ease: [M.ease(0.25), M.ease(0.5), M.ease(0.75)],
+  settle: [M.settle(0.3), M.settle(0.5), M.settle(0.7), M.settle(0.85)],   // muestrea el overshoot
+  stagger: M.stagger, enterDur: M.enterDur, life: M.life != null ? M.life : 0.6,
+  dx: M.enter.dx, dy: M.enter.dy, scale: M.enter.scale, rotate: M.enter.rotate,
+})
+const DIMS = [
+  ['ease', (a, b) => sumAbs(a.ease, b.ease) > 0.05],
+  ['settle', (a, b) => sumAbs(a.settle, b.settle) > 0.08],
+  ['stagger', (a, b) => Math.abs(a.stagger - b.stagger) > 0.025],
+  ['enterDur', (a, b) => Math.abs(a.enterDur - b.enterDur) > 0.05],
+  ['dy', (a, b) => Math.abs(a.dy - b.dy) > 5],
+  ['dx', (a, b) => Math.abs(a.dx - b.dx) > 8],
+  ['scale', (a, b) => Math.abs(a.scale - b.scale) > 0.012],
+  ['rotate', (a, b) => Math.abs(a.rotate - b.rotate) > 0.01],
+  ['life', (a, b) => Math.abs(a.life - b.life) > 0.1],
+]
+const MIN_DIMS = 3
+const F = mods.map(m => ({ id: m.id, f: feats(m.make()) }))
+for (let i = 0; i < F.length; i++) for (let j = i + 1; j < F.length; j++) {
+  const diff = DIMS.filter(([, fn]) => fn(F[i].f, F[j].f)).map(([n]) => n)
+  if (diff.length < MIN_DIMS) fails.push(`${F[i].id} ~= ${F[j].id}: casi-clon (solo difieren en ${diff.length} eje(s): [${diff.join(',')}])`)
+}
+
 if (fails.length) {
   console.log('\nFALLOS (' + fails.length + '):')
   for (const f of fails) console.log('  - ' + f)
