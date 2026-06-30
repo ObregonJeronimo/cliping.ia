@@ -11,6 +11,23 @@ function accentAsText(accent, tone) {
   return lighten(accent, 0.2)
 }
 
+// CLAMP DE GAMUT (perceptual). Scope REAL: comprime ~61% de TODAS las combos (no solo brandColor neon: los esquemas
+// harmony/temp/tone suben S a 0.84-0.95 a proposito). Comprime SOLO el tope de saturacion (soft-knee: S<=SK intacto;
+// [SK..1] -> [SK..SMAX]) conservando HUE y L EXACTOS -> menos "neon barato"/dureza sin cambiar la identidad de marca.
+// GUARD: revierte al acento original si comprimir bajaria el onAccent REAL (mismos anchors que finalize) por debajo del
+// margen Y por debajo del valor previo -> nunca empeora la legibilidad. PURO/determinista (sin r()/Date -> no re-rollea).
+function clampGamut(accent, tone) {
+  const c = hexToHsl(accent)
+  const SK = 0.82, SMAX = 0.92, GUARD = 3.5
+  if (c.s <= SK) return accent
+  const t = (c.s - SK) / (1 - SK)
+  const cand = hslToHex(c.h, SK + (SMAX - SK) * t, c.l)
+  const light = tone === 'light' ? '#ffffff' : '#fbf6ec', dark = tone === 'light' ? '#1c1510' : '#14090e'   // EXACTO a finalize
+  const before = contrast(legibleOnBest(accent, light, dark), accent)
+  const after = contrast(legibleOnBest(cand, light, dark), cand)
+  return (after >= GUARD || after >= before) ? cand : accent
+}
+
 // GUARDRAIL determinista de accent2: debe (a) distinguirse de accent y (b) no perderse contra el bg. PURO (sin PRNG/
 // Date). NO toca accent/ink/dim/onAccent (accent2 es relleno/stroke/gradiente, nunca texto). Separa por LUMINANCIA
 // (preserva el hue) -> esquemas monocromaticos y marcas grises siguen coherentes, no se inventa un hue nuevo.
@@ -37,6 +54,7 @@ function separateAccent2(accent, accent2, bg0, bg1, tone) {
 // la luminancia HSL no es la perceptual, asi que un corte .l>0.6 dejaba a hues luminosos (verde/ambar) con texto
 // ilegible (la "banda muerta"). Elegir el mejor de off-white/near-black por contraste garantiza >=~4.2 para todo hue.
 export function finalize(accent, accent2, bg0, bg1, tone) {
+  accent = clampGamut(accent, tone)                            // gamut/sat clamp perceptual ANTES de derivar roles (hue/L intactos; onAccent garantizado por el guard)
   accent2 = separateAccent2(accent, accent2, bg0, bg1, tone)   // garantiza accent2 distinguible de accent y visible sobre el bg
   if (tone === 'light') return {
     tone, accent, accent2, bg0, bg1, surface: 'rgba(20,16,24,0.05)',
