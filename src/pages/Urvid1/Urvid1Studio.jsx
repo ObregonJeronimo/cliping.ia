@@ -85,11 +85,14 @@ export default function Urvid1Studio() {
       const j = await r.json()
       const b = j && j.brief
       if (!b || j.error) { setAnalyzing(j && j.error ? j.error : 'No se pudo analizar la pagina'); return }
+      // SLOT-MEDIA: la imagen TOP del ranking (perceive devuelve j.images mejor-primero) -> foto del showcase a sangre.
+      const _mi = Array.isArray(j.images) && j.images[0] ? j.images[0] : null
       setBrief({
         brand: b.brand || 'Marca', rubro: RUBROS.includes(b.rubro) ? b.rubro : 'default',
         tone: b.tone === 'light' ? 'light' : 'dark', brandColor: b.brandColor || '#5b8cff',
         tagline: b.tagline || '', claim: b.claim || '', cta: b.cta || '',
         bullets: Array.isArray(b.bullets) ? b.bullets : [], stats: Array.isArray(b.stats) ? b.stats : [], proof: b.proof || '',
+        mediaImage: _mi ? (typeof _mi === 'string' ? _mi : (_mi.url || _mi.src || null)) : null,
       })
       setLock(null); setKeep(null); setSeed(0); headRef.current = 0; setHead(0); setAnalyzing('')
     } catch {

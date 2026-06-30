@@ -2,7 +2,7 @@
 // env = { pal, content, fonts, seed, energy, sceneDur }. content = { brand, tagline, claim, cta, ... }.
 // Usan la PALETA + la primitiva de texto (no-desborde garantizado) + motion. REGLA: texto en tinta (ink/inkText),
 // acento para DECO (barras/reglas). El director elige la escena segun el beat narrativo (hook/value/proof/close).
-import { register } from '../../core/registry.js'
+import { register, get } from '../../core/registry.js'
 import { drawText, drawWrapped, fitUniform } from '../../core/text.js'
 import { W, H, TAU, inv, lerp, clamp, eOutCubic, eOutBack, eInOutCubic, spring, smooth, rgba } from '../../core/util.js'
 import { mulberry32 } from '../../core/prng.js'
@@ -176,6 +176,46 @@ register({
     if (ru > 0.9) rrSheen(ctx, rx, ry, rw, 5, t, { per: 3.0, strength: 0.55, tone: pal.tone })
     // tagline en su slot
     if (content.tagline && L.tag) drawWrapped(ctx, content.tagline, L.tag.cx, L.tag.cy, { size: Math.min(L.tag.size, 26), weight: 600, family: fonts.text, maxW: L.tag.w, align: L.tag.align, color: pal.dim, alpha: inv(t, 0.62, 1.05), maxLines: 2 })
+  },
+})
+
+// SHOWCASE A SANGRE (slot-media): la FOTO real del producto a pantalla completa (cover-crop + ken-burns leve) con un
+// scrim de legibilidad y el brand/claim/cta encima en BLANCO (el fondo es foto, no la paleta). weight:0 -> NUNCA la
+// sortea el weightedPick; entra SOLO por el ruteo-por-presencia de assemble (1er opener + brief.mediaImage). Sin foto
+// (napi/gates, foto-no-lista, o lock/keep sin mediaImage) DEGRADA a hero.center -> hero tipografico valido, no un hueco.
+register({
+  id: 'scene.showcase.fullbleed', lib: 'scene-layouts', category: 'openers/hero', tones: ['dark', 'light'], rubros: ['*'], weight: 0,
+  register: 'editorial', intensity: 'bold', tags: ['apertura', 'foto', 'full-bleed'], beat: 'hook',
+  render(ctx, t, env) {
+    const { content, fonts, pal } = env
+    const img = (env.getImg && env.mediaImage) ? env.getImg(env.mediaImage) : null
+    if (!img) { const h = get('scene.hero.center'); if (h && h.render !== this.render) return h.render(ctx, t, env); return }   // degrade: hero tipografico
+    // COVER-CROP: llena 405x720 sin deformar (recorta el exceso) + ken-burns MUY leve solo sobre la foto
+    const ar = (img.width || 1) / (img.height || 1), vr = W / H
+    let dw, dh; if (ar > vr) { dh = H; dw = H * ar } else { dw = W; dh = W / ar }
+    const kb = 1.05 - 0.05 * eOutCubic(inv(t, 0, 1.4)); dw *= kb; dh *= kb
+    ctx.save(); ctx.globalAlpha = inv(t, 0, 0.45); ctx.drawImage(img, (W - dw) / 2, (H - dh) / 2, dw, dh); ctx.restore()
+    // SCRIM obligatorio (APCA del texto sobre foto NO lo cubre ningun gate; foto clara mata el contraste): banda oscura abajo + techo suave
+    const g = ctx.createLinearGradient(0, 0, 0, H)
+    g.addColorStop(0, 'rgba(0,0,0,0.30)'); g.addColorStop(0.40, 'rgba(0,0,0,0.05)'); g.addColorStop(0.66, 'rgba(0,0,0,0.36)'); g.addColorStop(1, 'rgba(0,0,0,0.76)')
+    ctx.save(); ctx.globalAlpha = inv(t, 0.1, 0.55); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); ctx.restore()
+    // TEXTO en la banda oscura inferior, SIEMPRE blanco + sombra (el fondo es foto). kicker(brand) -> claim -> cta.
+    const sh = 'rgba(0,0,0,0.6)', mx = W * 0.08, maxW = W * 0.84
+    drawText(ctx, (content.brand || 'Marca').toUpperCase(), mx, H * 0.645, { size: 18, weight: 700, family: fonts.accent || fonts.text, maxW, align: 'left', color: '#ffffff', alpha: inv(t, 0.3, 0.7), shadow: sh })
+    const rise = spring(inv(t, 0.35, 1.1), { zeta: 0.6, freq: 2.0 })
+    ctx.save(); ctx.translate(0, (1 - rise) * 28)
+    drawWrapped(ctx, content.claim || content.tagline || 'Un mensaje claro', mx, H * 0.74, { size: 46, weight: 800, family: fonts.display, maxW, align: 'left', color: '#ffffff', maxLines: 3, lh: 1.07, alpha: inv(t, 0.35, 0.78), shadow: sh })
+    ctx.restore()
+    if (content.cta) {
+      const ca = inv(t, 0.6, 1.0); if (ca > 0) {
+        const cy = H * 0.875, ch = 46, pad = 22
+        ctx.save(); ctx.font = `700 20px "${fonts.text}"`
+        const cw = Math.min(ctx.measureText(content.cta).width + pad * 2, maxW)
+        ctx.globalAlpha = ca; ctx.fillStyle = (pal && pal.accent) || '#ffffff'; ctx.beginPath(); ctx.roundRect(mx, cy - ch / 2, cw, ch, ch / 2); ctx.fill()
+        ctx.restore()
+        drawText(ctx, content.cta, mx + cw / 2, cy, { size: 20, weight: 700, family: fonts.text, maxW: cw - pad, align: 'center', color: (pal && pal.onAccent) || '#000000', alpha: ca })
+      }
+    }
   },
 })
 

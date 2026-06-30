@@ -296,6 +296,10 @@ export function makeVideo(brief = {}) {
     const lockId = lock && lock.scenes && lock.scenes[i]
     if (lock) { const lm = lockId ? get(lockId) : null; if (toneOk(lm)) mod = lm }
     if (!mod) mod = opts.length ? weightedPick(prng, opts, m => score(m) * sceneBias(m, sig)) : null
+    // SLOT-MEDIA: si el brief trae la FOTO real del producto, el PRIMER opener se sustituye por la escena showcase a
+    // sangre (foto cover-crop + scrim + texto). DESPUES del weightedPick (el prng del arco ya avanzo identico) y SOLO con
+    // brief.mediaImage -> los briefs sin foto (los 9 gates) corren byte-identico. No pisa una escena lockeada (!lockId).
+    if (brief.mediaImage && mod && !lockId && i === 0 && String(beat.category).split('/')[0] === 'openers') mod = get('scene.showcase.fullbleed') || mod
     if (mod) {
       const dur = clamp((beat.dur || 3.4) * durK, 2.2, 6)
       const sc = { start, dur, sceneId: mod.id, seed: (seed ^ hashStr('s' + i)) >>> 0, bgSeed: (seed ^ hashStr('bg|' + beat.category + '|' + i)) >>> 0 }   // variante de fondo por beat (mismo eje 'bg' que video.bgSeed)
@@ -305,7 +309,7 @@ export function makeVideo(brief = {}) {
   })
 
   return {
-    brand, rubro, tone, seed, seriousness, energy, palette, fonts, format, W: dims.w, H: dims.h, xf, logo: brief.logo || null,
+    brand, rubro, tone, seed, seriousness, energy, palette, fonts, format, W: dims.w, H: dims.h, xf, logo: brief.logo || null, mediaImage: brief.mediaImage || null,
     bgId: bg ? bg.id : null, bgSeed: (seed ^ hashStr('bg')) >>> 0,
     subId: sub ? sub.id : null, subSeed: (seed ^ hashStr('sub')) >>> 0,
     atmId: atm ? atm.id : null, atmSeed: (seed ^ hashStr('atm')) >>> 0,

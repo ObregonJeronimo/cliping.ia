@@ -5,13 +5,13 @@
 //   node tools/urvid1-shot.mjs           -> el ultimo compartido (entrada 0)
 //   node tools/urvid1-shot.mjs 2         -> la entrada #2 de la lista
 //   node tools/urvid1-shot.mjs '{"brand":"X","rubro":"tech",...}'  -> un brief pegado a mano (sin el archivo)
-import { createCanvas, GlobalFonts } from '@napi-rs/canvas'
+import { createCanvas, GlobalFonts, loadImage } from '@napi-rs/canvas'
 import { writeFileSync, mkdirSync, readFileSync, rmSync, existsSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { makeVideo, drawFrame, beatAt } from '../src/urvid/index.js'
-import { setScratchFactory } from '../src/urvid/core/render.js'
+import { setScratchFactory, setImageLoader } from '../src/urvid/core/render.js'
 import { W, H } from '../src/urvid/core/util.js'
 
 const HERE = dirname(fileURLToPath(import.meta.url)), OUT = join(HERE, 'out'); mkdirSync(OUT, { recursive: true })
@@ -32,6 +32,13 @@ if (arg && arg.trim().startsWith('{')) {
   console.log(`compartidos: ${list.length} · mostrando #${idx}${ts ? ' (' + ts + ')' : ''}`)
 }
 
+// SLOT-MEDIA (verify visual, NO es gate): pre-cargar la foto del producto para que el contact-sheet la muestre. El motor
+// usa env.getImg que en napi devuelve null salvo que setImageLoader le inyecte la imagen YA decodificada (lo que hacemos aca).
+const _mediaSrc = (brief && (brief.mediaImage || (brief.content && brief.content.mediaImage))) || null
+if (_mediaSrc) {
+  try { const _mi = await loadImage(_mediaSrc); setImageLoader((src) => src === _mediaSrc ? _mi : null); if (!brief.mediaImage) brief.mediaImage = _mediaSrc; console.log('mediaImage cargada:', _mediaSrc, _mi.width + 'x' + _mi.height) }
+  catch (e) { console.error('mediaImage NO cargo (' + _mediaSrc + '):', e.message) }
+}
 const video = makeVideo({ ...brief, seed: seed || undefined })
 console.log('MARCA:', brief.brand, '· seed:', seed || '(auto)', note ? '· nota: ' + note : '')
 console.log('BRIEF:', JSON.stringify({ rubro: brief.rubro, tone: brief.tone, brandColor: brief.brandColor, tagline: brief.tagline, claim: brief.claim, cta: brief.cta, bullets: brief.bullets, stats: brief.stats, proof: brief.proof }))
