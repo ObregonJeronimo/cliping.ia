@@ -21,3 +21,6 @@ remotion/props-*.json
 # TTFs de fuentes para el visor (regenerables con node tools/get-fonts.mjs) + scratch
 tools/fonts/
 tools/_*
+
+# marcador local del OWNER de Firebase (solo en la PC de Jero) -> start.bat publica reglas solo si existe. NO commitear.
+.firebase-owner

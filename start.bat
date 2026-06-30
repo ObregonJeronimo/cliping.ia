@@ -11,13 +11,20 @@ for /f "tokens=5" %%a in ('netstat -ano ^| findstr :8000 ^| findstr LISTENING') 
 echo Actualizando codigo (git pull ANTES de trabajar)...
 git pull
 
-echo Publicando reglas de Firestore (best-effort)...
-where firebase >nul 2>&1
-if %errorlevel%==0 (
-  call firebase deploy --only firestore:rules --non-interactive
+rem Publicar reglas de Firestore es operacion de OWNER del proyecto Firebase 'cliping-ia' (Jero). Un colaborador (Thiago)
+rem da 403 'Caller does not have required permission' -> NO lo necesita para correr la app local. Se gatea por un marcador
+rem .firebase-owner (gitignored, solo en la PC del owner): asi Jero auto-publica y Thiago lo saltea limpio, sin el error.
+if exist "%~dp0.firebase-owner" (
+  echo Publicando reglas de Firestore ^(sos owner^)...
+  where firebase >nul 2>&1
+  rem 'if errorlevel 1' se evalua en RUNTIME -- mas robusto que la variable errorlevel dentro de un bloque entre parentesis.
+  if errorlevel 1 (
+    echo   Firebase CLI no encontrado. Una sola vez:  npm i -g firebase-tools  ^&^&  firebase login
+  ) else (
+    call firebase deploy --only firestore:rules --non-interactive
+  )
 ) else (
-  echo   Firebase CLI no encontrado. Para publicar reglas automaticamente, una sola vez:
-  echo     npm i -g firebase-tools  ^&^&  firebase login
+  echo Reglas de Firestore: SALTADO ^(normal: no sos owner del proyecto Firebase; las publica Jero^).
 )
 
 echo Instalando dependencias del backend...
