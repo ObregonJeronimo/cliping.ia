@@ -35,6 +35,21 @@ function makeScratch(w, h) {
   return null
 }
 
+// PUSH CINEMATOGRAFICO DE FONDO (no del texto): zoom+deriva LENTOS y MINIMOS sobre las capas bg/sub. Deriva de
+// motion.life (0..1 fluidez) * motion.ambient(t,seed) (oscilacion PURA de t+seed -> DETERMINISTA). z>=1 SIEMPRE (zoom-in
+// solo recorta hacia adentro, nunca revela borde sin pintar); la deriva se ACOTA al overscan (z-1)*W/2. El TEXTO no pasa
+// por aca (paintScene es aparte) -> glifos pixel-estables, cero shimmer. Hace ctx.save(); el llamador hace ctx.restore().
+function bgPush(ctx, t, motion, seed) {
+  ctx.save()
+  const life = clamp(motion && motion.life != null ? motion.life : 0, 0, 1)
+  if (life <= 0 || !motion || typeof motion.ambient !== 'function') return   // sin vida -> sin transform (save ya hecho)
+  const amb = motion.ambient(t, (seed >>> 0)) || {}
+  const z = Math.max(1, 1 + life * (0.006 + Math.abs(amb.scale || 0)))        // zoom-in MINIMO, SIEMPRE >=1
+  const mx = (z - 1) * W / 2, my = (z - 1) * H / 2                            // overscan -> tope de la deriva
+  const ox = clamp((amb.x || 0) * life * 0.6, -mx, mx), oy = clamp((amb.y || 0) * life * 0.6, -my, my)
+  ctx.translate(W / 2 + ox, H / 2 + oy); ctx.scale(z, z); ctx.translate(-W / 2, -H / 2)
+}
+
 // pinta UNA escena (contenido) con la ENTRADA de la personalidad (offset/zoom/rotacion de entrada). Coords logicas.
 function paintScene(ctx, sc, t, video, motion, typekit, layout) {
   const mod = get(sc.sceneId); if (!mod) return
@@ -65,9 +80,9 @@ export function drawFrame(ctx, t, video) {
   const layout = resolveLayout(video)   // arquitectura de composicion (slots) del video (o default centrado)
   // CAPAS DE FONDO (viven todo el video): fondo -> textura/substrate -> atmosfera/luz -> (contenido encima)
   const base = { pal: video.palette, content: video.content, energy: 1 }
-  if (video.bgId) { const m = get(video.bgId); if (m) m.render(ctx, t, { ...base, seed: video.bgSeed }) }
-  if (video.subId) { const m = get(video.subId); if (m) m.render(ctx, t, { ...base, seed: video.subSeed }) }
-  if (video.atmId) { const m = get(video.atmId); if (m) m.render(ctx, t, { ...base, seed: video.atmSeed }) }
+  if (video.bgId) { const m = get(video.bgId); if (m) { bgPush(ctx, t, motion, video.bgSeed); m.render(ctx, t, { ...base, seed: video.bgSeed }); ctx.restore() } }
+  if (video.subId) { const m = get(video.subId); if (m) { bgPush(ctx, t, motion, video.subSeed); m.render(ctx, t, { ...base, seed: video.subSeed }); ctx.restore() } }
+  if (video.atmId) { const m = get(video.atmId); if (m) m.render(ctx, t, { ...base, seed: video.atmSeed }) }   // atm SIN push (rays/glints crawlean)
   // GARNISH markkit (persistente): un icono chico en una ESQUINA, tenue, detras del contenido. NUNCA centrado
   // (no compite con el titulo; la regla "nada de blobs/formas sobre el titulo"). Solo iconos (ver assemble.js).
   if (video.markId) {
