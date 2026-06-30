@@ -26,7 +26,7 @@ export function analyzeContent(content = {}, rubro = 'default') {
   const items = bullets.length || split
   return {
     hasData: stats.length > 0 || NUM.test(all),
-    isQuestion: /\?|¿/.test(tag || claim),
+    isQuestion: /\?|¿/.test(claim) || /\?|¿/.test(tag),   // BUG fix: `tag || claim` ignoraba la pregunta del CLAIM cuando habia tagline -> ahora ve AMBOS
     hasList: bullets.length >= 2 || split >= 2,
     hasCompare: /\bvs\.?\b|antes|despu[eé]s|mejor que|m[aá]s que|menos que/i.test(all),
     hasProof: !!proof,   // SOLO con testimonio real de la perception. El heuristico por texto invitaba a reciclar el claim como "resena" (falso).
