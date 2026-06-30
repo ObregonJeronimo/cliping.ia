@@ -169,8 +169,11 @@ export function makeVideo(brief = {}) {
     const bcap = { corto: 2, medio: 3, largo: 4 }[brief.duration] || 3
     if (content.bullets.length > bcap) content.bullets = content.bullets.slice(0, bcap)
   }
-  // SCORER de fit: peso × afinidad-rubro × match-seriedad(register) × match-intensidad. Reemplaza al viejo wadj.
-  const fitCtx = { rubro, seriousness }
+  // DENSIDAD de texto del brief (0..1): muchos items/bullets + datos + claim largo => contenido denso => sesgo a pairing
+  // legible. PURA (deriva de sig, NO consume r() -> no mueve ninguna secuencia PRNG). sig.items = bullets || split del head.
+  const density = Math.min(1, (sig.items || 0) / 4 * 0.6 + (sig.hasData ? 0.2 : 0) + (sig.longClaim ? 0.2 : 0))
+  // SCORER de fit: peso × afinidad-rubro × match-seriedad(register) × match-intensidad × legibilidad(densidad). Reemplaza al viejo wadj.
+  const fitCtx = { rubro, seriousness, density }
   const score = (m) => fitWeight(m, fitCtx)
 
   // TONO = SOLO COLOR. Con lockRecipe (toggle claro/oscuro), se reusa cada slot salvo que su modulo no soporte el tono.

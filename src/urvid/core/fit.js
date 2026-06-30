@@ -105,10 +105,32 @@ export function intensityFit(mod, seriousness) {
   const over = Math.max(0, i - tolerated)
   return Math.max(0.3, 1 - over * 1.4)
 }
+// LEGIBILIDAD del pairing (deriva de tags YA presentes en libs/typography/index.js). 'legible' = grotesk/sans neutro
+// (alta lectura en cuerpo/listas); 'display' = condensada/decorativa/dramatica (lee peor cuanto mas denso el contenido).
+// Tags verificados contra los pairings reales. SUAVE, nunca 0.
+const T_LEGIBLE = new Set(['limpio', 'moderno', 'neutro', 'sobrio', 'prolijo', 'swiss', 'geometrico', 'amigable', 'calido', 'humano', 'corporativo', 'tight', 'lectura', 'saas', 'confianza', 'contraste', 'clasico', 'startup'])
+const T_DISPLAY = new Set(['condensado', 'display', 'dramatico', 'impacto', 'poster', 'maximal', 'brutalista', 'industrial', 'funk', 'retro', 'vintage', 'chunky', 'goloso', 'cyber', 'futurista', 'glamour'])
+// caracter de legibilidad de un pairing en [-1..+1]: +legible / -display.
+function legChar(mod) {
+  const tags = mod.tags || []
+  let leg = 0, dis = 0
+  for (const t of tags) { if (T_LEGIBLE.has(t)) leg++; if (T_DISPLAY.has(t)) dis++ }
+  if (leg === 0 && dis === 0) return 0
+  return (leg - dis) / (leg + dis)
+}
+// 4to eje ORTOGONAL: densidad-de-texto-del-brief x caracter-del-pairing. Brief DENSO -> sesga a pairings legibles y
+// aleja de los display. SOLO afecta modulos con .fonts (pairings); el resto -> 1.0 (back-compat: color/motion/typekit/
+// mark/bg no tienen .fonts -> byte-identicos, determinismo intacto). SUAVE, nunca 0 (banda [0.7..1.27]).
+export function legibilityFit(mod, density) {
+  if (density == null || !mod.fonts) return 1.0
+  const c = legChar(mod)
+  if (c === 0) return 1.0
+  return Math.max(0.7, 1 + density * 0.27 * c)
+}
 
 // SCORER unico que el director usa como weightOf de weightedPick (reemplaza al viejo wadj de seriedad).
-// ctx = { rubro, seriousness }. Las escenas multiplican ademas por sceneBias (señal de contenido).
+// ctx = { rubro, seriousness, paletteHue, density }. Las escenas multiplican ademas por sceneBias (señal de contenido).
 export function fitWeight(mod, ctx = {}) {
   const w = mod.weight == null ? 1 : mod.weight
-  return Math.max(0, w) * rubroAffinity(mod, ctx.rubro) * hueAffinity(mod, ctx.rubro) * bgTempAffinity(mod, ctx.paletteHue) * registerFit(mod, ctx.seriousness) * intensityFit(mod, ctx.seriousness)
+  return Math.max(0, w) * rubroAffinity(mod, ctx.rubro) * hueAffinity(mod, ctx.rubro) * bgTempAffinity(mod, ctx.paletteHue) * registerFit(mod, ctx.seriousness) * intensityFit(mod, ctx.seriousness) * legibilityFit(mod, ctx.density)
 }
