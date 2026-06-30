@@ -33,7 +33,10 @@
   - **Stats sin símbolos decorativos** — perception metía `4.3★` (tofu en fuentes display); strip `_no_decor` + regla de prompt (preserva £/%). v5→v6.
   - **Cert SSL inválido → captura vacía → alucinación** — natura daba ERR_CERT_DATE_INVALID; `ignore_https_errors=True` en las 3 cargas. Sin esto perception inventaba "Natura cosméticos/belleza" (es **Aceites Natura/gastronomía**).
   - **Guardrail anti-alucinación** — si la captura viene VACÍA (cert/timeout/anti-bot), el prompt instruye basarse solo en el screenshot y NO inventar claims/cifras/proof. Verificado: doctoralia (timeout) ahora stats[]/proof'' en vez de features inventadas.
-  - **Validado en real:** el pipeline de audiencia clava el público (Tiendanube casual/emprendedores vs Linear formal/eng-teams vs Wise expats vs Nubank brasileiros) y cambia idioma+color+tipografía+movimiento en consecuencia.
+  - **Detector de bot-walls** — `_is_botwall` (Cloudflare/challenge/captcha): zonaprop servía el muro "Just a moment..." como contenido → ahora se trata como vacío → guardrail.
+  - **Anti-tofu en idiomas no-latinos** — el feature de idioma escribía copy en japonés (rakuten) → tofu en las fuentes latinas. `_is_nonlatin` (ja/zh/ko/ar/ru/...) → fallback a español. Verificado: rakuten ahora en español.
+  - **Bullets sin palabra-función colgada** — `_no_dangling` strip de conjunción/preposición final (rappi: "Restaurantes, super y" → "super").
+  - **Validado en 12 páginas reales** (tiendanube, linear, wise, natura, nubank, doctoralia, platzi, zonaprop, gymshark, rakuten, rappi, stripe): el pipeline de audiencia clava el público (Tiendanube casual/emprendedores vs Linear formal/eng-teams vs Wise expats vs Stripe formal/business-owners vs Gymshark most-aware/sale) y cambia idioma+color+tipografía+movimiento en consecuencia. Cache v3→v7.
 - _Diferidos: typekit-all-display + scrim-bbox (VISUAL, diseño vetado en docs/DEFERRED-typekit-scrim-specs.md); maxLines↔slot (no-op con mitigación segura). Lateral: overflow scene.social.* (tarea spawn). Restante del plan: med/low + arquitectónicos high/L (OKLCH, WebCodecs, unificar export, slot-media, datakit, markkit, playbooks)._
 
 ---
