@@ -95,7 +95,16 @@ function _beatText(category, c) {
 }
 // 1-3 Lotties para un beat: temas (routes) que matchean su texto -> 1 Lottie por tema, de la biblioteca de ESE tema
 // (cross-rubro real: un tema ecommerce tira de la libreria de moda aunque el video sea de salud). Sin match -> rubro del video.
-function pickSceneAnims(category, content, rubro, seed, i, items, seriousness = 0.5) {
+// PUBLICO -> conceptos de Lottie favorecidos (deteccion por keyword en audience.who; SOLO conceptos que EXISTEN en el manifest).
+// Inclina la eleccion de anim hacia el publico CON FALLBACK (si el beat no ofrece esos conceptos, usa los del tema) -> nunca rompe ni vacia.
+const WHO_CONCEPTS = [
+  { kw: ['empresa', 'negocio', 'profesional', 'ejecutiv', 'corporativ', 'b2b', 'decisor', 'pyme', 'startup', 'emprend'], c: ['analytics', 'data', 'growth', 'network', 'financial', 'investment', 'automation', 'rocket'] },
+  { kw: ['joven', 'genz', 'gen z', 'adolescent', 'estudiante', 'teen'], c: ['like', 'heart', 'star', 'rocket', 'mobile', 'online'] },
+  { kw: ['paciente', 'salud', 'medic', 'clinic', 'consult'], c: ['health', 'heart', 'medical', 'wellness', 'heartbeat', 'stethoscope'] },
+  { kw: ['deportista', 'fitness', 'atleta', 'entrena', 'gimnasio'], c: ['dumbbell', 'muscle', 'training', 'running', 'heart', 'gym'] },
+  { kw: ['familia', 'hogar', 'propietari', 'inquilin', 'comprador'], c: ['house', 'building', 'real', 'heart'] },
+]
+function pickSceneAnims(category, content, rubro, seed, i, items, seriousness = 0.5, who = '') {
   if (!items || !items.length) return []
   const lo = _deburr(_beatText(category, content))
   let routes = ANIM_ROUTES.filter(r => r.kw.some(k => lo.indexOf(_deburr(k)) >= 0))
@@ -109,6 +118,10 @@ function pickSceneAnims(category, content, rubro, seed, i, items, seriousness = 
   if (seriousness >= 0.7) cap = 1; else if (seriousness >= 0.55 || dense) cap = 2
   if ((nBul >= 4) || (nSt >= 3)) cap = Math.min(cap, 1)
   cap = Math.max(1, Math.min(3, cap))
+  // PUBLICO: union de conceptos favorecidos por los grupos que matchean audience.who. Sin who -> null -> byte-identico.
+  let favored = null
+  const _w = _deburr(String(who || ''))
+  if (_w) { const s = new Set(); for (const g of WHO_CONCEPTS) if (g.kw.some(k => _w.indexOf(_deburr(k)) >= 0)) for (const c of g.c) s.add(c); if (s.size) favored = s }
   const prng = seedFor(seed ^ hashStr('sanim' + i), 'sanim')
   const out = [], used = new Set()
   for (const r of routes) {
@@ -116,8 +129,9 @@ function pickSceneAnims(category, content, rubro, seed, i, items, seriousness = 
     let pool = items.filter(it => it.rubro === r.pool && !used.has(it.id))
     if (!pool.length && r.pool !== 'default') pool = items.filter(it => it.rubro === 'default' && !used.has(it.id))   // back-up universal
     const fine = r.c.length ? pool.filter(it => r.c.indexOf(it.concept) >= 0) : pool
-    const src = fine.length ? fine : pool                                  // si el filtro fino vacia, cualquiera del tema
+    let src = fine.length ? fine : pool                                    // si el filtro fino vacia, cualquiera del tema
     if (!src.length) continue
+    if (favored) { const fav = src.filter(it => favored.has(it.concept)); if (fav.length) src = fav }   // PUBLICO: inclina hacia el who (fallback: src completo) -> mismo 1 draw de prng, secuencia 'sanim' intacta
     const p = src[(prng() * src.length) | 0]
     out.push({ id: p.id, url: p.url, seed: (seed ^ hashStr('a' + i + r.id)) >>> 0 }); used.add(p.id)
   }
@@ -302,7 +316,7 @@ export function makeVideo(brief = {}) {
     if (mod) {
       const dur = clamp((beat.dur || 3.4) * durK, 2.2, 6)
       const sc = { start, dur, sceneId: mod.id, seed: (seed ^ hashStr('s' + i)) >>> 0, bgSeed: (seed ^ hashStr('bg|' + beat.category + '|' + i)) >>> 0 }   // variante de fondo por beat (mismo eje 'bg' que video.bgSeed)
-      if (perScene) sc.anims = pickSceneAnims(beat.category, { ...content, brand }, rubro, seed, i, animItems, seriousness)   // 1-3 Lotties por lo que dice ESTA escena (cap por seriedad/densidad)
+      if (perScene) sc.anims = pickSceneAnims(beat.category, { ...content, brand }, rubro, seed, i, animItems, seriousness, audience.who)   // 1-3 Lotties por lo que dice ESTA escena (cap por seriedad/densidad; ruteo inclinado al publico)
       scenes.push(sc); start += dur
     }
   })
