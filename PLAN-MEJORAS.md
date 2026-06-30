@@ -27,6 +27,13 @@
 - **[fase 2] analyze-enrich** — urgencia/naming/valencia detectadas y consumidas (arco + selección de escena). Cierra el cluster de audiencia.
 - **[verificación visual]** hoja de contacto renderizada (tools/urvid1-shot.mjs, fuentes reales) → la tanda se ve limpia: abre con hook, brand color consistente, pesos reales sin faux-bold, safe-area con aire abajo.
 - **[fase 2b — 5 de 6 high/M gate-verificables, vetados por workflow]**: **CTA mid-roll** (público urgente/most), **stagger real** (delay por-item desde la personalidad en 7 escenas), **fondo por hue/temp** (paleta cálida→fondos cálidos, 111 anotados), **atmo/sub-bias** (mood reacciona al contenido, tags reales), **connectors/interstitial** (categoría muerta activada, ~50%). Todos determinismo-safe (PRNG namespace separado / inserción pura) y gates verdes.
+- **[e2e — bugs reales cazados probando páginas reales** (tiendanube, linear, wise, natura, nubank, doctoralia) que los gates sintéticos NO ven]:
+  - **Copy en idioma de la página** (`content.lang`) — validado EN/PT/ES (linear→inglés, nubank→portugués). Cache v3→v4.
+  - **Bullets completos** — salían como fragmentos ("Tienda online de alto") porque el LLM pasaba >30 chars y el budget cortaba mid-frase; fix de prompt (reescribir, no recortar). v4→v5.
+  - **Stats sin símbolos decorativos** — perception metía `4.3★` (tofu en fuentes display); strip `_no_decor` + regla de prompt (preserva £/%). v5→v6.
+  - **Cert SSL inválido → captura vacía → alucinación** — natura daba ERR_CERT_DATE_INVALID; `ignore_https_errors=True` en las 3 cargas. Sin esto perception inventaba "Natura cosméticos/belleza" (es **Aceites Natura/gastronomía**).
+  - **Guardrail anti-alucinación** — si la captura viene VACÍA (cert/timeout/anti-bot), el prompt instruye basarse solo en el screenshot y NO inventar claims/cifras/proof. Verificado: doctoralia (timeout) ahora stats[]/proof'' en vez de features inventadas.
+  - **Validado en real:** el pipeline de audiencia clava el público (Tiendanube casual/emprendedores vs Linear formal/eng-teams vs Wise expats vs Nubank brasileiros) y cambia idioma+color+tipografía+movimiento en consecuencia.
 - _Diferidos: typekit-all-display + scrim-bbox (VISUAL, diseño vetado en docs/DEFERRED-typekit-scrim-specs.md); maxLines↔slot (no-op con mitigación segura). Lateral: overflow scene.social.* (tarea spawn). Restante del plan: med/low + arquitectónicos high/L (OKLCH, WebCodecs, unificar export, slot-media, datakit, markkit, playbooks)._
 
 ---
