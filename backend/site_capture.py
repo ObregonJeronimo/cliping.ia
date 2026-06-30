@@ -24,6 +24,13 @@ except Exception as _e:  # pragma: no cover
     _PW_OK = False
     print(f"[capture] Playwright no disponible: {_e}")
 
+# Perfil de navegador REALISTA (anti bot-wall): el User-Agent headless de Playwright lo detectan muchos muros
+# (Cloudflare/etc.) -> servian el "Just a moment..." o nada. Un UA de Chrome real + locale/timezone de AR hacen
+# que la captura parezca un usuario real argentino -> mas sitios devuelven su contenido real. Best-effort.
+_UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+       "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
+_CTX = dict(user_agent=_UA, locale="es-AR", timezone_id="America/Argentina/Buenos_Aires")
+
 
 # ---- SSRF GUARD --------------------------------------------------------------
 # El backend abre Chromium contra una URL que viene del cliente, y corre detras de un tunel publico
@@ -91,7 +98,7 @@ async def capture_site(url: str, out_path: str,
             # ignore_https_errors: muchos sitios legitimos tienen el cert vencido/mal (ERR_CERT_*); sin esto goto FALLA
             # y la captura vuelve vacia -> el brief se inventaria desde el nombre de marca (viola "fiel a la pagina").
             page = await browser.new_page(viewport={"width": width, "height": height},
-                                          device_scale_factor=2, ignore_https_errors=True)
+                                          device_scale_factor=2, ignore_https_errors=True, **_CTX)
             try:
                 await page.goto(url, wait_until="domcontentloaded", timeout=30000)
             except Exception as ge:
@@ -289,7 +296,7 @@ async def extract_content(url: str) -> dict | None:
     try:
         async with async_playwright() as p:
             browser = await p.chromium.launch(args=["--no-sandbox"])
-            page = await browser.new_page(viewport={"width": 1280, "height": 900}, ignore_https_errors=True)
+            page = await browser.new_page(viewport={"width": 1280, "height": 900}, ignore_https_errors=True, **_CTX)
             try:
                 await page.goto(url, wait_until="domcontentloaded", timeout=30000)
             except Exception as ge:
@@ -316,7 +323,7 @@ async def capture_all(url: str, out_path: str, width: int = 1280, height: int = 
             # ignore_https_errors: muchos sitios legitimos tienen el cert vencido/mal (ERR_CERT_*); sin esto goto FALLA
             # y la captura vuelve vacia -> el brief se inventaria desde el nombre de marca (viola "fiel a la pagina").
             page = await browser.new_page(viewport={"width": width, "height": height},
-                                          device_scale_factor=2, ignore_https_errors=True)
+                                          device_scale_factor=2, ignore_https_errors=True, **_CTX)
             try:
                 await page.goto(url, wait_until="domcontentloaded", timeout=30000)
             except Exception as ge:
