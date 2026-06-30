@@ -5,6 +5,7 @@
 import { register } from '../../core/registry.js'
 import { mulberry32, range, seedFor } from '../../core/prng.js'
 import { W, H, TAU, rgba, lighten, darken, clamp, lerp, mix, hexToHsl, hslToHex, eOutCubic, eInOutCubic } from '../../core/util.js'
+import { getScratch } from '../../core/render.js'   // factory de canvas portatil (para hornear el tile de dither); call diferido a runtime -> sin ciclo
 // FONDOS POR RUBRO (jun 2026): +155 fondos especificos por rubro (x2 tonos), un archivo por rubro -> el director
 // los prefiere por fit (rubroAffinity) sobre los genericos, asi cada rubro tiene su identidad de fondo en dark Y light.
 import './r-tech.js'
@@ -85,10 +86,36 @@ register({
 // ============================================================================
 
 // fondo base comun para las generativas: rampa vertical bg0->bg1 (no repetir en cada modulo)
+// ANTI-BANDING: un tile Bayer 8x8 (horneado UNA vez, module-cached) que se suma 0..2/255 sobre el gradiente -> rompe
+// los escalones visibles en oscuros sin grano perceptible. DETERMINISTA (Bayer fijo, sin t/PRNG). Tamano 64x64 (el motor
+// NUNCA pide ese tamano para transiciones -> no colisiona con el cache de scratch). null-safe (Node pelado -> no-op).
+const BAYER8 = [0, 32, 8, 40, 2, 34, 10, 42, 48, 16, 56, 24, 50, 18, 58, 26, 12, 44, 4, 36, 14, 46, 6, 38, 60, 28, 52, 20, 62, 30, 54, 22, 3, 35, 11, 43, 1, 33, 9, 41, 51, 19, 59, 27, 49, 17, 57, 25, 15, 47, 7, 39, 13, 45, 5, 37, 63, 31, 55, 23, 61, 29, 53, 21]
+let _dith = null, _dithTried = false
+function ditherTile() {
+  if (_dithTried) return _dith; _dithTried = true
+  const S = 64, cv = getScratch(S, S); if (!cv) return (_dith = null)
+  const c = cv.getContext && cv.getContext('2d'); if (!c) return (_dith = null)
+  const img = c.createImageData(S, S), d = img.data
+  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+    const v = Math.round((BAYER8[(y & 7) * 8 + (x & 7)] / 63) * 2)   // 0..2 aditivo
+    const i = (y * S + x) * 4; d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = 255
+  }
+  c.putImageData(img, 0, 0); return (_dith = cv)
+}
+function dither(ctx) {
+  const tile = ditherTile(); if (!tile) return
+  const pat = ctx.createPattern(tile, 'repeat'); if (!pat) return
+  ctx.save()
+  ctx.globalCompositeOperation = 'lighter'           // aditivo 0..2/255: rompe bandas en oscuros
+  ctx.setTransform(1, 0, 0, 1, 0, 0)                 // device-space: cubre todo el backing pese al bgPush; tile estatico (no shimmer)
+  ctx.fillStyle = pat; ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height)
+  ctx.restore()                                       // restaura transform del bgPush + composite default
+}
 function rampBg(ctx, pal) {
   const g = ctx.createLinearGradient(0, 0, 0, H)
   g.addColorStop(0, pal.bg0); g.addColorStop(1, pal.bg1)
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H)
+  dither(ctx)   // rompe banding del gradiente base (rampBg corre PRIMERO en cada modulo -> el tile queda bajo strokes/blobs)
 }
 // ruido de gradiente determinista (suma de senos sembrados) -> campo escalar suave en [0,1]
 function makeNoise(seed, oct = 3) {

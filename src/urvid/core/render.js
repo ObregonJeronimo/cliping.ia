@@ -34,6 +34,9 @@ function makeScratch(w, h) {
   if (typeof document !== 'undefined') { const c = document.createElement('canvas'); c.width = w; c.height = h; return c }
   return null
 }
+// scratch portatil para hornear tiles/patrones (mismo canvas inyectado: napi en gates/shot, OffscreenCanvas en browser).
+// Sin factory ni OffscreenCanvas (Node pelado) devuelve null -> el consumidor degrada a no-op.
+export function getScratch(w, h) { return makeScratch(w, h) }
 
 // PUSH CINEMATOGRAFICO DE FONDO (no del texto): zoom+deriva LENTOS y MINIMOS sobre las capas bg/sub. Deriva de
 // motion.life (0..1 fluidez) * motion.ambient(t,seed) (oscilacion PURA de t+seed -> DETERMINISTA). z>=1 SIEMPRE (zoom-in
