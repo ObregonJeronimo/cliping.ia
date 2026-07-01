@@ -9,6 +9,8 @@ import json
 import os
 import re
 
+import playbooks   # "el foso": playbook de marketing por rubro (item L142). Modulo de datos puro (sin deps) -> import seguro.
+
 try:
     from anthropic import AsyncAnthropic
     _client = AsyncAnthropic()
@@ -372,4 +374,19 @@ async def analyze_to_brief(url, desarrollo="", site=None, usage=None):
         tc = _safe_hex((content or {}).get("themeColor")) if isinstance(content, dict) else None
         if tc:
             out["brandColor"] = tc
+    # PLAYBOOK del rubro (item L142/L849): cableamos "el foso" de marketing al brief que consume el MOTOR (no solo el
+    # prompt del director legacy). Adjuntamos SOLO los campos accionables por el motor determinista: energyHint
+    # (alto|medio|bajo -> ritmo de stagger, ventana de transicion y agresividad de apertura) y playbookKey/themeHint
+    # (telemetria + uso futuro). Best-effort: un miss NUNCA rompe la perception (el motor los trata como opcionales,
+    # ausente = neutro byte-identico). El publico (who) modula el guide del prompt, no los campos del motor.
+    # neutros PRIMERO: garantizan que las 3 claves SIEMPRE existan aunque pick() fallara -> nunca se cachea (v9) ni se sirve
+    # un brief SIN energyHint (energyHint='medio' -> el motor lo trata como neutro byte-identico). Defensa anti cache-poisoning.
+    out["energyHint"], out["playbookKey"], out["themeHint"] = "medio", "generico", ""
+    try:
+        pb = playbooks.pick(out.get("rubro", ""), (out.get("audience") or {}).get("who", ""))
+        out["energyHint"] = pb["energy"]        # 'alto' | 'medio' | 'bajo'
+        out["playbookKey"] = pb["key"]          # p.ej. 'saas' | 'generico'  (telemetria + branching futuro)
+        out["themeHint"] = pb["theme_hint"]     # nombre de paleta THEME_VIBES o '' (uso futuro: mapa theme->hue en el motor)
+    except Exception as e:
+        print(f"[perceive] playbook no aplicado (sigo con neutros): {e}")
     return out

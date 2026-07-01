@@ -40,13 +40,19 @@ export function analyzeContent(content = {}, rubro = 'default') {
 
 // ARCO CONSCIENTE del contenido: apertura segun la señal dominante, 1-3 beats de cuerpo que matchean las señales
 // (sin repetir), cierre. El seed desempata y agrega variedad cuando faltan señales.
-export function buildArcSmart(seed, sig, awareness = 'solution', seriousness = 0.5, duration = 'medio') {
+export function buildArcSmart(seed, sig, awareness = 'solution', seriousness = 0.5, duration = 'medio', energyLevel = 0) {
   const r = seedFor(seed, 'arc')
   let open = 'openers/hero'
   // GARANTIA hook-2.5s + dirigido al publico: la SERIEDAD modula cuanto se arriesga a abrir con gancho (serio->hero
   // medido/creible; relajado->gancho directo). Promesa/dolor (claim con cuerpo o comparacion) sube la prob de gancho aun
   // en rubros serios REUSANDO el mismo draw del else-if final (no consume PRNG extra -> el cuerpo del arco queda IGUAL).
-  const hookProb = Math.max(0.5 * (1 - seriousness), (sig.hasCompare || sig.longClaim || sig.urgency || sig.valence === 'neg') ? 0.5 : 0)
+  // energyLevel del PLAYBOOK (item L142): energia ALTA (fitness/evento) abre mas seguido con GANCHO (piso 0.6); energia BAJA
+  // (salud/lujo/inmobiliaria) abre mas MEDIDO amortiguando SOLO la linea-base por seriedad (la tendencia default del vertical),
+  // NUNCA el piso por SEÑAL DE CONTENIDO (urgencia/comparacion/dolor explicitos): si una pagina calma trae urgencia REAL, el
+  // gancho se respeta (el contenido explicito le gana al default del rubro). NO agrega draws de r() (el r()<hookProb de abajo se
+  // consume igual) -> solo puede flipear la APERTURA; el cuerpo queda byte-identico. energyLevel 0 (medio/ausente) -> byte-identico.
+  const _hookBase = 0.5 * (1 - seriousness) * (energyLevel < 0 ? 0.6 : 1)
+  const hookProb = Math.max(_hookBase, energyLevel > 0 ? 0.6 : 0, (sig.hasCompare || sig.longClaim || sig.urgency || sig.valence === 'neg') ? 0.5 : 0)
   if (sig.isQuestion) open = 'openers/hook'
   // AUDIENCIA: si el publico aun NO busca (unaware) o recien SIENTE el problema, hay que ENGANCHAR fuerte / nombrar el dolor -> hook.
   else if (awareness === 'unaware' || awareness === 'problem') open = 'openers/hook'

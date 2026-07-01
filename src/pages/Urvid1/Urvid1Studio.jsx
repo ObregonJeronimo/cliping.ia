@@ -97,6 +97,9 @@ export default function Urvid1Studio() {
         // los consume: awareness dirige el arco, register mueve color/tipo, seriousness la seleccion). Ahora fluyen (item L867).
         audience: (b.audience && typeof b.audience === 'object') ? b.audience : undefined,
         seriousness: (typeof b.seriousness === 'number') ? b.seriousness : undefined,
+        // ENERGIA del PLAYBOOK del rubro (item L142): perception la infiere (alto|medio|bajo) desde el vertical -> dirige el
+        // ritmo del video (stagger/transicion/apertura). Valor invalido/ausente -> undefined -> el motor la trata como neutra.
+        energyHint: ['alto', 'medio', 'bajo'].includes(b.energyHint) ? b.energyHint : undefined,
       })
       setSegment('auto')   // el selector de publico vuelve a "Auto" -> usa lo que infirio la perception
       setLock(null); setKeep(null); setSeed(0); headRef.current = 0; setHead(0); setAnalyzing('')
@@ -195,12 +198,12 @@ export default function Urvid1Studio() {
   // inmediato + fallback offline. Antes era SOLO localStorage (se perdia al limpiar cache; el uid no se usaba).
   const save = async () => {
     const id = 'v' + Date.now().toString(36)
-    const item = { id, brand: brief.brand, rubro: brief.rubro, tone: brief.tone, brandColor: brief.brandColor, format: brief.format || '9:16', duration: brief.duration || 'medio', tagline: brief.tagline || '', claim: brief.claim || '', cta: brief.cta || '', bullets: brief.bullets || [], stats: brief.stats || [], proof: brief.proof || '', seed, ts: Date.now() }
+    const item = { id, brand: brief.brand, rubro: brief.rubro, tone: brief.tone, brandColor: brief.brandColor, format: brief.format || '9:16', duration: brief.duration || 'medio', tagline: brief.tagline || '', claim: brief.claim || '', cta: brief.cta || '', bullets: brief.bullets || [], stats: brief.stats || [], proof: brief.proof || '', ...(brief.energyHint ? { energyHint: brief.energyHint } : {}), seed, ts: Date.now() }   // energyHint del playbook (item L142) round-trip -> el video recargado conserva el RITMO del vertical (sin el, revertia a neutro). Spread condicional: Firestore rechaza undefined.
     const next = [item, ...saved].slice(0, 24)
     setSaved(next); localStorage.setItem('urvid1.saved', JSON.stringify(next))
     if (user?.uid) { try { await setDoc(doc(db, 'users', user.uid, 'urvid_videos', id), item) } catch { /* offline -> queda en localStorage */ } }
   }
-  const load = (it) => { setLock(null); setKeep(null); setBrief({ brand: it.brand, rubro: it.rubro, tone: it.tone, brandColor: it.brandColor, format: it.format || '9:16', duration: it.duration || 'medio', tagline: it.tagline, claim: it.claim, cta: it.cta, bullets: it.bullets || [], stats: it.stats || [], proof: it.proof || '' }); setSeed(it.seed || 0); headRef.current = 0; setHead(0) }
+  const load = (it) => { setLock(null); setKeep(null); setBrief({ brand: it.brand, rubro: it.rubro, tone: it.tone, brandColor: it.brandColor, format: it.format || '9:16', duration: it.duration || 'medio', tagline: it.tagline, claim: it.claim, cta: it.cta, bullets: it.bullets || [], stats: it.stats || [], proof: it.proof || '', energyHint: it.energyHint }); setSeed(it.seed || 0); headRef.current = 0; setHead(0) }   // energyHint del playbook (item L142); guardados viejos sin el -> undefined -> el motor lo trata como neutro
   const del = async (it) => {
     const next = saved.filter(s => s !== it)
     setSaved(next); localStorage.setItem('urvid1.saved', JSON.stringify(next))

@@ -477,7 +477,7 @@ async def urvid_perceive(req: PerceiveRequest):
             print(f"[perceive] upload screenshot fallo: {e}")
     # "v2-": version del SCHEMA del brief (claim/tagline/cta + bullets/stats/proof). Bumpear si cambia el shape ->
     # invalida cache vieja (no servir briefs sin el material nuevo). El cache por URL sigue evitando re-llamar a Claude.
-    ckey = "v8-" + _brand_cache_key(req.url)   # v8: BRAND siempre latino (marca cirilica/CJK -> dominio/transliteracion, anti-tofu del wordmark). v7: idioma solo si latino (no-latino->español, anti-tofu) + bot-wall + guardrail + stats sin simbolos decorativos (tofu) + bullets completos (prompt: frase con sentido, no fragmentos) + copy en el IDIOMA de la pagina (content.lang) + audience (who/register/awareness)
+    ckey = "v9-" + _brand_cache_key(req.url)   # v9: + energyHint/playbookKey/themeHint del playbook del rubro (item L142) -> invalida briefs cacheados sin esos campos. v8: BRAND siempre latino (marca cirilica/CJK -> dominio/transliteracion, anti-tofu del wordmark). v7: idioma solo si latino (no-latino->español, anti-tofu) + bot-wall + guardrail + stats sin simbolos decorativos (tofu) + bullets completos (prompt: frase con sentido, no fragmentos) + copy en el IDIOMA de la pagina (content.lang) + audience (who/register/awareness)
     chash = _content_fingerprint(site)
     # memkey scopeado POR USUARIO: antes el cache in-memory cruzaba usuarios (el analisis de A se servia a B). El de
     # Firestore ya era por uid; ahora el in-memory tambien.

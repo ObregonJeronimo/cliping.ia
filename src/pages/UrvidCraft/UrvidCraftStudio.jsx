@@ -139,6 +139,8 @@ export default function UrvidCraftStudio() {
         format: '9:16', duration: 'medio',
         tagline: b.tagline || '', claim: b.claim || '', cta: b.cta || '',
         bullets: Array.isArray(b.bullets) ? b.bullets : [], stats: Array.isArray(b.stats) ? b.stats : [], proof: b.proof || '',
+        // ENERGIA del PLAYBOOK del rubro (item L142): el vertical dirige el ritmo del video. Ausente/invalido -> neutra en el motor.
+        energyHint: ['alto', 'medio', 'bajo'].includes(b.energyHint) ? b.energyHint : undefined,
       })
       setPicks({}); headRef.current = 0; setHead(0); setAnalyzed(true); setAnalyzing('')
     } catch {
@@ -172,7 +174,7 @@ export default function UrvidCraftStudio() {
   // ---- guardar en "Mis videos" (Firestore + localStorage) -------------------------------------
   const save = async () => {
     const id = 'v' + Date.now().toString(36)
-    const item = { id, brand: brief.brand || 'Marca', rubro: brief.rubro, tone: brief.tone, brandColor: brief.brandColor, format: brief.format || '9:16', duration: brief.duration || 'medio', tagline: brief.tagline || '', claim: brief.claim || '', cta: brief.cta || '', bullets: brief.bullets || [], stats: brief.stats || [], proof: brief.proof || '', recipe: video.recipe, seed, ts: Date.now() }
+    const item = { id, brand: brief.brand || 'Marca', rubro: brief.rubro, tone: brief.tone, brandColor: brief.brandColor, format: brief.format || '9:16', duration: brief.duration || 'medio', tagline: brief.tagline || '', claim: brief.claim || '', cta: brief.cta || '', bullets: brief.bullets || [], stats: brief.stats || [], proof: brief.proof || '', ...(brief.energyHint ? { energyHint: brief.energyHint } : {}), recipe: video.recipe, seed, ts: Date.now() }   // energyHint (item L142): energy/xf NO estan en la receta -> sin persistirlo, el video lockeado recargaba con RITMO distinto
     const next = [item, ...saved].slice(0, 24)
     setSaved(next)
     try { localStorage.setItem(SAVED_KEY, JSON.stringify(next)) } catch { /* noop */ }
@@ -181,7 +183,7 @@ export default function UrvidCraftStudio() {
   }
   // cargar un guardado de vuelta al wizard: restaura brief+seed y RECONSTRUYE los picks desde la receta -> reproduce ese video.
   const loadSaved = (it) => {
-    setBrief({ ...BRIEF0, brand: it.brand || '', rubro: it.rubro || 'default', tone: it.tone || 'dark', brandColor: it.brandColor || BRIEF0.brandColor, format: it.format || '9:16', duration: it.duration || 'medio', tagline: it.tagline || '', claim: it.claim || '', cta: it.cta || '', bullets: it.bullets || [], stats: it.stats || [], proof: it.proof || '' })
+    setBrief({ ...BRIEF0, brand: it.brand || '', rubro: it.rubro || 'default', tone: it.tone || 'dark', brandColor: it.brandColor || BRIEF0.brandColor, format: it.format || '9:16', duration: it.duration || 'medio', tagline: it.tagline || '', claim: it.claim || '', cta: it.cta || '', bullets: it.bullets || [], stats: it.stats || [], proof: it.proof || '', energyHint: it.energyHint })   // energyHint del playbook (item L142) round-trip; guardados viejos -> undefined -> neutro
     setSeed(it.seed || newSeed())
     const r = it.recipe || {}
     const p = {}

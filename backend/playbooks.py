@@ -215,12 +215,25 @@ _DEFAULT = {
     "theme": "", "do": "mensaje claro y específico de la marca", "dont": "no caer en lo genérico",
 }
 
+# Mapa RUBRO-CANONICO de perception (tech/finanzas/gastronomia/moda/eventos/...) -> CLAVE de playbook. perception y
+# playbooks usan taxonomias DISTINTAS; sin este mapa, 'tech'/'gastronomia'/'moda'/'eventos' caerian al _DEFAULT (o
+# matchearian por casualidad via substrings). Con el mapa, cada rubro detectado activa SU playbook. Los rubros que ya
+# coinciden por nombre con una clave (salud/belleza/fitness/inmobiliaria/educacion) no necesitan entrada.
+RUBRO_ALIAS = {
+    "tech": "saas", "finanzas": "fintech", "gastronomia": "restaurante",
+    "moda": "ecommerce", "eventos": "evento",
+}
+
 
 def _match_key(industria: str) -> str:
-    """Mapea una industria (texto libre del brief) a una clave de playbook. Devuelve '' si no matchea."""
-    s = (industria or "").lower()
+    """Mapea una industria (rubro canonico o texto libre) a una clave de playbook. Devuelve '' si no matchea."""
+    s = (industria or "").lower().strip()
     if not s:
         return ""
+    if s in PLAYBOOKS:      # el rubro YA es una clave de playbook (salud/belleza/fitness/inmobiliaria/educacion)
+        return s
+    if s in RUBRO_ALIAS:    # rubro canonico de perception -> su clave (tech->saas, gastronomia->restaurante, ...)
+        return RUBRO_ALIAS[s]
     best, best_hits = "", 0
     for key, pb in PLAYBOOKS.items():
         hits = sum(1 for kw in pb["match"] if kw in s)

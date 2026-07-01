@@ -63,10 +63,16 @@ export function makeVideo(brief = {}) {
   // El REGISTER del publico nudgea la seriedad EFECTIVA: formal = mas sobrio; casual/warm = mas relajado (clamp 0..1).
   const _regNudge = { formal: 0.15, warm: -0.05, casual: -0.12 }[audience.register] || 0
   const seriousness = Math.max(0, Math.min(1, seriousness0 + _regNudge))
-  // ENERGIA del copy (urgency/valence) — ORTOGONAL a seriousness (un brief puede ser serio Y urgente). Hoy mueve el COLOR
-  // (colorEnergyBias); aca alimenta el MOVIMIENTO (stagger mas rapido con energia alta). PURO (sin r() -> no re-rollea).
-  const energy = Math.max(0, Math.min(1, (sig.urgency ? 0.55 : 0) + (sig.valence !== 'neu' ? 0.45 : 0)))
-  const arc = brief.arc || buildArcSmart(seed, sig, audience.awareness, seriousness, brief.duration || 'medio').map(c => ({ category: c, dur: _DUR[c] || 3.4 }))
+  // ENERGIA del PLAYBOOK del rubro (item L142/L849): perception cablea brief.energyHint (alto|medio|bajo) desde el playbook
+  // de marketing del vertical. Lo leemos como NIVEL con SIGNO (alto +1, bajo -1, medio/ausente 0) que dirige el RITMO del
+  // video hacia la energia del rubro: un fitness/evento (alto) acelera, un consultorio/lujo/inmobiliaria (bajo) calma.
+  // Centrado en 0 (medio/ausente) -> los 3 usos (energy, xf, hookProb) colapsan a hoy -> byte-identico (patron audience.register).
+  const energyLevel = ({ alto: 1, medio: 0, bajo: -1 })[brief.energyHint] || 0
+  // ENERGIA del copy (urgency/valence) — ORTOGONAL a seriousness (un brief puede ser serio Y urgente) — MAS el nudge del
+  // playbook. Mueve el COLOR (colorEnergyBias) y el MOVIMIENTO (motion.energy -> staggerK comprime la cascada). PURO (sin
+  // r() -> no re-rollea). energyLevel 0 -> el termino se anula -> byte-identico.
+  const energy = Math.max(0, Math.min(1, (sig.urgency ? 0.55 : 0) + (sig.valence !== 'neu' ? 0.45 : 0) + energyLevel * 0.32))
+  const arc = brief.arc || buildArcSmart(seed, sig, audience.awareness, seriousness, brief.duration || 'medio', energyLevel).map(c => ({ category: c, dur: _DUR[c] || 3.4 }))
   // CAP de bullets por DURACION (puro, sin PRNG): en videos cortos 4 bullets saturan y el ojo no los lee. Se aplica
   // DESPUES de analyzeContent(L155) y buildArcSmart(L163) -> el arco y la deteccion de señales ven SIEMPRE el set
   // COMPLETO (seleccion de escena byte-identica a hoy); solo el render y las Lotties por-escena ven el set capado.
@@ -129,7 +135,8 @@ export function makeVideo(brief = {}) {
   // PACING content-aware: publico serio lee mejor con XF mas larga/suave; energico con cortes mas snappy. PURO (sin PRNG).
   // Centrado en seriousness=0.5 -> seriousK=1 -> xf===baseXf (back-compat byte-identico). Banda [0.24,0.6]: tope 0.6 << dur
   // minima de escena (2.2s) -> ventanas separadas >=1.6s, sin solape (el gate qa de coexistencia A/B sigue inmune).
-  const xf = clamp(baseXf * clamp(1 + (seriousness - 0.5) * 0.5, 0.8, 1.25), 0.24, 0.6)
+  // energyLevel del playbook acorta (alto: cortes snappy) o alarga (bajo: transiciones suaves) la ventana; 0 -> factor 1 -> byte-identico.
+  const xf = clamp(baseXf * clamp(1 + (seriousness - 0.5) * 0.5, 0.8, 1.25) * (1 - energyLevel * 0.15), 0.24, 0.6)
   // POST: acabado (grano/vignette/leak/grade/scanlines) -> video.postId. Opcional (~58%).
   const postMod = optional(lock && lock.post, keep && keep.post, seedFor(seed, 'post'), 0.58, query('post', { tone }))
   // LAYOUT: arquitectura de composicion (centrado/editorial/poster/anclado...). El director elige UNA por video;
