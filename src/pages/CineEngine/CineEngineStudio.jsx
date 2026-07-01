@@ -123,7 +123,7 @@ export default function CineEngineStudio() {
   const recRef = useRef(null)
 
   const video = useMemo(
-    () => makeVideo({ ...brief, seed: seed || undefined, aiBgUrl: aiBgUrl || undefined, aiBgIntensity, perSceneAnims: true }),
+    () => makeVideo({ ...brief, seed: seed || undefined, aiBgUrl: aiBgUrl || undefined, aiBgIntensity }),
     [brief, seed, aiBgUrl, aiBgIntensity],
   )
 
