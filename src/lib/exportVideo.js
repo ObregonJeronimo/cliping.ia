@@ -37,11 +37,21 @@ export function exportCanvasVideo(video, opts = {}) {
   const startRecording = () => {
     rec.start()
     const t0 = performance.now()
+    // CADENCIA CONSTANTE (item L828): antes se redibujaba en CADA rAF (60/120Hz + jitter segun el monitor) -> presentacion
+    // despareja al stream de 30fps. Ahora presentamos un cuadro nuevo SOLO al cruzar el proximo tick de 1/fps -> pasos parejos
+    // garantizados (30 fijo por defecto) + ~mitad/cuarto de draws. La grabacion sigue atada al reloj (stop en dur) -> la
+    // duracion del mp4 no cambia; lo que se empareja es la separacion entre cuadros. La firma sync no cambia.
+    const frameDur = 1 / fps
+    let nextFrame = 0
     const tick = () => {
-      const el = (performance.now() - t0) / 1000, pct = Math.min(100, Math.round(el / dur * 100))
-      ectx.setTransform(scale, 0, 0, scale, 0, 0)
-      drawFrame(ectx, Math.min(el, dur), video)
-      if (onProgress) onProgress(pct)
+      const el = (performance.now() - t0) / 1000
+      if (el >= nextFrame) {
+        ectx.setTransform(scale, 0, 0, scale, 0, 0)
+        drawFrame(ectx, Math.min(el, dur), video)
+        if (onProgress) onProgress(Math.min(100, Math.round(el / dur * 100)))
+        nextFrame += frameDur
+        if (nextFrame < el) nextFrame = el + frameDur   // rAF atrasado (tab en 2do plano): reprograma, no dispares una rafaga
+      }
       if (el >= dur + 0.1) { try { rec.stop() } catch { /* noop */ } }
       else requestAnimationFrame(tick)
     }
