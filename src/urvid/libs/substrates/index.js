@@ -248,10 +248,12 @@ register({
     ctx.save()
     for (let x = 0; x < W; x += step) {
       const near = 1 - Math.min(1, Math.abs(x - sweepX) / 70) // realce suave bajo la banda
-      ctx.strokeStyle = rgba(ink, (pal.tone === 'light' ? 0.03 : 0.05) * breath * (1 + near * 0.8))
+      // ALPHA bajado (antes 0.03/0.05 + boost 0.8): las lineas verticales blancas cada 4px tapaban demasiado ("se ven como
+      // rayas", no como textura). ~mitad de alpha + barrido mas suave -> subpixel-grid que se SIENTE sin rayar el fondo.
+      ctx.strokeStyle = rgba(ink, (pal.tone === 'light' ? 0.018 : 0.026) * breath * (1 + near * 0.4))
       ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + 0.5, 0); ctx.lineTo(x + 0.5, H); ctx.stroke()
     }
-    ctx.strokeStyle = rgba(ink, (pal.tone === 'light' ? 0.04 : 0.06) * breath)
+    ctx.strokeStyle = rgba(ink, (pal.tone === 'light' ? 0.024 : 0.032) * breath)
     for (let y = 0; y < H; y += step) { ctx.beginPath(); ctx.moveTo(0, y + 0.5); ctx.lineTo(W, y + 0.5); ctx.stroke() }
     ctx.restore()
   },
