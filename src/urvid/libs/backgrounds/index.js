@@ -4,7 +4,7 @@
 // ESTE archivo es la PLANTILLA que los agentes siguen para llenar las ~11 categorias con cientos de modulos.
 import { register } from '../../core/registry.js'
 import { mulberry32, range, seedFor } from '../../core/prng.js'
-import { W, H, TAU, rgba, lighten, darken, clamp, lerp, mix, hexToHsl, hslToHex, eOutCubic, eInOutCubic } from '../../core/util.js'
+import { W, H, TAU, rgba, lighten, darken, clamp, lerp, mix, hexToHsl, hslToHex, hexToOklch, oklchToHex, eOutCubic, eInOutCubic } from '../../core/util.js'
 import { getScratch } from '../../core/render.js'   // factory de canvas portatil (para hornear el tile de dither); call diferido a runtime -> sin ciclo
 // FONDOS POR RUBRO (jun 2026): +155 fondos especificos por rubro (x2 tonos), un archivo por rubro -> el director
 // los prefiere por fit (rubroAffinity) sobre los genericos, asi cada rubro tiene su identidad de fondo en dark Y light.
@@ -111,9 +111,18 @@ function dither(ctx) {
   ctx.fillStyle = pat; ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height)
   ctx.restore()                                       // restaura transform del bgPush + composite default
 }
+// STOPS en OKLCH (item L148/L463 Stage 2): interpola c0->c1 en el espacio PERCEPTUAL (L,C,h con hue por camino angular corto)
+// y emite N+1 stops sRGB -> la rampa progresa PAREJO a la vista. El canvas interpola entre stops en sRGB, pero al ser densos
+// y ya perceptualmente espaciados, el resultado sigue el arco OKLCH. Para c0~c1 (misma familia) es sutil pero elimina el leve
+// desnivel de lightness del sRGB directo; para colores de hue distinto evita el "medio embarrado". Puro/determinista.
+function oklchStops(g, c0, c1, steps = 8) {
+  const a = hexToOklch(c0), b = hexToOklch(c1)
+  let dh = b.h - a.h; if (dh > Math.PI) dh -= 2 * Math.PI; else if (dh < -Math.PI) dh += 2 * Math.PI   // hue por el camino angular corto
+  for (let i = 0; i <= steps; i++) { const t = i / steps; g.addColorStop(t, oklchToHex(a.L + (b.L - a.L) * t, a.C + (b.C - a.C) * t, a.h + dh * t)) }
+}
 function rampBg(ctx, pal) {
   const g = ctx.createLinearGradient(0, 0, 0, H)
-  g.addColorStop(0, pal.bg0); g.addColorStop(1, pal.bg1)
+  oklchStops(g, pal.bg0, pal.bg1)   // rampa bg0->bg1 interpolada en OKLCH (antes: 2 stops sRGB directos)
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H)
   dither(ctx)   // rompe banding del gradiente base (rampBg corre PRIMERO en cada modulo -> el tile queda bajo strokes/blobs)
 }
