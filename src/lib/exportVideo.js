@@ -33,16 +33,38 @@ export function exportCanvasVideo(video, opts = {}) {
     setTimeout(() => URL.revokeObjectURL(href), 4000)
     if (onDone) onDone()
   }
-  rec.start()
-  const dur = video.duration, t0 = performance.now()
-  const tick = () => {
-    const el = (performance.now() - t0) / 1000, pct = Math.min(100, Math.round(el / dur * 100))
-    ectx.setTransform(scale, 0, 0, scale, 0, 0)
-    drawFrame(ectx, Math.min(el, dur), video)
-    if (onProgress) onProgress(pct)
-    if (el >= dur + 0.1) { try { rec.stop() } catch { /* noop */ } }
-    else requestAnimationFrame(tick)
+  const dur = video.duration
+  const startRecording = () => {
+    rec.start()
+    const t0 = performance.now()
+    const tick = () => {
+      const el = (performance.now() - t0) / 1000, pct = Math.min(100, Math.round(el / dur * 100))
+      ectx.setTransform(scale, 0, 0, scale, 0, 0)
+      drawFrame(ectx, Math.min(el, dur), video)
+      if (onProgress) onProgress(pct)
+      if (el >= dur + 0.1) { try { rec.stop() } catch { /* noop */ } }
+      else requestAnimationFrame(tick)
+    }
+    requestAnimationFrame(tick)
   }
-  requestAnimationFrame(tick)
+  // PRECARGA del LOGO (item L138): el logo se decodea async y drawFrame lo SALTEA hasta que esta listo -> antes salia recien
+  // tras 1-2 loops (el opener exportaba SIN marca). Calentamos el cache + un warm-up drawFrame antes de grabar -> la marca
+  // aparece desde el frame 0. Timeout DURO (1.5s): si el logo tarda o falla, el export arranca igual (nunca cuelga).
+  if (video.logo) {
+    let started = false
+    const go = () => {
+      if (started) return
+      started = true
+      ectx.setTransform(scale, 0, 0, scale, 0, 0); drawFrame(ectx, 0, video)   // warm-up: instancia la Image del logo con el cache HTTP ya caliente
+      requestAnimationFrame(() => requestAnimationFrame(startRecording))        // 2 frames para que el onload del logo dispare antes de grabar
+    }
+    const img = new Image()
+    try { img.crossOrigin = 'anonymous' } catch { /* noop */ }
+    img.onload = go; img.onerror = go
+    img.src = video.logo
+    setTimeout(go, 1500)
+  } else {
+    startRecording()
+  }
   return true
 }
