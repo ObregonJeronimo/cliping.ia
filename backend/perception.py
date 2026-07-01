@@ -16,6 +16,9 @@ except Exception:  # pragma: no cover
     _client = None
 
 BRIEF_MODEL = "claude-sonnet-4-6"
+# modelo FINO para RE-ESCALAR cuando el modelo se declara inseguro de su inferencia (pagina ambigua): mas caro, se usa
+# SOLO en ese caso (no en el camino normal). Ya tarifado en template_director.MODEL_PRICES / brand_dna.MODEL_PRICES.
+FINE_MODEL = "claude-opus-4-8"
 
 RUBROS = ["tech", "finanzas", "inmobiliaria", "salud", "educacion", "gastronomia",
           "moda", "belleza", "fitness", "eventos", "default"]
@@ -36,6 +39,7 @@ _SYS = (
     '- "proof": una linea de prueba social REAL (rating, cant. de clientes, premio) o "" si no hay\n'
     '- "seriousness": numero 0 a 1 (salud/finanzas alto ~0.8; gastronomia/moda bajo ~0.35)\n'
     '- "audience": objeto con A QUIEN le habla el reel, inferido de la pagina: {"who": "el publico objetivo en 2-5 palabras (ej: duenos de PyMEs, madres jovenes, gamers, profesionales de la salud)", "register": "formal" | "casual" | "warm" (como hablarle a ese publico), "awareness": UNA de "unaware" | "problem" | "solution" | "product" | "most" = la ETAPA DE CONSCIENCIA del comprador: unaware (no sabe que tiene el problema), problem (siente el problema pero no busca solucion), solution (busca soluciones), product (compara productos/marcas), most (listo para comprar, solo necesita el empujon)}. Es CLAVE: define el gancho y el tono del reel.\n'
+    '- "confidence": numero 0 a 1 = que tan SEGURO estas de tu inferencia de rubro+audience DADO lo que viste (baja ~0.3 si la pagina tiene poco texto, es ambigua o casi solo tenes el screenshot; alta ~0.9 si el contenido es claro y explicito). Se honesto: es una señal interna para decidir si conviene re-analizar, no una nota de calidad.\n'
     "REGLAS: FIEL a la pagina (NO inventes datos, cifras, premios ni features que no esten; "
     "si no hay, deja [] o \"\"), conciso, sin comillas tipograficas. "
     "IDIOMA: escribi el copy en el IDIOMA de la pagina (ver 'Idioma de la pagina' en el resumen). Si es espanol o no se "
@@ -264,6 +268,10 @@ def _normalize(b, url, content):
         out["seriousness"] = max(0.0, min(1.0, float(b.get("seriousness"))))
     except Exception:
         pass
+    try:
+        out["_confidence"] = max(0.0, min(1.0, float(b.get("confidence"))))   # confianza de INFERENCIA declarada por el modelo (telemetria; señal interna con prefijo _)
+    except Exception:
+        out["_confidence"] = None
     # AUDIENCIA de primera clase: a quien le habla el reel (who), como hablarle (register) y la ETAPA DE CONSCIENCIA
     # (awareness, Eugene Schwartz) que decide el gancho/copy. Defaults sensatos (casual/solution) si el modelo no la dio.
     aud = b.get("audience") if isinstance(b.get("audience"), dict) else {}
@@ -298,13 +306,13 @@ async def analyze_to_brief(url, desarrollo="", site=None, usage=None):
             blocks.append({"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": b64}})
         blocks.append({"type": "text", "text": text})
 
-        async def _call(max_toks, temp):
+        async def _call(max_toks, temp, model=BRIEF_MODEL):
             resp = await _client.messages.create(
-                model=BRIEF_MODEL, max_tokens=max_toks, temperature=temp,
+                model=model, max_tokens=max_toks, temperature=temp,
                 system=_SYS, messages=[{"role": "user", "content": blocks}])
             if usage is not None:
                 try:
-                    usage.append({"stage": "perceive", "model": BRIEF_MODEL,
+                    usage.append({"stage": "perceive", "model": model,
                                   "in": resp.usage.input_tokens, "out": resp.usage.output_tokens})
                 except Exception:
                     pass
@@ -324,6 +332,26 @@ async def analyze_to_brief(url, desarrollo="", site=None, usage=None):
                     print(f"[perceive] reintento tampoco parseo. raw2[:200]={txt2[:200]!r}")
             brief = parsed or {}
             parse_ok = bool(parsed)
+            # ESCALADO POR BAJA CONFIANZA DE INFERENCIA (item L391): si el modelo se declara inseguro (pagina ambigua) y
+            # hay screenshot util, re-analiza UNA vez con un modelo mas FINO y se queda con el brief de MAYOR confidence.
+            # Distinto de _low_confidence (que mide baja confianza de CAPTURA: botwall/vacio); esto es baja confianza de
+            # INFERENCIA (la pagina cargo bien pero es ambigua). Solo con b64 -> el modelo fino aporta sobre todo en la VISION.
+            if parse_ok and b64:
+                try:
+                    conf = float(brief.get("confidence", 1))
+                except (TypeError, ValueError):
+                    conf = 1.0
+                if conf < 0.55:
+                    print(f"[perceive] confidence de inferencia baja ({conf:.2f}) -> re-analizo con {FINE_MODEL}")
+                    txt3 = await _call(1200, 0.3, model=FINE_MODEL)
+                    parsed3 = _extract_json(txt3)
+                    if parsed3:
+                        try:
+                            conf3 = float(parsed3.get("confidence", 0))
+                        except (TypeError, ValueError):
+                            conf3 = 0.0
+                        if conf3 >= conf:   # el re-analisis solo PISA el brief si viene mas seguro (nunca empeora)
+                            brief = parsed3
         except Exception as e:
             print(f"[perceive] LLM fallo (sigo con defaults): {e}")
     else:
