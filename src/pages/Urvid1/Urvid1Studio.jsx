@@ -24,8 +24,7 @@ export default function Urvid1Studio() {
   // KEEP: "otra variante" mantiene la IDENTIDAD de la pagina (color + tipografia) y re-rolea el resto. Se limpia
   // ante cualquier cambio del brief (marca/color/rubro/texto) o al analizar/cargar otro -> ahi el estilo se re-elige.
   const [keep, setKeep] = useState(null)
-  // perSceneAnims: urvid IA rutea 1-3 Lotties POR ESCENA segun lo que dice cada escena (toda la biblioteca, no solo el rubro).
-  const video = useMemo(() => makeVideo({ ...brief, seed: seed || undefined, lockRecipe: lock || undefined, keepRecipe: keep || undefined, perSceneAnims: true }), [brief, seed, lock, keep])
+  const video = useMemo(() => makeVideo({ ...brief, seed: seed || undefined, lockRecipe: lock || undefined, keepRecipe: keep || undefined }), [brief, seed, lock, keep])
   const [playing, setPlaying] = useState(true)
   const [speed, setSpeed] = useState(1)
   const [head, setHead] = useState(0)

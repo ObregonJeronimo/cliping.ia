@@ -9,7 +9,6 @@ import { resolveTypekit } from './typekit.js'
 import { resolveTransition } from './transitions.js'
 import { resolvePost } from './post.js'
 import { resolveLayout } from './layout.js'
-import { drawLottie } from '../lottie/player.js'
 
 const XF = 0.4   // ventana de transicion entre escenas (s) — corta = snappy, menos tiempo de solape
 
@@ -147,29 +146,7 @@ export function drawFrame(ctx, t, video) {
       ctx.restore()
     }
   }
-  // ANIM (Lottie PRE-HECHA, ruteada por concepto): acento animado en una esquina, DETRAS del contenido (no compite con
-  // el titulo). Se rendea con lottie-web por `t` -> determinista; SOLO en browser (en Node drawLottie es no-op, asi los
-  // gates no dependen de lottie). Aparece tras un breve delay (carga async; mientras tanto no dibuja). Conserva sus
-  // colores de diseno (acento pro). El espacio del titulo nunca lo pisa porque va detras del contenido.
-  if (video.animUrl) {
-    const corners = [[W * 0.74, H * 0.2], [W * 0.74, H * 0.8], [W * 0.26, H * 0.8]]   // TR / BR / BL (evita TL = marca)
-    const [gx, gy] = corners[(video.animSeed >>> 0) % corners.length], sz = W * 0.34
-    const a = (video.tone === 'light' ? 0.92 : 1) * inv(t, 0.4, 1.1)
-    if (a > 0) { ctx.save(); ctx.globalAlpha = a; drawLottie(ctx, video.animId, video.animUrl, t, gx - sz / 2, gy - sz / 2, sz, sz); ctx.restore() }
-  }
-  // ANIM POR ESCENA (urvid IA): 1-3 Lotties de la escena ACTIVA, ruteadas por lo que dice esa escena. Detras del contenido,
-  // en esquinas (evita TL=marca y el centro=titulo). Browser-only (drawLottie no-op en Node). Fade por tiempo de escena.
-  const actAnim = video.scenes && video.scenes.find(s => t >= s.start && t < s.start + s.dur)
-  if (actAnim && actAnim.anims && actAnim.anims.length) {
-    const slots = [[W * 0.78, H * 0.2], [W * 0.22, H * 0.8], [W * 0.78, H * 0.8]]
-    const n = Math.min(actAnim.anims.length, 3), sz = W * (n >= 3 ? 0.22 : n === 2 ? 0.26 : 0.3), lt = t - actAnim.start
-    for (let k = 0; k < n; k++) {
-      const an = actAnim.anims[k]; if (!an || !an.url) continue
-      const [gx, gy] = slots[k % slots.length]
-      const a = (video.tone === 'light' ? 0.9 : 1) * inv(lt, 0.2 + k * 0.12, 0.9 + k * 0.12)
-      if (a > 0) { ctx.save(); ctx.globalAlpha = a; drawLottie(ctx, an.id, an.url, lt, gx - sz / 2, gy - sz / 2, sz, sz); ctx.restore() }
-    }
-  }
+  // (Lotties ELIMINADOS 2026-07-01: los acentos animados por-escena y a nivel-video ensuciaban la composicion sin aportar.)
   // GUARD de texto CENTRALIZADO: scrim radial SUAVE en la zona del titulo (~centro), alpha BAJO -> legibilidad
   // consistente sin que cada fondo lo reimplemente y sin enturbiar fondos ya limpios. Debajo del texto. Determinista.
   {
