@@ -1,0 +1,48 @@
+// Export de video del motor urvid (browser-only). Graba un canvas OFFSCREEN a resolucion REAL (1080 de ancho ->
+// 1080x1920 en 9:16) con MediaRecorder: una vuelta EXACTA (0..duration) dibujada con drawFrame por t (determinista,
+// pixel-estable). Cero backend / cero costo de servidor. Es el UNICO camino de export -> urvid IA (flujo principal) y
+// urvid IA Advanced (craft) lo COMPARTEN. Antes Urvid1 grababa el canvas del preview VIVO (menor resolucion = W*DPR,
+// acoplado al loop de reproduccion); UrvidCraft ya usaba este metodo offscreen -> unificado (item L134).
+import { drawFrame } from '../urvid/index.js'
+
+const MIME_TYPES = ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm']
+
+// Arranca la grabacion. Devuelve true si arranco, false si el navegador no soporta (y ya llamo onError).
+// opts: { filename, bitrate=12e6, fps=30, onProgress(pct), onError(msg), onDone() } — callbacks opcionales.
+export function exportCanvasVideo(video, opts = {}) {
+  const { filename = 'urvid', bitrate = 12e6, fps = 30, onProgress, onError, onDone } = opts
+  const fail = (m) => { if (onError) onError(m); return false }
+  if (typeof window === 'undefined' || typeof window.MediaRecorder === 'undefined') return fail('Tu navegador no soporta exportar')
+  const scale = 1080 / video.W
+  const ecv = document.createElement('canvas')
+  ecv.width = Math.round(video.W * scale); ecv.height = Math.round(video.H * scale)
+  if (typeof ecv.captureStream !== 'function') return fail('Tu navegador no soporta exportar')
+  const ectx = ecv.getContext('2d')
+  const mime = MIME_TYPES.find(t => { try { return MediaRecorder.isTypeSupported(t) } catch { return false } }) || ''
+  const ext = mime.indexOf('mp4') >= 0 ? 'mp4' : 'webm'
+  let rec
+  try { rec = new MediaRecorder(ecv.captureStream(fps), mime ? { mimeType: mime, videoBitsPerSecond: bitrate } : { videoBitsPerSecond: bitrate }) }
+  catch { return fail('No se pudo iniciar la grabacion') }
+  const chunks = []
+  rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data) }
+  rec.onstop = () => {
+    const blob = new Blob(chunks, { type: mime || 'video/webm' }), href = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = href; a.download = `${String(filename).replace(/\s+/g, '-')}.${ext}`
+    document.body.appendChild(a); a.click(); a.remove()
+    setTimeout(() => URL.revokeObjectURL(href), 4000)
+    if (onDone) onDone()
+  }
+  rec.start()
+  const dur = video.duration, t0 = performance.now()
+  const tick = () => {
+    const el = (performance.now() - t0) / 1000, pct = Math.min(100, Math.round(el / dur * 100))
+    ectx.setTransform(scale, 0, 0, scale, 0, 0)
+    drawFrame(ectx, Math.min(el, dur), video)
+    if (onProgress) onProgress(pct)
+    if (el >= dur + 0.1) { try { rec.stop() } catch { /* noop */ } }
+    else requestAnimationFrame(tick)
+  }
+  requestAnimationFrame(tick)
+  return true
+}

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { collection, doc, getDocs, setDoc, deleteDoc } from 'firebase/firestore'
 import { makeVideo, drawFrame } from '../../urvid/index.js'
+import { exportCanvasVideo } from '../../lib/exportVideo.js'
 import { useAuth } from '../../contexts/AuthContext'
 import { db } from '../../lib/firebase'
 import OptionGrid from './OptionGrid.jsx'
@@ -153,40 +154,18 @@ export default function UrvidCraftStudio() {
   const delStat = (i) => setBrief(b => ({ ...b, stats: b.stats.filter((_, j) => j !== i) }))
 
   // ---- export en ALTA CALIDAD (client-side) ---------------------------------------------------
-  // No graba el canvas chico del preview: renderiza a un canvas OFFSCREEN a resolucion REAL (1080 de ancho ->
-  // 1080x1920 en 9:16) y graba ESE con MediaRecorder. Una vuelta exacta (0..duration). Cero costo de servidor.
+  // EXPORT: modulo COMPARTIDO (src/lib/exportVideo.js) — canvas OFFSCREEN a 1080 real, una vuelta exacta. Mismo camino
+  // que urvid IA. Este estudio YA usaba offscreen; ahora el codigo vive en un solo lugar (unificado -> item L134).
   const exportVideo = () => {
     if (exporting) return
-    if (typeof window.MediaRecorder === 'undefined') { setExporting('Tu navegador no soporta exportar'); setTimeout(() => setExporting(''), 5000); return }
-    const scale = 1080 / video.W
-    const ecv = document.createElement('canvas'); ecv.width = Math.round(video.W * scale); ecv.height = Math.round(video.H * scale)
-    if (typeof ecv.captureStream !== 'function') { setExporting('Tu navegador no soporta exportar'); setTimeout(() => setExporting(''), 5000); return }
-    const ectx = ecv.getContext('2d')
-    const types = ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm']
-    const mime = types.find(t => { try { return MediaRecorder.isTypeSupported(t) } catch { return false } }) || ''
-    const ext = mime.indexOf('mp4') >= 0 ? 'mp4' : 'webm'
-    let rec
-    try { rec = new MediaRecorder(ecv.captureStream(30), mime ? { mimeType: mime, videoBitsPerSecond: 12e6 } : { videoBitsPerSecond: 12e6 }) }
-    catch { setExporting('No se pudo iniciar la grabacion'); setTimeout(() => setExporting(''), 5000); return }
-    const chunks = []
-    rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data) }
-    rec.onstop = () => {
-      const blob = new Blob(chunks, { type: mime || 'video/webm' }), href = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = href; a.download = `${(brief.brand || 'urvid').replace(/\s+/g, '-')}-${(brief.format || '9-16').replace(':', 'x')}.${ext}`
-      document.body.appendChild(a); a.click(); a.remove()
-      setTimeout(() => URL.revokeObjectURL(href), 4000); setExporting('')
-    }
-    rec.start()
-    const dur = video.duration, t0 = performance.now()
-    const tick = () => {
-      const el = (performance.now() - t0) / 1000, pct = Math.min(100, Math.round(el / dur * 100))
-      ectx.setTransform(scale, 0, 0, scale, 0, 0); drawFrame(ectx, Math.min(el, dur), video)
-      setExporting(pct + '%')
-      if (el >= dur + 0.1) { try { rec.stop() } catch { /* noop */ } }
-      else requestAnimationFrame(tick)
-    }
-    requestAnimationFrame(tick)
+    const ok = exportCanvasVideo(video, {
+      filename: `${(brief.brand || 'urvid')}-${(brief.format || '9-16').replace(':', 'x')}`,
+      bitrate: 12e6,
+      onProgress: pct => setExporting(pct + '%'),
+      onError: m => { setExporting(m); setTimeout(() => setExporting(''), 5000) },
+      onDone: () => setExporting(''),
+    })
+    if (ok) setExporting('0%')
   }
 
   // ---- guardar en "Mis videos" (Firestore + localStorage) -------------------------------------
