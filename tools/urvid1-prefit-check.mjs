@@ -128,6 +128,16 @@ for (const over of [ADV, PATHO]) {
     for (const x of e) bad.push(`${rubro}/${tone}/#${s} ${x.scene}: "${x.str}"`)
   }
 }
+// CASO CRUDO x FORMATO (re-fit por formato, item L629): contenido adversarial SIN pre-fit -> makeVideo re-fitea el RENDER
+// por formato (renderContent = BUDGETS_WIDE en 9:16, BUDGETS en 4:5/1:1). El render debe dar 0 ellipsis en CUALQUIER
+// formato -> asegura que los BUDGETS_WIDE de 9:16 no se pasan de la capacidad real y que 4:5/1:1 siguen seguros.
+for (const over of [ADV, PATHO]) for (const format of ['9:16', '4:5', '1:1']) {
+  for (const rubro of RUBROS) for (const tone of ['dark', 'light']) for (let s = 1; s <= SEEDS; s++) {
+    const e = ellipsisOf({ brand: 'Marca', rubro, tone, brandColor: '#4285F4', seed: s, format, content: over })
+    checked++
+    for (const x of e) bad.push(`${format} ${rubro}/${tone}/#${s} ${x.scene}: "${x.str}"`)
+  }
+}
 console.log(`PREFIT assert: ${checked} videos (contenido adversarial -> fitContent -> render)`)
 console.log(`${bad.length === 0 ? 'OK ' : 'XX '} ELLIPSIS tras fitContent: ${bad.length}`)
 for (const e of bad.slice(0, 10)) console.log('     - ' + e)

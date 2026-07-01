@@ -12,7 +12,7 @@ import { query, get } from './registry.js'
 import { seedFor, weightedPick, hashStr, stableSeed, pick, shuffled } from './prng.js'
 import { analyzeContent, buildArcSmart, sceneBias, atmoSubBias, colorEnergyBias, audienceWarmBias } from './strategy.js'
 import { fitWeight, canonRubro, layoutBias, RUBRO_HUE } from './fit.js'
-import { fitContent } from './script.js'
+import { fitContent, BUDGETS, BUDGETS_WIDE } from './script.js'
 import LOTTIE from '../lottie/manifest.js'
 
 // ARCO narrativo VARIADO por semilla: apertura (hook|hero) -> 1-3 beats de cuerpo SIN repetir -> cierre. Usa todas
@@ -156,7 +156,7 @@ export function makeVideo(brief = {}) {
   // como lo arma el estudio y la perception). Unimos ambos -> el anidado gana. Asi el texto SIEMPRE llega a las escenas.
   // fitContent (core/script.js) = RED DE SEGURIDAD del guion: ata cada campo a su presupuesto y recorta en limite de
   // palabra (nunca a la mitad) -> el texto se muestra COMPLETO en cualquier escena (no se corta con "..."). Determinista.
-  const content = fitContent({
+  const rawUnion = {
     ...(brief.tagline != null ? { tagline: brief.tagline } : {}),
     ...(brief.claim != null ? { claim: brief.claim } : {}),
     ...(brief.cta != null ? { cta: brief.cta } : {}),
@@ -165,7 +165,12 @@ export function makeVideo(brief = {}) {
     ...(Array.isArray(brief.stats) && brief.stats.length ? { stats: brief.stats } : {}),
     ...(brief.proof ? { proof: brief.proof } : {}),
     ...(brief.content || {}),
-  })
+  }
+  const content = fitContent(rawUnion)   // RECETA (BUDGETS, formato-INDEPENDIENTE): alimenta analyzeContent + buildArcSmart + ruteo de anim
+  // RENDER: en 9:16 (lienzo mas alto) mostramos MAS del mensaje real del usuario (BUDGETS_WIDE, con margen bajo la capacidad
+  // que mide el sweep); 4:5/1:1 usan los BUDGETS conservadores -> byte-identico ahi. NO afecta la receta (mismo seed -> mismo
+  // arco/escenas/anims), solo el TEXTO dibujado. El prefit gate asserta los 3 formatos con contenido crudo.
+  const renderContent = fitContent(rawUnion, format === '9:16' ? BUDGETS_WIDE : BUDGETS)
   const seed = brief.seed != null ? (brief.seed >>> 0) : stableSeed(brand, rubro)
   // AUDIENCIA (de la perception): {who, register, awareness}. register -> nudge de seriedad; awareness -> sesgo del arco. Default {} (back-compat).
   const audience = (brief.audience && typeof brief.audience === 'object') ? brief.audience : {}
@@ -333,7 +338,7 @@ export function makeVideo(brief = {}) {
     transitionId: trMod ? trMod.id : null,
     postId: postMod ? postMod.id : null, postSeed: (seed ^ hashStr('post')) >>> 0,
     layoutId: layMod ? layMod.id : null,
-    content: { brand, ...content },
+    content: { brand, ...renderContent },   // lo que se DIBUJA (BUDGETS_WIDE en 9:16, BUDGETS en 4:5/1:1); la receta usa `content`
     scenes, duration: start || 8,
     recipe: { color: colMod ? colMod.id : null, type: typMod ? typMod.id : null, bg: bg ? bg.id : null, sub: sub ? sub.id : null, atm: atm ? atm.id : null, motion: motMod ? motMod.id : null, typekit: tkMod ? tkMod.id : null, mark: markMod ? markMod.id : null, anim: animPick ? animPick.id : null, transition: trMod ? trMod.id : null, post: postMod ? postMod.id : null, layout: layMod ? layMod.id : null, scenes: scenes.map(s => s.sceneId) },   // la "carta" del video
   }
