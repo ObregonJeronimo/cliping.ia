@@ -197,3 +197,9 @@ select.input { appearance: none; cursor: pointer; background-image: linear-gradi
   .effectWrap { flex-direction: column; }
   .effectChips { max-height: none; }
 }
+
+/* WIREFRAME de composicion (LayoutPreview, item L584): esquema de cajas de slots por preset de layout */
+.lpStage { display: flex; justify-content: center; padding: 12px; background: var(--bg); border: 1px solid var(--border2); border-radius: var(--rcard); }
+.lpSvg { height: 300px; width: auto; display: block; }
+.lpFrame { fill: var(--surface); stroke: var(--border2); stroke-width: 2; }
+.lpHint { margin: 8px 0 6px; font-size: 12px; color: var(--muted); text-align: center; }

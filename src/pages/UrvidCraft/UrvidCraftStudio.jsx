@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { db } from '../../lib/firebase'
 import OptionGrid from './OptionGrid.jsx'
 import EffectPreview from './EffectPreview.jsx'
+import LayoutPreview from './LayoutPreview.jsx'
 import Collapsible from './Collapsible.jsx'
 import { optionsFor, allSceneOptions, categoryOf, topCategoryOfScene, shortId, SLOT_LIB } from './craftLib.js'
 import styles from './UrvidCraftStudio.module.css'
@@ -367,7 +368,9 @@ export default function UrvidCraftStudio() {
         <p className={styles.lead}>Ajustes finos, todos opcionales. Esta en automatico — abri solo lo que quieras tocar.</p>
         {adv.map(a => (
           <Collapsible key={a.slot} title={a.title} hint={shortId(fullRecipe[a.slot]) || 'ninguno'}>
-            <EffectPreview slot={a.slot} options={opts[a.slot]} selectedId={fullRecipe[a.slot]} onPick={id => pick(a.slot, id)} brief={brief} seed={seed} fullRecipe={fullRecipe} optional={a.optional} />
+            {a.slot === 'layout'
+              ? <LayoutPreview options={opts.layout} selectedId={fullRecipe.layout} onPick={id => pick('layout', id)} />
+              : <EffectPreview slot={a.slot} options={opts[a.slot]} selectedId={fullRecipe[a.slot]} onPick={id => pick(a.slot, id)} brief={brief} seed={seed} fullRecipe={fullRecipe} optional={a.optional} />}
           </Collapsible>
         ))}
       </div>

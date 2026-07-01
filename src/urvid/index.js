@@ -22,3 +22,4 @@ export function drawFrame(ctx, t, video) {
 export { stats, query, get } from './core/registry.js'
 export { derivePalette } from './core/palette.js'
 export { W, H, FPS, FORMATS, setFormat } from './core/util.js'
+export { arrange, resolveLayout, place } from './core/layout.js'   // usados por el wireframe de composicion del estudio (UrvidCraft LayoutPreview)
