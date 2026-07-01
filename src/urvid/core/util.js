@@ -56,8 +56,45 @@ export function hslToHex(h, s, l) {
   const hx = v => Math.round((v + m) * 255).toString(16).padStart(2, '0')
   return '#' + hx(r) + hx(g) + hx(b)
 }
-export function lighten(hex, amt) { const a = hexToHsl(hex); return hslToHex(a.h, a.s, clamp(a.l + (1 - a.l) * amt, 0, 1)) }
-export function darken(hex, amt) { const a = hexToHsl(hex); return hslToHex(a.h, a.s, clamp(a.l * (1 - amt), 0, 1)) }
+// OKLCH (espacio perceptualmente uniforme) para lighten/darken (item L148/L463): mover la L PERCEPTUAL manteniendo hue+chroma
+// -> sin la desaturacion/hue-shift de HSL cerca de blanco/negro (en HSL c=(1-|2l-1|)*s colapsa el chroma en los extremos).
+// sRGB<->OKLab<->OKLCH con constantes de Bjorn Ottosson + clamp de gamut DETERMINISTA (biseccion de chroma hasta entrar en
+// sRGB, 18 pasos fijos -> mismo input siempre da el mismo hex). El tier de contraste/APCA (luminance/contrast/apcaLc) NO se
+// toca: son estandares definidos en sRGB. hexToHsl/hslToHex quedan para la logica de HUE de los esquemas (circulos distintos).
+function _srgbToLin(c) { c /= 255; return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4) }
+function _linToByte(c) { const v = c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(c, 1 / 2.4) - 0.055; return Math.round(clamp(v, 0, 1) * 255) }
+export function hexToOklch(hex) {
+  let h = (hex || '#888').replace('#', ''); if (h.length === 3) h = h.split('').map(c => c + c).join('')
+  const r = _srgbToLin(parseInt(h.slice(0, 2), 16)), g = _srgbToLin(parseInt(h.slice(2, 4), 16)), b = _srgbToLin(parseInt(h.slice(4, 6), 16))
+  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b)
+  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b)
+  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b)
+  const L = 0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s
+  const A = 1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s
+  const B = 0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s
+  return { L, C: Math.hypot(A, B), h: Math.atan2(B, A) }   // h en RADIANES
+}
+function _oklchToLinRgb(L, C, h) {
+  const A = C * Math.cos(h), B = C * Math.sin(h)
+  const l_ = L + 0.3963377774 * A + 0.2158037573 * B, m_ = L - 0.1055613458 * A - 0.0638541728 * B, s_ = L - 0.0894841775 * A - 1.2914855480 * B
+  const l = l_ * l_ * l_, m = m_ * m_ * m_, s = s_ * s_ * s_
+  return [4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s, -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s, -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s]
+}
+export function oklchToHex(L, C, h) {
+  L = clamp(L, 0, 1)
+  const inGamut = rgb => rgb[0] >= -1e-4 && rgb[0] <= 1.0001 && rgb[1] >= -1e-4 && rgb[1] <= 1.0001 && rgb[2] >= -1e-4 && rgb[2] <= 1.0001
+  let C2 = C
+  if (!inGamut(_oklchToLinRgb(L, C, h))) {   // reduce el chroma hasta entrar en sRGB (biseccion determinista) -> nunca emite un hex fuera de gamut
+    let lo = 0, hi = C
+    for (let i = 0; i < 18; i++) { const mid = (lo + hi) / 2; if (inGamut(_oklchToLinRgb(L, mid, h))) lo = mid; else hi = mid }
+    C2 = lo
+  }
+  const rgb = _oklchToLinRgb(L, C2, h), hx = v => _linToByte(v).toString(16).padStart(2, '0')
+  return '#' + hx(rgb[0]) + hx(rgb[1]) + hx(rgb[2])
+}
+// lighten/darken: MISMA semantica de amt (fraccion de headroom / multiplicativo) pero sobre la L de OKLCH, conservando C y hue.
+export function lighten(hex, amt) { const c = hexToOklch(hex); return oklchToHex(clamp(c.L + (1 - c.L) * amt, 0, 1), c.C, c.h) }
+export function darken(hex, amt) { const c = hexToOklch(hex); return oklchToHex(clamp(c.L * (1 - amt), 0, 1), c.C, c.h) }
 export function rgba(hex, alpha) {
   let h = (hex || '#000').replace('#', ''); if (h.length === 3) h = h.split('').map(c => c + c).join('')
   return `rgba(${parseInt(h.slice(0, 2), 16)},${parseInt(h.slice(2, 4), 16)},${parseInt(h.slice(4, 6), 16)},${clamp(alpha, 0, 1)})`
