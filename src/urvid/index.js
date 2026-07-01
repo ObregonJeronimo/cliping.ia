@@ -11,13 +11,13 @@ import { drawFrame as _drawFrame, beatAt } from './core/render.js'
 import { setPostIntensity } from './libs/post/index.js'
 import { clamp as _clamp } from './core/util.js'
 export { beatAt }
-export function drawFrame(ctx, t, video) {
+export function drawFrame(ctx, t, video, opts) {
   const s = video && video.seriousness != null ? video.seriousness : 0.5
   // FIDELIDAD de la FOTO real (slot-media): con mediaImage el acabado se baja a 0.7x -> el grade no recolorea de mas la
   // foto del producto (true-color) y el video luce mas premium (foto real = menos sobre-procesado). Sin foto = 1 (gates inertes).
   const mediaK = (video && video.mediaImage) ? 0.7 : 1
   setPostIntensity(_clamp(1 + (0.5 - s) * 0.5, 0.78, 1.18) * mediaK)   // serio(1)->0.78 tenue; relajado(0)->1.18; s=0.5->1.0 (byte-identico sin foto)
-  return _drawFrame(ctx, t, video)
+  return _drawFrame(ctx, t, video, opts)
 }
 export { stats, query, get } from './core/registry.js'
 export { derivePalette } from './core/palette.js'

@@ -10,7 +10,7 @@
     "qa": "node tools/urvid1-qa.mjs",
     "qa:full": "node tools/urvid1-qa.mjs full",
     "prefit": "node tools/urvid1-prefit-check.mjs",
-    "gates": "node tools/urvid1-test.mjs && node tools/urvid1-text-check.mjs && node tools/urvid1-apca-check.mjs && node tools/urvid1-qa.mjs && node tools/urvid1-prefit-check.mjs && node tools/urvid1-keep-check.mjs && node tools/urvid1-layout-check.mjs && node tools/urvid1-playbook-check.mjs && vite build"
+    "gates": "node tools/urvid1-test.mjs && node tools/urvid1-text-check.mjs && node tools/urvid1-apca-check.mjs && node tools/urvid1-qa.mjs && node tools/urvid1-prefit-check.mjs && node tools/urvid1-keep-check.mjs && node tools/urvid1-layout-check.mjs && node tools/urvid1-playbook-check.mjs && node tools/urvid1-quality-check.mjs && vite build"
   },
   "dependencies": {
     "firebase": "^10.13.0",

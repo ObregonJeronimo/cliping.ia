@@ -116,7 +116,7 @@ function paintScene(ctx, sc, t, video, motion, typekit, layout) {
   ctx.restore()
 }
 
-export function drawFrame(ctx, t, video) {
+export function drawFrame(ctx, t, video, opts = {}) {
   setFormat(video.format)   // sincroniza W/H al formato del video (live binding que leen todos los modulos)
   ctx.clearRect(0, 0, W, H)
   smooth(ctx)   // logo de marca nitido al exportar a alta (default 'low' lo deja blando)
@@ -125,7 +125,11 @@ export function drawFrame(ctx, t, video) {
   const transition = resolveTransition(video) // transicion entre escenas (o cut)
   const layout = resolveLayout(video)   // arquitectura de composicion (slots) del video (o default centrado)
   // CAPAS DE FONDO (viven todo el video): fondo -> textura/substrate -> atmosfera/luz -> (contenido encima)
-  const base = { pal: video.palette, content: video.content, energy: 1 }
+  // PRESUPUESTO ADAPTATIVO de draws (item L717): quality (default 1) escala el conteo de particulas de los substrates/atm
+  // pesados (grano/fibra/polvo: cientos-miles de fillRect por frame). 1 = full -> export/gates BYTE-IDENTICOS; el preview
+  // en vivo lo baja (loop continuo) para ganar FPS sin tocar la calidad del export. Puro; no consume PRNG.
+  const quality = opts.quality != null ? opts.quality : (video.quality != null ? video.quality : 1)
+  const base = { pal: video.palette, content: video.content, energy: 1, quality }
   if (video.bgId) { const m = get(video.bgId); if (m) { const _sc = video.scenes && video.scenes.find(s => t >= s.start && t < s.start + s.dur); const _bs = (_sc && _sc.bgSeed != null) ? _sc.bgSeed : video.bgSeed; bgPush(ctx, t, motion, _bs); m.render(ctx, t, { ...base, seed: _bs }); ctx.restore() } }
   if (video.subId) { const m = get(video.subId); if (m) { bgPush(ctx, t, motion, video.subSeed); m.render(ctx, t, { ...base, seed: video.subSeed }); ctx.restore() } }
   if (video.atmId) { const m = get(video.atmId); if (m) m.render(ctx, t, { ...base, seed: video.atmSeed }) }   // atm SIN push (rays/glints crawlean)

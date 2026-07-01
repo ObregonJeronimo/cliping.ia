@@ -11,6 +11,11 @@ import { W, H, TAU, rgba, lighten, darken, clamp, smooth } from '../../core/util
 const inkOf = pal => (pal.tone === 'light' ? '#000000' : '#ffffff')
 const antiInkOf = pal => (pal.tone === 'light' ? '#ffffff' : '#000000')
 
+// PRESUPUESTO ADAPTATIVO de draws (item L717): escala el conteo de particulas por env.quality. quality=1 (default: export,
+// gates, cualquier caller sin opts) -> Math.round(n*1)=n -> BYTE-IDENTICO. El preview en vivo pasa quality<1 -> menos draws
+// por frame -> loop mas fluido (el export sigue a full). Piso 1 (nunca 0 particulas). Puro; no consume PRNG.
+const qN = (env, n) => Math.max(1, Math.round(n * (env && env.quality != null ? env.quality : 1)))
+
 // ============================================================ grain-noise ============================================================
 
 register({
@@ -20,7 +25,7 @@ register({
     const { pal } = env, r = mulberry32(env.seed ^ 0x9e3779b1)
     // grano por puntos: muchos micropuntos sembrados; "centellean" en bloques temporales (sin Math.random)
     const ink = inkOf(pal), anti = antiInkOf(pal)
-    const N = 1400, base = pal.tone === 'light' ? 0.05 : 0.07
+    const N = qN(env, 1400), base = pal.tone === 'light' ? 0.05 : 0.07
     const flick = 0.5 + 0.5 * Math.sin(t * 1.7)   // respiracion global del grano
     ctx.save()
     for (let i = 0; i < N; i++) {
@@ -263,7 +268,7 @@ register({
     const ink = inkOf(pal), anti = antiInkOf(pal)
     ctx.save()
     ctx.lineWidth = 0.6
-    const N = 500
+    const N = qN(env, 500)
     for (let i = 0; i < N; i++) {
       const x = r() * W, y = r() * H, ang = r() * TAU, len = 2 + r() * 5
       const dark = r() < 0.55
@@ -892,7 +897,7 @@ register({
     v.addColorStop(1, pal.tone === 'light' ? 'rgba(0,0,0,0.05)' : 'rgba(0,0,0,0.3)')
     ctx.fillStyle = v; ctx.fillRect(0, 0, W, H)
     // textura: puntos que se DENSIFICAN hacia el borde (probabilidad ~ d^2)
-    const N = 2600
+    const N = qN(env, 2600)
     for (let i = 0; i < N; i++) {
       const x = r() * W, y = r() * H
       const d = Math.hypot(x - cx, y - cy) / maxD
@@ -922,7 +927,7 @@ register({
     // sal y pimienta: micropuntos de tinta Y anti-tinta en densidad media, con un "twinkle" por bloque temporal
     // (sin Math.random; el centelleo viene de un seno por indice). Mas grueso que grain.film -> textura de estatica fina.
     const ink = inkOf(pal), anti = antiInkOf(pal)
-    const N = 900, baseA = pal.tone === 'light' ? 0.05 : 0.075
+    const N = qN(env, 900), baseA = pal.tone === 'light' ? 0.05 : 0.075
     ctx.save()
     for (let i = 0; i < N; i++) {
       const x = r() * W, y = r() * H, s = 0.7 + r() * 1.3
@@ -1354,7 +1359,7 @@ register({
     // segun la cercania a las franjas moviles. Tenue, tone-aware.
     const anti = antiInkOf(pal)
     ctx.save()
-    const N = 700
+    const N = qN(env, 700)
     // dos franjas erosionadas sembradas que derivan despacio con t
     const b1 = range(r, 0, H) + Math.sin(t * 0.22) * 28
     const b2 = range(r, 0, H) + Math.cos(t * 0.18) * 28
@@ -1459,7 +1464,7 @@ register({
     // nieve de TV (static snow): muchos pixeles ANTI-tinta/tinta en grilla floja que "centellean" por bloque temporal
     // (el twinkle viene de un seno por indice + fase sembrada, sin Math.random). Mas denso que speckle, granos chicos.
     const ink = inkOf(pal), anti = antiInkOf(pal)
-    const N = 1100, baseA = pal.tone === 'light' ? 0.045 : 0.07
+    const N = qN(env, 1100), baseA = pal.tone === 'light' ? 0.045 : 0.07
     ctx.save()
     for (let i = 0; i < N; i++) {
       const x = r() * W, y = r() * H, s = 0.8 + r() * 1.1
@@ -1484,7 +1489,7 @@ register({
     // -> el ruido cromatico de una foto subexpuesta. Respira muy leve con t. Tone-aware (alpha bajo en claro).
     const ink = inkOf(pal)
     const cols = [pal.accent, pal.accent2, ink]
-    const N = 950, baseA = pal.tone === 'light' ? 0.04 : 0.06
+    const N = qN(env, 950), baseA = pal.tone === 'light' ? 0.04 : 0.06
     const breath = 0.7 + 0.3 * Math.sin(t * 1.1)
     ctx.save()
     for (let i = 0; i < N; i++) {
@@ -1534,7 +1539,7 @@ register({
     // puntillismo / stipple (grabado a punta seca): puntos finos SEMBRADOS cuya densidad sigue un gradiente diagonal
     // (denso en una esquina, ralo en la opuesta) -> sombreado de ilustracion clasica. Casi inmovil. Tenue, ink-aware.
     const ink = inkOf(pal)
-    const N = 2200
+    const N = qN(env, 2200)
     const grad = pal.tone === 'light' ? 0.05 : 0.08
     const slide = 0.5 + 0.5 * Math.sin(t * 0.3)
     ctx.save()
@@ -1633,7 +1638,7 @@ register({
     const sheenAt = (x, y) => Math.max(0, 1 - Math.abs((x + y) - sweep) / 240)
     ctx.save()
     // poros
-    const N = 650
+    const N = qN(env, 650)
     for (let i = 0; i < N; i++) {
       const x = r() * W, y = r() * H, s = 0.6 + r() * 1.6, lit = sheenAt(x, y)
       ctx.fillStyle = rgba(ink, (pal.tone === 'light' ? 0.03 : 0.055) * (0.4 + 0.6 * r()) * breath)
@@ -2027,7 +2032,7 @@ register({
     // ruido de sensor (shot/Poisson): ruido fino MAS denso en las zonas oscuras del encuadre (parte inferior),
     // como el ISO alto digital. Probabilidad de dibujar cae hacia arriba. Centelleo rapido por bloque. Tone-aware.
     const ink = inkOf(pal), anti = antiInkOf(pal)
-    const N = 2200, base = pal.tone === 'light' ? 0.04 : 0.06
+    const N = qN(env, 2200), base = pal.tone === 'light' ? 0.04 : 0.06
     const breath = 0.7 + 0.3 * Math.sin(t * 2.1)
     ctx.save()
     for (let i = 0; i < N; i++) {

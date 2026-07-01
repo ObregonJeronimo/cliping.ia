@@ -48,7 +48,7 @@ export default function Urvid1Studio() {
       const dt = Math.min((now - last) / 1000, 0.05) * speed; last = now
       if (playing) { headRef.current += dt; if (headRef.current >= video.duration) headRef.current -= video.duration }
       ctx.setTransform(DPR, 0, 0, DPR, 0, 0)
-      drawFrame(ctx, headRef.current, video)
+      drawFrame(ctx, headRef.current, video, { quality: 0.7 })   // preview EN VIVO a calidad reducida (item L717): ~30% menos particulas/frame en los substrates pesados -> loop mas fluido. El EXPORT (exportVideo.js, sin opts) va a FULL.
       setHead(headRef.current)
       raf = requestAnimationFrame(loop)
     }
@@ -145,7 +145,7 @@ export default function Urvid1Studio() {
       const v = makeVideo({ ...brief, seed: s })
       const cv = document.createElement('canvas'); cv.width = Math.round(v.W * 1.1); cv.height = Math.round(v.H * 1.1)
       const c = cv.getContext('2d'); c.setTransform(1.1, 0, 0, 1.1, 0, 0)
-      try { drawFrame(c, v.duration * 0.35, v) } catch { /* skip */ }
+      try { drawFrame(c, v.duration * 0.35, v, { quality: 0.4 }) } catch { /* skip */ }   // thumbnails de variantes: calidad baja (item L717), se regeneran en lote
       out.push({ seed: s, url: cv.toDataURL('image/png') })
     }
     setVariants(out)

@@ -107,7 +107,7 @@ export default function UrvidCraftStudio() {
     const ctx = cv.getContext('2d')
     const DPR = Math.min(window.devicePixelRatio || 1, 2.5)
     cv.width = video.W * DPR; cv.height = video.H * DPR
-    const draw = () => { ctx.setTransform(DPR, 0, 0, DPR, 0, 0); drawFrame(ctx, headRef.current, video) }
+    const draw = () => { ctx.setTransform(DPR, 0, 0, DPR, 0, 0); drawFrame(ctx, headRef.current, video, { quality: 0.7 }) }   // preview a calidad reducida (item L717); el export va a full
     // EN PAUSA: dibuja UN frame y NO entra al loop -> la pagina queda idle (sin re-render por frame).
     if (!playing) { draw(); setHead(headRef.current); return }
     // REPRODUCIENDO: anima en canvas cada frame, pero el estado de React (la hora) se actualiza THROTTLEADO (~8/s)
