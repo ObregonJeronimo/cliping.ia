@@ -600,7 +600,7 @@ export default function UrvidCraftStudio() {
           <div className={styles.modalBg} onClick={() => setNewOpen(false)}>
             <div className={styles.modal} onClick={e => e.stopPropagation()}>
               <h3 className={styles.modalTitle}>Nuevo proyecto</h3>
-              <label className={styles.field}><span className={styles.lbl}>Nombre</span><input className={styles.input} autoFocus value={npName} onChange={e => setNpName(e.target.value)} placeholder="Mi video de Wise" onKeyDown={e => { if (e.key === 'Enter') { setNewOpen(false); newProject(npName.trim() || 'Proyecto sin título', npUrl.trim()) } }} /></label>
+              <label className={styles.field}><span className={styles.lbl}>Nombre</span><input className={styles.input} autoFocus value={npName} onChange={e => setNpName(e.target.value)} placeholder="Mi video de Urvid" onKeyDown={e => { if (e.key === 'Enter') { setNewOpen(false); newProject(npName.trim() || 'Proyecto sin título', npUrl.trim()) } }} /></label>
               <label className={styles.field}><span className={styles.lbl}>Link de la página (opcional)</span><input className={styles.input} value={npUrl} onChange={e => setNpUrl(e.target.value)} placeholder="https://tu-sitio.com" /></label>
               <div className={styles.modalActions}>
                 <button className={styles.ghost} onClick={() => setNewOpen(false)}>Cancelar</button>

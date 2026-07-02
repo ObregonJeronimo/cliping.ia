@@ -50,7 +50,7 @@
 .timelineDock { flex-shrink: 0; max-height: 42vh; overflow-y: auto; border-top: 1px solid var(--border); background: var(--surface); padding: 4px 14px 12px; }
 
 /* ---- EDITOR full-screen (overlay que TAPA el sidebar de la app) ---- */
-.editorFull { position: fixed; inset: 0; z-index: 60; box-sizing: border-box; background: var(--bg); color: var(--ink); font-family: var(--fbody); -webkit-font-smoothing: antialiased; display: flex; flex-direction: column;
+.editorFull { position: fixed; inset: 0; z-index: 200; box-sizing: border-box; background: var(--bg); color: var(--ink); font-family: var(--fbody); -webkit-font-smoothing: antialiased; display: flex; flex-direction: column;
   --bg: #f3f2ee; --surface: #fff; --ink: #16150f; --muted: #74716a; --faint: #a9a69d; --disabled: #c4c0b6; --border: rgba(22, 21, 15, .1); --border2: rgba(22, 21, 15, .16); --hover: rgba(22, 21, 15, .03);
   --fdisplay: 'Bricolage Grotesque', 'DM Sans', sans-serif; --fbody: 'DM Sans', sans-serif; --fmono: 'JetBrains Mono', monospace; --rbtn: 12px; --shadow-lg: 0 26px 60px -34px rgba(22, 21, 15, .28); }
 .topLeft { display: flex; align-items: center; gap: 14px; }
@@ -93,7 +93,7 @@
 .mgrEmpty span { color: var(--muted); margin-bottom: 12px; }
 
 /* modal nuevo proyecto */
-.modalBg { position: fixed; inset: 0; z-index: 80; background: rgba(22, 21, 15, 0.42); display: flex; align-items: center; justify-content: center; padding: 20px; }
+.modalBg { position: fixed; inset: 0; z-index: 210; background: rgba(22, 21, 15, 0.42); display: flex; align-items: center; justify-content: center; padding: 20px; }
 .modal { background: var(--surface); border-radius: 18px; padding: 24px; width: 100%; max-width: 420px; box-shadow: var(--shadow-lg); display: flex; flex-direction: column; gap: 14px; }
 .modalTitle { font-family: var(--fdisplay); font-weight: 600; font-size: 20px; margin: 0; }
 .modalActions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px; }
