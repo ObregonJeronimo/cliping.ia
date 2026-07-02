@@ -97,10 +97,10 @@ export function buildArcSmart(seed, sig, awareness = 'solution', seriousness = 0
   // sumo UN editorial por los guards body.indexOf<0) -> el filter quita exactamente ese 1 lider. Op pura post-r() (sin re-roll).
   const ob = (open === 'statements/editorial') ? finalBody.filter((c, i, a) => !(c === 'statements/editorial' && a.indexOf(c) === i)) : finalBody
   const seq = [open, ...ob]
-  // MID-ROLL CTA: para publico con URGENCIA o muy consciente (most/product), un empujon de CTA ANTES del cierre final.
-  // ADITIVO (no reemplaza beats de texto) y SIN consumir r() (decision pura sobre booleanos) -> no re-rollea el cuerpo.
-  const ctaUrgent = sig.urgency || awareness === 'most' || awareness === 'product'
-  if (ctaUrgent && duration !== 'corto' && seq.length >= 3) seq.push('closers/outro')
+  // CIERRE: UN solo outro/CTA. (Antes, para publico urgente/consciente se agregaba un 2do 'closers/outro' como
+  // "mid-roll CTA", pero quedaba PEGADO al cierre -> las dos ultimas escenas mostraban el MISMO CTA ("Comienza
+  // gratis"), leido como escena duplicada [bug reportado]. Un reel de ~12s cierra mejor con UN CTA claro; el enfasis
+  // para publico urgente ya lo da el opener-hook + el boost de escenas 'cta'/'cierre' en RULES, sin duplicar la escena.)
   return [...seq, 'closers/outro']
 }
 
