@@ -2008,10 +2008,12 @@ register({
 
 register({
   id: 'data.number.cardstat', lib: 'datakit', category: 'numeros-animados', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
+  real: true, needsStats: 1,   // MIGRADO (item L152): lee la 1ra stat REAL; el selector solo lo elige con realStats>=1.
   register: 'neutral', intensity: 'medium', tags: ['hero', 'tarjeta', 'kpi', 'mono'],
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
-    // numero hero DENTRO de una tarjeta de superficie con titulo arriba y chip de delta abajo-derecha. Limpio.
+    const { pal, content, fonts } = env
+    const st = realStat(content, 0); if (!st) return   // honestidad: solo con stat real (el selector ya lo gatea; doble-guard)
+    // numero hero DENTRO de una tarjeta de superficie con titulo arriba. Limpio.
     const cardX = W * 0.1, cardW = W * 0.8, cardY = H * 0.28, cardH = H * 0.42
     const cAp = spring(inv(t, 0.1, 0.8), { zeta: 0.55, freq: 1.8 })
     ctx.save(); ctx.globalAlpha = clamp(cAp, 0, 1)
@@ -2022,24 +2024,10 @@ register({
     ctx.restore()
     sheen(ctx, cardX, cardY, cardW, 6, t, { period: 3.4, strength: 0.24, r: 3 })
     // titulo
-    drawText(ctx, shortLabel(content.tagline, 3) || 'Este mes', W / 2, cardY + 46, { size: 16, weight: 600, family: fonts.text, maxW: cardW * 0.8, color: pal.dim, alpha: inv(t, 0.3, 0.9) })
-    // numero grande
-    const target = range(r, 1200, 96000)
-    const val = countTo(target, t, 0.2, 1.2)
-    drawText(ctx, fmtInt(val), W / 2, cardY + cardH * 0.5, { size: 72, weight: 700, family: fonts.accent, maxW: cardW * 0.86, color: numColor(pal) })
-    // chip de delta abajo (flecha + %)
-    const dAp = inv(t, 0.5, 1.1)
-    if (dAp > 0) {
-      const delta = Math.round(range(r, 6, 38))
-      const txt = '+' + delta + '%'
-      ctx.font = `700 16px "${fonts.accent}"`; const tw = ctx.measureText(txt).width
-      const cw = tw + 46, cxp = W / 2 - cw / 2, cyp = cardY + cardH - 50
-      ctx.save(); ctx.globalAlpha = dAp
-      ctx.fillStyle = rgba(pal.accent, 0.16 + 0.08 * idleK(t) * pulse01(t, 0)); roundRectPath(ctx, cxp, cyp, cw, 32, 16); ctx.fill()
-      flechaUp(ctx, cxp + 20, cyp + 16 + drift(t, 0, 1, 1.1), 7, pal.accent)
-      drawText(ctx, txt, cxp + 32, cyp + 16, { size: 16, weight: 700, family: fonts.accent, align: 'left', maxW: tw + 4, color: numColor(pal) })
-      ctx.restore()
-    }
+    drawText(ctx, shortLabel(st.label, 3) || shortLabel(content.tagline, 3) || 'Este mes', W / 2, cardY + 46, { size: 16, weight: 600, family: fonts.text, maxW: cardW * 0.8, color: pal.dim, alpha: inv(t, 0.3, 0.9) })
+    // numero grande = el VALOR REAL (item L152) con count-up sobre su parte numerica
+    drawText(ctx, statDisplay(st, t, 0.2, 1.2), W / 2, cardY + cardH * 0.5, { size: 72, weight: 700, family: fonts.accent, maxW: cardW * 0.86, color: numColor(pal) })
+    // (chip de delta '+X%' ELIMINADO: fabricaba un crecimiento inventado -> deshonesto. Sin una 2da stat real no se muestra.)
     const lab = content.claim
     if (lab) drawText(ctx, lab, W / 2, cardY + cardH + 40, { size: 18, weight: 600, family: fonts.text, maxW: W * 0.82, color: pal.dim, alpha: inv(t, 0.7, 1.2) })
   },
