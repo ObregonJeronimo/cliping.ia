@@ -84,6 +84,9 @@ export function makeVideo(brief = {}) {
   // DENSIDAD de texto del brief (0..1): muchos items/bullets + datos + claim largo => contenido denso => sesgo a pairing
   // legible. PURA (deriva de sig, NO consume r() -> no mueve ninguna secuencia PRNG). sig.items = bullets || split del head.
   const density = Math.min(1, (sig.items || 0) / 4 * 0.6 + (sig.hasData ? 0.2 : 0) + (sig.longClaim ? 0.2 : 0))
+  // STATS REALES (item L152): las cifras que la perception SELECCIONO de la pagina (value no vacio). Gatean datakit: un
+  // modulo de data-viz solo entra al pool si hay suficientes stats reales -> nunca se fabrica un numero (honestidad de datos).
+  const realStats = Array.isArray(content.stats) ? content.stats.filter(s => s && (s.value || s.value === 0)) : []
   // SCORER de fit: peso × afinidad-rubro × match-seriedad(register) × match-intensidad × legibilidad(densidad). Reemplaza al viejo wadj.
   const fitCtx = { rubro, seriousness, density }
   const score = (m) => fitWeight(m, fitCtx)
@@ -174,11 +177,14 @@ export function makeVideo(brief = {}) {
   const scenes = []; let start = 0
   arc.forEach((beat, i) => {
     let opts = query('scene-layouts', { tone, category: beat.category })
-    // DATAKIT queda FUERA del pool: sus charts FABRICAN los numeros (mulberry32 por seed) -> contradice la
-    // honestidad de datos (no inventar). Las escenas data/* honestas ya cubren 1 numero REAL (statAt/numFrom) y
-    // scene.data.multi cubre 2-3 stats reales; sin datos reales el beat degrada a texto. (Antes datakit entraba
-    // justo cuando NO habia stats -> grafico inventado.) Reactivar datakit recien cuando lea content.stats reales
-    // (pendiente: reescritura de los 66 modulos para que rendericen datos reales y se salteen si no alcanzan).
+    // DATAKIT HONESTO (item L152): un beat de DATOS con stats REALES suficientes suma al pool los modulos datakit MIGRADOS
+    // (m.real -> leen content.stats, NUNCA fabrican). Gatea por realStats.length -> SIN stats el pool queda byte-identico (los
+    // briefs de gates sin stats quedan iguales) y el beat degrada a la escena honesta scene.data.* (statAt/numFrom). Los ~65
+    // modulos NO migrados no tienen m.real -> siguen fuera (fabricarian). Determinismo: weightedPick consume 1 prng() sin
+    // importar el tamaño del pool + seedFor(arco) es independiente del contenido del pool -> el resto queda intacto.
+    if (beat.category === 'data/single' && realStats.length >= 1) {
+      opts = opts.concat(query('datakit', { tone }).filter(m => m.real && (m.needsStats || 1) <= realStats.length))
+    }
     const prng = seedFor(seed ^ hashStr('arc' + i), 'scene')
     let mod = null
     const lockId = lock && lock.scenes && lock.scenes[i]

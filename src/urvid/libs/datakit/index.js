@@ -21,6 +21,28 @@ function countTo(target, t, t0, t1) { return target * eOutExpo(inv(t, t0, t1)) }
 // color del NUMERO segun tono: claro -> tinta; oscuro -> inkText (acento-como-texto, legible).
 function numColor(pal) { return pal.tone === 'light' ? pal.ink : pal.inkText }
 
+// ---- DATOS REALES (item L152): los modulos MIGRADOS (real:true) leen content.stats y NUNCA fabrican. El selector ya
+// los gatea por realStats>=needsStats (assemble.js); estos helpers son el seam + un doble-guard de honestidad. ----
+// realStat(content,i): la i-esima stat REAL {value,label} de la perception, o null.
+function realStat(content, i = 0) {
+  const s = content && Array.isArray(content.stats) ? content.stats[i] : null
+  return s && (s.value || s.value === 0) ? s : null
+}
+// parseStat: separa el value ('92%', '$1.2M', '4.9', '+218%') en {num, prefix, suffix, decimals} para animar el count-up
+// mostrando el valor EXACTO. Si no hay numero parseable -> num=null (se muestra el string crudo, sin count-up).
+function parseStat(v) {
+  const raw = String(v == null ? '' : v).trim()
+  const m = raw.match(/[-+]?\d[\d.,]*/)
+  if (!m) return { raw, num: null, prefix: '', suffix: '', decimals: 0 }
+  const norm = m[0].replace(/,(?=\d{3}\b)/g, '').replace(',', '.')   // 1,000->1000 ; 4,9->4.9
+  const num = parseFloat(norm)
+  return { raw, num: isFinite(num) ? num : null, prefix: raw.slice(0, m.index), suffix: raw.slice(m.index + m[0].length), decimals: Math.min((norm.split('.')[1] || '').length, 2) }
+}
+// formatea el numero animado (thousands sep para enteros; decimales fijos si el valor real los tenia).
+function fmtNum(v, decimals) { return decimals > 0 ? (Math.round(v * 10 ** decimals) / 10 ** decimals).toFixed(decimals) : fmtInt(v) }
+// statDisplay: el valor REAL con count-up en su parte numerica (o el string crudo si no es numerico). Determinista por t.
+function statDisplay(st, t, t0, t1) { const p = parseStat(st.value); return p.num != null ? p.prefix + fmtNum(countTo(p.num, t, t0, t1), p.decimals) + p.suffix : p.raw }
+
 // ---- VIDA CONTINUA (idle life) — helpers puros, deterministas (SOLO por t). Sutiles y suaves. ----
 // Tras la entrada los datos se asientan; estos helpers le dan vida CONTINUA a la DECO (barras/arcos/
 // puntos/agujas/reglas) sin cambiar el dato ni mover el texto de su lugar. Todo via Math.sin(t*w+phase).
@@ -86,16 +108,14 @@ function sheenArc(ctx, cx, cy, rad, lw, t, col, { period = 4, phase = 0, span = 
 // ====================================================================== numeros-animados
 register({
   id: 'data.number.bigcount', lib: 'datakit', category: 'numeros-animados', tones: ['dark', 'light'], rubros: ['finanzas', 'tech', 'default'], weight: 1.3,
+  real: true, needsStats: 1,   // MIGRADO (item L152): lee la 1ra stat REAL; el selector solo lo elige con realStats>=1 (nunca fabrica).
   register: 'neutral', intensity: 'medium', tags: ['hero', 'stat', 'mono'],
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
+    const { pal, content, fonts } = env
+    const st = realStat(content, 0); if (!st) return   // honestidad: SOLO con stat real (el selector ya lo gatea; doble-guard)
     const cx = W / 2, cy = H * 0.44
-    // valor estable derivado de la semilla (3 a 5 cifras -> impacto)
-    const target = Math.round(range(r, 1200, 98000))
-    const val = countTo(target, t, 0.1, 1.2)
-    const sufijo = pick(r, ['+', 'k', '', ''])
-    // numero grande en mono, color por tono
-    drawText(ctx, fmtInt(val) + sufijo, cx, cy, {
+    // numero grande en mono (el VALOR REAL con count-up), color por tono
+    drawText(ctx, statDisplay(st, t, 0.1, 1.2), cx, cy, {
       size: 92, weight: 700, family: fonts.accent, maxW: W * 0.88, color: numColor(pal),
       shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.35)' : null,
     })
@@ -105,8 +125,8 @@ register({
     ctx.save(); ctx.globalAlpha = glow(t, 0, 0.78, 1)
     ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(cx - rw / 2, ry, rw, 6, 3); ctx.fill()
     ctx.restore()
-    // etiqueta (claim/tagline) debajo, en dim
-    const label = content.claim || content.tagline || content.brand || ''
+    // etiqueta REAL del stat (o claim/tagline como fallback) debajo, en dim
+    const label = st.label || content.claim || content.tagline || ''
     if (label) drawText(ctx, label, cx, cy + 94, { size: 22, weight: 600, family: fonts.text, maxW: W * 0.78, color: pal.dim, alpha: inv(t, 0.7, 1.2) })
   },
 })
