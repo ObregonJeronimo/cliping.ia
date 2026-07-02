@@ -63,9 +63,19 @@ export default function UrvidCraftStudio() {
   // TIMELINE (Fase 1): `order` = permutacion de las escenas base editada por el usuario. Se reconcilia a identidad si cambia
   // la CANTIDAD de escenas (ej cambiar duracion); si solo cambia el contenido, se conserva. applyTimeline reordena + recalcula
   // los starts (fail-safe al base si el orden no es valido). El preview y el export usan `video` -> ambos reflejan el reorden.
-  const [order, setOrder] = useState([])
-  useEffect(() => { setOrder(prev => (prev.length === baseVideo.scenes.length ? prev : identityOrder(baseVideo.scenes.length))) }, [baseVideo])
-  const video = useMemo(() => applyTimeline(baseVideo, order), [baseVideo, order])
+  // DOCUMENTO del timeline (Fase 2+): { order, sceneText:{baseIdx:{campo:valor}}, overlays[], audio[] }. Serializable ->
+  // se persiste con el video (draft + Firestore). order se reconcilia a identidad si cambia la CANTIDAD de escenas.
+  const [tl, setTl] = useState(() => { const t = (d0 && d0.timeline) || {}; return { v: 1, order: t.order || [], sceneText: t.sceneText || {}, overlays: t.overlays || [], audio: t.audio || [] } })
+  useEffect(() => { setTl(t => (t.order.length === baseVideo.scenes.length ? t : { ...t, order: identityOrder(baseVideo.scenes.length) })) }, [baseVideo])
+  const video = useMemo(() => applyTimeline(baseVideo, tl.order, tl.sceneText), [baseVideo, tl.order, tl.sceneText])
+  // edita el texto de UNA escena (por indice BASE) -> override en tl.sceneText; vacio -> quita el override (vuelve al global).
+  const editSceneText = (baseIdx, key, val) => setTl(t => {
+    const cur = { ...(t.sceneText[baseIdx] || {}) }
+    if (val == null || val === '') delete cur[key]; else cur[key] = val
+    const st = { ...t.sceneText }
+    if (Object.keys(cur).length) st[baseIdx] = cur; else delete st[baseIdx]
+    return { ...t, sceneText: st }
+  })
   const tokens = useMemo(() => estimateTokens(video, brief), [video, brief])   // consumo APROXIMADO por elemento (reemplaza "creditos")
 
   // opciones por slot (lista completa ordenada por afinidad; la grilla capea el display). Recalcula al cambiar tono/rubro.
@@ -82,7 +92,7 @@ export default function UrvidCraftStudio() {
 
   // PERSISTENCIA: guarda el borrador ante cualquier cambio (solo datos -> el video se re-renderiza determinista al retomar).
   useEffect(() => {
-    try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ brief, picks, seed, step, url, analyzed })) } catch { /* noop */ }
+    try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ brief, picks, seed, step, url, analyzed, timeline: tl })) } catch { /* noop */ }
   }, [brief, picks, seed, step, url, analyzed])
 
   // al loguearse, trae "Mis videos" de advanced de Firestore (coleccion propia); sin sesion queda el cache de localStorage.
@@ -99,7 +109,7 @@ export default function UrvidCraftStudio() {
   // EMPEZAR DE NUEVO: descarta el borrador y vuelve al estado inicial (semilla nueva).
   const restart = () => {
     try { localStorage.removeItem(DRAFT_KEY) } catch { /* noop */ }
-    setBrief(BRIEF0); setPicks({}); setUrl(''); setAnalyzed(false); setStep(0); setSeed(newSeed())
+    setBrief(BRIEF0); setPicks({}); setUrl(''); setAnalyzed(false); setStep(0); setSeed(newSeed()); setTl({ v: 1, order: [], sceneText: {}, overlays: [], audio: [] })
     headRef.current = 0; setHead(0)
   }
 
@@ -154,7 +164,7 @@ export default function UrvidCraftStudio() {
         // ENERGIA del PLAYBOOK del rubro (item L142): el vertical dirige el ritmo del video. Ausente/invalido -> neutra en el motor.
         energyHint: ['alto', 'medio', 'bajo'].includes(b.energyHint) ? b.energyHint : undefined,
       })
-      setPicks({}); headRef.current = 0; setHead(0); setAnalyzed(true); setAnalyzing('')
+      setPicks({}); setTl({ v: 1, order: [], sceneText: {}, overlays: [], audio: [] }); headRef.current = 0; setHead(0); setAnalyzed(true); setAnalyzing('')
     } catch {
       setAnalyzing('Backend no disponible — abri "start.bat" (corre en localhost:8000)')
     }
@@ -186,7 +196,7 @@ export default function UrvidCraftStudio() {
   // ---- guardar en "Mis videos" (Firestore + localStorage) -------------------------------------
   const save = async () => {
     const id = 'v' + Date.now().toString(36)
-    const item = { id, brand: brief.brand || 'Marca', rubro: brief.rubro, tone: brief.tone, brandColor: brief.brandColor, format: brief.format || '9:16', duration: brief.duration || 'medio', tagline: brief.tagline || '', claim: brief.claim || '', cta: brief.cta || '', bullets: brief.bullets || [], stats: brief.stats || [], proof: brief.proof || '', ...(brief.energyHint ? { energyHint: brief.energyHint } : {}), recipe: video.recipe, seed, ts: Date.now() }   // energyHint (item L142): energy/xf NO estan en la receta -> sin persistirlo, el video lockeado recargaba con RITMO distinto
+    const item = { id, brand: brief.brand || 'Marca', rubro: brief.rubro, tone: brief.tone, brandColor: brief.brandColor, format: brief.format || '9:16', duration: brief.duration || 'medio', tagline: brief.tagline || '', claim: brief.claim || '', cta: brief.cta || '', bullets: brief.bullets || [], stats: brief.stats || [], proof: brief.proof || '', ...(brief.energyHint ? { energyHint: brief.energyHint } : {}), recipe: video.recipe, timeline: tl, seed, ts: Date.now() }   // energyHint (item L142): energy/xf NO estan en la receta. timeline (Fase 2+): reorden/overrides/overlays/audio del editor -> el guardado los conserva
     const next = [item, ...saved].slice(0, 24)
     setSaved(next)
     try { localStorage.setItem(SAVED_KEY, JSON.stringify(next)) } catch { /* noop */ }
@@ -202,6 +212,8 @@ export default function UrvidCraftStudio() {
     for (const k of Object.keys(SLOT_LIB)) { if (r[k] != null) p[k] = r[k] }   // todos los slots del recipe (auto-incluye futuros)
     if (Array.isArray(r.scenes)) p.scenes = Object.fromEntries(r.scenes.map((s, i) => [i, s]))
     setPicks(p)
+    const t = (it.timeline && typeof it.timeline === 'object') ? it.timeline : {}   // restaura el documento del timeline (reorden/overrides/overlays/audio)
+    setTl({ v: 1, order: t.order || [], sceneText: t.sceneText || {}, overlays: t.overlays || [], audio: t.audio || [] })
     setAnalyzed(true); setStep(6)   // salta a "Crear" (revision) para ver el preview armado
     headRef.current = 0; setHead(0); setPlaying(true)
   }
@@ -472,7 +484,7 @@ export default function UrvidCraftStudio() {
           </aside>
         </div>
         {/* TIMELINE de edicion (Fase 1) — full-width bajo las columnas, una vez analizado el sitio */}
-        {analyzed && <Timeline video={video} head={head} order={order} onReorder={setOrder} brief={brief} onEditText={up} onSeek={seek} />}
+        {analyzed && <Timeline video={video} head={head} order={tl.order} onReorder={o => setTl(t => ({ ...t, order: o }))} brief={brief} sceneText={tl.sceneText} onEditSceneText={editSceneText} onSeek={seek} />}
       </div>
     </div>
   )

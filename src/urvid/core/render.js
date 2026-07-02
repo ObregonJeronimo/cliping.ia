@@ -112,7 +112,7 @@ function paintScene(ctx, sc, t, video, motion, typekit, layout) {
   const ox = (en.dx || 0) * k * intK, oy = (en.dy || 0) * k * intK, rot = (en.rotate || 0) * k * intK
   ctx.save()
   ctx.translate(W / 2 + ox, H / 2 + oy); ctx.rotate(rot); ctx.scale(z, z); ctx.translate(-W / 2, -H / 2)
-  mod.render(ctx, ts, { pal: video.palette, content: video.content, fonts: video.fonts, seed: sc.seed, energy: 1, sceneDur: sc.dur, motion, typekit, layout, mediaImage: video.mediaImage, getImg: _getImg })
+  mod.render(ctx, ts, { pal: video.palette, content: sc.content || video.content, fonts: video.fonts, seed: sc.seed, energy: 1, sceneDur: sc.dur, motion, typekit, layout, mediaImage: video.mediaImage, getImg: _getImg })   // sc.content = override de texto POR-ESCENA del timeline (item timeline Fase 2); ausente -> content global -> byte-identico (gates intactos)
   ctx.restore()
 }
 

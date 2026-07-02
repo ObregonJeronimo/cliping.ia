@@ -9,7 +9,7 @@ import styles from './Timeline.module.css'
 
 const HUE = { Apertura: '#5f7cf5', Mensaje: '#1fa876', Lista: '#c9902b', 'Comparación': '#b3612f', Dato: '#8a5cf0', Prueba: '#d0417a', Cierre: '#e0533b', Puente: '#7d8a99', Detalle: '#2b9bc9', Escena: '#888' }
 
-export default function Timeline({ video, head, order, onReorder, brief, onEditText, onSeek }) {
+export default function Timeline({ video, head, order, onReorder, brief, sceneText, onEditSceneText, onSeek }) {
   const scenes = (video && video.scenes) || []
   const dur = (video && video.duration) || 1
   const [sel, setSel] = useState(-1)          // bloque seleccionado (indice de display)
@@ -38,7 +38,10 @@ export default function Timeline({ video, head, order, onReorder, brief, onEditT
           <div className={styles.playhead} style={{ left: `${Math.max(0, Math.min(100, (head / dur) * 100))}%` }} />
           {scenes.map((sc, i) => {
             const m = sceneMeta(sc.sceneId)
-            const txt = blockText(brief, m.textKey)
+            const baseIdx = sc.baseIndex != null ? sc.baseIndex : i          // el override se guarda por indice BASE (sigue a la escena al reordenar)
+            const ov = sceneText && sceneText[baseIdx]
+            const txt = blockText((ov && Object.keys(ov).length) ? { ...brief, ...ov } : brief, m.textKey)
+            const overridden = !!(ov && ov[m.textKey] != null)
             const editable = isInlineEditable(m.textKey)
             const hue = HUE[m.label] || '#888'
             return (
@@ -53,14 +56,14 @@ export default function Timeline({ video, head, order, onReorder, brief, onEditT
                 onClick={() => { setSel(i); onSeek && onSeek(sc.start) }}
                 title={`${m.label} · ${(sc.dur || 0).toFixed(1)}s`}
               >
-                <span className={styles.blockTop}>{m.label}</span>
+                <span className={styles.blockTop}>{m.label}{overridden ? ' ✎' : ''}</span>
                 {editing === i && editable
                   ? <input
                       className={styles.blockInput}
                       autoFocus
                       defaultValue={txt}
                       onClick={e => e.stopPropagation()}
-                      onBlur={e => { onEditText && onEditText(m.textKey, e.target.value); setEditing(-1) }}
+                      onBlur={e => { onEditSceneText && onEditSceneText(baseIdx, m.textKey, e.target.value); setEditing(-1) }}
                       onKeyDown={e => { if (e.key === 'Enter') e.target.blur(); else if (e.key === 'Escape') setEditing(-1) }}
                     />
                   : <span

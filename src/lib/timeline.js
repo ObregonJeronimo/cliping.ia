@@ -46,15 +46,26 @@ export function identityOrder(n) {
   return Array.from({ length: Math.max(0, n | 0) }, (_, i) => i)
 }
 
-// aplica el orden del usuario al video base: reordena scenes y RECALCULA los start acumulados. Si el orden no es una
-// permutacion valida y COMPLETA de los indices base, devuelve el video base intacto (fail-safe -> nunca rompe el preview).
-export function applyTimeline(video, order) {
+// aplica el documento de timeline sobre el video base SIN tocar el motor determinista:
+//  - `order` reordena las escenas y RECALCULA los start acumulados (Fase 1).
+//  - `sceneText` (opcional, Fase 2) mapea INDICE BASE -> {campo:valor} y se inyecta como sc.content (el motor usa
+//    sc.content || video.content -> una escena sin override queda byte-identica). El indice es BASE, asi el override
+//    sigue a su escena aunque se reordene. Cada escena resultante lleva `baseIndex` (para editar por-escena en la UI).
+// Si `order` no es una permutacion valida y COMPLETA, devuelve el video base intacto (fail-safe -> nunca rompe el preview).
+export function applyTimeline(video, order, sceneText) {
   const base = video && Array.isArray(video.scenes) ? video.scenes : null
   if (!base || !Array.isArray(order) || order.length !== base.length) return video
   const seen = new Set()
   for (const i of order) { if (!(Number.isInteger(i) && i >= 0 && i < base.length) || seen.has(i)) return video; seen.add(i) }
+  const gc = video.content || {}
   let start = 0
-  const scenes = order.map(i => { const s = { ...base[i], start }; start += (s.dur || 0); return s })
+  const scenes = order.map(i => {
+    const ov = sceneText && sceneText[i]
+    const content = (ov && Object.keys(ov).length) ? { ...gc, ...ov } : undefined   // override de texto por-escena; ausente -> undefined -> motor usa el content global
+    const s = { ...base[i], start, baseIndex: i, ...(content ? { content } : {}) }
+    start += (s.dur || 0)
+    return s
+  })
   return { ...video, scenes, duration: start || video.duration }
 }
 
