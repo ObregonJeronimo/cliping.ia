@@ -3,6 +3,7 @@ import { collection, getDocs, doc, getDoc, setDoc, deleteDoc } from 'firebase/fi
 import { makeVideo, drawFrame, beatAt, W, H } from '../../urvid/index.js'
 import { exportCanvasVideo } from '../../lib/exportVideo.js'
 import { drawWatermark } from '../../lib/watermark.js'
+import { estimateTokens } from '../../lib/tokens.js'
 import { useAuth } from '../../contexts/AuthContext'
 import { db } from '../../lib/firebase'
 import styles from './Urvid1Studio.module.css'
@@ -26,6 +27,7 @@ export default function Urvid1Studio() {
   // ante cualquier cambio del brief (marca/color/rubro/texto) o al analizar/cargar otro -> ahi el estilo se re-elige.
   const [keep, setKeep] = useState(null)
   const video = useMemo(() => makeVideo({ ...brief, seed: seed || undefined, lockRecipe: lock || undefined, keepRecipe: keep || undefined }), [brief, seed, lock, keep])
+  const tokens = useMemo(() => estimateTokens(video, brief), [video, brief])   // consumo APROXIMADO por elemento (reemplaza "creditos")
   const [playing, setPlaying] = useState(true)
   const [speed, setSpeed] = useState(1)
   const [head, setHead] = useState(0)
@@ -287,6 +289,13 @@ export default function Urvid1Studio() {
               ))}
             </div>
           )}
+          {/* CONSUMO en TOKENS (aprox) — reemplaza el viejo "creditos" opaco: desglosa que cuesta el video por elemento */}
+          <div className={styles.tokens}>
+            <div className={styles.tokensHead}><span>⚡ Consumo estimado</span><strong>≈ {tokens.total.toLocaleString('es')} tk</strong></div>
+            <div className={styles.tokensList}>
+              {tokens.items.map(it => <div key={it.key} className={styles.tokensRow}><span>{it.label}</span><span>{it.tokens}</span></div>)}
+            </div>
+          </div>
           <span className={styles.seedpill}><i>semilla</i>{seed ? '#' + (seed >>> 0).toString(16).slice(0, 6) : 'auto (marca + rubro)'}</span>
           {import.meta.env.DEV && <button className={styles.share} onClick={share} title="Manda este video a Claude para que lo vea (solo dev)">{shared === '...' ? 'Compartiendo…' : '↗ Compartir con Claude'}</button>}
           {import.meta.env.DEV && shared && shared !== '...' && <p style={{ margin: 0, fontSize: 12, color: shared.indexOf('✓') >= 0 ? 'var(--green)' : 'var(--red)' }}>{shared}</p>}

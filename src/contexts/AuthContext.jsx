@@ -36,7 +36,7 @@ export function AuthProvider({ children }) {
         email:       firebaseUser.email,
         displayName: firebaseUser.displayName,
         photoURL:    firebaseUser.photoURL,
-        credits:     5,
+        tokens:      5000,   // saldo en TOKENS (reemplaza "creditos"); el consumo se estima por complejidad del video
         plan:        'free',
         createdAt:   serverTimestamp(),
       }

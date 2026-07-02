@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { collection, doc, getDocs, setDoc, deleteDoc } from 'firebase/firestore'
 import { makeVideo, drawFrame } from '../../urvid/index.js'
 import { exportCanvasVideo } from '../../lib/exportVideo.js'
+import { estimateTokens } from '../../lib/tokens.js'
 import { useAuth } from '../../contexts/AuthContext'
 import { db } from '../../lib/firebase'
 import OptionGrid from './OptionGrid.jsx'
@@ -57,6 +58,7 @@ export default function UrvidCraftStudio() {
   }, [baseRecipe, picks])
   // VIDEO en vivo: receta completa LOCKEADA (pinea cada slot elegido + los auto). Determinista.
   const video = useMemo(() => makeVideo({ ...brief, brand: brief.brand || 'Tu marca', seed, lockRecipe: fullRecipe }), [brief, seed, fullRecipe])
+  const tokens = useMemo(() => estimateTokens(video, brief), [video, brief])   // consumo APROXIMADO por elemento (reemplaza "creditos")
 
   // opciones por slot (lista completa ordenada por afinidad; la grilla capea el display). Recalcula al cambiar tono/rubro.
   const opts = useMemo(() => ({
@@ -307,6 +309,15 @@ export default function UrvidCraftStudio() {
           {chips.map(([k, v]) => <span key={k} className={styles.chip}><i>{k}</i>{String(v).replace(/^[^.]+\./, '')}</span>)}
         </div>
         <div className={styles.flowLine}>{video.recipe.scenes.map(s => s.replace(/^[^.]+\./, '')).join('  →  ')}</div>
+        {/* CONSUMO en TOKENS (aprox) — desglose por elemento; mismo modelo que urvid IA (src/lib/tokens.js) */}
+        <div style={{ marginTop: 14, borderTop: '1px solid rgba(0,0,0,0.09)', paddingTop: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, marginBottom: 8 }}>
+            <span style={{ opacity: 0.65 }}>⚡ Consumo estimado</span><strong>≈ {tokens.total.toLocaleString('es')} tokens</strong>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px', fontSize: 12, opacity: 0.68 }}>
+            {tokens.items.map(it => <span key={it.key}>{it.label}: <b>{it.tokens}</b></span>)}
+          </div>
+        </div>
         <div className={styles.actions}>
           <button className={styles.primary} onClick={save}>★ Crear y guardar</button>
           <button className={styles.ghost} onClick={exportVideo} disabled={!!exporting}>{exporting ? `Exportando ${exporting}` : '⬇ Descargar video'}</button>

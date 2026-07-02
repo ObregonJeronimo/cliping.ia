@@ -52,7 +52,7 @@ export default function Sidebar() {
       <div className={styles.bottom}>
         <div className={styles.credits}>
           <span className={styles.creditsIcon}>⚡</span>
-          <span><strong>{profile?.credits ?? 0}</strong> créditos</span>
+          <span><strong>{(profile?.tokens ?? (profile?.credits ?? 0) * 1000).toLocaleString('es')}</strong> tokens</span>
         </div>
 
         <div className={styles.userRow}>
