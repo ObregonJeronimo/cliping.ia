@@ -1005,26 +1005,20 @@ register({
 // ====================================================================== numeros-animados (mas)
 register({
   id: 'data.number.unit', lib: 'datakit', category: 'numeros-animados', tones: ['dark', 'light'], rubros: ['*'], weight: 1.1,
+  real: true, needsStats: 1,   // MIGRADO (item L152): lee la 1ra stat REAL; el selector solo lo elige con realStats>=1.
   register: 'neutral', intensity: 'bold', tags: ['hero', 'stat', 'unidad', 'mono'],
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
-    // numero hero con UNIDAD/prefijo en linea aparte (ej "$" + "2.4M") -> moneda/escala. El simbolo en acento-tinta.
+    const { pal, content, fonts } = env
+    const st = realStat(content, 0); if (!st) return   // honestidad: solo con stat real (el selector ya lo gatea; doble-guard)
+    // numero hero = el VALOR REAL (el value ya trae su prefijo/sufijo: '$2.4M','92%','28.725') con count-up en la parte numerica.
     const cx = W / 2, cy = H * 0.44
-    const scales = [{ s: 1e6, suf: 'M' }, { s: 1e3, suf: 'k' }, { s: 1, suf: '' }]
-    const sc = pick(r, scales)
-    const target = range(r, 1.6, 9.4)              // 1.6..9.4 -> con sufijo M/k da impacto
-    const val = target * eOutExpo(inv(t, 0.1, 1.2))
-    const sym = pick(r, ['$', '+', ''])
-    const shown = (sc.suf ? val.toFixed(1) : fmtInt(val)) + sc.suf
-    // simbolo arriba-izquierda del numero (acento como deco, chico) -> deriva idle suave
-    if (sym) drawText(ctx, sym, cx - W * 0.3, cy - 30 + drift(t, 0.5, 1.1), { size: 40, weight: 700, family: fonts.accent, color: pal.accent, alpha: inv(t, 0.3, 0.9) * glow(t, 0.5, 0.8, 1) })
-    drawText(ctx, shown, cx, cy, { size: 100, weight: 700, family: fonts.accent, maxW: W * 0.82, color: numColor(pal), shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.35)' : null })
+    drawText(ctx, statDisplay(st, t, 0.1, 1.2), cx, cy, { size: 100, weight: 700, family: fonts.accent, maxW: W * 0.82, color: numColor(pal), shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.35)' : null })
     // regla de acento bajo el numero -> respira ancho + glow idle
     const ru = eOutCubic(inv(t, 0.5, 1.2)), rw = 110 * ru * breath(t, 0, 0.02)
     ctx.save(); ctx.globalAlpha = glow(t, 0, 0.78, 1)
     ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(cx - rw / 2, cy + 62, rw, 6, 3); ctx.fill()
     ctx.restore()
-    const label = content.tagline || content.claim || content.brand || ''
+    const label = st.label || content.tagline || content.claim || ''
     if (label) drawText(ctx, label, cx, cy + 100, { size: 21, weight: 600, family: fonts.text, maxW: W * 0.78, color: pal.dim, alpha: inv(t, 0.7, 1.2) })
   },
 })
