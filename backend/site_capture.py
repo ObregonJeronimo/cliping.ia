@@ -13,6 +13,7 @@ Setup en el backend (una vez):
 from __future__ import annotations
 
 import ipaddress
+import re
 import socket
 from pathlib import Path
 from urllib.parse import urlparse
@@ -118,6 +119,69 @@ def _guard(url: str) -> bool:
     return ok
 
 
+# ---- PEEK SURGICAL (item L348): mirar /nosotros o /precios SOLO si el home trae poca señal ----
+_PEEK_RE = re.compile(r"(nosotros|about|qui[eé]nes|equipo|precios|pricing|planes|plans|productos|servicios|company)", re.I)
+
+
+def _bare_host(netloc: str) -> str:
+    h = (netloc or "").lower()
+    return h[4:] if h.startswith("www.") else h
+
+
+def _is_sparse(content: dict) -> bool:
+    """El HOME trae POCA señal (landing minima / hero sin cuerpo) -> vale mirar /nosotros o /precios. PURO (testeable)."""
+    if not isinstance(content, dict):
+        return False
+    body = content.get("bodyText") or ""
+    heads = content.get("headings") or []
+    paras = content.get("paragraphs") or []
+    return len(body) < 600 and (len(heads) + len(paras)) < 8
+
+
+def _peek_url(nav_links, base_url: str):
+    """El PRIMER link de nav/footer que matchee /nosotros|precios|... y sea del MISMO dominio (anti-SSRF / no salir del sitio).
+    None si no hay. PURO (testeable sin browser)."""
+    base = _bare_host(urlparse((base_url or "").strip()).netloc)
+    for lk in (nav_links or []):
+        if not isinstance(lk, dict):
+            continue
+        href = (lk.get("h") or "").strip()
+        if not href or not (_PEEK_RE.search(href) or _PEEK_RE.search(lk.get("t") or "")):
+            continue
+        try:
+            h = urlparse(href)
+        except Exception:
+            continue
+        if h.scheme not in ("http", "https"):
+            continue
+        host = _bare_host(h.netloc)
+        if host and host != base:   # mismo dominio: no salir del sitio ni pegarle a otro host
+            continue
+        return href
+    return None
+
+
+def _merge_peek(home: dict, extra: dict, peek_url: str) -> dict:
+    """Fusiona el texto de la pagina peekeada en el content del HOME (dedup + capeado). El home conserva screenshot/logo/images."""
+    if not isinstance(extra, dict) or not isinstance(home, dict):
+        return home
+    out = dict(home)
+    for k, cap in (("headings", 20), ("paragraphs", 30), ("testimonials", 12), ("ctas", 14)):
+        a = list(home.get(k) or [])
+        seen = set(a)
+        for x in (extra.get(k) or []):
+            if x and x not in seen and len(a) < cap:
+                a.append(x)
+                seen.add(x)
+        out[k] = a
+    eb = (extra.get("bodyText") or "").strip()
+    if eb:
+        tag = urlparse(peek_url).path.strip("/") or "peek"
+        out["bodyText"] = ((home.get("bodyText") or "") + f"\n\n[/{tag}] " + eb)[:6000]
+    out["peekedFrom"] = peek_url
+    return out
+
+
 # NOTA: capture_site (screenshot-only) se ELIMINO por codigo muerto (0 callers; el pipeline vivo usa capture_all, que
 # captura screenshot+contenido+imagenes en UNA sola carga). extract_content (content-only) queda porque lo usa el
 # pipeline Remotion LEGACY (template_director.py). Si se retira ese legacy, extract_content tambien puede borrarse.
@@ -134,6 +198,12 @@ _JS_EXTRACT = r"""
     .filter(t => t.length >= 3 && t.length <= 90)).slice(0, 14);
   const nav = uniq([...document.querySelectorAll('nav a, header a')].map(txt)
     .filter(t => t.length >= 2 && t.length <= 26)).slice(0, 14);
+  // navLinks (item L348): texto + href absoluto de nav/header/footer -> el peek surgical elige /nosotros|/precios. Dedup por href.
+  const _seenH = new Set();
+  const navLinks = [...document.querySelectorAll('nav a, header a, footer a')]
+    .map(a => ({ t: clean(a.innerText).slice(0, 40), h: a.href || '' }))
+    .filter(x => { if (!x.h || _seenH.has(x.h)) return false; _seenH.add(x.h); return true; })
+    .slice(0, 40);
   const ctas = uniq([...document.querySelectorAll('button, a.btn, a[class*="button" i], [role="button"]')].map(txt)
     .filter(t => t.length >= 2 && t.length <= 32)).slice(0, 10);
   const paragraphs = uniq([...document.querySelectorAll('p, li')].map(txt)
@@ -218,7 +288,7 @@ _JS_EXTRACT = r"""
     description: clean(meta('meta[name="description"]', 'content') || meta('meta[property="og:description"]', 'content')).slice(0, 300),
     themeColor: meta('meta[name="theme-color"]', 'content'),
     accentCss,
-    logo, headings, nav, ctas, paragraphs, testimonials, structured,
+    logo, headings, nav, navLinks, ctas, paragraphs, testimonials, structured,
     bodyText: clean(document.body && document.body.innerText).slice(0, 4000),
   };
 }
@@ -398,6 +468,21 @@ async def capture_all(url: str, out_path: str, width: int = 1280, height: int = 
                     out["screenshot"] = out_path
             except Exception as se:
                 print(f"[capture_all] screenshot: {se}")
+            # PEEK SURGICAL (item L348): si el HOME trae POCA señal, el publico-objetivo/precio suele estar en /nosotros o
+            # /precios. El browser YA esta abierto y el screenshot del hero YA se saco -> navegamos UNA vez mas SOLO en ese caso
+            # (cero costo de latencia en el caso comun) y fusionamos el texto extra en el content. Mismo dominio (SSRF). Best-effort.
+            try:
+                c = out.get("content")
+                if isinstance(c, dict) and _is_sparse(c):
+                    peek = _peek_url(c.get("navLinks") or [], url)
+                    if peek and _guard(peek):
+                        print(f"[capture_all] home sparse -> peek {peek}")
+                        await page.goto(peek, wait_until="domcontentloaded", timeout=20000)
+                        await page.wait_for_timeout(700)
+                        extra = await page.evaluate(_JS_EXTRACT)
+                        out["content"] = _merge_peek(c, extra, peek)
+            except Exception as pe:
+                print(f"[capture_all] peek: {pe}")
             await browser.close()
     except Exception as e:
         print(f"[capture_all] error: {e}")
