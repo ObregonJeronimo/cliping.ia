@@ -283,7 +283,7 @@ def _normalize(b, url, content):
     return out
 
 
-async def analyze_to_brief(url, desarrollo="", site=None, usage=None):
+async def analyze_to_brief(url, desarrollo="", site=None, usage=None, audience_hint="", goal_hint=""):
     """UNA llamada multimodal (texto + screenshot) -> brief rico. `site` = resultado de site_capture.capture_all."""
     content = (site or {}).get("content") if isinstance(site, dict) else None
     shot = (site or {}).get("screenshot") if isinstance(site, dict) else None
@@ -294,6 +294,16 @@ async def analyze_to_brief(url, desarrollo="", site=None, usage=None):
         b64 = _shot_b64(shot)
         desarrollo = _clip(desarrollo, 500)   # cap: limita tokens y la superficie de prompt-injection de input del usuario
         text = f"URL: {url}\n"
+        # DECLARADO POR EL USUARIO (item L373): el usuario conoce a su publico/objetivo mejor que la inferencia del sitio ->
+        # bloque SEPARADO y de MAXIMA prioridad (manda sobre lo inferido). La audiencia declarada fija audience.who; el objetivo
+        # adapta cta/awareness/gancho. Capeados (anti prompt-injection / tokens) como el resto del input del usuario.
+        _ah, _gh = _clip(audience_hint, 160), _clip(goal_hint, 40)
+        if _ah or _gh:
+            text += "AUDIENCIA/OBJETIVO DECLARADOS POR EL USUARIO (MANDAN sobre lo inferido del sitio):\n"
+            if _ah:
+                text += f"- Publico objetivo: {_ah} -> usalo como audience.who y adapta tono/register/awareness a ese publico.\n"
+            if _gh:
+                text += f"- Objetivo del reel: {_gh} -> adapta el CTA, el gancho y el awareness a ese objetivo.\n"
         if desarrollo:
             text += f"Notas del usuario (priorizalas): {desarrollo}\n"
         text += ("Contenido capturado de la pagina:\n" + digest + "\n") if digest else (

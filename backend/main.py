@@ -414,6 +414,8 @@ async def urvid_share(req: UrvidShareRequest):
 class PerceiveRequest(BaseModel):
     url: str = ""
     desarrollo: str = ""
+    audienceHint: str = ""   # DECLARADO por el usuario (item L373): a quien le vende (manda sobre lo inferido del sitio)
+    goalHint: str = ""       # DECLARADO: objetivo del reel (leads|ventas|reservas|descargas|contacto) -> adapta cta/gancho/awareness
     userId: str = ""
     refresh: bool = False   # True = ignora el cache y re-analiza
 
@@ -477,7 +479,8 @@ async def urvid_perceive(req: PerceiveRequest):
             print(f"[perceive] upload screenshot fallo: {e}")
     # "v2-": version del SCHEMA del brief (claim/tagline/cta + bullets/stats/proof). Bumpear si cambia el shape ->
     # invalida cache vieja (no servir briefs sin el material nuevo). El cache por URL sigue evitando re-llamar a Claude.
-    ckey = "v9-" + _brand_cache_key(req.url)   # v9: + energyHint/playbookKey/themeHint del playbook del rubro (item L142) -> invalida briefs cacheados sin esos campos. v8: BRAND siempre latino (marca cirilica/CJK -> dominio/transliteracion, anti-tofu del wordmark). v7: idioma solo si latino (no-latino->español, anti-tofu) + bot-wall + guardrail + stats sin simbolos decorativos (tofu) + bullets completos (prompt: frase con sentido, no fragmentos) + copy en el IDIOMA de la pagina (content.lang) + audience (who/register/awareness)
+    _hint = (req.audienceHint.strip() + "|" + req.goalHint.strip())   # DECLARADO (item L373): audiencia/objetivo cambian el brief -> deben keyear el cache (si no, cambiar el hint serviria el brief viejo)
+    ckey = "v9-" + _brand_cache_key(req.url) + (("-h" + hashlib.md5(_hint.encode("utf-8")).hexdigest()[:8]) if _hint.strip("|") else "")   # v9: + energyHint/playbookKey/themeHint del playbook del rubro (item L142) -> invalida briefs cacheados sin esos campos. v8: BRAND siempre latino (marca cirilica/CJK -> dominio/transliteracion, anti-tofu del wordmark). v7: idioma solo si latino (no-latino->español, anti-tofu) + bot-wall + guardrail + stats sin simbolos decorativos (tofu) + bullets completos (prompt: frase con sentido, no fragmentos) + copy en el IDIOMA de la pagina (content.lang) + audience (who/register/awareness)
     chash = _content_fingerprint(site)
     # memkey scopeado POR USUARIO: antes el cache in-memory cruzaba usuarios (el analisis de A se servia a B). El de
     # Firestore ya era por uid; ahora el in-memory tambien.
@@ -490,7 +493,7 @@ async def urvid_perceive(req: PerceiveRequest):
             return {"brief": cached, "source": {}, "cost": {}, "cached": True, "images": site.get("images") or [], "screenshotUrl": screenshot_url}
     usage = []
     # UNA sola llamada multimodal (texto + screenshot juntos) -> brief rico. Mas robusto Y mas barato que 2 llamadas.
-    brief = await perception.analyze_to_brief(req.url.strip(), req.desarrollo.strip(), site=site, usage=usage)
+    brief = await perception.analyze_to_brief(req.url.strip(), req.desarrollo.strip(), site=site, usage=usage, audience_hint=req.audienceHint.strip(), goal_hint=req.goalHint.strip())
     # ultimo fallback de color: dominante vibrante del screenshot.
     if site.get("screenshot") and brief.get("brandColor", "#5b8cff") == "#5b8cff":
         try:

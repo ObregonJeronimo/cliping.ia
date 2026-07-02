@@ -37,6 +37,8 @@ export default function Urvid1Studio() {
   const [exporting, setExporting] = useState('')   // '' | 'NN%' | mensaje de error
   const [variants, setVariants] = useState([])     // [{seed, url}] miniaturas de variantes para elegir
   const [segment, setSegment] = useState('auto')   // PUBLICO elegido (override de audience/seriousness sobre lo inferido) — item L867
+  const [audienceHint, setAudienceHint] = useState('')   // L373: a quien le vende (declarado -> manda sobre lo inferido del sitio)
+  const [goalHint, setGoalHint] = useState('')           // L373: objetivo del reel (leads/ventas/reservas/...) -> adapta cta/gancho
 
   useEffect(() => {
     const cv = cvRef.current; if (!cv) return
@@ -81,7 +83,7 @@ export default function Urvid1Studio() {
     if (!url.trim() || analyzing === 'loading') return
     setAnalyzing('loading')
     try {
-      const r = await fetch(`${API_URL}/api/urvid/perceive`, { method: 'POST', headers: HEADERS, body: JSON.stringify({ url: url.trim(), userId: user?.uid || '', refresh }) })
+      const r = await fetch(`${API_URL}/api/urvid/perceive`, { method: 'POST', headers: HEADERS, body: JSON.stringify({ url: url.trim(), userId: user?.uid || '', refresh, audienceHint, goalHint }) })
       const j = await r.json()
       const b = j && j.brief
       if (!b || j.error) { setAnalyzing(j && j.error ? j.error : 'No se pudo analizar la pagina'); return }
@@ -229,6 +231,10 @@ export default function Urvid1Studio() {
           </label>
           <button className={styles.ghost} onClick={() => analyze(true)} disabled={analyzing === 'loading' || !url.trim()} title="Ignora el cache y vuelve a analizar la pagina">↻ Re-analizar</button>
           {analyzing && analyzing !== 'loading' && <p style={{ margin: '0 0 6px', fontSize: 12, color: 'var(--red)' }}>{analyzing}</p>}
+          <div className={styles.field}>Notas para la IA (opcional) — la audiencia/objetivo que declarás MANDAN sobre lo inferido
+            <input placeholder="A quién le vendés (ej: madres jóvenes, PyMEs)" value={audienceHint} onChange={e => setAudienceHint(e.target.value)} maxLength={160} />
+            <div className={styles.seg} style={{ marginTop: 6 }}>{[['', 'Auto'], ['leads', 'Leads'], ['ventas', 'Ventas'], ['reservas', 'Reservas'], ['descargas', 'Descargas'], ['contacto', 'Contacto']].map(([g, lbl]) => <button key={g || 'auto'} type="button" className={goalHint === g ? styles.on : ''} onClick={() => setGoalHint(g)} title="Objetivo del reel: adapta el CTA, el gancho y el awareness">{lbl}</button>)}</div>
+          </div>
           <label className={styles.field}>Marca<input value={brief.brand} onChange={e => up('brand', e.target.value)} /></label>
           <div className={styles.two}>
             <label className={styles.field}>Color<input type="color" value={brief.brandColor} onChange={e => up('brandColor', e.target.value)} /></label>
