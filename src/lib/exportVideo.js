@@ -48,12 +48,20 @@ async function exportWithWebCodecs(video, opts) {
   const out = new MB.Output({ format: new MB.Mp4OutputFormat(), target: new MB.BufferTarget() })
   const source = new MB.CanvasSource(ecv, { codec: 'avc', bitrate: MB.QUALITY_HIGH })
   out.addVideoTrack(source)
+  // AUDIO (SFX del timeline): mezcla los clips -> pista AAC muxeada al MP4 (reproducible en cualquier player; el camino
+  // MediaRecorder codificaba Opus-en-MP4, que varios reproductores no soportan). Best-effort: si algo falla, video sin audio.
+  let audioSource = null, mix = null
+  try {
+    mix = await mixTimeline(video)
+    if (mix && MB.AudioBufferSource) { audioSource = new MB.AudioBufferSource({ codec: 'aac', bitrate: 160000 }); out.addAudioTrack(audioSource) }
+  } catch (e) { audioSource = null; mix = null }
   await out.start()
   for (let i = 0; i < frames; i++) {
     drawAt(i / fps)                          // cuadro DETERMINISTA en t = i/fps (no tiempo real -> sin cuadros perdidos)
     await source.add(i / fps, 1 / fps)
     if (onProgress && i % 3 === 0) onProgress(Math.round(i / frames * 100))
   }
+  if (audioSource && mix) { try { await audioSource.add(mix) } catch (e) { /* si el encode de audio falla, queda solo el video */ } }
   await out.finalize()
   download(new Blob([out.target.buffer], { type: 'video/mp4' }), filename, 'mp4')
   if (onProgress) onProgress(100)
@@ -147,10 +155,9 @@ function exportWithMediaRecorder(video, opts = {}) {
 export function exportCanvasVideo(video, opts = {}) {
   const { onError } = opts
   if (typeof window === 'undefined' || typeof document === 'undefined') { if (onError) onError('Tu navegador no soporta exportar'); return false }
-  // Con AUDIO (SFX del timeline) vamos SIEMPRE por MediaRecorder: soporta pista de audio via stream.addTrack (el camino
-  // WebCodecs exportaria video sin sonido). Sin audio, se prefiere WebCodecs (MP4 determinista, mejor calidad).
-  const hasAudio = !!(video && video.timeline && video.timeline.audio && video.timeline.audio.length)
-  if (!hasAudio && typeof window.VideoEncoder !== 'undefined') {
+  // WebCodecs primero: MP4 determinista H.264 + audio AAC (universal). MediaRecorder es el fallback (su audio va en Opus,
+  // no siempre reproducible, pero mejor un video que nada). El audio de los SFX viaja dentro de video.timeline.audio.
+  if (typeof window.VideoEncoder !== 'undefined') {
     exportWithWebCodecs(video, opts).catch(err => {
       console.warn('[export] WebCodecs fallo -> MediaRecorder', err)
       exportWithMediaRecorder(video, opts)   // fallback robusto

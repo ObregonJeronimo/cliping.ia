@@ -86,6 +86,7 @@ export default function UrvidCraftStudio() {
   const [recording, setRecording] = useState(false)
   const dragOvRef = useRef(null)   // 'move' | 'record' | null (accion en curso sobre el canvas)
   const recRef = useRef(null)      // { t0, pts:[{ms,x,y}] } mientras se graba
+  const lastDrawRef = useRef(0)    // throttle del redibujo mientras se arrastra/graba (evita saturar el CPU)
   const addOverlay = () => setTl(t => { const ov = makeTextOverlay(headRef.current, video.W, video.H); setSelOv(ov.id); return { ...t, overlays: [...(t.overlays || []), ov] } })
   const patchOv = (id, patch) => setTl(t => ({ ...t, overlays: patchOverlay(t.overlays, id, patch) }))
   const removeOv = (id) => { setTl(t => ({ ...t, overlays: (t.overlays || []).filter(o => o.id !== id) })); setSelOv(null); setRecording(false) }
@@ -95,15 +96,22 @@ export default function UrvidCraftStudio() {
   const onCanvasDown = (e) => {
     if (!selOv) return
     try { cvRef.current.setPointerCapture(e.pointerId) } catch { /* noop */ }
-    const p = evToLogical(e)
-    if (recording) { recRef.current = { t0: performance.now(), pts: [{ ms: 0, x: p.x, y: p.y }] }; dragOvRef.current = 'record' }
-    else { dragOvRef.current = 'move'; patchOv(selOv, { transform: { x: Math.round(p.x), y: Math.round(p.y) } }) }
+    const p = evToLogical(e), x = Math.round(p.x), y = Math.round(p.y)
+    lastDrawRef.current = 0
+    if (recording) {
+      recRef.current = { t0: performance.now(), pts: [{ ms: 0, x, y }] }; dragOvRef.current = 'record'
+      // mientras graba: el overlay queda VISIBLE en el punto de agarre desde el playhead, sin animacion -> feedback en vivo
+      patchOv(selOv, { startSec: +headRef.current.toFixed(2), anim: { kind: 'none' }, transform: { x, y } })
+    } else { dragOvRef.current = 'move'; patchOv(selOv, { transform: { x, y } }) }
   }
   const onCanvasMove = (e) => {
     if (!dragOvRef.current || !selOv) return
-    const p = evToLogical(e)
-    if (dragOvRef.current === 'record') { if (recRef.current) recRef.current.pts.push({ ms: performance.now() - recRef.current.t0, x: p.x, y: p.y }) }
-    else patchOv(selOv, { transform: { x: Math.round(p.x), y: Math.round(p.y) } })
+    const p = evToLogical(e), x = Math.round(p.x), y = Math.round(p.y)
+    if (dragOvRef.current === 'record' && recRef.current) recRef.current.pts.push({ ms: performance.now() - recRef.current.t0, x: p.x, y: p.y })
+    // THROTTLE del redibujo (~30/s): sin esto, patchOv en CADA pointermove (~120/s) redibuja todo el frame y satura el CPU
+    // -> el preview se traba. El gesto se graba COMPLETO igual (los puntos van a recRef arriba); solo el feedback visual se limita.
+    const now = performance.now()
+    if (now - lastDrawRef.current > 33) { lastDrawRef.current = now; patchOv(selOv, { transform: { x, y } }) }
   }
   const onCanvasUp = () => {
     if (dragOvRef.current === 'record' && recRef.current) {
