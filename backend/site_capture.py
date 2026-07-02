@@ -119,8 +119,11 @@ def _guard(url: str) -> bool:
     return ok
 
 
-# ---- PEEK SURGICAL (item L348): mirar /nosotros o /precios SOLO si el home trae poca señal ----
+# ---- PEEK SURGICAL (item L348): mirar /nosotros o /precios si el home trae poca señal, O si es rico pero le FALTA el precio ----
 _PEEK_RE = re.compile(r"(nosotros|about|qui[eé]nes|equipo|precios|pricing|planes|plans|productos|servicios|company)", re.I)
+_PRICE_LINK_RE = re.compile(r"(precios|pricing|planes|plans|tarifas?|price)", re.I)   # links a la pagina de PRECIOS
+# señal de que el home YA muestra precio (no hace falta peekear /precios): $NN, "NN usd/ars/eur", "por mes", "/mes", "desde $", "NN% off"
+_PRICE_SIGNAL_RE = re.compile(r"(\$\s?\d|\d[\d.,]*\s?(usd|ars|eur|€|mxn|clp|cop|pesos|d[oó]lares)|\bpor mes\b|/\s?mes|\bdesde\s?\$|\d+\s?%\s?(off|dto|descuento))", re.I)
 
 
 def _bare_host(netloc: str) -> str:
@@ -138,15 +141,23 @@ def _is_sparse(content: dict) -> bool:
     return len(body) < 600 and (len(heads) + len(paras)) < 8
 
 
-def _peek_url(nav_links, base_url: str):
-    """El PRIMER link de nav/footer que matchee /nosotros|precios|... y sea del MISMO dominio (anti-SSRF / no salir del sitio).
-    None si no hay. PURO (testeable sin browser)."""
+def _home_has_price(content: dict) -> bool:
+    """El home YA muestra precio (no hace falta peekear /precios). PURO."""
+    if not isinstance(content, dict):
+        return True
+    blob = " ".join([content.get("bodyText") or ""] + list(content.get("headings") or []) + list(content.get("paragraphs") or []))
+    return bool(_PRICE_SIGNAL_RE.search(blob))
+
+
+def _peek_url(nav_links, base_url: str, regex=_PEEK_RE):
+    """El PRIMER link de nav/footer que matchee `regex` (por defecto /nosotros|precios|...) y sea del MISMO dominio
+    (anti-SSRF / no salir del sitio). None si no hay. PURO (testeable sin browser)."""
     base = _bare_host(urlparse((base_url or "").strip()).netloc)
     for lk in (nav_links or []):
         if not isinstance(lk, dict):
             continue
         href = (lk.get("h") or "").strip()
-        if not href or not (_PEEK_RE.search(href) or _PEEK_RE.search(lk.get("t") or "")):
+        if not href or not (regex.search(href) or regex.search(lk.get("t") or "")):
             continue
         try:
             h = urlparse(href)
@@ -473,10 +484,16 @@ async def capture_all(url: str, out_path: str, width: int = 1280, height: int = 
             # (cero costo de latencia en el caso comun) y fusionamos el texto extra en el content. Mismo dominio (SSRF). Best-effort.
             try:
                 c = out.get("content")
-                if isinstance(c, dict) and _is_sparse(c):
-                    peek = _peek_url(c.get("navLinks") or [], url)
+                if isinstance(c, dict):
+                    peek = None
+                    if _is_sparse(c):
+                        peek = _peek_url(c.get("navLinks") or [], url)                       # home pobre -> cualquier /nosotros|precios|...
+                        why = "sparse"
+                    elif not _home_has_price(c):
+                        peek = _peek_url(c.get("navLinks") or [], url, _PRICE_LINK_RE)        # home rico SIN precio + hay /precios -> peekearlo
+                        why = "sin-precio"
                     if peek and _guard(peek):
-                        print(f"[capture_all] home sparse -> peek {peek}")
+                        print(f"[capture_all] peek ({why}) -> {peek}")
                         await page.goto(peek, wait_until="domcontentloaded", timeout=20000)
                         await page.wait_for_timeout(700)
                         extra = await page.evaluate(_JS_EXTRACT)

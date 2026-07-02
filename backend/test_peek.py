@@ -48,9 +48,25 @@ def test_merge_peek_fusiona_y_dedup():
     assert m["logo"] == "L" and m["screenshot"] == "s.png"                        # el home conserva su logo/screenshot
 
 
+def test_home_has_price():
+    assert sc._home_has_price({"bodyText": "Planes desde $29 por mes"}) is True
+    assert sc._home_has_price({"headings": ["Desde US$ 10"]}) is True
+    assert sc._home_has_price({"bodyText": "Crea tu tienda online y vende mas", "headings": ["Vende mas"]}) is False   # home marketing SIN precio (caso Shopify)
+
+
+def test_peek_url_solo_precios():
+    base = "https://acme.com/"
+    nav = [
+        {"t": "Nosotros", "h": "https://acme.com/nosotros"},   # no es de precios
+        {"t": "Precios", "h": "https://acme.com/precios"},      # este (regex de precios)
+    ]
+    assert sc._peek_url(nav, base, sc._PRICE_LINK_RE) == "https://acme.com/precios"
+    assert sc._peek_url([{"t": "Nosotros", "h": "https://acme.com/nosotros"}], base, sc._PRICE_LINK_RE) is None   # sin link de precios
+
+
 if __name__ == "__main__":
     fns = [test_sparse_detection, test_peek_url_primer_match_mismo_dominio, test_peek_url_rechaza_otro_dominio,
-           test_peek_url_none_si_no_hay_match, test_merge_peek_fusiona_y_dedup]
+           test_peek_url_none_si_no_hay_match, test_merge_peek_fusiona_y_dedup, test_home_has_price, test_peek_url_solo_precios]
     p = f = 0
     for fn in fns:
         try:
