@@ -49,6 +49,55 @@
 .transportBar { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 6px 16px; flex-shrink: 0; }
 .timelineDock { flex-shrink: 0; max-height: 42vh; overflow-y: auto; border-top: 1px solid var(--border); background: var(--surface); padding: 4px 14px 12px; }
 
+/* ---- EDITOR full-screen (overlay que TAPA el sidebar de la app) ---- */
+.editorFull { position: fixed; inset: 0; z-index: 60; box-sizing: border-box; background: var(--bg); color: var(--ink); font-family: var(--fbody); -webkit-font-smoothing: antialiased; display: flex; flex-direction: column;
+  --bg: #f3f2ee; --surface: #fff; --ink: #16150f; --muted: #74716a; --faint: #a9a69d; --disabled: #c4c0b6; --border: rgba(22, 21, 15, .1); --border2: rgba(22, 21, 15, .16); --hover: rgba(22, 21, 15, .03);
+  --fdisplay: 'Bricolage Grotesque', 'DM Sans', sans-serif; --fbody: 'DM Sans', sans-serif; --fmono: 'JetBrains Mono', monospace; --rbtn: 12px; --shadow-lg: 0 26px 60px -34px rgba(22, 21, 15, .28); }
+.topLeft { display: flex; align-items: center; gap: 14px; }
+.backBtn { background: transparent; border: 1px solid var(--border2); color: var(--muted); border-radius: 100px; padding: 7px 14px; font-family: var(--fbody); font-size: 13px; font-weight: 500; cursor: pointer; }
+.backBtn:hover { border-color: var(--ink); color: var(--ink); }
+.projTitle { font-family: var(--fdisplay); font-weight: 600; font-size: 16px; letter-spacing: -0.02em; }
+
+/* sidebar vertical de secciones (icono + label) */
+.iconRail { width: 82px; flex-shrink: 0; display: flex; flex-direction: column; gap: 2px; padding: 8px 6px; border-right: 1px solid var(--border); background: var(--surface); overflow-y: auto; }
+.railItem { display: flex; flex-direction: column; align-items: center; gap: 4px; background: transparent; border: none; border-radius: 10px; padding: 9px 4px; color: var(--muted); font-family: var(--fbody); font-size: 10.5px; font-weight: 500; cursor: pointer; transition: background .12s, color .12s; }
+.railItem:hover { background: var(--hover); color: var(--ink); }
+.railItemOn { background: var(--ink); color: var(--bg); }
+.railItemLbl { line-height: 1; }
+
+/* panel de la seccion (colapsable) */
+.panelWrap { width: 320px; flex-shrink: 0; display: flex; flex-direction: column; border-right: 1px solid var(--border); background: var(--surface); min-height: 0; min-width: 0; overflow: hidden; transition: width .18s ease; }
+.panelClosed { width: 0 !important; border-right: none; }
+.panelHead { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid var(--border); font-family: var(--fmono); font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); flex-shrink: 0; }
+.panelCollapse { background: transparent; border: 1px solid var(--border); color: var(--muted); border-radius: 7px; width: 24px; height: 24px; cursor: pointer; font-size: 15px; line-height: 1; }
+.panelCollapse:hover { border-color: var(--ink); color: var(--ink); }
+.panelReopen { align-self: center; margin: 8px 2px 0; background: var(--surface); border: 1px solid var(--border2); color: var(--muted); border-radius: 7px; width: 22px; height: 46px; cursor: pointer; flex-shrink: 0; }
+.panelReopen:hover { border-color: var(--ink); color: var(--ink); }
+
+/* ---- MANAGER de proyectos (con el sidebar de la app visible) ---- */
+.mgr { max-width: 1080px; margin: 0 auto; padding: 40px 48px; width: 100%; box-sizing: border-box; overflow-y: auto; }
+.mgrHead { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 8px; }
+.mgrLead { color: var(--muted); font-size: 15px; margin: 0 0 28px; }
+.mgrGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 16px; }
+.projCard { position: relative; border: 1px solid var(--border); border-radius: 16px; overflow: hidden; background: var(--surface); transition: border-color .12s, transform .1s, box-shadow .12s; }
+.projCard:hover { border-color: var(--border2); box-shadow: var(--shadow-lg); transform: translateY(-2px); }
+.projOpen { display: block; width: 100%; text-align: left; background: transparent; border: none; cursor: pointer; padding: 0; }
+.projThumb { height: 108px; display: flex; align-items: center; justify-content: center; font-family: var(--fdisplay); font-weight: 700; font-size: 40px; color: #fff; background: var(--c, #5b8cff); }
+.projInfo { padding: 12px 14px; }
+.projName { font-weight: 600; font-size: 15px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.projMeta { font-size: 12px; color: var(--muted); margin-top: 3px; }
+.projDel { position: absolute; top: 8px; right: 8px; width: 26px; height: 26px; border-radius: 50%; border: none; background: rgba(0, 0, 0, 0.42); color: #fff; cursor: pointer; font-size: 16px; line-height: 1; opacity: 0; transition: opacity .12s; }
+.projCard:hover .projDel { opacity: 1; }
+.mgrEmpty { border: 1px dashed var(--border2); border-radius: 18px; padding: 48px 24px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.mgrEmpty b { font-family: var(--fdisplay); font-size: 20px; }
+.mgrEmpty span { color: var(--muted); margin-bottom: 12px; }
+
+/* modal nuevo proyecto */
+.modalBg { position: fixed; inset: 0; z-index: 80; background: rgba(22, 21, 15, 0.42); display: flex; align-items: center; justify-content: center; padding: 20px; }
+.modal { background: var(--surface); border-radius: 18px; padding: 24px; width: 100%; max-width: 420px; box-shadow: var(--shadow-lg); display: flex; flex-direction: column; gap: 14px; }
+.modalTitle { font-family: var(--fdisplay); font-weight: 600; font-size: 20px; margin: 0; }
+.modalActions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px; }
+
 /* ---- header ---- */
 .header { display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap; padding-bottom: 28px; border-bottom: 1px solid var(--border); margin-bottom: 32px; }
 .logo { font-family: var(--fdisplay); font-weight: 600; font-size: 22px; letter-spacing: -0.03em; }

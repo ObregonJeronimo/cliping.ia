@@ -9,6 +9,7 @@ import OverlayEditor from './OverlayEditor.jsx'
 import SfxEditor from './SfxEditor.jsx'
 import { SFX, sfxBuffer } from '../../lib/sfxLib.js'
 import { playPreview } from '../../lib/audioMix.js'
+import { drawWatermark } from '../../lib/watermark.js'
 import { useAuth } from '../../contexts/AuthContext'
 import { db } from '../../lib/firebase'
 import OptionGrid from './OptionGrid.jsx'
@@ -34,6 +35,8 @@ const BRIEF0 = { brand: '', rubro: 'default', tone: 'dark', brandColor: '#5b8cff
 const DRAFT_KEY = 'urvidcraft.draft'   // el wizard PERSISTE (brief+picks+seed+paso) -> retoma donde quedaste. Solo datos, re-renderiza determinista.
 const SAVED_KEY = 'urvidcraft.saved'   // "Mis videos" de advanced — SEPARADO de urvid IA (que usa urvid1.saved)
 const SAVED_COL = 'urvidcraft_videos'  // coleccion Firestore propia de advanced (urvid IA usa urvid_videos)
+const PROJ_KEY = 'urvidcraft.projects' // PROYECTOS (nombre + estado de edicion completo) — localStorage + Firestore
+const PROJ_COL = 'urvidcraft_projects'
 const newSeed = () => (Math.floor((typeof performance !== 'undefined' ? performance.now() : 1) * 1000) >>> 0) || 1
 
 // iconos de las tabs del rail (line-icons SVG, heredan el color de la tab via currentColor) — reemplazan los emojis.
@@ -67,6 +70,13 @@ export default function UrvidCraftStudio() {
   const [savedMsg, setSavedMsg] = useState('')
   // "Mis videos" de advanced (almacen propio). Cache local inmediato + Firestore (coleccion separada) como fuente de verdad.
   const [saved, setSaved] = useState(() => { try { return JSON.parse(localStorage.getItem(SAVED_KEY) || '[]') } catch { return [] } })
+  // PROYECTOS (manager): al entrar a advanced primero se elige/crea un proyecto; recien ahi se entra al EDITOR.
+  const [projects, setProjects] = useState(() => { try { return JSON.parse(localStorage.getItem(PROJ_KEY) || '[]') } catch { return [] } })
+  const [mode, setMode] = useState('manager')   // 'manager' (lista de proyectos) | 'editor'
+  const [projId, setProjId] = useState(null)     // proyecto activo en el editor
+  const [panelOpen, setPanelOpen] = useState(true)  // sidebar de secciones colapsable
+  const [newOpen, setNewOpen] = useState(false)  // dialogo "nuevo proyecto"
+  const [npName, setNpName] = useState(''); const [npUrl, setNpUrl] = useState('')
 
   // receta AUTO de base (deterministica por brief+seed). El usuario la edita con `picks`; el resto queda auto y ESTABLE.
   const baseRecipe = useMemo(() => makeVideo({ ...brief, brand: brief.brand || 'Tu marca', seed }).recipe, [brief, seed])
@@ -196,7 +206,7 @@ export default function UrvidCraftStudio() {
     const ctx = cv.getContext('2d')
     const DPR = Math.min(window.devicePixelRatio || 1, 2.5)
     cv.width = video.W * DPR; cv.height = video.H * DPR
-    const draw = () => { ctx.setTransform(DPR, 0, 0, DPR, 0, 0); drawFrame(ctx, headRef.current, video, { quality: 0.7 }) }   // preview a calidad reducida (item L717); el export va a full
+    const draw = () => { ctx.setTransform(DPR, 0, 0, DPR, 0, 0); drawFrame(ctx, headRef.current, video, { quality: 0.7 }); ctx.setTransform(DPR, 0, 0, DPR, 0, 0); drawWatermark(ctx, video.W, video.H) }   // preview a calidad reducida (item L717) + marca de agua (anti screen-record); el export va limpio a full
     // EN PAUSA: dibuja UN frame y NO entra al loop -> la pagina queda idle (sin re-render por frame).
     if (!playing) { draw(); setHead(headRef.current); return }
     // REPRODUCIENDO: anima en canvas cada frame, pero el estado de React (la hora) se actualiza THROTTLEADO (~8/s)
@@ -302,6 +312,48 @@ export default function UrvidCraftStudio() {
     try { localStorage.setItem(SAVED_KEY, JSON.stringify(next)) } catch { /* noop */ }
     if (user?.uid && it.id) { try { await deleteDoc(doc(db, 'users', user.uid, SAVED_COL, it.id)) } catch { /* noop */ } }
   }
+  // ---- PROYECTOS ----
+  const persistProjects = (list) => { setProjects(list); try { localStorage.setItem(PROJ_KEY, JSON.stringify(list)) } catch { /* noop */ } }
+  const applyProjectState = (p) => {
+    const b = p.brief || BRIEF0
+    setBrief({ ...BRIEF0, ...b }); setPicks(p.picks || {}); setSeed(p.seed || newSeed())
+    const t = (p.timeline && typeof p.timeline === 'object') ? p.timeline : {}
+    setTl({ v: 1, order: t.order || [], sceneText: t.sceneText || {}, overlays: t.overlays || [], audio: t.audio || [] })
+    setAnalyzed(!!(b && (b.brand || b.claim || b.tagline))); setRailTab('datos'); setUrl(p.url || ''); headRef.current = 0; setHead(0); setPlaying(true)
+  }
+  const openProject = (p) => { applyProjectState(p); setProjId(p.id); setMode('editor') }
+  const newProject = (name, initUrl) => {
+    const p = { id: 'p' + Date.now().toString(36), name: (name || 'Proyecto sin título').slice(0, 60), ts: Date.now(), brief: BRIEF0, picks: {}, seed: newSeed(), timeline: { v: 1, order: [], sceneText: {}, overlays: [], audio: [] }, url: initUrl || '' }
+    persistProjects([p, ...projects].slice(0, 60)); applyProjectState(p); setProjId(p.id); setMode('editor')
+    if (initUrl) setTimeout(() => analyze(false), 60)   // si dio URL, analiza al entrar
+  }
+  const saveProject = () => {
+    if (!projId) return
+    const prev = projects.find(p => p.id === projId) || {}
+    const patch = { ...prev, id: projId, name: prev.name || 'Proyecto', ts: Date.now(), url, brand: brief.brand, rubro: brief.rubro, brandColor: brief.brandColor, brief, picks, seed, timeline: tl }
+    persistProjects(projects.some(p => p.id === projId) ? projects.map(p => p.id === projId ? patch : p) : [patch, ...projects])
+    if (user?.uid) { try { setDoc(doc(db, 'users', user.uid, PROJ_COL, projId), patch) } catch { /* offline */ } }
+  }
+  const delProject = (id) => { persistProjects(projects.filter(p => p.id !== id)); if (user?.uid) { try { deleteDoc(doc(db, 'users', user.uid, PROJ_COL, id)) } catch { /* noop */ } } }
+  const backToManager = () => { saveProject(); setPlaying(false); setMode('manager') }
+  // carga los proyectos de Firestore al loguearse (fuente de verdad; sin sesion queda localStorage).
+  useEffect(() => {
+    if (!user?.uid) return
+    let alive = true
+    getDocs(collection(db, 'users', user.uid, PROJ_COL)).then(snap => {
+      if (!alive) return
+      const items = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.ts || 0) - (a.ts || 0)).slice(0, 60)
+      if (items.length) persistProjects(items)
+    }).catch(() => { /* offline -> localStorage */ })
+    return () => { alive = false }
+  }, [user?.uid])
+  // AUTO-GUARDADO del proyecto activo (debounce) mientras editas.
+  useEffect(() => {
+    if (mode !== 'editor' || !projId) return
+    const t = setTimeout(saveProject, 900)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [brief, picks, seed, tl, mode, projId])
 
   // ---- pasos: Datos -> Estilo -> Fondo -> Escenas -> Cierre -> Crear. (FASE C agregara "Avanzado" plegable.) ----
   // NO memoizar con [] (capturaria closures viejos del estado): array fresco cada render, las funciones cierran sobre el estado actual.
@@ -326,7 +378,6 @@ export default function UrvidCraftStudio() {
     { key: 'fondo', label: 'Fondo', icon: ICONS.fondo }, { key: 'escenas', label: 'Escenas', icon: ICONS.escenas },
     { key: 'cierre', label: 'Cierre', icon: ICONS.cierre }, { key: 'avanzado', label: 'Avanzado', icon: ICONS.avanzado },
     { key: 'animaciones', label: 'Animaciones', icon: ICONS.animaciones }, { key: 'sfx', label: 'SFX', icon: ICONS.sfx },
-    { key: 'guardados', label: 'Guardados', icon: ICONS.guardados },
   ]
   const STEP_RENDER = { datos: renderDatos, estilo: renderEstilo, fondo: renderFondo, escenas: renderEscenas, cierre: renderCierre, avanzado: renderAvanzado }
 
@@ -517,52 +568,99 @@ export default function UrvidCraftStudio() {
     )
   }
 
+  // ---- MANAGER de proyectos (el sidebar de la app se ve normal) ----
+  if (mode === 'manager') {
+    const openNew = () => { setNpName(''); setNpUrl(''); setNewOpen(true) }
+    return (
+      <div className={styles.wrap}>
+        <div className={styles.mgr}>
+          <div className={styles.mgrHead}>
+            <div className={`${styles.logo} urvidTitleIn`}>urvid <span className="urvidIA">IA</span> advanced</div>
+            <button className={styles.primary} onClick={openNew}>＋ Nuevo proyecto</button>
+          </div>
+          <p className={styles.mgrLead}>Tus proyectos de video. Creá uno nuevo o abrí uno para seguir editando.</p>
+          {projects.length === 0
+            ? <div className={styles.mgrEmpty}><b>Todavía no tenés proyectos</b><span>Creá tu primer proyecto para empezar a editar.</span><button className={styles.primary} onClick={openNew}>＋ Crear proyecto</button></div>
+            : <div className={styles.mgrGrid}>
+                {projects.map(p => (
+                  <div key={p.id} className={styles.projCard} style={{ '--c': p.brandColor || '#5b8cff' }}>
+                    <button className={styles.projOpen} onClick={() => openProject(p)}>
+                      <div className={styles.projThumb}>{(p.brand || p.name || '?').trim().slice(0, 1).toUpperCase()}</div>
+                      <div className={styles.projInfo}>
+                        <div className={styles.projName}>{p.name}</div>
+                        <div className={styles.projMeta}>{p.brand || 'Sin marca'} · {new Date(p.ts || Date.now()).toLocaleDateString('es')}</div>
+                      </div>
+                    </button>
+                    <button className={styles.projDel} onClick={() => delProject(p.id)} title="Borrar proyecto">×</button>
+                  </div>
+                ))}
+              </div>}
+        </div>
+        {newOpen && (
+          <div className={styles.modalBg} onClick={() => setNewOpen(false)}>
+            <div className={styles.modal} onClick={e => e.stopPropagation()}>
+              <h3 className={styles.modalTitle}>Nuevo proyecto</h3>
+              <label className={styles.field}><span className={styles.lbl}>Nombre</span><input className={styles.input} autoFocus value={npName} onChange={e => setNpName(e.target.value)} placeholder="Mi video de Wise" onKeyDown={e => { if (e.key === 'Enter') { setNewOpen(false); newProject(npName.trim() || 'Proyecto sin título', npUrl.trim()) } }} /></label>
+              <label className={styles.field}><span className={styles.lbl}>Link de la página (opcional)</span><input className={styles.input} value={npUrl} onChange={e => setNpUrl(e.target.value)} placeholder="https://tu-sitio.com" /></label>
+              <div className={styles.modalActions}>
+                <button className={styles.ghost} onClick={() => setNewOpen(false)}>Cancelar</button>
+                <button className={styles.primary} onClick={() => { setNewOpen(false); newProject(npName.trim() || 'Proyecto sin título', npUrl.trim()) }}>Crear y editar</button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // ---- EDITOR: overlay full-screen (tapa el sidebar de la app); sidebar PROPIO de secciones (vertical, colapsable) ----
   return (
-    <div className={styles.wrap}>
-      {/* TOPBAR: marca + acciones globales (guardar / descargar / empezar de cero) */}
+    <div className={styles.editorFull}>
       <div className={styles.topbar}>
-        <div className={`${styles.logo} urvidTitleIn`}>urvid <span className="urvidIA">IA</span> advanced</div>
+        <div className={styles.topLeft}>
+          <button className={styles.backBtn} onClick={backToManager} title="Volver a proyectos">‹ Proyectos</button>
+          <span className={styles.projTitle}>{(projects.find(p => p.id === projId) || {}).name || 'Proyecto'}</span>
+        </div>
         <div className={styles.topActions}>
           {analyzed && <>
-            <button className={styles.ghost} onClick={save}>★ Guardar</button>
+            <button className={styles.ghost} onClick={saveProject}>★ Guardar</button>
             <button className={styles.primary} onClick={exportVideo} disabled={!!exporting}>{exporting ? `Exportando ${exporting}` : '⬇ Descargar'}</button>
           </>}
-          {(analyzed || step > 0) && <button className={styles.restartTop} onClick={restart} title="Descarta este video y empeza uno desde cero">↺ Empezar de cero</button>}
         </div>
       </div>
 
       <div className={styles.body}>
-        {/* RAIL izquierdo: tabs (pasos + animaciones + SFX + guardados) + panel scrolleable */}
-        <aside className={styles.rail}>
-          <div className={styles.railTabs}>
-            {RAIL_TABS.map(t => (
-              <button key={t.key} className={`${styles.railTab} ${railTab === t.key ? styles.railTabOn : ''}`} onClick={() => setRailTab(t.key)}>
-                <span className={styles.railIcon}>{t.icon}</span>{t.label}
-              </button>
-            ))}
+        {/* SIDEBAR de secciones (vertical, colapsable) */}
+        <aside className={styles.iconRail}>
+          {RAIL_TABS.map(t => (
+            <button key={t.key} className={`${styles.railItem} ${railTab === t.key && panelOpen ? styles.railItemOn : ''}`}
+              onClick={() => { if (railTab === t.key && panelOpen) setPanelOpen(false); else { setRailTab(t.key); setPanelOpen(true) } }} title={t.label}>
+              <span className={styles.railIcon}>{t.icon}</span>
+              <span className={styles.railItemLbl}>{t.label}</span>
+            </button>
+          ))}
+        </aside>
+
+        {/* PANEL de la seccion (colapsable) */}
+        {panelOpen && (
+          <div className={styles.panelWrap}>
+          <div className={styles.panelHead}>
+            <span>{(RAIL_TABS.find(t => t.key === railTab) || {}).label}</span>
+            <button className={styles.panelCollapse} onClick={() => setPanelOpen(false)} title="Contraer panel">‹</button>
           </div>
           <div className={styles.railPanel} key={railTab}>
             {railTab === 'animaciones'
               ? <OverlayEditor overlays={tl.overlays} selId={selOv} onSelect={setSelOv} onAdd={addOverlay} onPatch={patchOv} onRemove={removeOv} recording={recording} onToggleRecord={toggleRecord} duration={video.duration} />
               : railTab === 'sfx'
                 ? <SfxEditor audio={tl.audio} selId={selSfx} onSelect={setSelSfx} onAdd={addSfx} onPreview={previewSfx} onPatch={patchSfx} onRemove={removeSfx} duration={video.duration} />
-                : railTab === 'guardados'
-                  ? <div className={styles.myVideos}>
-                      <span className={styles.eyebrowSm}>Mis videos</span>
-                      {saved.length === 0
-                        ? <p className={styles.myEmpty}>Todavia no guardaste ninguno. Tocá <b>★ Guardar</b> arriba y aparecen acá.</p>
-                        : <div className={styles.myList}>{saved.map((it, i) => (
-                            <div key={it.id || i} className={styles.myCard} style={{ '--c': it.brandColor }}>
-                              <button className={styles.myCardBtn} onClick={() => loadSaved(it)}><b>{it.brand || 'Marca'}</b><span>{RUBRO_LBL[it.rubro] || it.rubro} · {it.tone === 'dark' ? 'oscuro' : 'claro'}</span></button>
-                              <button className={styles.myDel} onClick={() => delSaved(it)} title="Borrar">×</button>
-                            </div>))}</div>}
-                    </div>
-                  : <div className={styles.stepAnim}>{(STEP_RENDER[railTab] || renderDatos)()}</div>}
+                : <div className={styles.stepAnim}>{(STEP_RENDER[railTab] || renderDatos)()}</div>}
             {savedMsg && <p className={styles.ok}>{savedMsg}</p>}
           </div>
-        </aside>
+          </div>
+        )}
+        {!panelOpen && <button className={styles.panelReopen} onClick={() => setPanelOpen(true)} title="Abrir panel">›</button>}
 
-        {/* CENTRO: video + transport + timeline (todo junto, sin scroll de pagina) */}
+        {/* CENTRO: video + transport + timeline */}
         <div className={styles.stageCol}>
           <div className={styles.stage}>
             {analyzed
