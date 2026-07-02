@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useMemo } from 'react'
 import { collection, getDocs, doc, getDoc, setDoc, deleteDoc } from 'firebase/firestore'
 import { makeVideo, drawFrame, beatAt, W, H } from '../../urvid/index.js'
 import { exportCanvasVideo } from '../../lib/exportVideo.js'
+import { drawWatermark } from '../../lib/watermark.js'
 import { useAuth } from '../../contexts/AuthContext'
 import { db } from '../../lib/firebase'
 import styles from './Urvid1Studio.module.css'
@@ -51,6 +52,8 @@ export default function Urvid1Studio() {
       if (playing) { headRef.current += dt; if (headRef.current >= video.duration) headRef.current -= video.duration }
       ctx.setTransform(DPR, 0, 0, DPR, 0, 0)
       drawFrame(ctx, headRef.current, video, { quality: 0.7 })   // preview EN VIVO a calidad reducida (item L717): ~30% menos particulas/frame en los substrates pesados -> loop mas fluido. El EXPORT (exportVideo.js, sin opts) va a FULL.
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0)                      // por si drawFrame dejo el transform tocado
+      drawWatermark(ctx, video.W, video.H)                       // marca de agua SOLO en el preview (anti screen-record); el export/descarga va LIMPIO
       setHead(headRef.current)
       raf = requestAnimationFrame(loop)
     }
