@@ -49,10 +49,19 @@ def test_merge_peek_fusiona_y_dedup():
 
 
 def test_home_has_price():
-    assert sc._home_has_price({"bodyText": "Planes: $29/mes, $49/mes, $99/mes"}) is True   # 3+ precios -> tabla de planes real
-    assert sc._home_has_price({"bodyText": "empezá con $1/mes de promo"}) is False          # 1 promo suelta -> peek /precios (caso Shopify)
-    assert sc._home_has_price({"bodyText": "Crea tu tienda online y vende mas", "headings": ["Vende mas"]}) is False   # home marketing SIN precio
-    assert sc._home_price_count({"bodyText": "sin precio aca"}) == 0
+    # Tiendanube-style: tabla real de planes (3 montos distintos con /mes) -> el home YA tiene pricing -> NO peek
+    tabla = {"bodyText": "Esencial $26.999/mes, Impulso $78.999/mes, Escala $234.999/mes"}
+    assert sc._home_plan_prices(tabla) == 3 and sc._home_has_price(tabla) is True
+    # Shopify-style: mockup 'US$ 125,00' repetido 6x SIN periodicidad -> 0 montos de plan -> peek /precios
+    shopify = {"bodyText": "Compra por US$ 125,00 " * 6}
+    assert sc._home_plan_prices(shopify) == 0 and sc._home_has_price(shopify) is False
+    # promo suelta ('$1/mes') = 1 monto de plan -> < 2 -> peek (el caso que motivó el fix)
+    assert sc._home_has_price({"bodyText": "empezá con $1/mes de promo por 3 meses"}) is False
+    # Notion/Slack-style: home sin montos -> peek
+    assert sc._home_has_price({"bodyText": "Crea, colabora y organiza tu trabajo"}) is False
+    # JSON-LD Offer / og:price declara precio -> home con pricing declarado -> NO peek
+    assert sc._home_has_price({"bodyText": "sin texto de precio", "structured": {"price": "19.00", "currency": "USD"}}) is True
+    assert sc._home_has_price({"bodyText": "x", "structured": {"priceRange": "$$-$$$"}}) is True
 
 
 def test_peek_url_solo_precios():

@@ -122,8 +122,17 @@ def _guard(url: str) -> bool:
 # ---- PEEK SURGICAL (item L348): mirar /nosotros o /precios si el home trae poca señal, O si es rico pero le FALTA el precio ----
 _PEEK_RE = re.compile(r"(nosotros|about|qui[eé]nes|equipo|precios|pricing|planes|plans|productos|servicios|company)", re.I)
 _PRICE_LINK_RE = re.compile(r"(precios|pricing|planes|plans|tarifas?|price)", re.I)   # links a la pagina de PRECIOS
-# señal de que el home YA muestra precio (no hace falta peekear /precios): $NN, "NN usd/ars/eur", "por mes", "/mes", "desde $", "NN% off"
-_PRICE_SIGNAL_RE = re.compile(r"(\$\s?\d|\d[\d.,]*\s?(usd|ars|eur|€|mxn|clp|cop|pesos|d[oó]lares)|\bpor mes\b|/\s?mes|\bdesde\s?\$|\d+\s?%\s?(off|dto|descuento))", re.I)
+# monto monetario en texto: (simbolo/codigo de moneda + numero) o (numero + codigo). Grupo 1/2 = el numero.
+_MONEY_RE = re.compile(
+    r"(?:US\$|U\$S|AR\$|R\$|\$|€|£|USD|ARS|EUR|MXN|CLP|COP|BRL)\s?(\d[\d.,]*)"
+    r"|(\d[\d.,]*)\s?(?:usd|ars|eur|mxn|clp|cop|brl|€|pesos|d[oó]lares|reais)\b",
+    re.I,
+)
+# periodicidad/recurrencia: lo que, CERCA de un monto, delata que es precio de un PLAN (no un mockup ni un precio de producto suelto).
+_PERIOD_RE = re.compile(
+    r"(/\s?mes\b|/\s?mo\b|/\s?month\b|\bpor\s+mes\b|\bmensual|/\s?a[nñ]o\b|/\s?year\b|\banual|/\s?usuario\b|/\s?user\b|per\s+(?:member|user|month|seat)|/\s?seat\b)",
+    re.I,
+)
 
 
 def _bare_host(netloc: str) -> str:
@@ -141,17 +150,33 @@ def _is_sparse(content: dict) -> bool:
     return len(body) < 600 and (len(heads) + len(paras)) < 8
 
 
-def _home_price_count(content: dict) -> int:
-    """Cuantas señales de precio hay en el home ($NN, "por mes", "desde $", "NN% off"...). PURO."""
+def _home_plan_prices(content: dict) -> int:
+    """Nº de MONTOS de precio DISTINTOS en el home que parecen de un PLAN: un monto monetario con un token de
+    periodicidad (/mes, /año, per user...) a <=30 chars. Distingue una tabla de planes real de una promo/mockup
+    suelto (Shopify: 'US$125' x6 sin '/mes' = 0; Tiendanube: '$26.999/mes' x3 = 3). PURO (testeable)."""
     if not isinstance(content, dict):
         return 99
     blob = " ".join([content.get("bodyText") or ""] + list(content.get("headings") or []) + list(content.get("paragraphs") or []))
-    return len(_PRICE_SIGNAL_RE.findall(blob))
+    seen = set()
+    for m in _MONEY_RE.finditer(blob):
+        amt = m.group(1) or m.group(2) or ""
+        norm = re.sub(r"[.,]", "", amt).lstrip("0") or "0"          # normaliza miles/decimales para comparar montos ($26.999 -> 26999)
+        lo, hi = max(0, m.start() - 30), min(len(blob), m.end() + 30)
+        if _PERIOD_RE.search(blob[lo:hi]):                          # solo cuenta si hay periodicidad cerca -> es de plan, no un precio suelto
+            seen.add(norm)
+    return len(seen)
 
 
 def _home_has_price(content: dict) -> bool:
-    """El home ya muestra su PRICING (>=3 señales -> tabla de planes real, no una promo suelta tipo '$1/mes') -> no peekea /precios."""
-    return _home_price_count(content) >= 3
+    """El home YA muestra su PRICING real -> no hace falta peekear /precios. True si:
+    (a) la marca DECLARA precio en structured data (JSON-LD Offer / og:price), o
+    (b) hay >=2 montos de plan DISTINTOS (monto + periodicidad). Una promo suelta ('$1/mes') o un mockup NO alcanzan. PURO."""
+    if not isinstance(content, dict):
+        return True
+    st = content.get("structured") or {}
+    if isinstance(st, dict) and (str(st.get("price") or "").strip() or str(st.get("priceRange") or "").strip()):
+        return True                                                 # precio declarado por la marca -> el home ya tiene pricing
+    return _home_plan_prices(content) >= 2
 
 
 def _peek_url(nav_links, base_url: str, regex=_PEEK_RE):
@@ -490,19 +515,29 @@ async def capture_all(url: str, out_path: str, width: int = 1280, height: int = 
             try:
                 c = out.get("content")
                 if isinstance(c, dict):
+                    home_url = page.url or url                                    # base REAL tras redirect (notion.so -> notion.com): los <a> del nav se resuelven contra ESTA, no la url original
+                    nav = c.get("navLinks") or []
+                    price_link = _peek_url(nav, home_url, _PRICE_LINK_RE)         # <a> a /precios|pricing|planes del MISMO dominio (o None)
+                    has_price = _home_has_price(c)
                     peek, why = None, ""
-                    if _is_sparse(c):
-                        peek, why = _peek_url(c.get("navLinks") or [], url), "sparse"                 # home pobre -> cualquier /nosotros|precios|...
-                    elif not _home_has_price(c):
-                        peek, why = _peek_url(c.get("navLinks") or [], url, _PRICE_LINK_RE), "sin-precio"   # home sin tabla de planes + hay /precios -> peekearlo
-                    # DIAGNOSTICO (item L348): por que (no) peekea. Muestra sparse/nº-precios/candidato + los hrefs de nav capturados.
-                    print(f"[capture_all] peek? sparse={_is_sparse(c)} precios={_home_price_count(c)} -> {peek or 'NO'} | nav={[(l.get('h') or '')[-34:] for l in (c.get('navLinks') or [])[:14]]}")
+                    if not has_price and price_link:
+                        peek, why = price_link, "sin-precio"                      # al home le falta la tabla de planes + hay <a> de /precios -> peekearlo
+                    elif _is_sparse(c):
+                        peek, why = _peek_url(nav, home_url), "sparse"            # home pobre -> cualquier /nosotros|precios|... para enriquecer
+                    st = c.get("structured") or {}
+                    # DIAGNOSTICO (item L348): por que (no) peekea.
+                    print(f"[capture_all] peek? has_price={has_price} planPrices={_home_plan_prices(c)} ld_price={(st.get('price') or '')!r} sparse={_is_sparse(c)} priceLink={price_link or '-'} -> {peek or 'NO'}")
                     if peek and _guard(peek):
                         print(f"[capture_all] peek ({why}) -> {peek}")
-                        await page.goto(peek, wait_until="domcontentloaded", timeout=20000)
+                        resp = await page.goto(peek, wait_until="domcontentloaded", timeout=20000)
                         await page.wait_for_timeout(700)
-                        extra = await page.evaluate(_JS_EXTRACT)
-                        out["content"] = _merge_peek(c, extra, peek)
+                        final = page.url or peek                                  # re-valida el destino REAL: no fusionar un redirect cross-host ni un 4xx/5xx
+                        same_host = _bare_host(urlparse(final).netloc) == _bare_host(urlparse(home_url).netloc)
+                        if same_host and ((resp is None) or resp.status < 400):
+                            extra = await page.evaluate(_JS_EXTRACT)
+                            out["content"] = _merge_peek(c, extra, final)
+                        else:
+                            print(f"[capture_all] peek descartado (host_ok={same_host} status={getattr(resp, 'status', None)})")
             except Exception as pe:
                 print(f"[capture_all] peek: {pe}")
             await browser.close()
