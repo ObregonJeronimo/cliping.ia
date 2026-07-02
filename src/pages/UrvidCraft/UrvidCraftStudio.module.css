@@ -32,8 +32,14 @@
 .railTab { display: inline-flex; align-items: center; gap: 5px; background: transparent; border: 1px solid transparent; color: var(--muted); border-radius: 9px; padding: 5px 9px; font-family: var(--fbody); font-size: 12px; font-weight: 500; cursor: pointer; transition: background .12s, color .12s; }
 .railTab:hover { background: var(--hover); color: var(--ink); }
 .railTabOn { background: var(--ink); color: var(--bg); }
-.railIcon { font-size: 12px; }
+.railIcon { display: inline-flex; align-items: center; opacity: 0.9; }
 .railPanel { flex: 1; overflow-y: auto; padding: 16px; }
+/* el rail es angosto: los pares lado-a-lado (Formato/Duración, Marca/Rubro...) se APILAN para no cortarse; inputs compactos */
+.railPanel .grid2 { grid-template-columns: 1fr; gap: 12px; }
+.railPanel .stepBody { gap: 14px; }
+.railPanel .input, .railPanel .color, .railPanel select.input { padding: 9px 12px; font-size: 14px; border-radius: 10px; }
+.railPanel .color { height: 40px; padding: 5px; }
+.railPanel select.input { background-position: calc(100% - 16px) 17px, calc(100% - 11px) 17px; }
 .stageCol { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--bg); }
 .stage { flex: 1; display: flex; align-items: center; justify-content: center; padding: 18px; min-height: 0; }
 .stage .frame { height: 100%; width: auto; max-width: 100%; }

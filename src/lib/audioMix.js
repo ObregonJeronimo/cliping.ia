@@ -29,7 +29,8 @@ export function playPreview(video, fromSec = 0) {
   const clips = video && video.timeline && video.timeline.audio
   const AC = typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext)
   if (!clips || !clips.length || !AC) return { stop() {} }
-  const ctx = new AC(); const now = ctx.currentTime; const srcs = []
+  const ctx = new AC(); try { ctx.resume() } catch (e) { /* autoplay: se resume con el gesto del play */ }
+  const now = ctx.currentTime; const srcs = []
   for (const c of clips) {
     const start = (c.startSec || 0) - fromSec
     if (start + (c.durSec || 0.3) < 0) continue   // el clip ya termino antes del playhead

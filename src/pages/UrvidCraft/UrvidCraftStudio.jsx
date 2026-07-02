@@ -8,6 +8,7 @@ import Timeline from './Timeline.jsx'
 import OverlayEditor from './OverlayEditor.jsx'
 import SfxEditor from './SfxEditor.jsx'
 import { SFX, sfxBuffer } from '../../lib/sfxLib.js'
+import { playPreview } from '../../lib/audioMix.js'
 import { useAuth } from '../../contexts/AuthContext'
 import { db } from '../../lib/firebase'
 import OptionGrid from './OptionGrid.jsx'
@@ -34,6 +35,20 @@ const DRAFT_KEY = 'urvidcraft.draft'   // el wizard PERSISTE (brief+picks+seed+p
 const SAVED_KEY = 'urvidcraft.saved'   // "Mis videos" de advanced — SEPARADO de urvid IA (que usa urvid1.saved)
 const SAVED_COL = 'urvidcraft_videos'  // coleccion Firestore propia de advanced (urvid IA usa urvid_videos)
 const newSeed = () => (Math.floor((typeof performance !== 'undefined' ? performance.now() : 1) * 1000) >>> 0) || 1
+
+// iconos de las tabs del rail (line-icons SVG, heredan el color de la tab via currentColor) — reemplazan los emojis.
+const _ic = (d) => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">{d}</svg>
+const ICONS = {
+  datos: _ic(<><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.6 2.7 2.6 15.3 0 18M12 3c-2.6 2.7-2.6 15.3 0 18" /></>),
+  estilo: _ic(<path d="M12 3s6 6.4 6 10a6 6 0 1 1-12 0c0-3.6 6-10 6-10z" />),
+  fondo: _ic(<><rect x="3" y="4" width="18" height="16" rx="2" /><circle cx="8.5" cy="9.5" r="1.5" /><path d="M21 16l-5-5-8 8" /></>),
+  escenas: _ic(<><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M8 4v16M16 4v16M3 9h5M3 15h5M16 9h5M16 15h5" /></>),
+  cierre: _ic(<path d="M5 21V4M5 4h11l-2 3.5L16 11H5" />),
+  avanzado: _ic(<><path d="M5 8h9M18 8h1M5 12h1M9 12h10M5 16h6M15 16h4" /><circle cx="16" cy="8" r="2" /><circle cx="7.5" cy="12" r="2" /><circle cx="13" cy="16" r="2" /></>),
+  animaciones: _ic(<path d="M5 6V5h14v1M12 5v14M9 19h6" />),
+  sfx: _ic(<><path d="M11 5L6 9H3v6h3l5 4z" /><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 6a9 9 0 0 1 0 12" /></>),
+  guardados: _ic(<path d="M6 3h12v18l-6-4-6 4z" />),
+}
 
 export default function UrvidCraftStudio() {
   const { user } = useAuth()
@@ -174,6 +189,8 @@ export default function UrvidCraftStudio() {
   const headRef = useRef(0)
   const [head, setHead] = useState(0)
   const [playing, setPlaying] = useState(true)
+  const audioPrevRef = useRef(null)          // handle del audio de preview (SFX en vivo) mientras reproduce
+  const restartAudioRef = useRef(() => {})   // reprograma el audio al reiniciar el loop (siempre la ultima version)
   useEffect(() => {
     const cv = cvRef.current; if (!cv) return
     const ctx = cv.getContext('2d')
@@ -187,7 +204,7 @@ export default function UrvidCraftStudio() {
     let raf, last = performance.now(), lastUI = 0
     const loop = (now) => {
       const dt = Math.min((now - last) / 1000, 0.05); last = now
-      headRef.current += dt; if (headRef.current >= video.duration) headRef.current -= video.duration
+      headRef.current += dt; if (headRef.current >= video.duration) { headRef.current -= video.duration; restartAudioRef.current() }   // al reiniciar el loop, reprograma los SFX desde 0
       draw()
       if (now - lastUI > 120) { lastUI = now; setHead(headRef.current) }
       raf = requestAnimationFrame(loop)
@@ -195,8 +212,18 @@ export default function UrvidCraftStudio() {
     raf = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(raf)
   }, [video, playing])
-  // seek desde el timeline (clic en un bloque) -> mueve el playhead a ese tiempo. Reajusta el frame aunque este en pausa.
+  // seek desde el timeline (clic/arrastre) -> mueve el playhead a ese tiempo. Reajusta el frame aunque este en pausa.
   const seek = (t) => { headRef.current = Math.max(0, Math.min(t || 0, video.duration)); setHead(headRef.current) }
+  // PREVIEW de AUDIO (Fase 4): al reproducir, agenda los SFX del timeline en un AudioContext vivo -> se escuchan MIENTRAS
+  // editas (sin descargar). Se (re)programa al play y al cambiar los clips, se reprograma al reiniciar el loop, y se corta al pausar.
+  const stopPreviewAudio = () => { if (audioPrevRef.current) { audioPrevRef.current.stop(); audioPrevRef.current = null } }
+  const startPreviewAudio = (fromSec) => { stopPreviewAudio(); if (tl.audio && tl.audio.length) audioPrevRef.current = playPreview({ duration: video.duration, timeline: { audio: tl.audio } }, fromSec || 0) }
+  restartAudioRef.current = () => startPreviewAudio(0)
+  useEffect(() => {
+    if (playing) startPreviewAudio(headRef.current); else stopPreviewAudio()
+    return stopPreviewAudio
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playing, tl.audio, video.duration])
 
   // ---- perception -----------------------------------------------------------------------------
   const analyze = async (refresh = false) => {
@@ -295,11 +322,11 @@ export default function UrvidCraftStudio() {
   // TABS del rail (editor Canva-style): pasos de config + Animaciones + SFX + Guardados. Reusan los render de los pasos.
   const [railTab, setRailTab] = useState('datos')
   const RAIL_TABS = [
-    { key: 'datos', label: 'Datos', icon: '🌐' }, { key: 'estilo', label: 'Estilo', icon: '🎨' },
-    { key: 'fondo', label: 'Fondo', icon: '🖼️' }, { key: 'escenas', label: 'Escenas', icon: '🎬' },
-    { key: 'cierre', label: 'Cierre', icon: '✨' }, { key: 'avanzado', label: 'Avanzado', icon: '⚙️' },
-    { key: 'animaciones', label: 'Animaciones', icon: '✍️' }, { key: 'sfx', label: 'SFX', icon: '🔊' },
-    { key: 'guardados', label: 'Guardados', icon: '★' },
+    { key: 'datos', label: 'Datos', icon: ICONS.datos }, { key: 'estilo', label: 'Estilo', icon: ICONS.estilo },
+    { key: 'fondo', label: 'Fondo', icon: ICONS.fondo }, { key: 'escenas', label: 'Escenas', icon: ICONS.escenas },
+    { key: 'cierre', label: 'Cierre', icon: ICONS.cierre }, { key: 'avanzado', label: 'Avanzado', icon: ICONS.avanzado },
+    { key: 'animaciones', label: 'Animaciones', icon: ICONS.animaciones }, { key: 'sfx', label: 'SFX', icon: ICONS.sfx },
+    { key: 'guardados', label: 'Guardados', icon: ICONS.guardados },
   ]
   const STEP_RENDER = { datos: renderDatos, estilo: renderEstilo, fondo: renderFondo, escenas: renderEscenas, cierre: renderCierre, avanzado: renderAvanzado }
 
