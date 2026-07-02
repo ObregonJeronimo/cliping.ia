@@ -143,14 +143,19 @@ export function makeVideo(brief = {}) {
   // MARKKIT garnish: un ICONO (por rubro) en una esquina, chico y tenue, opcional (~50%). Solo iconos
   // (NUNCA un blob/forma centrada detras del titulo). Los divisores/marcos quedan para composicion per-escena.
   const MARK_GARNISH_CATS = new Set(['iconos-rubro', 'iconos-animados'])
-  const markPool = query('markkit', { tone }).filter(m => MARK_GARNISH_CATS.has(m.category))
+  const _markCats = query('markkit', { tone }).filter(m => MARK_GARNISH_CATS.has(m.category))
+  // RELEVANCIA por RUBRO (fix "icono que no tiene sentido" / casita off-rubro): preferir iconos del rubro o universales ('*'),
+  // evitando los de OTRO rubro (ej una maceta de inmobiliaria en un video de moda) que el floor 0.45 de rubroAffinity dejaba
+  // colar. Fallback al pool completo si el rubro tiene <3 iconos propios (no dejar el garnish vacio en rubros con pocos iconos).
+  const _markRubro = _markCats.filter(m => ((m.rubros && m.rubros.length) ? m.rubros : ['*']).some(r => r === '*' || canonRubro(r) === rubro))
+  const markPool = _markRubro.length >= 3 ? _markRubro : _markCats
   const markMod = optional(lock && lock.mark, keep && keep.mark, seedFor(seed, 'markgarnish'), 0.5, markPool)
   // MARCA EDITORIAL (item L154): un MARCO HUECO con el codigo visual del rubro (corchetes de foco / filigrana de esquina /
   // ventana browser tech) a escala de BORDE, DETRAS del contenido -> firma el video sin tocar el layout/maxW. Clave: el
   // "320-ellipsis" venia de REDUCIR availW (layout.js) al encajar texto en un marco; ESTO no toca el texto -> imposible desbordar.
   // Pool CURADO: SOLO marcos que no escriben texto propio ni bloquean el centro del titulo. Eje de seed NUEVO (editmark) ->
   // byte-identico cuando ausente (no mueve ningun otro stream). Opcional ~35%, respeta lock/keep como los otros slots.
-  const EDIT_MARK_IDS = new Set(['mark.frame.brackets', 'mark.accent.corner-flourish', 'mark.frame.tab-window'])
+  const EDIT_MARK_IDS = new Set(['mark.frame.brackets', 'mark.frame.tab-window'])   // corner-flourish SACADO (feedback usuario): a escala de borde se fragmentaba y se leia como ruido de esquina. Solo marcos GEOMETRICOS claros (corchetes/ventana) que enmarcan el lienzo.
   const editPool = query('markkit', { tone }).filter(m => EDIT_MARK_IDS.has(m.id))
   const editMod = optional(lock && lock.editmark, keep && keep.editmark, seedFor(seed, 'editmark'), 0.35, editPool)
   // TRANSICION escena-a-escena (wipe/slide/iris/bars/cut) -> video.transitionId.

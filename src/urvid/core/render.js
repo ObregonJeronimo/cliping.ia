@@ -158,7 +158,7 @@ export function drawFrame(ctx, t, video, opts = {}) {
     if (m) {
       const _es = video.seriousness != null ? video.seriousness : 0.5
       const _eK = clamp(1 - 0.5 * (_es - 0.5), 0.7, 1.3)
-      ctx.save(); ctx.globalAlpha = (video.tone === 'light' ? 0.42 : 0.52) * _eK
+      ctx.save(); ctx.globalAlpha = (video.tone === 'light' ? 0.55 : 0.62) * _eK   // subido (feedback): el marco se leia demasiado tenue -> mas presente pero al borde, sin competir con el titulo centrado
       ctx.translate(W / 2, H / 2); ctx.scale(1.45, 1.45); ctx.translate(-W / 2, -H / 2)
       m.render(ctx, t, { ...base, fonts: video.fonts, seed: (video.editMarkSeed >>> 0) })
       ctx.restore()
