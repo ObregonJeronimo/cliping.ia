@@ -87,6 +87,21 @@ export function makeVideo(brief = {}) {
   // STATS REALES (item L152): las cifras que la perception SELECCIONO de la pagina (value no vacio). Gatean datakit: un
   // modulo de data-viz solo entra al pool si hay suficientes stats reales -> nunca se fabrica un numero (honestidad de datos).
   const realStats = Array.isArray(content.stats) ? content.stats.filter(s => s && (s.value || s.value === 0)) : []
+  // GATE POR TIPO (item L152): un modulo datakit TIPADO (needsType 'percent'/'rating') solo es elegible si existe una stat
+  // real de ese tipo. Sin ella el modulo se auto-saltaria (statPercent/statRating -> null -> return) y dejaria la ESCENA
+  // VACIA (~3s muertos). Esto lo mantiene FUERA del pool. La logica es la MISMA que statPercent/statRating en datakit ->
+  // selector y auto-skip del modulo COINCIDEN. Puro (no consume prng): plain/stack (sin needsType) pasan siempre.
+  const _hasStatType = (stats, type) => {
+    if (!type) return true
+    return stats.some(s => {
+      if (!s || s.value == null) return false
+      const v = String(s.value), n = parseFloat(v.replace(/[^\d.,-]/g, '').replace(',', '.'))
+      if (!isFinite(n)) return false
+      if (type === 'percent') return /%/.test(v) && n >= 0 && n <= 150
+      if (type === 'rating') return !/%/.test(v) && n >= 0 && n <= 5
+      return true
+    })
+  }
   // SCORER de fit: peso × afinidad-rubro × match-seriedad(register) × match-intensidad × legibilidad(densidad). Reemplaza al viejo wadj.
   const fitCtx = { rubro, seriousness, density }
   const score = (m) => fitWeight(m, fitCtx)
@@ -183,7 +198,13 @@ export function makeVideo(brief = {}) {
     // modulos NO migrados no tienen m.real -> siguen fuera (fabricarian). Determinismo: weightedPick consume 1 prng() sin
     // importar el tamaño del pool + seedFor(arco) es independiente del contenido del pool -> el resto queda intacto.
     if (beat.category === 'data/single' && realStats.length >= 1) {
-      opts = opts.concat(query('datakit', { tone }).filter(m => m.real && (m.needsStats || 1) <= realStats.length))
+      opts = opts.concat(query('datakit', { tone }).filter(m => m.real && (m.needsStats || 1) <= realStats.length && _hasStatType(realStats, m.needsType)))
+    }
+    // DATA/MULTI (item L152): un beat de VARIOS datos con >=2 stats REALES suma los modulos datakit multi (stack/grid: cada
+    // columna muestra una stat real). Mismo gate por needsStats -> sin >=2 el pool queda byte-identico; el determinismo se
+    // mantiene (weightedPick consume 1 prng() sin importar el tamaño del pool). Los modulos multi tienen needsStats 2 o 3.
+    if (beat.category === 'data/multi' && realStats.length >= 2) {
+      opts = opts.concat(query('datakit', { tone }).filter(m => m.real && (m.needsStats || 1) <= realStats.length && _hasStatType(realStats, m.needsType)))
     }
     const prng = seedFor(seed ^ hashStr('arc' + i), 'scene')
     let mod = null

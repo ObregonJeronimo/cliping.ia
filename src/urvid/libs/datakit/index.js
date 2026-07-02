@@ -5,7 +5,7 @@
 // puede ir en inkText. Acento = DECO (barra que se llena, arco, estrella). Sin Math.random/Date.now.
 import { register } from '../../core/registry.js'
 import { mulberry32, seedFor, range } from '../../core/prng.js'
-import { drawText } from '../../core/text.js'
+import { drawText, drawWrapped } from '../../core/text.js'
 import { W, H, TAU, clamp, inv, lerp, eOutCubic, eOutExpo, spring, rgba, lighten } from '../../core/util.js'
 
 // ---- helpers locales (puros) ----
@@ -42,6 +42,16 @@ function parseStat(v) {
 function fmtNum(v, decimals) { return decimals > 0 ? (Math.round(v * 10 ** decimals) / 10 ** decimals).toFixed(decimals) : fmtInt(v) }
 // statDisplay: el valor REAL con count-up en su parte numerica (o el string crudo si no es numerico). Determinista por t.
 function statDisplay(st, t, t0, t1) { const p = parseStat(st.value); return p.num != null ? p.prefix + fmtNum(countTo(p.num, t, t0, t1), p.decimals) + p.suffix : p.raw }
+// statPercent(content): la 1ra stat cuyo value es un PORCENTAJE real -> {pct:0..1, st}. null si ninguna es %. Para
+// modulos que rellenan un arco/anillo por un valor 0..1 -> NUNCA fabrican el % (item L152): sin un % real, se auto-saltan.
+function statPercent(content) {
+  const arr = content && Array.isArray(content.stats) ? content.stats : []
+  for (const s of arr) { if (!s || s.value == null) continue; const p = parseStat(s.value); if (p.num != null && /%/.test(String(s.value))) { const v = p.num / 100; if (v >= 0 && v <= 1.5) return { pct: Math.min(v, 1), st: s } } }
+  return null
+}
+// statRating(content): la 1ra stat cuyo value es un RATING real 0..5 (sin '%') -> {score:0..5, st}. null si ninguna. Para
+// modulos de estrellas -> el nro de estrellas sale de un dato real; sin rating real (ej '4.9') el modulo se auto-salta.
+function statRating(content) { const arr = content && Array.isArray(content.stats) ? content.stats : []; for (const s of arr) { if (!s || s.value == null) continue; const p = parseStat(s.value); if (p.num != null && p.num >= 0 && p.num <= 5 && !/%/.test(String(s.value))) return { score: p.num, st: s } } return null }
 
 // ---- VIDA CONTINUA (idle life) — helpers puros, deterministas (SOLO por t). Sutiles y suaves. ----
 // Tras la entrada los datos se asientan; estos helpers le dan vida CONTINUA a la DECO (barras/arcos/
@@ -133,27 +143,26 @@ register({
 
 register({
   id: 'data.number.statgrid', lib: 'datakit', category: 'numeros-animados', tones: ['dark', 'light'], rubros: ['finanzas', 'tech', 'default'], weight: 1,
+  real: true, needsStats: 2,   // MIGRADO (item L152): apila 2-3 stats REALES (valor + etiqueta); sin >=2 se auto-salta.
   register: 'neutral', intensity: 'medium', tags: ['stats', 'kpi', 'mono'],
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
-    // 3 KPIs apilados: numero mono + etiqueta corta. Valores estables, sufijos variados.
-    const rows = 3, top = H * 0.26, gap = H * 0.17
-    const units = ['%', 'k', '+']
-    const labels = [content.tagline, content.claim, content.cta].map(s => (s || '').split(' ').slice(0, 3).join(' '))
+    const { pal, content, fonts } = env
+    // 2-3 KPIs REALES apilados: el VALOR real (con su prefijo/sufijo) en mono + su etiqueta.
+    const rs = (content.stats || []).filter(s => s && (s.value || s.value === 0)).slice(0, 3)
+    if (rs.length < 2) return   // honestidad: solo con >=2 stats reales (el selector ya lo gatea; doble-guard)
+    const rows = rs.length, top = H * 0.26, gap = H * 0.17
     for (let i = 0; i < rows; i++) {
       const y = top + i * gap
       const ap = inv(t, 0.1 + i * 0.18, 0.7 + i * 0.18)
-      const tgt = i === 0 ? range(r, 12, 98) : range(r, 120, 9800)
-      const val = tgt * eOutExpo(ap)
       ctx.save(); ctx.globalAlpha = ap
       // tick de acento a la izquierda (DECO) -> respira en alto + glow continuo, desfasado por fila
       const tickH = 36 * Math.min(1, ap * 1.3) * breath(t, i * 1.6, 0.035, 1.2)
       ctx.save(); ctx.globalAlpha = glow(t, i * 1.6, 0.7, 1)
       ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(W * 0.12, y - tickH / 2, 5, tickH, 2.5); ctx.fill()
       ctx.restore()
-      drawText(ctx, fmtInt(val) + units[i], W * 0.2, y, { size: 46, weight: 700, family: fonts.accent, align: 'left', maxW: W * 0.44, color: numColor(pal) })
-      const lab = labels[i] || ['Crecimiento', 'Usuarios', 'Resultados'][i]
-      drawText(ctx, lab, W * 0.66, y, { size: 18, weight: 600, family: fonts.text, align: 'left', maxW: W * 0.26, color: pal.dim })
+      drawText(ctx, statDisplay(rs[i], t, 0.1 + i * 0.18, 0.7 + i * 0.18), W * 0.2, y, { size: 46, weight: 700, family: fonts.accent, align: 'left', maxW: W * 0.34, color: numColor(pal) })
+      // etiqueta REAL: drawWrapped -> ancha y hasta 2 lineas, achica antes de elidir -> etiquetas largas entran completas
+      drawWrapped(ctx, rs[i].label || '', W * 0.58, y, { size: 18, min: 13, weight: 600, family: fonts.text, align: 'left', maxW: W * 0.38, maxLines: 2, color: pal.dim })
       ctx.restore()
     }
   },
@@ -226,11 +235,13 @@ register({
 // ====================================================================== anillos / radiales
 register({
   id: 'data.ring.gauge', lib: 'datakit', category: 'anillos/radiales', tones: ['dark', 'light'], rubros: ['finanzas', 'tech', 'fitness'], weight: 1.2,
+  real: true, needsStats: 1, needsType: 'percent',   // MIGRADO (item L152): rellena el arco con un % REAL (statPercent); el selector solo lo elige si hay un % real -> nunca escena vacia.
   register: 'neutral', intensity: 'medium', tags: ['gauge', 'porcentaje', 'anillo'],
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
+    const { pal, content, fonts } = env
+    const pr = statPercent(content); if (!pr) return   // honestidad: solo con un % real (ej '92%')
     const cx = W / 2, cy = H * 0.42, rad = W * 0.3, lw = 18
-    const pct = range(r, 0.42, 0.96)
+    const pct = pr.pct
     const ap = eOutCubic(inv(t, 0.1, 1.2))
     const sweep = TAU * pct * ap
     const start = -TAU / 4
@@ -250,10 +261,10 @@ register({
     ctx.save(); ctx.globalAlpha = glow(t, 0, 0.7, 1)
     ctx.fillStyle = lighten(pal.accent, 0.25); ctx.beginPath(); ctx.arc(hx, hy, lw * 0.42 * breath(t, 0, 0.06, 1.3), 0, TAU); ctx.fill()
     ctx.restore()
-    // numero centrado en mono
-    drawText(ctx, Math.round(pct * 100 * ap) + '%', cx, cy - 2, { size: 56, weight: 700, family: fonts.accent, maxW: rad * 1.5, color: numColor(pal) })
-    // etiqueta debajo
-    const lab = content.tagline || content.claim
+    // numero centrado en mono = el VALOR REAL con count-up
+    drawText(ctx, statDisplay(pr.st, t, 0.1, 1.2), cx, cy - 2, { size: 56, weight: 700, family: fonts.accent, maxW: rad * 1.5, color: numColor(pal) })
+    // etiqueta REAL del stat debajo
+    const lab = pr.st.label || content.tagline || content.claim
     if (lab) drawText(ctx, lab, cx, cy + rad + 44, { size: 20, weight: 600, family: fonts.text, maxW: W * 0.74, color: pal.dim, alpha: inv(t, 0.7, 1.2) })
   },
 })
@@ -406,11 +417,13 @@ register({
 // ====================================================================== rating / prueba social
 register({
   id: 'data.rating.stars', lib: 'datakit', category: 'rating/prueba-social', tones: ['dark', 'light'], rubros: ['gastronomia', 'belleza', 'default'], weight: 1.1,
+  real: true, needsStats: 1, needsType: 'rating',   // MIGRADO (item L152): las estrellas salen de un RATING real 0..5 (statRating); el selector solo lo elige si hay un rating real -> nunca escena vacia.
   register: 'friendly', intensity: 'medium', tags: ['rating', 'estrellas', 'review'],
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
+    const { pal, content, fonts } = env
+    const rt = statRating(content); if (!rt) return   // honestidad: solo con un rating real 0..5 (ej '4.9')
     const cx = W / 2, cy = H * 0.42
-    const score = range(r, 4.2, 5)            // rating alto (prueba social)
+    const score = rt.score                     // 0..5 REAL
     const filled = score                       // 0..5
     const n = 5, gap = W * 0.13, sr = W * 0.05
     const totalW = (n - 1) * gap
@@ -431,9 +444,9 @@ register({
       }
       ctx.restore()
     }
-    // numero del rating en mono
-    drawText(ctx, score.toFixed(1), cx, cy + sr + 56, { size: 52, weight: 700, family: fonts.accent, maxW: W * 0.5, color: numColor(pal), alpha: inv(t, 0.6, 1.1) })
-    const lab = content.tagline || content.claim || 'sobre 5 estrellas'
+    // numero del rating en mono = el VALOR REAL con count-up
+    drawText(ctx, statDisplay(rt.st, t, 0.15, 1.1), cx, cy + sr + 56, { size: 52, weight: 700, family: fonts.accent, maxW: W * 0.5, color: numColor(pal), alpha: inv(t, 0.6, 1.1) })
+    const lab = rt.st.label || content.tagline || content.claim || 'sobre 5 estrellas'
     drawText(ctx, lab, cx, cy + sr + 98, { size: 18, weight: 600, family: fonts.text, maxW: W * 0.78, color: pal.dim, alpha: inv(t, 0.8, 1.3) })
   },
 })
@@ -568,39 +581,38 @@ register({
 // ====================================================================== numberStack
 register({
   id: 'data.stack.trio', lib: 'datakit', category: 'numberStack', tones: ['dark', 'light'], rubros: ['finanzas', 'tech', 'default'], weight: 1.2,
+  real: true, needsStats: 3,   // MIGRADO (item L152): apila 3 stats REALES (el del medio es el foco); sin 3 se auto-salta.
   register: 'neutral', intensity: 'medium', tags: ['kpi', 'stack', 'mono'],
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
-    // 3 datos apilados con DESTACADO: el del medio mas grande (foco), divisores entre filas.
+    const { pal, content, fonts } = env
+    // 3 datos REALES apilados con DESTACADO: el del medio mas grande (foco), divisores entre filas.
+    const rs = (content.stats || []).filter(s => s && (s.value || s.value === 0)).slice(0, 3)
+    if (rs.length < 3) return   // honestidad: solo con 3 stats reales (el layout foco-central necesita 3)
     const top = H * 0.24, gap = H * 0.18, cx = W / 2
-    const units = ['%', 'k', '+']
-    const labels = [shortLabel(content.tagline, 3), shortLabel(content.claim, 3), shortLabel(content.cta, 3)]
-    const defLab = ['Satisfaccion', 'Clientes', 'Anos']
-    const tgts = [range(r, 60, 99), range(r, 1.2, 9.8), range(r, 5, 40)]
     const sizes = [40, 64, 40]   // el del medio es el foco
     for (let i = 0; i < 3; i++) {
       const y = top + i * gap
       const ap = inv(t, 0.1 + i * 0.16, 0.7 + i * 0.16)
-      const val = tgts[i] * eOutExpo(ap)
-      const shown = i === 1 ? val.toFixed(1) : fmtInt(val)
       // divisor superior (menos en la 1ra)
       if (i > 0) { ctx.strokeStyle = hairline(pal, 0.1); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(W * 0.2, y - gap / 2); ctx.lineTo(W * 0.8, y - gap / 2); ctx.stroke() }
-      drawText(ctx, shown + units[i], cx, y - 8, { size: sizes[i], weight: 700, family: fonts.accent, maxW: W * 0.84, color: numColor(pal), alpha: clamp(ap * 1.3, 0, 1) })
+      drawText(ctx, statDisplay(rs[i], t, 0.1 + i * 0.16, 0.7 + i * 0.16), cx, y - 8, { size: sizes[i], weight: 700, family: fonts.accent, maxW: W * 0.84, color: numColor(pal), alpha: clamp(ap * 1.3, 0, 1) })
       // marca de acento del foco (pildora bajo el numero del medio) -> respira ancho + glow idle
       if (i === 1) { const wu = eOutCubic(inv(t, 0.4, 1)), ww = 70 * wu * breath(t, 0, 0.025); ctx.save(); ctx.globalAlpha = glow(t, 0, 0.78, 1); ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(cx - ww / 2, y + 26, ww, 5, 2.5); ctx.fill(); ctx.restore() }
-      drawText(ctx, labels[i] || defLab[i], cx, y + (i === 1 ? 46 : 24), { size: 16, weight: 600, family: fonts.text, maxW: W * 0.7, color: pal.dim, alpha: clamp(ap * 1.2, 0, 1) })
+      drawText(ctx, shortLabel(rs[i].label, 3), cx, y + (i === 1 ? 46 : 24), { size: 16, weight: 600, family: fonts.text, maxW: W * 0.7, color: pal.dim, alpha: clamp(ap * 1.2, 0, 1) })
     }
   },
 })
 
 register({
   id: 'data.stack.rowduo', lib: 'datakit', category: 'numberStack', tones: ['dark', 'light'], rubros: ['finanzas', 'tech', 'default'], weight: 1,
+  real: true, needsStats: 2,   // MIGRADO (item L152): 2 datos REALES lado a lado; sin >=2 se auto-salta.
   register: 'neutral', intensity: 'medium', tags: ['kpi', 'fila', 'mono'],
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
-    // 2 datos lado a lado en una fila, separados por un divisor vertical de acento. Foco compartido.
+    const { pal, content, fonts } = env
+    // 2 datos REALES lado a lado en una fila, separados por un divisor vertical de acento. Foco compartido.
+    const rs = (content.stats || []).filter(s => s && (s.value || s.value === 0)).slice(0, 2)
+    if (rs.length < 2) return   // honestidad: solo con >=2 stats reales
     const cy = H * 0.44, xA = W * 0.3, xB = W * 0.7
-    const tgtA = range(r, 120, 9800), tgtB = range(r, 12, 96)
     const apA = inv(t, 0.12, 0.8), apB = inv(t, 0.3, 1)
     const titulo = content.tagline || content.claim
     if (titulo) drawText(ctx, titulo, W / 2, H * 0.26, { size: 21, weight: 700, family: fonts.display, maxW: W * 0.84, color: pal.ink, alpha: inv(t, 0.1, 0.55) })
@@ -609,10 +621,10 @@ register({
     ctx.save(); ctx.globalAlpha = glow(t, 0, 0.78, 1)
     ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(W / 2 - 2, cy - dh / 2, 4, dh, 2); ctx.fill()
     ctx.restore()
-    drawText(ctx, fmtInt(tgtA * eOutExpo(apA)) + '+', xA, cy - 6, { size: 50, weight: 700, family: fonts.accent, maxW: W * 0.34, color: numColor(pal), alpha: clamp(apA * 1.3, 0, 1) })
-    drawText(ctx, Math.round(tgtB * eOutExpo(apB)) + '%', xB, cy - 6, { size: 50, weight: 700, family: fonts.accent, maxW: W * 0.34, color: numColor(pal), alpha: clamp(apB * 1.3, 0, 1) })
-    drawText(ctx, shortLabel(content.claim, 2) || 'Proyectos', xA, cy + 40, { size: 16, weight: 600, family: fonts.text, maxW: W * 0.3, color: pal.dim, alpha: clamp(apA * 1.2, 0, 1) })
-    drawText(ctx, shortLabel(content.cta, 2) || 'Mejora', xB, cy + 40, { size: 16, weight: 600, family: fonts.text, maxW: W * 0.3, color: pal.dim, alpha: clamp(apB * 1.2, 0, 1) })
+    drawText(ctx, statDisplay(rs[0], t, 0.12, 0.8), xA, cy - 6, { size: 50, weight: 700, family: fonts.accent, maxW: W * 0.34, color: numColor(pal), alpha: clamp(apA * 1.3, 0, 1) })
+    drawText(ctx, statDisplay(rs[1], t, 0.3, 1), xB, cy - 6, { size: 50, weight: 700, family: fonts.accent, maxW: W * 0.34, color: numColor(pal), alpha: clamp(apB * 1.3, 0, 1) })
+    drawText(ctx, shortLabel(rs[0].label, 2), xA, cy + 42, { size: 16, min: 12, weight: 600, family: fonts.text, maxW: W * 0.36, maxLines: 2, color: pal.dim, alpha: clamp(apA * 1.2, 0, 1) })
+    drawText(ctx, shortLabel(rs[1].label, 2), xB, cy + 42, { size: 16, min: 12, weight: 600, family: fonts.text, maxW: W * 0.36, maxLines: 2, color: pal.dim, alpha: clamp(apB * 1.2, 0, 1) })
   },
 })
 
@@ -735,12 +747,14 @@ register({
 // ====================================================================== donut
 register({
   id: 'data.donut.share', lib: 'datakit', category: 'donut', tones: ['dark', 'light'], rubros: ['finanzas', 'tech', 'default'], weight: 1.1,
+  real: true, needsStats: 1, needsType: 'percent',   // MIGRADO (item L152): el share del donut es un % REAL (statPercent); el selector solo lo elige si hay un % real -> nunca escena vacia.
   register: 'neutral', intensity: 'medium', tags: ['donut', 'porcentaje', 'share'],
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
+    const { pal, content, fonts } = env
+    const pr = statPercent(content); if (!pr) return   // honestidad: solo con un % real
     // donut de 1 valor (share dominante) con el hueco grande y el % grande adentro. Limpio.
     const cx = W / 2, cy = H * 0.42, rad = W * 0.3, lw = 34
-    const pct = range(r, 0.5, 0.88)
+    const pct = pr.pct
     const ap = eOutCubic(inv(t, 0.1, 1.1)), start = -TAU / 4
     ctx.lineCap = 'butt'; ctx.lineWidth = lw
     // resto (riel tenue)
@@ -752,12 +766,12 @@ register({
     ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, rad + lw, start, start + sweepS); ctx.arc(cx, cy, rad - lw, start + sweepS, start, true); ctx.closePath(); ctx.clip()
     sheenArc(ctx, cx, cy, rad, lw, t, pal.accent, { period: 4.4, span: 0.6, strength: 0.4 })
     ctx.restore()
-    // % central en mono (tinta en claro)
-    drawText(ctx, Math.round(pct * 100 * ap) + '%', cx, cy - 4, { size: 58, weight: 700, family: fonts.accent, maxW: rad * 1.4, color: numColor(pal) })
-    drawText(ctx, shortLabel(content.tagline, 3) || 'del mercado', cx, cy + 40, { size: 16, weight: 600, family: fonts.text, maxW: rad * 1.5, color: pal.dim, alpha: inv(t, 0.5, 1) })
-    // etiqueta inferior
+    // % central en mono (tinta en claro) = el VALOR REAL con count-up
+    drawText(ctx, statDisplay(pr.st, t, 0.1, 1.1), cx, cy - 4, { size: 58, weight: 700, family: fonts.accent, maxW: rad * 1.4, color: numColor(pal) })
+    drawText(ctx, shortLabel(pr.st.label, 3) || 'del mercado', cx, cy + 40, { size: 16, weight: 600, family: fonts.text, maxW: rad * 1.5, color: pal.dim, alpha: inv(t, 0.5, 1) })
+    // etiqueta inferior (claim): drawWrapped -> envuelve en <=2 lineas y achica antes de elidir (claims largos entran completos)
     const lab = content.claim
-    if (lab) drawText(ctx, lab, cx, cy + rad + 56, { size: 19, weight: 600, family: fonts.text, maxW: W * 0.78, color: pal.dim, alpha: inv(t, 0.7, 1.2) })
+    if (lab) drawWrapped(ctx, lab, cx, cy + rad + 56, { size: 19, min: 14, weight: 600, family: fonts.text, maxW: W * 0.78, maxLines: 2, color: pal.dim, alpha: inv(t, 0.7, 1.2) })
   },
 })
 
@@ -921,42 +935,24 @@ register({
 
 register({
   id: 'data.stack.deltacol', lib: 'datakit', category: 'numberStack', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
-  register: 'neutral', intensity: 'medium', tags: ['kpi', 'delta', 'tendencia'],
+  real: true, needsStats: 2,   // MIGRADO (item L152): 2-3 KPIs REALES en columna; sin >=2 se auto-salta.
+  register: 'neutral', intensity: 'medium', tags: ['kpi', 'tablero', 'mono'],
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
-    // 3 KPIs en columna, cada uno con su DELTA (flecha arriba + % chico de acento). Tablero de metricas.
-    const top = H * 0.26, gap = H * 0.18, xL = W * 0.14
-    const units = ['', 'k', '%']
-    const tgts = [range(r, 120, 980), range(r, 1.2, 48), range(r, 20, 95)]
-    const deltas = [range(r, 4, 28), range(r, 6, 34), range(r, 3, 19)]
-    const labels = [content.tagline, content.claim, content.cta].map(s => shortLabel(s, 3))
-    const def = ['Visitas', 'Mensajes', 'Conversion']
-    for (let i = 0; i < 3; i++) {
+    const { pal, content, fonts } = env
+    // 2-3 KPIs REALES en columna (VALOR real + etiqueta). Tablero de metricas.
+    const rs = (content.stats || []).filter(s => s && (s.value || s.value === 0)).slice(0, 3)
+    if (rs.length < 2) return   // honestidad: solo con >=2 stats reales
+    const n = rs.length, top = H * 0.26, gap = H * 0.18, xL = W * 0.14
+    for (let i = 0; i < n; i++) {
       const y = top + i * gap
       const ap = inv(t, 0.1 + i * 0.15, 0.7 + i * 0.15)
-      const v = tgts[i] * eOutExpo(ap)
-      const shown = i === 1 ? v.toFixed(1) : fmtInt(v)
       // etiqueta arriba
-      drawText(ctx, labels[i] || def[i], xL, y - 26, { size: 14, weight: 600, family: fonts.text, align: 'left', maxW: W * 0.6, color: pal.dim, alpha: clamp(ap * 1.3, 0, 1) })
-      // numero grande mono
-      drawText(ctx, shown + units[i], xL, y + 6, { size: 46, weight: 700, family: fonts.accent, align: 'left', maxW: W * 0.5, color: numColor(pal), alpha: clamp(ap * 1.2, 0, 1) })
-      // chip de delta a la derecha (flecha + %)
-      const dAp = inv(t, 0.5 + i * 0.12, 1 + i * 0.12)
-      if (dAp > 0) {
-        ctx.save(); ctx.globalAlpha = dAp
-        const dtxt = '+' + Math.round(deltas[i]) + '%'
-        ctx.font = `700 15px "${fonts.accent}"`; const tw = ctx.measureText(dtxt).width
-        const chipW = tw + 34, chipX = W * 0.86 - chipW, chipY = y - 14
-        ctx.fillStyle = rgba(pal.accent, 0.16 + 0.08 * idleK(t) * pulse01(t, i * 0.8)); ctx.beginPath(); ctx.roundRect(chipX, chipY, chipW, 28, 14); ctx.fill()
-        // flechita con deriva idle vertical (sube/baja sutil, sugiere tendencia)
-        ctx.strokeStyle = pal.accent; ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.lineJoin = 'round'
-        const ax = chipX + 14, ay = chipY + 14 + drift(t, i * 0.8, 0.9, 1.2)
-        ctx.beginPath(); ctx.moveTo(ax, ay + 5); ctx.lineTo(ax, ay - 5); ctx.moveTo(ax - 4, ay - 1); ctx.lineTo(ax, ay - 5); ctx.lineTo(ax + 4, ay - 1); ctx.stroke()
-        drawText(ctx, dtxt, ax + 12, ay, { size: 15, weight: 700, family: fonts.accent, align: 'left', maxW: tw + 4, color: numColor(pal) })
-        ctx.restore()
-      }
+      drawText(ctx, shortLabel(rs[i].label, 3), xL, y - 26, { size: 14, weight: 600, family: fonts.text, align: 'left', maxW: W * 0.6, color: pal.dim, alpha: clamp(ap * 1.3, 0, 1) })
+      // numero grande mono = el VALOR REAL con count-up
+      drawText(ctx, statDisplay(rs[i], t, 0.1 + i * 0.15, 0.7 + i * 0.15), xL, y + 6, { size: 46, weight: 700, family: fonts.accent, align: 'left', maxW: W * 0.72, color: numColor(pal), alpha: clamp(ap * 1.2, 0, 1) })
+      // (chip de DELTA '+X%' ELIMINADO: fabricaba una tendencia inventada por fila -> deshonesto.)
       // regla divisoria
-      if (i < 2) { ctx.strokeStyle = hairline(pal, 0.08); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(xL, y + gap / 2); ctx.lineTo(W * 0.86, y + gap / 2); ctx.stroke() }
+      if (i < n - 1) { ctx.strokeStyle = hairline(pal, 0.08); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(xL, y + gap / 2); ctx.lineTo(W * 0.86, y + gap / 2); ctx.stroke() }
     }
   },
 })
@@ -1130,12 +1126,14 @@ register({
 // ====================================================================== anillos / radiales (mas)
 register({
   id: 'data.ring.dial', lib: 'datakit', category: 'anillos/radiales', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
+  real: true, needsStats: 1, needsType: 'percent',   // MIGRADO (item L152): la aguja barre un % REAL (statPercent); el selector solo lo elige si hay un % real -> nunca escena vacia.
   register: 'neutral', intensity: 'medium', tags: ['gauge', 'aguja', 'medidor'],
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
+    const { pal, content, fonts } = env
+    const pr = statPercent(content); if (!pr) return   // honestidad: solo con un % real
     // medidor de medio arco (180) con AGUJA que barre 0..max. Arco riel + arco de acento + aguja.
     const cx = W / 2, cy = H * 0.5, rad = W * 0.32, lw = 16
-    const pct = range(r, 0.45, 0.95)
+    const pct = pr.pct
     const ap = eOutCubic(inv(t, 0.1, 1.2))
     const a0 = Math.PI, a1 = TAU                    // semicirculo superior (de 180 a 360)
     ctx.lineCap = 'round'; ctx.lineWidth = lw
@@ -1150,21 +1148,23 @@ register({
     ctx.strokeStyle = numColor(pal); ctx.lineWidth = 4; ctx.lineCap = 'round'
     ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(nx, ny); ctx.stroke()
     ctx.save(); ctx.globalAlpha = glow(t, 0, 0.8, 1); ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.arc(cx, cy, 9 * breath(t, 0, 0.05, 1.3), 0, TAU); ctx.fill(); ctx.restore()
-    // numero (mono) bajo el centro
-    drawText(ctx, Math.round(pct * 100 * ap) + '%', cx, cy + 44, { size: 48, weight: 700, family: fonts.accent, maxW: rad * 1.6, color: numColor(pal) })
-    const lab = content.tagline || content.claim
+    // numero (mono) bajo el centro = el VALOR REAL con count-up
+    drawText(ctx, statDisplay(pr.st, t, 0.1, 1.2), cx, cy + 44, { size: 48, weight: 700, family: fonts.accent, maxW: rad * 1.6, color: numColor(pal) })
+    const lab = pr.st.label || content.tagline || content.claim
     if (lab) drawText(ctx, lab, cx, cy + 92, { size: 18, weight: 600, family: fonts.text, maxW: W * 0.78, color: pal.dim, alpha: inv(t, 0.7, 1.2) })
   },
 })
 
 register({
   id: 'data.ring.dots', lib: 'datakit', category: 'anillos/radiales', tones: ['dark', 'light'], rubros: ['*'], weight: 0.9,
+  real: true, needsStats: 1, needsType: 'percent',   // MIGRADO (item L152): N puntos llenos = un % REAL (statPercent); el selector solo lo elige si hay un % real -> nunca escena vacia.
   register: 'neutral', intensity: 'soft', tags: ['anillo', 'puntos', 'progreso'],
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
+    const { pal, content, fonts } = env
+    const pr = statPercent(content); if (!pr) return   // honestidad: solo con un % real
     // anillo de PUNTOS (24): N llenos de acento segun %, el resto en riel. Numero al centro.
     const cx = W / 2, cy = H * 0.42, rad = W * 0.3, nDots = 24
-    const pct = range(r, 0.5, 0.92)
+    const pct = pr.pct
     const ap = inv(t, 0.1, 1.1)
     const filled = nDots * pct
     for (let i = 0; i < nDots; i++) {
@@ -1181,8 +1181,8 @@ register({
       else { ctx.fillStyle = hairline(pal, 0.16); ctx.beginPath(); ctx.arc(0, 0, 5, 0, TAU); ctx.fill() }
       ctx.restore()
     }
-    drawText(ctx, Math.round(pct * 100 * ap) + '%', cx, cy - 2, { size: 50, weight: 700, family: fonts.accent, maxW: rad * 1.4, color: numColor(pal) })
-    const lab = shortLabel(content.tagline, 3) || 'completado'
+    drawText(ctx, statDisplay(pr.st, t, 0.1, 1.1), cx, cy - 2, { size: 50, weight: 700, family: fonts.accent, maxW: rad * 1.4, color: numColor(pal) })
+    const lab = shortLabel(pr.st.label, 3) || 'completado'
     drawText(ctx, lab, cx, cy + 38, { size: 16, weight: 600, family: fonts.text, maxW: rad * 1.6, color: pal.dim, alpha: inv(t, 0.6, 1.1) })
   },
 })
@@ -1262,17 +1262,19 @@ register({
 // ====================================================================== comparacion / proporcion (mas)
 register({
   id: 'data.compare.battery', lib: 'datakit', category: 'comparacion/proporcion', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
+  real: true, needsStats: 1, needsType: 'percent',   // MIGRADO (item L152): las celdas llenas = un % REAL (statPercent); el selector solo lo elige si hay un % real -> nunca escena vacia.
   register: 'neutral', intensity: 'medium', tags: ['proporcion', 'segmentos', 'meta'],
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
+    const { pal, content, fonts } = env
+    const pr = statPercent(content); if (!pr) return   // honestidad: solo con un % real
     // barra "bateria" segmentada (10 celdas): N llenas de acento = progreso hacia la meta. % grande arriba.
     const cells = 10, x0 = W * 0.12, bw = W * 0.76, bh = 44, y = H * 0.46
     const gap = 4, cw = (bw - gap * (cells - 1)) / cells
-    const pct = range(r, 0.4, 0.9)
+    const pct = pr.pct
     const ap = eOutCubic(inv(t, 0.1, 1.1))
     const filled = cells * pct * ap
-    // % grande
-    drawText(ctx, Math.round(pct * 100 * ap) + '%', W / 2, y - 56, { size: 56, weight: 700, family: fonts.accent, maxW: bw, color: numColor(pal), alpha: inv(t, 0.3, 0.9) })
+    // % grande = el VALOR REAL con count-up
+    drawText(ctx, statDisplay(pr.st, t, 0.1, 1.1), W / 2, y - 56, { size: 56, weight: 700, family: fonts.accent, maxW: bw, color: numColor(pal), alpha: inv(t, 0.3, 0.9) })
     for (let i = 0; i < cells; i++) {
       const cx = x0 + i * (cw + gap)
       const frac = clamp(filled - i, 0, 1)
@@ -1287,8 +1289,8 @@ register({
         ctx.restore()
       }
     }
-    // etiqueta
-    drawText(ctx, shortLabel(content.tagline, 4) || 'hacia la meta', W / 2, y + bh + 34, { size: 18, weight: 600, family: fonts.text, maxW: W * 0.8, color: pal.dim, alpha: inv(t, 0.6, 1.1) })
+    // etiqueta REAL del stat
+    drawText(ctx, shortLabel(pr.st.label, 4) || 'hacia la meta', W / 2, y + bh + 34, { size: 18, weight: 600, family: fonts.text, maxW: W * 0.8, color: pal.dim, alpha: inv(t, 0.6, 1.1) })
   },
 })
 
@@ -1447,12 +1449,14 @@ register({
 
 register({
   id: 'data.progress.ringpct', lib: 'datakit', category: 'progreso', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
+  real: true, needsStats: 1, needsType: 'percent',   // MIGRADO (item L152): el anillo se llena por un % REAL (statPercent); el selector solo lo elige si hay un % real -> nunca escena vacia.
   register: 'neutral', intensity: 'soft', tags: ['progreso', 'anillo', 'porcentaje'],
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
+    const { pal, content, fonts } = env
+    const pr = statPercent(content); if (!pr) return   // honestidad: solo con un % real
     // anillo de progreso fino con punto-cabeza + numero grande contando. Limpio, foco en el %.
     const cx = W / 2, cy = H * 0.42, rad = W * 0.31, lw = 12
-    const pct = range(r, 0.55, 0.96)
+    const pct = pr.pct
     const ap = eOutCubic(inv(t, 0.1, 1.2))
     const start = -TAU / 4, sweep = TAU * pct * ap
     ctx.lineCap = 'round'; ctx.lineWidth = lw
@@ -1467,11 +1471,11 @@ register({
     ctx.save(); ctx.globalAlpha = glow(t, 0, 0.75, 1)
     ctx.fillStyle = lighten(pal.accent, 0.3); ctx.beginPath(); ctx.arc(hx, hy, lw * 0.5 * breath(t, 0, 0.06, 1.3), 0, TAU); ctx.fill(); ctx.restore()
     ctx.fillStyle = pal.bg0; ctx.beginPath(); ctx.arc(hx, hy, lw * 0.2, 0, TAU); ctx.fill()
-    // numero grande contando (mono)
-    drawText(ctx, Math.round(pct * 100 * ap) + '%', cx, cy - 2, { size: 60, weight: 700, family: fonts.accent, maxW: rad * 1.5, color: numColor(pal) })
-    drawText(ctx, shortLabel(content.tagline, 3) || 'logrado', cx, cy + 42, { size: 17, weight: 600, family: fonts.text, maxW: rad * 1.6, color: pal.dim, alpha: inv(t, 0.5, 1) })
+    // numero grande contando (mono) = el VALOR REAL con count-up
+    drawText(ctx, statDisplay(pr.st, t, 0.1, 1.2), cx, cy - 2, { size: 60, weight: 700, family: fonts.accent, maxW: rad * 1.5, color: numColor(pal) })
+    drawText(ctx, shortLabel(pr.st.label, 3) || 'logrado', cx, cy + 42, { size: 17, weight: 600, family: fonts.text, maxW: rad * 1.6, color: pal.dim, alpha: inv(t, 0.5, 1) })
     const lab = content.claim
-    if (lab && lab !== content.tagline) drawText(ctx, lab, cx, cy + rad + 52, { size: 18, weight: 600, family: fonts.text, maxW: W * 0.8, color: pal.dim, alpha: inv(t, 0.7, 1.2) })
+    if (lab && lab !== content.tagline) drawWrapped(ctx, lab, cx, cy + rad + 52, { size: 18, min: 14, weight: 600, family: fonts.text, maxW: W * 0.8, maxLines: 2, color: pal.dim, alpha: inv(t, 0.7, 1.2) })
   },
 })
 
@@ -1489,30 +1493,19 @@ register({
 // ====================================================================== numeros-animados (mas)
 register({
   id: 'data.number.plusminus', lib: 'datakit', category: 'numeros-animados', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
+  real: true, needsStats: 1,   // MIGRADO (item L152): el numero hero es la 1ra stat REAL (el value ya trae su signo/sufijo, ej '+218%'); sin stat real se auto-salta.
   register: 'neutral', intensity: 'bold', tags: ['hero', 'delta', 'tendencia', 'mono'],
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
-    // numero hero con DELTA: gran % central + chip de tendencia (flecha + delta) arriba. Foco en la mejora.
+    const { pal, content, fonts } = env
+    const st = realStat(content, 0); if (!st) return   // honestidad: solo con stat real
+    // numero hero = el VALOR REAL con count-up (el value ya trae su prefijo/sufijo: '+218%','92%','$2.4M').
     const cx = W / 2, cy = H * 0.46
-    const target = range(r, 42, 320)                  // ej "+218%"
-    const val = countTo(target, t, 0.1, 1.2)
-    // chip de tendencia arriba
-    const cAp = inv(t, 0.2, 0.8)
-    if (cAp > 0) {
-      ctx.save(); ctx.globalAlpha = cAp
-      const txt = 'vs mes anterior'
-      ctx.font = `600 14px "${fonts.text}"`; const tw = ctx.measureText(txt).width
-      const cw = tw + 44, cxp = cx - cw / 2, cyp = cy - 118
-      ctx.fillStyle = rgba(pal.accent, 0.16); ctx.beginPath(); ctx.roundRect(cxp, cyp, cw, 30, 15); ctx.fill()
-      flechaUp(ctx, cxp + 18, cyp + 15 + drift(t, 0, 1, 1.1), 7, pal.accent)
-      drawText(ctx, txt, cxp + 30, cyp + 15, { size: 14, weight: 600, family: fonts.text, align: 'left', maxW: tw + 4, color: pal.dim })
-      ctx.restore()
-    }
-    drawText(ctx, '+' + fmtInt(val) + '%', cx, cy, { size: 92, weight: 700, family: fonts.accent, maxW: W * 0.86, color: numColor(pal), shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.35)' : null })
+    // (chip 'vs mes anterior' ELIMINADO: aseveraba una comparacion temporal que no viene del dato -> deshonesto.)
+    drawText(ctx, statDisplay(st, t, 0.1, 1.2), cx, cy, { size: 92, weight: 700, family: fonts.accent, maxW: W * 0.86, color: numColor(pal), shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.35)' : null })
     const ru = eOutCubic(inv(t, 0.5, 1.2)), rw = 110 * ru * breath(t, 0, 0.02)
     ctx.save(); ctx.globalAlpha = glow(t, 0, 0.78, 1)
     ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(cx - rw / 2, cy + 58, rw, 6, 3); ctx.fill(); ctx.restore()
-    const label = content.tagline || content.claim || content.brand || ''
+    const label = st.label || content.tagline || content.claim || content.brand || ''
     if (label) drawText(ctx, label, cx, cy + 96, { size: 21, weight: 600, family: fonts.text, maxW: W * 0.8, color: pal.dim, alpha: inv(t, 0.7, 1.2) })
   },
 })
@@ -1604,12 +1597,14 @@ register({
 // ====================================================================== anillos / radiales (mas)
 register({
   id: 'data.ring.halfgauge', lib: 'datakit', category: 'anillos/radiales', tones: ['dark', 'light'], rubros: ['*'], weight: 1.1,
+  real: true, needsStats: 1, needsType: 'percent',   // MIGRADO (item L152): el semiarco se llena por un % REAL (statPercent); el selector solo lo elige si hay un % real -> nunca escena vacia.
   register: 'neutral', intensity: 'medium', tags: ['gauge', 'semi', 'porcentaje', 'mono'],
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
+    const { pal, content, fonts } = env
+    const pr = statPercent(content); if (!pr) return   // honestidad: solo con un % real
     // medidor SEMICIRCULAR (180 abajo) con relleno grueso + numero grande en el hueco. Ticks finos de escala.
     const cx = W / 2, cy = H * 0.54, rad = W * 0.34, lw = 24
-    const pct = range(r, 0.45, 0.95)
+    const pct = pr.pct
     const ap = eOutCubic(inv(t, 0.1, 1.2))
     const a0 = Math.PI, a1 = TAU
     ctx.lineCap = 'round'; ctx.lineWidth = lw
@@ -1628,9 +1623,9 @@ register({
       ctx.strokeStyle = hairline(pal, 0.2); ctx.lineWidth = 2
       ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1); ctx.lineTo(cx + Math.cos(a) * r2, cy + Math.sin(a) * r2); ctx.stroke()
     }
-    // numero grande en el hueco
-    drawText(ctx, Math.round(pct * 100 * ap) + '%', cx, cy - 18, { size: 64, weight: 700, family: fonts.accent, maxW: rad * 1.6, color: numColor(pal) })
-    const lab = content.tagline || content.claim
+    // numero grande en el hueco = el VALOR REAL con count-up
+    drawText(ctx, statDisplay(pr.st, t, 0.1, 1.2), cx, cy - 18, { size: 64, weight: 700, family: fonts.accent, maxW: rad * 1.6, color: numColor(pal) })
+    const lab = pr.st.label || content.tagline || content.claim
     if (lab) drawText(ctx, lab, cx, cy + 28, { size: 18, weight: 600, family: fonts.text, maxW: W * 0.74, color: pal.dim, alpha: inv(t, 0.7, 1.2) })
   },
 })
@@ -1746,15 +1741,16 @@ register({
 // ====================================================================== rating / prueba-social (mas)
 register({
   id: 'data.rating.bignum', lib: 'datakit', category: 'rating/prueba-social', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
+  real: true, needsStats: 1, needsType: 'rating',   // MIGRADO (item L152): el score gigante + estrellas salen de un RATING real 0..5 (statRating); el selector solo lo elige si hay un rating real -> nunca escena vacia.
   register: 'friendly', intensity: 'bold', tags: ['rating', 'score', 'estrellas', 'mono'],
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
-    // score gigante (ej "4.9") + fila de estrellas debajo + cantidad de reviews mono. Prueba social directa.
+    const { pal, content, fonts } = env
+    const rt = statRating(content); if (!rt) return   // honestidad: solo con un rating real 0..5 (ej '4.9')
+    // score gigante REAL (ej "4.9") + fila de estrellas debajo + etiqueta. Prueba social directa.
     const cx = W / 2, cy = H * 0.4
-    const score = range(r, 4.3, 4.95)
-    const reviews = Math.round(range(r, 80, 3200))
+    const score = rt.score
     const ap = inv(t, 0.1, 0.7)
-    drawText(ctx, (score * eOutExpo(ap)).toFixed(1), cx, cy, { size: 120, weight: 700, family: fonts.accent, maxW: W * 0.7, color: numColor(pal), shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.3)' : null })
+    drawText(ctx, statDisplay(rt.st, t, 0.1, 0.7), cx, cy, { size: 120, weight: 700, family: fonts.accent, maxW: W * 0.7, color: numColor(pal), shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.3)' : null })
     // estrellas debajo
     const n = 5, gap = W * 0.08, sr = W * 0.034, totalW = (n - 1) * gap
     const sAp = inv(t, 0.4, 1)
@@ -1767,7 +1763,8 @@ register({
       if (frac > 0) { ctx.save(); ctx.beginPath(); ctx.rect(-sr * 1.3, -sr * 1.3, sr * 2.6 * frac, sr * 2.6); ctx.clip(); starPath(ctx, sr); ctx.fillStyle = frac > 0.5 ? lighten(pal.accent, idleK(t) * pulse01(t, -i * 0.6) * 0.2) : pal.accent; ctx.fill(); ctx.restore() }
       ctx.restore()
     }
-    drawText(ctx, fmtInt(reviews) + ' opiniones', cx, cy + 140, { size: 18, weight: 600, family: fonts.text, maxW: W * 0.8, color: pal.dim, alpha: inv(t, 0.7, 1.2) })
+    // etiqueta REAL del stat (o copy) -> SIN cantidad de reviews fabricada (era un numero inventado -> deshonesto)
+    drawText(ctx, rt.st.label || content.tagline || content.claim || '', cx, cy + 140, { size: 18, weight: 600, family: fonts.text, maxW: W * 0.8, color: pal.dim, alpha: inv(t, 0.7, 1.2) })
   },
 })
 
@@ -1805,20 +1802,19 @@ register({
 // ====================================================================== numberStack (mas)
 register({
   id: 'data.stack.cards', lib: 'datakit', category: 'numberStack', tones: ['dark', 'light'], rubros: ['*'], weight: 1.1,
+  real: true, needsStats: 2,   // MIGRADO (item L152): 2-4 KPIs REALES en grid; solo dibuja las tarjetas que tienen stat real; sin >=2 se auto-salta.
   register: 'neutral', intensity: 'medium', tags: ['kpi', 'tarjetas', 'grid', 'mono'],
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
-    // 4 KPIs en grid 2x2 de tarjetas (numero mono grande + etiqueta). Dashboard compacto. La 1ra destacada.
-    const cols = 2, rows = 2, pad = W * 0.06, gx = W * 0.04, gy = H * 0.03
-    const cardW = (W - pad * 2 - gx) / cols, cardH = (H * 0.48 - gy) / rows
+    const { pal, content, fonts } = env
+    // KPIs REALES en grid 2x2 de tarjetas (VALOR real + etiqueta). Dashboard compacto. La 1ra destacada.
+    const rs = (content.stats || []).filter(s => s && (s.value || s.value === 0)).slice(0, 4)
+    if (rs.length < 2) return   // honestidad: solo con >=2 stats reales
+    const cols = 2, pad = W * 0.06, gx = W * 0.04, gy = H * 0.03
+    const cardW = (W - pad * 2 - gx) / cols, cardH = (H * 0.48 - gy) / 2
     const ox = pad, oy = H * 0.28
-    const units = ['%', 'k', '+', '%']
-    const tgts = [range(r, 60, 99), range(r, 1.2, 48), range(r, 80, 980), range(r, 18, 64)]
-    const labels = [content.brand, content.tagline, content.claim, content.cta].map(s => shortLabel(s, 2))
-    const def = ['Exito', 'Clientes', 'Proyectos', 'Mejora']
     const titulo = content.tagline || ''
     if (titulo) drawText(ctx, titulo, W / 2, H * 0.2, { size: 22, weight: 700, family: fonts.display, maxW: W * 0.84, color: pal.ink, alpha: inv(t, 0.1, 0.55) })
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < rs.length; i++) {
       const c = i % cols, ro = Math.floor(i / cols)
       const x = ox + c * (cardW + gx), y = oy + ro * (cardH + gy)
       const ap = spring(inv(t, 0.12 + i * 0.1, 0.8 + i * 0.1), { zeta: 0.5, freq: 2 })
@@ -1827,10 +1823,8 @@ register({
       ctx.fillStyle = pal.surface; ctx.beginPath(); ctx.roundRect(x, y, cardW, cardH, 14); ctx.fill()
       if (i === 0) { ctx.save(); ctx.globalAlpha *= glow(t, 0, 0.6, 1); ctx.strokeStyle = pal.accent; ctx.lineWidth = 2; ctx.beginPath(); ctx.roundRect(x, y, cardW, cardH, 14); ctx.stroke(); ctx.restore() }
       else { ctx.strokeStyle = hairline(pal, 0.14); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.roundRect(x, y, cardW, cardH, 14); ctx.stroke() }
-      const val = tgts[i] * eOutExpo(inv(t, 0.2 + i * 0.08, 0.9 + i * 0.08))
-      const shown = i === 1 ? val.toFixed(1) : fmtInt(val)
-      drawText(ctx, shown + units[i], x + cardW / 2, y + cardH * 0.4, { size: 38, weight: 700, family: fonts.accent, maxW: cardW * 0.86, color: numColor(pal) })
-      drawText(ctx, labels[i] || def[i], x + cardW / 2, y + cardH * 0.74, { size: 14, weight: 600, family: fonts.text, maxW: cardW * 0.86, color: pal.dim })
+      drawText(ctx, statDisplay(rs[i], t, 0.2 + i * 0.08, 0.9 + i * 0.08), x + cardW / 2, y + cardH * 0.4, { size: 38, weight: 700, family: fonts.accent, maxW: cardW * 0.86, color: numColor(pal) })
+      drawText(ctx, shortLabel(rs[i].label, 2), x + cardW / 2, y + cardH * 0.74, { size: 14, weight: 600, family: fonts.text, maxW: cardW * 0.86, color: pal.dim })
       ctx.restore()
     }
   },
@@ -1839,14 +1833,16 @@ register({
 // ====================================================================== progreso (mas)
 register({
   id: 'data.progress.barbig', lib: 'datakit', category: 'progreso', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
+  real: true, needsStats: 1, needsType: 'percent',   // MIGRADO (item L152): el % gigante + la barra salen de un % REAL (statPercent); el selector solo lo elige si hay un % real -> nunca escena vacia.
   register: 'neutral', intensity: 'bold', tags: ['progreso', 'barra', 'porcentaje', 'mono'],
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
+    const { pal, content, fonts } = env
+    const pr = statPercent(content); if (!pr) return   // honestidad: solo con un % real
     // % GIGANTE arriba + barra de progreso gruesa con punto-cabeza debajo. Foco maximo en el numero.
     const cx = W / 2, cy = H * 0.4
-    const pct = range(r, 0.5, 0.95)
+    const pct = pr.pct
     const ap = eOutCubic(inv(t, 0.1, 1.1))
-    drawText(ctx, Math.round(pct * 100 * ap) + '%', cx, cy, { size: 110, weight: 700, family: fonts.accent, maxW: W * 0.8, color: numColor(pal), shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.3)' : null })
+    drawText(ctx, statDisplay(pr.st, t, 0.1, 1.1), cx, cy, { size: 110, weight: 700, family: fonts.accent, maxW: W * 0.8, color: numColor(pal), shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.3)' : null })
     // barra
     const x0 = W * 0.12, bw = W * 0.76, bh = 16, by = cy + 90
     ctx.fillStyle = hairline(pal, 0.1); ctx.beginPath(); ctx.roundRect(x0, by, bw, bh, bh / 2); ctx.fill()
@@ -1855,7 +1851,7 @@ register({
     sheen(ctx, x0, by, fw, bh, t, { period: 3.2, strength: 0.2, r: bh / 2 })
     // punto-cabeza con glow idle
     ctx.save(); ctx.globalAlpha = glow(t, 0, 0.75, 1); ctx.fillStyle = lighten(pal.accent, 0.3); ctx.beginPath(); ctx.arc(x0 + fw, by + bh / 2, bh * 0.7 * breath(t, 0, 0.06, 1.3), 0, TAU); ctx.fill(); ctx.restore()
-    const lab = content.tagline || content.claim || 'completado'
+    const lab = pr.st.label || content.tagline || content.claim || 'completado'
     drawText(ctx, lab, cx, by + bh + 40, { size: 19, weight: 600, family: fonts.text, maxW: W * 0.82, color: pal.dim, alpha: inv(t, 0.6, 1.1) })
   },
 })
@@ -1972,12 +1968,13 @@ function flechaUp(ctx, cx, cy, s, color) {
 // ====================================================================== numeros-animados (mas)
 register({
   id: 'data.number.percentcircle', lib: 'datakit', category: 'numeros-animados', tones: ['dark', 'light'], rubros: ['*'], weight: 1.1,
+  real: true, needsStats: 1, needsType: 'percent',   // MIGRADO (item L152): el % hero es un % REAL (statPercent); el selector solo lo elige si hay un % real -> nunca escena vacia.
   register: 'neutral', intensity: 'bold', tags: ['hero', 'porcentaje', 'marco', 'mono'],
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
+    const { pal, content, fonts } = env
+    const pr = statPercent(content); if (!pr) return   // honestidad: solo con un % real
     // % GRANDE centrado dentro de un MARCO circular fino de acento (deco), con dos rulos cortos a los lados.
     const cx = W / 2, cy = H * 0.42, rad = W * 0.36
-    const pct = range(r, 0.6, 0.98)
     const ap = eOutCubic(inv(t, 0.1, 1.2))
     // marco circular tenue (riel)
     ctx.lineWidth = 2; ctx.strokeStyle = hairline(pal, 0.14)
@@ -1990,13 +1987,13 @@ register({
     ctx.beginPath(); ctx.arc(cx, cy, rad, -TAU / 4 + spin - span2, -TAU / 4 + spin + span2); ctx.stroke()
     ctx.beginPath(); ctx.arc(cx, cy, rad, TAU / 4 + spin - span2, TAU / 4 + spin + span2); ctx.stroke()
     ctx.restore()
-    // numero grande
-    drawText(ctx, Math.round(pct * 100 * ap) + '%', cx, cy - 6, { size: 96, weight: 700, family: fonts.accent, maxW: rad * 1.7, color: numColor(pal), shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.3)' : null })
-    // etiqueta corta dentro del marco
-    drawText(ctx, shortLabel(content.tagline, 3) || 'de satisfaccion', cx, cy + 44, { size: 17, weight: 600, family: fonts.text, maxW: rad * 1.5, color: pal.dim, alpha: inv(t, 0.5, 1) })
-    // claim debajo del marco
+    // numero grande = el VALOR REAL con count-up
+    drawText(ctx, statDisplay(pr.st, t, 0.1, 1.2), cx, cy - 6, { size: 96, weight: 700, family: fonts.accent, maxW: rad * 1.7, color: numColor(pal), shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.3)' : null })
+    // etiqueta corta REAL dentro del marco
+    drawText(ctx, shortLabel(pr.st.label, 3) || 'de satisfaccion', cx, cy + 44, { size: 17, weight: 600, family: fonts.text, maxW: rad * 1.5, color: pal.dim, alpha: inv(t, 0.5, 1) })
+    // claim debajo del marco: drawWrapped -> <=2 lineas, achica antes de elidir
     const lab = content.claim
-    if (lab && lab !== content.tagline) drawText(ctx, lab, cx, cy + rad + 50, { size: 18, weight: 600, family: fonts.text, maxW: W * 0.8, color: pal.dim, alpha: inv(t, 0.7, 1.2) })
+    if (lab && lab !== content.tagline) drawWrapped(ctx, lab, cx, cy + rad + 50, { size: 18, min: 14, weight: 600, family: fonts.text, maxW: W * 0.8, maxLines: 2, color: pal.dim, alpha: inv(t, 0.7, 1.2) })
   },
 })
 
@@ -2022,8 +2019,9 @@ register({
     // numero grande = el VALOR REAL (item L152) con count-up sobre su parte numerica
     drawText(ctx, statDisplay(st, t, 0.2, 1.2), W / 2, cardY + cardH * 0.5, { size: 72, weight: 700, family: fonts.accent, maxW: cardW * 0.86, color: numColor(pal) })
     // (chip de delta '+X%' ELIMINADO: fabricaba un crecimiento inventado -> deshonesto. Sin una 2da stat real no se muestra.)
+    // claim bajo la tarjeta: drawWrapped -> <=2 lineas, achica antes de elidir (claims largos entran completos)
     const lab = content.claim
-    if (lab) drawText(ctx, lab, W / 2, cardY + cardH + 40, { size: 18, weight: 600, family: fonts.text, maxW: W * 0.82, color: pal.dim, alpha: inv(t, 0.7, 1.2) })
+    if (lab) drawWrapped(ctx, lab, W / 2, cardY + cardH + 40, { size: 18, min: 14, weight: 600, family: fonts.text, maxW: W * 0.82, maxLines: 2, color: pal.dim, alpha: inv(t, 0.7, 1.2) })
   },
 })
 
@@ -2140,12 +2138,14 @@ register({
 // ====================================================================== donut (mas)
 register({
   id: 'data.donut.gauge270', lib: 'datakit', category: 'donut', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
+  real: true, needsStats: 1, needsType: 'percent',   // MIGRADO (item L152): el arco 270 se llena por un % REAL (statPercent); el selector solo lo elige si hay un % real -> nunca escena vacia.
   register: 'neutral', intensity: 'medium', tags: ['donut', 'gauge', '270', 'porcentaje', 'mono'],
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
+    const { pal, content, fonts } = env
+    const pr = statPercent(content); if (!pr) return   // honestidad: solo con un % real
     // gauge de 270 grados (3/4 de vuelta, hueco abajo) con numero grande al centro y etiquetas min/max. Limpio.
     const cx = W / 2, cy = H * 0.44, rad = W * 0.32, lw = 22
-    const pct = range(r, 0.4, 0.95)
+    const pct = pr.pct
     const ap = eOutCubic(inv(t, 0.1, 1.2))
     const a0 = Math.PI * 0.75, total = Math.PI * 1.5   // 270 grados, hueco abajo
     ctx.lineCap = 'round'; ctx.lineWidth = lw
@@ -2159,9 +2159,9 @@ register({
     // punto cabeza con glow idle
     const ha = a0 + sweep270
     ctx.save(); ctx.globalAlpha = glow(t, 0, 0.75, 1); ctx.fillStyle = lighten(pal.accent, 0.3); ctx.beginPath(); ctx.arc(cx + Math.cos(ha) * rad, cy + Math.sin(ha) * rad, lw * 0.42 * breath(t, 0, 0.06, 1.3), 0, TAU); ctx.fill(); ctx.restore()
-    // numero grande centro
-    drawText(ctx, Math.round(pct * 100 * ap) + '%', cx, cy - 4, { size: 64, weight: 700, family: fonts.accent, maxW: rad * 1.5, color: numColor(pal) })
-    drawText(ctx, shortLabel(content.tagline, 3) || 'del objetivo', cx, cy + 40, { size: 16, weight: 600, family: fonts.text, maxW: rad * 1.5, color: pal.dim, alpha: inv(t, 0.5, 1) })
+    // numero grande centro = el VALOR REAL con count-up
+    drawText(ctx, statDisplay(pr.st, t, 0.1, 1.2), cx, cy - 4, { size: 64, weight: 700, family: fonts.accent, maxW: rad * 1.5, color: numColor(pal) })
+    drawText(ctx, shortLabel(pr.st.label, 3) || 'del objetivo', cx, cy + 40, { size: 16, weight: 600, family: fonts.text, maxW: rad * 1.5, color: pal.dim, alpha: inv(t, 0.5, 1) })
     // min / max en las puntas inferiores
     const mAp = inv(t, 0.6, 1.1)
     drawText(ctx, '0', cx + Math.cos(a0) * (rad + 4), cy + Math.sin(a0) * (rad + 4) + 16, { size: 13, weight: 700, family: fonts.accent, maxW: 40, color: pal.dim, alpha: mAp })
@@ -2405,30 +2405,27 @@ register({
 // ====================================================================== numberStack (mas)
 register({
   id: 'data.stack.bigsmall', lib: 'datakit', category: 'numberStack', tones: ['dark', 'light'], rubros: ['*'], weight: 1.1,
+  real: true, needsStats: 3,   // MIGRADO (item L152): 1 hero REAL (rs[0]) + 2 chicos REALES (rs[1..2]); sin 3 se auto-salta.
   register: 'neutral', intensity: 'bold', tags: ['kpi', 'hero', 'jerarquia', 'mono'],
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
-    // 1 numero HERO arriba + 2 stats chicos lado a lado debajo (jerarquia). Regla de acento separa.
+    const { pal, content, fonts } = env
+    // 1 numero HERO REAL arriba + 2 stats REALES chicos lado a lado debajo (jerarquia). Regla de acento separa.
+    const rs = (content.stats || []).filter(s => s && (s.value || s.value === 0)).slice(0, 3)
+    if (rs.length < 3) return   // honestidad: solo con 3 stats reales (hero + 2)
     const cx = W / 2
-    const heroT = range(r, 1.2, 9.6)
-    const heroVal = (heroT * eOutExpo(inv(t, 0.1, 1.1))).toFixed(1)
-    // hero
-    drawText(ctx, shortLabel(content.tagline, 3) || 'Ingresos', cx, H * 0.24, { size: 16, weight: 600, family: fonts.text, maxW: W * 0.8, color: pal.dim, alpha: inv(t, 0.2, 0.8) })
-    drawText(ctx, '$' + heroVal + 'M', cx, H * 0.36, { size: 84, weight: 700, family: fonts.accent, maxW: W * 0.86, color: numColor(pal), shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.3)' : null })
+    // hero (el VALOR REAL, ya con su prefijo/sufijo)
+    drawText(ctx, shortLabel(rs[0].label, 3) || 'Ingresos', cx, H * 0.24, { size: 16, weight: 600, family: fonts.text, maxW: W * 0.8, color: pal.dim, alpha: inv(t, 0.2, 0.8) })
+    drawText(ctx, statDisplay(rs[0], t, 0.1, 1.1), cx, H * 0.36, { size: 84, weight: 700, family: fonts.accent, maxW: W * 0.86, color: numColor(pal), shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.3)' : null })
     // regla de acento -> respira ancho + glow idle
     const ru = eOutCubic(inv(t, 0.4, 1)), rw = 90 * ru * breath(t, 0, 0.02)
     ctx.save(); ctx.globalAlpha = glow(t, 0, 0.78, 1)
     ctx.fillStyle = pal.accent; roundRectPath(ctx, cx - rw / 2, H * 0.43, rw, 5, 2.5); ctx.fill(); ctx.restore()
-    // 2 stats chicos
+    // 2 stats chicos REALES
     const xs = [W * 0.3, W * 0.7]
-    const subT = [range(r, 12, 96), range(r, 120, 980)]
-    const subU = ['%', '+']
-    const subL = [shortLabel(content.claim, 2) || 'Conversion', shortLabel(content.cta, 2) || 'Clientes']
     for (let i = 0; i < 2; i++) {
       const ap = inv(t, 0.5 + i * 0.12, 1.1 + i * 0.12)
-      const v = subT[i] * eOutExpo(ap)
-      drawText(ctx, (i === 0 ? Math.round(v) : fmtInt(v)) + subU[i], xs[i], H * 0.56, { size: 40, weight: 700, family: fonts.accent, maxW: W * 0.34, color: numColor(pal), alpha: clamp(ap * 1.3, 0, 1) })
-      drawText(ctx, subL[i], xs[i], H * 0.62, { size: 14, weight: 600, family: fonts.text, maxW: W * 0.34, color: pal.dim, alpha: clamp(ap * 1.2, 0, 1) })
+      drawText(ctx, statDisplay(rs[i + 1], t, 0.5 + i * 0.12, 1.1 + i * 0.12), xs[i], H * 0.56, { size: 40, weight: 700, family: fonts.accent, maxW: W * 0.34, color: numColor(pal), alpha: clamp(ap * 1.3, 0, 1) })
+      drawText(ctx, shortLabel(rs[i + 1].label, 2), xs[i], H * 0.62, { size: 14, weight: 600, family: fonts.text, maxW: W * 0.34, color: pal.dim, alpha: clamp(ap * 1.2, 0, 1) })
     }
     // divisor vertical entre los 2 chicos
     const dh = eOutCubic(inv(t, 0.6, 1)) * 50
@@ -2439,12 +2436,14 @@ register({
 // ====================================================================== progreso (mas)
 register({
   id: 'data.progress.dialarc', lib: 'datakit', category: 'progreso', tones: ['dark', 'light'], rubros: ['*'], weight: 1,
+  real: true, needsStats: 1, needsType: 'percent',   // MIGRADO (item L152): el arco 3/4 + los ticks se llenan por un % REAL (statPercent); el selector solo lo elige si hay un % real -> nunca escena vacia.
   register: 'neutral', intensity: 'medium', tags: ['progreso', 'arco', 'escala', 'mono'],
   render(ctx, t, env) {
-    const { pal, content, fonts } = env, r = seedFor(env.seed, 'data')
+    const { pal, content, fonts } = env
+    const pr = statPercent(content); if (!pr) return   // honestidad: solo con un % real
     // arco de progreso (3/4) con ESCALA de puntos alrededor (12 ticks que se encienden) + numero central. Premium.
     const cx = W / 2, cy = H * 0.42, rad = W * 0.3, lw = 16, nTicks = 12
-    const pct = range(r, 0.5, 0.95)
+    const pct = pr.pct
     const ap = eOutCubic(inv(t, 0.1, 1.2))
     const a0 = Math.PI * 0.75, total = Math.PI * 1.5
     // arco riel + acento
@@ -2466,9 +2465,9 @@ register({
       ctx.strokeStyle = on ? pal.accent : hairline(pal, 0.18); ctx.lineWidth = on ? 3 : 2
       ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1); ctx.lineTo(cx + Math.cos(a) * r2, cy + Math.sin(a) * r2); ctx.stroke(); ctx.restore()
     }
-    // numero central
-    drawText(ctx, Math.round(pct * 100 * ap) + '%', cx, cy - 4, { size: 58, weight: 700, family: fonts.accent, maxW: rad * 1.4, color: numColor(pal) })
-    drawText(ctx, shortLabel(content.tagline, 3) || 'completado', cx, cy + 38, { size: 16, weight: 600, family: fonts.text, maxW: rad * 1.5, color: pal.dim, alpha: inv(t, 0.5, 1) })
+    // numero central = el VALOR REAL con count-up
+    drawText(ctx, statDisplay(pr.st, t, 0.1, 1.2), cx, cy - 4, { size: 58, weight: 700, family: fonts.accent, maxW: rad * 1.4, color: numColor(pal) })
+    drawText(ctx, shortLabel(pr.st.label, 3) || 'completado', cx, cy + 38, { size: 16, weight: 600, family: fonts.text, maxW: rad * 1.5, color: pal.dim, alpha: inv(t, 0.5, 1) })
     const lab = content.claim
     if (lab && lab !== content.tagline) drawText(ctx, lab, cx, cy + rad + 56, { size: 18, weight: 600, family: fonts.text, maxW: W * 0.8, color: pal.dim, alpha: inv(t, 0.7, 1.2) })
   },
