@@ -22,6 +22,11 @@
 .soon .lane { align-items: center; justify-content: center; opacity: 0.55; }
 .soonLbl { font-size: 10px; opacity: 0.6; font-style: italic; }
 
+/* bloques de overlay (pista Animaciones) — posicionados ABSOLUTO por tiempo */
+.ovBlock { position: absolute; top: 6px; bottom: 6px; display: flex; align-items: center; padding: 0 9px; border-radius: 6px; background: #efeaff; border: 1px solid #b9a7f0; border-left: 3px solid #7048e8; cursor: pointer; overflow: hidden; z-index: 2; }
+.ovBlock:hover { box-shadow: 0 1px 6px rgba(112, 72, 232, 0.25); }
+.ovTxt { font-size: 11px; color: #4a3a8a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
 .selBar { display: flex; justify-content: space-between; align-items: center; margin-top: 9px; font-size: 11px; opacity: 0.85; }
 .selBtns button { border: 1px solid rgba(0, 0, 0, 0.15); background: #fff; border-radius: 6px; width: 28px; height: 24px; cursor: pointer; margin-left: 5px; font-size: 12px; }
 .selBtns button:disabled { opacity: 0.35; cursor: default; }

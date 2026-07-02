@@ -3,8 +3,9 @@ import { collection, doc, getDocs, setDoc, deleteDoc } from 'firebase/firestore'
 import { makeVideo, drawFrame } from '../../urvid/index.js'
 import { exportCanvasVideo } from '../../lib/exportVideo.js'
 import { estimateTokens } from '../../lib/tokens.js'
-import { applyTimeline, identityOrder } from '../../lib/timeline.js'
+import { applyTimeline, identityOrder, makeTextOverlay, patchOverlay, finalizeRecording } from '../../lib/timeline.js'
 import Timeline from './Timeline.jsx'
+import OverlayEditor from './OverlayEditor.jsx'
 import { useAuth } from '../../contexts/AuthContext'
 import { db } from '../../lib/firebase'
 import OptionGrid from './OptionGrid.jsx'
@@ -67,7 +68,9 @@ export default function UrvidCraftStudio() {
   // se persiste con el video (draft + Firestore). order se reconcilia a identidad si cambia la CANTIDAD de escenas.
   const [tl, setTl] = useState(() => { const t = (d0 && d0.timeline) || {}; return { v: 1, order: t.order || [], sceneText: t.sceneText || {}, overlays: t.overlays || [], audio: t.audio || [] } })
   useEffect(() => { setTl(t => (t.order.length === baseVideo.scenes.length ? t : { ...t, order: identityOrder(baseVideo.scenes.length) })) }, [baseVideo])
-  const video = useMemo(() => applyTimeline(baseVideo, tl.order, tl.sceneText), [baseVideo, tl.order, tl.sceneText])
+  // applyTimeline aplica order + sceneText a las escenas; ADEMAS adjuntamos el documento `tl` como video.timeline para que
+  // drawFrame dibuje los overlays (y, en Fase 4, mezcle el audio). Sin overlays/audio -> drawOverlays no-op -> nada cambia.
+  const video = useMemo(() => ({ ...applyTimeline(baseVideo, tl.order, tl.sceneText), timeline: tl }), [baseVideo, tl])
   // edita el texto de UNA escena (por indice BASE) -> override en tl.sceneText; vacio -> quita el override (vuelve al global).
   const editSceneText = (baseIdx, key, val) => setTl(t => {
     const cur = { ...(t.sceneText[baseIdx] || {}) }
@@ -76,6 +79,38 @@ export default function UrvidCraftStudio() {
     if (Object.keys(cur).length) st[baseIdx] = cur; else delete st[baseIdx]
     return { ...t, sceneText: st }
   })
+  // OVERLAYS (Fase 3): objetos texto animados SOBRE el video. selOv = seleccionado; recording = grabando el gesto.
+  const [selOv, setSelOv] = useState(null)
+  const [recording, setRecording] = useState(false)
+  const dragOvRef = useRef(null)   // 'move' | 'record' | null (accion en curso sobre el canvas)
+  const recRef = useRef(null)      // { t0, pts:[{ms,x,y}] } mientras se graba
+  const addOverlay = () => setTl(t => { const ov = makeTextOverlay(headRef.current, video.W, video.H); setSelOv(ov.id); return { ...t, overlays: [...(t.overlays || []), ov] } })
+  const patchOv = (id, patch) => setTl(t => ({ ...t, overlays: patchOverlay(t.overlays, id, patch) }))
+  const removeOv = (id) => { setTl(t => ({ ...t, overlays: (t.overlays || []).filter(o => o.id !== id) })); setSelOv(null); setRecording(false) }
+  const toggleRecord = () => { setRecording(r => !r); setPlaying(false) }
+  // coords del puntero -> espacio LOGICO del video (misma conversion que AnimLab: rect del canvas -> W/H del video).
+  const evToLogical = (e) => { const cv = cvRef.current; if (!cv) return { x: 0, y: 0 }; const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) / (r.width || 1) * video.W, y: (e.clientY - r.top) / (r.height || 1) * video.H } }
+  const onCanvasDown = (e) => {
+    if (!selOv) return
+    try { cvRef.current.setPointerCapture(e.pointerId) } catch { /* noop */ }
+    const p = evToLogical(e)
+    if (recording) { recRef.current = { t0: performance.now(), pts: [{ ms: 0, x: p.x, y: p.y }] }; dragOvRef.current = 'record' }
+    else { dragOvRef.current = 'move'; patchOv(selOv, { transform: { x: Math.round(p.x), y: Math.round(p.y) } }) }
+  }
+  const onCanvasMove = (e) => {
+    if (!dragOvRef.current || !selOv) return
+    const p = evToLogical(e)
+    if (dragOvRef.current === 'record') { if (recRef.current) recRef.current.pts.push({ ms: performance.now() - recRef.current.t0, x: p.x, y: p.y }) }
+    else patchOv(selOv, { transform: { x: Math.round(p.x), y: Math.round(p.y) } })
+  }
+  const onCanvasUp = () => {
+    if (dragOvRef.current === 'record' && recRef.current) {
+      const r = finalizeRecording(recRef.current.pts)
+      if (r) patchOv(selOv, { anim: r.anim, durSec: r.durSec, startSec: +headRef.current.toFixed(2), transform: { x: r.home.x, y: r.home.y } })
+      setRecording(false)
+    }
+    dragOvRef.current = null; recRef.current = null
+  }
   const tokens = useMemo(() => estimateTokens(video, brief), [video, brief])   // consumo APROXIMADO por elemento (reemplaza "creditos")
 
   // opciones por slot (lista completa ordenada por afinidad; la grilla capea el display). Recalcula al cambiar tono/rubro.
@@ -459,7 +494,7 @@ export default function UrvidCraftStudio() {
           <aside className={styles.aside}>
             <span className={styles.eyebrowSm}>Como va quedando</span>
             <div className={styles.frame} style={{ aspectRatio: `${video.W} / ${video.H}` }}>
-              <canvas ref={cvRef} />
+              <canvas ref={cvRef} onPointerDown={onCanvasDown} onPointerMove={onCanvasMove} onPointerUp={onCanvasUp} onPointerLeave={onCanvasUp} style={{ cursor: selOv ? (recording ? 'crosshair' : 'move') : 'default', touchAction: 'none' }} />
             </div>
             <div className={styles.transport}>
               <button className={styles.tbtn} onClick={() => setPlaying(p => !p)}>{playing ? '⏸' : '▶'}</button>
@@ -484,7 +519,10 @@ export default function UrvidCraftStudio() {
           </aside>
         </div>
         {/* TIMELINE de edicion (Fase 1) — full-width bajo las columnas, una vez analizado el sitio */}
-        {analyzed && <Timeline video={video} head={head} order={tl.order} onReorder={o => setTl(t => ({ ...t, order: o }))} brief={brief} sceneText={tl.sceneText} onEditSceneText={editSceneText} onSeek={seek} />}
+        {analyzed && <>
+          <Timeline video={video} head={head} order={tl.order} onReorder={o => setTl(t => ({ ...t, order: o }))} brief={brief} sceneText={tl.sceneText} onEditSceneText={editSceneText} onSeek={seek} overlays={tl.overlays} selOverlay={selOv} onSelectOverlay={setSelOv} />
+          <OverlayEditor overlays={tl.overlays} selId={selOv} onSelect={setSelOv} onAdd={addOverlay} onPatch={patchOv} onRemove={removeOv} recording={recording} onToggleRecord={toggleRecord} duration={video.duration} />
+        </>}
       </div>
     </div>
   )

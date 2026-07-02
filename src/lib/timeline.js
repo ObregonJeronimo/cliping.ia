@@ -78,3 +78,47 @@ export function moveItem(order, from, to) {
   next.splice(to, 0, it)
   return next
 }
+
+// ---- OVERLAYS (Fase 3): objetos de texto/imagen sobre el video, con animacion (preset o grabada) ----
+import { decimate } from '../urvid/core/anim.js'
+
+let _ovSeq = 0
+export const OVERLAY_PRESETS = [
+  { key: 'fadeIn', label: 'Fade in' }, { key: 'fadeOut', label: 'Fade out' },
+  { key: 'slideLeft', label: 'Desde izquierda' }, { key: 'slideRight', label: 'Desde derecha' },
+  { key: 'slideUp', label: 'Desde abajo' }, { key: 'pop', label: 'Pop' }, { key: 'none', label: 'Sin animación' },
+]
+
+// overlay de TEXTO por defecto: centrado, visible 2.5s desde `startSec`, preset fadeIn.
+export function makeTextOverlay(startSec = 0, VW = 405, VH = 720) {
+  return {
+    id: 'ov_' + Date.now().toString(36) + '_' + (_ovSeq++), type: 'text', track: 'anim', text: 'Tu texto',
+    style: { size: 56, weight: 800, color: '#ffffff', stroke: null },
+    transform: { x: Math.round(VW / 2), y: Math.round(VH / 2), scale: 1, rot: 0, alpha: 1 },
+    startSec: +(startSec || 0).toFixed(2), durSec: 2.5, anim: { kind: 'preset', preset: 'fadeIn', ease: 'suave' },
+  }
+}
+
+// aplica un patch a un overlay por id (inmutable; mergea transform/style/anim anidados).
+export function patchOverlay(overlays, id, patch) {
+  return (overlays || []).map(o => {
+    if (o.id !== id) return o
+    const n = { ...o, ...patch }
+    if (patch.transform) n.transform = { ...o.transform, ...patch.transform }
+    if (patch.style) n.style = { ...o.style, ...patch.style }
+    if (patch.anim) n.anim = { ...o.anim, ...patch.anim }
+    return n
+  })
+}
+
+// convierte un gesto grabado [{ms,x,y}] en una animacion 'recorded': normaliza el tiempo a [0,1], diezma (RDP) a
+// pocos keyframes conservando la forma. Devuelve { anim, durSec, home:{x,y} } o null si el gesto es trivial.
+export function finalizeRecording(pts) {
+  const clean = (pts || []).filter(p => p && isFinite(p.x) && isFinite(p.y))
+  if (clean.length < 2) return null
+  const total = clean[clean.length - 1].ms || 1
+  let kfs = clean.map(p => ({ t: Math.max(0, Math.min(1, p.ms / total)), x: Math.round(p.x), y: Math.round(p.y) }))
+  kfs = decimate(kfs, 3)
+  if (kfs.length < 2) return null
+  return { anim: { kind: 'recorded', ease: 'lineal', curved: true, keyframes: kfs }, durSec: Math.max(0.4, +(total / 1000).toFixed(2)), home: { x: kfs[0].x, y: kfs[0].y } }
+}

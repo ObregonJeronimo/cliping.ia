@@ -9,7 +9,7 @@ import styles from './Timeline.module.css'
 
 const HUE = { Apertura: '#5f7cf5', Mensaje: '#1fa876', Lista: '#c9902b', 'Comparación': '#b3612f', Dato: '#8a5cf0', Prueba: '#d0417a', Cierre: '#e0533b', Puente: '#7d8a99', Detalle: '#2b9bc9', Escena: '#888' }
 
-export default function Timeline({ video, head, order, onReorder, brief, sceneText, onEditSceneText, onSeek }) {
+export default function Timeline({ video, head, order, onReorder, brief, sceneText, onEditSceneText, onSeek, overlays, selOverlay, onSelectOverlay }) {
   const scenes = (video && video.scenes) || []
   const dur = (video && video.duration) || 1
   const [sel, setSel] = useState(-1)          // bloque seleccionado (indice de display)
@@ -76,8 +76,24 @@ export default function Timeline({ video, head, order, onReorder, brief, sceneTe
         </div>
       </div>
 
-      {/* PISTAS de fases próximas (estructura) */}
-      <div className={`${styles.track} ${styles.soon}`}><span className={styles.trackLbl}>Animaciones</span><div className={styles.lane}><span className={styles.soonLbl}>próximamente</span></div></div>
+      {/* PISTA ANIMACIONES — objetos overlay del usuario, posicionados por tiempo (startSec/durSec) */}
+      <div className={styles.track}>
+        <span className={styles.trackLbl}>Animaciones</span>
+        <div className={styles.lane}>
+          <div className={styles.playhead} style={{ left: `${Math.max(0, Math.min(100, (head / dur) * 100))}%` }} />
+          {(overlays || []).map(ov => (
+            <div key={ov.id}
+              className={`${styles.ovBlock} ${selOverlay === ov.id ? styles.selBlock : ''}`}
+              style={{ left: `${Math.max(0, Math.min(97, ((ov.startSec || 0) / dur) * 100))}%`, width: `${Math.max(5, ((ov.durSec || 1) / dur) * 100)}%` }}
+              onClick={() => onSelectOverlay && onSelectOverlay(ov.id)}
+              title={`${ov.text || '(texto)'} · ${(ov.startSec || 0).toFixed(1)}–${((ov.startSec || 0) + (ov.durSec || 0)).toFixed(1)}s`}>
+              <span className={styles.ovTxt}>{ov.anim?.kind === 'recorded' ? '⦿ ' : ''}{ov.text || '(texto)'}</span>
+            </div>
+          ))}
+          {(!overlays || !overlays.length) && <span className={styles.soonLbl}>agregá un texto abajo ↓</span>}
+        </div>
+      </div>
+      {/* PISTA SFX — fase próxima */}
       <div className={`${styles.track} ${styles.soon}`}><span className={styles.trackLbl}>SFX</span><div className={styles.lane}><span className={styles.soonLbl}>próximamente</span></div></div>
 
       {/* controles del bloque seleccionado (reorden confiable por botones, además del drag) */}

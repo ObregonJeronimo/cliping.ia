@@ -7,6 +7,7 @@ import { W, H, inv, clamp, eOutCubic, setFormat } from './util.js'
 import { resolveMotion } from './motion.js'
 import { resolveTypekit } from './typekit.js'
 import { resolveTransition } from './transitions.js'
+import { drawOverlays } from './overlay.js'
 import { resolvePost } from './post.js'
 import { resolveLayout } from './layout.js'
 
@@ -214,6 +215,10 @@ export function drawFrame(ctx, t, video, opts = {}) {
     if (!act) act = t < scenes[0].start ? scenes[0] : scenes[scenes.length - 1]
     paintScene(ctx, act, t, video, motion, typekit, layout)
   }
+  // OVERLAYS del timeline (objetos texto/imagen del usuario, animados) — SOBRE la escena, DEBAJO del post (el grano los
+  // integra). Short-circuit si no hay video.timeline -> byte-identico (gates intactos). En Node sin loader, las imagenes
+  // se saltean (getImg -> null). Preview Y export pasan por drawFrame -> los overlays salen en ambos.
+  if (video.timeline) drawOverlays(ctx, t, video, _getImg)
   // POST: acabado (grano/vignette/leak/grade/scanlines) SOBRE todo el cuadro -> el "film look" que une el frame.
   if (video.postId) { const post = resolvePost(video); post.render(ctx, t, { pal: video.palette, content: video.content, energy: 1, seed: video.postSeed >>> 0 }) }
   // LOGO de marca (brand-kit) en una esquina, chico y nitido (despues del post). Un logo NO es "foto real" -> ok.
