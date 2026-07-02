@@ -201,11 +201,13 @@ register({
     ctx.save(); ctx.globalAlpha = inv(t, 0.1, 0.55); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); ctx.restore()
     // TEXTO en la banda oscura inferior, SIEMPRE blanco + sombra (el fondo es foto). kicker(brand) -> claim -> cta.
     const sh = 'rgba(0,0,0,0.6)', mx = W * 0.08, maxW = W * 0.84
-    drawText(ctx, (content.brand || 'Marca').toUpperCase(), mx, H * 0.645, { size: 18, weight: 700, family: fonts.accent || fonts.text, maxW, align: 'left', color: '#ffffff', alpha: inv(t, 0.3, 0.7), shadow: sh })
-    const rise = spring(inv(t, 0.35, 1.1), { zeta: 0.6, freq: 2.0 })
+    // CLAIM primero y MEDIDO: el kicker (marca) se ancla ARRIBA de su TOP REAL -> nunca se le monta encima, sea cual sea el
+    // alto/nº de lineas/fuente del titulo. (Antes el kicker iba a una Y FIJA H*0.645 y un claim alto se le "chocaba".)
+    const rise = spring(inv(t, 0.35, 1.1), { zeta: 0.6, freq: 2.0 }), claimY = H * 0.73
     ctx.save(); ctx.translate(0, (1 - rise) * 28)
-    drawWrapped(ctx, content.claim || content.tagline || 'Un mensaje claro', mx, H * 0.74, { size: 46, weight: 800, family: fonts.display, maxW, align: 'left', color: '#ffffff', maxLines: 3, lh: 1.07, alpha: inv(t, 0.35, 0.78), shadow: sh })
+    const claimH = drawWrapped(ctx, content.claim || content.tagline || 'Un mensaje claro', mx, claimY, { size: 46, weight: 800, family: fonts.display, maxW, align: 'left', color: '#ffffff', maxLines: 3, lh: 1.07, alpha: inv(t, 0.35, 0.78), shadow: sh })
     ctx.restore()
+    drawText(ctx, (content.brand || 'Marca').toUpperCase(), mx, claimY - claimH / 2 - 26, { size: 18, weight: 700, family: fonts.accent || fonts.text, maxW, align: 'left', color: '#ffffff', alpha: inv(t, 0.3, 0.7), shadow: sh })
     if (content.cta) {
       const ca = inv(t, 0.6, 1.0); if (ca > 0) {
         const cy = H * 0.875, ch = 46, pad = 22

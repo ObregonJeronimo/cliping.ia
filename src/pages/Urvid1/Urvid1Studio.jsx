@@ -233,7 +233,7 @@ export default function Urvid1Studio() {
           {analyzing && analyzing !== 'loading' && <p style={{ margin: '0 0 6px', fontSize: 12, color: 'var(--red)' }}>{analyzing}</p>}
           <div className={styles.field}>Notas para la IA (opcional) — la audiencia/objetivo que declarás MANDAN sobre lo inferido
             <input placeholder="A quién le vendés (ej: madres jóvenes, PyMEs)" value={audienceHint} onChange={e => setAudienceHint(e.target.value)} maxLength={160} />
-            <div className={styles.seg} style={{ marginTop: 6 }}>{[['', 'Auto'], ['leads', 'Leads'], ['ventas', 'Ventas'], ['reservas', 'Reservas'], ['descargas', 'Descargas'], ['contacto', 'Contacto']].map(([g, lbl]) => <button key={g || 'auto'} type="button" className={goalHint === g ? styles.on : ''} onClick={() => setGoalHint(g)} title="Objetivo del reel: adapta el CTA, el gancho y el awareness">{lbl}</button>)}</div>
+            <select value={goalHint} onChange={e => setGoalHint(e.target.value)} title="Objetivo del reel: adapta el CTA, el gancho y el awareness" style={{ marginTop: 6, width: '100%' }}>{[['', 'Objetivo: Auto'], ['leads', 'Objetivo: Leads'], ['ventas', 'Objetivo: Ventas'], ['reservas', 'Objetivo: Reservas'], ['descargas', 'Objetivo: Descargas'], ['contacto', 'Objetivo: Contacto']].map(([g, lbl]) => <option key={g || 'auto'} value={g}>{lbl}</option>)}</select>
           </div>
           <label className={styles.field}>Marca<input value={brief.brand} onChange={e => up('brand', e.target.value)} /></label>
           <div className={styles.two}>
