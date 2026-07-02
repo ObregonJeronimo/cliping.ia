@@ -9,7 +9,7 @@ import styles from './Timeline.module.css'
 
 const HUE = { Apertura: '#5f7cf5', Mensaje: '#1fa876', Lista: '#c9902b', 'Comparación': '#b3612f', Dato: '#8a5cf0', Prueba: '#d0417a', Cierre: '#e0533b', Puente: '#7d8a99', Detalle: '#2b9bc9', Escena: '#888' }
 
-export default function Timeline({ video, head, order, onReorder, brief, sceneText, onEditSceneText, onSeek, overlays, selOverlay, onSelectOverlay }) {
+export default function Timeline({ video, head, order, onReorder, brief, sceneText, onEditSceneText, onSeek, overlays, selOverlay, onSelectOverlay, audio, selSfx, onSelectSfx }) {
   const scenes = (video && video.scenes) || []
   const dur = (video && video.duration) || 1
   const [sel, setSel] = useState(-1)          // bloque seleccionado (indice de display)
@@ -93,8 +93,23 @@ export default function Timeline({ video, head, order, onReorder, brief, sceneTe
           {(!overlays || !overlays.length) && <span className={styles.soonLbl}>agregá un texto abajo ↓</span>}
         </div>
       </div>
-      {/* PISTA SFX — fase próxima */}
-      <div className={`${styles.track} ${styles.soon}`}><span className={styles.trackLbl}>SFX</span><div className={styles.lane}><span className={styles.soonLbl}>próximamente</span></div></div>
+      {/* PISTA SFX — clips de audio posicionados por tiempo */}
+      <div className={styles.track}>
+        <span className={styles.trackLbl}>SFX</span>
+        <div className={styles.lane}>
+          <div className={styles.playhead} style={{ left: `${Math.max(0, Math.min(100, (head / dur) * 100))}%` }} />
+          {(audio || []).map(a => (
+            <div key={a.id}
+              className={`${styles.sfxBlock} ${selSfx === a.id ? styles.selBlock : ''}`}
+              style={{ left: `${Math.max(0, Math.min(97, ((a.startSec || 0) / dur) * 100))}%`, width: `${Math.max(4, ((a.durSec || 0.3) / dur) * 100)}%` }}
+              onClick={() => onSelectSfx && onSelectSfx(a.id)}
+              title={`${a.sfx} · ${(a.startSec || 0).toFixed(1)}s`}>
+              <span className={styles.sfxTxt}>♪ {a.sfx}</span>
+            </div>
+          ))}
+          {(!audio || !audio.length) && <span className={styles.soonLbl}>agregá un efecto abajo ↓</span>}
+        </div>
+      </div>
 
       {/* controles del bloque seleccionado (reorden confiable por botones, además del drag) */}
       {sel >= 0 && sel < scenes.length && (

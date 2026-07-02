@@ -6,6 +6,8 @@ import { estimateTokens } from '../../lib/tokens.js'
 import { applyTimeline, identityOrder, makeTextOverlay, patchOverlay, finalizeRecording } from '../../lib/timeline.js'
 import Timeline from './Timeline.jsx'
 import OverlayEditor from './OverlayEditor.jsx'
+import SfxEditor from './SfxEditor.jsx'
+import { SFX, sfxBuffer } from '../../lib/sfxLib.js'
 import { useAuth } from '../../contexts/AuthContext'
 import { db } from '../../lib/firebase'
 import OptionGrid from './OptionGrid.jsx'
@@ -111,6 +113,13 @@ export default function UrvidCraftStudio() {
     }
     dragOvRef.current = null; recRef.current = null
   }
+  // SFX (Fase 4): clips de audio en video.timeline.audio. selSfx = seleccionado.
+  const [selSfx, setSelSfx] = useState(null)
+  const addSfx = (sfxId) => setTl(t => { const meta = SFX.find(s => s.id === sfxId) || { dur: 0.3 }; const clip = { id: 'sfx_' + Date.now().toString(36) + '_' + ((t.audio || []).length), sfx: sfxId, startSec: +headRef.current.toFixed(2), durSec: meta.dur, gain: 0.9 }; setSelSfx(clip.id); return { ...t, audio: [...(t.audio || []), clip] } })
+  const patchSfx = (id, patch) => setTl(t => ({ ...t, audio: (t.audio || []).map(a => a.id === id ? { ...a, ...patch } : a) }))
+  const removeSfx = (id) => { setTl(t => ({ ...t, audio: (t.audio || []).filter(a => a.id !== id) })); setSelSfx(null) }
+  // escuchar un SFX una vez (gesto del usuario -> autoplay OK). Cierra el contexto al terminar.
+  const previewSfx = (sfxId) => { try { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return; const ctx = new AC(); const src = ctx.createBufferSource(); src.buffer = sfxBuffer(ctx, sfxId); src.connect(ctx.destination); src.onended = () => { try { ctx.close() } catch (e) { /* noop */ } }; src.start() } catch (e) { /* noop */ } }
   const tokens = useMemo(() => estimateTokens(video, brief), [video, brief])   // consumo APROXIMADO por elemento (reemplaza "creditos")
 
   // opciones por slot (lista completa ordenada por afinidad; la grilla capea el display). Recalcula al cambiar tono/rubro.
@@ -520,8 +529,9 @@ export default function UrvidCraftStudio() {
         </div>
         {/* TIMELINE de edicion (Fase 1) — full-width bajo las columnas, una vez analizado el sitio */}
         {analyzed && <>
-          <Timeline video={video} head={head} order={tl.order} onReorder={o => setTl(t => ({ ...t, order: o }))} brief={brief} sceneText={tl.sceneText} onEditSceneText={editSceneText} onSeek={seek} overlays={tl.overlays} selOverlay={selOv} onSelectOverlay={setSelOv} />
+          <Timeline video={video} head={head} order={tl.order} onReorder={o => setTl(t => ({ ...t, order: o }))} brief={brief} sceneText={tl.sceneText} onEditSceneText={editSceneText} onSeek={seek} overlays={tl.overlays} selOverlay={selOv} onSelectOverlay={setSelOv} audio={tl.audio} selSfx={selSfx} onSelectSfx={setSelSfx} />
           <OverlayEditor overlays={tl.overlays} selId={selOv} onSelect={setSelOv} onAdd={addOverlay} onPatch={patchOv} onRemove={removeOv} recording={recording} onToggleRecord={toggleRecord} duration={video.duration} />
+          <SfxEditor audio={tl.audio} selId={selSfx} onSelect={setSelSfx} onAdd={addSfx} onPreview={previewSfx} onPatch={patchSfx} onRemove={removeSfx} duration={video.duration} />
         </>}
       </div>
     </div>

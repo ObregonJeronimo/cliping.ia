@@ -6,6 +6,7 @@
 // Cero backend / cero costo de servidor. Lo comparten urvid IA (flujo principal) y urvid IA Advanced (craft). El patron
 // WebCodecs+mediabunny (import del CDN esm.sh, sin dependencia npm) ya esta probado y andando en AnimLab.
 import { drawFrame } from '../urvid/index.js'
+import { mixTimeline, bufferToStreamTrack } from './audioMix.js'
 
 const MIME_TYPES = ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm']
 
@@ -71,54 +72,73 @@ function exportWithMediaRecorder(video, opts = {}) {
   const ectx = ecv.getContext('2d')
   const mime = MIME_TYPES.find(t => { try { return MediaRecorder.isTypeSupported(t) } catch { return false } }) || ''
   const ext = mime.indexOf('mp4') >= 0 ? 'mp4' : 'webm'
-  let rec
-  try { rec = new MediaRecorder(ecv.captureStream(fps), mime ? { mimeType: mime, videoBitsPerSecond: bitrate } : { videoBitsPerSecond: bitrate }) }
-  catch { return fail('No se pudo iniciar la grabacion') }
-  const chunks = []
-  rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data) }
-  rec.onstop = () => {
-    download(new Blob(chunks, { type: mime || 'video/webm' }), filename, ext)
-    if (onDone) onDone()
-  }
+  const stream = ecv.captureStream(fps)
   const dur = video.duration
-  const startRecording = () => {
-    rec.start()
-    const t0 = performance.now()
-    // CADENCIA CONSTANTE (item L828): presenta un cuadro nuevo SOLO al cruzar el proximo tick de 1/fps -> pasos parejos.
-    const frameDur = 1 / fps
-    let nextFrame = 0
-    const tick = () => {
-      const el = (performance.now() - t0) / 1000
-      if (el >= nextFrame) {
-        ectx.setTransform(scale, 0, 0, scale, 0, 0)
-        drawFrame(ectx, Math.min(el, dur), video)
-        if (onProgress) onProgress(Math.min(100, Math.round(el / dur * 100)))
-        nextFrame += frameDur
-        if (nextFrame < el) nextFrame = el + frameDur   // rAF atrasado (tab en 2do plano): reprograma, no dispares una rafaga
+  let audioHandle = null   // pista de audio (SFX del timeline) si la hay
+
+  const run = () => {
+    let rec
+    try { rec = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: bitrate } : { videoBitsPerSecond: bitrate }) }
+    catch { return fail('No se pudo iniciar la grabacion') }
+    const chunks = []
+    rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data) }
+    rec.onstop = () => {
+      download(new Blob(chunks, { type: mime || 'video/webm' }), filename, ext)
+      if (audioHandle && audioHandle.stop) { try { audioHandle.stop() } catch (e) { /* noop */ } }
+      if (onDone) onDone()
+    }
+    const startRecording = () => {
+      rec.start()
+      if (audioHandle) audioHandle.start()   // arranca el audio junto con la grabacion -> sincronizado con el video (ambos en tiempo real)
+      const t0 = performance.now()
+      // CADENCIA CONSTANTE (item L828): presenta un cuadro nuevo SOLO al cruzar el proximo tick de 1/fps -> pasos parejos.
+      const frameDur = 1 / fps
+      let nextFrame = 0
+      const tick = () => {
+        const el = (performance.now() - t0) / 1000
+        if (el >= nextFrame) {
+          ectx.setTransform(scale, 0, 0, scale, 0, 0)
+          drawFrame(ectx, Math.min(el, dur), video)
+          if (onProgress) onProgress(Math.min(100, Math.round(el / dur * 100)))
+          nextFrame += frameDur
+          if (nextFrame < el) nextFrame = el + frameDur   // rAF atrasado (tab en 2do plano): reprograma, no dispares una rafaga
+        }
+        if (el >= dur + 0.1) { try { rec.stop() } catch { /* noop */ } }
+        else requestAnimationFrame(tick)
       }
-      if (el >= dur + 0.1) { try { rec.stop() } catch { /* noop */ } }
-      else requestAnimationFrame(tick)
+      requestAnimationFrame(tick)
     }
-    requestAnimationFrame(tick)
-  }
-  // LOGO desde el cuadro 0 (item L138): warm-up + 2 rAF antes de grabar; timeout duro 1.5s (nunca cuelga).
-  if (video.logo) {
-    let started = false
-    const go = () => {
-      if (started) return
-      started = true
-      ectx.setTransform(scale, 0, 0, scale, 0, 0); drawFrame(ectx, 0, video)
-      requestAnimationFrame(() => requestAnimationFrame(startRecording))
+    // LOGO desde el cuadro 0 (item L138): warm-up + 2 rAF antes de grabar; timeout duro 1.5s (nunca cuelga).
+    if (video.logo) {
+      let started = false
+      const go = () => {
+        if (started) return
+        started = true
+        ectx.setTransform(scale, 0, 0, scale, 0, 0); drawFrame(ectx, 0, video)
+        requestAnimationFrame(() => requestAnimationFrame(startRecording))
+      }
+      const img = new Image()
+      try { img.crossOrigin = 'anonymous' } catch { /* noop */ }
+      img.onload = go; img.onerror = go
+      img.src = video.logo
+      setTimeout(go, 1500)
+    } else {
+      startRecording()
     }
-    const img = new Image()
-    try { img.crossOrigin = 'anonymous' } catch { /* noop */ }
-    img.onload = go; img.onerror = go
-    img.src = video.logo
-    setTimeout(go, 1500)
-  } else {
-    startRecording()
+    return true
   }
-  return true
+
+  // AUDIO (SFX del timeline): mezcla los clips y agrega la pista de audio al stream ANTES de grabar. Sin clips -> video solo.
+  const clips = video.timeline && video.timeline.audio
+  if (clips && clips.length) {
+    mixTimeline(video).then(mix => {
+      const at = mix && bufferToStreamTrack(mix)
+      if (at && at.track) { audioHandle = at; try { stream.addTrack(at.track) } catch (e) { /* noop */ } }
+      run()
+    }).catch(() => run())
+    return true
+  }
+  return run()
 }
 
 // DISPATCHER: prefiere WebCodecs (MP4 determinista) y cae a MediaRecorder si no hay VideoEncoder o si WebCodecs FALLA en
@@ -127,7 +147,10 @@ function exportWithMediaRecorder(video, opts = {}) {
 export function exportCanvasVideo(video, opts = {}) {
   const { onError } = opts
   if (typeof window === 'undefined' || typeof document === 'undefined') { if (onError) onError('Tu navegador no soporta exportar'); return false }
-  if (typeof window.VideoEncoder !== 'undefined') {
+  // Con AUDIO (SFX del timeline) vamos SIEMPRE por MediaRecorder: soporta pista de audio via stream.addTrack (el camino
+  // WebCodecs exportaria video sin sonido). Sin audio, se prefiere WebCodecs (MP4 determinista, mejor calidad).
+  const hasAudio = !!(video && video.timeline && video.timeline.audio && video.timeline.audio.length)
+  if (!hasAudio && typeof window.VideoEncoder !== 'undefined') {
     exportWithWebCodecs(video, opts).catch(err => {
       console.warn('[export] WebCodecs fallo -> MediaRecorder', err)
       exportWithMediaRecorder(video, opts)   // fallback robusto
