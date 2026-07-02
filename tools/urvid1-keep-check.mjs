@@ -3,7 +3,7 @@
 // Re-rolea CUAL modulo (variedad), no la presencia. Sin esto, "keep" podia inventar adornos (rompe la identidad).
 import { makeVideo } from '../src/urvid/index.js'   // barrel: registra typekit/mark/post/sub/atmosphere en el registry (importar assemble.js suelto deja los pools VACIOS)
 
-const OPT = ['typekit', 'mark', 'post', 'sub', 'atm']
+const OPT = ['typekit', 'mark', 'editmark', 'post', 'sub', 'atm']
 const brief = { brand: 'Acme', rubro: 'tech', tone: 'dark', brandColor: '#5b8cff', tagline: 'Construido para escalar', claim: 'La plataforma que crece con vos', cta: 'Probalo gratis', bullets: ['Rapido', 'Seguro', 'Simple'], stats: [{ value: '99.9%', label: 'uptime' }] }
 
 let fails = 0

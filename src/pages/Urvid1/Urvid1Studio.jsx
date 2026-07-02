@@ -193,7 +193,7 @@ export default function Urvid1Studio() {
   // OTRA VARIANTE: nueva semilla PERO conserva color+tipografia (la identidad de la pagina) -> mismo estilo,
   // composicion distinta (fondo/escenas/motion/transicion). Y REINICIA el reproductor a 0 (antes seguia en el
   // segundo donde estabas y habia que rebobinar a mano).
-  const reroll = () => { const r = video.recipe; setKeep({ color: r.color, type: r.type, typekit: r.typekit, mark: r.mark, post: r.post, sub: r.sub, atm: r.atm }); setLock(null); setSeed(s => ((s || 1) + 0x9e3779b1) >>> 0 || 1); headRef.current = 0; setHead(0) }   // keep transporta la PRESENCIA exacta de los 5 slots opcionales (typekit/mark/post/sub/atm) -> la variante re-rolea CUAL modulo pero nunca AGREGA una capa que el original no tenia. NO incluir bg/motion/transition/layout/scenes (los re-elige `required` -> variedad de composicion)
+  const reroll = () => { const r = video.recipe; setKeep({ color: r.color, type: r.type, typekit: r.typekit, mark: r.mark, editmark: r.editmark, post: r.post, sub: r.sub, atm: r.atm }); setLock(null); setSeed(s => ((s || 1) + 0x9e3779b1) >>> 0 || 1); headRef.current = 0; setHead(0) }   // keep transporta la PRESENCIA exacta de los 5 slots opcionales (typekit/mark/post/sub/atm) -> la variante re-rolea CUAL modulo pero nunca AGREGA una capa que el original no tenia. NO incluir bg/motion/transition/layout/scenes (los re-elige `required` -> variedad de composicion)
   // "Mis videos" persiste en Firestore (users/{uid}/urvid_videos) cuando hay sesion; localStorage es el cache local
   // inmediato + fallback offline. Antes era SOLO localStorage (se perdia al limpiar cache; el uid no se usaba).
   const save = async () => {

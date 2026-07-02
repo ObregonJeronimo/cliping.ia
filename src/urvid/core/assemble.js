@@ -145,6 +145,14 @@ export function makeVideo(brief = {}) {
   const MARK_GARNISH_CATS = new Set(['iconos-rubro', 'iconos-animados'])
   const markPool = query('markkit', { tone }).filter(m => MARK_GARNISH_CATS.has(m.category))
   const markMod = optional(lock && lock.mark, keep && keep.mark, seedFor(seed, 'markgarnish'), 0.5, markPool)
+  // MARCA EDITORIAL (item L154): un MARCO HUECO con el codigo visual del rubro (corchetes de foco / filigrana de esquina /
+  // ventana browser tech) a escala de BORDE, DETRAS del contenido -> firma el video sin tocar el layout/maxW. Clave: el
+  // "320-ellipsis" venia de REDUCIR availW (layout.js) al encajar texto en un marco; ESTO no toca el texto -> imposible desbordar.
+  // Pool CURADO: SOLO marcos que no escriben texto propio ni bloquean el centro del titulo. Eje de seed NUEVO (editmark) ->
+  // byte-identico cuando ausente (no mueve ningun otro stream). Opcional ~35%, respeta lock/keep como los otros slots.
+  const EDIT_MARK_IDS = new Set(['mark.frame.brackets', 'mark.accent.corner-flourish', 'mark.frame.tab-window'])
+  const editPool = query('markkit', { tone }).filter(m => EDIT_MARK_IDS.has(m.id))
+  const editMod = optional(lock && lock.editmark, keep && keep.editmark, seedFor(seed, 'editmark'), 0.35, editPool)
   // TRANSICION escena-a-escena (wipe/slide/iris/bars/cut) -> video.transitionId.
   const trMod = required(lock && lock.transition, keep && keep.transition, seedFor(seed, 'transition'), query('transitions', { tone }))
   // PACING: la ventana de transicion (XF) sale de la PERSONALIDAD de movimiento (snappy corta, calmo larga).
@@ -230,11 +238,12 @@ export function makeVideo(brief = {}) {
     motionId: motMod ? motMod.id : null,
     typekitId: tkMod ? tkMod.id : null,
     markId: markMod ? markMod.id : null, markSeed: (seed ^ hashStr('mark')) >>> 0,
+    editMarkId: editMod ? editMod.id : null, editMarkSeed: (seed ^ hashStr('editmark')) >>> 0,
     transitionId: trMod ? trMod.id : null,
     postId: postMod ? postMod.id : null, postSeed: (seed ^ hashStr('post')) >>> 0,
     layoutId: layMod ? layMod.id : null,
     content: { brand, ...renderContent },   // lo que se DIBUJA (BUDGETS_WIDE en 9:16, BUDGETS en 4:5/1:1); la receta usa `content`
     scenes, duration: start || 8,
-    recipe: { color: colMod ? colMod.id : null, type: typMod ? typMod.id : null, bg: bg ? bg.id : null, sub: sub ? sub.id : null, atm: atm ? atm.id : null, motion: motMod ? motMod.id : null, typekit: tkMod ? tkMod.id : null, mark: markMod ? markMod.id : null, transition: trMod ? trMod.id : null, post: postMod ? postMod.id : null, layout: layMod ? layMod.id : null, scenes: scenes.map(s => s.sceneId) },   // la "carta" del video
+    recipe: { color: colMod ? colMod.id : null, type: typMod ? typMod.id : null, bg: bg ? bg.id : null, sub: sub ? sub.id : null, atm: atm ? atm.id : null, motion: motMod ? motMod.id : null, typekit: tkMod ? tkMod.id : null, mark: markMod ? markMod.id : null, editmark: editMod ? editMod.id : null, transition: trMod ? trMod.id : null, post: postMod ? postMod.id : null, layout: layMod ? layMod.id : null, scenes: scenes.map(s => s.sceneId) },   // la "carta" del video
   }
 }

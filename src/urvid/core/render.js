@@ -150,6 +150,20 @@ export function drawFrame(ctx, t, video, opts = {}) {
       ctx.restore()
     }
   }
+  // MARCA EDITORIAL (item L154): un MARCO HUECO del rubro (corchetes/filigrana/ventana) a escala de BORDE, DETRAS del contenido,
+  // tenue. NO escribe texto ni bloquea el centro -> no compite con el titulo ni desborda (no toca el layout). Escala 1.45:
+  // el marco (bw~W*0.62) pasa a ~W*0.9 -> enmarca el LIENZO, no el titulo. Tenue-por-seriedad (igual que el garnish). Determinista.
+  if (video.editMarkId) {
+    const m = get(video.editMarkId)
+    if (m) {
+      const _es = video.seriousness != null ? video.seriousness : 0.5
+      const _eK = clamp(1 - 0.5 * (_es - 0.5), 0.7, 1.3)
+      ctx.save(); ctx.globalAlpha = (video.tone === 'light' ? 0.42 : 0.52) * _eK
+      ctx.translate(W / 2, H / 2); ctx.scale(1.45, 1.45); ctx.translate(-W / 2, -H / 2)
+      m.render(ctx, t, { ...base, fonts: video.fonts, seed: (video.editMarkSeed >>> 0) })
+      ctx.restore()
+    }
+  }
   // (Lotties ELIMINADOS 2026-07-01: los acentos animados por-escena y a nivel-video ensuciaban la composicion sin aportar.)
   // GUARD de texto CENTRALIZADO: scrim radial SUAVE en la zona del titulo (~centro), alpha BAJO -> legibilidad
   // consistente sin que cada fondo lo reimplemente y sin enturbiar fondos ya limpios. Debajo del texto. Determinista.
