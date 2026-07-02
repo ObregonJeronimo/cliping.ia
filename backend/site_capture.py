@@ -141,12 +141,17 @@ def _is_sparse(content: dict) -> bool:
     return len(body) < 600 and (len(heads) + len(paras)) < 8
 
 
-def _home_has_price(content: dict) -> bool:
-    """El home YA muestra precio (no hace falta peekear /precios). PURO."""
+def _home_price_count(content: dict) -> int:
+    """Cuantas señales de precio hay en el home ($NN, "por mes", "desde $", "NN% off"...). PURO."""
     if not isinstance(content, dict):
-        return True
+        return 99
     blob = " ".join([content.get("bodyText") or ""] + list(content.get("headings") or []) + list(content.get("paragraphs") or []))
-    return bool(_PRICE_SIGNAL_RE.search(blob))
+    return len(_PRICE_SIGNAL_RE.findall(blob))
+
+
+def _home_has_price(content: dict) -> bool:
+    """El home ya muestra su PRICING (>=3 señales -> tabla de planes real, no una promo suelta tipo '$1/mes') -> no peekea /precios."""
+    return _home_price_count(content) >= 3
 
 
 def _peek_url(nav_links, base_url: str, regex=_PEEK_RE):
@@ -485,13 +490,13 @@ async def capture_all(url: str, out_path: str, width: int = 1280, height: int = 
             try:
                 c = out.get("content")
                 if isinstance(c, dict):
-                    peek = None
+                    peek, why = None, ""
                     if _is_sparse(c):
-                        peek = _peek_url(c.get("navLinks") or [], url)                       # home pobre -> cualquier /nosotros|precios|...
-                        why = "sparse"
+                        peek, why = _peek_url(c.get("navLinks") or [], url), "sparse"                 # home pobre -> cualquier /nosotros|precios|...
                     elif not _home_has_price(c):
-                        peek = _peek_url(c.get("navLinks") or [], url, _PRICE_LINK_RE)        # home rico SIN precio + hay /precios -> peekearlo
-                        why = "sin-precio"
+                        peek, why = _peek_url(c.get("navLinks") or [], url, _PRICE_LINK_RE), "sin-precio"   # home sin tabla de planes + hay /precios -> peekearlo
+                    # DIAGNOSTICO (item L348): por que (no) peekea. Muestra sparse/nº-precios/candidato + los hrefs de nav capturados.
+                    print(f"[capture_all] peek? sparse={_is_sparse(c)} precios={_home_price_count(c)} -> {peek or 'NO'} | nav={[(l.get('h') or '')[-34:] for l in (c.get('navLinks') or [])[:14]]}")
                     if peek and _guard(peek):
                         print(f"[capture_all] peek ({why}) -> {peek}")
                         await page.goto(peek, wait_until="domcontentloaded", timeout=20000)

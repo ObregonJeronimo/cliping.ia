@@ -49,9 +49,10 @@ def test_merge_peek_fusiona_y_dedup():
 
 
 def test_home_has_price():
-    assert sc._home_has_price({"bodyText": "Planes desde $29 por mes"}) is True
-    assert sc._home_has_price({"headings": ["Desde US$ 10"]}) is True
-    assert sc._home_has_price({"bodyText": "Crea tu tienda online y vende mas", "headings": ["Vende mas"]}) is False   # home marketing SIN precio (caso Shopify)
+    assert sc._home_has_price({"bodyText": "Planes: $29/mes, $49/mes, $99/mes"}) is True   # 3+ precios -> tabla de planes real
+    assert sc._home_has_price({"bodyText": "empezá con $1/mes de promo"}) is False          # 1 promo suelta -> peek /precios (caso Shopify)
+    assert sc._home_has_price({"bodyText": "Crea tu tienda online y vende mas", "headings": ["Vende mas"]}) is False   # home marketing SIN precio
+    assert sc._home_price_count({"bodyText": "sin precio aca"}) == 0
 
 
 def test_peek_url_solo_precios():
