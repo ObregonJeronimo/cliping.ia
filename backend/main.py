@@ -149,6 +149,68 @@ def _get_rating_bias(db, user_id: str) -> dict:
     return out
 
 
+def _bump(d: dict, key, weight):
+    if key:
+        d[key] = d.get(key, 0) + weight
+
+
+def _argmax_pos(d: dict):
+    """La clave con score NETO máximo y > 0 (las que quedaron <=0 por 👎 no ganan). None si ninguna."""
+    best, val = None, 0
+    for k, v in d.items():
+        if v > val:
+            best, val = k, v
+    return best
+
+
+def _get_urvid_audience_bias(db, user_id: str, brand_key: str = "") -> dict:
+    """Espejo de _get_rating_bias pero por señales de AUDIENCIA (item L389): agrega los videos URVID que el usuario
+    VALORO 👍/👎 (opcionalmente de una misma marca) y devuelve pistas SUAVES de que awareness/register/energia/
+    seriousness anduvieron mejor. Best-effort; poca evidencia -> {} (no sesga, no colapsa la variedad). Es una PISTA
+    (leve desempate), NO manda como el audience_hint declarado (item L373)."""
+    MIN_EVIDENCE = 3   # < 3 videos 👍 -> no hay señal confiable (evita que 1-2 votos fijen el rumbo)
+    out = {}
+    if not (db and user_id):
+        return out
+    try:
+        snap = db.collection("users").document(user_id).collection("urvid_videos").get()
+        aw, reg, energy = {}, {}, {}
+        ser_sum = ser_w = n_pos = 0
+        for d in snap:
+            v = d.to_dict() or {}
+            r = v.get("rating", 0)
+            if not r:
+                continue
+            if brand_key and v.get("brandKey") != brand_key:
+                continue   # el bias es "en reels de ESTA marca..." -> solo la misma marca
+            a = v.get("audience") or {}
+            if r > 0:
+                n_pos += 1
+            _bump(aw, a.get("awareness"), r)
+            _bump(reg, a.get("register"), r)
+            _bump(energy, v.get("energyHint"), r)
+            s = v.get("seriousness")
+            if isinstance(s, (int, float)) and r > 0:
+                ser_sum += s * r
+                ser_w += r
+        if n_pos < MIN_EVIDENCE:
+            return out
+        best_aw, best_reg, best_en = _argmax_pos(aw), _argmax_pos(reg), _argmax_pos(energy)
+        if best_aw:
+            out["awareness"] = {"value": best_aw, "n": aw[best_aw]}
+        if best_reg:
+            out["register"] = {"value": best_reg, "n": reg[best_reg]}
+        if best_en:
+            out["energy"] = {"value": best_en, "n": energy[best_en]}
+        if ser_w:
+            out["seriousness"] = {"value": round(ser_sum / ser_w, 2), "n": int(ser_w)}
+        if out:
+            out["_evidence"] = n_pos
+    except Exception as e:
+        print(f"[urvid-bias] derivar falló: {e}")
+    return out
+
+
 def _brand_key(url: str) -> str:
     """Clave estable por marca/dominio para el historial de estilos (rotacion de variedad por marca)."""
     host = _re.sub(r"^https?://(www\.)?", "", (url or "").strip().lower()).split("/")[0]
@@ -479,13 +541,18 @@ async def urvid_perceive(req: PerceiveRequest):
             print(f"[perceive] upload screenshot fallo: {e}")
     # "v2-": version del SCHEMA del brief (claim/tagline/cta + bullets/stats/proof). Bumpear si cambia el shape ->
     # invalida cache vieja (no servir briefs sin el material nuevo). El cache por URL sigue evitando re-llamar a Claude.
+    db = get_firestore()
+    # BIAS de AUDIENCIA (item L389): pista SUAVE derivada de los videos de ESTA marca que el usuario valoro 👍/👎. Como
+    # CAMBIA el brief, su firma estable (_bsig: solo los valores GANADORES, no cada voto) entra en la ckey igual que el
+    # _hint de L373 -> un rating nuevo invalida el brief cacheado, pero el cache sigue util (no cambia con cada voto).
+    audience_bias = _get_urvid_audience_bias(db, req.userId, _brand_key(req.url))
+    _bsig = "|".join(sorted(f"{k}={(audience_bias.get(k) or {}).get('value')}" for k in ("awareness", "register", "energy", "seriousness") if audience_bias.get(k)))
     _hint = (req.audienceHint.strip() + "|" + req.goalHint.strip())   # DECLARADO (item L373): audiencia/objetivo cambian el brief -> deben keyear el cache (si no, cambiar el hint serviria el brief viejo)
-    ckey = "v9-" + _brand_cache_key(req.url) + (("-h" + hashlib.md5(_hint.encode("utf-8")).hexdigest()[:8]) if _hint.strip("|") else "")   # v9: + energyHint/playbookKey/themeHint del playbook del rubro (item L142) -> invalida briefs cacheados sin esos campos. v8: BRAND siempre latino (marca cirilica/CJK -> dominio/transliteracion, anti-tofu del wordmark). v7: idioma solo si latino (no-latino->español, anti-tofu) + bot-wall + guardrail + stats sin simbolos decorativos (tofu) + bullets completos (prompt: frase con sentido, no fragmentos) + copy en el IDIOMA de la pagina (content.lang) + audience (who/register/awareness)
+    ckey = "v10-" + _brand_cache_key(req.url) + (("-h" + hashlib.md5(_hint.encode("utf-8")).hexdigest()[:8]) if _hint.strip("|") else "") + (("-b" + hashlib.md5(_bsig.encode("utf-8")).hexdigest()[:6]) if _bsig else "")   # v10: + firma del bias de audiencia del historial (item L389) -> un rating nuevo (que cambia el brief) invalida el cache viejo. v9: + energyHint/playbookKey/themeHint del playbook (item L142). v8: BRAND siempre latino. v7: idioma solo si latino + bot-wall + guardrail + stats sin simbolos + bullets completos + copy en el IDIOMA de la pagina + audience (who/register/awareness)
     chash = _content_fingerprint(site)
     # memkey scopeado POR USUARIO: antes el cache in-memory cruzaba usuarios (el analisis de A se servia a B). El de
     # Firestore ya era por uid; ahora el in-memory tambien.
     memkey = (req.userId or "") + "|" + ckey + "|" + chash
-    db = get_firestore()
     if not req.refresh:
         cached = _urvid_brief_cache.get(memkey) or _get_urvid_brief_fs(db, req.userId, ckey, chash)
         if cached:
@@ -493,7 +560,7 @@ async def urvid_perceive(req: PerceiveRequest):
             return {"brief": cached, "source": {}, "cost": {}, "cached": True, "images": site.get("images") or [], "screenshotUrl": screenshot_url}
     usage = []
     # UNA sola llamada multimodal (texto + screenshot juntos) -> brief rico. Mas robusto Y mas barato que 2 llamadas.
-    brief = await perception.analyze_to_brief(req.url.strip(), req.desarrollo.strip(), site=site, usage=usage, audience_hint=req.audienceHint.strip(), goal_hint=req.goalHint.strip())
+    brief = await perception.analyze_to_brief(req.url.strip(), req.desarrollo.strip(), site=site, usage=usage, audience_hint=req.audienceHint.strip(), goal_hint=req.goalHint.strip(), audience_bias=audience_bias)
     # ultimo fallback de color: dominante vibrante del screenshot.
     if site.get("screenshot") and brief.get("brandColor", "#5b8cff") == "#5b8cff":
         try:

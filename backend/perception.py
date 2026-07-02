@@ -283,7 +283,7 @@ def _normalize(b, url, content):
     return out
 
 
-async def analyze_to_brief(url, desarrollo="", site=None, usage=None, audience_hint="", goal_hint=""):
+async def analyze_to_brief(url, desarrollo="", site=None, usage=None, audience_hint="", goal_hint="", audience_bias=None):
     """UNA llamada multimodal (texto + screenshot) -> brief rico. `site` = resultado de site_capture.capture_all."""
     content = (site or {}).get("content") if isinstance(site, dict) else None
     shot = (site or {}).get("screenshot") if isinstance(site, dict) else None
@@ -304,6 +304,27 @@ async def analyze_to_brief(url, desarrollo="", site=None, usage=None, audience_h
                 text += f"- Publico objetivo: {_ah} -> usalo como audience.who y adapta tono/register/awareness a ese publico.\n"
             if _gh:
                 text += f"- Objetivo del reel: {_gh} -> adapta el CTA, el gancho y el awareness a ese objetivo.\n"
+        # PISTA SUAVE de HISTORIAL (item L389): que awareness/register/energia/seriedad anduvieron mejor en reels PREVIOS
+        # de esta marca que el usuario valoro. Es un DESEMPATE leve -> va DEBAJO de lo declarado (L373) y de la inferencia
+        # del sitio. Los valores son enums cerrados + un float (los formateamos nosotros) -> cero superficie de prompt-injection.
+        if audience_bias:
+            _bl = []
+            _ab_aw = (audience_bias.get("awareness") or {}).get("value")
+            _ab_reg = (audience_bias.get("register") or {}).get("value")
+            _ab_en = (audience_bias.get("energy") or {}).get("value")
+            _ab_ser = (audience_bias.get("seriousness") or {}).get("value")
+            if _ab_aw:
+                _bl.append(f"nivel de conciencia (awareness) '{_ab_aw}'")
+            if _ab_reg:
+                _bl.append(f"registro/tono '{_ab_reg}'")
+            if _ab_en:
+                _bl.append(f"energia '{_ab_en}'")
+            if isinstance(_ab_ser, (int, float)):
+                _bl.append(f"seriedad ~{_ab_ser:.2f}")
+            if _bl:
+                text += ("PISTA SUAVE (historial, NO obligatoria): en reels previos de esta marca que el usuario valoro "
+                         "bien, funcionaron mejor " + ", ".join(_bl) + ". Usala SOLO como leve desempate; si lo declarado "
+                         "por el usuario o lo que ves en el sitio sugieren otra cosa, IGNORALA.\n")
         if desarrollo:
             text += f"Notas del usuario (priorizalas): {desarrollo}\n"
         text += ("Contenido capturado de la pagina:\n" + digest + "\n") if digest else (

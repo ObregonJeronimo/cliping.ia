@@ -198,12 +198,30 @@ export default function Urvid1Studio() {
   const reroll = () => { const r = video.recipe; setKeep({ color: r.color, type: r.type, typekit: r.typekit, mark: r.mark, editmark: r.editmark, post: r.post, sub: r.sub, atm: r.atm }); setLock(null); setSeed(s => ((s || 1) + 0x9e3779b1) >>> 0 || 1); headRef.current = 0; setHead(0) }   // keep transporta la PRESENCIA exacta de los 5 slots opcionales (typekit/mark/post/sub/atm) -> la variante re-rolea CUAL modulo pero nunca AGREGA una capa que el original no tenia. NO incluir bg/motion/transition/layout/scenes (los re-elige `required` -> variedad de composicion)
   // "Mis videos" persiste en Firestore (users/{uid}/urvid_videos) cuando hay sesion; localStorage es el cache local
   // inmediato + fallback offline. Antes era SOLO localStorage (se perdia al limpiar cache; el uid no se usaba).
+  // clave de marca = MISMO criterio que el backend _brand_key (dominio de la URL analizada) -> el bias de audiencia
+  // (item L389) agrupa los videos rateados por marca. Sin URL -> "sin_url" (igual que el backend).
+  const brandKeyOf = (u) => { const host = (u || '').trim().toLowerCase().replace(/^https?:\/\/(www\.)?/, '').split('/')[0]; return host.replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'sin_url' }
+  const cleanAudience = (a) => { if (!a || typeof a !== 'object') return null; const o = {}; for (const k of ['who', 'register', 'awareness']) if (typeof a[k] === 'string' && a[k]) o[k] = a[k]; return Object.keys(o).length ? o : null }   // solo strings definidos (Firestore rechaza undefined anidado)
   const save = async () => {
     const id = 'v' + Date.now().toString(36)
-    const item = { id, brand: brief.brand, rubro: brief.rubro, tone: brief.tone, brandColor: brief.brandColor, format: brief.format || '9:16', duration: brief.duration || 'medio', tagline: brief.tagline || '', claim: brief.claim || '', cta: brief.cta || '', bullets: brief.bullets || [], stats: brief.stats || [], proof: brief.proof || '', ...(brief.energyHint ? { energyHint: brief.energyHint } : {}), seed, ts: Date.now() }   // energyHint del playbook (item L142) round-trip -> el video recargado conserva el RITMO del vertical (sin el, revertia a neutro). Spread condicional: Firestore rechaza undefined.
+    const _aud = cleanAudience(brief.audience)
+    // item L389 (loop de feedback de AUDIENCIA): persistimos las señales que el motor USO (audience/seriousness/segment)
+    // + rating:0 + brandKey -> el 👍/👎 las correlaciona y el backend deriva que awareness/register/seriousness convirtio
+    // mejor por marca. Spreads condicionales: Firestore rechaza undefined.
+    const item = { id, brand: brief.brand, rubro: brief.rubro, tone: brief.tone, brandColor: brief.brandColor, format: brief.format || '9:16', duration: brief.duration || 'medio', tagline: brief.tagline || '', claim: brief.claim || '', cta: brief.cta || '', bullets: brief.bullets || [], stats: brief.stats || [], proof: brief.proof || '', ...(brief.energyHint ? { energyHint: brief.energyHint } : {}), ...(_aud ? { audience: _aud } : {}), ...(typeof brief.seriousness === 'number' ? { seriousness: brief.seriousness } : {}), segment, brandKey: brandKeyOf(url), rating: 0, seed, ts: Date.now() }   // energyHint/audience/seriousness round-trip (ritmo+audiencia se conservan al recargar); rating/brandKey alimentan el loop L389
     const next = [item, ...saved].slice(0, 24)
     setSaved(next); localStorage.setItem('urvid1.saved', JSON.stringify(next))
     if (user?.uid) { try { await setDoc(doc(db, 'users', user.uid, 'urvid_videos', id), item) } catch { /* offline -> queda en localStorage */ } }
+  }
+  // RATING 👍/👎 (item L389): marca el video guardado como bien/mal valorado -> el backend usa esas señales de audiencia
+  // para afinar la inferencia del proximo analisis de ESTA marca. Re-tocar el mismo voto lo saca (vuelve a 0). Escribe
+  // directo a Firestore con merge (mismo patron que el resto del studio, sin endpoint nuevo).
+  const rate = async (it, value) => {
+    const rating = it.rating === value ? 0 : value
+    const at = Date.now()
+    const next = saved.map(s => (s === it ? { ...s, rating, ratedAt: at } : s))
+    setSaved(next); localStorage.setItem('urvid1.saved', JSON.stringify(next))
+    if (user?.uid && it.id) { try { await setDoc(doc(db, 'users', user.uid, 'urvid_videos', it.id), { rating, ratedAt: at }, { merge: true }) } catch { /* offline -> queda en localStorage */ } }
   }
   const load = (it) => { setLock(null); setKeep(null); setBrief({ brand: it.brand, rubro: it.rubro, tone: it.tone, brandColor: it.brandColor, format: it.format || '9:16', duration: it.duration || 'medio', tagline: it.tagline, claim: it.claim, cta: it.cta, bullets: it.bullets || [], stats: it.stats || [], proof: it.proof || '', energyHint: it.energyHint }); setSeed(it.seed || 0); headRef.current = 0; setHead(0) }   // energyHint del playbook (item L142); guardados viejos sin el -> undefined -> el motor lo trata como neutro
   const del = async (it) => {
@@ -290,6 +308,8 @@ export default function Urvid1Studio() {
             {saved.map((it, i) => (
               <div key={i} className={styles.card} style={{ '--c': it.brandColor }}>
                 <button className={styles.cardBtn} onClick={() => load(it)}><b>{it.brand}</b><span>{it.rubro} · {it.tone === 'dark' ? 'oscuro' : 'claro'}</span></button>
+                <button className={`${styles.rate} ${it.rating === 1 ? styles.rateOn : ''}`} onClick={() => rate(it, 1)} title="Me gustó — afina la audiencia de esta marca para el próximo análisis">👍</button>
+                <button className={`${styles.rate} ${it.rating === -1 ? styles.rateOn : ''}`} onClick={() => rate(it, -1)} title="No me gustó">👎</button>
                 <button className={styles.del} onClick={() => del(it)} title="Borrar">×</button>
               </div>
             ))}
