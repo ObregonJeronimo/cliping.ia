@@ -3,6 +3,8 @@ import { collection, doc, getDocs, setDoc, deleteDoc } from 'firebase/firestore'
 import { makeVideo, drawFrame } from '../../urvid/index.js'
 import { exportCanvasVideo } from '../../lib/exportVideo.js'
 import { estimateTokens } from '../../lib/tokens.js'
+import { applyTimeline, identityOrder } from '../../lib/timeline.js'
+import Timeline from './Timeline.jsx'
 import { useAuth } from '../../contexts/AuthContext'
 import { db } from '../../lib/firebase'
 import OptionGrid from './OptionGrid.jsx'
@@ -57,7 +59,13 @@ export default function UrvidCraftStudio() {
     return r
   }, [baseRecipe, picks])
   // VIDEO en vivo: receta completa LOCKEADA (pinea cada slot elegido + los auto). Determinista.
-  const video = useMemo(() => makeVideo({ ...brief, brand: brief.brand || 'Tu marca', seed, lockRecipe: fullRecipe }), [brief, seed, fullRecipe])
+  const baseVideo = useMemo(() => makeVideo({ ...brief, brand: brief.brand || 'Tu marca', seed, lockRecipe: fullRecipe }), [brief, seed, fullRecipe])
+  // TIMELINE (Fase 1): `order` = permutacion de las escenas base editada por el usuario. Se reconcilia a identidad si cambia
+  // la CANTIDAD de escenas (ej cambiar duracion); si solo cambia el contenido, se conserva. applyTimeline reordena + recalcula
+  // los starts (fail-safe al base si el orden no es valido). El preview y el export usan `video` -> ambos reflejan el reorden.
+  const [order, setOrder] = useState([])
+  useEffect(() => { setOrder(prev => (prev.length === baseVideo.scenes.length ? prev : identityOrder(baseVideo.scenes.length))) }, [baseVideo])
+  const video = useMemo(() => applyTimeline(baseVideo, order), [baseVideo, order])
   const tokens = useMemo(() => estimateTokens(video, brief), [video, brief])   // consumo APROXIMADO por elemento (reemplaza "creditos")
 
   // opciones por slot (lista completa ordenada por afinidad; la grilla capea el display). Recalcula al cambiar tono/rubro.
@@ -125,6 +133,8 @@ export default function UrvidCraftStudio() {
     raf = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(raf)
   }, [video, playing])
+  // seek desde el timeline (clic en un bloque) -> mueve el playhead a ese tiempo. Reajusta el frame aunque este en pausa.
+  const seek = (t) => { headRef.current = Math.max(0, Math.min(t || 0, video.duration)); setHead(headRef.current) }
 
   // ---- perception -----------------------------------------------------------------------------
   const analyze = async (refresh = false) => {
@@ -308,7 +318,7 @@ export default function UrvidCraftStudio() {
         <div className={styles.recipeChips}>
           {chips.map(([k, v]) => <span key={k} className={styles.chip}><i>{k}</i>{String(v).replace(/^[^.]+\./, '')}</span>)}
         </div>
-        <div className={styles.flowLine}>{video.recipe.scenes.map(s => s.replace(/^[^.]+\./, '')).join('  →  ')}</div>
+        <div className={styles.flowLine}>{video.scenes.map(s => s.sceneId.replace(/^[^.]+\./, '')).join('  →  ')}</div>
         {/* CONSUMO en TOKENS (aprox) — desglose por elemento; mismo modelo que urvid IA (src/lib/tokens.js) */}
         <div style={{ marginTop: 14, borderTop: '1px solid rgba(0,0,0,0.09)', paddingTop: 12 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, marginBottom: 8 }}>
@@ -461,6 +471,8 @@ export default function UrvidCraftStudio() {
             </div>
           </aside>
         </div>
+        {/* TIMELINE de edicion (Fase 1) — full-width bajo las columnas, una vez analizado el sitio */}
+        {analyzed && <Timeline video={video} head={head} order={order} onReorder={setOrder} brief={brief} onEditText={up} onSeek={seek} />}
       </div>
     </div>
   )

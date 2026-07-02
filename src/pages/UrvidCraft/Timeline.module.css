@@ -1,0 +1,27 @@
+/* TIMELINE de edicion (Fase 1) — tema claro (papel), acorde a urvid advanced. Full-width bajo las columnas. */
+.timeline { margin: 20px 0 8px; border: 1px solid rgba(0, 0, 0, 0.1); border-radius: 14px; background: rgba(255, 255, 255, 0.55); padding: 12px 14px; }
+.head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+.ttl { font-weight: 700; font-size: 14px; }
+.hint { font-size: 11px; opacity: 0.5; }
+
+.track { display: grid; grid-template-columns: 76px 1fr; align-items: center; gap: 10px; margin-bottom: 6px; }
+.trackLbl { font-size: 11px; font-weight: 600; opacity: 0.6; text-align: right; }
+.lane { position: relative; display: flex; gap: 3px; height: 54px; background: rgba(0, 0, 0, 0.035); border-radius: 8px; padding: 3px; overflow: hidden; }
+
+.block { flex-basis: 0; min-width: 0; display: flex; flex-direction: column; gap: 2px; justify-content: center; padding: 6px 9px; border-radius: 6px; background: #fff; border: 1px solid rgba(0, 0, 0, 0.1); border-left: 3px solid var(--hue, #888); cursor: grab; overflow: hidden; user-select: none; transition: box-shadow .1s; }
+.block:hover { box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08); }
+.block:active { cursor: grabbing; }
+.selBlock { box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.28); }
+.blockTop { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap; color: var(--hue, #888); }
+.blockTxt { font-size: 11px; color: #222; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: text; }
+.ph { opacity: 0.4; font-style: italic; }
+.blockInput { font-size: 11px; width: 100%; box-sizing: border-box; border: 1px solid rgba(0, 0, 0, 0.25); border-radius: 4px; padding: 2px 5px; font-family: inherit; }
+
+.playhead { position: absolute; top: 0; bottom: 0; width: 2px; background: #e0533b; pointer-events: none; z-index: 3; }
+
+.soon .lane { align-items: center; justify-content: center; opacity: 0.55; }
+.soonLbl { font-size: 10px; opacity: 0.6; font-style: italic; }
+
+.selBar { display: flex; justify-content: space-between; align-items: center; margin-top: 9px; font-size: 11px; opacity: 0.85; }
+.selBtns button { border: 1px solid rgba(0, 0, 0, 0.15); background: #fff; border-radius: 6px; width: 28px; height: 24px; cursor: pointer; margin-left: 5px; font-size: 12px; }
+.selBtns button:disabled { opacity: 0.35; cursor: default; }
