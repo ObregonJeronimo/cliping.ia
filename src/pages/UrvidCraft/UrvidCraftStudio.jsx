@@ -292,6 +292,16 @@ export default function UrvidCraftStudio() {
   const canPrev = step > 0
   const next = () => setStep(s => Math.min(STEPS.length - 1, s + 1))
   const prev = () => setStep(s => Math.max(0, s - 1))
+  // TABS del rail (editor Canva-style): pasos de config + Animaciones + SFX + Guardados. Reusan los render de los pasos.
+  const [railTab, setRailTab] = useState('datos')
+  const RAIL_TABS = [
+    { key: 'datos', label: 'Datos', icon: '🌐' }, { key: 'estilo', label: 'Estilo', icon: '🎨' },
+    { key: 'fondo', label: 'Fondo', icon: '🖼️' }, { key: 'escenas', label: 'Escenas', icon: '🎬' },
+    { key: 'cierre', label: 'Cierre', icon: '✨' }, { key: 'avanzado', label: 'Avanzado', icon: '⚙️' },
+    { key: 'animaciones', label: 'Animaciones', icon: '✍️' }, { key: 'sfx', label: 'SFX', icon: '🔊' },
+    { key: 'guardados', label: 'Guardados', icon: '★' },
+  ]
+  const STEP_RENDER = { datos: renderDatos, estilo: renderEstilo, fondo: renderFondo, escenas: renderEscenas, cierre: renderCierre, avanzado: renderAvanzado }
 
   // ---------- render de cada paso ----------
   function renderDatos() {
@@ -482,65 +492,70 @@ export default function UrvidCraftStudio() {
 
   return (
     <div className={styles.wrap}>
-      <div className={styles.inner} ref={topRef}>
-        <header className={styles.header}>
-          <div className={`${styles.logo} urvidTitleIn`}>urvid <span className="urvidIA">IA</span> advanced</div>
-          <div className={styles.steps}>
-            {STEPS.map((s, i) => (
-              <button key={s.key} className={`${styles.stepTab} ${i === step ? styles.stepOn : ''} ${i < step ? styles.stepDone : ''}`} onClick={() => setStep(i)}>
-                <span className={styles.stepNum}>{String(i + 1).padStart(2, '0')}</span>{s.label}
+      {/* TOPBAR: marca + acciones globales (guardar / descargar / empezar de cero) */}
+      <div className={styles.topbar}>
+        <div className={`${styles.logo} urvidTitleIn`}>urvid <span className="urvidIA">IA</span> advanced</div>
+        <div className={styles.topActions}>
+          {analyzed && <>
+            <button className={styles.ghost} onClick={save}>★ Guardar</button>
+            <button className={styles.primary} onClick={exportVideo} disabled={!!exporting}>{exporting ? `Exportando ${exporting}` : '⬇ Descargar'}</button>
+          </>}
+          {(analyzed || step > 0) && <button className={styles.restartTop} onClick={restart} title="Descarta este video y empeza uno desde cero">↺ Empezar de cero</button>}
+        </div>
+      </div>
+
+      <div className={styles.body}>
+        {/* RAIL izquierdo: tabs (pasos + animaciones + SFX + guardados) + panel scrolleable */}
+        <aside className={styles.rail}>
+          <div className={styles.railTabs}>
+            {RAIL_TABS.map(t => (
+              <button key={t.key} className={`${styles.railTab} ${railTab === t.key ? styles.railTabOn : ''}`} onClick={() => setRailTab(t.key)}>
+                <span className={styles.railIcon}>{t.icon}</span>{t.label}
               </button>
             ))}
-            {(analyzed || step > 0) && <button className={styles.restartTop} onClick={restart} title="Descarta este video y empeza uno desde cero">↺ Empezar de cero</button>}
           </div>
-        </header>
+          <div className={styles.railPanel} key={railTab}>
+            {railTab === 'animaciones'
+              ? <OverlayEditor overlays={tl.overlays} selId={selOv} onSelect={setSelOv} onAdd={addOverlay} onPatch={patchOv} onRemove={removeOv} recording={recording} onToggleRecord={toggleRecord} duration={video.duration} />
+              : railTab === 'sfx'
+                ? <SfxEditor audio={tl.audio} selId={selSfx} onSelect={setSelSfx} onAdd={addSfx} onPreview={previewSfx} onPatch={patchSfx} onRemove={removeSfx} duration={video.duration} />
+                : railTab === 'guardados'
+                  ? <div className={styles.myVideos}>
+                      <span className={styles.eyebrowSm}>Mis videos</span>
+                      {saved.length === 0
+                        ? <p className={styles.myEmpty}>Todavia no guardaste ninguno. Tocá <b>★ Guardar</b> arriba y aparecen acá.</p>
+                        : <div className={styles.myList}>{saved.map((it, i) => (
+                            <div key={it.id || i} className={styles.myCard} style={{ '--c': it.brandColor }}>
+                              <button className={styles.myCardBtn} onClick={() => loadSaved(it)}><b>{it.brand || 'Marca'}</b><span>{RUBRO_LBL[it.rubro] || it.rubro} · {it.tone === 'dark' ? 'oscuro' : 'claro'}</span></button>
+                              <button className={styles.myDel} onClick={() => delSaved(it)} title="Borrar">×</button>
+                            </div>))}</div>}
+                    </div>
+                  : <div className={styles.stepAnim}>{(STEP_RENDER[railTab] || renderDatos)()}</div>}
+            {savedMsg && <p className={styles.ok}>{savedMsg}</p>}
+          </div>
+        </aside>
 
-        <div className={styles.cols}>
-          <section className={styles.main}>
-            <span className={styles.eyebrow}>{cur.eyebrow} · paso {step + 1} de {STEPS.length}</span>
-            <h2 className={styles.title}>{cur.label}</h2>
-            <div key={cur.key} className={styles.stepAnim}>{cur.render()}</div>
-            <div className={styles.nav}>
-              <button className={styles.ghost} onClick={prev} disabled={!canPrev}>← Atras</button>
-              {canNext
-                ? <button className={styles.primary} onClick={next}>Siguiente →</button>
-                : <span className={styles.endHint}>Listo para crear</span>}
+        {/* CENTRO: video + transport + timeline (todo junto, sin scroll de pagina) */}
+        <div className={styles.stageCol}>
+          <div className={styles.stage}>
+            {analyzed
+              ? <div className={styles.frame} style={{ aspectRatio: `${video.W} / ${video.H}` }}>
+                  <canvas ref={cvRef} onPointerDown={onCanvasDown} onPointerMove={onCanvasMove} onPointerUp={onCanvasUp} onPointerLeave={onCanvasUp} style={{ cursor: selOv ? (recording ? 'crosshair' : 'move') : 'default', touchAction: 'none' }} />
+                </div>
+              : <div className={styles.stageEmpty}><b>Empezá por “Datos”</b><span>Pegá el link de tu página y analizala para armar el video.</span></div>}
+          </div>
+          <div className={styles.transportBar}>
+            <button className={styles.tbtn} onClick={() => setPlaying(p => !p)}>{playing ? '⏸' : '▶'}</button>
+            <button className={styles.tbtn} onClick={() => { headRef.current = 0; setHead(0) }} title="Volver al inicio">↺</button>
+            <span className={styles.time}>{head.toFixed(1)} / {video.duration.toFixed(1)}s</span>
+            {exporting && exporting.indexOf('%') < 0 && <span className={styles.err}>{exporting}</span>}
+          </div>
+          {analyzed && (
+            <div className={styles.timelineDock}>
+              <Timeline video={video} head={head} order={tl.order} onReorder={o => setTl(t => ({ ...t, order: o }))} brief={brief} sceneText={tl.sceneText} onEditSceneText={editSceneText} onSeek={seek} overlays={tl.overlays} selOverlay={selOv} onSelectOverlay={setSelOv} audio={tl.audio} selSfx={selSfx} onSelectSfx={setSelSfx} onPatchOverlay={patchOv} onPatchSfx={patchSfx} />
             </div>
-          </section>
-
-          <aside className={styles.aside}>
-            <span className={styles.eyebrowSm}>Como va quedando</span>
-            <div className={styles.frame} style={{ aspectRatio: `${video.W} / ${video.H}` }}>
-              <canvas ref={cvRef} onPointerDown={onCanvasDown} onPointerMove={onCanvasMove} onPointerUp={onCanvasUp} onPointerLeave={onCanvasUp} style={{ cursor: selOv ? (recording ? 'crosshair' : 'move') : 'default', touchAction: 'none' }} />
-            </div>
-            <div className={styles.transport}>
-              <button className={styles.tbtn} onClick={() => setPlaying(p => !p)}>{playing ? '⏸' : '▶'}</button>
-              <button className={styles.tbtn} onClick={() => { headRef.current = 0 }}>↺</button>
-              <span className={styles.time}>{head.toFixed(1)} / {video.duration.toFixed(1)}s</span>
-            </div>
-            <p className={styles.miniNote}>Preview en tu navegador — no consume nada del servidor.</p>
-
-            <div className={styles.myVideos}>
-              <span className={styles.eyebrowSm}>Mis videos</span>
-              {saved.length === 0
-                ? <p className={styles.myEmpty}>Todavia no guardaste ninguno. Tocá <b>★ Crear y guardar</b> y aparecen acá.</p>
-                : <div className={styles.myList}>
-                    {saved.map((it, i) => (
-                      <div key={it.id || i} className={styles.myCard} style={{ '--c': it.brandColor }}>
-                        <button className={styles.myCardBtn} onClick={() => loadSaved(it)}><b>{it.brand || 'Marca'}</b><span>{RUBRO_LBL[it.rubro] || it.rubro} · {it.tone === 'dark' ? 'oscuro' : 'claro'}</span></button>
-                        <button className={styles.myDel} onClick={() => delSaved(it)} title="Borrar">×</button>
-                      </div>
-                    ))}
-                  </div>}
-            </div>
-          </aside>
+          )}
         </div>
-        {/* TIMELINE de edicion (Fase 1) — full-width bajo las columnas, una vez analizado el sitio */}
-        {analyzed && <>
-          <Timeline video={video} head={head} order={tl.order} onReorder={o => setTl(t => ({ ...t, order: o }))} brief={brief} sceneText={tl.sceneText} onEditSceneText={editSceneText} onSeek={seek} overlays={tl.overlays} selOverlay={selOv} onSelectOverlay={setSelOv} audio={tl.audio} selSfx={selSfx} onSelectSfx={setSelSfx} />
-          <OverlayEditor overlays={tl.overlays} selId={selOv} onSelect={setSelOv} onAdd={addOverlay} onPatch={patchOv} onRemove={removeOv} recording={recording} onToggleRecord={toggleRecord} duration={video.duration} />
-          <SfxEditor audio={tl.audio} selId={selSfx} onSelect={setSelSfx} onAdd={addSfx} onPreview={previewSfx} onPatch={patchSfx} onRemove={removeSfx} duration={video.duration} />
-        </>}
       </div>
     </div>
   )
