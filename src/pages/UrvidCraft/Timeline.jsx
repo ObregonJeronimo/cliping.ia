@@ -9,16 +9,21 @@ import styles from './Timeline.module.css'
 
 const HUE = { Apertura: '#5f7cf5', Mensaje: '#1fa876', Lista: '#c9902b', 'Comparación': '#b3612f', Dato: '#8a5cf0', Prueba: '#d0417a', Cierre: '#e0533b', Puente: '#7d8a99', Detalle: '#2b9bc9', Escena: '#888' }
 
-export default function Timeline({ video, head, order, onReorder, brief, sceneText, onEditSceneText, onSeek, overlays, selOverlay, onSelectOverlay, audio, selSfx, onSelectSfx, onPatchOverlay, onPatchSfx }) {
+export default function Timeline({ video, head, order, onReorder, brief, sceneText, onEditSceneText, onSeek, overlays, selOverlay, onSelectOverlay, audio, selSfx, onSelectSfx, onPatchOverlay, onPatchSfx, onDropAudio, onDropText }) {
   const scenes = (video && video.scenes) || []
   const dur = (video && video.duration) || 1
   const [sel, setSel] = useState(-1)          // escena seleccionada (indice de display)
   const [editing, setEditing] = useState(-1)  // escena en edicion de texto
+  const [dropZone, setDropZone] = useState(null)  // pista resaltada al arrastrar desde el sidebar ('ov'|'sfx')
   const dragFrom = useRef(-1)                  // reorden de escenas (HTML5 DnD)
   const dragRef = useRef(null)                 // arrastre en TIEMPO: { mode:'scrub'|'ov'|'sfx', id?, laneEl, blockDur? }
 
   const pct = (t) => Math.max(0, Math.min(100, (t / dur) * 100))
   const timeFromX = (clientX, laneEl) => { const r = laneEl.getBoundingClientRect(); return Math.max(0, Math.min(dur, ((clientX - r.left) / (r.width || 1)) * dur)) }
+  // DROP desde el sidebar: arrastrar un item de la librería (audio o texto) y soltarlo en la pista -> agrega en ese tiempo.
+  const laneOver = (e, type) => { if (Array.from(e.dataTransfer.types || []).indexOf(type) >= 0) { e.preventDefault(); setDropZone(type === 'application/urvid-audio' ? 'sfx' : 'ov') } }
+  const laneDropAudio = (e) => { setDropZone(null); const id = e.dataTransfer.getData('application/urvid-audio'); if (id && onDropAudio) { e.preventDefault(); onDropAudio(id, timeFromX(e.clientX, e.currentTarget)) } }
+  const laneDropText = (e) => { setDropZone(null); const ok = e.dataTransfer.getData('application/urvid-text'); if (ok && onDropText) { e.preventDefault(); onDropText(timeFromX(e.clientX, e.currentTarget)) } }
 
   // arrastre global (playhead + bloques): un solo par de listeners en window mientras dura el gesto.
   useEffect(() => {
@@ -94,10 +99,11 @@ export default function Timeline({ video, head, order, onReorder, brief, sceneTe
         </div>
       </div>
 
-      {/* PISTA ANIMACIONES — overlays arrastrables en el tiempo */}
+      {/* PISTA ANIMACIONES — overlays arrastrables en el tiempo + drop de texto desde el sidebar */}
       <div className={styles.track}>
         <span className={styles.trackLbl}>Animaciones</span>
-        <div className={styles.lane}>
+        <div className={`${styles.lane} ${dropZone === 'ov' ? styles.laneDrop : ''}`}
+          onDragOver={e => laneOver(e, 'application/urvid-text')} onDragLeave={() => setDropZone(null)} onDrop={laneDropText}>
           <div className={styles.playhead} style={{ left: `${pct(head)}%` }} />
           {(overlays || []).map(ov => (
             <div key={ov.id}
@@ -112,10 +118,11 @@ export default function Timeline({ video, head, order, onReorder, brief, sceneTe
         </div>
       </div>
 
-      {/* PISTA SFX — clips arrastrables en el tiempo */}
+      {/* PISTA SFX — clips arrastrables en el tiempo + drop de SFX/música desde el sidebar */}
       <div className={styles.track}>
         <span className={styles.trackLbl}>SFX</span>
-        <div className={styles.lane}>
+        <div className={`${styles.lane} ${dropZone === 'sfx' ? styles.laneDrop : ''}`}
+          onDragOver={e => laneOver(e, 'application/urvid-audio')} onDragLeave={() => setDropZone(null)} onDrop={laneDropAudio}>
           <div className={styles.playhead} style={{ left: `${pct(head)}%` }} />
           {(audio || []).map(a => (
             <div key={a.id}

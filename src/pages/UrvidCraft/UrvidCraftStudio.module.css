@@ -40,7 +40,11 @@
 .railPanel .input, .railPanel .color, .railPanel select.input { padding: 9px 12px; font-size: 14px; border-radius: 10px; }
 .railPanel .color { height: 40px; padding: 5px; }
 .railPanel select.input { background-position: calc(100% - 16px) 17px, calc(100% - 11px) 17px; }
-.stageCol { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--bg); }
+.stageCol { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--bg); position: relative; }
+
+/* recuadro FLOTANTE del clip de audio seleccionado — a la izquierda del stage (en el espacio vacío junto al video) */
+.clipFloat { position: absolute; left: 16px; top: 46%; transform: translateY(-50%); z-index: 6; }
+@media (max-width: 1100px) { .clipFloat { top: 12px; transform: none; } }
 .stage { flex: 1; display: flex; align-items: center; justify-content: center; padding: 18px; min-height: 0; }
 .stage .frame { height: 100%; width: auto; max-width: 100%; }
 .stageEmpty { display: flex; flex-direction: column; gap: 8px; align-items: center; justify-content: center; color: var(--muted); text-align: center; }
@@ -97,6 +101,16 @@
 .modal { background: var(--surface); border-radius: 18px; padding: 24px; width: 100%; max-width: 420px; box-shadow: var(--shadow-lg); display: flex; flex-direction: column; gap: 14px; }
 .modalTitle { font-family: var(--fdisplay); font-weight: 600; font-size: 20px; margin: 0; }
 .modalActions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px; }
+/* modal "Renderizar y exportar" — resumen de tokens aproximados */
+.modalLead { margin: -4px 0 0; font-size: 13.5px; line-height: 1.5; color: var(--text2); }
+.expBox { border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; background: var(--bg); }
+.expHead { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--text2); }
+.expHead strong { color: var(--text); font-size: 15px; }
+.expList { display: flex; flex-direction: column; gap: 3px; margin-top: 9px; padding-top: 9px; border-top: 1px solid var(--border); }
+.expRow { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--text2); }
+.expRow span:last-child { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--text); }
+.expBal { margin: 0; font-size: 13px; color: var(--text2); }
+.expBal b { color: var(--text); }
 
 /* ---- header ---- */
 .header { display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap; padding-bottom: 28px; border-bottom: 1px solid var(--border); margin-bottom: 32px; }

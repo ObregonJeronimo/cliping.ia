@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth'
-import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore'
+import { doc, setDoc, getDoc, serverTimestamp, updateDoc } from 'firebase/firestore'
 import { auth, db } from '../lib/firebase'
 
 const AuthContext = createContext(null)
@@ -58,8 +58,20 @@ export function AuthProvider({ children }) {
     await signOut(auth)
   }
 
+  // descuenta `amount` tokens del saldo del usuario (al renderizar/exportar). Optimista (actualiza el estado ya) +
+  // persiste en Firestore. Clampa a 0. Devuelve el nuevo saldo (o null si no hay sesión).
+  async function spendTokens(amount) {
+    if (!user || !amount || amount <= 0) return null
+    const current = Number(profile && profile.tokens)
+    const base = Number.isFinite(current) ? current : 0
+    const next = Math.max(0, base - Math.round(amount))
+    setProfile(p => ({ ...(p || {}), tokens: next }))
+    try { await updateDoc(doc(db, 'users', user.uid), { tokens: next }) } catch (e) { /* offline -> queda local */ }
+    return next
+  }
+
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signInWithGoogle, logout }}>
+    <AuthContext.Provider value={{ user, profile, loading, signInWithGoogle, logout, spendTokens }}>
       {children}
     </AuthContext.Provider>
   )

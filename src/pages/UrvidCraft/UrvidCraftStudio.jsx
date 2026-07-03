@@ -6,9 +6,9 @@ import { estimateTokens } from '../../lib/tokens.js'
 import { applyTimeline, identityOrder, makeTextOverlay, patchOverlay, finalizeRecording } from '../../lib/timeline.js'
 import Timeline from './Timeline.jsx'
 import OverlayEditor from './OverlayEditor.jsx'
-import AudioEditor from './AudioEditor.jsx'
+import AudioEditor, { ClipInspector } from './AudioEditor.jsx'
 import { SFX, sfxBuffer } from '../../lib/sfxLib.js'
-import { SFX_LIBRARY, MUSIC_LIBRARY, ASSET_BY_ID, isAsset, decodeAsset, decodeUrl } from '../../lib/audioAssets.js'
+import { SFX_LIBRARY, MUSIC_LIBRARY, ASSET_BY_ID, isAsset, decodeAsset, decodeUrl, clipLabel } from '../../lib/audioAssets.js'
 import { uploadUserAudio, listUserAudio, deleteUserAudio } from '../../lib/audioUploads.js'
 import { playPreview } from '../../lib/audioMix.js'
 import { drawWatermark } from '../../lib/watermark.js'
@@ -57,7 +57,7 @@ const ICONS = {
 }
 
 export default function UrvidCraftStudio() {
-  const { user } = useAuth()
+  const { user, profile, spendTokens } = useAuth()
   // BORRADOR persistido (se lee UNA vez): retoma brief+picks+seed+paso si volves al wizard.
   const [d0] = useState(() => { try { return JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null') } catch { return null } })
   const [brief, setBrief] = useState(() => (d0 && d0.brief ? { ...BRIEF0, ...d0.brief } : BRIEF0))
@@ -115,7 +115,7 @@ export default function UrvidCraftStudio() {
   const dragOvRef = useRef(null)   // 'move' | 'record' | null (accion en curso sobre el canvas)
   const recRef = useRef(null)      // { t0, pts:[{ms,x,y}] } mientras se graba
   const lastDrawRef = useRef(0)    // throttle del redibujo mientras se arrastra/graba (evita saturar el CPU)
-  const addOverlay = () => setTl(t => { const ov = makeTextOverlay(headRef.current, video.W, video.H); setSelOv(ov.id); return { ...t, overlays: [...(t.overlays || []), ov] } })
+  const addOverlay = (atSec) => setTl(t => { const ov = makeTextOverlay(typeof atSec === 'number' ? atSec : headRef.current, video.W, video.H); setSelOv(ov.id); return { ...t, overlays: [...(t.overlays || []), ov] } })
   const patchOv = (id, patch) => setTl(t => ({ ...t, overlays: patchOverlay(t.overlays, id, patch) }))
   const removeOv = (id) => { setTl(t => ({ ...t, overlays: (t.overlays || []).filter(o => o.id !== id) })); setSelOv(null); setRecording(false) }
   const toggleRecord = () => { setRecording(r => !r); setPlaying(false) }
@@ -158,10 +158,11 @@ export default function UrvidCraftStudio() {
   const uploadById = (clipId) => uploads.find(u => 'up:' + u.id === clipId)   // meta de una subida por el id de clip 'up:...'
   // agrega un clip de audio (SFX sintetizado, SFX de archivo, música o SUBIDA del usuario) en el playhead. Música/subidas de
   // música arrancan más bajo (0.5). Las subidas guardan url+name INLINE -> el proyecto queda autocontenido para preview/export.
-  const addSfx = (sfxId) => setTl(t => {
+  const addSfx = (sfxId, atSec) => setTl(t => {
     const up = sfxId.indexOf('up:') === 0 ? uploadById(sfxId) : null
     const meta = up || ASSET_BY_ID.get(sfxId) || SFX.find(s => s.id === sfxId) || { dur: 0.3 }
-    const clip = { id: 'sfx_' + Date.now().toString(36) + '_' + ((t.audio || []).length), sfx: sfxId, startSec: +headRef.current.toFixed(2), durSec: meta.dur || 0.3, gain: meta.kind === 'music' ? 0.5 : 0.9 }
+    const start = atSec != null ? atSec : headRef.current
+    const clip = { id: 'sfx_' + Date.now().toString(36) + '_' + ((t.audio || []).length), sfx: sfxId, startSec: +start.toFixed(2), durSec: meta.dur || 0.3, gain: meta.kind === 'music' ? 0.5 : 0.9 }
     if (up) { clip.url = up.url; clip.name = up.name }
     setSelSfx(clip.id); return { ...t, audio: [...(t.audio || []), clip] }
   })
@@ -344,7 +345,11 @@ export default function UrvidCraftStudio() {
   // ---- export en ALTA CALIDAD (client-side) ---------------------------------------------------
   // EXPORT: modulo COMPARTIDO (src/lib/exportVideo.js) — canvas OFFSCREEN a 1080 real, una vuelta exacta. Mismo camino
   // que urvid IA. Este estudio YA usaba offscreen; ahora el codigo vive en un solo lugar (unificado -> item L134).
-  const exportVideo = () => {
+  const [confirmExport, setConfirmExport] = useState(false)   // modal "Renderizar y exportar" (muestra tokens aprox)
+  const requestExport = () => { if (exporting) return; setConfirmExport(true) }
+  // confirma: descuenta los tokens estimados (aprox) y arranca el render/export.
+  const doExport = () => {
+    setConfirmExport(false)
     if (exporting) return
     const ok = exportCanvasVideo(video, {
       filename: `${(brief.brand || 'urvid')}-${(brief.format || '9-16').replace(':', 'x')}`,
@@ -353,7 +358,7 @@ export default function UrvidCraftStudio() {
       onError: m => { setExporting(m); setTimeout(() => setExporting(''), 5000) },
       onDone: () => setExporting(''),
     })
-    if (ok) setExporting('0%')
+    if (ok) { setExporting('0%'); if (spendTokens && tokens.total > 0) spendTokens(tokens.total) }   // descuenta al arrancar el render
   }
 
   // ---- guardar en "Mis videos" (Firestore + localStorage) -------------------------------------
@@ -557,7 +562,7 @@ export default function UrvidCraftStudio() {
         </div>
         <div className={styles.actions}>
           <button className={styles.primary} onClick={save}>★ Crear y guardar</button>
-          <button className={styles.ghost} onClick={exportVideo} disabled={!!exporting}>{exporting ? `Exportando ${exporting}` : '⬇ Descargar video'}</button>
+          <button className={styles.ghost} onClick={requestExport} disabled={!!exporting}>{exporting ? `Exportando ${exporting}` : '⬇ Renderizar y exportar'}</button>
         </div>
         {savedMsg && <p className={styles.ok}>{savedMsg}</p>}
         {exporting && exporting.indexOf('%') < 0 && <p className={styles.err}>{exporting}</p>}
@@ -699,7 +704,7 @@ export default function UrvidCraftStudio() {
         <div className={styles.topActions}>
           {analyzed && <>
             <button className={styles.ghost} onClick={saveProject}>★ Guardar</button>
-            <button className={styles.primary} onClick={exportVideo} disabled={!!exporting}>{exporting ? `Exportando ${exporting}` : '⬇ Descargar'}</button>
+            <button className={styles.primary} onClick={requestExport} disabled={!!exporting}>{exporting ? `Exportando ${exporting}` : '⬇ Renderizar y exportar'}</button>
           </>}
         </div>
       </div>
@@ -740,6 +745,15 @@ export default function UrvidCraftStudio() {
 
         {/* CENTRO: video + transport + timeline */}
         <div className={styles.stageCol}>
+          {/* RECUADRO FLOTANTE del clip de audio seleccionado (a la derecha del panel, en el área del stage) */}
+          {(railTab === 'sfx' || railTab === 'musica') && (() => {
+            const c = (tl.audio || []).find(a => a.id === selSfx)
+            return c ? (
+              <div className={styles.clipFloat}>
+                <ClipInspector clip={c} name={c.name || clipLabel(c.sfx)} accent={railTab === 'musica' ? '#7048e8' : '#c98a2b'} duration={video.duration} onPatch={patchSfx} onRemove={removeSfx} onClose={() => setSelSfx(null)} />
+              </div>
+            ) : null
+          })()}
           <div className={styles.stage}>
             {analyzed
               ? <div className={styles.frame} style={{ aspectRatio: `${video.W} / ${video.H}` }}>
@@ -755,11 +769,33 @@ export default function UrvidCraftStudio() {
           </div>
           {analyzed && (
             <div className={styles.timelineDock}>
-              <Timeline video={video} head={head} order={tl.order} onReorder={o => setTl(t => ({ ...t, order: o }))} brief={brief} sceneText={tl.sceneText} onEditSceneText={editSceneText} onSeek={seek} overlays={tl.overlays} selOverlay={selOv} onSelectOverlay={setSelOv} audio={tl.audio} selSfx={selSfx} onSelectSfx={setSelSfx} onPatchOverlay={patchOv} onPatchSfx={patchSfx} />
+              <Timeline video={video} head={head} order={tl.order} onReorder={o => setTl(t => ({ ...t, order: o }))} brief={brief} sceneText={tl.sceneText} onEditSceneText={editSceneText} onSeek={seek} overlays={tl.overlays} selOverlay={selOv} onSelectOverlay={setSelOv} audio={tl.audio} selSfx={selSfx} onSelectSfx={setSelSfx} onPatchOverlay={patchOv} onPatchSfx={patchSfx} onDropAudio={(id, t) => addSfx(id, t)} onDropText={(t) => addOverlay(t)} />
             </div>
           )}
         </div>
       </div>
+
+      {confirmExport && (
+        <div className={styles.modalBg} onClick={() => setConfirmExport(false)}>
+          <div className={styles.modal} onClick={e => e.stopPropagation()}>
+            <div className={styles.modalTitle}>Renderizar y exportar</div>
+            <p className={styles.modalLead}>Se renderiza el video en 1080p y se descarga. Esto consume tokens (cantidad <b>aproximada</b> — no es un cálculo exacto):</p>
+            <div className={styles.expBox}>
+              <div className={styles.expHead}><span>⚡ Consumo aproximado</span><strong>≈ {tokens.total.toLocaleString('es')} tk</strong></div>
+              <div className={styles.expList}>
+                {tokens.items.map(it => <div key={it.key} className={styles.expRow}><span>{it.label}</span><span>{it.tokens}</span></div>)}
+              </div>
+            </div>
+            {profile && Number.isFinite(Number(profile.tokens)) && (
+              <p className={styles.expBal}>Saldo: <b>{Number(profile.tokens).toLocaleString('es')}</b> → <b>{Math.max(0, Number(profile.tokens) - tokens.total).toLocaleString('es')}</b> tk</p>
+            )}
+            <div className={styles.modalActions}>
+              <button className={styles.ghost} onClick={() => setConfirmExport(false)}>Cancelar</button>
+              <button className={styles.primary} onClick={doExport}>⬇ Renderizar y exportar</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -85,7 +85,9 @@ export default function OverlayEditor({ overlays, selId, onSelect, onAdd, onPatc
     <div style={S.card}>
       <div style={S.head}>
         <span style={S.title}>Animaciones</span>
-        <button onClick={onAdd} style={S.add}>+ Texto</button>
+        <button onClick={() => onAdd()} style={S.add} draggable
+          onDragStart={e => { e.dataTransfer.setData('application/urvid-text', '1'); e.dataTransfer.setData('text/plain', 'Texto'); e.dataTransfer.effectAllowed = 'copy' }}
+          title="Agregá un texto (o arrastralo a la pista Animaciones del timeline)">+ Texto</button>
       </div>
 
       {(!overlays || !overlays.length) && (
