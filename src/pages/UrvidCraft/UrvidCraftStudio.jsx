@@ -222,18 +222,30 @@ export default function UrvidCraftStudio() {
     raf = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(raf)
   }, [video, playing])
-  // seek desde el timeline (clic/arrastre) -> mueve el playhead a ese tiempo. Reajusta el frame aunque este en pausa.
+  // EN PAUSA: redibuja el frame cuando cambia el playhead (seek desde el timeline) o el documento (overlays/escenas via `video`).
+  // Sin esto, mover la linea de tiempo con el video pausado no actualizaba el canvas hasta despausar (el loop no corre en pausa).
+  useEffect(() => {
+    if (playing) return
+    const cv = cvRef.current; if (!cv) return
+    const ctx = cv.getContext('2d')
+    const DPR = Math.min(window.devicePixelRatio || 1, 2.5)
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0); drawFrame(ctx, headRef.current, video, { quality: 0.7 })
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0); drawWatermark(ctx, video.W, video.H)
+  }, [head, playing, video])
+  // seek desde el timeline (clic/arrastre) -> mueve el playhead a ese tiempo. Redibuja aunque este en pausa (efecto de arriba).
   const seek = (t) => { headRef.current = Math.max(0, Math.min(t || 0, video.duration)); setHead(headRef.current) }
   // PREVIEW de AUDIO (Fase 4): al reproducir, agenda los SFX del timeline en un AudioContext vivo -> se escuchan MIENTRAS
   // editas (sin descargar). Se (re)programa al play y al cambiar los clips, se reprograma al reiniciar el loop, y se corta al pausar.
   const stopPreviewAudio = () => { if (audioPrevRef.current) { audioPrevRef.current.stop(); audioPrevRef.current = null } }
   const startPreviewAudio = (fromSec) => { stopPreviewAudio(); if (tl.audio && tl.audio.length) audioPrevRef.current = playPreview({ duration: video.duration, timeline: { audio: tl.audio } }, fromSec || 0) }
   restartAudioRef.current = () => startPreviewAudio(0)
+  // Solo suena en el EDITOR: en el manager de proyectos no hay canvas visible -> no debe reproducirse audio de fondo
+  // (antes, un draft viejo con SFX + playing=true por defecto dejaba sonando el video "fantasma" al entrar a advanced).
   useEffect(() => {
-    if (playing) startPreviewAudio(headRef.current); else stopPreviewAudio()
+    if (mode === 'editor' && playing) startPreviewAudio(headRef.current); else stopPreviewAudio()
     return stopPreviewAudio
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playing, tl.audio, video.duration])
+  }, [playing, mode, tl.audio, video.duration])
 
   // ---- perception -----------------------------------------------------------------------------
   const analyze = async (refresh = false) => {
