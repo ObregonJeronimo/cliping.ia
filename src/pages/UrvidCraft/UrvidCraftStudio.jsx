@@ -8,7 +8,8 @@ import Timeline from './Timeline.jsx'
 import OverlayEditor from './OverlayEditor.jsx'
 import AudioEditor from './AudioEditor.jsx'
 import { SFX, sfxBuffer } from '../../lib/sfxLib.js'
-import { SFX_LIBRARY, MUSIC_LIBRARY, ASSET_BY_ID, isAsset, decodeAsset } from '../../lib/audioAssets.js'
+import { SFX_LIBRARY, MUSIC_LIBRARY, ASSET_BY_ID, isAsset, decodeAsset, decodeUrl } from '../../lib/audioAssets.js'
+import { uploadUserAudio, listUserAudio, deleteUserAudio } from '../../lib/audioUploads.js'
 import { playPreview } from '../../lib/audioMix.js'
 import { drawWatermark } from '../../lib/watermark.js'
 import { useAuth } from '../../contexts/AuthContext'
@@ -150,8 +151,20 @@ export default function UrvidCraftStudio() {
   }
   // SFX (Fase 4): clips de audio en video.timeline.audio. selSfx = seleccionado.
   const [selSfx, setSelSfx] = useState(null)
-  // agrega un clip de audio (SFX sintetizado, SFX de archivo o música) en el playhead. La música arranca más bajo (0.5).
-  const addSfx = (sfxId) => setTl(t => { const meta = ASSET_BY_ID.get(sfxId) || SFX.find(s => s.id === sfxId) || { dur: 0.3 }; const clip = { id: 'sfx_' + Date.now().toString(36) + '_' + ((t.audio || []).length), sfx: sfxId, startSec: +headRef.current.toFixed(2), durSec: meta.dur || 0.3, gain: meta.kind === 'music' ? 0.5 : 0.9 }; setSelSfx(clip.id); return { ...t, audio: [...(t.audio || []), clip] } })
+  const [uploads, setUploads] = useState([])       // audio SUBIDO por el usuario (Storage): { id, name, kind, dur, url, path, ts }
+  const [uploading, setUploading] = useState('')   // estado/mensaje de la subida en curso
+  const fileInputRef = useRef(null)
+  const uploadKindRef = useRef('music')            // a qué pestaña va la subida (music|sfx)
+  const uploadById = (clipId) => uploads.find(u => 'up:' + u.id === clipId)   // meta de una subida por el id de clip 'up:...'
+  // agrega un clip de audio (SFX sintetizado, SFX de archivo, música o SUBIDA del usuario) en el playhead. Música/subidas de
+  // música arrancan más bajo (0.5). Las subidas guardan url+name INLINE -> el proyecto queda autocontenido para preview/export.
+  const addSfx = (sfxId) => setTl(t => {
+    const up = sfxId.indexOf('up:') === 0 ? uploadById(sfxId) : null
+    const meta = up || ASSET_BY_ID.get(sfxId) || SFX.find(s => s.id === sfxId) || { dur: 0.3 }
+    const clip = { id: 'sfx_' + Date.now().toString(36) + '_' + ((t.audio || []).length), sfx: sfxId, startSec: +headRef.current.toFixed(2), durSec: meta.dur || 0.3, gain: meta.kind === 'music' ? 0.5 : 0.9 }
+    if (up) { clip.url = up.url; clip.name = up.name }
+    setSelSfx(clip.id); return { ...t, audio: [...(t.audio || []), clip] }
+  })
   const patchSfx = (id, patch) => setTl(t => ({ ...t, audio: (t.audio || []).map(a => a.id === id ? { ...a, ...patch } : a) }))
   const removeSfx = (id) => { setTl(t => ({ ...t, audio: (t.audio || []).filter(a => a.id !== id) })); setSelSfx(null) }
   // escuchar un SFX una vez (gesto del usuario -> autoplay OK). Cierra el contexto al terminar.
@@ -162,11 +175,40 @@ export default function UrvidCraftStudio() {
       const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return
       const ctx = new AC()
       const play = (buf) => { if (!buf) { try { ctx.close() } catch (e) { /* noop */ } return } const src = ctx.createBufferSource(); src.buffer = buf; src.connect(ctx.destination); src.onended = () => { try { ctx.close() } catch (e) { /* noop */ } }; src.start() }
-      if (isAsset(sfxId)) decodeAsset(ctx, sfxId).then(play).catch(() => { try { ctx.close() } catch (e) { /* noop */ } })
+      const up = sfxId.indexOf('up:') === 0 ? uploadById(sfxId) : null
+      if (up) decodeUrl(ctx, sfxId, up.url).then(play).catch(() => { try { ctx.close() } catch (e) { /* noop */ } })
+      else if (isAsset(sfxId)) decodeAsset(ctx, sfxId).then(play).catch(() => { try { ctx.close() } catch (e) { /* noop */ } })
       else play(sfxBuffer(ctx, sfxId))
     } catch (e) { /* noop */ }
   }
+  // SUBIR audio propio: valida + decodifica local (para preview/export de la sesión sin re-fetch) y sube a Storage (privado).
+  const triggerUpload = (kind) => { uploadKindRef.current = kind; setUploading(''); if (fileInputRef.current) fileInputRef.current.click() }
+  const onFilePicked = async (e) => {
+    const file = e.target.files && e.target.files[0]; if (e.target) e.target.value = ''
+    if (!file) return
+    if (!user?.uid) { setUploading('Iniciá sesión para subir audio.'); return }
+    setUploading('Subiendo…')
+    try { const meta = await uploadUserAudio(user.uid, file, uploadKindRef.current); setUploads(u => [meta, ...u]); setUploading('') }
+    catch (err) { setUploading((err && err.message) || 'No se pudo subir el audio.') }
+  }
+  const deleteUpload = (clipId) => {
+    const up = uploadById(clipId); if (!up) return
+    if (user?.uid) deleteUserAudio(user.uid, up)
+    setUploads(u => u.filter(x => 'up:' + x.id !== clipId))
+    setTl(t => ({ ...t, audio: (t.audio || []).filter(a => a.sfx !== clipId) }))   // saca clips que la usaban (quedarían mudos)
+  }
   const tokens = useMemo(() => estimateTokens(video, brief), [video, brief])   // consumo APROXIMADO por elemento (reemplaza "creditos")
+  // al loguearse, trae las subidas de audio del usuario (Storage); sin sesión no hay subidas.
+  useEffect(() => {
+    if (!user?.uid) { setUploads([]); return }
+    let alive = true
+    listUserAudio(user.uid).then(list => { if (alive) setUploads(list) })
+    return () => { alive = false }
+  }, [user?.uid])
+  // librerías por pestaña: built-in + las subidas del usuario (categoría "Tus subidas").
+  const upItems = (kind) => uploads.filter(u => u.kind === kind).map(u => ({ id: 'up:' + u.id, name: u.name, cat: 'Tus subidas', dur: u.dur }))
+  const sfxLib = useMemo(() => [...SFX_LIBRARY, ...upItems('sfx')], [uploads])   // eslint-disable-line react-hooks/exhaustive-deps
+  const musicLib = useMemo(() => [...MUSIC_LIBRARY, ...upItems('music')], [uploads])   // eslint-disable-line react-hooks/exhaustive-deps
 
   // opciones por slot (lista completa ordenada por afinidad; la grilla capea el display). Recalcula al cambiar tono/rubro.
   const opts = useMemo(() => ({
@@ -663,6 +705,7 @@ export default function UrvidCraftStudio() {
       </div>
 
       <div className={styles.body}>
+        <input ref={fileInputRef} type="file" accept="audio/*" onChange={onFilePicked} style={{ display: 'none' }} />
         {/* SIDEBAR de secciones (vertical, colapsable) */}
         <aside className={styles.iconRail}>
           {RAIL_TABS.map(t => (
@@ -685,9 +728,9 @@ export default function UrvidCraftStudio() {
             {railTab === 'animaciones'
               ? <OverlayEditor overlays={tl.overlays} selId={selOv} onSelect={setSelOv} onAdd={addOverlay} onPatch={patchOv} onRemove={removeOv} recording={recording} onToggleRecord={toggleRecord} duration={video.duration} />
               : railTab === 'sfx'
-                ? <AudioEditor library={SFX_LIBRARY} title="SFX (efectos de sonido)" accent="#c98a2b" lead="Efectos cortos: sintetizados (libres) y grabados CC0 de Kenney." audio={tl.audio} selId={selSfx} onSelect={setSelSfx} onAdd={addSfx} onPreview={previewSfx} onPatch={patchSfx} onRemove={removeSfx} duration={video.duration} />
+                ? <AudioEditor library={sfxLib} title="SFX (efectos de sonido)" accent="#c98a2b" lead="Efectos cortos: sintetizados (libres) y grabados CC0 de Kenney. También podés subir los tuyos." audio={tl.audio} selId={selSfx} onSelect={setSelSfx} onAdd={addSfx} onPreview={previewSfx} onPatch={patchSfx} onRemove={removeSfx} duration={video.duration} onUpload={() => triggerUpload('sfx')} uploading={uploading} onDeleteUpload={deleteUpload} />
                 : railTab === 'musica'
-                  ? <AudioEditor library={MUSIC_LIBRARY} title="Música" accent="#7048e8" lead="Jingles musicales CC0 (Kenney) para acentos. Para camas de fondo largas podés sumar tus pistas de Mixkit/Pixabay." hint="Tocá ▶ para escuchar; “+” agrega el track en el playhead. La música arranca a volumen bajo — ajustalo abajo. Sale en el video descargado." audio={tl.audio} selId={selSfx} onSelect={setSelSfx} onAdd={addSfx} onPreview={previewSfx} onPatch={patchSfx} onRemove={removeSfx} duration={video.duration} />
+                  ? <AudioEditor library={musicLib} title="Música" accent="#7048e8" lead="Jingles CC0 (Kenney) para acentos. Para música cinematográfica (risers, logos, camas), subí la tuya de Pixabay/Mixkit con “Subir” — sale horneada en tu video." hint="Tocá ▶ para escuchar; “+” agrega el track en el playhead. La música arranca a volumen bajo — ajustalo abajo. Sale en el video descargado." audio={tl.audio} selId={selSfx} onSelect={setSelSfx} onAdd={addSfx} onPreview={previewSfx} onPatch={patchSfx} onRemove={removeSfx} duration={video.duration} onUpload={() => triggerUpload('music')} uploading={uploading} onDeleteUpload={deleteUpload} />
                   : <div className={styles.stepAnim}>{(STEP_RENDER[railTab] || renderDatos)()}</div>}
             {savedMsg && <p className={styles.ok}>{savedMsg}</p>}
           </div>

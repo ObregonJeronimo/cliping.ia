@@ -1,12 +1,17 @@
 // audioMix — mezcla los clips de SFX del timeline. Para el EXPORT: un unico AudioBuffer via OfflineAudioContext (mux por
 // MediaRecorder). Para el PREVIEW: agenda los clips en un AudioContext vivo. Clips = video.timeline.audio = [{id,sfx,startSec,durSec,gain}].
 import { sfxBuffer } from './sfxLib.js'
-import { isAsset, decodeAsset, cachedAsset } from './audioAssets.js'
+import { isAsset, decodeAsset, decodeUrl, cachedAsset } from './audioAssets.js'
 
 const _gainOf = (c) => (c && c.gain != null ? c.gain : 0.9)
-// resuelve el AudioBuffer de un clip: archivo (decode async, cacheado) o sintetizado (generado en el acto). Puede tardar
-// (fetch+decode la 1ra vez) -> el mix del export lo AWAITEA. Devuelve null si el archivo no carga -> el clip se saltea.
-async function resolveBuffer(ctx, id) { return isAsset(id) ? await decodeAsset(ctx, id) : sfxBuffer(ctx, id) }
+const _isUpload = (id) => typeof id === 'string' && id.indexOf('up:') === 0   // subida del usuario (Storage) -> la URL viaja en el clip
+// resuelve el AudioBuffer de un clip: subida del usuario (decode desde su URL), asset built-in (decode del archivo) o
+// sintetizado (generado en el acto). Puede tardar (fetch+decode la 1ra vez) -> el mix del export lo AWAITEA. null -> se saltea.
+async function resolveBuffer(ctx, c) {
+  const id = c.sfx || c.id
+  if (_isUpload(id)) return c.url ? await decodeUrl(ctx, id, c.url) : null
+  return isAsset(id) ? await decodeAsset(ctx, id) : sfxBuffer(ctx, id)
+}
 
 // mixTimeline(video, sampleRate) -> Promise<AudioBuffer|null>. null si no hay clips o no hay OfflineAudioContext.
 export async function mixTimeline(video, sampleRate = 48000) {
@@ -18,7 +23,7 @@ export async function mixTimeline(video, sampleRate = 48000) {
   const ctx = new OAC(2, Math.ceil(dur * sampleRate), sampleRate)
   for (const c of clips) {
     try {
-      const buf = await resolveBuffer(ctx, c.sfx || c.id)
+      const buf = await resolveBuffer(ctx, c)
       if (!buf) continue
       const src = ctx.createBufferSource(); src.buffer = buf
       const g = ctx.createGain(); g.gain.value = _gainOf(c)
@@ -53,10 +58,11 @@ export function playPreview(video, fromSec = 0) {
   }
   for (const c of clips) {
     const id = c.sfx || c.id
-    if (isAsset(id)) {
+    const upload = _isUpload(id)
+    if (upload || isAsset(id)) {
       const cached = cachedAsset(id, ctx.sampleRate)
       if (cached) schedule(cached, c)
-      else decodeAsset(ctx, id).then(buf => schedule(buf, c)).catch(() => { /* noop */ })
+      else (upload ? decodeUrl(ctx, id, c.url) : decodeAsset(ctx, id)).then(buf => schedule(buf, c)).catch(() => { /* noop */ })
     } else {
       try { schedule(sfxBuffer(ctx, id), c) } catch (e) { /* noop */ }
     }

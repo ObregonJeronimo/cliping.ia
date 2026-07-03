@@ -13,6 +13,8 @@ const S = {
   pill: { display: 'inline-flex', alignItems: 'stretch', border: `1px solid ${T.line}`, borderRadius: 20, overflow: 'hidden', background: '#fff' },
   play: { border: 'none', background: 'transparent', cursor: 'pointer', padding: '4px 7px', fontSize: 10, color: T.sub, display: 'inline-flex', alignItems: 'center' },
   addBtn: (ac) => ({ border: 'none', borderLeft: `1px solid ${T.line}`, background: 'transparent', cursor: 'pointer', padding: '4px 10px', fontSize: 11.5, fontWeight: 600, color: ac, whiteSpace: 'nowrap' }),
+  delUp: { border: 'none', borderLeft: `1px solid ${T.line}`, background: 'transparent', cursor: 'pointer', padding: '4px 8px', fontSize: 13, lineHeight: 1, color: '#b04a3a' },
+  upload: (ac) => ({ display: 'inline-flex', alignItems: 'center', gap: 5, border: `1px solid ${ac}`, borderRadius: 9, background: ac + '12', color: ac, cursor: 'pointer', padding: '6px 11px', fontSize: 12.5, fontWeight: 600 }),
   sub: { fontSize: 10, fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', color: T.sub, margin: '16px 0 7px' },
   clips: { display: 'flex', flexWrap: 'wrap', gap: 6 },
   clip: (on, ac) => ({ fontSize: 11, padding: '4px 10px', borderRadius: 20, cursor: 'pointer', border: `1px solid ${on ? ac : T.line}`, background: on ? ac + '18' : '#fff', color: on ? ac : T.ink, fontWeight: on ? 600 : 500 }),
@@ -33,14 +35,19 @@ function groupByCat(library) {
   return order.map(cat => ({ cat, items: map[cat] }))
 }
 
-export default function AudioEditor({ library, title, lead, accent = '#c98a2b', hint, audio, selId, onSelect, onAdd, onPreview, onPatch, onRemove, duration }) {
+export default function AudioEditor({ library, title, lead, accent = '#c98a2b', hint, audio, selId, onSelect, onAdd, onPreview, onPatch, onRemove, duration, onUpload, uploading, onDeleteUpload }) {
   const sel = (audio || []).find(a => a.id === selId)
   const dur = Math.max(1, duration || 12)
   const groups = groupByCat(library)
+  const busy = uploading === 'Subiendo…'
   return (
     <div style={S.card}>
-      <span style={S.title}>{title}</span>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+        <span style={S.title}>{title}</span>
+        {onUpload && <button onClick={onUpload} disabled={busy} style={{ ...S.upload(accent), opacity: busy ? 0.6 : 1 }}>⬆ {busy ? 'Subiendo…' : 'Subir'}</button>}
+      </div>
       {lead && <p style={S.lead}>{lead}</p>}
+      {uploading && !busy && <p style={{ ...S.lead, color: '#b04a3a', margin: '0 0 10px' }}>{uploading}</p>}
 
       {groups.map(g => (
         <div key={g.cat}>
@@ -50,6 +57,7 @@ export default function AudioEditor({ library, title, lead, accent = '#c98a2b', 
               <span key={it.id} style={S.pill}>
                 <button onClick={() => onPreview && onPreview(it.id)} title="Escuchar" style={S.play}>▶</button>
                 <button onClick={() => onAdd && onAdd(it.id)} title={`Agregar “${it.name}” en el playhead`} style={S.addBtn(accent)}>{it.name} +</button>
+                {onDeleteUpload && it.id.indexOf('up:') === 0 && <button onClick={() => onDeleteUpload(it.id)} title="Eliminar esta subida" style={S.delUp}>×</button>}
               </span>
             ))}
           </div>
@@ -62,7 +70,7 @@ export default function AudioEditor({ library, title, lead, accent = '#c98a2b', 
           <div style={S.clips}>
             {audio.map(a => (
               <button key={a.id} onClick={() => onSelect(a.id)} style={S.clip(selId === a.id, accent)}>
-                ♪ {clipLabel(a.sfx)} · {(a.startSec || 0).toFixed(1)}s
+                ♪ {a.name || clipLabel(a.sfx)} · {(a.startSec || 0).toFixed(1)}s
               </button>
             ))}
           </div>

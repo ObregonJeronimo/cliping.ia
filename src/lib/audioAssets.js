@@ -72,29 +72,35 @@ export const clipLabel = (id) => _NAME.get(id) || id
 const BASE = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.BASE_URL) || '/'
 const assetUrl = (file) => (BASE.endsWith('/') ? BASE : BASE + '/') + 'audio/' + file
 
-const _bytes = new Map()    // id -> Promise<ArrayBuffer> (fetch una sola vez)
-const _buffers = new Map()  // id|sampleRate -> AudioBuffer (decodificado)
+const _bytes = new Map()    // key -> Promise<ArrayBuffer> (fetch/registro una sola vez)
+const _buffers = new Map()  // key|sampleRate -> AudioBuffer (decodificado)
 
-function fetchBytes(a) {
-  let p = _bytes.get(a.id)
+function bytesFor(key, url) {
+  let p = _bytes.get(key)
   if (!p) {
-    p = fetch(assetUrl(a.file)).then(r => { if (!r.ok) throw new Error('audio ' + r.status); return r.arrayBuffer() })
-    _bytes.set(a.id, p)
+    p = fetch(url).then(r => { if (!r.ok) throw new Error('audio ' + r.status); return r.arrayBuffer() })
+    _bytes.set(key, p)
   }
   return p
 }
 
-// decodeAsset(ctx, id) -> Promise<AudioBuffer|null>. Cacheado por (id, sampleRate). decodeAudioData DETACHA el
-// ArrayBuffer que recibe -> siempre se le pasa una COPIA (slice) para poder redecodificar en otro contexto.
-export async function decodeAsset(ctx, id) {
-  const a = ASSET_BY_ID.get(id); if (!a) return null
-  const key = id + '|' + ctx.sampleRate
-  const cached = _buffers.get(key); if (cached) return cached
-  const bytes = await fetchBytes(a)
+// pre-carga bytes YA en memoria bajo una key (p. ej. un archivo recién subido) -> preview/export de esta sesión decodifican
+// sin volver a bajarlo del servidor (evita el fetch cross-origin y el CORS del bucket de Storage).
+export function registerBytes(key, arrayBuffer) { _bytes.set(key, Promise.resolve(arrayBuffer)) }
+
+// decodeUrl(ctx, key, url) -> Promise<AudioBuffer|null>. Cacheado por (key, sampleRate). decodeAudioData DETACHA el
+// ArrayBuffer que recibe -> siempre se le pasa una COPIA (slice) para poder redecodificar en otro contexto/sampleRate.
+export async function decodeUrl(ctx, key, url) {
+  const cacheKey = key + '|' + ctx.sampleRate
+  const cached = _buffers.get(cacheKey); if (cached) return cached
+  const bytes = await bytesFor(key, url)
   const buf = await ctx.decodeAudioData(bytes.slice(0))
-  _buffers.set(key, buf)
+  _buffers.set(cacheKey, buf)
   return buf
 }
 
-// accesor SINCRONO desde cache (para agendar el preview en vivo sin await). null si aún no se decodificó.
-export const cachedAsset = (id, sampleRate) => _buffers.get(id + '|' + sampleRate) || null
+// decodeAsset(ctx, id) -> decodifica un asset del MANIFEST (built-in). null si el id no existe.
+export function decodeAsset(ctx, id) { const a = ASSET_BY_ID.get(id); return a ? decodeUrl(ctx, id, assetUrl(a.file)) : Promise.resolve(null) }
+
+// accesor SINCRONO desde cache (para agendar el preview en vivo sin await). Sirve para assets Y subidas (misma cache). null si aún no se decodificó.
+export const cachedAsset = (key, sampleRate) => _buffers.get(key + '|' + sampleRate) || null

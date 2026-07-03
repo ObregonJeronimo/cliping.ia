@@ -122,8 +122,8 @@ export default function Timeline({ video, head, order, onReorder, brief, sceneTe
               className={`${styles.sfxBlock} ${selSfx === a.id ? styles.selBlock : ''}`}
               style={{ left: `${Math.max(0, Math.min(97, pct(a.startSec || 0)))}%`, width: `${Math.max(4, ((a.durSec || 0.3) / dur) * 100)}%` }}
               onPointerDown={e => startBlockDrag(e, 'sfx', a.id, a.durSec)}
-              title={`${clipLabel(a.sfx)} · ${(a.startSec || 0).toFixed(1)}s · arrastrá para mover`}>
-              <span className={styles.sfxTxt}>♪ {clipLabel(a.sfx)}</span>
+              title={`${a.name || clipLabel(a.sfx)} · ${(a.startSec || 0).toFixed(1)}s · arrastrá para mover`}>
+              <span className={styles.sfxTxt}>♪ {a.name || clipLabel(a.sfx)}</span>
             </div>
           ))}
           {(!audio || !audio.length) && <span className={styles.soonLbl}>agregá un efecto en la pestaña “SFX”</span>}

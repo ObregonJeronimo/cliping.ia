@@ -4,7 +4,7 @@ import styles from './Legal.module.css'
 
 export default function Terminos() {
   const navigate = useNavigate()
-  const updated = '10 de junio de 2026'
+  const updated = '2 de julio de 2026'
 
   useEffect(() => { window.scrollTo(0, 0) }, [])
 
@@ -139,7 +139,31 @@ export default function Terminos() {
         </section>
 
         <section className={styles.section}>
-          <h2>10. Cambios en los terminos</h2>
+          <h2>10. Contenido de audio subido por el usuario</h2>
+          <p>
+            Urvid puede permitirte subir tus propios archivos de audio (musica, efectos
+            de sonido u otros) para incorporarlos a tus videos. Al subir un archivo,
+            declaras y garantizas que sos titular de los derechos necesarios o que contas
+            con la licencia o autorizacion suficiente para utilizarlo con fines
+            comerciales dentro del Servicio. Sos el unico responsable del contenido que
+            subis.
+          </p>
+          <p>
+            Los archivos que subis se almacenan de forma privada, asociados a tu cuenta, y
+            se utilizan exclusivamente para generar tus propios videos: Urvid no los
+            incorpora a una biblioteca compartida ni los redistribuye a otros usuarios. Nos
+            otorgas una licencia limitada, con el unico fin de alojarlos y procesarlos para
+            prestarte el Servicio.
+          </p>
+          <p>
+            Mantenes a Urvid indemne frente a cualquier reclamo de terceros derivado del
+            contenido que subis. Urvid podra remover contenido subido que sea objeto de un
+            reclamo de derechos, que infrinja estos Terminos o la ley, sin previo aviso.
+          </p>
+        </section>
+
+        <section className={styles.section}>
+          <h2>11. Cambios en los terminos</h2>
           <p>
             Podemos actualizar estos Terminos periodicamente. Los cambios significativos
             seran notificados a traves del Servicio. El uso continuado luego de una
@@ -148,7 +172,7 @@ export default function Terminos() {
         </section>
 
         <section className={styles.section}>
-          <h2>11. Contacto</h2>
+          <h2>12. Contacto</h2>
           <p>
             Ante cualquier consulta sobre estos Terminos, podes contactarnos a traves de
             los canales oficiales de Urvid.

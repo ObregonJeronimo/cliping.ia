@@ -1,0 +1,18 @@
+rules_version = '2';
+
+// Reglas de Firebase Storage. Cada usuario es dueño EXCLUSIVO de su subárbol users/{uid}/**
+// (audio subido para sus videos). Nadie más escribe/lee ahí por el SDK. Los archivos se sirven a la app
+// vía URL con token de getDownloadURL(). Límite de 20 MB por archivo y solo content-type de audio.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /users/{userId}/{allPaths=**} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth != null && request.auth.uid == userId
+                   && request.resource.size < 20 * 1024 * 1024
+                   && request.resource.contentType.matches('audio/.*');
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+    // Todo lo demás, bloqueado.
+    match /{allPaths=**} { allow read, write: if false; }
+  }
+}
