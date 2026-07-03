@@ -29,7 +29,6 @@ export const AUDIO_ASSETS = [
   { id: 'ui-bong', name: 'Bong', kind: 'sfx', cat: 'Interfaz', file: 'sfx/ui-bong.ogg', dur: 0.12 },
   { id: 'ui-question', name: 'Pregunta', kind: 'sfx', cat: 'Interfaz', file: 'sfx/ui-question.ogg', dur: 0.33 },
   { id: 'ui-scratch', name: 'Scratch', kind: 'sfx', cat: 'Interfaz', file: 'sfx/ui-scratch.ogg', dur: 0.14 },
-  { id: 'ui-scroll', name: 'Scroll', kind: 'sfx', cat: 'Interfaz', file: 'sfx/ui-scroll.ogg', dur: 1.00 },
   { id: 'ui-glitch', name: 'Glitch UI', kind: 'sfx', cat: 'Interfaz', file: 'sfx/ui-glitch.ogg', dur: 0.03 },
   { id: 'ui-maximize', name: 'Maximizar', kind: 'sfx', cat: 'Interfaz', file: 'sfx/ui-maximize.ogg', dur: 0.26 },
   { id: 'ui-minimize', name: 'Minimizar', kind: 'sfx', cat: 'Interfaz', file: 'sfx/ui-minimize.ogg', dur: 0.26 },

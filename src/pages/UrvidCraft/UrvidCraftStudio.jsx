@@ -214,6 +214,7 @@ export default function UrvidCraftStudio() {
   const [playing, setPlaying] = useState(true)
   const audioPrevRef = useRef(null)          // handle del audio de preview (SFX en vivo) mientras reproduce
   const restartAudioRef = useRef(() => {})   // reprograma el audio al reiniciar el loop (siempre la ultima version)
+  const seekAudioRef = useRef(0)             // timer del debounce para re-anclar el audio al soltar un seek
   useEffect(() => {
     const cv = cvRef.current; if (!cv) return
     const ctx = cv.getContext('2d')
@@ -246,7 +247,13 @@ export default function UrvidCraftStudio() {
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0); drawWatermark(ctx, video.W, video.H)
   }, [head, playing, video])
   // seek desde el timeline (clic/arrastre) -> mueve el playhead a ese tiempo. Redibuja aunque este en pausa (efecto de arriba).
-  const seek = (t) => { headRef.current = Math.max(0, Math.min(t || 0, video.duration)); setHead(headRef.current) }
+  const seek = (t) => {
+    headRef.current = Math.max(0, Math.min(t || 0, video.duration)); setHead(headRef.current)
+    // si REPRODUCE, re-ancla el audio al nuevo playhead: los SFX ya agendados quedan desfasados tras un seek y no vuelven
+    // a sonar hasta el proximo loop -> hay que reprogramarlos desde la nueva posicion. DEBOUNCE: onSeek dispara en cada paso
+    // del arrastre; reprogramar en cada uno recrearia el AudioContext ~120 veces/s y trabaria el scrub. Reprograma al soltar.
+    if (playing && mode === 'editor') { clearTimeout(seekAudioRef.current); seekAudioRef.current = setTimeout(() => startPreviewAudio(headRef.current), 90) }
+  }
   // PREVIEW de AUDIO (Fase 4): al reproducir, agenda los SFX del timeline en un AudioContext vivo -> se escuchan MIENTRAS
   // editas (sin descargar). Se (re)programa al play y al cambiar los clips, se reprograma al reiniciar el loop, y se corta al pausar.
   const stopPreviewAudio = () => { if (audioPrevRef.current) { audioPrevRef.current.stop(); audioPrevRef.current = null } }
@@ -256,7 +263,7 @@ export default function UrvidCraftStudio() {
   // (antes, un draft viejo con SFX + playing=true por defecto dejaba sonando el video "fantasma" al entrar a advanced).
   useEffect(() => {
     if (mode === 'editor' && playing) startPreviewAudio(headRef.current); else stopPreviewAudio()
-    return stopPreviewAudio
+    return () => { clearTimeout(seekAudioRef.current); stopPreviewAudio() }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playing, mode, tl.audio, video.duration])
 
@@ -699,7 +706,7 @@ export default function UrvidCraftStudio() {
           </div>
           <div className={styles.transportBar}>
             <button className={styles.tbtn} onClick={() => setPlaying(p => !p)}>{playing ? '⏸' : '▶'}</button>
-            <button className={styles.tbtn} onClick={() => { headRef.current = 0; setHead(0) }} title="Volver al inicio">↺</button>
+            <button className={styles.tbtn} onClick={() => seek(0)} title="Volver al inicio">↺</button>
             <span className={styles.time}>{head.toFixed(1)} / {video.duration.toFixed(1)}s</span>
             {exporting && exporting.indexOf('%') < 0 && <span className={styles.err}>{exporting}</span>}
           </div>
