@@ -6,8 +6,9 @@ import { estimateTokens } from '../../lib/tokens.js'
 import { applyTimeline, identityOrder, makeTextOverlay, patchOverlay, finalizeRecording } from '../../lib/timeline.js'
 import Timeline from './Timeline.jsx'
 import OverlayEditor from './OverlayEditor.jsx'
-import SfxEditor from './SfxEditor.jsx'
+import AudioEditor from './AudioEditor.jsx'
 import { SFX, sfxBuffer } from '../../lib/sfxLib.js'
+import { SFX_LIBRARY, MUSIC_LIBRARY, ASSET_BY_ID, isAsset, decodeAsset } from '../../lib/audioAssets.js'
 import { playPreview } from '../../lib/audioMix.js'
 import { drawWatermark } from '../../lib/watermark.js'
 import { useAuth } from '../../contexts/AuthContext'
@@ -50,6 +51,7 @@ const ICONS = {
   avanzado: _ic(<><path d="M5 8h9M18 8h1M5 12h1M9 12h10M5 16h6M15 16h4" /><circle cx="16" cy="8" r="2" /><circle cx="7.5" cy="12" r="2" /><circle cx="13" cy="16" r="2" /></>),
   animaciones: _ic(<path d="M5 6V5h14v1M12 5v14M9 19h6" />),
   sfx: _ic(<><path d="M11 5L6 9H3v6h3l5 4z" /><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 6a9 9 0 0 1 0 12" /></>),
+  musica: _ic(<><path d="M9 18V5l10-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="16" cy="16" r="3" /></>),
   guardados: _ic(<path d="M6 3h12v18l-6-4-6 4z" />),
 }
 
@@ -148,11 +150,22 @@ export default function UrvidCraftStudio() {
   }
   // SFX (Fase 4): clips de audio en video.timeline.audio. selSfx = seleccionado.
   const [selSfx, setSelSfx] = useState(null)
-  const addSfx = (sfxId) => setTl(t => { const meta = SFX.find(s => s.id === sfxId) || { dur: 0.3 }; const clip = { id: 'sfx_' + Date.now().toString(36) + '_' + ((t.audio || []).length), sfx: sfxId, startSec: +headRef.current.toFixed(2), durSec: meta.dur, gain: 0.9 }; setSelSfx(clip.id); return { ...t, audio: [...(t.audio || []), clip] } })
+  // agrega un clip de audio (SFX sintetizado, SFX de archivo o música) en el playhead. La música arranca más bajo (0.5).
+  const addSfx = (sfxId) => setTl(t => { const meta = ASSET_BY_ID.get(sfxId) || SFX.find(s => s.id === sfxId) || { dur: 0.3 }; const clip = { id: 'sfx_' + Date.now().toString(36) + '_' + ((t.audio || []).length), sfx: sfxId, startSec: +headRef.current.toFixed(2), durSec: meta.dur || 0.3, gain: meta.kind === 'music' ? 0.5 : 0.9 }; setSelSfx(clip.id); return { ...t, audio: [...(t.audio || []), clip] } })
   const patchSfx = (id, patch) => setTl(t => ({ ...t, audio: (t.audio || []).map(a => a.id === id ? { ...a, ...patch } : a) }))
   const removeSfx = (id) => { setTl(t => ({ ...t, audio: (t.audio || []).filter(a => a.id !== id) })); setSelSfx(null) }
   // escuchar un SFX una vez (gesto del usuario -> autoplay OK). Cierra el contexto al terminar.
-  const previewSfx = (sfxId) => { try { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return; const ctx = new AC(); const src = ctx.createBufferSource(); src.buffer = sfxBuffer(ctx, sfxId); src.connect(ctx.destination); src.onended = () => { try { ctx.close() } catch (e) { /* noop */ } }; src.start() } catch (e) { /* noop */ } }
+  // escuchar un sonido una vez (gesto del usuario -> autoplay OK). Los sintetizados suenan en el acto; los ARCHIVOS se
+  // decodifican async y suenan al terminar. Cierra el contexto al terminar el sonido.
+  const previewSfx = (sfxId) => {
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return
+      const ctx = new AC()
+      const play = (buf) => { if (!buf) { try { ctx.close() } catch (e) { /* noop */ } return } const src = ctx.createBufferSource(); src.buffer = buf; src.connect(ctx.destination); src.onended = () => { try { ctx.close() } catch (e) { /* noop */ } }; src.start() }
+      if (isAsset(sfxId)) decodeAsset(ctx, sfxId).then(play).catch(() => { try { ctx.close() } catch (e) { /* noop */ } })
+      else play(sfxBuffer(ctx, sfxId))
+    } catch (e) { /* noop */ }
+  }
   const tokens = useMemo(() => estimateTokens(video, brief), [video, brief])   // consumo APROXIMADO por elemento (reemplaza "creditos")
 
   // opciones por slot (lista completa ordenada por afinidad; la grilla capea el display). Recalcula al cambiar tono/rubro.
@@ -390,6 +403,7 @@ export default function UrvidCraftStudio() {
     { key: 'fondo', label: 'Fondo', icon: ICONS.fondo }, { key: 'escenas', label: 'Escenas', icon: ICONS.escenas },
     { key: 'cierre', label: 'Cierre', icon: ICONS.cierre }, { key: 'avanzado', label: 'Avanzado', icon: ICONS.avanzado },
     { key: 'animaciones', label: 'Animaciones', icon: ICONS.animaciones }, { key: 'sfx', label: 'SFX', icon: ICONS.sfx },
+    { key: 'musica', label: 'Música', icon: ICONS.musica },
   ]
   const STEP_RENDER = { datos: renderDatos, estilo: renderEstilo, fondo: renderFondo, escenas: renderEscenas, cierre: renderCierre, avanzado: renderAvanzado }
 
@@ -664,8 +678,10 @@ export default function UrvidCraftStudio() {
             {railTab === 'animaciones'
               ? <OverlayEditor overlays={tl.overlays} selId={selOv} onSelect={setSelOv} onAdd={addOverlay} onPatch={patchOv} onRemove={removeOv} recording={recording} onToggleRecord={toggleRecord} duration={video.duration} />
               : railTab === 'sfx'
-                ? <SfxEditor audio={tl.audio} selId={selSfx} onSelect={setSelSfx} onAdd={addSfx} onPreview={previewSfx} onPatch={patchSfx} onRemove={removeSfx} duration={video.duration} />
-                : <div className={styles.stepAnim}>{(STEP_RENDER[railTab] || renderDatos)()}</div>}
+                ? <AudioEditor library={SFX_LIBRARY} title="SFX (efectos de sonido)" accent="#c98a2b" lead="Efectos cortos: sintetizados (libres) y grabados CC0 de Kenney." audio={tl.audio} selId={selSfx} onSelect={setSelSfx} onAdd={addSfx} onPreview={previewSfx} onPatch={patchSfx} onRemove={removeSfx} duration={video.duration} />
+                : railTab === 'musica'
+                  ? <AudioEditor library={MUSIC_LIBRARY} title="Música" accent="#7048e8" lead="Jingles musicales CC0 (Kenney) para acentos. Para camas de fondo largas podés sumar tus pistas de Mixkit/Pixabay." hint="Tocá ▶ para escuchar; “+” agrega el track en el playhead. La música arranca a volumen bajo — ajustalo abajo. Sale en el video descargado." audio={tl.audio} selId={selSfx} onSelect={setSelSfx} onAdd={addSfx} onPreview={previewSfx} onPatch={patchSfx} onRemove={removeSfx} duration={video.duration} />
+                  : <div className={styles.stepAnim}>{(STEP_RENDER[railTab] || renderDatos)()}</div>}
             {savedMsg && <p className={styles.ok}>{savedMsg}</p>}
           </div>
           </div>

@@ -1,0 +1,21 @@
+Audio assets — procedencia y licencia
+=====================================
+
+Todos los archivos de esta carpeta son CC0 (Creative Commons Zero / dominio público):
+uso comercial libre, sin atribución obligatoria. Aun así, acreditamos la fuente.
+
+Fuente: Kenney (https://kenney.nl) — CC0 1.0 (https://creativecommons.org/publicdomain/zero/1.0/)
+
+  sfx/ui-*.ogg      -> "Interface Sounds"  (Kenney, CC0)
+  sfx/hit-*.ogg     -> "Impact Sounds"     (Kenney, CC0)
+  music/jingle-*.ogg-> "Music Jingles"     (Kenney, CC0)
+
+Los efectos "sintetizados" del editor (pop, whoosh, boom, etc.) NO son archivos:
+se generan por WebAudio en src/lib/sfxLib.js (también 100% libres).
+
+Para sumar MÁS audios (p. ej. camas de música largas):
+  - Pixabay (https://pixabay.com/sound-effects/) y Mixkit (https://mixkit.co) son de uso
+    comercial libre. Descargá a mano los que quieras (su licencia prohíbe la descarga en masa)
+    y dejalos en public/audio/music/ (o /sfx/), luego sumalos al manifest en
+    src/lib/audioAssets.js. Los archivos se sirven desde nuestro propio dominio (nunca hotlink)
+    y solo salen HORNEADOS dentro del video exportado (uso permitido; no es redistribución).
