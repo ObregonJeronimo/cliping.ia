@@ -35,7 +35,10 @@ export function makeKinetic(brief, opts = {}) {
   let mi = 0
 
   for (const beat of script.beats) {
-    const pool = query('scenes', { kind: beat.role }).filter(m => !m.needs || ((!m.needs.photos || images.length >= m.needs.photos)))
+    const pool = query('scenes', { kind: beat.role }).filter(m => !m.needs || (
+      (!m.needs.photos || images.length >= m.needs.photos) &&
+      (!m.needs.maxChars || String(beat.text || '').length <= m.needs.maxChars)
+    ))
     if (!pool.length) continue                                 // sin modulo para el rol -> se salta (v1: roles cubiertos)
     const mod = weightedPick(rC, pool, m => ((beat.role === 'hook' && m.hookWeight != null ? m.hookWeight : m.weight) || 1) * (used.has(m.id) ? 0.15 : 1))
     used.add(mod.id)

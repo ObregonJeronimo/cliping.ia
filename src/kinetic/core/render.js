@@ -77,8 +77,30 @@ function paintScene(ctx, sc, t, video) {
   sc.ink = env.ink                                             // para garnish
   paintPlate(ctx, video.W, video.H, sc, t, video)
   const mod = get(sc.sceneId)
+
+  // VIDA AE: la "camara" deriva DENTRO de cada escena (zoom/pan sutil continuo, nunca un frame muerto)
+  // + WHIP de salida (empuje de escala hacia el corte). Parametros frescos del seed por llamada (seek-safe).
+  // El drift maximo (3.5% + pan 4px) queda DENTRO de los margenes de fit (>=26px) -> nada desborda.
+  const W = video.W, H = video.H
+  const rc = seedFor(sc.seed, 'kin.cam')
+  const zIn = rc() < 0.55, zAmt = 0.012 + rc() * 0.022
+  const panX = (rc() - 0.5) * 8, panY = (rc() - 0.5) * 8
+  const p = clamp(ts / sc.dur, 0, 1)
+  const isLast = sc === video.scenes[video.scenes.length - 1]
+  // whip SOLO hacia hard cuts: si la escena termina en una transicion con dur>0, la transicion YA es el
+  // gesto de salida (sin esto, el whip quedaba horneado al 100% en el buffer A congelado -> pop visual).
+  const endsInXf = video.cuts.some(c => c.dur > 0 && Math.abs(c.at - (sc.t0 + sc.dur)) < 1e-6)
+  const out = (isLast || endsInXf) ? 0 : clamp((ts - (sc.dur - 0.2)) / 0.2, 0, 1)
+  const z = (1 + zAmt * (zIn ? p : 1 - p)) * (1 + 0.05 * out * out)
+  ctx.save()
+  ctx.translate(W / 2 + panX * p, H / 2 + panY * p)
+  ctx.scale(z, z)
+  ctx.translate(-W / 2, -H / 2)
   if (mod) mod.render(ctx, ts, env)
-  paintGarnish(ctx, video.W, video.H, sc, t, video)
+  paintGarnish(ctx, W, H, sc, t, video)
+  ctx.restore()
+  // fade del whip como VELO de placa POR ENCIMA (uniforme aunque una escena asigne globalAlpha adentro)
+  if (out > 0) { ctx.save(); ctx.globalAlpha *= 0.18 * out; paintPlate(ctx, W, H, sc, t, video); ctx.restore() }
 }
 
 // textura global (grain/paper) — campo ESTATICO seedeado (no flickerea: determinista y sereno)

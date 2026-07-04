@@ -38,31 +38,38 @@ function blueprint(ctx, W, H, beat, p, ink, dna) {
   ctx.restore()
 }
 
-// tile bauhaus: card chica con patron geometrico que cambia en tercios del beat (0: diamante, 1: molinete, 2: circulo-centrado)
-function bauhausTile(ctx, W, H, beat, p, video) {
-  const g = beat.garnish
-  const dna = video.dna
-  const s = g.r * W * 2                     // lado del tile
-  const x = g.cx * W - s / 2, y = g.cy * H - s / 2
-  const pop = spring(win(p, 0.05, 0.35), 0.6, 12)
-  if (pop <= 0.01) return
-  const phase = Math.min(2, Math.floor(p * 3))   // cicla el patron al beat
+// tile bauhaus REUSABLE (lo usan el garnish y la escena kin.scene.bauhaus): card con patron geometrico.
+// phase 0: diamante · 1: molinete · 2: circulo sobre franjas. paper/accent vienen del DNA del llamador.
+export function drawBauhausTile(ctx, x, y, s, phase, paper, accent) {
   ctx.save()
-  ctx.translate(x + s / 2, y + s / 2); ctx.scale(pop, pop); ctx.translate(-s / 2, -s / 2)
-  ctx.fillStyle = dna.paperLight; ctx.fillRect(0, 0, s, s)
-  ctx.fillStyle = dna.accent
-  if (phase === 0) {                        // diamante
+  ctx.translate(x, y)
+  ctx.fillStyle = paper; ctx.fillRect(0, 0, s, s)
+  ctx.fillStyle = accent
+  if (phase === 0) {
     ctx.beginPath(); ctx.moveTo(s / 2, s * 0.08); ctx.lineTo(s * 0.92, s / 2); ctx.lineTo(s / 2, s * 0.92); ctx.lineTo(s * 0.08, s / 2); ctx.closePath(); ctx.fill()
-    ctx.fillStyle = dna.paperLight; ctx.beginPath(); ctx.arc(s / 2, s / 2, s * 0.14, 0, TAU); ctx.fill()
-  } else if (phase === 1) {                 // molinete: 4 triangulos
+    ctx.fillStyle = paper; ctx.beginPath(); ctx.arc(s / 2, s / 2, s * 0.14, 0, TAU); ctx.fill()
+  } else if (phase === 1) {
     for (let i = 0; i < 4; i++) {
       ctx.save(); ctx.translate(s / 2, s / 2); ctx.rotate(i * Math.PI / 2)
       ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(s / 2, 0); ctx.lineTo(0, -s / 2); ctx.closePath(); ctx.fill(); ctx.restore()
     }
-  } else {                                  // circulo centrado sobre franjas
+  } else {
     ctx.fillRect(0, s * 0.42, s, s * 0.16)
     ctx.beginPath(); ctx.arc(s / 2, s / 2, s * 0.22, 0, TAU); ctx.fill()
   }
+  ctx.restore()
+}
+
+function bauhausTile(ctx, W, H, beat, p, video) {
+  const g = beat.garnish
+  const dna = video.dna
+  const s = g.r * W * 2                     // lado del tile
+  const pop = spring(win(p, 0.05, 0.35), 0.6, 12)
+  if (pop <= 0.01) return
+  const phase = Math.min(2, Math.floor(p * 3))   // cicla el patron al beat
+  ctx.save()
+  ctx.translate(g.cx * W, g.cy * H); ctx.scale(pop, pop)
+  drawBauhausTile(ctx, -s / 2, -s / 2, s, phase, dna.paperLight, dna.accent)
   ctx.restore()
 }
 

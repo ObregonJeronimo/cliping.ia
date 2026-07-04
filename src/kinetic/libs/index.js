@@ -7,7 +7,11 @@ import stat from './scenes/stat.js'
 import cta from './scenes/cta.js'
 import polaroidInline from './scenes/polaroid-inline.js'
 import collage from './scenes/collage.js'
+import morphReveal from './scenes/morph-reveal.js'
+import cardZoom from './scenes/card-zoom.js'
+import bauhausGrid from './scenes/bauhaus-grid.js'
+import badge from './scenes/badge.js'
 import transitions from './transitions/index.js'
 
 // guard anti-doble-registro (HMR de vite re-importa el barrel; el registry tira con id duplicado)
-if (!get('kin.scene.typewriter')) registerAll([typewriter, wordcascade, statement, stat, cta, polaroidInline, collage, ...transitions])
+if (!get('kin.scene.typewriter')) registerAll([typewriter, wordcascade, statement, stat, cta, polaroidInline, collage, morphReveal, cardZoom, bauhausGrid, badge, ...transitions])

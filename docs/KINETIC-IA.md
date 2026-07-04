@@ -152,7 +152,16 @@ Sin IA generativa en el camino crítico. El análisis de página es el MISMO bac
 - [x] Gates: `tools/kinetic-test.mjs` (determinismo byte-idéntico + 24/24 genotipos distintos +
   contrato) integrado a `npm run gates`; `tools/kinetic-shot.mjs` (contact-sheet + MP4) para eyeball
 - [x] Verificado visual con 2 briefs reales: seeds distintos ⇒ videos IRRECONOCIBLES entre sí
-- [ ] Crecimiento de biblioteca (cada sesión suma): más escenas (card-zoomout, bauhaus-tiles,
-  morph blob→rombo como escena), más pares/familias/plantillas, beat-grid con bpm real por jingle,
-  gate estadístico de variedad, keepRecipe parcial
-- [ ] Sesión de pulido visual con Jero mirando (timing fino, más "aire" AE)
+- [x] **v1.1 "vida AE"** (2026-07-04, mismo día):
+  - **Cámara con drift** (zoom/pan sutil continuo por escena — ningún frame muerto) + **whip de
+    salida** hacia cada hard cut (suprimido cuando el borde lleva transición: la transición es el gesto)
+  - 4 escenas nuevas de la firma del reel: **morph-reveal** (blob→rombo con la frase adentro→full-bleed,
+    la apertura del reel), **card-zoom** (zoom-out a card con borde), **bauhaus** (grilla de tiles que
+    cicla al beat), **badge** (píldora auto-dibujada con typewriter) — 11 escenas totales, casting sano
+  - Testeo e2e de UNA línea: `node tools/kinetic-shot.mjs --url https://sitio.com [--mp4]`
+    (captura+percepción REALES → video); verificado con duolingo.com
+  - Review adversarial (workflow, 3 revisores con mediciones de TTF reales): 5 hallazgos, todos
+    corregidos (desbordes del piso de fitFont en morph/bauhaus → wrap 2 líneas; whip horneado en el
+    buffer de transición → suprimido; alpha pisado en card-zoom; gate ampliado con **seek-en-frío**)
+- [ ] Siguiente: beat-grid con bpm real por jingle, más pares/familias/plantillas, gate estadístico
+  de variedad, keepRecipe parcial, sesión de pulido de timing con Jero mirando el preview

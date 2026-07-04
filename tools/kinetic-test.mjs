@@ -27,6 +27,11 @@ for (const seed of [1, 7, 1234, 99991]) {
     const p1 = png(a, t), p2 = png(b, t)
     if (!p1.equals(p2)) die(`seed ${seed} t=${t.toFixed(2)}: frame difiere entre corridas`)
   }
+  // SEEK EN FRIO: un video nuevo renderizado SOLO en el ultimo t (sin frames previos) debe dar el mismo
+  // byte que la corrida secuencial -> caza estado dependiente del historial de renders (buffers/caches).
+  const cold = makeKinetic(brief, { seed })
+  const tLast = ts[ts.length - 1]
+  if (!png(cold, tLast).equals(png(a, tLast))) die(`seed ${seed} t=${tLast.toFixed(2)}: seek en frio difiere (estado entre frames)`)
 }
 
 // 2) anti-fabrica smoke: 24 seeds -> genotipos discretos, ninguno duplicado exacto
