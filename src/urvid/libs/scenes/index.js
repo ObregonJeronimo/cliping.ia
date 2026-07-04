@@ -2454,7 +2454,12 @@ register({
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     // marca centrada arriba
     drawWrapped(ctx, content.brand || 'Marca', cx, H * 0.36, { size: 48, weight: 800, family: fonts.display, maxW: W * 0.86, color: pal.ink, maxLines: 2, lh: 1.04, alpha: inv(t, 0.15, 0.7), shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.4)' : null })
-    const cta = content.cta || content.tagline || 'Empeza hoy'
+    let cta = content.cta || content.tagline || 'Empeza hoy'
+    // pildora de UNA linea: un cta adversarial largo no entra ni al min -> recorte por PALABRA antes de
+    // dibujar (nunca "..."; regla prefit). CTAs reales (cortos) = no-op. Determinista (solo mide texto).
+    ctx.save(); ctx.font = `800 14px "${fonts.display}"`
+    while (cta.indexOf(' ') > 0 && ctx.measureText(cta).width > W * 0.44 + 8) cta = cta.slice(0, cta.lastIndexOf(' '))
+    ctx.restore()
     // flecha larga de acento que barre y termina apuntando a la pildora del CTA
     const ay = H * 0.56, arrP = M.ease(inv(t, 0.4, 1.0))
     // VIDA: la punta de la flecha "empuja" hacia la pildora de forma continua (deriva sutil) tras llegar
@@ -2469,7 +2474,9 @@ register({
     if (settledC) rrSheen(ctx, -pw / 2, -ph / 2, pw, ph, t, { per: 3.4, strength: 0.4, tone: pal.tone })
     drawText(ctx, cta, 0, 1, { size: 24, weight: 800, family: fonts.display, maxW: pw - 30, color: pal.onAccent })
     ctx.restore()
-    if (content.tagline && content.cta) drawText(ctx, content.tagline, cx, H * 0.7, { size: 18, weight: 600, family: fonts.text, maxW: W * 0.8, color: pal.dim, alpha: inv(t, 0.85, 1.3) })
+    // tagline en 2 lineas (WRAP, nunca elipsis): los budgets anchos de 9:16 (re-fit por formato) no entran
+    // en una linea al min -> drawWrapped achica y envuelve como el resto del motor.
+    if (content.tagline && content.cta) drawWrapped(ctx, content.tagline, cx, H * 0.72, { size: 18, weight: 600, family: fonts.text, maxW: W * 0.8, color: pal.dim, maxLines: 2, lh: 1.25, alpha: inv(t, 0.85, 1.3) })
   },
 })
 
