@@ -6,6 +6,7 @@ import UrvidCraftStudio from './pages/UrvidCraft/UrvidCraftStudio'
 import AnimLab from './pages/AnimLab/AnimLab'
 import CineStudio from './pages/Cine/CineStudio'
 import CineEngineStudio from './pages/CineEngine/CineEngineStudio'
+import KineticStudio from './pages/Kinetic/KineticStudio'
 import Login from './pages/Login'
 import Landing from './pages/Landing'
 import Terminos from './pages/Legal/Terminos'
@@ -33,6 +34,7 @@ function AppRoutes() {
         <Route index element={<Urvid1Studio />} />
         <Route path="urvid" element={<Navigate to="/studio" replace />} />
         <Route path="craft" element={<UrvidCraftStudio />} />
+        <Route path="kinetic" element={<KineticStudio />} />
         <Route path="anim" element={<AnimLab />} />
         <Route path="cine" element={<CineStudio />} />
         <Route path="cine-motor" element={<CineEngineStudio />} />

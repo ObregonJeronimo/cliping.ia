@@ -34,13 +34,13 @@ const rafTwice = () => new Promise(r => requestAnimationFrame(() => requestAnima
 // CAMINO 1 — WebCodecs (mediabunny): MP4 DETERMINISTA frame-a-frame. Async; LANZA si no hay soporte o si algo falla
 // (el dispatcher lo captura y cae a MediaRecorder). Cada cuadro se dibuja en t=i/fps -> reproducible, sin cuadros perdidos.
 async function exportWithWebCodecs(video, opts) {
-  const { filename = 'urvid', fps = 30, onProgress, onDone } = opts
+  const { filename = 'urvid', fps = 30, onProgress, onDone, drawFrameFn = drawFrame } = opts
   const scale = 1080 / video.W
   const ecv = document.createElement('canvas')
   ecv.width = Math.round(video.W * scale); ecv.height = Math.round(video.H * scale)
   const ectx = ecv.getContext('2d')
   const dur = video.duration, frames = Math.max(1, Math.round(dur * fps))
-  const drawAt = (t) => { ectx.setTransform(scale, 0, 0, scale, 0, 0); drawFrame(ectx, Math.min(t, dur), video) }
+  const drawAt = (t) => { ectx.setTransform(scale, 0, 0, scale, 0, 0); drawFrameFn(ectx, Math.min(t, dur), video) }
   // LOGO desde el cuadro 0: precarga (calienta el cache HTTP) -> warm-up drawFrame(0) (instancia la Image interna del logo)
   // -> 2 rAF para que su decode dispare, ANTES de codificar el cuadro 0. (mismo objetivo que L138 en el camino MediaRecorder.)
   await preloadLogo(video); drawAt(0); await rafTwice()
@@ -70,7 +70,7 @@ async function exportWithWebCodecs(video, opts) {
 
 // CAMINO 2 — MediaRecorder (fallback en tiempo real). = el export previo (L134/L138/L828). Devuelve true/false SYNC.
 function exportWithMediaRecorder(video, opts = {}) {
-  const { filename = 'urvid', bitrate = 12e6, fps = 30, onProgress, onError, onDone } = opts
+  const { filename = 'urvid', bitrate = 12e6, fps = 30, onProgress, onError, onDone, drawFrameFn = drawFrame } = opts
   const fail = (m) => { if (onError) onError(m); return false }
   if (typeof window === 'undefined' || typeof window.MediaRecorder === 'undefined') return fail('Tu navegador no soporta exportar')
   const scale = 1080 / video.W
@@ -106,7 +106,7 @@ function exportWithMediaRecorder(video, opts = {}) {
         const el = (performance.now() - t0) / 1000
         if (el >= nextFrame) {
           ectx.setTransform(scale, 0, 0, scale, 0, 0)
-          drawFrame(ectx, Math.min(el, dur), video)
+          drawFrameFn(ectx, Math.min(el, dur), video)
           if (onProgress) onProgress(Math.min(100, Math.round(el / dur * 100)))
           nextFrame += frameDur
           if (nextFrame < el) nextFrame = el + frameDur   // rAF atrasado (tab en 2do plano): reprograma, no dispares una rafaga
@@ -122,7 +122,7 @@ function exportWithMediaRecorder(video, opts = {}) {
       const go = () => {
         if (started) return
         started = true
-        ectx.setTransform(scale, 0, 0, scale, 0, 0); drawFrame(ectx, 0, video)
+        ectx.setTransform(scale, 0, 0, scale, 0, 0); drawFrameFn(ectx, 0, video)
         requestAnimationFrame(() => requestAnimationFrame(startRecording))
       }
       const img = new Image()

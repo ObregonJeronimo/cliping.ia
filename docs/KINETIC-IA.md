@@ -132,7 +132,27 @@ Sin IA generativa en el camino crítico. El análisis de página es el MISMO bac
 ## 6. Estado
 
 - [x] Investigación frame a frame del reel de referencia (2026-07-04)
-- [x] Recon del código real + diseño (3 diseñadores) + auditoría adversarial (workflow)
-- [ ] v1 del motor (core + escenas + transiciones + estudio + sidebar + galería) — EN CURSO
-- [ ] Gates + contact-sheet del motor nuevo
-- [ ] Crecimiento de biblioteca (más escenas/dialectos por sesión)
+- [x] Recon del código real + diseño (3 diseñadores) + auditoría adversarial (workflow, 11 agentes)
+- [x] **v1 del motor CONSTRUIDO y ANDANDO** (2026-07-04):
+  - `src/kinetic/core/`: prng · util · motion (springs cerrados z/w, stagger, ghost, wobble) ·
+    shapes (blob polar, morph, wipe líquido) · text (fit nunca-desborda + `drawKinetic` por carácter +
+    `drawWordReveal`) · dna (Style DNA: mood gaussiano cap 3:1 + vetos + ~15 continuos) ·
+    script (4 plantillas retóricas: manifiesto/enumeración/stat-punch/contraste) ·
+    registry propio · assemble (director por beats, cortes AL beat) · render (placas por escena +
+    doble buffer de transiciones + cache de imágenes con hook Node)
+  - `src/kinetic/libs/`: fonts (14 pares curados, pesos horneados browser/Node) · backgrounds
+    (placas + mesh animado con clamp de luminancia) · garnish (blueprint/bauhaus/orgánico) ·
+    7 escenas (typewriter, wordcascade, statement/respiro, stat, cta ×4 variantes, polaroid-inline,
+    collage) · 4 transiciones (cut/fade/**liquid-wipe**/**collapse-esfera**)
+  - **CERO imports cruzados** con src/urvid (motores separados de verdad, verificado por auditoría)
+- [x] Estudio **Kinetic IA** en el sidebar (`/studio/kinetic`): link → analizar (mismo backend) →
+  preview con watermark → Otra variante (salto áureo) → export MP4 (WebCodecs con `drawFrameFn`
+  parametrizado, regresión cero en urvid) → música loopeada + whoosh en cortes → galería
+  `kinetic_videos` (brief+seed+receta, nunca mp4)
+- [x] Gates: `tools/kinetic-test.mjs` (determinismo byte-idéntico + 24/24 genotipos distintos +
+  contrato) integrado a `npm run gates`; `tools/kinetic-shot.mjs` (contact-sheet + MP4) para eyeball
+- [x] Verificado visual con 2 briefs reales: seeds distintos ⇒ videos IRRECONOCIBLES entre sí
+- [ ] Crecimiento de biblioteca (cada sesión suma): más escenas (card-zoomout, bauhaus-tiles,
+  morph blob→rombo como escena), más pares/familias/plantillas, beat-grid con bpm real por jingle,
+  gate estadístico de variedad, keepRecipe parcial
+- [ ] Sesión de pulido visual con Jero mirando (timing fino, más "aire" AE)
