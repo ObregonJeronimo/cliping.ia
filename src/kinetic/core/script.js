@@ -4,12 +4,15 @@
 // punch (el genero vive de frases cortas gigantes) — el fit de dibujo es la red final, esto es la primera.
 import { seedFor, weightedPick, pick } from './prng.js'
 
+// conectores que NO pueden quedar colgando al final de un fragmento ("Lecciones cortas y" delata al robot)
+const DANGLING = new Set(['y', 'e', 'o', 'u', 'de', 'del', 'la', 'el', 'los', 'las', 'a', 'al', 'en', 'con', 'para', 'por', 'que', 'tu', 'su', 'sus', 'un', 'una', 'mas', 'más', 'sin', 'se', 'lo', 'te', 'and', 'or', 'the', 'of', 'to', 'for', 'with', 'your'])
 const cut = (s, maxChars) => {
   s = String(s == null ? '' : s).replace(/\s+/g, ' ').trim()
   if (s.length <= maxChars) return s
-  const words = s.split(' '); let out = ''
-  for (const w of words) { if ((out + ' ' + w).trim().length > maxChars) break; out = (out + ' ' + w).trim() }
-  return out || s.slice(0, maxChars)
+  const words = s.split(' '); let kept = []
+  for (const w of words) { if ((kept.join(' ') + ' ' + w).trim().length > maxChars) break; kept.push(w) }
+  while (kept.length > 1 && DANGLING.has(kept[kept.length - 1].toLowerCase().replace(/[.,:;!?]+$/, ''))) kept.pop()
+  return kept.join(' ') || s.slice(0, maxChars)
 }
 const B = { hook: 34, line: 26, breath: 16, cta: 22, stat: 8, statLabel: 20, photo: 24 }
 

@@ -35,6 +35,8 @@ async def probe(url):
     media = (top if isinstance(top, str) else (top.get("url") or top.get("src"))) if top else None
     if media:
         brief["mediaImage"] = media
+    # KINETIC: el motor nuevo consume la lista COMPLETA de imagenes (polaroids inline/collage), no solo la top
+    brief["images"] = [x for x in ((i if isinstance(i, str) else (i.get("url") or i.get("src") or "")) for i in imgs[:8]) if x]
     path = os.path.join(OUT, f"e2e_{host}.json")
     with open(path, "w", encoding="utf-8") as f:
         json.dump(brief, f, ensure_ascii=False)

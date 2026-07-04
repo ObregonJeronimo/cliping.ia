@@ -2,9 +2,11 @@
 // exacto de un brief+seed -> contact-sheet (tools/out/kinetic-shot.png) + MP4 opcional (kinetic-shot.mp4).
 // Uso:
 //   node tools/kinetic-shot.mjs '{"brand":"Acme","rubro":"tech","claim":"...","seed":7}'
-//   node tools/kinetic-shot.mjs '{...}' --mp4        -> ademas exporta el MP4 con ffmpeg
+//   node tools/kinetic-shot.mjs --url https://sitio.com [seed]   -> FLUJO COMPLETO: captura+percepcion
+//       reales (backend/e2e_probe.py) -> brief -> video. El testeo canonico de "grandes avances".
+//   ... --mp4        -> ademas exporta el MP4 con ffmpeg
 import { createCanvas, GlobalFonts, loadImage } from '@napi-rs/canvas'
-import { writeFileSync, mkdirSync, rmSync } from 'node:fs'
+import { writeFileSync, mkdirSync, rmSync, readFileSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
@@ -14,9 +16,24 @@ const HERE = dirname(fileURLToPath(import.meta.url)), OUT = join(HERE, 'out'); m
 try { GlobalFonts.loadFontsFromDir(join(HERE, 'fonts')) } catch { /* fuentes del sistema */ }
 setScratchFactory((w, h) => createCanvas(w, h))               // OBLIGATORIO: sin esto las transiciones caen a corte seco
 
+let brief
 const arg = process.argv[2]
-if (!arg || !arg.trim().startsWith('{')) { console.error('Uso: node tools/kinetic-shot.mjs \'{"brand":...}\''); process.exit(1) }
-const brief = JSON.parse(arg)
+if (arg === '--url' && process.argv[3]) {
+  // FLUJO REAL pagina -> brief: corre el probe del backend (captura Playwright + perception Claude) y
+  // levanta el JSON que deja en tools/out/e2e_<host>.json (incluye images[] para polaroids/collage).
+  const url = process.argv[3]
+  const host = new URL(url).hostname.replace('www.', '').split('.')[0]
+  console.log('e2e: capturando y analizando', url, '…')
+  execFileSync('python', ['e2e_probe.py', url], { cwd: join(HERE, '..', 'backend'), stdio: 'inherit' })
+  brief = JSON.parse(readFileSync(join(OUT, `e2e_${host}.json`), 'utf-8'))
+  if (brief.content && typeof brief.content === 'object') brief = { ...brief, ...brief.content }   // aplanar
+  const s = Number(process.argv[4]); if (Number.isFinite(s) && s > 0) brief.seed = s >>> 0
+} else if (arg && arg.trim().startsWith('{')) {
+  brief = JSON.parse(arg)
+} else {
+  console.error('Uso: node tools/kinetic-shot.mjs \'{"brand":...}\'  |  --url https://sitio.com [seed]')
+  process.exit(1)
+}
 const seed = (brief.seed >>> 0) || 0
 
 // pre-cargar imagenes del brief (napi: el motor las recibe YA decodificadas via setImageLoader)
