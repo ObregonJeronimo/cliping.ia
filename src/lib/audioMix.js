@@ -5,6 +5,17 @@ import { isAsset, decodeAsset, decodeUrl, cachedAsset } from './audioAssets.js'
 
 const _gainOf = (c) => (c && c.gain != null ? c.gain : 0.9)
 const _isUpload = (id) => typeof id === 'string' && id.indexOf('up:') === 0   // subida del usuario (Storage) -> la URL viaja en el clip
+// aplica la envolvente de ganancia (fade in/out) a un GainNode en tiempos ABSOLUTOS del contexto [startT, endT]. Sin fades
+// -> ganancia constante. Los fades se clampean a la mitad del segmento (no se cruzan). 0.0001 en vez de 0 (linearRamp no llega a 0).
+function _envelope(g, gv, startT, endT, fadeIn, fadeOut) {
+  const seg = Math.max(0.001, endT - startT)
+  const fi = Math.max(0, Math.min(fadeIn || 0, seg / 2))
+  const fo = Math.max(0, Math.min(fadeOut || 0, seg / 2))
+  if (fi <= 0 && fo <= 0) { g.gain.value = gv; return }
+  g.gain.setValueAtTime(fi > 0 ? 0.0001 : gv, startT)
+  if (fi > 0) g.gain.linearRampToValueAtTime(gv, startT + fi)
+  if (fo > 0) { g.gain.setValueAtTime(gv, Math.max(startT + fi, endT - fo)); g.gain.linearRampToValueAtTime(0.0001, endT) }
+}
 // resuelve el AudioBuffer de un clip: subida del usuario (decode desde su URL), asset built-in (decode del archivo) o
 // sintetizado (generado en el acto). Puede tardar (fetch+decode la 1ra vez) -> el mix del export lo AWAITEA. null -> se saltea.
 async function resolveBuffer(ctx, c) {
@@ -26,9 +37,15 @@ export async function mixTimeline(video, sampleRate = 48000) {
       const buf = await resolveBuffer(ctx, c)
       if (!buf) continue
       const src = ctx.createBufferSource(); src.buffer = buf
-      const g = ctx.createGain(); g.gain.value = _gainOf(c)
+      const g = ctx.createGain()
       src.connect(g); g.connect(ctx.destination)
-      src.start(Math.max(0, c.startSec || 0))
+      const startT = Math.max(0, c.startSec || 0)
+      const loop = !!c.loop
+      const segDur = loop ? Math.max(0.05, dur - startT) : (buf.duration || c.durSec || 0.3)   // loop -> repite hasta el final del video
+      const endT = startT + segDur
+      _envelope(g, _gainOf(c), startT, endT, c.fadeIn, c.fadeOut)
+      if (loop) { src.loop = true; src.start(startT); src.stop(endT) }
+      else src.start(startT)
     } catch (e) { /* clip invalido -> saltea */ }
   }
   return ctx.startRendering()
@@ -43,16 +60,22 @@ export function playPreview(video, fromSec = 0) {
   if (!clips || !clips.length || !AC) return { stop() {} }
   const ctx = new AC(); try { ctx.resume() } catch (e) { /* autoplay: se resume con el gesto del play */ }
   const t0 = ctx.currentTime; const srcs = []; let stopped = false
+  const vdur = Math.max(0.1, (video && video.duration) || 1)
   const schedule = (buf, c) => {
     if (stopped || !buf) return
     const start = (c.startSec || 0) - fromSec
-    if (start + (c.durSec || buf.duration || 0.3) < 0) return   // el clip ya terminó antes del playhead
+    const segFull = c.loop ? Math.max(0.05, vdur - (c.startSec || 0)) : (buf.duration || c.durSec || 0.3)
+    if (start + segFull < 0) return   // el clip ya terminó antes del playhead
     try {
       const src = ctx.createBufferSource(); src.buffer = buf
-      const g = ctx.createGain(); g.gain.value = _gainOf(c)
+      const g = ctx.createGain()
       src.connect(g); g.connect(ctx.destination)
       const offset = start < 0 ? -start : 0
-      src.start(Math.max(ctx.currentTime, t0 + Math.max(0, start)), offset)
+      const at = Math.max(ctx.currentTime, t0 + Math.max(0, start))
+      const endAt = t0 + Math.max(0, start) + segFull
+      _envelope(g, _gainOf(c), at, Math.max(at + 0.02, endAt), c.fadeIn, c.fadeOut)
+      if (c.loop) { src.loop = true; src.start(at, offset); src.stop(Math.max(at + 0.02, endAt)) }
+      else src.start(at, offset)
       srcs.push(src)
     } catch (e) { /* noop */ }
   }

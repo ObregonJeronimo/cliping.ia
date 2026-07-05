@@ -17,7 +17,7 @@ const HEADERS = { 'Content-Type': 'application/json', 'ngrok-skip-browser-warnin
 // urvid 1.0 · estudio. Arma un video con el motor de bibliotecas (determinista) y lo reproduce EN VIVO (transport).
 // El almacen de videos vive aca mismo (localStorage) — no hay item aparte. NO toca "Animaciones".
 export default function Urvid1Studio() {
-  const { user } = useAuth()
+  const { user, profile, spendTokens } = useAuth()
   const [brief, setBrief] = useState({ brand: 'Nodo', rubro: 'tech', tone: 'dark', brandColor: '#22e06a', format: '9:16', duration: 'medio', tagline: 'Automatiza lo aburrido y enfocate en lo que importa', claim: 'Menos tareas repetitivas, mas resultados reales', cta: 'Probalo gratis' })
   const [seed, setSeed] = useState(0)
   // TONO = SOLO COLOR: al togglear claro/oscuro bloqueamos la receta (lockRecipe) -> el director reusa los mismos
@@ -131,7 +131,10 @@ export default function Urvid1Studio() {
 
   // EXPORT: modulo COMPARTIDO (src/lib/exportVideo.js) — graba un canvas OFFSCREEN a 1080 real, no el preview vivo.
   // Mismo camino que urvid IA Advanced (craft). El motor corre en el browser -> cero backend. Una vuelta exacta.
-  const exportVideo = () => {
+  const [confirmExport, setConfirmExport] = useState(false)   // modal "Renderizar y exportar" (muestra tokens aprox)
+  const requestExport = () => { if (exporting) return; setConfirmExport(true) }
+  const doExport = () => {
+    setConfirmExport(false)
     if (exporting) return
     const ok = exportCanvasVideo(video, {
       filename: `${(brief.brand || 'urvid')}-${(brief.format || '9-16').replace(':', 'x')}`,
@@ -140,7 +143,7 @@ export default function Urvid1Studio() {
       onError: m => { setExporting(m); setTimeout(() => setExporting(''), 5000) },
       onDone: () => setExporting(''),
     })
-    if (ok) setExporting('0%')
+    if (ok) { setExporting('0%'); if (spendTokens && tokens.total > 0) spendTokens(tokens.total) }   // descuenta al arrancar el render
   }
 
   // VARIANTES: genera N recetas distintas (N semillas) y las muestra como miniaturas para ELEGIR (en vez de un reroll
@@ -277,7 +280,7 @@ export default function Urvid1Studio() {
             <button className={styles.primary} onClick={reroll}>↻ Otra variante</button>
             <button className={styles.ghost} onClick={save}>★ Guardar</button>
           </div>
-          <button className={styles.primary} onClick={exportVideo} disabled={!!exporting} style={{ width: '100%' }}>{exporting ? `Exportando ${exporting}` : '⬇ Descargar video'}</button>
+          <button className={styles.primary} onClick={requestExport} disabled={!!exporting} style={{ width: '100%' }}>{exporting ? `Exportando ${exporting}` : '⬇ Renderizar y exportar'}</button>
           {exporting && exporting.indexOf('%') < 0 && <p style={{ margin: 0, fontSize: 12, color: 'var(--red)' }}>{exporting}</p>}
           <button className={styles.ghost} onClick={genVariants} style={{ width: '100%' }} title="Genera 6 variantes para elegir">⊞ Ver variantes</button>
           {variants.length > 0 && (
@@ -337,6 +340,28 @@ export default function Urvid1Studio() {
         </div>
         <p className={styles.flow}>{video.recipe.scenes.map(s => s.replace(/^[^.]+\./, '')).join('  →  ')}</p>
       </footer>
+
+      {confirmExport && (
+        <div onClick={() => setConfirmExport(false)} style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(0,0,0,0.62)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 420, background: 'var(--panel, #14141b)', border: '1px solid var(--border2, #2a2a35)', borderRadius: 16, padding: 22, color: 'var(--fg, #e9e9ef)', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}>
+            <div style={{ fontSize: 19, fontWeight: 700, marginBottom: 10 }}>Renderizar y exportar</div>
+            <p style={{ fontSize: 13.5, lineHeight: 1.5, color: 'var(--fg2, #a6a6b2)', margin: '0 0 14px' }}>Se renderiza el video en 1080p y se descarga. Esto consume tokens (cantidad <b>aproximada</b> — no es un cálculo exacto):</p>
+            <div style={{ border: '1px solid var(--border2, #2a2a35)', borderRadius: 12, padding: '12px 14px', marginBottom: 14 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, color: 'var(--fg2, #a6a6b2)' }}><span>⚡ Consumo aproximado</span><strong style={{ color: 'var(--fg, #e9e9ef)', fontSize: 15 }}>≈ {tokens.total.toLocaleString('es')} tk</strong></div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: 9, paddingTop: 9, borderTop: '1px solid var(--border2, #2a2a35)' }}>
+                {tokens.items.map(it => <div key={it.key} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, color: 'var(--fg2, #a6a6b2)' }}><span>{it.label}</span><span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: 'var(--fg, #e9e9ef)' }}>{it.tokens}</span></div>)}
+              </div>
+            </div>
+            {profile && Number.isFinite(Number(profile.tokens)) && (
+              <p style={{ fontSize: 13, color: 'var(--fg2, #a6a6b2)', margin: '0 0 14px' }}>Saldo: <b style={{ color: 'var(--fg, #e9e9ef)' }}>{Number(profile.tokens).toLocaleString('es')}</b> → <b style={{ color: 'var(--fg, #e9e9ef)' }}>{Math.max(0, Number(profile.tokens) - tokens.total).toLocaleString('es')}</b> tk</p>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button className={styles.ghost} onClick={() => setConfirmExport(false)}>Cancelar</button>
+              <button className={styles.primary} onClick={doExport}>⬇ Renderizar y exportar</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

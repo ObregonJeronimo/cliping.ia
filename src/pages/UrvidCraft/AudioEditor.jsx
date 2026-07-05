@@ -114,6 +114,23 @@ export function ClipInspector({ clip, name, accent = '#c98a2b', duration, onPatc
         <input type="range" min="0" max="1" step="0.05" value={clip.gain == null ? 0.9 : clip.gain} onChange={e => onPatch(clip.id, { gain: +e.target.value })} style={sl} />
         <span style={IN.val}>{Math.round((clip.gain == null ? 0.9 : clip.gain) * 100)}%</span>
       </div>
+      <div style={IN.field}>
+        <span style={IN.lbl}>Loop</span>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 7, flex: 1, cursor: 'pointer', fontSize: 12, color: '#4a4f5c' }}>
+          <input type="checkbox" checked={!!clip.loop} onChange={e => onPatch(clip.id, { loop: e.target.checked })} style={{ accentColor: accent, cursor: 'pointer' }} />
+          repetir hasta el final
+        </label>
+      </div>
+      <div style={IN.field}>
+        <span style={IN.lbl}>Fade in</span>
+        <input type="range" min="0" max="2" step="0.1" value={clip.fadeIn || 0} onChange={e => onPatch(clip.id, { fadeIn: +e.target.value })} style={sl} />
+        <span style={IN.val}>{(clip.fadeIn || 0).toFixed(1)}s</span>
+      </div>
+      <div style={IN.field}>
+        <span style={IN.lbl}>Fade out</span>
+        <input type="range" min="0" max="2" step="0.1" value={clip.fadeOut || 0} onChange={e => onPatch(clip.id, { fadeOut: +e.target.value })} style={sl} />
+        <span style={IN.val}>{(clip.fadeOut || 0).toFixed(1)}s</span>
+      </div>
       <button style={IN.del} onClick={() => onRemove(clip.id)}><IconTrash /> Quitar clip</button>
     </div>
   )
