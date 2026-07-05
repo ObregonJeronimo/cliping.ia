@@ -126,7 +126,7 @@ register({
     const cx = W / 2, cy = H * 0.44
     // numero grande en mono (el VALOR REAL con count-up), color por tono
     drawText(ctx, statDisplay(st, t, 0.1, 1.2), cx, cy, {
-      size: 92, weight: 700, family: fonts.accent, maxW: W * 0.88, color: numColor(pal),
+      size: 120, weight: 700, family: fonts.accent, maxW: W * 0.88, color: numColor(pal),
       shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.35)' : null,
     })
     // regla de acento que crece bajo el numero (DECO) + respiracion idle continua (ancho/glow)
@@ -160,7 +160,7 @@ register({
       ctx.save(); ctx.globalAlpha = glow(t, i * 1.6, 0.7, 1)
       ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(W * 0.12, y - tickH / 2, 5, tickH, 2.5); ctx.fill()
       ctx.restore()
-      drawText(ctx, statDisplay(rs[i], t, 0.1 + i * 0.18, 0.7 + i * 0.18), W * 0.2, y, { size: 46, weight: 700, family: fonts.accent, align: 'left', maxW: W * 0.34, color: numColor(pal) })
+      drawText(ctx, statDisplay(rs[i], t, 0.1 + i * 0.18, 0.7 + i * 0.18), W * 0.2, y, { size: 72, weight: 700, family: fonts.accent, align: 'left', maxW: W * 0.34, color: numColor(pal) })
       // etiqueta REAL: drawWrapped -> ancha y hasta 2 lineas, achica antes de elidir -> etiquetas largas entran completas
       drawWrapped(ctx, rs[i].label || '', W * 0.58, y, { size: 18, min: 13, weight: 600, family: fonts.text, align: 'left', maxW: W * 0.38, maxLines: 2, color: pal.dim })
       ctx.restore()
@@ -262,7 +262,7 @@ register({
     ctx.fillStyle = lighten(pal.accent, 0.25); ctx.beginPath(); ctx.arc(hx, hy, lw * 0.42 * breath(t, 0, 0.06, 1.3), 0, TAU); ctx.fill()
     ctx.restore()
     // numero centrado en mono = el VALOR REAL con count-up
-    drawText(ctx, statDisplay(pr.st, t, 0.1, 1.2), cx, cy - 2, { size: 56, weight: 700, family: fonts.accent, maxW: rad * 1.5, color: numColor(pal) })
+    drawText(ctx, statDisplay(pr.st, t, 0.1, 1.2), cx, cy - 2, { size: 84, weight: 700, family: fonts.accent, maxW: rad * 1.5, color: numColor(pal) })
     // etiqueta REAL del stat debajo
     const lab = pr.st.label || content.tagline || content.claim
     if (lab) drawText(ctx, lab, cx, cy + rad + 44, { size: 20, weight: 600, family: fonts.text, maxW: W * 0.74, color: pal.dim, alpha: inv(t, 0.7, 1.2) })
@@ -949,7 +949,7 @@ register({
       // etiqueta arriba
       drawText(ctx, shortLabel(rs[i].label, 3), xL, y - 26, { size: 14, weight: 600, family: fonts.text, align: 'left', maxW: W * 0.6, color: pal.dim, alpha: clamp(ap * 1.3, 0, 1) })
       // numero grande mono = el VALOR REAL con count-up
-      drawText(ctx, statDisplay(rs[i], t, 0.1 + i * 0.15, 0.7 + i * 0.15), xL, y + 6, { size: 46, weight: 700, family: fonts.accent, align: 'left', maxW: W * 0.72, color: numColor(pal), alpha: clamp(ap * 1.2, 0, 1) })
+      drawText(ctx, statDisplay(rs[i], t, 0.1 + i * 0.15, 0.7 + i * 0.15), xL, y + 6, { size: 86, weight: 700, family: fonts.accent, align: 'left', maxW: W * 0.72, color: numColor(pal), alpha: clamp(ap * 1.2, 0, 1) })
       // (chip de DELTA '+X%' ELIMINADO: fabricaba una tendencia inventada por fila -> deshonesto.)
       // regla divisoria
       if (i < n - 1) { ctx.strokeStyle = hairline(pal, 0.08); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(xL, y + gap / 2); ctx.lineTo(W * 0.86, y + gap / 2); ctx.stroke() }
@@ -1501,7 +1501,7 @@ register({
     // numero hero = el VALOR REAL con count-up (el value ya trae su prefijo/sufijo: '+218%','92%','$2.4M').
     const cx = W / 2, cy = H * 0.46
     // (chip 'vs mes anterior' ELIMINADO: aseveraba una comparacion temporal que no viene del dato -> deshonesto.)
-    drawText(ctx, statDisplay(st, t, 0.1, 1.2), cx, cy, { size: 92, weight: 700, family: fonts.accent, maxW: W * 0.86, color: numColor(pal), shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.35)' : null })
+    drawText(ctx, statDisplay(st, t, 0.1, 1.2), cx, cy, { size: 120, weight: 700, family: fonts.accent, maxW: W * 0.86, color: numColor(pal), shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.35)' : null })
     const ru = eOutCubic(inv(t, 0.5, 1.2)), rw = 110 * ru * breath(t, 0, 0.02)
     ctx.save(); ctx.globalAlpha = glow(t, 0, 0.78, 1)
     ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(cx - rw / 2, cy + 58, rw, 6, 3); ctx.fill(); ctx.restore()

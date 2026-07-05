@@ -3,7 +3,7 @@
 // Usan la PALETA + la primitiva de texto (no-desborde garantizado) + motion. REGLA: texto en tinta (ink/inkText),
 // acento para DECO (barras/reglas). El director elige la escena segun el beat narrativo (hook/value/proof/close).
 import { register, get } from '../../core/registry.js'
-import { drawText, drawWrapped, fitUniform } from '../../core/text.js'
+import { drawText, drawWrapped, fitUniform, fitFont } from '../../core/text.js'
 import { W, H, TAU, inv, lerp, clamp, eOutCubic, eOutBack, eInOutCubic, spring, smooth, rgba } from '../../core/util.js'
 import { mulberry32 } from '../../core/prng.js'
 import { defaultMotion } from '../../core/motion.js'
@@ -250,17 +250,25 @@ register({
       { id: 'brand', kind: 'title', text: content.brand || 'Marca' },
       content.cta ? { id: 'cta', kind: 'cta', text: content.cta } : null,
     ]), b = L.brand
-    drawText(ctx, content.brand || 'Marca', b.cx, b.cy, { size: Math.min(b.size, 54), weight: 800, family: fonts.display, maxW: b.w, color: pal.ink, align: b.align, alpha: inv(t, 0.2, 0.9) })
-    // regla de acento bajo la marca + VIDA: respira + sheen
-    const barY = b.y + b.h + 6, bar = M.ease(inv(t, 0.5, 1.1)), bw = clamp(b.w * 0.34, 70, 160) * bar * breathe(t, 0.85, 0.02)   // ancho ANCLADO al slot de marca (no px fijo)
-    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(b.cx - bw / 2, barY, bw, 5, 3); ctx.fill()
-    if (bar > 0.9) rrSheen(ctx, b.cx - bw / 2, barY, bw, 5, t, { per: 3.0, strength: 0.55, tone: pal.tone })
-    // CTA: texto en TINTA-acento (legible) + subrayado en acento (DECO) + chevron, en su slot
+    drawText(ctx, content.brand || 'Marca', b.cx, b.cy, { size: Math.min(b.size, 84), weight: 800, family: fonts.display, maxW: b.w, color: pal.ink, align: b.align, alpha: inv(t, 0.2, 0.9) })
+    // regla de acento bajo la marca + VIDA: respira + sheen. ANCLADA por align del slot (con layout left,
+    // b.cx es el BORDE izquierdo, no el centro -> centrarla ahi la sacaba del canvas; bug eye1 "balo gratis").
+    const barY = b.y + b.h + 6, bar = M.ease(inv(t, 0.5, 1.1)), bw = clamp(b.w * 0.34, 70, 160) * bar * breathe(t, 0.85, 0.02)
+    const bx = b.align === 'left' ? b.x : b.align === 'right' ? b.x + b.w - bw : b.cx - bw / 2
+    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(bx, barY, bw, 5, 3); ctx.fill()
+    if (bar > 0.9) rrSheen(ctx, bx, barY, bw, 5, t, { per: 3.0, strength: 0.55, tone: pal.tone })
+    // CTA: texto en TINTA-acento (legible) + subrayado en acento (DECO) + chevron, en su slot.
+    // Ancla segun el align del slot: antes traducia a ct.cx (= borde izq con layout left) y dibujaba
+    // centrado -> mitad del CTA fuera del frame (bug eye1).
     const cta = inv(t, 1.0, 1.6)
     if (cta > 0 && content.cta && L.cta) {
       const ct = L.cta, sc = M.settle(cta, { zeta: 0.5, freq: 2.0 })
-      ctx.save(); ctx.translate(ct.cx, ct.cy); ctx.scale(0.94 + 0.06 * sc, 0.94 + 0.06 * sc)
-      const fs = drawText(ctx, content.cta, 0, 0, { size: Math.min(ct.size, 28), weight: 800, family: fonts.display, maxW: ct.w, color: pal.inkText })
+      const fs0 = fitFont(ctx, content.cta, Math.min(ct.size, 28), ct.w, 14, 800, fonts.display)
+      ctx.font = `800 ${fs0}px "${fonts.display}"`
+      const tw0 = Math.min(ct.w, ctx.measureText(content.cta).width)
+      const ax = ct.align === 'left' ? ct.x + tw0 / 2 : ct.align === 'right' ? ct.x + ct.w - tw0 / 2 : ct.cx
+      ctx.save(); ctx.translate(ax, ct.cy); ctx.scale(0.94 + 0.06 * sc, 0.94 + 0.06 * sc)
+      const fs = drawText(ctx, content.cta, 0, 0, { size: fs0, weight: 800, family: fonts.display, maxW: ct.w, color: pal.inkText })
       ctx.font = `800 ${fs}px "${fonts.display}"`; const tw = Math.min(ct.w, ctx.measureText(content.cta).width)
       const up = M.ease(inv(t, 1.3, 1.9))
       ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(-tw / 2, fs * 0.62, tw * up, 5, 2.5); ctx.fill()
@@ -292,7 +300,7 @@ register({
     // claim grande, en su slot, en 2-3 lineas, stagger por subida. ARRANCA cuando el kicker ya asento (~0.34) -> orden de lectura kicker->titulo sin solape (ambos completos << t=dur*0.7s del muestreo QA)
     const rise = M.settle(inv(t, 0.24, 0.9), 1.3)   // FRONT-LOAD: el claim (mensaje principal del opener) revela ~0.14s antes -> el gancho llega mas rapido
     ctx.save(); ctx.globalAlpha = inv(t, 0.26, 0.7); ctx.translate(0, (1 - rise) * 40)
-    drawWrapped(ctx, claimSrc, c.cx, c.cy, { size: Math.min(c.size, 50), weight: 800, family: fonts.display, maxW: c.w, color: pal.ink, align: c.align, maxLines: 3, lh: 1.08, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.45)' : null })
+    drawWrapped(ctx, claimSrc, c.cx, c.cy, { size: Math.min(c.size, 80), weight: 800, family: fonts.display, maxW: c.w, color: pal.ink, align: c.align, maxLines: 3, lh: 1.08, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.45)' : null })
     ctx.restore()
     // regla inferior que barre, anclada bajo el slot del claim + VIDA: sheen recorriendola en loop
     const rx = c.x, ry = c.y + c.h + 8, ru = M.ease(inv(t, 0.7, 1.3)), rw = c.w * ru
@@ -715,7 +723,7 @@ register({
     const breath = 1 + 0.012 * Math.sin(t * 1.6)
     const sc = (0.78 + 0.22 * sp) * breath
     ctx.save(); ctx.globalAlpha = inv(t, 0.12, 0.5); ctx.translate(cx, cy); ctx.scale(sc, sc)
-    drawText(ctx, word, 0, 0, { size: Math.min(wS.size, 62), weight: 800, family: fonts.display, maxW: wS.w, color: pal.ink, align: wS.align, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.45)' : null })
+    drawText(ctx, word, 0, 0, { size: Math.min(Math.round(wS.h * 0.9), 170), weight: 800, family: fonts.display, maxW: wS.w, color: pal.ink, align: wS.align, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.45)' : null })
     ctx.restore()
   },
 })
@@ -740,7 +748,7 @@ register({
     // palabra en su slot, entra desde la izquierda con la banda
     const enter = M.ease(inv(t, 0.25, 0.9))
     ctx.save(); ctx.globalAlpha = inv(t, 0.2, 0.6); ctx.translate((1 - enter) * -30, 0)
-    drawText(ctx, word, wS.align === 'center' ? wS.cx : wS.x, cy, { size: Math.min(wS.size, 52), weight: 800, family: fonts.display, maxW: wS.w, color: pal.ink, align: wS.align, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.4)' : null })
+    drawText(ctx, word, wS.align === 'center' ? wS.cx : wS.x, cy, { size: Math.min(Math.round(wS.h * 0.85), 150), weight: 800, family: fonts.display, maxW: wS.w, color: pal.ink, align: wS.align, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.4)' : null })
     ctx.restore()
     // numero/kicker de paso opcional arriba (si la marca existe), en su slot, en mono-acento
     if (content.brand && L.kick) drawText(ctx, (content.brand || '').toUpperCase(), L.kick.align === 'center' ? L.kick.cx : L.kick.x, L.kick.cy, { size: Math.min(L.kick.size, 15), weight: 700, family: eyebrowFamily(fonts), color: pal.inkText, align: L.kick.align, maxW: L.kick.w, alpha: inv(t, 0.0, 0.35) })
@@ -765,7 +773,7 @@ register({
     // palabra en tinta encima, sube y se asienta, en su slot
     const rise = M.settle(inv(t, 0.25, 1.0), 1.2)
     ctx.save(); ctx.globalAlpha = inv(t, 0.25, 0.7); ctx.translate(0, (1 - rise) * 26)
-    drawText(ctx, word, wcx, wcy, { size: Math.min(wS.size, 46), weight: 800, family: fonts.display, maxW: wS.w, color: pal.ink, align: wS.align })
+    drawText(ctx, word, wcx, wcy, { size: Math.min(wS.size, 60), weight: 800, family: fonts.display, maxW: wS.w, color: pal.ink, align: wS.align })
     ctx.restore()
     // regla corta bajo la palabra + VIDA: respira + sheen
     const ry = wS.y + wS.h + 6, ru = M.ease(inv(t, 0.5, 1.1)), crw = 60 * ru * breathe(t, 0.9, 0.03)
@@ -978,7 +986,7 @@ register({
     ]), b = L.brand
     const sp = M.settle(inv(t, 0.1, 1.0), { zeta: 0.5, freq: 2.0 }), sc = 0.86 + 0.14 * sp
     ctx.save(); ctx.globalAlpha = inv(t, 0.05, 0.45); ctx.translate(b.cx, b.cy); ctx.scale(sc, sc); ctx.translate(-b.cx, -b.cy)
-    drawWrapped(ctx, content.brand || 'Marca', b.cx, b.cy, { size: Math.min(b.size, 72), weight: 800, family: fonts.display, maxW: b.w, color: pal.ink, align: b.align, maxLines: 2, lh: 1.0, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.45)' : null })
+    drawWrapped(ctx, content.brand || 'Marca', b.cx, b.cy, { size: Math.min(b.size, 110), weight: 800, family: fonts.display, maxW: b.w, color: pal.ink, align: b.align, maxLines: 2, lh: 1.0, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.45)' : null })
     ctx.restore()
     // regla ancha de acento bajo la marca + VIDA: respira + sheen
     const ry = b.y + b.h + 10, ru = M.ease(inv(t, 0.5, 1.1)), brw = 140 * ru * breathe(t, 0.85, 0.02)
@@ -1193,22 +1201,22 @@ register({
     // idea negada arriba, en dim, con tachado de acento que se traza
     const ba = inv(t, 0.1, 0.55)
     ctx.save(); ctx.globalAlpha = ba
-    drawWrapped(ctx, bad, mx, H * 0.36, { size: 30, weight: 700, family: fonts.display, maxW: W * 0.76, color: pal.dim, align: 'left', maxLines: 3, min: 13, lh: 1.12 })
+    drawWrapped(ctx, bad, mx, H * 0.30, { size: 26, weight: 700, family: fonts.display, maxW: W * 0.76, color: pal.dim, align: 'left', maxLines: 3, min: 13, lh: 1.12 })
     ctx.restore()
-    ctx.font = `700 30px "${fonts.display}"`
+    ctx.font = `700 26px "${fonts.display}"`
     const bw = Math.min(W * 0.76, ctx.measureText(bad).width)
     const st = M.ease(inv(t, 0.3, 0.8))
     ctx.save(); ctx.strokeStyle = pal.accent; ctx.lineWidth = 4; ctx.lineCap = 'round'
-    ctx.beginPath(); ctx.moveTo(mx, H * 0.36); ctx.lineTo(mx + bw * st, H * 0.36); ctx.stroke(); ctx.restore()
+    ctx.beginPath(); ctx.moveTo(mx, H * 0.30); ctx.lineTo(mx + bw * st, H * 0.30); ctx.stroke(); ctx.restore()
     // idea buena abajo, en tinta, fuerte, sube
     const ga = inv(t, 0.55, 1.05), rise = M.settle(ga, 1.2)
     ctx.save(); ctx.globalAlpha = ga; ctx.translate(0, (1 - rise) * 26)
-    drawWrapped(ctx, good, mx, H * 0.56, { size: 42, weight: 800, family: fonts.display, maxW: W * 0.8, color: pal.ink, align: 'left', maxLines: 3, min: 13, lh: 1.08, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.45)' : null })
+    drawWrapped(ctx, good, mx, H * 0.52, { size: 64, weight: 800, family: fonts.display, maxW: W * 0.8, color: pal.ink, align: 'left', maxLines: 3, min: 13, lh: 1.08, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.45)' : null })
     ctx.restore()
     // chevron de acento que apunta a la idea buena + VIDA: deriva + glow pulsante (continuo)
     const chp = M.ease(inv(t, 0.5, 0.95))
     ctx.save(); if (chp > 0.95) pulseGlow(ctx, pal.accent, t, { sp: 1.5, base: 1, amp: 5 })
-    chevron(ctx, mx + 12 + (chp >= 1 ? drift(t, 1.4, 2.2) : 0), H * 0.47, 16, pal.accent, 4.5, chp); ctx.restore()
+    chevron(ctx, mx + 12 + (chp >= 1 ? drift(t, 1.4, 2.2) : 0), H * 0.368, 16, pal.accent, 4.5, chp); ctx.restore()
   },
 })
 
@@ -1257,7 +1265,7 @@ register({
     if (ru > 0.9) { ctx.save(); pulseGlow(ctx, pal.accent, t, { sp: 1.3, base: 1, amp: 4 }); ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.arc(rx1, H * 0.24, 4 * breathe(t, 1.3, 0.1), 0, TAU); ctx.fill(); ctx.restore() }
     // claim grande, izquierda, mucho aire arriba
     ctx.save(); ctx.globalAlpha = inv(t, 0.25, 0.75); ctx.translate((1 - M.ease(inv(t, 0.25, 0.9))) * 20, 0)
-    drawWrapped(ctx, content.claim || content.tagline || 'La claridad gana', mx, H * 0.52, { size: 40, weight: 800, family: fonts.display, maxW: W * 0.78, color: pal.ink, align: 'left', maxLines: 4, lh: 1.18 })
+    drawWrapped(ctx, content.claim || content.tagline || 'La claridad gana', mx, H * 0.52, { size: 72, weight: 800, family: fonts.display, maxW: W * 0.78, color: pal.ink, align: 'left', maxLines: 4, lh: 1.18 })
     ctx.restore()
     // firma de marca abajo
     if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), mx, H * 0.78, { size: 15, weight: 700, family: eyebrowFamily(fonts), color: pal.dim, align: 'left', maxW: W * 0.7, alpha: inv(t, 0.7, 1.2) })
@@ -1557,7 +1565,7 @@ register({
     // palabra centrada que entra con spring, en su slot
     const sp = M.settle(inv(t, 0.15, 1.0), { zeta: 0.5, freq: 2.1 }), sc = 0.82 + 0.18 * sp
     ctx.save(); ctx.globalAlpha = inv(t, 0.1, 0.5); ctx.translate(cx, cy); ctx.scale(sc, sc)
-    drawText(ctx, word, 0, 0, { size: Math.min(wS.size, 50), weight: 800, family: fonts.display, color: pal.ink, maxW: wS.w, align: wS.align, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.4)' : null })
+    drawText(ctx, word, 0, 0, { size: Math.min(Math.round(wS.h * 0.8), 120), weight: 800, family: fonts.display, color: pal.ink, maxW: wS.w, align: wS.align, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.4)' : null })
     ctx.restore()
     // tres chevrones bajo la palabra, en cascada (cada uno con su delay)
     // VIDA: tras entrar, una onda de brillo "avanza" recorriendo los chevrones en loop (sensacion de seguir)
@@ -1987,7 +1995,7 @@ register({
     const L = place(env, [{ id: 'word', kind: 'title', text: word }]), wS = L.word, cx = wS.cx, cy = wS.cy
     const sp = M.settle(inv(t, 0.15, 1.0), { zeta: 0.5, freq: 2.1 }), sc = 0.82 + 0.18 * sp
     ctx.save(); ctx.globalAlpha = inv(t, 0.1, 0.5); ctx.translate(cx, cy); ctx.scale(sc, sc)
-    drawText(ctx, word, 0, 0, { size: Math.min(wS.size, 52), weight: 800, family: fonts.display, color: pal.ink, maxW: wS.w, align: wS.align, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.4)' : null })
+    drawText(ctx, word, 0, 0, { size: Math.min(Math.round(wS.h * 0.8), 120), weight: 800, family: fonts.display, color: pal.ink, maxW: wS.w, align: wS.align, shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.4)' : null })
     ctx.restore()
     const r = mulberry32((env.seed >>> 0) ^ 0xd07)
     const total = 4, active = (r() * total) | 0
@@ -2456,20 +2464,23 @@ register({
     drawWrapped(ctx, content.brand || 'Marca', cx, H * 0.36, { size: 48, weight: 800, family: fonts.display, maxW: W * 0.86, color: pal.ink, maxLines: 2, lh: 1.04, alpha: inv(t, 0.15, 0.7), shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.4)' : null })
     let cta = content.cta || content.tagline || 'Empeza hoy'
     // pildora de UNA linea: un cta adversarial largo no entra ni al min -> recorte por PALABRA antes de
-    // dibujar (nunca "..."; regla prefit). CTAs reales (cortos) = no-op. Determinista (solo mide texto).
-    ctx.save(); ctx.font = `800 14px "${fonts.display}"`
+    // dibujar (nunca "..."; regla prefit). MIDE AL TAMANO QUE DIBUJA (24px; antes media a 14 y casi nunca
+    // recortaba -> la pildora se salia del canvas, bug eye2). Determinista (solo mide texto).
+    ctx.save(); ctx.font = `800 24px "${fonts.display}"`
     while (cta.indexOf(' ') > 0 && ctx.measureText(cta).width > W * 0.44 + 8) cta = cta.slice(0, cta.lastIndexOf(' '))
+    // pildora CTA: geometria ANTES de la flecha (la flecha apunta a donde la pildora realmente queda).
+    // Clamp al canvas: px fijo en W*0.5 mandaba el borde derecho hasta W*0.94+44 > W -> pildora mutilada.
+    const tw = Math.min(W * 0.44, ctx.measureText(cta).width), pw = tw + 44, ph = 50
     ctx.restore()
-    // flecha larga de acento que barre y termina apuntando a la pildora del CTA
+    const pxL = Math.min(W * 0.5, W * 0.93 - pw)
     const ay = H * 0.56, arrP = M.ease(inv(t, 0.4, 1.0))
     // VIDA: la punta de la flecha "empuja" hacia la pildora de forma continua (deriva sutil) tras llegar
-    const arrEnd = W * 0.46 + (arrP >= 1 ? drift(t, 1.2, 4) : 0)
+    const arrEnd = pxL - 10 + (arrP >= 1 ? drift(t, 1.2, 4) : 0)
     arrowH(ctx, W * 0.12, arrEnd, ay, pal.accent, 5, arrP)
-    // pildora CTA a la derecha de la flecha, entra con spring + VIDA: respira + sheen
+    // entra con spring + VIDA: respira + sheen
     const gp = M.settle(inv(t, 0.6, 1.25), { zeta: 0.5, freq: 2 }), settledC = gp > 0.9
     ctx.save(); ctx.font = `800 24px "${fonts.display}"`
-    const tw = Math.min(W * 0.44, ctx.measureText(cta).width), pw = tw + 44, ph = 50, px = W * 0.5
-    ctx.translate(px + pw / 2, ay); ctx.scale((0.8 + 0.2 * gp) * (settledC ? breathe(t, 0.9, 0.012) : 1), (0.8 + 0.2 * gp) * (settledC ? breathe(t, 0.9, 0.012) : 1)); ctx.globalAlpha = inv(t, 0.6, 1.0)
+    ctx.translate(pxL + pw / 2, ay); ctx.scale((0.8 + 0.2 * gp) * (settledC ? breathe(t, 0.9, 0.012) : 1), (0.8 + 0.2 * gp) * (settledC ? breathe(t, 0.9, 0.012) : 1)); ctx.globalAlpha = inv(t, 0.6, 1.0)
     ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(-pw / 2, -ph / 2, pw, ph, ph / 2); ctx.fill()
     if (settledC) rrSheen(ctx, -pw / 2, -ph / 2, pw, ph, t, { per: 3.4, strength: 0.4, tone: pal.tone })
     drawText(ctx, cta, 0, 1, { size: 24, weight: 800, family: fonts.display, maxW: pw - 30, color: pal.onAccent })

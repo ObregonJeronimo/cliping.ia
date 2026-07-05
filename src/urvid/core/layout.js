@@ -46,7 +46,11 @@ export function arrange(request, preset = {}) {
   for (let i = 0; i < slots.length; i++) {
     const r = slots[i], h = heights[i], k = KIND[r.kind] || KIND.body
     const cx = align === 'center' ? W / 2 : align === 'right' ? (W - sideM) : sideM
-    const size = clamp(Math.min(k.base, (h / (k.lines || 1)) * 0.82), k.min, k.base * 1.3)
+    // TECHO por kind: title/stat pueden CRECER sobre base cuando el slot tiene alto de sobra (antes el
+    // Math.min(k.base, ...) hacia el tope superior inalcanzable -> titulos capados a 64px con el frame vacio).
+    // El resto queda en cap 1.0 = comportamiento identico. wrap()/fitFont solo ACHICAN -> sin riesgo de desborde.
+    const capK = r.kind === 'title' ? 1.8 : r.kind === 'stat' ? 1.6 : 1.0
+    const size = clamp((h / (k.lines || 1)) * 0.82, k.min, k.base * capK)
     out[r.id] = { x: sideM, y, w: availW, h, cx, cy: y + h / 2, size, align, kind: r.kind }
     y += h + gapPx
   }
