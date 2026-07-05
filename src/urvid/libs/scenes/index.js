@@ -2468,11 +2468,14 @@ register({
     // recortaba -> la pildora se salia del canvas, bug eye2). Determinista (solo mide texto).
     ctx.save(); ctx.font = `800 24px "${fonts.display}"`
     while (cta.indexOf(' ') > 0 && ctx.measureText(cta).width > W * 0.44 + 8) cta = cta.slice(0, cta.lastIndexOf(' '))
+    // sin conectores colgando al final ("Descubri la" -> "Descubri"): delata al robot
+    const _DANG = ['y', 'e', 'o', 'u', 'de', 'del', 'la', 'el', 'los', 'las', 'a', 'al', 'en', 'con', 'para', 'por', 'que', 'tu', 'su', 'un', 'una', 'mas', 'sin', 'lo', 'te']
+    while (cta.indexOf(' ') > 0 && _DANG.includes(cta.slice(cta.lastIndexOf(' ') + 1).toLowerCase())) cta = cta.slice(0, cta.lastIndexOf(' '))
     // pildora CTA: geometria ANTES de la flecha (la flecha apunta a donde la pildora realmente queda).
     // Clamp al canvas: px fijo en W*0.5 mandaba el borde derecho hasta W*0.94+44 > W -> pildora mutilada.
     const tw = Math.min(W * 0.44, ctx.measureText(cta).width), pw = tw + 44, ph = 50
     ctx.restore()
-    const pxL = Math.min(W * 0.5, W * 0.93 - pw)
+    const pxL = Math.min(W * 0.5, W * 0.90 - pw)   // margen derecho real (0.93 quedaba pegado al borde)
     const ay = H * 0.56, arrP = M.ease(inv(t, 0.4, 1.0))
     // VIDA: la punta de la flecha "empuja" hacia la pildora de forma continua (deriva sutil) tras llegar
     const arrEnd = pxL - 10 + (arrP >= 1 ? drift(t, 1.2, 4) : 0)

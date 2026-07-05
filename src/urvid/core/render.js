@@ -100,7 +100,9 @@ function paintScene(ctx, sc, t, video, motion, typekit, layout) {
   const s = video.seriousness != null ? video.seriousness : 0.5, dev = 0.5 - s
   const intK = clamp(1 + dev * 0.6, 0.7, 1.3)
   const eDur = clamp((motion.enterDur || 0.5) * clamp(1 + dev * 0.5, 0.75, 1.25), 0.2, 0.9)
-  const ep = motion.ease(inv(ts, 0, eDur)), k = 1 - ep
+  // OVERSHOOT (OLA VISUAL): la entrada usa settle (spring que se pasa y rebota) en vez de ease monotonico
+  // -> pop con asentamiento fisico real. En ts>=eDur settle=1 -> k=0 exacto: asentado pixel-estable igual que hoy.
+  const ep = motion.settle ? motion.settle(inv(ts, 0, eDur)) : motion.ease(inv(ts, 0, eDur)), k = 1 - ep
   const en = motion.enter || {}
   // FLUIDEZ vs LEGIBILIDAD: el CONTENIDO (texto incluido) NO se escala ni deriva de forma CONTINUA. El ken-burns
   // (zoom lento <=1.2% sobre toda la escena) re-rasterizaba el glifo a escala sub-pixel cuadro a cuadro -> shimmer/
@@ -136,17 +138,27 @@ export function drawFrame(ctx, t, video, opts = {}) {
   if (video.atmId) { const m = get(video.atmId); if (m) m.render(ctx, t, { ...base, seed: video.atmSeed }) }   // atm SIN push (rays/glints crawlean)
   // GARNISH markkit (persistente): un icono chico en una ESQUINA, tenue, detras del contenido. NUNCA centrado
   // (no compite con el titulo; la regla "nada de blobs/formas sobre el titulo"). Solo iconos (ver assemble.js).
-  if (video.markId) {
+  // MARK POR ESCENA (OLA VISUAL): antes garnish+marco salian IDENTICOS en TODOS los frames del video
+  // (misma esquina, mismo alpha) = huella de "video generado". Ahora la presencia y la esquina se modulan
+  // por la ESCENA activa (sc.seed, puro): ~2/3 de escenas con garnish, ~1/2 con marco, esquina rotada,
+  // fade de 0.25s al entrar, y SIEMPRE ocultos en la primera escena (el hook abre limpio).
+  const _mkSc = video.scenes && video.scenes.find(sc => t >= sc.start && t < sc.start + sc.dur)
+  const _mkFirst = _mkSc && video.scenes[0] === _mkSc
+  const _mkFade = _mkSc ? clamp((t - _mkSc.start) / 0.25, 0, 1) : 1
+  if (video.markId && !(_mkFirst) && !(_mkSc && ((_mkSc.seed >>> 2) % 3) === 0)) {
     const m = get(video.markId)
     if (m) {
       const corners = [[W * 0.82, H * 0.14], [W * 0.82, H * 0.86], [W * 0.18, H * 0.86]]   // TR / BR / BL
-      const [gx, gy] = corners[(video.markSeed >>> 0) % corners.length], s = 0.2
+      const _ci = _mkSc ? ((video.markSeed ^ _mkSc.seed) >>> 0) % corners.length : (video.markSeed >>> 0) % corners.length
+      const [gx, gy] = corners[_ci], s = 0.2
       // GARNISH-BY-SERIOUSNESS: brief serio -> adorno mas tenue (menos competencia con la lectura); relajado -> mas presente.
-      // PURO (sin PRNG). Centrado en s=0.5 = alpha de hoy (sin video.seriousness -> 0.5 -> byte-identico).
       const _gs = video.seriousness != null ? video.seriousness : 0.5
       const _gK = clamp(1 - 0.5 * (_gs - 0.5), 0.7, 1.3)   // s=0.85->0.825 ; s=0.5->1.0 ; s=0.2->1.15
-      ctx.save(); ctx.globalAlpha = (video.tone === 'light' ? 0.5 : 0.62) * _gK
-      ctx.translate(gx, gy); ctx.scale(s, s); ctx.translate(-W / 2, -H / 2)
+      // VIDA ambient (deco pura, sin glifos): deriva sutil + respiracion de alpha. Determinista (solo t+seed).
+      const _ph = (video.markSeed % 7)
+      const br = 1 + 0.08 * Math.sin(t * 0.5 + _ph)
+      ctx.save(); ctx.globalAlpha = (video.tone === 'light' ? 0.5 : 0.62) * _gK * _mkFade * clamp(br, 0.9, 1.1)
+      ctx.translate(gx + Math.sin(t * 0.35 + _ph) * 2.5, gy + Math.cos(t * 0.28 + _ph) * 2); ctx.scale(s, s); ctx.translate(-W / 2, -H / 2)
       m.render(ctx, t, { ...base, seed: video.markSeed })
       ctx.restore()
     }
@@ -154,13 +166,15 @@ export function drawFrame(ctx, t, video, opts = {}) {
   // MARCA EDITORIAL (item L154): un MARCO HUECO del rubro (corchetes/filigrana/ventana) a escala de BORDE, DETRAS del contenido,
   // tenue. NO escribe texto ni bloquea el centro -> no compite con el titulo ni desborda (no toca el layout). Escala 1.45:
   // el marco (bw~W*0.62) pasa a ~W*0.9 -> enmarca el LIENZO, no el titulo. Tenue-por-seriedad (igual que el garnish). Determinista.
-  if (video.editMarkId) {
+  if (video.editMarkId && !_mkFirst && !(_mkSc && ((_mkSc.seed >>> 4) & 1) === 0)) {
     const m = get(video.editMarkId)
     if (m) {
       const _es = video.seriousness != null ? video.seriousness : 0.5
       const _eK = clamp(1 - 0.5 * (_es - 0.5), 0.7, 1.3)
-      ctx.save(); ctx.globalAlpha = (video.tone === 'light' ? 0.55 : 0.62) * _eK   // subido (feedback): el marco se leia demasiado tenue -> mas presente pero al borde, sin competir con el titulo centrado
-      ctx.translate(W / 2, H / 2); ctx.scale(1.45, 1.45); ctx.translate(-W / 2, -H / 2)
+      const _eph = (video.editMarkSeed % 5)
+      ctx.save(); ctx.globalAlpha = (video.tone === 'light' ? 0.55 : 0.62) * _eK * _mkFade * clamp(1 + 0.07 * Math.sin(t * 0.42 + _eph), 0.92, 1.08)
+      const _ez = 1.45 * (1 + 0.004 * Math.sin(t * 0.4 + _eph))   // respiracion sutil del marco (deco, sin glifos)
+      ctx.translate(W / 2, H / 2); ctx.scale(_ez, _ez); ctx.translate(-W / 2, -H / 2)
       m.render(ctx, t, { ...base, fonts: video.fonts, seed: (video.editMarkSeed >>> 0) })
       ctx.restore()
     }
@@ -200,7 +214,12 @@ export function drawFrame(ctx, t, video, opts = {}) {
     if (bufA && bufB) {
       if (p < 0.5) {
         const ca = bufA.getContext('2d'); ca.setTransform(1, 0, 0, 1, 0, 0); ca.clearRect(0, 0, bufA.width, bufA.height); ca.setTransform(ss, 0, 0, ss, 0, 0); paintScene(ca, trans.A, t, video, motion, typekit, layout)
-        blit(ctx, bufA, 1 - eOutCubic(p / 0.5))   // A se disuelve sobre el fondo
+        // WHIP de salida (OLA VISUAL): A no solo se apaga — se VA con un empuje de escala hacia el corte
+        // (transformacion sobre el buffer ya pintado: costo cero, determinista).
+        const _we = eOutCubic(p / 0.5)
+        ctx.save(); ctx.globalAlpha *= clamp(1 - _we, 0, 1)
+        ctx.translate(W / 2, H / 2); ctx.scale(1 + 0.06 * _we * _we, 1 + 0.06 * _we * _we); ctx.translate(-W / 2, -H / 2)
+        ctx.drawImage(bufA, 0, 0, W, H); ctx.restore()
       } else {
         const cb = bufB.getContext('2d'); cb.setTransform(1, 0, 0, 1, 0, 0); cb.clearRect(0, 0, bufB.width, bufB.height); cb.setTransform(ss, 0, 0, ss, 0, 0); paintScene(cb, trans.B, t, video, motion, typekit, layout)
         transition.render(ctx, eOutCubic((p - 0.5) / 0.5), () => {}, c => blit(c, bufB, 1), { W, H })   // A ya no esta; B entra
