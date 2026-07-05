@@ -56,14 +56,31 @@ function separateAccent2(accent, accent2, bg0, bg1, tone) {
 export function finalize(accent, accent2, bg0, bg1, tone) {
   accent = clampGamut(accent, tone)                            // gamut/sat clamp perceptual ANTES de derivar roles (hue/L intactos; onAccent garantizado por el guard)
   accent2 = separateAccent2(accent, accent2, bg0, bg1, tone)   // garantiza accent2 distinguible de accent y visible sobre el bg
-  if (tone === 'light') return {
-    tone, accent, accent2, bg0, bg1, surface: 'rgba(20,16,24,0.05)',
-    ink: '#1c1510', dim: '#564a3e', inkText: accentAsText(accent, 'light'),
-    onAccent: legibleOnBest(accent, '#ffffff', '#1c1510'),   // APCA + piso WCAG (mata la "banda muerta")
+  // TINTAS TEÑIDAS (OLA VISUAL): ink/dim heredan un TINTE del hue del fondo -> se borra la huella de
+  // fabrica (#fbf6ec/#14090e identicos en todos los videos). La S del tinte escala con la S REAL de bg0
+  // (fondo acromatico -> anchors neutros = byte-identico en noir/bn). Guard: si el tenido pierde contraste
+  // vs el anchor sobre bg0, cae al anchor (el gate APCA re-valida ink>=4.5 en 1881 combos).
+  const _bh = hexToHsl(bg0), _ts = Math.min(0.10, _bh.s * 0.35)
+  if (tone === 'light') {
+    let ink = '#1c1510', dim = '#564a3e'
+    if (_ts > 0.015) {
+      const inkT = hslToHex(_bh.h, _ts, 0.085), dimT = hslToHex(_bh.h, Math.min(0.14, _bh.s * 0.45), 0.30)
+      if (contrast(inkT, bg0) >= contrast(ink, bg0) - 0.4) { ink = inkT; dim = dimT }
+    }
+    return {
+      tone, accent, accent2, bg0, bg1, surface: 'rgba(20,16,24,0.05)',
+      ink, dim, inkText: accentAsText(accent, 'light'),
+      onAccent: legibleOnBest(accent, '#ffffff', '#1c1510'),   // APCA + piso WCAG (mata la "banda muerta")
+    }
+  }
+  let ink = '#fbf6ec', dim = '#cfc6d6'
+  if (_ts > 0.015) {
+    const inkT = hslToHex(_bh.h, _ts, 0.955), dimT = hslToHex(_bh.h, Math.min(0.12, _bh.s * 0.4), 0.80)
+    if (contrast(inkT, bg0) >= contrast(ink, bg0) - 0.4) { ink = inkT; dim = dimT }
   }
   return {
     tone, accent, accent2, bg0, bg1, surface: 'rgba(255,255,255,0.05)',
-    ink: '#fbf6ec', dim: '#cfc6d6', inkText: accentAsText(accent, 'dark'),
+    ink, dim, inkText: accentAsText(accent, 'dark'),
     onAccent: legibleOnBest(accent, '#fbf6ec', '#14090e'),   // APCA + piso WCAG (perceptual, mejor en oscuro)
   }
 }

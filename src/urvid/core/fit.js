@@ -75,9 +75,11 @@ const _hueDist = (a, b) => Math.abs(((a - b) % 360 + 540) % 360 - 180)   // 0..1
 // hue: SOLO los modulos de color que portan un hue de acento legible declaran mod.hue (grados). Sin hue -> 1.0 (neutro,
 // back-compat: el resto de las libs no son color). Misma forma SUAVE que rubroAffinity: cae con la distancia hue<->rubro
 // pero NUNCA a 0 (afinidad, no exclusion). dist 0 -> 1.25 (match); 180 -> 0.55 (opuesto). Es un desempate fino, no domina.
-export function hueAffinity(mod, rubro) {
-  if (mod.hue == null || !rubro || rubro === 'default') return 1.0
-  const target = RUBRO_HUE[rubro]
+export function hueAffinity(mod, rubro, brandHue) {
+  if (mod.hue == null) return 1.0
+  // FIDELIDAD DE MARCA (OLA VISUAL): con marca CROMATICA el desempate es contra el hue de la MARCA
+  // (la paleta curada cercana a la marca gana el pick); sin marca cae al hue psicologico del rubro.
+  const target = brandHue != null ? brandHue : (rubro && rubro !== 'default' ? RUBRO_HUE[rubro] : null)
   if (target == null) return 1.0
   return 1.25 - 0.7 * (_hueDist(mod.hue, target) / 180)
 }
@@ -149,5 +151,5 @@ export function layoutBias(mod, sig) {
 // ctx = { rubro, seriousness, paletteHue, density }. Las escenas multiplican ademas por sceneBias (señal de contenido).
 export function fitWeight(mod, ctx = {}) {
   const w = mod.weight == null ? 1 : mod.weight
-  return Math.max(0, w) * rubroAffinity(mod, ctx.rubro) * hueAffinity(mod, ctx.rubro) * bgTempAffinity(mod, ctx.paletteHue) * registerFit(mod, ctx.seriousness) * intensityFit(mod, ctx.seriousness) * legibilityFit(mod, ctx.density)
+  return Math.max(0, w) * rubroAffinity(mod, ctx.rubro) * hueAffinity(mod, ctx.rubro, ctx.brandHue) * bgTempAffinity(mod, ctx.paletteHue) * registerFit(mod, ctx.seriousness) * intensityFit(mod, ctx.seriousness) * legibilityFit(mod, ctx.density)
 }

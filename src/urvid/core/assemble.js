@@ -103,7 +103,7 @@ export function makeVideo(brief = {}) {
     })
   }
   // SCORER de fit: peso × afinidad-rubro × match-seriedad(register) × match-intensidad × legibilidad(densidad). Reemplaza al viejo wadj.
-  const fitCtx = { rubro, seriousness, density }
+  const fitCtx = { rubro, seriousness, density, brandHue: _bcHsl.s >= 0.12 ? _bcHsl.h : null }   // OLA VISUAL: el pick de color desempata contra el hue de la MARCA
   const score = (m) => fitWeight(m, fitCtx)
 
   // TONO = SOLO COLOR. Con lockRecipe (toggle claro/oscuro), se reusa cada slot salvo que su modulo no soporte el tono.
