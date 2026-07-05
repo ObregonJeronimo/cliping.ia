@@ -126,7 +126,7 @@ register({
     const cx = W / 2, cy = H * 0.44
     // numero grande en mono (el VALOR REAL con count-up), color por tono
     drawText(ctx, statDisplay(st, t, 0.1, 1.2), cx, cy, {
-      size: 120, weight: 700, family: fonts.accent, maxW: W * 0.88, color: numColor(pal),
+      size: 120, weight: 700, family: fonts.num || fonts.accent, maxW: W * 0.88, color: numColor(pal),
       shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.35)' : null,
     })
     // regla de acento que crece bajo el numero (DECO) + respiracion idle continua (ancho/glow)
@@ -160,7 +160,7 @@ register({
       ctx.save(); ctx.globalAlpha = glow(t, i * 1.6, 0.7, 1)
       ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(W * 0.12, y - tickH / 2, 5, tickH, 2.5); ctx.fill()
       ctx.restore()
-      drawText(ctx, statDisplay(rs[i], t, 0.1 + i * 0.18, 0.7 + i * 0.18), W * 0.2, y, { size: 72, weight: 700, family: fonts.accent, align: 'left', maxW: W * 0.34, color: numColor(pal) })
+      drawText(ctx, statDisplay(rs[i], t, 0.1 + i * 0.18, 0.7 + i * 0.18), W * 0.2, y, { size: 72, weight: 700, family: fonts.num || fonts.accent, align: 'left', maxW: W * 0.34, color: numColor(pal) })
       // etiqueta REAL: drawWrapped -> ancha y hasta 2 lineas, achica antes de elidir -> etiquetas largas entran completas
       drawWrapped(ctx, rs[i].label || '', W * 0.58, y, { size: 18, min: 13, weight: 600, family: fonts.text, align: 'left', maxW: W * 0.38, maxLines: 2, color: pal.dim })
       ctx.restore()
@@ -194,7 +194,7 @@ register({
       // sheen idle: un brillo recorre el relleno (mas marcado en el lider), desfasado por barra
       sheen(ctx, x0, y, fillW, bh, t, { period: 3.6, phase: i * 0.22, strength: i === 0 ? 0.18 : 0.1 })
       // valor % al final del riel, en mono tinta
-      drawText(ctx, Math.round(raw[i] * 100 * ap) + '%', x0 + bw + 4, y + bh / 2, { size: 15, weight: 700, family: fonts.accent, align: 'left', maxW: W * 0.1, color: numColor(pal), alpha: ap })
+      drawText(ctx, Math.round(raw[i] * 100 * ap) + '%', x0 + bw + 4, y + bh / 2, { size: 15, weight: 700, family: fonts.num || fonts.accent, align: 'left', maxW: W * 0.1, color: numColor(pal), alpha: ap })
     }
   },
 })
@@ -224,7 +224,7 @@ register({
     const apk = inv(t, 0.7, 1.1)
     if (apk > 0) {
       const bx = x0 + peak * slot + slot / 2
-      drawText(ctx, Math.round(vals[peak] * 100) + '%', bx, base - maxH * vals[peak] - 16, { size: 18, weight: 700, family: fonts.accent, maxW: slot * 1.4, color: numColor(pal), alpha: apk })
+      drawText(ctx, Math.round(vals[peak] * 100) + '%', bx, base - maxH * vals[peak] - 16, { size: 18, weight: 700, family: fonts.num || fonts.accent, maxW: slot * 1.4, color: numColor(pal), alpha: apk })
     }
     // titulo
     const ti = content.tagline || content.claim
@@ -262,7 +262,7 @@ register({
     ctx.fillStyle = lighten(pal.accent, 0.25); ctx.beginPath(); ctx.arc(hx, hy, lw * 0.42 * breath(t, 0, 0.06, 1.3), 0, TAU); ctx.fill()
     ctx.restore()
     // numero centrado en mono = el VALOR REAL con count-up
-    drawText(ctx, statDisplay(pr.st, t, 0.1, 1.2), cx, cy - 2, { size: 84, weight: 700, family: fonts.accent, maxW: rad * 1.5, color: numColor(pal) })
+    drawText(ctx, statDisplay(pr.st, t, 0.1, 1.2), cx, cy - 2, { size: 84, weight: 700, family: fonts.num || fonts.accent, maxW: rad * 1.5, color: numColor(pal) })
     // etiqueta REAL del stat debajo
     const lab = pr.st.label || content.tagline || content.claim
     if (lab) drawText(ctx, lab, cx, cy + rad + 44, { size: 20, weight: 600, family: fonts.text, maxW: W * 0.74, color: pal.dim, alpha: inv(t, 0.7, 1.2) })
@@ -293,7 +293,7 @@ register({
     sheenArc(ctx, cx, cy, rad, lw, t, pal.accent, { period: 5, span: 0.7, strength: 0.4 })
     ctx.restore()
     // numero central = primer segmento en %
-    drawText(ctx, Math.round(parts[0] * 100 * ap) + '%', cx, cy, { size: 48, weight: 700, family: fonts.accent, maxW: rad * 1.4, color: numColor(pal) })
+    drawText(ctx, Math.round(parts[0] * 100 * ap) + '%', cx, cy, { size: 48, weight: 700, family: fonts.num || fonts.accent, maxW: rad * 1.4, color: numColor(pal) })
     const lab = content.tagline || content.claim
     if (lab) drawText(ctx, lab, cx, cy + rad + 48, { size: 19, weight: 600, family: fonts.text, maxW: W * 0.72, color: pal.dim, alpha: inv(t, 0.7, 1.2) })
   },
@@ -342,7 +342,7 @@ register({
     ctx.restore()
     // delta % arriba
     const delta = Math.round((pts[n - 1].v - pts[0].v) * 100)
-    drawText(ctx, '+' + Math.abs(delta) + '%', W / 2, H * 0.22, { size: 40, weight: 700, family: fonts.accent, maxW: W * 0.5, color: numColor(pal), alpha: inv(t, 0.4, 1) })
+    drawText(ctx, '+' + Math.abs(delta) + '%', W / 2, H * 0.22, { size: 40, weight: 700, family: fonts.num || fonts.accent, maxW: W * 0.5, color: numColor(pal), alpha: inv(t, 0.4, 1) })
     const lab = content.tagline || content.claim
     if (lab) drawText(ctx, lab, W / 2, H * 0.66, { size: 19, weight: 600, family: fonts.text, maxW: W * 0.74, color: pal.dim, alpha: inv(t, 0.7, 1.2) })
   },
@@ -371,8 +371,8 @@ register({
     ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(xB - bw / 2, base - hB, bw, hB, [8, 8, 0, 0]); ctx.fill()
     sheenV(ctx, xB - bw / 2, base - hB, bw, hB, t, { period: 4, phase: 0.5, strength: 0.2 })
     // valores
-    drawText(ctx, Math.round(vA * 100 * apA) + '%', xA, base - hA - 18, { size: 22, weight: 700, family: fonts.accent, maxW: bw * 1.6, color: pal.dim, alpha: apA })
-    drawText(ctx, Math.round(vB * 100 * apB) + '%', xB, base - hB - 18, { size: 26, weight: 700, family: fonts.accent, maxW: bw * 1.6, color: numColor(pal), alpha: apB })
+    drawText(ctx, Math.round(vA * 100 * apA) + '%', xA, base - hA - 18, { size: 22, weight: 700, family: fonts.num || fonts.accent, maxW: bw * 1.6, color: pal.dim, alpha: apA })
+    drawText(ctx, Math.round(vB * 100 * apB) + '%', xB, base - hB - 18, { size: 26, weight: 700, family: fonts.num || fonts.accent, maxW: bw * 1.6, color: numColor(pal), alpha: apB })
     // etiquetas bajo cada barra
     drawText(ctx, 'Antes', xA, base + 22, { size: 16, weight: 600, family: fonts.text, maxW: bw * 1.4, color: pal.dim, alpha: apA })
     drawText(ctx, content.cta ? content.cta.split(' ').slice(0, 2).join(' ') : 'Despues', xB, base + 22, { size: 16, weight: 700, family: fonts.text, maxW: bw * 1.6, color: numColor(pal), alpha: apB })
@@ -407,7 +407,7 @@ register({
     ctx.beginPath(); ctx.moveTo(x0 + cut, y - 2); ctx.lineTo(x0 + cut, y + bh + 2); ctx.stroke()
     ctx.restore()
     // % grande de la parte de acento
-    drawText(ctx, Math.round(share * 100 * ap) + '%', x0 + bw * 0.5, y - 44, { size: 56, weight: 700, family: fonts.accent, maxW: bw, color: numColor(pal), alpha: inv(t, 0.3, 0.9) })
+    drawText(ctx, Math.round(share * 100 * ap) + '%', x0 + bw * 0.5, y - 44, { size: 56, weight: 700, family: fonts.num || fonts.accent, maxW: bw, color: numColor(pal), alpha: inv(t, 0.3, 0.9) })
     // etiqueta de cada lado
     drawText(ctx, (content.brand || 'Nosotros'), x0 + 6, y + bh + 22, { size: 16, weight: 700, family: fonts.text, align: 'left', maxW: bw * 0.5, color: numColor(pal), alpha: ap })
     drawText(ctx, 'Resto', x0 + bw - 6, y + bh + 22, { size: 16, weight: 600, family: fonts.text, align: 'right', maxW: bw * 0.4, color: pal.dim, alpha: ap })
@@ -445,7 +445,7 @@ register({
       ctx.restore()
     }
     // numero del rating en mono = el VALOR REAL con count-up
-    drawText(ctx, statDisplay(rt.st, t, 0.15, 1.1), cx, cy + sr + 56, { size: 52, weight: 700, family: fonts.accent, maxW: W * 0.5, color: numColor(pal), alpha: inv(t, 0.6, 1.1) })
+    drawText(ctx, statDisplay(rt.st, t, 0.15, 1.1), cx, cy + sr + 56, { size: 52, weight: 700, family: fonts.num || fonts.accent, maxW: W * 0.5, color: numColor(pal), alpha: inv(t, 0.6, 1.1) })
     const lab = rt.st.label || content.tagline || content.claim || 'sobre 5 estrellas'
     drawText(ctx, lab, cx, cy + sr + 98, { size: 18, weight: 600, family: fonts.text, maxW: W * 0.78, color: pal.dim, alpha: inv(t, 0.8, 1.3) })
   },
@@ -523,13 +523,13 @@ register({
         // tilde en los completados, numero en el activo (ultimo alcanzado)
         const isLast = i === Math.min(n - 1, Math.floor(prog * (n - 1) + 0.0001))
         if (isLast && prog < 0.999) {
-          drawText(ctx, String(i + 1), 0, 1, { size: 16, weight: 700, family: fonts.accent, maxW: nodeR * 1.6, color: numColor(pal) })
+          drawText(ctx, String(i + 1), 0, 1, { size: 16, weight: 700, family: fonts.num || fonts.accent, maxW: nodeR * 1.6, color: numColor(pal) })
         } else {
           ctx.strokeStyle = pal.accent; ctx.lineWidth = 3; ctx.lineJoin = 'round'; ctx.lineCap = 'round'
           checkPath(ctx, nodeR * 0.85); ctx.stroke()
         }
       } else {
-        drawText(ctx, String(i + 1), 0, 1, { size: 15, weight: 700, family: fonts.accent, maxW: nodeR * 1.6, color: pal.dim })
+        drawText(ctx, String(i + 1), 0, 1, { size: 15, weight: 700, family: fonts.num || fonts.accent, maxW: nodeR * 1.6, color: pal.dim })
       }
       ctx.restore()
       // etiqueta a la derecha del nodo
@@ -571,7 +571,7 @@ register({
       ctx.fillStyle = pal.surface; ctx.beginPath(); ctx.roundRect(-chipW / 2, -chipH / 2, chipW, chipH, 14); ctx.fill()
       ctx.strokeStyle = hairline(pal, 0.18); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.roundRect(-chipW / 2, -chipH / 2, chipW, chipH, 14); ctx.stroke()
       // numero de paso (mono) + etiqueta
-      drawText(ctx, String(i + 1), 0, -16, { size: 30, weight: 700, family: fonts.accent, maxW: chipW * 0.8, color: numColor(pal) })
+      drawText(ctx, String(i + 1), 0, -16, { size: 30, weight: 700, family: fonts.num || fonts.accent, maxW: chipW * 0.8, color: numColor(pal) })
       drawText(ctx, labels[i] || def[i], 0, 22, { size: 15, weight: 600, family: fonts.text, maxW: chipW * 0.9, color: pal.dim })
       ctx.restore()
     }
@@ -595,7 +595,7 @@ register({
       const ap = inv(t, 0.1 + i * 0.16, 0.7 + i * 0.16)
       // divisor superior (menos en la 1ra)
       if (i > 0) { ctx.strokeStyle = hairline(pal, 0.1); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(W * 0.2, y - gap / 2); ctx.lineTo(W * 0.8, y - gap / 2); ctx.stroke() }
-      drawText(ctx, statDisplay(rs[i], t, 0.1 + i * 0.16, 0.7 + i * 0.16), cx, y - 8, { size: sizes[i], weight: 700, family: fonts.accent, maxW: W * 0.84, color: numColor(pal), alpha: clamp(ap * 1.3, 0, 1) })
+      drawText(ctx, statDisplay(rs[i], t, 0.1 + i * 0.16, 0.7 + i * 0.16), cx, y - 8, { size: sizes[i], weight: 700, family: fonts.num || fonts.accent, maxW: W * 0.84, color: numColor(pal), alpha: clamp(ap * 1.3, 0, 1) })
       // marca de acento del foco (pildora bajo el numero del medio) -> respira ancho + glow idle
       if (i === 1) { const wu = eOutCubic(inv(t, 0.4, 1)), ww = 70 * wu * breath(t, 0, 0.025); ctx.save(); ctx.globalAlpha = glow(t, 0, 0.78, 1); ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(cx - ww / 2, y + 26, ww, 5, 2.5); ctx.fill(); ctx.restore() }
       drawText(ctx, shortLabel(rs[i].label, 3), cx, y + (i === 1 ? 46 : 24), { size: 16, weight: 600, family: fonts.text, maxW: W * 0.7, color: pal.dim, alpha: clamp(ap * 1.2, 0, 1) })
@@ -621,8 +621,8 @@ register({
     ctx.save(); ctx.globalAlpha = glow(t, 0, 0.78, 1)
     ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(W / 2 - 2, cy - dh / 2, 4, dh, 2); ctx.fill()
     ctx.restore()
-    drawText(ctx, statDisplay(rs[0], t, 0.12, 0.8), xA, cy - 6, { size: 50, weight: 700, family: fonts.accent, maxW: W * 0.34, color: numColor(pal), alpha: clamp(apA * 1.3, 0, 1) })
-    drawText(ctx, statDisplay(rs[1], t, 0.3, 1), xB, cy - 6, { size: 50, weight: 700, family: fonts.accent, maxW: W * 0.34, color: numColor(pal), alpha: clamp(apB * 1.3, 0, 1) })
+    drawText(ctx, statDisplay(rs[0], t, 0.12, 0.8), xA, cy - 6, { size: 50, weight: 700, family: fonts.num || fonts.accent, maxW: W * 0.34, color: numColor(pal), alpha: clamp(apA * 1.3, 0, 1) })
+    drawText(ctx, statDisplay(rs[1], t, 0.3, 1), xB, cy - 6, { size: 50, weight: 700, family: fonts.num || fonts.accent, maxW: W * 0.34, color: numColor(pal), alpha: clamp(apB * 1.3, 0, 1) })
     drawText(ctx, shortLabel(rs[0].label, 2), xA, cy + 42, { size: 16, min: 12, weight: 600, family: fonts.text, maxW: W * 0.36, maxLines: 2, color: pal.dim, alpha: clamp(apA * 1.2, 0, 1) })
     drawText(ctx, shortLabel(rs[1].label, 2), xB, cy + 42, { size: 16, min: 12, weight: 600, family: fonts.text, maxW: W * 0.36, maxLines: 2, color: pal.dim, alpha: clamp(apB * 1.2, 0, 1) })
   },
@@ -655,7 +655,7 @@ register({
       ctx.fillStyle = rgba(pal.accent2, 0.75); ctx.beginPath(); ctx.roundRect(bx, base - hL - hH, bw, hH, [6, 6, 0, 0]); ctx.fill()
       // total encima en mono
       const totAp = inv(t, 0.6 + i * 0.1, 1 + i * 0.1)
-      if (totAp > 0) drawText(ctx, Math.round((lo + hi) * 100) + '', bx + bw / 2, base - hL - hH - 16, { size: 16, weight: 700, family: fonts.accent, maxW: slot, color: numColor(pal), alpha: totAp })
+      if (totAp > 0) drawText(ctx, Math.round((lo + hi) * 100) + '', bx + bw / 2, base - hL - hH - 16, { size: 16, weight: 700, family: fonts.num || fonts.accent, maxW: slot, color: numColor(pal), alpha: totAp })
       drawText(ctx, labs[i], bx + bw / 2, base + 20, { size: 14, weight: 600, family: fonts.text, maxW: slot, color: pal.dim, alpha: clamp(apL * 1.2, 0, 1) })
     }
     // leyenda
@@ -697,7 +697,7 @@ register({
       ctx.beginPath(); ctx.arc(Math.max(x0 + 6, ex), y, 14 * breath(t, i * 0.8, 0.05, 1.2), 0, TAU); ctx.fill()
       ctx.restore()
       // valor al lado de la cabeza
-      drawText(ctx, Math.round(raw[i] * 100 * ap) + '%', Math.max(x0 + 6, ex) + 22, y, { size: 15, weight: 700, family: fonts.accent, align: 'left', maxW: W * 0.2, color: numColor(pal), alpha: ap })
+      drawText(ctx, Math.round(raw[i] * 100 * ap) + '%', Math.max(x0 + 6, ex) + 22, y, { size: 15, weight: 700, family: fonts.num || fonts.accent, align: 'left', maxW: W * 0.2, color: numColor(pal), alpha: ap })
     }
   },
 })
@@ -737,7 +737,7 @@ register({
       const ap = inv(t, 0.6 + i * 0.12, 1.1 + i * 0.12)
       ctx.save(); ctx.globalAlpha = ap
       ctx.fillStyle = cols[i]; ctx.beginPath(); ctx.arc(lx, ly, 7, 0, TAU); ctx.fill()
-      drawText(ctx, Math.round(pcts[i] * 100) + '%', lx + 18, ly - 8, { size: 22, weight: 700, family: fonts.accent, align: 'left', maxW: W * 0.24, color: numColor(pal) })
+      drawText(ctx, Math.round(pcts[i] * 100) + '%', lx + 18, ly - 8, { size: 22, weight: 700, family: fonts.num || fonts.accent, align: 'left', maxW: W * 0.24, color: numColor(pal) })
       drawText(ctx, labs[i], lx + 18, ly + 12, { size: 12, weight: 600, family: fonts.text, align: 'left', maxW: W * 0.24, color: pal.dim })
       ctx.restore()
     }
@@ -767,7 +767,7 @@ register({
     sheenArc(ctx, cx, cy, rad, lw, t, pal.accent, { period: 4.4, span: 0.6, strength: 0.4 })
     ctx.restore()
     // % central en mono (tinta en claro) = el VALOR REAL con count-up
-    drawText(ctx, statDisplay(pr.st, t, 0.1, 1.1), cx, cy - 4, { size: 58, weight: 700, family: fonts.accent, maxW: rad * 1.4, color: numColor(pal) })
+    drawText(ctx, statDisplay(pr.st, t, 0.1, 1.1), cx, cy - 4, { size: 58, weight: 700, family: fonts.num || fonts.accent, maxW: rad * 1.4, color: numColor(pal) })
     drawText(ctx, shortLabel(pr.st.label, 3) || 'del mercado', cx, cy + 40, { size: 16, weight: 600, family: fonts.text, maxW: rad * 1.5, color: pal.dim, alpha: inv(t, 0.5, 1) })
     // etiqueta inferior (claim): drawWrapped -> envuelve en <=2 lineas y achica antes de elidir (claims largos entran completos)
     const lab = content.claim
@@ -800,7 +800,7 @@ register({
     ctx.restore()
     // total al centro (numero estable grande)
     const total = Math.round(range(r, 1200, 9800))
-    drawText(ctx, fmtInt(total * ap), cx, cy - 4, { size: 34, weight: 700, family: fonts.accent, maxW: rad * 1.3, color: numColor(pal) })
+    drawText(ctx, fmtInt(total * ap), cx, cy - 4, { size: 34, weight: 700, family: fonts.num || fonts.accent, maxW: rad * 1.3, color: numColor(pal) })
     drawText(ctx, 'total', cx, cy + 26, { size: 13, weight: 600, family: fonts.text, maxW: rad * 1.2, color: pal.dim, alpha: inv(t, 0.5, 1) })
     // leyenda en lista 2x2 debajo. Etiqueta de 1 palabra (tight) + % a la derecha de la columna sin colision.
     const labels = [content.brand, content.tagline, content.claim, content.cta].map(s => shortLabel(s, 1))
@@ -814,7 +814,7 @@ register({
       ctx.fillStyle = cols[i]; ctx.beginPath(); ctx.roundRect(lx, ly - 7, 14, 14, 4); ctx.fill()
       // la etiqueta termina antes de donde arranca el % (gap de 8px)
       drawText(ctx, (labels[i] || def[i]), lx + 22, ly, { size: 14, weight: 600, family: fonts.text, align: 'left', maxW: pctRight - W * 0.1 - 22 - 8, color: pal.ink })
-      drawText(ctx, Math.round(parts[i] * 100) + '%', lx + pctRight, ly, { size: 15, weight: 700, family: fonts.accent, align: 'right', maxW: W * 0.1, color: numColor(pal) })
+      drawText(ctx, Math.round(parts[i] * 100) + '%', lx + pctRight, ly, { size: 15, weight: 700, family: fonts.num || fonts.accent, align: 'right', maxW: W * 0.1, color: numColor(pal) })
       ctx.restore()
     }
   },
@@ -837,14 +837,14 @@ register({
     drawText(ctx, 'Antes', x0, yA - 22, { size: 14, weight: 600, family: fonts.text, align: 'left', maxW: bw, color: pal.dim, alpha: apA })
     ctx.fillStyle = hairline(pal, 0.08); ctx.beginPath(); ctx.roundRect(x0, yA, bw, bh, bh / 2); ctx.fill()
     ctx.fillStyle = rgba(pal.accent, 0.4); ctx.beginPath(); ctx.roundRect(x0, yA, Math.max(bh, bw * vA * apA), bh, bh / 2); ctx.fill()
-    drawText(ctx, Math.round(vA * 100 * apA) + '%', x0 + bw + 12, yA + bh / 2, { size: 16, weight: 700, family: fonts.accent, align: 'left', maxW: W * 0.14, color: pal.dim, alpha: apA })
+    drawText(ctx, Math.round(vA * 100 * apA) + '%', x0 + bw + 12, yA + bh / 2, { size: 16, weight: 700, family: fonts.num || fonts.accent, align: 'left', maxW: W * 0.14, color: pal.dim, alpha: apA })
     // fila DESPUES (acento pleno)
     drawText(ctx, shortLabel(content.cta, 2) || 'Despues', x0, yB - 22, { size: 14, weight: 700, family: fonts.text, align: 'left', maxW: bw, color: numColor(pal), alpha: apB })
     ctx.fillStyle = hairline(pal, 0.08); ctx.beginPath(); ctx.roundRect(x0, yB, bw, bh, bh / 2); ctx.fill()
     const fwB = Math.max(bh, bw * vB * apB)
     ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(x0, yB, fwB, bh, bh / 2); ctx.fill()
     sheen(ctx, x0, yB, fwB, bh, t, { period: 3.6, strength: 0.18, r: bh / 2 })
-    drawText(ctx, Math.round(vB * 100 * apB) + '%', x0 + bw + 12, yB + bh / 2, { size: 16, weight: 700, family: fonts.accent, align: 'left', maxW: W * 0.14, color: numColor(pal), alpha: apB })
+    drawText(ctx, Math.round(vB * 100 * apB) + '%', x0 + bw + 12, yB + bh / 2, { size: 16, weight: 700, family: fonts.num || fonts.accent, align: 'left', maxW: W * 0.14, color: numColor(pal), alpha: apB })
     // delta de mejora (chip de acento)
     const dAp = inv(t, 0.7, 1.2)
     if (dAp > 0) {
@@ -855,7 +855,7 @@ register({
       const px = W / 2 - (tw + 36) / 2, py = H * 0.64
       ctx.save(); ctx.globalAlpha = dAp * glow(t, 0, 0.82, 1)
       ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(px, py, tw + 36, 38, 19); ctx.fill(); ctx.restore()
-      drawText(ctx, txt, px + (tw + 36) / 2, py + 19, { size: 18, weight: 700, family: fonts.accent, maxW: tw + 30, color: pal.onAccent })
+      drawText(ctx, txt, px + (tw + 36) / 2, py + 19, { size: 18, weight: 700, family: fonts.num || fonts.accent, maxW: tw + 30, color: pal.onAccent })
       ctx.restore()
     }
   },
@@ -887,7 +887,7 @@ register({
     }
     // texto "N de cada 10"
     const tAp = inv(t, 0.7, 1.2)
-    drawText(ctx, filled + ' de cada 10', W / 2, oy + gridH + H * 0.13, { size: 26, weight: 700, family: fonts.accent, maxW: W * 0.7, color: numColor(pal), alpha: tAp })
+    drawText(ctx, filled + ' de cada 10', W / 2, oy + gridH + H * 0.13, { size: 26, weight: 700, family: fonts.num || fonts.accent, maxW: W * 0.7, color: numColor(pal), alpha: tAp })
     const lab = shortLabel(content.cta, 4) || 'nos recomiendan'
     drawText(ctx, lab, W / 2, oy + gridH + H * 0.18, { size: 17, weight: 600, family: fonts.text, maxW: W * 0.8, color: pal.dim, alpha: inv(t, 0.8, 1.3) })
   },
@@ -911,7 +911,7 @@ register({
     const pfw = Math.max(8, pbw * prog)
     ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(pbx, pby, pfw, 8, 4); ctx.fill()
     sheen(ctx, pbx, pby, pfw, 8, t, { period: 3, strength: 0.2, r: 4 })
-    drawText(ctx, Math.round(prog * 100) + '%', pbx + pbw + 10, pby + 4, { size: 14, weight: 700, family: fonts.accent, align: 'left', maxW: W * 0.12, color: numColor(pal) })
+    drawText(ctx, Math.round(prog * 100) + '%', pbx + pbw + 10, pby + 4, { size: 14, weight: 700, family: fonts.num || fonts.accent, align: 'left', maxW: W * 0.12, color: numColor(pal) })
     for (let i = 0; i < n; i++) {
       const y = top + i * gap
       const done = prog > (i + 0.5) / n
@@ -949,7 +949,7 @@ register({
       // etiqueta arriba
       drawText(ctx, shortLabel(rs[i].label, 3), xL, y - 26, { size: 14, weight: 600, family: fonts.text, align: 'left', maxW: W * 0.6, color: pal.dim, alpha: clamp(ap * 1.3, 0, 1) })
       // numero grande mono = el VALOR REAL con count-up
-      drawText(ctx, statDisplay(rs[i], t, 0.1 + i * 0.15, 0.7 + i * 0.15), xL, y + 6, { size: 86, weight: 700, family: fonts.accent, align: 'left', maxW: W * 0.72, color: numColor(pal), alpha: clamp(ap * 1.2, 0, 1) })
+      drawText(ctx, statDisplay(rs[i], t, 0.1 + i * 0.15, 0.7 + i * 0.15), xL, y + 6, { size: 86, weight: 700, family: fonts.num || fonts.accent, align: 'left', maxW: W * 0.72, color: numColor(pal), alpha: clamp(ap * 1.2, 0, 1) })
       // (chip de DELTA '+X%' ELIMINADO: fabricaba una tendencia inventada por fila -> deshonesto.)
       // regla divisoria
       if (i < n - 1) { ctx.strokeStyle = hairline(pal, 0.08); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(xL, y + gap / 2); ctx.lineTo(W * 0.86, y + gap / 2); ctx.stroke() }
@@ -982,10 +982,10 @@ register({
     const pAp = inv(t, 0.7, 1.1)
     if (pAp > 0) {
       const bx = x0 + peak * slot + slot / 2
-      drawText(ctx, Math.round(vals[peak] * 100) + '', bx, base - maxH * vals[peak] - 14, { size: 15, weight: 700, family: fonts.accent, maxW: slot * 2, color: numColor(pal), alpha: pAp })
+      drawText(ctx, Math.round(vals[peak] * 100) + '', bx, base - maxH * vals[peak] - 14, { size: 15, weight: 700, family: fonts.num || fonts.accent, maxW: slot * 2, color: numColor(pal), alpha: pAp })
     }
     const delta = Math.round((vals[n - 1] - vals[0]) * 100)
-    drawText(ctx, '+' + Math.abs(delta) + '%', W / 2, H * 0.22, { size: 40, weight: 700, family: fonts.accent, maxW: W * 0.5, color: numColor(pal), alpha: inv(t, 0.4, 1) })
+    drawText(ctx, '+' + Math.abs(delta) + '%', W / 2, H * 0.22, { size: 40, weight: 700, family: fonts.num || fonts.accent, maxW: W * 0.5, color: numColor(pal), alpha: inv(t, 0.4, 1) })
     const lab = content.tagline || content.claim
     if (lab) drawText(ctx, lab, W / 2, H * 0.72, { size: 18, weight: 600, family: fonts.text, maxW: W * 0.78, color: pal.dim, alpha: inv(t, 0.7, 1.2) })
   },
@@ -1008,7 +1008,7 @@ register({
     const st = realStat(content, 0); if (!st) return   // honestidad: solo con stat real (el selector ya lo gatea; doble-guard)
     // numero hero = el VALOR REAL (el value ya trae su prefijo/sufijo: '$2.4M','92%','28.725') con count-up en la parte numerica.
     const cx = W / 2, cy = H * 0.44
-    drawText(ctx, statDisplay(st, t, 0.1, 1.2), cx, cy, { size: 100, weight: 700, family: fonts.accent, maxW: W * 0.82, color: numColor(pal), shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.35)' : null })
+    drawText(ctx, statDisplay(st, t, 0.1, 1.2), cx, cy, { size: 100, weight: 700, family: fonts.num || fonts.accent, maxW: W * 0.82, color: numColor(pal), shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.35)' : null })
     // regla de acento bajo el numero -> respira ancho + glow idle
     const ru = eOutCubic(inv(t, 0.5, 1.2)), rw = 110 * ru * breath(t, 0, 0.02)
     ctx.save(); ctx.globalAlpha = glow(t, 0, 0.78, 1)
@@ -1048,7 +1048,7 @@ register({
       // linea media del odometro (deco)
       ctx.strokeStyle = hairline(pal, 0.08); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + 4, cy); ctx.lineTo(x + cellW - 4, cy); ctx.stroke()
       ctx.restore()
-      drawText(ctx, ch, x + cellW / 2, cy, { size: 44, weight: 700, family: fonts.accent, maxW: cellW, color: numColor(pal), alpha: clamp(ap * 1.4, 0, 1) })
+      drawText(ctx, ch, x + cellW / 2, cy, { size: 44, weight: 700, family: fonts.num || fonts.accent, maxW: cellW, color: numColor(pal), alpha: clamp(ap * 1.4, 0, 1) })
       x += cellW + gap; cellIdx++
     }
     // regla de acento debajo -> respira ancho + glow idle
@@ -1084,7 +1084,7 @@ register({
       ctx.beginPath(); ctx.roundRect(x0, y, fwR, bh, bh / 2); ctx.fill()
       sheen(ctx, x0, y, fwR, bh, t, { period: 3.4, phase: i * 0.2, strength: i === 0 ? 0.18 : 0.1, r: bh / 2 })
       // % al final
-      drawText(ctx, Math.round(vals[i] * 100 * ap) + '%', x0 + bw + 12, y + bh / 2, { size: 15, weight: 700, family: fonts.accent, align: 'left', maxW: W * 0.14, color: numColor(pal), alpha: ap })
+      drawText(ctx, Math.round(vals[i] * 100 * ap) + '%', x0 + bw + 12, y + bh / 2, { size: 15, weight: 700, family: fonts.num || fonts.accent, align: 'left', maxW: W * 0.14, color: numColor(pal), alpha: ap })
     }
   },
 })
@@ -1118,7 +1118,7 @@ register({
       drawText(ctx, shortLabel(labels[i], 1) || def[i], pos ? cxAxis - 10 : cxAxis + 10, y + bh / 2, { size: 13, weight: 600, family: fonts.text, align: pos ? 'right' : 'left', maxW: W * 0.16, color: pal.dim, alpha: ap })
       // valor en la punta
       const vx = pos ? cxAxis + len + 8 : cxAxis - len - 8
-      drawText(ctx, (pos ? '+' : '-') + Math.round(v * 40 * ap), vx, y + bh / 2, { size: 13, weight: 700, family: fonts.accent, align: pos ? 'left' : 'right', maxW: W * 0.14, color: pos ? numColor(pal) : pal.dim, alpha: ap })
+      drawText(ctx, (pos ? '+' : '-') + Math.round(v * 40 * ap), vx, y + bh / 2, { size: 13, weight: 700, family: fonts.num || fonts.accent, align: pos ? 'left' : 'right', maxW: W * 0.14, color: pos ? numColor(pal) : pal.dim, alpha: ap })
     }
   },
 })
@@ -1149,7 +1149,7 @@ register({
     ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(nx, ny); ctx.stroke()
     ctx.save(); ctx.globalAlpha = glow(t, 0, 0.8, 1); ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.arc(cx, cy, 9 * breath(t, 0, 0.05, 1.3), 0, TAU); ctx.fill(); ctx.restore()
     // numero (mono) bajo el centro = el VALOR REAL con count-up
-    drawText(ctx, statDisplay(pr.st, t, 0.1, 1.2), cx, cy + 44, { size: 48, weight: 700, family: fonts.accent, maxW: rad * 1.6, color: numColor(pal) })
+    drawText(ctx, statDisplay(pr.st, t, 0.1, 1.2), cx, cy + 44, { size: 48, weight: 700, family: fonts.num || fonts.accent, maxW: rad * 1.6, color: numColor(pal) })
     const lab = pr.st.label || content.tagline || content.claim
     if (lab) drawText(ctx, lab, cx, cy + 92, { size: 18, weight: 600, family: fonts.text, maxW: W * 0.78, color: pal.dim, alpha: inv(t, 0.7, 1.2) })
   },
@@ -1181,7 +1181,7 @@ register({
       else { ctx.fillStyle = hairline(pal, 0.16); ctx.beginPath(); ctx.arc(0, 0, 5, 0, TAU); ctx.fill() }
       ctx.restore()
     }
-    drawText(ctx, statDisplay(pr.st, t, 0.1, 1.1), cx, cy - 2, { size: 50, weight: 700, family: fonts.accent, maxW: rad * 1.4, color: numColor(pal) })
+    drawText(ctx, statDisplay(pr.st, t, 0.1, 1.1), cx, cy - 2, { size: 50, weight: 700, family: fonts.num || fonts.accent, maxW: rad * 1.4, color: numColor(pal) })
     const lab = shortLabel(pr.st.label, 3) || 'completado'
     drawText(ctx, lab, cx, cy + 38, { size: 16, weight: 600, family: fonts.text, maxW: rad * 1.6, color: pal.dim, alpha: inv(t, 0.6, 1.1) })
   },
@@ -1212,7 +1212,7 @@ register({
       ctx.save(); ctx.beginPath(); ctx.arc(cx, cyc, rad + lw, start, start + sweepD); ctx.arc(cx, cyc, rad - lw, start + sweepD, start, true); ctx.closePath(); ctx.clip()
       sheenArc(ctx, cx, cyc, rad, lw, t, cols[k], { period: 4.2, phase: k * 0.4, span: 0.7, strength: 0.42 })
       ctx.restore()
-      drawText(ctx, Math.round(pcts[k] * 100 * ap) + '%', cx, cyc, { size: 30, weight: 700, family: fonts.accent, maxW: rad * 1.6, color: numColor(pal) })
+      drawText(ctx, Math.round(pcts[k] * 100 * ap) + '%', cx, cyc, { size: 30, weight: 700, family: fonts.num || fonts.accent, maxW: rad * 1.6, color: numColor(pal) })
       drawText(ctx, labs[k], cx, cyc + rad + 30, { size: 16, weight: 600, family: fonts.text, maxW: W * 0.32, color: pal.dim, alpha: inv(t, 0.6, 1.1) })
     }
   },
@@ -1274,7 +1274,7 @@ register({
     const ap = eOutCubic(inv(t, 0.1, 1.1))
     const filled = cells * pct * ap
     // % grande = el VALOR REAL con count-up
-    drawText(ctx, statDisplay(pr.st, t, 0.1, 1.1), W / 2, y - 56, { size: 56, weight: 700, family: fonts.accent, maxW: bw, color: numColor(pal), alpha: inv(t, 0.3, 0.9) })
+    drawText(ctx, statDisplay(pr.st, t, 0.1, 1.1), W / 2, y - 56, { size: 56, weight: 700, family: fonts.num || fonts.accent, maxW: bw, color: numColor(pal), alpha: inv(t, 0.3, 0.9) })
     for (let i = 0; i < cells; i++) {
       const cx = x0 + i * (cw + gap)
       const frac = clamp(filled - i, 0, 1)
@@ -1311,20 +1311,20 @@ register({
     ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(cxc - lA, yA, lA, bh, [bh / 2, 0, 0, bh / 2]); ctx.fill()
     sheen(ctx, cxc - lA, yA, lA, bh, t, { period: 3.4, strength: 0.18, r: bh / 2 })
     drawText(ctx, shortLabel(content.brand, 2) || 'Nosotros', cxc - lA - 10, yA + bh / 2, { size: 14, weight: 700, family: fonts.text, align: 'right', maxW: W * 0.3, color: numColor(pal), alpha: apA })
-    drawText(ctx, Math.round(vA * 100 * apA) + '%', cxc - 10, yA + bh / 2, { size: 16, weight: 700, family: fonts.accent, align: 'right', maxW: lA, color: pal.onAccent, alpha: apA })
+    drawText(ctx, Math.round(vA * 100 * apA) + '%', cxc - 10, yA + bh / 2, { size: 16, weight: 700, family: fonts.num || fonts.accent, align: 'right', maxW: lA, color: pal.onAccent, alpha: apA })
     // B (abajo, atenuado, crece a la derecha)
     const yB = top + gap
     const lB = maxL * vB * apB
     ctx.fillStyle = rgba(pal.accent, 0.35); ctx.beginPath(); ctx.roundRect(cxc, yB, lB, bh, [0, bh / 2, bh / 2, 0]); ctx.fill()
     drawText(ctx, 'Resto', cxc + lB + 10, yB + bh / 2, { size: 14, weight: 600, family: fonts.text, align: 'left', maxW: W * 0.3, color: pal.dim, alpha: apB })
-    drawText(ctx, Math.round(vB * 100 * apB) + '%', cxc + 10, yB + bh / 2, { size: 16, weight: 700, family: fonts.accent, align: 'left', maxW: lB, color: numColor(pal), alpha: apB })
+    drawText(ctx, Math.round(vB * 100 * apB) + '%', cxc + 10, yB + bh / 2, { size: 16, weight: 700, family: fonts.num || fonts.accent, align: 'left', maxW: lB, color: numColor(pal), alpha: apB })
     // VS al medio
     const vAp = spring(inv(t, 0.1, 0.7), { zeta: 0.45, freq: 2.2 })
     const vsB = breath(t, 0, 0.025, 1.1)
     ctx.save(); ctx.globalAlpha = clamp(vAp, 0, 1); ctx.translate(cxc, (yA + yB + bh) / 2); ctx.scale(clamp(vAp, 0, 1.1) * vsB, clamp(vAp, 0, 1.1) * vsB)
     ctx.fillStyle = pal.bg0; ctx.beginPath(); ctx.arc(0, 0, 22, 0, TAU); ctx.fill()
     ctx.save(); ctx.globalAlpha *= glow(t, 0, 0.7, 1); ctx.strokeStyle = pal.accent; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(0, 0, 22, 0, TAU); ctx.stroke(); ctx.restore()
-    drawText(ctx, 'VS', 0, 1, { size: 16, weight: 700, family: fonts.accent, maxW: 40, color: numColor(pal) })
+    drawText(ctx, 'VS', 0, 1, { size: 16, weight: 700, family: fonts.num || fonts.accent, maxW: 40, color: numColor(pal) })
     ctx.restore()
   },
 })
@@ -1339,7 +1339,7 @@ register({
     const score = range(r, 4.3, 4.95)
     const reviews = Math.round(range(r, 120, 2400))
     // score + estrellitas a la izquierda
-    drawText(ctx, score.toFixed(1), W * 0.24, H * 0.34, { size: 64, weight: 700, family: fonts.accent, maxW: W * 0.4, color: numColor(pal), alpha: inv(t, 0.2, 0.8) })
+    drawText(ctx, score.toFixed(1), W * 0.24, H * 0.34, { size: 64, weight: 700, family: fonts.num || fonts.accent, maxW: W * 0.4, color: numColor(pal), alpha: inv(t, 0.2, 0.8) })
     const sAp = inv(t, 0.3, 0.9)
     for (let i = 0; i < 5; i++) {
       const sx = W * 0.12 + i * 22
@@ -1356,7 +1356,7 @@ register({
     for (let i = 0; i < 5; i++) {
       const y = top + i * gap
       const ap = eOutCubic(inv(t, 0.2 + i * 0.08, 0.9 + i * 0.08))
-      drawText(ctx, String(5 - i), x0 - 16, y + bh / 2, { size: 12, weight: 700, family: fonts.accent, align: 'right', maxW: 16, color: pal.dim, alpha: ap })
+      drawText(ctx, String(5 - i), x0 - 16, y + bh / 2, { size: 12, weight: 700, family: fonts.num || fonts.accent, align: 'right', maxW: 16, color: pal.dim, alpha: ap })
       ctx.fillStyle = hairline(pal, 0.1); ctx.beginPath(); ctx.roundRect(x0, y, bw, bh, bh / 2); ctx.fill()
       const fwd = Math.max(bh, bw * dist[i] * ap)
       ctx.fillStyle = i === 0 ? pal.accent : rgba(pal.accent, 0.45)
@@ -1395,7 +1395,7 @@ register({
       const ap = eOutBack01(reach)
       const week = (i + 1) * 2     // "Sem 2/4/6/8"
       // fecha-mono arriba
-      drawText(ctx, 'Sem ' + week, x, cy - 38, { size: 13, weight: 700, family: fonts.accent, maxW: span / n, color: reach > 0.5 ? numColor(pal) : pal.dim, alpha: clamp(0.4 + ap * 0.6, 0, 1) })
+      drawText(ctx, 'Sem ' + week, x, cy - 38, { size: 13, weight: 700, family: fonts.num || fonts.accent, maxW: span / n, color: reach > 0.5 ? numColor(pal) : pal.dim, alpha: clamp(0.4 + ap * 0.6, 0, 1) })
       // halo idle que late en hitos alcanzados
       if (reach > 0.5 && ik > 0.001) { const hp = ((t / 2.4 + i * 0.22) % 1 + 1) % 1; ctx.save(); ctx.globalAlpha = (1 - hp) * 0.35 * ik; ctx.strokeStyle = pal.accent; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, cy, 11 + hp * 8, 0, TAU); ctx.stroke(); ctx.restore() }
       // nodo
@@ -1440,7 +1440,7 @@ register({
     }
     // centro: paso actual / total (cuenta hasta target)
     const cur = Math.round(lit)
-    drawText(ctx, cur + '/' + steps, cx, cy - 6, { size: 52, weight: 700, family: fonts.accent, maxW: rad * 1.4, color: numColor(pal) })
+    drawText(ctx, cur + '/' + steps, cx, cy - 6, { size: 52, weight: 700, family: fonts.num || fonts.accent, maxW: rad * 1.4, color: numColor(pal) })
     drawText(ctx, 'pasos', cx, cy + 34, { size: 16, weight: 600, family: fonts.text, maxW: rad * 1.4, color: pal.dim, alpha: inv(t, 0.5, 1) })
     const lab = content.tagline || content.claim
     if (lab) drawText(ctx, lab, cx, cy + rad + 50, { size: 18, weight: 600, family: fonts.text, maxW: W * 0.8, color: pal.dim, alpha: inv(t, 0.7, 1.2) })
@@ -1472,7 +1472,7 @@ register({
     ctx.fillStyle = lighten(pal.accent, 0.3); ctx.beginPath(); ctx.arc(hx, hy, lw * 0.5 * breath(t, 0, 0.06, 1.3), 0, TAU); ctx.fill(); ctx.restore()
     ctx.fillStyle = pal.bg0; ctx.beginPath(); ctx.arc(hx, hy, lw * 0.2, 0, TAU); ctx.fill()
     // numero grande contando (mono) = el VALOR REAL con count-up
-    drawText(ctx, statDisplay(pr.st, t, 0.1, 1.2), cx, cy - 2, { size: 60, weight: 700, family: fonts.accent, maxW: rad * 1.5, color: numColor(pal) })
+    drawText(ctx, statDisplay(pr.st, t, 0.1, 1.2), cx, cy - 2, { size: 60, weight: 700, family: fonts.num || fonts.accent, maxW: rad * 1.5, color: numColor(pal) })
     drawText(ctx, shortLabel(pr.st.label, 3) || 'logrado', cx, cy + 42, { size: 17, weight: 600, family: fonts.text, maxW: rad * 1.6, color: pal.dim, alpha: inv(t, 0.5, 1) })
     const lab = content.claim
     if (lab && lab !== content.tagline) drawWrapped(ctx, lab, cx, cy + rad + 52, { size: 18, min: 14, weight: 600, family: fonts.text, maxW: W * 0.8, maxLines: 2, color: pal.dim, alpha: inv(t, 0.7, 1.2) })
@@ -1501,7 +1501,7 @@ register({
     // numero hero = el VALOR REAL con count-up (el value ya trae su prefijo/sufijo: '+218%','92%','$2.4M').
     const cx = W / 2, cy = H * 0.46
     // (chip 'vs mes anterior' ELIMINADO: aseveraba una comparacion temporal que no viene del dato -> deshonesto.)
-    drawText(ctx, statDisplay(st, t, 0.1, 1.2), cx, cy, { size: 120, weight: 700, family: fonts.accent, maxW: W * 0.86, color: numColor(pal), shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.35)' : null })
+    drawText(ctx, statDisplay(st, t, 0.1, 1.2), cx, cy, { size: 120, weight: 700, family: fonts.num || fonts.accent, maxW: W * 0.86, color: numColor(pal), shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.35)' : null })
     const ru = eOutCubic(inv(t, 0.5, 1.2)), rw = 110 * ru * breath(t, 0, 0.02)
     ctx.save(); ctx.globalAlpha = glow(t, 0, 0.78, 1)
     ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(cx - rw / 2, cy + 58, rw, 6, 3); ctx.fill(); ctx.restore()
@@ -1522,13 +1522,13 @@ register({
     const ap = inv(t, 0.1, 0.8)
     const numShown = Math.round(num * eOutExpo(ap))
     // numerador grande
-    drawText(ctx, String(numShown), cx - W * 0.14, cy, { size: 110, weight: 700, family: fonts.accent, align: 'right', maxW: W * 0.34, color: numColor(pal), alpha: clamp(ap * 1.3, 0, 1) })
+    drawText(ctx, String(numShown), cx - W * 0.14, cy, { size: 110, weight: 700, family: fonts.num || fonts.accent, align: 'right', maxW: W * 0.34, color: numColor(pal), alpha: clamp(ap * 1.3, 0, 1) })
     // barra "/" inclinada de acento (DECO) -> glow idle + leve respiracion de grosor
     const sAp = eOutCubic(inv(t, 0.3, 0.9))
     ctx.save(); ctx.strokeStyle = pal.accent; ctx.lineWidth = 7 * breath(t, 0, 0.04, 1.2); ctx.lineCap = 'round'; ctx.globalAlpha = sAp * glow(t, 0, 0.78, 1)
     ctx.beginPath(); ctx.moveTo(cx + 14, cy + 44); ctx.lineTo(cx - 14, cy - 44); ctx.stroke(); ctx.restore()
     // denominador
-    drawText(ctx, String(den), cx + W * 0.14, cy + 8, { size: 56, weight: 700, family: fonts.accent, align: 'left', maxW: W * 0.3, color: pal.dim, alpha: inv(t, 0.4, 1) })
+    drawText(ctx, String(den), cx + W * 0.14, cy + 8, { size: 56, weight: 700, family: fonts.num || fonts.accent, align: 'left', maxW: W * 0.3, color: pal.dim, alpha: inv(t, 0.4, 1) })
     const label = content.tagline || content.claim || 'lo recomiendan'
     drawText(ctx, label, cx, cy + 110, { size: 20, weight: 600, family: fonts.text, maxW: W * 0.82, color: pal.dim, alpha: inv(t, 0.7, 1.2) })
   },
@@ -1557,7 +1557,7 @@ register({
       // rotulo DENTRO a la izq (color que contrasta con el relleno cuando esta sobre el)
       drawText(ctx, shortLabel(labels[i], 2) || def[i], x0 + 16, y + bh / 2, { size: 15, weight: 700, family: fonts.text, align: 'left', maxW: bw * 0.55, color: i === 0 ? pal.onAccent : numColor(pal), alpha: ap })
       // valor mono a la derecha
-      drawText(ctx, Math.round(raw[i] * 100 * ap) + '%', x0 + bw - 14, y + bh / 2, { size: 16, weight: 700, family: fonts.accent, align: 'right', maxW: W * 0.16, color: numColor(pal), alpha: ap })
+      drawText(ctx, Math.round(raw[i] * 100 * ap) + '%', x0 + bw - 14, y + bh / 2, { size: 16, weight: 700, family: fonts.num || fonts.accent, align: 'right', maxW: W * 0.16, color: numColor(pal), alpha: ap })
     }
   },
 })
@@ -1586,10 +1586,10 @@ register({
       const mx = x0 + bw * meta
       ctx.save(); ctx.globalAlpha = mAp * glow(t, 0, 0.7, 1); ctx.strokeStyle = numColor(pal); ctx.lineWidth = 3; ctx.lineCap = 'round'
       ctx.beginPath(); ctx.moveTo(mx, y - 12); ctx.lineTo(mx, y + bh + 12); ctx.stroke(); ctx.restore()
-      drawText(ctx, 'meta ' + Math.round(meta * 100) + '%', mx, y - 24, { size: 14, weight: 700, family: fonts.accent, maxW: W * 0.4, color: numColor(pal), alpha: mAp })
+      drawText(ctx, 'meta ' + Math.round(meta * 100) + '%', mx, y - 24, { size: 14, weight: 700, family: fonts.num || fonts.accent, maxW: W * 0.4, color: numColor(pal), alpha: mAp })
     }
     // valor actual grande arriba-izq del riel
-    drawText(ctx, Math.round(cur * 100 * ap) + '%', x0 + 4, y - 24, { size: 30, weight: 700, family: fonts.accent, align: 'left', maxW: bw * 0.5, color: numColor(pal), alpha: inv(t, 0.3, 0.9) })
+    drawText(ctx, Math.round(cur * 100 * ap) + '%', x0 + 4, y - 24, { size: 30, weight: 700, family: fonts.num || fonts.accent, align: 'left', maxW: bw * 0.5, color: numColor(pal), alpha: inv(t, 0.3, 0.9) })
     drawText(ctx, shortLabel(content.cta, 4) || 'logrado', W / 2, y + bh + 36, { size: 17, weight: 600, family: fonts.text, maxW: W * 0.8, color: pal.dim, alpha: inv(t, 0.6, 1.1) })
   },
 })
@@ -1624,7 +1624,7 @@ register({
       ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1); ctx.lineTo(cx + Math.cos(a) * r2, cy + Math.sin(a) * r2); ctx.stroke()
     }
     // numero grande en el hueco = el VALOR REAL con count-up
-    drawText(ctx, statDisplay(pr.st, t, 0.1, 1.2), cx, cy - 18, { size: 64, weight: 700, family: fonts.accent, maxW: rad * 1.6, color: numColor(pal) })
+    drawText(ctx, statDisplay(pr.st, t, 0.1, 1.2), cx, cy - 18, { size: 64, weight: 700, family: fonts.num || fonts.accent, maxW: rad * 1.6, color: numColor(pal) })
     const lab = pr.st.label || content.tagline || content.claim
     if (lab) drawText(ctx, lab, cx, cy + 28, { size: 18, weight: 600, family: fonts.text, maxW: W * 0.74, color: pal.dim, alpha: inv(t, 0.7, 1.2) })
   },
@@ -1654,7 +1654,7 @@ register({
     sheenArc(ctx, cx, cy, rad, lw, t, pal.accent, { period: 5, span: 0.7, strength: 0.36 })
     ctx.restore()
     // % dominante al centro
-    drawText(ctx, Math.round(parts[0] * 100 * ap) + '%', cx, cy, { size: 32, weight: 700, family: fonts.accent, maxW: rad * 1.4, color: numColor(pal) })
+    drawText(ctx, Math.round(parts[0] * 100 * ap) + '%', cx, cy, { size: 32, weight: 700, family: fonts.num || fonts.accent, maxW: rad * 1.4, color: numColor(pal) })
     // leyenda a la derecha
     const labels = [content.brand, content.claim, content.cta].map(s => shortLabel(s, 2))
     const def = ['Directo', 'Social', 'Otros']
@@ -1665,7 +1665,7 @@ register({
       ctx.save(); ctx.globalAlpha = la
       ctx.fillStyle = cols[i]; ctx.beginPath(); ctx.arc(lx, ly, 8, 0, TAU); ctx.fill()
       drawText(ctx, labels[i] || def[i], lx + 18, ly - 9, { size: 14, weight: 600, family: fonts.text, align: 'left', maxW: W * 0.3, color: pal.ink })
-      drawText(ctx, Math.round(parts[i] * 100) + '%', lx + 18, ly + 12, { size: 20, weight: 700, family: fonts.accent, align: 'left', maxW: W * 0.3, color: numColor(pal) })
+      drawText(ctx, Math.round(parts[i] * 100) + '%', lx + 18, ly + 12, { size: 20, weight: 700, family: fonts.num || fonts.accent, align: 'left', maxW: W * 0.3, color: numColor(pal) })
       ctx.restore()
     }
   },
@@ -1700,7 +1700,7 @@ register({
     if (li >= 0 && idleK(t) > 0.001) { const hp = ((t / 2.2) % 1 + 1) % 1, last = pts[Math.min(li, n - 1)]; ctx.save(); ctx.globalAlpha = (1 - hp) * 0.5 * idleK(t); ctx.strokeStyle = lighten(pal.accent, 0.3); ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(last.x, last.y, 5 + hp * 11, 0, TAU); ctx.stroke(); ctx.restore(); ctx.save(); ctx.globalAlpha = glow(t, 0, 0.7, 1); ctx.fillStyle = lighten(pal.accent, 0.3); ctx.beginPath(); ctx.arc(last.x, last.y, 4 * breath(t, 0, 0.06, 1.4), 0, TAU); ctx.fill(); ctx.restore() }
     // valor final grande arriba
     const delta = Math.round(vals[n - 1] * 100)
-    drawText(ctx, delta + '%', W / 2, H * 0.24, { size: 42, weight: 700, family: fonts.accent, maxW: W * 0.5, color: numColor(pal), alpha: inv(t, 0.4, 1) })
+    drawText(ctx, delta + '%', W / 2, H * 0.24, { size: 42, weight: 700, family: fonts.num || fonts.accent, maxW: W * 0.5, color: numColor(pal), alpha: inv(t, 0.4, 1) })
     const lab = content.tagline || content.claim
     if (lab) drawText(ctx, lab, W / 2, H * 0.66, { size: 18, weight: 600, family: fonts.text, maxW: W * 0.78, color: pal.dim, alpha: inv(t, 0.7, 1.2) })
   },
@@ -1731,7 +1731,7 @@ register({
       sheenV(ctx, bx, base - hh, bw, hh, t, { period: 4, phase: i * 0.2, strength: i === n - 1 ? 0.2 : 0.1, r: 8 })
       // valor encima (mono)
       const vAp = inv(t, 0.5 + i * 0.12, 1 + i * 0.12)
-      if (vAp > 0) drawText(ctx, Math.round(vals[i] * 100) + '', bx + bw / 2, base - hh - 16, { size: 18, weight: 700, family: fonts.accent, maxW: slot, color: i === n - 1 ? numColor(pal) : pal.dim, alpha: vAp })
+      if (vAp > 0) drawText(ctx, Math.round(vals[i] * 100) + '', bx + bw / 2, base - hh - 16, { size: 18, weight: 700, family: fonts.num || fonts.accent, maxW: slot, color: i === n - 1 ? numColor(pal) : pal.dim, alpha: vAp })
       // etiqueta abajo
       drawText(ctx, labels[i] || def[i], bx + bw / 2, base + 22, { size: 14, weight: 600, family: fonts.text, maxW: slot + 6, color: i === n - 1 ? pal.ink : pal.dim, alpha: clamp(ap * 1.2, 0, 1) })
     }
@@ -1750,7 +1750,7 @@ register({
     const cx = W / 2, cy = H * 0.4
     const score = rt.score
     const ap = inv(t, 0.1, 0.7)
-    drawText(ctx, statDisplay(rt.st, t, 0.1, 0.7), cx, cy, { size: 120, weight: 700, family: fonts.accent, maxW: W * 0.7, color: numColor(pal), shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.3)' : null })
+    drawText(ctx, statDisplay(rt.st, t, 0.1, 0.7), cx, cy, { size: 120, weight: 700, family: fonts.num || fonts.accent, maxW: W * 0.7, color: numColor(pal), shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.3)' : null })
     // estrellas debajo
     const n = 5, gap = W * 0.08, sr = W * 0.034, totalW = (n - 1) * gap
     const sAp = inv(t, 0.4, 1)
@@ -1791,7 +1791,7 @@ register({
       ctx.save(); ctx.globalAlpha = i === 0 ? glow(t, i * 0.6, 0.82, 1) : 1
       ctx.fillStyle = i === 0 ? pal.accent : rgba(pal.accent, 0.16)
       ctx.beginPath(); ctx.arc(pcx, pcy, 28, 0, TAU); ctx.fill(); ctx.restore()
-      drawText(ctx, String(i + 1), pcx, pcy, { size: 30, weight: 700, family: fonts.accent, maxW: 56, color: i === 0 ? pal.onAccent : numColor(pal) })
+      drawText(ctx, String(i + 1), pcx, pcy, { size: 30, weight: 700, family: fonts.num || fonts.accent, maxW: 56, color: i === 0 ? pal.onAccent : numColor(pal) })
       // titulo a la derecha
       drawText(ctx, shortLabel(labels[i], 4) || def[i], x0 + 86, y + cardH / 2, { size: 18, weight: 600, family: fonts.text, align: 'left', maxW: cardW - 100, color: pal.ink })
       ctx.restore()
@@ -1823,7 +1823,7 @@ register({
       ctx.fillStyle = pal.surface; ctx.beginPath(); ctx.roundRect(x, y, cardW, cardH, 14); ctx.fill()
       if (i === 0) { ctx.save(); ctx.globalAlpha *= glow(t, 0, 0.6, 1); ctx.strokeStyle = pal.accent; ctx.lineWidth = 2; ctx.beginPath(); ctx.roundRect(x, y, cardW, cardH, 14); ctx.stroke(); ctx.restore() }
       else { ctx.strokeStyle = hairline(pal, 0.14); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.roundRect(x, y, cardW, cardH, 14); ctx.stroke() }
-      drawText(ctx, statDisplay(rs[i], t, 0.2 + i * 0.08, 0.9 + i * 0.08), x + cardW / 2, y + cardH * 0.4, { size: 38, weight: 700, family: fonts.accent, maxW: cardW * 0.86, color: numColor(pal) })
+      drawText(ctx, statDisplay(rs[i], t, 0.2 + i * 0.08, 0.9 + i * 0.08), x + cardW / 2, y + cardH * 0.4, { size: 38, weight: 700, family: fonts.num || fonts.accent, maxW: cardW * 0.86, color: numColor(pal) })
       drawText(ctx, shortLabel(rs[i].label, 2), x + cardW / 2, y + cardH * 0.74, { size: 14, weight: 600, family: fonts.text, maxW: cardW * 0.86, color: pal.dim })
       ctx.restore()
     }
@@ -1842,7 +1842,7 @@ register({
     const cx = W / 2, cy = H * 0.4
     const pct = pr.pct
     const ap = eOutCubic(inv(t, 0.1, 1.1))
-    drawText(ctx, statDisplay(pr.st, t, 0.1, 1.1), cx, cy, { size: 110, weight: 700, family: fonts.accent, maxW: W * 0.8, color: numColor(pal), shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.3)' : null })
+    drawText(ctx, statDisplay(pr.st, t, 0.1, 1.1), cx, cy, { size: 110, weight: 700, family: fonts.num || fonts.accent, maxW: W * 0.8, color: numColor(pal), shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.3)' : null })
     // barra
     const x0 = W * 0.12, bw = W * 0.76, bh = 16, by = cy + 90
     ctx.fillStyle = hairline(pal, 0.1); ctx.beginPath(); ctx.roundRect(x0, by, bw, bh, bh / 2); ctx.fill()
@@ -1886,11 +1886,11 @@ register({
       ctx.fillStyle = done ? pal.accent : pal.bg0; ctx.beginPath(); ctx.arc(0, 0, nodeR, 0, TAU); ctx.fill()
       ctx.lineWidth = 3; ctx.strokeStyle = done ? pal.accent : hairline(pal, 0.25); ctx.beginPath(); ctx.arc(0, 0, nodeR, 0, TAU); ctx.stroke()
       if (done) { ctx.strokeStyle = pal.onAccent; ctx.lineWidth = 3; ctx.lineJoin = 'round'; ctx.lineCap = 'round'; checkPath(ctx, nodeR * 0.85); ctx.stroke() }
-      else drawText(ctx, String(i + 1), 0, 1, { size: 16, weight: 700, family: fonts.accent, maxW: nodeR * 1.6, color: i === Math.floor(lit + 0.001) ? numColor(pal) : pal.dim })
+      else drawText(ctx, String(i + 1), 0, 1, { size: 16, weight: 700, family: fonts.num || fonts.accent, maxW: nodeR * 1.6, color: i === Math.floor(lit + 0.001) ? numColor(pal) : pal.dim })
       ctx.restore()
     }
     // contador X/N debajo
-    drawText(ctx, Math.round(lit) + '/' + steps + ' pasos', W / 2, cy + 56, { size: 18, weight: 700, family: fonts.accent, maxW: W * 0.6, color: numColor(pal), alpha: inv(t, 0.5, 1) })
+    drawText(ctx, Math.round(lit) + '/' + steps + ' pasos', W / 2, cy + 56, { size: 18, weight: 700, family: fonts.num || fonts.accent, maxW: W * 0.6, color: numColor(pal), alpha: inv(t, 0.5, 1) })
   },
 })
 
@@ -1927,7 +1927,7 @@ register({
     let cxs2 = x0
     for (let i = 0; i < 3; i++) {
       const segW = bw * parts[i] * ap
-      if (segW > 36) drawText(ctx, Math.round(parts[i] * 100) + '%', cxs2 + segW / 2, y + bh / 2, { size: 17, weight: 700, family: fonts.accent, maxW: segW - 8, color: i === 0 ? pal.onAccent : numColor(pal), alpha: inv(t, 0.5, 1) })
+      if (segW > 36) drawText(ctx, Math.round(parts[i] * 100) + '%', cxs2 + segW / 2, y + bh / 2, { size: 17, weight: 700, family: fonts.num || fonts.accent, maxW: segW - 8, color: i === 0 ? pal.onAccent : numColor(pal), alpha: inv(t, 0.5, 1) })
       cxs2 += segW
     }
     // leyenda debajo (3 chips en fila)
@@ -1988,7 +1988,7 @@ register({
     ctx.beginPath(); ctx.arc(cx, cy, rad, TAU / 4 + spin - span2, TAU / 4 + spin + span2); ctx.stroke()
     ctx.restore()
     // numero grande = el VALOR REAL con count-up
-    drawText(ctx, statDisplay(pr.st, t, 0.1, 1.2), cx, cy - 6, { size: 96, weight: 700, family: fonts.accent, maxW: rad * 1.7, color: numColor(pal), shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.3)' : null })
+    drawText(ctx, statDisplay(pr.st, t, 0.1, 1.2), cx, cy - 6, { size: 96, weight: 700, family: fonts.num || fonts.accent, maxW: rad * 1.7, color: numColor(pal), shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.3)' : null })
     // etiqueta corta REAL dentro del marco
     drawText(ctx, shortLabel(pr.st.label, 3) || 'de satisfaccion', cx, cy + 44, { size: 17, weight: 600, family: fonts.text, maxW: rad * 1.5, color: pal.dim, alpha: inv(t, 0.5, 1) })
     // claim debajo del marco: drawWrapped -> <=2 lineas, achica antes de elidir
@@ -2017,7 +2017,7 @@ register({
     // titulo
     drawText(ctx, shortLabel(st.label, 3) || shortLabel(content.tagline, 3) || 'Este mes', W / 2, cardY + 46, { size: 16, weight: 600, family: fonts.text, maxW: cardW * 0.8, color: pal.dim, alpha: inv(t, 0.3, 0.9) })
     // numero grande = el VALOR REAL (item L152) con count-up sobre su parte numerica
-    drawText(ctx, statDisplay(st, t, 0.2, 1.2), W / 2, cardY + cardH * 0.5, { size: 72, weight: 700, family: fonts.accent, maxW: cardW * 0.86, color: numColor(pal) })
+    drawText(ctx, statDisplay(st, t, 0.2, 1.2), W / 2, cardY + cardH * 0.5, { size: 72, weight: 700, family: fonts.num || fonts.accent, maxW: cardW * 0.86, color: numColor(pal) })
     // (chip de delta '+X%' ELIMINADO: fabricaba un crecimiento inventado -> deshonesto. Sin una 2da stat real no se muestra.)
     // claim bajo la tarjeta: drawWrapped -> <=2 lineas, achica antes de elidir (claims largos entran completos)
     const lab = content.claim
@@ -2055,7 +2055,7 @@ register({
       ctx.beginPath(); ctx.arc(xLo, y + bh / 2, 3.5 * breath(t, i * 0.6, 0.08, 1.2), 0, TAU); ctx.fill()
       ctx.beginPath(); ctx.arc(xHi, y + bh / 2, 3.5 * breath(t, i * 0.6 + Math.PI, 0.08, 1.2), 0, TAU); ctx.fill(); ctx.restore()
       // valor del rango a la derecha
-      drawText(ctx, Math.round(hi * 100 * ap) + '', x0 + span + 14, y + bh / 2, { size: 15, weight: 700, family: fonts.accent, align: 'left', maxW: W * 0.1, color: numColor(pal), alpha: ap })
+      drawText(ctx, Math.round(hi * 100 * ap) + '', x0 + span + 14, y + bh / 2, { size: 15, weight: 700, family: fonts.num || fonts.accent, align: 'left', maxW: W * 0.1, color: numColor(pal), alpha: ap })
     }
   },
 })
@@ -2087,7 +2087,7 @@ register({
     const pAp = inv(t, 0.7, 1.1)
     if (pAp > 0) {
       const bx = x0 + peak * slot + slot / 2
-      drawText(ctx, Math.round(vals[peak] * 100) + '', bx, base - maxH * vals[peak] - 14, { size: 16, weight: 700, family: fonts.accent, maxW: slot * 2, color: numColor(pal), alpha: pAp })
+      drawText(ctx, Math.round(vals[peak] * 100) + '', bx, base - maxH * vals[peak] - 14, { size: 16, weight: 700, family: fonts.num || fonts.accent, maxW: slot * 2, color: numColor(pal), alpha: pAp })
     }
     const lab = content.claim
     if (lab && lab !== content.tagline) drawText(ctx, lab, W / 2, base + 40, { size: 18, weight: 600, family: fonts.text, maxW: W * 0.8, color: pal.dim, alpha: inv(t, 0.7, 1.2) })
@@ -2119,7 +2119,7 @@ register({
       ctx.restore()
     }
     // numero principal (anillo externo) al centro
-    drawText(ctx, Math.round(pcts[0] * 100 * eOutCubic(inv(t, 0.1, 1.1))) + '%', cx, cy, { size: 50, weight: 700, family: fonts.accent, maxW: rads[1] * 1.4, color: numColor(pal) })
+    drawText(ctx, Math.round(pcts[0] * 100 * eOutCubic(inv(t, 0.1, 1.1))) + '%', cx, cy, { size: 50, weight: 700, family: fonts.num || fonts.accent, maxW: rads[1] * 1.4, color: numColor(pal) })
     // leyenda debajo (2 filas: punto + etiqueta + %)
     const labs = [shortLabel(content.tagline, 2) || 'Alcance', shortLabel(content.claim, 2) || 'Interaccion']
     const ly0 = cy + rads[0] + 44, rowH = 38
@@ -2129,7 +2129,7 @@ register({
       ctx.save(); ctx.globalAlpha = la
       ctx.fillStyle = cols[i]; ctx.beginPath(); ctx.arc(W * 0.22, ly, 8, 0, TAU); ctx.fill()
       drawText(ctx, labs[i], W * 0.22 + 18, ly, { size: 15, weight: 600, family: fonts.text, align: 'left', maxW: W * 0.4, color: pal.ink })
-      drawText(ctx, Math.round(pcts[i] * 100) + '%', W * 0.82, ly, { size: 18, weight: 700, family: fonts.accent, align: 'right', maxW: W * 0.18, color: numColor(pal) })
+      drawText(ctx, Math.round(pcts[i] * 100) + '%', W * 0.82, ly, { size: 18, weight: 700, family: fonts.num || fonts.accent, align: 'right', maxW: W * 0.18, color: numColor(pal) })
       ctx.restore()
     }
   },
@@ -2160,12 +2160,12 @@ register({
     const ha = a0 + sweep270
     ctx.save(); ctx.globalAlpha = glow(t, 0, 0.75, 1); ctx.fillStyle = lighten(pal.accent, 0.3); ctx.beginPath(); ctx.arc(cx + Math.cos(ha) * rad, cy + Math.sin(ha) * rad, lw * 0.42 * breath(t, 0, 0.06, 1.3), 0, TAU); ctx.fill(); ctx.restore()
     // numero grande centro = el VALOR REAL con count-up
-    drawText(ctx, statDisplay(pr.st, t, 0.1, 1.2), cx, cy - 4, { size: 64, weight: 700, family: fonts.accent, maxW: rad * 1.5, color: numColor(pal) })
+    drawText(ctx, statDisplay(pr.st, t, 0.1, 1.2), cx, cy - 4, { size: 64, weight: 700, family: fonts.num || fonts.accent, maxW: rad * 1.5, color: numColor(pal) })
     drawText(ctx, shortLabel(pr.st.label, 3) || 'del objetivo', cx, cy + 40, { size: 16, weight: 600, family: fonts.text, maxW: rad * 1.5, color: pal.dim, alpha: inv(t, 0.5, 1) })
     // min / max en las puntas inferiores
     const mAp = inv(t, 0.6, 1.1)
-    drawText(ctx, '0', cx + Math.cos(a0) * (rad + 4), cy + Math.sin(a0) * (rad + 4) + 16, { size: 13, weight: 700, family: fonts.accent, maxW: 40, color: pal.dim, alpha: mAp })
-    drawText(ctx, '100', cx + Math.cos(a0 + total) * (rad + 4), cy + Math.sin(a0 + total) * (rad + 4) + 16, { size: 13, weight: 700, family: fonts.accent, maxW: 50, color: pal.dim, alpha: mAp })
+    drawText(ctx, '0', cx + Math.cos(a0) * (rad + 4), cy + Math.sin(a0) * (rad + 4) + 16, { size: 13, weight: 700, family: fonts.num || fonts.accent, maxW: 40, color: pal.dim, alpha: mAp })
+    drawText(ctx, '100', cx + Math.cos(a0 + total) * (rad + 4), cy + Math.sin(a0 + total) * (rad + 4) + 16, { size: 13, weight: 700, family: fonts.num || fonts.accent, maxW: 50, color: pal.dim, alpha: mAp })
   },
 })
 
@@ -2206,7 +2206,7 @@ register({
     if (idleK(t) > 0.001) { const pp = ((t / 2.2) % 1 + 1) % 1; ctx.save(); ctx.globalAlpha = (1 - pp) * 0.5 * idleK(t); ctx.strokeStyle = lighten(pal.accent, 0.3); ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(ex, ey, 5 + pp * 12, 0, TAU); ctx.stroke(); ctx.restore() }
     ctx.save(); ctx.globalAlpha = glow(t, 0, 0.75, 1); ctx.fillStyle = lighten(pal.accent, 0.3); ctx.beginPath(); ctx.arc(ex, ey, 5 * breath(t, 0, 0.06, 1.4), 0, TAU); ctx.fill(); ctx.restore()
     // valor final grande arriba
-    drawText(ctx, Math.round(pts[n - 1].v * 100) + '%', W / 2, H * 0.24, { size: 42, weight: 700, family: fonts.accent, maxW: W * 0.5, color: numColor(pal), alpha: inv(t, 0.4, 1) })
+    drawText(ctx, Math.round(pts[n - 1].v * 100) + '%', W / 2, H * 0.24, { size: 42, weight: 700, family: fonts.num || fonts.accent, maxW: W * 0.5, color: numColor(pal), alpha: inv(t, 0.4, 1) })
     const lab = content.tagline || content.claim
     if (lab) drawText(ctx, lab, W / 2, H * 0.7, { size: 18, weight: 600, family: fonts.text, maxW: W * 0.8, color: pal.dim, alpha: inv(t, 0.7, 1.2) })
   },
@@ -2249,7 +2249,7 @@ register({
     ctx.strokeStyle = hairline(pal, 0.1); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x0, base + 1); ctx.lineTo(x0 + span, base + 1); ctx.stroke()
     // delta total
     const delta = Math.round((lvl - 0.3) * 100)
-    drawText(ctx, (delta >= 0 ? '+' : '') + delta + '%', W / 2, H * 0.7, { size: 28, weight: 700, family: fonts.accent, maxW: W * 0.5, color: numColor(pal), alpha: inv(t, 0.7, 1.2) })
+    drawText(ctx, (delta >= 0 ? '+' : '') + delta + '%', W / 2, H * 0.7, { size: 28, weight: 700, family: fonts.num || fonts.accent, maxW: W * 0.5, color: numColor(pal), alpha: inv(t, 0.7, 1.2) })
   },
 })
 
@@ -2278,8 +2278,8 @@ register({
     ctx.strokeStyle = pal.bg0; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(mx, y - 6); ctx.lineTo(mx, y + bh + 6); ctx.stroke()
     ctx.save(); ctx.globalAlpha = glow(t, 0, 0.78, 1); ctx.fillStyle = numColor(pal); ctx.beginPath(); ctx.arc(mx, y + bh / 2, 8 * breath(t, 0, 0.05, 1.2), 0, TAU); ctx.fill(); ctx.restore()
     // % a cada lado (dentro)
-    drawText(ctx, Math.round(share * 100 * ap) + '%', x0 + 18, y + bh / 2, { size: 22, weight: 700, family: fonts.accent, align: 'left', maxW: cut - 24, color: pal.onAccent, alpha: inv(t, 0.4, 1) })
-    drawText(ctx, Math.round((1 - share) * 100 * ap) + '%', x0 + bw - 18, y + bh / 2, { size: 20, weight: 700, family: fonts.accent, align: 'right', maxW: bw - cut - 24, color: numColor(pal), alpha: inv(t, 0.4, 1) })
+    drawText(ctx, Math.round(share * 100 * ap) + '%', x0 + 18, y + bh / 2, { size: 22, weight: 700, family: fonts.num || fonts.accent, align: 'left', maxW: cut - 24, color: pal.onAccent, alpha: inv(t, 0.4, 1) })
+    drawText(ctx, Math.round((1 - share) * 100 * ap) + '%', x0 + bw - 18, y + bh / 2, { size: 20, weight: 700, family: fonts.num || fonts.accent, align: 'right', maxW: bw - cut - 24, color: numColor(pal), alpha: inv(t, 0.4, 1) })
     // etiquetas debajo
     const lAp = inv(t, 0.6, 1.1)
     drawText(ctx, shortLabel(content.brand, 2) || 'Nosotros', x0, y + bh + 26, { size: 15, weight: 700, family: fonts.text, align: 'left', maxW: bw * 0.5, color: numColor(pal), alpha: lAp })
@@ -2314,7 +2314,7 @@ register({
       // punto despues (acento, lleno) -> respira + glow idle (desfasado por fila)
       ctx.save(); ctx.globalAlpha = ap * glow(t, i * 0.7, 0.72, 1); ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.arc(xb, y, 9 * breath(t, i * 0.7, 0.06, 1.2), 0, TAU); ctx.fill(); ctx.restore()
       // valor despues a la derecha
-      drawText(ctx, Math.round(b * 100 * ap) + '', x0 + span + 18, y, { size: 15, weight: 700, family: fonts.accent, align: 'left', maxW: W * 0.12, color: numColor(pal), alpha: ap })
+      drawText(ctx, Math.round(b * 100 * ap) + '', x0 + span + 18, y, { size: 15, weight: 700, family: fonts.num || fonts.accent, align: 'left', maxW: W * 0.12, color: numColor(pal), alpha: ap })
     }
   },
 })
@@ -2350,8 +2350,8 @@ register({
     ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(nx, ny); ctx.stroke()
     ctx.save(); ctx.globalAlpha = glow(t, 0, 0.82, 1); ctx.fillStyle = numColor(pal); ctx.beginPath(); ctx.arc(cx, cy, 8 * breath(t, 0, 0.05, 1.2), 0, TAU); ctx.fill(); ctx.restore()
     // numero NPS bajo el centro
-    drawText(ctx, 'NPS', cx, cy + 32, { size: 14, weight: 700, family: fonts.accent, maxW: rad, color: pal.dim, alpha: inv(t, 0.5, 1) })
-    drawText(ctx, String(Math.round(npsVal * ap)), cx, cy + 70, { size: 56, weight: 700, family: fonts.accent, maxW: rad * 1.4, color: numColor(pal) })
+    drawText(ctx, 'NPS', cx, cy + 32, { size: 14, weight: 700, family: fonts.num || fonts.accent, maxW: rad, color: pal.dim, alpha: inv(t, 0.5, 1) })
+    drawText(ctx, String(Math.round(npsVal * ap)), cx, cy + 70, { size: 56, weight: 700, family: fonts.num || fonts.accent, maxW: rad * 1.4, color: numColor(pal) })
     const lab = content.tagline || content.claim
     if (lab) drawText(ctx, lab, cx, cy + 120, { size: 17, weight: 600, family: fonts.text, maxW: W * 0.8, color: pal.dim, alpha: inv(t, 0.7, 1.2) })
   },
@@ -2393,7 +2393,7 @@ register({
       ctx.save(); ctx.translate(cx, y)
       ctx.fillStyle = reach > 0.5 ? pal.accent : pal.bg0; ctx.beginPath(); ctx.arc(0, 0, nodeR, 0, TAU); ctx.fill()
       ctx.lineWidth = 3; ctx.strokeStyle = reach > 0.5 ? pal.accent : hairline(pal, 0.25); ctx.beginPath(); ctx.arc(0, 0, nodeR, 0, TAU); ctx.stroke()
-      drawText(ctx, String(i + 1), 0, 1, { size: 15, weight: 700, family: fonts.accent, maxW: nodeR * 1.6, color: reach > 0.5 ? pal.onAccent : pal.dim })
+      drawText(ctx, String(i + 1), 0, 1, { size: 15, weight: 700, family: fonts.num || fonts.accent, maxW: nodeR * 1.6, color: reach > 0.5 ? pal.onAccent : pal.dim })
       ctx.restore()
       // rotulo alternado
       const lab = shortLabel(labels[i], 3) || def[i]
@@ -2415,7 +2415,7 @@ register({
     const cx = W / 2
     // hero (el VALOR REAL, ya con su prefijo/sufijo)
     drawText(ctx, shortLabel(rs[0].label, 3) || 'Ingresos', cx, H * 0.24, { size: 16, weight: 600, family: fonts.text, maxW: W * 0.8, color: pal.dim, alpha: inv(t, 0.2, 0.8) })
-    drawText(ctx, statDisplay(rs[0], t, 0.1, 1.1), cx, H * 0.36, { size: 84, weight: 700, family: fonts.accent, maxW: W * 0.86, color: numColor(pal), shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.3)' : null })
+    drawText(ctx, statDisplay(rs[0], t, 0.1, 1.1), cx, H * 0.36, { size: 84, weight: 700, family: fonts.num || fonts.accent, maxW: W * 0.86, color: numColor(pal), shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.3)' : null })
     // regla de acento -> respira ancho + glow idle
     const ru = eOutCubic(inv(t, 0.4, 1)), rw = 90 * ru * breath(t, 0, 0.02)
     ctx.save(); ctx.globalAlpha = glow(t, 0, 0.78, 1)
@@ -2424,7 +2424,7 @@ register({
     const xs = [W * 0.3, W * 0.7]
     for (let i = 0; i < 2; i++) {
       const ap = inv(t, 0.5 + i * 0.12, 1.1 + i * 0.12)
-      drawText(ctx, statDisplay(rs[i + 1], t, 0.5 + i * 0.12, 1.1 + i * 0.12), xs[i], H * 0.56, { size: 40, weight: 700, family: fonts.accent, maxW: W * 0.34, color: numColor(pal), alpha: clamp(ap * 1.3, 0, 1) })
+      drawText(ctx, statDisplay(rs[i + 1], t, 0.5 + i * 0.12, 1.1 + i * 0.12), xs[i], H * 0.56, { size: 40, weight: 700, family: fonts.num || fonts.accent, maxW: W * 0.34, color: numColor(pal), alpha: clamp(ap * 1.3, 0, 1) })
       drawText(ctx, shortLabel(rs[i + 1].label, 2), xs[i], H * 0.62, { size: 14, weight: 600, family: fonts.text, maxW: W * 0.34, color: pal.dim, alpha: clamp(ap * 1.2, 0, 1) })
     }
     // divisor vertical entre los 2 chicos
@@ -2466,7 +2466,7 @@ register({
       ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1); ctx.lineTo(cx + Math.cos(a) * r2, cy + Math.sin(a) * r2); ctx.stroke(); ctx.restore()
     }
     // numero central = el VALOR REAL con count-up
-    drawText(ctx, statDisplay(pr.st, t, 0.1, 1.2), cx, cy - 4, { size: 58, weight: 700, family: fonts.accent, maxW: rad * 1.4, color: numColor(pal) })
+    drawText(ctx, statDisplay(pr.st, t, 0.1, 1.2), cx, cy - 4, { size: 58, weight: 700, family: fonts.num || fonts.accent, maxW: rad * 1.4, color: numColor(pal) })
     drawText(ctx, shortLabel(pr.st.label, 3) || 'completado', cx, cy + 38, { size: 16, weight: 600, family: fonts.text, maxW: rad * 1.5, color: pal.dim, alpha: inv(t, 0.5, 1) })
     const lab = content.claim
     if (lab && lab !== content.tagline) drawText(ctx, lab, cx, cy + rad + 56, { size: 18, weight: 600, family: fonts.text, maxW: W * 0.8, color: pal.dim, alpha: inv(t, 0.7, 1.2) })

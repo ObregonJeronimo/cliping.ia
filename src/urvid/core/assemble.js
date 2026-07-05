@@ -135,7 +135,12 @@ export function makeVideo(brief = {}) {
   // mod.temp; todo otro slot queda 1.0 (identico). Se setea aca (post-paleta) -> el pick de color de arriba no lo ve.
   fitCtx.paletteHue = (palette && palette.accent) ? hexToHsl(palette.accent).h : null
   const typMod = required(lock && lock.type, keep && keep.type, seedFor(seed, 'typepick'), query('typography', { tone }), m => score(m) * audienceWarmBias(m, audience.register))
-  const fonts = typMod ? typMod.fonts : { display: 'Space Grotesk', text: 'Inter', accent: 'JetBrains Mono' }   // typMod SIEMPRE gana (typography no queda vacio para dark/light); fallback estatico sano (= pairing grotesk-clean, el de mayor weight) por defensa
+  // clon (no mutar el objeto del registry) + GUARD "numeros nunca en script" (OLA VISUAL): 9 pairings
+  // tienen accent manuscrito (Caveat / Permanent Marker) -> "99.9%" salia como firma, ilegible (bug eye1).
+  // fonts.num es el rol REAL para datos: mono legible cuando el accent es script. Determinista (solo pairing).
+  const fonts = { ...(typMod ? typMod.fonts : { display: 'Space Grotesk', text: 'Inter', accent: 'JetBrains Mono' }) }   // typMod SIEMPRE gana; fallback estatico sano por defensa
+  const SCRIPTY = ['Caveat', 'Permanent Marker', 'Caprasimo']
+  fonts.num = (SCRIPTY.includes(fonts.accent) || fonts.accent === fonts.text) ? 'JetBrains Mono' : fonts.accent
   // MOTION: personalidad de movimiento (entrada/asentamiento/stagger/drift) -> env.motion.
   const motMod = required(lock && lock.motion, keep && keep.motion, seedFor(seed, 'motionpick'), query('motion', { tone }))
   // TYPEKIT: efecto de texto cinetico para los titulos -> env.typekit. ~30% sin efecto (plain) para no saturar.

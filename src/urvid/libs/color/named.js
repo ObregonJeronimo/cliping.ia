@@ -5,7 +5,10 @@
 // para elegir cual de los dos hexes va a accent vs accent2 (sin romper el contraste, que ya esta validado).
 import { register } from '../../core/registry.js'
 import { finalize } from '../../core/palette.js'
-import { hexToHsl } from '../../core/util.js'
+import { hexToHsl, contrast } from '../../core/util.js'
+
+// distancia circular de hue (0..180)
+const hueDist = (h1, h2) => { const d = Math.abs(h1 - h2) % 360; return d > 180 ? 360 - d : d }
 
 // Helper: registra una paleta curada. `p` = { accent, accent2, bg0, bg1 } (hexes FIJOS).
 // El tono se declara segun el fondo real (lo verifica el script de contraste). brandColor se IGNORA a proposito:
@@ -16,7 +19,19 @@ function named(name, tone, p, { rubros = ['*'], weight = 1, tags = [] } = {}) {
   register({
     id: 'color.named.' + name, lib: 'color', category: 'named-palettes', tones: [tone], rubros, weight, tags: ['curada', ...tags],
     hue: hexToHsl(p.accent).h,   // PSICOLOGIA DE COLOR: el hue del acento curado (fijo) -> el scorer lo matchea al rubro del brief
-    derive(_brandColor, { tone: _t, seed: _seed }) {
+    derive(brandColor, { tone: _t, seed: _seed }) {
+      // DESEMPATE POR MARCA (OLA VISUAL — prometido en el header y nunca implementado): si la marca es
+      // cromatica y accent2 esta CLARAMENTE mas cerca de su hue, se intercambian los roles — la paleta
+      // curada queda intacta, solo cambia cual hex protagoniza. Guard: el nuevo protagonista tiene que
+      // sostener un onAccent legible (>=3.2 con blanco o casi-negro); si no, orden curado original.
+      const b = hexToHsl(brandColor || '')
+      if (b.s >= 0.12) {
+        const hA = hexToHsl(p.accent).h, hB = hexToHsl(p.accent2).h
+        if (hueDist(hB, b.h) < hueDist(hA, b.h) - 15 &&
+          (contrast(p.accent2, '#ffffff') >= 3.2 || contrast(p.accent2, '#14090e') >= 3.2)) {
+          return finalize(p.accent2, p.accent, p.bg0, p.bg1, tone)
+        }
+      }
       return finalize(p.accent, p.accent2, p.bg0, p.bg1, tone)
     },
   })

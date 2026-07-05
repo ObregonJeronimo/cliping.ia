@@ -34,6 +34,12 @@ function safeAccent(h, s, l, tone) {
   return aHi
 }
 
+// ANCLA DE MARCA (OLA VISUAL): el ACENTO protagonista hereda el HUE de la marca; S/L del mood se
+// conservan (el caracter del grade queda en accent2/bg). Marca ACROMATICA (s<0.12) -> hue del mood
+// tal cual. Antes los 14 grades de hue fijo pisaban la marca (verde #22e06a -> video azul, bug eye1).
+const brandHue = (a, hMood) => (a.s < 0.12 ? hMood : a.h)
+
+
 // ---------------------------------------------------------------------------
 // NOIR — blanco/negro + 1 acento de marca. Solo oscuro.
 register({
@@ -54,7 +60,7 @@ register({
   rubros: ['*', 'eventos', 'gastronomia', 'fitness', 'inmobiliaria'], weight: 1.2, tags: ['teal-orange', 'cine', 'blockbuster'],
   derive(brandColor, { tone }) {
     const a = BRAND(brandColor)
-    const accent = safeAccent(28, 0.92, 0.58, 'dark')                 // naranja calido fijo (skin/highlight)
+    const accent = safeAccent(brandHue(a, 28), 0.92, 0.58, 'dark')                 // naranja calido fijo (skin/highlight)
     const accent2 = hslToHex(190, 0.7, 0.5)                           // teal fijo
     const bg0 = hslToHex(192, 0.45, 0.085), bg1 = hslToHex(196, 0.5, 0.035)  // sombras teal
     return finalize(accent, accent2, bg0, bg1, 'dark')
@@ -109,7 +115,7 @@ register({
   rubros: ['*', 'eventos', 'gastronomia', 'inmobiliaria'], weight: 0.8, tags: ['sepia', 'vintage', 'film', 'nostalgia'],
   derive(brandColor, { tone }) {
     const a = BRAND(brandColor)
-    const accent = safeAccent(34, 0.62, tone === 'light' ? 0.44 : 0.58, tone)   // ambar viejo
+    const accent = safeAccent(brandHue(a, 34), 0.62, tone === 'light' ? 0.44 : 0.58, tone)   // ambar viejo
     const accent2 = hslToHex(22, 0.5, tone === 'light' ? 0.48 : 0.54)
     const [bg0, bg1] = tone === 'light'
       ? [hslToHex(40, 0.3, 0.94), hslToHex(38, 0.26, 0.88)]
@@ -124,7 +130,7 @@ register({
   rubros: ['salud', 'tech', 'finanzas', '*'], weight: 1, tags: ['clinico', 'limpio', 'azul', 'frio', 'confiable'],
   derive(brandColor, { tone }) {
     const a = BRAND(brandColor)
-    const accent = safeAccent(205, 0.78, tone === 'light' ? 0.46 : 0.6, tone)
+    const accent = safeAccent(brandHue(a, 205), 0.78, tone === 'light' ? 0.46 : 0.6, tone)
     const accent2 = hslToHex(180, 0.55, tone === 'light' ? 0.42 : 0.56)
     const [bg0, bg1] = tone === 'light'
       ? [hslToHex(205, 0.25, 0.975), hslToHex(200, 0.22, 0.93)]
@@ -139,7 +145,7 @@ register({
   rubros: ['gastronomia', 'eventos', 'moda', '*'], weight: 1, tags: ['atardecer', 'calido', 'naranja', 'rosa'],
   derive(brandColor, { tone }) {
     const a = BRAND(brandColor)
-    const accent = safeAccent(18, 0.9, tone === 'light' ? 0.5 : 0.6, tone)
+    const accent = safeAccent(brandHue(a, 18), 0.9, tone === 'light' ? 0.5 : 0.6, tone)
     const accent2 = hslToHex(338, 0.78, tone === 'light' ? 0.52 : 0.62)
     const [bg0, bg1] = tone === 'light'
       ? [hslToHex(24, 0.4, 0.97), hslToHex(340, 0.3, 0.93)]
@@ -154,7 +160,7 @@ register({
   rubros: ['*', 'inmobiliaria', 'salud', 'gastronomia'], weight: 0.9, tags: ['bosque', 'verde', 'natural', 'profundo'],
   derive(brandColor, { tone }) {
     const a = BRAND(brandColor)
-    const accent = safeAccent(135, 0.55, 0.55, 'dark')
+    const accent = safeAccent(brandHue(a, 135), 0.55, 0.55, 'dark')
     const accent2 = hslToHex(95, 0.5, 0.55)
     const bg0 = hslToHex(150, 0.4, 0.075), bg1 = hslToHex(160, 0.45, 0.035)
     return finalize(accent, accent2, bg0, bg1, 'dark')
@@ -183,7 +189,7 @@ register({
   rubros: ['*', 'tech', 'eventos', 'moda'], weight: 0.8, tags: ['vaporwave', 'retro', '80s', 'rosa', 'cyan'],
   derive(brandColor, { tone }) {
     const a = BRAND(brandColor)
-    const accent = safeAccent(320, 0.85, 0.62, 'dark')     // magenta
+    const accent = safeAccent(brandHue(a, 320), 0.85, 0.62, 'dark')     // magenta
     const accent2 = hslToHex(185, 0.8, 0.58)     // cyan
     const bg0 = hslToHex(270, 0.45, 0.09), bg1 = hslToHex(300, 0.4, 0.045)
     return finalize(accent, accent2, bg0, bg1, 'dark')
@@ -250,7 +256,7 @@ register({
   rubros: ['*', 'moda', 'belleza', 'inmobiliaria', 'gastronomia', 'eventos'], weight: 0.9, tags: ['dorado', 'noir', 'lujo', 'premium', 'nocturno'],
   derive(brandColor, { tone }) {
     const a = BRAND(brandColor)
-    const accent = safeAccent(44, 0.78, 0.58, 'dark')      // dorado
+    const accent = safeAccent(brandHue(a, 44), 0.78, 0.58, 'dark')      // dorado
     const accent2 = hslToHex(38, 0.5, 0.5)       // bronce
     const bg0 = hslToHex(40, 0.12, 0.07), bg1 = '#050403'
     return finalize(accent, accent2, bg0, bg1, 'dark')
@@ -263,7 +269,7 @@ register({
   rubros: ['salud', 'tech', 'belleza', 'fitness', '*'], weight: 0.9, tags: ['menta', 'hielo', 'frio', 'fresco', 'limpio'],
   derive(brandColor, { tone }) {
     const a = BRAND(brandColor)
-    const accent = safeAccent(165, 0.65, tone === 'light' ? 0.4 : 0.58, tone)
+    const accent = safeAccent(brandHue(a, 165), 0.65, tone === 'light' ? 0.4 : 0.58, tone)
     const accent2 = hslToHex(195, 0.62, tone === 'light' ? 0.44 : 0.6)
     const [bg0, bg1] = tone === 'light'
       ? [hslToHex(170, 0.25, 0.975), hslToHex(190, 0.22, 0.93)]
@@ -278,7 +284,7 @@ register({
   rubros: ['*', 'gastronomia', 'moda', 'belleza', 'eventos'], weight: 0.85, tags: ['vino', 'borgona', 'profundo', 'sofisticado'],
   derive(brandColor, { tone }) {
     const a = BRAND(brandColor)
-    const accent = safeAccent(345, 0.62, 0.55, 'dark')     // vino
+    const accent = safeAccent(brandHue(a, 345), 0.62, 0.55, 'dark')     // vino
     const accent2 = hslToHex(310, 0.5, 0.52)     // ciruela
     const bg0 = hslToHex(345, 0.45, 0.08), bg1 = hslToHex(330, 0.5, 0.035)
     return finalize(accent, accent2, bg0, bg1, 'dark')
@@ -291,7 +297,7 @@ register({
   rubros: ['*', 'inmobiliaria', 'gastronomia', 'moda'], weight: 0.85, tags: ['arcilla', 'terracota', 'desierto', 'calido'],
   derive(brandColor, { tone }) {
     const a = BRAND(brandColor)
-    const accent = safeAccent(16, 0.6, tone === 'light' ? 0.46 : 0.58, tone)   // terracota
+    const accent = safeAccent(brandHue(a, 16), 0.6, tone === 'light' ? 0.46 : 0.58, tone)   // terracota
     const accent2 = hslToHex(32, 0.52, tone === 'light' ? 0.48 : 0.56) // arena tostada
     const [bg0, bg1] = tone === 'light'
       ? [hslToHex(28, 0.3, 0.96), hslToHex(18, 0.26, 0.91)]
@@ -306,7 +312,7 @@ register({
   rubros: ['*', 'finanzas', 'tech', 'inmobiliaria', 'eventos'], weight: 1, tags: ['medianoche', 'azul', 'profundo', 'elegante'],
   derive(brandColor, { tone }) {
     const a = BRAND(brandColor)
-    const accent = safeAccent(220, 0.78, 0.62, 'dark')
+    const accent = safeAccent(brandHue(a, 220), 0.78, 0.62, 'dark')
     const accent2 = hslToHex(245, 0.6, 0.62)
     const bg0 = hslToHex(225, 0.55, 0.08), bg1 = hslToHex(235, 0.6, 0.035)
     return finalize(accent, accent2, bg0, bg1, 'dark')
@@ -332,7 +338,7 @@ register({
   rubros: ['*', 'belleza', 'moda', 'eventos'], weight: 0.75, tags: ['algodon-azucar', 'kawaii', 'rosa', 'celeste', 'claro'],
   derive(brandColor, { tone }) {
     const a = BRAND(brandColor)
-    const accent = safeAccent(330, 0.62, 0.55, 'light')
+    const accent = safeAccent(brandHue(a, 330), 0.62, 0.55, 'light')
     const accent2 = hslToHex(200, 0.58, 0.52)
     const bg0 = hslToHex(330, 0.4, 0.975), bg1 = hslToHex(200, 0.35, 0.95)
     return finalize(accent, accent2, bg0, bg1, 'light')
@@ -345,7 +351,7 @@ register({
   rubros: ['*', 'finanzas', 'belleza', 'moda', 'inmobiliaria'], weight: 0.85, tags: ['esmeralda', 'verde', 'lujo', 'profundo'],
   derive(brandColor, { tone }) {
     const a = BRAND(brandColor)
-    const accent = safeAccent(155, 0.7, 0.55, 'dark')
+    const accent = safeAccent(brandHue(a, 155), 0.7, 0.55, 'dark')
     const accent2 = hslToHex(168, 0.6, 0.5)
     const bg0 = hslToHex(160, 0.4, 0.07), bg1 = hslToHex(150, 0.45, 0.03)
     return finalize(accent, accent2, bg0, bg1, 'dark')
@@ -373,7 +379,7 @@ register({
   rubros: ['*', 'gastronomia', 'eventos', 'inmobiliaria', 'moda'], weight: 0.8, tags: ['cobre', 'anochecer', 'calido-frio', 'cine'],
   derive(brandColor, { tone }) {
     const a = BRAND(brandColor)
-    const accent = safeAccent(24, 0.72, 0.56, 'dark')      // cobre
+    const accent = safeAccent(brandHue(a, 24), 0.72, 0.56, 'dark')      // cobre
     const accent2 = hslToHex(210, 0.55, 0.58)    // azul anochecer
     const bg0 = hslToHex(216, 0.4, 0.08), bg1 = hslToHex(222, 0.45, 0.035)
     return finalize(accent, accent2, bg0, bg1, 'dark')
