@@ -78,14 +78,17 @@ function smooth(c) { c.imageSmoothingEnabled = true; if ('imageSmoothingQuality'
 // motion.life (0..1 fluidez) * motion.ambient(t,seed) (oscilacion PURA de t+seed -> DETERMINISTA). z>=1 SIEMPRE (zoom-in
 // solo recorta hacia adentro, nunca revela borde sin pintar); la deriva se ACOTA al overscan (z-1)*W/2. El TEXTO no pasa
 // por aca (paintScene es aparte) -> glifos pixel-estables, cero shimmer. Hace ctx.save(); el llamador hace ctx.restore().
-function bgPush(ctx, t, motion, seed) {
+// rate = multiplicador de la vida (PARALLAX, OLA VISUAL): el bg va a rate=1 (byte-identico) y el substrate a rate>1 ->
+// la capa de textura (mas "adelante") deriva/zoomea MAS que el fondo -> separacion de profundidad al reproducir. Sigue
+// acotado al overscan (nunca revela borde). rate=1 por defecto -> sin cambio.
+function bgPush(ctx, t, motion, seed, rate = 1) {
   ctx.save()
   const life = clamp(motion && motion.life != null ? motion.life : 0, 0, 1)
   if (life <= 0 || !motion || typeof motion.ambient !== 'function') return   // sin vida -> sin transform (save ya hecho)
   const amb = motion.ambient(t, (seed >>> 0)) || {}
-  const z = Math.max(1, 1 + life * (0.006 + Math.abs(amb.scale || 0)))        // zoom-in MINIMO, SIEMPRE >=1
+  const z = Math.max(1, 1 + life * rate * (0.006 + Math.abs(amb.scale || 0)))  // zoom-in MINIMO, SIEMPRE >=1
   const mx = (z - 1) * W / 2, my = (z - 1) * H / 2                            // overscan -> tope de la deriva
-  const ox = clamp((amb.x || 0) * life * 0.6, -mx, mx), oy = clamp((amb.y || 0) * life * 0.6, -my, my)
+  const ox = clamp((amb.x || 0) * life * rate * 0.6, -mx, mx), oy = clamp((amb.y || 0) * life * rate * 0.6, -my, my)
   ctx.translate(W / 2 + ox, H / 2 + oy); ctx.scale(z, z); ctx.translate(-W / 2, -H / 2)
 }
 
@@ -134,7 +137,7 @@ export function drawFrame(ctx, t, video, opts = {}) {
   const quality = opts.quality != null ? opts.quality : (video.quality != null ? video.quality : 1)
   const base = { pal: video.palette, content: video.content, energy: 1, quality }
   if (video.bgId) { const m = get(video.bgId); if (m) { const _sc = video.scenes && video.scenes.find(s => t >= s.start && t < s.start + s.dur); const _bs = (_sc && _sc.bgSeed != null) ? _sc.bgSeed : video.bgSeed; bgPush(ctx, t, motion, _bs); m.render(ctx, t, { ...base, seed: _bs }); ctx.restore() } }
-  if (video.subId) { const m = get(video.subId); if (m) { bgPush(ctx, t, motion, video.subSeed); m.render(ctx, t, { ...base, seed: video.subSeed }); ctx.restore() } }
+  if (video.subId) { const m = get(video.subId); if (m) { bgPush(ctx, t, motion, video.subSeed, 1.8); m.render(ctx, t, { ...base, seed: video.subSeed }); ctx.restore() } }   // PARALLAX: sub a 1.8x del bg (profundidad)
   if (video.atmId) { const m = get(video.atmId); if (m) m.render(ctx, t, { ...base, seed: video.atmSeed }) }   // atm SIN push (rays/glints crawlean)
   // GARNISH markkit (persistente): un icono chico en una ESQUINA, tenue, detras del contenido. NUNCA centrado
   // (no compite con el titulo; la regla "nada de blobs/formas sobre el titulo"). Solo iconos (ver assemble.js).
