@@ -166,6 +166,14 @@ function heroHalo(ctx, hx, hy, hr, accent, t, tone) {
 function pulseGlow(ctx, color, t, { sp = 1.1, base = 4, amp = 5, ph = 0 } = {}) {
   ctx.shadowColor = color; ctx.shadowBlur = base + amp * (0.5 + 0.5 * Math.sin(t * sp + ph))
 }
+// OLA VISUAL · DUOTONO — regla/subrayado fino con degradé horizontal accent→accent2 (la marca respira, no es un tono
+// plano). El stop 0 ES accent exacto; accent2 solo tiñe el otro extremo. Solo se usa en REGLAS finas (no en pills que
+// llevan texto onAccent). Fallback a plano si no hay accent2. Puro/determinista (sin PRNG, sin t).
+function accentGrad(ctx, x, y, w, h, r, accent, accent2) {
+  if (accent2 && accent2 !== accent && w > 0) { const g = ctx.createLinearGradient(x, 0, x + w, 0); g.addColorStop(0, accent); g.addColorStop(1, accent2); ctx.fillStyle = g }
+  else ctx.fillStyle = accent
+  ctx.beginPath(); ctx.roundRect(x, y, w, h, r); ctx.fill()
+}
 // punto de brillo que ORBITA un arco (cx,cy,R) recorriendo el rango [a0, a0+span] en loop (continuo via t).
 // Para dar vida a anillos/donuts/dials/gauges ya dibujados. dotR pequeno, blanco/acento translucido.
 function arcSheenDot(ctx, cx, cy, R, a0, span, t, { per = 4.0, dotR = 3.2, color = '#fff', tone = 'dark' } = {}) {
@@ -194,7 +202,7 @@ register({
     // regla de acento bajo el wordmark (DECO) + VIDA: respira de ancho y un sheen la recorre en loop
     const ru = M.ease(inv(t, 0.5, 1.1)), rw = clamp(b.w * 0.22, 40, 120) * ru * breathe(t, 0.9, 0.02)   // ancho ANCLADO al slot del wordmark (no px fijo) -> se adapta al ancho real y al formato (4:5/1:1)
     const rx = b.align === 'left' ? b.x : b.cx - rw / 2, ry = b.y + b.h + 6
-    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(rx, ry, rw, 5, 2.5); ctx.fill()
+    accentGrad(ctx, rx, ry, rw, 5, 2.5, pal.accent, pal.accent2)
     if (ru > 0.9) rrSheen(ctx, rx, ry, rw, 5, t, { per: 3.0, strength: 0.55, tone: pal.tone })
     // tagline en su slot
     if (content.tagline && L.tag) drawWrapped(ctx, content.tagline, L.tag.cx, L.tag.cy, { size: Math.min(L.tag.size, 26), weight: 600, family: fonts.text, maxW: L.tag.w, align: L.tag.align, color: pal.dim, alpha: inv(t, 0.62, 1.05), maxLines: 2 })
@@ -253,7 +261,7 @@ register({
     // barra de acento SOBRE el titular (DECO) + VIDA: respira de ancho y un sheen la recorre
     const mr = M.ease(inv(t, 0.05, 0.5)), mbw = clamp(c.w * 0.20, 36, 90) * mr * breathe(t, 1.0, 0.022)   // ancho ANCLADO al slot del claim (no px fijo)
     const bx = c.align === 'left' ? c.x : c.cx - mbw / 2, by = c.y - c.h / 2 - 16
-    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(bx, by, mbw, 6, 3); ctx.fill()
+    accentGrad(ctx, bx, by, mbw, 6, 3, pal.accent, pal.accent2)
     if (mr > 0.9) rrSheen(ctx, bx, by, mbw, 6, t, { per: 2.8, strength: 0.55, tone: pal.tone })
     // claim en su slot, envuelto, con slide-in
     ctx.save(); ctx.globalAlpha = inv(t, 0.15, 0.6); ctx.translate((1 - M.ease(inv(t, 0.15, 0.7))) * 24, 0)
@@ -294,7 +302,7 @@ register({
       const fs = drawText(ctx, content.cta, 0, 0, { size: fs0, weight: 800, family: fonts.display, maxW: ct.w, color: pal.inkText })
       ctx.font = `800 ${fs}px "${fonts.display}"`; const tw = Math.min(ct.w, ctx.measureText(content.cta).width)
       const up = M.ease(inv(t, 1.3, 1.9))
-      ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(-tw / 2, fs * 0.62, tw * up, 5, 2.5); ctx.fill()
+      accentGrad(ctx, -tw / 2, fs * 0.62, tw * up, 5, 2.5, pal.accent, pal.accent2)
       if (inv(t, 1.6, 2.0) > 0) { ctx.save(); ctx.strokeStyle = pal.accent; ctx.lineWidth = 4; ctx.lineCap = 'round'; pulseGlow(ctx, pal.accent, t, { sp: 1.3, base: 2, amp: 6 }); const ay = fs * 0.62 + 22 + drift(t, 1.1, 1.2); ctx.beginPath(); ctx.moveTo(-13, ay); ctx.lineTo(0, ay + 11); ctx.lineTo(13, ay); ctx.stroke(); ctx.restore() }
       ctx.restore()
     }
@@ -327,7 +335,7 @@ register({
     ctx.restore()
     // regla inferior que barre, anclada bajo el slot del claim + VIDA: sheen recorriendola en loop
     const rx = c.x, ry = c.y + c.h + 8, ru = M.ease(inv(t, 0.7, 1.3)), rw = c.w * ru
-    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(rx, ry, rw, 5, 2.5); ctx.fill()
+    accentGrad(ctx, rx, ry, rw, 5, 2.5, pal.accent, pal.accent2)
     if (ru > 0.9) rrSheen(ctx, rx, ry, rw, 5, t, { per: 3.4, strength: 0.5, tone: pal.tone })
   },
 })
@@ -409,7 +417,7 @@ register({
     ctx.restore()
     // VIDA: regla de acento bajo el numero, respira + sheen (DECO, continua)
     const rcx = nS.cx, ru = M.ease(inv(t, 0.45, 1.0)), rw = 70 * ru * breathe(t, 0.9, 0.025), ry = nS.y + nS.h + 2
-    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(rcx - rw / 2, ry, rw, 5, 2.5); ctx.fill()
+    accentGrad(ctx, rcx - rw / 2, ry, rw, 5, 2.5, pal.accent, pal.accent2)
     if (ru > 0.9) rrSheen(ctx, rcx - rw / 2, ry, rw, 5, t, { per: 3.0, strength: 0.5, tone: pal.tone })
     // contexto debajo, en su slot
     drawWrapped(ctx, ctxSrc, cS.cx, cS.cy, { size: Math.min(cS.size, 24), weight: 700, family: fonts.text, maxW: cS.w, color: pal.ink, align: cS.align, alpha: inv(t, 0.5, 1.0), maxLines: 2 })
@@ -903,7 +911,7 @@ register({
     ctx.restore()
     // regla de acento bajo el numero + VIDA: respira + sheen
     const rcx = nS.cx, ru = M.ease(inv(t, 0.45, 1.0)), srw = 92 * ru * breathe(t, 0.9, 0.022), sry = nS.y + nS.h + 2
-    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(rcx - srw / 2, sry, srw, 5, 2.5); ctx.fill()
+    accentGrad(ctx, rcx - srw / 2, sry, srw, 5, 2.5, pal.accent, pal.accent2)
     if (ru > 0.9) rrSheen(ctx, rcx - srw / 2, sry, srw, 5, t, { per: 3.0, strength: 0.55, tone: pal.tone })
     // contexto que explica la estadistica (lo que la vuelve shock), en su slot
     drawWrapped(ctx, ctxSrc, cS.cx, cS.cy, { size: Math.min(cS.size, 25), weight: 700, family: fonts.text, maxW: cS.w, color: pal.ink, align: cS.align, maxLines: 3, lh: 1.18, alpha: inv(t, 0.55, 1.05) })
@@ -990,7 +998,7 @@ register({
     // ultima palabra/regla en acento bajo el bloque + VIDA: respira + sheen
     const ru = M.ease(inv(t, 0.6, 1.2)), mrw = 92 * ru * breathe(t, 0.85, 0.022), mry = y0 + blockH - lineH / 2 + 26
     const mrx = c.align === 'center' ? c.cx - mrw / 2 : ax
-    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(mrx, mry, mrw, 6, 3); ctx.fill()
+    accentGrad(ctx, mrx, mry, mrw, 6, 3, pal.accent, pal.accent2)
     if (ru > 0.9) rrSheen(ctx, mrx, mry, mrw, 6, t, { per: 3.0, strength: 0.55, tone: pal.tone })
   },
 })
@@ -1014,7 +1022,7 @@ register({
     ctx.restore()
     // regla ancha de acento bajo la marca + VIDA: respira + sheen
     const ry = b.y + b.h + 10, ru = M.ease(inv(t, 0.5, 1.1)), brw = 140 * ru * breathe(t, 0.85, 0.02)
-    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(b.cx - brw / 2, ry, brw, 6, 3); ctx.fill()
+    accentGrad(ctx, b.cx - brw / 2, ry, brw, 6, 3, pal.accent, pal.accent2)
     if (ru > 0.9) rrSheen(ctx, b.cx - brw / 2, ry, brw, 6, t, { per: 3.2, strength: 0.55, tone: pal.tone })
     // cta o tagline debajo, en su slot, en mono-acento
     if (sub && L.sub) drawText(ctx, sub, L.sub.cx, L.sub.cy, { size: Math.min(L.sub.size, 22), weight: 700, family: fonts.text, maxW: L.sub.w, color: pal.inkText, align: L.sub.align, alpha: inv(t, 0.75, 1.25) })
@@ -1539,7 +1547,7 @@ register({
     drawWrapped(ctx, content.brand || 'Marca', rx, H * 0.4, { size: 38, weight: 800, family: fonts.display, maxW: W - rx - W * 0.06, color: pal.ink, align: 'left', maxLines: 2, lh: 1.04, alpha: inv(t, 0.4, 0.9) })
     // regla de acento + VIDA: respira + sheen
     const ru = M.ease(inv(t, 0.55, 1.1)), srw = 70 * ru * breathe(t, 0.9, 0.025)
-    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(rx, H * 0.5, srw, 5, 2.5); ctx.fill()
+    accentGrad(ctx, rx, H * 0.5, srw, 5, 2.5, pal.accent, pal.accent2)
     if (ru > 0.9) rrSheen(ctx, rx, H * 0.5, srw, 5, t, { per: 3.0, strength: 0.5, tone: pal.tone })
     const cta = content.cta || content.tagline
     if (cta) {
@@ -1572,7 +1580,7 @@ register({
     ctx.restore()
     // regla larga de acento que cruza bajo la palabra + VIDA: respira + sheen
     const ru = M.ease(inv(t, 0.45, 1.1)), irw = (W * 0.9 - mx) * ru * breathe(t, 0.85, 0.015)
-    ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.roundRect(mx, H * 0.57, irw, 5, 2.5); ctx.fill()
+    accentGrad(ctx, mx, H * 0.57, irw, 5, 2.5, pal.accent, pal.accent2)
     if (ru > 0.9) rrSheen(ctx, mx, H * 0.57, irw, 5, t, { per: 3.2, strength: 0.5, tone: pal.tone })
   },
 })

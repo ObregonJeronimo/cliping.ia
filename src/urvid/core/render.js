@@ -180,6 +180,18 @@ export function drawFrame(ctx, t, video, opts = {}) {
     }
   }
   // (Lotties ELIMINADOS 2026-07-01: los acentos animados por-escena y a nivel-video ensuciaban la composicion sin aportar.)
+  // OLA VISUAL · UNA LUZ POR VIDEO: una direccion de luz COHERENTE para todo el video (angulo fijo derivado del seed,
+  // determinista) -> un gradiente lineal MUY sutil sobre las capas de fondo (DEBAJO del contenido) aclara un lado y apaga
+  // el opuesto, dando volumen en vez de un cuadro plano. Alpha bajo -> no afecta la legibilidad del texto (va encima). Puro.
+  {
+    const la = ((video.seed >>> 0) % 628) / 100                      // angulo fijo por video en [0,2π)
+    const dx = Math.cos(la) * W * 0.75, dy = Math.sin(la) * H * 0.75, lightTone = video.tone === 'light'
+    const g = ctx.createLinearGradient(W / 2 - dx, H / 2 - dy, W / 2 + dx, H / 2 + dy)
+    g.addColorStop(0, lightTone ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.06)')
+    g.addColorStop(0.5, 'rgba(0,0,0,0)')
+    g.addColorStop(1, lightTone ? 'rgba(20,15,25,0.05)' : 'rgba(0,0,0,0.11)')
+    ctx.save(); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); ctx.restore()
+  }
   // GUARD de texto CENTRALIZADO: scrim radial SUAVE en la zona del titulo (~centro), alpha BAJO -> legibilidad
   // consistente sin que cada fondo lo reimplemente y sin enturbiar fondos ya limpios. Debajo del texto. Determinista.
   {
