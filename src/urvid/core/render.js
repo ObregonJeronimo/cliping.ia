@@ -102,7 +102,7 @@ function paintScene(ctx, sc, t, video, motion, typekit, layout) {
   // eDur (0.9s) mantiene la entrada << 0.7*dur_min (=1.54s, piso 2.2s) -> toda escena ASENTADA (k=0) en el muestreo de prefit/qa.
   const s = video.seriousness != null ? video.seriousness : 0.5, dev = 0.5 - s
   const intK = clamp(1 + dev * 0.6, 0.7, 1.3)
-  const eDur = clamp((motion.enterDur || 0.5) * clamp(1 + dev * 0.5, 0.75, 1.25), 0.2, 0.9)
+  const eDur = clamp((motion.enterDur || 0.5) * clamp(1 + dev * 0.5, 0.75, 1.25), 0.2, 0.7)   // OLA VISUAL #8: techo 0.9->0.7 -> el mensaje ASIENTA (queda legible) ~0.2s antes tras el corte, sin beat vacío largo. Sigue << 0.7*dur_min (settle garantizado en el muestreo de prefit/qa)
   // OVERSHOOT (OLA VISUAL): la entrada usa settle (spring que se pasa y rebota) en vez de ease monotonico
   // -> pop con asentamiento fisico real. En ts>=eDur settle=1 -> k=0 exacto: asentado pixel-estable igual que hoy.
   const ep = motion.settle ? motion.settle(inv(ts, 0, eDur)) : motion.ease(inv(ts, 0, eDur)), k = 1 - ep
