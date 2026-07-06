@@ -3,7 +3,7 @@
 // transitions compone los buffers (clip/transform); ademas A se DISUELVE (alpha 1->0) para que su texto no quede
 // pisando a B. Sin buffer disponible (Node pelado) cae al modo directo previo. ctx en espacio logico 405x720.
 import { get } from './registry.js'
-import { W, H, inv, clamp, eOutCubic, setFormat } from './util.js'
+import { W, H, inv, clamp, eOutCubic, setFormat, rgba } from './util.js'
 import { resolveMotion } from './motion.js'
 import { resolveTypekit } from './typekit.js'
 import { resolveTransition } from './transitions.js'
@@ -194,6 +194,17 @@ export function drawFrame(ctx, t, video, opts = {}) {
     g.addColorStop(0.5, 'rgba(0,0,0,0)')
     g.addColorStop(1, lightTone ? 'rgba(20,15,25,0.05)' : 'rgba(0,0,0,0.11)')
     ctx.save(); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); ctx.restore()
+  }
+  // OLA VISUAL · KEY-WASH POR ESCENA: cada corte "re-ilumina" el cuadro — un lavado tenue teñido al ACENTO cuya posición
+  // varía por ESCENA (sc.seed) y entra con el fade del corte -> cada beat se siente iluminado distinto (no un video plano).
+  // Debajo del contenido, alpha bajo (no afecta legibilidad). Oculto en la 1ra escena (hook limpio). Determinista.
+  if (_mkSc && !_mkFirst) {
+    const ws = (_mkSc.seed >>> 0)
+    const wx = W * (0.25 + 0.5 * ((ws % 97) / 97)), wy = H * (0.18 + 0.34 * (((ws >> 5) % 89) / 89))
+    const wa = (video.tone === 'light' ? 0.045 : 0.065) * _mkFade
+    const wg = ctx.createRadialGradient(wx, wy, 0, wx, wy, W * 0.95)
+    wg.addColorStop(0, rgba(video.palette.accent, wa)); wg.addColorStop(1, rgba(video.palette.accent, 0))
+    ctx.save(); if (video.tone !== 'light') ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = wg; ctx.fillRect(0, 0, W, H); ctx.restore()
   }
   // GUARD de texto CENTRALIZADO: scrim radial SUAVE en la zona del titulo (~centro), alpha BAJO -> legibilidad
   // consistente sin que cada fondo lo reimplemente y sin enturbiar fondos ya limpios. Debajo del texto. Determinista.
