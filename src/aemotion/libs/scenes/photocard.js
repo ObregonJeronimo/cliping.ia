@@ -19,7 +19,6 @@ function coverDraw(ctx, img, x, y, w, h) {
 
 export default {
   id: 'am.scene.photocard', lib: 'scenes', kind: ['photo'], weight: 1,
-  anchor(sc, video) { return { x: video.W / 2, y: video.H * 0.42, r: 5 } },
   render(ctx, ts, env) {
     const { W, H, dna, ink, acc, outP } = env
     const r = env.rng('photo')

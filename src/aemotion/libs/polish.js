@@ -9,7 +9,7 @@ import { TAU, clamp, lerp, rgba, fontStr } from '../core/util.js'
 import { seedFor } from '../core/prng.js'
 import { win, cubicOut, expoOut } from '../core/motion.js'
 import { drawShape } from '../core/shapes.js'
-import { circlePath, starPath, polygonPath, linePath, rectPath } from '../core/path.js'
+import { circlePath, starPath, polygonPath, linePath, rectPath, tracePath } from '../core/path.js'
 
 // ---------- idle: deriva continua con fase por elemento (amp px, period seg) ----------
 export function idle(t, phase, amp = 3, period = 5) {
@@ -143,17 +143,23 @@ export function drawFloaters(ctx, env, t, p = 1, ep = 0) {
     ctx.save()
     ctx.globalAlpha *= a
     const glow = env.dark ? dna.glowK * (far ? 0.4 : 1) : 0
+    const col = i % 2 ? (env.acc2 || acc) : acc                 // el segundo color del esquema vive aca
     if (dna.shapeDialect === 'anillos') {
-      glowStroke(ctx, c => { c.beginPath(); c.arc(x, y, sz, 0, TAU) }, acc, far ? 1 : 1.5, glow)
+      glowStroke(ctx, c => { c.beginPath(); c.arc(x, y, sz, 0, TAU) }, col, far ? 1 : 1.5, glow)
     } else if (dna.shapeDialect === 'gotas') {
-      glowFill(ctx, c => { c.beginPath(); c.arc(x, y, sz * 0.8, 0, TAU) }, acc, glow)
+      glowFill(ctx, c => { c.beginPath(); c.arc(x, y, sz * 0.8, 0, TAU) }, col, glow)
     } else if (dna.shapeDialect === 'grid') {
-      glowStroke(ctx, c => { c.beginPath(); c.moveTo(x - sz, y); c.lineTo(x + sz, y); c.moveTo(x, y - sz); c.lineTo(x, y + sz) }, acc, 1.4, glow)
+      glowStroke(ctx, c => { c.beginPath(); c.moveTo(x - sz, y); c.lineTo(x + sz, y); c.moveTo(x, y - sz); c.lineTo(x, y + sz) }, col, 1.4, glow)
     } else if (dna.shapeDialect === 'subrayados') {
-      glowStroke(ctx, c => { c.beginPath(); c.moveTo(x - sz, y); c.lineTo(x + sz, y) }, acc, 2, glow * 0.5)
+      glowStroke(ctx, c => { c.beginPath(); c.moveTo(x - sz, y); c.lineTo(x + sz, y) }, col, 2, glow * 0.5)
+    } else if (dna.shapeDialect === 'estrellas') {
+      glowFill(ctx, c => tracePath(c, starPath(x, y, sz, sz * 0.45, 5, t * 0.12 + ph)), col, glow)
+    } else if (dna.shapeDialect === 'arcos') {
+      const a0 = ph + t * 0.1
+      glowStroke(ctx, c => { c.beginPath(); c.arc(x, y, sz, a0, a0 + 2.1) }, col, far ? 1.2 : 1.8, glow)
     } else {
       ctx.translate(x, y); ctx.rotate(t * 0.15 + ph)
-      glowFill(ctx, c => { c.beginPath(); c.rect(-sz * 0.7, -sz * 0.7, sz * 1.4, sz * 1.4) }, acc, glow)
+      glowFill(ctx, c => { c.beginPath(); c.rect(-sz * 0.7, -sz * 0.7, sz * 1.4, sz * 1.4) }, col, glow)
     }
     ctx.restore()
   }

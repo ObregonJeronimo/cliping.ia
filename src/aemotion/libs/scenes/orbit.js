@@ -12,13 +12,6 @@ import { seedFor } from '../../core/prng.js'
 export default {
   id: 'am.scene.orbit', lib: 'scenes', kind: ['line', 'stat'], weight: 0.9,
   famBias: { orbita: 1.6, blueprint: 1.35, poster: 0.5 },
-  anchor(sc, video) {
-    // recomputa el radio base EXACTO del render (mismos 2 primeros draws del stream 'orbit')
-    const rr = seedFor(sc.seed, 'orbit')
-    rr()
-    const base = Math.min(video.W, video.H) * (0.3 + rr() * 0.06)
-    return { x: video.W / 2, y: video.H * 0.48 - base, r: 4.5 }
-  },
   render(ctx, ts, env) {
     const { W, H, dna, ink, acc, outP } = env
     const r = env.rng('orbit')
@@ -44,7 +37,7 @@ export default {
       if (glow > 0.05 && i === 0) { ctx.shadowColor = acc; ctx.shadowBlur = 16 * glow }
       drawShape(ctx, ts, {
         path: circlePath(W / 2, cy, R),
-        stroke: { color: rgba(acc, 0.62 - i * 0.15), width: 2.4 - i * 0.5 },
+        stroke: { color: rgba(i % 2 ? env.acc2 : acc, 0.62 - i * 0.15), width: 2.4 - i * 0.5 },
         trim: { start: 0, end: expoOut(lp) * seg, offset: dir * ts * 0.022 + r() },
       })
       ctx.restore()

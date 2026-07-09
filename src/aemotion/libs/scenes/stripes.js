@@ -11,7 +11,6 @@ import { rgba, clamp, fontStr } from '../../core/util.js'
 export default {
   id: 'am.scene.stripes', lib: 'scenes', kind: ['hook', 'line'], weight: 0.7, hookWeight: 0.9,
   famBias: { poster: 1.9, liquidpop: 1.2, editorial: 0.4, orbita: 0.6 },
-  anchor(sc, video) { return { x: video.W / 2, y: video.H * 0.3, r: 5 } },
   render(ctx, ts, env) {
     const { W, H, dna, ink, acc, outP } = env
     const r = env.rng('stripes')
@@ -32,7 +31,7 @@ export default {
       ctx.save()
       ctx.translate(x, 0)
       ctx.translate(W / 2, i * hS + hS / 2); ctx.scale(stretch, 1 / stretch); ctx.translate(-W / 2, -(i * hS + hS / 2))
-      drawShape(ctx, ts, { path: rectPath(0, i * hS + 2, W, hS - 4, dna.radius), fill: rgba(acc, alpha) })
+      drawShape(ctx, ts, { path: rectPath(0, i * hS + 2, W, hS - 4, dna.radius), fill: rgba(i % 2 ? env.acc2 : acc, alpha) })
       ctx.restore()
     }
 

@@ -79,11 +79,11 @@ function moodPick(r, items, mood, moodOfItem, veto) {
 //  pol: motivo de polaridad (L claro / D oscuro / A placa de acento) · dialects: formas de la familia
 //  fonts: voces preferidas (bias x2.2, no exclusivas) · bg: variante de fondo que pinta backgrounds.js
 export const FAMILIAS = [
-  { id: 'orbita', mood: [0.25, 0.55, 0.65], pol: [['D', 'D', 'L', 'D', 'D'], ['D', 'D', 'D', 'A', 'D']], dialects: ['anillos', 'gotas'], fonts: ['suizo', 'tech', 'ancho', 'sora', 'shoulders'], bg: 'glow' },
-  { id: 'editorial', mood: [0.6, 0.85, 0.35], pol: [['L', 'L', 'D', 'L', 'L'], ['L', 'L', 'L', 'A', 'L']], dialects: ['subrayados', 'anillos'], fonts: ['editorial', 'serif-drama', 'suizo', 'sora'], bg: 'papel' },
-  { id: 'liquidpop', mood: [0.75, 0.25, 0.7], pol: [['A', 'L', 'A', 'L', 'A'], ['L', 'A', 'L', 'A', 'D']], dialects: ['gotas', 'bloques'], fonts: ['redondo', 'ancho', 'suizo', 'condensado'], bg: 'blobs' },
-  { id: 'blueprint', mood: [0.3, 0.65, 0.55], pol: [['D', 'D', 'L', 'D', 'D'], ['D', 'L', 'D', 'D', 'D']], dialects: ['grid', 'anillos'], fonts: ['tech', 'brutal-mono', 'suizo', 'condensado'], bg: 'grid' },
-  { id: 'poster', mood: [0.35, 0.4, 0.85], pol: [['L', 'D', 'A', 'D', 'L'], ['D', 'L', 'D', 'A', 'D']], dialects: ['bloques', 'subrayados'], fonts: ['brutal-mono', 'shoulders', 'condensado', 'ancho'], bg: 'franja' },
+  { id: 'orbita', mood: [0.25, 0.55, 0.65], pol: [['D', 'D', 'L', 'D', 'D'], ['D', 'D', 'D', 'A', 'D']], dialects: ['anillos', 'gotas', 'arcos'], fonts: ['suizo', 'tech', 'ancho', 'sora', 'shoulders'], bg: 'glow' },
+  { id: 'editorial', mood: [0.6, 0.85, 0.35], pol: [['L', 'L', 'D', 'L', 'L'], ['L', 'L', 'L', 'A', 'L']], dialects: ['subrayados', 'anillos', 'arcos'], fonts: ['editorial', 'serif-drama', 'suizo', 'sora'], bg: 'papel' },
+  { id: 'liquidpop', mood: [0.75, 0.25, 0.7], pol: [['A', 'L', 'A', 'L', 'A'], ['L', 'A', 'L', 'A', 'D']], dialects: ['gotas', 'bloques', 'estrellas'], fonts: ['redondo', 'ancho', 'suizo', 'condensado'], bg: 'blobs' },
+  { id: 'blueprint', mood: [0.3, 0.65, 0.55], pol: [['D', 'D', 'L', 'D', 'D'], ['D', 'L', 'D', 'D', 'D']], dialects: ['grid', 'anillos', 'arcos'], fonts: ['tech', 'brutal-mono', 'suizo', 'condensado'], bg: 'grid' },
+  { id: 'poster', mood: [0.35, 0.4, 0.85], pol: [['L', 'D', 'A', 'D', 'L'], ['D', 'L', 'D', 'A', 'D']], dialects: ['bloques', 'subrayados', 'estrellas'], fonts: ['brutal-mono', 'shoulders', 'condensado', 'ancho'], bg: 'franja' },
 ]
 
 export function deriveDNA(brief, seed) {
@@ -130,7 +130,13 @@ export function deriveDNA(brief, seed) {
   for (let i = 0; i < 8 && contrast(accent, '#ffffff') < 4.5 && contrast(accent, '#0b0b0e') < 4.5; i++) {
     const a = hexToHsl(accent); accent = hslToHex(a.h, a.s, a.l > 0.5 ? a.l - 0.06 : a.l + 0.06)
   }
-  const accent2 = hslToHex(hue + range(rC, 24, 60) * (rC() < 0.5 ? 1 : -1), range(rC, 0.5, 0.85), range(rC, 0.5, 0.66))
+  // ESQUEMA de color (variedad real: no todo monocromo de la marca): mono = analogo cercano,
+  // duo = complementario, tri = triadico. El segundo color vive en flotantes/anillos/franjas.
+  const scheme = pick(rC, ['mono', 'mono', 'duo', 'duo', 'tri'])
+  const hue2 = scheme === 'duo' ? hue + range(rC, 150, 210)
+    : scheme === 'tri' ? hue + (rC() < 0.5 ? 120 : -120) + range(rC, -15, 15)
+      : hue + range(rC, 24, 60) * (rC() < 0.5 ? 1 : -1)
+  const accent2 = hslToHex(hue2, range(rC, 0.5, 0.85), range(rC, 0.5, 0.66))
   const inkOnAccent = contrast(accent, '#ffffff') >= contrast(accent, '#0b0b0e') ? '#ffffff' : '#0b0b0e'
   const inkLight = hslToHex(hue + range(rC, -15, 15), range(rC, 0.05, 0.25), range(rC, 0.05, 0.11))
   const inkDark = hslToHex(hue + range(rC, -15, 15), range(rC, 0.03, 0.15), range(rC, 0.93, 0.98))
@@ -160,7 +166,7 @@ export function deriveDNA(brief, seed) {
     familia: fam.id, bg: fam.bg, shapeDialect, polarityMotif,
     pairId: pair.id, display: pair.display, dw: pair.dw, dAlt: pair.alt, support: pair.support, sw: pair.sw,
     caseMode, trackEm, leading, sizeContrast,
-    paperLight, paperDark, accent, accent2, inkOnAccent, inkLight, inkDark,
+    scheme, paperLight, paperDark, accent, accent2, inkOnAccent, inkLight, inkDark,
     glowK: fam.id === 'orbita' ? range(rC, 0.5, 1) : range(rC, 0, 0.35),
     z, w, overshoot, staggerOverlap, squashK, shutterK, bpm,
     margin, radius, ctaKind, texture, texIntensity, breathPos,

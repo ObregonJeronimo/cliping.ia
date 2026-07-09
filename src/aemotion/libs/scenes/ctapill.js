@@ -10,7 +10,6 @@ import { rgba, clamp, fontStr, TAU } from '../../core/util.js'
 
 export default {
   id: 'am.scene.ctapill', lib: 'scenes', kind: ['cta'], weight: 1,
-  anchor(sc, video) { return { x: video.W / 2, y: video.H * 0.47 - 62, r: 5 } },
   render(ctx, ts, env) {
     const { W, H, dna, ink, acc } = env
     const text = applyCase(env.text, dna.caseMode === 'sentence' ? 'title' : dna.caseMode)
@@ -44,7 +43,7 @@ export default {
       const rr = 46 + ph * 74
       ctx.save()
       ctx.globalAlpha *= 0.34 * (1 - ph)
-      ctx.strokeStyle = acc; ctx.lineWidth = 1.6
+      ctx.strokeStyle = k ? env.acc2 : acc; ctx.lineWidth = 1.6
       ctx.beginPath(); ctx.ellipse(W / 2, cy, rr * 1.7, rr, 0, 0, TAU); ctx.stroke()
       ctx.restore()
     }

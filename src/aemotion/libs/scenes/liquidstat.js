@@ -24,10 +24,6 @@ function countUp(text, p) {
 export default {
   id: 'am.scene.liquidstat', lib: 'scenes', kind: ['stat'], weight: 1.1,
   famBias: { liquidpop: 1.6, orbita: 1.1, editorial: 0.7 },
-  anchor(sc, video) {
-    const r = seedFor(sc.seed, 'liquid')
-    return { x: video.W * (0.42 + r() * 0.16), y: video.H * 0.29, r: 7 }
-  },
   render(ctx, ts, env) {
     const { W, H, dna, ink, acc, outP } = env
     const r = env.rng('liquid')

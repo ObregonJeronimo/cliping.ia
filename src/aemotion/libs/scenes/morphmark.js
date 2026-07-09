@@ -22,7 +22,9 @@ function morphFor(seed, dialect, cx, cy, R) {
     const builders = dialect === 'anillos' ? [() => circlePath(cx, cy, R), () => polygonPath(cx, cy, R, 6, r() * TAU)]
       : dialect === 'bloques' ? [() => rectPath(cx - R, cy - R * 0.7, R * 2, R * 1.4, R * 0.12), () => polygonPath(cx, cy, R, 4, r() * TAU)]
         : dialect === 'grid' ? [() => polygonPath(cx, cy, R, 3, r() * TAU), () => polygonPath(cx, cy, R, 6, r() * TAU)]
-          : [() => starPath(cx, cy, R, R * 0.44, 5, r() * TAU), () => circlePath(cx, cy, R * 0.86)]
+          : dialect === 'estrellas' ? [() => starPath(cx, cy, R, R * 0.44, 5, r() * TAU), () => starPath(cx, cy, R, R * 0.62, 8, r() * TAU)]
+            : dialect === 'arcos' ? [() => circlePath(cx, cy, R * 0.9), () => polygonPath(cx, cy, R, 8, r() * TAU)]
+              : [() => starPath(cx, cy, R, R * 0.44, 5, r() * TAU), () => circlePath(cx, cy, R * 0.86)]
     f = pathMorph(builders[0](), builders[1](), { n: 120 })
     if (_cache.size > 64) _cache.clear()
     _cache.set(key, f)
@@ -33,7 +35,6 @@ function morphFor(seed, dialect, cx, cy, R) {
 export default {
   id: 'am.scene.morphmark', lib: 'scenes', kind: ['hook', 'line', 'breath'], weight: 1, hookWeight: 0.7,
   famBias: { liquidpop: 1.3, orbita: 1.15 },
-  anchor(sc, video) { return { x: video.W / 2, y: sc.text ? video.H * 0.34 : video.H * 0.5, r: 6 } },
   render(ctx, ts, env) {
     const { W, H, dna, ink, acc, outP } = env
     const isBreath = !env.text

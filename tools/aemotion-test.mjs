@@ -152,7 +152,7 @@ for (const seed of [1, 7, 1234]) {
 const genos = new Set(), fams = new Set()
 for (let s = 1; s <= 24; s++) {
   const v = makeMotionVideo(brief, { seed: s * 37 })
-  genos.add([v.dna.familia, v.dna.pairId, v.dna.shapeDialect, v.dna.ctaKind, v.dna.caseMode, v.script.templateId].join('|'))
+  genos.add([v.dna.familia, v.dna.pairId, v.dna.shapeDialect, v.dna.scheme, v.dna.ctaKind, v.dna.caseMode, v.script.templateId].join('|'))
   fams.add(v.dna.familia)
 }
 if (genos.size < 18) die(`variedad pobre: solo ${genos.size}/24 genotipos distintos`)

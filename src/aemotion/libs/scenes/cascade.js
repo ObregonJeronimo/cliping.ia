@@ -6,7 +6,7 @@
 import { wrapFit } from '../../core/text.js'
 import { drawAnimatedText } from '../../core/textfx.js'
 import { drawShape } from '../../core/shapes.js'
-import { circlePath, linePath, rectPath } from '../../core/path.js'
+import { circlePath, linePath, rectPath, starPath } from '../../core/path.js'
 import { metaballPath } from '../../core/liquid.js'
 import { win, cubicOut, expoOut } from '../../core/motion.js'
 import { idle, exitP, applyExit, drawEyebrow, drawFloaters, glowText, glowStroke, glowFill } from '../polish.js'
@@ -16,7 +16,6 @@ import { rgba, clamp, fontStr } from '../../core/util.js'
 export default {
   id: 'am.scene.cascade', lib: 'scenes', kind: ['hook', 'line'], weight: 1.2,
   famBias: { orbita: 1.3, editorial: 1.2, blueprint: 1.1 },
-  anchor(sc, video) { return { x: video.W / 2, y: video.H * 0.62, r: 5 } },
   render(ctx, ts, env) {
     const { W, H, dna, ink, acc, outP } = env
     const text = applyCase(env.text, dna.caseMode)
@@ -95,8 +94,25 @@ export default {
         const p = clamp(g * n - i, 0, 1)
         if (p <= 0) continue
         const x = W / 2 + (i - (n - 1) / 2) * 17
-        glowStroke(ctx, c => { c.beginPath(); c.moveTo(x, yG - 5 * p); c.lineTo(x, yG + 5 * p) }, rgba(acc, 0.85), 2, glow * 0.6)
+        glowStroke(ctx, c => { c.beginPath(); c.moveTo(x, yG - 5 * p); c.lineTo(x, yG + 5 * p) }, rgba(i % 2 ? env.acc2 : acc, 0.85), 2, glow * 0.6)
       }
+    } else if (dna.shapeDialect === 'estrellas') {
+      // 3 mini estrellas staggered, la del medio en el segundo color del esquema
+      for (let i = 0; i < 3; i++) {
+        const p = clamp(g * 3 - i, 0, 1)
+        if (p <= 0) continue
+        const x = W / 2 + (i - 1) * 26
+        drawShape(ctx, ts, {
+          path: starPath(x, yG + 2, 7 * cubicOut(p), 3.2 * cubicOut(p), 5, ts * 0.2 + i),
+          fill: i === 1 ? env.acc2 : acc,
+        })
+      }
+    } else if (dna.shapeDialect === 'arcos') {
+      drawShape(ctx, ts, {
+        path: circlePath(W / 2, yG - 2, 24),
+        stroke: { color: acc, width: 3 },
+        trim: { start: 0.55, end: 0.55 + 0.4 * expoOut(g), offset: ts * 0.01 },
+      })
     } else {
       const bw = Math.min(maxW * 0.36, 130) * cubicOut(g)
       drawShape(ctx, ts, { path: rectPath(W / 2 - bw / 2, yG - 4, bw, 8, dna.radius ? 4 : 0), fill: acc })

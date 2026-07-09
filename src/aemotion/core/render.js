@@ -6,7 +6,6 @@
 import { get } from './registry.js'
 import { paintPlate, inkFor, isDarkPol } from '../libs/backgrounds.js'
 import { drawCornerMeta } from '../libs/polish.js'
-import { drawPivot } from '../libs/pivot.js'
 import { seedFor } from './prng.js'
 import { clamp } from './util.js'
 import { pooled } from './scratch.js'
@@ -57,6 +56,7 @@ function envFor(sc, ts, video) {
     W: video.W, H: video.H, t: ts, dur: sc.dur, prog: clamp(ts / sc.dur, 0, 1),
     video, dna, sc, ink, idx, outP,
     acc: sc.polarity === 'accent' ? ink : dna.accent,          // acento legible aun sobre placa de acento
+    acc2: sc.polarity === 'accent' ? ink : dna.accent2,        // segundo color del esquema (duo/tri)
     paper: isDarkPol(sc.polarity) ? dna.paperDark : dna.paperLight,
     dark: isDarkPol(sc.polarity),
     text: sc.text, sub: sc.sub,
@@ -142,8 +142,6 @@ export function drawMotionFrame(ctx, t, video) {
       paintScene(ctx, p < 0.5 ? A : Bs, t, video)              // fallback: corte seco
     }
   }
-  // PIVOTE persistente (match-cut device): por encima de escenas Y transiciones, dentro de la camara
-  drawPivot(ctx, t, video)
   ctx.restore()                                                // fin camara global
 
   // FINISHING PASS (research): vineta universal solo-esquinas (invisible como efecto, visible como
