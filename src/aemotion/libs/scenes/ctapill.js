@@ -3,9 +3,10 @@
 import { drawText, fitFont } from '../../core/text.js'
 import { drawShape } from '../../core/shapes.js'
 import { rectPath, linePath } from '../../core/path.js'
-import { spring, springVel, win, cubicOut } from '../../core/motion.js'
+import { spring, springVel, win, cubicOut, expoOut } from '../../core/motion.js'
+import { idle, drawFloaters, drawEyebrow } from '../polish.js'
 import { applyCase } from '../fonts.js'
-import { rgba, clamp, fontStr } from '../../core/util.js'
+import { rgba, clamp, fontStr, TAU } from '../../core/util.js'
 
 export default {
   id: 'am.scene.ctapill', lib: 'scenes', kind: ['cta'], weight: 1,
@@ -14,6 +15,17 @@ export default {
     const text = applyCase(env.text, dna.caseMode === 'sentence' ? 'title' : dna.caseMode)
     const cy = H * 0.47
     const maxW = W - env.margin * 2
+    const glow = env.dark ? dna.glowK : 0
+
+    // el cierre tambien VIVE: flotantes + eyebrow + pulso continuo del CTA
+    drawFloaters(ctx, env, ts, win(ts, 0.5, 1.5), 0)
+    drawEyebrow(ctx, env, env.video.brand, cy - W * 0.2, win(ts, 0.1, 0.7), 0)
+    const pulse = 1 + 0.014 * Math.sin(ts * TAU * 0.42)
+    const idC = idle(ts, 1.9, 2, 6.4)
+    ctx.save()
+    ctx.translate(idC.dx, idC.dy)
+    ctx.translate(W / 2, cy); ctx.scale(pulse, pulse); ctx.translate(-W / 2, -cy)
+    if (glow > 0.05) { ctx.shadowColor = acc; ctx.shadowBlur = 18 * glow }
 
     const kind = dna.ctaKind
     if (kind === 'pill') {
@@ -66,10 +78,12 @@ export default {
       ctx.restore()
     }
 
-    // marca (sub) abajo, sobria
+    ctx.restore()
+
+    // marca (sub) abajo, sobria (fuera del pulso)
     if (env.sub) drawText(ctx, applyCase(env.sub, 'upper'), W / 2, H * 0.47 + W * 0.14, {
       size: 14, weight: dna.sw, family: dna.support, maxW: maxW * 0.7, color: ink,
-      alpha: 0.62 * clamp(win(ts, 0.8, 1.4), 0, 1), tracking: 2.5,
+      alpha: 0.62 * expoOut(clamp(win(ts, 0.85, 1.5), 0, 1)), tracking: 2.5,
     })
   },
 }

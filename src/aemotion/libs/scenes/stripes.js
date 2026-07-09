@@ -3,7 +3,8 @@
 import { wrapFit } from '../../core/text.js'
 import { drawShape } from '../../core/shapes.js'
 import { rectPath } from '../../core/path.js'
-import { spring, springVel, stagger, win } from '../../core/motion.js'
+import { spring, springVel, stagger, win, expoOut } from '../../core/motion.js'
+import { idle, exitP, applyExit } from '../polish.js'
 import { applyCase } from '../fonts.js'
 import { rgba, clamp, fontStr } from '../../core/util.js'
 
@@ -11,18 +12,20 @@ export default {
   id: 'am.scene.stripes', lib: 'scenes', kind: ['hook', 'line'], weight: 0.7, hookWeight: 0.9,
   famBias: { poster: 1.9, liquidpop: 1.2, editorial: 0.4, orbita: 0.6 },
   render(ctx, ts, env) {
-    const { W, H, dna, ink, acc } = env
+    const { W, H, dna, ink, acc, outP } = env
     const r = env.rng('stripes')
     const n = 3 + ((r() * 2) | 0)
-    const p = clamp(win(ts, 0.02, 0.85), 0, 1)
+    const p = clamp(win(ts, 0.02, 0.95), 0, 1)
     const hS = H / n
+    const epS = exitP(outP, 1, 2)
     for (let i = 0; i < n; i++) {
       const lp = stagger(p, i, n, dna.staggerOverlap)
       if (lp <= 0) continue
       const e = spring(lp, dna.z, dna.w)
       const sv = springVel(lp, dna.z, dna.w)
       const dir = i % 2 ? 1 : -1
-      const x = dir * W * (1 - e)
+      // entra, VIVE (deriva horizontal lenta continua) y SALE acelerando hacia su lado
+      const x = dir * W * (1 - e) + Math.sin(ts * 0.5 + i * 1.9) * 4 + dir * W * (epS * epS * epS)
       const stretch = 1 + clamp(Math.abs(sv) * 0.02, 0, 0.18)
       const alpha = i % 2 ? 0.1 : 0.16
       ctx.save()
@@ -32,21 +35,32 @@ export default {
       ctx.restore()
     }
 
-    // texto gigante encima (entra despues de las franjas)
+    // texto gigante encima: por linea (expo solapado), keyword en acento, idle + salida
     const text = applyCase(env.text, dna.caseMode)
     const maxW = W - env.margin * 2
-    const wr = wrapFit(ctx, text, Math.round(W * 0.17), maxW, 20, dna.dw, dna.display, 3, dna.trackingBias)
-    const lineH = wr.size * 1.06
-    const e = spring(win(ts, 0.35, 0.9), dna.z * 0.85, dna.w * 1.1)
+    const wr = wrapFit(ctx, text, Math.round(W * 0.185), maxW, 20, dna.dw, dna.display, 3, dna.trackingBias)
+    const lineH = wr.size * 1.02
+    const idT = idle(ts, 0.6, 2.4, 6.8)
+    const epT = exitP(outP, 0, 2)
     ctx.save()
-    ctx.globalAlpha *= clamp(e * 1.6, 0, 1)
-    ctx.font = fontStr(dna.dw, wr.size, dna.display); ctx.letterSpacing = dna.trackingBias + 'px'
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = ink
-    const y0 = H * 0.5 - ((wr.lines.length - 1) / 2) * lineH
-    wr.lines.forEach((ln, i) => {
-      const dx = (i % 2 ? 1 : -1) * (1 - e) * 30
-      ctx.fillText(ln, W / 2 + dx, y0 + i * lineH)
-    })
+    ctx.translate(idT.dx, idT.dy)
+    let aT = 1
+    if (epT > 0) aT = applyExit(ctx, epT, W / 2, H * 0.5, -1)
+    ctx.globalAlpha *= aT
+    if (aT > 0.01) {
+      ctx.font = fontStr(dna.dw, wr.size, dna.display); ctx.letterSpacing = dna.trackingBias + 'px'
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+      const y0 = H * 0.5 - ((wr.lines.length - 1) / 2) * lineH
+      wr.lines.forEach((ln, i) => {
+        const le = expoOut(clamp(win(ts, 0.4 + i * 0.13, 1.25 + i * 0.13), 0, 1))
+        const dx = (i % 2 ? 1 : -1) * (1 - le) * 44
+        ctx.save()
+        ctx.globalAlpha *= clamp(le * 1.4, 0, 1)
+        ctx.fillStyle = wr.lines.length > 1 && i === wr.lines.length - 1 ? acc : ink
+        ctx.fillText(ln, W / 2 + dx, y0 + i * lineH)
+        ctx.restore()
+      })
+    }
     ctx.restore()
   },
 }

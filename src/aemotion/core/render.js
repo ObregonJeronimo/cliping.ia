@@ -5,6 +5,7 @@
 // Determinismo: cero estado entre frames salvo pools idempotentes.
 import { get } from './registry.js'
 import { paintPlate, inkFor, isDarkPol } from '../libs/backgrounds.js'
+import { drawCornerMeta } from '../libs/polish.js'
 import { seedFor } from './prng.js'
 import { clamp } from './util.js'
 import { pooled } from './scratch.js'
@@ -20,9 +21,15 @@ export const beatAt = (t, video) => { const s = sceneAt(video, t); return s ? s.
 function envFor(sc, ts, video) {
   const dna = video.dna
   const ink = inkFor(sc, dna)
+  // SALIDA coreografiada: si la escena termina en corte SECO, sus elementos se despiden en los
+  // ultimos ~0.5s (ease-in, stagger inverso). Si termina en transicion, la transicion es el gesto.
+  const idx = video.scenes.indexOf(sc)
+  const isLast = idx === video.scenes.length - 1
+  const outXf = video.cuts.some(c => c.dur > 0 && Math.abs(c.at - (sc.t0 + sc.dur)) < 1e-6)
+  const outP = (isLast || outXf) ? 0 : clamp((ts - (sc.dur - 0.5)) / 0.42, 0, 1)
   return {
     W: video.W, H: video.H, t: ts, dur: sc.dur, prog: clamp(ts / sc.dur, 0, 1),
-    video, dna, sc, ink,
+    video, dna, sc, ink, idx, outP,
     acc: sc.polarity === 'accent' ? ink : dna.accent,          // acento legible aun sobre placa de acento
     paper: isDarkPol(sc.polarity) ? dna.paperDark : dna.paperLight,
     dark: isDarkPol(sc.polarity),
@@ -38,23 +45,25 @@ function paintScene(ctx, sc, t, video) {
   paintPlate(ctx, video.W, video.H, sc, t, video)
   const mod = get(sc.sceneId)
 
-  // camara sutil: drift uniforme de la placa entera (zoom 1-2.4% + pan chico) + whip SOLO a cortes secos
+  // camara sutil: drift uniforme de la placa entera (zoom 1-2.4% + pan chico). Sin whip: la salida
+  // ahora es COREOGRAFIADA por elemento (env.outP) — el golpe de escala encima quedaba sucio.
   const W = video.W, H = video.H
   const rc = seedFor(sc.seed, 'am.cam')
   const zIn = rc() < 0.55, zAmt = 0.008 + rc() * 0.016
   const panX = (rc() - 0.5) * 7, panY = (rc() - 0.5) * 7
   const p = clamp(ts / sc.dur, 0, 1)
-  const isLast = sc === video.scenes[video.scenes.length - 1]
-  const endsInXf = video.cuts.some(c => c.dur > 0 && Math.abs(c.at - (sc.t0 + sc.dur)) < 1e-6)
-  const out = (isLast || endsInXf) ? 0 : clamp((ts - (sc.dur - 0.2)) / 0.2, 0, 1)
-  const z = (1 + zAmt * (zIn ? p : 1 - p)) * (1 + 0.045 * out * out)
+  const z = 1 + zAmt * (zIn ? p : 1 - p)
   ctx.save()
   ctx.translate(W / 2 + panX * p, H / 2 + panY * p)
   ctx.scale(z, z)
   ctx.translate(-W / 2, -H / 2)
   if (mod) mod.render(ctx, ts, env)
+  // metadata de esquina (identidad editorial, uniforme en todo el video; respeta la salida)
+  ctx.save()
+  ctx.globalAlpha *= clamp(ts * 2.2, 0, 1) * (1 - env.outP)
+  drawCornerMeta(ctx, env, t)
   ctx.restore()
-  if (out > 0) { ctx.save(); ctx.globalAlpha *= 0.16 * out; paintPlate(ctx, W, H, sc, t, video); ctx.restore() }
+  ctx.restore()
 }
 
 // grain estatico seedeado (determinista, no flickerea)

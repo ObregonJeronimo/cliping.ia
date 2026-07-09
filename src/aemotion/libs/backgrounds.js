@@ -19,9 +19,11 @@ export function paintPlate(ctx, W, H, sc, t, video) {
   const r = seedFor(sc.seed, 'am.bg')
 
   if (dna.bg === 'glow' && pol === 'dark') {
-    // orbital: halo radial del acento que respira + vineta profunda (el look youmotion)
-    const cx = W * (0.3 + r() * 0.4), cy = H * (0.22 + r() * 0.2)
-    const rad = Math.max(W, H) * (0.5 + r() * 0.25) * (1 + 0.06 * Math.sin(drift * TAU * 0.5))
+    // orbital: halo radial del acento que respira Y DERIVA (el fondo nunca esta muerto) + vineta
+    const ph = r() * TAU
+    const cx = W * (0.3 + r() * 0.4) + Math.sin(drift * TAU * 0.4 + ph) * W * 0.06
+    const cy = H * (0.22 + r() * 0.2) + Math.cos(drift * TAU * 0.3 + ph) * H * 0.04
+    const rad = Math.max(W, H) * (0.5 + r() * 0.25) * (1 + 0.08 * Math.sin(drift * TAU * 0.5 + ph))
     const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, rad)
     g.addColorStop(0, rgba(dna.accent, 0.16 * dna.glowK))
     g.addColorStop(0.55, rgba(dna.accent, 0.05 * dna.glowK))

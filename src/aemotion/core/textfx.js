@@ -62,6 +62,7 @@ export function layoutChars(ctx, text, x, align = 'center', tracking = 0) {
 
 // dibuja un texto con animators. spec = {
 //   text, x, y, size, weight=800, family='Arial', fill='#fff', align='center', tracking=0,
+//   glow: { color, blur },                                    // glow POR CARACTER (sigue la revelacion)
 //   animators: [{ sel, props: { x, y, rot, scale, alpha, tracking } }]   // props animables (deltas)
 // }
 // Cada animator suma su delta pesado por su selector; alpha/scale interpolan desde 1 (como AE).
@@ -99,6 +100,7 @@ export function drawAnimatedText(ctx, t, spec) {
     if (rot) ctx.rotate(rot)
     if (scale !== 1) ctx.scale(scale, scale)
     ctx.fillStyle = val(spec.fill, t) || '#fff'
+    if (spec.glow && spec.glow.blur > 1 && alpha > 0.05) { ctx.shadowColor = spec.glow.color; ctx.shadowBlur = spec.glow.blur }
     ctx.fillText(c.ch, 0, 0)
     ctx.restore()
   }

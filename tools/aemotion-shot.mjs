@@ -1,6 +1,7 @@
-// aemotion-shot.mjs — "ver" el motor aemotion. Dos modos:
+// aemotion-shot.mjs — "ver" el motor aemotion. Modos:
 //   node tools/aemotion-shot.mjs '{"brand":"Acme","rubro":"tech","claim":"...","seed":7}'   -> VIDEO real
-//   node tools/aemotion-shot.mjs --demo [seed]                                              -> testbed F1/F2
+//   node tools/aemotion-shot.mjs '{...}' --strip 0        -> 12 frames DENSOS de la escena 0 (coreografia)
+//   node tools/aemotion-shot.mjs --demo [seed]            -> testbed F1/F2
 // Determinista: contact-sheet (tools/out/aemotion-shot.png) + MP4 opcional (--mp4, ffmpeg).
 import { createCanvas, GlobalFonts } from '@napi-rs/canvas'
 import { writeFileSync, mkdirSync, rmSync } from 'node:fs'
@@ -42,13 +43,24 @@ function frame(t, ss = 2) {
   return cv
 }
 
+// --strip <i>: 12 frames densos dentro de la ventana de la escena i (para juzgar la coreografia)
+let stripWin = null
+const stripIx = process.argv.indexOf('--strip')
+if (stripIx > 0 && video) {
+  const si = Number(process.argv[stripIx + 1]) || 0
+  const sc = video.scenes[Math.min(si, video.scenes.length - 1)]
+  stripWin = [sc.t0, sc.t0 + sc.dur]
+  console.log('STRIP escena', si, sc.sceneId, sc.polarity, '·', stripWin[0].toFixed(2) + 's ->', stripWin[1].toFixed(2) + 's')
+}
+
 const n = 16, cols = 4, tileW = 232, tileH = Math.round(tileW * H / W), pad = 10, top = 28
 const rows = Math.ceil(n / cols), cw = cols * tileW + (cols + 1) * pad, ch = top + rows * (tileH + 18) + (rows + 1) * pad
 const sheet = createCanvas(cw, ch), sx = sheet.getContext('2d')
 sx.fillStyle = '#0a0a0f'; sx.fillRect(0, 0, cw, ch); sx.fillStyle = '#fff'; sx.font = 'bold 14px sans-serif'
 sx.fillText(title + ' · ' + DUR.toFixed(1) + 's', pad, 18)
 for (let i = 0; i < n; i++) {
-  const t = (i + 0.5) * DUR / n, r = (i / cols) | 0, c = i % cols
+  const t = stripWin ? stripWin[0] + (i + 0.5) * (stripWin[1] - stripWin[0]) / n : (i + 0.5) * DUR / n
+  const r = (i / cols) | 0, c = i % cols
   const x = pad + c * (tileW + pad), y = top + pad + r * (tileH + 18 + pad)
   sx.drawImage(frame(t), x, y, tileW, tileH)
   sx.fillStyle = '#9aa'; sx.font = '11px sans-serif'
