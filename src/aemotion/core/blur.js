@@ -2,19 +2,11 @@
 // como drawFrame es funcion pura de t, se evalua la capa en N sub-tiempos dentro de la ventana del
 // shutter y se PROMEDIA. Ventana = (shutterAngle/360)/fps seg (AE: 180°@24fps = 1/48s; permite hasta
 // 720° para smear estilizado). Promedio exacto: cada muestra se rasteriza opaca en un scratch propio
-// y se acumula con alpha 1/(i+1) (promedio progresivo uniforme).
-// Scratch: browser -> OffscreenCanvas; Node -> inyectar con setScratchFactory (tools). Sin scratch
-// degrada a 1 muestra (dibuja nitido) — mismo contrato que las transiciones de kinetic.
+// y se acumula con alpha 1/(i+1) (promedio progresivo uniforme). Buffers POOLEADOS (cero alloc por frame).
+// Sin scratch factory (Node pelado) degrada a 1 muestra — mismo contrato que las transiciones.
 // Costo real: N rasterizados de la capa -> usarlo POR CAPA rapida, no en el frame entero.
 import { clamp } from './util.js'
-
-let scratchFactory = null
-export function setScratchFactory(f) { scratchFactory = f }
-function scratch(w, h) {
-  if (scratchFactory) return scratchFactory(w, h)
-  if (typeof OffscreenCanvas !== 'undefined') return new OffscreenCanvas(w, h)
-  return null
-}
+import { pooled } from './scratch.js'
 
 // motionBlur(ctx, t, opts, drawAt): drawAt(ctx2, ti) dibuja la capa en el sub-tiempo ti.
 //  opts: samples (2..16, def 8) · shutter (grados, def 180) · fps (def 30) · phase (-1..0, def -0.5
@@ -28,7 +20,7 @@ export function motionBlur(ctx, t, opts, drawAt) {
   if (samples <= 1 || win <= 0) { drawAt(ctx, t); return }
 
   const cw = ctx.canvas.width, ch = ctx.canvas.height
-  const acc = scratch(cw, ch), smp = scratch(cw, ch)
+  const acc = pooled('am.blur.acc', cw, ch), smp = pooled('am.blur.smp', cw, ch)
   if (!acc || !smp) { drawAt(ctx, t); return }
 
   const m = ctx.getTransform()
@@ -38,7 +30,7 @@ export function motionBlur(ctx, t, opts, drawAt) {
     const ti = t + (phase + i / (samples - 1)) * win
     sctx.setTransform(1, 0, 0, 1, 0, 0); sctx.clearRect(0, 0, cw, ch)
     sctx.setTransform(m.a, m.b, m.c, m.d, m.e, m.f)      // mismo transform (ss del supersampling incluido)
-    drawAt(sctx, Math.max(0, ti))
+    sctx.save(); drawAt(sctx, Math.max(0, ti)); sctx.restore()
     actx.globalAlpha = 1 / (i + 1)                       // promedio progresivo: acc = media(muestras 0..i)
     actx.drawImage(smp, 0, 0)
   }

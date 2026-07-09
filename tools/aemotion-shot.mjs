@@ -1,23 +1,44 @@
-// aemotion-shot.mjs — "ver" el banco de pruebas del motor aemotion (demo F1). Determinista:
-// contact-sheet de 12 frames -> tools/out/aemotion-shot.png (+ --mp4 opcional con ffmpeg).
-// Uso: node tools/aemotion-shot.mjs [seed] [--mp4]
+// aemotion-shot.mjs — "ver" el motor aemotion. Dos modos:
+//   node tools/aemotion-shot.mjs '{"brand":"Acme","rubro":"tech","claim":"...","seed":7}'   -> VIDEO real
+//   node tools/aemotion-shot.mjs --demo [seed]                                              -> testbed F1/F2
+// Determinista: contact-sheet (tools/out/aemotion-shot.png) + MP4 opcional (--mp4, ffmpeg).
 import { createCanvas, GlobalFonts } from '@napi-rs/canvas'
 import { writeFileSync, mkdirSync, rmSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
-import { drawDemoFrame, DEMO_DUR, W, H, setScratchFactory } from '../src/aemotion/index.js'
+import { makeMotionVideo, drawMotionFrame, beatAt, drawDemoFrame, DEMO_DUR, W as DW, H as DH, setScratchFactory } from '../src/aemotion/index.js'
 
 const HERE = dirname(fileURLToPath(import.meta.url)), OUT = join(HERE, 'out'); mkdirSync(OUT, { recursive: true })
 try { GlobalFonts.loadFontsFromDir(join(HERE, 'fonts')) } catch { /* fuentes del sistema */ }
-setScratchFactory((w, h) => createCanvas(w, h))   // OBLIGATORIO: sin esto el motion blur degrada a 1 muestra
+setScratchFactory((w, h) => createCanvas(w, h))   // OBLIGATORIO: sin esto blur degrada y transiciones caen a corte seco
 
-const seed = Number(process.argv[2]) || 7
+const arg = process.argv[2]
+const demoMode = !arg || arg === '--demo'
+
+let video = null, W, H, DUR, title, drawFn
+if (demoMode) {
+  const seed = Number(process.argv[3]) || 7
+  W = DW; H = DH; DUR = DEMO_DUR; title = 'AEMOTION testbed · seed ' + seed
+  drawFn = (ctx, t) => drawDemoFrame(ctx, t, seed)
+} else {
+  const brief = JSON.parse(arg)
+  const seed = (brief.seed >>> 0) || undefined
+  video = makeMotionVideo(brief, { seed })
+  W = video.W; H = video.H; DUR = video.duration
+  const d = video.dna
+  console.log('AEMOTION ·', brief.brand, '· seed:', video.seed)
+  console.log('DNA:', JSON.stringify({ familia: d.familia, pair: d.pairId, dialecto: d.shapeDialect, cta: d.ctaKind, case: d.caseMode, bpm: +d.bpm.toFixed(1), accent: d.accent }))
+  console.log('GUION:', video.script.templateId, '·', video.scenes.map(s => `${s.role}:${s.sceneId.replace('am.scene.', '')}(${s.polarity})`).join(' > '))
+  console.log('CORTES:', video.cuts.map(c => `${c.at.toFixed(1)}s ${c.id.replace('am.xf.', '')}`).join(' · '), '· dur:', DUR.toFixed(1) + 's')
+  title = 'AEMOTION · ' + (brief.brand || '') + ' · ' + d.familia + '/' + d.pairId + '/' + video.script.templateId + ' · seed ' + video.seed
+  drawFn = (ctx, t) => drawMotionFrame(ctx, t, video)
+}
 
 function frame(t, ss = 2) {
   const cv = createCanvas(W * ss, H * ss), ctx = cv.getContext('2d')
   ctx.setTransform(ss, 0, 0, ss, 0, 0)
-  drawDemoFrame(ctx, t, seed)
+  drawFn(ctx, t)
   return cv
 }
 
@@ -25,17 +46,18 @@ const n = 16, cols = 4, tileW = 232, tileH = Math.round(tileW * H / W), pad = 10
 const rows = Math.ceil(n / cols), cw = cols * tileW + (cols + 1) * pad, ch = top + rows * (tileH + 18) + (rows + 1) * pad
 const sheet = createCanvas(cw, ch), sx = sheet.getContext('2d')
 sx.fillStyle = '#0a0a0f'; sx.fillRect(0, 0, cw, ch); sx.fillStyle = '#fff'; sx.font = 'bold 14px sans-serif'
-sx.fillText('AEMOTION testbed · seed ' + seed + ' · ' + DEMO_DUR.toFixed(1) + 's', pad, 18)
+sx.fillText(title + ' · ' + DUR.toFixed(1) + 's', pad, 18)
 for (let i = 0; i < n; i++) {
-  const t = (i + 0.5) * DEMO_DUR / n, r = (i / cols) | 0, c = i % cols
+  const t = (i + 0.5) * DUR / n, r = (i / cols) | 0, c = i % cols
   const x = pad + c * (tileW + pad), y = top + pad + r * (tileH + 18 + pad)
   sx.drawImage(frame(t), x, y, tileW, tileH)
-  sx.fillStyle = '#9aa'; sx.font = '11px sans-serif'; sx.fillText(t.toFixed(2) + 's', x + 2, y + tileH + 13)
+  sx.fillStyle = '#9aa'; sx.font = '11px sans-serif'
+  sx.fillText((t.toFixed(2) + 's ' + (video ? beatAt(t, video).replace('am.scene.', '') : '')).slice(0, 38), x + 2, y + tileH + 13)
 }
 writeFileSync(join(OUT, 'aemotion-shot.png'), sheet.toBuffer('image/png')); console.log('wrote tools/out/aemotion-shot.png')
 
 if (process.argv.includes('--mp4')) {
-  const fps = 30, MS = 2, total = Math.round(DEMO_DUR * fps), tmp = join(OUT, '_aeframes')
+  const fps = 30, MS = 2, total = Math.round(DUR * fps), tmp = join(OUT, '_aeframes')
   rmSync(tmp, { recursive: true, force: true }); mkdirSync(tmp, { recursive: true })
   for (let i = 0; i < total; i++) { const cv = frame((i + 0.5) / fps, MS); writeFileSync(join(tmp, `f${String(i).padStart(4, '0')}.png`), cv.toBuffer('image/png')) }
   try {

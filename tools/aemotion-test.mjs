@@ -2,15 +2,20 @@
 // referencia, Easy Ease simetrico, derivada del spring vs diferencia finita, longitud del circulo,
 // trim, follow-path); (2) DETERMINISMO byte-identico: el demo con el mismo t produce el mismo PNG en
 // 2 corridas y en seek en frio (caza estado escondido entre frames — wiggle/trim/tracks incluidos).
-import { createCanvas } from '@napi-rs/canvas'
+import { createCanvas, GlobalFonts } from '@napi-rs/canvas'
+import { fileURLToPath } from 'node:url'
+import { dirname, join } from 'node:path'
 import {
   cubicBezier, track, velOf, spring, springVel, squashFactor,
   parsePath, circlePath, starPath, measure, pointAt, trimmed,
   pathMorph, ringOf, metaballPath, rangeAmount, randomOrder, setScratchFactory,
+  makeMotionVideo, drawMotionFrame,
   drawDemoFrame, DEMO_DUR, W, H,
 } from '../src/aemotion/index.js'
 
-setScratchFactory((w, h) => createCanvas(w, h))   // OBLIGATORIO en Node: sin esto el motion blur degrada a 1 muestra
+const HERE = dirname(fileURLToPath(import.meta.url))
+try { GlobalFonts.loadFontsFromDir(join(HERE, 'fonts')) } catch { /* fuentes del sistema */ }
+setScratchFactory((w, h) => createCanvas(w, h))   // OBLIGATORIO en Node: sin esto blur degrada y transiciones caen a corte seco
 
 let fails = 0
 const die = m => { console.error('FAIL  ' + m); fails++ }
@@ -121,5 +126,43 @@ for (const t of TS) {
 if (!png(TS[TS.length - 1]).equals(png(TS[TS.length - 1]))) die('seek en frio difiere')
 if (DEMO_DUR <= 0) die('DEMO_DUR invalido')
 
+// 14) VIDEO REAL: makeMotionVideo determinista (receta + frames byte-identicos, incluida la ventana
+// de transicion) + seek en frio + contrato basico
+const brief = { brand: 'Acme', rubro: 'tech', brandColor: '#5b8cff', tagline: 'Construido para escalar', claim: 'La plataforma que crece con vos', cta: 'Probalo gratis', bullets: ['Rapido', 'Seguro', 'Simple'], stats: [{ value: '99.9%', label: 'uptime' }] }
+const vpng = (video, t) => {
+  const ss = 2, cv = createCanvas(video.W * ss, video.H * ss), ctx = cv.getContext('2d')
+  ctx.setTransform(ss, 0, 0, ss, 0, 0)
+  drawMotionFrame(ctx, t, video)
+  return cv.toBuffer('image/png')
+}
+for (const seed of [1, 7, 1234]) {
+  const a = makeMotionVideo(brief, { seed }), b = makeMotionVideo(brief, { seed })
+  if (JSON.stringify(a.recipe) !== JSON.stringify(b.recipe)) die(`video seed ${seed}: receta re-rolleo`)
+  const vts = [0.2, a.duration * 0.35, a.duration * 0.8]
+  const ftr = a.cuts.find(c => c.dur > 0); if (ftr) vts.push(ftr.at)
+  for (const t of vts) {
+    if (!vpng(a, t).equals(vpng(b, t))) die(`video seed ${seed} t=${t.toFixed(2)}: frame difiere entre corridas`)
+  }
+  const cold = makeMotionVideo(brief, { seed })
+  const tLast = vts[vts.length - 1]
+  if (!vpng(cold, tLast).equals(vpng(a, tLast))) die(`video seed ${seed}: seek en frio difiere (estado entre frames)`)
+}
+
+// 15) ANTI-FABRICA: 24 seeds -> genotipos discretos, variedad real (pedido explicito: varios disenos)
+const genos = new Set(), fams = new Set()
+for (let s = 1; s <= 24; s++) {
+  const v = makeMotionVideo(brief, { seed: s * 37 })
+  genos.add([v.dna.familia, v.dna.pairId, v.dna.shapeDialect, v.dna.ctaKind, v.dna.caseMode, v.script.templateId].join('|'))
+  fams.add(v.dna.familia)
+}
+if (genos.size < 18) die(`variedad pobre: solo ${genos.size}/24 genotipos distintos`)
+if (fams.size < 3) die(`variedad pobre: solo ${fams.size} familias visuales en 24 seeds`)
+
+// 16) contrato basico
+const vv = makeMotionVideo(brief, { seed: 5 })
+if (!(vv.duration > 6 && vv.duration <= 30)) die('duracion fuera de rango: ' + vv.duration)
+if (!vv.scenes.length || vv.scenes[vv.scenes.length - 1].role !== 'cta') die('el video no cierra con CTA')
+if (!vv.recipe || !vv.recipe.dna) die('receta sin dna')
+
 if (fails) { console.error(`\nGATE AEMOTION FALLO (${fails}).`); process.exit(1) }
-console.log('GATE AEMOTION OK (matematica exacta + determinismo byte-identico en ' + TS.length + ' ts).')
+console.log(`GATE AEMOTION OK (matematica + determinismo testbed ${TS.length} ts + video real 3 seeds + ${genos.size}/24 genotipos, ${fams.size} familias).`)

@@ -28,3 +28,9 @@ export function seedFor(seed, namespace) { return mulberry32((seed ^ hashStr(nam
 export const pick = (prng, arr) => arr[(prng() * arr.length) | 0]
 export const range = (prng, a, b) => a + (b - a) * prng()
 export const irange = (prng, a, b) => a + ((prng() * (b - a + 1)) | 0)
+export function weightedPick(prng, items, weightOf) {
+  let total = 0; for (const it of items) total += Math.max(0, weightOf(it))
+  let r = prng() * total
+  for (const it of items) { r -= Math.max(0, weightOf(it)); if (r <= 0) return it }
+  return items[items.length - 1]
+}
