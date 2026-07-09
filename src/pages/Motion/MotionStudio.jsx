@@ -31,7 +31,7 @@ export default function MotionStudio() {
   const [exporting, setExporting] = useState('')
   const [saved, setSaved] = useState(() => { try { return JSON.parse(localStorage.getItem('aemotion.saved') || '[]') } catch { return [] } })
   const [musicId, setMusicId] = useState('')
-  const [sfxOnCuts, setSfxOnCuts] = useState(true)
+  const [sfxOnCuts, setSfxOnCuts] = useState(false)   // opt-in: el whoosh en cada corte molestaba por defecto
   const audioRef = useRef(null)
 
   // timeline de audio sintetico: musica loopeada + whoosh en cada hard-cut (mismo patron kinetic)
