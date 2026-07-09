@@ -1,20 +1,26 @@
-// aemotion 0.1 · DEMO — escena de exhibicion de los cimientos F1, en 3 beats:
+// aemotion 0.1 · DEMO — escena de exhibicion del motor (banco de pruebas visual), en 5 beats:
 //   B1 speed graph + squash&stretch (card entra con keyframes AE, se aplasta al frenar; badge con spring)
 //   B2 trim paths (circulo draw-on, subrayado, repeater de estrellas rotando)
 //   B3 follow-path (flecha viaja una curva con auto-orientacion y estela por trim) + wiggle blob
-// NO es una escena de producto: es el banco de pruebas visual del motor (tools/aemotion-shot.mjs la
-// renderiza a contact-sheet). Determinista: funcion pura de (t, seed).
+//   B4 morph (estrella->circulo con correspondencia de puntos) + liquid (membrana metaball)
+//   B5 text animators (cascada per-char con range selector) + motion blur multi-sample
+// NO es una escena de producto: tools/aemotion-shot.mjs la renderiza a contact-sheet.
+// Determinista: funcion pura de (t, seed).
 import { clamp, lerp, TAU, fontStr, rgba } from './core/util.js'
 import { track, val, velOf } from './core/keys.js'
 import { spring, springVel, win, cubicOut, stagger } from './core/motion.js'
 import { parsePath, circlePath, rectPath, starPath, linePath, measure, pointAt, tracePath } from './core/path.js'
 import { drawShape } from './core/shapes.js'
+import { pathMorph } from './core/morph.js'
+import { metaballPath } from './core/liquid.js'
+import { motionBlur } from './core/blur.js'
+import { drawAnimatedText } from './core/textfx.js'
 
 export const W = 405, H = 720
-export const DEMO_DUR = 8.1
+export const DEMO_DUR = 13.5
 
 const BG = '#0c0e14', INK = '#f2f4f8', ACC = '#5b8cff', ACC2 = '#22e06a'
-const B1 = [0.0, 2.7], B2 = [2.7, 5.4], B3 = [5.4, 8.1]
+const B1 = [0.0, 2.7], B2 = [2.7, 5.4], B3 = [5.4, 8.1], B4 = [8.1, 10.8], B5 = [10.8, 13.5]
 
 // ---------- B1: speed graph + squash ----------
 const cardY = track([
@@ -158,6 +164,87 @@ function beat3(ctx, t) {
   ctx.restore()
 }
 
+// ---------- B4: morph + liquid ----------
+const morphSC = pathMorph(starPath(W / 2, H * 0.32, 74, 32, 5), circlePath(W / 2, H * 0.32, 62), { n: 140 })
+const morphT = track([
+  { t: 8.6, v: 0, out: { speed: 0, influence: 45 } },
+  { t: 10.0, v: 1, in: { speed: 0, influence: 60 } },
+])
+const gotaX = track([
+  { t: 8.4, v: W * 0.86, out: { speed: 0, influence: 40 } },
+  { t: 9.45, v: W * 0.35 + 42, in: { speed: 0, influence: 60 } },
+  { t: 9.85, v: W * 0.35 + 42, interp: 'hold' },
+  { t: 10.65, v: W * 0.9, in: { speed: 0, influence: 50 } },
+])
+
+function beat4(ctx, t) {
+  const a = clamp(win(t, B4[0], B4[0] + 0.3) - win(t, B4[1] - 0.25, B4[1]), 0, 1)
+  if (a <= 0) return
+  ctx.save(); ctx.globalAlpha = a
+
+  label(ctx, '04 · MORPH + LIQUID', 56)
+
+  // morph estrella->circulo (correspondencia de puntos: los vertices viajan lo minimo)
+  drawShape(ctx, t, {
+    path: () => morphSC(morphT(t)),
+    fill: rgba(ACC, 0.16),
+    stroke: { color: ACC, width: 3.5 },
+  })
+  ctx.fillStyle = rgba(INK, 0.6); ctx.font = fontStr(400, 14, 'Arial'); ctx.textAlign = 'center'
+  ctx.fillText('morph con correspondencia de puntos', W / 2, H * 0.32 + 108)
+
+  // liquid: gota que se acerca, se funde por la membrana y se despega
+  const yL = H * 0.62
+  const xA = W * 0.35, rA = 33, rB = 25
+  const xB = gotaX(t)
+  ctx.fillStyle = ACC2
+  drawShape(ctx, t, { path: circlePath(xA, yL, rA), fill: ACC2 })
+  drawShape(ctx, t, { path: circlePath(xB, yL, rB), fill: ACC2 })
+  const mem = metaballPath(xA, yL, rA, xB, yL, rB, { v: 0.5, handle: 2.4 })
+  if (mem) drawShape(ctx, t, { path: mem, fill: ACC2 })
+  ctx.fillStyle = rgba(INK, 0.6); ctx.font = fontStr(400, 14, 'Arial'); ctx.textAlign = 'center'
+  ctx.fillText('membrana metaball (liquid)', W / 2, yL + 76)
+  ctx.restore()
+}
+
+// ---------- B5: text animators + motion blur ----------
+const cascada = track([
+  { t: 11.05, v: -0.55, out: { speed: 0, influence: 40 } },
+  { t: 12.45, v: 1.05, in: { speed: 0, influence: 55 } },
+])
+const bolaX = track([
+  { t: 12.1, v: 64, out: { speed: 0, influence: 30 } },
+  { t: 12.75, v: W - 64, in: { speed: 0, influence: 82 } },
+])
+
+function beat5(ctx, t) {
+  const a = clamp(win(t, B5[0], B5[0] + 0.3) - win(t, B5[1] - 0.2, B5[1]), 0, 1)
+  if (a <= 0) return
+  ctx.save(); ctx.globalAlpha = a
+
+  label(ctx, '05 · TEXT ANIMATORS + MOTION BLUR', 56)
+
+  // cascada per-char: la ventana del range selector barre el texto y los chars van asentando
+  drawAnimatedText(ctx, t, {
+    text: 'MOTION', x: W / 2, y: H * 0.40, size: 62, weight: 900, fill: INK, tracking: 4,
+    animators: [{
+      sel: { start: 0, end: 0.45, offset: cascada, shape: 'rampUp' },
+      props: { y: 36, alpha: 0, rot: 0.14, scale: 0.82 },
+    }],
+  })
+  ctx.fillStyle = rgba(INK, 0.6); ctx.font = fontStr(400, 14, 'Arial'); ctx.textAlign = 'center'
+  ctx.fillText('range selector per-caracter', W / 2, H * 0.40 + 40)
+
+  // motion blur real: N sub-muestras promediadas dentro de la ventana del shutter
+  const yB = H * 0.62
+  motionBlur(ctx, t, { samples: 10, shutter: 330, fps: 30 }, (c, ti) => {
+    drawShape(c, ti, { path: circlePath(bolaX(ti), yB, 20), fill: ACC })
+  })
+  ctx.fillStyle = rgba(INK, 0.6); ctx.font = fontStr(400, 14, 'Arial'); ctx.textAlign = 'center'
+  ctx.fillText('shutter 330° · 10 muestras', W / 2, yB + 58)
+  ctx.restore()
+}
+
 // ---------- helpers ----------
 const ctxWith = (ctx, fn) => { ctx.save(); fn(); ctx.restore() }
 function label(ctx, txt, y) {
@@ -173,9 +260,11 @@ export function drawDemoFrame(ctx, t, seed = 7) {
   beat1(ctx, t)
   beat2(ctx, t)
   beat3(ctx, t)
+  beat4(ctx, t)
+  beat5(ctx, t)
   // marca de agua del banco de pruebas
   ctx.globalAlpha = 0.45
   ctx.fillStyle = '#7c879c'; ctx.font = fontStr(700, 11, 'Arial'); ctx.textAlign = 'left'
-  ctx.fillText('aemotion 0.1 · F1 testbed', 24, H - 20)
+  ctx.fillText('aemotion 0.1 · testbed', 24, H - 20)
   ctx.restore()
 }

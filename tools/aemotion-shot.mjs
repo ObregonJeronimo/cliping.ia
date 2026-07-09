@@ -6,10 +6,11 @@ import { writeFileSync, mkdirSync, rmSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
-import { drawDemoFrame, DEMO_DUR, W, H } from '../src/aemotion/index.js'
+import { drawDemoFrame, DEMO_DUR, W, H, setScratchFactory } from '../src/aemotion/index.js'
 
 const HERE = dirname(fileURLToPath(import.meta.url)), OUT = join(HERE, 'out'); mkdirSync(OUT, { recursive: true })
 try { GlobalFonts.loadFontsFromDir(join(HERE, 'fonts')) } catch { /* fuentes del sistema */ }
+setScratchFactory((w, h) => createCanvas(w, h))   // OBLIGATORIO: sin esto el motion blur degrada a 1 muestra
 
 const seed = Number(process.argv[2]) || 7
 
@@ -20,11 +21,11 @@ function frame(t, ss = 2) {
   return cv
 }
 
-const n = 12, cols = 4, tileW = 232, tileH = Math.round(tileW * H / W), pad = 10, top = 28
+const n = 16, cols = 4, tileW = 232, tileH = Math.round(tileW * H / W), pad = 10, top = 28
 const rows = Math.ceil(n / cols), cw = cols * tileW + (cols + 1) * pad, ch = top + rows * (tileH + 18) + (rows + 1) * pad
 const sheet = createCanvas(cw, ch), sx = sheet.getContext('2d')
 sx.fillStyle = '#0a0a0f'; sx.fillRect(0, 0, cw, ch); sx.fillStyle = '#fff'; sx.font = 'bold 14px sans-serif'
-sx.fillText('AEMOTION F1 testbed · seed ' + seed + ' · ' + DEMO_DUR.toFixed(1) + 's', pad, 18)
+sx.fillText('AEMOTION testbed · seed ' + seed + ' · ' + DEMO_DUR.toFixed(1) + 's', pad, 18)
 for (let i = 0; i < n; i++) {
   const t = (i + 0.5) * DEMO_DUR / n, r = (i / cols) | 0, c = i % cols
   const x = pad + c * (tileW + pad), y = top + pad + r * (tileH + 18 + pad)

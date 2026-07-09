@@ -5,9 +5,12 @@
 import { createCanvas } from '@napi-rs/canvas'
 import {
   cubicBezier, track, velOf, spring, springVel, squashFactor,
-  parsePath, circlePath, measure, pointAt, trimmed,
+  parsePath, circlePath, starPath, measure, pointAt, trimmed,
+  pathMorph, ringOf, metaballPath, rangeAmount, randomOrder, setScratchFactory,
   drawDemoFrame, DEMO_DUR, W, H,
 } from '../src/aemotion/index.js'
+
+setScratchFactory((w, h) => createCanvas(w, h))   // OBLIGATORIO en Node: sin esto el motion blur degrada a 1 muestra
 
 let fails = 0
 const die = m => { console.error('FAIL  ' + m); fails++ }
@@ -68,14 +71,48 @@ for (const sub of tr) for (let i = 1; i < sub.pts.length; i++) trLen += Math.hyp
 near(trLen, 10, 1e-6, 'trim 25-75 mide la mitad')
 if (trimmed(lm, 7, 7).length !== 0) die('trim vacio deberia dar []')
 
-// 10) DETERMINISMO byte-identico del demo (2 corridas + seek en frio, ts cubren los 3 beats)
+// 10) MORPH: los extremos del interpolador son los anillos de origen/destino (alineados)
+const mSC = pathMorph(starPath(0, 0, 60, 26, 5), circlePath(0, 0, 50), { n: 96 })
+const ring0 = mSC(0), ring1 = mSC(1)
+const A0 = ringOf(starPath(0, 0, 60, 26, 5), 96)
+near(ring0[0].x, A0[0].x, 1e-9, 'morph f(0) = anillo A (x)')
+near(ring0[0].y, A0[0].y, 1e-9, 'morph f(0) = anillo A (y)')
+{ // todo punto de f(1) esta sobre el circulo destino (radio 50, tolerancia del resampleo)
+  let worst = 0
+  for (const p of ring1) { if (p.c === 'Z') continue; if (p.x == null) continue; worst = Math.max(worst, Math.abs(Math.hypot(p.x, p.y) - 50)) }
+  if (worst > 0.6) die(`morph f(1): punto a ${worst.toFixed(3)}px del circulo destino`)
+}
+const rHalf = mSC(0.5)
+if (!rHalf.some(s => s.c === 'Z')) die('morph f(0.5) no cierra el path')
+
+// 11) LIQUID: membrana existe cuando estan cerca, null cuando lejos o contenidos
+if (!metaballPath(0, 0, 30, 70, 0, 24)) die('metaball: deberia haber membrana a d=70')
+if (metaballPath(0, 0, 30, 500, 0, 24)) die('metaball: no deberia haber membrana a d=500')
+if (metaballPath(0, 0, 30, 2, 0, 24)) die('metaball: no deberia haber membrana con circulo contenido')
+{ const mm = metaballPath(0, 0, 30, 70, 0, 24); if (mm[mm.length - 1].c !== 'Z') die('metaball: la membrana no cierra') }
+
+// 12) TEXTFX: range selector (square ventana completa = 1; triangle pico al centro; orden seedeado estable)
+for (let i = 0; i < 5; i++) near(rangeAmount(i, 5, { start: 0, end: 1, shape: 'square' }, 0), 1, 1e-9, `square full char ${i}`)
+{
+  const wMid = rangeAmount(2, 5, { start: 0, end: 1, shape: 'triangle' }, 0)
+  const wEdge = rangeAmount(0, 5, { start: 0, end: 1, shape: 'triangle' }, 0)
+  if (!(wMid > wEdge)) die('triangle: el centro deberia pesar mas que el borde')
+}
+{
+  const o1 = randomOrder(8, 42), o2 = randomOrder(8, 42), o3 = randomOrder(8, 43)
+  if (o1.join() !== o2.join()) die('randomOrder: mismo seed deberia dar el mismo orden')
+  if (o1.join() === o3.join()) die('randomOrder: seeds distintos dieron el mismo orden (sospechoso)')
+  if (o1.slice().sort((a, b) => a - b).join() !== '0,1,2,3,4,5,6,7') die('randomOrder: no es permutacion')
+}
+
+// 13) DETERMINISMO byte-identico del demo (2 corridas + seek en frio, ts cubren los 5 beats)
 const png = t => {
   const ss = 2, cv = createCanvas(W * ss, H * ss), ctx = cv.getContext('2d')
   ctx.setTransform(ss, 0, 0, ss, 0, 0)
   drawDemoFrame(ctx, t, 7)
   return cv.toBuffer('image/png')
 }
-const TS = [0.6, 1.12, 1.4, 3.6, 4.6, 6.4, 7.2]
+const TS = [0.6, 1.12, 1.4, 3.6, 4.6, 6.4, 7.2, 8.9, 9.7, 11.6, 12.35, 13.1]
 for (const t of TS) {
   if (!png(t).equals(png(t))) die(`t=${t}: frame difiere entre corridas`)
 }
