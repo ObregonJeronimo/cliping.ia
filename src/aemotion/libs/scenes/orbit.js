@@ -7,10 +7,18 @@ import { win, stagger, cubicOut, expoOut } from '../../core/motion.js'
 import { idle, exitP, applyExit, drawFloaters, glowStroke, glowFill } from '../polish.js'
 import { applyCase, trackPx } from '../fonts.js'
 import { rgba, clamp, fontStr, TAU } from '../../core/util.js'
+import { seedFor } from '../../core/prng.js'
 
 export default {
   id: 'am.scene.orbit', lib: 'scenes', kind: ['line', 'stat'], weight: 0.9,
   famBias: { orbita: 1.6, blueprint: 1.35, poster: 0.5 },
+  anchor(sc, video) {
+    // recomputa el radio base EXACTO del render (mismos 2 primeros draws del stream 'orbit')
+    const rr = seedFor(sc.seed, 'orbit')
+    rr()
+    const base = Math.min(video.W, video.H) * (0.3 + rr() * 0.06)
+    return { x: video.W / 2, y: video.H * 0.48 - base, r: 4.5 }
+  },
   render(ctx, ts, env) {
     const { W, H, dna, ink, acc, outP } = env
     const r = env.rng('orbit')

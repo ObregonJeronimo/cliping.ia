@@ -3,12 +3,12 @@
 //   node tools/aemotion-shot.mjs '{...}' --strip 0        -> 12 frames DENSOS de la escena 0 (coreografia)
 //   node tools/aemotion-shot.mjs --demo [seed]            -> testbed F1/F2
 // Determinista: contact-sheet (tools/out/aemotion-shot.png) + MP4 opcional (--mp4, ffmpeg).
-import { createCanvas, GlobalFonts } from '@napi-rs/canvas'
+import { createCanvas, GlobalFonts, loadImage } from '@napi-rs/canvas'
 import { writeFileSync, mkdirSync, rmSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
-import { makeMotionVideo, drawMotionFrame, beatAt, drawDemoFrame, DEMO_DUR, W as DW, H as DH, setScratchFactory } from '../src/aemotion/index.js'
+import { makeMotionVideo, drawMotionFrame, beatAt, drawDemoFrame, DEMO_DUR, W as DW, H as DH, setScratchFactory, setImageLoader } from '../src/aemotion/index.js'
 
 const HERE = dirname(fileURLToPath(import.meta.url)), OUT = join(HERE, 'out'); mkdirSync(OUT, { recursive: true })
 try { GlobalFonts.loadFontsFromDir(join(HERE, 'fonts')) } catch { /* fuentes del sistema */ }
@@ -25,6 +25,13 @@ if (demoMode) {
 } else {
   const brief = JSON.parse(arg)
   const seed = (brief.seed >>> 0) || undefined
+  // pre-cargar imagenes del brief (napi: el motor las recibe YA decodificadas via setImageLoader)
+  const imgs = new Map()
+  for (const u of (brief.images || []).slice(0, 8)) {
+    try { imgs.set(u, await loadImage(u)); console.log('img ok:', String(u).slice(0, 80)) }
+    catch (e) { console.log('img FALLO:', String(u).slice(0, 80), e.message) }
+  }
+  setImageLoader(src => imgs.get(src) || null)
   video = makeMotionVideo(brief, { seed })
   W = video.W; H = video.H; DUR = video.duration
   const d = video.dna

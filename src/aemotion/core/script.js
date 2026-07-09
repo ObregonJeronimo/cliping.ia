@@ -63,6 +63,12 @@ export function buildScript(brief, seed, dna) {
   const r = seedFor(seed, 'am.script')
   const tpl = weightedPick(r, TEMPLATES, t => t.weight(brief))
   const beats = tpl.build(brief, r)
+  // beat de FOTO si el sitio dio imagenes (la escena degrada a tipografia si no cargan)
+  const imgs = (brief.images || []).filter(Boolean)
+  if (imgs.length >= 1) {
+    const txt = cut(brief.tagline && tpl.id !== 'contraste' ? brief.tagline : (brief.bullets || [])[1] || brief.brand, B.line)
+    beats.splice(Math.min(beats.length, 2 + ((r() * 2) | 0)), 0, { role: 'photo', text: txt, durBeats: 4 })
+  }
   if (!beats.some(b => b.role === 'breath')) {
     const at = Math.max(1, Math.min(beats.length - 1, Math.round(beats.length * dna.breathPos)))
     beats.splice(at, 0, { role: 'breath', text: '', durBeats: 2 })   // corto: es un sting, no una escena

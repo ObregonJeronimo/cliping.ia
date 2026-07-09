@@ -11,6 +11,7 @@ import { rgba, clamp, fontStr } from '../../core/util.js'
 export default {
   id: 'am.scene.stripes', lib: 'scenes', kind: ['hook', 'line'], weight: 0.7, hookWeight: 0.9,
   famBias: { poster: 1.9, liquidpop: 1.2, editorial: 0.4, orbita: 0.6 },
+  anchor(sc, video) { return { x: video.W / 2, y: video.H * 0.3, r: 5 } },
   render(ctx, ts, env) {
     const { W, H, dna, ink, acc, outP } = env
     const r = env.rng('stripes')

@@ -6,10 +6,36 @@
 import { get } from './registry.js'
 import { paintPlate, inkFor, isDarkPol } from '../libs/backgrounds.js'
 import { drawCornerMeta } from '../libs/polish.js'
+import { drawPivot } from '../libs/pivot.js'
 import { seedFor } from './prng.js'
 import { clamp } from './util.js'
 import { pooled } from './scratch.js'
 import '../libs/index.js'
+
+// --- imagenes (mismo contrato de nombres que urvid/kinetic: los tools ya saben usarlo) ---
+// Browser: Image() async con crossOrigin (export sin canvas tainted). Node: loader inyectado
+// (setImageLoader con la imagen YA decodificada). Sin imagen -> la escena degrada a tipografia.
+let _imageLoader = null
+export function setImageLoader(fn) { _imageLoader = fn }
+const _imgCache = new Map()
+export function getImg(url) {
+  if (!url) return null
+  let e = _imgCache.get(url)
+  if (e !== undefined) return (e && e.ok) ? e.img : null
+  if (_imageLoader) {
+    const img = _imageLoader(url)
+    _imgCache.set(url, img ? { img, ok: true } : { ok: false })
+    return img || null
+  }
+  if (typeof Image === 'undefined') { _imgCache.set(url, { ok: false }); return null }
+  const img = new Image()
+  e = { img, ok: false }
+  _imgCache.set(url, e)
+  try { img.crossOrigin = 'anonymous' } catch { /* noop */ }
+  img.onload = () => { e.ok = true }
+  img.src = url
+  return null
+}
 
 function sceneAt(video, t) {
   const ss = video.scenes
@@ -34,6 +60,7 @@ function envFor(sc, ts, video) {
     paper: isDarkPol(sc.polarity) ? dna.paperDark : dna.paperLight,
     dark: isDarkPol(sc.polarity),
     text: sc.text, sub: sc.sub,
+    images: video.images || [], getImg,
     rng: ns => seedFor(sc.seed, ns),
     margin: dna.margin,
   }
@@ -115,6 +142,8 @@ export function drawMotionFrame(ctx, t, video) {
       paintScene(ctx, p < 0.5 ? A : Bs, t, video)              // fallback: corte seco
     }
   }
+  // PIVOTE persistente (match-cut device): por encima de escenas Y transiciones, dentro de la camara
+  drawPivot(ctx, t, video)
   ctx.restore()                                                // fin camara global
 
   // FINISHING PASS (research): vineta universal solo-esquinas (invisible como efecto, visible como

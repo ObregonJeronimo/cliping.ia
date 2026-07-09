@@ -5,7 +5,7 @@
 // Node/tools: setScratchFactory(createCanvas) OBLIGATORIO (blur multi-sample + buffers de transicion).
 
 export { makeMotionVideo, MW, MH } from './core/assemble.js'
-export { drawMotionFrame, beatAt } from './core/render.js'
+export { drawMotionFrame, beatAt, setImageLoader, getImg } from './core/render.js'
 export { deriveDNA, FAMILIAS } from './core/dna.js'
 export { setScratchFactory } from './core/scratch.js'
 

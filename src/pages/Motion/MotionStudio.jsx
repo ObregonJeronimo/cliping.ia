@@ -101,6 +101,7 @@ export default function MotionStudio() {
         brand: b.brand || 'Marca', rubro: b.rubro || 'default', brandColor: b.brandColor || '#5b8cff',
         tagline: b.tagline || '', claim: b.claim || '', cta: b.cta || '',
         bullets: Array.isArray(b.bullets) ? b.bullets : [], stats: Array.isArray(b.stats) ? b.stats : [],
+        images: Array.isArray(j.images) ? j.images.filter(x => typeof x === 'string').slice(0, 8) : [],
         audience: (b.audience && typeof b.audience === 'object') ? b.audience : undefined,
         seriousness: (typeof b.seriousness === 'number') ? b.seriousness : undefined,
         energyHint: ['alto', 'medio', 'bajo'].includes(b.energyHint) ? b.energyHint : undefined,
@@ -117,6 +118,11 @@ export default function MotionStudio() {
   const exportVideo = async () => {
     if (exporting) return
     setExporting('preparando...')
+    // precargar las imagenes de escena antes de renderizar (sin esto la photocard sale en fallback)
+    await Promise.all((video.images || []).map(src => new Promise(res => {
+      const im = new Image(); try { im.crossOrigin = 'anonymous' } catch { /* noop */ }
+      im.onload = res; im.onerror = res; im.src = src; setTimeout(res, 2500)
+    })))
     const ok = exportCanvasVideo(videoWithAudio, {
       filename: `${(brief.brand || 'motion')}-motion-9x16`,
       bitrate: 12e6,
@@ -135,7 +141,7 @@ export default function MotionStudio() {
     const item = {
       id, brand: brief.brand, brandColor: brief.brandColor, rubro: brief.rubro || 'default',
       tagline: brief.tagline || '', claim: brief.claim || '', cta: brief.cta || '',
-      bullets: brief.bullets || [], stats: brief.stats || [],
+      bullets: brief.bullets || [], stats: brief.stats || [], images: brief.images || [],
       ...(brief.audience ? { audience: JSON.parse(JSON.stringify(brief.audience)) } : {}),
       ...(typeof brief.seriousness === 'number' ? { seriousness: brief.seriousness } : {}),
       ...(brief.energyHint ? { energyHint: brief.energyHint } : {}),
@@ -146,7 +152,7 @@ export default function MotionStudio() {
     if (user?.uid) { try { setDoc(doc(db, 'users', user.uid, 'aemotion_videos', id), item) } catch { /* offline */ } }
   }
   const loadSaved = (it) => {
-    setBrief({ brand: it.brand, rubro: it.rubro, brandColor: it.brandColor, tagline: it.tagline, claim: it.claim, cta: it.cta, bullets: it.bullets || [], stats: it.stats || [], audience: it.audience, seriousness: it.seriousness, energyHint: it.energyHint })
+    setBrief({ brand: it.brand, rubro: it.rubro, brandColor: it.brandColor, tagline: it.tagline, claim: it.claim, cta: it.cta, bullets: it.bullets || [], stats: it.stats || [], images: it.images || [], audience: it.audience, seriousness: it.seriousness, energyHint: it.energyHint })
     setSeed(it.seed || 1); setMusicId(it.musicId || ''); setSfxOnCuts(!!it.sfxOnCuts)
     headRef.current = 0; setHead(0)
   }

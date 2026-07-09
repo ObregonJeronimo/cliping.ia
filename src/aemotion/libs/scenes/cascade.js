@@ -16,6 +16,7 @@ import { rgba, clamp, fontStr } from '../../core/util.js'
 export default {
   id: 'am.scene.cascade', lib: 'scenes', kind: ['hook', 'line'], weight: 1.2,
   famBias: { orbita: 1.3, editorial: 1.2, blueprint: 1.1 },
+  anchor(sc, video) { return { x: video.W / 2, y: video.H * 0.62, r: 5 } },
   render(ctx, ts, env) {
     const { W, H, dna, ink, acc, outP } = env
     const text = applyCase(env.text, dna.caseMode)

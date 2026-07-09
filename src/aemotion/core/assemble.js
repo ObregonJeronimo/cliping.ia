@@ -70,6 +70,7 @@ export function makeMotionVideo(brief, opts = {}) {
   const video = {
     engine: 'aemotion', v: 1, seed, W: MW, H: MH, duration,
     brand: brief.brand || '', cta: brief.cta || '', tagline: brief.tagline || '',
+    images: (brief.images || []).filter(Boolean).slice(0, 8),
     dna, script, scenes, cuts,
     recipe: {
       v: 1, seed, templateId: script.templateId, dna,

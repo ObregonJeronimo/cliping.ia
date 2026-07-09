@@ -33,6 +33,7 @@ function morphFor(seed, dialect, cx, cy, R) {
 export default {
   id: 'am.scene.morphmark', lib: 'scenes', kind: ['hook', 'line', 'breath'], weight: 1, hookWeight: 0.7,
   famBias: { liquidpop: 1.3, orbita: 1.15 },
+  anchor(sc, video) { return { x: video.W / 2, y: sc.text ? video.H * 0.34 : video.H * 0.5, r: 6 } },
   render(ctx, ts, env) {
     const { W, H, dna, ink, acc, outP } = env
     const isBreath = !env.text
@@ -65,7 +66,7 @@ export default {
       const brand = String(env.video.brand || '').toUpperCase()
       if (brand) {
         const epB = exitP(outP, 0, 2)
-        const eB = expoOut(clamp(win(ts, 0.45, 1.25), 0, 1))
+        const eB = expoOut(clamp(win(ts, 0.22, 0.75), 0, 1))   // rapido: el sting dura ~1.3s
         ctx.save()
         ctx.globalAlpha *= clamp(eB * 1.3, 0, 1) * (1 - epB * epB)
         ctx.font = fontStr(dna.sw, 16, dna.support)
@@ -77,7 +78,7 @@ export default {
         drawShape(ctx, ts, {
           path: circlePath(W / 2, cy, R * 1.45),
           stroke: { color: rgba(ink, 0.4), width: 1.4 },
-          trim: { start: 0, end: expoOut(clamp(win(ts, 0.3, 1.6), 0, 1)) * 0.85, offset: 0.1 + ts * 0.015 },
+          trim: { start: 0, end: expoOut(clamp(win(ts, 0.12, 0.95), 0, 1)) * 0.85, offset: 0.1 + ts * 0.015 },
           alpha: 1 - epS * epS,
         })
       }

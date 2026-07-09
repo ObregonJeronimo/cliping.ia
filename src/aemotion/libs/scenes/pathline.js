@@ -29,6 +29,7 @@ function rutaFor(seed, W, H, yBase, rng) {
 export default {
   id: 'am.scene.pathline', lib: 'scenes', kind: ['line'], weight: 0.9,
   famBias: { editorial: 1.5, blueprint: 1.25, poster: 0.6 },
+  anchor(sc, video) { return { x: video.W * 0.84, y: video.H * 0.56, r: 5 } },
   render(ctx, ts, env) {
     const { W, H, dna, ink, acc, outP } = env
     const text = applyCase(env.text, dna.caseMode)

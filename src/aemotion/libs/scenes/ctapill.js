@@ -10,6 +10,7 @@ import { rgba, clamp, fontStr, TAU } from '../../core/util.js'
 
 export default {
   id: 'am.scene.ctapill', lib: 'scenes', kind: ['cta'], weight: 1,
+  anchor(sc, video) { return { x: video.W / 2, y: video.H * 0.47 - 62, r: 5 } },
   render(ctx, ts, env) {
     const { W, H, dna, ink, acc } = env
     const text = applyCase(env.text, dna.caseMode === 'sentence' ? 'title' : dna.caseMode)

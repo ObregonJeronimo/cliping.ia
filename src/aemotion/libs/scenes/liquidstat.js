@@ -8,6 +8,7 @@ import { spring, win, cubicOut, expoOut } from '../../core/motion.js'
 import { idle, exitP, applyExit, drawFloaters, drawEyebrow } from '../polish.js'
 import { rgba, clamp, TAU } from '../../core/util.js'
 import { trackPx } from '../fonts.js'
+import { seedFor } from '../../core/prng.js'
 
 // contador determinista: "98%" -> "0%".."98%" · "+400" -> "+0".."+400" (la parte numerica cuenta)
 function countUp(text, p) {
@@ -23,6 +24,10 @@ function countUp(text, p) {
 export default {
   id: 'am.scene.liquidstat', lib: 'scenes', kind: ['stat'], weight: 1.1,
   famBias: { liquidpop: 1.6, orbita: 1.1, editorial: 0.7 },
+  anchor(sc, video) {
+    const r = seedFor(sc.seed, 'liquid')
+    return { x: video.W * (0.42 + r() * 0.16), y: video.H * 0.29, r: 7 }
+  },
   render(ctx, ts, env) {
     const { W, H, dna, ink, acc, outP } = env
     const r = env.rng('liquid')
