@@ -84,6 +84,12 @@ export function drawMotionFrame(ctx, t, video) {
   t = clamp(t, 0, Math.max(0.001, video.duration - 0.0001))
   try { ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high' } catch { /* noop */ }
 
+  // CAMARA GLOBAL con logica (research: zoom progresivo sobre TODO el video = se lee "una sola
+  // toma"): scale 1.0 -> ~1.05 con ease lentisimo, encima de escenas Y transiciones.
+  const camZ = 1 + 0.048 * (1 - Math.pow(1 - t / video.duration, 2))
+  ctx.save()
+  ctx.translate(W / 2, H / 2); ctx.scale(camZ, camZ); ctx.translate(-W / 2, -H / 2)
+
   let tr = null
   for (const c of video.cuts) {
     if (c.dur > 0 && t >= c.at - c.dur / 2 && t < c.at + c.dur / 2) { tr = c; break }
@@ -109,6 +115,13 @@ export function drawMotionFrame(ctx, t, video) {
       paintScene(ctx, p < 0.5 ? A : Bs, t, video)              // fallback: corte seco
     }
   }
+  ctx.restore()                                                // fin camara global
 
+  // FINISHING PASS (research): vineta universal solo-esquinas (invisible como efecto, visible como
+  // "terminado") + grain. Fuera de la camara: pegados al frame, no al mundo.
+  const vg = ctx.createRadialGradient(W / 2, H / 2, H * 0.42, W / 2, H / 2, H * 0.82)
+  vg.addColorStop(0, 'rgba(0,0,0,0)')
+  vg.addColorStop(1, 'rgba(0,0,0,0.16)')
+  ctx.save(); ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H); ctx.restore()
   paintTexture(ctx, video)
 }

@@ -19,10 +19,10 @@ function blobPath(ctx, cx, cy, R, ph1, ph2) {
   ctx.closePath()
 }
 
-const blit = (ctx, buf, dx = 0, dy = 0) => {
-  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0)
-  ctx.drawImage(buf, Math.round(dx), Math.round(dy))
-  ctx.restore()
+// blit en espacio LOGICO (hereda el transform actual — la camara global sigue aplicando durante
+// la transicion; los buffers vienen rasterizados a ss y se re-mapean al rect W×H)
+const blit = (ctx, buf, env, dx = 0, dy = 0) => {
+  ctx.drawImage(buf, dx, dy, env.W, env.H)
 }
 
 export default [
@@ -39,12 +39,12 @@ export default [
       const ph1 = r() * TAU, ph2 = r() * TAU
       const maxR = Math.hypot(Math.max(cx, W - cx), Math.max(cy, H - cy)) * 1.12
       const R = cubicInOut(p) * maxR
-      blit(ctx, A)
+      blit(ctx, A, env)
       if (R > 0.5) {
         ctx.save()
         blobPath(ctx, cx, cy, R, ph1, ph2)
         ctx.clip()
-        blit(ctx, B)
+        blit(ctx, B, env)
         ctx.restore()
         ctx.save()
         blobPath(ctx, cx, cy, R, ph1, ph2)
@@ -62,22 +62,24 @@ export default [
     id: 'am.xf.push', lib: 'transitions', kind: 'feature', weight: 1, dur: 0.5,
     render(ctx, p, A, B, env) {
       const { W, H, ss, seed } = env
-      const r = seedFor(seed, 'am.push')
-      const horiz = r() < 0.6, dir = r() < 0.5 ? 1 : -1
+      // continuidad de direccion (research): TODO el video empuja hacia el mismo lado (flowDir del
+      // seed del VIDEO, no del corte) — los cortes se leen como un solo viaje
+      const rf = seedFor(env.video.seed, 'am.flow')
+      const horiz = rf() < 0.6, dir = rf() < 0.5 ? 1 : -1
       const e = spring(p, 0.78, 9.5)
-      const off = e * (horiz ? W : H) * ss * dir
+      const off = e * (horiz ? W : H) * dir
       const vel = clamp(Math.abs(cubicOut(Math.min(p / 0.4, 1)) - cubicOut(Math.min(Math.max(p - 0.04, 0) / 0.4, 1))) * 26, 0, 1)
       const dx = horiz ? -off : 0, dy = horiz ? 0 : -off
-      const bx = horiz ? dx + W * ss * dir : 0, by = horiz ? 0 : dy + H * ss * dir
+      const bx = horiz ? dx + W * dir : 0, by = horiz ? 0 : dy + H * dir
       // fantasmas hacia atras del movimiento (solo mientras hay velocidad)
       if (vel > 0.12) {
         ctx.save(); ctx.globalAlpha = 0.16 * vel
-        blit(ctx, A, dx + (horiz ? 10 * dir : 0), dy + (horiz ? 0 : 10 * dir))
-        blit(ctx, B, bx + (horiz ? 10 * dir : 0), by + (horiz ? 0 : 10 * dir))
+        blit(ctx, A, env, dx + (horiz ? 10 * dir : 0), dy + (horiz ? 0 : 10 * dir))
+        blit(ctx, B, env, bx + (horiz ? 10 * dir : 0), by + (horiz ? 0 : 10 * dir))
         ctx.restore()
       }
-      blit(ctx, A, dx, dy)
-      blit(ctx, B, bx, by)
+      blit(ctx, A, env, dx, dy)
+      blit(ctx, B, env, bx, by)
     },
   },
 
@@ -88,9 +90,11 @@ export default [
     render(ctx, p, A, B, env) {
       const { W, H, seed, dna } = env
       const r = seedFor(seed, 'am.wipe')
-      const ang = (r() < 0.5 ? -1 : 1) * (0.16 + r() * 0.2)
+      const rf = seedFor(env.video.seed, 'am.flow')
+      rf(); const flowSign = rf() < 0.5 ? 1 : -1               // mismo sentido que el push del video
+      const ang = flowSign * (0.16 + r() * 0.2)
       const diag = Math.hypot(W, H) * 1.15
-      blit(ctx, p < 0.5 ? A : B)
+      blit(ctx, p < 0.5 ? A : B, env)
       // la placa entra [0,.5] cubriendo y sale [.5,1] descubriendo, siempre en el mismo sentido
       const e = p < 0.5 ? cubicInOut(p * 2) : cubicInOut((p - 0.5) * 2)
       const x = p < 0.5 ? -diag + e * diag : e * diag

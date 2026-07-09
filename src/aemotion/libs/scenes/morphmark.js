@@ -5,9 +5,10 @@ import { wrapFit } from '../../core/text.js'
 import { drawShape } from '../../core/shapes.js'
 import { pathMorph } from '../../core/morph.js'
 import { circlePath, starPath, polygonPath, rectPath } from '../../core/path.js'
+// (circlePath tambien arma el anillo del brand sting)
 import { spring, springVel, win, expoOut } from '../../core/motion.js'
 import { idle, exitP, applyExit, drawFloaters } from '../polish.js'
-import { applyCase } from '../fonts.js'
+import { applyCase, trackPx } from '../fonts.js'
 import { rgba, clamp, TAU, fontStr } from '../../core/util.js'
 import { seedFor } from '../../core/prng.js'
 
@@ -54,11 +55,34 @@ export default {
       path: interp(mp),
       fill: isBreath ? acc : rgba(acc, 0.14),
       stroke: isBreath ? null : { color: rgba(acc, 0.85), width: 2.5 },
-      at: { x: 0, y: 0, scale: 0.2 + 0.8 * enter },
+      at: { scale: 0.2 + 0.8 * enter, ax: W / 2, ay: cy },    // escala ANCLADA al centro de la forma
       alpha: clamp(enter * 1.5, 0, 1),
     })
     ctx.restore()
-    if (isBreath) return
+    if (isBreath) {
+      // BRAND STING: el respiro no es una forma vacia — es el momento de marca. La marca aparece
+      // con tracking ancho bajo la forma (per-char, sobria) + anillo fino que se dibuja alrededor.
+      const brand = String(env.video.brand || '').toUpperCase()
+      if (brand) {
+        const epB = exitP(outP, 0, 2)
+        const eB = expoOut(clamp(win(ts, 0.45, 1.25), 0, 1))
+        ctx.save()
+        ctx.globalAlpha *= clamp(eB * 1.3, 0, 1) * (1 - epB * epB)
+        ctx.font = fontStr(dna.sw, 16, dna.support)
+        ctx.letterSpacing = '6px'
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+        ctx.fillStyle = ink
+        ctx.fillText(brand, W / 2, cy + R + 44 + (1 - eB) * 12)
+        ctx.restore()
+        drawShape(ctx, ts, {
+          path: circlePath(W / 2, cy, R * 1.45),
+          stroke: { color: rgba(ink, 0.4), width: 1.4 },
+          trim: { start: 0, end: expoOut(clamp(win(ts, 0.3, 1.6), 0, 1)) * 0.85, offset: 0.1 + ts * 0.015 },
+          alpha: 1 - epS * epS,
+        })
+      }
+      return
+    }
 
     // texto slam con squash (derivada del spring) + idle + salida
     const text = applyCase(env.text, dna.caseMode)
@@ -66,8 +90,10 @@ export default {
     const tIn = win(ts, 0.3, 0.85)
     const e = spring(tIn, dna.z * 0.85, dna.w * 1.1)
     const sv = springVel(tIn, dna.z * 0.85, dna.w * 1.1)
-    const wr = wrapFit(ctx, text, Math.round(W * 0.155), maxW, 18, dna.dw, dna.display, 2, dna.trackingBias)
-    const lineH = wr.size * 1.05
+    const base = Math.round(W * 0.155)
+    const tr = trackPx(dna, base)
+    const wr = wrapFit(ctx, text, base, maxW, 18, dna.dw, dna.display, 2, tr)
+    const lineH = wr.size * dna.leading
     const yT = H * 0.62
     const stretch = 1 + clamp(Math.abs(sv) * 0.02, 0, 0.2)
     const idT = idle(ts, 2.6, 2.2, 6)
@@ -78,7 +104,7 @@ export default {
     if (epT > 0) aT = applyExit(ctx, epT, W / 2, yT, -1)
     ctx.globalAlpha *= clamp(e * 1.6, 0, 1) * aT
     ctx.translate(W / 2, yT); ctx.scale((0.7 + 0.3 * e) / stretch, (0.7 + 0.3 * e) * stretch); ctx.translate(-W / 2, -yT)
-    ctx.font = fontStr(dna.dw, wr.size, dna.display); ctx.letterSpacing = dna.trackingBias + 'px'
+    ctx.font = fontStr(dna.dw, wr.size, dna.display); ctx.letterSpacing = tr + 'px'
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
     wr.lines.forEach((ln, i) => {
       ctx.fillStyle = wr.lines.length > 1 && i === wr.lines.length - 1 ? acc : ink

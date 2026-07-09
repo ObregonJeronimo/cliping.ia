@@ -19,27 +19,36 @@ export function paintPlate(ctx, W, H, sc, t, video) {
   const r = seedFor(sc.seed, 'am.bg')
 
   if (dna.bg === 'glow' && pol === 'dark') {
-    // orbital: halo radial del acento que respira Y DERIVA (el fondo nunca esta muerto) + vineta
+    // orbital: halo del acento que respira y deriva LENTO (ciclos aurora de ~18s, tiempo GLOBAL —
+    // el fondo cose las escenas) + flicker de exposicion sutil (±4% a ~0.7Hz) + vineta profunda
     const ph = r() * TAU
-    const cx = W * (0.3 + r() * 0.4) + Math.sin(drift * TAU * 0.4 + ph) * W * 0.06
-    const cy = H * (0.22 + r() * 0.2) + Math.cos(drift * TAU * 0.3 + ph) * H * 0.04
-    const rad = Math.max(W, H) * (0.5 + r() * 0.25) * (1 + 0.08 * Math.sin(drift * TAU * 0.5 + ph))
+    const cx = W * (0.3 + r() * 0.4) + Math.sin(t * TAU / 19 + ph) * W * 0.07
+    const cy = H * (0.22 + r() * 0.2) + Math.cos(t * TAU / 23 + ph) * H * 0.05
+    const rad = Math.max(W, H) * (0.5 + r() * 0.25) * (1 + 0.07 * Math.sin(t * TAU / 16 + ph))
+    const flick = 1 + 0.04 * Math.sin(t * TAU * 0.7 + ph)
     const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, rad)
-    g.addColorStop(0, rgba(dna.accent, 0.16 * dna.glowK))
-    g.addColorStop(0.55, rgba(dna.accent, 0.05 * dna.glowK))
+    g.addColorStop(0, rgba(dna.accent, 0.16 * dna.glowK * flick))
+    g.addColorStop(0.55, rgba(dna.accent, 0.05 * dna.glowK * flick))
     g.addColorStop(1, 'rgba(0,0,0,0)')
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H)
     const v = ctx.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, H * 0.75)
     v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,0.34)')
     ctx.fillStyle = v; ctx.fillRect(0, 0, W, H)
+  } else if (dna.bg === 'glow' && pol === 'light') {
+    // placa clara de la familia orbital: lavado tibio del acento (que no quede muerta plana)
+    const g = ctx.createRadialGradient(W * 0.5, H * 0.3, 0, W * 0.5, H * 0.3, H * 0.7)
+    g.addColorStop(0, rgba(dna.accent, 0.055))
+    g.addColorStop(1, 'rgba(0,0,0,0)')
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H)
   } else if (dna.bg === 'blobs' && pol !== 'dark') {
-    // liquidpop: 2 manchas enormes del analogo, muy suaves (viven detras del contenido)
-    for (let i = 0; i < 2; i++) {
-      const cx = W * (0.2 + r() * 0.6 + 0.05 * Math.sin(drift * TAU * (0.3 + i * 0.2)))
-      const cy = H * (0.2 + r() * 0.6 + 0.05 * Math.cos(drift * TAU * 0.25))
-      const rad = Math.max(W, H) * (0.3 + r() * 0.25)
+    // liquidpop: 3 orbes aurora, ciclos LENTOS (research: 15-25s; sub-10s distrae), tiempo global
+    for (let i = 0; i < 3; i++) {
+      const ph = r() * TAU
+      const cx = W * (0.2 + r() * 0.6) + Math.sin(t * TAU / (16 + i * 4) + ph) * W * 0.08
+      const cy = H * (0.2 + r() * 0.6) + Math.cos(t * TAU / (21 + i * 3) + ph) * H * 0.06
+      const rad = Math.max(W, H) * (0.26 + r() * 0.22)
       const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, rad)
-      g.addColorStop(0, rgba(pol === 'accent' ? dna.accent2 : dna.accent, pol === 'accent' ? 0.22 : 0.1))
+      g.addColorStop(0, rgba(i % 2 ? dna.accent2 : dna.accent, pol === 'accent' ? 0.16 : 0.09))
       g.addColorStop(1, 'rgba(0,0,0,0)')
       ctx.fillStyle = g; ctx.fillRect(0, 0, W, H)
     }
@@ -48,7 +57,7 @@ export function paintPlate(ctx, W, H, sc, t, video) {
     ctx.save()
     ctx.strokeStyle = rgba(pol === 'dark' ? dna.inkDark : dna.inkLight, 0.055)
     ctx.lineWidth = 1
-    const step = 34 + Math.round(r() * 14)
+    const step = 24 + Math.round(r() * 8)                      // celda 24-32 (research: 16/24px consistente)
     ctx.beginPath()
     for (let x = step; x < W; x += step) { ctx.moveTo(x, 0); ctx.lineTo(x, H) }
     for (let y = step; y < H; y += step) { ctx.moveTo(0, y); ctx.lineTo(W, y) }

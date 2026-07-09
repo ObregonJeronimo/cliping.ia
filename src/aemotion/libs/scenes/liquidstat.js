@@ -7,6 +7,7 @@ import { metaballPath } from '../../core/liquid.js'
 import { spring, win, cubicOut, expoOut } from '../../core/motion.js'
 import { idle, exitP, applyExit, drawFloaters, drawEyebrow } from '../polish.js'
 import { rgba, clamp, TAU } from '../../core/util.js'
+import { trackPx } from '../fonts.js'
 
 // contador determinista: "98%" -> "0%".."98%" · "+400" -> "+0".."+400" (la parte numerica cuenta)
 function countUp(text, p) {
@@ -69,7 +70,7 @@ export default {
       ctx.save()
       ctx.globalAlpha *= clamp(e * 1.4, 0, 1)
       ctx.translate(W / 2, cy); ctx.scale(0.82 + 0.18 * e, 0.82 + 0.18 * e); ctx.translate(-W / 2, -cy)
-      drawText(ctx, countUp(env.text, cp), W / 2, cy, { size: Math.round(W * 0.31), weight: dna.dw, family: dna.display, maxW: W - env.margin * 2, color: ink, tracking: dna.trackingBias })
+      drawText(ctx, countUp(env.text, cp), W / 2, cy, { size: Math.round(W * 0.31), weight: dna.dw, family: dna.display, maxW: W - env.margin * 2, color: ink, tracking: trackPx(dna, Math.round(W * 0.31)) })
       ctx.restore()
       if (env.sub) drawText(ctx, env.sub, W / 2, cy + W * 0.19, {
         size: 15.5, weight: dna.sw, family: dna.support, maxW: W - env.margin * 2.5, color: ink,

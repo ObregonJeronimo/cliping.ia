@@ -7,7 +7,7 @@ import { parsePath, measure, pointAt } from '../../core/path.js'
 import { motionBlur } from '../../core/blur.js'
 import { win, cubicInOut, expoOut } from '../../core/motion.js'
 import { idle, exitP, applyExit, drawFloaters, drawEyebrow } from '../polish.js'
-import { applyCase } from '../fonts.js'
+import { applyCase, trackPx } from '../fonts.js'
 import { rgba, clamp, fontStr } from '../../core/util.js'
 
 const _cache = new Map()
@@ -33,8 +33,10 @@ export default {
     const { W, H, dna, ink, acc, outP } = env
     const text = applyCase(env.text, dna.caseMode)
     const maxW = W - env.margin * 2
-    const wr = wrapFit(ctx, text, Math.round(W * 0.155), maxW, 18, dna.dw, dna.display, 2, dna.trackingBias)
-    const lineH = wr.size * 1.06
+    const base = Math.round(W * 0.155)
+    const tr = trackPx(dna, base)
+    const wr = wrapFit(ctx, text, base, maxW, 18, dna.dw, dna.display, 2, tr)
+    const lineH = wr.size * dna.leading
     const cy = H * 0.46
     const glow = env.dark ? dna.glowK : 0
 
@@ -50,7 +52,7 @@ export default {
     if (epT > 0) aT = applyExit(ctx, epT, W / 2, cy, -1)
     ctx.globalAlpha *= aT
     if (aT > 0.01) {
-      ctx.font = fontStr(dna.dw, wr.size, dna.display); ctx.letterSpacing = dna.trackingBias + 'px'
+      ctx.font = fontStr(dna.dw, wr.size, dna.display); ctx.letterSpacing = tr + 'px'
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
       wr.lines.forEach((ln, i) => {
         const le = expoOut(clamp(win(ts, 0.1 + i * 0.12, 0.95 + i * 0.12), 0, 1))

@@ -111,7 +111,10 @@ export function deriveDNA(brief, seed) {
     return it
   })()
   const caseMode = pick(rV, fam.id === 'poster' ? ['upper', 'upper', 'title'] : mood[1] > 0.66 ? ['sentence', 'title', 'upper'] : ['upper', 'upper', 'sentence', 'title'])
-  const trackingBias = range(rV, -0.5, 2.4)
+  // micro-craft tipografico (research): UPPERCASE pide tracking +5-10% del em y leading compacto
+  // 0.88-0.97; caja mixta pide tracking neutro/negativo y leading ~1.0-1.08. En EM (escala con size).
+  const trackEm = caseMode === 'upper' ? range(rV, 0.045, 0.095) : range(rV, -0.02, 0.004)
+  const leading = caseMode === 'upper' ? range(rV, 0.9, 0.97) : range(rV, 1.0, 1.08)
   const sizeContrast = range(rV, 1.7, 3.0)
 
   // --- paleta (anclas SIEMPRE jitterizadas: jamas un hex de fabrica) ---
@@ -156,7 +159,7 @@ export function deriveDNA(brief, seed) {
     v: 1, mood,
     familia: fam.id, bg: fam.bg, shapeDialect, polarityMotif,
     pairId: pair.id, display: pair.display, dw: pair.dw, dAlt: pair.alt, support: pair.support, sw: pair.sw,
-    caseMode, trackingBias, sizeContrast,
+    caseMode, trackEm, leading, sizeContrast,
     paperLight, paperDark, accent, accent2, inkOnAccent, inkLight, inkDark,
     glowK: fam.id === 'orbita' ? range(rC, 0.5, 1) : range(rC, 0, 0.35),
     z, w, overshoot, staggerOverlap, squashK, shutterK, bpm,

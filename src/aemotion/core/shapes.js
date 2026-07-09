@@ -54,11 +54,13 @@ export function drawShape(ctx, t, shape) {
 
   if (shape.at) {
     const a = shape.at
-    ctx.translate(val(a.x, t) || 0, val(a.y, t) || 0)
+    const ax = val(a.ax, t) || 0, ay = val(a.ay, t) || 0    // ANCLA: rotar/escalar alrededor de (ax,ay)
+    ctx.translate((val(a.x, t) || 0) + ax, (val(a.y, t) || 0) + ay)
     if (a.rot != null) ctx.rotate(val(a.rot, t))
     const s = a.scale != null ? val(a.scale, t) : 1
     const sx = a.sx != null ? val(a.sx, t) : s, sy = a.sy != null ? val(a.sy, t) : s
     if (sx !== 1 || sy !== 1) ctx.scale(sx, sy)
+    ctx.translate(-ax, -ay)
   }
 
   const once = c => paintOne(c, t, shape, cmds)

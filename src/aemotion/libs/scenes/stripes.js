@@ -5,7 +5,7 @@ import { drawShape } from '../../core/shapes.js'
 import { rectPath } from '../../core/path.js'
 import { spring, springVel, stagger, win, expoOut } from '../../core/motion.js'
 import { idle, exitP, applyExit } from '../polish.js'
-import { applyCase } from '../fonts.js'
+import { applyCase, trackPx } from '../fonts.js'
 import { rgba, clamp, fontStr } from '../../core/util.js'
 
 export default {
@@ -38,8 +38,10 @@ export default {
     // texto gigante encima: por linea (expo solapado), keyword en acento, idle + salida
     const text = applyCase(env.text, dna.caseMode)
     const maxW = W - env.margin * 2
-    const wr = wrapFit(ctx, text, Math.round(W * 0.185), maxW, 20, dna.dw, dna.display, 3, dna.trackingBias)
-    const lineH = wr.size * 1.02
+    const base = Math.round(W * 0.185)
+    const tr = trackPx(dna, base)
+    const wr = wrapFit(ctx, text, base, maxW, 20, dna.dw, dna.display, 3, tr)
+    const lineH = wr.size * dna.leading
     const idT = idle(ts, 0.6, 2.4, 6.8)
     const epT = exitP(outP, 0, 2)
     ctx.save()
@@ -48,7 +50,7 @@ export default {
     if (epT > 0) aT = applyExit(ctx, epT, W / 2, H * 0.5, -1)
     ctx.globalAlpha *= aT
     if (aT > 0.01) {
-      ctx.font = fontStr(dna.dw, wr.size, dna.display); ctx.letterSpacing = dna.trackingBias + 'px'
+      ctx.font = fontStr(dna.dw, wr.size, dna.display); ctx.letterSpacing = tr + 'px'
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
       const y0 = H * 0.5 - ((wr.lines.length - 1) / 2) * lineH
       wr.lines.forEach((ln, i) => {

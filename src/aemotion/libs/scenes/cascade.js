@@ -10,7 +10,7 @@ import { circlePath, linePath, rectPath } from '../../core/path.js'
 import { metaballPath } from '../../core/liquid.js'
 import { win, cubicOut, expoOut } from '../../core/motion.js'
 import { idle, exitP, applyExit, drawEyebrow, drawFloaters, glowText, glowStroke, glowFill } from '../polish.js'
-import { applyCase } from '../fonts.js'
+import { applyCase, trackPx } from '../fonts.js'
 import { rgba, clamp, fontStr } from '../../core/util.js'
 
 export default {
@@ -20,9 +20,11 @@ export default {
     const { W, H, dna, ink, acc, outP } = env
     const text = applyCase(env.text, dna.caseMode)
     const maxW = W - env.margin * 2
-    // tipografia PROTAGONISTA: grande, interlineado apretado
-    const wr = wrapFit(ctx, text, Math.round(W * 0.19), maxW, 20, dna.dw, dna.display, 2, dna.trackingBias)
-    const lineH = wr.size * 1.04
+    // tipografia PROTAGONISTA: grande, tracking en EM y leading del DNA (micro-craft del research)
+    const base = Math.round(W * 0.19)
+    const tr = trackPx(dna, base)
+    const wr = wrapFit(ctx, text, base, maxW, 20, dna.dw, dna.display, 2, tr)
+    const lineH = wr.size * dna.leading
     const y0 = H * 0.485 - ((wr.lines.length - 1) / 2) * lineH
     const glow = env.dark ? dna.glowK : 0
 
@@ -45,7 +47,7 @@ export default {
       const off = -0.6 + win(ts, 0.2 + i * 0.24, 1.35 + i * 0.24) * 1.75
       drawAnimatedText(ctx, ts, {
         text: ln, x: W / 2, y: y0 + i * lineH + wr.size * 0.35, size: wr.size, weight: dna.dw, family: dna.display,
-        fill: isAccLine ? acc : ink, tracking: dna.trackingBias,
+        fill: isAccLine ? acc : ink, tracking: tr,
         glow: isAccLine && glow > 0.05 ? { color: acc, blur: 22 * glow } : null,   // glow POR char revelado
         animators: [{ sel: { start: 0, end: 0.42, offset: off, shape: 'rampUp' }, props: { y: wr.size * 0.42, alpha: 0, rot: 0.08, scale: 0.88 } }],
       })

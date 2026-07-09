@@ -22,7 +22,8 @@ const TEMPLATES = [
       const hook = brief.claim || brief.tagline || brief.brand
       const frags = [{ role: 'hook', text: cut(hook, B.hook), durBeats: 5 }]
       const pool = [brief.tagline, ...(brief.bullets || [])].filter(x => x && cut(x, B.line) !== cut(hook, B.line))
-      for (const b of pool.slice(0, 3)) frags.push({ role: 'line', text: cut(b, B.line), durBeats: 3 })
+      // dwell de lectura (research legibility): lineas 4 beats (~2.4-2.9s), no 3 (~1.4-2s quedaba corto)
+      for (const b of pool.slice(0, 3)) frags.push({ role: 'line', text: cut(b, B.line), durBeats: 4 })
       return frags
     },
   },
@@ -30,7 +31,7 @@ const TEMPLATES = [
     id: 'enumeracion', weight: b => ((b.bullets || []).length >= 2 ? 1.2 : 0),
     build(brief) {
       const frags = [{ role: 'hook', text: cut(brief.claim || brief.tagline || brief.brand, B.hook), durBeats: 5 }]
-      for (const b of (brief.bullets || []).slice(0, 3)) frags.push({ role: 'line', text: cut(b, B.line), durBeats: 3 })
+      for (const b of (brief.bullets || []).slice(0, 3)) frags.push({ role: 'line', text: cut(b, B.line), durBeats: 4 })
       return frags
     },
   },
@@ -41,7 +42,7 @@ const TEMPLATES = [
       return [
         { role: 'hook', text: cut(brief.claim || brief.tagline || brief.brand, B.hook), durBeats: 5 },
         { role: 'stat', text: cut(st.value, B.stat), sub: cut(st.label, B.statLabel), durBeats: 5 },
-        ...(brief.bullets && brief.bullets.length ? [{ role: 'line', text: cut(brief.bullets[0], B.line), durBeats: 3 }] : []),
+        ...(brief.bullets && brief.bullets.length ? [{ role: 'line', text: cut(brief.bullets[0], B.line), durBeats: 4 }] : []),
       ]
     },
   },
@@ -50,9 +51,9 @@ const TEMPLATES = [
     build(brief) {
       return [
         { role: 'hook', text: cut(brief.tagline, B.hook), durBeats: 4 },
-        { role: 'breath', text: '', durBeats: 3 },
+        { role: 'breath', text: '', durBeats: 2 },
         { role: 'line', text: cut(brief.claim, B.hook), durBeats: 4, slam: true },
-        ...(brief.bullets && brief.bullets.length ? [{ role: 'line', text: cut(brief.bullets[0], B.line), durBeats: 3 }] : []),
+        ...(brief.bullets && brief.bullets.length ? [{ role: 'line', text: cut(brief.bullets[0], B.line), durBeats: 4 }] : []),
       ]
     },
   },
@@ -64,7 +65,7 @@ export function buildScript(brief, seed, dna) {
   const beats = tpl.build(brief, r)
   if (!beats.some(b => b.role === 'breath')) {
     const at = Math.max(1, Math.min(beats.length - 1, Math.round(beats.length * dna.breathPos)))
-    beats.splice(at, 0, { role: 'breath', text: '', durBeats: 3 })
+    beats.splice(at, 0, { role: 'breath', text: '', durBeats: 2 })   // corto: es un sting, no una escena
   }
   beats.push({ role: 'cta', text: cut(brief.cta || 'Conocenos', B.cta), sub: brief.brand, durBeats: 5 })
   return { templateId: tpl.id, beats }

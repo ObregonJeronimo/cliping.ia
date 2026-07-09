@@ -5,7 +5,7 @@ import { drawShape } from '../../core/shapes.js'
 import { circlePath } from '../../core/path.js'
 import { win, stagger, cubicOut, expoOut } from '../../core/motion.js'
 import { idle, exitP, applyExit, drawFloaters, glowStroke, glowFill } from '../polish.js'
-import { applyCase } from '../fonts.js'
+import { applyCase, trackPx } from '../fonts.js'
 import { rgba, clamp, fontStr, TAU } from '../../core/util.js'
 
 export default {
@@ -66,14 +66,15 @@ export default {
         const val = applyCase(env.text, 'upper')
         const e = expoOut(clamp(win(ts, 0.3, 1.15), 0, 1))
         ctx.save(); ctx.globalAlpha *= clamp(e * 1.3, 0, 1)
-        drawText(ctx, val, W / 2, cy - 8, { size: Math.round(W * 0.2), weight: dna.dw, family: dna.display, maxW: base * 1.6, color: ink, tracking: dna.trackingBias })
+        drawText(ctx, val, W / 2, cy - 8, { size: Math.round(W * 0.2), weight: dna.dw, family: dna.display, maxW: base * 1.6, color: ink, tracking: trackPx(dna, Math.round(W * 0.2)) })
         if (env.sub) drawText(ctx, env.sub, W / 2, cy + Math.round(W * 0.2) * 0.6, { size: 14.5, weight: dna.sw, family: dna.support, maxW: base * 1.7, color: ink, alpha: 0.65 })
         ctx.restore()
       } else {
         const text = applyCase(env.text, dna.caseMode)
-        const wr = wrapFit(ctx, text, Math.round(W * 0.11), base * 1.56, 15, dna.dw, dna.display, 3, dna.trackingBias)
-        const lineH = wr.size * 1.1
-        ctx.font = fontStr(dna.dw, wr.size, dna.display); ctx.letterSpacing = dna.trackingBias + 'px'
+        const tr = trackPx(dna, Math.round(W * 0.11))
+        const wr = wrapFit(ctx, text, Math.round(W * 0.11), base * 1.56, 15, dna.dw, dna.display, 3, tr)
+        const lineH = wr.size * Math.max(dna.leading, 1.05)   // texto chico en anillo pide aire
+        ctx.font = fontStr(dna.dw, wr.size, dna.display); ctx.letterSpacing = tr + 'px'
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
         wr.lines.forEach((ln, i) => {
           const le = expoOut(clamp(win(ts, 0.3 + i * 0.12, 1.1 + i * 0.12), 0, 1))

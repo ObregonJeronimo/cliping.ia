@@ -69,7 +69,7 @@ export function makeMotionVideo(brief, opts = {}) {
   const duration = clamp(t, 8, 30)
   const video = {
     engine: 'aemotion', v: 1, seed, W: MW, H: MH, duration,
-    brand: brief.brand || '', cta: brief.cta || '',
+    brand: brief.brand || '', cta: brief.cta || '', tagline: brief.tagline || '',
     dna, script, scenes, cuts,
     recipe: {
       v: 1, seed, templateId: script.templateId, dna,

@@ -19,6 +19,9 @@ export const FONT_VETO = (pair, mood) => {
   return false
 }
 
+// tracking en px para un tamano dado (el DNA lo define en EM: escala con la tipografia)
+export const trackPx = (dna, size) => Math.round(size * (dna.trackEm || 0) * 10) / 10
+
 export function applyCase(str, caseMode) {
   str = String(str == null ? '' : str)
   if (caseMode === 'upper') return str.toUpperCase()
