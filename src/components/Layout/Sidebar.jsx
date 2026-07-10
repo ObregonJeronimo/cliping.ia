@@ -18,8 +18,10 @@ const renderLabel = (label) => label.split(/(\bIA\b)/).map((part, i) =>
 )
 
 export default function Sidebar() {
-  const { user, profile, logout } = useAuth()
+  const { user, profile, admin, logout } = useAuth()
   const navigate = useNavigate()
+  // solo admins ven la Biblioteca de contenido (uso privado)
+  const nav = admin ? [...NAV, { to: '/studio/biblioteca', icon: '▤', label: 'Biblioteca de contenido' }] : NAV
 
   async function handleLogout() {
     await logout()
@@ -34,7 +36,7 @@ export default function Sidebar() {
       </div>
 
       <nav className={styles.nav}>
-        {NAV.map(item => (
+        {nav.map(item => (
           <NavLink
             key={item.to}
             to={item.to}

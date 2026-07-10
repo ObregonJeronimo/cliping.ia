@@ -6,6 +6,7 @@ import UrvidCraftStudio from './pages/UrvidCraft/UrvidCraftStudio'
 import AnimLab from './pages/AnimLab/AnimLab'
 import KineticStudio from './pages/Kinetic/KineticStudio'
 import MotionStudio from './pages/Motion/MotionStudio'
+import BibliotecaStudio from './pages/Biblioteca/BibliotecaStudio'
 import Login from './pages/Login'
 import Landing from './pages/Landing'
 import Terminos from './pages/Legal/Terminos'
@@ -15,6 +16,14 @@ function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
   if (loading) return <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',color:'#737373',fontSize:'14px'}}>Cargando...</div>
   if (!user) return <Navigate to="/login" replace />
+  return children
+}
+
+// solo admins: no-admins van al estudio principal (no deberian siquiera ver la ruta)
+function AdminRoute({ children }) {
+  const { admin, loading } = useAuth()
+  if (loading) return null
+  if (!admin) return <Navigate to="/studio" replace />
   return children
 }
 
@@ -36,6 +45,7 @@ function AppRoutes() {
         <Route path="kinetic" element={<KineticStudio />} />
         <Route path="motion" element={<MotionStudio />} />
         <Route path="anim" element={<AnimLab />} />
+        <Route path="biblioteca" element={<AdminRoute><BibliotecaStudio /></AdminRoute>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

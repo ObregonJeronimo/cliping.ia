@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from 'react'
 import { GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth'
 import { doc, setDoc, getDoc, serverTimestamp, updateDoc } from 'firebase/firestore'
 import { auth, db } from '../lib/firebase'
+import { isAdmin as isAdminEmail } from '../lib/admin'
 
 const AuthContext = createContext(null)
 
@@ -70,8 +71,11 @@ export function AuthProvider({ children }) {
     return next
   }
 
+  // rol admin: allowlist de emails (uso privado, Biblioteca de contenido)
+  const admin = isAdminEmail(user?.email)
+
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signInWithGoogle, logout, spendTokens }}>
+    <AuthContext.Provider value={{ user, profile, loading, admin, signInWithGoogle, logout, spendTokens }}>
       {children}
     </AuthContext.Provider>
   )

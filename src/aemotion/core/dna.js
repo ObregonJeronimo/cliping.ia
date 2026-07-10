@@ -60,6 +60,16 @@ function moodOf(brief, r) {
   return [clamp(calidez + range(r, -0.15, 0.15), 0, 1), clamp(formalidad + range(r, -0.15, 0.15), 0, 1), clamp(energia + range(r, -0.15, 0.15), 0, 1)]
 }
 
+// CURACION (Biblioteca de contenido): quita de una lista los items ELIMINADOS por el admin. Con set
+// vacio devuelve la MISMA lista (identica consumicion de PRNG -> determinismo intacto, gates verdes).
+// Fallback duro: si eliminar vaciaria la lista, se ignora la eliminacion (jamas romper la generacion).
+const EMPTY = new Set()
+function filterAvail(list, keyFn, disabled) {
+  if (!disabled || !disabled.size) return list
+  const out = list.filter(x => !disabled.has(keyFn(x)))
+  return out.length ? out : list
+}
+
 // pick con afinidad gaussiana al mood, pesos capeados 3:1 (el bias orienta, nunca determina)
 function moodPick(r, items, mood, moodOfItem, veto) {
   const S2 = 2 * 0.35 * 0.35
@@ -86,28 +96,29 @@ export const FAMILIAS = [
   { id: 'poster', mood: [0.35, 0.4, 0.85], pol: [['L', 'D', 'A', 'D', 'L'], ['D', 'L', 'D', 'A', 'D']], dialects: ['bloques', 'subrayados', 'estrellas'], fonts: ['brutal-mono', 'shoulders', 'condensado', 'ancho'], bg: 'franja' },
 ]
 
-export function deriveDNA(brief, seed) {
+export function deriveDNA(brief, seed, disabled = EMPTY) {
   const rMood = seedFor(seed, 'am.dna.mood')
   const mood = moodOf(brief, rMood)
 
   // --- familia visual (el eje mas grande de variedad) ---
   const rF = seedFor(seed, 'am.dna.familia')
-  const fam = moodPick(rF, FAMILIAS, mood, f => f.mood, null)
-  const shapeDialect = pick(rF, fam.dialects)
+  const fam = moodPick(rF, filterAvail(FAMILIAS, f => 'fam:' + f.id, disabled), mood, f => f.mood, null)
+  const shapeDialect = pick(rF, filterAvail(fam.dialects, d => 'dialect:' + d, disabled))
   const polarityMotif = pick(rF, fam.pol)
 
   // --- voz tipografica (mood-pick global con bias de familia) ---
   const rV = seedFor(seed, 'am.dna.voice')
   const famSet = new Set(fam.fonts)
+  const fonts = filterAvail(FONT_PAIRS, p => 'font:' + p.id, disabled)
   const pair = (() => {
     const S2 = 2 * 0.35 * 0.35
-    let ws = FONT_PAIRS.map(p => {
+    let ws = fonts.map(p => {
       const d2 = (p.mood[0] - mood[0]) ** 2 + (p.mood[1] - mood[1]) ** 2 + (p.mood[2] - mood[2]) ** 2
       return Math.exp(-d2 / S2) * (famSet.has(p.id) ? 2.2 : 1)
     })
     const mx = Math.max(...ws); ws = ws.map(w => Math.max(w, mx / 3))
-    let it = weightedPick(rV, FONT_PAIRS, x => ws[FONT_PAIRS.indexOf(x)])
-    for (let k = 0; k < 6 && FONT_VETO(it, mood); k++) it = weightedPick(rV, FONT_PAIRS, x => ws[FONT_PAIRS.indexOf(x)])
+    let it = weightedPick(rV, fonts, x => ws[fonts.indexOf(x)])
+    for (let k = 0; k < 6 && FONT_VETO(it, mood); k++) it = weightedPick(rV, fonts, x => ws[fonts.indexOf(x)])
     return it
   })()
   const caseMode = pick(rV, fam.id === 'poster' ? ['upper', 'upper', 'title'] : mood[1] > 0.66 ? ['sentence', 'title', 'upper'] : ['upper', 'upper', 'sentence', 'title'])
@@ -132,7 +143,7 @@ export function deriveDNA(brief, seed) {
   }
   // ESQUEMA de color (variedad real: no todo monocromo de la marca): mono = analogo cercano,
   // duo = complementario, tri = triadico. El segundo color vive en flotantes/anillos/franjas.
-  const scheme = pick(rC, ['mono', 'mono', 'duo', 'duo', 'tri'])
+  const scheme = pick(rC, filterAvail(['mono', 'mono', 'duo', 'duo', 'tri'], x => 'scheme:' + x, disabled))
   const hue2 = scheme === 'duo' ? hue + range(rC, 150, 210)
     : scheme === 'tri' ? hue + (rC() < 0.5 ? 120 : -120) + range(rC, -15, 15)
       : hue + range(rC, 24, 60) * (rC() < 0.5 ? 1 : -1)

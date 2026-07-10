@@ -9,6 +9,11 @@ export { drawMotionFrame, beatAt, setImageLoader, getImg } from './core/render.j
 export { deriveDNA, FAMILIAS } from './core/dna.js'
 export { setScratchFactory } from './core/scratch.js'
 
+// catalogo (Biblioteca de contenido): fuentes, fondos y el registro de escenas/transiciones
+export { query as listModules } from './core/registry.js'
+export { FONT_PAIRS, applyCase, trackPx } from './libs/fonts.js'
+export { paintPlate, inkFor } from './libs/backgrounds.js'
+
 // arsenal (para el editor/futuras capas y los tools)
 export { track, val, velOf } from './core/keys.js'
 export { cubicBezier, xSolver, cubicVal, EASY, EASY_STRONG } from './core/ease.js'

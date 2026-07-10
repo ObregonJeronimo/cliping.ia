@@ -14,7 +14,11 @@ export const MW = 405, MH = 720
 
 export function makeMotionVideo(brief, opts = {}) {
   const seed = (opts.seed != null ? opts.seed : (brief.seed != null ? brief.seed : stableSeed(brief.brand, brief.rubro))) >>> 0
-  const dna = deriveDNA(brief, seed)
+  // CURACION: set de items ELIMINADOS por el admin (Biblioteca). Vacio -> generacion identica
+  // (gates verdes). Se aplica al DNA (familias/fuentes/esquemas/formas) y aca (escenas/transiciones).
+  const disabled = opts.disabled instanceof Set ? opts.disabled : new Set(opts.disabled || [])
+  const avail = (list) => { const o = list.filter(m => !disabled.has(m.id)); return o.length ? o : list }
+  const dna = deriveDNA(brief, seed, disabled)
   const script = buildScript(brief, seed, dna)
   const beatDur = 60 / dna.bpm
 
@@ -26,7 +30,7 @@ export function makeMotionVideo(brief, opts = {}) {
   let t = 0, mi = 0
 
   for (const beat of script.beats) {
-    const pool = query('scenes', { kind: beat.role })
+    const pool = avail(query('scenes', { kind: beat.role }))
     if (!pool.length) continue
     const mod = weightedPick(rC, pool, m => {
       const base = (beat.role === 'hook' && m.hookWeight != null ? m.hookWeight : m.weight) || 1
@@ -54,7 +58,7 @@ export function makeMotionVideo(brief, opts = {}) {
 
   // --- cortes: default seco (en beat); 1-2 bordes feature (post-hook y pre-cta) con seamless real ---
   const rX = seedFor(seed, 'am.cuts')
-  const featurePool = query('transitions', {}).filter(m => m.dur > 0)
+  const featurePool = query('transitions', {}).filter(m => m.dur > 0 && !disabled.has(m.id))
   const cuts = []
   for (let i = 1; i < scenes.length; i++) {
     const isPostHook = i === 1, isPreCta = i === scenes.length - 1

@@ -7,6 +7,7 @@ import { MUSIC_LIBRARY, ASSET_BY_ID } from '../../lib/audioAssets.js'
 import { playPreview } from '../../lib/audioMix.js'
 import { useAuth } from '../../contexts/AuthContext'
 import { db } from '../../lib/firebase'
+import { loadRemoved } from '../../lib/contentLibrary'
 import styles from './MotionStudio.module.css'
 
 // Backend (perception): MISMO endpoint que urvid IA. En dev pega a localhost:8000 (start.bat).
@@ -21,7 +22,10 @@ export default function MotionStudio() {
   const { user } = useAuth()
   const [brief, setBrief] = useState({ brand: 'Nodo', rubro: 'tech', brandColor: '#22e06a', tagline: 'Automatiza lo aburrido', claim: 'Menos tareas repetitivas, mas resultados', cta: 'Probalo gratis', bullets: ['Rapido de integrar', 'Reportes en vivo', 'Soporte 24/7'], stats: [{ value: '+400', label: 'equipos lo usan' }] })
   const [seed, setSeed] = useState(1)
-  const video = useMemo(() => makeMotionVideo(brief, { seed }), [brief, seed])
+  // curacion admin (Biblioteca): el contenido eliminado no se usa al generar. Vacio -> comportamiento normal.
+  const [disabled, setDisabled] = useState(() => new Set())
+  useEffect(() => { loadRemoved().then(setDisabled) }, [])
+  const video = useMemo(() => makeMotionVideo(brief, { seed, disabled }), [brief, seed, disabled])
   const [playing, setPlaying] = useState(true)
   const [head, setHead] = useState(0)
   const headRef = useRef(0)
