@@ -4,8 +4,6 @@ import AppLayout from './components/Layout/AppLayout'
 import Urvid1Studio from './pages/Urvid1/Urvid1Studio'
 import UrvidCraftStudio from './pages/UrvidCraft/UrvidCraftStudio'
 import AnimLab from './pages/AnimLab/AnimLab'
-import CineStudio from './pages/Cine/CineStudio'
-import CineEngineStudio from './pages/CineEngine/CineEngineStudio'
 import KineticStudio from './pages/Kinetic/KineticStudio'
 import MotionStudio from './pages/Motion/MotionStudio'
 import Login from './pages/Login'
@@ -38,8 +36,6 @@ function AppRoutes() {
         <Route path="kinetic" element={<KineticStudio />} />
         <Route path="motion" element={<MotionStudio />} />
         <Route path="anim" element={<AnimLab />} />
-        <Route path="cine" element={<CineStudio />} />
-        <Route path="cine-motor" element={<CineEngineStudio />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

@@ -10,8 +10,6 @@ const NAV = [
   { to: '/studio/kinetic', icon: '◎', label: 'Kinetic IA' },
   { to: '/studio/motion', icon: '◉', label: 'Motion IA' },
   { to: '/studio/anim', icon: '➤', label: 'Animaciones IA' },
-  { to: '/studio/cine', icon: '◆', label: 'Cine IA' },
-  { to: '/studio/cine-motor', icon: '◈', label: 'Cine IA (motor)' },
 ]
 
 // pinta el token "IA" del label con el gradiente iridiscente (igual que los titulos de pagina)
