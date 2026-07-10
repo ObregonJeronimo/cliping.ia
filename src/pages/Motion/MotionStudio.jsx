@@ -23,8 +23,12 @@ export default function MotionStudio() {
   const [brief, setBrief] = useState({ brand: 'Nodo', rubro: 'tech', brandColor: '#22e06a', tagline: 'Automatiza lo aburrido', claim: 'Menos tareas repetitivas, mas resultados', cta: 'Probalo gratis', bullets: ['Rapido de integrar', 'Reportes en vivo', 'Soporte 24/7'], stats: [{ value: '+400', label: 'equipos lo usan' }] })
   const [seed, setSeed] = useState(1)
   // curacion admin (Biblioteca): el contenido eliminado no se usa al generar. Vacio -> comportamiento normal.
-  const [disabled, setDisabled] = useState(() => new Set())
-  useEffect(() => { loadRemoved().then(setDisabled) }, [])
+  // Los ids vienen namespaceados por motor ('motion|...'); acepta tambien ids legacy sin prefijo.
+  const [removedRaw, setRemovedRaw] = useState(() => new Set())
+  useEffect(() => { loadRemoved().then(setRemovedRaw) }, [])
+  const disabled = useMemo(() => new Set([...removedRaw]
+    .filter(id => id.startsWith('motion|') || !id.includes('|'))
+    .map(id => id.startsWith('motion|') ? id.slice(7) : id)), [removedRaw])
   const video = useMemo(() => makeMotionVideo(brief, { seed, disabled }), [brief, seed, disabled])
   const [playing, setPlaying] = useState(true)
   const [head, setHead] = useState(0)

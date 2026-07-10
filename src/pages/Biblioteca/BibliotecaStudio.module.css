@@ -17,6 +17,26 @@
 .sync { font-size: 12px; color: #38c172; }
 .syncWarn { font-size: 12px; color: #d8a24a; }
 
+/* switcher de motores */
+.tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+.tab { font-size: 13px; font-weight: 600; padding: 8px 16px; border-radius: 10px; border: 1px solid #262b38; background: #14171f; color: #aab0be; cursor: pointer; transition: all 0.14s ease; }
+.tab:hover { border-color: #3a4152; color: #dfe3ec; }
+.tabOn { background: #2a3350; border-color: #4a5a8f; color: #fff; }
+
+.loading { padding: 40px; text-align: center; color: #8b93a5; font-size: 14px; }
+.engineNote { font-size: 12.5px; color: #8b93a5; margin: 16px 0 10px; }
+.catNote { font-size: 12.5px; color: #7b8395; margin: 2px 0 14px; }
+
+/* chips de categoria */
+.chips { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0 4px; }
+.chip { font-size: 12.5px; font-weight: 600; padding: 6px 12px; border-radius: 999px; border: 1px solid #242a36; background: #12151d; color: #9aa2b1; cursor: pointer; transition: all 0.14s ease; }
+.chip:hover { border-color: #3a4152; color: #dfe3ec; }
+.chipOn { background: #1e2536; border-color: #46527a; color: #eef1f7; }
+.chipCount { font-size: 11px; color: #6b7385; margin-left: 3px; }
+
+.playBtn { position: absolute; top: 8px; right: 8px; width: 34px; height: 34px; border-radius: 50%; border: none; background: rgba(0,0,0,0.55); color: #fff; cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center; }
+.playBtn:hover { background: rgba(0,0,0,0.8); }
+
 .section { margin-top: 30px; }
 .secHead { display: flex; align-items: baseline; gap: 12px; margin-bottom: 12px; border-bottom: 1px solid #212532; padding-bottom: 8px; flex-wrap: wrap; }
 .secTitle { font-size: 17px; font-weight: 700; margin: 0; }
