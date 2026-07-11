@@ -3,7 +3,7 @@ import { makeTemplateVideo, drawTemplateFrame, normalizeTemplate, GALLERY, OBJEC
 import { circlePath, rectPath, starPath, polygonPath, linePath, tracePath } from '../../aemotion/index.js'
 import { useAuth } from '../../contexts/AuthContext'
 import { isAdmin } from '../../lib/admin'
-import { loadTemplates, saveTemplate, deleteTemplate } from '../../lib/templateStore'
+import { loadTemplates, saveTemplate, deleteTemplate, makeTemplateId } from '../../lib/templateStore'
 import s from './TemplateEditor.module.css'
 
 // EDITOR DE TEMPLATES (admin) — crea/edita templates autorados: escenas, capas (texto fijo o SLOT
@@ -18,7 +18,8 @@ const SHAPES = ['rect', 'circle', 'star', 'poly', 'line']
 
 let _id = 0
 const uid = (p) => p + Date.now().toString(36) + (_id++).toString(36)
-const blankTemplate = () => normalizeTemplate({ id: uid('tpl'), name: 'Nuevo template', mode: 'dark', scenes: [{ id: uid('sc'), dur: 3, background: { kind: 'glow' }, layers: [{ id: uid('ly'), type: 'text', y: 0.47, slot: { kind: 'headline', maxChars: 40, maxLines: 3 }, style: { size: 74, weight: 900, color: 'ink', font: 'Archivo' }, anim: { in: 'cascade', inDur: 1, delay: 0, idle: true, out: 'fade' } }] }] })
+const scaffoldScenes = () => [{ id: uid('sc'), dur: 3, background: { ref: 'bg.glow-corner' }, layers: [{ id: uid('ly'), type: 'text', y: 0.47, slot: { kind: 'headline', maxChars: 40, maxLines: 3 }, style: { size: 74, weight: 900, color: 'ink', font: 'Archivo' }, anim: { in: 'cascade', inDur: 1, delay: 0, idle: true, out: 'fade' } }] }]
+const blankTemplate = (name, id) => normalizeTemplate({ id: id || uid('tpl'), name: name || 'Nuevo template', mode: 'dark', scenes: scaffoldScenes() })
 const blankLayer = (type) => ({
   text: { id: uid('ly'), type: 'text', x: 0.5, y: 0.5, scale: 1, rot: 0, text: 'Texto', style: { size: 60, weight: 800, color: 'ink', font: 'Archivo', align: 'center' }, anim: { in: 'rise', inDur: 0.6, delay: 0, idle: 'drift', out: 'fade' } },
   shape: { id: uid('ly'), type: 'shape', x: 0.5, y: 0.6, scale: 1, rot: 0, shape: 'line', shapeStyle: { w: 130, stroke: 'accent', width: 4 }, anim: { in: 'slide-l', inDur: 0.5, delay: 0, idle: 'drift', out: 'fade' } },
@@ -29,13 +30,20 @@ const blankLayer = (type) => ({
 export default function TemplateEditor() {
   const { user } = useAuth()
   const [tpl, setTpl] = useState(blankTemplate)
+  const [mode, setMode] = useState('manager')      // 'manager' (gestor de templates) | 'editor'
   const [layerId, setLayerId] = useState(null)
   const [saved, setSaved] = useState([])
   const [playing, setPlaying] = useState(true)
   const [head, setHead] = useState(0)
   const [status, setStatus] = useState('')
   const [io, setIo] = useState(null)
+  const [newOpen, setNewOpen] = useState(false)    // dialogo "nuevo template" (pide solo nombre)
+  const [newName, setNewName] = useState('')
+  const [copiedId, setCopiedId] = useState(null)   // id recien copiado (feedback por-tarjeta/chip)
   const headRef = useRef(0), cvRef = useRef(null), dragRef = useRef(null)
+  const savedSnapRef = useRef('')                  // snapshot del contenido ya guardado (dirty-check)
+  const tplRef = useRef(tpl); tplRef.current = tpl // ultimo tpl (para flush al desmontar)
+  const dirtyRef = useRef(false)
 
   const video = useMemo(() => makeTemplateVideo(tpl, SAMPLE), [tpl])
   useEffect(() => { loadTemplates().then(setSaved) }, [])
@@ -51,7 +59,7 @@ export default function TemplateEditor() {
   const activeIdx = useMemo(() => {
     const ss = video.scenes; let i = 0
     for (let k = 0; k < ss.length; k++) if (head >= ss[k].t0 - 1e-6) i = k
-    return Math.min(i, tpl.scenes.length - 1)
+    return Math.max(0, Math.min(i, tpl.scenes.length - 1))
   }, [head, video, tpl.scenes.length])
   const scene = tpl.scenes[activeIdx] || tpl.scenes[0]
   const layer = scene?.layers.find(l => l.id === layerId) || null
@@ -61,6 +69,7 @@ export default function TemplateEditor() {
   const playingRef = useRef(playing); playingRef.current = playing
   const layerRef = useRef(layer); layerRef.current = layer
   useEffect(() => {
+    if (mode !== 'editor') return       // el loop de preview solo corre en el editor (no en el gestor)
     const cv = cvRef.current; if (!cv) return
     const ctx = cv.getContext('2d'); const DPR = Math.min(window.devicePixelRatio || 1, 2)
     let raf, last = performance.now()
@@ -83,7 +92,23 @@ export default function TemplateEditor() {
     }
     raf = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(raf)
-  }, [])
+  }, [mode])
+
+  // AUTO-GUARDADO del template activo mientras editás (debounce), como urvid advanced. Solo guarda si
+  // el CONTENIDO cambió (dirty-check por snapshot) -> abrir un template sin tocarlo no bumpea su ts ni
+  // lo reordena ni genera un write. Persiste en localStorage + Firestore (best-effort).
+  useEffect(() => {
+    if (mode !== 'editor') return
+    const cur = JSON.stringify(tpl)
+    if (cur === savedSnapRef.current) { dirtyRef.current = false; return }
+    dirtyRef.current = true
+    const h = setTimeout(async () => { savedSnapRef.current = cur; dirtyRef.current = false; const { list } = await saveTemplate(tpl); setSaved(list) }, 900)
+    return () => clearTimeout(h)
+  }, [tpl, mode])
+
+  // FLUSH al desmontar (ej. navegar a otra sección por el sidebar): writeLS de saveTemplate es
+  // síncrono -> persiste la última edición aunque el componente se desarme antes del debounce.
+  useEffect(() => () => { if (dirtyRef.current) saveTemplate(tplRef.current) }, [])
 
   // t0 (inicio) de una escena por índice, a partir de sus duraciones (para saltar el playhead ahí)
   const sceneStart = (scenes, i) => scenes.slice(0, i).reduce((a, s2) => a + (s2.dur || 0), 0)
@@ -116,25 +141,125 @@ export default function TemplateEditor() {
   const onMove = (e) => { if (!dragRef.current) return; const [x, y] = norm(e); const id = dragRef.current.id; const scenes = tpl.scenes.map((s2, j) => j === activeIdx ? { ...s2, layers: s2.layers.map(l => l.id === id ? { ...l, x: +x.toFixed(3), y: +y.toFixed(3) } : l) } : s2); commit({ ...tpl, scenes }) }
   const onUp = () => { dragRef.current = null }
 
-  const save = async () => { setStatus('guardando…'); const { synced } = await saveTemplate(tpl); const list = await loadTemplates(); setSaved(list); setStatus(synced ? 'guardado ✓' : 'guardado local'); setTimeout(() => setStatus(''), 2500) }
-  const load = (t) => { setTpl(normalizeTemplate(t)); setLayerId(null); seek(0) }
+  // --- persistencia / GESTOR de templates (patrón urvid advanced: gestor -> editor) ---
+  // entra a un template al editor sin re-guardarlo (el snapshot evita el write/bump-ts al solo abrir)
+  const enterEditor = (t) => { const nt = normalizeTemplate(t); if (!nt.scenes.length) nt.scenes = scaffoldScenes(); savedSnapRef.current = JSON.stringify(nt); dirtyRef.current = false; setTpl(nt); setLayerId(null); seek(0); setMode('editor') }
+  // flush del template saliente si tenía cambios sin guardar (antes de reemplazarlo por otro)
+  const flushCurrent = async () => { if (dirtyRef.current) { dirtyRef.current = false; await saveTemplate(tplRef.current) } }
+  const save = async () => { setStatus('guardando…'); savedSnapRef.current = JSON.stringify(tpl); dirtyRef.current = false; const { list, synced } = await saveTemplate(tpl); setSaved(list); setStatus(synced ? 'guardado ✓' : 'guardado local'); setTimeout(() => setStatus(''), 2500) }
   const del = async (id) => { const { list } = await deleteTemplate(id); setSaved(list) }
-  const loadGallery = (id) => { const g = GALLERY.find(t => t.id === id); if (!g) return; load({ ...JSON.parse(JSON.stringify(g)), id: uid('tpl'), name: g.name + ' (copia)' }) }
-  const newBlank = () => { setTpl(blankTemplate()); setLayerId(null); seek(0) }
+  const openTemplate = (t) => enterEditor(t)
+  // crear: pide SOLO el nombre; se le asigna un ID único (a la vista, lo usan los motores) y se guarda al crear.
+  const createTemplate = async (name) => {
+    const id = makeTemplateId(saved.map(t => t.id))
+    const t = blankTemplate((name || '').trim() || 'Template sin título', id)
+    savedSnapRef.current = JSON.stringify(t); dirtyRef.current = false
+    setTpl(t); setLayerId(null); seek(0); setMode('editor')
+    const { list } = await saveTemplate(t); setSaved(list)
+  }
+  const duplicateTemplate = async (t) => {
+    const id = makeTemplateId(saved.map(x => x.id))
+    const copy = normalizeTemplate({ ...JSON.parse(JSON.stringify(t)), id, name: (t.name || 'Template') + ' (copia)' })
+    const { list } = await saveTemplate(copy); setSaved(list)
+  }
+  // volver al gestor: flush del actual + RE-SYNC desde Firestore (para ver cambios de otros admins)
+  const backToManager = async () => { setPlaying(false); await save(); const list = await loadTemplates(); setSaved(list); setMode('manager') }
+  // cargar un diseño de galería como template NUEVO (id fresco): flushea el saliente y guarda el nuevo ya
+  const loadGallery = async (id) => {
+    const g = GALLERY.find(t => t.id === id); if (!g) return
+    await flushCurrent()
+    const nid = makeTemplateId(saved.map(t => t.id))
+    const t = normalizeTemplate({ ...JSON.parse(JSON.stringify(g)), id: nid, name: g.name })
+    savedSnapRef.current = JSON.stringify(t); dirtyRef.current = false
+    setTpl(t); setLayerId(null); seek(0)
+    const { list } = await saveTemplate(t); setSaved(list)
+  }
+  // aplicar un template pegado como JSON: flushea el saliente, garantiza ID único (si no trae uno con
+  // formato TPL-, le asigna uno nuevo -> no pisa otro por colisión) y >=1 escena (evita crash), y lo guarda
+  const applyJson = async () => {
+    let parsed; try { parsed = JSON.parse(io) } catch (err) { alert('JSON invalido: ' + err.message); return }
+    await flushCurrent()
+    const id = (typeof parsed.id === 'string' && /^TPL-/.test(parsed.id)) ? parsed.id : makeTemplateId(saved.map(t => t.id))
+    const t = normalizeTemplate({ ...parsed, id })
+    if (!t.scenes.length) t.scenes = scaffoldScenes()
+    savedSnapRef.current = JSON.stringify(t); dirtyRef.current = false
+    setTpl(t); setLayerId(null); seek(0); setIo(null)
+    const { list } = await saveTemplate(t); setSaved(list)
+  }
+  const copyId = (id) => { try { navigator.clipboard && navigator.clipboard.writeText(id) } catch { /* noop */ } setCopiedId(id); setTimeout(() => setCopiedId(cur => cur === id ? null : cur), 1600) }
 
   if (!isAdmin(user?.email)) return <div className={s.wrap}><div className={s.denied}>Acceso restringido.</div></div>
+
+  // ---- GESTOR de templates (grid de tarjetas; se ve el sidebar de la app) ----
+  if (mode === 'manager') {
+    return (
+      <div className={s.mgrWrap}>
+        <div className={s.mgr}>
+          <div className={s.mgrHead}>
+            <div>
+              <h1 className={s.mgrTitle}>Editor de templates</h1>
+              <p className={s.mgrLead}>Tus templates autorados. Creá uno nuevo o abrí uno para seguir editándolo. Cada template tiene un ID único que los motores van a usar para identificarlo.</p>
+            </div>
+            <button className={s.mgrNew} onClick={() => { setNewName(''); setNewOpen(true) }}>＋ Nuevo template</button>
+          </div>
+          {saved.length === 0
+            ? <div className={s.mgrEmpty}><b>Todavía no tenés templates</b><span>Creá tu primer template para empezar a editar.</span><button className={s.mgrNew} onClick={() => { setNewName(''); setNewOpen(true) }}>＋ Crear template</button></div>
+            : <div className={s.mgrGrid}>
+                {saved.map(t => (
+                  <div key={t.id} className={s.card}>
+                    <button className={s.cardOpen} onClick={() => openTemplate(t)} title="Abrir">
+                      <div className={s.cardThumb}><TemplateThumb tpl={t} /></div>
+                      <div className={s.cardBody}>
+                        <div className={s.cardName}>{t.name}</div>
+                        <div className={s.cardMeta}>{(t.scenes || []).length} escena{(t.scenes || []).length === 1 ? '' : 's'} · {new Date(t.ts || Date.now()).toLocaleDateString('es')}</div>
+                      </div>
+                    </button>
+                    <div className={s.cardIdRow}>
+                      <code className={s.cardId} title="Identificador único (lo usan los motores)">{t.id}</code>
+                      <button className={s.cardIdCopy} onClick={() => copyId(t.id)} title="Copiar ID">{copiedId === t.id ? '✓' : '⧉'}</button>
+                    </div>
+                    <div className={s.cardActions}>
+                      <button className={s.cardBtn} onClick={() => duplicateTemplate(t)}>Duplicar</button>
+                      <button className={`${s.cardBtn} ${s.cardDel}`} onClick={() => del(t.id)}>Borrar</button>
+                    </div>
+                  </div>
+                ))}
+              </div>}
+        </div>
+        {newOpen && (
+          <div className={s.mgrModalBg} onClick={() => setNewOpen(false)}>
+            <div className={s.mgrModalBox} onClick={e => e.stopPropagation()}>
+              <div className={s.mgrModalTitle}>Nuevo template</div>
+              <label className={s.mgrField}><span>Nombre del template</span>
+                <input className={s.mgrInput} autoFocus value={newName} onChange={e => setNewName(e.target.value)} placeholder="Ej: Promo lanzamiento" onKeyDown={e => { if (e.key === 'Enter') { setNewOpen(false); createTemplate(newName) } }} />
+              </label>
+              <div className={s.mgrHint}>Al crearlo se le asigna un ID único (visible en el editor) que los motores usarán para identificarlo.</div>
+              <div className={s.row} style={{ justifyContent: 'flex-end', marginTop: 4 }}>
+                <button className={s.mgrBtn} onClick={() => setNewOpen(false)}>Cancelar</button>
+                <button className={`${s.mgrBtn} ${s.mgrPrimary}`} onClick={() => { setNewOpen(false); createTemplate(newName) }}>Crear y editar</button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className={s.editor}>
       {/* IZQUIERDA · escenas + template */}
       <aside className={s.left}>
+        <button className={s.backBtn} onClick={backToManager} title="Volver al gestor de templates">‹ Templates</button>
         <input className={s.name} value={tpl.name} onChange={e => commit({ ...tpl, name: e.target.value })} />
+        <div className={s.idChip} title="Identificador único del template — lo usan los motores para referenciarlo">
+          <span className={s.idLabel}>ID</span><code className={s.idVal}>{tpl.id}</code>
+          <button className={s.idCopy} onClick={() => copyId(tpl.id)}>{copiedId === tpl.id ? '✓' : '⧉'}</button>
+        </div>
         <div className={s.row}>
           <select className={s.sel} value={tpl.mode} onChange={e => commit({ ...tpl, mode: e.target.value })}><option value="dark">Oscuro</option><option value="light">Claro</option></select>
-          <button className={s.btn} onClick={newBlank}>Nuevo</button>
         </div>
         <select className={s.sel} style={{ width: '100%', marginBottom: 8 }} value="" onChange={e => loadGallery(e.target.value)}>
-          <option value="">Galeria: cargar template…</option>
+          <option value="">Empezar desde galería…</option>
           {GALLERY.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
         </select>
         <button className={s.btn} style={{ width: '100%' }} onClick={() => setIo(JSON.stringify(tpl, null, 2))}>Importar / Exportar JSON</button>
@@ -152,16 +277,6 @@ export default function TemplateEditor() {
             </div>
           ))}
           <button className={s.addScene} onClick={addScene}>+ Escena</button>
-        </div>
-        <div className={s.secLabel}>Mis templates</div>
-        <div className={s.saved}>
-          {saved.length === 0 && <div className={s.empty}>Todavia no guardaste ninguno.</div>}
-          {saved.map(t => (
-            <div key={t.id} className={s.savedRow}>
-              <button className={s.savedMain} onClick={() => load(t)}>{t.name}<span>{(t.scenes || []).length} esc.</span></button>
-              <button className={s.savedDel} onClick={() => del(t.id)}>×</button>
-            </div>
-          ))}
         </div>
       </aside>
 
@@ -271,7 +386,7 @@ export default function TemplateEditor() {
           <div className={s.row}>
             <button className={s.btn} onClick={() => { navigator.clipboard?.writeText(io) }}>Copiar</button>
             <button className={s.btn} onClick={() => setIo(null)}>Cerrar</button>
-            <button className={`${s.btn} ${s.primary}`} onClick={() => { try { const t = normalizeTemplate(JSON.parse(io)); setTpl(t); setLayerId(null); seek(0); setIo(null) } catch (err) { alert('JSON invalido: ' + err.message) } }}>Aplicar</button>
+            <button className={`${s.btn} ${s.primary}`} onClick={applyJson}>Aplicar</button>
           </div>
         </div>
       </div>}
@@ -310,6 +425,25 @@ function ThumbGrid({ items, value, onChange, render, w, h }) {
       </button>
     ))}
   </div>
+}
+
+// miniatura ESTATICA de un template (primer frame de la escena 1, con el brief de muestra) para las
+// tarjetas del gestor. Se dibuja una vez con el motor -> vista previa real del diseño.
+function TemplateThumb({ tpl }) {
+  const ref = useRef(null)
+  useEffect(() => {
+    const cv = ref.current; if (!cv) return
+    const ctx = cv.getContext('2d')
+    try {
+      const rv = makeTemplateVideo(tpl, SAMPLE)
+      const DPR = Math.min(window.devicePixelRatio || 1, 2)
+      cv.width = Math.round(96 * DPR); cv.height = Math.round(170 * DPR)
+      ctx.setTransform(cv.width / rv.W, 0, 0, cv.height / rv.H, 0, 0)
+      const t0 = (rv.scenes[0] && rv.scenes[0].t0) || 0
+      drawTemplateFrame(ctx, t0 + 0.6, rv)
+    } catch { /* template invalido -> miniatura vacia */ }
+  }, [tpl])
+  return <canvas ref={ref} className={s.cardCanvas} />
 }
 
 // preview animado (loop) de la entrada seleccionada, sobre un cuadrado de muestra
