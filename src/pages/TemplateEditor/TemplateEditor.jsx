@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { makeTemplateVideo, drawTemplateFrame, normalizeTemplate, GALLERY, OBJECTS, OBJECT_IDS, BACKGROUNDS, ANIM_IN, ANIM_OUT, IDLE_KINDS, hitTest } from '../../templates/index.js'
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
+import { makeTemplateVideo, drawTemplateFrame, normalizeTemplate, GALLERY, OBJECTS, OBJECT_IDS, BACKGROUNDS, ANIM_IN, ANIM_OUT, IDLE_KINDS, hitTest, paintTemplateBackground, drawObject, deriveTemplatePalette, resolveColor } from '../../templates/index.js'
+import { circlePath, rectPath, starPath, polygonPath, linePath, tracePath } from '../../aemotion/index.js'
 import { useAuth } from '../../contexts/AuthContext'
 import { isAdmin } from '../../lib/admin'
 import { loadTemplates, saveTemplate, deleteTemplate } from '../../lib/templateStore'
@@ -39,6 +40,12 @@ export default function TemplateEditor() {
 
   const video = useMemo(() => makeTemplateVideo(tpl, SAMPLE), [tpl])
   useEffect(() => { loadTemplates().then(setSaved) }, [])
+
+  // paleta de muestra para las miniaturas (refleja el modo del template)
+  const thumbPal = useMemo(() => deriveTemplatePalette('#5b8cff', tpl.mode), [tpl.mode])
+  const bgThumb = useCallback((ctx, id, W, H) => { ctx.setTransform(W / 405, 0, 0, H / 720, 0, 0); paintTemplateBackground(ctx, { ref: id }, 0.4, thumbPal, 405, 720) }, [thumbPal])
+  const objThumb = useCallback((ctx, id, W, H) => { ctx.setTransform(W / 405, 0, 0, H / 720, 0, 0); ctx.fillStyle = thumbPal.bg; ctx.fillRect(0, 0, 405, 720); drawObject(ctx, id, 1.3, 2.5, { x: 202, y: 360, pal: thumbPal, params: {} }) }, [thumbPal])
+  const shapeThumb = useCallback((ctx, id, W, H) => { ctx.setTransform(W / 120, 0, 0, H / 120, 0, 0); ctx.fillStyle = thumbPal.surface; ctx.fillRect(0, 0, 120, 120); const p = (SHAPE_PATH[id] || SHAPE_PATH.circle)(60, 40); if (id === 'line') { tracePath(ctx, p); ctx.strokeStyle = thumbPal.accent; ctx.lineWidth = 7; ctx.lineCap = 'round'; ctx.stroke() } else { tracePath(ctx, p); ctx.fillStyle = thumbPal.accent; ctx.fill() } }, [thumbPal])
 
   const scene = tpl.scenes[sceneIdx] || tpl.scenes[0]
   const layer = scene?.layers.find(l => l.id === layerId) || null
@@ -153,7 +160,8 @@ export default function TemplateEditor() {
       <aside className={s.right}>
         <div className={s.secLabel}>Escena {sceneIdx + 1}</div>
         <Field label="Duracion (s)"><input className={s.inp} type="number" min={1} max={12} step={0.1} value={scene.dur} onChange={e => patchScene(sceneIdx, { dur: Math.max(1, +e.target.value) })} /></Field>
-        <Field label="Fondo"><select className={s.sel} value={scene.background?.ref || 'bg.glow-corner'} onChange={e => patchScene(sceneIdx, { background: { ...scene.background, ref: e.target.value } })}>{BACKGROUNDS.map(b => <option key={b.id} value={b.id}>{b.label}</option>)}</select></Field>
+        <div className={s.pickLabel}>Fondo</div>
+        <ThumbGrid items={BACKGROUNDS} value={scene.background?.ref || 'bg.glow-corner'} onChange={v => patchScene(sceneIdx, { background: { ...scene.background, ref: v } })} render={bgThumb} w={48} h={85} />
 
         <div className={s.secLabel}>Capas</div>
         <div className={s.layers}>
@@ -195,24 +203,26 @@ export default function TemplateEditor() {
             <Field label="Fuente"><select className={s.sel} value={layer.style?.font || 'Archivo'} onChange={e => patchLayer({ style: { font: e.target.value } })}>{FONTS.map(f => <option key={f} value={f}>{f}</option>)}</select></Field>
             <Field label="Tamano"><input className={s.inp} type="number" min={12} max={160} value={layer.style?.size || 60} onChange={e => patchLayer({ style: { size: +e.target.value } })} /></Field>
             <Field label="Peso"><select className={s.sel} value={layer.style?.weight || 800} onChange={e => patchLayer({ style: { weight: +e.target.value } })}>{[400, 500, 600, 700, 800, 900].map(w => <option key={w} value={w}>{w}</option>)}</select></Field>
-            <Field label="Color"><TokenSel value={layer.style?.color || 'ink'} onChange={v => patchLayer({ style: { color: v } })} /></Field>
+            <Field label="Color"><TokenSel value={layer.style?.color || 'ink'} onChange={v => patchLayer({ style: { color: v } })} pal={thumbPal} /></Field>
             <Field label="Alineacion"><select className={s.sel} value={layer.style?.align || 'center'} onChange={e => patchLayer({ style: { align: e.target.value } })}><option value="left">izq</option><option value="center">centro</option><option value="right">der</option></select></Field>
           </>}
 
           {layer.type === 'shape' && <>
-            <Field label="Forma"><select className={s.sel} value={layer.shape} onChange={e => patchLayer({ shape: e.target.value })}>{SHAPES.map(sh => <option key={sh} value={sh}>{sh}</option>)}</select></Field>
-            <Field label="Relleno"><TokenSel value={layer.shapeStyle?.fill || ''} onChange={v => patchLayer({ shapeStyle: { fill: v } })} allowNone /></Field>
-            <Field label="Borde"><TokenSel value={layer.shapeStyle?.stroke || ''} onChange={v => patchLayer({ shapeStyle: { stroke: v } })} allowNone /></Field>
+            <div className={s.pickLabel}>Forma</div>
+            <ThumbGrid items={SHAPES.map(sh => ({ id: sh, label: sh }))} value={layer.shape} onChange={v => patchLayer({ shape: v })} render={shapeThumb} w={54} h={54} />
+            <Field label="Relleno"><TokenSel value={layer.shapeStyle?.fill || ''} onChange={v => patchLayer({ shapeStyle: { fill: v } })} allowNone pal={thumbPal} /></Field>
+            <Field label="Borde"><TokenSel value={layer.shapeStyle?.stroke || ''} onChange={v => patchLayer({ shapeStyle: { stroke: v } })} allowNone pal={thumbPal} /></Field>
             <Field label="Tamano"><input className={s.inp} type="number" min={8} max={400} value={layer.shapeStyle?.r || layer.shapeStyle?.w || 100} onChange={e => patchLayer({ shapeStyle: { r: +e.target.value, w: +e.target.value } })} /></Field>
             <Field label="Glow"><input className={s.inp} type="range" min={0} max={1} step={0.05} value={layer.shapeStyle?.glow || 0} onChange={e => patchLayer({ shapeStyle: { glow: +e.target.value } })} /></Field>
           </>}
 
           {layer.type === 'object' && <>
-            <Field label="Objeto"><select className={s.sel} value={layer.objectId} onChange={e => patchLayer({ objectId: e.target.value, params: {} })}>{OBJECTS.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}</select></Field>
+            <div className={s.pickLabel}>Objeto</div>
+            <ThumbGrid items={OBJECTS} value={layer.objectId} onChange={v => patchLayer({ objectId: v, params: {} })} render={objThumb} w={48} h={85} />
             <Field label="Tamano"><input className={s.inp} type="number" min={10} max={220} value={layer.params?.size || layer.params?.r || 60} onChange={e => patchLayer({ params: { size: +e.target.value, r: +e.target.value } })} /></Field>
             <Field label="Glow"><input className={s.inp} type="range" min={0} max={1} step={0.05} value={layer.params?.glow ?? 0.4} onChange={e => patchLayer({ params: { glow: +e.target.value } })} /></Field>
             <Field label="Giro (°/s)"><input className={s.inp} type="number" min={-180} max={180} value={layer.params?.degPerSec || 0} onChange={e => patchLayer({ params: { degPerSec: +e.target.value } })} /></Field>
-            <Field label="Color"><TokenSel value={layer.params?.color || 'accent'} onChange={v => patchLayer({ params: { color: v } })} /></Field>
+            <Field label="Color"><TokenSel value={layer.params?.color || 'accent'} onChange={v => patchLayer({ params: { color: v } })} pal={thumbPal} /></Field>
             {layer.objectId === 'morph' && <>
               <Field label="Desde"><select className={s.sel} value={layer.params?.from || 'square'} onChange={e => patchLayer({ params: { from: e.target.value } })}>{['square', 'circle', 'star', 'triangle', 'hexagon', 'drop'].map(k => <option key={k} value={k}>{k}</option>)}</select></Field>
               <Field label="Hacia"><select className={s.sel} value={layer.params?.to || 'drop'} onChange={e => patchLayer({ params: { to: e.target.value } })}>{['drop', 'circle', 'star', 'square', 'triangle', 'hexagon'].map(k => <option key={k} value={k}>{k}</option>)}</select></Field>
@@ -220,6 +230,7 @@ export default function TemplateEditor() {
           </>}
 
           <div className={s.secLabel2}>Animacion</div>
+          <AnimPreview animIn={layer.anim?.in || 'rise'} pal={thumbPal} />
           <Field label="Entrada"><select className={s.sel} value={layer.anim?.in || 'rise'} onChange={e => patchLayer({ anim: { in: e.target.value } })}>{ANIM_IN.map(a => <option key={a} value={a}>{a}</option>)}</select></Field>
           <Field label="Duracion"><input className={s.inp} type="range" min={0.2} max={1.6} step={0.05} value={layer.anim?.inDur ?? 0.6} onChange={e => patchLayer({ anim: { inDur: +e.target.value } })} /></Field>
           <Field label="Retraso"><input className={s.inp} type="range" min={0} max={2.5} step={0.05} value={layer.anim?.delay ?? 0} onChange={e => patchLayer({ anim: { delay: +e.target.value } })} /></Field>
@@ -244,12 +255,61 @@ export default function TemplateEditor() {
 }
 
 function Field({ label, children }) { return <label className={s.field}><span>{label}</span>{children}</label> }
-function TokenSel({ value, onChange, allowNone }) {
-  return <select className={s.sel} value={value} onChange={e => onChange(e.target.value)}>
-    {allowNone && <option value="">(ninguno)</option>}
-    {TOKENS.map(t => <option key={t} value={t}>{t}</option>)}
-  </select>
+
+// selector de color: swatches con el color real de la paleta (o select si no hay pal)
+function TokenSel({ value, onChange, allowNone, pal }) {
+  if (!pal) return <select className={s.sel} value={value} onChange={e => onChange(e.target.value)}>{allowNone && <option value="">(ninguno)</option>}{TOKENS.map(t => <option key={t} value={t}>{t}</option>)}</select>
+  return <div className={s.swatches}>
+    {allowNone && <button className={`${s.swatch} ${value === '' ? s.swOn : ''}`} style={{ background: 'transparent', border: '1px dashed #556' }} onClick={() => onChange('')} title="ninguno">∅</button>}
+    {TOKENS.map(t => <button key={t} className={`${s.swatch} ${value === t ? s.swOn : ''}`} style={{ background: resolveColor(t, pal) }} onClick={() => onChange(t)} title={t} />)}
+  </div>
 }
+
+// SHAPE path para miniaturas
+const SHAPE_PATH = { rect: (c, r) => rectPath(c - r, c - r * 0.7, r * 2, r * 1.4, r * 0.14), circle: (c, r) => circlePath(c, c, r), star: (c, r) => starPath(c, c, r, r * 0.44, 5), poly: (c, r) => polygonPath(c, c, r, 6), line: (c, r) => linePath(c - r, c, c + r, c) }
+
+// canvas de miniatura: render(ctx, id, W, H) — se dibuja UNA vez (deps estables: render + id)
+function Thumb({ render, id, w, h }) {
+  const ref = useRef(null)
+  useEffect(() => { const cv = ref.current; if (!cv) return; const ctx = cv.getContext('2d'); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height); try { render(ctx, id, cv.width, cv.height) } catch { /* noop */ } }, [render, id])
+  return <canvas ref={ref} width={w} height={h} className={s.thumb} />
+}
+
+// grilla de miniaturas seleccionable
+function ThumbGrid({ items, value, onChange, render, w, h }) {
+  return <div className={s.thumbGrid}>
+    {items.map(it => (
+      <button key={it.id} className={`${s.thumbCell} ${value === it.id ? s.thumbOn : ''}`} onClick={() => onChange(it.id)} title={it.label}>
+        <Thumb render={render} id={it.id} w={w} h={h} />
+        <span className={s.thumbLabel}>{it.label}</span>
+      </button>
+    ))}
+  </div>
+}
+
+// preview animado (loop) de la entrada seleccionada, sobre un cuadrado de muestra
+function AnimPreview({ animIn, pal }) {
+  const ref = useRef(null), raf = useRef(0)
+  useEffect(() => {
+    const cv = ref.current; if (!cv) return; const ctx = cv.getContext('2d'); const t0 = performance.now()
+    const loop = (now) => {
+      const ts = ((now - t0) / 1000) % 2.6
+      ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height)
+      ctx.fillStyle = pal.surface; ctx.fillRect(0, 0, cv.width, cv.height)
+      const e = Math.min(ts / 0.7, 1), s = 1 - Math.pow(1 - e, 3)
+      let a = 1, dx = 0, dy = 0, sc = 1, rot = 0
+      if (animIn === 'fade') a = s; else if (animIn === 'rise') { a = s; dy = (1 - s) * 22 } else if (animIn === 'drop') { a = s; dy = -(1 - s) * 22 } else if (animIn === 'slide-l') { a = s; dx = -(1 - s) * 40 } else if (animIn === 'slide-r') { a = s; dx = (1 - s) * 40 } else if (animIn === 'zoom') { a = s; sc = 1.4 - 0.4 * s } else if (animIn === 'zoom-in' || animIn === 'pop') { a = s; sc = 0.4 + 0.6 * s } else if (animIn === 'whip') { a = s; dx = (1 - s) * 34; rot = (1 - s) * 0.3 } else if (animIn === 'peel-l') { a = s; dx = -(1 - s) * 44; rot = -(1 - s) * 0.8 } else if (animIn === 'peel-r') { a = s; dx = (1 - s) * 44; rot = (1 - s) * 0.8 }
+      const cx = cv.width / 2, cy = cv.height / 2
+      ctx.globalAlpha = Math.max(0, a); ctx.translate(cx + dx, cy + dy); ctx.rotate(rot); ctx.scale(sc, sc)
+      ctx.fillStyle = pal.accent; ctx.fillRect(-14, -14, 28, 28)
+      raf.current = requestAnimationFrame(loop)
+    }
+    raf.current = requestAnimationFrame(loop)
+    return () => cancelAnimationFrame(raf.current)
+  }, [animIn, pal])
+  return <canvas ref={ref} width={190} height={80} className={s.animPrev} />
+}
+
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v)
 // merge superficial por sub-objeto (style/anim/slot/shapeStyle se fusionan, no se pisan)
 function deepMerge(l, p) { const out = { ...l }; for (const k in p) { if (p[k] && typeof p[k] === 'object' && !Array.isArray(p[k]) && l[k] && typeof l[k] === 'object') out[k] = { ...l[k], ...p[k] }; else out[k] = p[k] } return out }

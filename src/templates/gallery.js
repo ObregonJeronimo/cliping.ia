@@ -114,4 +114,100 @@ export const GALLERY = [
       ] },
     ],
   },
+
+  // 7 · GASTRONOMIA — calido, la foto manda
+  {
+    id: 'g.gastro', name: 'Gastronomia', mode: 'dark', scenes: [
+      { id: 's1', dur: 3.2, background: { ref: 'bg.glow-corner' }, layers: [
+        { type: 'image', x: 0.5, y: 0.38, shapeStyle: { w: 300, h: 360, r: 18 }, anim: { in: 'pop', inDur: 0.6, idle: 'float', out: 'fade' } },
+        { type: 'text', y: 0.74, slot: { kind: 'brand', maxChars: 18 }, style: { size: 56, weight: 900, color: 'ink', font: 'Fraunces' }, anim: { in: 'rise', delay: 0.4, out: 'fade' } },
+        eyebrow('SABOR REAL', 0.84),
+      ] },
+      { id: 's2', dur: 3, background: { ref: 'bg.mesh' }, layers: [
+        { type: 'text', y: 0.47, slot: { kind: 'headline', maxChars: 40, maxLines: 3 }, style: { size: 62, weight: 800, color: 'ink', font: 'Fraunces' }, anim: { in: 'cascade', out: 'fade' } },
+      ] },
+      { id: 's3', dur: 2.8, background: { ref: 'bg.accent' }, layers: [cta(0.44), brandSmall(0.56)] },
+    ],
+  },
+
+  // 8 · FITNESS — bold, energetico, el resultado manda
+  {
+    id: 'g.fitness', name: 'Fitness', mode: 'dark', scenes: [
+      { id: 's1', dur: 2.6, background: { ref: 'bg.duotone' }, layers: [
+        eyebrow('TU CAMBIO EMPIEZA HOY', 0.28, { anim: { in: 'whip' } }),
+        { type: 'text', y: 0.52, slot: { kind: 'stat', maxChars: 8 }, style: { size: 150, weight: 900, color: 'onAccent' }, anim: { in: 'zoom-in', idle: 'pulse', out: 'scale' } },
+        { type: 'text', y: 0.68, slot: { kind: 'statLabel', maxChars: 22 }, style: { size: 32, weight: 800, color: 'onAccent' }, anim: { in: 'rise', delay: 0.4, out: 'fade' } },
+      ] },
+      { id: 's2', dur: 2.8, background: { ref: 'bg.spotlight' }, layers: [
+        { type: 'object', objectId: 'morph', x: 0.5, y: 0.36, params: { from: 'triangle', to: 'star', size: 62, degPerSec: 40, fill: 'accent', glow: 0.6 }, anim: { in: 'peel-l', inDur: 0.8, idle: 'spin', out: 'fade' } },
+        { type: 'text', y: 0.66, slot: { kind: 'headline', maxChars: 34, maxLines: 2 }, style: { size: 56, weight: 900, color: 'ink' }, anim: { in: 'rise', delay: 0.4, out: 'fade' } },
+      ] },
+      { id: 's3', dur: 2.6, background: { ref: 'bg.accent' }, layers: [{ ...cta(0.44), style: { size: 66, weight: 900, color: 'onAccent' } }, brandSmall(0.56)] },
+    ],
+  },
+
+  // 9 · INMOBILIARIA — elegante, foto + dato
+  {
+    id: 'g.inmo', name: 'Inmobiliaria', mode: 'dark', scenes: [
+      { id: 's1', dur: 3.2, background: { ref: 'bg.plain' }, layers: [
+        { type: 'image', x: 0.5, y: 0.4, shapeStyle: { w: 340, h: 300, r: 12 }, anim: { in: 'zoom', inDur: 0.8, idle: 'drift', out: 'fade' } },
+        { type: 'text', y: 0.72, slot: { kind: 'headline', maxChars: 34, maxLines: 2 }, style: { size: 46, weight: 700, color: 'ink' }, anim: { in: 'rise', delay: 0.4, out: 'fade' } },
+      ] },
+      { id: 's2', dur: 2.8, background: { ref: 'bg.gradient' }, layers: [
+        { type: 'text', y: 0.42, slot: { kind: 'stat', maxChars: 10 }, style: { size: 110, weight: 900, color: 'accent' }, anim: { in: 'zoom-in', idle: 'pulse', out: 'fade' } },
+        { type: 'text', y: 0.58, slot: { kind: 'statLabel', maxChars: 24 }, style: { size: 30, weight: 600, color: 'ink', tracking: 2 }, anim: { in: 'fade', delay: 0.4, out: 'fade' } },
+      ] },
+      { id: 's3', dur: 2.8, background: { ref: 'bg.accent' }, layers: [cta(0.44), brandSmall(0.56)] },
+    ],
+  },
+
+  // 10 · MODA — editorial, tipografia grande, claro
+  {
+    id: 'g.moda', name: 'Moda', mode: 'light', scenes: [
+      { id: 's1', dur: 3, background: { ref: 'bg.plain' }, layers: [
+        { type: 'text', y: 0.44, slot: { kind: 'brand', maxChars: 16 }, style: { size: 120, weight: 900, color: 'ink', font: 'Playfair Display' }, anim: { in: 'cascade', idle: 'drift', out: 'rise' } },
+        eyebrow('NUEVA COLECCION', 0.6),
+      ] },
+      { id: 's2', dur: 3, background: { ref: 'bg.duotone' }, layers: [
+        { type: 'image', x: 0.5, y: 0.42, shapeStyle: { w: 300, h: 380, r: 4 }, anim: { in: 'slide-r', inDur: 0.7, idle: 'float', out: 'slide-l' } },
+        { type: 'text', y: 0.82, slot: { kind: 'tagline', maxChars: 26, maxLines: 1 }, style: { size: 40, weight: 700, color: 'onAccent', font: 'Playfair Display' }, anim: { in: 'rise', delay: 0.5, out: 'fade' } },
+      ] },
+      { id: 's3', dur: 2.6, background: { ref: 'bg.plain' }, layers: [
+        { type: 'text', y: 0.46, slot: { kind: 'cta', maxChars: 20 }, style: { size: 54, weight: 800, color: 'accent', font: 'Playfair Display' }, anim: { in: 'rise', idle: 'float', out: 'none' } },
+        { type: 'object', objectId: 'line-draw', x: 0.5, y: 0.56, params: { len: 160, width: 2, color: 'ink', glow: 0, dur: 0.9 }, anim: { in: 'fade', delay: 0.5, out: 'none' } },
+      ] },
+    ],
+  },
+
+  // 11 · BELLEZA / SALUD — suave, claro, calmo
+  {
+    id: 'g.belleza', name: 'Belleza / Salud', mode: 'light', scenes: [
+      { id: 's1', dur: 3.2, background: { ref: 'bg.gradient' }, layers: [
+        { type: 'object', objectId: 'blob', x: 0.5, y: 0.36, params: { r: 66, fill: { gradient: ['accent', 'accent2'], angle: 50 }, glow: 0.5 }, anim: { in: 'pop', inDur: 0.7, idle: 'float', out: 'fade' } },
+        { type: 'text', y: 0.66, slot: { kind: 'brand', maxChars: 20 }, style: { size: 52, weight: 700, color: 'ink', font: 'Fraunces' }, anim: { in: 'rise', delay: 0.4, out: 'fade' } },
+        eyebrow('CUIDATE', 0.76),
+      ] },
+      { id: 's2', dur: 3, background: { ref: 'bg.plain' }, layers: [
+        { type: 'text', y: 0.47, slot: { kind: 'headline', maxChars: 44, maxLines: 3 }, style: { size: 54, weight: 600, color: 'ink', font: 'Fraunces' }, anim: { in: 'fade', inDur: 0.8, idle: 'drift', out: 'fade' } },
+      ] },
+      { id: 's3', dur: 2.8, background: { ref: 'bg.plain' }, layers: [
+        { type: 'text', y: 0.46, slot: { kind: 'cta', maxChars: 22 }, style: { size: 52, weight: 700, color: 'accent', font: 'Fraunces' }, anim: { in: 'rise', idle: 'float', out: 'none' } },
+      ] },
+    ],
+  },
+
+  // 12 · EDUCACION — claro, lista de lo que aprendes
+  {
+    id: 'g.educacion', name: 'Educacion / Curso', mode: 'dark', scenes: [
+      { id: 's1', dur: 3, background: { ref: 'bg.glow-corner' }, layers: [
+        eyebrow('APRENDE', 0.32),
+        { type: 'text', y: 0.5, slot: { kind: 'headline', maxChars: 36, maxLines: 3 }, style: { size: 64, weight: 900, color: 'ink' }, anim: { in: 'cascade', out: 'fade' } },
+      ] },
+      { id: 's2', dur: 4, background: { ref: 'bg.dots' }, layers: [
+        { type: 'text', y: 0.16, text: 'VAS A LOGRAR', style: { size: 34, weight: 800, color: 'accent', tracking: 2 }, anim: { in: 'rise', out: 'fade' } },
+        { type: 'text', y: 0.56, slot: { kind: 'list', maxItems: 3, maxChars: 28 }, style: { size: 38, weight: 700, color: 'ink', align: 'left', maxW: 0.84 }, anim: { in: 'fade', idle: 'none', out: 'fade' } },
+      ] },
+      { id: 's3', dur: 2.8, background: { ref: 'bg.accent' }, layers: [cta(0.44), brandSmall(0.56)] },
+    ],
+  },
 ]
