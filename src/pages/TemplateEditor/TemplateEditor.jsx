@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { makeTemplateVideo, drawTemplateFrame, normalizeTemplate, EXAMPLE_TEMPLATES } from '../../templates/index.js'
+import { makeTemplateVideo, drawTemplateFrame, normalizeTemplate, EXAMPLE_TEMPLATES, OBJECTS, OBJECT_IDS, BACKGROUNDS, ANIM_IN, ANIM_OUT, IDLE_KINDS, hitTest } from '../../templates/index.js'
 import { useAuth } from '../../contexts/AuthContext'
 import { isAdmin } from '../../lib/admin'
 import { loadTemplates, saveTemplate, deleteTemplate } from '../../lib/templateStore'
@@ -12,18 +12,17 @@ import s from './TemplateEditor.module.css'
 const SAMPLE = { brand: 'Nodo', rubro: 'tech', brandColor: '#22e06a', tagline: 'Automatiza lo aburrido', claim: 'Menos tareas repetitivas, mas resultados', cta: 'Probalo gratis', bullets: ['Rapido de integrar', 'Reportes en vivo', 'Soporte 24/7'], stats: [{ value: '+400', label: 'equipos lo usan' }] }
 const FONTS = ['Archivo', 'Anton', 'Inter', 'Oswald', 'Playfair Display', 'Space Grotesk', 'Sora', 'Unbounded', 'DM Sans', 'Bricolage Grotesque', 'Fraunces', 'Chakra Petch', 'Big Shoulders Display', 'Quicksand']
 const TOKENS = ['ink', 'dim', 'accent', 'accent2', 'onAccent', 'bg', 'surface']
-const ANIMS = ['none', 'fade', 'rise', 'drop', 'slide-l', 'slide-r', 'pop', 'cascade']
 const SLOTS = ['brand', 'headline', 'tagline', 'line', 'list', 'stat', 'statLabel', 'cta']
-const BGS = ['solid', 'gradient', 'glow', 'grid', 'accent']
 const SHAPES = ['rect', 'circle', 'star', 'poly', 'line']
 
 let _id = 0
 const uid = (p) => p + Date.now().toString(36) + (_id++).toString(36)
 const blankTemplate = () => normalizeTemplate({ id: uid('tpl'), name: 'Nuevo template', mode: 'dark', scenes: [{ id: uid('sc'), dur: 3, background: { kind: 'glow' }, layers: [{ id: uid('ly'), type: 'text', y: 0.47, slot: { kind: 'headline', maxChars: 40, maxLines: 3 }, style: { size: 74, weight: 900, color: 'ink', font: 'Archivo' }, anim: { in: 'cascade', inDur: 1, delay: 0, idle: true, out: 'fade' } }] }] })
 const blankLayer = (type) => ({
-  text: { id: uid('ly'), type: 'text', x: 0.5, y: 0.5, scale: 1, rot: 0, text: 'Texto', style: { size: 60, weight: 800, color: 'ink', font: 'Archivo', align: 'center' }, anim: { in: 'rise', inDur: 0.6, delay: 0, idle: true, out: 'fade' } },
-  shape: { id: uid('ly'), type: 'shape', x: 0.5, y: 0.6, scale: 1, rot: 0, shape: 'line', shapeStyle: { w: 130, stroke: 'accent', width: 4 }, anim: { in: 'slide-l', inDur: 0.5, delay: 0, idle: true, out: 'fade' } },
-  image: { id: uid('ly'), type: 'image', x: 0.5, y: 0.42, scale: 1, rot: 0, shapeStyle: { w: 240, h: 300, r: 10 }, anim: { in: 'pop', inDur: 0.5, delay: 0, idle: true, out: 'fade' } },
+  text: { id: uid('ly'), type: 'text', x: 0.5, y: 0.5, scale: 1, rot: 0, text: 'Texto', style: { size: 60, weight: 800, color: 'ink', font: 'Archivo', align: 'center' }, anim: { in: 'rise', inDur: 0.6, delay: 0, idle: 'drift', out: 'fade' } },
+  shape: { id: uid('ly'), type: 'shape', x: 0.5, y: 0.6, scale: 1, rot: 0, shape: 'line', shapeStyle: { w: 130, stroke: 'accent', width: 4 }, anim: { in: 'slide-l', inDur: 0.5, delay: 0, idle: 'drift', out: 'fade' } },
+  image: { id: uid('ly'), type: 'image', x: 0.5, y: 0.42, scale: 1, rot: 0, shapeStyle: { w: 240, h: 300, r: 10 }, anim: { in: 'pop', inDur: 0.5, delay: 0, idle: 'drift', out: 'fade' } },
+  object: { id: uid('ly'), type: 'object', objectId: 'morph', x: 0.5, y: 0.42, scale: 1, rot: 0, params: {}, anim: { in: 'pop', inDur: 0.6, delay: 0, idle: 'float', out: 'fade' } },
 }[type])
 
 export default function TemplateEditor() {
@@ -35,6 +34,7 @@ export default function TemplateEditor() {
   const [playing, setPlaying] = useState(true)
   const [head, setHead] = useState(0)
   const [status, setStatus] = useState('')
+  const [io, setIo] = useState(null)
   const headRef = useRef(0), cvRef = useRef(null), dragRef = useRef(null)
 
   const video = useMemo(() => makeTemplateVideo(tpl, SAMPLE), [tpl])
@@ -80,9 +80,10 @@ export default function TemplateEditor() {
   const seek = (t) => { headRef.current = t; setHead(t); setPlaying(false) }
   const selectScene = (i) => { setSceneIdx(i); setLayerId(null); seek(tpl.scenes.slice(0, i).reduce((a, s2) => a + s2.dur, 0) + 0.4) }
 
-  // drag para mover la capa seleccionada
-  const onDown = (e) => { if (!layer) return; dragRef.current = { id: layer.id }; onMove(e) }
-  const onMove = (e) => { if (!dragRef.current) return; const r = cvRef.current.getBoundingClientRect(); const x = clamp((e.clientX - r.left) / r.width, 0, 1), y = clamp((e.clientY - r.top) / r.height, 0, 1); const scenes = tpl.scenes.map((s2, j) => j === sceneIdx ? { ...s2, layers: s2.layers.map(l => l.id === dragRef.current.id ? { ...l, x: +x.toFixed(3), y: +y.toFixed(3) } : l) } : s2); commit({ ...tpl, scenes }) }
+  // click en el lienzo -> selecciona la capa mas cercana (hit-test); luego arrastra para moverla
+  const norm = (e) => { const r = cvRef.current.getBoundingClientRect(); return [clamp((e.clientX - r.left) / r.width, 0, 1), clamp((e.clientY - r.top) / r.height, 0, 1)] }
+  const onDown = (e) => { const [nx, ny] = norm(e); const hit = hitTest(video, sceneIdx, nx, ny); if (hit) { setLayerId(hit); dragRef.current = { id: hit } } else dragRef.current = null }
+  const onMove = (e) => { if (!dragRef.current) return; const [x, y] = norm(e); const id = dragRef.current.id; const scenes = tpl.scenes.map((s2, j) => j === sceneIdx ? { ...s2, layers: s2.layers.map(l => l.id === id ? { ...l, x: +x.toFixed(3), y: +y.toFixed(3) } : l) } : s2); commit({ ...tpl, scenes }) }
   const onUp = () => { dragRef.current = null }
 
   const save = async () => { setStatus('guardando…'); const { synced } = await saveTemplate(tpl); const list = await loadTemplates(); setSaved(list); setStatus(synced ? 'guardado ✓' : 'guardado local'); setTimeout(() => setStatus(''), 2500) }
@@ -103,6 +104,7 @@ export default function TemplateEditor() {
           <button className={s.btn} onClick={newBlank}>Nuevo</button>
           <button className={s.btn} onClick={loadExample}>Ejemplo</button>
         </div>
+        <button className={s.btn} style={{ width: '100%' }} onClick={() => setIo(JSON.stringify(tpl, null, 2))}>Importar / Exportar JSON</button>
         <div className={s.secLabel}>Escenas</div>
         <div className={s.scenes}>
           {tpl.scenes.map((sc, i) => (
@@ -148,8 +150,7 @@ export default function TemplateEditor() {
       <aside className={s.right}>
         <div className={s.secLabel}>Escena {sceneIdx + 1}</div>
         <Field label="Duracion (s)"><input className={s.inp} type="number" min={1} max={12} step={0.1} value={scene.dur} onChange={e => patchScene(sceneIdx, { dur: Math.max(1, +e.target.value) })} /></Field>
-        <Field label="Fondo"><select className={s.sel} value={scene.background?.kind || 'solid'} onChange={e => patchScene(sceneIdx, { background: { ...scene.background, kind: e.target.value } })}>{BGS.map(b => <option key={b} value={b}>{b}</option>)}</select></Field>
-        <Field label="Color fondo"><TokenSel value={scene.background?.color1 || 'bg'} onChange={v => patchScene(sceneIdx, { background: { ...scene.background, color1: v } })} /></Field>
+        <Field label="Fondo"><select className={s.sel} value={scene.background?.ref || 'bg.glow-corner'} onChange={e => patchScene(sceneIdx, { background: { ...scene.background, ref: e.target.value } })}>{BACKGROUNDS.map(b => <option key={b.id} value={b.id}>{b.label}</option>)}</select></Field>
 
         <div className={s.secLabel}>Capas</div>
         <div className={s.layers}>
@@ -162,6 +163,7 @@ export default function TemplateEditor() {
         </div>
         <div className={s.row}>
           <button className={s.btn} onClick={() => addLayer('text')}>+ Texto</button>
+          <button className={s.btn} onClick={() => addLayer('object')}>+ Objeto</button>
           <button className={s.btn} onClick={() => addLayer('shape')}>+ Forma</button>
           <button className={s.btn} onClick={() => addLayer('image')}>+ Imagen</button>
         </div>
@@ -199,16 +201,41 @@ export default function TemplateEditor() {
             <Field label="Relleno"><TokenSel value={layer.shapeStyle?.fill || ''} onChange={v => patchLayer({ shapeStyle: { fill: v } })} allowNone /></Field>
             <Field label="Borde"><TokenSel value={layer.shapeStyle?.stroke || ''} onChange={v => patchLayer({ shapeStyle: { stroke: v } })} allowNone /></Field>
             <Field label="Tamano"><input className={s.inp} type="number" min={8} max={400} value={layer.shapeStyle?.r || layer.shapeStyle?.w || 100} onChange={e => patchLayer({ shapeStyle: { r: +e.target.value, w: +e.target.value } })} /></Field>
+            <Field label="Glow"><input className={s.inp} type="range" min={0} max={1} step={0.05} value={layer.shapeStyle?.glow || 0} onChange={e => patchLayer({ shapeStyle: { glow: +e.target.value } })} /></Field>
+          </>}
+
+          {layer.type === 'object' && <>
+            <Field label="Objeto"><select className={s.sel} value={layer.objectId} onChange={e => patchLayer({ objectId: e.target.value, params: {} })}>{OBJECTS.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}</select></Field>
+            <Field label="Tamano"><input className={s.inp} type="number" min={10} max={220} value={layer.params?.size || layer.params?.r || 60} onChange={e => patchLayer({ params: { size: +e.target.value, r: +e.target.value } })} /></Field>
+            <Field label="Glow"><input className={s.inp} type="range" min={0} max={1} step={0.05} value={layer.params?.glow ?? 0.4} onChange={e => patchLayer({ params: { glow: +e.target.value } })} /></Field>
+            <Field label="Giro (°/s)"><input className={s.inp} type="number" min={-180} max={180} value={layer.params?.degPerSec || 0} onChange={e => patchLayer({ params: { degPerSec: +e.target.value } })} /></Field>
+            <Field label="Color"><TokenSel value={layer.params?.color || 'accent'} onChange={v => patchLayer({ params: { color: v } })} /></Field>
+            {layer.objectId === 'morph' && <>
+              <Field label="Desde"><select className={s.sel} value={layer.params?.from || 'square'} onChange={e => patchLayer({ params: { from: e.target.value } })}>{['square', 'circle', 'star', 'triangle', 'hexagon', 'drop'].map(k => <option key={k} value={k}>{k}</option>)}</select></Field>
+              <Field label="Hacia"><select className={s.sel} value={layer.params?.to || 'drop'} onChange={e => patchLayer({ params: { to: e.target.value } })}>{['drop', 'circle', 'star', 'square', 'triangle', 'hexagon'].map(k => <option key={k} value={k}>{k}</option>)}</select></Field>
+            </>}
           </>}
 
           <div className={s.secLabel2}>Animacion</div>
-          <Field label="Entrada"><select className={s.sel} value={layer.anim?.in || 'rise'} onChange={e => patchLayer({ anim: { in: e.target.value } })}>{ANIMS.map(a => <option key={a} value={a}>{a}</option>)}</select></Field>
+          <Field label="Entrada"><select className={s.sel} value={layer.anim?.in || 'rise'} onChange={e => patchLayer({ anim: { in: e.target.value } })}>{ANIM_IN.map(a => <option key={a} value={a}>{a}</option>)}</select></Field>
           <Field label="Duracion"><input className={s.inp} type="range" min={0.2} max={1.6} step={0.05} value={layer.anim?.inDur ?? 0.6} onChange={e => patchLayer({ anim: { inDur: +e.target.value } })} /></Field>
-          <Field label="Retraso"><input className={s.inp} type="range" min={0} max={2} step={0.05} value={layer.anim?.delay ?? 0} onChange={e => patchLayer({ anim: { delay: +e.target.value } })} /></Field>
-          <Field label="Idle"><input type="checkbox" checked={layer.anim?.idle !== false} onChange={e => patchLayer({ anim: { idle: e.target.checked } })} /></Field>
-          <Field label="Salida"><select className={s.sel} value={layer.anim?.out || 'fade'} onChange={e => patchLayer({ anim: { out: e.target.value } })}><option value="none">ninguna</option><option value="fade">fade</option><option value="rise">rise</option></select></Field>
+          <Field label="Retraso"><input className={s.inp} type="range" min={0} max={2.5} step={0.05} value={layer.anim?.delay ?? 0} onChange={e => patchLayer({ anim: { delay: +e.target.value } })} /></Field>
+          <Field label="Idle"><select className={s.sel} value={layer.anim?.idle === false ? 'none' : (layer.anim?.idle === true || layer.anim?.idle == null ? 'drift' : layer.anim.idle)} onChange={e => patchLayer({ anim: { idle: e.target.value } })}>{IDLE_KINDS.map(k => <option key={k} value={k}>{k}</option>)}</select></Field>
+          <Field label="Salida"><select className={s.sel} value={layer.anim?.out || 'fade'} onChange={e => patchLayer({ anim: { out: e.target.value } })}>{ANIM_OUT.map(a => <option key={a} value={a}>{a}</option>)}</select></Field>
         </div>}
       </aside>
+
+      {io != null && <div className={s.modal} onClick={() => setIo(null)}>
+        <div className={s.modalBox} onClick={e => e.stopPropagation()}>
+          <div className={s.secLabel}>Template como JSON <span>pega el que te paso, o copia el tuyo</span></div>
+          <textarea className={s.io} value={io} onChange={e => setIo(e.target.value)} spellCheck={false} />
+          <div className={s.row}>
+            <button className={s.btn} onClick={() => { navigator.clipboard?.writeText(io) }}>Copiar</button>
+            <button className={s.btn} onClick={() => setIo(null)}>Cerrar</button>
+            <button className={`${s.btn} ${s.primary}`} onClick={() => { try { const t = normalizeTemplate(JSON.parse(io)); setTpl(t); setSceneIdx(0); setLayerId(null); seek(0); setIo(null) } catch (err) { alert('JSON invalido: ' + err.message) } }}>Aplicar</button>
+          </div>
+        </div>
+      </div>}
     </div>
   )
 }

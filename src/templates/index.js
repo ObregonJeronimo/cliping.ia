@@ -8,10 +8,13 @@ import { resolveContent } from './content.js'
 import { deriveTemplatePalette } from './palette.js'
 import { drawTemplateFrame } from './render.js'
 
-export { drawTemplateFrame } from './render.js'
+export { drawTemplateFrame, hitTest } from './render.js'
 export { EXAMPLE_TEMPLATES, normalizeTemplate, MW, MH } from './schema.js'
 export { resolveContent } from './content.js'
 export { deriveTemplatePalette, resolveColor } from './palette.js'
+export { OBJECTS, OBJECT_IDS, drawObject } from './objects.js'
+export { BACKGROUNDS, BACKGROUND_IDS, paintTemplateBackground } from './backgrounds.js'
+export { ANIM_IN, ANIM_OUT, IDLE_KINDS } from './anim.js'
 
 // --- imagenes (mismo contrato que los motores: browser new Image / Node loader inyectado) ---
 let _imageLoader = null
