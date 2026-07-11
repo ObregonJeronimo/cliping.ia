@@ -7,6 +7,7 @@ import AnimLab from './pages/AnimLab/AnimLab'
 import KineticStudio from './pages/Kinetic/KineticStudio'
 import MotionStudio from './pages/Motion/MotionStudio'
 import BibliotecaStudio from './pages/Biblioteca/BibliotecaStudio'
+import TemplateEditor from './pages/TemplateEditor/TemplateEditor'
 import Login from './pages/Login'
 import Landing from './pages/Landing'
 import Terminos from './pages/Legal/Terminos'
@@ -46,6 +47,7 @@ function AppRoutes() {
         <Route path="motion" element={<MotionStudio />} />
         <Route path="anim" element={<AnimLab />} />
         <Route path="biblioteca" element={<AdminRoute><BibliotecaStudio /></AdminRoute>} />
+        <Route path="templates" element={<AdminRoute><TemplateEditor /></AdminRoute>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

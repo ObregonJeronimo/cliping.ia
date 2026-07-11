@@ -12,9 +12,9 @@ service cloud.firestore {
       }
     }
 
-    // Biblioteca de contenido (curacion compartida del motor Motion): la leen todos los usuarios
-    // autenticados (para excluir el contenido eliminado al generar); la escriben solo los admins.
-    match /config/contentLibrary {
+    // Config compartida (admin): curacion de la Biblioteca + templates autorados. La leen todos los
+    // usuarios autenticados (para usarlos al generar); la escriben solo los admins.
+    match /config/{doc} {
       allow read: if request.auth != null;
       allow write: if request.auth != null && request.auth.token.email in [
         'thiagowendler53@gmail.com',
