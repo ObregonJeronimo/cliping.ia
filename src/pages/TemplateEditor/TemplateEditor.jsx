@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
-import { makeTemplateVideo, drawTemplateFrame, normalizeTemplate, GALLERY, OBJECTS, OBJECT_IDS, BACKGROUNDS, ANIM_IN, ANIM_OUT, IDLE_KINDS, hitTest, paintTemplateBackground, drawObject, deriveTemplatePalette, resolveColor } from '../../templates/index.js'
+import { makeTemplateVideo, drawTemplateFrame, normalizeTemplate, GALLERY, OBJECTS, OBJECT_IDS, BACKGROUNDS, ANIM_IN, ANIM_OUT, IDLE_KINDS, hitTest, layerExtent, paintTemplateBackground, drawObject, deriveTemplatePalette, resolveColor } from '../../templates/index.js'
 import { circlePath, rectPath, starPath, polygonPath, linePath, tracePath } from '../../aemotion/index.js'
 import { useAuth } from '../../contexts/AuthContext'
 import { isAdmin } from '../../lib/admin'
@@ -29,7 +29,6 @@ const blankLayer = (type) => ({
 export default function TemplateEditor() {
   const { user } = useAuth()
   const [tpl, setTpl] = useState(blankTemplate)
-  const [sceneIdx, setSceneIdx] = useState(0)
   const [layerId, setLayerId] = useState(null)
   const [saved, setSaved] = useState([])
   const [playing, setPlaying] = useState(true)
@@ -47,7 +46,14 @@ export default function TemplateEditor() {
   const objThumb = useCallback((ctx, id, W, H) => { ctx.setTransform(W / 405, 0, 0, H / 720, 0, 0); ctx.fillStyle = thumbPal.bg; ctx.fillRect(0, 0, 405, 720); drawObject(ctx, id, 1.3, 2.5, { x: 202, y: 360, pal: thumbPal, params: {} }) }, [thumbPal])
   const shapeThumb = useCallback((ctx, id, W, H) => { ctx.setTransform(W / 120, 0, 0, H / 120, 0, 0); ctx.fillStyle = thumbPal.surface; ctx.fillRect(0, 0, 120, 120); const p = (SHAPE_PATH[id] || SHAPE_PATH.circle)(60, 40); if (id === 'line') { tracePath(ctx, p); ctx.strokeStyle = thumbPal.accent; ctx.lineWidth = 7; ctx.lineCap = 'round'; ctx.stroke() } else { tracePath(ctx, p); ctx.fillStyle = thumbPal.accent; ctx.fill() } }, [thumbPal])
 
-  const scene = tpl.scenes[sceneIdx] || tpl.scenes[0]
+  // ESCENA ACTIVA = la que se ve en el playhead (no una selección aparte). Así lo que editás/arrastrás
+  // es SIEMPRE la escena visible en el lienzo (antes divergían y se movía la capa equivocada / el fondo).
+  const activeIdx = useMemo(() => {
+    const ss = video.scenes; let i = 0
+    for (let k = 0; k < ss.length; k++) if (head >= ss[k].t0 - 1e-6) i = k
+    return Math.min(i, tpl.scenes.length - 1)
+  }, [head, video, tpl.scenes.length])
+  const scene = tpl.scenes[activeIdx] || tpl.scenes[0]
   const layer = scene?.layers.find(l => l.id === layerId) || null
 
   // el loop lee todo por refs -> se monta UNA vez y no se desarma en cada edit (robusto)
@@ -62,42 +68,59 @@ export default function TemplateEditor() {
       const v = videoRef.current
       if (cv.width !== Math.round(v.W * DPR)) { cv.width = Math.round(v.W * DPR); cv.height = Math.round(v.H * DPR) }
       const dt = Math.min((now - last) / 1000, 0.05); last = now
-      if (playingRef.current) { headRef.current += dt; if (headRef.current >= v.duration) headRef.current = 0 }
+      // el playhead solo avanza (y re-renderiza React) mientras reproduce; pausado queda ocioso
+      if (playingRef.current) { headRef.current += dt; if (headRef.current >= v.duration) headRef.current = 0; setHead(headRef.current) }
       ctx.setTransform(DPR, 0, 0, DPR, 0, 0)
       drawTemplateFrame(ctx, headRef.current, v)
       const L = layerRef.current
-      if (L) { const lx = (L.x ?? 0.5) * v.W, ly = (L.y ?? 0.5) * v.H; ctx.strokeStyle = '#4f9dff'; ctx.lineWidth = 1.5; ctx.setLineDash([5, 4]); ctx.strokeRect(lx - 46, ly - 30, 92, 60); ctx.setLineDash([]); ctx.fillStyle = '#4f9dff'; ctx.beginPath(); ctx.arc(lx, ly, 4, 0, 6.283); ctx.fill() }
-      setHead(headRef.current)
+      if (L) {
+        const lx = (typeof L.x === 'number' ? L.x : 0.5) * v.W, ly = (typeof L.y === 'number' ? L.y : 0.5) * v.H
+        const { hw, hh } = layerExtent(v, L)
+        ctx.strokeStyle = '#4f9dff'; ctx.lineWidth = 1.5; ctx.setLineDash([5, 4]); ctx.strokeRect(lx - hw, ly - hh, hw * 2, hh * 2); ctx.setLineDash([])
+        ctx.fillStyle = '#4f9dff'; ctx.beginPath(); ctx.arc(lx, ly, 4, 0, 6.283); ctx.fill()
+      }
       raf = requestAnimationFrame(loop)
     }
     raf = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(raf)
   }, [])
 
-  // --- updates inmutables ---
+  // t0 (inicio) de una escena por índice, a partir de sus duraciones (para saltar el playhead ahí)
+  const sceneStart = (scenes, i) => scenes.slice(0, i).reduce((a, s2) => a + (s2.dur || 0), 0)
+
+  // --- updates inmutables (todo opera sobre la escena ACTIVA = la del playhead) ---
   const commit = (next) => setTpl({ ...next })
   const patchScene = (i, p) => { const scenes = tpl.scenes.map((s2, j) => j === i ? { ...s2, ...p } : s2); commit({ ...tpl, scenes }) }
-  const patchLayer = (p) => { const scenes = tpl.scenes.map((s2, j) => j === sceneIdx ? { ...s2, layers: s2.layers.map(l => l.id === layerId ? deepMerge(l, p) : l) } : s2); commit({ ...tpl, scenes }) }
-  const addLayer = (type) => { const l = blankLayer(type); const scenes = tpl.scenes.map((s2, j) => j === sceneIdx ? { ...s2, layers: [...s2.layers, l] } : s2); commit({ ...tpl, scenes }); setLayerId(l.id) }
-  const delLayer = () => { if (!layerId) return; const scenes = tpl.scenes.map((s2, j) => j === sceneIdx ? { ...s2, layers: s2.layers.filter(l => l.id !== layerId) } : s2); commit({ ...tpl, scenes }); setLayerId(null) }
-  const addScene = () => { const sc = { id: uid('sc'), dur: 3, background: { kind: 'glow' }, layers: [] }; commit({ ...tpl, scenes: [...tpl.scenes, sc] }); setSceneIdx(tpl.scenes.length); seek(video.duration) }
-  const delScene = (i) => { if (tpl.scenes.length <= 1) return; const scenes = tpl.scenes.filter((_, j) => j !== i); commit({ ...tpl, scenes }); setSceneIdx(Math.max(0, i - 1)) }
-  const moveScene = (i, d) => { const j = i + d; if (j < 0 || j >= tpl.scenes.length) return; const scenes = [...tpl.scenes]; [scenes[i], scenes[j]] = [scenes[j], scenes[i]]; commit({ ...tpl, scenes }); setSceneIdx(j) }
+  const patchLayer = (p) => { const scenes = tpl.scenes.map((s2, j) => j === activeIdx ? { ...s2, layers: s2.layers.map(l => l.id === layerId ? deepMerge(l, p) : l) } : s2); commit({ ...tpl, scenes }) }
+  const addLayer = (type) => { const l = blankLayer(type); const scenes = tpl.scenes.map((s2, j) => j === activeIdx ? { ...s2, layers: [...s2.layers, l] } : s2); commit({ ...tpl, scenes }); setLayerId(l.id); setPlaying(false) }
+  const delLayer = () => { if (!layerId) return; const scenes = tpl.scenes.map((s2, j) => j === activeIdx ? { ...s2, layers: s2.layers.filter(l => l.id !== layerId) } : s2); commit({ ...tpl, scenes }); setLayerId(null) }
+  const addScene = () => { const sc = { id: uid('sc'), dur: 3, background: { ref: 'bg.glow-corner' }, layers: [] }; const scenes = [...tpl.scenes, sc]; commit({ ...tpl, scenes }); setLayerId(null); seek(sceneStart(scenes, scenes.length - 1) + 0.05) }
+  const delScene = (i) => { if (tpl.scenes.length <= 1) return; const scenes = tpl.scenes.filter((_, j) => j !== i); commit({ ...tpl, scenes }); setLayerId(null); seek(sceneStart(scenes, Math.max(0, i - 1)) + 0.05) }
+  const moveScene = (i, d) => { const j = i + d; if (j < 0 || j >= tpl.scenes.length) return; const scenes = [...tpl.scenes]; [scenes[i], scenes[j]] = [scenes[j], scenes[i]]; commit({ ...tpl, scenes }); seek(sceneStart(scenes, j) + 0.05) }
 
   const seek = (t) => { headRef.current = t; setHead(t); setPlaying(false) }
-  const selectScene = (i) => { setSceneIdx(i); setLayerId(null); seek(tpl.scenes.slice(0, i).reduce((a, s2) => a + s2.dur, 0) + 0.4) }
+  // seleccionar una escena = mover el playhead a su inicio (así activeIdx pasa a ser esa escena)
+  const selectScene = (i) => { setLayerId(null); seek(sceneStart(tpl.scenes, i) + 0.05) }
 
-  // click en el lienzo -> selecciona la capa mas cercana (hit-test); luego arrastra para moverla
+  // click en el lienzo -> selecciona la capa que está debajo (hit-test topmost); luego arrastra para
+  // moverla. Pausa al agarrar (la escena no se mueve mientras editás). Si no acertás pero hay una capa
+  // seleccionada en esta escena, la arrastra igual.
   const norm = (e) => { const r = cvRef.current.getBoundingClientRect(); return [clamp((e.clientX - r.left) / r.width, 0, 1), clamp((e.clientY - r.top) / r.height, 0, 1)] }
-  const onDown = (e) => { const [nx, ny] = norm(e); const hit = hitTest(video, sceneIdx, nx, ny); if (hit) { setLayerId(hit); dragRef.current = { id: hit } } else dragRef.current = null }
-  const onMove = (e) => { if (!dragRef.current) return; const [x, y] = norm(e); const id = dragRef.current.id; const scenes = tpl.scenes.map((s2, j) => j === sceneIdx ? { ...s2, layers: s2.layers.map(l => l.id === id ? { ...l, x: +x.toFixed(3), y: +y.toFixed(3) } : l) } : s2); commit({ ...tpl, scenes }) }
+  const onDown = (e) => {
+    const [nx, ny] = norm(e); setPlaying(false)
+    const hit = hitTest(video, activeIdx, nx, ny)
+    if (hit) { setLayerId(hit); dragRef.current = { id: hit } }
+    else if (layer && scene.layers.some(l => l.id === layer.id)) dragRef.current = { id: layer.id }
+    else dragRef.current = null
+  }
+  const onMove = (e) => { if (!dragRef.current) return; const [x, y] = norm(e); const id = dragRef.current.id; const scenes = tpl.scenes.map((s2, j) => j === activeIdx ? { ...s2, layers: s2.layers.map(l => l.id === id ? { ...l, x: +x.toFixed(3), y: +y.toFixed(3) } : l) } : s2); commit({ ...tpl, scenes }) }
   const onUp = () => { dragRef.current = null }
 
   const save = async () => { setStatus('guardando…'); const { synced } = await saveTemplate(tpl); const list = await loadTemplates(); setSaved(list); setStatus(synced ? 'guardado ✓' : 'guardado local'); setTimeout(() => setStatus(''), 2500) }
-  const load = (t) => { setTpl(normalizeTemplate(t)); setSceneIdx(0); setLayerId(null); seek(0) }
+  const load = (t) => { setTpl(normalizeTemplate(t)); setLayerId(null); seek(0) }
   const del = async (id) => { const { list } = await deleteTemplate(id); setSaved(list) }
   const loadGallery = (id) => { const g = GALLERY.find(t => t.id === id); if (!g) return; load({ ...JSON.parse(JSON.stringify(g)), id: uid('tpl'), name: g.name + ' (copia)' }) }
-  const newBlank = () => { setTpl(blankTemplate()); setSceneIdx(0); setLayerId(null); seek(0) }
+  const newBlank = () => { setTpl(blankTemplate()); setLayerId(null); seek(0) }
 
   if (!isAdmin(user?.email)) return <div className={s.wrap}><div className={s.denied}>Acceso restringido.</div></div>
 
@@ -118,7 +141,7 @@ export default function TemplateEditor() {
         <div className={s.secLabel}>Escenas</div>
         <div className={s.scenes}>
           {tpl.scenes.map((sc, i) => (
-            <div key={sc.id} className={`${s.sceneRow} ${i === sceneIdx ? s.on : ''}`} onClick={() => selectScene(i)}>
+            <div key={sc.id} className={`${s.sceneRow} ${i === activeIdx ? s.on : ''}`} onClick={() => selectScene(i)}>
               <span className={s.sceneNo}>{i + 1}</span>
               <span className={s.sceneMeta}>{sc.layers.length} capas · {sc.dur}s</span>
               <span className={s.sceneActions}>
@@ -146,6 +169,8 @@ export default function TemplateEditor() {
       <div className={s.stage}>
         <div className={s.frame}>
           <canvas ref={cvRef} className={s.canvas} onMouseDown={onDown} onMouseMove={onMove} onMouseUp={onUp} onMouseLeave={onUp} />
+          {/* indicador de escena en vivo (se actualiza con el playhead) */}
+          <div className={s.sceneTag}><b>Escena {activeIdx + 1}</b><span>/ {tpl.scenes.length}</span></div>
         </div>
         <div className={s.transport}>
           <button className={s.btn} onClick={() => setPlaying(p => !p)}>{playing ? '⏸' : '▶'}</button>
@@ -153,22 +178,22 @@ export default function TemplateEditor() {
           <span className={s.time}>{head.toFixed(1)}s / {video.duration.toFixed(1)}s</span>
           <button className={`${s.btn} ${s.primary}`} onClick={save}>{status || 'Guardar'}</button>
         </div>
-        <div className={s.hint}>Selecciona una capa a la derecha y arrastrala en el lienzo para moverla.</div>
+        <div className={s.hint}>Hacé click en una capa del lienzo para seleccionarla y arrastrala para moverla · o elegila en la lista de la derecha.</div>
       </div>
 
       {/* DERECHA · propiedades */}
       <aside className={s.right}>
-        <div className={s.secLabel}>Escena {sceneIdx + 1}</div>
-        <Field label="Duracion (s)"><input className={s.inp} type="number" min={1} max={12} step={0.1} value={scene.dur} onChange={e => patchScene(sceneIdx, { dur: Math.max(1, +e.target.value) })} /></Field>
+        <div className={s.secLabel}>Escena {activeIdx + 1} <span style={{ color: '#5a6377', fontWeight: 600 }}>de {tpl.scenes.length}</span></div>
+        <Field label="Duracion (s)"><input className={s.inp} type="number" min={1} max={12} step={0.1} value={scene.dur} onChange={e => patchScene(activeIdx, { dur: Math.max(1, +e.target.value) })} /></Field>
         <div className={s.pickLabel}>Fondo</div>
-        <ThumbGrid items={BACKGROUNDS} value={scene.background?.ref || 'bg.glow-corner'} onChange={v => patchScene(sceneIdx, { background: { ...scene.background, ref: v } })} render={bgThumb} w={48} h={85} />
+        <ThumbGrid items={BACKGROUNDS} value={scene.background?.ref || 'bg.glow-corner'} onChange={v => patchScene(activeIdx, { background: { ...scene.background, ref: v } })} render={bgThumb} w={48} h={85} />
 
         <div className={s.secLabel}>Capas</div>
         <div className={s.layers}>
           {scene.layers.map(l => (
             <button key={l.id} className={`${s.layerRow} ${l.id === layerId ? s.on : ''}`} onClick={() => setLayerId(l.id)}>
-              <span className={s.layerType}>{l.type === 'text' ? (l.slot ? '{ }' : 'T') : l.type === 'shape' ? '◆' : '▣'}</span>
-              <span className={s.layerName}>{l.type === 'text' ? (l.slot ? l.slot.kind : (l.text || 'texto')) : l.type === 'shape' ? l.shape : 'imagen'}</span>
+              <span className={s.layerType}>{l.type === 'text' ? (l.slot ? '{ }' : 'T') : l.type === 'shape' ? '◆' : l.type === 'object' ? '✳' : '▣'}</span>
+              <span className={s.layerName}>{l.type === 'text' ? (l.slot ? l.slot.kind : (l.text || 'texto')) : l.type === 'shape' ? l.shape : l.type === 'object' ? (l.objectId || 'objeto') : 'imagen'}</span>
             </button>
           ))}
         </div>
@@ -246,7 +271,7 @@ export default function TemplateEditor() {
           <div className={s.row}>
             <button className={s.btn} onClick={() => { navigator.clipboard?.writeText(io) }}>Copiar</button>
             <button className={s.btn} onClick={() => setIo(null)}>Cerrar</button>
-            <button className={`${s.btn} ${s.primary}`} onClick={() => { try { const t = normalizeTemplate(JSON.parse(io)); setTpl(t); setSceneIdx(0); setLayerId(null); seek(0); setIo(null) } catch (err) { alert('JSON invalido: ' + err.message) } }}>Aplicar</button>
+            <button className={`${s.btn} ${s.primary}`} onClick={() => { try { const t = normalizeTemplate(JSON.parse(io)); setTpl(t); setLayerId(null); seek(0); setIo(null) } catch (err) { alert('JSON invalido: ' + err.message) } }}>Aplicar</button>
           </div>
         </div>
       </div>}

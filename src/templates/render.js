@@ -129,10 +129,31 @@ export function drawTemplateFrame(ctx, t, rv) {
   for (let i = 0; i < layers.length; i++) { const l = layers[i]; l._i = i; try { renderLayer(ctx, l, ts, sc, rv) } catch { /* capa problematica no rompe el frame */ } }
 }
 
-// hit-test: capa (id) mas cercana a un punto normalizado (para seleccionar en el lienzo)
+// extensión aproximada de una capa en PIXELES (medio-ancho/medio-alto), para hit-test y para dibujar
+// el recuadro de selección ajustado a la capa (no una caja fija). Estimación por tipo/tamaño.
+export function layerExtent(rv, l) {
+  const W = rv.W, H = rv.H
+  const sc = (typeof l.scale === 'number' ? l.scale : 1)
+  if (l.type === 'object') { const sz = ((l.params && (l.params.size || l.params.r)) || 70) * sc; return { hw: Math.max(46, sz * 0.95), hh: Math.max(46, sz * 0.95) } }
+  if (l.type === 'shape') { const s = l.shapeStyle || {}; const w = (s.w || (s.r ? s.r * 2 : 100)) * sc, h = (s.h || (s.r ? s.r * 2 : 60)) * sc; return { hw: Math.max(24, w / 2), hh: Math.max(18, h / 2) } }
+  if (l.type === 'image') { const s = l.shapeStyle || {}; const w = (s.w || W * 0.6) * sc, h = (s.h || w * 1.2) * sc; return { hw: w / 2, hh: h / 2 } }
+  const size = ((l.style && l.style.size) || 60) * sc; const lines = (l.slot && l.slot.maxLines) || 2; return { hw: W * 0.44, hh: Math.max(size * 0.7, size * lines * 0.62) }
+}
+
+// hit-test: capa (id) bajo un punto normalizado. Recorre de arriba (última dibujada, la que se ve
+// encima) hacia abajo y devuelve la PRIMERA cuyo bounding-box contiene el punto; si ninguna, la de
+// centro más cercano dentro de un radio. Así seleccionás lo que realmente ves, no el fondo.
 export function hitTest(rv, sceneIdx, nx, ny) {
   const sc = rv.scenes[sceneIdx]; if (!sc) return null
-  let best = null, bd = 1e9
-  for (const l of sc.layers) { const lx = (typeof l.x === 'number' ? l.x : 0.5), ly = (typeof l.y === 'number' ? l.y : 0.5); const d = (lx - nx) ** 2 + (ly - ny) ** 2; if (d < bd) { bd = d; best = l } }
-  return bd < 0.04 ? best?.id : null   // dentro de ~0.2 normalizado
+  const layers = sc.layers || []
+  let fb = null, fbd = 1e9
+  for (let i = layers.length - 1; i >= 0; i--) {
+    const l = layers[i]
+    const lx = (typeof l.x === 'number' ? l.x : 0.5), ly = (typeof l.y === 'number' ? l.y : 0.5)
+    const { hw, hh } = layerExtent(rv, l)
+    if (Math.abs(nx - lx) * rv.W <= hw && Math.abs(ny - ly) * rv.H <= hh) return l.id
+    const d = (lx - nx) ** 2 + (ly - ny) ** 2
+    if (d < fbd) { fbd = d; fb = l }
+  }
+  return fbd < 0.05 ? (fb && fb.id) : null   // fallback: centro más cercano dentro de ~0.22 normalizado
 }

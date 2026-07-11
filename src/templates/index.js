@@ -8,7 +8,7 @@ import { resolveContent } from './content.js'
 import { deriveTemplatePalette } from './palette.js'
 import { drawTemplateFrame } from './render.js'
 
-export { drawTemplateFrame, hitTest } from './render.js'
+export { drawTemplateFrame, hitTest, layerExtent } from './render.js'
 export { EXAMPLE_TEMPLATES, normalizeTemplate, MW, MH } from './schema.js'
 export { GALLERY } from './gallery.js'
 export { resolveContent } from './content.js'
