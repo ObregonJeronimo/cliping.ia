@@ -10,6 +10,7 @@ import { drawTemplateFrame } from './render.js'
 
 export { drawTemplateFrame, hitTest } from './render.js'
 export { EXAMPLE_TEMPLATES, normalizeTemplate, MW, MH } from './schema.js'
+export { GALLERY } from './gallery.js'
 export { resolveContent } from './content.js'
 export { deriveTemplatePalette, resolveColor } from './palette.js'
 export { OBJECTS, OBJECT_IDS, drawObject } from './objects.js'

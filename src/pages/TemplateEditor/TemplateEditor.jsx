@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { makeTemplateVideo, drawTemplateFrame, normalizeTemplate, EXAMPLE_TEMPLATES, OBJECTS, OBJECT_IDS, BACKGROUNDS, ANIM_IN, ANIM_OUT, IDLE_KINDS, hitTest } from '../../templates/index.js'
+import { makeTemplateVideo, drawTemplateFrame, normalizeTemplate, GALLERY, OBJECTS, OBJECT_IDS, BACKGROUNDS, ANIM_IN, ANIM_OUT, IDLE_KINDS, hitTest } from '../../templates/index.js'
 import { useAuth } from '../../contexts/AuthContext'
 import { isAdmin } from '../../lib/admin'
 import { loadTemplates, saveTemplate, deleteTemplate } from '../../lib/templateStore'
@@ -89,7 +89,7 @@ export default function TemplateEditor() {
   const save = async () => { setStatus('guardando…'); const { synced } = await saveTemplate(tpl); const list = await loadTemplates(); setSaved(list); setStatus(synced ? 'guardado ✓' : 'guardado local'); setTimeout(() => setStatus(''), 2500) }
   const load = (t) => { setTpl(normalizeTemplate(t)); setSceneIdx(0); setLayerId(null); seek(0) }
   const del = async (id) => { const { list } = await deleteTemplate(id); setSaved(list) }
-  const loadExample = () => load({ ...EXAMPLE_TEMPLATES[0], id: uid('tpl'), name: 'Promo basico (copia)' })
+  const loadGallery = (id) => { const g = GALLERY.find(t => t.id === id); if (!g) return; load({ ...JSON.parse(JSON.stringify(g)), id: uid('tpl'), name: g.name + ' (copia)' }) }
   const newBlank = () => { setTpl(blankTemplate()); setSceneIdx(0); setLayerId(null); seek(0) }
 
   if (!isAdmin(user?.email)) return <div className={s.wrap}><div className={s.denied}>Acceso restringido.</div></div>
@@ -102,8 +102,11 @@ export default function TemplateEditor() {
         <div className={s.row}>
           <select className={s.sel} value={tpl.mode} onChange={e => commit({ ...tpl, mode: e.target.value })}><option value="dark">Oscuro</option><option value="light">Claro</option></select>
           <button className={s.btn} onClick={newBlank}>Nuevo</button>
-          <button className={s.btn} onClick={loadExample}>Ejemplo</button>
         </div>
+        <select className={s.sel} style={{ width: '100%', marginBottom: 8 }} value="" onChange={e => loadGallery(e.target.value)}>
+          <option value="">Galeria: cargar template…</option>
+          {GALLERY.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+        </select>
         <button className={s.btn} style={{ width: '100%' }} onClick={() => setIo(JSON.stringify(tpl, null, 2))}>Importar / Exportar JSON</button>
         <div className={s.secLabel}>Escenas</div>
         <div className={s.scenes}>
