@@ -211,37 +211,43 @@ export const GALLERY = [
     ],
   },
 
-  // 13 · URVID — showcase propio: capas FX (Animaciones FX) + texto cinetico. Contenido fijo (el
-  // promo de urvid), no parametrizado. Demuestra las FX como capas de template (type:'fx').
+  // 13 · URVID — showcase propio con ESTRUCTURA de marketing (gancho -> como -> que -> rapidez ->
+  // prueba -> CTA; la marca CIERRA, no abre). Demuestra las capacidades nuevas: texto KINETICO por
+  // palabra, TYPEWRITER, CAMARA de escena, IMAGEN 3D (flip Y + wobble), y capas fx (Animaciones FX).
   {
     id: 'g.urvid', name: 'Urvid — Promo FX', mode: 'dark', scenes: [
-      { id: 's1', dur: 2.9, background: { ref: 'bg.spotlight' }, layers: [
-        { type: 'fx', fxId: 'cromo-liquido', x: 0.5, y: 0.34, params: { size: 118 }, anim: { in: 'fade', inDur: 0.6, idle: 'none', out: 'fade' } },
-        { type: 'text', y: 0.6, text: 'urvid', style: { size: 96, weight: 900, color: 'ink' }, anim: { in: 'cascade', inDur: 0.9, idle: 'drift', out: 'fade' } },
-        { type: 'text', y: 0.69, text: 'videos de marketing con IA', style: { size: 22, weight: 500, color: 'dim', tracking: 1 }, anim: { in: 'rise', delay: 0.6, out: 'fade' } },
+      // 1 · GANCHO (propuesta de valor, sin logo) — tipografia kinetica + camara viva
+      { id: 's1', dur: 3.0, background: { ref: 'bg.spotlight' }, camera: { kind: 'kinetic', amt: 1 }, layers: [
+        { type: 'text', y: 0.44, text: 'Videos de marketing', style: { size: 56, weight: 900, color: 'ink', maxW: 0.9 }, anim: { in: 'kinetic', stagger: 0.16, out: 'fade' } },
+        { type: 'text', y: 0.6, text: 'que venden.', style: { size: 62, weight: 900, color: 'accent2' }, anim: { in: 'kinetic', delay: 0.95, stagger: 0.12, out: 'fade' } },
       ] },
-      { id: 's2', dur: 2.5, background: { ref: 'bg.glow-corner' }, layers: [
-        { type: 'text', y: 0.3, text: 'PASO 1', style: { size: 24, weight: 800, color: 'accent', tracking: 4 }, anim: { in: 'fade', inDur: 0.4, out: 'fade' } },
-        { type: 'text', y: 0.5, text: 'Escribí una idea.', style: { size: 66, weight: 900, color: 'ink', maxW: 0.86 }, anim: { in: 'cascade', inDur: 0.9, idle: 'drift', out: 'fade' } },
-        { type: 'fx', fxId: 'cromo-liquido', x: 0.5, y: 0.8, params: { size: 52 }, anim: { in: 'pop', inDur: 0.6, delay: 0.3, out: 'fade' } },
+      // 2 · COMO (tu idea) — typewriter
+      { id: 's2', dur: 2.6, background: { ref: 'bg.glow-corner' }, camera: { kind: 'push', amt: 0.7 }, layers: [
+        { type: 'text', y: 0.34, text: 'PASO 1 · TU IDEA', style: { size: 18, weight: 800, color: 'dim', tracking: 3 }, anim: { in: 'fade', inDur: 0.4, out: 'fade' } },
+        { type: 'text', y: 0.5, text: 'Escribí tu idea', style: { size: 48, weight: 900, color: 'ink' }, anim: { in: 'typewriter', cps: 9, delay: 0.3, out: 'fade' } },
       ] },
-      { id: 's3', dur: 2.6, background: { ref: 'bg.mesh' }, layers: [
-        { type: 'fx', fxId: 'vortice', x: 0.5, y: 0.4, params: { size: 120 }, anim: { in: 'fade', inDur: 0.6, out: 'fade' } },
-        { type: 'text', y: 0.63, text: 'PASO 2', style: { size: 24, weight: 800, color: 'accent', tracking: 4 }, anim: { in: 'fade', inDur: 0.4, delay: 0.2, out: 'fade' } },
-        { type: 'text', y: 0.75, text: 'La IA lo vuelve video.', style: { size: 46, weight: 900, color: 'ink', maxW: 0.86 }, anim: { in: 'rise', delay: 0.35, out: 'fade' } },
+      // 3 · QUE OBTENES (el video) — IMAGEN 3D (flip Y + wobble); reemplaza animacion sin sentido
+      { id: 's3', dur: 2.8, background: { ref: 'bg.mesh' }, camera: { kind: 'push', amt: 0.5 }, layers: [
+        { type: 'image', x: 0.5, y: 0.36, shapeStyle: { w: 208, h: 132, r: 16, placeholder: 'video' }, anim: { in: 'flip3d', inDur: 0.8, idle: 'wobble3d', out: 'fade' } },
+        { type: 'text', y: 0.66, text: 'La IA lo convierte', style: { size: 42, weight: 900, color: 'ink', maxW: 0.86 }, anim: { in: 'kinetic', delay: 0.55, stagger: 0.1, out: 'fade' } },
+        { type: 'text', y: 0.75, text: 'en un video.', style: { size: 42, weight: 900, color: 'accent2' }, anim: { in: 'kinetic', delay: 0.9, stagger: 0.1, out: 'fade' } },
       ] },
-      { id: 's4', dur: 2.4, background: { ref: 'bg.glow-corner' }, layers: [
+      // 4 · RAPIDEZ — spinner->check
+      { id: 's4', dur: 2.2, background: { ref: 'bg.glow-corner' }, layers: [
         { type: 'fx', fxId: 'check-draw', x: 0.5, y: 0.4, params: { size: 108 }, anim: { in: 'fade', inDur: 0.4, out: 'fade' } },
-        { type: 'text', y: 0.68, text: 'En segundos.', style: { size: 58, weight: 900, color: 'ink' }, anim: { in: 'rise', delay: 0.3, out: 'fade' } },
+        { type: 'text', y: 0.66, text: 'En segundos.', style: { size: 58, weight: 900, color: 'ink' }, anim: { in: 'rise', delay: 0.3, out: 'fade' } },
       ] },
-      { id: 's5', dur: 2.4, background: { ref: 'bg.grid' }, layers: [
+      // 5 · PRUEBA — stat + barras
+      { id: 's5', dur: 2.2, background: { ref: 'bg.grid' }, layers: [
         { type: 'text', y: 0.32, text: '+2.500', style: { size: 100, weight: 900, color: 'ink' }, anim: { in: 'zoom-in', inDur: 0.5, idle: 'pulse', out: 'fade' } },
-        { type: 'text', y: 0.44, text: 'videos ya creados', style: { size: 22, weight: 600, color: 'dim', tracking: 1 }, anim: { in: 'fade', delay: 0.35, out: 'fade' } },
-        { type: 'fx', fxId: 'barras-crecen', x: 0.5, y: 0.72, params: { size: 110 }, anim: { in: 'fade', inDur: 0.4, delay: 0.2, out: 'fade' } },
+        { type: 'text', y: 0.44, text: 'videos ya creados', style: { size: 21, weight: 600, color: 'dim', tracking: 1 }, anim: { in: 'fade', delay: 0.35, out: 'fade' } },
+        { type: 'fx', fxId: 'barras-crecen', x: 0.5, y: 0.64, params: { size: 108 }, anim: { in: 'fade', inDur: 0.4, delay: 0.2, out: 'fade' } },
       ] },
+      // 6 · CTA + MARCA (la marca cierra)
       { id: 's6', dur: 3.0, background: { ref: 'bg.accent' }, layers: [
-        { type: 'text', y: 0.44, text: 'Probalo gratis', style: { size: 72, weight: 900, color: 'onAccent' }, anim: { in: 'pop', inDur: 0.55, idle: 'pulse', out: 'none' } },
-        { type: 'text', y: 0.57, text: 'urvid.app', style: { size: 26, weight: 700, color: 'onAccent', tracking: 3 }, anim: { in: 'fade', delay: 0.4, out: 'none' } },
+        { type: 'text', y: 0.42, text: 'Probalo gratis', style: { size: 72, weight: 900, color: 'onAccent' }, anim: { in: 'pop', inDur: 0.55, idle: 'pulse', out: 'none' } },
+        { type: 'text', y: 0.56, text: 'urvid', style: { size: 42, weight: 900, color: 'onAccent' }, anim: { in: 'rise', delay: 0.5, out: 'none' } },
+        { type: 'text', y: 0.64, text: 'urvid.app', style: { size: 18, weight: 700, color: 'onAccent', tracking: 2 }, anim: { in: 'fade', delay: 0.8, out: 'none' } },
       ] },
     ],
   },

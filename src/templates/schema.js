@@ -17,7 +17,7 @@ const uid = (p) => p + '_' + (++_uid).toString(36)
 export function normalizeTemplate(t) {
   const tpl = { id: t.id || uid('tpl'), name: t.name || 'Template', mode: t.mode === 'light' ? 'light' : 'dark', W: t.W || MW, H: t.H || MH, scenes: [] }
   tpl.scenes = (t.scenes || []).map(sc => ({
-    id: sc.id || uid('sc'), dur: Math.max(1, +sc.dur || 3), background: sc.background || { kind: 'solid' },
+    id: sc.id || uid('sc'), dur: Math.max(1, +sc.dur || 3), background: sc.background || { kind: 'solid' }, camera: sc.camera || null,
     layers: (sc.layers || []).map(l => ({ id: l.id || uid('ly'), type: l.type || 'text', x: l.x == null ? 0.5 : l.x, y: l.y == null ? 0.5 : l.y, scale: l.scale == null ? 1 : l.scale, rot: l.rot || 0, ...l })),
   }))
   return tpl

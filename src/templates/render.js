@@ -8,7 +8,7 @@ import {
   clamp, rgba, fontStr, TAU, win, expoOut,
 } from '../aemotion/index.js'
 import { resolveColor } from './palette.js'
-import { animState } from './anim.js'
+import { animState, cubicOut } from './anim.js'
 import { drawObject } from './objects.js'
 import { drawFX } from './fx.js'
 import { paintTemplateBackground } from './backgrounds.js'
@@ -66,13 +66,31 @@ function renderLayer(ctx, layer, ts, sc, rv) {
     if (s.stroke) { tracePath(ctx, path); ctx.strokeStyle = resolveColor(s.stroke, pal); ctx.lineWidth = s.width || 3; ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.stroke() }
   } else if (layer.type === 'image') {
     const img = rv.getImg ? rv.getImg(layer.imageUrl || (rv.brief && rv.brief.mediaImage) || (rv.brief && (rv.brief.images || [])[0])) : null
-    const s = layer.shapeStyle || {}, w = s.w || W * 0.6, h = s.h || w * 1.2
+    const s = layer.shapeStyle || {}, w = s.w || W * 0.6, h = s.h || w * 1.2, A = layer.anim || {}
+    // rotacion 3D en Y: flip3d (entrada, de canto a frente) + wobble3d (idle, falsa profundidad)
+    let angY = 0
+    if (A.in === 'flip3d') angY += (1 - cubicOut(st.enterP)) * (Math.PI * 0.6)
+    if (A.idle === 'wobble3d') angY += Math.sin(ts * 0.8 + (layer._i || 0)) * 0.11 * (st.enterP >= 0.99 ? 1 : 0)
     ctx.save()
+    if (Math.abs(angY) > 0.001) { const sX = Math.max(Math.cos(angY), 0.04); ctx.translate(x, y); ctx.transform(sX, 0, 0, 1, 0, 0); ctx.translate(-x, -y) }
+    ctx.save()
+    const rectP = () => rectPath(x - w / 2, y - h / 2, w, h, s.r || 8)
     if (img) {
-      const p = rectPath(x - w / 2, y - h / 2, w, h, s.r || 8); tracePath(ctx, p); ctx.clip()
+      tracePath(ctx, rectP()); ctx.clip()
       const iw = img.width || 1, ih = img.height || 1, k = Math.max(w / iw, h / ih)
       ctx.drawImage(img, (iw - w / k) / 2, (ih - h / k) / 2, w / k, h / k, x - w / 2, y - h / 2, w, h)
-    } else { tracePath(ctx, rectPath(x - w / 2, y - h / 2, w, h, s.r || 8)); ctx.fillStyle = resolveColor('surface', pal); ctx.fill(); ctx.strokeStyle = rgba(resolveColor('ink', pal), 0.2); ctx.lineWidth = 2; ctx.stroke() }
+    } else if (s.placeholder === 'video') {
+      const g = ctx.createLinearGradient(x - w / 2, y - h / 2, x + w / 2, y + h / 2); g.addColorStop(0, resolveColor('accent', pal)); g.addColorStop(1, resolveColor('accent2', pal))
+      tracePath(ctx, rectP()); ctx.fillStyle = g; ctx.fill(); tracePath(ctx, rectP()); ctx.clip()
+      const R = Math.min(w, h) * 0.15
+      ctx.fillStyle = rgba('#ffffff', 0.92); ctx.beginPath(); ctx.arc(x, y - h * 0.06, R, 0, TAU); ctx.fill()
+      ctx.fillStyle = resolveColor('bg', pal); ctx.beginPath(); ctx.moveTo(x - R * 0.35, y - h * 0.06 - R * 0.5); ctx.lineTo(x + R * 0.6, y - h * 0.06); ctx.lineTo(x - R * 0.35, y - h * 0.06 + R * 0.5); ctx.closePath(); ctx.fill()
+      ctx.fillStyle = rgba('#ffffff', 0.85); tracePath(ctx, rectPath(x - w * 0.32, y + h * 0.2, w * 0.42, h * 0.09, 3)); ctx.fill()
+      ctx.fillStyle = rgba('#ffffff', 0.4); tracePath(ctx, rectPath(x - w * 0.32, y + h * 0.33, w * 0.62, h * 0.06, 3)); ctx.fill()
+    } else { tracePath(ctx, rectP()); ctx.fillStyle = resolveColor('surface', pal); ctx.fill(); ctx.strokeStyle = rgba(resolveColor('ink', pal), 0.2); ctx.lineWidth = 2; ctx.stroke() }
+    if (Math.abs(angY) > 0.02) { const dir = Math.sin(angY), sg = ctx.createLinearGradient(x - w / 2, 0, x + w / 2, 0); sg.addColorStop(0, rgba('#000000', Math.max(0, dir) * 0.45)); sg.addColorStop(0.5, rgba('#000000', 0)); sg.addColorStop(1, rgba('#000000', Math.max(0, -dir) * 0.45)); tracePath(ctx, rectP()); ctx.fillStyle = sg; ctx.fill() }
+    ctx.restore()
+    tracePath(ctx, rectP()); ctx.strokeStyle = rgba(resolveColor('ink', pal), 0.16); ctx.lineWidth = 1.5; ctx.stroke()
     ctx.restore()
   } else {
     renderText(ctx, layer, st, x, y, ts, sc, rv)
@@ -104,9 +122,46 @@ function renderText(ctx, layer, st, x, y, ts, sc, rv) {
     return
   }
 
+  const inKind = (layer.anim && layer.anim.in) || ''
+  // KINETIC: revelado por PALABRA (bloques golpeados que entran desde la izquierda + leve zoom)
+  if (inKind === 'kinetic') {
+    const wr = wrapFit(ctx, String(val), sty.size || Math.round(W * 0.12), maxW, 14, weight, family, sty.maxLines || 3, tracking)
+    const lineH = wr.size * (sty.leading || 1.16), y0 = y - ((wr.lines.length - 1) / 2) * lineH
+    const delay = (layer.anim.delay || 0), stag = layer.anim.stagger || 0.14
+    ctx.font = fontStr(weight, wr.size, family); ctx.letterSpacing = tracking + 'px'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left'
+    let wi = 0
+    wr.lines.forEach((ln, li) => {
+      const parts = ln.split(' '), lw = ctx.measureText(ln).width
+      let cx = align === 'left' ? x - maxW / 2 : x - lw / 2
+      parts.forEach((word, k) => {
+        const seg = word + (k < parts.length - 1 ? ' ' : ''), sw = ctx.measureText(seg).width
+        const rt = win(ts, delay + wi * stag, delay + wi * stag + 0.34)
+        const e = expoOut(rt), al = clamp(rt * 2.4, 0, 1), scl = 1 + 0.12 * (1 - e), dx = (1 - e) * -24
+        if (al > 0.003) {
+          const ly = y0 + li * lineH, ax = cx + ctx.measureText(word).width / 2 + dx
+          ctx.save(); ctx.globalAlpha *= al; ctx.translate(ax, ly); ctx.scale(scl, scl); ctx.translate(-ax, -ly)
+          ctx.fillStyle = color; ctx.fillText(word, cx + dx, ly); ctx.restore()
+        }
+        cx += sw; wi++
+      })
+    })
+    return
+  }
+  // TYPEWRITER: tipeo char-por-char con cursor parpadeante
+  if (inKind === 'typewriter') {
+    const full = String(val), size = fitFont(ctx, full, sty.size || Math.round(W * 0.1), maxW, 14, weight, family, tracking)
+    ctx.font = fontStr(weight, size, family); ctx.letterSpacing = tracking + 'px'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left'
+    const cps = layer.anim.cps || 18, delay = layer.anim.delay || 0
+    const n = Math.floor(clamp((ts - delay) * cps, 0, full.length)), shown = full.slice(0, n)
+    const tw = ctx.measureText(full).width, x0 = x - tw / 2
+    ctx.fillStyle = color; ctx.fillText(shown, x0, y)
+    const cw = ctx.measureText(shown).width, done = n >= full.length
+    if (done ? (Math.sin(ts * 6) > 0) : true) { ctx.fillStyle = resolveColor('accent', pal); ctx.fillRect(x0 + cw + 4, y - size * 0.44, Math.max(2, size * 0.06), size * 0.88) }
+    return
+  }
   const wr = wrapFit(ctx, String(val), sty.size || Math.round(W * 0.13), maxW, 14, weight, family, sty.maxLines || 3, tracking)
   const lineH = wr.size * (sty.leading || 1.06)
-  if ((layer.anim && layer.anim.in) === 'cascade') {
+  if (inKind === 'cascade') {
     const y0 = y - ((wr.lines.length - 1) / 2) * lineH
     wr.lines.forEach((ln, i) => {
       const off = -0.6 + win(ts, (layer.anim.delay || 0) + i * 0.22, (layer.anim.delay || 0) + 1.2 + i * 0.22) * 1.75
@@ -121,6 +176,21 @@ function renderText(ctx, layer, st, x, y, ts, sc, rv) {
   wr.lines.forEach((ln, i) => ctx.fillText(ln, align === 'left' ? x - maxW / 2 : align === 'right' ? x + maxW / 2 : x, y0 + i * lineH))
 }
 
+// CAMARA de escena: movimiento cinematico sobre TODAS las capas (el fondo queda fijo). Da el "la
+// camara nunca se queda quieta". kind: push (zoom in) / push-out / pan-up / pan-down / kinetic (vivo).
+function sceneCamera(cfg, ts, dur) {
+  if (!cfg || !cfg.kind || cfg.kind === 'none') return null
+  const p = clamp(ts / Math.max(0.1, dur), 0, 1), e = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2
+  const amt = cfg.amt == null ? 1 : cfg.amt
+  let z = 1, dx = 0, dy = 0
+  if (cfg.kind === 'push') z = 1 + 0.08 * amt * e
+  else if (cfg.kind === 'push-out') z = 1 + 0.08 * amt * (1 - e)
+  else if (cfg.kind === 'pan-up') { dy = 40 * amt * e; z = 1 + 0.03 * amt }
+  else if (cfg.kind === 'pan-down') { dy = -40 * amt * e; z = 1 + 0.03 * amt }
+  else if (cfg.kind === 'kinetic') { z = 1 + 0.05 * amt * e + 0.012 * Math.sin(ts * 0.9); dy = Math.sin(ts * 0.6) * 6 * amt }
+  return { z, dx, dy }
+}
+
 export function drawTemplateFrame(ctx, t, rv) {
   const W = rv.W, H = rv.H
   t = clamp(t, 0, Math.max(0.001, rv.duration - 0.0001))
@@ -128,8 +198,12 @@ export function drawTemplateFrame(ctx, t, rv) {
   const sc = sceneAt(rv, t)
   const ts = Math.max(0, t - sc.t0)
   paintTemplateBackground(ctx, sc.background, ts, rv.palette, W, H)
+  const cam = sceneCamera(sc.camera, ts, sc.dur)
+  ctx.save()
+  if (cam) { ctx.translate(W / 2, H / 2); ctx.scale(cam.z, cam.z); ctx.translate(-W / 2 + cam.dx, -H / 2 + cam.dy) }
   const layers = sc.layers || []
   for (let i = 0; i < layers.length; i++) { const l = layers[i]; l._i = i; try { renderLayer(ctx, l, ts, sc, rv) } catch { /* capa problematica no rompe el frame */ } }
+  ctx.restore()
 }
 
 // extensión aproximada de una capa en PIXELES (medio-ancho/medio-alto), para hit-test y para dibujar

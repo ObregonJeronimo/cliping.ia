@@ -18,10 +18,13 @@ const PRESETS_IN = {
   'peel-l': (e) => ({ alpha: clamp(e * 1.5, 0, 1), dx: -(1 - e) * 220, rot: -(1 - cubicOut(e)) * 0.85 }),  // despega de la pared izquierda
   'peel-r': (e) => ({ alpha: clamp(e * 1.5, 0, 1), dx: (1 - e) * 220, rot: (1 - cubicOut(e)) * 0.85 }),
   cascade: () => ({ alpha: 1 }),                                // el alpha lo maneja el barrido per-caracter del texto
+  kinetic: () => ({ alpha: 1 }),                               // texto: revelado por PALABRA (render.js)
+  typewriter: () => ({ alpha: 1 }),                            // texto: tipeo char-por-char (render.js)
+  flip3d: (e) => ({ alpha: clamp(e * 1.4, 0, 1) }),            // imagen: giro 3D en Y (el squash lo aplica render.js)
 }
 export const ANIM_IN = Object.keys(PRESETS_IN)
 export const ANIM_OUT = ['none', 'fade', 'rise', 'drop', 'scale', 'slide-l', 'slide-r']
-export const IDLE_KINDS = ['none', 'drift', 'float', 'pulse', 'sway', 'spin']
+export const IDLE_KINDS = ['none', 'drift', 'float', 'pulse', 'sway', 'spin', 'wobble3d']
 
 export function animState(ts, dur, layer, isLast) {
   const a = layer.anim || {}
