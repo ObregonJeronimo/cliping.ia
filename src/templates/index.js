@@ -14,6 +14,7 @@ export { GALLERY } from './gallery.js'
 export { resolveContent } from './content.js'
 export { deriveTemplatePalette, resolveColor } from './palette.js'
 export { OBJECTS, OBJECT_IDS, drawObject } from './objects.js'
+export { FX, FX_IDS, FX_CATS, drawFX } from './fx.js'
 export { BACKGROUNDS, BACKGROUND_IDS, paintTemplateBackground } from './backgrounds.js'
 export { ANIM_IN, ANIM_OUT, IDLE_KINDS } from './anim.js'
 

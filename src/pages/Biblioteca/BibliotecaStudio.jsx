@@ -6,6 +6,7 @@ import buildUrvid from './adapters/urvid.js'
 import buildUrvidAdv from './adapters/urvidAdvanced.js'
 import buildKinetic from './adapters/kinetic.js'
 import buildMotion from './adapters/motion.js'
+import buildFx from './adapters/fx.js'
 import { PREV_W, PREV_H } from './adapters/common.js'
 import styles from './BibliotecaStudio.module.css'
 
@@ -19,8 +20,9 @@ const ENGINES = [
   { key: 'urvid-adv', build: buildUrvidAdv },
   { key: 'kinetic', build: buildKinetic },
   { key: 'motion', build: buildMotion },
+  { key: 'fx', build: buildFx },
 ]
-const ENGINE_LABEL = { urvid: 'urvid IA', 'urvid-adv': 'urvid IA advanced', kinetic: 'Kinetic IA', motion: 'Motion IA' }
+const ENGINE_LABEL = { urvid: 'urvid IA', 'urvid-adv': 'urvid IA advanced', kinetic: 'Kinetic IA', motion: 'Motion IA', fx: 'Animaciones FX' }
 
 // tarjeta con render PEREZOSO (IntersectionObserver) + animacion al hover. Guardas try/catch: un
 // modulo raro nunca debe romper la grilla entera.
