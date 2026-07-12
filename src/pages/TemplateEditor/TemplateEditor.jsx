@@ -183,10 +183,26 @@ export default function TemplateEditor() {
     const t = normalizeTemplate({ ...parsed, id })
     if (!t.scenes.length) t.scenes = scaffoldScenes()
     savedSnapRef.current = JSON.stringify(t); dirtyRef.current = false
-    setTpl(t); setLayerId(null); seek(0); setIo(null)
+    setTpl(t); setLayerId(null); seek(0); setIo(null); setMode('editor')   // entra al editor con el importado (sirve desde el gestor tambien)
     const { list } = await saveTemplate(t); setSaved(list)
   }
   const copyId = (id) => { try { navigator.clipboard && navigator.clipboard.writeText(id) } catch { /* noop */ } setCopiedId(id); setTimeout(() => setCopiedId(cur => cur === id ? null : cur), 1600) }
+
+  // modal Importar/Exportar JSON — compartido por el gestor (importar un template pegado) y el editor
+  // (exportar/importar el actual). applyJson le asigna ID único, garantiza >=1 escena y entra al editor.
+  const jsonModal = io != null && (
+    <div className={s.modal} onClick={() => setIo(null)}>
+      <div className={s.modalBox} onClick={e => e.stopPropagation()}>
+        <div className={s.secLabel}>Template como JSON <span>pegá el que te paso, o copiá el tuyo</span></div>
+        <textarea className={s.io} value={io} onChange={e => setIo(e.target.value)} spellCheck={false} placeholder="Pegá acá el JSON del template…" />
+        <div className={s.row}>
+          <button className={s.btn} onClick={() => { navigator.clipboard?.writeText(io) }}>Copiar</button>
+          <button className={s.btn} onClick={() => setIo(null)}>Cerrar</button>
+          <button className={`${s.btn} ${s.primary}`} onClick={applyJson}>Aplicar</button>
+        </div>
+      </div>
+    </div>
+  )
 
   if (!isAdmin(user?.email)) return <div className={s.wrap}><div className={s.denied}>Acceso restringido.</div></div>
 
@@ -200,7 +216,10 @@ export default function TemplateEditor() {
               <h1 className={s.mgrTitle}>Editor de templates</h1>
               <p className={s.mgrLead}>Tus templates autorados. Creá uno nuevo o abrí uno para seguir editándolo. Cada template tiene un ID único que los motores van a usar para identificarlo.</p>
             </div>
-            <button className={s.mgrNew} onClick={() => { setNewName(''); setNewOpen(true) }}>＋ Nuevo template</button>
+            <div className={s.mgrHeadBtns}>
+              <button className={s.mgrGhost} onClick={() => setIo('')}>Importar JSON</button>
+              <button className={s.mgrNew} onClick={() => { setNewName(''); setNewOpen(true) }}>＋ Nuevo template</button>
+            </div>
           </div>
           {saved.length === 0
             ? <div className={s.mgrEmpty}><b>Todavía no tenés templates</b><span>Creá tu primer template para empezar a editar.</span><button className={s.mgrNew} onClick={() => { setNewName(''); setNewOpen(true) }}>＋ Crear template</button></div>
@@ -241,6 +260,7 @@ export default function TemplateEditor() {
             </div>
           </div>
         )}
+        {jsonModal}
       </div>
     )
   }
@@ -379,17 +399,7 @@ export default function TemplateEditor() {
         </div>}
       </aside>
 
-      {io != null && <div className={s.modal} onClick={() => setIo(null)}>
-        <div className={s.modalBox} onClick={e => e.stopPropagation()}>
-          <div className={s.secLabel}>Template como JSON <span>pega el que te paso, o copia el tuyo</span></div>
-          <textarea className={s.io} value={io} onChange={e => setIo(e.target.value)} spellCheck={false} />
-          <div className={s.row}>
-            <button className={s.btn} onClick={() => { navigator.clipboard?.writeText(io) }}>Copiar</button>
-            <button className={s.btn} onClick={() => setIo(null)}>Cerrar</button>
-            <button className={`${s.btn} ${s.primary}`} onClick={applyJson}>Aplicar</button>
-          </div>
-        </div>
-      </div>}
+      {jsonModal}
     </div>
   )
 }
