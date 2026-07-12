@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useMemo } from 'react'
 import { collection, getDocs, doc, getDoc, setDoc, deleteDoc } from 'firebase/firestore'
 import { makeMotionVideo, drawMotionFrame } from '../../aemotion/index.js'
+import { makeFxVideo, drawFxFrame } from '../../motionfx/index.js'
 import { exportCanvasVideo } from '../../lib/exportVideo.js'
 import { drawWatermark } from '../../lib/watermark.js'
 import { MUSIC_LIBRARY, ASSET_BY_ID } from '../../lib/audioAssets.js'
@@ -29,7 +30,11 @@ export default function MotionStudio() {
   const disabled = useMemo(() => new Set([...removedRaw]
     .filter(id => id.startsWith('motion|') || !id.includes('|'))
     .map(id => id.startsWith('motion|') ? id.slice(7) : id)), [removedRaw])
-  const video = useMemo(() => makeMotionVideo(brief, { seed, disabled }), [brief, seed, disabled])
+  // MOTOR de animación: 'motion' = aemotion actual (5 familias) | 'fx' = FX Kinético (animaciones FX de la
+  // Biblioteca + entradas de texto nuevas + transiciones enérgicas). Selector abajo.
+  const [engineMode, setEngineMode] = useState('motion')
+  const video = useMemo(() => engineMode === 'fx' ? makeFxVideo(brief, { seed, disabled }) : makeMotionVideo(brief, { seed, disabled }), [brief, seed, disabled, engineMode])
+  const drawFrame = engineMode === 'fx' ? drawFxFrame : drawMotionFrame
   const [playing, setPlaying] = useState(true)
   const [head, setHead] = useState(0)
   const headRef = useRef(0)
@@ -72,7 +77,7 @@ export default function MotionStudio() {
         if (headRef.current >= video.duration) { headRef.current -= video.duration; startAudio(0) }
       }
       ctx.setTransform(DPR, 0, 0, DPR, 0, 0)
-      drawMotionFrame(ctx, headRef.current, video)
+      drawFrame(ctx, headRef.current, video)
       ctx.setTransform(DPR, 0, 0, DPR, 0, 0)
       drawWatermark(ctx, video.W, video.H)
       setHead(headRef.current)
@@ -134,7 +139,7 @@ export default function MotionStudio() {
     const ok = exportCanvasVideo(videoWithAudio, {
       filename: `${(brief.brand || 'motion')}-motion-9x16`,
       bitrate: 12e6,
-      drawFrameFn: drawMotionFrame,
+      drawFrameFn: drawFrame,
       onProgress: pct => setExporting(pct + '%'),
       onError: m => { setExporting(m); setTimeout(() => setExporting(''), 5000) },
       onDone: () => setExporting(''),
@@ -153,7 +158,7 @@ export default function MotionStudio() {
       ...(brief.audience ? { audience: JSON.parse(JSON.stringify(brief.audience)) } : {}),
       ...(typeof brief.seriousness === 'number' ? { seriousness: brief.seriousness } : {}),
       ...(brief.energyHint ? { energyHint: brief.energyHint } : {}),
-      recipe: cleanRecipe, seed, ...(musicId ? { musicId } : {}), sfxOnCuts, ts: Date.now(),
+      recipe: cleanRecipe, seed, engineMode, ...(musicId ? { musicId } : {}), sfxOnCuts, ts: Date.now(),
     }
     const next = [item, ...saved].slice(0, 24)
     setSaved(next); localStorage.setItem('aemotion.saved', JSON.stringify(next))
@@ -161,7 +166,7 @@ export default function MotionStudio() {
   }
   const loadSaved = (it) => {
     setBrief({ brand: it.brand, rubro: it.rubro, brandColor: it.brandColor, tagline: it.tagline, claim: it.claim, cta: it.cta, bullets: it.bullets || [], stats: it.stats || [], images: it.images || [], audience: it.audience, seriousness: it.seriousness, energyHint: it.energyHint })
-    setSeed(it.seed || 1); setMusicId(it.musicId || ''); setSfxOnCuts(!!it.sfxOnCuts)
+    setSeed(it.seed || 1); setMusicId(it.musicId || ''); setSfxOnCuts(!!it.sfxOnCuts); setEngineMode(it.engineMode || 'motion')
     headRef.current = 0; setHead(0)
   }
   const delSaved = (it) => {
@@ -191,6 +196,13 @@ export default function MotionStudio() {
           <span className={styles.chip}>{dna.shapeDialect}</span>
           <span className={styles.chip}>{video.script.templateId}</span>
           <span className={styles.chip}>{Math.round(dna.bpm)} bpm</span>
+        </div>
+
+        <div className={styles.row}>
+          <select className={styles.input} value={engineMode} onChange={e => { setEngineMode(e.target.value); headRef.current = 0; setHead(0) }} title="Motor de animación">
+            <option value="motion">Animaciones: Motion IA (actual)</option>
+            <option value="fx">Animaciones: FX Kinético (nuevo)</option>
+          </select>
         </div>
 
         <div className={styles.row}>
