@@ -62,8 +62,11 @@ function smoothClosed(ctx, pts) { const n = pts.length; ctx.moveTo((pts[0][0] + 
 
 // nubes de partículas deterministas (se calculan UNA vez al importar)
 function cloud(seed, n) { const rnd = mulberry32(seed); const a = []; for (let i = 0; i < n; i++) { let hx, hy; do { hx = rnd() * 2 - 1; hy = rnd() * 2 - 1 } while (hx * hx + hy * hy > 1); a.push({ hx, hy, a: rnd() * TAU, rr: rnd(), ph: rnd() * TAU, sz: 0.6 + rnd() * 0.8, k: rnd() }) } return a }
-const CLOUD = cloud(9337, 240), SPARKS = cloud(4242, 60)
+const CLOUD = cloud(9337, 240), SPARKS = cloud(4242, 60), STARS = cloud(2024, 150)
 const hashN = (i) => { const s = Math.sin(i * 12.9898) * 43758.5453; return s - Math.floor(s) }
+// nodos fijos (para redes/constelaciones): posiciones + pares cercanos precomputados
+function nodeNet(seed, n) { const rnd = mulberry32(seed), nodes = []; for (let i = 0; i < n; i++) nodes.push([rnd() * 2 - 1, rnd() * 2 - 1, rnd() * TAU]); const edges = []; for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) { const dd = Math.hypot(nodes[i][0] - nodes[j][0], nodes[i][1] - nodes[j][1]); if (dd < 0.85) edges.push([i, j, dd]) } return { nodes, edges } }
+const NET = nodeNet(77, 11), CONSTEL = nodeNet(313, 9)
 const MGLYPH = '01<>[]{}/|=+*#'
 
 // ============================ ANIMACIONES ============================
@@ -554,6 +557,359 @@ FN['radar'] = (ctx, ts, dur, x, y, pal, p) => {
   ctx.globalAlpha = 1
 }
 
+// ==================== TANDA 2 (50+ nuevas): geometría · espacio · abstracto · trazo + expansiones ====================
+// ---- GEOMETRÍA ----
+FN['mandala'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 62, u = ts / dur, N = 8, br = 1 + 0.06 * Math.sin(u * TAU * 2)
+  ctx.save(); ctx.translate(x, y); ctx.rotate(u * TAU * 0.2)
+  for (let ring = 0; ring < 3; ring++) { const rr = R0 * (0.32 + ring * 0.3) * br, col = ring % 2 ? 'accent' : 'accent2'; for (let i = 0; i < N; i++) { const a = i / N * TAU + ring * 0.35; ctx.save(); ctx.rotate(a); ctx.translate(rr, 0); ctx.rotate(u * TAU * 0.5 * (ring % 2 ? 1 : -1)); ctx.fillStyle = rgba(R(col, pal), 0.65); ctx.beginPath(); ctx.ellipse(0, 0, R0 * 0.17, R0 * 0.08, 0, 0, TAU); ctx.fill(); ctx.restore() } }
+  glow(ctx, R('accent', pal), 10, () => { ctx.fillStyle = R('ink', pal); ctx.beginPath(); ctx.arc(0, 0, R0 * 0.1, 0, TAU); ctx.fill() }); ctx.restore()
+}
+FN['kaleidoscopio'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 64, N = 6
+  ctx.save(); ctx.translate(x, y); ctx.globalCompositeOperation = 'lighter'
+  for (let i = 0; i < N; i++) { ctx.save(); ctx.rotate(i / N * TAU); if (i % 2) ctx.scale(1, -1)
+    const a1 = Math.sin(ts * 0.9) * 0.6, r1 = R0 * (0.45 + 0.2 * Math.sin(ts * 1.3)); ctx.fillStyle = rgba(R('accent', pal), 0.5); ctx.beginPath(); ctx.arc(Math.cos(a1) * r1, Math.sin(a1) * r1, R0 * 0.19, 0, TAU); ctx.fill()
+    const a2 = 0.6 + Math.cos(ts * 0.7) * 0.5, r2 = R0 * (0.6 + 0.15 * Math.cos(ts)); ctx.fillStyle = rgba(R('accent2', pal), 0.5); ctx.beginPath(); ctx.arc(Math.cos(a2) * r2, Math.sin(a2) * r2, R0 * 0.13, 0, TAU); ctx.fill(); ctx.restore() }
+  ctx.restore()
+}
+FN['espirografo'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 64, u = ts / dur, Rr = R0 * 0.9, rr = R0 * 0.34, d = R0 * 0.5
+  glow(ctx, rgba(R('accent', pal), 0.4), R0 * 0.3, () => { ctx.strokeStyle = grad(ctx, x, y, R0, pal); ctx.lineWidth = 2; ctx.beginPath(); for (let i = 0; i <= 220; i++) { const t = i / 220 * TAU * 5 + u * TAU; const px = x + (Rr - rr) * Math.cos(t) + d * Math.cos((Rr - rr) / rr * t), py = y + (Rr - rr) * Math.sin(t) - d * Math.sin((Rr - rr) / rr * t); i ? ctx.lineTo(px, py) : ctx.moveTo(px, py) } ctx.stroke() })
+}
+FN['lissajous'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 64, u = ts / dur, ph = u * TAU
+  glow(ctx, rgba(R('accent', pal), 0.4), R0 * 0.3, () => { ctx.strokeStyle = grad(ctx, x, y, R0, pal); ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.beginPath(); for (let i = 0; i <= 160; i++) { const t = i / 160 * TAU, px = x + R0 * Math.sin(3 * t + ph), py = y + R0 * Math.sin(2 * t); i ? ctx.lineTo(px, py) : ctx.moveTo(px, py) } ctx.stroke() })
+}
+FN['grilla-onda'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 66, n = 9, sp = R0 * 1.8 / n
+  ctx.save(); ctx.globalCompositeOperation = 'lighter'
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) { const gx = x - R0 * 0.9 + i * sp, gy = y - R0 * 0.9 + j * sp, dist = Math.hypot(i - n / 2, j - n / 2); const s = 0.5 + 0.5 * Math.sin(ts * 2 - dist * 0.9); ctx.globalAlpha = 0.4 + s * 0.5; ctx.fillStyle = R(s > 0.5 ? 'accent' : 'accent2', pal); ctx.beginPath(); ctx.arc(gx, gy, R0 * 0.03 * (0.5 + s), 0, TAU); ctx.fill() }
+  ctx.restore()
+}
+FN['moire'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 66, u = ts / dur
+  ctx.save(); ctx.globalCompositeOperation = 'lighter'
+  for (let pass = 0; pass < 2; pass++) { const cx = x + (pass ? Math.sin(u * TAU) * R0 * 0.25 : 0), cy = y; ctx.strokeStyle = rgba(R(pass ? 'accent2' : 'accent', pal), 0.4); ctx.lineWidth = 1.5; for (let r = R0 * 0.15; r < R0 * 1.5; r += R0 * 0.11) { ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.stroke() } }
+  ctx.restore()
+}
+FN['hex-pulso'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 64, cols = [[0, 0], [1, 0], [-1, 0], [0.5, 0.87], [-0.5, 0.87], [0.5, -0.87], [-0.5, -0.87]]
+  ctx.save(); ctx.globalCompositeOperation = 'lighter'
+  cols.forEach((c, i) => { const cx = x + c[0] * R0 * 0.62, cy = y + c[1] * R0 * 0.62, s = 0.5 + 0.5 * Math.sin(ts * 2.4 - i * 0.7); ctx.globalAlpha = 0.3 + s * 0.6; ctx.fillStyle = R(i % 2 ? 'accent2' : 'accent', pal); tracePath(ctx, polygonPath(cx, cy, R0 * 0.3 * (0.7 + s * 0.4), 6)); ctx.fill() })
+  ctx.restore()
+}
+FN['tunel'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 70, u = ts / dur
+  for (let i = 8; i >= 0; i--) { const f = ((i / 9) + u) % 1, rr = R0 * (0.05 + f * 1.5), rot = f * 1.5 + u * TAU * 0.3; ctx.save(); ctx.globalAlpha = (1 - f) * 0.8; ctx.translate(x, y); ctx.rotate(rot); ctx.strokeStyle = R(i % 2 ? 'accent' : 'accent2', pal); ctx.lineWidth = R0 * 0.05 * (1 - f) + 1; tracePath(ctx, polygonPath(0, 0, rr, 6)); ctx.stroke(); ctx.restore() }
+}
+FN['red-nodos'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 66, N = NET
+  ctx.save()
+  N.edges.forEach(([i, j], e) => { const pulse = (Math.sin(ts * 2 + e * 0.9) + 1) / 2; ctx.strokeStyle = rgba(R('accent', pal), 0.15 + pulse * 0.4); ctx.lineWidth = 1 + pulse; ctx.beginPath(); ctx.moveTo(x + N.nodes[i][0] * R0, y + N.nodes[i][1] * R0); ctx.lineTo(x + N.nodes[j][0] * R0, y + N.nodes[j][1] * R0); ctx.stroke() })
+  N.nodes.forEach((nd, i) => { const s = 0.7 + 0.3 * Math.sin(ts * 2.5 + i); glow(ctx, R('accent', pal), 8, () => { ctx.fillStyle = R('ink', pal); ctx.beginPath(); ctx.arc(x + nd[0] * R0, y + nd[1] * R0, R0 * 0.05 * s, 0, TAU); ctx.fill() }) })
+  ctx.restore()
+}
+FN['flor-vida'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 60, u = ts / dur, r = R0 * 0.5 * (1 + 0.04 * Math.sin(u * TAU * 2))   // ya formada + respira + rota -> loop seamless (sin frame vacío ni hold)
+  ctx.save(); ctx.translate(x, y); ctx.rotate(u * TAU * 0.15); ctx.strokeStyle = grad(ctx, 0, 0, R0, pal); ctx.lineWidth = 2
+  glow(ctx, rgba(R('accent', pal), 0.35), R0 * 0.3, () => { ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.stroke(); for (let i = 0; i < 6; i++) { const a = i / 6 * TAU; ctx.beginPath(); ctx.arc(Math.cos(a) * r, Math.sin(a) * r, r, 0, TAU); ctx.stroke() } })
+  ctx.restore()
+}
+// ---- ESPACIO ----
+FN['campo-estrellas'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 70
+  ctx.save(); ctx.globalCompositeOperation = 'lighter'
+  for (let i = 0; i < 130; i++) { const d = STARS[i], life = ((ts / dur) * (0.5 + d.rr) + d.k) % 1, rr = life * life * R0 * 1.7, px = x + Math.cos(d.a) * rr, py = y + Math.sin(d.a) * rr, len = life * R0 * 0.35; ctx.globalAlpha = life; ctx.strokeStyle = R('ink', pal); ctx.lineWidth = 0.6 + life * 1.8; ctx.beginPath(); ctx.moveTo(x + Math.cos(d.a) * (rr - len), y + Math.sin(d.a) * (rr - len)); ctx.lineTo(px, py); ctx.stroke() }
+  ctx.restore()
+}
+FN['orbita-planeta'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 60, u = ts / dur
+  ctx.strokeStyle = rgba(R('ink', pal), 0.1); ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(x, y, R0 * 0.9, R0 * 0.34, 0, 0, TAU); ctx.stroke()
+  glow(ctx, rgba(R('accent', pal), 0.5), R0 * 0.4, () => { ctx.fillStyle = grad(ctx, x, y, R0 * 0.5, pal); ctx.beginPath(); ctx.arc(x, y, R0 * 0.42, 0, TAU); ctx.fill() })
+  const a = u * TAU, mx = x + Math.cos(a) * R0 * 0.9, my = y + Math.sin(a) * R0 * 0.34, front = Math.sin(a) > 0
+  const drawMoon = () => glow(ctx, R('accent2', pal), 8, () => { ctx.fillStyle = R('ink', pal); ctx.beginPath(); ctx.arc(mx, my, R0 * 0.12, 0, TAU); ctx.fill() })
+  if (!front) drawMoon()   // luna detrás se dibujó antes del planeta arriba? -> orden simple: si atrás, ya cubierto
+  if (front) drawMoon()
+}
+FN['galaxia-espiral'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 68, u = ts / dur
+  ctx.save(); ctx.globalCompositeOperation = 'lighter'
+  for (let i = 0; i < 220; i++) { const d = STARS[i % 150], arm = Math.floor(d.k * 2), f = d.rr, ang = f * 5 + arm * PI + u * TAU * 0.3, rr = R0 * f, px = x + Math.cos(ang) * rr, py = y + Math.sin(ang) * rr * 0.55; ctx.globalAlpha = 0.7 * (1 - f * 0.25); ctx.fillStyle = R(d.k > 0.5 ? 'accent' : 'accent2', pal); ctx.beginPath(); ctx.arc(px, py, R0 * 0.02 * d.sz, 0, TAU); ctx.fill() }
+  glow(ctx, R('accent', pal), 16, () => { ctx.fillStyle = R('ink', pal); ctx.beginPath(); ctx.arc(x, y, R0 * 0.09, 0, TAU); ctx.fill() }); ctx.restore()
+}
+FN['cometa-cruza'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 66
+  ctx.save(); ctx.globalCompositeOperation = 'lighter'
+  for (const ph of [0, 0.5]) {   // dos cometas desfasados -> el cuadro nunca queda vacío, loop continuo
+    const u = ((ts / dur) + ph) % 1, cx = lerp(x - R0 * 1.1, x + R0 * 1.1, u), cy = lerp(y + R0 * 0.7, y - R0 * 0.7, u)
+    for (let i = 0; i < 16; i++) { const f = i / 16; ctx.globalAlpha = (1 - f) * 0.55; ctx.fillStyle = R('accent', pal); ctx.beginPath(); ctx.arc(cx - f * R0 * 0.7, cy + f * R0 * 0.45, R0 * 0.055 * (1 - f), 0, TAU); ctx.fill() }
+    glow(ctx, R('accent2', pal), 12, () => { ctx.globalAlpha = 1; ctx.fillStyle = R('ink', pal); ctx.beginPath(); ctx.arc(cx, cy, R0 * 0.07, 0, TAU); ctx.fill() })
+  }
+  ctx.restore(); ctx.globalAlpha = 1
+}
+FN['constelacion'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 66, C = CONSTEL, u = (ts % dur) / dur, drawn = sm(clamp(u / 0.6, 0, 1)), lineFade = u > 0.85 ? 1 - (u - 0.85) / 0.15 : 1   // desvanece las líneas al cerrar -> loop seamless
+  ctx.save()
+  C.edges.forEach(([i, j], e) => { const seg = clamp(drawn * C.edges.length - e, 0, 1); if (seg <= 0) return; const ax = x + C.nodes[i][0] * R0, ay = y + C.nodes[i][1] * R0, bx = x + C.nodes[j][0] * R0, by = y + C.nodes[j][1] * R0; ctx.strokeStyle = rgba(R('accent', pal), 0.5 * lineFade); ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(lerp(ax, bx, seg), lerp(ay, by, seg)); ctx.stroke() })
+  C.nodes.forEach((nd, i) => { const tw = 0.6 + 0.4 * Math.sin(ts * 3 + i * 1.3); glow(ctx, R('accent2', pal), 8, () => { ctx.fillStyle = R('ink', pal); ctx.globalAlpha = tw; ctx.beginPath(); ctx.arc(x + nd[0] * R0, y + nd[1] * R0, R0 * 0.045, 0, TAU); ctx.fill() }) }); ctx.globalAlpha = 1; ctx.restore()
+}
+FN['agujero-negro'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 66, u = ts / dur
+  ctx.save(); ctx.globalCompositeOperation = 'lighter'
+  for (let i = 0; i < 160; i++) { const d = STARS[i % 150], ang = d.a + u * TAU * (1.5 - d.rr) + d.rr * 8, rr = R0 * (0.28 + d.rr * 0.9), px = x + Math.cos(ang) * rr, py = y + Math.sin(ang) * rr * 0.4; ctx.globalAlpha = 0.6 * (1 - d.rr * 0.3); ctx.fillStyle = R(d.k > 0.5 ? 'accent' : 'accent2', pal); ctx.beginPath(); ctx.arc(px, py, R0 * 0.02 * d.sz, 0, TAU); ctx.fill() }
+  ctx.restore()
+  const rg = ctx.createRadialGradient(x, y, 0, x, y, R0 * 0.32); rg.addColorStop(0, '#000'); rg.addColorStop(0.75, '#000'); rg.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = rg; ctx.beginPath(); ctx.arc(x, y, R0 * 0.32, 0, TAU); ctx.fill()
+  glow(ctx, R('accent', pal), 12, () => { ctx.strokeStyle = rgba(R('accent', pal), 0.6); ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, R0 * 0.3, 0, TAU); ctx.stroke() })
+}
+FN['meteoros'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 70
+  ctx.save(); ctx.globalCompositeOperation = 'lighter'
+  for (let i = 0; i < 14; i++) { const d = STARS[i * 7], life = ((ts / dur) * (0.6 + d.rr * 0.6) + d.k) % 1, sxp = x - R0 + d.hx * R0 * 1.4 + life * R0 * 2.2, syp = y - R0 * 1.2 + d.hy * R0 * 0.6 + life * R0 * 2; const len = R0 * 0.4; ctx.globalAlpha = Math.sin(life * PI); const g = ctx.createLinearGradient(sxp - len, syp - len * 0.7, sxp, syp); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, R('ink', pal)); ctx.strokeStyle = g; ctx.lineWidth = 2 * d.sz; ctx.beginPath(); ctx.moveTo(sxp - len, syp - len * 0.7); ctx.lineTo(sxp, syp); ctx.stroke() }
+  ctx.restore()
+}
+FN['sistema-orbital'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 66, u = ts / dur
+  glow(ctx, rgba(R('accent', pal), 0.6), R0 * 0.4, () => { ctx.fillStyle = grad(ctx, x, y, R0 * 0.3, pal); ctx.beginPath(); ctx.arc(x, y, R0 * 0.16, 0, TAU); ctx.fill() })
+  for (let o = 1; o <= 3; o++) { const rr = R0 * (0.35 + o * 0.22); ctx.strokeStyle = rgba(R('ink', pal), 0.1); ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x, y, rr, 0, TAU); ctx.stroke(); const a = u * TAU * (2 - o * 0.5) + o; const px = x + Math.cos(a) * rr, py = y + Math.sin(a) * rr; glow(ctx, R(o % 2 ? 'accent' : 'accent2', pal), 7, () => { ctx.fillStyle = R(o % 2 ? 'accent' : 'accent2', pal); ctx.beginPath(); ctx.arc(px, py, R0 * 0.06, 0, TAU); ctx.fill() }) }
+}
+
+// ---- ABSTRACTO ----
+FN['ondas-lineas'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 68, u = ts / dur
+  ctx.save(); ctx.globalCompositeOperation = 'lighter'
+  for (let l = 0; l < 7; l++) { const yy = y - R0 * 0.7 + l * R0 * 1.4 / 6; ctx.strokeStyle = rgba(R(l % 2 ? 'accent2' : 'accent', pal), 0.6); ctx.lineWidth = 2; ctx.beginPath(); for (let i = 0; i <= 40; i++) { const f = i / 40, px = x - R0 + f * R0 * 2, py = yy + Math.sin(f * 6 - u * TAU + l * 0.5) * R0 * 0.18; i ? ctx.lineTo(px, py) : ctx.moveTo(px, py) } ctx.stroke() }
+  ctx.restore()
+}
+FN['op-circulos'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 66, u = ts / dur
+  for (let r = R0 * 1.4, k = 0; r > R0 * 0.05; r -= R0 * 0.13, k++) { const w = R0 * 0.06 * (1 + Math.sin(u * TAU * 2 - r / R0 * 3)); ctx.strokeStyle = R(k % 2 ? 'accent' : 'accent2', pal); ctx.lineWidth = Math.max(1, w); ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.stroke() }
+}
+FN['rayas-onda'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 66, u = ts / dur, W = R0 * 1.9, n = 16
+  ctx.save(); ctx.beginPath(); tracePath(ctx, rectPath(x - W / 2, y - R0, W, R0 * 2, R0 * 0.15)); ctx.clip()
+  for (let i = 0; i < n; i++) { const f = i / n, off = Math.sin(f * TAU * 2 - u * TAU) * R0 * 0.25; ctx.fillStyle = R(i % 2 ? 'accent' : 'accent2', pal); ctx.beginPath(); ctx.moveTo(x - W / 2 + f * W + off, y - R0); ctx.lineTo(x - W / 2 + (f + 1 / n) * W + off, y - R0); ctx.lineTo(x - W / 2 + (f + 1 / n) * W + off, y + R0); ctx.lineTo(x - W / 2 + f * W + off, y + R0); ctx.closePath(); ctx.fill() }
+  ctx.restore()
+}
+FN['puntos-onda'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 66, n = 11, sp = R0 * 1.8 / n
+  ctx.save(); ctx.globalCompositeOperation = 'lighter'
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) { const gx = x - R0 * 0.9 + i * sp, gy = y - R0 * 0.9 + j * sp, w = Math.sin(ts * 2 - Math.hypot(i - n / 2, j - n / 2) * 0.75), s = (w + 1) / 2; ctx.globalAlpha = 0.35 + s * 0.65; ctx.fillStyle = R(s > 0.65 ? 'ink' : s > 0.35 ? 'accent' : 'accent2', pal); ctx.beginPath(); ctx.arc(gx, gy + w * R0 * 0.1, R0 * 0.02 * (0.6 + s * 1.2), 0, TAU); ctx.fill() }   // onda radial: puntos crecen/brillan en las crestas (relieve)
+  ctx.restore(); ctx.globalAlpha = 1
+}
+FN['espiral-hipnotica'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 66, u = ts / dur
+  ctx.save(); ctx.translate(x, y); ctx.rotate(u * TAU); ctx.strokeStyle = grad(ctx, 0, 0, R0, pal); ctx.lineWidth = R0 * 0.09; ctx.lineCap = 'round'; ctx.beginPath()
+  for (let i = 0; i <= 240; i++) { const t = i / 240 * TAU * 5, rr = t / (TAU * 5) * R0 * 1.4, px = Math.cos(t) * rr, py = Math.sin(t) * rr; i ? ctx.lineTo(px, py) : ctx.moveTo(px, py) } ctx.stroke(); ctx.restore()
+}
+FN['tunel-cuadrados'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 68, u = ts / dur
+  for (let i = 9; i >= 0; i--) { const f = ((i / 10) + u) % 1, s = R0 * (0.06 + f * 1.5), rot = f * 0.8; ctx.save(); ctx.globalAlpha = (1 - f) * 0.85; ctx.translate(x, y); ctx.rotate(rot); ctx.strokeStyle = R(i % 2 ? 'accent' : 'accent2', pal); ctx.lineWidth = R0 * 0.05 * (1 - f) + 1; ctx.strokeRect(-s, -s, s * 2, s * 2); ctx.restore() }
+}
+FN['plasma-formas'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 66, u = ts / dur
+  ctx.save(); ctx.globalCompositeOperation = 'lighter'
+  for (let i = 0; i < 4; i++) { const a = u * TAU * (i % 2 ? 1 : -1) + i * 1.6, cx = x + Math.cos(a) * R0 * 0.5, cy = y + Math.sin(a * 1.3) * R0 * 0.5, rg = ctx.createRadialGradient(cx, cy, 0, cx, cy, R0 * 0.9); rg.addColorStop(0, rgba(R(i % 2 ? 'accent' : 'accent2', pal), 0.5)); rg.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = rg; ctx.fillRect(x - R0 * 1.5, y - R0 * 1.5, R0 * 3, R0 * 3) }
+  ctx.restore()
+}
+FN['curva-parametrica'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 66, u = ts / dur
+  glow(ctx, rgba(R('accent', pal), 0.4), R0 * 0.3, () => { ctx.strokeStyle = grad(ctx, x, y, R0, pal); ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.beginPath(); for (let i = 0; i <= 180; i++) { const t = i / 180 * TAU, rr = R0 * (0.6 + 0.4 * Math.cos(4 * t + u * TAU)), px = x + Math.cos(t) * rr, py = y + Math.sin(t) * rr; i ? ctx.lineTo(px, py) : ctx.moveTo(px, py) } ctx.closePath(); ctx.stroke() })
+}
+// ---- TRAZO / LINE-ART ----
+function drawPolyTrim(ctx, pts, e, col, w) { const total = pts.length - 1, prog = e * total; ctx.strokeStyle = col; ctx.lineWidth = w; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i <= total; i++) { const seg = clamp(prog - (i - 1), 0, 1); if (seg <= 0) break; ctx.lineTo(lerp(pts[i - 1][0], pts[i][0], seg), lerp(pts[i - 1][1], pts[i][1], seg)) } ctx.stroke() }
+FN['firma'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 64, u = (ts % dur) / dur, e = sm(clamp(u / 0.8, 0, 1)), pts = []
+  for (let i = 0; i <= 60; i++) { const t = i / 60; pts.push([x - R0 + t * R0 * 2, y + Math.sin(t * 9) * R0 * 0.4 * (1 - t * 0.3) - t * R0 * 0.2]) }
+  glow(ctx, rgba(R('accent', pal), 0.4), R0 * 0.25, () => drawPolyTrim(ctx, pts, e, grad(ctx, x, y, R0, pal), R0 * 0.06))
+  ctx.globalAlpha = u > 0.9 ? 1 - (u - 0.9) / 0.1 : 1
+}
+FN['flecha-draw'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 64, u = (ts % dur) / dur, e = expoOut(clamp(u / 0.6, 0, 1)), fade = u > 0.85 ? 1 - (u - 0.85) / 0.15 : 1
+  const shaft = [[x - R0 * 0.8, y], [x + R0 * 0.6, y]], head = [[x + R0 * 0.2, y - R0 * 0.35], [x + R0 * 0.65, y], [x + R0 * 0.2, y + R0 * 0.35]]
+  ctx.globalAlpha = fade; glow(ctx, rgba(R('accent', pal), 0.4), R0 * 0.3, () => { drawPolyTrim(ctx, shaft, e, grad(ctx, x, y, R0, pal), R0 * 0.1); if (e > 0.7) drawPolyTrim(ctx, head, clamp((e - 0.7) / 0.3, 0, 1), R('accent', pal), R0 * 0.1) }); ctx.globalAlpha = 1
+}
+FN['subrayado'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 64, u = (ts % dur) / dur, e = expoOut(clamp(u / 0.55, 0, 1)), fade = u > 0.82 ? 1 - (u - 0.82) / 0.18 : 1
+  ctx.globalAlpha = fade
+  ctx.fillStyle = rgba(R('ink', pal), 0.5); ctx.font = `bold ${R0 * 0.5}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('Aa', x, y - R0 * 0.25)
+  glow(ctx, rgba(R('accent', pal), 0.5), R0 * 0.3, () => { ctx.strokeStyle = grad(ctx, x, y, R0, pal); ctx.lineWidth = R0 * 0.09; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(x - R0 * 0.6, y + R0 * 0.3); const wob = Math.sin(e * 6) * R0 * 0.03; ctx.quadraticCurveTo(x, y + R0 * 0.3 + wob, x - R0 * 0.6 + R0 * 1.2 * e, y + R0 * 0.3); ctx.stroke() }); ctx.globalAlpha = 1
+}
+FN['corchetes'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 64, u = (ts % dur) / dur, gap = R0 * 0.85, arm = R0 * 0.4, h = R0 * 0.55, fade = u > 0.9 ? 1 - (u - 0.9) / 0.1 : 1
+  ctx.globalAlpha = fade
+  glow(ctx, rgba(R('accent', pal), 0.4), R0 * 0.25, () => {
+    for (let s = 0; s < 2; s++) { const sign = s ? 1 : -1, bx = x + sign * gap, e = expoOut(clamp((u - s * 0.2) / 0.62, 0, 1))   // se dibujan progresivamente (serif->vertical->serif), escalonados
+      const pts = [[bx - sign * arm, y - h], [bx, y - h], [bx, y + h], [bx - sign * arm, y + h]]
+      drawPolyTrim(ctx, pts, e, grad(ctx, x, y, R0, pal), R0 * 0.08) }
+  }); ctx.globalAlpha = 1
+}
+FN['garabato'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 64, u = (ts % dur) / dur, e = sm(clamp(u / 0.75, 0, 1)), pts = []
+  for (let i = 0; i <= 80; i++) { const t = i / 80; pts.push([x + Math.cos(t * TAU * 2.5) * R0 * 0.7 * (0.3 + t), y + Math.sin(t * TAU * 3.5) * R0 * 0.6 * (0.3 + t)]) }
+  glow(ctx, rgba(R('accent', pal), 0.4), R0 * 0.25, () => drawPolyTrim(ctx, pts, e, grad(ctx, x, y, R0, pal), R0 * 0.05))
+}
+FN['onda-audio'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 66, u = ts / dur
+  glow(ctx, rgba(R('accent', pal), 0.4), R0 * 0.25, () => { ctx.strokeStyle = grad(ctx, x, y, R0, pal); ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.beginPath(); for (let i = 0; i <= 60; i++) { const f = i / 60, px = x - R0 + f * R0 * 2, amp = R0 * 0.4 * Math.exp(-Math.pow((f - 0.5) * 4, 2)) * (0.4 + 0.6 * Math.abs(Math.sin(f * 20 - u * TAU * 2))), py = y + Math.sin(f * 30 - u * TAU * 3) * amp; i ? ctx.lineTo(px, py) : ctx.moveTo(px, py) } ctx.stroke() })
+}
+// ---- LÍQUIDO (expansión) ----
+FN['veta-marmol'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 62, u = ts / dur
+  ctx.save(); ctx.beginPath(); ctx.arc(x, y, R0, 0, TAU); ctx.clip()
+  const bands = ['accent', 'accent2', 'ink', 'accent2']
+  for (let b = 0; b < 4; b++) { ctx.fillStyle = rgba(R(bands[b], pal), b === 2 ? 0.25 : 0.6); ctx.beginPath(); for (let i = 0; i <= 60; i++) { const t = i / 60 * TAU, warp = Math.sin(t * 3 + u * TAU + b) * R0 * 0.12 * Math.sin(u * PI + b), rr = R0 * (0.35 + b * 0.16) + warp; const px = x + Math.cos(t) * rr, py = y + Math.sin(t) * rr; i ? ctx.lineTo(px, py) : ctx.moveTo(px, py) } ctx.closePath(); ctx.fill() }
+  ctx.restore()
+}
+FN['catenaria-miel'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 50, u = (ts % dur) / dur, top = y - R0 * 0.55, a = 1.7, ch0 = Math.cosh(a)
+  const sag = R0 * (0.6 + 0.7 * (0.5 - 0.5 * Math.cos(u * TAU))), wmid = R0 * 0.18   // combe hacia ABAJO (∪) y respira -> loop seamless
+  const yy = f => top + sag * (ch0 - Math.cosh(a * (2 * f - 1))) / (ch0 - 1)
+  const wf = f => wmid * (0.45 + 0.55 * Math.cos((f - 0.5) * PI))   // más grueso en el medio (gota de miel)
+  glow(ctx, rgba(R('accent', pal), 0.5), R0 * 0.4, () => {
+    ctx.fillStyle = grad(ctx, x, y, R0, pal); ctx.beginPath()
+    for (let i = 0; i <= 30; i++) { const f = i / 30, px = x - R0 * 0.7 + f * R0 * 1.4; i ? ctx.lineTo(px, yy(f) + wf(f)) : ctx.moveTo(px, yy(f) + wf(f)) }
+    for (let i = 30; i >= 0; i--) { const f = i / 30, px = x - R0 * 0.7 + f * R0 * 1.4; ctx.lineTo(px, yy(f) - wf(f)) }
+    ctx.closePath(); ctx.fill(); ctx.beginPath(); ctx.arc(x, yy(0.5), wmid * 1.5, 0, TAU); ctx.fill()
+  })
+}
+FN['malla-gradiente'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 62, u = ts / dur, pts = blobPath(x, y, R0, u * 3, 0.05)
+  ctx.save(); ctx.beginPath(); smoothClosed(ctx, pts); ctx.clip(); ctx.globalCompositeOperation = 'lighter'
+  for (let j = 0; j < 4; j++) { const a = u * TAU * (j % 2 ? 1 : -1) + j * 1.5, cx = x + Math.cos(a) * R0 * 0.5, cy = y + Math.sin(a * 1.2) * R0 * 0.5, rg = ctx.createRadialGradient(cx, cy, 0, cx, cy, R0); rg.addColorStop(0, rgba(R(['accent', 'accent2', 'ink', 'accent'][j], pal), 0.55)); rg.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = rg; ctx.fillRect(x - R0, y - R0, R0 * 2, R0 * 2) }
+  ctx.restore()
+}
+FN['corona-splash'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 62, u = (ts % dur) / dur, rise = sm(clamp(u / 0.45, 0, 1)), fall = sm(clamp((u - 0.45) / 0.55, 0, 1)), N = 12
+  const rc = R0 * (0.3 + rise * 0.7) * (1 - fall * 0.5), h = R0 * 0.5 * Math.sin(PI * clamp(u / 0.45, 0, 1)) * (1 - fall)   // sube y COLAPSA (no se congela)
+  glow(ctx, rgba(R('accent', pal), 0.5), R0 * 0.3, () => { ctx.fillStyle = grad(ctx, x, y, R0, pal); ctx.beginPath()
+    for (let i = 0; i <= N; i++) { const a = i / N * TAU, spike = (i % 2 ? 1 : 0.6), px = x + Math.cos(a) * rc * spike, py = y + Math.sin(a) * rc * 0.35 * spike - (i % 2 ? h : 0); i ? ctx.lineTo(px, py) : ctx.moveTo(px, py) } ctx.closePath(); ctx.fill() })
+  if (fall > 0) { ctx.save(); ctx.globalAlpha = 1 - fall; ctx.strokeStyle = R('accent2', pal); ctx.lineWidth = 3 * (1 - fall); ctx.beginPath(); ctx.ellipse(x, y, R0 * (0.5 + fall * 1.1), R0 * (0.5 + fall * 1.1) * 0.35, 0, 0, TAU); ctx.stroke(); ctx.restore() }   // anillo que se expande y desvanece
+}
+// ---- PROFUNDIDAD (expansión) ----
+FN['cubo-3d'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 46, u = ts / dur, ax = u * TAU, ay = u * TAU * 0.7
+  const V = [[-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1], [-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]]
+  const R3 = V.map(v => { let [a, b, c] = v; let b2 = b * Math.cos(ax) - c * Math.sin(ax), c2 = b * Math.sin(ax) + c * Math.cos(ax); b = b2; c = c2; let a2 = a * Math.cos(ay) + c * Math.sin(ay), c3 = -a * Math.sin(ay) + c * Math.cos(ay); return [a2, b, c3] })
+  const P = R3.map(v => [x + v[0] * R0, y + v[1] * R0])
+  const faces = [[0, 1, 2, 3], [4, 5, 6, 7], [0, 1, 5, 4], [2, 3, 7, 6], [1, 2, 6, 5], [0, 3, 7, 4]], L = [0.35, -0.5, 0.79]
+  faces.map(f => { const z = f.reduce((s, i) => s + R3[i][2], 0) / 4, v0 = R3[f[0]], v1 = R3[f[1]], v2 = R3[f[2]]; const e1 = [v1[0] - v0[0], v1[1] - v0[1], v1[2] - v0[2]], e2 = [v2[0] - v0[0], v2[1] - v0[1], v2[2] - v0[2]]; const nx = e1[1] * e2[2] - e1[2] * e2[1], ny = e1[2] * e2[0] - e1[0] * e2[2], nz = e1[0] * e2[1] - e1[1] * e2[0], nl = Math.hypot(nx, ny, nz) || 1; const sh = clamp((nx * L[0] + ny * L[1] + nz * L[2]) / nl * 0.5 + 0.5, 0.15, 1); return { f, z, sh } })
+    .sort((a, b) => a.z - b.z).forEach(({ f, sh }) => { ctx.fillStyle = rgba(R('accent', pal), 0.35 + sh * 0.6); ctx.beginPath(); f.forEach((i, j) => j ? ctx.lineTo(P[i][0], P[i][1]) : ctx.moveTo(P[i][0], P[i][1])); ctx.closePath(); ctx.fill(); ctx.strokeStyle = rgba(R('accent2', pal), 0.4); ctx.lineWidth = 1; ctx.stroke() })   // sombreado lambertiano por cara -> lee volumen 3D
+}
+FN['iso-piramide'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 50, u = (ts % dur) / dur, h = (u < 0.7 ? Math.max(0, backOut(u / 0.7)) : 1) * R0 * 1.4, w = R0, d = R0 * 0.5
+  const apex = [x, y - h - d], bN = [x, y - d], bE = [x + w, y], bS = [x, y + d], bW = [x - w, y]
+  const face = (a, b, cc, col, al) => { ctx.fillStyle = rgba(R(col, pal), al); ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.lineTo(cc[0], cc[1]); ctx.closePath(); ctx.fill() }
+  glow(ctx, rgba(R('accent', pal), 0.3), R0 * 0.3, () => { face(apex, bW, bS, 'accent', 0.8); face(apex, bE, bS, 'accent2', 0.95); face(apex, bW, bN, 'ink', 0.85); face(apex, bE, bN, 'ink', 0.65) })
+}
+FN['parallax-capas'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 64, u = ts / dur
+  const layers = [{ sc: 1.05, sp: 0.25, col: 'accent2', sh: 'hexagon', al: 0.4 }, { sc: 0.72, sp: 0.6, col: 'accent', sh: 'circle', al: 0.65 }, { sc: 0.44, sp: 1.05, col: 'ink', sh: 'star', al: 0.95 }]
+  layers.forEach(L => { const off = Math.sin(u * TAU) * R0 * 0.55 * L.sp, ov = Math.cos(u * TAU) * R0 * 0.18 * L.sp; ctx.save(); ctx.globalAlpha = L.al; ctx.fillStyle = R(L.col, pal); tracePath(ctx, shapeOf(L.sh, x + off, y + ov, R0 * 0.72 * L.sc)); ctx.fill(); ctx.restore() })   // 3 capas separadas a distinta velocidad/amplitud -> parallax legible
+}
+FN['prisma-gira'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 52, u = ts / dur, sxv = Math.cos(u * TAU)
+  const w = R0 * Math.max(0.06, Math.abs(sxv)), H = R0 * 1.2
+  const g = ctx.createLinearGradient(x - w, 0, x + w, 0); g.addColorStop(0, R('accent', pal)); g.addColorStop(0.5, '#e2e9f7'); g.addColorStop(1, R('accent2', pal))
+  glow(ctx, rgba(R('accent', pal), 0.35), R0 * 0.3, () => { ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(x - w, y - H / 2); ctx.lineTo(x + w, y - H / 2); ctx.lineTo(x + w, y + H / 2); ctx.lineTo(x - w, y + H / 2); ctx.closePath(); ctx.fill() })
+}
+// ---- GLITCH (expansión) ----
+FN['circuito'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 64, u = ts / dur
+  const traces = [[[-1, -0.6], [0.2, -0.6], [0.2, 0.3], [0.9, 0.3]], [[-0.9, 0.5], [-0.2, 0.5], [-0.2, -0.3], [0.6, -0.3], [0.6, 0.7]], [[-0.6, -0.9], [-0.6, 0], [0.5, 0], [0.5, 0.9]]]
+  ctx.save()
+  traces.forEach((tr, ti) => { const pts = tr.map(q => [x + q[0] * R0, y + q[1] * R0]); const e = sm(clamp((u * 1.4 - ti * 0.15), 0, 1)); ctx.strokeStyle = rgba(R('accent', pal), 0.4); ctx.lineWidth = 2; drawPolyTrim(ctx, pts, e, rgba(R('accent', pal), 0.4), 2)
+    const pp = ((u * 1.5 + ti * 0.3) % 1) * (pts.length - 1), si = Math.floor(pp), sf = pp - si; if (si < pts.length - 1) { const px = lerp(pts[si][0], pts[si + 1][0], sf), py = lerp(pts[si][1], pts[si + 1][1], sf); glow(ctx, R('accent2', pal), 10, () => { ctx.fillStyle = R('ink', pal); ctx.beginPath(); ctx.arc(px, py, R0 * 0.045, 0, TAU); ctx.fill() }) }
+    pts.forEach(q => { ctx.fillStyle = rgba(R('accent2', pal), 0.6); ctx.beginPath(); ctx.arc(q[0], q[1], R0 * 0.03, 0, TAU); ctx.fill() }) })
+  ctx.restore()
+}
+FN['barra-carga'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 62, u = (ts % dur) / dur, prog = sm(clamp(u / 0.85, 0, 1)), W = R0 * 1.8, H = R0 * 0.5
+  ctx.fillStyle = rgba(R('ink', pal), 0.1); tracePath(ctx, rectPath(x - W / 2, y - H / 2, W, H, H / 2)); ctx.fill()
+  ctx.save(); tracePath(ctx, rectPath(x - W / 2, y - H / 2, W * Math.max(0.001, prog), H, H / 2)); ctx.clip()
+  glow(ctx, rgba(R('accent', pal), 0.4), R0 * 0.2, () => { ctx.fillStyle = grad(ctx, x, y, R0, pal); ctx.fillRect(x - W / 2, y - H / 2, W, H) })
+  ctx.globalCompositeOperation = 'lighter'; for (let s = -2; s < prog * 20; s++) { const sx = x - W / 2 + (s * R0 * 0.2 + (ts * R0 * 0.6) % (R0 * 0.4)); ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.beginPath(); ctx.moveTo(sx, y - H / 2); ctx.lineTo(sx + R0 * 0.1, y - H / 2); ctx.lineTo(sx - R0 * 0.1, y + H / 2); ctx.lineTo(sx - R0 * 0.2, y + H / 2); ctx.closePath(); ctx.fill() }
+  ctx.restore()
+  ctx.fillStyle = R('ink', pal); ctx.font = `bold ${R0 * 0.28}px ui-monospace,monospace`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(Math.round(prog * 100) + '%', x, y - H)
+}
+FN['senal-datos'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 64, u = ts / dur, cols = 14, rows = 10, bw = R0 * 1.8 / cols, bh = R0 * 2 / rows, scan = (u * cols * 1.5) % cols
+  ctx.save(); ctx.beginPath(); ctx.rect(x - R0 * 0.9, y - R0, R0 * 1.8, R0 * 2); ctx.clip()
+  for (let c = 0; c < cols; c++) { const cx = x - R0 * 0.9 + c * bw, near = Math.exp(-Math.abs(c - scan) * 0.6); for (let seg = 0; seg < rows; seg++) { if (hashN(c * 31 + seg * 7) > 0.55) continue; const pulse = 0.25 + 0.75 * near * (0.5 + 0.5 * Math.sin(ts * 4 + seg)); ctx.globalAlpha = pulse; ctx.fillStyle = R(near > 0.5 ? 'ink' : seg > 6 ? 'accent2' : 'accent', pal); ctx.fillRect(cx + 1, y - R0 + seg * bh, bw - 2, bh - 2) } }   // menor densidad + onda de escaneo L->R + brillo que respira -> transmisión
+  ctx.restore(); ctx.globalAlpha = 1
+}
+// ---- NATURALEZA (expansión) ----
+FN['tesla-arc'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 60
+  ctx.save(); ctx.globalCompositeOperation = 'lighter'
+  for (let b = 0; b < 3; b++) { const pts = [[x - R0 * 0.85, y]]; const steps = 10; for (let i = 1; i < steps; i++) { const f = i / steps, off = Math.sin(f * 8 + ts * 6 + b * 2) * R0 * 0.35 * Math.sin(f * PI) + (hashN(b * 13 + i + Math.floor(ts * 8)) - 0.5) * R0 * 0.15; pts.push([x - R0 * 0.85 + f * R0 * 1.7, y + off]) } pts.push([x + R0 * 0.85, y])
+    ctx.strokeStyle = rgba(R('accent2', pal), 0.35); ctx.lineWidth = R0 * 0.1; ctx.lineCap = 'round'; ctx.beginPath(); tracePts(ctx, pts, false); ctx.stroke(); ctx.strokeStyle = '#dfeaff'; ctx.lineWidth = R0 * 0.03; ctx.beginPath(); tracePts(ctx, pts, false); ctx.stroke() }
+  glow(ctx, R('accent2', pal), 12, () => { for (const s of [-1, 1]) { ctx.fillStyle = R('accent', pal); ctx.beginPath(); ctx.arc(x + s * R0 * 0.85, y, R0 * 0.1, 0, TAU); ctx.fill() } }); ctx.restore()
+}
+FN['petalos'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 66
+  for (let i = 0; i < 22; i++) { const d = CLOUD[i * 4], life = ((ts / dur) * (0.4 + d.rr * 0.5) + d.k) % 1, py = y - R0 + life * R0 * 2.2, px = x + d.hx * R0 + Math.sin(life * 6 + d.ph) * R0 * 0.3, flip = Math.abs(Math.cos(ts * 3 + d.ph)); ctx.save(); ctx.globalAlpha = 0.85 * Math.sin(life * PI + 0.3); ctx.translate(px, py); ctx.rotate(d.ph + life * 4); ctx.scale(Math.max(0.15, flip), 1); ctx.fillStyle = R(i % 3 ? 'accent' : 'accent2', pal); tracePath(ctx, dropPath(0, 0, R0 * 0.11 * d.sz)); ctx.fill(); ctx.restore() }
+  ctx.globalAlpha = 1
+}
+FN['gravity-well'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 66, u = ts / dur, mx = x + Math.cos(u * TAU) * R0 * 0.4, my = y + Math.sin(u * TAU) * R0 * 0.4, n = 10, sp = R0 * 1.8 / n
+  ctx.save()
+  for (let i = 0; i <= n; i++) for (let j = 0; j <= n; j++) { const gx = x - R0 * 0.9 + i * sp, gy = y - R0 * 0.9 + j * sp, dx = gx - mx, dy = gy - my, dd = Math.hypot(dx, dy) + R0 * 0.12, pull = R0 * 1.5 / (1 + Math.pow(dd / R0 * 2.2, 2)); const px = gx - dx / dd * pull, py = gy - dy / dd * pull, near = clamp(pull / (R0 * 0.4), 0, 1); ctx.globalAlpha = 0.3 + near * 0.6; ctx.fillStyle = R(near > 0.5 ? 'accent2' : 'accent', pal); ctx.beginPath(); ctx.arc(px, py, R0 * 0.018 + near * R0 * 0.04, 0, TAU); ctx.fill() }   // malla que se comba hacia la masa (pozo visible)
+  glow(ctx, R('accent2', pal), 12, () => { ctx.globalAlpha = 1; ctx.fillStyle = R('ink', pal); ctx.beginPath(); ctx.arc(mx, my, R0 * 0.06, 0, TAU); ctx.fill() }); ctx.restore(); ctx.globalAlpha = 1
+}
+FN['remolino-hojas'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 66
+  ctx.save()
+  for (let i = 0; i < 20; i++) { const d = CLOUD[i * 5], a = d.a + ts * (0.8 + d.rr) + d.rr * 6, rr = R0 * (0.2 + ((ts * 0.15 + d.k) % 1) * 0.9), px = x + Math.cos(a) * rr, py = y + Math.sin(a) * rr; ctx.save(); ctx.globalAlpha = 0.8; ctx.translate(px, py); ctx.rotate(a + ts * 2); ctx.scale(Math.max(0.2, Math.abs(Math.cos(ts * 3 + d.ph))), 1); ctx.fillStyle = R(i % 3 === 0 ? 'accent2' : 'accent', pal); tracePath(ctx, dropPath(0, 0, R0 * 0.1 * d.sz)); ctx.fill(); ctx.restore() }
+  ctx.restore()
+}
+// ---- UI (expansión) ----
+FN['donut-progress'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 62, u = (ts % dur) / dur, e = sm(clamp(u / 0.85, 0, 1)), ec = Math.min(e, 0.9995)
+  ctx.strokeStyle = rgba(R('ink', pal), 0.1); ctx.lineWidth = R0 * 0.22; ctx.beginPath(); ctx.arc(x, y, R0 * 0.8, 0, TAU); ctx.stroke()
+  glow(ctx, rgba(R('accent', pal), 0.4), R0 * 0.3, () => { ctx.strokeStyle = grad(ctx, x, y, R0, pal); ctx.lineWidth = R0 * 0.22; ctx.lineCap = 'round'; ctx.beginPath(); ctx.arc(x, y, R0 * 0.8, -HALF_PI, -HALF_PI + TAU * ec); ctx.stroke() })
+  ctx.fillStyle = R('ink', pal); ctx.font = `bold ${R0 * 0.42}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(Math.round(e * 100) + '', x, y)
+}
+FN['toggle-switch'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 56, u = (ts % dur) / dur, on = u % 1 < 0.5, prog = on ? sm(clamp((u % 0.5) / 0.28, 0, 1)) : 1 - sm(clamp(((u - 0.5)) / 0.28, 0, 1)), tw = R0 * 1.5, th = R0 * 0.72
+  ctx.fillStyle = prog > 0.5 ? R('accent', pal) : rgba(R('ink', pal), 0.18); tracePath(ctx, rectPath(x - tw / 2, y - th / 2, tw, th, th / 2)); ctx.fill()
+  const thumbx = lerp(x - tw / 2 + th / 2, x + tw / 2 - th / 2, prog), sq = 1 + 0.14 * Math.sin(prog * PI)
+  glow(ctx, rgba(R('accent', pal), 0.4), 8, () => { ctx.fillStyle = R('ink', pal); ctx.beginPath(); ctx.ellipse(thumbx, y, th * 0.36 * sq, th * 0.36 / sq, 0, 0, TAU); ctx.fill() })
+}
+FN['waveform'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 66, u = ts / dur, n = 30, bw = R0 * 1.8 / n
+  for (let i = 0; i < n; i++) { const h = R0 * (0.1 + 0.9 * Math.abs(Math.sin(i * 0.5 + u * TAU * 2) * Math.cos(i * 0.2 - u * TAU))); const bx = x - R0 * 0.9 + i * bw; ctx.fillStyle = grad(ctx, x, y, R0, pal); tracePath(ctx, rectPath(bx + bw * 0.15, y - h, bw * 0.7, h * 2, bw * 0.3)); ctx.fill() }
+}
+FN['wifi-bars'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 60, u = (ts % dur) / dur, n = 4
+  for (let i = 0; i < n; i++) { const bh = R0 * (0.35 + i * 0.42), bx = x - R0 * 0.7 + i * R0 * 0.45
+    ctx.fillStyle = rgba(R('ink', pal), 0.12); tracePath(ctx, rectPath(bx, y + R0 * 0.7 - bh, R0 * 0.26, bh, R0 * 0.08)); ctx.fill()   // ghost siempre presente (contenedor no se vacía)
+    const on = clamp(u * 1.2 * n - i, 0, 1) * (u > 0.85 ? 1 - (u - 0.85) / 0.15 : 1); if (on > 0.02) { const e = backOut(clamp(on, 0, 1)); ctx.save(); ctx.translate(bx + R0 * 0.13, y + R0 * 0.7); ctx.scale(1, Math.max(0.02, e)); glow(ctx, rgba(R('accent', pal), 0.3), 6, () => { ctx.fillStyle = grad(ctx, x, y, R0, pal); tracePath(ctx, rectPath(-R0 * 0.13, -bh, R0 * 0.26, bh, R0 * 0.08)); ctx.fill() }); ctx.restore() } }
+}
+// ---- KINÉTICO (expansión) ----
+FN['implosion'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 66, u = (ts % dur) / dur
+  ctx.save(); ctx.globalCompositeOperation = 'lighter'
+  if (u < 0.5) { const k = u / 0.5; for (let i = 0; i < 40; i++) { const d = STARS[i * 3], rr = R0 * 1.3 * (1 - easeInCubic(k)); ctx.globalAlpha = k; ctx.fillStyle = R(d.k > 0.5 ? 'accent' : 'accent2', pal); ctx.beginPath(); ctx.arc(x + Math.cos(d.a) * rr, y + Math.sin(d.a) * rr, R0 * 0.03, 0, TAU); ctx.fill() } }
+  else { const k = (u - 0.5) / 0.5; for (let i = 0; i < 3; i++) { const kk = clamp(k * 1.3 - i * 0.12, 0, 1); ctx.globalAlpha = (1 - kk) * 0.9; ctx.strokeStyle = R('accent', pal); ctx.lineWidth = R0 * 0.08 * (1 - kk); ctx.beginPath(); ctx.arc(x, y, R0 * 1.3 * kk, 0, TAU); ctx.stroke() } const fl = Math.max(0, 1 - k * 6); if (fl > 0) { ctx.globalAlpha = fl; ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(x, y, R0 * 0.3, 0, TAU); ctx.fill() } }
+  ctx.restore(); ctx.globalAlpha = 1
+}
+FN['destello'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 60, u = (ts % dur) / dur, fl = clamp(u / 0.08, 0, 1) * Math.exp(-u * 7)   // rampa de entrada (sin pop) + caída empinada (sin cola muerta)
+  if (fl < 0.01) return
+  ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = fl
+  glow(ctx, R('accent', pal), 20, () => { ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(x, y, R0 * 0.18 * (0.5 + fl), 0, TAU); ctx.fill() })
+  ctx.strokeStyle = 'rgba(255,255,255,0.9)'
+  for (const [ln, wd] of [[1.05, 0.06], [0.7, 0.13]]) for (let i = 0; i < 4; i++) { const a = i / 4 * TAU + u * 0.5 + (i % 2 ? 0.4 : 0); ctx.lineWidth = R0 * wd * fl; ctx.beginPath(); ctx.moveTo(x - Math.cos(a) * R0 * ln * fl, y - Math.sin(a) * R0 * ln * fl); ctx.lineTo(x + Math.cos(a) * R0 * ln * fl, y + Math.sin(a) * R0 * ln * fl); ctx.stroke() }
+  ctx.restore(); ctx.globalAlpha = 1
+}
+FN['vortice'] = (ctx, ts, dur, x, y, pal, p) => {
+  const R0 = p.size || 66, u = ts / dur
+  ctx.save(); ctx.globalCompositeOperation = 'lighter'
+  for (let m = 0; m < 4; m++) { const off = m / 4 * TAU; ctx.strokeStyle = rgba(R(m % 2 ? 'accent' : 'accent2', pal), 0.6); ctx.lineWidth = R0 * 0.06; ctx.lineCap = 'round'; ctx.beginPath(); for (let i = 0; i <= 50; i++) { const f = i / 50, t2 = off + f * 4 + u * TAU, rr = R0 * f * 1.2, px = x + Math.cos(t2) * rr, py = y + Math.sin(t2) * rr; i ? ctx.lineTo(px, py) : ctx.moveTo(px, py) } ctx.stroke() }
+  glow(ctx, R('accent', pal), 12, () => { ctx.fillStyle = R('ink', pal); ctx.beginPath(); ctx.arc(x, y, R0 * 0.07, 0, TAU); ctx.fill() }); ctx.restore()
+}
+
 // helpers de forma
 function shapeOf(kind, x, y, r) {
   return kind === 'circle' ? circlePath(x, y, r)
@@ -585,6 +941,10 @@ export const FX_CATS = [
   { key: 'glitch', title: 'Glitch / Digital', note: 'RGB tear, scanlines CRT, lluvia matrix, holograma y disolución en píxeles.' },
   { key: 'naturaleza', title: 'Naturaleza', note: 'Llama, rayo, brasas, nieve, burbujas y auroras — física con senos y ruido semilla.' },
   { key: 'ui', title: 'UI / Data', note: 'Ecualizador, barras que crecen, spinner, check y radar — motion de producto.' },
+  { key: 'geometria', title: 'Geometría', note: 'Mandalas, caleidoscopios, espirógrafos, moiré, túneles y redes — simetría matemática.' },
+  { key: 'espacio', title: 'Espacio', note: 'Campos de estrellas, órbitas, galaxias, cometas, constelaciones y agujeros negros.' },
+  { key: 'abstracto', title: 'Abstracto', note: 'Op-art, ondas, espirales hipnóticas, plasma y curvas paramétricas.' },
+  { key: 'trazo', title: 'Trazo / Line-art', note: 'Firmas, flechas, corchetes, garabatos y ondas que se dibujan solas.' },
 ]
 export const FX = [
   { id: 'despegue-gelatina', cat: 'liquido', label: 'Despegue gelatina', dur: 2.6, params: { size: 62 } },
@@ -646,6 +1006,60 @@ export const FX = [
   { id: 'spinner-gusano', cat: 'ui', label: 'Spinner gusano', dur: 2.0, params: { size: 60 } },
   { id: 'check-draw', cat: 'ui', label: 'Check animado', dur: 2.4, params: { size: 58 } },
   { id: 'radar', cat: 'ui', label: 'Radar', dur: 3.0, params: { size: 66 } },
+  { id: 'donut-progress', cat: 'ui', label: 'Progreso donut', dur: 2.6, params: { size: 62 } },
+  { id: 'toggle-switch', cat: 'ui', label: 'Toggle', dur: 3.0, params: { size: 56 } },
+  { id: 'waveform', cat: 'ui', label: 'Onda de audio', dur: 2.4, params: { size: 66 } },
+  { id: 'wifi-bars', cat: 'ui', label: 'Señal wifi', dur: 2.4, params: { size: 60 } },
+  { id: 'mandala', cat: 'geometria', label: 'Mandala', dur: 6.0, params: { size: 62 } },
+  { id: 'kaleidoscopio', cat: 'geometria', label: 'Caleidoscopio', dur: 5.0, params: { size: 64 } },
+  { id: 'espirografo', cat: 'geometria', label: 'Espirógrafo', dur: 5.0, params: { size: 64 } },
+  { id: 'lissajous', cat: 'geometria', label: 'Lissajous', dur: 4.0, params: { size: 64 } },
+  { id: 'grilla-onda', cat: 'geometria', label: 'Grilla en onda', dur: 3.0, params: { size: 66 } },
+  { id: 'moire', cat: 'geometria', label: 'Moiré', dur: 4.0, params: { size: 66 } },
+  { id: 'hex-pulso', cat: 'geometria', label: 'Hexágonos que laten', dur: 2.6, params: { size: 64 } },
+  { id: 'tunel', cat: 'geometria', label: 'Túnel hexagonal', dur: 3.0, params: { size: 70 } },
+  { id: 'red-nodos', cat: 'geometria', label: 'Red de nodos', dur: 3.0, params: { size: 66 } },
+  { id: 'flor-vida', cat: 'geometria', label: 'Flor de la vida', dur: 3.0, params: { size: 60 } },
+  { id: 'campo-estrellas', cat: 'espacio', label: 'Campo de estrellas', dur: 3.0, params: { size: 70 } },
+  { id: 'orbita-planeta', cat: 'espacio', label: 'Planeta y luna', dur: 4.0, params: { size: 60 } },
+  { id: 'galaxia-espiral', cat: 'espacio', label: 'Galaxia espiral', dur: 6.0, params: { size: 68 } },
+  { id: 'cometa-cruza', cat: 'espacio', label: 'Cometa', dur: 3.0, params: { size: 66 } },
+  { id: 'constelacion', cat: 'espacio', label: 'Constelación', dur: 3.5, params: { size: 66 } },
+  { id: 'agujero-negro', cat: 'espacio', label: 'Agujero negro', dur: 5.0, params: { size: 66 } },
+  { id: 'meteoros', cat: 'espacio', label: 'Lluvia de meteoros', dur: 3.0, params: { size: 70 } },
+  { id: 'sistema-orbital', cat: 'espacio', label: 'Sistema orbital', dur: 5.0, params: { size: 66 } },
+  { id: 'ondas-lineas', cat: 'abstracto', label: 'Líneas en onda', dur: 3.0, params: { size: 68 } },
+  { id: 'op-circulos', cat: 'abstracto', label: 'Op-art círculos', dur: 3.0, params: { size: 66 } },
+  { id: 'rayas-onda', cat: 'abstracto', label: 'Rayas onduladas', dur: 3.0, params: { size: 66 } },
+  { id: 'puntos-onda', cat: 'abstracto', label: 'Puntos en onda', dur: 3.0, params: { size: 66 } },
+  { id: 'espiral-hipnotica', cat: 'abstracto', label: 'Espiral hipnótica', dur: 4.0, params: { size: 66 } },
+  { id: 'tunel-cuadrados', cat: 'abstracto', label: 'Túnel de cuadrados', dur: 3.0, params: { size: 68 } },
+  { id: 'plasma-formas', cat: 'abstracto', label: 'Plasma', dur: 5.0, params: { size: 66 } },
+  { id: 'curva-parametrica', cat: 'abstracto', label: 'Curva paramétrica', dur: 4.0, params: { size: 66 } },
+  { id: 'firma', cat: 'trazo', label: 'Firma', dur: 3.0, params: { size: 64 } },
+  { id: 'flecha-draw', cat: 'trazo', label: 'Flecha', dur: 2.4, params: { size: 64 } },
+  { id: 'subrayado', cat: 'trazo', label: 'Subrayado', dur: 2.6, params: { size: 64 } },
+  { id: 'corchetes', cat: 'trazo', label: 'Corchetes', dur: 2.6, params: { size: 64 } },
+  { id: 'garabato', cat: 'trazo', label: 'Garabato', dur: 3.0, params: { size: 64 } },
+  { id: 'onda-audio', cat: 'trazo', label: 'Onda trazada', dur: 3.0, params: { size: 66 } },
+  { id: 'veta-marmol', cat: 'liquido', label: 'Mármol', dur: 5.0, params: { size: 62 } },
+  { id: 'catenaria-miel', cat: 'liquido', label: 'Hilo de miel', dur: 3.0, params: { size: 50 } },
+  { id: 'malla-gradiente', cat: 'liquido', label: 'Malla de gradiente', dur: 5.0, params: { size: 62 } },
+  { id: 'corona-splash', cat: 'liquido', label: 'Corona de salpicadura', dur: 2.6, params: { size: 62 } },
+  { id: 'cubo-3d', cat: 'profundidad', label: 'Cubo 3D', dur: 4.0, params: { size: 46 } },
+  { id: 'iso-piramide', cat: 'profundidad', label: 'Pirámide isométrica', dur: 2.6, params: { size: 50 } },
+  { id: 'parallax-capas', cat: 'profundidad', label: 'Parallax de capas', dur: 4.0, params: { size: 64 } },
+  { id: 'prisma-gira', cat: 'profundidad', label: 'Prisma que gira', dur: 2.6, params: { size: 52 } },
+  { id: 'circuito', cat: 'glitch', label: 'Circuito', dur: 3.0, params: { size: 64 } },
+  { id: 'barra-carga', cat: 'glitch', label: 'Barra de carga', dur: 2.8, params: { size: 62 } },
+  { id: 'senal-datos', cat: 'glitch', label: 'Señal de datos', dur: 3.0, params: { size: 64 } },
+  { id: 'tesla-arc', cat: 'naturaleza', label: 'Arco eléctrico', dur: 2.4, params: { size: 60 } },
+  { id: 'petalos', cat: 'naturaleza', label: 'Pétalos que caen', dur: 4.0, params: { size: 66 } },
+  { id: 'gravity-well', cat: 'naturaleza', label: 'Pozo gravitacional', dur: 4.0, params: { size: 66 } },
+  { id: 'remolino-hojas', cat: 'naturaleza', label: 'Remolino de hojas', dur: 4.0, params: { size: 66 } },
+  { id: 'implosion', cat: 'kinetico', label: 'Implosión', dur: 2.6, params: { size: 66 } },
+  { id: 'destello', cat: 'kinetico', label: 'Destello', dur: 1.4, params: { size: 60 } },
+  { id: 'vortice', cat: 'kinetico', label: 'Vórtice', dur: 4.0, params: { size: 66 } },
 ]
 export const FX_IDS = FX.map(f => f.id)
 const BY_ID = new Map(FX.map(f => [f.id, f]))
