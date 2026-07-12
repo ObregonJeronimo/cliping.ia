@@ -216,10 +216,11 @@ export const GALLERY = [
   // palabra, TYPEWRITER, CAMARA de escena, IMAGEN 3D (flip Y + wobble), y capas fx (Animaciones FX).
   {
     id: 'g.urvid', name: 'Urvid — Promo FX', mode: 'dark', scenes: [
-      // 1 · GANCHO (propuesta de valor, sin logo) — tipografia kinetica + camara viva
-      { id: 's1', dur: 3.0, background: { ref: 'bg.spotlight' }, camera: { kind: 'kinetic', amt: 1 }, layers: [
-        { type: 'text', y: 0.44, text: 'Videos de marketing', style: { size: 56, weight: 900, color: 'ink', maxW: 0.9 }, anim: { in: 'kinetic', stagger: 0.16, out: 'fade' } },
-        { type: 'text', y: 0.6, text: 'que venden.', style: { size: 62, weight: 900, color: 'accent2' }, anim: { in: 'kinetic', delay: 0.95, stagger: 0.12, out: 'fade' } },
+      // 1 · GANCHO (propuesta de valor, sin logo) — TEXTO PINNED (sin cámara) + MASK-REVEAL + leading
+      //     apretado + jerarquía (kicker chico -> hero de acento). Nace desde un borde, asienta y CONGELA.
+      { id: 's1', dur: 3.0, background: { ref: 'bg.spotlight' }, layers: [
+        { type: 'text', y: 0.455, text: 'Videos de marketing', pinned: true, style: { size: 38, weight: 800, color: 'ink', maxW: 0.9, maxLines: 1, tracking: 0.5 }, anim: { in: 'mask-reveal', delay: 0.15, revealDur: 0.72, out: 'fade' } },
+        { type: 'text', y: 0.56, text: 'que venden.', pinned: true, style: { size: 76, weight: 900, color: 'accent2', maxW: 0.92, maxLines: 1 }, anim: { in: 'mask-reveal', delay: 0.34, revealDur: 0.72, out: 'fade' } },
       ] },
       // 2 · COMO (tu idea) — typewriter
       { id: 's2', dur: 2.6, background: { ref: 'bg.glow-corner' }, camera: { kind: 'push', amt: 0.7 }, layers: [

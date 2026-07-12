@@ -20,6 +20,7 @@ const PRESETS_IN = {
   cascade: () => ({ alpha: 1 }),                                // el alpha lo maneja el barrido per-caracter del texto
   kinetic: () => ({ alpha: 1 }),                               // texto: revelado por PALABRA (render.js)
   typewriter: () => ({ alpha: 1 }),                            // texto: tipeo char-por-char (render.js)
+  'mask-reveal': () => ({ alpha: 1 }),                         // texto: línea nace desde un borde (render.js)
   flip3d: (e) => ({ alpha: clamp(e * 1.4, 0, 1) }),            // imagen: giro 3D en Y (el squash lo aplica render.js)
 }
 export const ANIM_IN = Object.keys(PRESETS_IN)

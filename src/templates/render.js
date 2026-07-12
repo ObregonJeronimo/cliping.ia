@@ -5,7 +5,7 @@
 import {
   drawShape, circlePath, rectPath, starPath, linePath, polygonPath, tracePath,
   drawAnimatedText, wrapFit, drawText, fitFont, track,
-  clamp, rgba, fontStr, TAU, win, expoOut,
+  clamp, lerp, rgba, fontStr, TAU, win, expoOut, spring, backOut,
 } from '../aemotion/index.js'
 import { resolveColor } from './palette.js'
 import { animState, cubicOut } from './anim.js'
@@ -159,6 +159,31 @@ function renderText(ctx, layer, st, x, y, ts, sc, rv) {
     if (done ? (Math.sin(ts * 6) > 0) : true) { ctx.fillStyle = resolveColor('accent', pal); ctx.fillRect(x0 + cw + 4, y - size * 0.44, Math.max(2, size * 0.06), size * 0.88) }
     return
   }
+  // MASK-REVEAL: cada línea nace desde atrás de un borde (clip fijo + sube de +112% a 0 con expoOut),
+  // leading APRETADO por cap-height, y motion-blur por-línea gateado por velocidad (research: "animá la
+  // entrada, después asentá y congelá; nada se mueve al leer"). El texto va PINNED (sin cámara).
+  if (inKind === 'mask-reveal') {
+    const A = layer.anim || {}
+    const mr = wrapFit(ctx, String(val), sty.size || Math.round(W * 0.12), maxW, 14, weight, family, sty.maxLines || 3, tracking)
+    ctx.font = fontStr(weight, mr.size, family); ctx.letterSpacing = tracking + 'px'; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'
+    const cm = ctx.measureText('Hg'); const capH = cm.actualBoundingBoxAscent || mr.size * 0.72, desc = cm.actualBoundingBoxDescent || mr.size * 0.2
+    const lineStep = mr.size * (sty.leading == null ? 1.02 : sty.leading)   // APRETADO (display), no 1.2+
+    const n = mr.lines.length, y0 = y - ((n - 1) * lineStep) / 2 + capH * 0.32   // centrado óptico sobre la tinta
+    const delay = A.delay || 0, stag = A.stagger || 0.1, rdur = A.revealDur || 0.7, boxH = capH + desc + 3
+    const dfr = (1 / 30) / rdur   // paso de localT por frame (para la velocidad del blur)
+    mr.lines.forEach((ln, i) => {
+      const baseline = y0 + i * lineStep, t0 = delay + i * stag
+      const localT = clamp(win(ts, t0, t0 + rdur), 0, 1)
+      const dyOf = lt => (1 - expoOut(clamp(lt, 0, 1))) * boxH * 1.12
+      const dy = dyOf(localT), dyPrev = dyOf(localT - dfr), vpx = Math.abs(dy - dyPrev)
+      ctx.save(); ctx.beginPath(); ctx.rect(x - maxW / 2, baseline - capH - 2, maxW, boxH); ctx.clip(); ctx.fillStyle = color
+      const N = clamp(Math.round(vpx / 2.2), 1, 4)   // ~1 sub-muestra cada 2px de estela; nítido en reposo
+      if (N > 1) { for (let s = 0; s < N; s++) { const dg = lerp(dyPrev, dy, s / (N - 1)); ctx.save(); ctx.globalAlpha *= 1 / N; ctx.fillText(ln, x, baseline + dg); ctx.restore() } }
+      else ctx.fillText(ln, x, baseline + dy)
+      ctx.restore()
+    })
+    return
+  }
   const wr = wrapFit(ctx, String(val), sty.size || Math.round(W * 0.13), maxW, 14, weight, family, sty.maxLines || 3, tracking)
   const lineH = wr.size * (sty.leading || 1.06)
   if (inKind === 'cascade') {
@@ -199,11 +224,16 @@ export function drawTemplateFrame(ctx, t, rv) {
   const ts = Math.max(0, t - sc.t0)
   paintTemplateBackground(ctx, sc.background, ts, rv.palette, W, H)
   const cam = sceneCamera(sc.camera, ts, sc.dur)
-  ctx.save()
-  if (cam) { ctx.translate(W / 2, H / 2); ctx.scale(cam.z, cam.z); ctx.translate(-W / 2 + cam.dx, -H / 2 + cam.dy) }
   const layers = sc.layers || []
-  for (let i = 0; i < layers.length; i++) { const l = layers[i]; l._i = i; try { renderLayer(ctx, l, ts, sc, rv) } catch { /* capa problematica no rompe el frame */ } }
-  ctx.restore()
+  // Cámara por-capa: las capas PINNED (texto de lectura) ignoran la cámara y quedan clavadas en
+  // pantalla; solo las no-pinned (fondo/objetos) paralajan. Desacople texto↔cámara (research).
+  for (let i = 0; i < layers.length; i++) {
+    const l = layers[i]; l._i = i
+    ctx.save()
+    if (cam && !l.pinned) { ctx.translate(W / 2, H / 2); ctx.scale(cam.z, cam.z); ctx.translate(-W / 2 + cam.dx, -H / 2 + cam.dy) }
+    try { renderLayer(ctx, l, ts, sc, rv) } catch { /* capa problematica no rompe el frame */ }
+    ctx.restore()
+  }
 }
 
 // extensión aproximada de una capa en PIXELES (medio-ancho/medio-alto), para hit-test y para dibujar
