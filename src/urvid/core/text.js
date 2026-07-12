@@ -73,7 +73,10 @@ export function wrap(ctx, str, base, maxW, min, weight, family, maxLines = 2, tr
 }
 
 // dibuja UNA linea fiteada+clipeada. Devuelve el tamano usado.
+// Si el caller pide maxLines>1 (con maxW), delega a drawWrapped -> ENVUELVE en vez de clipear con "…"
+// (varias escenas pasaban maxLines:2 esperando wrap; drawText lo ignoraba y elidia). Fix transversal.
 export function drawText(ctx, str, x, y, opts = {}) {
+  if (opts.maxLines > 1 && opts.maxW > 0) return drawWrapped(ctx, str, x, y, opts)
   const { size = 40, weight = 700, family = 'Inter', align = 'center', baseline = 'middle', maxW = 0, min = 14, color = '#fff', shadow, alpha = 1 } = opts
   ctx.save(); ctx.globalAlpha *= clamp(alpha, 0, 1)
   const tr = trackFor(weight, size, opts)

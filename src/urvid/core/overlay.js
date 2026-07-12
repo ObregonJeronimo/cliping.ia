@@ -2,6 +2,8 @@
 // PURO respecto al PRNG del motor (no consume r()). NULL-SAFE: video.timeline ausente o sin overlays -> no dibuja nada
 // -> gates byte-identicos. Coordenadas en espacio LOGICO del video (video.W x video.H) -> correcto en 9:16/4:5/1:1.
 import { EASE, sample, posAt } from './anim.js'
+import { wrap } from './text.js'
+import { fontStr } from './util.js'
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v))
 
@@ -44,12 +46,21 @@ function paintOverlay(ctx, ov, local, getImg, VW, VH) {
     const img = getImg && getImg(ov.imgSrc)
     if (img && img.width) { const w = ov.w || img.width, h = ov.h || img.height; ctx.drawImage(img, -w / 2, -h / 2, w, h) }
   } else {
-    const st = ov.style || {}, size = st.size || 48, txt = ov.text || ''
-    ctx.font = `${st.weight || 800} ${size}px ${st.font || 'Inter, system-ui, sans-serif'}`
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
-    if (st.stroke) { ctx.lineWidth = size * 0.14; ctx.strokeStyle = st.stroke; ctx.lineJoin = 'round'; ctx.strokeText(txt, 0, 0) }
-    ctx.fillStyle = st.color || '#ffffff'
-    ctx.fillText(txt, 0, 0)
+    // TEXTO del usuario: FIT + WRAP para que NUNCA se salga del cuadro (antes era fillText crudo -> un
+    // texto largo desbordaba el frame). Ancho útil = distancia al borde más cercano (el texto va centrado
+    // en x), en coords LOCALES (el ctx ya está escalado por `scale`). Envuelve hasta 3 líneas y achica.
+    const st = ov.style || {}, size = st.size || 48, txt = String(ov.text || '')
+    const weight = st.weight || 800, family = st.font || 'Inter, system-ui, sans-serif'
+    const pad = VW * 0.045, maxScreen = 2 * Math.max(24, Math.min(x - pad, VW - pad - x))
+    const maxW = maxScreen / Math.max(0.2, scale)
+    const wr = wrap(ctx, txt, size, maxW, 14, weight, family, st.maxLines || 3)
+    const lineH = wr.size * (st.lh || 1.16), total = (wr.lines.length - 1) * lineH
+    ctx.font = fontStr(weight, wr.size, family); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+    wr.lines.forEach((ln, i) => {
+      const yy = -total / 2 + i * lineH
+      if (st.stroke) { ctx.lineWidth = wr.size * 0.14; ctx.strokeStyle = st.stroke; ctx.lineJoin = 'round'; ctx.strokeText(ln, 0, yy) }
+      ctx.fillStyle = st.color || '#ffffff'; ctx.fillText(ln, 0, yy)
+    })
   }
   ctx.restore()
 }
