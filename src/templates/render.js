@@ -10,6 +10,7 @@ import {
 import { resolveColor } from './palette.js'
 import { animState } from './anim.js'
 import { drawObject } from './objects.js'
+import { drawFX } from './fx.js'
 import { paintTemplateBackground } from './backgrounds.js'
 
 function sceneAt(rv, t) { const ss = rv.scenes; for (let i = ss.length - 1; i >= 0; i--) if (t >= ss[i].t0) return ss[i]; return ss[0] }
@@ -54,6 +55,8 @@ function renderLayer(ctx, layer, ts, sc, rv) {
 
   if (layer.type === 'object') {
     drawObject(ctx, layer.objectId || 'spin', ts, sc.dur, { x, y, pal, params: layer.params })
+  } else if (layer.type === 'fx') {
+    drawFX(ctx, layer.fxId || 'blob-respira', ts, sc.dur, { x, y, pal, params: layer.params })
   } else if (layer.type === 'shape') {
     const s = layer.shapeStyle || {}
     const path = (SHAPES[layer.shape] || SHAPES.circle)(x, y, s)
