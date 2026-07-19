@@ -259,7 +259,7 @@ export function makeVideo(brief = {}) {
       track: 3 + lr() * 8,
       ring: ['dash', 'solid', 'none'][(lr() * 3) | 0],
       orn: ['line', 'line', 'corners', 'dots'][(lr() * 4) | 0],
-      heroIdx: (lr() * 3) | 0,
+      heroIdx: (lr() * 3) | 0, heroR: lr(), heroMode: ['solo', 'solo', 'orbit', 'macro'][(lr() * 4) | 0],
       hp: [lr(), lr(), lr()],
     }
     scenes.length = 0

@@ -364,19 +364,38 @@ function oShield(ctx, t, sw, ac, fonts, brand, hp) {
   ctx.stroke()
   ctx.restore()
 }
+function oPhoto(ctx, t, sw, ac, fonts, brand, hp, env) {
+  const img = env && env.getImg && env.mediaImage ? env.getImg(env.mediaImage) : null
+  if (!img) { oCard(ctx, t, sw, ac, fonts, brand, hp); return }
+  const PW = 210 + hp[0] * 40, PH = PW * (1.1 + hp[1] * 0.25), x = -PW / 2, y = -PH / 2
+  ctx.save(); ctx.rotate(-0.04 + hp[2] * 0.08)
+  shadowUnder(ctx, () => { rr(ctx, x - 8, y - 8, PW + 16, PH + 16, 10); ctx.fillStyle = '#0e0f13'; ctx.fill() })
+  rr(ctx, x - 8, y - 8, PW + 16, PH + 16, 10); ctx.fillStyle = '#14151b'; ctx.fill()
+  ctx.save(); rr(ctx, x, y, PW, PH, 4); ctx.clip()
+  const iw = img.width, ih = img.height, sc = Math.max(PW / iw, PH / ih)
+  ctx.drawImage(img, (iw - PW / sc) / 2, (ih - PH / sc) / 2, PW / sc, PH / sc, x, y, PW, PH)
+  const dk = ctx.createLinearGradient(0, y, 0, y + PH)
+  dk.addColorStop(0, 'rgba(0,0,0,0)'); dk.addColorStop(1, 'rgba(0,0,0,0.35)')
+  ctx.fillStyle = dk; ctx.fillRect(x, y, PW, PH)
+  ctx.restore()
+  specSweep(ctx, () => rr(ctx, x - 8, y - 8, PW + 16, PH + 16, 10), sw, 40, PW, 0.14)
+  rr(ctx, x - 7.5, y - 7.5, PW + 15, PH + 15, 9.5); ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.lineWidth = 1; ctx.stroke()
+  ctx.fillStyle = rgba(ac, 0.95); ctx.fillRect(x, y + PH + 12, PW * 0.34, 2.5)
+  ctx.restore()
+}
 // pools POR RUBRO (el heroIdx del look elige adentro; hp varia las proporciones)
 const POOLS = {
-  finanzas: [oCard, oChart, oShield],
-  tech: [oWindow, oChart, oCard],
-  default: [oWindow, oCard, oChart],
-  educacion: [oBook, oWindow, oShield],
-  gastronomia: [oPlate, oCup, oTicket],
-  belleza: [oBottle, oTag, oCapsule],
-  moda: [oBag, oTag, oBottle],
-  salud: [oCapsule, oShield, oRing],
-  eventos: [oTicket, oCup, oBag],
-  fitness: [oDumbbell, oRing, oWindow],
-  inmobiliaria: [oHouse, oCard, oShield],
+  finanzas: [oCard, oChart, oShield, oRing, oHouse, oCapsule],
+  tech: [oWindow, oChart, oShield, oRing, oCard, oCapsule],
+  default: [oShield, oRing, oChart, oWindow, oTicket, oBook],
+  educacion: [oBook, oShield, oWindow, oRing, oTicket, oCup],
+  gastronomia: [oPlate, oCup, oTicket, oTag, oBag, oRing],
+  belleza: [oBottle, oTag, oCapsule, oRing, oBag, oCup],
+  moda: [oBag, oTag, oBottle, oTicket, oRing, oShield],
+  salud: [oCapsule, oShield, oRing, oBottle, oBook, oWindow],
+  eventos: [oTicket, oCup, oBag, oRing, oTag, oShield],
+  fitness: [oDumbbell, oRing, oShield, oWindow, oCapsule, oChart],
+  inmobiliaria: [oHouse, oCard, oShield, oChart, oWindow, oRing],
 }
 
 // ---------- ESCENAS ----------
@@ -416,13 +435,25 @@ register({
     const { pal, content, fonts } = env, lk = lookOf(env)
     plate(ctx, t, pal.accent, lk)
     const pool = POOLS[env.rubro] || POOLS.default
-    const hero = pool[(lk.o.heroIdx || 0) % pool.length]
+    const hR = lk.o.heroR != null ? lk.o.heroR : 0
+    // FOTO REAL de la pagina como heroe (adaptacion maxima) ~45% de las veces cuando existe
+    const usePhoto = env.mediaImage && hR < 0.45
+    const hero = usePhoto ? oPhoto : pool[(hR * pool.length) | 0]
+    const mode = lk.o.heroMode || 'solo'
     const en = spring(win(t, 0.05, 1.0), 0.6, 11)
     ctx.save()
     ctx.translate(W / 2, H * 0.4 + (1 - en) * H * 0.45 + Math.sin(t * 1.4) * 4)
+    if (mode === 'orbit') {
+      const op = win(t, 0.7, 1.8)
+      ctx.save(); ctx.strokeStyle = rgba(pal.accent, 0.4); ctx.lineWidth = 1.4; ctx.setLineDash([3, 10])
+      ctx.rotate(t * 0.12)
+      ctx.beginPath(); ctx.ellipse(0, 0, 175 * eo(op), 66 * eo(op), -0.3, 0, TAU); ctx.stroke(); ctx.restore()
+    }
     ctx.rotate(-0.03 + Math.sin(t * 0.9) * 0.012)
-    ctx.scale(1.2, 1.2)
-    hero(ctx, t, win(t, 0.9, 2.1), pal.accent, fonts, content.brand, lk.o.hp)
+    const mScale = mode === 'macro' ? 1.75 : 1.2
+    if (mode === 'macro') ctx.translate(26, -16)
+    ctx.scale(mScale, mScale)
+    hero(ctx, t, win(t, 0.9, 2.1), pal.accent, fonts, content.brand, lk.o.hp, env)
     ctx.restore()
     drawText(ctx, ('CONOCÉ ' + (content.brand || '')).toUpperCase(), W / 2, H * 0.7, { size: 13, weight: 600, family: fonts.num || fonts.accent, upper: true, tracking: 5, maxW: W * 0.8, alpha: win(t, 1.4, 1.9) * 0.85, color: lk.dim })
     maskLine(ctx, content.tagline || content.claim || '', W / 2, H * 0.77, 24, win(t, 1.6, 2.2), { weight: 600, family: fonts.display, color: lk.ink, maxW: W * 0.86 })
