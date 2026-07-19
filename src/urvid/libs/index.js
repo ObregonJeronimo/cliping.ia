@@ -5,7 +5,8 @@ import './typography/index.js'    // pairings de fuentes (display/text/accent)
 import './backgrounds/index.js'   // fondos full-canvas
 import './substrates/index.js'    // texturas/overlays tenues
 import './atmosphere/index.js'    // capas de luz/atmosfera
-import './scenes/index.js'        // scene-layouts: contenido por beat
+import './scenes/index.js'
+import './scenes/premium.js'   // direccion de arte PREMIUM NOIR (weight 0: solo via brief.style)        // scene-layouts: contenido por beat
 import './markkit/index.js'       // graficos/formas/iconos/decoradores
 import './datakit/index.js'       // data-viz: numeros/barras/anillos
 import './motion/index.js'        // personalidades de movimiento (el director elige una -> env.motion)

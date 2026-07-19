@@ -243,7 +243,22 @@ export function makeVideo(brief = {}) {
     }
   })
 
-  return {
+  // DIRECCION DE ARTE "PREMIUM NOIR" (opt-in brief.style==='premium'): reemplaza el arco por la gramatica
+  // DIRIGIDA de la pieza NOVA (apertura->statement->objeto-heroe->punch->rafaga->cierre) y silencia las
+  // capas decorativas: el look manda de punta a punta (acento = MARCA, tipografia = pairing del video,
+  // objeto heroe = rubro, copy = analisis). PURO (cero PRNG nuevo): sin style es un no-op byte-identico.
+  const premium = brief.style === 'premium'
+  if (premium) {
+    scenes.length = 0
+    const G = [['scene.prem.open', 1.9], ['scene.prem.statement', 2.7], ['scene.prem.hero', 3.0]]
+    if ((renderContent.stats && renderContent.stats.length) || renderContent.cta) G.push(['scene.prem.punch', 2.3])
+    if ((renderContent.bullets && renderContent.bullets.length >= 2) || /[·,]/.test(renderContent.claim || '')) G.push(['scene.prem.rafaga', 2.6])
+    G.push(['scene.prem.outro', 2.8])
+    start = 0
+    G.forEach((g, i) => { scenes.push({ start, dur: g[1], sceneId: g[0], seed: (seed ^ hashStr('prem' + i)) >>> 0, bgSeed: (seed ^ hashStr('prembg' + i)) >>> 0 }); start += g[1] })
+  }
+
+  const _out = {
     brand, rubro, tone, seed, seriousness, energy, palette, fonts, format, W: dims.w, H: dims.h, xf, logo: brief.logo || null, mediaImage: brief.mediaImage || null,
     bgId: bg ? bg.id : null, bgSeed: (seed ^ hashStr('bg')) >>> 0,
     subId: sub ? sub.id : null, subSeed: (seed ^ hashStr('sub')) >>> 0,
@@ -259,4 +274,11 @@ export function makeVideo(brief = {}) {
     scenes, duration: start || 8,
     recipe: { color: colMod ? colMod.id : null, type: typMod ? typMod.id : null, bg: bg ? bg.id : null, sub: sub ? sub.id : null, atm: atm ? atm.id : null, motion: motMod ? motMod.id : null, typekit: tkMod ? tkMod.id : null, mark: markMod ? markMod.id : null, editmark: editMod ? editMod.id : null, transition: trMod ? trMod.id : null, post: postMod ? postMod.id : null, layout: layMod ? layMod.id : null, scenes: scenes.map(s => s.sceneId) },   // la "carta" del video
   }
+  if (premium) {
+    // el look pinta TODO (placa noir + acabado por escena): las capas globales se apagan para que nada compita
+    _out.bgId = null; _out.subId = null; _out.atmId = null; _out.markId = null; _out.editMarkId = null
+    _out.postId = null; _out.typekitId = null
+    _out.style = 'premium'; _out.recipe.style = 'premium'
+  }
+  return _out
 }
