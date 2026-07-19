@@ -9,7 +9,7 @@
 import { derivePalette } from './palette.js'
 import { FORMATS, clamp, hexToHsl, hslToHex } from './util.js'
 import { query, get } from './registry.js'
-import { seedFor, weightedPick, hashStr, stableSeed, shuffled } from './prng.js'
+import { seedFor, weightedPick, hashStr, stableSeed, shuffled, mulberry32 } from './prng.js'
 import { analyzeContent, buildArcSmart, sceneBias, atmoSubBias, colorEnergyBias, audienceWarmBias } from './strategy.js'
 import { fitWeight, canonRubro, layoutBias, RUBRO_HUE } from './fit.js'
 import { fitContent, BUDGETS, BUDGETS_WIDE } from './script.js'
@@ -249,13 +249,26 @@ export function makeVideo(brief = {}) {
   // objeto heroe = rubro, copy = analisis). PURO (cero PRNG nuevo): sin style es un no-op byte-identico.
   const premium = brief.style === 'premium'
   if (premium) {
+    // LOOK del video (UNA vez, determinista): placa (noir/carbon/tinta-de-marca/crema) x case x tracking x
+    // anillo x ornamento x objeto-heroe del pool del rubro x hp continuo -> con las 33 tipografias y el
+    // acento de marca continuo, CIENTOS de direcciones distintas del mismo lenguaje. Namespace propio.
+    const lr = mulberry32((seed ^ hashStr('premlook')) >>> 0)
+    const premLook = {
+      plate: ['noir', 'noir', 'carbon', 'tinta', 'crema'][(lr() * 5) | 0],
+      case: lr() < 0.55 ? 'upper' : 'title',
+      track: 3 + lr() * 8,
+      ring: ['dash', 'solid', 'none'][(lr() * 3) | 0],
+      orn: ['line', 'line', 'corners', 'dots'][(lr() * 4) | 0],
+      heroIdx: (lr() * 3) | 0,
+      hp: [lr(), lr(), lr()],
+    }
     scenes.length = 0
     const G = [['scene.prem.open', 1.9], ['scene.prem.statement', 2.7], ['scene.prem.hero', 3.0]]
     if ((renderContent.stats && renderContent.stats.length) || renderContent.cta) G.push(['scene.prem.punch', 2.3])
     if ((renderContent.bullets && renderContent.bullets.length >= 2) || /[·,]/.test(renderContent.claim || '')) G.push(['scene.prem.rafaga', 2.6])
     G.push(['scene.prem.outro', 2.8])
     start = 0
-    G.forEach((g, i) => { scenes.push({ start, dur: g[1], sceneId: g[0], seed: (seed ^ hashStr('prem' + i)) >>> 0, bgSeed: (seed ^ hashStr('prembg' + i)) >>> 0 }); start += g[1] })
+    G.forEach((g, i) => { scenes.push({ start, dur: g[1], sceneId: g[0], seed: (seed ^ hashStr('prem' + i)) >>> 0, bgSeed: (seed ^ hashStr('prembg' + i)) >>> 0, look: premLook }); start += g[1] })
   }
 
   const _out = {
