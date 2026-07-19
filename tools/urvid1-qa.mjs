@@ -80,11 +80,16 @@ for (const rubro of RUBROS) {
       for (let i = 1; i < video.scenes.length; i++) {
         const b = video.scenes[i].start, uniqA = [...(fp[i - 1] || [])].filter(x => !(fp[i] || new Set()).has(x)), uniqB = [...(fp[i] || [])].filter(x => !(fp[i - 1] || new Set()).has(x))
         if (!uniqA.length || !uniqB.length) continue
+        // CONTRATO NUEVO (solape controlado, fix frame-vacio): B JAMAS antes de p=0.33; A puede coexistir
+        // en p>=0.33 SOLO como fantasma (alpha <=8% por construccion del fade eOutCubic(p/0.62)).
+        const xfW = video.xf || 0.4
         for (const dt of [0.08, 0.16, 0.24, 0.32]) {
           const c = ctxFor(); telStart(); drawFrame(c, b + dt, video); const recs = telStop(); transChecked++
           const present = new Set(recs.map(r => r.raw))
           const aIn = uniqA.some(x => present.has(x)), bIn = uniqB.some(x => present.has(x))
-          if (aIn && bIn) { defects.timing.push(`${tag} ${video.scenes[i - 1].sceneId}->${video.scenes[i].sceneId} @t=${(b + dt).toFixed(2)}: A y B juntos`); break }
+          const pp = dt / xfW
+          if (bIn && pp < 0.33) { defects.timing.push(`${tag} ${video.scenes[i - 1].sceneId}->${video.scenes[i].sceneId} @t=${(b + dt).toFixed(2)}: B entra ANTES de p=0.33 (p=${pp.toFixed(2)})`); break }
+          if (aIn && pp >= 0.66) { defects.timing.push(`${tag} ${video.scenes[i - 1].sceneId}->${video.scenes[i].sceneId} @t=${(b + dt).toFixed(2)}: A sigue visible tarde (p=${pp.toFixed(2)})`); break }
         }
       }
     }

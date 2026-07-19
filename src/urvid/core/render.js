@@ -238,17 +238,21 @@ export function drawFrame(ctx, t, video, opts = {}) {
     const bufA = transitionBuf(0, bw, bh), bufB = bufA ? transitionBuf(1, bw, bh) : null
     const blit = (c, buf, a) => { c.save(); c.globalAlpha *= clamp(a, 0, 1); c.drawImage(buf, 0, 0, W, H); c.restore() }
     if (bufA && bufB) {
-      if (p < 0.5) {
+      // SOLAPE CONTROLADO (fix del FRAME VACIO cazado por urvid1-cuts en cada corte): A sale en [0, 0.62]
+      // (fade rapido: alpha <=8% desde p~0.35) y B entra desde p=0.35 con su geometria -> NUNCA un frame sin
+      // contenido. El "texto pisado" que motivo el dip secuenciado no vuelve: cuando B aparece, A es fantasma.
+      if (p < 0.62) {
         const ca = bufA.getContext('2d'); ca.setTransform(1, 0, 0, 1, 0, 0); ca.clearRect(0, 0, bufA.width, bufA.height); ca.setTransform(ss, 0, 0, ss, 0, 0); paintScene(ca, trans.A, t, video, motion, typekit, layout)
         // WHIP de salida (OLA VISUAL): A no solo se apaga — se VA con un empuje de escala hacia el corte
         // (transformacion sobre el buffer ya pintado: costo cero, determinista).
-        const _we = eOutCubic(p / 0.5)
+        const _we = eOutCubic(p / 0.62)
         ctx.save(); ctx.globalAlpha *= clamp(1 - _we, 0, 1)
         ctx.translate(W / 2, H / 2); ctx.scale(1 + 0.06 * _we * _we, 1 + 0.06 * _we * _we); ctx.translate(-W / 2, -H / 2)
         ctx.drawImage(bufA, 0, 0, W, H); ctx.restore()
-      } else {
+      }
+      if (p >= 0.35) {
         const cb = bufB.getContext('2d'); cb.setTransform(1, 0, 0, 1, 0, 0); cb.clearRect(0, 0, bufB.width, bufB.height); cb.setTransform(ss, 0, 0, ss, 0, 0); paintScene(cb, trans.B, t, video, motion, typekit, layout)
-        transition.render(ctx, eOutCubic((p - 0.5) / 0.5), () => {}, c => blit(c, bufB, 1), { W, H })   // A ya no esta; B entra
+        transition.render(ctx, eOutCubic((p - 0.35) / 0.65), () => {}, c => blit(c, bufB, 1), { W, H })   // B entra mientras A se desvanece
       }
     } else {
       // fallback sin buffers (Node pelado): corte seco a mitad de ventana (sin solape, determinismo intacto).
