@@ -263,12 +263,30 @@ export function makeVideo(brief = {}) {
       hp: [lr(), lr(), lr()],
     }
     scenes.length = 0
-    const G = [['scene.prem.open', 1.9], ['scene.prem.statement', 2.7], ['scene.prem.hero', 3.0]]
-    if ((renderContent.stats && renderContent.stats.length) || renderContent.cta) G.push(['scene.prem.punch', 2.3])
-    if ((renderContent.bullets && renderContent.bullets.length >= 2) || /[·,]/.test(renderContent.claim || '')) G.push(['scene.prem.rafaga', 2.6])
-    G.push(['scene.prem.outro', 2.8])
+    // 5 GRAMATICAS CURADAS (no aleatorias: cada una con logica narrativa + reglas de sentido). El seed
+    // elige entre las VALIDAS para este contenido; los slots opcionales (punch/rafaga) solo con material real.
+    const hasStats = !!(renderContent.stats && renderContent.stats.length)
+    const hasPunch = hasStats || !!renderContent.cta
+    const hasRafaga = (renderContent.bullets && renderContent.bullets.length >= 2) || /[·,]/.test(renderContent.claim || '')
+    const O = 'scene.prem.open', S = 'scene.prem.statement', Hh = 'scene.prem.hero', P = 'scene.prem.punch', R = 'scene.prem.rafaga', X = 'scene.prem.outro'
+    const GRAMS = [
+      // clasica: restraint -> mensaje -> producto -> prueba -> beneficios -> cierre (el ad de marca completo)
+      { id: 'clasica', w: 1.2, ok: true, G: [[O, 1.9], [S, 2.7], [Hh, 3.0], ...(hasPunch ? [[P, 2.3]] : []), ...(hasRafaga ? [[R, 2.6]] : []), [X, 2.8]] },
+      // producto-primero: el OBJETO abre (product-first, estilo keynote) -> mensaje -> beneficios -> dato -> cierre
+      { id: 'producto', w: 1.1, ok: true, G: [[Hh, 3.2], [S, 2.6], ...(hasRafaga ? [[R, 2.4]] : []), ...(hasPunch ? [[P, 2.2]] : []), [X, 2.8]] },
+      // dato-primero: el NUMERO como gancho (solo con stat REAL) -> mensaje -> producto -> beneficios -> cierre
+      { id: 'dato', w: 1.0, ok: hasStats, G: [[P, 2.6], [S, 2.5], [Hh, 2.9], ...(hasRafaga ? [[R, 2.4]] : []), [X, 2.8]] },
+      // rafaga-primero: beneficios al beat como gancho (energia) -> producto -> mensaje -> cierre
+      { id: 'rafaga', w: 0.9, ok: hasRafaga, G: [[R, 2.7], [Hh, 2.9], [S, 2.5], ...(hasPunch ? [[P, 2.2]] : []), [X, 2.8]] },
+      // editorial: minimal con AIRE (sin punch/rafaga a proposito): restraint -> mensaje -> producto -> cierre
+      { id: 'editorial', w: 0.8, ok: true, G: [[O, 2.1], [S, 2.9], [Hh, 3.2], [X, 3.0]] },
+    ].filter(g => g.ok)
+    let gr = lr() * GRAMS.reduce((a, g) => a + g.w, 0)
+    let gram = GRAMS[0]
+    for (const g of GRAMS) { gr -= g.w; if (gr <= 0) { gram = g; break } }
+    premLook.gram = gram.id
     start = 0
-    G.forEach((g, i) => { scenes.push({ start, dur: g[1], sceneId: g[0], seed: (seed ^ hashStr('prem' + i)) >>> 0, bgSeed: (seed ^ hashStr('prembg' + i)) >>> 0, look: premLook }); start += g[1] })
+    gram.G.forEach((g, i) => { scenes.push({ start, dur: g[1], sceneId: g[0], seed: (seed ^ hashStr('prem' + i)) >>> 0, bgSeed: (seed ^ hashStr('prembg' + i)) >>> 0, look: premLook }); start += g[1] })
   }
 
   const _out = {
