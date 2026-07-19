@@ -234,7 +234,10 @@ export function makeVideo(brief = {}) {
     // brief.mediaImage -> los briefs sin foto (los 9 gates) corren byte-identico. No pisa una escena lockeada (!lockId).
     if (brief.mediaImage && mod && !lockId && i === 0) mod = get('scene.showcase.fullbleed') || mod   // i===0 es SIEMPRE el opener (hero/hook/statement) -> la foto ES el opener (como los competidores), sea cual sea su categoria
     if (mod) {
-      const dur = clamp((beat.dur || 3.4) * durK, 2.2, 6)
+      // DURACION POR VALOR (bug de Jero "beats vacios"): una escena-puente de UNA palabra no puede durar 4s.
+      // Los interstitials capean a 2.3s SIN importar durK (el tiempo sobrante se reparte al resto via renormalizado).
+      const _capHi = beat.category === 'connectors/interstitial' ? 2.3 : 6
+      const dur = clamp((beat.dur || 3.4) * durK, 2.2, _capHi)
       const sc = { start, dur, sceneId: mod.id, seed: (seed ^ hashStr('s' + i)) >>> 0, bgSeed: (seed ^ hashStr('bg|' + beat.category + '|' + i)) >>> 0 }   // variante de fondo por beat (mismo eje 'bg' que video.bgSeed)
       scenes.push(sc); start += dur
     }

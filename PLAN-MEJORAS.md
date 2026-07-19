@@ -59,9 +59,9 @@
 - [ ] **[M] Key-wash por escena: cada corte RE-ILUMINA el cuadro** — el guard de texto es un radial FIJO (W/2, H*0.47) para todas las escenas de todos los videos (`render.js:171-176`). Fix: wash lineal direccional por sc.seed anclado a lightAng (fallback propio), alpha 0.05-0.09, respiración lenta. ⚠️ El "crossfade gratis" es falso (el find salta a B en el corte): blend explícito en la ventana xf o ease-in-only documentado.
 
 ### 🎞️ QA DE MOVIMIENTO + bugs a ojo de Jero (2026-07-05) — van PRIMERO
-- [ ] **[S] Herramienta `urvid1-cuts.mjs`**: mp4 → frames 30fps en VENTANAS DE CORTE (12 por grilla 4×3, regla de Jero) + fin de cada escena → los cortes/transiciones/reveals se ven frame a frame (los contact-sheets estáticos no los muestran).
+- [x] **[S] Herramienta `urvid1-cuts.mjs`**: mp4 → frames 30fps en VENTANAS DE CORTE (12 por grilla 4×3, regla de Jero) + fin de cada escena → los cortes/transiciones/reveals se ven frame a frame (los contact-sheets estáticos no los muestran).
 - [ ] **[M] Textos cortados a mitad de palabra** ("Ejemplo Palabr") — cazar con urvid1-cuts la causa (¿reveal de typekit que no completa antes del corte/freeze?); GATE nuevo: a fin-de-escena−0.05s y en el freeze de XF, telemetría = texto COMPLETO.
-- [ ] **[M] Beats vacíos**: escenas de 1 palabra + dibujo durando ~4s — duración por VALOR: interstitial/word ≤ ~2s; nunca beat completo para una palabra.
+- [x] **[M] Beats vacíos**: escenas de 1 palabra + dibujo durando ~4s — duración por VALOR: interstitial/word ≤ ~2s; nunca beat completo para una palabra.
 - [ ] **[M] Mezcla del arco**: "casi siempre listas o cosas sin sentido" — revisar pesos/uso de checklist-lists y qué contenido cae en cada escena de urvid IA.
 - [ ] **[M] Advanced: curar pickers** — esconder/pesar opciones malas o sin sentido que hoy se ofrecen al usuario.
 - [ ] **[M] Morphs bajo revisión de movimiento** (kinetic/motion): con urvid1-cuts decidir cuáles se quedan; un morph mediocre resta — mejor 8 transiciones excelentes que 16 flojas.
