@@ -4,6 +4,7 @@
 // pisando a B. Sin buffer disponible (Node pelado) cae al modo directo previo. ctx en espacio logico 405x720.
 import { get } from './registry.js'
 import { W, H, inv, clamp, eOutCubic, setFormat, rgba } from './util.js'
+import { seedFor } from './prng.js'
 import { resolveMotion } from './motion.js'
 import { resolveTypekit } from './typekit.js'
 import { resolveTransition } from './transitions.js'
@@ -116,8 +117,22 @@ function paintScene(ctx, sc, t, video, motion, typekit, layout) {
   // mueve el contenido, a proposito (si en el futuro se quiere un push cinematografico, va sobre el FONDO, no el texto).
   const z = 1 + (en.scale || 0) * k * intK
   const ox = (en.dx || 0) * k * intK, oy = (en.dy || 0) * k * intK, rot = (en.rotate || 0) * k * intK
+  // MICRO-CAMARA (OLA MOVIMIENTO — finales congelados): drift MONOTONICO por progreso de escena
+  // (zoom 1.2-2.5% + pan <=6px), amplitud x motion.life (reducedMotion -> 0 -> byte-identico) y atenuada
+  // por seriedad. MONOTONICO = sin reversiones = sin el crawl que mato al ken-burns sinusoidal viejo.
+  // Params frescos de sc.seed por llamada (seek-safe). CRITERIO DE REVERT: si Jero ve texto "vibrando"
+  // en el preview, poner CAM_K = 0 y este bloque queda inerte.
+  const CAM_K = 1
+  const rc = seedFor((sc.seed >>> 0), 'cam')
+  const camIn = rc() < 0.55, camZ = 0.012 + rc() * 0.013
+  const camPX = (rc() - 0.5) * 10, camPY = (rc() - 0.5) * 8
+  const _life = clamp(motion && motion.life != null ? motion.life : 0, 0, 1)
+  const camK = CAM_K * _life * clamp(1 - (s - 0.5) * 0.8, 0.6, 1.2)
+  const _prog = clamp(ts / (sc.dur || 3), 0, 1)
+  const cz = 1 + camZ * camK * (camIn ? _prog : 1 - _prog)
+  const cox = camPX * camK * _prog, coy = camPY * camK * _prog
   ctx.save()
-  ctx.translate(W / 2 + ox, H / 2 + oy); ctx.rotate(rot); ctx.scale(z, z); ctx.translate(-W / 2, -H / 2)
+  ctx.translate(W / 2 + ox + cox, H / 2 + oy + coy); ctx.rotate(rot); ctx.scale(z * cz, z * cz); ctx.translate(-W / 2, -H / 2)
   mod.render(ctx, ts, { pal: video.palette, content: sc.content || video.content, fonts: video.fonts, seed: sc.seed, energy: 1, sceneDur: sc.dur, motion, typekit, layout, mediaImage: video.mediaImage, getImg: _getImg })   // sc.content = override de texto POR-ESCENA del timeline (item timeline Fase 2); ausente -> content global -> byte-identico (gates intactos)
   ctx.restore()
 }
