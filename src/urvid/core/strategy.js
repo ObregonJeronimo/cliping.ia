@@ -3,7 +3,7 @@
 // abre con un numero, una pregunta abre con un hook de pregunta, una lista usa checklist, etc. PURO + DETERMINISTA
 // (las señales salen del texto; el seed solo desempata/varia). El analisis REAL desde una URL (perception) es la
 // pieza de PRODUCCION pendiente (engancha con backend/) y alimentaria estas mismas señales.
-import { seedFor, shuffled } from './prng.js'
+import { seedFor, shuffled, weightedPick } from './prng.js'
 
 const NUM = /(?:^|[^\w])([+\-]?\$?\s?\d[\d.,]*\s?(?:%|x|k|mil|millones)?)/i
 // SEÑALES de AUDIENCIA en el copy (es-AR): URGENCIA/escasez (mueve el arco al gancho y favorece CTA), NAMING explicito
@@ -64,28 +64,30 @@ export function buildArcSmart(seed, sig, awareness = 'solution', seriousness = 0
   // (most/product) o nombrado explicito -> abrir con STATEMENT en vez de hero generico. Solo re-proposita el HERO default
   // (nunca roba un hook: question/data/unaware/problem/urgency conservan prioridad).
   if (open === 'openers/hero' && sig.longClaim && (awareness === 'most' || awareness === 'product' || sig.audienceNamed)) open = 'statements/editorial'
-  // beats que pide el contenido (en orden de prioridad), sin repetir
-  const want = []
-  if (sig.hasData) want.push(r() < 0.5 ? 'data/single' : 'data/multi')
-  if (sig.hasCompare) want.push('lists/comparison')
-  if (sig.hasList && !sig.hasCompare) want.push('lists/checklist')
-  if (sig.hasProof) want.push('social/proof')
-  // SIEMPRE garantizar un beat de MENSAJE (statement/checklist): un video no puede ser SOLO numeros/datos/proof
-  // (eso se veia como "una escena con un numero y nada mas"). Si no hay beat de texto, anteponemos el statement.
-  const hasText = c => c === 'statements/editorial' || c === 'lists/checklist'
-  if (sig.longClaim || !want.length || !want.some(hasText)) want.unshift('statements/editorial')
-  const body = []
-  for (const c of want) if (body.indexOf(c) < 0 && body.length < 3) body.push(c)
-  // completar hasta 1-3 beats con cuerpo variado. SOLO beats de TEXTO (derivan del claim/tagline real): los beats
-  // de data/proof/comparison salen UNICAMENTE de `want` (señales reales) -> el director nunca rellena con un grafico
-  // o un testimonio cuando no hay datos que mostrar (eso obligaba a las escenas a fabricar numeros/citas).
-  // DURACION 'corto' alcanzable: el cuerpo se acota a 1 beat (arco de 3: opener+1+outro -> el target ~8s se logra).
-  // bodyCap se aplica DESPUES de consumir los mismos draws de r() (shuffled/target abajo) -> medio/largo byte-identicos.
+  // CUERPO por MUESTREO PONDERADO (bug de Jero "casi siempre listas"): antes las señales GARANTIZABAN su
+  // beat -> con brief completo el 100% de los videos salia hook+data+checklist+social EN ESE ORDEN (0%
+  // statements, medido en 200 seeds). Ahora las señales dan PESO y el seed ELIGE 2-3 beats sin reemplazo ->
+  // estructura VARIADA video a video, con las garantias de siempre: data/proof/comparison JAMAS sin señal
+  // real (peso 0 -> el director nunca fabrica numeros/citas) y SIEMPRE >=1 beat de MENSAJE (statement/checklist).
   const bodyCap = duration === 'corto' ? 1 : 3
-  const filler = shuffled(r, ['statements/editorial', 'lists/checklist'])
-  const target = Math.min(bodyCap, Math.max(body.length, 1 + (r() * 3 | 0)))
-  for (const c of filler) { if (body.length >= target || body.length >= bodyCap) break; if (body.indexOf(c) < 0) body.push(c) }
-  const finalBody = body.slice(0, bodyCap)
+  const cand = [
+    ['statements/editorial', sig.longClaim ? 1.35 : 1.0],
+    ['data', sig.hasData ? 1.15 : 0],
+    ['lists/comparison', sig.hasCompare ? 1.15 : 0],
+    ['lists/checklist', sig.hasList ? (sig.hasCompare ? 0.7 : 1.1) : 0],
+    ['social/proof', sig.hasProof ? 0.95 : 0],
+  ].filter(c => c[1] > 0)
+  const target = Math.min(bodyCap, 2 + (r() < 0.45 ? 1 : 0))
+  const body = []
+  const pool = cand.slice()
+  while (body.length < target && pool.length) {
+    const pick = weightedPick(r, pool, c => c[1])
+    pool.splice(pool.indexOf(pick), 1)
+    body.push(pick[0] === 'data' ? (r() < 0.5 ? 'data/single' : 'data/multi') : pick[0])
+  }
+  const hasText = c => c === 'statements/editorial' || c === 'lists/checklist'
+  if (!body.some(hasText)) body[Math.max(0, body.length - 1)] = 'statements/editorial'
+  const finalBody = [...new Set(body)].slice(0, bodyCap)
   // CONNECTOR/INTERSTITIAL: un beat-PUENTE de una palabra entre dos beats de cuerpo (activa una categoria que existia
   // pero el arco nunca usaba). PRNG de NAMESPACE separado ('arc-conn') -> sus draws NO mueven la secuencia 'arc' (el
   // cuerpo NO se re-rollea, mismo brief+seed = mismo arco). Solo con >=2 body y duracion != corto (no infla el corto).

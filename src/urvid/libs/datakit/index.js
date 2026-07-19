@@ -1824,7 +1824,7 @@ register({
       if (i === 0) { ctx.save(); ctx.globalAlpha *= glow(t, 0, 0.6, 1); ctx.strokeStyle = pal.accent; ctx.lineWidth = 2; ctx.beginPath(); ctx.roundRect(x, y, cardW, cardH, 14); ctx.stroke(); ctx.restore() }
       else { ctx.strokeStyle = hairline(pal, 0.14); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.roundRect(x, y, cardW, cardH, 14); ctx.stroke() }
       drawText(ctx, statDisplay(rs[i], t, 0.2 + i * 0.08, 0.9 + i * 0.08), x + cardW / 2, y + cardH * 0.4, { size: 38, weight: 700, family: fonts.num || fonts.accent, maxW: cardW * 0.86, color: numColor(pal) })
-      drawText(ctx, shortLabel(rs[i].label, 2), x + cardW / 2, y + cardH * 0.74, { size: 14, weight: 600, family: fonts.text, maxW: cardW * 0.86, color: pal.dim })
+      drawText(ctx, shortLabel(rs[i].label, 2), x + cardW / 2, y + cardH * 0.74, { size: 14, min: 10, weight: 600, family: fonts.text, maxW: cardW * 0.86, color: pal.dim })   // min 10: la etiqueta ACHICA (size=min bloqueaba el fit -> '…')
       ctx.restore()
     }
   },

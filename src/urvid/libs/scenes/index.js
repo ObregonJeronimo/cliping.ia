@@ -707,15 +707,20 @@ register({
     // pildora CTA rellena de acento que crece, centrada en su slot
     const gp = M.settle(inv(t, 0.5, 1.2), { zeta: 0.5, freq: 2 })
     ctx.save(); ctx.font = `800 26px "${fonts.display}"`
-    const tw = Math.min(ct.w, ctx.measureText(cta).width), pw = tw + 56, ph = 56
+    // pildora de UNA linea: recorte por PALABRA al tamano REAL de dibujo (jamas "…"; patron arrowcta) + sin conectores colgando
+    let ctaP = String(cta)
+    while (ctaP.indexOf(' ') > 0 && ctx.measureText(ctaP).width > ct.w) ctaP = ctaP.slice(0, ctaP.lastIndexOf(' '))
+    const _DGH = ['y', 'e', 'o', 'u', 'de', 'del', 'la', 'el', 'los', 'las', 'a', 'al', 'en', 'con', 'para', 'por', 'que', 'tu', 'su', 'un', 'una', 'mas', 'sin', 'lo', 'te']
+    while (ctaP.indexOf(' ') > 0 && _DGH.includes(ctaP.slice(ctaP.lastIndexOf(' ') + 1).toLowerCase())) ctaP = ctaP.slice(0, ctaP.lastIndexOf(' '))
+    const tw = Math.min(ct.w, ctx.measureText(ctaP).width), pw = tw + 56, ph = 56
     ctx.translate(ct.cx, ct.cy); ctx.scale(0.85 + 0.15 * gp, 0.85 + 0.15 * gp); ctx.globalAlpha = inv(t, 0.5, 0.9)   // entra y queda quieta (sheen = vida; sin breathe -> el CTA no shimmerea)
     heroHalo(ctx, 0, 0, pw * 0.85, pal.accent, t, pal.tone)
     depthRect(ctx, -pw / 2, -ph / 2, pw, ph, ph / 2, pal.accent, pal.tone, 1)
     // VIDA: sheen recorre la pildora (DECO, continuo)
     if (gp > 0.9) rrSheen(ctx, -pw / 2, -ph / 2, pw, ph, t, { per: 3.4, strength: 0.4, tone: pal.tone })
-    drawText(ctx, cta, 0, 1, { size: 26, weight: 900, family: fonts.display, maxW: pw - 36, color: pal.onAccent })
+    drawText(ctx, ctaP, 0, 1, { size: 26, weight: 900, family: fonts.display, maxW: pw - 36, color: pal.onAccent })
     ctx.restore()
-    if (content.tagline && L.tag) drawText(ctx, content.tagline, L.tag.cx, L.tag.cy, { size: Math.min(L.tag.size, 18), weight: 600, family: fonts.text, maxW: L.tag.w, color: pal.dim, align: L.tag.align, alpha: inv(t, 0.8, 1.3) })
+    if (content.tagline && L.tag) drawWrapped(ctx, content.tagline, L.tag.cx, L.tag.cy, { size: Math.min(L.tag.size, 18), min: 12, weight: 600, family: fonts.text, maxW: L.tag.w, color: pal.dim, align: L.tag.align, maxLines: 2, lh: 1.22, alpha: inv(t, 0.8, 1.3) })   // WRAP: la tagline adversarial no entra en 1 linea al piso
   },
 })
 
@@ -1471,7 +1476,7 @@ register({
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
     // titular de confianza
-    drawWrapped(ctx, content.claim || content.tagline || 'Equipos que ya confian', cx, H * 0.3, { size: 30, weight: 900, family: fonts.display, maxW: W * 0.82, color: pal.ink, maxLines: 2, lh: 1.14, alpha: inv(t, 0.1, 0.6) })
+    drawWrapped(ctx, content.claim || content.tagline || 'Equipos que ya confian', cx, H * 0.3, { size: 30, min: 13, weight: 900, family: fonts.display, maxW: W * 0.82, color: pal.ink, maxLines: 3, lh: 1.14, alpha: inv(t, 0.1, 0.6) })
     // N chips con iniciales estables por seed (placeholders de logo). El ancho del chip
     // se deriva de la banda disponible para que SIEMPRE entre dentro del cuadro.
     const r = mulberry32((env.seed >>> 0) ^ 0x10c0)
@@ -1964,7 +1969,7 @@ register({
     const r = mulberry32((env.seed >>> 0) ^ 0xa11)
     const n = 5, rad = 26, overlap = rad * 1.3, rowW = (n - 1) * overlap + rad * 2
     avatarRow(ctx, cx - rowW / 2 + rad, H * 0.36, rad, n, r, M, t, pal, fonts, 0.2, 0.09)
-    drawWrapped(ctx, content.claim || content.tagline || 'Miles ya se sumaron esta semana', cx, H * 0.54, { size: 28, weight: 900, family: fonts.display, maxW: W * 0.82, color: pal.ink, maxLines: 2, lh: 1.14, alpha: inv(t, 0.45, 0.95), shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.4)' : null })
+    drawWrapped(ctx, content.claim || content.tagline || 'Miles ya se sumaron esta semana', cx, H * 0.54, { size: 28, min: 13, weight: 900, family: fonts.display, maxW: W * 0.82, color: pal.ink, maxLines: 3, lh: 1.14, alpha: inv(t, 0.45, 0.95), shadow: pal.tone === 'dark' ? 'rgba(0,0,0,0.4)' : null })
     // 5 estrellas + VIDA: titilan (escala+glow, fase por estrella)
     const fillP = M.ease(inv(t, 0.65, 1.25)) * 5, sr = 11, gap = 30, x0 = cx - gap * 2
     for (let i = 0; i < 5; i++) {
@@ -2264,12 +2269,17 @@ register({
   register: 'friendly', intensity: 'medium', tags: ['lista', 'badges', 'pildoras', 'wrap'], beat: 'value',
   render(ctx, t, env) {
     const { pal, content, fonts } = env, M = env.motion || _DM, TK = env.typekit || _DTK, cx = W / 2
-    const items = splitItems(content.claim || content.tagline || 'Rapido · Seguro · Simple · Sin limites', 5)
+    const items0 = splitItems(content.claim || content.tagline || 'Rapido · Seguro · Simple · Sin limites', 5)
     if (content.brand) drawText(ctx, (content.brand || '').toUpperCase(), cx, H * 0.3, { size: 16, weight: 700, family: eyebrowFamily(fonts), upper: true, color: pal.inkText, maxW: W * 0.78, alpha: inv(t, 0.05, 0.4) })
     // layout en filas: mide cada badge (tilde + texto) y los acomoda centrados con wrap
-    ctx.font = `700 20px "${fonts.text}"`
     const chipH = 46, padX = 18, tickW = 26, gap = 12, maxRowW = W * 0.86
-    const meas = items.map(it => Math.min(maxRowW - padX * 2 - tickW, ctx.measureText(it).width) + padX * 2 + tickW)
+    // fragmentos de PILDORA: recorte por PALABRA al piso real (10px) -> chips con palabras COMPLETAS, jamas
+    // "…" (el arco variado ahora manda claims adversariales aca y una pildora de una linea no envuelve).
+    const innerMax = maxRowW - padX * 2 - tickW
+    ctx.font = `700 10px "${fonts.text}"`
+    const items = items0.map(raw => { let s2 = String(raw); while (s2.indexOf(' ') > 0 && ctx.measureText(s2).width > innerMax) s2 = s2.slice(0, s2.lastIndexOf(' ')); return s2 })
+    ctx.font = `700 20px "${fonts.text}"`
+    const meas = items.map(it => Math.min(innerMax, ctx.measureText(it).width) + padX * 2 + tickW)
     const rowsArr = []; let row = [], rw = 0
     items.forEach((it, i) => { const w = meas[i]; if (rw + w + (row.length ? gap : 0) > maxRowW && row.length) { rowsArr.push({ row, rw }); row = []; rw = 0 } rw += w + (row.length ? gap : 0); row.push({ it, w }) })
     if (row.length) rowsArr.push({ row, rw })
@@ -2297,7 +2307,7 @@ register({
         ctx.save(); ctx.translate(cxx + padX + 4, cyr + chipH / 2); ctx.scale(tkb, tkb)
         if (tin >= 1) pulseGlow(ctx, pal.accent, t, { sp: 1.3, base: 0, amp: 3, ph: ci * 1.3 })
         tick(ctx, 0, 0, 9, M.ease(tin), pal.accent, 3); ctx.restore()
-        drawText(ctx, it, cxx + padX + tickW, cyr + chipH / 2, { size: 20, weight: 700, family: fonts.text, color: pal.ink, align: 'left', maxW: w - padX * 2 - tickW, alpha: tin })
+        drawText(ctx, it, cxx + padX + tickW, cyr + chipH / 2, { size: 20, min: 9, weight: 700, family: fonts.text, color: pal.ink, align: 'left', maxW: w - padX * 2 - tickW, alpha: tin })   // min 11: bullet largo ACHICA, jamas '…' (arco variado ahora si llega aca)
         cxx += w + gap
       })
     })
