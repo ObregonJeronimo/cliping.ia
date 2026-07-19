@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NOVA — demo de craft (Fable)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; height: 100%; background: #050507; display: grid; place-items: center; overflow: hidden; }
+  canvas { height: min(96vh, 96svh); aspect-ratio: 1080 / 1920; border-radius: 18px; box-shadow: 0 30px 120px rgba(0,0,0,.7); cursor: pointer; }
+  #hint { position: fixed; bottom: 14px; left: 0; right: 0; text-align: center; color: #6a6f60; font: 12px "Space Mono", monospace; letter-spacing: 2px; }
+</style>
+</head>
+<body>
+<canvas id="cv" width="1080" height="1920"></canvas>
+<div id="hint">CLICK: PAUSA · R: REINICIAR</div>
+<script type="module">
+  import { drawFrame, DUR, W, H } from './demo-nova.js'
+  const cv = document.getElementById('cv'), ctx = cv.getContext('2d')
+  let playing = true, t0 = 0, paused = 0
+  async function start() {
+    await document.fonts.load('900 100px "Archivo"'); await document.fonts.load('400 30px "Space Mono"')
+    t0 = performance.now()
+    const loop = now => {
+      const t = ((playing ? now - t0 : paused) / 1000) % DUR
+      ctx.setTransform(1, 0, 0, 1, 0, 0)
+      drawFrame(ctx, t)
+      requestAnimationFrame(loop)
+    }
+    requestAnimationFrame(loop)
+  }
+  cv.onclick = () => { if (playing) { paused = performance.now() - t0 } else { t0 = performance.now() - paused }; playing = !playing }
+  addEventListener('keydown', e => { if (e.key === 'r' || e.key === 'R') { t0 = performance.now(); paused = 0; playing = true } })
+  start()
+</script>
+</body>
+</html>
