@@ -5,12 +5,15 @@
 // puede pasar los 22 gates y aun asi ser indistinguible del anterior.
 //
 // Esto mide DISTRIBUCIONES sobre toda la matriz y escribe un reporte versionado en
-// tools/out/director-loop.md. Como esta commiteado, `git diff` sobre ese archivo muestra en una
+// docs/director/LOOP-REPORT.md. Como esta commiteado, `git diff` sobre ese archivo muestra en una
 // pantalla que le hizo un cambio del motor a la variedad de la salida — que es exactamente la
 // pregunta que ningun assert contesta.
 //
 // Uso:  node tools/director-loop.mjs            -> escribe el reporte y lo imprime
 //       node tools/director-loop.mjs 25         -> con 25 seeds por pagina (default 15)
+//
+// OJO con el destino: el reporte NO va a tools/out/ (esta gitignoreado, es salida descartable). Todo
+// su valor es que este VERSIONADO, asi que vive en docs/director/ junto a las otras docs del motor.
 import { createCanvas, GlobalFonts } from '@napi-rs/canvas'
 import { writeFileSync, readdirSync, readFileSync, existsSync, mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -25,7 +28,8 @@ import { drawFrame } from '../src/director/render/video.js'
 import { corpusHero } from '../src/director/render/draw.js'
 import { drawPlaca } from '../src/director/render/plate.js'
 
-const HERE = dirname(fileURLToPath(import.meta.url)), OUT = join(HERE, 'out')
+const HERE = dirname(fileURLToPath(import.meta.url))
+const OUT = join(HERE, '..', 'docs', 'director')   // versionado: el reporte se diffea, no se descarta
 mkdirSync(OUT, { recursive: true })
 try { GlobalFonts.loadFontsFromDir(join(HERE, 'fonts')) } catch {}
 
@@ -176,6 +180,6 @@ L.push(paginasMonotonas.length ? `**Paginas monotonas**: ${paginasMonotonas.join
 L.push('')
 
 const md = L.join('\n')
-writeFileSync(join(OUT, 'director-loop.md'), md)
+writeFileSync(join(OUT, 'LOOP-REPORT.md'), md)
 console.log(md)
-console.log('-> tools/out/director-loop.md')
+console.log('-> docs/director/LOOP-REPORT.md')

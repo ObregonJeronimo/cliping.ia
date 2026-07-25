@@ -443,7 +443,7 @@ lotties propios como acentos; objetos 3D (three ya está); modo craft completo.
   ganó a la escala de salida. Un track por propiedad, que es además lo que el editor de F5 necesita.
 - `dip-solapado` (el fallback) competía de igual a igual con las recetas específicas y ganaba la mitad
   de las veces → todos los cortes iguales. Y dos `flash-cut` seguidos leían como tic del motor.
-- [x] F4 — Loop de calidad (2026-07-25: `tools/director-loop.mjs` + `npm run loop` → reporte versionado en `tools/out/director-loop.md`)
+- [x] F4 — Loop de calidad (2026-07-25: `tools/director-loop.mjs` + `npm run loop` → reporte versionado en `docs/director/LOOP-REPORT.md`)
 
 **Por qué el reporte no es un gate.** Los gates contestan si un video está *roto*. Después de que
 dejan de encontrar nada, queda el problema que de verdad mata a un motor generativo: que los videos
