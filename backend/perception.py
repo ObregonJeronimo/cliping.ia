@@ -42,6 +42,28 @@ _SYS = (
     '- "seriousness": numero 0 a 1 (salud/finanzas alto ~0.8; gastronomia/moda bajo ~0.35)\n'
     '- "audience": objeto con A QUIEN le habla el reel, inferido de la pagina: {"who": "el publico objetivo en 2-5 palabras (ej: duenos de PyMEs, madres jovenes, gamers, profesionales de la salud)", "register": "formal" | "casual" | "warm" (como hablarle a ese publico), "awareness": UNA de "unaware" | "problem" | "solution" | "product" | "most" = la ETAPA DE CONSCIENCIA del comprador: unaware (no sabe que tiene el problema), problem (siente el problema pero no busca solucion), solution (busca soluciones), product (compara productos/marcas), most (listo para comprar, solo necesita el empujon)}. Es CLAVE: define el gancho y el tono del reel.\n'
     '- "confidence": numero 0 a 1 = que tan SEGURO estas de tu inferencia de rubro+audience DADO lo que viste (baja ~0.3 si la pagina tiene poco texto, es ambigua o casi solo tenes el screenshot; alta ~0.9 si el contenido es claro y explicito). Se honesto: es una señal interna para decidir si conviene re-analizar, no una nota de calidad.\n'
+    # SEMANTICA: la LECTURA de la pagina para el motor Director. No es copy: es el inventario de lo que la pagina
+    # REALMENTE dice, y de el sale QUE ESCENAS existen (sin pasos no hay escena de proceso, sin precio no hay escena
+    # de oferta). Por eso una lista vacia es informacion util, y una lista inflada arruina el video entero.
+    '- "semantica": objeto con la LECTURA de la pagina (que es, como funciona, que ofrece). NO es copy de venta: es el INVENTARIO de lo que la pagina dice. De aca sale QUE ESCENAS tendra el video: lo que este vacio simplemente no se muestra. Claves:\n'
+    '   · "queHace": UNA frase de 10 a 140 caracteres que explica QUE VENDE/OFRECE, en criollo y sin slogan (ej "Software de facturacion para comercios chicos"). "" si de verdad no se entiende.\n'
+    '   · "comoFunciona": 0 a 5 pasos REALES del proceso, en el ORDEN que los muestra la pagina, cada uno MAX 48 caracteres. SOLO si la pagina explica un flujo/pasos/onboarding ("1. Crea tu cuenta", "Elegi tu plan"...). [] si la pagina no explica ningun proceso.\n'
+    '   · "tipoNegocio": UNO EXACTO de: saas, ecommerce, servicio-local, educacion, media, portfolio, app, evento, otro\n'
+    '   · "modeloUso": como accede el cliente, UNO EXACTO de: suscripcion, compra, reserva, registro, descarga, contacto, desconocido\n'
+    '   · "features": 0 a 6 capacidades REALES del producto/servicio, cada una {"titulo": "MAX 28 caracteres", "detalle": "MAX 90 caracteres"}. Se distingue de "bullets" (que es copy de venta): esto es QUE HACE, descriptivo.\n'
+    '   · "pruebas": {"stats": 0 a 4 datos duros [{"valor": "la cifra sola, MAX 10 caracteres", "etiqueta": "que es esa cifra, MAX 26"}], "testimonios": 0 a 3 [{"texto": "la cita LITERAL, MAX 140", "firma": "quien la dijo, MAX 28"}], "logosClientes": true SOLO si ves una tira/grilla de logos de clientes o partners}\n'
+    '   · "oferta": {"precio": "tal cual aparece, MAX 16 (ej \'$29/mes\', \'desde 15.000\')", "promo": "el descuento/regalo tal cual, MAX 40", "urgencia": "el plazo/stock/fecha limite, MAX 40"} — "" en el que no aparezca.\n'
+    '   · "vozDeMarca": EXACTAMENTE 3 adjetivos (MAX 14 caracteres c/u) sobre COMO habla la marca en su propio texto, no sobre que vende (ej ["tecnico","sobrio","directo"]).\n'
+    '   · "idioma": codigo ISO 639-1 de 2 letras del idioma de la pagina ("es", "en", "pt"...).\n'
+    # ANTI-INVENCION: la regla historica del repo, escrita como un TEST que el modelo puede correr sobre cada item
+    # ("¿donde lo lei?"). Un dato inventado sale al aire como si la marca lo hubiera dicho: es el peor error posible.
+    "ANTI-INVENCION (la regla MAS IMPORTANTE, aplica a TODO el bloque 'semantica'): cada paso, feature, cifra, "
+    "testimonio, precio, promo y urgencia tiene que poder SEÑALARSE en el texto capturado o en el screenshot. "
+    "Antes de escribir cada item preguntate '¿donde lo lei?': si no podes citar la palabra o la linea exacta de "
+    "donde salio, NO lo escribas. NO completes listas para llegar al maximo (3 features reales valen mas que 6 con "
+    "3 inventadas), NO deduzcas pasos de 'como suele funcionar un producto asi', NO redondees ni estimes numeros, "
+    "NO parafrasees un testimonio que no viste, NO supongas un precio ni una promo. Una lista vacia o un \"\" es una "
+    "RESPUESTA CORRECTA y esperada: el motor simplemente no genera esa escena. "
     "REGLAS: FIEL a la pagina (NO inventes datos, cifras, premios ni features que no esten; "
     "si no hay, deja [] o \"\"), conciso, sin comillas tipograficas. "
     "IDIOMA: escribi el copy en el IDIOMA de la pagina (ver 'Idioma de la pagina' en el resumen). Si es espanol o no se "
@@ -248,6 +270,165 @@ def _norm_stats(v):
     return out
 
 
+# ---------------------------------------------------------------- SEMANTICA (pagemodel.v1 §1.3)
+# Bloque ADITIVO: el brief legacy (brand/rubro/tone/brandColor/tagline/claim/cta/bullets/stats/proof/audience/
+# seriousness/energyHint) sale byte-identico y los motores que ya lo consumen no se enteran. Enums CERRADOS: sumar
+# un valor es bump de la version del pagemodel, asi que un valor desconocido cae al default y NO se propaga.
+_TIPO_NEGOCIO = ("saas", "ecommerce", "servicio-local", "educacion", "media", "portfolio", "app", "evento", "otro")
+_MODELO_USO = ("suscripcion", "compra", "reserva", "registro", "descarga", "contacto", "desconocido")
+_VOZ_DEFAULT = ("claro", "directo", "actual")
+_ISO2 = re.compile(r"^[a-z]{2}$")
+
+
+def _txt(s, n):
+    """Texto que el motor VA A DIBUJAR: sin simbolos decorativos (saldrian tofu), recortado por PALABRA y sin el
+    conector colgando que deja la frase a medias. Es la composicion de los tres helpers que ya usa el brief, MAS
+    dos garantias que el pagemodel necesita y el brief legacy no tenia:
+
+    1) SOLO ESCALARES. `_clip_words` hace `str(s or "")`: un dict/lista del LLM se convertia en su repr de Python
+       y se DIBUJABA tal cual en el video ("{'amount': 29", "['a', 'b']"). Es el mismo defecto del `7` en
+       vozDeMarca, pero en TODOS los campos de texto. Un numero SI es texto valido (stat "500").
+    2) CAP DURO. `_clip_words` NO recorta cuando la PRIMERA palabra ya excede n (devuelve la palabra entera):
+       un precio "ARS$1.299.999,00/mes" o una URL rompian TODOS los caps de §1.3 (medido: 10 de 10 campos).
+       El brief legacy sobrevive porque el motor le corre fitContent encima; el pagemodel es un CONTRATO con
+       caps numericos que schema.js/pagemodel.py validan, asi que aca el cap se cumple o se corta."""
+    if isinstance(s, bool) or not isinstance(s, (str, int, float)):
+        return ""
+    t = _no_dangling(_no_decor(_clip_words(s, n)))
+    if len(t) > n:
+        t = _no_dangling(t[:n])
+    return t
+
+
+def _flag(v):
+    """Booleano del LLM. `bool(v)` no alcanza: el modelo devuelve seguido la string "false"/"no"/"0" y
+    `bool("false") is True` -> encenderiamos la escena de logos de clientes en una pagina que no tiene ninguno
+    (exactamente el tipo de dato FABRICADO que la regla anti-invencion prohibe)."""
+    if isinstance(v, str):
+        return v.strip().lower() not in ("", "false", "no", "0", "none", "null", "n/a")
+    return bool(v)
+
+
+def _enum(v, valores, default):
+    """Enum CERRADO, tolerante a la forma (no al valor): 'SaaS ' -> 'saas', pero 'marketplace' -> el default.
+    Sin el lower/strip perdiamos la señal por un capital del modelo y caiamos a 'otro' con dato bueno."""
+    x = v.strip().lower() if isinstance(v, str) else v
+    return x if x in valores else default
+
+
+def _norm_txts(v, n, maxlen):
+    """Lista de strings del pagemodel (pasos). Igual que _norm_list pero pasando tambien por _no_decor; _norm_list
+    NO se toca porque lo comparte 'bullets' y su salida tiene que quedar byte-identica."""
+    out = []
+    if isinstance(v, list):
+        for it in v:
+            t = _txt(it, maxlen)
+            if t:
+                out.append(t)
+            if len(out) >= n:
+                break
+    return out
+
+
+def _norm_objs(v, n, fields):
+    """Lista de objetos {campo: cap_de_chars} del pagemodel. Descarta el item que se quedo sin su campo OBLIGATORIO
+    (el PRIMERO de `fields`): un stat sin cifra o un testimonio sin texto no es un item vacio, es basura que
+    encenderia una escena sin nada que mostrar."""
+    out = []
+    if isinstance(v, list):
+        for it in v:
+            # el LLM devuelve seguido ["rapido","barato"] donde pediamos objetos: en vez de tirar la señal, el string
+            # se toma como el campo obligatorio y el resto queda vacio (mismo criterio que schema.js::normalizePageModel).
+            if isinstance(it, str):
+                it = {fields[0][0]: it}
+            if not isinstance(it, dict):
+                continue
+            o = {k: _txt(it.get(k), cap) for k, cap in fields}
+            if o[fields[0][0]]:
+                out.append(o)
+            if len(out) >= n:
+                break
+    return out
+
+
+def _idioma(v, content):
+    """Idioma del COPY del reel, que NO siempre es el de la pagina: si la pagina es de alfabeto no-latino el copy se
+    escribe en español (el motor solo renderiza latino), asi que devolver 'ja'/'ru' mentiria sobre lo que el video
+    dice. El lang declarado por la pagina manda sobre lo que diga el LLM (es medido, no inferido)."""
+    c = content if isinstance(content, dict) else {}
+    if _is_nonlatin(c):
+        return "es"
+    lang = str(c.get("lang") or "").split("-")[0].strip().lower()
+    if _ISO2.match(lang):
+        return lang
+    guess = str(v or "").split("-")[0].strip().lower()
+    return guess if _ISO2.match(guess) else "es"
+
+
+_REGISTER = ("formal", "casual", "warm")
+_AWARENESS = ("unaware", "problem", "solution", "product", "most")
+
+
+def _audiencia(b):
+    """`semantica.audiencia` con los DEFAULTS Y CAPS DE LA SPEC (§1.3: who <=60, register 'casual', awareness
+    'problem'), NO los del brief legacy (who <=40, awareness 'solution').
+
+    Lee el MISMO `audience` que el LLM ya contesto, asi que cuando el modelo responde el brief y el pagemodel
+    dicen exactamente lo mismo (no hay dos verdades). La unica divergencia es cuando el modelo OMITE la
+    audiencia: ahi el brief legacy sigue diciendo 'solution' (no se toca: lo consumen urvid/kinetic/templates)
+    y el pagemodel dice 'problem', que es el default conservador que exigen §1.3 y el fixture de pagina vacia
+    de §1.7 — y es el correcto: si no sabemos nada de la pagina, no podemos afirmar que el publico ya esta
+    buscando soluciones."""
+    aud = b.get("audience") if isinstance(b.get("audience"), dict) else {}
+    return {"who": _txt(aud.get("who"), 60),
+            "register": _enum(aud.get("register"), _REGISTER, "casual"),
+            "awareness": _enum(aud.get("awareness"), _AWARENESS, "problem")}
+
+
+def _norm_semantica(b, content):
+    """Normalizacion DEFENSIVA de 'semantica': el LLM puede devolver cualquier cosa (enums inventados, listas de
+    strings donde van objetos, el bloque entero ausente) y esto tiene que producir igual un bloque valido."""
+    raw = b.get("semantica") if isinstance(b, dict) else None
+    s = raw if isinstance(raw, dict) else {}
+    pr = s.get("pruebas") if isinstance(s.get("pruebas"), dict) else {}
+    of = s.get("oferta") if isinstance(s.get("oferta"), dict) else {}
+    # queHace es la frase-ancla del composer: menos de 10 chars no es una frase ("SaaS", "Web") -> mejor vacio, asi
+    # el composer cae a title/host en vez de abrir el video con un fragmento sin sentido.
+    qh = _txt(s.get("queHace"), 140)
+    # vozDeMarca son SIEMPRE 3 (el schema lo exige): si el LLM dio menos, se completa con los neutros sin repetir.
+    voz = []
+    for x in (s.get("vozDeMarca") or []) if isinstance(s.get("vozDeMarca"), list) else []:
+        if not isinstance(x, str):
+            continue   # un 7 no es un adjetivo: coercionarlo a "7" lo dibujaria tal cual en el video
+        w = _txt(x, 14).lower()
+        if w and w not in voz:
+            voz.append(w)
+        if len(voz) >= 3:
+            break
+    for w in _VOZ_DEFAULT:
+        if len(voz) >= 3:
+            break
+        if w not in voz:
+            voz.append(w)
+    return {
+        "queHace": qh if len(qh) >= 10 else "",
+        "comoFunciona": _norm_txts(s.get("comoFunciona"), 5, 48),
+        "tipoNegocio": _enum(s.get("tipoNegocio"), _TIPO_NEGOCIO, "otro"),
+        "modeloUso": _enum(s.get("modeloUso"), _MODELO_USO, "desconocido"),
+        "features": _norm_objs(s.get("features"), 6, (("titulo", 28), ("detalle", 90))),
+        "pruebas": {
+            "stats": _norm_objs(pr.get("stats"), 4, (("valor", 10), ("etiqueta", 26))),
+            "testimonios": _norm_objs(pr.get("testimonios"), 3, (("texto", 140), ("firma", 28))),
+            "logosClientes": _flag(pr.get("logosClientes")),
+        },
+        "oferta": {"precio": _txt(of.get("precio"), 16), "promo": _txt(of.get("promo"), 40),
+                   "urgencia": _txt(of.get("urgencia"), 40)},
+        "audiencia": _audiencia(b),
+        "vozDeMarca": voz,
+        "idioma": _idioma(s.get("idioma"), content),
+    }
+
+
 def _normalize(b, url, content):
     b = b if isinstance(b, dict) else {}
     content = content if isinstance(content, dict) else {}
@@ -280,6 +461,10 @@ def _normalize(b, url, content):
     reg = aud.get("register") if aud.get("register") in ("formal", "casual", "warm") else None
     aw = aud.get("awareness") if aud.get("awareness") in ("unaware", "problem", "solution", "product", "most") else None
     out["audience"] = {"who": _clip_words(aud.get("who"), 40), "register": reg or "casual", "awareness": aw or "solution"}
+    # SEMANTICA para el motor Director (pagemodel.v1 §1.3). Es ADITIVO: ningun consumidor actual del brief lee esta
+    # clave, y si el LLM no la devolvio sale con defaults sanos. NO deriva de `out`: normaliza el crudo del LLM con
+    # los caps/defaults de la spec (que son distintos de los del brief legacy, y el legacy no se puede tocar).
+    out["semantica"] = _norm_semantica(b, content)
     return out
 
 
@@ -352,14 +537,16 @@ async def analyze_to_brief(url, desarrollo="", site=None, usage=None, audience_h
             return "".join(getattr(x, "text", "") for x in resp.content if getattr(x, "type", "") == "text")
 
         try:
-            txt = await _call(750, 0.4)
+            # 1600 (antes 750): el bloque 'semantica' agrega ~600 tokens de salida. Con 750 el JSON se truncaba
+            # SIEMPRE y el camino de REPAIR pasaba de excepcional a normal (2 llamadas por pagina).
+            txt = await _call(1600, 0.4)
             parsed = _extract_json(txt)
             # REPAIR: si el JSON no parseo (p.ej. se trunco en 750 tokens), reintenta UNA vez con mas tokens y menos
             # temperatura. Solo cuando falla -> no agrega costo en el caso normal. Antes un near-miss caia a un brief
             # generico SIN señal -> indistinguible de una falla total.
             if not parsed:
                 print(f"[perceive] JSON no parseo, reintento. raw[:200]={txt[:200]!r}")
-                txt2 = await _call(1200, 0.2)
+                txt2 = await _call(2400, 0.2)
                 parsed = _extract_json(txt2)
                 if not parsed:
                     print(f"[perceive] reintento tampoco parseo. raw2[:200]={txt2[:200]!r}")
@@ -376,7 +563,7 @@ async def analyze_to_brief(url, desarrollo="", site=None, usage=None, audience_h
                     conf = 1.0
                 if conf < 0.55:
                     print(f"[perceive] confidence de inferencia baja ({conf:.2f}) -> re-analizo con {FINE_MODEL}")
-                    txt3 = await _call(1200, 0.3, model=FINE_MODEL)
+                    txt3 = await _call(2400, 0.3, model=FINE_MODEL)
                     parsed3 = _extract_json(txt3)
                     if parsed3:
                         try:
@@ -410,7 +597,7 @@ async def analyze_to_brief(url, desarrollo="", site=None, usage=None, audience_h
     # (alto|medio|bajo -> ritmo de stagger, ventana de transicion y agresividad de apertura) y playbookKey/themeHint
     # (telemetria + uso futuro). Best-effort: un miss NUNCA rompe la perception (el motor los trata como opcionales,
     # ausente = neutro byte-identico). El publico (who) modula el guide del prompt, no los campos del motor.
-    # neutros PRIMERO: garantizan que las 3 claves SIEMPRE existan aunque pick() fallara -> nunca se cachea (v9) ni se sirve
+    # neutros PRIMERO: garantizan que las 3 claves SIEMPRE existan aunque pick() fallara -> nunca se cachea (ckey v11) ni se sirve
     # un brief SIN energyHint (energyHint='medio' -> el motor lo trata como neutro byte-identico). Defensa anti cache-poisoning.
     out["energyHint"], out["playbookKey"], out["themeHint"] = "medio", "generico", ""
     try:

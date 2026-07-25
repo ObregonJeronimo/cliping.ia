@@ -1,0 +1,145 @@
+{
+  "assets": {
+    "images": [
+      {
+        "ar": 0.8,
+        "kind": "producto",
+        "rank": 9.0,
+        "url": "https://例え.jp/product.jpg"
+      },
+      {
+        "ar": 1.0,
+        "kind": "persona",
+        "rank": 4.0,
+        "url": "https://例え.jp/team.jpg"
+      }
+    ],
+    "logo": "https://例え.jp/logo.png",
+    "ogImage": "https://例え.jp/og.jpg",
+    "screenshot": "tools/out/e2e_jp.png"
+  },
+  "brand": "スタジオ",
+  "captura": {
+    "confianza": 0.96,
+    "errores": [],
+    "estado": "ok",
+    "httpStatus": 200,
+    "notas": [
+      "script no latino: verificar glifos"
+    ],
+    "ts": "2026-07-25T12:00:00Z",
+    "url": "https://例え.jp",
+    "urlFinal": "https://例え.jp",
+    "viewport": [
+      1280,
+      900
+    ]
+  },
+  "dna": {
+    "density": {
+      "fill": 0.41,
+      "nivel": "medio",
+      "nodos": 62,
+      "score": 0.44
+    },
+    "modernidad": [
+      "bigtype",
+      "editorial-photo"
+    ],
+    "modernidadScores": {
+      "bigtype": 0.8,
+      "editorial-photo": 0.62
+    },
+    "mood": {
+      "calidez": 0.71,
+      "energia": 0.42,
+      "formalidad": 0.63
+    },
+    "palette": {
+      "accent": "#d64545",
+      "accent2": "#2f6f4f",
+      "accentText": "#d23434",
+      "acromatica": false,
+      "bg": "#faf7f2",
+      "bgLum": 0.933,
+      "inkOnBg": "#1a1714"
+    },
+    "shape": {
+      "borderStyle": "hairline",
+      "borderWidth": 1.0,
+      "pill": false,
+      "radius": 4,
+      "radiusRatio": 0.015,
+      "shadowStyle": "flat"
+    },
+    "signals": {
+      "accentScore": 2.4,
+      "areaImgVsTexto": 1.4,
+      "blurBackdrop": 0,
+      "chromaMax": 0.58,
+      "contrasteBgInk": 16.7,
+      "gradStops": 0,
+      "gridCards": 3,
+      "muestras": {
+        "botones": 6,
+        "cards": 9,
+        "imagenes": 7,
+        "texto": 84
+      }
+    },
+    "typography": {
+      "bodyHint": "serif",
+      "caseHint": "sentence",
+      "displayHint": "grotesk",
+      "h1Ratio": 0.047,
+      "script": "cjk",
+      "textDir": "ltr",
+      "widthRatio": 0.71
+    }
+  },
+  "semantica": {
+    "audiencia": {
+      "awareness": "solution",
+      "register": "formal",
+      "who": "中小企業"
+    },
+    "comoFunciona": [
+      "相談",
+      "設計",
+      "納品"
+    ],
+    "cta": "詳しく見る",
+    "features": [
+      {
+        "detalle": "ロゴから体験まで",
+        "titulo": "ブランド設計"
+      }
+    ],
+    "idioma": "ja",
+    "modeloUso": "contacto",
+    "oferta": {
+      "precio": "",
+      "promo": "",
+      "urgencia": ""
+    },
+    "pruebas": {
+      "logosClientes": true,
+      "stats": [
+        {
+          "etiqueta": "案件",
+          "valor": "120"
+        }
+      ],
+      "testimonios": []
+    },
+    "queHace": "デザインとブランディングの小さなスタジオです",
+    "tipoNegocio": "servicio-local",
+    "vozDeMarca": [
+      "静か",
+      "丁寧",
+      "現代的"
+    ]
+  },
+  "url": "https://例え.jp",
+  "v": 1
+}

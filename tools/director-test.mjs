@@ -120,16 +120,21 @@ const near = (a, b, eps = 1e-9) => Math.abs(a - b) <= eps
   const ADV = [
     ['vacio', {}],
     ['null', null],
-    ['botwall', { brand: '', semantica: { queHace: '' }, dna: { palette: { accent: 'no-es-hex' } } }],
-    ['basura', { v: 99, dna: { mood: { calidez: 5 }, modernidad: 'bento', shape: { radius: 999 } }, semantica: { tipoNegocio: 'inventado', features: 'no-array' }, assets: { images: 'x' } }],
-    ['no-latina', { brand: 'Яндекс', semantica: { queHace: '日本語のページ' }, assets: { images: [{ url: 'https://x/y.jpg', kind: 'raro' }] } }],
+    ['botwall', { brand: '', semantica: { queHace: '' }, dna: { palette: { accent: 'no-es-hex' } }, captura: { estado: 'botwall', confianza: 9 } }],
+    ['basura', { v: 99, dna: { mood: { calidez: 5 }, modernidad: 'bento', shape: { radius: 999 }, density: 'denso', signals: { muestras: { texto: 1e9 } } }, semantica: { tipoNegocio: 'inventado', features: 'no-array', vozDeMarca: 'un solo string' }, assets: { images: 'x' } }],
+    ['no-latina', { brand: 'Яндекс', semantica: { queHace: '日本語のページ', idioma: 'JA' }, dna: { typography: { script: 'cjk', caseHint: 'sentence' } }, assets: { images: [{ url: 'https://x/y.jpg', kind: 'raro' }] } }],
   ]
   for (const [name, raw] of ADV) {
     const pm = normalizePageModel(raw)
     const v = validatePageModel(pm)
     if (!v.ok) die(`SCHEMA: normalizePageModel('${name}') produjo invalido:\n${formatErrors(v.errors)}`)
     ok(/^#[0-9a-f]{6}$/.test(pm.dna.palette.accent), `SCHEMA: accent normalizado invalido en '${name}'`)
-    ok(pm.semantica.queHace.length > 0, `SCHEMA: queHace vacio en '${name}'`)
+    // queHace VACIO es legitimo (DNA-SPEC §1.3: si la senal no esta, el campo queda vacio) — lo que
+    // NO puede pasar es que falte el campo, quede fuera de rango o rompa un enum cerrado.
+    ok(typeof pm.semantica.queHace === 'string', `SCHEMA: queHace debe existir como string en '${name}'`)
+    ok(pm.captura.confianza >= 0 && pm.captura.confianza <= 1, `SCHEMA: confianza fuera de [0,1] en '${name}'`)
+    ok(Array.isArray(pm.semantica.vozDeMarca) && pm.semantica.vozDeMarca.length === 3, `SCHEMA: vozDeMarca debe ser 3 adjetivos en '${name}'`)
+    ok(pm.dna.density && typeof pm.dna.density === 'object' && pm.dna.density.score >= 0, `SCHEMA: density debe ser objeto {nivel,score,...} en '${name}'`)
   }
   // 4.2 adapter del brief legacy
   const pm = briefToPageModel({
@@ -142,14 +147,20 @@ const near = (a, b, eps = 1e-9) => Math.abs(a - b) <= eps
   ok(vpm.ok, 'SCHEMA: briefToPageModel debe producir un pagemodel valido:\n' + formatErrors(vpm.errors))
   ok(pm.dna.palette.accent === '#22e06a', 'SCHEMA: el adapter debe conservar el brandColor')
   ok(pm.semantica.tipoNegocio === 'saas' && pm.semantica.modeloUso === 'suscripcion', 'SCHEMA: mapeo rubro->negocio/uso')
+  ok(pm.dna.density.nivel === 'medio' && pm.dna.density.score > 0, 'SCHEMA: el adapter debe estimar la densidad como objeto')
   ok(pm.semantica.features.length === 2 && pm.semantica.pruebas.stats.length === 1 && pm.semantica.pruebas.testimonios.length === 1, 'SCHEMA: el adapter debe mapear bullets/stats/proof')
   ok(pm.assets.images.length === 1 && pm.assets.images[0].url === 'https://x/a.jpg', 'SCHEMA: el adapter debe mapear imagenes')
 
   // 4.3 los validadores CAZAN cada clase de error (si no cazan, el gate no sirve)
-  const bad = validatePageModel({ v: 1, dna: { palette: { accent: 'rojo' }, density: 'x', mood: { calidez: 3 } }, semantica: { queHace: '', tipoNegocio: 'nope' } })
+  const bad = validatePageModel({
+    v: 2,                                                        // VERSION
+    dna: { palette: { accent: 'rojo' }, density: 'x', mood: { calidez: 3 }, typography: { script: 'klingon' } },
+    semantica: { tipoNegocio: 'nope' },
+    assets: { images: [{ kind: 'raro' }] },                       // MISSING (sin url) + ENUM
+  })
   const codes = new Set(bad.errors.map(x => x.code))
-  ok(!bad.ok && codes.has('E-SCHEMA-TYPE') && codes.has('E-SCHEMA-ENUM') && codes.has('E-SCHEMA-RANGE') && codes.has('E-SCHEMA-MISSING'),
-    'SCHEMA: validatePageModel debe cazar TYPE/ENUM/RANGE/MISSING. Cazo: ' + [...codes].join(','))
+  ok(!bad.ok && codes.has('E-SCHEMA-TYPE') && codes.has('E-SCHEMA-ENUM') && codes.has('E-SCHEMA-RANGE') && codes.has('E-SCHEMA-MISSING') && codes.has('E-SCHEMA-COLOR') && codes.has('E-SCHEMA-VERSION'),
+    'SCHEMA: validatePageModel debe cazar VERSION/TYPE/ENUM/RANGE/COLOR/MISSING. Cazo: ' + [...codes].join(','))
 
   const sbOK = { v: 1, scenes: [{ id: 'sc1', dur: 3, layers: [{ id: 'l1', kind: 'text', role: 'title', text: 'Hola', box: [0.1, 0.4, 0.8, 0.2] }] }] }
   ok(validateStoryboard(sbOK).ok, 'SCHEMA: storyboard valido rechazado: ' + formatErrors(validateStoryboard(sbOK).errors))

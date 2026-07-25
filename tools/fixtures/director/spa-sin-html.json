@@ -1,0 +1,113 @@
+{
+  "assets": {
+    "images": [],
+    "logo": "https://app-spa.io/favicon.png",
+    "ogImage": "",
+    "screenshot": ""
+  },
+  "brand": "App",
+  "captura": {
+    "confianza": 0.0,
+    "errores": [],
+    "estado": "spa-vacia",
+    "httpStatus": 200,
+    "notas": [
+      "spa: 2.o intento sin contenido",
+      "spa vacia: solo bg y theme-color"
+    ],
+    "ts": "2026-07-25T12:00:00Z",
+    "url": "https://app-spa.io",
+    "urlFinal": "https://app-spa.io",
+    "viewport": [
+      1280,
+      900
+    ]
+  },
+  "dna": {
+    "density": {
+      "fill": 0.0,
+      "nivel": "aireado",
+      "nodos": 0,
+      "score": 0.0
+    },
+    "modernidad": [],
+    "modernidadScores": {},
+    "mood": {
+      "calidez": 0.5,
+      "energia": 0.45,
+      "formalidad": 0.5
+    },
+    "palette": {
+      "accent": "#0f9d58",
+      "accent2": null,
+      "accentText": "#0f9d58",
+      "acromatica": false,
+      "bg": "#0b0b0f",
+      "bgLum": 0.003,
+      "inkOnBg": "#f4f1ea"
+    },
+    "shape": {
+      "borderStyle": "none",
+      "borderWidth": 0.0,
+      "pill": false,
+      "radius": 12,
+      "radiusRatio": 0.06,
+      "shadowStyle": "flat"
+    },
+    "signals": {
+      "accentScore": 0.0,
+      "areaImgVsTexto": 0.0,
+      "blurBackdrop": 0,
+      "chromaMax": 0.0,
+      "contrasteBgInk": 21.0,
+      "gradStops": 0,
+      "gridCards": 0,
+      "muestras": {
+        "botones": 0,
+        "cards": 0,
+        "imagenes": 0,
+        "texto": 0
+      }
+    },
+    "typography": {
+      "bodyHint": "grotesk",
+      "caseHint": "sentence",
+      "displayHint": "grotesk",
+      "h1Ratio": 0.0,
+      "script": "latin",
+      "textDir": "ltr",
+      "widthRatio": 0.66
+    }
+  },
+  "semantica": {
+    "audiencia": {
+      "awareness": "problem",
+      "register": "casual",
+      "who": ""
+    },
+    "comoFunciona": [],
+    "cta": "",
+    "features": [],
+    "idioma": "en",
+    "modeloUso": "suscripcion",
+    "oferta": {
+      "precio": "",
+      "promo": "",
+      "urgencia": ""
+    },
+    "pruebas": {
+      "logosClientes": false,
+      "stats": [],
+      "testimonios": []
+    },
+    "queHace": "",
+    "tipoNegocio": "saas",
+    "vozDeMarca": [
+      "claro",
+      "directo",
+      "actual"
+    ]
+  },
+  "url": "https://app-spa.io",
+  "v": 1
+}

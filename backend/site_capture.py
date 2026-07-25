@@ -408,6 +408,885 @@ _JS_IMAGES = r"""
 """
 
 
+# ============================================================================================
+# DNA VISUAL (pagemodel.v1 · docs/director/DNA-SPEC.md §2) — F1/C1
+# ============================================================================================
+# POR QUE existe: el motor Director necesita que el video se SIENTA de la misma familia que la
+# pagina del cliente. Ese "adjetivo" se MIDE (Playwright, $0, determinista), no se le pregunta a un
+# LLM: medir es gratis, exacto y repetible; adivinar es caro y distinto en cada corrida.
+#
+# PRECONDICION DURA — VIEWPORT 1280x900: TODOS los umbrales de abajo estan calibrados a ese ancho
+# (areas relativas al viewport, h1Ratio contra 1280, rejilla de densidad de 64x45 celdas). Cambiar el
+# viewport NO rompe el codigo pero SI invalida la calibracion: hay que recalibrar §2 entera.
+#
+# PRECONDICIONES DE MOMENTO (§2.0), verificadas en capture_all:
+#   1) window.scrollY === 0            -> el DNA es el del PRIMER viewport, no el de la mitad de la pagina
+#   2) document.fonts.ready resuelto   -> si no, fontFamily computa el fallback y displayHint sale mal
+#   3) banner de consentimiento cerrado-> si no, medimos el diseño del CMP, no el de la marca
+#   4) ANTES del bloque `peek`         -> el peek NAVEGA a otra URL (/precios, /nosotros): medir despues
+#      seria medir OTRA pagina del sitio. Es la trampa mas facil de reintroducir al mover el peek.
+#
+# El bloque devuelto es CRUDO: la normalizacion/sanidad (§3: hex, clamps, contraste, acromatismo,
+# accent2 derivado) corre en Python (backend/pagemodel.py) porque asi es testeable SIN browser.
+
+_JS_DNA = r"""
+() => {
+  'use strict';
+  // ---- UMBRALES NOMBRADOS (§2). Calibrados a viewport 1280x900 (ver comentario en Python). ----
+  const K = {
+    POOL_SCAN: 4000, POOL_MAX: 1200, LADO_MIN: 8, PROF_VP: 2,          // universo de muestreo (§2.1)
+    CAP_BTN: 60, CAP_CARD: 80, CAP_TXT: 300, CAP_TIT: 20, CAP_IMG: 40,
+    BTN_W: 40, BTN_H: 16, CARD_AREA: 0.02, IMG_NAT_W: 120,
+    ACC_A: 0.5, ACC_CHROMA: 0.18, ACC_LUM_LO: 0.12, ACC_LUM_HI: 0.92, // accent (§2.3)
+    ACC_AREA_REF: 20000, BK_H: 12, BK_S: 0.12, BK_L: 0.10,
+    ACC2_DHUE: 25, ACC2_SCORE: 0.25,
+    BG_AREA: 0.06, BG_A: 0.9,                                          // bg (§2.3)
+    WR_DEF: 0.66, WR_COND: 0.56, WR_ROUND: 0.74,                       // typography (§2.4)
+    CASE_UPPER: 0.40, CASE_TITLE: 0.60, SCRIPT_MIN: 0.30,
+    BORD_FRAC: 0.25, BORD_HAIR: 1.5, BORD_A: 0.05, BORD_CONTR: 1.15,   // shape (§2.5)
+    SOMB_FRAC: 0.25, SOMB_SOFT: 12, SOMB_HARD_BLUR: 6, SOMB_HARD_OFF: 2, SOMB_A: 0.04,
+    CELDA: 20,                                                          // density (§2.6)
+    GLASS_BLUR: 4, GLASS_A_LO: 0.03, GLASS_A_HI: 0.85, GLASS_AREA: 0.02,   // modernidad (§2.8)
+    BENTO_HIJOS: 4, BENTO_RAD: 8, BENTO_VAR: 1.6,
+    BIG_PIVOTE: 0.030, BIG_PASO: 0.030,
+    EDIT_MAYOR: 0.22, EDIT_GRANDE: 0.04, EDIT_RATIO: 0.8,
+    MESH_PORT: 0.40, MESH_BLOB_BLUR: 40, MESH_BLOB_CHROMA: 0.2, MESH_STOPS: 3,
+    BRUT_BORD: 3, BRUT_RAD: 4, BRUT_BLUR: 2, BRUT_CONTR: 12,
+    BRUT_CHROMA: 0.55, BRUT_LUM_LO: 0.35, BRUT_LUM_HI: 0.75,
+    MOD_ENTRA: 0.5, MOD_MAX: 3,
+    TXT_MIN: 200, TXT_NODOS: 5,                                         // señal insuficiente (§3.5)
+  };
+
+  const t0 = Date.now();
+  const notas = [];
+  const nota = (s) => { s = String(s).slice(0, 120); if (notas.length < 12 && notas.indexOf(s) < 0) notas.push(s); };
+
+  const VW = Math.max(320, window.innerWidth || 1280);
+  const VH = Math.max(320, window.innerHeight || 900);
+  const VAREA = VW * VH;
+
+  const clamp = (v, a, b) => (v < a ? a : (v > b ? b : v));
+  const r2 = (v) => (isFinite(v) ? Math.round(v * 100) / 100 : 0);
+  const median = (xs) => { const s = xs.filter(isFinite).sort((a, b) => a - b); if (!s.length) return null; const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+  // mediana PONDERADA: el elemento donde la suma acumulada de pesos cruza la mitad del total.
+  const medianW = (pairs) => {
+    const s = pairs.filter(p => isFinite(p[0]) && p[1] > 0).sort((a, b) => a[0] - b[0]);
+    if (!s.length) return null;
+    const tot = s.reduce((a, p) => a + p[1], 0); let acc = 0;
+    for (const p of s) { acc += p[1]; if (acc >= tot / 2) return p[0]; }
+    return s[s.length - 1][0];
+  };
+
+  // ---------------------------------------------------------------- §2.2 resolucion de color
+  // Chromium computa cada vez mas colores como oklch()/color(display-p3)/color-mix(): un regex de
+  // rgba() falla EN SILENCIO ahi (devuelve '') y el acento se pierde. Pintar en un canvas 1x1 y leer
+  // el pixel resuelve CUALQUIER sintaxis que el motor entienda, hoy y dentro de dos años.
+  const _cv = document.createElement('canvas'); _cv.width = _cv.height = 1;
+  let _cx = null; try { _cx = _cv.getContext('2d', { willReadFrequently: true }); } catch (e) { _cx = null; }
+  const HEXCACHE = new Map();
+  function toRGBA(css) {
+    if (!_cx || !css || css === 'none' || css === 'transparent') return null;
+    if (HEXCACHE.has(css)) return HEXCACHE.get(css);
+    let out = null;
+    try {
+      // VALIDEZ por DOBLE SENTINELA: fillStyle CONSERVA el valor previo si el nuevo es invalido. Con un
+      // solo sentinela negro haria falta una lista de "que strings SON negro" que siempre queda corta y
+      // descarta negros legitimos. Con dos opuestos no hace falta lista: un valor valido no puede quedar
+      // igual a los dos.
+      _cx.fillStyle = '#000000'; _cx.fillStyle = css; const a1 = _cx.fillStyle;
+      _cx.fillStyle = '#ffffff'; _cx.fillStyle = css; const a2 = _cx.fillStyle;
+      if (a1 !== a2) { HEXCACHE.set(css, null); return null; }
+      _cx.save();
+      _cx.globalCompositeOperation = 'copy';   // 'copy' escribe el alfa tal cual, sin componer con lo previo
+      _cx.fillStyle = css;
+      _cx.fillRect(0, 0, 1, 1);
+      _cx.restore();                            // OBLIGATORIO: sin esto 'copy' queda pegado en el contexto
+      const d = _cx.getImageData(0, 0, 1, 1).data;
+      out = { hex: '#' + [d[0], d[1], d[2]].map(v => v.toString(16).padStart(2, '0')).join(''), a: d[3] / 255 };
+    } catch (e) { out = null; }
+    HEXCACHE.set(css, out);
+    return out;
+  }
+
+  const rgbOf = (hex) => [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
+  const hslOf = (hex) => {
+    const [R, G, B] = rgbOf(hex).map(v => v / 255);
+    const mx = Math.max(R, G, B), mn = Math.min(R, G, B), d = mx - mn, l = (mx + mn) / 2;
+    let h = 0, s = 0;
+    if (d > 1e-6) {
+      s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn);
+      h = (mx === R ? ((G - B) / d) % 6 : mx === G ? (B - R) / d + 2 : (R - G) / d + 4) * 60;
+      if (h < 0) h += 360;
+    }
+    return [d < 0.02 ? 0 : h, s, l];         // hue sin sentido bajo croma 0.02 -> 0
+  };
+  const chromaOf = (hex) => { const [R, G, B] = rgbOf(hex); return (Math.max(R, G, B) - Math.min(R, G, B)) / 255; };
+  const lum01Of = (hex) => { const [R, G, B] = rgbOf(hex); return (Math.max(R, G, B) + Math.min(R, G, B)) / 510; };
+  const hueOf = (hex) => hslOf(hex)[0];
+  const relLum = (hex) => {                  // luminancia relativa WCAG (misma formula que brand_dna.py::_rellum)
+    const c = rgbOf(hex).map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  };
+  const contrast = (a, b) => { const la = relLum(a), lb = relLum(b); return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05); };
+  const dHue = (a, b) => { let d = Math.abs(a - b); return d > 180 ? 360 - d : d; };
+
+  // ---------------------------------------------------------------- §2.1 universo de muestreo
+  // r y cs se miden UNA sola vez por nodo: releerlos por campo dispara reflow y la extraccion pasa de
+  // milisegundos a segundos en cualquier landing grande.
+  const visible = (el) => {
+    let r; try { r = el.getBoundingClientRect(); } catch (e) { return null; }
+    if (r.width < K.LADO_MIN || r.height < K.LADO_MIN) return null;
+    if (r.bottom < 0 || r.top > VH * K.PROF_VP) return null;   // 2 viewports de profundidad, no mas
+    let cs; try { cs = getComputedStyle(el); } catch (e) { return null; }
+    if (!cs || cs.display === 'none' || cs.visibility === 'hidden') return null;
+    if (parseFloat(cs.opacity) < 0.1) return null;
+    return { el, r, cs };
+  };
+  const areaVP = (r) => Math.max(0, Math.min(r.right, VW) - Math.max(r.left, 0)) *
+                        Math.max(0, Math.min(r.bottom, VH) - Math.max(r.top, 0));
+
+  let POOL = [];
+  try {
+    POOL = [].slice.call(document.querySelectorAll('body *'), 0, K.POOL_SCAN)
+             .map(visible).filter(Boolean).slice(0, K.POOL_MAX);
+  } catch (e) { nota('pool: ' + e); }
+
+  const inPool = new Map(); for (const x of POOL) inPool.set(x.el, x);
+
+  const SEL_BTN = 'button, a.btn, a[class*="button" i], [role="button"], a[class*="cta" i], input[type=submit]';
+  const BOTONES = POOL.filter(x => { try { return x.el.matches(SEL_BTN); } catch (e) { return false; } })
+                      .filter(x => x.r.width >= K.BTN_W && x.r.height >= K.BTN_H).slice(0, K.CAP_BTN);
+
+  const bgHexDe = (x) => { const c = toRGBA(x.cs.backgroundColor); return c && c.a >= 0.5 ? c.hex : null; };
+  const CARDS = POOL.filter(x => {
+    if (x.r.width * x.r.height < K.CARD_AREA * VAREA) return false;
+    const rad = parseFloat(x.cs.borderTopLeftRadius) || 0;
+    if (rad > 0) return true;
+    if (x.cs.boxShadow && x.cs.boxShadow !== 'none') return true;
+    if ((parseFloat(x.cs.borderTopWidth) || 0) > 0 && x.cs.borderTopStyle !== 'none') return true;
+    const mio = bgHexDe(x); if (!mio) return false;
+    const p = x.el.parentElement ? inPool.get(x.el.parentElement) : null;
+    const suyo = p ? bgHexDe(p) : null;
+    return suyo !== mio;                     // fondo opaco distinto del padre = card
+  }).slice(0, K.CAP_CARD);
+
+  // hojas de texto: el nodo tiene texto propio y ningun hijo-elemento aporta texto (evita contar el
+  // mismo parrafo 5 veces, una por ancestro).
+  const TEXTO = [];
+  for (const x of POOL) {
+    if (TEXTO.length >= K.CAP_TXT) break;
+    let t = ''; try { t = (x.el.innerText || '').trim(); } catch (e) { continue; }
+    if (t.length < 2) continue;
+    let hijoConTexto = false;
+    const ch = x.el.children;
+    for (let i = 0; i < ch.length; i++) { if ((ch[i].textContent || '').trim().length) { hijoConTexto = true; break; } }
+    if (hijoConTexto) continue;
+    x.txt = t;
+    TEXTO.push(x);
+  }
+
+  const SEL_TIT = 'h1, h2, [class*="title" i], [class*="heading" i]';
+  const esTit = (x) => { try { return x.el.matches(SEL_TIT); } catch (e) { return false; } };
+  let TITULARES = TEXTO.filter(esTit);
+  if (!TITULARES.length) {
+    // FALLBACK sano: <h1><span>Big</span> title</h1> NO es hoja de texto -> quedaria sin titulares y
+    // displayHint/h1Ratio saldrian del cuerpo. Si el corte por hoja deja el set vacio, aflojamos.
+    TITULARES = POOL.filter(esTit);
+    for (const x of TITULARES) { if (x.txt == null) { try { x.txt = (x.el.innerText || '').trim(); } catch (e) { x.txt = ''; } } }
+    if (TITULARES.length) nota('titulares por fallback (no-hoja)');
+  }
+  TITULARES = TITULARES.sort((a, b) => (parseFloat(b.cs.fontSize) || 0) - (parseFloat(a.cs.fontSize) || 0)).slice(0, K.CAP_TIT);
+
+  const IMAGENES = [];
+  try {
+    for (const im of Array.prototype.slice.call(document.images)) {
+      if ((im.naturalWidth || 0) < K.IMG_NAT_W) continue;
+      const v = visible(im); if (!v) continue;
+      v.esImg = true; v.nw = im.naturalWidth; v.nh = im.naturalHeight; v.alt = im.alt || '';
+      IMAGENES.push(v);
+      if (IMAGENES.length >= K.CAP_IMG) break;
+    }
+    for (const x of POOL) {
+      if (IMAGENES.length >= K.CAP_IMG) break;
+      const bi = x.cs.backgroundImage;
+      if (!bi || bi.indexOf('url(') < 0) continue;
+      if (x.r.width * x.r.height < K.CARD_AREA * VAREA) continue;
+      x.esImg = false; x.bgImg = bi;
+      IMAGENES.push(x);
+    }
+  } catch (e) { nota('imagenes: ' + e); }
+
+  // ---------------------------------------------------------------- §2.3 palette · accent
+  const accCand = [];                 // TODOS los hex crudos ANTES de cualquier descarte -> chromaMax
+  const votos = new Map(), votosSinChroma = new Map();
+  let caidosChroma = 0, caidosLum = 0;
+  for (const b of BOTONES) {
+    const wArea = Math.min(1, (b.r.width * b.r.height) / K.ACC_AREA_REF);   // un CTA de 200x48 pesa mas que un chip
+    const lista = [[b.cs.backgroundColor, 2], [b.cs.borderTopColor, 1], [b.cs.color, 1]];
+    for (const ps of ['::before', '::after']) {
+      try { const p = getComputedStyle(b.el, ps); if (p) lista.push([p.backgroundColor, 2]); } catch (e) {}
+    }
+    for (const par of lista) {
+      const c = toRGBA(par[0]); if (!c) continue;
+      accCand.push(c.hex);
+      if (c.a < K.ACC_A) continue;           // transparente: no es un color, no cuenta como "candidato caido"
+      const ch = chromaOf(c.hex), lu = lum01Of(c.hex);
+      votosSinChroma.set(c.hex, (votosSinChroma.get(c.hex) || 0) + Math.max(ch, 0.05) * par[1] * wArea);
+      if (ch < K.ACC_CHROMA) { caidosChroma++; continue; }                  // gris/blanco/negro
+      if (lu < K.ACC_LUM_LO || lu > K.ACC_LUM_HI) { caidosLum++; continue; }
+      votos.set(c.hex, (votos.get(c.hex) || 0) + ch * par[1] * wArea);
+    }
+  }
+  // El canvas guarda PREMULTIPLICADO: un color con alfa vuelve con hasta +-2/255 por canal. Sin este
+  // bucketing, rgba(91,140,255,.9) y rgb(91,140,255) votan como DOS colores y se parten el score.
+  const bucketize = (m) => {
+    const items = [...m.entries()].map(e => { const h = hslOf(e[0]); return { hex: e[0], sc: e[1], h: h[0], s: h[1], l: h[2] }; })
+                                  .sort((a, b) => b.sc - a.sc || (a.hex < b.hex ? -1 : 1));
+    const out = [];
+    for (const it of items) {
+      let hit = null;
+      for (const b of out) if (dHue(b.h, it.h) < K.BK_H && Math.abs(b.s - it.s) < K.BK_S && Math.abs(b.l - it.l) < K.BK_L) { hit = b; break; }
+      if (hit) hit.sc += it.sc; else out.push(it);
+    }
+    return out.sort((a, b) => b.sc - a.sc || (a.hex < b.hex ? -1 : 1));
+  };
+
+  let ranking = bucketize(votos);
+  let accent = ranking.length ? ranking[0].hex : '';
+  let accentScore = ranking.length ? ranking[0].sc : 0;
+
+  if (!accent) {                                     // fallback 1: theme-color declarado por la marca
+    const tc = document.querySelector('meta[name="theme-color" i]');
+    const c = tc ? toRGBA((tc.getAttribute('content') || '').trim()) : null;
+    if (c && c.a >= K.ACC_A) {
+      const ch = chromaOf(c.hex), lu = lum01Of(c.hex);
+      if (ch >= K.ACC_CHROMA && lu >= K.ACC_LUM_LO && lu <= K.ACC_LUM_HI) {
+        accent = c.hex; accentScore = ch; ranking = bucketize(new Map([[c.hex, ch]])); nota('accent por theme-color');
+      }
+    }
+  }
+  if (!accent) {                                     // fallback 2: el bg mas saturado de los 8 nodos mayores
+    const grandes = POOL.slice().sort((a, b) => areaVP(b.r) - areaVP(a.r)).slice(0, 8);
+    let mejor = '', mch = 0;
+    for (const g of grandes) {
+      const c = toRGBA(g.cs.backgroundColor); if (!c || c.a < K.ACC_A) continue;
+      const ch = chromaOf(c.hex), lu = lum01Of(c.hex);
+      if (ch < K.ACC_CHROMA || lu < K.ACC_LUM_LO || lu > K.ACC_LUM_HI) continue;
+      if (ch > mch) { mch = ch; mejor = c.hex; }
+    }
+    if (mejor) { accent = mejor; accentScore = mch; ranking = bucketize(new Map([[mejor, mch]])); nota('accent por fondo saturado'); }
+  }
+  // FALLBACK 2.5 (acromatico) — NO es opcional. Sin el, una marca negro-sobre-blanco (Apple, Vercel)
+  // pierde todos sus candidatos en el gate de chroma, cae al default #5b8cff y el video se pinta de un
+  // azul que la marca NO tiene. Condicion: hubo candidatos y TODOS cayeron por croma (ninguno por
+  // luminosidad, que es lo que delataria un color real pero extremo). Los transparentes no cuentan:
+  // no son colores, y exigir "cero descartes por alfa" desactivaria este fallback en casi toda pagina real.
+  if (!accent && caidosChroma > 0 && caidosLum === 0) {
+    const rk = bucketize(votosSinChroma);
+    if (rk.length) { accent = rk[0].hex; accentScore = rk[0].sc; ranking = rk; nota('marca acromatica: accent medido sin gate de chroma'); }
+  }
+  if (!accent) nota('accent por defecto');           // fallback 3 lo aplica Python (#5b8cff, accentScore 0)
+
+  // accent2: SEGUNDO del ranking con salto real de hue. El mismo hue con otra luminosidad no es un
+  // segundo color de marca, es una sombra -> null y que §3.4 lo derive si la direccion de arte lo pide.
+  let accent2 = null;
+  if (accent && ranking.length > 1) {
+    const h0 = hueOf(accent), s0 = accentScore || 1;
+    for (const c of ranking.slice(1)) {
+      if (c.sc >= K.ACC2_SCORE * s0 && dHue(hueOf(c.hex), h0) >= K.ACC2_DHUE) { accent2 = c.hex; break; }
+    }
+  }
+
+  // ---------------------------------------------------------------- §2.3 palette · bg / inkOnBg
+  const votosBg = new Map();
+  for (const x of POOL) {
+    const a = areaVP(x.r); if (a < K.BG_AREA * VAREA) continue;
+    const c = toRGBA(x.cs.backgroundColor); if (!c || c.a < K.BG_A) continue;
+    votosBg.set(c.hex, (votosBg.get(c.hex) || 0) + a);
+  }
+  let bg = '';
+  { let best = -1; for (const e of votosBg) if (e[1] > best) { best = e[1]; bg = e[0]; } }
+  // stops de un gradiente: partir por comas de NIVEL 0 (rgb(1,2,3) NO son tres stops) y descartar el
+  // primer arg si es direccion. Contar comas a secas se equivoca por uno segun haya o no direccion.
+  const splitTop = (s) => {
+    const out = []; let d = 0, cur = '';
+    for (const ch of s) {
+      if (ch === '(') d++; else if (ch === ')') d--;
+      if (ch === ',' && d === 0) { out.push(cur); cur = ''; } else cur += ch;
+    }
+    if (cur.trim()) out.push(cur);
+    return out.map(x => x.trim()).filter(Boolean);
+  };
+  const primerGrad = (bgi) => {
+    const m = /(?:-webkit-)?(?:repeating-)?(?:linear|radial|conic)-gradient\(/i.exec(bgi || '');
+    if (!m) return '';
+    let d = 0, j = m.index + m[0].length - 1;
+    for (; j < bgi.length; j++) { if (bgi[j] === '(') d++; else if (bgi[j] === ')') { d--; if (d === 0) { j++; break; } } }
+    return bgi.slice(m.index, j);
+  };
+  const argsGrad = (g) => {
+    const i = g.indexOf('('); if (i < 0) return [];
+    const args = splitTop(g.slice(i + 1, g.lastIndexOf(')')));
+    // El primer arg puede ser DIRECCION y no un stop. Ademas de las formas lineales (to/angulo/from/in),
+    // hay que cubrir las RADIALES/CONICAS ('circle at 20% 20%', 'ellipse closest-side', 'farthest-corner'):
+    // sin eso `radial-gradient(circle at 20% 20%, #a, transparent)` cuenta 3 stops en vez de 2 y dispara
+    // gradient-mesh por el gate `stops >= 3`. Ningun color-stop empieza con esas palabras.
+    if (args.length && (/^(to |[\d.]+(deg|rad|grad|turn)|at |from |in |circle\b|ellipse\b|closest-|farthest-)/i.test(args[0])
+                        || /\bat\s/i.test(args[0]))) args.shift();
+    return args;
+  };
+  if (!bg) {
+    for (const el of [document.body, document.documentElement]) {
+      if (!el) continue;
+      const cs = getComputedStyle(el);
+      const c = toRGBA(cs.backgroundColor);
+      if (c && c.a >= K.BG_A) { bg = c.hex; break; }
+      const g = primerGrad(cs.backgroundImage);
+      if (g) { const a0 = argsGrad(g)[0]; const cc = a0 ? toRGBA(a0.replace(/\s+[-\d.]+(%|px|em|rem)\s*$/i, '')) : null; if (cc) { bg = cc.hex; nota('bg por 1er stop de gradiente'); break; } }
+    }
+  }
+  if (!bg) { bg = '#ffffff'; nota('bg por defecto'); }
+  const bgLum = relLum(bg);
+
+  const votosInk = new Map();
+  for (const x of TEXTO) {
+    const c = toRGBA(x.cs.color); if (!c || c.a < 0.5) continue;
+    const peso = x.txt.length * (parseFloat(x.cs.fontSize) || 16);
+    votosInk.set(c.hex, (votosInk.get(c.hex) || 0) + peso);
+  }
+  let inkOnBg = '';
+  { let best = -1; for (const e of votosInk) if (e[1] > best) { best = e[1]; inkOnBg = e[0]; } }
+  // PIVOTE 0.18 (no 0.5): es donde el blanco y el negro dan el MISMO contraste sobre ese fondo.
+  // relLum no es lightness: #808080 vale 0.216, no 0.5. Con 0.5, un fondo #8a8a8a recibiria tinta clara
+  // (contraste 2.8) cuando la correcta es la oscura (5.9).
+  if (!inkOnBg) { inkOnBg = bgLum > 0.18 ? '#111114' : '#f4f1ea'; nota('ink por defecto'); }
+
+  let chromaMax = 0;
+  for (const h of accCand.concat([bg, inkOnBg])) { const c = chromaOf(h); if (c > chromaMax) chromaMax = c; }
+
+  // ---------------------------------------------------------------- §2.4 typography
+  const stackDe = (cs) => {
+    const ff = (cs.fontFamily || '').toLowerCase();
+    const partes = ff.split(',').map(s => s.trim().replace(/^["']|["']$/g, '')).filter(Boolean);
+    return { primera: partes[0] || '', generico: partes[partes.length - 1] || '', full: ff };
+  };
+  const widthRatioDe = (cs) => {
+    if (!_cx) return 0;
+    try {
+      // PESO FIJO 400 (y NO cs.fontWeight): widthRatio mide la CONDENSACION DE LA FAMILIA, y los cortes
+      // de la cascada (<0.56 condensed, >0.74 rounded) salen de una tabla de anchos en peso regular.
+      // Medido en Chromium: Arial 400=0.67 pero 800=0.76 (bold sintetico) -> una grotesca neutra en un
+      // titular bold se clasificaria `rounded`, y Arial Narrow 900 da 0.76, o sea una CONDENSADA se
+      // leeria `rounded`. Con 400 la tabla de referencia de la spec se reproduce exacta.
+      _cx.font = '400 100px ' + cs.fontFamily;
+      if (_cx.font.indexOf('100px') < 0) return 0;    // font invalida: el ctx CONSERVA el valor previo
+      // HAMBURGEFONTSIV = las 15 mayusculas de la panela clasica de diseño de tipos (anchas MWOG,
+      // medias HABURNETSV, la estrecha I). El resultado es ANCHO MEDIO DE MAYUSCULA EN EMS.
+      return _cx.measureText('HAMBURGEFONTSIV').width / (15 * 100);
+    } catch (e) { return 0; }
+  };
+  const claseDe = (cs, wr) => {
+    const st = stackDe(cs);
+    const sinSans = st.full.replace(/sans[- ]?serif/g, '');   // "sans-serif" CONTIENE "serif": limpiar antes
+    const stretch = (cs.fontStretch || 'normal');
+    const stretchPct = /(\d+(?:\.\d+)?)%/.exec(stretch);
+    if (/mono|courier|consolas|menlo|monaco|jetbrains|space mono|ibm plex mono|source code|fira code/.test(st.full) || st.generico === 'monospace') return 'mono';
+    if (/condensed|narrow|oswald|bebas|anton|teko|archivo narrow|barlow condensed|roboto condensed/.test(st.full)
+        || (stretchPct && parseFloat(stretchPct[1]) < 100)
+        || (wr > 0 && wr < K.WR_COND)) return 'condensed';
+    if (/serif|georgia|times|garamond|playfair|merriweather|lora|tiempos|canela|recoleta|freight|charter|cambria|bodoni|didot/.test(sinSans) || st.generico === 'serif') return 'serif';
+    if (/rounded|nunito|quicksand|comfortaa|varela|baloo|fredoka|circular|dm sans rounded|sf pro rounded/.test(st.full)
+        || (wr > K.WR_ROUND && /sans/.test(st.generico))) return 'rounded';
+    return 'grotesk';
+  };
+
+  const nodoDisplay = TITULARES[0] || null;
+  let nodoBody = null, mejorPeso = -1;
+  for (const x of TEXTO) {
+    const fs = parseFloat(x.cs.fontSize) || 0;
+    if (fs > 22 || fs <= 0) continue;
+    const peso = x.txt.length * fs;
+    if (peso > mejorPeso) { mejorPeso = peso; nodoBody = x; }
+  }
+  const wrDisplay = nodoDisplay ? widthRatioDe(nodoDisplay.cs) : 0;
+  const displayHint = nodoDisplay ? claseDe(nodoDisplay.cs, wrDisplay) : '';
+  const bodyHint = nodoBody ? claseDe(nodoBody.cs, widthRatioDe(nodoBody.cs)) : '';
+  const widthRatio = wrDisplay > 0 ? wrDisplay : (nodoBody ? widthRatioDe(nodoBody.cs) : 0);
+
+  // h1Ratio contra el ANCHO (no el alto) a proposito: el ancho es lo que limita cuantas palabras entran
+  // en una linea, que es lo que "big type" significa.
+  let h1Fs = nodoDisplay ? (parseFloat(nodoDisplay.cs.fontSize) || 0) : 0;
+  const h1RectH = nodoDisplay ? nodoDisplay.r.height : 0;
+  if (h1Fs > 200) {                       // §3.5: pagina con zoom/transform:scale
+    if (h1RectH >= 8 && h1RectH <= 200) { h1Fs = h1RectH; nota('h1 gigante: recalculado por rect'); }
+    else { h1Fs = 0; nota('h1 gigante: h1Ratio descartado'); }
+  }
+  const h1Ratio = clamp(h1Fs / VW, 0, 0.5);
+
+  // script / textDir
+  let blob = ''; try { blob = (document.body && document.body.innerText || '').slice(0, 4000); } catch (e) {}
+  const RANGOS = {
+    cjk: /[぀-ヿ㐀-鿿豈-﫿가-힯]/g,
+    arabic: /[؀-ۿݐ-ݿ]/g,
+    hebrew: /[֐-׿]/g,
+    cyrillic: /[Ѐ-ӿ]/g,
+    greek: /[Ͱ-Ͽ]/g,
+    devanagari: /[ऀ-ॿ]/g,
+    latin: /[a-zA-ZÀ-ɏ]/g,
+  };
+  const conteo = {}; let totalAlfa = 0;
+  for (const k in RANGOS) { const m = blob.match(RANGOS[k]); conteo[k] = m ? m.length : 0; totalAlfa += conteo[k]; }
+  let script = 'latin';
+  if (totalAlfa > 0) { for (const k in conteo) if (conteo[k] / totalAlfa >= K.SCRIPT_MIN) { script = k; break; } }
+  let dirHtml = ''; try { dirHtml = (document.dir || getComputedStyle(document.documentElement).direction || '').toLowerCase(); } catch (e) {}
+  const textDir = (script === 'arabic' || script === 'hebrew' || dirHtml === 'rtl') ? 'rtl' : 'ltr';
+
+  // caseHint
+  const letras = (s) => s.replace(/[^\p{L}]/gu, '');
+  const esUpper = (x) => {
+    if (x.cs.textTransform === 'uppercase') return true;
+    const t = x.txt || ''; const L = letras(t);
+    return L.length >= 6 && (L.match(/\p{Lu}/gu) || []).length / L.length >= 0.85;
+  };
+  const esTitle = (x) => {
+    const ws = (x.txt || '').split(/\s+/).filter(w => letras(w).length > 3);
+    return ws.length >= 2 && ws.every(w => /^\p{Lu}/u.test(letras(w))) && !esUpper(x);
+  };
+  const muestraCase = TITULARES.slice(0, 12).concat(BOTONES.filter(b => { if (b.txt == null) { try { b.txt = (b.el.innerText || '').trim(); } catch (e) { b.txt = ''; } } return b.txt.length >= 2; }));
+  let caseHint = '';
+  if (muestraCase.length) {
+    const up = muestraCase.filter(esUpper).length / muestraCase.length;
+    const ti = muestraCase.filter(esTitle).length / muestraCase.length;
+    caseHint = up >= K.CASE_UPPER ? 'upper' : (ti >= K.CASE_TITLE ? 'title' : 'sentence');
+  }
+  // §5.3: mayusculas y Title Case NO existen en CJK/arabe/hebreo; aplicarlas produce texto roto.
+  if (script !== 'latin') { caseHint = 'sentence'; nota('script no latino: verificar glifos'); }
+
+  // ---------------------------------------------------------------- §2.5 shape
+  const parseRad = (v, mn) => {
+    const t = String(v || '').trim().split(/\s+/)[0];
+    if (t.endsWith('%')) return (parseFloat(t) || 0) / 100 * mn;
+    const n = parseFloat(t); return isFinite(n) ? n : 0;
+  };
+  const radMuestras = [], radRatios = [];
+  let pills = 0;
+  for (const x of BOTONES.concat(CARDS)) {
+    const mn = Math.min(x.r.width, x.r.height);
+    const rad = parseRad(x.cs.borderTopLeftRadius, mn);
+    const esPill = rad >= mn / 2 - 1;
+    const esBtn = BOTONES.indexOf(x) >= 0;
+    if (esBtn && esPill) pills++;
+    if (!esPill) radMuestras.push([rad, Math.max(1, x.r.width * x.r.height)]);
+    if (!esBtn) radRatios.push(clamp(rad / Math.max(1, mn), 0, 0.5));   // el ratio es lo que se HEREDA (§4.1)
+  }
+  let radius = medianW(radMuestras);
+  let pill = BOTONES.length ? (pills / BOTONES.length) >= 0.5 : false;
+  if (radius != null && radius > 64) { pill = true; radius = 32; nota('radius absurdo: pastilla mal medida'); }  // §3.5
+  const radiusRatio = median(radRatios);
+
+  const bordes = [];
+  for (const x of BOTONES.concat(CARDS)) {
+    const w = parseFloat(x.cs.borderTopWidth) || 0;
+    if (w <= 0 || x.cs.borderTopStyle === 'none') { bordes.push(null); continue; }
+    const c = toRGBA(x.cs.borderTopColor);
+    if (!c || c.a < K.BORD_A || contrast(c.hex, bg) < K.BORD_CONTR) { bordes.push(null); continue; }  // un borde invisible no es un borde
+    bordes.push(w);
+  }
+  const bordesOk = bordes.filter(v => v != null);
+  const fracBorde = bordes.length ? bordesOk.length / bordes.length : 0;
+  let borderWidth = median(bordesOk);
+  if (borderWidth != null && borderWidth > 12) { borderWidth = 12; nota('borderWidth absurdo: clamp 12'); }
+  const borderStyle = fracBorde < K.BORD_FRAC ? 'none' : ((borderWidth || 0) <= K.BORD_HAIR ? 'hairline' : 'bold');
+
+  // box-shadow en Chromium viene SIEMPRE normalizado: "rgb(...) X Y B S[, ...]". Sin libreria: partir a
+  // nivel 0, primera no-inset, leer los px por orden.
+  const parseSombra = (bs) => {
+    if (!bs || bs === 'none') return null;
+    for (const parte of splitTop(bs)) {
+      if (/\binset\b/.test(parte)) continue;
+      const m = /^\s*(rgba?\([^)]*\))\s*(.*)$/i.exec(parte);
+      const col = m ? m[1] : null, resto = m ? m[2] : parte;
+      const c = col ? toRGBA(col) : null;
+      if (c && c.a < K.SOMB_A) continue;
+      const nums = (resto.match(/-?[\d.]+px/g) || []).map(parseFloat);
+      if (!nums.length) continue;
+      return { ox: nums[0] || 0, oy: nums[1] || 0, blur: nums[2] || 0, spread: nums[3] || 0 };
+    }
+    return null;
+  };
+  const sombras = CARDS.map(x => parseSombra(x.cs.boxShadow));
+  const sombrasOk = sombras.filter(Boolean);
+  const fracSombra = sombras.length ? sombrasOk.length / sombras.length : 0;
+  const blurMediano = median(sombrasOk.map(s => s.blur));
+  const maxOff = sombrasOk.length ? Math.max.apply(null, sombrasOk.map(s => Math.max(Math.abs(s.ox), Math.abs(s.oy)))) : 0;
+  let shadowStyle = 'flat';
+  if (fracSombra >= K.SOMB_FRAC && blurMediano != null) {
+    shadowStyle = blurMediano >= K.SOMB_SOFT ? 'soft'
+                : (blurMediano <= K.SOMB_HARD_BLUR && maxOff >= K.SOMB_HARD_OFF ? 'hard' : 'soft');
+  }
+
+  // ---------------------------------------------------------------- §2.6 density
+  // La rejilla es la parte que importa: sumar areas de rects ANIDADOS da fill > 1 en cualquier landing
+  // moderna (el texto vive dentro de la card, que vive dentro de la seccion).
+  const CX = Math.ceil(VW / K.CELDA), CY = Math.ceil(VH / K.CELDA);
+  const GRID = new Uint8Array(CX * CY);
+  const CONT = TEXTO.concat(IMAGENES, BOTONES).filter(x => areaVP(x.r) > 0);
+  for (const x of CONT) {
+    const x0 = Math.max(0, Math.floor(x.r.left / K.CELDA)), x1 = Math.min(CX - 1, Math.ceil(x.r.right / K.CELDA) - 1);
+    const y0 = Math.max(0, Math.floor(x.r.top / K.CELDA)), y1 = Math.min(CY - 1, Math.ceil(x.r.bottom / K.CELDA) - 1);
+    for (let yy = y0; yy <= y1; yy++) for (let xx = x0; xx <= x1; xx++) GRID[yy * CX + xx] = 1;
+  }
+  let ocupadas = 0; for (let i = 0; i < GRID.length; i++) ocupadas += GRID[i];
+  const fill = clamp(ocupadas / (CX * CY), 0, 1);
+  const nodos = CONT.length;
+  const dScore = clamp(0.65 * fill + 0.35 * Math.min(1, nodos / 45), 0, 1);
+  const dNivel = dScore < 0.30 ? 'aireado' : (dScore <= 0.52 ? 'medio' : 'denso');
+
+  // ---------------------------------------------------------------- §2.8 detectores de modernidad
+  const sc = {};
+
+  // glass — backdrop-filter es la firma INEQUIVOCA. filter: blur() sobre el propio nodo NO cuenta
+  // (eso es un blob desenfocado -> mira gradient-mesh).
+  let blurBackdrop = 0, nGlass = 0;
+  for (const x of POOL) {
+    const bf = x.cs.backdropFilter || x.cs.webkitBackdropFilter || '';
+    const m = /blur\(\s*([\d.]+)px/i.exec(bf); if (!m) continue;
+    const px = parseFloat(m[1]); if (!(px >= K.GLASS_BLUR)) continue;
+    const c = toRGBA(x.cs.backgroundColor); if (!c || c.a < K.GLASS_A_LO || c.a > K.GLASS_A_HI) continue;
+    if (areaVP(x.r) < K.GLASS_AREA * VAREA) continue;
+    nGlass++; if (px > blurBackdrop) blurBackdrop = px;
+  }
+  // GUARDA OBLIGATORIA, no defensiva: la expresion arranca en 0.5, asi que sin esto glass entraria en
+  // TODAS las paginas del mundo (y max() de un conjunto vacio es -Infinity).
+  sc.glass = nGlass === 0 ? 0 : clamp(0.5 + 0.1 * nGlass + 0.01 * (blurBackdrop - K.GLASS_BLUR), 0, 1);
+
+  // bento
+  let gridCards = 0, bento = 0;
+  for (const x of POOL) {
+    const disp = x.cs.display;
+    if (disp !== 'grid' && disp !== 'inline-grid' && disp !== 'flex') continue;
+    const kids = [];
+    for (const k of x.el.children) { const v = inPool.get(k) || visible(k); if (v) kids.push(v); }
+    if (kids.length < K.BENTO_HIJOS) continue;
+    const mio = bgHexDe(x);
+    const cards = kids.filter(k => (parseFloat(k.cs.borderTopLeftRadius) || 0) >= K.BENTO_RAD
+                                || (k.cs.boxShadow && k.cs.boxShadow !== 'none')
+                                || (bgHexDe(k) && bgHexDe(k) !== mio));
+    if (cards.length < K.BENTO_HIJOS) continue;      // 3 cards en fila es el layout mas generico que existe
+    const areas = cards.map(k => Math.max(1, k.r.width * k.r.height));
+    const varianza = Math.max.apply(null, areas) / Math.max(1, Math.min.apply(null, areas));
+    const spans = cards.some(k => /span\s*\d+/i.test((k.cs.gridColumn || '') + ' ' + (k.cs.gridRow || '')) && !/span\s*1\b/i.test((k.cs.gridColumn || '') + ' ' + (k.cs.gridRow || '')));
+    const asim = varianza >= K.BENTO_VAR || (x.cs.gridTemplateAreas && x.cs.gridTemplateAreas !== 'none') || spans;
+    if (cards.length > gridCards) gridCards = cards.length;
+    bento = Math.max(bento, clamp(0.35 + 0.08 * Math.min(cards.length, 8) + (asim ? 0.25 : 0), 0, 1));
+  }
+  sc.bento = bento;
+
+  // bigtype — consume el h1Ratio ya medido en §2.4, NO lo recalcula
+  if (nodoDisplay && h1Fs > 0) {
+    const palabras = (nodoDisplay.txt || '').split(/\s+/).filter(Boolean).length;
+    const fw = parseFloat(nodoDisplay.cs.fontWeight) || 400;
+    sc.bigtype = clamp((h1Ratio - K.BIG_PIVOTE) / K.BIG_PASO + (palabras <= 6 ? 0.20 : 0) + (fw >= 700 ? 0.10 : 0), 0, 1);
+  } else sc.bigtype = 0;
+
+  // editorial-photo
+  let areaImgVP = 0, mayor = 0, nGrandes = 0;
+  for (const x of IMAGENES) {
+    const a = areaVP(x.r); areaImgVP += a;
+    if (a / VAREA > mayor) mayor = a / VAREA;
+    if (x.r.width * x.r.height >= K.EDIT_GRANDE * VAREA) nGrandes++;
+  }
+  let areaTxtVP = 0; for (const x of TEXTO) areaTxtVP += areaVP(x.r);
+  const areaImgVsTexto = areaImgVP / Math.max(1, areaTxtVP);
+  // CONDICION DE ENTRADA antes del score: sin ella una landing SaaS con UN mockup de hero entra igual
+  // (el primer termino solo ya toca el umbral) y dispara heroes de foto real donde no hay fotos.
+  sc['editorial-photo'] = (mayor < K.EDIT_MAYOR || (nGrandes < 2 && areaImgVsTexto < K.EDIT_RATIO)) ? 0
+    : clamp(0.5 * Math.min(1, mayor / K.EDIT_MAYOR) + 0.3 * Math.min(1, nGrandes / 3) + 0.2 * Math.min(1, areaImgVsTexto / 1.2), 0, 1);
+
+  // gradient-mesh — el gate de 40% va en el FILTRO de portadores: sin el, un boton con gradiente pinta
+  // de mesh el video entero. Los blobs si recorren POOL (un blob desenfocado es chico por definicion).
+  const portadores = [];
+  for (const el of [document.body, document.documentElement]) if (el) { try { portadores.push({ el, cs: getComputedStyle(el) }); } catch (e) {} }
+  for (const x of POOL.slice().sort((a, b) => areaVP(b.r) - areaVP(a.r))) {
+    if (portadores.length >= 8) break;
+    if (areaVP(x.r) >= K.MESH_PORT * VAREA) portadores.push(x);
+  }
+  let radiales = 0, conicos = 0, gradStops = 0;
+  for (const p of portadores) {
+    const bgi = p.cs.backgroundImage; if (!bgi || bgi === 'none') continue;
+    radiales = Math.max(radiales, (bgi.match(/radial-gradient\(/gi) || []).length);
+    conicos = Math.max(conicos, (bgi.match(/conic-gradient\(/gi) || []).length);
+    const g = primerGrad(bgi); if (g) gradStops = Math.max(gradStops, argsGrad(g).length);
+  }
+  let blobs = 0;
+  for (const x of POOL) {
+    const m = /blur\(\s*([\d.]+)px/i.exec(x.cs.filter || ''); if (!m) continue;
+    if (parseFloat(m[1]) < K.MESH_BLOB_BLUR) continue;
+    const c = toRGBA(x.cs.backgroundColor); if (!c || chromaOf(c.hex) < K.MESH_BLOB_CHROMA) continue;
+    blobs++;
+  }
+  sc['gradient-mesh'] = clamp((radiales >= 2 ? 0.6 : 0) + (conicos >= 1 ? 0.6 : 0)
+                            + (gradStops >= K.MESH_STOPS ? 0.35 : 0) + 0.15 * Math.min(blobs, 3), 0, 1);
+
+  // brutalist
+  const accParaBrut = accent || '#5b8cff';
+  const c1 = (borderWidth || 0) >= K.BRUT_BORD, c2 = (radius == null ? 12 : radius) <= K.BRUT_RAD;
+  const c3 = shadowStyle === 'hard' && (blurMediano == null ? 99 : blurMediano) <= K.BRUT_BLUR;
+  const c4 = contrast(inkOnBg, bg) >= K.BRUT_CONTR;
+  // c5 exige accent MEDIDO: puntuar "color plano y chillon" con el default #5b8cff seria puntuar un
+  // color que la pagina no tiene (una pagina vacia sacaba 0.25 de brutalist por este termino).
+  const c5 = !!accent && chromaOf(accParaBrut) >= K.BRUT_CHROMA && lum01Of(accParaBrut) >= K.BRUT_LUM_LO && lum01Of(accParaBrut) <= K.BRUT_LUM_HI;
+  sc.brutalist = 0.30 * c1 + 0.25 * c2 + 0.20 * c3 + 0.15 * c4 + 0.10 * c5;
+
+  let modernidad = Object.keys(sc).filter(k => sc[k] >= K.MOD_ENTRA).sort((a, b) => sc[b] - sc[a] || (a < b ? -1 : 1));
+  // brutalist y glass son ANTAGONICOS por definicion: si entran los dos, queda el de mayor score.
+  if (modernidad.indexOf('brutalist') >= 0 && modernidad.indexOf('glass') >= 0) {
+    const perdedor = sc.brutalist >= sc.glass ? 'glass' : 'brutalist';
+    modernidad = modernidad.filter(k => k !== perdedor);
+  }
+  modernidad = modernidad.slice(0, K.MOD_MAX);       // mas de 3 lenguajes visuales = slop
+  const modernidadScores = {};
+  for (const k of modernidad) modernidadScores[k] = r2(sc[k]);
+
+  // ---------------------------------------------------------------- §2.7 mood (base + deltas)
+  // Se calcula ACA porque todas las entradas estan medidas ACA; Python aplica despues los deltas del
+  // caso acromatico (§3.2) y el clamp/redondeo final. Los tres ejes caen directo en el moodPick
+  // gaussiano que ya existe en src/kinetic/core/dna.js: mismo espacio, misma escala.
+  const warmth = (hex) => chromaOf(hex) < 0.10 ? 0.5 : 0.5 + 0.5 * Math.cos((hueOf(hex) - 40) * Math.PI / 180);
+  const accM = accent || '#5b8cff';
+  // Si el accent NO se midio, sus terminos aportan 0 en vez de opinar con el default: la formula solo
+  // corre sobre lo que se midio (misma regla que "0 medido != 0.35 por default" de §2.6).
+  const hayAcc = !!accent, chAcc = hayAcc ? chromaOf(accM) : 0;
+  const dh = displayHint || 'grotesk';
+  const rr = radiusRatio == null ? 0.06 : radiusRatio;
+
+  let calidez = 0.50 + (hayAcc ? 0.40 * (warmth(accM) - 0.5) * 2 : 0) + 0.20 * (warmth(bg) - 0.5) * 2;
+  calidez += (dh === 'serif' || dh === 'rounded') ? 0.08 : ((dh === 'mono' || dh === 'condensed') ? -0.08 : 0);
+  calidez += rr >= 0.12 ? 0.06 : (rr <= 0.02 ? -0.06 : 0);
+  calidez += bgLum >= 0.55 ? 0.04 : (bgLum <= 0.06 ? -0.04 : 0);
+
+  let formalidad = 0.50;
+  formalidad += dh === 'serif' ? 0.18 : ((dh === 'mono' || dh === 'condensed') ? 0.10 : (dh === 'rounded' ? -0.20 : 0));
+  formalidad += (caseHint === 'upper') ? 0.12 : 0;
+  formalidad += rr <= 0.03 ? 0.12 : (rr >= 0.14 ? -0.14 : 0);
+  formalidad += dNivel === 'denso' ? 0.12 : (dNivel === 'aireado' ? -0.06 : 0);
+  formalidad += !hayAcc ? 0 : (chAcc >= 0.65 ? -0.14 : (chAcc <= 0.25 ? 0.10 : 0));
+  formalidad += borderStyle === 'hairline' ? 0.08 : 0;
+  formalidad += modernidad.indexOf('brutalist') >= 0 ? -0.10 : 0;
+  formalidad += modernidad.indexOf('editorial-photo') >= 0 ? 0.06 : 0;
+
+  const esAccentFill = (hex) => { const a = hslOf(accM), b = hslOf(hex); return dHue(a[0], b[0]) < K.BK_H && Math.abs(a[1] - b[1]) < K.BK_S && Math.abs(a[2] - b[2]) < K.BK_L; };
+  let nCtasAccent = 0;
+  for (const b of BOTONES) { const c = toRGBA(b.cs.backgroundColor); if (c && c.a >= 0.5 && esAccentFill(c.hex)) nCtasAccent++; }
+  let nAnimaciones = 0;
+  for (const x of POOL) if (x.cs.animationName && x.cs.animationName !== 'none') nAnimaciones++;
+
+  // base 0.35 (no 0.45, que es el default de "no medi nada"): el primer termino casi nunca es cero en
+  // una pagina medida, asi que una marca con acento saturado normal aterriza en ~0.55.
+  let energia = 0.35 + 0.30 * chAcc;
+  energia += (accent2 && dHue(hueOf(accent2), hueOf(accM)) >= 60) ? 0.08 : 0;
+  energia += modernidad.indexOf('gradient-mesh') >= 0 ? 0.12 : 0;
+  energia += modernidad.indexOf('bigtype') >= 0 ? 0.10 : 0;
+  energia += modernidad.indexOf('brutalist') >= 0 ? 0.10 : 0;
+  energia += nCtasAccent >= 3 ? 0.08 : 0;
+  energia += dScore >= 0.55 ? 0.08 : 0;
+  energia += (bgLum <= 0.06 && chAcc >= 0.5) ? 0.08 : 0;
+  energia += nAnimaciones >= 5 ? 0.06 : 0;
+  energia += (dh === 'serif' && caseHint !== 'upper') ? -0.08 : 0;
+
+  // ---------------------------------------------------------------- §2.9 assets.images[].kind
+  // el guard de falsy NO es decorativo: new URL(null, href) resuelve a ".../null" y mete una entrada
+  // fantasma en imagesMeta por cada <img> sin srcset/data-src.
+  const absUrl = (u) => { if (!u) return null; try { return new URL(u, location.href).href; } catch (e) { return null; } };
+  const mejorSrcset = (ss) => {
+    if (!ss) return null; let best = null, bw = -1;
+    ss.split(',').forEach(p => { const m = p.trim().split(/\s+/); const w = parseInt(m[1]) || 0; if (m[0] && w >= bw) { best = m[0]; bw = w; } });
+    return best;
+  };
+  const tieneMarco = (el) => {
+    let p = el;
+    for (let i = 0; i < 4 && p; i++) {
+      let cs; try { cs = getComputedStyle(p); } catch (e) { break; }
+      if ((parseFloat(cs.borderTopLeftRadius) || 0) >= 8 && cs.boxShadow && cs.boxShadow !== 'none') return true;
+      p = p.parentElement;
+    }
+    return false;
+  };
+  const enProducto = (el) => { try { return !!(el.matches('[itemprop="image" i]') || el.closest('[class*="product" i], [itemprop="image" i], [class*="pricing" i] figure, [class*="price" i] figure')); } catch (e) { return false; } };
+  // EL ORDEN DE LAS REGLAS ES LA PRECEDENCIA (primer match gana). `ui` es nombre ∨ (aspecto ∧ marco):
+  // con la lectura (nombre ∨ aspecto) ∧ marco, una imagen con "dashboard" en el alt pero sin marco se
+  // colaria al pool editorial.
+  const clasificar = (el, r, alt, url, w, h) => {
+    const A = (alt || '').toLowerCase(), U = (url || '').toLowerCase(), blob2 = U + ' ' + A;
+    const ar = (w && h) ? w / h : (r && r.height ? r.width / r.height : null);
+    if (/screenshot|dashboard|mockup|app[-_]?(ui|screen)|interface|panel/.test(blob2)) return 'ui';
+    if (ar != null && ar >= 1.5 && ar <= 2.2 && tieneMarco(el)) return 'ui';
+    if (/team|equipo|founder|ceo|cliente|customer|retrato|portrait|avatar|staff/.test(A)) return 'persona';
+    if (ar != null && ar >= 0.7 && ar <= 1.05 && r) {
+      let cs2; try { cs2 = getComputedStyle(el); } catch (e) { cs2 = null; }
+      const mn = Math.min(r.width, r.height);
+      if (cs2 && parseRad(cs2.borderTopLeftRadius, mn) >= 0.4 * mn) return 'persona';
+    }
+    if (enProducto(el) || /producto|product|item|modelo|sku/.test(A)) return 'producto';
+    if (ar != null && ar >= 0.75 && ar <= 1.3) return 'producto';
+    // ambiente usa el aspecto RENDERIZADO, no el natural: un hero full-bleed suele ser una foto 3:2
+    // recortada por object-fit a una banda 1280x520. Lo que lo hace "ambiente" es como ocupa la
+    // pantalla, no las proporciones del archivo.
+    const arR = (r && r.height) ? r.width / r.height : ar;
+    if (r && r.width * r.height >= 0.25 * VAREA && arR != null && arR >= 1.6) return 'ambiente';
+    return 'desconocido';
+  };
+  const imagesMeta = [], vistas = new Set();
+  const regMeta = (url, kind, ar, alt) => {
+    const a = absUrl(url); if (!a || vistas.has(a) || a.indexOf('data:') === 0) return;
+    vistas.add(a); imagesMeta.push({ url: a, kind, ar: ar == null ? null : r2(ar), alt: (alt || '').slice(0, 80) });
+  };
+  try {
+    for (const im of Array.prototype.slice.call(document.images, 0, 120)) {
+      let r = null; try { r = im.getBoundingClientRect(); } catch (e) {}
+      const w = im.naturalWidth || im.width, h = im.naturalHeight || im.height;
+      const src = im.currentSrc || im.src;
+      const kind = clasificar(im, r, im.alt, src, w, h);
+      const ar = (w && h) ? w / h : null;
+      // se registra el MISMO kind bajo TODAS las urls que esa <img> puede aportar (src, srcset, data-*),
+      // porque _JS_IMAGES emite cualquiera de ellas: asi el join por url del pagemodel no falla.
+      regMeta(src, kind, ar, im.alt);
+      regMeta(mejorSrcset(im.getAttribute('srcset') || im.getAttribute('data-srcset')), kind, ar, im.alt);
+      for (const at of ['data-src', 'data-original', 'data-lazy-src', 'data-lazy', 'data-image', 'data-bg']) regMeta(im.getAttribute(at), kind, ar, im.alt);
+      if (imagesMeta.length > 90) break;
+    }
+    for (const x of IMAGENES) {
+      if (x.esImg || !x.bgImg) continue;
+      const m = /url\(["']?(.*?)["']?\)/.exec(x.bgImg); if (!m || !m[1]) continue;
+      regMeta(m[1], clasificar(x.el, x.r, '', m[1], x.r.width, x.r.height), x.r.width / Math.max(1, x.r.height), '');
+    }
+  } catch (e) { nota('imagesMeta: ' + e); }
+
+  // ---------------------------------------------------------------- salida CRUDA
+  const bodyLen = blob.trim().length;
+  const senalInsuficiente = bodyLen < K.TXT_MIN && TEXTO.length < K.TXT_NODOS;   // §3.5 / §5.1
+  if (senalInsuficiente) nota('sin texto: dna por defecto');
+  let scrollY = 0; try { scrollY = window.scrollY || 0; } catch (e) {}
+  if (scrollY > 4) nota('scrollY != 0 al medir');
+
+  return {
+    palette: {
+      accent: accent || '', accent2: accent2, bg, inkOnBg, bgLum: r2(bgLum),
+      // ranking completo: §3.5 lo necesita para "accent == bg -> siguiente candidato" sin re-capturar
+      accentRank: ranking.slice(0, 8).map(c => ({ hex: c.hex, score: r2(c.sc), hue: Math.round(c.h), chroma: r2(chromaOf(c.hex)), lum: r2(c.l) })),
+    },
+    typography: { displayHint, bodyHint, caseHint, script, textDir, h1Ratio: r2(h1Ratio), widthRatio: r2(widthRatio) },
+    shape: {
+      radius: radius == null ? null : Math.round(radius),
+      radiusRatio: radiusRatio == null ? null : r2(radiusRatio),
+      pill, borderStyle, borderWidth: borderWidth == null ? 0 : r2(borderWidth), shadowStyle,
+    },
+    density: { nivel: dNivel, score: r2(dScore), fill: r2(fill), nodos },
+    mood: { calidez: r2(clamp(calidez, 0, 1)), formalidad: r2(clamp(formalidad, 0, 1)), energia: r2(clamp(energia, 0, 1)) },
+    modernidad, modernidadScores,
+    signals: {
+      muestras: { botones: BOTONES.length, cards: CARDS.length, texto: TEXTO.length, imagenes: IMAGENES.length },
+      accentScore: r2(accentScore), chromaMax: r2(chromaMax), blurBackdrop: Math.round(blurBackdrop),
+      gridCards, areaImgVsTexto: r2(areaImgVsTexto), gradStops, contrasteBgInk: r2(contrast(bg, inkOnBg)),
+    },
+    imagesMeta,
+    notas,
+    // crudo para trazabilidad/desempates de director-loop: el motor NO lo consume
+    extras: {
+      senalInsuficiente, bodyLen, scrollY, ms: Date.now() - t0,
+      h1FontSize: r2(h1Fs), h1RectH: r2(h1RectH), nCtasAccent, nAnimaciones,
+      caidosChroma, caidosLum, blurMediano: blurMediano == null ? null : r2(blurMediano),
+      scoresAll: { bento: r2(sc.bento), glass: r2(sc.glass), bigtype: r2(sc.bigtype),
+                   'editorial-photo': r2(sc['editorial-photo']), 'gradient-mesh': r2(sc['gradient-mesh']),
+                   brutalist: r2(sc.brutalist) },
+    },
+  };
+}
+"""
+
+
+# Sonda barata para clasificar el ESTADO de la captura (§5): shell de SPA vacio, marcadores de
+# Cloudflare y largo del body. Va aparte de _JS_EXTRACT porque hay que evaluarla TAMBIEN despues de
+# los reintentos, y aparte de _JS_DNA porque decide SI vale la pena medir el DNA.
+_JS_PROBE = r"""
+() => {
+  const body = ((document.body && document.body.innerText) || '').trim();
+  const root = document.querySelector('#root, #app, [data-reactroot], #__next');
+  const spaVacia = !!root && root.children.length <= 1 && ((root.innerText || '').trim().length < 40);
+  const cf = !!document.querySelector('#cf-wrapper, .cf-error-code, #challenge-form, #challenge-running, [class*="cf-browser-verification"]');
+  return { bodyLen: body.length, spaVacia, cfMarker: cf, title: (document.title || '').slice(0, 200), bodyText: body.slice(0, 1200) };
+}
+"""
+
+
+# ---- ESTADO DE LA CAPTURA (DNA-SPEC §5) — puro y testeable sin browser ------------------------
+_BOTWALL_RE = re.compile(
+    r"just a moment|checking your browser|verify (you are )?human|attention required|"
+    r"access denied|enable javascript|ddos protection|cf-browser-verification|"
+    r"unusual traffic|are you a robot", re.I)
+_404_RE = re.compile(r"\b404\b|not found|p[áa]gina no encontrada|no existe|error 5\d\d|oops", re.I)
+_BOTWALL_STATUS = {403, 429, 503}
+
+# Que hace pagemodel.py con el `dna` medido, segun el estado (§5.2/§5.4/§5.5/§5.6). El extractor NO
+# decide direccion de arte, solo deja la instruccion explicita para que nadie estampe el diseño de
+# Cloudflare (gris, Inter, radius 8) sobre la marca del cliente.
+_POLITICA_DNA = {
+    "ok": "completo",
+    "spa-vacia": "solo-bg",     # se conserva bg + theme-color + logo; el resto a defaults
+    "botwall": "descartar",
+    "404": "descartar",
+    "timeout": "descartar",
+    "bloqueada": "descartar",
+}
+
+
+def detect_estado(probe: dict | None, http_status: int = 0, goto_fallo: bool = False) -> tuple[str, str]:
+    """Clasifica la captura segun DNA-SPEC §5. Devuelve (estado, nota). PURO (testeable sin browser).
+    `probe` = salida de _JS_PROBE. El orden importa: un 403 de Cloudflare es botwall, no 404."""
+    p = probe if isinstance(probe, dict) else {}
+    body = (p.get("bodyText") or "")
+    body_len = int(p.get("bodyLen") or 0)
+    blob = f"{p.get('title') or ''} {body}"
+    if goto_fallo and body_len == 0 and not http_status:
+        return "timeout", "timeout de captura"
+    if http_status in _BOTWALL_STATUS or _BOTWALL_RE.search(blob) or (body_len < 400 and p.get("cfMarker")):
+        return "botwall", "botwall: dna descartado"
+    if http_status >= 400 or (_404_RE.search(p.get("title") or "") and body_len < 800):
+        return "404", "404/error"
+    if body_len < 200 and p.get("spaVacia"):
+        return "spa-vacia", "spa sin contenido"
+    return "ok", ""
+
+
+def _root_url(url: str) -> str:
+    """Raiz del MISMO host (scheme://host/) — recuperacion del caso 404 (§5.5). '' si no se puede."""
+    try:
+        u = urlparse((url or "").strip())
+        if u.scheme in _ALLOWED_SCHEMES and u.netloc:
+            return f"{u.scheme}://{u.netloc}/"
+    except Exception:
+        pass
+    return ""
+
+
+async def extract_dna(page) -> dict:
+    """Mide el DNA VISUAL (DNA-SPEC §2) sobre la pagina YA renderizada y devuelve el bloque CRUDO
+    (sin normalizar: §3 corre en Python, en backend/pagemodel.py, para poder testearlo sin browser).
+
+    INVARIANTE: nunca lanza. Si el evaluate falla devuelve {} y el resto del pipeline sigue vivo —
+    capture_all alimenta a perception/urvid/kinetic y no puede morir por una medicion opcional."""
+    try:
+        await page.evaluate("() => window.scrollTo(0, 0)")   # precondicion 1 de §2.0
+    except Exception:
+        pass
+    try:
+        dna = await page.evaluate(_JS_DNA)
+        return dna if isinstance(dna, dict) else {}
+    except Exception as e:
+        print(f"[dna] extract fallo: {e}")
+        return {}
+
+
 async def extract_content(url: str) -> dict | None:
     """
     Carga la página con Chromium y extrae el texto YA RENDERIZADO (clave para sitios
@@ -433,13 +1312,76 @@ async def extract_content(url: str) -> dict | None:
         return None
 
 
+async def _settle(page):
+    """Secuencia de espera del pipeline: consent -> networkidle -> lazy-load -> <img> grandes -> fonts.
+    Extraida a funcion PARA PODER REPETIRLA en los reintentos de §5.4 (SPA vacia) y §5.5 (404 -> raiz)
+    sin duplicar el codigo (y sin que los dos caminos se desincronicen). Best-effort de punta a punta."""
+    # Cerrar cookies temprano (si las hay) para no taparle el hero al screenshot NI al DNA (si el banner
+    # sigue abierto medimos el diseño del CMP, no el de la marca — precondicion 3 de §2.0).
+    await _dismiss_consent(page)
+    # Esperar a que la red se calme: hero, imágenes y FONDOS CSS terminan de cargar.
+    # (Antes sacábamos la foto apenas cargaba el DOM y el hero salía vacío.)
+    try:
+        await page.wait_for_load_state("networkidle", timeout=9000)
+    except Exception:
+        pass
+    # Forzar lazy-load de TODA la pagina: recorre el alto en pasos (asi cargan las fotos de producto
+    # lazy/servidas por Firebase que estan fuera del primer viewport), despues vuelve arriba.
+    try:
+        await page.evaluate(
+            "async () => { const step = Math.max(500, Math.round(window.innerHeight * 0.85));"
+            " for (let y = 0; y <= document.body.scrollHeight; y += step) { window.scrollTo(0, y);"
+            " await new Promise(r => setTimeout(r, 350)); } window.scrollTo(0, 0); }")
+        await page.wait_for_timeout(900)
+        try:
+            await page.wait_for_load_state("networkidle", timeout=6000)
+        except Exception:
+            pass
+    except Exception:
+        pass
+    # Esperar a que las <img> grandes (hero incluido) estén realmente cargadas.
+    try:
+        await page.wait_for_function(
+            "() => Array.from(document.images).filter(i=>i.width>200)"
+            ".every(i=>i.complete && i.naturalWidth>0)",
+            timeout=5000)
+    except Exception:
+        pass
+    # SEÑAL CONCRETA (mejor que networkidle): esperar a que las WEBFONTS estén listas y APLICADAS antes del
+    # screenshot. Si no, la foto sale con la fuente de fallback -> el modelo multimodal lee mal la tipografia
+    # (y el FOUT cambia el layout del hero). document.fonts.ready es el gate real; va acotado por timeout.
+    # Para el DNA es MAS critico todavia: sin esto fontFamily computa el fallback y displayHint/widthRatio
+    # miden una tipografia que el usuario nunca vio (precondicion 2 de §2.0).
+    try:
+        await page.evaluate(
+            "async () => { try { if (document.fonts && document.fonts.ready) "
+            "await Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 3000))]); } catch (e) {} }")
+    except Exception:
+        pass
+    await page.wait_for_timeout(900)
+
+
 async def capture_all(url: str, out_path: str, width: int = 1280, height: int = 900) -> dict:
     """UNA sola carga de Chromium: extrae el texto renderizado (content) Y saca el screenshot,
     en vez de abrir el navegador dos veces por video. Devuelve {'screenshot': path|None,
-    'content': dict|None}. Best-effort: cualquier parte que falle vuelve None, no rompe."""
-    out = {"screenshot": None, "content": None, "images": []}
+    'content': dict|None, 'images': [...], 'dna': {...}, 'captura': {...}}. Best-effort: cualquier
+    parte que falle vuelve None/{}, no rompe.
+
+    ADITIVO (F1): 'dna' (mediciones CRUDAS de DNA-SPEC §2) y 'captura' (estado/httpStatus/urlFinal de
+    §1.1) son claves NUEVAS; todo lo que ya devolvia (content/images/screenshot) no cambio de forma."""
+    out = {"screenshot": None, "content": None, "images": [], "dna": {}, "captura": None}
+    viewport = [width, height]
     if not _PW_OK or not url or not _guard(url):
+        # `bloqueada` es el UNICO estado que se decide SIN navegar: es la barrera anti-SSRF. Si el
+        # extractor llegara a medir una URL que url_is_safe() rechazo, el bug es de seguridad.
+        motivo = "playwright no disponible" if not _PW_OK else url_is_safe(url)[1]
+        out["captura"] = {"url": url or "", "urlFinal": url or "", "httpStatus": 0,
+                          "estado": "bloqueada", "viewport": viewport,
+                          "notas": [f"url bloqueada: {motivo}"[:120]], "politicaDna": "descartar"}
+        out["dna"] = {"politica": "descartar"}
         return out
+    http_status, goto_fallo, url_final, notas = 0, False, url, []
+    estado = "ok"
     try:
         async with async_playwright() as p:
             browser = await p.chromium.launch(args=["--no-sandbox"])
@@ -448,55 +1390,81 @@ async def capture_all(url: str, out_path: str, width: int = 1280, height: int = 
             page = await browser.new_page(viewport={"width": width, "height": height},
                                           device_scale_factor=2, ignore_https_errors=True, **_CTX)
             try:
-                await page.goto(url, wait_until="domcontentloaded", timeout=30000)
+                resp = await page.goto(url, wait_until="domcontentloaded", timeout=30000)
+                http_status = int(getattr(resp, "status", 0) or 0)
             except Exception as ge:
+                goto_fallo = True
                 print(f"[capture_all] goto lento ({ge}); sigo con lo que haya")
-            # Cerrar cookies temprano (si las hay) para no taparle el hero al screenshot.
-            await _dismiss_consent(page)
-            # Esperar a que la red se calme: hero, imágenes y FONDOS CSS terminan de cargar.
-            # (Antes sacábamos la foto apenas cargaba el DOM y el hero salía vacío.)
-            try:
-                await page.wait_for_load_state("networkidle", timeout=9000)
-            except Exception:
-                pass
-            # Forzar lazy-load de TODA la pagina: recorre el alto en pasos (asi cargan las fotos de producto
-            # lazy/servidas por Firebase que estan fuera del primer viewport), despues vuelve arriba.
-            try:
-                await page.evaluate(
-                    "async () => { const step = Math.max(500, Math.round(window.innerHeight * 0.85));"
-                    " for (let y = 0; y <= document.body.scrollHeight; y += step) { window.scrollTo(0, y);"
-                    " await new Promise(r => setTimeout(r, 350)); } window.scrollTo(0, 0); }")
-                await page.wait_for_timeout(900)
-                try:
-                    await page.wait_for_load_state("networkidle", timeout=6000)
-                except Exception:
-                    pass
-            except Exception:
-                pass
-            # Esperar a que las <img> grandes (hero incluido) estén realmente cargadas.
-            try:
-                await page.wait_for_function(
-                    "() => Array.from(document.images).filter(i=>i.width>200)"
-                    ".every(i=>i.complete && i.naturalWidth>0)",
-                    timeout=5000)
-            except Exception:
-                pass
-            # SEÑAL CONCRETA (mejor que networkidle): esperar a que las WEBFONTS estén listas y APLICADAS antes del
-            # screenshot. Si no, la foto sale con la fuente de fallback -> el modelo multimodal lee mal la tipografia
-            # (y el FOUT cambia el layout del hero). document.fonts.ready es el gate real; va acotado por timeout.
-            try:
-                await page.evaluate(
-                    "async () => { try { if (document.fonts && document.fonts.ready) "
-                    "await Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 3000))]); } catch (e) {} }")
-            except Exception:
-                pass
-            await page.wait_for_timeout(900)
+            await _settle(page)
             try:
                 data = await page.evaluate(_JS_EXTRACT)
                 if isinstance(data, dict):
                     out["content"] = data
             except Exception as ee:
                 print(f"[capture_all] extract: {ee}")
+
+            # ---- ESTADO DE LA CAPTURA + RECUPERACIONES (§5). Van ANTES del DNA: si hay que medir otra
+            # pagina (raiz de un 404) o esperar un segundo pintado (SPA), el DNA tiene que salir de ESA.
+            probe = None
+            try:
+                probe = await page.evaluate(_JS_PROBE)
+            except Exception as pe:
+                print(f"[capture_all] probe: {pe}")
+            estado, nota0 = detect_estado(probe, http_status, goto_fallo)
+            if nota0:
+                notas.append(nota0)
+
+            if estado == "spa-vacia":
+                # §5.4: UN reintento. El shell ya esta montado, a la app le puede faltar un tick de datos.
+                try:
+                    await page.wait_for_timeout(3000)
+                    await _settle(page)
+                    probe2 = await page.evaluate(_JS_PROBE)
+                    est2, _ = detect_estado(probe2, http_status, False)
+                    if est2 == "ok":
+                        probe, estado = probe2, "ok"
+                        notas.append("spa: 2.º intento")
+                        d2 = await page.evaluate(_JS_EXTRACT)
+                        if isinstance(d2, dict):
+                            out["content"] = d2
+                except Exception as se:
+                    print(f"[capture_all] retry spa: {se}")
+
+            if estado == "404":
+                # §5.5: UNA recuperacion a la raiz del MISMO host (pasando por el guard). Una URL rota no
+                # justifica inventar marca, pero la raiz suele ser el sitio real que el usuario quiso.
+                root = _root_url(page.url or url)
+                if root and root.rstrip("/") != (page.url or url).rstrip("/") and _guard(root):
+                    try:
+                        r2 = await page.goto(root, wait_until="domcontentloaded", timeout=20000)
+                        st2 = int(getattr(r2, "status", 0) or 0)
+                        await _settle(page)
+                        probe2 = await page.evaluate(_JS_PROBE)
+                        est2, n2 = detect_estado(probe2, st2, False)
+                        if est2 == "ok":
+                            probe, estado, http_status, url_final = probe2, "ok", st2, page.url or root
+                            notas.append("404: se midió la raíz")
+                            d2 = await page.evaluate(_JS_EXTRACT)
+                            if isinstance(d2, dict):
+                                out["content"] = d2
+                    except Exception as re4:
+                        print(f"[capture_all] retry 404: {re4}")
+
+            # ---- DNA VISUAL (§2.0): ACA, con scrollY == 0, DESPUES de _JS_EXTRACT y MUY ANTES del peek.
+            # NO MOVER debajo del bloque `peek`: el peek hace page.goto(/precios) y el DNA pasaria a ser
+            # el de OTRA pagina del sitio. Es la trampa mas facil de reintroducir al tocar el peek.
+            try:
+                dna = await extract_dna(page)
+                if isinstance(dna, dict) and dna:
+                    out["dna"] = dna
+                    for n in (dna.get("notas") or []):
+                        if n not in notas:
+                            notas.append(n)
+            except Exception as de:
+                print(f"[capture_all] dna: {de}")
+            # urlFinal se congela ACA (tras redirects, antes del peek): si se leyera al final, el peek
+            # a /precios se colaria como "la URL que medimos".
+            url_final = page.url or url_final
             try:
                 imgs = await page.evaluate(_JS_IMAGES)
                 if isinstance(imgs, list):
@@ -542,5 +1510,25 @@ async def capture_all(url: str, out_path: str, width: int = 1280, height: int = 
                 print(f"[capture_all] peek: {pe}")
             await browser.close()
     except Exception as e:
+        estado = estado if estado != "ok" else "timeout"
+        notas.append(f"error de captura: {e}"[:120])
         print(f"[capture_all] error: {e}")
+
+    # ---- bloque `captura` (§1.1): estado + trazabilidad. `confianza` NO se calcula aca: su formula
+    # (§1.5) necesita la semantica del LLM, asi que la arma pagemodel.py cuando tiene las dos mitades.
+    dna_blk = out.get("dna") or {}
+    politica = _POLITICA_DNA.get(estado, "descartar")
+    # §3.5/§5.1: una pagina que respondio 200 pero no tiene texto no es "ok con dna medido": es "no se
+    # midio nada util". Escribir 0 medido es distinto de escribir el default, y la politica lo dice.
+    if politica == "completo" and ((dna_blk.get("extras") or {}).get("senalInsuficiente")):
+        politica = "solo-bg"
+    if isinstance(dna_blk, dict):
+        dna_blk["politica"] = politica
+        out["dna"] = dna_blk
+    out["captura"] = {"url": url, "urlFinal": url_final or url, "httpStatus": http_status,
+                      "estado": estado, "viewport": viewport,
+                      "notas": [str(n)[:120] for n in notas][:8], "politicaDna": politica}
+    print(f"[capture_all] captura estado={estado} http={http_status} politicaDna={politica} "
+          f"muestras={((dna_blk.get('signals') or {}).get('muestras') or {})} "
+          f"modernidad={dna_blk.get('modernidad') or []}")
     return out

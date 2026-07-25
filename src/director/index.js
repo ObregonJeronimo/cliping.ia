@@ -25,7 +25,8 @@ export { parseEase, isEase, easeName, spring, win, wobble, stagger, lin, expoOut
 export { fontStr, fitFont, fitUniform, wrapFit, wordTrim, clip, drawText, drawWrapped, drawMaskLine, drawKineticLine, telStart, telStop, telTag } from './core/text.js'
 export {
   PM_V, SB_V, TL_V, CANVAS, PROPS, PROP_DEFAULT, LAYER_KINDS, TEXT_ROLES,
-  TIPO_NEGOCIO, MODELO_USO, DISPLAY_HINT, CASE_HINT, DENSITY, BORDER_STYLE, SHADOW_STYLE, MODERNIDAD, IMG_KIND,
+  TIPO_NEGOCIO, MODELO_USO, DISPLAY_HINT, CASE_HINT, SCRIPT, TEXT_DIR, DENSITY, BORDER_STYLE, SHADOW_STYLE,
+  MODERNIDAD, IMG_KIND, ESTADO, VOZ_DEFAULT,
   validatePageModel, validateStoryboard, validateTimeline, normalizePageModel, briefToPageModel, formatErrors, err,
 } from './core/schema.js'
 

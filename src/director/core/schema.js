@@ -12,17 +12,25 @@
 export const PM_V = 1, SB_V = 1, TL_V = 1
 export const CANVAS = { W: 405, H: 720, FPS: 30 }
 
+// ENUMS CERRADOS del pagemodel.v1 — la tabla normativa es docs/director/DNA-SPEC.md §1 y estos
+// arrays son su ESPEJO en JS; backend/pagemodel.py tiene el espejo en Python. Agregar un valor a
+// cualquiera de los tres lados sin tocar los otros dos = el mismo pagemodel valida distinto segun
+// quien lo lea. Agregar un valor de verdad = bump de PM_V.
 export const TIPO_NEGOCIO = ['saas', 'ecommerce', 'servicio-local', 'educacion', 'media', 'portfolio', 'app', 'evento', 'otro']
-export const MODELO_USO = ['suscripcion', 'compra', 'reserva', 'registro', 'descarga', 'contacto', 'otro']
-export const DISPLAY_HINT = ['serif', 'grotesk', 'rounded', 'mono', 'condensed', 'display']
+export const MODELO_USO = ['suscripcion', 'compra', 'reserva', 'registro', 'descarga', 'contacto', 'desconocido']
+export const DISPLAY_HINT = ['serif', 'grotesk', 'rounded', 'mono', 'condensed']
 export const CASE_HINT = ['upper', 'title', 'sentence']
+export const SCRIPT = ['latin', 'cyrillic', 'greek', 'cjk', 'arabic', 'hebrew', 'devanagari', 'otro']
+export const TEXT_DIR = ['ltr', 'rtl']
 export const DENSITY = ['aireado', 'medio', 'denso']
 export const BORDER_STYLE = ['none', 'hairline', 'bold']
 export const SHADOW_STYLE = ['flat', 'soft', 'hard']
 export const MODERNIDAD = ['bento', 'glass', 'bigtype', 'editorial-photo', 'gradient-mesh', 'brutalist']
-export const IMG_KIND = ['producto', 'persona', 'ambiente', 'ui', 'logo', 'otro']
+export const IMG_KIND = ['producto', 'persona', 'ambiente', 'ui', 'desconocido']
 export const REGISTER = ['formal', 'casual', 'warm']
 export const AWARENESS = ['unaware', 'problem', 'solution', 'product', 'most']
+export const ESTADO = ['ok', 'botwall', 'spa-vacia', '404', 'timeout', 'bloqueada']
+export const VOZ_DEFAULT = ['claro', 'directo', 'actual']
 
 // capas: el set es CERRADO (el renderer y la UI conocen cada kind; sumar = bump de SB_V)
 export const LAYER_KINDS = ['text', 'heroObj', 'photo', 'shape', 'badge', 'stepper', 'priceTag', 'logoRow', 'plate']
@@ -41,114 +49,223 @@ const clamp = (v, a, b) => (v < a ? a : v > b ? b : v)
 const clean = s => String(s == null ? '' : s).replace(/\s+/g, ' ').trim()
 
 // ---------------------------------------------------------------- PAGEMODEL
+const isHex6 = v => isStr(v) && /^#[0-9a-fA-F]{6}$/.test(v)
+
+// validate() es la SEGUNDA linea defensiva: el pagemodel ya viene normalizado desde Python
+// (backend/pagemodel.py, que corre una sola vez al capturar). Aca NO se re-deriva nada — ni
+// accentText, ni acromatica, ni mood: si ambos lados derivaran, derivarian distinto (DNA-SPEC §1.8).
 export function validatePageModel(pm) {
   const e = []
   if (!pm || typeof pm !== 'object') return { ok: false, errors: [err('E-SCHEMA-MISSING', '', 'pagemodel ausente')] }
-  if (pm.v !== PM_V) e.push(err('E-SCHEMA-TYPE', 'v', `version ${pm.v} != ${PM_V}`))
-  const d = pm.dna || {}
-  if (!d.palette || !isStr(d.palette.accent)) e.push(err('E-SCHEMA-MISSING', 'dna.palette.accent', 'falta el acento'))
-  else if (!/^#[0-9a-fA-F]{6}$/.test(d.palette.accent)) e.push(err('E-SCHEMA-TYPE', 'dna.palette.accent', 'hex #rrggbb invalido: ' + d.palette.accent))
-  if (d.typography && d.typography.displayHint && !inEnum(d.typography.displayHint, DISPLAY_HINT)) e.push(err('E-SCHEMA-ENUM', 'dna.typography.displayHint', String(d.typography.displayHint)))
-  if (d.typography && d.typography.caseHint && !inEnum(d.typography.caseHint, CASE_HINT)) e.push(err('E-SCHEMA-ENUM', 'dna.typography.caseHint', String(d.typography.caseHint)))
-  if (d.shape && d.shape.radius != null && !(isNum(d.shape.radius) && d.shape.radius >= 0 && d.shape.radius <= 32)) e.push(err('E-SCHEMA-RANGE', 'dna.shape.radius', 'fuera de [0,32]'))
-  if (d.shape && d.shape.borderStyle && !inEnum(d.shape.borderStyle, BORDER_STYLE)) e.push(err('E-SCHEMA-ENUM', 'dna.shape.borderStyle', String(d.shape.borderStyle)))
-  if (d.shape && d.shape.shadowStyle && !inEnum(d.shape.shadowStyle, SHADOW_STYLE)) e.push(err('E-SCHEMA-ENUM', 'dna.shape.shadowStyle', String(d.shape.shadowStyle)))
-  if (d.density && !inEnum(d.density, DENSITY)) e.push(err('E-SCHEMA-ENUM', 'dna.density', String(d.density)))
-  for (const k of ['calidez', 'formalidad', 'energia']) {
-    const v = d.mood ? d.mood[k] : null
-    if (v != null && !(isNum(v) && v >= 0 && v <= 1)) e.push(err('E-SCHEMA-RANGE', 'dna.mood.' + k, 'fuera de [0,1]'))
+  if (pm.v !== PM_V) e.push(err('E-SCHEMA-VERSION', 'v', `version ${pm.v} != ${PM_V}`))
+  const color = (v, path) => { if (v != null && !isHex6(v)) e.push(err('E-SCHEMA-COLOR', path, 'hex #rrggbb invalido: ' + v)) }
+  const rango = (v, path, lo, hi) => { if (v != null && !(isNum(v) && v >= lo && v <= hi)) e.push(err('E-SCHEMA-RANGE', path, `fuera de [${lo},${hi}]: ${v}`)) }
+  const enu = (v, set, path) => { if (v != null && !inEnum(v, set)) e.push(err('E-SCHEMA-ENUM', path, String(v))) }
+
+  // captura: sin `estado` los 5 casos adversariales son indistinguibles entre si (DNA-SPEC §5)
+  const c = pm.captura
+  if (c != null) {
+    if (typeof c !== 'object') e.push(err('E-SCHEMA-TYPE', 'captura', 'debe ser objeto'))
+    else {
+      enu(c.estado, ESTADO, 'captura.estado')
+      rango(c.confianza, 'captura.confianza', 0, 1)
+      rango(c.httpStatus, 'captura.httpStatus', 0, 599)
+      if (c.viewport != null && !(Array.isArray(c.viewport) && c.viewport.length === 2 && c.viewport.every(isNum))) e.push(err('E-SCHEMA-TYPE', 'captura.viewport', 'debe ser [w,h] numerico'))
+    }
   }
+
+  const d = pm.dna || {}
+  const p = d.palette
+  if (!p || !isStr(p.accent)) e.push(err('E-SCHEMA-MISSING', 'dna.palette.accent', 'falta el acento'))
+  else {
+    color(p.accent, 'dna.palette.accent'); color(p.bg, 'dna.palette.bg')
+    color(p.inkOnBg, 'dna.palette.inkOnBg'); color(p.accentText, 'dna.palette.accentText')
+    if (p.accent2 != null) color(p.accent2, 'dna.palette.accent2')   // null es legitimo: "no hay 2.o color de marca"
+    rango(p.bgLum, 'dna.palette.bgLum', 0, 1)
+  }
+  const t = d.typography || {}
+  enu(t.displayHint, DISPLAY_HINT, 'dna.typography.displayHint')
+  enu(t.bodyHint, DISPLAY_HINT, 'dna.typography.bodyHint')
+  enu(t.caseHint, CASE_HINT, 'dna.typography.caseHint')
+  enu(t.script, SCRIPT, 'dna.typography.script')
+  enu(t.textDir, TEXT_DIR, 'dna.typography.textDir')
+  rango(t.h1Ratio, 'dna.typography.h1Ratio', 0, 0.5)
+  rango(t.widthRatio, 'dna.typography.widthRatio', 0.35, 0.95)
+  const sh = d.shape || {}
+  rango(sh.radius, 'dna.shape.radius', 0, 32)
+  rango(sh.radiusRatio, 'dna.shape.radiusRatio', 0, 0.5)
+  rango(sh.borderWidth, 'dna.shape.borderWidth', 0, 12)
+  enu(sh.borderStyle, BORDER_STYLE, 'dna.shape.borderStyle')
+  enu(sh.shadowStyle, SHADOW_STYLE, 'dna.shape.shadowStyle')
+  // density es un OBJETO (DNA-SPEC §1.8): el motor necesita el continuo `score` para ritmo y carga;
+  // el string del boceto del plan sobrevive como `density.nivel`.
+  if (d.density != null) {
+    if (typeof d.density !== 'object' || Array.isArray(d.density)) e.push(err('E-SCHEMA-TYPE', 'dna.density', 'debe ser objeto {nivel,score,fill,nodos}'))
+    else {
+      enu(d.density.nivel, DENSITY, 'dna.density.nivel')
+      rango(d.density.score, 'dna.density.score', 0, 1)
+      rango(d.density.fill, 'dna.density.fill', 0, 1)
+      rango(d.density.nodos, 'dna.density.nodos', 0, 400)
+    }
+  }
+  for (const k of ['calidez', 'formalidad', 'energia']) rango(d.mood ? d.mood[k] : null, 'dna.mood.' + k, 0, 1)
   if (d.modernidad != null) {
     if (!Array.isArray(d.modernidad)) e.push(err('E-SCHEMA-TYPE', 'dna.modernidad', 'debe ser array'))
-    else d.modernidad.forEach((m, i) => { if (!inEnum(m, MODERNIDAD)) e.push(err('E-SCHEMA-ENUM', `dna.modernidad[${i}]`, String(m))) })
+    else {
+      if (d.modernidad.length > 3) e.push(err('E-SCHEMA-RANGE', 'dna.modernidad', 'maximo 3 lenguajes: ' + d.modernidad.length))
+      d.modernidad.forEach((m, i) => enu(m, MODERNIDAD, `dna.modernidad[${i}]`))
+    }
   }
+
   const s = pm.semantica || {}
-  if (!isStr(s.queHace) || !clean(s.queHace)) e.push(err('E-SCHEMA-MISSING', 'semantica.queHace', 'la frase de que hace la pagina es obligatoria'))
-  if (s.tipoNegocio && !inEnum(s.tipoNegocio, TIPO_NEGOCIO)) e.push(err('E-SCHEMA-ENUM', 'semantica.tipoNegocio', String(s.tipoNegocio)))
-  if (s.modeloUso && !inEnum(s.modeloUso, MODELO_USO)) e.push(err('E-SCHEMA-ENUM', 'semantica.modeloUso', String(s.modeloUso)))
+  // queHace VACIO es legitimo (DNA-SPEC §1.3): la pagina vacia/404 no tiene que decir nada y el
+  // composer cae a title/host. Exigirlo obligaba a inventar una frase, que es lo unico prohibido.
+  if (s.queHace != null && !isStr(s.queHace)) e.push(err('E-SCHEMA-TYPE', 'semantica.queHace', 'debe ser string'))
+  enu(s.tipoNegocio, TIPO_NEGOCIO, 'semantica.tipoNegocio')
+  enu(s.modeloUso, MODELO_USO, 'semantica.modeloUso')
   if (s.comoFunciona != null && !Array.isArray(s.comoFunciona)) e.push(err('E-SCHEMA-TYPE', 'semantica.comoFunciona', 'debe ser array'))
   if (s.features != null && !Array.isArray(s.features)) e.push(err('E-SCHEMA-TYPE', 'semantica.features', 'debe ser array'))
-  if (s.audiencia && s.audiencia.register && !inEnum(s.audiencia.register, REGISTER)) e.push(err('E-SCHEMA-ENUM', 'semantica.audiencia.register', String(s.audiencia.register)))
-  if (s.audiencia && s.audiencia.awareness && !inEnum(s.audiencia.awareness, AWARENESS)) e.push(err('E-SCHEMA-ENUM', 'semantica.audiencia.awareness', String(s.audiencia.awareness)))
+  if (s.vozDeMarca != null && !Array.isArray(s.vozDeMarca)) e.push(err('E-SCHEMA-TYPE', 'semantica.vozDeMarca', 'debe ser array de 3 adjetivos'))
+  if (s.audiencia) { enu(s.audiencia.register, REGISTER, 'semantica.audiencia.register'); enu(s.audiencia.awareness, AWARENESS, 'semantica.audiencia.awareness') }
+
   const a = pm.assets || {}
   if (a.images != null) {
     if (!Array.isArray(a.images)) e.push(err('E-SCHEMA-TYPE', 'assets.images', 'debe ser array'))
     else a.images.forEach((im, i) => {
       if (!im || !isStr(im.url) || !im.url) e.push(err('E-SCHEMA-MISSING', `assets.images[${i}].url`, 'sin url'))
-      if (im && im.kind && !inEnum(im.kind, IMG_KIND)) e.push(err('E-SCHEMA-ENUM', `assets.images[${i}].kind`, String(im.kind)))
+      if (im && im.kind != null) enu(im.kind, IMG_KIND, `assets.images[${i}].kind`)
     })
   }
   return { ok: e.length === 0, errors: e }
 }
 
 // pagemodel VALIDO siempre: rellena defaults sanos. Una pagina vacia/botwall produce un modelo usable.
+// ESPEJO de backend/pagemodel.py::build_pagemodel — mismos defaults, mismos enums, mismos clamps.
+// La diferencia de rol: Python MIDE y DERIVA (una vez, al capturar); esto solo rellena y clampea lo
+// que llega de Firestore/fixture/editor, para que el motor jamas reciba un campo fuera de rango.
 export function normalizePageModel(raw) {
   const r = raw && typeof raw === 'object' ? raw : {}
-  const d = r.dna || {}, s = r.semantica || {}, a = r.assets || {}
-  const pal = d.palette || {}
-  const hex = (v, def) => (isStr(v) && /^#[0-9a-fA-F]{6}$/.test(v) ? v.toLowerCase() : def)
+  const d = r.dna || {}, s = r.semantica || {}, a = r.assets || {}, c = r.captura || {}
+  const pal = d.palette || {}, typo = d.typography || {}, sh = d.shape || {}, den = d.density || {}
+  const hex = (v, def) => (isHex6(v) ? v.toLowerCase() : def)
   const num = (v, def, lo, hi) => (isNum(v) ? clamp(v, lo, hi) : def)
   const enumOr = (v, e, def) => (inEnum(v, e) ? v : def)
   const arr = (v, n) => (Array.isArray(v) ? v.filter(Boolean).slice(0, n) : [])
+  const txt = (v, n) => { const x = clean(v); return n && x.length > n ? x.slice(0, n).trim() : x }
+  const accent = hex(pal.accent, '#5b8cff')
+  const bg = hex(pal.bg, '#ffffff')
+  const modernidad = (Array.isArray(d.modernidad) ? d.modernidad : []).filter(m => inEnum(m, MODERNIDAD)).slice(0, 3)
+  const voz = arr(s.vozDeMarca, 3).map(x => txt(x, 14)).filter(Boolean)
+  const imgs = (Array.isArray(a.images) ? a.images : []).slice(0, 18)
   return {
     v: PM_V,
     brand: clean(r.brand) || 'Marca',
     url: clean(r.url) || '',
+    captura: {
+      url: clean(c.url) || clean(r.url) || '',
+      urlFinal: clean(c.urlFinal) || clean(c.url) || clean(r.url) || '',
+      httpStatus: num(c.httpStatus, 0, 0, 599),
+      estado: enumOr(c.estado, ESTADO, 'ok'),
+      ts: clean(c.ts),
+      confianza: num(c.confianza, 0, 0, 1),
+      viewport: Array.isArray(c.viewport) && c.viewport.length === 2 && c.viewport.every(isNum) ? c.viewport.slice() : [1280, 900],
+      notas: arr(c.notas, 8).map(x => txt(x, 120)).filter(Boolean),
+    },
     dna: {
       palette: {
-        accent: hex(pal.accent, '#5b8cff'),
-        accent2: hex(pal.accent2, null) || undefined,
-        bg: hex(pal.bg, '#0a0a0d'),
-        inkOnBg: hex(pal.inkOnBg, '#f2f0ea'),
+        accent,
+        accent2: hex(pal.accent2, null),          // null explicito = "no hay segundo color de marca"
+        bg,
+        inkOnBg: hex(pal.inkOnBg, '#111114'),
+        accentText: hex(pal.accentText, accent),  // default = accent (§1.2); NO se re-deriva el bucle de contraste
+        acromatica: !!pal.acromatica,
+        bgLum: num(pal.bgLum, 1, 0, 1),
       },
       typography: {
-        displayHint: enumOr(d.typography && d.typography.displayHint, DISPLAY_HINT, 'grotesk'),
-        caseHint: enumOr(d.typography && d.typography.caseHint, CASE_HINT, 'sentence'),
+        displayHint: enumOr(typo.displayHint, DISPLAY_HINT, 'grotesk'),
+        bodyHint: enumOr(typo.bodyHint, DISPLAY_HINT, 'grotesk'),
+        caseHint: enumOr(typo.caseHint, CASE_HINT, 'sentence'),
+        script: enumOr(typo.script, SCRIPT, 'latin'),
+        textDir: enumOr(typo.textDir, TEXT_DIR, 'ltr'),
+        h1Ratio: num(typo.h1Ratio, 0, 0, 0.5),
+        widthRatio: num(typo.widthRatio, 0.66, 0.35, 0.95),
       },
       shape: {
-        radius: num(d.shape && d.shape.radius, 12, 0, 32),
-        borderStyle: enumOr(d.shape && d.shape.borderStyle, BORDER_STYLE, 'hairline'),
-        shadowStyle: enumOr(d.shape && d.shape.shadowStyle, SHADOW_STYLE, 'soft'),
+        radius: num(sh.radius, 12, 0, 32),
+        radiusRatio: num(sh.radiusRatio, 0.06, 0, 0.5),   // esto es lo que se hereda: px de 1280 no sirven en 405
+        pill: !!sh.pill,
+        borderStyle: enumOr(sh.borderStyle, BORDER_STYLE, 'none'),
+        borderWidth: num(sh.borderWidth, 0, 0, 12),
+        shadowStyle: enumOr(sh.shadowStyle, SHADOW_STYLE, 'flat'),
       },
-      density: enumOr(d.density, DENSITY, 'medio'),
+      density: {
+        nivel: enumOr(den.nivel, DENSITY, 'medio'),
+        score: num(den.score, 0.35, 0, 1),
+        fill: num(den.fill, 0, 0, 1),
+        nodos: num(den.nodos, 0, 0, 400),
+      },
       mood: {
         calidez: num(d.mood && d.mood.calidez, 0.5, 0, 1),
         formalidad: num(d.mood && d.mood.formalidad, 0.5, 0, 1),
-        energia: num(d.mood && d.mood.energia, 0.5, 0, 1),
+        energia: num(d.mood && d.mood.energia, 0.45, 0, 1),
       },
-      modernidad: (Array.isArray(d.modernidad) ? d.modernidad : []).filter(m => inEnum(m, MODERNIDAD)),
+      modernidad,
+      modernidadScores: Object.fromEntries(Object.entries(d.modernidadScores || {}).filter(([k, v]) => inEnum(k, MODERNIDAD) && isNum(v)).map(([k, v]) => [k, clamp(v, 0, 1)])),
+      signals: normSignals(d.signals),
     },
     semantica: {
-      queHace: clean(s.queHace) || clean(r.claim) || clean(r.tagline) || `Conoce ${clean(r.brand) || 'la marca'}`,
-      comoFunciona: arr(s.comoFunciona, 5).map(clean).filter(Boolean),
+      // JAMAS inventar: si la senal no esta en la pagina, el campo queda vacio (un array vacio
+      // desactiva su escena). El fallback de copy es tarea del composer, no del schema.
+      queHace: txt(s.queHace || r.claim || r.tagline, 140),
+      comoFunciona: arr(s.comoFunciona, 5).map(x => txt(x, 48)).filter(Boolean),
       tipoNegocio: enumOr(s.tipoNegocio, TIPO_NEGOCIO, 'otro'),
-      modeloUso: enumOr(s.modeloUso, MODELO_USO, 'otro'),
-      features: arr(s.features, 6).map(f => (isStr(f) ? { titulo: clean(f), detalle: '' } : { titulo: clean(f && f.titulo), detalle: clean(f && f.detalle) })).filter(f => f.titulo),
+      modeloUso: enumOr(s.modeloUso, MODELO_USO, 'desconocido'),
+      features: arr(s.features, 6).map(f => (isStr(f) ? { titulo: txt(f, 28), detalle: '' } : { titulo: txt(f && f.titulo, 28), detalle: txt(f && f.detalle, 90) })).filter(f => f.titulo),
       pruebas: {
-        stats: arr(s.pruebas && s.pruebas.stats, 4).map(x => ({ value: clean(x.value), label: clean(x.label) })).filter(x => x.value),
-        testimonios: arr(s.pruebas && s.pruebas.testimonios, 3).map(x => (isStr(x) ? { texto: clean(x), autor: '' } : { texto: clean(x && x.texto), autor: clean(x && x.autor) })).filter(x => x.texto),
+        stats: arr(s.pruebas && s.pruebas.stats, 4).map(x => ({ valor: txt(x.valor != null ? x.valor : x.value, 10), etiqueta: txt(x.etiqueta != null ? x.etiqueta : x.label, 26) })).filter(x => x.valor),
+        testimonios: arr(s.pruebas && s.pruebas.testimonios, 3).map(x => (isStr(x) ? { texto: txt(x, 140), firma: '' } : { texto: txt(x && x.texto, 140), firma: txt(x && (x.firma != null ? x.firma : x.autor), 28) })).filter(x => x.texto),
         logosClientes: !!(s.pruebas && s.pruebas.logosClientes),
       },
       oferta: {
-        precio: clean(s.oferta && s.oferta.precio),
-        promo: clean(s.oferta && s.oferta.promo),
-        urgencia: clean(s.oferta && s.oferta.urgencia),
+        precio: txt(s.oferta && s.oferta.precio, 16),
+        promo: txt(s.oferta && s.oferta.promo, 40),
+        urgencia: txt(s.oferta && s.oferta.urgencia, 40),
       },
-      cta: clean(s.cta) || clean(r.cta) || 'Conocé más',
       audiencia: {
-        who: clean(s.audiencia && s.audiencia.who),
+        who: txt(s.audiencia && s.audiencia.who, 60),
         register: enumOr(s.audiencia && s.audiencia.register, REGISTER, 'casual'),
-        awareness: enumOr(s.audiencia && s.audiencia.awareness, AWARENESS, 'solution'),
+        awareness: enumOr(s.audiencia && s.audiencia.awareness, AWARENESS, 'problem'),
       },
-      vozDeMarca: clean(s.vozDeMarca),
+      vozDeMarca: voz.length === 3 ? voz : VOZ_DEFAULT.slice(),
+      idioma: (clean(s.idioma).toLowerCase().slice(0, 2) || 'es'),
+      cta: txt(s.cta || r.cta, 22),
     },
     assets: {
       logo: isStr(a.logo) ? a.logo : '',
       ogImage: isStr(a.ogImage) ? a.ogImage : '',
-      images: (Array.isArray(a.images) ? a.images : [])
-        .map((im, i) => (isStr(im) ? { url: im, kind: 'otro', rank: i } : { url: isStr(im && im.url) ? im.url : '', kind: enumOr(im && im.kind, IMG_KIND, 'otro'), rank: isNum(im && im.rank) ? im.rank : i }))
-        .filter(im => im.url).slice(0, 8),
+      screenshot: isStr(a.screenshot) ? a.screenshot : '',   // auditoria humana; NUNCA entra al video
+      images: imgs
+        .map((im, i) => (isStr(im)
+          ? { url: im, kind: 'desconocido', rank: imgs.length - i, ar: null }
+          : { url: isStr(im && im.url) ? im.url : '', kind: enumOr(im && im.kind, IMG_KIND, 'desconocido'), rank: isNum(im && im.rank) ? im.rank : imgs.length - i, ar: isNum(im && im.ar) ? im.ar : null }))
+        .filter(im => im.url),
     },
+  }
+}
+
+// bloque crudo de la medicion: el motor NO lo consume (existe para director-loop y los gates)
+function normSignals(raw) {
+  const g = raw || {}, m = g.muestras || {}
+  const n = (v, def, lo, hi) => (isNum(v) ? clamp(v, lo, hi) : def)
+  return {
+    muestras: { botones: n(m.botones, 0, 0, 60), cards: n(m.cards, 0, 0, 80), texto: n(m.texto, 0, 0, 300), imagenes: n(m.imagenes, 0, 0, 40) },
+    accentScore: n(g.accentScore, 0, 0, 1e6),
+    chromaMax: n(g.chromaMax, 0, 0, 1),
+    blurBackdrop: n(g.blurBackdrop, 0, 0, 200),
+    gridCards: n(g.gridCards, 0, 0, 200),
+    areaImgVsTexto: n(g.areaImgVsTexto, 0, 0, 1e4),
+    gradStops: n(g.gradStops, 0, 0, 64),
+    contrasteBgInk: n(g.contrasteBgInk, 21, 1, 21),
   }
 }
 
@@ -165,21 +282,26 @@ export function briefToPageModel(brief = {}) {
   const RUBRO_USO = { tech: 'suscripcion', educacion: 'registro', gastronomia: 'reserva', salud: 'reserva', belleza: 'compra', moda: 'compra', fitness: 'suscripcion', inmobiliaria: 'contacto', eventos: 'compra', finanzas: 'registro' }
   const ser = isNum(b.seriousness) ? b.seriousness : 0.5
   const ener = ({ alto: 0.8, medio: 0.5, bajo: 0.25 })[b.energyHint] != null ? ({ alto: 0.8, medio: 0.5, bajo: 0.25 })[b.energyHint] : 0.5
+  // el brief legacy no MIDE nada: la densidad se estima por cantidad de bullets, unica senal de carga
+  // que trae. `score` se elige en el centro del tramo de su nivel para que ambos queden coherentes.
+  const score = bullets.length >= 4 ? 0.7 : bullets.length >= 2 ? 0.4 : 0.2
   return normalizePageModel({
     brand: b.brand, url: b.url,
+    captura: { url: b.url, estado: 'ok', confianza: c.claim || c.tagline ? 0.5 : 0.3 },
     dna: {
       palette: { accent: b.brandColor, bg: b.tone === 'light' ? '#f2efe8' : '#0a0a0d', inkOnBg: b.tone === 'light' ? '#161310' : '#f2f0ea' },
       mood: { calidez: clamp(1 - ser, 0, 1), formalidad: ser, energia: ener },
-      density: bullets.length >= 4 ? 'denso' : bullets.length >= 2 ? 'medio' : 'aireado',
+      density: { score, fill: 0, nodos: bullets.length, nivel: score < 0.3 ? 'aireado' : score <= 0.52 ? 'medio' : 'denso' },
     },
     semantica: {
       queHace: c.claim || c.tagline,
       features: bullets.map(x => ({ titulo: x, detalle: '' })),
       tipoNegocio: RUBRO_NEGOCIO[b.rubro] || 'otro',
-      modeloUso: RUBRO_USO[b.rubro] || 'otro',
-      pruebas: { stats, testimonios: c.proof ? [{ texto: c.proof, autor: '' }] : [], logosClientes: false },
+      modeloUso: RUBRO_USO[b.rubro] || 'desconocido',
+      pruebas: { stats, testimonios: c.proof ? [{ texto: c.proof, firma: '' }] : [], logosClientes: false },
       cta: c.cta,
       audiencia: b.audience || {},
+      idioma: b.lang,
     },
     assets: { logo: b.logo, images: imgs, ogImage: b.mediaImage },
     // metadatos legacy que el motor sigue respetando

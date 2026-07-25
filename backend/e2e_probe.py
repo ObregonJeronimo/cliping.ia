@@ -1,4 +1,7 @@
 # e2e: captura una URL real -> perception -> brief. Imprime el brief y lo guarda para renderizar contact-sheet.
+# Ademas ensambla el PAGEMODEL v1 (dna medido + semantica + assets) y lo deja como fixture del motor
+# Director en tools/fixtures/director/<host>.json: es la unica forma de tener pagemodels de paginas
+# REALES sin que los gates dependan de la red (invariante 2 de docs/director/DNA-SPEC.md §0).
 # Uso: python e2e_probe.py <url> [<url> ...]   (corre desde backend/, carga .env)
 import asyncio, json, sys, os, uuid, urllib.parse
 try:
@@ -7,10 +10,12 @@ except Exception:
     pass
 from dotenv import load_dotenv
 load_dotenv()
-import site_capture, perception
+import site_capture, perception, pagemodel
 
 OUT = os.path.join(os.path.dirname(__file__), "..", "tools", "out")
+FIX = os.path.join(os.path.dirname(__file__), "..", "tools", "fixtures", "director")
 os.makedirs(OUT, exist_ok=True)
+os.makedirs(FIX, exist_ok=True)
 
 async def probe(url):
     host = urllib.parse.urlparse(url).netloc.replace("www.", "").split(".")[0]
@@ -52,6 +57,25 @@ async def probe(url):
     print(f"  stats={c.get('stats')}")
     print(f"  proof={c.get('proof')!r}")
     print(f"  -> brief guardado: tools/out/e2e_{host}.json")
+    # PAGEMODEL v1 (F1): el brief legacy se sigue guardando igual (lo consumen urvid IA / kinetic /
+    # templates); esto es ADITIVO. El fixture se ordena por clave para que un re-probe de la misma
+    # pagina de un diff legible en git y no un JSON revuelto.
+    try:
+        pmodel = pagemodel.build_pagemodel(url, site, brief)
+        slug = pagemodel._ascii_slug(pagemodel._bare_host(url) or host)
+        fpath = os.path.join(FIX, f"{slug}.json")
+        with open(fpath, "w", encoding="utf-8") as f:
+            json.dump(pmodel, f, ensure_ascii=False, indent=2, sort_keys=True)
+            f.write("\n")
+        cap, dna = pmodel["captura"], pmodel["dna"]
+        print(f"  pagemodel: estado={cap['estado']} confianza={cap['confianza']} accent={dna['palette']['accent']} "
+              f"bgLum={dna['palette']['bgLum']} tipo={dna['typography']['displayHint']} "
+              f"densidad={dna['density']['nivel']} modernidad={dna['modernidad']}")
+        if cap["notas"]:
+            print(f"  notas: {cap['notas']}")
+        print(f"  -> pagemodel guardado: tools/fixtures/director/{slug}.json")
+    except Exception as e:
+        print(f"  [{host}] pagemodel FALLO: {e}")   # nunca debe romper el probe del brief
 
 async def main():
     urls = sys.argv[1:]

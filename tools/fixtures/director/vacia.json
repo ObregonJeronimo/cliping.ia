@@ -1,0 +1,112 @@
+{
+  "assets": {
+    "images": [],
+    "logo": "",
+    "ogImage": "",
+    "screenshot": ""
+  },
+  "brand": "ejemplo.com",
+  "captura": {
+    "confianza": 0.3,
+    "errores": [],
+    "estado": "ok",
+    "httpStatus": 200,
+    "notas": [
+      "sin texto: dna por defecto"
+    ],
+    "ts": "2026-07-25T12:00:00Z",
+    "url": "https://ejemplo.com",
+    "urlFinal": "https://ejemplo.com",
+    "viewport": [
+      1280,
+      900
+    ]
+  },
+  "dna": {
+    "density": {
+      "fill": 0.0,
+      "nivel": "medio",
+      "nodos": 0,
+      "score": 0.35
+    },
+    "modernidad": [],
+    "modernidadScores": {},
+    "mood": {
+      "calidez": 0.5,
+      "energia": 0.45,
+      "formalidad": 0.5
+    },
+    "palette": {
+      "accent": "#5b8cff",
+      "accent2": null,
+      "accentText": "#1e61ff",
+      "acromatica": false,
+      "bg": "#ffffff",
+      "bgLum": 1.0,
+      "inkOnBg": "#111114"
+    },
+    "shape": {
+      "borderStyle": "none",
+      "borderWidth": 0.0,
+      "pill": false,
+      "radius": 12,
+      "radiusRatio": 0.06,
+      "shadowStyle": "flat"
+    },
+    "signals": {
+      "accentScore": 0.0,
+      "areaImgVsTexto": 0.0,
+      "blurBackdrop": 0,
+      "chromaMax": 0.0,
+      "contrasteBgInk": 21.0,
+      "gradStops": 0,
+      "gridCards": 0,
+      "muestras": {
+        "botones": 0,
+        "cards": 0,
+        "imagenes": 0,
+        "texto": 0
+      }
+    },
+    "typography": {
+      "bodyHint": "grotesk",
+      "caseHint": "sentence",
+      "displayHint": "grotesk",
+      "h1Ratio": 0.0,
+      "script": "latin",
+      "textDir": "ltr",
+      "widthRatio": 0.66
+    }
+  },
+  "semantica": {
+    "audiencia": {
+      "awareness": "problem",
+      "register": "casual",
+      "who": ""
+    },
+    "comoFunciona": [],
+    "cta": "",
+    "features": [],
+    "idioma": "es",
+    "modeloUso": "desconocido",
+    "oferta": {
+      "precio": "",
+      "promo": "",
+      "urgencia": ""
+    },
+    "pruebas": {
+      "logosClientes": false,
+      "stats": [],
+      "testimonios": []
+    },
+    "queHace": "",
+    "tipoNegocio": "otro",
+    "vozDeMarca": [
+      "claro",
+      "directo",
+      "actual"
+    ]
+  },
+  "url": "https://ejemplo.com",
+  "v": 1
+}
