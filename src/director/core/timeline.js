@@ -80,6 +80,23 @@ export function compile(sb, seed) {
     if (lIn) markers.push({ t: t0, label: '↦ ' + lIn.name })
     // FLASH real: 3-4 frames de placa a pleno sobre el corte. Es lo que hace que un corte seco se lea
     // como decision de montaje; sin el, flash-cut era solo un corte duro con un hueco en el medio.
+    if (lIn && lIn.entrada === 'expande') {
+      // EL PUNTO. Es lo que el ojo sigue mientras una escena se va y la otra llega, y sin el la
+      // transicion es un hueco. Nace donde estaba el foco de A y muere donde nace el de B.
+      const pid = `punto:${sc.id}`, a = R3(t0 - dIn * 0.5), b = R3(t0 + dIn * 0.5)
+      // El punto tiene que SOSTENER el cuadro mientras las dos escenas son chicas, no solo insinuarse:
+      // con 0.052 aportaba 0.15% de tinta y en una pagina pobre (404, botwall) el medio de la
+      // transicion quedaba por debajo del umbral de frame vacio. Es el unico elemento en pantalla en
+      // ese instante: merece el tamano de un elemento.
+      const d = 0.105
+      // z BAJA: el punto va DETRAS del contenido. Cuando importa (el medio de la transicion) no hay nada
+      // que lo tape, y cuando la escena entrante ya esta puesta no tiene que atravesarle una letra.
+      layers.push({ id: pid, kind: 'shape', life: [a, b], z: 15, base: { id: pid, kind: 'shape', shape: 'dot', fill: 'accent', box: [0.5 - d / 2, 0.5 - d * (CANVAS.W / CANVAS.H) / 2, d, d * (CANVAS.W / CANVAS.H)] }, ...cajaProps([0.5 - d / 2, 0.5 - d * (CANVAS.W / CANVAS.H) / 2, d, d * (CANVAS.W / CANVAS.H)]) })
+      push(pid, 'alpha', [{ t: a, v: 0 }, { t: R3(t0 - dIn * 0.20), v: 1, ease: 'co' }, { t: R3(t0 + dIn * 0.06), v: 1 }, { t: R3(t0 + dIn * 0.34), v: 0, ease: 'ci' }])   // se va apenas la escena entrante puede sostener el cuadro sola
+      // el punto NO se infla: su trabajo es ser el ancla que el ojo sigue, no un efecto. Inflarlo de
+      // 1 a 2.6 en cuatro frames daba 0.4 de escala por cuadro, que es un parpadeo, no un movimiento.
+      push(pid, 'scale', [{ t: a, v: 0.55 }, { t: t0, v: 1 }, { t: b, v: 1.25, ease: 'cio' }])
+    }
     if (lIn && lIn.entrada === 'flash') {
       const fid = `flash:${sc.id}`, a = R3(t0 - 0.075), b = R3(t0 + 0.085)
       layers.push({ id: fid, kind: 'shape', life: [a, b], z: 900, base: { id: fid, kind: 'shape', shape: 'rect', fill: look.dark ? 'ink' : 'accent', radius: 0, box: [0, 0, 1, 1], sangra: true }, ...cajaProps([0, 0, 1, 1]) })

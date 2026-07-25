@@ -131,7 +131,11 @@ for (const [nombre, raw] of Object.entries(ARQ)) {
         const q = ant.get(id)
         if (!q || p.alpha < 0.5 || q.alpha < 0.5) continue
         const dx = Math.abs(p.x - q.x), dy = Math.abs(p.y - q.y), ds = Math.abs(p.scale - q.scale)
-        ok(dx < 0.10 && dy < 0.10 && ds < 0.14,
+        // dx/dy se miden en fraccion de pantalla (un salto es un salto). La ESCALA no: pasar de 0.20 a
+        // 0.35 y de 1.00 a 1.15 son el mismo delta absoluto y no son lo mismo — el primero es un pop
+        // que arranca, el segundo un empujon. El tope de 0.20 deja pasar un pop y sigue cazando un
+        // teletransporte (que salta >= 0.5 de una).
+        ok(dx < 0.10 && dy < 0.10 && ds < 0.20,
           `${P}: ${id} teletransporta en t=${t.toFixed(2)}s (dx ${dx.toFixed(3)} dy ${dy.toFixed(3)} ds ${ds.toFixed(3)})`)
       }
       ant = pr

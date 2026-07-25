@@ -37,8 +37,19 @@ export function drawFrame(ctx, tl, t, opts = {}) {
       if (p.scale !== 1) ctx.scale(p.scale, p.scale)
       ctx.translate(-cx, -cy)
     }
-    // la capa se dibuja con su caja ANIMADA (normalizada de nuevo: los dibujantes trabajan en 0..1)
-    const capa = { ...l.base, box: [box[0] / W, box[1] / H, box[2] / W, box[3] / H] }
+    // TEXTO CON CAJA ANIMADA: se dibuja con la caja EN REPOSO y se ESCALA hasta la animada.
+    // Pasarle la caja animada lo obligaba a re-fitear en cada frame, y el fitter trabaja en pasos de
+    // 1px: durante todo un match-cut el tamano del texto saltaba 34 -> 33 -> 34, o sea temblaba. Es el
+    // defecto de motion mas facil de leer como "hecho por un script". Ademas asi el reveal por
+    // caracter no se recalcula a mitad de camino. El escalado es UNIFORME (por el ancho): estirar la
+    // tipografia en un eje se ve peor que cualquier cosa que estemos evitando.
+    let capa = { ...l.base, box: [box[0] / W, box[1] / H, box[2] / W, box[3] / H] }
+    if (l.base.kind === 'text' && l.base.box && Math.abs(l.base.box[2] - p.w) > 1e-6) {
+      const k = l.base.box[2] > 1e-6 ? p.w / l.base.box[2] : 1
+      ctx.translate(cx, cy); ctx.scale(k, k); ctx.translate(-cx, -cy)
+      const bw = l.base.box[2], bh = l.base.box[3]
+      capa = { ...l.base, box: [cx / W - bw / 2, cy / H - bh / 2, bw, bh] }
+    }
     drawCapa(ctx, capa, look, W, H, clamp(p.reveal, 0, 1), opts, rep)
     ctx.restore()
   }

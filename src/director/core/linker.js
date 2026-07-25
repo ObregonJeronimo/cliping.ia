@@ -21,14 +21,23 @@ import { clamp } from './util.js'
 // carries -> que matchKeys viajan (FLIP) · salida/entrada -> gesto de las capas que no viajan
 export const RECETAS = [
   {
+    // Pedia un match de 'hero', pero dos escenas de heroe NUNCA van seguidas: el guionista prohibe dos
+    // escenas de la misma familia consecutivas y todos los heroes son familia 'producto'. La receta de
+    // mayor peso del catalogo no podia dispararse jamas. El match-cut sirve para cualquier elemento
+    // con peso propio que este en las dos escenas, no solo para el objeto.
     name: 'carry', peso: 3.0, dur: 0.62, espectacular: false,
-    ok: (A, B, m) => m.some(x => x.key === 'hero' && x.de.kind === x.a.kind),
+    ok: (A, B, m) => m.some(x => x.de.kind === x.a.kind && CARRIABLES.indexOf(x.key) >= 0),
     carries: m => m.filter(x => x.de.kind === x.a.kind).map(x => x.key),
     salida: 'fade', entrada: 'rise',
   },
   {
-    name: 'morph-punto', peso: 1.1, dur: 0.55, espectacular: true,
-    ok: (A, B, m) => haiHero(A) && haiHero(B) && !m.some(x => x.key === 'hero'),
+    // idem: pedia heroe en las dos y eso no puede pasar. El gesto (colapsar a un punto de acento y
+    // volver a expandir) funciona con el FOCO de cualquier escena, que es justamente lo que el ojo
+    // esta siguiendo.
+    // peso bajo A PROPOSITO: al volverse alcanzable pasaba a salir en 100 de 120 videos y un gesto
+    // espectacular que sale siempre deja de ser espectacular.
+    name: 'morph-punto', peso: 0.5, dur: 0.55, espectacular: true,
+    ok: (A, B, m) => !!foco(A) && !!foco(B) && !m.some(x => x.key === 'hero'),
     carries: () => [], salida: 'colapso', entrada: 'expande',
   },
   {
@@ -73,7 +82,10 @@ export const RECETAS = [
     carries: m => m.map(x => x.key), salida: 'fade', entrada: 'pop',
   },
   {
-    name: 'gather', peso: 1.5, dur: 0.58, espectacular: true,
+    // NO cuenta contra el cupo de "espectacular": es el gesto del CIERRE, no una pirueta de mitad de
+    // video. Cuando competia por ese cupo, cualquier receta anterior se lo comia y el video terminaba
+    // con un fundido cualquiera — justo el momento que mas se mira.
+    name: 'gather', peso: 1.5, dur: 0.58, espectacular: false,
     ok: (A, B) => B.rol === 'cierre',
     carries: m => m.map(x => x.key), salida: 'recoge', entrada: 'rise',
   },
@@ -87,6 +99,9 @@ export const RECETAS = [
   },
 ]
 const haiHero = sc => sc.layers.some(l => l.kind === 'heroObj' || l.kind === 'photo')
+// matchKeys que justifican un match-cut: elementos con peso propio en las dos escenas. El chip de
+// marca y el filete de acento estan en casi todas, asi que acarrearlos no es un gesto de montaje.
+const CARRIABLES = ['hero', 'foto', 'stat', 'precio', 'mensaje', 'cta', 'pasos', 'logos']
 const foco = sc => sc.layers.find(l => l.focal)
 
 // ---------------------------------------------------------------- eleccion
@@ -126,7 +141,10 @@ export function gestoEntrada(nombre, l, i, look) {
     case 'impacto': return l.role === 'stat'
       ? { from: { alpha: 0, scale: 0.72 }, ease: 'spring:0.42,15' }
       : { from: { alpha: 0, dy: 0.02 }, ease: 'eo' }
-    case 'expande': return { from: { alpha: 0, scale: 0.12 }, ease: 'spring:0.62,13' }
+    // 0.12 con spring cambiaba la escala 0.31 POR FRAME: a 30fps el elemento se reducia a la mitad
+    // entre cuadro y cuadro y eso estroboscopia en vez de leerse como un movimiento. Amplitud menor y
+    // curva simetrica: la velocidad de pico baja al doble del promedio en vez de al triple.
+    case 'expande': return { from: { alpha: 0, scale: 0.28 }, ease: 'cio' }
     case 'empuja-in': return { from: { alpha: 1, dx: 0.55 }, ease: 'qo' }
     case 'acerca': return { from: { alpha: 0, scale: 0.94 }, ease: 'eo' }
     case 'traza': return l.kind === 'stepper' ? { from: { reveal: 0 }, ease: 'lin' } : { from: { alpha: 0, dy: 0.02 }, ease: 'eo' }
@@ -137,7 +155,7 @@ export function gestoEntrada(nombre, l, i, look) {
 export function gestoSalida(nombre, l, i, look) {
   switch (nombre) {
     case 'sube': return { to: { alpha: 0, dy: -0.035 }, ease: 'ci' }
-    case 'colapso': return { to: { alpha: 0, scale: 0.06 }, ease: 'ci' }
+    case 'colapso': return { to: { alpha: 0, scale: 0.24 }, ease: 'cio' }   // idem: colapsar a un punto literal es cliche y ademas estroboscopia
     case 'encoge': return { to: { alpha: 0, scale: 0.62 }, ease: 'cio' }
     case 'empuja': return { to: { alpha: 1, dx: -0.55 }, ease: 'qo' }
     case 'aleja': return { to: { alpha: 0, scale: 1.06 }, ease: 'eio' }
