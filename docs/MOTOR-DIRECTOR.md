@@ -407,8 +407,25 @@ lotties propios como acentos; objetos 3D (three ya está); modo craft completo.
   `ensureApca` corrige la tinta contra su propia placa.
 - El dominio como pie en todas las escenas hacía que una página pobre repitiera el mismo par de textos
   en cada cuadro → pie solo en apertura y cierre.
-- [~] F3.1 — Linker + Timeline + Render de video (2026-07-25: `core/linker` 12 recetas + FLIP por matchKey · `core/timeline` compilador y evaluador seek-safe · `render/video` · gate `director-timeline-check` — 27 videos / 3353 frames medidos · `director-cuts` para QA de movimiento)
-- [ ] F3.2 — Export MP4 + Estudio Director con editor E1  ← primer hito probable por Jero (bat → Vercel)
+- [x] F3.1 — Linker + Timeline + Render de video (2026-07-25: `core/linker` 12 recetas + FLIP por matchKey · `core/timeline` compilador y evaluador seek-safe · `render/video` · gate `director-timeline-check` — 27 videos / 3353 frames medidos · `director-cuts` para QA de movimiento)
+- [x] F3.2 — Export MP4 + Estudio Director con editor E1 (2026-07-25: item **Director IA** en el sidebar, ruta `/studio/director` · `core/edits` overlay declarativo · Timeline en canvas · Inspector E1 · export MP4 vía `lib/exportVideo` · `pagemodel` aditivo en `/api/urvid/perceive` · gate `director-edit-check` — 360 overlays / 1737 escenas renderizadas)
+
+**Defectos que cazaron los revisores adversariales en F3.2** (todos reproducidos, ninguno teórico):
+- La escena de FOTO era **código muerto**: pedía `kind === 'otro'`, que no está en el enum, así que
+  `normalizePageModel` lo convertía en `'desconocido'`. 0 de 60 seeds la producían.
+- `size: 2` derramaba el título en 13 de 20 casos: el piso del fitter escalaba con el tamaño **pedido**,
+  así que pedir el doble duplicaba también el mínimo. Ahora el piso es un límite de legibilidad absoluto.
+- `fitBlock` nunca probaba su propio piso (con `base` fraccionario, `s--` se rendía un escalón antes).
+- Texto sin espacios (500 letras) nunca se recortaba: la capacidad asumía que el texto podía envolver.
+- `String.slice` partía pares sustitutos → medio emoji en el overlay, que volvía como `U+FFFD` tras un
+  round-trip UTF-8: el edit guardado ya no generaba el mismo video. Se corta por code points.
+- Ocultar la capa **focal** dejaba el cascarón de la escena (2.6% → 0.79% de tinta). La regla anti-vacío
+  contaba capas; ahora mide **peso visual**, con piso absoluto y relativo.
+- `color: 'bg0'` pintaba texto invisible con un token perfectamente válido.
+- Los objetos héroe elidían la marca con puntos suspensivos ("LA PARRILLA…"): se les inyecta un
+  `drawText` que recorta por palabra, dejando `src/shared/objects.js` byte-idéntico para urvid.
+- Cambiar la música se revertía sola al dar la vuelta el preview (closure vieja en el bucle de rAF).
+- El preview seguía corriendo durante el export, peleándole el hilo al encoder en tiempo real.
 
 **Defectos de MOVIMIENTO que cazó F3.1** (todos vistos en rejillas de 12 frames, ninguno teórico):
 - `flash-cut` dejaba **0.1% de tinta** (pantalla casi vacía): el stagger hacía que B entrara escalonado
