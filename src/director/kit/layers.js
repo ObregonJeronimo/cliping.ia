@@ -58,6 +58,9 @@ export function forma(box, shape, o = {}) {
   return {
     ...base('shape', box, o),
     shape,
+    // el EJE de la forma viaja en la capa: un filete alineado a la izquierda ocupa una caja que empieza
+    // en el margen, y sin este dato quien la audite (o quien la edite) la lee como centrada.
+    ...(o.align ? { align: o.align } : {}),
     fill: o.fill === undefined ? 'accent' : o.fill,
     stroke: o.stroke || null,
     lw: o.lw == null ? 0.004 : o.lw,                       // fraccion del ANCHO
@@ -78,7 +81,7 @@ export function foto(box, url, o = {}) {
 
 // ---------------------------------------------------------------- compuestas
 export function badge(box, text, o = {}) {
-  return { ...base('badge', box, o), text: String(text || ''), size: o.size == null ? SIZE.kicker : o.size, fill: o.fill || 'accent', color: o.color || 'onAccent', upper: o.upper !== false }
+  return { ...base('badge', box, o), align: o.align || 'center', text: String(text || ''), size: o.size == null ? SIZE.kicker : o.size, fill: o.fill || 'accent', color: o.color || 'onAccent', upper: o.upper !== false }
 }
 export function stepper(box, items, o = {}) {
   return { ...base('stepper', box, o), items: (items || []).map(s => String(s)), size: o.size == null ? SIZE.step : o.size, numerado: o.numerado !== false }

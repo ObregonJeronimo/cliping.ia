@@ -311,7 +311,10 @@ function capaBadge(ctx, l, look, W, H, p) {
   ctx.font = fontStr(700, s, fnt)
   txt = wordTrim(ctx, txt, w * 0.78, s, 700, fnt, 0)
   const tw = ctx.measureText(txt).width
-  const pw = Math.min(w, tw + h * 1.15), px0 = x + (w - pw) / 2
+  const pw = Math.min(w, tw + h * 1.15)
+  // la pildora se ancla segun `align`: antes se centraba siempre dentro de su caja, asi que en un
+  // encuadre a la izquierda quedaba flotando en el medio mientras el titulo iba al borde.
+  const px0 = l.align === 'left' ? x : l.align === 'right' ? x + w - pw : x + (w - pw) / 2
   ctx.save()
   ctx.globalAlpha *= clamp(p * 1.3, 0, 1)
   ctx.fillStyle = col(look, l.fill)

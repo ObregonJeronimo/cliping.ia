@@ -45,7 +45,7 @@ function rail(g, o = {}) {
   // Tres ejes distintos conviviendo en el mismo cuadro es lo que hace que una pieza se lea desordenada.
   const w = o.w || g.w * 0.22
   const x = o.align === 'center' ? 0.5 - w / 2 : o.align === 'right' ? g.x1 - w : g.x0
-  return forma([x, o.y, w, 0.0045 * gr], 'line', { id: 'rail', matchKey: 'accent', fill: 'accent', z: 20 })
+  return forma([x, o.y, w, 0.0045 * gr], 'line', { id: 'rail', matchKey: 'accent', fill: 'accent', z: 20, align: o.align || 'left' })
 }
 // El pie: dominio real de la pagina. Nunca inventado — si no hay URL parseable, no hay pie.
 function pie(g, dominio) {
@@ -69,7 +69,7 @@ C['open.brand'] = (c, pm, look, g, r, est) => {
   const [by, bh] = g.band(centrado ? 0.34 : 0.52, centrado ? 0.62 : 0.80)
   return [
     placa(),
-    rail(g, { y: by - 0.055, w: g.w * range(r, 0.14, 0.26) * (est.pobre ? 1.9 : 1), grueso: est.pobre }),
+    rail(g, { y: by - 0.055, w: g.w * range(r, 0.14, 0.26) * (est.pobre ? 1.9 : 1), grueso: est.pobre, align: centrado ? 'center' : 'left' }),
     texto([g.x0, by, g.w, bh], c.marca, {
       id: 'brand', role: 'title', matchKey: 'brand', focal: true, align: centrado ? 'center' : 'left',
       // pagina sin material -> la marca se agranda hasta escala display. Un cuadro con una palabra
@@ -89,7 +89,7 @@ C['hook.statement'] = C['hook.marca'] = (c, pm, look, g, r, est) => {
   const [by, bh] = g.band(a, b)
   return [
     placa(),
-    izq ? rail(g, { vert: true, y: by, h: bh * 0.9 }) : rail(g, { y: by - 0.05, w: g.w * range(r, 0.16, 0.3) }),
+    izq ? rail(g, { vert: true, y: by, h: bh * 0.9 }) : rail(g, { y: by - 0.05, w: g.w * range(r, 0.16, 0.3), align: 'center' }),
     // en hook.marca el TITULAR es la marca (fallback honesto de una pagina sin contenido): el chip de
     // arriba la escribiria por segunda vez en el mismo cuadro.
     c.frase === pm.brand ? null : chipMarca(g, pm.brand, { align: izq ? 'left' : 'center' }),
@@ -118,7 +118,7 @@ C['hero.objeto'] = (c, pm, look, g, r, est) => {
     // caja de ancho completo: el objeto se escala por min(w/nw, h/nh), asi una ventana ancha y una
     // botella alta llenan igual de bien. Forzar una caja cuadrada desperdiciaba la mitad del alto.
     objeto([g.x0, oy, g.w, oh], est.proxObjeto(), { id: 'hero', matchKey: 'hero', focal: true, z: 40, hp: [r(), r(), r(), r()] }),
-    apoyo ? rail(g, { y: oy + oh + 0.03, w: g.w * range(r, 0.12, 0.22) }) : null,
+    apoyo ? rail(g, { y: oy + oh + 0.03, w: g.w * range(r, 0.12, 0.22), align: 'center' }) : null,
     apoyo ? texto([g.x0, oy + oh + 0.07, g.w, 0.115], apoyo, { role: 'subtitle', align: 'center', lines: 3, z: 30 }) : null,
   ]
 }
@@ -154,15 +154,19 @@ C['hero.product'] = (c, pm, look, g, r, est) => {
 
 C['proof.punch'] = (c, pm, look, g, r, est) => {
   const [by, bh] = g.band(0.26, 0.58)
+  // El dato tambien elige encuadre. Medido: el 45% de los videos tenia TODAS sus escenas centradas, y
+  // "todo centrado siempre" es el delator numero uno de pieza hecha por una maquina. Un numero grande
+  // alineado a la izquierda con su etiqueta debajo es una composicion editorial clasica, no un capricho.
+  const al = encuadreDe(r, look) === 'rail-izq' ? 'left' : 'center'
   return [
     placa(),
-    chipMarca(g, pm.brand),
+    chipMarca(g, pm.brand, { align: al }),
     texto([g.x0, by, g.w, bh], c.valor, {
-      id: 'stat', role: 'stat', matchKey: 'stat', focal: true, align: 'center',
+      id: 'stat', role: 'stat', matchKey: 'stat', focal: true, align: al,
       size: SIZE.stat * range(r, 0.92, 1.12), color: 'accentTxt', lines: 1, reveal: 'mask', z: 40,
     }),
-    rail(g, { y: by + bh + 0.018, w: g.w * range(r, 0.10, 0.2) }),
-    c.etiqueta ? texto([g.x0, by + bh + 0.05, g.w, 0.07], c.etiqueta, { role: 'statLabel', align: 'center', upper: true, color: 'dim', lines: 2, z: 30 }) : null,
+    rail(g, { y: by + bh + 0.018, w: g.w * range(r, 0.10, 0.2), align: al }),
+    c.etiqueta ? texto([g.x0, by + bh + 0.05, g.w, 0.07], c.etiqueta, { role: 'statLabel', align: al, upper: true, color: 'dim', lines: 2, z: 30 }) : null,
   ]
 }
 
@@ -189,7 +193,7 @@ C['proof.logos'] = (c, pm, look, g, r, est) => {
     placa(),
     chipMarca(g, c.marca),
     logoRow([g.x0, by, g.w, bh], 3 + ((r() * 3) | 0), { id: 'logos', matchKey: 'logos', focal: true, z: 40 }),
-    rail(g, { y: by - 0.045, w: g.w * 0.14 }),
+    rail(g, { y: by - 0.045, w: g.w * 0.14, align: 'center' }),
   ]
 }
 
@@ -263,14 +267,16 @@ C['howto.steps'] = (c, pm, look, g, r, est) => {
 C['cta.booking'] = (c, pm, look, g, r, est) => {
   const [by, bh] = g.band(0.36, 0.58)
   const conCta = !!c.cta
+  const izq = encuadreDe(r, look) === 'rail-izq'
+  const al = izq ? 'left' : 'center'
   return [
     placa(),
     texto([g.x0, by, g.w, bh * 0.62], c.marca, {
-      id: 'brand', role: 'title', matchKey: 'brand', focal: !conCta, align: 'center',
+      id: 'brand', role: 'title', matchKey: 'brand', focal: !conCta, align: al,
       size: SIZE.title * 0.9, lines: 2, upper: look.caseMode === 'upper', z: 40,
     }),
-    conCta ? badge([0.5 - 0.30, by + bh * 0.78, 0.60, 0.062], c.cta, { id: 'cta', matchKey: 'cta', focal: true, size: SIZE.cta, upper: false, z: 45 }) : null,
-    rail(g, { y: by - 0.05, w: g.w * 0.16 }),
+    conCta ? badge([izq ? g.x0 : 0.5 - 0.30, by + bh * 0.78, 0.60, 0.062], c.cta, { id: 'cta', matchKey: 'cta', focal: true, size: SIZE.cta, upper: false, align: al, z: 45 }) : null,
+    rail(g, { y: by - 0.05, w: g.w * 0.16, align: al }),
     pie(g, c.dominio || est.dominio),
   ]
 }
@@ -282,16 +288,19 @@ C['outro.cta'] = (c, pm, look, g, r, est) => {
   // Sin CTA y con la marca ya mostrada en grande, repetirla es un beat perdido: el cierre util es
   // DONDE ir. El dominio pasa a ser el foco y la marca queda de firma.
   const dominioFoco = !conCta && est.marcaEnGrande && !!dom
+  // el cierre tambien elige eje: era la otra escena que salia centrada en el 100% de los videos
+  const izq = encuadreDe(r, look) === 'rail-izq'
+  const al = izq ? 'left' : 'center'
   return [
     placa(),
     texto([g.x0, dominioFoco ? by + bh * 0.62 : by, g.w, bh * 0.6], dominioFoco ? dom : c.marca, {
-      id: 'brand', role: 'title', matchKey: dominioFoco ? 'dominio' : 'brand', focal: !conCta, align: 'center',
+      id: 'brand', role: 'title', matchKey: dominioFoco ? 'dominio' : 'brand', focal: !conCta, align: al,
       size: SIZE.title * range(r, 0.86, 1.02) * (dominioFoco ? 0.95 : 1), lines: 2, upper: look.caseMode === 'upper', z: 40,
     }),
-    dominioFoco ? texto([g.x0, by, g.w, bh * 0.5], c.marca, { id: 'firma', role: 'kicker', matchKey: 'brand', align: 'center', color: 'dim', upper: true, z: 30 }) : null,
+    dominioFoco ? texto([g.x0, by, g.w, bh * 0.5], c.marca, { id: 'firma', role: 'kicker', matchKey: 'brand', align: al, color: 'dim', upper: true, z: 30 }) : null,
     // sin CTA en la pagina -> el cierre es marca + dominio. Nunca una pildora con un verbo inventado.
-    conCta ? badge([0.5 - 0.30, by + bh * 0.76, 0.60, 0.062], c.cta, { id: 'cta', matchKey: 'cta', focal: true, size: SIZE.cta, upper: false, z: 45 }) : null,
-    rail(g, { y: by - 0.05, w: g.w * range(r, 0.12, 0.22) * (est.pobre ? 1.9 : 1), grueso: est.pobre }),
+    conCta ? badge([izq ? g.x0 : 0.5 - 0.30, by + bh * 0.76, 0.60, 0.062], c.cta, { id: 'cta', matchKey: 'cta', focal: true, size: SIZE.cta, upper: false, align: al, z: 45 }) : null,
+    rail(g, { y: by - 0.05, w: g.w * range(r, 0.12, 0.22) * (est.pobre ? 1.9 : 1), grueso: est.pobre, align: al }),
     dominioFoco ? null : pie(g, dom),
   ]
 }

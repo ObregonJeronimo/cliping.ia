@@ -82,6 +82,33 @@ for (const [nombre, raw] of Object.entries(ARQ)) {
       ok(d >= (l.id.startsWith('flash:') ? 0.1 : 0.3) - 1e-6, `${P}: capa ${l.id} vive ${d.toFixed(2)}s (parpadeo)`)
     }
 
+    // 8. E-SHIMMER — MOTION-PRINCIPLES §5 corolario 1: prohibido un track de `scale` o `rot` sobre una
+    // capa de TEXTO que se extienda mas alla de su ventana de entrada (o de salida). El renderer aplica
+    // esos props con ctx.scale(), y escalar glifos a una fraccion de pixel distinta en cada frame los
+    // re-rasteriza distinto: el titular HIERVE mientras se lee. Se midio en el 37% de las escenas antes
+    // de corregirlo, y el fix no tenia guardia: esta es la guardia.
+    // No se mira DONDE estan las keys sino si el valor VARIA mientras el texto se esta leyendo: una capa
+    // con keys de entrada Y de salida abarca toda su vida y entre medio esta perfectamente quieta.
+    const CONGLIFOS = new Set(['text', 'badge', 'stepper', 'priceTag'])
+    for (const capa of tl.layers) {
+      if (!CONGLIFOS.has(capa.kind)) continue
+      const [v0, v1] = capa.life
+      const h0 = v0 + 0.7, h1 = v1 - 0.7                 // ventana de LECTURA: sin entrada ni salida
+      if (h1 - h0 < 0.3) continue
+      for (const prop of ['scale', 'rot']) {
+        const tr = tl.tracks.find(t => t.layer === capa.id && t.prop === prop)
+        if (!tr) continue
+        let vmin = Infinity, vmax = -Infinity
+        for (let t = h0; t <= h1 + 1e-9; t += 1 / tl.fps) {
+          const p2 = propsAt(tl, t).get(capa.id)
+          if (!p2) continue
+          vmin = Math.min(vmin, p2[prop]); vmax = Math.max(vmax, p2[prop])
+        }
+        ok(!(vmax - vmin > 1e-6),
+          `${P}: ${capa.id} varia su ${prop} de ${vmin.toFixed(4)} a ${vmax.toFixed(4)} MIENTRAS SE LEE (${h0.toFixed(2)}s-${h1.toFixed(2)}s) — el texto hierve`)
+      }
+    }
+
     // 2. determinismo
     const tl2 = compile(composeStoryboard(pm, buildGuion(pm, seed), deriveLook(pm, seed), seed), seed)
     ok(JSON.stringify(tl) === JSON.stringify(tl2), `${P}: la timeline NO es determinista`)

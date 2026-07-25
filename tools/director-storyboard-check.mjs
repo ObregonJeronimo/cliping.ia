@@ -247,6 +247,31 @@ for (const [nombre, raw] of Object.entries(ARQ)) {
           `${P}: aire mal repartido (${(aire.arriba * 100).toFixed(0)}% arriba / ${(aire.abajo * 100).toFixed(0)}% abajo, ratio ${ratio.toFixed(2)})`)
       }
 
+      // 7d. E-ALIGN — el ornamento comparte EJE con el foco. Un filete a la izquierda con el titular
+      // centrado son dos ejes de lectura en el mismo cuadro, y es de las cosas que mas rapido hacen
+      // que una pieza se lea desordenada. Medido antes de existir este assert: 121 de 121 escenas
+      // fuera de eje, con un desplazamiento medio del 35% del ancho.
+      const foc = sc.layers.find(l => l.focal)
+      const filete = sc.layers.find(l => l.id === 'rail' && l.shape === 'line')
+      if (foc && filete) {
+        // el ANCLA de una capa depende de su alineacion: la caja de un texto a la izquierda ocupa todo
+        // el ancho pero su eje es el borde izquierdo. Comparar centros de caja daba 33% de desvio en
+        // escenas perfectamente alineadas.
+        const ancla = l => (l.align === 'left' ? l.box[0] : l.align === 'right' ? l.box[0] + l.box[2] : l.box[0] + l.box[2] / 2)
+        ok(Math.abs(ancla(foc) - ancla(filete)) < 0.12,
+          `${P}: el filete de acento esta fuera del eje del foco (${(Math.abs(ancla(foc) - ancla(filete)) * 100).toFixed(0)}% del ancho)`)
+      }
+
+      // 7e. E-HIER — C3: el foco tiene que GANAR tipograficamente. Si el titular y su apoyo miden casi
+      // lo mismo, el cuadro no dice que mirar primero y se lee como una lista, no como una escena.
+      if (foc && foc.kind === 'text') {
+        const otros = sc.layers.filter(l => l.kind === 'text' && l !== foc && l.id !== 'pie' &&
+          !(l.id === 'brand' && l.role === 'mark') && l.role !== foc.role)   // mismo rol = enumeracion: su jerarquia es temporal (la rafaga revela de a uno), no tipografica
+        const mayor = otros.reduce((m, l) => Math.max(m, l.size || 0), 0)
+        ok(!(mayor > 0) || foc.size >= mayor * 1.35,
+          `${P}: sin jerarquia — el foco mide ${(foc.size * 720).toFixed(0)}px y otro texto ${(mayor * 720).toFixed(0)}px`)
+      }
+
       // 8. E-DATO-FALSO — ni una palabra en pantalla que la pagina no haya dicho
       for (const l of sc.layers) {
         const cand = l.kind === 'text' ? [l.text] : l.kind === 'badge' ? [l.text]
