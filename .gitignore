@@ -22,3 +22,6 @@ remotion/props-*.json
 tools/fonts/
 tools/_*
 
+
+# scratch de auditorias/diagnosticos: nunca se commitea
+tools/tmp/
