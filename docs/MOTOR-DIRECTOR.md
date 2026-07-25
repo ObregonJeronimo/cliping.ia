@@ -1,182 +1,386 @@
-# MOTOR "DIRECTOR" — storyboard-first: escenas estáticas → entrelazado → timeline AE
+# MOTOR "DIRECTOR" — biblia de ejecución v2 (storyboard-first + edición total + independencia)
 
-> **La idea de Jero (2026-07-05)**: en vez de animar desde cero, componer primero IMÁGENES/ESCENAS
-> estáticas (un storyboard sobre la página del usuario, con su Design DNA), y DESPUÉS entrelazarlas
-> con animaciones de ingreso/egreso y transiciones donde los objetos de una escena se transforman
-> en la siguiente — para que parezca un proyecto de After Effects. Producto v1: modo AUTO (el video
-> se hace solo) + una **línea de tiempo perfecta estilo AE** visible en el estudio. v2: modo craft.
+> **Visión de Jero (2026-07-05)**: un motor nuevo y mejorado que (1) analiza la página y extrae su
+> DNA de diseño, (2) ENTIENDE qué hace y cómo se maneja la página para componer escenas que tengan
+> SENTIDO y sean modernas, (3) compone un storyboard de escenas estáticas, (4) las entrelaza con
+> animaciones de ingreso/egreso y match-cuts (objetos que se transforman en la siguiente escena),
+> (5) lo sirve como video AUTO con una **línea de tiempo estilo After Effects donde el usuario puede
+> EDITAR LO QUE SEA** con todas las herramientas necesarias.
 >
-> **Veredicto de factibilidad: MUY ALTA (9/10), de punta a punta, $0/video.** La razón clave: la
-> "detección de objetos" NO es visión por computadora — nuestras escenas son DECLARATIVAS. El motor
-> SABE qué objetos hay en cada escena porque él mismo los puso. El "objeto que se transforma en la
-> siguiente escena" es matching por id/rol en un grafo de capas + un tween — el patrón FLIP de GSAP.
-> Todo lo demás ya existe probado en el repo (compositor estático = look premium; kit de motion;
-> export determinista; QA de grillas). Roles: **Fable 5 Max** = dirección/plan/auditoría/veredictos
-> visuales; **Opus 4.8 Max** = ejecución de tandas con el loop de autotesting.
+> **Regla de INDEPENDENCIA (innegociable)**: las skills existentes (GSAP/design-dna/genjutsu/
+> LottieFiles) son MAESTROS para construir lo nuestro — el motor NO depende de ninguna skill, lib
+> externa de animación, ni servicio ajeno, ni en runtime ni en build. Si mañana todo eso desaparece
+> o se vuelve pago, el motor sigue igual. Lo que aprendamos se DESTILA a docs y código propios.
+>
+> **Roles**: Fable 5 Max = este plan, auditorías, veredictos visuales finos. **Opus 4.8 Max =
+> ejecución de TODAS las fases**, siguiendo este doc al pie de la letra.
+> **Costo**: $0/video (canvas propio + export WebCodecs en la PC del usuario, ya probado).
 
 ---
 
-## 1. Investigación: qué es cada cosa de los screenshots y cómo se maneja
+## 0. Principios (el ejecutor los relee antes de cada tanda)
 
-Los 5 son **skills de Claude Code**: carpetas de markdown (SKILL.md + referencias) que se cargan al
-contexto del agente cuando la tarea matchea. Se instalan con `/plugin marketplace add <repo>` o
-`npx skills add <url>` y viven en `.claude/skills/` (committeables al repo). **No son librerías de
-runtime**: son CONOCIMIENTO para que el agente escriba mejor código (salvo GSAP, que además implica
-la lib `gsap` de npm — hoy 100% gratis, plugins incluidos, desde que Webflow la liberó).
+1. **100% nuestro**: cero imports de skills/libs de animación en `src/director/`. Evaluador de
+   timeline, easings, objetos, UI: todo propio. Las skills solo se leen en TIEMPO DE DESARROLLO.
+2. **Determinismo absoluto**: mismo `pagemodel + seed` → mismo video byte a byte; `drawFrame(t)`
+   puro y seek-safe (gate con seek-en-frío, patrón kinetic-test).
+3. **Estático primero**: la calidad de composición se decide y VERIFICA en stills, antes de animar.
+4. **La timeline es LA fuente de verdad única**: lo que renderiza el motor = lo que muestra la UI
+   = lo que edita el usuario = lo que se guarda. Nunca dos representaciones.
+5. **Catálogos curados, jamás caso general**: recetas de transición y de escena elegidas de un
+   catálogo con reglas de sentido — el seed elige entre opciones VÁLIDAS, no inventa.
+6. **Nunca un frame vacío, nunca texto cortado, nunca contraste roto** (lecciones ya pagadas:
+   contratos de solape p<0.33/fantasma, fit-nunca-desborda, APCA — se heredan como gates).
+7. **Autotesting en loop**: ninguna tanda se pushea sin gates verdes + grillas miradas vs baseline.
 
-| Skill | Qué hace | Nos sirve |
+---
+
+## 1. Skills: qué destilamos de cada una (y a qué archivo NUESTRO va)
+
+Instalación (una vez, dev-time, $0): `npx skills add` de [gsap-skills](https://github.com/greensock/gsap-skills),
+[design-dna](https://github.com/zanwei/design-dna), [genjutsu](https://github.com/AThevon/genjutsu) → `.claude/skills/` del repo.
+Son solo lectura para el agente ejecutor; el motor JAMÁS las referencia.
+
+| Skill | Qué destilamos | Archivo NUESTRO (destino) |
 |---|---|---|
-| [GSAP Skills (oficial GreenSock)](https://github.com/greensock/gsap-skills) | 8 skills: core, **Timeline**, ScrollTrigger, **Flip**, SplitText, performance 60fps, React | **ALTO** — el modelo de TIMELINE (labels, tracks, easings, seek puro via `progress(t)`) es exactamente la "línea de tiempo AE" que queremos; y **FLIP** (First-Last-Invert-Play) es formalmente nuestro "linker" de escenas. Aunque no usemos la lib, sus patrones guían el diseño. |
-| [design-dna](https://github.com/zanwei/design-dna) | Convierte referencias (URLs/screenshots) en **JSON "Design DNA"**: tokens + estilo cualitativo + efectos, versionable | **ALTO como esquema** — el spec de dna.json es lo que nuestra perception debe emitir (hoy sacamos color/fuentes; falta radius/sombras/densidad/mood). El skill lo usa el AGENTE al diseñar; el extractor lo implementamos nosotros en site_capture (computed styles via Playwright, ya lo hacemos para el accent). |
-| [Genjutsu](https://github.com/AThevon/genjutsu) (ex creative-excellence) | Dirección creativa/motion para UI (cast/paint), multi-stack | **MEDIO** — conocimiento de criterio para las sesiones de ejecución. Instalar en `.claude/skills` del repo. |
-| [Motion Design Skill (LottieFiles)](https://lottiefiles.com/tutorials/lottie-creator/lottie-creator-mcp-create-animations-with-your-favorite-ai-assistants-vs6LnaDzYAL) + [generadores Lottie](https://github.com/diffusionstudio/lottie) | Principios de timing/easing para agentes + prompt→Lottie JSON production-ready | **MEDIO** — para fabricar NUESTROS acentos animados (lotties propios curados, no los genéricos que tiramos). No-core para Director v1. |
-| Three.js Skills ([colecciones](https://github.com/freshtechbro/claudedesignskills)) | Escenas 3D correctas en browser | **BAJO por ahora** — futuro: objetos héroe 3D (three ya está en package.json). Capa v4. |
+| GSAP · Timeline | Modelo mental de timeline: labels, tracks, position parameters, stagger, nesting | `docs/director/TIMELINE-SPEC.md` + `src/director/core/timeline.js` (evaluador propio) |
+| GSAP · Flip | El algoritmo First-Last-Invert-Play para match-cuts (medir estado A, estado B, invertir, animar) | `src/director/core/linker.js` (nuestro FLIP: opera sobre cajas declaradas, ni DOM ni lib) |
+| GSAP · Easing/perf | Tabla de easings pro (qué curva para qué gesto; duraciones 0.2-0.8s; nunca linear en UI) | `docs/director/MOTION-PRINCIPLES.md` + `src/director/core/ease.js` |
+| design-dna | El ESQUEMA de DNA (tokens + estilo cualitativo + efectos) y qué señales mirar en una página | `docs/director/DNA-SPEC.md` + extractor en `backend/site_capture.py` (Playwright, ya nuestro) |
+| genjutsu | Criterio anti-slop: jerarquía, restraint, un acento, micro-detalles que hacen "premium" | `docs/director/DIRECCION-DE-ARTE.md` (checklist que los gates visuales citan) |
+| LottieFiles motion | Principios de coreografía (anticipación, overlap, follow-through, stagger budgets) | `docs/director/MOTION-PRINCIPLES.md` (misma doc, sección coreografía) |
 
-**Acción**: instalar gsap-skills + design-dna + genjutsu en `.claude/skills` del repo (una vez,
-`npx skills add`) para que TODAS las sesiones de ejecución hereden esos criterios. $0.
-
----
-
-## 2. Por qué storyboard-first es LA arquitectura correcta (y qué recicla)
-
-Hoy los motores animan "en vivo": cada escena es una función `render(ctx,t)` que decide composición
-Y movimiento juntos. Eso hace difícil (a) verificar calidad (el 90% de mi verificación es sobre
-STILLS), (b) transiciones con continuidad de objetos (cada escena es una caja negra), (c) mostrar
-una timeline real (no existe el dato "keyframes").
-
-**Storyboard-first invierte el orden**: primero se COMPONEN N escenas estáticas perfectas (donde
-nuestro loop de verificación es más fuerte), después un LINKER calcula el movimiento entre ellas, y
-el resultado es una TIMELINE de keyframes — que es a la vez lo que renderiza el motor y lo que ve
-el usuario como línea de tiempo AE. Tres pájaros de un tiro.
-
-**Reciclaje directo (nada se tira):**
-| Pieza existente | Rol en Director |
-|---|---|
-| Placas + 14 objetos héroe + foto-real + ornamentos (premium.js) | Los "actores" de las escenas estáticas → mover los dibujantes PUROS a `src/shared/objects.js` (sin registry, importable por urvid/kinetic/director) |
-| 5 gramáticas curadas + guionista | Plantillas de storyboard (qué escenas y en qué orden) |
-| core prng/motion (springs)/text (fit nunca-desborda)/fit | Kit del renderer (patrón copia de kinetic, probado 2 veces) |
-| Design DNA parcial (accent anclado, fuentes, imágenes rankeadas) | Base del extractor DNA ampliado |
-| exportVideo.js con `drawFrameFn` | Export MP4 listo (cero cambios) |
-| urvid1-cuts (grillas 12), reveal-check, gates infra | La base del autotesting del Director |
-| Estudio (preview rAF, galería Firestore, watermark, selector) | Molde de la página "Director IA" |
+**Tarea F0.1**: el ejecutor lee las skills UNA vez y escribe esas 4 docs destiladas (nuestras,
+committeadas). Desde ahí, las docs propias son la única referencia. Verificación de independencia:
+gate `director-independence-check` = grep en `src/director/` que falla si aparece cualquier import
+externo fuera de la whitelist (react para la UI del estudio, nada más).
 
 ---
 
-## 3. Arquitectura del pipeline (6 etapas)
+## 2. PageModel: entender la página (DNA visual + SEMÁNTICA + assets)
 
-```
-URL → [1 DNA] → [2 STORYBOARD estático] → [3 LINKER] → [4 TIMELINE] → [5 RENDERER] → [6 ESTUDIO]
-```
+La pieza que pide Jero: que el motor ENTIENDA qué hace la página para que las escenas tengan
+sentido. Un solo JSON versionado (`pagemodel.v1`) que une lo visual y lo semántico:
 
-### 3.1 DNA de la página (backend)
-Ampliar site_capture/perception para emitir `dna.json`:
-`{ tokens: { palette[5], fontHints, radius, shadow, density }, style: { mood, contraste, energía },`
-`  assets: { logo, images[] rankeadas, ogImage } }` — esquema inspirado en design-dna. Lo que ya
-tenemos (accent por computed-style del CTA, fuentes, imágenes) + radius/sombras/densidad medidos de
-los computed styles del hero de la página. Fallbacks sanos cuando el sitio no da señal.
-
-### 3.2 Storyboard: escenas ESTÁTICAS declarativas
-`storyboard.json`: 5-7 escenas, cada una un **árbol de capas tipado**:
 ```json
-{ "id": "sc2", "role": "hero", "plate": "tinta",
-  "layers": [
-    { "id": "kicker", "kind": "text", "role": "kicker", "text": "CONOCÉ URVID", "box": [.1,.12,.8,.06] },
-    { "id": "obj1",   "kind": "heroObj", "obj": "chart", "hp": [0.3,0.7,0.5], "box": [.2,.25,.6,.35] },
-    { "id": "claim",  "kind": "text", "role": "title", "text": "Videos en un click", "box": [.08,.65,.84,.2] }
-  ] }
+{
+  "v": 1,
+  "dna": {
+    "palette": { "accent": "#...", "accent2": "#...", "bg": "#...", "inkOnBg": "#..." },
+    "typography": { "displayHint": "serif|grotesk|rounded|mono|condensed", "caseHint": "upper|title|sentence" },
+    "shape": { "radius": 0-32, "borderStyle": "none|hairline|bold", "shadowStyle": "flat|soft|hard" },
+    "density": "aireado|medio|denso",
+    "mood": { "calidez": 0-1, "formalidad": 0-1, "energia": 0-1 },
+    "modernidad": ["bento", "glass", "bigtype", "editorial-photo", "gradient-mesh", "brutalist"]
+  },
+  "semantica": {
+    "queHace": "una frase: qué vende/ofrece la página",
+    "comoFunciona": ["paso 1", "paso 2", "paso 3"],
+    "tipoNegocio": "saas|ecommerce|servicio-local|educacion|media|portfolio|app|evento",
+    "modeloUso": "suscripcion|compra|reserva|registro|descarga|contacto",
+    "features": [{ "titulo": "", "detalle": "" }],
+    "pruebas": { "stats": [], "testimonios": [], "logosClientes": bool },
+    "oferta": { "precio": "", "promo": "", "urgencia": "" },
+    "audiencia": { "who": "", "register": "", "awareness": "" },
+    "vozDeMarca": "3 adjetivos"
+  },
+  "assets": { "logo": "", "images": [{ "url": "", "kind": "producto|persona|ambiente|ui", "rank": 0 }], "ogImage": "" }
+}
 ```
-El **compositor estático** renderiza cada escena como STILL final (t=∞, todo asentado) usando el
-kit compartido. **GATE DE STILLS antes de animar**: acá se juega la composición — tipografía,
-jerarquía, contraste, aire — verificable en imagen fija con checks programáticos + grillas.
 
-### 3.3 LINKER: el entrelazado (la pieza nueva de verdad)
-Para cada par (A→B): matching de capas por id/rol → plan de transición con **catálogo curado de
-recetas por par-de-tipos** (NO resolver el caso general — esa es la trampa):
-- `heroObj → heroObj` (mismo obj): **carry** — el objeto NO sale: tween de box/escala/rotación a su
-  pose en B (match-cut real, patrón FLIP)
-- `heroObj → heroObj` (distinto): morph por colapso a punto → expande el nuevo
-- `plate fullbleed → card`: zoom-out (la escena A queda como tarjeta dentro de B)
-- `text(title) → text(title)`: mask-swap (el viejo sube y sale por máscara, el nuevo entra por abajo)
-- `photo → photo`: crossfade con parallax de escala opuesta
-- capas sin match: **exit** por tipo (mask-out / slide / fade+scale) SOLAPADO con los **enter** de B
-  (lección aprendida: jamás un frame vacío — contrato p<0.33/alpha fantasma ya inventado)
-- Elección determinista por seed entre las recetas VÁLIDAS para ese par + duración por energía.
+**Cómo se extrae (todo nuestro, backend existente ampliado):**
+- `dna.*`: site_capture con Playwright — computed styles del hero/CTA/cards (ya extraemos accent
+  así): radius medianos de botones/cards, box-shadows, font-family stacks → displayHint, densidad
+  por ratio texto/aire del viewport, modernidad por detección de patrones (backdrop-filter=glass,
+  grid de cards=bento, tamaño de h1 vs viewport=bigtype).
+- `semantica.*`: perception (el LLM que YA usamos) con prompt ampliado: pide queHace/comoFunciona/
+  tipoNegocio/modeloUso/features/vozDeMarca ADEMÁS de lo actual. Sube el cache key (v8→v9).
+- `assets.images[].kind`: clasificación barata por heurísticas (aspect, posición, alt) + el ranking
+  9:16 existente.
+- **Fallbacks sanos obligatorios**: cada campo tiene default razonable; una página pobre produce un
+  pagemodel válido (gate lo asserta con 5 páginas adversariales: vacía, botwall, no-latina, SPA, 404).
 
-### 3.4 TIMELINE: el modelo AE (una sola fuente de verdad)
-Compilar storyboard+links → `timeline.json`:
+**Por qué esto hace escenas CON SENTIDO**: el guionista deja de mapear "bullets→lista" a ciegas y
+pasa a mapear semántica→escena: `comoFunciona` → escena "3 pasos" con steppers; `modeloUso=reserva`
+→ CTA de reserva con horario; `tipoNegocio=ecommerce` → escena producto+precio; `saas` → ventana de
+app con las features reales; `logosClientes` → escena de confianza. La tabla completa vive en §4.
+
+---
+
+## 3. Arquitectura (7 etapas) y árbol de archivos
+
+```
+URL → [1 PageModel] → [2 Guion semántico] → [3 STORYBOARD estático] → [4 LINKER] → [5 TIMELINE]
+                                                                  → [6 RENDERER] → [7 ESTUDIO+EDITOR]
+```
+
+```
+src/director/
+  index.js                  barrel: makeDirector(pagemodel|brief, {seed}) → {video, timeline} · drawDirectorFrame(ctx,t,video)
+  core/
+    prng.js                 copia del patrón probado (mulberry32 + namespaces)
+    ease.js                 easings + springs cerrados PROPIOS (destilado de MOTION-PRINCIPLES)
+    text.js                 fit nunca-desborda + telemetría (patrón urvid/kinetic)
+    schema.js               validadores de pagemodel/storyboard/timeline (errores tipados E-SCHEMA-*)
+    scriptwriter.js         semántica → guion de escenas con sentido (tabla §4)
+    composer.js             guion+DNA → storyboard.json (escenas estáticas: árboles de capas)
+    linker.js               pares de escenas → plan de transición (FLIP propio + catálogo §5)
+    timeline.js             compilador (storyboard+links → timeline.json) + EVALUADOR puro evalAt(tl, t)
+    render.js               drawFrame(ctx,t): evalúa timeline y pinta capas con el kit
+  kit/
+    plates.js               placas (noir/carbón/tinta/crema + las que sumen los DNA modernos: glass/bento)
+    objects.js              re-export de src/shared/objects.js + objetos nuevos
+    layers.js               pintores por kind de capa: text/photo/heroObj/badge/shape/stepper/priceTag/logoRow
+    fx.js                   grano, viñeta, sweep, halo, sombras (destilado del look premium)
+src/shared/
+  objects.js                los 14+ dibujantes héroe PUROS extraídos de premium.js (usados por urvid Y director)
+src/pages/Director/
+  DirectorStudio.jsx        página del estudio (preview + timeline + inspector)
+  Timeline.jsx              el componente timeline AE (canvas propio — ver §7)
+  Inspector.jsx             panel de propiedades de la capa/key seleccionada
+  editorState.js            command-stack (undo/redo), selección, snapping — puro, testeable en Node
+tools/
+  director-shot.mjs         stills por escena + grillas de 12 por link + --mp4
+  director-test.mjs         determinismo byte-idéntico + seek-en-frío + contrato
+  director-storyboard-check.mjs · director-linker-check.mjs · director-timeline-check.mjs
+  director-independence-check.mjs · director-editor-check.mjs
+  director-loop.mjs         el loop de auto-mejora (§8)
+docs/director/
+  TIMELINE-SPEC.md · DNA-SPEC.md · MOTION-PRINCIPLES.md · DIRECCION-DE-ARTE.md   (destiladas en F0)
+```
+
+**Contratos clave (firmas exactas):**
+- `makeDirector(input, { seed }) → { video: {W,H,duration,fps,pagemodel,storyboard,timeline,seed}, }`
+  — `input` acepta pagemodel completo O un brief legacy (adapter interno) → funciona con el backend
+  actual desde el día 1 y mejora cuando el backend emita pagemodel.
+- `evalAt(timeline, t) → Map<layerId, {props resueltos}>` — puro, sin estado, O(tracks) con índice
+  binario por track (los keys están ordenados; gate lo garantiza).
+- `drawDirectorFrame(ctx, t, video)` — pinta `evalAt` con kit/layers.js. Export: el existente
+  `exportCanvasVideo(video, { drawFrameFn: drawDirectorFrame })`.
+
+---
+
+## 4. Guion semántico: mapa "qué hace la página" → escenas modernas
+
+`scriptwriter.js` — REGLAS DE SENTIDO (curadas; el seed elige entre las válidas):
+
+| Señal del pagemodel | Escena que habilita (kind) | Nota de diseño moderno |
+|---|---|---|
+| `queHace` | `hook.statement` (mask-reveal, palabra clave en acento) | big type editorial |
+| `comoFunciona` (≥2 pasos) | `howto.steps` — steppers numerados con conectores animados | bento/steps con líneas que se trazan |
+| `features` (≥2) | `features.bento` (grilla bento 2×2 con íconos-objeto chicos) o `rafaga.beat` | bento = modernidad 2025-26 |
+| `tipoNegocio=saas/app` | `hero.appwindow` — ventana con las features REALES tipeadas adentro | ui-in-video |
+| `tipoNegocio=ecommerce` + foto producto | `hero.product` — foto real con sweep + `priceTag` si hay oferta | foto editorial + etiqueta |
+| `modeloUso=reserva/turno` | `cta.booking` — CTA con chip de horario/disponibilidad | |
+| `pruebas.stats` | `proof.punch` (número gigante + anillo) | |
+| `pruebas.logosClientes` | `proof.logos` (fila de placas con sheen) | |
+| `pruebas.testimonios` | `proof.quote` (cita con comillas gigantes + firma) | |
+| `oferta.promo/urgencia` | `offer.flash` (placa de acento con la promo + countdown visual NO fake) | |
+| siempre | `open.brand` y `outro.cta` (ornamento del look + CTA con halo) | |
+
+**Gramáticas**: las 5 curadas existentes (clásica/producto/dato/ráfaga/editorial) se PORTAN y se
+suman 3 semánticas: `howto-first` (si comoFunciona es fuerte), `offer-first` (si hay promo+urgencia),
+`social-first` (si pruebas son fuertes). Reglas duras: nunca dos escenas de la misma familia
+seguidas; escena solo si su señal existe (jamás fabricar datos/testimonios — regla histórica).
+**Modernidad**: `dna.modernidad` sesga el catálogo (glass → placas glass; bento → features.bento;
+bigtype → statements más grandes; editorial-photo → héroes de foto). Así la página "se ve a sí
+misma" en el video.
+
+---
+
+## 5. Linker: catálogo COMPLETO de recetas (v1 = 12)
+
+Contrato: `link(A, B, seed) → { exits: [...], enters: [...], carries: [...], dur, name }`, todas
+las recetas emiten KEYFRAMES (no dibujan): el linker escribe en la timeline.
+
+Nuestro FLIP (destilado, sin lib): para cada capa con match (mismo `matchKey` — p.ej. el objeto
+héroe, el logo, un título persistente): First = caja/props al final de A · Last = caja/props al
+inicio de B · Invert = delta · Play = keys con spring. Continuidad garantizada por construcción
+(gate E-OBJ-JUMP la verifica ≤ 2px).
+
+| # | Par (A→B) | Receta | Detalle |
+|---|---|---|---|
+| 1 | heroObj → heroObj (mismo matchKey) | **carry** | FLIP de caja+rotación; el objeto nunca sale de pantalla |
+| 2 | heroObj → heroObj (distinto) | **morph-punto** | A colapsa a punto de acento → punto expande como B (0.55s) |
+| 3 | fullbleed → cualquiera | **zoom-out-card** | A se encoge a card con borde dentro de B (0.6s) |
+| 4 | cualquiera → fullbleed foto | **push-reveal** | B empuja desde un borde con parallax 12% |
+| 5 | title → title | **mask-swap** | viejo sube y sale por máscara, nuevo entra por abajo (solapados) |
+| 6 | photo → photo | **crossfade-parallax** | escalas opuestas 1.06↔0.98 |
+| 7 | steps interno | **trace** | el conector entre pasos se traza y arrastra la cámara |
+| 8 | placa oscura ↔ clara | **flash-cut** | corte seco + flash 2 frames (ya probado en ráfaga) |
+| 9 | cualquiera → punch | **impact** | dip 0.1s + número con spring overshoot + micro-shake 2px 3 frames |
+| 10 | logos/bento interno | **stagger-pop** | celdas con stagger 0.05s y spring |
+| 11 | cualquiera → outro | **gather** | las capas salientes convergen brevemente hacia el centro antes del corte (recogida) |
+| 12 | default | **dip-solapado** | el contrato anti-frame-vacío existente (exit alpha ≤8% cuando B entra) |
+
+Elección: filtro por par válido → weightedPick por seed + energía del pagemodel; máx 1 receta
+"espectacular" (2/3/11) por video; flash-cut solo en ráfagas/energía alta.
+
+---
+
+## 6. Timeline: modelo de datos (v1 congelado — TODO depende de esto)
+
 ```json
-{ "fps": 30, "dur": 14.2, "markers": [{"t":0,"label":"Apertura"}, ...],
-  "tracks": [ { "layer": "sc2.obj1", "prop": "y", "keys": [{"t":3.1,"v":0.9,"ease":"spring(0.6,11)"}, {"t":3.7,"v":0.4}] }, ... ] }
+{ "v": 1, "fps": 30, "dur": 14.2, "W": 405, "H": 720,
+  "markers": [ { "t": 0, "label": "Apertura", "sceneId": "sc1" } ],
+  "layers": [ { "id": "sc2.obj1", "sceneId": "sc2", "kind": "heroObj", "name": "Gráfico",
+                "base": { "obj": "chart", "hp": [0.3,0.7,0.5], "box": [0.2,0.25,0.6,0.35], "z": 20 },
+                "life": [3.1, 7.4] } ],
+  "tracks": [ { "layer": "sc2.obj1", "prop": "y", "keys": [
+                 { "t": 3.1, "v": 0.9, "ease": "spring:0.6,11" },
+                 { "t": 3.7, "v": 0.4 } ] } ],
+  "look": { "plate": "tinta", "case": "upper", "...": "el look del video (§premium heredado)" } }
 ```
-- Evaluador propio v1 (interpolador + easings del kit, seek puro, cero deps) con el MISMO shape
-  conceptual que GSAP timeline → si algún día conviene, swap a `gsap.timeline().progress(t)` sin
-  tocar el resto (el skill oficial documenta el modo seek).
-- **Esta estructura alimenta 1:1 la UI**: cada track es una fila, cada key un rombo, los markers
-  son las escenas. No hay "UI fake": la timeline que ves ES la que renderiza.
-
-### 3.5 RENDERER
-`drawFrame(ctx,t)`: evalúa timeline → dibuja capas con el kit compartido (placas, objetos, texto
-con fit, grano/viñeta). Determinista y seek-safe por construcción (los keyframes son datos).
-Export: `exportCanvasVideo(video, { drawFrameFn: drawDirectorFrame })` — ya existe.
-
-### 3.6 Estudio "Director IA" (modo AUTO v1)
-Sidebar nuevo. Flujo: URL → analizar (mismo backend) → video reproduciéndose + **panel timeline
-estilo AE** debajo: regla de tiempo, markers de escena con nombre, tracks por capa (agrupadas por
-escena, colapsables), barras/rombos de keyframes, playhead sincronizado, scrub, zoom horizontal.
-v1 READ-ONLY estricto (mirar, no editar) — el craft mode (v2) edita este mismo JSON.
+- `prop` ∈ `x,y,w,h,scale,rot,alpha,reveal,sweep,color?` — set CERRADO v1 (el evaluador y la UI
+  conocen cada uno; agregar props = bump de `v`).
+- `ease` string parseable: `lin | eo | eio | spring:z,w | back:s` → `ease.js` los resuelve.
+- `reveal` es EL prop de texto (0→1 dispara mask-reveal/typewriter según el kind) — así el
+  typewriter es editable como cualquier key.
+- **Regla de oro**: el renderer NO conoce escenas, solo capas+tracks. Las "escenas" son markers y
+  agrupación visual. Eso hace la edición trivial y elimina la clase de bugs de ventanas de escena.
 
 ---
 
-## 4. AUTOTESTING EN LOOP (pedido explícito de Jero)
+## 7. ESTUDIO + EDITOR (edición total, por capas de herramientas)
 
-**Taxonomía de errores tipada** (cada gate emite códigos, trackeables entre sesiones):
-`E-TXT-OVERFLOW` (desborde) · `E-TXT-MIDWORD` (palabra cortada) · `E-LAYER-OOB` (capa fuera de
-frame) · `E-LAYER-COLLIDE` (solape indebido) · `E-CONTRAST` (tinta/placa bajo umbral) ·
-`E-OBJ-JUMP` (discontinuidad >6px lógicos en un carry/tween compartido) · `E-DEADAIR` (>0.9s sin
-cambio perceptual) · `E-EMPTY-FRAME` (frame sin contenido en transición) · `E-TL-ORDER` (keys
-desordenadas/huecos) · `E-DET` (no determinista / seek-frío difiere).
+Layout: preview 9:16 arriba-izquierda · **Inspector** derecha · **Timeline** abajo full-width.
+La Timeline se dibuja en un CANVAS propio (no DOM por fila — con 40+ tracks el DOM muere; canvas
+nos da zoom/scroll fluidos y ya somos expertos en canvas).
 
-**Gates por etapa** (todos en `npm run gates`, patrón existente):
-1. `director-storyboard-check`: N briefs × seeds → stills de cada escena → checks programáticos
-   (telemetría de texto, bboxes dentro de frame, contraste contra placa, colisiones) → 0 errores.
-2. `director-linker-check`: por cada link, evaluar la timeline en 12 puntos → continuidad de
-   shared objects, cero frames vacíos, duraciones en rango [0.3, 0.9].
-3. `director-timeline-check`: contrato del JSON (keys ordenadas, eases válidos, tracks completos,
-   markers = escenas).
-4. `director-test`: determinismo byte-idéntico + **seek en frío** (ya inventado en kinetic-test).
-5. Visual: `director-shot.mjs` (stills por escena + grillas de 12 frames POR LINK — regla de Jero)
-   + `--mp4`. Baselines commiteadas para comparar regresiones a ojo.
+**E1 — Edición de contenido y ritmo (entra en F3, junto con el motor):**
+- Seleccionar capa (click en preview O en timeline) → Inspector: editar TEXTO (con re-fit
+  automático — jamás desborda), color de acento del video, tipografía (dropdown de pairings),
+  placa del look, objeto héroe (dropdown del pool), imagen (elegir otra de assets o subir).
+- Ritmo: arrastrar la duración de una escena (estira/comprime proporcionalmente sus keys),
+  reordenar escenas (drag del marker → el linker RE-LINKEA solo esos dos bordes),
+  eliminar/duplicar escena, cambiar receta de transición de un borde (dropdown de válidas).
+- Otra variante (seed) conservando edits de contenido (los edits son un overlay declarativo:
+  `{ layerId, field, value }[]` que se re-aplica tras regenerar; si la capa ya no existe, se avisa).
+- **Undo/redo ilimitado**: TODO pasa por `editorState.js` (command stack puro: `{do, undo}` por
+  comando — testeable en Node sin browser).
+- Guardar (Firestore `director_videos`): `{ pagemodelRef|brief, seed, edits[], timelineSnapshot }`.
 
-**El LOOP de auto-mejora** (`tools/director-loop.mjs`):
-```
-correr M briefs × N seeds → recolectar TODAS las violaciones tipadas
-→ reporte rankeado por frecuencia y severidad (JSON snapshot con fecha)
-→ fixear el top-3 → re-correr → repetir hasta: 0 errores duros, blandos < umbral
-→ diff contra el snapshot anterior (nunca subir una clase de error que ya estaba en 0)
-```
-Regla operativa por tanda de ejecución: gates verdes + 2-3 grillas nuevas MIRADAS contra baseline
-antes de cada push. Los veredictos visuales finos (¿el match-cut se siente bien?) los da Fable Max
-con las grillas; Jero es el gate final de "feel" en el preview.
+**E2 — Edición de keyframes (F5):**
+- Ver/mover keys (drag horizontal = tiempo, con snapping a 1/30s y a markers), editar valor
+  (Inspector numérico), cambiar ease por key (dropdown + preview de curva dibujada), añadir/borrar
+  key en el playhead, copiar/pegar keys entre capas del mismo prop.
+- Mover/estirar la "vida" de una capa (barra), solo dentro de su escena ± transiciones.
+
+**E3 — Herramientas pro (F6):**
+- Añadir capas desde biblioteca (texto/objeto/badge/foto) con drag al preview, alinear/distribuir,
+  z-order, edición de curvas de ease custom (2 handles), multi-selección con caja, atajos AE
+  (space play, J/K/L, ←/→ frame, I/O vida de capa, cmd+Z/Y).
+
+**Contrato de seguridad del editor**: toda edición pasa por `schema.js` → si un edit viola un
+invariante (texto desborda a tamaño mínimo, key fuera de vida, contraste roto), el editor lo
+CLAMPEA y lo marca en el Inspector — el usuario nunca puede producir un video roto.
 
 ---
 
-## 5. Fases de ejecución (con Opus 4.8 Max)
+## 8. AUTOTESTING EN LOOP (ampliado con el editor)
 
-- **F0 — Cimientos** (1 sesión): schemas storyboard/timeline · `src/shared/objects.js` (extraer
-  dibujantes puros de premium.js sin romper urvid) · compositor estático · `director-storyboard-check`
-  + stills-grids. Entregable: 5 briefs × stills perfectos.
-- **F1 — Linker + render** (1-2 sesiones): catálogo de 8-10 recetas de par · compilador de timeline ·
-  evaluador + renderer · gates 2-4 · export MP4. Entregable: video AUTO completo de punta a punta.
-- **F2 — Estudio** (1 sesión): página "Director IA" + panel timeline AE read-only sincronizado +
-  galería (patrón kinetic_videos). Entregable: probable con bat → Vercel.
-- **F3 — Loop de calidad** (1 sesión): `director-loop.mjs` + DNA ampliado en backend + pulido con
-  grillas hasta 0 errores duros.
-- **F4+ — Crecimiento**: craft mode (editar la timeline), más recetas de par y gramáticas, lotties
-  propios como acentos, objetos 3D (three ya está en deps), swap opcional a GSAP timeline.
+**Taxonomía tipada** (todo gate emite estos códigos; `director-loop` los agrega):
+`E-SCHEMA-*` · `E-TXT-OVERFLOW` · `E-TXT-MIDWORD` · `E-LAYER-OOB` · `E-LAYER-COLLIDE` ·
+`E-CONTRAST` · `E-OBJ-JUMP` · `E-EMPTY-FRAME` · `E-DEADAIR` · `E-TL-ORDER` · `E-TL-ORPHAN`
+(track sin capa) · `E-DET` · `E-SEEK` · `E-EDIT-REVERT` (undo no restaura byte-idéntico) ·
+`E-EDIT-BREAK` (un edit produce violación) · `E-INDEP` (import prohibido).
 
-**Riesgos y mitigaciones**: linker genérico feo → catálogo curado por pares (nunca caso general) ·
-scope-creep de la UI timeline → v1 read-only estricta · tercer motor duplica kit → `src/shared/`
-SOLO para funciones puras sin registry · DNA infiel → empezar por tokens que ya extraemos + mood
-de perception, fallbacks sanos.
+**Gates** (todos entran a `npm run gates`):
+1. `director-test`: determinismo byte-idéntico ×2 + seek-en-frío + 24 seeds → genotipos distintos.
+2. `director-storyboard-check`: 8 pagemodels × 4 seeds → stills → telemetría texto completa, bboxes
+   en frame, contraste ≥4.5 texto / ≥3 display, colisiones cero.
+3. `director-linker-check`: por link, evalAt en 12 puntos → E-OBJ-JUMP ≤2px, E-EMPTY-FRAME=0,
+   dur ∈ [0.3,0.9], siempre ≥1 capa visible.
+4. `director-timeline-check`: schema válido, keys ordenadas, eases parseables, sin huérfanos,
+   markers = escenas, vida ⊆ [0,dur].
+5. `director-editor-check` (Node, sin browser): fuzz de 200 comandos random del command-stack →
+   cada undo restaura EXACTO (hash del timeline); edits inválidos clampean sin tirar.
+6. `director-independence-check`: grep de imports en src/director → whitelist o falla.
+7. Visual: `director-shot.mjs` stills + grillas de 12 POR LINK (regla de Jero) + `--mp4`;
+   baselines en `tools/baselines/director/` para diff a ojo.
 
-**Costo**: $0/video (mismo stack canvas + export en la PC del usuario). GSAP si se adopta: gratis.
+**`director-loop.mjs`** (el loop de auto-mejora): corre 10 pagemodels reales (lista fija: saas,
+ecommerce, resto, gym, portfolio, educación, evento, salud, medio, página-pobre) × 5 seeds →
+recolecta violaciones → `reports/director/loop-<fecha>.json` rankeado → el ejecutor fixea el top-3
+→ re-run → repetir hasta 0 duros y blandos <5 → **diff contra el snapshot anterior: ninguna clase
+que estaba en 0 puede volver** (si vuelve, la tanda no se pushea). Cadencia por tanda: gates verdes
++ 3 grillas miradas vs baseline + loop-report adjunto en el commit message.
+
+---
+
+## 9. FASES — plan de ejecución sesión por sesión (Opus 4.8 Max)
+
+Cada fase: tareas numeradas → criterio de aceptación (CA) → gates que nacen. El ejecutor abre la
+fase leyendo §0 y cierra commiteando + actualizando el "Estado" al final de este doc.
+
+**F0 — Destilación + esqueleto (1 sesión)**
+1. `npx skills add` (gsap-skills, design-dna, genjutsu) → leer → escribir las 4 docs destiladas.
+2. Extraer `src/shared/objects.js` de premium.js (dibujantes puros, cero registry) y hacer que
+   premium.js los importe de ahí (urvid queda byte-idéntico — gate urvid1-test lo prueba).
+3. Crear `src/director/` con core/prng, ease, text, schema (validadores completos) + index stub.
+4. Gates: `director-independence-check` + schema-tests. CA: gates 26+2 verdes, urvid intacto.
+
+**F1 — PageModel (1 sesión)**
+1. `DNA-SPEC.md` → extractor en site_capture (radius/shadow/density/modernidad por computed styles).
+2. Prompt de perception ampliado (queHace/comoFunciona/tipoNegocio/modeloUso/features/vozDeMarca),
+   cache v9, adapter brief-legacy→pagemodel en `schema.js`.
+3. e2e_probe emite pagemodel.json; correr sobre las 10 páginas de la lista fija y COMMITEAR esos
+   pagemodels como fixtures de test (los gates no dependen de red).
+CA: 10 fixtures válidos (5 adversariales incluidos), pagemodel de urvid.com.ar y de un ecommerce
+real leídos y con semántica correcta a ojo.
+
+**F2 — Storyboard estático (1-2 sesiones)**
+1. `scriptwriter.js` (tabla §4 completa + 8 gramáticas) → guion.
+2. `kit/plates|layers|fx` + `composer.js` → storyboard.json → stills.
+3. `director-storyboard-check` + `director-shot` stills; baselines.
+CA: 8 fixtures × 4 seeds → 0 errores duros; grillas de stills MIRADAS: composición nivel premium
+actual o mejor; escenas semánticas presentes cuando la señal existe (howto/bento/logos/price).
+
+**F3 — Linker + Timeline + Render + Export + Estudio E1 (2 sesiones)**
+1. `linker.js` (12 recetas) + `timeline.js` (compilador + evaluador) + `render.js`.
+2. `director-test/linker-check/timeline-check`; grillas de 12 por link vs baseline.
+3. `DirectorStudio.jsx` + `Timeline.jsx` (canvas: regla, markers, tracks, playhead, scrub, zoom) +
+   Inspector con **E1 completo** + galería `director_videos` + export MP4 + item sidebar
+   "Director IA" + selector en el flujo del bat.
+CA: URL real → video AUTO completo → editar texto/color/objeto/duración/orden → export → todo
+verificado con grillas; Jero puede probar con su flujo bat+Vercel.
+
+**F4 — Loop de calidad (1 sesión)**
+`director-loop.mjs` + correr hasta 0 duros en las 10 páginas × 5 seeds + pulido visual con grillas
++ ampliar recetas/escenas donde el loop muestre monotonía. CA: loop-report limpio commiteado.
+
+**F5 — Editor E2 (1-2 sesiones)** — keyframes: drag/snap/ease/add/delete/copy, curvas dibujadas,
+`director-editor-check` fuzz. CA: editar un match-cut a mano y que quede mejor que el auto.
+
+**F6 — Editor E3 + craft (1-2 sesiones)** — capas desde biblioteca, multi-selección, atajos,
+alinear/distribuir. CA: rehacer NOVA a mano dentro del editor en <30 min.
+
+**F7+ — Crecimiento continuo**: más recetas/escenas/looks por sesión con el loop como guardián;
+lotties propios como acentos; objetos 3D (three ya está); modo craft completo.
+
+---
+
+## 10. Riesgos y decisiones tomadas (para no re-discutir)
+
+- **Linker feo en el caso general** → catálogo cerrado de 12; lo que no matchea usa dip-solapado.
+- **UI timeline = pozo de tiempo** → canvas propio + E1/E2/E3 estrictos; E1 sale con F3, no antes.
+- **Tercer motor duplica kit** → `src/shared/` SOLO funciones puras sin registry ni estado.
+- **Perception más cara por prompt ampliado** → mismo llamado, más campos (costo marginal ~0);
+  cache v9 por página.
+- **Edits vs regeneración** → edits como overlay declarativo re-aplicable; snapshot de timeline
+  guardado SIEMPRE (si el overlay no aplica, se abre el snapshot tal cual — nunca se pierde trabajo).
+- **Skills pagas mañana** → irrelevante por diseño: docs destiladas + `director-independence-check`.
+- **Timeline schema deriva** → `v` en el JSON + migradores en schema.js desde v1.
+
+---
+
+## Estado
+
+- [x] Plan v2 completo (este doc) — Fable 5 Max, 2026-07-05
+- [ ] F0 — Destilación + esqueleto
+- [ ] F1 — PageModel
+- [ ] F2 — Storyboard estático
+- [ ] F3 — Linker+Timeline+Render+Estudio E1  ← primer hito probable por Jero (bat → Vercel)
+- [ ] F4 — Loop de calidad
+- [ ] F5 — Editor E2 (keyframes)
+- [ ] F6 — Editor E3 (pro)
