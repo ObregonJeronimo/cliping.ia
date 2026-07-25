@@ -293,29 +293,36 @@ function capaLogos(ctx, l, look, W, H, p) {
   ctx.restore()
 }
 
+// ---------------------------------------------------------------- capa suelta
+// drawCapa dibuja UNA capa. Lo usan tanto drawScene (estatico, para el storyboard y sus gates) como
+// render/video.js (animado, con la caja y el alpha que resolvio el evaluador de timeline).
+export function drawCapa(ctx, l, look, W, H, p, opts = {}, rep = null) {
+  switch (l.kind) {
+    case 'plate': drawPlaca(ctx, look, W, H, l); break
+    case 'text': capaTexto(ctx, l, look, W, H, p, rep); break
+    case 'shape': capaForma(ctx, l, look, W, H, p); break
+    case 'heroObj': capaObjeto(ctx, l, look, W, H, p, opts); break
+    case 'photo': capaFoto(ctx, l, look, W, H, p, opts, rep); break
+    case 'badge': capaBadge(ctx, l, look, W, H, p); break
+    case 'stepper': capaStepper(ctx, l, look, W, H, p); break
+    case 'priceTag': capaPrecio(ctx, l, look, W, H, p); break
+    case 'logoRow': capaLogos(ctx, l, look, W, H, p); break
+    default: break
+  }
+}
+
 // ---------------------------------------------------------------- escena
 export function drawScene(ctx, sc, look, W, H, opts = {}) {
   const rep = { faltantes: [], desbordes: [], capas: sc.layers.length }
   const P = opts.p == null ? 1 : clamp(opts.p, 0, 1)
   for (const l of sc.layers) {
-    // p por capa: si el timeline mando props, manda el; si no, el progreso global de la escena
-    const p = opts.props && opts.props[l.id] && opts.props[l.id].reveal != null ? opts.props[l.id].reveal : P
-    const a = opts.props && opts.props[l.id] && opts.props[l.id].alpha != null ? opts.props[l.id].alpha : 1
+    const pr = opts.props && opts.props[l.id]
+    const p = pr && pr.reveal != null ? pr.reveal : P
+    const a = pr && pr.alpha != null ? pr.alpha : 1
     if (a <= 0) continue
     ctx.save()
     ctx.globalAlpha *= a
-    switch (l.kind) {
-      case 'plate': drawPlaca(ctx, look, W, H, l); break
-      case 'text': capaTexto(ctx, l, look, W, H, p, rep); break
-      case 'shape': capaForma(ctx, l, look, W, H, p); break
-      case 'heroObj': capaObjeto(ctx, l, look, W, H, p, opts); break
-      case 'photo': capaFoto(ctx, l, look, W, H, p, opts, rep); break
-      case 'badge': capaBadge(ctx, l, look, W, H, p); break
-      case 'stepper': capaStepper(ctx, l, look, W, H, p); break
-      case 'priceTag': capaPrecio(ctx, l, look, W, H, p); break
-      case 'logoRow': capaLogos(ctx, l, look, W, H, p); break
-      default: break
-    }
+    drawCapa(ctx, l, look, W, H, p, opts, rep)
     ctx.restore()
   }
   return rep

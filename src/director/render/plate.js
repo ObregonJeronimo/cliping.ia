@@ -13,13 +13,14 @@ const _grano = new Map()
 
 export function drawPlaca(ctx, look, W, H, opts = {}) {
   const orn = opts.orn !== false, grano = opts.grano !== false, vineta = opts.vineta !== false
+  const deriva = opts.deriva || 0                        // -0.5..0.5: desplaza la luz (fondo vivo)
   ctx.save()
 
   // --- base + UNA luz direccional ---
   ctx.fillStyle = look.bg0
   ctx.fillRect(0, 0, W, H)
   const ang = look.luzAng == null ? -1.57 : look.luzAng
-  const lx = W / 2 + Math.cos(ang) * W * 0.75, ly = H / 2 + Math.sin(ang) * H * 0.55
+  const lx = W / 2 + Math.cos(ang) * W * 0.75 + deriva * W * 1.6, ly = H / 2 + Math.sin(ang) * H * 0.55 + deriva * H * 0.5
   const g = ctx.createRadialGradient(lx, ly, Math.min(W, H) * 0.05, lx, ly, Math.max(W, H) * 0.95)
   g.addColorStop(0, look.bg1)
   g.addColorStop(0.55, mixColor(look.bg1, look.bg0, 0.62))

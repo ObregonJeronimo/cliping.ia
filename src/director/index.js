@@ -6,7 +6,7 @@
 // este motor NO importa de src/urvid, src/kinetic, ni de ninguna lib externa. Lo unico que comparte
 // con el resto del repo es src/shared/objects.js (dibujantes puros con inyeccion de dependencias).
 //
-// ESTADO: F0-F2 (cimientos + guion + storyboard). Lo que YA existe y es usable/testeable:
+// ESTADO: F0-F3.1 (cimientos + guion + storyboard + linker/timeline/video). Lo que YA existe y es usable/testeable:
 //   core/util.js    — matematica + color propios (OKLCH, WCAG, APCA, mezcla en luz lineal)
 //   core/prng.js    — determinismo por namespaces
 //   core/ease.js    — easings y springs en forma cerrada + parser del ease string del timeline
@@ -19,7 +19,10 @@
 //   kit/layers        — constructores declarativos de capa (puros: sin canvas)
 //   kit/objetos       — rubro detectado en el texto real -> objeto heroe del pool
 //   render/*          — placa y capas a pixeles, con telemetria auditable por los gates
-// Lo que llega en F3: linker (match-cuts), timeline (compilador+evaluador), export y estudio.
+//   core/linker       — 12 recetas de corte + FLIP (match-cut) por matchKey
+//   core/timeline     — compilador storyboard->timeline.v1 y evaluador seek-safe
+//   render/video      — drawFrame(t): el video, dibujado desde los keyframes
+// Lo que llega en F3.2: export MP4 y el estudio Director con el editor E1.
 
 export {
   TAU, clamp, clamp01, lerp, inv, round,
@@ -38,7 +41,12 @@ export { deriveLook, PLACAS, PAIRINGS } from './kit/look.js'
 export { makeGrid, dentroDeSafe, px, SAFE_TOP, SAFE_BOT } from './kit/grid.js'
 export { texto, forma, objeto, foto, badge, stepper, priceTag, logoRow, placa, escena, resetIds, SIZE, LH } from './kit/layers.js'
 export { POOLS, NOMBRES, rubroDe, textoDe, elegirObjetos } from './kit/objetos.js'
-export { drawScene, col } from './render/draw.js'
+export { drawScene, drawCapa, col } from './render/draw.js'
+
+// --- F3: linker + timeline + video ---
+export { link, RECETAS, gestoEntrada, gestoSalida } from './core/linker.js'
+export { compile, propsAt, layersAt, evalKeys, boxDe, escenaEn } from './core/timeline.js'
+export { drawFrame, frames, tDe } from './render/video.js'
 export { drawPlaca, drawVidrio } from './render/plate.js'
 export {
   PM_V, SB_V, TL_V, CANVAS, PROPS, PROP_DEFAULT, LAYER_KINDS, TEXT_ROLES,
@@ -51,4 +59,4 @@ export {
 // SUS utilidades de color -> cero acoplamiento con urvid aunque el archivo sea compartido).
 export { createHeroObjects } from '../shared/objects.js'
 
-export const DIRECTOR_VERSION = '0.3.0-f2'
+export const DIRECTOR_VERSION = '0.4.0-f3.1'

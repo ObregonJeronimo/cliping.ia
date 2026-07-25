@@ -407,7 +407,25 @@ lotties propios como acentos; objetos 3D (three ya está); modo craft completo.
   `ensureApca` corrige la tinta contra su propia placa.
 - El dominio como pie en todas las escenas hacía que una página pobre repitiera el mismo par de textos
   en cada cuadro → pie solo en apertura y cierre.
-- [ ] F3 — Linker+Timeline+Render+Estudio E1  ← primer hito probable por Jero (bat → Vercel)
+- [~] F3.1 — Linker + Timeline + Render de video (2026-07-25: `core/linker` 12 recetas + FLIP por matchKey · `core/timeline` compilador y evaluador seek-safe · `render/video` · gate `director-timeline-check` — 27 videos / 3353 frames medidos · `director-cuts` para QA de movimiento)
+- [ ] F3.2 — Export MP4 + Estudio Director con editor E1  ← primer hito probable por Jero (bat → Vercel)
+
+**Defectos de MOVIMIENTO que cazó F3.1** (todos vistos en rejillas de 12 frames, ninguno teórico):
+- `flash-cut` dejaba **0.1% de tinta** (pantalla casi vacía): el stagger hacía que B entrara escalonado
+  después de que A cortara en seco. Un corte seco es simultáneo por definición; además ahora hay flash real.
+- El video **arrancaba en negro** (0.00% de tinta en t=0.02s). Ahora el primer frame ya está compuesto y
+  hace push-in: en un reel los primeros 300ms son los únicos que se miran seguro.
+- **Aire muerto**: la escena se armaba y quedaba congelada >2s. Deriva lenta del foco + la luz de la
+  placa recorriendo el cuadro (fondo vivo) — ningún frame se repite.
+- El FLIP resolvía media pantalla en 0.5s con spring: **115px en un frame**, se leía como salto.
+  Ventana proporcional a la distancia y cúbica en viajes largos.
+- **Carry incompatible**: el chip de marca (14px, gris, izquierda) se acarreaba al título del cierre
+  (72px, tinta, centrado). El FLIP anima la caja, no la tipografía → el cierre se veía vacío. Ahora solo
+  se acarrean capas visualmente compatibles.
+- Dos tracks del mismo `(capa, prop)`: funcionaba por rangos disjuntos hasta que la deriva del foco le
+  ganó a la escala de salida. Un track por propiedad, que es además lo que el editor de F5 necesita.
+- `dip-solapado` (el fallback) competía de igual a igual con las recetas específicas y ganaba la mitad
+  de las veces → todos los cortes iguales. Y dos `flash-cut` seguidos leían como tic del motor.
 - [ ] F4 — Loop de calidad
 - [ ] F5 — Editor E2 (keyframes)
 - [ ] F6 — Editor E3 (pro)
