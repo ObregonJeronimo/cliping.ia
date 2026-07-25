@@ -7,12 +7,19 @@
 // con el resto del repo es src/shared/objects.js (dibujantes puros con inyeccion de dependencias).
 //
 // ESTADO: F0 (cimientos). Lo que YA existe y es usable/testeable:
+//   core/util.js    — matematica + color propios (OKLCH, WCAG, APCA, mezcla en luz lineal)
 //   core/prng.js    — determinismo por namespaces
 //   core/ease.js    — easings y springs en forma cerrada + parser del ease string del timeline
 //   core/text.js    — fit nunca-desborda + reveals (mascara / por caracter) + telemetria para gates
 //   core/schema.js  — contratos + validadores tipados + normalizador + adapter de brief legacy
 // Lo que llega en F1-F3: scriptwriter, composer, linker, timeline (compilador+evaluador), render.
 
+export {
+  TAU, clamp, clamp01, lerp, inv, round,
+  hexToRgb, rgbToHex, rgba, isHex, hexToHsl, hslToHex, hueDist,
+  hexToOklch, oklchToHex, lighten, darken, chroma,
+  luminance, contrast, apcaLc, legibleOn, ensureContrast, mixColor,
+} from './core/util.js'
 export { mulberry32, hashStr, stableSeed, seedFor, subSeed, pick, range, irange, weightedPick, weightedSample, shuffled } from './core/prng.js'
 export { parseEase, isEase, easeName, spring, win, wobble, stagger, lin, expoOut, expoIn, expoInOut, cubicOut, cubicIn, cubicInOut, quintOut, backOut } from './core/ease.js'
 export { fontStr, fitFont, fitUniform, wrapFit, wordTrim, clip, drawText, drawWrapped, drawMaskLine, drawKineticLine, telStart, telStop, telTag } from './core/text.js'

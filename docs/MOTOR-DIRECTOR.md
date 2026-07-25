@@ -168,7 +168,7 @@ docs/director/
 |---|---|---|
 | `queHace` | `hook.statement` (mask-reveal, palabra clave en acento) | big type editorial |
 | `comoFunciona` (≥2 pasos) | `howto.steps` — steppers numerados con conectores animados | bento/steps con líneas que se trazan |
-| `features` (≥2) | `features.bento` (grilla bento 2×2 con íconos-objeto chicos) o `rafaga.beat` | bento = modernidad 2025-26 |
+| `features` (≥3 → bento; ≥2 → ráfaga) | `features.bento` (grilla bento 2×2) o `rafaga.beat` | bento = modernidad 2025-26; con 2 features la grilla queda coja (ver DIRECCION-DE-ARTE §4.1) |
 | `tipoNegocio=saas/app` | `hero.appwindow` — ventana con las features REALES tipeadas adentro | ui-in-video |
 | `tipoNegocio=ecommerce` + foto producto | `hero.product` — foto real con sweep + `priceTag` si hay oferta | foto editorial + etiqueta |
 | `modeloUso=reserva/turno` | `cta.booking` — CTA con chip de horario/disponibilidad | |
@@ -285,6 +285,16 @@ CLAMPEA y lo marca en el Inspector — el usuario nunca puede producir un video 
 (track sin capa) · `E-DET` · `E-SEEK` · `E-EDIT-REVERT` (undo no restaura byte-idéntico) ·
 `E-EDIT-BREAK` (un edit produce violación) · `E-INDEP` (import prohibido).
 
+**Extension de composicion** (la agrego tras la auditoria de las docs destiladas — DIRECCION-DE-ARTE
+§5.0.1 las emite y los gates visuales las citan): `E-HIER` (jerarquia sin ratio) · `E-FOCUS` (sin punto
+focal dominante) · `E-IDEA` (mas de una idea por escena) · `E-AIRE` (margenes/aire bajo minimo) ·
+`E-ALIGN` (mas de 2 ejes de alineacion) · `E-COLOR-EXCESO` (acento sobre presupuesto) · `E-DENSIDAD` ·
+`E-PLANO` (menos de 3 planos de profundidad) · `E-ORNAMENTO` (deco compitiendo) · `E-MONOTONIA`
+(esqueletos repetidos entre escenas/seeds) · `E-SAFE-AREA` (fuera de zona segura; distinto de
+`E-LAYER-OOB`, que es fuera del lienzo) · `E-DATO-FALSO` (dato que no esta en el pagemodel) ·
+`E-EMOJI` · `E-BLEED` (sangrado accidental) · `E-TRANSITO` (movimiento simultaneo excesivo) ·
+`E-TXT-TOFU` (glifos no soportados por la fuente).
+
 **Gates** (todos entran a `npm run gates`):
 1. `director-test`: determinismo byte-idéntico ×2 + seek-en-frío + 24 seeds → genotipos distintos.
 2. `director-storyboard-check`: 8 pagemodels × 4 seeds → stills → telemetría texto completa, bboxes
@@ -324,8 +334,9 @@ fase leyendo §0 y cierra commiteando + actualizando el "Estado" al final de est
 1. `DNA-SPEC.md` → extractor en site_capture (radius/shadow/density/modernidad por computed styles).
 2. Prompt de perception ampliado (queHace/comoFunciona/tipoNegocio/modeloUso/features/vozDeMarca),
    cache v9, adapter brief-legacy→pagemodel en `schema.js`.
-3. e2e_probe emite pagemodel.json; correr sobre las 10 páginas de la lista fija y COMMITEAR esos
-   pagemodels como fixtures de test (los gates no dependen de red).
+3. e2e_probe emite pagemodel.json; correr sobre las **10 páginas reales** de la lista fija + los **5
+   casos adversariales** (vacía, botwall, no-latina, SPA, 404) = **15 fixtures** commiteados (los gates
+   nunca dependen de red).
 CA: 10 fixtures válidos (5 adversariales incluidos), pagemodel de urvid.com.ar y de un ecommerce
 real leídos y con semántica correcta a ojo.
 
@@ -377,7 +388,7 @@ lotties propios como acentos; objetos 3D (three ya está); modo craft completo.
 ## Estado
 
 - [x] Plan v2 completo (este doc) — Fable 5 Max, 2026-07-05
-- [ ] F0 — Destilación + esqueleto
+- [x] F0 — Destilación + esqueleto (2026-07-25: 4 docs destiladas+auditadas · shared/objects byte-idéntico · core prng/ease/text/util/schema · gates independence+director en la cadena)
 - [ ] F1 — PageModel
 - [ ] F2 — Storyboard estático
 - [ ] F3 — Linker+Timeline+Render+Estudio E1  ← primer hito probable por Jero (bat → Vercel)

@@ -14,6 +14,7 @@ import {
   fitFont, wrapFit, wordTrim, drawText, telStart, telStop,
   validatePageModel, validateStoryboard, validateTimeline, normalizePageModel, briefToPageModel, formatErrors,
   PROPS, LAYER_KINDS, CANVAS,
+  contrast, apcaLc, lighten, darken, chroma, ensureContrast, mixColor, hexToHsl, hslToHex, hueDist, legibleOn, hexToOklch, oklchToHex,
 } from '../src/director/index.js'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -176,5 +177,45 @@ const near = (a, b, eps = 1e-9) => Math.abs(a - b) <= eps
   ok(PROPS.length >= 9 && LAYER_KINDS.length >= 9, 'SCHEMA: los sets cerrados deben estar completos')
 }
 
+// ---------------------------------------------------------------- 5. UTIL (color/contraste propios)
+{
+  const byte0 = hex => parseInt(String(hex).replace('#', '').slice(0, 2), 16)
+  // WCAG: maximo teorico 21, simetrico, y 1 consigo mismo
+  ok(near(contrast('#ffffff', '#000000'), 21, 1e-6), 'UTIL: contraste blanco/negro debe ser 21')
+  ok(near(contrast('#000000', '#ffffff'), contrast('#ffffff', '#000000'), 1e-9), 'UTIL: contraste debe ser simetrico')
+  ok(contrast('#777777', '#777777') === 1, 'UTIL: contraste de un color consigo mismo es 1')
+  // APCA: FIRMADO (claro sobre oscuro da negativo) y fuerte en los extremos
+  ok(apcaLc('#ffffff', '#000000') < -100, 'UTIL: APCA blanco sobre negro debe ser ~-108')
+  ok(apcaLc('#000000', '#ffffff') > 100, 'UTIL: APCA negro sobre blanco debe ser ~+106')
+  ok(Math.abs(apcaLc('#808080', '#808080')) < 1, 'UTIL: APCA de iguales debe ser ~0')
+  // OKLCH: round-trip estable + lighten/darken monotonos SIN lavar el color (la razon de usar OKLCH y no HSL)
+  for (const hex of ['#22e06a', '#c56a8e', '#e0762a', '#3d6ef7', '#808080']) {
+    const c = hexToOklch(hex)
+    const back = oklchToHex(c.L, c.C, c.h)
+    ok(contrast(back, hex) < 1.06, `UTIL: round-trip OKLCH se desvio en ${hex} -> ${back}`)
+    const lt = lighten(hex, 0.3), dk = darken(hex, 0.3)
+    ok(hexToOklch(lt).L > c.L && hexToOklch(dk).L < c.L, `UTIL: lighten/darken no monotonos en ${hex}`)
+    if (chroma(hex) > 0.05) ok(chroma(lt) > chroma(hex) * 0.5, `UTIL: lighten LAVO el color en ${hex} (${chroma(hex).toFixed(3)} -> ${chroma(lt).toFixed(3)})`)
+  }
+  ok(chroma('#808080') < 0.02 && chroma('#22e06a') > 0.15, 'UTIL: chroma debe distinguir acromatico de saturado')
+  // ensureContrast: alcanza el objetivo y es idempotente
+  for (const [fg, bg] of [['#333333', '#000000'], ['#cccccc', '#ffffff'], ['#22e06a', '#0a0a0d']]) {
+    const f = ensureContrast(fg, bg, 4.5)
+    ok(contrast(f, bg) >= 4.5 - 1e-9, `UTIL: ensureContrast no alcanzo 4.5 (${fg}/${bg} -> ${contrast(f, bg).toFixed(2)})`)
+    ok(ensureContrast(f, bg, 4.5) === f, 'UTIL: ensureContrast debe ser idempotente')
+  }
+  // mezcla en luz LINEAL: el medio blanco/negro NO puede ser el #808080 de sRGB (gris barroso)
+  const mid = mixColor('#000000', '#ffffff', 0.5)
+  ok(mid !== '#808080' && byte0(mid) > 150, `UTIL: mixColor debe interpolar en luz lineal (dio ${mid})`)
+  ok(mixColor('#123456', '#abcdef', 0) === '#123456' && mixColor('#123456', '#abcdef', 1) === '#abcdef', 'UTIL: mixColor en los extremos devuelve los originales')
+  // HSL / hue
+  ok(near(hexToHsl('#ff0000').h, 0) && near(hexToHsl('#00ff00').h, 120) && near(hexToHsl('#0000ff').h, 240), 'UTIL: hue de los primarios')
+  ok(hueDist(350, 10) === 20 && hueDist(0, 180) === 180, 'UTIL: hueDist debe ser circular')
+  ok(hslToHex(0, 0, 0) === '#000000' && hslToHex(0, 0, 1) === '#ffffff', 'UTIL: hslToHex en los extremos')
+  // legibleOn: siempre el candidato mas legible
+  ok(contrast(legibleOn('#0a0a0d'), '#0a0a0d') > 4.5, 'UTIL: legibleOn sobre casi-negro -> tinta clara legible')
+  ok(contrast(legibleOn('#f2efe8'), '#f2efe8') > 4.5, 'UTIL: legibleOn sobre casi-blanco -> tinta oscura legible')
+}
+
 if (fails) { console.error(`\nGATE DIRECTOR FALLO (${fails} casos).`); process.exit(1) }
-console.log('GATE DIRECTOR OK (prng determinista+ortogonal · easings con overshoot real · fit nunca-desborda · schema valida y normaliza 5 casos adversariales).')
+console.log('GATE DIRECTOR OK (prng ortogonal · easings con overshoot real · fit nunca-desborda · schema normaliza 5 casos adversariales · color propio WCAG/APCA/OKLCH sin lavado + mezcla lineal).')
