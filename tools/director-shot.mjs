@@ -14,7 +14,7 @@ import { normalizePageModel, validateStoryboard, formatErrors, CANVAS } from '..
 import { buildGuion } from '../src/director/core/scriptwriter.js'
 import { composeStoryboard, matchesEntre } from '../src/director/core/composer.js'
 import { deriveLook } from '../src/director/kit/look.js'
-import { drawScene } from '../src/director/render/draw.js'
+import { drawScene, corpusHero } from '../src/director/render/draw.js'
 
 const HERE = dirname(fileURLToPath(import.meta.url)), OUT = join(HERE, 'out')
 mkdirSync(OUT, { recursive: true })

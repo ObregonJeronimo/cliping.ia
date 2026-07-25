@@ -45,8 +45,8 @@ const ESC = 0.5, W = Math.round(CANVAS.W * ESC), H = Math.round(CANVAS.H * ESC)
 const makeCanvas = (w, h) => createCanvas(w, h)
 const cvA = createCanvas(W, H), ctxA = cvA.getContext('2d')
 
-function pinta(tl, t, brand) {
-  drawFrame(ctxA, tl, t, { W, H, makeCanvas, brand, images: new Map() })
+function pinta(tl, t, brand, corpus) {
+  drawFrame(ctxA, tl, t, { W, H, makeCanvas, brand, corpus, images: new Map() })
   return ctxA.getImageData(0, 0, W, H).data
 }
 const hash = d => { let h = 2166136261 >>> 0; for (let i = 0; i < d.length; i += 61) { h ^= d[i]; h = Math.imul(h, 16777619) >>> 0 } return h }
@@ -54,6 +54,7 @@ const hash = d => { let h = 2166136261 >>> 0; for (let i = 0; i < d.length; i +=
 let nFrames = 0, nVid = 0
 for (const [nombre, raw] of Object.entries(ARQ)) {
   const pm = normalizePageModel(raw)
+  const corpusH = corpusHero(pm)          // lo que el objeto heroe puede escribir adentro suyo
   for (let s = 1; s <= SEEDS; s++) {
     const seed = (s * 3266489917) >>> 0
     const sb = composeStoryboard(pm, buildGuion(pm, seed), deriveLook(pm, seed), seed)
@@ -95,7 +96,7 @@ for (const [nombre, raw] of Object.entries(ARQ)) {
     let prevHash = null, prevProps = null, congelados = 0, peorTinta = 1, tPeor = 0
     for (let i = 0; i < total; i += PASO) {
       const t = Math.min(tl.dur, (i + 0.5) / tl.fps)
-      const d = pinta(tl, t, pm.brand)
+      const d = pinta(tl, t, pm.brand, corpusH)
       nFrames++
 
       // 4. E-EMPTY-FRAME
@@ -143,9 +144,9 @@ for (const [nombre, raw] of Object.entries(ARQ)) {
 
     // 3. E-SEEK — el mismo t desde cero y despues de saltar por todos lados da el MISMO pixel
     const tm = tl.dur * 0.5
-    const h1 = hash(pinta(tl, tm, pm.brand))
-    pinta(tl, tl.dur * 0.9, pm.brand); pinta(tl, 0.2, pm.brand); pinta(tl, tl.dur * 0.33, pm.brand)
-    const h2 = hash(pinta(tl, tm, pm.brand))
+    const h1 = hash(pinta(tl, tm, pm.brand, corpusH))
+    pinta(tl, tl.dur * 0.9, pm.brand, corpusH); pinta(tl, 0.2, pm.brand, corpusH); pinta(tl, tl.dur * 0.33, pm.brand, corpusH)
+    const h2 = hash(pinta(tl, tm, pm.brand, corpusH))
     ok(h1 === h2, `${P}: NO es seek-safe (el frame en ${tm.toFixed(2)}s cambia segun por donde se paso)`)
   }
 }

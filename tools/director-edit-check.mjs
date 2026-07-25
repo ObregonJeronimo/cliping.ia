@@ -179,14 +179,14 @@ function fondoDe(look) {
 // puntos suspensivos, y el ocultado que dejaba la escena en 0.42% de tinta. Ahora corre para TODOS
 // los sets y mide las tres cosas que un cuadro puede tener mal: texto que se sale, texto cortado con
 // "..." y cuadro sin imagen.
-function auditar(sb, seed, brand) {
+function auditar(sb, seed, brand, corpus) {
   const tl = compile(sb, seed)
   const fondo = fondoDe(tl.look)
   const out = { desbordes: [], elididos: [], tinta: new Map(), frames: 0 }
   for (const e of tl.escenas) {
     const t = Math.min(tl.dur - 0.001, e.t0 + e.dur * 0.62)   // ya revelado, todavia sin salir
     const tel = telStart()
-    const rep = drawFrame(ctx, tl, t, { W, H, makeCanvas, brand, images: new Map() })
+    const rep = drawFrame(ctx, tl, t, { W, H, makeCanvas, brand, corpus, images: new Map() })
     telStop()
     out.frames++
     // el mensaje trae la GEOMETRIA: sin ella, un desborde obliga a reproducir el caso a mano para
@@ -214,6 +214,7 @@ ok(LARGO.length >= 200, `el texto adversarial mide ${LARGO.length} caracteres (d
 
 for (const [nombre, raw] of Object.entries(ARQ)) {
   const pm = normalizePageModel(raw)
+  const corpusH = corpusHero(pm)
   for (let s = 1; s <= SEEDS; s++) {
     const seed = (s * 2654435761) >>> 0
     const sb = composeStoryboard(pm, buildGuion(pm, seed), deriveLook(pm, seed), seed)
@@ -221,7 +222,7 @@ for (const [nombre, raw] of Object.entries(ARQ)) {
 
     // linea base de tinta por escena: el MISMO video sin ninguna edicion. Es la referencia contra la
     // que se juzga si una edicion derrumbo el cuadro.
-    const tintaBase = auditar(sb, seed, pm.brand).tinta
+    const tintaBase = auditar(sb, seed, pm.brand, corpusH).tinta
 
     for (const [set, gen] of SETS) {
       const P = `${nombre}#${s}/${set}`
@@ -283,7 +284,7 @@ for (const [nombre, raw] of Object.entries(ARQ)) {
       // 8. Se COMPILA y se DIBUJA de verdad, con las fuentes reales, para CADA set: ninguna edicion
       // puede producir un cuadro con texto derramado, texto elidido o sin imagen.
       {
-        const au = auditar(a, seed, pm.brand)
+        const au = auditar(a, seed, pm.brand, corpusH)
         nFrames += au.frames
         ok(au.desbordes.length === 0, `${P}: texto derramado fuera de su caja en ${au.desbordes.slice(0, 3).join(', ')}`)
         ok(au.elididos.length === 0, `${P}: texto cortado con puntos suspensivos en ${au.elididos.slice(0, 3).join(', ')}`)
