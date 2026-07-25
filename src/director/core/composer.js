@@ -19,7 +19,7 @@ import { SB_V, CANVAS } from './schema.js'
 import { seedFor, pick, range, weightedPick } from './prng.js'
 import { mismaCosa } from './scriptwriter.js'
 import { clamp } from './util.js'
-import { makeGrid } from '../kit/grid.js'
+import { makeGrid, SAFE_TOP, SAFE_BOT } from '../kit/grid.js'
 import { texto, forma, objeto, foto, badge, stepper, priceTag, logoRow, placa, escena, resetIds, SIZE } from '../kit/layers.js'
 import { elegirObjetos } from '../kit/objetos.js'
 import { huellaDe } from '../kit/look.js'
@@ -106,7 +106,12 @@ C['hero.objeto'] = (c, pm, look, g, r, est) => {
   // el apoyo puede caerse (si ya se mostro ese texto). Se resuelve ANTES de encuadrar: sin texto, el
   // heroe se queda con TODA la banda en vez de dejar medio cuadro vacio, que era el 'beat vacio'.
   const apoyo = est.nuevo(c.apoyo)
-  const [oy, oh] = apoyo ? g.band(0.04, 0.58) : g.band(0.02, 0.86)
+  // La caja del heroe NO puede abarcar toda la zona. Un objeto ALTO (una taza con su vapor, una bolsa
+  // con su manija) se ajusta por altura y llena la caja EXACTA: si la caja es la zona entera, el
+  // objeto queda sin aire y sus extremos chocan con el chip de marca — medido y visto: el vapor de la
+  // taza atravesaba "LA PARRILLA DE DON JULIO". El aire tiene que estar en la CAJA, no esperarse del
+  // objeto.
+  const [oy, oh] = apoyo ? g.band(0.12, 0.56) : g.band(0.12, 0.78)
   return [
     placa(),
     chipMarca(g, c.marca),
@@ -119,7 +124,7 @@ C['hero.objeto'] = (c, pm, look, g, r, est) => {
 }
 
 C['hero.appwindow'] = (c, pm, look, g, r, est) => {
-  const [oy, oh] = g.band(0.06, 0.58)
+  const [oy, oh] = g.band(0.12, 0.56)
   const lineas = (c.lineas || []).filter(Boolean).slice(0, 3)
   return [
     placa(),
@@ -291,6 +296,45 @@ C['outro.cta'] = (c, pm, look, g, r, est) => {
   ]
 }
 
+// ---------------------------------------------------------------- reparto del aire
+// El composer coloca cada escena con bandas fijas, y eso deja el bloque flotando: medido sobre 263
+// escenas, NINGUNA reparte el aire — o el contenido queda arriba y el tercio de abajo vacio
+// (proof.logos: 7.8% arriba / 52.3% abajo) o al reves. Dos ejes de lectura distintos en el mismo video.
+//
+// Este paso corre UNA vez al final, sobre el arbol de capas ya armado, y no toca a los 15 compositores:
+// mide el bloque, mide sus anclas y lo recentra. Es geometria pura y determinista (no dibuja nada).
+//
+// ANCLAS: el chip de marca y el pie de dominio NO se mueven — su trabajo es justamente estar pegados
+// al borde. El bloque se recentra en el hueco QUE ELLAS DEJAN, no en el cuadro entero.
+const esAncla = l => (l.id === 'brand' && l.role === 'mark') || l.id === 'pie'
+function recentrar(layers, g) {
+  // Una escena con SANGRADO esta anclada a ese borde a proposito (una foto que se va del cuadro no es
+  // un bloque flotando): recentrarla la rompe — medido, empujaba la pastilla de precio fuera del safe
+  // area. Ahi el reparto del aire ya lo decidio el sangrado.
+  if (layers.some(l => l.sangra && l.kind !== 'plate')) return layers
+  const bloque = layers.filter(l => l.kind !== 'plate' && !l.sangra && !esAncla(l))
+  if (!bloque.length) return layers
+  let y0 = 1, y1 = 0
+  for (const l of bloque) { y0 = Math.min(y0, l.box[1]); y1 = Math.max(y1, l.box[1] + l.box[3]) }
+  const chip = layers.find(l => l.id === 'brand' && l.role === 'mark')
+  const pie = layers.find(l => l.id === 'pie')
+  const zTop = chip ? chip.box[1] + chip.box[3] + g.my * 0.9 : g.y0
+  const zBot = pie ? pie.box[1] - g.my * 0.9 : g.y1
+  const aire = (zBot - zTop) - (y1 - y0)
+  // CENTRO OPTICO, no geometrico: el ojo lee un bloque como centrado cuando tiene un poco MENOS de aire
+  // arriba que abajo. 0.45/0.55 es el reparto clasico de una pieza vertical.
+  // Si el bloque es MAS ALTO que su zona no hay aire que repartir, pero igual se ACOTA: sin esto una
+  // caja generosa (el heroe usa casi todo el alto) podia arrancar por encima del chip y pisarlo.
+  const dy = aire > 0 ? (zTop + aire * 0.45) - y0 : Math.max(0, zTop - y0) + Math.min(0, zBot - y1)
+  if (Math.abs(dy) < 0.002) return layers
+  // el desplazamiento se ACOTA para que ninguna capa termine pisando el safe area: mover el bloque no
+  // puede convertirse en sacar una pastilla del cuadro.
+  const dyOk = Math.max(SAFE_TOP + 0.005 - y0, Math.min(dy, (1 - SAFE_BOT - 0.005) - y1))
+  if (Math.abs(dyOk) < 0.002) return layers
+  for (const l of bloque) l.box = [l.box[0], +(l.box[1] + dyOk).toFixed(5), l.box[2], l.box[3]]
+  return layers
+}
+
 // ---------------------------------------------------------------- API
 // composeStoryboard(pagemodel, guion, look, seed) -> storyboard.v1
 // PURO: sin canvas, sin medir, sin Date/Math.random. Mismo input -> mismo JSON byte a byte.
@@ -334,6 +378,7 @@ export function composeStoryboard(pm, guion, look, seed) {
     // lo mismo y el video se lee como un error. Con contenido real el chip si sirve — ancla la marca
     // mientras pasa otra cosa.
     if (est.pobre && est.marcaEnGrande) layers = layers.filter(l => !(l.id === 'brand' && l.role === 'mark'))
+    layers = recentrar(layers, g)
     return escena(`s${i}_${esc.id.replace('.', '-')}`, esc.dur, layers, {
       escena: esc.id, familia: esc.familia, rol: esc.rol, t0: esc.t0,
     })

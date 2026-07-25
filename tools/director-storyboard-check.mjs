@@ -73,6 +73,35 @@ function esReal(txt, corpus) {
 // ---------------------------------------------------------------- render de auditoria
 const ESC = 0.75, W = Math.round(CANVAS.W * ESC), H = Math.round(CANVAS.H * ESC)
 const makeCanvas = (w, h) => createCanvas(w, h)
+// bbox de la tinta DENTRO de la zona que dejan las anclas (chip arriba, pie abajo). Es lo unico que
+// dice si el BLOQUE esta centrado: medir el cuadro entero conflaciona el bloque con unas anclas que
+// por diseño van pegadas al borde, y da ratios de 20 que no significan nada.
+function aireDe(sc, look, corpus, brand) {
+  const b = createCanvas(W, H), cb = b.getContext('2d')
+  const a = createCanvas(W, H), ca = a.getContext('2d')
+  drawPlaca(ca, look, W, H, {})
+  drawScene(cb, sc, look, W, H, { p: 1, makeCanvas, brand: brand || '', corpus, images: new Map() })
+  const fondo = ca.getImageData(0, 0, W, H).data, d = cb.getImageData(0, 0, W, H).data
+  const chip = sc.layers.find(l => l.id === 'brand' && l.role === 'mark')
+  const pie = sc.layers.find(l => l.id === 'pie')
+  const top = chip ? (chip.box[1] + chip.box[3]) * H : SAFE_TOP * H
+  const bot = pie ? pie.box[1] * H : (1 - SAFE_BOT) * H
+  let y0 = H, y1 = -1
+  for (let y = Math.ceil(top); y < Math.floor(bot); y++) for (let x = 0; x < W; x++) {
+    const i = (y * W + x) * 4
+    // umbral 70 y no 24: la sombra difusa de un objeto heroe se derrama fuera de su caja y a 24 contaba
+    // como borde del bloque. Una sombra suave no es MASA visual; lo que se mide aca es donde el ojo ve
+    // que empieza y termina el contenido.
+    if (Math.abs(d[i] - fondo[i]) + Math.abs(d[i + 1] - fondo[i + 1]) + Math.abs(d[i + 2] - fondo[i + 2]) > 70) { if (y < y0) y0 = y; if (y > y1) y1 = y; break }
+  }
+  if (y1 < 0 || bot - top < 1) return null
+  // Sin imagenes reales (el gate corre sin red) una capa `photo` se dibuja como un bloque neutro casi
+  // igual a la placa, que no llega al umbral de tinta: la escena parece vacia arriba y el reparto
+  // medido es basura. No es un defecto de composicion, es que falta la foto.
+  if (sc.layers.some(l => l.kind === 'photo')) return null
+  return { arriba: (y0 - top) / (bot - top), abajo: (bot - y1) / (bot - top) }
+}
+
 function pixelesDeContenido(sc, look, corpus, brand) {
   const a = createCanvas(W, H), ca = a.getContext('2d')
   drawPlaca(ca, look, W, H, {})
@@ -198,6 +227,24 @@ for (const [nombre, raw] of Object.entries(ARQ)) {
         } else {
           ok(!malo, `${P}/${l.id}: TOFU con "${f}" en "${String(l.text).slice(0, 30)}"`)
         }
+      }
+
+      // 7c. E-AIRE — el bloque tiene que estar centrado en la zona que le dejan sus anclas. Medido antes
+      // de existir este assert: NINGUNA escena repartia el aire; o el contenido quedaba arriba con el
+      // tercio de abajo vacio (proof.logos 7.8/52.3) o al reves. Dos ejes de lectura en el mismo video
+      // es lo que hace que una pieza se lea desordenada aunque cada cuadro por separado este bien.
+      // El objetivo es el centro OPTICO (un poco menos de aire arriba que abajo), no el geometrico.
+      const aire = aireDe(sc, look, corpusH, pm.brand)
+      if (aire && aire.arriba + aire.abajo > 0.06) {
+        const ratio = aire.abajo > 0.004 ? aire.arriba / aire.abajo : 99
+        // Rango ANCHO a proposito. La metrica mide tinta sobre la placa y no puede separar el cuerpo de
+        // un objeto de sus extremos decorativos (el vapor de una taza, la manija de una bolsa), asi que
+        // exigir un reparto fino seria pelearle a la silueta del objeto, no a un defecto. Lo que este
+        // assert tiene que cazar es el modo de falla real: el bloque PEGADO a un borde con el otro
+        // tercio vacio, que es lo que pasaba en las 263 escenas medidas antes de que existiera el
+        // recentrado. Con el recentrado puesto la poblacion quedo en 0.69-1.08.
+        ok(ratio >= 0.35 && ratio <= 2.2,
+          `${P}: aire mal repartido (${(aire.arriba * 100).toFixed(0)}% arriba / ${(aire.abajo * 100).toFixed(0)}% abajo, ratio ${ratio.toFixed(2)})`)
       }
 
       // 8. E-DATO-FALSO — ni una palabra en pantalla que la pagina no haya dicho

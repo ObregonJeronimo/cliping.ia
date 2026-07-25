@@ -131,12 +131,23 @@ function medirObjeto(name, hp, makeCanvas, look) {
       cx.restore()
       const d = cx.getImageData(0, 0, S, S).data
       let x0 = S, y0 = S, x1 = -1, y1 = -1
-      // umbral 72 y no 8: la sombra difusa de los dibujantes deja alpha bajo hasta 60px afuera del
-      // cuerpo. Midiendo con umbral bajo, el heroe entraba en su caja SOMBRA INCLUIDA y se veia chico.
+      // Umbral 30. Con 8 la sombra difusa (que llega 60px afuera del cuerpo) inflaba el bbox y el heroe
+      // se veia chico. Con 72 pasaba lo contrario: los trazos TENUES no contaban — el vapor de la taza
+      // es un stroke claro y fino, asi que el objeto se escalaba como si no existiera y el vapor
+      // terminaba atravesando el nombre de la marca. 30 deja afuera la sombra y adentro lo dibujado.
       for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
-        if (d[(y * S + x) * 4 + 3] > 72) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y }
+        if (d[(y * S + x) * 4 + 3] > 30) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y }
       }
-      if (x1 > x0 && y1 > y0) out = [x1 - x0 + 2, y1 - y0 + 2]
+      // Ademas del TAMANO, el desplazamiento del centro visual respecto del origen de dibujo. Los
+      // dibujantes centran su CUERPO en (0,0), pero lo que se ve incluye extremos asimetricos: el vapor
+      // de la taza sube y no baja, la manija de la bolsa sobresale arriba. Sin compensarlo, el objeto
+      // se posiciona por su origen y queda descentrado en su caja — visto: el vapor atravesaba el
+      // nombre de la marca mientras abajo sobraba el 40% del cuadro.
+      // Se centra por la EXTENSION (centro del bbox), no por el centroide de masa. Medido en la taza:
+      // se extiende 123 unidades hacia arriba (el vapor) y 91 hacia abajo. Por centroide queda colgada
+      // alta y deja el 45% del cuadro vacio abajo; por extension queda simetrica. El ojo perdona un
+      // objeto cuya masa esta un poco baja, pero no un tercio de cuadro vacio de un solo lado.
+      if (x1 > x0 && y1 > y0) out = [x1 - x0 + 2, y1 - y0 + 2, (x0 + x1) / 2 - S / 2, (y0 + y1) / 2 - S / 2]
     } catch { /* sin canvas offscreen -> tabla */ }
   }
   _bbox.set(key, out)
@@ -236,11 +247,12 @@ function capaObjeto(ctx, l, look, W, H, p, opts) {
   const fn = HERO.byName[l.obj]
   if (!fn) return
   const [x, y, w, h] = [l.box[0] * W, l.box[1] * H, l.box[2] * W, l.box[3] * H]
-  const [nw, nh] = medirObjeto(l.obj, l.hp, opts.makeCanvas, look)
+  const [nw, nh, ox = 0, oy = 0] = medirObjeto(l.obj, l.hp, opts.makeCanvas, look)
   const k = Math.min(w / nw, h / nh) * 1.06            // el heroe llena su caja; la sombra puede sangrar
   ctx.save()
   ctx.translate(x + w / 2, y + h / 2)
   ctx.scale(k, k)
+  ctx.translate(-ox, -oy)                              // el CENTRO VISUAL del objeto va al centro de la caja
   ctx.globalAlpha *= clamp(p * 1.2, 0, 1)
   const fonts = { display: look.fonts.display, support: look.fonts.support, num: look.fonts.num, accent: look.fonts.support }
   // la marca SIEMPRE puede escribirse adentro del objeto (es de la pagina por definicion); el resto

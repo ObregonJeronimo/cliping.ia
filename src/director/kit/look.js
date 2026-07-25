@@ -7,6 +7,7 @@
 // Las tintas se tiñen, el tracking y los margenes son continuos, el ornamento y la placa varian por seed.
 import { seedFor, weightedPick, range, pick, hashStr } from '../core/prng.js'
 import { clamp, hexToHsl, hslToHex, chroma, lighten, darken, luminance, contrast, ensureContrast, ensureApca, apcaLc as apcaLcOf, legibleOn, hueDist } from '../core/util.js'
+const esNum = v => typeof v === 'number' && Number.isFinite(v)
 
 // ---------------------------------------------------------------- familias de placa
 // Cada una define bg0/bg1 (fondo) + tinta. 'tinta' se tiñe con el hue de la MARCA (no de la pagina:
@@ -144,7 +145,13 @@ export function deriveLook(pm, seed) {
   const sombra = brut ? 'hard' : dna.shape.shadowStyle
 
   // --- RITMO / DENSIDAD / ORNAMENTO (continuos: anti-huella) ---
-  const margen = dna.density === 'aireado' ? range(r, 0.10, 0.14) : dna.density === 'denso' ? range(r, 0.055, 0.085) : range(r, 0.075, 0.11)
+  // DENSIDAD: comparaba `dna.density` (que desde el pagemodel.v1 es un OBJETO {nivel,score,fill,nodos})
+  // contra strings, asi que las tres ramas eran una sola y todo lo que el backend media con una rejilla
+  // de 64x45 celdas no llegaba nunca al video. Ahora entra por el CONTINUO `score`, que es mejor que
+  // los tres baldes: una pagina apenas densa merece apenas menos aire, no un salto de categoria.
+  // score 0 (pagina aireada) -> margen ancho · score 1 (pagina apretada) -> margen angosto.
+  const dens = clamp(dna.density && esNum(dna.density.score) ? dna.density.score : 0.35, 0, 1)
+  const margen = range(r, 0.135 - dens * 0.075, 0.155 - dens * 0.075)
   const orn = brut ? 'corners' : pick(r, ['line', 'line', 'corners', 'dots'])
   const grano = pick(r, [0.03, 0.04, 0.05, 0.055])
   const luzAng = pick(r, [-2.35, -1.57, -0.79])                        // UNA luz por video (DIRECCION-DE-ARTE P2)
@@ -162,7 +169,7 @@ export function deriveLook(pm, seed) {
     fonts: { display: parEff.display, dw: parEff.dw, support: parEff.support, sw: parEff.sw, num: fuenteNum, clase, escritura: dna.typography.script },
     caseMode, bigK, tracking: range(r, -0.3, 2.4),
     radius, borde, sombra,
-    margen, orn, grano, luzAng,
+    margen, orn, grano, luzAng, densidad: dens,
     modernidad: mod,
     energia: dna.mood.energia, formalidad: dna.mood.formalidad,
   }
