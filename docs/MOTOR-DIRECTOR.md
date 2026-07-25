@@ -443,6 +443,16 @@ lotties propios como acentos; objetos 3D (three ya está); modo craft completo.
   ganó a la escala de salida. Un track por propiedad, que es además lo que el editor de F5 necesita.
 - `dip-solapado` (el fallback) competía de igual a igual con las recetas específicas y ganaba la mitad
   de las veces → todos los cortes iguales. Y dos `flash-cut` seguidos leían como tic del motor.
-- [ ] F4 — Loop de calidad
+- [x] F4 — Loop de calidad (2026-07-25: `tools/director-loop.mjs` + `npm run loop` → reporte versionado en `tools/out/director-loop.md`)
+
+**Por qué el reporte no es un gate.** Los gates contestan si un video está *roto*. Después de que
+dejan de encontrar nada, queda el problema que de verdad mata a un motor generativo: que los videos
+se **parezcan entre sí**. Eso no es binario, es una distribución. El reporte mide recetas de corte,
+gramáticas, placas, tipografías, objetos, eje del foco, duración y —lo más útil— cuántas variantes
+distintas produce **cada página** al mover el seed, contra el techo de escenas que esa página
+habilita. Está commiteado a propósito: `git diff` sobre él muestra en una pantalla qué le hizo un
+cambio del motor a la variedad de la salida.
+Una página sin material no puede dar muchas estructuras, así que la alerta de monotonía compara
+contra ese techo — si no, acusaría a un 404 por hacer lo único honesto que puede hacer.
 - [ ] F5 — Editor E2 (keyframes)
 - [ ] F6 — Editor E3 (pro)
