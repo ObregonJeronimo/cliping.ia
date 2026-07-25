@@ -20,19 +20,19 @@ export const ESCENAS = [
   {
     id: 'open.brand', familia: 'apertura', rol: 'hook', dur: 1.9, peso: 1,
     requiere: () => true,
-    contenido: pm => ({ marca: pm.brand, kicker: pm.semantica.vozDeMarca || '' }),
+    contenido: pm => ({ marca: pm.brand, kicker: dominioDe(pm) }),
   },
   {
     id: 'hook.statement', familia: 'mensaje', rol: 'hook', dur: 2.7, peso: 1.4,
     requiere: pm => !!pm.semantica.queHace,
-    contenido: pm => ({ frase: pm.semantica.queHace, apoyo: voz(pm) }),
+    contenido: pm => ({ frase: pm.semantica.queHace, apoyo: '' }),
   },
   {
     // FALLBACK HONESTO: si la pagina no dice que hace (vacia/botwall/404), el ancla es la MARCA a escala
     // display. No inventamos una frase (eso es lo unico prohibido) — mostramos lo unico real que hay.
     id: 'hook.marca', familia: 'mensaje', rol: 'hook', dur: 2.5, peso: 1.0,
     requiere: pm => !pm.semantica.queHace && !!pm.brand,
-    contenido: pm => ({ frase: pm.brand, apoyo: voz(pm) }),
+    contenido: pm => ({ frase: pm.brand, apoyo: dominioDe(pm) }),
   },
   {
     id: 'howto.steps', familia: 'explicacion', rol: 'cuerpo', dur: 3.4, peso: 1.3,
@@ -70,12 +70,12 @@ export const ESCENAS = [
   {
     id: 'proof.punch', familia: 'prueba', rol: 'prueba', dur: 2.3, peso: 1.2,
     requiere: pm => (pm.semantica.pruebas.stats || []).length >= 1,
-    contenido: pm => ({ valor: pm.semantica.pruebas.stats[0].value, etiqueta: pm.semantica.pruebas.stats[0].label || '' }),
+    contenido: pm => ({ valor: pm.semantica.pruebas.stats[0].valor, etiqueta: pm.semantica.pruebas.stats[0].etiqueta || '' }),
   },
   {
     id: 'proof.quote', familia: 'prueba', rol: 'prueba', dur: 2.8, peso: 1.0,
     requiere: pm => (pm.semantica.pruebas.testimonios || []).length >= 1,
-    contenido: pm => ({ cita: pm.semantica.pruebas.testimonios[0].texto, autor: pm.semantica.pruebas.testimonios[0].autor || '' }),
+    contenido: pm => ({ cita: pm.semantica.pruebas.testimonios[0].texto, autor: pm.semantica.pruebas.testimonios[0].firma || '' }),
   },
   {
     id: 'proof.logos', familia: 'prueba', rol: 'prueba', dur: 2.2, peso: 0.8,
@@ -90,7 +90,7 @@ export const ESCENAS = [
   {
     id: 'cta.booking', familia: 'cierre', rol: 'cierre', dur: 2.8, peso: 1.4,
     requiere: pm => ['reserva', 'contacto'].indexOf(pm.semantica.modeloUso) >= 0,
-    contenido: pm => ({ marca: pm.brand, cta: pm.semantica.cta, modo: pm.semantica.modeloUso }),
+    contenido: pm => ({ marca: pm.brand, cta: pm.semantica.cta || '', modo: pm.semantica.modeloUso, dominio: dominioDe(pm) }),
   },
   {
     id: 'outro.cta', familia: 'cierre', rol: 'cierre', dur: 2.8, peso: 1,
@@ -100,8 +100,9 @@ export const ESCENAS = [
     contenido: pm => ({ marca: pm.brand, cta: pm.semantica.cta || '', apoyo: pm.semantica.queHace || '', dominio: dominioDe(pm) }),
   },
 ]
-// la voz de marca viaja como string[3] (DNA-SPEC §1.3); el guion la entrega ya unida para el kicker
-const voz = pm => (Array.isArray(pm.semantica.vozDeMarca) ? pm.semantica.vozDeMarca.join(' · ') : (pm.semantica.vozDeMarca || ''))
+// OJO: `vozDeMarca` NO se imprime nunca. Es una señal de ESTILO (como escribir), no copy — y ademas
+// tiene default ['claro','directo','actual']: mostrarlo pone en pantalla una lista que la pagina nunca
+// dijo. Era exactamente el 'listas sin sentido' que se veia en los videos. Se usa solo como sesgo.
 const dominioDe = pm => { try { return new URL(pm.url).hostname.replace(/^www\./, '') } catch { return '' } }
 const BY_ID = Object.fromEntries(ESCENAS.map(e => [e.id, e]))
 

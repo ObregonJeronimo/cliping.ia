@@ -116,6 +116,25 @@ export function legibleOn(bg, light = '#f2f0ea', dark = '#121016', minW = 3) {
 }
 // sube/baja la L (OKLCH) del color hasta alcanzar el contraste WCAG pedido contra bg. Determinista
 // (32 pasos fijos); si no se alcanza, devuelve el mejor encontrado. Es el guard de legibilidad del motor.
+// ensureApca(hex, bg, target) — igual que ensureContrast pero midiendo con APCA (Lc con signo).
+// APCA es el criterio correcto para TEXTO sobre placa: pondera el tamano y castiga el gris medio sobre
+// negro, que es justo el caso que WCAG deja pasar y en un telefono no se lee. Mantiene el CROMA: solo
+// mueve la L de OKLCH, asi el acento sigue siendo el color de la marca, mas claro o mas oscuro.
+export function ensureApca(hex, bg, target = 60, maxSteps = 28) {
+  if (Math.abs(apcaLc(hex, bg)) >= target) return hex
+  const c = hexToOklch(hex)
+  const up = luminance(bg) < 0.18                           // placa oscura -> aclarar la tinta
+  let best = hex, bestLc = Math.abs(apcaLc(hex, bg))
+  for (let i = 1; i <= maxSteps; i++) {
+    const L = clamp01(up ? c.L + (1 - c.L) * (i / maxSteps) : c.L * (1 - i / maxSteps))
+    const cand = oklchToHex(L, c.C, c.h)
+    const lc = Math.abs(apcaLc(cand, bg))
+    if (lc > bestLc) { bestLc = lc; best = cand }
+    if (lc >= target) return cand
+  }
+  return best
+}
+
 export function ensureContrast(hex, bg, target = 4.5, maxSteps = 32) {
   if (contrast(hex, bg) >= target) return hex
   const c = hexToOklch(hex), bgL = luminance(bg)

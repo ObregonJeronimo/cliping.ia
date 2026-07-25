@@ -70,6 +70,36 @@ for (const [nombre, raw] of Object.entries(PMS)) {
     let t = 0
     for (const e of g.escenas) { ok(Math.abs(e.t0 - t) < 0.05, `${nombre}#${s}: t0 desalineado en ${e.id}`); t += e.dur }
 
+    // 7. CONTENIDO NO VACIO — una escena que se elige y despues no tiene que mostrar es un beat muerto
+    // (E-EMPTY-FRAME). Este assert es el que ata el guion al NORMALIZADOR: si el catalogo lee un campo
+    // con el nombre de antes de normalizar (value/label/autor en vez de valor/etiqueta/firma), la
+    // escena sale con undefined y el video muestra un hueco. Paso una vez; no vuelve a pasar.
+    for (const e of g.escenas) {
+      const c = e.contenido || {}
+      const lleno = v => typeof v === 'string' && v.trim().length > 0
+      const listaOk = (a, n) => Array.isArray(a) && a.length >= n && a.every(x => lleno(typeof x === 'string' ? x : (x && x.titulo)))
+      const REQ = {
+        'open.brand': () => lleno(c.marca),
+        'hook.statement': () => lleno(c.frase),
+        'hook.marca': () => lleno(c.frase),
+        'howto.steps': () => listaOk(c.pasos, 2),
+        'features.bento': () => listaOk(c.celdas, 3),
+        'rafaga.beat': () => listaOk(c.items, 2),
+        'hero.appwindow': () => lleno(c.marca),
+        'hero.product': () => lleno(c.foto),
+        'hero.objeto': () => lleno(c.marca),
+        'proof.punch': () => lleno(c.valor),
+        'proof.quote': () => lleno(c.cita),
+        'proof.logos': () => lleno(c.marca),
+        'offer.flash': () => lleno(c.promo) || lleno(c.urgencia),
+        'cta.booking': () => lleno(c.marca),
+        'outro.cta': () => lleno(c.marca) || lleno(c.dominio),
+      }
+      ok(REQ[e.id] && REQ[e.id](), `${nombre}#${s}: escena ${e.id} SIN CONTENIDO util -> beat vacio (${JSON.stringify(c)})`)
+      // ningun campo declarado puede llegar como undefined/null: seria "undefined" dibujado en pantalla
+      for (const [k, v] of Object.entries(c)) ok(v != null, `${nombre}#${s}: ${e.id}.${k} es ${v} (campo mal nombrado?)`)
+    }
+
     // 6. DETERMINISMO
     const g2 = buildGuion(pm, seed)
     ok(JSON.stringify(g) === JSON.stringify(g2), `${nombre}#${s}: el guion NO es determinista`)

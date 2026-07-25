@@ -6,7 +6,7 @@
 // Regla anti-huella (DNA-SPEC §4.5, heredada de kinetic): nada visual puede ser CONSTANTE entre videos.
 // Las tintas se tiñen, el tracking y los margenes son continuos, el ornamento y la placa varian por seed.
 import { seedFor, weightedPick, range, pick } from '../core/prng.js'
-import { clamp, hexToHsl, hslToHex, chroma, lighten, darken, luminance, contrast, ensureContrast, legibleOn, hueDist } from '../core/util.js'
+import { clamp, hexToHsl, hslToHex, chroma, lighten, darken, luminance, contrast, ensureContrast, ensureApca, apcaLc as apcaLcOf, legibleOn, hueDist } from '../core/util.js'
 
 // ---------------------------------------------------------------- familias de placa
 // Cada una define bg0/bg1 (fondo) + tinta. 'tinta' se tiñe con el hue de la MARCA (no de la pagina:
@@ -62,6 +62,20 @@ export const PAIRINGS = {
     { display: 'Anton', dw: 400, support: 'Inter', sw: 500 },
   ],
 }
+// ESCRITURA NO LATINA — nuestras 72 webfonts son latinas. Si la pagina esta en japones, chino, coreano,
+// arabe, hebreo o devanagari, imponerles Archivo o Playfair da TOFU (cuadritos) en pantalla: el video
+// sale ilegible aunque todos los demas chequeos pasen.
+// La solucion honesta a costo cero es no pelear: se pide la Noto de esa escritura y se deja que la
+// cadena CSS caiga al sans del sistema, que en cualquier dispositivo de esa region existe. Cambiamos
+// "nuestra tipografia elegida" por "texto legible", que es la unica jerarquia correcta aca.
+const FUENTE_ESCRITURA = {
+  cjk: { display: 'Noto Sans JP', support: 'Noto Sans JP', dw: 800, sw: 500 },
+  arabic: { display: 'Noto Sans Arabic', support: 'Noto Sans Arabic', dw: 700, sw: 400 },
+  hebrew: { display: 'Noto Sans Hebrew', support: 'Noto Sans Hebrew', dw: 700, sw: 400 },
+  devanagari: { display: 'Noto Sans Devanagari', support: 'Noto Sans Devanagari', dw: 700, sw: 400 },
+}
+// cirilico y griego SI los cubren varias de nuestras familias (Inter, Onest, Archivo): no se tocan.
+
 // mono legible para NUMEROS (regla dura del repo: un dato jamas en fuente script/manuscrita)
 const NUM_FONT = { 'IBM Plex Mono': 1, 'Space Mono': 1, 'JetBrains Mono': 1, 'DM Mono': 1 }
 
@@ -88,7 +102,12 @@ export function deriveLook(pm, seed) {
   } else if (contrast(accent, P.bg0) < 2.2) {
     accent = ensureContrast(accent, P.bg0, 2.6)            // el acento debe VERSE sobre su placa
   }
-  const onAccent = legibleOn(accent)
+  // legibleOn decide blanco/negro con WCAG; sobre naranjas y amarillos elige blanco y APCA lo reprueba
+  // (Lc 46). Elegimos el que gana en APCA y despues lo empujamos hasta el umbral de texto chico.
+  const cands = [P.dark ? '#0b0b0d' : '#0c0a08', '#ffffff', legibleOn(accent)]
+  let onAccent = cands[0], mejor = -1
+  for (const cnd of cands) { const lc = Math.abs(apcaLcOf(cnd, accent)); if (lc > mejor) { mejor = lc; onAccent = cnd } }
+  onAccent = ensureApca(onAccent, accent, 62)
   // accent2 (DNA-SPEC §3.4): del pagemodel si vino, si no derivado por rotacion de hue
   let accent2 = dna.palette.accent2
   if (!accent2 || hueDist(hexToHsl(accent2).h, hAcc) < 12) {
@@ -102,7 +121,11 @@ export function deriveLook(pm, seed) {
   const par = pick(r, PAIRINGS[clase])
   const caseMode = mod.indexOf('brutalist') >= 0 ? 'upper' : dna.typography.caseHint
   const bigK = mod.indexOf('bigtype') >= 0 ? 1.18 : 1                 // DNA-SPEC §4.2
-  const fuenteNum = NUM_FONT[par.support] ? par.support : 'IBM Plex Mono'
+  let fuenteNum = NUM_FONT[par.support] ? par.support : 'IBM Plex Mono'
+  // la escritura manda sobre el pairing: primero que se LEA, despues el gusto tipografico
+  const escritura = FUENTE_ESCRITURA[dna.typography.script]
+  const parEff = escritura ? { ...par, ...escritura } : par
+  if (escritura) fuenteNum = escritura.support
 
   // --- FORMA (heredada de la pagina, endurecida por brutalist) ---
   const brut = mod.indexOf('brutalist') >= 0
@@ -116,11 +139,17 @@ export function deriveLook(pm, seed) {
   const grano = pick(r, [0.03, 0.04, 0.05, 0.055])
   const luzAng = pick(r, [-2.35, -1.57, -0.79])                        // UNA luz por video (DIRECCION-DE-ARTE P2)
 
+  // TINTAS DE TEXTO: el acento y el gris secundario se validan con APCA CONTRA SU PLACA y se corrigen
+  // si no llegan. Sin esto, un acento indigo sobre placa 'tinta' daba Lc 31 (ilegible en un telefono)
+  // y el dato mas importante del video era el texto peor leido de la pieza.
+  const accentTxt = ensureApca(accent, P.bg0, 62)
+  const dim = ensureApca(P.dim, P.bg0, 64)
+
   return {
     v: 1,
-    placa, ...P,
-    accent, accent2, onAccent, acromatica: acro,
-    fonts: { display: par.display, dw: par.dw, support: par.support, sw: par.sw, num: fuenteNum, clase },
+    placa, ...P, dim,
+    accent, accent2, accentTxt, onAccent, acromatica: acro,
+    fonts: { display: parEff.display, dw: parEff.dw, support: parEff.support, sw: parEff.sw, num: fuenteNum, clase, escritura: dna.typography.script },
     caseMode, bigK, tracking: range(r, -0.3, 2.4),
     radius, borde, sombra,
     margen, orn, grano, luzAng,
@@ -137,9 +166,9 @@ function placaColors(placa, hAcc, acro, r, forzarClaro) {
     const h = calido ? range(r, 30, 52) : hAcc + range(r, -18, 18)
     return {
       dark: false,
-      bg0: tint(h, calido ? range(r, 0.10, 0.20) : range(r, 0.03, 0.10), range(r, 0.915, 0.965)),
-      bg1: tint(h, calido ? range(r, 0.12, 0.22) : range(r, 0.04, 0.12), range(r, 0.86, 0.91)),
-      ink: tint(h + range(r, -14, 14), range(r, 0.05, 0.22), range(r, 0.06, 0.12)),
+      bg0: tint(h, calido ? range(r, 0.12, 0.22) : range(r, 0.07, 0.16), range(r, 0.925, 0.965)),
+      bg1: tint(h, calido ? range(r, 0.14, 0.26) : range(r, 0.06, 0.16), range(r, 0.795, 0.865)),
+      ink: tint(h + range(r, -14, 14), range(r, 0.06, 0.24), range(r, 0.045, 0.10)),
       dim: tint(h, range(r, 0.04, 0.14), range(r, 0.36, 0.46)),
     }
   }

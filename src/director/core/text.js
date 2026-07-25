@@ -38,21 +38,77 @@ export function fitUniform(ctx, items, base, maxW, min, weight, family, tr = 0) 
   for (const it of (items || [])) { const f = fitFont(ctx, String(it == null ? '' : it), s, maxW, min, weight, family, tr); if (f < s) s = f }
   return s
 }
-// envuelve en <= maxLines ACHICANDO hasta que ninguna linea desborde. Devuelve { size, lines }.
+// UNIDADES DE CORTE — donde se puede partir una linea. En latino/cirilico/griego la unidad es la
+// PALABRA; en japones, chino y coreano no hay espacios y la unidad es el CARACTER.
+// Sin esto, una frase CJK entera era UNA sola "palabra" que no entraba en ningun ancho, el fitter
+// llegaba al minimo sin poder cortar y la red de ultimo recurso elidia: "デザインとブランディ…".
+// Una pagina japonesa daba un video con la frase mutilada, siempre.
+const CJK = /[ᄀ-ᇿ⺀-〿぀-ヿ㐀-䶿一-鿿豈-﫿＀-￯]/
+// no se puede empezar renglon con estos (paréntesis/puntuacion de cierre japonesa y occidental)
+const NO_INICIO = new Set(['、', '。', '，', '．', '）', '」', '』', '］', '｝', '・', 'ー', '？', '！', ':', ';', ',', '.', ')', ']', '}', '»'])
+function unidades(str) {
+  const out = []
+  let cur = null
+  for (const c of Array.from(str)) {
+    if (c === ' ') { cur = null; if (out.length) out[out.length - 1].sp = true; continue }
+    if (CJK.test(c)) {
+      // la puntuacion de cierre se pega a la unidad anterior en vez de abrir renglon
+      if (NO_INICIO.has(c) && out.length && !out[out.length - 1].sp) out[out.length - 1].t += c
+      else out.push({ t: c, sp: false })
+      cur = null
+      continue
+    }
+    if (cur) cur.t += c
+    else { cur = { t: c, sp: false }; out.push(cur) }
+  }
+  return out
+}
+
+// envuelve a `maxW` a un tamano dado. Helper interno compartido por wrapFit y fitBlock.
+function wrapAt(ctx, uds, s, maxW, weight, family, tr) {
+  ctx.font = fontStr(weight, s, family); ctx.letterSpacing = (tr || 0) + 'px'
+  const ls = []; let cur = '', sep = ''
+  for (const u of uds) {
+    const tt = cur ? cur + sep + u.t : u.t
+    if (ctx.measureText(tt).width <= maxW || !cur) cur = tt
+    else { ls.push(cur); cur = u.t }
+    sep = u.sp ? ' ' : ''
+  }
+  if (cur) ls.push(cur)
+  return { ls, over: ls.some(l => ctx.measureText(l).width > maxW + 0.5) }
+}
+
+// envuelve en <= maxLines ACHICANDO hasta que ninguna linea desborde. Devuelve { size, lines, over }.
+// `over: true` significa que ni al minimo entra en maxLines y se RECORTARON lineas -> quien llama
+// tiene que tratarlo como error, no como resultado normal. Preferir fitBlock cuando hay caja con alto.
 export function wrapFit(ctx, str, base, maxW, min, weight, family, maxLines = 2, tr = 0) {
   str = String(str == null ? '' : str).replace(/\s+/g, ' ').trim()
-  const words = str.split(' ')
+  const uds = unidades(str)
   const prev = ctx.letterSpacing || '0px'
-  const at = s => {
-    ctx.font = fontStr(weight, s, family); ctx.letterSpacing = (tr || 0) + 'px'
-    const ls = []; let cur = ''
-    for (const w of words) { const tt = cur ? cur + ' ' + w : w; if (ctx.measureText(tt).width <= maxW || !cur) cur = tt; else { ls.push(cur); cur = w } }
-    if (cur) ls.push(cur)
-    return { ls, over: ls.some(l => ctx.measureText(l).width > maxW + 0.5) }
-  }
   let out = null
-  for (let s = base; s >= min; s--) { const { ls, over } = at(s); if (ls.length <= maxLines && !over) { out = { size: s, lines: ls }; break } }
-  if (!out) { const { ls } = at(min); out = { size: min, lines: ls.slice(0, maxLines) } }   // el guionista acota antes; red de seguridad
+  for (let s = base; s >= min; s--) { const { ls, over } = wrapAt(ctx, uds, s, maxW, weight, family, tr); if (ls.length <= maxLines && !over) { out = { size: s, lines: ls, over: false }; break } }
+  if (!out) { const { ls } = wrapAt(ctx, uds, min, maxW, weight, family, tr); out = { size: min, lines: ls.slice(0, maxLines), over: ls.length > maxLines } }
+  ctx.letterSpacing = prev
+  return out
+}
+
+// fitBlock — el fitter que usa el Director para TODO bloque de texto con caja: achica hasta que la
+// frase COMPLETA entra en ancho Y en alto. Nunca descarta palabras.
+//
+// Por que existe: wrapFit acota por CANTIDAD DE LINEAS. Cuando la frase no entraba en esas lineas ni
+// al tamano minimo, hacia `slice(0, maxLines)` y el video mostraba media oracion ("...listo para" en
+// vez de "...listo para publicar"). Con caja, el limite natural es el ALTO: se puede usar una linea
+// mas y bajar un punto, y la frase entra entera. El numero de lineas pasa a ser consecuencia, no ley.
+export function fitBlock(ctx, str, maxW, maxH, base, min, weight, family, lh = 1.2, tr = 0) {
+  str = String(str == null ? '' : str).replace(/\s+/g, ' ').trim()
+  const uds = unidades(str)
+  const prev = ctx.letterSpacing || '0px'
+  let out = null
+  for (let s = base; s >= min; s--) {
+    const { ls, over } = wrapAt(ctx, uds, s, maxW, weight, family, tr)
+    if (!over && (ls.length - 1) * s * lh + s <= maxH + 0.5) { out = { size: s, lines: ls, over: false }; break }
+  }
+  if (!out) { const { ls } = wrapAt(ctx, uds, min, maxW, weight, family, tr); out = { size: min, lines: ls, over: true } }
   ctx.letterSpacing = prev
   return out
 }

@@ -6,13 +6,20 @@
 // este motor NO importa de src/urvid, src/kinetic, ni de ninguna lib externa. Lo unico que comparte
 // con el resto del repo es src/shared/objects.js (dibujantes puros con inyeccion de dependencias).
 //
-// ESTADO: F0 (cimientos). Lo que YA existe y es usable/testeable:
+// ESTADO: F0-F2 (cimientos + guion + storyboard). Lo que YA existe y es usable/testeable:
 //   core/util.js    — matematica + color propios (OKLCH, WCAG, APCA, mezcla en luz lineal)
 //   core/prng.js    — determinismo por namespaces
 //   core/ease.js    — easings y springs en forma cerrada + parser del ease string del timeline
 //   core/text.js    — fit nunca-desborda + reveals (mascara / por caracter) + telemetria para gates
 //   core/schema.js  — contratos + validadores tipados + normalizador + adapter de brief legacy
-// Lo que llega en F1-F3: scriptwriter, composer, linker, timeline (compilador+evaluador), render.
+//   core/scriptwriter — guion semantico (15 escenas, 8 gramaticas, anti-invencion)
+//   core/composer     — storyboard: escenas ESTATICAS como arboles de capas con matchKey
+//   kit/look          — DNA medido + seed -> direccion de arte (placa, tintas, tipografia, forma)
+//   kit/grid          — grilla normalizada con safe areas de IG/TikTok
+//   kit/layers        — constructores declarativos de capa (puros: sin canvas)
+//   kit/objetos       — rubro detectado en el texto real -> objeto heroe del pool
+//   render/*          — placa y capas a pixeles, con telemetria auditable por los gates
+// Lo que llega en F3: linker (match-cuts), timeline (compilador+evaluador), export y estudio.
 
 export {
   TAU, clamp, clamp01, lerp, inv, round,
@@ -22,7 +29,17 @@ export {
 } from './core/util.js'
 export { mulberry32, hashStr, stableSeed, seedFor, subSeed, pick, range, irange, weightedPick, weightedSample, shuffled } from './core/prng.js'
 export { parseEase, isEase, easeName, spring, win, wobble, stagger, lin, expoOut, expoIn, expoInOut, cubicOut, cubicIn, cubicInOut, quintOut, backOut } from './core/ease.js'
-export { fontStr, fitFont, fitUniform, wrapFit, wordTrim, clip, drawText, drawWrapped, drawMaskLine, drawKineticLine, telStart, telStop, telTag } from './core/text.js'
+export { fontStr, fitFont, fitUniform, wrapFit, fitBlock, wordTrim, clip, drawText, drawWrapped, drawMaskLine, drawKineticLine, telStart, telStop, telTag } from './core/text.js'
+
+// --- F2: guion -> storyboard ---
+export { buildGuion, ESCENAS, GRAMATICAS, sesgosActivos } from './core/scriptwriter.js'
+export { composeStoryboard, matchesEntre } from './core/composer.js'
+export { deriveLook, PLACAS, PAIRINGS } from './kit/look.js'
+export { makeGrid, dentroDeSafe, px, SAFE_TOP, SAFE_BOT } from './kit/grid.js'
+export { texto, forma, objeto, foto, badge, stepper, priceTag, logoRow, placa, escena, resetIds, SIZE, LH } from './kit/layers.js'
+export { POOLS, NOMBRES, rubroDe, textoDe, elegirObjetos } from './kit/objetos.js'
+export { drawScene, col } from './render/draw.js'
+export { drawPlaca, drawVidrio } from './render/plate.js'
 export {
   PM_V, SB_V, TL_V, CANVAS, PROPS, PROP_DEFAULT, LAYER_KINDS, TEXT_ROLES,
   TIPO_NEGOCIO, MODELO_USO, DISPLAY_HINT, CASE_HINT, SCRIPT, TEXT_DIR, DENSITY, BORDER_STYLE, SHADOW_STYLE,
@@ -34,4 +51,4 @@ export {
 // SUS utilidades de color -> cero acoplamiento con urvid aunque el archivo sea compartido).
 export { createHeroObjects } from '../shared/objects.js'
 
-export const DIRECTOR_VERSION = '0.1.0-f0'
+export const DIRECTOR_VERSION = '0.3.0-f2'
