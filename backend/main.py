@@ -514,6 +514,21 @@ def _set_urvid_brief_fs(db, uid, ckey, brief, chash, url):
         print(f"[perceive] cache guardar fallo: {e}")
 
 
+def _pagemodel_safe(url, site, brief):
+    """pagemodel.v1 (el contrato de datos que consume el motor Director) armado con lo que YA se capturo.
+    Es BEST-EFFORT a proposito: la clave 'pagemodel' es ADITIVA y los estudios viejos (urvid IA, Kinetic,
+    Motion) ni la miran, asi que un fallo del ensamblador devuelve None y /perceive responde igual — el
+    analisis nunca se cae por el motor nuevo. El import es perezoso por lo mismo: si pagemodel.py se rompe,
+    el backend entero sigue levantando. Mismo uso exacto que backend/e2e_probe.py para que lo que ve el
+    estudio y el fixture del gate director-pagemodel sean EL MISMO objeto."""
+    try:
+        import pagemodel
+        return pagemodel.build_pagemodel(url, site, brief)
+    except Exception as e:
+        print(f"[perceive] pagemodel fallo (sigo sin el): {e}")
+        return None
+
+
 @app.post("/api/urvid/perceive")
 async def urvid_perceive(req: PerceiveRequest):
     """Analiza una pagina/URL (como el motor viejo: brand_dna lee el screenshot + el texto capturado) y devuelve el
@@ -557,7 +572,10 @@ async def urvid_perceive(req: PerceiveRequest):
         cached = _urvid_brief_cache.get(memkey) or _get_urvid_brief_fs(db, req.userId, ckey, chash)
         if cached:
             print(f"[perceive] '{req.url}' desde CACHE")
-            return {"brief": cached, "source": {}, "cost": {}, "cached": True, "images": site.get("images") or [], "screenshotUrl": screenshot_url}
+            # el pagemodel NO se cachea: el brief cacheado solo aporta la semantica, y el dna sale de la
+            # captura FRESCA que ya se hizo arriba (site) -> re-ensamblarlo es barato y siempre coherente.
+            return {"brief": cached, "source": {}, "cost": {}, "cached": True, "images": site.get("images") or [], "screenshotUrl": screenshot_url,
+                    "pagemodel": _pagemodel_safe(req.url.strip(), site, cached)}
     usage = []
     # UNA sola llamada multimodal (texto + screenshot juntos) -> brief rico. Mas robusto Y mas barato que 2 llamadas.
     brief = await perception.analyze_to_brief(req.url.strip(), req.desarrollo.strip(), site=site, usage=usage, audience_hint=req.audienceHint.strip(), goal_hint=req.goalHint.strip(), audience_bias=audience_bias)
@@ -578,7 +596,8 @@ async def urvid_perceive(req: PerceiveRequest):
     src = {"title": (site.get("content") or {}).get("title", "") if isinstance(site.get("content"), dict) else "",
            "logo": site.get("logo", "")}
     print(f"[perceive] '{req.url}' -> {brief.get('brand')} / {brief.get('rubro')} / {brief.get('brandColor')} (parse_ok={parse_ok})")
-    return {"brief": brief, "source": src, "cost": cost, "cached": False, "parse_ok": parse_ok, "images": site.get("images") or [], "screenshotUrl": screenshot_url}
+    return {"brief": brief, "source": src, "cost": cost, "cached": False, "parse_ok": parse_ok, "images": site.get("images") or [], "screenshotUrl": screenshot_url,
+            "pagemodel": _pagemodel_safe(req.url.strip(), site, brief)}
 
 
 class CineAnalyzeRequest(BaseModel):

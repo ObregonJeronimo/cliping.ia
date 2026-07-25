@@ -16,7 +16,21 @@ import { clamp, rgba, mixColor, lighten, darken, legibleOn } from '../core/util.
 import { createHeroObjects } from '../../shared/objects.js'
 import { drawPlaca, drawVidrio } from './plate.js'
 
-const HERO = createHeroObjects({ drawText, lighten, darken, rgba })
+// Los dibujantes de src/shared/objects.js escriben la marca dentro del objeto (la tarjeta, el ticket,
+// la ventana) con un maxW fijo, y drawText elide con puntos suspensivos cuando no entra: una marca
+// larga salia como "LA PARRILLA..." adentro del objeto. Como ese archivo es COMPARTIDO byte a byte
+// con urvid (hay un harness de hash que lo verifica), no se toca: se le INYECTA a este motor un
+// drawText que recorta por PALABRA antes de dibujar. urvid sigue recibiendo el suyo, intacto.
+function drawTextSinElidir(ctx, str, x, y, opts = {}) {
+  const { maxW = 0, size = 40, weight = 700, family = 'Inter', tracking = 0, min = 12 } = opts
+  let t = String(str == null ? '' : str)
+  if (maxW > 0 && t) {
+    const s2 = fitFont(ctx, t, size, maxW, Math.max(9, min), weight, family, tracking)
+    t = wordTrim(ctx, t, maxW, s2, weight, family, tracking)
+  }
+  return drawText(ctx, t, x, y, opts)
+}
+const HERO = createHeroObjects({ drawText: drawTextSinElidir, lighten, darken, rgba })
 
 // ---------------------------------------------------------------- tokens
 // Las capas guardan TOKENS ('accent', 'ink', 'dim'...) y no hex: asi el mismo storyboard se puede
@@ -47,10 +61,18 @@ const peso = (look, l) => (l.weight != null ? l.weight : (l.family === 'display'
 const _bbox = new Map()
 const NOMINAL = { card: [240, 150], window: [245, 165], plate: [245, 245], cup: [145, 130], bottle: [110, 230], ticket: [235, 110], dumbbell: [215, 90], ring: [200, 200], house: [205, 190], book: [190, 150], capsule: [175, 80], bag: [180, 190], tag: [210, 100], chart: [220, 220], shield: [200, 230], photo: [240, 240] }
 
+// en el browser no hace falta que el caller inyecte nada: si hay document, sabemos hacer un canvas
+// offscreen. Sin esto, el estudio que se olvidara de pasar makeCanvas caia a la tabla NOMINAL y los
+// objetos heroe salian con un tamano aproximado en vez del real.
+const _autoCanvas = typeof document !== 'undefined'
+  ? (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c }
+  : null
+
 function medirObjeto(name, hp, makeCanvas, look) {
   const key = name
   if (_bbox.has(key)) return _bbox.get(key)
   let out = NOMINAL[name] || [220, 200]
+  makeCanvas = makeCanvas || _autoCanvas
   if (makeCanvas) {
     try {
       const S = 640, c = makeCanvas(S, S), cx = c.getContext('2d')
@@ -80,8 +102,12 @@ function capaTexto(ctx, l, look, W, H, p, rep) {
   const ax = l.align === 'left' ? x : l.align === 'right' ? x + w : x + w / 2
   const cy = y + h / 2
   const size = Math.max(9, l.size * H)
+  // PISO DEL FITTER: es un limite de LEGIBILIDAD, no una fraccion de la intencion. Cuando era
+  // `size * 0.34`, pedir el doble de tamano tambien duplicaba el piso, y un titulo con `size: 2`
+  // desde el editor ya no podia achicar lo suficiente para entrar en su caja: desbordaba.
+  // Ahora el piso es el menor entre "un tercio de lo pedido" y "2% del alto del lienzo".
   const o = {
-    size, maxW: w, min: Math.max(9, size * 0.34), weight: peso(look, l), family: fam(look, l.family),
+    size, maxW: w, min: Math.max(9, Math.min(size * 0.34, H * 0.020)), weight: peso(look, l), family: fam(look, l.family),
     color: col(look, l.color), align: l.align, tracking: l.tracking == null ? look.tracking * (size / 60) : l.tracking,
     lh: l.lh, maxLines: l.lines,
   }
@@ -208,8 +234,12 @@ function capaBadge(ctx, l, look, W, H, p) {
   const size = Math.max(9, l.size * H)
   const fnt = fam(look, 'support')
   // la pildora se AJUSTA al texto: un boton con aire de sobra a los lados grita plantilla
-  const s = fitFont(ctx, txt, size, w * 0.78, size * 0.5, 700, fnt, 0)
+  // El badge es una sola linea: se achica y, si aun no entra, se recorta POR PALABRA. Antes caia en
+  // el clip por defecto de drawText, que elide con puntos suspensivos — y un CTA cortado a la mitad
+  // ("Probalo grat...") es exactamente el defecto que el motor promete no cometer.
+  const s = fitFont(ctx, txt, size, w * 0.78, Math.max(9, size * 0.42), 700, fnt, 0)
   ctx.font = fontStr(700, s, fnt)
+  txt = wordTrim(ctx, txt, w * 0.78, s, 700, fnt, 0)
   const tw = ctx.measureText(txt).width
   const pw = Math.min(w, tw + h * 1.15), px0 = x + (w - pw) / 2
   ctx.save()

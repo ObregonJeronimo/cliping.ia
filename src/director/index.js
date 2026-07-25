@@ -6,7 +6,7 @@
 // este motor NO importa de src/urvid, src/kinetic, ni de ninguna lib externa. Lo unico que comparte
 // con el resto del repo es src/shared/objects.js (dibujantes puros con inyeccion de dependencias).
 //
-// ESTADO: F0-F3.1 (cimientos + guion + storyboard + linker/timeline/video). Lo que YA existe y es usable/testeable:
+// ESTADO: F0-F3.2 (cimientos + guion + storyboard + linker/timeline/video + edicion). Lo que YA existe:
 //   core/util.js    — matematica + color propios (OKLCH, WCAG, APCA, mezcla en luz lineal)
 //   core/prng.js    — determinismo por namespaces
 //   core/ease.js    — easings y springs en forma cerrada + parser del ease string del timeline
@@ -22,7 +22,8 @@
 //   core/linker       — 12 recetas de corte + FLIP (match-cut) por matchKey
 //   core/timeline     — compilador storyboard->timeline.v1 y evaluador seek-safe
 //   render/video      — drawFrame(t): el video, dibujado desde los keyframes
-// Lo que llega en F3.2: export MP4 y el estudio Director con el editor E1.
+//   core/edits        — overlay DECLARATIVO de edicion: el video se re-genera desde (pagemodel, seed, edits)
+// Lo que llega despues: export MP4 y el estudio Director con el editor E1 montado sobre core/edits.
 
 export {
   TAU, clamp, clamp01, lerp, inv, round,
@@ -48,6 +49,9 @@ export { link, RECETAS, gestoEntrada, gestoSalida } from './core/linker.js'
 export { compile, propsAt, layersAt, evalKeys, boxDe, escenaEn } from './core/timeline.js'
 export { drawFrame, frames, tDe } from './render/video.js'
 export { drawPlaca, drawVidrio } from './render/plate.js'
+// --- F3.2: edicion ---
+export { EDITS_V, DUR_MIN, DUR_MAX, SIZE_MIN, SIZE_MAX, COLOR_TOKENS, emptyEdits, applyEdits, validateEdits, contarEdits } from './core/edits.js'
+
 export {
   PM_V, SB_V, TL_V, CANVAS, PROPS, PROP_DEFAULT, LAYER_KINDS, TEXT_ROLES,
   TIPO_NEGOCIO, MODELO_USO, DISPLAY_HINT, CASE_HINT, SCRIPT, TEXT_DIR, DENSITY, BORDER_STYLE, SHADOW_STYLE,
@@ -59,4 +63,4 @@ export {
 // SUS utilidades de color -> cero acoplamiento con urvid aunque el archivo sea compartido).
 export { createHeroObjects } from '../shared/objects.js'
 
-export const DIRECTOR_VERSION = '0.4.0-f3.1'
+export const DIRECTOR_VERSION = '0.5.0-f3.2'

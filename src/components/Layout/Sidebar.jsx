@@ -7,6 +7,7 @@ import styles from './Sidebar.module.css'
 const NAV = [
   { to: '/studio', icon: '●', label: 'urvid IA' },
   { to: '/studio/craft', icon: '✦', label: 'urvid IA advanced' },
+  { to: '/studio/director', icon: '◈', label: 'Director IA' },
   { to: '/studio/kinetic', icon: '◎', label: 'Kinetic IA' },
   { to: '/studio/motion', icon: '◉', label: 'Motion IA' },
   { to: '/studio/anim', icon: '➤', label: 'Animaciones IA' },

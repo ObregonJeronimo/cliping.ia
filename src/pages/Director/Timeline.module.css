@@ -1,0 +1,17 @@
+/* Timeline del Director — contenedor del canvas. Todo lo que se ve dentro del panel de pistas lo
+   dibuja Timeline.jsx en 2D; aca solo estan el marco, la cabecera y el scroll. */
+.panel { background: #0d0d14; border: 1px solid #262636; border-radius: 14px; overflow: hidden; }
+.head { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid #1e1e2c; }
+.ttl { color: #e5e7f0; font-size: 13px; font-weight: 600; }
+.hint { color: #6b7186; font-size: 11.5px; }
+.zoom { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+.zbtn { background: #1d1d29; border: 1px solid #32324a; color: #dfe2f0; border-radius: 8px; width: 26px; height: 24px; font-size: 14px; line-height: 1; cursor: pointer; }
+.zbtn:hover { background: #262637; }
+.zval { color: #7c8199; font-size: 11px; font-variant-numeric: tabular-nums; min-width: 52px; text-align: center; }
+
+/* scroll horizontal cuando el video no entra al ancho del panel; vertical si hay muchas capas */
+.scroll { overflow-x: auto; overflow-y: auto; max-height: 244px; }
+.cv { display: block; cursor: crosshair; touch-action: none; }
+.scroll::-webkit-scrollbar { height: 9px; width: 9px; }
+.scroll::-webkit-scrollbar-thumb { background: #2c2c40; border-radius: 999px; }
+.scroll::-webkit-scrollbar-track { background: #12121a; }

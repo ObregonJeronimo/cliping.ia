@@ -5,6 +5,7 @@ import Urvid1Studio from './pages/Urvid1/Urvid1Studio'
 import UrvidCraftStudio from './pages/UrvidCraft/UrvidCraftStudio'
 import AnimLab from './pages/AnimLab/AnimLab'
 import KineticStudio from './pages/Kinetic/KineticStudio'
+import DirectorStudio from './pages/Director/DirectorStudio'
 import MotionStudio from './pages/Motion/MotionStudio'
 import BibliotecaStudio from './pages/Biblioteca/BibliotecaStudio'
 import TemplateEditor from './pages/TemplateEditor/TemplateEditor'
@@ -43,6 +44,7 @@ function AppRoutes() {
         <Route index element={<Urvid1Studio />} />
         <Route path="urvid" element={<Navigate to="/studio" replace />} />
         <Route path="craft" element={<UrvidCraftStudio />} />
+        <Route path="director" element={<DirectorStudio />} />
         <Route path="kinetic" element={<KineticStudio />} />
         <Route path="motion" element={<MotionStudio />} />
         <Route path="anim" element={<AnimLab />} />

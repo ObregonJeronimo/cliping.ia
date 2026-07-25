@@ -159,7 +159,10 @@ export function deriveLook(pm, seed) {
 }
 
 // colores concretos de cada familia de placa. Las tintas se TIÑEN (nunca el mismo hex en dos videos).
-function placaColors(placa, hAcc, acro, r, forzarClaro) {
+// EXPORTADA porque el overlay de edicion (core/edits.js) permite cambiar la familia de placa sin
+// recomponer el video: necesita ESTA derivacion y no una copia, o el fondo editado no seria el mismo
+// fondo que produce deriveLook para esa familia.
+export function placaColors(placa, hAcc, acro, r, forzarClaro) {
   const tint = (h, s, l) => hslToHex(h, acro ? Math.min(s, 0.04) : s, l)
   if (placa === 'crema' || placa === 'papel' || forzarClaro) {
     const calido = placa === 'papel' || forzarClaro

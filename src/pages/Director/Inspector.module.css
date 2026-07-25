@@ -1,0 +1,42 @@
+/* Inspector — columna derecha. Mismo lenguaje que el panel izquierdo, un poco mas compacto porque
+   son controles y no lectura: 300px de ancho fijo tienen que bancar 15 escenas sin desbordar. */
+.panel { background: #0d0d14; border: 1px solid #262636; border-radius: 14px; padding: 12px; max-height: calc(52vh + 90px); overflow-y: auto; }
+.head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.ttl { color: #e5e7f0; font-size: 14px; font-weight: 600; }
+.count { color: #a5b4fc; background: #191926; border: 1px solid #2c2c40; border-radius: 999px; font-size: 11px; padding: 2px 8px; }
+.reset { margin-left: auto; background: #1d1d29; border: 1px solid #32324a; color: #dfe2f0; border-radius: 8px; padding: 5px 9px; font-size: 11.5px; cursor: pointer; }
+.reset:hover { background: #262637; }
+.reset:disabled { opacity: 0.45; cursor: default; }
+
+/* avisos de validateEdits: lo que el motor ignoro (una edicion invalida nunca rompe el render) */
+.avisos { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.aviso { color: #fda4af; background: rgba(253, 164, 175, 0.07); border: 1px solid rgba(253, 164, 175, 0.18); border-radius: 8px; font-size: 11px; line-height: 1.35; padding: 5px 7px; }
+
+.sec { border-top: 1px solid #1e1e2c; padding-top: 10px; margin-top: 10px; }
+.sec:first-of-type { border-top: 0; margin-top: 0; padding-top: 0; }
+.h3 { color: #b7bccb; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; margin: 0 0 8px; }
+.hint { color: #6b7186; font-size: 12px; line-height: 1.45; margin: 0; }
+
+.meta { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.kind { background: #191926; border: 1px solid #2c2c40; color: #a5b4fc; font-size: 11px; border-radius: 6px; padding: 2px 7px; }
+.mid { color: #6b7186; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.off { margin-left: auto; color: #fda4af; border: 1px solid rgba(253, 164, 175, 0.25); border-radius: 6px; font-size: 10.5px; padding: 1px 6px; }
+
+.lbl { display: block; color: #8a8fa5; font-size: 11.5px; margin: 8px 0 4px; }
+.val { color: #7c8199; font-size: 11px; font-variant-numeric: tabular-nums; }
+.input { width: 100%; background: #14141c; border: 1px solid #2a2a38; color: #e8e9f2; border-radius: 8px; padding: 7px 9px; font-size: 12.5px; outline: none; }
+.input:focus { border-color: #6366f1; }
+.area { width: 100%; background: #14141c; border: 1px solid #2a2a38; color: #e8e9f2; border-radius: 8px; padding: 7px 9px; font-size: 12.5px; outline: none; resize: vertical; font-family: inherit; line-height: 1.4; }
+.area:focus { border-color: #6366f1; }
+.range { width: 100%; accent-color: #7c3aed; margin: 2px 0 0; }
+.check { display: flex; align-items: center; gap: 6px; color: #b7bccb; font-size: 12px; margin-top: 10px; }
+.fila { display: flex; align-items: center; gap: 8px; }
+.fila .lbl { margin: 0; flex: 1; }
+.color { width: 44px; height: 26px; background: #14141c; border: 1px solid #2a2a38; border-radius: 8px; padding: 2px; cursor: pointer; }
+
+.esc { padding: 5px 0; }
+.escTop { display: flex; align-items: center; gap: 6px; }
+.escNom { color: #dfe2f0; font-size: 12px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mini { background: #1d1d29; border: 1px solid #32324a; color: #dfe2f0; border-radius: 6px; width: 22px; height: 20px; font-size: 11px; line-height: 1; cursor: pointer; }
+.mini:hover { background: #262637; }
+.mini:disabled { opacity: 0.35; cursor: default; }

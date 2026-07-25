@@ -56,9 +56,13 @@ export const ESCENAS = [
   },
   {
     id: 'hero.product', familia: 'producto', rol: 'cuerpo', dur: 3.0, peso: 1.3,
-    requiere: pm => pm.semantica.tipoNegocio === 'ecommerce' && (pm.assets.images || []).some(i => i.kind === 'producto' || i.kind === 'otro'),
+    // OJO: 'otro' NO existe en IMG_KIND (schema.js), asi que normalizePageModel lo convertia en
+    // 'desconocido' y esta condicion nunca podia ser verdadera. Sumado a que ni el brief legacy ni
+    // backend/pagemodel.py clasifican imagenes (todas salen 'desconocido'), la escena de FOTO era
+    // codigo muerto: 0 de 60 seeds la producian. Con 'desconocido' aceptado, sale en ~1 de 2.
+    requiere: pm => pm.semantica.tipoNegocio === 'ecommerce' && (pm.assets.images || []).some(i => i.kind === 'producto' || i.kind === 'desconocido'),
     contenido: pm => ({
-      foto: (pm.assets.images.find(i => i.kind === 'producto') || pm.assets.images[0]).url,
+      foto: (pm.assets.images.find(i => i.kind === 'producto') || pm.assets.images[0]).url,   // preferimos la clasificada; si no hay, la mejor del ranking de site_capture (viene primera)
       precio: pm.semantica.oferta.precio || '', titulo: pm.semantica.queHace,
     }),
   },

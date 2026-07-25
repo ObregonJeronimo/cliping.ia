@@ -1,0 +1,58 @@
+/* Director IA · estudio — 3 columnas (panel + escenario 9:16 + inspector) y la timeline abajo a lo
+   ancho. Mismo lenguaje visual que Kinetic IA: fondos #0d-#1d, bordes #262636, acento indigo/violeta. */
+.wrap { display: flex; flex-direction: column; gap: 14px; padding: 22px; min-height: 100%; }
+.top { display: flex; gap: 16px; align-items: flex-start; }
+.left { flex: 1 1 330px; max-width: 420px; min-width: 290px; }
+.stage { flex: 1 1 auto; display: flex; flex-direction: column; gap: 10px; align-items: center; min-width: 220px; }
+.right { flex: 0 0 300px; }
+.bottom { width: 100%; }
+
+.title { font-size: 28px; font-weight: 800; margin: 0 0 6px; color: #f2f2f8; }
+.ia { background: linear-gradient(100deg, #7dd3fc, #c084fc, #f472b6); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.sub { color: #9aa0b4; font-size: 13px; line-height: 1.5; margin: 0 0 14px; }
+.row { display: flex; gap: 8px; margin: 10px 0; align-items: center; flex-wrap: wrap; }
+.input { flex: 1 1 180px; background: #14141c; border: 1px solid #2a2a38; color: #eee; border-radius: 10px; padding: 9px 11px; font-size: 13px; outline: none; }
+.input:focus { border-color: #6366f1; }
+.btn { background: #1d1d29; border: 1px solid #32324a; color: #dfe2f0; border-radius: 10px; padding: 9px 13px; font-size: 13px; cursor: pointer; }
+.btn:hover { background: #262637; }
+.btn:disabled { opacity: 0.55; cursor: default; }
+.primary { background: linear-gradient(100deg, #4f46e5, #7c3aed); border-color: transparent; color: #fff; font-weight: 600; }
+.err { color: #fda4af; font-size: 12.5px; margin: 6px 0; }
+.check { color: #b7bccb; font-size: 12.5px; display: flex; gap: 6px; align-items: center; }
+
+/* chips del ADN de la pieza: gramatica, sesgos, placa, tipografia, objetos, duracion */
+.dna { display: flex; gap: 6px; flex-wrap: wrap; margin: 10px 0 4px; }
+.chip { background: #191926; border: 1px solid #2c2c40; color: #a5b4fc; font-size: 11.5px; border-radius: 999px; padding: 3px 10px; }
+.cortes { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 6px 0 2px; }
+.cortesLbl { color: #6b7186; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
+.corte { background: #14141c; border: 1px solid #262636; color: #8a8fa5; font-size: 11px; border-radius: 6px; padding: 2px 7px; }
+
+.h2 { color: #e5e7f0; font-size: 15px; margin: 20px 0 10px; }
+.gallery { display: flex; flex-direction: column; gap: 6px; max-height: 210px; overflow-y: auto; }
+.empty { color: #6b7186; font-size: 12.5px; }
+.card { display: flex; align-items: stretch; }
+.cardMain { flex: 1; display: flex; align-items: center; gap: 10px; background: #14141c; border: 1px solid #262636; border-radius: 10px 0 0 10px; padding: 8px 11px; cursor: pointer; text-align: left; }
+.cardMain:hover { background: #1a1a26; }
+.cardDot { width: 12px; height: 12px; border-radius: 999px; flex: 0 0 auto; }
+.cardBrand { color: #e8e9f2; font-size: 13px; font-weight: 600; }
+.cardMeta { color: #7c8199; font-size: 11.5px; margin-left: auto; font-variant-numeric: tabular-nums; }
+.cardDel { background: #14141c; border: 1px solid #262636; border-left: 0; border-radius: 0 10px 10px 0; color: #8a8fa5; cursor: pointer; padding: 0 11px; font-size: 15px; }
+.cardDel:hover { color: #fda4af; }
+
+/* escenario: el 9:16 manda el alto; a 1366px de ancho entra sin apretar las columnas laterales */
+.frame { height: min(52vh, 560px); border-radius: 16px; overflow: hidden; border: 1px solid #262636; background: #000; box-shadow: 0 18px 60px rgba(0, 0, 0, 0.45); }
+.canvas { width: 100%; height: 100%; display: block; cursor: pointer; }
+.transport { display: flex; gap: 10px; align-items: center; width: 100%; }
+.scrub { flex: 1; accent-color: #7c3aed; }
+.time { color: #8a8fa5; font-size: 12px; font-variant-numeric: tabular-nums; }
+
+@media (max-width: 1200px) {
+  .top { flex-wrap: wrap; }
+  .right { flex: 1 1 300px; }
+}
+@media (max-width: 900px) {
+  .top { flex-direction: column; }
+  .left, .right { max-width: none; width: 100%; }
+  .stage { width: 100%; }
+  .frame { height: auto; width: min(92vw, 405px); }
+}

@@ -104,7 +104,14 @@ export function fitBlock(ctx, str, maxW, maxH, base, min, weight, family, lh = 1
   const uds = unidades(str)
   const prev = ctx.letterSpacing || '0px'
   let out = null
-  for (let s = base; s >= min; s--) {
+  // OJO con el recorrido: `base` casi siempre es fraccionario (49.3px), asi que `s--` nunca cae
+  // exactamente en `min` y el fitter se rendia UN ESCALON ANTES de su propio piso. Con un texto al
+  // limite, esa diferencia era exactamente la que separaba "entra" de "desborda". Se recorre en
+  // enteros y despues se prueba el piso explicitamente.
+  const tam = []
+  for (let s = Math.floor(base); s > min; s--) tam.push(s)
+  tam.push(min)
+  for (const s of tam) {
     const { ls, over } = wrapAt(ctx, uds, s, maxW, weight, family, tr)
     if (!over && (ls.length - 1) * s * lh + s <= maxH + 0.5) { out = { size: s, lines: ls, over: false }; break }
   }
