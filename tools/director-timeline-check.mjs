@@ -18,6 +18,7 @@ import { composeStoryboard } from '../src/director/core/composer.js'
 import { deriveLook } from '../src/director/kit/look.js'
 import { compile, propsAt } from '../src/director/core/timeline.js'
 import { drawFrame } from '../src/director/render/video.js'
+import { corpusHero } from '../src/director/render/draw.js'
 import { drawPlaca } from '../src/director/render/plate.js'
 
 const HERE = dirname(fileURLToPath(import.meta.url))

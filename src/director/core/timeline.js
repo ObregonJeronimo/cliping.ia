@@ -88,6 +88,13 @@ export function compile(sb, seed) {
 
     const propios = sc.layers.filter(l => l.kind !== 'plate')
     const orden = propios.slice().sort((a, b) => a.z - b.z)
+    // ORDEN DE ENTRADA != orden de dibujo. El stagger iba por z ascendente, y la capa FOCAL suele ser
+    // la de mayor z: entraba ULTIMA. Resultado medido: 0.18% de tinta en el corte, porque durante
+    // ~0.2s lo unico puesto eran el chip de marca y tres filetes de 3px mientras el heroe todavia no
+    // habia empezado. El cuadro lo sostiene el foco: entra PRIMERO y los detalles lo siguen. Ademas es
+    // mejor montaje — el ojo aterriza en el sujeto y despues aparecen los accesorios.
+    const pesoEnt = l => (l.focal ? 1e6 : 0) + (l.box[2] || 0) * (l.box[3] || 0)
+    const ordenEntrada = new Map(propios.slice().sort((a, b) => pesoEnt(b) - pesoEnt(a) || a.z - b.z).map((l, i) => [l.id, i]))
     orden.forEach((l, k) => {
       const box = l.box
       const cae = cajaProps(box)
@@ -119,7 +126,10 @@ export function compile(sb, seed) {
       // un corte SECO (step) es simultaneo por definicion. Con stagger, A desaparecia de golpe y B
       // entraba escalonado: hasta 0.22s de pantalla casi vacia. Medido en la rejilla: 0.1% de tinta.
       const seco = lIn && (lIn.entrada === 'flash' || lIn.salida === 'corte')
-      const stag = (seco || i === 0) ? 0 : Math.min(0.055 * k, 0.22)  // stagger por z: el fondo entra antes que el texto
+      // el stagger se cuenta en el orden de ENTRADA (foco primero) y nunca puede pasar de la mitad de
+      // la ventana del corte: si no, la escena entrante llega tarde a su propio corte.
+      const kEnt = ordenEntrada.get(l.id) || 0
+      const stag = (seco || i === 0) ? 0 : Math.min(0.055 * kEnt, 0.18, dIn * 0.45)
       const e0 = R3(entra0 + stag), e1 = R3(entra1 + stag)
       // PRIMER FRAME: el video arranca CON LA IMAGEN PUESTA y hace un push-in. Nada de fundido desde
       // el fondo: en un reel los primeros 300ms son los unicos que se miran seguro, y gastarlos en un
@@ -189,7 +199,12 @@ function cierre(id, s0, s1, l, lOut, look, push, cae, yaScale) {
   if (!lOut) return
   const go = gestoSalida(lOut.salida, l, 0, look)
   const t = go.to
-  if (t.alpha != null) push(id, 'alpha', [{ t: s0, v: 1 }, { t: s1, v: t.alpha, ease: go.ease }])
+  // LA OPACIDAD NO SIGUE LA CURVA DEL GESTO. Los gestos de salida usan curvas *in* (ei, ci, step),
+  // que a mitad de la ventana todavia estan al 97%: la capa que se va y la que entra se cruzaban las
+  // dos en su meseta, y durante medio segundo se leian DOS mensajes superpuestos a opacidad plena.
+  // Se lee como un error de render, no como una transicion. La POSICION si puede solaparse (eso es lo
+  // que da continuidad); la opacidad se va rapido y termina en la primera parte de la ventana.
+  if (t.alpha != null) push(id, 'alpha', [{ t: s0, v: 1 }, { t: R3(s0 + (s1 - s0) * 0.62), v: t.alpha, ease: 'co' }])
   if (t.scale != null && !yaScale) push(id, 'scale', [{ t: s0, v: 1 }, { t: s1, v: t.scale, ease: go.ease }])
   if (t.dy != null) push(id, 'y', [{ t: s0, v: R4(cae.y) }, { t: s1, v: R4(cae.y + t.dy), ease: go.ease }])
   if (t.dx != null) push(id, 'x', [{ t: s0, v: R4(cae.x) }, { t: s1, v: R4(cae.x + t.dx), ease: go.ease }])

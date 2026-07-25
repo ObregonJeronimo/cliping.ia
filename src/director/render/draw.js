@@ -16,21 +16,71 @@ import { clamp, rgba, mixColor, lighten, darken, legibleOn } from '../core/util.
 import { createHeroObjects } from '../../shared/objects.js'
 import { drawPlaca, drawVidrio } from './plate.js'
 
-// Los dibujantes de src/shared/objects.js escriben la marca dentro del objeto (la tarjeta, el ticket,
-// la ventana) con un maxW fijo, y drawText elide con puntos suspensivos cuando no entra: una marca
-// larga salia como "LA PARRILLA..." adentro del objeto. Como ese archivo es COMPARTIDO byte a byte
-// con urvid (hay un harness de hash que lo verifica), no se toca: se le INYECTA a este motor un
-// drawText que recorta por PALABRA antes de dibujar. urvid sigue recibiendo el suyo, intacto.
-function drawTextSinElidir(ctx, str, x, y, opts = {}) {
-  const { maxW = 0, size = 40, weight = 700, family = 'Inter', tracking = 0, min = 12 } = opts
-  let t = String(str == null ? '' : str)
+// ---------------------------------------------------------------- texto DENTRO del objeto heroe
+// Los dibujantes de src/shared/objects.js escriben adentro del objeto: la marca en la tarjeta, y
+// tambien etiquetas horneadas ("ADMIT ONE", "VOL. 7", "NUEVA TEMPORADA", "•••• •••• 4021") y CIFRAS
+// derivadas del seed ("87%" en el anillo, "+58%" en el grafico). Ese archivo es COMPARTIDO byte a byte
+// con urvid (hay un harness de hash que lo verifica), asi que no se toca: se le INYECTA a este motor
+// un drawText propio. urvid sigue recibiendo el suyo, intacto.
+//
+// DOS REGLAS, y las dos vienen de defectos medidos:
+//
+// 1. ANTI-INVENCION. El gate E-DATO-FALSO audita el texto de las CAPAS, pero nunca miraba lo que el
+//    dibujante pinta adentro del objeto. Resultado: 45% de los videos mostraban un porcentaje
+//    fabricado como foco del cuadro — una tienda de ropa sin una sola estadistica en su pagina
+//    publicando "87%", una parrilla con "ADMIT ONE". Es la mentira mas cara posible sobre la marca de
+//    un cliente, y es exactamente lo que la regla anti-invencion existe para impedir. Aca solo se
+//    dibuja lo que la pagina DIJO. Sin corpus, solo pasa la marca: el objeto es una ilustracion de la
+//    marca, no un tablero de datos.
+//
+// 2. LA MARCA NO SE RECORTA. Un nombre propio no es una frase: "Straßenhandwerk" no puede salir
+//    "STRASSENHAN…" ni "La Parrilla de Don Julio" quedar en "LA PARRILLA" mientras el chip de arriba
+//    dice el nombre completo — el video se contradeciria a si mismo. Se achica hasta 6px antes de
+//    tocar una sola palabra.
+let _corpusHero = null                                   // set por capaObjeto durante el dibujo
+const _normHero = t => String(t == null ? '' : t).toLowerCase()
+  .normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '')
+function diceLaPagina(t) {
+  const k = _normHero(t)
+  if (!k) return true                                    // vacio: no dice nada, no miente
+  if (!_corpusHero) return false                         // sin corpus, nada pasa salvo la marca (abajo)
+  for (const c of _corpusHero) if (c === k || c.indexOf(k) >= 0) return true
+  return false
+}
+function drawTextHero(ctx, str, x, y, opts = {}) {
+  const t = String(str == null ? '' : str)
+  if (!diceLaPagina(t)) return opts.size || 0            // la pagina no lo dijo: no se dibuja
+  const { maxW = 0, size = 40, weight = 700, family = 'Inter', tracking = 0 } = opts
   if (maxW > 0 && t) {
-    const s2 = fitFont(ctx, t, size, maxW, Math.max(9, min), weight, family, tracking)
-    t = wordTrim(ctx, t, maxW, s2, weight, family, tracking)
+    // piso 6px: preferimos la marca chiquita y ENTERA antes que recortada.
+    let tr = tracking
+    let s2 = fitFont(ctx, t, size, maxW, 6, weight, family, tr)
+    // Si ni al piso entra, lo primero que se sacrifica es el TRACKING, que es decoracion del objeto:
+    // "La Parrilla de Don Julio" son 24 glifos y 3px de tracking le suman 72px, mas que el propio
+    // texto. El nombre del negocio no se negocia; el espaciado si.
+    ctx.font = fontStr(weight, s2, family); ctx.letterSpacing = tr + 'px'
+    if (tr !== 0 && ctx.measureText(t).width > maxW) { tr = 0; s2 = fitFont(ctx, t, size, maxW, 6, weight, family, 0) }
+    ctx.letterSpacing = '0px'
+    return drawText(ctx, t, x, y, { ...opts, size: s2, min: 6, tracking: tr })
   }
   return drawText(ctx, t, x, y, opts)
 }
-const HERO = createHeroObjects({ drawText: drawTextSinElidir, lighten, darken, rgba })
+const HERO = createHeroObjects({ drawText: drawTextHero, lighten, darken, rgba })
+
+// corpusHero(pm) -> Set normalizado con TODO lo que la pagina dijo. Lo arma el caller (estudio, gates)
+// y viaja en opts.corpus. Es el mismo criterio que usa el gate de anti-invencion.
+export function corpusHero(pm) {
+  if (!pm) return null
+  const s = pm.semantica || {}
+  const partes = [pm.brand, s.queHace, s.cta,
+    ...(s.features || []).flatMap(f => [f.titulo, f.detalle]),
+    ...(s.comoFunciona || []),
+    ...((s.pruebas && s.pruebas.stats) || []).flatMap(x => [x.valor, x.etiqueta]),
+    ...((s.pruebas && s.pruebas.testimonios) || []).flatMap(x => [x.texto, x.firma]),
+    (s.oferta && s.oferta.precio) || '', (s.oferta && s.oferta.promo) || '', (s.oferta && s.oferta.urgencia) || '',
+  ]
+  return new Set(partes.map(_normHero).filter(Boolean))
+}
 
 // ---------------------------------------------------------------- tokens
 // Las capas guardan TOKENS ('accent', 'ink', 'dim'...) y no hex: asi el mismo storyboard se puede
@@ -193,7 +243,15 @@ function capaObjeto(ctx, l, look, W, H, p, opts) {
   ctx.scale(k, k)
   ctx.globalAlpha *= clamp(p * 1.2, 0, 1)
   const fonts = { display: look.fonts.display, support: look.fonts.support, num: look.fonts.num, accent: look.fonts.support }
-  fn(ctx, p, clamp(p * 1.35 - 0.2, 0, 1), col(look, l.tint), fonts, opts.brand || '', l.hp)
+  // la marca SIEMPRE puede escribirse adentro del objeto (es de la pagina por definicion); el resto
+  // solo si esta en el corpus. Se restaura en finally: una excepcion de un dibujante no puede dejar
+  // el corpus de un video pegado para el siguiente.
+  const antes = _corpusHero
+  const c = opts.corpus ? new Set(opts.corpus) : new Set()
+  if (opts.brand) c.add(_normHero(opts.brand))
+  _corpusHero = c
+  try { fn(ctx, p, clamp(p * 1.35 - 0.2, 0, 1), col(look, l.tint), fonts, opts.brand || '', l.hp) }
+  finally { _corpusHero = antes }
   ctx.restore()
 }
 

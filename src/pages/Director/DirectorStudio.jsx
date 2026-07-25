@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { collection, getDocs, doc, setDoc, deleteDoc } from 'firebase/firestore'
 import {
   normalizePageModel, briefToPageModel, buildGuion, deriveLook, composeStoryboard,
-  compile, drawFrame, applyEdits, emptyEdits,
+  compile, drawFrame, applyEdits, emptyEdits, corpusHero,
 } from '../../director/index.js'
 import { exportCanvasVideo } from '../../lib/exportVideo.js'
 import { drawWatermark } from '../../lib/watermark.js'
@@ -111,6 +111,9 @@ export default function DirectorStudio() {
 
   // --- AUDIO: musica LOOPEADA en clips deterministas + whoosh en cada corte de escena (los t0 de las
   // escenas 2..n son, por definicion, los instantes de corte).
+  // CORPUS: lo que la pagina DIJO. El objeto heroe solo puede escribir esto adentro (si no, dibuja
+  // porcentajes salidos del seed sobre la marca del cliente).
+  const corpus = useMemo(() => corpusHero(pm), [pm])
   const cortes = useMemo(() => tl.escenas.slice(1).map(e => e.t0), [tl])
   const audioClips = useMemo(() => {
     const out = []
@@ -152,7 +155,7 @@ export default function DirectorStudio() {
         if (headRef.current >= tl.dur) { headRef.current -= tl.dur; startAudioRef.current(0) }   // wrap: re-ancla el audio
       }
       ctx.setTransform(DPR, 0, 0, DPR, 0, 0)
-      drawFrame(ctx, tl, headRef.current, { W, H, makeCanvas, brand: pm.brand, images: imagesRef.current })
+      drawFrame(ctx, tl, headRef.current, { W, H, makeCanvas, brand: pm.brand, images: imagesRef.current, corpus })
       ctx.setTransform(DPR, 0, 0, DPR, 0, 0)
       drawWatermark(ctx, W, H)
       setHead(headRef.current)
@@ -160,7 +163,7 @@ export default function DirectorStudio() {
     }
     raf = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(raf)
-  }, [tl, playing]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [tl, playing, corpus]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // el head no puede quedar fuera del video cuando una edicion acorta la duracion
   useEffect(() => { if (headRef.current > tl.dur) { headRef.current = 0; setHead(0) } }, [tl.dur])
@@ -217,7 +220,7 @@ export default function DirectorStudio() {
     stopAudio()
     const restaurar = () => { setExporting(''); setPlaying(true) }
     await imagesReady.current                       // sin esto el MP4 puede salir con huecos donde van las fotos
-    const opts = { W: tl.canvas.W, H: tl.canvas.H, makeCanvas, brand: pm.brand, images: imagesRef.current }
+    const opts = { W: tl.canvas.W, H: tl.canvas.H, makeCanvas, brand: pm.brand, images: imagesRef.current, corpus }
     const ok = exportCanvasVideo(videoExp, {
       filename: `${pm.brand || 'director'}-director-9x16`,
       bitrate: 12e6,

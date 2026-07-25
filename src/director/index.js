@@ -42,7 +42,7 @@ export { deriveLook, PLACAS, PAIRINGS } from './kit/look.js'
 export { makeGrid, dentroDeSafe, px, SAFE_TOP, SAFE_BOT } from './kit/grid.js'
 export { texto, forma, objeto, foto, badge, stepper, priceTag, logoRow, placa, escena, resetIds, SIZE, LH } from './kit/layers.js'
 export { POOLS, NOMBRES, rubroDe, textoDe, elegirObjetos } from './kit/objetos.js'
-export { drawScene, drawCapa, col } from './render/draw.js'
+export { drawScene, drawCapa, col, corpusHero } from './render/draw.js'
 
 // --- F3: linker + timeline + video ---
 export { link, RECETAS, gestoEntrada, gestoSalida } from './core/linker.js'

@@ -188,7 +188,7 @@ export function drawMaskLine(ctx, str, x, y, p, opts = {}) {
 // dibujado == el fiteado -> el contrato nunca-desborda se mantiene aunque dibujemos glifo por glifo.
 export function drawKineticLine(ctx, str, cx, y, p, opts = {}) {
   const { size = 60, weight = 800, family = 'Inter', maxW = 300, min = 14, color = '#fff',
-    dim = null, overlap = 0.55, tracking = 0, alpha = 1, z = 0.62, w: ww = 13 } = opts
+    dim = null, overlap = 0.55, tracking = 0, alpha = 1, z = 0.62, w: ww = 13, align = 'center' } = opts
   str = String(str == null ? '' : str)
   if (!str || p <= 0 || alpha <= 0) return 0
   ctx.save(); ctx.globalAlpha *= clamp(alpha, 0, 1)
@@ -198,7 +198,12 @@ export function drawKineticLine(ctx, str, cx, y, p, opts = {}) {
   const chars = Array.from(str)
   const widths = chars.map(c => ctx.measureText(c).width)
   const total = widths.reduce((a, b) => a + b, 0) + tracking * Math.max(0, chars.length - 1)
-  let x = cx - total / 2
+  // RESPETA `align`. Antes centraba SIEMPRE sobre el x recibido, y el renderer le pasa el borde
+  // IZQUIERDO de la caja cuando la capa es align:'left' -> media linea quedaba fuera del lienzo
+  // ("Converti" salia "onverti"), y al llegar reveal=1 el dibujo saltaba al camino de drawText, que si
+  // respeta align: un teletransporte de 250px en un frame. Pasaba en el titular del hook, que es la
+  // frase que decide si el espectador sigue mirando.
+  let x = align === 'left' ? cx : align === 'right' ? cx - total : cx - total / 2
   const n = chars.length
   const dimColor = dim || 'rgba(255,255,255,0.30)'
   for (let i = 0; i < n; i++) {

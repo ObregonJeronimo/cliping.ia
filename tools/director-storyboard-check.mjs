@@ -21,7 +21,7 @@ import { normalizePageModel, validateStoryboard, formatErrors, CANVAS } from '..
 import { buildGuion } from '../src/director/core/scriptwriter.js'
 import { composeStoryboard } from '../src/director/core/composer.js'
 import { deriveLook } from '../src/director/kit/look.js'
-import { drawScene, col } from '../src/director/render/draw.js'
+import { drawScene, col, corpusHero } from '../src/director/render/draw.js'
 import { drawPlaca } from '../src/director/render/plate.js'
 import { SAFE_TOP, SAFE_BOT } from '../src/director/kit/grid.js'
 import { telStart, telStop } from '../src/director/core/text.js'
@@ -73,11 +73,11 @@ function esReal(txt, corpus) {
 // ---------------------------------------------------------------- render de auditoria
 const ESC = 0.75, W = Math.round(CANVAS.W * ESC), H = Math.round(CANVAS.H * ESC)
 const makeCanvas = (w, h) => createCanvas(w, h)
-function pixelesDeContenido(sc, look) {
+function pixelesDeContenido(sc, look, corpus, brand) {
   const a = createCanvas(W, H), ca = a.getContext('2d')
   drawPlaca(ca, look, W, H, {})
   const b = createCanvas(W, H), cb = b.getContext('2d')
-  const rep = drawScene(cb, sc, look, W, H, { p: 1, makeCanvas, brand: '', images: new Map() })
+  const rep = drawScene(cb, sc, look, W, H, { p: 1, makeCanvas, brand: brand || '', corpus, images: new Map() })
   const da = ca.getImageData(0, 0, W, H).data, db = cb.getImageData(0, 0, W, H).data
   let n = 0
   for (let i = 0; i < da.length; i += 4) {
@@ -119,6 +119,7 @@ let nEsc = 0, nVid = 0
 for (const [nombre, raw] of Object.entries(ARQ)) {
   const pm = normalizePageModel(raw)
   const corpus = corpusDe(pm)
+  const corpusH = corpusHero(pm)          // el que puede escribir el objeto heroe adentro suyo
   for (let s = 1; s <= SEEDS; s++) {
     const seed = (s * 2246822519) >>> 0
     const guion = buildGuion(pm, seed)
@@ -151,7 +152,7 @@ for (const [nombre, raw] of Object.entries(ARQ)) {
 
       // 4/5/6/7 requieren dibujar
       const tel = telStart()
-      const { frac, rep } = pixelesDeContenido(sc, look)
+      const { frac, rep } = pixelesDeContenido(sc, look, corpusH, pm.brand)
       telStop()
 
       ok(rep.desbordes.length === 0, `${P}: texto recortado en ${rep.desbordes.map(d => `${d.id}="${d.text.slice(0, 40)}"`).join(', ')}`)
@@ -206,6 +207,15 @@ for (const [nombre, raw] of Object.entries(ARQ)) {
         for (const t of cand) ok(esReal(t, corpus), `${P}/${l.id}: TEXTO INVENTADO "${t}" (no esta en el pagemodel)`)
         // los logos son anonimos por diseño: un nombre ahi seria un cliente fabricado
         ok(!(l.kind === 'logoRow' && l.text), `${P}/${l.id}: logoRow con texto = cliente inventado`)
+      }
+      // E-DATO-FALSO tambien ADENTRO del objeto heroe: los dibujantes de src/shared/objects.js
+      // escriben etiquetas horneadas ("ADMIT ONE", "VOL. 7") y cifras derivadas del seed ("87%",
+      // "+58%"). Era el unico texto del video que nadie auditaba, y salia en el 45% de los videos como
+      // foco del cuadro. La telemetria de core/text.js registra CADA linea dibujada, incluida esa.
+      if (sc.layers.some(l => l.kind === 'heroObj')) {
+        for (const t of tel) {
+          ok(esReal(t.str, corpus), `${P}: el objeto heroe escribio "${t.str}" y la pagina no lo dice`)
+        }
       }
 
       // 9. E-MONOTONIA: dos escenas seguidas con el mismo contenido textual

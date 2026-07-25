@@ -151,7 +151,16 @@ export function normalizePageModel(raw) {
   const num = (v, def, lo, hi) => (isNum(v) ? clamp(v, lo, hi) : def)
   const enumOr = (v, e, def) => (inEnum(v, e) ? v : def)
   const arr = (v, n) => (Array.isArray(v) ? v.filter(Boolean).slice(0, n) : [])
-  const txt = (v, n) => { const x = clean(v); return n && x.length > n ? x.slice(0, n).trim() : x }
+  // ESPEJO EXACTO de backend/pagemodel.py::_s: al capar, retrocede al ultimo espacio si esta al menos
+  // al 60% del tope. Antes era un hachazo seco y el camino degradado (cuando el backend no manda
+  // pagemodel y se adapta el brief legacy) dejaba "Atencion personalizada siemp" en pantalla — y una
+  // celda de bento que decia solo "siemp". Dos espejos del mismo dato no pueden cortar distinto.
+  const txt = (v, n) => {
+    const x = clean(v)
+    if (!n || x.length <= n) return x
+    const cut = x.slice(0, n), sp = cut.lastIndexOf(' ')
+    return (sp >= n * 0.6 ? cut.slice(0, sp) : cut).trim()
+  }
   const accent = hex(pal.accent, '#5b8cff')
   const bg = hex(pal.bg, '#ffffff')
   const modernidad = (Array.isArray(d.modernidad) ? d.modernidad : []).filter(m => inEnum(m, MODERNIDAD)).slice(0, 3)

@@ -57,7 +57,7 @@ function renderVideo(seed) {
   if (!v.ok) { console.error('STORYBOARD INVALIDO:\n' + formatErrors(v.errors)); process.exit(1) }
   const tiles = sb.scenes.map(sc => {
     const c = createCanvas(W, H), cx = c.getContext('2d')
-    const rep = drawScene(cx, sc, look, W, H, { p: 1, makeCanvas, brand: pm.brand, images: new Map() })
+    const rep = drawScene(cx, sc, look, W, H, { p: 1, makeCanvas, brand: pm.brand, corpus: corpusHero(pm), images: new Map() })
     return { c, sc, rep }
   })
   return { sb, guion, look, tiles }

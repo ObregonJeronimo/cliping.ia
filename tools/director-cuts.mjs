@@ -20,6 +20,7 @@ import { composeStoryboard } from '../src/director/core/composer.js'
 import { deriveLook } from '../src/director/kit/look.js'
 import { compile } from '../src/director/core/timeline.js'
 import { drawFrame } from '../src/director/render/video.js'
+import { corpusHero } from '../src/director/render/draw.js'
 
 const HERE = dirname(fileURLToPath(import.meta.url)), OUT = join(HERE, 'out')
 mkdirSync(OUT, { recursive: true })
@@ -61,7 +62,7 @@ const ESC = 1.1, W = Math.round(CANVAS.W * ESC), H = Math.round(CANVAS.H * ESC)
 const makeCanvas = (w, h) => createCanvas(w, h)
 const frame = t => {
   const c = createCanvas(W, H), cx = c.getContext('2d')
-  const rep = drawFrame(cx, tl, t, { W, H, makeCanvas, brand: pm.brand, images: new Map() })
+  const rep = drawFrame(cx, tl, t, { W, H, makeCanvas, brand: pm.brand, corpus: corpusHero(pm), images: new Map() })
   return { c, rep, t }
 }
 // mide cuanta imagen hay SOBRE EL FONDO (mismo criterio que el gate). Medir alpha>0 daria 100%
