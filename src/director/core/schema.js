@@ -168,7 +168,7 @@ export function normalizePageModel(raw) {
   const imgs = (Array.isArray(a.images) ? a.images : []).slice(0, 18)
   return {
     v: PM_V,
-    brand: clean(r.brand) || 'Marca',
+    brand: txt(r.brand, 32) || 'Marca',   // el UNICO campo que no tenia tope: un <title> que es el dominio entero daba 58 caracteres y se elidia en la apertura y en el cierre
     url: clean(r.url) || '',
     captura: {
       url: clean(c.url) || clean(r.url) || '',

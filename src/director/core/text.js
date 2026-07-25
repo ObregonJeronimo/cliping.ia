@@ -28,7 +28,10 @@ export function fitFont(ctx, str, base, maxW, min, weight, family, tr = 0) {
   const prev = ctx.letterSpacing || '0px'
   ctx.letterSpacing = (tr || 0) + 'px'
   ctx.font = fontStr(weight, s, family)
-  while (s > min && ctx.measureText(str).width > maxW) { s -= 1; ctx.font = fontStr(weight, s, family) }
+  // `base` siempre es fraccionario (los tamanos son SIZE.* x H), asi que `s -= 1` se pasaba UN escalon
+  // por debajo del piso: con piso 9 devolvia 8.04. En la pildora del CTA eso son 21px en el export de
+  // 1080 — el unico texto accionable del reel, ilegible en un telefono.
+  while (s > min && ctx.measureText(str).width > maxW) { s = Math.max(min, s - 1); ctx.font = fontStr(weight, s, family); if (s <= min) break }
   ctx.letterSpacing = prev
   return s
 }

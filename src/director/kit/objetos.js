@@ -15,7 +15,13 @@ import { seedFor, weightedSample } from '../core/prng.js'
 const HERO = createHeroObjects({ drawText, lighten, darken, rgba })
 // invierte el catalogo: funcion -> nombre, para poder exponer los pools como strings
 const NOMBRE = new Map(Object.entries(HERO.byName).map(([n, f]) => [f, n]))
-export const POOLS = Object.fromEntries(Object.entries(HERO.pools).map(([k, fs]) => [k, fs.map(f => NOMBRE.get(f)).filter(Boolean)]))
+// `ring` NO entra en ningun pool. Su unico contenido era el porcentaje del centro, que salia del seed
+// y por lo tanto es un dato inventado: al filtrarlo (correctamente) el objeto quedo siendo un arco
+// incompleto sobre el fondo, o sea el grafico universal de "cargando". Un anillo sin dato no ilustra
+// nada. Vuelve cuando reciba un valor REAL de la pagina por parametro.
+const SIN_DATO = new Set(['ring'])
+
+export const POOLS = Object.fromEntries(Object.entries(HERO.pools).map(([k, fs]) => [k, fs.map(f => NOMBRE.get(f)).filter(n => n && !SIN_DATO.has(n))]))
 export const NOMBRES = HERO.names
 
 // palabras -> rubro. Sin acentos y en minuscula; se compara contra el texto normalizado de la pagina.
@@ -66,7 +72,7 @@ export function rubroDe(pm) {
 // objeto en el mismo video nunca muestran lo mismo, que era la queja original del motor viejo).
 export function elegirObjetos(pm, seed, n = 3) {
   const pool = POOLS[rubroDe(pm)] || POOLS.default
-  const r = seedFor(seed, 'dir.obj')
+  const r = seedFor(seed, 'dir.obj:' + rubroDe(pm))   // dos rubros distintos no eligen en el mismo orden
   const sel = weightedSample(r, pool, Math.min(n, pool.length), () => 1)
   return sel.length ? sel : ['shield']
 }

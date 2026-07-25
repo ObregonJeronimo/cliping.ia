@@ -5,7 +5,7 @@
 //
 // Regla anti-huella (DNA-SPEC §4.5, heredada de kinetic): nada visual puede ser CONSTANTE entre videos.
 // Las tintas se tiñen, el tracking y los margenes son continuos, el ornamento y la placa varian por seed.
-import { seedFor, weightedPick, range, pick } from '../core/prng.js'
+import { seedFor, weightedPick, range, pick, hashStr } from '../core/prng.js'
 import { clamp, hexToHsl, hslToHex, chroma, lighten, darken, luminance, contrast, ensureContrast, ensureApca, apcaLc as apcaLcOf, legibleOn, hueDist } from '../core/util.js'
 
 // ---------------------------------------------------------------- familias de placa
@@ -81,8 +81,18 @@ const NUM_FONT = { 'IBM Plex Mono': 1, 'Space Mono': 1, 'JetBrains Mono': 1, 'DM
 
 // ---------------------------------------------------------------- derivacion
 // deriveLook(pagemodel, seed) -> look congelado para TODO el video
+// huella ESTABLE de la pagina: entra al namespace del PRNG para que el stream dependa de QUE pagina
+// es, no solo del seed. Sin esto, `seedFor(seed, 'dir.look')` daba el MISMO stream para un SaaS y para
+// una parrilla: al seed por defecto (1) cinco paginas distintas salian con la misma placa, el mismo
+// ornamento, la misma tipografia y el mismo encuadre — o sea que todo cliente que no tocara el seed
+// publicaba la misma pieza. Solo cambiaban el acento y el objeto.
+export const huellaDe = pm => hashStr([
+  pm.brand, pm.url, pm.dna.palette.accent, pm.semantica.tipoNegocio, pm.semantica.modeloUso,
+  (pm.dna.typography && pm.dna.typography.displayHint) || '',
+].join('|')).toString(36)
+
 export function deriveLook(pm, seed) {
-  const r = seedFor(seed, 'dir.look')
+  const r = seedFor(seed, 'dir.look:' + huellaDe(pm))
   const dna = pm.dna
   const mod = (dna.modernidad || []).slice(0, 2)          // tope de 2 lenguajes (3 = slop)
   const acro = chroma(dna.palette.accent) < 0.12

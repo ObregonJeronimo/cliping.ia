@@ -24,15 +24,21 @@ export const ESCENAS = [
   },
   {
     id: 'hook.statement', familia: 'mensaje', rol: 'hook', dur: 2.7, peso: 1.4,
-    requiere: pm => !!pm.semantica.queHace,
+    // `queHace` igual a la MARCA no es una frase: es el nombre repetido. Pasaba con paginas cuyo
+    // <title> es el nombre del sitio (404, botwall), y el video terminaba con cuatro cuadros seguidos
+    // diciendo "Sitio". Decir el nombre no es decir que hace: eso es hook.marca, y ahi va.
+    requiere: pm => !!pm.semantica.queHace && !mismaCosa(pm.semantica.queHace, pm.brand),
     contenido: pm => ({ frase: pm.semantica.queHace, apoyo: '' }),
   },
   {
     // FALLBACK HONESTO: si la pagina no dice que hace (vacia/botwall/404), el ancla es la MARCA a escala
     // display. No inventamos una frase (eso es lo unico prohibido) — mostramos lo unico real que hay.
     id: 'hook.marca', familia: 'mensaje', rol: 'hook', dur: 2.5, peso: 1.0,
-    requiere: pm => !pm.semantica.queHace && !!pm.brand,
-    contenido: pm => ({ frase: pm.brand, apoyo: dominioDe(pm) }),
+    requiere: pm => (!pm.semantica.queHace || mismaCosa(pm.semantica.queHace, pm.brand)) && !!pm.brand,
+    // sin apoyo: el dominio es del CIERRE (es el "donde ir"). Ponerlo tambien aca hacia que el hook y
+    // el cierre de una pagina sin contenido dijeran exactamente los mismos dos strings, uno detras del
+    // otro. El hook es el NOMBRE; el cierre, donde encontrarlo.
+    contenido: pm => ({ frase: pm.brand, apoyo: '' }),
   },
   {
     id: 'howto.steps', familia: 'explicacion', rol: 'cuerpo', dur: 3.4, peso: 1.3,
@@ -108,6 +114,9 @@ export const ESCENAS = [
 // tiene default ['claro','directo','actual']: mostrarlo pone en pantalla una lista que la pagina nunca
 // dijo. Era exactamente el 'listas sin sentido' que se veia en los videos. Se usa solo como sesgo.
 const dominioDe = pm => { try { return new URL(pm.url).hostname.replace(/^www\./, '') } catch { return '' } }
+// "son la misma cosa" a ojos del espectador: mismas letras, sin acentos ni puntuacion
+const _n = t => String(t == null ? '' : t).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '')
+export const mismaCosa = (a, b) => { const x = _n(a), y = _n(b); return !!x && !!y && (x === y || x.indexOf(y) === 0 && x.length - y.length < 4) }
 const BY_ID = Object.fromEntries(ESCENAS.map(e => [e.id, e]))
 
 // ---------------------------------------------------------------- sesgo por modernidad (DNA-SPEC §4.2)
@@ -171,6 +180,14 @@ export function buildGuion(pm, seed) {
     usadas.add(esc.id)
     escenas.push({ id: esc.id, familia: esc.familia, rol: esc.rol, dur: esc.dur, contenido: esc.contenido(pm) })
   }
+  // open.brand y hook.marca son LA MISMA COSA a distinta escala: la marca sola. En una pagina sin
+  // contenido las dos podian entrar en el mismo video y quedaban dos cuadros seguidos diciendo lo
+  // mismo. Se queda la de escala display, que es la que sostiene un cuadro; la apertura chica sobra.
+  if (usadas.has('open.brand') && usadas.has('hook.marca')) {
+    const i = escenas.findIndex(e => e.id === 'open.brand')
+    if (i >= 0) { escenas.splice(i, 1); usadas.delete('open.brand') }
+  }
+
   // GARANTIAS del guion (una pagina pobre igual tiene que dar un video que cierre):
   if (!escenas.some(e => e.rol === 'hook')) {
     const h = ['hook.statement', 'hook.marca', 'open.brand'].map(id => BY_ID[id]).find(e => e.requiere(pm) && !usadas.has(e.id)) || BY_ID['open.brand']

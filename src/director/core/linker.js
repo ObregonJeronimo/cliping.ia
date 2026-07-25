@@ -135,7 +135,10 @@ export function link(A, B, matches, seed, look, estado = {}) {
 export function gestoEntrada(nombre, l, i, look) {
   const dz = look.dark ? 1 : -1
   switch (nombre) {
-    case 'mask': return { from: { reveal: 0 }, ease: 'eo' }
+    // el reveal por mascara NO controla la opacidad, asi que la capa entrante estaba a alpha 1 desde
+    // el primer frame de su ventana mientras la saliente todavia estaba al 90%: dos titulares
+    // impresos uno sobre otro. Es la unica receta que quedo fuera del arreglo de opacidad.
+    case 'mask': return { from: { reveal: 0, alpha: 0 }, ease: 'eo' }
     case 'rise': return { from: { alpha: 0, dy: 0.028, scale: 0.985 }, ease: 'spring:0.72,14' }
     case 'pop': return { from: { alpha: 0, scale: 0.86 }, ease: 'spring:0.55,16' }
     case 'impacto': return l.role === 'stat'
@@ -148,7 +151,10 @@ export function gestoEntrada(nombre, l, i, look) {
     case 'empuja-in': return { from: { alpha: 1, dx: 0.55 }, ease: 'qo' }
     case 'acerca': return { from: { alpha: 0, scale: 0.94 }, ease: 'eo' }
     case 'traza': return l.kind === 'stepper' ? { from: { reveal: 0 }, ease: 'lin' } : { from: { alpha: 0, dy: 0.02 }, ease: 'eo' }
-    case 'flash': return { from: { alpha: 0 }, ease: 'step' }
+    // 'step' vale 0 hasta t>=1, o sea que la capa entrante era INVISIBLE durante TODA su ventana: en
+    // cuanto el flash se apagaba quedaba un frame con la placa sola. Medido: tinta 0.00%. El corte
+    // sigue siendo seco (el flash tapa el cambio), pero la escena entrante ya esta puesta debajo.
+    case 'flash': return { from: { alpha: 0 }, ease: 'co' }
     default: return { from: { alpha: 0, dy: 0.02 * dz }, ease: 'eo' }
   }
 }

@@ -17,10 +17,12 @@
 
 import { SB_V, CANVAS } from './schema.js'
 import { seedFor, pick, range, weightedPick } from './prng.js'
+import { mismaCosa } from './scriptwriter.js'
 import { clamp } from './util.js'
 import { makeGrid } from '../kit/grid.js'
 import { texto, forma, objeto, foto, badge, stepper, priceTag, logoRow, placa, escena, resetIds, SIZE } from '../kit/layers.js'
 import { elegirObjetos } from '../kit/objetos.js'
+import { huellaDe } from '../kit/look.js'
 
 // ---------------------------------------------------------------- fragmentos reutilizables
 // El chip de marca: chico, arriba. Lleva matchKey 'brand' -> el linker lo hace VIAJAR entre escenas
@@ -37,8 +39,13 @@ function chipMarca(g, marca, o = {}) {
 function rail(g, o = {}) {
   const vert = !!o.vert
   const gr = o.grueso ? 4.5 : 1                          // barra gruesa: recurso para paginas sin material
-  return forma(vert ? [g.x0, o.y, 0.006 * gr, o.h] : [g.x0, o.y, o.w || g.w * 0.22, 0.0045 * gr],
-    vert ? 'bar' : 'line', { id: 'rail', matchKey: 'accent', fill: 'accent', z: 20 })
+  if (vert) return forma([g.x0, o.y, 0.006 * gr, o.h], 'bar', { id: 'rail', matchKey: 'accent', fill: 'accent', z: 20 })
+  // EL FILETE COMPARTE EJE CON EL FOCO. Anclaba siempre a la izquierda mientras el bloque iba centrado:
+  // medido, 121 de 121 escenas con el acento fuera de eje (desplazamiento medio del 35% del ancho).
+  // Tres ejes distintos conviviendo en el mismo cuadro es lo que hace que una pieza se lea desordenada.
+  const w = o.w || g.w * 0.22
+  const x = o.align === 'center' ? 0.5 - w / 2 : o.align === 'right' ? g.x1 - w : g.x0
+  return forma([x, o.y, w, 0.0045 * gr], 'line', { id: 'rail', matchKey: 'accent', fill: 'accent', z: 20 })
 }
 // El pie: dominio real de la pagina. Nunca inventado — si no hay URL parseable, no hay pie.
 function pie(g, dominio) {
@@ -83,7 +90,9 @@ C['hook.statement'] = C['hook.marca'] = (c, pm, look, g, r, est) => {
   return [
     placa(),
     izq ? rail(g, { vert: true, y: by, h: bh * 0.9 }) : rail(g, { y: by - 0.05, w: g.w * range(r, 0.16, 0.3) }),
-    chipMarca(g, pm.brand, { align: izq ? 'left' : 'center' }),
+    // en hook.marca el TITULAR es la marca (fallback honesto de una pagina sin contenido): el chip de
+    // arriba la escribiria por segunda vez en el mismo cuadro.
+    c.frase === pm.brand ? null : chipMarca(g, pm.brand, { align: izq ? 'left' : 'center' }),
     texto([izq ? g.x0 + 0.045 : g.x0, by, izq ? g.w - 0.045 : g.w, bh], c.frase, {
       role: 'title', focal: true, align: izq ? 'left' : 'center', matchKey: 'mensaje',
       size: SIZE.display * look.bigK * range(r, 0.92, 1.08), lines: 3,
@@ -185,7 +194,9 @@ C['offer.flash'] = (c, pm, look, g, r, est) => {
   return [
     placa(),
     chipMarca(g, pm.brand),
-    c.urgencia ? badge([0.5 - 0.28, by - 0.06, 0.56, 0.042], c.urgencia, { id: 'urg', matchKey: 'urgencia', z: 35 }) : null,
+    // la pildora SOLO si hay promo Y urgencia: sin promo el titular ya dice la urgencia, y ponerla en
+    // los dos lados escribia la misma frase dos veces en el mismo cuadro (medido: 15 de 15 escenas).
+    (c.urgencia && c.promo) ? badge([0.5 - 0.28, by - 0.06, 0.56, 0.042], c.urgencia, { id: 'urg', matchKey: 'urgencia', z: 35 }) : null,
     texto([g.x0, by, g.w, conPrecio ? bh * 0.55 : bh], c.promo || c.urgencia, {
       role: 'title', focal: true, align: 'center', matchKey: 'mensaje',
       size: SIZE.title * range(r, 0.95, 1.15), lines: 3, upper: look.caseMode === 'upper', z: 40,
@@ -299,7 +310,10 @@ export function composeStoryboard(pm, guion, look, seed) {
   // tercera. Sin esto, un hero.product previo consumia el queHace y el hook lo repetia dos escenas
   // seguidas (o al reves, el hook quedaba mudo).
   for (const e of guion.escenas) if (e.rol === 'hook' && e.contenido.frase) vistos.add(String(e.contenido.frase).trim().toLowerCase())
-  const rico = !!(pm.semantica.queHace || (pm.semantica.features || []).length || (pm.semantica.pruebas.stats || []).length)
+  // MISMO criterio que el guionista: un `queHace` que es el nombre repetido no es contenido. Sin esto,
+  // una pagina 404 cuyo <title> es el nombre del sitio contaba como "rica" y se quedaba con el chip de
+  // marca en todos los cuadros, diciendo lo mismo tres veces seguidas.
+  const rico = !!((pm.semantica.queHace && !mismaCosa(pm.semantica.queHace, pm.brand)) || (pm.semantica.features || []).length || (pm.semantica.pruebas.stats || []).length)
   const est = {
     objs, dominio: dominioDe(pm), pobre: !rico,
     // el cierre necesita saber si la marca ya se mostro en grande para no repetirla
@@ -309,12 +323,17 @@ export function composeStoryboard(pm, guion, look, seed) {
     marcar: t => { const k = String(t || '').trim().toLowerCase(); if (k) vistos.add(k) },
   }
   const scenes = guion.escenas.map((esc, i) => {
-    const r = seedFor(seed, 'dir.comp.' + i + '.' + esc.id)
+    const r = seedFor(seed, 'dir.comp:' + huellaDe(pm) + '.' + i + '.' + esc.id)   // el encuadre tambien depende de QUE pagina es
     const fn = C[esc.id]
     if (!fn) throw new Error('composer: escena sin compositor: ' + esc.id)
     // el dominio viaja a TODAS las escenas de cierre aunque el guion no lo ponga (dato real, no inventado)
     const cont = esc.contenido
-    const layers = fn(cont, pm, look, g, r, est).filter(Boolean)
+    let layers = fn(cont, pm, look, g, r, est).filter(Boolean)
+    // EL CHIP DE MARCA SOBRA CUANDO LA MARCA ES TODO EL VIDEO. En una pagina sin contenido, el unico
+    // material es el nombre: si ademas va de chip en cada cuadro, todas las escenas dicen exactamente
+    // lo mismo y el video se lee como un error. Con contenido real el chip si sirve — ancla la marca
+    // mientras pasa otra cosa.
+    if (est.pobre && est.marcaEnGrande) layers = layers.filter(l => !(l.id === 'brand' && l.role === 'mark'))
     return escena(`s${i}_${esc.id.replace('.', '-')}`, esc.dur, layers, {
       escena: esc.id, familia: esc.familia, rol: esc.rol, t0: esc.t0,
     })
