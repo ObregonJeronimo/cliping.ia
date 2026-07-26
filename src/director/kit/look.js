@@ -118,7 +118,10 @@ export function deriveLook(pm, seed) {
   const cands = [P.dark ? '#0b0b0d' : '#0c0a08', '#ffffff', legibleOn(accent)]
   let onAccent = cands[0], mejor = -1
   for (const cnd of cands) { const lc = Math.abs(apcaLcOf(cnd, accent)); if (lc > mejor) { mejor = lc; onAccent = cnd } }
-  onAccent = ensureApca(onAccent, accent, 62)
+  // 66 y no 62: el gate exige >= 62 y `ensureApca` corta en cuanto alcanza su objetivo, asi que
+  // apuntar al umbral exacto deja casos que caen en 61.99 por redondeo. Quien produce apunta POR
+  // ENCIMA del umbral de aceptacion; el margen no cuesta nada.
+  onAccent = ensureApca(onAccent, accent, 66)
   // accent2 (DNA-SPEC §3.4): del pagemodel si vino, si no derivado por rotacion de hue
   let accent2 = dna.palette.accent2
   if (!accent2 || hueDist(hexToHsl(accent2).h, hAcc) < 12) {
@@ -128,7 +131,23 @@ export function deriveLook(pm, seed) {
   }
 
   // --- TIPOGRAFIA ---
-  const clase = PAIRINGS[dna.typography.displayHint] ? dna.typography.displayHint : 'grotesk'
+  // La clase de la pagina SESGA, no encadena. Medido sobre 8 paginas reales (Stripe, Linear, Tailwind,
+  // Basecamp, Ghost, MercadoLibre, awwwards y la nuestra): las 8 dan `grotesk`, y no es un fallo del
+  // detector — Söhne, Inter y Proxima Nova son grotescas de verdad; el diseño web moderno es homogeneo.
+  // Pero mapear 1:1 dejaba 4 de los 18 pares del catalogo en uso y 14 muertos: todos los reels con la
+  // misma tipografia. Un reel NO es la pagina: DNA-SPEC ya dice que heredamos la CLASE, nunca la
+  // webfont, y una pagina grotesca aguanta un titular display o condensado sin dejar de ser ella.
+  // Los vecinos son los que NO traicionan la lectura de marca (una pagina seria nunca cae en rounded).
+  const VECINAS = {
+    grotesk: [['grotesk', 3], ['display', 1.4], ['condensed', 1.0]],
+    serif: [['serif', 3], ['display', 1.2]],
+    rounded: [['rounded', 3], ['grotesk', 1.2]],
+    mono: [['mono', 3], ['condensed', 1.2]],
+    condensed: [['condensed', 3], ['grotesk', 1.2], ['display', 1.0]],
+  }
+  const base = PAIRINGS[dna.typography.displayHint] ? dna.typography.displayHint : 'grotesk'
+  const clase = weightedPick(r, (VECINAS[base] || VECINAS.grotesk).map(x => x[0]),
+    n => (VECINAS[base] || VECINAS.grotesk).find(x => x[0] === n)[1])
   const par = pick(r, PAIRINGS[clase])
   const caseMode = mod.indexOf('brutalist') >= 0 ? 'upper' : dna.typography.caseHint
   const bigK = mod.indexOf('bigtype') >= 0 ? 1.18 : 1                 // DNA-SPEC §4.2
@@ -159,8 +178,8 @@ export function deriveLook(pm, seed) {
   // TINTAS DE TEXTO: el acento y el gris secundario se validan con APCA CONTRA SU PLACA y se corrigen
   // si no llegan. Sin esto, un acento indigo sobre placa 'tinta' daba Lc 31 (ilegible en un telefono)
   // y el dato mas importante del video era el texto peor leido de la pieza.
-  const accentTxt = ensureApca(accent, P.bg0, 62)
-  const dim = ensureApca(P.dim, P.bg0, 64)
+  const accentTxt = ensureApca(accent, P.bg0, 66)
+  const dim = ensureApca(P.dim, P.bg0, 68)
 
   return {
     v: 1,

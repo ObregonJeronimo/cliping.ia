@@ -125,7 +125,12 @@ C['hero.objeto'] = (c, pm, look, g, r, est) => {
 
 C['hero.appwindow'] = (c, pm, look, g, r, est) => {
   const [oy, oh] = g.band(0.12, 0.56)
-  const lineas = (c.lineas || []).filter(Boolean).slice(0, 3)
+  // La ventana lista features solo si el video NO tiene una escena dedicada a features. Con las dos,
+  // el mismo trio de titulos salia dos veces seguidas — lo caza el gate de monotonia, y aparecio recien
+  // con paginas REALES (Ghost, Basecamp, la nuestra): la matriz sintetica no daba esa combinacion.
+  // La ventana las muestra como DETALLE del producto; rafaga/bento las muestran como SUJETO. Cuando
+  // las dos estan, manda la que las tiene como sujeto.
+  const lineas = est.hayEscenaDeFeatures ? [] : (c.lineas || []).filter(Boolean).slice(0, 3)
   return [
     placa(),
     chipMarca(g, c.marca),
@@ -371,6 +376,7 @@ export function composeStoryboard(pm, guion, look, seed) {
     objs, dominio: dominioDe(pm), pobre: !rico,
     // el cierre necesita saber si la marca ya se mostro en grande para no repetirla
     marcaEnGrande: guion.escenas.some(e => e.id === 'open.brand' || e.id === 'hook.marca'),
+    hayEscenaDeFeatures: guion.escenas.some(e => e.id === 'rafaga.beat' || e.id === 'features.bento'),
     proxObjeto: () => objs[io_++ % objs.length],
     nuevo: t => { const k = String(t || '').trim().toLowerCase(); if (!k || vistos.has(k)) return ''; vistos.add(k); return t },
     marcar: t => { const k = String(t || '').trim().toLowerCase(); if (k) vistos.add(k) },

@@ -1,0 +1,263 @@
+{
+  "assets": {
+    "images": [
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 18.0,
+        "url": "https://assets.awwwards.com/awards/submissions/2026/05/6a0d91d70fb12233968918.png"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 17.0,
+        "url": "https://assets.awwwards.com/assets/images/pages/about-certificates/awwwards.jpg"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 16.0,
+        "url": "https://assets.awwwards.com/awards/media/cache/optimize/course/674d91f79cf25496129366.webp"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 15.0,
+        "url": "https://assets.awwwards.com/awards/media/cache/thumb_880_660/submissions/2026/07/6a4e25946c1e1348691645.jpg"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 14.0,
+        "url": "https://assets.awwwards.com/awards/media/cache/optimize/course/6673c18f25e39088428068.jpg"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 13.0,
+        "url": "https://assets.awwwards.com/awards/media/cache/thumb_834_598/asset/2026/07/6a5775b3b152b803306686.jpg"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 12.0,
+        "url": "https://assets.awwwards.com/awards/images/2025/07/free-fonts-2025.jpg"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 11.0,
+        "url": "https://assets.awwwards.com/awards/media/cache/thumb_440_330/submissions/2026/05/6a158f7c60f6a690221508.jpg"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 10.0,
+        "url": "https://assets.awwwards.com/awards/media/cache/thumb_440_330/submissions/2026/03/69b3f943a214f802124149.png"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 9.0,
+        "url": "https://assets.awwwards.com/awards/media/cache/thumb_440_330/submissions/2026/03/69b84d2d21df3837974102.jpg"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 8.0,
+        "url": "https://assets.awwwards.com/awards/media/cache/thumb_440_330/submissions/2025/11/691e097035762683172286.jpg"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 7.0,
+        "url": "https://assets.awwwards.com/awards/media/cache/thumb_440_330/submissions/2025/10/690245dcb2d99371340686.jpg"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 6.0,
+        "url": "https://assets.awwwards.com/awards/media/cache/thumb_440_330/submissions/2026/05/6a0d91d70fb12233968918.png"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 5.0,
+        "url": "https://assets.awwwards.com/awards/media/cache/optimize/course/67fd1f105b711140307572.jpg"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 4.0,
+        "url": "https://assets.awwwards.com/awards/media/cache/optimize/course/67bf066b62dd7624361533.jpg"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 3.0,
+        "url": "https://assets.awwwards.com/awards/submissions/2017/01/58766ab21ca3e.jpg"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 2.0,
+        "url": "https://assets.awwwards.com/awards/external/2020/02/5e46ea525a4fd697638340.jpg"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 1.0,
+        "url": "https://assets.awwwards.com/awards/images/2021/05/gradients-trends-thumb-2.jpg"
+      }
+    ],
+    "logo": "https://www.awwwards.com/apple-touch-icon.png",
+    "ogImage": "https://assets.awwwards.com/awards/submissions/2026/05/6a0d91d70fb12233968918.png",
+    "screenshot": "C:\\Users\\Usuario\\Documents\\cliping.ia\\backend\\..\\tools\\out\\e2e_awwwards.png"
+  },
+  "brand": "Awwwards",
+  "captura": {
+    "confianza": 0.96,
+    "errores": [],
+    "estado": "ok",
+    "httpStatus": 200,
+    "notas": [
+      "marca acromatica: accent medido sin gate de chroma",
+      "accent descartado: era el fondo o la tinta"
+    ],
+    "ts": "",
+    "url": "https://www.awwwards.com",
+    "urlFinal": "https://www.awwwards.com/",
+    "viewport": [
+      1280,
+      900
+    ]
+  },
+  "dna": {
+    "density": {
+      "fill": 0.77,
+      "nivel": "denso",
+      "nodos": 28,
+      "score": 0.72
+    },
+    "modernidad": [
+      "bigtype",
+      "editorial-photo"
+    ],
+    "modernidadScores": {
+      "bigtype": 1,
+      "editorial-photo": 0.8
+    },
+    "mood": {
+      "calidez": 0.54,
+      "energia": 0.43,
+      "formalidad": 0.88
+    },
+    "palette": {
+      "accent": "#5b8cff",
+      "accent2": null,
+      "accentText": "#0953ff",
+      "acromatica": true,
+      "bg": "#e9e9e9",
+      "bgLum": 0.815,
+      "inkOnBg": "#222222"
+    },
+    "shape": {
+      "borderStyle": "none",
+      "borderWidth": 1.0,
+      "pill": false,
+      "radius": 0,
+      "radiusRatio": 0.09,
+      "shadowStyle": "flat"
+    },
+    "signals": {
+      "accentScore": 0.07,
+      "areaImgVsTexto": 1.56,
+      "blurBackdrop": 0,
+      "chromaMax": 0,
+      "contrasteBgInk": 13.1,
+      "gradStops": 0,
+      "gridCards": 0,
+      "muestras": {
+        "botones": 3,
+        "cards": 6,
+        "imagenes": 1,
+        "texto": 27
+      }
+    },
+    "typography": {
+      "bodyHint": "grotesk",
+      "caseHint": "sentence",
+      "displayHint": "grotesk",
+      "h1Ratio": 0.09,
+      "script": "latin",
+      "textDir": "ltr",
+      "widthRatio": 0.62
+    }
+  },
+  "semantica": {
+    "audiencia": {
+      "awareness": "solution",
+      "register": "casual",
+      "who": "diseñadores y agencias web"
+    },
+    "comoFunciona": [
+      "Submit your website",
+      "Community votes and scores",
+      "Winners get Site of the Day"
+    ],
+    "cta": "Submit Website",
+    "features": [
+      {
+        "detalle": "Sitio destacado diariamente con score de la comunidad",
+        "titulo": "Site of the Day"
+      },
+      {
+        "detalle": "Directorio global de diseñadores y agencias web",
+        "titulo": "Directory"
+      },
+      {
+        "detalle": "Cursos de diseño y desarrollo web",
+        "titulo": "Academy"
+      },
+      {
+        "detalle": "Bolsa de trabajo para profesionales del diseño",
+        "titulo": "Jobs"
+      },
+      {
+        "detalle": "Marketplace de recursos para diseñadores",
+        "titulo": "Market"
+      }
+    ],
+    "idioma": "en",
+    "modeloUso": "registro",
+    "oferta": {
+      "precio": "",
+      "promo": "",
+      "urgencia": ""
+    },
+    "pruebas": {
+      "logosClientes": false,
+      "stats": [
+        {
+          "etiqueta": "score Site of the Day",
+          "valor": "7.17/10"
+        }
+      ],
+      "testimonios": [
+        {
+          "firma": "",
+          "texto": "Site of the Day: Artem Shcherbakov — Score 7.17 of 10"
+        }
+      ]
+    },
+    "queHace": "Plataforma de premios que reconoce y exhibe los mejores sitios web del mundo.",
+    "tipoNegocio": "media",
+    "vozDeMarca": [
+      "inspirador",
+      "selectivo",
+      "global"
+    ]
+  },
+  "url": "https://www.awwwards.com",
+  "v": 1
+}

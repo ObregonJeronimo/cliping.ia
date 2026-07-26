@@ -1,0 +1,183 @@
+{
+  "assets": {
+    "images": [
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 4.0,
+        "url": "https://linear.app/cdn-cgi/imagedelivery/fO02fVwohEs9s9UHFwon6A/c7fa8f5f-d439-4329-6a65-de549b51e300/f=auto,dpr=2,fit=scale-down,metadata=none"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 3.0,
+        "url": "https://linear.app/cdn-cgi/imagedelivery/fO02fVwohEs9s9UHFwon6A/6600ca96-e49b-4fd9-c03a-7979faddad00/f=auto,dpr=2,fit=scale-down,metadata=none"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 2.0,
+        "url": "https://linear.app/static/og/homepage.jpg"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 1.0,
+        "url": "https://linear.app/cdn-cgi/imagedelivery/fO02fVwohEs9s9UHFwon6A/c7b144b7-4ef0-4991-9bcb-617c6a37d200/f=auto,dpr=2,fit=scale-down,metadata=none"
+      }
+    ],
+    "logo": "https://linear.app/static/apple-touch-icon.png?v=2",
+    "ogImage": "https://linear.app/cdn-cgi/imagedelivery/fO02fVwohEs9s9UHFwon6A/c7fa8f5f-d439-4329-6a65-de549b51e300/f=auto,dpr=2,fit=scale-down,metadata=none",
+    "screenshot": "C:\\Users\\Usuario\\Documents\\cliping.ia\\backend\\..\\tools\\out\\e2e_linear.png"
+  },
+  "brand": "Linear",
+  "captura": {
+    "confianza": 1.0,
+    "errores": [],
+    "estado": "ok",
+    "httpStatus": 200,
+    "notas": [
+      "titulares por fallback (no-hoja)",
+      "marca acromatica: accent medido sin gate de chroma",
+      "accent del brandColor del brief"
+    ],
+    "ts": "",
+    "url": "https://linear.app",
+    "urlFinal": "https://linear.app/",
+    "viewport": [
+      1280,
+      900
+    ]
+  },
+  "dna": {
+    "density": {
+      "fill": 0.67,
+      "nivel": "denso",
+      "nodos": 71,
+      "score": 0.79
+    },
+    "modernidad": [
+      "editorial-photo",
+      "bigtype"
+    ],
+    "modernidadScores": {
+      "bigtype": 0.67,
+      "editorial-photo": 0.9
+    },
+    "mood": {
+      "calidez": 0.4,
+      "energia": 0.51,
+      "formalidad": 1
+    },
+    "palette": {
+      "accent": "#5e6ad2",
+      "accent2": null,
+      "accentText": "#6e79d6",
+      "acromatica": true,
+      "bg": "#08090a",
+      "bgLum": 0.003,
+      "inkOnBg": "#d0d6e0"
+    },
+    "shape": {
+      "borderStyle": "hairline",
+      "borderWidth": 1.0,
+      "pill": false,
+      "radius": 0,
+      "radiusRatio": 0.02,
+      "shadowStyle": "soft"
+    },
+    "signals": {
+      "accentScore": 0.42,
+      "areaImgVsTexto": 4.65,
+      "blurBackdrop": 0,
+      "chromaMax": 0.06,
+      "contrasteBgInk": 13.64,
+      "gradStops": 0,
+      "gridCards": 0,
+      "muestras": {
+        "botones": 18,
+        "cards": 16,
+        "imagenes": 4,
+        "texto": 92
+      }
+    },
+    "typography": {
+      "bodyHint": "grotesk",
+      "caseHint": "sentence",
+      "displayHint": "grotesk",
+      "h1Ratio": 0.05,
+      "script": "latin",
+      "textDir": "ltr",
+      "widthRatio": 0.64
+    }
+  },
+  "semantica": {
+    "audiencia": {
+      "awareness": "solution",
+      "register": "formal",
+      "who": "product and engineering teams"
+    },
+    "comoFunciona": [],
+    "cta": "Sign up free",
+    "features": [
+      {
+        "detalle": "Create, route, label and prioritize issues from conversations and customer feedback.",
+        "titulo": "Issue tracking"
+      },
+      {
+        "detalle": "Designed for workflows shared by humans and agents, from drafting PRDs to pushing PRs.",
+        "titulo": "AI agent workflows"
+      },
+      {
+        "detalle": "Reduces noise and restores momentum to help teams ship with high velocity and focus.",
+        "titulo": "Triage Intelligence"
+      },
+      {
+        "detalle": "Define product direction and move work forward across teams and agents.",
+        "titulo": "Initiatives & Projects"
+      },
+      {
+        "detalle": "Review pull requests and agent output directly within the system.",
+        "titulo": "PR & agent review"
+      },
+      {
+        "detalle": "Understand progress at scale across the entire workspace.",
+        "titulo": "Pulse & progress"
+      }
+    ],
+    "idioma": "en",
+    "modeloUso": "suscripcion",
+    "oferta": {
+      "precio": "",
+      "promo": "",
+      "urgencia": ""
+    },
+    "pruebas": {
+      "logosClientes": false,
+      "stats": [],
+      "testimonios": [
+        {
+          "firma": "Linear customer",
+          "texto": "You'll probably build a better product, just because of the craft that using Linear infuses on your brain."
+        },
+        {
+          "firma": "Linear customer",
+          "texto": "Our speed is intense and Linear helps us be action biased."
+        },
+        {
+          "firma": "Linear customer",
+          "texto": "Linear is excellent, just excellent. It has the right opinions for fast moving teams."
+        }
+      ]
+    },
+    "queHace": "Project management and issue tracking tool purpose-built for product development teams and AI agents.",
+    "tipoNegocio": "saas",
+    "vozDeMarca": [
+      "opinionated",
+      "precise",
+      "minimal"
+    ]
+  },
+  "url": "https://linear.app",
+  "v": 1
+}

@@ -25,9 +25,9 @@ export const POOLS = Object.fromEntries(Object.entries(HERO.pools).map(([k, fs])
 export const NOMBRES = HERO.names
 
 // palabras -> rubro. Sin acentos y en minuscula; se compara contra el texto normalizado de la pagina.
-const PISTAS = [
-  ['gastronomia', ['restaurant', 'resto', 'parrilla', 'cafe', 'cafeteria', 'bar ', 'pizza', 'sushi', 'menu', 'cocina', 'gastronom', 'delivery', 'panaderia', 'heladeria', 'vino', 'cerveza', 'brunch', 'chef']],
-  ['belleza', ['peluqueria', 'barberia', 'estetica', 'belleza', 'spa', 'unas', 'manicur', 'cosmetic', 'skincare', 'maquillaje', 'perfum', 'salon']],
+export const PISTAS = [
+  ['gastronomia', ['restaurant', 'restaurante', 'parrilla', 'cafe', 'cafeteria', 'bar ', 'pizza', 'sushi', 'menu', 'cocina', 'gastronom', 'delivery', 'panaderia', 'heladeria', 'vino', 'cerveza', 'brunch', 'chef']],
+  ['belleza', ['peluqueria', 'barberia', 'estetica', 'belleza', 'spa', 'manicur', 'cosmetic', 'skincare', 'maquillaje', 'perfum', 'salon']],
   ['fitness', ['gimnasio', 'gym', 'fitness', 'entrenamiento', 'crossfit', 'pilates', 'yoga', 'musculacion', 'personal trainer', 'entrenador']],
   ['salud', ['clinica', 'consultorio', 'medic', 'odontolog', 'dentista', 'turno', 'salud', 'farmacia', 'psicolog', 'nutricion', 'kinesiolog', 'veterinaria']],
   ['inmobiliaria', ['inmobiliaria', 'propiedad', 'alquiler', 'venta de casas', 'departamento', 'terreno', 'inmueble', 'bienes raices', 'mudanza', 'arquitectura', 'construccion', 'reforma']],
@@ -58,14 +58,25 @@ export function textoDe(pm) {
 // rubroDe(pm) -> clave de POOLS. Gana la pista con mas coincidencias; empate -> la primera de la lista.
 export function rubroDe(pm) {
   const t = ' ' + textoDe(pm) + ' '
+  // La pista tiene que empezar una PALABRA, no aparecer en cualquier lado. Con substring pelado
+  // "sidebar " contiene "bar " y "workspace" contiene "spa": medido sobre paginas reales, Linear caia
+  // en gastronomia y Tailwind en belleza — 2 de 8 elegian la familia de objeto equivocada, y el heroe
+  // de una herramienta de software salia siendo un plato de comida.
+  // Se compara contra el INICIO de palabra y no palabra completa a proposito: varias pistas son raices
+  // ('medic', 'odontolog', 'contab') pensadas para agarrar la familia entera.
+  const dice = p => t.indexOf(' ' + p.trim()) >= 0
   let mejor = null, max = 0
   for (const [rubro, palabras] of PISTAS) {
     let n = 0
-    for (const p of palabras) if (t.indexOf(p) >= 0) n++
+    for (const p of palabras) if (dice(p)) n++
     if (n > max) { max = n; mejor = rubro }
   }
-  if (mejor) return mejor
-  return POR_TIPO[(pm.semantica && pm.semantica.tipoNegocio) || 'otro'] || 'default'
+  // Con UNA sola coincidencia manda `tipoNegocio`, que es una lectura semantica de la pagina entera y
+  // no un accidente de vocabulario. Medido sobre paginas reales: a Tailwind le disparaban 'clases'
+  // (educacion), 'api' (tech) y 'unas' (belleza) con una coincidencia cada una, y ganaba la primera de
+  // la lista. Dos coincidencias ya son un patron; una es ruido.
+  if (mejor && max >= 2) return mejor
+  return POR_TIPO[(pm.semantica && pm.semantica.tipoNegocio) || 'otro'] || (mejor || 'default')
 }
 
 // elegirObjetos(pm, seed, n) -> n objetos DISTINTOS del pool del rubro (sin reposicion: dos escenas de

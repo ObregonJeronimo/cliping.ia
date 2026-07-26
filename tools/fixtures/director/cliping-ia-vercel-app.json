@@ -1,0 +1,156 @@
+{
+  "assets": {
+    "images": [],
+    "logo": "https://cliping-ia.vercel.app/logo.svg",
+    "ogImage": "",
+    "screenshot": "C:\\Users\\Usuario\\Documents\\cliping.ia\\backend\\..\\tools\\out\\e2e_cliping-ia.png"
+  },
+  "brand": "Urvid",
+  "captura": {
+    "confianza": 0.86,
+    "errores": [],
+    "estado": "ok",
+    "httpStatus": 200,
+    "notas": [
+      "marca acromatica: accent medido sin gate de chroma",
+      "accent descartado: era el fondo o la tinta"
+    ],
+    "ts": "",
+    "url": "https://cliping-ia.vercel.app",
+    "urlFinal": "https://cliping-ia.vercel.app/",
+    "viewport": [
+      1280,
+      900
+    ]
+  },
+  "dna": {
+    "density": {
+      "fill": 0.16,
+      "nivel": "aireado",
+      "nodos": 17,
+      "score": 0.24
+    },
+    "modernidad": [
+      "bigtype",
+      "bento",
+      "glass"
+    ],
+    "modernidadScores": {
+      "bento": 0.83,
+      "bigtype": 1,
+      "glass": 0.72
+    },
+    "mood": {
+      "calidez": 0.54,
+      "energia": 0.44,
+      "formalidad": 0.72
+    },
+    "palette": {
+      "accent": "#5b8cff",
+      "accent2": null,
+      "accentText": "#0953ff",
+      "acromatica": true,
+      "bg": "#f3f2ee",
+      "bgLum": 0.887,
+      "inkOnBg": "#16150f"
+    },
+    "shape": {
+      "borderStyle": "hairline",
+      "borderWidth": 1.0,
+      "pill": false,
+      "radius": 0,
+      "radiusRatio": 0.1,
+      "shadowStyle": "soft"
+    },
+    "signals": {
+      "accentScore": 0.15,
+      "areaImgVsTexto": 0,
+      "blurBackdrop": 16,
+      "chromaMax": 0.03,
+      "contrasteBgInk": 16.33,
+      "gradStops": 0,
+      "gridCards": 6,
+      "muestras": {
+        "botones": 3,
+        "cards": 19,
+        "imagenes": 0,
+        "texto": 40
+      }
+    },
+    "typography": {
+      "bodyHint": "grotesk",
+      "caseHint": "sentence",
+      "displayHint": "grotesk",
+      "h1Ratio": 0.05,
+      "script": "latin",
+      "textDir": "ltr",
+      "widthRatio": 0.57
+    }
+  },
+  "semantica": {
+    "audiencia": {
+      "awareness": "problem",
+      "register": "casual",
+      "who": "dueños de negocios digitales"
+    },
+    "comoFunciona": [
+      "Pegá el link de tu sitio web",
+      "Describí lo que querés mostrar",
+      "La IA escribe el guion y arma el video",
+      "Descargá listo para publicar"
+    ],
+    "cta": "Empezar gratis",
+    "features": [
+      {
+        "detalle": "La IA analiza tu página, extrae puntos clave y genera guion y edición profesional.",
+        "titulo": "Análisis de landing page"
+      },
+      {
+        "detalle": "Vertical para TikTok/Reels, cuadrado para feed, horizontal para YouTube.",
+        "titulo": "Todos los formatos"
+      },
+      {
+        "detalle": "La IA elige y genera imágenes y clips para cada escena. Sin buscar stock.",
+        "titulo": "Visuales y B-Roll"
+      },
+      {
+        "detalle": "Narración con voz natural y subtítulos sincronizados automáticamente.",
+        "titulo": "Voz en off y subtítulos"
+      },
+      {
+        "detalle": "El video respeta la identidad visual de tu marca en cada generación.",
+        "titulo": "Tu marca, siempre"
+      },
+      {
+        "detalle": "Control adicional sobre el resultado para usuarios que quieren más personalización.",
+        "titulo": "Modo avanzado de IA"
+      }
+    ],
+    "idioma": "es",
+    "modeloUso": "registro",
+    "oferta": {
+      "precio": "",
+      "promo": "2 meses gratis en plan anual",
+      "urgencia": ""
+    },
+    "pruebas": {
+      "logosClientes": false,
+      "stats": [],
+      "testimonios": [
+        {
+          "firma": "Usuario de Urvid",
+          "texto": "Un video profesional que muestre todas las herramientas de mi sitio, listo para publicar"
+        }
+      ]
+    },
+    "queHace": "Genera videos de marketing profesionales a partir de la URL de tu sitio usando IA.",
+    "tipoNegocio": "saas",
+    "vozDeMarca": [
+      "directo",
+      "moderno",
+      "accesible"
+    ]
+  },
+  "url": "https://cliping-ia.vercel.app",
+  "v": 1
+}

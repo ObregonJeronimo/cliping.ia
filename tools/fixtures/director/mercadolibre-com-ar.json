@@ -1,0 +1,263 @@
+{
+  "assets": {
+    "images": [
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 18.0,
+        "url": "https://http2.mlstatic.com/static/org-img/homesnw/mercado-libre.png?v=2"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 17.0,
+        "url": "https://http2.mlstatic.com/D_NQ_805858-MLA114656577121_072026-OO.webp"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 16.0,
+        "url": "https://http2.mlstatic.com/D_NQ_833335-MLA114655415089_072026-OO.webp"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 15.0,
+        "url": "https://http2.mlstatic.com/D_Q_NP_2X_912287-MLA114164702663_072026-V.webp"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 14.0,
+        "url": "https://http2.mlstatic.com/D_NQ_876912-MLA114655592449_072026-OO.webp"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 13.0,
+        "url": "https://http2.mlstatic.com/D_NQ_697613-MLA114654952575_072026-OO.webp"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 12.0,
+        "url": "https://http2.mlstatic.com/D_NQ_780398-MLA113398711256_072026-OO.webp"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 11.0,
+        "url": "https://http2.mlstatic.com/D_NQ_957092-MLA114817872833_072026-OO.webp"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 10.0,
+        "url": "https://http2.mlstatic.com/resources/frontend/statics/loyal/partners/hbo/widgetMultiPartnerCard/20260130160908_hbomaxWidgetmultiMobdskMla@3x.jpg"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 9.0,
+        "url": "https://http2.mlstatic.com/resources/frontend/statics/loyal/partners/vix/widgetMultiPartnerCard/20251126164753_ViX_MercadoLibre_WidgetMultipartner_1152x849.jpg"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 8.0,
+        "url": "https://http2.mlstatic.com/D_Q_NP_2X_896321-MLA113707951891_062026-AB.webp"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 7.0,
+        "url": "https://http2.mlstatic.com/D_Q_NP_2X_878814-MLA114486573623_072026-AB.webp"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 6.0,
+        "url": "https://http2.mlstatic.com/D_Q_NP_2X_905630-MLA98860119349_112025-AB.webp"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 5.0,
+        "url": "https://http2.mlstatic.com/D_Q_NP_2X_832099-MLA86884461208_072025-AB.webp"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 4.0,
+        "url": "https://http2.mlstatic.com/D_Q_NP_2X_849618-MLA88494084431_072025-AB.webp"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 3.0,
+        "url": "https://http2.mlstatic.com/D_Q_NP_2X_977665-MLA107423760309_022026-AB.webp"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 2.0,
+        "url": "https://http2.mlstatic.com/D_Q_NP_2X_835510-MLA109087671452_042026-AB.webp"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 1.0,
+        "url": "https://http2.mlstatic.com/D_Q_NP_2X_879184-MLA90557082581_082025-AB.webp"
+      }
+    ],
+    "logo": "https://http2.mlstatic.com/frontend-assets/ml-web-navigation/ui-navigation/5.21.22/mercadolibre/180x180.png",
+    "ogImage": "https://http2.mlstatic.com/static/org-img/homesnw/mercado-libre.png?v=2",
+    "screenshot": "C:\\Users\\Usuario\\Documents\\cliping.ia\\backend\\..\\tools\\out\\e2e_mercadolibre.png"
+  },
+  "brand": "Mercado Libre",
+  "captura": {
+    "confianza": 1.0,
+    "errores": [],
+    "estado": "ok",
+    "httpStatus": 200,
+    "notas": [],
+    "ts": "",
+    "url": "https://www.mercadolibre.com.ar",
+    "urlFinal": "https://www.mercadolibre.com.ar/",
+    "viewport": [
+      1280,
+      900
+    ]
+  },
+  "dna": {
+    "density": {
+      "fill": 0.68,
+      "nivel": "denso",
+      "nodos": 50,
+      "score": 0.79
+    },
+    "modernidad": [
+      "editorial-photo",
+      "brutalist"
+    ],
+    "modernidadScores": {
+      "brutalist": 0.5,
+      "editorial-photo": 1
+    },
+    "mood": {
+      "calidez": 0.08,
+      "energia": 0.72,
+      "formalidad": 0.7
+    },
+    "palette": {
+      "accent": "#2968c8",
+      "accent2": null,
+      "accentText": "#2968c8",
+      "acromatica": false,
+      "bg": "#ebebeb",
+      "bgLum": 0.831,
+      "inkOnBg": "#000000"
+    },
+    "shape": {
+      "borderStyle": "none",
+      "borderWidth": 0,
+      "pill": false,
+      "radius": 0,
+      "radiusRatio": 0,
+      "shadowStyle": "flat"
+    },
+    "signals": {
+      "accentScore": 0.38,
+      "areaImgVsTexto": 4.84,
+      "blurBackdrop": 0,
+      "chromaMax": 0.78,
+      "contrasteBgInk": 17.62,
+      "gradStops": 0,
+      "gridCards": 0,
+      "muestras": {
+        "botones": 7,
+        "cards": 52,
+        "imagenes": 34,
+        "texto": 218
+      }
+    },
+    "typography": {
+      "bodyHint": "grotesk",
+      "caseHint": "sentence",
+      "displayHint": "grotesk",
+      "h1Ratio": 0.02,
+      "script": "latin",
+      "textDir": "ltr",
+      "widthRatio": 0.63
+    }
+  },
+  "semantica": {
+    "audiencia": {
+      "awareness": "most",
+      "register": "casual",
+      "who": "compradores online argentinos"
+    },
+    "comoFunciona": [
+      "Buscá el producto que querés",
+      "Elegí tu medio de pago",
+      "Recibilo con envío gratis"
+    ],
+    "cta": "Comprá ahora",
+    "features": [
+      {
+        "detalle": "En productos desde $16.000 y gratis en la primera compra.",
+        "titulo": "Envío gratis"
+      },
+      {
+        "detalle": "Financiación disponible en miles de productos.",
+        "titulo": "Hasta 18 cuotas sin interés"
+      },
+      {
+        "detalle": "Podés devolver tu compra gratis si algo sale mal.",
+        "titulo": "Compra protegida"
+      },
+      {
+        "detalle": "Tarjeta, débito, efectivo o Cuotas sin Tarjeta.",
+        "titulo": "Múltiples medios de pago"
+      },
+      {
+        "detalle": "Sección de productos con precios bajos accesibles.",
+        "titulo": "Menos de $20.000"
+      },
+      {
+        "detalle": "Explorá los productos que son tendencia.",
+        "titulo": "Más vendidos"
+      }
+    ],
+    "idioma": "es",
+    "modeloUso": "compra",
+    "oferta": {
+      "precio": "",
+      "promo": "Hasta 30% OFF en muebles, electrobeauty",
+      "urgencia": ""
+    },
+    "pruebas": {
+      "logosClientes": false,
+      "stats": [
+        {
+          "etiqueta": "descuento en muebles y más",
+          "valor": "30% OFF"
+        },
+        {
+          "etiqueta": "sin interés disponibles",
+          "valor": "18 cuotas"
+        }
+      ],
+      "testimonios": []
+    },
+    "queHace": "Marketplace online con millones de productos, envíos gratis, cuotas sin interés y compra protegida.",
+    "tipoNegocio": "ecommerce",
+    "vozDeMarca": [
+      "accesible",
+      "directo",
+      "dinámico"
+    ]
+  },
+  "url": "https://www.mercadolibre.com.ar",
+  "v": 1
+}

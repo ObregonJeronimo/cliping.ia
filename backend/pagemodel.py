@@ -221,7 +221,7 @@ def _norm_signals(raw):
     }
 
 
-def _norm_palette(raw, signals, notas, errores, medido=True):
+def _norm_palette(raw, signals, notas, errores, medido=True, marca=None):
     """§3.1 formato -> §3.2 acromatismo -> §3.3 contraste -> §3.4 accent2. El ORDEN importa: la
     sanidad de contraste asume que ya se decidio si la marca tiene color.
     `medido=False` = el dna se cayo a defaults (§2.6 formula-vs-default): con chromaMax = 0 porque no
@@ -238,14 +238,22 @@ def _norm_palette(raw, signals, notas, errores, medido=True):
     # del ranking que trae la medicion; si no hay ranking, default. Se descarta ANTES de decidir tinta.
     ranking = [h for h in (_hex(x) for x in _list(p.get("accentRanking"))) if h]
     ink_raw = _hex(p.get("inkOnBg"))
-    for cand in [accent] + ranking + [DEF_ACCENT]:
+    # `marca` = brief.brandColor, el color que el LLM leyo de la pagina. Va DESPUES de lo medido (una
+    # medicion real le gana a una lectura) y ANTES del default. Sin este eslabon, toda pagina cuyo
+    # acento medido resultara ser el fondo o la tinta caia al azul por defecto: medido sobre paginas
+    # REALES, Linear (#5e6ad2) y Tailwind (#38bdf8) salian las dos con el MISMO #5b8cff aunque el brief
+    # traia el color correcto. O sea: todo video de pagina real era del mismo azul.
+    marca_hex = _hex(marca) if marca else None
+    cands = [accent] + ranking + ([marca_hex] if marca_hex and _chroma(marca_hex) >= 0.12 else []) + [DEF_ACCENT]
+    for cand in cands:
         if _contrast(cand, bg) >= 1.15 and (ink_raw is None or cand != ink_raw):
             accent = cand
             break
     else:
         accent = DEF_ACCENT
     if accent != _hex(p.get("accent"), DEF_ACCENT):
-        notas.append("accent descartado: era el fondo o la tinta")
+        notas.append("accent del brandColor del brief" if marca_hex and accent == marca_hex
+                     else "accent descartado: era el fondo o la tinta")
 
     ink = ink_raw if ink_raw else (DEF_INK if bg_lum > PIVOTE_LUM else DEF_INK_DARK)
 
@@ -347,11 +355,11 @@ def _norm_modernidad(raw_list, raw_scores):
     return orden, {k: scores[k] for k in orden if k in scores}
 
 
-def _norm_dna(raw, notas, errores):
+def _norm_dna(raw, notas, errores, marca=None):
     """Normaliza el bloque MEDIDO. `raw` es lo que devuelve extract_dna() (crudo, sin normalizar)."""
     d = _dict(raw)
     signals = _norm_signals(d.get("signals"))
-    palette = _norm_palette(d.get("palette"), signals, notas, errores)
+    palette = _norm_palette(d.get("palette"), signals, notas, errores, marca=marca)
     modernidad, mscores = _norm_modernidad(d.get("modernidad"), d.get("modernidadScores"))
     mood_raw = _dict(d.get("mood"))
     mood = {"calidez": _f(mood_raw.get("calidez"), 0.50, 0, 1),
@@ -566,7 +574,7 @@ def build_pagemodel(url: str, site=None, brief=None) -> dict:
         dna["density"] = {"nivel": "aireado", "score": 0.0, "fill": 0.0, "nodos": 0}
         notas.append("spa vacia: solo bg y theme-color")
         # el accentText del theme-color puede no ser legible sobre el bg -> se sanea igual que en §3.3
-        dna["palette"] = _norm_palette(dna["palette"], dna["signals"], notas, errores, medido=False)
+        dna["palette"] = _norm_palette(dna["palette"], dna["signals"], notas, errores, medido=False, marca=_hex(brief.get("brandColor")))
     elif body_len < 200 and signals["muestras"]["texto"] < 5:
         # §3.5 ultima fila / §5.1: senal insuficiente. TODO el dna a defaults salvo bg (unica senal
         # aprovechable). Escribir el default es decir "no se"; escribir 0 medido seria mentir distinto.
@@ -575,10 +583,10 @@ def build_pagemodel(url: str, site=None, brief=None) -> dict:
         dna["palette"]["bg"] = bg
         dna["palette"]["bgLum"] = round(_rellum(bg), 3)
         dna["palette"]["inkOnBg"] = DEF_INK if _rellum(bg) > PIVOTE_LUM else DEF_INK_DARK
-        dna["palette"] = _norm_palette(dna["palette"], dna["signals"], notas, errores, medido=False)
+        dna["palette"] = _norm_palette(dna["palette"], dna["signals"], notas, errores, medido=False, marca=_hex(brief.get("brandColor")))
         notas.append("sin texto: dna por defecto")
     else:
-        dna = _norm_dna(dna_raw, notas, errores)
+        dna = _norm_dna(dna_raw, notas, errores, marca=_hex(brief.get("brandColor")))
         _derivar_accent2(dna)
 
     semantica = _norm_semantica(brief.get("semantica"), brief, content)
