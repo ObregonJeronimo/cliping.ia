@@ -487,6 +487,16 @@ export function composeStoryboard(pm, guion, look, seed) {
       // sombra: el recorte trae la que tenia contra el fondo de SU pagina y sobre el fondo del video
       // se pierde, dejando la tarjeta pegada como una calcomania. Sube cuando el objeto casi no
       // contrasta con el fondo — una tarjeta blanca sobre un look claro sin sombra no tiene borde.
+      // UN OBJETO NO SE RECORTA; UNA IMAGEN SI. Una tarjeta, un boton o un logo son piezas: cortarles
+      // un borde los rompe, asi que entran enteros aunque queden mas chicos. Una foto o una captura
+      // de producto son imagenes: recortarlas es lo normal y ademas es lo unico que las salva, porque
+      // una captura de dashboard ajustada entera dentro de la caja queda del tamaño de una estampilla
+      // y su interfaz se vuelve una mancha. Encuadrada llena el cuadro y se lee.
+      if (p.rol === 'foto' || p.rol === 'hero') {
+        return foto(l.box, p.url, {
+          id: l.id, matchKey: l.matchKey, focal: l.focal, z: l.z, fit: 'cover', reveal: l.reveal,
+        })
+      }
       const c = contrast(p.color || '#808080', look.bg0)
       // UNA PIEZA ANCHA SANGRA. Ajustada dentro de los margenes queda diminuta y la escena se lee
       // vacia; de borde a borde se lee como una banda, que es una composicion valida y ademas le
