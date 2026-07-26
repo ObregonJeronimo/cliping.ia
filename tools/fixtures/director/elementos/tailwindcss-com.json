@@ -1,0 +1,308 @@
+{
+  "assets": {
+    "images": [
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 18,
+        "url": "https://tailwindcss.com/_next/static/media/dark-mode.light.0tx34lu8jwt_1.png"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 17,
+        "url": "https://tailwindcss.com/_next/static/media/dark-mode.dark.11szx9d7s4zjz.png"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 16,
+        "url": "https://tailwindcss.com/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fgumroad.02mqjvoidm9od.png&w=640&q=75"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 15,
+        "url": "https://tailwindcss.com/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fskims.17-pjntproup-.png&w=640&q=75"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 14,
+        "url": "https://tailwindcss.com/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Freddit.0j_xuv2uowcvq.png&w=640&q=75"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 13,
+        "url": "https://tailwindcss.com/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fverge.07-a9z7tfaczw.png&w=640&q=75"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 12,
+        "url": "https://tailwindcss.com/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fgoogleio.0vxfs_7d-fn74.png&w=640&q=75"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 11,
+        "url": "https://tailwindcss.com/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fted.0ikpe7d7m~~3n.png&w=640&q=75"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 10,
+        "url": "https://tailwindcss.com/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fpoolside.13~g4ne7r787g.png&w=640&q=75"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 9,
+        "url": "https://tailwindcss.com/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fmidjourney.0-hew7ka2ltkt.png&w=640&q=75"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 8,
+        "url": "https://tailwindcss.com/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fnasa.0rhlq.ak47fm..png&w=640&q=75"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 7,
+        "url": "https://tailwindcss.com/_next/static/media/css-grid-1.0c8bc8q87-upx.png"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 6,
+        "url": "https://tailwindcss.com/_next/static/media/3d-transforms.02bsrv~jiqeb9.jpeg"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 5,
+        "url": "https://tailwindcss.com/_next/static/media/filters.17z4w2mm8xht2.png"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 4,
+        "url": "https://tailwindcss.com/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fshopify.0--7_f_9g4gy7.png&w=1080&q=75"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 3,
+        "url": "https://tailwindcss.com/opengraph-image.jpg?opengraph-image.0jwfhnd690..4.jpg"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 2,
+        "url": "https://tailwindcss.com/_next/static/media/responsive-1.10chodfonif1e.png"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 1,
+        "url": "https://tailwindcss.com/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fopal.17bsj~5nn-bhl.png&w=640&q=75"
+      }
+    ],
+    "logo": "https://tailwindcss.com/favicons/apple-touch-icon.png?v=4",
+    "ogImage": "https://tailwindcss.com/_next/static/media/dark-mode.light.0tx34lu8jwt_1.png",
+    "screenshot": "C:\\Users\\Usuario\\Documents\\cliping.ia\\backend\\..\\tools\\out\\e2e_tailwindcss.png",
+    "elementos": [
+      {
+        "id": "el0",
+        "rol": "logo",
+        "url": "tailwindcss-com__el0-logo.png",
+        "w": 317,
+        "h": 40,
+        "ar": 7.925,
+        "alfa": true,
+        "textura": 0.082,
+        "color": "#003549",
+        "lum": 0.169,
+        "minPx": 0,
+        "texto": ""
+      },
+      {
+        "id": "el1",
+        "rol": "cta",
+        "url": "tailwindcss-com__el1-cta.png",
+        "w": 294,
+        "h": 80,
+        "ar": 3.675,
+        "alfa": false,
+        "textura": 0.198,
+        "color": "#f648a4",
+        "lum": 0.453,
+        "minPx": 14,
+        "texto": "Check availability"
+      },
+      {
+        "id": "el2",
+        "rol": "hero",
+        "url": "tailwindcss-com__el2-hero.png",
+        "w": 380,
+        "h": 384,
+        "ar": 0.99,
+        "alfa": false,
+        "textura": 0.162,
+        "color": "#483942",
+        "lum": 0.239,
+        "minPx": 0,
+        "texto": ""
+      },
+      {
+        "id": "el3",
+        "rol": "foto",
+        "url": "tailwindcss-com__el3-foto.png",
+        "w": 752,
+        "h": 1242,
+        "ar": 0.605,
+        "alfa": true,
+        "textura": 0.103,
+        "color": "#9ca1a9",
+        "lum": 0.629,
+        "minPx": 0,
+        "texto": ""
+      }
+    ]
+  },
+  "brand": "Tailwind CSS",
+  "captura": {
+    "confianza": 0.96,
+    "errores": [],
+    "estado": "ok",
+    "httpStatus": 200,
+    "notas": [
+      "marca acromatica: accent medido sin gate de chroma",
+      "accent del brandColor del brief",
+      "ink saneado por contraste"
+    ],
+    "ts": "",
+    "url": "https://tailwindcss.com",
+    "urlFinal": "https://tailwindcss.com/",
+    "viewport": [
+      1280,
+      900
+    ]
+  },
+  "dna": {
+    "density": {
+      "fill": 0.44,
+      "nivel": "denso",
+      "nodos": 41,
+      "score": 0.6
+    },
+    "modernidad": [
+      "bigtype",
+      "glass"
+    ],
+    "modernidadScores": {
+      "bigtype": 1,
+      "glass": 0.68
+    },
+    "mood": {
+      "calidez": 0.46,
+      "energia": 0.45,
+      "formalidad": 0.82
+    },
+    "palette": {
+      "accent": "#38bdf8",
+      "accent2": null,
+      "accentText": "#38bdf8",
+      "acromatica": true,
+      "bg": "#030712",
+      "bgLum": 0.002,
+      "inkOnBg": "#f4f1ea"
+    },
+    "shape": {
+      "borderStyle": "none",
+      "borderWidth": 0,
+      "pill": true,
+      "radius": 12,
+      "radiusRatio": 0.03,
+      "shadowStyle": "flat"
+    },
+    "signals": {
+      "accentScore": 0.09,
+      "areaImgVsTexto": 0.06,
+      "blurBackdrop": 12,
+      "chromaMax": 0.08,
+      "contrasteBgInk": 17.85,
+      "gradStops": 0,
+      "gridCards": 0,
+      "muestras": {
+        "botones": 3,
+        "cards": 7,
+        "imagenes": 1,
+        "texto": 70
+      }
+    },
+    "typography": {
+      "bodyHint": "grotesk",
+      "caseHint": "sentence",
+      "displayHint": "grotesk",
+      "h1Ratio": 0.08,
+      "script": "latin",
+      "textDir": "ltr",
+      "widthRatio": 0.64
+    }
+  },
+  "semantica": {
+    "audiencia": {
+      "awareness": "solution",
+      "register": "casual",
+      "who": "frontend developers"
+    },
+    "comoFunciona": [],
+    "cta": "Get started",
+    "features": [
+      {
+        "detalle": "Clases como flex, pt-4, text-center y rotate-90 componibles en el markup.",
+        "titulo": "Utility-first classes"
+      },
+      {
+        "detalle": "Aplica cualquier utility en un breakpoint poniendo el screen size delante.",
+        "titulo": "Responsive design"
+      },
+      {
+        "detalle": "Agrega dark: delante de cualquier color para aplicarlo en modo oscuro.",
+        "titulo": "Dark mode"
+      },
+      {
+        "detalle": "Personaliza el tema creando unas pocas variables CSS.",
+        "titulo": "Theme customization"
+      },
+      {
+        "detalle": "Soporte para backdrop-blur y filtros CSS modernos apilables.",
+        "titulo": "Backdrop filters"
+      }
+    ],
+    "idioma": "en",
+    "modeloUso": "descarga",
+    "oferta": {
+      "precio": "",
+      "promo": "",
+      "urgencia": ""
+    },
+    "pruebas": {
+      "logosClientes": false,
+      "stats": [],
+      "testimonios": []
+    },
+    "queHace": "Framework CSS utility-first para construir sitios modernos directo en el HTML.",
+    "tipoNegocio": "saas",
+    "vozDeMarca": [
+      "directo",
+      "moderno",
+      "tecnico"
+    ]
+  },
+  "url": "https://tailwindcss.com",
+  "v": 1
+}

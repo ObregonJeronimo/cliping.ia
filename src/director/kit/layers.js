@@ -79,6 +79,24 @@ export function foto(box, url, o = {}) {
   return { ...base('photo', box, o), url: String(url || ''), fit: o.fit || 'cover', radius: o.radius == null ? null : o.radius, veil: o.veil == null ? 0 : o.veil }
 }
 
+// ---------------------------------------------------------------- elemento REAL recortado de la pagina
+// No es una `foto` con otro nombre. Una foto se recorta a su caja: se le puede pedir cualquier
+// proporcion porque lo que sobra del encuadre no se extraña. Un elemento es un OBJETO — el logo de la
+// marca, su boton, su tarjeta de precio — y recortarlo o estirarlo lo rompe: un logo con el 20% de
+// mas de ancho es la clase de error que el dueño de la marca ve antes que cualquier otra cosa.
+// Por eso `box` aca es un ESPACIO DISPONIBLE, no un destino: el elemento entra completo adentro,
+// centrado, con su proporcion intacta y sin clip.
+export function elemento(box, url, ar, o = {}) {
+  return {
+    ...base('elemento', box, o),
+    url: String(url || ''),
+    ar: Number(ar) > 0 ? Number(ar) : 1,        // ancho/alto REAL del recorte
+    rol: o.rol || 'foto',
+    ancla: o.ancla || 'center',                 // donde se apoya dentro del espacio: center | top | bottom
+    sombra: o.sombra == null ? 0 : o.sombra,    // 0..1 — despega del fondo al objeto que no trae la suya
+  }
+}
+
 // ---------------------------------------------------------------- compuestas
 export function badge(box, text, o = {}) {
   return { ...base('badge', box, o), align: o.align || 'center', text: String(text || ''), size: o.size == null ? SIZE.kicker : o.size, fill: o.fill || 'accent', color: o.color || 'onAccent', upper: o.upper !== false }

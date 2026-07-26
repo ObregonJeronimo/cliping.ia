@@ -27,13 +27,17 @@ export const BORDER_STYLE = ['none', 'hairline', 'bold']
 export const SHADOW_STYLE = ['flat', 'soft', 'hard']
 export const MODERNIDAD = ['bento', 'glass', 'bigtype', 'editorial-photo', 'gradient-mesh', 'brutalist']
 export const IMG_KIND = ['producto', 'persona', 'ambiente', 'ui', 'desconocido']
+// Roles de los recortes de elementos REALES de la pagina. No describen QUE se ve (eso es IMG_KIND)
+// sino QUE PAPEL juega el objeto, que es lo que decide como animarlo: un logo entra y se queda, un CTA
+// cierra, una tarjeta desfila, una foto respalda. ESPEJO de backend/pagemodel.py::EL_ROL.
+export const EL_ROL = ['logo', 'cta', 'tarjeta', 'hero', 'foto']
 export const REGISTER = ['formal', 'casual', 'warm']
 export const AWARENESS = ['unaware', 'problem', 'solution', 'product', 'most']
 export const ESTADO = ['ok', 'botwall', 'spa-vacia', '404', 'timeout', 'bloqueada']
 export const VOZ_DEFAULT = ['claro', 'directo', 'actual']
 
 // capas: el set es CERRADO (el renderer y la UI conocen cada kind; sumar = bump de SB_V)
-export const LAYER_KINDS = ['text', 'heroObj', 'photo', 'shape', 'badge', 'stepper', 'priceTag', 'logoRow', 'plate']
+export const LAYER_KINDS = ['text', 'heroObj', 'photo', 'elemento', 'shape', 'badge', 'stepper', 'priceTag', 'logoRow', 'plate']
 export const TEXT_ROLES = ['kicker', 'title', 'subtitle', 'body', 'stat', 'statLabel', 'cta', 'mark', 'quote', 'step']
 // props animables: set CERRADO v1 (agregar = bump de TL_V; el evaluador y el Inspector los conocen)
 export const PROPS = ['x', 'y', 'w', 'h', 'scale', 'rot', 'alpha', 'reveal', 'sweep']
@@ -134,6 +138,17 @@ export function validatePageModel(pm) {
     else a.images.forEach((im, i) => {
       if (!im || !isStr(im.url) || !im.url) e.push(err('E-SCHEMA-MISSING', `assets.images[${i}].url`, 'sin url'))
       if (im && im.kind != null) enu(im.kind, IMG_KIND, `assets.images[${i}].kind`)
+    })
+  }
+  if (a.elementos != null) {
+    if (!Array.isArray(a.elementos)) e.push(err('E-SCHEMA-TYPE', 'assets.elementos', 'debe ser array'))
+    else a.elementos.forEach((el, i) => {
+      if (!el || !isStr(el.url) || !el.url) e.push(err('E-SCHEMA-MISSING', `assets.elementos[${i}].url`, 'sin url'))
+      // Un elemento es un archivo que generamos y hospedamos NOSOTROS, no una URL que ya estaba en la
+      // pagina. Sin w/h el motor no puede reservarle caja sin deformarlo, y deformar el logo de una
+      // marca es el unico defecto de esta feature que el usuario nota al instante.
+      if (el && (!isNum(el.w) || !isNum(el.h) || el.w <= 0 || el.h <= 0)) e.push(err('E-SCHEMA-MISSING', `assets.elementos[${i}].w/h`, 'sin medidas'))
+      if (el && el.rol != null) enu(el.rol, EL_ROL, `assets.elementos[${i}].rol`)
     })
   }
   return { ok: e.length === 0, errors: e }
@@ -258,6 +273,26 @@ export function normalizePageModel(raw) {
           ? { url: im, kind: 'desconocido', rank: imgs.length - i, ar: null }
           : { url: isStr(im && im.url) ? im.url : '', kind: enumOr(im && im.kind, IMG_KIND, 'desconocido'), rank: isNum(im && im.rank) ? im.rank : imgs.length - i, ar: isNum(im && im.ar) ? im.ar : null }))
         .filter(im => im.url),
+      // ESPEJO de backend/pagemodel.py::_norm_assets. `ar` se RECALCULA de w/h en vez de confiar en el
+      // que venga: es el numero con el que el motor decide la caja, y un ar mentido deforma el objeto.
+      elementos: (Array.isArray(a.elementos) ? a.elementos : []).slice(0, 14)
+        .map((el, i) => ({
+          id: isStr(el && el.id) && el.id ? el.id : `el${i}`,
+          rol: enumOr(el && el.rol, EL_ROL, 'foto'),
+          url: isStr(el && el.url) ? el.url : '',
+          w: isNum(el && el.w) ? Math.round(clamp(el.w, 0, 20000)) : 0,
+          h: isNum(el && el.h) ? Math.round(clamp(el.h, 0, 20000)) : 0,
+          alfa: !!(el && el.alfa),
+          textura: num(el && el.textura, 0, 0, 1),
+          // color/lum: color DOMINANTE de lo opaco del recorte. Decide si el objeto se ve sobre el
+          // fondo que eligio el look — un logo negro sobre un fondo oscuro no esta.
+          color: hex(el && el.color, '#808080'),
+          lum: num(el && el.lum, 0.5, 0, 1),
+          minPx: isNum(el && el.minPx) ? Math.round(clamp(el.minPx, 0, 400)) : 0,
+          texto: isStr(el && el.texto) ? el.texto.slice(0, 80) : '',
+        }))
+        .filter(el => el.url && el.w >= 16 && el.h >= 12)
+        .map(el => ({ ...el, ar: Math.round((el.w / el.h) * 1000) / 1000 })),
     },
   }
 }

@@ -112,7 +112,8 @@
     ],
     "logo": "https://http2.mlstatic.com/frontend-assets/ml-web-navigation/ui-navigation/5.21.22/mercadolibre/180x180.png",
     "ogImage": "https://http2.mlstatic.com/static/org-img/homesnw/mercado-libre.png?v=2",
-    "screenshot": "C:\\Users\\Usuario\\Documents\\cliping.ia\\backend\\..\\tools\\out\\e2e_mercadolibre.png"
+    "screenshot": "C:\\Users\\Usuario\\Documents\\cliping.ia\\backend\\..\\tools\\out\\e2e_mercadolibre.png",
+    "elementos": []
   },
   "brand": "Mercado Libre",
   "captura": {

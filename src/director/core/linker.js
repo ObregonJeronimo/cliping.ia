@@ -42,12 +42,12 @@ export const RECETAS = [
   },
   {
     name: 'zoom-out-card', peso: 1.0, dur: 0.60, espectacular: true,
-    ok: A => A.layers.some(l => l.sangra && l.kind === 'photo'),
+    ok: A => A.layers.some(l => l.sangra && (l.kind === 'photo' || l.kind === 'elemento')),
     carries: m => m.map(x => x.key), salida: 'encoge', entrada: 'rise',
   },
   {
     name: 'push-reveal', peso: 1.2, dur: 0.52, espectacular: false,
-    ok: (A, B) => B.layers.some(l => l.sangra && l.kind === 'photo'),
+    ok: (A, B) => B.layers.some(l => l.sangra && (l.kind === 'photo' || l.kind === 'elemento')),
     carries: m => m.map(x => x.key), salida: 'empuja', entrada: 'empuja-in',
   },
   {
@@ -98,7 +98,11 @@ export const RECETAS = [
     carries: m => m.map(x => x.key), salida: 'fade', entrada: 'rise',
   },
 ]
-const haiHero = sc => sc.layers.some(l => l.kind === 'heroObj' || l.kind === 'photo')
+// Un elemento REAL recortado de la pagina es un heroe igual que una foto o un objeto dibujado: ocupa
+// el mismo lugar en la composicion y se anima con los mismos gestos. Si no entrara aca, las escenas
+// que muestran la tarjeta de la pagina se quedarian sin las recetas de transicion que necesitan.
+const esHeroe = l => l.kind === 'heroObj' || l.kind === 'photo' || l.kind === 'elemento'
+const haiHero = sc => sc.layers.some(esHeroe)
 // matchKeys que justifican un match-cut: elementos con peso propio en las dos escenas. El chip de
 // marca y el filete de acento estan en casi todas, asi que acarrearlos no es un gesto de montaje.
 const CARRIABLES = ['hero', 'foto', 'stat', 'precio', 'mensaje', 'cta', 'pasos', 'logos']

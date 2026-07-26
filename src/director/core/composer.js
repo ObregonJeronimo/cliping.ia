@@ -18,23 +18,62 @@
 import { SB_V, CANVAS } from './schema.js'
 import { seedFor, pick, range, weightedPick } from './prng.js'
 import { mismaCosa } from './scriptwriter.js'
-import { clamp } from './util.js'
+import { clamp, contrast } from './util.js'
 import { makeGrid, SAFE_TOP, SAFE_BOT } from '../kit/grid.js'
-import { texto, forma, objeto, foto, badge, stepper, priceTag, logoRow, placa, escena, resetIds, SIZE } from '../kit/layers.js'
+import { texto, forma, objeto, foto, elemento, badge, stepper, priceTag, logoRow, placa, escena, resetIds, SIZE } from '../kit/layers.js'
 import { elegirObjetos } from '../kit/objetos.js'
 import { huellaDe } from '../kit/look.js'
+
 
 // ---------------------------------------------------------------- fragmentos reutilizables
 // El chip de marca: chico, arriba. Lleva matchKey 'brand' -> el linker lo hace VIAJAR entre escenas
 // en vez de cortarlo, que es el gesto que mas "hecho por un editor" se ve.
 function chipMarca(g, marca, o = {}) {
-  if (!marca) return null
   const y = g.y0 + (o.dy || 0)
+  // Con el logo REAL de la pagina, el chip deja de ser el nombre en mayusculas y pasa a ser la marca
+  // tal como ella se dibuja. Mismo id, mismo matchKey y misma caja: para el linker sigue siendo "el
+  // chip", asi que sigue VIAJANDO entre escenas en vez de cortarse, que es el gesto que mas se nota.
+  const lg = o.logo
+  if (lg) {
+    // OJO con las unidades: box[2] es fraccion del ANCHO y box[3] del ALTO, y el cuadro es 9:16. Sin
+    // el factor H/W un logo de proporcion 4:1 recibia una caja de 0.12x0.03 — que en pixeles es
+    // 130x58, o sea proporcion 2.2 — y capaElemento lo ajustaba por el ancho dejandolo a la mitad del
+    // alto pedido. No se deformaba (eso lo impide el ajuste), pero salia chico sin motivo.
+    const alto = 0.030
+    const ancho = Math.min(g.w * 0.5, alto * (lg.ar || 3) * (CANVAS.H / CANVAS.W))
+    const x = o.align === 'center' ? 0.5 - ancho / 2 : o.align === 'right' ? g.x0 + g.w - ancho : g.x0
+    return elemento([x, y, ancho, alto], lg.url, lg.ar, {
+      id: 'brand', role: 'mark', matchKey: 'brand', rol: 'logo', ancla: 'top', z: 30, reveal: 'fade',
+    })
+  }
+  if (!marca) return null
   return texto([g.x0, y, g.w, 0.03], marca, {
     id: 'brand', role: 'mark', matchKey: 'brand', align: o.align || 'left',
     upper: true, color: 'dim', z: 30, reveal: 'fade',
   })
 }
+// ---------------------------------------------------------------- elementos REALES de la pagina
+// El pagemodel puede traer recortes PNG de los objetos de la pagina (su logo, sus tarjetas, su boton).
+// Cuando estan, el video muestra la marca; cuando no, el motor dibuja sus figuras como siempre. Todo
+// lo de aca es OPCIONAL por diseño: una pagina que bloquea al bot, o una captura sin credenciales de
+// hosting, tienen que seguir dando un video entero.
+//
+// SE VE O NO SE USA. Un recorte trae los colores que tenia EN SU PAGINA, y el look del video no es la
+// pagina: un logo negro de una landing clara, puesto sobre el fondo oscuro que eligio el look,
+// simplemente no esta. Y "el logo no aparece" es el defecto que el dueño de la marca nota antes que
+// ninguno. Por eso todo elemento pasa por `seVe` antes de entrar.
+//
+// El umbral es 2.2 y no el 4.5 de la tipografia a proposito: esto no es texto que haya que LEER, es
+// una forma que hay que DISTINGUIR del fondo, y pedirle contraste de lectura descartaria logos
+// perfectamente visibles.
+const CONTRASTE_MIN_ELEM = 2.2
+function seVe(el, look) {
+  if (!el || !el.url) return false
+  // sin alfa el recorte trae su propio fondo opaco: se recorta contra si mismo, no contra el video
+  if (!el.alfa) return true
+  return contrast(el.color || '#808080', look.bg0) >= CONTRASTE_MIN_ELEM
+}
+
 // El rail: la linea de acento. Es el elemento que da CONTINUIDAD visual a todo el video.
 function rail(g, o = {}) {
   const vert = !!o.vert
@@ -125,6 +164,7 @@ C['hero.objeto'] = (c, pm, look, g, r, est) => {
 
 C['hero.appwindow'] = (c, pm, look, g, r, est) => {
   const [oy, oh] = g.band(0.12, 0.56)
+
   // La ventana lista features solo si el video NO tiene una escena dedicada a features. Con las dos,
   // el mismo trio de titulos salia dos veces seguidas — lo caza el gate de monotonia, y aparecio recien
   // con paginas REALES (Ghost, Basecamp, la nuestra): la matriz sintetica no daba esa combinacion.
@@ -372,8 +412,38 @@ export function composeStoryboard(pm, guion, look, seed) {
   // una pagina 404 cuyo <title> es el nombre del sitio contaba como "rica" y se quedaba con el chip de
   // marca en todos los cuadros, diciendo lo mismo tres veces seguidas.
   const rico = !!((pm.semantica.queHace && !mismaCosa(pm.semantica.queHace, pm.brand)) || (pm.semantica.features || []).length || (pm.semantica.pruebas.stats || []).length)
+  // POOLS DE ELEMENTOS REALES. Se filtran UNA vez por `seVe` (el look ya esta decidido) para que
+  // ningun compositor tenga que acordarse de chequearlo. Si la pagina no dio elementos, todo queda
+  // vacio y el motor compone exactamente como antes.
+  const els = (pm.assets && pm.assets.elementos) || []
+  const delRol = rol => els.filter(e => e.rol === rol && seVe(e, look))
+  let ip_ = 0
+  // ORDEN POR PROPORCION, no por rol. Una pagina se diseña para una pantalla apaisada y sus piezas
+  // salen anchas: una tarjeta de 1216x340 puesta en un cuadro 9:16 mide el 13% del alto — una
+  // estampilla en el medio de la nada, que es peor que el objeto dibujado que reemplaza. Las piezas
+  // que ya vienen con proporcion de pieza vertical entran primero; las apaisadas entran igual pero
+  // ultimas, y sangrando (abajo).
+  // 1.12 es la proporcion de la caja que los compositores le ceden al heroe (0.88 del ancho por 0.44
+  // del alto en un 9:16). Se mide en escala logaritmica porque el mismo desvio duele igual hacia los
+  // dos lados: 2.24 esta tan lejos de encajar como 0.56.
+  const CAJA_AR = 1.12
+  const fotos = [...delRol('foto'), ...delRol('hero')]
+    .sort((a, b) => Math.abs(Math.log(a.ar / 0.75)) - Math.abs(Math.log(b.ar / 0.75)))
+  const piezas = [...delRol('tarjeta'), ...delRol('hero'), ...delRol('foto')]
+    .filter(e => e.ar <= 6 && e.ar >= 0.18)      // mas alla de eso es una franja, no un objeto
+    .sort((a, b) => Math.abs(Math.log(a.ar / CAJA_AR)) - Math.abs(Math.log(b.ar / CAJA_AR)))
   const est = {
     objs, dominio: dominioDe(pm), pobre: !rico,
+    logoEl: delRol('logo')[0] || null,
+    ctaEl: delRol('cta')[0] || null,
+    // Las piezas se reparten SIN reposicion, igual que los objetos dibujados: dos escenas seguidas
+    // mostrando la misma tarjeta de la pagina es el mismo defecto que el motor viejo tenia con su
+    // tarjeta de catalogo, solo que con mejor arte.
+    proxPieza: () => (piezas.length ? piezas[ip_++ % piezas.length] : null),
+    hayPiezas: piezas.length > 0,
+    // para las capas `photo`: nuestro recorte de la MISMA imagen. Se prefiere el de proporcion mas
+    // parecida a un cuadro vertical, que es donde va a vivir.
+    fotoEl: fotos.length ? (url => (fotos.find(e => e.url === url) ? url : fotos[0].url)) : null,
     // el cierre necesita saber si la marca ya se mostro en grande para no repetirla
     marcaEnGrande: guion.escenas.some(e => e.id === 'open.brand' || e.id === 'hook.marca'),
     hayEscenaDeFeatures: guion.escenas.some(e => e.id === 'rafaga.beat' || e.id === 'features.bento'),
@@ -393,6 +463,65 @@ export function composeStoryboard(pm, guion, look, seed) {
     // lo mismo y el video se lee como un error. Con contenido real el chip si sirve — ancla la marca
     // mientras pasa otra cosa.
     if (est.pobre && est.marcaEnGrande) layers = layers.filter(l => !(l.id === 'brand' && l.role === 'mark'))
+    // EL LOGO REAL REEMPLAZA AL CHIP, en un solo lugar y para todas las escenas. Hacerlo aca y no en
+    // cada compositor evita tocar los doce que ponen chip, y sobre todo evita que uno se olvide.
+    // Solo el CHIP (role 'mark'): cuando la marca es el TITULAR de la escena — una pagina sin material
+    // cuyo unico contenido es su nombre — el foco tiene que seguir siendo texto, porque la jerarquia
+    // tipografica que exige C3 se mide en tamaño de fuente y una imagen no tiene tamaño de fuente.
+    if (est.logoEl) layers = layers.map(l => (l.id === 'brand' && l.role === 'mark' && l.kind === 'text')
+      ? chipMarca(g, pm.brand, { logo: est.logoEl, align: l.align, dy: l.box[1] - g.y0 })
+      : l)
+    // EL OBJETO DIBUJADO CEDE AL OBJETO REAL. Es la sustitucion que hace toda la diferencia: estas
+    // escenas existen para mostrar el producto, y hasta ahora mostraban un escudo o una ventana de
+    // catalogo teñidos con la paleta de la marca — parecidos a la pagina, pero no la pagina. Cada
+    // escena recibe una pieza DISTINTA (sin reposicion), asi que un video de seis escenas recorre
+    // seis objetos reales del sitio en vez de repetir el mismo.
+    //
+    // Se conserva id, matchKey, caja, foco y z: para el linker sigue siendo "el heroe", asi que los
+    // match-cuts que conectan una escena con la siguiente siguen funcionando exactamente igual.
+    // Va DESPUES de recentrar-no: va antes, porque el recentrado mide cajas y estas no cambian.
+    if (est.hayPiezas) layers = layers.map(l => {
+      if (l.kind !== 'heroObj') return l
+      const p = est.proxPieza()
+      if (!p) return l
+      // sombra: el recorte trae la que tenia contra el fondo de SU pagina y sobre el fondo del video
+      // se pierde, dejando la tarjeta pegada como una calcomania. Sube cuando el objeto casi no
+      // contrasta con el fondo — una tarjeta blanca sobre un look claro sin sombra no tiene borde.
+      const c = contrast(p.color || '#808080', look.bg0)
+      // UNA PIEZA ANCHA SANGRA. Ajustada dentro de los margenes queda diminuta y la escena se lee
+      // vacia; de borde a borde se lee como una banda, que es una composicion valida y ademas le
+      // abre al linker las recetas de transicion que piden `sangra`.
+      const ancha = p.ar > 1.9
+      const box = ancha
+        ? [0, l.box[1] + (l.box[3] - Math.min(l.box[3], (CANVAS.W / p.ar) / CANVAS.H)) / 2, 1, Math.min(l.box[3], (CANVAS.W / p.ar) / CANVAS.H)]
+        : l.box
+      return elemento(box, p.url, p.ar, {
+        id: l.id, matchKey: l.matchKey, focal: l.focal, rol: p.rol, z: l.z,
+        sangra: ancha, sombra: ancha ? 0 : (c < 1.6 ? 0.9 : 0.5), reveal: l.reveal,
+      })
+    })
+    // LA FOTO SALE DE NUESTRO RECORTE, no de la URL de la pagina. Es la misma imagen — el extractor la
+    // saca del DOM — pero la nuestra esta hospedada por nosotros, recortada y capada de tamaño. La
+    // original puede bloquear el hotlink, puede pesar 3MB o puede no existir mañana, y cuando no
+    // carga la escena queda con un rectangulo gris donde iba el producto.
+    // Se cambia SOLO la url: la capa sigue siendo `photo`, con su recorte a la caja, su veil y su
+    // radio. Convertirla en `elemento` cambiaria la composicion, y esta escena esta compuesta con una
+    // foto que sangra y un titulo encima.
+    if (est.fotoEl) layers = layers.map(l => (l.kind === 'photo' ? { ...l, url: est.fotoEl(l.url) } : l))
+    // EL BOTON REAL en el cierre. La pildora dibujada dice el CTA correcto — sale del texto de la
+    // pagina — pero con la forma, el color y la tipografia que eligio el motor. El boton recortado es
+    // el que el usuario va a ver cuando entre al sitio, y esa continuidad entre el video y la landing
+    // es media razon por la que un reel convierte.
+    if (est.ctaEl) layers = layers.map(l => {
+      if (l.kind !== 'badge' || l.id !== 'cta') return l
+      const e = est.ctaEl
+      const alto = Math.min(l.box[3] * 1.15, l.box[2] / (e.ar || 4) * (CANVAS.W / CANVAS.H))
+      const ancho = alto * (e.ar || 4) * (CANVAS.H / CANVAS.W)
+      const x = l.align === 'left' ? l.box[0] : l.align === 'right' ? l.box[0] + l.box[2] - ancho : 0.5 - ancho / 2
+      return elemento([x, l.box[1], ancho, alto], e.url, e.ar, {
+        id: l.id, matchKey: l.matchKey, focal: l.focal, rol: 'cta', z: l.z, sombra: 0.4,
+      })
+    })
     layers = recentrar(layers, g)
     return escena(`s${i}_${esc.id.replace('.', '-')}`, esc.dur, layers, {
       escena: esc.id, familia: esc.familia, rol: esc.rol, t0: esc.t0,

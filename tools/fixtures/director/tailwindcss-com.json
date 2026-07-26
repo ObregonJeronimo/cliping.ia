@@ -112,7 +112,8 @@
     ],
     "logo": "https://tailwindcss.com/favicons/apple-touch-icon.png?v=4",
     "ogImage": "https://tailwindcss.com/_next/static/media/dark-mode.light.0tx34lu8jwt_1.png",
-    "screenshot": "C:\\Users\\Usuario\\Documents\\cliping.ia\\backend\\..\\tools\\out\\e2e_tailwindcss.png"
+    "screenshot": "C:\\Users\\Usuario\\Documents\\cliping.ia\\backend\\..\\tools\\out\\e2e_tailwindcss.png",
+    "elementos": []
   },
   "brand": "Tailwind CSS",
   "captura": {

@@ -112,7 +112,8 @@
     ],
     "logo": "https://ghost.org/images/meta/ghost-6.png",
     "ogImage": "https://ghost.org/images/meta/ghost-6.png",
-    "screenshot": "C:\\Users\\Usuario\\Documents\\cliping.ia\\backend\\..\\tools\\out\\e2e_ghost.png"
+    "screenshot": "C:\\Users\\Usuario\\Documents\\cliping.ia\\backend\\..\\tools\\out\\e2e_ghost.png",
+    "elementos": []
   },
   "brand": "Ghost",
   "captura": {

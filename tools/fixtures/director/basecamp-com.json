@@ -112,7 +112,8 @@
     ],
     "logo": "https://basecamp.com/assets/images/general/apple-touch-icon.png",
     "ogImage": "https://basecamp.com/assets/images/project/page-message-board-light.webp",
-    "screenshot": "C:\\Users\\Usuario\\Documents\\cliping.ia\\backend\\..\\tools\\out\\e2e_basecamp.png"
+    "screenshot": "C:\\Users\\Usuario\\Documents\\cliping.ia\\backend\\..\\tools\\out\\e2e_basecamp.png",
+    "elementos": []
   },
   "brand": "Basecamp",
   "captura": {

@@ -300,6 +300,45 @@ function capaFoto(ctx, l, look, W, H, p, opts, rep) {
   ctx.restore()
 }
 
+// Un elemento REAL de la pagina (logo, boton, tarjeta, foto) recortado como PNG. La caja es el
+// ESPACIO que se le cede, no el destino: se ajusta adentro con `contain` y su proporcion propia. Sin
+// clip a proposito — el recorte ya trae su forma, y volver a cortarlo con el radio del look le
+// comeria las esquinas al boton que la pagina diseño redondo.
+function capaElemento(ctx, l, look, W, H, p, opts, rep) {
+  const [bx, by, bw, bh] = [l.box[0] * W, l.box[1] * H, l.box[2] * W, l.box[3] * H]
+  const img = opts.images && (opts.images.get ? opts.images.get(l.url) : opts.images[l.url])
+  ctx.save()
+  ctx.globalAlpha *= clamp(p * 1.25, 0, 1)
+  const ar = (img && img.width) ? img.width / img.height : (l.ar || 1)
+  let w = bw, h = bw / ar
+  if (h > bh) { h = bh; w = bh * ar }
+  const x = bx + (bw - w) / 2
+  const y = l.ancla === 'top' ? by : l.ancla === 'bottom' ? by + bh - h : by + (bh - h) / 2
+  if (img && img.width) {
+    if (l.sombra > 0) {
+      // El recorte viene con la sombra que tenia EN LA PAGINA, que se calculo contra el fondo de la
+      // pagina. Sobre el fondo del video puede desaparecer, y una tarjeta sin despegue se lee como
+      // una mancha pegada. Esta es opcional y la pide quien compone, no se aplica sola.
+      ctx.shadowColor = rgba(look.bg0, 0.45 * l.sombra)
+      ctx.shadowBlur = H * 0.022 * l.sombra
+      ctx.shadowOffsetY = H * 0.008 * l.sombra
+    }
+    ctx.drawImage(img, x, y, w, h)
+    // El renderer DECLARA el rectangulo que pinto. Medirlo despues contando pixeles no alcanza: un
+    // logo de 16px de alto tiene mas error de redondeo que la tolerancia con la que uno querria
+    // auditarlo, y el antialias del borde se cuenta o no segun el umbral que elija quien mide. Esto
+    // es exacto, y ademas es lo que el editor necesita para dibujar el marco de seleccion sobre el
+    // objeto y no sobre la caja que se le habia cedido.
+    if (rep && rep.elementos) rep.elementos.push({ id: l.id, url: l.url, x, y, w, h })
+  } else {
+    // sin imagen: NADA. Un placeholder gris con la forma del logo es peor que la ausencia, porque el
+    // resto de la escena se compuso contando con este objeto y el hueco al menos se ve como un hueco.
+    // Se reporta para que el gate lo cuente igual que una foto faltante.
+    if (rep) rep.faltantes.push(l.url)
+  }
+  ctx.restore()
+}
+
 function capaBadge(ctx, l, look, W, H, p) {
   const [x, y, w, h] = [l.box[0] * W, l.box[1] * H, l.box[2] * W, l.box[3] * H]
   let txt = String(l.text || '')
@@ -410,6 +449,7 @@ export function drawCapa(ctx, l, look, W, H, p, opts = {}, rep = null) {
     case 'shape': capaForma(ctx, l, look, W, H, p); break
     case 'heroObj': capaObjeto(ctx, l, look, W, H, p, opts); break
     case 'photo': capaFoto(ctx, l, look, W, H, p, opts, rep); break
+    case 'elemento': capaElemento(ctx, l, look, W, H, p, opts, rep); break
     case 'badge': capaBadge(ctx, l, look, W, H, p); break
     case 'stepper': capaStepper(ctx, l, look, W, H, p); break
     case 'priceTag': capaPrecio(ctx, l, look, W, H, p); break
@@ -420,7 +460,7 @@ export function drawCapa(ctx, l, look, W, H, p, opts = {}, rep = null) {
 
 // ---------------------------------------------------------------- escena
 export function drawScene(ctx, sc, look, W, H, opts = {}) {
-  const rep = { faltantes: [], desbordes: [], capas: sc.layers.length }
+  const rep = { faltantes: [], desbordes: [], elementos: [], capas: sc.layers.length }
   const P = opts.p == null ? 1 : clamp(opts.p, 0, 1)
   for (const l of sc.layers) {
     const pr = opts.props && opts.props[l.id]

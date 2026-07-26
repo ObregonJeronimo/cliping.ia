@@ -51,7 +51,7 @@ const DEMO = normalizePageModel({
     cta: 'Probalo gratis',
     idioma: 'es',
   },
-  assets: { images: [] },
+  assets: { images: [], elementos: [] },
 })
 
 // ESTUDIO DIRECTOR — el editor del motor storyboard-first (src/director). Pega un link, el backend
@@ -100,7 +100,14 @@ export default function DirectorStudio() {
   // ellas segun el seed. Precargando solo las primeras 12, un seed que eligiera la 15 dibujaba un
   // hueco gris — en el preview y en el MP4. Se precargan todas: cambiar de variante no vuelve a bajar
   // nada, y la foto que el storyboard referencie siempre esta en el Map.
-  const imgUrls = useMemo(() => (pm.assets.images || []).map(i => i.url).filter(Boolean).slice(0, 18), [pm])
+  // Los ELEMENTOS (recortes de los objetos reales de la pagina) van en la MISMA precarga que las
+  // fotos: para el renderer las dos cosas son una imagen en el Map, y si no estuvieran aca el motor
+  // dibujaria el hueco en vez del logo o la tarjeta de la marca. Van primero porque un elemento
+  // faltante rompe el foco de una escena; una foto faltante deja un bloque neutro.
+  const imgUrls = useMemo(() => [
+    ...(pm.assets.elementos || []).map(e => e.url),
+    ...(pm.assets.images || []).map(i => i.url),
+  ].filter(Boolean).slice(0, 32), [pm])
   const imgKey = imgUrls.join('|')
   useEffect(() => {
     const map = new Map()

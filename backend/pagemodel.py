@@ -39,6 +39,10 @@ MODELO_USO = ("suscripcion", "compra", "reserva", "registro", "descarga", "conta
 REGISTER = ("formal", "casual", "warm")
 AWARENESS = ("unaware", "problem", "solution", "product", "most")
 IMG_KIND = ("producto", "persona", "ambiente", "ui", "desconocido")
+# Roles de los recortes de elementos reales. NO son "que se ve" (eso es IMG_KIND) sino QUE PAPEL juega
+# el objeto en la pagina, que es lo que decide como animarlo: un logo entra y se queda, un CTA cierra,
+# una tarjeta desfila, una foto respalda.
+EL_ROL = ("logo", "cta", "tarjeta", "hero", "foto")
 
 # defaults del schema (§1.2/§1.3) — una sola tabla, citada desde los dos lenguajes
 DEF_ACCENT = "#5b8cff"          # el mismo default que brief.brandColor en src/kinetic/core/dna.js
@@ -476,10 +480,36 @@ def _norm_assets(site, brief, content):
         imgs.append({"url": url, "kind": _enum(kind, IMG_KIND, "desconocido"),
                      "rank": _f(rank, float(n - i), 0, 1e9, 2),   # sin rank medido: el ORDEN de llegada ya es el ranking
                      "ar": None if ar in (None, "") else _f(ar, None, 0.01, 100, 3)})
+    # ELEMENTOS: recortes PNG de los objetos REALES de la pagina (logo, tarjetas, botones, fotos) que
+    # el Director anima en vez de dibujar figuras de catalogo. A diferencia de `images` — que son URLs
+    # que ya existian en la pagina — estos son archivos que creamos y hospedamos nosotros, asi que sin
+    # `url` no sirven de nada: el path local vive en la maquina que capturo.
+    els = []
+    for e in _list(site.get("elementos"))[:14]:
+        if not isinstance(e, dict):
+            continue
+        url = _s(e.get("url"))
+        if not url or url.startswith("data:"):
+            continue
+        w, h = _f(e.get("w"), 0, 0, 20000, 0), _f(e.get("h"), 0, 0, 20000, 0)
+        if w < 16 or h < 12:
+            continue
+        els.append({"id": _s(e.get("id")) or f"el{len(els)}", "rol": _enum(e.get("rol"), EL_ROL, "foto"),
+                    "url": url, "w": int(w), "h": int(h), "ar": round(w / h, 3),
+                    "alfa": bool(e.get("alfa")), "textura": _f(e.get("textura"), 0.0, 0, 1, 3),
+                    # color/lum: el color DOMINANTE de lo opaco del recorte. Decide si el objeto se ve
+                    # sobre el fondo que eligio el look — un logo negro sobre un fondo oscuro no esta.
+                    "color": _hex(e.get("color"), "#808080"), "lum": _f(e.get("lum"), 0.5, 0, 1, 3),
+                    # minPx es el texto MAS CHICO que el elemento trae adentro, medido en el navegador.
+                    # Es lo unico exacto que tenemos sobre si va a poder leerse en un reel; 0 = no tiene
+                    # texto propio (una foto), que no es lo mismo que "ilegible".
+                    "minPx": int(_f(e.get("minPx"), 0, 0, 400, 0)),
+                    "texto": _s(e.get("texto"))[:80]})
+
     return {"logo": _s(site.get("logo") or content.get("logo") or brief.get("logo")),
             "ogImage": _s(content.get("ogImage") or brief.get("mediaImage")),
             "screenshot": _s(site.get("screenshot")),      # SOLO para auditoria humana: no entra al video (§4.3)
-            "images": imgs}
+            "images": imgs, "elementos": els}
 
 
 # ---------------------------------------------------------------- estado de la captura (§5)

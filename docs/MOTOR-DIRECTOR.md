@@ -382,6 +382,14 @@ lotties propios como acentos; objetos 3D (three ya está); modo craft completo.
   guardado SIEMPRE (si el overlay no aplica, se abre el snapshot tal cual — nunca se pierde trabajo).
 - **Skills pagas mañana** → irrelevante por diseño: docs destiladas + `director-independence-check`.
 - **Timeline schema deriva** → `v` en el JSON + migradores en schema.js desde v1.
+- **Los objetos salían de un catálogo, no de la página** → extractor de elementos por DOM
+  (`docs/director/ELEMENTOS.md`). Por DOM y no por visión: el navegador ya sabe dónde termina cada
+  objeto, cuesta $0 y no falla en los bordes. **No se vectoriza**: un PNG recortado ya cubre todo lo
+  que la timeline sabe animar. **Aditivo por diseño**: una página que bloquea al bot no da recortes y
+  el motor compone como antes — lo verifica el gate en cada corrida.
+- **three.js / GSAP para "videos modernos"** → descartado. Rompe la regla de independencia
+  (`director-independence-check`), mete un runtime de terceros en el render y no agrega ningún gesto
+  que la timeline no tenga. Lo que hacía falta no era otro motor de animación: eran otros objetos.
 
 ---
 

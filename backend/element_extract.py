@@ -210,7 +210,7 @@ def _analizar(png: bytes) -> dict | None:
     chico y descentrado que su caja — todo el encuadre queda mal por una razon invisible.
     """
     if not _PIL_OK:
-        return {"png": png, "w": 0, "h": 0, "tinta": 1.0, "textura": 0.0, "hash": hashlib.sha1(png).hexdigest()[:16], "alfa": False}
+        return {"png": png, "w": 0, "h": 0, "tinta": 1.0, "textura": 0.0, "color": "#808080", "lum": 0.5, "hash": hashlib.sha1(png).hexdigest()[:16], "alfa": False}
     try:
         im = Image.open(io.BytesIO(png)).convert("RGBA")
     except Exception:
@@ -262,11 +262,29 @@ def _analizar(png: bytes) -> dict | None:
         if v > prom:
             huella |= (1 << i)
 
+    # COLOR DOMINANTE de lo opaco. Sin esto no hay forma de saber si el logo real se va a ver: un logo
+    # negro sobre el fondo oscuro que eligio el look desaparece, y "el logo no esta" es el defecto que
+    # el dueño de la marca nota antes que ninguno. Se ignoran los pixeles casi transparentes porque en
+    # un recorte con alfa son la mayoria y arrastrarian el promedio a cualquier lado.
+    peq = im.resize((max(1, min(48, w)), max(1, min(48, h))), Image.BOX)
+    sr = sg = sb = 0
+    n_op = 0
+    for (pr, pg_, pb, pa) in peq.getdata():
+        if pa >= 160:
+            sr += pr; sg += pg_; sb += pb; n_op += 1
+    if n_op:
+        cr, cg, cb = sr // n_op, sg // n_op, sb // n_op
+    else:
+        cr = cg = cb = 128
+    color = "#%02x%02x%02x" % (cr, cg, cb)
+    lum = round((0.2126 * cr + 0.7152 * cg + 0.0722 * cb) / 255.0, 3)
+
     buf = io.BytesIO()
     im.save(buf, "PNG", optimize=True)
     b = buf.getvalue()
     return {"png": b, "w": w, "h": h, "tinta": round(tinta, 3), "textura": round(textura, 3),
-            "hash": hashlib.sha1(im.tobytes()).hexdigest()[:16], "huella": huella, "alfa": tiene_alfa}
+            "hash": hashlib.sha1(im.tobytes()).hexdigest()[:16], "huella": huella, "alfa": tiene_alfa,
+            "color": color, "lum": lum}
 
 
 async def extraer_elementos(page, max_n: int = MAX_ELEMENTOS) -> list[dict]:
@@ -340,6 +358,7 @@ async def extraer_elementos(page, max_n: int = MAX_ELEMENTOS) -> list[dict]:
         huellas.append((a["huella"], txt))
         out.append({"id": f"el{c['i']}", "rol": c["rol"], "w": a["w"], "h": a["h"],
                     "tinta": a["tinta"], "textura": a["textura"], "alfa": a["alfa"],
+                    "color": a["color"], "lum": a["lum"],
                     "minPx": c.get("minPx", 0), "texto": c.get("texto", ""), "png": a["png"]})
         if len(out) >= max_n:
             break
@@ -350,3 +369,45 @@ async def extraer_elementos(page, max_n: int = MAX_ELEMENTOS) -> list[dict]:
     peso = {"logo": 100, "cta": 80, "tarjeta": 70, "hero": 65, "foto": 50}
     out.sort(key=lambda e: (-peso.get(e["rol"], 30), -min(e.get("minPx") or 99, 20)))
     return out
+
+
+async def publicar_elementos(elementos: list[dict], dir_local: str, prefijo: str) -> list[dict]:
+    """Guarda los PNG en disco y los sube; devuelve la lista SIN bytes y con `url`.
+
+    Los recortes son archivos nuevos (no existen en la pagina), asi que alguien tiene que hospedarlos.
+    Se descarta el data-uri a proposito: un elemento pesa cientos de kB y embeberlos en el pagemodel lo
+    volveria de megabytes, cuando el pagemodel viaja en cada request y se guarda por video.
+
+    Todo best-effort: sin credenciales de Cloudinary el elemento se queda con url="" y el pagemodel lo
+    descarta, asi que el Director vuelve solo a dibujar sus figuras. Degradar es correcto; romper la
+    captura entera porque no habia una API key, no.
+    """
+    if not elementos:
+        return []
+    os.makedirs(dir_local, exist_ok=True)
+    subir = None
+    try:
+        from cloudinary_upload import upload_image, API_SECRET
+        if API_SECRET:
+            subir = upload_image
+    except Exception as e:
+        print(f"[elementos] sin uploader: {e}")
+
+    async def uno(e):
+        path = os.path.join(dir_local, f"{prefijo}_{e['id']}.png")
+        try:
+            with open(path, "wb") as f:
+                f.write(e["png"])
+        except Exception as ex:
+            print(f"[elementos] no pude guardar {e['id']}: {ex}")
+            return None
+        url = ""
+        if subir:
+            try:
+                url = await subir(path, f"el_{prefijo}_{e['id']}") or ""
+            except Exception as ex:
+                print(f"[elementos] upload {e['id']}: {str(ex)[:80]}")
+        return {k: v for k, v in e.items() if k != "png"} | {"url": url, "path": path}
+
+    subidos = await asyncio.gather(*[uno(e) for e in elementos], return_exceptions=False)
+    return [s for s in subidos if s]

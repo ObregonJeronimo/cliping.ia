@@ -28,7 +28,8 @@
     ],
     "logo": "https://linear.app/static/apple-touch-icon.png?v=2",
     "ogImage": "https://linear.app/cdn-cgi/imagedelivery/fO02fVwohEs9s9UHFwon6A/c7fa8f5f-d439-4329-6a65-de549b51e300/f=auto,dpr=2,fit=scale-down,metadata=none",
-    "screenshot": "C:\\Users\\Usuario\\Documents\\cliping.ia\\backend\\..\\tools\\out\\e2e_linear.png"
+    "screenshot": "C:\\Users\\Usuario\\Documents\\cliping.ia\\backend\\..\\tools\\out\\e2e_linear.png",
+    "elementos": []
   },
   "brand": "Linear",
   "captura": {

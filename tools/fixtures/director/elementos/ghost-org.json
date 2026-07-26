@@ -1,0 +1,375 @@
+{
+  "assets": {
+    "images": [
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 18,
+        "url": "https://ghost.org/images/meta/ghost-6.png"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 17,
+        "url": "https://ghost.org/images/home/posts_hu3b21debb17401a2115316debd8fe8fa5_467056_3600x0_resize_q100_h2_box_3.webp"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 16,
+        "url": "https://ghost.org/images/home/posts_hu3b21debb17401a2115316debd8fe8fa5_467056_2800x0_resize_q100_h2_box_3.webp"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 15,
+        "url": "https://ghost.org/images/marketplace/themes/gallery/1_hue3493b35e18683fc18b4e18de641178d_265724_1000x0_resize_q100_h2_box_3.webp"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 14,
+        "url": "https://ghost.org/images/marketplace/themes/gallery/10_hu70a322e78cd25fadb797f09d7028b7c6_158995_1000x0_resize_q100_h2_box_3.webp"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 13,
+        "url": "https://ghost.org/images/marketplace/themes/gallery/9_hu7f65267634ae5611e15c6c9193a30606_103301_1000x0_resize_q100_h2_box_3.webp"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 12,
+        "url": "https://ghost.org/images/marketplace/themes/gallery/2_huc60bd78e9687369ad14d5f988e95f0f4_204379_1000x0_resize_q100_h2_box_3.webp"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 11,
+        "url": "https://ghost.org/images/marketplace/themes/gallery/31_hu23677a6dc7ceb9d950273b47389ee9f2_102543_600x0_resize_q100_h2_box_3.webp"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 10,
+        "url": "https://ghost.org/images/marketplace/themes/gallery/16_hu15106a464093f7531d0ae40d764c2870_115750_1000x0_resize_q100_h2_box_3.webp"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 9,
+        "url": "https://ghost.org/images/marketplace/themes/gallery/7_hub7d4ed8d68e4b8522178aea5cbee02bb_151385_1000x0_resize_q100_h2_box_3.webp"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 8,
+        "url": "https://ghost.org/images/marketplace/themes/gallery/29_hu7d8007571fef1208eae8c9987d766944_90794_600x0_resize_q100_h2_box_3.webp"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 7,
+        "url": "https://ghost.org/images/marketplace/themes/gallery/32_huab68c0400e99d7ba654d78c9bbfb06f6_24785_600x0_resize_q100_h2_box_3.webp"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 6,
+        "url": "https://ghost.org/images/marketplace/themes/gallery/33_hu052ed601aea7d9b9dcfdefe81929a862_99991_600x0_resize_q100_h2_box_3.webp"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 5,
+        "url": "https://ghost.org/images/marketplace/themes/gallery/15_hu11e331409657f9ea278e420d0f59bce6_111652_1000x0_resize_q100_h2_box_3.webp"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 4,
+        "url": "https://ghost.org/images/marketplace/themes/gallery/27_hu084232fd0add9091fbcdf313dd0581d6_41497_600x0_resize_q100_h2_box_3.webp"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 3,
+        "url": "https://ghost.org/images/marketplace/themes/gallery/4_hu835c013f2ea94981ae437d729e102449_251558_1000x0_resize_q100_h2_box_3.webp"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 2,
+        "url": "https://ghost.org/images/marketplace/themes/gallery/20_huafed1ac3adb86ba9ee2c714f2ffb2638_177149_1000x0_resize_q100_h2_box_3.webp"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 1,
+        "url": "https://ghost.org/images/marketplace/themes/gallery/19_hu33a0ac050ddeefda399b8f9a2e3cbe6e_126115_1000x0_resize_q100_h2_box_3.webp"
+      }
+    ],
+    "logo": "https://ghost.org/images/meta/ghost-6.png",
+    "ogImage": "https://ghost.org/images/meta/ghost-6.png",
+    "screenshot": "C:\\Users\\Usuario\\Documents\\cliping.ia\\backend\\..\\tools\\out\\e2e_ghost.png",
+    "elementos": [
+      {
+        "id": "el0",
+        "rol": "logo",
+        "url": "ghost-org__el0-logo.png",
+        "w": 211,
+        "h": 69,
+        "ar": 3.058,
+        "alfa": true,
+        "textura": 0,
+        "color": "#121316",
+        "lum": 0.075,
+        "minPx": 15,
+        "texto": ""
+      },
+      {
+        "id": "el2",
+        "rol": "cta",
+        "url": "ghost-org__el2-cta.png",
+        "w": 544,
+        "h": 124,
+        "ar": 4.387,
+        "alfa": false,
+        "textura": 0.157,
+        "color": "#c2ed17",
+        "lum": 0.833,
+        "minPx": 20,
+        "texto": "Start publishing now →"
+      },
+      {
+        "id": "el1",
+        "rol": "cta",
+        "url": "ghost-org__el1-cta.png",
+        "w": 310,
+        "h": 80,
+        "ar": 3.875,
+        "alfa": true,
+        "textura": 0.183,
+        "color": "#27292b",
+        "lum": 0.16,
+        "minPx": 14,
+        "texto": "Get Started — free"
+      },
+      {
+        "id": "el4",
+        "rol": "foto",
+        "url": "ghost-org__el4-foto.png",
+        "w": 1400,
+        "h": 854,
+        "ar": 1.639,
+        "alfa": false,
+        "textura": 0.047,
+        "color": "#171519",
+        "lum": 0.085,
+        "minPx": 0,
+        "texto": ""
+      },
+      {
+        "id": "el5",
+        "rol": "foto",
+        "url": "ghost-org__el5-foto.png",
+        "w": 1400,
+        "h": 817,
+        "ar": 1.714,
+        "alfa": false,
+        "textura": 0.118,
+        "color": "#f6f6f6",
+        "lum": 0.965,
+        "minPx": 0,
+        "texto": ""
+      },
+      {
+        "id": "el6",
+        "rol": "foto",
+        "url": "ghost-org__el6-foto.png",
+        "w": 1400,
+        "h": 932,
+        "ar": 1.502,
+        "alfa": false,
+        "textura": 0.071,
+        "color": "#797a8e",
+        "lum": 0.483,
+        "minPx": 0,
+        "texto": ""
+      },
+      {
+        "id": "el7",
+        "rol": "foto",
+        "url": "ghost-org__el7-foto.png",
+        "w": 1400,
+        "h": 777,
+        "ar": 1.802,
+        "alfa": false,
+        "textura": 0.073,
+        "color": "#14161a",
+        "lum": 0.086,
+        "minPx": 0,
+        "texto": "Ghost screenshot"
+      },
+      {
+        "id": "el8",
+        "rol": "foto",
+        "url": "ghost-org__el8-foto.png",
+        "w": 1152,
+        "h": 1400,
+        "ar": 0.823,
+        "alfa": true,
+        "textura": 0.042,
+        "color": "#f2c7e6",
+        "lum": 0.825,
+        "minPx": 0,
+        "texto": ""
+      }
+    ]
+  },
+  "brand": "Ghost",
+  "captura": {
+    "confianza": 0.91,
+    "errores": [],
+    "estado": "ok",
+    "httpStatus": 200,
+    "notas": [
+      "titulares por fallback (no-hoja)",
+      "marca acromatica: accent medido sin gate de chroma"
+    ],
+    "ts": "",
+    "url": "https://ghost.org",
+    "urlFinal": "https://ghost.org/",
+    "viewport": [
+      1280,
+      900
+    ]
+  },
+  "dna": {
+    "density": {
+      "fill": 0.18,
+      "nivel": "aireado",
+      "nodos": 12,
+      "score": 0.21
+    },
+    "modernidad": [
+      "bigtype"
+    ],
+    "modernidadScores": {
+      "bigtype": 1
+    },
+    "mood": {
+      "calidez": 0.08,
+      "energia": 0.58,
+      "formalidad": 0.66
+    },
+    "palette": {
+      "accent": "#64748b",
+      "accent2": null,
+      "accentText": "#64748b",
+      "acromatica": false,
+      "bg": "#ffffff",
+      "bgLum": 1,
+      "inkOnBg": "#000000"
+    },
+    "shape": {
+      "borderStyle": "none",
+      "borderWidth": 0,
+      "pill": false,
+      "radius": 0,
+      "radiusRatio": 0,
+      "shadowStyle": "flat"
+    },
+    "signals": {
+      "accentScore": 0.15,
+      "areaImgVsTexto": 0,
+      "blurBackdrop": 0,
+      "chromaMax": 0.15,
+      "contrasteBgInk": 21,
+      "gradStops": 0,
+      "gridCards": 0,
+      "muestras": {
+        "botones": 4,
+        "cards": 5,
+        "imagenes": 0,
+        "texto": 11
+      }
+    },
+    "typography": {
+      "bodyHint": "grotesk",
+      "caseHint": "sentence",
+      "displayHint": "grotesk",
+      "h1Ratio": 0.08,
+      "script": "latin",
+      "textDir": "ltr",
+      "widthRatio": 0.67
+    }
+  },
+  "semantica": {
+    "audiencia": {
+      "awareness": "solution",
+      "register": "casual",
+      "who": "creators, writers and publishers"
+    },
+    "comoFunciona": [],
+    "cta": "Get Started free",
+    "features": [
+      {
+        "detalle": "Hundreds of beautifully designed publication templates to build your site.",
+        "titulo": "Site design tools"
+      },
+      {
+        "detalle": "Send email newsletters directly from the platform, no third-party tool needed.",
+        "titulo": "Newsletters built-in"
+      },
+      {
+        "detalle": "Monetise your audience with native paid membership and subscription tiers.",
+        "titulo": "Paid subscriptions"
+      },
+      {
+        "detalle": "Track total members, paid members and free members growth from the dashboard.",
+        "titulo": "Native analytics"
+      },
+      {
+        "detalle": "Create discount offers and promotional campaigns for your audience.",
+        "titulo": "Offers & promotions"
+      },
+      {
+        "detalle": "Embed rich media content with dynamic cards in your posts.",
+        "titulo": "Rich media & dynamic cards"
+      }
+    ],
+    "idioma": "en",
+    "modeloUso": "registro",
+    "oferta": {
+      "precio": "",
+      "promo": "",
+      "urgencia": "Just launched: Ghost 6.0"
+    },
+    "pruebas": {
+      "logosClientes": false,
+      "stats": [
+        {
+          "etiqueta": "earned by publishers",
+          "valor": "$100M+"
+        }
+      ],
+      "testimonios": [
+        {
+          "firma": "",
+          "texto": "Used by Platformer, 404Media, Tangle, The Browser and thousands more."
+        }
+      ]
+    },
+    "queHace": "Open source publishing platform with newsletters and paid subscriptions built-in for creators and media outlets.",
+    "tipoNegocio": "saas",
+    "vozDeMarca": [
+      "moderno",
+      "directo",
+      "ambicioso"
+    ]
+  },
+  "url": "https://ghost.org",
+  "v": 1
+}

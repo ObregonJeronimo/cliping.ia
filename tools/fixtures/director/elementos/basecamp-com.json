@@ -1,0 +1,340 @@
+{
+  "assets": {
+    "images": [
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 18,
+        "url": "https://basecamp.com/assets/images/project/page-message-board-light.webp"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 17,
+        "url": "https://basecamp.com/assets/images/project/page-docs-and-files-light.webp"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 16,
+        "url": "https://basecamp.com/assets/images/project/page-to-dos-light.webp"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 15,
+        "url": "https://basecamp.com/assets/images/project/page-card-table-light.webp"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 14,
+        "url": "https://basecamp.com/assets/images/project/view-message-board-light.webp"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 13,
+        "url": "https://basecamp.com/assets/images/project/view-docs-and-files-light.webp"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 12,
+        "url": "https://basecamp.com/assets/images/project/view-to-dos-light.webp"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 11,
+        "url": "https://basecamp.com/assets/images/project/view-chat-light.webp"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 10,
+        "url": "https://basecamp.com/assets/images/project/view-schedule-light.webp"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 9,
+        "url": "https://basecamp.com/assets/images/project/view-card-table-light.webp"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 8,
+        "url": "https://basecamp.com/assets/images/project/background-light.webp"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 7,
+        "url": "https://basecamp.com/videos/meet/chase.webp"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 6,
+        "url": "https://basecamp.com/assets/images/project/background-dark.webp"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 5,
+        "url": "https://basecamp.com/assets/images/project/tool-message-board-dark.webp"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 4,
+        "url": "https://basecamp.com/assets/images/project/tool-docs-and-files-dark.webp"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 3,
+        "url": "https://basecamp.com/assets/images/project/tool-to-dos-dark.webp"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 2,
+        "url": "https://basecamp.com/assets/images/project/tool-chat-dark.webp"
+      },
+      {
+        "ar": null,
+        "kind": "desconocido",
+        "rank": 1,
+        "url": "https://basecamp.com/assets/images/project/tool-schedule-dark.webp"
+      }
+    ],
+    "logo": "https://basecamp.com/assets/images/general/apple-touch-icon.png",
+    "ogImage": "https://basecamp.com/assets/images/project/page-message-board-light.webp",
+    "screenshot": "C:\\Users\\Usuario\\Documents\\cliping.ia\\backend\\..\\tools\\out\\e2e_basecamp.png",
+    "elementos": [
+      {
+        "id": "el1",
+        "rol": "cta",
+        "url": "basecamp-com__el1-cta.png",
+        "w": 858,
+        "h": 135,
+        "ar": 6.356,
+        "alfa": true,
+        "textura": 0.221,
+        "color": "#cfb45d",
+        "lum": 0.704,
+        "minPx": 17,
+        "texto": "Take a 3 minute tour of Basecamp"
+      },
+      {
+        "id": "el2",
+        "rol": "cta",
+        "url": "basecamp-com__el2-cta.png",
+        "w": 950,
+        "h": 180,
+        "ar": 5.278,
+        "alfa": false,
+        "textura": 0.184,
+        "color": "#d8dadc",
+        "lum": 0.854,
+        "minPx": 17,
+        "texto": "Meet Chase, our Head of Support"
+      },
+      {
+        "id": "el0",
+        "rol": "cta",
+        "url": "basecamp-com__el0-cta.png",
+        "w": 225,
+        "h": 68,
+        "ar": 3.309,
+        "alfa": false,
+        "textura": 0.243,
+        "color": "#3984d6",
+        "lum": 0.478,
+        "minPx": 15,
+        "texto": "Sign up free"
+      },
+      {
+        "id": "el4",
+        "rol": "foto",
+        "url": "basecamp-com__el4-foto.png",
+        "w": 1331,
+        "h": 1400,
+        "ar": 0.951,
+        "alfa": false,
+        "textura": 0.096,
+        "color": "#f4f4f4",
+        "lum": 0.957,
+        "minPx": 0,
+        "texto": ""
+      },
+      {
+        "id": "el5",
+        "rol": "foto",
+        "url": "basecamp-com__el5-foto.png",
+        "w": 1390,
+        "h": 1309,
+        "ar": 1.062,
+        "alfa": true,
+        "textura": 0.125,
+        "color": "#909f8f",
+        "lum": 0.606,
+        "minPx": 0,
+        "texto": ""
+      }
+    ]
+  },
+  "brand": "Basecamp",
+  "captura": {
+    "confianza": 1,
+    "errores": [],
+    "estado": "ok",
+    "httpStatus": 200,
+    "notas": [],
+    "ts": "",
+    "url": "https://basecamp.com",
+    "urlFinal": "https://basecamp.com/",
+    "viewport": [
+      1280,
+      900
+    ]
+  },
+  "dna": {
+    "density": {
+      "fill": 0.66,
+      "nivel": "denso",
+      "nodos": 50,
+      "score": 0.78
+    },
+    "modernidad": [
+      "editorial-photo",
+      "brutalist"
+    ],
+    "modernidadScores": {
+      "brutalist": 0.5,
+      "editorial-photo": 1
+    },
+    "mood": {
+      "calidez": 0.14,
+      "energia": 0.82,
+      "formalidad": 0.56
+    },
+    "palette": {
+      "accent": "#2377d2",
+      "accent2": null,
+      "accentText": "#2377d2",
+      "acromatica": false,
+      "bg": "#ffffff",
+      "bgLum": 1,
+      "inkOnBg": "#29353c"
+    },
+    "shape": {
+      "borderStyle": "none",
+      "borderWidth": 0,
+      "pill": false,
+      "radius": 0,
+      "radiusRatio": 0.02,
+      "shadowStyle": "soft"
+    },
+    "signals": {
+      "accentScore": 2.14,
+      "areaImgVsTexto": 10.07,
+      "blurBackdrop": 0,
+      "chromaMax": 0.69,
+      "contrasteBgInk": 12.58,
+      "gradStops": 0,
+      "gridCards": 0,
+      "muestras": {
+        "botones": 14,
+        "cards": 8,
+        "imagenes": 18,
+        "texto": 47
+      }
+    },
+    "typography": {
+      "bodyHint": "grotesk",
+      "caseHint": "sentence",
+      "displayHint": "grotesk",
+      "h1Ratio": 0.03,
+      "script": "latin",
+      "textDir": "ltr",
+      "widthRatio": 0.65
+    }
+  },
+  "semantica": {
+    "audiencia": {
+      "awareness": "problem",
+      "register": "casual",
+      "who": "team leads and project managers"
+    },
+    "comoFunciona": [],
+    "cta": "Try it free",
+    "features": [
+      {
+        "detalle": "Centralized board for team announcements and project updates.",
+        "titulo": "Message Board"
+      },
+      {
+        "detalle": "Store and organize project documents, images, and files.",
+        "titulo": "Docs & Files"
+      },
+      {
+        "detalle": "Track tasks with checklists, assignments, and workflow stages.",
+        "titulo": "Project Tasks"
+      },
+      {
+        "detalle": "Real-time team chat with voice note support.",
+        "titulo": "Chat"
+      },
+      {
+        "detalle": "Calendar view for meetings, deadlines, and events.",
+        "titulo": "Schedule"
+      },
+      {
+        "detalle": "Connect Figma, Google Drive, Zoom and other tools directly.",
+        "titulo": "External links"
+      }
+    ],
+    "idioma": "en",
+    "modeloUso": "suscripcion",
+    "oferta": {
+      "precio": "",
+      "promo": "Two paid plans, one free plan",
+      "urgencia": ""
+    },
+    "pruebas": {
+      "logosClientes": false,
+      "stats": [
+        {
+          "etiqueta": "usuarios activos en este",
+          "valor": "71.782"
+        }
+      ],
+      "testimonios": [
+        {
+          "firma": "Patrick Sheffield, Moore",
+          "texto": "Simply put, we get more work done, quicker, and better. Productivity is up. Errors are down. Clients are happier."
+        },
+        {
+          "firma": "Aaron Bingaman, Penn State",
+          "texto": "Information flows like water. A lot more transparency. Everyone is on the same page. No more secrets and blindspots."
+        },
+        {
+          "firma": "Shannon Kropf, Full Sail",
+          "texto": "Since using Basecamp, our communication is drastically better and deadlines are met without drama."
+        }
+      ]
+    },
+    "queHace": "Project management tool that centralizes tasks, chat, docs, and schedules in one place.",
+    "tipoNegocio": "saas",
+    "vozDeMarca": [
+      "straightforwar",
+      "reliable",
+      "calm"
+    ]
+  },
+  "url": "https://basecamp.com",
+  "v": 1
+}

@@ -16,7 +16,7 @@ import { clamp } from '../core/util.js'
 export function drawFrame(ctx, tl, t, opts = {}) {
   const W = opts.W || tl.canvas.W, H = opts.H || tl.canvas.H
   const look = tl.look
-  const rep = { faltantes: [], desbordes: [], capas: 0, t }
+  const rep = { faltantes: [], desbordes: [], elementos: [], capas: 0, t }
   ctx.save()
   ctx.clearRect(0, 0, W, H)
 

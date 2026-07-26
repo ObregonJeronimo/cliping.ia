@@ -25,6 +25,15 @@ except Exception as _e:  # pragma: no cover
     _PW_OK = False
     print(f"[capture] Playwright no disponible: {_e}")
 
+try:
+    from element_extract import extraer_elementos, publicar_elementos
+except Exception as _ee:  # pragma: no cover
+    # sin PIL o sin el modulo la captura sigue funcionando entera: los elementos son ADITIVOS y el
+    # Director vuelve solo a dibujar sus figuras si no le llega ninguno
+    async def extraer_elementos(page, max_n=0): return []
+    async def publicar_elementos(els, d, p): return []
+    print(f"[capture] extractor de elementos no disponible: {_ee}")
+
 # Perfil de navegador REALISTA (anti bot-wall): el User-Agent headless de Playwright lo detectan muchos muros
 # (Cloudflare/etc.) -> servian el "Just a moment..." o nada. Un UA de Chrome real + locale/timezone de AR hacen
 # que la captura parezca un usuario real argentino -> mas sitios devuelven su contenido real. Best-effort.
@@ -1361,15 +1370,19 @@ async def _settle(page):
     await page.wait_for_timeout(900)
 
 
-async def capture_all(url: str, out_path: str, width: int = 1280, height: int = 900) -> dict:
+async def capture_all(url: str, out_path: str, width: int = 1280, height: int = 900, elementos: bool = True) -> dict:
     """UNA sola carga de Chromium: extrae el texto renderizado (content) Y saca el screenshot,
     en vez de abrir el navegador dos veces por video. Devuelve {'screenshot': path|None,
     'content': dict|None, 'images': [...], 'dna': {...}, 'captura': {...}}. Best-effort: cualquier
     parte que falle vuelve None/{}, no rompe.
 
     ADITIVO (F1): 'dna' (mediciones CRUDAS de DNA-SPEC §2) y 'captura' (estado/httpStatus/urlFinal de
-    §1.1) son claves NUEVAS; todo lo que ya devolvia (content/images/screenshot) no cambio de forma."""
-    out = {"screenshot": None, "content": None, "images": [], "dna": {}, "captura": None}
+    §1.1) son claves NUEVAS; todo lo que ya devolvia (content/images/screenshot) no cambio de forma.
+
+    ADITIVO (elementos): recortes PNG de los objetos reales de la pagina (logo, tarjetas, botones,
+    fotos) para que el video anime la pagina del usuario y no figuras de catalogo. `elementos=False`
+    los saltea: son ~10 screenshots extra por captura y no todo llamador los necesita."""
+    out = {"screenshot": None, "content": None, "images": [], "dna": {}, "captura": None, "elementos": []}
     viewport = [width, height]
     if not _PW_OK or not url or not _guard(url):
         # `bloqueada` es el UNICO estado que se decide SIN navegar: es la barrera anti-SSRF. Si el
@@ -1477,6 +1490,27 @@ async def capture_all(url: str, out_path: str, width: int = 1280, height: int = 
                     out["screenshot"] = out_path
             except Exception as se:
                 print(f"[capture_all] screenshot: {se}")
+
+            # ---- ELEMENTOS (recortes de los objetos reales para animarlos en el video). VA ACA por la
+            # misma razon que el DNA: DESPUES del screenshot del hero y ANTES del peek. Si bajara del
+            # peek, los objetos serian los de /precios y el video mostraria la pagina equivocada.
+            # Hace scroll para disparar el lazy-load y vuelve a 0, porque el peek de abajo lee el nav.
+            if elementos:
+                try:
+                    await page.evaluate("async()=>{const h=document.body.scrollHeight;for(let y=0;y<h;y+=700){scrollTo(0,y);await new Promise(r=>setTimeout(r,50))}scrollTo(0,0)}")
+                    await page.wait_for_timeout(400)
+                    els = await extraer_elementos(page)
+                    if els:
+                        pref = Path(out_path).stem
+                        out["elementos"] = await publicar_elementos(els, str(Path(out_path).parent / "elementos"), pref)
+                        print(f"[capture_all] elementos: {len(out['elementos'])} ({', '.join(sorted({e['rol'] for e in out['elementos']}))})")
+                except Exception as ee:
+                    print(f"[capture_all] elementos: {ee}")
+                finally:
+                    try:
+                        await page.evaluate("() => scrollTo(0, 0)")
+                    except Exception:
+                        pass
             # PEEK SURGICAL (item L348): si el HOME trae POCA señal, el publico-objetivo/precio suele estar en /nosotros o
             # /precios. El browser YA esta abierto y el screenshot del hero YA se saco -> navegamos UNA vez mas SOLO en ese caso
             # (cero costo de latencia en el caso comun) y fusionamos el texto extra en el content. Mismo dominio (SSRF). Best-effort.
