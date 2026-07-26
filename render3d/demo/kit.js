@@ -21,20 +21,67 @@ import * as THREE from 'three'
 // ---------------------------------------------------------------- ritmo
 // Todo el tiempo de la pieza se expresa en BEATS y se convierte acá. Es la diferencia entre un video
 // que "va" y uno que arrastra: los cortes caen donde el ojo ya los espera.
-export const BPM = 124
-export const BEAT = 60 / BPM                       // 0.4839 s
-export const b = n => n * BEAT                     // beats -> segundos
+// Todo lo que define la PERSONALIDAD de la pieza vive en un AIRE y entra por `configurar()`. Se
+// exporta con `let` a proposito: los modulos ES exportan BINDINGS VIVOS, asi que reasignar aca cambia
+// el valor que ven las seis escenas sin que ninguna tenga que enterarse. Eso es lo que permite que un
+// asador, un estudio juridico y una marca de zapatillas usen las MISMAS escenas y salgan tres piezas
+// que no se parecen en nada.
+export let BPM = 124
+export let BEAT = 60 / BPM
+export const b = n => n * BEAT                     // lee el BEAT vigente, no una copia
 
 // ---------------------------------------------------------------- paleta
 // Base oscura + UN acento saturado + blanco. Es la fórmula del 90% de los reels de marca que
 // funcionan: el negro deja respirar al bloom y el acento no compite con nada.
-export const LOOK = {
+const _cacheTexto = new Map()
+
+export let LOOK = {
   tinta: '#f2f4f8',
   bg: '#05060a',
   bg2: '#0b1020',
   acento: '#5b6cff',
   acento2: '#00e5c0',
   calido: '#ff5a3c',
+}
+
+// ---------------------------------------------------------------- GESTO
+// La familia de curvas. Es la mitad de la personalidad de una pieza y casi nadie la mira: el MISMO
+// movimiento con `back.out` se lee decidido, con `elastic.out` juguetón, con `power4.out` costoso y
+// con `steps` artesanal. Las escenas piden un GESTO ("llega", "sale", "frena") y el aire decide con
+// que curva se resuelve, asi que cambiar de aire cambia como se mueve todo sin tocar una escena.
+//
+// El aire por defecto devuelve exactamente las curvas con las que se compuso ANTHEM: cambiar de
+// familia tiene que ser una decision, no un efecto secundario de haber refactorizado.
+const GESTO_BASE = {
+  llega: (n = 2.2) => `back.out(${n})`,             // entra y se pasa: lo que hace que algo "llegue"
+  frena: (n = 2) => (n >= 5 ? 'expo.out' : `power${n}.out`),
+  acelera: (n = 2) => `power${n}.in`,
+  vaiven: (n = 0) => (n ? `power${n}.inOut` : 'sine.inOut'),
+}
+export let E = GESTO_BASE
+
+export let AIRE = null
+
+// configurar(aire) — se llama UNA vez antes de construir la pieza. Todo lo que no venga en el aire
+// se queda con el valor de ANTHEM.
+export function configurar(aire) {
+  if (!aire) return
+  AIRE = aire
+  if (aire.bpm) { BPM = aire.bpm; BEAT = 60 / BPM }
+  if (aire.paleta) LOOK = { ...LOOK, ...aire.paleta }
+  if (aire.gesto) E = { ...GESTO_BASE, ...aire.gesto }
+  _cacheTexto.clear()                                // el cache guarda color y fuente: hay que soltarlo
+}
+
+// Las escenas piden fuentes por nombre concreto ('Anton', 'DMSans'). El aire las REMAPEA por rol:
+// asi una escena escrita con una grotesca de display sale en serif editorial o en condensada
+// deportiva sin que la escena sepa que existe el concepto de aire.
+const ROL_DISPLAY = new Set(['Anton', 'ArchivoBlack', 'BigShoulders', 'Bricolage'])
+function resolverFuente(f) {
+  const fu = AIRE && AIRE.fuentes
+  if (!fu) return f
+  if (ROL_DISPLAY.has(f)) return fu.display || f
+  return fu.apoyo || f
 }
 
 export const hex = h => new THREE.Color(h)
@@ -53,12 +100,12 @@ export function mulberry32(a) {
 // El texto se dibuja en un canvas 2D y entra como textura. En una pieza así la tipografía es el
 // material principal, no un subtítulo: se supermuestrea x3 porque la cámara la acerca y un glifo
 // pixelado delata todo el truco.
-const _cacheTexto = new Map()
 export function texto(str, opciones = {}) {
   const o = {
     fuente: 'Anton', peso: 400, size: 200, color: LOOK.tinta, tracking: 0,
     upper: true, linea: 0.92, alineado: 'center', ...opciones,
   }
+  o.fuente = resolverFuente(o.fuente)
   const clave = JSON.stringify([str, o])
   if (_cacheTexto.has(clave)) return _cacheTexto.get(clave)
 

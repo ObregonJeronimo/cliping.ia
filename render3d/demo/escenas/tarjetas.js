@@ -14,7 +14,7 @@
 //     por entero sería medio giga de canvas; con 8 pasos se lee igual de bien y cuesta nada.
 //   · NADA se apaga con opacidad si puede irse por MÁSCARA: el texto se desescribe, no se funde.
 
-import {
+import { E,
   LOOK, b, planoTexto, texto, materialMascara, matAcento, matTarjeta, enArco,
 } from '../kit.js'
 
@@ -245,52 +245,52 @@ export function build(ctx) {
   // con una contra-rotación del 70% (no del 100%: si compensa todo, el arco queda clavado al centro
   // y el movimiento se pierde). Beat 4-5.15: vuelve exactamente a su lugar — es contrato.
   tl.fromTo(camera.position, { x: -0.30, y: 0.18, z: distBase + 3.30 },
-    { x: -1.45, y: 0.02, z: distBase - 0.55, duration: b(1.15), ease: 'power4.out', immediateRender: false }, 0)
+    { x: -1.45, y: 0.02, z: distBase - 0.55, duration: b(1.15), ease: E.frena(4), immediateRender: false }, 0)
   tl.fromTo(camera.rotation, { x: 0, y: 0, z: 0 },
-    { x: 0.004, y: -0.050, z: 0.012, duration: b(1.15), ease: 'power4.out', immediateRender: false }, 0)
+    { x: 0.004, y: -0.050, z: 0.012, duration: b(1.15), ease: E.frena(4), immediateRender: false }, 0)
 
-  tl.to(camera.position, { x: 1.62, duration: b(2.85), ease: 'sine.inOut' }, b(1.15))
-  tl.to(camera.rotation, { y: 0.058, duration: b(2.85), ease: 'sine.inOut' }, b(1.15))
+  tl.to(camera.position, { x: 1.62, duration: b(2.85), ease: E.vaiven() }, b(1.15))
+  tl.to(camera.rotation, { y: 0.058, duration: b(2.85), ease: E.vaiven() }, b(1.15))
   // el acercamiento se queda en -1.70: más adentro y el bloque de titular se sale por arriba
-  tl.to(camera.position, { z: distBase - 1.70, duration: b(1.45), ease: 'sine.inOut' }, b(1.15))
-  tl.to(camera.position, { z: distBase - 0.60, duration: b(1.40), ease: 'sine.inOut' }, b(2.60))
-  tl.to(camera.position, { y: -0.16, duration: b(1.60), ease: 'sine.inOut' }, b(1.15))
-  tl.to(camera.position, { y: 0.05, duration: b(1.25), ease: 'sine.inOut' }, b(2.75))
-  tl.to(camera.rotation, { x: -0.006, z: -0.016, duration: b(1.60), ease: 'sine.inOut' }, b(1.15))
-  tl.to(camera.rotation, { x: 0.004, z: 0.008, duration: b(1.25), ease: 'sine.inOut' }, b(2.75))
+  tl.to(camera.position, { z: distBase - 1.70, duration: b(1.45), ease: E.vaiven() }, b(1.15))
+  tl.to(camera.position, { z: distBase - 0.60, duration: b(1.40), ease: E.vaiven() }, b(2.60))
+  tl.to(camera.position, { y: -0.16, duration: b(1.60), ease: E.vaiven() }, b(1.15))
+  tl.to(camera.position, { y: 0.05, duration: b(1.25), ease: E.vaiven() }, b(2.75))
+  tl.to(camera.rotation, { x: -0.006, z: -0.016, duration: b(1.60), ease: E.vaiven() }, b(1.15))
+  tl.to(camera.rotation, { x: 0.004, z: 0.008, duration: b(1.25), ease: E.vaiven() }, b(2.75))
 
-  tl.to(camera.position, { x: 0, y: 0, z: distBase, duration: b(1.15), ease: 'power3.inOut' }, b(4.0))
-  tl.to(camera.rotation, { x: 0, y: 0, z: 0, duration: b(1.15), ease: 'power3.inOut' }, b(4.0))
+  tl.to(camera.position, { x: 0, y: 0, z: distBase, duration: b(1.15), ease: E.vaiven(3) }, b(4.0))
+  tl.to(camera.rotation, { x: 0, y: 0, z: 0, duration: b(1.15), ease: E.vaiven(3) }, b(4.0))
 
   // ---------------------------------------------------------------- fondo y pase final
-  tl.fromTo(fondo.uPulso, { value: 0 }, { value: 0.42, duration: b(0.18), ease: 'power2.out', immediateRender: false }, 0)
-  tl.to(fondo.uPulso, { value: 0, duration: b(1.10), ease: 'power2.out' }, b(0.18))
-  tl.fromTo(fondo.uGrilla, { value: 0.55 }, { value: 0.74, duration: b(1.40), ease: 'sine.inOut', immediateRender: false }, b(1.0))
-  tl.to(fondo.uGrilla, { value: 0.26, duration: b(0.70), ease: 'power2.in' }, b(3.90))
-  tl.to(fondo.uGrilla, { value: 0.55, duration: b(1.00), ease: 'sine.inOut' }, b(4.80))
-  tl.fromTo(fondo.uPulso, { value: 0.55 }, { value: 0, duration: b(1.00), ease: 'power2.out', immediateRender: false }, b(4.0))
+  tl.fromTo(fondo.uPulso, { value: 0 }, { value: 0.42, duration: b(0.18), ease: E.frena(2), immediateRender: false }, 0)
+  tl.to(fondo.uPulso, { value: 0, duration: b(1.10), ease: E.frena(2) }, b(0.18))
+  tl.fromTo(fondo.uGrilla, { value: 0.55 }, { value: 0.74, duration: b(1.40), ease: E.vaiven(), immediateRender: false }, b(1.0))
+  tl.to(fondo.uGrilla, { value: 0.26, duration: b(0.70), ease: E.acelera(2) }, b(3.90))
+  tl.to(fondo.uGrilla, { value: 0.55, duration: b(1.00), ease: E.vaiven() }, b(4.80))
+  tl.fromTo(fondo.uPulso, { value: 0.55 }, { value: 0, duration: b(1.00), ease: E.frena(2), immediateRender: false }, b(4.0))
   // dos frames de blanco sobre el beat 4: el corte interno se lee como decisión de montaje
-  tl.fromTo(pelicula.uFlash, { value: 0.30 }, { value: 0, duration: 0.075, ease: 'power2.in', immediateRender: false }, b(4.0))
+  tl.fromTo(pelicula.uFlash, { value: 0.30 }, { value: 0, duration: 0.075, ease: E.acelera(2), immediateRender: false }, b(4.0))
 
   // ---------------------------------------------------------------- titular, epígrafe, barras
-  tl.fromTo(kicker.material.uniforms.uProg, { value: 0 }, { value: 1, duration: b(0.45), ease: 'power2.out', immediateRender: false }, b(0.20))
-  tl.fromTo(titulo.material.uniforms.uProg, { value: 0 }, { value: 1, duration: b(0.85), ease: 'power3.inOut', immediateRender: false }, b(0.32))
-  tl.fromTo(titulo.position, { y: 3.37 }, { y: 3.10, duration: b(0.90), ease: 'back.out(2.0)', immediateRender: false }, b(0.32))
-  tl.fromTo(reglaTit.scale, { x: 0 }, { x: 1, duration: b(0.70), ease: 'power3.out', immediateRender: false }, b(0.55))
-  tl.fromTo(epigrafe.material.uniforms.uProg, { value: 0 }, { value: 1, duration: b(0.80), ease: 'power2.out', immediateRender: false }, b(0.85))
-  tl.fromTo(reglaPie.scale, { x: 0 }, { x: 1, duration: b(0.75), ease: 'power3.out', immediateRender: false }, b(0.62))
-  tl.fromTo(zocalo.scale, { x: 0 }, { x: 1, duration: b(0.80), ease: 'power3.out', immediateRender: false }, b(0.48))
-  tl.fromTo(pieI.material.uniforms.uProg, { value: 0 }, { value: 1, duration: b(0.50), ease: 'power2.out', immediateRender: false }, b(0.75))
-  tl.fromTo(pieD.material.uniforms.uProg, { value: 0 }, { value: 1, duration: b(0.50), ease: 'power2.out', immediateRender: false }, b(0.82))
-  tl.fromTo(eco.mat.uniforms.uProg, { value: 0 }, { value: 1, duration: b(1.20), ease: 'power2.out', immediateRender: false }, b(0.75))
+  tl.fromTo(kicker.material.uniforms.uProg, { value: 0 }, { value: 1, duration: b(0.45), ease: E.frena(2), immediateRender: false }, b(0.20))
+  tl.fromTo(titulo.material.uniforms.uProg, { value: 0 }, { value: 1, duration: b(0.85), ease: E.vaiven(3), immediateRender: false }, b(0.32))
+  tl.fromTo(titulo.position, { y: 3.37 }, { y: 3.10, duration: b(0.90), ease: E.llega(2.0), immediateRender: false }, b(0.32))
+  tl.fromTo(reglaTit.scale, { x: 0 }, { x: 1, duration: b(0.70), ease: E.frena(3), immediateRender: false }, b(0.55))
+  tl.fromTo(epigrafe.material.uniforms.uProg, { value: 0 }, { value: 1, duration: b(0.80), ease: E.frena(2), immediateRender: false }, b(0.85))
+  tl.fromTo(reglaPie.scale, { x: 0 }, { x: 1, duration: b(0.75), ease: E.frena(3), immediateRender: false }, b(0.62))
+  tl.fromTo(zocalo.scale, { x: 0 }, { x: 1, duration: b(0.80), ease: E.frena(3), immediateRender: false }, b(0.48))
+  tl.fromTo(pieI.material.uniforms.uProg, { value: 0 }, { value: 1, duration: b(0.50), ease: E.frena(2), immediateRender: false }, b(0.75))
+  tl.fromTo(pieD.material.uniforms.uProg, { value: 0 }, { value: 1, duration: b(0.50), ease: E.frena(2), immediateRender: false }, b(0.82))
+  tl.fromTo(eco.mat.uniforms.uProg, { value: 0 }, { value: 1, duration: b(1.20), ease: E.frena(2), immediateRender: false }, b(0.75))
 
   for (let i = 0; i < NB; i++) {
     const m = barras.children[i]
-    tl.fromTo(m.scale, { y: 0 }, { y: 1, duration: b(0.60), ease: 'back.out(2.2)', immediateRender: false }, b(0.55) + i * 0.016)
+    tl.fromTo(m.scale, { y: 0 }, { y: 1, duration: b(0.60), ease: E.llega(2.2), immediateRender: false }, b(0.55) + i * 0.016)
     // respiración: cada barra con su propio período, así el bloque nunca queda quieto
     const s = b(1.90) + i * 0.010 + per2[i] * 0.08
-    tl.to(m.scale, { y: alt2[i], duration: (b(3.90) - s) / 2, ease: 'sine.inOut', repeat: 1, yoyo: true }, s)
-    tl.to(m.scale, { y: 0, duration: b(0.45), ease: 'power3.in' }, b(4.0) + (NB - 1 - i) * 0.008)
+    tl.to(m.scale, { y: alt2[i], duration: (b(3.90) - s) / 2, ease: E.vaiven(), repeat: 1, yoyo: true }, s)
+    tl.to(m.scale, { y: 0, duration: b(0.45), ease: E.acelera(3) }, b(4.0) + (NB - 1 - i) * 0.008)
   }
 
   // ---------------------------------------------------------------- entrada de las tarjetas
@@ -299,25 +299,25 @@ export function build(ctx) {
     const t0 = p * 0.07                                  // stagger: nunca llegan juntas
     tl.fromTo(t.gr.position,
       { x: base.x + e.dx, y: base.y + e.dy, z: base.z + e.dz },
-      { x: base.x, y: base.y, z: base.z, duration: b(0.72), ease: 'back.out(1.9)', immediateRender: false }, t0)
+      { x: base.x, y: base.y, z: base.z, duration: b(0.72), ease: E.llega(1.9), immediateRender: false }, t0)
     tl.fromTo(t.gr.rotation, { y: base.ry + e.ry, z: e.rz },
-      { y: base.ry, z: 0, duration: b(0.80), ease: 'back.out(1.6)', immediateRender: false }, t0)
+      { y: base.ry, z: 0, duration: b(0.80), ease: E.llega(1.6), immediateRender: false }, t0)
     tl.fromTo(t.gr.scale, { x: 0.55, y: 0.55, z: 0.55 },
-      { x: 1, y: 1, z: 1, duration: b(0.70), ease: 'back.out(2.3)', immediateRender: false }, t0)
+      { x: 1, y: 1, z: 1, duration: b(0.70), ease: E.llega(2.3), immediateRender: false }, t0)
 
     // el contenido se escribe mientras la tarjeta todavía está frenando
     const tc = t0 + 0.16
-    tl.fromTo(t.idx.material.uniforms.uProg, { value: 0 }, { value: 1, duration: b(0.40), ease: 'power2.out', immediateRender: false }, tc - 0.03)
-    tl.fromTo(t.fil.scale, { x: 0 }, { x: 1, duration: b(0.50), ease: 'back.out(2.6)', immediateRender: false }, tc)
-    tl.fromTo(t.num.mat.uniforms.uProg, { value: 0 }, { value: 1, duration: b(0.62), ease: 'power3.out', immediateRender: false }, tc + 0.05)
-    tl.fromTo(t.pista.material, { opacity: 0 }, { opacity: 1, duration: b(0.40), ease: 'power2.out', immediateRender: false }, tc + 0.06)
-    tl.fromTo(t.lab.material.uniforms.uProg, { value: 0 }, { value: 1, duration: b(0.55), ease: 'power2.out', immediateRender: false }, tc + 0.10)
+    tl.fromTo(t.idx.material.uniforms.uProg, { value: 0 }, { value: 1, duration: b(0.40), ease: E.frena(2), immediateRender: false }, tc - 0.03)
+    tl.fromTo(t.fil.scale, { x: 0 }, { x: 1, duration: b(0.50), ease: E.llega(2.6), immediateRender: false }, tc)
+    tl.fromTo(t.num.mat.uniforms.uProg, { value: 0 }, { value: 1, duration: b(0.62), ease: E.frena(3), immediateRender: false }, tc + 0.05)
+    tl.fromTo(t.pista.material, { opacity: 0 }, { opacity: 1, duration: b(0.40), ease: E.frena(2), immediateRender: false }, tc + 0.06)
+    tl.fromTo(t.lab.material.uniforms.uProg, { value: 0 }, { value: 1, duration: b(0.55), ease: E.frena(2), immediateRender: false }, tc + 0.10)
 
     // ------------------------------------------------------------ el número CUENTA
     const est = { v: 0 }
     const esHero = i === HERO
     tl.to(est, {
-      v: 1, duration: b(2.15), ease: 'power2.out',
+      v: 1, duration: b(2.15), ease: E.frena(2),
       onUpdate: () => {
         const k = Math.round(est.v * PASOS)
         t.num.poner(k)
@@ -331,23 +331,23 @@ export function build(ctx) {
     // y la salida arranca de un valor limpio. El desfasaje sale de rnd(), no de un múltiplo.
     const fs = b(1.50) + rnd() * 0.22
     const amp = (0.05 + rnd() * 0.08) * (rnd() < 0.5 ? -1 : 1)
-    tl.to(t.gr.position, { y: base.y + amp, duration: (b(4.0) - fs) / 4, ease: 'sine.inOut', repeat: 3, yoyo: true }, fs)
+    tl.to(t.gr.position, { y: base.y + amp, duration: (b(4.0) - fs) / 4, ease: E.vaiven(), repeat: 3, yoyo: true }, fs)
     const fs2 = b(1.55) + rnd() * 0.24
     const gir = (rnd() < 0.5 ? -1 : 1) * 0.024
-    tl.to(t.gr.rotation, { z: gir, duration: (b(4.0) - fs2) / 4, ease: 'sine.inOut', repeat: 3, yoyo: true }, fs2)
+    tl.to(t.gr.rotation, { z: gir, duration: (b(4.0) - fs2) / 4, ease: E.vaiven(), repeat: 3, yoyo: true }, fs2)
   })
 
   // ---------------------------------------------------------------- beat 4: se resuelve en una
   const h = tarjetas[HERO]
-  tl.to(h.gr.position, { x: 0, y: 0, z: 12.2, duration: b(1.20), ease: 'back.out(1.2)' }, b(4.0))
-  tl.to(h.gr.rotation, { x: 0, y: 0, z: 0, duration: b(1.00), ease: 'power2.out' }, b(4.0))
-  tl.to(h.gr.scale, { x: 1.06, y: 1.06, z: 1.06, duration: b(1.20), ease: 'back.out(1.4)' }, b(4.0))
-  tl.fromTo(h.rim.scale, { x: 1, y: 1 }, { x: 1.05, y: 1.035, duration: b(0.35), ease: 'power2.out', immediateRender: false }, b(4.0))
+  tl.to(h.gr.position, { x: 0, y: 0, z: 12.2, duration: b(1.20), ease: E.llega(1.2) }, b(4.0))
+  tl.to(h.gr.rotation, { x: 0, y: 0, z: 0, duration: b(1.00), ease: E.frena(2) }, b(4.0))
+  tl.to(h.gr.scale, { x: 1.06, y: 1.06, z: 1.06, duration: b(1.20), ease: E.llega(1.4) }, b(4.0))
+  tl.fromTo(h.rim.scale, { x: 1, y: 1 }, { x: 1.05, y: 1.035, duration: b(0.35), ease: E.frena(2), immediateRender: false }, b(4.0))
   tl.to(h.rim.scale, { x: 1, y: 1, duration: b(0.55), ease: 'elastic.out(1, 0.45)' }, b(4.35))
   // hasta el corte no descansa: sigue empujando y el borde late
-  tl.to(h.gr.position, { z: 12.85, duration: b(0.65), ease: 'sine.inOut' }, b(5.20))
-  tl.to(h.gr.rotation, { y: 0.045, duration: b(0.65), ease: 'sine.inOut' }, b(5.20))
-  tl.to(h.rimMat, { opacity: 0.5, duration: b(0.50), ease: 'sine.inOut', repeat: 1, yoyo: true }, b(4.85))
+  tl.to(h.gr.position, { z: 12.85, duration: b(0.65), ease: E.vaiven() }, b(5.20))
+  tl.to(h.gr.rotation, { y: 0.045, duration: b(0.65), ease: E.vaiven() }, b(5.20))
+  tl.to(h.rimMat, { opacity: 0.5, duration: b(0.50), ease: E.vaiven(), repeat: 1, yoyo: true }, b(4.85))
 
   // las otras se van hacia atrás, acelerando (power3.in): el obturador las arrastra al irse
   tarjetas.forEach((t, i) => {
@@ -355,23 +355,23 @@ export function build(ctx) {
     const base = t.base
     const s = i < HERO ? -1 : 1
     const d = b(4.0) + (2 - Math.abs(i - HERO)) * 0.035
-    tl.to(t.gr.position, { x: base.x * 2.15 + s * 0.5, y: base.y + (i % 2 ? -0.95 : 0.95), z: base.z - 6.4, duration: b(0.90), ease: 'power3.in' }, d)
-    tl.to(t.gr.rotation, { y: base.ry + s * 0.85, z: s * 0.22, duration: b(0.90), ease: 'power2.in' }, d)
-    tl.to(t.gr.scale, { x: 0.62, y: 0.62, z: 0.62, duration: b(0.90), ease: 'power3.in' }, d)
+    tl.to(t.gr.position, { x: base.x * 2.15 + s * 0.5, y: base.y + (i % 2 ? -0.95 : 0.95), z: base.z - 6.4, duration: b(0.90), ease: E.acelera(3) }, d)
+    tl.to(t.gr.rotation, { y: base.ry + s * 0.85, z: s * 0.22, duration: b(0.90), ease: E.acelera(2) }, d)
+    tl.to(t.gr.scale, { x: 0.62, y: 0.62, z: 0.62, duration: b(0.90), ease: E.acelera(3) }, d)
     tl.to([t.num.mat.uniforms.uProg, t.idx.material.uniforms.uProg, t.lab.material.uniforms.uProg],
-      { value: 0, duration: b(0.45), ease: 'power2.in', stagger: 0.03 }, d + 0.06)
+      { value: 0, duration: b(0.45), ease: E.acelera(2), stagger: 0.03 }, d + 0.06)
     tl.to([t.rimMat, t.cuerpoMat, t.fil.material, t.pista.material, t.relleno.material],
-      { opacity: 0, duration: b(0.55), ease: 'power2.in' }, d + 0.14)
+      { opacity: 0, duration: b(0.55), ease: E.acelera(2) }, d + 0.14)
   })
 
   // y el cuadro se despeja: el texto se DESESCRIBE, no se funde
   tl.to([kicker.material.uniforms.uProg, titulo.material.uniforms.uProg, epigrafe.material.uniforms.uProg,
     pieI.material.uniforms.uProg, pieD.material.uniforms.uProg, eco.mat.uniforms.uProg],
-  { value: 0, duration: b(0.55), ease: 'power2.in', stagger: 0.035 }, b(4.0))
-  tl.to([reglaTit.scale, reglaPie.scale, zocalo.scale], { x: 0.02, duration: b(0.60), ease: 'power3.in', stagger: 0.035 }, b(4.0))
-  tl.to(titulo.position, { y: 4.00, duration: b(0.70), ease: 'power2.in' }, b(4.0))
-  tl.to(epigrafe.position, { y: -2.55, duration: b(0.70), ease: 'power2.in' }, b(4.0))
-  tl.to(eco.malla.position, { z: -11.5, duration: b(0.80), ease: 'power2.in' }, b(4.0))
+  { value: 0, duration: b(0.55), ease: E.acelera(2), stagger: 0.035 }, b(4.0))
+  tl.to([reglaTit.scale, reglaPie.scale, zocalo.scale], { x: 0.02, duration: b(0.60), ease: E.acelera(3), stagger: 0.035 }, b(4.0))
+  tl.to(titulo.position, { y: 4.00, duration: b(0.70), ease: E.acelera(2) }, b(4.0))
+  tl.to(epigrafe.position, { y: -2.55, duration: b(0.70), ease: E.acelera(2) }, b(4.0))
+  tl.to(eco.malla.position, { z: -11.5, duration: b(0.80), ease: E.acelera(2) }, b(4.0))
 
   // Se suelta el freno ANTES de devolverla. GSAP nace la timeline pausada (contrato) pero un hijo
   // pausado tiene _ts = 0, y el bucle de render del padre saltea a los hijos con _ts = 0: la maestra

@@ -13,7 +13,7 @@
 // El cuadro nunca está vacío: brackets de esquina, ticks radiales, anillo punteado que gira y
 // polvo en profundidad. Y nada descansa: si un elemento llegó a su lugar, respira.
 
-import { LOOK, b, planoTexto, materialMascara, filete, hex } from '../kit.js'
+import { E, LOOK, b, planoTexto, materialMascara, filete, hex } from '../kit.js'
 
 export const meta = { id: 'cierre', beats: 6 }
 
@@ -271,7 +271,7 @@ export function build(ctx) {
   // ==================================================================== timeline
   // Todo cae en beats enteros o medios. Nada "a los 2.3 segundos".
 
-  const pe = gsap.parseEase ? gsap.parseEase('power3.inOut') : (t => t)
+  const pe = gsap.parseEase ? gsap.parseEase(E.vaiven(3)) : (t => t)
   // invierto la curva del trazo para que cada tick reviente EXACTAMENTE cuando el borde le pasa
   const inv = y => { let lo = 0, hi = 1; for (let k = 0; k < 34; k++) { const m = (lo + hi) / 2; if (pe(m) < y) lo = m; else hi = m } return (lo + hi) / 2 }
 
@@ -284,104 +284,104 @@ export function build(ctx) {
 
   // --- BEAT 0 → 1 · el anillo se dibuja y CIERRA
   tl.fromTo(aro.material.uniforms.uProg, { value: 0 },
-    { value: 1, duration: b(1), ease: 'power3.inOut' }, 0)
+    { value: 1, duration: b(1), ease: E.vaiven(3) }, 0)
   tl.fromTo(aroDeco.material.uniforms.uProg, { value: 0 },
-    { value: 1, duration: b(1.2), ease: 'power2.out' }, b(0.1))
+    { value: 1, duration: b(1.2), ease: E.frena(2) }, b(0.1))
   // el punteado gira TODA la escena: nunca hay reposo total en el cuadro
   tl.to(aroDeco.material.uniforms.uGiro, { value: -1.15, duration: b(5.4), ease: 'none' }, 0)
   tl.to(gTicks.rotation, { z: 0.16, duration: b(5.4), ease: 'none' }, 0)
 
   // brackets: llegan pasándose, escalonados
-  tl.to(brackets.map(o => o.scale), { x: 1, y: 1, z: 1, duration: b(0.55), ease: 'back.out(2.6)', stagger: 0.055 }, b(0.04))
+  tl.to(brackets.map(o => o.scale), { x: 1, y: 1, z: 1, duration: b(0.55), ease: E.llega(2.6), stagger: 0.055 }, b(0.04))
   // polvo
-  tl.to(polvo.map(o => o.scale), { x: 1, y: 1, z: 1, duration: b(0.7), ease: 'back.out(1.8)', stagger: 0.012 }, b(0.06))
+  tl.to(polvo.map(o => o.scale), { x: 1, y: 1, z: 1, duration: b(0.7), ease: E.llega(1.8), stagger: 0.012 }, b(0.06))
   tl.fromTo(gPolvo.position, { y: -0.40 }, { y: 0.48, duration: b(5.6), ease: 'none' }, 0)
 
   // ticks sincronizados con el borde del trazo
   ticks.forEach((t, i) => {
-    tl.to(t.scale, { x: 1, y: 1, z: 1, duration: b(0.32), ease: 'back.out(3.0)' },
+    tl.to(t.scale, { x: 1, y: 1, z: 1, duration: b(0.32), ease: E.llega(3.0) },
       Math.max(0, b(1) * inv(i / NT) - 0.03))
   })
 
   // el cierre del anillo golpea: pop de escala, pulso de fondo, y se apaga la cabeza del trazo
-  tl.fromTo(gAnillo.scale, { x: 1, y: 1, z: 1 }, { x: 1.055, y: 1.055, z: 1.055, duration: b(0.18), ease: 'power3.out' }, b(1))
+  tl.fromTo(gAnillo.scale, { x: 1, y: 1, z: 1 }, { x: 1.055, y: 1.055, z: 1.055, duration: b(0.18), ease: E.frena(3) }, b(1))
   tl.to(gAnillo.scale, { x: 1, y: 1, z: 1, duration: b(0.7), ease: 'elastic.out(1, 0.45)' }, b(1.18))
-  tl.to(aro.material.uniforms.uCabeza, { value: 0, duration: b(0.3), ease: 'power2.out' }, b(1))
-  tl.to(bloom, { strength: 0.40, duration: b(0.12), ease: 'power2.out' }, b(1))
-  tl.to(bloom, { strength: 0.22, duration: b(0.55), ease: 'power2.inOut' }, b(1.12))
+  tl.to(aro.material.uniforms.uCabeza, { value: 0, duration: b(0.3), ease: E.frena(2) }, b(1))
+  tl.to(bloom, { strength: 0.40, duration: b(0.12), ease: E.frena(2) }, b(1))
+  tl.to(bloom, { strength: 0.22, duration: b(0.55), ease: E.vaiven(2) }, b(1.12))
   tl.set(fondo.uPulso, { value: 0.34 }, b(1))
-  tl.to(fondo.uPulso, { value: 0, duration: b(0.85), ease: 'power2.out' }, b(1))
+  tl.to(fondo.uPulso, { value: 0, duration: b(0.85), ease: E.frena(2) }, b(1))
 
   // --- BEAT 0.5 → 2 · la marca llega adentro del anillo
   tl.fromTo(gMarca.scale, { x: 0.70, y: 0.70, z: 0.70 },
-    { x: 1, y: 1, z: 1, duration: b(1.2), ease: 'back.out(2.0)' }, b(0.5))
-  tl.fromTo(gMarca.rotation, { y: 0.62 }, { y: 0, duration: b(1.25), ease: 'power3.out' }, b(0.5))
+    { x: 1, y: 1, z: 1, duration: b(1.2), ease: E.llega(2.0) }, b(0.5))
+  tl.fromTo(gMarca.rotation, { y: 0.62 }, { y: 0, duration: b(1.25), ease: E.frena(3) }, b(0.5))
   tl.fromTo(marca.material.uniforms.uProg, { value: 0.15 },
-    { value: 1.05, duration: b(1.0), ease: 'power2.inOut' }, b(0.55))
+    { value: 1.05, duration: b(1.0), ease: E.vaiven(2) }, b(0.55))
   // asienta respirando: llegar y quedarse quieto mata la pieza
-  tl.to(gMarca.scale, { x: 1.012, y: 1.012, z: 1.012, duration: b(1.4), ease: 'sine.inOut' }, b(1.75))
-  tl.to(gMarca.scale, { x: 1, y: 1, z: 1, duration: b(1.3), ease: 'sine.inOut' }, b(3.15))
+  tl.to(gMarca.scale, { x: 1.012, y: 1.012, z: 1.012, duration: b(1.4), ease: E.vaiven() }, b(1.75))
+  tl.to(gMarca.scale, { x: 1, y: 1, z: 1, duration: b(1.3), ease: E.vaiven() }, b(3.15))
 
   // --- BEAT 1.5 → 3 · la píldora entra desde abajo y rebota
-  tl.fromTo(gPill.position, { y: -5.7 }, { y: -2.15, duration: b(0.9), ease: 'back.out(2.4)' }, b(1.5))
-  tl.to(gPill.scale, { y: 0.84, x: 1.05, duration: b(0.14), ease: 'power2.out' }, b(2.4))
+  tl.fromTo(gPill.position, { y: -5.7 }, { y: -2.15, duration: b(0.9), ease: E.llega(2.4) }, b(1.5))
+  tl.to(gPill.scale, { y: 0.84, x: 1.05, duration: b(0.14), ease: E.frena(2) }, b(2.4))
   tl.to(gPill.scale, { y: 1, x: 1, duration: b(0.6), ease: 'elastic.out(1, 0.42)' }, b(2.54))
   tl.set(fondo.uPulso, { value: 0.22 }, b(2.4))
-  tl.to(fondo.uPulso, { value: 0, duration: b(0.55), ease: 'power2.out' }, b(2.4))
+  tl.to(fondo.uPulso, { value: 0, duration: b(0.55), ease: E.frena(2) }, b(2.4))
   tl.fromTo(cta.material.uniforms.uProg, { value: 0 },
-    { value: 1.04, duration: b(0.55), ease: 'power2.out' }, b(2.5))
+    { value: 1.04, duration: b(0.55), ease: E.frena(2) }, b(2.5))
   // el chevron empuja: la píldora sigue viva después de aterrizar
-  tl.fromTo(gChev.scale, { x: 0, y: 0, z: 0 }, { x: 1, y: 1, z: 1, duration: b(0.4), ease: 'back.out(3.0)' }, b(2.7))
-  tl.to(gChev.position, { x: pillW / 2 - 0.22, duration: b(0.3), ease: 'power2.inOut' }, b(3.5))
-  tl.to(gChev.position, { x: pillW / 2 - 0.31, duration: b(0.4), ease: 'power2.inOut' }, b(3.8))
-  tl.to(gChev.position, { x: pillW / 2 - 0.24, duration: b(0.3), ease: 'power2.inOut' }, b(4.2))
+  tl.fromTo(gChev.scale, { x: 0, y: 0, z: 0 }, { x: 1, y: 1, z: 1, duration: b(0.4), ease: E.llega(3.0) }, b(2.7))
+  tl.to(gChev.position, { x: pillW / 2 - 0.22, duration: b(0.3), ease: E.vaiven(2) }, b(3.5))
+  tl.to(gChev.position, { x: pillW / 2 - 0.31, duration: b(0.4), ease: E.vaiven(2) }, b(3.8))
+  tl.to(gChev.position, { x: pillW / 2 - 0.24, duration: b(0.3), ease: E.vaiven(2) }, b(4.2))
 
   // --- BEAT 3 → 4.5 · el filete cruza y frena, y caen las tres marcas
-  tl.fromTo(gFilete.scale, { x: 0.0001 }, { x: 1, duration: b(0.42), ease: 'power4.out' }, b(3))
-  tl.fromTo(cabeza.position, { x: -LF / 2 }, { x: LF / 2, duration: b(0.42), ease: 'power4.out' }, b(3))
-  tl.fromTo(cabeza.scale, { x: 0, y: 0, z: 0 }, { x: 1, y: 1, z: 1, duration: b(0.1), ease: 'back.out(3)' }, b(3))
-  tl.to(cabeza.scale, { x: 0, y: 0, z: 0, duration: b(0.22), ease: 'power2.in' }, b(3.36))
-  tl.to(gFilete.scale, { x: 1.02, duration: b(0.1), ease: 'power2.out' }, b(3.42))
+  tl.fromTo(gFilete.scale, { x: 0.0001 }, { x: 1, duration: b(0.42), ease: E.frena(4) }, b(3))
+  tl.fromTo(cabeza.position, { x: -LF / 2 }, { x: LF / 2, duration: b(0.42), ease: E.frena(4) }, b(3))
+  tl.fromTo(cabeza.scale, { x: 0, y: 0, z: 0 }, { x: 1, y: 1, z: 1, duration: b(0.1), ease: E.llega(3) }, b(3))
+  tl.to(cabeza.scale, { x: 0, y: 0, z: 0, duration: b(0.22), ease: E.acelera(2) }, b(3.36))
+  tl.to(gFilete.scale, { x: 1.02, duration: b(0.1), ease: E.frena(2) }, b(3.42))
   tl.to(gFilete.scale, { x: 1, duration: b(0.35), ease: 'elastic.out(1, 0.5)' }, b(3.52))
   tl.set(fondo.uPulso, { value: 0.18 }, b(3.42))
-  tl.to(fondo.uPulso, { value: 0, duration: b(0.5), ease: 'power2.out' }, b(3.42))
+  tl.to(fondo.uPulso, { value: 0, duration: b(0.5), ease: E.frena(2) }, b(3.42))
 
   marcasM.forEach((m, i) => {
     const t0 = b(3.2 + i * 0.24)
-    tl.fromTo(m.position, { y: -0.20 }, { y: 0, duration: b(0.5), ease: 'back.out(2.4)' }, t0)
-    tl.fromTo(m.material.uniforms.uProg, { value: 0 }, { value: 1.04, duration: b(0.5), ease: 'power2.out' }, t0)
+    tl.fromTo(m.position, { y: -0.20 }, { y: 0, duration: b(0.5), ease: E.llega(2.4) }, t0)
+    tl.fromTo(m.material.uniforms.uProg, { value: 0 }, { value: 1.04, duration: b(0.5), ease: E.frena(2) }, t0)
   })
-  tl.to(puntos.map(p => p.scale), { x: 1, y: 1, z: 1, duration: b(0.34), ease: 'back.out(3.2)', stagger: 0.07 }, b(3.55))
+  tl.to(puntos.map(p => p.scale), { x: 1, y: 1, z: 1, duration: b(0.34), ease: E.llega(3.2), stagger: 0.07 }, b(3.55))
 
   // --- BEAT 4.5 → 6 · CIERRE. Todo se comprime, el bloom baja, queda el anillo.
   tl.set(fondo.uPulso, { value: 0.30 }, b(4.5))
-  tl.to(fondo.uPulso, { value: 0, duration: b(0.8), ease: 'power2.out' }, b(4.5))
-  tl.to(gComp.scale, { x: 0.90, y: 0.90, z: 0.90, duration: b(0.9), ease: 'power2.inOut' }, b(4.5))
-  tl.to(gAnillo.scale, { x: 0.965, y: 0.965, z: 0.965, duration: b(0.9), ease: 'power2.inOut' }, b(4.5))
-  tl.to(bloom, { strength: 0.44, duration: b(0.28), ease: 'power2.out' }, b(4.5))
-  tl.to(bloom, { strength: 0.17, duration: b(0.80), ease: 'power2.inOut' }, b(4.78))
-  tl.to(fondo.uGrilla, { value: 0.015, duration: b(0.95), ease: 'power2.in' }, b(4.5))
+  tl.to(fondo.uPulso, { value: 0, duration: b(0.8), ease: E.frena(2) }, b(4.5))
+  tl.to(gComp.scale, { x: 0.90, y: 0.90, z: 0.90, duration: b(0.9), ease: E.vaiven(2) }, b(4.5))
+  tl.to(gAnillo.scale, { x: 0.965, y: 0.965, z: 0.965, duration: b(0.9), ease: E.vaiven(2) }, b(4.5))
+  tl.to(bloom, { strength: 0.44, duration: b(0.28), ease: E.frena(2) }, b(4.5))
+  tl.to(bloom, { strength: 0.17, duration: b(0.80), ease: E.vaiven(2) }, b(4.78))
+  tl.to(fondo.uGrilla, { value: 0.015, duration: b(0.95), ease: E.acelera(2) }, b(4.5))
 
   // salidas: por MÁSCARA y escalonadas, en orden inverso al de entrada
-  tl.to(polvo.map(o => o.scale), { x: 0, y: 0, z: 0, duration: b(0.4), ease: 'power2.in', stagger: 0.008 }, b(4.55))
+  tl.to(polvo.map(o => o.scale), { x: 0, y: 0, z: 0, duration: b(0.4), ease: E.acelera(2), stagger: 0.008 }, b(4.55))
   tl.to(brackets.map(o => o.scale), { x: 0, y: 0, z: 0, duration: b(0.38), ease: 'back.in(2.2)', stagger: 0.04 }, b(4.6))
   marcasM.forEach((m, i) => {
     tl.set(m.material.uniforms.uDir, { value: 1 }, b(4.6))
-    tl.to(m.material.uniforms.uProg, { value: 0, duration: b(0.4), ease: 'power2.in' }, b(4.6 + i * 0.09))
+    tl.to(m.material.uniforms.uProg, { value: 0, duration: b(0.4), ease: E.acelera(2) }, b(4.6 + i * 0.09))
   })
   tl.to(puntos.map(p => p.scale), { x: 0, y: 0, z: 0, duration: b(0.3), ease: 'back.in(2)', stagger: 0.04 }, b(4.6))
-  tl.to(gFilete.scale, { x: 0.0001, duration: b(0.45), ease: 'power3.in' }, b(4.75))
+  tl.to(gFilete.scale, { x: 0.0001, duration: b(0.45), ease: E.acelera(3) }, b(4.75))
   tl.set(cta.material.uniforms.uDir, { value: 1 }, b(4.8))
-  tl.to(cta.material.uniforms.uProg, { value: 0, duration: b(0.3), ease: 'power2.in' }, b(4.8))
+  tl.to(cta.material.uniforms.uProg, { value: 0, duration: b(0.3), ease: E.acelera(2) }, b(4.8))
   tl.to(gChev.scale, { x: 0, y: 0, z: 0, duration: b(0.2), ease: 'back.in(2.4)' }, b(4.8))
-  tl.to(gPill.scale, { x: 0.72, y: 0.0001, duration: b(0.42), ease: 'power3.in' }, b(4.9))
-  tl.to(pill.material.uniforms.uAlfa, { value: 0, duration: b(0.42), ease: 'power2.in' }, b(4.9))
+  tl.to(gPill.scale, { x: 0.72, y: 0.0001, duration: b(0.42), ease: E.acelera(3) }, b(4.9))
+  tl.to(pill.material.uniforms.uAlfa, { value: 0, duration: b(0.42), ease: E.acelera(2) }, b(4.9))
   tl.set(marca.material.uniforms.uDir, { value: 3 }, b(4.9))
-  tl.to(marca.material.uniforms.uProg, { value: -0.08, duration: b(0.40), ease: 'power2.in' }, b(4.9))
-  tl.to(gMarca.scale, { x: 0.86, y: 0.86, z: 0.86, duration: b(0.45), ease: 'power2.in' }, b(4.9))
-  tl.to(gMarca.rotation, { y: -0.34, duration: b(0.45), ease: 'power2.in' }, b(4.9))
+  tl.to(marca.material.uniforms.uProg, { value: -0.08, duration: b(0.40), ease: E.acelera(2) }, b(4.9))
+  tl.to(gMarca.scale, { x: 0.86, y: 0.86, z: 0.86, duration: b(0.45), ease: E.acelera(2) }, b(4.9))
+  tl.to(gMarca.rotation, { y: -0.34, duration: b(0.45), ease: E.acelera(2) }, b(4.9))
   tl.to(ticks.map(t => t.scale), { x: 0, y: 0, z: 0, duration: b(0.30), ease: 'back.in(2.4)', stagger: 0.006 }, b(4.6))
-  tl.to(aroDeco.material.uniforms.uAlfa, { value: 0, duration: b(0.45), ease: 'power2.in' }, b(4.95))
+  tl.to(aroDeco.material.uniforms.uAlfa, { value: 0, duration: b(0.45), ease: E.acelera(2) }, b(4.95))
 
   // El anillo solo, respirando: ni el último medio beat descansa. La respiración tiene que CERRAR
   // antes del apagón — un tween que se solapa y termina después le vuelve a subir el alfa y el
@@ -390,22 +390,22 @@ export function build(ctx) {
   const t0Apagon = FIN - 3 * FRAME - 0.004
   const tRespira = b(5.4)
   const dRespira = (t0Apagon - tRespira - 0.002) / 2
-  tl.to(gAnillo.scale, { x: 0.995, y: 0.995, z: 0.995, duration: dRespira * 2, ease: 'sine.inOut' }, tRespira)
-  tl.to(aro.material.uniforms.uAlfa, { value: 0.80, duration: dRespira, ease: 'sine.inOut' }, tRespira)
-  tl.to(aro.material.uniforms.uAlfa, { value: 1, duration: dRespira, ease: 'sine.inOut' }, tRespira + dRespira)
+  tl.to(gAnillo.scale, { x: 0.995, y: 0.995, z: 0.995, duration: dRespira * 2, ease: E.vaiven() }, tRespira)
+  tl.to(aro.material.uniforms.uAlfa, { value: 0.80, duration: dRespira, ease: E.vaiven() }, tRespira)
+  tl.to(aro.material.uniforms.uAlfa, { value: 1, duration: dRespira, ease: E.vaiven() }, tRespira + dRespira)
 
   // --- cámara: empuje mínimo, retroceso al cerrar, y vuelve EXACTO a (0,0,distBase)
-  tl.to(camera.position, { z: distBase - 0.35, duration: b(4.5), ease: 'sine.inOut' }, 0)
-  tl.to(camera.rotation, { z: 0.010, duration: b(2.4), ease: 'sine.inOut' }, 0)
-  tl.to(camera.rotation, { z: 0, duration: b(2.1), ease: 'sine.inOut' }, b(2.4))
-  tl.to(camera.position, { z: distBase + 0.72, duration: b(0.85), ease: 'power2.inOut' }, b(4.5))
-  tl.to(camera.position, { z: distBase, duration: b(0.55), ease: 'power2.out' }, b(5.35))
+  tl.to(camera.position, { z: distBase - 0.35, duration: b(4.5), ease: E.vaiven() }, 0)
+  tl.to(camera.rotation, { z: 0.010, duration: b(2.4), ease: E.vaiven() }, 0)
+  tl.to(camera.rotation, { z: 0, duration: b(2.1), ease: E.vaiven() }, b(2.4))
+  tl.to(camera.position, { z: distBase + 0.72, duration: b(0.85), ease: E.vaiven(2) }, b(4.5))
+  tl.to(camera.position, { z: distBase, duration: b(0.55), ease: E.frena(2) }, b(5.35))
   tl.set(camera.position, { x: 0, y: 0, z: distBase }, b(5.94))
   tl.set(camera.rotation, { x: 0, y: 0, z: 0 }, b(5.94))
 
   // --- y el anillo se apaga en los últimos 3 frames
-  tl.to(gAnillo.scale, { x: 1.05, y: 1.05, z: 1.05, duration: 3 * FRAME, ease: 'power2.out' }, t0Apagon)
-  tl.to(aro.material.uniforms.uAlfa, { value: 0, duration: 3 * FRAME, ease: 'power2.in' }, t0Apagon)
+  tl.to(gAnillo.scale, { x: 1.05, y: 1.05, z: 1.05, duration: 3 * FRAME, ease: E.frena(2) }, t0Apagon)
+  tl.to(aro.material.uniforms.uAlfa, { value: 0, duration: 3 * FRAME, ease: E.acelera(2) }, t0Apagon)
 
   // La timeline se ARMA en pausa (así ningún tween corre mientras se la construye) pero se devuelve
   // corriendo. Un hijo pausado tiene timeScale 0 y el padre lo SALTEA al renderizar: colgado de la

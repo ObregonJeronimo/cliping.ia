@@ -15,7 +15,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js'
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js'
-import { BEAT, b, LOOK, hex, mulberry32, fondoVivo } from './kit.js'
+import { BEAT, b, LOOK, hex, mulberry32, fondoVivo, configurar } from './kit.js'
 import { ESCENAS } from './escenas/index.js'
 
 // ---------------------------------------------------------------- pase final de película
@@ -84,6 +84,21 @@ export class Anthem {
     this.scene.add(this.fondo)
 
     this._composer()
+    // EL TRATAMIENTO ES DEL AIRE, no del arnes. Un bloom calibrado sobre un acento azul revienta
+    // sobre un amarillo fluor: el amarillo ya entra al pase con dos canales cerca de 1.0, asi que
+    // con el mismo umbral florece TODO el glifo y el texto sale como una mancha blanca ilegible.
+    // Cada aire trae su propia exposicion porque cada paleta pega distinto contra el mismo pase.
+    const pel = (spec.__aire && spec.__aire.pelicula) || {}
+    if (pel.bloom != null) this.bloom.strength = pel.bloom
+    if (pel.umbral != null) this.bloom.threshold = pel.umbral
+    if (pel.radio != null) this.bloom.radius = pel.radio
+    const u = this.pelicula.uniforms
+    if (pel.grano != null) u.uGrano.value = pel.grano
+    if (pel.vinieta != null) u.uVinieta.value = pel.vinieta
+    if (pel.aberr != null) u.uAberr.value = pel.aberr
+    // La energia de camara tambien: una marca de lujo con la camara del aire deportivo se lee como
+    // una plantilla mal elegida, por mas que la paleta sea correcta.
+    this.camaraE = (spec.__aire && spec.__aire.camara) || { dolly: 1, orbita: 1 }
     this.tl = window.gsap.timeline({ paused: true })
     this.escenas = []
   }
@@ -191,8 +206,31 @@ window.URVID = {
   async init(spec) {
     // Sin esperar a las fuentes, el primer texto se mide y se dibuja con la de sistema y queda así
     // para siempre en la textura cacheada — un fallo que sólo se ve al final, en el video.
+    // EL AIRE ANTES QUE NADA: define paleta, tipografia, ritmo y familia de gestos, y todo lo que se
+    // construye despues lo lee. Configurarlo tarde deja medio arbol armado con los valores del aire
+    // anterior — un defecto que sale en forma de una escena con la tipografia equivocada.
+    let aire = null
+    if (spec.aire) {
+      const mod = await import(`./aires/${spec.aire}.js`)
+      aire = mod.default || mod.aire
+      configurar(aire)
+      spec.__aire = aire
+    }
     await document.fonts.ready
-    await Promise.all(['Anton', 'ArchivoBlack', 'BigShoulders', 'Bricolage', 'DMSans']
+    // Las tipografias del aire se cargan por FontFace y no por @font-face en el CSS: el CSS tendria
+    // que declarar las 72 de antemano y ninguna pieza usa mas de dos. Se espera a que esten ANTES de
+    // rasterizar: el canvas mide con la que haya en ese momento, y como la textura queda cacheada,
+    // una fuente que llega tarde no se ve mal — se ve con OTRA tipografia, para siempre.
+    for (const nombre of Object.values((aire && aire.fuentes) || {})) {
+      if (document.fonts.check(`400 100px "${nombre}"`)) continue
+      try {
+        const ff = new FontFace(nombre, `url(/fonts/${nombre}.ttf)`)
+        await ff.load()
+        document.fonts.add(ff)
+      } catch (e) { console.error('fuente ' + nombre + ': ' + e.message) }
+    }
+    await Promise.all(['Anton', 'ArchivoBlack', 'BigShoulders', 'Bricolage', 'DMSans',
+      ...Object.values((aire && aire.fuentes) || {})]
       .map(f => document.fonts.load(`400 200px "${f}"`).catch(() => {})))
     const canvas = document.getElementById('c')
     canvas.width = spec.W; canvas.height = spec.H

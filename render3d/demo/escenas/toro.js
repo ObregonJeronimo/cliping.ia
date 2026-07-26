@@ -26,7 +26,7 @@
 // reproduce su degrade en coordenadas de mundo: la union cae en el mismo punto del espacio, asi que
 // no hay costura. Se resuelve acá adentro para no tocar el kit.
 
-import { LOOK, b, texto, materialMascara, filete, matAcento, matTarjeta, hex } from '../kit.js'
+import { E, LOOK, b, texto, materialMascara, filete, matAcento, matTarjeta, hex } from '../kit.js'
 
 export const meta = { id: 'toro', beats: 6 }
 
@@ -396,17 +396,17 @@ export function build(ctx) {
   // ================================================================== ENTRADA · beat 0 – 0.8
   nucleo.scale.setScalar(0)
   nucleo.position.z = -9
-  tl.to(nucleo.scale, { x: 1, y: 1, z: 1, duration: b(0.75), ease: 'back.out(1.85)' }, 0)
-  tl.to(nucleo.position, { z: 0, duration: b(0.85), ease: 'power3.out' }, 0)
+  tl.to(nucleo.scale, { x: 1, y: 1, z: 1, duration: b(0.75), ease: E.llega(1.85) }, 0)
+  tl.to(nucleo.position, { z: 0, duration: b(0.85), ease: E.frena(3) }, 0)
 
-  tl.to(aroA.scale, { x: 1, y: 1, z: 1, duration: b(0.8), ease: 'back.out(2.4)' }, b(0.16))
-  tl.to(aroB.scale, { x: 1, y: 1, z: 1, duration: b(0.8), ease: 'back.out(2.4)' }, b(0.28))
-  tl.to(nodos.map(n => n.scale), { x: 1, y: 1, z: 1, duration: b(0.55), ease: 'back.out(2.8)', stagger: 0.045 }, b(0.24))
+  tl.to(aroA.scale, { x: 1, y: 1, z: 1, duration: b(0.8), ease: E.llega(2.4) }, b(0.16))
+  tl.to(aroB.scale, { x: 1, y: 1, z: 1, duration: b(0.8), ease: E.llega(2.4) }, b(0.28))
+  tl.to(nodos.map(n => n.scale), { x: 1, y: 1, z: 1, duration: b(0.55), ease: E.llega(2.8), stagger: 0.045 }, b(0.24))
 
-  tl.to(matPolvo.uniforms.uProg, { value: 1.35, duration: b(1.4), ease: 'power2.out' }, b(0.12))
+  tl.to(matPolvo.uniforms.uProg, { value: 1.35, duration: b(1.4), ease: E.frena(2) }, b(0.12))
 
-  tl.to(escuadras.map(e => e.scale), { x: 1, y: 1, z: 1, duration: b(0.6), ease: 'back.out(2.2)', stagger: 0.06 }, b(0.3))
-  tl.to(matHUD, { opacity: 1, duration: b(0.4), ease: 'power2.out' }, b(0.3))
+  tl.to(escuadras.map(e => e.scale), { x: 1, y: 1, z: 1, duration: b(0.6), ease: E.llega(2.2), stagger: 0.06 }, b(0.3))
+  tl.to(matHUD, { opacity: 1, duration: b(0.4), ease: E.frena(2) }, b(0.3))
 
   // ================================================================== GIRO CONTINUO · toda la escena
   // Nada descansa: estos tweens no paran nunca. Las velocidades no son multiplos entre si (3.35/1.31)
@@ -421,59 +421,59 @@ export function build(ctx) {
 
   // Respiracion del polvo y latido de los nodos sobre medios beats: el ritmo se siente aunque no
   // haya un corte.
-  tl.to(matPolvo.uniforms.uEsc, { value: 1.18, duration: b(1.5), ease: 'sine.inOut' }, b(1.0))
-  tl.to(matPolvo.uniforms.uEsc, { value: 1.0, duration: b(1.5), ease: 'sine.inOut' }, b(2.5))
+  tl.to(matPolvo.uniforms.uEsc, { value: 1.18, duration: b(1.5), ease: E.vaiven() }, b(1.0))
+  tl.to(matPolvo.uniforms.uEsc, { value: 1.0, duration: b(1.5), ease: E.vaiven() }, b(2.5))
   for (const t0 of [3.0, 3.5, 4.0]) {
-    tl.to(nodos.map(n => n.scale), { x: 1.55, y: 1.55, z: 1.55, duration: b(0.14), ease: 'power2.out', stagger: 0.022 }, b(t0))
-    tl.to(nodos.map(n => n.scale), { x: 1, y: 1, z: 1, duration: b(0.36), ease: 'power2.out', stagger: 0.022 }, b(t0) + b(0.14))
+    tl.to(nodos.map(n => n.scale), { x: 1.55, y: 1.55, z: 1.55, duration: b(0.14), ease: E.frena(2), stagger: 0.022 }, b(t0))
+    tl.to(nodos.map(n => n.scale), { x: 1, y: 1, z: 1, duration: b(0.36), ease: E.frena(2), stagger: 0.022 }, b(t0) + b(0.14))
   }
 
   // ================================================================== TIPOGRAFIA · beat 1.35 – 4.35
   // Las escuadras se retiran justo antes: el cuadro cambia de estado en vez de acumular.
-  tl.to(matHUD, { opacity: 0, duration: b(0.5), ease: 'power2.in' }, b(1.35))
-  tl.to(escuadras.map(e => e.scale), { x: 0.72, y: 0.72, z: 0.72, duration: b(0.6), ease: 'power2.in', stagger: 0.04 }, b(1.35))
+  tl.to(matHUD, { opacity: 0, duration: b(0.5), ease: E.acelera(2) }, b(1.35))
+  tl.to(escuadras.map(e => e.scale), { x: 0.72, y: 0.72, z: 0.72, duration: b(0.6), ease: E.acelera(2), stagger: 0.04 }, b(1.35))
 
-  tl.to(tick.scale, { y: 1, duration: b(0.3), ease: 'back.out(2.6)' }, b(1.35))
-  tl.to(kick.material.uniforms.uProg, { value: 1, duration: b(0.55), ease: 'power2.out' }, b(1.4))
+  tl.to(tick.scale, { y: 1, duration: b(0.3), ease: E.llega(2.6) }, b(1.35))
+  tl.to(kick.material.uniforms.uProg, { value: 1, duration: b(0.55), ease: E.frena(2) }, b(1.4))
 
   palabras.forEach((m, i) => {
     const t0 = b(1.55) + i * 0.055                                // stagger de 55 ms: el ojo lee orden
-    tl.fromTo(m.position, { y: Y_PAL - 0.19 }, { y: Y_PAL, duration: b(0.85), ease: 'back.out(2.1)' }, t0)
-    tl.fromTo(m.rotation, { x: -0.45 }, { x: 0, duration: b(0.95), ease: 'back.out(1.7)' }, t0)
+    tl.fromTo(m.position, { y: Y_PAL - 0.19 }, { y: Y_PAL, duration: b(0.85), ease: E.llega(2.1) }, t0)
+    tl.fromTo(m.rotation, { x: -0.45 }, { x: 0, duration: b(0.95), ease: E.llega(1.7) }, t0)
   })
-  tl.to(uProgPal, { value: 1, duration: b(0.7), ease: 'power2.out', stagger: 0.055 }, b(1.55))
+  tl.to(uProgPal, { value: 1, duration: b(0.7), ease: E.frena(2), stagger: 0.055 }, b(1.55))
 
-  tl.to(fileteWrap.scale, { x: 1, duration: b(0.8), ease: 'power3.out' }, b(1.62))
-  tl.to(sub.material.uniforms.uProg, { value: 1, duration: b(0.7), ease: 'power2.out' }, b(2.05))
-  tl.fromTo(sub.position, { y: Y_SUB - 0.1 }, { y: Y_SUB, duration: b(0.7), ease: 'back.out(1.9)' }, b(2.05))
+  tl.to(fileteWrap.scale, { x: 1, duration: b(0.8), ease: E.frena(3) }, b(1.62))
+  tl.to(sub.material.uniforms.uProg, { value: 1, duration: b(0.7), ease: E.frena(2) }, b(2.05))
+  tl.fromTo(sub.position, { y: Y_SUB - 0.1 }, { y: Y_SUB, duration: b(0.7), ease: E.llega(1.9) }, b(2.05))
 
-  tl.to(lectura.material.uniforms.uProg, { value: 1, duration: b(0.5), ease: 'power2.out' }, b(0.9))
+  tl.to(lectura.material.uniforms.uProg, { value: 1, duration: b(0.5), ease: E.frena(2) }, b(0.9))
 
   tl.to(escaner.material, { opacity: 1, duration: b(0.2) }, b(2.6))
   tl.fromTo(escaner.position, { x: X0 }, { x: -X0, duration: b(1.7), ease: 'power1.inOut' }, b(2.6))
   tl.to(escaner.material, { opacity: 0, duration: b(0.3) }, b(4.0))
 
   // ================================================================== SALIDA · beat 4.35 – 5.92
-  tl.to(uProgPal, { value: 0, duration: b(0.45), ease: 'power2.in', stagger: { each: 0.04, from: 'end' } }, b(4.35))
+  tl.to(uProgPal, { value: 0, duration: b(0.45), ease: E.acelera(2), stagger: { each: 0.04, from: 'end' } }, b(4.35))
   tl.to([kick.material.uniforms.uProg, sub.material.uniforms.uProg, lectura.material.uniforms.uProg],
-    { value: 0, duration: b(0.45), ease: 'power2.in', stagger: 0.05 }, b(4.28))
-  tl.to(tipo.position, { y: -0.5, duration: b(1.0), ease: 'power2.in' }, b(4.35))
-  tl.to(fileteWrap.scale, { x: 0, duration: b(0.4), ease: 'power3.in' }, b(4.5))
-  tl.to(tick.scale, { y: 0, duration: b(0.25), ease: 'power3.in' }, b(4.6))
+    { value: 0, duration: b(0.45), ease: E.acelera(2), stagger: 0.05 }, b(4.28))
+  tl.to(tipo.position, { y: -0.5, duration: b(1.0), ease: E.acelera(2) }, b(4.35))
+  tl.to(fileteWrap.scale, { x: 0, duration: b(0.4), ease: E.acelera(3) }, b(4.5))
+  tl.to(tick.scale, { y: 0, duration: b(0.25), ease: E.acelera(3) }, b(4.6))
 
   // El objeto acelera hacia arriba y hacia el fondo. power3.in: sale, no se desvanece.
-  tl.to(nucleo.position, { y: 9.6, z: -5.2, duration: b(1.05), ease: 'power3.in' }, b(4.5))
-  tl.to(nucleo.scale, { x: 0.72, y: 0.72, z: 0.72, duration: b(1.05), ease: 'power2.in' }, b(4.5))
+  tl.to(nucleo.position, { y: 9.6, z: -5.2, duration: b(1.05), ease: E.acelera(3) }, b(4.5))
+  tl.to(nucleo.scale, { x: 0.72, y: 0.72, z: 0.72, duration: b(1.05), ease: E.acelera(2) }, b(4.5))
 
   ondas.forEach((o, i) => {
     const t0 = b(4.5) + i * 0.11
     tl.set(o.material, { opacity: 0.95 }, t0)
-    tl.fromTo(o.scale, { x: 0.6, y: 0.6, z: 0.6 }, { x: 6.4, y: 6.4, z: 6.4, duration: b(1.2), ease: 'power2.out' }, t0)
+    tl.fromTo(o.scale, { x: 0.6, y: 0.6, z: 0.6 }, { x: 6.4, y: 6.4, z: 6.4, duration: b(1.2), ease: E.frena(2) }, t0)
     tl.to(o.material, { opacity: 0, duration: b(1.1), ease: 'power1.in' }, t0 + b(0.12))
   })
 
-  tl.to(matPolvo.uniforms.uDisp, { value: 1.55, duration: b(1.4), ease: 'power2.in' }, b(4.5))
-  tl.to(matPolvo.uniforms.uOp, { value: 0, duration: b(1.1), ease: 'power2.in' }, b(4.8))
+  tl.to(matPolvo.uniforms.uDisp, { value: 1.55, duration: b(1.4), ease: E.acelera(2) }, b(4.5))
+  tl.to(matPolvo.uniforms.uOp, { value: 0, duration: b(1.1), ease: E.acelera(2) }, b(4.8))
 
   return { g, tl }
 }

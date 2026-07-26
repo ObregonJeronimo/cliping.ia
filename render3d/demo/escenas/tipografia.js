@@ -25,7 +25,7 @@
 // barras que entran a contratiempo (en los medios beats), columna de marcas que baja sin parar,
 // regla de progreso escalonada arriba y epígrafe abajo.
 
-import { LOOK, b, texto, planoTexto, matAcento, hex } from '../kit.js'
+import { E, LOOK, b, texto, planoTexto, matAcento, hex } from '../kit.js'
 
 export const meta = { id: 'tipografia', beats: 8 }
 
@@ -292,70 +292,70 @@ export function build(ctx) {
   const sal = (bt, rapido) => b(bt) - (rapido ? 3 : 5) * F
 
   // 1 · las mitades se juntan (con stagger: nunca llegan a la vez) y se van disparadas al revés
-  tl.to(w1a.position, { x: -x1, duration: b(0.85), ease: 'back.out(1.9)' }, 0)
-  tl.to(w1b.position, { x: x1, duration: b(0.85), ease: 'back.out(1.9)' }, 0.055)
-  tl.to(w1a.scale, { y: 1, duration: b(0.8), ease: 'back.out(2.6)' }, 0)
-  tl.to(w1b.scale, { y: 1, duration: b(0.8), ease: 'back.out(2.6)' }, 0.055)
-  tl.to(w1a.position, { y: 0.42, duration: b(0.55), ease: 'sine.inOut' }, b(0.9))
-  tl.to(w1b.position, { y: 0.18, duration: b(0.55), ease: 'sine.inOut' }, b(0.9))
-  tl.to(w1a.position, { x: -x1 - 6.6, duration: b(0.42), ease: 'power3.in' }, sal(1.5))
-  tl.to(w1b.position, { x: x1 + 6.6, duration: b(0.42), ease: 'power3.in' }, sal(1.5) + 0.03)
+  tl.to(w1a.position, { x: -x1, duration: b(0.85), ease: E.llega(1.9) }, 0)
+  tl.to(w1b.position, { x: x1, duration: b(0.85), ease: E.llega(1.9) }, 0.055)
+  tl.to(w1a.scale, { y: 1, duration: b(0.8), ease: E.llega(2.6) }, 0)
+  tl.to(w1b.scale, { y: 1, duration: b(0.8), ease: E.llega(2.6) }, 0.055)
+  tl.to(w1a.position, { y: 0.42, duration: b(0.55), ease: E.vaiven() }, b(0.9))
+  tl.to(w1b.position, { y: 0.18, duration: b(0.55), ease: E.vaiven() }, b(0.9))
+  tl.to(w1a.position, { x: -x1 - 6.6, duration: b(0.42), ease: E.acelera(3) }, sal(1.5))
+  tl.to(w1b.position, { x: x1 + 6.6, duration: b(0.42), ease: E.acelera(3) }, sal(1.5) + 0.03)
 
   // 2 · escala anclada al margen; se va aplastándose (escala a 0 en Y mientras se estira en X)
-  tl.to(w2.scale, { x: 1, y: 1, duration: b(0.78), ease: 'back.out(2.6)' }, ent(1.5))
-  tl.to(w2.rotation, { z: 0, duration: b(0.92), ease: 'back.out(2.2)' }, ent(1.5))
-  tl.to(w2.position, { x: XI + 0.14, duration: b(0.9), ease: 'sine.inOut' }, b(1.9))
-  tl.to(w2.scale, { y: 0, x: 1.3, duration: b(0.42), ease: 'power3.in' }, sal(3))
+  tl.to(w2.scale, { x: 1, y: 1, duration: b(0.78), ease: E.llega(2.6) }, ent(1.5))
+  tl.to(w2.rotation, { z: 0, duration: b(0.92), ease: E.llega(2.2) }, ent(1.5))
+  tl.to(w2.position, { x: XI + 0.14, duration: b(0.9), ease: E.vaiven() }, b(1.9))
+  tl.to(w2.scale, { y: 0, x: 1.3, duration: b(0.42), ease: E.acelera(3) }, sal(3))
 
   // 3 · máscara horizontal que descubre; se borra por máscara inversa y se escapa hacia arriba
-  tl.to(w3.material.uniforms.uProg, { value: 1, duration: b(0.36), ease: 'power2.out' }, ent(3))
-  tl.to(w3.position, { x: XD, duration: b(0.5), ease: 'expo.out' }, ent(3))
-  tl.to(w3.material.uniforms.uProg, { value: 0, duration: b(0.31), ease: 'power2.in' }, sal(3.5, 1))
-  tl.to(w3.position, { y: 0.62, duration: b(0.31), ease: 'power2.in' }, sal(3.5, 1))
+  tl.to(w3.material.uniforms.uProg, { value: 1, duration: b(0.36), ease: E.frena(2) }, ent(3))
+  tl.to(w3.position, { x: XD, duration: b(0.5), ease: E.frena(5) }, ent(3))
+  tl.to(w3.material.uniforms.uProg, { value: 0, duration: b(0.31), ease: E.acelera(2) }, sal(3.5, 1))
+  tl.to(w3.position, { y: 0.62, duration: b(0.31), ease: E.acelera(2) }, sal(3.5, 1))
 
   // 4 · máscara vertical; se va por aceleración hacia arriba, fuera de cuadro
-  tl.to(w4.material.uniforms.uProg, { value: 1, duration: b(0.36), ease: 'power2.out' }, ent(3.5))
-  tl.to(w4.position, { y: 0.60, duration: b(0.34), ease: 'expo.out' }, ent(3.5))
-  tl.to(w4.position, { y: 6.8, duration: b(0.33), ease: 'power3.in' }, sal(4, 1))
+  tl.to(w4.material.uniforms.uProg, { value: 1, duration: b(0.36), ease: E.frena(2) }, ent(3.5))
+  tl.to(w4.position, { y: 0.60, duration: b(0.34), ease: E.frena(5) }, ent(3.5))
+  tl.to(w4.position, { y: 6.8, duration: b(0.33), ease: E.acelera(3) }, sal(4, 1))
 
   // 5 · cae de plano desde 90° y sigue girando hasta desaparecer por el otro lado
-  tl.to(w5.rotation, { x: 0, duration: b(0.42), ease: 'back.out(2.4)' }, ent(4))
-  tl.to(w5.scale, { x: 1, y: 1, duration: b(0.42), ease: 'expo.out' }, ent(4))
-  tl.to(w5.position, { y: 0.25, duration: b(0.42), ease: 'back.out(2.0)' }, ent(4))
-  tl.to(w5.rotation, { x: -Math.PI / 2, duration: b(0.31), ease: 'power3.in' }, sal(4.5, 1))
-  tl.to(w5.position, { y: 0.62, duration: b(0.31), ease: 'power3.in' }, sal(4.5, 1))
+  tl.to(w5.rotation, { x: 0, duration: b(0.42), ease: E.llega(2.4) }, ent(4))
+  tl.to(w5.scale, { x: 1, y: 1, duration: b(0.42), ease: E.frena(5) }, ent(4))
+  tl.to(w5.position, { y: 0.25, duration: b(0.42), ease: E.llega(2.0) }, ent(4))
+  tl.to(w5.rotation, { x: -Math.PI / 2, duration: b(0.31), ease: E.acelera(3) }, sal(4.5, 1))
+  tl.to(w5.position, { y: 0.62, duration: b(0.31), ease: E.acelera(3) }, sal(4.5, 1))
 
   // 6 · entra de fuera de cuadro con overshoot y se va por el lado contrario
-  tl.to(w6.position, { x: XD, duration: b(0.82), ease: 'back.out(1.7)' }, ent(4.5))
-  tl.to(w6.rotation, { z: 0, duration: b(1.0), ease: 'back.out(2.0)' }, ent(4.5))
-  tl.to(w6.position, { y: 0.58, duration: b(0.4), ease: 'sine.inOut' }, b(5.3))
-  tl.to(w6.position, { x: XD - 9.4, duration: b(0.42), ease: 'power3.in' }, sal(6))
-  tl.to(w6.rotation, { z: -0.10, duration: b(0.42), ease: 'power2.in' }, sal(6))
+  tl.to(w6.position, { x: XD, duration: b(0.82), ease: E.llega(1.7) }, ent(4.5))
+  tl.to(w6.rotation, { z: 0, duration: b(1.0), ease: E.llega(2.0) }, ent(4.5))
+  tl.to(w6.position, { y: 0.58, duration: b(0.4), ease: E.vaiven() }, b(5.3))
+  tl.to(w6.position, { x: XD - 9.4, duration: b(0.42), ease: E.acelera(3) }, sal(6))
+  tl.to(w6.rotation, { z: -0.10, duration: b(0.42), ease: E.acelera(2) }, sal(6))
 
   // 7 · llega desde el fondo pasándose de largo, vuelve a golpear en el beat 7 y se escapa creciendo
   //     justo cuando el corte de escena la interrumpe
   tl.set(w7, { visible: true }, ent(6))
-  tl.to(w7.position, { z: 0, duration: b(0.95), ease: 'back.out(2.2)' }, ent(6))
-  tl.to(w7.rotation, { z: 0, duration: b(1.1), ease: 'back.out(1.8)' }, ent(6))
-  tl.to(w7.scale, { x: 1.10, y: 1.10, duration: b(0.42), ease: 'back.out(3)' }, b(7) - F)
-  tl.to(w7.position, { y: 0.22, duration: b(0.8), ease: 'sine.inOut' }, b(6.85))
-  tl.to(w7.scale, { x: 1.34, y: 1.34, duration: b(0.35), ease: 'power2.in' }, b(7.6))
-  tl.to(w7b.material.uniforms.uProg, { value: 1, duration: b(0.5), ease: 'power2.out' }, b(6) + 3 * F)
-  tl.to(w7b.scale, { x: 1.09, duration: b(1.2), ease: 'sine.inOut' }, b(6.6))
-  tl.to(w7b.position, { y: 2.75, duration: b(0.4), ease: 'power2.in' }, b(7.5))
+  tl.to(w7.position, { z: 0, duration: b(0.95), ease: E.llega(2.2) }, ent(6))
+  tl.to(w7.rotation, { z: 0, duration: b(1.1), ease: E.llega(1.8) }, ent(6))
+  tl.to(w7.scale, { x: 1.10, y: 1.10, duration: b(0.42), ease: E.llega(3) }, b(7) - F)
+  tl.to(w7.position, { y: 0.22, duration: b(0.8), ease: E.vaiven() }, b(6.85))
+  tl.to(w7.scale, { x: 1.34, y: 1.34, duration: b(0.35), ease: E.acelera(2) }, b(7.6))
+  tl.to(w7b.material.uniforms.uProg, { value: 1, duration: b(0.5), ease: E.frena(2) }, b(6) + 3 * F)
+  tl.to(w7b.scale, { x: 1.09, duration: b(1.2), ease: E.vaiven() }, b(6.6))
+  tl.to(w7b.position, { y: 2.75, duration: b(0.4), ease: E.acelera(2) }, b(7.5))
 
   // -------- filete: se contrae, SALTA de sitio y vuelve a crecer. El salto es lo que se ve.
   let prev = FIL[0].l
   for (let i = 0; i < FIL.length; i++) {
     const s = FIL[i]
     const tc = b(s.bt)
-    if (i > 0) tl.to(fil.scale, { x: 0, duration: 2.5 * F, ease: 'power2.in' }, tc - 3 * F)
+    if (i > 0) tl.to(fil.scale, { x: 0, duration: 2.5 * F, ease: E.acelera(2) }, tc - 3 * F)
     const t0 = Math.max(0, tc - 0.5 * F)
     const col = hex(s.c).multiplyScalar(3.4)
     tl.set(fil.position, { x: s.x, y: s.y }, t0)
     tl.set(fil.scale, { y: s.gr }, t0)
     tl.set(fil.material.color, { r: col.r, g: col.g, b: col.b }, t0)
-    tl.to(fil.scale, { x: s.l, duration: b(0.26), ease: 'expo.out' }, t0)
+    tl.to(fil.scale, { x: s.l, duration: b(0.26), ease: E.frena(5) }, t0)
     prev = s.l
   }
   void prev
@@ -366,22 +366,22 @@ export function build(ctx) {
       const t0 = b(bt) + p.fase
       const t1 = b(bt + vida) + p.fase
       if (p.eje === 'xy') {
-        tl.to(p.m.scale, { x: 1, y: 1, duration: b(0.34), ease: 'back.out(2.8)' }, t0)
-        tl.to(p.m.rotation, { z: 0, duration: b(0.5), ease: 'back.out(2.2)' }, t0)
-        tl.to(p.m.scale, { x: 0, y: 0, duration: b(0.26), ease: 'power3.in' }, t1)
-        tl.to(p.m.rotation, { z: -0.55, duration: b(0.26), ease: 'power2.in' }, t1)
+        tl.to(p.m.scale, { x: 1, y: 1, duration: b(0.34), ease: E.llega(2.8) }, t0)
+        tl.to(p.m.rotation, { z: 0, duration: b(0.5), ease: E.llega(2.2) }, t0)
+        tl.to(p.m.scale, { x: 0, y: 0, duration: b(0.26), ease: E.acelera(3) }, t1)
+        tl.to(p.m.rotation, { z: -0.55, duration: b(0.26), ease: E.acelera(2) }, t1)
       } else {
-        tl.to(p.m.scale, { [p.eje]: p.larg, duration: b(0.34), ease: 'expo.out' }, t0)
-        tl.to(p.m.scale, { [p.eje]: 0, duration: b(0.26), ease: 'power3.in' }, t1)
+        tl.to(p.m.scale, { [p.eje]: p.larg, duration: b(0.34), ease: E.frena(5) }, t0)
+        tl.to(p.m.scale, { [p.eje]: 0, duration: b(0.26), ease: E.acelera(3) }, t1)
       }
     }
   }
   bloque.rotation.z = 0.42
 
   // -------- barrido del cierre
-  tl.to(barrido.scale, { x: 6.7, duration: 0.07, ease: 'power2.out' }, b(7.5))
+  tl.to(barrido.scale, { x: 6.7, duration: 0.07, ease: E.frena(2) }, b(7.5))
   tl.to(barrido.position, { y: 1.9, duration: b(0.45), ease: 'power1.inOut' }, b(7.5))
-  tl.to(barrido.scale, { x: 0, duration: 0.07, ease: 'power2.in' }, b(7.5) + 0.13)
+  tl.to(barrido.scale, { x: 0, duration: 0.07, ease: E.acelera(2) }, b(7.5) + 0.13)
 
   // -------- columna de marcas: un solo movimiento continuo, de punta a punta de la escena
   for (const mk of marcas) {
@@ -389,16 +389,16 @@ export function build(ctx) {
   }
 
   // -------- HUD: rótulo y regla escalonada (un escalón por medio beat)
-  tl.to(hud.scale, { x: 1, duration: b(0.7), ease: 'expo.out' }, 0.06)
+  tl.to(hud.scale, { x: 1, duration: b(0.7), ease: E.frena(5) }, 0.06)
   tl.to(relleno.scale, { x: XD - XI, duration: b(7.85), ease: 'steps(16)' }, 0)
-  tl.to(riel.scale, { y: 0.05, duration: b(1.2), ease: 'sine.inOut' }, b(6))
+  tl.to(riel.scale, { y: 0.05, duration: b(1.2), ease: E.vaiven() }, b(6))
 
   // -------- epígrafes
-  tl.to(c1.material.uniforms.uProg, { value: 1, duration: b(0.7), ease: 'power2.out' }, 0.10)
-  tl.to(c1.material.uniforms.uProg, { value: 0, duration: b(0.4), ease: 'power2.in' }, sal(4, 1))
-  tl.to(c2.material.uniforms.uProg, { value: 1, duration: b(0.7), ease: 'power2.out' }, ent(4))
-  tl.to(c2.scale, { x: 1.06, duration: b(2.4), ease: 'sine.inOut' }, b(5))
-  tl.to(c2.position, { y: -3.70, duration: b(0.6), ease: 'power2.in' }, b(7.3))
+  tl.to(c1.material.uniforms.uProg, { value: 1, duration: b(0.7), ease: E.frena(2) }, 0.10)
+  tl.to(c1.material.uniforms.uProg, { value: 0, duration: b(0.4), ease: E.acelera(2) }, sal(4, 1))
+  tl.to(c2.material.uniforms.uProg, { value: 1, duration: b(0.7), ease: E.frena(2) }, ent(4))
+  tl.to(c2.scale, { x: 1.06, duration: b(2.4), ease: E.vaiven() }, b(5))
+  tl.to(c2.position, { y: -3.70, duration: b(0.6), ease: E.acelera(2) }, b(7.3))
 
   // ------------------------------------------------------------------ fondo, pase final y cámara
   //
@@ -408,39 +408,39 @@ export function build(ctx) {
   for (const bt of CORTE) {
     const t0 = Math.max(0, b(bt) - 2 * F)
     tl.set(fondo.uPulso, { value: bt === 0 ? 0.52 : 0.42 }, t0)
-    tl.to(fondo.uPulso, { value: 0.05, duration: b(0.44), ease: 'expo.out' }, t0)
+    tl.to(fondo.uPulso, { value: 0.05, duration: b(0.44), ease: E.frena(5) }, t0)
   }
   tl.set(fondo.uPulso, { value: 0.40 }, b(7) - 2 * F)
-  tl.to(fondo.uPulso, { value: 0, duration: b(0.9), ease: 'expo.out' }, b(7) - 2 * F)
+  tl.to(fondo.uPulso, { value: 0, duration: b(0.9), ease: E.frena(5) }, b(7) - 2 * F)
 
   tl.set(fondo.uGrilla, { value: 0.55 }, 0)
-  tl.to(fondo.uGrilla, { value: 0.95, duration: b(2.6), ease: 'sine.inOut' }, 0)
+  tl.to(fondo.uGrilla, { value: 0.95, duration: b(2.6), ease: E.vaiven() }, 0)
   tl.set(fondo.uGrilla, { value: 1.55 }, b(3) - 2 * F)
-  tl.to(fondo.uGrilla, { value: 0.30, duration: b(1.4), ease: 'expo.out' }, b(3) - 2 * F)
-  tl.to(fondo.uGrilla, { value: 1.10, duration: b(1.5), ease: 'power2.inOut' }, b(4.5))
-  tl.to(fondo.uGrilla, { value: 0.55, duration: b(1.6), ease: 'sine.inOut' }, b(6))
+  tl.to(fondo.uGrilla, { value: 0.30, duration: b(1.4), ease: E.frena(5) }, b(3) - 2 * F)
+  tl.to(fondo.uGrilla, { value: 1.10, duration: b(1.5), ease: E.vaiven(2) }, b(4.5))
+  tl.to(fondo.uGrilla, { value: 0.55, duration: b(1.6), ease: E.vaiven() }, b(6))
 
   // Micro-flashes SÓLO en el tramo rápido y en el golpe del beat 7. Los cortes de escena ya los pone
   // el secuenciador; estos son los cortes de adentro y por eso valen la mitad.
   for (const bt of [3, 3.5, 4, 7]) {
     const t0 = b(bt) - F
     tl.set(pelicula.uFlash, { value: 0.3 }, t0)
-    tl.to(pelicula.uFlash, { value: 0, duration: 2 * F, ease: 'power2.in' }, t0)
+    tl.to(pelicula.uFlash, { value: 0, duration: 2 * F, ease: E.acelera(2) }, t0)
   }
 
-  tl.to(bloom, { strength: 1.15, duration: b(1.0), ease: 'power2.out' }, b(6))
-  tl.to(bloom, { strength: 0.85, duration: b(0.5), ease: 'sine.inOut' }, b(7.1))
+  tl.to(bloom, { strength: 1.15, duration: b(1.0), ease: E.frena(2) }, b(6))
+  tl.to(bloom, { strength: 0.85, duration: b(0.5), ease: E.vaiven() }, b(7.1))
 
   // CÁMARA: un acercamiento lento que sostiene los 8 beats y dos ladeos secos sobre el tramo rápido.
   // Vuelve a su sitio antes del final — si no, la escena siguiente arranca desde otro punto de vista.
-  tl.to(camera.position, { z: distBase - 0.9, duration: b(6), ease: 'sine.inOut' }, 0)
-  tl.to(camera.position, { z: distBase, duration: b(1.5), ease: 'power2.inOut' }, b(6))
-  tl.to(camera.position, { y: 0.24, duration: b(4), ease: 'sine.inOut' }, 0)
-  tl.to(camera.position, { y: 0, duration: b(3.5), ease: 'sine.inOut' }, b(4))
+  tl.to(camera.position, { z: distBase - 0.9, duration: b(6), ease: E.vaiven() }, 0)
+  tl.to(camera.position, { z: distBase, duration: b(1.5), ease: E.vaiven(2) }, b(6))
+  tl.to(camera.position, { y: 0.24, duration: b(4), ease: E.vaiven() }, 0)
+  tl.to(camera.position, { y: 0, duration: b(3.5), ease: E.vaiven() }, b(4))
   for (const [bt, lado] of [[3, 1], [3.5, -1], [4, 1]]) {
     const t0 = b(bt) - 2 * F
     tl.set(camera.rotation, { z: 0.019 * lado }, t0)
-    tl.to(camera.rotation, { z: 0, duration: b(0.42), ease: 'expo.out' }, t0)
+    tl.to(camera.rotation, { z: 0, duration: b(0.42), ease: E.frena(5) }, t0)
   }
   tl.set(camera.position, { x: 0, y: 0, z: distBase }, b(7.92))
   tl.set(camera.rotation, { x: 0, y: 0, z: 0 }, b(7.92))
