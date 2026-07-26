@@ -1,0 +1,22 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>urvid render3d</title>
+<style>
+  /* El body no tiene que aportar NADA al pixel: cualquier margen, scrollbar o color de fondo del
+     documento entra en el screenshot y arruina el frame. El canvas es el cuadro entero. */
+  html, body { margin: 0; padding: 0; background: #000; overflow: hidden; }
+  canvas { display: block; }
+</style>
+<!-- Dos lienzos: #c es donde dibuja WebGL y #acc es donde se PROMEDIAN las submuestras del
+     obturador. Se fotografia #acc siempre, asi el driver no tiene que saber si el desenfoque
+     de movimiento esta prendido: con muestras=1 es una copia directa. #c queda fuera de
+     pantalla porque si los dos estuvieran visibles el screenshot agarraria los dos. -->
+<canvas id="c" style="position:absolute;left:-99999px;top:0"></canvas>
+<canvas id="acc"></canvas>
+<!-- GSAP como script clásico (deja window.gsap) y three como módulo: mezclar es más simple que
+     armar un import map, y el orden importa — escena.js lee window.gsap al construir la timeline. -->
+<script src="./gsap.min.js"></script>
+<script type="importmap">
+{ "imports": { "three": "./three.module.js", "three/addons/": "./jsm/" } }
+</script>
+<script type="module" src="./escena.js"></script>

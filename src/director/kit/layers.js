@@ -29,6 +29,14 @@ const base = (kind, box, o = {}) => ({
   ...(o.matchKey ? { matchKey: o.matchKey } : {}),
   ...(o.focal ? { focal: true } : {}),
   ...(o.sangra ? { sangra: true } : {}),
+  // `role` es el PAPEL de la capa en la composicion (mark, title, body, pie...), no su tipo de dibujo.
+  // Lo mira el composer para decidir quien es ancla y quien flota, y lo mira el gate de jerarquia.
+  // Vivia solo en `texto()`, que se lo re-agregaba despues del spread, asi que cualquier otro kind que
+  // dijera `role` lo perdia en silencio. Se noto cuando el chip de marca paso a ser el logo recortado:
+  // `esAncla` dejo de reconocerlo y el pase de aire lo arrastraba hasta un 14% del alto de cuadro hacia
+  // abajo, saltando entre escenas del mismo video en vez de quedarse pegado arriba, que es todo su
+  // trabajo. El chip de TEXTO nunca se movio (offset 0.0000 en 102 de 102 escenas medidas).
+  ...(o.role ? { role: o.role } : {}),
   z: o.z == null ? 10 : o.z,
 })
 

@@ -105,6 +105,56 @@ aditividad.
   instantes y **falla si no llegó a auditar ni un elemento vivo**, para que no pueda volver a vaciarse
   en silencio.
 
+## Lo que apareció al salir del set de calibración
+
+El extractor se ajustó mirando 8 páginas. Correrlo contra 6 páginas nuevas (una tienda, un
+restaurante, un gimnasio argentino, una página vieja de verdad, dos pesadas en JS) mostró que rendía
+bastante peor fuera de ese set: **4.7 elementos por página contra 8.0**, y **cero tarjetas en 6 de 6** —
+justo el rol que mejor viaja a un reel. Mirando los 28 recortes uno por uno, 21 no eran objetos
+limpios. Cuatro causas, las cuatro arregladas:
+
+1. **El contenedor de un tile no pinta nada: la imagen es el fondo.** `propio()` exigía fondo, borde o
+   sombra, así que descartaba el patrón más común de una tienda — `<a><img><div>título</div></a>` — y
+   se quedaba con el `<img>` suelto. Ahora una pieza también cuenta si una imagen le cubre el 60%.
+2. **Overlays ajenos entraban recortados a mitad de palabra.** Una tarjeta flotante que invade la caja
+   de la foto de al lado aparecía cortada dentro del recorte. Ahora se oculta lo que *tapa* al
+   elemento y no es descendiente suyo. Los descendientes no se tocan: el título y el botón que la
+   propia pieza lleva encima de su foto **son** la pieza.
+3. **Logos con la losa horneada en el archivo.** Muchas marcas sirven el logo como PNG/JPG con el
+   fondo blanco adentro; ahí no hay nada que apagar en el DOM y el recorte sale correcto — un
+   rectángulo blanco con el logo en el medio, que sobre el fondo del video se lee como un parche
+   pegado. Se quita el color de la losa solo si el **borde** del recorte es uniforme, con rampa suave
+   para no dejar halo, y se revierte si al quitarlo queda casi vacío (el logo *era* de ese color).
+4. **El botón de aviso legal ganaba como CTA.** "Aceptar cookies" ya estaba filtrado; faltaba
+   "Entendido", "Got it", "De acuerdo" y los diálogos modales.
+
+Una página vieja de verdad (berkshirehathaway, HTTP 200) devuelve **0 candidatos**: de 54 elementos
+visibles solo 1 pinta algo propio. Eso no es un defecto — es la respuesta correcta, y el motor
+degrada solo a sus figuras dibujadas.
+
+## Lo que todavía no está
+
+Medido sobre 7 páginas × 6-12 seeds, con verificación en píxeles:
+
+- **69% de los recortes no aparece nunca** en el video (37 de 53 crops jamás se pintan en ningún
+  frame de ningún seed). **39% de los frames** no tiene ni un píxel de la página en pantalla.
+- Solo **4 de los 15 compositores** tienen camino de sustitución. Donde lo tienen, la sustitución es
+  total (36/36 heroObj reemplazados, el objeto real ocupa el 90% del área que ocupaba el dibujado);
+  pero eso pasa en **0.86 escenas por video**.
+- `features.bento` es la mayor superficie dibujada del motor (**32% del cuadro por escena**) y usa
+  cero recortes. El reemplazo obvio no sirve tal cual: una celda de un bento 2×2 mide 159×161px, y
+  meter ahí una tarjeta de 366×570 la escala al 28% y baja su texto de 12px a **3.4px**. Solo tiene
+  sentido en el bento 1×N o con una tarjeta por escena.
+- `proxPieza` **no rota**: hay como máximo un slot de héroe por video, así que el round-robin siempre
+  devuelve `piezas[0]` y las demás nunca entran. La rotación tiene que venir del seed, no del orden
+  de llamada.
+- El carry de match-cut **perdería** la imagen de la escena B si dos escenas consecutivas compartieran
+  matchKey `hero` (probado sintéticamente: la timeline queda con una sola capa y B nunca se ve). Hoy
+  no se dispara — 0 de 174 pares — porque el guionista no pone dos escenas de familia "producto"
+  seguidas. Es un defecto **latente**, no activo.
+- `sangra: true` nunca se alcanza en una capa de elemento (0/105), así que el `|| kind === 'elemento'`
+  de dos recetas del linker es código muerto por ahora.
+
 ## Herramientas
 
 ```bash

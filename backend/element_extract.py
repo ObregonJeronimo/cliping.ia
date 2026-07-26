@@ -53,6 +53,21 @@ _JS_CANDIDATOS = r"""
   // DETRAS: el hermano que pinta el fondo no es ancestro, asi que apagar ancestros no lo saca. Un
   // boton transparente sobre una foto devolvia un pedazo de la foto, no el boton. Solo se aceptan
   // los que pintan lo suyo, o los que SON la imagen (img/svg/video/canvas).
+  // Una pieza puede no pintar NADA propio y aun asi ser un objeto: en una tienda moderna el tile es
+  // una foto a sangre con el titulo encima, y el contenedor no tiene ni fondo ni borde porque LA
+  // IMAGEN es el fondo. Pidiendo fondo/borde, seis paginas nuevas de seis daban CERO tarjetas — justo
+  // el rol que mejor viaja a un reel, porque ya viene con proporcion de pieza y jerarquia adentro.
+  // Se pide que la imagen cubra el 60% para no aceptar un parrafo que casualmente tiene un icono.
+  const conImagen = (el) => {
+    const r = el.getBoundingClientRect(), a = r.width * r.height;
+    if (a <= 0) return false;
+    for (const im of el.querySelectorAll('img, video, canvas')) {
+      const ri = im.getBoundingClientRect();
+      if (ri.width * ri.height >= a * 0.6) return true;
+    }
+    const b = getComputedStyle(el).backgroundImage;
+    return !!(b && b !== 'none' && b.includes('url('));
+  };
   const propio = (el) => {
     const cs = getComputedStyle(el);
     if (/^(img|svg|video|canvas|picture)$/.test(el.tagName.toLowerCase())) return true;
@@ -60,7 +75,7 @@ _JS_CANDIDATOS = r"""
     if (cs.backgroundImage && cs.backgroundImage !== 'none') return true;
     if (parseFloat(cs.borderTopWidth) > 0 && !trans(cs.borderTopColor)) return true;
     if (cs.boxShadow && cs.boxShadow !== 'none') return true;
-    return false;
+    return conImagen(el);
   };
   const out = [], visto = [];
   let n = 0;
@@ -111,14 +126,20 @@ _JS_CANDIDATOS = r"""
   const VERBO = /(empez|comenz|prob|start|get|try|sign|book|reserv|compr|buy|contact|demo|descarg|download|solicit|agenda|join|crear|create|pedir|cotiz)/i;
   // El banner de cookies es un boton grande, pintado y arriba de todo: gana todos los criterios de un
   // CTA y no dice nada de la marca. Un video que abre con "Aceptar cookies" es un chiste.
+  // Los botones de aviso legal ganan todos los criterios de un CTA — son grandes, pintados y estan
+  // arriba de todo — y no dicen nada de la marca. Un video que abre con "Aceptar cookies" o
+  // "Entendido" es un chiste. Los cortos van anclados para que "ok" no matchee "book" ni "Entendido"
+  // se coma un "entendimiento".
   const COOKIE = /(cookie|consent|gdpr|privacidad|privacy|aceptar todo|accept all|más información|mas informacion|preferenc)/i;
+  const LEGAL = /^(entendido|entendi|got it|de acuerdo|ok|acepto|aceptar|accept|allow all|permitir|i agree|agree|continuar|continue|cerrar|close|dismiss|no,? gracias|no thanks)$/i;
   let cta = 0;
   for (const el of Array.from(document.querySelectorAll('a[class*="btn" i], a[class*="button" i], button, [role="button"], a[href*="signup"], a[href*="contact"]')).slice(0, 150)) {
     if (cta >= 3) break;
     const r = el.getBoundingClientRect(), cs = getComputedStyle(el);
     const txt = (el.innerText || '').trim();
     if (!txt || r.width < 80 || r.height < 30 || r.height > 96) continue;
-    if (COOKIE.test(txt) || el.closest('[class*="cookie" i], [class*="consent" i], [id*="cookie" i], [id*="consent" i], [class*="gdpr" i]')) continue;
+    if (COOKIE.test(txt) || LEGAL.test(txt)) continue;
+    if (el.closest('[class*="cookie" i], [class*="consent" i], [id*="cookie" i], [id*="consent" i], [class*="gdpr" i], [class*="legal" i], [role="dialog"], [aria-modal="true"]')) continue;
     if (!(!trans(cs.backgroundColor) || VERBO.test(txt))) continue;
     if (push(el, 'cta', 40)) cta++;
   }
@@ -129,7 +150,7 @@ _JS_CANDIDATOS = r"""
     const cs = getComputedStyle(el), r = el.getBoundingClientRect();
     const fondo = !trans(cs.backgroundColor) || (cs.backgroundImage && cs.backgroundImage !== 'none');
     const borde = parseFloat(cs.borderTopWidth) > 0 || (cs.boxShadow && cs.boxShadow !== 'none');
-    return (fondo || borde) && r.width >= 150 && r.height >= 100 && r.width <= W * 0.85 && r.height <= H * 0.92;
+    return (fondo || borde || conImagen(el)) && r.width >= 150 && r.height >= 100 && r.width <= W * 0.85 && r.height <= H * 0.92;
   };
   // Muchas paginas envuelven la tarjeta en una seccion que tambien tiene fondo propio. Capturar el
   // envoltorio da una tarjeta chiquita flotando en un mar de color, y como el envoltorio es opaco el
@@ -145,7 +166,12 @@ _JS_CANDIDATOS = r"""
     }
     return false;
   };
-  const sel = 'article, li, [class*="card" i], [class*="feature" i], [class*="tile" i], [class*="plan" i], [class*="pricing" i], section > div > div';
+  // El <a> entra al selector porque en una tienda el tile ES un link: <a><img><div>titulo</div></a>.
+  // Sin el, se capturaba el <img> suelto y la leyenda quedaba afuera — peor todavia desde que se
+  // ocultan los overlays ajenos, porque para el <img> su propia leyenda es una HERMANA, no una hija.
+  // Capturando el contenedor, la leyenda pasa a ser descendiente y sobrevive; y como las tarjetas se
+  // eligen antes que las fotos, el tile bloquea a su propia imagen y no se duplica.
+  const sel = 'article, li, a, [class*="card" i], [class*="feature" i], [class*="tile" i], [class*="plan" i], [class*="pricing" i], section > div > div';
   let tarj = 0;
   for (const el of Array.from(document.querySelectorAll(sel)).slice(0, 700)) {
     if (tarj >= 6) break;
@@ -192,9 +218,24 @@ _JS_LIMPIAR = r"""
   const g = (n, p, v) => { window.__uvR.push([n, p, n.style.getPropertyValue(p), n.style.getPropertyPriority(p)]); n.style.setProperty(p, v, 'important'); };
   for (let a = el.parentElement; a; a = a.parentElement) { g(a, 'background', 'transparent'); g(a, 'background-image', 'none'); g(a, 'box-shadow', 'none'); }
   g(document.documentElement, 'background', 'transparent');
-  for (const f of document.querySelectorAll('*')) {
+  // Se oculta lo que TAPA al elemento: un header pegajoso o un banner de cookies se ponen encima
+  // cuando Playwright hace scroll para capturar, y una tarjeta flotante que INVADE la caja de la foto
+  // de al lado sale recortada a mitad de palabra dentro del recorte ("DISH…" "Book n…"), que es la
+  // basura mas visible que devolvia el extractor en paginas que no estaban en el set de calibracion.
+  //
+  // Los DESCENDIENTES no se tocan: el titulo y el boton que la propia pieza lleva encima de su foto
+  // son parte de la pieza, y son justamente lo que la hace servir para un reel.
+  const r = el.getBoundingClientRect();
+  for (const f of document.querySelectorAll('body *')) {
+    if (f === el || f.contains(el) || el.contains(f)) continue;
     const cs = getComputedStyle(f);
-    if ((cs.position === 'fixed' || cs.position === 'sticky') && f !== el && !f.contains(el)) g(f, 'display', 'none');
+    const flota = cs.position === 'fixed' || cs.position === 'sticky' || cs.position === 'absolute'
+                  || (cs.zIndex !== 'auto' && parseFloat(cs.zIndex) > 0);
+    if (!flota) continue;
+    const rf = f.getBoundingClientRect();
+    if (rf.width < 4 || rf.height < 4) continue;
+    if (rf.right <= r.left || rf.left >= r.right || rf.bottom <= r.top || rf.top >= r.bottom) continue;
+    g(f, 'display', 'none');
   }
   return true;
 }
@@ -202,7 +243,60 @@ _JS_LIMPIAR = r"""
 _JS_RESTAURAR = "() => { for (const [n,p,v,pr] of (window.__uvR||[])) { if (v) n.style.setProperty(p,v,pr); else n.style.removeProperty(p) } window.__uvR = [] }"
 
 
-def _analizar(png: bytes) -> dict | None:
+def _despegar_losa(im: "Image.Image") -> "Image.Image":
+    """Saca el fondo HORNEADO de un logo que vino como imagen opaca.
+
+    Muchas marcas sirven su logo como PNG/JPG con la losa de color adentro del archivo. Ahi no hay
+    nada que apagar en el DOM: el recorte sale correcto y es un rectangulo blanco con el logo en el
+    medio. Sobre el fondo del video eso se lee como un parche pegado, que es peor que no poner el
+    logo.
+
+    Solo se aplica al rol `logo` y solo si el BORDE del recorte es de un color uniforme — o sea, si de
+    verdad hay una losa. Si el borde es variado (un logo que ya es una foto, o que llega recortado con
+    algo detras) no se toca nada. Y si al quitar el color queda casi vacio, se devuelve el original:
+    un logo que era mayormente de ese color no tenia losa, ERA de ese color.
+    """
+    w, h = im.size
+    px = im.load()
+    borde = []
+    paso = max(1, min(w, h) // 24)
+    for x in range(0, w, paso):
+        borde.append(px[x, 0]); borde.append(px[x, h - 1])
+    for y in range(0, h, paso):
+        borde.append(px[0, y]); borde.append(px[w - 1, y])
+    borde = [p for p in borde if p[3] >= 200]
+    if len(borde) < 8:
+        return im
+    cr = sum(p[0] for p in borde) // len(borde)
+    cg = sum(p[1] for p in borde) // len(borde)
+    cb = sum(p[2] for p in borde) // len(borde)
+    disp = max(abs(p[0] - cr) + abs(p[1] - cg) + abs(p[2] - cb) for p in borde)
+    if disp > 40:
+        return im                                  # borde variado: no hay losa que sacar
+
+    # rampa suave en vez de umbral seco: el antialias del trazo cae entre medio y un corte duro le
+    # deja al logo un halo del color de la losa, que es exactamente lo que se quiere evitar
+    DENTRO, FUERA = 26, 90
+    out = im.copy()
+    po = out.load()
+    opacos = 0
+    for y in range(h):
+        for x in range(w):
+            r, g, b, a = po[x, y]
+            d = abs(r - cr) + abs(g - cg) + abs(b - cb)
+            if d <= DENTRO:
+                po[x, y] = (r, g, b, 0)
+            elif d < FUERA:
+                po[x, y] = (r, g, b, int(a * (d - DENTRO) / (FUERA - DENTRO)))
+                opacos += 1
+            else:
+                opacos += 1
+    if opacos < w * h * 0.02:
+        return im                                  # el logo ERA de ese color: se habria borrado entero
+    return out
+
+
+def _analizar(png: bytes, rol: str = "") -> dict | None:
     """Recorta el margen transparente y mide el recorte. Devuelve None si no sirve.
 
     El recorte importa mas de lo que parece: la caja del elemento en el DOM incluye padding y aire, y
@@ -215,6 +309,10 @@ def _analizar(png: bytes) -> dict | None:
         im = Image.open(io.BytesIO(png)).convert("RGBA")
     except Exception:
         return None
+    # La losa se saca ANTES de recortar margenes: recortar primero no hace nada (el recorte es 100%
+    # opaco, su bbox es el rectangulo entero) y despues quedaria el margen de losa horneado adentro.
+    if rol == "logo":
+        im = _despegar_losa(im)
     caja = im.getbbox()  # bbox sobre alfa: devuelve la region con algo pintado
     if caja:
         im = im.crop(caja)
@@ -329,7 +427,7 @@ async def extraer_elementos(page, max_n: int = MAX_ELEMENTOS) -> list[dict]:
             except Exception:
                 pass
 
-        a = _analizar(png)
+        a = _analizar(png, c.get("rol", ""))
         if not a:
             continue
         if a["tinta"] < MIN_TINTA:

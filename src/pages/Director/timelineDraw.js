@@ -17,6 +17,10 @@ export const PADT = 6
 export const COL_KIND = {
   text: '#6f8cff', heroObj: '#f0a23c', photo: '#3fbfa4', shape: '#8b6cf5',
   badge: '#e0533b', stepper: '#2b9bc9', priceTag: '#d0417a', logoRow: '#a06cf0', plate: '#4a4a60',
+  // 'elemento' es un objeto REAL recortado de la pagina. Sin color propio caia en el gris de
+  // "kind desconocido" — justo la capa que uno mas quiere distinguir de un vistazo, porque es la
+  // diferencia entre un cuadro que muestra la marca y uno que muestra el catalogo del motor.
+  elemento: '#22c55e',
 }
 
 // etiqueta de fila. Los ids del compilador son `escena:capa` (o `flash:escena`) y en 96px no entran

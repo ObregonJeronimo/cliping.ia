@@ -164,9 +164,23 @@
         "h": 1242,
         "ar": 0.605,
         "alfa": true,
-        "textura": 0.103,
-        "color": "#9ca1a9",
-        "lum": 0.629,
+        "textura": 0.089,
+        "color": "#9da0a7",
+        "lum": 0.627,
+        "minPx": 0,
+        "texto": ""
+      },
+      {
+        "id": "el4",
+        "rol": "foto",
+        "url": "tailwindcss-com__el4-foto.png",
+        "w": 752,
+        "h": 1242,
+        "ar": 0.605,
+        "alfa": true,
+        "textura": 0.081,
+        "color": "#555b67",
+        "lum": 0.355,
         "minPx": 0,
         "texto": ""
       }

@@ -103,6 +103,32 @@ for (const f of CASOS) {
     const sb2 = composeStoryboard(pm, buildGuion(pm, seed), deriveLook(pm, seed), seed)
     ok(JSON.stringify(sb) === JSON.stringify(sb2), `E-DET ${nombre}#${s}: dos composiciones distintas con el mismo seed`)
 
+    // ---- E-ELEM-ANCLA: el chip de marca esta PEGADO al borde superior, sea texto o logo recortado.
+    // El chip es un ancla: el pase de aire recentra el bloque en el hueco que el chip deja, y no al
+    // chip. Cuando el logo real reemplazo al texto, el chip dejo de reconocerse como ancla y el pase
+    // lo arrastraba hasta un 14% del alto hacia abajo — y a distinta altura en cada escena, asi que
+    // ademas SALTABA dentro del mismo video. Se verifica en las dos formas del chip a proposito: el
+    // defecto era invisible mientras el chip fuera texto.
+    // El chip se busca por ESTRUCTURA (id + alto de chip), no por `role`. Buscarlo por `l.role ===
+    // 'mark'` — que es lo natural — hacia que la comprobacion se salteara sola justo cuando el defecto
+    // estaba presente: sin `role` el `find` devolvia undefined y el gate pasaba en verde. Un gate no
+    // puede depender del campo cuya perdida esta auditando.
+    const esChip = l => l.id === 'brand' && l.box[3] <= 0.05   // un titular de marca nunca mide 3% de alto
+    const ys = []
+    for (const sc of sb.scenes) {
+      const chip = sc.layers.find(esChip)
+      if (!chip) continue
+      ys.push(chip.box[1])
+      ok(chip.role === 'mark',
+        `E-ELEM-ANCLA ${nombre}#${s}/${sc.id}: el chip (${chip.kind}) perdio su role -> deja de ser ancla para el pase de aire`)
+      ok(Math.abs(chip.box[1] - sb.grid.y0) < 0.002,
+        `E-ELEM-ANCLA ${nombre}#${s}/${sc.id}: el chip (${chip.kind}) esta en y=${chip.box[1].toFixed(4)} y la reja empieza en ${sb.grid.y0.toFixed(4)}`)
+    }
+    if (ys.length > 1) {
+      ok(Math.max(...ys) - Math.min(...ys) < 0.002,
+        `E-ELEM-ANCLA ${nombre}#${s}: el chip de marca salta ${(Math.max(...ys) - Math.min(...ys)).toFixed(4)} entre escenas del mismo video`)
+    }
+
     const porUrl = new Map(pm.assets.elementos.map(e => [e.url, e]))
     for (const sc of sb.scenes) {
       for (const l of sc.layers.filter(x => x.kind === 'elemento')) {

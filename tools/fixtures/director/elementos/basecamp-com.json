@@ -164,9 +164,9 @@
         "h": 1400,
         "ar": 0.951,
         "alfa": false,
-        "textura": 0.096,
-        "color": "#f4f4f4",
-        "lum": 0.957,
+        "textura": 0.076,
+        "color": "#f6f6f6",
+        "lum": 0.965,
         "minPx": 0,
         "texto": ""
       },
