@@ -30,7 +30,7 @@ motor a la variedad de la salida.
 ## Composicion
 - eje del foco: center 866 (68%) · left 411 (32%)
 - videos con TODAS las escenas centradas: **50/285 (18%)** — "todo centrado siempre" es el delator numero uno de pieza hecha por una maquina
-- tinta del PEOR cuadro de cada video: mediana 2.3% (min 0.72%)
+- tinta del PEOR cuadro de cada video: mediana 2.3% (min 0.79%)
 
 ## Anti-huella por pagina
 Cuantas variantes distintas produce CADA pagina al mover el seed. Si una pagina da siempre la

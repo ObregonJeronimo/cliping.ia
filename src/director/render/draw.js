@@ -169,7 +169,11 @@ function capaTexto(ctx, l, look, W, H, p, rep) {
   // Ahora el piso es el menor entre "un tercio de lo pedido" y "2% del alto del lienzo".
   const o = {
     size, maxW: w, min: Math.max(9, Math.min(size * 0.34, H * 0.020)), weight: peso(look, l), family: fam(look, l.family),
-    color: col(look, l.color), align: l.align, tracking: l.tracking == null ? look.tracking * (size / 60) : l.tracking,
+    color: col(look, l.color), align: l.align,
+    // LOS NUMEROS NO LLEVAN TRACKING POSITIVO. El del look esta pensado para titulares y escala con el
+    // tamano: sobre un dato de 112px daba 4.5px de espaciado y separaba el punto decimal — "3.8%" se
+    // leia "3 . 8%". Una cifra quiere espaciado neutro o apretado, nunca suelto.
+    tracking: l.tracking == null ? (l.family === 'num' ? Math.min(0, look.tracking) : look.tracking * (size / 60)) : l.tracking,
     lh: l.lh, maxLines: l.lines,
   }
   // UNA SOLA medicion para todos los caminos de revelado: el texto ocupa lo mismo con p=0.3 que con

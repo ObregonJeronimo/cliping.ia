@@ -77,8 +77,12 @@ const FUENTE_ESCRITURA = {
 }
 // cirilico y griego SI los cubren varias de nuestras familias (Inter, Onest, Archivo): no se tocan.
 
-// mono legible para NUMEROS (regla dura del repo: un dato jamas en fuente script/manuscrita)
-const NUM_FONT = { 'IBM Plex Mono': 1, 'Space Mono': 1, 'JetBrains Mono': 1, 'DM Mono': 1 }
+// Un dato JAMAS en fuente script/manuscrita — esa es la regla dura del repo. Pero se implementaba
+// forzando una MONOESPACIADA, y en mono el punto decimal ocupa un ancho completo: "3.8%" se dibujaba
+// "3 . 8%" (visto en el reel real de Stripe). La regla correcta es la que estaba escrita: se usa la
+// tipografia de apoyo del pairing salvo que sea manuscrita. En este catalogo ninguna lo es, asi que
+// el forzado a mono no protegia de nada y solo rompia los decimales.
+const SCRIPT_FONT = { Caveat: 1, 'Permanent Marker': 1, 'Bagel Fat One': 1, Caprasimo: 1 }
 
 // ---------------------------------------------------------------- derivacion
 // deriveLook(pagemodel, seed) -> look congelado para TODO el video
@@ -151,7 +155,7 @@ export function deriveLook(pm, seed) {
   const par = pick(r, PAIRINGS[clase])
   const caseMode = mod.indexOf('brutalist') >= 0 ? 'upper' : dna.typography.caseHint
   const bigK = mod.indexOf('bigtype') >= 0 ? 1.18 : 1                 // DNA-SPEC §4.2
-  let fuenteNum = NUM_FONT[par.support] ? par.support : 'IBM Plex Mono'
+  let fuenteNum = SCRIPT_FONT[par.support] ? 'IBM Plex Mono' : par.support
   // la escritura manda sobre el pairing: primero que se LEA, despues el gusto tipografico
   const escritura = FUENTE_ESCRITURA[dna.typography.script]
   const parEff = escritura ? { ...par, ...escritura } : par
