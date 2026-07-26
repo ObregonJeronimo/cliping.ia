@@ -17,6 +17,7 @@
 
 import { CANVAS, err } from './schema.js'
 import { seedFor } from './prng.js'
+import { isEase } from './ease.js'
 import { clamp, isHex, apcaLc, ensureApca, ensureContrast, contrast, legibleOn, hexToHsl, hslToHex } from './util.js'
 import { PLACAS, placaColors } from '../kit/look.js'
 import { NOMBRES } from '../kit/objetos.js'
@@ -33,6 +34,7 @@ export const COLOR_TOKENS = ['ink', 'dim', 'accent', 'accentTxt', 'accent2', 'on
 
 // ---------------------------------------------------------------- helpers puros
 const R2 = v => Math.round(v * 100) / 100
+const R3 = v => Math.round(v * 1000) / 1000     // milisegundos: la MISMA resolucion con la que el compilador escribe los tiempos de keyframe
 const R5 = v => Math.round(v * 100000) / 100000
 // clon por JSON: el storyboard es JSON puro por contrato (sin funciones, sin undefined, sin ciclos),
 // asi que esto es la copia profunda mas barata Y la garantia de que applyEdits no comparte NI UNA
@@ -66,7 +68,7 @@ const MIN_PESO = 0.055
 // El estado inicial del editor. Un overlay vacio aplicado a un storyboard devuelve ese mismo
 // storyboard (el gate lo verifica byte a byte): "sin ediciones" no puede significar "otro video".
 export function emptyEdits() {
-  return { v: EDITS_V, escenas: {}, capas: {}, look: {}, orden: null }
+  return { v: EDITS_V, escenas: {}, capas: {}, look: {}, orden: null, keys: {} }
 }
 
 // ---------------------------------------------------------------- lectura + validacion del overlay
@@ -98,6 +100,23 @@ function analizar(edits, sb) {
       // reporta para que la UI pueda mostrar el limite en vez de mentir con el valor pedido.
       if (v.dur < DUR_MIN - 1e-9 || v.dur > DUR_MAX + 1e-9) E('E-EDIT-DUR', P + '.dur', `fuera de [${DUR_MIN},${DUR_MAX}]s: ${v.dur} (se clampea)`)
       plan.escenas.set(id, { dur: R2(clamp(v.dur, DUR_MIN, DUR_MAX)) })
+    }
+  }
+
+  // --- keyframes: clave "capaId|prop" (E2). Se valida la FORMA aca; el saneo real lo hace
+  // applyEditsTimeline, que es el unico que conoce la vida de cada capa. ---
+  if (edits.keys != null) {
+    if (!esObj(edits.keys)) E('E-EDIT-TYPE', 'keys', 'debe ser un objeto { "capaId|prop": [keys] }')
+    else for (const [k, v] of Object.entries(edits.keys)) {
+      const P = 'keys.' + k
+      const i = String(k).lastIndexOf('|')
+      if (i <= 0 || i >= k.length - 1) { E('E-EDIT-CLAVE', P, 'la clave debe ser "capaId|prop"'); continue }
+      if (!Array.isArray(v)) { E('E-EDIT-TYPE', P, 'debe ser un array de keyframes'); continue }
+      if (v.length < 2) E('E-EDIT-KEYS', P, 'una curva necesita al menos 2 keyframes')
+      for (const kf of v) {
+        if (!esObj(kf) || !esNum(kf.t) || !esNum(kf.v)) { E('E-EDIT-KEYS', P, 'keyframe sin t o v numericos'); break }
+        if (kf.ease != null && !isEase(kf.ease)) { E('E-EDIT-EASE', P, 'ease no parseable: ' + kf.ease); break }
+      }
     }
   }
 
@@ -201,7 +220,7 @@ export function validateEdits(edits, sb = null) {
 // contarEdits(edits) -> cuantas ediciones ACTIVAS hay (badge "N cambios" en la UI del estudio).
 // Cuenta propiedades tocadas, no entradas del objeto: cambiarle el texto Y el color a la misma capa
 // son dos decisiones del usuario y la UI tiene que decir 2.
-export function contarEdits(edits) {
+export function contarEdits(edits) {   // incluye las curvas de E2: una curva tocada es una edicion
   if (!esObj(edits)) return 0
   let n = 0
   if (esObj(edits.escenas)) for (const v of Object.values(edits.escenas)) if (esObj(v) && v.dur !== undefined) n++
@@ -210,6 +229,8 @@ export function contarEdits(edits) {
   }
   if (esObj(edits.look)) for (const k of ['accent', 'placa']) if (edits.look[k] !== undefined) n++
   if (Array.isArray(edits.orden) && edits.orden.length) n++
+  // una CURVA tocada es una edicion: el usuario movio keyframes de un prop y eso es una decision suya
+  if (esObj(edits.keys)) n += Object.values(edits.keys).filter(v => Array.isArray(v) && v.length >= 2).length
   return n
 }
 
@@ -405,6 +426,96 @@ function fondoDe(sc, l, look) {
   return { bg: bajo ? resolverColor(bajo.fill, look) : look.bg0, look }
 }
 
+
+// ---------------------------------------------------------------- E2: keyframes
+// POR QUE UN SEGUNDO OVERLAY. Los edits de E1 operan sobre el STORYBOARD (que dice QUE hay y DONDE);
+// los keyframes viven en la TIMELINE, que se compila despues. Meterlos en el mismo overlay obligaria
+// a que applyEdits conociera el compilador, y el compilador es justamente lo que puede cambiar cuando
+// el motor mejora. Separados, un video editado a mano se re-genera con el linker nuevo y las curvas
+// del usuario se vuelven a poner encima.
+//
+// GRANULARIDAD: cuando el usuario toca un track, el overlay se queda con el track ENTERO
+// (`"capaId|prop": [{t,v,ease}, ...]`). Guardar deltas por keyframe (mover el 3ro, borrar el 5to)
+// obliga a que los indices sobrevivan a un recompilado, y no sobreviven: si el linker elige otra
+// receta, ese track tiene otra cantidad de keys y el delta apunta a cualquier lado. Con el track
+// completo, la edicion es autocontenida y "restablecer" es borrar una clave.
+// EASES es el MENU que ofrece la UI, no el conjunto de lo que el motor acepta. La distincion importa:
+// el linker emite springs con parametros propios de cada gesto ('spring:0.78,13' para un FLIP corto,
+// 'spring:0.55,16' para un pop). Si el saneo solo aceptara esta lista, mover un keyframe en el tiempo
+// le BORRARIA al track el spring que el motor eligio — el usuario arrastra un rombo y de paso pierde
+// la curva. Lo que se acepta es todo lo que `isEase` parsea; lo que se OFRECE es esta lista corta.
+export const EASES = ['lin', 'eo', 'ei', 'eio', 'co', 'ci', 'cio', 'qo', 'back', 'spring:0.7,13', 'step']
+const RANGO_PROP = {
+  x: [-0.5, 1.5], y: [-0.5, 1.5], w: [0.005, 2], h: [0.005, 2],
+  scale: [0.02, 4], rot: [-3.2, 3.2], alpha: [0, 1], reveal: [0, 1], sweep: [0, 1],
+}
+
+// applyEditsTimeline(tl, edits) -> NUEVA timeline con los tracks editados. Pura y determinista.
+// Tolerante igual que applyEdits: un track invalido se ignora y el video sigue saliendo.
+export function applyEditsTimeline(tl, edits) {
+  if (!tl || typeof tl !== 'object' || !Array.isArray(tl.tracks)) return tl
+  const ed = esObj(edits) && esObj(edits.keys) ? edits.keys : null
+  if (!ed || !Object.keys(ed).length) return tl
+  const out = clonar(tl)
+  const vida = new Map(out.layers.map(l => [l.id, l.life]))
+  for (const [clave, keys] of Object.entries(ed)) {
+    const i = String(clave).lastIndexOf('|')
+    if (i <= 0) continue
+    const layer = clave.slice(0, i), prop = clave.slice(i + 1)
+    const limpio = sanearKeys(keys, prop, vida.get(layer), out.dur)
+    if (!limpio) continue
+    const k = out.tracks.findIndex(t => t.layer === layer && t.prop === prop)
+    if (k >= 0) out.tracks[k] = { layer, prop, keys: limpio }
+    else if (vida.has(layer)) out.tracks.push({ layer, prop, keys: limpio })
+  }
+  // el evaluador cachea su indice en el objeto; el clon no lo trae, pero por las dudas no se hereda
+  out.tracks.sort((a, b) => a.layer.localeCompare(b.layer) || a.prop.localeCompare(b.prop))
+  return out
+}
+
+// sanearKeys — lo que sale de aca SIEMPRE cumple validateTimeline: >=2 keys, ordenadas, dentro de la
+// vida de su capa y del video, valores en rango y ease parseable. Es la frontera entre "lo que el
+// usuario arrastro en la UI" y "lo que el motor puede dibujar sin romperse".
+function sanearKeys(keys, prop, life, dur) {
+  if (!Array.isArray(keys) || keys.length < 2) return null
+  if (!life || RANGO_PROP[prop] === undefined) return null
+  const [lo, hi] = RANGO_PROP[prop]
+  const t0 = Math.max(0, life[0]), t1 = Math.min(dur, life[1])
+  if (!(t1 > t0)) return null
+  const out = []
+  for (const k of keys) {
+    if (!esObj(k) || !esNum(k.t) || !esNum(k.v)) continue
+    const t = R3(clamp(k.t, t0, t1))
+    const v = R5(clamp(k.v, lo, hi))
+    const ease = typeof k.ease === 'string' && isEase(k.ease) ? k.ease : undefined
+    out.push(ease ? { t, v, ease } : { t, v })
+  }
+  if (out.length < 2) return null
+  out.sort((a, b) => a.t - b.t)
+  // dos keys en el mismo instante son una curva ambigua: gana la ultima que el usuario dejo ahi
+  const fin = []
+  for (const k of out) {
+    if (fin.length && Math.abs(fin[fin.length - 1].t - k.t) < 1e-9) fin[fin.length - 1] = k
+    else fin.push(k)
+  }
+  return fin.length >= 2 ? fin : null
+}
+
+// tracksDe(tl, layerId) -> los tracks de una capa, para que la UI sepa que curvas puede editar
+export function tracksDe(tl, layerId) {
+  return (tl && Array.isArray(tl.tracks) ? tl.tracks : []).filter(t => t.layer === layerId)
+}
+
+// keysDeTrack(tl, layer, prop) -> copia editable del track (o una curva plana si no existe todavia,
+// para que el usuario pueda ANIMAR un prop que el motor dejo quieto)
+export function keysDeTrack(tl, layer, prop) {
+  const tr = (tl.tracks || []).find(t => t.layer === layer && t.prop === prop)
+  if (tr) return clonar(tr.keys)
+  const capa = (tl.layers || []).find(l => l.id === layer)
+  if (!capa || RANGO_PROP[prop] === undefined) return null
+  const base = capa[prop] != null ? capa[prop] : (prop === 'scale' || prop === 'alpha' || prop === 'reveal' ? 1 : 0)
+  return [{ t: R3(capa.life[0]), v: base }, { t: R3(capa.life[1]), v: base }]
+}
 
 // ---------------------------------------------------------------- look editado
 // Re-teñir NO es cambiar un hex: accentTxt (el acento cuando hace de TEXTO) y onAccent (la tinta que

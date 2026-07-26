@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { collection, getDocs, doc, setDoc, deleteDoc } from 'firebase/firestore'
 import {
   normalizePageModel, briefToPageModel, buildGuion, deriveLook, composeStoryboard,
-  compile, drawFrame, applyEdits, emptyEdits, corpusHero,
+  compile, drawFrame, applyEdits, applyEditsTimeline, emptyEdits, corpusHero,
 } from '../../director/index.js'
 import { exportCanvasVideo } from '../../lib/exportVideo.js'
 import { drawWatermark } from '../../lib/watermark.js'
@@ -68,6 +68,7 @@ export default function DirectorStudio() {
   const [playing, setPlaying] = useState(true)
   const [head, setHead] = useState(0)
   const [selected, setSelected] = useState('')
+  const [selKey, setSelKey] = useState(null)           // { layer, prop, i } — el keyframe agarrado (E2)
   const [zoom, setZoom] = useState(64)                 // pixeles por segundo de la timeline
   const [musicId, setMusicId] = useState('')
   const [sfxOnCuts, setSfxOnCuts] = useState(true)
@@ -86,7 +87,12 @@ export default function DirectorStudio() {
   // regla del overlay: una edicion invalida jamas puede romper el render -> si applyEdits explota,
   // se dibuja el storyboard SIN editar en vez de dejar la pagina en blanco.
   const sb = useMemo(() => { try { return applyEdits(sbBase, edits) } catch { return sbBase } }, [sbBase, edits])
-  const tl = useMemo(() => compile(sb, seed), [sb, seed])
+  const tlBase = useMemo(() => compile(sb, seed), [sb, seed])
+  // E1 va sobre el STORYBOARD (que hay y donde) y E2 sobre la TIMELINE COMPILADA (cuando y como se
+  // mueve). Por eso los keyframes se aplican DESPUES de compile: si fueran antes, el compilador los
+  // volveria a escribir con los suyos en cada recompilado. Misma regla de oro que E1: una curva
+  // invalida no puede romper el render -> se cae a la timeline del motor.
+  const tl = useMemo(() => { try { return applyEditsTimeline(tlBase, edits) } catch { return tlBase } }, [tlBase, edits])
 
   // --- IMAGENES: el renderer las quiere ya decodeadas en un Map. Se precargan al cambiar el pagemodel;
   // onerror/timeout resuelven igual (una foto rota no puede colgar el preview ni el export).
@@ -194,7 +200,7 @@ export default function DirectorStudio() {
       if (!j.pagemodel && !j.brief) { setAnalyzing('No se pudo analizar la pagina'); return }
       const crudo = j.pagemodel ? j.pagemodel : briefToPageModel({ ...j.brief, url: url.trim(), images: Array.isArray(j.images) ? j.images : [] })
       setPm(normalizePageModel({ ...crudo, url: crudo.url || url.trim() }))
-      setSeed(1); setEdits(emptyEdits()); setSelected('')
+      setSeed(1); setEdits(emptyEdits()); setSelected(''); setSelKey(null)
       headRef.current = 0; setHead(0); setAnalyzing('')
     } catch {
       setAnalyzing('Backend no disponible — abri "start.bat" (corre en localhost:8000)')
@@ -202,10 +208,11 @@ export default function DirectorStudio() {
   }
 
   // OTRA VARIANTE: salto aureo de semilla (mismo patron que urvid/kinetic) -> guion, look y montaje
-  // completamente nuevos. Las ediciones se limpian porque apuntan a ids de capa que ya no existen.
+  // completamente nuevos. Las ediciones se limpian porque apuntan a ids de capa que ya no existen —
+  // las curvas de E2 todavia mas: sus claves son "capaId|prop" del montaje viejo.
   const reroll = () => {
     setSeed(s => (((s || 1) + 0x9e3779b1) >>> 0) || 1)
-    setEdits(emptyEdits()); setSelected('')
+    setEdits(emptyEdits()); setSelected(''); setSelKey(null)
     headRef.current = 0; setHead(0)
   }
 
@@ -247,7 +254,7 @@ export default function DirectorStudio() {
     setPm(normalizePageModel(it.pagemodel))
     setSeed(it.seed || 1)
     setEdits(it.edits && it.edits.v ? it.edits : emptyEdits())
-    setSelected(''); headRef.current = 0; setHead(0)
+    setSelected(''); setSelKey(null); headRef.current = 0; setHead(0)
   }
   const delSaved = (it) => {
     const next = saved.filter(x => x.id !== it.id)
@@ -282,7 +289,18 @@ export default function DirectorStudio() {
   const onDur = (sceneId, segs) => setEdits(e => ({ ...e, escenas: { ...e.escenas, [sceneId]: { dur: segs } } }))
   const onReorder = (orden) => setEdits(e => ({ ...e, orden }))
   const onLook = (patch) => setEdits(e => ({ ...e, look: { ...e.look, ...patch } }))
-  const onReset = () => { setEdits(emptyEdits()); setSelected('') }
+  const onReset = () => { setEdits(emptyEdits()); setSelected(''); setSelKey(null) }
+
+  // --- CURVAS (overlay E2). El overlay se queda con el TRACK ENTERO, no con deltas por keyframe: los
+  // indices no sobreviven a un recompilado (si el linker elige otra receta, ese track tiene otra
+  // cantidad de keys y el delta apunta a cualquier lado). `keys === null` borra la entrada y la capa
+  // vuelve a moverse como la animo el motor — restablecer es olvidar una clave, no deshacer nada.
+  const onCurva = (layer, prop, keys) => setEdits(e => {
+    const k = { ...(e.keys || {}) }
+    const clave = layer + '|' + prop
+    if (Array.isArray(keys) && keys.length >= 2) k[clave] = keys; else delete k[clave]
+    return { ...e, keys: k }
+  })
 
   const objetos = (sb.rubro || []).join(' · ')
 
@@ -355,14 +373,18 @@ export default function DirectorStudio() {
 
         <div className={styles.right}>
           <Inspector
-            sb={sb} sbBase={sbBase} tl={tl} selected={selected} edits={edits} look={sb.look}
+            sb={sb} sbBase={sbBase} tl={tl} selected={selected} edits={edits} look={sb.look} selKey={selKey}
             onEdit={onEdit} onReorder={onReorder} onDur={onDur} onLook={onLook} onReset={onReset}
+            onSelKey={setSelKey} onCurva={onCurva}
           />
         </div>
       </div>
 
       <div className={styles.bottom}>
-        <Timeline tl={tl} head={head} onSeek={seek} selected={selected} onSelect={setSelected} zoom={zoom} onZoom={setZoom} />
+        <Timeline
+          tl={tl} head={head} onSeek={seek} selected={selected} onSelect={setSelected} zoom={zoom} onZoom={setZoom}
+          selKey={selKey} onSelKey={setSelKey} onCurva={onCurva} keysEdit={edits.keys}
+        />
       </div>
     </div>
   )

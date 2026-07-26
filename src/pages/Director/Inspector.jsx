@@ -1,4 +1,5 @@
-import { NOMBRES, PLACAS, contarEdits, validateEdits, COLOR_TOKENS, DUR_MIN, DUR_MAX, SIZE_MIN, SIZE_MAX } from '../../director/index.js'
+import { NOMBRES, PLACAS, contarEdits, validateEdits, COLOR_TOKENS, DUR_MIN, DUR_MAX, SIZE_MIN, SIZE_MAX, EASES, PROPS, tracksDe, keysDeTrack } from '../../director/index.js'
+import { corto } from './timelineDraw.js'
 import styles from './Inspector.module.css'
 
 // INSPECTOR (editor E1) — el panel que convierte al Director en un editor y no en un generador.
@@ -12,8 +13,17 @@ import styles from './Inspector.module.css'
 // los rangos y los tokens NO se hardcodean: salen del contrato del overlay (core/edits.js), asi el
 // slider no puede pedir un valor que applyEdits despues clampea a otra cosa.
 const NOMBRE_TOKEN = { ink: 'tinta', dim: 'tinta suave', accent: 'acento', accentTxt: 'acento legible', accent2: 'acento 2', onAccent: 'sobre acento', bg0: 'fondo', bg1: 'fondo 2' }
+// los 9 props del timeline en castellano: 'sweep' o 'reveal' no le dicen nada a nadie que no haya
+// leido el compilador, y el panel de curvas es justamente para el que no lo leyo.
+const NOMBRE_PROP = { x: 'posicion X', y: 'posicion Y', w: 'ancho', h: 'alto', scale: 'escala', rot: 'rotacion', alpha: 'opacidad', reveal: 'aparicion', sweep: 'barrido' }
+// paso del input de VALOR: x/y/w/h son fracciones del lienzo (0.01 es ~4px de ancho, se ve); escala,
+// opacidad y radianes necesitan un paso mas grueso o hacen falta veinte clicks para notar el cambio.
+const PASO_PROP = { x: 0.01, y: 0.01, w: 0.01, h: 0.01, scale: 0.05, rot: 0.05, alpha: 0.05, reveal: 0.05, sweep: 0.05 }
+// el input vacio NO es un cero: sin este filtro, borrar el campo para escribir otro numero mandaba un
+// t=0 que clampeaba el keyframe contra el inicio de la capa antes de terminar de tipear.
+const num = (e) => { const v = e.target.value; if (v === '') return null; const n = Number(v); return Number.isFinite(n) ? n : null }
 
-export default function Inspector({ sb, sbBase, tl, selected, edits, onEdit, onReorder, onDur, look, onLook, onReset }) {
+export default function Inspector({ sb, sbBase, tl, selected, edits, onEdit, onReorder, onDur, look, onLook, onReset, selKey, onSelKey, onCurva }) {
   // DOS storyboards a proposito: `sb` (ya editado) manda en lo que se LISTA — orden y duracion de las
   // escenas — y `sbBase` (el que genero el motor) manda en lo que se EDITA. Resolver la capa contra el
   // editado tenia dos bugs: ocultar una capa la sacaba del storyboard, asi que su propio checkbox
@@ -45,6 +55,48 @@ export default function Inspector({ sb, sbBase, tl, selected, edits, onEdit, onR
     onReorder(next)
   }
 
+  // --- E2: KEYFRAMES. La curva se lee SIEMPRE de la timeline ya editada, nunca del overlay: lo que
+  // el usuario guardo puede estar fuera de rango y applyEditsTimeline lo clampea. Mostrando el overlay
+  // el input diria 3 y el video se moveria a 1. La timeline es la que dibuja, asi que es la verdad.
+  const F = Math.round(1000 / ((tl && tl.fps) || 30)) / 1000     // un frame, redondeado a ms como el motor
+  const keysEd = edits.keys || {}
+  const curva = selKey ? keysDeTrack(tl, selKey.layer, selKey.prop) : null
+  // el selKey puede quedar colgado (se borro un keyframe, o el motor recompilo con menos keys): sin
+  // este chequeo el panel leia undefined.t y tiraba la pagina entera.
+  const kf = curva && selKey.i >= 0 && selKey.i < curva.length ? curva[selKey.i] : null
+  const capaSel = kf ? tl.layers.find(l => l.id === selKey.layer) : null
+  const conKey = (mut) => onCurva(selKey.layer, selKey.prop, curva.map((k, j) => (j === selKey.i ? mut(k) : k)))
+  // MISMO clampeo que el arrastre de la timeline (Timeline.jsx::moverKey): entre sus vecinos con un
+  // frame de margen y dentro de la vida de su capa. Si las dos vias clampearan distinto, escribir el
+  // tiempo a mano y arrastrarlo darian resultados distintos para el mismo keyframe.
+  const moverKf = (t) => {
+    const i = selKey.i, life = capaSel ? capaSel.life : [0, tl.dur]
+    const lo = Math.max(life[0], i > 0 ? curva[i - 1].t + F : life[0])
+    const hi = Math.min(life[1], i < curva.length - 1 ? curva[i + 1].t - F : life[1])
+    if (hi < lo) return
+    conKey(k => ({ ...k, t: Math.round(Math.min(hi, Math.max(lo, t)) * 1000) / 1000 }))
+  }
+  // el valor NO se clampea aca: los rangos por prop son del motor (sanearKeys) y duplicarlos en la UI
+  // es garantizar que un dia digan cosas distintas. Se manda crudo y el input muestra lo que quedo.
+  const valorKf = (v) => conKey(k => ({ ...k, v }))
+  const easeKf = (e) => conKey(k => (e ? { t: k.t, v: k.v, ease: e } : { t: k.t, v: k.v }))
+  const borrarKf = () => { onCurva(selKey.layer, selKey.prop, curva.filter((_, j) => j !== selKey.i)); onSelKey(null) }
+  const resetCurva = () => { onCurva(selKey.layer, selKey.prop, null); onSelKey(null) }
+
+  // curvas de la capa seleccionada. `tl.layers` y no el storyboard: la placa y los flashes del montaje
+  // no son capas de escena pero se animan igual, y son de las que mas se quiere retocar.
+  const tracks = tlCapa ? tracksDe(tl, selected) : []
+  const quietos = tlCapa ? PROPS.filter(p => !tracks.some(t => t.prop === p)) : []
+  // "+ animar": keysDeTrack devuelve una curva PLANA en los extremos de la vida de la capa, o sea que
+  // guardarla no cambia un pixel. Es a proposito: el usuario primero declara "esto se mueve" y despues
+  // decide como, sin que el video pegue un salto al tocar el boton.
+  const animar = (p) => {
+    const k = keysDeTrack(tl, selected, p)
+    if (!k || k.length < 2) return
+    onCurva(selected, p, k)
+    onSelKey({ layer: selected, prop: p, i: 0 })
+  }
+
   return (
     <div className={styles.panel}>
       <div className={styles.head}>
@@ -56,6 +108,43 @@ export default function Inspector({ sb, sbBase, tl, selected, edits, onEdit, onR
       {avisos.length > 0 && (
         <div className={styles.avisos}>
           {avisos.map((a, i) => <div key={i} className={styles.aviso} title={a.code}>{a.path}: {a.msg}</div>)}
+        </div>
+      )}
+
+      {/* --- KEYFRAME (E2): va ARRIBA DE TODO porque aparece por una accion directa del usuario
+           (agarro un rombo en la timeline) y tiene que estar donde ya esta mirando. --- */}
+      {kf && (
+        <div className={styles.sec}>
+          <h3 className={styles.h3}>Keyframe</h3>
+          <div className={styles.meta}>
+            <span className={styles.kind}>{NOMBRE_PROP[selKey.prop] || selKey.prop}</span>
+            <span className={styles.mid} title={selKey.layer}>{corto(selKey.layer)}</span>
+            <span className={styles.val}>{selKey.i + 1}/{curva.length}</span>
+          </div>
+
+          <div className={styles.fila}>
+            <label className={styles.lbl}>Tiempo</label>
+            <input type="number" className={styles.num} step={F} value={kf.t}
+              onChange={e => { const n = num(e); if (n != null) moverKf(n) }} />
+            <span className={styles.val}>s</span>
+          </div>
+          <div className={styles.fila}>
+            <label className={styles.lbl}>Valor</label>
+            <input type="number" className={styles.num} step={PASO_PROP[selKey.prop] || 0.01} value={kf.v}
+              onChange={e => { const n = num(e); if (n != null) valorKf(n) }} />
+          </div>
+
+          <label className={styles.lbl}>Ease</label>
+          <select className={styles.input} value={kf.ease || ''} disabled={selKey.i === 0} onChange={e => easeKf(e.target.value)}>
+            <option value="">(el del motor)</option>
+            {EASES.map(e => <option key={e} value={e}>{e}</option>)}
+          </select>
+          {selKey.i === 0 && <p className={styles.hint}>El ease es el de ENTRADA a cada keyframe, asi que el primero de la curva no usa ninguno.</p>}
+
+          <div className={styles.btns}>
+            <button className={styles.btn2} onClick={borrarKf} disabled={curva.length <= 2} title="Una curva necesita al menos 2 keyframes">Borrar keyframe</button>
+            <button className={styles.btn2} onClick={resetCurva} title="La capa vuelve a moverse como la animo el motor">Restablecer curva</button>
+          </div>
         </div>
       )}
 
@@ -108,6 +197,31 @@ export default function Inspector({ sb, sbBase, tl, selected, edits, onEdit, onR
           </>
         )}
       </div>
+
+      {/* --- CURVAS de la capa: que se mueve hoy, y que se puede empezar a mover. Sin esta lista, un
+           prop que el motor dejo quieto no tiene ni un rombo que agarrar y era inanimable. --- */}
+      {tlCapa && (
+        <div className={styles.sec}>
+          <h3 className={styles.h3}>Curvas</h3>
+          {tracks.map(t => {
+            const on = selKey && selKey.layer === selected && selKey.prop === t.prop
+            return (
+              <button key={t.prop} className={`${styles.trk} ${on ? styles.trkOn : ''}`} onClick={() => onSelKey({ layer: selected, prop: t.prop, i: 0 })} title="Selecciona su primer keyframe">
+                <span className={styles.trkNom}>{NOMBRE_PROP[t.prop] || t.prop}</span>
+                {keysEd[selected + '|' + t.prop] && <span className={styles.trkEd} title="curva tuya, ya no la del motor">◆</span>}
+                <span className={styles.val}>{t.keys.length} keys</span>
+              </button>
+            )
+          })}
+          {quietos.length > 0 && (
+            <div className={styles.adds}>
+              {quietos.map(p => (
+                <button key={p} className={styles.add} onClick={() => animar(p)} title="Crea una curva plana en la vida de la capa: no cambia nada hasta que muevas un valor">+ {NOMBRE_PROP[p] || p}</button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* --- ESCENAS: duracion y orden --- */}
       <div className={styles.sec}>

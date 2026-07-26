@@ -50,7 +50,7 @@ export { compile, propsAt, layersAt, evalKeys, boxDe, escenaEn } from './core/ti
 export { drawFrame, frames, tDe } from './render/video.js'
 export { drawPlaca, drawVidrio } from './render/plate.js'
 // --- F3.2: edicion ---
-export { EDITS_V, DUR_MIN, DUR_MAX, SIZE_MIN, SIZE_MAX, COLOR_TOKENS, emptyEdits, applyEdits, validateEdits, contarEdits } from './core/edits.js'
+export { EDITS_V, DUR_MIN, DUR_MAX, SIZE_MIN, SIZE_MAX, COLOR_TOKENS, EASES, emptyEdits, applyEdits, applyEditsTimeline, validateEdits, contarEdits, tracksDe, keysDeTrack } from './core/edits.js'
 
 export {
   PM_V, SB_V, TL_V, CANVAS, PROPS, PROP_DEFAULT, LAYER_KINDS, TEXT_ROLES,
@@ -63,4 +63,4 @@ export {
 // SUS utilidades de color -> cero acoplamiento con urvid aunque el archivo sea compartido).
 export { createHeroObjects } from '../shared/objects.js'
 
-export const DIRECTOR_VERSION = '0.5.0-f3.2'
+export const DIRECTOR_VERSION = '0.6.0-f5'

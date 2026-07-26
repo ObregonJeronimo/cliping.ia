@@ -32,16 +32,20 @@ export const corto = (id) => {
 }
 // mismo orden estable que usa el renderer (z y despues id)
 export const capasDe = (tl) => (tl ? tl.layers.slice().sort((a, b) => a.z - b.z || a.id.localeCompare(b.id)) : [])
-// union de los tiempos de key de TODOS los tracks de una capa: el rombo marca "aca pasa algo", sin
-// importar si lo que cambia es x, alpha o scale.
+// keys de una capa como REFERENCIAS { t, prop, i }, no como una union de tiempos. Antes era un Set de
+// instantes (alcanzaba para dibujar "aca pasa algo"), pero E2 tiene que poder AGARRAR un rombo y saber
+// que track y que indice toco: un tiempo suelto no dice cual de los seis props se esta arrastrando.
+// Dos props con key en el MISMO t dan dos entradas que caen en el mismo pixel — se ven como un rombo
+// solo, igual que antes, y el hit-test resuelve por orden de track (determinista).
 export function keysPorCapa(tl) {
   const m = new Map()
   if (!tl) return m
   for (const tr of tl.tracks) {
-    let s = m.get(tr.layer)
-    if (!s) { s = new Set(); m.set(tr.layer, s) }
-    for (const k of tr.keys) s.add(Math.round(k.t * 1000) / 1000)
+    let a = m.get(tr.layer)
+    if (!a) { a = []; m.set(tr.layer, a) }
+    tr.keys.forEach((k, i) => a.push({ t: Math.round(k.t * 1000) / 1000, prop: tr.prop, i }))
   }
+  for (const a of m.values()) a.sort((p, q) => p.t - q.t)
   return m
 }
 export const altoDe = (n) => RULER + PADT * 2 + n * ROW
@@ -49,13 +53,47 @@ export const anchoDe = (dur, zoom) => GUT + dur * zoom + 24
 // fila que cae en una coordenada Y del CONTENIDO (la usa el click del componente)
 export const filaEn = (capas, y) => { const i = Math.floor((y - RULER - PADT) / ROW); return i >= 0 && i < capas.length ? capas[i] : null }
 
-// dibujarTimeline(ctx, o) — o: { tl, head, selected, zoom, cssW, cssH, sx, sy, capas, keys }
+// tolerancia del hit-test de keyframe: el rombo mide ~7px, asi que 6 de radio agarra sin obligar a
+// apuntar al pixel y sin robarle clicks al scrub de la fila de al lado (ROW es 18).
+export const KEY_TOL = 6
+// keyEn(capas, keys, x, y, zoom, sx, sy) -> { layer, prop, i } | null — GEOMETRIA PURA, sin DOM.
+// x/y son coordenadas del CONTENIDO del canvas (las mismas que da el pointer del componente) y sx/sy
+// el scroll: la regla y el canal de etiquetas se dibujan PEGADOS ahi, o sea que tapan a los rombos que
+// caen debajo. Sin ese descuento, hacer scrub sobre la regla agarraba keyframes invisibles.
+export function keyEn(capas, keys, x, y, zoom, sx = 0, sy = 0) {
+  if (!keys || x < Math.max(0, sx) + GUT) return null
+  if (y < Math.max(0, sy) + RULER) return null
+  const i = Math.floor((y - RULER - PADT) / ROW)
+  if (i < 0 || i >= capas.length) return null
+  const ks = keys.get(capas[i].id)
+  if (!ks) return null
+  if (Math.abs(y - (RULER + PADT + i * ROW + ROW / 2)) > KEY_TOL) return null
+  let mejor = null, dm = KEY_TOL + 1e-9
+  for (const k of ks) {
+    const d = Math.abs(GUT + k.t * zoom - x)
+    if (d < dm) { dm = d; mejor = k }               // `<` y no `<=`: ante un empate gana el primer track
+  }
+  return mejor ? { layer: capas[i].id, prop: mejor.prop, i: mejor.i } : null
+}
+
+// acento del estudio: el mismo violeta con el que se resalta la fila seleccionada
+const ACENTO = '#7c5cff'
+
+// dibujarTimeline(ctx, o) — o: { tl, head, selected, zoom, cssW, cssH, sx, sy, capas, keys, selKey, editadas }
 // sx/sy son el scroll del contenedor: la regla y el canal de etiquetas se dibujan AHI para quedar
 // pegados (con 30 capas, perder la regla o los nombres al scrollear vuelve inutil el panel).
+// selKey = { layer, prop, i } | null (el keyframe agarrado) · editadas = Set de "capaId|prop" que el
+// usuario ya toco: sin esa marca no hay forma de distinguir de un vistazo lo suyo de lo del motor.
 export function dibujarTimeline(ctx, o) {
   const { tl, head, selected, zoom, cssW, cssH } = o
   const capas = o.capas || capasDe(tl)
   const keys = o.keys || keysPorCapa(tl)
+  const selKey = o.selKey || null
+  const editadas = o.editadas || new Set()
+  // la marca del canal de etiquetas es por CAPA, no por track: una pasada sobre un Set chico sale mas
+  // barato que preguntarle a cada capa por sus nueve props.
+  const capasEd = new Set()
+  for (const k of editadas) capasEd.add(String(k).slice(0, String(k).lastIndexOf('|')))
   const sx = Math.max(0, o.sx || 0), sy = Math.max(0, o.sy || 0)
   const dur = Math.max(0.1, tl.dur || 1)
   const X = t => GUT + t * zoom
@@ -79,6 +117,9 @@ export function dibujarTimeline(ctx, o) {
   }
 
   // --- barras de vida + rombos de keyframe
+  // el rombo SELECCIONADO se guarda para el final: dos props con key en el mismo t caen en el mismo
+  // pixel, y si se dibujara en su turno el siguiente track lo taparia con un rombo chico y blanco.
+  let elegido = null
   capas.forEach((l, i) => {
     const y = y0 + i * ROW
     const a = X(Math.max(0, l.life[0])), b = X(Math.min(dur, l.life[1]))
@@ -95,15 +136,16 @@ export function dibujarTimeline(ctx, o) {
     const ks = keys.get(l.id)
     if (!ks) return
     const cy = y + ROW / 2
-    for (const t of ks) {
-      const x = X(t)
+    for (const k of ks) {
+      const x = X(k.t)
       if (x < a - 4 || x > b + 4) continue
-      ctx.save(); ctx.translate(x, cy); ctx.rotate(Math.PI / 4)
-      ctx.fillStyle = '#0d0d14'; ctx.fillRect(-3.4, -3.4, 6.8, 6.8)      // borde: separa rombos pegados
-      ctx.fillStyle = sel ? '#ffffff' : 'rgba(240,240,250,0.88)'; ctx.fillRect(-2.4, -2.4, 4.8, 4.8)
-      ctx.restore()
+      if (selKey && selKey.layer === l.id && selKey.prop === k.prop && selKey.i === k.i) { elegido = [x, cy]; continue }
+      // el halo (lo que normalmente separa dos rombos pegados) se tiñe de acento cuando la curva es del
+      // usuario: a 7px un relleno distinto no se lee, un contorno de color si.
+      rombo(ctx, x, cy, 2.4, sel ? '#ffffff' : 'rgba(240,240,250,0.88)', editadas.has(l.id + '|' + k.prop) ? ACENTO : '#0d0d14')
     }
   })
+  if (elegido) rombo(ctx, elegido[0], elegido[1], 4.2, ACENTO, '#ffffff')
 
   // --- REGLA: marcas cada 0.5s y numeros en los segundos enteros (cada 2s si el zoom es chico).
   // Va DESPUES de las pistas y a la altura del scroll: tapa las filas de arriba y queda siempre visible.
@@ -144,11 +186,15 @@ export function dibujarTimeline(ctx, o) {
   ctx.font = '10.5px system-ui, -apple-system, Segoe UI, sans-serif'
   capas.forEach((l, i) => {
     const y = y0 + i * ROW
+    const ed = capasEd.has(l.id)
     if (l.id === selected) { ctx.fillStyle = 'rgba(124,92,255,0.16)'; ctx.fillRect(sx, y, GUT, ROW) }
     ctx.fillStyle = COL_KIND[l.kind] || '#6b7186'
     ctx.fillRect(sx + 6, y + ROW / 2 - 3, 6, 6)
-    ctx.fillStyle = l.id === selected ? '#e8e9f2' : '#8a8fa5'
-    ctx.fillText(recorta(ctx, corto(l.id), GUT - 22), sx + 17, y + ROW / 2 + 3.5)
+    // el id en acento + un punto al borde del canal: la capa cuya animacion ya NO es la que puso el
+    // motor tiene que verse sin abrir el inspector ni recordar que se toco.
+    ctx.fillStyle = ed ? '#c9b6ff' : (l.id === selected ? '#e8e9f2' : '#8a8fa5')
+    ctx.fillText(recorta(ctx, corto(l.id), GUT - (ed ? 30 : 22)), sx + 17, y + ROW / 2 + 3.5)
+    if (ed) { ctx.fillStyle = ACENTO; ctx.beginPath(); ctx.arc(sx + GUT - 8, y + ROW / 2, 2.6, 0, Math.PI * 2); ctx.fill() }
   })
 
   // --- PLAYHEAD (recortado al area de pistas: no invade el canal de etiquetas)
@@ -159,6 +205,15 @@ export function dibujarTimeline(ctx, o) {
   ctx.beginPath(); ctx.moveTo(hx, 0); ctx.lineTo(hx, cssH); ctx.stroke()
   ctx.fillStyle = '#ff4d6d'
   ctx.beginPath(); ctx.moveTo(hx - 4, 0); ctx.lineTo(hx + 4, 0); ctx.lineTo(hx, 6); ctx.closePath(); ctx.fill()
+  ctx.restore()
+}
+
+// un rombo de keyframe: cuadrado rotado 45 grados sobre un cuadrado un pixel mas grande que hace de
+// borde. El borde no es adorno — sin el, dos keys a 2 frames de distancia se leen como una mancha.
+function rombo(ctx, x, cy, r, fill, borde) {
+  ctx.save(); ctx.translate(x, cy); ctx.rotate(Math.PI / 4)
+  ctx.fillStyle = borde; ctx.fillRect(-(r + 1), -(r + 1), (r + 1) * 2, (r + 1) * 2)
+  ctx.fillStyle = fill; ctx.fillRect(-r, -r, r * 2, r * 2)
   ctx.restore()
 }
 
