@@ -1,0 +1,24 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>ANTHEM · referencia de motion graphics</title>
+<style>
+  /* Las tipografías se sirven desde tools/fonts por el mismo servidor local del driver. Sin @font-face
+     el canvas mide y dibuja con la fuente del sistema, y como la textura queda cacheada el error se
+     ve recién en el video terminado. */
+  @font-face { font-family: "Anton";        src: url("/fonts/Anton-400.ttf") format("truetype"); font-weight: 400; font-display: block; }
+  @font-face { font-family: "ArchivoBlack"; src: url("/fonts/ArchivoBlack-400.ttf") format("truetype"); font-weight: 400; font-display: block; }
+  @font-face { font-family: "BigShoulders"; src: url("/fonts/BigShouldersDisplay-900.ttf") format("truetype"); font-weight: 900; font-display: block; }
+  @font-face { font-family: "Bricolage";    src: url("/fonts/BricolageGrotesque-800.ttf") format("truetype"); font-weight: 800; font-display: block; }
+  @font-face { font-family: "DMSans";       src: url("/fonts/DMSans-500.ttf") format("truetype"); font-weight: 500; font-display: block; }
+  html, body { margin: 0; padding: 0; background: #000; overflow: hidden; }
+  canvas { display: block; }
+</style>
+<!-- #c dibuja WebGL, #acc promedia las submuestras del obturador y es el que se graba. #c va fuera de
+     pantalla: si los dos estuvieran visibles, la captura agarraría los dos. -->
+<canvas id="c" style="position:absolute;left:-99999px;top:0"></canvas>
+<canvas id="acc"></canvas>
+<script src="/gsap.min.js"></script>
+<script type="importmap">
+{ "imports": { "three": "/three.module.js", "three/addons/": "/jsm/" } }
+</script>
+<script type="module" src="./main.js"></script>

@@ -1,0 +1,443 @@
+// ANTHEM · apertura — 6 beats (2.90 s). La pieza abre en seco.
+//
+// La apertura es el único lugar donde el espectador decide si sigue mirando, así que acá no hay
+// fundido de entrada. Hay un filete que cruza el cuadro pasándose de largo y volviendo, un rótulo que
+// se ESCRIBE por máscara, un contador que acelera hacia el corte — y en el beat 1.5 todo colapsa en
+// tres frames mientras la grilla del fondo se prende de golpe. Recién ahí entra ANTHEM, letra por
+// letra, desde z = -13.
+//
+// Tres decisiones sostienen la escena:
+//   · el corte cae en el beat 1.5 EXACTO. El ojo ya lo está esperando; un corte a los "2.3 segundos"
+//     se lee como que el video se movió, no como que alguien lo cortó.
+//   · la palabra mide ~94% del ancho del cuadro. Un titular al 40% se lee tímido: en un reel la
+//     tipografía es la imagen, no un rótulo sobre la imagen.
+//   · después del beat 3 nada descansa. La palabra deriva y respira, las letras flotan desfasadas,
+//     una barra de progreso avanza abajo y el fondo late una vez por beat.
+//
+// El overshoot vive en la ROTACIÓN y en la escala de cada letra, no en z: con la palabra ocupando el
+// 94% del ancho, un back.out sobre la profundidad la empujaba fuera del cuadro en el rebote.
+
+import { LOOK, b, planoTexto, texto, materialMascara, filete, hex } from '../kit.js'
+
+export const meta = { id: 'apertura', beats: 6 }
+
+// `texto()` rasteriza el glifo en un lienzo que mide 1.34·size de alto y le deja 0.3·size de aire
+// lateral. Traducido a mundo: por cada unidad de ALTO del plano, AIRE es aire y (ar - AIRE) es glifo.
+// Sin descontarlo, "ANTHEM" se arma con seis agujeros adentro y nunca llega al borde del cuadro.
+const AIRE = 0.3 / 1.34
+
+// El bloom del pase final tiene umbral 0.62 y pasa el color ENTERO apenas lo cruza — no hay medio
+// florecer. Un rótulo blanco de 200 px lo cruza y queda lindo; "ANTHEM" a 1000 px de ancho lo cruza y
+// se convierte en un rectángulo blanco que se come el cuadro. La palabra grande va apenas por debajo
+// del umbral: nítida, con contraste total sobre el negro, y sin halo.
+const TIPO_GRANDE = '#c3cbdb'
+
+const ANTON = { fuente: 'Anton', size: 200, color: TIPO_GRANDE }
+const CHICA = { fuente: 'DMSans', peso: 500, size: 200, tracking: 0.24, color: LOOK.tinta }
+const CIFRA = { fuente: 'Bricolage', peso: 800, size: 200, tracking: 0.06, color: LOOK.tinta }
+
+export function build(ctx) {
+  const { THREE, gsap, mundoW, camera, distBase, rnd, fondo, pelicula, bloom } = ctx
+
+  const g = new THREE.Group()
+  const tl = gsap.timeline({ paused: true })
+
+  const F = 1 / 30                 // un frame: la unidad en la que se mide un corte duro
+  const BX = mundoW / 2            // borde del cuadro en x  (2.8125)
+  const MX = BX * 0.87             // margen de composición   (2.447)
+  const bloomBase = (bloom && bloom.strength) || 0.85
+
+  // fromTo con immediateRender apagado: el valor de partida queda declarado en la timeline y no
+  // depende de en qué estado encuentre el objeto el primer seek. Es lo que hace que scrubbear hacia
+  // atrás devuelva exactamente el mismo frame.
+  const de = (obj, desde, hasta, t) => tl.fromTo(obj, desde, { ...hasta, immediateRender: false }, t)
+
+  // ---------------------------------------------------------------- helpers de esta escena
+  // Nada de esto escribe ni testea profundidad: las letras cruzan el cuadro viajando desde z -13 y una
+  // línea de 3 cm les cortaba un pedazo en pleno vuelo.
+  const sinZ = (m, orden = 2) => { m.material.depthWrite = false; m.material.depthTest = false; m.renderOrder = orden; return m }
+
+  // El `filete` del kit nace a 3.2× de intensidad: cruza el umbral del bloom y florece. Es justo lo
+  // que se quiere para UN elemento heroico sobre negro — y justo lo que no se quiere para las veinte
+  // líneas que estructuran el cuadro, porque veinte neones juntos lavan el frame entero. `raya` es la
+  // misma geometría por debajo del umbral: línea nítida, sin halo.
+  const raya = (w, h, color = LOOK.acento, k = 1.5) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({
+      color: hex(color).multiplyScalar(k), toneMapped: false,
+    }))
+    return sinZ(m)
+  }
+  // Anclada por un extremo: escalando x crece hacia un lado en vez de abrirse desde el centro.
+  const rayaDesde = (w, h, color, k, dir) => {
+    const m = raya(w, h, color, k)
+    m.geometry.translate(dir * w / 2, 0, 0)
+    return m
+  }
+
+  const tenue = (w, h, op, c = LOOK.tinta) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({
+      color: hex(c).multiplyScalar(0.5), transparent: true, opacity: op, toneMapped: false,
+    }))
+    return sinZ(m, 1)
+  }
+
+  // Rótulo revelado por máscara. Se le pasa siempre un color: el uniform uTinte del kit nace en null
+  // y three intenta subirlo igual, así que un rótulo "sin tinte" revienta al primer render WebGL.
+  const rotulo = (str, altoMax, anchoMax, o) => {
+    const t = texto(str, o)
+    const alto = t.ar > 0.01 ? Math.min(altoMax, anchoMax / t.ar) : altoMax
+    const mat = materialMascara(t.tex, o.color || LOOK.tinta)
+    mat.uniforms.uSuave.value = 0.05
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(alto * t.ar, alto), mat)
+    m.userData.ancho = alto * t.ar
+    m.userData.prog = mat.uniforms.uProg
+    m.renderOrder = 6
+    m.position.z = 0.1
+    return m
+  }
+  const izq = (m, x, y) => { m.position.set(x + m.userData.ancho / 2, y, m.position.z); return m }
+  const der = (m, x, y) => { m.position.set(x - m.userData.ancho / 2, y, m.position.z); return m }
+
+  // Un objeto con escala 0.001 NO es un objeto invisible: es una línea de un píxel. Sobre el negro de
+  // la apertura esas astillas se leen como suciedad en el cuadro — y la que peor queda es la que
+  // encima florece. Todo lo que entra después se apaga de verdad hasta su beat.
+  const apagadoHasta = (o, t) => {
+    o.visible = false
+    tl.set(o, { visible: false }, 0)
+    tl.set(o, { visible: true }, t)
+    return o
+  }
+
+  // ================================================================ estado inicial explícito
+  // Todo nace donde la timeline lo va a encontrar. Un objeto que arranca en su posición final y sólo
+  // se corrige al primer tween produce un frame 0 distinto al resto de los renders.
+  tl.set(fondo.uGrilla, { value: 0 }, 0)
+  tl.set(fondo.uPulso, { value: 0 }, 0)
+  tl.set(pelicula.uFlash, { value: 0 }, 0)
+  tl.set(camera.position, { x: 0, y: 0, z: distBase }, 0)
+  tl.set(camera.rotation, { x: 0, y: 0, z: 0 }, 0)
+
+  // ================================================================ A · el filete cruza el cuadro
+  // beat 0.0-0.5. Negro casi total: la grilla está apagada y lo único que existe es una línea de
+  // acento que se abre desde el centro, se pasa de los bordes y vuelve. Acá SÍ va el neón del kit:
+  // es el único objeto del cuadro y todo el trabajo de atracción recae sobre él.
+  const gAp = new THREE.Group()
+  g.add(gAp)
+
+  const fil = sinZ(filete(mundoW * 1.02, 0.05, LOOK.acento), 3)
+  fil.position.set(0, 0, -0.35)
+  fil.scale.set(0.001, 2.4, 1)
+  gAp.add(fil)
+
+  de(fil.scale, { x: 0.001 }, { x: 1, duration: b(0.44), ease: 'back.out(2.4)' }, 0)
+  de(fil.scale, { y: 2.4 }, { y: 1, duration: b(0.62), ease: 'expo.out' }, 0)
+
+  // Marcas de tiempo sobre el filete: cuatro rayitas verticales de alturas alternadas, escalonadas.
+  // El stagger es lo que las convierte en una regla y no en cuatro palitos.
+  const marcas = []
+  ;[[-1.98, 0.38], [-0.72, 0.24], [0.72, 0.24], [1.98, 0.38]].forEach(([x, h]) => {
+    const m = raya(0.04, h, LOOK.acento, 2.6)
+    m.position.set(x, 0, -0.34)
+    m.scale.y = 0.001
+    gAp.add(m)
+    marcas.push(m)
+  })
+  marcas.forEach((m, i) => {
+    de(m.scale, { y: 0.001 }, { y: 1, duration: b(0.34), ease: 'back.out(2.8)' }, b(0.14) + i * 0.045)
+  })
+
+  // Cruz vertical y dos hairlines: el cuadro tiene que estar lleno incluso cuando está casi negro.
+  const cruz = tenue(0.016, 3.8, 0.5)
+  cruz.position.set(0, 0, -0.4)
+  cruz.scale.y = 0.001
+  gAp.add(cruz)
+  de(cruz.scale, { y: 0.001 }, { y: 1, duration: b(0.55), ease: 'expo.out' }, b(0.26))
+
+  ;[1.62, -1.62].forEach((y, i) => {
+    const h = tenue(mundoW * 0.74, 0.01, 0.42)
+    h.position.set(0, y, -0.4)
+    h.scale.x = 0.001
+    gAp.add(h)
+    de(h.scale, { x: 0.001 }, { x: 1, duration: b(0.6), ease: 'expo.out' }, b(0.12) + i * 0.07)
+  })
+
+  // ================================================================ marco de esquinas (sobrevive al corte)
+  // Las escuadras salen disparadas desde el centro hacia sus esquinas: son lo único que cruza el corte
+  // duro sin romperse, y esa continuidad es lo que hace que el corte se lea como montaje y no como que
+  // el video empezó de nuevo.
+  const gMarco = new THREE.Group()
+  g.add(gMarco)
+  const esquinas = []
+  ;[[-1, 1], [1, 1], [-1, -1], [1, -1]].forEach(([sx, sy]) => {
+    const e = new THREE.Group()
+    const h = raya(0.30, 0.024, LOOK.acento, 1.6)
+    h.position.set(sx * (MX - 0.15), sy * 4.25, -0.3)
+    const v = raya(0.024, 0.30, LOOK.acento, 1.6)
+    v.position.set(sx * MX, sy * (4.25 - 0.15), -0.3)
+    e.add(h, v)
+    e.scale.set(0.001, 0.001, 1)
+    gMarco.add(e)
+    esquinas.push(e)
+  })
+  esquinas.forEach((e, i) => {
+    de(e.scale, { x: 0.001, y: 0.001 }, { x: 1, y: 1, duration: b(0.42), ease: 'back.out(2.0)' }, b(0.30) + i * 0.05)
+  })
+
+  // ================================================================ B · el rótulo y el contador
+  // beat 0.5-1.0. Tipografía chica con tracking alto revelada por MÁSCARA: el texto se escribe de
+  // izquierda a derecha. Un fundido acá sería la transición de quien no eligió ninguna.
+  const rot = izq(rotulo('URVID // MOTION SYSTEM', 0.16, mundoW * 0.62, CHICA), -MX, 0.44)
+  gAp.add(rot)
+  const rotX = rot.position.x
+  rot.userData.prog.value = 0
+  de(rot.userData.prog, { value: 0 }, { value: 1.08, duration: b(0.52), ease: 'power2.inOut' }, b(0.5))
+  de(rot.position, { x: rotX - 0.16 }, { x: rotX, duration: b(0.7), ease: 'power3.out' }, b(0.5))
+
+  const micro = izq(rotulo('REC · 124 BPM', 0.115, mundoW * 0.4, { ...CHICA, tracking: 0.3, color: LOOK.acento2 }), -MX, -0.45)
+  gAp.add(micro)
+  micro.userData.prog.value = 0
+  de(micro.userData.prog, { value: 0 }, { value: 1.08, duration: b(0.4), ease: 'power2.out' }, b(0.82))
+
+  const formato = der(rotulo('1080 · 1920', 0.105, mundoW * 0.4, { ...CHICA, tracking: 0.3 }), MX, -0.45)
+  formato.material.uniforms.uDir.value = 1
+  gAp.add(formato)
+  formato.userData.prog.value = 0
+  de(formato.userData.prog, { value: 0 }, { value: 1.08, duration: b(0.4), ease: 'power2.out' }, b(0.95))
+
+  // El contador NO interpola texto: son seis planos distintos que se prenden y se apagan. Los dos
+  // primeros caen en medios beats y después acelera hacia el corte — un readout que se apura es lo que
+  // avisa al ojo que algo va a pasar en el 1.5.
+  const CNT = [['00', 0.25], ['05', 0.5], ['11', 1.0], ['17', 1.25], ['21', 1.375], ['24', 1.4375]]
+  CNT.forEach(([txt, beat], i) => {
+    const m = planoTexto(txt, 0.30, CIFRA)
+    m.position.set(MX - (0.30 * m.userData.ar) / 2, 0.44, 0.1)
+    m.renderOrder = 6
+    m.visible = false
+    gAp.add(m)
+    const t0 = b(beat)
+    const t1 = i + 1 < CNT.length ? b(CNT[i + 1][1]) : b(1.5) + 3 * F
+    tl.set(m, { visible: true }, t0)
+    tl.set(m, { visible: false }, t1)
+    de(m.scale, { x: 1.16, y: 1.16 }, { x: 1, y: 1, duration: b(0.22), ease: 'back.out(3.2)' }, t0)
+  })
+
+  // Testigo de grabación: parpadea en cuartos de beat. Nada descansa, ni siquiera un cuadrado de 8 cm.
+  const testigo = raya(0.08, 0.08, LOOK.calido, 2.6)
+  testigo.position.set(MX - 0.72, 0.44, -0.3)
+  testigo.visible = false
+  gAp.add(testigo)
+  for (let k = 0; k < 3; k++) {
+    tl.set(testigo, { visible: true }, b(0.25 + k * 0.5))
+    tl.set(testigo, { visible: false }, b(0.5 + k * 0.5))
+  }
+
+  // ================================================================ C · beat 1.5 — CORTE DURO
+  const T = b(1.5)
+
+  // El rótulo y el filete no se van: se aplastan. Escala en y a cero en tres frames, con un tirón de
+  // 6% en x para que el colapso tenga dirección.
+  de(gAp.scale, { y: 1 }, { y: 0.001, duration: 3 * F, ease: 'power3.in' }, T)
+  de(gAp.scale, { x: 1 }, { x: 1.06, duration: 3 * F, ease: 'power2.in' }, T)
+  tl.set(gAp, { visible: true }, 0)
+  tl.set(gAp, { visible: false }, T + 3 * F)
+
+  // La grilla se prende pasándose (1.15) y se asienta en 0.82. Un uniform que va del 0 a su valor y
+  // frena ahí se lee a interruptor; pasarse y volver se lee a golpe.
+  de(fondo.uGrilla, { value: 0 }, { value: 1.15, duration: 2 * F, ease: 'power2.out' }, T)
+  de(fondo.uGrilla, { value: 1.15 }, { value: 0.82, duration: b(0.5), ease: 'power2.out' }, T + 2 * F)
+
+  de(fondo.uPulso, { value: 0 }, { value: 0.55, duration: 2 * F, ease: 'power2.out' }, T)
+  de(fondo.uPulso, { value: 0.55 }, { value: 0, duration: b(0.55), ease: 'power3.out' }, T + 2 * F)
+
+  de(pelicula.uFlash, { value: 0.32 }, { value: 0, duration: 2 * F, ease: 'power2.in' }, T)
+  de(bloom, { strength: bloomBase * 1.45 }, { strength: bloomBase, duration: b(0.6), ease: 'power3.out' }, T)
+
+  // Las escuadras entran de golpe un 10% afuera y vuelven: el marco "acusa" el corte.
+  de(gMarco.scale, { x: 1.10, y: 1.06 }, { x: 1, y: 1, duration: b(0.55), ease: 'back.out(2.2)' }, T)
+
+  // Rieles laterales y sus marcas: aparecen con la grilla y le arman al cuadro una caja que sostiene
+  // la palabra enorme que está por entrar.
+  const gRiel = new THREE.Group()
+  g.add(gRiel)
+  apagadoHasta(gRiel, T)
+  ;[-1, 1].forEach((sx, i) => {
+    const r = tenue(0.012, 7.6, 0.55, LOOK.acento)
+    r.position.set(sx * MX, 0, -0.4)
+    r.scale.y = 0.001
+    gRiel.add(r)
+    de(r.scale, { y: 0.001 }, { y: 1, duration: b(0.55), ease: 'expo.out' }, T + i * 0.05)
+    ;[3.0, 1.5, -1.5, -3.0].forEach((y, k) => {
+      const t = rayaDesde(0.14, 0.016, LOOK.acento, 1.6, -sx)
+      t.position.set(sx * MX, y, -0.3)
+      t.scale.x = 0.001
+      gRiel.add(t)
+      de(t.scale, { x: 0.001 }, { x: 1, duration: b(0.3), ease: 'back.out(2.6)' }, T + b(0.18) + (k * 2 + i) * 0.04)
+    })
+  })
+
+  // ================================================================ D · beat 1.5-3.0 — LA PALABRA
+  // Cada letra es su propio plano. Se miden todas con el mismo tamaño de fuente, se les descuenta el
+  // aire del lienzo y recién ahí se calcula el ALTO que hace que la palabra entera mida 94% del ancho
+  // del cuadro. Es la única forma de que "ANTHEM" toque los bordes sin dejar huecos entre letras.
+  const LETRAS = ['A', 'N', 'T', 'H', 'E', 'M']
+  const TRACK = 0.016
+  const OBJ = mundoW * 0.94
+  const unidad = LETRAS.map(L => Math.max(0.05, texto(L, ANTON).ar - AIRE))
+  const suma = unidad.reduce((a, c) => a + c, 0)
+  const ALTO = suma > 0.05 ? (OBJ - TRACK * (LETRAS.length - 1)) / suma : 2.2
+
+  // `texto()` dibuja con textBaseline 'middle', y en Anton el centro óptico de la caja de mayúsculas
+  // queda ~0.093·ALTO por encima del centro del plano. Sin corregirlo la palabra se sienta alta y le
+  // come el aire a la cabecera — medido sobre el render, no deducido de la métrica de la fuente.
+  const gPal = new THREE.Group()
+  gPal.position.set(0, 0.26 - ALTO * 0.093, 0)
+  g.add(gPal)
+
+  const letras = []
+  let cursor = -OBJ / 2
+  LETRAS.forEach((L, i) => {
+    const w = unidad[i] * ALTO
+    const m = planoTexto(L, ALTO, ANTON)
+    m.position.set(cursor + w / 2, 0, -13)
+    m.rotation.x = -1.35
+    m.rotation.z = (rnd() - 0.5) * 0.16
+    m.scale.set(0.86, 0.86, 1)
+    m.material.opacity = 0
+    m.renderOrder = 4
+    gPal.add(m)
+    letras.push(m)
+    cursor += w + TRACK
+  })
+
+  const DUR = b(0.95)
+  letras.forEach((m, i) => {
+    const t0 = T + i * 0.05                       // stagger de 50 ms: el ojo lee intención, no un grupo
+    tl.set(m.material, { opacity: 0 }, 0)
+    tl.set(m.material, { opacity: 1 }, t0)
+    de(m.position, { z: -13 }, { z: 0, duration: DUR, ease: 'power3.out' }, t0)
+    de(m.position, { y: -0.55 }, { y: 0, duration: DUR, ease: 'back.out(2.0)' }, t0)
+    de(m.rotation, { x: -1.35 }, { x: 0, duration: DUR, ease: 'back.out(2.2)' }, t0)
+    de(m.rotation, { z: m.rotation.z }, { z: 0, duration: DUR, ease: 'back.out(1.8)' }, t0)
+    de(m.scale, { x: 0.86, y: 0.86 }, { x: 1, y: 1, duration: DUR, ease: 'back.out(2.6)' }, t0)
+  })
+
+  // Empuje de cámara mientras las letras llegan, y una inclinación mínima que se resuelve sola. El
+  // empuje se frena en -0.55 porque con la palabra al 94% del ancho, medio metro más la recorta.
+  de(camera.position, { z: distBase + 0.85 }, { z: distBase - 0.55, duration: b(1.6), ease: 'power2.out' }, T)
+  de(camera.rotation, { z: 0.016 }, { z: 0, duration: b(1.4), ease: 'power2.out' }, T)
+
+  // Filete de acento debajo de la palabra: dispara de izquierda a derecha y llena el hueco que deja la
+  // tipografía mientras todavía está aterrizando.
+  const filD = rayaDesde(MX * 2, 0.02, LOOK.acento2, 1.2, 1)
+  filD.position.set(-MX, -0.78, -0.35)
+  filD.scale.x = 0.001
+  g.add(filD)
+  apagadoHasta(filD, b(1.9))
+  de(filD.scale, { x: 0.001 }, { x: 1, duration: b(0.55), ease: 'expo.out' }, b(1.9))
+
+  // Cabecera sobre la palabra: rótulo centrado con dos filetes que crecen hacia afuera desde su borde.
+  const CAB_Y = 1.62
+  const cab = rotulo('SISTEMA DE MOTION', 0.135, mundoW * 0.42, { ...CHICA, tracking: 0.3 })
+  cab.position.set(0, CAB_Y, 0.1)
+  g.add(cab)
+  cab.userData.prog.value = 0
+  de(cab.userData.prog, { value: 0 }, { value: 1.08, duration: b(0.6), ease: 'power2.inOut' }, b(2.15))
+  ;[-1, 1].forEach((sx, i) => {
+    const f = rayaDesde(0.46, 0.018, LOOK.acento, 1.9, sx)
+    f.position.set(sx * (cab.userData.ancho / 2 + 0.28), CAB_Y, -0.3)
+    f.scale.x = 0.001
+    g.add(f)
+    apagadoHasta(f, b(2.05) + i * 0.06)
+    de(f.scale, { x: 0.001 }, { x: 1, duration: b(0.4), ease: 'back.out(2.4)' }, b(2.05) + i * 0.06)
+  })
+
+  // ================================================================ E · beat 3.0-6.0 — la palabra vive
+  // Queda, pero no quieta: deriva lentísimo en x, respira 1.2% en escala y cada letra flota en z con
+  // su propio período. Tres movimientos casi imperceptibles que juntos son la diferencia entre una
+  // palabra puesta y una palabra viva.
+  de(gPal.position, { x: 0.07 }, { x: -0.07, duration: b(2.9), ease: 'sine.inOut' }, b(3.0))
+  de(gPal.scale, { x: 1, y: 1 }, { x: 1.012, y: 1.012, duration: b(1.42), ease: 'sine.inOut', yoyo: true, repeat: 1 }, b(3.0))
+  letras.forEach((m, i) => {
+    const amp = (i % 2 ? 0.055 : -0.045) - i * 0.004
+    de(m.position, { z: 0 }, { z: amp, duration: b(1.30 + i * 0.02), ease: 'sine.inOut', yoyo: true, repeat: 1 }, b(3.0))
+  })
+
+  // Segunda línea, revelada por máscara. Dice para qué existe la pieza.
+  const sub = rotulo('HECHO A MANO PARA MEDIR A LA MAQUINA', 0.165, mundoW * 0.86, { ...CHICA, tracking: 0.18 })
+  sub.position.set(0, -1.24, 0.1)
+  g.add(sub)
+  sub.userData.prog.value = 0
+  de(sub.userData.prog, { value: 0 }, { value: 1.08, duration: b(0.9), ease: 'power2.inOut' }, b(3.05))
+
+  const sub2 = rotulo('6 ESCENAS · 0 PLANTILLAS', 0.11, mundoW * 0.6, { ...CHICA, tracking: 0.34, color: LOOK.acento2 })
+  sub2.position.set(0, -1.66, 0.1)
+  g.add(sub2)
+  sub2.userData.prog.value = 0
+  de(sub2.userData.prog, { value: 0 }, { value: 1.08, duration: b(0.7), ease: 'power2.out' }, b(4.1))
+
+  // Fila de metadatos en el tercio inferior. El aire es una decisión, no un sobrante: sin esto la
+  // mitad de abajo del cuadro queda como grilla vacía durante tres beats, que es exactamente el rato
+  // en que el espectador decide si desliza.
+  const reglon = tenue(MX * 2, 0.006, 0.35)
+  reglon.position.set(0, -2.64, -0.4)
+  reglon.scale.x = 0.001
+  g.add(reglon)
+  apagadoHasta(reglon, b(3.4))
+  de(reglon.scale, { x: 0.001 }, { x: 1, duration: b(0.7), ease: 'expo.out' }, b(3.4))
+
+  const metaL = izq(rotulo('CAPITULO 01 — APERTURA', 0.10, mundoW * 0.5, { ...CHICA, tracking: 0.32 }), -MX, -2.44)
+  g.add(metaL)
+  metaL.userData.prog.value = 0
+  de(metaL.userData.prog, { value: 0 }, { value: 1.08, duration: b(0.5), ease: 'power2.out' }, b(3.6))
+
+  const metaR = der(rotulo('124 BPM · 30 FPS', 0.10, mundoW * 0.42, { ...CHICA, tracking: 0.32, color: LOOK.acento2 }), MX, -2.44)
+  metaR.material.uniforms.uDir.value = 1
+  g.add(metaR)
+  metaR.userData.prog.value = 0
+  de(metaR.userData.prog, { value: 0 }, { value: 1.08, duration: b(0.5), ease: 'power2.out' }, b(3.85))
+
+  // Barra de progreso abajo: avanza sin ease durante los últimos tres beats, con un testigo que la
+  // recorre. Es el reloj visible de la escena.
+  const riel = tenue(MX * 2, 0.008, 0.4)
+  riel.position.set(0, -4.35, -0.4)
+  g.add(riel)
+  apagadoHasta(riel, b(3.0))
+  const prog = rayaDesde(MX * 2, 0.024, LOOK.acento, 1.8, 1)
+  prog.position.set(-MX, -4.35, -0.3)
+  prog.scale.x = 0.001
+  g.add(prog)
+  apagadoHasta(prog, b(3.0))
+  de(prog.scale, { x: 0.001 }, { x: 1, duration: b(2.7), ease: 'none' }, b(3.0))
+  const punto = raya(0.055, 0.14, LOOK.tinta, 1.15)
+  punto.position.set(-MX, -4.35, -0.28)
+  punto.renderOrder = 3
+  g.add(punto)
+  apagadoHasta(punto, b(3.0))
+  de(punto.position, { x: -MX }, { x: MX, duration: b(2.7), ease: 'none' }, b(3.0))
+
+  // Pulso del fondo: un latido por beat, corto y suave. El fondo respira con la música que no está.
+  for (let k = 3; k <= 5; k++) {
+    de(fondo.uPulso, { value: 0 }, { value: 0.32, duration: b(0.14), ease: 'power2.out' }, b(k))
+    de(fondo.uPulso, { value: 0.32 }, { value: 0, duration: b(0.62), ease: 'power3.out' }, b(k) + b(0.14))
+  }
+  // Y el marco late con él, un 0.8%: casi no se ve, pero si se apaga el cuadro se muere.
+  de(gMarco.scale, { x: 1, y: 1 }, { x: 1.008, y: 1.008, duration: b(0.5), ease: 'sine.inOut', yoyo: true, repeat: 3 }, b(3.0))
+
+  // ================================================================ devolver la cámara
+  // Si la escena no deja la cámara donde la encontró, la que sigue arranca desde otro punto de vista y
+  // la pieza se desarma. El tween la trae y el set la clava.
+  de(camera.position, { z: distBase - 0.55 }, { z: distBase, duration: b(1.9), ease: 'sine.inOut' }, b(3.1))
+  de(fondo.uGrilla, { value: 0.82 }, { value: 0.58, duration: b(1.6), ease: 'none' }, b(4.2))
+  tl.set(camera.position, { x: 0, y: 0, z: distBase }, b(5.2))
+  tl.set(camera.rotation, { x: 0, y: 0, z: 0 }, b(5.2))
+
+  // El secuenciador cuelga esta timeline de la maestra con `tl.add()`. Una timeline PAUSADA anidada en
+  // otra NO se renderiza nunca: GSAP la saltea y encima aporta duración 0, así que la pieza sale con
+  // la escena congelada en el estado en que la dejó build() y sin un solo error en consola. Nace en
+  // pausa —como pide el contrato, para que no corra sola mientras se la construye— y se despausa al
+  // entregarla. El reloj lo sigue poniendo el driver, que es lo que el contrato realmente protege.
+  tl.pause(0)
+  tl.paused(false)
+
+  return { g, tl }
+}

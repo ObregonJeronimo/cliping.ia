@@ -55,6 +55,10 @@ class _Handler(http.server.SimpleHTTPRequestHandler):
             return str(NODE / "three" / "examples" / "jsm" / p[5:])
         if p == "/gsap.min.js":
             return str(NODE / "gsap" / "dist" / "gsap.min.js")
+        if p.startswith("/fonts/"):
+            # las mismas 72 tipografias que usa el render 2D del Director; servirlas por http es lo
+            # que permite que el canvas del navegador MIDA con la fuente real y no con la del sistema
+            return str(RAIZ / "tools" / "fonts" / p[7:])
         if p.startswith("/assets/") and self.raiz_assets:
             return str(Path(self.raiz_assets) / p[8:])
         return str(RENDER3D / p.lstrip("/"))
@@ -99,7 +103,7 @@ async def render_frames(spec, salida_dir, raiz_assets=None, gpu=False, cada=1, l
             pg.on("pageerror", lambda e: errores.append(str(e)))
             pg.on("console", lambda m: errores.append(f"console.{m.type}: {m.text}") if m.type == "error" else None)
 
-            await pg.goto(f"http://127.0.0.1:{puerto}/escena.html", wait_until="load", timeout=30000)
+            await pg.goto(f"http://127.0.0.1:{puerto}/{spec.get('pagina', 'escena.html')}", wait_until="load", timeout=30000)
             await pg.wait_for_function("() => !!window.URVID", timeout=15000)
             info = await pg.evaluate("(s) => window.URVID.init(s)", spec)
             log(f"[render3d] escena: {info['capas']} capas, {info['texturas']} texturas"
@@ -108,6 +112,11 @@ async def render_frames(spec, salida_dir, raiz_assets=None, gpu=False, cada=1, l
                 log(f"[render3d] errores de pagina: {errores[:3]}")
 
             fps = spec.get("fps", 30)
+            if info.get("dur"):
+                # la pagina manda: la pieza a mano se mide en beats y su duracion no se sabe hasta
+                # construirla. Sin esto se pedian 900 frames para una escena de 2.9 s y la tira de
+                # contacto quedaba casi entera congelada despues del final.
+                spec["dur"] = info["dur"]
             n = int(round(spec["dur"] * fps))
             lienzo = pg.locator("#acc")   # el de la acumulacion del obturador; con muestras=1 es copia de #c
             for i in range(0, n, cada):
@@ -157,13 +166,15 @@ async def grabar_mp4(spec, salida, raiz_assets=None, gpu=False, bitrate=12_000_0
             pg = await br.new_page(viewport={"width": spec["W"], "height": spec["H"]}, device_scale_factor=1)
             errores = []
             pg.on("pageerror", lambda e: errores.append(str(e)))
-            await pg.goto(f"http://127.0.0.1:{puerto}/escena.html", wait_until="load", timeout=30000)
+            await pg.goto(f"http://127.0.0.1:{puerto}/{spec.get('pagina', 'escena.html')}", wait_until="load", timeout=30000)
             await pg.wait_for_function("() => !!window.URVID", timeout=15000)
             info = await pg.evaluate("(s) => window.URVID.init(s)", spec)
             log(f"[render3d] escena: {info['capas']} capas, {info['texturas']} texturas"
                 + (f", FALTAN {len(info['faltan'])}" if info.get("faltan") else ""))
 
             fps = spec.get("fps", 30)
+            if info.get("dur"):
+                spec["dur"] = info["dur"]           # la pagina manda: la pieza a mano se mide en beats
             n = int(round(spec["dur"] * fps))
             await pg.evaluate("(b) => window.URVID.grabarInicio(b)", bitrate)
             for i in range(n):
