@@ -38,6 +38,13 @@ _NO_FEATURE = re.compile(
     r"subscribe|follow|s[ií]guenos|compartir|share|login|iniciar sesi[oó]n|sign in|sign up|"
     r"buscar|search|carrito|cart|checkout|footer|copyright|todos los derechos)\b", re.I)
 
+# Y estas aparecen en CUALQUIER PARTE del encabezado, no solo al principio: "Sobre nosotros" y
+# "Un poco sobre nosotros" son el mismo rotulo de seccion, y el ancla de arriba solo caza el
+# primero. Aparecio probando una pagina que pone su hero abajo.
+_SECCION = re.compile(
+    r"(sobre nosotros|qui[eé]nes somos|nuestro equipo|nuestra historia|about us|our team|"
+    r"our story|preguntas frecuentes|frequently asked)", re.I)
+
 # Un CTA de verdad es corto e imperativo. "Leer mas sobre nuestra politica de privacidad" no lo es.
 _CTA_BUENO = re.compile(
     r"^(empez|comenz|prob|solicit|pedi|ped[ií]|compr|reserv|agend|contrat|descarg|registr|cre[aá]|"
@@ -107,25 +114,118 @@ def marca_de(content, url=""):
     return host.split(".")[0].capitalize() if host else ""
 
 
-def _features(content):
-    """Los <h2>/<h3> de una landing SON su lista de features: asi se disenan las landings."""
-    out, vistos = [], set()
-    for h in _lista((content or {}).get("headings")):
+# Palabras sin contenido. No se usan para medir de que habla un encabezado: "for", "the", "de" y "la"
+# aparecen en todo y no distinguen nada.
+_VACIAS = set((
+    "the a an and or of to for in on at with without from by into over under is are was be that this "
+    "your our its it as not no you we they he she su sus de del la el los las un una unos unas y o u "
+    "al con sin por para en que como mas pero desde hasta entre sobre tras es son fue ser mi tu se lo"
+).split())
+
+
+def _fichas(t):
+    """Palabras con contenido, recortadas a cinco letras.
+
+    El recorte es un lematizador de pobre y alcanza para lo unico que hace falta aca: que "build",
+    "building" y "built" cuenten como la misma idea. Un lematizador de verdad seria una dependencia
+    nueva para ganar dos casos.
+    """
+    palabras = re.findall(r"[A-Za-zÁÉÍÓÚÑáéíóúñ]{2,}", str(t or "").lower())
+    return {w[:5] for w in palabras if w not in _VACIAS and len(w) > 2}
+
+
+def _features(content, claim="", marca=""):
+    """Los encabezados de una landing SON su lista de features. El problema es cuales.
+
+    LO QUE ESTABA MAL, medido en vivo sobre tailwindcss.com: las cuatro frases que salian eran
+    "Supported by the best.", "Built for the modern", "Browse properties" y "Redefining real-time".
+    Las dos ultimas son titulos de PLANTILLAS de su galeria de ejemplos. No es invencion —estan
+    literalmente en el DOM— pero en el video se leen como si fueran lo que el producto hace, y eso es
+    igual de daniño: el espectador entiende que Tailwind vende propiedades inmobiliarias.
+
+    La causa era tomar los encabezados EN ORDEN DE DOM y cortar en seis. Y el intento obvio de
+    arreglarlo —pesar por el nivel del encabezado, h2 sobre h3— resulto INERTE: la captura devuelve
+    `headings` como una lista plana de STRINGS, sin nivel. `_nivel_de` devolvia siempre el default.
+
+    Lo que si separa a los buenos de los ajenos es el LEXICO. Los encabezados del producto comparten
+    palabras con la descripcion que la marca escribio de si misma; los de una galeria no comparten
+    ninguna. Medido sobre la captura de Tailwind, con la descripcion "utility-first CSS framework for
+    rapidly building modern websites without ever leaving your HTML":
+
+        "Rapidly build modern websites without ever leaving your HTML"  6 palabras en comun
+        "Build whatever you want, without touching your CSS file"       3
+        "Built for the modern web."                                     1
+        "Browse properties"                                             0   <- galeria
+        "Redefining real-time performance"                              0   <- galeria
+
+    La posicion pesa, pero MUCHO MENOS que el lexico (un punto contra dos por palabra): hay landings
+    que ponen su mejor titulo abajo, y castigarlas por eso seria cambiar un sesgo por otro.
+
+    Y el orden de salida es el del DOCUMENTO, no el del puntaje: la lista de features de una landing
+    tiene un orden que alguien penso, y reordenarla por afinidad lexica la desarma.
+    """
+    c = content or {}
+    fichasClaim = _fichas(claim) | _fichas(c.get("description")) | _fichas(c.get("title"))
+    # La navegacion aparece como encabezado en muchas landings ("Product", "Features", "Company").
+    # La captura ya la trae aparte, asi que no hay que adivinarla: se descarta lo que este ahi.
+    navegacion = {_limpio(x).lower() for x in (_lista(c.get("nav")) + _lista(c.get("ctas")))}
+    # Un encabezado que NO DICE MAS QUE EL NOMBRE DE LA MARCA no es un feature: es el rotulo de una
+    # seccion. Aparecio en cuanto empece a pesar por lexico, y era predecible — el nombre de la marca
+    # esta en el titulo y en la descripcion, asi que "Tailwind CSS" y "Tailwind Plus" puntuaban altisimo
+    # por decir exactamente lo que ya sabemos. Se descartan por SUSTRACCION: si al quitarle las palabras
+    # de la marca no queda nada con contenido, no aporta nada.
+    fichasMarca = _fichas(marca) | _fichas(c.get("siteName"))
+
+    cands = []
+    brutos = _lista(c.get("headings"))
+    for i, h in enumerate(brutos):
         t = _texto_de(h)
-        n = _nivel_de(h)
-        if not t or n < 2 or n > 3:
+        if not t:
             continue
         # Un feature es un titulo, no una oracion ni una palabra suelta.
-        if len(t) < 6 or len(t) > 60 or _NO_FEATURE.search(t):
+        if len(t) < 6 or len(t) > 60 or _NO_FEATURE.search(t) or _SECCION.search(t):
             continue
-        clave = t.lower()
-        if clave in vistos:
+        if t.lower() in navegacion:
             continue
-        vistos.add(clave)
-        out.append({"titulo": t[:28], "detalle": ""})
-        if len(out) >= 6:
+        if not (_fichas(t) - fichasMarca):
+            continue
+        pos = 1.0 - (i / max(1, len(brutos) - 1))
+        comun = len(_fichas(t) & fichasClaim)
+        cands.append((comun * 2 + pos, comun, i, t))
+
+    # EL PISO IMPORTA MAS QUE EL ORDEN. Ordenar por puntaje y cortar en seis no filtraba NADA cuando la
+    # pagina daba ocho candidatos: entraban los seis mejores de ocho, o sea casi todos, y "Browse
+    # properties" volvia a colarse en cuanto se liberaba un lugar. Lo que hay que decidir no es cual es
+    # mejor sino QUE ENTRA, y para eso hace falta un umbral.
+    #
+    # El umbral es: al menos UNA palabra con contenido en comun con lo que la marca dice de si misma.
+    # Cuesta perder algun titulo legitimo — "Ship faster and smaller." es copy real de Tailwind y se
+
+    # cae— y ese costo es el correcto: la regla del repo es que un slot vacio es una escena que el
+    # guionista no elige, y eso es mucho mas barato que una frase que dice algo falso sobre la marca.
+    #
+    # La excepcion es la pagina que no dio descripcion ni titulo utiles: ahi el lexico no puede medir
+    # nada y filtrar por el dejaria la lista vacia. Con menos de tres sobrevivientes se vuelve al orden
+    # de documento, que es el comportamiento de antes.
+    # DOS y no tres. Probado con una pagina que pone su hero abajo ("Sobre nosotros", "Equipo",
+    # "Novedades", "Gestion de turnos para clinicas", "Historia clinica digital"): con el umbral en
+    # tres, los dos titulos buenos no alcanzaban el minimo, se caia al respaldo y entraban los tres
+    # rotulos de seccion. Con dos, salen exactamente los dos que hablan del producto. Dos frases
+    # ciertas valen mas que cinco de las cuales tres son ruido — y el guionista ya sabe componer con
+    # menos material.
+    conLexico = [c for c in cands if c[1] >= 1]
+    usables = conLexico if len(conLexico) >= 2 else cands
+    usables = sorted(usables, key=lambda x: -x[0])
+    elegidos, vistos = [], set()
+    for _, _comun, i, t in usables:
+        if t.lower() in vistos:
+            continue
+        vistos.add(t.lower())
+        elegidos.append((i, t))
+        if len(elegidos) >= 6:
             break
-    return out
+    elegidos.sort()
+    return [{"titulo": t[:28], "detalle": ""} for _, t in elegidos]
 
 
 def _cta(content):
@@ -181,7 +281,7 @@ def brief_de(site, url=""):
     if not que_hace:
         que_hace = _limpio(c.get("title"), 220)
 
-    features = _features(c)
+    features = _features(c, que_hace, marca_de(c, url))
     return {
         "brand": marca_de(c, url),
         "semantica": {
