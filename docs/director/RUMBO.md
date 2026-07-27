@@ -113,3 +113,59 @@ y un `prog` genérico), con migrador, tocando evaluador + `edits.js` + Inspector
 
 Lo que **nunca** hay que hacer es al revés: mover el guionista, los elementos reales, los edits y los
 27 gates adentro de ANTHEM.
+
+---
+
+# Sesión del 27-jul-2026 — qué se cerró y qué queda
+
+Todo lo de acá está **medido y mirado**: cada cambio grande terminó en un render, una lámina de
+contactos y, cuando aplica, una corrida de `tools/medir-video.py`.
+
+## Lo que se cerró
+
+| Defecto | Cómo se veía | Dónde está el arreglo |
+|---|---|---|
+| **La identidad medida se tiraba** | Stripe (violeta sobre blanco) salía azul institucional sobre azul marino, igual que Basecamp, igual que Ghost. **5 de 7 páginas reales son claras y las 7 salían oscuras.** | `render3d/demo/adn.js` + gate `tools/adn-check.mjs` |
+| **Las escenas hablaban del motor** | El video de Stripe decía "SIETE ENTRADAS · NINGUNA IGUAL", "CAPÍTULO 01 — APERTURA", "SIN IA GENERATIVA" — copy de urvid, en castellano, en la pieza de una marca inglesa | las 7 escenas + gate `E-PROCEDENCIA` |
+| **La escala de grises estaba calibrada contra negro** | `#c3cbdb` para el titular y `#0c1124` para las tarjetas: buenos valores **sobre negro**, un fantasma y un rectángulo azul marino sobre blanco | `nivel(k)` en `kit.js` |
+| **Una página = un solo video posible** | Misma estructura, mismo orden, 17.42 s fijos, para todas | `render3d/demo/guion.js` — **55 estructuras** medidas |
+| **Los metales salían negros** | Chasis de titanio y aluminio como dos siluetas oscuras, con tres luces encendidas. `metalness:1` no tiene componente difusa: sin `scene.environment` no refleja nada | `_estudio()` en `main.js` |
+| **Los 52 recortes reales no se usaban** | Se medían, se recortaban, se guardaban y se tiraban | hero `mosaico` |
+| **`modifiers` de GSAP no corría** | Cuatro heroes llegaban y se quedaban clavados. Sólo se aplica a propiedades declaradas en `vars`, y no había ninguna. Cero errores, cero avisos | los 4 heroes, con dos grupos |
+| **El camino completo no se probaba nunca** | Cada pieza andaba sola | `backend/motor.py` |
+| **Sin brief, la semántica quedaba vacía** | Linear en vivo: 0 frases, 0 cifras, sin CTA, marca `"LINEAR.APP"` | `backend/semantica_gratis.py` |
+
+## Dónde sigue estando por debajo de ANTHEM
+
+Medido sobre `G-s30a.mp4` (Stripe, 30 s) contra `ANTHEM.mp4`:
+
+| métrica | ANTHEM | motor | lectura |
+|---|---|---|---|
+| píxeles en movimiento | 0.226 | 0.116 | **la mitad.** Es la brecha más grande y la más honesta |
+| cortes por minuto | 55 | 26 | el piso de un reel moderno es 40 |
+| saturación | 0.443 | 0.143 | ANTHEM es oscuro y saturado; una marca blanca nunca va a dar 0.44 |
+| ocupación de cuadro | 0.317 | 0.237 | hay cuadros con demasiado aire |
+| contraste | 0.178 | 0.158 | parejo |
+
+**El diagnóstico del ritmo de corte, con el número al lado.** Las escenas del motor duran 4–8 beats y
+cortan sólo en su frontera: 8 cortes en 30 s. ANTHEM corta **dentro** de la escena — su bloque de
+tipografía cinética mete 7 entradas en 8 beats, cada una un reemplazo duro. No es que al motor le
+falte ritmo: le faltan **eventos por escena**.
+
+> `ritmo_en_beat` da 0.615 y no 0.875, pero eso es en buena parte artefacto: el analizador cuenta
+> destellos internos como cortes. Los cortes de escena **sí** caen en la grilla (3.03 / 7.03 / 11.0 /
+> 14.0 / 16.0 …, a 120 bpm el beat es 0.5 s).
+
+## Lo próximo, en orden de impacto
+
+1. **Más eventos por escena.** Es lo que cierra la brecha de movimiento y la de cortes a la vez. Un
+   sub-corte cada 2 beats dentro de `tipografia` y `tarjetas` sube las dos métricas sin tocar el guion.
+2. **Más escenas en el catálogo.** El gate lo dice solo: **72 de 324 guiones quedan cortos porque se
+   acabó el catálogo** — siete escenas no llenan 30 s a tempo alto. Ahí el arreglo es material nuevo,
+   no más tolerancia de tempo (hoy 15%).
+3. **La interfaz.** `backend/motor.py --heroes` ya es el contrato que va a llamar la pantalla: el
+   selector de hero es ese `--hero`, y la lista se lee de los módulos. Falta la ruta HTTP y la página.
+4. **Más heroes.** Hay 5 y la idea son cientos. El contrato está y ahora el verificador los cubre:
+   `render3d/demo/verificar.mjs` mira `escenas/` **y** `heroes/`.
+5. **La tipografía del ADN no discrimina.** Las 7 páginas medidas dan `displayHint: grotesk` y
+   `caseHint: sentence`. Hoy la variedad de fuentes la pone el aire; el ADN no aporta nada ahí.
