@@ -78,7 +78,9 @@ export function build(ctx) {
   // Y SANGRA. Una tarjeta ancha cortada por los dos bordes se lee mejor que una entera y chiquita, y
   // ademas dice "hay mas pagina que la que entra", que es cierto. Es la misma decision que ya estaba
   // tomada y documentada en la escena de rafaga.
-  const ANCHO_UTIL = mundoW * 1.16
+  // 1.06 y no 1.16, por la misma razon que en la rafaga: un recorte de pagina lleva su contenido
+  // adentro y sangrarlo se lo come. Ver el comentario largo alla.
+  const ANCHO_UTIL = mundoW * 1.0
   const ALTO_UTIL = mundoH * 0.80
   const AIRE = 0.95
   const destacada = n >= 3                       // con una o dos piezas no hay jerarquia que armar

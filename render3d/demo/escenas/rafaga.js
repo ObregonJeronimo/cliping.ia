@@ -105,8 +105,22 @@ export function build(ctx) {
   // estampillas flotando en el medio de la pantalla. En una rafaga la pieza tiene que LLENAR, porque
   // se la ve un cuarto de segundo y no hay tiempo para que el ojo la busque. Se deja SANGRAR por los
   // costados: una tarjeta ancha cortada por los dos bordes se lee mejor que una entera y chiquita.
-  const ALTO_MAX = mundoH * 0.56
-  const ANCHO_MAX = mundoW * 1.24
+  // LA SANGRIA TIENE UN LIMITE Y LO PUSO UN RECORTE DE THE VERGE.
+  //
+  // Con 1.24 del ancho del cuadro se pierde el 19% de la pieza por los costados. Eso esta bien para una
+  // foto o un degradado —lo que se va es fondo— y es DESTRUCTIVO para una tarjeta que es puro texto:
+  // el recorte de una tarjeta de titular salio cortado por los dos lados y se leia "vidia, Microsoft /
+  // unch open AI / ecurity alliance". Un recorte de pagina SIEMPRE tiene su contenido adentro, asi que
+  // cortarlo siempre cuesta informacion; la sangria solo puede ser el gesto, no la mitad de la pieza.
+  //
+  // 1.06 es una sangria que se LEE como sangria —el borde toca los dos lados del cuadro— y se lleva un
+  // 3% de cada margen. Lo que se pierde de ancho se recupera de alto: 0.62 en vez de 0.56.
+  const ALTO_MAX = mundoH * 0.62
+  // 1.00 EXACTO. Con 1.06 se perdia un 3% de cada margen, que suena a nada y es la primera letra:
+  // "Meta is royally..." salia "eta is royally". Un recorte de pagina no puede perder ni un pixel,
+  // porque todo lo que tiene es contenido. "A sangre" acá quiere decir que toca los dos bordes, no que
+  // los pase.
+  const ANCHO_MAX = mundoW * 1.0
   const mallas = piezas.map((p) => {
     let m
     if (p.tipo === 'recorte') {
