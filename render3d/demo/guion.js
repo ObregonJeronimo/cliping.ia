@@ -36,6 +36,9 @@ const REQUISITOS = {
   // Una cifra alcanza: la escena ya se compone con la cantidad real. Cero cifras es una escena de
   // datos sin datos.
   tarjetas: (d) => (d.datos || []).length >= 1,
+  // La ráfaga necesita CON QUE rafaguear: tres piezas, sean recortes reales o frases. Con dos, doce
+  // slots se llenan con dos cosas repetidas y el corte deja de significar algo.
+  rafaga: (d) => ((d.elementos || []).length + (d.frases || []).filter(Boolean).length) >= 3,
   // El beat de inversión es un titular a sangre. Sin golpe no hay nada que romper.
   destello: (d) => !!d.golpe,
   // El toro es geometría: no necesita nada, y por eso es el relleno honesto cuando falta material.
@@ -49,11 +52,13 @@ const REQUISITOS = {
 //   mensaje→objeto→datos   entra por el claim, el objeto ilustra                (más publicitario)
 //   datos→mensaje→objeto   abre con la prueba dura                              (más B2B)
 //   mensaje→datos→objeto   claim y prueba juntos, el objeto cierra              (más de producto)
+// La RAFAGA va siempre despues de una escena lenta y antes de un corte de estructura: su gracia es el
+// contraste de densidad. Doce cuadros en seis beats pegados a otra escena rapida se leen como ruido.
 const ORDENES = [
-  ['hero', 'tipografia', 'tarjetas', 'destello', 'toro'],
-  ['tipografia', 'hero', 'tarjetas', 'destello', 'toro'],
-  ['tarjetas', 'tipografia', 'hero', 'destello', 'toro'],
-  ['tipografia', 'tarjetas', 'hero', 'toro', 'destello'],
+  ['hero', 'tipografia', 'rafaga', 'tarjetas', 'destello', 'toro'],
+  ['tipografia', 'hero', 'rafaga', 'tarjetas', 'destello', 'toro'],
+  ['tarjetas', 'tipografia', 'hero', 'rafaga', 'destello', 'toro'],
+  ['tipografia', 'tarjetas', 'rafaga', 'hero', 'toro', 'destello'],
 ]
 
 export const DUR_OBJETIVO = { corto: 15, medio: 20, largo: 30 }

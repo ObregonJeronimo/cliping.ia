@@ -23,12 +23,13 @@ import { guionDe, beatsDelGuion, ajusteDe, TOPE_AJUSTE } from '../render3d/demo/
 const CAT = new Map([
   ['apertura', { beats: 6 }], ['hero', { beats: 8 }], ['toro', { beats: 6 }],
   ['tipografia', { beats: 8 }], ['tarjetas', { beats: 6 }], ['destello', { beats: 4 }],
+  ['rafaga', { beats: 6 }],
   ['cierre', { beats: 6 }],
 ])
 
 const PAGINAS = {
   // Una landing completa: cuatro frases, cifras, golpe. Da para elegir.
-  rica: { marca: 'STRIPE', frases: ['a', 'b', 'c', 'd'], datos: [{ etiqueta: 'X' }, { etiqueta: 'Y' }], golpe: 'G' },
+  rica: { marca: 'STRIPE', frases: ['a', 'b', 'c', 'd'], datos: [{ etiqueta: 'X' }, { etiqueta: 'Y' }], golpe: 'G', elementos: [1, 2, 3, 4] },
   // Lo que da la mayoria de las paginas reales: algo de copy, ninguna cifra.
   media: { marca: 'LINEAR', frases: ['a', 'b', 'c', 'd'], datos: [], golpe: 'G' },
   // El caso que rompe: casi nada. Una pagina detras de login, una 404, un sitio que bloqueo al bot.
@@ -46,6 +47,7 @@ const cortas = []
 
 const REQ = {
   tipografia: d => (d.frases || []).filter(Boolean).length >= 4,
+  rafaga: d => ((d.elementos || []).length + (d.frases || []).filter(Boolean).length) >= 3,
   tarjetas: d => (d.datos || []).length >= 1,
   destello: d => !!d.golpe,
 }
