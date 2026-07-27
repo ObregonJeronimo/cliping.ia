@@ -203,7 +203,8 @@ export function fondoVivo(mundoW, mundoH) {
     depthWrite: false,
     uniforms: {
       uT: { value: 0 }, uA: { value: hex(LOOK.bg) }, uB: { value: hex(LOOK.bg2) },
-      uAcento: { value: hex(LOOK.acento) }, uGrilla: { value: 0.55 }, uPulso: { value: 0 },
+      uAcento: { value: hex(LOOK.acento) }, uAcento2: { value: hex(LOOK.acento2) },
+      uGrilla: { value: 0.55 }, uPulso: { value: 0 },
       // 1 = mundo claro. La grilla y el pulso son ADITIVOS, que es lo correcto sobre negro y un
       // desastre sobre blanco: sumar sobre un fondo que ya está en 1.0 no aclara nada, sólo desatura
       // hasta el gris. En claro las mismas dos cosas tienen que OSCURECER hacia el acento.
@@ -211,7 +212,7 @@ export function fondoVivo(mundoW, mundoH) {
     },
     vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
     fragmentShader: `
-      uniform float uT, uGrilla, uPulso, uClaro; uniform vec3 uA, uB, uAcento;
+      uniform float uT, uGrilla, uPulso, uClaro; uniform vec3 uA, uB, uAcento, uAcento2;
       varying vec2 vUv;
       float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898,78.233)))*43758.5453); }
       void main(){
@@ -235,6 +236,65 @@ export function fondoVivo(mundoW, mundoH) {
         // PULSO: un halo que late con el beat. Se maneja desde la timeline, no con un reloj propio.
         float halo = uPulso * smoothstep(0.75, 0.0, distance(uv, vec2(0.5, 0.5)));
         col = mix(col + uAcento * halo * 0.5, mix(col, uAcento, halo * 0.32), uClaro);
+        // ---------------------------------------------------------------- campos de color (mundo claro)
+        // UN MUNDO CLARO NO PUEDE BRILLAR, Y ESE ERA TODO EL PROBLEMA.
+        //
+        // Medido: la MISMA pieza, los MISMOS datos, cambiando sólo la polaridad, pasa de 0.104 a 0.215
+        // de píxeles en movimiento y de 0.075 a 0.134 de ocupación de cuadro. El doble, las dos. No es
+        // el grano —a umbral 60, donde el grano no llega, la brecha es de 6×— ni el largo de las
+        // frases: es que la mitad del "movimiento" de una pieza oscura la pone el GLOW. Un halo de
+        // bloom desplazándose mueve cientos de píxeles alrededor de cada objeto, y la grilla aditiva
+        // ilumina donde antes no había nada. Sobre blanco, sumar luz no hace nada.
+        //
+        // Lo que sí tiene una pieza clara es el CAMPO DE COLOR: manchas grandes y suaves del color de
+        // la marca que se desplazan por debajo de todo. Es el vocabulario de las landings claras de
+        // hoy y no es un truco para la métrica — es lo que hace que un cuadro blanco con una frase
+        // encima se lea como diseñado en vez de como vacío. Y como son grandes y se mueven, aportan
+        // exactamente lo que faltaba: área que cambia.
+        //
+        // Los períodos no son múltiplos entre sí: si lo fueran, las dos manchas volverían a alinearse
+        // cada tanto y el fondo latiría como una sola cosa.
+        // COORDENADAS DE CUADRO, no del plano. El plano del fondo mide 2.6x el cuadro y vive en
+        // z=-14, asi que lo que la camara ve es apenas su parte central: uv 0..1 recorre mucho mas que
+        // la pantalla. La primera version puso las manchas en uv (0.26, 0.30) y la cuña en la esquina
+        // (1, 0) — TODO fuera de campo. Se noto porque las metricas no se movieron ni un digito entre
+        // la version con cuña y la version sin cuña: identicas, hasta el ultimo decimal.
+        vec2 f = (uv - 0.5) * 1.49 + 0.5;
+        vec2 c1 = vec2(0.26 + sin(uT * 0.131) * 0.13, 0.30 + cos(uT * 0.107) * 0.10);
+        vec2 c2 = vec2(0.76 + cos(uT * 0.091) * 0.11, 0.71 + sin(uT * 0.118) * 0.12);
+        float m1 = smoothstep(0.62, 0.0, distance(f, c1));
+        float m2 = smoothstep(0.54, 0.0, distance(f, c2));
+        // El centro del cuadro cede: ahí vive la tipografía, y un campo fuerte detrás de una frase le
+        // roba el contraste que la hace legible. La máscara se abre hacia los bordes.
+        float borde = smoothstep(0.10, 0.42, distance(f, vec2(0.5, 0.52)));
+        vec3 campos = mix(col, uAcento, m1 * 0.34);
+        campos = mix(campos, uAcento2, m2 * 0.24);
+        col = mix(col, mix(col, campos, 0.35 + 0.65 * borde), uClaro);
+
+        // Y UNA CUÑA DE BORDE DURO. Los campos suaves de arriba subieron el movimiento un 19% y la
+        // OCUPACIÓN NO SE MOVIÓ (0.075 -> 0.072), y eso no es un defecto de la métrica: la ocupación
+        // toma la mediana del cuadro como fondo y cuenta lo que se aleja de ella, así que un degradé
+        // grande y suave corre la propia mediana y no cuenta nunca. Un mundo claro sólo puede ocupar
+        // el cuadro con MASA DE BORDE DURO, que además es lo que usa el diseño editorial claro: el
+        // bloque de color plano, no la nube.
+        //
+        // Va en la esquina inferior derecha y con la diagonal corrida, o sea lejos del centro óptico
+        // donde vive la tipografía: un bloque sólido detrás de una frase le come el contraste que la
+        // hace legible, y la legibilidad no se negocia por una métrica.
+        // El factor 1.49 vale a la distancia de reposo; cuando la camara hace dolly, la porcion del
+        // plano que entra en cuadro cambia y el mapeo se corre. Por eso la cuña es GRANDE y su umbral
+        // esta lejos del borde: con 1.02 desaparecia entera en los cuadros en que la camara se acerca
+        // — que es exactamente el mismo error que dejo la pauta del toro fuera de campo cuatro beats.
+        // Una masa que depende de un mapeo aproximado tiene que tener margen, o no depender de el.
+        // LA DIAGONAL VA POR DEBAJO DE LA BANDA DE TIPOGRAFIA, y eso fija los coeficientes.
+        // Con (0.62, 0.88) la cuña subia hasta el medio del cuadro y el titular la cruzaba: tinta
+        // oscura sobre un violeta saturado pierde el contraste que la hace legible. La ocupacion daba
+        // 0.391 —por encima de la referencia— y la pieza era peor. Con mas peso en Y (1.15) el borde
+        // se aplana y queda entre el 9% y el 39% del alto, o sea debajo del renglon del titular.
+        float dg = (f.x * 0.35 + (1.0 - f.y) * 1.15) - (1.05 + sin(uT * 0.077) * 0.075);
+        float cuna = smoothstep(0.0, 0.006, dg);
+        col = mix(col, mix(col, uAcento, 0.86), cuna * uClaro);
+
         // grano fino, para que el degradé no muestre bandas
         col += (hash(uv * 1400.0 + uT * 13.0) - 0.5) * 0.016;
         gl_FragColor = vec4(col, 1.0);
