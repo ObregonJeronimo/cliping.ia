@@ -19,6 +19,7 @@ import { BEAT, b, LOOK, hex, mulberry32, fondoVivo, configurar } from './kit.js'
 import { configurarDatos } from './datos.js'
 import { personalizar } from './adn.js'
 import { ESCENAS } from './escenas/index.js'
+import { guionDe, ajusteDe } from './guion.js'
 
 // ---------------------------------------------------------------- pase final de película
 // Grano + viñeta + aberración + un leve halo. El tiempo ENTRA como uniform: un pase con reloj propio
@@ -124,7 +125,16 @@ export class Anthem {
       new THREE.SphereGeometry(60, 24, 16),
       new THREE.ShaderMaterial({
         side: THREE.BackSide,
-        uniforms: { uA: { value: hex(LOOK.bg2) }, uB: { value: hex(LOOK.acento) }, uC: { value: hex(LOOK.tinta) } },
+        // EL ACENTO VA DESATURADO A LA MITAD. A saturacion plena el reflejo pinta el metal entero del
+        // color de la marca y el titanio sale violeta plastico: un metal se reconoce porque refleja
+        // un ENTORNO, no porque este teñido. Con la mezcla al 50% contra un gris de la misma
+        // luminancia queda gris con el color de la marca corriendole por los cantos, que es lo que
+        // hace un producto fotografiado en un set con geles de color.
+        uniforms: {
+          uA: { value: hex(LOOK.bg2) },
+          uB: { value: hex(LOOK.acento).lerp(new THREE.Color(0.55, 0.57, 0.62), 0.5) },
+          uC: { value: hex(LOOK.tinta) },
+        },
         vertexShader: 'varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
         fragmentShader: `uniform vec3 uA, uB, uC; varying vec3 vP;
           void main(){
@@ -188,10 +198,33 @@ export class Anthem {
     let beat = 0
     // `soloEscena` arma UNA sola escena y nada mas. Es lo que permite afinar una escena mirandola
     // sola, sin renderizar los 17 segundos enteros cada vez que se cambia un easing.
-    const lista = this.spec.soloEscena
-      ? ESCENAS.filter(m => m.meta.id === this.spec.soloEscena)
-      : ESCENAS
-    if (!lista.length) throw new Error('escena desconocida: ' + this.spec.soloEscena)
+    // EL GUION DECIDE LA LISTA. Antes era la constante ESCENAS: las mismas seis, siempre, en el mismo
+    // orden, 17.42 s fijos. Ahora el material que la pagina dio decide que se puede contar, la semilla
+    // decide en que orden, y el objetivo en segundos decide cuanto entra. Ver render3d/demo/guion.js.
+    const catalogo = new Map(ESCENAS.map(m => [m.meta.id, m.meta]))
+    const porIdEsc = new Map(ESCENAS.map(m => [m.meta.id, m]))
+    let lista
+    if (this.spec.soloEscena) {
+      lista = ESCENAS.filter(m => m.meta.id === this.spec.soloEscena)
+      if (!lista.length) throw new Error('escena desconocida: ' + this.spec.soloEscena)
+    } else {
+      const plan = this.spec.guion || guionDe({
+        escenas: catalogo,
+        datos: this.spec.datos,
+        seed: this.spec.seed || 7,
+        beatSeg: BEAT,
+        dur: this.spec.durObjetivo || null,
+      })
+      lista = plan.map(id => porIdEsc.get(id)).filter(Boolean)
+      this.guionUsado = plan
+      // Ver ajusteDe(): corre el tempo de la pieza entera hasta un 12% para clavar la duracion pedida.
+      this.ajuste = ajusteDe(plan, catalogo, BEAT, this.spec.durObjetivo || null)
+    }
+    if (!lista.length) throw new Error('el guion quedo vacio')
+    // Cuantas veces se construyo ya cada id. Una pieza de 30 s lleva tres escenas de hero, y sin este
+    // numero las tres eligen el mismo objeto: el mismo telefono tres veces con otro corte en el medio,
+    // que es peor que no repetir. Con el, cada una toma el siguiente hero elegible.
+    const repeticiones = new Map()
     for (const mod of lista) {
       const ctx = {
         THREE, gsap: g, look: LOOK, W: this.W, H: this.H,
@@ -208,7 +241,9 @@ export class Anthem {
         spec: this.spec,
         texturas: this.texturas,
         datosEls: (this.spec.datos && this.spec.datos.elementos) || [],
+        repeticion: repeticiones.get(mod.meta.id) || 0,
       }
+      repeticiones.set(mod.meta.id, (repeticiones.get(mod.meta.id) || 0) + 1)
       const r = await mod.build(ctx)
       if (r.heroUsado) this.heroUsado = r.heroUsado
       const t0 = b(beat)
@@ -227,11 +262,21 @@ export class Anthem {
       this.escenas.push({ id: mod.meta.id, g: r.g, gr: r.gr || null, t0, t1: t0 + dur })
       beat += mod.meta.beats
     }
-    this.dur = b(beat)
+    // AJUSTE DE TEMPO. La maestra corre hasta un 12% mas rapido o mas lento para clavar la duracion
+    // pedida; `dur` es lo que dura el ARCHIVO, que es lo unico que ve el que lo publica. Va aca y no
+    // en las escenas: escalando la maestra, TODO escala junto y la grilla de beats sigue coherente.
+    // Ver ajusteDe() en guion.js.
+    const esc = (this.ajuste && this.ajuste.escala) || 1
+    this.tl.timeScale(esc)
+    this.dur = b(beat) / esc
+    // Los relojes del grano y de la grilla se declaran en el tiempo PROPIO de la maestra (sin escalar),
+    // porque van colgados de ella y se escalan con todo lo demas. Usar this.dur aca los dejaria
+    // corriendo a otra velocidad que la pieza, y el grano se leeria como un parpadeo.
+    const durPropia = b(beat)
 
     // El grano y la grilla del fondo avanzan con el tiempo del video, atados a la maestra.
-    this.tl.to(this.pelicula.uniforms.uT, { value: this.dur, duration: this.dur, ease: 'none' }, 0)
-    this.tl.to(this.fondo.material.uniforms.uT, { value: this.dur, duration: this.dur, ease: 'none' }, 0)
+    this.tl.to(this.pelicula.uniforms.uT, { value: durPropia, duration: durPropia, ease: 'none' }, 0)
+    this.tl.to(this.fondo.material.uniforms.uT, { value: durPropia, duration: durPropia, ease: 'none' }, 0)
 
     // FLASH EN CADA CORTE DE ESCENA, salvo el primero. Dos frames — más se lee como error, menos no
     // se ve. Va acá y no en cada escena para que ninguna se olvide y el ritmo quede parejo.

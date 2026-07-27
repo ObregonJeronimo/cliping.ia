@@ -14,7 +14,13 @@ import * as tarjetas from './tarjetas.js'
 import * as destello from './destello.js'
 import * as cierre from './cierre.js'
 
-// El HERO reemplaza al toro como segunda escena: el toro es geometria generica, el hero muestra la
-// PAGINA del usuario. El toro sigue disponible como hero 'nada' cuando no hay material.
-export const ESCENAS = [apertura, hero, tipografia, tarjetas, destello, cierre]
-void toro
+// ESTO YA NO ES EL ORDEN DE LA PIEZA: es el CATALOGO de lo que existe. El orden y la seleccion los
+// decide render3d/demo/guion.js con el material que la pagina dio, la semilla y la duracion pedida.
+// Mientras esta lista fue el orden, una pagina daba exactamente un video posible — misma estructura
+// para todos, que es lo que se percibe como "son todos iguales" incluso con la paleta de cada marca
+// ya aplicada.
+//
+// El toro vuelve al catalogo. Salio de la pieza cuando el hero ocupo su lugar (geometria generica vs.
+// la pagina del usuario), pero como ALTERNATIVA sigue siendo bueno: es la unica escena que no
+// necesita absolutamente nada, y es lo que sostiene el espacio cuando la pagina no dio material.
+export const ESCENAS = [apertura, hero, toro, tipografia, tarjetas, destello, cierre]

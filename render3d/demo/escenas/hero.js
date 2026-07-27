@@ -15,11 +15,18 @@ export function build(ctx) {
   if (texturas && texturas.get('tira')) disponible.add('tira')
   if (datosEls && datosEls.length) disponible.add('elementos')
 
+  // QUE HERO. El pedido del usuario manda en la PRIMERA aparicion. A partir de la segunda se rota,
+  // porque una pieza de 30 s trae tres escenas de hero y las tres con el mismo objeto son la misma
+  // escena tres veces — el corte entre ellas no se lee como corte. Rotando, el espectador ve el
+  // telefono, despues el mosaico de su propia pagina, despues el cristal: tres formas de mirar lo
+  // mismo, que es de lo que se trata un reel.
   const pedido = ctx.spec && ctx.spec.hero
   const posibles = elegibles(disponible)
-  const elegido = (pedido && posibles.find(h => h.meta.id === pedido))
-    || posibles[0]
-    || null
+  const rep = ctx.repeticion || 0
+  const base = pedido ? posibles.findIndex(h => h.meta.id === pedido) : 0
+  const elegido = posibles.length
+    ? posibles[(Math.max(0, base) + rep) % posibles.length]
+    : null
 
   if (!elegido) {
     // Sin material para ningun hero, la escena no tiene sujeto. Grupo vacio: el secuenciador la salta
