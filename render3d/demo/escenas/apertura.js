@@ -63,8 +63,11 @@ const ANTON = () => ({ fuente: 'Anton', size: 200, color: TIPO_GRANDE() })
 // blanco, o sea invisibles — mientras que los tres que pisan el color adentro de build() salian bien.
 // Mismo archivo, mismo helper: la unica diferencia era DONDE se leyo LOOK. Es el defecto de la regla 9
 // entrando por la puerta de al lado, sin un solo hexadecimal escrito a mano.
-const CHICA = () => ({ fuente: 'DMSans', peso: 500, size: 200, tracking: 0.24, color: LOOK.tinta })
-const CIFRA = () => ({ fuente: 'Bricolage', peso: 800, size: 200, tracking: 0.06, color: LOOK.tinta })
+// Los rotulos chicos tampoco van en LOOK.tinta: son chicos, pero el bloom no mide tamanos — mide
+// luminancia por pixel. Un rotulo de ocho pixeles por encima del umbral florece igual y se convierte
+// en una mancha ilegible, que en un rotulo es peor que en un titular porque no queda ni la silueta.
+const CHICA = () => ({ fuente: 'DMSans', peso: 500, size: 200, tracking: 0.24, color: nivel(0.80) })
+const CIFRA = () => ({ fuente: 'Bricolage', peso: 800, size: 200, tracking: 0.06, color: nivel(0.80) })
 
 export function build(ctx) {
   const { THREE, gsap, mundoW, mundoH, camera, distBase, rnd, fondo, pelicula, bloom } = ctx
@@ -116,7 +119,7 @@ export function build(ctx) {
   const rotulo = (str, altoMax, anchoMax, o) => {
     const t = texto(str, o)
     const alto = t.ar > 0.01 ? Math.min(altoMax, anchoMax / t.ar) : altoMax
-    const mat = materialMascara(t.tex, o.color || LOOK.tinta)
+    const mat = materialMascara(t.tex, o.color || nivel(0.80))
     mat.uniforms.uSuave.value = 0.05
     const m = new THREE.Mesh(new THREE.PlaneGeometry(alto * t.ar, alto), mat)
     m.userData.ancho = alto * t.ar

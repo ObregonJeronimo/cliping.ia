@@ -85,8 +85,21 @@ export function build(ctx) {
   const resto = destacada ? n - 1 : n
   const cols = resto <= 1 ? 1 : 2
   const filas = Math.max(1, Math.ceil(resto / cols))
-  // La banda destacada se lleva el 42% del alto util; lo que sobra se reparte entre las filas.
-  const altoBanda = destacada ? ALTO_UTIL * 0.42 : 0
+  // LA BANDA MIDE LO QUE MIDE SU PIEZA, no un porcentaje fijo.
+  //
+  // Con 42% del alto reservado siempre, un logo de relacion 7.92 —que es lo que devuelve la extraccion
+  // en muchas paginas, porque un logotipo es una tira— ocupa 0.78 de alto y deja 2.6 unidades de
+  // cuadro RESERVADAS Y VACIAS. Medido: la misma escena da 0.518 de ocupacion sobre una pagina de
+  // tarjetas anchas (Stripe) y 0.158 sobre una de logo-tira y fotos cuadradas (Tailwind). No es que
+  // una pagina tenga menos material: es que el reparto no miraba QUE material tiene.
+  //
+  // Ahora la banda pide exactamente el alto que su pieza puede llenar cruzando el ancho, con un tope
+  // por si la pieza es cuadrada (una foto de relacion 1 se comeria el cuadro entero), y todo lo que no
+  // usa vuelve a la grilla de abajo.
+  const arBanda = destacada ? Math.max(0.05, piezas[0].ar) : 1
+  const altoBanda = destacada
+    ? Math.min(ALTO_UTIL * 0.46, (ANCHO_UTIL * AIRE) / arBanda)
+    : 0
   const celdaW = ANCHO_UTIL / cols
   const celdaH = (ALTO_UTIL - altoBanda) / filas
 

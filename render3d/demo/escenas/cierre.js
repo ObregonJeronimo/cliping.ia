@@ -19,7 +19,7 @@
 // beat. No cambia la composición: el anillo cierra una sola vez, la marca sigue clavada adentro y el
 // CTA sigue siendo lo único que pide algo. Lo que cambia es que ninguno de los tres espera al final.
 
-import { E, LOOK, b, planoTexto, materialMascara, filete, hex } from '../kit.js'
+import { E, LOOK, b, planoTexto, materialMascara, filete, hex, nivel } from '../kit.js'
 // El COPY sale de los DATOS. Lo que queda escrito aca es CHROME de la pieza (rotulos de
 // capitulo, indicadores tecnicos): eso es direccion de arte y no cambia con el contenido.
 // Lo que la marca DICE — su nombre, sus cifras, su claim, su CTA — sale de los datos o NO SALE.
@@ -228,7 +228,11 @@ export function build(ctx) {
   const gMarca = new THREE.Group()
   const MY = CY - 0.24                            // su Y de reposo: los golpes la sacuden y vuelven acá
   gMarca.position.set(0, MY, 0.05)
-  const marca = textoMascara(D.marca, 1, LOOK.tinta, { fuente: 'Anton', tracking: 0.01 })
+  // NO en LOOK.tinta. Es el nombre de la marca a tamano 1 —la tipografia mas grande de la pieza— y la
+  // tinta de un mundo oscuro tiene luminancia ~0.9 contra un umbral de bloom de 0.62: florece entera y
+  // sale como un ladrillo blanco sin contraformas. Visto en un render en vivo de tailwindcss.com. Es
+  // el mismo defecto que ya habia aparecido en la rafaga; ver el presupuesto de luz en toro.js.
+  const marca = textoMascara(D.marca, 1, nivel(0.78), { fuente: 'Anton', tracking: 0.01 })
   marca.material.uniforms.uDir.value = 2          // se descubre de abajo hacia arriba
   marca.material.uniforms.uSuave.value = 0.10
   marca.scale.setScalar(4.34 / ancho(marca))      // 77% del ancho del cuadro
@@ -237,9 +241,20 @@ export function build(ctx) {
   gComp.add(gMarca)
 
   // ---- píldora de CTA
+  // SIN CTA NO HAY BOTON. Con D.cta en null esto dibujaba `textoMascara('')` —una textura vacia— y
+  // despues una pildora de `ancho(cta) + 1.15`, o sea un boton REDONDO Y VACIO con su chevron, en el
+  // ultimo cuadro de la pieza. Un boton sin nada escrito es peor que no tener boton: promete una
+  // accion y no dice cual. Y pasa seguido: paginas cuyo CTA es una imagen, o que lo tienen fuera del
+  // area capturada, dan cta null y componian igual el boton.
+  //
+  // Es la misma regla de siempre, aplicada donde faltaba: un slot vacio se compone SIN el, no con un
+  // recuadro de su tamano.
+  const hayCta = !!(D.cta && String(D.cta).trim())
   const gPill = new THREE.Group()
   gPill.position.set(0, -5.7, 0.12)
-  const cta = textoMascara((D.cta || ''), 0.26, '#050810', { fuente: 'DMSans', tracking: 0.075 })
+  // El texto va del color del FONDO, no de un negro fijo: sobre la pildora de acento, en un mundo
+  // claro tiene que ser claro y en uno oscuro, oscuro. '#050810' acertaba solo en el mundo oscuro.
+  const cta = textoMascara((D.cta || ''), 0.26, LOOK.bg, { fuente: 'DMSans', tracking: 0.075 })
   cta.material.uniforms.uSuave.value = 0.05
   cta.renderOrder = 9
   const pillW = ancho(cta) + 1.15
@@ -257,7 +272,7 @@ export function build(ctx) {
     gChev.add(bar)
   }
   gPill.add(pill, cta, gChev)
-  gComp.add(gPill)
+  if (hayCta) gComp.add(gPill)
 
   // ---- filete que cruza. La geometría va corrida para que escale desde el borde IZQUIERDO:
   // si escala desde el centro se lee como "aparece", no como "cruza".
@@ -362,18 +377,18 @@ export function build(ctx) {
   tl.to(gMarca.scale, { x: 1, y: 1, z: 1, duration: b(1.3), ease: E.vaiven() }, b(3.15))
 
   // --- BEAT 1.5 → 3 · la píldora entra desde abajo y rebota
-  tl.fromTo(gPill.position, { y: -5.7 }, { y: -2.15, duration: b(0.9), ease: E.llega(2.4) }, b(1.5))
-  tl.to(gPill.scale, { y: 0.84, x: 1.05, duration: b(0.14), ease: E.frena(2) }, b(2.4))
-  tl.to(gPill.scale, { y: 1, x: 1, duration: b(0.6), ease: 'elastic.out(1, 0.42)' }, b(2.54))
+  if (hayCta) tl.fromTo(gPill.position, { y: -5.7 }, { y: -2.15, duration: b(0.9), ease: E.llega(2.4) }, b(1.5))
+  if (hayCta) tl.to(gPill.scale, { y: 0.84, x: 1.05, duration: b(0.14), ease: E.frena(2) }, b(2.4))
+  if (hayCta) tl.to(gPill.scale, { y: 1, x: 1, duration: b(0.6), ease: 'elastic.out(1, 0.42)' }, b(2.54))
   tl.set(fondo.uPulso, { value: 0.22 }, b(2.4))
   tl.to(fondo.uPulso, { value: 0, duration: b(0.55), ease: E.frena(2) }, b(2.4))
-  tl.fromTo(cta.material.uniforms.uProg, { value: 0 },
+  if (hayCta) tl.fromTo(cta.material.uniforms.uProg, { value: 0 },
     { value: 1.04, duration: b(0.55), ease: E.frena(2) }, b(2.5))
   // el chevron empuja: la píldora sigue viva después de aterrizar
-  tl.fromTo(gChev.scale, { x: 0, y: 0, z: 0 }, { x: 1, y: 1, z: 1, duration: b(0.4), ease: E.llega(3.0) }, b(2.7))
-  tl.to(gChev.position, { x: pillW / 2 - 0.22, duration: b(0.3), ease: E.vaiven(2) }, b(3.5))
-  tl.to(gChev.position, { x: pillW / 2 - 0.31, duration: b(0.4), ease: E.vaiven(2) }, b(3.8))
-  tl.to(gChev.position, { x: pillW / 2 - 0.24, duration: b(0.3), ease: E.vaiven(2) }, b(4.2))
+  if (hayCta) tl.fromTo(gChev.scale, { x: 0, y: 0, z: 0 }, { x: 1, y: 1, z: 1, duration: b(0.4), ease: E.llega(3.0) }, b(2.7))
+  if (hayCta) tl.to(gChev.position, { x: pillW / 2 - 0.22, duration: b(0.3), ease: E.vaiven(2) }, b(3.5))
+  if (hayCta) tl.to(gChev.position, { x: pillW / 2 - 0.31, duration: b(0.4), ease: E.vaiven(2) }, b(3.8))
+  if (hayCta) tl.to(gChev.position, { x: pillW / 2 - 0.24, duration: b(0.3), ease: E.vaiven(2) }, b(4.2))
 
   // --- BEAT 3 → 4.5 · el filete cruza y frena, y caen las tres marcas
   tl.fromTo(gFilete.scale, { x: 0.0001 }, { x: 1, duration: b(0.42), ease: E.frena(4) }, b(3))
@@ -486,8 +501,8 @@ export function build(ctx) {
   // final antes del apagón.
   // Va por POSICIÓN: la escala de gPill está tomada por el aterrizaje (b2.4–b3.14) y por la salida.
   for (const [bt, alto, vuelta] of [[3, 0.34, 0.30], [3.5, 0.40, 0.32], [4, 0.46, 0.40]]) {
-    tl.to(gPill.position, { y: -2.15 + alto, duration: b(0.10), ease: E.frena(3) }, b(bt))
-    tl.to(gPill.position, { y: -2.15, duration: b(vuelta), ease: 'elastic.out(1, 0.5)' }, b(bt + 0.10))
+    if (hayCta) tl.to(gPill.position, { y: -2.15 + alto, duration: b(0.10), ease: E.frena(3) }, b(bt))
+    if (hayCta) tl.to(gPill.position, { y: -2.15, duration: b(vuelta), ease: 'elastic.out(1, 0.5)' }, b(bt + 0.10))
   }
 
   // --- BARRIDO DE BRILLO sobre el CTA, dos pasadas. La primera cuando el texto ya terminó de
@@ -501,7 +516,7 @@ export function build(ctx) {
   // subdivisión de cuarto que ella, y no se amontona con las seis cosas que ya pasan en b4.
   const BR = pillW * 0.78
   for (const bt of [3.25, 4.25]) {
-    tl.fromTo(pill.material.uniforms.uBrillo, { value: -BR },
+    if (hayCta) tl.fromTo(pill.material.uniforms.uBrillo, { value: -BR },
       { value: BR, duration: b(0.34), ease: 'none', immediateRender: false }, b(bt))
   }
 
@@ -573,11 +588,11 @@ export function build(ctx) {
   })
   if (puntos.length) tl.to(puntos.map(p => p.scale), { x: 0, y: 0, z: 0, duration: b(0.3), ease: 'back.in(2)', stagger: 0.04 }, b(4.6))
   tl.to(gFilete.scale, { x: 0.0001, duration: b(0.45), ease: E.acelera(3) }, b(4.75))
-  tl.set(cta.material.uniforms.uDir, { value: 1 }, b(4.8))
-  tl.to(cta.material.uniforms.uProg, { value: 0, duration: b(0.3), ease: E.acelera(2) }, b(4.8))
-  tl.to(gChev.scale, { x: 0, y: 0, z: 0, duration: b(0.2), ease: 'back.in(2.4)' }, b(4.8))
-  tl.to(gPill.scale, { x: 0.72, y: 0.0001, duration: b(0.42), ease: E.acelera(3) }, b(4.9))
-  tl.to(pill.material.uniforms.uAlfa, { value: 0, duration: b(0.42), ease: E.acelera(2) }, b(4.9))
+  if (hayCta) tl.set(cta.material.uniforms.uDir, { value: 1 }, b(4.8))
+  if (hayCta) tl.to(cta.material.uniforms.uProg, { value: 0, duration: b(0.3), ease: E.acelera(2) }, b(4.8))
+  if (hayCta) tl.to(gChev.scale, { x: 0, y: 0, z: 0, duration: b(0.2), ease: 'back.in(2.4)' }, b(4.8))
+  if (hayCta) tl.to(gPill.scale, { x: 0.72, y: 0.0001, duration: b(0.42), ease: E.acelera(3) }, b(4.9))
+  if (hayCta) tl.to(pill.material.uniforms.uAlfa, { value: 0, duration: b(0.42), ease: E.acelera(2) }, b(4.9))
   tl.set(marca.material.uniforms.uDir, { value: 3 }, b(4.9))
   tl.to(marca.material.uniforms.uProg, { value: -0.08, duration: b(0.40), ease: E.acelera(2) }, b(4.9))
   tl.to(gMarca.scale, { x: 0.86, y: 0.86, z: 0.86, duration: b(0.45), ease: E.acelera(2) }, b(4.9))

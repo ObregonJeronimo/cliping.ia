@@ -96,6 +96,15 @@ const PROHIBIDO = [
   [/\bDate\.now\b|\bnew Date\b/, 'reloj propio — el tiempo lo pone el driver'],
   [/\brequestAnimationFrame\b/, 'requestAnimationFrame — el render no corre en tiempo real'],
   [/\bsetTimeout\b|\bsetInterval\b/, 'temporizador — todo tiene que estar declarado en la timeline'],
+  // PRESUPUESTO DE LUZ, como regla de codigo. UnrealBloomPass no atenua: o un pixel queda debajo
+  // del umbral y no florece nada, o lo pasa y entra ENTERO. La tinta de un mundo oscuro esta en
+  // ~0.9 de luminancia contra un umbral de 0.62, asi que CUALQUIER texto pintado con LOOK.tinta
+  // florece completo y sale como una mancha sin contraformas. Paso TRES veces —la rafaga, el
+  // nombre de la marca en el cierre, los rotulos de la apertura— y las tres se descubrieron
+  // mirando un render en vivo, nunca con una compuerta. El color de un texto sale de nivel(k),
+  // que E-LUZ mantiene por debajo del umbral.
+  [/color:\s*LOOK\.tinta/, 'texto en LOOK.tinta — florece entero con el bloom y sale ilegible; usa nivel(0.80) o menos'],
+  [/textoMascara\([^)]*,\s*LOOK\.tinta\b/, 'textoMascara en LOOK.tinta — florece entero con el bloom; usa nivel(0.78) o menos'],
 ]
 
 const ids = process.argv.slice(2).length
