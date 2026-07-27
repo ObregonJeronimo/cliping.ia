@@ -147,6 +147,32 @@ export function build(ctx) {
   tl.set(camera.position, { x: 0, y: 0, z: distBase }, 0)
   tl.set(camera.rotation, { x: 0, y: 0, z: 0 }, 0)
 
+  // ================================================================ 0 · LA CORTINA
+  // La pieza abria con un beat y medio de cuadro CASI VACIO: la grilla del fondo esta en cero hasta
+  // b(1.5) y lo unico que se anima antes son filetes de un pixel de alto. Medido sobre el video: 0.60 s
+  // seguidos sin que cambie NADA, y 0.695 de los cuadros de la escena practicamente quietos. La
+  // referencia hecha a mano abre con 0.10 s. Seis veces mas quieta, y en el peor lugar posible: los
+  // primeros dos segundos son los que deciden si alguien sigue mirando.
+  //
+  // El vacio era una decision de direccion y se respeta. La quietud no. La diferencia entre las dos
+  // cosas es que un vacio se puede REVELAR: una cortina del color de la marca que cubre el cuadro
+  // entero y se retira en diagonal deja exactamente el mismo cuadro vacio, pero llegando a el con un
+  // gesto. Ademas el primer cuadro de la pieza pasa a ser una pantalla solida con el color del
+  // cliente, que es como abre la mitad de los reels de marca que funcionan.
+  //
+  // Va en `g` y sin textura, asi que E-ENCAJE la saltea (mide tipografia y recortes, no masas).
+  const cortina = new THREE.Mesh(
+    new THREE.PlaneGeometry(mundoW * 3.2, mundoH * 2.2),
+    new THREE.MeshBasicMaterial({ color: hex(LOOK.acento), toneMapped: false }))
+  cortina.position.set(0, 0, 2.6)
+  cortina.rotation.z = -0.62                      // la misma diagonal que la cuña del fondo claro
+  g.add(cortina)
+  // Se retira acelerando: una cortina que sale frenando se lee como que le costo, y esta tiene que
+  // leerse como que la corrieron de un tiron. Termina en b(1.35), justo antes de que la grilla se
+  // prenda en b(1.5) — el cuadro queda un instante desnudo y ahi cae el golpe.
+  de(cortina.position, { x: 0, y: 0 }, { x: mundoW * 2.5, y: mundoH * 1.5, duration: b(1.35), ease: E.acelera(2.4) }, 0)
+  tl.set(cortina, { visible: false }, b(1.4))
+
   // ================================================================ A · el filete cruza el cuadro
   // beat 0.0-0.5. Negro casi total: la grilla está apagada y lo único que existe es una línea de
   // acento que se abre desde el centro, se pasa de los bordes y vuelve. Acá SÍ va el neón del kit:

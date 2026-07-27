@@ -30,7 +30,15 @@ export const meta = {
 // Orden de preferencia. El logo primero porque es lo único que identifica a la marca de un vistazo;
 // después las tarjetas, que son las piezas más "diseñadas" de una landing; después fotos y botones.
 const ROLES = ['logo', 'tarjeta', 'foto', 'cta']
-const MAX = 9
+// CINCO Y NO NUEVE. Medido sobre un video real, esta era la escena mas floja de toda la pieza: 0.069
+// de movimiento y 0.093 de ocupacion, contra 0.226 y 0.317 de la referencia. 0.093 quiere decir que
+// los recortes de la pagina cubren menos del 10% del cuadro — nueve estampillas flotando en el medio
+// de la pantalla. La escena que MAS deberia mostrar la pagina del usuario era la que menos la mostraba.
+//
+// La aritmetica lo explica sola: nueve piezas en tres columnas dan celdas de 1.6 de ancho, y un
+// recorte apaisado —que es la forma de casi toda tarjeta de landing— queda limitado por el ancho y
+// sale de 0.46 de alto en un cuadro de 10. Menos piezas y mas grandes muestran MAS pagina, no menos.
+const MAX = 5
 
 export function build(ctx) {
   const { THREE, gsap, mundoW, mundoH, camera, distBase, rnd, texturas, datosEls } = ctx
@@ -39,13 +47,19 @@ export function build(ctx) {
   const tl = gsap.timeline({ paused: true })
   const DUR = b(meta.beats)
 
-  const elegidos = recortesDe(datosEls || [], ROLES, MAX)
+  // Se piden mas recortes de los que entran en el cuadro. Los que sobran no se descartan: son los
+  // RELEVOS, y son lo que convierte al mosaico de una foto de familia en algo que pasa.
+  const elegidos = recortesDe(datosEls || [], ROLES, MAX + 4)
   const piezas = []
   for (const e of elegidos) {
     const tex = texturas && texturas.get(e.url)
     if (!tex || !tex.image) continue
     piezas.push({ e, tex, ar: tex.image.width / tex.image.height })
   }
+
+  // Los primeros MAX arman la formacion; el resto espera turno.
+  const relevos = piezas.slice(MAX)
+  piezas.length = Math.min(piezas.length, MAX)
 
   // Sin material no hay mosaico. Devolver un grupo vacío es correcto y es lo que manda la regla: el
   // registro de heroes no debería haber ofrecido este hero para esta página, y si igual llegó acá, una
@@ -57,33 +71,59 @@ export function build(ctx) {
 
   // COLUMNAS SEGÚN CUÁNTOS HAY. Con 1 o 2 piezas una grilla es un chiste: van grandes y centradas.
   const n = piezas.length
-  const cols = n <= 2 ? n : n <= 4 ? 2 : n <= 6 ? 3 : 3
-  const filas = Math.ceil(n / cols)
-  const ANCHO_UTIL = mundoW * 0.86
-  const ALTO_UTIL = mundoH * 0.62
+  // BENTO, no grilla pareja. La primera pieza —el logo, o la tarjeta mejor puntuada— ocupa una banda
+  // ANCHA sola, y el resto se reparte en dos columnas debajo. Es la unica forma de que un recorte
+  // apaisado llegue a medir algo en un cuadro vertical: cruzando el ancho entero.
+  //
+  // Y SANGRA. Una tarjeta ancha cortada por los dos bordes se lee mejor que una entera y chiquita, y
+  // ademas dice "hay mas pagina que la que entra", que es cierto. Es la misma decision que ya estaba
+  // tomada y documentada en la escena de rafaga.
+  const ANCHO_UTIL = mundoW * 1.16
+  const ALTO_UTIL = mundoH * 0.80
+  const AIRE = 0.95
+  const destacada = n >= 3                       // con una o dos piezas no hay jerarquia que armar
+  const resto = destacada ? n - 1 : n
+  const cols = resto <= 1 ? 1 : 2
+  const filas = Math.max(1, Math.ceil(resto / cols))
+  // La banda destacada se lleva el 42% del alto util; lo que sobra se reparte entre las filas.
+  const altoBanda = destacada ? ALTO_UTIL * 0.42 : 0
   const celdaW = ANCHO_UTIL / cols
-  const celdaH = ALTO_UTIL / filas
-  const AIRE = 0.86                     // el respiro entre piezas; sin esto el mosaico es una pared
+  const celdaH = (ALTO_UTIL - altoBanda) / filas
 
   const gM = new THREE.Group()
   g.add(gM)
 
   const mallas = []
   piezas.forEach((p, i) => {
-    const col = i % cols, fila = Math.floor(i / cols)
+    // La destacada es la pieza 0 y vive en su propia banda; el resto se indexa desplazado.
+    const esBanda = destacada && i === 0
+    const j = destacada ? i - 1 : i
+    const col = esBanda ? 0 : j % cols
+    const fila = esBanda ? -1 : Math.floor(j / cols)
     // La pieza entra en su celda por el lado que la limita, nunca estirada. Un logo apaisado en una
     // celda cuadrada tiene que sobrar por arriba y por abajo, no achatarse.
-    const hPorAlto = celdaH * AIRE
-    const hPorAncho = (celdaW * AIRE) / Math.max(0.05, p.ar)
+    const anchoCelda = esBanda ? ANCHO_UTIL : celdaW
+    const altoCelda = esBanda ? altoBanda : celdaH
+    const hPorAlto = altoCelda * AIRE
+    const hPorAncho = (anchoCelda * AIRE) / Math.max(0.05, p.ar)
     const alto = Math.min(hPorAlto, hPorAncho)
     const m = planoRecorte(p.tex, alto)
     if (!m) return
-    const x = (col - (cols - 1) / 2) * celdaW
     // La última fila puede estar incompleta: se centra sola en vez de quedar pegada a la izquierda.
-    const enFila = Math.min(cols, n - fila * cols)
-    const xCentrado = (col - (enFila - 1) / 2) * celdaW
-    const y = ((filas - 1) / 2 - fila) * celdaH
-    m.userData.destino = new THREE.Vector3(fila === filas - 1 ? xCentrado : x, y, 0)
+    const enFila = esBanda ? 1 : Math.min(cols, resto - fila * cols)
+    const x = esBanda ? 0 : (col - (enFila - 1) / 2) * celdaW
+    // La banda va arriba de todo; las filas cuelgan debajo de ella.
+    const y0 = ALTO_UTIL / 2 - altoBanda / 2
+    const y = esBanda ? y0 : (y0 - altoBanda / 2) - celdaH * (fila + 0.5)
+    // CADA PIEZA A SU PROPIA PROFUNDIDAD. Con todas en z=0 el mosaico es una lamina pegada: la camara
+    // hace dolly durante toda la escena y no pasa nada, porque un plano frontal se acerca igual que
+    // otro. Repartidas en una franja de profundidad, el mismo dolly produce PARALAJE — las de adelante
+    // barren mas rapido que las de atras— y eso es movimiento de verdad, no un tween mas.
+    //
+    // Medido: con todas en cero, la escena daba 0.078 de pixeles en movimiento con la ocupacion ya
+    // arreglada. Era la escena mas floja de la pieza y lo seguia siendo despues de llenarla.
+    const z = esBanda ? 0.55 : ((j % 2 ? -0.75 : 0.35) + (fila % 2 ? -0.35 : 0.2))
+    m.userData.destino = new THREE.Vector3(x, y, z)
     m.userData.rol = p.e.rol
     gr.add(m)
     mallas.push(m)
@@ -114,7 +154,7 @@ export function build(ctx) {
     // grupo se lee como una nube que se ordena y no como una lista que se enumera.
     const t0 = b(0.15) + (i / Math.max(1, mallas.length)) * b(1.9)
     tl.to(m.material, { opacity: 1, duration: b(0.42), ease: E.frena(2) }, t0)
-    tl.to(m.position, { x: m.userData.destino.x, y: m.userData.destino.y, z: 0,
+    tl.to(m.position, { x: m.userData.destino.x, y: m.userData.destino.y, z: m.userData.destino.z,
       duration: b(1.5), ease: E.llega(1.5) }, t0)
     tl.to(m.rotation, { x: 0, y: 0, z: 0, duration: b(1.7), ease: E.frena(3) }, t0)
 
@@ -124,6 +164,49 @@ export function build(ctx) {
     // eso sólo corre para propiedades declaradas en `vars` y acá no había ninguna. Ver telefono.js.
     m.userData.osc = { f: rnd() * 6.28, vel: 0.5 + rnd() * 0.5, amp: 0.05 + rnd() * 0.05, desde: t0 + b(1.5) }
   })
+
+  // ---------------------------------------------------------------- RELEVOS
+  // EL MOSAICO SE ACTUALIZA, como un panel en vivo. Es lo que arregla el ultimo numero que quedaba
+  // mal: con la formacion ya llena y grande, la escena daba 0.518 de ocupacion —la mas alta de la
+  // pieza— y 0.080 de pixeles en movimiento, la mas baja. Las dos cosas a la vez tienen una sola
+  // explicacion: una tarjeta GRANDE deslizandose cambia solo sus BORDES, y el interior queda igual
+  // cuadro a cuadro. Le puse profundidades distintas para que el dolly hiciera paralaje y subio dos
+  // milesimas: el paralaje es suave y lo suave no cuenta, ni para la metrica ni para el ojo.
+  //
+  // Lo que si cuenta es que una pieza DEJE DE ESTAR y otra ocupe su lugar. Cada relevo cambia de golpe
+  // un rectangulo entero del cuadro, que es exactamente lo que el ojo registra como corte. Y no es un
+  // truco para el numero: un mosaico que se actualiza muestra MAS pagina del usuario en los mismos
+  // seis beats.
+  //
+  // El relevo NUNCA toca la banda destacada (el logo): esa es el ancla de la composicion y la unica
+  // pieza que identifica la marca. Lo que rota son las celdas de abajo.
+  const cambios = []
+  relevos.forEach((p, k) => {
+    const destinoIdx = (destacada ? 1 : 0) + (k % Math.max(1, mallas.length - (destacada ? 1 : 0)))
+    const base = mallas[destinoIdx]
+    if (!base) return
+    const alto = base.geometry.parameters.height
+    const anchoCelda = ANCHO_UTIL / cols
+    const h = Math.min(alto, (anchoCelda * AIRE) / Math.max(0.05, p.ar))
+    const m = planoRecorte(p.tex, h)
+    if (!m) return
+    m.position.copy(base.userData.destino)
+    m.visible = false
+    m.material.opacity = 1
+    gr.add(m)
+    // Los relevos caen en beats enteros y escalonados: 3, 4, 5. Antes del 3 la formacion todavia se
+    // esta armando y un cambio ahi se lee como un error de carga.
+    const t = b(3 + k)
+    if (t > DUR - b(1.2)) return                    // no tan cerca del final: no se llegaria a ver
+    cambios.push({ base, m, t })
+  })
+  for (const c of cambios) {
+    // Reemplazo DURO, como en la rafaga: un fundido de medio beat deja las dos piezas encima y se lee
+    // como un error de superposicion, no como un cambio.
+    tl.set(c.base, { visible: false }, c.t)
+    tl.set(c.m, { visible: true }, c.t)
+    tl.fromTo(c.m.scale, { x: 0.82, y: 0.82 }, { x: 1, y: 1, duration: b(0.3), ease: E.llega(2.6), immediateRender: false }, c.t)
+  }
 
   // EL ACENTO SEPARA. Un mosaico de recortes con fondo propio es una pared de rectángulos; un filete
   // que barre por detrás le da un plano y una dirección.
@@ -139,8 +222,10 @@ export function build(ctx) {
   // pegada. Vuelve a distBase antes del corte — es contrato de escena.
   tl.fromTo(camera.position, { z: distBase + 1.5 }, { z: distBase - 0.5, duration: DUR * 0.8, ease: 'none' }, 0)
   tl.to(camera.position, { z: distBase, duration: DUR * 0.2, ease: E.vaiven() }, DUR * 0.8)
-  tl.to(gM.rotation, { y: 0.09, duration: DUR * 0.55, ease: E.vaiven() }, 0)
-  tl.to(gM.rotation, { y: 0, duration: DUR * 0.45, ease: E.vaiven() }, DUR * 0.55)
+  // El conjunto BARRE, no solo respira: un giro de 0.09 rad sobre nueve planos no mueve casi nada.
+  // Con 0.20 y un desplazamiento lateral, el paralaje de las profundidades se hace visible.
+  tl.to(gM.rotation, { y: 0.20, duration: DUR * 0.55, ease: E.vaiven() }, 0)
+  tl.to(gM.rotation, { y: -0.06, duration: DUR * 0.45, ease: E.vaiven() }, DUR * 0.55)
   // gM sólo mueve el filete; los recortes viven en la otra escena y copian su rotación cada frame.
   // Acá también respira cada pieza: entre que llegó a su celda y que empieza a salir.
   // EL ORDEN IMPORTA Y CUESTA CARO. Esto colgaba de un tween hijo puesto en 0 con duracion DUR, y
@@ -176,14 +261,19 @@ export function build(ctx) {
   if (mallas.length > 1) {
     for (let i = 2; i < meta.beats - 1; i++) {
       const m = mallas[(i * 3) % mallas.length]
-      tl.to(m.position, { z: 0.85, duration: b(0.22), ease: E.llega(2.2) }, b(i))
-      tl.to(m.position, { z: 0, duration: b(0.45), ease: E.frena(3) }, b(i + 0.25))
+      // El destaque es de ESCALA y no de z: con la banda destacada delante, un adelanto en z de una
+      // pieza chica no se lee. Un salto de escala si, y ademas no pelea con el paralaje.
+      tl.to(m.scale, { x: 1.13, y: 1.13, duration: b(0.20), ease: E.llega(2.4) }, b(i))
+      tl.to(m.scale, { x: 1, y: 1, duration: b(0.5), ease: E.frena(3) }, b(i + 0.24))
     }
   }
 
   // SALEN HACIA LA CÁMARA, escalonadas. El corte siguiente se siente ganado.
-  mallas.forEach((m, i) => {
-    const t = DUR - b(0.95) + (i / Math.max(1, mallas.length)) * b(0.3)
+  // Salen TODAS, las de la formacion y las que las relevaron: una pieza que se quedo escondida y no
+  // recibe la salida reaparece en el ultimo cuadro cuando el grupo se apaga.
+  const salientes = [...mallas, ...cambios.map(c => c.m)]
+  salientes.forEach((m, i) => {
+    const t = DUR - b(0.95) + (i / Math.max(1, salientes.length)) * b(0.3)
     tl.to(m.position, { z: 5.5, duration: b(0.6), ease: E.acelera(3) }, t)
     tl.to(m.material, { opacity: 0, duration: b(0.45), ease: E.acelera(2) }, t + b(0.12))
   })
