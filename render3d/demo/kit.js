@@ -293,6 +293,13 @@ export function fondoVivo(mundoW, mundoH) {
         // se aplana y queda entre el 9% y el 39% del alto, o sea debajo del renglon del titular.
         float dg = (f.x * 0.35 + (1.0 - f.y) * 1.15) - (1.05 + sin(uT * 0.077) * 0.075);
         float cuna = smoothstep(0.0, 0.006, dg);
+        // SOLO EN CLARO, y no por falta de ganas. Probada tambien en el mundo oscuro, la cuña sube la
+        // ocupacion de 0.28 a 0.61 —muy por encima de la referencia— y la pieza queda PEOR: el azul
+        // profundo con las lineas de neon encima se convierte en un diagonal celeste apagado, y el
+        // contraste baja de 0.177 a 0.171. Un mundo oscuro ya tiene cuerpo: se lo da el glow, que es
+        // justo lo que un mundo claro no puede tener. Es la segunda vez en esta sesion que una version
+        // gana la metrica y hay que tirarla; el 11% de ocupacion que le falta al mundo oscuro contra la
+        // referencia es una diferencia de estetica, no un defecto, y cerrarla cuesta mas de lo que vale.
         col = mix(col, mix(col, uAcento, 0.86), cuna * uClaro);
 
         // grano fino, para que el degradé no muestre bandas
