@@ -294,8 +294,21 @@ export class Anthem {
     return { escenas: this.escenas.map(e => e.id), dur: this.dur }
   }
 
+  // seek(t) — `t` es tiempo de ARCHIVO (lo que ve el que mira el video); la timeline corre en su
+  // tiempo PROPIO, que no es el mismo cuando hay ajuste de tempo.
+  //
+  // `timeScale` cambia a que velocidad AVANZA una timeline, no como se la BUSCA: `tl.time(x)` pone su
+  // tiempo local en x, sin escalar. Con el ajuste puesto —28 beats estirados a 30 segundos— buscar el
+  // segundo 29 ponia la timeline en su local 29, dos segundos DESPUES de su duracion propia de 28: la
+  // pieza quedaba congelada en su ultimo cuadro durante los dos segundos finales.
+  //
+  // No fallaba nada. El video duraba exactamente los 30 segundos pedidos, el guion decia lo correcto y
+  // el ultimo cuadro era el cuadro correcto. Lo delato una sola metrica: quietud maxima 1.97 s, con el
+  // desglose por escena mostrando 0.33 s como peor caso — o sea que la ventana quieta caia FUERA de
+  // toda escena, que es justo lo que pasa cuando la pieza se acabo antes que el archivo.
   seek(t) {
-    const tt = Math.max(0, Math.min(this.dur, t))
+    const esc = (this.ajuste && this.ajuste.escala) || 1
+    const tt = Math.max(0, Math.min(this.dur, t)) * esc
     this.tl.time(tt, false)
     // Prender/apagar por ventana: una escena que sigue en la escena 3D consumiendo draw calls y
     // asomando un borde detrás de la siguiente es el defecto más difícil de encontrar mirando.

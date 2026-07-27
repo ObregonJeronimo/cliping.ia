@@ -10,6 +10,7 @@ const NAV = [
   { to: '/studio/director', icon: '◈', label: 'Director IA' },
   { to: '/studio/kinetic', icon: '◎', label: 'Kinetic IA' },
   { to: '/studio/motion', icon: '◉', label: 'Motion IA' },
+  { to: '/studio/motor3d', icon: '⬡', label: 'Motor 3D IA' },
   { to: '/studio/anim', icon: '➤', label: 'Animaciones IA' },
 ]
 

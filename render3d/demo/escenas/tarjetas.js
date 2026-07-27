@@ -189,6 +189,14 @@ export function build(ctx) {
   reglaTit.scale.x = 0
   g.add(reglaTit)
 
+  // El TICK que corre sobre el filete del titular llevando el compás. Vive acá arriba porque es parte
+  // del bloque de titular, pero su razón de ser es de TIEMPO y está explicada en la sección EVENTOS.
+  // Nace invisible: hasta que las tarjetas no aterrizan no hay nada que marcar.
+  const compas = regla(0.42, 0.075, LOOK.acento2, 0.95)
+  compas.position.set(-1.85, 2.50, 1.22)
+  compas.visible = false
+  g.add(compas)
+
   // ------------------------------------------------------------ bloque inferior
   // El epigrafe DECIA "CINCO INDICADORES" siempre, incluso sobre UNA sola tarjeta. No es ruido de
   // demo: es una afirmacion falsa sobre lo que hay en pantalla, y el espectador la puede contar.
@@ -304,8 +312,14 @@ export function build(ctx) {
   // el arco: sólo existe porque hay cámara, y es lo que convierte cinco fichas en una composición
   enArco(tarjetas.map(t => t.gr), ARCO_R, ARCO_A)
   tarjetas.forEach((t, i) => {
-    const u = Math.abs(i / 4 - 0.5) * 2                   // 1 en los bordes, 0 en el centro
-    t.gr.position.y = ARCO_Y + 0.17 * (1 - u)             // arco también en y: leve, pero se nota
+    // El 4 estaba escrito a mano —los cinco datos de la demo— y con menos cifras el arco salía
+    // TORCIDO. Medido: con dos tarjetas quedaban a 0.060 y 0.145 de alto, o sea una más alta que su
+    // par simétrico; con tres subían en escalera 0.060 / 0.145 / 0.230 en vez de arquearse; con cuatro
+    // el punto alto caía en la tercera y no en el medio. Y desde que las tarjetas se REPARTEN en el
+    // beat 2 y medio esto dejó de ser cosmético: la que cruza no mueve su y, así que el asiento espejo
+    // tiene que estar a la MISMA altura o aterriza 0.17 fuera de lugar — toda la amplitud del arco.
+    const u = DATOS.length > 1 ? Math.abs(i / (DATOS.length - 1) - 0.5) * 2 : 0
+    t.gr.position.y = ARCO_Y + 0.17 * (1 - u)             // 1 en los bordes, 0 en el centro
     t.base = { x: t.gr.position.x, y: t.gr.position.y, z: t.gr.position.z, ry: t.gr.rotation.y }
   })
 
@@ -418,8 +432,133 @@ export function build(ctx) {
     tl.to(t.gr.rotation, { z: gir, duration: (b(4.0) - fs2) / 4, ease: E.vaiven(), repeat: 3, yoyo: true }, fs2)
   })
 
-  // ---------------------------------------------------------------- beat 4: se resuelve en una
+  // ================================================================ EVENTOS ADENTRO DE LA ESCENA
+  // Medido contra la pieza hecha a mano: el motor mueve 0.118 de píxeles contra 0.226 y corta 44 veces
+  // por minuto contra 55. La causa no es el ritmo del guion: es que las escenas cortan SOLO en su
+  // frontera. Acá se veía crudo — entre que las tarjetas aterrizan (beat 1) y que la escena se resuelve
+  // (beat 4) hay dos beats y medio en los que lo único que cambia es un dígito. Eso es movimiento
+  // continuo con CERO eventos, y un evento —algo que aparece, salta o se reemplaza— es lo único que el
+  // ojo cuenta como corte.
+  //
+  // Lo que sigue no reescribe la escena: le mete golpes adentro. Todo está escrito para N tarjetas,
+  // porque la página pudo haber dado UNA sola cifra: nada de esto asume que hay un vecino.
+
+  // ---------------------------------------------------------------- el compás
+  // Un filete quieto es una línea; uno que SALTA cada medio beat es un metrónomo, y le da al tramo
+  // muerto una referencia de tiempo sin taparle nada al contador. Salta con `set` y no con un tween:
+  // medio beat de deslizamiento suave es exactamente lo que NO sube el ritmo de corte.
+  const PASOS_C = [-1.85, -1.11, -0.37, 0.37, 1.11, 1.85]
+  tl.set(compas, { visible: true }, b(1.0))
+  PASOS_C.forEach((x, j) => {
+    const k = b(1.0 + j * 0.5)
+    tl.set(compas.position, { x }, k)
+    // Fuerte en el beat, débil en el contratiempo. Seis saltos del mismo tamaño se leen como un objeto
+    // que se arrastra; con la diferencia de peso se leen como un pulso.
+    tl.set(compas.scale, { x: j % 2 ? 0.5 : 1, y: j % 2 ? 0.45 : 1 }, k)
+  })
+  tl.set(compas, { visible: false }, b(4.0))
+
+  // ---------------------------------------------------------------- el filete de cada tarjeta
+  // CONTRATIEMPO DE VERDAD: en el medio EXACTO entre dos ticks. Esto decía b(1.55), b(2.05), b(2.55)…
+  // o sea 0.05 de beat DESPUÉS del tick — 24 ms — y a los 30 cuadros por segundo a los que se rinde
+  // esto es el mismo cuadro o el siguiente. Medido sobre la timeline: el tick caía en el cuadro 30 y
+  // el filete también; en el 37 y el 38; en el 44 y el 45. Los dos golpes se leían como UNO y la
+  // escena pagaba dos eventos para cobrar uno — exactamente lo que este comentario decía evitar. En el
+  // cuarto de beat el ojo los cuenta separados, que es todo el punto.
+  //
+  // No hay golpe antes de b(1.75) porque la entrada del filete corre hasta b(1.41) en la última
+  // tarjeta y un `set` pisado por un tween vivo no se ve. Tampoco hay uno en b(2.75): ahí las tarjetas
+  // están de canto por el reparto y el filete no existe en pantalla. El de b(3.25) sí queda, aunque
+  // caiga de canto, porque lo que se ve es su RESULTADO cuando la tarjeta vuelve a mirar a cámara.
+  //
+  // Y ALTERNAN EN DAMERO, no en barrido con desfasaje. El desfasaje era de 12 ms por tarjeta: 0.36 de
+  // cuadro, así que las cinco saltaban en el MISMO cuadro y el barrido no existía. Para que se leyera
+  // hacía falta un cuadro entero por tarjeta —0.33 de beat con cinco cifras— y hasta el tick siguiente
+  // hay un cuarto de beat: no entra, y la última tarjeta terminaba cruzándose al corte. Con pares e
+  // impares en contrafase el golpe es simultáneo, no hay nada que se pueda ir a la escena de al lado,
+  // y la fila igual cambia de dibujo entera.
+  const OFF = [1.75, 2.25, 3.25, 3.75]
+  tarjetas.forEach((t, i) => {
+    OFF.forEach((k, j) => {
+      // El último golpe deja TODOS los filetes enteros: si la escena se resuelve con el de la héroe a
+      // media asta, la tarjeta se va al primer plano mostrando algo que parece a medio dibujar.
+      const entero = j === OFF.length - 1 || (i + j) % 2 === 1
+      tl.set(t.fil.scale, { x: entero ? 1 : 0.44 }, b(k))
+    })
+  })
+
+  // ---------------------------------------------------------------- beat 1 y medio: la héroe se adelanta
+  // El contador subiendo dos beats es INFORMACIÓN, no imagen: el número cambia y la composición no. Un
+  // empujón corto de la tarjeta que ya es el sujeto de la escena resuelve las dos cosas —marca quién
+  // manda antes de que el beat 4 lo diga, y mete un evento donde no había ninguno—. Y es lo único de
+  // todo este bloque que funciona IGUAL con una tarjeta que con cinco: la héroe siempre existe.
+  //
+  // SALE EN b(1.5) Y VUELVE EN b(2.0), sobre el tick y no entre dos. Estaba en b(1.72) y b(2.06), que
+  // no son ni beat ni medio beat: el empujón caía cinco cuadros después del tick y se leía como un
+  // movimiento suelto en vez de como el golpe fuerte del compás. Un evento que no cae en la grilla no
+  // suma ritmo, sólo suma movimiento — y de movimiento esta escena ya andaba sobrada.
   const h = tarjetas[HERO]
+  tl.to(h.gr.position, { z: h.base.z + 1.30, duration: b(0.34), ease: E.llega(2.6) }, b(1.5))
+  tl.to(h.gr.scale, { x: 1.09, y: 1.09, z: 1.09, duration: b(0.34), ease: E.llega(2.6) }, b(1.5))
+  // El borde late y vuelve solo con repeat+yoyo. Encadenado a mano pedía una tercera marca de tiempo
+  // —b(1.90)— que no caía en ningún lado de la grilla y sólo existía para empalmar dos tweens.
+  tl.fromTo(h.rim.scale, { x: 1, y: 1 }, { x: 1.08, y: 1.05, duration: b(0.25), ease: E.frena(2), repeat: 1, yoyo: true, immediateRender: false }, b(1.5))
+  tl.to(h.gr.position, { z: h.base.z, duration: b(0.40), ease: E.acelera(2) }, b(2.0))
+  tl.to(h.gr.scale, { x: 1, y: 1, z: 1, duration: b(0.40), ease: E.acelera(2) }, b(2.0))
+
+  // ------------------------------------------------------- beat 2 y medio: el arco se DA VUELTA
+  // Las tarjetas se reparten de nuevo: cada una se va al lugar de su espejo. Es el evento más grande
+  // que admite esta composición sin dejar de ser ella misma —el arco sigue siendo el arco, cambia
+  // quién ocupa cada asiento—.
+  //
+  // TRES COSAS QUE HAY QUE HACER BIEN O NO FUNCIONA:
+  //  · Se gira hasta 1.25 rad y NUNCA hasta pi/2 o más. Los planos de texto son DoubleSide: pasado el
+  //    canto, el número se lee al revés. A 1.25 la tarjeta ya se ve como un filo (cos = 0.32) y el
+  //    cambio de asiento no se percibe como un teletransporte.
+  //  · El par espejo comparte la MISMA z del arco (cos es simétrico), así que sin separarlos se
+  //    atraviesan. Las de la izquierda pasan por delante y las de la derecha por detrás — que es cómo
+  //    se reparten unas cartas de verdad.
+  //  · Se mueven x y z, NO y. La flotación es dueña de y durante todo este tramo y dos tweens sobre la
+  //    misma propiedad se pelean por el último render. Se puede no tocarla porque el arco es SIMÉTRICO
+  //    y el asiento espejo está exactamente a la misma altura — con el arco torcido que había antes
+  //    (ver el `u` de más arriba) la que cruzaba aterrizaba 0.17 arriba o abajo de su asiento.
+  //
+  // CON UNA SOLA TARJETA el espejo es ella misma: no hay viaje, y queda el giro de canto con el paso
+  // atrás. Sigue siendo un evento duro, que es lo que se vino a buscar — no se inventa un vecino.
+  const espejo = i => DATOS.length - 1 - i
+  tarjetas.forEach((t, i) => { t.destino = tarjetas[espejo(i)].base })
+  // ARRANCA EN b(2.5), sobre el cuarto tick. Estaba en b(2.60): 0.1 de beat después, que a 30 cuadros
+  // es cuadro y medio — el tick quedaba tapado por el evento más grande de la escena y se perdía. Un
+  // golpe grande que cae SOBRE el pulso lo confirma; uno que cae un cuadro y medio tarde lo borra.
+  const VUELTA = b(2.5)
+  tarjetas.forEach((t, i) => {
+    const d = t.destino
+    const izq = i < (DATOS.length - 1) / 2
+    const s = VUELTA + i * 0.028                        // stagger: se reparten, no saltan en bloque
+    tl.to(t.gr.rotation, { y: t.base.ry + (izq ? 1.25 : -1.25), duration: b(0.26), ease: E.acelera(2) }, s)
+    tl.to(t.gr.position, { x: (t.base.x + d.x) / 2, z: d.z + (izq ? 0.95 : -0.95), duration: b(0.22), ease: E.acelera(2) }, s + b(0.18))
+    tl.to(t.gr.position, { x: d.x, z: d.z, duration: b(0.26), ease: E.frena(2) }, s + b(0.40))
+    tl.to(t.gr.rotation, { y: d.ry, duration: b(0.42), ease: E.llega(2.0) }, s + b(0.52))
+  })
+
+  // El reparto se puntúa con el mismo vocabulario que el corte del beat 4: dos frames de blanco y un
+  // golpe de fondo. Sin eso el movimiento se lee como que se movió la cámara; con eso se lee como una
+  // decisión de montaje, que es lo que es. El blanco NO cae en el arranque —decía que lo "anunciaba" y
+  // no era cierto—: cae a 0.14 de beat, con las tarjetas a mitad de giro, que es el instante feo del
+  // reparto y el único que conviene tapar.
+  //
+  // Estos tres son satélites del golpe de b(2.5), no eventos propios: por eso cuelgan de VUELTA y no
+  // de la grilla. Un satélite no tiene que caer en el pulso — el que cae en el pulso es su dueño.
+  tl.fromTo(pelicula.uFlash, { value: 0.22 }, { value: 0, duration: 0.06, ease: E.acelera(2), immediateRender: false }, VUELTA + b(0.14))
+  tl.fromTo(fondo.uPulso, { value: 0.34 }, { value: 0, duration: b(0.60), ease: E.frena(2), immediateRender: false }, VUELTA + b(0.14))
+  tl.to(fondo.uGrilla, { value: 0.38, duration: b(0.14), ease: E.acelera(2) }, VUELTA)
+  tl.to(fondo.uGrilla, { value: 0.74, duration: b(0.50), ease: E.frena(2) }, VUELTA + b(0.20))
+  // El eco gigante contra-desliza: es lo único que distingue "las tarjetas cambiaron de lugar" de "se
+  // movió el punto de vista". Vuelve a 0 antes del beat 4, donde lo espera su propia salida.
+  tl.to(eco.malla.position, { x: -0.62, duration: b(0.45), ease: E.vaiven() }, VUELTA)
+  tl.to(eco.malla.position, { x: 0, duration: b(0.55), ease: E.vaiven() }, VUELTA + b(0.50))
+
+  // ---------------------------------------------------------------- beat 4: se resuelve en una
   tl.to(h.gr.position, { x: 0, y: 0, z: 12.2, duration: b(1.20), ease: E.llega(1.2) }, b(4.0))
   tl.to(h.gr.rotation, { x: 0, y: 0, z: 0, duration: b(1.00), ease: E.frena(2) }, b(4.0))
   tl.to(h.gr.scale, { x: 1.06, y: 1.06, z: 1.06, duration: b(1.20), ease: E.llega(1.4) }, b(4.0))
@@ -433,9 +572,15 @@ export function build(ctx) {
   // las otras se van hacia atrás, acelerando (power3.in): el obturador las arrastra al irse
   tarjetas.forEach((t, i) => {
     if (i === HERO) return
-    const base = t.base
-    const s = i < HERO ? -1 : 1
+    // SE VA DESDE EL ASIENTO QUE OCUPA, no desde el que tenía antes del reparto. Con `t.base` una
+    // tarjeta que acababa de cruzarse al otro lado salía volando de vuelta hacia donde ya no estaba:
+    // atravesaba el cuadro entero en 0.9 beats y el corte se leía como un error. Y el lado del giro
+    // sale del signo de esa x, no del índice, por lo mismo.
+    const base = t.destino
+    const s = base.x < 0 ? -1 : 1
     const d = b(4.0) + (2 - Math.abs(i - HERO)) * 0.035
+    // La y también sale del asiento ocupado. Con el arco simétrico las dos son el mismo número, pero
+    // leerla de `t.base` dejaba escrito que no lo eran — y es justo lo que estaba roto un rato arriba.
     tl.to(t.gr.position, { x: base.x * 2.15 + s * 0.5, y: base.y + (i % 2 ? -0.95 : 0.95), z: base.z - 6.4, duration: b(0.90), ease: E.acelera(3) }, d)
     tl.to(t.gr.rotation, { y: base.ry + s * 0.85, z: s * 0.22, duration: b(0.90), ease: E.acelera(2) }, d)
     tl.to(t.gr.scale, { x: 0.62, y: 0.62, z: 0.62, duration: b(0.90), ease: E.acelera(3) }, d)

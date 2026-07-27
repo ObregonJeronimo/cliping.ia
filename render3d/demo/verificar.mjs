@@ -356,20 +356,32 @@ for (const id of ids) {
   // geometria esta fija en su grupo y lo que viaja es el grupo. Con la version local, un hero que
   // llegaba, flotaba y salia daba "nada se mueve" en toda su duracion, y mando a arreglar un bug que
   // no existia. Una compuerta que acusa en falso cuesta mas que no tenerla.
-  const firmaDe = (grupo) => {
+  // PUNTO CIEGO QUE COSTO UNA ESCENA ENTERA. Esta firma miraba SOLO `r.g`, y hay escenas que dejan
+  // ahi apenas dos mallas: todo lo que el espectador ve —la pagina, los recortes reales, el marco—
+  // vive en `gr`, la escena post-bloom. Con la version vieja, una escena podia quedarse
+  // completamente quieta durante sus seis beats y salir en verde, porque lo unico que se movia era lo
+  // que la compuerta no miraba. Lo encontro una revision adversarial sobre la escena "pantalla": el
+  // verificador estaba verde con CINCO defectos adentro.
+  //
+  // `gr` es donde va TODO recorte real de la pagina, o sea la parte mas valiosa del producto. Era
+  // justo lo que no se estaba controlando.
+  const firmaDe = (grupo, extra) => {
     let s = ''
-    grupo.updateWorldMatrix(true, true)
-    grupo.traverse(o => {
+    for (const raiz of [grupo, extra]) {
+      if (!raiz) continue
+      raiz.updateWorldMatrix(true, true)
+      raiz.traverse(o => {
       if (!o.isMesh && !o.isPoints) return
       const e = o.matrixWorld.elements
       for (let i = 0; i < 16; i++) s += e[i].toFixed(3) + ','
       s += `${o.visible ? 1 : 0},`
         + `${(o.material && o.material.opacity != null ? o.material.opacity : 1).toFixed(3)},`
         + `${(o.material && o.material.uniforms && o.material.uniforms.uProg ? o.material.uniforms.uProg.value : 0).toFixed(3)};`
-    })
+      })
+    }
     return s
   }
-  const firma = () => firmaDe(r.g)
+  const firma = () => firmaDe(r.g, r.gr)
   const N = Math.max(12, Math.round(dur * 30))
   let previa = null, quieto = 0, peor = 0
   for (let i = 0; i <= N; i++) {
@@ -395,7 +407,16 @@ for (const id of ids) {
   // sola -la de arriba, a matriz mundial- las dos dejaron de hablar el mismo idioma: el chequeo empezo
   // a acusar de no-determinista a toda escena correcta. Una comparacion con dos formatos distintos no
   // compara nada.
-  const fb = firmaDe(r2.g)
+  const fb = firmaDe(r2.g, r2.gr)
+  if (fa !== fb && process.env.DIFF) {
+    const A = fa.split(';'), B = fb.split(';')
+    for (let i = 0; i < Math.max(A.length, B.length); i++) {
+      if (A[i] !== B[i]) { console.error(`  DIFF obj ${i}:
+    A=${A[i]}
+    B=${B[i]}`); break }
+    }
+    console.error(`  objetos A=${A.length} B=${B.length}`)
+  }
   ok(fa === fb, `${id}: dos construcciones con la misma semilla dan escenas distintas`)
 
   if (!fails) console.log(`  ${id}: OK — ${r.g.children.length} objetos, ${dur.toFixed(2)}s de ${limite.toFixed(2)}s, quietud maxima ${quietoSeg.toFixed(2)}s`)

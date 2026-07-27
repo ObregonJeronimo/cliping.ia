@@ -14,6 +14,21 @@
 //   · después del beat 3 nada descansa. La palabra deriva y respira, las letras flotan desfasadas,
 //     una barra de progreso avanza abajo y el fondo late una vez por beat.
 //
+// LO QUE FALTABA, MEDIDO. "Nada descansa" resultó ser la mitad del trabajo. Entre el beat 3 y el 6 el
+// cuadro se movía todo el tiempo y no PASABA nada: deriva, respiración y flotación son movimiento
+// CONTINUO, y el ojo no cuenta como corte algo que no cambia de golpe. Contra la pieza hecha a mano el
+// motor daba 44 cortes por minuto y la referencia 55, con 40 de piso — y la cola de esta escena era
+// justo el tramo donde entran tres rótulos sobre un cuadro casi congelado. Ahora la cola tiene golpes:
+// la regla de abajo se dibuja POR TRAMOS que se apuran hacia el beat 4, el nombre se desplaza por
+// LETRAS en el 4 y en el 5, y los corchetes de encuadre PARPADEAN dos frames sobre esos mismos beats.
+// Ninguno de los tres agrega un elemento al cuadro: son los que ya estaban, moviéndose cuando toca.
+// Esta escena es la primera impresión de la pieza y ese fue el límite de todo lo que se probó acá:
+// nada que desplace la composición, nada que ensucie el nombre.
+//
+// TODOS LOS GOLPES CAEN EN LA GRILLA — beats, medios, cuartos y dieciseisavos. No es purismo: una
+// pieza que se corta contra una música que no está sólo se lee a montaje si los cortes caen donde el
+// oído los espera, y un valor elegido a ojo se delata igual que un corte "a los 2.3 segundos".
+//
 // El overshoot vive en la ROTACIÓN y en la escala de cada letra, no en z: con la palabra ocupando el
 // 94% del ancho, un back.out sobre la profundidad la empujaba fuera del cuadro en el rebote.
 
@@ -40,8 +55,16 @@ const AIRE = 0.3 / 1.34
 const TIPO_GRANDE = () => nivel(0.78)
 
 const ANTON = () => ({ fuente: 'Anton', size: 200, color: TIPO_GRANDE() })
-const CHICA = { fuente: 'DMSans', peso: 500, size: 200, tracking: 0.24, color: LOOK.tinta }
-const CIFRA = { fuente: 'Bricolage', peso: 800, size: 200, tracking: 0.06, color: LOOK.tinta }
+// FUNCIONES POR EL MISMO MOTIVO QUE `TIPO_GRANDE`, y durante un tiempo no lo fueron: eran objetos
+// literales, y `LOOK.tinta` se leia AL IMPORTAR el archivo — antes de que `configurar()` reasigne la
+// paleta. Que LOOK sea un binding vivo no salva a nadie acá: lo que queda congelado es el VALOR ya
+// copiado adentro del objeto. Medido con un aire de pagina clara (tinta #101216 sobre fondo #f4f6fa),
+// los CINCO rotulos que salen de CHICA se pintaban #f2f4f8 — la tinta casi blanca de la DEMO, sobre
+// blanco, o sea invisibles — mientras que los tres que pisan el color adentro de build() salian bien.
+// Mismo archivo, mismo helper: la unica diferencia era DONDE se leyo LOOK. Es el defecto de la regla 9
+// entrando por la puerta de al lado, sin un solo hexadecimal escrito a mano.
+const CHICA = () => ({ fuente: 'DMSans', peso: 500, size: 200, tracking: 0.24, color: LOOK.tinta })
+const CIFRA = () => ({ fuente: 'Bricolage', peso: 800, size: 200, tracking: 0.06, color: LOOK.tinta })
 
 export function build(ctx) {
   const { THREE, gsap, mundoW, mundoH, camera, distBase, rnd, fondo, pelicula, bloom } = ctx
@@ -193,7 +216,7 @@ export function build(ctx) {
   // ================================================================ B · el rótulo y el contador
   // beat 0.5-1.0. Tipografía chica con tracking alto revelada por MÁSCARA: el texto se escribe de
   // izquierda a derecha. Un fundido acá sería la transición de quien no eligió ninguna.
-  const rot = izq(rotulo(D.rotulo, 0.16, mundoW * 0.62, CHICA), -MX, 0.44)
+  const rot = izq(rotulo(D.rotulo, 0.16, mundoW * 0.62, CHICA()), -MX, 0.44)
   gAp.add(rot)
   const rotX = rot.position.x
   rot.userData.prog.value = 0
@@ -202,12 +225,12 @@ export function build(ctx) {
 
   // El micro-rotulo decia `REC · 124 BPM`: jerga del motor, en el video de un cliente. El dominio de
   // la propia pagina ocupa el mismo lugar, mide parecido y ademas es cierto.
-  const micro = izq(rotulo(sello(0), 0.115, mundoW * 0.4, { ...CHICA, tracking: 0.3, color: LOOK.acento2 }), -MX, -0.45)
+  const micro = izq(rotulo(sello(0), 0.115, mundoW * 0.4, { ...CHICA(), tracking: 0.3, color: LOOK.acento2 }), -MX, -0.45)
   gAp.add(micro)
   micro.userData.prog.value = 0
   de(micro.userData.prog, { value: 0 }, { value: 1.08, duration: b(0.4), ease: E.frena(2) }, b(0.82))
 
-  const formato = der(rotulo('1080 · 1920', 0.105, mundoW * 0.4, { ...CHICA, tracking: 0.3 }), MX, -0.45)
+  const formato = der(rotulo('1080 · 1920', 0.105, mundoW * 0.4, { ...CHICA(), tracking: 0.3 }), MX, -0.45)
   formato.material.uniforms.uDir.value = 1
   gAp.add(formato)
   formato.userData.prog.value = 0
@@ -218,7 +241,7 @@ export function build(ctx) {
   // avisa al ojo que algo va a pasar en el 1.5.
   const CNT = [['00', 0.25], ['05', 0.5], ['11', 1.0], ['17', 1.25], ['21', 1.375], ['24', 1.4375]]
   CNT.forEach(([txt, beat], i) => {
-    const m = planoTexto(txt, 0.30, CIFRA)
+    const m = planoTexto(txt, 0.30, CIFRA())
     m.position.set(MX - (0.30 * m.userData.ar) / 2, 0.44, 0.1)
     m.renderOrder = 6
     m.visible = false
@@ -358,8 +381,18 @@ export function build(ctx) {
   })
 
   const DUR = b(0.95)
+  // EL TERCER STAGGER QUE SE SUMABA, y el más grande de los tres. Los otros dos (el desfase del
+  // flotado y el del pateo) ya reparten un techo entre las letras; éste seguía siendo 50 ms FIJOS por
+  // letra, que con la palabra entrando desde z -13 es el que más empuja: a partir de 36 letras la
+  // última arranca tan tarde que la escena se pasa de sus seis beats y se come la siguiente. Medido:
+  // con 40 letras la timeline daba 3.136 s contra un techo de 2.903. Nadie lo veía porque la duración
+  // se mide con "ANTHEM" y el gate de encaje llega hasta "TRANSPORTES INTERNACIONALES" (15 de corrido).
+  // El techo de 1.55 beats está elegido para que hasta quince letras el paso siga siendo exactamente
+  // 0.05 y la entrada de siempre no se mueva ni un frame; recién de dieciséis en adelante el abanico
+  // se comprime en vez de desbordar.
+  const pasoEntrada = Math.min(0.05, b(1.55) / Math.max(1, letras.length))
   letras.forEach((m, i) => {
-    const t0 = T + i * 0.05                       // stagger de 50 ms: el ojo lee intención, no un grupo
+    const t0 = T + i * pasoEntrada                // el ojo lee intención, no un grupo
     tl.set(m.material, { opacity: 0 }, 0)
     tl.set(m.material, { opacity: 1 }, t0)
     de(m.position, { z: -13 }, { z: 0, duration: DUR, ease: E.frena(3) }, t0)
@@ -385,7 +418,7 @@ export function build(ctx) {
 
   // Cabecera sobre la palabra: rótulo centrado con dos filetes que crecen hacia afuera desde su borde.
   const CAB_Y = 1.62
-  const cab = rotulo(D.rotulo, 0.135, mundoW * 0.42, { ...CHICA, tracking: 0.3 })
+  const cab = rotulo(D.rotulo, 0.135, mundoW * 0.42, { ...CHICA(), tracking: 0.3 })
   cab.position.set(0, CAB_Y, 0.1)
   g.add(cab)
   cab.userData.prog.value = 0
@@ -405,13 +438,45 @@ export function build(ctx) {
   // palabra puesta y una palabra viva.
   de(gPal.position, { x: 0.07 }, { x: -0.07, duration: b(2.9), ease: E.vaiven() }, b(3.0))
   de(gPal.scale, { x: 1, y: 1 }, { x: 1.012, y: 1.012, duration: b(1.42), ease: E.vaiven(), yoyo: true, repeat: 1 }, b(3.0))
+  // El desfase de período por letra tenía el mismo defecto de "se suma" que los pateos de acá abajo, y
+  // este SÍ se estaba pasando: el tween arranca en el 3.0, va y vuelve (yoyo), así que su período no
+  // puede pasar de beat y medio o la escena termina después de sus seis beats y se come la siguiente.
+  // Con 0.02 fijos la letra 13 pedía 1.56 y la timeline duraba 2.961 s en un lugar de 2.903 — o sea que
+  // toda marca de doce letras para arriba pisaba a la escena de al lado, en silencio. No lo cazaba
+  // nadie porque la duración se mide con "ANTHEM", que tiene seis. El incremento se REPARTE: con seis
+  // letras da exactamente lo de antes, y con quince comprime el abanico en vez de desbordarlo.
+  const desfase = Math.min(0.02, 0.18 / Math.max(1, letras.length))
   letras.forEach((m, i) => {
     const amp = (i % 2 ? 0.055 : -0.045) - i * 0.004
-    de(m.position, { z: 0 }, { z: amp, duration: b(1.30 + i * 0.02), ease: E.vaiven(), yoyo: true, repeat: 1 }, b(3.0))
+    de(m.position, { z: 0 }, { z: amp, duration: b(1.30 + i * desfase), ease: E.vaiven(), yoyo: true, repeat: 1 }, b(3.0))
+  })
+
+  // ---- el nombre PATEA en el 4 y en el 5
+  // La deriva y la respiración de arriba mueven píxeles y no cuentan un evento: son continuas, y lo
+  // continuo el ojo lo lee como que la imagen está viva, no como que algo pasó. Acá el nombre se
+  // DESPLAZA por letras: cada una salta a su desfase en un frame —eso es el evento— y vuelve pasándose.
+  //
+  // EL SALTO VA EN Y, NO EN X. Las letras están a 1.6 cm una de otra: un desplazamiento horizontal las
+  // encima y el nombre de la marca sale pisado en el cuadro más grande de la pieza. Eso es un defecto,
+  // no un gesto. En vertical el reparto a lo ancho no se toca y la palabra sigue siendo legible en
+  // todos los frames del salto.
+  //
+  // El segundo golpe es más chico y arranca por el lado contrario (el `+ k` invierte la alternancia):
+  // dos golpes idénticos separados por un beat se leen a metrónomo.
+  //
+  // EL STAGGER SE REPARTE, NO SE SUMA. Con 25 ms fijos por letra, una marca de quince letras empuja el
+  // último tween 0.35 s más allá del arranque y la escena se pasa de sus seis beats — se come la que
+  // sigue. El techo es fijo y el paso sale de dividirlo.
+  const paso = Math.min(0.028, b(0.42) / Math.max(1, letras.length))
+  ;[[4.0, 0.10, b(0.34)], [5.0, 0.062, b(0.28)]].forEach(([beat, amp, dur], k) => {
+    letras.forEach((m, i) => {
+      const off = ((i + k) % 2 ? 1 : -1) * ALTO * amp
+      de(m.position, { y: off }, { y: 0, duration: dur, ease: E.llega(2.4) }, b(beat) + i * paso)
+    })
   })
 
   // Segunda línea, revelada por máscara. Dice para qué existe la pieza.
-  const sub = rotulo(D.claim, 0.165, mundoW * 0.86, { ...CHICA, tracking: 0.18 })
+  const sub = rotulo(D.claim, 0.165, mundoW * 0.86, { ...CHICA(), tracking: 0.18 })
   sub.position.set(0, -1.24, 0.1)
   g.add(sub)
   sub.userData.prog.value = 0
@@ -419,7 +484,7 @@ export function build(ctx) {
 
   // Decia '6 ESCENAS · 0 PLANTILLAS' — autopromocion del motor metida en la pieza de otro. El claim
   // de la pagina es lo que corresponde en ese renglon, y si la pagina no dio ninguno no va nada.
-  const sub2 = rotulo(D.claim || '', 0.11, mundoW * 0.6, { ...CHICA, tracking: 0.34, color: LOOK.acento2 })
+  const sub2 = rotulo(D.claim || '', 0.11, mundoW * 0.6, { ...CHICA(), tracking: 0.34, color: LOOK.acento2 })
   sub2.position.set(0, -1.66, 0.1)
   g.add(sub2)
   sub2.userData.prog.value = 0
@@ -428,22 +493,58 @@ export function build(ctx) {
   // Fila de metadatos en el tercio inferior. El aire es una decisión, no un sobrante: sin esto la
   // mitad de abajo del cuadro queda como grilla vacía durante tres beats, que es exactamente el rato
   // en que el espectador decide si desliza.
-  const reglon = tenue(MX * 2, 0.006, 0.35)
-  reglon.position.set(0, -2.64, -0.4)
-  reglon.scale.x = 0.001
-  g.add(reglon)
-  apagadoHasta(reglon, b(3.4))
-  de(reglon.scale, { x: 0.001 }, { x: 1, duration: b(0.7), ease: E.frena(5) }, b(3.4))
+  // El renglón se dibujaba DE UNA: una barra que barría de punta a punta en 0.7 beats. Eso es
+  // movimiento, no es un evento — un barrido lento no lo cuenta ni el ojo ni el analizador. Ahora se
+  // dibuja POR TRAMOS, y los tramos SE APURAN. Es exactamente el gesto del contador del arranque, que
+  // se acelera hacia el corte del 1.5; acá la regla termina de cerrarse en el 3.875 y el nombre patea
+  // en el 4.0, así que los cinco golpes se leen como una entrada.
+  //
+  // LOS TIEMPOS SON SEMICORCHEAS, NO NÚMEROS LINDOS. Iban en 3.30, 3.52, 3.68, 3.79 y 3.86: valores
+  // que no son ni beats ni medios ni cuartos ni dieciseisavos de nada, elegidos a ojo para que la
+  // separación se achicara. El gesto era el correcto y el resultado en pantalla es el MISMO —los cinco
+  // caen en los frames 48, 52, 54, 56 y 57 con una lista y con la otra—, pero una escena que se
+  // sincroniza con una música que no está no puede tener eventos fuera de la grilla: el contador de
+  // acá arriba usa 0.25, 0.5, 1.0, 1.25, 1.375 y 1.4375, o sea cuartos, octavos y dieciseisavos, y es
+  // el vocabulario del archivo. Además 3.79 caía a 0.5 ms del borde del frame 55: de qué lado de la
+  // línea aterrizaba dependía del quinto decimal del BPM.
+  //
+  // Los tramos dejan 6 cm de aire entre sí — el 1% del largo. Alcanza para que durante el dibujado se
+  // vean CINCO piezas y no una barra a saltos, y en el estado final se lee como lo que dice ser: una
+  // regla graduada, no un filete partido.
+  const REGLA_Y = -2.64
+  const REGLA_T = [3.25, 3.5625, 3.6875, 3.8125, 3.875]
+  const anchoT = (MX * 2) / REGLA_T.length
+  // Anclado por el borde izquierdo, como `rayaDesde`, para que cada tramo CREZCA hacia la derecha en
+  // vez de abrirse desde su centro: abriéndose desde el centro, cinco tramos a la vez parpadean como
+  // guiones y no como una línea que se está trazando.
+  const regla = REGLA_T.map((beat, i) => {
+    const t = tenue(anchoT - 0.06, 0.006, 0.35)
+    t.geometry.translate((anchoT - 0.06) / 2, 0, 0)
+    t.position.set(-MX + i * anchoT, REGLA_Y, -0.4)
+    t.scale.x = 0.001
+    g.add(t)
+    apagadoHasta(t, b(beat))
+    de(t.scale, { x: 0.001 }, { x: 1, duration: 3 * F, ease: E.frena(3) }, b(beat))
+    return t
+  })
+  // Y se retira EN SENTIDO CONTRARIO justo antes del corte, un tramo cada dos frames. Nada salía de
+  // esta escena: terminaba entera y el corte la encontraba llena, que es lo que hace que un corte se
+  // lea como que el video se movió. La regla replegándose mientras el testigo de la barra de progreso
+  // termina su recorrido hacia el otro lado son cinco eventos más en el tramo más muerto de la cola.
+  // El arranque del repliegue va en el 5.25 —un cuarto de beat— por lo mismo que la lista de arriba:
+  // el 5.30 no era nada. Los cinco tramos se apagan en los mismos frames (77, 79, 81, 83 y 85) y
+  // sobran dos frames más de aire antes del corte.
+  regla.forEach((t, i) => tl.set(t, { visible: false }, b(5.25) + (regla.length - 1 - i) * 2 * F))
 
   // 'CAPITULO 01 — APERTURA' era el nombre INTERNO de la escena impreso en el cuadro: no solo estaba
   // en castellano en la pieza de una marca inglesa, delataba la plantilla. Un indice puro compone
   // igual y no dice nada que pueda ser falso.
-  const metaL = izq(rotulo(marca(1, 6), 0.10, mundoW * 0.5, { ...CHICA, tracking: 0.32 }), -MX, -2.44)
+  const metaL = izq(rotulo(marca(1, 6), 0.10, mundoW * 0.5, { ...CHICA(), tracking: 0.32 }), -MX, -2.44)
   g.add(metaL)
   metaL.userData.prog.value = 0
   de(metaL.userData.prog, { value: 0 }, { value: 1.08, duration: b(0.5), ease: E.frena(2) }, b(3.6))
 
-  const metaR = der(rotulo(sello(1), 0.10, mundoW * 0.42, { ...CHICA, tracking: 0.32, color: LOOK.acento2 }), MX, -2.44)
+  const metaR = der(rotulo(sello(1), 0.10, mundoW * 0.42, { ...CHICA(), tracking: 0.32, color: LOOK.acento2 }), MX, -2.44)
   metaR.material.uniforms.uDir.value = 1
   g.add(metaR)
   metaR.userData.prog.value = 0
@@ -475,6 +576,32 @@ export function build(ctx) {
   }
   // Y el marco late con él, un 0.8%: casi no se ve, pero si se apaga el cuadro se muere.
   de(gMarco.scale, { x: 1, y: 1 }, { x: 1.008, y: 1.008, duration: b(0.5), ease: E.vaiven(), yoyo: true, repeat: 3 }, b(3.0))
+
+  // ---- los corchetes PARPADEAN sobre el beat
+  // Ese latido del 0.8% se VE pero no se CUENTA: el ojo registra que el marco respira, no que pasó
+  // algo. Sobre los beats de la cola los cuatro corchetes se apagan DOS FRAMES y vuelven. Es el gesto
+  // de un visor —66 ms, sin desplazar un milímetro de la composición— y es lo más barato que hay para
+  // poner un golpe seco donde no había ninguno: no entra ningún objeto nuevo al cuadro.
+  //
+  // Se apaga cada esquina un frame después de la anterior, así el parpadeo RECORRE el marco en vez de
+  // apagarlo entero: apagado entero se lee a error de reproducción, escalonado se lee a intención.
+  //
+  // El del 4.5 va a CONTRATIEMPO y sólo con la diagonal. Dos golpes iguales separados por un beat
+  // exacto se leen a metrónomo; el impar en el medio es lo que los convierte en un ritmo.
+  //
+  // Se apaga la MALLA y no el grupo de la esquina a propósito: el grupo se apaga igual de bien en
+  // pantalla, pero la firma con la que se mide "nada descansa" mira malla por malla y un parpadeo
+  // hecho sobre el padre no figura en ninguna medición.
+  esquinas.forEach(e => e.children.forEach(m => tl.set(m, { visible: true }, 0)))
+  ;[[4.0, [0, 1, 2, 3]], [4.5, [0, 3]], [5.0, [0, 1, 2, 3]]].forEach(([beat, cuales]) => {
+    cuales.forEach((c, k) => {
+      const t0 = b(beat) + k * F
+      esquinas[c].children.forEach(m => {
+        tl.set(m, { visible: false }, t0)
+        tl.set(m, { visible: true }, t0 + 2 * F)
+      })
+    })
+  })
 
   // ================================================================ devolver la cámara
   // Si la escena no deja la cámara donde la encontró, la que sigue arranca desde otro punto de vista y

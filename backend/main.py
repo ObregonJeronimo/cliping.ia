@@ -1408,3 +1408,227 @@ async def _run_batch_job(batch_id: str, req: TimelineBatchRequest, n: int):
     except Exception as e:
         print(f"[batch] ERROR fatal: {e}")
         J.update({"status": "error", "error": str(e)[:400]})
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# MOTOR 3D — el camino de backend/motor.py (captura -> pagemodel -> DATOS -> render3d)
+# expuesto por HTTP. Aca NO se reimplementa ni un paso del pipeline: se llama al mismo
+# motor.render() que corre el CLI. Esa es la unica forma de que la pantalla y
+# `python backend/motor.py <url>` no se separen; el dia que den videos distintos, el bug
+# esta en este archivo y no en el motor.
+# ──────────────────────────────────────────────────────────────────────────────
+_MOTOR3D_AIRES_DIR = Path(__file__).parent.parent / "render3d" / "demo" / "aires"
+_MOTOR3D_HEROES_TTL = 60          # segundos
+_motor3d_heroes_cache: dict = {"ts": 0.0, "data": []}
+
+# Un render 3D tiene un Chromium y un ffmpeg adentro, y ademas ESCRIBE el cache por dominio
+# (tools/out/motor/<dominio>/pagemodel.json y datos.json). Dos renders de la misma pagina a la vez
+# se pisan esos archivos y el segundo puede terminar renderizando los datos del primero — un video
+# con la marca equivocada y ni un error en el log. Se atienden de a uno.
+_motor3d_turno = asyncio.Semaphore(1)
+
+
+async def _motor3d_heroes() -> list[dict]:
+    """Catalogo de heroes, LEIDO de los modulos via motor.heroes_disponibles().
+
+    No se copia la lista aca a proposito: una copia se desincroniza el dia que alguien agrega un
+    hero, y el sintoma seria un selector que ofrece algo que no existe. Corre en un hilo porque por
+    dentro levanta un `node` (bloqueante) y congelar el loop dejaria de responder el polling de
+    /api/jobs. El cache es corto (60 s) para que la pantalla pueda pedirlo seguido sin pagar un
+    proceso por request, pero que un hero nuevo igual aparezca solo, sin reiniciar el backend.
+    """
+    ahora = time.time()
+    if _motor3d_heroes_cache["data"] and (ahora - _motor3d_heroes_cache["ts"]) < _MOTOR3D_HEROES_TTL:
+        return _motor3d_heroes_cache["data"]
+    import motor   # perezoso, como pagemodel: si motor.py se rompe, el backend igual levanta
+    heroes = await asyncio.to_thread(motor.heroes_disponibles)
+    _motor3d_heroes_cache.update({"ts": ahora, "data": heroes})
+    return heroes
+
+
+def _motor3d_aires() -> list[str]:
+    """Los aires que EXISTEN, leidos del directorio de modulos por la misma razon que los heroes.
+    Importa para la seguridad ademas de para el selector: `aire` termina en un import dinamico
+    dentro de la pagina del render (`./aires/${spec.aire}.js`, render3d/demo/main.js), asi que un
+    valor que no este en esta lista no puede pasar."""
+    try:
+        return sorted(p.stem for p in _MOTOR3D_AIRES_DIR.glob("*.js"))
+    except Exception as e:
+        print(f"[motor3d] no se pudo leer el catalogo de aires: {e}")
+        return []
+
+
+def _motor3d_informe(url: str, salida: str, pedido: str) -> dict:
+    """Que hero se uso REALMENTE y que material dio la pagina. Best-effort: si no se puede medir, el
+    job no dice nada (y la pantalla, que solo repite lo que el job informa, no muestra ningun aviso).
+
+    Las dos fuentes ya las escribe el pipeline, no se re-deduce nada:
+      · <mp4>.plan.json  -> los heroes que el secuenciador ejecuto (render3d._guardar_plan)
+      · el cache del dominio -> tira.png y datos.elementos, o sea el material que se consiguio
+    Si el hero pedido esta entre los usados NO hubo sustitucion, aunque una pieza larga haya metido
+    otros heroes en las escenas siguientes: informar el primero de la lista inventaria un reemplazo
+    que no paso."""
+    out: dict = {}
+    try:
+        with open(salida + ".plan.json", encoding="utf-8") as f:
+            usados = [h for h in (json.load(f).get("heroes") or []) if h]
+        if usados:
+            out["heroUsado"] = pedido if (pedido and pedido in usados) else usados[0]
+            out["heroesUsados"] = usados
+    except Exception as e:
+        print(f"[motor3d] sin plan del render (no informo el hero usado): {e}")
+    try:
+        import motor
+        # _dominio() y SALIDA del propio motor: rehacer la ruta del cache aca la desincroniza el dia
+        # que el motor cambie como nombra sus carpetas, y el informe empezaria a medir un directorio
+        # que no existe -> "la pagina no dio nada" sobre una pagina que dio todo.
+        dst = os.path.join(motor.SALIDA, motor._dominio(url))
+        mat = []
+        if os.path.exists(os.path.join(dst, "tira.png")):
+            mat.append("tira")
+        try:
+            with open(os.path.join(dst, "datos.json"), encoding="utf-8") as f:
+                if (json.load(f).get("datos") or {}).get("elementos"):
+                    mat.append("elementos")
+        except Exception:
+            pass
+        out["material"] = mat
+        # Aviso para el proximo que agregue un material: sin medicion aca, el informe lo va a dar por
+        # ausente y la pantalla va a decir que la pagina no lo dio.
+        declarados = {n for h in (_motor3d_heroes_cache.get("data") or [])
+                      for n in (h.get("necesita") or []) if n and n != "nada"}
+        sin_medir = declarados - {"tira", "elementos"}
+        if sin_medir:
+            print(f"[motor3d] material declarado que este informe no sabe medir: {sorted(sin_medir)}")
+    except Exception as e:
+        print(f"[motor3d] no se pudo medir el material de la pagina: {e}")
+    return out
+
+
+@app.get("/api/motor3d/heroes")
+async def motor3d_heroes():
+    """Que heroes hay, que material necesita cada uno y cuantos beats ocupa. Van tambien los aires:
+    son el otro parametro de /render con vocabulario cerrado, y el selector los pide en la misma
+    pantalla."""
+    try:
+        return {"heroes": await _motor3d_heroes(), "aires": _motor3d_aires(), "error": ""}
+    except Exception as e:
+        # Forma de error del resto del repo: 200 + {"error"} (el front ya sabe leerla).
+        print(f"[motor3d] leer los heroes fallo: {e}")
+        return {"heroes": [], "aires": _motor3d_aires(), "error": str(e)[:300]}
+
+
+class Motor3DRequest(BaseModel):
+    url: str = ""
+    hero: str = ""             # '' = lo elige el motor segun el material que consiguio la captura
+    dur: int = 20              # duracion objetivo en segundos (15/20/30)
+    seed: int = 7              # cambiala para OTRA version del MISMO video (el motor es determinista)
+    aire: str = ""             # '' = el que sale del rubro + el DNA medidos
+    recapturar: bool = False   # ignora la captura cacheada del dominio y vuelve a bajar la pagina
+
+
+@app.post("/api/motor3d/render")
+async def motor3d_render(req: Motor3DRequest):
+    """URL -> reel vertical 9:16. Un render tarda entre uno y tres minutos, asi que NO es sincronico:
+    devuelve {job_id} y el front lo pollea en /api/jobs/{job_id} como el resto del repo.
+
+    Todo lo que viene de afuera se valida ACA, antes de crear el job: asi el usuario recibe el motivo
+    real en la respuesta del POST en vez de un job que muere a los dos minutos con un error del
+    navegador."""
+    url = (req.url or "").strip()
+    if not url:
+        return {"error": "Necesitas una URL"}
+    # ANTI-SSRF. La barrera es site_capture.url_is_safe() —la misma que usa la captura— y se llama
+    # explicitamente aca por dos razones: (1) el POST devuelve el motivo en vez de fallar mudo, y
+    # (2) si el dominio YA esta capturado, motor.render() reusa el cache y NO pasa por capture_all,
+    # o sea que la guarda de adentro no llegaria a correr nunca. Esta es la que decide de verdad.
+    import site_capture
+    ok, motivo = await asyncio.to_thread(site_capture.url_is_safe, url)   # resuelve DNS: a un hilo
+    if not ok:
+        print(f"[motor3d] URL rechazada (SSRF guard): {motivo} :: {url!r}")
+        return {"error": f"URL rechazada: {motivo}"}
+
+    # `hero` elige un MODULO. Se valida contra el catalogo real —el mismo que devuelve /heroes— y
+    # nunca se interpola crudo: lo que no esta en la lista no llega al motor.
+    hero = (req.hero or "").strip()
+    if hero:
+        try:
+            ids = [h.get("id") for h in await _motor3d_heroes()]
+        except Exception as e:
+            return {"error": f"no se pudo validar el hero contra el catalogo: {str(e)[:200]}"}
+        if hero not in ids:
+            return {"error": f"hero desconocido: {hero!r}. Hay: {', '.join(i for i in ids if i)}"}
+
+    aire = (req.aire or "").strip()
+    if aire:
+        aires = _motor3d_aires()
+        if aire not in aires:
+            return {"error": f"aire desconocido: {aire!r}. Hay: {', '.join(aires)}"}
+
+    # Topes: `dur` es tiempo de render y de GPU. La semilla se envuelve en 32 bits en vez de recortarse
+    # porque el "otra version" del estudio la avanza con el salto aureo (s + 0x9e3779b1 >>> 0): con un
+    # tope, todas las semillas grandes colapsarian en el mismo numero y el boton devolveria el MISMO video.
+    dur = max(5, min(int(req.dur or 20), 60))
+    seed = abs(int(req.seed or 0)) % (2 ** 32)
+
+    job_id = str(uuid.uuid4())
+    jobs[job_id] = {
+        "id": job_id, "kind": "motor3d", "status": "queued", "step": None, "progress": 0,
+        "videoPath": None, "videoFilename": None, "videoUrl": "", "cloudinaryUrl": "",
+        "url": url, "hero": hero, "aire": aire, "dur": dur, "seed": seed,
+        "error": None, "createdAt": datetime.utcnow().isoformat(),
+    }
+    asyncio.create_task(_run_motor3d_job(job_id, url, hero, aire, dur, seed, bool(req.recapturar)))
+    return {"job_id": job_id}
+
+
+async def _run_motor3d_job(job_id: str, url: str, hero: str, aire: str,
+                           dur: int, seed: int, recapturar: bool):
+    # OUTPUTS_DIR (y no Path(__file__).parent/"outputs"): es EL MISMO directorio del que sirven
+    # /api/video/{filename} y /outputs, asi que el mp4 queda descargable sin depender del cwd.
+    OUTPUTS_DIR.mkdir(exist_ok=True)
+    salida = (OUTPUTS_DIR / f"{job_id}_motor3d.mp4").absolute()
+    try:
+        if _motor3d_turno.locked():
+            jobs[job_id].update({"step": "en cola (hay otro render 3D en curso)", "progress": 3})
+        async with _motor3d_turno:
+            import motor
+            jobs[job_id].update({"status": "processing", "step": "captura + render", "progress": 10})
+            print(f"[motor3d] job {job_id[:8]} -> {url} | hero {hero or 'auto'} · aire {aire or 'auto'} · {dur}s · semilla {seed}")
+
+            # En un HILO con su propio loop: motor.render() es una corrutina pero tiene tramos
+            # BLOQUEANTES adentro (el `node` de anthem-datos y, sobre todo, el ffmpeg que transcodifica
+            # a H.264, que son decenas de segundos). En el loop del server eso congela la API entera
+            # —incluido el /api/jobs con el que el front sigue ESTE job—. Probado: playwright anda
+            # bien en un loop propio dentro de un hilo.
+            def _correr():
+                return asyncio.run(motor.render(
+                    url, str(salida), hero=hero or None, dur=dur, seed=seed,
+                    aire=aire or None, recapturar=recapturar))
+
+            await asyncio.to_thread(_correr)
+
+        # QUE PASO DE VERDAD. El hero se pide ANTES de leer la pagina, asi que puede no poder armarse
+        # y el motor compone con otro: el job tiene que decirlo, porque es la unica fuente que lo sabe.
+        # Callarlo deja al usuario creyendo que vio el hero que eligio.
+        jobs[job_id].update(_motor3d_informe(url, str(salida), hero))
+
+        jobs[job_id].update({"status": "uploading", "step": "upload", "progress": 88})
+        cloud = ""
+        try:
+            from cloudinary_upload import upload_video
+            cloud = await upload_video(str(salida), f"motor3d_{job_id[:8]}")
+            print(f"[motor3d] Cloudinary OK -> {cloud}")
+        except Exception as ce:
+            # Igual que en timeline: sin Cloudinary el video existe y se sirve local; no es un fallo.
+            print(f"[motor3d] Cloudinary fallo (sigue el archivo local): {ce}")
+
+        jobs[job_id].update({
+            "status": "done", "step": "export", "progress": 100,
+            "videoPath": str(salida), "videoFilename": salida.name,
+            "cloudinaryUrl": cloud, "videoUrl": cloud or f"/api/video/{salida.name}",
+        })
+        print(f"[motor3d] OK -> {salida.name} ({salida.stat().st_size // 1024} kb)")
+    except Exception as e:
+        print(f"[motor3d] ERROR: {e}")
+        jobs[job_id].update({"status": "error", "error": str(e)[:400]})

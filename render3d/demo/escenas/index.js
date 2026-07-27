@@ -13,6 +13,8 @@ import * as tipografia from './tipografia.js'
 import * as tarjetas from './tarjetas.js'
 import * as destello from './destello.js'
 import * as rafaga from './rafaga.js'
+import * as pantalla from './pantalla.js'
+import * as columna from './columna.js'
 import * as cierre from './cierre.js'
 
 // ESTO YA NO ES EL ORDEN DE LA PIEZA: es el CATALOGO de lo que existe. El orden y la seleccion los
@@ -24,4 +26,4 @@ import * as cierre from './cierre.js'
 // El toro vuelve al catalogo. Salio de la pieza cuando el hero ocupo su lugar (geometria generica vs.
 // la pagina del usuario), pero como ALTERNATIVA sigue siendo bueno: es la unica escena que no
 // necesita absolutamente nada, y es lo que sostiene el espacio cuando la pagina no dio material.
-export const ESCENAS = [apertura, hero, toro, tipografia, rafaga, tarjetas, destello, cierre]
+export const ESCENAS = [apertura, hero, toro, tipografia, rafaga, pantalla, columna, tarjetas, destello, cierre]

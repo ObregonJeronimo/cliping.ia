@@ -316,9 +316,22 @@ def main():
     if not args:
         print(__doc__)
         return
+    # EL BPM SALE DEL PLAN si el render dejo uno. `ritmo_en_beat` compara los cortes contra una grilla,
+    # y compararlos contra la grilla EQUIVOCADA no mide nada: una pieza estirada de 28 a 30 segundos
+    # corre a 112 y no a 120, asi que medida contra 120 sus cortes caen 0.536 en vez de 0.79 y el
+    # numero acusa de arritmica a una pieza que esta perfectamente en tiempo.
+    def _bpm_de(v):
+        pp = Path(str(v) + ".plan.json")
+        if pp.exists():
+            try:
+                return float(json.loads(pp.read_text(encoding="utf-8")).get("bpm") or bpm)
+            except Exception:
+                return bpm
+        return bpm
+
     ms = []
     for v in args:
-        m = medir(v, bpm=bpm, ancho=ancho)
+        m = medir(v, bpm=_bpm_de(v), ancho=ancho)
         Path(str(v) + ".metricas.json").write_text(json.dumps(m, indent=1), encoding="utf-8")
         ms.append(m)
     tabla(ms)

@@ -97,6 +97,11 @@ export function datosDe(pm) {
     pie: [pm.url ? new URL(pm.url).hostname.replace(/^www\./, '') : '', '1080x1920', '30 FPS'].filter(Boolean),
     dominio: pm.url ? new URL(pm.url).hostname.replace(/^www\./, '') : '',
     elementos: (pm.assets?.elementos || []).map(e => ({ rol: e.rol, url: e.url, ar: e.ar })),
+    // Si la captura consiguio la TIRA scrolleable. No es contenido: es una condicion de material, y el
+    // guionista la necesita para saber si puede elegir la escena que muestra la pagina a sangre.
+    // Sin este dato, el guion metia esa escena en piezas de sitios que bloquearon al bot movil y salia
+    // un rectangulo vacio de tres segundos.
+    tira: !!pm._tira,
   }
 }
 

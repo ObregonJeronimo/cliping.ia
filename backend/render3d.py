@@ -163,10 +163,19 @@ def _guardar_plan(destino, info):
     try:
         plan = info.get("plan") or []
         beats = info.get("beats") or []
+        # EL BPM QUE SE GUARDA ES EL EFECTIVO. El del aire son 120, pero si la pieza se estiro de 28
+        # a 30 segundos para clavar la duracion pedida, sus cortes ya no caen cada 0.5 s sino cada
+        # 0.536. Guardando el nominal, los tramos calculados a partir de los beats terminaban 2 s
+        # antes que el video y la ultima escena quedaba sin medir.
+        propios = sum(beats) * (60.0 / info["bpm"]) if beats and info.get("bpm") else 0
+        bpm_ef = info.get("bpm")
+        if propios and info.get("dur"):
+            bpm_ef = round(info["bpm"] * propios / info["dur"], 2)
         datos = {
-            "plan": plan, "beats": beats, "bpm": info.get("bpm"),
+            "plan": plan, "beats": beats, "bpm": bpm_ef, "bpmAire": info.get("bpm"),
             "heroes": info.get("heroes") or [], "dur": info.get("dur"),
             "tramos": ",".join(f"{i}:{b}" for i, b in zip(plan, beats)),
+            "escala": round(propios / info["dur"], 4) if propios and info.get("dur") else 1,
         }
         with open(str(destino) + ".plan.json", "w", encoding="utf-8") as f:
             json.dump(datos, f, ensure_ascii=False, indent=1)
@@ -199,7 +208,7 @@ async def grabar_mp4(spec, salida, raiz_assets=None, gpu=False, bitrate=12_000_0
             fps = spec.get("fps", 30)
             if info.get("dur"):
                 spec["dur"] = info["dur"]           # la pagina manda: la pieza a mano se mide en beats
-            _guardar_plan(destino, info)
+            _guardar_plan(salida, info)
             n = int(round(spec["dur"] * fps))
             await pg.evaluate("(b) => window.URVID.grabarInicio(b)", bitrate)
             for i in range(n):

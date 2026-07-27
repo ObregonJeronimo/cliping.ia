@@ -23,15 +23,17 @@ import { guionDe, beatsDelGuion, ajusteDe, TOPE_AJUSTE } from '../render3d/demo/
 const CAT = new Map([
   ['apertura', { beats: 6 }], ['hero', { beats: 8 }], ['toro', { beats: 6 }],
   ['tipografia', { beats: 8 }], ['tarjetas', { beats: 6 }], ['destello', { beats: 4 }],
-  ['rafaga', { beats: 6 }],
+  ['rafaga', { beats: 6 }], ['pantalla', { beats: 6 }], ['columna', { beats: 6 }],
   ['cierre', { beats: 6 }],
 ])
 
 const PAGINAS = {
   // Una landing completa: cuatro frases, cifras, golpe. Da para elegir.
-  rica: { marca: 'STRIPE', frases: ['a', 'b', 'c', 'd'], datos: [{ etiqueta: 'X' }, { etiqueta: 'Y' }], golpe: 'G', elementos: [1, 2, 3, 4] },
-  // Lo que da la mayoria de las paginas reales: algo de copy, ninguna cifra.
-  media: { marca: 'LINEAR', frases: ['a', 'b', 'c', 'd'], datos: [], golpe: 'G' },
+  rica: { marca: 'STRIPE', frases: ['a', 'b', 'c', 'd'], datos: [{ etiqueta: 'X' }, { etiqueta: 'Y' }], golpe: 'G', elementos: [1, 2, 3, 4], tira: true },
+  // Lo que da la mayoria de las paginas reales: algo de copy, ninguna cifra, pero SI captura movil y
+  // algunos recortes. Que no los tuviera era irreal y hacia que la compuerta subestimara el catalogo:
+  // una pagina normal si puede sostener la escena a sangre y la columna de recortes.
+  media: { marca: 'LINEAR', frases: ['a', 'b', 'c', 'd'], datos: [], golpe: 'G', elementos: [1, 2, 3], tira: true },
   // El caso que rompe: casi nada. Una pagina detras de login, una 404, un sitio que bloqueo al bot.
   pobre: { marca: 'Q', frases: ['a'], datos: [], golpe: null },
 }
@@ -48,6 +50,8 @@ const cortas = []
 const REQ = {
   tipografia: d => (d.frases || []).filter(Boolean).length >= 4,
   rafaga: d => ((d.elementos || []).length + (d.frases || []).filter(Boolean).length) >= 3,
+  pantalla: d => !!d.tira,
+  columna: d => (d.elementos || []).length >= 2,
   tarjetas: d => (d.datos || []).length >= 1,
   destello: d => !!d.golpe,
 }
@@ -136,7 +140,7 @@ console.log(`GUION OK — ${combinaciones} guiones (3 paginas x 3 ritmos x ${DUR
   + `duracion, variedad, material, marco y cortes.  ${todos.size} estructuras distintas.`)
 if (cortas.length) {
   const casos = [...new Set(cortas.map(c => c.split('/seed')[0] + ' -> ' + c.split(': ')[1]))]
-  console.log(`  ${cortas.length} guiones quedan cortos porque SE ACABO EL CATALOGO (7 escenas no llenan 30 s a tempo alto):`)
+  console.log(`  ${cortas.length} guiones quedan cortos porque SE ACABO EL CATALOGO (${CAT.size} escenas, y el material de esa pagina no da para mas):`)
   for (const c of casos.slice(0, 6)) console.log(`    ${c}`)
   console.log('    El arreglo es mas escenas, no mas tolerancia de tempo.')
 }

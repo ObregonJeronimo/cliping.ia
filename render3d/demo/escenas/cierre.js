@@ -12,6 +12,12 @@
 //
 // El cuadro nunca está vacío: brackets de esquina, ticks radiales, anillo punteado que gira y
 // polvo en profundidad. Y nada descansa: si un elemento llegó a su lugar, respira.
+//
+// QUE RESPIRE NO ALCANZA — y eso costó una medición para verse. De b1.5 a b4.5 esta escena no tenía
+// un solo cambio DURO: todo lo que pasaba en tres beats era deriva lenta, y una placa que deriva se
+// lee como una placa. Por eso abajo hay un bloque entero de METRÓNOMO que mete un golpe cada medio
+// beat. No cambia la composición: el anillo cierra una sola vez, la marca sigue clavada adentro y el
+// CTA sigue siendo lo único que pide algo. Lo que cambia es que ninguno de los tres espera al final.
 
 import { E, LOOK, b, planoTexto, materialMascara, filete, hex } from '../kit.js'
 // El COPY sale de los DATOS. Lo que queda escrito aca es CHROME de la pieza (rotulos de
@@ -92,6 +98,12 @@ export function build(ctx) {
 
   // PÍLDORA: esquinas redondeadas por SDF. Un plano con la textura ya redondeada quedaría atado a
   // una resolución; el SDF aguanta que la cámara se acerque.
+  //
+  // EL BARRIDO DE BRILLO VA ACÁ ADENTRO, no como un plano encima. Una barra blanca cruzando por
+  // delante habría que recortarla a la forma de la píldora, y recortar un SDF con otro plano es
+  // exactamente el trabajo que el SDF ya está haciendo: `uBrillo` es la posición de la banda en el
+  // mismo espacio en el que se calcula la máscara, así que sale clipeada gratis y con las esquinas
+  // redondeadas correctas. Arranca fuera de rango (-99) para que no haya destello en el frame cero.
   function pildora(w, h, color) {
     const pad = 0.08
     const mat = new THREE.ShaderMaterial({
@@ -99,10 +111,11 @@ export function build(ctx) {
       uniforms: {
         uW: { value: w }, uH: { value: h }, uR: { value: h * 0.5 }, uPad: { value: pad },
         uCol: { value: hex(color).multiplyScalar(1.02) }, uAlfa: { value: 1 },
+        uBrillo: { value: -99 },
       },
       vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
       fragmentShader: `
-        uniform float uW,uH,uR,uPad,uAlfa; uniform vec3 uCol; varying vec2 vUv;
+        uniform float uW,uH,uR,uPad,uAlfa,uBrillo; uniform vec3 uCol; varying vec2 vUv;
         void main(){
           vec2 p = (vUv - 0.5) * vec2(uW + uPad, uH + uPad);
           vec2 q = abs(p) - (vec2(uW, uH) * 0.5 - uR);
@@ -110,6 +123,16 @@ export function build(ctx) {
           float m = smoothstep(0.010, -0.010, d);
           // degradé interno: la píldora deja de ser una mancha plana de color
           vec3 c = uCol * (0.82 + 0.40 * smoothstep(0.0, 1.0, vUv.y));
+          // banda INCLINADA: vertical se lee como un error de render, inclinada se lee como reflejo
+          float bri = smoothstep(0.19, 0.0, abs(p.x - uBrillo + p.y * 0.62));
+          // EL BARRIDO SUMA SOBRE LO QUE FALTA PARA BLANCO, no blanco a secas. Sumando blanco puro por
+          // 0.72, el canal azul del acento por defecto llegaba a 1.96 medido: con toneMapped en false no
+          // rueda, RECORTA, y como el umbral del bloom esta en 0.62 la banda salia como una barra
+          // blanca reventada. Es el mismo defecto que este archivo documenta arriba sobre las
+          // intensidades, cometido desde el otro lado. Contra el hueco que queda hasta 1.0 el brillo
+          // no puede pasarse por definicion: el pico del cuadro sigue siendo el que ya tenia la
+          // pildora sola, y un acento clarito (un amarillo) deja de irse a blanco lavado.
+          c += (vec3(1.0) - min(c, vec3(1.0))) * bri * 0.85;
           gl_FragColor = vec4(c, m * uAlfa);
           if (gl_FragColor.a < 0.004) discard;
         }`,
@@ -156,6 +179,12 @@ export function build(ctx) {
     t.position.set(Math.sin(a) * (R + 0.115), Math.cos(a) * (R + 0.115), -0.02)
     t.rotation.z = -a
     t.scale.setScalar(0)
+    // La dirección RADIAL de cada tick, guardada al construirlo. Los golpes del metrónomo empujan los
+    // ticks fuertes hacia afuera, y sin esto habría que recalcular el ángulo dentro de la timeline —
+    // que es donde el azar y la trigonometría repetida se convierten en bugs de determinismo.
+    t.userData.dx = Math.sin(a); t.userData.dy = Math.cos(a)
+    t.userData.bx = t.position.x; t.userData.by = t.position.y
+    t.userData.fuerte = fuerte
     ticks.push(t); gTicks.add(t)
   }
   gAnillo.add(gTicks)
@@ -173,6 +202,12 @@ export function build(ctx) {
     par.add(h, v)
     par.position.set(bx, by, -0.4)
     par.scale.setScalar(0)
+    // Los golpes del metrónomo re-asientan las esquinas, y para eso hace falta saber hacia dónde es
+    // "afuera". Va por POSICIÓN y no por escala a propósito: la escala de los brackets ya está
+    // ocupada de punta a punta por la entrada y la salida, y dos tweens sobre la misma propiedad se
+    // pisan sin avisar.
+    par.userData.sx = sx; par.userData.sy = sy
+    par.userData.bx = bx; par.userData.by = by
     brackets.push(par); gBrackets.add(par)
   }
   gComp.add(gBrackets)
@@ -191,7 +226,8 @@ export function build(ctx) {
 
   // ---- la marca, dentro del anillo, a escala agresiva
   const gMarca = new THREE.Group()
-  gMarca.position.set(0, CY - 0.24, 0.05)
+  const MY = CY - 0.24                            // su Y de reposo: los golpes la sacuden y vuelven acá
+  gMarca.position.set(0, MY, 0.05)
   const marca = textoMascara(D.marca, 1, LOOK.tinta, { fuente: 'Anton', tracking: 0.01 })
   marca.material.uniforms.uDir.value = 2          // se descubre de abajo hacia arriba
   marca.material.uniforms.uSuave.value = 0.10
@@ -357,6 +393,167 @@ export function build(ctx) {
   // Con una sola marca no hay separadores, y `tl.to([], ...)` no falla: avisa por consola y sigue. Un
   // aviso que nadie lee es peor que un error — se guarda para que la escena se componga con lo que hay.
   if (puntos.length) tl.to(puntos.map(p => p.scale), { x: 1, y: 1, z: 1, duration: b(0.34), ease: E.llega(3.2), stagger: 0.07 }, b(3.55))
+
+  // ==================================================================== EL METRÓNOMO · b1.5 → b4
+  // POR QUÉ EXISTE ESTE BLOQUE, con el número al lado.
+  // Medido frame a frame sobre esta misma escena: entre b1.6 y b5.1 —tres beats y medio, más de la
+  // mitad del cierre— no pasaba NADA duro. El anillo cerraba, la marca llegaba, la píldora aterrizaba,
+  // y de ahí al apagón todo era deriva lenta. El verificador daba verde porque nada se quedaba quieto
+  // del todo, y ese es justo su punto ciego: mide REPOSO, no RITMO. Una placa que respira no está
+  // quieta y aun así se lee como una placa.
+  //
+  // La corrección no es acelerar lo que ya hay ni cambiar la composición: es que el cierre TENGA
+  // PULSO. Cada medio beat cae un golpe. Y cada golpe es un ACORDE —los ticks del anillo revientan
+  // siempre, y encima entra un protagonista distinto cada vez— porque seis golpes idénticos se leen
+  // como un loop roto, no como un ritmo.
+  //
+  // Lo que NO se toca: el anillo principal se dibuja y cierra UNA sola vez (ese golpe es el eje de la
+  // escena y repetirlo lo gastaría), la marca sigue clavada en el centro y el CTA sigue siendo lo
+  // único que le pide algo al que mira.
+  // --- los TICKS son el metrónomo, y ésta es su grilla: los demás elementos entran sobre algunas de
+  // estas casillas, no sobre todas. En cada golpe revienta un tercio de los ticks, y el tercio ROTA
+  // con el número de golpe: así el patrón viaja alrededor del anillo en vez de parpadear siempre igual.
+  const GOLPES = [1.5, 2, 2.5, 3, 3.5, 4]
+  GOLPES.forEach((bt, k) => {
+    ticks.forEach((t, i) => {
+      if ((i + k) % 3 !== 0) return
+      tl.to(t.scale, { y: 2.7, duration: b(0.06), ease: E.frena(3) }, b(bt))
+      tl.to(t.scale, { y: 1, duration: b(0.22), ease: E.acelera(2) }, b(bt + 0.06))
+      // los cuatro ticks FUERTES además salen disparados hacia afuera: "reventar" tiene dirección, y
+      // un tick que sólo se estira hacia los dos lados se lee como que respira, no como que golpea
+      if (!t.userData.fuerte) return
+      tl.to(t.position, { x: t.userData.bx + t.userData.dx * 0.17, y: t.userData.by + t.userData.dy * 0.17, duration: b(0.07), ease: E.frena(3) }, b(bt))
+      tl.to(t.position, { x: t.userData.bx, y: t.userData.by, duration: b(0.30), ease: 'elastic.out(1, 0.5)' }, b(bt + 0.07))
+    })
+  })
+
+  // --- el punteado exterior hace RADAR: se apaga de golpe y se vuelve a dibujar dando la vuelta.
+  // Es el único anillo que puede permitírselo — está declarado arriba como el elemento inquieto de la
+  // escena, así que barrerlo dos veces no contradice nada. Velocidad constante a propósito: con una
+  // curva de frenado deja de leerse como barrido y pasa a leerse como un fundido circular.
+  for (const bt of [2, 3.5]) {
+    tl.set(aroDeco.material.uniforms.uProg, { value: 0.02 }, b(bt))
+    tl.to(aroDeco.material.uniforms.uProg, { value: 1, duration: b(0.62), ease: 'none' }, b(bt))
+  }
+
+  // --- las esquinas se re-asientan: salen y vuelven con overshoot, escalonadas.
+  brackets.forEach((par, i) => {
+    for (const bt of [1.5, 3]) {
+      const t0 = b(bt) + i * 0.022
+      tl.to(par.position, { x: (2.52 + 0.26) * par.userData.sx, y: (4.52 + 0.20) * par.userData.sy, duration: b(0.10), ease: E.frena(3) }, t0)
+      tl.to(par.position, { x: par.userData.bx, y: par.userData.by, duration: b(0.46), ease: 'elastic.out(1, 0.5)' }, t0 + b(0.10))
+    }
+  })
+
+  // --- el anillo entero acusa el golpe en los acentos (b2.5 y b3.5). Sólo pop de escala: el trazo no
+  // se vuelve a dibujar nunca.
+  for (const [bt, esc] of [[2.5, 1.028], [3.5, 1.022]]) {
+    tl.to(gAnillo.scale, { x: esc, y: esc, z: esc, duration: b(0.10), ease: E.frena(3) }, b(bt))
+    tl.to(gAnillo.scale, { x: 1, y: 1, z: 1, duration: b(0.42), ease: 'elastic.out(1, 0.45)' }, b(bt + 0.10))
+  }
+
+  // --- LA MARCA SE VUELVE A ESCRIBIR. Este es el evento grande del bloque, y hay una medición atrás:
+  // contando cuánta pantalla cambia por frame, en esta escena sólo DOS piezas tienen superficie —la
+  // marca (7% del cuadro) y la píldora (4%)—. Todo lo demás (ticks, brackets, polvo, puntos) suma
+  // menos del 1% junto: el ojo lo registra como textura, pero no mueve la densidad de corte ni un
+  // punto. Los golpes que no tocan la marca o la píldora no son golpes, son adorno.
+  //
+  // Por eso la marca se RE-ESCRIBE dos veces: la máscara la borra y la vuelve a dibujar en cinco
+  // frames. Es el mismo revelado por máscara con el que entra —no es un recurso nuevo— usado como
+  // acento en vez de sólo en la entrada y la salida.
+  //
+  // Barre y vuelve POR EL MISMO LADO, y nunca baja de 0.16. Probé el cruce elegante —borrar hacia la
+  // izquierda y volver desde la derecha invirtiendo uDir— y se ve mal: al invertir la dirección con
+  // uProg bajo, el pedazo visible SALTA de un borde al otro y la palabra parpadea partida. Volviendo
+  // por donde se fue se lee como que se re-escribe, que es lo que se busca.
+  tl.set(marca.material.uniforms.uDir, { value: 0 }, b(2.5))
+  for (const bt of [2.5, 4]) {
+    tl.to(marca.material.uniforms.uProg, { value: 0.16, duration: b(0.08), ease: E.acelera(2) }, b(bt))
+    tl.to(marca.material.uniforms.uProg, { value: 1.05, duration: b(0.15), ease: E.frena(2) }, b(bt + 0.08))
+    // y encima el sacudón: un tirón hacia abajo y una guiñada que se resuelven solos. La escala está
+    // ocupada por la respiración de b1.75 a b4.45, así que el impacto va por posición y rotación —
+    // que además se lee como golpe y no como zoom.
+    tl.to(gMarca.position, { y: MY - 0.075, duration: b(0.08), ease: E.frena(3) }, b(bt))
+    tl.to(gMarca.position, { y: MY, duration: b(0.42), ease: 'elastic.out(1, 0.5)' }, b(bt + 0.08))
+    tl.to(gMarca.rotation, { y: -0.055, duration: b(0.09), ease: E.frena(3) }, b(bt))
+    tl.to(gMarca.rotation, { y: 0, duration: b(0.40), ease: E.vaiven(2) }, b(bt + 0.09))
+  }
+
+  // --- LA PÍLDORA GOLPEA TRES VECES antes del cierre, en b3, b3.5 y b4. Es la otra pieza con
+  // superficie, y un CTA que aterriza y se queda quieto era justo lo que esta escena hacía mal.
+  // Tres saltos en la grilla de medio beat se leen como una llamada; uno solo se leería como que algo
+  // lo empujó sin querer. Van creciendo —0.34, 0.40, 0.46— para que el último quede como el pedido
+  // final antes del apagón.
+  // Va por POSICIÓN: la escala de gPill está tomada por el aterrizaje (b2.4–b3.14) y por la salida.
+  for (const [bt, alto, vuelta] of [[3, 0.34, 0.30], [3.5, 0.40, 0.32], [4, 0.46, 0.40]]) {
+    tl.to(gPill.position, { y: -2.15 + alto, duration: b(0.10), ease: E.frena(3) }, b(bt))
+    tl.to(gPill.position, { y: -2.15, duration: b(vuelta), ease: 'elastic.out(1, 0.5)' }, b(bt + 0.10))
+  }
+
+  // --- BARRIDO DE BRILLO sobre el CTA, dos pasadas. La primera cuando el texto ya terminó de
+  // revelarse (antes barrería una píldora medio vacía), la segunda un beat más tarde para que el
+  // último elemento vivo antes del apagón sea justamente el que pide la acción.
+  // `immediateRender: false` no es decorativo: con el fromTo por defecto, GSAP escribe el valor
+  // inicial AL CONSTRUIR la timeline, y las dos pasadas se pisarían la una a la otra antes de correr.
+  // LA SEGUNDA PASADA ESTABA EN b(4.05) y eso no era "un beat más tarde", eran 0.8: caía 24 ms
+  // después de b4 —menos de un frame a 30— o sea ni en el golpe ni a contratiempo, que es como se
+  // lee un error de sincro. En b(4.25) es un beat exacto después de la primera, cae en la misma
+  // subdivisión de cuarto que ella, y no se amontona con las seis cosas que ya pasan en b4.
+  const BR = pillW * 0.78
+  for (const bt of [3.25, 4.25]) {
+    tl.fromTo(pill.material.uniforms.uBrillo, { value: -BR },
+      { value: BR, duration: b(0.34), ease: 'none', immediateRender: false }, b(bt))
+  }
+
+  // --- chispas en el polvo: dos ráfagas, un quinto de las partículas cada una.
+  ;[2.5, 3.75].forEach((bt, k) => {
+    polvo.forEach((p, i) => {
+      if ((i + k * 2) % 5 !== 0) return
+      tl.to(p.scale, { x: 2.4, y: 2.4, z: 2.4, duration: b(0.08), ease: E.frena(3) }, b(bt))
+      tl.to(p.scale, { x: 1, y: 1, z: 1, duration: b(0.30), ease: E.acelera(2) }, b(bt + 0.08))
+    })
+  })
+
+  // --- el filete tampoco se queda: da un tic (se retrae y vuelve) y su cabeza reaparece un frame en
+  // la punta, como si el trazo se rearmara. Va en b4, la última casilla libre antes de la salida.
+  tl.to(gFilete.scale, { x: 0.955, duration: b(0.08), ease: E.acelera(2) }, b(4))
+  tl.to(gFilete.scale, { x: 1, duration: b(0.34), ease: 'elastic.out(1, 0.5)' }, b(4.08))
+  tl.to(cabeza.scale, { x: 1, y: 1, z: 1, duration: b(0.07), ease: E.llega(3) }, b(4))
+  tl.to(cabeza.scale, { x: 0, y: 0, z: 0, duration: b(0.20), ease: E.acelera(2) }, b(4.12))
+
+  // --- las marcas del pie se mueven DESPUÉS de entrar: una ola que las levanta en orden y una deriva
+  // lenta de toda la fila. Entrar escalonadas y después congelarse era la mitad del problema medido.
+  // Todo por forEach y no por array: con `D.pie` vacío no hay marcas, `marcasM.map(...)` daría un
+  // array vacío y GSAP avisaría por consola sin fallar — el aviso que el verificador convierte en FAIL.
+  // El ancla estaba en b(4.15): no es beat, ni medio, ni cuarto. Nadie la sincroniza con nada y cae a
+  // 24 ms de b4, o sea que el ojo la agrupa con el golpe de b4 igual pero desalineada — el defecto de
+  // sincro sin el beneficio del contratiempo. b(4.25) es la primera casilla de la grilla que queda
+  // libre después de que termina de entrar la última marca (b4.18).
+  marcasM.forEach((m, i) => {
+    const t1 = b(4.25 + i * 0.10)
+    tl.to(m.position, { y: 0.13, duration: b(0.12), ease: E.frena(3) }, t1)
+    tl.to(m.position, { y: 0, duration: b(0.34), ease: 'elastic.out(1, 0.5)' }, t1 + b(0.12))
+  })
+  tl.to(gMarcas.position, { x: 0.09, duration: b(1.4), ease: E.vaiven() }, b(3.3))
+  tl.to(gMarcas.position, { x: 0, duration: b(0.9), ease: E.vaiven() }, b(4.7))
+  // los separadores laten con el metrónomo, y sólo si la página dio material para que existan
+  if (puntos.length) {
+    tl.to(puntos.map(p => p.scale), { x: 1.9, y: 1.9, z: 1.9, duration: b(0.08), ease: E.frena(3), stagger: 0.04 }, b(4))
+    tl.to(puntos.map(p => p.scale), { x: 1, y: 1, z: 1, duration: b(0.30), ease: E.acelera(2), stagger: 0.04 }, b(4.08))
+  }
+
+  // --- y el cuadro entero acusa cada acento. Los huecos NO son arbitrarios: uPulso y bloom ya tienen
+  // tweens corriendo en b1–b1.85, b2.4–b2.95, b3.42–b3.92 y b4.5–b5.3, y un `set` en medio de un tween
+  // en curso lo pisa el tween en el frame siguiente — no falla, simplemente no se ve. Estos tres caen
+  // en las ventanas libres.
+  for (const [bt, v, d] of [[2, 0.14, 0.38], [3, 0.16, 0.40], [4, 0.15, 0.45]]) {
+    tl.set(fondo.uPulso, { value: v }, b(bt))
+    tl.to(fondo.uPulso, { value: 0, duration: b(d), ease: E.frena(2) }, b(bt))
+  }
+  for (const bt of [2.5, 3.5]) {
+    tl.to(bloom, { strength: 0.34, duration: b(0.10), ease: E.frena(2) }, b(bt))
+    tl.to(bloom, { strength: 0.22, duration: b(0.40), ease: E.vaiven(2) }, b(bt + 0.10))
+  }
 
   // --- BEAT 4.5 → 6 · CIERRE. Todo se comprime, el bloom baja, queda el anillo.
   tl.set(fondo.uPulso, { value: 0.30 }, b(4.5))

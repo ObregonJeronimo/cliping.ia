@@ -143,7 +143,17 @@ export function build(ctx) {
   tl.to(gM.rotation, { y: 0, duration: DUR * 0.45, ease: E.vaiven() }, DUR * 0.55)
   // gM sólo mueve el filete; los recortes viven en la otra escena y copian su rotación cada frame.
   // Acá también respira cada pieza: entre que llegó a su celda y que empieza a salir.
-  tl.to({}, { duration: DUR, ease: 'none', onUpdate: () => {
+  // EL ORDEN IMPORTA Y CUESTA CARO. Esto colgaba de un tween hijo puesto en 0 con duracion DUR, y
+  // GSAP renderiza sus hijos ORDENADOS POR TIEMPO DE INICIO: cualquier tween que arranque despues de 0
+  // —la llegada, el vaiven, la salida— se renderiza DESPUES, o sea que la sincronizacion leia
+  // transformaciones de un frame viejo. En el render no se notaba porque se avanza cuadro a cuadro y
+  // el error de un frame es invisible; se veia recien en un SALTO en frio, que es lo que hace un
+  // editor al arrastrar la aguja. Lo encontro la compuerta de determinismo el dia que empezo a mirar
+  // tambien el grupo post-bloom.
+  //
+  // El onUpdate de la TIMELINE corre despues de todos sus hijos, que es exactamente la garantia que
+  // hace falta. `main.js` avanza con `tl.time(t, false)`, o sea sin suprimir eventos, asi que dispara.
+  tl.eventCallback('onUpdate', () => {
     const t = tl.time()
     for (const m of mallas) {
       m.rotation.y = gM.rotation.y
@@ -152,7 +162,7 @@ export function build(ctx) {
         m.position.y = m.userData.destino.y + Math.sin(t * o.vel + o.f) * o.amp
       }
     }
-  } }, 0)
+  })
 
   // DESTAQUE POR BEAT: en cada beat, UNA pieza se adelanta y vuelve.
   //

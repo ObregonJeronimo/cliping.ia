@@ -1,0 +1,64 @@
+/* Motor 3D · estudio — 2 columnas (panel izq + escenario 9:16 der), mismo lenguaje visual que
+   Kinetic IA / Director IA: fondos #0d-#1d, bordes #262636, acento indigo/violeta. */
+.wrap { display: flex; gap: 28px; padding: 22px; min-height: 100%; align-items: flex-start; }
+.left { flex: 1 1 460px; max-width: 620px; min-width: 300px; }
+
+.title { font-size: 30px; font-weight: 800; margin: 0 0 6px; color: #f2f2f8; }
+.ia { background: linear-gradient(100deg, #7dd3fc, #c084fc, #f472b6); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.sub { color: #9aa0b4; font-size: 13.5px; line-height: 1.5; margin: 0 0 16px; }
+.row { display: flex; gap: 8px; margin: 10px 0; align-items: center; flex-wrap: wrap; }
+.input { flex: 1 1 200px; background: #14141c; border: 1px solid #2a2a38; color: #eee; border-radius: 10px; padding: 10px 12px; font-size: 13.5px; outline: none; }
+.input:focus { border-color: #6366f1; }
+.seedInput { flex: 0 0 130px; font-variant-numeric: tabular-nums; }
+.btn { background: #1d1d29; border: 1px solid #32324a; color: #dfe2f0; border-radius: 10px; padding: 10px 14px; font-size: 13px; cursor: pointer; }
+.btn:hover { background: #262637; }
+.btn:disabled { opacity: 0.55; cursor: default; }
+.primary { background: linear-gradient(100deg, #4f46e5, #7c3aed); border-color: transparent; color: #fff; font-weight: 600; }
+.err { color: #fda4af; font-size: 12.5px; margin: 6px 0; }
+.h2 { color: #e5e7f0; font-size: 15px; margin: 22px 0 4px; }
+.nota { color: #6b7186; font-size: 12px; line-height: 1.5; margin: 0 0 10px; }
+
+/* segmentado de duracion: 15 / 20 / 30 */
+.seg { display: flex; gap: 6px; }
+.seg button { background: #14141c; border: 1px solid #262636; color: #9aa0b4; border-radius: 9px; padding: 8px 15px; font-size: 13px; cursor: pointer; font-variant-numeric: tabular-nums; }
+.seg button:hover { background: #1a1a26; }
+.seg .on { background: #1d1d29; border-color: #6366f1; color: #e8e9f2; font-weight: 600; }
+.lbl { color: #8a8fa5; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; margin-right: 4px; }
+
+/* selector de heroes: tarjetas con el nombre y QUE MATERIAL necesita */
+.heroes { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+.hero { background: #14141c; border: 1px solid #262636; border-radius: 12px; padding: 11px 12px; cursor: pointer; text-align: left; display: flex; flex-direction: column; gap: 6px; }
+.hero:hover { background: #1a1a26; border-color: #33334a; }
+.heroOn { border-color: #6366f1; background: #191926; box-shadow: 0 0 0 1px #6366f1 inset; }
+.heroNombre { color: #e8e9f2; font-size: 13.5px; font-weight: 600; }
+.heroMeta { display: flex; gap: 5px; flex-wrap: wrap; }
+.chip { background: #191926; border: 1px solid #2c2c40; color: #a5b4fc; font-size: 11px; border-radius: 999px; padding: 2px 9px; }
+.chipLibre { color: #86efac; border-color: #24402f; }
+.chipFalta { color: #fda4af; border-color: #45222c; }
+.heroFalta { color: #fda4af; font-size: 11.5px; line-height: 1.4; }
+.heroUsado { color: #86efac; font-size: 11.5px; }
+
+/* aviso: el hero pedido no se pudo armar con lo que dio la pagina */
+.aviso { background: #241a1e; border: 1px solid #45222c; color: #fecdd3; font-size: 12.5px; line-height: 1.5; border-radius: 10px; padding: 10px 12px; margin: 12px 0; }
+.avisoOk { background: #16211b; border-color: #24402f; color: #bbf7d0; }
+
+/* progreso del job */
+.prog { height: 6px; background: #14141c; border: 1px solid #262636; border-radius: 999px; overflow: hidden; margin: 10px 0 6px; }
+.progFill { height: 100%; background: linear-gradient(100deg, #4f46e5, #7c3aed); transition: width 0.3s ease; }
+.progLbl { color: #8a8fa5; font-size: 12px; font-variant-numeric: tabular-nums; }
+
+/* ficha de lo que se rindio (no el formulario en vivo: lo que se uso para ESTE video) */
+.ficha { display: flex; gap: 6px; flex-wrap: wrap; margin: 10px 0 0; }
+
+/* escenario 9:16 */
+.stage { flex: 0 0 auto; display: flex; flex-direction: column; gap: 10px; align-items: center; }
+.frame { height: min(72vh, 700px); aspect-ratio: 9 / 16; border-radius: 18px; overflow: hidden; border: 1px solid #262636; background: #000; box-shadow: 0 18px 60px rgba(0, 0, 0, 0.45); display: flex; align-items: center; justify-content: center; }
+.video { width: 100%; height: 100%; display: block; object-fit: contain; background: #000; }
+.vacio { color: #6b7186; font-size: 12.5px; text-align: center; padding: 0 24px; line-height: 1.6; }
+
+@media (max-width: 1000px) {
+  .wrap { flex-direction: column; }
+  .left { max-width: none; width: 100%; }
+  .stage { width: 100%; }
+  .frame { height: auto; width: min(92vw, 405px); }
+}

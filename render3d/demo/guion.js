@@ -39,6 +39,11 @@ const REQUISITOS = {
   // La ráfaga necesita CON QUE rafaguear: tres piezas, sean recortes reales o frases. Con dos, doce
   // slots se llenan con dos cosas repetidas y el corte deja de significar algo.
   rafaga: (d) => ((d.elementos || []).length + (d.frases || []).filter(Boolean).length) >= 3,
+  // La pagina a sangre necesita la TIRA, que es la captura movil scrolleable. No hay forma de
+  // sustituirla: sin tira la escena es un rectangulo vacio.
+  pantalla: (d) => !!d.tira,
+  // La columna es un feed de recortes reales. Con menos de dos piezas no es una columna, es una foto.
+  columna: (d) => (d.elementos || []).length >= 2,
   // El beat de inversión es un titular a sangre. Sin golpe no hay nada que romper.
   destello: (d) => !!d.golpe,
   // El toro es geometría: no necesita nada, y por eso es el relleno honesto cuando falta material.
@@ -55,10 +60,10 @@ const REQUISITOS = {
 // La RAFAGA va siempre despues de una escena lenta y antes de un corte de estructura: su gracia es el
 // contraste de densidad. Doce cuadros en seis beats pegados a otra escena rapida se leen como ruido.
 const ORDENES = [
-  ['hero', 'tipografia', 'rafaga', 'tarjetas', 'destello', 'toro'],
-  ['tipografia', 'hero', 'rafaga', 'tarjetas', 'destello', 'toro'],
-  ['tarjetas', 'tipografia', 'hero', 'rafaga', 'destello', 'toro'],
-  ['tipografia', 'tarjetas', 'rafaga', 'hero', 'toro', 'destello'],
+  ['hero', 'tipografia', 'rafaga', 'pantalla', 'tarjetas', 'destello', 'columna', 'toro'],
+  ['pantalla', 'tipografia', 'hero', 'rafaga', 'tarjetas', 'columna', 'destello', 'toro'],
+  ['tarjetas', 'tipografia', 'hero', 'rafaga', 'columna', 'destello', 'pantalla', 'toro'],
+  ['tipografia', 'pantalla', 'tarjetas', 'rafaga', 'hero', 'columna', 'toro', 'destello'],
 ]
 
 export const DUR_OBJETIVO = { corto: 15, medio: 20, largo: 30 }

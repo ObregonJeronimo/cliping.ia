@@ -193,7 +193,6 @@ export function build(ctx) {
     gFlota.position.y = Math.sin(t * 0.63 + f1) * 0.13 * k
     gFlota.rotation.y = Math.sin(t * 0.47 + f2) * 0.13 * k
   }
-  tl.to({}, { duration: DUR, ease: 'none', onUpdate: flotar }, 0)
   flotar()
 
   // EL SCROLL SALTA POR BEAT, no es una rampa.
@@ -253,7 +252,17 @@ export function build(ctx) {
     mundo.decompose(pantalla.position, pantalla.quaternion, pantalla.scale)
     pantalla.translateZ(GRUESO * 0.62)
   }
-  tl.to({}, { duration: DUR, ease: 'none', onUpdate: sincronizar }, 0)
+  // EL ORDEN IMPORTA Y CUESTA CARO. Esto colgaba de un tween hijo puesto en 0 con duracion DUR, y
+  // GSAP renderiza sus hijos ORDENADOS POR TIEMPO DE INICIO: cualquier tween que arranque despues de 0
+  // —la llegada, el vaiven, la salida— se renderiza DESPUES, o sea que la sincronizacion leia
+  // transformaciones de un frame viejo. En el render no se notaba porque se avanza cuadro a cuadro y
+  // el error de un frame es invisible; se veia recien en un SALTO en frio, que es lo que hace un
+  // editor al arrastrar la aguja. Lo encontro la compuerta de determinismo el dia que empezo a mirar
+  // tambien el grupo post-bloom.
+  //
+  // El onUpdate de la TIMELINE corre despues de todos sus hijos, que es exactamente la garantia que
+  // hace falta. `main.js` avanza con `tl.time(t, false)`, o sea sin suprimir eventos, asi que dispara.
+  tl.eventCallback('onUpdate', () => { flotar(); sincronizar() })
   sincronizar()
 
   return { g, gr, tl }
