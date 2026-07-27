@@ -130,11 +130,18 @@ export function paletaDe(aire, dna) {
 
   let bg, bg2, tinta
   if (claro) {
-    // MUNDO CLARO. El fondo es el de la página; el segundo fondo es el mismo hue de la marca a
-    // saturación baja y lightness altísima — el degradé apenas se ve, que es exactamente lo que hace
-    // una landing clara buena. Subir la saturación acá convierte la pieza en un folleto.
+    // MUNDO CLARO. El fondo es el de la página; el segundo es el mismo tono de la marca, y es el que
+    // decide si la pieza tiene cuerpo o parece sin terminar.
+    //
+    // El primer valor fue 0.20 de saturación a 0.88 de lightness, con el argumento de que una landing
+    // clara buena tiene el degradé casi invisible. En una PÁGINA es cierto; en un VIDEO no, y el
+    // analizador lo dijo con un número: 0.096 de saturación media contra 0.443 de la pieza de
+    // referencia, y 0.237 de ocupación de cuadro contra 0.317. Una landing se mira quieta y con el
+    // contenido llenándola; un reel de 30 s tiene cuadros donde el fondo ES la imagen, y ahí el blanco
+    // liso se lee como que falta algo. 0.40 sigue siendo un degradé suave — no un folleto — pero le da
+    // al cuadro un campo de color de la marca en vez de nada.
     bg = bgPag
-    bg2 = aHex({ h: hA.h, s: 0.20, l: Math.max(0.88, aHsl(bgPag).l - 0.07) })
+    bg2 = aHex({ h: hA.h, s: 0.40, l: Math.min(0.93, Math.max(0.80, aHsl(bgPag).l - 0.14)) })
     tinta = forzarContraste(P.inkOnBg || '#111111', bg, 7)
   } else {
     bg = bgPag || A.bg

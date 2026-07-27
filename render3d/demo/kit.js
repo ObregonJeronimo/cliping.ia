@@ -231,7 +231,7 @@ export function fondoVivo(mundoW, mundoH) {
         // porque suma luz donde no habia, y sobre blanco la misma linea tiñe apenas un blanco que ya
         // estaba lleno. Con 0.26 la grilla en fuga quedaba de fantasma y los cuadros sin protagonista
         // salian en blanco liso.
-        col = mix(col + uAcento * linea * 0.16, mix(col, uAcento * 0.62, linea * 0.44), uClaro);
+        col = mix(col + uAcento * linea * 0.16, mix(col, uAcento * 0.58, linea * 0.52), uClaro);
         // PULSO: un halo que late con el beat. Se maneja desde la timeline, no con un reloj propio.
         float halo = uPulso * smoothstep(0.75, 0.0, distance(uv, vec2(0.5, 0.5)));
         col = mix(col + uAcento * halo * 0.5, mix(col, uAcento, halo * 0.32), uClaro);

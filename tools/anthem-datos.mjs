@@ -134,11 +134,15 @@ export function aireDe(pm) {
   return base
 }
 
+// Acepta un NOMBRE de fixture o una RUTA a un pagemodel cualquiera. Lo segundo es lo que usa
+// backend/motor.py con una pagina recien capturada: sin eso, el puente solo servia para los siete
+// fixtures del repo y el camino completo URL -> video no se podia correr nunca de punta a punta.
 const nombre = process.argv[2] || 'stripe-com'
 const dirFix = join(HERE, 'fixtures', 'director', 'elementos')
-const ruta = existsSync(join(dirFix, `${nombre}.json`))
-  ? join(dirFix, `${nombre}.json`)
-  : join(HERE, 'fixtures', 'director', `${nombre}.json`)
+const ruta = nombre.endsWith('.json') && existsSync(nombre) ? nombre
+  : existsSync(join(dirFix, `${nombre}.json`))
+    ? join(dirFix, `${nombre}.json`)
+    : join(HERE, 'fixtures', 'director', `${nombre}.json`)
 const pm = normalizePageModel(JSON.parse(readFileSync(ruta, 'utf8')))
 const d = datosDe(pm)
 const aire = aireDe(pm)

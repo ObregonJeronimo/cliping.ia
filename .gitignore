@@ -25,3 +25,6 @@ tools/_*
 
 # scratch de auditorias/diagnosticos: nunca se commitea
 tools/tmp/
+
+# Cache del motor: capturas y renders por dominio. Se regenera con backend/motor.py.
+tools/out/motor/
