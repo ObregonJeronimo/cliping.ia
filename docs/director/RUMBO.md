@@ -312,3 +312,72 @@ propia mediana del cuadro y por construccion no cuenta nunca).
    en claro— pero una revision con medicion propia encontraria mas.
 4. **`cta` vacio en paginas que si tienen CTA.** Tailwind tiene "Get started" y la captura no lo
    devuelve en `ctas`; el regex imperativo no es el problema, el problema es que el boton no llega.
+
+
+---
+
+# Cuarta vuelta — no queda nada de la lista
+
+## El motor, de punta a punta
+
+    python backend/motor.py https://stripe.com --dur 30 --seed 4
+    -> 50 segundos. 33 MB. Un reel de 30 s con la pagina real del cliente.
+
+De esos 50 s, la mayoria es la captura del sitio. El render de 900 cuadros a 1080x1920 con
+sobremuestreo de obturador tarda 12.
+
+## Contra la pieza hecha a mano
+
+Mundo OSCURO (tailwindcss.com, en vivo), que es la polaridad de la referencia:
+
+| metrica | ANTHEM | motor | |
+|---|---|---|---|
+| quietud maxima | 0.10 s | 0.10 s | igual |
+| cortes sobre el beat | 0.875 | 0.87 | igual |
+| frames casi quietos | 0.126 | 0.102 | mejor |
+| saturacion | 0.443 | 0.609 | mejor |
+| obturador | −0.179 | −0.191 | mejor |
+| contraste | 0.178 | 0.177 | ≈ |
+| ocupacion | 0.317 | 0.277 | −13% |
+| movimiento | 0.226 | 0.192 | −15% |
+
+Mundo CLARO (stripe.com, en vivo): ocupacion 0.396, contraste 0.181, cortes/min 40, quietud 0.3 s.
+
+## Lo que se cerro en esta vuelta
+
+- **El bento del mosaico se adapta al material.** Reservaba 42% del alto para la banda destacada; un
+  logo-tira de relacion 7.92 ocupa 0.78 y dejaba 2.6 unidades reservadas y vacias. Ahora la banda pide
+  el alto que su pieza puede llenar. Tailwind 0.158 -> 0.272.
+- **Un boton vacio en el cuadro final.** Con `D.cta` null se dibujaba la pildora igual, sin texto.
+- **El presupuesto de luz, por tercera vez**, ahora como REGLA DE CODIGO: el verificador rechaza
+  `color: LOOK.tinta` y `textoMascara(..., LOOK.tinta)`.
+- **La lectura del DOM deja de traer copy ajeno.** Tailwind decia "Browse properties" y "Redefining
+  real-time", que son titulos de plantillas de su galeria.
+- **`corto()` mutilaba texto que no habia cortado.** El CTA de Stripe es "Sign in" y en el boton salia
+  "SIGN", porque "in" esta en la lista de palabras que no pueden cerrar una frase. Esa lista existe
+  para arreglar frases MUTILADAS por el recorte; aplicada a un texto entero es un censor.
+- **H.264 directo.** Se codificaba VP9 y se transcodificaba con libx264: dos codificaciones con
+  perdida encadenadas. Chromium codifica H.264 High (avc1.640033); ahora ffmpeg solo remuxea.
+  112 MB -> 45 MB, minutos -> 12 s, metricas identicas.
+- **`tools/encuadre-check.mjs`**, la compuerta que faltaba: lo que una escena anima tiene que entrar
+  en el cuadro, proyectado a 30 fps contra la camara que la escena mueve.
+
+## Lo que se probo y se descarto, con el numero
+
+- **La cuña de color en el mundo oscuro.** Sube la ocupacion de 0.28 a 0.61 —por encima de la
+  referencia— y la pieza queda peor: el azul profundo con neon encima se vuelve un diagonal celeste
+  apagado y el contraste baja de 0.177 a 0.171. El 13% de ocupacion que le falta al mundo oscuro es
+  una diferencia de estetica, no un defecto.
+- **Paralaje por profundidad en el mosaico.** Repartir las piezas en z para que el dolly las separe
+  subio el movimiento DOS MILESIMAS. Una tarjeta grande deslizandose cambia solo sus bordes.
+
+## Lo que queda, y por que no se hizo
+
+1. **El movimiento del mundo claro** (0.157 contra 0.226). Esta explicado y acotado: la mitad del
+   movimiento de una pieza oscura la pone el glow. Cerrarlo pide inventar vocabulario claro nuevo, no
+   ajustar parametros.
+2. **Las revisiones adversariales de los cuatro heroes nuevos** quedaron sin correr (el workflow se
+   quedo sin sesion). Se hicieron a mano y salio de ahi la compuerta de encuadre, pero una revision
+   con medicion propia por hero encontraria mas.
+3. **La captura no siempre trae el CTA.** En tailwindcss.com el boton "Get started" no llega a
+   `content.ctas`; el problema esta en la extraccion del DOM, no en la interpretacion.

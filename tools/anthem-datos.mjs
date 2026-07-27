@@ -38,7 +38,12 @@ function sinColgar(s) {
 // Corta sin partir palabras y sin dejar la frase colgando.
 function corto(t, n) {
   const s = String(t || '').replace(/\s+/g, ' ').trim()
-  if (s.length <= n) return sinColgar(s)
+  // SI NO SE CORTA, NO SE TOCA. `sinColgar` existe para arreglar el final de una frase MUTILADA por el
+  // recorte; aplicarlo a un texto que entero se convierte en un censor de las palabras de la marca.
+  // Medido en vivo: el CTA de stripe.com es "Sign in" y en el boton salia "SIGN", porque "in" esta en
+  // la lista de colgantes. Un boton que dice SIGN no es un boton corto: es un boton roto. Y lo mismo
+  // le pasaba a cualquier titular que la pagina hubiera decidido terminar en preposicion.
+  if (s.length <= n) return s
   const c = s.slice(0, n)
   const sp = c.lastIndexOf(' ')
   return sinColgar((sp > n * 0.55 ? c.slice(0, sp) : c).trim())
