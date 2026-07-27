@@ -169,3 +169,80 @@ falte ritmo: le faltan **eventos por escena**.
    `render3d/demo/verificar.mjs` mira `escenas/` **y** `heroes/`.
 5. **La tipografía del ADN no discrimina.** Las 7 páginas medidas dan `displayHint: grotesk` y
    `caseHint: sentence`. Hoy la variedad de fuentes la pone el aire; el ADN no aporta nada ahí.
+
+
+---
+
+# Segunda vuelta — densificacion, catalogo e interfaz
+
+## Donde esta el motor ahora, medido
+
+Pieza de 30 s de Stripe contra `ANTHEM.mp4`, cada una medida contra SU propia grilla de beats:
+
+| metrica | ANTHEM | al empezar | ahora |
+|---|---|---|---|
+| **cortes por minuto** | 55.1 | 26 | **56.0** |
+| **movimiento/nitidez** | −0.179 | −0.204 | **−0.174** |
+| frames casi quietos | 0.126 | 0.284 | 0.160 |
+| quietud maxima | 0.10 s | 0.60 s | 0.37 s |
+| ocupacion de cuadro | 0.317 | 0.237 | 0.273 |
+| pixeles en movimiento | 0.226 | 0.100 | 0.136 |
+| cortes sobre el beat | — | 0.44 | 0.75 |
+
+Dos metricas ya estan **en la referencia o por encima**: el ritmo de corte y el obturador. Las que
+faltan son movimiento y ocupacion, y las dos tienen el mismo culpable identificado por el desglose
+por escena (`tools/medir-video.py --tramos`, o automatico si el render dejo su `.plan.json`):
+
+| escena | movimiento | ocupacion |
+|---|---|---|
+| columna | **0.255** | 0.334 |
+| destello | 0.229 | 0.249 |
+| tarjetas | 0.157 | 0.103 |
+| pantalla | 0.147 | 0.321 |
+| rafaga | 0.122 | 0.294 |
+| hero | 0.109 | **0.875** |
+| tipografia | 0.102 | 0.076 |
+| cierre | 0.061 | 0.080 |
+| **apertura** | **0.031** | 0.081 |
+
+La apertura es el piso y lo sigue siendo despues de densificarla. Es tambien la unica escena donde
+la quietud puede ser una decision —abre en seco— asi que subirla tiene un techo de diseno, no
+tecnico. La siguiente palanca real es la ocupacion de `tipografia` (0.076): una escena de tipografia
+cinetica que ocupa el 7.6% del cuadro esta pidiendo tipografia mas grande, no mas eventos.
+
+## Lo que se cerro en esta vuelta
+
+- **Cuatro escenas densificadas** y **dos escenas nuevas** (`pantalla`, la pagina a sangre en bandas;
+  `columna`, un feed vertical de recortes reales). Catalogo de 8 a 10; una pieza de 30 s se llena con
+  diez escenas DISTINTAS sin repetir hero.
+- **Dos aires estaban muertos**: `bienestar` y `deportivo` no los elegia ninguna pagina posible. Un
+  gimnasio recibia el aire de una panaderia. `E-ADN-AIRE-MUERTO` barre 630 combinaciones.
+- **La interfaz existe**: `GET /api/motor3d/heroes`, `POST /api/motor3d/render` y la pantalla
+  `/studio/motor3d` con selector de hero, duracion y semilla.
+
+## Los cinco defectos que encontro la revision adversarial, y que ninguna compuerta veia
+
+1. **La pauta del toro no se veia NUNCA** — fuera de cuadro del beat 0.25 al 4.25. Seis de sus
+   diecisiete eventos pasaban abajo del borde. El error fue medir contra el cuadro EN REPOSO en la
+   unica escena que orbita la camara.
+2. **El "contratiempo" de las tarjetas caia 24 ms despues del tick**: el MISMO cuadro. La escena
+   pagaba dos eventos y cobraba uno.
+3. **La firma de movimiento miraba solo `r.g`**, nunca `gr`. Ahi vive TODO recorte real de la pagina
+   — la parte mas valiosa del producto era la unica sin controlar. Arreglado, encontro al toque un
+   problema de determinismo en los cuatro heroes.
+4. **La cola congelada.** `timeScale` cambia a que velocidad AVANZA una timeline, no como se la
+   BUSCA. Con el ajuste de tempo puesto, la pieza se congelaba en su ultimo cuadro durante los dos
+   segundos finales. El video duraba lo pedido y el ultimo cuadro era el correcto; lo delato una sola
+   metrica.
+5. **`nivel(k)` mezclaba en espacio LINEAL** y subia la tipografia por encima del umbral de bloom: en
+   un mundo oscuro el titular salia como un ladrillo blanco. Lo encontro un render en vivo, no una
+   compuerta — por eso ahora hay una (`E-LUZ`).
+
+## Lo proximo
+
+1. **Ocupacion de `tipografia`** (0.076). Es la palanca de movimiento y de ocupacion a la vez.
+2. **La semantica gratuita agarra copy que esta en la pagina pero no es de la marca.** En
+   tailwindcss.com devolvio "Browse properties" y "Redefining real-time", que son titulos de
+   plantillas de su galeria. No es invencion —esta literalmente en el DOM— pero se lee como si fuera
+   el producto. Hace falta pesar los `<h2>` por su posicion en la pagina.
+3. **Mas heroes.** Hay cinco y la idea son cientos. El contrato esta y el verificador ya los cubre.
