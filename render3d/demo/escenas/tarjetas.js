@@ -183,7 +183,12 @@ export function build(ctx) {
   g.add(reglaTit)
 
   // ------------------------------------------------------------ bloque inferior
-  const epigrafe = txt('CINCO INDICADORES · UNA MISMA HISTORIA', 0.135, { fuente: 'DMSans', size: 72, tracking: 0.16 }, LOOK.tinta, 0)
+  // El epigrafe DECIA "CINCO INDICADORES" siempre, incluso sobre UNA sola tarjeta. No es ruido de
+  // demo: es una afirmacion falsa sobre lo que hay en pantalla, y el espectador la puede contar.
+  // Se deriva de la cantidad real.
+  const NUM = ['CERO', 'UN', 'DOS', 'TRES', 'CUATRO', 'CINCO']
+  const epi = DATOS.length === 1 ? 'UN INDICADOR' : `${NUM[DATOS.length] || DATOS.length} INDICADORES · UNA MISMA HISTORIA`
+  const epigrafe = txt(epi, 0.135, { fuente: 'DMSans', size: 72, tracking: 0.16 }, LOOK.tinta, 0)
   epigrafe.position.set(0, -1.70, 0.42)
   g.add(epigrafe)
 

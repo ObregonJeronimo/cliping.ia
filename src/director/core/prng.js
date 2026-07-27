@@ -23,9 +23,16 @@ export function hashStr(s) {
 // semilla estable desde partes (marca+url) -> mismo input = mismo video, siempre
 export const stableSeed = (...parts) => hashStr(parts.filter(p => p != null).join('|'))
 // generador con SUB-SEED por namespace -> ejes ortogonales
-export const seedFor = (seed, ns) => mulberry32((seed ^ hashStr(ns)) >>> 0)
+// OJO CON EL TIPO DE `seed`. El XOR fuerza ToInt32, y ToInt32 de un string es 0: con una semilla
+// string el sub-seed colapsaba a hashStr(ns) y TODAS las paginas producian la misma secuencia.
+// Verificado: seedFor('abc','dir.guion') y seedFor('zzz','dir.guion') daban valores identicos.
+// Hoy ningun caller pasa strings — todos pasan numeros — asi que no esta roto, pero es una mina para
+// el primero que llame buildGuion con un id de pagina o un hash. Se normaliza con el mismo hashStr
+// que ya usa stableSeed dos lineas mas arriba.
+export const seedFor = (seed, ns) => mulberry32((normSeed(seed) ^ hashStr(ns)) >>> 0)
+const normSeed = (s) => (typeof s === 'number' && Number.isFinite(s) ? (s >>> 0) : hashStr(String(s)))
 // semilla derivada (no un generador): para estampar un seed propio en una capa/escena
-export const subSeed = (seed, ns) => (seed ^ hashStr(ns)) >>> 0
+export const subSeed = (seed, ns) => (normSeed(seed) ^ hashStr(ns)) >>> 0
 
 export const pick = (r, arr) => arr[(r() * arr.length) | 0]
 export const range = (r, a, b) => a + (b - a) * r()

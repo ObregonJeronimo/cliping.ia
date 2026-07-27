@@ -22,6 +22,7 @@ import { composeStoryboard } from '../src/director/core/composer.js'
 import { deriveLook } from '../src/director/kit/look.js'
 import { compile } from '../src/director/core/timeline.js'
 import { drawScene, corpusHero } from '../src/director/render/draw.js'
+import { drawPlaca } from '../src/director/render/plate.js'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 try { GlobalFonts.loadFontsFromDir(join(HERE, 'fonts')) } catch {}
@@ -67,6 +68,26 @@ const W = 1080, H = 1920
 void CANVAS
 
 let nTexto = 0
+
+// La placa se rasteriza con el MISMO drawPlaca del motor 2D: es el fondo que el look derivo de la
+// pagina (degradé, trama, viñeta), y reimplementarlo en un shader seria inventar otro fondo distinto
+// del que el resto del sistema da por hecho.
+let nPlaca = 0
+const _placas = new Map()
+function rasterizarPlaca(sc) {
+  const clave = JSON.stringify(sc.layers.find(l => l.kind === 'plate') || {})
+  if (_placas.has(clave)) return _placas.get(clave)
+  const cv = createCanvas(Math.round(W * 0.7), Math.round(H * 0.7))
+  const ctx = cv.getContext('2d')
+  try {
+    drawPlaca(ctx, look, cv.width, cv.height, sc.layers.find(l => l.kind === 'plate') || {})
+  } catch { return null }
+  const archivo = `placa_${nPlaca++}.png`
+  writeFileSync(join(ASSETS, archivo), cv.toBuffer('image/png'))
+  _placas.set(clave, archivo)
+  return archivo
+}
+
 function rasterizarTexto(sc, capa) {
   const [bx, by, bw, bh] = capa.box
   const w = Math.max(8, Math.round(bw * W * SS))
@@ -103,7 +124,21 @@ const escenaDe = id => sb.scenes.find(s => id.startsWith(s.id + ':')) || sb.scen
 const capas = []
 for (const l of tl.layers) {
   const b = l.base || {}
-  if (b.kind === 'plate' || !b.box) continue
+  // LA PLACA ES EL FONDO COMPUESTO DE CADA ESCENA — degradé, textura, viñeta, la trama del look — y
+  // se estaba tirando entera: 48 de 977 capas, o sea el fondo de TODAS las escenas. Por eso el video
+  // generado se veia vacio al lado de la referencia: no le faltaba movimiento, le faltaba el cuadro.
+  // Va como un plano a sangre bien atras, para que la camara le pase por delante y haya paralaje.
+  if (b.kind === 'plate') {
+    const url = rasterizarPlaca(escenaDe(l.id))
+    if (url) {
+      capas.push({
+        id: l.id, kind: 'texto', url: `assets/${url}`, rol: 'placa', z: 0,
+        box: [0, 0, 1, 1], vida: l.life, tracks: tracksDe(l.id), fondo: true,
+      })
+    }
+    continue
+  }
+  if (!b.box) continue
   let url = null
   let kind = b.kind
   if (b.kind === 'elemento' || b.kind === 'photo') {
@@ -127,6 +162,16 @@ for (const l of tl.layers) {
 
 // `oscuro` 0..1 a partir de la luminancia relativa del fondo medido. Es la perilla de la que cuelga
 // todo el tratamiento de pelicula.
+// Luminancia LINEAL, que es contra la que compara UnrealBloomPass — no la relativa de WCAG ni el
+// valor sRGB. THREE.Color ya convierte de sRGB a lineal al subir el color, asi que un #f2f4f8 no entra
+// con 0.95 sino con 0.92 de luminancia lineal: mirar el hex y creer que "no llega al umbral" es
+// exactamente como se cuela este defecto.
+const lumLineal = (h) => {
+  const c = [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255)
+    .map(v => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4))
+  return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
+}
+
 const lumRel = (h) => {
   const c = [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255)
     .map(v => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4))
@@ -154,7 +199,16 @@ const spec = {
   // con umbral 0.82 TODO el fondo supera el umbral y florece, la viñeta se lee como suciedad en las
   // esquinas y el grano como ruido de escaneo. Sobre claro casi no se toca nada; sobre oscuro el
   // efecto entra completo, que es donde de verdad aporta.
-  bloom: { fuerza: 0.10 + oscuro * (0.30 + energia * 0.30), radio: 0.45, umbral: 0.95 - oscuro * 0.22 },
+  // EL UMBRAL SE MIDE CONTRA LA TINTA, NO CONTRA EL FONDO. Calculado por el fondo, una pagina oscura
+  // daba umbral 0.73 — y la tinta del Director es blanco puro, que en luminancia LINEAL entra con 0.92.
+  // O sea que TODO EL TEXTO cruzaba el umbral y florecia entero: cada palabra salia como una mancha
+  // blanca con el halo tapandole los contrapunzones, y el video generado era ilegible. Es el mismo
+  // error que ya habia costado caro con el amarillo fluor, pero al reves: alla el problema era el
+  // acento, aca es la tipografia, que es casi todo el cuadro.
+  //
+  // El bloom existe para que el ACENTO se lea como LUZ. El texto tiene que quedar afuera, y la unica
+  // forma de garantizarlo sin dos pasadas de render es poner el umbral POR ENCIMA de la tinta.
+  bloom: { fuerza: 0.16 + oscuro * 0.22, radio: 0.5, umbral: Math.min(0.985, lumLineal(look.ink) + 0.05) },
   pelicula: { grano: 0.012 + oscuro * 0.045, vinieta: 0.10 + oscuro * 0.70, aberr: 0.0004 + oscuro * 0.0014 },
   // Sin mapeo de tono: la paleta esta MEDIDA de la pagina y ya es sRGB. ACES la reinterpreta como si
   // fuera HDR y sube los claros — el blanco de la marca dejaba de ser su blanco.

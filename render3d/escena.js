@@ -84,6 +84,29 @@ const ShaderPelicula = {
   `,
 }
 
+// ---------------------------------------------------------------- revelado por MASCARA
+// Una barra que DESCUBRE en vez de un fundido. El shader recorta por UV, así que el texto aparece
+// escrito y no encendido — y esa es la diferencia entre un reel y una presentación. Es el material de
+// todas las capas de texto porque `reveal` es un prop de primera clase de la timeline del Director:
+// el compilador lo emite para casi todo lo que se lee.
+function materialMascara(map) {
+  return new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, side: THREE.DoubleSide,
+    uniforms: { map: { value: map }, uProg: { value: 1 }, uDir: { value: 0 }, uSuave: { value: 0.07 }, uAlpha: { value: 1 } },
+    vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
+    fragmentShader: `
+      uniform sampler2D map; uniform float uProg, uDir, uSuave, uAlpha;
+      varying vec2 vUv;
+      void main(){
+        vec4 t = texture2D(map, vUv);
+        float e = uDir < 0.5 ? vUv.x : uDir < 1.5 ? 1.0 - vUv.x : uDir < 2.5 ? vUv.y : 1.0 - vUv.y;
+        float m = smoothstep(uProg, uProg - uSuave, e);
+        gl_FragColor = vec4(t.rgb, t.a * m * uAlpha);
+        if (gl_FragColor.a < 0.003) discard;
+      }`,
+  })
+}
+
 // ---------------------------------------------------------------- utilidades de color / caja
 const hex = h => new THREE.Color(h || '#000000')
 // El Director trabaja en fracciones del cuadro (0..1, con el origen arriba a la izquierda) y three en
@@ -220,8 +243,11 @@ export class Escena {
       const tex = texturas.get(capa.url)
       if (!tex) return null
       tex.colorSpace = THREE.SRGBColorSpace
-      const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false })
-      mesh = new THREE.Mesh(new THREE.PlaneGeometry(ancho, alto), mat)
+      // MATERIAL DE MASCARA, no un plano opaco. `reveal` es EL gesto de texto del Director — el
+      // barrido que ESCRIBE una frase en vez de encenderla — y este renderer lo ignoraba: de los 9
+      // props de la timeline leía 5, y entre los 4 que tiraba estaban los 116 keys de reveal. Por eso
+      // el mismo timeline que en 2D se escribe, en 3D aparecía de golpe y el video se sentía plano.
+      mesh = new THREE.Mesh(new THREE.PlaneGeometry(ancho, alto), materialMascara(tex))
     } else {
       return null
     }
@@ -237,7 +263,54 @@ export class Escena {
     // 3D salía idéntico al 2D con una viñeta encima — todo el costo de WebGL y ninguna de sus ventajas.
     // Ahora el rango va de -4 (el fondo, que casi no se mueve) a +2.4 (el chip de marca, pegado al
     // lente), que sobre un dolly de una unidad da un desplazamiento relativo bien visible.
-    mesh.position.z = ((capa.z || 10) - 26) * 0.30
+    // El fondo va MUCHO mas atras que cualquier capa y agrandado, para que la camara le pase por
+    // delante sin descubrir su borde. Es lo que convierte el dolly en paralaje de verdad en vez de en
+    // un zoom sobre una imagen plana.
+    mesh.position.z = capa.fondo ? -16 : ((capa.z || 10) - 26) * 0.30
+    if (capa.fondo) {
+      mesh.scale.set(2.6, 2.6, 1)
+      mesh.renderOrder = -100
+      // EL FONDO NO ES UNA FOTO. La placa que compuso el Director sigue siendo la base —su degrade,
+      // su trama, su viñeta— pero encima corre una grilla en fuga que se desplaza con el tiempo del
+      // video. Medido: sin esto el 79% de los frames del video generado eran una foto fija, porque el
+      // compilador solo anima ENTRADAS y SALIDAS y en el medio de cada escena no se mueve NADA.
+      // Una deriva sutil sobre las capas no alcanza: 0.03 unidades de mundo son seis pixeles en un
+      // ciclo de siete segundos, o sea 0.03 px por frame — por debajo de lo que se ve y por debajo de
+      // lo que cualquier medicion registra. El fondo, en cambio, cubre el cuadro entero.
+      mesh.material = new THREE.ShaderMaterial({
+        depthWrite: false, transparent: false,
+        uniforms: {
+          map: { value: mesh.material.map }, uT: { value: 0 },
+          uAcento: { value: hex(this.spec.look.accent) },
+          uFuerza: { value: this.spec.fondoVivo == null ? 1 : this.spec.fondoVivo },
+        },
+        vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
+        fragmentShader: `
+          uniform sampler2D map; uniform float uT, uFuerza; uniform vec3 uAcento;
+          varying vec2 vUv;
+          float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898,78.233)))*43758.5453); }
+          void main(){
+            // la placa se muestrea en el centro del plano, que es donde cae el cuadro visible
+            vec2 uvP = (vUv - 0.5) / 2.6 + 0.5;   // la placa vive en el centro; afuera manda su borde
+            vec3 col = texture2D(map, clamp(uvP, 0.0, 1.0)).rgb;
+            // La grilla se calcula en el espacio del PLANO (vUv), no en el de la textura. Calculada
+            // en uvP quedaba confinada al rectangulo central donde la placa existe —1/2.6 del plano—
+            // y se veia un recuadro con grilla flotando sobre un fondo liso, que es peor que no tener
+            // grilla: delata la construccion.
+            vec2 g = vUv - vec2(0.5, 0.505);
+            float persp = 1.0 / max(0.06, abs(g.y) * 2.4);
+            float lx = abs(fract(g.x * persp * 5.0 + 0.5) - 0.5);
+            float ly = abs(fract(g.y * 9.0 - uT * 0.20 + 0.5) - 0.5);
+            float linea = (smoothstep(0.055, 0.0, lx) + smoothstep(0.05, 0.0, ly))
+                        * smoothstep(0.62, 0.06, abs(g.y));
+            col += uAcento * linea * 0.13 * uFuerza;
+            // ruido que se mueve: sube el piso de cambio por frame sin ensuciar la imagen
+            col += (hash(vUv * 1600.0 + uT * 21.0) - 0.5) * 0.022 * uFuerza;
+            gl_FragColor = vec4(col, 1.0);
+          }`,
+      })
+      this.fondoMat = mesh.material
+    }
     mesh.renderOrder = capa.z || 10
     mesh.userData = { capa, x0: mesh.position.x, y0: mesh.position.y, z0: mesh.position.z, w0: ancho, h0: alto }
     this.scene.add(mesh)
@@ -300,6 +373,37 @@ export class Escena {
         { z: z0, duration: dur * 1.15, ease: 'power3.out' }, vida[0])
     }
 
+    // ---- NADA DESCANSA. Es la regla que mas separa un reel de una diapositiva, y la que el video
+    // generado no cumplia: medido con tools/medir-video.py, el 73% de sus frames eran una foto fija y
+    // solo el 2.2% del cuadro cambiaba por frame (la referencia hecha a mano: 12.6% y 22.6%).
+    //
+    // El motor 2D compone escenas ESTATICAS y el compilador solo anima las ENTRADAS y las SALIDAS: en
+    // el medio de cada escena, literalmente nada se mueve. Eso en papel esta bien —la composicion se
+    // lee— y en video se lee como que el reproductor se colgo.
+    //
+    // Cada capa recibe una deriva y una respiracion CONTINUAS, lentisimas y con periodo PRIMO entre si
+    // (7.3 / 9.7 / 11.3 segundos, y una fase propia por capa sacada del PRNG). Si los periodos fueran
+    // multiplos, todas las capas volverian a alinearse cada tanto y el conjunto latiria como una sola
+    // cosa — que es peor que la quietud, porque se nota el truco.
+    //
+    // Es una decision de RENDER, no del guion: no toca la timeline ni los gates del motor 2D. La misma
+    // que ya toma la camara unas lineas mas abajo.
+    const viva = this.spec.vida === false ? 0 : (this.spec.vida == null ? 1 : this.spec.vida)
+    if (viva > 0) {
+      for (const mesh of this.capas) {
+        const u = mesh.userData
+        if (u.capa.fondo) continue                    // el fondo ya se mueve por paralaje de camara
+        const f1 = this.rnd() * 6.283, f2 = this.rnd() * 6.283, f3 = this.rnd() * 6.283
+        // amplitudes en unidades de mundo: por debajo de esto no se ve, por encima se lee como que la
+        // capa esta mal anclada
+        const ax = 0.075 * viva, ay = 0.055 * viva, ae = 0.010 * viva
+        u.deriva = { f1, f2, f3, ax, ay, ae }
+      }
+    }
+
+    if (this.fondoMat) {
+      this.tl.to(this.fondoMat.uniforms.uT, { duration: this.spec.dur, value: this.spec.dur, ease: 'none' }, 0)
+    }
     // El grano avanza con el tiempo del video, no con el reloj: se ata a la misma timeline.
     this.tl.to(this.pelicula.uniforms.uT, { duration: this.spec.dur, value: this.spec.dur, ease: 'none' }, 0)
     // Movimiento de CAMARA: un dolly lento hacia adelante más una deriva lateral mínima. Es el gesto
@@ -315,6 +419,7 @@ export class Escena {
   }
 
   seek(t) {
+    this._t = t
     this.tl.time(Math.max(0, Math.min(this.spec.dur, t)), false)
     // Los valores interpolados por GSAP se vuelcan al mesh acá y no en un onUpdate por tween: con un
     // onUpdate por tramo, dos tramos del mismo prop que se solapan se pisan en orden impredecible.
@@ -322,12 +427,43 @@ export class Escena {
       const d = mesh.userData.dst
       if (!d) continue
       const p = d._alpha == null ? 1 : d._alpha
-      mesh.material.opacity = Math.max(0, Math.min(1, p))
+      const u = mesh.material.uniforms
+      // Un ShaderMaterial no tiene `opacity`: hay que escribir su uniform. Asignarle .opacity no
+      // falla — simplemente no hace nada, y la capa se queda opaca toda la escena.
+      // Se pregunta por CADA uniform, no por el material. No todos los ShaderMaterial de la escena
+      // tienen los mismos: el fondo vivo no lleva uAlpha ni uProg, y dar por hecho que si los tiene
+      // tiraba el render entero con "Cannot set properties of undefined".
+      if (u && u.uAlpha) u.uAlpha.value = Math.max(0, Math.min(1, p))
+      else if (!u) mesh.material.opacity = Math.max(0, Math.min(1, p))
       mesh.visible = p > 0.002
+      // REVEAL: el barrido que escribe el texto. Sin track, la capa esta descubierta entera.
+      if (u && u.uProg) u.uProg.value = d._reveal == null ? 1 : Math.max(0, Math.min(1, d._reveal))
       const sx = d._scale == null ? 1 : d._scale
-      mesh.scale.set(sx, sx, 1)
-      if (d._x != null) mesh.position.x = (d._x - 0.5) * this.mundoW + (d.w0 / 2) * 0
-      if (d._y != null) mesh.position.y = -((d._y - 0.5) * this.mundoH)
+      // CAJA ANIMADA. `w` y `h` son fracciones del cuadro y el compilador las anima en los match-cuts:
+      // una tarjeta que crece de su caja chica a la grande. Se aplican como escala relativa a la caja
+      // en reposo. En el TEXTO se usa la de ANCHO para los dos ejes: estirar la tipografia en un solo
+      // eje se ve peor que cualquier cosa que este renderer este tratando de evitar — es la misma
+      // regla que ya aplica el render 2D.
+      const esTexto = mesh.userData.capa.kind === 'texto' || mesh.userData.capa.kind === 'text'
+      const kw = d._w == null ? 1 : d._w / (mesh.userData.capa.box[2] || 1)
+      const kh = d._h == null ? 1 : d._h / (mesh.userData.capa.box[3] || 1)
+      // La deriva se SUMA a lo que decidio la timeline, no la reemplaza: una capa que esta viajando en
+      // un match-cut sigue su curva y ademas respira. Se aplica despues de leer x/y para que la
+      // posicion base siga siendo la del compilador.
+      const dv = mesh.userData.deriva
+      const esc = dv ? 1 + Math.sin(this._t * 0.556 + dv.f3) * dv.ae : 1
+      mesh.scale.set(sx * kw * esc, sx * (esTexto ? kw : kh) * esc, 1)
+      if (dv) {
+        mesh.position.x += Math.sin(this._t * 0.861 + dv.f1) * dv.ax
+        mesh.position.y += Math.sin(this._t * 0.648 + dv.f2) * dv.ay
+      }
+      // LA POSICION SE RECONSTRUYE ENTERA EN CADA FRAME, no se corrige la del frame anterior. Con
+      // `if (d._x != null) ...` una capa SIN track de x nunca se reasignaba, asi que el `+=` de la
+      // deriva se acumulaba frame a frame y la capa se iba volando del cuadro. Medido: la ocupacion
+      // cayo de 0.133 a 0.092 y el detector de cortes paso de 11 a 0, porque a los pocos segundos ya
+      // no quedaba casi nada en pantalla que pudiera cambiar.
+      mesh.position.x = d._x != null ? (d._x - 0.5) * this.mundoW : mesh.userData.x0
+      mesh.position.y = d._y != null ? -((d._y - 0.5) * this.mundoH) : mesh.userData.y0
       if (d._rot != null) mesh.rotation.z = d._rot
       // GIRO 3D: mientras la capa entra, se acompaña con un giro en Y que se resuelve al llegar. Es
       // lo que hace que la tarjeta "llegue" en vez de aparecer, y solo existe porque hay perspectiva.

@@ -17,7 +17,7 @@
 // El overshoot vive en la ROTACIÓN y en la escala de cada letra, no en z: con la palabra ocupando el
 // 94% del ancho, un back.out sobre la profundidad la empujaba fuera del cuadro en el rebote.
 
-import { E, LOOK, b, planoTexto, texto, materialMascara, filete, hex } from '../kit.js'
+import { E, LOOK, b, BPM, planoTexto, texto, materialMascara, filete, hex } from '../kit.js'
 // El COPY sale de los DATOS. Lo que queda escrito aca es CHROME de la pieza (rotulos de
 // capitulo, indicadores tecnicos): eso es direccion de arte y no cambia con el contenido.
 // Lo que la marca DICE — su nombre, sus cifras, su claim, su CTA — sale de los datos o NO SALE.
@@ -197,7 +197,7 @@ export function build(ctx) {
   de(rot.userData.prog, { value: 0 }, { value: 1.08, duration: b(0.52), ease: E.vaiven(2) }, b(0.5))
   de(rot.position, { x: rotX - 0.16 }, { x: rotX, duration: b(0.7), ease: E.frena(3) }, b(0.5))
 
-  const micro = izq(rotulo('REC · 124 BPM', 0.115, mundoW * 0.4, { ...CHICA, tracking: 0.3, color: LOOK.acento2 }), -MX, -0.45)
+  const micro = izq(rotulo(`REC · ${Math.round(BPM)} BPM`, 0.115, mundoW * 0.4, { ...CHICA, tracking: 0.3, color: LOOK.acento2 }), -MX, -0.45)
   gAp.add(micro)
   micro.userData.prog.value = 0
   de(micro.userData.prog, { value: 0 }, { value: 1.08, duration: b(0.4), ease: E.frena(2) }, b(0.82))
@@ -433,7 +433,7 @@ export function build(ctx) {
   metaL.userData.prog.value = 0
   de(metaL.userData.prog, { value: 0 }, { value: 1.08, duration: b(0.5), ease: E.frena(2) }, b(3.6))
 
-  const metaR = der(rotulo('124 BPM · 30 FPS', 0.10, mundoW * 0.42, { ...CHICA, tracking: 0.32, color: LOOK.acento2 }), MX, -2.44)
+  const metaR = der(rotulo(`${Math.round(BPM)} BPM · 30 FPS`, 0.10, mundoW * 0.42, { ...CHICA, tracking: 0.32, color: LOOK.acento2 }), MX, -2.44)
   metaR.material.uniforms.uDir.value = 1
   g.add(metaR)
   metaR.userData.prog.value = 0
