@@ -121,11 +121,42 @@ const VARIANTES = {
   editorial: { alta: 'editorial', baja: 'editorial' },
   inmobiliario: { alta: 'inmobiliario', baja: 'lujo' },
   nocturno: { alta: 'nocturno', baja: 'nocturno' },
+  // Sin estas dos entradas, un gimnasio con energia > 0.80 —que es la mitad de los gimnasios— caia
+  // en el `|| base` y volvia a salir deportivo por accidente; pero uno con energia < 0.30 se iba a
+  // 'corporativo' y perdia el aire que se le acababa de asignar. La variante baja de un aire
+  // especializado es EL MISMO aire: la energia modula dentro de la familia, no salta de familia.
+  deportivo: { alta: 'deportivo', baja: 'deportivo' },
+  bienestar: { alta: 'bienestar', baja: 'bienestar' },
 }
+// DENTRO DE 'servicio-local' HAY TRES NEGOCIOS QUE NO SE PARECEN EN NADA.
+//
+// `tipoNegocio` es una clasificacion gruesa y mete en la misma bolsa a una panaderia, un gimnasio y un
+// spa. Con el mapeo por rubro a secas, los tres recibian el aire "gastronomico" — o sea que un
+// gimnasio salia con la direccion de arte de una panaderia. Y los dos aires que existen exactamente
+// para esos casos, "deportivo" y "bienestar", eran CODIGO MUERTO: once aires escritos, nueve
+// alcanzables, y ninguna compuerta que lo dijera.
+//
+// La segunda señal es el MOOD medido, que dentro de un mismo rubro si discrimina:
+//   energia alta + calidez baja   -> deportivo   (un gimnasio: frio, duro, rapido)
+//   energia baja + calidez alta   -> bienestar   (un spa, una clinica: tibio, lento, amable)
+//   el resto                       -> gastronomico / artesanal, que es lo que ya hacia
+// Los umbrales son deliberadamente exigentes (0.66 / 0.34): la duda tiene que caer en el aire generico
+// del rubro, no en el especializado. Un aire de gimnasio en la pieza de una panaderia es peor error
+// que una panaderia en el aire neutro de su rubro.
+function afinarServicioLocal(mood) {
+  const e = mood?.energia ?? 0.5
+  const c = mood?.calidez ?? 0.5
+  if (e >= 0.66 && c <= 0.40) return 'deportivo'
+  if (e <= 0.42 && c >= 0.60) return 'bienestar'
+  return null
+}
+
 export function aireDe(pm) {
   const s = pm.semantica || {}
-  const energia = pm.dna?.mood?.energia ?? 0.5
-  const base = POR_RUBRO[s.tipoNegocio] || 'tecnico'
+  const mood = pm.dna?.mood
+  const energia = mood?.energia ?? 0.5
+  let base = POR_RUBRO[s.tipoNegocio] || 'tecnico'
+  if (s.tipoNegocio === 'servicio-local') base = afinarServicioLocal(mood) || base
   // Un registro formal DECLARADO pesa mas que cualquier otra señal: es lo unico que la pagina dijo
   // explicitamente sobre como quiere que le hablen a su publico.
   if (s.audiencia?.register === 'formal') return VARIANTES[base]?.baja || 'corporativo'
@@ -137,6 +168,11 @@ export function aireDe(pm) {
 // Acepta un NOMBRE de fixture o una RUTA a un pagemodel cualquiera. Lo segundo es lo que usa
 // backend/motor.py con una pagina recien capturada: sin eso, el puente solo servia para los siete
 // fixtures del repo y el camino completo URL -> video no se podia correr nunca de punta a punta.
+// EL CLI SOLO CORRE SI ESTE ARCHIVO ES EL PROGRAMA. Lo de abajo lee un fixture y ESCRIBE un json:
+// como efecto de un `import` desde una compuerta, eso es una bomba — lee un archivo que puede no
+// existir y pisa una salida que nadie pidio. `datosDe` y `aireDe` se exportan para poder probarlos.
+const esPrograma = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]
+if (esPrograma) {
 const nombre = process.argv[2] || 'stripe-com'
 const dirFix = join(HERE, 'fixtures', 'director', 'elementos')
 const ruta = nombre.endsWith('.json') && existsSync(nombre) ? nombre
@@ -153,3 +189,4 @@ writeFileSync(salida, JSON.stringify({ datos: d, aire, dna: pm.dna || null }, nu
 const bl = pm.dna?.palette?.bgLum
 console.log(`${salida}\n  marca "${d.marca}" · aire "${aire}"${bl != null ? ` · mundo ${bl > 0.42 ? 'CLARO' : 'oscuro'} (${pm.dna.palette.bg} / acento ${pm.dna.palette.accent})` : ''} · ${d.frases.length} frases · ${d.datos.length} cifras · cta ${d.cta ? `"${d.cta}"` : 'NINGUNO'}`)
 console.log('  frases:', d.frases.map(f => JSON.stringify(f)).join(' '))
+}

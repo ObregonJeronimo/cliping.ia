@@ -91,6 +91,38 @@ for (const { id, pm } of FIX) {
   }
 }
 
+// ---------------------------------------------------------------- E-ADN-AIRE-MUERTO
+// Once aires escritos, nueve alcanzables. "bienestar" y "deportivo" no los producia NINGUNA entrada
+// posible: existian, se mantenian, y ningun video del mundo iba a usarlos. Un gimnasio recibia el aire
+// de una panaderia porque los dos son 'servicio-local'.
+//
+// Se barre una grilla de paginas plausibles —los ocho rubros que el clasificador puede devolver, por
+// energia, calidez y registro— y se exige que cada aire de la carpeta salga al menos una vez. Es la
+// unica forma de que "escribi un aire nuevo" y "el motor puede elegirlo" sean la misma cosa: sin esto
+// las dos afirmaciones se separan en silencio y nadie se entera hasta que alguien las cuenta.
+const { aireDe } = await import('./anthem-datos.mjs')
+const RUBROS = ['saas', 'app', 'ecommerce', 'servicio-local', 'educacion', 'media', 'portfolio',
+  'evento', 'otro']
+const producidos = new Set()
+let barridos = 0
+for (const tipoNegocio of RUBROS) {
+  for (const energia of [0.1, 0.25, 0.35, 0.5, 0.7, 0.85, 0.95]) {
+    for (const calidez of [0.1, 0.3, 0.5, 0.7, 0.9]) {
+      for (const register of ['casual', 'formal']) {
+        barridos++
+        producidos.add(aireDe({
+          semantica: { tipoNegocio, audiencia: { register } },
+          dna: { mood: { energia, calidez } },
+        }))
+      }
+    }
+  }
+}
+const muertos = Object.keys(AIRES).filter(a => !producidos.has(a))
+for (const m of muertos) {
+  F('E-ADN-AIRE-MUERTO', `el aire "${m}" existe en render3d/demo/aires/ y NINGUNA pagina posible lo elige — ${barridos} combinaciones barridas`)
+}
+
 const n = FIX.length * Object.keys(AIRES).length
 if (fallos.length) {
   console.error(`ADN: ${fallos.length} FALLO(S) sobre ${n} combinaciones\n` + fallos.map(f => '  ' + f).join('\n'))
@@ -99,3 +131,4 @@ if (fallos.length) {
 const claras = FIX.filter(x => x.pm.dna.palette.bgLum > 0.42).length
 console.log(`ADN OK — ${n} combinaciones (${FIX.length} páginas × ${Object.keys(AIRES).length} aires): `
   + `polaridad, tono de marca (±14°), legibilidad y variedad.  ${claras}/${FIX.length} páginas dan mundo CLARO.`)
+console.log(`  los ${Object.keys(AIRES).length} aires son alcanzables (${barridos} combinaciones de rubro × energía × calidez × registro).`)
