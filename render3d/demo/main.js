@@ -15,7 +15,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js'
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js'
-import { BEAT, b, LOOK, hex, mulberry32, fondoVivo, configurar } from './kit.js'
+import { BEAT, b, LOOK, CLARO, hex, mulberry32, fondoVivo, configurar } from './kit.js'
 import { configurarDatos } from './datos.js'
 import { personalizar } from './adn.js'
 import { ESCENAS } from './escenas/index.js'
@@ -242,6 +242,13 @@ export class Anthem {
         texturas: this.texturas,
         datosEls: (this.spec.datos && this.spec.datos.elementos) || [],
         repeticion: repeticiones.get(mod.meta.id) || 0,
+        // ¿EL MUNDO ES CLARO? Estaba en el arnes de pruebas y NO estaba aca, asi que en el render de
+        // verdad `ctx.claro` llegaba undefined y toda escena que lo consulta creia estar siempre en un
+        // mundo oscuro. Los heroes que mezclan aditivo —el enjambre, el cristal, la cinta— sumaban luz
+        // sobre blanco: el enjambre salia COMPLETAMENTE INVISIBLE en las paginas claras, que son cinco
+        // de cada siete. En oscuro andaban perfecto, asi que el defecto no aparecia nunca mirando la
+        // demo. Un contrato que solo se cumple en el arnes es un contrato que no existe.
+        claro: CLARO,
       }
       repeticiones.set(mod.meta.id, (repeticiones.get(mod.meta.id) || 0) + 1)
       const r = await mod.build(ctx)

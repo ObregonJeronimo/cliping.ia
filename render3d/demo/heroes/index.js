@@ -12,8 +12,12 @@
 // que no tener telefono.
 import * as telefono from './telefono.js'
 import * as portatil from './portatil.js'
+import * as ventana from './ventana.js'
 import * as mosaico from './mosaico.js'
+import * as vitrina from './vitrina.js'
 import * as prisma from './prisma.js'
+import * as cinta from './cinta.js'
+import * as enjambre from './enjambre.js'
 import * as toro from '../escenas/toro.js'
 
 // El toro se registra como hero de RESPALDO. Es geometria pura, asi que no necesita nada de la pagina
@@ -25,7 +29,13 @@ const orbital = {
   build: toro.build,
 }
 
-export const HEROES = [telefono, portatil, mosaico, prisma, orbital]
+// EL ORDEN ES EL DE PREFERENCIA y no es alfabetico: el registro elige `posibles[0]` cuando el usuario
+// no pide nada, y a partir de la segunda aparicion ROTA. Adelante van los que muestran la PAGINA del
+// usuario —telefono, portatil, ventana, mosaico, vitrina—, porque eso es lo que ninguna plantilla
+// puede fingir; atras los de geometria pura, que son los que sostienen la pieza cuando la captura
+// fallo. Un video que arranca con un cristal cuando podia arrancar con la pagina del cliente esta
+// eligiendo mal.
+export const HEROES = [telefono, portatil, ventana, mosaico, vitrina, prisma, cinta, enjambre, orbital]
 export const porId = (id) => HEROES.find(h => h.meta.id === id) || null
 
 // Los que se pueden armar con el material que HAY. `disponible` es un set con 'tira', 'elementos'...
