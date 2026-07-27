@@ -246,3 +246,69 @@ cinetica que ocupa el 7.6% del cuadro esta pidiendo tipografia mas grande, no ma
    plantillas de su galeria. No es invencion —esta literalmente en el DOM— pero se lee como si fuera
    el producto. Hace falta pesar los `<h2>` por su posicion en la pagina.
 3. **Mas heroes.** Hay cinco y la idea son cientos. El contrato esta y el verificador ya los cubre.
+
+
+---
+
+# Tercera vuelta — donde esta el motor hoy
+
+## Contra la pieza hecha a mano, sobre material comparable
+
+`tailwindcss.com`, 30 s, hecha DE PUNTA A PUNTA desde la URL con `backend/motor.py`, mundo oscuro
+(la misma polaridad que la referencia):
+
+| metrica | ANTHEM (a mano) | motor en vivo | |
+|---|---|---|---|
+| quietud maxima | 0.10 s | **0.10 s** | igual |
+| cortes sobre el beat | 0.875 | **0.875** | igual |
+| frames casi quietos | 0.126 | **0.102** | mejor |
+| saturacion | 0.443 | **0.606** | mejor |
+| contraste | 0.178 | 0.175 | ≈ |
+| obturador (mov/nitidez) | −0.179 | −0.165 | ≈ |
+| ocupacion de cuadro | 0.317 | 0.283 | −11% |
+| pixeles en movimiento | 0.226 | 0.190 | −16% |
+| cortes por minuto | 55.1 | 48.0 | dentro de banda |
+
+Y en mundo CLARO (Stripe, 30 s), donde la referencia no aplica porque su vocabulario es el glow:
+
+| metrica | ANTHEM | al empezar la sesion | ahora |
+|---|---|---|---|
+| cortes por minuto | 55.1 | 26 | **70.0** |
+| contraste | 0.178 | 0.151 | **0.178** |
+| ocupacion | 0.317 | 0.237 | **0.394** |
+| frames casi quietos | 0.126 | 0.284 | 0.159 |
+| quietud maxima | 0.10 s | 0.60 s | 0.47 s |
+| movimiento | 0.226 | 0.100 | 0.145 |
+
+## El hallazgo que reordeno todo
+
+La brecha de movimiento que se venia persiguiendo era en gran parte un ARTEFACTO DE COMPARACION.
+Experimento: la misma pieza, los mismos datos, cambiando SOLO la polaridad, pasa de 0.104 a 0.215 de
+movimiento y de 0.075 a 0.134 de ocupacion. No es el grano —a umbral 60, donde el grano no llega, la
+brecha es de 6×— ni el largo de las frases. Es que **la mitad del movimiento de una pieza oscura la
+pone el glow**: un halo de bloom desplazandose mueve cientos de pixeles alrededor de cada objeto.
+Sobre blanco, sumar luz no hace nada.
+
+De ahi salio el vocabulario propio del mundo claro: campos de color en movimiento (suben movimiento y
+saturacion) y una **cuña de borde duro** (la unica que sube ocupacion — un degrade suave corre la
+propia mediana del cuadro y por construccion no cuenta nunca).
+
+## Estado del catalogo
+
+- **10 escenas**: apertura, hero, toro, tipografia, rafaga, pantalla, columna, tarjetas, destello, cierre.
+- **9 heroes**: telefono, portatil, ventana, mosaico, vitrina, prisma, cinta, enjambre, orbital.
+- **11 aires**, los 11 alcanzables (antes 9).
+- **71 estructuras** de guion distintas; 15/20/30 s clavados.
+
+## Lo proximo
+
+1. **El mosaico sobre paginas de recortes chicos.** Sobre Stripe da 0.518 de ocupacion; sobre Tailwind,
+   0.158. La composicion bento asume tarjetas anchas; con recortes casi cuadrados el alto de celda
+   manda y las piezas se achican. Hace falta que el bento elija su reparto SEGUN las relaciones de
+   aspecto que tiene, no siempre igual.
+2. **Ocupacion en mundo oscuro** (0.283 contra 0.317). Es la ultima metrica claramente por debajo.
+3. **Las revisiones adversariales de los cuatro heroes nuevos quedaron sin correr** (el workflow se
+   quedo sin sesion con 6 de 9 agentes). Las hice a mano y encontre uno grave —el enjambre invisible
+   en claro— pero una revision con medicion propia encontraria mas.
+4. **`cta` vacio en paginas que si tienen CTA.** Tailwind tiene "Get started" y la captura no lo
+   devuelve en `ctas`; el regex imperativo no es el problema, el problema es que el boton no llega.
