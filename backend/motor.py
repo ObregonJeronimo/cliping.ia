@@ -143,7 +143,7 @@ def datos_de(pagemodel_path: str, dst: str) -> dict:
 
 async def render(url: str, salida: str, hero: str | None = None, dur: int = 20,
                  seed: int = 7, aire: str | None = None, recapturar: bool = False,
-                 bitrate: int = 10_000_000) -> str:
+                 bitrate: int = 8_000_000) -> str:
     dst = os.path.join(SALIDA, _dominio(url))
     pm_path = os.path.join(dst, "pagemodel.json")
     if recapturar or not os.path.exists(pm_path):

@@ -441,8 +441,41 @@ window.URVID = {
       output: (ch) => { const bts = new Uint8Array(ch.byteLength); ch.copyTo(bts); this._chunks.push({ b: bts, t: ch.timestamp, clave: ch.type === 'key' }) },
       error: (err) => { this._encErr = String(err) },
     })
-    this._enc.configure({ codec: 'vp09.00.10.08', width: s.W, height: s.H, bitrate: bitrate || 16e6, framerate: s.fps || 30, latencyMode: 'quality' })
-    return true
+    // H.264 DIRECTO SI SE PUEDE, y se puede.
+    //
+    // Hasta ahora esto codificaba VP9 y despues backend/render3d.py lo TRANSCODIFICABA a H.264 con
+    // libx264, porque VP9 en MP4 casi no se reproduce fuera de Chrome e Instagram lo rechaza. O sea
+    // DOS codificaciones con perdida encadenadas: la segunda gastaba bits carisimos en preservar los
+    // artefactos de la primera. Con grano de pelicula —que es ruido, o sea incompresible— una pieza de
+    // 30 s terminaba pesando 112 MB.
+    //
+    // Chromium SI puede codificar H.264 High: probado con isConfigSupported, avc1.640028 (nivel 4.0) y
+    // avc1.640033 (nivel 5.1) responden que si; el Baseline avc1.42E01F que se habia probado antes
+    // responde que no, y de ahi venia la creencia de que no habia H.264. Una sola codificacion, sin
+    // transcode, y el bitrate se controla de verdad en vez de pelearlo con un CRF.
+    //
+    // `format: 'annexb'` porque el flujo se guarda crudo y se REMUXEA con `-c copy`: annexb lleva los
+    // SPS/PPS adentro de cada keyframe, asi que ffmpeg lo lee sin extradata. Con el formato `avc` por
+    // defecto los chunks vienen con prefijo de longitud y sin cabecera, y hay que armar el avcC a mano.
+    const codec = { W: s.W, H: s.H }
+    this._codec = 'vp09.00.10.08'
+    for (const c of ['avc1.640033', 'avc1.640028']) {
+      try {
+        const sop = await VideoEncoder.isConfigSupported({
+          codec: c, width: s.W, height: s.H, bitrate: bitrate || 12e6, framerate: s.fps || 30,
+          avc: { format: 'annexb' },
+        })
+        if (sop && sop.supported) { this._codec = c; break }
+      } catch (e) { /* el navegador no lo conoce: se sigue probando */ }
+    }
+    void codec
+    const cfg = {
+      codec: this._codec, width: s.W, height: s.H,
+      bitrate: bitrate || 12e6, framerate: s.fps || 30, latencyMode: 'quality',
+    }
+    if (this._codec.startsWith('avc1')) cfg.avc = { format: 'annexb' }
+    this._enc.configure(cfg)
+    return { codec: this._codec }
   },
   async grabarFrame(i) {
     const e = window.__esc, s = e.spec, fps = s.fps || 30
@@ -456,7 +489,8 @@ window.URVID = {
   async grabarFin() {
     await this._enc.flush(); this._enc.close()
     if (this._encErr) throw new Error(this._encErr)
-    return { n: this._chunks.length, bytes: this._chunks.reduce((n, c) => n + c.b.length, 0), err: null }
+    return { n: this._chunks.length, bytes: this._chunks.reduce((n, c) => n + c.b.length, 0),
+      codec: this._codec, err: null }
   },
   tajada(desde, cuantos) {
     const cs = this._chunks.slice(desde, desde + cuantos)

@@ -190,6 +190,10 @@ async def grabar_mp4(spec, salida, raiz_assets=None, gpu=False, bitrate=12_000_0
     frames era el 99% del tiempo de render. Codificando con WebCodecs el frame no sale del navegador
     y al final viaja un solo video.
     """
+
+    # Que codec devolvio el navegador. Se inicializa aca y no adentro del bloque del navegador
+    # porque si la captura falla antes de llamar a grabarInicio, el muxer de mas abajo lo lee igual.
+    codec_usado = None
     from playwright.async_api import async_playwright
 
     puerto, apagar = _servir(raiz_assets)
@@ -210,7 +214,8 @@ async def grabar_mp4(spec, salida, raiz_assets=None, gpu=False, bitrate=12_000_0
                 spec["dur"] = info["dur"]           # la pagina manda: la pieza a mano se mide en beats
             _guardar_plan(salida, info)
             n = int(round(spec["dur"] * fps))
-            await pg.evaluate("(b) => window.URVID.grabarInicio(b)", bitrate)
+            inicio = await pg.evaluate("(b) => window.URVID.grabarInicio(b)", bitrate)
+            codec_usado = (inicio or {}).get("codec") if isinstance(inicio, dict) else None
             for i in range(n):
                 await pg.evaluate("(i) => window.URVID.grabarFrame(i)", i)
                 if i and i % 120 == 0:
@@ -233,13 +238,32 @@ async def grabar_mp4(spec, salida, raiz_assets=None, gpu=False, bitrate=12_000_0
     finally:
         apagar()
 
-    tmp = Path(salida).with_suffix(".ivf")
-    _ivf(chunks, spec["W"], spec["H"], spec.get("fps", 30), tmp)
     import imageio_ffmpeg
     exe = imageio_ffmpeg.get_ffmpeg_exe()
-    # Transcodificar a H.264: VP9 en MP4 casi no se reproduce fuera de Chrome, e Instagram lo rechaza.
-    cmd = [exe, "-y", "-i", str(tmp), "-c:v", "libx264", "-pix_fmt", "yuv420p",
-           "-crf", "18", "-preset", "medium", "-movflags", "+faststart", str(salida)]
+    fps = spec.get("fps", 30)
+
+    if str(codec_usado or "").startswith("avc1"):
+        # H.264 CRUDO -> REMUX, sin recodificar.
+        #
+        # Antes esto era VP9 y despues un transcode con libx264: dos codificaciones con perdida
+        # encadenadas, y la segunda gastando bits carisimos en preservar los artefactos de la primera.
+        # Con grano de pelicula —que es ruido incompresible— una pieza de 30 s salia de 112 MB.
+        # Chromium codifica H.264 High directo (probado: avc1.640033 y avc1.640028 soportados), asi
+        # que aca solo hay que envolver el flujo en un MP4. `-c copy` no toca un solo bit.
+        tmp = Path(salida).with_suffix(".h264")
+        with open(tmp, "wb") as f:
+            for b, _t, _k in chunks:
+                f.write(b)
+        cmd = [exe, "-y", "-fflags", "+genpts", "-r", str(fps), "-f", "h264", "-i", str(tmp),
+               "-c:v", "copy", "-movflags", "+faststart", str(salida)]
+    else:
+        # Camino de respaldo: VP9 en un IVF y transcode. Sigue existiendo porque un navegador sin
+        # H.264 (una build sin los codecs propietarios) tiene que poder sacar el video igual.
+        tmp = Path(salida).with_suffix(".ivf")
+        _ivf(chunks, spec["W"], spec["H"], fps, tmp)
+        cmd = [exe, "-y", "-i", str(tmp), "-c:v", "libx264", "-pix_fmt", "yuv420p",
+               "-crf", "20", "-maxrate", "12M", "-bufsize", "24M", "-preset", "medium",
+               "-movflags", "+faststart", str(salida)]
     r = subprocess.run(cmd, capture_output=True)
     if r.returncode != 0:
         raise RuntimeError("ffmpeg: " + r.stderr.decode("utf-8", "replace")[-400:])
