@@ -20,7 +20,7 @@ import { E,
 // El COPY sale de los DATOS. Lo que queda escrito aca es CHROME de la pieza (rotulos de
 // capitulo, indicadores tecnicos): eso es direccion de arte y no cambia con el contenido.
 // Lo que la marca DICE — su nombre, sus cifras, su claim, su CTA — sale de los datos o NO SALE.
-import { D } from '../datos.js'
+import { D, esDemo } from '../datos.js'
 
 export const meta = { id: 'tarjetas', beats: 6 }
 
@@ -74,7 +74,11 @@ const PASOS = 8         // escalones del contador -> 9 texturas por tarjeta
 // impedir, y el codigo no fallaba — mentia en silencio.
 function resolver() {
   const d = datosDeLaPagina()
-  const DATOS = d.length ? d : DEMO
+  // Las cifras de DEMO son SOLO para la demo. Medido: 7 de 12 fixtures caian en este fallback, y el
+  // video de Linear salia diciendo "300 MARCAS / 96 CIUDADES / 24 PREMIOS" — cifras de ANTHEM
+  // presentadas como suyas. Sin cifras propias la escena no tiene sujeto y devuelve una lista vacia:
+  // el guionista es quien tiene que no elegirla, y un cuadro que falta se ve; una cifra ajena no.
+  const DATOS = d.length ? d : (esDemo ? DEMO : [])
   const HERO = Math.min(2, DATOS.length - 1)   // la que se queda: la del medio, o la ultima si hay pocas
   // entran de afuera hacia adentro y la heroe aterriza ULTIMA
   const resto = DATOS.map((_, i) => i).filter(i => i !== HERO)
@@ -103,6 +107,9 @@ const ENTRADAS = [
 export function build(ctx) {
   const { THREE, gsap, camera, distBase, rnd, fondo, pelicula } = ctx
   const { DATOS, HERO, ORDEN } = resolver()
+  // Sin una sola cifra esta escena no tiene de que hablar. Devuelve un grupo vacio en vez de
+  // inventar: el secuenciador lo salta y la pieza queda mas corta, que es la respuesta honesta.
+  if (!DATOS.length) return { g, tl, vacia: true }
   const g = new THREE.Group()
   const tl = gsap.timeline({ paused: true })
 

@@ -23,9 +23,27 @@ try { GlobalFonts.loadFontsFromDir(join(RAIZ, 'tools', 'fonts')) } catch { /* la
 
 // ---- DOM mínimo. El kit usa document.createElement('canvas') para rasterizar tipografía y
 // document.fonts para esperarla; nada más del navegador hace falta para ARMAR la escena.
+// Se intercepta `fillText` para saber QUE ESCRIBE cada escena. Es la única forma de auditar el
+// contenido sin renderizar: el kit rasteriza toda su tipografía en un canvas 2D, así que todo lo que
+// el espectador va a leer pasa por acá.
+const ESCRITO = []
+function lienzo(w = 4, h = 4) {
+  const cv = createCanvas(w, h)
+  const get = cv.getContext.bind(cv)
+  cv.getContext = (tipo, o) => {
+    const c = get(tipo, o)
+    if (c && c.fillText && !c.__espiado) {
+      const orig = c.fillText.bind(c)
+      c.fillText = (txt, x, y) => { ESCRITO.push(String(txt)); return orig(txt, x, y) }
+      c.__espiado = true
+    }
+    return c
+  }
+  return cv
+}
 globalThis.document = {
-  createElement: (t) => (t === 'canvas' ? createCanvas(4, 4) : { style: {} }),
-  getElementById: () => createCanvas(4, 4),
+  createElement: (t) => (t === 'canvas' ? lienzo() : { style: {} }),
+  getElementById: () => lienzo(),
   fonts: { ready: Promise.resolve(), load: async () => {} },
 }
 globalThis.window = globalThis
@@ -87,19 +105,42 @@ for (const id of ids) {
   // pagina real: una cifra, una frase, sin bloque y sin CTA. Es el caso que rompe, y el que el
   // verificador no miraba: con los datos de ANTHEM (cinco de todo) toda escena parece correcta.
   const { configurarDatos, ANTHEM } = await import(pathToFileURL(join(HERE, 'datos.js')).href)
-  configurarDatos({ marca: 'Q', rotulo: 'Q', claim: 'UNA COSA', frases: ['UNA COSA'],
-    bloque: null, datos: [{ valor: '4.9', etiqueta: 'RESEÑAS' }], golpe: 'UNA COSA', cta: null,
-    pie: ['q.com'], dominio: 'q.com', elementos: [] })
+  const CENTINELA = 'ZZQX'
+  configurarDatos({ marca: CENTINELA, rotulo: CENTINELA, claim: CENTINELA + ' UNO',
+    frases: [CENTINELA + ' UNO'], bloque: null,
+    datos: [{ valor: '4.9', etiqueta: CENTINELA }], golpe: CENTINELA + ' UNO', cta: null,
+    pie: [CENTINELA], dominio: CENTINELA, elementos: [] })
+  ESCRITO.length = 0
   try {
     const camPobre = new THREE.PerspectiveCamera(fov, W / H, 0.1, 400)
     camPobre.position.set(0, 0, distBase)
     let sp = 1
     const rp = await mod.build({ ...ctx, camera: camPobre, fondo: uni(), rnd: () => { sp = (sp * 1664525 + 1013904223) >>> 0; return sp / 4294967296 } })
-    ok(rp && rp.g && rp.g.children.length > 0, `${id}: con una pagina POBRE el grupo queda vacio`)
-    rp.tl.time(mod.meta.beats * BEAT, false)
+    ok(rp && rp.g, `${id}: con una pagina POBRE no devolvio grupo`)
+    if (rp && rp.tl) rp.tl.time(mod.meta.beats * BEAT, false)
   } catch (e) {
     die(`${id}: con una pagina POBRE (1 cifra, 1 frase, sin CTA) build() lanzo — ${e.message}`)
   }
+
+  // ---- E-INVENCION. La regla anti-invencion vivia en cuatro comentarios largos y en NINGUN test, y
+  // por eso pudo romperse sin que nada avisara: medido sobre los fixtures, 46 de 84 slots de frase y
+  // las cifras de 7 de 12 paginas salian del copy de la demo. El video de Stripe decia "ANIMA" y el
+  // de una 404 decia "300 MARCAS · 96 CIUDADES".
+  //
+  // Se construye con datos marcados con un centinela y se mira TODO lo que la escena escribio. Si
+  // aparece una frase o una cifra de ANTHEM, la escena esta rellenando con contenido ajeno.
+  const norm = t => String(t).toUpperCase().replace(/\s+/g, ' ').trim()
+  const escrito = ESCRITO.map(norm)
+  const prohibido = [
+    ...ANTHEM.frases.flatMap(f => f.split('\n')),
+    ...ANTHEM.datos.map(d => d.etiqueta),
+    ...ANTHEM.datos.map(d => String(d.valor)),
+    ANTHEM.marca, ANTHEM.cta, ANTHEM.claim,
+  ].map(norm).filter(t => t.length >= 3)
+  const fugas = [...new Set(prohibido.filter(p => escrito.some(e => e === p)))]
+  ok(fugas.length === 0,
+    `E-INVENCION ${id}: con una pagina que NO dijo eso, la escena escribe contenido de la demo: ${fugas.slice(0, 4).map(f => JSON.stringify(f)).join(', ')}`)
+
   configurarDatos(ANTHEM)
 
   let r

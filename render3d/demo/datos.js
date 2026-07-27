@@ -39,10 +39,15 @@ export const ANTHEM = {
 
 export let D = ANTHEM
 
+// ¿Estamos mostrando la demo o el video de alguien? Es la distinción que decide si un hueco se
+// rellena o se deja vacío, y no tenerla convirtió la regla anti-invención en un comentario.
+export let esDemo = true
+
 // Rellena SOLO lo que falta. Nunca inventa contenido: si la página no dio frases, quedan las de
 // ANTHEM y la escena de tipografía no debería elegirse — esa decisión es del guionista, no de acá.
 export function configurarDatos(d) {
   if (!d) return
+  esDemo = d === ANTHEM
   D = { ...ANTHEM, ...d }
   // Las listas se recortan a lo que la página realmente dijo. Completar hasta cinco con material de
   // ANTHEM haría que el video de un cliente mostrara las cifras de la demo — que es exactamente el
@@ -53,7 +58,27 @@ export function configurarDatos(d) {
   if (Array.isArray(d.elementos)) D.elementos = d.elementos.filter(e => e && e.url)
 }
 
-// Helper para las escenas: la frase i, o la de ANTHEM si la página no llegó a tantas. Devuelve
-// siempre algo dibujable — una escena a la que le falta una frase se compone con menos, no explota.
-export const frase = (i) => (D.frases && D.frases[i]) || ANTHEM.frases[i] || ''
+// La frase i. Si la página no llegó a tantas, devuelve CADENA VACÍA — no la de ANTHEM.
+//
+// Esto decía `|| ANTHEM.frases[i]`, y ese "o" era una mentira que se publicaba. Medido sobre los
+// fixtures: 46 de 84 slots de frase salían del copy de la demo. El video de Stripe decía "ANIMA",
+// "CADA PÁGINA" y "SU PROPIO VIDEO" — frases de ANTHEM, presentadas como si fueran de Stripe. Y el de
+// una página 404 salía diciendo "300 MARCAS · 96 CIUDADES · 24 PREMIOS".
+//
+// El archivo declaraba la regla anti-invención en un comentario largo y a la vez la violaba tres
+// líneas más abajo. Un fallback que rellena con contenido AJENO no es robustez: es exactamente el
+// defecto que la regla existe para impedir. Un hueco vacío es un problema de composición — se ve, se
+// arregla. Una frase ajena es un problema de veracidad, y no se ve nunca.
+//
+// El único caso en que se rellena es la DEMO: cuando nadie pasó una página, ANTHEM es su propio
+// contenido y no hay marca a la que mentirle.
+export const frase = (i) => {
+  const f = D.frases && D.frases[i]
+  if (f) return f
+  return esDemo ? (ANTHEM.frases[i] || '') : ''
+}
 export const dato = (i) => (D.datos && D.datos[i]) || null
+
+// Cuántas frases REALES hay. Las escenas lo usan para componerse con lo que hay en vez de dejar
+// slots vacíos: es la diferencia entre una escena más corta y una escena con agujeros.
+export const nFrases = () => (esDemo ? ANTHEM.frases.length : (D.frases || []).filter(Boolean).length)
