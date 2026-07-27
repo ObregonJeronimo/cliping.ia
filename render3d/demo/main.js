@@ -81,6 +81,7 @@ export class Anthem {
     const rim = new THREE.PointLight(hex(LOOK.acento), 60, 40); rim.position.set(4, -3, 4)
     this.scene.add(rim)
     this.rim = rim
+    this.scene.environment = this._estudio()
 
     this.fondo = fondoVivo(this.mundoW, this.mundoH)
     this.scene.add(this.fondo)
@@ -103,6 +104,51 @@ export class Anthem {
     this.camaraE = (spec.__aire && spec.__aire.camara) || { dolly: 1, orbita: 1 }
     this.tl = window.gsap.timeline({ paused: true })
     this.escenas = []
+  }
+
+  // ESTUDIO: el entorno que reflejan los metales.
+  //
+  // UN METAL NO TIENE COLOR DIFUSO. Con `metalness: 1` el material no responde a las luces
+  // direccionales salvo por el punto especular: todo lo que se ve de un metal es el ENTORNO
+  // reflejado. Sin `scene.environment`, el entorno es negro y el metal sale negro — que es
+  // exactamente lo que pasaba: el chasis de titanio del telefono y el aluminio de la notebook
+  // llegaban al video como dos siluetas oscuras, con tres luces encendidas en la escena. Cero
+  // errores; el material estaba haciendo justo lo que dice la fisica.
+  //
+  // Se construye un entorno propio y no se usa RoomEnvironment porque un cuarto de muebles grises
+  // deja el metal gris. Este es un degrade de los colores de LA MARCA con dos softboxes: el metal
+  // refleja el acento de quien paga el video, que es la unica razon por la que hay un metal ahi.
+  _estudio() {
+    const est = new THREE.Scene()
+    const cielo = new THREE.Mesh(
+      new THREE.SphereGeometry(60, 24, 16),
+      new THREE.ShaderMaterial({
+        side: THREE.BackSide,
+        uniforms: { uA: { value: hex(LOOK.bg2) }, uB: { value: hex(LOOK.acento) }, uC: { value: hex(LOOK.tinta) } },
+        vertexShader: 'varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
+        fragmentShader: `uniform vec3 uA, uB, uC; varying vec3 vP;
+          void main(){
+            float y = vP.y * 0.5 + 0.5;
+            vec3 c = mix(uA * 0.6, uB * 0.85, smoothstep(0.15, 0.62, y));
+            c = mix(c, uC * 1.5, smoothstep(0.72, 1.0, y));   // el cenit, que es lo que da el filo
+            gl_FragColor = vec4(c, 1.0);
+          }`,
+      }))
+    est.add(cielo)
+    // Dos softboxes. Sin ellas el reflejo es un degrade parejo y el metal se lee como plastico: lo
+    // que dice "metal" es un borde DURO entre claro y oscuro corriendose sobre la superficie.
+    const caja = (x, y, z, s, k) => {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(s, s),
+        new THREE.MeshBasicMaterial({ color: hex(LOOK.tinta).multiplyScalar(k) }))
+      m.position.set(x, y, z); m.lookAt(0, 0, 0); est.add(m)
+    }
+    caja(-14, 16, 12, 22, 3.2)
+    caja(12, -6, 14, 14, 1.1)
+    const pmrem = new THREE.PMREMGenerator(this.renderer)
+    const tex = pmrem.fromScene(est, 0.04).texture
+    pmrem.dispose()
+    cielo.geometry.dispose(); cielo.material.dispose()
+    return tex
   }
 
   _composer() {

@@ -18,7 +18,16 @@ import { dirname, join } from 'node:path'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const RAIZ = join(HERE, '..', '..')
-const DIR = join(HERE, 'escenas')
+// SE VERIFICAN LAS DOS CARPETAS. Los heroes cumplen exactamente el mismo contrato que las escenas
+// —meta {id, beats}, build(ctx) -> {g, gr, tl}— y por eso les corresponden exactamente los mismos
+// chequeos: determinismo, duracion dentro de sus beats, camara devuelta, nada quieto mas de un beat.
+// Mirando solo `escenas/`, los heroes eran el unico codigo del motor sin ninguna compuerta, y son
+// justo la parte que mas rapido va a crecer: la idea es que sean cientos.
+const DIRS = [join(HERE, 'escenas'), join(HERE, 'heroes')]
+const rutaDe = (id) => {
+  for (const d of DIRS) { const r = join(d, `${id}.js`); if (existsSync(r)) return r }
+  return join(DIRS[0], `${id}.js`)
+}
 try { GlobalFonts.loadFontsFromDir(join(RAIZ, 'tools', 'fonts')) } catch { /* la medida de texto cae a la fuente por defecto */ }
 
 // ---- DOM mínimo. El kit usa document.createElement('canvas') para rasterizar tipografía y
@@ -60,6 +69,24 @@ globalThis.gsap = gsap
 const THREE = await import(pathToFileURL(join(RAIZ, 'node_modules', 'three', 'build', 'three.module.js')).href)
 const { BEAT, LOOK, b, limpiarCache } = await import(pathToFileURL(join(HERE, 'kit.js')).href)
 
+// Texturas de mentira con relaciones de aspecto de verdad. Los heroes solo leen `image.width/height`
+// para decidir la composicion, asi que un canvas de 4 px alcanza y no cuesta memoria: lo que se esta
+// probando es la GEOMETRIA de la grilla, no los pixeles.
+function tejidoFalso(relaciones) {
+  const m = new Map()
+  relaciones.forEach((ar, i) => {
+    const h = 64, w = Math.max(2, Math.round(h * ar))
+    const t = new THREE.CanvasTexture(createCanvas(w, h))
+    t.image = { width: w, height: h }
+    m.set('f' + i, t)
+  })
+  // El hero de telefono y el de portatil piden la tira larga de la pagina, con su alto real.
+  const tira = new THREE.CanvasTexture(createCanvas(4, 4))
+  tira.image = { width: 720, height: 6240 }
+  m.set('tira', tira)
+  return m
+}
+
 let fails = 0
 const die = m => { console.error('FAIL  ' + m); fails++ }
 const ok = (c, m) => { if (!c) die(m) }
@@ -73,16 +100,18 @@ const PROHIBIDO = [
 
 const ids = process.argv.slice(2).length
   ? process.argv.slice(2)
-  : (existsSync(DIR) ? readdirSync(DIR).filter(f => f.endsWith('.js') && f !== 'index.js').map(f => f.replace('.js', '')) : [])
+  : [...new Set(DIRS.flatMap(d => (existsSync(d)
+    ? readdirSync(d).filter(f => f.endsWith('.js') && f !== 'index.js').map(f => f.replace('.js', ''))
+    : [])))]
 
-if (!ids.length) { console.error('no hay escenas en ' + DIR); process.exit(1) }
+if (!ids.length) { console.error('no hay escenas ni heroes en ' + DIRS.join(' ni ')); process.exit(1) }
 
 const W = 1080, H = 1920, mundoH = 10, mundoW = mundoH * (W / H)
 const fov = 30
 const distBase = (mundoH / 2) / Math.tan((fov * Math.PI / 180) / 2)
 
 for (const id of ids) {
-  const ruta = join(DIR, `${id}.js`)
+  const ruta = rutaDe(id)
   if (!existsSync(ruta)) { die(`${id}: no existe ${ruta}`); continue }
 
   const fuente = readFileSync(ruta, 'utf8')
@@ -107,6 +136,20 @@ for (const id of ids) {
     fondo: uni(),
     pelicula: { uT: { value: 0 }, uFlash: { value: 0 }, uGrano: { value: 0.055 }, uVinieta: { value: 0.9 }, uAberr: { value: 0.0022 } },
     bloom: { strength: 0.85, radius: 0.62, threshold: 0.62 },
+    // MATERIAL SINTETICO PARA LOS HEROES. Con `texturas` vacio, el hero de mosaico devolvia un grupo
+    // vacio -que es lo correcto y honesto- y toda su logica de composicion quedaba SIN PROBAR: cuantas
+    // columnas, como encaja cada pieza en su celda segun su relacion de aspecto, como se centra la
+    // ultima fila incompleta. Justo lo que puede romperse.
+    //
+    // Las relaciones de aspecto no son al azar: 2.4 es un logo apaisado, 1.0 un cuadrado, 0.6 una foto
+    // vertical, 3.4 un boton. Son las formas reales que devuelve la extraccion, y son las que hacen que
+    // una grilla ingenua deforme el logo de alguien.
+    texturas: tejidoFalso([2.4, 1.0, 0.6, 3.4, 1.35]),
+    datosEls: [
+      { rol: 'logo', url: 'f0' }, { rol: 'tarjeta', url: 'f1' }, { rol: 'foto', url: 'f2' },
+      { rol: 'cta', url: 'f3' }, { rol: 'tarjeta', url: 'f4' },
+    ],
+    spec: { tiraViewport: 1560 }, claro: false,
   }
 
   // ---- PAGINA POBRE. Antes de nada, se construye la escena con el material MINIMO que puede dar una
@@ -240,9 +283,16 @@ for (const id of ids) {
       // un cuadro de 5.6 x 10, o sea que la "Q" gigante —el defecto exacto que hay que cazar— entraba
       // en la definicion de fondo y se salteaba. Comprobado devolviendo el defecto: el gate pasaba en
       // verde. Toda tipografia lleva `material.map`; un panel de color plano no.
-      const esFondo = !(o.material && o.material.map) && t.x >= mundoW * 0.9 && t.y >= mundoH * 0.9
+      // SOLO SE MIDE LO QUE LLEVA TEXTURA. Es lo que este chequeo siempre quiso mirar: la tipografia
+      // (que se rasteriza a textura) y los recortes reales de la pagina. Un cuerpo de geometria pura
+      // -el chasis de un telefono, el halo detras de un producto, un panel de fondo- es GRANDE A
+      // PROPOSITO: un anuncio de telefono encuadra el aparato ocupando el cuadro, y el halo tiene que
+      // desbordarlo o no es un halo. Midiendolos, los cuatro heroes fallaban por hacer justo lo que
+      // corresponde, mientras el defecto que hay que cazar -una marca de una letra que se come el
+      // cuadro- sigue siendo tipografia y sigue entrando.
+      if (!(o.material && o.material.map)) return
       const esFilete = Math.min(t.x, t.y) < 0.15
-      if (esFondo || esFilete || t.y > mundoH * 1.6) return
+      if (esFilete || t.y > mundoH * 1.6) return
       if (!peor || t.y > peor.y) peor = { x: t.x, y: t.y }
     })
     if (peor) {
@@ -301,17 +351,25 @@ for (const id of ids) {
   // ---- NADA DESCANSA. Se recorre la timeline muestreando la posicion/escala/opacidad de todo el
   // grupo y se busca la ventana mas larga sin cambios. Un beat entero sin movimiento no es un
   // silencio, es una diapositiva.
-  const firma = () => {
+  // La firma se toma sobre la matriz MUNDIAL, no sobre la posicion local. Leyendo la local, una malla
+  // quieta dentro de un grupo que se mueve figura como quieta — y asi se mueve casi todo hero: la
+  // geometria esta fija en su grupo y lo que viaja es el grupo. Con la version local, un hero que
+  // llegaba, flotaba y salia daba "nada se mueve" en toda su duracion, y mando a arreglar un bug que
+  // no existia. Una compuerta que acusa en falso cuesta mas que no tenerla.
+  const firmaDe = (grupo) => {
     let s = ''
-    r.g.traverse(o => {
+    grupo.updateWorldMatrix(true, true)
+    grupo.traverse(o => {
       if (!o.isMesh && !o.isPoints) return
-      s += `${o.position.x.toFixed(3)},${o.position.y.toFixed(3)},${o.position.z.toFixed(3)},`
-        + `${o.scale.x.toFixed(3)},${o.rotation.y.toFixed(3)},${o.visible ? 1 : 0},`
+      const e = o.matrixWorld.elements
+      for (let i = 0; i < 16; i++) s += e[i].toFixed(3) + ','
+      s += `${o.visible ? 1 : 0},`
         + `${(o.material && o.material.opacity != null ? o.material.opacity : 1).toFixed(3)},`
         + `${(o.material && o.material.uniforms && o.material.uniforms.uProg ? o.material.uniforms.uProg.value : 0).toFixed(3)};`
     })
     return s
   }
+  const firma = () => firmaDe(r.g)
   const N = Math.max(12, Math.round(dur * 30))
   let previa = null, quieto = 0, peor = 0
   for (let i = 0; i <= N; i++) {
@@ -333,14 +391,11 @@ for (const id of ids) {
   const gg = r.g; const guardar = gg
   void guardar
   r2.tl.time((r2.tl.duration()) * 0.5, false)
-  let fb = ''
-  r2.g.traverse(o => {
-    if (!o.isMesh && !o.isPoints) return
-    fb += `${o.position.x.toFixed(3)},${o.position.y.toFixed(3)},${o.position.z.toFixed(3)},`
-      + `${o.scale.x.toFixed(3)},${o.rotation.y.toFixed(3)},${o.visible ? 1 : 0},`
-      + `${(o.material && o.material.opacity != null ? o.material.opacity : 1).toFixed(3)},`
-      + `${(o.material && o.material.uniforms && o.material.uniforms.uProg ? o.material.uniforms.uProg.value : 0).toFixed(3)};`
-  })
+  // La MISMA funcion de firma para las dos construcciones. Estaba duplicada a mano, y al cambiar una
+  // sola -la de arriba, a matriz mundial- las dos dejaron de hablar el mismo idioma: el chequeo empezo
+  // a acusar de no-determinista a toda escena correcta. Una comparacion con dos formatos distintos no
+  // compara nada.
+  const fb = firmaDe(r2.g)
   ok(fa === fb, `${id}: dos construcciones con la misma semilla dan escenas distintas`)
 
   if (!fails) console.log(`  ${id}: OK — ${r.g.children.length} objetos, ${dur.toFixed(2)}s de ${limite.toFixed(2)}s, quietud maxima ${quietoSeg.toFixed(2)}s`)

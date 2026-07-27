@@ -77,8 +77,18 @@ export function build(ctx) {
   const GRUESO = ANCHO * 0.085
   const R = ANCHO * R_ESQ
 
+  // DOS GRUPOS, Y NO ES UN CAPRICHO. `gTel` hace la LLEGADA y la SALIDA; `gFlota`, hijo suyo, hace el
+  // vaivén continuo. Separarlos evita que dos tweens escriban la misma propiedad y se pisen.
+  //
+  // El primer intento tenía uno solo y resolvía el vaivén con `modifiers` de GSAP — y NUNCA CORRIÓ.
+  // `modifiers` sólo se aplica a propiedades que están declaradas en `vars`, y ahí no había ninguna:
+  // era un tween sin nada que animar con un modificador colgado. Cero errores, cero avisos, y el
+  // teléfono llegaba y se quedaba clavado. En la lámina de contactos no se ve, porque entre cuadro y
+  // cuadro la página scrollea y parece que algo pasa. Lo encontró la compuerta de "nada se mueve".
   const gTel = new THREE.Group()
   g.add(gTel)
+  const gFlota = new THREE.Group()
+  gTel.add(gFlota)
 
   // ---------------------------------------------------------------- cuerpo
   // El bisel de la extrusión ES el canto: un borde curvo que va del frente al lateral y devuelve un
@@ -94,7 +104,7 @@ export function build(ctx) {
     color: hex('#7c828f'), roughness: 0.34, metalness: 1.0,
     clearcoat: 0.6, clearcoatRoughness: 0.25,
   }))
-  gTel.add(cuerpo)
+  gFlota.add(cuerpo)
 
   // Frente negro: el bisel del aparato. Va apenas por delante del cuerpo y apenas más chico, así que
   // deja ver el canto metálico alrededor — que es exactamente lo que se ve en un teléfono real.
@@ -106,7 +116,7 @@ export function build(ctx) {
     color: hex('#07080c'), roughness: 0.22, metalness: 0.4, clearcoat: 1, clearcoatRoughness: 0.06,
   }))
   frente.position.z = GRUESO * 0.52
-  gTel.add(frente)
+  gFlota.add(frente)
 
   // Botones laterales. Son tres cilindros de dos milímetros que casi no se ven — y justamente por eso
   // hacen falta: un canto perfectamente liso se lee como un render, no como un objeto.
@@ -114,13 +124,13 @@ export function build(ctx) {
   const boton = (y, largo) => {
     const m = new THREE.Mesh(new THREE.BoxGeometry(ANCHO * 0.012, largo, GRUESO * 0.55), matBoton)
     m.position.set(ANCHO / 2 + ANCHO * 0.004, y, 0)
-    gTel.add(m)
+    gFlota.add(m)
     return m
   }
   boton(ALTO * 0.20, ALTO * 0.075)                       // encendido
   const vol = new THREE.Mesh(new THREE.BoxGeometry(ANCHO * 0.012, ALTO * 0.055, GRUESO * 0.55), matBoton)
-  vol.position.set(-ANCHO / 2 - ANCHO * 0.004, ALTO * 0.26, 0); gTel.add(vol)
-  const vol2 = vol.clone(); vol2.position.y = ALTO * 0.185; gTel.add(vol2)
+  vol.position.set(-ANCHO / 2 - ANCHO * 0.004, ALTO * 0.26, 0); gFlota.add(vol)
+  const vol2 = vol.clone(); vol2.position.y = ALTO * 0.185; gFlota.add(vol2)
 
   // ---------------------------------------------------------------- pantalla
   // Va en `gr` (post-bloom) pero se mueve CON el teléfono, que vive en `g`: son dos escenas distintas,
@@ -201,7 +211,7 @@ export function build(ctx) {
         void main(){ gl_FragColor = vec4(uCol, smoothstep(0.5, 0.04, distance(vUv, vec2(0.5))) * uF); }`,
     }))
   halo.position.z = -GRUESO * 2.4
-  gTel.add(halo)
+  gFlota.add(halo)
 
   // ---------------------------------------------------------------- tiempo
   const DUR = b(meta.beats)
@@ -226,13 +236,17 @@ export function build(ctx) {
   // volverían a alinearse cada tanto y el conjunto latiría como una sola cosa, que se nota más que la
   // quietud misma.
   const f1 = rnd() * 6.28, f2 = rnd() * 6.28, f3 = rnd() * 6.28
-  tl.to(gTel.position, { duration: DUR, ease: 'none',
-    modifiers: { y: () => -0.30 + Math.sin(tl.time() * 0.74 + f1) * 0.15 } }, 0)
-  tl.to(gTel.rotation, { duration: DUR, ease: 'none',
-    modifiers: {
-      y: () => -0.22 + Math.sin(tl.time() * 0.53 + f2) * 0.14,
-      z: () => 0.015 + Math.sin(tl.time() * 0.41 + f3) * 0.03,
-    } }, b(1.35))
+  const flotar = () => {
+    const t = tl.time()
+    // Arranca en cero y crece: si el vaivén ya estuviera a plena amplitud durante la llegada, el
+    // aparato entraría temblando en vez de llegar y asentarse.
+    const k = Math.min(1, Math.max(0, (t - b(1.1)) / b(1.2)))
+    gFlota.position.y = Math.sin(t * 0.74 + f1) * 0.15 * k
+    gFlota.rotation.y = Math.sin(t * 0.53 + f2) * 0.14 * k
+    gFlota.rotation.z = Math.sin(t * 0.41 + f3) * 0.03 * k
+  }
+  tl.to({}, { duration: DUR, ease: 'none', onUpdate: flotar }, 0)
+  flotar()
 
   // EL SCROLL recorre como mucho el 68% de la tira: llegar al final delata que la página se acabó.
   if (tira) {
@@ -260,11 +274,13 @@ export function build(ctx) {
   tl.to(gTel.rotation, { z: 0.32, x: -0.28, duration: b(0.85), ease: E.acelera(2) }, DUR - b(0.85))
 
   // La pantalla vive en la otra escena: copia la transformación del aparato en cada frame.
+  // La pantalla vive en la OTRA escena, así que no puede ser hija: se le copia la transformación
+  // MUNDIAL de gFlota, que ya combina la llegada de gTel con el vaivén. Copiar sólo gTel dejaba la
+  // pantalla quieta mientras el aparato se movía — el vidrio flotando por su cuenta.
   const sincronizar = () => {
     if (!pantalla) return
-    pantalla.position.copy(gTel.position)
-    pantalla.rotation.copy(gTel.rotation)
-    pantalla.scale.copy(gTel.scale)
+    g.updateWorldMatrix(true, true)
+    gFlota.matrixWorld.decompose(pantalla.position, pantalla.quaternion, pantalla.scale)
     pantalla.translateZ(GRUESO * 0.59)
   }
   tl.to({}, { duration: DUR, ease: 'none', onUpdate: sincronizar }, 0)

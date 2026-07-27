@@ -11,6 +11,9 @@
 // El selector no ofrece un hero cuyo material no exista: un telefono con la pantalla negra es peor
 // que no tener telefono.
 import * as telefono from './telefono.js'
+import * as portatil from './portatil.js'
+import * as mosaico from './mosaico.js'
+import * as prisma from './prisma.js'
 import * as toro from '../escenas/toro.js'
 
 // El toro se registra como hero de RESPALDO. Es geometria pura, asi que no necesita nada de la pagina
@@ -22,7 +25,7 @@ const orbital = {
   build: toro.build,
 }
 
-export const HEROES = [telefono, orbital]
+export const HEROES = [telefono, portatil, mosaico, prisma, orbital]
 export const porId = (id) => HEROES.find(h => h.meta.id === id) || null
 
 // Los que se pueden armar con el material que HAY. `disponible` es un set con 'tira', 'elementos'...
