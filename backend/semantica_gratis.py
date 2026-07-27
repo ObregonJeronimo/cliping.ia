@@ -262,6 +262,125 @@ def _stats(content):
     return out
 
 
+# ---------------------------------------------------------------- de que rubro es la pagina
+# EL RUBRO ES LO QUE ELIGE EL AIRE, y sin el todos los videos vuelven a parecerse.
+#
+# `tipoNegocio` lo llenaba el LLM. Sin brief queda en "otro", y "otro" no esta en el mapa de rubros de
+# tools/anthem-datos.mjs, asi que cae al default: TECNICO. Medido en vivo sobre tres paginas de
+# registros completamente distintos —mercadolibre.com.ar (ecommerce), pentagram.com (estudio de
+# diseño) y theverge.com (medio)— las tres salieron con el mismo aire tecnico. Once aires escritos y
+# el camino gratuito solo podia alcanzar dos.
+#
+# Y las señales estaban ahi sin usarse. schema.org es DECISIVO cuando existe: mercadolibre declara
+# "onlinestore" y the verge "newsmediaorganization", literalmente en el DOM. Cuando no existe, el menu
+# lo desempata solo: "Carrito / Categorias / Mis compras" no se parece en nada a "Pricing / Docs /
+# Log in" ni a "Work / Archive / Studio".
+#
+# Se puntua y se exige MARGEN: si el primero no le saca dos puntos al segundo, devuelve "otro" y el
+# motor cae al aire por defecto. Un rubro equivocado es peor que ninguno — un asador con la direccion
+# de arte de un SaaS se lee como plantilla, que es exactamente lo que hay que evitar.
+
+# schema.org -> rubro. Es lo mas confiable que hay: lo declara el sitio sobre si mismo.
+_SCHEMA = {
+    "onlinestore": "ecommerce", "store": "ecommerce", "shop": "ecommerce", "product": "ecommerce",
+    "offer": "ecommerce", "offercatalog": "ecommerce",
+    "newsmediaorganization": "media", "newsarticle": "media", "blog": "media", "blogposting": "media",
+    "periodical": "media",
+    "restaurant": "servicio-local", "foodestablishment": "servicio-local", "cafe": "servicio-local",
+    "bakery": "servicio-local", "localbusiness": "servicio-local", "hairsalon": "servicio-local",
+    "healthandbeautybusiness": "servicio-local", "medicalbusiness": "servicio-local",
+    "dentist": "servicio-local", "physician": "servicio-local", "exercisegym": "servicio-local",
+    "sportsactivitylocation": "servicio-local", "spa": "servicio-local", "hotel": "servicio-local",
+    "realestateagent": "servicio-local", "automotivebusiness": "servicio-local",
+    "educationalorganization": "educacion", "school": "educacion", "course": "educacion",
+    "collegeoruniversity": "educacion",
+    "event": "evento", "musicevent": "evento", "festival": "evento", "theaterevent": "evento",
+    "softwareapplication": "app", "webapplication": "app", "mobileapplication": "app",
+    "professionalservice": "portfolio",
+}
+
+# Vocabulario de MENU. Un menu dice a que vino la gente, y por eso desempata mejor que el copy: el
+# copy de marketing de un ecommerce y el de un SaaS se parecen; sus menus no se parecen en nada.
+_VOCAB = {
+    "ecommerce": ("carrito cart checkout categorias categories tienda shop productos products ofertas "
+                  "envio envios shipping comprar buy catalogo catalog mis-compras favoritos wishlist "
+                  "sucursales talles"),
+    "saas": ("pricing precios docs documentacion api integraciones integrations changelog log-in login "
+             "sign-up signup demo dashboard plataforma platform developers desarrolladores"),
+    "portfolio": ("work trabajos proyectos projects portfolio archive archivo studio estudio clientes "
+                  "clients casos cases about-us obra"),
+    "servicio-local": ("reservar reservas reserva menu carta turnos turno sucursal sucursales horarios "
+                       "delivery pedidos pedi ubicacion como-llegar whatsapp presupuesto"),
+    "educacion": ("cursos curso alumnos inscripcion inscribite programa campus carreras clases "
+                  "capacitacion certificacion becas"),
+    # OJO CON LO GENERICO. "news" y "newsletter" estaban aca y son las dos palabras mas inutiles del
+    # conjunto: casi toda empresa tiene una seccion de prensa y un boletin. Con ellas, pentagram.com
+    # —un estudio de diseño con "Work / Archive" en el menu— empataba 3 a 2 contra "media" y el margen
+    # lo mandaba a "otro". Una palabra que aparece en todos los rubros no clasifica: solo hace ruido.
+    "media": ("noticias articulos articles opinion secciones ultimas primicias "
+              "reviews entrevistas podcast redaccion columnistas"),
+    "evento": ("entradas tickets agenda programacion lineup speakers ponentes edicion sede fecha"),
+}
+
+# Palabras del RESUMEN de la marca. Pesan menos que el menu porque el copy de marketing tiende a
+# parecerse entre rubros, pero desempatan cuando el menu es generico.
+_RESUMEN = {
+    "saas": "software platform plataforma saas api herramienta tool framework infrastructure",
+    "portfolio": "design consultancy studio estudio agencia agency portfolio arquitectura branding",
+    "media": "news noticias magazine revista periodismo journalism cobertura media",
+    "ecommerce": "tienda store comprar productos envio marketplace",
+    "servicio-local": "restaurante bar clinica gimnasio salon peluqueria taller barrio local",
+    "educacion": "cursos escuela academia universidad aprender ensenanza",
+    "evento": "festival conferencia congreso evento edicion",
+}
+
+
+def _sin_tildes(t):
+    tabla = str.maketrans("áéíóúüñÁÉÍÓÚÜÑ", "aeiouunAEIOUUN")
+    return str(t or "").translate(tabla).lower()
+
+
+def rubro_de(content):
+    """Devuelve un tipoNegocio del enum del pagemodel, o "otro" si no hay evidencia suficiente."""
+    c = content or {}
+    puntos = {}
+    def sumar(r, n):
+        if r:
+            puntos[r] = puntos.get(r, 0) + n
+
+    # 1. schema.org, lo que el sitio declara de si mismo. Vale 4: es una afirmacion, no una pista.
+    for t in _lista((c.get("structured") or {}).get("types")):
+        sumar(_SCHEMA.get(_sin_tildes(t).replace(" ", "")), 4)
+
+    # 2. el menu. Vale 1 por palabra distinta que coincida, hasta 3: tres coincidencias ya son un
+    #    patron y mas no agregan certeza.
+    nav = _sin_tildes(" ".join(_limpio(x, 40) for x in
+                               (_lista(c.get("nav")) + _lista(c.get("ctas")))))
+    nav = re.sub(r"[^a-z0-9]+", " ", nav)
+    for rubro, voc in _VOCAB.items():
+        golpes = sum(1 for w in set(voc.split()) if f" {w.replace('-', ' ')} " in f" {nav} ")
+        sumar(rubro, min(3, golpes))
+
+    # 3. el resumen de la marca. Vale la mitad: el copy de marketing se parece entre rubros.
+    resumen = _sin_tildes(_limpio(c.get("description"), 300) + " " + _limpio(c.get("title"), 120))
+    resumen = re.sub(r"[^a-z0-9]+", " ", resumen)
+    for rubro, voc in _RESUMEN.items():
+        golpes = sum(1 for w in set(voc.split()) if f" {w} " in f" {resumen} ")
+        sumar(rubro, min(2, golpes) * 0.5)
+
+    if not puntos:
+        return "otro"
+    orden = sorted(puntos.items(), key=lambda kv: -kv[1])
+    primero = orden[0]
+    segundo = orden[1][1] if len(orden) > 1 else 0
+    # MARGEN. Sin el, una pagina que menciona "pricing" y "tienda" una vez cada uno se clasifica por
+    # ruido. Un rubro equivocado es peor que ninguno: manda al video la direccion de arte de otro
+    # negocio, que es exactamente lo que se lee como plantilla.
+    if primero[1] < 2 or primero[1] - segundo < 2:
+        return "otro"
+    return primero[0]
+
+
 def brief_de(site, url=""):
     """site (lo que devuelve capture_all) -> un brief con el bloque `semantica` que espera pagemodel.
 
@@ -286,6 +405,8 @@ def brief_de(site, url=""):
         "brand": marca_de(c, url),
         "semantica": {
             "queHace": que_hace,
+            # El rubro decide el AIRE, o sea la direccion de arte entera. Ver rubro_de.
+            "tipoNegocio": rubro_de(c),
             # `comoFunciona` son pasos y una landing rara vez los marca de forma reconocible sin un
             # modelo que los interprete. Vacio es correcto: deja la escena sin elegir en vez de
             # llenarla con encabezados que no son pasos.

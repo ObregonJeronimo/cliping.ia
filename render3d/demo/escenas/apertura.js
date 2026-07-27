@@ -40,6 +40,26 @@ import { D, marca, sello } from '../datos.js'
 
 export const meta = { id: 'apertura', beats: 6 }
 
+// QUE PALABRA DE LA MARCA VA EN EL CUADRO MAS GRANDE DE LA PIEZA.
+//
+// Se EXPORTA porque la compuerta E-ENCAJE tiene que comprobar que esa palabra se dibuje entera, y
+// antes la deducia por su cuenta con una copia de la regla. Cuando la regla cambio, las dos versiones
+// divergieron y la compuerta empezo a exigir una palabra que la escena ya no dibujaba. Es el mismo
+// defecto que hizo que la firma de determinismo, duplicada a mano, dejara de comparar nada: una regla
+// escrita dos veces es una regla que en algun momento se contradice.
+//
+// LA REGLA: la primera palabra con peso, no la mas larga. Elegir la mas larga es correcto sobre el
+// ancho y falso sobre la MARCA — "MERCADO LIBRE ARGENTINA" abria diciendo "ARGENTINA", que no es el
+// nombre de nadie. Se saltea el articulo inicial ("The Verge" -> VERGE) y una primera palabra de una
+// o dos letras, porque ninguno de los dos identifica nada. El espacio nunca entra: la escena reparte
+// las letras a lo ancho del cuadro y un espacio abre un hueco del tamano de una letra.
+const ARTICULO = new Set(['THE', 'EL', 'LA', 'LOS', 'LAS', 'UN', 'UNA', 'A', 'AN'])
+export function palabraDeMarca(marca) {
+  const pal = String(marca || 'ANTHEM').toUpperCase().trim().split(/\s+/).filter(Boolean)
+  const util = pal.filter((w, i) => !(i === 0 && (ARTICULO.has(w) || w.length <= 2)))
+  return util[0] || pal[0] || 'ANTHEM'
+}
+
 // `texto()` rasteriza el glifo en un lienzo que mide 1.34·size de alto y le deja 0.3·size de aire
 // lateral. Traducido a mundo: por cada unidad de ALTO del plano, AIRE es aire y (ar - AIRE) es glifo.
 // Sin descontarlo, "ANTHEM" se arma con seis agujeros adentro y nunca llega al borde del cuadro.
@@ -349,10 +369,19 @@ export function build(ctx) {
   const LETRAS = (() => {
     const m = String(D.marca || 'ANTHEM').toUpperCase().trim()
     const pal = m.split(/\s+/).filter(Boolean)
-    // Una marca de dos palabras se compone por su palabra MÁS LARGA: es la que manda el ancho. El
-    // espacio no entra porque la escena reparte las letras a lo ancho del cuadro y un espacio abre un
-    // hueco del tamaño de una letra.
-    const elegida = pal.sort((a, c) => c.length - a.length)[0] || 'ANTHEM'
+    // LA PRIMERA PALABRA CON PESO, no la mas larga.
+    //
+    // Esto elegia la palabra MAS LARGA, con el argumento de que es la que manda el ancho. Y es cierto
+    // sobre el ancho y falso sobre la MARCA: "MERCADO LIBRE ARGENTINA" abria diciendo "ARGENTINA", que
+    // no es el nombre de nadie. El cuadro mas grande de la pieza mostrando la palabra equivocada es el
+    // error mas caro que puede cometer una apertura — es lo unico que el espectador se lleva si deja
+    // de mirar a los dos segundos.
+    //
+    // Una marca lidera con su nombre, asi que va la primera palabra. Se saltea el articulo inicial
+    // ("The Verge" -> VERGE) porque un articulo solo no identifica nada, y se saltea una primera
+    // palabra de una o dos letras por la misma razon. El espacio no entra en ningun caso: la escena
+    // reparte las letras a lo ancho del cuadro y un espacio abre un hueco del tamano de una letra.
+    const elegida = palabraDeMarca(m)
     // NO SE TRUNCA. Antes iba `.slice(0, 9)` y "CONSTRUCCIONES DEL SUR" salía "CONSTRUCC": el video de
     // un cliente abría con su nombre cortado a la mitad, en el cuadro más grande de la pieza, y sin
     // que nada avisara. Una marca larga se compone MÁS CHICA — de eso se encarga el reparto de abajo,

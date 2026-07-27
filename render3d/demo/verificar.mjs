@@ -342,7 +342,9 @@ for (const id of ids) {
     // con letras repetidas ("CONSTRUCCIONES" tiene tres C y dos O) rasteriza cada glifo UNA sola vez
     // y contar los fillText da menos letras de las que la palabra tiene. La primera versión de este
     // chequeo acusaba de truncado a una escena que dibujaba el nombre completo.
-    const larga = marca.split(/\s+/).sort((a, c) => c.length - a.length)[0]
+    // La regla la pone LA ESCENA y se importa; deducirla aca era una copia que ya diverguio una vez.
+    const larga = (mod.palabraDeMarca ? mod.palabraDeMarca(marca)
+      : marca.split(/\s+/).sort((a, c) => c.length - a.length)[0])
     const dibujadas = new Set(ESCRITO.filter(t => t.length === 1 && /[A-ZÁÉÍÓÚÑ]/i.test(t)).map(t => t.toUpperCase()))
     if (dibujadas.size) {
       const faltan = [...new Set(larga.split(''))].filter(L => !dibujadas.has(L))
