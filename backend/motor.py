@@ -156,12 +156,38 @@ async def render(url: str, salida: str, hero: str | None = None, dur: int = 20,
     with open(pm_path, encoding="utf-8") as f:
         pm = json.load(f)
 
-    # Las URLs de los recortes tienen que ser las que va a pedir el navegador del render, que sirve
-    # `dst` en /assets/. Con el nombre pelado el TextureLoader falla en silencio y el mosaico sale
-    # vacio — sin un solo error, porque un hero sin material se compone sin material a proposito.
+    # LOS RECORTES SE SIRVEN DESDE EL DISCO, y hay que EMPAREJARLOS, no adivinarlos.
+    #
+    # La extraccion guarda los PNG en <dst>/elementos/ Y ademas los sube a Cloudinary, y en el
+    # pagemodel queda la URL REMOTA. La primera version armaba la ruta local con el basename de esa
+    # URL — y no coinciden: el remoto es "el_captura_el0.png" y el archivo en disco es
+    # "captura_el0.png". El TextureLoader no encontraba nada, fallaba EN SILENCIO (su callback de
+    # error existe y lo unico que hace es seguir), y el hero de mosaico y la escena de columna salian
+    # vacios en todos los videos hechos desde una URL real. En los fixtures del repo no pasaba porque
+    # ahi los nombres si coinciden: el defecto solo existia en el camino de produccion.
+    #
+    # Se empareja por el token "elN", que es lo unico estable entre los dos nombres. Si no hay archivo
+    # local, se deja la URL REMOTA: el navegador del render tiene red y bajarla es mejor que no
+    # mostrar nada.
+    dir_el = os.path.join(dst, "elementos")
+    locales = {}
+    if os.path.isdir(dir_el):
+        for f in os.listdir(dir_el):
+            m = re.search(r"(el\d+)", f)
+            if m:
+                locales[m.group(1)] = f
+    faltan = 0
     for e in d["datos"].get("elementos", []):
-        if not e["url"].startswith("/assets/"):
-            e["url"] = "/assets/" + os.path.basename(e["url"])
+        if e["url"].startswith("/assets/"):
+            continue
+        m = re.search(r"(el\d+)", os.path.basename(e["url"]))
+        f = locales.get(m.group(1)) if m else None
+        if f:
+            e["url"] = "/assets/elementos/" + f
+        else:
+            faltan += 1
+    if faltan:
+        print(f"  ({faltan} recortes sin archivo local: se piden por red)")
 
     spec = {
         "W": 1080, "H": 1920, "fps": 30,

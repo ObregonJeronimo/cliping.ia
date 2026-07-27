@@ -110,6 +110,34 @@ const W = 1080, H = 1920, mundoH = 10, mundoW = mundoH * (W / H)
 const fov = 30
 const distBase = (mundoH / 2) / Math.tan((fov * Math.PI / 180) / 2)
 
+// ---- E-LUZ. El presupuesto de luz de la pieza, comprobado una vez.
+//
+// UnrealBloomPass no atenua: su filtro de paso alto es un smoothstep de ancho 0.01 sobre el umbral.
+// O un pixel queda debajo y no florece NADA, o lo pasa y entra ENTERO al bloom. Por eso la escala de
+// grises de la tipografia esta calibrada para vivir JUSTO por debajo, y por eso una escala que se
+// corre un poco hacia arriba no degrada: revienta.
+//
+// Paso exactamente eso. `nivel(k)` mezclaba con THREE.Color.lerp, que trabaja en espacio LINEAL, y
+// nivel(0.78) daba luminancia 0.707 contra un umbral de 0.62: en un mundo oscuro el titular salia
+// como un ladrillo blanco sin contraformas. El gris escrito a mano que reemplazo tenia 0.594. Nada
+// fallo; lo encontre mirando un render en vivo de tailwindcss.com.
+{
+  const lum = (h) => {
+    const t = String(h).replace('#', '')
+    const f = i => { const v = parseInt(t.slice(i, i + 2), 16) / 255; return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4) }
+    return 0.2126 * f(0) + 0.7152 * f(2) + 0.0722 * f(4)
+  }
+  const { nivel } = await import(pathToFileURL(join(HERE, 'kit.js')).href)
+  const UMBRAL = 0.62                      // el del aire tecnico, que es el mas bajo del sistema
+  // 0.80 es el nivel mas alto que usa una escena para tipografia (el numero de las tarjetas).
+  for (const k of [0.50, 0.56, 0.75, 0.78, 0.80]) {
+    const c = nivel(k)
+    ok(lum(c) < UMBRAL, `E-LUZ: nivel(${k}) da ${c}, luminancia ${lum(c).toFixed(3)} — por encima del `
+      + `umbral de bloom ${UMBRAL}. La tipografia de display va a florecer entera y salir ilegible. `
+      + `Casi seguro que la mezcla volvio al espacio LINEAL: tiene que ser en sRGB.`)
+  }
+}
+
 for (const id of ids) {
   const ruta = rutaDe(id)
   if (!existsSync(ruta)) { die(`${id}: no existe ${ruta}`); continue }

@@ -274,12 +274,33 @@ export const matAcento = (color = LOOK.acento, intensidad = 1.15) => new THREE.M
 // OJO: se evalúa cuando se llama, NUNCA a nivel de módulo. LOOK cambia en `configurar()`, que corre
 // después de que los módulos se importan; un `const C = nivel(0.7)` arriba de un archivo se queda con
 // la paleta de ANTHEM para siempre y no falla — miente en silencio.
-const _c1 = new THREE.Color(), _c2 = new THREE.Color()
+// SE MEZCLA EN sRGB, NO EN LINEAL, y la diferencia no es academica: es la que decide si el texto se
+// lee o sale reventado.
+//
+// `THREE.Color.lerp` trabaja en el espacio LINEAL de trabajo, asi que `nivel(0.78)` entre #05060a y
+// #f2f4f8 devolvia #d9dbde — luminancia 0.707. El umbral del bloom del aire tecnico es 0.62, o sea que
+// TODA la tipografia de display quedaba por encima y florecia entera: en un mundo oscuro el titular
+// salia como un ladrillo blanco sin contraformas, ilegible. El gris escrito a mano que reemplace
+// (#c3cbdb) tenia luminancia 0.594, elegido a proposito para pasar JUSTO por debajo — el
+// "presupuesto de luz" que documenta toro.js. Mezclando los mismos extremos en sRGB da #bec0c4,
+// luminancia 0.526: debajo del umbral, con margen.
+//
+// Lo delato un render en vivo de tailwindcss.com, no una compuerta. Por eso hay una compuerta ahora.
+const _canal = (h) => {
+  const t = String(h).replace('#', '')
+  const n = t.length === 3 ? t.split('').map(c => c + c).join('') : t
+  return [0, 2, 4].map(i => parseInt(n.slice(i, i + 2), 16) || 0)
+}
+const _hex = (v) => '#' + v.map(x => Math.max(0, Math.min(255, Math.round(x))).toString(16).padStart(2, '0')).join('')
 export function nivel(k, tinte = 0) {
-  _c1.set(LOOK.bg); _c2.set(LOOK.tinta)
-  _c1.lerp(_c2, Math.min(1, Math.max(0, k)))
-  if (tinte > 0) _c1.lerp(_c2.set(LOOK.acento), tinte)
-  return '#' + _c1.getHexString()
+  const a = _canal(LOOK.bg), b = _canal(LOOK.tinta)
+  const t = Math.min(1, Math.max(0, k))
+  let v = a.map((x, i) => x + (b[i] - x) * t)
+  if (tinte > 0) {
+    const c = _canal(LOOK.acento)
+    v = v.map((x, i) => x + (c[i] - x) * tinte)
+  }
+  return _hex(v)
 }
 
 export const matTarjeta = (color = null) => new THREE.MeshPhysicalMaterial({

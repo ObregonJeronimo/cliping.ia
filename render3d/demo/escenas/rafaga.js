@@ -115,7 +115,11 @@ export function build(ctx) {
       m = planoRecorte(p.tex, alto)
       if (m) gr.add(m)
     } else {
-      const t = texto(p.txt, { fuente: 'Anton', size: 200, color: LOOK.tinta })
+      // NO va en LOOK.tinta. Es tipografia de DISPLAY a media pantalla, y la tinta de un mundo oscuro
+      // tiene luminancia ~0.9 contra un umbral de bloom de 0.62: florece entera y sale como un
+      // ladrillo blanco sin contraformas. Se vio en un render en vivo de tailwindcss.com — cuatro
+      // manchas blancas donde tenian que leerse cuatro frases. Ver el presupuesto de luz en toro.js.
+      const t = texto(p.txt, { fuente: 'Anton', size: 200, color: nivel(0.78) })
       // La frase entra por el lado que la limita. Un titular de dos palabras y uno de cinco no pueden
       // salir del mismo alto: el de cinco se saldría del cuadro.
       // La tipografia NO sangra: una palabra cortada por el borde no se lee, y una frase es lo unico
