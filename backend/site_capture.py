@@ -270,8 +270,33 @@ _JS_EXTRACT = r"""
     .map(a => ({ t: clean(a.innerText).slice(0, 40), h: a.href || '' }))
     .filter(x => { if (!x.h || _seenH.has(x.h)) return false; _seenH.add(x.h); return true; })
     .slice(0, 40);
-  const ctas = uniq([...document.querySelectorAll('button, a.btn, a[class*="button" i], [role="button"]')].map(txt)
-    .filter(t => t.length >= 2 && t.length <= 32)).slice(0, 10);
+  // CTAs. La primera version buscaba por SELECTOR —button, .btn, [role=button]— y se perdia el boton
+  // principal de media web moderna: con Tailwind y compania, el CTA es un <a> con clases de utilidad y
+  // ninguna se llama "button". Medido en tailwindcss.com: su "Get started" no llegaba, y el video
+  // salia sin llamada a la accion.
+  //
+  // Un humano no reconoce un boton por su etiqueta HTML: lo reconoce porque tiene FONDO PROPIO y
+  // relleno alrededor del texto. Eso es lo que se mide acá. Se recorren como mucho 400 enlaces para no
+  // pagar un getComputedStyle por cada uno de los miles que tiene un portal.
+  const pareceBoton = (el) => {
+    try {
+      const cs = getComputedStyle(el);
+      const bg = cs.backgroundColor || '';
+      const m = bg.match(/rgba?\(([^)]+)\)/);
+      if (!m) return false;
+      const p = m[1].split(',').map(Number);
+      if (p.length > 3 && p[3] < 0.35) return false;           // fondo transparente: es texto, no boton
+      const padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+      const padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+      return padX >= 14 && padY >= 8;
+    } catch (e) { return false }
+  };
+  const porEstilo = [...document.querySelectorAll('a')].slice(0, 400)
+    .filter(a => { try { return !a.closest('nav, footer') } catch (e) { return true } })
+    .filter(pareceBoton);
+  const ctas = uniq([...document.querySelectorAll('button, a.btn, a[class*="button" i], [role="button"]')]
+    .concat(porEstilo).map(txt)
+    .filter(t => t.length >= 2 && t.length <= 32)).slice(0, 14);
   const paragraphs = uniq([...document.querySelectorAll('p, li')].map(txt)
     .filter(t => t.length >= 30 && t.length <= 240)).slice(0, 14);
   // VOZ DEL CLIENTE: testimonios/reseñas reales -> dan el tono y los DOLORES del publico (no la voz de marketing de la
