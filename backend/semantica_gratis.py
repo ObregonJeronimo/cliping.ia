@@ -43,7 +43,11 @@ _NO_FEATURE = re.compile(
 # primero. Aparecio probando una pagina que pone su hero abajo.
 _SECCION = re.compile(
     r"(sobre nosotros|qui[eé]nes somos|nuestro equipo|nuestra historia|about us|our team|"
-    r"our story|preguntas frecuentes|frequently asked)", re.I)
+    r"our story|preguntas frecuentes|frequently asked|"
+    # Etiquetas de ACCESIBILIDAD y de maquetado. No las escribio nadie para que se lean: existen para
+    # el lector de pantalla. "Site navigation" salio como feature de pentagram.com.
+    r"site navigation|main navigation|main menu|skip to|saltar al|saltar el|breadcrumb|"
+    r"navegaci[oó]n del sitio|men[uú] principal)", re.I)
 
 # Un CTA de verdad es corto e imperativo. "Leer mas sobre nuestra politica de privacidad" no lo es.
 _CTA_BUENO = re.compile(
@@ -59,21 +63,38 @@ _CIFRA = re.compile(
 
 
 def _limpio(t, n=200):
-    return re.sub(r"\s+", " ", str(t or "")).strip()[:n]
+    t = re.sub(r"\s+", " ", str(t or "")).strip()
+    # Los separadores de maquetado que quedan pegados al texto. Un encabezado de The Verge llega como
+    # "Print screen /" y "Staff picks /": la barra es el separador visual de su grilla, no parte del
+    # titulo, y en el video se lee como un texto cortado a la mitad.
+    t = re.sub(r"[\s/|·•—–\-]+$", "", t)
+    return t[:n]
 
 
 def _lista(v):
     return v if isinstance(v, list) else []
 
 
+def _titulo_solo(t):
+    """Se queda con el TITULO cuando el encabezado trae el subtitulo pegado con un separador.
+
+    The Verge devuelve "Print screen / The world of computers" y "Staff picks / Our favorite stories":
+    la barra es el separador visual de su grilla y lo que sigue es la bajada. Recortado a veintidos
+    caracteres para la pantalla, eso sale como "Print screen / The wo" — un texto partido al medio, que
+    se lee como un error del sistema. El titulo es lo de antes del separador.
+    """
+    p = re.split(r"\s+[/|·•—–]\s+", str(t or ""), maxsplit=1)
+    return p[0] if p and len(p[0]) >= 6 else str(t or "")
+
+
 def _texto_de(h):
     """Un encabezado puede venir como string o como {texto/text/t, nivel/level}."""
     if isinstance(h, str):
-        return _limpio(h)
+        return _titulo_solo(_limpio(h))
     if isinstance(h, dict):
         for k in ("texto", "text", "t", "titulo", "title", "value"):
             if h.get(k):
-                return _limpio(h[k])
+                return _titulo_solo(_limpio(h[k]))
     return ""
 
 

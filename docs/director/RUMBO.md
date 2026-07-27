@@ -381,3 +381,57 @@ Mundo CLARO (stripe.com, en vivo): ocupacion 0.396, contraste 0.181, cortes/min 
    con medicion propia por hero encontraria mas.
 3. **La captura no siempre trae el CTA.** En tailwindcss.com el boton "Get started" no llega a
    `content.ctas`; el problema esta en la extraccion del DOM, no en la interpretacion.
+
+
+---
+
+# Quinta vuelta — el analisis que faltaba: probar OTROS RUBROS
+
+## El defecto que solo aparecia mirando fuera del SaaS
+
+El motor se habia probado con Stripe, Linear y Tailwind. Tres paginas del mismo registro. Capture tres
+de registros completamente distintos y las tres salieron con el MISMO aire:
+
+| pagina | rubro real | aire, antes | aire, ahora |
+|---|---|---|---|
+| mercadolibre.com.ar | ecommerce | tecnico | **jugueton** |
+| pentagram.com | estudio de diseño | tecnico | **inmobiliario** |
+| theverge.com | medio | tecnico | **editorial** |
+
+`tipoNegocio` lo llenaba el LLM; sin brief queda en "otro", que no esta en el mapa de rubros y cae al
+default TECNICO. **Once aires escritos y el camino gratuito alcanzaba dos.** Es el defecto de "todos
+los videos se ven iguales" entrando por una puerta nueva, y no se habria visto nunca probando SaaS.
+
+Las señales estaban en el DOM sin usarse: schema.org (`onlinestore`, `newsmediaorganization`) cuando
+existe, y el MENU cuando no — "Carrito / Categorias / Mis compras" no se parece en nada a "Pricing /
+Docs / Log in" ni a "Work / Archive / Studio". Se exige MARGEN de dos puntos: sin evidencia clara
+devuelve "otro" y cae al aire por defecto, porque un rubro equivocado le mete al video la direccion de
+arte de otro negocio.
+
+`tools/rubro-check.py`: 5 paginas reales medidas + 5 rubros sinteticos que NO capture (restaurante,
+gimnasio sin schema, escuela, festival, tienda sin schema) + 4 ambiguas que tienen que caer en "otro".
+
+## Y la apertura decia "ARGENTINA"
+
+Elegia la palabra MAS LARGA de la marca — correcto sobre el ancho, falso sobre la marca. "MERCADO
+LIBRE ARGENTINA" mostraba "ARGENTINA" en el cuadro mas grande de la pieza, que es lo unico que se
+lleva el que deja de mirar a los dos segundos. Ahora va la primera palabra con peso, salteando el
+articulo ("The Verge" -> VERGE).
+
+**La regla la exporta la escena y la compuerta la importa.** E-ENCAJE tenia una copia y al cambiarla
+empezo a exigir una palabra que la escena ya no dibuja. Es el TERCER caso en esta sesion de una regla
+escrita dos veces que termina contradiciendose (los otros: la firma de determinismo y el catalogo de
+heroes).
+
+## Lo que queda, honestamente
+
+1. **Un medio no tiene "features".** The Verge da "Most Popular", "Staff picks", "Latest from
+   Reviews": son nombres de seccion, no copy de producto, y ninguna heuristica lexica los va a
+   convertir en un claim. Para el rubro `media` habria que usar los TITULARES de sus notas, que si son
+   su contenido. Es un cambio de diseño, no un ajuste.
+2. **El movimiento del mundo claro** (0.157 contra 0.226). Explicado y acotado: la mitad del movimiento
+   de una pieza oscura la pone el glow.
+3. **La captura no siempre trae el CTA.** En tailwindcss.com "Get started" no llega a `content.ctas`.
+   El problema esta en la extraccion del DOM.
+4. **Los cuatro heroes nuevos no tuvieron revision adversarial completa.** Salio de ahi la compuerta de
+   encuadre, pero una revision con medicion propia por hero encontraria mas.
