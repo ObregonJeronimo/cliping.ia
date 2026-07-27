@@ -26,6 +26,10 @@ import { drawPlaca } from '../src/director/render/plate.js'
 import { SAFE_TOP, SAFE_BOT } from '../src/director/kit/grid.js'
 import { telStart, telStop } from '../src/director/core/text.js'
 import { apcaLc } from '../src/director/core/util.js'
+// Los pixeles se leen con este helper y no con getImageData: la version nativa de
+// @napi-rs/canvas no libera nunca su buffer y un gate de miles de frames se come
+// decenas de GB. Ver tools/lib/pixeles.mjs.
+import { pixeles } from './lib/pixeles.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 try { GlobalFonts.loadFontsFromDir(join(HERE, 'fonts')) } catch {}
@@ -81,7 +85,7 @@ function aireDe(sc, look, corpus, brand) {
   const a = createCanvas(W, H), ca = a.getContext('2d')
   drawPlaca(ca, look, W, H, {})
   drawScene(cb, sc, look, W, H, { p: 1, makeCanvas, brand: brand || '', corpus, images: new Map() })
-  const fondo = ca.getImageData(0, 0, W, H).data, d = cb.getImageData(0, 0, W, H).data
+  const fondo = pixeles(ca), d = pixeles(cb)
   const chip = sc.layers.find(l => l.id === 'brand' && l.role === 'mark')
   const pie = sc.layers.find(l => l.id === 'pie')
   const top = chip ? (chip.box[1] + chip.box[3]) * H : SAFE_TOP * H
@@ -107,7 +111,7 @@ function pixelesDeContenido(sc, look, corpus, brand) {
   drawPlaca(ca, look, W, H, {})
   const b = createCanvas(W, H), cb = b.getContext('2d')
   const rep = drawScene(cb, sc, look, W, H, { p: 1, makeCanvas, brand: brand || '', corpus, images: new Map() })
-  const da = ca.getImageData(0, 0, W, H).data, db = cb.getImageData(0, 0, W, H).data
+  const da = pixeles(ca), db = pixeles(cb)
   let n = 0
   for (let i = 0; i < da.length; i += 4) {
     if (Math.abs(da[i] - db[i]) + Math.abs(da[i + 1] - db[i + 1]) + Math.abs(da[i + 2] - db[i + 2]) > 24) n++
@@ -130,7 +134,7 @@ function tofuEn(str, family) {
         cx.font = `700 28px "${family}", sans-serif`
         cx.textBaseline = 'middle'; cx.fillStyle = '#fff'
         cx.fillText(c, 4, S / 2)
-        return cv.getContext('2d').getImageData(0, 0, S, S).data
+        return pixeles(cv)
       }
       const a = pinta(ch), b = pinta('￿')
       let dif = 0

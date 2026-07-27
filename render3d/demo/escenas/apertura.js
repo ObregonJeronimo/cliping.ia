@@ -41,7 +41,7 @@ const CHICA = { fuente: 'DMSans', peso: 500, size: 200, tracking: 0.24, color: L
 const CIFRA = { fuente: 'Bricolage', peso: 800, size: 200, tracking: 0.06, color: LOOK.tinta }
 
 export function build(ctx) {
-  const { THREE, gsap, mundoW, camera, distBase, rnd, fondo, pelicula, bloom } = ctx
+  const { THREE, gsap, mundoW, mundoH, camera, distBase, rnd, fondo, pelicula, bloom } = ctx
 
   const g = new THREE.Group()
   const tl = gsap.timeline({ paused: true })
@@ -292,15 +292,42 @@ export function build(ctx) {
   const LETRAS = (() => {
     const m = String(D.marca || 'ANTHEM').toUpperCase().trim()
     const pal = m.split(/\s+/).filter(Boolean)
+    // Una marca de dos palabras se compone por su palabra MÁS LARGA: es la que manda el ancho. El
+    // espacio no entra porque la escena reparte las letras a lo ancho del cuadro y un espacio abre un
+    // hueco del tamaño de una letra.
     const elegida = pal.sort((a, c) => c.length - a.length)[0] || 'ANTHEM'
-    // Más de nueve letras a 94% del ancho da glifos finísimos que el bloom se come: se recorta.
-    return elegida.slice(0, 9).split('')
+    // NO SE TRUNCA. Antes iba `.slice(0, 9)` y "CONSTRUCCIONES DEL SUR" salía "CONSTRUCC": el video de
+    // un cliente abría con su nombre cortado a la mitad, en el cuadro más grande de la pieza, y sin
+    // que nada avisara. Una marca larga se compone MÁS CHICA — de eso se encarga el reparto de abajo,
+    // que ya divide el ancho disponible entre la suma de las proporciones.
+    return elegida.split('')
   })()
   const TRACK = 0.016
   const OBJ = mundoW * 0.94
   const unidad = LETRAS.map(L => Math.max(0.05, texto(L, ANTON).ar - AIRE))
   const suma = unidad.reduce((a, c) => a + c, 0)
-  const ALTO = suma > 0.05 ? (OBJ - TRACK * (LETRAS.length - 1)) / suma : 2.2
+  // ENCAJE DE DOS EJES. El reparto original sólo miraba el ANCHO: repartía el 94% del cuadro entre la
+  // suma de proporciones y sacaba el alto de ahí. Con muchas letras funciona —la palabra se achica
+  // sola—, pero con pocas explota: una marca de UNA letra da una suma de ~0.55 y el alto salía 9.6
+  // unidades en un cuadro de 10, o sea la letra al 143% del alto útil, comiéndose el rótulo, el claim
+  // y las esquinas. Con dos o tres letras el titular quedaba tan alto que se superponía con la
+  // cabecera.
+  //
+  // Es el mismo defecto de un solo eje que ya está resuelto unas líneas más arriba para el rótulo
+  // (`Math.min(altoMax, anchoMax / t.ar)`), y por eso el rótulo nunca se rompió y el titular sí.
+  //
+  // El tope es 0.34 del alto de mundo: es el punto donde la palabra sigue siendo el objeto dominante
+  // del cuadro pero deja respirar arriba y abajo. El piso es 0.55, porque por debajo de eso el glifo
+  // en Anton se afina tanto que el bloom le rellena los contrapunzones y el nombre deja de leerse.
+  const ALTO_MAX = mundoH * 0.34
+  const ALTO_MIN = 0.55
+  const porAncho = suma > 0.05 ? (OBJ - TRACK * (LETRAS.length - 1)) / suma : 2.2
+  // El piso NO se aplica si haría desbordar el cuadro: entre un nombre chico y un nombre cortado por
+  // el borde, gana el chico. Un titular que se sale se lee como un error de render; uno pequeño se
+  // lee como una marca de nombre largo, que es lo que es.
+  const conPiso = Math.max(ALTO_MIN, Math.min(ALTO_MAX, porAncho))
+  const cabe = suma * conPiso + TRACK * (LETRAS.length - 1) <= mundoW * 0.98
+  const ALTO = cabe ? conPiso : Math.min(ALTO_MAX, porAncho)
 
   // `texto()` dibuja con textBaseline 'middle', y en Anton el centro óptico de la caja de mayúsculas
   // queda ~0.093·ALTO por encima del centro del plano. Sin corregirlo la palabra se sienta alta y le

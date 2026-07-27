@@ -11,6 +11,7 @@ import { dirname, join } from 'node:path'
 import { makeVideo, drawFrame, FPS } from '../src/urvid/index.js'
 import { setScratchFactory } from '../src/urvid/core/render.js'
 import { W, H } from '../src/urvid/core/util.js'
+import { pixeles } from './lib/pixeles.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url)), OUT = join(HERE, 'out'); mkdirSync(OUT, { recursive: true })
 try { GlobalFonts.loadFontsFromDir(join(HERE, 'fonts')) } catch {}
@@ -32,7 +33,7 @@ const brief = seed => ({
 function renderAt(video, t) {
   const cv = createCanvas(W * SS, H * SS), c = cv.getContext('2d'); c.setTransform(SS, 0, 0, SS, 0, 0)
   drawFrame(c, t, video)
-  return cv.getContext('2d').getImageData(0, 0, W * SS, H * SS).data
+  return pixeles(cv)
 }
 
 // diff: max abs por canal. Devuelve {buf(Uint8 amplificado), meanAll, meanBand}

@@ -8,6 +8,7 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { drawFrame, setLogo, setPhotos } from '../src/pages/Animaciones/engineCore.js'
+import { pixeles } from './lib/pixeles.mjs'
 
 const LW = 405, LH = 720, DSF = 1080 / LW   // escala de produccion (2.667) -> reproduce el crawl real
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -40,7 +41,10 @@ function frameGray(t) {
   const ctx = cv.getContext('2d')
   ctx.setTransform(DSF, 0, 0, DSF, 0, 0)
   drawFrame(ctx, t, tl)
-  const { data, width, height } = ctx.getImageData(0, 0, LW * DSF, LH * DSF)
+  // pixeles() en vez de getImageData: la version nativa no libera su buffer. Como ya no viene un
+  // objeto ImageData, el ancho y el alto se toman del lienzo, que es de donde salian igual.
+  const data = pixeles(ctx)
+  const width = LW * DSF, height = LH * DSF
   const g = new Float32Array(width * height)
   for (let i = 0, j = 0; i < data.length; i += 4, j++) g[j] = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]
   return { g, width, height }

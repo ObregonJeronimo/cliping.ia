@@ -32,6 +32,10 @@ import { emptyEdits, applyEdits, validateEdits, contarEdits, EDITS_V, DUR_MIN, D
 import { seedFor, pick, shuffled } from '../src/director/core/prng.js'
 import { apcaLc } from '../src/director/core/util.js'
 import { NOMBRES } from '../src/director/kit/objetos.js'
+// Los pixeles se leen con este helper y no con getImageData: la version nativa de
+// @napi-rs/canvas no libera nunca su buffer y un gate de miles de frames se come
+// decenas de GB. Ver tools/lib/pixeles.mjs.
+import { pixeles } from './lib/pixeles.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 try { GlobalFonts.loadFontsFromDir(join(HERE, 'fonts')) } catch {}
@@ -171,7 +175,7 @@ const _fondos = new Map()
 function fondoDe(look) {
   const k = look.bg0 + '|' + look.bg1 + '|' + look.orn + '|' + look.grano + '|' + look.luzAng
   let d = _fondos.get(k)
-  if (!d) { const c = createCanvas(W, H), cx = c.getContext('2d'); drawPlaca(cx, look, W, H, {}); d = cx.getImageData(0, 0, W, H).data; _fondos.set(k, d) }
+  if (!d) { const c = createCanvas(W, H), cx = c.getContext('2d'); drawPlaca(cx, look, W, H, {}); d = pixeles(cx); _fondos.set(k, d) }
   return d
 }
 // AUDITORIA COMPLETA de un storyboard editado. Antes esto solo corria para 2 de los 9 sets y solo
@@ -198,7 +202,7 @@ function auditar(sb, seed, brand, corpus) {
       out.desbordes.push(`${e.escena}/${d.id} [${geo}]`)
     }
     for (const x of tel) if (x.ellip) out.elididos.push(`${e.escena}:"${x.str}"`)
-    const d = ctx.getImageData(0, 0, W, H).data
+    const d = pixeles(ctx)
     let n = 0
     for (let i = 0; i < d.length; i += 4) {
       if (Math.abs(d[i] - fondo[i]) + Math.abs(d[i + 1] - fondo[i + 1]) + Math.abs(d[i + 2] - fondo[i + 2]) > 24) n++

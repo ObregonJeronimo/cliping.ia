@@ -14,6 +14,10 @@ import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { drawFrame, drawBackground, beatAt, timelineDuration, setLogo, setPhotos, DEMO_TIMELINE, THEME_NAMES } from '../src/pages/Animaciones/engineCore.js'
+// Los pixeles se leen con este helper y no con getImageData: la version nativa de
+// @napi-rs/canvas no libera nunca su buffer y un gate de miles de frames se come
+// decenas de GB. Ver tools/lib/pixeles.mjs.
+import { pixeles } from './lib/pixeles.mjs'
 
 const W = 405, H = 720
 const SS = 2                          // supersample del frame fuente (nitidez)
@@ -193,7 +197,7 @@ function motionMap(tl, fps = 24) {
     const t = (i + 0.5) * dur / n
     const cv = createCanvas(mw, mh), ctx = cv.getContext('2d'); ctx.setTransform(mw / W, 0, 0, mh / H, 0, 0)
     drawFrame(ctx, t, tl)
-    const d = ctx.getImageData(0, 0, mw, mh).data
+    const d = pixeles(ctx)
     if (prev) { let s = 0; for (let k = 0; k < d.length; k += 4) s += Math.abs(d[k] - prev[k]) + Math.abs(d[k + 1] - prev[k + 1]) + Math.abs(d[k + 2] - prev[k + 2]); energy.push({ t, e: s / (d.length / 4 * 3) }) }
     prev = d
   }

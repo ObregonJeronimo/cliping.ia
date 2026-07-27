@@ -73,6 +73,12 @@ export function configurar(aire) {
   _cacheTexto.clear()                                // el cache guarda color y fuente: hay que soltarlo
 }
 
+// El cache de texturas guarda color, fuente y tracking dentro de su clave, asi que sobrevive a un
+// cambio de DATOS pero no deberia sobrevivir a uno de AIRE — `configurar` ya lo suelta. Se exporta
+// para que un arnes pueda forzar el rasterizado y auditar QUE se dibuja: con el cache caliente, un
+// glifo que ya se rasterizo no vuelve a pasar por fillText y parece que la escena no lo dibujo.
+export function limpiarCache() { _cacheTexto.clear() }
+
 // Las escenas piden fuentes por nombre concreto ('Anton', 'DMSans'). El aire las REMAPEA por rol:
 // asi una escena escrita con una grotesca de display sale en serif editorial o en condensada
 // deportiva sin que la escena sepa que existe el concepto de aire.

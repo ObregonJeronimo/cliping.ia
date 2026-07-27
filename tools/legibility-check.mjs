@@ -8,6 +8,10 @@ import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs'
 import { join, dirname, basename } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { drawFrame, timelineDuration, setLogo, setPhotos } from '../src/pages/Animaciones/engineCore.js'
+// Los pixeles se leen con este helper y no con getImageData: la version nativa de
+// @napi-rs/canvas no libera nunca su buffer y un gate de miles de frames se come
+// decenas de GB. Ver tools/lib/pixeles.mjs.
+import { pixeles } from './lib/pixeles.mjs'
 
 const W = 405, H = 720, SS = 2, NF = 8
 const MIN_AA = 2.4          // umbral: por debajo de 2.4:1 el cuerpo se lee MAL (AA grande es 3.0; damos aire al glow/halo)
@@ -52,10 +56,10 @@ function check(path) {
       return orig(str, x, y)
     }
     drawFrame(ctx, t, tl)
-    const full = ctx.getImageData(0, 0, W * SS, H * SS).data
+    const full = pixeles(ctx)
     const cv2 = createCanvas(W * SS, H * SS), ctx2 = cv2.getContext('2d'); ctx2.setTransform(SS, 0, 0, SS, 0, 0)
     drawFrame(ctx2, t, tl, { bgOnly: true })
-    const bg = ctx2.getImageData(0, 0, W * SS, H * SS).data
+    const bg = pixeles(ctx2)
     const WD = W * SS, HD = H * SS
     for (const b of boxes) {
       const x0 = Math.max(0, Math.floor(b.x0)), x1 = Math.min(WD - 1, Math.ceil(b.x1)), y0 = Math.max(0, Math.floor(b.y0)), y1 = Math.min(HD - 1, Math.ceil(b.y1))

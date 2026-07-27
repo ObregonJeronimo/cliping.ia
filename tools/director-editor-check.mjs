@@ -28,6 +28,10 @@ import { seedFor, pick, range } from '../src/director/core/prng.js'
 import { drawFrame } from '../src/director/render/video.js'
 import { corpusHero } from '../src/director/render/draw.js'
 import { drawPlaca } from '../src/director/render/plate.js'
+// Los pixeles se leen con este helper y no con getImageData: la version nativa de
+// @napi-rs/canvas no libera nunca su buffer y un gate de miles de frames se come
+// decenas de GB. Ver tools/lib/pixeles.mjs.
+import { pixeles } from './lib/pixeles.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 try { GlobalFonts.loadFontsFromDir(join(HERE, 'fonts')) } catch {}
@@ -122,13 +126,13 @@ const cv = createCanvas(W, H), ctx = cv.getContext('2d')
 function auditarVideo(tl, brand, corpus) {
   const cb = createCanvas(W, H), cbx = cb.getContext('2d')
   drawPlaca(cbx, tl.look, W, H, {})
-  const fondo = cbx.getImageData(0, 0, W, H).data
+  const fondo = pixeles(cbx)
   let peor = 1, saltos = 0, ant = null
   const total = Math.round(tl.dur * tl.fps)
   for (let i = 0; i < total; i += 3) {
     const t = Math.min(tl.dur, (i + 0.5) / tl.fps)
     drawFrame(ctx, tl, t, { W, H, makeCanvas: mk, brand, corpus, images: new Map() })
-    const d = ctx.getImageData(0, 0, W, H).data
+    const d = pixeles(ctx)
     let n = 0
     for (let j = 0; j < d.length; j += 4) {
       if (Math.abs(d[j] - fondo[j]) + Math.abs(d[j + 1] - fondo[j + 1]) + Math.abs(d[j + 2] - fondo[j + 2]) > 24) n++

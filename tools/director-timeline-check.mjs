@@ -20,6 +20,10 @@ import { compile, propsAt } from '../src/director/core/timeline.js'
 import { drawFrame } from '../src/director/render/video.js'
 import { corpusHero } from '../src/director/render/draw.js'
 import { drawPlaca } from '../src/director/render/plate.js'
+// Los pixeles se leen con este helper y no con getImageData: la version nativa de
+// @napi-rs/canvas no libera nunca su buffer y un gate de miles de frames se come
+// decenas de GB. Ver tools/lib/pixeles.mjs.
+import { pixeles } from './lib/pixeles.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 try { GlobalFonts.loadFontsFromDir(join(HERE, 'fonts')) } catch {}
@@ -47,7 +51,7 @@ const cvA = createCanvas(W, H), ctxA = cvA.getContext('2d')
 
 function pinta(tl, t, brand, corpus) {
   drawFrame(ctxA, tl, t, { W, H, makeCanvas, brand, corpus, images: new Map() })
-  return ctxA.getImageData(0, 0, W, H).data
+  return pixeles(ctxA)
 }
 const hash = d => { let h = 2166136261 >>> 0; for (let i = 0; i < d.length; i += 61) { h ^= d[i]; h = Math.imul(h, 16777619) >>> 0 } return h }
 
@@ -116,7 +120,7 @@ for (const [nombre, raw] of Object.entries(ARQ)) {
     // fondo de referencia para medir tinta
     const cb = createCanvas(W, H), cbx = cb.getContext('2d')
     drawPlaca(cbx, tl.look, W, H, {})
-    const fondo = cbx.getImageData(0, 0, W, H).data
+    const fondo = pixeles(cbx)
 
     // 3/4/5/6 — recorrido frame a frame
     const total = Math.round(tl.dur * tl.fps)

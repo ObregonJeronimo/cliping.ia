@@ -129,7 +129,11 @@ function medirObjeto(name, hp, makeCanvas, look) {
       cx.save(); cx.translate(S / 2, S / 2)
       HERO.byName[name](cx, 1, 1, '#ff0000', { display: 'Inter', support: 'Inter', num: 'Inter', accent: 'Inter' }, 'MARCA', [0.5, 0.5, 0.5, 0.5])
       cx.restore()
-      const d = cx.getImageData(0, 0, S, S).data
+      // `.data()` en vez de getImageData: en node, @napi-rs/canvas no libera nunca el buffer de
+      // getImageData. Aca se llama pocas veces (el bbox se cachea por objeto), pero el motor tambien
+      // lo usan los gates y la suma importa. Se COPIA porque `.data()` devuelve una vista VIVA del
+      // lienzo — sin copiar, el bbox de un objeto cambiaria al dibujar el siguiente.
+      const d = typeof c.data === 'function' ? Uint8ClampedArray.from(c.data()) : cx.getImageData(0, 0, S, S).data
       let x0 = S, y0 = S, x1 = -1, y1 = -1
       // Umbral 30. Con 8 la sombra difusa (que llega 60px afuera del cuerpo) inflaba el bbox y el heroe
       // se veia chico. Con 72 pasaba lo contrario: los trazos TENUES no contaban — el vapor de la taza

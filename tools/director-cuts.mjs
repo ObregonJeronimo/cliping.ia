@@ -21,6 +21,10 @@ import { deriveLook } from '../src/director/kit/look.js'
 import { compile } from '../src/director/core/timeline.js'
 import { drawFrame } from '../src/director/render/video.js'
 import { corpusHero } from '../src/director/render/draw.js'
+// Los pixeles se leen con este helper y no con getImageData: la version nativa de
+// @napi-rs/canvas no libera nunca su buffer y un gate de miles de frames se come
+// decenas de GB. Ver tools/lib/pixeles.mjs.
+import { pixeles } from './lib/pixeles.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url)), OUT = join(HERE, 'out')
 mkdirSync(OUT, { recursive: true })
@@ -70,10 +74,10 @@ const frame = t => {
 const placaSola = (() => {
   const c = createCanvas(W, H), cx = c.getContext('2d')
   drawFrame(cx, { ...tl, layers: tl.layers.filter(l => l.kind === 'plate'), tracks: [] }, 0, { W, H, makeCanvas })
-  return cx.getImageData(0, 0, W, H).data
+  return pixeles(cx)
 })()
 const tinta = c => {
-  const d = c.getContext('2d').getImageData(0, 0, W, H).data
+  const d = pixeles(c)
   let n = 0
   for (let i = 0; i < d.length; i += 4) {
     if (Math.abs(d[i] - placaSola[i]) + Math.abs(d[i + 1] - placaSola[i + 1]) + Math.abs(d[i + 2] - placaSola[i + 2]) > 24) n++

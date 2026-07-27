@@ -8,6 +8,10 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { drawFrame, setLogo, setPhotos } from '../src/pages/Animaciones/engineCore.js'
+// Los pixeles se leen con este helper y no con getImageData: la version nativa de
+// @napi-rs/canvas no libera nunca su buffer y un gate de miles de frames se come
+// decenas de GB. Ver tools/lib/pixeles.mjs.
+import { pixeles } from './lib/pixeles.mjs'
 
 const LW = 405, LH = 720, DSF = 1080 / LW
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -26,7 +30,7 @@ function renderRGBA(t, bgOnly) {
   const cv = createCanvas(LW * DSF, LH * DSF)
   const ctx = cv.getContext('2d'); ctx.setTransform(DSF, 0, 0, DSF, 0, 0)
   drawFrame(ctx, t, tl, bgOnly ? { bgOnly: true } : undefined)
-  return ctx.getImageData(0, 0, LW * DSF, LH * DSF).data
+  return pixeles(ctx)
 }
 
 // limites de escena

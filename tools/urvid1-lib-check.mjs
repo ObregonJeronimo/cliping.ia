@@ -14,6 +14,10 @@ import { defaultMotion } from '../src/urvid/core/motion.js'
 import { defaultTypekit } from '../src/urvid/core/typekit.js'
 import { defaultLayout } from '../src/urvid/core/layout.js'
 import { W, H, setFormat } from '../src/urvid/core/util.js'
+// Los pixeles se leen con este helper y no con getImageData: la version nativa de
+// @napi-rs/canvas no libera nunca su buffer y un gate de miles de frames se come
+// decenas de GB. Ver tools/lib/pixeles.mjs.
+import { pixeles } from './lib/pixeles.mjs'
 
 const lib = process.argv[2], N = process.argv[3] ? Number(process.argv[3]) : 0
 if (!lib) { console.error('uso: node tools/urvid1-lib-check.mjs <lib> [ultimosN]'); process.exit(2) }
@@ -38,9 +42,9 @@ function tile(mod, t, tone) {
   } else { mod.render(c, t, envFor(7, tone, pal)) }
   return cv
 }
-function bgRGB(bg0) { const c = createCanvas(1, 1).getContext('2d'); c.fillStyle = bg0; c.fillRect(0, 0, 1, 1); const d = c.getImageData(0, 0, 1, 1).data; return [d[0], d[1], d[2]] }
+function bgRGB(bg0) { const c = createCanvas(1, 1).getContext('2d'); c.fillStyle = bg0; c.fillRect(0, 0, 1, 1); const d = pixeles(c); return [d[0], d[1], d[2]] }
 // no-blank robusto: cuenta pixeles que DIFIEREN del fondo (capta gradientes sutiles de atmosphere/substrates, no solo lineas)
-function nonblank(cv, bg) { const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data; let diff = 0, n = 0; for (let i = 0; i < d.length; i += 4 * 11) { n++; if (Math.abs(d[i] - bg[0]) + Math.abs(d[i + 1] - bg[1]) + Math.abs(d[i + 2] - bg[2]) > 5) diff++ }; return diff > n * 0.002 }
+function nonblank(cv, bg) { const d = pixeles(cv); let diff = 0, n = 0; for (let i = 0; i < d.length; i += 4 * 11) { n++; if (Math.abs(d[i] - bg[0]) + Math.abs(d[i + 1] - bg[1]) + Math.abs(d[i + 2] - bg[2]) > 5) diff++ }; return diff > n * 0.002 }
 
 let ids = Array.from(new Set([...query(lib, { tone: 'dark' }), ...query(lib, { tone: 'light' })].map(m => m.id)))
 if (N > 0) ids = ids.slice(-N)

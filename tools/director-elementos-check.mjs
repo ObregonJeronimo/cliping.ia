@@ -32,6 +32,10 @@ import { compile } from '../src/director/core/timeline.js'
 import { drawFrame } from '../src/director/render/video.js'
 import { drawScene, corpusHero } from '../src/director/render/draw.js'
 import { contrast } from '../src/director/core/util.js'
+// Los pixeles se leen con este helper y no con getImageData: la version nativa de
+// @napi-rs/canvas no libera nunca su buffer y un gate de miles de frames se come
+// decenas de GB. Ver tools/lib/pixeles.mjs.
+import { pixeles } from './lib/pixeles.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 try { GlobalFonts.loadFontsFromDir(join(HERE, 'fonts')) } catch {}
@@ -169,7 +173,7 @@ for (const f of CASOS) {
         ok(dib.x >= bx[0] - 0.5 && dib.y >= bx[1] - 0.5 && dib.x + dib.w <= bx[0] + bx[2] + 0.5 && dib.y + dib.h <= bx[1] + bx[3] + 0.5,
           `E-ELEM-OOB ${nombre}#${s}/${sc.id}: ${l.id} pinta [${[dib.x, dib.y, dib.w, dib.h].map(Math.round)}] fuera de [${bx.map(Math.round)}]`)
 
-        const bb = bbox(ctx.getImageData(0, 0, W, H).data, W, H)
+        const bb = bbox(pixeles(ctx), W, H)
         ok(!!bb, `${nombre}#${s}/${sc.id}: ${l.id} declarado pero el cuadro salio en blanco`)
         if (bb) ok(bb.x1 >= dib.x - 2 && bb.x0 <= dib.x + dib.w + 2,
           `${nombre}#${s}/${sc.id}: ${l.id} declara pintar en x=${Math.round(dib.x)} pero la tinta esta en ${bb.x0}..${bb.x1}`)
@@ -189,7 +193,7 @@ for (const f of CASOS) {
       const falt = ((rep && rep.faltantes) || []).filter(u => porUrl.has(u))
       ok(falt.length === 0, `E-ELEM-FALTA ${nombre}#${s}@${t.toFixed(2)}s: faltan ${falt.slice(0, 2).join(', ')}`)
       // frame casi vacio: se mide contra el fondo real del look, no contra negro
-      const d = ctx.getImageData(0, 0, W, H).data
+      const d = pixeles(ctx)
       let tinta = 0
       const bg = [parseInt(look.bg0.slice(1, 3), 16), parseInt(look.bg0.slice(3, 5), 16), parseInt(look.bg0.slice(5, 7), 16)]
       for (let p = 0; p < d.length; p += 4 * 37) {

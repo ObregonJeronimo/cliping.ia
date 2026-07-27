@@ -27,6 +27,10 @@ import { RECETAS } from '../src/director/core/linker.js'
 import { drawFrame } from '../src/director/render/video.js'
 import { corpusHero } from '../src/director/render/draw.js'
 import { drawPlaca } from '../src/director/render/plate.js'
+// Los pixeles se leen con este helper y no con getImageData: la version nativa de
+// @napi-rs/canvas no libera nunca su buffer y un gate de miles de frames se come
+// decenas de GB. Ver tools/lib/pixeles.mjs.
+import { pixeles } from './lib/pixeles.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const OUT = join(HERE, '..', 'docs', 'director')   // versionado: el reporte se diffea, no se descarta
@@ -103,11 +107,11 @@ for (const [nombre, raw] of Object.entries(ARQ)) {
     // (1 de cada 4 frames) porque el reporte tiene que correr en segundos, no en minutos.
     const cb = createCanvas(W, H), cbx = cb.getContext('2d')
     drawPlaca(cbx, look, W, H, {})
-    const fondo = cbx.getImageData(0, 0, W, H).data
+    const fondo = pixeles(cbx)
     let peor = 1
     for (let i = 0; i < Math.round(tl.dur * tl.fps); i += 4) {
       drawFrame(ctx, tl, Math.min(tl.dur, (i + 0.5) / tl.fps), { W, H, makeCanvas: mk, brand: pm.brand, corpus, images: new Map() })
-      const d = ctx.getImageData(0, 0, W, H).data
+      const d = pixeles(ctx)
       let n = 0
       for (let j = 0; j < d.length; j += 4) {
         if (Math.abs(d[j] - fondo[j]) + Math.abs(d[j + 1] - fondo[j + 1]) + Math.abs(d[j + 2] - fondo[j + 2]) > 24) n++

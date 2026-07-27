@@ -107,11 +107,15 @@ const ENTRADAS = [
 export function build(ctx) {
   const { THREE, gsap, camera, distBase, rnd, fondo, pelicula } = ctx
   const { DATOS, HERO, ORDEN } = resolver()
-  // Sin una sola cifra esta escena no tiene de que hablar. Devuelve un grupo vacio en vez de
-  // inventar: el secuenciador lo salta y la pieza queda mas corta, que es la respuesta honesta.
-  if (!DATOS.length) return { g, tl, vacia: true }
   const g = new THREE.Group()
   const tl = gsap.timeline({ paused: true })
+  // Sin una sola cifra esta escena no tiene de que hablar. Devuelve un grupo vacio en vez de inventar:
+  // el secuenciador lo salta y la pieza queda mas corta, que es la respuesta honesta.
+  //
+  // VA DESPUES de crear g y tl. Estaba antes, y como son `const` el early return caia en la zona
+  // muerta temporal: "Cannot access 'g' before initialization". O sea que el camino honesto —el que
+  // se toma justamente cuando la pagina no dio cifras— era el unico que crasheaba.
+  if (!DATOS.length) return { g, tl, vacia: true }
 
   // ------------------------------------------------------------ helpers locales
   // Un plano de texto que se revela por máscara. `materialMascara` SIEMPRE con color: su uniform de

@@ -7,6 +7,10 @@ import { readFileSync, readdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { drawFrame, timelineDuration, setLogo, setPhotos } from '../src/pages/Animaciones/engineCore.js'
+// Los pixeles se leen con este helper y no con getImageData: la version nativa de
+// @napi-rs/canvas no libera nunca su buffer y un gate de miles de frames se come
+// decenas de GB. Ver tools/lib/pixeles.mjs.
+import { pixeles } from './lib/pixeles.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 try { GlobalFonts.loadFontsFromDir(join(HERE, 'fonts')) } catch { }
@@ -31,7 +35,7 @@ function aHashAt(tl, t) {
   const cv = createCanvas(HW, HH); const ctx = cv.getContext('2d')
   ctx.setTransform(HW / 405, 0, 0, HH / 720, 0, 0)
   drawFrame(ctx, t, tl)
-  const d = ctx.getImageData(0, 0, HW, HH).data
+  const d = pixeles(ctx)
   const g = new Float32Array(HW * HH); let sum = 0
   for (let i = 0, j = 0; i < d.length; i += 4, j++) { g[j] = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]; sum += g[j] }
   const mean = sum / g.length

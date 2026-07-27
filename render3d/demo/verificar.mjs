@@ -50,7 +50,7 @@ globalThis.window = globalThis
 const { gsap } = await import(pathToFileURL(join(RAIZ, 'node_modules', 'gsap', 'index.js')).href)
 globalThis.gsap = gsap
 const THREE = await import(pathToFileURL(join(RAIZ, 'node_modules', 'three', 'build', 'three.module.js')).href)
-const { BEAT, LOOK, b } = await import(pathToFileURL(join(HERE, 'kit.js')).href)
+const { BEAT, LOOK, b, limpiarCache } = await import(pathToFileURL(join(HERE, 'kit.js')).href)
 
 let fails = 0
 const die = m => { console.error('FAIL  ' + m); fails++ }
@@ -140,6 +140,83 @@ for (const id of ids) {
   const fugas = [...new Set(prohibido.filter(p => escrito.some(e => e === p)))]
   ok(fugas.length === 0,
     `E-INVENCION ${id}: con una pagina que NO dijo eso, la escena escribe contenido de la demo: ${fugas.slice(0, 4).map(f => JSON.stringify(f)).join(', ')}`)
+
+  // ---- E-ENCAJE. La composición tiene que aguantar nombres que no midan lo que mide "ANTHEM".
+  // Medido antes de este chequeo: la banda segura de la marca era de 5 a 9 letras. Con "Q" la letra
+  // ocupaba el 143% del alto útil; con diez o más el nombre se truncaba EN SILENCIO
+  // ("CONSTRUCCIONES DEL SUR" salía "CONSTRUCC"). Ninguna de las dos cosas movía una sola métrica del
+  // analizador, porque el ritmo seguía perfecto — el proyecto tenía compuerta de ritmo y ninguna de
+  // composición.
+  //
+  // Se construye con marcas de 1, 2, 12 y 22 letras y se mide la caja real de cada malla contra el
+  // cuadro visible. No se comprueba que quede lindo: se comprueba que ENTRE y que el nombre esté
+  // completo, que es lo que un test puede saber.
+  for (const marca of ['Q', 'GO', 'CONSTRUCCIONES', 'TRANSPORTES INTERNACIONALES']) {
+    configurarDatos({ ...ANTHEM, marca, frases: [marca], datos: [], cta: null, golpe: marca })
+    // El cache de texturas hace que un glifo ya rasterizado no vuelva a pasar por fillText, asi que
+    // sin soltarlo el chequeo de truncado ve menos letras de las que la escena dibuja y acusa en
+    // falso. Le paso: la primera version reporto "CONSTRUCCIONES" como truncada estando entera.
+    limpiarCache()
+    ESCRITO.length = 0
+    let rm
+    try {
+      const cm = new THREE.PerspectiveCamera(fov, W / H, 0.1, 400)
+      cm.position.set(0, 0, distBase)
+      let sm = 1
+      rm = await mod.build({ ...ctx, camera: cm, fondo: uni(), rnd: () => { sm = (sm * 1664525 + 1013904223) >>> 0; return sm / 4294967296 } })
+    } catch (e) { die(`E-ENCAJE ${id}: con la marca "${marca}" build() lanzo — ${e.message}`); continue }
+    if (!rm || !rm.g) continue
+    rm.tl.time(mod.meta.beats * BEAT * 0.72, false)      // ya asentada, antes de la salida
+    // SE MIDE OBJETO POR OBJETO, no la union. La primera version tomaba el bounding box de todo el
+    // grupo y acusaba a las dos escenas correctas: `toro` tiene particulas a 80 unidades y
+    // `tipografia` estaciona las frases fuera del cuadro esperando su turno. Eso es composicion
+    // valida — lo que no puede pasar es que UNA pieza visible sea mucho mas grande que el cuadro.
+    // Se ignora lo que esta lejos del centro (estacionado) y lo que es fondo (muy grande a proposito
+    // y detras de todo).
+    const caja = new THREE.Box3()
+    const v = new THREE.Vector3()
+    let peor = null
+    rm.g.traverse(o => {
+      if (!o.isMesh || !o.visible) return
+      if (o.material && o.material.opacity != null && o.material.opacity <= 0.05) return
+      caja.setFromObject(o)
+      if (caja.isEmpty()) return
+      caja.getCenter(v)
+      // fuera de cuadro = estacionada esperando entrar, no es un defecto
+      if (Math.abs(v.x) > mundoW * 0.9 || Math.abs(v.y) > mundoH * 0.7 || v.z < -20) return
+      const t = caja.getSize(new THREE.Vector3())
+      // Un PANEL de fondo ocupa el cuadro entero a proposito (el beat de inversion pinta uno blanco);
+      // un FILETE es una barra finita que puede cruzar el cuadro de punta a punta. Ninguno de los dos
+      // es un problema de encaje — el problema es una pieza con CUERPO que no entra.
+      //
+      // EL FONDO SE RECONOCE POR NO TENER TEXTURA, no por ser grande. Distinguirlo por tamaño hacia
+      // que este chequeo fuera VACIO: una marca de una sola letra sin tope de alto mide 5.3 x 9.6 en
+      // un cuadro de 5.6 x 10, o sea que la "Q" gigante —el defecto exacto que hay que cazar— entraba
+      // en la definicion de fondo y se salteaba. Comprobado devolviendo el defecto: el gate pasaba en
+      // verde. Toda tipografia lleva `material.map`; un panel de color plano no.
+      const esFondo = !(o.material && o.material.map) && t.x >= mundoW * 0.9 && t.y >= mundoH * 0.9
+      const esFilete = Math.min(t.x, t.y) < 0.15
+      if (esFondo || esFilete || t.y > mundoH * 1.6) return
+      if (!peor || t.y > peor.y) peor = { x: t.x, y: t.y }
+    })
+    if (peor) {
+      ok(peor.y <= mundoH * 0.85 && peor.x <= mundoW * 2.2,
+        `E-ENCAJE ${id}: con la marca "${marca}" una pieza mide ${peor.x.toFixed(2)}x${peor.y.toFixed(2)} en un cuadro de ${mundoW.toFixed(2)}x${mundoH.toFixed(2)} — se come el cuadro`)
+    }
+    // El nombre entero o nada: un truncado silencioso es peor que un nombre chico.
+    //
+    // Se comparan CONJUNTOS de letras y no cantidades: `texto()` cachea por clave, así que una marca
+    // con letras repetidas ("CONSTRUCCIONES" tiene tres C y dos O) rasteriza cada glifo UNA sola vez
+    // y contar los fillText da menos letras de las que la palabra tiene. La primera versión de este
+    // chequeo acusaba de truncado a una escena que dibujaba el nombre completo.
+    const larga = marca.split(/\s+/).sort((a, c) => c.length - a.length)[0]
+    const dibujadas = new Set(ESCRITO.filter(t => t.length === 1 && /[A-ZÁÉÍÓÚÑ]/i.test(t)).map(t => t.toUpperCase()))
+    if (dibujadas.size) {
+      const faltan = [...new Set(larga.split(''))].filter(L => !dibujadas.has(L))
+      ok(faltan.length === 0,
+        `E-ENCAJE ${id}: de la marca "${larga}" no se dibujaron las letras ${faltan.join('')} — se trunco en silencio`)
+    }
+  }
 
   configurarDatos(ANTHEM)
 
