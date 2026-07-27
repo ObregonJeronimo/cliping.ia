@@ -18,19 +18,23 @@
 // arranca `cierre` con el fondo en blanco y el bloom en cero, la pieza se desarma y el bug aparece
 // recién en el video terminado.
 
-import { E, LOOK, b, texto, materialMascara, filete, hex } from '../kit.js'
+import { E, LOOK, b, texto, materialMascara, filete, hex, nivel } from '../kit.js'
 // El COPY sale de los DATOS. Lo que queda escrito aca es CHROME de la pieza (rotulos de
 // capitulo, indicadores tecnicos): eso es direccion de arte y no cambia con el contenido.
 // Lo que la marca DICE — su nombre, sus cifras, su claim, su CTA — sale de los datos o NO SALE.
-import { D } from '../datos.js'
+import { D, marca, sello } from '../datos.js'
 
 export const meta = { id: 'destello', beats: 4 }
 
 const F = 1 / 30                    // un frame a 30 fps: la unidad del corte seco
-const PAPEL_BORDE = '#dde1ea'
-const PAPEL_CENTRO = '#ffffff'
-const GRIS = '#98a1b3'              // el segundo valor: deja pasar la tipografía negra por encima
-const NEGRO = '#000000'
+// ESTA ESCENA ES UNA INVERSION: una hoja de papel BLANCA con tipografia NEGRA, dentro de un mundo
+// oscuro. Escrita con hex fijos, en un mundo CLARO la hoja blanca desaparece contra el fondo blanco
+// y la escena entera se borra. Escrita sobre la escala fondo->tinta, la inversion se da vuelta
+// sola: hoja oscura y letra clara. Sigue siendo la misma idea — el plano que se opone al fondo.
+const PAPEL_BORDE = () => nivel(0.86)
+const PAPEL_CENTRO = () => nivel(1)
+const GRIS = () => nivel(0.62)      // el segundo valor: deja pasar la tipografía de la hoja por encima
+const NEGRO = () => nivel(0)
 const ABIERTO = 1.10                // la máscara abre MÁS que el plano: si termina en 1.0, el borde
                                     // suave del shader se come la última letra y nunca se ve entera
 
@@ -63,15 +67,15 @@ export function build(ctx) {
   const oBloom = bloom.strength
   const oVin = pelicula.uVinieta.value
   const oAb = pelicula.uAberr.value
-  const papelA = hex(PAPEL_BORDE)
-  const papelB = hex(PAPEL_CENTRO)
+  const papelA = hex(PAPEL_BORDE())
+  const papelB = hex(PAPEL_CENTRO())
 
   // ---------------------------------------------------------------- útiles locales
   // El acento del kit viene multiplicado x3.2 porque está pensado para florecer sobre negro. Sobre
   // blanco y con el bloom apagado eso se lava y queda un celeste sucio: acá el color va PLANO.
   const plano = c => new THREE.MeshBasicMaterial({ color: hex(c), toneMapped: false })
-  const matNegro = plano(NEGRO)
-  const matGris = plano(GRIS)
+  const matNegro = plano(NEGRO())
+  const matGris = plano(GRIS())
   const matAzul = plano(LOOK.acento)
 
   // Una barra con el pivote en un borde: escalarla la hace CRECER desde ahí en vez de inflarse desde
@@ -98,7 +102,7 @@ export function build(ctx) {
     const ar = Math.max(0.2, t.ar || 4)
     const m = new THREE.Mesh(
       new THREE.PlaneGeometry(ancho, ancho / ar),
-      materialMascara(t.tex, o.tinta || NEGRO),
+      materialMascara(t.tex, o.tinta || NEGRO()),
     )
     m.material.uniforms.uSuave.value = o.suave != null ? o.suave : 0.045
     m.material.uniforms.uDir.value = o.dir != null ? o.dir : 0
@@ -118,7 +122,7 @@ export function build(ctx) {
       uv.setY(i, arriba ? 0.5 + v * 0.5 : v * 0.5)
     }
     uv.needsUpdate = true
-    const m = new THREE.Mesh(geo, materialMascara(t.tex, NEGRO))
+    const m = new THREE.Mesh(geo, materialMascara(t.tex, NEGRO()))
     m.material.uniforms.uSuave.value = 0.03
     m.position.y = arriba ? alto / 4 : -alto / 4
     m.userData.u = m.material.uniforms
@@ -133,7 +137,9 @@ export function build(ctx) {
   const tipo = new THREE.Group(); g.add(tipo)
 
   // — zona superior: etiqueta, regla, arco que se sale por la derecha, disco
-  const etiqueta = capa('05 · INVERSION', 1.75, { fuente: 'DMSans', peso: 500, tracking: 0.26 })
+  // '05 · INVERSION' era el nombre interno de la escena impreso en el cuadro. Un indice compone igual
+  // y no puede ser falso. Ver el comentario de `marca` en datos.js.
+  const etiqueta = capa(marca(5, 6), 1.75, { fuente: 'DMSans', peso: 500, tracking: 0.26 })
   etiqueta.position.set(XI + 1.75 / 2, 4.32, 0); tipo.add(etiqueta)
 
   const regla = barra(XD - XI, 0.035, 'izq')
@@ -156,7 +162,12 @@ export function build(ctx) {
   const L1 = capa(lineasGolpe()[0], mundoW * 0.945)
   L1.position.set(0, 1.45, 0); tipo.add(L1)
 
-  const L2 = capa('UNA', 1.75, { dir: 2, suave: 0.10 })
+  // La palabra suelta entre las dos lineas del golpe. Estaba fija en 'UNA' — la primera palabra del
+  // golpe de ANTHEM ('ESTO NO LO HACE / UNA PLANTILLA'), que en cualquier otra pagina queda como un
+  // articulo huerfano colgado en el medio del cuadro. Se toma la primera palabra REAL de la segunda
+  // linea, que es lo que la composicion siempre quiso decir: un eco tipografico del hero.
+  const eco = String(lineasGolpe()[1] || '').trim().split(' ')[0] || ''
+  const L2 = capa(eco, 1.75, { dir: 2, suave: 0.10 })
   L2.position.set(XI + 1.75 / 2, 0.42, 0); tipo.add(L2)
 
   const barraUna = barra(2.95, 0.56, 'der')
@@ -181,7 +192,8 @@ export function build(ctx) {
   lineaAcento.scale.x = 0.0001
   g.add(lineaAcento)
 
-  const caption = capa('HECHO CUADRO POR CUADRO', 3.30, { fuente: 'DMSans', peso: 500, tracking: 0.20 })
+  // Decia 'HECHO CUADRO POR CUADRO' — una afirmacion sobre el metodo del motor, no sobre el negocio.
+  const caption = capa(sello(0), 3.30, { fuente: 'DMSans', peso: 500, tracking: 0.20 })
   caption.position.set(XI + 3.30 / 2, -2.14, 0); tipo.add(caption)
 
   // — zona inferior: una fila de cuadraditos con anchos sembrados y tres barras a sangre

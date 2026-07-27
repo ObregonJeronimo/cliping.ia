@@ -15,12 +15,15 @@
 //   · NADA se apaga con opacidad si puede irse por MÁSCARA: el texto se desescribe, no se funde.
 
 import { E,
-  LOOK, b, planoTexto, texto, materialMascara, matAcento, matTarjeta, enArco,
+  LOOK, b, planoTexto, texto, materialMascara, matAcento, matTarjeta, enArco, nivel,
 } from '../kit.js'
-// El COPY sale de los DATOS. Lo que queda escrito aca es CHROME de la pieza (rotulos de
-// capitulo, indicadores tecnicos): eso es direccion de arte y no cambia con el contenido.
-// Lo que la marca DICE — su nombre, sus cifras, su claim, su CTA — sale de los datos o NO SALE.
-import { D, esDemo } from '../datos.js'
+// TODO EL TEXTO SALE DE LOS DATOS. Este archivo decia que el 'chrome' (rotulos de capitulo,
+// indicadores tecnicos) era direccion de arte y podia quedar escrito aca — y con esa licencia
+// el video de Stripe salia diciendo 'BLOQUE 04 · DATOS' y 'DOS INDICADORES · UNA MISMA
+// HISTORIA': castellano del motor, en la pieza de una marca inglesa. Un rotulo de chrome
+// delata la plantilla aunque no mienta. Lo unico que puede escribirse a mano son indices sin
+// letras (`marca`) y el pie real (`sello`); el gate E-PROCEDENCIA lo hace cumplir.
+import { D, esDemo, marca, sello } from '../datos.js'
 
 export const meta = { id: 'tarjetas', beats: 6 }
 
@@ -31,8 +34,10 @@ export const meta = { id: 'tarjetas', beats: 6 }
 // Por eso la tipografía GRANDE va apenas por debajo del umbral y la chica se queda en el blanco del
 // look. Lo mismo con el acento2 (#00e5c0, luminancia 0.60 a intensidad 1): pasado de 1.0 deja de ser
 // un borde y pasa a ser una lámpara que lava el cuadro entero.
-const C_NUM = '#c9d1e4'   // número: 0.63, apenas asoma el halo
-const C_TIT = '#bcc4d8'   // titular: 0.55, limpio
+// Numero y titular, sobre la escala fondo->tinta. Ver `nivel` en kit.js: escritos como hex fijo
+// eran gris claro sobre blanco, o sea nada.
+const C_NUM = () => nivel(0.80)
+const C_TIT = () => nivel(0.75)
 
 // ---------------------------------------------------------------- el dato
 // LAS CIFRAS SON DE LA PÁGINA O NO EXISTEN. Esta lista estaba escrita a mano y, en cuanto la pieza
@@ -163,17 +168,19 @@ export function build(ctx) {
   // Sin numero entero no hay cuenta: se repite la misma textura y la tarjeta simplemente aparece.
   const nHero = DATOS[HERO].n
   for (let k = 0; k <= PASOS; k++) heroTexs.push(texto(nHero == null ? DATOS[HERO].txt : String(Math.round(nHero * k / PASOS)), { fuente: 'Anton', size: 130 }))
-  const eco = contador(3.8, nHero == null ? 0 : nHero, 130, '#243066', heroTexs, heroTexs[PASOS].ar)
+  const eco = contador(3.8, nHero == null ? 0 : nHero, 130, nivel(0.22, 0.45), heroTexs, heroTexs[PASOS].ar)
   eco.mat.uniforms.uSuave.value = 0.22
   eco.malla.position.set(0, 0.10, -7.2)
   g.add(eco.malla)
 
   // ------------------------------------------------------------ bloque superior
-  const kicker = txt('BLOQUE 04 · DATOS', 0.13, { fuente: 'DMSans', size: 64, tracking: 0.34 }, LOOK.acento2, 0)
+  // 'BLOQUE 04 · DATOS' era el nombre interno de la escena impreso en el cuadro, en castellano, en el
+  // video de cualquier marca. Un indice ocupa el mismo lugar y no afirma nada.
+  const kicker = txt(marca(4, 6), 0.13, { fuente: 'DMSans', size: 64, tracking: 0.34 }, LOOK.acento2, 0)
   kicker.position.set(0, 3.85, 1.20)
   g.add(kicker)
 
-  const titulo = txt(D.marca, 1.05, { fuente: 'Anton', size: 110 }, C_TIT, 0)
+  const titulo = txt(D.marca, 1.05, { fuente: 'Anton', size: 110 }, C_TIT(), 0)
   titulo.position.set(0, 3.10, 1.20)
   g.add(titulo)
 
@@ -186,8 +193,14 @@ export function build(ctx) {
   // El epigrafe DECIA "CINCO INDICADORES" siempre, incluso sobre UNA sola tarjeta. No es ruido de
   // demo: es una afirmacion falsa sobre lo que hay en pantalla, y el espectador la puede contar.
   // Se deriva de la cantidad real.
+  // Y SEGUIA SIENDO VOZ DEL MOTOR. Derivarlo de la cantidad real arreglo la parte falsa, no la parte
+  // ajena: "DOS INDICADORES · UNA MISMA HISTORIA" es castellano editorial de urvid metido en la pieza
+  // de una marca inglesa que jamas dijo eso. En la demo el motor habla de si mismo y esta bien; en el
+  // video de un cliente, el renglon lo ocupa el dominio de su propia pagina.
   const NUM = ['CERO', 'UN', 'DOS', 'TRES', 'CUATRO', 'CINCO']
-  const epi = DATOS.length === 1 ? 'UN INDICADOR' : `${NUM[DATOS.length] || DATOS.length} INDICADORES · UNA MISMA HISTORIA`
+  const epi = esDemo
+    ? (DATOS.length === 1 ? 'UN INDICADOR' : `${NUM[DATOS.length] || DATOS.length} INDICADORES · UNA MISMA HISTORIA`)
+    : sello(0)
   const epigrafe = txt(epi, 0.135, { fuente: 'DMSans', size: 72, tracking: 0.16 }, LOOK.tinta, 0)
   epigrafe.position.set(0, -1.70, 0.42)
   g.add(epigrafe)
@@ -247,7 +260,9 @@ export function build(ctx) {
     gr.add(rim)
 
     // cuerpo con espesor real: el travelling lateral necesita un canto que atrape la luz
-    const cuerpoMat = fundible(matTarjeta(esHero ? '#111c40' : '#0c1124'))
+    // Las tarjetas se levantan del fondo un escalon corto, tenidas hacia el acento de la marca. Con el
+    // navy fijo, en una pieza blanca eran rectangulos azul marino plantados en el medio.
+    const cuerpoMat = fundible(matTarjeta(nivel(esHero ? 0.13 : 0.09, 0.40)))
     const cuerpo = new THREE.Mesh(new THREE.BoxGeometry(CW, CH, CD), cuerpoMat)
     gr.add(cuerpo)
 
@@ -256,7 +271,7 @@ export function build(ctx) {
     idx.position.set(0, CH / 2 - 0.20, zf)
     gr.add(idx)
 
-    const num = contador(0.62, d.n, esHero ? 130 : 80, C_NUM, esHero ? heroTexs : null, esHero ? heroTexs[PASOS].ar : null)
+    const num = contador(0.62, d.n, esHero ? 130 : 80, C_NUM(), esHero ? heroTexs : null, esHero ? heroTexs[PASOS].ar : null)
     num.malla.position.set(0, 0.20, zf)
     gr.add(num.malla)
 

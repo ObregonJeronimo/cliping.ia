@@ -143,6 +143,9 @@ const pm = normalizePageModel(JSON.parse(readFileSync(ruta, 'utf8')))
 const d = datosDe(pm)
 const aire = aireDe(pm)
 const salida = process.argv[3] || join(HERE, 'out', `datos-${nombre}.json`)
-writeFileSync(salida, JSON.stringify({ datos: d, aire }, null, 1))
-console.log(`${salida}\n  marca "${d.marca}" · aire "${aire}" · ${d.frases.length} frases · ${d.datos.length} cifras · cta ${d.cta ? `"${d.cta}"` : 'NINGUNO'}`)
+// El ADN viaja ENTERO al spec. Es lo que hace que la paleta, la polaridad claro/oscuro, la tipografía y
+// los radios de la marca lleguen a la pantalla en vez de quedarse en el informe de medición.
+writeFileSync(salida, JSON.stringify({ datos: d, aire, dna: pm.dna || null }, null, 1))
+const bl = pm.dna?.palette?.bgLum
+console.log(`${salida}\n  marca "${d.marca}" · aire "${aire}"${bl != null ? ` · mundo ${bl > 0.42 ? 'CLARO' : 'oscuro'} (${pm.dna.palette.bg} / acento ${pm.dna.palette.accent})` : ''} · ${d.frases.length} frases · ${d.datos.length} cifras · cta ${d.cta ? `"${d.cta}"` : 'NINGUNO'}`)
 console.log('  frases:', d.frases.map(f => JSON.stringify(f)).join(' '))

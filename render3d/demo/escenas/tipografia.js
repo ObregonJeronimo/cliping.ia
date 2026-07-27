@@ -29,7 +29,7 @@ import { E, LOOK, b, texto, planoTexto, matAcento, hex } from '../kit.js'
 // Las frases salen de los DATOS, no del archivo: la misma escena sirve para cualquier pagina.
 // El estilo de cada entrada (que fuente, que ancho, que gesto) SI es de la escena — eso es direccion
 // de arte y no cambia con el contenido.
-import { frase, D } from '../datos.js'
+import { frase, D, nFrases, sello } from '../datos.js'
 
 export const meta = { id: 'tipografia', beats: 8 }
 
@@ -209,7 +209,10 @@ export function build(ctx) {
 
   // Línea de apoyo del cierre: cuerpo chico y muy espaciado contra el titular enorme. El contraste de
   // escala es lo que hace que el titular se lea grande.
-  const s7 = medida('SU PROPIO', CHICA, 3.5, 0.44)
+  // Estaba fija en 'SU PROPIO' — un fragmento del copy de ANTHEM ('CADA PAGINA / SU PROPIO / VIDEO')
+  // que en cualquier otra pieza queda como dos palabras sueltas sin sujeto. Es la linea de apoyo del
+  // cierre: le corresponde la ultima frase real que la pagina dio.
+  const s7 = medida(frase(Math.max(0, nFrases() - 1)) || '', CHICA, 3.5, 0.44)
   const w7b = planoW(s7, 0, { dir: 0, borde: 0.12, filo: LOOK.acento2 })
   w7b.position.set(0, 2.55, 0)
 
@@ -280,10 +283,15 @@ export function build(ctx) {
   relleno.position.set(XI, 4.12, 0); relleno.scale.set(0, 0.05, 1)
 
   // Epígrafes de abajo: dos, y el cambio cae en el beat 4 — el mismo pulso que el tramo rápido.
-  const e1 = medida('SIETE ENTRADAS · NINGUNA IGUAL', CHICA, 3.5, 0.22)
+  // ESTOS DOS EPIGRAFES ERAN LA FUGA MAS CARA DEL MOTOR. Decian 'SIETE ENTRADAS · NINGUNA IGUAL' y
+  // 'CADA CORTE CAE EN EL BEAT': copy de urvid sobre su propia tecnica, en castellano, impreso en el
+  // video de Stripe. El gate E-INVENCION no los veia porque solo conocia los literales del objeto
+  // ANTHEM de datos.js, y estos estaban escritos aca adentro. De ahi salio E-PROCEDENCIA.
+  // Ahora los ocupan el rotulo de la pagina y su dominio: reales, cortos y del mismo largo.
+  const e1 = medida(D.rotulo || sello(0), CHICA, 3.5, 0.22)
   const c1 = planoW(e1, -1, { dir: 0, borde: 0.1, filo: LOOK.acento })
   c1.position.set(XI, -3.62, 0)
-  const e2 = medida('CADA CORTE CAE EN EL BEAT', CHICA, 3.2, 0.22)
+  const e2 = medida(sello(0), CHICA, 3.2, 0.22)
   const c2 = planoW(e2, -1, { dir: 0, borde: 0.1, filo: LOOK.acento2 })
   c2.position.set(XI, -3.62, 0)
 

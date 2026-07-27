@@ -17,6 +17,7 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js'
 import { BEAT, b, LOOK, hex, mulberry32, fondoVivo, configurar } from './kit.js'
 import { configurarDatos } from './datos.js'
+import { personalizar } from './adn.js'
 import { ESCENAS } from './escenas/index.js'
 
 // ---------------------------------------------------------------- pase final de película
@@ -248,6 +249,10 @@ window.URVID = {
     if (spec.aire) {
       const mod = await import(`./aires/${spec.aire}.js`)
       aire = mod.default || mod.aire
+      // EL ADN DE LA PAGINA PISA EL HUE Y LA POLARIDAD DEL AIRE. Sin este paso el motor medía la
+      // identidad de cada marca y despues la tiraba: cinco de siete paginas reales medidas son
+      // CLARAS y salian todas en azul marino. Ver render3d/demo/adn.js para el reparto exacto.
+      if (spec.dna) aire = personalizar(aire, spec.dna, mulberry32((spec.seed || 1) * 7919))
       configurar(aire)
       spec.__aire = aire
     }

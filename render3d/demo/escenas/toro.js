@@ -26,11 +26,11 @@
 // reproduce su degrade en coordenadas de mundo: la union cae en el mismo punto del espacio, asi que
 // no hay costura. Se resuelve acá adentro para no tocar el kit.
 
-import { E, LOOK, b, texto, materialMascara, filete, matAcento, matTarjeta, hex } from '../kit.js'
+import { E, LOOK, b, texto, materialMascara, filete, matAcento, matTarjeta, hex, nivel } from '../kit.js'
 // El COPY sale de los DATOS. Lo que queda escrito aca es CHROME de la pieza (rotulos de
 // capitulo, indicadores tecnicos): eso es direccion de arte y no cambia con el contenido.
 // Lo que la marca DICE — su nombre, sus cifras, su claim, su CTA — sale de los datos o NO SALE.
-import { D } from '../datos.js'
+import { D, marca, sello } from '../datos.js'
 
 export const meta = { id: 'toro', beats: 6 }
 
@@ -46,8 +46,10 @@ const U_FIN = 5.7              // beats que dura el recorrido de camara (termina
 // Asi que el reparto es explicito: la TIPOGRAFIA vive por debajo del umbral y sale con filo de
 // navaja; los ACENTOS viven apenas por encima y son los unicos que florecen. Eso es tambien lo que
 // hace un colorista: la luz la dan los graficos, no el texto.
-const TIPO_ALTA = '#8c95ab'    // luminancia 0.583 — bajo el umbral, se lee casi blanco tras el OutputPass
-const TIPO_BAJA = '#7d879e'    // luminancia 0.527 — segundo nivel de jerarquia
+// Dos escalones de jerarquia sobre la escala fondo->tinta. Estaban fijos en '#8c95ab' y '#7d879e',
+// que son las luminancias correctas SOBRE NEGRO y dos fantasmas sobre blanco.
+const TIPO_ALTA = () => nivel(0.56)
+const TIPO_BAJA = () => nivel(0.50)
 // Y los multiplicadores de acento se quedan cerca de 1.2: por encima de ~2 el nucleo satura a blanco
 // y el color queda solo en el halo — un tubo de neon blanco en vez de una linea del color de la marca.
 
@@ -260,8 +262,14 @@ export function build(ctx) {
     return f
   }
 
-  const PAL = ['CADA', 'OBJETO', 'ES', 'REAL']
-  const optPal = { fuente: 'Anton', size: 200, tracking: 0.006, color: TIPO_ALTA }
+  // Las cuatro palabras que cruzan el cuadro DECIAN 'CADA OBJETO ES REAL': una frase sobre el metodo
+  // del motor, en castellano, en el video de cualquier marca del mundo. Salen del bloque destacado de
+  // la propia pagina, que es el titular corto que la escena siempre necesito. Si la pagina no dio
+  // ninguno se usa el golpe, y si tampoco hay golpe la escena se compone sin palabras: el toro y la
+  // estructura ya sostienen el cuadro.
+  const frasePal = String((D.bloque && D.bloque.titulo) || D.golpe || '').replace(/\s+/g, ' ').trim()
+  const PAL = frasePal ? frasePal.split(/\s+/).slice(0, 4) : []
+  const optPal = { fuente: 'Anton', size: 200, tracking: 0.006, color: TIPO_ALTA() }
   const ars = PAL.map(p => texto(p, optPal).ar)
   const sumaAr = ars.reduce((a, v) => a + v, 0)
   const ALTO_PAL = ANCHO / sumaAr
@@ -278,8 +286,8 @@ export function build(ctx) {
   const uProgPal = palabras.map(m => m.material.uniforms.uProg)
 
   // -- kicker + marca de tick
-  const kick = lineaMasc('02 · VOLUMEN', mundoW * 0.34,
-    { fuente: 'DMSans', size: 120, tracking: 0.2, alineado: 'left', color: TIPO_BAJA }, 0, 0.14)
+  const kick = lineaMasc(marca(2, 6), mundoW * 0.34,
+    { fuente: 'DMSans', size: 120, tracking: 0.2, alineado: 'left', color: TIPO_BAJA() }, 0, 0.14)
   kick.position.set(X0 + mundoW * 0.17 + 0.06, Y_KICK, 0)
   tipo.add(kick)
 
@@ -307,13 +315,15 @@ export function build(ctx) {
 
   // -- bajada
   const sub = lineaMasc((D.bloque ? D.bloque.bajada : ''), mundoW * 0.68,
-    { fuente: 'DMSans', size: 120, tracking: 0.16, alineado: 'left', color: TIPO_BAJA }, 2, 0.12)
+    { fuente: 'DMSans', size: 120, tracking: 0.16, alineado: 'left', color: TIPO_BAJA() }, 2, 0.12)
   sub.position.set(X0 + mundoW * 0.34, Y_SUB, 0)
   tipo.add(sub)
 
   // -- lectura tecnica arriba a la derecha: el cuadro esta lleno tambien donde no hay protagonista
-  const lectura = lineaMasc('R 1.34 · SEG 18 · MALLA VIVA', mundoW * 0.5,
-    { fuente: 'DMSans', size: 110, tracking: 0.18, alineado: 'left', color: TIPO_BAJA }, 0, 0.12)
+  // Decia 'R 1.34 · SEG 18 · MALLA VIVA': jerga interna disfrazada de lectura tecnica. El dominio real
+  // llena el mismo hueco con el mismo peso visual.
+  const lectura = lineaMasc(sello(0), mundoW * 0.5,
+    { fuente: 'DMSans', size: 110, tracking: 0.18, alineado: 'left', color: TIPO_BAJA() }, 0, 0.12)
   lectura.position.set(2.6 - mundoW * 0.25, 3.55, 0.6)
   g.add(lectura)
 

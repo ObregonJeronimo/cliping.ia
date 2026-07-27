@@ -17,11 +17,11 @@
 // El overshoot vive en la ROTACIÓN y en la escala de cada letra, no en z: con la palabra ocupando el
 // 94% del ancho, un back.out sobre la profundidad la empujaba fuera del cuadro en el rebote.
 
-import { E, LOOK, b, BPM, planoTexto, texto, materialMascara, filete, hex } from '../kit.js'
+import { E, LOOK, b, BPM, planoTexto, texto, materialMascara, filete, hex, nivel } from '../kit.js'
 // El COPY sale de los DATOS. Lo que queda escrito aca es CHROME de la pieza (rotulos de
 // capitulo, indicadores tecnicos): eso es direccion de arte y no cambia con el contenido.
 // Lo que la marca DICE — su nombre, sus cifras, su claim, su CTA — sale de los datos o NO SALE.
-import { D } from '../datos.js'
+import { D, marca, sello } from '../datos.js'
 
 export const meta = { id: 'apertura', beats: 6 }
 
@@ -34,9 +34,12 @@ const AIRE = 0.3 / 1.34
 // florecer. Un rótulo blanco de 200 px lo cruza y queda lindo; "ANTHEM" a 1000 px de ancho lo cruza y
 // se convierte en un rectángulo blanco que se come el cuadro. La palabra grande va apenas por debajo
 // del umbral: nítida, con contraste total sobre el negro, y sin halo.
-const TIPO_GRANDE = '#c3cbdb'
+// Era '#c3cbdb': un gris claro calibrado contra fondo negro, invisible sobre blanco. `nivel` lo
+// resuelve en el mundo que toque. Es funcion y no constante porque LOOK todavia no existe cuando
+// este archivo se importa — ver el comentario de `nivel` en kit.js.
+const TIPO_GRANDE = () => nivel(0.78)
 
-const ANTON = { fuente: 'Anton', size: 200, color: TIPO_GRANDE }
+const ANTON = () => ({ fuente: 'Anton', size: 200, color: TIPO_GRANDE() })
 const CHICA = { fuente: 'DMSans', peso: 500, size: 200, tracking: 0.24, color: LOOK.tinta }
 const CIFRA = { fuente: 'Bricolage', peso: 800, size: 200, tracking: 0.06, color: LOOK.tinta }
 
@@ -197,7 +200,9 @@ export function build(ctx) {
   de(rot.userData.prog, { value: 0 }, { value: 1.08, duration: b(0.52), ease: E.vaiven(2) }, b(0.5))
   de(rot.position, { x: rotX - 0.16 }, { x: rotX, duration: b(0.7), ease: E.frena(3) }, b(0.5))
 
-  const micro = izq(rotulo(`REC · ${Math.round(BPM)} BPM`, 0.115, mundoW * 0.4, { ...CHICA, tracking: 0.3, color: LOOK.acento2 }), -MX, -0.45)
+  // El micro-rotulo decia `REC · 124 BPM`: jerga del motor, en el video de un cliente. El dominio de
+  // la propia pagina ocupa el mismo lugar, mide parecido y ademas es cierto.
+  const micro = izq(rotulo(sello(0), 0.115, mundoW * 0.4, { ...CHICA, tracking: 0.3, color: LOOK.acento2 }), -MX, -0.45)
   gAp.add(micro)
   micro.userData.prog.value = 0
   de(micro.userData.prog, { value: 0 }, { value: 1.08, duration: b(0.4), ease: E.frena(2) }, b(0.82))
@@ -304,7 +309,7 @@ export function build(ctx) {
   })()
   const TRACK = 0.016
   const OBJ = mundoW * 0.94
-  const unidad = LETRAS.map(L => Math.max(0.05, texto(L, ANTON).ar - AIRE))
+  const unidad = LETRAS.map(L => Math.max(0.05, texto(L, ANTON()).ar - AIRE))
   const suma = unidad.reduce((a, c) => a + c, 0)
   // ENCAJE DE DOS EJES. El reparto original sólo miraba el ANCHO: repartía el 94% del cuadro entre la
   // suma de proporciones y sacaba el alto de ahí. Con muchas letras funciona —la palabra se achica
@@ -340,7 +345,7 @@ export function build(ctx) {
   let cursor = -OBJ / 2
   LETRAS.forEach((L, i) => {
     const w = unidad[i] * ALTO
-    const m = planoTexto(L, ALTO, ANTON)
+    const m = planoTexto(L, ALTO, ANTON())
     m.position.set(cursor + w / 2, 0, -13)
     m.rotation.x = -1.35
     m.rotation.z = (rnd() - 0.5) * 0.16
@@ -412,7 +417,9 @@ export function build(ctx) {
   sub.userData.prog.value = 0
   de(sub.userData.prog, { value: 0 }, { value: 1.08, duration: b(0.9), ease: E.vaiven(2) }, b(3.05))
 
-  const sub2 = rotulo('6 ESCENAS · 0 PLANTILLAS', 0.11, mundoW * 0.6, { ...CHICA, tracking: 0.34, color: LOOK.acento2 })
+  // Decia '6 ESCENAS · 0 PLANTILLAS' — autopromocion del motor metida en la pieza de otro. El claim
+  // de la pagina es lo que corresponde en ese renglon, y si la pagina no dio ninguno no va nada.
+  const sub2 = rotulo(D.claim || '', 0.11, mundoW * 0.6, { ...CHICA, tracking: 0.34, color: LOOK.acento2 })
   sub2.position.set(0, -1.66, 0.1)
   g.add(sub2)
   sub2.userData.prog.value = 0
@@ -428,12 +435,15 @@ export function build(ctx) {
   apagadoHasta(reglon, b(3.4))
   de(reglon.scale, { x: 0.001 }, { x: 1, duration: b(0.7), ease: E.frena(5) }, b(3.4))
 
-  const metaL = izq(rotulo('CAPITULO 01 — APERTURA', 0.10, mundoW * 0.5, { ...CHICA, tracking: 0.32 }), -MX, -2.44)
+  // 'CAPITULO 01 — APERTURA' era el nombre INTERNO de la escena impreso en el cuadro: no solo estaba
+  // en castellano en la pieza de una marca inglesa, delataba la plantilla. Un indice puro compone
+  // igual y no dice nada que pueda ser falso.
+  const metaL = izq(rotulo(marca(1, 6), 0.10, mundoW * 0.5, { ...CHICA, tracking: 0.32 }), -MX, -2.44)
   g.add(metaL)
   metaL.userData.prog.value = 0
   de(metaL.userData.prog, { value: 0 }, { value: 1.08, duration: b(0.5), ease: E.frena(2) }, b(3.6))
 
-  const metaR = der(rotulo(`${Math.round(BPM)} BPM · 30 FPS`, 0.10, mundoW * 0.42, { ...CHICA, tracking: 0.32, color: LOOK.acento2 }), MX, -2.44)
+  const metaR = der(rotulo(sello(1), 0.10, mundoW * 0.42, { ...CHICA, tracking: 0.32, color: LOOK.acento2 }), MX, -2.44)
   metaR.material.uniforms.uDir.value = 1
   g.add(metaR)
   metaR.userData.prog.value = 0

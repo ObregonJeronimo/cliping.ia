@@ -17,7 +17,7 @@ import { E, LOOK, b, planoTexto, materialMascara, filete, hex } from '../kit.js'
 // El COPY sale de los DATOS. Lo que queda escrito aca es CHROME de la pieza (rotulos de
 // capitulo, indicadores tecnicos): eso es direccion de arte y no cambia con el contenido.
 // Lo que la marca DICE — su nombre, sus cifras, su claim, su CTA — sale de los datos o NO SALE.
-import { D } from '../datos.js'
+import { D, sello } from '../datos.js'
 
 export const meta = { id: 'cierre', beats: 6 }
 
@@ -239,11 +239,10 @@ export function build(ctx) {
   cabeza.position.set(-LF / 2, -3.30, 0.02)
 
   // ---- tres marcas, repartidas y escalonadas
-  const datos = [
-    ['1080x1920', LOOK.tinta],
-    ['30 FPS', LOOK.tinta],
-    ['SIN IA GENERATIVA', LOOK.acento2],
-  ]
+  // El pie sale de D.pie, que trae el dominio real de la pagina y el formato del archivo. Estaba
+  // escrito a mano y el tercero decia 'SIN IA GENERATIVA': una afirmacion sobre COMO SE HIZO EL VIDEO,
+  // firmada como si fuera de la marca, en la pieza de un cliente que nunca dijo eso.
+  const datos = sello.lista().slice(0, 3).map((t, i) => [t, i === 2 ? LOOK.acento2 : LOOK.tinta])
   const gMarcas = new THREE.Group()
   gMarcas.position.set(0, -3.92, 0.02)
   const marcasM = []
@@ -355,7 +354,9 @@ export function build(ctx) {
     tl.fromTo(m.position, { y: -0.20 }, { y: 0, duration: b(0.5), ease: E.llega(2.4) }, t0)
     tl.fromTo(m.material.uniforms.uProg, { value: 0 }, { value: 1.04, duration: b(0.5), ease: E.frena(2) }, t0)
   })
-  tl.to(puntos.map(p => p.scale), { x: 1, y: 1, z: 1, duration: b(0.34), ease: E.llega(3.2), stagger: 0.07 }, b(3.55))
+  // Con una sola marca no hay separadores, y `tl.to([], ...)` no falla: avisa por consola y sigue. Un
+  // aviso que nadie lee es peor que un error — se guarda para que la escena se componga con lo que hay.
+  if (puntos.length) tl.to(puntos.map(p => p.scale), { x: 1, y: 1, z: 1, duration: b(0.34), ease: E.llega(3.2), stagger: 0.07 }, b(3.55))
 
   // --- BEAT 4.5 → 6 · CIERRE. Todo se comprime, el bloom baja, queda el anillo.
   tl.set(fondo.uPulso, { value: 0.30 }, b(4.5))
@@ -373,7 +374,7 @@ export function build(ctx) {
     tl.set(m.material.uniforms.uDir, { value: 1 }, b(4.6))
     tl.to(m.material.uniforms.uProg, { value: 0, duration: b(0.4), ease: E.acelera(2) }, b(4.6 + i * 0.09))
   })
-  tl.to(puntos.map(p => p.scale), { x: 0, y: 0, z: 0, duration: b(0.3), ease: 'back.in(2)', stagger: 0.04 }, b(4.6))
+  if (puntos.length) tl.to(puntos.map(p => p.scale), { x: 0, y: 0, z: 0, duration: b(0.3), ease: 'back.in(2)', stagger: 0.04 }, b(4.6))
   tl.to(gFilete.scale, { x: 0.0001, duration: b(0.45), ease: E.acelera(3) }, b(4.75))
   tl.set(cta.material.uniforms.uDir, { value: 1 }, b(4.8))
   tl.to(cta.material.uniforms.uProg, { value: 0, duration: b(0.3), ease: E.acelera(2) }, b(4.8))

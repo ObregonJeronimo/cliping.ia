@@ -47,6 +47,14 @@ globalThis.document = {
   fonts: { ready: Promise.resolve(), load: async () => {} },
 }
 globalThis.window = globalThis
+
+// ---- GSAP avisa por consola cuando le pedis animar un target que no existe, y sigue como si nada.
+// Es exactamente la forma de un defecto de composicion: la escena se armo con menos material del que
+// esperaba (una pagina con un solo dato, sin CTA) y quedaron tweens apuntando al vacio. No falla, no
+// se ve en el codigo, y en el video sale un hueco. Se captura el aviso y se convierte en FAIL.
+const AVISOS = []
+const _warn = console.warn.bind(console)
+console.warn = (...a) => { AVISOS.push(a.join(' ')); }
 const { gsap } = await import(pathToFileURL(join(RAIZ, 'node_modules', 'gsap', 'index.js')).href)
 globalThis.gsap = gsap
 const THREE = await import(pathToFileURL(join(RAIZ, 'node_modules', 'three', 'build', 'three.module.js')).href)
@@ -122,6 +130,13 @@ for (const id of ids) {
     die(`${id}: con una pagina POBRE (1 cifra, 1 frase, sin CTA) build() lanzo — ${e.message}`)
   }
 
+  // ---- E-VACIO. Ver el interceptor de console.warn arriba.
+  const vacios = [...new Set(AVISOS.filter(a => /target.*not found/i.test(a)))]
+  ok(vacios.length === 0,
+    `E-VACIO ${id}: con una pagina POBRE la timeline anima objetos que la escena no llego a crear `
+    + `(${vacios.length} aviso(s) de GSAP). La escena tiene que componerse con lo que hay, no dejar el hueco.`)
+  AVISOS.length = 0
+
   // ---- E-INVENCION. La regla anti-invencion vivia en cuatro comentarios largos y en NINGUN test, y
   // por eso pudo romperse sin que nada avisara: medido sobre los fixtures, 46 de 84 slots de frase y
   // las cifras de 7 de 12 paginas salian del copy de la demo. El video de Stripe decia "ANIMA" y el
@@ -140,6 +155,37 @@ for (const id of ids) {
   const fugas = [...new Set(prohibido.filter(p => escrito.some(e => e === p)))]
   ok(fugas.length === 0,
     `E-INVENCION ${id}: con una pagina que NO dijo eso, la escena escribe contenido de la demo: ${fugas.slice(0, 4).map(f => JSON.stringify(f)).join(', ')}`)
+
+  // ---- E-PROCEDENCIA. El punto ciego del chequeo de arriba: solo conoce los literales que viven en
+  // el objeto ANTHEM de datos.js. Una frase escrita A MANO DENTRO DE UNA ESCENA no esta en esa lista y
+  // pasaba invisible. Y habia varias: el video de Stripe salia diciendo "SIETE ENTRADAS · NINGUNA
+  // IGUAL" y "CADA CORTE CAE EN EL BEAT" — copy sobre el motor, en castellano, en la pieza de una
+  // marca inglesa que nunca dijo nada parecido. Exactamente el defecto que la regla existe para
+  // impedir, cometido desde el otro lado.
+  //
+  // Este chequeo invierte la carga de la prueba: en vez de una lista de lo PROHIBIDO, exige que todo
+  // lo que la escena escribe sea RASTREABLE a los datos que recibio. Se permiten dos cosas mas:
+  //   · texto sin letras (numeros, indices, filetes tipo "01 / 06") — no afirma nada del negocio;
+  //   · lo declarado en DECORATIVO, la lista corta y compartida de rotulos de sistema.
+  // Cualquier copy nuevo escrito a mano falla hasta que alguien lo ponga en esa lista a la vista.
+  const { DECORATIVO } = await import(pathToFileURL(join(HERE, 'datos.js')).href)
+  const permitido = new Set([...DECORATIVO].map(norm))
+  // Todos los strings del objeto de datos, en profundidad. La escena puede recortar, partir en
+  // renglones o separar en palabras, asi que vale como rastreable si es SUBCADENA de alguno.
+  const rastro = []
+  ;(function hondo(v) {
+    if (typeof v === 'string' || typeof v === 'number') rastro.push(norm(v))
+    else if (Array.isArray(v)) v.forEach(hondo)
+    else if (v && typeof v === 'object') Object.values(v).forEach(hondo)
+  })(await import(pathToFileURL(join(HERE, 'datos.js')).href).then(m => m.D))
+  const inventado = [...new Set(escrito.filter(e => {
+    if (!/[A-ZÁÉÍÓÚÑÜ]/.test(e)) return false                     // sin letras: no afirma nada
+    if (permitido.has(e)) return false
+    return !rastro.some(f => f.includes(e))
+  }))]
+  ok(inventado.length === 0,
+    `E-PROCEDENCIA ${id}: escribe texto que la pagina nunca dijo y no esta declarado en DECORATIVO: `
+    + `${inventado.slice(0, 5).map(f => JSON.stringify(f)).join(', ')}`)
 
   // ---- E-ENCAJE. La composición tiene que aguantar nombres que no midan lo que mide "ANTHEM".
   // Medido antes de este chequeo: la banda segura de la marca era de 5 a 9 letras. Con "Q" la letra

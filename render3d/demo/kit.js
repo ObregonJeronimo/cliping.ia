@@ -61,12 +61,17 @@ const GESTO_BASE = {
 export let E = GESTO_BASE
 
 export let AIRE = null
+// ¿El mundo es claro? Lo decide el ADN de la página, no el aire. Las escenas lo consultan para elegir
+// entre sumar luz y restarla: la misma escena que sobre negro dibuja un halo, sobre blanco tiene que
+// dibujar una sombra, o desaparece.
+export let CLARO = false
 
 // configurar(aire) — se llama UNA vez antes de construir la pieza. Todo lo que no venga en el aire
 // se queda con el valor de ANTHEM.
 export function configurar(aire) {
   if (!aire) return
   AIRE = aire
+  CLARO = !!aire.claro
   if (aire.bpm) { BPM = aire.bpm; BEAT = 60 / BPM }
   if (aire.paleta) LOOK = { ...LOOK, ...aire.paleta }
   if (aire.gesto) E = { ...GESTO_BASE, ...aire.gesto }
@@ -199,10 +204,14 @@ export function fondoVivo(mundoW, mundoH) {
     uniforms: {
       uT: { value: 0 }, uA: { value: hex(LOOK.bg) }, uB: { value: hex(LOOK.bg2) },
       uAcento: { value: hex(LOOK.acento) }, uGrilla: { value: 0.55 }, uPulso: { value: 0 },
+      // 1 = mundo claro. La grilla y el pulso son ADITIVOS, que es lo correcto sobre negro y un
+      // desastre sobre blanco: sumar sobre un fondo que ya está en 1.0 no aclara nada, sólo desatura
+      // hasta el gris. En claro las mismas dos cosas tienen que OSCURECER hacia el acento.
+      uClaro: { value: CLARO ? 1 : 0 },
     },
     vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
     fragmentShader: `
-      uniform float uT, uGrilla, uPulso; uniform vec3 uA, uB, uAcento;
+      uniform float uT, uGrilla, uPulso, uClaro; uniform vec3 uA, uB, uAcento;
       varying vec2 vUv;
       float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898,78.233)))*43758.5453); }
       void main(){
@@ -216,9 +225,16 @@ export function fondoVivo(mundoW, mundoH) {
         float ly = abs(fract(g.y * 9.0 - uT * 0.18 + 0.5) - 0.5);
         float linea = smoothstep(0.055, 0.0, lx) + smoothstep(0.05, 0.0, ly);
         linea *= smoothstep(0.62, 0.06, abs(g.y)) * uGrilla;
-        col += uAcento * linea * 0.16;
+        // En oscuro la línea SUMA luz; en claro TIÑE hacia el acento. Es la misma grilla y en los dos
+        // casos aparece por delante del fondo, que es lo único que importa.
+        // En claro hace falta MAS peso, no menos: sobre negro una linea de acento al 16% ya destaca
+        // porque suma luz donde no habia, y sobre blanco la misma linea tiñe apenas un blanco que ya
+        // estaba lleno. Con 0.26 la grilla en fuga quedaba de fantasma y los cuadros sin protagonista
+        // salian en blanco liso.
+        col = mix(col + uAcento * linea * 0.16, mix(col, uAcento * 0.62, linea * 0.44), uClaro);
         // PULSO: un halo que late con el beat. Se maneja desde la timeline, no con un reloj propio.
-        col += uAcento * uPulso * 0.5 * smoothstep(0.75, 0.0, distance(uv, vec2(0.5, 0.5)));
+        float halo = uPulso * smoothstep(0.75, 0.0, distance(uv, vec2(0.5, 0.5)));
+        col = mix(col + uAcento * halo * 0.5, mix(col, uAcento, halo * 0.32), uClaro);
         // grano fino, para que el degradé no muestre bandas
         col += (hash(uv * 1400.0 + uT * 13.0) - 0.5) * 0.016;
         gl_FragColor = vec4(col, 1.0);
@@ -239,8 +255,35 @@ export function fondoVivo(mundoW, mundoH) {
 export const matAcento = (color = LOOK.acento, intensidad = 1.15) => new THREE.MeshBasicMaterial({
   color: hex(color).multiplyScalar(intensidad), toneMapped: false,
 })
-export const matTarjeta = (color = '#101528') => new THREE.MeshPhysicalMaterial({
-  color: hex(color), roughness: 0.42, metalness: 0.1, clearcoat: 0.6, clearcoatRoughness: 0.25,
+// ---------------------------------------------------------------- la escala fondo → tinta
+// nivel(k) — el color que está al k del camino que va del FONDO a la TINTA. k=0 es el fondo, k=1 es
+// la tinta, 0.5 es el gris del medio.
+//
+// POR QUÉ EXISTE. Las escenas tenían la escala de grises escrita a mano: '#c3cbdb' para el titular,
+// '#8c95ab' para la jerarquía alta, '#7d879e' para la baja. Son valores buenos, y están calibrados
+// contra un fondo negro. En un mundo claro —cinco de cada siete páginas reales— el titular gris claro
+// sobre blanco es un fantasma, y la tarjeta '#0c1124' es un rectángulo azul marino plantado en el medio
+// de una pieza blanca. La misma jerarquía escrita como `nivel(0.78)` da gris claro sobre negro y gris
+// oscuro sobre blanco, sin que la escena tenga que saber en qué mundo está.
+//
+// Y ARREGLA LA INVERSIÓN GRATIS. La escena de destello es una hoja de papel BLANCA con tipografía
+// NEGRA, dentro de un mundo oscuro: una inversión deliberada. Escrita como nivel(1) para la hoja y
+// nivel(0) para la letra, en un mundo claro se da vuelta sola —hoja oscura, letra clara— y sigue
+// siendo la misma idea: el plano que se opone al fondo.
+//
+// OJO: se evalúa cuando se llama, NUNCA a nivel de módulo. LOOK cambia en `configurar()`, que corre
+// después de que los módulos se importan; un `const C = nivel(0.7)` arriba de un archivo se queda con
+// la paleta de ANTHEM para siempre y no falla — miente en silencio.
+const _c1 = new THREE.Color(), _c2 = new THREE.Color()
+export function nivel(k, tinte = 0) {
+  _c1.set(LOOK.bg); _c2.set(LOOK.tinta)
+  _c1.lerp(_c2, Math.min(1, Math.max(0, k)))
+  if (tinte > 0) _c1.lerp(_c2.set(LOOK.acento), tinte)
+  return '#' + _c1.getHexString()
+}
+
+export const matTarjeta = (color = null) => new THREE.MeshPhysicalMaterial({
+  color: hex(color || nivel(0.10, 0.35)), roughness: 0.42, metalness: 0.1, clearcoat: 0.6, clearcoatRoughness: 0.25,
 })
 
 // ---------------------------------------------------------------- helpers de composición

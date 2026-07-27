@@ -39,6 +39,38 @@ export const ANTHEM = {
 
 export let D = ANTHEM
 
+// LO ÚNICO QUE UNA ESCENA PUEDE ESCRIBIR SIN QUE LA PÁGINA LO HAYA DICHO.
+//
+// Son rótulos de sistema: no afirman nada sobre el negocio, y por eso no mienten. "1080X1920" es el
+// formato del archivo; "30 FPS" es su cadencia. Un espectador no los lee como una promesa de la marca.
+//
+// La lista es corta a propósito y el gate E-PROCEDENCIA la usa como única excepción: cualquier texto
+// que una escena escriba y que no salga de los DATOS ni esté acá, falla. Eso invierte la carga de la
+// prueba — antes había que acordarse de prohibir cada frase nueva, y por eso se filtraron "SIETE
+// ENTRADAS · NINGUNA IGUAL" y "CADA CORTE CAE EN EL BEAT" al video de Stripe. Ahora hay que declararla,
+// y declararla es un acto visible en el diff.
+export const DECORATIVO = new Set([
+  '1080X1920', '30 FPS', '9:16',
+])
+
+// ---------------------------------------------------------------- rótulos de escena
+// Toda escena quiere una marca chica arriba o abajo: el tipo de cosa que en una pieza editorial dice
+// "02 · VOLUMEN" y compone el cuadro. El problema es que esos rótulos estaban escritos a mano, en
+// castellano, con el vocabulario interno del motor — así que el video de una marca inglesa salía
+// diciendo "CAPITULO 01 — APERTURA" y "BLOQUE 04 · DATOS". No es sólo que mienta: DELATA LA PLANTILLA,
+// que es lo peor que puede hacer una pieza que quiere pasar por hecha a medida.
+//
+// Las dos formas honestas de llenar ese slot:
+//   · `marca(i, n)` — un índice puro. Sin letras, no afirma nada, y leído como número de página es
+//     exactamente el gesto editorial que se buscaba.
+//   · `sello(i)`    — el pie REAL: el dominio de la página y el formato del archivo.
+export const marca = (i, n) => `${String(i).padStart(2, '0')} / ${String(n).padStart(2, '0')}`
+export const sello = (i = 0) => {
+  const p = sello.lista()
+  return p[i] || p[0] || ''
+}
+sello.lista = () => (D.pie || []).filter(Boolean)
+
 // ¿Estamos mostrando la demo o el video de alguien? Es la distinción que decide si un hueco se
 // rellena o se deja vacío, y no tenerla convirtió la regla anti-invención en un comentario.
 export let esDemo = true
