@@ -16,6 +16,8 @@ y una herramienta de diagnostico que no se puede correr no diagnostica nada. Tod
 —diferencia entre frames, laplaciano, histogramas— son unas lineas de numpy.
 
 Uso:  python tools/medir-video.py <video.mp4> [--bpm 124] [--ancho 240]
+      python tools/medir-video.py v.mp4 --bpm 120 --tramos "apertura:6,hero:8,cierre:6"
+          (desglose POR ESCENA: el promedio de la pieza esconde cual arrastra)
       python tools/medir-video.py a.mp4 b.mp4 --bpm 124        (compara dos)
 """
 import json
@@ -87,8 +89,26 @@ def _laplaciano(l):
     return float(lap.var())
 
 
-def medir(video, bpm=124.0, ancho=240):
-    fr, fps, dur = _frames(video, ancho)
+def medir(video, bpm=124.0, ancho=240, desde=None, hasta=None, _cache={}):
+    """Metricas de un video, o de un TRAMO de un video si se dan `desde`/`hasta` en segundos.
+
+    El tramo existe porque el promedio de la pieza entera esconde justo lo que hay que arreglar. La
+    pieza mide 0.118 de movimiento contra 0.226 de la referencia, y ese numero no dice NADA sobre que
+    hacer: puede ser que todas las escenas esten igual de flojas o que dos arrastren a las otras seis.
+    Son dos problemas distintos y el arreglo es distinto. Medido por escena, aparece el culpable.
+
+    Los frames se decodifican UNA sola vez por video y se cachean: medir nueve tramos de una pieza de
+    30 s decodificando nueve veces tarda nueve veces mas para leer exactamente los mismos pixeles.
+    """
+    clave = (str(video), ancho)
+    if clave not in _cache:
+        _cache.clear()                                  # un video por vez: no se acumulan 30 s en RAM
+        _cache[clave] = _frames(video, ancho)
+    fr, fps, dur = _cache[clave]
+    if desde is not None or hasta is not None:
+        i0 = max(0, int(round((desde or 0.0) * fps)))
+        i1 = min(len(fr), int(round((hasta if hasta is not None else dur) * fps)))
+        fr = fr[i0:i1]
     n = len(fr)
     if n < 4:
         raise RuntimeError(f"{video}: solo {n} frames")
@@ -211,11 +231,76 @@ def tabla(ms):
     print()
 
 
+def tramos_de(spec, bpm):
+    """"apertura:6,hero:8,..." -> [(id, desde, hasta)] en segundos, con el beat de ESE bpm.
+
+    Se declaran en BEATS y no en segundos porque asi es como el guion las declara, y porque el bpm
+    cambia con el aire de cada pagina: escribir los segundos a mano es garantizar que un dia no
+    coincidan con los cortes reales y que la tabla mienta sin avisar.
+    """
+    beat = 60.0 / bpm
+    out, t = [], 0.0
+    for parte in str(spec).split(","):
+        parte = parte.strip()
+        if not parte:
+            continue
+        nombre, _, beats = parte.partition(":")
+        b = float(beats or 0)
+        out.append((nombre.strip(), t, t + b * beat))
+        t += b * beat
+    return out
+
+
+# Las columnas del desglose por escena. Son menos que las de la tabla completa a proposito: sobre un
+# tramo de tres segundos, la saturacion media o la correlacion movimiento/nitidez no tienen suficiente
+# muestra para significar algo, y una cifra sin respaldo en una tabla se lee igual de firme que una
+# con respaldo.
+FILAS_TRAMO = [
+    ("dur", "dur", "s"),
+    ("cortes", "cortes", ""),
+    ("mov_frac_media", "movimiento", ""),
+    ("frames_casi_quietos", "casi quietos", ""),
+    ("quietud_max_s", "quietud max", "s"),
+    ("ocupacion", "ocupacion", ""),
+]
+
+
+def tabla_tramos(video, tramos, bpm, ancho):
+    print()
+    print(f"  DESGLOSE POR ESCENA — {Path(video).name}")
+    cab = "  " + "escena".ljust(14)
+    for _, nombre, _u in FILAS_TRAMO:
+        cab += nombre.rjust(14)
+    print(cab)
+    print("  " + "-" * (14 + 14 * len(FILAS_TRAMO)))
+    filas = []
+    for nombre, t0, t1 in tramos:
+        try:
+            m = medir(video, bpm=bpm, ancho=ancho, desde=t0, hasta=t1)
+        except RuntimeError as e:
+            print(f"  {nombre.ljust(14)}  (sin frames: {e})")
+            continue
+        linea = "  " + nombre.ljust(14)
+        for k, _n, uni in FILAS_TRAMO:
+            v = m.get(k)
+            linea += ("-" if v is None else f"{v}{uni}").rjust(14)
+        print(linea)
+        filas.append((nombre, m))
+    if filas:
+        # El peor de la lista, que es el unico numero por el que vale la pena leer esta tabla.
+        flojo = min(filas, key=lambda f: f[1]["mov_frac_media"])
+        quieto = max(filas, key=lambda f: f[1]["quietud_max_s"])
+        print()
+        print(f"  la escena mas floja de movimiento es \"{flojo[0]}\" ({flojo[1]['mov_frac_media']})")
+        print(f"  la que mas tiempo se queda quieta es \"{quieto[0]}\" ({quieto[1]['quietud_max_s']}s)")
+    print()
+
+
 def main():
     # Se saltea el VALOR que sigue a cada bandera. Filtrar solo lo que empieza con "--" dejaba el
     # "124" de "--bpm 124" como si fuera un archivo, y ffmpeg fallaba diciendo que no existe el
     # archivo 124 — un error que no apunta ni de lejos a la causa.
-    bpm, ancho, args, saltear = 124.0, 240, [], False
+    bpm, ancho, args, saltear, tramos = 124.0, 240, [], False, None
     for i, a in enumerate(sys.argv[1:], start=1):
         if saltear:
             saltear = False
@@ -224,6 +309,8 @@ def main():
             bpm = float(sys.argv[i + 1]); saltear = True
         elif a == "--ancho":
             ancho = int(sys.argv[i + 1]); saltear = True
+        elif a == "--tramos":
+            tramos = sys.argv[i + 1]; saltear = True
         elif not a.startswith("--"):
             args.append(a)
     if not args:
@@ -235,6 +322,9 @@ def main():
         Path(str(v) + ".metricas.json").write_text(json.dumps(m, indent=1), encoding="utf-8")
         ms.append(m)
     tabla(ms)
+    if tramos:
+        for v in args:
+            tabla_tramos(v, tramos_de(tramos, bpm), bpm, ancho)
     for m in ms:
         print(f"{Path(m['video']).name}: cortes en {', '.join(str(t) for t in m['tiempos_corte'][:14])}"
               + (" ..." if len(m["tiempos_corte"]) > 14 else ""))

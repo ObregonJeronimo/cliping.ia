@@ -154,6 +154,23 @@ export function build(ctx) {
     }
   } }, 0)
 
+  // DESTAQUE POR BEAT: en cada beat, UNA pieza se adelanta y vuelve.
+  //
+  // Sin esto, una vez que las nueve llegaron a su celda el cuadro es una grilla que respira — bonita y
+  // quieta. Medido sobre los heroes: el que sólo llegaba y flotaba daba 0.072 de movimiento y 61% de
+  // frames casi quietos. Un adelanto de medio beat es un EVENTO duro, dirige el ojo a una pieza
+  // concreta —que es lo que hace un editor con un corte— y cuesta un tween.
+  //
+  // El paso es 3 y no 1 para que la pieza destacada SALTE por la grilla en vez de recorrerla en orden:
+  // recorrerla en orden se lee como un barrido automático, saltar se lee como una decisión.
+  if (mallas.length > 1) {
+    for (let i = 2; i < meta.beats - 1; i++) {
+      const m = mallas[(i * 3) % mallas.length]
+      tl.to(m.position, { z: 0.85, duration: b(0.22), ease: E.llega(2.2) }, b(i))
+      tl.to(m.position, { z: 0, duration: b(0.45), ease: E.frena(3) }, b(i + 0.25))
+    }
+  }
+
   // SALEN HACIA LA CÁMARA, escalonadas. El corte siguiente se siente ganado.
   mallas.forEach((m, i) => {
     const t = DUR - b(0.95) + (i / Math.max(1, mallas.length)) * b(0.3)

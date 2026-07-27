@@ -155,7 +155,7 @@ export function build(ctx) {
     new THREE.PlaneGeometry(ANCHO * 2.4, ALTO_P * 2.6),
     new THREE.ShaderMaterial({
       transparent: true, depthWrite: false,
-      uniforms: { uCol: { value: hex(LOOK.acento) }, uF: { value: 0.30 } },
+      uniforms: { uCol: { value: hex(LOOK.acento) }, uF: { value: 0.26 } },
       vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
       fragmentShader: `uniform vec3 uCol; uniform float uF; varying vec2 vUv;
         void main(){ gl_FragColor = vec4(uCol, smoothstep(0.5, 0.05, distance(vUv, vec2(0.5))) * uF); }`,
@@ -196,12 +196,44 @@ export function build(ctx) {
   tl.to({}, { duration: DUR, ease: 'none', onUpdate: flotar }, 0)
   flotar()
 
-  // El scroll arranca cuando la tapa terminó de abrir: antes compite con la apertura y no se lee.
+  // EL SCROLL SALTA POR BEAT, no es una rampa.
+  //
+  // Medido: esta escena daba 0.072 de movimiento y 61% de frames casi quietos — la segunda peor de la
+  // pieza, y la peor de los heroes. La causa era esta línea: después de que la tapa abre, en cuatro
+  // beats no pasaba NADA salvo un desplazamiento continuo tan suave que el analizador no lo distingue
+  // de una foto fija. Y no lo distingue porque el ojo tampoco.
+  //
+  // Un scroll REAL no es una rampa: alguien empuja el dedo, la página salta, frena, vuelve a saltar.
+  // Cinco saltos rápidos con reposo entre medio dan cinco EVENTOS donde antes había una rampa, se leen
+  // como una mano usando el aparato, y suman movimiento donde no había. Cada salto arranca en su beat.
   if (tira) {
     const visible = Math.min(1, (altoVP / altoTira) * 0.52)
     const recorrido = Math.max(0, 1 - visible) * 0.55
-    tl.fromTo(tira.offset, { y: 1 - visible },
-      { y: 1 - visible - recorrido, duration: b(meta.beats - 3.4), ease: E.vaiven(2), immediateRender: false }, b(2.5))
+    const SALTOS = 5
+    const y0 = 1 - visible
+    for (let i = 0; i < SALTOS; i++) {
+      // El primer salto es el más largo: es el que dice "esto se puede scrollear". Los siguientes se
+      // acortan, como el gesto real de alguien que ya encontró lo que buscaba.
+      const desde = y0 - recorrido * (i / SALTOS) ** 0.78
+      const hasta = y0 - recorrido * ((i + 1) / SALTOS) ** 0.78
+      tl.fromTo(tira.offset, { y: desde },
+        { y: hasta, duration: b(0.38), ease: E.frena(4), immediateRender: false }, b(2.4 + i * 0.9))
+    }
+  }
+
+  // EL APARATO GIRA A PERFIL Y VUELVE. Es el único gesto que aprovecha que hay un objeto de tres
+  // dimensiones ahí: durante medio segundo se ve el CANTO —el aluminio, el grosor, la bisagra— y eso
+  // es lo que separa un render 3D de una foto de producto con parallax. Cae en el beat 4 y vuelve en
+  // el 5.5, o sea sobre la grilla, para que el giro se sienta parte del montaje y no un capricho.
+  tl.to(gEq.rotation, { y: -0.78, duration: b(0.55), ease: E.frena(3) }, b(4))
+  tl.to(gEq.rotation, { y: -0.20, duration: b(0.7), ease: E.llega(1.3) }, b(5.5))
+
+  // El halo LATE en cada beat. Es el metrónomo visual de la escena: sin él, entre salto y salto de
+  // scroll el cuadro vuelve a quedarse sin nada que cambie.
+  const uHalo = halo.material.uniforms.uF
+  for (let i = 2; i < meta.beats - 1; i++) {
+    tl.to(uHalo, { value: 0.44, duration: b(0.16), ease: E.frena(3) }, b(i))
+    tl.to(uHalo, { value: 0.26, duration: b(0.55), ease: E.vaiven() }, b(i + 0.16))
   }
 
   tl.fromTo(camera.position, { z: distBase + 1.1 }, { z: distBase - 0.45, duration: DUR * 0.82, ease: 'none' }, 0)
