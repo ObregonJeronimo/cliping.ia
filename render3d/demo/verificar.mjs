@@ -83,6 +83,25 @@ for (const id of ids) {
     bloom: { strength: 0.85, radius: 0.62, threshold: 0.62 },
   }
 
+  // ---- PAGINA POBRE. Antes de nada, se construye la escena con el material MINIMO que puede dar una
+  // pagina real: una cifra, una frase, sin bloque y sin CTA. Es el caso que rompe, y el que el
+  // verificador no miraba: con los datos de ANTHEM (cinco de todo) toda escena parece correcta.
+  const { configurarDatos, ANTHEM } = await import(pathToFileURL(join(HERE, 'datos.js')).href)
+  configurarDatos({ marca: 'Q', rotulo: 'Q', claim: 'UNA COSA', frases: ['UNA COSA'],
+    bloque: null, datos: [{ valor: '4.9', etiqueta: 'RESEÑAS' }], golpe: 'UNA COSA', cta: null,
+    pie: ['q.com'], dominio: 'q.com', elementos: [] })
+  try {
+    const camPobre = new THREE.PerspectiveCamera(fov, W / H, 0.1, 400)
+    camPobre.position.set(0, 0, distBase)
+    let sp = 1
+    const rp = await mod.build({ ...ctx, camera: camPobre, fondo: uni(), rnd: () => { sp = (sp * 1664525 + 1013904223) >>> 0; return sp / 4294967296 } })
+    ok(rp && rp.g && rp.g.children.length > 0, `${id}: con una pagina POBRE el grupo queda vacio`)
+    rp.tl.time(mod.meta.beats * BEAT, false)
+  } catch (e) {
+    die(`${id}: con una pagina POBRE (1 cifra, 1 frase, sin CTA) build() lanzo — ${e.message}`)
+  }
+  configurarDatos(ANTHEM)
+
   let r
   try { r = await mod.build(ctx) } catch (e) { die(`${id}: build() lanzo — ${e.message}`); continue }
   ok(r && r.g && r.tl, `${id}: build() tiene que devolver { g, tl }`)

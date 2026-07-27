@@ -17,6 +17,10 @@
 import { E,
   LOOK, b, planoTexto, texto, materialMascara, matAcento, matTarjeta, enArco,
 } from '../kit.js'
+// El COPY sale de los DATOS. Lo que queda escrito aca es CHROME de la pieza (rotulos de
+// capitulo, indicadores tecnicos): eso es direccion de arte y no cambia con el contenido.
+// Lo que la marca DICE — su nombre, sus cifras, su claim, su CTA — sale de los datos o NO SALE.
+import { D } from '../datos.js'
 
 export const meta = { id: 'tarjetas', beats: 6 }
 
@@ -31,22 +35,63 @@ const C_NUM = '#c9d1e4'   // número: 0.63, apenas asoma el halo
 const C_TIT = '#bcc4d8'   // titular: 0.55, limpio
 
 // ---------------------------------------------------------------- el dato
-const DATOS = [
-  { n: 12, et: 'PAISES', ix: '01' },
-  { n: 48, et: 'EQUIPOS', ix: '02' },
-  { n: 300, et: 'MARCAS', ix: '03' },
-  { n: 96, et: 'CIUDADES', ix: '04' },
-  { n: 24, et: 'PREMIOS', ix: '05' },
+// LAS CIFRAS SON DE LA PÁGINA O NO EXISTEN. Esta lista estaba escrita a mano y, en cuanto la pieza
+// empezó a recibir datos reales, el video de un cliente mostraba "300 MARCAS" y "96 CIUDADES" — cifras
+// de la demo, presentadas como si fueran suyas. Es la mentira más cara que puede cometer este motor y
+// la regla anti-invención existe exactamente para impedirla.
+//
+// Si la página dio dos cifras, salen DOS tarjetas. No se completa la grilla, no se redondea, no se
+// inventa un índice. Los valores de ANTHEM quedan sólo como datos de la propia demo, cuando nadie
+// pasó una página.
+function datosDeLaPagina() {
+  const d = (D.datos || []).filter(x => x && x.etiqueta != null)
+  if (!d.length) return []
+  return d.slice(0, 5).map((x, i) => ({
+    // El valor puede ser "4.9" o "30s": el contador sólo tiene sentido sobre un número entero, así
+    // que lo que no es numérico se muestra fijo (n = null) en vez de contar hasta un NaN.
+    n: /^\d+$/.test(String(x.valor)) ? parseInt(x.valor, 10) : null,
+    txt: String(x.valor),
+    et: String(x.etiqueta).toUpperCase(),
+    ix: String(i + 1).padStart(2, '0'),
+  }))
+}
+const DEMO = [
+  { n: 12, txt: '12', et: 'PAISES', ix: '01' },
+  { n: 48, txt: '48', et: 'EQUIPOS', ix: '02' },
+  { n: 300, txt: '300', et: 'MARCAS', ix: '03' },
+  { n: 96, txt: '96', et: 'CIUDADES', ix: '04' },
+  { n: 24, txt: '24', et: 'PREMIOS', ix: '05' },
 ]
-const HERO = 2          // la que se queda
+// DATOS, HERO y ORDEN se resuelven a la CANTIDAD real de cifras. Con cinco escritas a mano estos tres
+// eran constantes; con dos, un HERO fijo en 2 apunta fuera de la lista y ORDEN pide indices que no
+// existen — la escena no falla, dibuja undefined.
 const PASOS = 8         // escalones del contador -> 9 texturas por tarjeta
-const ORDEN = [0, 4, 1, 3, 2]   // entran de afuera hacia adentro: la héroe aterriza última
+
+// SE RESUELVE DENTRO DE build(), NO AL IMPORTAR EL MODULO. Evaluado a nivel de modulo, esto corre
+// cuando el navegador resuelve el grafo de imports — o sea ANTES de que configurarDatos() haya puesto
+// los datos de la pagina. `D` todavia era ANTHEM y el video de un cliente salia con las cifras de la
+// demo: 300 MARCAS, 96 CIUDADES. Es exactamente la violacion anti-invencion que este archivo dice
+// impedir, y el codigo no fallaba — mentia en silencio.
+function resolver() {
+  const d = datosDeLaPagina()
+  const DATOS = d.length ? d : DEMO
+  const HERO = Math.min(2, DATOS.length - 1)   // la que se queda: la del medio, o la ultima si hay pocas
+  // entran de afuera hacia adentro y la heroe aterriza ULTIMA
+  const resto = DATOS.map((_, i) => i).filter(i => i !== HERO)
+  const ORDEN = []
+  while (resto.length) { ORDEN.push(resto.shift()); if (resto.length) ORDEN.push(resto.pop()) }
+  ORDEN.push(HERO)
+  return { DATOS, HERO, ORDEN }
+}
 
 // geometría de la tarjeta y del arco, en unidades de mundo (cuadro visible: x ±2.81, y ±5)
 const CW = 1.24, CH = 1.86, CD = 0.07
 const ARCO_R = 4.4, ARCO_A = 1.30, ARCO_Y = 0.06
 
 // cada una llega de un lado distinto: si entran todas del mismo lado se lee como una lista que baja
+// Cinco direcciones de entrada. Con menos tarjetas se eligen REPARTIDAS y no las tres primeras:
+// tres tarjetas entrando todas desde la izquierda se leen como una lista que baja.
+const dirDe = (i, n) => ENTRADAS[n >= 5 ? i : Math.round(i * (ENTRADAS.length - 1) / Math.max(1, n - 1))]
 const ENTRADAS = [
   { dx: -3.7, dy: -2.5, dz: -1.7, ry: 1.05, rz: 0.22 },
   { dx: -1.2, dy: 4.5, dz: -1.1, ry: -0.95, rz: -0.18 },
@@ -57,6 +102,7 @@ const ENTRADAS = [
 
 export function build(ctx) {
   const { THREE, gsap, camera, distBase, rnd, fondo, pelicula } = ctx
+  const { DATOS, HERO, ORDEN } = resolver()
   const g = new THREE.Group()
   const tl = gsap.timeline({ paused: true })
 
@@ -103,8 +149,10 @@ export function build(ctx) {
   // Comparte las texturas de la tarjeta héroe, así que cuenta con ella sin costar una sola textura
   // más. A z=-7.2 casi no se desplaza mientras el frente barre: eso es lo que se lee como profundidad.
   const heroTexs = []
-  for (let k = 0; k <= PASOS; k++) heroTexs.push(texto(String(Math.round(DATOS[HERO].n * k / PASOS)), { fuente: 'Anton', size: 130 }))
-  const eco = contador(3.8, DATOS[HERO].n, 130, '#243066', heroTexs, heroTexs[PASOS].ar)
+  // Sin numero entero no hay cuenta: se repite la misma textura y la tarjeta simplemente aparece.
+  const nHero = DATOS[HERO].n
+  for (let k = 0; k <= PASOS; k++) heroTexs.push(texto(nHero == null ? DATOS[HERO].txt : String(Math.round(nHero * k / PASOS)), { fuente: 'Anton', size: 130 }))
+  const eco = contador(3.8, nHero == null ? 0 : nHero, 130, '#243066', heroTexs, heroTexs[PASOS].ar)
   eco.mat.uniforms.uSuave.value = 0.22
   eco.malla.position.set(0, 0.10, -7.2)
   g.add(eco.malla)
@@ -114,7 +162,7 @@ export function build(ctx) {
   kicker.position.set(0, 3.85, 1.20)
   g.add(kicker)
 
-  const titulo = txt('EN NUMEROS', 1.05, { fuente: 'Anton', size: 110 }, C_TIT, 0)
+  const titulo = txt(D.marca, 1.05, { fuente: 'Anton', size: 110 }, C_TIT, 0)
   titulo.position.set(0, 3.10, 1.20)
   g.add(titulo)
 
@@ -133,7 +181,7 @@ export function build(ctx) {
   reglaPie.scale.x = 0
   g.add(reglaPie)
 
-  const pieI = txt('ANTHEM', 0.15, { fuente: 'DMSans', size: 64, tracking: 0.30 }, LOOK.tinta, 0)
+  const pieI = txt(D.marca, 0.15, { fuente: 'DMSans', size: 64, tracking: 0.30 }, LOOK.tinta, 0)
   pieI.position.set(-2.38 + 0.15 * pieI.userData.ar / 2, -2.48, 0.42)
   g.add(pieI)
   const pieD = txt('2026', 0.15, { fuente: 'DMSans', size: 64, tracking: 0.30 }, LOOK.acento2, 1)
@@ -168,7 +216,9 @@ export function build(ctx) {
 
   // ------------------------------------------------------------ las cinco tarjetas
   const tarjetas = []
-  for (let i = 0; i < 5; i++) {
+  // Tantas tarjetas como cifras dio la pagina. El 5 escrito a mano hacia que la escena pidiera
+  // DATOS[2] con una lista de dos y muriera leyendo .ix de undefined.
+  for (let i = 0; i < DATOS.length; i++) {
     const d = DATOS[i]
     const esHero = i === HERO
     const gr = new THREE.Group()
@@ -231,7 +281,7 @@ export function build(ctx) {
   // estado del primer frame, explícito: los tweens son fromTo con immediateRender:false para no
   // tocar la cámara ni las capas antes de que el cabezal entre en esta escena
   tarjetas.forEach((t, i) => {
-    const e = ENTRADAS[i]
+    const e = dirDe(i, DATOS.length)
     t.gr.position.set(t.base.x + e.dx, t.base.y + e.dy, t.base.z + e.dz)
     t.gr.rotation.set(0, t.base.ry + e.ry, e.rz)
     t.gr.scale.setScalar(0.55)
@@ -295,7 +345,7 @@ export function build(ctx) {
 
   // ---------------------------------------------------------------- entrada de las tarjetas
   ORDEN.forEach((i, p) => {
-    const t = tarjetas[i], e = ENTRADAS[i], base = t.base
+    const t = tarjetas[i], e = dirDe(i, DATOS.length), base = t.base
     const t0 = p * 0.07                                  // stagger: nunca llegan juntas
     tl.fromTo(t.gr.position,
       { x: base.x + e.dx, y: base.y + e.dy, z: base.z + e.dz },

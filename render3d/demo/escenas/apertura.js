@@ -18,6 +18,10 @@
 // 94% del ancho, un back.out sobre la profundidad la empujaba fuera del cuadro en el rebote.
 
 import { E, LOOK, b, planoTexto, texto, materialMascara, filete, hex } from '../kit.js'
+// El COPY sale de los DATOS. Lo que queda escrito aca es CHROME de la pieza (rotulos de
+// capitulo, indicadores tecnicos): eso es direccion de arte y no cambia con el contenido.
+// Lo que la marca DICE — su nombre, sus cifras, su claim, su CTA — sale de los datos o NO SALE.
+import { D } from '../datos.js'
 
 export const meta = { id: 'apertura', beats: 6 }
 
@@ -186,7 +190,7 @@ export function build(ctx) {
   // ================================================================ B · el rótulo y el contador
   // beat 0.5-1.0. Tipografía chica con tracking alto revelada por MÁSCARA: el texto se escribe de
   // izquierda a derecha. Un fundido acá sería la transición de quien no eligió ninguna.
-  const rot = izq(rotulo('URVID // MOTION SYSTEM', 0.16, mundoW * 0.62, CHICA), -MX, 0.44)
+  const rot = izq(rotulo(D.rotulo, 0.16, mundoW * 0.62, CHICA), -MX, 0.44)
   gAp.add(rot)
   const rotX = rot.position.x
   rot.userData.prog.value = 0
@@ -279,7 +283,19 @@ export function build(ctx) {
   // Cada letra es su propio plano. Se miden todas con el mismo tamaño de fuente, se les descuenta el
   // aire del lienzo y recién ahí se calcula el ALTO que hace que la palabra entera mida 94% del ancho
   // del cuadro. Es la única forma de que "ANTHEM" toque los bordes sin dejar huecos entre letras.
-  const LETRAS = ['A', 'N', 'T', 'H', 'E', 'M']
+  // LA PALABRA ES LA MARCA. Estaba escrita letra por letra y el video de cualquier página abría
+  // diciendo "ANTHEM" — el nombre de la demo, en el cuadro más grande de la pieza.
+  //
+  // Se cae a una sola línea sin espacios: la escena reparte las letras a lo ancho del cuadro, y con un
+  // espacio en el medio el reparto abre un hueco del tamaño de una letra. Una marca de dos palabras se
+  // compone por su palabra más larga, que es la que de verdad manda el ancho.
+  const LETRAS = (() => {
+    const m = String(D.marca || 'ANTHEM').toUpperCase().trim()
+    const pal = m.split(/\s+/).filter(Boolean)
+    const elegida = pal.sort((a, c) => c.length - a.length)[0] || 'ANTHEM'
+    // Más de nueve letras a 94% del ancho da glifos finísimos que el bloom se come: se recorta.
+    return elegida.slice(0, 9).split('')
+  })()
   const TRACK = 0.016
   const OBJ = mundoW * 0.94
   const unidad = LETRAS.map(L => Math.max(0.05, texto(L, ANTON).ar - AIRE))
@@ -337,7 +353,7 @@ export function build(ctx) {
 
   // Cabecera sobre la palabra: rótulo centrado con dos filetes que crecen hacia afuera desde su borde.
   const CAB_Y = 1.62
-  const cab = rotulo('SISTEMA DE MOTION', 0.135, mundoW * 0.42, { ...CHICA, tracking: 0.3 })
+  const cab = rotulo(D.rotulo, 0.135, mundoW * 0.42, { ...CHICA, tracking: 0.3 })
   cab.position.set(0, CAB_Y, 0.1)
   g.add(cab)
   cab.userData.prog.value = 0
@@ -363,7 +379,7 @@ export function build(ctx) {
   })
 
   // Segunda línea, revelada por máscara. Dice para qué existe la pieza.
-  const sub = rotulo('HECHO A MANO PARA MEDIR A LA MAQUINA', 0.165, mundoW * 0.86, { ...CHICA, tracking: 0.18 })
+  const sub = rotulo(D.claim, 0.165, mundoW * 0.86, { ...CHICA, tracking: 0.18 })
   sub.position.set(0, -1.24, 0.1)
   g.add(sub)
   sub.userData.prog.value = 0

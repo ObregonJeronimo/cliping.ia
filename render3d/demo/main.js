@@ -16,6 +16,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js'
 import { BEAT, b, LOOK, hex, mulberry32, fondoVivo, configurar } from './kit.js'
+import { configurarDatos } from './datos.js'
 import { ESCENAS } from './escenas/index.js'
 
 // ---------------------------------------------------------------- pase final de película
@@ -216,6 +217,9 @@ window.URVID = {
       configurar(aire)
       spec.__aire = aire
     }
+    // Los DATOS antes de construir, por la misma razon que el aire: las escenas miden la tipografia
+    // al construirse y cachean la textura. Configurarlos tarde deja media pieza diciendo otra cosa.
+    if (spec.datos) configurarDatos(spec.datos)
     await document.fonts.ready
     // Las tipografias del aire se cargan por FontFace y no por @font-face en el CSS: el CSS tendria
     // que declarar las 72 de antemano y ninguna pieza usa mas de dos. Se espera a que esten ANTES de

@@ -14,6 +14,10 @@
 // polvo en profundidad. Y nada descansa: si un elemento llegó a su lugar, respira.
 
 import { E, LOOK, b, planoTexto, materialMascara, filete, hex } from '../kit.js'
+// El COPY sale de los DATOS. Lo que queda escrito aca es CHROME de la pieza (rotulos de
+// capitulo, indicadores tecnicos): eso es direccion de arte y no cambia con el contenido.
+// Lo que la marca DICE — su nombre, sus cifras, su claim, su CTA — sale de los datos o NO SALE.
+import { D } from '../datos.js'
 
 export const meta = { id: 'cierre', beats: 6 }
 
@@ -188,7 +192,7 @@ export function build(ctx) {
   // ---- la marca, dentro del anillo, a escala agresiva
   const gMarca = new THREE.Group()
   gMarca.position.set(0, CY - 0.24, 0.05)
-  const marca = textoMascara('ANTHEM', 1, LOOK.tinta, { fuente: 'Anton', tracking: 0.01 })
+  const marca = textoMascara(D.marca, 1, LOOK.tinta, { fuente: 'Anton', tracking: 0.01 })
   marca.material.uniforms.uDir.value = 2          // se descubre de abajo hacia arriba
   marca.material.uniforms.uSuave.value = 0.10
   marca.scale.setScalar(4.34 / ancho(marca))      // 77% del ancho del cuadro
@@ -199,7 +203,7 @@ export function build(ctx) {
   // ---- píldora de CTA
   const gPill = new THREE.Group()
   gPill.position.set(0, -5.7, 0.12)
-  const cta = textoMascara('VER EL MOTOR', 0.26, '#050810', { fuente: 'DMSans', tracking: 0.075 })
+  const cta = textoMascara((D.cta || ''), 0.26, '#050810', { fuente: 'DMSans', tracking: 0.075 })
   cta.material.uniforms.uSuave.value = 0.05
   cta.renderOrder = 9
   const pillW = ancho(cta) + 1.15

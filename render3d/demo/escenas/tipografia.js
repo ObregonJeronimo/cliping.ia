@@ -26,6 +26,10 @@
 // regla de progreso escalonada arriba y epígrafe abajo.
 
 import { E, LOOK, b, texto, planoTexto, matAcento, hex } from '../kit.js'
+// Las frases salen de los DATOS, no del archivo: la misma escena sirve para cualquier pagina.
+// El estilo de cada entrada (que fuente, que ancho, que gesto) SI es de la escena — eso es direccion
+// de arte y no cambia con el contenido.
+import { frase, D } from '../datos.js'
 
 export const meta = { id: 'tipografia', beats: 8 }
 
@@ -144,7 +148,7 @@ export function build(ctx) {
 
   // 1 · SPLIT. Dos mitades de la MISMA textura (partida por UV) que llegan desde los costados y se
   // encuentran. Que el corte pase por el medio de los glifos es justamente lo que se ve.
-  const m1 = medida('NO ES UNA\nPLANTILLA', ANTON, ANCHO + 0.05, 3.1)
+  const m1 = medida(frase(0), ANTON, ANCHO + 0.05, 3.1)
   function mitad(lado) {
     const geo = new THREE.PlaneGeometry(m1.ancho / 2, m1.alto)
     const uv = geo.attributes.uv
@@ -165,36 +169,36 @@ export function build(ctx) {
 
   // 2 · ESCALA DESDE 0 ANCLADA A LA IZQUIERDA. Crece desde el margen, no desde su propio centro: el
   // ojo lee que la palabra sale del borde del cuadro.
-  const m2 = medida('ES UN MOTOR', ANCHA, ANCHO, 2.35)
+  const m2 = medida(frase(1), ANCHA, ANCHO, 2.35)
   const w2 = plano(m2, -1)
   w2.position.set(XI, 0.55, 0); w2.scale.set(0, 0, 1); w2.rotation.z = -0.07
 
   // 3 · MÁSCARA HORIZONTAL, pegada a la derecha, casi de borde a borde.
-  const m3 = medida('MIDE', NEGRA, ANCHO, 2.7)
+  const m3 = medida(frase(2), NEGRA, ANCHO, 2.7)
   const w3 = planoW(m3, 1, { dir: 0, borde: 0.05, filo: LOOK.acento2 })
   w3.position.set(XD + 0.32, 0.15, 0)
 
   // 4 · MÁSCARA VERTICAL (de abajo hacia arriba), pegada a la izquierda.
-  const m4 = medida('COMPONE', ANTON, ANCHO, 2.45)
+  const m4 = medida(frase(3), ANTON, ANCHO, 2.45)
   const w4 = planoW(m4, -1, { dir: 2, borde: 0.09, filo: LOOK.acento })
   w4.position.set(XI, 0.60 - 0.30, 0)
 
   // 5 · ROTACIÓN EN X DESDE 90°: cae de plano hacia la cámara. Es la ÚNICA que va en el acento, y por
   // eso es también la más grande del tramo rápido: el color y el cuerpo dicen lo mismo.
-  const m5 = medida('ANIMA', ANCHA, 4.8, 3.2)
+  const m5 = medida(frase(4), ANCHA, 4.8, 3.2)
   // 1.3 y no 2.4: es la única palabra que se deja pasar el umbral, y apenas. Con más, el acento deja de
   // ser una palabra encendida y pasa a ser una mancha turquesa.
   const w5 = plano(m5, 0, LOOK.acento2, 1.3)
   w5.position.set(0, 0.25 - 0.22, 0); w5.rotation.x = Math.PI / 2; w5.scale.set(1.18, 1.18, 1)
 
   // 6 · LLEGADA DESDE FUERA DE CUADRO con overshoot, pegada a la derecha.
-  const m6 = medida('CADA PAGINA', ANTON, ANCHO, 2.25)
+  const m6 = medida(frase(5), ANTON, ANCHO, 2.25)
   const w6 = plano(m6, 1)
   w6.position.set(XD + 6.8, 0.50, 0); w6.rotation.z = 0.06
 
   // 7 · EMPUJE EN Z: llega desde el fondo y se pasa hacia la cámara. Se compone a 7.5 de ancho sobre un
   // cuadro de 5.63: se sale por los dos lados a propósito. Un titular al 40% del ancho se lee tímido.
-  const m7 = medida('VIDEO', NEGRA, 7.5, 3.8)
+  const m7 = medida(frase(6), NEGRA, 7.5, 3.8)
   const w7 = plano(m7, 0)
   w7.position.set(0, 0.10, -13); w7.rotation.z = 0.045
   // Las otras seis se esconden solas por construcción (fuera de cuadro, escala 0, máscara en 0 o
@@ -265,7 +269,7 @@ export function build(ctx) {
 
   // HUD superior: rótulo fijo + regla de progreso escalonada en 16 pasos, o sea un escalón por medio
   // beat. Es un metrónomo visible, y de paso confirma que la grilla existe.
-  const rot = medida('URVID · TIPOGRAFIA CINETICA', CHICA, 2.9, 0.20)
+  const rot = medida(D.rotulo, CHICA, 2.9, 0.20)
   const hud = plano(rot, -1)
   hud.position.set(XI, 4.45, 0)
   hud.scale.set(0.001, 1, 1)

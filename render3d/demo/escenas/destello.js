@@ -19,6 +19,10 @@
 // recién en el video terminado.
 
 import { E, LOOK, b, texto, materialMascara, filete, hex } from '../kit.js'
+// El COPY sale de los DATOS. Lo que queda escrito aca es CHROME de la pieza (rotulos de
+// capitulo, indicadores tecnicos): eso es direccion de arte y no cambia con el contenido.
+// Lo que la marca DICE — su nombre, sus cifras, su claim, su CTA — sale de los datos o NO SALE.
+import { D } from '../datos.js'
 
 export const meta = { id: 'destello', beats: 4 }
 
@@ -29,6 +33,21 @@ const GRIS = '#98a1b3'              // el segundo valor: deja pasar la tipograf�
 const NEGRO = '#000000'
 const ABIERTO = 1.10                // la máscara abre MÁS que el plano: si termina en 1.0, el borde
                                     // suave del shader se come la última letra y nunca se ve entera
+
+
+// El golpe se compone en DOS renglones. Los datos pueden traerlo con salto explicito o como una
+// sola linea; si viene entero se parte por la mitad en palabras, porque esta escena esta compuesta
+// para dos bloques y con uno solo el cuadro se desbalancea.
+function lineasGolpe() {
+  const g = String(D.golpe || '').trim()
+  if (!g) return ['', '']
+  const nl = g.indexOf(String.fromCharCode(10))
+  if (nl > 0) return [g.slice(0, nl), g.slice(nl + 1)]
+  const pal = g.split(' ')
+  if (pal.length < 2) return [g, '']
+  const m = Math.ceil(pal.length / 2)
+  return [pal.slice(0, m).join(' '), pal.slice(m).join(' ')]
+}
 
 export function build(ctx) {
   const { THREE, gsap, mundoW, camera, distBase, fondo, pelicula, bloom, rnd } = ctx
@@ -134,7 +153,7 @@ export function build(ctx) {
   vRegla.position.set(-2.62, -4.7, -0.12); formas.add(vRegla)
 
   // — bloque de texto
-  const L1 = capa('ESTO NO LO HACE', mundoW * 0.945)
+  const L1 = capa(lineasGolpe()[0], mundoW * 0.945)
   L1.position.set(0, 1.45, 0); tipo.add(L1)
 
   const L2 = capa('UNA', 1.75, { dir: 2, suave: 0.10 })
@@ -144,7 +163,7 @@ export function build(ctx) {
   barraUna.position.set(XD, 0.42, 0); formas.add(barraUna)
 
   // — el hero: a sangre por los dos lados, partido en dos desde que se construye
-  const tHero = texto('PLANTILLA', { fuente: 'ArchivoBlack' })
+  const tHero = texto(lineasGolpe()[1], { fuente: 'ArchivoBlack' })
   const ANCHO_HERO = mundoW * 1.12
   const ALTO_HERO = ANCHO_HERO / Math.max(0.2, tHero.ar || 4.6)
   const heroWrap = new THREE.Group(); heroWrap.position.set(0, -0.90, 0); tipo.add(heroWrap)

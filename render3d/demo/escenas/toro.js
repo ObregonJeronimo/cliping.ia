@@ -27,6 +27,10 @@
 // no hay costura. Se resuelve acá adentro para no tocar el kit.
 
 import { E, LOOK, b, texto, materialMascara, filete, matAcento, matTarjeta, hex } from '../kit.js'
+// El COPY sale de los DATOS. Lo que queda escrito aca es CHROME de la pieza (rotulos de
+// capitulo, indicadores tecnicos): eso es direccion de arte y no cambia con el contenido.
+// Lo que la marca DICE — su nombre, sus cifras, su claim, su CTA — sale de los datos o NO SALE.
+import { D } from '../datos.js'
 
 export const meta = { id: 'toro', beats: 6 }
 
@@ -302,7 +306,7 @@ export function build(ctx) {
   tipo.add(escaner)
 
   // -- bajada
-  const sub = lineaMasc('GEOMETRIA, NO UN DIBUJO', mundoW * 0.68,
+  const sub = lineaMasc((D.bloque ? D.bloque.bajada : ''), mundoW * 0.68,
     { fuente: 'DMSans', size: 120, tracking: 0.16, alineado: 'left', color: TIPO_BAJA }, 2, 0.12)
   sub.position.set(X0 + mundoW * 0.34, Y_SUB, 0)
   tipo.add(sub)

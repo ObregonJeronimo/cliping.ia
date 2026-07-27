@@ -1,0 +1,73 @@
+// AIRE "editorial" — papel y tinta. Fondo crema, negro de imprenta, UN rojo de tapa. Ritmo 100.
+// Para: medios, newsletters, revistas, cultura, libros, podcasts, periodismo.
+//
+// ES EL UNICO AIRE DE FONDO CLARO, y eso da vuelta las reglas del tratamiento entero.
+//
+// 1. EL BLOOM SE APAGA CASI DEL TODO. El papel (#f0e9dc) entra al pase con luminancia ~0.91: con el
+//    umbral del aire tecnico (0.62) florece EL CUADRO ENTERO —no el acento, el fondo— y la pieza sale
+//    como una hoja sobreexpuesta con el texto comido por el halo. Umbral 0.95 deja el papel por
+//    debajo del corte y fuerza 0.14 reserva el poco brillo que queda para los reflejos especulares de
+//    los objetos 3D. Es correcto conceptualmente ademas de necesario: la tinta no emite luz.
+// 2. LA VIÑETA BAJA A 0.15. Sobre negro una viñeta fuerte es profundidad; sobre papel es un filtro de
+//    telefono. Ademas oscurecer los bordes de un fondo claro cuenta como "cuadro ocupado" en el
+//    analizador sin que haya nada dibujado ahi — 0.15 mantiene el borde por debajo del umbral de la
+//    metrica, asi que lo que se mide es composicion y no el propio tratamiento.
+// 3. EL GRANO SUBE. 0.05 sobre un fondo claro no es ruido de video: es TEXTURA DE PAPEL, y es lo que
+//    impide que el crema se lea como un blanco digital plano.
+//
+// COLOR. Tinta casi negra (no negro puro: la tinta sobre papel nunca lo es), crema de fondo, rojo de
+// tapa como acento y un azul de imprenta como secundario. El secundario tiene que ser OSCURO: sobre
+// papel, un color claro desaparece. Ninguno de los dos llega saturado al pase, asi que ninguno
+// florece y el negro sigue siendo negro.
+//
+// TIPOGRAFIA. Serif de texto para los titulares —Newsreader, que es una serif de diario, no una
+// didona de moda— con una grotesca escandinava de apoyo para los rotulos. La jerarquia sale del
+// contraste serif/grotesca, no del peso.
+//
+// GESTO. Precision de composicion tipografica: nada rebota, nada se desliza de mas. `llega` es un
+// power2.out —una curva que reparte el recorrido en vez de clavarlo en el primer 20% como haria un
+// expo— porque un aire pausado tiene que seguir moviendose TODO el rato; y `vaiven` va en
+// power1.inOut, un balanceo parejo de prensa en vez de la respiracion de un seno.
+
+// EL ARNES NO CARGA LAS TIPOGRAFIAS DEL AIRE, ASI QUE LAS CARGA EL AIRE.
+// main.js hace `if (document.fonts.check('400 100px "X"')) continue` antes de registrar cada
+// FontFace, y en Chrome check() devuelve TRUE para una familia que NO EXISTE: el algoritmo busca las
+// caras que hacen falta, no encuentra ninguna, y concluye que estan todas cargadas. O sea que el
+// continue se saltea exactamente las tipografias que habia que cargar. El defecto no se ve al
+// construir —el canvas mide con la del sistema y la textura queda cacheada— sino en el video
+// terminado, con toda la pieza en la serif por defecto de Chrome. En un aire de titulares serif eso
+// es todavia mas caro que en los demas, porque la sustitucion "casi funciona": no salta a la vista
+// que es Times, solo se ve una pieza sin caracter. El aire se importa con `await import()`, asi que
+// este await de nivel superior frena la construccion hasta que las caras esten registradas — y no
+// hace falta tocar el arnes.
+for (const n of ['Newsreader-600', 'FamiljenGrotesk-500']) {
+  if ([...document.fonts].some(f => f.family === n)) continue
+  try {
+    const ff = new FontFace(n, `url(/fonts/${n}.ttf)`)
+    await ff.load()
+    document.fonts.add(ff)
+  } catch (e) { console.error('aire editorial: fuente ' + n + ': ' + e.message) }
+}
+
+export default {
+  id: 'editorial',
+  bpm: 100,
+  paleta: {
+    tinta: '#14110d',        // negro de tinta, con una gota de calido
+    bg: '#f0e9dc',           // papel crema
+    bg2: '#e2dac7',          // el mismo papel, un tono a la sombra
+    acento: '#c3362b',       // rojo de tapa
+    acento2: '#1d3557',      // azul de imprenta: OSCURO, o sobre papel no existe
+    calido: '#9c6b3a',       // ocre de encuadernacion
+  },
+  fuentes: { display: 'Newsreader-600', apoyo: 'FamiljenGrotesk-500' },
+  gesto: {
+    llega: () => 'power2.out',                                   // se posa; no rebota
+    frena: (n = 2) => (n >= 4 ? 'expo.out' : 'power3.out'),      // siempre nitida
+    acelera: () => 'power2.in',
+    vaiven: () => 'power1.inOut',
+  },
+  // mucho aire y poca deriva: el cuadro es una pagina, y una pagina no orbita.
+  camara: { dolly: 0.6, orbita: 0.5 },
+  pelicula: { bloom: 0.14, umbral: 0.95, radio: 0.35, grano: 0.05, vinieta: 0.15, aberr: 0.0006 },
+}
