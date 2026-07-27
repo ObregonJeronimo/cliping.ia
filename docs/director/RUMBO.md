@@ -435,3 +435,54 @@ heroes).
    El problema esta en la extraccion del DOM.
 4. **Los cuatro heroes nuevos no tuvieron revision adversarial completa.** Salio de ahi la compuerta de
    encuadre, pero una revision con medicion propia por hero encontraria mas.
+
+
+---
+
+# Sexta vuelta — la lista queda cerrada, y una pregunta contestada
+
+## Los cuatro pendientes
+
+| pendiente | estado |
+|---|---|
+| Un medio no tiene features | **cerrado.** La captura trae ahora `titulares` (enlaces de tarjeta, no encabezados) y van por `comoFunciona`, que admite 48 caracteres, partidos en dos renglones |
+| La captura no siempre trae el CTA | **cerrado.** Un boton se reconoce por FONDO PROPIO y relleno, no por su etiqueta HTML |
+| Revision adversarial de los heroes | **cerrada.** Los nueve, en las dos polaridades, medidos uno por uno |
+| Movimiento del mundo claro | **contestado.** Ver abajo |
+
+## La pregunta del movimiento, contestada con cuatro experimentos
+
+El mundo claro mide 0.146 de pixeles en movimiento contra 0.226 de la referencia. Probe cuatro
+formas de cerrarlo y las cuatro dieron el mismo resultado:
+
+| intento | movimiento | lo que si movio |
+|---|---|---|
+| campos de color a la deriva | +0.019 | saturacion +37% |
+| cuña de borde duro | +0.002 | **ocupacion 0.075 -> 0.275** |
+| paralaje por profundidad (mosaico) | **+0.002** | nada |
+| polvo detras del hero | **+0.001** | nada |
+| la cuña saltando en el beat | **+0.001** | ocupacion +0.037, cortes +2/min |
+
+El patron es el mismo en los cinco y ya no es una hipotesis: **`mov_frac` cuenta pixeles que cruzan un
+umbral de luminancia entre cuadro y cuadro. Una masa grande y plana desplazandose cambia SOLO SUS
+BORDES — el interior sigue siendo del mismo color.** Lo que mueve el numero es que muchas cosas
+chicas y contrastadas cambien de estado.
+
+Y eso es exactamente lo que el mundo oscuro consigue gratis con el GLOW: un halo de bloom
+desplazandose repinta un area grande y suave alrededor de cada objeto. Un diseño claro no puede
+tenerlo, y no porque falte esfuerzo — porque sumar luz sobre blanco no hace nada.
+
+**La conclusion no es "falta trabajo": es que 0.226 es la marca de una pieza oscura con glow y no es
+la marca correcta para una marca blanca.** Lo que si es exigible al mundo claro esta cumplido:
+ocupacion 0.431 contra 0.317 de la referencia, contraste 0.180 contra 0.178, cortes 72/min contra 55.
+
+## Lo que aprendio el repo, y esta escrito en el codigo donde vuelve la tentacion
+
+Tres veces en esta sesion hubo que tirar una version que GANABA LA METRICA:
+- la cuña a media altura (ocupacion 0.391, por encima de la referencia) hacia que el titular la
+  cruzara y perdiera contraste;
+- la cuña en el mundo oscuro (ocupacion 0.61) lavaba el azul profundo y bajaba el contraste;
+- el polvo detras del hero costaba 200 posiciones por cuadro y no se veia.
+
+Los tres estan anotados EN EL CODIGO y no solo acá, porque el impulso vuelve solo la proxima vez que
+una escena se sienta vacia.

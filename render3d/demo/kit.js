@@ -205,6 +205,9 @@ export function fondoVivo(mundoW, mundoH) {
       uT: { value: 0 }, uA: { value: hex(LOOK.bg) }, uB: { value: hex(LOOK.bg2) },
       uAcento: { value: hex(LOOK.acento) }, uAcento2: { value: hex(LOOK.acento2) },
       uGrilla: { value: 0.55 }, uPulso: { value: 0 },
+      // El beat, para que el fondo pueda caer en la grilla del montaje. Sin esto lo unico que podia
+      // hacer una masa de fondo era DERIVAR, y lo suave no cuenta: ni para el ojo ni para la medicion.
+      uBeat: { value: BEAT },
       // 1 = mundo claro. La grilla y el pulso son ADITIVOS, que es lo correcto sobre negro y un
       // desastre sobre blanco: sumar sobre un fondo que ya está en 1.0 no aclara nada, sólo desatura
       // hasta el gris. En claro las mismas dos cosas tienen que OSCURECER hacia el acento.
@@ -212,7 +215,7 @@ export function fondoVivo(mundoW, mundoH) {
     },
     vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
     fragmentShader: `
-      uniform float uT, uGrilla, uPulso, uClaro; uniform vec3 uA, uB, uAcento, uAcento2;
+      uniform float uT, uGrilla, uPulso, uClaro, uBeat; uniform vec3 uA, uB, uAcento, uAcento2;
       varying vec2 vUv;
       float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898,78.233)))*43758.5453); }
       void main(){
@@ -291,7 +294,19 @@ export function fondoVivo(mundoW, mundoH) {
         // oscura sobre un violeta saturado pierde el contraste que la hace legible. La ocupacion daba
         // 0.391 —por encima de la referencia— y la pieza era peor. Con mas peso en Y (1.15) el borde
         // se aplana y queda entre el 9% y el 39% del alto, o sea debajo del renglon del titular.
-        float dg = (f.x * 0.35 + (1.0 - f.y) * 1.15) - (1.05 + sin(uT * 0.077) * 0.075);
+        // LA CUÑA SALTA EN EL BEAT, no deriva. Derivando con un seno lentisimo era una masa enorme que
+        // cambiaba tres pixeles por cuadro: la version anterior subio la ocupacion y NO subio el
+        // movimiento, que es la misma leccion que dio el mosaico con el paralaje y el hero con el
+        // polvo. Lo que el ojo registra —y lo que la medicion cuenta— es que algo CAMBIE DE GOLPE.
+        //
+        // Cada dos beats toma una posicion nueva de una lista de cuatro. Dos beats y no uno porque a
+        // un beat el fondo compite con los cortes de la pieza; a dos, acompaña. Y son posiciones
+        // discretas y no un valor al azar para que el salto se lea como una DECISION repetida, que es
+        // lo que hace un diseño editorial, y no como un temblor.
+        float paso = floor(uT / max(0.05, uBeat * 2.0));
+        float sel = fract(sin(paso * 12.9898) * 43758.5453);
+        float donde = 1.05 + floor(sel * 4.0) * 0.055 - 0.08;
+        float dg = (f.x * 0.35 + (1.0 - f.y) * 1.15) - donde;
         float cuna = smoothstep(0.0, 0.006, dg);
         // SOLO EN CLARO, y no por falta de ganas. Probada tambien en el mundo oscuro, la cuña sube la
         // ocupacion de 0.28 a 0.61 —muy por encima de la referencia— y la pieza queda PEOR: el azul
