@@ -322,9 +322,24 @@ def main():
         Path(str(v) + ".metricas.json").write_text(json.dumps(m, indent=1), encoding="utf-8")
         ms.append(m)
     tabla(ms)
-    if tramos:
-        for v in args:
-            tabla_tramos(v, tramos_de(tramos, bpm), bpm, ancho)
+    # Si no se pidieron tramos a mano, se busca el plan que el propio render dejo al lado del mp4
+    # (backend/render3d.py lo escribe). Asi el desglose por escena es gratis y —lo que importa— usa el
+    # plan REAL y el bpm REAL de esa pieza, en vez de dos numeros que hay que acordarse de pasar bien.
+    for v in args:
+        spec, bpm_v = tramos, bpm
+        plan_path = Path(str(v) + ".plan.json")
+        if not spec and plan_path.exists():
+            try:
+                d = json.loads(plan_path.read_text(encoding="utf-8"))
+                spec = d.get("tramos") or None
+                if d.get("bpm"):
+                    bpm_v = float(d["bpm"])
+                if d.get("heroes"):
+                    print("\n  heroes usados: " + ", ".join(d["heroes"]))
+            except Exception:
+                spec = None
+        if spec:
+            tabla_tramos(v, tramos_de(spec, bpm_v), bpm_v, ancho)
     for m in ms:
         print(f"{Path(m['video']).name}: cortes en {', '.join(str(t) for t in m['tiempos_corte'][:14])}"
               + (" ..." if len(m["tiempos_corte"]) > 14 else ""))

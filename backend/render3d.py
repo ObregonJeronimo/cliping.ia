@@ -150,6 +150,30 @@ def _ivf(chunks, w, h, fps, salida):
     return salida
 
 
+def _guardar_plan(destino, info):
+    """Deja al lado del mp4 el plan que el secuenciador realmente ejecuto.
+
+    Es lo que hace que `python tools/medir-video.py v.mp4 --tramos ...` sea automatico en vez de un
+    numero que hay que reconstruir a mano. Y sobre todo: lo escribe QUIEN LO SABE. Reconstruirlo desde
+    afuera obliga a correr el guionista dos veces y a confiar en que las dos corridas dieron lo mismo;
+    el dia que no, la tabla de metricas le asigna cada numero a la escena equivocada en silencio.
+
+    Best-effort: si falla, el video igual se grabo y eso es lo que importa.
+    """
+    try:
+        plan = info.get("plan") or []
+        beats = info.get("beats") or []
+        datos = {
+            "plan": plan, "beats": beats, "bpm": info.get("bpm"),
+            "heroes": info.get("heroes") or [], "dur": info.get("dur"),
+            "tramos": ",".join(f"{i}:{b}" for i, b in zip(plan, beats)),
+        }
+        with open(str(destino) + ".plan.json", "w", encoding="utf-8") as f:
+            json.dump(datos, f, ensure_ascii=False, indent=1)
+    except Exception:
+        pass
+
+
 async def grabar_mp4(spec, salida, raiz_assets=None, gpu=False, bitrate=12_000_000, log=print):
     """Render + codificacion DENTRO del navegador. Es el camino rapido y el que se usa de verdad.
 
@@ -175,6 +199,7 @@ async def grabar_mp4(spec, salida, raiz_assets=None, gpu=False, bitrate=12_000_0
             fps = spec.get("fps", 30)
             if info.get("dur"):
                 spec["dur"] = info["dur"]           # la pagina manda: la pieza a mano se mide en beats
+            _guardar_plan(destino, info)
             n = int(round(spec["dur"] * fps))
             await pg.evaluate("(b) => window.URVID.grabarInicio(b)", bitrate)
             for i in range(n):

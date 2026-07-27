@@ -245,7 +245,12 @@ export class Anthem {
       }
       repeticiones.set(mod.meta.id, (repeticiones.get(mod.meta.id) || 0) + 1)
       const r = await mod.build(ctx)
-      if (r.heroUsado) this.heroUsado = r.heroUsado
+      if (r.heroUsado) {
+        this.heroUsado = r.heroUsado
+        // TODOS los heroes usados, no solo el ultimo. Una pieza de 30 s trae tres escenas de hero con
+        // tres objetos distintos, y con un solo campo el informe decia que la pieza uso uno.
+        ;(this.heroesUsados || (this.heroesUsados = [])).push(r.heroUsado)
+      }
       const t0 = b(beat)
       const dur = b(mod.meta.beats)
       r.g.visible = false
@@ -386,7 +391,21 @@ window.URVID = {
     const info = await a.construir()
     window.__esc = a
     spec.dur = a.dur
-    return { capas: info.escenas.length, texturas: 0, faltan: [], escenas: info.escenas, dur: a.dur }
+    // EL PLAN VIAJA DE VUELTA. Sin esto, para medir la pieza por escena habia que reconstruir a mano
+    // que escenas eligio el guion y con que bpm — o sea correr el guionista dos veces, una en el
+    // render y otra en el analisis, y confiar en que dieron lo mismo. La primera vez que no dieran lo
+    // mismo, la tabla de metricas asignaria cada numero a la escena equivocada y nadie se enteraria.
+    // Lo escribe quien lo sabe: el secuenciador.
+    return {
+      capas: info.escenas.length, texturas: 0, faltan: [], escenas: info.escenas, dur: a.dur,
+      plan: (a.guionUsado || info.escenas.map(e => e.id)),
+      beats: (a.guionUsado || []).map(id => {
+        const m = ESCENAS.find(x => x.meta.id === id)
+        return m ? m.meta.beats : 0
+      }),
+      bpm: Math.round(60 / BEAT),
+      heroes: a.heroesUsados || [],
+    }
   },
   duracion() { return window.__esc.dur },
   frame(t) {
