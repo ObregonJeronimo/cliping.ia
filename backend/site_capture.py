@@ -216,7 +216,7 @@ def _merge_peek(home: dict, extra: dict, peek_url: str) -> dict:
     if not isinstance(extra, dict) or not isinstance(home, dict):
         return home
     out = dict(home)
-    for k, cap in (("headings", 20), ("paragraphs", 30), ("testimonials", 12), ("ctas", 14)):
+    for k, cap in (("headings", 20), ("titulares", 16), ("paragraphs", 30), ("testimonials", 12), ("ctas", 14)):
         a = list(home.get(k) or [])
         seen = set(a)
         for x in (extra.get(k) or []):
@@ -246,6 +246,22 @@ _JS_EXTRACT = r"""
   const meta = (sel, attr) => { const e = document.querySelector(sel); return e ? (e.getAttribute(attr) || '') : ''; };
   const headings = uniq([...document.querySelectorAll('h1,h2,h3')].map(txt)
     .filter(t => t.length >= 3 && t.length <= 90)).slice(0, 14);
+  // TITULARES: el texto de los enlaces que son NOTAS, no navegacion.
+  //
+  // En un medio, los <h2> son nombres de SECCION ("Most Popular", "Latest from Tech") y el contenido
+  // de verdad vive en los enlaces de las tarjetas. Sin esto, el video de theverge.com salia diciendo
+  // "Most Popular" y "Staff picks" como si fueran lo que la marca hace — nombres de mueble, no de
+  // producto. Un medio no tiene features; tiene titulares, y son lo unico suyo que hay para mostrar.
+  //
+  // Se distinguen de la navegacion por tres cosas a la vez, y hacen falta las tres: viven dentro de
+  // main/article/una tarjeta, miden como una frase (30 a 120) y tienen mas de tres palabras. Un item
+  // de menu cumple como mucho una.
+  const titulares = uniq([...document.querySelectorAll(
+      'main a, article a, [class*="card" i] a, [class*="story" i] a, [class*="post" i] a')]
+    .filter(a => { try { return !a.closest('nav, header, footer, aside') } catch (e) { return true } })
+    .map(txt)
+    .filter(t => t.length >= 30 && t.length <= 120 && t.split(/\s+/).length >= 4
+      && !/^(ver|leer|read|see|more|mas|subscribe|suscrib)/i.test(t))).slice(0, 16);
   const nav = uniq([...document.querySelectorAll('nav a, header a')].map(txt)
     .filter(t => t.length >= 2 && t.length <= 26)).slice(0, 14);
   // navLinks (item L348): texto + href absoluto de nav/header/footer -> el peek surgical elige /nosotros|/precios. Dedup por href.
@@ -338,7 +354,7 @@ _JS_EXTRACT = r"""
     description: clean(meta('meta[name="description"]', 'content') || meta('meta[property="og:description"]', 'content')).slice(0, 300),
     themeColor: meta('meta[name="theme-color"]', 'content'),
     accentCss,
-    logo, headings, nav, navLinks, ctas, paragraphs, testimonials, structured,
+    logo, headings, titulares, nav, navLinks, ctas, paragraphs, testimonials, structured,
     bodyText: clean(document.body && document.body.innerText).slice(0, 4000),
   };
 }

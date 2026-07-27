@@ -155,6 +155,33 @@ def _fichas(t):
     return {w[:5] for w in palabras if w not in _VACIAS and len(w) > 2}
 
 
+def _titulares(content, n=6):
+    """Los titulares de un medio, los mas cortos primero.
+
+    UN MEDIO NO TIENE FEATURES. The Verge da "Most Popular", "Staff picks", "Latest from Reviews":
+    nombres de SECCION, o sea de mueble, no de producto. Ninguna heuristica lexica los va a convertir
+    en algo que valga la pena poner en un video, porque el problema no es elegir mal entre lo que hay
+    — es que lo que hay no es contenido.
+
+    Lo suyo son los TITULARES, y estan en los enlaces de las tarjetas, no en los encabezados (ver
+    `titulares` en backend/site_capture.py). Se prefieren los CORTOS: un titular de noventa caracteres
+    en tipografia cinetica sale a un cuarto del alto y no se lee, y un medio siempre tiene varios.
+    """
+    ts = [_limpio(t, 110) for t in _lista((content or {}).get("titulares"))]
+    ts = [t for t in ts if 25 <= len(t) <= 78]
+    ts.sort(key=len)
+    vistos, out = set(), []
+    for t in ts:
+        c = t.lower()[:24]
+        if c in vistos:
+            continue
+        vistos.add(c)
+        out.append({"titulo": t, "detalle": ""})
+        if len(out) >= n:
+            break
+    return out
+
+
 def _features(content, claim="", marca=""):
     """Los encabezados de una landing SON su lista de features. El problema es cuales.
 
@@ -421,17 +448,24 @@ def brief_de(site, url=""):
     if not que_hace:
         que_hace = _limpio(c.get("title"), 220)
 
+    rubro = rubro_de(c)
     features = _features(c, que_hace, marca_de(c, url))
+    # LOS TITULARES VAN EN `comoFunciona`, no en `features`, y la razon es de FORMA: el pagemodel
+    # recorta un titulo de feature a 28 caracteres —esta pensado para etiquetas— y un titular ahi sale
+    # partido al medio ("My $5,000 smart bed needs"), que promete un final que nunca llega. El campo de
+    # pasos admite 48, que es lo que mide un titular corto entero.
+    titulares = _titulares(c, 4) if rubro == "media" else []
     return {
         "brand": marca_de(c, url),
         "semantica": {
             "queHace": que_hace,
             # El rubro decide el AIRE, o sea la direccion de arte entera. Ver rubro_de.
-            "tipoNegocio": rubro_de(c),
+            "tipoNegocio": rubro,
             # `comoFunciona` son pasos y una landing rara vez los marca de forma reconocible sin un
             # modelo que los interprete. Vacio es correcto: deja la escena sin elegir en vez de
             # llenarla con encabezados que no son pasos.
-            "comoFunciona": [],
+            # En un medio esto lleva los TITULARES: es el unico campo del modelo donde entra uno entero.
+            "comoFunciona": [t["titulo"] for t in titulares],
             "features": features,
             "pruebas": {"stats": _stats(c), "testimonios": [], "logosClientes": False},
             "cta": _cta(c),

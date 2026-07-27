@@ -66,13 +66,31 @@ function frasesDe(pm) {
     const mitad = Math.ceil(pal.length / 2)
     out.push(pal.slice(0, mitad).join(' ') + '\n' + pal.slice(mitad).join(' '))
   }
-  for (const f of (s.features || []).slice(0, 4)) {
-    const t = corto(f.titulo, 22)
-    if (t) out.push(t)
+  // UN TITULAR NO ENTRA EN VEINTIDOS CARACTERES, y un medio no tiene otra cosa que titulares. Para
+  // ese rubro se admiten cuarenta y se parten en DOS RENGLONES equilibrados, que es como se compone un
+  // titular en cualquier portada: asi la tipografia queda al doble de alto que puesta en una sola
+  // linea, y a una sola linea de cuarenta caracteres no se lee nada.
+  const esMedio = s.tipoNegocio === 'media'
+  for (const f of (s.features || []).slice(0, esMedio ? 1 : 4)) {
+    const t = corto(f.titulo, esMedio ? 40 : 22)
+    if (!t) continue
+    if (esMedio && t.length > 20) {
+      const pal = t.split(' ')
+      const mitad = Math.ceil(pal.length / 2)
+      out.push(pal.slice(0, mitad).join(' ') + String.fromCharCode(10) + pal.slice(mitad).join(' '))
+    } else out.push(t)
   }
-  for (const p of (s.comoFunciona || []).slice(0, 2)) {
-    const t = corto(p, 18)
-    if (t) out.push(t)
+  // EN UN MEDIO, `comoFunciona` trae los TITULARES y son el contenido principal, no un apoyo: van
+  // primero y con el largo que necesitan. Ver backend/semantica_gratis.py — un medio no tiene
+  // features, tiene titulares, y meterlos en el campo de etiquetas los partia al medio.
+  for (const p of (s.comoFunciona || []).slice(0, esMedio ? 4 : 2)) {
+    const t = corto(p, esMedio ? 44 : 18)
+    if (!t) continue
+    if (esMedio && t.length > 20) {
+      const pal = t.split(' ')
+      const mitad = Math.ceil(pal.length / 2)
+      out.push(pal.slice(0, mitad).join(' ') + String.fromCharCode(10) + pal.slice(mitad).join(' '))
+    } else out.push(t)
   }
   // Sin relleno: si la pagina dio dos frases, salen dos. El guionista decide si con dos alcanza para
   // sostener una escena de tipografia cinetica de ocho beats — probablemente no, y entonces esa

@@ -74,8 +74,13 @@ async def capturar(url: str, dst: str, con_tira: bool = True) -> dict:
     from pagemodel import build_pagemodel
 
     site = await capture_all(url, os.path.join(dst, "captura.json"), elementos=True)
+    # SE GUARDA LA CAPTURA ENTERA, no solo el texto. Lo caro de este proceso es abrir el navegador y
+    # esperar la red; con la captura completa en disco, el modelo semantico se puede REHACER sin volver
+    # a bajar el sitio. Guardando solo `content` habia que recapturar cada vez que cambiaba una linea
+    # del interprete, y eso mordio tres veces: se corregia la lectura del DOM, se renderizaba, y el
+    # video salia con el modelo viejo porque el pagemodel del cache no se habia tocado.
     with open(os.path.join(dst, "site.json"), "w", encoding="utf-8") as f:
-        json.dump({"content": (site or {}).get("content")}, f, ensure_ascii=False, indent=1)
+        json.dump(site, f, ensure_ascii=False, indent=1, default=str)
 
     # EL BRIEF SALE DEL DOM, GRATIS. Sin brief, `build_pagemodel` devuelve el bloque `semantica`
     # entero VACIO y no falla: un modelo valido que no dice nada. La primera corrida de punta a punta
@@ -146,11 +151,32 @@ async def render(url: str, salida: str, hero: str | None = None, dur: int = 20,
                  bitrate: int = 8_000_000) -> str:
     dst = os.path.join(SALIDA, _dominio(url))
     pm_path = os.path.join(dst, "pagemodel.json")
-    if recapturar or not os.path.exists(pm_path):
+    site_path = os.path.join(dst, "site.json")
+    if recapturar or not os.path.exists(site_path):
         print(f"capturando {url} ...")
         await capturar(url, dst)
     else:
-        print(f"reusando la captura de {dst}  (--recapturar para volver a bajarla)")
+        # EL MODELO SE REHACE SIEMPRE, la captura no. Son dos cosas distintas: bajar el sitio cuesta
+        # medio minuto de red y no cambia si no cambio el sitio; interpretarlo cuesta milisegundos y
+        # cambia cada vez que se toca el interprete. Reusar el modelo cacheado hacia que un arreglo de
+        # la lectura del DOM no se viera en el video hasta acordarse de pasar --recapturar.
+        print(f"reusando la captura de {dst} y rehaciendo el modelo  (--recapturar para volver a bajarla)")
+        with open(site_path, encoding="utf-8") as f:
+            site = json.load(f)
+        from semantica_gratis import brief_de
+        from pagemodel import build_pagemodel
+        brief = brief_de(site, url)
+        pm = build_pagemodel(url, site=site, brief=brief)
+        if brief.get("brand") and (not pm.get("brand") or "." in str(pm.get("brand"))):
+            pm["brand"] = brief["brand"]
+        if os.path.exists(pm_path):
+            try:
+                with open(pm_path, encoding="utf-8") as f:
+                    pm["_tira"] = json.load(f).get("_tira")
+            except Exception:
+                pass
+        with open(pm_path, "w", encoding="utf-8") as f:
+            json.dump(pm, f, ensure_ascii=False, indent=1)
 
     d = datos_de(pm_path, dst)
     with open(pm_path, encoding="utf-8") as f:
