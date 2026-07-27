@@ -230,13 +230,23 @@ for (const id of ids) {
   // ---- DURACION. Es el chequeo que mas vale: una timeline que se pasa no falla, solo pisa a la
   // escena siguiente, y eso se descubre mirando la pieza entera y sin saber quien fue.
   const limite = mod.meta.beats * BEAT
-  const dur = r.tl.duration()
+  // `duration()` NO cuenta el timeScale propio de la timeline: una escena de 6 beats reescalada para
+  // llenar 8 sigue reportando 2.88s. Midiendo eso, el verificador veia un segundo de quietud al final
+  // que en el video no existe — y al reves, una escena ACELERADA se le habria pasado por larga.
+  // El largo real es duration() / timeScale(), y `time()` se mueve en las unidades SIN escalar.
+  const escala = r.tl.timeScale() || 1
+  const dur = r.tl.duration() / escala
+  const finPropio = r.tl.duration()
+  // Una escena puede declararse VACIA a proposito: es la respuesta honesta cuando la pagina no dio el
+  // material que necesita (sin cifras no hay escena de datos, sin captura no hay hero de telefono).
+  // Exigirle duracion y movimiento a eso seria exigirle que invente.
+  if (r.vacia) { console.log(`  ${id}: vacia a proposito (sin material) — se saltea`); continue }
   ok(dur <= limite + 1e-3, `${id}: la timeline dura ${dur.toFixed(3)}s y su lugar es ${limite.toFixed(3)}s (${mod.meta.beats} beats) — se come la escena siguiente`)
   ok(dur > limite * 0.5, `${id}: la timeline dura ${dur.toFixed(3)}s de ${limite.toFixed(3)}s disponibles — mas de la mitad de la escena queda congelada`)
 
   // ---- CAMARA. Se recorre hasta el final y se comprueba que volvio. Si una escena mueve la camara y
   // no la devuelve, la siguiente arranca desde otro punto de vista y la pieza se desarma.
-  r.tl.time(limite, false)
+  r.tl.time(finPropio, false)
   const p = camera.position
   const vuelve = Math.abs(p.x) < 0.02 && Math.abs(p.y) < 0.02 && Math.abs(p.z - distBase) < 0.02
     && Math.abs(camera.rotation.x) < 0.01 && Math.abs(camera.rotation.y) < 0.01 && Math.abs(camera.rotation.z) < 0.01
@@ -256,15 +266,15 @@ for (const id of ids) {
     })
     return s
   }
-  const N = Math.max(12, Math.round(limite * 30))
+  const N = Math.max(12, Math.round(dur * 30))
   let previa = null, quieto = 0, peor = 0
   for (let i = 0; i <= N; i++) {
-    r.tl.time((i / N) * limite, false)
+    r.tl.time((i / N) * finPropio, false)
     const f = firma()
     if (f === previa) { quieto++; peor = Math.max(peor, quieto) } else { quieto = 0 }
     previa = f
   }
-  const quietoSeg = (peor / N) * limite
+  const quietoSeg = (peor / N) * dur
   ok(quietoSeg < BEAT * 1.05, `${id}: ${quietoSeg.toFixed(2)}s sin que se mueva NADA (mas de un beat) — eso se lee como diapositiva`)
 
   // ---- DETERMINISMO: construir dos veces con la misma semilla tiene que dar la misma firma.
@@ -273,10 +283,10 @@ for (const id of ids) {
   let semilla2 = 1
   const ctx2 = { ...ctx, camera: camera2, fondo: uni(), rnd: () => { semilla2 = (semilla2 * 1664525 + 1013904223) >>> 0; return semilla2 / 4294967296 } }
   const r2 = await mod.build(ctx2)
-  r.tl.time(limite * 0.5, false); const fa = firma()
+  r.tl.time(finPropio * 0.5, false); const fa = firma()
   const gg = r.g; const guardar = gg
   void guardar
-  r2.tl.time(limite * 0.5, false)
+  r2.tl.time((r2.tl.duration()) * 0.5, false)
   let fb = ''
   r2.g.traverse(o => {
     if (!o.isMesh && !o.isPoints) return

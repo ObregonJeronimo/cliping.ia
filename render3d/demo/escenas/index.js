@@ -7,10 +7,14 @@
 // Cada módulo declara sus beats y el secuenciador los encadena. Cambiar el orden acá cambia la pieza
 // entera sin tocar una sola escena.
 import * as apertura from './apertura.js'
+import * as hero from './hero.js'
 import * as toro from './toro.js'
 import * as tipografia from './tipografia.js'
 import * as tarjetas from './tarjetas.js'
 import * as destello from './destello.js'
 import * as cierre from './cierre.js'
 
-export const ESCENAS = [apertura, toro, tipografia, tarjetas, destello, cierre]
+// El HERO reemplaza al toro como segunda escena: el toro es geometria generica, el hero muestra la
+// PAGINA del usuario. El toro sigue disponible como hero 'nada' cuando no hay material.
+export const ESCENAS = [apertura, hero, tipografia, tarjetas, destello, cierre]
+void toro

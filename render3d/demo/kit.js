@@ -261,3 +261,53 @@ export function enArco(objs, radio, aperturaRad) {
     o.rotation.y = -a
   })
 }
+
+
+// ---------------------------------------------------------------- recortes REALES de la pagina
+// Un recorte no es una foto: es un OBJETO de la marca — su logo, su tarjeta de precio, su boton. Se
+// dibuja con SU proporcion y sin recortar. Estirar el logo de una marca un 20% es el defecto que su
+// dueño ve antes que ninguno, y recortarlo lo rompe igual.
+//
+// `alto` es el alto en unidades de mundo; el ancho sale de la proporcion del archivo. Devuelve null
+// si no hay textura: una escena que no puede mostrar el objeto se compone sin el, nunca con un hueco
+// gris que se lee como un error de carga.
+export function planoRecorte(tex, alto, o = {}) {
+  if (!tex || !tex.image) return null
+  const ar = tex.image.width / tex.image.height
+  tex.colorSpace = THREE.SRGBColorSpace
+  tex.anisotropy = 8
+  const mat = new THREE.MeshBasicMaterial({
+    map: tex, transparent: true, depthWrite: false, side: THREE.DoubleSide,
+    // toneMapped false y sin multiplicar: el recorte YA trae los colores de la marca y cualquier
+    // ganancia los falsea. Su integracion con la pieza la da el grano y la viñeta del pase final,
+    // que se aplican despues porque el recorte vive en la escena post-bloom.
+    toneMapped: false, opacity: o.opacidad == null ? 1 : o.opacidad,
+  })
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(alto * ar, alto), mat)
+  m.userData.ar = ar
+  return m
+}
+
+// Carga los recortes que declara D.elementos. Devuelve un Map url -> textura. El TextureLoader de
+// three es asincronico: si una escena no espera, construye con texturas vacias y el plano sale negro.
+export function cargarRecortes(elementos) {
+  const cargador = new THREE.TextureLoader()
+  const urls = [...new Set((elementos || []).map(e => e.url).filter(Boolean))]
+  const mapa = new Map()
+  return Promise.all(urls.map(u => new Promise(res => {
+    cargador.load(u, t => { mapa.set(u, t); res() }, undefined, () => res())
+  }))).then(() => mapa)
+}
+
+// Elige recortes por ROL, en el orden en que sirven para una escena. Nunca inventa: si la pagina no
+// dio ninguno del rol pedido, devuelve una lista mas corta o vacia, y la escena se compone sin ellos.
+export function recortesDe(elementos, roles, n = 3) {
+  const out = []
+  for (const rol of [].concat(roles)) {
+    for (const e of (elementos || [])) {
+      if (e.rol === rol && !out.includes(e)) out.push(e)
+      if (out.length >= n) return out
+    }
+  }
+  return out
+}

@@ -112,6 +112,24 @@ export class Anthem {
     // herramienta principal — es lo que hace que un color se lea como LUZ y no como pintura.
     this.bloom = new UnrealBloomPass(new THREE.Vector2(this.W, this.H), 0.85, 0.62, 0.62)
     this.composer.addPass(this.bloom)
+
+    // ---- LOS RECORTES REALES VAN DESPUES DEL BLOOM, en una escena aparte.
+    // Un recorte de una pagina es mayormente BLANCO: medido sobre los 52 recortes de los fixtures, el
+    // 50.7% de sus pixeles opacos esta por encima del umbral de bloom, y hay tarjetas con el 99%.
+    // Pasados por el pase, el logo y la tarjeta de la marca salen como UNA MANCHA que se come medio
+    // cuadro. No es un caso raro: la web es blanca y el look de la pieza esta calibrado para geometria
+    // oscura que brilla sobre negro.
+    //
+    // La solucion no es bajarles el brillo —eso cambia la marca— sino COMPONERLOS DESPUES: un segundo
+    // RenderPass con clear apagado, colocado entre el bloom y el pase de pelicula. Asi los recortes no
+    // florecen pero SI reciben grano, viñeta y aberracion, que es exactamente lo que los integra con
+    // el resto de la pieza en vez de dejarlos pegados como una calcomania.
+    this.escenaReal = new THREE.Scene()
+    const paseReal = new RenderPass(this.escenaReal, this.camera)
+    paseReal.clear = false
+    paseReal.clearDepth = true
+    this.composer.addPass(paseReal)
+
     this.pelicula = new ShaderPass(Pelicula)
     this.pelicula.uniforms.uRes.value.set(this.W, this.H)
     this.composer.addPass(this.pelicula)
@@ -134,8 +152,18 @@ export class Anthem {
         camera: this.camera, distBase: this.distBase, rnd: this.rnd,
         BEAT, b, fondo: this.fondo.material.uniforms, pelicula: this.pelicula.uniforms,
         bloom: this.bloom,
+        // Donde van los RECORTES REALES de la pagina. Es una escena aparte que se compone despues del
+        // bloom: una escena que quiera mostrar el logo o una tarjeta del sitio mete su grupo aca en
+        // vez de en `g`, y el recorte no se quema. Ver la nota en _composer().
+        real: this.escenaReal,
+        // El spec entero y las texturas cargadas: los HEROES los necesitan (la tira scrolleable de la
+        // pagina, el hero que pidio el usuario) y una escena comun simplemente los ignora.
+        spec: this.spec,
+        texturas: this.texturas,
+        datosEls: (this.spec.datos && this.spec.datos.elementos) || [],
       }
       const r = await mod.build(ctx)
+      if (r.heroUsado) this.heroUsado = r.heroUsado
       const t0 = b(beat)
       const dur = b(mod.meta.beats)
       r.g.visible = false
@@ -147,7 +175,9 @@ export class Anthem {
       // frame 0 y el cuadro sale vacio, sin ningun error. Es el defecto mas caro de este arnes
       // porque no falla, simplemente no se ve nada y parece un problema de la escena.
       r.tl.paused(false)
-      this.escenas.push({ id: mod.meta.id, g: r.g, t0, t1: t0 + dur })
+      // Una escena puede devolver `gr`: su grupo de recortes reales, que vive en la escena post-bloom.
+      if (r.gr) { r.gr.visible = false; this.escenaReal.add(r.gr) }
+      this.escenas.push({ id: mod.meta.id, g: r.g, gr: r.gr || null, t0, t1: t0 + dur })
       beat += mod.meta.beats
     }
     this.dur = b(beat)
@@ -172,7 +202,11 @@ export class Anthem {
     this.tl.time(tt, false)
     // Prender/apagar por ventana: una escena que sigue en la escena 3D consumiendo draw calls y
     // asomando un borde detrás de la siguiente es el defecto más difícil de encontrar mirando.
-    for (const e of this.escenas) e.g.visible = tt >= e.t0 - 0.02 && tt <= e.t1 + 0.02
+    for (const e of this.escenas) {
+      const vivo = tt >= e.t0 - 0.02 && tt <= e.t1 + 0.02
+      e.g.visible = vivo
+      if (e.gr) e.gr.visible = vivo          // el grupo de recortes reales, en la escena post-bloom
+    }
   }
 
   render() { this.composer.render() }
@@ -241,6 +275,18 @@ window.URVID = {
     const acc = document.getElementById('acc')
     acc.width = spec.W; acc.height = spec.H
     const a = new Anthem(spec, canvas)
+    // TEXTURAS ANTES DE CONSTRUIR. El TextureLoader es asincronico: una escena que construye sin
+    // esperar arma su plano con una textura vacia y sale negro, sin ningun error.
+    a.texturas = new Map()
+    const pedidos = []
+    if (spec.tira) pedidos.push(['tira', spec.tira])
+    for (const e of ((spec.datos && spec.datos.elementos) || [])) pedidos.push([e.url, e.url])
+    if (pedidos.length) {
+      const cargador = new THREE.TextureLoader()
+      await Promise.all(pedidos.map(([clave, url]) => new Promise(res => {
+        cargador.load(url, t => { a.texturas.set(clave, t); res() }, undefined, () => res())
+      })))
+    }
     const info = await a.construir()
     window.__esc = a
     spec.dur = a.dur
