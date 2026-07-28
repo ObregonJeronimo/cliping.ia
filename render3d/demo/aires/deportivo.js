@@ -1,3 +1,4 @@
+import { pot } from '../kit.js'
 // AIRE "deportivo" — negro y naranja flúor, condensada, ritmo alto y gestos violentos.
 // Para: gimnasios, indumentaria deportiva, suplementos, competencias, motor, esports.
 //
@@ -38,7 +39,7 @@ export default {
   gesto: {
     llega: (n = 2.2) => `back.out(${Math.min(4.6, n * 1.8)})`,
     frena: () => 'power2.out',
-    acelera: (n = 2) => `power${Math.min(4, n + 1)}.in`,
+    acelera: (n = 2) => pot(Math.min(4, n + 1), 'in'),
     vaiven: () => 'power2.inOut',
   },
   camara: { dolly: 1.5, orbita: 1.3 },

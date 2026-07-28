@@ -54,8 +54,12 @@ function lienzo(w = 4, h = 4) {
 globalThis.document = {
   createElement: (t) => (t === 'canvas' ? lienzo() : { style: {} }),
   getElementById: () => lienzo(),
-  fonts: { ready: Promise.resolve(), load: async () => {} },
+  // `add`, el iterador y `check` los pide el registro de tipografias de los modulos de aire, que corre
+  // al importarse. E-EASE-VALIDO los importa para leer su gesto, asi que sin esto la compuerta ni
+  // arranca. No cargan nada de verdad: FontFace es un cascaron y lo que importa es que no explote.
+  fonts: { ready: Promise.resolve(), load: async () => {}, add() {}, check: () => true, *[Symbol.iterator]() {} },
 }
+globalThis.FontFace = class { constructor(f) { this.family = f } async load() { return this } }
 globalThis.window = globalThis
 
 // ---- GSAP avisa por consola cuando le pedis animar un target que no existe, y sigue como si nada.
@@ -507,6 +511,49 @@ for (const id of ids) {
 
   if (!fails) console.log(`  ${id}: OK — ${r.g.children.length} objetos, ${dur.toFixed(2)}s de ${limite.toFixed(2)}s, quietud maxima ${quietoSeg.toFixed(2)}s`)
   else console.log(`  ${id}: revisado (${dur.toFixed(2)}s / ${limite.toFixed(2)}s)`)
+}
+
+// ---------------------------------------------------------------- E-EASE-VALIDO
+// GSAP NO AVISA CUANDO NO ENTIENDE UN EASE. Parsea el string a undefined y cae en silencio a su ease
+// por defecto —power1.out—, asi que un `power2.4.in` no tira error, no rompe el render y no ensucia la
+// consola: el objeto simplemente se mueve al reves de lo pedido. Medido: `acelera` producia una cadena
+// invalida en tres aires (tecnico, artesanal y deportivo), y uno de los dos sitios de llamada es la
+// cortina de apertura.js:196 — el PRIMER movimiento de la pieza, desacelerando donde tenia que acelerar.
+//
+// Se barren los cuatro verbos de los once aires contra los argumentos que las escenas usan DE VERDAD,
+// leidos de los archivos: asi la compuerta se actualiza sola cuando alguien escribe una llamada nueva y
+// no hay una lista a mano que se desincronice. `gsap.parseEase` es el mismo parser que usa el render.
+{
+  // El namespace y no la desestructuracion: `E` es un binding vivo que `configurar()` reasigna, y
+  // destructurarlo congela el valor del momento del import — leeria siempre el gesto base.
+  const kit = await import(pathToFileURL(join(HERE, 'kit.js')).href)
+  const VERBOS = ['llega', 'frena', 'acelera', 'vaiven']
+  const usados = { llega: new Set(), frena: new Set(), acelera: new Set(), vaiven: new Set() }
+  for (const d of ['escenas', 'heroes']) {
+    const dir = join(HERE, d)
+    for (const f of readdirSync(dir).filter(x => x.endsWith('.js'))) {
+      const src = readFileSync(join(dir, f), 'utf8')
+      for (const m of src.matchAll(/E\.(llega|frena|acelera|vaiven)\(([^)]*)\)/g)) {
+        const a = m[2].trim()
+        if (a === '') usados[m[1]].add(undefined)
+        else if (/^[\d.]+$/.test(a)) usados[m[1]].add(parseFloat(a))
+      }
+    }
+  }
+  const dirAires = join(HERE, 'aires')
+  for (const f of readdirSync(dirAires).filter(x => x.endsWith('.js'))) {
+    const aire = (await import(pathToFileURL(join(dirAires, f)).href)).default
+    kit.configurar(aire)
+    for (const v of VERBOS) {
+      for (const arg of usados[v]) {
+        const s = kit.E[v](arg)
+        if (!gsap.parseEase(s)) {
+          die(`E-EASE-VALIDO  el aire "${f.replace('.js', '')}" con ${v}(${arg}) produce "${s}", que GSAP no parsea: cae en silencio a power1.out y el movimiento sale al reves del pedido`)
+        }
+      }
+    }
+  }
+  kit.configurar(null)                               // se deja el vocabulario como estaba
 }
 
 // ---------------------------------------------------------------- E-COMPOSITOR-PARSEA

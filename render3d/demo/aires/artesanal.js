@@ -1,3 +1,4 @@
+import { pot } from '../kit.js'
 // AIRE "artesanal" — tierra y papel, serif con mano, y un movimiento que avanza A SALTITOS.
 // Para: ceramica, panaderia, huerta, conservas, feria, marroquineria, cerveceria de barrio.
 //
@@ -74,7 +75,7 @@ export default {
     // Frenadas blandas. `expo.out` mete todo el recorrido en el primer 10% y despues no se mueve
     // nada: se lee a maquina Y deja frames quietos. Potencias bajas reparten el movimiento.
     frena: (n = 2) => (n >= 4 ? 'power2.out' : 'power1.out'),
-    acelera: (n = 2) => `power${Math.max(1, n - 1)}.in`,
+    acelera: (n = 2) => pot(Math.max(1, n - 1), 'in'),
     vaiven: (n = 0) => (n ? `power${Math.min(2, n)}.inOut` : 'sine.inOut'),
   },
   camara: { dolly: 0.75, orbita: 0.85 },

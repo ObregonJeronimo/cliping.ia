@@ -95,11 +95,23 @@ export let LOOK = {
 //
 // El aire por defecto devuelve exactamente las curvas con las que se compuso ANTHEM: cambiar de
 // familia tiene que ser una decision, no un efecto secundario de haber refactorizado.
+//
+// GSAP SOLO CONOCE power0..power4 CON POTENCIA ENTERA, y no avisa cuando le pasas otra cosa: parsea
+// `power2.4.in` a undefined y cae en silencio a su ease por defecto, que es power1.out. O sea que
+// `acelera` —el verbo de IRSE RAPIDO— terminaba desacelerando. Pasaba en tres aires (tecnico,
+// artesanal y deportivo) y en el primer movimiento de la pieza: la cortina de apertura.js:196. No lo
+// veia nadie porque no hay error, ni excepcion, ni aviso por consola; el video simplemente se movia al
+// reves de lo pedido. Por eso `pot` se exporta: la regla vive en UN lugar y los aires que retocan la
+// potencia la piden en vez de volver a interpolar a mano.
+export const pot = (n, dir) => `power${Math.max(0, Math.min(4, Math.round(n)))}.${dir}`
+
 const GESTO_BASE = {
   llega: (n = 2.2) => `back.out(${n})`,             // entra y se pasa: lo que hace que algo "llegue"
-  frena: (n = 2) => (n >= 5 ? 'expo.out' : `power${n}.out`),
-  acelera: (n = 2) => `power${n}.in`,
-  vaiven: (n = 0) => (n ? `power${n}.inOut` : 'sine.inOut'),
+  // `frena` ya trataba el desborde por arriba —n>=5 no existe como potencia y va a expo.out, la
+  // frenada mas fuerte del vocabulario estandar—; lo que faltaba era el caso no entero.
+  frena: (n = 2) => (n >= 5 ? 'expo.out' : pot(n, 'out')),
+  acelera: (n = 2) => pot(n, 'in'),
+  vaiven: (n = 0) => (n ? pot(n, 'inOut') : 'sine.inOut'),
 }
 export let E = GESTO_BASE
 
