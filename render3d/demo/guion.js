@@ -118,6 +118,19 @@ const REQUISITOS = {
 // marca) y cierra el bloque de prueba en otra (la firma despues del dato), que ademas es donde un
 // sello significa algo.
 //
+// TRES ESCENAS BEBEN DEL MISMO POZO, y con poco material se nota. `tipografia` recorre TODAS las
+// frases, `partida` usa las dos primeras y `lista` cuatro. Una pagina normal da cuatro frases
+// —basecamp dio exactamente cuatro— asi que las tres pueden terminar diciendo lo mismo con distinta
+// tipografia: en el render se vio "01 BIG NUMBERS. / 02 REMEMBER WHEN" en la lista, que eran las dos
+// frases que `tipografia` acababa de pasar diez segundos antes. El espectador no lee dos escenas: lee
+// una repetida.
+//
+// Mitigado a medias en `lista`, que ahora toma las ULTIMAS frases en vez de las primeras, asi que con
+// cinco o mas ya no coincide. Lo que falta es la decision de GUION: cuantas escenas de texto entran
+// en una pieza segun cuantas frases dio la pagina. Con cuatro frases deberia entrar UNA sola. No se
+// hizo todavia porque el cambio obvio —subir un minimo en REQUISITOS— ya demostro ser trampa una vez
+// (ver la nota de `tipografia`): hay que medirlo con guion-check antes, y mirar el video despues.
+//
 // OJO AL AGREGAR ESCENAS NUEVAS: una escena que no figura en NINGUNA de estas listas no se elige
 // jamas, aunque exista, este registrada y cumpla sus REQUISITOS — `medio` sale de filtrar ESTA lista.
 // Es la forma mas silenciosa que tiene el catalogo de crecer sin que se note.

@@ -36,11 +36,22 @@ export function build(ctx) {
   const DUR = b(meta.beats)
 
   // ---- el material que hay
-  const items = (D.frases || [])
+  // SE TOMAN LAS ULTIMAS, NO LAS PRIMERAS, y es para no repetir lo que la pieza ya dijo.
+  // `frases` la consumen tres escenas: `tipografia` las recorre todas, `partida` usa las DOS primeras
+  // y esta usa cuatro. Tomando tambien desde el principio, una pieza con `tipografia` cerca mostraba
+  // el mismo copy palabra por palabra dos veces en diez segundos — visto en el render de basecamp:
+  // "01 BIG NUMBERS. / 02 REMEMBER WHEN" son exactamente las dos frases que la escena anterior acababa
+  // de pasar. Desde el final, en cuanto la pagina da cinco o mas, la lista enumera material que el
+  // espectador todavia no vio.
+  //
+  // OJO: con cuatro frases justas las tres escenas siguen coincidiendo, porque no hay de donde sacar
+  // mas. Eso NO se arregla acá — se arregla en el guion, decidiendo cuantas escenas de texto entran
+  // segun el material que hay. Queda anotado ahi.
+  const todas = (D.frases || [])
     .filter(f => f && !String(f).includes('\n'))
     .map(f => String(f).trim())
     .filter(Boolean)
-    .slice(0, MAX_ITEMS)
+  const items = todas.slice(-MAX_ITEMS)
   if (items.length < MIN_ITEMS) {
     tl.to({}, { duration: DUR }, 0)
     return { g, tl, vacia: true }
