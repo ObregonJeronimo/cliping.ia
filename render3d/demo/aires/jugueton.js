@@ -22,6 +22,31 @@
 // LENTO NO ES QUIETO — Y BLANDO TAMPOCO. 120 BPM (beat de medio segundo justo) no es un ritmo lento,
 // es un ritmo que se puede seguir con la mano: rapido para que nada se detenga, redondo para que no
 // se lea agresivo.
+// LAS FUENTES DE ESTE AIRE HAY QUE REGISTRARLAS, Y NO SE HACIA.
+// demo.html declara por @font-face solo las CINCO de ANTHEM (Anton, ArchivoBlack, BigShoulders,
+// Bricolage, DMSans). Cualquier otra familia hay que meterla en `document.fonts` a mano o el canvas
+// mide y dibuja con la del sistema, la textura queda cacheada asi para siempre, y la pieza sale
+// entera en una grotesca cualquiera. NO TIRA NINGUN ERROR: se ve recien en el video terminado.
+//
+// El camino de main.js no alcanza: saltea la carga cuando `document.fonts.check()` dice que si, y esa
+// funcion contesta true para una familia que no existe —da por buena la que el sistema va a usar de
+// reemplazo—. Por eso el test de aca abajo recorre el SET y compara familias, que es lo unico que
+// distingue "esta cargada" de "hay algo con que dibujarla".
+//
+// Va en el modulo del aire, con await de nivel superior, porque main.js lo importa con `await
+// import(...)` ANTES de rasterizar el primer glifo. El guard de `document` es para poder importar el
+// aire desde Node (lo hacen adn-check y guion-check).
+if (typeof document !== 'undefined' && document.fonts) {
+  for (const nombre of ['BagelFatOne-400', 'Quicksand-700']) {
+    if ([...document.fonts].some(f => f.family === nombre)) continue
+    try {
+      const ff = new FontFace(nombre, `url(/fonts/${nombre}.ttf)`)
+      await ff.load()
+      document.fonts.add(ff)
+    } catch (e) { console.error('aire jugueton, fuente ' + nombre + ': ' + e.message) }
+  }
+}
+
 export default {
   id: 'jugueton',
   bpm: 120,
@@ -55,6 +80,6 @@ export default {
   // EL MOBILIARIO DEL CUADRO: celdas que se encienden en el beat; sin corchetes, que enfrian.
   // Ver el comentario largo de MOB en kit.js — antes esto estaba horneado en las escenas y
   // por eso dos piezas de rubros opuestos seguian teniendo el mismo mueble.
-  mobiliario: { fondo: 'bloques', esquinas: false, hud: false },
+  mobiliario: { fondo: 'bloques', marco: 'nada', hud: false },   // el color y la forma ya gritan; un marco encima es ruido
 
 }

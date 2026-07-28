@@ -103,13 +103,134 @@ export let AIRE = null
 //             'rayas'   diagonales duras en movimiento: deporte, urgencia
 //             'bloques' celdas grandes que se encienden en el beat: jugueton, ecommerce
 //             'nada'    solo el degrade: lujo, arquitectura, todo lo que necesita AIRE
-//   esquinas  los corchetes de encuadre. Dicen 'camara', 'tecnico', 'capturado'.
+//   marco     QUE forma tiene el borde del cuadro. Ver MARCOS, abajo.
+//   margen    [fx, fy] la fraccion del semieje donde compone el contenido. El rectangulo invisible.
 //   hud       los rotulos chicos de formato y dominio. Dicen 'ficha tecnica'.
 //
 // El orden de PATRONES importa: es el indice que viaja al shader como uPatron.
 export const PATRONES = ['fuga', 'puntos', 'ondas', 'rayas', 'bloques', 'nada']
-const MOBILIARIO_BASE = { fondo: 'fuga', esquinas: true, hud: true }
+
+// ---------------------------------------------------------------- el marco del cuadro
+// `esquinas` ERA UN BOOLEANO, y esa es la razon de que todas las piezas se vieran iguales por el
+// borde: cuando estaba prendido dibujaba SIEMPRE el mismo corchete de camara. No habia un tercer
+// marco posible en todo el motor — o los brackets de ANTHEM, o nada.
+//
+// Las cinco familias no son cinco parametros del mismo dibujo: cada una compone el borde con un
+// recurso distinto, y por eso se distinguen en un scroll.
+//
+//   'escuadras'    cuatro esquinas en L. PUNTOS en las cuatro esquinas. Dice camara, encuadre,
+//                  capturado. Es lo que ANTHEM tiene hoy, y la linea de base: no se toca.
+//   'reglas'       dos filetes horizontales, arriba y abajo, sin cerrar los lados. HORIZONTAL, y
+//                  sobre todo ABIERTO: es la caja de una pagina impresa, no un recuadro.
+//   'passepartout' cuatro bandas solidas que tapan el borde. MASA, no linea: enmarca por el vacio,
+//                  como el pasepartu de un cuadro colgado. El unico que quita area util.
+//   'ticks'        marcas cortas repartidas por el perimetro. RITMO: es la acotacion de un plano.
+//   'rotulado'     una sola regla vertical con remate, de un lado. ASIMETRICO: el margen de un
+//                  cuaderno editorial. Es el unico que rompe la simetria del cuadro.
+//
+// Ninguna dibuja un rectangulo continuo de acento a proposito: con el umbral de bloom de nocturno
+// (0.58) una linea cerrada de acento FLORECE en un marco brillante, que es exactamente la queja.
+// Por eso solo 'escuadras' —que son segmentos cortos— usa el acento; el resto nace en nivel().
+export const MARCOS = ['nada', 'escuadras', 'reglas', 'passepartout', 'ticks', 'rotulado']
+
+// El margen tambien es del aire. Era la razon MAS PROFUNDA de que todo se pareciera: el rectangulo
+// invisible al que se alinea el contenido estaba escrito a mano en diez escenas, y las diez habian
+// convergido a ojo al mismo lugar (rango medido: 0.30 unidades = 58 px en un cuadro de 1080). El
+// default [0.87, 0.85] no es un numero nuevo: es EXACTAMENTE lo que apertura componia con literales
+// —mundoW/2*0.87 = 2.446875 y mundoH/2*0.85 = 4.25—, asi que la linea de base no se mueve un pixel.
+const MOBILIARIO_BASE = { fondo: 'fuga', marco: 'escuadras', hud: true, margen: [0.87, 0.85] }
 export let MOB = MOBILIARIO_BASE
+
+// marco(mundoW, mundoH, o) -> { g, piezas, X, Y } | null
+//
+// Devuelve null para 'nada', asi que la escena escribe `const m = marco(...)` y `if (m) g.add(m.g)`.
+// `piezas` viene en orden de recorrido del perimetro para que la escena escalone la entrada SIN saber
+// que forma tiene el marco: es lo que permite que las cinco familias entren con el gesto de su aire.
+//
+// Cada pieza trae en userData su posicion de reposo (`base`) y hacia donde queda AFUERA (`fuera`,
+// unitario). Con eso una escena escribe "las piezas del marco salen y vuelven en el beat" una sola
+// vez y funciona igual para cuatro esquinas, dos filetes o veintiocho ticks. cierre.js hacia eso a
+// mano con los literales 2.52/4.52 repetidos dentro del tween.
+//
+// No toca ctx.rnd: un marco es una decision del aire, no un sorteo. El determinismo sale gratis.
+export function marco(mundoW, mundoH, o = {}) {
+  const tipo = o.tipo || MOB.marco || 'escuadras'
+  if (tipo === 'nada' || !MARCOS.includes(tipo)) return null
+  const m = o.margen || MOB.margen || [0.87, 0.85]
+  const X = mundoW / 2 * m[0], Y = mundoH / 2 * m[1]
+  const z = o.z === undefined ? -0.3 : o.z
+  const peso = o.peso || 1                          // grosor y largo relativos: cierre compone mas pesado
+  const g = new THREE.Group()
+  const piezas = []
+
+  // Plano plano, sin sombreado ni tono: el borde no participa de la iluminacion de la escena. Sin
+  // profundidad —ni escritura ni test— y con renderOrder fijo, que es como lo componian apertura y
+  // cierre: el marco no se ordena contra la escena, se dibuja siempre en su capa.
+  const placa = (w, h, color, k = 1) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({
+      color: hex(color).multiplyScalar(k), toneMapped: false, transparent: true,
+      depthWrite: false, depthTest: false,
+    }))
+    m.renderOrder = o.orden === undefined ? 2 : o.orden
+    return m
+  }
+  // registra una pieza con su reposo y su direccion de afuera
+  const pieza = (obj, x, y, fx, fy) => {
+    obj.position.set(x, y, z)
+    obj.userData.base = { x, y }
+    obj.userData.fuera = { x: fx, y: fy }
+    g.add(obj); piezas.push(obj)
+    return obj
+  }
+
+  if (tipo === 'escuadras') {
+    // Geometria IDENTICA a la que apertura.js componia con literales: con margen [0.87,0.85] el brazo
+    // horizontal cae en x = sx*(X - 0.15) y el vertical en y = sy*(Y - 0.15), que es lo de siempre.
+    const col = o.color || LOOK.acento
+    const br = o.brillo === undefined ? 1.6 : o.brillo
+    const L = 0.30 * peso, GR = 0.024 * peso
+    for (const [sx, sy] of [[-1, 1], [1, 1], [-1, -1], [1, -1]]) {
+      const e = new THREE.Group()
+      const h = placa(L, GR, col, br); h.position.x = -sx * L / 2
+      const v = placa(GR, L, col, br); v.position.y = -sy * L / 2
+      e.add(h, v)
+      pieza(e, sx * X, sy * Y, sx, sy)
+    }
+  } else if (tipo === 'reglas') {
+    // Abierto a los lados A PROPOSITO. Un rectangulo cerrado es el recuadro del que hay que huir.
+    const col = o.color || nivel(0.38)
+    for (const sy of [1, -1]) pieza(placa(X * 2, 0.014 * peso, col), 0, sy * Y, 0, sy)
+  } else if (tipo === 'passepartout') {
+    // Enmarca TAPANDO, no dibujando. Las bandas van del borde real del mundo hasta el margen, asi que
+    // cubren cualquier cosa que sangre — por eso una escena que sangra a proposito no pide esta.
+    const col = o.color || nivel(0.07)
+    const bx = mundoW / 2 - X, by = mundoH / 2 - Y
+    for (const sy of [1, -1]) pieza(placa(mundoW, by, col), 0, sy * (mundoH / 2 - by / 2), 0, sy)
+    for (const sx of [-1, 1]) pieza(placa(bx, mundoH, col), sx * (mundoW / 2 - bx / 2), 0, sx, 0)
+  } else if (tipo === 'ticks') {
+    // La acotacion de un plano. El recorrido va en sentido horario desde arriba-izquierda para que un
+    // stagger sobre `piezas` se lea como que el cuadro se esta midiendo solo.
+    const col = o.color || nivel(0.42)
+    const NH = 5, NV = 9, LT = 0.11 * peso, GR = 0.014 * peso
+    const fila = (n, f) => { for (let i = 0; i < n; i++) f(n === 1 ? 0.5 : i / (n - 1)) }
+    fila(NH, t => pieza(placa(GR, LT, col), -X + t * X * 2, Y - LT / 2, 0, 1))
+    fila(NV, t => pieza(placa(LT, GR, col), X - LT / 2, Y - t * Y * 2, 1, 0))
+    fila(NH, t => pieza(placa(GR, LT, col), X - t * X * 2, -Y + LT / 2, 0, -1))
+    fila(NV, t => pieza(placa(LT, GR, col), -X + LT / 2, -Y + t * Y * 2, -1, 0))
+  } else if (tipo === 'rotulado') {
+    // Una sola vertical, de un lado, con remate arriba y abajo. Rompe la simetria del cuadro: es el
+    // margen de un cuaderno, no un marco. `lado` -1 izquierda (default) o 1 derecha.
+    const col = o.color || nivel(0.40)
+    const lado = o.lado === 1 ? 1 : -1
+    const alto = Y * 1.72
+    pieza(placa(0.012 * peso, alto, col), lado * X, 0, lado, 0)
+    for (const sy of [1, -1]) pieza(placa(0.10, 0.012 * peso, col), lado * (X - 0.049), sy * (alto / 2), lado, 0)
+  }
+
+  // `tipo` viaja de vuelta porque hay gestos que solo tienen sentido en algunas familias: un parpadeo
+  // sobre las escuadras o los ticks se lee como instrumento, y sobre un pasepartu es un fogonazo.
+  return { g, piezas, X, Y, tipo }
+}
 // ¿El mundo es claro? Lo decide el ADN de la página, no el aire. Las escenas lo consultan para elegir
 // entre sumar luz y restarla: la misma escena que sobre negro dibuja un halo, sobre blanco tiene que
 // dibujar una sombra, o desaparece.

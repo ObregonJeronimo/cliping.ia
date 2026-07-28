@@ -5,6 +5,31 @@
 // —una deriva de cámara imperceptible, un brillo que recorre un canto— pero NUNCA se apura. Por eso
 // baja el BPM (76 en vez de 124: la pieza dura casi el doble y respira) y saca el overshoot: nada
 // rebota, todo se posa. `frena` sube a potencia 4 y `llega` deja de pasarse.
+// LAS FUENTES DE ESTE AIRE HAY QUE REGISTRARLAS, Y NO SE HACIA.
+// demo.html declara por @font-face solo las CINCO de ANTHEM (Anton, ArchivoBlack, BigShoulders,
+// Bricolage, DMSans). Cualquier otra familia hay que meterla en `document.fonts` a mano o el canvas
+// mide y dibuja con la del sistema, la textura queda cacheada asi para siempre, y la pieza sale
+// entera en una grotesca cualquiera. NO TIRA NINGUN ERROR: se ve recien en el video terminado.
+//
+// El camino de main.js no alcanza: saltea la carga cuando `document.fonts.check()` dice que si, y esa
+// funcion contesta true para una familia que no existe —da por buena la que el sistema va a usar de
+// reemplazo—. Por eso el test de aca abajo recorre el SET y compara familias, que es lo unico que
+// distingue "esta cargada" de "hay algo con que dibujarla".
+//
+// Va en el modulo del aire, con await de nivel superior, porque main.js lo importa con `await
+// import(...)` ANTES de rasterizar el primer glifo. El guard de `document` es para poder importar el
+// aire desde Node (lo hacen adn-check y guion-check).
+if (typeof document !== 'undefined' && document.fonts) {
+  for (const nombre of ['PlayfairDisplay-700', 'Spectral-400']) {
+    if ([...document.fonts].some(f => f.family === nombre)) continue
+    try {
+      const ff = new FontFace(nombre, `url(/fonts/${nombre}.ttf)`)
+      await ff.load()
+      document.fonts.add(ff)
+    } catch (e) { console.error('aire lujo, fuente ' + nombre + ': ' + e.message) }
+  }
+}
+
 export default {
   id: 'lujo',
   bpm: 76,
@@ -23,6 +48,6 @@ export default {
   // EL MOBILIARIO DEL CUADRO: solo el degrade. Lo caro se vende con AIRE, no con lineas.
   // Ver el comentario largo de MOB en kit.js — antes esto estaba horneado en las escenas y
   // por eso dos piezas de rubros opuestos seguian teniendo el mismo mueble.
-  mobiliario: { fondo: 'nada', esquinas: false, hud: false },
+  mobiliario: { fondo: 'nada', marco: 'passepartout', hud: false },   // el pasepartu de un cuadro colgado: enmarca por el vacio
 
 }

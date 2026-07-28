@@ -32,7 +32,7 @@
 // El overshoot vive en la ROTACIÓN y en la escala de cada letra, no en z: con la palabra ocupando el
 // 94% del ancho, un back.out sobre la profundidad la empujaba fuera del cuadro en el rebote.
 
-import { E, LOOK, MOB, b, BPM, planoTexto, texto, materialMascara, filete, hex, nivel } from '../kit.js'
+import { E, LOOK, MOB, b, BPM, planoTexto, texto, materialMascara, filete, hex, nivel, marco } from '../kit.js'
 // El COPY sale de los DATOS. Lo que queda escrito aca es CHROME de la pieza (rotulos de
 // capitulo, indicadores tecnicos): eso es direccion de arte y no cambia con el contenido.
 // Lo que la marca DICE — su nombre, sus cifras, su claim, su CTA — sale de los datos o NO SALE.
@@ -248,22 +248,28 @@ export function build(ctx) {
   // perfectos para software y para deporte, y sobre una joyeria o una panaderia dicen exactamente
   // lo que no hay que decir. Un aire que no los pide compone el cuadro sin ellos y el resto de la
   // escena no se entera. Ver MOB en kit.js.
-  const gMarco = new THREE.Group()
-  if (MOB.esquinas) g.add(gMarco)
-  const esquinas = []
-  ;[[-1, 1], [1, 1], [-1, -1], [1, -1]].forEach(([sx, sy]) => {
-    const e = new THREE.Group()
-    const h = raya(0.30, 0.024, LOOK.acento, 1.6)
-    h.position.set(sx * (MX - 0.15), sy * 4.25, -0.3)
-    const v = raya(0.024, 0.30, LOOK.acento, 1.6)
-    v.position.set(sx * MX, sy * (4.25 - 0.15), -0.3)
-    e.add(h, v)
-    e.scale.set(0.001, 0.001, 1)
-    gMarco.add(e)
-    esquinas.push(e)
-  })
+  // La FORMA la elige el aire, no la escena: un pasepartu de galeria para lujo, ticks de acotacion
+  // para arquitectura, dos filetes para una pieza impresa. Antes esto era un booleano y por eso todas
+  // las piezas se veian iguales por el borde. Ver MARCOS en kit.js.
+  const mrc = marco(mundoW, mundoH)
+  const esquinas = mrc ? mrc.piezas : []
+  if (mrc) g.add(mrc.g)
+  // SALEN DISPARADAS DESDE EL CENTRO, y eso hay que escribirlo. Antes el grupo del marco vivia en el
+  // origen con los brazos en posiciones ABSOLUTAS, asi que escalarlo de 0 a 1 los mandaba volando del
+  // centro a su esquina: el vuelo era un efecto lateral de la estructura. Ahora cada pieza vive EN su
+  // esquina —lo necesita el metronomo, que la empuja hacia afuera— y el vuelo hay que pedirlo.
+  //
+  // Posicion y escala con la MISMA curva dan pos = base x escala en todo momento, que es exactamente
+  // lo que hacia la estructura vieja. Y ahora sirve para las cinco familias: los ticks entran desde el
+  // centro igual que las escuadras, sin que la escena sepa cual le toco.
+  const K0 = 0.001
   esquinas.forEach((e, i) => {
-    de(e.scale, { x: 0.001, y: 0.001 }, { x: 1, y: 1, duration: b(0.42), ease: E.llega(2.0) }, b(0.30) + i * 0.05)
+    const bs = e.userData.base
+    e.scale.set(K0, K0, 1)
+    e.position.set(bs.x * K0, bs.y * K0, e.position.z)
+    const t0 = b(0.30) + i * 0.05
+    de(e.scale, { x: K0, y: K0 }, { x: 1, y: 1, duration: b(0.42), ease: E.llega(2.0) }, t0)
+    de(e.position, { x: bs.x * K0, y: bs.y * K0 }, { x: bs.x, y: bs.y, duration: b(0.42), ease: E.llega(2.0) }, t0)
   })
 
   // ================================================================ B · el rótulo y el contador
@@ -343,14 +349,23 @@ export function build(ctx) {
   de(bloom, { strength: bloomBase * 1.45 }, { strength: bloomBase, duration: b(0.6), ease: E.frena(3) }, T)
 
   // Las escuadras entran de golpe un 10% afuera y vuelven: el marco "acusa" el corte.
-  de(gMarco.scale, { x: 1.10, y: 1.06 }, { x: 1, y: 1, duration: b(0.55), ease: E.llega(2.2) }, T)
+  if (mrc) de(mrc.g.scale, { x: 1.10, y: 1.06 }, { x: 1, y: 1, duration: b(0.55), ease: E.llega(2.2) }, T)
 
   // Rieles laterales y sus marcas: aparecen con la grilla y le arman al cuadro una caja que sostiene
   // la palabra enorme que está por entrar.
+  //
+  // SON PARTE DEL MARCO Y NO PREGUNTABAN. Dos verticales de 7.6 unidades —1459 px de 1920— en color de
+  // acento, pegadas a ±MX, en los once aires. Ese es el "recuadro en los cuatro costados" que se ve en
+  // todas las piezas: no lo dibujaba el marco del aire, lo dibujaba esta escena por su cuenta. Y era
+  // peor que redundante: un aire que eligio 'reglas' —dos filetes ABIERTOS a los lados, a proposito—
+  // recibia los lados igual, o sea que la escena contradecia la decision del aire.
+  //
+  // Los rieles son el vocabulario de 'escuadras': el HUD de camara de ANTHEM, donde la caja cerrada es
+  // justamente el punto. En las otras familias sobran, y sacarlos es lo que deja ver el marco elegido.
+  const hudLateral = !!(mrc && mrc.tipo === 'escuadras')
   const gRiel = new THREE.Group()
-  g.add(gRiel)
-  apagadoHasta(gRiel, T)
-  ;[-1, 1].forEach((sx, i) => {
+  if (hudLateral) { g.add(gRiel); apagadoHasta(gRiel, T) }
+  if (hudLateral) [-1, 1].forEach((sx, i) => {
     const r = tenue(0.012, 7.6, 0.55, LOOK.acento)
     r.position.set(sx * MX, 0, -0.4)
     r.scale.y = 0.001
@@ -642,7 +657,7 @@ export function build(ctx) {
     de(fondo.uPulso, { value: 0.32 }, { value: 0, duration: b(0.62), ease: E.frena(3) }, b(k) + b(0.14))
   }
   // Y el marco late con él, un 0.8%: casi no se ve, pero si se apaga el cuadro se muere.
-  de(gMarco.scale, { x: 1, y: 1 }, { x: 1.008, y: 1.008, duration: b(0.5), ease: E.vaiven(), yoyo: true, repeat: 3 }, b(3.0))
+  if (mrc) de(mrc.g.scale, { x: 1, y: 1 }, { x: 1.008, y: 1.008, duration: b(0.5), ease: E.vaiven(), yoyo: true, repeat: 3 }, b(3.0))
 
   // ---- los corchetes PARPADEAN sobre el beat
   // Ese latido del 0.8% se VE pero no se CUENTA: el ojo registra que el marco respira, no que pasó
@@ -659,16 +674,25 @@ export function build(ctx) {
   // Se apaga la MALLA y no el grupo de la esquina a propósito: el grupo se apaga igual de bien en
   // pantalla, pero la firma con la que se mide "nada descansa" mira malla por malla y un parpadeo
   // hecho sobre el padre no figura en ninguna medición.
-  esquinas.forEach(e => e.children.forEach(m => tl.set(m, { visible: true }, 0)))
-  ;[[4.0, [0, 1, 2, 3]], [4.5, [0, 3]], [5.0, [0, 1, 2, 3]]].forEach(([beat, cuales]) => {
-    cuales.forEach((c, k) => {
-      const t0 = b(beat) + k * F
-      esquinas[c].children.forEach(m => {
-        tl.set(m, { visible: false }, t0)
-        tl.set(m, { visible: true }, t0 + 2 * F)
+  //
+  // El parpadeo es de INSTRUMENTO: sobre escuadras o ticks se lee como un aparato que mide, y sobre
+  // un pasepartu o dos filetes es un fogonazo. Cada familia acepta los gestos que le corresponden.
+  const parpadean = mrc && (mrc.tipo === 'escuadras' || mrc.tipo === 'ticks')
+  // Una pieza puede ser un grupo de dos brazos (escuadras) o una malla suelta (ticks): se apaga la
+  // MALLA en los dos casos, nunca el padre.
+  const mallasDe = e => (e.children.length ? e.children : [e])
+  if (parpadean) {
+    esquinas.forEach(e => mallasDe(e).forEach(m => tl.set(m, { visible: true }, 0)))
+    ;[[4.0, [0, 1, 2, 3]], [4.5, [0, 3]], [5.0, [0, 1, 2, 3]]].forEach(([beat, cuales]) => {
+      cuales.forEach((c, k) => {
+        const t0 = b(beat) + k * F
+        mallasDe(esquinas[c % esquinas.length]).forEach(m => {
+          tl.set(m, { visible: false }, t0)
+          tl.set(m, { visible: true }, t0 + 2 * F)
+        })
       })
     })
-  })
+  }
 
   // ================================================================ devolver la cámara
   // Si la escena no deja la cámara donde la encontró, la que sigue arranca desde otro punto de vista y

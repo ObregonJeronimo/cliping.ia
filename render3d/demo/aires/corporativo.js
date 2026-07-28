@@ -73,6 +73,6 @@ export default {
   // EL MOBILIARIO DEL CUADRO: mismo instrumental que tecnico, mas sobrio en el resto.
   // Ver el comentario largo de MOB en kit.js — antes esto estaba horneado en las escenas y
   // por eso dos piezas de rubros opuestos seguian teniendo el mismo mueble.
-  mobiliario: { fondo: 'fuga', esquinas: true, hud: true },
+  mobiliario: { fondo: 'fuga', marco: 'reglas', hud: true },   // la caja de un informe impreso, abierta a los lados
 
 }

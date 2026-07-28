@@ -19,7 +19,7 @@
 // beat. No cambia la composición: el anillo cierra una sola vez, la marca sigue clavada adentro y el
 // CTA sigue siendo lo único que pide algo. Lo que cambia es que ninguno de los tres espera al final.
 
-import { E, LOOK, MOB, b, planoTexto, materialMascara, filete, hex, nivel } from '../kit.js'
+import { E, LOOK, b, planoTexto, materialMascara, filete, hex, nivel, marco } from '../kit.js'
 // El COPY sale de los DATOS. Lo que queda escrito aca es CHROME de la pieza (rotulos de
 // capitulo, indicadores tecnicos): eso es direccion de arte y no cambia con el contenido.
 // Lo que la marca DICE — su nombre, sus cifras, su claim, su CTA — sale de los datos o NO SALE.
@@ -28,7 +28,7 @@ import { D, sello } from '../datos.js'
 export const meta = { id: 'cierre', beats: 6 }
 
 export function build(ctx) {
-  const { THREE, gsap, camera, distBase, rnd, fondo, bloom } = ctx
+  const { THREE, gsap, camera, distBase, rnd, fondo, bloom, mundoW, mundoH } = ctx
 
   const g = new THREE.Group()
   const tl = gsap.timeline({ paused: true })
@@ -190,29 +190,22 @@ export function build(ctx) {
   gAnillo.add(gTicks)
 
   // ---- brackets de esquina: el cuadro tiene bordes y se nota
-  const gBrackets = new THREE.Group()
-  const brackets = []
-  for (const sx of [-1, 1]) for (const sy of [-1, 1]) {
-    const bx = 2.52 * sx, by = 4.52 * sy
-    const par = new THREE.Group()
-    const h = atenuar(filete(0.46, 0.030, LOOK.acento), LOOK.acento, 1.25)
-    h.position.set(-0.23 * sx, 0, 0)
-    const v = atenuar(filete(0.34, 0.030, LOOK.acento), LOOK.acento, 1.25)
-    v.rotation.z = Math.PI / 2; v.position.set(0, -0.17 * sy, 0)
-    par.add(h, v)
-    par.position.set(bx, by, -0.4)
-    par.scale.setScalar(0)
-    // Los golpes del metrónomo re-asientan las esquinas, y para eso hace falta saber hacia dónde es
-    // "afuera". Va por POSICIÓN y no por escala a propósito: la escala de los brackets ya está
-    // ocupada de punta a punta por la entrada y la salida, y dos tweens sobre la misma propiedad se
-    // pisan sin avisar.
-    par.userData.sx = sx; par.userData.sy = sy
-    par.userData.bx = bx; par.userData.by = by
-    brackets.push(par); gBrackets.add(par)
+  // LA FORMA DEL BORDE LA ELIGE EL AIRE. Esta escena componia su propio rectangulo con literales
+  // (2.52, 4.52) y apertura componia OTRO (2.447, 4.25): en la misma pieza el marco se corria 14 px
+  // en x y 52 px en y entre el primer plano y el ultimo. Ahora los dos piden el mismo marco al kit y
+  // el rectangulo es uno solo. `peso` conserva el trazo mas grueso del cierre, que es deliberado.
+  //
+  // Los golpes del metronomo re-asientan las piezas, y para eso hace falta saber hacia donde es
+  // "afuera": lo trae cada pieza en userData.fuera, asi que el gesto funciona igual con cuatro
+  // esquinas que con dos filetes o veintiocho ticks. Va por POSICION y no por escala a proposito: la
+  // escala ya esta ocupada de punta a punta por la entrada y la salida, y dos tweens sobre la misma
+  // propiedad se pisan sin avisar.
+  const mrc = marco(mundoW, mundoH, { z: -0.4, peso: 1.35, brillo: 1.25 })
+  const brackets = mrc ? mrc.piezas : []
+  if (mrc) {
+    brackets.forEach(p => p.scale.setScalar(0))
+    gComp.add(mrc.g)
   }
-  // Los corchetes los pide el AIRE. Dicen 'camara' y 'tecnico', y sobre una joyeria o una panaderia
-  // dicen exactamente lo que no hay que decir. Ver MOB en kit.js.
-  if (MOB.esquinas) gComp.add(gBrackets)
 
   // ---- polvo en profundidad: paralaje barato, y algo que siempre se está moviendo
   const gPolvo = new THREE.Group()
@@ -457,8 +450,9 @@ export function build(ctx) {
   brackets.forEach((par, i) => {
     for (const bt of [1.5, 3]) {
       const t0 = b(bt) + i * 0.022
-      tl.to(par.position, { x: (2.52 + 0.26) * par.userData.sx, y: (4.52 + 0.20) * par.userData.sy, duration: b(0.10), ease: E.frena(3) }, t0)
-      tl.to(par.position, { x: par.userData.bx, y: par.userData.by, duration: b(0.46), ease: 'elastic.out(1, 0.5)' }, t0 + b(0.10))
+      const u = par.userData
+      tl.to(par.position, { x: u.base.x + 0.26 * u.fuera.x, y: u.base.y + 0.20 * u.fuera.y, duration: b(0.10), ease: E.frena(3) }, t0)
+      tl.to(par.position, { x: u.base.x, y: u.base.y, duration: b(0.46), ease: 'elastic.out(1, 0.5)' }, t0 + b(0.10))
     }
   })
 

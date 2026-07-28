@@ -73,6 +73,6 @@ export default {
   // EL MOBILIARIO DEL CUADRO: reticula de papel: superficie, no profundidad. Una revista no tiene HUD.
   // Ver el comentario largo de MOB en kit.js — antes esto estaba horneado en las escenas y
   // por eso dos piezas de rubros opuestos seguian teniendo el mismo mueble.
-  mobiliario: { fondo: 'puntos', esquinas: false, hud: false },
+  mobiliario: { fondo: 'puntos', marco: 'rotulado', hud: false },   // el margen asimetrico de un cuaderno: rompe la simetria del cuadro
 
 }

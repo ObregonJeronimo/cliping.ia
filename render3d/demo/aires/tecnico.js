@@ -14,6 +14,6 @@ export default {
   // EL MOBILIARIO DEL CUADRO: el HUD de ANTHEM entero: es la referencia y no se toca.
   // Ver el comentario largo de MOB en kit.js — antes esto estaba horneado en las escenas y
   // por eso dos piezas de rubros opuestos seguian teniendo el mismo mueble.
-  mobiliario: { fondo: 'fuga', esquinas: true, hud: true },
+  mobiliario: { fondo: 'fuga', marco: 'escuadras', hud: true },   // la linea de base de ANTHEM: no se toca
 
 }

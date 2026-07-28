@@ -80,6 +80,6 @@ export default {
   // EL MOBILIARIO DEL CUADRO: lo mismo, y por eso el patron existe.
   // Ver el comentario largo de MOB en kit.js — antes esto estaba horneado en las escenas y
   // por eso dos piezas de rubros opuestos seguian teniendo el mismo mueble.
-  mobiliario: { fondo: 'ondas', esquinas: false, hud: false },
+  mobiliario: { fondo: 'ondas', marco: 'nada', hud: false },   // el aire ES el mensaje; cualquier borde lo contradice
 
 }

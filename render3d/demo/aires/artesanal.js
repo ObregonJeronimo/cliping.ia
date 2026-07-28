@@ -82,6 +82,6 @@ export default {
   // EL MOBILIARIO DEL CUADRO: el mismo papel, mas calido por la paleta.
   // Ver el comentario largo de MOB en kit.js — antes esto estaba horneado en las escenas y
   // por eso dos piezas de rubros opuestos seguian teniendo el mismo mueble.
-  mobiliario: { fondo: 'puntos', esquinas: false, hud: false },
+  mobiliario: { fondo: 'puntos', marco: 'reglas', hud: false },   // papel: el filete de arriba y abajo de una pagina compuesta a mano
 
 }

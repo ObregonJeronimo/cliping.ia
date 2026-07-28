@@ -21,8 +21,18 @@ import { dirname, join } from 'node:path'
 
 // Los aires son módulos de navegador: algunos registran fuentes con FontFace al importarse. El stub es
 // lo mínimo para que `import` no explote en Node — no se ejecuta nada de render acá.
+// El stub ANOTA que familias construye cada aire. No alcanza con leer el archivo: los aires registran
+// de cuatro formas distintas —`for (const nombre of [...])`, `for (const n of [...])`, y gastronomico
+// desde `Object.values(CARAS)`, o sea una variable— y una version de esta compuerta que buscaba el
+// nombre en el texto daba verde SIEMPRE, porque el propio `fuentes: { display: 'X' }` ya contiene la
+// cadena. Probado A/B: con la version de texto, vaciarle la lista de registro a "lujo" no fallaba.
+// Ejecutar el modulo y anotar lo que construye mide lo que pasa de verdad, sin importar como se escriba.
+let _capturando = []
 globalThis.document = { fonts: { *[Symbol.iterator]() {}, add() {}, check: () => true, load: async () => {} } }
-globalThis.FontFace = class { async load() { return this } }
+globalThis.FontFace = class {
+  constructor(familia) { this.family = familia; _capturando.push(familia) }
+  async load() { return this }
+}
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const { personalizar, contraste, aHsl, SAT_GRIS } = await import('../render3d/demo/adn.js')
@@ -30,8 +40,12 @@ const { personalizar, contraste, aHsl, SAT_GRIS } = await import('../render3d/de
 const dirAires = join(HERE, '..', 'render3d', 'demo', 'aires')
 const dirFix = join(HERE, 'fixtures', 'director', 'elementos')
 const AIRES = {}
+const REGISTRA = new Map()               // aire -> familias que su modulo construye de verdad
 for (const f of readdirSync(dirAires).filter(f => f.endsWith('.js'))) {
-  AIRES[f.replace('.js', '')] = (await import(`../render3d/demo/aires/${f}`)).default
+  const nom = f.replace('.js', '')
+  _capturando = []                       // el modulo corre su registro al importarse: lo que caiga aca es suyo
+  AIRES[nom] = (await import(`../render3d/demo/aires/${f}`)).default
+  REGISTRA.set(nom, new Set(_capturando))
 }
 const FIX = readdirSync(dirFix).filter(f => f.endsWith('.json'))
   .map(f => ({ id: f.replace('.json', ''), pm: JSON.parse(readFileSync(join(dirFix, f), 'utf8')) }))
@@ -104,16 +118,20 @@ const { aireDe } = await import('./anthem-datos.mjs')
 const RUBROS = ['saas', 'app', 'ecommerce', 'servicio-local', 'educacion', 'media', 'portfolio',
   'evento', 'otro']
 const producidos = new Set()
+const porRubro = new Map()               // rubro -> Set de aires que ese rubro puede producir
 let barridos = 0
 for (const tipoNegocio of RUBROS) {
+  porRubro.set(tipoNegocio, new Set())
   for (const energia of [0.1, 0.25, 0.35, 0.5, 0.7, 0.85, 0.95]) {
     for (const calidez of [0.1, 0.3, 0.5, 0.7, 0.9]) {
       for (const register of ['casual', 'formal']) {
         barridos++
-        producidos.add(aireDe({
+        const elegido = aireDe({
           semantica: { tipoNegocio, audiencia: { register } },
           dna: { mood: { energia, calidez } },
-        }))
+        })
+        producidos.add(elegido)
+        porRubro.get(tipoNegocio).add(elegido)
       }
     }
   }
@@ -121,6 +139,70 @@ for (const tipoNegocio of RUBROS) {
 const muertos = Object.keys(AIRES).filter(a => !producidos.has(a))
 for (const m of muertos) {
   F('E-ADN-AIRE-MUERTO', `el aire "${m}" existe en render3d/demo/aires/ y NINGUNA pagina posible lo elige — ${barridos} combinaciones barridas`)
+}
+
+// ---------------------------------------------------------------- E-MOBILIARIO-DECLARADO / E-MARCO-VARIEDAD
+// El mueble del cuadro —fondo, marco, hud— era la mitad de la identidad de una pieza y se HEREDABA en
+// silencio: "inmobiliario" no declaraba `mobiliario` y configurar() le pegaba el de ANTHEM entero, asi
+// que el aire de arquitectura salia con grilla en fuga, corchetes de camara y rotulos de ficha tecnica.
+// Nadie lo decidio y nada fallaba. Es exactamente la clase de defecto que este archivo existe para
+// cazar: invisible desde el codigo, visible solo poniendo dos videos al lado.
+//
+// MARCOS se IMPORTA del kit y no se copia. Una lista escrita a mano en un gate deja de coincidir con la
+// del motor sin avisar — le paso a guion-check, que medio un catalogo fantasma de 10 escenas cuando ya
+// habia 16 y por eso no reportaba guiones cortos.
+const { MARCOS } = await import('../render3d/demo/kit.js')
+for (const [nombre, a] of Object.entries(AIRES)) {
+  if (!a.mobiliario) { F('E-MOBILIARIO-DECLARADO', `el aire "${nombre}" no declara mobiliario: hereda el de ANTHEM sin que nadie lo haya decidido`); continue }
+  const mc = a.mobiliario.marco
+  if (!mc) F('E-MOBILIARIO-DECLARADO', `el aire "${nombre}" declara mobiliario pero no "marco"`)
+  else if (!MARCOS.includes(mc)) F('E-MOBILIARIO-DECLARADO', `el aire "${nombre}" pide el marco "${mc}", que no esta en MARCOS (${MARCOS.join(', ')})`)
+}
+
+// El marco era un BOOLEANO y por eso todas las piezas se veian iguales por el borde: prendido dibujaba
+// siempre el mismo corchete. Con la familia no alcanza que EXISTAN cinco formas — hay que exigir que se
+// repartan, y sobre todo que dos aires alcanzables desde el MISMO rubro no compongan el mismo mueble,
+// que es el caso que el espectador puede ver uno al lado del otro.
+const marcosVivos = new Set([...producidos].map(a => AIRES[a] && AIRES[a].mobiliario && AIRES[a].mobiliario.marco).filter(Boolean))
+if (marcosVivos.size < 4) {
+  F('E-MARCO-VARIEDAD', `los aires alcanzables reparten solo ${marcosVivos.size} marcos distintos (${[...marcosVivos].join(', ')}); hacen falta 4`)
+}
+for (const [rubro, aires] of porRubro) {
+  const vistos = new Map()
+  for (const nombre of aires) {
+    const mb = AIRES[nombre] && AIRES[nombre].mobiliario
+    if (!mb) continue
+    const firma = `${mb.fondo}|${mb.marco}|${!!mb.hud}`
+    if (vistos.has(firma)) F('E-MARCO-VARIEDAD', `rubro "${rubro}": los aires "${nombre}" y "${vistos.get(firma)}" componen el MISMO mueble (${firma})`)
+    else vistos.set(firma, nombre)
+  }
+}
+
+// ---------------------------------------------------------------- E-FUENTE-LLEGA
+// La tipografia es la MITAD de la identidad de una pieza y tres aires enteros la perdian en silencio.
+// demo.html declara por @font-face solo las cinco de ANTHEM; cualquier otra familia hay que meterla en
+// `document.fonts` desde el modulo del aire. "lujo", "nocturno" y "jugueton" no lo hacian y "deportivo"
+// lo hacia a medias, asi que sus piezas salian en la grotesca del sistema: los .ttf estaban bajados,
+// declarados en el aire, y no llegaban al cuadro. No fallaba nada. Es el mismo defecto que este archivo
+// caza para la paleta —lo medido no llega a la pantalla— entrando por la puerta de al lado.
+//
+// El camino de main.js:453 no cuenta como registro: saltea la carga si `document.fonts.check()` dice
+// que si, y esa funcion contesta true para una familia inexistente. Por eso la compuerta exige el
+// registro EXPLICITO en el modulo del aire, que es el unico que usa el test correcto.
+const cssDemo = readFileSync(join(HERE, '..', 'render3d', 'demo', 'demo.html'), 'utf8')
+const EN_CSS = new Set([...cssDemo.matchAll(/font-family:\s*"([^"]+)"/g)].map(m => m[1]))
+const dirFuentes = join(HERE, 'fonts')
+const TTF = new Set(readdirSync(dirFuentes).filter(f => f.endsWith('.ttf')).map(f => f.replace('.ttf', '')))
+for (const [nombre, a] of Object.entries(AIRES)) {
+  const registradas = REGISTRA.get(nombre) || new Set()
+  for (const [rol, fam] of Object.entries(a.fuentes || {})) {
+    if (EN_CSS.has(fam)) continue                                     // la declara el CSS de demo.html
+    if (!registradas.has(fam)) {
+      F('E-FUENTE-LLEGA', `el aire "${nombre}" pide ${rol} "${fam}" y nadie la registra: no esta en el @font-face de demo.html ni en el FontFace del propio aire, asi que la pieza sale en la fuente del sistema`)
+    } else if (!TTF.has(fam)) {
+      F('E-FUENTE-LLEGA', `el aire "${nombre}" registra ${rol} "${fam}" pero tools/fonts/${fam}.ttf no existe: el FontFace va a fallar y la pieza sale en la fuente del sistema`)
+    }
+  }
 }
 
 const n = FIX.length * Object.keys(AIRES).length
@@ -132,3 +214,4 @@ const claras = FIX.filter(x => x.pm.dna.palette.bgLum > 0.42).length
 console.log(`ADN OK — ${n} combinaciones (${FIX.length} páginas × ${Object.keys(AIRES).length} aires): `
   + `polaridad, tono de marca (±14°), legibilidad y variedad.  ${claras}/${FIX.length} páginas dan mundo CLARO.`)
 console.log(`  los ${Object.keys(AIRES).length} aires son alcanzables (${barridos} combinaciones de rubro × energía × calidez × registro).`)
+console.log(`  los 11 declaran su mobiliario y reparten ${marcosVivos.size} marcos distintos: ${[...marcosVivos].sort().join(', ')}.`)

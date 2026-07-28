@@ -5,6 +5,31 @@
 // golpe, que es la lectura física de "fuerza". El BPM sube a 140 — la pieza dura menos y cada beat
 // pega. Y las frenadas son de potencia baja para que el movimiento llegue rápido y corte seco en vez
 // de deslizarse hasta detenerse.
+// LAS FUENTES DE ESTE AIRE HAY QUE REGISTRARLAS, Y NO SE HACIA.
+// demo.html declara por @font-face solo las CINCO de ANTHEM (Anton, ArchivoBlack, BigShoulders,
+// Bricolage, DMSans). Cualquier otra familia hay que meterla en `document.fonts` a mano o el canvas
+// mide y dibuja con la del sistema, la textura queda cacheada asi para siempre, y la pieza sale
+// entera en una grotesca cualquiera. NO TIRA NINGUN ERROR: se ve recien en el video terminado.
+//
+// El camino de main.js no alcanza: saltea la carga cuando `document.fonts.check()` dice que si, y esa
+// funcion contesta true para una familia que no existe —da por buena la que el sistema va a usar de
+// reemplazo—. Por eso el test de aca abajo recorre el SET y compara familias, que es lo unico que
+// distingue "esta cargada" de "hay algo con que dibujarla".
+//
+// Va en el modulo del aire, con await de nivel superior, porque main.js lo importa con `await
+// import(...)` ANTES de rasterizar el primer glifo. El guard de `document` es para poder importar el
+// aire desde Node (lo hacen adn-check y guion-check).
+if (typeof document !== 'undefined' && document.fonts) {
+  for (const nombre of ['Barlow-600']) {
+    if ([...document.fonts].some(f => f.family === nombre)) continue
+    try {
+      const ff = new FontFace(nombre, `url(/fonts/${nombre}.ttf)`)
+      await ff.load()
+      document.fonts.add(ff)
+    } catch (e) { console.error('aire deportivo, fuente ' + nombre + ': ' + e.message) }
+  }
+}
+
 export default {
   id: 'deportivo',
   bpm: 140,
@@ -24,6 +49,6 @@ export default {
   // EL MOBILIARIO DEL CUADRO: lo mismo, que es de donde viene el patron.
   // Ver el comentario largo de MOB en kit.js — antes esto estaba horneado en las escenas y
   // por eso dos piezas de rubros opuestos seguian teniendo el mismo mueble.
-  mobiliario: { fondo: 'rayas', esquinas: true, hud: false },
+  mobiliario: { fondo: 'rayas', marco: 'ticks', hud: false },   // acotacion: marca de pista, de cronometro, de medicion
 
 }

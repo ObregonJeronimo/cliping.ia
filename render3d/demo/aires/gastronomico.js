@@ -42,7 +42,10 @@
 // ve mal, se ve con OTRA tipografia para siempre. El rango de peso 100-900 evita que pedir 900 sobre
 // una cara de 700 fabrique una negrita sintetica: en una serif de display eso engorda los remates y se
 // nota.
-const CARAS = { display: 'Fraunces-700', apoyo: 'FamiljenGrotesk-500' }
+// Fraunces-700 NO EXISTE en tools/fonts: el descargador baja 600 y 900. El FontFace fallaba, el aire
+// entero salia en la grotesca del sistema y no lo decia nadie. Va 600 —la mas cercana a la que se
+// habia pedido— y no 900, que es la que usa artesanal: dos aires con la misma cara es medio aire.
+const CARAS = { display: 'Fraunces-600', apoyo: 'FamiljenGrotesk-500' }
 
 if (typeof document !== 'undefined' && document.fonts && typeof FontFace === 'function') {
   await Promise.all(Object.values(CARAS).map(async nombre => {
@@ -86,6 +89,6 @@ export default {
   // EL MOBILIARIO DEL CUADRO: curvas: nada de esquinas duras alrededor de comida.
   // Ver el comentario largo de MOB en kit.js — antes esto estaba horneado en las escenas y
   // por eso dos piezas de rubros opuestos seguian teniendo el mismo mueble.
-  mobiliario: { fondo: 'ondas', esquinas: false, hud: false },
+  mobiliario: { fondo: 'ondas', marco: 'reglas', hud: false },   // la carta de un restaurante lleva filetes, no corchetes de camara
 
 }

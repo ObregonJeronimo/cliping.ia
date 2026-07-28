@@ -64,4 +64,13 @@ export default {
   },
   camara: { dolly: 1.55, orbita: 0.55 },
   pelicula: { bloom: 0.42, umbral: 0.90, radio: 0.5, grano: 0.034, vinieta: 0.62, aberr: 0.0007 },
+  // ESTE AIRE NO DECLARABA MOBILIARIO Y SALIA CON EL DE ANTHEM. El merge de configurar() le pegaba
+  // el MOBILIARIO_BASE entero —grilla en fuga, corchetes de camara y rotulos de ficha tecnica—, o sea
+  // que el aire de arquitectura, el que mas necesita AIRE, se veia como una herramienta de ingenieria.
+  // No lo decidio nadie: se heredo. Ahora lo declara, y adn-check exige que todos lo declaren.
+  //
+  // 'nada' de fondo porque el producto ES el espacio (ver LA IDEA, arriba) y una grilla en fuga lo
+  // llena. 'ticks' porque la acotacion es el vocabulario literal de un plano, y este aire ya tiene el
+  // azul de cianotipo para dibujarla.
+  mobiliario: { fondo: 'nada', marco: 'ticks', hud: false },
 }

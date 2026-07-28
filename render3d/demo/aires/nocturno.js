@@ -19,6 +19,31 @@
 // El magenta es oscuro en luminancia (0.272 lineal) y por eso NO dispara el bloom cuando se usa como
 // relleno — igual que el azul del aire tecnico. Es correcto: el magenta es la PINTURA de la pieza y el
 // cian es la LUZ. Si florecieran los dos no habria jerarquia y el cuadro seria una sopa rosa.
+// LAS FUENTES DE ESTE AIRE HAY QUE REGISTRARLAS, Y NO SE HACIA.
+// demo.html declara por @font-face solo las CINCO de ANTHEM (Anton, ArchivoBlack, BigShoulders,
+// Bricolage, DMSans). Cualquier otra familia hay que meterla en `document.fonts` a mano o el canvas
+// mide y dibuja con la del sistema, la textura queda cacheada asi para siempre, y la pieza sale
+// entera en una grotesca cualquiera. NO TIRA NINGUN ERROR: se ve recien en el video terminado.
+//
+// El camino de main.js no alcanza: saltea la carga cuando `document.fonts.check()` dice que si, y esa
+// funcion contesta true para una familia que no existe —da por buena la que el sistema va a usar de
+// reemplazo—. Por eso el test de aca abajo recorre el SET y compara familias, que es lo unico que
+// distingue "esta cargada" de "hay algo con que dibujarla".
+//
+// Va en el modulo del aire, con await de nivel superior, porque main.js lo importa con `await
+// import(...)` ANTES de rasterizar el primer glifo. El guard de `document` es para poder importar el
+// aire desde Node (lo hacen adn-check y guion-check).
+if (typeof document !== 'undefined' && document.fonts) {
+  for (const nombre of ['Unbounded-800', 'ChakraPetch-500']) {
+    if ([...document.fonts].some(f => f.family === nombre)) continue
+    try {
+      const ff = new FontFace(nombre, `url(/fonts/${nombre}.ttf)`)
+      await ff.load()
+      document.fonts.add(ff)
+    } catch (e) { console.error('aire nocturno, fuente ' + nombre + ': ' + e.message) }
+  }
+}
+
 export default {
   id: 'nocturno',
   bpm: 128,
@@ -47,6 +72,6 @@ export default {
   // EL MOBILIARIO DEL CUADRO: diagonales corriendo: la pieza no deja respirar, y sin ficha tecnica.
   // Ver el comentario largo de MOB en kit.js — antes esto estaba horneado en las escenas y
   // por eso dos piezas de rubros opuestos seguian teniendo el mismo mueble.
-  mobiliario: { fondo: 'rayas', esquinas: true, hud: false },
+  mobiliario: { fondo: 'rayas', marco: 'passepartout', hud: false },   // la masa oscura alrededor hace que el neon del centro se lea como neon
 
 }
