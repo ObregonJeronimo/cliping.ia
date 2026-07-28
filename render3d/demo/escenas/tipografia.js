@@ -7,10 +7,16 @@
 //
 // TRES DECISIONES QUE VALE LA PENA DEFENDER
 //
-// 1. EL SOLAPE ES DE TRES FRAMES, MEDIDO. La que sale arranca a irse 5 frames antes del corte y la que
-//    entra llega 2 frames antes: se pisan 3 frames exactos. Con 0 el cuadro parpadea en negro y se lee
-//    como un error de reproducción; con 10 se lee como un fundido cruzado, o sea como PowerPoint. Los
-//    tres frames son la diferencia entre un corte y un parpadeo.
+// 1. LA QUE SALE TERMINA DE IRSE ANTES DE QUE LLEGUE LA SIGUIENTE. Durante mucho tiempo esto decia
+//    que el solape era de tres frames "y esa era la diferencia entre un corte y un parpadeo". En el
+//    video no era eso lo que se veia: eran dos frases DISTINTAS ocupando el mismo renglon durante
+//    tres cuadros —"BIG NU|VIBERS.", "REMEMBER|WHEN"— dos veces en cinco segundos, y no se lee como
+//    un corte sino como un error de render. La salida arrancaba 5 frames antes del beat y duraba 6,
+//    o sea que terminaba DESPUES del corte, encima de la que entraba.
+//    Ahora la salida empieza 7 frames antes y la entrada cae EN el beat: queda casi un cuadro de aire
+//    entre las dos. El parpadeo en negro que el numero viejo temia no aparece, y la razon es que el
+//    cuadro nunca se queda vacio — abajo hay fondo, filete, barras y la columna de marcas, que son
+//    justamente lo que esta escena pone para que nunca haya un instante sin nada.
 //
 // 2. NADA DE PIVOTES-GRUPO. El anclaje de escala se hace moviendo la GEOMETRÍA (geo.translate), no
 //    metiendo la malla en un Group. Así "crece desde el borde izquierdo" queda escrito en la malla y
@@ -148,7 +154,21 @@ export function build(ctx) {
 
   // 1 · SPLIT. Dos mitades de la MISMA textura (partida por UV) que llegan desde los costados y se
   // encuentran. Que el corte pase por el medio de los glifos es justamente lo que se ve.
-  const m1 = medida(frase(0), ANTON, ANCHO + 0.05, 3.1)
+  // LAS FRASES CICLAN CUANDO SON MENOS QUE LOS SLOTS, y no es relleno: es el material de la pagina
+  // volviendo a pasar. Esta escena coreografia SIETE entradas y una pagina normal da cuatro —basecamp
+  // dio exactamente cuatro—, asi que los tres ultimos slots salian vacios y la escena se quedaba
+  // CUATRO BEATS sin dibujar una sola palabra. Medido mirando el render: cinco cuadros seguidos con
+  // el fondo, el HUD y nada mas. En un reel vertical eso es la señal de scroll.
+  //
+  // Sostener la ultima frase hasta el final NO se puede: el contrato prohibe que algo quede quieto
+  // mas de un beat, y una frase clavada cuatro beats es justo eso. Reciclar SI: es exactamente lo que
+  // hace `columna` con sus recortes —y lo documenta— porque volver a pasar por lo que la pagina dijo
+  // se lee como continuidad, no como material inventado. No aparece ni una palabra que la marca no
+  // haya escrito, que es la unica condicion que importa.
+  const NF = Math.max(1, nFrases())
+  const fr = (i) => frase(i % NF)
+
+  const m1 = medida(fr(0), ANTON, ANCHO + 0.05, 3.1)
   function mitad(lado) {
     const geo = new THREE.PlaneGeometry(m1.ancho / 2, m1.alto)
     const uv = geo.attributes.uv
@@ -169,36 +189,36 @@ export function build(ctx) {
 
   // 2 · ESCALA DESDE 0 ANCLADA A LA IZQUIERDA. Crece desde el margen, no desde su propio centro: el
   // ojo lee que la palabra sale del borde del cuadro.
-  const m2 = medida(frase(1), ANCHA, ANCHO, 2.35)
+  const m2 = medida(fr(1), ANCHA, ANCHO, 2.35)
   const w2 = plano(m2, -1)
   w2.position.set(XI, 0.55, 0); w2.scale.set(0, 0, 1); w2.rotation.z = -0.07
 
   // 3 · MÁSCARA HORIZONTAL, pegada a la derecha, casi de borde a borde.
-  const m3 = medida(frase(2), NEGRA, ANCHO, 2.7)
+  const m3 = medida(fr(2), NEGRA, ANCHO, 2.7)
   const w3 = planoW(m3, 1, { dir: 0, borde: 0.05, filo: LOOK.acento2 })
   w3.position.set(XD + 0.32, 0.15, 0)
 
   // 4 · MÁSCARA VERTICAL (de abajo hacia arriba), pegada a la izquierda.
-  const m4 = medida(frase(3), ANTON, ANCHO, 2.45)
+  const m4 = medida(fr(3), ANTON, ANCHO, 2.45)
   const w4 = planoW(m4, -1, { dir: 2, borde: 0.09, filo: LOOK.acento })
   w4.position.set(XI, 0.60 - 0.30, 0)
 
   // 5 · ROTACIÓN EN X DESDE 90°: cae de plano hacia la cámara. Es la ÚNICA que va en el acento, y por
   // eso es también la más grande del tramo rápido: el color y el cuerpo dicen lo mismo.
-  const m5 = medida(frase(4), ANCHA, 4.8, 3.2)
+  const m5 = medida(fr(4), ANCHA, 4.8, 3.2)
   // 1.3 y no 2.4: es la única palabra que se deja pasar el umbral, y apenas. Con más, el acento deja de
   // ser una palabra encendida y pasa a ser una mancha turquesa.
   const w5 = plano(m5, 0, LOOK.acento2, 1.3)
   w5.position.set(0, 0.25 - 0.22, 0); w5.rotation.x = Math.PI / 2; w5.scale.set(1.18, 1.18, 1)
 
   // 6 · LLEGADA DESDE FUERA DE CUADRO con overshoot, pegada a la derecha.
-  const m6 = medida(frase(5), ANTON, ANCHO, 2.25)
+  const m6 = medida(fr(5), ANTON, ANCHO, 2.25)
   const w6 = plano(m6, 1)
   w6.position.set(XD + 6.8, 0.50, 0); w6.rotation.z = 0.06
 
   // 7 · EMPUJE EN Z: llega desde el fondo y se pasa hacia la cámara. Se compone a 7.5 de ancho sobre un
   // cuadro de 5.63: se sale por los dos lados a propósito. Un titular al 40% del ancho se lee tímido.
-  const m7 = medida(frase(6), NEGRA, 7.5, 3.8)
+  const m7 = medida(fr(6), NEGRA, 7.5, 3.8)
   const w7 = plano(m7, 0)
   w7.position.set(0, 0.10, -13); w7.rotation.z = 0.045
   // Las otras seis se esconden solas por construcción (fuera de cuadro, escala 0, máscara en 0 o
@@ -300,8 +320,16 @@ export function build(ctx) {
   // Entradas 2 frames ANTES del corte (el impacto cae sobre el beat, no después) y salidas 5 frames
   // antes: exactamente 3 frames de solape. En el tramo rápido (medios beats) la salida arranca 3
   // frames antes, porque no hay lugar para más y aun así quedan los 3 frames de solape.
-  const ent = bt => Math.max(0, b(bt) - 2 * F)
-  const sal = (bt, rapido) => b(bt) - (rapido ? 3 : 5) * F
+  // LA QUE SE VA TERMINA DE IRSE ANTES DE QUE LLEGUE LA SIGUIENTE, y eso hay que decirlo con numeros
+  // porque antes no pasaba. La salida arrancaba 5 cuadros antes del beat y duraba b(0.42) —unos 6—,
+  // asi que terminaba 1 cuadro DESPUES del beat; la entrada arrancaba 2 antes. Resultado: tres
+  // cuadros con las dos frases ocupando el mismo renglon. En el video se leia "BIG NU|VIBERS." y
+  // "REMEMBER|WHEN" encimados, dos veces en cinco segundos, y no se lee como un efecto: se lee como
+  // un error de render. Ahora la salida empieza antes y la entrada cae EN el beat, con casi un cuadro
+  // de aire entre las dos. El corte sigue cayendo en la grilla; lo unico que cambia es que ya no hay
+  // solape.
+  const ent = bt => Math.max(0, b(bt))
+  const sal = (bt, rapido) => b(bt) - (rapido ? 5 : 7) * F
 
   // 1 · las mitades se juntan (con stagger: nunca llegan a la vez) y se van disparadas al revés
   tl.to(w1a.position, { x: -x1, duration: b(0.85), ease: E.llega(1.9) }, 0)
