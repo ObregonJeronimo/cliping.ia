@@ -134,12 +134,86 @@ const REQUISITOS = {
 // OJO AL AGREGAR ESCENAS NUEVAS: una escena que no figura en NINGUNA de estas listas no se elige
 // jamas, aunque exista, este registrada y cumpla sus REQUISITOS — `medio` sale de filtrar ESTA lista.
 // Es la forma mas silenciosa que tiene el catalogo de crecer sin que se note.
-const ORDENES = [
-  ['sello', 'hero', 'tipografia', 'partida', 'rafaga', 'lista', 'titular', 'pantalla', 'tarjetas', 'contraste', 'cita', 'destello', 'columna', 'toro'],
-  ['pantalla', 'titular', 'tipografia', 'partida', 'lista', 'hero', 'rafaga', 'tarjetas', 'contraste', 'cita', 'columna', 'destello', 'sello', 'toro'],
-  ['tarjetas', 'contraste', 'cita', 'sello', 'tipografia', 'partida', 'lista', 'hero', 'titular', 'rafaga', 'columna', 'destello', 'pantalla', 'toro'],
-  ['tipografia', 'partida', 'lista', 'titular', 'pantalla', 'tarjetas', 'contraste', 'rafaga', 'hero', 'cita', 'columna', 'sello', 'toro', 'destello'],
-]
+// DE QUE HABLA CADA ESCENA. La familia no es una etiqueta decorativa: es lo unico que permite armar
+// un orden nuevo por semilla sin que la pieza se lea repetida. Dos escenas de la misma familia
+// seguidas dicen lo mismo con distinta tipografia — es exactamente el defecto que el cupo de escenas
+// de texto vino a tapar, visto desde el otro lado.
+//
+// SI FALTA UNA, guion-check falla. Una tabla escrita a mano al lado de un catalogo que crece es la
+// receta del catalogo fantasma: a este mismo repo le paso con guion-check midiendo diez escenas
+// cuando ya habia dieciseis, y por eso no reportaba guiones cortos durante meses.
+const FAMILIA = {
+  tipografia: 'texto', lista: 'texto', partida: 'texto', titular: 'texto', cita: 'texto',
+  pantalla: 'pagina', columna: 'pagina',
+  hero: 'objeto',
+  // `toro` NO es de la familia del hero, y ponerlo ahi fue un error propio que costo nueve segundos de
+  // pieza: en una pagina pobre el relleno solo puede repetir hero/toro/sello, y si hero y toro no
+  // pueden tocarse se queda sin huecos y la pieza sale en 21.3s de 30. La familia responde a QUE DICE
+  // la escena, y el toro es geometria pura: no afirma nada sobre la marca. Por eso puede ir al lado de
+  // cualquier cosa —es el unico que puede— y por eso es el que sostiene una pieza sin material.
+  toro: 'abstracto',
+  tarjetas: 'dato', rafaga: 'dato',
+  sello: 'marca', destello: 'marca',
+  contraste: 'comparacion',
+}
+export const familiasDe = () => FAMILIA
+
+// EL ORDEN LO ARMA LA SEMILLA, y antes elegia entre CUATRO listas escritas a mano. Medido sobre las
+// nueve combinaciones de pagina x ritmo x duracion: casi todas daban 4 estructuras para 100 semillas,
+// y la peor daba UNA. O sea que un cliente que pedia "otra version del mismo video" recibia el mismo
+// video. La semilla existia y no llegaba a nada, que es el defecto que este motor tiene tres veces.
+//
+// Las cuatro listas ademas escondian una trampa que estaba documentada y sin arreglar: una escena que
+// no figurara en NINGUNA no se elegia jamas, aunque existiera, estuviera registrada y cumpliera sus
+// requisitos. Era la forma mas silenciosa que tenia el catalogo de crecer sin que se note. Barajando
+// las escenas REGISTRADAS eso se cierra solo: entra al sorteo todo lo que existe.
+//
+// El orden no es un sorteo pelado, porque un sorteo pelado pone dos escenas de texto seguidas y la
+// pieza se lee repetida. Se baraja y despues se REPARTE POR FAMILIA: en cada paso se toma la primera
+// candidata cuya familia no sea la de la anterior. Es la misma regla que el montaje usa para no
+// repetir gesto, aplicada al guion.
+function barajar(ids, rnd) {
+  const a = ids.slice()
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rnd() * (i + 1))
+    const tmp = a[i]; a[i] = a[j]; a[j] = tmp
+  }
+  return a
+}
+
+// SEPARAR FAMILIAS VA AL FINAL, y ponerlo antes fue un defecto propio que se vio mirando el plan: con
+// la semilla 7 salio `toro > hero`, las dos de familia 'objeto'. Repartiendo sobre la lista completa
+// y filtrando DESPUES por material y por presupuesto, las escenas que hacian de separador se caen y
+// las gemelas vuelven a quedar pegadas. La invariante hay que garantizarla sobre la lista que se va a
+// ver, no sobre una intermedia.
+function separarFamilias(ids) {
+  const a = ids.slice()
+  const salida = []
+  let ultima = null
+  const fam = (id) => FAMILIA[id] || id
+  while (a.length) {
+    // SE ELIGE LA FAMILIA CON MAS PENDIENTES, no la primera que no repita. La version codiciosa
+    // parecia equivalente y no lo es: con dos 'objeto', un 'dato' y dos 'texto' existe un orden sin
+    // pares repetidos, y tomando la primera que sirve los dos 'texto' quedaban pegados al final. Se
+    // vio en el plan de la semilla 7. Gastar primero la familia mas numerosa es lo que garantiza que
+    // alcancen los separadores — es el mismo argumento por el que se ordena una baraja por palo.
+    const cuenta = new Map()
+    for (const id of a) cuenta.set(fam(id), (cuenta.get(fam(id)) || 0) + 1)
+    let mejorFam = null
+    for (const [f, n] of cuenta) {
+      if (f === ultima) continue
+      if (mejorFam === null || n > cuenta.get(mejorFam)) mejorFam = f
+    }
+    // Sin candidata, lo que queda es todo de la familia anterior: se toma igual. Quedarse sin escenas
+    // es peor que un par repetido en la cola.
+    let k = mejorFam === null ? 0 : a.findIndex(id => fam(id) === mejorFam)
+    if (k < 0) k = 0
+    const id = a.splice(k, 1)[0]
+    ultima = fam(id)
+    salida.push(id)
+  }
+  return salida
+}
 
 export const DUR_OBJETIVO = { corto: 15, medio: 20, largo: 30 }
 
@@ -166,7 +240,10 @@ export function guionDe({ escenas, datos, seed = 1, beatSeg = 60 / 124, dur = nu
   s = (s ^ (s >>> 15)) >>> 0
   const rnd = () => { s = (s * 1664525 + 1013904223) >>> 0; return ((s ^ (s >>> 16)) >>> 0) / 4294967296 }
 
-  const orden = ORDENES[Math.floor(rnd() * ORDENES.length) % ORDENES.length]
+  // Se barajan las escenas REGISTRADAS menos las fijas: asi una escena nueva entra al sorteo el dia
+  // que se registra, sin que nadie tenga que acordarse de agregarla a una lista.
+  const candidatas = [...escenas.keys()].filter(id => id !== 'apertura' && id !== 'cierre')
+  const orden = barajar(candidatas, rnd)
 
   // CUPO DE ESCENAS DE TEXTO, porque tres beben del mismo pozo.
   // `tipografia` recorre TODAS las frases, `lista` usa cuatro y `partida` dos. Con lo que da una
@@ -199,13 +276,31 @@ export function guionDe({ escenas, datos, seed = 1, beatSeg = 60 / 124, dur = nu
   // (medio segundo) es invisible; quedarse corto un 10% se nota.
   const disponibles = objetivo === Infinity ? Infinity : objetivo - beatsFijos + 1
 
-  const plan = []
-  let usados = 0
-  for (const id of medio) {
-    const c = beatsDe(id)
-    if (usados + c > disponibles) continue           // no entra: se saltea y se sigue probando
-    plan.push(id); usados += c
+  // QUIENES ENTRAN Y EN QUE ORDEN SON DOS PREGUNTAS DISTINTAS, y mezclarlas costaba segundos de
+  // pieza. Llenando el presupuesto en el orden barajado, una escena de seis beats elegida primero le
+  // saca el lugar a una de ocho que ya no entra: medido al barajar, los guiones cortos pasaron de 4 a
+  // 14 sobre 324. El orden lo pone la semilla —que es de donde sale la variedad— y la SELECCION se
+  // queda con el mejor de dos llenados: el del orden y el de mayor-primero. Despues se devuelve al
+  // orden barajado, asi que la variedad no se pierde.
+  const llenar = (lista) => {
+    const dentro = new Set()
+    let n = 0
+    for (const id of lista) {
+      const c = beatsDe(id)
+      if (n + c > disponibles) continue               // no entra: se saltea y se sigue probando
+      dentro.add(id); n += c
+    }
+    return { dentro, n }
   }
+  const porOrden = llenar(medio)
+  const porTamano = llenar(medio.slice().sort((x, y) => beatsDe(y) - beatsDe(x)))
+  const mejor = porTamano.n > porOrden.n ? porTamano : porOrden
+  // El reparto por familia se aplica ACA: despues del filtro por material, del cupo de texto y de la
+  // seleccion por presupuesto —los tres pueden sacar la escena que hacia de separador y volver a pegar
+  // dos gemelas— y ANTES del relleno, que tiene su propia regla de colocacion. Aplicarlo al final
+  // deshacia esa colocacion: medido, dejaba dos heroes pegados en 14 de 324 guiones.
+  const plan = separarFamilias(medio.filter(id => mejor.dentro.has(id)))
+  let usados = mejor.n
 
   // TODAVÍA SOBRA TIEMPO. Pasa siempre que se piden 30 s: el material del medio da 20 y quedan diez
   // segundos de nada. La respuesta NO es estirar las escenas —una escena al 150% de su duración es la
@@ -236,9 +331,15 @@ export function guionDe({ escenas, datos, seed = 1, beatSeg = 60 / 124, dur = nu
       // primera"— y eso dejaba fuera justo el arranque que usa la pieza de referencia (apertura y
       // enseguida el objeto). Costaba ocho beats por pieza: una de 30 s se quedaba en 22.8 con
       // dieciocho beats libres y un hueco perfectamente valido que nadie miraba.
+      // Y SE MIRA LA FAMILIA, no el id. Comparando solo el id, el relleno metia `toro` pegado a `hero`
+      // —las dos son de familia 'objeto'— y el corte entre ellas no se lee. Lo encontro E-GUION-FAMILIA
+      // en su primera corrida: tres guiones de 324, todos en paginas con material de sobra, donde el
+      // reparto por familia habia hecho bien su trabajo y el relleno lo deshacia despues.
+      const famR = FAMILIA[relleno] || relleno
+      const famDe = (id) => (id === undefined ? null : (FAMILIA[id] || id))
       const huecos = []
       for (let i = 0; i <= plan.length; i++) {
-        if (plan[i - 1] !== relleno && plan[i] !== relleno) huecos.push(i)
+        if (famDe(plan[i - 1]) !== famR && famDe(plan[i]) !== famR) huecos.push(i)
       }
       if (!huecos.length) break
       plan.splice(huecos[Math.floor(rnd() * huecos.length) % huecos.length], 0, relleno)

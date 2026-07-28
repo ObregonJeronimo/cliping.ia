@@ -16,7 +16,7 @@
 // mismo cliente pidiendo otra versión— y es el que rompía. Un congruencial lineal sembrado con
 // números chicos consecutivos devuelve primeros valores casi iguales, así que las doce caían en el
 // mismo orden narrativo. Con semillas al azar el defecto no se veía.
-import { guionDe, beatsDelGuion, ajusteDe, TOPE_AJUSTE } from '../render3d/demo/guion.js'
+import { guionDe, beatsDelGuion, ajusteDe, TOPE_AJUSTE, familiasDe } from '../render3d/demo/guion.js'
 
 // El catalogo real, copiado de los meta.beats de cada escena. Se declara aca y no se importan los
 // modulos porque importarlos arrastra three y un DOM: esta compuerta tiene que ser instantanea.
@@ -127,6 +127,51 @@ for (const [nomPag, datos] of Object.entries(PAGINAS)) {
       }
     }
   }
+}
+
+// ---------------------------------------------------------------- E-GUION-FAMILIA
+// Dos escenas de la misma familia pegadas dicen lo mismo con distinta tipografia. El guion las separa
+// al armar el orden, pero hay cuatro pasos posteriores —filtro por material, cupo de texto, seleccion
+// por presupuesto y relleno— que pueden sacar la escena que hacia de separador.
+//
+// LA COMPUERTA TIENE QUE SABER CUANDO ES INEVITABLE, o acusa en falso y se aprende a ignorar. Con seis
+// escenas de las cuales cuatro son de texto, no hay orden posible sin un par pegado. El criterio exacto
+// es el de reorganizar una cadena: hay solucion si y solo si ninguna familia supera ceil(n/2). Solo se
+// falla cuando HABIA orden y el motor no lo encontro.
+for (const [nomPag, datos] of Object.entries(PAGINAS)) {
+  for (const [nomAire, beatSeg] of Object.entries(BPM)) {
+    for (const dur of DURS) {
+      for (const seed of SEMILLAS) {
+        const plan = guionDe({ escenas: CAT, datos, seed, beatSeg, dur })
+          .filter(id => id !== 'apertura' && id !== 'cierre')
+        const fam = plan.map(id => familiasDe()[id] || id)
+        const cuenta = new Map()
+        for (const f of fam) cuenta.set(f, (cuenta.get(f) || 0) + 1)
+        const tope = Math.ceil(plan.length / 2)
+        const evitable = [...cuenta.values()].every(n => n <= tope)
+        for (let i = 1; i < fam.length; i++) {
+          if (fam[i] === fam[i - 1] && evitable) {
+            fallos.push(`E-GUION-FAMILIA  ${nomPag}/${nomAire}/${dur}s/seed${seed}: "${plan[i - 1]}" y "${plan[i]}" son las dos de familia "${fam[i]}" y habia orden posible sin repetir`)
+            break
+          }
+        }
+      }
+    }
+  }
+}
+
+// ---------------------------------------------------------------- E-FAMILIA-DECLARADA
+// El orden de la pieza lo arma la semilla barajando y despues repartiendo POR FAMILIA, para que dos
+// escenas que dicen lo mismo no caigan pegadas. Una escena sin familia declarada no participa de ese
+// reparto: se comporta como si fuera unica en su especie y puede quedar al lado de su gemela.
+//
+// Es la misma clase de deriva que ya costo cara en este archivo —el catalogo de arriba estuvo midiendo
+// diez escenas cuando el motor tenia dieciseis, y por eso no reportaba guiones cortos—: una tabla
+// escrita a mano al lado de un catalogo que crece se desactualiza sin avisar. Acá se avisa.
+const FAM = familiasDe()
+for (const id of CAT.keys()) {
+  if (id === 'apertura' || id === 'cierre') continue     // las fijas no entran al sorteo
+  if (!FAM[id]) fallos.push(`E-FAMILIA-DECLARADA  la escena "${id}" no declara familia en guion.js: queda fuera del reparto y puede caer pegada a otra que diga lo mismo`)
 }
 
 if (fallos.length) {
