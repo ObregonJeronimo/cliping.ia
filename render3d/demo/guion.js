@@ -52,6 +52,10 @@ const REQUISITOS = {
   // error de conteo. Solo cuentan las frases de UNA linea: las de dos renglones son titulares (el
   // claim viene partido asi), y numerar un titular lo degrada a viñeta ademas de romper la grilla.
   lista: (d) => (d.frases || []).filter(f => f && !/\n/.test(String(f))).length >= 3,
+  // La portada necesita las DOS cosas: una foto real de la pagina y algo con forma de titular. Sin
+  // foto es un titular sobre el fondo, y eso ya lo hace `destello`; sin texto es una foto suelta.
+  titular: (d) => (d.elementos || []).some(e => e && ['foto', 'hero', 'tarjeta'].includes(e.rol))
+    && (d.frases || []).filter(Boolean).length >= 1,
   // El beat de inversión es un titular a sangre. Sin golpe no hay nada que romper.
   destello: (d) => !!d.golpe,
   // El toro es geometría: no necesita nada, y por eso es el relleno honesto cuando falta material.
@@ -77,10 +81,10 @@ const REQUISITOS = {
 // jamas, aunque exista, este registrada y cumpla sus REQUISITOS — `medio` sale de filtrar ESTA lista.
 // Es la forma mas silenciosa que tiene el catalogo de crecer sin que se note.
 const ORDENES = [
-  ['hero', 'tipografia', 'rafaga', 'lista', 'pantalla', 'tarjetas', 'cita', 'destello', 'columna', 'toro'],
-  ['pantalla', 'tipografia', 'lista', 'hero', 'rafaga', 'tarjetas', 'cita', 'columna', 'destello', 'toro'],
-  ['tarjetas', 'cita', 'tipografia', 'lista', 'hero', 'rafaga', 'columna', 'destello', 'pantalla', 'toro'],
-  ['tipografia', 'lista', 'pantalla', 'tarjetas', 'rafaga', 'hero', 'cita', 'columna', 'toro', 'destello'],
+  ['hero', 'tipografia', 'rafaga', 'lista', 'titular', 'pantalla', 'tarjetas', 'cita', 'destello', 'columna', 'toro'],
+  ['pantalla', 'titular', 'tipografia', 'lista', 'hero', 'rafaga', 'tarjetas', 'cita', 'columna', 'destello', 'toro'],
+  ['tarjetas', 'cita', 'tipografia', 'lista', 'hero', 'titular', 'rafaga', 'columna', 'destello', 'pantalla', 'toro'],
+  ['tipografia', 'lista', 'titular', 'pantalla', 'tarjetas', 'rafaga', 'hero', 'cita', 'columna', 'toro', 'destello'],
 ]
 
 export const DUR_OBJETIVO = { corto: 15, medio: 20, largo: 30 }
