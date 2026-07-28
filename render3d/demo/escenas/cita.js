@@ -26,7 +26,7 @@
 // SIN TESTIMONIO NO HAY ESCENA. No hay como sustituir el sujeto: una cita sin cita es un cuadro con
 // comillas vacias. Se declara vacia y el guionista es quien no deberia haberla elegido.
 
-import { LOOK, b, E, texto, nivel, matAcento, materialMascara, filete, CLARO, finMascara, deriva, encaje } from '../kit.js'
+import { LOOK, b, E, texto, nivel, matAcento, materialMascara, filete, CLARO, finMascara, deriva, encaje, dolly, orbita } from '../kit.js'
 import { testimonios } from '../datos.js'
 
 export const meta = { id: 'cita', beats: 6 }
@@ -216,9 +216,9 @@ export function build(ctx) {
   // Devolverla es CONTRATO: la escena siguiente arranca desde (0,0,distBase) y si esta la deja
   // corrida, el corte se lee como un salto. El `set` del final es el seguro: si algun tween quedara
   // a mitad por un ajuste de tempo, igual se entrega la camara donde corresponde.
-  tl.fromTo(camera.position, { z: distBase + 0.30 }, { z: distBase - 0.18, duration: DUR * 0.80, ease: 'none', immediateRender: false }, 0)
+  tl.fromTo(camera.position, { z: dolly(distBase, 0.30) }, { z: dolly(distBase, -0.18), duration: DUR * 0.80, ease: 'none', immediateRender: false }, 0)
   tl.to(camera.position, { z: distBase, duration: DUR * 0.20, ease: E.vaiven() }, DUR * 0.80)
-  tl.fromTo(camera.position, { x: 0.10 }, { x: -0.06, duration: DUR * 0.62, ease: E.vaiven(), immediateRender: false }, 0)
+  tl.fromTo(camera.position, { x: orbita(0.10) }, { x: orbita(-0.06), duration: DUR * 0.62, ease: E.vaiven(), immediateRender: false }, 0)
   tl.to(camera.position, { x: 0, duration: DUR * 0.38, ease: E.vaiven() }, DUR * 0.62)
   tl.set(camera.position, { x: 0, y: 0, z: distBase }, DUR - 0.001)
 

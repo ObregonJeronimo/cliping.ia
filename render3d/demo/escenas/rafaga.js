@@ -24,7 +24,7 @@
 // todas frases; si no dio frases, todos recortes. El guionista no la elige si no hay ni una cosa ni la
 // otra — no hay ráfaga de nada.
 
-import { LOOK, b, E, hex, texto, planoRecorte, recortesDe, nivel, matAcento } from '../kit.js'
+import { LOOK, b, E, hex, texto, planoRecorte, recortesDe, nivel, matAcento, dolly } from '../kit.js'
 import { D, frase, nFrases, marca } from '../datos.js'
 
 export const meta = { id: 'rafaga', beats: 6 }
@@ -196,7 +196,7 @@ export function build(ctx) {
 
   // La cámara empuja parejo y vuelve: le da a la ráfaga una dirección, que es lo que la separa de un
   // pase de diapositivas rápido.
-  tl.fromTo(camera.position, { z: distBase + 0.55 }, { z: distBase - 0.30, duration: DUR * 0.85, ease: 'none' }, 0)
+  tl.fromTo(camera.position, { z: dolly(distBase, 0.55) }, { z: dolly(distBase, -0.30), duration: DUR * 0.85, ease: 'none' }, 0)
   tl.to(camera.position, { z: distBase, duration: DUR * 0.15, ease: E.vaiven() }, DUR * 0.85)
 
   tl.to(arriba.scale, { x: 0.0001, duration: b(0.35), ease: E.acelera(2) }, DUR - b(0.35))

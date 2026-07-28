@@ -49,8 +49,11 @@ function lienzo(w = 4, h = 4) { return createCanvas(w, h) }
 globalThis.document = {
   createElement: (t) => (t === 'canvas' ? lienzo() : { style: {} }),
   getElementById: () => lienzo(),
-  fonts: { ready: Promise.resolve(), load: async () => {} },
+  // `add`, el iterador y `check` los necesitan los modulos de aire, que registran sus tipografias al
+  // importarse. Sin ellos `[...document.fonts]` explota y el barrido no arranca.
+  fonts: { ready: Promise.resolve(), load: async () => {}, add() {}, check: () => true, *[Symbol.iterator]() {} },
 }
+globalThis.FontFace = class { constructor(f) { this.family = f } async load() { return this } }
 globalThis.window = globalThis
 console.warn = () => {}
 // Por `dist/` y no por `index.js`: ver la nota larga en render3d/demo/verificar.mjs. En resumen,
@@ -59,7 +62,17 @@ console.warn = () => {}
 const { gsap } = await import(pathToFileURL(join(RAIZ, 'node_modules', 'gsap', 'dist', 'gsap.js')).href)
 globalThis.gsap = gsap
 const THREE = await import(pathToFileURL(join(RAIZ, 'node_modules', 'three', 'build', 'three.module.js')).href)
-const { BEAT, LOOK, b } = await import(pathToFileURL(join(DEMO, 'kit.js')).href)
+const { BEAT, LOOK, b, configurar } = await import(pathToFileURL(join(DEMO, 'kit.js')).href)
+// LOS ONCE AIRES, NO SOLO EL DEFAULT. Esta compuerta construia siempre con la configuracion de ANTHEM,
+// asi que era CIEGA a todo lo que el aire cambia: la tipografia (una display ancha ocupa mas renglon),
+// el ritmo (el bpm cambia la duracion y con ella cuanto recorre cada tween) y —desde que `camara` esta
+// cableada— cuanto se mueve la camara, que va de 0.4 a 1.55 en dolly y de 0.35 a 1.3 en orbita. Con
+// dolly 1.55 la camara se acerca un 55% mas que en la linea de base: si algo se sale del cuadro, se
+// sale ahi y no en tecnico. Auditar ese cableado sin barrer los aires seria auditar el caso que no falla.
+const AIRES = {}
+for (const f of readdirSync(join(DEMO, 'aires')).filter(f => f.endsWith('.js'))) {
+  AIRES[f.replace('.js', '')] = (await import(pathToFileURL(join(DEMO, 'aires', f)).href)).default
+}
 const { configurarDatos, ANTHEM } = await import(pathToFileURL(join(DEMO, 'datos.js')).href)
 
 function tejidoFalso(relaciones) {
@@ -111,7 +124,12 @@ function enCuadro(obj, caja, m) {
 }
 
 let revisados = 0
-for (const id of ids) {
+const _push = fallos.push.bind(fallos)
+for (const [nombreAire, aire] of Object.entries(AIRES)) {
+ configurar(aire)
+ // cada fallo dice en QUE aire aparecio: sin eso, "se sale del cuadro" no se puede reproducir
+ fallos.push = (m) => _push(`${m}   [aire ${nombreAire}]`)
+ for (const id of ids) {
   const ruta = rutaDe(id)
   if (!existsSync(ruta)) continue
   let mod
@@ -243,11 +261,13 @@ for (const id of ids) {
         + `de la escena y solo entra en el ${(frac * 100).toFixed(0)}% de esos cuadros`)
     }
   }
+ }
 }
 
 if (fallos.length) {
   console.error(`ENCUADRE: ${fallos.length} FALLO(S)\n` + fallos.map(f => '  ' + f).join('\n'))
   process.exit(1)
 }
-console.log(`ENCUADRE OK — ${revisados} escenas y heroes: todo lo que se anima entra en el cuadro `
-  + '(proyectado a 30 fps contra la camara que mueve cada escena).')
+console.log(`ENCUADRE OK — ${revisados} construcciones (${revisados / Object.keys(AIRES).length} escenas y heroes `
+  + `x ${Object.keys(AIRES).length} aires): todo lo que se anima entra en el cuadro, proyectado a 30 fps `
+  + 'contra la camara que mueve cada escena CON la amplitud que le pone su aire.')

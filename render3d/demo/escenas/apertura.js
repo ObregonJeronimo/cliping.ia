@@ -32,7 +32,7 @@
 // El overshoot vive en la ROTACIÓN y en la escala de cada letra, no en z: con la palabra ocupando el
 // 94% del ancho, un back.out sobre la profundidad la empujaba fuera del cuadro en el rebote.
 
-import { E, LOOK, MOB, b, BPM, planoTexto, texto, materialMascara, filete, hex, nivel, marco } from '../kit.js'
+import { E, LOOK, MOB, b, BPM, planoTexto, texto, materialMascara, filete, hex, nivel, marco, dolly, orbita } from '../kit.js'
 // El COPY sale de los DATOS. Lo que queda escrito aca es CHROME de la pieza (rotulos de
 // capitulo, indicadores tecnicos): eso es direccion de arte y no cambia con el contenido.
 // Lo que la marca DICE — su nombre, sus cifras, su claim, su CTA — sale de los datos o NO SALE.
@@ -486,8 +486,8 @@ export function build(ctx) {
 
   // Empuje de cámara mientras las letras llegan, y una inclinación mínima que se resuelve sola. El
   // empuje se frena en -0.55 porque con la palabra al 94% del ancho, medio metro más la recorta.
-  de(camera.position, { z: distBase + 0.85 }, { z: distBase - 0.55, duration: b(1.6), ease: E.frena(2) }, T)
-  de(camera.rotation, { z: 0.016 }, { z: 0, duration: b(1.4), ease: E.frena(2) }, T)
+  de(camera.position, { z: dolly(distBase, 0.85) }, { z: dolly(distBase, -0.55), duration: b(1.6), ease: E.frena(2) }, T)
+  de(camera.rotation, { z: orbita(0.016) }, { z: 0, duration: b(1.4), ease: E.frena(2) }, T)
 
   // Filete de acento debajo de la palabra: dispara de izquierda a derecha y llena el hueco que deja la
   // tipografía mientras todavía está aterrizando.
@@ -697,7 +697,7 @@ export function build(ctx) {
   // ================================================================ devolver la cámara
   // Si la escena no deja la cámara donde la encontró, la que sigue arranca desde otro punto de vista y
   // la pieza se desarma. El tween la trae y el set la clava.
-  de(camera.position, { z: distBase - 0.55 }, { z: distBase, duration: b(1.9), ease: E.vaiven() }, b(3.1))
+  de(camera.position, { z: dolly(distBase, -0.55) }, { z: distBase, duration: b(1.9), ease: E.vaiven() }, b(3.1))
   de(fondo.uGrilla, { value: 0.82 }, { value: 0.58, duration: b(1.6), ease: 'none' }, b(4.2))
   tl.set(camera.position, { x: 0, y: 0, z: distBase }, b(5.2))
   tl.set(camera.rotation, { x: 0, y: 0, z: 0 }, b(5.2))

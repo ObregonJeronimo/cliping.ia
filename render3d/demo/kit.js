@@ -30,6 +30,24 @@ export let BPM = 124
 export let BEAT = 60 / BPM
 export const b = n => n * BEAT                     // lee el BEAT vigente, no una copia
 
+// ---------------------------------------------------------------- cuanto se mueve la camara
+// CUANTA CAMARA TIENE ESTE AIRE. Los once aires declaran `camara: { dolly, orbita }` desde que existen
+// —de 0.4 a 1.55 en dolly, de 0.35 a 1.3 en orbita, o sea casi cuatro veces— y NADIE LO LEIA: main.js
+// lo copiaba a `this.camaraE` (main.js:126) y ese campo no aparecia en ninguna otra linea del motor.
+// Resultado: una pieza de lujo y una de deportivo movian la camara exactamente igual. Es el mismo
+// defecto que el de las fuentes —declarado, medido, y nunca llega a la pantalla— y por eso las once
+// personalidades se sentian mas parecidas de lo que dicen sus archivos.
+//
+//   dolly   cuanto AVANZA o RETROCEDE la camara. Es el eje de la intimidad: acercarse es enfatizar.
+//   orbita  cuanto se corre de lado y cuanto se inclina. Es el eje de la inquietud.
+//
+// Se aplica al DELTA y nunca al reposo: `dolly(distBase, -0.35)` mueve el acercamiento, y el
+// `tl.set(camera.position, { z: distBase })` con el que toda escena devuelve la camara queda intacto.
+// Esa separacion es lo que hace que el cableado no pueda romper la regla de que la camara vuelve.
+export let CAM = { dolly: 1, orbita: 1 }
+export const dolly = (base, d) => base + d * CAM.dolly
+export const orbita = v => v * CAM.orbita
+
 // ---------------------------------------------------------------- deriva continua
 // EL MOVIMIENTO LENTO QUE NO PARA: la escena respira, se acerca, se corre un pelo hacia el margen.
 // No se escribe con tweens sobre las propiedades, y hay dos razones, las dos pagadas caro:
@@ -243,6 +261,7 @@ export function configurar(aire) {
   AIRE = aire
   CLARO = !!aire.claro
   MOB = { ...MOBILIARIO_BASE, ...(aire.mobiliario || {}) }
+  CAM = { dolly: 1, orbita: 1, ...(aire.camara || {}) }
   if (aire.bpm) { BPM = aire.bpm; BEAT = 60 / BPM }
   if (aire.paleta) LOOK = { ...LOOK, ...aire.paleta }
   if (aire.gesto) E = { ...GESTO_BASE, ...aire.gesto }

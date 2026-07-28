@@ -27,7 +27,7 @@
 // luz y el cabezal. Esos si florecen, que es justo lo que hace que un hueco se lea como luz y no como
 // un agujero.
 
-import { LOOK, b, E, texto, materialMascara, matAcento, nivel } from '../kit.js'
+import { LOOK, b, E, texto, materialMascara, matAcento, nivel, dolly } from '../kit.js'
 import { sello } from '../datos.js'
 
 export const meta = { id: 'pantalla', beats: 6 }
@@ -330,8 +330,8 @@ export function build(ctx) {
   // PARALAJE: sin ella la pagina scrolleando es una textura corriendo detras de un vidrio fijo.
   // NUNCA se aleja mas alla de distBase — ahi el cuadro es el mas grande que va a ser y el plano deja
   // 0.28 de margen; un paso mas atras y se ve el borde de la pagina.
-  tl.fromTo(camera.position, { z: distBase - 0.05 },
-    { z: distBase - 1.15, duration: DUR * 0.86, ease: 'none', immediateRender: false }, 0)
+  tl.fromTo(camera.position, { z: dolly(distBase, -0.05) },
+    { z: dolly(distBase, -1.15), duration: DUR * 0.86, ease: 'none', immediateRender: false }, 0)
   tl.to(camera.position, { z: distBase, duration: DUR * 0.14, ease: E.vaiven() }, DUR * 0.86)
 
   // ================================================================ EL CUADRO A CUADRO

@@ -20,7 +20,7 @@
 //
 // CONTRATO: ver heroes/telefono.js
 
-import { LOOK, b, E, hex, matAcento } from '../kit.js'
+import { LOOK, b, E, hex, matAcento, dolly } from '../kit.js'
 
 export const meta = {
   id: 'cinta',
@@ -299,7 +299,7 @@ export function build(ctx) {
   tl.to(mat.uniforms.uCola, { value: 1, duration: b(1.6), ease: E.acelera(2) }, DUR - b(1.6))
   tl.to(gCinta.position, { z: 1.8, y: mundoH * 0.09, duration: b(1.6), ease: E.acelera(2) }, DUR - b(1.6))
 
-  tl.fromTo(camera.position, { z: distBase + 0.9 }, { z: distBase - 0.5, duration: DUR * 0.8, ease: 'none' }, 0)
+  tl.fromTo(camera.position, { z: dolly(distBase, 0.9) }, { z: dolly(distBase, -0.5), duration: DUR * 0.8, ease: 'none' }, 0)
   tl.to(camera.position, { z: distBase, duration: DUR * 0.2, ease: E.vaiven() }, DUR * 0.8)
 
   // EL GIRO, en una sola función y en función del TIEMPO, nunca acumulando. Dos ejes de períodos que

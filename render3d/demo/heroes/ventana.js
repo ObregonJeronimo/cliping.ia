@@ -32,7 +32,7 @@
 //
 // CONTRATO: ver heroes/telefono.js
 
-import { LOOK, b, E, hex, matAcento, nivel } from '../kit.js'
+import { LOOK, b, E, hex, matAcento, nivel, dolly } from '../kit.js'
 
 export const meta = {
   id: 'ventana',
@@ -419,7 +419,7 @@ export function build(ctx) {
   }
 
   // La cámara se acerca mientras la ventana se asienta y vuelve antes del corte: es contrato de escena.
-  tl.fromTo(camera.position, { z: distBase + 1.0 }, { z: distBase - 0.40, duration: DUR * 0.82, ease: 'none' }, 0)
+  tl.fromTo(camera.position, { z: dolly(distBase, 1.0) }, { z: dolly(distBase, -0.40), duration: DUR * 0.82, ease: 'none' }, 0)
   tl.to(camera.position, { z: distBase, duration: DUR * 0.18, ease: E.vaiven() }, DUR * 0.82)
 
   // SALE ENROLLÁNDOSE HACIA SU BARRA mientras se va para arriba: el mismo gesto que la trajo, al revés

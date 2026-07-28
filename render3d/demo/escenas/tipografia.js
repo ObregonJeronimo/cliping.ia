@@ -31,7 +31,7 @@
 // barras que entran a contratiempo (en los medios beats), columna de marcas que baja sin parar,
 // regla de progreso escalonada arriba y epígrafe abajo.
 
-import { E, LOOK, b, texto, planoTexto, matAcento, hex } from '../kit.js'
+import { E, LOOK, b, texto, planoTexto, matAcento, hex, dolly, orbita } from '../kit.js'
 // Las frases salen de los DATOS, no del archivo: la misma escena sirve para cualquier pagina.
 // El estilo de cada entrada (que fuente, que ancho, que gesto) SI es de la escena — eso es direccion
 // de arte y no cambia con el contenido.
@@ -473,13 +473,13 @@ export function build(ctx) {
 
   // CÁMARA: un acercamiento lento que sostiene los 8 beats y dos ladeos secos sobre el tramo rápido.
   // Vuelve a su sitio antes del final — si no, la escena siguiente arranca desde otro punto de vista.
-  tl.to(camera.position, { z: distBase - 0.9, duration: b(6), ease: E.vaiven() }, 0)
+  tl.to(camera.position, { z: dolly(distBase, -0.9), duration: b(6), ease: E.vaiven() }, 0)
   tl.to(camera.position, { z: distBase, duration: b(1.5), ease: E.vaiven(2) }, b(6))
-  tl.to(camera.position, { y: 0.24, duration: b(4), ease: E.vaiven() }, 0)
+  tl.to(camera.position, { y: orbita(0.24), duration: b(4), ease: E.vaiven() }, 0)
   tl.to(camera.position, { y: 0, duration: b(3.5), ease: E.vaiven() }, b(4))
   for (const [bt, lado] of [[3, 1], [3.5, -1], [4, 1]]) {
     const t0 = b(bt) - 2 * F
-    tl.set(camera.rotation, { z: 0.019 * lado }, t0)
+    tl.set(camera.rotation, { z: orbita(0.019) * lado }, t0)
     tl.to(camera.rotation, { z: 0, duration: b(0.42), ease: E.frena(5) }, t0)
   }
   tl.set(camera.position, { x: 0, y: 0, z: distBase }, b(7.92))

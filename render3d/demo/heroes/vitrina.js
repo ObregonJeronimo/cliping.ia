@@ -12,7 +12,7 @@
 //
 // CONTRATO: ver heroes/telefono.js
 
-import { LOOK, b, E, hex, nivel, matAcento, planoRecorte, recortesDe } from '../kit.js'
+import { LOOK, b, E, hex, nivel, matAcento, planoRecorte, recortesDe, dolly, orbita } from '../kit.js'
 
 export const meta = {
   id: 'vitrina',
@@ -357,9 +357,9 @@ export function build(ctx) {
   // fondo, un objeto quieto en el centro del cuadro se lee pegado a la imagen de atrás.
   // Vuelve exacta a (0, 0, distBase) con rotación cero antes del corte — es contrato de escena, y una
   // cámara que no vuelve arranca la escena siguiente desde otro punto de vista.
-  tl.fromTo(camera.position, { y: mundoH * 0.075, z: distBase + 1.15 },
-    { y: 0, z: distBase - 0.62, duration: DUR * 0.80, ease: 'none' }, 0)
-  tl.fromTo(camera.rotation, { x: -0.048 }, { x: 0, duration: DUR * 0.80, ease: 'none' }, 0)
+  tl.fromTo(camera.position, { y: mundoH * 0.075, z: dolly(distBase, 1.15) },
+    { y: 0, z: dolly(distBase, -0.62), duration: DUR * 0.80, ease: 'none' }, 0)
+  tl.fromTo(camera.rotation, { x: orbita(-0.048) }, { x: 0, duration: DUR * 0.80, ease: 'none' }, 0)
   tl.to(camera.position, { z: distBase, duration: DUR * 0.20, ease: E.vaiven() }, DUR * 0.80)
 
   // SALIDA: se apaga la vitrina. La pieza se retira hacia arriba —se la llevan, no explota— el vidrio

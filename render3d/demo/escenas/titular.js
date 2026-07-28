@@ -22,7 +22,7 @@
 // SIN FOTO NO HAY PORTADA. Una portada sin imagen es un titular sobre el fondo, y eso ya existe.
 // Se declara vacia y el guionista es quien no deberia haberla elegido.
 
-import { LOOK, b, E, texto, nivel, matAcento, materialMascara, planoRecorte, recortesDe, filete, finMascara, deriva, encaje } from '../kit.js'
+import { LOOK, b, E, texto, nivel, matAcento, materialMascara, planoRecorte, recortesDe, filete, finMascara, deriva, encaje, dolly, orbita } from '../kit.js'
 import { D } from '../datos.js'
 
 export const meta = { id: 'titular', beats: 6 }
@@ -202,9 +202,9 @@ export function build(ctx) {
   tl.to(foto.material, { opacity: 0, duration: b(0.40), ease: E.acelera(2) }, SALIDA)
 
   // ---- camara: un empuje lento y su devolucion. Devolverla es CONTRATO.
-  tl.fromTo(camera.position, { z: distBase + 0.36 }, { z: distBase - 0.14, duration: DUR * 0.84, ease: 'none', immediateRender: false }, 0)
+  tl.fromTo(camera.position, { z: dolly(distBase, 0.36) }, { z: dolly(distBase, -0.14), duration: DUR * 0.84, ease: 'none', immediateRender: false }, 0)
   tl.to(camera.position, { z: distBase, duration: DUR * 0.16, ease: E.vaiven() }, DUR * 0.84)
-  tl.fromTo(camera.position, { y: -0.10 }, { y: 0.06, duration: DUR * 0.66, ease: E.vaiven(), immediateRender: false }, 0)
+  tl.fromTo(camera.position, { y: orbita(-0.10) }, { y: orbita(0.06), duration: DUR * 0.66, ease: E.vaiven(), immediateRender: false }, 0)
   tl.to(camera.position, { y: 0, duration: DUR * 0.34, ease: E.vaiven() }, DUR * 0.66)
   tl.set(camera.position, { x: 0, y: 0, z: distBase }, DUR - 0.001)
 

@@ -27,7 +27,7 @@
 // SIN RECORTES NO HAY ESCENA. La columna no tiene otro sujeto: si la pagina no dio ni un elemento,
 // devuelve el grupo vacio y ocupa su lugar en silencio. El guionista es quien no deberia elegirla.
 
-import { LOOK, b, E, texto, planoRecorte, recortesDe, nivel, matAcento, materialMascara, deriva } from '../kit.js'
+import { LOOK, b, E, texto, planoRecorte, recortesDe, nivel, matAcento, materialMascara, deriva, dolly, orbita } from '../kit.js'
 import { marca, sello } from '../datos.js'
 
 export const meta = { id: 'columna', beats: 6 }
@@ -347,9 +347,9 @@ export function build(ctx) {
   // Un empuje parejo que se devuelve. La columna ya sube sola: si la camara ademas viajara, los dos
   // movimientos se cancelarian y el feed quedaria clavado. Lo unico que hace es acercarse —o sea,
   // aumentar el ritmo aparente— y volver, porque devolverla es contrato.
-  tl.fromTo(camera.position, { z: distBase + 0.50 }, { z: distBase - 0.26, duration: DUR * 0.78, ease: 'none', immediateRender: false }, 0)
+  tl.fromTo(camera.position, { z: dolly(distBase, 0.50) }, { z: dolly(distBase, -0.26), duration: DUR * 0.78, ease: 'none', immediateRender: false }, 0)
   tl.to(camera.position, { z: distBase, duration: DUR * 0.22, ease: E.vaiven() }, DUR * 0.78)
-  tl.fromTo(camera.position, { x: -0.14 }, { x: 0.12, duration: DUR * 0.56, ease: E.vaiven(), immediateRender: false }, 0)
+  tl.fromTo(camera.position, { x: orbita(-0.14) }, { x: orbita(0.12), duration: DUR * 0.56, ease: E.vaiven(), immediateRender: false }, 0)
   tl.to(camera.position, { x: 0, duration: DUR * 0.44, ease: E.vaiven() }, DUR * 0.56)
 
   return { g, gr, tl }

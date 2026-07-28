@@ -21,7 +21,7 @@
 // SIN TRES ITEMS NO HAY LISTA. Con dos es un par, y un par numerado se lee como un error de conteo.
 // No se rellena: se declara vacia y el guionista es quien no deberia haberla elegido.
 
-import { LOOK, b, E, texto, nivel, matAcento, materialMascara, CLARO, finMascara, deriva, encaje } from '../kit.js'
+import { LOOK, b, E, texto, nivel, matAcento, materialMascara, CLARO, finMascara, deriva, encaje, dolly, orbita } from '../kit.js'
 import { D } from '../datos.js'
 
 export const meta = { id: 'lista', beats: 6 }
@@ -167,9 +167,9 @@ export function build(ctx) {
   // ---- camara: un paneo lateral corto que se devuelve
   // Devolverla es CONTRATO: la escena siguiente arranca en (0,0,distBase) y si esta la deja corrida,
   // el corte se lee como un salto. El `set` final es el seguro ante cualquier ajuste de tempo.
-  tl.fromTo(camera.position, { x: -0.14 }, { x: 0.10, duration: DUR * 0.72, ease: E.vaiven(), immediateRender: false }, 0)
+  tl.fromTo(camera.position, { x: orbita(-0.14) }, { x: orbita(0.10), duration: DUR * 0.72, ease: E.vaiven(), immediateRender: false }, 0)
   tl.to(camera.position, { x: 0, duration: DUR * 0.28, ease: E.vaiven() }, DUR * 0.72)
-  tl.fromTo(camera.position, { z: distBase + 0.22 }, { z: distBase - 0.10, duration: DUR * 0.82, ease: 'none', immediateRender: false }, 0)
+  tl.fromTo(camera.position, { z: dolly(distBase, 0.22) }, { z: dolly(distBase, -0.10), duration: DUR * 0.82, ease: 'none', immediateRender: false }, 0)
   tl.to(camera.position, { z: distBase, duration: DUR * 0.18, ease: E.vaiven() }, DUR * 0.82)
   tl.set(camera.position, { x: 0, y: 0, z: distBase }, DUR - 0.001)
 

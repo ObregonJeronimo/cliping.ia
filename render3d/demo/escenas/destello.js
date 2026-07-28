@@ -18,7 +18,7 @@
 // arranca `cierre` con el fondo en blanco y el bloom en cero, la pieza se desarma y el bug aparece
 // recién en el video terminado.
 
-import { E, LOOK, b, texto, materialMascara, filete, hex, nivel } from '../kit.js'
+import { E, LOOK, b, texto, materialMascara, filete, hex, nivel, orbita, dolly } from '../kit.js'
 // El COPY sale de los DATOS. Lo que queda escrito aca es CHROME de la pieza (rotulos de
 // capitulo, indicadores tecnicos): eso es direccion de arte y no cambia con el contenido.
 // Lo que la marca DICE — su nombre, sus cifras, su claim, su CTA — sale de los datos o NO SALE.
@@ -289,9 +289,9 @@ export function build(ctx) {
 
   // Golpe de cámara: entra de un frame y se acomoda durante beat y medio. El asentamiento largo es la
   // capa que sostiene el "nada descansa" mientras la tipografía todavía está entrando.
-  tl.fromTo(camera.position, { z: distBase }, { z: distBase * 0.885, duration: F, ease: 'none' }, 0)
+  tl.fromTo(camera.position, { z: distBase }, { z: dolly(distBase, distBase * -0.115), duration: F, ease: 'none' }, 0)
   tl.to(camera.position, { z: distBase, duration: b(1.7), ease: E.frena(3) }, F)
-  tl.fromTo(camera.rotation, { z: 0 }, { z: 0.014, duration: F, ease: 'none' }, 0)
+  tl.fromTo(camera.rotation, { z: 0 }, { z: orbita(0.014), duration: F, ease: 'none' }, 0)
   tl.to(camera.rotation, { z: 0, duration: b(0.9), ease: 'elastic.out(1, 0.5)' }, F)
 
   // ---------------------------------------------------------------- b0.10–b1.30 · ENTRA EL CUADRO
@@ -400,7 +400,7 @@ export function build(ctx) {
   tl.to(pelicula.uAberr, { value: 0.0085, duration: F, ease: 'none' }, b(3.50))
   tl.to(pelicula.uAberr, { value: oAb, duration: b(0.40), ease: E.frena(2) }, b(3.50) + F)
 
-  tl.to(camera.position, { z: distBase * 1.06, duration: F, ease: 'none' }, b(3.50))
+  tl.to(camera.position, { z: dolly(distBase, distBase * 0.06), duration: F, ease: 'none' }, b(3.50))
   tl.to(camera.position, { z: distBase, duration: b(0.42), ease: E.frena(3) }, b(3.52))
 
   // Y el bloque invertido se apaga DEBAJO del flash. El panel negro tapa el cuadro sólo mientras está

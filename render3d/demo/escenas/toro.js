@@ -48,7 +48,7 @@
 // reproduce su degrade en coordenadas de mundo: la union cae en el mismo punto del espacio, asi que
 // no hay costura. Se resuelve acá adentro para no tocar el kit.
 
-import { E, LOOK, b, texto, materialMascara, filete, matAcento, matTarjeta, hex, nivel } from '../kit.js'
+import { E, LOOK, b, texto, materialMascara, filete, matAcento, matTarjeta, hex, nivel, dolly, orbita } from '../kit.js'
 // El COPY sale de los DATOS. Lo que queda escrito aca es CHROME de la pieza (rotulos de
 // capitulo, indicadores tecnicos): eso es direccion de arte y no cambia con el contenido.
 // Lo que la marca DICE — su nombre, sus cifras, su claim, su CTA — sale de los datos o NO SALE.
@@ -431,9 +431,12 @@ export function build(ctx) {
     }
     const y = sm(u)
     const arco = 4 * y * (1 - y)             // 0 en los dos extremos, 1 en el medio — por eso vuelve
-    const ang = 0.36 * arco                  // arco lateral
-    const alt = 5.47 * arco * (0.5 - y)      // sube, cruza el ecuador y desciende
-    const dist = distBase * (1 - 0.085 * arco)
+    // La AMPLITUD de la orbita la pone el aire: arco lateral y altura por `orbita`, acercamiento por
+    // `dolly`. La forma de la curva no se toca —sigue valiendo 0 en los dos extremos, que es lo que
+    // hace que la camara vuelva sola— asi que escalarla no puede romper el contrato de devolucion.
+    const ang = orbita(0.36) * arco          // arco lateral
+    const alt = orbita(5.47) * arco * (0.5 - y)   // sube, cruza el ecuador y desciende
+    const dist = dolly(distBase, distBase * -0.085 * arco)
 
     // El punto al que mira sube al objeto en la entrada y baja cuando llega la tipografia: el
     // encuadre se reacomoda solo en vez de quedar decidido de antemano.

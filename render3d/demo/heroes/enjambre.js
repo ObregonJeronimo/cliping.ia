@@ -24,7 +24,7 @@
 //
 // CONTRATO: ver heroes/telefono.js
 
-import { LOOK, b, E, hex, nivel } from '../kit.js'
+import { LOOK, b, E, hex, nivel, dolly } from '../kit.js'
 
 export const meta = {
   id: 'enjambre',
@@ -356,7 +356,7 @@ export function build(ctx) {
     }
   }
 
-  tl.fromTo(camera.position, { z: distBase + 1.1 }, { z: distBase - 0.6, duration: DUR * 0.84, ease: 'none' }, 0)
+  tl.fromTo(camera.position, { z: dolly(distBase, 1.1) }, { z: dolly(distBase, -0.6), duration: DUR * 0.84, ease: 'none' }, 0)
   tl.to(camera.position, { z: distBase, duration: DUR * 0.16, ease: E.vaiven() }, DUR * 0.84)
 
   // ------------------------------------------------------------------ el bucle

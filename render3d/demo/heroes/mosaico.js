@@ -18,7 +18,7 @@
 //
 // CONTRATO: ver heroes/telefono.js
 
-import { LOOK, b, E, hex, planoRecorte, recortesDe } from '../kit.js'
+import { LOOK, b, E, hex, planoRecorte, recortesDe, dolly } from '../kit.js'
 
 export const meta = {
   id: 'mosaico',
@@ -235,7 +235,7 @@ export function build(ctx) {
 
   // LA CÁMARA respira sobre el conjunto: sin paralaje, nueve planos a z=0 se leen como una sola imagen
   // pegada. Vuelve a distBase antes del corte — es contrato de escena.
-  tl.fromTo(camera.position, { z: distBase + 1.5 }, { z: distBase - 0.5, duration: DUR * 0.8, ease: 'none' }, 0)
+  tl.fromTo(camera.position, { z: dolly(distBase, 1.5) }, { z: dolly(distBase, -0.5), duration: DUR * 0.8, ease: 'none' }, 0)
   tl.to(camera.position, { z: distBase, duration: DUR * 0.2, ease: E.vaiven() }, DUR * 0.8)
   // El conjunto BARRE, no solo respira: un giro de 0.09 rad sobre nueve planos no mueve casi nada.
   // Con 0.20 y un desplazamiento lateral, el paralaje de las profundidades se hace visible.

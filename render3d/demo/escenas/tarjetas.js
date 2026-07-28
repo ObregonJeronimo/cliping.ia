@@ -15,8 +15,7 @@
 //   · NADA se apaga con opacidad si puede irse por MÁSCARA: el texto se desescribe, no se funde.
 
 import { E,
-  LOOK, b, planoTexto, texto, materialMascara, matAcento, matTarjeta, enArco, nivel,
-} from '../kit.js'
+  LOOK, b, planoTexto, texto, materialMascara, matAcento, matTarjeta, enArco, nivel, dolly, orbita } from '../kit.js'
 // TODO EL TEXTO SALE DE LOS DATOS. Este archivo decia que el 'chrome' (rotulos de capitulo,
 // indicadores tecnicos) era direccion de arte y podia quedar escrito aca — y con esa licencia
 // el video de Stripe salia diciendo 'BLOQUE 04 · DATOS' y 'DOS INDICADORES · UNA MISMA
@@ -339,20 +338,20 @@ export function build(ctx) {
   // Beat 0-1.15: viene de más lejos y se acerca. Beat 1.15-4: TRAVELLING LATERAL delante del arco,
   // con una contra-rotación del 70% (no del 100%: si compensa todo, el arco queda clavado al centro
   // y el movimiento se pierde). Beat 4-5.15: vuelve exactamente a su lugar — es contrato.
-  tl.fromTo(camera.position, { x: -0.30, y: 0.18, z: distBase + 3.30 },
-    { x: -1.45, y: 0.02, z: distBase - 0.55, duration: b(1.15), ease: E.frena(4), immediateRender: false }, 0)
+  tl.fromTo(camera.position, { x: orbita(-0.30), y: orbita(0.18), z: dolly(distBase, 3.30) },
+    { x: orbita(-1.45), y: orbita(0.02), z: dolly(distBase, -0.55), duration: b(1.15), ease: E.frena(4), immediateRender: false }, 0)
   tl.fromTo(camera.rotation, { x: 0, y: 0, z: 0 },
-    { x: 0.004, y: -0.050, z: 0.012, duration: b(1.15), ease: E.frena(4), immediateRender: false }, 0)
+    { x: orbita(0.004), y: orbita(-0.050), z: orbita(0.012), duration: b(1.15), ease: E.frena(4), immediateRender: false }, 0)
 
-  tl.to(camera.position, { x: 1.62, duration: b(2.85), ease: E.vaiven() }, b(1.15))
-  tl.to(camera.rotation, { y: 0.058, duration: b(2.85), ease: E.vaiven() }, b(1.15))
+  tl.to(camera.position, { x: orbita(1.62), duration: b(2.85), ease: E.vaiven() }, b(1.15))
+  tl.to(camera.rotation, { y: orbita(0.058), duration: b(2.85), ease: E.vaiven() }, b(1.15))
   // el acercamiento se queda en -1.70: más adentro y el bloque de titular se sale por arriba
-  tl.to(camera.position, { z: distBase - 1.70, duration: b(1.45), ease: E.vaiven() }, b(1.15))
-  tl.to(camera.position, { z: distBase - 0.60, duration: b(1.40), ease: E.vaiven() }, b(2.60))
-  tl.to(camera.position, { y: -0.16, duration: b(1.60), ease: E.vaiven() }, b(1.15))
-  tl.to(camera.position, { y: 0.05, duration: b(1.25), ease: E.vaiven() }, b(2.75))
-  tl.to(camera.rotation, { x: -0.006, z: -0.016, duration: b(1.60), ease: E.vaiven() }, b(1.15))
-  tl.to(camera.rotation, { x: 0.004, z: 0.008, duration: b(1.25), ease: E.vaiven() }, b(2.75))
+  tl.to(camera.position, { z: dolly(distBase, -1.70), duration: b(1.45), ease: E.vaiven() }, b(1.15))
+  tl.to(camera.position, { z: dolly(distBase, -0.60), duration: b(1.40), ease: E.vaiven() }, b(2.60))
+  tl.to(camera.position, { y: orbita(-0.16), duration: b(1.60), ease: E.vaiven() }, b(1.15))
+  tl.to(camera.position, { y: orbita(0.05), duration: b(1.25), ease: E.vaiven() }, b(2.75))
+  tl.to(camera.rotation, { x: orbita(-0.006), z: orbita(-0.016), duration: b(1.60), ease: E.vaiven() }, b(1.15))
+  tl.to(camera.rotation, { x: orbita(0.004), z: orbita(0.008), duration: b(1.25), ease: E.vaiven() }, b(2.75))
 
   tl.to(camera.position, { x: 0, y: 0, z: distBase, duration: b(1.15), ease: E.vaiven(3) }, b(4.0))
   tl.to(camera.rotation, { x: 0, y: 0, z: 0, duration: b(1.15), ease: E.vaiven(3) }, b(4.0))

@@ -19,7 +19,7 @@
 // que la familia que eligio el aire lo tenga dibujado, y una que no lo tenga devuelve un rectangulo
 // vacio sin avisar.
 
-import { LOOK, b, E, texto, nivel, matAcento, materialMascara, CLARO, finMascara, deriva, encaje } from '../kit.js'
+import { LOOK, b, E, texto, nivel, matAcento, materialMascara, CLARO, finMascara, deriva, encaje, dolly } from '../kit.js'
 import { D } from '../datos.js'
 
 export const meta = { id: 'sello', beats: 6 }
@@ -146,7 +146,7 @@ export function build(ctx) {
   ejes.forEach(e => tl.to(e.m.scale, { [e.horizontal ? 'x' : 'y']: 0.001, duration: b(0.34), ease: E.acelera(3) }, SALIDA))
 
   // ---- camara: un acercamiento minimo. Devolverla es CONTRATO.
-  tl.fromTo(camera.position, { z: distBase + 0.20 }, { z: distBase - 0.06, duration: DUR * 0.86, ease: 'none', immediateRender: false }, 0)
+  tl.fromTo(camera.position, { z: dolly(distBase, 0.20) }, { z: dolly(distBase, -0.06), duration: DUR * 0.86, ease: 'none', immediateRender: false }, 0)
   tl.to(camera.position, { z: distBase, duration: DUR * 0.14, ease: E.vaiven() }, DUR * 0.86)
   tl.set(camera.position, { x: 0, y: 0, z: distBase }, DUR - 0.001)
 

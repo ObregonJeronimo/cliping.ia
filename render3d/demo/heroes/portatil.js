@@ -16,7 +16,7 @@
 //
 // CONTRATO: ver heroes/telefono.js
 
-import { LOOK, b, E, hex } from '../kit.js'
+import { LOOK, b, E, hex, dolly } from '../kit.js'
 
 export const meta = {
   id: 'portatil',
@@ -235,7 +235,7 @@ export function build(ctx) {
     tl.to(uHalo, { value: 0.26, duration: b(0.55), ease: E.vaiven() }, b(i + 0.16))
   }
 
-  tl.fromTo(camera.position, { z: distBase + 1.1 }, { z: distBase - 0.45, duration: DUR * 0.82, ease: 'none' }, 0)
+  tl.fromTo(camera.position, { z: dolly(distBase, 1.1) }, { z: dolly(distBase, -0.45), duration: DUR * 0.82, ease: 'none' }, 0)
   tl.to(camera.position, { z: distBase, duration: DUR * 0.18, ease: E.vaiven() }, DUR * 0.82)
 
   // Sale hacia abajo cerrando de a poco: el mismo gesto que la trajo, al revés y acelerando.

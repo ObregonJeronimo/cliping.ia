@@ -16,7 +16,7 @@
 //
 // CONTRATO: ver heroes/telefono.js
 
-import { LOOK, b, E, hex, matAcento } from '../kit.js'
+import { LOOK, b, E, hex, matAcento, dolly } from '../kit.js'
 
 export const meta = {
   id: 'prisma',
@@ -146,7 +146,7 @@ export function build(ctx) {
   tl.to(halo.material.uniforms.uF, { value: 0.20, duration: b(1.6), ease: E.vaiven() }, b(3.4))
   tl.to(halo.material.uniforms.uF, { value: 0.34, duration: b(1.6), ease: E.vaiven() }, b(5.0))
 
-  tl.fromTo(camera.position, { z: distBase + 0.8 }, { z: distBase - 0.55, duration: DUR * 0.8, ease: 'none' }, 0)
+  tl.fromTo(camera.position, { z: dolly(distBase, 0.8) }, { z: dolly(distBase, -0.55), duration: DUR * 0.8, ease: 'none' }, 0)
   tl.to(camera.position, { z: distBase, duration: DUR * 0.2, ease: E.vaiven() }, DUR * 0.8)
 
   // Sale creciendo hacia la cámara y apagándose: el cristal se traga el cuadro y corta.

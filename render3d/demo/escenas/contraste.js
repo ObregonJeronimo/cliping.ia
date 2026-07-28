@@ -18,7 +18,7 @@
 //
 // SIN DOS RECORTES NO HAY COMPARACION. Con uno es una foto, y eso ya lo hacen `titular` y `columna`.
 
-import { LOOK, b, E, nivel, matAcento, materialMascara, planoRecorte, recortesDe, finMascara, deriva } from '../kit.js'
+import { LOOK, b, E, nivel, matAcento, materialMascara, planoRecorte, recortesDe, finMascara, deriva, dolly, orbita } from '../kit.js'
 
 export const meta = { id: 'contraste', beats: 6 }
 
@@ -176,9 +176,9 @@ export function build(ctx) {
   tl.to(cama.scale, { y: 0.001, duration: b(0.34), ease: E.acelera(3) }, SALIDA + b(0.06))
 
   // ---- camara: devolverla es CONTRATO
-  tl.fromTo(camera.position, { x: -0.10 }, { x: 0.10, duration: DUR * 0.70, ease: E.vaiven(), immediateRender: false }, 0)
+  tl.fromTo(camera.position, { x: orbita(-0.10) }, { x: orbita(0.10), duration: DUR * 0.70, ease: E.vaiven(), immediateRender: false }, 0)
   tl.to(camera.position, { x: 0, duration: DUR * 0.30, ease: E.vaiven() }, DUR * 0.70)
-  tl.fromTo(camera.position, { z: distBase + 0.24 }, { z: distBase - 0.10, duration: DUR * 0.82, ease: 'none', immediateRender: false }, 0)
+  tl.fromTo(camera.position, { z: dolly(distBase, 0.24) }, { z: dolly(distBase, -0.10), duration: DUR * 0.82, ease: 'none', immediateRender: false }, 0)
   tl.to(camera.position, { z: distBase, duration: DUR * 0.18, ease: E.vaiven() }, DUR * 0.82)
   tl.set(camera.position, { x: 0, y: 0, z: distBase }, DUR - 0.001)
 

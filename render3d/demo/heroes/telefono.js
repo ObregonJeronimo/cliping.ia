@@ -27,7 +27,7 @@
 //   `gr` va a la escena POST-BLOOM: ahí va la pantalla, porque una página es mayormente blanca y el
 //        bloom la convierte en una mancha.
 
-import { LOOK, b, E, hex, matAcento } from '../kit.js'
+import { LOOK, b, E, hex, matAcento, dolly } from '../kit.js'
 
 export const meta = {
   id: 'telefono',
@@ -302,7 +302,7 @@ export function build(ctx) {
 
   // La cámara se acerca mientras el aparato se asienta, y vuelve. Sin esto no hay paralaje contra el
   // fondo y el objeto se lee pegado a la imagen de atrás.
-  tl.fromTo(camera.position, { z: distBase + 0.9 }, { z: distBase - 0.35, duration: DUR * 0.82, ease: 'none' }, 0)
+  tl.fromTo(camera.position, { z: dolly(distBase, 0.9) }, { z: dolly(distBase, -0.35), duration: DUR * 0.82, ease: 'none' }, 0)
   tl.to(camera.position, { z: distBase, duration: DUR * 0.18, ease: E.vaiven() }, DUR * 0.82)
 
   // SALIDA acelerando: es lo que hace que el corte siguiente se sienta ganado y no impuesto.

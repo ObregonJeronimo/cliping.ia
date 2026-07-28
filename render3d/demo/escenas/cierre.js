@@ -19,7 +19,7 @@
 // beat. No cambia la composición: el anillo cierra una sola vez, la marca sigue clavada adentro y el
 // CTA sigue siendo lo único que pide algo. Lo que cambia es que ninguno de los tres espera al final.
 
-import { E, LOOK, b, planoTexto, materialMascara, filete, hex, nivel, marco } from '../kit.js'
+import { E, LOOK, b, planoTexto, materialMascara, filete, hex, nivel, marco, dolly, orbita } from '../kit.js'
 // El COPY sale de los DATOS. Lo que queda escrito aca es CHROME de la pieza (rotulos de
 // capitulo, indicadores tecnicos): eso es direccion de arte y no cambia con el contenido.
 // Lo que la marca DICE — su nombre, sus cifras, su claim, su CTA — sale de los datos o NO SALE.
@@ -608,10 +608,10 @@ export function build(ctx) {
   tl.to(aro.material.uniforms.uAlfa, { value: 1, duration: dRespira, ease: E.vaiven() }, tRespira + dRespira)
 
   // --- cámara: empuje mínimo, retroceso al cerrar, y vuelve EXACTO a (0,0,distBase)
-  tl.to(camera.position, { z: distBase - 0.35, duration: b(4.5), ease: E.vaiven() }, 0)
-  tl.to(camera.rotation, { z: 0.010, duration: b(2.4), ease: E.vaiven() }, 0)
+  tl.to(camera.position, { z: dolly(distBase, -0.35), duration: b(4.5), ease: E.vaiven() }, 0)
+  tl.to(camera.rotation, { z: orbita(0.010), duration: b(2.4), ease: E.vaiven() }, 0)
   tl.to(camera.rotation, { z: 0, duration: b(2.1), ease: E.vaiven() }, b(2.4))
-  tl.to(camera.position, { z: distBase + 0.72, duration: b(0.85), ease: E.vaiven(2) }, b(4.5))
+  tl.to(camera.position, { z: dolly(distBase, 0.72), duration: b(0.85), ease: E.vaiven(2) }, b(4.5))
   tl.to(camera.position, { z: distBase, duration: b(0.55), ease: E.frena(2) }, b(5.35))
   tl.set(camera.position, { x: 0, y: 0, z: distBase }, b(5.94))
   tl.set(camera.rotation, { x: 0, y: 0, z: 0 }, b(5.94))
