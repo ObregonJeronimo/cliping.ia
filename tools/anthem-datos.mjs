@@ -114,6 +114,16 @@ export function datosDe(pm) {
     datos: (pr.stats || []).slice(0, 5).map(x => ({
       valor: x.valor, etiqueta: corto(x.etiqueta, 12).toUpperCase(),
     })),
+    // LA VOZ DEL CLIENTE. Se capturaba desde hace tiempo y moria aca: `pruebas` entraba a esta funcion
+    // y solo se leia `stats`, asi que ninguna escena podia pedir un testimonio ni aunque la pagina lo
+    // publicara. Va SIN mayusculizar, al reves que el resto: una cita en versales deja de sonar a
+    // persona y pasa a sonar a cartel. Y la firma viaja como venga —vacia incluida—: linear.app
+    // publica sus citas sin autor, y ponerle uno generico seria escribirle a la marca del cliente
+    // palabras que nadie dijo. El corte de 120/24 es el del contrato de pagemodel (140/28) con aire
+    // para que la escena no tenga que elidir.
+    testimonios: (pr.testimonios || []).slice(0, 3)
+      .filter(x => x && x.texto)
+      .map(x => ({ texto: corto(x.texto, 120), firma: corto(x.firma || '', 24) })),
     golpe: corto(s.queHace, 34).toUpperCase() || null,
     cta: s.cta ? corto(s.cta, 20).toUpperCase() : null,
     // El pie son datos REALES: el dominio y el formato. Nunca una promesa.

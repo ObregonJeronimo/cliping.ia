@@ -286,6 +286,87 @@ def _cta(content):
     return cands[0] if cands else ""
 
 
+# FIRMA PEGADA AL FINAL DE LA CITA. No es una forma inventada: es como la web escribe un testimonio.
+# Medido sobre capturas reales — basecamp.com da 7 de 7 con esta forma exacta:
+#   "...Errors are down. Clients are happier. Patrick Sheffield, Moore Communications Group"
+# El autor viene DESPUES del punto final, sin raya, sin comillas y sin punto propio, porque en el HTML
+# vive en otro elemento y el innerText los pega. Por eso se ancla en el cierre de oracion y se exige
+# que la cola NO tenga puntuacion de oracion: es lo unico que separa "la cita sigue" de "empezo la firma".
+# El tope de la cola es 60 y no 44 porque 44 dejaba afuera un caso real: "Patrick Sheffield, Moore
+# Communications Group" mide 45, y al no reconocerse como firma el nombre se quedaba DENTRO de la cita
+# — o sea, el texto que la escena publica como palabras del cliente terminaba con su propio nombre
+# pegado. Quien filtra de verdad no es el largo sino la forma de nombre de _MAYUS/coma, de abajo.
+_FIRMA_PEGADA = re.compile(r"(?<=[.!?])\s+([^.!?]{2,60})$")
+# Una firma es un NOMBRE, no una frase. O trae coma ("Nombre, Empresa") o trae al menos dos palabras
+# con mayuscula ("Tobi Lutke Shopify Co-Founder"). Sin esa evidencia se descarta: preferimos una cita
+# sin firma —que es lo que linear.app publica de verdad— antes que colgarle un autor al que no lo tiene.
+_MAYUS = re.compile(r"\b[A-ZÀ-Ü][\wÀ-ſ&.]*")
+
+
+def _testimonios(content):
+    """La voz del cliente, tal cual la escribio quien la dijo.
+
+    ANTI-INVENCION, y aca la tentacion es concreta: el innerText de un bloque de testimonio trae la
+    cita y el autor pegados sin separador, asi que "adivinar donde termina la cita" es adivinar un
+    nombre propio. Cuando la evidencia no alcanza, la firma queda VACIA y la cita se publica sola —
+    linear.app hace exactamente eso en su propia pagina. Nunca se rellena con un generico tipo
+    "cliente de la marca": eso seria ponerle a la marca del cliente palabras que nadie dijo.
+
+    El selector de captura tambien pesca `[class*="quote" i]`, que en un sitio de servicios matchea el
+    boton de "pedi tu presupuesto" (*get a quote*). Publicar eso como testimonio no es inventar texto,
+    es algo peor: es presentar copy de marketing como si fuera la voz de un cliente. Por eso se exige
+    que el material tenga forma de frase dicha por alguien (varias palabras y largo de cita real).
+    """
+    out, vistos = [], {}
+    for crudo in _lista((content or {}).get("testimonials")):
+        t = _limpio(crudo, 240)
+        if len(t) < 25 or len(t.split()) < 5:      # un boton o un rotulo no es un testimonio
+            continue
+        # UN CTA NO ES UNA VOZ. El selector de captura pesca `[class*="quote" i]`, que en un sitio de
+        # servicios es el boton de presupuesto: "Pedi tu presupuesto sin cargo y sin compromiso" tiene
+        # once palabras y pasaba todos los filtros de largo. Se reusa _CTA_BUENO —el vocabulario de
+        # imperativos que el repo ya mantiene para detectar botones— en vez de escribir una lista
+        # negra nueva al lado, que se pudriria por separado. Un testimonio es alguien contando su
+        # experiencia; si el texto le da una orden al lector, no es eso.
+        if _CTA_BUENO.search(t):
+            continue
+        firma = ""
+        m = _FIRMA_PEGADA.search(t)
+        if m:
+            cola = m.group(1).strip()
+            # La cola es una firma solo si se comporta como un nombre: coma, o dos mayusculas.
+            if "," in cola or len(_MAYUS.findall(cola)) >= 2:
+                # NUNCA a mitad de palabra. El contrato corta la firma en 28 y "Shannon Kropf, Full
+                # Sail University" salia como "Shannon Kropf, Full Sail Uni": un apellido partido se
+                # lee como un error de la herramienta, no como una cita. Con coma, la parte de antes
+                # ES la persona y sobra para firmar; sin coma, se cae a palabras enteras.
+                if len(cola) > 28 and "," in cola:
+                    cola = cola.split(",")[0].strip()
+                while len(cola) > 28 and " " in cola:
+                    cola = cola.rsplit(" ", 1)[0].strip()
+                firma = _limpio(cola, 28)
+                t = _limpio(t[:m.start()], 240)
+        texto = _limpio(t, 140)
+        if len(texto) < 25:
+            continue
+        # LA MISMA CITA PUEDE VENIR DOS VECES CON DISTINTA FIRMA. Pasa cuando el selector matchea el
+        # <blockquote> y ademas su contenedor: linear.app entrega la cita de Gabriel Peal una vez con
+        # la firma corta y otra con nombre, cargo y empresa. Quedarse con la primera es quedarse con la
+        # peor por orden de aparicion, asi que ante texto repetido gana la firma MAS COMPLETA — que es
+        # la que dice quien es la persona.
+        clave = texto.lower()
+        previo = vistos.get(clave)
+        if previo is not None:
+            if len(firma) > len(out[previo]["firma"]):
+                out[previo]["firma"] = firma
+            continue
+        vistos[clave] = len(out)
+        out.append({"texto": texto, "firma": firma})
+        if len(out) >= 3:
+            break
+    return out
+
+
 def _stats(content):
     """Cifras que la pagina presenta COMO cifras, con su etiqueta pegada.
 
@@ -467,7 +548,7 @@ def brief_de(site, url=""):
             # En un medio esto lleva los TITULARES: es el unico campo del modelo donde entra uno entero.
             "comoFunciona": [t["titulo"] for t in titulares],
             "features": features,
-            "pruebas": {"stats": _stats(c), "testimonios": [], "logosClientes": False},
+            "pruebas": {"stats": _stats(c), "testimonios": _testimonios(c), "logosClientes": False},
             "cta": _cta(c),
             "idioma": (_limpio(c.get("lang"), 5) or "es")[:2],
         },

@@ -301,9 +301,53 @@ _JS_EXTRACT = r"""
     .filter(t => t.length >= 30 && t.length <= 240)).slice(0, 14);
   // VOZ DEL CLIENTE: testimonios/reseñas reales -> dan el tono y los DOLORES del publico (no la voz de marketing de la
   // marca). Perception los usa para escribir un copy que suene como su cliente. Selectores semanticos + schema.org.
+  // LA FIRMA VIAJA CON LA CITA, Y NO ES UN ADORNO. Medido en linear.app: las tres citas estan firmadas en la pagina
+  // ("Gabriel Peal, Staff Software Engineer, OpenAI" / "Nik Koblov, Head of Engineering, Ramp"), pero el <blockquote>
+  // que matchea el selector contiene SOLO la cita — el nombre vive en un hermano. Capturando la cita sola, el modelo
+  // recibia tres testimonios huerfanos y llenaba el casillero de autor con un generico ("Linear customer"): perdiamos
+  // al ingeniero de OpenAI que avala el producto —la prueba social mas fuerte de esa pagina— y ADEMAS publicabamos
+  // una atribucion que la pagina nunca hizo. La regla anti-invencion ya estaba escrita en el prompt; lo que faltaba
+  // era que hubiera algo que leer. Se busca la firma en el contenedor de la cita y se PEGA al final, que es
+  // exactamente la forma en que otras paginas (basecamp.com, 7 de 7) ya la sirven: asi aguas abajo hay un solo
+  // criterio de lectura y no dos caminos que mantener.
+  const CITA_SEL = '[class*="testimonial" i], [class*="review" i], [class*="opinion" i], [class*="quote" i], blockquote, [itemprop="reviewBody" i]';
+  const FIRMA_SEL = 'figcaption, cite, footer, [class*="author" i], [class*="autor" i], [class*="byline" i], [class*="role" i], [class*="cargo" i]';
+  const firmaDe = (el) => {
+    // SE TREPA DE A UN NIVEL, Y SE FRENA EN SECO AL LLEGAR AL GRUPO. Medido en basecamp.com: buscando la firma en
+    // "el contenedor" a secas, se llegaba al carrusel que agrupa los siete testimonios y se devolvia la PRIMERA
+    // firma que hubiera ahi — o sea la de otra persona. La cita de Patrick Sheffield salia firmada por Aaron
+    // Bingaman. Atribuirle a alguien palabras que dijo otro es peor que no tener firma: es el unico error de esta
+    // familia que ademas de mentir sobre la marca, mete a un tercero real en el medio.
+    // La condicion de corte es contar citas: un contenedor que abarca mas de una NO es el de esta cita, y sus
+    // firmas pertenecen a las otras.
+    let n = el.parentElement;
+    for (let i = 0; i < 3 && n; i++, n = n.parentElement) {
+      if (n.querySelectorAll(CITA_SEL).length > 1) return '';
+      let mejor = '';
+      for (const f of n.querySelectorAll(FIRMA_SEL)) {
+        if (el.contains(f)) continue;            // lo que esta DENTRO de la cita es cita, no firma
+        // NOMBRE Y EMPRESA SE UNEN CON COMA, y no es cosmetica. Cuando la firma esta armada con dos <span> en
+        // linea, innerText los pega sin separador y sale "Gabriel PealOpenAI": eso se publicaria asi, tal cual,
+        // debajo de la cita. Se leen las partes y se unen, que ademas deja la forma "Nombre, Empresa" que el
+        // lector de aguas abajo ya sabe cortar cuando no entra.
+        const partes = [...f.children].map(txt).filter(Boolean);
+        const t = partes.length >= 2 ? partes.join(', ') : txt(f);
+        // La mas COMPLETA de las candidatas: en linear.app conviven la version corta y "Gabriel Peal, Staff
+        // Software Engineer, OpenAI", y la segunda es la que dice quien es la persona.
+        if (t && t.length >= 3 && t.length <= 60 && t.length > mejor.length) mejor = t;
+      }
+      if (mejor) return mejor;
+    }
+    return '';
+  };
   const testimonials = uniq([...document.querySelectorAll(
     '[class*="testimonial" i], [class*="review" i], [class*="opinion" i], [class*="quote" i], blockquote, [itemprop="reviewBody" i]'
-  )].map(txt).filter(t => t.length >= 20 && t.length <= 240)).slice(0, 6);
+  )].map(el => {
+    const cita = txt(el);
+    const firma = firmaDe(el);
+    // Si el contenedor ya traia la firma adentro (el caso basecamp), pegarla otra vez la duplicaria.
+    return (cita && firma && !cita.includes(firma)) ? (cita + ' ' + firma) : cita;
+  }).filter(t => t.length >= 20 && t.length <= 240)).slice(0, 6);
   let logoRaw = '';
   const ico = document.querySelector('link[rel*="apple-touch-icon" i]')
     || document.querySelector('meta[property="og:image"]')
