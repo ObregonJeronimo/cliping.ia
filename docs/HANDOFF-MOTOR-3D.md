@@ -362,6 +362,31 @@ una de deporte).
 - **Mira los videos.** Renderiza con dos o tres seeds y mira. Es literalmente de donde salio cada
   defecto serio de este proyecto.
 - **Medi antes de optimizar.**
+- **Un artefacto es un defecto SOLO si ninguna linea lo quiso.** Antes de arreglar cualquier cosa que
+  se vea rara en un cuadro, rastrea el pixel hasta la linea que lo dibuja. Si aparece una declaracion
+  deliberada —con nombre propio, con comentario— es DISEÑO, no defecto, y "arreglarlo" es romper la
+  pieza. Paso de verdad: un auditor reporto "un rectangulo blanco solido y VACIO" en `destello` y era
+  `barraUna = barra(2.95, 0.56, 'der')`, del mismo lenguaje que las otras barras del cuadro.
+
+### Auditar el video con agentes: para que sirve y para que no
+
+Mirar el video es lo que encuentra los defectos, asi que repartir esa mirada entre varios agentes
+—uno por tramo— cubre mucho mas terreno que mirarlo uno solo. Pero conviene saber que se compra:
+
+- **Un tercio de lo que reportan es falso.** Medido en la unica auditoria que se hizo asi: de siete
+  hallazgos verificados uno por uno, dos no existian (un "subtitulo duplicado" que aparecia una sola
+  vez, y la barra de arriba). NUNCA se toca codigo por un hallazgo sin confirmarlo en el cuadro.
+- **Los dos peores defectos del video los encontro el usuario, no los agentes** (el telefono ilegible
+  y el CTA pixelado). El agente amplia cobertura; no reemplaza a alguien mirando la pieza entera.
+- **El error de base es facil de cometer: darles solo imagenes.** Un agente que ve un cuadro y no
+  puede leer el codigo NO PUEDE distinguir un artefacto de un elemento intencional — se le esta
+  pidiendo un juicio que su informacion no permite. Si se los audita con imagenes, hay que exigirles
+  que reporten OBSERVACION ("hay un rectangulo blanco de 300x80 en tal coordenada del segundo N") y
+  no CONCLUSION ("hay un rectangulo huerfano"), y que digan explicitamente cuando no pudieron
+  encontrar que lo origina. La conclusion la saca quien puede leer las dos cosas.
+- **El falso NEGATIVO no se cierra con esto.** Un agente que no ve un defecto no deja rastro, asi que
+  la unica defensa sigue siendo mirar el video terminado — y que lo mire tambien alguien que no
+  escribio el codigo.
 
 ### Seguridad — sin excepciones
 - **Nunca subas `backend/.env` al repo.** Pedile las keys a Jero por un canal privado.
