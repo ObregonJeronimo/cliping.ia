@@ -166,10 +166,22 @@ export function build(ctx) {
   const g  = new THREE.Group()   // escena normal: PASA por el bloom
   const gr = new THREE.Group()   // post-bloom: TODO recorte de pagina va aca, o se quema
   const tl = gsap.timeline({ paused: true })
+
+  // SIN MATERIAL, LA ESCENA SE RINDE. No rellena, no inventa: se declara vacia y el
+  // secuenciador la saltea. Es la anti-invencion hecha codigo, y es lo primero que
+  // escribis en una escena nueva.
+  if (!loQueNecesito.length) return { g, gr, tl, vacia: true }
+
   // ... duracion total <= b(meta.beats)
   return { g, gr, tl }
 }
 ```
+
+`gr` es opcional (una escena sin recortes devuelve solo `{ g, tl }`), y `hero` devuelve ademas
+`heroUsado`. Pero **`vacia: true` no es opcional en la practica**: cualquier escena que dependa de un
+dato que la pagina puede no tener lo necesita. Mira `columna.js:76`, `pantalla.js:70` o
+`tarjetas.js:123` — las tres son el mismo gesto, y las seis escenas nuevas lo van a necesitar (`cita`
+sin testimonios, `lista` sin lista, `titular` sin titulares).
 
 Las escenas de hoy: `apertura, hero, toro, tipografia, rafaga, pantalla, columna, tarjetas, destello,
 cierre`. Los heroes (lo que protagoniza `hero`): `telefono, portatil, ventana, mosaico, vitrina,
