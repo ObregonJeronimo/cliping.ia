@@ -125,7 +125,19 @@ export function build(ctx) {
     let m
     if (p.tipo === 'recorte') {
       const ar = p.tex.image.width / p.tex.image.height
-      const alto = Math.min(ALTO_MAX, ANCHO_MAX / Math.max(0.08, ar))
+      // UN RECORTE NO SE AMPLIA MAS ALLA DE SU PROPIA RESOLUCION, y este era el defecto mas visible
+      // del video: el boton "Sign up free" de basecamp se captura con unos 250 px de ancho y esta
+      // escena lo estiraba hasta ocupar casi los 1080 del cuadro. Cuatro veces su tamaño: los bordes
+      // se deshacen y el texto queda con dientes. Se ve enseguida porque un CTA es justo lo que el
+      // espectador mira, y porque un recorte borroso delata que la pieza esta hecha con pedazos de
+      // una captura y no con material propio.
+      // El tope es 1.4x: por encima de eso el remuestreo empieza a notarse en los cantos de un
+      // boton, que es la peor superficie posible (bordes rectos, alto contraste, texto adentro).
+      // Un recorte que no llega al ancho del cuadro se muestra MAS CHICO, y esta bien: mejor una
+      // pieza nitida y menor que una grande y sucia.
+      const MAG_MAX = 1.4
+      const anchoNativo = (p.tex.image.width * MAG_MAX / (ctx.W || 1080)) * mundoW
+      const alto = Math.min(ALTO_MAX, Math.min(ANCHO_MAX, anchoNativo) / Math.max(0.08, ar))
       m = planoRecorte(p.tex, alto)
       if (m) gr.add(m)
     } else {
