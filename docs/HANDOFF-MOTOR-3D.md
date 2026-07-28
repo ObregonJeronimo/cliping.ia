@@ -57,7 +57,13 @@ npm run gates:guard
 ```
 
 **Nunca `npm run gates` pelado.** El wrapper existe porque una vez un script se comio 28 GB y tiro la
-PC abajo; `gates:guard` mide el pico y aborta. Hoy da **27 OK / 0 FAIL, pico ~7.9 GB**.
+PC abajo; `gates:guard` mide el pico y aborta. Hoy da **28 OK / 0 FAIL, pico ~7.7 GB**, y tarda
+**~30 minutos**: no son tests de unidad, renderizan miles de cuadros. Para el dia a dia alcanza con
+las cinco de esta zona (`verificar.mjs`, `guion-check`, `encuadre-check`, `adn-check`,
+`testimonios-check`), que juntas tardan **7 segundos**. El guard entero, solo antes de pushear.
+
+Y OJO CON EL NUMERO: el contador del guard cuenta apariciones de `OK (`, no compuertas. `RUBRO`,
+`ADN` y `ENCUADRE` pasan y nunca se contaron. Es un proxy, no un inventario.
 
 Dos herramientas mas, para mirar y para medir:
 
@@ -183,8 +189,9 @@ dato que la pagina puede no tener lo necesita. Mira `columna.js:76`, `pantalla.j
 `tarjetas.js:123` — las tres son el mismo gesto, y las seis escenas nuevas lo van a necesitar (`cita`
 sin testimonios, `lista` sin lista, `titular` sin titulares).
 
-Las escenas de hoy: `apertura, hero, toro, tipografia, rafaga, pantalla, columna, tarjetas, destello,
-cierre`. Los heroes (lo que protagoniza `hero`): `telefono, portatil, ventana, mosaico, vitrina,
+Las escenas de hoy son DIECISEIS: `apertura, hero, toro, tipografia, rafaga, pantalla, columna,
+tarjetas, destello, cierre` (las diez originales) y las seis del punto 8, ya hechas: `cita, lista,
+titular, partida, contraste, sello`. Los heroes (lo que protagoniza `hero`): `telefono, portatil, ventana, mosaico, vitrina,
 prisma, cinta, enjambre, orbital` — en ese orden, que es orden de preferencia (primero los que
 muestran la pagina, ultimo la geometria pura).
 
@@ -205,6 +212,7 @@ Todas colgadas de `npm run gates:guard`:
 | `tools/guion-check.mjs` | que el guion no repita ni deje huecos |
 | `tools/rubro-check.py` | que un ecommerce, un estudio y un medio no salgan iguales |
 | `tools/medir-video.py` | 12 metricas del mp4 terminado, con `--tramos` por escena |
+| `tools/testimonios-check.py` | que la firma de un testimonio LLEGUE cuando la pagina la da, y que NUNCA se invente cuando no |
 
 Y dos reglas que las compuertas hacen cumplir y que vas a chocar: **`nivel(k)` nunca `LOOK.tinta` para
 texto** (esta prohibido por regex), y **nada de grises hardcodeados** — todo color sale del DNA o de
@@ -234,7 +242,31 @@ No son teoria: cada una se comio una tarde.
 8. **`mov_frac` cuenta pixeles que cruzan un umbral de luma entre frames.** Una masa grande y plana
    que se mueve cambia solo sus BORDES. Lo que mueve la aguja son **eventos duros**, no deriva suave.
    Esto se repitio cuatro veces.
-9. **Cinco veces una version gano la metrica y se veia peor**, y las cinco gano la que se veia mejor.
+9. **`encuadre-check` NO caza un texto que se sale del cuadro.** Verifica INTERSECCION con el
+   frustum, no contencion, y ademas saltea las mallas con `materialMascara` porque no exponen
+   `material.map`. En este trabajo dos escenas salieron con el texto cortado por la derecha y la
+   compuerta dijo OK las dos veces. Mientras siga asi: el ancho de un renglon se MIDE contra
+   `mundoW` y se achica el bloque entero si no entra. No lo adivines por cantidad de caracteres —
+   el ancho lo decide la fuente que eligio el aire, y cambia por pieza.
+10. **Una escena que no figura en ninguna de las cuatro `ORDENES` no se elige JAMAS**, aunque exista,
+    este registrada y cumpla sus `REQUISITOS`. Y si va ULTIMA en la lista tampoco entra: el
+    presupuesto de beats se agota antes. `sello` estuvo escrito, verde y ausente de diez semillas
+    seguidas por esto.
+11. **`uProg` de `materialMascara` no termina en 1.0**, termina en `1 + uSuave`. Con 1.0 la banda
+    suave cae exactamente en el canto y la ultima letra de cada renglon queda lavada para siempre.
+    `pantalla.js` y `destello.js` ya lo sabian (1.11 y 1.10) y las escenas nuevas no.
+12. **Una propiedad, un solo escritor.** Si la deriva continua y una entrada animan las dos
+    `fondo.position.x`, la escena deja de ser determinista y la compuerta la caza con "dos
+    construcciones con la misma semilla dan escenas distintas". Si hacen falta dos movimientos,
+    hacen falta dos objetos (un contenedor y su hijo).
+13. **`immediateRender: false` tambien fuera de las escenas.** Los `fromTo` de las transiciones iban
+    sin el y escribian su valor inicial AL CREARSE: el video entero salia con el cuadro corrido y una
+    franja de acento pegada a un costado, desde el segundo cero. Ninguna compuerta lo vio; lo delato
+    mirar una tira de cuadros consecutivos.
+14. **Un recorte de pagina es un PNG CON TRANSPARENCIA.** Apilar dos y barrer uno sobre otro no tapa
+    nada: se leen mezclados. La mascara recorta el PNG, no lo vuelve opaco — hace falta un respaldo
+    que barra con el.
+15. **Cinco veces una version gano la metrica y se veia peor**, y las cinco gano la que se veia mejor.
    Mirar le gana a leer: todos los defectos serios salieron de mirar hojas de contacto, ninguno de
    leer codigo.
 
@@ -260,7 +292,33 @@ esta en `docs/director/RUMBO.md` (siete vueltas, con lo que se probo y se tiro).
 
 ---
 
-## 8. LA TAREA — mas variedad, y de TIPO, no de color
+## 8. LA TAREA — mas variedad, y de TIPO, no de color  ·  **HECHA**
+
+> Los tres frentes estan cerrados y pusheados. Lo que sigue en esta seccion es el diagnostico
+> original, que se deja porque explica POR QUE cada escena existe. Lo que quedo pendiente esta al
+> final, en "lo que sigue".
+
+**(a) Seis escenas nuevas** — `cita` (la unica que habla con otra voz), `lista` (bandera a la
+izquierda, numerada), `titular` (la foto de la pagina como fondo sobre el que se escribe), `partida`
+(el cuadro partido en dos), `contraste` (la primera comparacion del motor) y `sello` (la unica que
+compone con vacio, para `lujo` e `inmobiliario`).
+
+**(b) Transiciones** — antes TODO corte era duro + flash, siempre. Ahora hay corte, flash, barrido y
+empuje, elegidos por corte con el PRNG sembrado y sin repetir el mismo gesto dos veces seguidas. Van
+en el PASE DE POST y no en la escena 3D: un barrido "de verdad" pide las dos escenas visibles a la
+vez, y ahi las dos animarian la MISMA camara. El aire opina con el campo `transiciones`.
+
+**(c) `testimonios`** — se llena, viaja hasta DATOS y tiene compuerta propia.
+
+### Lo que sigue
+- Regenerar los fixtures: `linear-app.json` firma sus tres citas como "Linear customer", un rotulo
+  que no esta en la pagina. La pagina SI dice quien las dijo y ahora la captura lo trae; los fixtures
+  son de antes del arreglo. Se rehacen con `python backend/test_pagemodel.py --write`.
+- `encuadre-check` tiene un punto ciego (ver trampa 12): no vio ninguno de los dos textos que se
+  salieron del cuadro en este trabajo.
+- El diagnostico original, para contexto:
+
+## 8-bis. El diagnostico que abrio este trabajo
 
 Este es el trabajo que quedo abierto y el que sigue. El diagnostico, textual:
 
