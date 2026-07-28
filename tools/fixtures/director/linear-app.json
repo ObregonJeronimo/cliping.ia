@@ -1,5 +1,6 @@
 {
   "assets": {
+    "elementos": [],
     "images": [
       {
         "ar": null,
@@ -28,8 +29,7 @@
     ],
     "logo": "https://linear.app/static/apple-touch-icon.png?v=2",
     "ogImage": "https://linear.app/cdn-cgi/imagedelivery/fO02fVwohEs9s9UHFwon6A/c7fa8f5f-d439-4329-6a65-de549b51e300/f=auto,dpr=2,fit=scale-down,metadata=none",
-    "screenshot": "C:\\Users\\Usuario\\Documents\\cliping.ia\\backend\\..\\tools\\out\\e2e_linear.png",
-    "elementos": []
+    "screenshot": "C:\\Users\\Usuario\\Documents\\cliping.ia\\backend\\..\\tools\\out\\e2e_linear.png"
   },
   "brand": "Linear",
   "captura": {
@@ -158,15 +158,15 @@
       "stats": [],
       "testimonios": [
         {
-          "firma": "Linear customer",
+          "firma": "Gabriel Peal, OpenAI",
           "texto": "You'll probably build a better product, just because of the craft that using Linear infuses on your brain."
         },
         {
-          "firma": "Linear customer",
+          "firma": "Nik Koblov, Ramp",
           "texto": "Our speed is intense and Linear helps us be action biased."
         },
         {
-          "firma": "Linear customer",
+          "firma": "Kaz Nejatian, Opendoor",
           "texto": "Linear is excellent, just excellent. It has the right opinions for fast moving teams."
         }
       ]
