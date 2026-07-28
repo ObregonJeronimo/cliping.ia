@@ -5,8 +5,8 @@ Guía para correr el proyecto en una PC nueva y trabajar entre varios sin pisarn
 > **Thiago, empezá acá (orden):**
 > 1. Instalá los programas y cloná el repo → **"Setup en una PC nueva"** (abajo).
 > 2. Pedile a Jero el `backend/.env` (secrets) y, si vas a hostear la demo en vivo, su **authtoken de ngrok**.
-> 3. Corré `npm install` (raíz) + las deps del backend, y probá `npm run gates` → debe dar **todo verde**.
-> 4. Abrí **[`THIAGO-IA-CONTEXTO.md`](THIAGO-IA-CONTEXTO.md)** y pegá su contenido como **primer mensaje** en tu Claude Code: pone a tu IA al día del proyecto y le marca las reglas (gates, determinismo, qué NO romper).
+> 3. Corré `npm install` (raíz) + las deps del backend, y probá **`npm run gates:guard`** (siempre el `:guard`, nunca `npm run gates` pelado) → debe dar **27 OK / 0 FAIL**.
+> 4. Abrí **[`docs/HANDOFF-MOTOR-3D.md`](docs/HANDOFF-MOTOR-3D.md)** y pegá su contenido como **primer mensaje** en tu Claude Code. **Ese es el contexto que importa**: describe el motor 3D nuevo (`render3d/demo/` + `backend/motor.py`), cómo correrlo, las reglas y la tarea que sigue. *(Si además vas a tocar el motor canvas `src/urvid`, sumá [`THIAGO-IA-CONTEXTO.md`](THIAGO-IA-CONTEXTO.md).)*
 > 5. Antes de tocar `main`: **`git pull`**. Al terminar el día: **commit + push**. Nunca los dos el mismo día.
 
 > **Para Jero — sumar a Thiago (una sola vez):**

@@ -2,6 +2,11 @@
 
 > **Thiago:** copiá TODO lo de abajo (desde "Hola" hasta el final) y pegalo como primer mensaje en tu Claude Code / asistente, dentro de la carpeta del repo. Lo pone al día del proyecto y le marca las reglas para que no rompa nada.
 
+> ## 🔴 LEEME PRIMERO — hay un MOTOR NUEVO que no está en tu copia
+> Hacé **`git pull`**. Todo el trabajo de las últimas semanas está en un motor **3D** (`render3d/demo/` + `backend/motor.py`, Three.js + GSAP, renderiza a mp4 en tu PC) que este archivo **no describe**. Lo que leés acá abajo sigue siendo cierto para el motor canvas, pero **no es donde está el trabajo ni la tarea que sigue**.
+>
+> **Pegale a tu IA [`docs/HANDOFF-MOTOR-3D.md`](docs/HANDOFF-MOTOR-3D.md) — ese es el contexto completo**, y este archivo sólo si vas a tocar `src/urvid`.
+
 ---
 
 Hola. Vas a trabajar en **cliping.ia (urvid)**, un proyecto que convierte una **URL** en un **reel vertical de marketing 9:16**. Antes de tocar nada, internalizá esto:
@@ -9,6 +14,7 @@ Hola. Vas a trabajar en **cliping.ia (urvid)**, un proyecto que convierte una **
 ## Qué es y cómo está armado
 - **urvid IA** (`/studio`) y **urvid IA Advanced** (`/studio/craft`): generan el video con un **motor de CANVAS que corre en el navegador** → `src/urvid/` (`makeVideo()` arma una "carta"/recipe determinista, `drawFrame()` la dibuja). Es **determinista** (mismo brief+seed = mismo frame), **$0** (no renderiza en servidor; exporta con MediaRecorder).
 - **Cine IA** (`/studio/cine-motor`): un video de IA (fal.ai) es el fondo y nuestro motor le pone el texto. Usa un **fork**: `src/urvid-cine/`. **Las mejoras de Cine van SOLO ahí; `src/urvid/` no se toca para Cine.**
+- **MOTOR 3D / director** (`render3d/demo/` + `backend/motor.py`): **el motor nuevo, y donde está todo el trabajo reciente.** Three.js + GSAP, renderiza a mp4 en tu propia PC (`python backend/motor.py <url> --dur 20`). Determinista, $0. Ver [`docs/HANDOFF-MOTOR-3D.md`](docs/HANDOFF-MOTOR-3D.md).
 - **Frontend:** React + Vite (`src/`), deploy en **Vercel**. Push a `main` → redeploy.
 - **Backend:** FastAPI (`backend/`, `python run.py`, puerto 8000): captura la página con Playwright + arma el **brief** con Claude (`/api/urvid/perceive`), genera video fal (`/api/seedance/*`), analiza clips (`/api/cine/analyze`).
 
@@ -18,9 +24,9 @@ Hay una carpeta `remotion/` + `backend/template_director.py` + una skill `.claud
 ## ⚠️ GOTCHA #2 — todo cambio al motor DEBE pasar los gates
 Antes de pushear cualquier cambio a `src/urvid`:
 ```
-npm run gates
+npm run gates:guard
 ```
-Corre la cadena: **determinismo** (frame idéntico), **texto** (el fitter ACHICA, nunca corta con "…", cero desborde aun con texto adversarial), **APCA/contraste** (ink≥4.5, onAccent≥3), **QA** (listas parejas, nunca dos escenas juntas en una transición) y **vite build**. **Si un gate se pone rojo, NO se pushea.** Extra (no está en la cadena): `node tools/urvid1-color-check.mjs`.
+**Siempre el `:guard`, nunca `npm run gates` pelado** — el wrapper mide la memoria y aborta; existe porque un script se comió 28 GB y tiró una PC abajo. Hoy la cadena da **27 OK / 0 FAIL**. Corre: **determinismo** (frame idéntico), **texto** (el fitter ACHICA, nunca corta con "…", cero desborde aun con texto adversarial), **APCA/contraste** (ink≥4.5, onAccent≥3), **QA** (listas parejas, nunca dos escenas juntas en una transición) y **vite build**. **Si un gate se pone rojo, NO se pushea.** Extra (no está en la cadena): `node tools/urvid1-color-check.mjs`.
 
 ## ⚠️ GOTCHA #3 — los gates NO miden lo VISUAL
 Determinismo/contraste/desborde sí; pero "se ve lindo / la animación queda bien / el color es de la marca" NO. Para eso renderizá una **hoja de contacto** con fuentes reales y miralá:
@@ -49,4 +55,4 @@ En `src/urvid/core/strategy.js` `buildArcSmart` usa un solo generador (`seedFor(
 - `src/urvid-cine/` — fork para Cine IA.
 - `backend/perception.py` — arma el brief (incluye `audience{who,register,awareness}`). `backend/site_capture.py` — captura (texto, screenshot, imágenes rankeadas, datos declarados). `backend/main.py` — endpoints.
 
-**Primera tarea sugerida:** corré `npm run gates` para confirmar que tu entorno está sano (debe dar todo verde), después abrí `PLAN-MEJORAS.md` y decime qué te gustaría encarar. No toques `src/urvid` sin entender el gotcha del PRNG y sin correr los gates después.
+**Primera tarea:** corré `npm run gates:guard` para confirmar que tu entorno está sano (**27 OK / 0 FAIL**), y después andá a [`docs/HANDOFF-MOTOR-3D.md`](docs/HANDOFF-MOTOR-3D.md): ahí está el motor nuevo, cómo correrlo y la tarea que sigue (más variedad de composición: seis escenas nuevas, transiciones y testimonios). Si en cambio vas a tocar `src/urvid`, no lo hagas sin entender el gotcha del PRNG y sin correr los gates después.
