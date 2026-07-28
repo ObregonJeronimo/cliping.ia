@@ -310,7 +310,22 @@ for (const id of ids) {
     const v = new THREE.Vector3()
     let peor = null
     const noEncajan = []
-    rm.g.traverse(o => {
+    // DOS RAICES PARA EL CHEQUEO DECLARATIVO, UNA SOLA PARA EL HEURISTICO. `titular` compone TODO en
+    // `gr` —foto, banda y titular— porque la escena post-bloom se dibuja encima de `g` sin importar el
+    // z. Recorriendo solo `g`, sus tres renglones declaraban `encaja = true` y nadie los miraba: la
+    // escena con el cuerpo tipografico mas grande de las seis era justo la que no estaba chequeada.
+    // Es el mismo defecto que el commit anterior ("la compuerta que miraba la mitad de los casos"),
+    // cometido de nuevo veinte lineas mas abajo.
+    // El heuristico `peor` ("se come el cuadro") SIGUE mirando solo `g`, y a proposito: esta calibrado
+    // contra el, y en `gr` vive la FOTO de titular, que se dimensiona para CUBRIR el cuadro. Abrirsela
+    // seria acusarla de hacer exactamente lo que corresponde.
+    // NO se fuerza updateWorldMatrix aca: `Box3.setFromObject` ya actualiza lo que necesita, y
+    // forzarlo cambia las cajas que mide el heuristico `peor` —que esta calibrado con las de antes—.
+    // Probado: agregandolo, `destello` pasaba a fallar por una pieza de 6.42x14.34, que es su titular
+    // a sangre haciendo exactamente lo que esa escena existe para hacer. Una compuerta que acusa en
+    // falso se aprende a ignorar, y despues no ve el defecto de verdad.
+    const raices = [rm.g, rm.gr].filter(Boolean)
+    const mirar = (o, esG) => {
       if (!o.isMesh || !o.visible) return
       if (o.material && o.material.opacity != null && o.material.opacity <= 0.05) return
       caja.setFromObject(o)
@@ -355,10 +370,12 @@ for (const id of ids) {
           noEncajan.push(`${o.geometry.type} ${t.x.toFixed(2)}x${t.y.toFixed(2)} centrada en (${v.x.toFixed(2)}, ${v.y.toFixed(2)})`)
         }
       }
+      if (!esG) return                              // el heuristico de abajo es solo para `g`
       const esFilete = Math.min(t.x, t.y) < 0.15
       if (esFilete || t.y > mundoH * 1.6) return
       if (!peor || t.y > peor.y) peor = { x: t.x, y: t.y }
-    })
+    }
+    for (const raiz of raices) raiz.traverse(o => mirar(o, raiz === rm.g))
     ok(noEncajan.length === 0,
       `E-ENCAJE ${id}: con la marca "${marca}" ${noEncajan.length} pieza(s) declaradas encaja=true se salen del cuadro (${mundoW.toFixed(2)}x${mundoH.toFixed(2)}): ${noEncajan.join(' · ')}`)
     if (peor) {

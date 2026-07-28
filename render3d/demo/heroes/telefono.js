@@ -65,7 +65,21 @@ export function build(ctx) {
   const tl = gsap.timeline({ paused: true })
 
   const tira = texturas && texturas.get('tira')
-  const altoVP = (spec && spec.tiraViewport) || 1560
+  // CUANTA PAGINA SE VE, Y POR QUE NO ES "UNA PANTALLA ENTERA".
+  // La tira se captura a 720 px de ancho (un viewport movil a 2x). La pantalla del telefono ocupa
+  // unos 600 px del cuadro de 1080, asi que mostrar un viewport completo deja la tipografia de la
+  // pagina en ~10 px de alto. A ese tamaño NINGUN filtro la salva: el aparato esta inclinado en 3D,
+  // el muestreo nunca cae texel-a-pixel, y el texto sale con una franja mas clara cruzando cada
+  // renglon —se veia como si estuviera tachado—. No es un problema de mipmaps: se probo sin ellos y
+  // salio igual, y la tira ORIGINAL esta perfectamente nitida, asi que el ruido lo agrega el
+  // remuestreo, no la captura.
+  //
+  // Por eso se muestra la MITAD de un viewport, al doble de tamaño. Es lo que hace cualquier mockup
+  // de producto: nadie filma un telefono para que se lea la pagina entera, lo filma para que se lea
+  // UNA cosa. Ademas el scroll sigue recorriendo la pagina, asi que no se pierde contenido: se
+  // pierde simultaneidad, que es justo lo que sobraba.
+  const ZOOM = 2
+  const altoVP = ((spec && spec.tiraViewport) || 1560) / ZOOM
   const altoTira = tira && tira.image ? tira.image.height : altoVP
 
   // EL TAMAÑO DECIDE SI LA PÁGINA SE LEE O ES RUIDO. A 0.60 de alto de cuadro el teléfono entra
@@ -140,6 +154,15 @@ export function build(ctx) {
     tira.colorSpace = THREE.SRGBColorSpace
     tira.wrapS = tira.wrapT = THREE.ClampToEdgeWrapping
     tira.anisotropy = 8
+    // SIN MIPMAPS, Y NO ES UN DESCUIDO. La pantalla del telefono mide ~1600 px en el cuadro y el
+    // viewport de la tira son 1560 texels: es practicamente 1:1, el unico caso donde el mipmap
+    // ESTORBA. Con la derivada rondando 1.0 el muestreo cae medio nivel abajo y devuelve la mitad de
+    // la resolucion: en el video se veia una fila mas clara CRUZANDO cada renglon de texto, como un
+    // tachado, sobre todo en la equis-altura. Con filtro lineal puro el texto de la pagina sale
+    // nitido, que es la unica razon por la que esta escena existe.
+    tira.generateMipmaps = false
+    tira.minFilter = THREE.LinearFilter
+    tira.needsUpdate = true
     const visible = altoVP / altoTira
     tira.repeat.set(1, visible)
     tira.offset.set(0, 1 - visible)                      // arranca ARRIBA de la página
@@ -155,10 +178,21 @@ export function build(ctx) {
       uniforms: {
         map: { value: tira }, uR: { value: (R * 0.80) / pw }, uAR: { value: pw / ph },
         uBrillo: { value: 1.0 }, uBarrido: { value: 0.35 },
+        // EL RECORTE DE LA TIRA VIAJA COMO UNIFORM, y no como `tira.repeat/offset`.
+        // three aplica repeat/offset SOLO en los materiales que arman la UV con sus propios chunks
+        // (`uvTransform`). Este shader esta escrito a mano y muestreaba `texture2D(map, vUv)` crudo,
+        // asi que los dos renglones que preparaban el viewport no hacian absolutamente nada: la
+        // pagina ENTERA —ocho mil pixeles— se aplastaba dentro de la pantalla del telefono y salia
+        // como una textura de ruido gris donde no se leia una sola palabra. Y el scroll tampoco
+        // existia: el tween movia `tira.offset`, que este shader nunca lee. O sea que la promesa del
+        // hero (recorrer la pagina de verdad) estaba escrita en el comentario y no en la imagen.
+        uRep: { value: new THREE.Vector2(1, visible) },
+        uOff: { value: new THREE.Vector2(0, 1 - visible) },
       },
       vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
       fragmentShader: `
-        uniform sampler2D map; uniform float uR, uAR, uBrillo, uBarrido; varying vec2 vUv;
+        uniform sampler2D map; uniform float uR, uAR, uBrillo, uBarrido;
+        uniform vec2 uRep, uOff; varying vec2 vUv;
         // rectángulo redondeado, medido en el espacio del ANCHO para que el radio no se deforme
         float rr(vec2 p, vec2 h, float r){ vec2 d = abs(p) - h + vec2(r); return length(max(d,0.0)) + min(max(d.x,d.y),0.0) - r; }
         void main(){
@@ -166,7 +200,8 @@ export function build(ctx) {
           float dist = rr(p, vec2(0.5, 0.5 / uAR), uR);
           float a = smoothstep(0.004, -0.002, dist);
           if (a < 0.004) discard;
-          vec3 c = texture2D(map, vUv).rgb * uBrillo;
+          // La misma cuenta que hace three: uv' = uv * repeat + offset. Sin esto se ve la pagina entera.
+          vec3 c = texture2D(map, vUv * uRep + uOff).rgb * uBrillo;
 
           // ISLA DINÁMICA. Va acá y no en su propia geometría porque así queda siempre POR ENCIMA de
           // la página pase lo que pase con el z-fighting, y porque sobre una página oscura sólo se
@@ -248,10 +283,12 @@ export function build(ctx) {
   flotar()
 
   // EL SCROLL recorre como mucho el 68% de la tira: llegar al final delata que la página se acabó.
-  if (tira) {
+  // Se anima el UNIFORM y no `tira.offset`: este shader no lee repeat/offset de la textura (ver la
+  // nota larga arriba). Mientras el tween apunto a `tira.offset`, el telefono no scrolleo NUNCA.
+  if (tira && pantalla) {
     const visible = altoVP / altoTira
     const recorrido = Math.max(0, 1 - visible) * 0.68
-    tl.fromTo(tira.offset, { y: 1 - visible },
+    tl.fromTo(pantalla.material.uniforms.uOff.value, { y: 1 - visible },
       { y: 1 - visible - recorrido, duration: b(meta.beats - 1.6), ease: E.frena(3), immediateRender: false },
       b(0.9))
   }
