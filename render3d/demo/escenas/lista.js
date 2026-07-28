@@ -21,7 +21,7 @@
 // SIN TRES ITEMS NO HAY LISTA. Con dos es un par, y un par numerado se lee como un error de conteo.
 // No se rellena: se declara vacia y el guionista es quien no deberia haberla elegido.
 
-import { LOOK, b, E, texto, nivel, matAcento, materialMascara, CLARO, finMascara, deriva } from '../kit.js'
+import { LOOK, b, E, texto, nivel, matAcento, materialMascara, CLARO, finMascara, deriva, encaje } from '../kit.js'
 import { D } from '../datos.js'
 
 export const meta = { id: 'lista', beats: 6 }
@@ -72,8 +72,7 @@ export function build(ctx) {
   // (sangrar es una decision de composicion valida) y no si entro entera.
   const FUENTE_ITEM = { fuente: 'Anton', peso: 400, size: 150, tracking: 0.004, upper: true, alineado: 'left' }
   const texs = items.map(t => texto(t, FUENTE_ITEM))
-  const anchoMax = Math.max(...texs.map(t => ALTO_BASE * t.ar))
-  const ALTO_ITEM = anchoMax > ANCHO_UTIL ? ALTO_BASE * (ANCHO_UTIL / anchoMax) : ALTO_BASE
+  const ALTO_ITEM = encaje(ALTO_BASE, Math.max(...texs.map(t => t.ar)), ANCHO_UTIL)
   const PASO = Math.max(ALTO_ITEM, ALTO_BASE * 0.62) * 1.95
 
   // El bloque se centra vertical: con tres items o con cuatro, la lista queda a la misma altura

@@ -22,7 +22,7 @@
 // SIN FOTO NO HAY PORTADA. Una portada sin imagen es un titular sobre el fondo, y eso ya existe.
 // Se declara vacia y el guionista es quien no deberia haberla elegido.
 
-import { LOOK, b, E, texto, nivel, matAcento, materialMascara, planoRecorte, recortesDe, filete, finMascara, deriva } from '../kit.js'
+import { LOOK, b, E, texto, nivel, matAcento, materialMascara, planoRecorte, recortesDe, filete, finMascara, deriva, encaje } from '../kit.js'
 import { D } from '../datos.js'
 
 export const meta = { id: 'titular', beats: 6 }
@@ -125,8 +125,7 @@ export function build(ctx) {
   const texs = lineas.map(l => texto(l, FUENTE))
   const ANCHO_UTIL = mundoW * 0.88
   const ALTO_BASE = mundoH * 0.085
-  const anchoMax = Math.max(...texs.map(t => ALTO_BASE * t.ar))
-  const ALTO_L = anchoMax > ANCHO_UTIL ? ALTO_BASE * (ANCHO_UTIL / anchoMax) : ALTO_BASE
+  const ALTO_L = encaje(ALTO_BASE, Math.max(...texs.map(t => t.ar)), ANCHO_UTIL)
   const PASO = ALTO_L * 1.12                        // titular: interlinea CERRADA, como en una portada
 
   // En `gr` el texto NO pasa por el bloom, asi que puede ir casi a tinta sin reventarse. Es la unica

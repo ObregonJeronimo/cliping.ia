@@ -19,7 +19,7 @@
 // que la familia que eligio el aire lo tenga dibujado, y una que no lo tenga devuelve un rectangulo
 // vacio sin avisar.
 
-import { LOOK, b, E, texto, nivel, matAcento, materialMascara, CLARO, finMascara, deriva } from '../kit.js'
+import { LOOK, b, E, texto, nivel, matAcento, materialMascara, CLARO, finMascara, deriva, encaje } from '../kit.js'
 import { D } from '../datos.js'
 
 export const meta = { id: 'sello', beats: 6 }
@@ -80,7 +80,7 @@ export function build(ctx) {
   const t = texto(marca, { fuente: 'Anton', peso: 400, size: 170, tracking: 0.03, upper: true, alineado: 'center' })
   const ANCHO_UTIL = R * 1.42
   const ALTO_BASE = mundoH * 0.055
-  const alto = ALTO_BASE * t.ar > ANCHO_UTIL ? ANCHO_UTIL / t.ar : ALTO_BASE
+  const alto = encaje(ALTO_BASE, t.ar, ANCHO_UTIL)
   // nivel() YA SE DA VUELTA SOLO: va del fondo a la tinta, asi que un k ALTO es oscuro en un mundo
   // claro y claro en uno oscuro. Escribi `CLARO ? 0.06 : 0.97` —o sea, casi el fondo en mundo claro—
   // y el nombre de la marca salio blanco sobre fondo blanco: se leia apenas. El unico motivo para

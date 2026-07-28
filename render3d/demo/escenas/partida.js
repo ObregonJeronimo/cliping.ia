@@ -18,7 +18,7 @@
 // SIN DOS FRASES NO HAY PAR. Con una, la mitad vacia es un rectangulo de color esperando contenido
 // —el defecto exacto que la regla anti-invencion existe para impedir—. Se declara vacia.
 
-import { LOOK, b, E, texto, nivel, matAcento, materialMascara, CLARO, finMascara, deriva } from '../kit.js'
+import { LOOK, b, E, texto, nivel, matAcento, materialMascara, CLARO, finMascara, deriva, encaje } from '../kit.js'
 import { D } from '../datos.js'
 
 export const meta = { id: 'partida', beats: 6 }
@@ -78,7 +78,7 @@ export function build(ctx) {
     // las mallas con materialMascara porque no exponen material.map).
     const t = texto(par[i], { fuente: 'Anton', peso: 400, size: 160, tracking: 0.004, upper: true, alineado: 'left' })
     const ALTO_BASE = mundoH * 0.062
-    const alto = ALTO_BASE * t.ar > ANCHO_UTIL ? ANCHO_UTIL / t.ar : ALTO_BASE
+    const alto = encaje(ALTO_BASE, t.ar, ANCHO_UTIL)
     // Sobre el panel de acento el texto va casi a papel; sobre el oscuro, a tinta. Es la misma
     // inversion que hace `destello`, pero dentro del mismo cuadro y al mismo tiempo.
     const mat = materialMascara(t.tex, arriba ? nivel(CLARO ? 0.02 : 0.98) : COLOR_TXT)

@@ -233,6 +233,22 @@ export function planoTexto(str, altoMundo, opciones = {}) {
 export const SUAVE = 0.06
 export const finMascara = (suave = SUAVE) => 1 + suave
 
+// ---------------------------------------------------------------- encaje de texto
+// MEDIR NO ES OPCIONAL. Una escena que fija el alto de su tipografia y confia en que va a entrar
+// funciona con la pagina que tenia enfrente el dia que se escribio y se sale del cuadro con la
+// siguiente: `cita` se fue del encuadre por adivinar 26 caracteres por linea en vez de medir. Se mide
+// con texto(), que devuelve el `ar` REAL de la textura, y se baja el alto hasta que la linea mas
+// ancha entre en `anchoUtil`.
+//
+// Nunca agranda. Si ya entra se queda en `altoBase`, porque un texto corto no tiene por que ocupar
+// todo el ancho: el alto es el que fija la jerarquia entre un titular y un pie, y estirarlo la borra.
+//
+// `arMax` es el aspecto de la linea mas ancha —Math.max(...texs.map(t => t.ar))— o el `ar` propio si
+// hay una sola. Estaba escrito en cinco escenas con dos grafias, una de ellas dando el rodeo de un
+// `anchoMax` intermedio que multiplicaba y dividia por `altoBase` para llegar exactamente aca.
+export const encaje = (altoBase, arMax, anchoUtil) =>
+  altoBase * arMax > anchoUtil ? anchoUtil / arMax : altoBase
+
 export function materialMascara(map, color = null) {
   return new THREE.ShaderMaterial({
     transparent: true, depthWrite: false, side: THREE.DoubleSide,

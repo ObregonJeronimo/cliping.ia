@@ -26,7 +26,7 @@
 // SIN TESTIMONIO NO HAY ESCENA. No hay como sustituir el sujeto: una cita sin cita es un cuadro con
 // comillas vacias. Se declara vacia y el guionista es quien no deberia haberla elegido.
 
-import { LOOK, b, E, texto, nivel, matAcento, materialMascara, filete, CLARO, finMascara, deriva } from '../kit.js'
+import { LOOK, b, E, texto, nivel, matAcento, materialMascara, filete, CLARO, finMascara, deriva, encaje } from '../kit.js'
 import { testimonios } from '../datos.js'
 
 export const meta = { id: 'cita', beats: 6 }
@@ -97,8 +97,7 @@ export function build(ctx) {
   const ANCHO_UTIL = mundoW * 0.86
   const texs = lineas.map(l => texto(l, FUENTE_CITA))
   const ALTO_BASE = mundoH * 0.072
-  const anchoMax = Math.max(...texs.map(t => ALTO_BASE * t.ar))
-  const ALTO_LINEA = anchoMax > ANCHO_UTIL ? ALTO_BASE * (ANCHO_UTIL / anchoMax) : ALTO_BASE
+  const ALTO_LINEA = encaje(ALTO_BASE, Math.max(...texs.map(t => t.ar)), ANCHO_UTIL)
   const PASO = ALTO_LINEA * 1.30
 
   // CONTRASTE POR MUNDO. El tope de 0.80 existe por el BLOOM: en un mundo oscuro la tipografia de
