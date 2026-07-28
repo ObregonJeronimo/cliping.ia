@@ -99,13 +99,21 @@ const REQUISITOS = {
 // despues de `tarjetas` en los ordenes que la tienen antes, y en el orden que abre con la prueba
 // (el tercero, el mas B2B) va segunda, cerrando el bloque de entrada.
 //
+// EL SELLO VA TEMPRANO O NO VA. Lo puse ultimo en las cuatro listas y, medido corriendo el guion
+// contra una pagina con material, NUNCA entraba: el presupuesto de beats se agota antes de llegar al
+// final de la lista, asi que la escena existia, estaba registrada, cumplia sus REQUISITOS y no se
+// elegia jamas. Y es justo la escena que sostiene a `lujo` e `inmobiliario`, los dos aires que
+// componen con AIRE y no toleran un catalogo de cuadros llenos. Ahora abre una pieza (declaracion de
+// marca) y cierra el bloque de prueba en otra (la firma despues del dato), que ademas es donde un
+// sello significa algo.
+//
 // OJO AL AGREGAR ESCENAS NUEVAS: una escena que no figura en NINGUNA de estas listas no se elige
 // jamas, aunque exista, este registrada y cumpla sus REQUISITOS — `medio` sale de filtrar ESTA lista.
 // Es la forma mas silenciosa que tiene el catalogo de crecer sin que se note.
 const ORDENES = [
-  ['hero', 'tipografia', 'partida', 'rafaga', 'lista', 'titular', 'pantalla', 'tarjetas', 'contraste', 'cita', 'destello', 'columna', 'sello', 'toro'],
+  ['sello', 'hero', 'tipografia', 'partida', 'rafaga', 'lista', 'titular', 'pantalla', 'tarjetas', 'contraste', 'cita', 'destello', 'columna', 'toro'],
   ['pantalla', 'titular', 'tipografia', 'partida', 'lista', 'hero', 'rafaga', 'tarjetas', 'contraste', 'cita', 'columna', 'destello', 'sello', 'toro'],
-  ['tarjetas', 'contraste', 'cita', 'tipografia', 'partida', 'lista', 'hero', 'titular', 'rafaga', 'columna', 'destello', 'pantalla', 'sello', 'toro'],
+  ['tarjetas', 'contraste', 'cita', 'sello', 'tipografia', 'partida', 'lista', 'hero', 'titular', 'rafaga', 'columna', 'destello', 'pantalla', 'toro'],
   ['tipografia', 'partida', 'lista', 'titular', 'pantalla', 'tarjetas', 'contraste', 'rafaga', 'hero', 'cita', 'columna', 'sello', 'toro', 'destello'],
 ]
 

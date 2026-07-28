@@ -81,7 +81,12 @@ export function build(ctx) {
   const ANCHO_UTIL = R * 1.42
   const ALTO_BASE = mundoH * 0.055
   const alto = ALTO_BASE * t.ar > ANCHO_UTIL ? ANCHO_UTIL / t.ar : ALTO_BASE
-  const matN = materialMascara(t.tex, nivel(CLARO ? 0.06 : 0.97))
+  // nivel() YA SE DA VUELTA SOLO: va del fondo a la tinta, asi que un k ALTO es oscuro en un mundo
+  // claro y claro en uno oscuro. Escribi `CLARO ? 0.06 : 0.97` —o sea, casi el fondo en mundo claro—
+  // y el nombre de la marca salio blanco sobre fondo blanco: se leia apenas. El unico motivo para
+  // mirar CLARO aca es el BLOOM, que solo muerde en mundo oscuro: por eso el tope de 0.80 de ese lado
+  // y la libertad de empujar hasta 0.94 del otro. Es exactamente el mismo criterio que `cita`.
+  const matN = materialMascara(t.tex, nivel(CLARO ? 0.94 : 0.80))
   matN.uniforms.uDir.value = 2                      // se escribe de abajo hacia arriba: se "sella"
   const nombre = new THREE.Mesh(new THREE.PlaneGeometry(alto * t.ar, alto), matN)
   nombre.position.set(0, 0, 0.3)
