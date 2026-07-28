@@ -486,3 +486,49 @@ Tres veces en esta sesion hubo que tirar una version que GANABA LA METRICA:
 
 Los tres estan anotados EN EL CODIGO y no solo acá, porque el impulso vuelve solo la proxima vez que
 una escena se sienta vacia.
+
+
+---
+
+# Septima vuelta — "siempre me mostras el mismo tipo de video"
+
+Tenia razon, y era un defecto de fondo que no estaba mirado.
+
+## Lo que cambiaba un aire y lo que NO
+
+Un aire declaraba `bpm, paleta, fuentes, gesto, camara, pelicula`. Con eso, dos piezas de rubros
+opuestos seguian viendose iguales: cambiaba el color y la letra, y **el MUEBLE del cuadro era el
+mismo** — la misma grilla en perspectiva, los mismos corchetes de encuadre, los mismos rotulos
+tecnicos de formato y dominio. Una panaderia recibia el HUD de una herramienta de ingenieria con otra
+tipografia.
+
+El mueble es la mitad de la identidad de una pieza y estaba horneado en `apertura.js` y `cierre.js`.
+Ahora lo declara el aire (`mobiliario`) y la escena PREGUNTA:
+
+| fondo | que dice | para |
+|---|---|---|
+| `fuga` | espacio, tecnologia, velocidad | tecnico, corporativo |
+| `puntos` | superficie, papel — no promete profundidad | editorial, artesanal |
+| `ondas` | respira, nada tiene esquinas | gastronomico, bienestar |
+| `rayas` | no deja respirar; la unica que no se desvanece en los bordes | deportivo, nocturno |
+| `bloques` | celdas que se encienden EN EL BEAT | jugueton |
+| `nada` | solo el degrade: lo caro se vende con AIRE | lujo, inmobiliario |
+
+Mas dos interruptores: `esquinas` (los corchetes, que dicen "camara") y `hud` (la ficha tecnica).
+
+## Y el resto de la vuelta
+
+- **El rubro estaba muerto en el camino gratuito**: mercadolibre, pentagram y theverge salian los tres
+  con aire `tecnico`. Ahora son `jugueton`, `inmobiliario` y `editorial`. Clasificador por schema.org
+  + menu + resumen, con margen exigido.
+- **La apertura decia "ARGENTINA"** — elegia la palabra mas larga de la marca.
+- **Un medio no tiene features**: la captura trae `titulares` (enlaces de tarjeta) y van por
+  `comoFunciona`, que admite 48 caracteres, en dos renglones.
+- **El CTA se reconoce por como se ve** (fondo propio + relleno), no por su etiqueta HTML.
+- **Un recorte de pagina no puede perder ni un pixel**: la sangria bajo de 1.24 a 1.00 exacto.
+
+## El patron que se repitio toda la sesion
+
+Cinco veces hubo que elegir entre una version que ganaba la metrica y una que se veia mejor, y las
+cinco gano la segunda. Y cuatro veces la respuesta a "esto se ve vacio" fue **eventos duros**, no
+movimiento suave: lo suave no cuenta ni para el ojo ni para `mov_frac`.
