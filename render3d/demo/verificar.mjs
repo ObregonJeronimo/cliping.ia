@@ -64,7 +64,14 @@ globalThis.window = globalThis
 const AVISOS = []
 const _warn = console.warn.bind(console)
 console.warn = (...a) => { AVISOS.push(a.join(' ')); }
-const { gsap } = await import(pathToFileURL(join(RAIZ, 'node_modules', 'gsap', 'index.js')).href)
+// GSAP entra por el build de `dist/` y NO por `index.js`, y no es cuestion de gusto: `index.js` esta
+// escrito en ESM pero el package.json de gsap no declara `"type": "module"`, asi que Node lo carga
+// como CJS y muere con "Cannot use import statement outside a module" ANTES de correr una sola
+// verificacion. La compuerta no fallaba: no arrancaba, que se parece demasiado a que no exista.
+// Y ademas `dist/` es EXACTAMENTE lo que corre en el render — render3d.py sirve /gsap.min.js desde
+// node_modules/gsap/dist/ —, asi que verificar contra `index.js` era verificar otro build que el que
+// se renderiza. Esta linea cierra las dos cosas de una.
+const { gsap } = await import(pathToFileURL(join(RAIZ, 'node_modules', 'gsap', 'dist', 'gsap.js')).href)
 globalThis.gsap = gsap
 const THREE = await import(pathToFileURL(join(RAIZ, 'node_modules', 'three', 'build', 'three.module.js')).href)
 const { BEAT, LOOK, b, limpiarCache } = await import(pathToFileURL(join(HERE, 'kit.js')).href)

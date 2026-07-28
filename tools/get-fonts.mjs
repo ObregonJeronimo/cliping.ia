@@ -52,6 +52,25 @@ const FONTS = [
   // --- script / handmade ---
   ['Caveat', 'Caveat:wght@600;700', 'Caveat'],
   ['Permanent Marker', 'Permanent+Marker', 'PermanentMarker'],
+  // --- escrituras NO latinas ---
+  // Estas cuatro no son decorativas: son EXACTAMENTE las que pide FUENTE_ESCRITURA en
+  // src/director/kit/look.js cuando la pagina no esta en alfabeto latino. Ninguna de las de arriba
+  // trae esos glifos, asi que sin estas el texto no se dibuja: ni un glifo, ni un error.
+  //
+  // EN EL NAVEGADOR esto no hacia falta —look.js apuesta a que la cadena CSS caiga al sans del
+  // sistema, que en un dispositivo de esa region siempre existe— pero las compuertas rasterizan con
+  // napi-canvas (Skia) en Node, donde no hay cadena que valga: si la familia no esta registrada, no
+  // hay glifo. Medido: sin estas, el fixture `no-latina` (japones) renderizaba escenas con 0.63% de
+  // pixeles sobre el fondo y tumbaba GATE STORYBOARD en cuatro casos. Windows trae Noto para arabe,
+  // hebreo, armenio y georgiano, pero NO trae ninguna Noto CJK, asi que la compuerta pasaba o fallaba
+  // segun que fuentes tuviera instaladas la maquina — que es la peor clase de compuerta que hay.
+  //
+  // Los pesos son los que declara FUENTE_ESCRITURA (dw/sw): pedir otros deja a Skia sintetizando un
+  // falso negrita sobre el regular, que en CJK se lee como un borron.
+  ['Noto Sans JP', 'Noto+Sans+JP:wght@500;800', 'NotoSansJP'],
+  ['Noto Sans Arabic', 'Noto+Sans+Arabic:wght@400;700', 'NotoSansArabic'],
+  ['Noto Sans Hebrew', 'Noto+Sans+Hebrew:wght@400;700', 'NotoSansHebrew'],
+  ['Noto Sans Devanagari', 'Noto+Sans+Devanagari:wght@400;700', 'NotoSansDevanagari'],
 ]
 
 // UA tipo Wget -> Google sirve TTF (no woff2), que es lo que registra @napi-rs/canvas (Skia)

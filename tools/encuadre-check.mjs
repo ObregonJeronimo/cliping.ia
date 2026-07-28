@@ -53,7 +53,10 @@ globalThis.document = {
 }
 globalThis.window = globalThis
 console.warn = () => {}
-const { gsap } = await import(pathToFileURL(join(RAIZ, 'node_modules', 'gsap', 'index.js')).href)
+// Por `dist/` y no por `index.js`: ver la nota larga en render3d/demo/verificar.mjs. En resumen,
+// `index.js` es ESM sin `"type": "module"` en el package de gsap -> Node lo lee como CJS y la
+// compuerta ni arranca; y `dist/` es el build que el render sirve de verdad (/gsap.min.js).
+const { gsap } = await import(pathToFileURL(join(RAIZ, 'node_modules', 'gsap', 'dist', 'gsap.js')).href)
 globalThis.gsap = gsap
 const THREE = await import(pathToFileURL(join(RAIZ, 'node_modules', 'three', 'build', 'three.module.js')).href)
 const { BEAT, LOOK, b } = await import(pathToFileURL(join(DEMO, 'kit.js')).href)
