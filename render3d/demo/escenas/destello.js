@@ -174,13 +174,36 @@ export function build(ctx) {
   barraUna.position.set(XD, 0.42, 0); formas.add(barraUna)
 
   // — el hero: a sangre por los dos lados, partido en dos desde que se construye
-  const tHero = texto(lineasGolpe()[1], { fuente: 'ArchivoBlack' })
-  const ANCHO_HERO = mundoW * 1.12
+  //
+  // EL NOMBRE DE LA MARCA NO SE CORTA NUNCA, y es la unica excepcion al sangrado.
+  // Sangrar es el recurso que sostiene esta escena: la palabra mide 112% del cuadro, se corta contra
+  // los dos bordes y se parte al medio para que entre la linea de color. Con el golpe de ANTHEM —"UNA
+  // PLANTILLA"— eso corta una letra de una palabra generica y se lee igual; es estilo.
+  //
+  // Pero el golpe sale de la pagina, y cuando la marca cae en esta linea el 6% de sangrado por lado se
+  // come justo su ultima letra: en el render de basecamp.com se leia "MILLIONS, BASECAM". Un nombre
+  // propio mutilado no se lee como estilo, se lee como que el render fallo — y es la unica palabra de
+  // toda la pieza que un cliente mira con lupa. Un video de marketing donde la marca sale cortada
+  // pierde el sentido entero.
+  //
+  // Asi que cuando la linea CONTIENE la marca, el hero encaja (0.98) en vez de sangrar. Se pierde el
+  // recurso en esa pieza y se gana lo unico que no es negociable. En las demas, sangra como siempre.
+  const lineaHero = String(lineasGolpe()[1] || '')
+  const nombre = String(D.marca || '').trim()
+  const tocaLaMarca = nombre.length >= 3 && lineaHero.toUpperCase().includes(nombre.toUpperCase())
+  const tHero = texto(lineaHero, { fuente: 'ArchivoBlack' })
+  const ANCHO_HERO = mundoW * (tocaLaMarca ? 0.98 : 1.12)
   const ALTO_HERO = ANCHO_HERO / Math.max(0.2, tHero.ar || 4.6)
   const heroWrap = new THREE.Group(); heroWrap.position.set(0, -0.90, 0); tipo.add(heroWrap)
   const heroG = new THREE.Group(); heroWrap.add(heroG)
   const mArriba = mitad(tHero, ANCHO_HERO, true); heroG.add(mArriba)
   const mAbajo = mitad(tHero, ANCHO_HERO, false); heroG.add(mAbajo)
+  // SE DECLARA, no se confia. Cuando la linea lleva la marca, estas dos mitades TIENEN que entrar en
+  // el cuadro, y E-ENCAJE lo hace cumplir: si mañana alguien vuelve a subir el ancho, la compuerta lo
+  // caza en vez de que aparezca en el video de un cliente. Cuando NO lleva la marca no se marca nada,
+  // asi que la escena puede seguir sangrando sin que nadie la acuse — que es justo para lo que se
+  // hizo declarativo el chequeo.
+  if (tocaLaMarca) { mArriba.userData.encaja = true; mAbajo.userData.encaja = true }
 
   const anilloGrande = arco(2.10, 2.145, 0.86, matGris)
   anilloGrande.position.set(0, -0.90, -0.18); formas.add(anilloGrande)
