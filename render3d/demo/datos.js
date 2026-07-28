@@ -31,6 +31,13 @@ export const ANTHEM = {
     { valor: 24, etiqueta: 'PAÍSES' },
   ],
   golpe: 'ESTO NO LO HACE\nUNA PLANTILLA',
+  // La voz del cliente. En ANTHEM es NUESTRA propia copy —igual que el claim y el golpe—, no la de
+  // una marca ajena: la demo es su propio contenido y no hay nadie a quien atribuirle nada falso.
+  // Sirve ademas para que la escena de cita se pueda ver y medir sin depender de que la pagina de
+  // turno publique testimonios.
+  testimonios: [
+    { texto: 'Lo armamos para medirnos contra una pieza hecha a mano, no contra otra plantilla.', firma: 'URVID' },
+  ],
   cta: 'VER EL MOTOR',
   pie: ['1080x1920', '30 FPS', 'SIN IA GENERATIVA'],
   dominio: '',
@@ -88,6 +95,20 @@ export function configurarDatos(d) {
   if (Array.isArray(d.frases)) D.frases = d.frases.filter(Boolean)
   if (Array.isArray(d.pie)) D.pie = d.pie.filter(Boolean)
   if (Array.isArray(d.elementos)) D.elementos = d.elementos.filter(e => e && e.url)
+  // Un testimonio sin texto no es un testimonio. La firma SI puede venir vacia —hay paginas que
+  // publican la cita sin decir quien la dijo— y en ese caso la escena la muestra sin autor, que es
+  // la verdad; lo que nunca se hace es completarla.
+  if (Array.isArray(d.testimonios)) D.testimonios = d.testimonios.filter(t => t && t.texto)
+}
+
+// Los testimonios REALES de la pagina. Mismo criterio que `frase`: si la pagina no dio ninguno se
+// devuelve vacio y la escena de cita no se elige — nunca se cae a los de ANTHEM, porque poner en boca
+// de un cliente ajeno una frase nuestra es la mentira mas cara que puede cometer este motor. El unico
+// caso en que ANTHEM habla es la DEMO, donde el contenido es propio.
+export const testimonios = () => {
+  const t = (D.testimonios || []).filter(x => x && x.texto)
+  if (t.length) return t
+  return esDemo ? (ANTHEM.testimonios || []) : []
 }
 
 // La frase i. Si la página no llegó a tantas, devuelve CADENA VACÍA — no la de ANTHEM.

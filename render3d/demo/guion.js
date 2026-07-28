@@ -44,6 +44,10 @@ const REQUISITOS = {
   pantalla: (d) => !!d.tira,
   // La columna es un feed de recortes reales. Con menos de dos piezas no es una columna, es una foto.
   columna: (d) => (d.elementos || []).length >= 2,
+  // La cita necesita que ALGUIEN HAYA HABLADO. Es el unico requisito que no se puede sustituir con
+  // otro material: sin testimonio no hay cita, y una cita fabricada es la mentira mas cara del motor.
+  // Basta uno — la escena cita a UNA persona, no arma un muro de opiniones.
+  cita: (d) => (d.testimonios || []).some(t => t && t.texto),
   // El beat de inversión es un titular a sangre. Sin golpe no hay nada que romper.
   destello: (d) => !!d.golpe,
   // El toro es geometría: no necesita nada, y por eso es el relleno honesto cuando falta material.
@@ -59,11 +63,20 @@ const REQUISITOS = {
 //   mensaje→datos→objeto   claim y prueba juntos, el objeto cierra              (más de producto)
 // La RAFAGA va siempre despues de una escena lenta y antes de un corte de estructura: su gracia es el
 // contraste de densidad. Doce cuadros en seis beats pegados a otra escena rapida se leen como ruido.
+// LA CITA VA PEGADA A LA PRUEBA, y no en cualquier lado. Un testimonio es prueba social: al lado de
+// las cifras arma UN bloque de prueba (el dato duro y despues alguien que lo confirma), y suelto en
+// el medio del mensaje se lee como una frase mas del claim, que es justo lo que no es. Por eso entra
+// despues de `tarjetas` en los ordenes que la tienen antes, y en el orden que abre con la prueba
+// (el tercero, el mas B2B) va segunda, cerrando el bloque de entrada.
+//
+// OJO AL AGREGAR ESCENAS NUEVAS: una escena que no figura en NINGUNA de estas listas no se elige
+// jamas, aunque exista, este registrada y cumpla sus REQUISITOS — `medio` sale de filtrar ESTA lista.
+// Es la forma mas silenciosa que tiene el catalogo de crecer sin que se note.
 const ORDENES = [
-  ['hero', 'tipografia', 'rafaga', 'pantalla', 'tarjetas', 'destello', 'columna', 'toro'],
-  ['pantalla', 'tipografia', 'hero', 'rafaga', 'tarjetas', 'columna', 'destello', 'toro'],
-  ['tarjetas', 'tipografia', 'hero', 'rafaga', 'columna', 'destello', 'pantalla', 'toro'],
-  ['tipografia', 'pantalla', 'tarjetas', 'rafaga', 'hero', 'columna', 'toro', 'destello'],
+  ['hero', 'tipografia', 'rafaga', 'pantalla', 'tarjetas', 'cita', 'destello', 'columna', 'toro'],
+  ['pantalla', 'tipografia', 'hero', 'rafaga', 'tarjetas', 'cita', 'columna', 'destello', 'toro'],
+  ['tarjetas', 'cita', 'tipografia', 'hero', 'rafaga', 'columna', 'destello', 'pantalla', 'toro'],
+  ['tipografia', 'pantalla', 'tarjetas', 'rafaga', 'hero', 'cita', 'columna', 'toro', 'destello'],
 ]
 
 export const DUR_OBJETIVO = { corto: 15, medio: 20, largo: 30 }
