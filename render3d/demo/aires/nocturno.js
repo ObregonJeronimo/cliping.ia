@@ -73,5 +73,8 @@ export default {
   // Ver el comentario largo de MOB en kit.js — antes esto estaba horneado en las escenas y
   // por eso dos piezas de rubros opuestos seguian teniendo el mismo mueble.
   mobiliario: { fondo: 'rayas', marco: 'passepartout', hud: false },   // la masa oscura alrededor hace que el neon del centro se lea como neon
+  // COMO CORTA ESTE AIRE: club: el flash ES la luz estroboscopica del rubro, y el empuje vertical lo baja al
+  // formato en el que se mira.
+  transiciones: ['corte', 'flash', 'empujeV', 'corte', 'flash', 'empuje'],
 
 }

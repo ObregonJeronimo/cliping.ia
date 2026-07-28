@@ -81,5 +81,7 @@ export default {
   // Ver el comentario largo de MOB en kit.js — antes esto estaba horneado en las escenas y
   // por eso dos piezas de rubros opuestos seguian teniendo el mismo mueble.
   mobiliario: { fondo: 'bloques', marco: 'nada', hud: false },   // el color y la forma ya gritan; un marco encima es ruido
+  // COMO CORTA ESTE AIRE: el unico donde el corte duro es minoria: todo se mueve, que es el punto.
+  transiciones: ['empujeV', 'flash', 'empuje', 'corte', 'flash', 'empujeV'],
 
 }

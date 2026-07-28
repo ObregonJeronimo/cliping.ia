@@ -175,6 +175,10 @@ def _guardar_plan(destino, info):
             "plan": plan, "beats": beats, "bpm": bpm_ef, "bpmAire": info.get("bpm"),
             "heroes": info.get("heroes") or [], "dur": info.get("dur"),
             "tramos": ",".join(f"{i}:{b}" for i, b in zip(plan, beats)),
+            # QUE GESTO DE MONTAJE LE TOCO A CADA CORTE. El montaje es lo mas dificil de verificar
+            # mirando cuadros sueltos —un empuje dura diez frames y un corte duro no deja rastro—, asi
+            # que la pieza lo declara. Un elemento menos que la lista de escenas: son los cortes.
+            "montaje": info.get("montaje") or [],
             "escala": round(propios / info["dur"], 4) if propios and info.get("dur") else 1,
         }
         with open(str(destino) + ".plan.json", "w", encoding="utf-8") as f:

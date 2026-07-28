@@ -83,5 +83,7 @@ export default {
   // Ver el comentario largo de MOB en kit.js — antes esto estaba horneado en las escenas y
   // por eso dos piezas de rubros opuestos seguian teniendo el mismo mueble.
   mobiliario: { fondo: 'puntos', marco: 'reglas', hud: false },   // papel: el filete de arriba y abajo de una pagina compuesta a mano
+  // COMO CORTA ESTE AIRE: lo hecho a mano no tiene efectos: casi todo corte, con una sola banda que respira.
+  transiciones: ['corte', 'corte', 'barrido', 'corte', 'corte', 'corte'],
 
 }

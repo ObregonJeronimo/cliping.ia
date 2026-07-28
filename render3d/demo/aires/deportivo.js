@@ -50,5 +50,8 @@ export default {
   // Ver el comentario largo de MOB en kit.js — antes esto estaba horneado en las escenas y
   // por eso dos piezas de rubros opuestos seguian teniendo el mismo mueble.
   mobiliario: { fondo: 'rayas', marco: 'ticks', hud: false },   // acotacion: marca de pista, de cronometro, de medicion
+  // COMO CORTA ESTE AIRE: el unico aire donde el flash es mayoria: es el lenguaje del deporte, y los dos ejes
+  // de empuje le dan el pique que un corte seco solo no da.
+  transiciones: ['flash', 'corte', 'empuje', 'flash', 'corte', 'empujeV'],
 
 }

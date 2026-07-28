@@ -73,4 +73,7 @@ export default {
   // llena. 'ticks' porque la acotacion es el vocabulario literal de un plano, y este aire ya tiene el
   // azul de cianotipo para dibujarla.
   mobiliario: { fondo: 'nada', marco: 'ticks', hud: false },
+  // COMO CORTA ESTE AIRE: recorrer un espacio es subir por el: el vertical es el mismo verbo que su camara,
+  // que avanza en vez de girar.
+  transiciones: ['corte', 'empujeV', 'corte', 'corte', 'empujeV', 'barrido'],
 }

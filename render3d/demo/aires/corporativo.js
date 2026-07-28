@@ -74,5 +74,7 @@ export default {
   // Ver el comentario largo de MOB en kit.js — antes esto estaba horneado en las escenas y
   // por eso dos piezas de rubros opuestos seguian teniendo el mismo mueble.
   mobiliario: { fondo: 'fuga', marco: 'reglas', hud: true },   // la caja de un informe impreso, abierta a los lados
+  // COMO CORTA ESTE AIRE: sobrio: casi todo corte duro, y cuando adorna lo hace con la banda y no con un golpe.
+  transiciones: ['corte', 'corte', 'barrido', 'corte', 'corte', 'empuje'],
 
 }

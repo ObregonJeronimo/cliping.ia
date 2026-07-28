@@ -90,5 +90,7 @@ export default {
   // Ver el comentario largo de MOB en kit.js — antes esto estaba horneado en las escenas y
   // por eso dos piezas de rubros opuestos seguian teniendo el mismo mueble.
   mobiliario: { fondo: 'ondas', marco: 'reglas', hud: false },   // la carta de un restaurante lleva filetes, no corchetes de camara
+  // COMO CORTA ESTE AIRE: la banda pasa como pasa un plato; el vertical, como se baja por una carta.
+  transiciones: ['corte', 'barrido', 'corte', 'corte', 'empujeV', 'corte'],
 
 }

@@ -151,6 +151,20 @@ export const PATRONES = ['fuga', 'puntos', 'ondas', 'rayas', 'bloques', 'nada']
 // Por eso solo 'escuadras' —que son segmentos cortos— usa el acento; el resto nace en nivel().
 export const MARCOS = ['nada', 'escuadras', 'reglas', 'passepartout', 'ticks', 'rotulado']
 
+// ---------------------------------------------------------------- como corta este aire
+// EL MONTAJE ES DEL AIRE, y hasta ahora no lo era. main.js ya sabia repartir cinco gestos de corte y
+// leer `AIRE.transiciones`, pero NINGUNO de los once aires lo declaraba: los once caian al reparto de
+// ANTHEM. Una pieza de joyeria cortaba igual que una de deporte — el mismo defecto de siempre, un
+// parametro que existe y nadie usa.
+//
+//   'corte'     seco, sin nada encima. Es la mayoria en casi todos los aires y esa es su gracia.
+//   'flash'     dos frames de blanco. Acento duro; en un aire lento se lee como un error.
+//   'barrido'   una banda de acento cruza en diagonal y tapa el salto. Elegante, cuesta medio beat.
+//   'empuje'    el cuadro se corre en X y la entrante llega del otro lado. Lateral, de catalogo.
+//   'empujeV'   lo mismo en Y. ES EL EJE QUE PIDE EL 9:16: en un cuadro de 1080x1920 el gesto nativo
+//               es el vertical —asi se mira un feed—, y el motor solo tenia el horizontal.
+export const MONTAJES = ['corte', 'flash', 'barrido', 'empuje', 'empujeV']
+
 // El margen tambien es del aire. Era la razon MAS PROFUNDA de que todo se pareciera: el rectangulo
 // invisible al que se alinea el contenido estaba escrito a mano en diez escenas, y las diez habian
 // convergido a ojo al mismo lugar (rango medido: 0.30 unidades = 58 px en un cuadro de 1080). El

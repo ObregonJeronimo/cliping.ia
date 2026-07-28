@@ -15,5 +15,7 @@ export default {
   // Ver el comentario largo de MOB en kit.js — antes esto estaba horneado en las escenas y
   // por eso dos piezas de rubros opuestos seguian teniendo el mismo mueble.
   mobiliario: { fondo: 'fuga', marco: 'escuadras', hud: true },   // la linea de base de ANTHEM: no se toca
+  // COMO CORTA ESTE AIRE: el reparto de ANTHEM tal cual: es la linea de base y no se toca.
+  transiciones: ['corte', 'corte', 'flash', 'barrido', 'empuje', 'corte'],
 
 }

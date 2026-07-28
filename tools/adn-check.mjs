@@ -151,7 +151,7 @@ for (const m of muertos) {
 // MARCOS se IMPORTA del kit y no se copia. Una lista escrita a mano en un gate deja de coincidir con la
 // del motor sin avisar — le paso a guion-check, que medio un catalogo fantasma de 10 escenas cuando ya
 // habia 16 y por eso no reportaba guiones cortos.
-const { MARCOS } = await import('../render3d/demo/kit.js')
+const { MARCOS, MONTAJES } = await import('../render3d/demo/kit.js')
 for (const [nombre, a] of Object.entries(AIRES)) {
   if (!a.mobiliario) { F('E-MOBILIARIO-DECLARADO', `el aire "${nombre}" no declara mobiliario: hereda el de ANTHEM sin que nadie lo haya decidido`); continue }
   const mc = a.mobiliario.marco
@@ -174,6 +174,35 @@ for (const [rubro, aires] of porRubro) {
     if (!mb) continue
     const firma = `${mb.fondo}|${mb.marco}|${!!mb.hud}`
     if (vistos.has(firma)) F('E-MARCO-VARIEDAD', `rubro "${rubro}": los aires "${nombre}" y "${vistos.get(firma)}" componen el MISMO mueble (${firma})`)
+    else vistos.set(firma, nombre)
+  }
+}
+
+// ---------------------------------------------------------------- E-MONTAJE-DECLARADO / E-MONTAJE-VARIEDAD
+// EL MONTAJE ERA LA DIMENSION MAS MUERTA DE TODAS. main.js sabia repartir cinco gestos de corte y leer
+// `AIRE.transiciones` desde que se escribio el sistema, y NINGUNO de los once aires lo declaraba: los
+// once caian al reparto de ANTHEM. Una pieza de joyeria cortaba exactamente igual que una de deporte.
+// Y el modo de falla es silencioso en los dos sentidos: no declararlo no rompe nada, y declarar un
+// gesto que no existe tampoco —main.js cae en un `else` vacio y el corte sale duro sin avisar—.
+for (const [nombre, a] of Object.entries(AIRES)) {
+  const tr = a.transiciones
+  if (!Array.isArray(tr) || !tr.length) { F('E-MONTAJE-DECLARADO', `el aire "${nombre}" no declara "transiciones": cae al reparto de ANTHEM y corta como el aire tecnico`); continue }
+  for (const x of tr) {
+    if (!MONTAJES.includes(x)) F('E-MONTAJE-DECLARADO', `el aire "${nombre}" pide el gesto de montaje "${x}", que no esta en MONTAJES (${MONTAJES.join(', ')}): main.js lo ignora y ese corte sale duro`)
+  }
+}
+// Que existan cinco gestos no reparte nada por si solo. Se exige que los aires alcanzables compongan
+// montajes distintos, y sobre todo que dos aires del MISMO rubro no corten igual — que es el par que
+// un cliente puede llegar a ver uno al lado del otro.
+const montajesVivos = new Set([...producidos].map(a => JSON.stringify((AIRES[a] || {}).transiciones || null)))
+if (montajesVivos.size < 5) {
+  F('E-MONTAJE-VARIEDAD', `los aires alcanzables reparten solo ${montajesVivos.size} montajes distintos; hacen falta 5`)
+}
+for (const [rubro, aires] of porRubro) {
+  const vistos = new Map()
+  for (const nombre of aires) {
+    const firma = JSON.stringify((AIRES[nombre] || {}).transiciones || null)
+    if (vistos.has(firma)) F('E-MONTAJE-VARIEDAD', `rubro "${rubro}": los aires "${nombre}" y "${vistos.get(firma)}" cortan EXACTAMENTE igual`)
     else vistos.set(firma, nombre)
   }
 }
@@ -215,3 +244,4 @@ console.log(`ADN OK — ${n} combinaciones (${FIX.length} páginas × ${Object.k
   + `polaridad, tono de marca (±14°), legibilidad y variedad.  ${claras}/${FIX.length} páginas dan mundo CLARO.`)
 console.log(`  los ${Object.keys(AIRES).length} aires son alcanzables (${barridos} combinaciones de rubro × energía × calidez × registro).`)
 console.log(`  los 11 declaran su mobiliario y reparten ${marcosVivos.size} marcos distintos: ${[...marcosVivos].sort().join(', ')}.`)
+console.log(`  los 11 declaran su montaje y reparten ${montajesVivos.size} formas distintas de cortar.`)

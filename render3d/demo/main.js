@@ -15,7 +15,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js'
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js'
-import { BEAT, b, LOOK, CLARO, AIRE, hex, mulberry32, fondoVivo, configurar } from './kit.js'
+import { BEAT, b, LOOK, CLARO, AIRE, hex, mulberry32, fondoVivo, configurar, MONTAJES } from './kit.js'
 import { configurarDatos } from './datos.js'
 import { personalizar } from './adn.js'
 import { ESCENAS } from './escenas/index.js'
@@ -31,23 +31,25 @@ const Pelicula = {
     uRes: { value: new THREE.Vector2(1080, 1920) },
     // TRANSICIONES, en el pase de post y no en la escena 3D. Ver la nota larga donde se programan.
     //   uEmpuje  desplaza el cuadro entero en X (en UV). La saliente se va y la entrante llega.
+    //   uEmpujeY lo mismo en Y. Es el eje que pide un cuadro de 1080x1920: el gesto vertical es el
+    //            nativo del formato —asi se mira un feed— y el motor solo tenia el horizontal.
     //   uBarrido 0..1: la posicion de una banda solida que cruza el cuadro y tapa el corte.
     //   uTinteTr el color de esas dos cosas — sale del acento del aire, nunca de un gris fijo.
-    uEmpuje: { value: 0 }, uBarrido: { value: 0 }, uAnchoBar: { value: 0.16 },
+    uEmpuje: { value: 0 }, uEmpujeY: { value: 0 }, uBarrido: { value: 0 }, uAnchoBar: { value: 0.16 },
     uTinteTr: { value: new THREE.Color('#5b6cff') },
   },
   vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
   fragmentShader: `
     uniform sampler2D tDiffuse; uniform float uT, uGrano, uVinieta, uAberr, uFlash;
-    uniform float uEmpuje, uBarrido, uAnchoBar; uniform vec3 uTinteTr;
+    uniform float uEmpuje, uEmpujeY, uBarrido, uAnchoBar; uniform vec3 uTinteTr;
     uniform vec2 uRes; varying vec2 vUv;
     float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898,78.233)))*43758.5453); }
     void main(){
       // EMPUJE: el cuadro entero se corre. Lo que queda del otro lado NO se estira (una muestra
       // clampeada se lee como un manchon barato): se pinta con el color de la transicion, que es el
       // acento del aire. Asi el empuje se lee como una carta que entra, con su propio borde.
-      vec2 uvp = vUv - vec2(uEmpuje, 0.0);
-      bool fueraEmp = uvp.x < 0.0 || uvp.x > 1.0;
+      vec2 uvp = vUv - vec2(uEmpuje, uEmpujeY);
+      bool fueraEmp = uvp.x < 0.0 || uvp.x > 1.0 || uvp.y < 0.0 || uvp.y > 1.0;
       vec2 uvs = clamp(uvp, 0.0, 1.0);
       vec2 c = uvs - 0.5; float r2 = dot(c,c);
       vec2 des = c * uAberr * r2 * 4.0;
@@ -329,10 +331,15 @@ export class Anthem {
     const fps = this.spec.fps || 30
     const dosFrames = 2 / fps
     const REPARTO_BASE = ['corte', 'corte', 'flash', 'barrido', 'empuje', 'corte']
-    const reparto = (AIRE && Array.isArray(AIRE.transiciones) && AIRE.transiciones.length)
-      ? AIRE.transiciones : REPARTO_BASE
+    // Se FILTRA contra el vocabulario: un aire que escriba 'persiana' por error caeria en un `else`
+    // silencioso y sus cortes saldrian todos duros sin que nada lo diga. Filtrado, el gesto invalido
+    // desaparece del reparto y adn-check lo caza antes de que llegue a un video.
+    const declarado = (AIRE && Array.isArray(AIRE.transiciones))
+      ? AIRE.transiciones.filter(x => MONTAJES.includes(x)) : []
+    const reparto = declarado.length ? declarado : REPARTO_BASE
     this.pelicula.uniforms.uTinteTr.value = hex(LOOK.acento)
 
+    const montaje = []
     for (let i = 1; i < this.escenas.length; i++) {
       const e = this.escenas[i]
       // La eleccion sale del PRNG sembrado de la pieza: misma semilla, mismo montaje. Y NUNCA dos
@@ -340,6 +347,10 @@ export class Anthem {
       let tipo = reparto[Math.floor(this.rnd() * reparto.length) % reparto.length]
       if (tipo === this._ultimaTr && tipo !== 'corte') tipo = 'corte'
       this._ultimaTr = tipo
+      // Queda ANOTADO en el plan. Sin esto, para saber que gesto le toco a cada corte habia que
+      // mirar el video cuadro por cuadro y adivinar — y adivinar es como se dan por buenas cosas que
+      // no pasaron. El montaje es la dimension mas dificil de ver en un still, asi que se escribe.
+      montaje.push(tipo)
 
       if (tipo === 'flash') {
         this.tl.set(this.pelicula.uniforms.uFlash, { value: 0.85 }, e.t0 - dosFrames * 0.5)
@@ -353,6 +364,15 @@ export class Anthem {
         // escenas y aca me la saltee: se vio en el video como una franja de acento permanente.
         this.tl.fromTo(this.pelicula.uniforms.uBarrido, { value: -0.25 }, { value: 1.25, duration: d, ease: 'power2.inOut', immediateRender: false }, e.t0 - d / 2)
         this.tl.set(this.pelicula.uniforms.uBarrido, { value: 0 }, e.t0 + d / 2)
+      } else if (tipo === 'empujeV') {
+        // EL EJE DEL FORMATO. En 9:16 el desplazamiento vertical es el gesto que el ojo ya tiene
+        // aprendido de mirar feeds, asi que se lee como avance y no como efecto. Va MAS CORTO que el
+        // horizontal —0.30 de UV contra 0.42— porque el cuadro es casi el doble de alto: el mismo
+        // valor de UV recorre el doble de pixeles y el empuje se leia como un salto de pagina.
+        const dirV = (i % 2 === 0) ? 1 : -1
+        const dv = b(0.34)
+        this.tl.fromTo(this.pelicula.uniforms.uEmpujeY, { value: 0 }, { value: 0.30 * dirV, duration: dv, ease: 'power3.in', immediateRender: false }, e.t0 - dv)
+        this.tl.fromTo(this.pelicula.uniforms.uEmpujeY, { value: -0.30 * dirV }, { value: 0, duration: dv, ease: 'power3.out', immediateRender: false }, e.t0)
       } else if (tipo === 'empuje') {
         // La saliente se va y la entrante llega DESDE EL OTRO LADO. El signo alterna por corte: dos
         // empujes seguidos en la misma direccion se leen como un scroll, no como un montaje.
@@ -367,7 +387,7 @@ export class Anthem {
       // 'corte' no hace nada, y esa es exactamente su gracia: el corte duro sigue siendo la mayoria.
     }
     this.tl.pause(0)
-    return { escenas: this.escenas.map(e => e.id), dur: this.dur }
+    return { escenas: this.escenas.map(e => e.id), dur: this.dur, montaje }
   }
 
   // seek(t) — `t` es tiempo de ARCHIVO (lo que ve el que mira el video); la timeline corre en su
@@ -488,6 +508,7 @@ window.URVID = {
     return {
       capas: info.escenas.length, texturas: 0, faltan: [], escenas: info.escenas, dur: a.dur,
       plan: (a.guionUsado || info.escenas.map(e => e.id)),
+      montaje: info.montaje || [],
       beats: (a.guionUsado || []).map(id => {
         const m = ESCENAS.find(x => x.meta.id === id)
         return m ? m.meta.beats : 0

@@ -81,5 +81,8 @@ export default {
   // Ver el comentario largo de MOB en kit.js — antes esto estaba horneado en las escenas y
   // por eso dos piezas de rubros opuestos seguian teniendo el mismo mueble.
   mobiliario: { fondo: 'ondas', marco: 'nada', hud: false },   // el aire ES el mensaje; cualquier borde lo contradice
+  // COMO CORTA ESTE AIRE: SIN FLASH ni empuje: nada que sobresalte. Es el aire cuyo mensaje es la calma y
+  // un golpe lo contradice.
+  transiciones: ['corte', 'corte', 'barrido', 'corte', 'barrido', 'corte'],
 
 }

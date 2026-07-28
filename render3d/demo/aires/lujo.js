@@ -49,5 +49,8 @@ export default {
   // Ver el comentario largo de MOB en kit.js — antes esto estaba horneado en las escenas y
   // por eso dos piezas de rubros opuestos seguian teniendo el mismo mueble.
   mobiliario: { fondo: 'nada', marco: 'passepartout', hud: false },   // el pasepartu de un cuadro colgado: enmarca por el vacio
+  // COMO CORTA ESTE AIRE: SIN FLASH. Dos frames de blanco en una pieza de joyeria se leen como un error de
+  // archivo, no como acento. Corta seco o pasa una banda; nunca golpea.
+  transiciones: ['corte', 'corte', 'corte', 'barrido', 'corte', 'barrido'],
 
 }
