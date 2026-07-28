@@ -45,8 +45,17 @@ function corto(t, n) {
   // le pasaba a cualquier titular que la pagina hubiera decidido terminar en preposicion.
   if (s.length <= n) return s
   const c = s.slice(0, n)
+  // CORTAR A MITAD DE PALABRA SE LEE COMO HERRAMIENTA ROTA, y el umbral decide cuando se prefiere eso
+  // antes que un texto demasiado corto. Estaba en 0.55 y fallaba por una decima en un caso REAL:
+  // "Big numbers. Highly-trusted." con tope 22 deja el ultimo espacio en 12 y el umbral pedia >12.1,
+  // asi que salia "BIG NUMBERS. HIGHLY-TR" — visible en el render de basecamp.com, y en una lista
+  // numerada, donde los items se leen como un conjunto, canta muchisimo mas que suelto.
+  // Con 0.45 ese caso corta en "Big numbers.", que es una frase entera y ademas dice lo mismo. El
+  // umbral sigue existiendo para lo que existia: que una primera palabra larguisima no deje el slot
+  // en dos letras. Sin espacio util no hay nada que hacer y se corta igual — pero eso es una palabra
+  // sola mas larga que el campo, no una frase mutilada.
   const sp = c.lastIndexOf(' ')
-  return sinColgar((sp > n * 0.55 ? c.slice(0, sp) : c).trim())
+  return sinColgar((sp > n * 0.45 ? c.slice(0, sp) : c).trim())
 }
 
 // La tipografia cinetica quiere frases de UNA o DOS palabras que peguen. Una oracion entera en un

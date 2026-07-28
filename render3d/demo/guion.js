@@ -48,6 +48,10 @@ const REQUISITOS = {
   // otro material: sin testimonio no hay cita, y una cita fabricada es la mentira mas cara del motor.
   // Basta uno — la escena cita a UNA persona, no arma un muro de opiniones.
   cita: (d) => (d.testimonios || []).some(t => t && t.texto),
+  // Una lista necesita TRES cosas que enumerar. Con dos es un par, y un par numerado se lee como un
+  // error de conteo. Solo cuentan las frases de UNA linea: las de dos renglones son titulares (el
+  // claim viene partido asi), y numerar un titular lo degrada a viñeta ademas de romper la grilla.
+  lista: (d) => (d.frases || []).filter(f => f && !/\n/.test(String(f))).length >= 3,
   // El beat de inversión es un titular a sangre. Sin golpe no hay nada que romper.
   destello: (d) => !!d.golpe,
   // El toro es geometría: no necesita nada, y por eso es el relleno honesto cuando falta material.
@@ -73,10 +77,10 @@ const REQUISITOS = {
 // jamas, aunque exista, este registrada y cumpla sus REQUISITOS — `medio` sale de filtrar ESTA lista.
 // Es la forma mas silenciosa que tiene el catalogo de crecer sin que se note.
 const ORDENES = [
-  ['hero', 'tipografia', 'rafaga', 'pantalla', 'tarjetas', 'cita', 'destello', 'columna', 'toro'],
-  ['pantalla', 'tipografia', 'hero', 'rafaga', 'tarjetas', 'cita', 'columna', 'destello', 'toro'],
-  ['tarjetas', 'cita', 'tipografia', 'hero', 'rafaga', 'columna', 'destello', 'pantalla', 'toro'],
-  ['tipografia', 'pantalla', 'tarjetas', 'rafaga', 'hero', 'cita', 'columna', 'toro', 'destello'],
+  ['hero', 'tipografia', 'rafaga', 'lista', 'pantalla', 'tarjetas', 'cita', 'destello', 'columna', 'toro'],
+  ['pantalla', 'tipografia', 'lista', 'hero', 'rafaga', 'tarjetas', 'cita', 'columna', 'destello', 'toro'],
+  ['tarjetas', 'cita', 'tipografia', 'lista', 'hero', 'rafaga', 'columna', 'destello', 'pantalla', 'toro'],
+  ['tipografia', 'lista', 'pantalla', 'tarjetas', 'rafaga', 'hero', 'cita', 'columna', 'toro', 'destello'],
 ]
 
 export const DUR_OBJETIVO = { corto: 15, medio: 20, largo: 30 }
