@@ -63,7 +63,9 @@ export default {
     vaiven: (n = 0) => (n ? `power${Math.min(2, n)}.inOut` : 'sine.inOut'),
   },
   camara: { dolly: 1.55, orbita: 0.55 },
-  pelicula: { bloom: 0.42, umbral: 0.90, radio: 0.5, grano: 0.034, vinieta: 0.62, aberr: 0.0007 },
+  // LA FORMA DE LA LUZ, no solo cuanta: caja de luz: el rectangulo es el vocabulario del plano, y la fuente apenas arriba
+  // se lee como luz cenital de vidriera.
+  pelicula: { bloom: 0.42, umbral: 0.90, radio: 0.5, grano: 0.034, vinieta: 0.62, aberr: 0.0007, vinietaForma: 0.85, vinietaCentro: [0.5, 0.56] },
   // ESTE AIRE NO DECLARABA MOBILIARIO Y SALIA CON EL DE ANTHEM. El merge de configurar() le pegaba
   // el MOBILIARIO_BASE entero —grilla en fuga, corchetes de camara y rotulos de ficha tecnica—, o sea
   // que el aire de arquitectura, el que mas necesita AIRE, se veia como una herramienta de ingenieria.

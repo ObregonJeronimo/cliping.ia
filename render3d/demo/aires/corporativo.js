@@ -69,7 +69,8 @@ export default {
   },
   // camara medida y casi sin orbita: el punto de vista de esta pieza no se pasea, se acomoda.
   camara: { dolly: 0.7, orbita: 0.35 },
-  pelicula: { bloom: 0.56, umbral: 0.72, radio: 0.68, grano: 0.035, vinieta: 0.6, aberr: 0.0009 },
+  // LA FORMA DE LA LUZ, no solo cuanta: rectangular y sobrio: la luz no dibuja, encuadra.
+  pelicula: { bloom: 0.56, umbral: 0.72, radio: 0.68, grano: 0.035, vinieta: 0.6, aberr: 0.0009, vinietaForma: 0.70 },
   // EL MOBILIARIO DEL CUADRO: mismo instrumental que tecnico, mas sobrio en el resto.
   // Ver el comentario largo de MOB en kit.js — antes esto estaba horneado en las escenas y
   // por eso dos piezas de rubros opuestos seguian teniendo el mismo mueble.

@@ -45,7 +45,8 @@ export default {
   // El amarillo #e8ff3a entra al pase con R y G casi en 1.0: con umbral 0.58 florece el glifo ENTERO
   // y el texto sale como una mancha blanca. Umbral alto y fuerza moderada — la energia de este aire la
   // dan el ritmo y el overshoot, no la exposicion.
-  pelicula: { bloom: 0.55, umbral: 0.86, grano: 0.075, vinieta: 0.8, aberr: 0.0035 },
+  // LA FORMA DE LA LUZ, no solo cuanta: la fuente apenas abajo: luz de cancha, que viene de los costados y no del cielo.
+  pelicula: { bloom: 0.55, umbral: 0.86, grano: 0.075, vinieta: 0.8, aberr: 0.0035, vinietaForma: 0.35, vinietaCentro: [0.5, 0.46] },
   // EL MOBILIARIO DEL CUADRO: lo mismo, que es de donde viene el patron.
   // Ver el comentario largo de MOB en kit.js — antes esto estaba horneado en las escenas y
   // por eso dos piezas de rubros opuestos seguian teniendo el mismo mueble.

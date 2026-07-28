@@ -15,6 +15,7 @@ import { createCanvas, GlobalFonts } from '@napi-rs/canvas'
 import { readFileSync, existsSync, readdirSync } from 'node:fs'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { dirname, join } from 'node:path'
+import { execFileSync } from 'node:child_process'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const RAIZ = join(HERE, '..', '..')
@@ -508,5 +509,23 @@ for (const id of ids) {
   else console.log(`  ${id}: revisado (${dur.toFixed(2)}s / ${limite.toFixed(2)}s)`)
 }
 
+// ---------------------------------------------------------------- E-COMPOSITOR-PARSEA
+// NINGUNA de las cinco compuertas de la zona tocaba main.js. Las escenas se importan una por una y el
+// compositor no, asi que un error de sintaxis ahi pasaba las cinco en verde y aparecia recien al
+// renderizar — como un timeout de Playwright esperando window.URVID, sin una linea que diga que paso.
+// Costo una tanda entera de renders, y el error era una comilla invertida dentro de un comentario del
+// shader: el shader se escribe como template literal y se cierra con la primera que aparezca.
+//
+// node --check parsea sin resolver imports ni ejecutar nada: cuesta milisegundos y cierra la clase.
+for (const arch of ['main.js', 'kit.js', 'guion.js', 'datos.js', 'adn.js']) {
+  try {
+    execFileSync(process.execPath, ['--check', join(RAIZ, 'render3d', 'demo', arch)], { stdio: 'pipe' })
+  } catch (e) {
+    const linea = String(e.stderr || e.message).split(/\r?\n/).find(l => l.includes('Error')) || 'error de sintaxis'
+    die(`render3d/demo/${arch} no parsea: ${linea}`)
+  }
+}
+
 if (fails) { console.error(`\nVERIFICAR: ${fails} FAIL`); process.exit(1) }
+
 console.log(`VERIFICAR OK (${ids.length} escena${ids.length > 1 ? 's' : ''}: contrato, sin azar ni reloj propio, duracion dentro de sus beats, camara devuelta, nada descansa mas de un beat, determinista).`)

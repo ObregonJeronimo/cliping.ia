@@ -78,7 +78,8 @@ export default {
     vaiven: (n = 0) => (n ? `power${Math.min(2, n)}.inOut` : 'sine.inOut'),
   },
   camara: { dolly: 0.75, orbita: 0.85 },
-  pelicula: { bloom: 0.52, umbral: 0.86, radio: 0.55, grano: 0.085, vinieta: 0.78, aberr: 0.0020 },
+  // LA FORMA DE LA LUZ, no solo cuanta: a mitad de camino: el borde de un papel, ni aro fotografico ni caja perfecta.
+  pelicula: { bloom: 0.52, umbral: 0.86, radio: 0.55, grano: 0.085, vinieta: 0.78, aberr: 0.0020, vinietaForma: 0.55 },
   // EL MOBILIARIO DEL CUADRO: el mismo papel, mas calido por la paleta.
   // Ver el comentario largo de MOB en kit.js — antes esto estaba horneado en las escenas y
   // por eso dos piezas de rubros opuestos seguian teniendo el mismo mueble.

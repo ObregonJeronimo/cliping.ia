@@ -69,7 +69,8 @@ export default {
   },
   // mucho aire y poca deriva: el cuadro es una pagina, y una pagina no orbita.
   camara: { dolly: 0.6, orbita: 0.5 },
-  pelicula: { bloom: 0.14, umbral: 0.95, radio: 0.35, grano: 0.05, vinieta: 0.15, aberr: 0.0006 },
+  // LA FORMA DE LA LUZ, no solo cuanta: una pagina impresa no tiene aro: tiene margen. La caja apaga los cuatro lados parejo.
+  pelicula: { bloom: 0.14, umbral: 0.95, radio: 0.35, grano: 0.05, vinieta: 0.15, aberr: 0.0006, vinietaForma: 0.90 },
   // EL MOBILIARIO DEL CUADRO: reticula de papel: superficie, no profundidad. Una revista no tiene HUD.
   // Ver el comentario largo de MOB en kit.js — antes esto estaba horneado en las escenas y
   // por eso dos piezas de rubros opuestos seguian teniendo el mismo mueble.

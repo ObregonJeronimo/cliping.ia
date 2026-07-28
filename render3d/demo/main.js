@@ -28,6 +28,18 @@ const Pelicula = {
   uniforms: {
     tDiffuse: { value: null }, uT: { value: 0 }, uGrano: { value: 0.055 },
     uVinieta: { value: 0.9 }, uAberr: { value: 0.0022 }, uFlash: { value: 0 },
+    // LA FORMA DE LA VIÑETA, no solo su intensidad. Estaba horneada —`smoothstep(0.95, 0.10, r2)` con
+    // r2 en espacio UV— y era byte a byte la misma en los once aires: solo cambiaba cuanto oscurece.
+    // Calculado sobre esa curva, la esquina baja al 54% y el borde medio al 92%, siempre con el mismo
+    // aro. Once personalidades declaraban su exposicion y todas recibian el mismo recorte de luz.
+    //   uVinForma  0 = ovalo (distancia euclidiana), 1 = RECTANGULAR (norma del maximo). No es el
+    //              mismo efecto con otro numero: un ovalo oscurece las esquinas y deja los lados; un
+    //              rectangulo apaga los cuatro lados parejo y se lee como una caja de luz.
+    //   uVinCentro donde esta la fuente. Corrido hacia arriba se lee como luz cenital, que es lo que
+    //              pide una vidriera; centrado se lee como foco de estudio.
+    //   uVinAsp    correccion de aspecto. En 1 el aro es un circulo en UV —o sea un ovalo alto en el
+    //              cuadro—, que es lo que hay hoy y queda como default.
+    uVinForma: { value: 0 }, uVinCentro: { value: new THREE.Vector2(0.5, 0.5) }, uVinAsp: { value: 1 },
     uRes: { value: new THREE.Vector2(1080, 1920) },
     // TRANSICIONES, en el pase de post y no en la escena 3D. Ver la nota larga donde se programan.
     //   uEmpuje  desplaza el cuadro entero en X (en UV). La saliente se va y la entrante llega.
@@ -42,6 +54,7 @@ const Pelicula = {
   fragmentShader: `
     uniform sampler2D tDiffuse; uniform float uT, uGrano, uVinieta, uAberr, uFlash;
     uniform float uEmpuje, uEmpujeY, uBarrido, uAnchoBar; uniform vec3 uTinteTr;
+    uniform float uVinForma, uVinAsp; uniform vec2 uVinCentro;
     uniform vec2 uRes; varying vec2 vUv;
     float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898,78.233)))*43758.5453); }
     void main(){
@@ -59,7 +72,19 @@ const Pelicula = {
       col.b = texture2D(tDiffuse, uvs - des).b;
       col.a = 1.0;
       if (fueraEmp) col.rgb = uTinteTr;
-      col.rgb *= mix(1.0, smoothstep(0.95, 0.10, r2), uVinieta);
+      // La aberracion sigue usando el r2 crudo de arriba: es una propiedad de la LENTE, no de la
+      // exposicion, y moverla con la viñeta habria cambiado el color de los bordes en los once aires.
+      // (Sin comillas invertidas en este comentario: esta DENTRO del template literal del shader y una
+      // sola lo cierra. Costo una tanda de renders con la pagina sin cargar y sin mensaje util.)
+      // LAS DOS NORMAS TIENEN QUE LLEGAR AL MISMO MAXIMO o la forma no hace nada. El ovalo es dot(dv,dv)
+      // y toca 0.50 en la esquina; la norma del maximo al cuadrado toca 0.25 en el borde, o sea la
+      // MITAD, asi que con los mismos umbrales la caja apenas oscurecia y forma 0.90 se veia igual que
+      // forma 0. Se vio restando dos renders del mismo aire: la diferencia era plana. El x2 las pone en
+      // la misma escala — la caja llega a 0.50 en los cuatro lados, que es justo lo que se busca.
+      vec2 dv = (uvs - uVinCentro) * vec2(uVinAsp, 1.0);
+      float ovalo = dot(dv, dv);
+      float caja = max(abs(dv.x), abs(dv.y));
+      col.rgb *= mix(1.0, smoothstep(0.95, 0.10, mix(ovalo, 2.0 * caja * caja, uVinForma)), uVinieta);
       col.rgb += (hash(vUv * uRes + vec2(uT*71.3, uT*37.7)) - 0.5) * uGrano;
       // BARRIDO: una banda solida cruza el cuadro y TAPA el corte. El cambio de escena ocurre cuando
       // la banda esta encima, asi que el espectador nunca ve el salto — ve pasar una cosa. En 9:16 va
@@ -123,9 +148,12 @@ export class Anthem {
     if (pel.grano != null) u.uGrano.value = pel.grano
     if (pel.vinieta != null) u.uVinieta.value = pel.vinieta
     if (pel.aberr != null) u.uAberr.value = pel.aberr
-    // La energia de camara tambien: una marca de lujo con la camara del aire deportivo se lee como
-    // una plantilla mal elegida, por mas que la paleta sea correcta.
-    this.camaraE = (spec.__aire && spec.__aire.camara) || { dolly: 1, orbita: 1 }
+    if (pel.vinietaForma != null) u.uVinForma.value = pel.vinietaForma
+    if (pel.vinietaCentro) u.uVinCentro.value.set(pel.vinietaCentro[0], pel.vinietaCentro[1])
+    if (pel.vinietaAsp != null) u.uVinAsp.value = pel.vinietaAsp
+    // La energia de camara la aplica `configurar()` en el kit, que expone CAM y los verbos dolly() y
+    // orbita(). Aca vivia `this.camaraE`, un campo que se asignaba y no leia NADIE en todo el motor:
+    // los once aires declaraban su camara y las once piezas la movian igual.
     this.tl = window.gsap.timeline({ paused: true })
     this.escenas = []
   }

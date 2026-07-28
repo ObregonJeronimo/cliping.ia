@@ -178,6 +178,31 @@ for (const [rubro, aires] of porRubro) {
   }
 }
 
+// ---------------------------------------------------------------- E-LUZ-VARIEDAD
+// La viñeta era la tercera fuente del "recuadro en los cuatro costados" del que se quejo el usuario, y
+// la mas escondida: la FORMA estaba horneada en el shader —`smoothstep(0.95, 0.10, r2)` con r2 en UV—
+// y era byte a byte la misma en los once aires. Solo variaba `vinieta`, o sea CUANTO oscurece, nunca
+// DONDE. Once personalidades declarando su exposicion y las once recibiendo el mismo recorte de luz.
+//
+// Se mide la terna completa (forma, centro, aspecto) porque cambiar solo la intensidad es exactamente
+// el error que este archivo existe para cazar: variedad de parametro disfrazada de variedad de tipo.
+const firmaLuz = (a) => {
+  const p = a.pelicula || {}
+  return `${p.vinietaForma || 0}|${(p.vinietaCentro || [0.5, 0.5]).join(',')}|${p.vinietaAsp || 1}`
+}
+const lucesVivas = new Set([...producidos].map(n => firmaLuz(AIRES[n] || {})))
+if (lucesVivas.size < 6) {
+  F('E-LUZ-VARIEDAD', `los aires alcanzables reparten solo ${lucesVivas.size} formas de luz distintas; hacen falta 6`)
+}
+for (const [rubro, aires] of porRubro) {
+  const vistos = new Map()
+  for (const nombre of aires) {
+    const f = firmaLuz(AIRES[nombre] || {})
+    if (vistos.has(f)) F('E-LUZ-VARIEDAD', `rubro "${rubro}": los aires "${nombre}" y "${vistos.get(f)}" recortan la luz con la MISMA forma`)
+    else vistos.set(f, nombre)
+  }
+}
+
 // ---------------------------------------------------------------- E-MONTAJE-DECLARADO / E-MONTAJE-VARIEDAD
 // EL MONTAJE ERA LA DIMENSION MAS MUERTA DE TODAS. main.js sabia repartir cinco gestos de corte y leer
 // `AIRE.transiciones` desde que se escribio el sistema, y NINGUNO de los once aires lo declaraba: los
@@ -245,3 +270,4 @@ console.log(`ADN OK — ${n} combinaciones (${FIX.length} páginas × ${Object.k
 console.log(`  los ${Object.keys(AIRES).length} aires son alcanzables (${barridos} combinaciones de rubro × energía × calidez × registro).`)
 console.log(`  los 11 declaran su mobiliario y reparten ${marcosVivos.size} marcos distintos: ${[...marcosVivos].sort().join(', ')}.`)
 console.log(`  los 11 declaran su montaje y reparten ${montajesVivos.size} formas distintas de cortar.`)
+console.log(`  y ${lucesVivas.size} recortes de luz distintos (forma x centro x aspecto), no solo intensidades.`)

@@ -85,7 +85,8 @@ export default {
   // verde sobre el tercio inferior del cuadro y se comia el epigrafe. Y encima ese momento cae justo
   // donde la escena FUERZA bloom.strength a 1.15, asi que lo que uno pone en el aire ahi no manda.
   // 0.55 deja el halo pegado al objeto: brilla el borde, no el vecindario. El calor lo pone la paleta.
-  pelicula: { bloom: 0.46, umbral: 0.76, radio: 0.55, grano: 0.078, vinieta: 0.95, aberr: 0.0015 },
+  // LA FORMA DE LA LUZ, no solo cuanta: luz calida de arriba, como la lampara sobre una mesa.
+  pelicula: { bloom: 0.46, umbral: 0.76, radio: 0.55, grano: 0.078, vinieta: 0.95, aberr: 0.0015, vinietaForma: 0.15, vinietaCentro: [0.5, 0.55] },
   // EL MOBILIARIO DEL CUADRO: curvas: nada de esquinas duras alrededor de comida.
   // Ver el comentario largo de MOB en kit.js — antes esto estaba horneado en las escenas y
   // por eso dos piezas de rubros opuestos seguian teniendo el mismo mueble.
