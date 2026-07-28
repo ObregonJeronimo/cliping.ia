@@ -56,6 +56,28 @@ const REQUISITOS = {
   // foto es un titular sobre el fondo, y eso ya lo hace `destello`; sin texto es una foto suelta.
   titular: (d) => (d.elementos || []).some(e => e && ['foto', 'hero', 'tarjeta'].includes(e.rol))
     && (d.frases || []).filter(Boolean).length >= 1,
+  // Partir el cuadro sirve para decir DOS cosas a la vez, asi que necesita dos. Con una, la mitad
+  // vacia es un rectangulo de color esperando contenido. Solo frases de una linea: las de dos
+  // renglones son titulares y no entran en media pantalla.
+  partida: (d) => (d.frases || []).filter(f => f && !/\n/.test(String(f))).length >= 2,
+  // Una comparacion necesita DOS piezas reales Y COMPARABLES. Con una es una foto, y eso ya lo hacen
+  // otras dos. Pero ademas: dos piezas de proporciones muy distintas —un logo apaisado contra una
+  // captura vertical— no se comparan, se estorban; encajadas en la misma caja una queda enorme y la
+  // otra en un rincon, y el barrido pierde el sentido. Se exige que sus proporciones esten dentro de
+  // un factor de 2, que es lo que separa "dos versiones de lo mismo" de "dos cosas distintas".
+  contraste: (d) => {
+    const ars = (d.elementos || []).filter(e => e && e.url && e.ar > 0).map(e => e.ar)
+    for (let i = 0; i < ars.length; i++) {
+      for (let j = i + 1; j < ars.length; j++) {
+        const k = ars[i] / ars[j]
+        if (k >= 0.5 && k <= 2) return true
+      }
+    }
+    return false
+  },
+  // El sello solo necesita el nombre, y toda pagina tiene uno. Es la escena que sostiene las piezas
+  // de lujo e inmobiliaria, que componen con AIRE y no toleran un catalogo de cuadros llenos.
+  sello: (d) => !!d.marca,
   // El beat de inversión es un titular a sangre. Sin golpe no hay nada que romper.
   destello: (d) => !!d.golpe,
   // El toro es geometría: no necesita nada, y por eso es el relleno honesto cuando falta material.
@@ -81,10 +103,10 @@ const REQUISITOS = {
 // jamas, aunque exista, este registrada y cumpla sus REQUISITOS — `medio` sale de filtrar ESTA lista.
 // Es la forma mas silenciosa que tiene el catalogo de crecer sin que se note.
 const ORDENES = [
-  ['hero', 'tipografia', 'rafaga', 'lista', 'titular', 'pantalla', 'tarjetas', 'cita', 'destello', 'columna', 'toro'],
-  ['pantalla', 'titular', 'tipografia', 'lista', 'hero', 'rafaga', 'tarjetas', 'cita', 'columna', 'destello', 'toro'],
-  ['tarjetas', 'cita', 'tipografia', 'lista', 'hero', 'titular', 'rafaga', 'columna', 'destello', 'pantalla', 'toro'],
-  ['tipografia', 'lista', 'titular', 'pantalla', 'tarjetas', 'rafaga', 'hero', 'cita', 'columna', 'toro', 'destello'],
+  ['hero', 'tipografia', 'partida', 'rafaga', 'lista', 'titular', 'pantalla', 'tarjetas', 'contraste', 'cita', 'destello', 'columna', 'sello', 'toro'],
+  ['pantalla', 'titular', 'tipografia', 'partida', 'lista', 'hero', 'rafaga', 'tarjetas', 'contraste', 'cita', 'columna', 'destello', 'sello', 'toro'],
+  ['tarjetas', 'contraste', 'cita', 'tipografia', 'partida', 'lista', 'hero', 'titular', 'rafaga', 'columna', 'destello', 'pantalla', 'sello', 'toro'],
+  ['tipografia', 'partida', 'lista', 'titular', 'pantalla', 'tarjetas', 'contraste', 'rafaga', 'hero', 'cita', 'columna', 'sello', 'toro', 'destello'],
 ]
 
 export const DUR_OBJETIVO = { corto: 15, medio: 20, largo: 30 }
