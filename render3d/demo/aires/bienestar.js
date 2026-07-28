@@ -77,4 +77,9 @@ export default {
   // tramo donde `tipografia` FUERZA bloom.strength a 1.15 un radio grande le tiñe medio cuadro de
   // verde. Con el halo corto, la calma la dan la paleta y la vinieta abierta, no la exposicion.
   pelicula: { bloom: 0.3, umbral: 0.88, radio: 0.6, grano: 0.022, vinieta: 0.35, aberr: 0.0006 },
+  // EL MOBILIARIO DEL CUADRO: lo mismo, y por eso el patron existe.
+  // Ver el comentario largo de MOB en kit.js — antes esto estaba horneado en las escenas y
+  // por eso dos piezas de rubros opuestos seguian teniendo el mismo mueble.
+  mobiliario: { fondo: 'ondas', esquinas: false, hud: false },
+
 }

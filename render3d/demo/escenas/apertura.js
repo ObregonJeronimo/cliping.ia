@@ -32,7 +32,7 @@
 // El overshoot vive en la ROTACIÓN y en la escala de cada letra, no en z: con la palabra ocupando el
 // 94% del ancho, un back.out sobre la profundidad la empujaba fuera del cuadro en el rebote.
 
-import { E, LOOK, b, BPM, planoTexto, texto, materialMascara, filete, hex, nivel } from '../kit.js'
+import { E, LOOK, MOB, b, BPM, planoTexto, texto, materialMascara, filete, hex, nivel } from '../kit.js'
 // El COPY sale de los DATOS. Lo que queda escrito aca es CHROME de la pieza (rotulos de
 // capitulo, indicadores tecnicos): eso es direccion de arte y no cambia con el contenido.
 // Lo que la marca DICE — su nombre, sus cifras, su claim, su CTA — sale de los datos o NO SALE.
@@ -244,8 +244,12 @@ export function build(ctx) {
   // Las escuadras salen disparadas desde el centro hacia sus esquinas: son lo único que cruza el corte
   // duro sin romperse, y esa continuidad es lo que hace que el corte se lea como montaje y no como que
   // el video empezó de nuevo.
+  // LOS CORCHETES SON DEL AIRE, no de la escena. Dicen 'camara', 'tecnico', 'capturado': son
+  // perfectos para software y para deporte, y sobre una joyeria o una panaderia dicen exactamente
+  // lo que no hay que decir. Un aire que no los pide compone el cuadro sin ellos y el resto de la
+  // escena no se entera. Ver MOB en kit.js.
   const gMarco = new THREE.Group()
-  g.add(gMarco)
+  if (MOB.esquinas) g.add(gMarco)
   const esquinas = []
   ;[[-1, 1], [1, 1], [-1, -1], [1, -1]].forEach(([sx, sy]) => {
     const e = new THREE.Group()
@@ -274,16 +278,21 @@ export function build(ctx) {
 
   // El micro-rotulo decia `REC · 124 BPM`: jerga del motor, en el video de un cliente. El dominio de
   // la propia pagina ocupa el mismo lugar, mide parecido y ademas es cierto.
-  const micro = izq(rotulo(sello(0), 0.115, mundoW * 0.4, { ...CHICA(), tracking: 0.3, color: LOOK.acento2 }), -MX, -0.45)
-  gAp.add(micro)
-  micro.userData.prog.value = 0
-  de(micro.userData.prog, { value: 0 }, { value: 1.08, duration: b(0.4), ease: E.frena(2) }, b(0.82))
+  // EL HUD TAMBIEN. Estos dos rotulos —el dominio y el formato del archivo— son una FICHA TECNICA:
+  // le quedan bien a una pieza que quiere parecer un instrumento y le sobran a una que quiere
+  // parecer una revista. El aire decide si el cuadro lleva ficha.
+  if (MOB.hud) {
+    const micro = izq(rotulo(sello(0), 0.115, mundoW * 0.4, { ...CHICA(), tracking: 0.3, color: LOOK.acento2 }), -MX, -0.45)
+    gAp.add(micro)
+    micro.userData.prog.value = 0
+    de(micro.userData.prog, { value: 0 }, { value: 1.08, duration: b(0.4), ease: E.frena(2) }, b(0.82))
 
-  const formato = der(rotulo('1080 · 1920', 0.105, mundoW * 0.4, { ...CHICA(), tracking: 0.3 }), MX, -0.45)
-  formato.material.uniforms.uDir.value = 1
-  gAp.add(formato)
-  formato.userData.prog.value = 0
-  de(formato.userData.prog, { value: 0 }, { value: 1.08, duration: b(0.4), ease: E.frena(2) }, b(0.95))
+    const formato = der(rotulo('1080 · 1920', 0.105, mundoW * 0.4, { ...CHICA(), tracking: 0.3 }), MX, -0.45)
+    formato.material.uniforms.uDir.value = 1
+    gAp.add(formato)
+    formato.userData.prog.value = 0
+    de(formato.userData.prog, { value: 0 }, { value: 1.08, duration: b(0.4), ease: E.frena(2) }, b(0.95))
+  }
 
   // El contador NO interpola texto: son seis planos distintos que se prenden y se apagan. Los dos
   // primeros caen en medios beats y después acelera hacia el corte — un readout que se apura es lo que

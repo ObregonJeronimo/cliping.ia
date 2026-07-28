@@ -44,4 +44,9 @@ export default {
   // Camara suelta: en un video de fiesta la camara nunca esta en tripode.
   camara: { dolly: 1.35, orbita: 1.25 },
   pelicula: { bloom: 1.15, umbral: 0.58, radio: 0.95, grano: 0.05, vinieta: 1.0, aberr: 0.0045 },
+  // EL MOBILIARIO DEL CUADRO: diagonales corriendo: la pieza no deja respirar, y sin ficha tecnica.
+  // Ver el comentario largo de MOB en kit.js — antes esto estaba horneado en las escenas y
+  // por eso dos piezas de rubros opuestos seguian teniendo el mismo mueble.
+  mobiliario: { fondo: 'rayas', esquinas: true, hud: false },
+
 }

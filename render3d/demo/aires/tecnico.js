@@ -11,4 +11,9 @@ export default {
   gesto: {},
   camara: { dolly: 1.0, orbita: 1.0 },
   pelicula: { bloom: 0.85, umbral: 0.62, grano: 0.055, vinieta: 0.9, aberr: 0.0022 },
+  // EL MOBILIARIO DEL CUADRO: el HUD de ANTHEM entero: es la referencia y no se toca.
+  // Ver el comentario largo de MOB en kit.js — antes esto estaba horneado en las escenas y
+  // por eso dos piezas de rubros opuestos seguian teniendo el mismo mueble.
+  mobiliario: { fondo: 'fuga', esquinas: true, hud: true },
+
 }

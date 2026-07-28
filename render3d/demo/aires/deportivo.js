@@ -21,4 +21,9 @@ export default {
   // y el texto sale como una mancha blanca. Umbral alto y fuerza moderada — la energia de este aire la
   // dan el ritmo y el overshoot, no la exposicion.
   pelicula: { bloom: 0.55, umbral: 0.86, grano: 0.075, vinieta: 0.8, aberr: 0.0035 },
+  // EL MOBILIARIO DEL CUADRO: lo mismo, que es de donde viene el patron.
+  // Ver el comentario largo de MOB en kit.js — antes esto estaba horneado en las escenas y
+  // por eso dos piezas de rubros opuestos seguian teniendo el mismo mueble.
+  mobiliario: { fondo: 'rayas', esquinas: true, hud: false },
+
 }

@@ -83,4 +83,9 @@ export default {
   // donde la escena FUERZA bloom.strength a 1.15, asi que lo que uno pone en el aire ahi no manda.
   // 0.55 deja el halo pegado al objeto: brilla el borde, no el vecindario. El calor lo pone la paleta.
   pelicula: { bloom: 0.46, umbral: 0.76, radio: 0.55, grano: 0.078, vinieta: 0.95, aberr: 0.0015 },
+  // EL MOBILIARIO DEL CUADRO: curvas: nada de esquinas duras alrededor de comida.
+  // Ver el comentario largo de MOB en kit.js — antes esto estaba horneado en las escenas y
+  // por eso dos piezas de rubros opuestos seguian teniendo el mismo mueble.
+  mobiliario: { fondo: 'ondas', esquinas: false, hud: false },
+
 }

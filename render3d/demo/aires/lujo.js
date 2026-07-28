@@ -20,4 +20,9 @@ export default {
   camara: { dolly: 0.45, orbita: 0.35 },
   // bloom bajo y grano fino: el brillo del oro tiene que leerse como metal, no como neón.
   pelicula: { bloom: 0.42, umbral: 0.78, grano: 0.025, vinieta: 1.0, aberr: 0.0008 },
+  // EL MOBILIARIO DEL CUADRO: solo el degrade. Lo caro se vende con AIRE, no con lineas.
+  // Ver el comentario largo de MOB en kit.js — antes esto estaba horneado en las escenas y
+  // por eso dos piezas de rubros opuestos seguian teniendo el mismo mueble.
+  mobiliario: { fondo: 'nada', esquinas: false, hud: false },
+
 }

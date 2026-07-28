@@ -61,6 +61,30 @@ const GESTO_BASE = {
 export let E = GESTO_BASE
 
 export let AIRE = null
+
+// EL MOBILIARIO DEL CUADRO — lo que faltaba para que dos videos no se parezcan.
+//
+// Un aire declaraba paleta, tipografia, ritmo, gestos, camara y pelicula, y con eso dos piezas de
+// rubros opuestos SEGUIAN VIENDOSE IGUAL: cambiaba el color y la letra, y el MUEBLE era el mismo —
+// la misma grilla en fuga, los mismos corchetes de encuadre, los mismos rotulos tecnicos. Una
+// panaderia recibia el HUD de una herramienta de ingenieria con otra tipografia.
+//
+// El mueble es la mitad de la identidad de una pieza y estaba horneado en las escenas. Ahora lo
+// pide el aire, y la escena pregunta en vez de imponer.
+//
+//   fondo     'fuga'    la grilla en perspectiva de ANTHEM: espacio, tecnologia, velocidad
+//             'puntos'  una reticula de puntos: papel, editorial, artesanal
+//             'ondas'   curvas suaves que respiran: bienestar, gastronomia, cuidado
+//             'rayas'   diagonales duras en movimiento: deporte, urgencia
+//             'bloques' celdas grandes que se encienden en el beat: jugueton, ecommerce
+//             'nada'    solo el degrade: lujo, arquitectura, todo lo que necesita AIRE
+//   esquinas  los corchetes de encuadre. Dicen 'camara', 'tecnico', 'capturado'.
+//   hud       los rotulos chicos de formato y dominio. Dicen 'ficha tecnica'.
+//
+// El orden de PATRONES importa: es el indice que viaja al shader como uPatron.
+export const PATRONES = ['fuga', 'puntos', 'ondas', 'rayas', 'bloques', 'nada']
+const MOBILIARIO_BASE = { fondo: 'fuga', esquinas: true, hud: true }
+export let MOB = MOBILIARIO_BASE
 // ¿El mundo es claro? Lo decide el ADN de la página, no el aire. Las escenas lo consultan para elegir
 // entre sumar luz y restarla: la misma escena que sobre negro dibuja un halo, sobre blanco tiene que
 // dibujar una sombra, o desaparece.
@@ -72,6 +96,7 @@ export function configurar(aire) {
   if (!aire) return
   AIRE = aire
   CLARO = !!aire.claro
+  MOB = { ...MOBILIARIO_BASE, ...(aire.mobiliario || {}) }
   if (aire.bpm) { BPM = aire.bpm; BEAT = 60 / BPM }
   if (aire.paleta) LOOK = { ...LOOK, ...aire.paleta }
   if (aire.gesto) E = { ...GESTO_BASE, ...aire.gesto }
@@ -208,6 +233,9 @@ export function fondoVivo(mundoW, mundoH) {
       // El beat, para que el fondo pueda caer en la grilla del montaje. Sin esto lo unico que podia
       // hacer una masa de fondo era DERIVAR, y lo suave no cuenta: ni para el ojo ni para la medicion.
       uBeat: { value: BEAT },
+      // Que patron dibuja el fondo. Ver MOBILIARIO_BASE arriba: es lo que hace que una pieza de
+      // lujo no tenga la misma grilla de ingenieria que una de software.
+      uPatron: { value: Math.max(0, PATRONES.indexOf(MOB.fondo)) },
       // 1 = mundo claro. La grilla y el pulso son ADITIVOS, que es lo correcto sobre negro y un
       // desastre sobre blanco: sumar sobre un fondo que ya está en 1.0 no aclara nada, sólo desatura
       // hasta el gris. En claro las mismas dos cosas tienen que OSCURECER hacia el acento.
@@ -215,20 +243,54 @@ export function fondoVivo(mundoW, mundoH) {
     },
     vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
     fragmentShader: `
-      uniform float uT, uGrilla, uPulso, uClaro, uBeat; uniform vec3 uA, uB, uAcento, uAcento2;
+      uniform float uT, uGrilla, uPulso, uClaro, uBeat, uPatron; uniform vec3 uA, uB, uAcento, uAcento2;
       varying vec2 vUv;
       float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898,78.233)))*43758.5453); }
       void main(){
         vec2 uv = vUv;
         vec3 col = mix(uA, uB, smoothstep(0.95, 0.05, distance(uv, vec2(0.5, 0.58))));
-        // GRILLA EN FUGA: las líneas se juntan hacia el horizonte y se desplazan con el tiempo. Da
-        // sensación de espacio sin costar geometría.
+        // EL PATRON DEL FONDO LO PIDE EL AIRE. Seis, y ninguno es decorado: cada uno dice de que
+        // clase de negocio es la pieza antes de que se lea una palabra. La grilla en fuga —la de
+        // ANTHEM— dice espacio y tecnologia, y sobre una panaderia dice 'software de panaderia'.
         vec2 g = uv - vec2(0.5, 0.52);
-        float persp = 1.0 / max(0.06, abs(g.y) * 2.4);
-        float lx = abs(fract(g.x * persp * 5.0 + 0.5) - 0.5);
-        float ly = abs(fract(g.y * 9.0 - uT * 0.18 + 0.5) - 0.5);
-        float linea = smoothstep(0.055, 0.0, lx) + smoothstep(0.05, 0.0, ly);
-        linea *= smoothstep(0.62, 0.06, abs(g.y)) * uGrilla;
+        float linea = 0.0;
+        if (uPatron < 0.5) {
+          // FUGA: las lineas se juntan hacia el horizonte y se desplazan. Espacio sin geometria.
+          float persp = 1.0 / max(0.06, abs(g.y) * 2.4);
+          float lx = abs(fract(g.x * persp * 5.0 + 0.5) - 0.5);
+          float ly = abs(fract(g.y * 9.0 - uT * 0.18 + 0.5) - 0.5);
+          linea = smoothstep(0.055, 0.0, lx) + smoothstep(0.05, 0.0, ly);
+          linea *= smoothstep(0.62, 0.06, abs(g.y));
+        } else if (uPatron < 1.5) {
+          // PUNTOS: una reticula regular que deriva despacio. Es el papel milimetrado de un
+          // cuaderno de diseno, y no tiene fuga: no promete profundidad, promete superficie.
+          vec2 q = fract((g + vec2(uT * 0.006, -uT * 0.012)) * 26.0) - 0.5;
+          linea = smoothstep(0.30, 0.06, length(q)) * 0.9;
+        } else if (uPatron < 2.5) {
+          // ONDAS: tres senos de periodos no multiplos entre si, o volverian a alinearse. Respira,
+          // y nada tiene esquinas.
+          float w = sin(g.x * 7.0 + uT * 0.30) * 0.055
+                  + sin(g.x * 11.3 - uT * 0.21) * 0.035
+                  + sin(g.x * 4.1 + uT * 0.13) * 0.045;
+          float d = abs(fract((g.y - w) * 5.0 + 0.5) - 0.5);
+          linea = smoothstep(0.09, 0.0, d) * 0.75;
+        } else if (uPatron < 3.5) {
+          // RAYAS: diagonales duras corriendo. Es la unica que NO se desvanece hacia los bordes,
+          // porque su gracia es no dejar respirar.
+          float d = abs(fract((g.x * 1.5 + g.y * 2.2) * 6.0 - uT * 0.55 + 0.5) - 0.5);
+          linea = smoothstep(0.16, 0.05, d) * 0.8;
+        } else if (uPatron < 4.5) {
+          // BLOQUES: una cuadricula grande donde algunas celdas se encienden EN EL BEAT. Es el
+          // unico patron con eventos propios, y por eso es el de las piezas que quieren gritar.
+          vec2 celda = floor((g + vec2(0.5)) * vec2(3.0, 5.0));
+          float paso = floor(uT / max(0.05, uBeat));
+          float h = fract(sin(dot(celda, vec2(12.9898, 78.233)) + paso * 3.7) * 43758.5453);
+          vec2 dentro = fract((g + vec2(0.5)) * vec2(3.0, 5.0));
+          float borde = min(min(dentro.x, 1.0 - dentro.x), min(dentro.y, 1.0 - dentro.y));
+          linea = step(0.78, h) * smoothstep(0.0, 0.04, borde) * 0.55;
+        }
+        // 'nada' (uPatron >= 4.5) deja el degrade solo: es lo que necesita una pieza que vende aire.
+        linea *= uGrilla;
         // En oscuro la línea SUMA luz; en claro TIÑE hacia el acento. Es la misma grilla y en los dos
         // casos aparece por delante del fondo, que es lo único que importa.
         // En claro hace falta MAS peso, no menos: sobre negro una linea de acento al 16% ya destaca

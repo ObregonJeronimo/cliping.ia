@@ -52,4 +52,9 @@ export default {
   // Camara con juego: se mueve mas que la del aire tecnico pero sin la violencia de la deportiva.
   camara: { dolly: 1.25, orbita: 1.15 },
   pelicula: { bloom: 0.40, umbral: 0.72, radio: 0.55, grano: 0.03, vinieta: 0.5, aberr: 0.0012 },
+  // EL MOBILIARIO DEL CUADRO: celdas que se encienden en el beat; sin corchetes, que enfrian.
+  // Ver el comentario largo de MOB en kit.js — antes esto estaba horneado en las escenas y
+  // por eso dos piezas de rubros opuestos seguian teniendo el mismo mueble.
+  mobiliario: { fondo: 'bloques', esquinas: false, hud: false },
+
 }

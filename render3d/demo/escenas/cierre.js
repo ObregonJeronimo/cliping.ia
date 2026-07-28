@@ -19,7 +19,7 @@
 // beat. No cambia la composición: el anillo cierra una sola vez, la marca sigue clavada adentro y el
 // CTA sigue siendo lo único que pide algo. Lo que cambia es que ninguno de los tres espera al final.
 
-import { E, LOOK, b, planoTexto, materialMascara, filete, hex, nivel } from '../kit.js'
+import { E, LOOK, MOB, b, planoTexto, materialMascara, filete, hex, nivel } from '../kit.js'
 // El COPY sale de los DATOS. Lo que queda escrito aca es CHROME de la pieza (rotulos de
 // capitulo, indicadores tecnicos): eso es direccion de arte y no cambia con el contenido.
 // Lo que la marca DICE — su nombre, sus cifras, su claim, su CTA — sale de los datos o NO SALE.
@@ -210,7 +210,9 @@ export function build(ctx) {
     par.userData.bx = bx; par.userData.by = by
     brackets.push(par); gBrackets.add(par)
   }
-  gComp.add(gBrackets)
+  // Los corchetes los pide el AIRE. Dicen 'camara' y 'tecnico', y sobre una joyeria o una panaderia
+  // dicen exactamente lo que no hay que decir. Ver MOB en kit.js.
+  if (MOB.esquinas) gComp.add(gBrackets)
 
   // ---- polvo en profundidad: paralaje barato, y algo que siempre se está moviendo
   const gPolvo = new THREE.Group()
