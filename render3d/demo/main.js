@@ -345,7 +345,16 @@ export class Anthem {
       // La eleccion sale del PRNG sembrado de la pieza: misma semilla, mismo montaje. Y NUNCA dos
       // cortes iguales seguidos — que es lo que convertia el flash en un tic en vez de un acento.
       let tipo = reparto[Math.floor(this.rnd() * reparto.length) % reparto.length]
-      if (tipo === this._ultimaTr && tipo !== 'corte') tipo = 'corte'
+      // NUNCA DOS GESTOS IGUALES SEGUIDOS — eso es lo que convertia el flash en un tic en vez de un
+      // acento. Pero la version anterior caia SIEMPRE en 'corte', y eso le comia el caracter justo a
+      // los aires que mas lo declaran: `jugueton` tiene cinco de seis gestos con movimiento y medido
+      // en un render de 15 s, la mitad de sus cortes salian secos. Un aire que dijo "yo casi no corto
+      // duro" terminaba cortando duro por una regla de desempate.
+      //
+      // Ahora cae al PRIMER gesto distinto del reparto, y eso le da un significado declarable a la
+      // primera posicion: es el gesto por defecto del aire. Los repartos que arrancan con 'corte'
+      // —nueve de once, incluido tecnico— se comportan exactamente igual que antes.
+      if (tipo === this._ultimaTr && tipo !== 'corte') tipo = reparto.find(x => x !== tipo) || 'corte'
       this._ultimaTr = tipo
       // Queda ANOTADO en el plan. Sin esto, para saber que gesto le toco a cada corte habia que
       // mirar el video cuadro por cuadro y adivinar — y adivinar es como se dan por buenas cosas que
