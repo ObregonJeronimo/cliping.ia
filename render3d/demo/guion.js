@@ -167,7 +167,29 @@ export function guionDe({ escenas, datos, seed = 1, beatSeg = 60 / 124, dur = nu
   const rnd = () => { s = (s * 1664525 + 1013904223) >>> 0; return ((s ^ (s >>> 16)) >>> 0) / 4294967296 }
 
   const orden = ORDENES[Math.floor(rnd() * ORDENES.length) % ORDENES.length]
-  const medio = orden.filter(puede)
+
+  // CUPO DE ESCENAS DE TEXTO, porque tres beben del mismo pozo.
+  // `tipografia` recorre TODAS las frases, `lista` usa cuatro y `partida` dos. Con lo que da una
+  // pagina normal —basecamp dio cuatro— las tres terminan diciendo lo MISMO con distinta tipografia,
+  // y el espectador no ve tres escenas: ve una repetida tres veces. Se vio en el render: la lista
+  // enumeraba "01 BIG NUMBERS. / 02 REMEMBER WHEN", las dos frases que `tipografia` acababa de pasar.
+  //
+  // El cupo sale de cuantas frases DISTINTAS hay para repartir, no de un gusto: con ocho o mas alcanza
+  // para las tres sin que se pisen, con cinco a siete para dos, y con cuatro o menos para UNA sola.
+  // El orden de la lista es de prioridad y tampoco es arbitrario: `tipografia` es la escena de mensaje
+  // del catalogo y ocupa ocho beats —el doble que las otras—, asi que sacarla y dejar dos de seis
+  // cambia la pieza mucho mas que sacar las otras dos.
+  //
+  // Los beats que se liberan NO se pierden: los toma el relleno, que ahora repite hero/toro/sello.
+  // Por eso este cupo es asumible hoy y no lo era con el catalogo de diez.
+  const SEDIENTAS = ['tipografia', 'lista', 'partida']
+  const nFr = (d.frases || []).filter(Boolean).length
+  const cupo = nFr >= 8 ? 3 : nFr >= 5 ? 2 : 1
+  // Se elige POR PRIORIDAD y no por donde caiga en la lista del orden: filtrando sobre la marcha
+  // sobrevivia la que apareciera primero en ESE orden, que es otra cosa distinta de la que dice el
+  // parrafo de arriba. El codigo tiene que decir lo mismo que su comentario.
+  const sobreviven = new Set(SEDIENTAS.filter(puede).slice(0, cupo))
+  const medio = orden.filter(puede).filter(id => !SEDIENTAS.includes(id) || sobreviven.has(id))
 
   const fijas = ['apertura', 'cierre'].filter(puede)
   const beatsFijos = fijas.reduce((n, id) => n + beatsDe(id), 0)
