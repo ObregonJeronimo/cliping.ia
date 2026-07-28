@@ -26,7 +26,7 @@
 // SIN TESTIMONIO NO HAY ESCENA. No hay como sustituir el sujeto: una cita sin cita es un cuadro con
 // comillas vacias. Se declara vacia y el guionista es quien no deberia haberla elegido.
 
-import { LOOK, b, E, texto, nivel, matAcento, materialMascara, filete, CLARO } from '../kit.js'
+import { LOOK, b, E, texto, nivel, matAcento, materialMascara, filete, CLARO, finMascara, deriva } from '../kit.js'
 import { testimonios } from '../datos.js'
 
 export const meta = { id: 'cita', beats: 6 }
@@ -169,15 +169,11 @@ export function build(ctx) {
   // sobre matrixWorld: mover la camara no alcanza, porque los objetos no se enteran. Un tween sobre
   // un reloj con las propiedades escritas a mano es la version segura — `modifiers` de GSAP no corre
   // si la propiedad no esta tambien en vars, y esa trampa ya costo cuatro heroes que nunca flotaron.
-  const reloj = { t: 0 }
-  const derivar = () => {
-    const u = reloj.t / DUR
+  deriva(tl, DUR, u => {
     g.position.x = Math.sin(u * Math.PI * 1.1) * mundoW * 0.012
     g.position.y = -u * mundoH * 0.018                    // el bloque sube apenas: la cita "se asienta"
     comilla.rotation.z = Math.sin(u * Math.PI * 2.0) * 0.02
-  }
-  derivar()
-  tl.to(reloj, { t: DUR, duration: DUR, ease: 'none', onUpdate: derivar }, 0)
+  })
 
   // ---- la comilla entra primero, y de golpe
   tl.fromTo(comilla.scale, { x: 0.2, y: 0.2 }, { x: 1, y: 1, duration: b(0.55), ease: E.llega(2.6), immediateRender: false }, 0)
@@ -194,7 +190,7 @@ export function build(ctx) {
   // renglon— se queda a mitad de camino. Medido mirando el render de basecamp.com a resolucion
   // real: "INFORMATION FLOWS LIKE" mostraba la E lavada, y "NO MORE…" los puntos. Llevando uProg un
   // uSuave mas alla, la banda suave sale del plano y la linea queda entera.
-  const FIN = 1 + 0.06                              // 0.06 = uSuave por defecto de materialMascara
+  const FIN = finMascara()                          // 1 + uSuave: ver la nota en kit.js
   const T0 = b(0.45)
   const PASO_BEAT = b(0.85)
   meshes.forEach((x, i) => {

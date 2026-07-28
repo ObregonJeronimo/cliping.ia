@@ -18,7 +18,7 @@
 // SIN DOS FRASES NO HAY PAR. Con una, la mitad vacia es un rectangulo de color esperando contenido
 // —el defecto exacto que la regla anti-invencion existe para impedir—. Se declara vacia.
 
-import { LOOK, b, E, texto, nivel, matAcento, materialMascara, CLARO } from '../kit.js'
+import { LOOK, b, E, texto, nivel, matAcento, materialMascara, CLARO, finMascara, deriva } from '../kit.js'
 import { D } from '../datos.js'
 
 export const meta = { id: 'partida', beats: 6 }
@@ -45,7 +45,7 @@ export function build(ctx) {
   const PANEL_H = mundoH * 0.32
   const MARGEN = mundoW * 0.40
   const ANCHO_UTIL = mundoW * 0.80
-  const FIN = 1.06                                  // 1 + uSuave: con 1 la ultima letra queda lavada
+  const FIN = finMascara()                          // 1 + uSuave: con 1 la ultima letra queda lavada
   const COLOR_TXT = nivel(CLARO ? 0.94 : 0.82)
 
   const paneles = []
@@ -104,16 +104,12 @@ export function build(ctx) {
   // DERIVA CONTINUA: nada puede quedar quieto mas de un beat y se mide sobre matrixWorld, asi que
   // mover la camara no alcanza. Un tween sobre un reloj con las props escritas a mano — `modifiers`
   // de GSAP no corre si la propiedad no esta tambien en vars, y esa trampa ya costo cuatro heroes.
-  const reloj = { t: 0 }
-  const derivar = () => {
-    const u = reloj.t / DUR
+  deriva(tl, DUR, u => {
     // Las dos mitades derivan en sentidos OPUESTOS: la costura se mantiene y el cuadro respira.
     paneles[0].cont.position.x = Math.sin(u * Math.PI * 1.2) * mundoW * 0.02
     paneles[1].cont.position.x = -Math.sin(u * Math.PI * 1.2) * mundoW * 0.02
     g.position.y = Math.sin(u * Math.PI * 0.8) * mundoH * 0.006
-  }
-  derivar()
-  tl.to(reloj, { t: DUR, duration: DUR, ease: 'none', onUpdate: derivar }, 0)
+  })
 
   // ---- las mitades llegan de lados opuestos
   paneles.forEach((p, i) => {

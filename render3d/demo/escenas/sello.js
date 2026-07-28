@@ -19,7 +19,7 @@
 // que la familia que eligio el aire lo tenga dibujado, y una que no lo tenga devuelve un rectangulo
 // vacio sin avisar.
 
-import { LOOK, b, E, texto, nivel, matAcento, materialMascara, CLARO } from '../kit.js'
+import { LOOK, b, E, texto, nivel, matAcento, materialMascara, CLARO, finMascara, deriva } from '../kit.js'
 import { D } from '../datos.js'
 
 export const meta = { id: 'sello', beats: 6 }
@@ -39,7 +39,7 @@ export function build(ctx) {
   }
 
   const R = mundoW * 0.30                           // radio del anillo
-  const FIN = 1.06                                  // 1 + uSuave
+  const FIN = finMascara()                          // 1 + uSuave
 
   // ---- el anillo, en arcos
   // Cada arco es su propia malla para poder trazarlos de a uno. Un RingGeometry entero solo se puede
@@ -111,15 +111,11 @@ export function build(ctx) {
   // El anillo gira LENTO y en un solo sentido: en una pieza de lujo el movimiento tiene que ser algo
   // que uno nota recien despues de mirarlo un rato.
   const giro0 = (rnd() - 0.5) * 0.2
-  const reloj = { t: 0 }
-  const derivar = () => {
-    const u = reloj.t / DUR
+  deriva(tl, DUR, u => {
     for (let i = 0; i < arcos.length; i++) arcos[i].rotation.z = giro0 + u * 0.16 * (i % 2 ? -1 : 1)
     g.position.y = Math.sin(u * Math.PI * 0.9) * mundoH * 0.005
     g.scale.setScalar(1 + u * 0.02)
-  }
-  derivar()
-  tl.to(reloj, { t: DUR, duration: DUR, ease: 'none', onUpdate: derivar }, 0)
+  })
 
   // ---- se traza: un arco por beat, que son los eventos duros de la escena
   arcos.forEach((a, i) => {

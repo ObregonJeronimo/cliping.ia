@@ -22,7 +22,7 @@
 // SIN FOTO NO HAY PORTADA. Una portada sin imagen es un titular sobre el fondo, y eso ya existe.
 // Se declara vacia y el guionista es quien no deberia haberla elegido.
 
-import { LOOK, b, E, texto, nivel, matAcento, materialMascara, planoRecorte, recortesDe, filete } from '../kit.js'
+import { LOOK, b, E, texto, nivel, matAcento, materialMascara, planoRecorte, recortesDe, filete, finMascara, deriva } from '../kit.js'
 import { D } from '../datos.js'
 
 export const meta = { id: 'titular', beats: 6 }
@@ -132,7 +132,7 @@ export function build(ctx) {
   // En `gr` el texto NO pasa por el bloom, asi que puede ir casi a tinta sin reventarse. Es la unica
   // escena del catalogo donde eso es cierto, y se aprovecha: un titular de portada tiene que pegar.
   const COLOR_T = nivel(0.97)
-  const FIN = 1.06                                  // 1 + uSuave: con 1 la ultima letra queda lavada
+  const FIN = finMascara()                          // 1 + uSuave: con 1 la ultima letra queda lavada
   const MARGEN = -mundoW * 0.42
   const filas = []
   for (let i = 0; i < lineas.length; i++) {
@@ -170,18 +170,14 @@ export function build(ctx) {
   // mover la camara no alcanza. Un tween sobre un reloj con las props escritas a mano: `modifiers` de
   // GSAP no corre si la propiedad no esta tambien en vars, y esa trampa ya costo cuatro heroes.
   // La foto deriva MAS que el texto: es el paralaje barato que separa el fondo del titular.
-  const reloj = { t: 0 }
-  const derivar = () => {
-    const u = reloj.t / DUR
+  deriva(tl, DUR, u => {
     foto.position.x = Math.sin(u * Math.PI * 0.9) * mundoW * 0.05
     foto.scale.setScalar(1 + u * 0.045)             // la foto se acerca despacio: la portada respira
     g.position.y = -u * mundoH * 0.010
     // El titular NO deriva: es el ancla del cuadro. Si se moviera con la foto, el paralaje
     // desapareceria — el efecto existe justamente porque una capa se mueve y la otra no.
     gr.position.y = -u * mundoH * 0.004
-  }
-  derivar()
-  tl.to(reloj, { t: DUR, duration: DUR, ease: 'none', onUpdate: derivar }, 0)
+  })
 
   // ---- la foto entra revelandose desde abajo, como una cortina que sube
   tl.fromTo(foto.material, { opacity: 0 }, { opacity: 1, duration: b(0.55), ease: E.frena(2), immediateRender: false }, 0)

@@ -18,7 +18,7 @@
 //
 // SIN DOS RECORTES NO HAY COMPARACION. Con uno es una foto, y eso ya lo hacen `titular` y `columna`.
 
-import { LOOK, b, E, nivel, matAcento, materialMascara, planoRecorte, recortesDe } from '../kit.js'
+import { LOOK, b, E, nivel, matAcento, materialMascara, planoRecorte, recortesDe, finMascara, deriva } from '../kit.js'
 
 export const meta = { id: 'contraste', beats: 6 }
 
@@ -134,15 +134,11 @@ export function build(ctx) {
   // EL FILO SE MUEVE CON EL BARRIDO, no aparte: se lee del mismo uProg que corta la pieza de arriba,
   // asi que no hay dos verdades sobre donde esta el corte. Sincronizarlos con dos tweens paralelos
   // fue lo primero que probe y se despegaban en cada cambio de ease.
-  const reloj = { t: 0 }
-  const mover = () => {
-    const u = reloj.t / DUR
+  deriva(tl, DUR, u => {
     g.position.x = Math.sin(u * Math.PI * 1.4) * mundoW * 0.008
     gr.position.x = Math.sin(u * Math.PI * 1.4) * mundoW * 0.008
     gr.scale.setScalar(1 + u * 0.03)                // la comparacion se acerca despacio
-  }
-  mover()
-  tl.to(reloj, { t: DUR, duration: DUR, ease: 'none', onUpdate: mover }, 0)
+  })
 
   // EL FILO SE SINCRONIZA EN eventCallback, NO EN EL RELOJ. Los hijos de una timeline se renderizan
   // por orden de START-TIME: el reloj arranca en 0 y el tween de uProg en el beat 1.1, asi que si el
@@ -167,7 +163,7 @@ export function build(ctx) {
   // Una sola pasada de seis beats es una deriva, y la metrica de movimiento —que cuenta pixeles
   // cruzando un umbral de luma entre cuadros— apenas la registra. Dos pasadas con un alto en el medio
   // son DOS eventos duros, y ademas dejan ver cada pieza entera antes de volver.
-  const FIN = 1.06                                  // 1 + uSuave: con 1 queda una franja sin revelar
+  const FIN = finMascara()                          // 1 + uSuave: con 1 queda una franja sin revelar
   tl.fromTo(encima.mat.uniforms.uProg, { value: 0 }, { value: FIN, duration: b(1.30), ease: E.frena(3), immediateRender: false }, b(1.10))
   tl.to(encima.mat.uniforms.uProg, { value: 0.06, duration: b(1.10), ease: E.vaiven(2) }, b(3.00))
   tl.to(encima.mat.uniforms.uProg, { value: FIN, duration: b(0.85), ease: E.frena(3) }, b(4.30))

@@ -30,6 +30,31 @@ export let BPM = 124
 export let BEAT = 60 / BPM
 export const b = n => n * BEAT                     // lee el BEAT vigente, no una copia
 
+// ---------------------------------------------------------------- deriva continua
+// EL MOVIMIENTO LENTO QUE NO PARA: la escena respira, se acerca, se corre un pelo hacia el margen.
+// No se escribe con tweens sobre las propiedades, y hay dos razones, las dos pagadas caro:
+//
+//   1. La trampa de `modifiers` sin la propiedad declarada en `vars` costo cuatro bugs en este repo.
+//      Aca `t` SI esta en vars, asi que el tween corre de verdad, y las propiedades se escriben a mano.
+//   2. UNA PROPIEDAD, UN SOLO ESCRITOR. Deriva, entrada y golpe queriendo la misma `position.x` como
+//      tweens separados se pisan, y el resultado deja de ser determinista: `partida` salio con dos
+//      escritores sobre `fondo.position.x` y el render no repetia dos veces igual.
+//
+// El molde estaba copiado en siete escenas y escondia un tercer filo: la llamada a mano ANTES del
+// tween. Sin ella el cuadro 0 queda sin escribir —GSAP no dispara onUpdate en el instante cero— y la
+// escena arranca con un salto de un frame. Es invisible leyendo y se ve mirando, que es la peor
+// combinacion. Metido aca adentro, ya no hay como olvidarselo.
+//
+// `paso` recibe (u, t): u normalizado 0..1 para las escenas que respiran, t en segundos para las que
+// cuentan beats (columna reparte por beat y necesita el crudo).
+export function deriva(tl, dur, paso) {
+  const reloj = { t: 0 }
+  const correr = () => paso(reloj.t / dur, reloj.t)
+  correr()
+  tl.to(reloj, { t: dur, duration: dur, ease: 'none', onUpdate: correr }, 0)
+  return reloj
+}
+
 // ---------------------------------------------------------------- paleta
 // Base oscura + UN acento saturado + blanco. Es la fórmula del 90% de los reels de marca que
 // funcionan: el negro deja respirar al bloom y el acento no compite con nada.
@@ -194,6 +219,20 @@ export function planoTexto(str, altoMundo, opciones = {}) {
 // ---------------------------------------------------------------- revelado por MÁSCARA
 // Una barra que descubre en vez de un fundido. El shader recorta por UV, así que el texto aparece
 // "escrito" y no "encendido" — y esa es la diferencia entre un reel y una presentación.
+//
+// EL REVELADO NO TERMINA EN 1, TERMINA EN 1 + uSuave. El shader hace smoothstep(uProg, uProg-uSuave, e):
+// con uProg en 1 la banda blanda queda PISANDO el borde derecho y la ultima letra sale lavada. Hay que
+// pasarse el ancho de la banda para que el degrade salga del plano.
+//
+// Ese numero estaba escrito a mano —`1.06`, `1 + 0.06`, `1.06 // 1 + uSuave`— en seis escenas, cada una
+// con su propio comentario reexplicando la misma trampa. El problema no era la repeticion: era que el
+// numero DEPENDE de `SUAVE` y nadie los ataba. Cambiar el 0.06 de aca abajo dejaba las seis mal, sin
+// romper ninguna compuerta y sin que nada lo dijera: la ultima letra de seis escenas se lavaba y habia
+// que volver a descubrirlo mirando. Ahora se deriva, y quien tenga un uSuave propio pide finMascara(suyo)
+// —pantalla.js usa 0.11 porque su barrido es mucho mas ancho—.
+export const SUAVE = 0.06
+export const finMascara = (suave = SUAVE) => 1 + suave
+
 export function materialMascara(map, color = null) {
   return new THREE.ShaderMaterial({
     transparent: true, depthWrite: false, side: THREE.DoubleSide,
@@ -202,7 +241,7 @@ export function materialMascara(map, color = null) {
       // uTinte SIEMPRE es un Color, nunca null: three sube los uniforms sin preguntar y un vec3 en
       // null revienta el shader con un error que no menciona el uniform. Cuando no hay tinte se
       // manda negro y `uUsaTinte` en 0 lo ignora.
-      uSuave: { value: 0.06 }, uTinte: { value: hex(color || '#000000') }, uUsaTinte: { value: color ? 1 : 0 },
+      uSuave: { value: SUAVE }, uTinte: { value: hex(color || '#000000') }, uUsaTinte: { value: color ? 1 : 0 },
     },
     vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
     fragmentShader: `

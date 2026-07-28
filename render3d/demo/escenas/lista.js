@@ -21,7 +21,7 @@
 // SIN TRES ITEMS NO HAY LISTA. Con dos es un par, y un par numerado se lee como un error de conteo.
 // No se rellena: se declara vacia y el guionista es quien no deberia haberla elegido.
 
-import { LOOK, b, E, texto, nivel, matAcento, materialMascara, CLARO } from '../kit.js'
+import { LOOK, b, E, texto, nivel, matAcento, materialMascara, CLARO, finMascara, deriva } from '../kit.js'
 import { D } from '../datos.js'
 
 export const meta = { id: 'lista', beats: 6 }
@@ -85,7 +85,7 @@ export function build(ctx) {
   // el opuesto —un gris que se lava contra el fondo— y conviene empujar hacia la tinta.
   const COLOR_ITEM = nivel(CLARO ? 0.94 : 0.80)
   const COLOR_NUM = nivel(CLARO ? 0.62 : 0.52)
-  const FIN = 1.06                               // 1 + uSuave: ver la nota del revelado, abajo
+  const FIN = finMascara()                       // 1 + uSuave: ver la nota del revelado, abajo
 
   // ---- la linea vertical que ata la lista
   // Es lo que convierte cuatro renglones sueltos en UNA lista. Crece de arriba hacia abajo con los
@@ -128,14 +128,10 @@ export function build(ctx) {
   // matrixWorld: mover la camara no alcanza porque los objetos no se enteran. Va como UN tween sobre
   // un reloj con las propiedades escritas a mano — `modifiers` de GSAP no corre si la propiedad no
   // esta tambien en vars, y esa trampa ya costo cuatro heroes que nunca flotaron.
-  const reloj = { t: 0 }
-  const derivar = () => {
-    const u = reloj.t / DUR
+  deriva(tl, DUR, u => {
     g.position.x = -u * mundoW * 0.020            // la lista deriva hacia el margen mientras se lee
     g.position.y = Math.sin(u * Math.PI * 1.3) * mundoH * 0.006
-  }
-  derivar()
-  tl.to(reloj, { t: DUR, duration: DUR, ease: 'none', onUpdate: derivar }, 0)
+  })
 
   // ---- el riel primero: establece la columna antes de que llegue el primer item
   tl.fromTo(riel.scale, { y: 0.001 }, { y: 1, duration: b(0.75), ease: E.frena(3), immediateRender: false }, 0)

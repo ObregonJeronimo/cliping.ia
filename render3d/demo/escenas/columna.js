@@ -27,7 +27,7 @@
 // SIN RECORTES NO HAY ESCENA. La columna no tiene otro sujeto: si la pagina no dio ni un elemento,
 // devuelve el grupo vacio y ocupa su lugar en silencio. El guionista es quien no deberia elegirla.
 
-import { LOOK, b, E, texto, planoRecorte, recortesDe, nivel, matAcento, materialMascara } from '../kit.js'
+import { LOOK, b, E, texto, planoRecorte, recortesDe, nivel, matAcento, materialMascara, deriva } from '../kit.js'
 import { marca, sello } from '../datos.js'
 
 export const meta = { id: 'columna', beats: 6 }
@@ -254,9 +254,11 @@ export function build(ctx) {
   // es un tween sobre un reloj —`t` SI esta en vars, asi que el tween corre— y las propiedades escritas
   // a mano adentro. Ademas resuelve el problema de fondo: desplazamiento, foco y golpe escriben los
   // TRES sobre la misma `scale`, y como tweens separados se pisarian.
-  const reloj = { t: 0 }
-  const avanzar = () => {
-    const t = reloj.t
+  // El `u` normalizado no sirve aca: esta escena reparte POR BEAT y necesita el crudo en segundos,
+  // ademas de su propio `u` local dentro del beat. Por eso toma el segundo parametro y descarta el
+  // primero. La llamada obligatoria en t=0 —sin ella la pila entera arranca apilada en y=0— ahora la
+  // hace `deriva`; el porque esta en kit.js.
+  deriva(tl, DUR, (_u, t) => {
     const off = VEL * t
     const k = Math.min(meta.beats - 1, Math.floor(t / UNBEAT))
     const u = (t - k * UNBEAT) / UNBEAT
@@ -308,12 +310,7 @@ export function build(ctx) {
     const ix = idxTex[k]
     if (matIdx.uniforms.map.value !== ix.tex) matIdx.uniforms.map.value = ix.tex
     mIdx.scale.x = ix.ar / AR_IDX
-  }
-  // El primer cuadro tiene que estar compuesto ANTES de que la timeline corra: los tweens de abajo son
-  // fromTo con immediateRender:false para no tocar la camara antes de tiempo, y sin esta llamada la
-  // pila entera arrancaria apilada en y=0.
-  avanzar()
-  tl.to(reloj, { t: DUR, duration: DUR, ease: 'none', onUpdate: avanzar }, 0)
+  })
 
   // ---------------------------------------------------------------- los seis golpes
   for (let k = 0; k < meta.beats; k++) {
