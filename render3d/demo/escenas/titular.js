@@ -119,8 +119,8 @@ export function build(ctx) {
 
   // ---- el titular
   // Se MIDE y se achica el bloque entero si no entra: el ancho de un renglon lo decide la fuente que
-  // eligio el aire, no la cantidad de letras. Y encuadre-check no lo caza —verifica interseccion, no
-  // contencion, y saltea las mallas con materialMascara porque no exponen material.map—.
+  // eligio el aire, no la cantidad de letras. Las lineas se marcan con `userData.encaja = true` y
+  // E-ENCAJE se encarga de que entren; la FOTO no se marca, porque su trabajo es justamente sangrar.
   const FUENTE = { fuente: 'Anton', peso: 400, size: 190, tracking: 0.002, upper: true, alineado: 'left' }
   const texs = lineas.map(l => texto(l, FUENTE))
   const ANCHO_UTIL = mundoW * 0.88
@@ -140,6 +140,7 @@ export function build(ctx) {
     const mat = materialMascara(t.tex, COLOR_T)
     const m = new THREE.Mesh(new THREE.PlaneGeometry(ALTO_L * t.ar, ALTO_L), mat)
     m.position.set(MARGEN + (ALTO_L * t.ar) / 2, BANDA_Y - ALTO_L * 0.72 - i * PASO, 0.5)
+    m.userData.encaja = true       // la FOTO sangra a proposito; el titular no
     gr.add(m)
     filas.push({ m, mat })
   }

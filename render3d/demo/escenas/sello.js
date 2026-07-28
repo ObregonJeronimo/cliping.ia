@@ -90,6 +90,7 @@ export function build(ctx) {
   matN.uniforms.uDir.value = 2                      // se escribe de abajo hacia arriba: se "sella"
   const nombre = new THREE.Mesh(new THREE.PlaneGeometry(alto * t.ar, alto), matN)
   nombre.position.set(0, 0, 0.3)
+  nombre.userData.encaja = true    // el nombre de la marca, entero o nada
   g.add(nombre)
 
   // ---- el pie: el rubro o el dominio, chico, debajo del anillo. Puede no existir.

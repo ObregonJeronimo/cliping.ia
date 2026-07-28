@@ -56,8 +56,9 @@ export function build(ctx) {
   // Se MIDE y se achica el bloque entero si el item mas largo no entra. Un item que se sale por la
   // derecha es el defecto que la primera version de `cita` mostro en el render de basecamp.com: el
   // ancho de un renglon no lo decide la cantidad de letras sino la fuente que eligio el aire.
-  // Y no lo caza encuadre-check, que verifica interseccion con el frustum y ademas saltea las mallas
-  // con materialMascara porque no exponen material.map.
+  // Los items se marcan con `userData.encaja = true` para que E-ENCAJE compruebe que entraron: sin
+  // esa marca nadie lo mira, porque `encuadre-check` solo pregunta si la pieza se CRUZA con el cuadro
+  // (sangrar es una decision de composicion valida) y no si entro entera.
   const FUENTE_ITEM = { fuente: 'Anton', peso: 400, size: 150, tracking: 0.004, upper: true, alineado: 'left' }
   const texs = items.map(t => texto(t, FUENTE_ITEM))
   const anchoMax = Math.max(...texs.map(t => ALTO_BASE * t.ar))
@@ -105,6 +106,7 @@ export function build(ctx) {
     const matT = materialMascara(t.tex, COLOR_ITEM)
     const mT = new THREE.Mesh(new THREE.PlaneGeometry(ALTO_ITEM * t.ar, ALTO_ITEM), matT)
     mT.position.set(MARGEN + SANGRIA + (ALTO_ITEM * t.ar) / 2, y, 0)
+    mT.userData.encaja = true      // un item de lista que se sale no es una lista
     g.add(mT)
 
     filas.push({ matN, matT, mT })

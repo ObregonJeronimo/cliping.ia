@@ -309,6 +309,7 @@ for (const id of ids) {
     const caja = new THREE.Box3()
     const v = new THREE.Vector3()
     let peor = null
+    const noEncajan = []
     rm.g.traverse(o => {
       if (!o.isMesh || !o.visible) return
       if (o.material && o.material.opacity != null && o.material.opacity <= 0.05) return
@@ -334,11 +335,32 @@ for (const id of ids) {
       // desbordarlo o no es un halo. Midiendolos, los cuatro heroes fallaban por hacer justo lo que
       // corresponde, mientras el defecto que hay que cazar -una marca de una letra que se come el
       // cuadro- sigue siendo tipografia y sigue entrando.
-      if (!(o.material && o.material.map)) return
+      // LA TEXTURA PUEDE VIVIR EN DOS LADOS, y preguntar por uno solo dejaba ciega a la compuerta.
+      // `material.map` es lo que expone un MeshBasicMaterial, pero TODA malla revelada por mascara usa
+      // un ShaderMaterial y su textura esta en `uniforms.map`. Preguntando solo por la primera, este
+      // chequeo salteaba el texto entero de las seis escenas nuevas —que entran por barrido— y por eso
+      // dos de ellas salieron al video con el renglon cortado por la derecha mientras el gate decia
+      // OK. Un chequeo que mira la mitad de los casos no es medio chequeo: es uno que da confianza.
+      const mat = o.material
+      const conTextura = !!(mat && (mat.map || (mat.uniforms && mat.uniforms.map && mat.uniforms.map.value)))
+      if (!conTextura) return
+      // E-ENCAJE-ENTERO: lo que la escena DECLARA que tiene que entrar, entra ENTERO.
+      // No se puede deducir del dibujo: un titular a sangre y un titular que no entro se ven igual en
+      // una caja. Asi que lo declara quien compone —`userData.encaja = true`— y la compuerta lo hace
+      // cumplir. La escena que sangra a proposito simplemente no marca nada y nadie la acusa, que es
+      // la unica forma de tener esta regla sin volverla ruido.
+      if (o.userData && o.userData.encaja) {
+        const dx = Math.abs(v.x) + t.x / 2, dy = Math.abs(v.y) + t.y / 2
+        if (dx > mundoW * 0.51 || dy > mundoH * 0.51) {
+          noEncajan.push(`${o.geometry.type} ${t.x.toFixed(2)}x${t.y.toFixed(2)} centrada en (${v.x.toFixed(2)}, ${v.y.toFixed(2)})`)
+        }
+      }
       const esFilete = Math.min(t.x, t.y) < 0.15
       if (esFilete || t.y > mundoH * 1.6) return
       if (!peor || t.y > peor.y) peor = { x: t.x, y: t.y }
     })
+    ok(noEncajan.length === 0,
+      `E-ENCAJE ${id}: con la marca "${marca}" ${noEncajan.length} pieza(s) declaradas encaja=true se salen del cuadro (${mundoW.toFixed(2)}x${mundoH.toFixed(2)}): ${noEncajan.join(' · ')}`)
     if (peor) {
       ok(peor.y <= mundoH * 0.85 && peor.x <= mundoW * 2.2,
         `E-ENCAJE ${id}: con la marca "${marca}" una pieza mide ${peor.x.toFixed(2)}x${peor.y.toFixed(2)} en un cuadro de ${mundoW.toFixed(2)}x${mundoH.toFixed(2)} — se come el cuadro`)

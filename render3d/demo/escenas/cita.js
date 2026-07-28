@@ -90,8 +90,10 @@ export function build(ctx) {
   // renglon no lo decide la cantidad de letras sino la FUENTE que eligio el aire y su tracking, y
   // las dos cambian por pieza. Se miden todas las lineas y, si la mas ancha no entra, se achica el
   // BLOQUE ENTERO por igual — achicar solo la que sobra rompe la escala tipografica y se nota.
-  // Y no esperes que lo cace encuadre-check: esa compuerta verifica INTERSECCION con el frustum, no
-  // contencion, asi que un texto que sale medio cuadro por la derecha le parece perfectamente visible.
+  // Y ojo con que compuerta te cuida: `encuadre-check` verifica INTERSECCION con el frustum, no
+  // contencion, asi que un texto que sale medio cuadro por la derecha le parece perfectamente
+  // visible. La que si lo caza es E-ENCAJE, y solo porque estas mallas se declaran con
+  // `userData.encaja = true` — sin esa marca nadie mira si el renglon entero entro.
   const ANCHO_UTIL = mundoW * 0.86
   const texs = lineas.map(l => texto(l, FUENTE_CITA))
   const ALTO_BASE = mundoH * 0.072
@@ -136,6 +138,7 @@ export function build(ctx) {
     // Anclada por su borde IZQUIERDO: centrada, cada linea arrancaria en un x distinto segun su
     // largo y el bloque dejaria de tener un margen.
     m.position.set(MARGEN + (ALTO_LINEA * t.ar) / 2, TOPE - i * PASO, 0)
+    m.userData.encaja = true       // una cita cortada por el borde es una cita mal citada
     g.add(m)
     meshes.push({ m, mat })
   }

@@ -85,6 +85,7 @@ export function build(ctx) {
     mat.uniforms.uDir.value = arriba ? 0 : 1        // cada mitad se escribe hacia su propio lado
     const m = new THREE.Mesh(new THREE.PlaneGeometry(alto * t.ar, alto), mat)
     m.position.set(arriba ? -MARGEN + (alto * t.ar) / 2 : MARGEN - (alto * t.ar) / 2, cy, 0.2)
+    m.userData.encaja = true       // los PANELES sangran a proposito; su texto no
     cont.add(m)
 
     paneles.push({ cont, fondo, m, mat, arriba, cy })
