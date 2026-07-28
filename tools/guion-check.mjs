@@ -20,10 +20,16 @@ import { guionDe, beatsDelGuion, ajusteDe, TOPE_AJUSTE } from '../render3d/demo/
 
 // El catalogo real, copiado de los meta.beats de cada escena. Se declara aca y no se importan los
 // modulos porque importarlos arrastra three y un DOM: esta compuerta tiene que ser instantanea.
+// OJO: ESTA LISTA SE DESINCRONIZO UNA VEZ Y NADIE SE ENTERO. Se agregaron seis escenas al motor y
+// esta compuerta siguio midiendo diez durante todo ese trabajo, informando "se acabo el catalogo (10
+// escenas)" sobre un catalogo que ya tenia dieciseis. Un dato copiado a mano es una copia que algun
+// dia miente; si vuelve a pasar, el sintoma es este mismo mensaje con un numero viejo.
 const CAT = new Map([
   ['apertura', { beats: 6 }], ['hero', { beats: 8 }], ['toro', { beats: 6 }],
   ['tipografia', { beats: 8 }], ['tarjetas', { beats: 6 }], ['destello', { beats: 4 }],
   ['rafaga', { beats: 6 }], ['pantalla', { beats: 6 }], ['columna', { beats: 6 }],
+  ['cita', { beats: 6 }], ['lista', { beats: 6 }], ['titular', { beats: 6 }],
+  ['partida', { beats: 6 }], ['contraste', { beats: 6 }], ['sello', { beats: 6 }],
   ['cierre', { beats: 6 }],
 ])
 

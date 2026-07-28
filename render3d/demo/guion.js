@@ -30,8 +30,19 @@ const REQUISITOS = {
   apertura: (d) => !!d.marca,
   // El hero cae a geometría pura si no hay material: siempre se puede armar.
   hero: () => true,
-  // Cuatro entradas tipográficas es lo que su composición reparte. Con menos quedan slots vacíos, que
-  // es de lo que se trataba todo esto.
+  // CUATRO ES EL MINIMO PARA ELEGIRLA, PERO LA ESCENA COREOGRAFIA SIETE, y esa diferencia es un
+  // defecto REAL que se ve en el video: `tipografia.js:151-201` pide `frase(0)` hasta `frase(6)`, asi
+  // que con cuatro frases —lo que dio basecamp.com, y lo que dan las tres paginas de prueba de
+  // guion-check, incluida la "rica"— los tres ultimos slots salen vacios y la escena pasa casi UN
+  // SEGUNDO sin dibujar una sola palabra. Medido mirando el render: cinco cuadros seguidos con el
+  // fondo, el HUD y nada mas. En un reel vertical, un segundo en blanco es la señal de scroll.
+  //
+  // Y SUBIR ESTE NUMERO NO ES EL ARREGLO. Se probo en 7 y se midio: ninguna pagina real llega a
+  // siete frases, asi que la escena de tipografia cinetica —una de las centrales del catalogo—
+  // simplemente dejaba de elegirse. El arreglo esta en la ESCENA, que tiene que componerse con las
+  // frases que hay en vez de coreografiar siete a ciegas: es lo que ya hace `columna`, que con dos
+  // recortes reparte esos dos y lo documenta. Mientras eso no se haga, cuatro sigue siendo el umbral
+  // porque una escena con huecos es mejor que ninguna escena.
   tipografia: (d) => (d.frases || []).filter(Boolean).length >= 4,
   // Una cifra alcanza: la escena ya se compone con la cantidad real. Cero cifras es una escena de
   // datos sin datos.
@@ -165,8 +176,16 @@ export function guionDe({ escenas, datos, seed = 1, beatSeg = 60 / 124, dur = nu
   // segundos de nada. La respuesta NO es estirar las escenas —una escena al 150% de su duración es la
   // misma escena en cámara lenta, y se nota— sino repetir la del HERO con OTRO hero. Es la única que
   // puede volver diciendo algo distinto, porque su sujeto es un objeto y hay varios.
-  if (objetivo !== Infinity && puede('hero')) {
-    const c = beatsDe('hero')
+  // SE REPITE LO QUE NO DEPENDE DEL MATERIAL, y no solo el hero. Con el catalogo del gate corregido
+  // aparecio el agujero: una pagina POBRE (nombre y poco mas) pedia 30 s y entregaba 20, con
+  // veinticuatro beats libres donde entraba una escena de seis. El relleno solo sabia repetir `hero`,
+  // y una vez que no quedan huecos sin hero al lado, se rinde. `toro` no necesita nada y `sello` solo
+  // el nombre: las dos pueden volver sin afirmar nada nuevo sobre la marca, que es la unica condicion
+  // que importa. Un emblema que vuelve al final se lee como firma; veinticuatro beats de nada se leen
+  // como que el video se corto.
+  for (const relleno of ['hero', 'toro', 'sello']) {
+  if (objetivo !== Infinity && puede(relleno)) {
+    const c = beatsDe(relleno)
     // Hasta seis vueltas. Con tres, una pieza de 30 s a 142 bpm se quedaba en 25: el tope no lo ponia
     // el material sino un numero elegido a ojo.
     let vueltas = 0
@@ -184,12 +203,13 @@ export function guionDe({ escenas, datos, seed = 1, beatSeg = 60 / 124, dur = nu
       // dieciocho beats libres y un hueco perfectamente valido que nadie miraba.
       const huecos = []
       for (let i = 0; i <= plan.length; i++) {
-        if (plan[i - 1] !== 'hero' && plan[i] !== 'hero') huecos.push(i)
+        if (plan[i - 1] !== relleno && plan[i] !== relleno) huecos.push(i)
       }
       if (!huecos.length) break
-      plan.splice(huecos[Math.floor(rnd() * huecos.length) % huecos.length], 0, 'hero')
+      plan.splice(huecos[Math.floor(rnd() * huecos.length) % huecos.length], 0, relleno)
       usados += c; vueltas++
     }
+  }
   }
 
   // Si NADA del medio entró, la pieza sería apertura + cierre pegados. Antes que eso, entra el toro:
