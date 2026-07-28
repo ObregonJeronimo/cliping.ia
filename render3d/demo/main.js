@@ -15,7 +15,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js'
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js'
-import { BEAT, b, LOOK, CLARO, hex, mulberry32, fondoVivo, configurar } from './kit.js'
+import { BEAT, b, LOOK, CLARO, AIRE, hex, mulberry32, fondoVivo, configurar } from './kit.js'
 import { configurarDatos } from './datos.js'
 import { personalizar } from './adn.js'
 import { ESCENAS } from './escenas/index.js'
@@ -29,22 +29,43 @@ const Pelicula = {
     tDiffuse: { value: null }, uT: { value: 0 }, uGrano: { value: 0.055 },
     uVinieta: { value: 0.9 }, uAberr: { value: 0.0022 }, uFlash: { value: 0 },
     uRes: { value: new THREE.Vector2(1080, 1920) },
+    // TRANSICIONES, en el pase de post y no en la escena 3D. Ver la nota larga donde se programan.
+    //   uEmpuje  desplaza el cuadro entero en X (en UV). La saliente se va y la entrante llega.
+    //   uBarrido 0..1: la posicion de una banda solida que cruza el cuadro y tapa el corte.
+    //   uTinteTr el color de esas dos cosas — sale del acento del aire, nunca de un gris fijo.
+    uEmpuje: { value: 0 }, uBarrido: { value: 0 }, uAnchoBar: { value: 0.16 },
+    uTinteTr: { value: new THREE.Color('#5b6cff') },
   },
   vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
   fragmentShader: `
     uniform sampler2D tDiffuse; uniform float uT, uGrano, uVinieta, uAberr, uFlash;
+    uniform float uEmpuje, uBarrido, uAnchoBar; uniform vec3 uTinteTr;
     uniform vec2 uRes; varying vec2 vUv;
     float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898,78.233)))*43758.5453); }
     void main(){
-      vec2 c = vUv - 0.5; float r2 = dot(c,c);
+      // EMPUJE: el cuadro entero se corre. Lo que queda del otro lado NO se estira (una muestra
+      // clampeada se lee como un manchon barato): se pinta con el color de la transicion, que es el
+      // acento del aire. Asi el empuje se lee como una carta que entra, con su propio borde.
+      vec2 uvp = vUv - vec2(uEmpuje, 0.0);
+      bool fueraEmp = uvp.x < 0.0 || uvp.x > 1.0;
+      vec2 uvs = clamp(uvp, 0.0, 1.0);
+      vec2 c = uvs - 0.5; float r2 = dot(c,c);
       vec2 des = c * uAberr * r2 * 4.0;
       vec4 col;
-      col.r = texture2D(tDiffuse, vUv + des).r;
-      col.g = texture2D(tDiffuse, vUv).g;
-      col.b = texture2D(tDiffuse, vUv - des).b;
+      col.r = texture2D(tDiffuse, uvs + des).r;
+      col.g = texture2D(tDiffuse, uvs).g;
+      col.b = texture2D(tDiffuse, uvs - des).b;
       col.a = 1.0;
+      if (fueraEmp) col.rgb = uTinteTr;
       col.rgb *= mix(1.0, smoothstep(0.95, 0.10, r2), uVinieta);
       col.rgb += (hash(vUv * uRes + vec2(uT*71.3, uT*37.7)) - 0.5) * uGrano;
+      // BARRIDO: una banda solida cruza el cuadro y TAPA el corte. El cambio de escena ocurre cuando
+      // la banda esta encima, asi que el espectador nunca ve el salto — ve pasar una cosa. En 9:16 va
+      // en diagonal: una banda vertical en un cuadro tan alto se lee como una persiana.
+      if (uBarrido > 0.0001) {
+        float d = abs((vUv.x + (vUv.y - 0.5) * 0.35) - uBarrido);
+        if (d < uAnchoBar) col.rgb = mix(col.rgb, uTinteTr, smoothstep(uAnchoBar, uAnchoBar * 0.55, d));
+      }
       // FLASH: dos o tres frames de blanco sobre el corte. Es lo que hace que un corte seco se lea
       // como decisión de montaje en vez de como un salto.
       col.rgb = mix(col.rgb, vec3(1.0), uFlash);
@@ -290,12 +311,60 @@ export class Anthem {
     this.tl.to(this.pelicula.uniforms.uT, { value: durPropia, duration: durPropia, ease: 'none' }, 0)
     this.tl.to(this.fondo.material.uniforms.uT, { value: durPropia, duration: durPropia, ease: 'none' }, 0)
 
-    // FLASH EN CADA CORTE DE ESCENA, salvo el primero. Dos frames — más se lee como error, menos no
-    // se ve. Va acá y no en cada escena para que ninguna se olvide y el ritmo quede parejo.
-    const dosFrames = 2 / (this.spec.fps || 30)
-    for (const e of this.escenas.slice(1)) {
-      this.tl.set(this.pelicula.uniforms.uFlash, { value: 0.85 }, e.t0 - dosFrames * 0.5)
-      this.tl.to(this.pelicula.uniforms.uFlash, { value: 0, duration: dosFrames, ease: 'power2.in' }, e.t0 - dosFrames * 0.5)
+    // ---------------------------------------------------------------- TRANSICIONES
+    // ANTES: TODO corte era duro + un flash de dos frames, SIEMPRE. Con doce escenas en el catalogo,
+    // una pieza de treinta segundos daba diez cortes idénticos: el montaje era la única dimensión del
+    // motor que no variaba nunca, ni entre piezas ni dentro de la misma.
+    //
+    // POR QUE VAN EN EL PASE DE POST Y NO EN LA ESCENA 3D. Un barrido o un empuje "de verdad" pide
+    // las DOS escenas visibles a la vez, y `seek()` prende una sola por ventana a proposito. Peor: en
+    // el solape las dos animarian la MISMA camara —cada escena la mueve y tiene que devolverla— y
+    // ganaria la que corre ultima por start-time, o sea que el corte dependeria del orden de creacion
+    // de los tweens. Hechas sobre el cuadro ya compuesto no tocan nada de eso: el cambio de escena
+    // sigue siendo instantaneo y lo que viaja es la imagen.
+    //
+    // EL AIRE OPINA. Una pieza de lujo no corta como una de deporte: `transiciones` en el aire declara
+    // con que reparte. Sin declararlo, el reparto por defecto es el de ANTHEM (mayoria de cortes duros
+    // y algun flash), asi que ningun aire existente cambia de comportamiento sin que alguien lo decida.
+    const fps = this.spec.fps || 30
+    const dosFrames = 2 / fps
+    const REPARTO_BASE = ['corte', 'corte', 'flash', 'barrido', 'empuje', 'corte']
+    const reparto = (AIRE && Array.isArray(AIRE.transiciones) && AIRE.transiciones.length)
+      ? AIRE.transiciones : REPARTO_BASE
+    this.pelicula.uniforms.uTinteTr.value = hex(LOOK.acento)
+
+    for (let i = 1; i < this.escenas.length; i++) {
+      const e = this.escenas[i]
+      // La eleccion sale del PRNG sembrado de la pieza: misma semilla, mismo montaje. Y NUNCA dos
+      // cortes iguales seguidos — que es lo que convertia el flash en un tic en vez de un acento.
+      let tipo = reparto[Math.floor(this.rnd() * reparto.length) % reparto.length]
+      if (tipo === this._ultimaTr && tipo !== 'corte') tipo = 'corte'
+      this._ultimaTr = tipo
+
+      if (tipo === 'flash') {
+        this.tl.set(this.pelicula.uniforms.uFlash, { value: 0.85 }, e.t0 - dosFrames * 0.5)
+        this.tl.to(this.pelicula.uniforms.uFlash, { value: 0, duration: dosFrames, ease: 'power2.in' }, e.t0 - dosFrames * 0.5)
+      } else if (tipo === 'barrido') {
+        // La banda TAPA el corte: entra antes del cambio de escena y sale despues, asi que el salto
+        // ocurre debajo de ella. Medio beat en total — mas y se lee como una escena propia.
+        const d = b(0.5)
+        // immediateRender:false o el fromTo escribe su valor inicial AL CREARSE y la banda queda
+        // plantada en el cuadro desde el segundo cero. Es la misma disciplina que siguen todas las
+        // escenas y aca me la saltee: se vio en el video como una franja de acento permanente.
+        this.tl.fromTo(this.pelicula.uniforms.uBarrido, { value: -0.25 }, { value: 1.25, duration: d, ease: 'power2.inOut', immediateRender: false }, e.t0 - d / 2)
+        this.tl.set(this.pelicula.uniforms.uBarrido, { value: 0 }, e.t0 + d / 2)
+      } else if (tipo === 'empuje') {
+        // La saliente se va y la entrante llega DESDE EL OTRO LADO. El signo alterna por corte: dos
+        // empujes seguidos en la misma direccion se leen como un scroll, no como un montaje.
+        const dir = (i % 2 === 0) ? 1 : -1
+        const d = b(0.34)
+        // immediateRender:false en los DOS: sin eso, el ultimo fromTo creado deja el cuadro corrido
+        // 0.42 de UV desde el arranque de la pieza y el video entero sale con una franja de acento
+        // pegada a un costado. Lo delato mirar una tira de cuadros, no la compuerta.
+        this.tl.fromTo(this.pelicula.uniforms.uEmpuje, { value: 0 }, { value: 0.42 * dir, duration: d, ease: 'power3.in', immediateRender: false }, e.t0 - d)
+        this.tl.fromTo(this.pelicula.uniforms.uEmpuje, { value: -0.42 * dir }, { value: 0, duration: d, ease: 'power3.out', immediateRender: false }, e.t0)
+      }
+      // 'corte' no hace nada, y esa es exactamente su gracia: el corte duro sigue siendo la mayoria.
     }
     this.tl.pause(0)
     return { escenas: this.escenas.map(e => e.id), dur: this.dur }
