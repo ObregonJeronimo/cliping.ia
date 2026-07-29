@@ -20,7 +20,7 @@
 // import(...)` ANTES de rasterizar el primer glifo. El guard de `document` es para poder importar el
 // aire desde Node (lo hacen adn-check y guion-check).
 if (typeof document !== 'undefined' && document.fonts) {
-  for (const nombre of ['PlayfairDisplay-700', 'Spectral-400']) {
+  for (const nombre of ['PlayfairDisplay-700', 'Spectral-400', 'DarkerGrotesque-900']) {
     if ([...document.fonts].some(f => f.family === nombre)) continue
     try {
       const ff = new FontFace(nombre, `url(/fonts/${nombre}.ttf)`)
@@ -35,6 +35,8 @@ export default {
   bpm: 76,
   paleta: { tinta: '#f4efe4', bg: '#080706', bg2: '#141009', acento: '#c9a227', acento2: '#8c7a4a', calido: '#e0c579' },
   fuentes: { display: 'PlayfairDisplay-700', apoyo: 'Spectral-400' },
+  // DOS VESTUARIOS, y la semilla elige. masthead de revista de moda. A diferencia de Playfair no tiene finos que el bloom se coma.
+  caras: [{ display: 'PlayfairDisplay-700', apoyo: 'Spectral-400' }, { display: 'DarkerGrotesque-900', apoyo: 'Spectral-400' }],
   gesto: {
     // sin overshoot: lo caro no rebota. Se posa.
     llega: () => 'power4.out',

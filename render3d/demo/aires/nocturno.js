@@ -34,7 +34,7 @@
 // import(...)` ANTES de rasterizar el primer glifo. El guard de `document` es para poder importar el
 // aire desde Node (lo hacen adn-check y guion-check).
 if (typeof document !== 'undefined' && document.fonts) {
-  for (const nombre of ['Unbounded-800', 'ChakraPetch-500']) {
+  for (const nombre of ['Unbounded-800', 'ChakraPetch-500', 'Righteous-400', 'SpaceMono-400']) {
     if ([...document.fonts].some(f => f.family === nombre)) continue
     try {
       const ff = new FontFace(nombre, `url(/fonts/${nombre}.ttf)`)
@@ -56,6 +56,8 @@ export default {
     calido: '#9a4dff',     // violeta electrico, el tercer color en dosis chicas
   },
   fuentes: { display: 'Unbounded-800', apoyo: 'ChakraPetch-500' },
+  // DOS VESTUARIOS, y la semilla elige. Righteous es geometrica de marquesina y SpaceMono le pone el registro de pantalla.
+  caras: [{ display: 'Unbounded-800', apoyo: 'ChakraPetch-500' }, { display: 'Righteous-400', apoyo: 'SpaceMono-400' }],
   gesto: {
     // REBOTE A LA LLEGADA, SALIDA SECA. Un cartel de fiesta entra golpeando y se va de golpe; nada se
     // desliza hasta detenerse. `llega` exagera el overshoot del base (2.2 -> 3.3) sin llegar al

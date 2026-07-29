@@ -211,6 +211,18 @@ const FAMILIAS = {
 }
 
 function fuentesDe(aire, dna, rnd) {
+  // LA SEMILLA ELIGE EL VESTUARIO. Antes esta linea corto-circuitaba: si el aire declaraba `fuentes`, se
+  // devolvia ese par y el `rnd` —que llega SEMBRADO— no se consumia nunca. Resultado: --seed cambiaba el
+  // guion, el montaje y la camara, y jamas la tipografia. Dos versiones del mismo video salian siempre
+  // con la misma cara, que es la mitad de la identidad de una pieza.
+  //
+  // `caras` es una lista de PARES, y `fuentes` es el par 0: un aire que no declara caras se comporta
+  // exactamente como antes. Los pares se eligen dentro de la misma familia de caracter y nunca cruzando
+  // registros — una cara equivocada en un aire es peor que ninguna variedad.
+  if (Array.isArray(aire.caras) && aire.caras.length > 1) {
+    const i = Math.floor(rnd() * aire.caras.length) % aire.caras.length
+    return aire.caras[i]
+  }
   if (aire.fuentes && aire.fuentes.display) return aire.fuentes
   const t = (dna && dna.typography) || {}
   const fd = FAMILIAS[t.displayHint] || FAMILIAS.grotesk

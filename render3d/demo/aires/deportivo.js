@@ -21,7 +21,7 @@ import { pot } from '../kit.js'
 // import(...)` ANTES de rasterizar el primer glifo. El guard de `document` es para poder importar el
 // aire desde Node (lo hacen adn-check y guion-check).
 if (typeof document !== 'undefined' && document.fonts) {
-  for (const nombre of ['Barlow-600']) {
+  for (const nombre of ['Barlow-600', 'Oswald-700']) {
     if ([...document.fonts].some(f => f.family === nombre)) continue
     try {
       const ff = new FontFace(nombre, `url(/fonts/${nombre}.ttf)`)
@@ -36,6 +36,8 @@ export default {
   bpm: 140,
   paleta: { tinta: '#ffffff', bg: '#08090b', bg2: '#16181d', acento: '#ff5a1f', acento2: '#e8ff3a', calido: '#ff2d55' },
   fuentes: { display: 'BigShoulders', apoyo: 'Barlow-600' },
+  // DOS VESTUARIOS, y la semilla elige. Oswald es la otra condensada del deporte: mas estrecha y con remates rectos.
+  caras: [{ display: 'BigShoulders', apoyo: 'Barlow-600' }, { display: 'Oswald-700', apoyo: 'Barlow-600' }],
   gesto: {
     llega: (n = 2.2) => `back.out(${Math.min(4.6, n * 1.8)})`,
     frena: () => 'power2.out',

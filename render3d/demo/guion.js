@@ -266,10 +266,20 @@ export function guionDe({ escenas, datos, seed = 1, beatSeg = 60 / 124, dur = nu
   const SEDIENTAS = ['tipografia', 'lista', 'partida']
   const nFr = (d.frases || []).filter(Boolean).length
   const cupo = nFr >= 8 ? 3 : nFr >= 5 ? 2 : 1
-  // Se elige POR PRIORIDAD y no por donde caiga en la lista del orden: filtrando sobre la marcha
-  // sobrevivia la que apareciera primero en ESE orden, que es otra cosa distinta de la que dice el
-  // parrafo de arriba. El codigo tiene que decir lo mismo que su comentario.
-  const sobreviven = new Set(SEDIENTAS.filter(puede).slice(0, cupo))
+  // Y SE ROTA CON LA SEMILLA, no se corta por prioridad fija. El `slice(0, cupo)` hacia ganar SIEMPRE a
+  // `tipografia`, asi que `lista` y `partida` quedaban inalcanzables en toda la franja de 3 a 7 frases —
+  // que es justo donde caen las paginas reales. Medido con la compuerta nueva: aparecian en el 0.0% de
+  // 324 guiones. Dos escenas escritas, verdes, en produccion, y que ningun espectador iba a ver.
+  //
+  // El cupo se conserva porque es correcto: tres escenas beben del mismo pozo de frases y ya se vio en
+  // un render a la lista enumerando lo que tipografia acababa de decir. Lo que cambia es CUAL sobrevive:
+  // con la semilla, no con un orden escrito a mano.
+  const califican = SEDIENTAS.filter(puede)
+  const sobreviven = new Set()
+  if (califican.length) {
+    const desde = Math.floor(rnd() * califican.length) % califican.length
+    for (let i = 0; i < Math.min(cupo, califican.length); i++) sobreviven.add(califican[(desde + i) % califican.length])
+  }
   const medio = orden.filter(puede).filter(id => !SEDIENTAS.includes(id) || sobreviven.has(id))
 
   const fijas = ['apertura', 'cierre'].filter(puede)

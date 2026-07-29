@@ -35,11 +35,28 @@ const CAT = new Map([
 
 const PAGINAS = {
   // Una landing completa: cuatro frases, cifras, golpe. Da para elegir.
-  rica: { marca: 'STRIPE', frases: ['a', 'b', 'c', 'd'], datos: [{ etiqueta: 'X' }, { etiqueta: 'Y' }], golpe: 'G', elementos: [1, 2, 3, 4], tira: true },
+  // LOS ELEMENTOS SON OBJETOS, NO ENTEROS, y esto era un defecto de la compuerta misma: pasaba
+  // `elementos: [1, 2, 3, 4]` mientras REQUISITOS.titular lee `e.rol` y REQUISITOS.contraste lee `e.url`
+  // y `e.ar`. Sobre enteros pelados los dos daban false SIEMPRE, asi que el gate imprimia OK sobre un
+  // catalogo del que nunca ejercitaba `titular` ni `contraste`. Y ninguna pagina declaraba testimonios,
+  // asi que `cita` tampoco corria nunca. Tres escenas verdes, en produccion, y sin una sola medicion.
+  rica: {
+    marca: 'STRIPE', frases: ['a', 'b', 'c', 'd'], datos: [{ etiqueta: 'X' }, { etiqueta: 'Y' }], golpe: 'G',
+    elementos: [
+      { rol: 'foto', url: 'e0', ar: 1.6 }, { rol: 'tarjeta', url: 'e1', ar: 0.75 },
+      { rol: 'logo', url: 'e2', ar: 2.8 }, { rol: 'cta', url: 'e3', ar: 3.4 },
+    ],
+    testimonios: [{ texto: 'lo dijo alguien de verdad', firma: 'X' }],
+    tira: true,
+  },
   // Lo que da la mayoria de las paginas reales: algo de copy, ninguna cifra, pero SI captura movil y
   // algunos recortes. Que no los tuviera era irreal y hacia que la compuerta subestimara el catalogo:
   // una pagina normal si puede sostener la escena a sangre y la columna de recortes.
-  media: { marca: 'LINEAR', frases: ['a', 'b', 'c', 'd'], datos: [], golpe: 'G', elementos: [1, 2, 3], tira: true },
+  media: {
+    marca: 'LINEAR', frases: ['a', 'b', 'c', 'd'], datos: [], golpe: 'G',
+    elementos: [{ rol: 'foto', url: 'm0', ar: 1.5 }, { rol: 'tarjeta', url: 'm1', ar: 0.8 }, { rol: 'logo', url: 'm2', ar: 2.2 }],
+    tira: true,
+  },
   // El caso que rompe: casi nada. Una pagina detras de login, una 404, un sitio que bloqueo al bot.
   pobre: { marca: 'Q', frases: ['a'], datos: [], golpe: null },
 }
@@ -129,6 +146,72 @@ for (const [nomPag, datos] of Object.entries(PAGINAS)) {
   }
 }
 
+// ---------------------------------------------------------------- E-GUION-ESCENA-MUERTA
+// UNA ESCENA QUE NUNCA SE ELIGE ES CODIGO QUE EL ESPECTADOR NO VA A VER. Es la misma muerte silenciosa
+// que E-ADN-AIRE-MUERTO caza para los aires, y para el catalogo de escenas no existia: se podia escribir
+// una escena, dejarla verde, ponerla en produccion y que ninguna pagina posible la eligiera jamas.
+//
+// El mensaje distingue las DOS causas, porque son dos bugs distintos con dos arreglos distintos:
+//   · por REQUISITOS: ninguna pagina de prueba le da el material que pide. Puede ser que el requisito
+//     este mal, o que falte un fixture.
+//   · por presupuesto: califica pero nunca entra, porque las que van antes se comen los beats.
+//
+// SE MIDE EN LA DURACION MAS LARGA, y eso importa: a 15 s entran cuatro escenas de medio y a 30 s ocho,
+// asi que promediando las tres duraciones una escena perfectamente viva da 1.2% y parece muerta. Pasó
+// con `partida`: sale en 14 de 60 semillas a 30 s —o sea 23%— y el promedio la acusaba. Una escena esta
+// muerta si no se elige TENIENDO LUGAR, no si no cabe en quince segundos.
+const DUR_MAX = Math.max(...DURS)
+const presencia = new Map([...CAT.keys()].map(id => [id, 0]))
+let planes = 0
+for (const [nomPag, datos] of Object.entries(PAGINAS)) {
+  for (const beatSeg of Object.values(BPM)) {
+    for (const dur of [DUR_MAX]) {
+      for (const seed of SEMILLAS) {
+        planes++
+        for (const id of new Set(guionDe({ escenas: CAT, datos, seed, beatSeg, dur }))) {
+          presencia.set(id, presencia.get(id) + 1)
+        }
+      }
+    }
+  }
+}
+// MUERTA Y ESCASA SON DOS COSAS. Esta compuerta se llama ESCENA-MUERTA y tiene que fallar por MUERTE:
+// por debajo del 1% la escena es, en la practica, codigo que nadie va a ver. Entre el 1% y el 5% esta
+// viva pero apretada —`partida` compite por un solo cupo contra `tipografia`, que ocupa el doble de
+// beats— y eso es un dato para mirar, no un defecto que deba frenar un push. Un fallo que en realidad es
+// un aviso se aprende a ignorar, y despues no se ve el que importa.
+const escasas = []
+for (const [id, n] of presencia) {
+  const frac = n / planes
+  if (frac >= 0.05) continue
+  const califica = Object.values(PAGINAS).some(d => (REQ[id] ? REQ[id](d) : true))
+  const causa = califica
+    ? 'califica en alguna pagina pero nunca entra: las que van antes se comen los beats'
+    : 'NINGUNA pagina de prueba le da el material que pide (revisar REQUISITOS o agregar un fixture)'
+  const msg = `"${id}" aparece en el ${(frac * 100).toFixed(1)}% de ${planes} guiones a ${DUR_MAX}s — ${causa}`
+  if (frac < 0.01) fallos.push(`E-GUION-ESCENA-MUERTA  ${msg}`)
+  else escasas.push(msg)
+}
+
+// ---------------------------------------------------------------- E-GUION-VERSIONES
+// El cliente que pide "otra version del mismo video" toca la SEMILLA y nada mas. Si con veinte semillas
+// recibe cuatro piezas, la semilla no es una version: es un sorteo entre cuatro. Medido antes de tocar el
+// guion: exactamente 4 estructuras en casi todas las combinaciones, y 1 en la peor.
+for (const [nomPag, datos] of Object.entries(PAGINAS)) {
+  for (const [nomAire, beatSeg] of Object.entries(BPM)) {
+    for (const dur of DURS) {
+      const vistos = new Set()
+      for (let s = 1; s <= 20; s++) vistos.add(guionDe({ escenas: CAT, datos, seed: s, beatSeg, dur }).join('>'))
+      // La pagina POBRE queda afuera del piso a proposito: con una frase y sin cifras hay tres escenas
+      // elegibles y no hay veinte piezas distintas que armar. Exigirselo seria pedirle que invente.
+      if (nomPag === 'pobre') continue
+      if (vistos.size < 8) {
+        fallos.push(`E-GUION-VERSIONES  ${nomPag}/${nomAire}/${dur}s: 20 semillas dan solo ${vistos.size} estructuras distintas; hacen falta 8. El cliente que pide otra version recibe la misma pieza`)
+      }
+    }
+  }
+}
+
 // ---------------------------------------------------------------- E-GUION-FAMILIA
 // Dos escenas de la misma familia pegadas dicen lo mismo con distinta tipografia. El guion las separa
 // al armar el orden, pero hay cuatro pasos posteriores —filtro por material, cupo de texto, seleccion
@@ -174,6 +257,10 @@ for (const id of CAT.keys()) {
   if (!FAM[id]) fallos.push(`E-FAMILIA-DECLARADA  la escena "${id}" no declara familia en guion.js: queda fuera del reparto y puede caer pegada a otra que diga lo mismo`)
 }
 
+if (escasas.length) {
+  console.log(`  ${escasas.length} escena(s) VIVA(S) PERO APRETADA(S) — entre el 1% y el 5%; dato para mirar, no defecto:`)
+  for (const m of escasas) console.log('    ' + m)
+}
 if (fallos.length) {
   console.error(`GUION: ${fallos.length} FALLO(S) sobre ${combinaciones} guiones\n` + fallos.slice(0, 14).map(f => '  ' + f).join('\n'))
   process.exit(1)

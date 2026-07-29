@@ -40,7 +40,7 @@
 // que es Times, solo se ve una pieza sin caracter. El aire se importa con `await import()`, asi que
 // este await de nivel superior frena la construccion hasta que las caras esten registradas — y no
 // hace falta tocar el arnes.
-for (const n of ['Newsreader-600', 'FamiljenGrotesk-500']) {
+for (const n of ['Newsreader-600', 'FamiljenGrotesk-500', 'Fraunces-900', 'HankenGrotesk-400']) {
   if ([...document.fonts].some(f => f.family === n)) continue
   try {
     const ff = new FontFace(n, `url(/fonts/${n}.ttf)`)
@@ -61,6 +61,8 @@ export default {
     calido: '#9c6b3a',       // ocre de encuadernacion
   },
   fuentes: { display: 'Newsreader-600', apoyo: 'FamiljenGrotesk-500' },
+  // DOS VESTUARIOS, y la semilla elige. la otra serif editorial del disco, con una grotesca humanista de apoyo.
+  caras: [{ display: 'Newsreader-600', apoyo: 'FamiljenGrotesk-500' }, { display: 'Fraunces-900', apoyo: 'HankenGrotesk-400' }],
   gesto: {
     llega: () => 'power2.out',                                   // se posa; no rebota
     frena: (n = 2) => (n >= 4 ? 'expo.out' : 'power3.out'),      // siempre nitida

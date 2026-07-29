@@ -281,6 +281,34 @@ for (const [rubro, aires] of porRubro) {
 }
 kitG.configurar(null)
 
+// ---------------------------------------------------------------- E-CARAS-ALCANZABLES
+// LA SEMILLA ELIGE EL VESTUARIO, y hay que comprobar que de verdad lo elija. Un `caras[]` con un solo par
+// es codigo que el usuario no va a ver nunca — la misma muerte silenciosa que ya paso con `sello` (una
+// escena que no figuraba en ninguna orden del guion) y con los ocho aires que declaraban camara sin que
+// nadie la leyera. Se barren ocho semillas por aire y se exige que salga mas de una cara de display.
+//
+// Y que la MISMA semilla de la MISMA cara: si no, dos renders del mismo pedido salen con distinta
+// tipografia, que es peor que no tener variedad.
+for (const [nombre, a] of Object.entries(AIRES)) {
+  if (!Array.isArray(a.caras) || a.caras.length < 2) continue
+  const vistas = new Set()
+  for (let s = 1; s <= 8; s++) {
+    let x = (s * 2654435761) >>> 0; x = (x ^ (x >>> 15)) >>> 0
+    const rnd = () => { x = (x * 1664525 + 1013904223) >>> 0; return ((x ^ (x >>> 16)) >>> 0) / 4294967296 }
+    vistas.add(personalizar(a, { palette: { bgLum: 0.1 }, mood: {} }, rnd).fuentes.display)
+  }
+  if (vistas.size < 2) {
+    F('E-CARAS-ALCANZABLES', `el aire "${nombre}" declara ${a.caras.length} vestuarios y ocho semillas dan siempre "${[...vistas][0]}": el segundo par es codigo que nadie va a ver`)
+  }
+  // determinismo del pick: la misma semilla, la misma cara
+  const dos = [1, 1].map(() => {
+    let x = (7 * 2654435761) >>> 0; x = (x ^ (x >>> 15)) >>> 0
+    const rnd = () => { x = (x * 1664525 + 1013904223) >>> 0; return ((x ^ (x >>> 16)) >>> 0) / 4294967296 }
+    return personalizar(a, { palette: { bgLum: 0.1 }, mood: {} }, rnd).fuentes.display
+  })
+  if (dos[0] !== dos[1]) F('E-CARAS-ALCANZABLES', `el aire "${nombre}" da dos caras distintas para la misma semilla: "${dos[0]}" y "${dos[1]}"`)
+}
+
 // ---------------------------------------------------------------- E-HALACION
 // La halacion tiñe los mips ANCHOS del bloom: es la luz que atraveso la emulsion, rebota contra el
 // soporte y vuelve teñida por la capa roja. Un neon blanco en pelicula tiene aura naranja; en digital
@@ -320,7 +348,16 @@ const dirFuentes = join(HERE, 'fonts')
 const TTF = new Set(readdirSync(dirFuentes).filter(f => f.endsWith('.ttf')).map(f => f.replace('.ttf', '')))
 for (const [nombre, a] of Object.entries(AIRES)) {
   const registradas = REGISTRA.get(nombre) || new Set()
-  for (const [rol, fam] of Object.entries(a.fuentes || {})) {
+  // TODAS LAS CARAS, no solo el par por defecto. `caras[]` es el vestuario que elige la semilla, y si el
+  // gate mira solo `fuentes` la mitad de los renders de un aire pueden salir en la fuente del sistema —
+  // exactamente el defecto que esta compuerta existe para cazar, entrando por la puerta nueva. Paso: al
+  // declarar caras[] en cinco aires, tecnico pidio Archivo-900 e IBMPlexMono-400 y nadie las registraba.
+  const todas = {}
+  for (const [rol, fam] of Object.entries(a.fuentes || {})) todas[rol] = fam
+  for (const [i, par] of (Array.isArray(a.caras) ? a.caras : []).entries()) {
+    for (const [rol, fam] of Object.entries(par || {})) todas[`caras[${i}].${rol}`] = fam
+  }
+  for (const [rol, fam] of Object.entries(todas)) {
     if (EN_CSS.has(fam)) continue                                     // la declara el CSS de demo.html
     if (!registradas.has(fam)) {
       F('E-FUENTE-LLEGA', `el aire "${nombre}" pide ${rol} "${fam}" y nadie la registra: no esta en el @font-face de demo.html ni en el FontFace del propio aire, asi que la pieza sale en la fuente del sistema`)
@@ -344,3 +381,4 @@ console.log(`  los 11 declaran su montaje y reparten ${montajesVivos.size} forma
 console.log(`  y ${lucesVivas.size} recortes de luz distintos (forma x centro x aspecto), no solo intensidades.`)
 console.log(`  ${Object.values(AIRES).filter(a => (a.pelicula || {}).halacion).length} aires tiñen el halo (halacion), el resto lo deja blanco.`)
 console.log(`  y ${gestosVivos.size} formas distintas de moverse en las tres llamadas que son el 54% del movimiento.`)
+console.log(`  ${Object.values(AIRES).filter(a => Array.isArray(a.caras) && a.caras.length > 1).length} aires tienen dos vestuarios tipograficos y la semilla elige.`)
