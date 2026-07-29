@@ -164,6 +164,28 @@ export class Anthem {
     if (pel.bloom != null) this.bloom.strength = pel.bloom
     if (pel.umbral != null) this.bloom.threshold = pel.umbral
     if (pel.radio != null) this.bloom.radius = pel.radio
+    // ---------------------------------------------------------------- HALACION
+    // El halo CALIDO alrededor de las altas luces. En pelicula quimica la luz fuerte atraviesa la
+    // emulsion, rebota contra el soporte y vuelve a exponerla desde atras — y como la capa roja es la
+    // ultima, lo que vuelve viene teñido. Por eso un neon blanco en film tiene un aura naranja y en
+    // digital no tiene ninguna.
+    //
+    // UnrealBloomPass compone CINCO mips y expone `bloomTintColors`, uno por mip. El mip 0 es el halo
+    // pegado al objeto y el 4 el mas ancho: la halacion vive en los ANCHOS, porque es luz que viajo.
+    // Teñir los cinco pintaria el borde del objeto y eso ya no es halacion, es un filtro de color.
+    //
+    // Sin declararlo los cinco quedan en blanco, que es el estado de siempre: ningun aire existente
+    // cambia sin que alguien lo decida.
+    if (pel.halacion && pel.halacion.color) {
+      const c = hex(pel.halacion.color)
+      const f = pel.halacion.fuerza == null ? 0.5 : pel.halacion.fuerza
+      // mip 3 a media fuerza y mip 4 entero: el tinte crece con el ancho del halo, igual que la luz
+      // que mas lejos viajo es la que mas capas atraveso.
+      for (const [i, k] of [[2, 0.25], [3, 0.6], [4, 1.0]]) {
+        const v = this.bloom.bloomTintColors[i]
+        v.set(1 + (c.r - 1) * f * k, 1 + (c.g - 1) * f * k, 1 + (c.b - 1) * f * k)
+      }
+    }
     const u = this.pelicula.uniforms
     if (pel.grano != null) u.uGrano.value = pel.grano
     if (pel.vinieta != null) u.uVinieta.value = pel.vinieta

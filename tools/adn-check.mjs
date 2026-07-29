@@ -250,6 +250,28 @@ for (const [rubro, aires] of porRubro) {
   }
 }
 
+// ---------------------------------------------------------------- E-HALACION
+// La halacion tiñe los mips ANCHOS del bloom: es la luz que atraveso la emulsion, rebota contra el
+// soporte y vuelve teñida por la capa roja. Un neon blanco en pelicula tiene aura naranja; en digital
+// no tiene ninguna.
+//
+// Se valida la DECLARACION, que es lo unico auditable sin renderizar: color parseable y fuerza en
+// rango. Un color con una letra de mas no tira error —THREE.Color lo resuelve a negro— y un aire
+// entero saldria con el halo apagado sin que nada lo diga. Es exactamente la familia de defecto que
+// este archivo ya caza tres veces: declarado, y no llega.
+const HEX6 = /^#[0-9a-fA-F]{6}$/
+for (const [nombre, a] of Object.entries(AIRES)) {
+  const h = (a.pelicula || {}).halacion
+  if (!h) continue
+  if (!HEX6.test(String(h.color || ''))) {
+    F('E-HALACION', `el aire "${nombre}" declara halacion con color "${h.color}", que no es un hex de seis digitos: THREE.Color lo resuelve a negro y el halo sale apagado sin avisar`)
+  }
+  const f = h.fuerza == null ? 0.5 : h.fuerza
+  if (!(f > 0 && f <= 1)) {
+    F('E-HALACION', `el aire "${nombre}" declara halacion con fuerza ${f}: fuera de (0, 1] el tinte o no hace nada o invierte el color del halo`)
+  }
+}
+
 // ---------------------------------------------------------------- E-FUENTE-LLEGA
 // La tipografia es la MITAD de la identidad de una pieza y tres aires enteros la perdian en silencio.
 // demo.html declara por @font-face solo las cinco de ANTHEM; cualquier otra familia hay que meterla en
@@ -289,3 +311,4 @@ console.log(`  los ${Object.keys(AIRES).length} aires son alcanzables (${barrido
 console.log(`  los 11 declaran su mobiliario y reparten ${marcosVivos.size} marcos distintos: ${[...marcosVivos].sort().join(', ')}.`)
 console.log(`  los 11 declaran su montaje y reparten ${montajesVivos.size} formas distintas de cortar.`)
 console.log(`  y ${lucesVivas.size} recortes de luz distintos (forma x centro x aspecto), no solo intensidades.`)
+console.log(`  ${Object.values(AIRES).filter(a => (a.pelicula || {}).halacion).length} aires tiñen el halo (halacion), el resto lo deja blanco.`)

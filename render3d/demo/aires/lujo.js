@@ -46,7 +46,8 @@ export default {
   // bloom bajo y grano fino: el brillo del oro tiene que leerse como metal, no como neón.
   // LA FORMA DE LA LUZ, no solo cuanta: ovalo casi puro y la fuente arriba: es el foco de una vitrina, y la esquina
   // oscura es la que hace que el oro se lea como oro.
-  pelicula: { bloom: 0.42, umbral: 0.78, grano: 0.025, vinieta: 1.0, aberr: 0.0008, vinietaForma: 0.10, vinietaCentro: [0.5, 0.56] },
+  // HALACION: el oro no brilla blanco. El halo tiene que traer el color del metal.
+  pelicula: { bloom: 0.42, umbral: 0.78, grano: 0.025, vinieta: 1.0, aberr: 0.0008, vinietaForma: 0.10, vinietaCentro: [0.5, 0.56], halacion: { color: '#f0c66a', fuerza: 0.45 } },
   // EL MOBILIARIO DEL CUADRO: solo el degrade. Lo caro se vende con AIRE, no con lineas.
   // Ver el comentario largo de MOB en kit.js — antes esto estaba horneado en las escenas y
   // por eso dos piezas de rubros opuestos seguian teniendo el mismo mueble.

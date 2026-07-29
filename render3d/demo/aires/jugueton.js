@@ -77,7 +77,8 @@ export default {
   // Camara con juego: se mueve mas que la del aire tecnico pero sin la violencia de la deportiva.
   camara: { dolly: 1.25, orbita: 1.15 },
   // LA FORMA DE LA LUZ, no solo cuanta: plano como un afiche: el aro suave le pondria drama a un aire que no lo quiere.
-  pelicula: { bloom: 0.40, umbral: 0.72, radio: 0.55, grano: 0.03, vinieta: 0.5, aberr: 0.0012, vinietaForma: 0.80 },
+  // HALACION: magenta: el aire ya grita, y el halo grita con el.
+  pelicula: { bloom: 0.40, umbral: 0.72, radio: 0.55, grano: 0.03, vinieta: 0.5, aberr: 0.0012, vinietaForma: 0.80, halacion: { color: '#ff4fd8', fuerza: 0.6 } },
   // EL MOBILIARIO DEL CUADRO: celdas que se encienden en el beat; sin corchetes, que enfrian.
   // Ver el comentario largo de MOB en kit.js — antes esto estaba horneado en las escenas y
   // por eso dos piezas de rubros opuestos seguian teniendo el mismo mueble.
