@@ -85,7 +85,27 @@ const Pelicula = {
       float ovalo = dot(dv, dv);
       float caja = max(abs(dv.x), abs(dv.y));
       col.rgb *= mix(1.0, smoothstep(0.95, 0.10, mix(ovalo, 2.0 * caja * caja, uVinForma)), uVinieta);
-      col.rgb += (hash(vUv * uRes + vec2(uT*71.3, uT*37.7)) - 0.5) * uGrano;
+      // GRANO DE EMULSION, no ruido plano. Este pase corre ANTES del OutputPass, o sea en luz LINEAL,
+      // y sumar una amplitud FIJA ahi es lo que le comia el negro a los nueve aires oscuros: sobre un
+      // fondo de 0.0007 lineal, un ±0.0275 se convierte despues de la curva sRGB en ±46/255, y encima
+      // la mitad negativa se recorta en cero, lo que SUBE la media. Medido antes de esto: nocturno
+      // declara un negro de 2/255 y entregaba 19; tecnico 6 -> 22; artesanal 11 -> 29. Los nueve
+      // terminaban en el mismo gris ruidoso, o sea que el negro que cada aire eligio no llegaba nunca.
+      //
+      // Una emulsion real no granula asi. El grano son cristales de plata REVELADOS: donde no llego luz
+      // no hay nada que revelar y donde se saturo esta todo revelado — el ruido vive en los MEDIOS. El
+      // peso se calcula en espacio perceptual (la raiz de gamma) porque "medio tono" es una nocion del
+      // ojo, no del sensor: en lineal, 0.5 ya es un gris clarisimo.
+      float lumG = dot(col.rgb, vec3(0.2126, 0.7152, 0.0722));
+      float lumP = pow(clamp(lumG, 0.0, 1.0), 0.4545);
+      float pesoG = 4.0 * lumP * (1.0 - lumP);            // 0 en negro y en blanco, 1 en el medio
+      // PENDIENTE DE MIRAR EN UNA PAGINA OSCURA. El grano tambien hace de dither, asi que quitarlo del
+      // negro podria dejar ver bandas en un degradado muy oscuro. Medido sobre la unica captura en
+      // cache —una pagina de mundo CLARO— no aparece: 94 niveles distintos en la zona contra 96 antes.
+      // El caso de negro grande no se pudo probar todavia; si aparece bandeo, el arreglo es un piso
+      // chico en pesoG (sin comillas invertidas en este comentario: esta dentro del shader), no
+      // volver al ruido plano.
+      col.rgb += (hash(vUv * uRes + vec2(uT*71.3, uT*37.7)) - 0.5) * uGrano * pesoG;
       // BARRIDO: una banda solida cruza el cuadro y TAPA el corte. El cambio de escena ocurre cuando
       // la banda esta encima, asi que el espectador nunca ve el salto — ve pasar una cosa. En 9:16 va
       // en diagonal: una banda vertical en un cuadro tan alto se lee como una persiana.
