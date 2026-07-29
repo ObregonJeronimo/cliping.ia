@@ -15,7 +15,7 @@
 //   · NADA se apaga con opacidad si puede irse por MÁSCARA: el texto se desescribe, no se funde.
 
 import { E,
-  LOOK, b, planoTexto, texto, materialMascara, matAcento, matTarjeta, enArco, nivel, dolly, orbita } from '../kit.js'
+  LOOK, b, planoTexto, texto, materialMascara, matAcento, matTarjeta, enArco, nivel, dolly, orbita, MOB } from '../kit.js'
 // TODO EL TEXTO SALE DE LOS DATOS. Este archivo decia que el 'chrome' (rotulos de capitulo,
 // indicadores tecnicos) era direccion de arte y podia quedar escrito aca — y con esa licencia
 // el video de Stripe salia diciendo 'BLOQUE 04 · DATOS' y 'DOS INDICADORES · UNA MISMA
@@ -110,6 +110,12 @@ const ENTRADAS = [
 
 export function build(ctx) {
   const { THREE, gsap, camera, distBase, rnd, fondo, pelicula } = ctx
+  // MUEBLE DE BORDE: LO PIDE EL AIRE, NO LA ESCENA. Este archivo dibujaba perimetro por su cuenta sin
+  // preguntar nunca por MOB, y por eso una pieza que eligio "sin marco" seguia teniendo lineas pegadas
+  // a los costados: no las ponia el marco, las ponia la escena. Es el reclamo del usuario visto desde
+  // el codigo. Se conserva en las familias donde la caja cerrada ES el punto —las escuadras de camara
+  // y los ticks de acotacion— y se retira en las demas.
+  const hudBorde = MOB.hud !== false && (MOB.marco === 'escuadras' || MOB.marco === 'ticks')
   const { DATOS, HERO, ORDEN } = resolver()
   const g = new THREE.Group()
   const tl = gsap.timeline({ paused: true })
@@ -248,7 +254,7 @@ export function build(ctx) {
   const zocalo = regla(4.90, 0.022, LOOK.acento, 1.0)
   zocalo.position.set(0, -4.11, 0.42)
   zocalo.scale.x = 0
-  g.add(zocalo)
+  if (hudBorde) g.add(zocalo)
 
   // ------------------------------------------------------------ las cinco tarjetas
   const tarjetas = []

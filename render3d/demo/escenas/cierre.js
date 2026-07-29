@@ -348,7 +348,11 @@ export function build(ctx) {
   tl.to(gTicks.rotation, { z: 0.16, duration: b(5.4), ease: 'none' }, 0)
 
   // brackets: llegan pasándose, escalonados
-  tl.to(brackets.map(o => o.scale), { x: 1, y: 1, z: 1, duration: b(0.55), ease: E.llega(2.6), stagger: 0.055 }, b(0.04))
+  // SIN MARCO NO HAY TWEEN. Desde que el marco es una familia, `nada` es un valor legitimo y deja
+  // `brackets` vacio: GSAP recibe una lista sin targets, avisa por consola y sigue. Es exactamente la
+  // forma del defecto que E-VACIO existe para cazar, y lo introduje yo al hacer el marco declarable.
+  // Lo encontro forzar el mobiliario base a 'nada' y correr las 24 escenas.
+  if (brackets.length) tl.to(brackets.map(o => o.scale), { x: 1, y: 1, z: 1, duration: b(0.55), ease: E.llega(2.6), stagger: 0.055 }, b(0.04))
   // polvo
   tl.to(polvo.map(o => o.scale), { x: 1, y: 1, z: 1, duration: b(0.7), ease: E.llega(1.8), stagger: 0.012 }, b(0.06))
   tl.fromTo(gPolvo.position, { y: -0.40 }, { y: 0.48, duration: b(5.6), ease: 'none' }, 0)
@@ -584,7 +588,7 @@ export function build(ctx) {
 
   // salidas: por MÁSCARA y escalonadas, en orden inverso al de entrada
   tl.to(polvo.map(o => o.scale), { x: 0, y: 0, z: 0, duration: b(0.4), ease: E.acelera(2), stagger: 0.008 }, b(4.55))
-  tl.to(brackets.map(o => o.scale), { x: 0, y: 0, z: 0, duration: b(0.38), ease: 'back.in(2.2)', stagger: 0.04 }, b(4.6))
+  if (brackets.length) tl.to(brackets.map(o => o.scale), { x: 0, y: 0, z: 0, duration: b(0.38), ease: 'back.in(2.2)', stagger: 0.04 }, b(4.6))
   marcasM.forEach((m, i) => {
     tl.set(m.material.uniforms.uDir, { value: 1 }, b(4.6))
     tl.to(m.material.uniforms.uProg, { value: 0, duration: b(0.4), ease: E.acelera(2) }, b(4.6 + i * 0.09))

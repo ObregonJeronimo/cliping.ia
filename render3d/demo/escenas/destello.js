@@ -18,7 +18,7 @@
 // arranca `cierre` con el fondo en blanco y el bloom en cero, la pieza se desarma y el bug aparece
 // recién en el video terminado.
 
-import { E, LOOK, b, texto, materialMascara, filete, hex, nivel, orbita, dolly } from '../kit.js'
+import { E, LOOK, b, texto, materialMascara, filete, hex, nivel, orbita, dolly, MOB } from '../kit.js'
 // El COPY sale de los DATOS. Lo que queda escrito aca es CHROME de la pieza (rotulos de
 // capitulo, indicadores tecnicos): eso es direccion de arte y no cambia con el contenido.
 // Lo que la marca DICE — su nombre, sus cifras, su claim, su CTA — sale de los datos o NO SALE.
@@ -55,6 +55,12 @@ function lineasGolpe() {
 
 export function build(ctx) {
   const { THREE, gsap, mundoW, camera, distBase, fondo, pelicula, bloom, rnd } = ctx
+  // MUEBLE DE BORDE: LO PIDE EL AIRE, NO LA ESCENA. Este archivo dibujaba perimetro por su cuenta sin
+  // preguntar nunca por MOB, y por eso una pieza que eligio "sin marco" seguia teniendo lineas pegadas
+  // a los costados: no las ponia el marco, las ponia la escena. Es el reclamo del usuario visto desde
+  // el codigo. Se conserva en las familias donde la caja cerrada ES el punto —las escuadras de camara
+  // y los ticks de acotacion— y se retira en las demas.
+  const hudBorde = MOB.hud !== false && (MOB.marco === 'escuadras' || MOB.marco === 'ticks')
 
   const g = new THREE.Group()
   const tl = gsap.timeline({ paused: true })
@@ -156,7 +162,8 @@ export function build(ctx) {
   // separarlos en z el orden de dibujado lo decide el sorter y una barra negra aparece tapada por un
   // filete gris en unos frames sí y en otros no.
   const vRegla = barra(0.05, 9.4, 'abajo', matGris)
-  vRegla.position.set(-2.62, -4.7, -0.12); formas.add(vRegla)
+  vRegla.position.set(-2.62, -4.7, -0.12)
+  if (hudBorde) formas.add(vRegla)
 
   // — bloque de texto
   const L1 = capa(lineasGolpe()[0], mundoW * 0.945)

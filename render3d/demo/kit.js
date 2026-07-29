@@ -205,6 +205,10 @@ export function marco(mundoW, mundoH, o = {}) {
   const z = o.z === undefined ? -0.3 : o.z
   const peso = o.peso || 1                          // grosor y largo relativos: cierre compone mas pesado
   const g = new THREE.Group()
+  // MARCA DE ORIGEN. La compuerta que caza mueble de borde horneado en las escenas necesita distinguir
+  // "esto es perimetro que alguien dibujo por su cuenta" de "esto es el marco que el aire pidio". Sin
+  // la marca tendria que adivinar por geometria, y acusaria en falso justo a la funcion correcta.
+  g.userData.esMarco = true
   const piezas = []
 
   // Plano plano, sin sombreado ni tono: el borde no participa de la iluminacion de la escena. Sin

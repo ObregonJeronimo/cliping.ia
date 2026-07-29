@@ -31,7 +31,7 @@
 // barras que entran a contratiempo (en los medios beats), columna de marcas que baja sin parar,
 // regla de progreso escalonada arriba y epígrafe abajo.
 
-import { E, LOOK, b, texto, planoTexto, matAcento, hex, dolly, orbita } from '../kit.js'
+import { E, LOOK, b, texto, planoTexto, matAcento, hex, dolly, orbita, MOB } from '../kit.js'
 // Las frases salen de los DATOS, no del archivo: la misma escena sirve para cualquier pagina.
 // El estilo de cada entrada (que fuente, que ancho, que gesto) SI es de la escena — eso es direccion
 // de arte y no cambia con el contenido.
@@ -62,6 +62,13 @@ const LUM = 0.655   // 0.655 x 0.887 = 0.581 lineal, apenas debajo del umbral
 
 export function build(ctx) {
   const { THREE, gsap, camera, distBase, mundoW, fondo, pelicula, bloom, rnd } = ctx
+  // MUEBLE DE BORDE: LO PIDE EL AIRE, NO LA ESCENA. Este archivo dibujaba perimetro por su cuenta sin
+  // preguntar nunca por MOB, y por eso una pieza que eligio "sin marco" seguia teniendo lineas pegadas
+  // a los costados: no las ponia el marco, las ponia la escena. Es el reclamo del usuario visto desde
+  // el codigo. Se conserva en las familias donde la caja cerrada ES el punto —las escuadras de camara
+  // y los ticks de acotacion— y se retira en las demas.
+  const hudBorde = MOB.hud !== false && (MOB.marco === 'escuadras' || MOB.marco === 'ticks')
+
   // EL BLOOM ES DEL AIRE Y HAY QUE DEVOLVERLO. Es estado COMPARTIDO por toda la pieza: una escena que
   // lo mueve y lo deja movido se lo cambia a todas las que siguen. Esta escena lo subia y despues
   // "restauraba" a un literal —el valor de ANTHEM—, asi que diez de los once aires terminaban la pieza
@@ -288,7 +295,10 @@ export function build(ctx) {
   // COLUMNA DE MARCAS en el borde derecho. Baja sin parar durante toda la escena: es el seguro contra
   // la regla 2 — por rápido que se corte, siempre hay algo en movimiento continuo debajo del montaje.
   const marcas = []
-  for (let i = 0; i < 24; i++) {
+  // El bucle entero va bajo la condicion, no solo el push: `barra()` hace `g.add(mesh)` por dentro, asi
+  // que filtrar el array dejaba las 24 mallas en la escena igual. Se vio renderizando jugueton —que
+  // declara marco 'nada'— y encontrando la columna intacta en el borde derecho.
+  if (hudBorde) for (let i = 0; i < 24; i++) {
     const largo = 0.10 + rnd() * 0.16
     const acentuada = rnd() > 0.72
     const mk = barra(acentuada ? LOOK.acento : LOOK.tinta, acentuada ? 2.6 : 0.8, 1, 0)

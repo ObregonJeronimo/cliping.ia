@@ -48,7 +48,7 @@
 // reproduce su degrade en coordenadas de mundo: la union cae en el mismo punto del espacio, asi que
 // no hay costura. Se resuelve acá adentro para no tocar el kit.
 
-import { E, LOOK, b, texto, materialMascara, filete, matAcento, matTarjeta, hex, nivel, dolly, orbita } from '../kit.js'
+import { E, LOOK, b, texto, materialMascara, filete, matAcento, matTarjeta, hex, nivel, dolly, orbita, MOB } from '../kit.js'
 // El COPY sale de los DATOS. Lo que queda escrito aca es CHROME de la pieza (rotulos de
 // capitulo, indicadores tecnicos): eso es direccion de arte y no cambia con el contenido.
 // Lo que la marca DICE — su nombre, sus cifras, su claim, su CTA — sale de los datos o NO SALE.
@@ -82,6 +82,12 @@ const sm = x => { const y = sat(x); return y * y * (3 - 2 * y) }
 
 export function build(ctx) {
   const { THREE, gsap, mundoW, camera, distBase, rnd, fondo, pelicula, bloom } = ctx
+  // MUEBLE DE BORDE: LO PIDE EL AIRE, NO LA ESCENA. Este archivo dibujaba perimetro por su cuenta sin
+  // preguntar nunca por MOB, y por eso una pieza que eligio "sin marco" seguia teniendo lineas pegadas
+  // a los costados: no las ponia el marco, las ponia la escena. Es el reclamo del usuario visto desde
+  // el codigo. Se conserva en las familias donde la caja cerrada ES el punto —las escuadras de camara
+  // y los ticks de acotacion— y se retira en las demas.
+  const hudBorde = MOB.hud !== false && (MOB.marco === 'escuadras' || MOB.marco === 'ticks')
   // EL BLOOM ES DEL AIRE Y HAY QUE DEVOLVERLO. Es estado COMPARTIDO por toda la pieza: una escena que
   // lo mueve y lo deja movido se lo cambia a todas las que siguen. Esta escena lo subia y despues
   // "restauraba" a un literal —el valor de ANTHEM—, asi que diez de los once aires terminaban la pieza
@@ -251,7 +257,7 @@ export function build(ctx) {
     e.position.set(x, ALTO_OBJ + y, 0.8)
     e.rotation.z = rz
     e.scale.setScalar(0)
-    g.add(e)
+    if (hudBorde) g.add(e)
     escuadras.push(e)
   }
 
