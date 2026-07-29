@@ -53,6 +53,10 @@ const REQUISITOS = {
   // La pagina a sangre necesita la TIRA, que es la captura movil scrolleable. No hay forma de
   // sustituirla: sin tira la escena es un rectangulo vacio.
   pantalla: (d) => !!d.tira,
+  // La MESA necesita una superficie con contenido: la tira de la pagina, o en su defecto un recorte
+  // grande. Es lo mismo que pide `pantalla` mas la alternativa del recorte, porque el sujeto de esta
+  // escena no es la pagina ENTERA sino una superficie que se pueda mirar en escorzo.
+  mesa: (d) => !!d.tira || (d.elementos || []).some(e => e && e.url),
   // La columna es un feed de recortes reales. Con menos de dos piezas no es una columna, es una foto.
   columna: (d) => (d.elementos || []).length >= 2,
   // La cita necesita que ALGUIEN HAYA HABLADO. Es el unico requisito que no se puede sustituir con
@@ -144,7 +148,7 @@ const REQUISITOS = {
 // cuando ya habia dieciseis, y por eso no reportaba guiones cortos durante meses.
 const FAMILIA = {
   tipografia: 'texto', lista: 'texto', partida: 'texto', titular: 'texto', cita: 'texto',
-  pantalla: 'pagina', columna: 'pagina',
+  pantalla: 'pagina', columna: 'pagina', mesa: 'pagina',
   hero: 'objeto',
   // `toro` NO es de la familia del hero, y ponerlo ahi fue un error propio que costo nueve segundos de
   // pieza: en una pagina pobre el relleno solo puede repetir hero/toro/sello, y si hero y toro no

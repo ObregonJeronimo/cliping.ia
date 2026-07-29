@@ -30,7 +30,7 @@ const CAT = new Map([
   ['rafaga', { beats: 6 }], ['pantalla', { beats: 6 }], ['columna', { beats: 6 }],
   ['cita', { beats: 6 }], ['lista', { beats: 6 }], ['titular', { beats: 6 }],
   ['partida', { beats: 6 }], ['contraste', { beats: 6 }], ['sello', { beats: 6 }],
-  ['cierre', { beats: 6 }],
+  ['cierre', { beats: 6 }], ['mesa', { beats: 6 }],
 ])
 
 const PAGINAS = {

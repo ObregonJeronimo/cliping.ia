@@ -21,6 +21,7 @@ import * as titular from './titular.js'
 import * as partida from './partida.js'
 import * as contraste from './contraste.js'
 import * as sello from './sello.js'
+import * as mesa from './mesa.js'
 import * as cierre from './cierre.js'
 
 // ESTO YA NO ES EL ORDEN DE LA PIEZA: es el CATALOGO de lo que existe. El orden y la seleccion los
@@ -32,4 +33,4 @@ import * as cierre from './cierre.js'
 // El toro vuelve al catalogo. Salio de la pieza cuando el hero ocupo su lugar (geometria generica vs.
 // la pagina del usuario), pero como ALTERNATIVA sigue siendo bueno: es la unica escena que no
 // necesita absolutamente nada, y es lo que sostiene el espacio cuando la pagina no dio material.
-export const ESCENAS = [apertura, hero, toro, tipografia, rafaga, pantalla, columna, cita, lista, titular, partida, contraste, sello, tarjetas, destello, cierre]
+export const ESCENAS = [apertura, hero, toro, tipografia, rafaga, pantalla, columna, cita, lista, titular, partida, contraste, sello, tarjetas, destello, cierre, mesa]
