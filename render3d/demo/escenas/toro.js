@@ -82,6 +82,13 @@ const sm = x => { const y = sat(x); return y * y * (3 - 2 * y) }
 
 export function build(ctx) {
   const { THREE, gsap, mundoW, camera, distBase, rnd, fondo, pelicula, bloom } = ctx
+  // EL BLOOM ES DEL AIRE Y HAY QUE DEVOLVERLO. Es estado COMPARTIDO por toda la pieza: una escena que
+  // lo mueve y lo deja movido se lo cambia a todas las que siguen. Esta escena lo subia y despues
+  // "restauraba" a un literal —el valor de ANTHEM—, asi que diez de los once aires terminaban la pieza
+  // con la floracion del aire tecnico. Un aire editorial declara 0.14 y seguia en 0.85: seis veces mas.
+  // Todo va RELATIVO a lo que puso el aire, para que el gesto valga igual en los once.
+  const oBloom = (bloom && bloom.strength) || 0.85
+
 
   const g = new THREE.Group()
   const tl = gsap.timeline({ paused: true })
@@ -427,6 +434,9 @@ export function build(ctx) {
     if (u >= 1) {                            // marca de salida, exacta y sin residuo
       camera.position.set(0, 0, distBase)
       camera.rotation.set(0, 0, 0)
+      // El bloom se devuelve ACA, en la misma marca de salida que la camara y por la misma razon. Sin
+      // esto la escena terminaba dejandolo en su ultimo valor y se lo llevaba puesto la que seguia.
+      if (bloom) bloom.strength = oBloom
       return
     }
     const y = sm(u)
@@ -452,7 +462,7 @@ export function build(ctx) {
     const tb = u * U_FIN                     // tiempo de escena, en BEATS
 
     if (bloom) {
-      bloom.strength = 0.85 + 0.65 * (1 - sm(tb / 0.80)) + 0.55 * golpe(tb, 4.50, 1.10)
+      bloom.strength = oBloom * (1 + 0.765 * (1 - sm(tb / 0.80)) + 0.647 * golpe(tb, 4.50, 1.10))
     }
     if (fondo) {
       fondo.uPulso.value = 0.60 * golpe(tb, 0.00, 0.85) + 0.26 * golpe(tb, 1.50, 0.50)

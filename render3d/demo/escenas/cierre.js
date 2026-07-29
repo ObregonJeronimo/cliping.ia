@@ -30,6 +30,13 @@ export const meta = { id: 'cierre', beats: 6 }
 export function build(ctx) {
   const { THREE, gsap, camera, distBase, rnd, fondo, bloom, mundoW, mundoH } = ctx
 
+  // EL BLOOM ES DEL AIRE Y HAY QUE DEVOLVERLO. Es estado COMPARTIDO por toda la pieza. Esta escena lo
+  // BAJA a proposito —la marca ocupa media pantalla y con la floracion alta los huecos de la Anton se
+  // rellenan hasta que el nombre sale como un ladrillo—, pero lo bajaba a numeros absolutos calibrados
+  // contra la base de ANTHEM, asi que en un aire que declara 0.14 el "bajon" era en realidad una
+  // SUBIDA. Todo va relativo, y al final se devuelve: la pieza puede repetirse o crecer por atras.
+  const oBloom = (bloom && bloom.strength) || 0.85
+
   const g = new THREE.Group()
   const tl = gsap.timeline({ paused: true })
 
@@ -328,7 +335,7 @@ export function build(ctx) {
   tl.set(camera.position, { x: 0, y: 0, z: distBase }, 0)
   tl.set(camera.rotation, { x: 0, y: 0, z: 0 }, 0)
   tl.set(fondo.uPulso, { value: 0 }, 0)
-  tl.set(bloom, { strength: 0.22 }, 0)
+  tl.set(bloom, { strength: oBloom * 0.259 }, 0)
   tl.fromTo(fondo.uGrilla, { value: 0.28 }, { value: 0.28, duration: b(4.5), ease: 'none' }, 0)
 
   // --- BEAT 0 → 1 · el anillo se dibuja y CIERRA
@@ -356,8 +363,8 @@ export function build(ctx) {
   tl.fromTo(gAnillo.scale, { x: 1, y: 1, z: 1 }, { x: 1.055, y: 1.055, z: 1.055, duration: b(0.18), ease: E.frena(3) }, b(1))
   tl.to(gAnillo.scale, { x: 1, y: 1, z: 1, duration: b(0.7), ease: 'elastic.out(1, 0.45)' }, b(1.18))
   tl.to(aro.material.uniforms.uCabeza, { value: 0, duration: b(0.3), ease: E.frena(2) }, b(1))
-  tl.to(bloom, { strength: 0.40, duration: b(0.12), ease: E.frena(2) }, b(1))
-  tl.to(bloom, { strength: 0.22, duration: b(0.55), ease: E.vaiven(2) }, b(1.12))
+  tl.to(bloom, { strength: oBloom * 0.471, duration: b(0.12), ease: E.frena(2) }, b(1))
+  tl.to(bloom, { strength: oBloom * 0.259, duration: b(0.55), ease: E.vaiven(2) }, b(1.12))
   tl.set(fondo.uPulso, { value: 0.34 }, b(1))
   tl.to(fondo.uPulso, { value: 0, duration: b(0.85), ease: E.frena(2) }, b(1))
 
@@ -562,8 +569,8 @@ export function build(ctx) {
     tl.to(fondo.uPulso, { value: 0, duration: b(d), ease: E.frena(2) }, b(bt))
   }
   for (const bt of [2.5, 3.5]) {
-    tl.to(bloom, { strength: 0.34, duration: b(0.10), ease: E.frena(2) }, b(bt))
-    tl.to(bloom, { strength: 0.22, duration: b(0.40), ease: E.vaiven(2) }, b(bt + 0.10))
+    tl.to(bloom, { strength: oBloom * 0.400, duration: b(0.10), ease: E.frena(2) }, b(bt))
+    tl.to(bloom, { strength: oBloom * 0.259, duration: b(0.40), ease: E.vaiven(2) }, b(bt + 0.10))
   }
 
   // --- BEAT 4.5 → 6 · CIERRE. Todo se comprime, el bloom baja, queda el anillo.
@@ -571,8 +578,8 @@ export function build(ctx) {
   tl.to(fondo.uPulso, { value: 0, duration: b(0.8), ease: E.frena(2) }, b(4.5))
   tl.to(gComp.scale, { x: 0.90, y: 0.90, z: 0.90, duration: b(0.9), ease: E.vaiven(2) }, b(4.5))
   tl.to(gAnillo.scale, { x: 0.965, y: 0.965, z: 0.965, duration: b(0.9), ease: E.vaiven(2) }, b(4.5))
-  tl.to(bloom, { strength: 0.44, duration: b(0.28), ease: E.frena(2) }, b(4.5))
-  tl.to(bloom, { strength: 0.17, duration: b(0.80), ease: E.vaiven(2) }, b(4.78))
+  tl.to(bloom, { strength: oBloom * 0.518, duration: b(0.28), ease: E.frena(2) }, b(4.5))
+  tl.to(bloom, { strength: oBloom * 0.200, duration: b(0.80), ease: E.vaiven(2) }, b(4.78))
   tl.to(fondo.uGrilla, { value: 0.015, duration: b(0.95), ease: E.acelera(2) }, b(4.5))
 
   // salidas: por MÁSCARA y escalonadas, en orden inverso al de entrada
@@ -619,6 +626,9 @@ export function build(ctx) {
   // --- y el anillo se apaga en los últimos 3 frames
   tl.to(gAnillo.scale, { x: 1.05, y: 1.05, z: 1.05, duration: 3 * FRAME, ease: E.frena(2) }, t0Apagon)
   tl.to(aro.material.uniforms.uAlfa, { value: 0, duration: 3 * FRAME, ease: E.acelera(2) }, t0Apagon)
+  // Y el bloom vuelve al valor del aire en el mismo apagon. La pieza termina ahi, pero el post es
+  // estado compartido y dejarlo movido es exactamente el defecto que E-POST-DEVUELTO caza.
+  tl.set(bloom, { strength: oBloom }, FIN - FRAME)
 
   // La timeline se ARMA en pausa (así ningún tween corre mientras se la construye) pero se devuelve
   // corriendo. Un hijo pausado tiene timeScale 0 y el padre lo SALTEA al renderizar: colgado de la

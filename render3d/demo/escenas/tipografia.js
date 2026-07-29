@@ -62,6 +62,13 @@ const LUM = 0.655   // 0.655 x 0.887 = 0.581 lineal, apenas debajo del umbral
 
 export function build(ctx) {
   const { THREE, gsap, camera, distBase, mundoW, fondo, pelicula, bloom, rnd } = ctx
+  // EL BLOOM ES DEL AIRE Y HAY QUE DEVOLVERLO. Es estado COMPARTIDO por toda la pieza: una escena que
+  // lo mueve y lo deja movido se lo cambia a todas las que siguen. Esta escena lo subia y despues
+  // "restauraba" a un literal —el valor de ANTHEM—, asi que diez de los once aires terminaban la pieza
+  // con la floracion del aire tecnico. Un aire editorial declara 0.14 y seguia en 0.85: seis veces mas.
+  // Todo va RELATIVO a lo que puso el aire, para que el gesto valga igual en los once.
+  const oBloom = (bloom && bloom.strength) || 0.85
+
 
   const g = new THREE.Group()
   const tl = gsap.timeline({ paused: true })
@@ -468,8 +475,9 @@ export function build(ctx) {
     tl.to(pelicula.uFlash, { value: 0, duration: 2 * F, ease: E.acelera(2) }, t0)
   }
 
-  tl.to(bloom, { strength: 1.15, duration: b(1.0), ease: E.frena(2) }, b(6))
-  tl.to(bloom, { strength: 0.85, duration: b(0.5), ease: E.vaiven() }, b(7.1))
+  // 1.15 sobre una base de 0.85 es x1.35; 0.85 era la base misma, o sea x1.
+  tl.to(bloom, { strength: oBloom * 1.35, duration: b(1.0), ease: E.frena(2) }, b(6))
+  tl.to(bloom, { strength: oBloom, duration: b(0.5), ease: E.vaiven() }, b(7.1))
 
   // CÁMARA: un acercamiento lento que sostiene los 8 beats y dos ladeos secos sobre el tramo rápido.
   // Vuelve a su sitio antes del final — si no, la escena siguiente arranca desde otro punto de vista.

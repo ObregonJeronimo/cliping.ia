@@ -127,6 +127,20 @@ const ids = process.argv.slice(2).length
 
 if (!ids.length) { console.error('no hay escenas ni heroes en ' + DIRS.join(' ni ')); process.exit(1) }
 
+// ---- EL POST LIMPIO, con valores CENTINELA a proposito.
+//
+// El stub de esta compuerta estaba sembrado en 0.85 / 0.055 / 0.9 / 0.0022 — los valores de ANTHEM—, y
+// resulta que 0.85 es EXACTAMENTE el numero que `tipografia` tiene escrito a mano para "restaurar" el
+// bloom despues de subirlo. O sea que el fixture confirmaba el defecto en vez de cazarlo: una escena
+// que devuelve un literal en lugar del valor del aire pasaba en verde.
+//
+// Con numeros que nadie va a hardcodear, restaurar a mano falla siempre. Es la misma idea que un
+// centinela en un test de memoria: si el valor que sale es "redondo", alguien lo escribio.
+const POST_LIMPIO = {
+  strength: 0.6137, radius: 0.5411, threshold: 0.7219,
+  grano: 0.0731, vinieta: 0.8137, aberr: 0.00413, flash: 0,
+}
+
 const W = 1080, H = 1920, mundoH = 10, mundoW = mundoH * (W / H)
 const fov = 30
 const distBase = (mundoH / 2) / Math.tan((fov * Math.PI / 180) / 2)
@@ -183,8 +197,12 @@ for (const id of ids) {
   const ctx = {
     THREE, gsap, look: LOOK, W, H, mundoW, mundoH, camera, distBase, rnd, BEAT, b,
     fondo: uni(),
-    pelicula: { uT: { value: 0 }, uFlash: { value: 0 }, uGrano: { value: 0.055 }, uVinieta: { value: 0.9 }, uAberr: { value: 0.0022 } },
-    bloom: { strength: 0.85, radius: 0.62, threshold: 0.62 },
+    // Sembrado con POST_LIMPIO: valores CENTINELA, no los de ANTHEM. Ver la nota donde se declaran.
+    pelicula: {
+      uT: { value: 0 }, uFlash: { value: POST_LIMPIO.flash }, uGrano: { value: POST_LIMPIO.grano },
+      uVinieta: { value: POST_LIMPIO.vinieta }, uAberr: { value: POST_LIMPIO.aberr },
+    },
+    bloom: { strength: POST_LIMPIO.strength, radius: POST_LIMPIO.radius, threshold: POST_LIMPIO.threshold },
     // MATERIAL SINTETICO PARA LOS HEROES. Con `texturas` vacio, el hero de mosaico devolvia un grupo
     // vacio -que es lo correcto y honesto- y toda su logica de composicion quedaba SIN PROBAR: cuantas
     // columnas, como encaja cada pieza en su celda segun su relacion de aspecto, como se centra la
@@ -407,6 +425,14 @@ for (const id of ids) {
   configurarDatos(ANTHEM)
 
   let r
+  // SE VUELVE A DEJAR EL POST COMO ESTABA ANTES DE LA CONSTRUCCION QUE SE MIDE. Arriba hay otras dos
+  // construcciones —la de pagina pobre y la de E-ENCAJE— que reciben `{ ...ctx }`, o sea el MISMO
+  // objeto `bloom` y los mismos uniforms, y ya lo ensuciaron: `tl.set` de GSAP escribe al crearse.
+  // Sin este reset la compuerta comparaba contra un valor sucio y dejaba pasar justo lo que busca.
+  const POST0 = POST_LIMPIO
+  ctx.bloom.strength = POST0.strength; ctx.bloom.radius = POST0.radius; ctx.bloom.threshold = POST0.threshold
+  ctx.pelicula.uGrano.value = POST0.grano; ctx.pelicula.uVinieta.value = POST0.vinieta
+  ctx.pelicula.uAberr.value = POST0.aberr; ctx.pelicula.uFlash.value = POST0.flash
   try { r = await mod.build(ctx) } catch (e) { die(`${id}: build() lanzo — ${e.message}`); continue }
   ok(r && r.g && r.tl, `${id}: build() tiene que devolver { g, tl }`)
   if (!r || !r.g || !r.tl) continue
@@ -432,11 +458,40 @@ for (const id of ids) {
 
   // ---- CAMARA. Se recorre hasta el final y se comprueba que volvio. Si una escena mueve la camara y
   // no la devuelve, la siguiente arranca desde otro punto de vista y la pieza se desarma.
+  // SE RECORRE LA ESCENA ANTES DE MIRAR EL FINAL, y no es un detalle. Saltando directo al ultimo
+  // instante, una escena que escribe estado compartido desde un onUpdate entra por su rama de salida
+  // —"si u>=1 devuelvo la camara y me voy"— y NUNCA llega a escribir. `toro` pasaba asi: en el render
+  // real la timeline se recorre cuadro a cuadro y deja el bloom en 0.85, y aca daba verde porque el
+  // unico seek era al final. Treinta muestras alcanzan para que todo onUpdate haya corrido.
+  for (let k = 0; k <= 30; k++) r.tl.time((k / 30) * finPropio, false)
   r.tl.time(finPropio, false)
   const p = camera.position
   const vuelve = Math.abs(p.x) < 0.02 && Math.abs(p.y) < 0.02 && Math.abs(p.z - distBase) < 0.02
     && Math.abs(camera.rotation.x) < 0.01 && Math.abs(camera.rotation.y) < 0.01 && Math.abs(camera.rotation.z) < 0.01
   ok(vuelve, `${id}: la camara termina en (${p.x.toFixed(2)}, ${p.y.toFixed(2)}, ${p.z.toFixed(2)}) rot(${camera.rotation.x.toFixed(2)}, ${camera.rotation.y.toFixed(2)}, ${camera.rotation.z.toFixed(2)}) y tiene que volver a (0, 0, ${distBase.toFixed(2)}) rot(0,0,0)`)
+
+  // ---- EL POST TAMBIEN SE DEVUELVE. Es la misma regla que la camara y faltaba: bloom y el pase de
+  // pelicula son estado COMPARTIDO por toda la pieza, asi que una escena que los mueve y no los deja
+  // como los encontro se los cambia a TODAS las que siguen.
+  //
+  // Y no era teorico. `tipografia` subia el bloom a 1.15 y despues "restauraba" a 0.85 escrito a mano
+  // —el valor de ANTHEM, no el del aire—, y esta temprano en las cuatro ordenes del guion: diez de los
+  // once aires terminaban la pieza con la floracion del aire tecnico. Un aire editorial declara 0.14 y
+  // seguia en 0.85, seis veces mas bloom del que se calibro. La compuerta no podia verlo porque su
+  // propio fixture estaba sembrado en 0.85; ahora va con centinelas.
+  const postFin = [
+    ['bloom.strength', ctx.bloom.strength, POST0.strength],
+    ['bloom.radius', ctx.bloom.radius, POST0.radius],
+    ['bloom.threshold', ctx.bloom.threshold, POST0.threshold],
+    ['uGrano', ctx.pelicula.uGrano.value, POST0.grano],
+    ['uVinieta', ctx.pelicula.uVinieta.value, POST0.vinieta],
+    ['uAberr', ctx.pelicula.uAberr.value, POST0.aberr],
+    ['uFlash', ctx.pelicula.uFlash.value, POST0.flash],
+  ]
+  for (const [nombre, fin, ini] of postFin) {
+    ok(Math.abs(fin - ini) < 1e-4,
+      `${id}: deja ${nombre} en ${fin} y lo encontro en ${ini} — el post es estado COMPARTIDO y se lo cambia a todas las escenas que siguen`)
+  }
 
   // ---- NADA DESCANSA. Se recorre la timeline muestreando la posicion/escala/opacidad de todo el
   // grupo y se busca la ventana mas larga sin cambios. Un beat entero sin movimiento no es un
