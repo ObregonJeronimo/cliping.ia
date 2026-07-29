@@ -193,7 +193,17 @@ export function build(ctx) {
   // Se retira acelerando: una cortina que sale frenando se lee como que le costo, y esta tiene que
   // leerse como que la corrieron de un tiron. Termina en b(1.35), justo antes de que la grilla se
   // prenda en b(1.5) — el cuadro queda un instante desnudo y ahi cae el golpe.
-  de(cortina.position, { x: 0, y: 0 }, { x: mundoW * 2.5, y: mundoH * 1.5, duration: b(1.35), ease: E.acelera(2.4) }, 0)
+  // LA DURACION SE ACORTO CUANDO EL EASE SE ARREGLO, y es una leccion sobre no cambiar una curva sin
+  // mirar el cuadro. `acelera` producia un ease invalido y GSAP caia a power1.out —una DESACELERACION—,
+  // asi que la cortina salia disparada en el primer frame y despues se arrastraba. Al arreglarlo empezo
+  // a acelerar de verdad... y con 1.35 beats de recorrido eso significa que la primera mitad del tiempo
+  // no recorre casi nada: medido sobre el render, 32 cuadros seguidos —un segundo entero— con el cuadro
+  // tapado por una pared de color plana. Justo el segundo en que el espectador decide si sigue mirando,
+  // que es lo que el encabezado de este archivo dice que hay que proteger.
+  //
+  // Con 0.8 beats la cortina despeja a los 0.23 s en vez de 0.41 y el gesto sigue siendo el correcto:
+  // arranca lenta y se va acelerando. La curva estaba bien; el tiempo estaba calibrado para la otra.
+  de(cortina.position, { x: 0, y: 0 }, { x: mundoW * 2.5, y: mundoH * 1.5, duration: b(0.8), ease: E.acelera(2.4) }, 0)
   tl.set(cortina, { visible: false }, b(1.4))
 
   // ================================================================ A · el filete cruza el cuadro
