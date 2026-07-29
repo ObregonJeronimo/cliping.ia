@@ -461,6 +461,16 @@ export function fondoVivo(mundoW, mundoH) {
       // Que patron dibuja el fondo. Ver MOBILIARIO_BASE arriba: es lo que hace que una pieza de
       // lujo no tenga la misma grilla de ingenieria que una de software.
       uPatron: { value: Math.max(0, PATRONES.indexOf(MOB.fondo)) },
+      // LA FORMA DE LA LUZ DEL FONDO, que era un ovalo centrado fijo e identico en los once aires:
+      // `distance(uv, vec2(0.5, 0.58))` con umbrales escritos a mano. Apilado sobre la viñeta —que
+      // tenia el mismo problema— daba la esquina del cuadro al 38% de la luminancia del centro en
+      // TODA pieza de TODO aire. Es la otra mitad del "recuadro en los cuatro costados".
+      //   uFonForma  0 = ovalo (foco), 1 = CAJA (pared iluminada pareja). No es el mismo degrade con
+      //              otro numero: uno concentra la luz en un punto y el otro la reparte por lados.
+      //   uFonCentro donde nace la luz. El default (0.5, 0.58) es el de siempre.
+      uFonForma: { value: (MOB.fondoForma || 0) },
+      uFonCentro: { value: new THREE.Vector2(...(MOB.fondoCentro || [0.5, 0.58])) },
+      uFonAsp: { value: (MOB.fondoAsp || 1) },
       // 1 = mundo claro. La grilla y el pulso son ADITIVOS, que es lo correcto sobre negro y un
       // desastre sobre blanco: sumar sobre un fondo que ya está en 1.0 no aclara nada, sólo desatura
       // hasta el gris. En claro las mismas dos cosas tienen que OSCURECER hacia el acento.
@@ -469,11 +479,17 @@ export function fondoVivo(mundoW, mundoH) {
     vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
     fragmentShader: `
       uniform float uT, uGrilla, uPulso, uClaro, uBeat, uPatron; uniform vec3 uA, uB, uAcento, uAcento2;
+      uniform float uFonForma, uFonAsp; uniform vec2 uFonCentro;
       varying vec2 vUv;
       float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898,78.233)))*43758.5453); }
       void main(){
         vec2 uv = vUv;
-        vec3 col = mix(uA, uB, smoothstep(0.95, 0.05, distance(uv, vec2(0.5, 0.58))));
+        // Las dos normas se llevan al mismo maximo o la forma no hace nada: el ovalo toca 0.77 en la
+        // esquina y la norma del maximo 0.58. Es la leccion que costo un render de mas en la viñeta.
+        vec2 df = (uv - uFonCentro) * vec2(uFonAsp, 1.0);
+        float dOv = length(df);
+        float dCa = max(abs(df.x), abs(df.y)) * 1.4142;
+        vec3 col = mix(uA, uB, smoothstep(0.95, 0.05, mix(dOv, dCa, uFonForma)));
         // EL PATRON DEL FONDO LO PIDE EL AIRE. Seis, y ninguno es decorado: cada uno dice de que
         // clase de negocio es la pieza antes de que se lea una palabra. La grilla en fuga —la de
         // ANTHEM— dice espacio y tecnologia, y sobre una panaderia dice 'software de panaderia'.

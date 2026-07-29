@@ -186,11 +186,29 @@ for (const [rubro, aires] of porRubro) {
 //
 // Se mide la terna completa (forma, centro, aspecto) porque cambiar solo la intensidad es exactamente
 // el error que este archivo existe para cazar: variedad de parametro disfrazada de variedad de tipo.
+// LAS DOS CAPAS, no solo la viñeta. El "recuadro en los cuatro costados" lo hacian DOS mascaras
+// radiales apiladas: la viñeta del pase de post y el degrade del fondo, las dos centradas, las dos
+// con umbrales escritos a mano y las dos identicas en los once aires. Medido antes de tocarlas: la
+// esquina del cuadro quedaba al 38% de la luminancia del centro en TODA pieza de TODO aire. Auditar
+// una sola dejaba la otra libre para volver a igualarlo todo.
 const firmaLuz = (a) => {
   const p = a.pelicula || {}
+  const m = a.mobiliario || {}
   return `${p.vinietaForma || 0}|${(p.vinietaCentro || [0.5, 0.5]).join(',')}|${p.vinietaAsp || 1}`
+    + `//${m.fondoForma || 0}|${(m.fondoCentro || [0.5, 0.58]).join(',')}|${m.fondoAsp || 1}`
 }
 const lucesVivas = new Set([...producidos].map(n => firmaLuz(AIRES[n] || {})))
+// CADA CAPA POR SEPARADO. Con la firma combinada alcanza que UNA de las dos varie para dar verde, y
+// probandolo se vio: revirtiendo la luz del fondo en los diez aires, la compuerta seguia en verde
+// porque las viñetas solas ya daban once firmas. Pero el recuadro lo hacen las DOS apiladas, asi que
+// dejar una plana devuelve la mitad del defecto. Se exige que las dos repartan.
+const fondosVivos = new Set([...producidos].map(n => {
+  const m = (AIRES[n] || {}).mobiliario || {}
+  return `${m.fondoForma || 0}|${(m.fondoCentro || [0.5, 0.58]).join(',')}|${m.fondoAsp || 1}`
+}))
+if (fondosVivos.size < 4) {
+  F('E-LUZ-VARIEDAD', `el degrade del fondo reparte solo ${fondosVivos.size} formas entre los aires alcanzables; hacen falta 4. Es la segunda mitad del recuadro: la viñeta puede variar y el fondo seguir siendo el mismo ovalo centrado en los once`)
+}
 if (lucesVivas.size < 6) {
   F('E-LUZ-VARIEDAD', `los aires alcanzables reparten solo ${lucesVivas.size} formas de luz distintas; hacen falta 6`)
 }
