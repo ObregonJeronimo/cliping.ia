@@ -64,7 +64,10 @@ export default {
     llega: (n = 2.2) => `back.out(${Math.min(4.0, n * 1.5).toFixed(2)})`,
     frena: (n = 2) => (n >= 5 ? 'expo.out' : 'power3.out'),
     acelera: (n = 2) => (n >= 3 ? 'expo.in' : `power${Math.min(4, n + 2)}.in`),
-    vaiven: (n = 0) => (n ? 'power2.inOut' : 'sine.inOut'),
+    // expo.inOut arranca y termina casi detenido y cruza el medio de golpe: es un pulso, no una
+    // oscilacion. Es la respiracion de un lugar con luz estroboscopica, y estaba en sine.inOut, o sea
+    // la misma que ocho de los once aires.
+    vaiven: (n = 0) => (n ? 'power3.inOut' : 'expo.inOut'),
   },
   // Camara suelta: en un video de fiesta la camara nunca esta en tripode.
   camara: { dolly: 1.35, orbita: 1.25 },

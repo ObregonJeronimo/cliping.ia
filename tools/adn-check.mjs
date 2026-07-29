@@ -250,6 +250,37 @@ for (const [rubro, aires] of porRubro) {
   }
 }
 
+// ---------------------------------------------------------------- E-GESTO-VARIEDAD
+// TRES LLAMADAS SON EL 54% DE TODO EL MOVIMIENTO DEL MOTOR. Medido sobre las 600 llamadas a E.* de
+// escenas y heroes: acelera(2) 115 usos, frena(2) 113, vaiven() 98. Si los aires colapsan ahi, colapsan
+// en mas de la mitad de lo que se mueve, por mucho que difieran en los verbos raros.
+//
+// Y colapsaban: `vaiven()` daba sine.inOut en NUEVE de once aires. Entre ellos lujo, nocturno y
+// jugueton — tres personalidades opuestas respirando exactamente igual que el aire tecnico.
+//
+// El criterio no es "todos distintos", que seria variedad nominal: hay aires calmos a los que sine.inOut
+// les corresponde. Es que dos aires alcanzables desde el MISMO rubro —o sea el par que un cliente puede
+// llegar a ver uno al lado del otro— no se muevan igual en las tres llamadas dominantes.
+const DOMINANTES = [['vaiven', undefined], ['acelera', 2], ['frena', 2]]
+const kitG = await import('../render3d/demo/kit.js')
+const firmaGesto = (aire) => {
+  kitG.configurar(aire)
+  return DOMINANTES.map(([v, a]) => kitG.E[v](a)).join('|')
+}
+const gestosVivos = new Set([...producidos].map(n => firmaGesto(AIRES[n])))
+if (gestosVivos.size < 5) {
+  F('E-GESTO-VARIEDAD', `los aires alcanzables se mueven con solo ${gestosVivos.size} combinaciones distintas en las tres llamadas que son el 54% del movimiento; hacen falta 5`)
+}
+for (const [rubro, aires] of porRubro) {
+  const vistos = new Map()
+  for (const nombre of aires) {
+    const f = firmaGesto(AIRES[nombre])
+    if (vistos.has(f)) F('E-GESTO-VARIEDAD', `rubro "${rubro}": los aires "${nombre}" y "${vistos.get(f)}" se mueven IGUAL en las tres llamadas dominantes (${f})`)
+    else vistos.set(f, nombre)
+  }
+}
+kitG.configurar(null)
+
 // ---------------------------------------------------------------- E-HALACION
 // La halacion tiñe los mips ANCHOS del bloom: es la luz que atraveso la emulsion, rebota contra el
 // soporte y vuelve teñida por la capa roja. Un neon blanco en pelicula tiene aura naranja; en digital
@@ -312,3 +343,4 @@ console.log(`  los 11 declaran su mobiliario y reparten ${marcosVivos.size} marc
 console.log(`  los 11 declaran su montaje y reparten ${montajesVivos.size} formas distintas de cortar.`)
 console.log(`  y ${lucesVivas.size} recortes de luz distintos (forma x centro x aspecto), no solo intensidades.`)
 console.log(`  ${Object.values(AIRES).filter(a => (a.pelicula || {}).halacion).length} aires tiñen el halo (halacion), el resto lo deja blanco.`)
+console.log(`  y ${gestosVivos.size} formas distintas de moverse en las tres llamadas que son el 54% del movimiento.`)

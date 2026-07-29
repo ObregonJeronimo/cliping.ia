@@ -40,7 +40,11 @@ export default {
     llega: () => 'power4.out',
     frena: () => 'power4.out',
     acelera: () => 'power2.in',
-    vaiven: () => 'sine.inOut',
+    // El vaiven mas LENTO del catalogo. power3.inOut se demora en los extremos: la cosa llega, se
+    // queda un instante de mas y recien vuelve. Es la diferencia entre algo que oscila y algo que se
+    // toma su tiempo — y este aire declara en su encabezado que nunca se apura. Estaba en sine.inOut,
+    // o sea respirando igual que el aire tecnico.
+    vaiven: () => 'power3.inOut',
   },
   camara: { dolly: 0.45, orbita: 0.35 },
   // bloom bajo y grano fino: el brillo del oro tiene que leerse como metal, no como neón.

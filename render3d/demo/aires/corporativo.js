@@ -65,7 +65,11 @@ export default {
     // frenadas de potencia MEDIA: ni el deslizamiento largo de un power4 ni el frenazo de un power5.
     frena: (n = 2) => `power${Math.min(3, Math.max(2, Math.round(n)))}.out`,
     acelera: (n = 2) => `power${Math.min(3, Math.max(2, Math.round(n)))}.in`,
-    vaiven: () => 'sine.inOut',
+    // power1.inOut es la oscilacion mas NEUTRA que hay: casi lineal, sin acento en los extremos. Es
+    // la coherente con el resto de este bloque —'ni el deslizamiento largo ni el frenazo'— y ademas
+    // lo separa del aire tecnico, con el que compartia las TRES curvas dominantes siendo los dos
+    // alcanzables desde saas, app y otro: el par que un cliente puede ver uno al lado del otro.
+    vaiven: () => 'power1.inOut',
   },
   // camara medida y casi sin orbita: el punto de vista de esta pieza no se pasea, se acomoda.
   camara: { dolly: 0.7, orbita: 0.35 },

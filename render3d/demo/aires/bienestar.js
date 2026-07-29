@@ -67,7 +67,11 @@ export default {
     // Nada se pasa: 0.2 de la fuerza pedida es un overshoot de milimetros. Se POSA, pero sigue vivo el
     // frame en que llega, que es la diferencia entre calmo y congelado.
     llega: (n = 2.2) => `back.out(${(n * 0.2).toFixed(2)})`,
-    frena: (n = 2) => (n >= 5 ? 'power3.out' : 'power2.out'),
+    // sine.out es la frenada mas SUAVE del vocabulario: entra desacelerando desde el primer frame y
+    // no tiene el tiron inicial de una potencia. Es literalmente 'se posa', que es lo que dice el
+    // comentario de arriba, y power2.out no lo era — era la curva del aire base. Compartia las tres
+    // dominantes con gastronomico, y los dos salen del mismo rubro (servicio-local).
+    frena: (n = 2) => (n >= 5 ? 'power2.out' : 'sine.out'),
     acelera: () => 'power2.in',
     vaiven: () => 'sine.inOut',
   },

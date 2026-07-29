@@ -72,7 +72,9 @@ export default {
     frena: (n = 2) => (n >= 5 ? 'expo.out' : 'back.out(1.05)'),
     // Salir tomando impulso hacia atras primero: es la anticipacion de dibujo animado y es gratis.
     acelera: (n = 2) => `back.in(${(1.1 + n * 0.15).toFixed(2)})`,
-    vaiven: (n = 0) => (n ? 'power1.inOut' : 'sine.inOut'),
+    // Se pasa de largo en LOS DOS extremos. Es el unico aire donde el vaiven rebota, y es el unico
+    // donde corresponde: todo lo demas de este archivo dice lo mismo.
+    vaiven: (n = 0) => (n ? 'back.inOut(1.3)' : 'back.inOut(1.05)'),
   },
   // Camara con juego: se mueve mas que la del aire tecnico pero sin la violencia de la deportiva.
   camara: { dolly: 1.25, orbita: 1.15 },
