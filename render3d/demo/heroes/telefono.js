@@ -65,22 +65,21 @@ export function build(ctx) {
   const tl = gsap.timeline({ paused: true })
 
   const tira = texturas && texturas.get('tira')
-  // CUANTA PAGINA SE VE, Y POR QUE NO ES "UNA PANTALLA ENTERA".
-  // La tira se captura a 720 px de ancho (un viewport movil a 2x). La pantalla del telefono ocupa
-  // unos 600 px del cuadro de 1080, asi que mostrar un viewport completo deja la tipografia de la
-  // pagina en ~10 px de alto. A ese tamaño NINGUN filtro la salva: el aparato esta inclinado en 3D,
-  // el muestreo nunca cae texel-a-pixel, y el texto sale con una franja mas clara cruzando cada
-  // renglon —se veia como si estuviera tachado—. No es un problema de mipmaps: se probo sin ellos y
-  // salio igual, y la tira ORIGINAL esta perfectamente nitida, asi que el ruido lo agrega el
-  // remuestreo, no la captura.
-  //
-  // Por eso se muestra la MITAD de un viewport, al doble de tamaño. Es lo que hace cualquier mockup
-  // de producto: nadie filma un telefono para que se lea la pagina entera, lo filma para que se lea
-  // UNA cosa. Ademas el scroll sigue recorriendo la pagina, asi que no se pierde contenido: se
-  // pierde simultaneidad, que es justo lo que sobraba.
-  const ZOOM = 2
-  const altoVP = ((spec && spec.tiraViewport) || 1560) / ZOOM
+  const altoVP = (spec && spec.tiraViewport) || 1560
   const altoTira = tira && tira.image ? tira.image.height : altoVP
+  const anchoTira = tira && tira.image ? (tira.image.width || 720) : 720
+
+  // EL TAMAÑO DECIDE SI LA PÁGINA SE LEE O ES RUIDO. A 0.60 de alto de cuadro el teléfono entra
+  // entero y elegante, y el texto de la página queda en seis píxeles: una textura gris que no dice
+  // nada. Un reel de producto encuadra el aparato GRANDE, aunque se salga del cuadro — es lo que
+  // hace cualquier anuncio de teléfono. A 0.86 el mismo texto mide un 43% más y ya se lee.
+  const ALTO = mundoH * 0.86
+  const ANCHO = ALTO * AR
+  const GRUESO = ANCHO * 0.085
+  const R = ANCHO * R_ESQ
+  // La pantalla, calculada acá arriba porque de su PROPORCION sale cuanta pagina se puede mostrar.
+  const pw = ANCHO * (1 - BISEL * 1.7)
+  const ph = ALTO * (1 - BISEL * 1.7 * AR)
 
   // LA FRANJA SEGURA DE ARRIBA, y no es decoracion. La isla dinamica vive entre el 94.3% y el 98.7% de
   // la altura de la pantalla, y la pagina se dibujaba POR DEBAJO: en el render se leia "The pr____ct",
@@ -95,7 +94,26 @@ export function build(ctx) {
   // es exactamente el estirado que el dueño de la marca ve antes que nadie. Se muestra MENOS pagina en
   // la misma escala: la ventana pierde los pixeles que la franja se lleva.
   const SEGURO = 0.068
-  const VENTANA_PX = altoVP * (1 - SEGURO)
+
+  // CUANTA PAGINA ENTRA: LA QUE LA PROPORCION DE LA PANTALLA PERMITE, NI UN PIXEL MAS.
+  //
+  // EL DEFECTO, MEDIDO. Habia un `ZOOM = 2` que mostraba MEDIO viewport "al doble de tamaño" — y solo
+  // recortaba el ALTO. El ancho seguia siendo la tira entera. O sea que 720 x 727 pixeles de pagina se
+  // mapeaban sobre un plano de proporcion 0.4486: escala horizontal 0.0052 unidades por pixel contra
+  // 0.0108 vertical. LA PAGINA SALIA ESTIRADA 2.06 VECES A LO ALTO, y por eso el titular de linear se
+  // leia con las letras altas y flacas. Thiago lo dijo dos veces —"la imagen aplastada"— y las dos
+  // veces busque el defecto en el recorte, que era donde no estaba.
+  //
+  // Y EL ZOOM NUNCA HIZO FALTA. Su comentario decia que un viewport completo deja la tipografia en
+  // ~10 px; medido con la geometria actual, la pantalla mide 723 px del cuadro de 1080 contra los 720
+  // de la tira, o sea 1.004 pixeles de pantalla por pixel de captura. La captura es a 2x, asi que un
+  // cuerpo de 16 px CSS llega a la pantalla con 32 px de alto. El "10 px" venia de cuando el aparato
+  // media 0.60 del cuadro, y quedo escrito despues de agrandarlo a 0.86.
+  //
+  // La cuenta unica: el ancho de la tira ocupa `pw`, asi que un alto de ventana `H` ocupa `H*pw/ancho`.
+  // Igualando eso a la altura util del plano —`ph` menos la franja segura— sale el H que no deforma.
+  // Escrito asi, la proporcion no puede romperse si mañana cambia el bisel o el tamaño del aparato.
+  const VENTANA_PX = anchoTira * ph * (1 - SEGURO) / pw
 
   // DONDE de la pagina se scrollea, MEDIDO. El 24% de la tira que se recorria antes es, en linear.app,
   // el camino que va del vacio de arriba a la captura de escritorio: 390 px en blanco y despues mil
@@ -113,15 +131,6 @@ export function build(ctx) {
     : 0
   const RECOR = altoTira > 0 ? Math.min(vl.recorrido / altoTira, OFF0) : 0
   const VENT = { off0: OFF0, rec: RECOR }
-
-  // EL TAMAÑO DECIDE SI LA PÁGINA SE LEE O ES RUIDO. A 0.60 de alto de cuadro el teléfono entra
-  // entero y elegante, y el texto de la página queda en seis píxeles: una textura gris que no dice
-  // nada. Un reel de producto encuadra el aparato GRANDE, aunque se salga del cuadro — es lo que
-  // hace cualquier anuncio de teléfono. A 0.86 el mismo texto mide un 43% más y ya se lee.
-  const ALTO = mundoH * 0.86
-  const ANCHO = ALTO * AR
-  const GRUESO = ANCHO * 0.085
-  const R = ANCHO * R_ESQ
 
   // DOS GRUPOS, Y NO ES UN CAPRICHO. `gTel` hace la LLEGADA y la SALIDA; `gFlota`, hijo suyo, hace el
   // vaivén continuo. Separarlos evita que dos tweens escriban la misma propiedad y se pisen.
@@ -199,8 +208,6 @@ export function build(ctx) {
     tira.repeat.set(1, visible)
     tira.offset.set(0, OFF0)                             // arranca donde la página se LEE
 
-    const pw = ANCHO * (1 - BISEL * 1.7)
-    const ph = ALTO * (1 - BISEL * 1.7 * AR)
     // TODO LO QUE PASA SOBRE LA PANTALLA PASA EN ESTE SHADER, y por una razón concreta: cualquier cosa
     // que se dibuje como un plano aparte —un reflejo, la isla— es un rectángulo que asoma por fuera del
     // bisel curvo. El primer intento puso el reflejo en su propio plano y salió un rombo celeste

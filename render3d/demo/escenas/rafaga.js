@@ -25,7 +25,7 @@
 // otra — no hay ráfaga de nada.
 
 import { LOOK, b, E, hex, texto, planoRecorte, recortesDe, nivel, matAcento, dolly } from '../kit.js'
-import { D, frase, nFrases, marca } from '../datos.js'
+import { D, marca, repartirFrases } from '../datos.js'
 
 export const meta = { id: 'rafaga', beats: 6 }
 
@@ -53,11 +53,10 @@ export function build(ctx) {
     const tex = texturas && texturas.get(e.url)
     if (tex && tex.image) recortes.push(tex)
   }
-  const frases = []
-  for (let i = 0; i < nFrases(); i++) {
-    const f = frase(i)
-    if (f) frases.push(String(f).replace(/\n/g, ' '))
-  }
+  // Del mostrador, no desde la primera. Esta escena alterna recorte y frase, asi que con SLOTS=6 usa
+  // tres: pedir mas seria vaciar el pozo para las escenas de texto que vengan despues. El salto de
+  // linea se aplana porque aca la frase pasa un beat y dos renglones compiten con el recorte de atras.
+  const frases = repartirFrases(3).map(f => String(f).replace(/\n/g, ' '))
 
   // Se ALTERNA, y se arranca por el recorte. Con las frases primero, los primeros cuadros de la
   // ráfaga son tipografía y la escena se confunde con la de tipografía cinética que suele venir

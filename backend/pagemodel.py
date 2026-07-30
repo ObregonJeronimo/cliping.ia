@@ -79,6 +79,19 @@ def _s(v, n=None):
     return (cut[:sp] if sp >= n * 0.6 else cut).strip()
 
 
+# EL TITULO DE UNA FEATURE YA VIENE ENTERO Y NO SE VUELVE A CORTAR.
+#
+# Estaba en 28 y era el SEGUNDO de tres recortes ciegos encadenados sobre el mismo texto: la semantica
+# cortaba a 28, esto volvia a cortar a 28 y el motor cortaba otra vez a 22. Lo que llegaba al video eran
+# fragmentos —"MAKE PRODUCT", "PICK A PACKAGE", "THE SAME CORE"— publicados como si fueran frases.
+#
+# `_titulo_util` en semantica_gratis.py ya garantiza que un titulo entra entero o recortado a un numero
+# entero de ORACIONES, con un techo de 48. Este tope queda como red: capa a lo mismo que el de arriba, asi
+# que en la practica no corta nada, y si algun dia otro camino alimenta este campo con un texto largo, el
+# corte sigue siendo en limite de palabra y no a mitad.
+TITULO_MAX = 48
+
+
 def _f(v, default, lo, hi, dec=2):
     try:
         x = float(v)
@@ -413,11 +426,11 @@ def _norm_semantica(sem_raw, brief, content):
     features = []
     for f in _list(s.get("features"))[:6]:
         if isinstance(f, str):
-            features.append({"titulo": _s(f, 28), "detalle": ""})
+            features.append({"titulo": _s(f, TITULO_MAX), "detalle": ""})
         elif isinstance(f, dict):
-            features.append({"titulo": _s(f.get("titulo"), 28), "detalle": _s(f.get("detalle"), 90)})
+            features.append({"titulo": _s(f.get("titulo"), TITULO_MAX), "detalle": _s(f.get("detalle"), 90)})
     if not features:                                      # fallback al brief legacy (bullets)
-        features = [{"titulo": _s(b, 28), "detalle": ""} for b in _list(c.get("bullets"))[:6] if _s(b)]
+        features = [{"titulo": _s(b, TITULO_MAX), "detalle": ""} for b in _list(c.get("bullets"))[:6] if _s(b)]
     features = [f for f in features if f["titulo"]]
 
     pr = _dict(s.get("pruebas"))

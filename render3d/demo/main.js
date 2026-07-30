@@ -15,8 +15,8 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js'
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js'
-import { BEAT, b, LOOK, CLARO, AIRE, hex, mulberry32, fondoVivo, configurar, MONTAJES } from './kit.js'
-import { configurarDatos } from './datos.js'
+import { BEAT, b, LOOK, CLARO, AIRE, hex, mulberry32, fondoVivo, configurar, MONTAJES, reiniciarRecortes } from './kit.js'
+import { configurarDatos, reiniciarReparto } from './datos.js'
 import { personalizar } from './adn.js'
 import { ESCENAS } from './escenas/index.js'
 import { guionDe, ajusteDe } from './guion.js'
@@ -317,6 +317,11 @@ export class Anthem {
     // Cuantas veces se construyo ya cada id. Una pieza de 30 s lleva tres escenas de hero, y sin este
     // numero las tres eligen el mismo objeto: el mismo telefono tres veces con otro corte en el medio,
     // que es peor que no repetir. Con el, cada una toma el siguiente hero elegible.
+    // EL MOSTRADOR ARRANCA EN CERO EN CADA PIEZA. Sin esto, un proceso que arma dos videos seguidos
+    // —el arnes de las compuertas hace exactamente eso— reparte a la segunda pieza las frases que
+    // sobraron de la primera, y el render deja de ser reproducible desde el spec.
+    reiniciarReparto()
+    reiniciarRecortes()
     const repeticiones = new Map()
     for (const mod of lista) {
       const ctx = {

@@ -82,7 +82,7 @@ console.warn = (...a) => { AVISOS.push(a.join(' ')); }
 const { gsap } = await import(pathToFileURL(join(RAIZ, 'node_modules', 'gsap', 'dist', 'gsap.js')).href)
 globalThis.gsap = gsap
 const THREE = await import(pathToFileURL(join(RAIZ, 'node_modules', 'three', 'build', 'three.module.js')).href)
-const { BEAT, LOOK, b, limpiarCache } = await import(pathToFileURL(join(HERE, 'kit.js')).href)
+const { BEAT, LOOK, b, limpiarCache, reiniciarRecortes } = await import(pathToFileURL(join(HERE, 'kit.js')).href)
 
 // Texturas de mentira con relaciones de aspecto de verdad. Los heroes solo leen `image.width/height`
 // para decidir la composicion, asi que un canvas de 4 px alcanza y no cuesta memoria: lo que se esta
@@ -225,7 +225,7 @@ for (const id of ids) {
   // ---- PAGINA POBRE. Antes de nada, se construye la escena con el material MINIMO que puede dar una
   // pagina real: una cifra, una frase, sin bloque y sin CTA. Es el caso que rompe, y el que el
   // verificador no miraba: con los datos de ANTHEM (cinco de todo) toda escena parece correcta.
-  const { configurarDatos, ANTHEM } = await import(pathToFileURL(join(HERE, 'datos.js')).href)
+  const { configurarDatos, ANTHEM, reiniciarReparto } = await import(pathToFileURL(join(HERE, 'datos.js')).href)
   const CENTINELA = 'ZZQX'
   configurarDatos({ marca: CENTINELA, rotulo: CENTINELA, claim: CENTINELA + ' UNO',
     frases: [CENTINELA + ' UNO'], bloque: null,
@@ -236,6 +236,7 @@ for (const id of ids) {
     const camPobre = new THREE.PerspectiveCamera(fov, W / H, 0.1, 400)
     camPobre.position.set(0, 0, distBase)
     let sp = 1
+    reiniciarReparto(); reiniciarRecortes()
     const rp = await mod.build({ ...ctx, camera: camPobre, fondo: uni(), rnd: () => { sp = (sp * 1664525 + 1013904223) >>> 0; return sp / 4294967296 } })
     ok(rp && rp.g, `${id}: con una pagina POBRE no devolvio grupo`)
     if (rp && rp.tl) rp.tl.time(mod.meta.beats * BEAT, false)
@@ -322,6 +323,7 @@ for (const id of ids) {
       const cm = new THREE.PerspectiveCamera(fov, W / H, 0.1, 400)
       cm.position.set(0, 0, distBase)
       let sm = 1
+      reiniciarReparto(); reiniciarRecortes()
       rm = await mod.build({ ...ctx, camera: cm, fondo: uni(), rnd: () => { sm = (sm * 1664525 + 1013904223) >>> 0; return sm / 4294967296 } })
     } catch (e) { die(`E-ENCAJE ${id}: con la marca "${marca}" build() lanzo — ${e.message}`); continue }
     if (!rm || !rm.g) continue
@@ -436,6 +438,7 @@ for (const id of ids) {
   ctx.bloom.strength = POST0.strength; ctx.bloom.radius = POST0.radius; ctx.bloom.threshold = POST0.threshold
   ctx.pelicula.uGrano.value = POST0.grano; ctx.pelicula.uVinieta.value = POST0.vinieta
   ctx.pelicula.uAberr.value = POST0.aberr; ctx.pelicula.uFlash.value = POST0.flash
+  reiniciarReparto(); reiniciarRecortes()
   try { r = await mod.build(ctx) } catch (e) { die(`${id}: build() lanzo — ${e.message}`); continue }
   ok(r && r.g && r.tl, `${id}: build() tiene que devolver { g, tl }`)
   if (!r || !r.g || !r.tl) continue
@@ -546,6 +549,7 @@ for (const id of ids) {
   camera2.position.set(0, 0, distBase)
   let semilla2 = 1
   const ctx2 = { ...ctx, camera: camera2, fondo: uni(), rnd: () => { semilla2 = (semilla2 * 1664525 + 1013904223) >>> 0; return semilla2 / 4294967296 } }
+  reiniciarReparto(); reiniciarRecortes()
   const r2 = await mod.build(ctx2)
   r.tl.time(finPropio * 0.5, false); const fa = firma()
   const gg = r.g; const guardar = gg

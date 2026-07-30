@@ -58,6 +58,26 @@ function corto(t, n) {
   return sinColgar((sp > n * 0.45 ? c.slice(0, sp) : c).trim())
 }
 
+// Compone una frase en uno o dos renglones, SIN recortarla. Devuelve [] si no hay frase, nunca un
+// pedazo. El tope duro de 52 es el unico caso en que se cae algo, y no deberia ocurrir: `_titulo_util`
+// en el extractor ya garantiza 48 como maximo. Existe por si otro camino alimenta este campo.
+function enRenglones(t, unaLinea) {
+  const s = String(t || '').replace(/\s+/g, ' ').trim()
+  if (!s || s.length > 52) return []
+  if (s.length <= unaLinea) return [s]
+  // El punto de quiebre es el que deja los dos renglones MAS PAREJOS, no la mitad de las palabras: con
+  // "Move work forward across teams and agents" partir por palabras da 21/19 y por largo 22/18; la
+  // diferencia se nota en el bloque, porque el ojo lee el desnivel antes que el texto.
+  const pal = s.split(' ')
+  if (pal.length < 2) return [s]
+  let mejor = 1, dif = Infinity
+  for (let k = 1; k < pal.length; k++) {
+    const a = pal.slice(0, k).join(' ').length, b2 = pal.slice(k).join(' ').length
+    if (Math.abs(a - b2) < dif) { dif = Math.abs(a - b2); mejor = k }
+  }
+  return [pal.slice(0, mejor).join(' ') + String.fromCharCode(10) + pal.slice(mejor).join(' ')]
+}
+
 // La tipografia cinetica quiere frases de UNA o DOS palabras que peguen. Una oracion entera en un
 // cuadro a 3 unidades de alto sale ilegible, y partirla en renglones la vuelve un parrafo.
 // Se prefiere: el claim partido en dos renglones, despues los titulos de features, despues verbos.
@@ -79,27 +99,26 @@ function frasesDe(pm) {
   // ese rubro se admiten cuarenta y se parten en DOS RENGLONES equilibrados, que es como se compone un
   // titular en cualquier portada: asi la tipografia queda al doble de alto que puesta en una sola
   // linea, y a una sola linea de cuarenta caracteres no se lee nada.
+  // UNA FRASE ENTRA ENTERA O NO ENTRA — no se recorta nunca mas.
+  //
+  // Esto recortaba a 22 caracteres SOBRE un pagemodel que ya venia recortado a 28, dos cortes ciegos
+  // encadenados, y lo que llegaba al video eran cuatro fragmentos: "MAKE PRODUCT", "MOVE WORK
+  // FORWARD", "PICK A PACKAGE", "THE SAME CORE". Arriba, `_titulo_util` ya garantiza que lo que llega
+  // es una frase completa de 48 caracteres o menos; aca lo unico que queda por decidir es en cuantos
+  // renglones se compone, y eso es una decision de TIPOGRAFIA, no un recorte de contenido.
+  //
+  // Pasados 28 caracteres va en DOS RENGLONES equilibrados. Es como se compone un titular en cualquier
+  // portada: la tipografia queda al doble de alto que en una sola linea, y a una sola linea de
+  // cuarenta caracteres el cuadro obliga a un cuerpo que no se lee.
   const esMedio = s.tipoNegocio === 'media'
-  for (const f of (s.features || []).slice(0, esMedio ? 1 : 4)) {
-    const t = corto(f.titulo, esMedio ? 40 : 22)
-    if (!t) continue
-    if (esMedio && t.length > 20) {
-      const pal = t.split(' ')
-      const mitad = Math.ceil(pal.length / 2)
-      out.push(pal.slice(0, mitad).join(' ') + String.fromCharCode(10) + pal.slice(mitad).join(' '))
-    } else out.push(t)
+  for (const f of (s.features || []).slice(0, esMedio ? 1 : 5)) {
+    out.push(...enRenglones(f.titulo, esMedio ? 20 : 28))
   }
   // EN UN MEDIO, `comoFunciona` trae los TITULARES y son el contenido principal, no un apoyo: van
   // primero y con el largo que necesitan. Ver backend/semantica_gratis.py — un medio no tiene
   // features, tiene titulares, y meterlos en el campo de etiquetas los partia al medio.
   for (const p of (s.comoFunciona || []).slice(0, esMedio ? 4 : 2)) {
-    const t = corto(p, esMedio ? 44 : 18)
-    if (!t) continue
-    if (esMedio && t.length > 20) {
-      const pal = t.split(' ')
-      const mitad = Math.ceil(pal.length / 2)
-      out.push(pal.slice(0, mitad).join(' ') + String.fromCharCode(10) + pal.slice(mitad).join(' '))
-    } else out.push(t)
+    out.push(...enRenglones(p, esMedio ? 20 : 26))
   }
   // Sin relleno: si la pagina dio dos frases, salen dos. El guionista decide si con dos alcanza para
   // sostener una escena de tipografia cinetica de ocho beats — probablemente no, y entonces esa
@@ -115,9 +134,23 @@ export function datosDe(pm) {
     rotulo: [pm.brand, s.tipoNegocio].filter(Boolean).join(' · ').toUpperCase(),
     claim: corto(s.queHace, 60).toUpperCase(),
     frases: frasesDe(pm),
-    bloque: (s.features || [])[0]
-      ? { titulo: corto(s.features[0].titulo, 26).toUpperCase(), bajada: corto(s.features[0].detalle, 34).toUpperCase() }
-      : null,
+    // EL BLOQUE ES UN ROTULO DE CUATRO PALABRAS Y SE ELIGE, NO SE RECORTA.
+    //
+    // Era `corto(features[0].titulo, 26)`: el QUINTO recorte ciego de la cadena. Y encima `toro` —el
+    // unico que lo consume— se queda con las primeras cuatro palabras, asi que el recorte se aplicaba
+    // dos veces. En el render se leia "MAKE PRODUCT OPERATIONS" debajo del objeto, que es la mitad de
+    // "Make product operations self-driving".
+    //
+    // Un slot de cuatro palabras no necesita cortar nada: necesita ELEGIR un titulo que ya tenga cuatro
+    // palabras o menos. Si la pagina no dio ninguno, el bloque no existe — que es la respuesta honesta
+    // y la que el resto del motor ya da.
+    bloque: (() => {
+      const cabe = (s.features || []).map(f => String(f.titulo || '').trim())
+        .find(t => t && t.split(/\s+/).length <= 4)
+      if (!cabe) return null
+      const det = (s.features || []).find(f => String(f.titulo || '').trim() === cabe)
+      return { titulo: cabe.toUpperCase(), bajada: corto(det && det.detalle, 34).toUpperCase() }
+    })(),
     // Las cifras salen TAL CUAL de las pruebas medidas. Nada de inventar un "+300" porque la escena
     // tiene cinco tarjetas: si hay una sola stat, va una sola tarjeta.
     datos: (pr.stats || []).slice(0, 5).map(x => ({

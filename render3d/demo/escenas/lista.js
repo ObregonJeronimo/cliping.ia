@@ -1,32 +1,39 @@
-// ESCENA "lista" — lo que la pagina enumera, enumerado. Alineada a la IZQUIERDA.
+// ESCENA "lista" — lo que la pagina dice, en bandera a la IZQUIERDA. Ya NO enumera.
 //
 // POR QUE EXISTE
 // El diagnostico que abrio este trabajo fue "toda escena es centrada". Un catalogo entero compuesto
 // sobre el mismo eje se percibe como un solo video con distinta paleta, y es exactamente lo que
 // hacia que dos piezas de rubros opuestos se vieran iguales. Esta escena existe para romper ese eje:
-// bandera a la izquierda, numeros colgados en el margen y una linea vertical que los ata. Es la
-// composicion mas vieja del diseño editorial y ninguna escena del motor la estaba usando.
+// bandera a la izquierda contra una regla de margen. Es la composicion mas vieja del diseño
+// editorial y ninguna escena del motor la estaba usando.
 //
-// Y ADEMAS ENUMERA, que no es lo mismo que mostrar. `tipografia` reparte las mismas frases por el
-// cuadro como impactos sueltos; aca van una debajo de la otra, numeradas, y eso las convierte en un
-// INVENTARIO: el espectador entiende "hay cuatro cosas" antes de leer ninguna.
+// YA NO ENUMERA, Y QUITARLO ARREGLA UN PROBLEMA DE VERACIDAD, no de gusto. Numeraba las frases 01,
+// 02, 03, 04 — y las frases son los ENCABEZADOS de la pagina en orden de documento, no los pasos de
+// un procedimiento. El ordinal AFIRMA que hay una secuencia, y esa secuencia la inventaba la escena.
+// En el render de basecamp se veia el resultado: "01 BIG NUMBERS. / 02 REMEMBER WHEN / 03 PICK A
+// PACKAGE / 04 THE SAME CORE", cuatro fragmentos numerados como si fueran un manual. Thiago: "esta
+// lista no tiene sentido, esta muy perdida, no deberia de ser una lista sino un texto libre".
 //
-// QUE CUENTA COMO ITEM DE LISTA
-// `frases` viene mezclada a proposito: el primer elemento suele ser el claim partido en DOS
-// RENGLONES (lleva \n) y detras vienen los titulos de feature y los pasos, cortos y de una sola
-// linea. Un titular de dos renglones no es un item de lista — numerarlo lo degrada a viñeta y ademas
-// rompe la grilla, porque mide el doble de alto que sus vecinos. Asi que el filtro es la forma del
-// material y no un campo nuevo: item de lista = frase de UNA sola linea.
+// Se conserva la unica razon por la que la escena existe: el EJE. Bandera a la izquierda contra un
+// catalogo compuesto al centro. La regla del margen se queda —es una barra de citacion, no una
+// viñeta— y los ordinales se van. Queda un bloque de texto libre, que es lo que el material fue
+// siempre.
 //
-// SIN TRES ITEMS NO HAY LISTA. Con dos es un par, y un par numerado se lee como un error de conteo.
-// No se rellena: se declara vacia y el guionista es quien no deberia haberla elegido.
+// Y ADMITE FRASES DE DOS RENGLONES. Antes las filtraba porque un item del doble de alto rompia la
+// grilla NUMERADA; sin numeros no hay grilla que romper. Con los titulos completos —que ahora llegan
+// enteros desde el extractor— la mayoria viene compuesta en dos renglones, y filtrarlas dejaba la
+// escena vacia en las dos paginas medidas.
+//
+// SIN TRES FRASES NO HAY BLOQUE. Con dos es un par, y para un par ya esta `partida`. No se rellena.
 
 import { LOOK, b, E, texto, nivel, matAcento, materialMascara, CLARO, finMascara, deriva, encaje, dolly, orbita } from '../kit.js'
-import { D } from '../datos.js'
+import { repartirFrases } from '../datos.js'
 
 export const meta = { id: 'lista', beats: 6 }
 
-const MAX_ITEMS = 4
+// TRES Y NO CUATRO: con los titulos completos cada frase ocupa dos renglones, y cuatro de esas son
+// ocho lineas de texto — un parrafo, no un bloque de display.
+const MAX_ITEMS = 3
 const MIN_ITEMS = 3
 
 export function build(ctx) {
@@ -36,22 +43,10 @@ export function build(ctx) {
   const DUR = b(meta.beats)
 
   // ---- el material que hay
-  // SE TOMAN LAS ULTIMAS, NO LAS PRIMERAS, y es para no repetir lo que la pieza ya dijo.
-  // `frases` la consumen tres escenas: `tipografia` las recorre todas, `partida` usa las DOS primeras
-  // y esta usa cuatro. Tomando tambien desde el principio, una pieza con `tipografia` cerca mostraba
-  // el mismo copy palabra por palabra dos veces en diez segundos — visto en el render de basecamp:
-  // "01 BIG NUMBERS. / 02 REMEMBER WHEN" son exactamente las dos frases que la escena anterior acababa
-  // de pasar. Desde el final, en cuanto la pagina da cinco o mas, la lista enumera material que el
-  // espectador todavia no vio.
-  //
-  // OJO: con cuatro frases justas las tres escenas siguen coincidiendo, porque no hay de donde sacar
-  // mas. Eso NO se arregla acá — se arregla en el guion, decidiendo cuantas escenas de texto entran
-  // segun el material que hay. Queda anotado ahi.
-  const todas = (D.frases || [])
-    .filter(f => f && !String(f).includes('\n'))
-    .map(f => String(f).trim())
-    .filter(Boolean)
-  const items = todas.slice(-MAX_ITEMS)
+  // DEL MOSTRADOR. Antes tomaba las ULTIMAS frases para no repetir lo que la pieza ya habia dicho, y su
+  // propio comentario admitia que no alcanzaba: con cuatro frases justas las tres escenas de texto
+  // coinciden igual. El arreglo no era local y ahora esta donde corresponde — ver `repartirFrases`.
+  const items = repartirFrases(MAX_ITEMS).map(f => String(f).trim()).filter(Boolean)
   if (items.length < MIN_ITEMS) {
     tl.to({}, { duration: DUR }, 0)
     return { g, tl, vacia: true }
@@ -59,8 +54,9 @@ export function build(ctx) {
 
   // ---- geometria: bandera a la izquierda
   const MARGEN = -mundoW * 0.40
-  const SANGRIA = mundoW * 0.15                 // donde arranca el texto: los numeros COLGAN a su izquierda
-  const ALTO_NUM = mundoH * 0.030
+  // SIN SANGRIA FRANCESA: existia para que los ordinales colgaran a la izquierda del texto. Sin
+  // ordinales, el texto arranca contra el margen y el bloque gana el 15% del ancho que ocupaban.
+  const SANGRIA = 0
   const ALTO_BASE = mundoH * 0.050
   const ANCHO_UTIL = mundoW * 0.86 - SANGRIA
 
@@ -83,7 +79,6 @@ export function build(ctx) {
   // por encima del umbral 0.62 florece entera y sale sin contraformas). En mundo claro el riesgo es
   // el opuesto —un gris que se lava contra el fondo— y conviene empujar hacia la tinta.
   const COLOR_ITEM = nivel(CLARO ? 0.94 : 0.80)
-  const COLOR_NUM = nivel(CLARO ? 0.62 : 0.52)
   const FIN = finMascara()                       // 1 + uSuave: ver la nota del revelado, abajo
 
   // ---- la linea vertical que ata la lista
@@ -103,14 +98,6 @@ export function build(ctx) {
   for (let i = 0; i < items.length; i++) {
     const y = TOPE - i * PASO
 
-    // El numero. Va en el margen, COLGADO a la izquierda del texto: es la sangria francesa de
-    // cualquier lista impresa, y es lo que hace que el ojo lea la columna de numeros como un indice.
-    const tn = texto(String(i + 1).padStart(2, '0'), { fuente: 'DMSans', peso: 500, size: 90, tracking: 0.08, upper: true, alineado: 'left', color: COLOR_NUM })
-    const matN = materialMascara(tn.tex, COLOR_NUM)
-    const mN = new THREE.Mesh(new THREE.PlaneGeometry(ALTO_NUM * tn.ar, ALTO_NUM), matN)
-    mN.position.set(MARGEN + (ALTO_NUM * tn.ar) / 2, y + ALTO_ITEM * 0.30, 0)
-    g.add(mN)
-
     // El texto del item, anclado por su borde izquierdo a la sangria.
     const t = texs[i]
     const matT = materialMascara(t.tex, COLOR_ITEM)
@@ -119,7 +106,7 @@ export function build(ctx) {
     mT.userData.encaja = true      // un item de lista que se sale no es una lista
     g.add(mT)
 
-    filas.push({ matN, matT, mT })
+    filas.push({ matT, mT })
   }
 
   // ================================================================ TIEMPO
@@ -147,9 +134,6 @@ export function build(ctx) {
   const PASO_BEAT = b(1.0)
   filas.forEach((f, i) => {
     const t0 = T0 + i * PASO_BEAT
-    // El numero entra ANTES que su texto: primero aparece el orden, despues lo que dice. Invertido se
-    // lee como que el numero llega tarde a etiquetar algo que ya estaba.
-    tl.fromTo(f.matN.uniforms.uProg, { value: 0 }, { value: FIN, duration: b(0.30), ease: E.frena(2), immediateRender: false }, t0)
     tl.fromTo(f.matT.uniforms.uProg, { value: 0 }, { value: FIN, duration: b(0.52), ease: E.frena(2), immediateRender: false }, t0 + b(0.12))
     // Un empuje corto desde la izquierda: el item "aterriza" en su renglon en vez de aparecer.
     tl.fromTo(f.mT.position, { x: f.mT.position.x - mundoW * 0.05 }, { x: f.mT.position.x, duration: b(0.42), ease: E.llega(1.8), immediateRender: false }, t0 + b(0.12))
@@ -160,7 +144,6 @@ export function build(ctx) {
   filas.forEach((f, i) => {
     const d = (filas.length - 1 - i) * b(0.04)
     tl.to(f.matT.uniforms.uProg, { value: 0, duration: b(0.30), ease: E.acelera(2) }, SALIDA + d)
-    tl.to(f.matN.uniforms.uProg, { value: 0, duration: b(0.26), ease: E.acelera(2) }, SALIDA + d)
   })
   tl.to(riel.scale, { y: 0.001, duration: b(0.34), ease: E.acelera(3) }, SALIDA)
 

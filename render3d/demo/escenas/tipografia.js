@@ -35,7 +35,7 @@ import { E, LOOK, b, texto, planoTexto, matAcento, hex, dolly, orbita, MOB } fro
 // Las frases salen de los DATOS, no del archivo: la misma escena sirve para cualquier pagina.
 // El estilo de cada entrada (que fuente, que ancho, que gesto) SI es de la escena — eso es direccion
 // de arte y no cambia con el contenido.
-import { frase, D, nFrases, sello } from '../datos.js'
+import { frase, D, nFrases, sello, repartirFrases } from '../datos.js'
 
 export const meta = { id: 'tipografia', beats: 8 }
 
@@ -179,8 +179,20 @@ export function build(ctx) {
   // hace `columna` con sus recortes —y lo documenta— porque volver a pasar por lo que la pagina dijo
   // se lee como continuidad, no como material inventado. No aparece ni una palabra que la marca no
   // haya escrito, que es la unica condicion que importa.
-  const NF = Math.max(1, nFrases())
-  const fr = (i) => frase(i % NF)
+  // PIDE TRES Y RECICLA DENTRO DE ESAS TRES. Antes recorria TODAS las frases de la pagina, o sea
+  // vaciaba el pozo para las escenas que vinieran despues — y con cuatro o cinco frases eso significa
+  // que la escena siguiente repetia palabra por palabra lo que esta acababa de decir. Reciclar de a
+  // tres es lo que esta escena ya hacia por dentro (ver la nota de arriba) y ahora ademas deja material
+  // para las otras. Ver `repartirFrases` en datos.js.
+  const mias = repartirFrases(3)
+  const NF = Math.max(1, mias.length)
+  // UN RENGLON, SIEMPRE. Esta escena parte una frase en mitades por UV, la reparte por el cuadro y la
+  // reemplaza en cada beat: todo eso supone UNA linea, y desde que el extractor entrega los titulos
+  // completos la mayoria llega compuesta en dos. En el render de linear se vio el resultado —"MOVE WORK
+  // FORWARD" dibujado encima de "ACROSS TEAMS AND AGENTS"—. El salto se aplana y `medida` ajusta el
+  // cuerpo al ancho del cuadro, que es exactamente para lo que existe. La composicion en dos renglones
+  // es de las escenas que la aprovechan: `titular`, `lista` y `partida`.
+  const fr = (i) => String(mias[i % NF] || '').replace(/\n/g, ' ')
 
   const m1 = medida(fr(0), ANTON, ANCHO + 0.05, 3.1)
   function mitad(lado) {
@@ -246,7 +258,7 @@ export function build(ctx) {
   // Estaba fija en 'SU PROPIO' — un fragmento del copy de ANTHEM ('CADA PAGINA / SU PROPIO / VIDEO')
   // que en cualquier otra pieza queda como dos palabras sueltas sin sujeto. Es la linea de apoyo del
   // cierre: le corresponde la ultima frase real que la pagina dio.
-  const s7 = medida(frase(Math.max(0, nFrases() - 1)) || '', CHICA, 3.5, 0.44)
+  const s7 = medida(fr(NF - 1), CHICA, 3.5, 0.44)
   const w7b = planoW(s7, 0, { dir: 0, borde: 0.12, filo: LOOK.acento2 })
   w7b.position.set(0, 2.55, 0)
 

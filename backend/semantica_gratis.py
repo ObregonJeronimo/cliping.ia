@@ -273,7 +273,47 @@ def _features(content, claim="", marca=""):
         if len(elegidos) >= 6:
             break
     elegidos.sort()
-    return [{"titulo": t[:28], "detalle": ""} for _, t in elegidos]
+    utiles = [_titulo_util(t) for _, t in elegidos]
+    return [{"titulo": t, "detalle": ""} for t in utiles if t]
+
+
+_FIN_ORACION = re.compile(r"(?<=[.!?])\s+")
+
+
+def _titulo_util(t, n=48):
+    """Un titulo entra ENTERO, o recortado a un numero entero de ORACIONES, o no entra.
+
+    EL DEFECTO, VISTO EN EL VIDEO. Esto era `t[:28]`, un corte ciego a mitad de palabra, y dejaba en
+    el pagemodel "Pick a package and try Basec", "Move work forward across tea", "The same core
+    features are i". Aguas abajo el motor recortaba OTRA VEZ y la escena de lista publicaba cuatro
+    items numerados —"01 PICK A PACKAGE / 02 THE SAME CORE"— que son cuatro promesas sin final.
+
+    Un titulo mutilado no es un titulo corto: es una cita falsa de la pagina del cliente. Es la misma
+    regla anti-invencion que el resto del motor ya cumple, aplicada al unico lugar donde faltaba.
+
+    POR QUE ORACIONES Y NO PALABRAS. Medidos, los titulos reales de dos landings van de 27 a 57
+    caracteres, y los largos son casi siempre DOS oraciones: "Big numbers. Highly-trusted. Rugged,
+    reliable, and ready." Quedarse con las primeras dos es honesto —es literalmente lo que la pagina
+    dice— mientras que cortar por palabra la misma frase da "...Rugged, reliable, and", que promete un
+    final que nunca llega. Si es UNA sola oracion y no entra, no hay corte honesto posible: se cae.
+
+    Medido con este criterio: linear conserva sus cinco titulos enteros y basecamp cuatro de seis. Los
+    dos que se caen son oraciones unicas de 52 y 55 caracteres — material que antes salia mutilado.
+    """
+    t = " ".join((t or "").split())
+    if len(t) <= n:
+        return t
+    partes = _FIN_ORACION.split(t)
+    if len(partes) > 1:
+        acum = ""
+        for p in partes:
+            cand = (acum + " " + p).strip() if acum else p
+            if len(cand) > n:
+                break
+            acum = cand
+        if acum:
+            return acum
+    return ""
 
 
 def _cta(content):

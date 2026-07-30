@@ -162,6 +162,23 @@ const FAMILIA = {
 }
 export const familiasDe = () => FAMILIA
 
+// ESCENAS DORMIDAS — registradas, verdes en las compuertas, y FUERA del sorteo.
+//
+// No es lo mismo que borrarlas. Una escena borrada se lleva su archivo, sus comentarios y el trabajo
+// de medicion que costo; una dormida sigue existiendo, sigue pasando `verificar` y se despierta
+// quitandola de este Set. Que este aca y no en el archivo de la escena es a proposito: la decision es
+// del GUION —de que material tiene sentido mostrar en una pieza— y no de la escena, que no puede
+// saberlo.
+//
+// `columna`: el feed vertical de recortes. Se le arreglo el tamaño, la nitidez y el fantasma del
+// obturador y aun asi lo que muestra son PEDAZOS de pagina fuera de contexto, y en una pagina con dos
+// o tres elementos utiles los repite. Thiago, mirando el render de basecamp: "vuelven a aparecer las
+// mismas imagenes que aparecieron en escenas atras, y estan horribles y tampoco tienen sentido, esa
+// escena que no aparezca, no pega nada". El problema no es como se ve: es que un feed necesita un
+// caudal de material que una landing no da. Cuando la cosecha de elementos entregue piezas con
+// sentido propio —hoy corta filas a mitad de palabra— esto se puede reconsiderar.
+export const DORMIDAS = new Set(['columna'])
+
 // EL ORDEN LO ARMA LA SEMILLA, y antes elegia entre CUATRO listas escritas a mano. Medido sobre las
 // nueve combinaciones de pagina x ritmo x duracion: casi todas daban 4 estructuras para 100 semillas,
 // y la peor daba UNA. O sea que un cliente que pedia "otra version del mismo video" recibia el mismo
@@ -246,7 +263,7 @@ export function guionDe({ escenas, datos, seed = 1, beatSeg = 60 / 124, dur = nu
 
   // Se barajan las escenas REGISTRADAS menos las fijas: asi una escena nueva entra al sorteo el dia
   // que se registra, sin que nadie tenga que acordarse de agregarla a una lista.
-  const candidatas = [...escenas.keys()].filter(id => id !== 'apertura' && id !== 'cierre')
+  const candidatas = [...escenas.keys()].filter(id => id !== 'apertura' && id !== 'cierre' && !DORMIDAS.has(id))
   const orden = barajar(candidatas, rnd)
 
   // CUPO DE ESCENAS DE TEXTO, porque tres beben del mismo pozo.
@@ -263,9 +280,17 @@ export function guionDe({ escenas, datos, seed = 1, beatSeg = 60 / 124, dur = nu
   //
   // Los beats que se liberan NO se pierden: los toma el relleno, que ahora repite hero/toro/sello.
   // Por eso este cupo es asumible hoy y no lo era con el catalogo de diez.
-  const SEDIENTAS = ['tipografia', 'lista', 'partida']
+  // `rafaga` ENTRA AL CUPO, y faltaba. Bebe del mismo pozo —alterna recorte y frase— y quedaba fuera
+  // de la cuenta, asi que con cuatro frases el cupo dejaba pasar UNA escena sedienta y despues `rafaga`
+  // mostraba las mismas dos frases igual. Se vio en el render de basecamp: la escena de 0:19 repetia
+  // "BIG NUMBERS", que era el primer item del bloque de texto de 0:12. El mostrador de datos.js evita
+  // que dos escenas muestren la MISMA frase mientras quede material; el cupo evita que se pidan mas
+  // frases de las que la pagina dio.
+  const SEDIENTAS = ['tipografia', 'lista', 'partida', 'rafaga']
   const nFr = (d.frases || []).filter(Boolean).length
-  const cupo = nFr >= 8 ? 3 : nFr >= 5 ? 2 : 1
+  // Cuantas frases pide cada una: tipografia 3, lista 3, partida 2, rafaga 3. El cupo sale de cuantas
+  // hay para repartir sin que ninguna tenga que dar la vuelta al pozo.
+  const cupo = nFr >= 9 ? 3 : nFr >= 5 ? 2 : 1
   // Y SE ROTA CON LA SEMILLA, no se corta por prioridad fija. El `slice(0, cupo)` hacia ganar SIEMPRE a
   // `tipografia`, asi que `lista` y `partida` quedaban inalcanzables en toda la franja de 3 a 7 frases —
   // que es justo donde caen las paginas reales. Medido con la compuerta nueva: aparecian en el 0.0% de

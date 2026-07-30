@@ -132,17 +132,62 @@ export function build(ctx) {
   const cuerpo = new THREE.Group()
   nucleo.add(cuerpo)
 
-  // 18 segmentos tubulares y no 28: a 28 el contorno ya es un circulo y la pieza deja de leerse como
-  // CONSTRUIDA. Con 18 se ven las facetas, que es de lo que trata la escena.
+  // CINCO CUERPOS, LOS ELIGE LA SEMILLA. Esta escena es la unica abstracta del catalogo y entra en casi
+  // toda pieza —es la que puede ir al lado de cualquier cosa—, asi que su forma era, en la practica, la
+  // firma del motor: Thiago vio dos videos de dos paginas distintas y en los dos "esa especie de esfera
+  // que parece un atomo raro con aros que giran".
+  //
+  // TODAS COMPARTEN RADIO EXTERIOR 1.66 y eso no es prolijidad: los nodos, los dos aros que tumban, el
+  // encuadre y los tiempos estan calibrados contra ese numero. Cambiando la forma dentro del mismo
+  // volumen, la composicion y las compuertas de encuadre siguen valiendo para las cinco sin tener que
+  // medir cinco veces. Lo que cambia es lo unico que se ve: la SILUETA y como el bloom agarra sus
+  // cantos.
+  //
+  // Todas llevan aristas duras (pocos segmentos, EdgesGeometry) porque de eso trata la escena: masa
+  // oscura con el filo encendido. Un cuerpo liso se lee blando y ninguna cantidad de bloom lo salva.
   const R = 1.34, TUBO = 0.32
-  const geoToro = new THREE.TorusGeometry(R, TUBO, 4, 18)
-  const toro = new THREE.Mesh(geoToro, matTarjeta('#1c2244'))
-  cuerpo.add(toro)
+  const RADIO = R + TUBO                     // 1.66 — el contrato que comparten las cinco
+  const FORMAS = ['anillo', 'poliedro', 'nudo', 'cristal', 'bobina']
+  const forma = FORMAS[Math.floor(rnd() * FORMAS.length) % FORMAS.length]
 
   const matCantos = new THREE.LineBasicMaterial({
     color: hex(LOOK.acento).multiplyScalar(1.5), toneMapped: false, transparent: true, opacity: 0.9,
   })
-  cuerpo.add(new THREE.LineSegments(new THREE.EdgesGeometry(geoToro, 18), matCantos))
+  // Cada pieza del cuerpo entra con su malla Y sus aristas. Se agrupa en una funcion porque la bobina
+  // son tres piezas y las otras una: sin esto, el caso de tres se escribe distinto y se desincroniza.
+  const piezaCuerpo = (geo, z = 0, umbral = 18) => {
+    const m = new THREE.Mesh(geo, matTarjeta('#1c2244'))
+    m.position.z = z
+    cuerpo.add(m)
+    const l = new THREE.LineSegments(new THREE.EdgesGeometry(geo, umbral), matCantos)
+    l.position.z = z
+    cuerpo.add(l)
+  }
+
+  if (forma === 'anillo') {
+    // El original. 18 segmentos tubulares y no 28: a 28 el contorno ya es un circulo y la pieza deja de
+    // leerse como CONSTRUIDA. La seccion es un CUADRADO (4 segmentos radiales), asi que hay aristas de
+    // verdad y el bloom tiene de donde agarrarse.
+    piezaCuerpo(new THREE.TorusGeometry(R, TUBO, 4, 18))
+  } else if (forma === 'poliedro') {
+    // Una esfera facetada de verdad: subdivision 1 da 80 caras, suficientes para leer volumen y pocas
+    // para que cada canto siga siendo un canto. Es la silueta mas cerrada de las cinco.
+    piezaCuerpo(new THREE.IcosahedronGeometry(RADIO, 1), 0, 1)
+  } else if (forma === 'nudo') {
+    // Un nudo toroidal 2-3. Es la unica de las cinco que no tiene eje de simetria evidente, asi que
+    // girando se lee como que cambia de forma — el gesto mas fuerte del grupo.
+    piezaCuerpo(new THREE.TorusKnotGeometry(1.16, 0.24, 84, 6, 2, 3), 0, 24)
+  } else if (forma === 'cristal') {
+    // Ocho caras planas y grandes: los cantos son largos y el bloom los dibuja como un dibujo lineal.
+    // Es la que mejor funciona en los aires de paleta calida, donde el filo pesa mas que la masa.
+    piezaCuerpo(new THREE.OctahedronGeometry(RADIO, 0), 0, 1)
+  } else {
+    // BOBINA: tres anillos finos apilados en z. Leen como un mecanismo y no como un objeto, y al girar
+    // los tres se cruzan entre si. El del medio es el mayor para que la silueta no sea un cilindro.
+    piezaCuerpo(new THREE.TorusGeometry(R * 0.86, 0.10, 4, 16), -0.30)
+    piezaCuerpo(new THREE.TorusGeometry(R, 0.12, 4, 18), 0)
+    piezaCuerpo(new THREE.TorusGeometry(R * 0.86, 0.10, 4, 16), 0.30)
+  }
 
   // Dos aros finos pegados al ecuador exterior e interior: geometria real de 2-3 px que el bloom
   // convierte en luz. Las lineas de 1 px solas no alcanzan a florecer.

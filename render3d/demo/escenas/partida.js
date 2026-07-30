@@ -19,7 +19,7 @@
 // —el defecto exacto que la regla anti-invencion existe para impedir—. Se declara vacia.
 
 import { LOOK, b, E, texto, nivel, matAcento, materialMascara, CLARO, finMascara, deriva, encaje, dolly , orbita} from '../kit.js'
-import { D } from '../datos.js'
+import { D, repartirFrases } from '../datos.js'
 
 export const meta = { id: 'partida', beats: 6 }
 
@@ -30,7 +30,9 @@ export function build(ctx) {
   const DUR = b(meta.beats)
 
   // ---- el material que hay: dos frases de UNA linea (las de dos renglones son titulares)
-  const fr = (D.frases || []).filter(f => f && !/\n/.test(String(f))).map(String)
+  // DEL MOSTRADOR, no desde el principio del pozo. Tomando siempre las dos primeras, esta escena decia
+  // palabra por palabra lo mismo que la de tipografia que suele venir antes. Ver datos.js.
+  const fr = repartirFrases(2, true)
   if (fr.length < 2) {
     tl.to({}, { duration: DUR }, 0)
     return { g, tl, vacia: true }

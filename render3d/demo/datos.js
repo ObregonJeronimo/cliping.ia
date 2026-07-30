@@ -130,6 +130,51 @@ export const frase = (i) => {
   if (f) return f
   return esDemo ? (ANTHEM.frases[i] || '') : ''
 }
+
+// ---------------------------------------------------------------- REPARTO
+// DOS ESCENAS NO PUEDEN DECIR LO MISMO, Y ESTE ERA EL DEFECTO MAS CARO DE LA PIEZA.
+//
+// Cinco escenas beben del mismo pozo de frases y CADA UNA empezaba a contar desde cero: `tipografia`
+// recorria todas, `rafaga` tomaba desde la primera, `partida` las dos primeras, `titular` la primera.
+// Resultado medido en el render de basecamp: la escena de 0:12 mostraba "BIG NUMBERS / REMEMBER WHEN /
+// PICK A PACKAGE / THE SAME CORE" y la de 0:19 mostraba "BIG NUMBERS" otra vez. Thiago lo dijo con
+// esas palabras: "aparecen las MISMAS IMAGENES Y MISMOS TEXTOS que aparecieron en anteriores escenas,
+// no innovan nada las escenas".
+//
+// `lista` intentaba esquivarlo tomando las ULTIMAS frases, y su propio comentario ya decia por que no
+// alcanza: con cuatro frases justas las tres escenas siguen coincidiendo, y el arreglo de verdad no
+// era local. Es este: un mostrador que REPARTE. Cada escena pide las que necesita y se lleva otras.
+//
+// EL CURSOR ES DETERMINISTA porque el orden de construccion lo es: `main.js` arma las escenas en el
+// orden del guion y llama a `reiniciarReparto()` antes de empezar. Dos renders de la misma semilla
+// reparten igual. Lo que NO puede hacerse es pedir frases fuera de `build()`, porque entonces el
+// reparto dependeria del orden de importacion de los modulos.
+//
+// SI EL POZO SE ACABA, SE DA LA VUELTA. Repetir es peor que no mostrar, pero dejar una escena vacia
+// por falta de material tambien vacia la pieza: el guionista ya limita cuantas escenas de texto entran
+// segun cuantas frases hay (ver el cupo en guion.js). Dar la vuelta es el ultimo recurso y avisa por
+// `repetidas` para que una compuerta pueda medirlo.
+let _cursor = 0
+export let repetidas = 0
+export const reiniciarReparto = () => { _cursor = 0; repetidas = 0 }
+
+// `soloUnaLinea` lo piden las escenas que componen una grilla vertical y no toleran un item del doble
+// de alto. `cuantas` es un maximo: si hay menos, devuelve menos, y la escena decide si le alcanza.
+export function repartirFrases(cuantas, soloUnaLinea = false) {
+  const pozo = (esDemo ? ANTHEM.frases : (D.frases || [])).filter(Boolean).map(String)
+  const elegibles = soloUnaLinea ? pozo.filter(f => !f.includes('\n')) : pozo
+  if (!elegibles.length) return []
+  const out = []
+  for (let k = 0; k < cuantas; k++) {
+    const i = (_cursor + k) % elegibles.length
+    if (_cursor + k >= elegibles.length) repetidas++
+    out.push(elegibles[i])
+  }
+  // El cursor avanza por el pozo COMPLETO y no por el filtrado: si `lista` se lleva las de una linea,
+  // la escena siguiente tiene que arrancar despues de ellas igual, o vuelve a caer en las mismas.
+  _cursor += Math.min(cuantas, elegibles.length)
+  return out
+}
 export const dato = (i) => (D.datos && D.datos[i]) || null
 
 // Cuántas frases REALES hay. Las escenas lo usan para componerse con lo que hay en vez de dejar

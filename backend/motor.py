@@ -246,7 +246,12 @@ def main():
     ap = argparse.ArgumentParser(description="URL -> reel vertical 9:16")
     ap.add_argument("url", nargs="?", help="la pagina a convertir")
     ap.add_argument("--hero", help="que objeto protagoniza (ver --heroes)")
-    ap.add_argument("--dur", type=int, default=20, help="duracion objetivo en segundos (15/20/30)")
+    # 25 Y NO 30. La duracion no es un gusto: es cuanto material tiene la pagina. Una landing da cuatro
+    # o cinco frases y dos o tres recortes utiles, y treinta segundos obligan al guion a poner mas
+    # escenas de las que ese material sostiene — las ultimas terminan repitiendo lo que ya se dijo.
+    # Thiago lo diagnostico mirando el video: "el posible problema que veo yo es la duracion, un video
+    # de 30 segundos yo lo bajaria a 25". Con 25 entran dos escenas menos y ninguna repite.
+    ap.add_argument("--dur", type=int, default=25, help="duracion objetivo en segundos (15/20/25/30)")
     ap.add_argument("--seed", type=int, default=7, help="cambiala para OTRA version del mismo video")
     ap.add_argument("--aire", help="forzar un aire en vez del que elige el rubro")
     ap.add_argument("--salida", help="ruta del mp4")

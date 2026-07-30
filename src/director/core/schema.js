@@ -244,7 +244,15 @@ export function normalizePageModel(raw) {
       comoFunciona: arr(s.comoFunciona, 5).map(x => txt(x, 48)).filter(Boolean),
       tipoNegocio: enumOr(s.tipoNegocio, TIPO_NEGOCIO, 'otro'),
       modeloUso: enumOr(s.modeloUso, MODELO_USO, 'desconocido'),
-      features: arr(s.features, 6).map(f => (isStr(f) ? { titulo: txt(f, 28), detalle: '' } : { titulo: txt(f && f.titulo, 28), detalle: txt(f && f.detalle, 90) })).filter(f => f.titulo),
+      // EL TITULO DE FEATURE SE CAPA A 48 Y NO A 28. Este era el CUARTO recorte ciego sobre el mismo
+      // texto: semantica_gratis cortaba a 28, pagemodel.py volvia a cortar a 28, este esquema cortaba
+      // otra vez a 28 y anthem-datos remataba en 22. El resultado en pantalla eran fragmentos —"MAKE
+      // PRODUCT", "PICK A PACKAGE", "THE SAME CORE"— publicados como si fueran las frases de la marca.
+      // Cada capa fue escrita por separado y cada una parecia razonable sola; encadenadas, ninguna
+      // dejaba pasar una frase entera. 48 es el mismo techo que ya aplica el extractor, asi que esta
+      // capa deja de recortar y sigue siendo la red de contencion de un campo que llegue sin pasar por
+      // ahi. Ver `_titulo_util` en backend/semantica_gratis.py.
+      features: arr(s.features, 6).map(f => (isStr(f) ? { titulo: txt(f, 48), detalle: '' } : { titulo: txt(f && f.titulo, 48), detalle: txt(f && f.detalle, 90) })).filter(f => f.titulo),
       pruebas: {
         stats: arr(s.pruebas && s.pruebas.stats, 4).map(x => ({ valor: txt(x.valor != null ? x.valor : x.value, 10), etiqueta: txt(x.etiqueta != null ? x.etiqueta : x.label, 26) })).filter(x => x.valor),
         testimonios: arr(s.pruebas && s.pruebas.testimonios, 3).map(x => (isStr(x) ? { texto: txt(x, 140), firma: '' } : { texto: txt(x && x.texto, 140), firma: txt(x && (x.firma != null ? x.firma : x.autor), 28) })).filter(x => x.texto),

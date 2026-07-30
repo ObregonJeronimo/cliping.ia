@@ -1018,13 +1018,37 @@ export function cargarRecortes(elementos) {
 
 // Elige recortes por ROL, en el orden en que sirven para una escena. Nunca inventa: si la pagina no
 // dio ninguno del rol pedido, devuelve una lista mas corta o vacia, y la escena se compone sin ellos.
+// LOS RECORTES TAMBIEN SE REPARTEN, por la misma razon que las frases.
+//
+// Cinco escenas piden recortes y TODAS empezaban por el primero de la lista. En el render de basecamp
+// eso se ve sin ambiguedad: la captura del panel de proyecto aparece en `mesa`, vuelve en `columna` y
+// vuelve otra vez en `rafaga` — tres escenas distintas mostrando exactamente la misma imagen, que es
+// lo que Thiago describio como "vuelven a aparecer las mismas imagenes que aparecieron en escenas
+// atras, no innovan nada".
+//
+// El cursor avanza por el POZO FILTRADO POR ROL y es global a la pieza, igual que el de las frases:
+// `main.js` lo reinicia antes de armar cada video y los arneses antes de cada construccion. Si el
+// material se acaba se da la vuelta —repetir es mejor que dejar la escena vacia— y eso se cuenta.
+let _cursorEls = 0
+export let recortesRepetidos = 0
+export const reiniciarRecortes = () => { _cursorEls = 0; recortesRepetidos = 0 }
+
 export function recortesDe(elementos, roles, n = 3) {
-  const out = []
+  // El pozo se arma en el orden de PRIORIDAD de roles que pide la escena, no en el del documento: una
+  // escena que pide ['foto','tarjeta'] quiere una foto primero aunque la tarjeta venga antes en la
+  // pagina. Eso ya era asi y se conserva.
+  const pozo = []
   for (const rol of [].concat(roles)) {
     for (const e of (elementos || [])) {
-      if (e.rol === rol && !out.includes(e)) out.push(e)
-      if (out.length >= n) return out
+      if (e.rol === rol && !pozo.includes(e)) pozo.push(e)
     }
   }
+  if (!pozo.length) return []
+  const out = []
+  for (let k = 0; k < n; k++) {
+    if (_cursorEls + k >= pozo.length) recortesRepetidos++
+    out.push(pozo[(_cursorEls + k) % pozo.length])
+  }
+  _cursorEls += Math.min(n, pozo.length)
   return out
 }

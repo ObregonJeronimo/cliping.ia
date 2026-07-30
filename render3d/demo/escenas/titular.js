@@ -23,7 +23,7 @@
 // Se declara vacia y el guionista es quien no deberia haberla elegido.
 
 import { LOOK, b, E, texto, nivel, matAcento, materialMascara, planoRecorte, recortesDe, filete, finMascara, deriva, encaje, dolly, orbita , hex} from '../kit.js'
-import { D } from '../datos.js'
+import { D, repartirFrases } from '../datos.js'
 
 export const meta = { id: 'titular', beats: 6 }
 
@@ -34,7 +34,11 @@ const MAX_LINEAS = 3
 // renglones (ver anthem-datos), asi que una frase con salto de linea ES un titular ya compuesto; si
 // no hay ninguna, se toma la frase mas larga, que es la que mas se le parece. Nunca se fabrica.
 function titularDe() {
-  const fr = (D.frases || []).filter(Boolean).map(String)
+  // DOS DEL MOSTRADOR, y se queda con la que mejor sirve de titular. Leyendo el pozo entero, esta
+  // escena mostraba SIEMPRE la primera frase de la pagina — la misma con la que abria la escena de
+  // tipografia—. Pedir dos permite seguir prefiriendo la compuesta en dos renglones sin volver al
+  // pozo completo. Ver `repartirFrases` en datos.js.
+  const fr = repartirFrases(2)
   const dosLineas = fr.find(f => f.includes('\n'))
   if (dosLineas) return dosLineas
   if (!fr.length) return ''

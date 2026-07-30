@@ -16,7 +16,7 @@
 // mismo cliente pidiendo otra versión— y es el que rompía. Un congruencial lineal sembrado con
 // números chicos consecutivos devuelve primeros valores casi iguales, así que las doce caían en el
 // mismo orden narrativo. Con semillas al azar el defecto no se veía.
-import { guionDe, beatsDelGuion, ajusteDe, TOPE_AJUSTE, familiasDe } from '../render3d/demo/guion.js'
+import { guionDe, beatsDelGuion, ajusteDe, TOPE_AJUSTE, familiasDe, DORMIDAS } from '../render3d/demo/guion.js'
 
 // El catalogo real, copiado de los meta.beats de cada escena. Se declara aca y no se importan los
 // modulos porque importarlos arrastra three y un DOM: esta compuerta tiene que ser instantanea.
@@ -180,9 +180,19 @@ for (const [nomPag, datos] of Object.entries(PAGINAS)) {
 // viva pero apretada —`partida` compite por un solo cupo contra `tipografia`, que ocupa el doble de
 // beats— y eso es un dato para mirar, no un defecto que deba frenar un push. Un fallo que en realidad es
 // un aviso se aprende a ignorar, y despues no se ve el que importa.
+// UNA ESCENA DORMIDA TIENE QUE ESTAR EN CERO, y esa es su compuerta. La regla de escena muerta existe
+// para cazar una escena que el guion NO PUEDE elegir por accidente; una dormida esta en cero a
+// proposito y declarado en `DORMIDAS`. Lo que sí se comprueba es lo contrario: si una dormida apareciera
+// en algun guion, el filtro se rompio y hay que enterarse.
+for (const id of DORMIDAS) {
+  const n = presencia.get(id) || 0
+  if (n > 0) fallos.push(`E-GUION-DORMIDA-DESPIERTA  "${id}" esta en DORMIDAS y aparece en ${n} de ${planes} guiones`)
+}
+
 const escasas = []
 for (const [id, n] of presencia) {
   const frac = n / planes
+  if (DORMIDAS.has(id)) continue
   if (frac >= 0.05) continue
   const califica = Object.values(PAGINAS).some(d => (REQ[id] ? REQ[id](d) : true))
   const causa = califica
