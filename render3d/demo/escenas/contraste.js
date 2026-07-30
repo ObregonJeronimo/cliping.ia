@@ -93,7 +93,13 @@ export function build(ctx) {
     new THREE.MeshBasicMaterial({ color: nivel(0.06), toneMapped: false }),
   )
   respaldo.geometry.translate(BOX_W * 1.06 / 2, 0, 0)   // crece desde su borde izquierdo
-  respaldo.position.set(-BOX_W * 1.03, 0, 0.05)        // detras de la pieza de arriba (que va en z 0.1)
+  // EL ORIGEN ES EL BORDE IZQUIERDO DE LA CAJA, o sea la MITAD del ancho — y estaba puesto el ancho
+  // entero. Con `translate(W/2)` el plano crece hacia la derecha desde su origen, asi que ese origen
+  // tiene que ser -W/2 y no -W. La diferencia es media caja: 2.13 unidades, y el respaldo terminaba
+  // sangrando fuera del cuadro por la izquierda y CORTANDO la pieza justo en el centro. En el render se
+  // veia como una placa negra que empieza fuera del cuadro y termina a mitad de la tarjeta, con el
+  // testimonio partido al medio — en dos de los tres videos mirados, o sea en la escena y no en el aire.
+  respaldo.position.set(-BOX_W * 1.06 / 2, 0, 0.05)     // detras de la pieza de arriba (que va en z 0.1)
   respaldo.scale.x = 0.001
   gr.add(respaldo)
 

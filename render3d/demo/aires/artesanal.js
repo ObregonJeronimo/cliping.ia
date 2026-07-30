@@ -61,7 +61,12 @@ if (typeof document !== 'undefined' && document.fonts) {
 // mucho que cambien el guion y el montaje. Los tres pares viven DENTRO del caracter de este aire y
 // nunca cruzan registro — una cara equivocada es peor que ninguna variedad.
 const CARAS_ARTESANAL = [
-  { display: 'Fraunces-900', apoyo: 'PermanentMarker-400' },
+  // EL APOYO NUNCA ES UNA CARA DE ROTULADOR. `PermanentMarker` estaba de APOYO, y el apoyo es lo que
+  // dibuja las etiquetas chicas: en el render de basecamp la tarjeta de dato salio con la unidad y el
+  // pie garabateados e ilegibles a 20 px. Una cara de marcador funciona GRANDE — pasa a display, que es
+  // donde su trazo es una decision y no una mancha.
+  { display: 'Fraunces-900', apoyo: 'Newsreader-400' },
+  { display: 'PermanentMarker-400', apoyo: 'HankenGrotesk-400' },
   { display: 'Caprasimo-400', apoyo: 'Fraunces-600' },
   { display: 'Caveat-700', apoyo: 'Newsreader-400' },
 ]
@@ -71,7 +76,7 @@ const CARAS_ARTESANAL = [
 // que estan cargadas, o sea antes del primer glifo rasterizado — `texto()` cachea la textura para
 // siempre. Lo cazan E-FUENTE-LLEGA y E-FUENTE-RESUELVE sobre caras[].
 if (typeof document !== 'undefined' && document.fonts && typeof FontFace === 'function') {
-  await Promise.all(['Caprasimo-400', 'Caveat-700', 'Fraunces-600', 'Fraunces-900', 'Newsreader-400', 'PermanentMarker-400'].map(async nombre => {
+  await Promise.all(['Caprasimo-400', 'Caveat-700', 'Fraunces-600', 'Fraunces-900', 'HankenGrotesk-400', 'Newsreader-400', 'PermanentMarker-400'].map(async nombre => {
     if ([...document.fonts].some(f => f.family === nombre)) return
     try {
       document.fonts.add(await new FontFace(nombre, `url(/fonts/${nombre}.ttf)`, { weight: '100 900' }).load())

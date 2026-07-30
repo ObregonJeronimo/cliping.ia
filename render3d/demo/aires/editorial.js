@@ -40,14 +40,6 @@
 // que es Times, solo se ve una pieza sin caracter. El aire se importa con `await import()`, asi que
 // este await de nivel superior frena la construccion hasta que las caras esten registradas — y no
 // hace falta tocar el arnes.
-for (const n of ['Newsreader-600', 'FamiljenGrotesk-500', 'Fraunces-900', 'HankenGrotesk-400']) {
-  if ([...document.fonts].some(f => f.family === n)) continue
-  try {
-    const ff = new FontFace(n, `url(/fonts/${n}.ttf)`)
-    await ff.load()
-    document.fonts.add(ff)
-  } catch (e) { console.error('aire editorial: fuente ' + n + ': ' + e.message) }
-}
 
 // TRES VESTUARIOS TIPOGRAFICOS, y la semilla elige (ver `fuentesDe` en adn.js). La tipografia es la
 // mitad de la identidad de una pieza: con un solo par, dos versiones del mismo video se ven iguales por

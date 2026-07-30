@@ -618,6 +618,32 @@ for (const id of ids) {
   kit.configurar(null)                               // se deja el vocabulario como estaba
 }
 
+// ---------------------------------------------------------------- E-SHADER-ENTERO
+// `node --check` caza la comilla invertida perdida SOLO cuando rompe la sintaxis. El caso silencioso es
+// peor: si el template literal se cierra antes de tiempo y lo que sigue resulta ser JavaScript valido,
+// el shader llega al navegador MUTILADO —sin su main, sin su salida— y el error aparece como un objeto
+// que no se dibuja, sin una linea en ninguna consola.
+//
+// Esto ya me paso CUATRO veces en este repo, siempre por escribir un identificador entre comillas
+// invertidas dentro de un comentario del shader. La comprobacion es tonta y definitiva: todo literal de
+// fragmentShader tiene que terminar declarando su salida, y todo vertexShader la suya. Si una comilla lo
+// corto antes, el texto no las contiene.
+for (const arch of ['main.js', 'kit.js']) {
+  const src = readFileSync(join(RAIZ, 'render3d', 'demo', arch), 'utf8')
+  for (const [clave, marca] of [['fragmentShader', 'gl_FragColor'], ['vertexShader', 'gl_Position']]) {
+    let i = 0
+    while ((i = src.indexOf(clave + ': `', i)) >= 0) {
+      const ini = i + clave.length + 3
+      const fin = src.indexOf('`', ini)
+      const cuerpo = fin < 0 ? src.slice(ini) : src.slice(ini, fin)
+      if (!cuerpo.includes(marca)) {
+        die(`E-SHADER-ENTERO  ${arch}: un ${clave} se cierra sin llegar a ${marca} — casi seguro una comilla invertida dentro de un comentario del shader`)
+      }
+      i = fin < 0 ? src.length : fin + 1
+    }
+  }
+}
+
 // ---------------------------------------------------------------- E-COMPOSITOR-PARSEA
 // NINGUNA de las cinco compuertas de la zona tocaba main.js. Las escenas se importan una por una y el
 // compositor no, asi que un error de sintaxis ahi pasaba las cinco en verde y aparecia recien al

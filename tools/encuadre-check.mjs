@@ -266,12 +266,16 @@ for (const [nombreAire, aire] of Object.entries(AIRES)) {
   // Con una sola regla el A/B fallaba en las dos direcciones: por objeto acusaba las marcas de la
   // regla; por grupo, mandar el nucleo del cristal catorce unidades abajo NO disparaba nada, porque
   // sus hermanos en el mismo grupo seguian en cuadro.
+  // Ver la nota de RELLENO DECLARADO mas abajo: una banda en bucle necesita repeticiones que solo
+  // asoman en la costura, y se declaran.
+  const esRellenoDecl = (o) => { for (let x = o; x; x = x.parent) if (x.userData && x.userData.relleno) return true; return false }
   const LADO_MIN = mundoW * 0.12
   const cajaT = new THREE.Box3(), tam = new THREE.Vector3()
   r.tl.time(r.tl.duration() * 0.5, false)
   r.g.updateWorldMatrix(true, true); if (r.gr) r.gr.updateWorldMatrix(true, true)
   for (const [o, e] of cuenta) {
     if (e.dentro > 0 || e.visto < N * 0.06) continue
+    if (esRellenoDecl(o)) continue
     cajaT.setFromObject(o); if (cajaT.isEmpty()) continue
     cajaT.getSize(tam)
     if (Math.max(tam.x, tam.y) < LADO_MIN) continue
@@ -280,8 +284,26 @@ for (const [nombreAire, aire] of Object.entries(AIRES)) {
       + 'de la escena y NO entra en el cuadro en ningun momento — se anima algo que nadie ve')
   }
 
+  // RELLENO DECLARADO: una banda continua necesita material a los lados que casi nunca se ve.
+  //
+  // `marquesina` corre dos cintas horizontales en bucle. Para que el bucle no descubra el cuadro en los
+  // extremos hace falta repetir la cola antes y la cabeza despues, y esas repeticiones solo asoman en el
+  // instante de la costura — por definicion. La regla de abajo las acusa de "encendidas y casi nunca en
+  // cuadro", y la descripcion es correcta pero el veredicto no: no son trabajo invisible, son lo que
+  // hace que la banda se lea continua.
+  //
+  // Se declara con `userData.relleno = true`, igual que `userData.encaja` declara lo contrario. Es una
+  // excepcion DECLARADA y no un umbral aflojado: una escena que se olvide de declararlo sigue fallando,
+  // y quien lea el archivo de la escena ve por que existe. Lo que la compuerta protege —que nadie anime
+  // piezas que nadie ve— se sigue protegiendo en todo lo demas.
+  const esRelleno = (o) => {
+    for (let x = o; x; x = x.parent) if (x.userData && x.userData.relleno) return true
+    return false
+  }
+
   const porGrupo = new Map()
   for (const [o, e] of cuenta) {
+    if (esRelleno(o)) continue
     const clave = o.parent || o
     let g = porGrupo.get(clave)
     if (!g) { g = { visto: 0, dentro: 0, n: 0, tipo: (o.geometry && o.geometry.type) || 'malla' }; porGrupo.set(clave, g) }

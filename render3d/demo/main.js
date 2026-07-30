@@ -54,13 +54,17 @@ const Pelicula = {
     //            despues, asi que el salto ocurre detras de ellas — igual que el barrido, pero
     //            partido en seis y en el eje que el formato pide.
     uEmpuje: { value: 0 }, uEmpujeY: { value: 0 }, uBarrido: { value: 0 }, uAnchoBar: { value: 0.16 },
-    uGolpe: { value: 0 }, uPersiana: { value: 0 },
+    //   uEstela  0..1: desenfoque RADIAL. Seis muestras sobre la recta que va del centro al pixel, asi
+    //            que es un zoom-blur y no un desenfoque parejo: arrastra hacia afuera y deja el centro
+    //            nitido. Es el efecto que convierte un punch en un GOLPE — sin el, un zoom rapido se
+    //            lee como que la camara se movio; con el, como que algo estallo.
+    uGolpe: { value: 0 }, uPersiana: { value: 0 }, uEstela: { value: 0 },
     uTinteTr: { value: new THREE.Color('#5b6cff') },
   },
   vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
   fragmentShader: `
     uniform sampler2D tDiffuse; uniform float uT, uGrano, uVinieta, uAberr, uFlash;
-    uniform float uEmpuje, uEmpujeY, uBarrido, uAnchoBar, uGolpe, uPersiana; uniform vec3 uTinteTr;
+    uniform float uEmpuje, uEmpujeY, uBarrido, uAnchoBar, uGolpe, uPersiana, uEstela; uniform vec3 uTinteTr;
     uniform float uVinForma, uVinAsp; uniform vec2 uVinCentro;
     uniform vec2 uRes; varying vec2 vUv;
     float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898,78.233)))*43758.5453); }
@@ -122,6 +126,18 @@ const Pelicula = {
       if (uBarrido > 0.0001) {
         float d = abs((vUv.x + (vUv.y - 0.5) * 0.35) - uBarrido);
         if (d < uAnchoBar) col.rgb = mix(col.rgb, uTinteTr, smoothstep(uAnchoBar, uAnchoBar * 0.55, d));
+      }
+      // ESTELA: desenfoque radial de seis muestras. Se hace DESPUES de la aberracion y antes de la
+      // vinieta, o sea sobre la imagen ya compuesta, porque lo que arrastra es el CUADRO y no una capa.
+      // El centro queda intacto por construccion —la distancia al centro escala el paso— y eso es lo que
+      // lo hace un golpe y no una borrosidad: el ojo sigue teniendo donde apoyarse.
+      if (uEstela > 0.0001) {
+        vec2 dir = (uvs - 0.5) * uEstela * 0.14;
+        vec3 acc = col.rgb;
+        for (int k = 1; k < 6; k++) {
+          acc += texture2D(tDiffuse, uvs - dir * (float(k) / 5.0)).rgb;
+        }
+        col.rgb = acc / 6.0;
       }
       // PERSIANA: seis lamas horizontales que crecen desde su propio eje hasta juntarse. Con uPersiana
       // en 1 el cuadro esta tapado entero y ahi ocurre el corte. Es el gesto vertical equivalente al
@@ -481,6 +497,10 @@ export class Anthem {
         const dg = b(0.30)
         this.tl.fromTo(this.pelicula.uniforms.uGolpe, { value: 0 }, { value: 0.18, duration: dg, ease: 'power3.in', immediateRender: false }, e.t0 - dg)
         this.tl.fromTo(this.pelicula.uniforms.uGolpe, { value: -0.12 }, { value: 0, duration: dg * 1.2, ease: 'power3.out', immediateRender: false }, e.t0)
+        // La estela acompaña al punch y se apaga MAS RAPIDO que el: un zoom que ya freno y sigue
+        // arrastrando se lee como un cuadro fuera de foco, que es lo contrario de un acento.
+        this.tl.fromTo(this.pelicula.uniforms.uEstela, { value: 0 }, { value: 1, duration: dg, ease: 'power3.in', immediateRender: false }, e.t0 - dg)
+        this.tl.to(this.pelicula.uniforms.uEstela, { value: 0, duration: dg * 0.7, ease: 'power2.out' }, e.t0)
       } else if (tipo === 'persiana') {
         // Cierra en un tercio de beat y abre en otro. El corte cae con las lamas cerradas, asi que el
         // salto no se ve; lo que se ve es el mecanismo. Va mas rapido que el barrido porque son seis

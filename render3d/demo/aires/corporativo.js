@@ -37,14 +37,6 @@
 // aca, 'ANTHEM' a 200px mide 851.8 px; sin ellas, 855.5 px, que es exactamente lo que mide en serif.
 // El aire se importa con `await import()`, asi que este await de nivel superior frena la construccion
 // hasta que las caras esten registradas — y no hace falta tocar el arnes.
-for (const n of ['PlusJakartaSans-800', 'Inter-500']) {
-  if ([...document.fonts].some(f => f.family === n)) continue
-  try {
-    const ff = new FontFace(n, `url(/fonts/${n}.ttf)`)
-    await ff.load()
-    document.fonts.add(ff)
-  } catch (e) { console.error('aire corporativo: fuente ' + n + ': ' + e.message) }
-}
 
 // TRES VESTUARIOS TIPOGRAFICOS, y la semilla elige (ver `fuentesDe` en adn.js). La tipografia es la
 // mitad de la identidad de una pieza: con un solo par, dos versiones del mismo video se ven iguales por
@@ -103,7 +95,7 @@ export default {
   // Ver el comentario largo de MOB en kit.js — antes esto estaba horneado en las escenas y
   // por eso dos piezas de rubros opuestos seguian teniendo el mismo mueble.
   // DE DONDE VIENE LA LUZ DEL FONDO: reparte antes que concentrar.
-  mobiliario: { fondo: 'fuga', marco: 'reglas', hud: true, fondoForma: 0.65 },   // la caja de un informe impreso, abierta a los lados
+  mobiliario: { fondo: 'circuito', marco: 'reglas', hud: true, fondoForma: 0.65 },   // la caja de un informe impreso, abierta a los lados
   // COMO CORTA ESTE AIRE: sobrio: casi todo corte duro, y cuando adorna lo hace con la banda y no con un golpe.
   // la persiana es un mecanismo ordenado, que es exactamente lo que este aire dice.
   transiciones: ['corte', 'corte', 'barrido', 'persiana', 'corte', 'empuje'],

@@ -406,7 +406,7 @@ export let AIRE = null
 //   hud       los rotulos chicos de formato y dominio. Dicen 'ficha tecnica'.
 //
 // El orden de PATRONES importa: es el indice que viaja al shader como uPatron.
-export const PATRONES = ['fuga', 'puntos', 'ondas', 'rayas', 'bloques', 'panal', 'contorno', 'nada']
+export const PATRONES = ['fuga', 'puntos', 'ondas', 'rayas', 'bloques', 'panal', 'contorno', 'circuito', 'arcos', 'nada']
 
 // ---------------------------------------------------------------- el marco del cuadro
 // `esquinas` ERA UN BOOLEANO, y esa es la razon de que todas las piezas se vieran iguales por el
@@ -758,7 +758,7 @@ export function fondoVivo(mundoW, mundoH) {
         float dOv = length(df);
         float dCa = max(abs(df.x), abs(df.y)) * 1.4142;
         vec3 col = mix(uA, uB, smoothstep(0.95, 0.05, mix(dOv, dCa, uFonForma)));
-        // EL PATRON DEL FONDO LO PIDE EL AIRE. Ocho, y ninguno es decorado: cada uno dice de que
+        // EL PATRON DEL FONDO LO PIDE EL AIRE. Diez, y ninguno es decorado: cada uno dice de que
         // clase de negocio es la pieza antes de que se lea una palabra. La grilla en fuga —la de
         // ANTHEM— dice espacio y tecnologia, y sobre una panaderia dice 'software de panaderia'.
         vec2 g = uv - vec2(0.5, 0.52);
@@ -820,8 +820,36 @@ export function fondoVivo(mundoW, mundoH) {
           float f = fract(campo * 1.6);
           linea = smoothstep(0.06, 0.0, min(f, 1.0 - f)) * 0.7;
           linea *= smoothstep(0.85, 0.12, length(g));
+        } else if (uPatron < 7.5) {
+          // CIRCUITO: trazas en angulo recto con nodos encendidos. Es la unica trama del grupo con
+          // ESQUINAS, y por eso rima con una interfaz y no con un material. Los nodos laten en el beat,
+          // asi que ademas es la segunda con eventos propios — pero de un tamaño mucho menor que el
+          // patron de bloques, que enciende celdas enteras. (Sin comillas invertidas aca adentro: cierran
+          // el template literal del shader. Es la cuarta vez que me pasa y por eso hay una compuerta.)
+          vec2 q = (g + vec2(-uT * 0.010, uT * 0.006)) * 11.0;
+          vec2 ce = floor(q);
+          vec2 d0 = fract(q) - 0.5;
+          float sem = fract(sin(dot(ce, vec2(41.3, 289.1))) * 43758.5453);
+          // Media celda lleva la traza horizontal y media la vertical: eso solo ya dibuja recorridos.
+          float traza = sem < 0.5
+            ? smoothstep(0.035, 0.0, abs(d0.y))
+            : smoothstep(0.035, 0.0, abs(d0.x));
+          // Un nodo en una de cada seis celdas, latiendo con el compas.
+          float paso2 = floor(uT / max(0.05, uBeat));
+          float hayNodo = step(0.82, fract(sem * 7.13));
+          float vivo = step(0.55, fract(sem * 13.7 + paso2 * 0.37));
+          float nodo = smoothstep(0.13, 0.04, length(d0)) * hayNodo * (0.30 + 0.70 * vivo);
+          linea = (traza * 0.40 + nodo) * smoothstep(0.90, 0.10, length(g));
+        } else if (uPatron < 8.5) {
+          // ARCOS: circunferencias concentricas que se abren desde un foco bajo. Es la unica RADIAL del
+          // grupo —todas las demas son cartesianas— y por eso es la que mejor sostiene una composicion
+          // centrada: sus lineas apuntan al sujeto en vez de cruzarlo.
+          float r = length((g - vec2(0.0, -0.34)) * vec2(1.0, 1.25));
+          float fr = fract(r * 7.0 - uT * 0.14);
+          linea = smoothstep(0.07, 0.0, min(fr, 1.0 - fr)) * 0.75;
+          linea *= smoothstep(0.05, 0.30, r) * smoothstep(1.05, 0.30, r);
         }
-        // 'nada' (uPatron >= 6.5) deja el degrade solo: es lo que necesita una pieza que vende aire.
+        // 'nada' (uPatron >= 8.5) deja el degrade solo: es lo que necesita una pieza que vende aire.
         linea *= uGrilla;
         // En oscuro la línea SUMA luz; en claro TIÑE hacia el acento. Es la misma grilla y en los dos
         // casos aparece por delante del fondo, que es lo único que importa.

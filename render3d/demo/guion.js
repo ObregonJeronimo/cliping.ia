@@ -148,6 +148,7 @@ const REQUISITOS = {
 // cuando ya habia dieciseis, y por eso no reportaba guiones cortos durante meses.
 const FAMILIA = {
   tipografia: 'texto', lista: 'texto', partida: 'texto', titular: 'texto', cita: 'texto',
+  marquesina: 'texto',
   pantalla: 'pagina', columna: 'pagina', mesa: 'pagina',
   hero: 'objeto',
   // `toro` NO es de la familia del hero, y ponerlo ahi fue un error propio que costo nueve segundos de
@@ -286,7 +287,7 @@ export function guionDe({ escenas, datos, seed = 1, beatSeg = 60 / 124, dur = nu
   // "BIG NUMBERS", que era el primer item del bloque de texto de 0:12. El mostrador de datos.js evita
   // que dos escenas muestren la MISMA frase mientras quede material; el cupo evita que se pidan mas
   // frases de las que la pagina dio.
-  const SEDIENTAS = ['tipografia', 'lista', 'partida', 'rafaga']
+  const SEDIENTAS = ['tipografia', 'lista', 'partida', 'rafaga', 'marquesina']
   const nFr = (d.frases || []).filter(Boolean).length
   // Cuantas frases pide cada una: tipografia 3, lista 3, partida 2, rafaga 3. El cupo sale de cuantas
   // hay para repartir sin que ninguna tenga que dar la vuelta al pozo.
