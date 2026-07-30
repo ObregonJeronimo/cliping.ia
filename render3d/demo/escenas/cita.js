@@ -216,10 +216,12 @@ export function build(ctx) {
   // Devolverla es CONTRATO: la escena siguiente arranca desde (0,0,distBase) y si esta la deja
   // corrida, el corte se lee como un salto. El `set` del final es el seguro: si algun tween quedara
   // a mitad por un ajuste de tempo, igual se entrega la camara donde corresponde.
-  tl.fromTo(camera.position, { z: dolly(distBase, 0.30) }, { z: dolly(distBase, -0.18), duration: DUR * 0.80, ease: 'none', immediateRender: false }, 0)
-  tl.to(camera.position, { z: distBase, duration: DUR * 0.20, ease: E.vaiven() }, DUR * 0.80)
-  tl.fromTo(camera.position, { x: orbita(0.10) }, { x: orbita(-0.06), duration: DUR * 0.62, ease: E.vaiven(), immediateRender: false }, 0)
-  tl.to(camera.position, { x: 0, duration: DUR * 0.38, ease: E.vaiven() }, DUR * 0.62)
+  // CAMARA QUE SE ASIENTA. Una cita pide que la LEAS, y una camara que viaja mientras hay tres renglones
+  // en pantalla compite con la lectura. Se acerca en el primer tercio y despues QUEDA QUIETA en z: el
+  // unico movimiento que sigue es una inclinacion minima que se resuelve, que es lo que hace una cabeza
+  // al empezar a leer. Las seis escenas nuevas hacian todas el mismo acercamiento con vaiven lateral.
+  tl.fromTo(camera.position, { z: dolly(distBase, 0.30) }, { z: distBase, duration: DUR * 0.34, ease: E.frena(3), immediateRender: false }, 0)
+  tl.fromTo(camera.rotation, { z: orbita(0.011) }, { z: 0, duration: DUR * 0.55, ease: E.frena(2), immediateRender: false }, 0)
   tl.set(camera.position, { x: 0, y: 0, z: distBase }, DUR - 0.001)
 
   return { g, tl }

@@ -19,7 +19,7 @@
 // que la familia que eligio el aire lo tenga dibujado, y una que no lo tenga devuelve un rectangulo
 // vacio sin avisar.
 
-import { LOOK, b, E, texto, nivel, matAcento, materialMascara, CLARO, finMascara, deriva, encaje, dolly } from '../kit.js'
+import { LOOK, b, E, texto, nivel, matAcento, materialMascara, CLARO, finMascara, deriva, encaje, dolly , orbita} from '../kit.js'
 import { D } from '../datos.js'
 
 export const meta = { id: 'sello', beats: 6 }
@@ -148,6 +148,12 @@ export function build(ctx) {
   // ---- camara: un acercamiento minimo. Devolverla es CONTRATO.
   tl.fromTo(camera.position, { z: dolly(distBase, 0.20) }, { z: dolly(distBase, -0.06), duration: DUR * 0.86, ease: 'none', immediateRender: false }, 0)
   tl.to(camera.position, { z: distBase, duration: DUR * 0.14, ease: E.vaiven() }, DUR * 0.86)
+  // CAMARA QUE GIRA APENAS ALREDEDOR DEL EMBLEMA. Era la unica de las seis escenas nuevas que no movia
+  // la camara en absoluto, y un sello es lo mas cercano a un OBJETO que tiene el catalogo tipografico:
+  // un giro minimo que se resuelve le da volumen sin sacarlo de eje. Va en rotacion y no en posicion
+  // porque mover la camara de lado desalinea el emblema del centro, que es donde tiene que estar.
+  tl.fromTo(camera.rotation, { z: orbita(-0.020) }, { z: orbita(0.014), duration: DUR * 0.80, ease: E.vaiven(), immediateRender: false }, 0)
+  tl.to(camera.rotation, { z: 0, duration: DUR * 0.20, ease: E.frena(2) }, DUR * 0.80)
   tl.set(camera.position, { x: 0, y: 0, z: distBase }, DUR - 0.001)
 
   return { g, tl }

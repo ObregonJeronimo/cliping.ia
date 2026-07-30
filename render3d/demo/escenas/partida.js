@@ -18,7 +18,7 @@
 // SIN DOS FRASES NO HAY PAR. Con una, la mitad vacia es un rectangulo de color esperando contenido
 // —el defecto exacto que la regla anti-invencion existe para impedir—. Se declara vacia.
 
-import { LOOK, b, E, texto, nivel, matAcento, materialMascara, CLARO, finMascara, deriva, encaje, dolly } from '../kit.js'
+import { LOOK, b, E, texto, nivel, matAcento, materialMascara, CLARO, finMascara, deriva, encaje, dolly , orbita} from '../kit.js'
 import { D } from '../datos.js'
 
 export const meta = { id: 'partida', beats: 6 }
@@ -142,8 +142,12 @@ export function build(ctx) {
   tl.to(costura.scale, { x: 0.001, duration: b(0.34), ease: E.acelera(3) }, SALIDA)
 
   // ---- camara: devolverla es CONTRATO. El `set` final es el seguro ante el ajuste de tempo.
-  tl.fromTo(camera.position, { z: dolly(distBase, 0.26) }, { z: dolly(distBase, -0.12), duration: DUR * 0.80, ease: 'none', immediateRender: false }, 0)
-  tl.to(camera.position, { z: distBase, duration: DUR * 0.20, ease: E.vaiven() }, DUR * 0.80)
+  // CAMARA QUE CRUZA LA COSTURA. El sujeto de esta escena es la LINEA donde se parte el cuadro, asi que
+  // la camara se desliza lateralmente y la atraviesa en vez de acercarse: el desplazamiento hace que la
+  // costura se lea como un borde con profundidad y no como una division dibujada. Sin acercamiento a
+  // proposito — dos movimientos a la vez sobre una composicion partida se leen como inestabilidad.
+  tl.fromTo(camera.position, { x: orbita(-0.26) }, { x: orbita(0.26), duration: DUR * 0.88, ease: 'none', immediateRender: false }, 0)
+  tl.to(camera.position, { x: 0, duration: DUR * 0.12, ease: E.frena(2) }, DUR * 0.88)
   tl.set(camera.position, { x: 0, y: 0, z: distBase }, DUR - 0.001)
 
   return { g, tl }

@@ -167,10 +167,11 @@ export function build(ctx) {
   // ---- camara: un paneo lateral corto que se devuelve
   // Devolverla es CONTRATO: la escena siguiente arranca en (0,0,distBase) y si esta la deja corrida,
   // el corte se lee como un salto. El `set` final es el seguro ante cualquier ajuste de tempo.
-  tl.fromTo(camera.position, { x: orbita(-0.14) }, { x: orbita(0.10), duration: DUR * 0.72, ease: E.vaiven(), immediateRender: false }, 0)
-  tl.to(camera.position, { x: 0, duration: DUR * 0.28, ease: E.vaiven() }, DUR * 0.72)
-  tl.fromTo(camera.position, { z: dolly(distBase, 0.22) }, { z: dolly(distBase, -0.10), duration: DUR * 0.82, ease: 'none', immediateRender: false }, 0)
-  tl.to(camera.position, { z: distBase, duration: DUR * 0.18, ease: E.vaiven() }, DUR * 0.82)
+  // CAMARA QUE BAJA. Una lista se lee de arriba hacia abajo, asi que la camara hace eso: desciende
+  // monotona mientras los items entran, sin acercarse. Es el unico movimiento vertical sostenido del
+  // catalogo y se lee como recorrer, no como respirar.
+  tl.fromTo(camera.position, { y: orbita(0.30) }, { y: orbita(-0.22), duration: DUR * 0.86, ease: 'none', immediateRender: false }, 0)
+  tl.to(camera.position, { y: 0, duration: DUR * 0.14, ease: E.frena(2) }, DUR * 0.86)
   tl.set(camera.position, { x: 0, y: 0, z: distBase }, DUR - 0.001)
 
   return { g, tl }

@@ -176,10 +176,11 @@ export function build(ctx) {
   tl.to(cama.scale, { y: 0.001, duration: b(0.34), ease: E.acelera(3) }, SALIDA + b(0.06))
 
   // ---- camara: devolverla es CONTRATO
-  tl.fromTo(camera.position, { x: orbita(-0.10) }, { x: orbita(0.10), duration: DUR * 0.70, ease: E.vaiven(), immediateRender: false }, 0)
-  tl.to(camera.position, { x: 0, duration: DUR * 0.30, ease: E.vaiven() }, DUR * 0.70)
-  tl.fromTo(camera.position, { z: dolly(distBase, 0.24) }, { z: dolly(distBase, -0.10), duration: DUR * 0.82, ease: 'none', immediateRender: false }, 0)
-  tl.to(camera.position, { z: distBase, duration: DUR * 0.18, ease: E.vaiven() }, DUR * 0.82)
+  // CAMARA QUE VA DE A HACIA B. La escena compara dos cosas, asi que la camara hace el recorrido de la
+  // comparacion: arranca del lado de A y termina del lado de B, monotona. Un vaiven que vuelve al centro
+  // decia "mira las dos" y lo que hay que decir es "pasa de una a la otra".
+  tl.fromTo(camera.position, { x: orbita(-0.20) }, { x: orbita(0.20), duration: DUR * 0.90, ease: E.vaiven(), immediateRender: false }, 0)
+  tl.to(camera.position, { x: 0, duration: DUR * 0.10, ease: E.frena(2) }, DUR * 0.90)
   tl.set(camera.position, { x: 0, y: 0, z: distBase }, DUR - 0.001)
 
   return { g, gr, tl }

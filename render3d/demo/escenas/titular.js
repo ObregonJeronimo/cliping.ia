@@ -202,10 +202,12 @@ export function build(ctx) {
   tl.to(foto.material, { opacity: 0, duration: b(0.40), ease: E.acelera(2) }, SALIDA)
 
   // ---- camara: un empuje lento y su devolucion. Devolverla es CONTRATO.
+  // CAMARA QUE ENDEREZA. Empieza inclinada y se acomoda mientras empuja: es el gesto de apoyar una
+  // portada sobre la mesa y ponerla derecha. El roll resuelve a cero antes del final, asi que el titular
+  // se lee recto justo cuando termino de escribirse.
   tl.fromTo(camera.position, { z: dolly(distBase, 0.36) }, { z: dolly(distBase, -0.14), duration: DUR * 0.84, ease: 'none', immediateRender: false }, 0)
   tl.to(camera.position, { z: distBase, duration: DUR * 0.16, ease: E.vaiven() }, DUR * 0.84)
-  tl.fromTo(camera.position, { y: orbita(-0.10) }, { y: orbita(0.06), duration: DUR * 0.66, ease: E.vaiven(), immediateRender: false }, 0)
-  tl.to(camera.position, { y: 0, duration: DUR * 0.34, ease: E.vaiven() }, DUR * 0.66)
+  tl.fromTo(camera.rotation, { z: orbita(-0.026) }, { z: 0, duration: DUR * 0.72, ease: E.frena(3), immediateRender: false }, 0)
   tl.set(camera.position, { x: 0, y: 0, z: distBase }, DUR - 0.001)
 
   return { g, gr, tl }
