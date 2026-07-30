@@ -22,7 +22,7 @@
 // SIN FOTO NO HAY PORTADA. Una portada sin imagen es un titular sobre el fondo, y eso ya existe.
 // Se declara vacia y el guionista es quien no deberia haberla elegido.
 
-import { LOOK, b, E, texto, nivel, matAcento, materialMascara, planoRecorte, recortesDe, filete, finMascara, deriva, encaje, dolly, orbita } from '../kit.js'
+import { LOOK, b, E, texto, nivel, matAcento, materialMascara, planoRecorte, recortesDe, filete, finMascara, deriva, encaje, dolly, orbita , hex} from '../kit.js'
 import { D } from '../datos.js'
 
 export const meta = { id: 'titular', beats: 6 }
@@ -81,6 +81,37 @@ export function build(ctx) {
   const FOTO_Y = mundoH * 0.5 - BANDA_H / 2       // anclada al canto superior del cuadro
   foto.position.set(0, FOTO_Y, -0.2)
   gr.add(foto)
+
+  // ---------------------------------------------------------------- LA FRANJA QUE BARRE LA FOTO
+  // ESTA ESCENA ERA LA SEGUNDA MAS MUERTA, MEDIDO: 2.92 de diferencia media entre cuadros a 270x480,
+  // contra 16.97 de `columna` y 12.84 de `toro`. Compone una portada —foto arriba, titular abajo— y
+  // despues la sostiene: dos masas que entran y se quedan. `verificar` la deja pasar porque su regla
+  // mide SI la firma cambia, no CUANTO.
+  //
+  // Y LA LECCION DE `sello` SE APLICA DIRECTO: pulsar lo que ya esta no alcanza —ahi dio un 3% y se
+  // reverti—, hace falta un elemento que ENTRE. Para una portada el gesto es una pasada de luz sobre la
+  // foto, como una tapa bajo el escaner: tiene MASA (todo el ancho del cuadro) y baja A SALTOS de un
+  // sexto de la banda por medio beat, porque la deriva suave no la cuenta ni el ojo ni la medicion.
+  //
+  // ADITIVA Y NO SOLIDA: una banda opaca sobre la captura de la pagina del cliente la TAPA, y esta
+  // escena existe para mostrarla. Sumando luz al 22% se lee como un reflejo que pasa y la pagina sigue
+  // ahi debajo. Va en `gr` como la foto: si fuera en `g` quedaria detras, porque `gr` se dibuja siempre
+  // por encima sin importar z.
+  const FRANJA_H = BANDA_H * 0.15
+  const franja = new THREE.Mesh(
+    new THREE.PlaneGeometry(mundoW * 1.04, FRANJA_H),
+    new THREE.MeshBasicMaterial({ color: hex(LOOK.acento).multiplyScalar(0.22), toneMapped: false, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }),
+  )
+  franja.position.set(0, FOTO_Y + BANDA_H / 2 - FRANJA_H / 2, 0.1)
+  gr.add(franja)
+
+  const PASOS_F = 6
+  const ARRIBA = FOTO_Y + BANDA_H / 2 - FRANJA_H / 2
+  tl.to(franja.material, { opacity: 1, duration: b(0.16), ease: E.frena(2) }, b(1.5))
+  for (let k = 1; k <= PASOS_F; k++) {
+    tl.set(franja.position, { y: ARRIBA - (k / PASOS_F) * (BANDA_H - FRANJA_H) }, b(1.5 + k * 0.5))
+  }
+  tl.to(franja.material, { opacity: 0, duration: b(0.24), ease: E.acelera(2) }, b(1.5 + PASOS_F * 0.5))
 
   // Recorte de la banda: la foto desborda a proposito, pero tiene que CORTARSE con filo arriba y
   // abajo o se lee como una imagen suelta flotando. Dos planos del color del fondo tapan lo que sobra;
