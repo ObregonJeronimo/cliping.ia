@@ -59,12 +59,13 @@ const Pelicula = {
     //            nitido. Es el efecto que convierte un punch en un GOLPE — sin el, un zoom rapido se
     //            lee como que la camara se movio; con el, como que algo estallo.
     uGolpe: { value: 0 }, uPersiana: { value: 0 }, uEstela: { value: 0 },
+    uIris: { value: 0 }, uTajo: { value: 0 },
     uTinteTr: { value: new THREE.Color('#5b6cff') },
   },
   vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
   fragmentShader: `
     uniform sampler2D tDiffuse; uniform float uT, uGrano, uVinieta, uAberr, uFlash;
-    uniform float uEmpuje, uEmpujeY, uBarrido, uAnchoBar, uGolpe, uPersiana, uEstela; uniform vec3 uTinteTr;
+    uniform float uEmpuje, uEmpujeY, uBarrido, uAnchoBar, uGolpe, uPersiana, uEstela, uIris, uTajo; uniform vec3 uTinteTr;
     uniform float uVinForma, uVinAsp; uniform vec2 uVinCentro;
     uniform vec2 uRes; varying vec2 vUv;
     float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898,78.233)))*43758.5453); }
@@ -75,7 +76,15 @@ const Pelicula = {
       // GOLPE: se escala la UV alrededor del centro ANTES de muestrear, asi que es un zoom optico y
       // no un escalado del resultado — no hay doble remuestreo ni bordes blandos. Va junto al empuje
       // porque los dos son el mismo remapeo y compartir la muestra los hace gratis.
-      vec2 uvp = (vUv - 0.5) / max(0.05, 1.0 + uGolpe) + 0.5 - vec2(uEmpuje, uEmpujeY);
+      // TAJO: el cuadro se parte por una diagonal y las dos mitades se van para lados opuestos. Va
+      // DENTRO de este remapeo y no en un paso aparte: sumado aca comparte la unica muestra que hace el
+      // pase, y resuelto despues costaria un segundo muestreo del cuadro entero para el mismo dibujo.
+      // La diagonal no es a 45 grados —seria la del cuadrado, y este cuadro es 9:16— sino inclinada un
+      // 35%, que es lo que hace que el corte cruce la altura util y no una esquina.
+      float ladoTajo = step(0.0, vUv.y - (0.5 + (vUv.x - 0.5) * 0.35));
+      vec2 uvp = (vUv - 0.5) / max(0.05, 1.0 + uGolpe) + 0.5
+               - vec2(uEmpuje, uEmpujeY)
+               + vec2((ladoTajo > 0.5 ? 1.0 : -1.0) * uTajo, 0.0);
       bool fueraEmp = uvp.x < 0.0 || uvp.x > 1.0 || uvp.y < 0.0 || uvp.y > 1.0;
       vec2 uvs = clamp(uvp, 0.0, 1.0);
       vec2 c = uvs - 0.5; float r2 = dot(c,c);
@@ -145,6 +154,24 @@ const Pelicula = {
       if (uPersiana > 0.0001) {
         float lama = abs(fract(vUv.y * 6.0) - 0.5) * 2.0;
         col.rgb = mix(col.rgb, uTinteTr, step(lama, uPersiana));
+      }
+      // IRIS: un obturador circular que se cierra desde el borde hacia el centro. Es el unico corte
+      // RADIAL del grupo —barrido, persiana y tajo son todos rectos— y por eso es el que sirve cuando la
+      // escena que sale compone al centro: el cuadro se cierra sobre el sujeto en vez de cruzarlo.
+      // El radio se mide contra la ESQUINA y no contra el borde: medido contra el borde, el circulo
+      // toca los cuatro lados con uIris en 1 pero las cuatro esquinas siguen mostrando imagen, y el
+      // corte ocurre con el cuadro a medio tapar.
+      if (uIris > 0.0001) {
+        float rEsq = length(vec2(0.5, 0.5) * vec2(uRes.x / max(1.0, uRes.y), 1.0));
+        float d = length((vUv - 0.5) * vec2(uRes.x / max(1.0, uRes.y), 1.0));
+        // SE TIÑE DE AFUERA HACIA ADENTRO, y el sentido del smoothstep es todo el efecto. Escrito al
+        // reves —tiñendo lo que queda DENTRO del radio— con uIris en 0 el radio vale el de la esquina y
+        // la mascara cubre el cuadro entero: el primer render salio con un ovalo de acento tapando todo
+        // antes de que la transicion empezara. Un obturador que se cierra pinta el BORDE y deja ver el
+        // centro hasta el ultimo instante.
+        // Borde blando de un pelo: a canto duro el circulo escalona sobre un cuadro de 1080 de ancho.
+        float rIris = rEsq * (1.0 - uIris);
+        col.rgb = mix(col.rgb, uTinteTr, smoothstep(rIris - 0.004, rIris + 0.004, d));
       }
       // FLASH: dos o tres frames de blanco sobre el corte. Es lo que hace que un corte seco se lea
       // como decisión de montaje en vez de como un salto.
@@ -550,6 +577,25 @@ export class Anthem {
         const dp = b(0.30)
         this.tl.fromTo(this.pelicula.uniforms.uPersiana, { value: 0 }, { value: 1, duration: dp, ease: 'power2.in', immediateRender: false }, e.t0 - dp)
         this.tl.fromTo(this.pelicula.uniforms.uPersiana, { value: 1 }, { value: 0, duration: dp, ease: 'power2.out', immediateRender: false }, e.t0)
+      } else if (tipo === 'iris') {
+        // OBTURADOR CIRCULAR. Cierra sobre el centro y abre en el cuadro siguiente. Va un pelo mas
+        // lento que la persiana —0.34 contra 0.30— porque un circulo que se cierra recorre mas camino
+        // visible que seis lamas: al mismo tiempo se lee como un parpadeo y pierde el gesto.
+        const di = b(0.34)
+        this.tl.fromTo(this.pelicula.uniforms.uIris, { value: 0 }, { value: 1, duration: di, ease: 'power2.in', immediateRender: false }, e.t0 - di)
+        this.tl.fromTo(this.pelicula.uniforms.uIris, { value: 1 }, { value: 0, duration: di, ease: 'power2.out', immediateRender: false }, e.t0)
+      } else if (tipo === 'tajo') {
+        // EL CUADRO SE PARTE EN DOS Y CADA MITAD SE VA PARA SU LADO. Es el corte mas violento del
+        // repertorio, asi que va CORTO: en 0.26 de beat entra y sale, y lo que queda es la sensacion de
+        // que algo lo abrio, no un efecto que se mira.
+        //
+        // El signo alterna por corte igual que el empuje: dos tajos seguidos hacia el mismo lado se
+        // leen como una vibracion. La mitad de la separacion en cada lado —0.55 de UV— alcanza para que
+        // ninguna de las dos mitades siga mostrando el centro del cuadro, que es donde estaba el sujeto.
+        const dt = b(0.26)
+        const dirT = (i % 2 === 0) ? 1 : -1
+        this.tl.fromTo(this.pelicula.uniforms.uTajo, { value: 0 }, { value: 0.55 * dirT, duration: dt, ease: 'power3.in', immediateRender: false }, e.t0 - dt)
+        this.tl.fromTo(this.pelicula.uniforms.uTajo, { value: -0.55 * dirT }, { value: 0, duration: dt, ease: 'power3.out', immediateRender: false }, e.t0)
       } else if (tipo === 'empuje') {
         // La saliente se va y la entrante llega DESDE EL OTRO LADO. El signo alterna por corte: dos
         // empujes seguidos en la misma direccion se leen como un scroll, no como un montaje.

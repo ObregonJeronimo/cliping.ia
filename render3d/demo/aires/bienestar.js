@@ -107,6 +107,6 @@ export default {
   mobiliario: { fondo: 'ondas', fondos: ['ondas', 'malla', 'topografia'], marco: 'nada', marcos: ['nada', 'reglas', 'cantoneras'], hud: false, fondoForma: 0.30, fondoAsp: 0.62 },   // el aire ES el mensaje; cualquier borde lo contradice
   // COMO CORTA ESTE AIRE: SIN FLASH ni empuje: nada que sobresalte. Es el aire cuyo mensaje es la calma y
   // un golpe lo contradice.
-  transiciones: ['corte', 'corte', 'barrido', 'corte', 'barrido', 'corte'],
+  transiciones: ['corte', 'corte', 'barrido', 'corte', 'barrido', 'corte', 'iris'],
 
 }

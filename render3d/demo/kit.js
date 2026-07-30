@@ -452,7 +452,10 @@ export const MARCOS = ['nada', 'escuadras', 'cantoneras', 'reglas', 'passepartou
 //   'empuje'    el cuadro se corre en X y la entrante llega del otro lado. Lateral, de catalogo.
 //   'empujeV'   lo mismo en Y. ES EL EJE QUE PIDE EL 9:16: en un cuadro de 1080x1920 el gesto nativo
 //               es el vertical —asi se mira un feed—, y el motor solo tenia el horizontal.
-export const MONTAJES = ['corte', 'flash', 'barrido', 'empuje', 'empujeV', 'golpe', 'persiana']
+// Nueve formas de cortar. 'iris' es la unica RADIAL —las otras ocho son rectas o de color— y
+// 'tajo' la unica que parte el cuadro en dos mitades que se van para lados opuestos.
+export const MONTAJES = ['corte', 'flash', 'barrido', 'empuje', 'empujeV', 'golpe', 'persiana',
+                         'iris', 'tajo']
 
 // El margen tambien es del aire. Era la razon MAS PROFUNDA de que todo se pareciera: el rectangulo
 // invisible al que se alinea el contenido estaba escrito a mano en diez escenas, y las diez habian

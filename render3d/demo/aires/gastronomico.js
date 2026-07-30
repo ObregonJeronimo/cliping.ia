@@ -111,6 +111,6 @@ export default {
   mobiliario: { fondo: 'ondas', fondos: ['ondas', 'terrazo', 'arcos'], marco: 'reglas', marcos: ['reglas', 'cantoneras', 'nada'], hud: false, fondoForma: 0.20, fondoCentro: [0.46, 0.60] },   // la carta de un restaurante lleva filetes, no corchetes de camara
   // COMO CORTA ESTE AIRE: la banda pasa como pasa un plato; el vertical, como se baja por una carta.
   // servicio y mostrador: un mecanismo que abre.
-  transiciones: ['corte', 'barrido', 'persiana', 'corte', 'empujeV', 'corte'],
+  transiciones: ['corte', 'barrido', 'persiana', 'corte', 'empujeV', 'corte', 'iris'],
 
 }

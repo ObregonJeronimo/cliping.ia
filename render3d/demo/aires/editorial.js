@@ -96,6 +96,6 @@ export default {
   // DE DONDE VIENE LA LUZ DEL FONDO: una pagina no tiene foco: tiene luz pareja.
   mobiliario: { fondo: 'puntos', fondos: ['puntos', 'contorno', 'malla'], marco: 'rotulado', marcos: ['rotulado', 'cantoneras', 'reglas'], hud: false, fondoForma: 0.90 },   // el margen asimetrico de un cuaderno: rompe la simetria del cuadro
   // COMO CORTA ESTE AIRE: el vertical se lee como pasar de pagina, que es exactamente el gesto del rubro.
-  transiciones: ['corte', 'corte', 'empujeV', 'corte', 'barrido', 'empujeV'],
+  transiciones: ['corte', 'corte', 'empujeV', 'corte', 'barrido', 'empujeV', 'iris'],
 
 }

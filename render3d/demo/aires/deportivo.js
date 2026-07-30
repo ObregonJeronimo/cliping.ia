@@ -83,6 +83,6 @@ export default {
   // COMO CORTA ESTE AIRE: el unico aire donde el flash es mayoria: es el lenguaje del deporte, y los dos ejes
   // de empuje le dan el pique que un corte seco solo no da.
   // el punch reemplaza un corte seco: este aire ya corta duro y le faltaba un acento que no moviera el eje.
-  transiciones: ['flash', 'golpe', 'empuje', 'flash', 'corte', 'empujeV'],
+  transiciones: ['flash', 'golpe', 'empuje', 'flash', 'corte', 'empujeV', 'tajo'],
 
 }

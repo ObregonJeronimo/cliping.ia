@@ -114,6 +114,6 @@ export default {
   mobiliario: { fondo: 'bloques', fondos: ['bloques', 'puntos', 'terrazo'], marco: 'nada', marcos: ['nada', 'cantoneras', 'escuadras'], hud: false, fondoForma: 0.80, fondoCentro: [0.5, 0.5] },   // el color y la forma ya gritan; un marco encima es ruido
   // COMO CORTA ESTE AIRE: el unico donde el corte duro es minoria: todo se mueve, que es el punto.
   // el mas energico del catalogo: el punch es su gesto natural.
-  transiciones: ['empujeV', 'flash', 'golpe', 'corte', 'flash', 'empujeV'],
+  transiciones: ['empujeV', 'flash', 'golpe', 'corte', 'flash', 'empujeV', 'tajo'],
 
 }
