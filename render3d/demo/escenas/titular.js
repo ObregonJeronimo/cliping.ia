@@ -72,12 +72,30 @@ export function build(ctx) {
   const lineas = String(txt).split('\n').map(s => s.trim()).filter(Boolean).slice(0, MAX_LINEAS)
   const BANDA_H = mundoH * (lineas.length >= 3 ? 0.50 : lineas.length === 2 ? 0.60 : 0.70)
   const arFoto = tex.image.width / tex.image.height
-  const altoCubre = Math.max(BANDA_H, mundoW / Math.max(0.08, arFoto))
-  const foto = planoRecorte(tex, altoCubre)
-  if (!foto) {                                     // defensivo: planoRecorte devuelve null sin imagen
-    tl.to({}, { duration: DUR }, 0)
-    return { g, gr, tl, vacia: true }
-  }
+
+  // LA PAGINA NO SE CORTA DE LOS COSTADOS, Y ANTES SI. La version anterior escalaba la captura para
+  // CUBRIR la banda: con una captura ancha —arFoto 1.6— cubrir un alto de 5.0 da 8.0 de ancho contra los
+  // 5.625 del cuadro, o sea un 42% de desborde, y el cuadro se lo comia. Thiago lo vio en el video:
+  // "aster app launch" en vez de "Faster app launch", "ctivity" en vez de "Activity" — CADA LINEA
+  // perdiendo sus primeras letras. Una foto puede sangrar; una captura de pagina con texto NO, porque
+  // sangrar de costado le come las palabras.
+  //
+  // Se compone a ANCHO COMPLETO y se recorta por UV en vertical, que es la unica direccion segura: una
+  // pagina se lee de arriba hacia abajo, asi que perder el pie no cuesta nada y perder el margen
+  // izquierdo cuesta todo. Es la misma cuenta que documentan `pantalla` y `mesa`.
+  const ANCHO_FOTO = mundoW * 1.02
+  const altoNativo = ANCHO_FOTO / Math.max(0.08, arFoto)
+  let visibleFoto = altoNativo > 0 ? Math.min(1, BANDA_H / altoNativo) : 1
+  const texFoto = tex.clone()
+  texFoto.needsUpdate = true
+  texFoto.wrapS = THREE.ClampToEdgeWrapping
+  texFoto.wrapT = THREE.ClampToEdgeWrapping
+  texFoto.repeat.set(1, visibleFoto)
+  texFoto.offset.set(0, 1 - visibleFoto)           // la ventana arranca ARRIBA: ahi empieza la pagina
+  const foto = new THREE.Mesh(
+    new THREE.PlaneGeometry(ANCHO_FOTO, Math.min(BANDA_H, altoNativo)),
+    new THREE.MeshBasicMaterial({ map: texFoto, toneMapped: false, transparent: true }),
+  )
   const FOTO_Y = mundoH * 0.5 - BANDA_H / 2       // anclada al canto superior del cuadro
   foto.position.set(0, FOTO_Y, -0.2)
   gr.add(foto)
@@ -130,7 +148,7 @@ export function build(ctx) {
   // por lo tanto se dibuja encima de todo `g`, sin importar el z. El dominio estaba dibujado y no se
   // veia nunca. Si la foto no desborda —el caso normal, porque el alto se elige para cubrir— no se
   // crea ninguna tapa: un plano opaco de mas es siempre algo tapando otra cosa.
-  const sobra = Math.max(0, (altoCubre - BANDA_H) / 2)
+  const sobra = Math.max(0, (Math.min(BANDA_H, altoNativo) - BANDA_H) / 2)
   if (sobra > 0.001) {
     tapa(FOTO_Y + BANDA_H / 2 + sobra / 2, sobra)
     tapa(FOTO_Y - BANDA_H / 2 - sobra / 2, sobra)

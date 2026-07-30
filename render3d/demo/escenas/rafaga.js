@@ -29,8 +29,15 @@ import { D, frase, nFrases, marca } from '../datos.js'
 
 export const meta = { id: 'rafaga', beats: 6 }
 
-const SLOTS = 12                       // doce cuadros en seis beats = uno cada medio beat
-const ROLES = ['tarjeta', 'foto', 'logo', 'cta']
+// SEIS Y NO DOCE. Con uno cada medio beat —0.24 s a 124 bpm— las piezas pasaban tan rapido que no se
+// alcanzaba a ver ninguna: Thiago lo vio mirando el video y es exacto. Un recorte real de una pagina no
+// es un destello de color, es informacion, y necesita tiempo de lectura. Uno por beat sigue cayendo en
+// la grilla del montaje —que es lo que la nota de abajo defiende— y duplica el tiempo en pantalla.
+const SLOTS = 6
+// SIN 'cta'. Un boton de la pagina arrancado de su contexto no dice nada: en el render salieron
+// "Contact sales" y "Listen" flotando en el cuadro, sin la fila donde vivian ni la accion que
+// acompañaban. Un CTA solo tiene sentido donde ES un pedido —el cierre— y no como material decorativo.
+const ROLES = ['tarjeta', 'foto', 'logo']
 
 export function build(ctx) {
   const { THREE, gsap, mundoW, mundoH, camera, distBase, rnd, texturas, datosEls } = ctx

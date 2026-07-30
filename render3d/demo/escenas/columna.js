@@ -35,7 +35,9 @@ export const meta = { id: 'columna', beats: 6 }
 // Ocho ranuras: es la pila mas corta que, con el paso elegido, deja la costura del bucle FUERA del
 // cuadro. Con seis la pieza que se recicla reaparecia por abajo estando todavia visible por arriba.
 const RANURAS = 8
-const ROLES = ['tarjeta', 'foto', 'logo', 'cta']
+// SIN 'cta', por lo mismo que rafaga: un boton fuera de su fila no aporta. En el render de linear
+// pasaron "Contact sales" y "Listen" entre las tarjetas, y un feed de botones no es un feed.
+const ROLES = ['tarjeta', 'foto', 'logo']
 
 // Cuanto crece una pieza al cruzar el centro, y cuan angosta es esa zona de foco. Es el unico efecto
 // "de camara" de la escena: no hay profundidad de campo, hay un tamaño que delata donde mirar.
@@ -89,7 +91,10 @@ export function build(ctx) {
   // UNA RANURA POR BEAT. No es una velocidad elegida a ojo: hace que en cada beat haya exactamente una
   // pieza pasando por el centro del cuadro, y por eso el destaque puede caer sobre lo que el ojo ya
   // esta mirando en vez de sobre una pieza cualquiera de la pila.
-  const VEL = PASO / UNBEAT
+  // UNA RANURA CADA DOS BEATS, no cada uno. A un beat el feed pasaba demasiado rapido para leer una
+  // sola tarjeta —mirado en el video—, y estas piezas son contenido real de la pagina, no textura. Sigue
+  // cayendo en la grilla (cada dos beats es grilla igual) y duplica el tiempo de lectura de cada pieza.
+  const VEL = PASO / (UNBEAT * 2)
 
   // El bucle. Cada pieza que sale por arriba vuelve a entrar por abajo. La costura cae en ±SPAN/2, o
   // sea a 12.8 del centro en un cuadro que llega a 5: el salto ocurre fuera de pantalla y no se ve.

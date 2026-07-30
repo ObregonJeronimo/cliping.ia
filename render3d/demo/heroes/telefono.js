@@ -287,10 +287,29 @@ export function build(ctx) {
   // nota larga arriba). Mientras el tween apunto a `tira.offset`, el telefono no scrolleo NUNCA.
   if (tira && pantalla) {
     const visible = altoVP / altoTira
-    const recorrido = Math.max(0, 1 - visible) * 0.68
-    tl.fromTo(pantalla.material.uniforms.uOff.value, { y: 1 - visible },
-      { y: 1 - visible - recorrido, duration: b(meta.beats - 1.6), ease: E.frena(3), immediateRender: false },
-      b(0.9))
+    // EL SCROLL BAJA A UN TERCIO, y no es solo legibilidad: a 0.68 de recorrido las DOS submuestras del
+    // obturador caian a una altura de linea de distancia y el promedio dibujaba el texto DUPLICADO. Se ve
+    // clarisimo en el render a resolucion completa —"The product / The product", "development /
+    // development"— y es la razon real de que "no se entienda", mas que la velocidad en si.
+    // El fantasma es proporcional al desplazamiento por cuadro, asi que bajarlo a 0.24 lo reduce a un
+    // tercio sin tocar el obturador (que subir a 4 muestras cuesta el doble de render).
+    const recorrido = Math.max(0, 1 - visible) * 0.24
+    // EL SCROLL VA A SALTOS, NO EN DERIVA, y esa es la unica forma de matar el fantasma. El obturador
+    // promedia DOS submuestras separadas en el tiempo: mientras la pantalla se desliza, esas dos caen en
+    // posiciones distintas y el promedio dibuja el texto DUPLICADO. Bajar la velocidad lo reduce pero no
+    // lo elimina —probado: de una altura de linea de separacion a dos copias superpuestas, todavia
+    // ilegible—, porque cualquier movimiento continuo lo produce.
+    //
+    // Con pasos y pausas el problema desaparece por construccion: durante la pausa las dos submuestras
+    // caen en el MISMO lugar y el texto sale nitido, y el borron queda confinado al salto, donde un
+    // borron es exactamente lo que corresponde ver. Es la misma leccion que `sello` y `titular`: en este
+    // motor lo discreto se lee y lo continuo se difumina.
+    //
+    // Cuatro pasos sobre los beats enteros: el ojo tiene un beat completo para leer cada pantalla.
+    const PASOS_P = 4
+    for (let k = 1; k <= PASOS_P; k++) {
+      tl.set(pantalla.material.uniforms.uOff.value, { y: 1 - visible - recorrido * (k / PASOS_P) }, b(0.9 + k * 1.2))
+    }
   }
 
   // El barrido del reflejo cruza una sola vez, empezando cuando el teléfono ya frenó: durante la
