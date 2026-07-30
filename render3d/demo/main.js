@@ -336,7 +336,12 @@ export class Anthem {
     } else {
       const plan = this.spec.guion || guionDe({
         escenas: catalogo,
-        datos: this.spec.datos,
+        // LA TIRA VIAJA EN EL SPEC, NO EN LOS DATOS, y `pantalla` la pedia como `d.tira`. Como el guion
+        // recibe solo `spec.datos`, ese campo era SIEMPRE undefined y la escena no se podia elegir
+        // jamas: medido sobre 200 guiones, 0%. No es que perdiera contra `mesa` —que es lo que supuse
+        // y escribi en el informe— es que su requisito leia de un objeto donde el dato no vive. La
+        // escena estaba escrita, verde en las compuertas y muerta en produccion.
+        datos: { ...this.spec.datos, tira: !!this.spec.tira },
         seed: this.spec.seed || 7,
         beatSeg: BEAT,
         dur: this.spec.durObjetivo || null,

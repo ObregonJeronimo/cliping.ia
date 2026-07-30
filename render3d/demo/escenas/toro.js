@@ -490,7 +490,34 @@ export function build(ctx) {
       if (bloom) bloom.strength = oBloom
       return
     }
-    const y = sm(u)
+    // SPEED RAMP: RAPIDO EN LA TRANSICION, LENTO EN LA INFORMACION.
+    //
+    // `sm(u)` es un smoothstep: acelera, cruza a velocidad pareja y frena. Es correcto y es de los años
+    // noventa — una camara que rodea un objeto a velocidad constante se lee como un render de
+    // arquitectura, no como publicidad. Lo que hace una pieza actual es lo contrario de repartir: mueve
+    // MUCHO donde no hay nada que leer y se queda casi quieta donde si.
+    //
+    // Esta escena revela su tipografia entre los beats 1.5 y 3.04, o sea entre u = 0.26 y u = 0.53. La
+    // rampa comprime el recorrido fuera de esa ventana y lo estira adentro: la camara hace la mayor
+    // parte del arco en el primer cuarto, se calma mientras se leen las palabras y vuelve a acelerar en
+    // la salida. Es una reparametrizacion del MISMO camino — `rampa` vale 0 en 0 y 1 en 1 — asi que la
+    // marca de devolucion de la camara sigue siendo exacta y el contrato no se toca.
+    //
+    // El peso es 0.62 y no 1: a rampa completa el tramo de lectura queda tan quieto que la compuerta de
+    // "nada descansa" empieza a tener razon. 0.62 es donde el gesto se nota y el movimiento sigue vivo.
+    const rampa = (x) => {
+      const a = 0.26, b2 = 0.53                    // la ventana en la que se lee la tipografia
+      const lento = 0.30                           // que fraccion del recorrido ocurre DENTRO de esa ventana
+      if (x <= a) return (x / a) * (1 - lento) * (a / (a + (1 - b2)))
+      if (x >= b2) {
+        const base = (1 - lento) * (a / (a + (1 - b2))) + lento
+        return base + ((x - b2) / (1 - b2)) * (1 - base)
+      }
+      return (1 - lento) * (a / (a + (1 - b2))) + ((x - a) / (b2 - a)) * lento
+    }
+    const PESO = 0.62
+    const ur = u * (1 - PESO) + rampa(u) * PESO
+    const y = sm(ur)
     const arco = 4 * y * (1 - y)             // 0 en los dos extremos, 1 en el medio — por eso vuelve
     // La AMPLITUD de la orbita la pone el aire: arco lateral y altura por `orbita`, acercamiento por
     // `dolly`. La forma de la curva no se toca —sigue valiendo 0 en los dos extremos, que es lo que

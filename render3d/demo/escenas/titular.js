@@ -23,7 +23,7 @@
 // Se declara vacia y el guionista es quien no deberia haberla elegido.
 
 import { LOOK, b, E, texto, nivel, matAcento, materialMascara, planoRecorte, recortesDe, filete, finMascara, deriva, encaje, dolly, orbita, hex, texturaDe } from '../kit.js'
-import { D, repartirFrases } from '../datos.js'
+import { D, repartirFrases, claimLibre, marcarClaimUsado } from '../datos.js'
 
 export const meta = { id: 'titular', beats: 6 }
 
@@ -48,7 +48,8 @@ const MAX_LINEAS = 3
 // `destello` compone el mismo tipo de material en dos.
 function titularDe() {
   const claim = String(D.claim || '').trim()
-  if (claim) return enLineas(claim, MAX_LINEAS)
+  // Si el gancho ya la uso, la portada cae a una frase: ver `claimLibre` en datos.js.
+  if (claim && claimLibre()) { marcarClaimUsado(); return enLineas(claim, MAX_LINEAS) }
   const fr = repartirFrases(2)
   const dosLineas = fr.find(f => f.includes('\n'))
   if (dosLineas) return dosLineas

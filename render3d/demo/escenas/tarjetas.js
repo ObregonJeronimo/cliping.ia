@@ -69,7 +69,10 @@ const DEMO = [
 // DATOS, HERO y ORDEN se resuelven a la CANTIDAD real de cifras. Con cinco escritas a mano estos tres
 // eran constantes; con dos, un HERO fijo en 2 apunta fuera de la lista y ORDEN pide indices que no
 // existen — la escena no falla, dibuja undefined.
-const PASOS = 8         // escalones del contador -> 9 texturas por tarjeta
+// ESCALONES DEL CONTADOR. Ocho eran pocos: un dato de 500 mostraba 0, 63, 125, 188... y eso no se lee
+// como un odometro, se lee como una cuenta a saltos. Catorce lo vuelven continuo al ojo y siguen siendo
+// quince texturas por tarjeta — el tope existe porque una textura por entero serian cientos de canvas.
+const PASOS = 14        // escalones del contador -> 15 texturas por tarjeta
 
 // SE RESUELVE DENTRO DE build(), NO AL IMPORTAR EL MODULO. Evaluado a nivel de modulo, esto corre
 // cuando el navegador resuelve el grafo de imports — o sea ANTES de que configurarDatos() haya puesto
@@ -416,8 +419,13 @@ export function build(ctx) {
     // ------------------------------------------------------------ el número CUENTA
     const est = { v: 0 }
     const esHero = i === HERO
+    // LA CURVA ES LO QUE HACE QUE UN CONTADOR SE LEA COMO UN ODOMETRO. Con `frena(2)` la cuenta sube
+    // casi pareja y termina de golpe; con `frena(4)` llega al 90% del valor en el primer tercio y
+    // despues se arrastra hasta clavarlo. Es la desaceleracion fuerte que usa cualquier contador de
+    // publicidad, y el ojo la sigue instintivamente porque quiere saber en que numero para.
+    // Se usa el vocabulario del AIRE y no un 'expo.out' literal: asi un aire calmo cuenta calmo.
     tl.to(est, {
-      v: 1, duration: b(2.15), ease: E.frena(2),
+      v: 1, duration: b(2.15), ease: E.frena(4),
       onUpdate: () => {
         const k = Math.round(est.v * PASOS)
         t.num.poner(k)

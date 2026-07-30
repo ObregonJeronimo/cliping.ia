@@ -26,6 +26,9 @@
 // El costo en beats sale de `meta.beats` del módulo, no de acá: duplicarlo es garantía de que en
 // algún momento los dos números dejen de coincidir.
 const REQUISITOS = {
+  // El gancho necesita la PROMESA de la pagina y nada mas. Sin description no hay gancho: es preferible
+  // abrir por la marca que abrir con un encabezado de seccion puesto en cuerpo de cartel.
+  gancho: (d) => !!String(d.claim || '').trim(),
   // La apertura sólo necesita el nombre. Toda página tiene uno.
   apertura: (d) => !!d.marca,
   // El hero cae a geometría pura si no hay material: siempre se puede armar.
@@ -63,10 +66,13 @@ const REQUISITOS = {
   // otro material: sin testimonio no hay cita, y una cita fabricada es la mentira mas cara del motor.
   // Basta uno — la escena cita a UNA persona, no arma un muro de opiniones.
   cita: (d) => (d.testimonios || []).some(t => t && t.texto),
-  // Una lista necesita TRES cosas que enumerar. Con dos es un par, y un par numerado se lee como un
-  // error de conteo. Solo cuentan las frases de UNA linea: las de dos renglones son titulares (el
-  // claim viene partido asi), y numerar un titular lo degrada a viñeta ademas de romper la grilla.
-  lista: (d) => (d.frases || []).filter(f => f && !/\n/.test(String(f))).length >= 3,
+  // TRES FRASES, DE LAS QUE SEAN. El filtro de "una sola linea" es de cuando la escena NUMERABA: un
+  // titular de dos renglones no podia ser un item de lista sin romper la grilla. Desde que dejo de
+  // enumerar compone bloques de dos renglones sin problema — y el filtro quedo. Como ademas el
+  // extractor ahora entrega los titulos COMPLETOS, y casi todos se componen en dos renglones, la
+  // cuenta de frases de una linea bajo a una o dos y la escena quedo inalcanzable: 0% de 200 guiones.
+  // Es el mismo defecto que `pantalla` con otra forma — un requisito que ya no describe a su escena.
+  lista: (d) => (d.frases || []).filter(Boolean).length >= 3,
   // La portada necesita las DOS cosas: una foto real de la pagina y algo con forma de titular. Sin
   // foto es un titular sobre el fondo, y eso ya lo hace `destello`; sin texto es una foto suelta.
   titular: (d) => (d.elementos || []).some(e => e && ['foto', 'hero', 'tarjeta'].includes(e.rol))
@@ -148,7 +154,7 @@ const REQUISITOS = {
 // cuando ya habia dieciseis, y por eso no reportaba guiones cortos durante meses.
 const FAMILIA = {
   tipografia: 'texto', lista: 'texto', partida: 'texto', titular: 'texto', cita: 'texto',
-  marquesina: 'texto',
+  marquesina: 'texto', gancho: 'texto',
   pantalla: 'pagina', columna: 'pagina', mesa: 'pagina',
   hero: 'objeto',
   // `toro` NO es de la familia del hero, y ponerlo ahi fue un error propio que costo nueve segundos de
@@ -313,7 +319,12 @@ export function guionDe({ escenas, datos, seed = 1, beatSeg = 60 / 124, dur = nu
   }
   const medio = orden.filter(puede).filter(id => !SEDIENTAS.includes(id) || sobreviven.has(id))
 
-  const fijas = ['apertura', 'cierre'].filter(puede)
+  // EL GANCHO ES FIJO Y VA ANTES DE LA MARCA. Es la unica escena que rompe "la apertura va primera", y
+  // la razon no es estetica: estos videos se ven en un feed, donde nadie decide seguir mirando porque
+  // le mostraron un logo. Decide en los primeros dos segundos y decide sobre si le prometieron algo.
+  // La regla vieja sigue valiendo, con una palabra mas: la apertura va primera ENTRE LAS ESCENAS DE
+  // MARCA. Adelante solo puede ir una promesa, y solo si la pagina la escribio.
+  const fijas = ['gancho', 'apertura', 'cierre'].filter(puede)
   const beatsFijos = fijas.reduce((n, id) => n + beatsDe(id), 0)
   const objetivo = dur ? Math.round(dur / beatSeg) : Infinity
   // Un beat de tolerancia. Sin ella, pidiendo 15 s salian 13.5: la ultima escena que entraba se
@@ -399,7 +410,8 @@ export function guionDe({ escenas, datos, seed = 1, beatSeg = 60 / 124, dur = nu
 
   const fin = fijas.includes('cierre') ? ['cierre'] : []
   const ini = fijas.includes('apertura') ? ['apertura'] : []
-  return [...ini, ...plan, ...fin]
+  const hook = fijas.includes('gancho') ? ['gancho'] : []
+  return [...hook, ...ini, ...plan, ...fin]
 }
 
 // AJUSTE FINO DE TEMPO. Un plan sólo puede medir múltiplos enteros de beat, y a 85 bpm un beat dura

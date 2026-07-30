@@ -160,7 +160,14 @@ export const frase = (i) => {
 // `repetidas` para que una compuerta pueda medirlo.
 let _cursor = 0
 export let repetidas = 0
-export const reiniciarReparto = () => { _cursor = 0; repetidas = 0 }
+// LA PROMESA TAMBIEN SE REPARTE, y es la unica pieza de copy que dos escenas quieren a la vez: `gancho`
+// la usa como cartel de entrada y `titular` como titular de portada. Con las dos en la misma pieza el
+// espectador lee la misma linea dos veces — el defecto que este mostrador vino a resolver. Quien la
+// toma primero avisa, y la otra cae a su respaldo.
+let _claimUsado = false
+export const claimLibre = () => !_claimUsado
+export const marcarClaimUsado = () => { _claimUsado = true }
+export const reiniciarReparto = () => { _cursor = 0; repetidas = 0; _claimUsado = false }
 
 // `soloUnaLinea` lo piden las escenas que componen una grilla vertical y no toleran un item del doble
 // de alto. `cuantas` es un maximo: si hay menos, devuelve menos, y la escena decide si le alcanza.

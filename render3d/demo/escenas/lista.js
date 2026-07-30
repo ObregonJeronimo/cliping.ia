@@ -93,6 +93,12 @@ export function build(ctx) {
   riel.scale.y = 0.001
   g.add(riel)
 
+  // `cont` le da a la CASCADA su propia propiedad. La deriva continua ya escribe `g.position.y`, y dos
+  // escritores sobre la misma propiedad dejan de ser deterministas — es la trampa que el kit documenta
+  // y que ya costo una vez en `partida`.
+  const cont = new THREE.Group()
+  g.add(cont)
+
   // ---- los items
   const filas = []
   for (let i = 0; i < items.length; i++) {
@@ -103,8 +109,8 @@ export function build(ctx) {
     const matT = materialMascara(t.tex, COLOR_ITEM)
     const mT = new THREE.Mesh(new THREE.PlaneGeometry(ALTO_ITEM * t.ar, ALTO_ITEM), matT)
     mT.position.set(MARGEN + SANGRIA + (ALTO_ITEM * t.ar) / 2, y, 0)
-    mT.userData.encaja = true      // un item de lista que se sale no es una lista
-    g.add(mT)
+    mT.userData.encaja = true      // una frase que se sale por el margen derecho no se lee
+    cont.add(mT)
 
     filas.push({ matT, mT })
   }
@@ -132,11 +138,31 @@ export function build(ctx) {
   // destello.js ya lo sabian (usan 1.11 y 1.10).
   const T0 = b(0.35)
   const PASO_BEAT = b(1.0)
+  // CASCADA: CADA FRASE LLEGA DESDE EL FONDO Y EMPUJA A LA ANTERIOR HACIA ARRIBA.
+  //
+  // Antes entraban con un empuje lateral de 0.05 del ancho y se quedaban en su renglon: tres frases
+  // apiladas que aparecen es una lista estatica con revelado, y una lista estatica es lo que el ojo
+  // saltea. El bloque tiene que ARMARSE delante del espectador.
+  //
+  // Cada frase entra desde z negativo con overshoot —llega, se pasa un poco y se acomoda— y el bloque
+  // entero sube medio paso en cada beat, asi que la que estaba arriba se corre para hacerle lugar. Es
+  // la unica forma de que un bloque de texto tenga movimiento propio sin que el texto se mueva mientras
+  // se lee: el desplazamiento ocurre ENTRE frase y frase, y en el reposo todo esta quieto.
+  //
+  // EL BLOQUE ARRANCA ABAJO Y TERMINA CENTRADO. Se compensa el corrimiento acumulado en la posicion de
+  // partida, asi que la ultima frase deja la composicion exactamente donde el resto de la escena la
+  // espera — el riel y el margen no se enteran.
+  const SUBE = PASO * 0.5
+  cont.position.y = -SUBE * (filas.length - 1) / 2
   filas.forEach((f, i) => {
     const t0 = T0 + i * PASO_BEAT
-    tl.fromTo(f.matT.uniforms.uProg, { value: 0 }, { value: FIN, duration: b(0.52), ease: E.frena(2), immediateRender: false }, t0 + b(0.12))
-    // Un empuje corto desde la izquierda: el item "aterriza" en su renglon en vez de aparecer.
-    tl.fromTo(f.mT.position, { x: f.mT.position.x - mundoW * 0.05 }, { x: f.mT.position.x, duration: b(0.42), ease: E.llega(1.8), immediateRender: false }, t0 + b(0.12))
+    tl.fromTo(f.matT.uniforms.uProg, { value: 0 }, { value: FIN, duration: b(0.46), ease: E.frena(3), immediateRender: false }, t0 + b(0.10))
+    // Desde el fondo, con overshoot: el gesto de `llega` del aire ES el rebote, y un aire calmo lo hace
+    // de milimetros mientras uno jugueton se pasa de verdad. Vale para los once sin tocar nada.
+    tl.fromTo(f.mT.position, { z: -2.6 }, { z: 0, duration: b(0.62), ease: E.llega(2.4), immediateRender: false }, t0)
+    tl.fromTo(f.mT.scale, { x: 0.82, y: 0.82 }, { x: 1, y: 1, duration: b(0.62), ease: E.llega(2.0), immediateRender: false }, t0)
+    // Y el bloque sube medio paso: la anterior se corre para hacerle lugar a esta.
+    if (i > 0) tl.to(cont.position, { y: `+=${SUBE}`, duration: b(0.50), ease: E.frena(3) }, t0)
   })
 
   // ---- salida: se apaga de abajo hacia arriba, contra el orden de entrada

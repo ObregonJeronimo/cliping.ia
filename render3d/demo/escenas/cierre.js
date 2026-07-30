@@ -403,6 +403,24 @@ export function build(ctx) {
     { value: 1.04, duration: b(0.55), ease: E.frena(2) }, b(2.5))
   // el chevron empuja: la píldora sigue viva después de aterrizar
   if (hayCta) tl.fromTo(gChev.scale, { x: 0, y: 0, z: 0 }, { x: 1, y: 1, z: 1, duration: b(0.4), ease: E.llega(3.0) }, b(2.7))
+
+  // --- BEAT 4 y 5 · EL LATIDO DEL CTA.
+  // Despues de rebotar, la pildora se queda quieta dos beats y medio hasta el final de la pieza. Un
+  // boton que se asienta y no vuelve a moverse deja de pedir: el latido es el principio mas basico de
+  // animacion de interfaz y es lo unico que separa "hay un boton" de "toca el boton".
+  //
+  // 6% Y NO 10%. La pildora mide 0.74 de alto y lleva texto adentro: al 10% el texto se mueve 13 px en
+  // 0.15 s, y con dos submuestras de obturador eso empieza a engrosar los glifos. Al 6% el gesto se
+  // lee igual —es un latido, no un salto— y el texto no se entera. Es la misma cuenta que gobierna
+  // todo el movimiento con tipografia de este motor.
+  //
+  // Y late DOS VECES, en el 4 y en el 5: una sola vez se lee como un residuo del rebote.
+  if (hayCta) {
+    for (const bt of [4.0, 5.0]) {
+      tl.to(gPill.scale, { x: 1.06, y: 1.06, duration: b(0.16), ease: E.frena(2) }, b(bt))
+      tl.to(gPill.scale, { x: 1, y: 1, duration: b(0.42), ease: 'elastic.out(1, 0.55)' }, b(bt) + b(0.16))
+    }
+  }
   if (hayCta) tl.to(gChev.position, { x: pillW / 2 - 0.22, duration: b(0.3), ease: E.vaiven(2) }, b(3.5))
   if (hayCta) tl.to(gChev.position, { x: pillW / 2 - 0.31, duration: b(0.4), ease: E.vaiven(2) }, b(3.8))
   if (hayCta) tl.to(gChev.position, { x: pillW / 2 - 0.24, duration: b(0.3), ease: E.vaiven(2) }, b(4.2))
