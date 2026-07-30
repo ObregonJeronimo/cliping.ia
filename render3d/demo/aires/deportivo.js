@@ -79,7 +79,7 @@ export default {
   // Ver el comentario largo de MOB en kit.js — antes esto estaba horneado en las escenas y
   // por eso dos piezas de rubros opuestos seguian teniendo el mismo mueble.
   // DE DONDE VIENE LA LUZ DEL FONDO: luz de cancha: viene de los costados, no del cielo.
-  mobiliario: { fondo: 'rayas', fondos: ['rayas', 'panal', 'bloques'], marco: 'ticks', hud: false, fondoForma: 0.45, fondoCentro: [0.5, 0.48] },   // acotacion: marca de pista, de cronometro, de medicion
+  mobiliario: { fondo: 'rayas', fondos: ['rayas', 'panal', 'bloques'], marco: 'ticks', marcos: ['ticks', 'escalimetro', 'escuadras'], hud: false, fondoForma: 0.45, fondoCentro: [0.5, 0.48] },   // acotacion: marca de pista, de cronometro, de medicion
   // COMO CORTA ESTE AIRE: el unico aire donde el flash es mayoria: es el lenguaje del deporte, y los dos ejes
   // de empuje le dan el pique que un corte seco solo no da.
   // el punch reemplaza un corte seco: este aire ya corta duro y le faltaba un acento que no moviera el eje.

@@ -82,7 +82,7 @@ export default {
   // Ver el comentario largo de MOB en kit.js — antes esto estaba horneado en las escenas y
   // por eso dos piezas de rubros opuestos seguian teniendo el mismo mueble.
   // DE DONDE VIENE LA LUZ DEL FONDO: el foco mas cerrado del catalogo y alto: vitrina.
-  mobiliario: { fondo: 'arcos', fondos: ['arcos', 'destellos', 'contorno'], marco: 'passepartout', hud: false, fondoForma: 0.05, fondoCentro: [0.5, 0.64] },   // el pasepartu de un cuadro colgado: enmarca por el vacio
+  mobiliario: { fondo: 'arcos', fondos: ['arcos', 'destellos', 'contorno'], marco: 'passepartout', marcos: ['passepartout', 'cantoneras', 'rotulado'], hud: false, fondoForma: 0.05, fondoCentro: [0.5, 0.64] },   // el pasepartu de un cuadro colgado: enmarca por el vacio
   // COMO CORTA ESTE AIRE: SIN FLASH. Dos frames de blanco en una pieza de joyeria se leen como un error de
   // archivo, no como acento. Corta seco o pasa una banda; nunca golpea.
   transiciones: ['corte', 'corte', 'corte', 'barrido', 'corte', 'barrido'],

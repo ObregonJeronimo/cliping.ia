@@ -433,7 +433,12 @@ export const PATRONES = ['fuga', 'puntos', 'ondas', 'rayas', 'bloques', 'panal',
 // Ninguna dibuja un rectangulo continuo de acento a proposito: con el umbral de bloom de nocturno
 // (0.58) una linea cerrada de acento FLORECE en un marco brillante, que es exactamente la queja.
 // Por eso solo 'escuadras' —que son segmentos cortos— usa el acento; el resto nace en nivel().
-export const MARCOS = ['nada', 'escuadras', 'reglas', 'passepartout', 'ticks', 'rotulado']
+// Ocho siluetas, y ninguna repite a otra: 'nada' (sin mueble), 'escuadras' (cuatro esquinas chicas,
+// mira de instrumento), 'cantoneras' (DOS esquinas grandes en diagonal, el cuadro abierto), 'reglas'
+// (dos barras horizontales), 'passepartout' (enmarca tapando), 'ticks' (acota los cuatro lados),
+// 'escalimetro' (gradua UN canto), 'rotulado' (una vertical con remates, margen de cuaderno).
+export const MARCOS = ['nada', 'escuadras', 'cantoneras', 'reglas', 'passepartout', 'ticks',
+                       'escalimetro', 'rotulado']
 
 // ---------------------------------------------------------------- como corta este aire
 // EL MONTAJE ES DEL AIRE, y hasta ahora no lo era. main.js ya sabia repartir cinco gestos de corte y
@@ -537,6 +542,40 @@ export function marco(mundoW, mundoH, o = {}) {
     fila(NV, t => pieza(placa(LT, GR, col), X - LT / 2, Y - t * Y * 2, 1, 0))
     fila(NH, t => pieza(placa(GR, LT, col), X - t * X * 2, -Y + LT / 2, 0, -1))
     fila(NV, t => pieza(placa(LT, GR, col), -X + LT / 2, -Y + t * Y * 2, -1, 0))
+  } else if (tipo === 'cantoneras') {
+    // DOS esquinas opuestas en vez de cuatro, y grandes. Las escuadras cierran el cuadro por los cuatro
+    // lados: es la marca de mira de un instrumento, y es correcta para `tecnico`. Con dos en diagonal el
+    // cuadro queda ABIERTO por las otras dos, la composicion gana una direccion —el ojo entra por una
+    // cantonera y sale por la otra— y el mueble deja de leerse como interfaz. Es lo que le faltaba a los
+    // aires editoriales, que hoy elegian entre un recuadro tecnico o nada.
+    const col = o.color || nivel(0.44)
+    const L = 0.72 * peso, GR = 0.030 * peso
+    // Arriba-izquierda y abajo-derecha. La diagonal la fija `o.diag`: con 1 se invierte, y eso le da a
+    // dos piezas del mismo aire dos composiciones distintas sin cambiar de familia.
+    const d = o.diag === 1 ? -1 : 1
+    for (const [sx, sy] of [[-d, 1], [d, -1]]) {
+      const e = new THREE.Group()
+      const h = placa(L, GR, col); h.position.x = -sx * L / 2
+      const v = placa(GR, L, col); v.position.y = -sy * L / 2
+      e.add(h, v)
+      pieza(e, sx * X, sy * Y, sx, sy)
+    }
+  } else if (tipo === 'escalimetro') {
+    // Una graduacion en UN solo canto vertical, con marcas largas cada cinco. `ticks` acota los cuatro
+    // lados y por eso se lee como plano tecnico; esta acota uno y se lee como REGLA apoyada al costado
+    // del cuadro. Ademas llena el canto, que en un formato vertical es la zona que siempre queda muerta,
+    // sin cerrar el encuadre por arriba y por abajo.
+    const col = o.color || nivel(0.40)
+    const lado = o.lado === 1 ? 1 : -1
+    const N = 21, GR = 0.011 * peso
+    for (let i = 0; i < N; i++) {
+      // Cada cinco marcas una larga: sin la jerarquia son veintiuna rayas iguales y el ojo no cuenta,
+      // solo ve textura.
+      const larga = i % 5 === 0
+      const LT = (larga ? 0.16 : 0.075) * peso
+      pieza(placa(LT, GR, col, larga ? 1.35 : 1),
+            lado * (X - LT / 2), Y - (i / (N - 1)) * Y * 2, lado, 0)
+    }
   } else if (tipo === 'rotulado') {
     // Una sola vertical, de un lado, con remate arriba y abajo. Rompe la simetria del cuadro: es el
     // margen de un cuaderno, no un marco. `lado` -1 izquierda (default) o 1 derecha.
@@ -568,14 +607,25 @@ export function configurar(aire, semilla = null) {
   // que es lo que necesitan las compuertas; con semilla, dos piezas del mismo aire dejan de tener la
   // misma trama detras. Es la misma leccion que la familia de aires: un patron nuevo agregado a un
   // selector que elige siempre lo mismo nace dormido, y en este repo eso ya paso demasiadas veces.
-  const fondos = (aire.mobiliario && aire.mobiliario.fondos) || null
-  if (fondos && fondos.length && semilla != null && Number.isFinite(Number(semilla))) {
-    let x = (Number(semilla) >>> 0) || 1
+  // La SAL es distinta para cada cosa que se elige. Con una sola cuenta, el fondo y el marco caerian
+  // siempre en el mismo indice de sus listas y variarian juntos: dos piezas tendrian dos combinaciones
+  // en vez de las nueve que hay. Es media variedad disfrazada de variedad.
+  const elegir = (lista, sal) => {
+    if (!lista || !lista.length || semilla == null || !Number.isFinite(Number(semilla))) return null
+    let x = ((Number(semilla) >>> 0) ^ sal) >>> 0 || 1
     x ^= x << 13; x >>>= 0
     x ^= x >> 17
     x ^= x << 5; x >>>= 0
-    MOB.fondo = fondos[(x >>> 0) % fondos.length]
+    return lista[(x >>> 0) % lista.length]
   }
+  const mo = aire.mobiliario || {}
+  const fondo = elegir(mo.fondos, 0x9e37)
+  if (fondo) MOB.fondo = fondo
+  // El MARCO es el mueble mas persistente de la pieza: esta en casi todas las escenas y es lo primero
+  // que hace que dos videos se vean "iguales" aunque cambie todo lo demas. Que varie dentro del aire es
+  // lo que mas se nota por linea cambiada de todo el sistema de variedad.
+  const marco = elegir(mo.marcos, 0x85eb)
+  if (marco) MOB.marco = marco
   CAM = { dolly: 1, orbita: 1, ...(aire.camara || {}) }
   if (aire.bpm) { BPM = aire.bpm; BEAT = 60 / BPM }
   if (aire.paleta) LOOK = { ...LOOK, ...aire.paleta }

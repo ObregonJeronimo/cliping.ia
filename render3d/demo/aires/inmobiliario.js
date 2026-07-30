@@ -100,7 +100,7 @@ export default {
   // llena. 'ticks' porque la acotacion es el vocabulario literal de un plano, y este aire ya tiene el
   // azul de cianotipo para dibujarla.
   // DE DONDE VIENE LA LUZ DEL FONDO: pared iluminada desde arriba: es como se fotografia un espacio.
-  mobiliario: { fondo: 'panal', fondos: ['panal', 'topografia', 'arcos'], marco: 'ticks', hud: false, fondoForma: 0.85, fondoCentro: [0.5, 0.72] },
+  mobiliario: { fondo: 'panal', fondos: ['panal', 'topografia', 'arcos'], marco: 'ticks', marcos: ['ticks', 'escalimetro', 'rotulado'], hud: false, fondoForma: 0.85, fondoCentro: [0.5, 0.72] },
   // COMO CORTA ESTE AIRE: recorrer un espacio es subir por el: el vertical es el mismo verbo que su camara,
   // que avanza en vez de girar.
   // estructura y superficie: la persiana rima con el panal del fondo.
