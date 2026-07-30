@@ -31,13 +31,36 @@ if (typeof document !== 'undefined' && document.fonts) {
   }
 }
 
+// TRES VESTUARIOS TIPOGRAFICOS, y la semilla elige (ver `fuentesDe` en adn.js). La tipografia es la
+// mitad de la identidad de una pieza: con un solo par, dos versiones del mismo video se ven iguales por
+// mucho que cambien el guion y el montaje. Los tres pares viven DENTRO del caracter de este aire y
+// nunca cruzan registro — una cara equivocada es peor que ninguna variedad.
+const CARAS_DEPORTIVO = [
+  { display: 'BigShoulders', apoyo: 'Barlow-600' },
+  { display: 'Oswald-700', apoyo: 'Barlow-600' },
+  { display: 'Archivo-900', apoyo: 'InterTight-500' },
+]
+
+// Las caras que demo.html NO declara por @font-face hay que meterlas en document.fonts a mano, o el
+// render sale en la grotesca del sistema. El await de nivel superior frena el import de este aire hasta
+// que estan cargadas, o sea antes del primer glifo rasterizado — `texto()` cachea la textura para
+// siempre. Lo cazan E-FUENTE-LLEGA y E-FUENTE-RESUELVE sobre caras[].
+if (typeof document !== 'undefined' && document.fonts && typeof FontFace === 'function') {
+  await Promise.all(['Archivo-900', 'Barlow-600', 'InterTight-500', 'Oswald-700'].map(async nombre => {
+    if ([...document.fonts].some(f => f.family === nombre)) return
+    try {
+      document.fonts.add(await new FontFace(nombre, `url(/fonts/${nombre}.ttf)`, { weight: '100 900' }).load())
+    } catch (e) { console.error('aire deportivo, cara ' + nombre + ': ' + (e && e.message)) }
+  }))
+}
+
 export default {
   id: 'deportivo',
   bpm: 140,
   paleta: { tinta: '#ffffff', bg: '#08090b', bg2: '#16181d', acento: '#ff5a1f', acento2: '#e8ff3a', calido: '#ff2d55' },
-  fuentes: { display: 'BigShoulders', apoyo: 'Barlow-600' },
+  fuentes: CARAS_DEPORTIVO[0],
+  caras: CARAS_DEPORTIVO,
   // DOS VESTUARIOS, y la semilla elige. Oswald es la otra condensada del deporte: mas estrecha y con remates rectos.
-  caras: [{ display: 'BigShoulders', apoyo: 'Barlow-600' }, { display: 'Oswald-700', apoyo: 'Barlow-600' }],
   gesto: {
     llega: (n = 2.2) => `back.out(${Math.min(4.6, n * 1.8)})`,
     frena: () => 'power2.out',
@@ -57,6 +80,7 @@ export default {
   mobiliario: { fondo: 'rayas', marco: 'ticks', hud: false, fondoForma: 0.45, fondoCentro: [0.5, 0.48] },   // acotacion: marca de pista, de cronometro, de medicion
   // COMO CORTA ESTE AIRE: el unico aire donde el flash es mayoria: es el lenguaje del deporte, y los dos ejes
   // de empuje le dan el pique que un corte seco solo no da.
-  transiciones: ['flash', 'corte', 'empuje', 'flash', 'corte', 'empujeV'],
+  // el punch reemplaza un corte seco: este aire ya corta duro y le faltaba un acento que no moviera el eje.
+  transiciones: ['flash', 'golpe', 'empuje', 'flash', 'corte', 'empujeV'],
 
 }

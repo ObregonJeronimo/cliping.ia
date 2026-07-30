@@ -18,6 +18,7 @@ import * as vitrina from './vitrina.js'
 import * as prisma from './prisma.js'
 import * as cinta from './cinta.js'
 import * as enjambre from './enjambre.js'
+import * as cubo from './cubo.js'
 import * as toro from '../escenas/toro.js'
 
 // El toro se registra como hero de RESPALDO. Es geometria pura, asi que no necesita nada de la pagina
@@ -35,7 +36,10 @@ const orbital = {
 // puede fingir; atras los de geometria pura, que son los que sostienen la pieza cuando la captura
 // fallo. Un video que arranca con un cristal cuando podia arrancar con la pagina del cliente esta
 // eligiendo mal.
-export const HEROES = [telefono, portatil, ventana, mosaico, vitrina, prisma, cinta, enjambre, orbital]
+// `cubo` va entre los que muestran la PAGINA: necesita recortes y los usa de a seis, que es donde
+// tener mas material se nota. Detras de `mosaico` porque ese muestra la pagina de una sola vez y este
+// la reparte — con poco material, el mosaico sigue siendo la lectura mas clara.
+export const HEROES = [telefono, portatil, ventana, mosaico, cubo, vitrina, prisma, cinta, enjambre, orbital]
 export const porId = (id) => HEROES.find(h => h.meta.id === id) || null
 
 // Los que se pueden armar con el material que HAY. `disponible` es un set con 'tira', 'elementos'...

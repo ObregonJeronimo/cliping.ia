@@ -45,13 +45,27 @@
 // Fraunces-700 NO EXISTE en tools/fonts: el descargador baja 600 y 900. El FontFace fallaba, el aire
 // entero salia en la grotesca del sistema y no lo decia nadie. Va 600 —la mas cercana a la que se
 // habia pedido— y no 900, que es la que usa artesanal: dos aires con la misma cara es medio aire.
-const CARAS = { display: 'Fraunces-600', apoyo: 'FamiljenGrotesk-500' }
 
+// TRES VESTUARIOS TIPOGRAFICOS, y la semilla elige (ver `fuentesDe` en adn.js). La tipografia es la
+// mitad de la identidad de una pieza: con un solo par, dos versiones del mismo video se ven iguales por
+// mucho que cambien el guion y el montaje. Los tres pares viven DENTRO del caracter de este aire y
+// nunca cruzan registro — una cara equivocada es peor que ninguna variedad.
+const CARAS_GASTRONOMICO = [
+  { display: 'Fraunces-600', apoyo: 'FamiljenGrotesk-500' },
+  { display: 'Caprasimo-400', apoyo: 'Newsreader-400' },
+  { display: 'Outfit-800', apoyo: 'Onest-600' },
+]
+
+// Las caras que demo.html NO declara por @font-face hay que meterlas en document.fonts a mano, o el
+// render sale en la grotesca del sistema. El await de nivel superior frena el import de este aire hasta
+// que estan cargadas, o sea antes del primer glifo rasterizado — `texto()` cachea la textura para
+// siempre. Lo cazan E-FUENTE-LLEGA y E-FUENTE-RESUELVE sobre caras[].
 if (typeof document !== 'undefined' && document.fonts && typeof FontFace === 'function') {
-  await Promise.all(Object.values(CARAS).map(async nombre => {
+  await Promise.all(['Caprasimo-400', 'FamiljenGrotesk-500', 'Fraunces-600', 'Newsreader-400', 'Onest-600', 'Outfit-800'].map(async nombre => {
+    if ([...document.fonts].some(f => f.family === nombre)) return
     try {
       document.fonts.add(await new FontFace(nombre, `url(/fonts/${nombre}.ttf)`, { weight: '100 900' }).load())
-    } catch (e) { console.error('aire gastronomico, fuente ' + nombre + ': ' + (e && e.message)) }
+    } catch (e) { console.error('aire gastronomico, cara ' + nombre + ': ' + (e && e.message)) }
   }))
 }
 
@@ -66,7 +80,8 @@ export default {
     acento2: '#a6ae5f',    // oliva
     calido: '#c9452b',     // brasa
   },
-  fuentes: CARAS,
+  fuentes: CARAS_GASTRONOMICO[0],
+  caras: CARAS_GASTRONOMICO,
   gesto: {
     // El overshoot no se saca, se ABLANDA. A 0.55 del valor que pide la escena, la palabra se pasa lo
     // justo para que se lea que llego sola y no que la clavaron.
@@ -94,6 +109,7 @@ export default {
   // DE DONDE VIENE LA LUZ DEL FONDO: la lampara sobre la mesa, apenas corrida.
   mobiliario: { fondo: 'ondas', marco: 'reglas', hud: false, fondoForma: 0.20, fondoCentro: [0.46, 0.60] },   // la carta de un restaurante lleva filetes, no corchetes de camara
   // COMO CORTA ESTE AIRE: la banda pasa como pasa un plato; el vertical, como se baja por una carta.
-  transiciones: ['corte', 'barrido', 'corte', 'corte', 'empujeV', 'corte'],
+  // servicio y mostrador: un mecanismo que abre.
+  transiciones: ['corte', 'barrido', 'persiana', 'corte', 'empujeV', 'corte'],
 
 }

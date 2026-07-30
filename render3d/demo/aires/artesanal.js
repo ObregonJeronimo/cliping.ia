@@ -56,6 +56,29 @@ if (typeof document !== 'undefined' && document.fonts) {
   }
 }
 
+// TRES VESTUARIOS TIPOGRAFICOS, y la semilla elige (ver `fuentesDe` en adn.js). La tipografia es la
+// mitad de la identidad de una pieza: con un solo par, dos versiones del mismo video se ven iguales por
+// mucho que cambien el guion y el montaje. Los tres pares viven DENTRO del caracter de este aire y
+// nunca cruzan registro — una cara equivocada es peor que ninguna variedad.
+const CARAS_ARTESANAL = [
+  { display: 'Fraunces-900', apoyo: 'PermanentMarker-400' },
+  { display: 'Caprasimo-400', apoyo: 'Fraunces-600' },
+  { display: 'Caveat-700', apoyo: 'Newsreader-400' },
+]
+
+// Las caras que demo.html NO declara por @font-face hay que meterlas en document.fonts a mano, o el
+// render sale en la grotesca del sistema. El await de nivel superior frena el import de este aire hasta
+// que estan cargadas, o sea antes del primer glifo rasterizado — `texto()` cachea la textura para
+// siempre. Lo cazan E-FUENTE-LLEGA y E-FUENTE-RESUELVE sobre caras[].
+if (typeof document !== 'undefined' && document.fonts && typeof FontFace === 'function') {
+  await Promise.all(['Caprasimo-400', 'Caveat-700', 'Fraunces-600', 'Fraunces-900', 'Newsreader-400', 'PermanentMarker-400'].map(async nombre => {
+    if ([...document.fonts].some(f => f.family === nombre)) return
+    try {
+      document.fonts.add(await new FontFace(nombre, `url(/fonts/${nombre}.ttf)`, { weight: '100 900' }).load())
+    } catch (e) { console.error('aire artesanal, cara ' + nombre + ': ' + (e && e.message)) }
+  }))
+}
+
 export default {
   id: 'artesanal',
   bpm: 104,
@@ -67,7 +90,8 @@ export default {
     acento2: '#7f8a45',    // verde musgo
     calido: '#b8402c',     // el rojo del sello de lacre
   },
-  fuentes: { display: 'Fraunces-900', apoyo: 'PermanentMarker-400' },
+  fuentes: CARAS_ARTESANAL[0],
+  caras: CARAS_ARTESANAL,
   gesto: {
     // El saltito, solo en los golpes cortos. Para todo lo demas un overshoot CHICO: lo hecho a mano
     // se pasa un poquito y vuelve, pero no rebota como una zapatilla.
@@ -86,7 +110,7 @@ export default {
   // Ver el comentario largo de MOB en kit.js — antes esto estaba horneado en las escenas y
   // por eso dos piezas de rubros opuestos seguian teniendo el mismo mueble.
   // DE DONDE VIENE LA LUZ DEL FONDO: la luz entra de una ventana, no del techo: por eso no esta centrada.
-  mobiliario: { fondo: 'puntos', marco: 'reglas', hud: false, fondoForma: 0.50, fondoCentro: [0.42, 0.62] },   // papel: el filete de arriba y abajo de una pagina compuesta a mano
+  mobiliario: { fondo: 'contorno', marco: 'reglas', hud: false, fondoForma: 0.50, fondoCentro: [0.42, 0.62] },   // papel: el filete de arriba y abajo de una pagina compuesta a mano
   // COMO CORTA ESTE AIRE: lo hecho a mano no tiene efectos: casi todo corte, con una sola banda que respira.
   transiciones: ['corte', 'corte', 'barrido', 'corte', 'corte', 'corte'],
 

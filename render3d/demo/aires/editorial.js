@@ -49,6 +49,29 @@ for (const n of ['Newsreader-600', 'FamiljenGrotesk-500', 'Fraunces-900', 'Hanke
   } catch (e) { console.error('aire editorial: fuente ' + n + ': ' + e.message) }
 }
 
+// TRES VESTUARIOS TIPOGRAFICOS, y la semilla elige (ver `fuentesDe` en adn.js). La tipografia es la
+// mitad de la identidad de una pieza: con un solo par, dos versiones del mismo video se ven iguales por
+// mucho que cambien el guion y el montaje. Los tres pares viven DENTRO del caracter de este aire y
+// nunca cruzan registro — una cara equivocada es peor que ninguna variedad.
+const CARAS_EDITORIAL = [
+  { display: 'Newsreader-600', apoyo: 'FamiljenGrotesk-500' },
+  { display: 'Fraunces-900', apoyo: 'HankenGrotesk-400' },
+  { display: 'PlayfairDisplay-900', apoyo: 'Spectral-400' },
+]
+
+// Las caras que demo.html NO declara por @font-face hay que meterlas en document.fonts a mano, o el
+// render sale en la grotesca del sistema. El await de nivel superior frena el import de este aire hasta
+// que estan cargadas, o sea antes del primer glifo rasterizado — `texto()` cachea la textura para
+// siempre. Lo cazan E-FUENTE-LLEGA y E-FUENTE-RESUELVE sobre caras[].
+if (typeof document !== 'undefined' && document.fonts && typeof FontFace === 'function') {
+  await Promise.all(['FamiljenGrotesk-500', 'Fraunces-900', 'HankenGrotesk-400', 'Newsreader-600', 'PlayfairDisplay-900', 'Spectral-400'].map(async nombre => {
+    if ([...document.fonts].some(f => f.family === nombre)) return
+    try {
+      document.fonts.add(await new FontFace(nombre, `url(/fonts/${nombre}.ttf)`, { weight: '100 900' }).load())
+    } catch (e) { console.error('aire editorial, cara ' + nombre + ': ' + (e && e.message)) }
+  }))
+}
+
 export default {
   id: 'editorial',
   bpm: 100,
@@ -60,9 +83,9 @@ export default {
     acento2: '#1d3557',      // azul de imprenta: OSCURO, o sobre papel no existe
     calido: '#9c6b3a',       // ocre de encuadernacion
   },
-  fuentes: { display: 'Newsreader-600', apoyo: 'FamiljenGrotesk-500' },
+  fuentes: CARAS_EDITORIAL[0],
+  caras: CARAS_EDITORIAL,
   // DOS VESTUARIOS, y la semilla elige. la otra serif editorial del disco, con una grotesca humanista de apoyo.
-  caras: [{ display: 'Newsreader-600', apoyo: 'FamiljenGrotesk-500' }, { display: 'Fraunces-900', apoyo: 'HankenGrotesk-400' }],
   gesto: {
     llega: () => 'power2.out',                                   // se posa; no rebota
     frena: (n = 2) => (n >= 4 ? 'expo.out' : 'power3.out'),      // siempre nitida

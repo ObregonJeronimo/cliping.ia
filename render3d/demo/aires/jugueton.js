@@ -47,6 +47,29 @@ if (typeof document !== 'undefined' && document.fonts) {
   }
 }
 
+// TRES VESTUARIOS TIPOGRAFICOS, y la semilla elige (ver `fuentesDe` en adn.js). La tipografia es la
+// mitad de la identidad de una pieza: con un solo par, dos versiones del mismo video se ven iguales por
+// mucho que cambien el guion y el montaje. Los tres pares viven DENTRO del caracter de este aire y
+// nunca cruzan registro — una cara equivocada es peor que ninguna variedad.
+const CARAS_JUGUETON = [
+  { display: 'BagelFatOne-400', apoyo: 'Quicksand-700' },
+  { display: 'Caprasimo-400', apoyo: 'Outfit-700' },
+  { display: 'Righteous-400', apoyo: 'Quicksand-500' },
+]
+
+// Las caras que demo.html NO declara por @font-face hay que meterlas en document.fonts a mano, o el
+// render sale en la grotesca del sistema. El await de nivel superior frena el import de este aire hasta
+// que estan cargadas, o sea antes del primer glifo rasterizado — `texto()` cachea la textura para
+// siempre. Lo cazan E-FUENTE-LLEGA y E-FUENTE-RESUELVE sobre caras[].
+if (typeof document !== 'undefined' && document.fonts && typeof FontFace === 'function') {
+  await Promise.all(['BagelFatOne-400', 'Caprasimo-400', 'Outfit-700', 'Quicksand-500', 'Quicksand-700', 'Righteous-400'].map(async nombre => {
+    if ([...document.fonts].some(f => f.family === nombre)) return
+    try {
+      document.fonts.add(await new FontFace(nombre, `url(/fonts/${nombre}.ttf)`, { weight: '100 900' }).load())
+    } catch (e) { console.error('aire jugueton, cara ' + nombre + ': ' + (e && e.message)) }
+  }))
+}
+
 export default {
   id: 'jugueton',
   bpm: 120,
@@ -58,7 +81,8 @@ export default {
     acento2: '#3fe0b0',    // verde menta: lo que la escena quiere destacar
     calido: '#5fd0ff',     // celeste, el cuarto primario en dosis chicas
   },
-  fuentes: { display: 'BagelFatOne-400', apoyo: 'Quicksand-700' },
+  fuentes: CARAS_JUGUETON[0],
+  caras: CARAS_JUGUETON,
   gesto: {
     // ACA SI VA ELASTIC. Es el unico aire donde una llegada que rebota dos veces antes de asentarse
     // no se lee como error de timing sino como caracter. El periodo baja cuando la escena pide mas
@@ -87,6 +111,7 @@ export default {
   // DE DONDE VIENE LA LUZ DEL FONDO: plano y centrado, como un afiche.
   mobiliario: { fondo: 'bloques', marco: 'nada', hud: false, fondoForma: 0.80, fondoCentro: [0.5, 0.5] },   // el color y la forma ya gritan; un marco encima es ruido
   // COMO CORTA ESTE AIRE: el unico donde el corte duro es minoria: todo se mueve, que es el punto.
-  transiciones: ['empujeV', 'flash', 'empuje', 'corte', 'flash', 'empujeV'],
+  // el mas energico del catalogo: el punch es su gesto natural.
+  transiciones: ['empujeV', 'flash', 'golpe', 'corte', 'flash', 'empujeV'],
 
 }

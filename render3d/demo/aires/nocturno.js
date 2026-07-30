@@ -44,6 +44,29 @@ if (typeof document !== 'undefined' && document.fonts) {
   }
 }
 
+// TRES VESTUARIOS TIPOGRAFICOS, y la semilla elige (ver `fuentesDe` en adn.js). La tipografia es la
+// mitad de la identidad de una pieza: con un solo par, dos versiones del mismo video se ven iguales por
+// mucho que cambien el guion y el montaje. Los tres pares viven DENTRO del caracter de este aire y
+// nunca cruzan registro — una cara equivocada es peor que ninguna variedad.
+const CARAS_NOCTURNO = [
+  { display: 'Unbounded-800', apoyo: 'ChakraPetch-500' },
+  { display: 'Righteous-400', apoyo: 'SpaceMono-400' },
+  { display: 'Sora-800', apoyo: 'JetBrainsMono-400' },
+]
+
+// Las caras que demo.html NO declara por @font-face hay que meterlas en document.fonts a mano, o el
+// render sale en la grotesca del sistema. El await de nivel superior frena el import de este aire hasta
+// que estan cargadas, o sea antes del primer glifo rasterizado — `texto()` cachea la textura para
+// siempre. Lo cazan E-FUENTE-LLEGA y E-FUENTE-RESUELVE sobre caras[].
+if (typeof document !== 'undefined' && document.fonts && typeof FontFace === 'function') {
+  await Promise.all(['ChakraPetch-500', 'JetBrainsMono-400', 'Righteous-400', 'Sora-800', 'SpaceMono-400', 'Unbounded-800'].map(async nombre => {
+    if ([...document.fonts].some(f => f.family === nombre)) return
+    try {
+      document.fonts.add(await new FontFace(nombre, `url(/fonts/${nombre}.ttf)`, { weight: '100 900' }).load())
+    } catch (e) { console.error('aire nocturno, cara ' + nombre + ': ' + (e && e.message)) }
+  }))
+}
+
 export default {
   id: 'nocturno',
   bpm: 128,
@@ -55,9 +78,9 @@ export default {
     acento2: '#25e5ff',    // cian — la luz, lo unico que florece de verdad
     calido: '#9a4dff',     // violeta electrico, el tercer color en dosis chicas
   },
-  fuentes: { display: 'Unbounded-800', apoyo: 'ChakraPetch-500' },
+  fuentes: CARAS_NOCTURNO[0],
+  caras: CARAS_NOCTURNO,
   // DOS VESTUARIOS, y la semilla elige. Righteous es geometrica de marquesina y SpaceMono le pone el registro de pantalla.
-  caras: [{ display: 'Unbounded-800', apoyo: 'ChakraPetch-500' }, { display: 'Righteous-400', apoyo: 'SpaceMono-400' }],
   gesto: {
     // REBOTE A LA LLEGADA, SALIDA SECA. Un cartel de fiesta entra golpeando y se va de golpe; nada se
     // desliza hasta detenerse. `llega` exagera el overshoot del base (2.2 -> 3.3) sin llegar al
@@ -85,6 +108,7 @@ export default {
   mobiliario: { fondo: 'rayas', marco: 'passepartout', hud: false, fondoForma: 0.0, fondoCentro: [0.5, 0.68] },   // la masa oscura alrededor hace que el neon del centro se lea como neon
   // COMO CORTA ESTE AIRE: club: el flash ES la luz estroboscopica del rubro, y el empuje vertical lo baja al
   // formato en el que se mira.
-  transiciones: ['corte', 'flash', 'empujeV', 'corte', 'flash', 'empuje'],
+  // idem deportivo, en el aire de mas contraste del catalogo.
+  transiciones: ['corte', 'flash', 'empujeV', 'golpe', 'flash', 'empuje'],
 
 }

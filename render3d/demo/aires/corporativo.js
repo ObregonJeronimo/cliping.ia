@@ -46,6 +46,29 @@ for (const n of ['PlusJakartaSans-800', 'Inter-500']) {
   } catch (e) { console.error('aire corporativo: fuente ' + n + ': ' + e.message) }
 }
 
+// TRES VESTUARIOS TIPOGRAFICOS, y la semilla elige (ver `fuentesDe` en adn.js). La tipografia es la
+// mitad de la identidad de una pieza: con un solo par, dos versiones del mismo video se ven iguales por
+// mucho que cambien el guion y el montaje. Los tres pares viven DENTRO del caracter de este aire y
+// nunca cruzan registro — una cara equivocada es peor que ninguna variedad.
+const CARAS_CORPORATIVO = [
+  { display: 'PlusJakartaSans-800', apoyo: 'Inter-500' },
+  { display: 'Sora-700', apoyo: 'HankenGrotesk-400' },
+  { display: 'Archivo-900', apoyo: 'Barlow-400' },
+]
+
+// Las caras que demo.html NO declara por @font-face hay que meterlas en document.fonts a mano, o el
+// render sale en la grotesca del sistema. El await de nivel superior frena el import de este aire hasta
+// que estan cargadas, o sea antes del primer glifo rasterizado — `texto()` cachea la textura para
+// siempre. Lo cazan E-FUENTE-LLEGA y E-FUENTE-RESUELVE sobre caras[].
+if (typeof document !== 'undefined' && document.fonts && typeof FontFace === 'function') {
+  await Promise.all(['Archivo-900', 'Barlow-400', 'HankenGrotesk-400', 'Inter-500', 'PlusJakartaSans-800', 'Sora-700'].map(async nombre => {
+    if ([...document.fonts].some(f => f.family === nombre)) return
+    try {
+      document.fonts.add(await new FontFace(nombre, `url(/fonts/${nombre}.ttf)`, { weight: '100 900' }).load())
+    } catch (e) { console.error('aire corporativo, cara ' + nombre + ': ' + (e && e.message)) }
+  }))
+}
+
 export default {
   id: 'corporativo',
   bpm: 108,
@@ -57,7 +80,8 @@ export default {
     acento2: '#a3b8d4',      // gris azulado — el secundario es un GRIS, no un segundo color
     calido: '#c08a4a',       // bronce: el unico punto de temperatura de toda la pieza
   },
-  fuentes: { display: 'PlusJakartaSans-800', apoyo: 'Inter-500' },
+  fuentes: CARAS_CORPORATIVO[0],
+  caras: CARAS_CORPORATIVO,
   gesto: {
     // overshoot recortado: se pasa apenas y se asienta. No es 'power.out' (eso seria el aire de lujo);
     // queda un rastro de aterrizaje, que es lo que separa firme de blando.
@@ -81,6 +105,7 @@ export default {
   // DE DONDE VIENE LA LUZ DEL FONDO: reparte antes que concentrar.
   mobiliario: { fondo: 'fuga', marco: 'reglas', hud: true, fondoForma: 0.65 },   // la caja de un informe impreso, abierta a los lados
   // COMO CORTA ESTE AIRE: sobrio: casi todo corte duro, y cuando adorna lo hace con la banda y no con un golpe.
-  transiciones: ['corte', 'corte', 'barrido', 'corte', 'corte', 'empuje'],
+  // la persiana es un mecanismo ordenado, que es exactamente lo que este aire dice.
+  transiciones: ['corte', 'corte', 'barrido', 'persiana', 'corte', 'empuje'],
 
 }

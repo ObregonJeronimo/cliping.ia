@@ -412,4 +412,4 @@ console.log(`  los 11 declaran su montaje y reparten ${montajesVivos.size} forma
 console.log(`  y ${lucesVivas.size} recortes de luz distintos (forma x centro x aspecto), no solo intensidades.`)
 console.log(`  ${Object.values(AIRES).filter(a => (a.pelicula || {}).halacion).length} aires tiñen el halo (halacion), el resto lo deja blanco.`)
 console.log(`  y ${gestosVivos.size} formas distintas de moverse en las tres llamadas que son el 54% del movimiento.`)
-console.log(`  ${Object.values(AIRES).filter(a => Array.isArray(a.caras) && a.caras.length > 1).length} aires tienen dos vestuarios tipograficos y la semilla elige.`)
+console.log(`  ${Object.values(AIRES).filter(a => Array.isArray(a.caras) && a.caras.length > 1).length} aires con varios vestuarios tipograficos y la semilla elige, ${Object.values(AIRES).reduce((n, a) => n + ((a.caras || []).length || 1), 0)} pares en total.`)

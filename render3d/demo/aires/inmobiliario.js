@@ -44,6 +44,29 @@ if (typeof document !== 'undefined' && document.fonts) {
   }
 }
 
+// TRES VESTUARIOS TIPOGRAFICOS, y la semilla elige (ver `fuentesDe` en adn.js). La tipografia es la
+// mitad de la identidad de una pieza: con un solo par, dos versiones del mismo video se ven iguales por
+// mucho que cambien el guion y el montaje. Los tres pares viven DENTRO del caracter de este aire y
+// nunca cruzan registro — una cara equivocada es peor que ninguna variedad.
+const CARAS_INMOBILIARIO = [
+  { display: 'Sora-800', apoyo: 'SpaceGrotesk-500' },
+  { display: 'PlusJakartaSans-700', apoyo: 'Inter-400' },
+  { display: 'Unbounded-600', apoyo: 'SpaceGrotesk-500' },
+]
+
+// Las caras que demo.html NO declara por @font-face hay que meterlas en document.fonts a mano, o el
+// render sale en la grotesca del sistema. El await de nivel superior frena el import de este aire hasta
+// que estan cargadas, o sea antes del primer glifo rasterizado — `texto()` cachea la textura para
+// siempre. Lo cazan E-FUENTE-LLEGA y E-FUENTE-RESUELVE sobre caras[].
+if (typeof document !== 'undefined' && document.fonts && typeof FontFace === 'function') {
+  await Promise.all(['Inter-400', 'PlusJakartaSans-700', 'Sora-800', 'SpaceGrotesk-500', 'Unbounded-600'].map(async nombre => {
+    if ([...document.fonts].some(f => f.family === nombre)) return
+    try {
+      document.fonts.add(await new FontFace(nombre, `url(/fonts/${nombre}.ttf)`, { weight: '100 900' }).load())
+    } catch (e) { console.error('aire inmobiliario, cara ' + nombre + ': ' + (e && e.message)) }
+  }))
+}
+
 export default {
   id: 'inmobiliario',
   bpm: 96,
@@ -55,7 +78,8 @@ export default {
     acento2: '#e0703a',    // naranja de obra
     calido: '#c85a24',
   },
-  fuentes: { display: 'Sora-800', apoyo: 'SpaceGrotesk-500' },
+  fuentes: CARAS_INMOBILIARIO[0],
+  caras: CARAS_INMOBILIARIO,
   gesto: {
     llega: () => 'power3.out',
     frena: (n = 2) => (n >= 4 ? 'circ.out' : 'power2.out'),
@@ -75,8 +99,9 @@ export default {
   // llena. 'ticks' porque la acotacion es el vocabulario literal de un plano, y este aire ya tiene el
   // azul de cianotipo para dibujarla.
   // DE DONDE VIENE LA LUZ DEL FONDO: pared iluminada desde arriba: es como se fotografia un espacio.
-  mobiliario: { fondo: 'nada', marco: 'ticks', hud: false, fondoForma: 0.85, fondoCentro: [0.5, 0.72] },
+  mobiliario: { fondo: 'panal', marco: 'ticks', hud: false, fondoForma: 0.85, fondoCentro: [0.5, 0.72] },
   // COMO CORTA ESTE AIRE: recorrer un espacio es subir por el: el vertical es el mismo verbo que su camara,
   // que avanza en vez de girar.
-  transiciones: ['corte', 'empujeV', 'corte', 'corte', 'empujeV', 'barrido'],
+  // estructura y superficie: la persiana rima con el panal del fondo.
+  transiciones: ['corte', 'empujeV', 'persiana', 'corte', 'empujeV', 'barrido'],
 }

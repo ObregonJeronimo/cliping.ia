@@ -41,13 +41,27 @@
 // terminaron de cargar: antes del primer glifo rasterizado, que es lo unico que importa porque
 // `texto()` cachea la textura para siempre. El rango 100-900 evita la negrita sintetica cuando una
 // escena pide peso 900 sobre la cara de 700.
-const CARAS = { display: 'Quicksand-700', apoyo: 'Onest-400' }
 
+// TRES VESTUARIOS TIPOGRAFICOS, y la semilla elige (ver `fuentesDe` en adn.js). La tipografia es la
+// mitad de la identidad de una pieza: con un solo par, dos versiones del mismo video se ven iguales por
+// mucho que cambien el guion y el montaje. Los tres pares viven DENTRO del caracter de este aire y
+// nunca cruzan registro — una cara equivocada es peor que ninguna variedad.
+const CARAS_BIENESTAR = [
+  { display: 'Quicksand-700', apoyo: 'Onest-400' },
+  { display: 'Outfit-700', apoyo: 'Onest-600' },
+  { display: 'HankenGrotesk-700', apoyo: 'Onest-400' },
+]
+
+// Las caras que demo.html NO declara por @font-face hay que meterlas en document.fonts a mano, o el
+// render sale en la grotesca del sistema. El await de nivel superior frena el import de este aire hasta
+// que estan cargadas, o sea antes del primer glifo rasterizado — `texto()` cachea la textura para
+// siempre. Lo cazan E-FUENTE-LLEGA y E-FUENTE-RESUELVE sobre caras[].
 if (typeof document !== 'undefined' && document.fonts && typeof FontFace === 'function') {
-  await Promise.all(Object.values(CARAS).map(async nombre => {
+  await Promise.all(['HankenGrotesk-700', 'Onest-400', 'Onest-600', 'Outfit-700', 'Quicksand-700'].map(async nombre => {
+    if ([...document.fonts].some(f => f.family === nombre)) return
     try {
       document.fonts.add(await new FontFace(nombre, `url(/fonts/${nombre}.ttf)`, { weight: '100 900' }).load())
-    } catch (e) { console.error('aire bienestar, fuente ' + nombre + ': ' + (e && e.message)) }
+    } catch (e) { console.error('aire bienestar, cara ' + nombre + ': ' + (e && e.message)) }
   }))
 }
 
@@ -62,7 +76,8 @@ export default {
     acento2: '#d9c9a6',    // arena
     calido: '#e3b491',     // durazno seco, para los pocos avisos calidos de la pieza
   },
-  fuentes: CARAS,
+  fuentes: CARAS_BIENESTAR[0],
+  caras: CARAS_BIENESTAR,
   gesto: {
     // Nada se pasa: 0.2 de la fuerza pedida es un overshoot de milimetros. Se POSA, pero sigue vivo el
     // frame en que llega, que es la diferencia entre calmo y congelado.

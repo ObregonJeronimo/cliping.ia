@@ -30,13 +30,36 @@ if (typeof document !== 'undefined' && document.fonts) {
   }
 }
 
+// TRES VESTUARIOS TIPOGRAFICOS, y la semilla elige (ver `fuentesDe` en adn.js). La tipografia es la
+// mitad de la identidad de una pieza: con un solo par, dos versiones del mismo video se ven iguales por
+// mucho que cambien el guion y el montaje. Los tres pares viven DENTRO del caracter de este aire y
+// nunca cruzan registro — una cara equivocada es peor que ninguna variedad.
+const CARAS_LUJO = [
+  { display: 'PlayfairDisplay-700', apoyo: 'Spectral-400' },
+  { display: 'DarkerGrotesque-900', apoyo: 'Spectral-400' },
+  { display: 'Fraunces-600', apoyo: 'Newsreader-400' },
+]
+
+// Las caras que demo.html NO declara por @font-face hay que meterlas en document.fonts a mano, o el
+// render sale en la grotesca del sistema. El await de nivel superior frena el import de este aire hasta
+// que estan cargadas, o sea antes del primer glifo rasterizado — `texto()` cachea la textura para
+// siempre. Lo cazan E-FUENTE-LLEGA y E-FUENTE-RESUELVE sobre caras[].
+if (typeof document !== 'undefined' && document.fonts && typeof FontFace === 'function') {
+  await Promise.all(['DarkerGrotesque-900', 'Fraunces-600', 'Newsreader-400', 'PlayfairDisplay-700', 'Spectral-400'].map(async nombre => {
+    if ([...document.fonts].some(f => f.family === nombre)) return
+    try {
+      document.fonts.add(await new FontFace(nombre, `url(/fonts/${nombre}.ttf)`, { weight: '100 900' }).load())
+    } catch (e) { console.error('aire lujo, cara ' + nombre + ': ' + (e && e.message)) }
+  }))
+}
+
 export default {
   id: 'lujo',
   bpm: 76,
   paleta: { tinta: '#f4efe4', bg: '#080706', bg2: '#141009', acento: '#c9a227', acento2: '#8c7a4a', calido: '#e0c579' },
-  fuentes: { display: 'PlayfairDisplay-700', apoyo: 'Spectral-400' },
+  fuentes: CARAS_LUJO[0],
+  caras: CARAS_LUJO,
   // DOS VESTUARIOS, y la semilla elige. masthead de revista de moda. A diferencia de Playfair no tiene finos que el bloom se coma.
-  caras: [{ display: 'PlayfairDisplay-700', apoyo: 'Spectral-400' }, { display: 'DarkerGrotesque-900', apoyo: 'Spectral-400' }],
   gesto: {
     // sin overshoot: lo caro no rebota. Se posa.
     llega: () => 'power4.out',

@@ -406,7 +406,7 @@ export let AIRE = null
 //   hud       los rotulos chicos de formato y dominio. Dicen 'ficha tecnica'.
 //
 // El orden de PATRONES importa: es el indice que viaja al shader como uPatron.
-export const PATRONES = ['fuga', 'puntos', 'ondas', 'rayas', 'bloques', 'nada']
+export const PATRONES = ['fuga', 'puntos', 'ondas', 'rayas', 'bloques', 'panal', 'contorno', 'nada']
 
 // ---------------------------------------------------------------- el marco del cuadro
 // `esquinas` ERA UN BOOLEANO, y esa es la razon de que todas las piezas se vieran iguales por el
@@ -443,7 +443,7 @@ export const MARCOS = ['nada', 'escuadras', 'reglas', 'passepartout', 'ticks', '
 //   'empuje'    el cuadro se corre en X y la entrante llega del otro lado. Lateral, de catalogo.
 //   'empujeV'   lo mismo en Y. ES EL EJE QUE PIDE EL 9:16: en un cuadro de 1080x1920 el gesto nativo
 //               es el vertical —asi se mira un feed—, y el motor solo tenia el horizontal.
-export const MONTAJES = ['corte', 'flash', 'barrido', 'empuje', 'empujeV']
+export const MONTAJES = ['corte', 'flash', 'barrido', 'empuje', 'empujeV', 'golpe', 'persiana']
 
 // El margen tambien es del aire. Era la razon MAS PROFUNDA de que todo se pareciera: el rectangulo
 // invisible al que se alinea el contenido estaba escrito a mano en diez escenas, y las diez habian
@@ -758,7 +758,7 @@ export function fondoVivo(mundoW, mundoH) {
         float dOv = length(df);
         float dCa = max(abs(df.x), abs(df.y)) * 1.4142;
         vec3 col = mix(uA, uB, smoothstep(0.95, 0.05, mix(dOv, dCa, uFonForma)));
-        // EL PATRON DEL FONDO LO PIDE EL AIRE. Seis, y ninguno es decorado: cada uno dice de que
+        // EL PATRON DEL FONDO LO PIDE EL AIRE. Ocho, y ninguno es decorado: cada uno dice de que
         // clase de negocio es la pieza antes de que se lea una palabra. La grilla en fuga —la de
         // ANTHEM— dice espacio y tecnologia, y sobre una panaderia dice 'software de panaderia'.
         vec2 g = uv - vec2(0.5, 0.52);
@@ -797,8 +797,31 @@ export function fondoVivo(mundoW, mundoH) {
           vec2 dentro = fract((g + vec2(0.5)) * vec2(3.0, 5.0));
           float borde = min(min(dentro.x, 1.0 - dentro.x), min(dentro.y, 1.0 - dentro.y));
           linea = step(0.78, h) * smoothstep(0.0, 0.04, borde) * 0.55;
+        } else if (uPatron < 5.5) {
+          // PANAL: una retícula hexagonal. Es la única trama del grupo que no tiene ni verticales ni
+          // horizontales, así que no compite con la tipografía —que sí las tiene— y por eso puede ir
+          // más marcada que las otras sin robarle contraste a una frase encima.
+          // El hexágono sale de dos rejillas rectangulares desfasadas media celda: es el truco clásico
+          // y cuesta dos fract en vez de una raíz por píxel.
+          vec2 h1 = (g + vec2(uT * 0.004, -uT * 0.010)) * vec2(9.0, 5.2);
+          vec2 a1 = abs(fract(h1) - 0.5);
+          vec2 a2 = abs(fract(h1 + vec2(0.5)) - 0.5);
+          float d1 = max(a1.x * 0.866 + a1.y * 0.5, a1.y);
+          float d2 = max(a2.x * 0.866 + a2.y * 0.5, a2.y);
+          linea = smoothstep(0.50, 0.44, min(d1, d2)) * 0.8;
+          linea *= smoothstep(0.80, 0.10, length(g));
+        } else if (uPatron < 6.5) {
+          // CONTORNO: curvas de nivel, como un mapa topográfico. Son bandas cerradas y orgánicas que
+          // se deforman lentísimo, y es la única que da la sensación de TERRENO en vez de rejilla.
+          // El campo es una suma de senos cruzados —no un ruido— para que se pueda escrubbear frame a
+          // frame sin depender de una tabla de azar.
+          float campo = sin(g.x * 5.2 + sin(g.y * 3.1 + uT * 0.11) * 1.7)
+                      + sin(g.y * 6.4 + sin(g.x * 2.3 - uT * 0.09) * 1.4);
+          float f = fract(campo * 1.6);
+          linea = smoothstep(0.06, 0.0, min(f, 1.0 - f)) * 0.7;
+          linea *= smoothstep(0.85, 0.12, length(g));
         }
-        // 'nada' (uPatron >= 4.5) deja el degrade solo: es lo que necesita una pieza que vende aire.
+        // 'nada' (uPatron >= 6.5) deja el degrade solo: es lo que necesita una pieza que vende aire.
         linea *= uGrilla;
         // En oscuro la línea SUMA luz; en claro TIÑE hacia el acento. Es la misma grilla y en los dos
         // casos aparece por delante del fondo, que es lo único que importa.

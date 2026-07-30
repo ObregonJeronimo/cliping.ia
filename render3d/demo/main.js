@@ -47,13 +47,20 @@ const Pelicula = {
     //            nativo del formato —asi se mira un feed— y el motor solo tenia el horizontal.
     //   uBarrido 0..1: la posicion de una banda solida que cruza el cuadro y tapa el corte.
     //   uTinteTr el color de esas dos cosas — sale del acento del aire, nunca de un gris fijo.
+    //   uGolpe   escala el cuadro entero alrededor de su centro. Es el punch-in: el gesto de montaje
+    //            mas usado del formato vertical y el unico que no mueve nada de lado, asi que sirve
+    //            donde un empuje se leeria como que la pieza se fue de eje.
+    //   uPersiana 0..1: cuantas lamas horizontales tapan el cuadro. Cierra antes del corte y abre
+    //            despues, asi que el salto ocurre detras de ellas — igual que el barrido, pero
+    //            partido en seis y en el eje que el formato pide.
     uEmpuje: { value: 0 }, uEmpujeY: { value: 0 }, uBarrido: { value: 0 }, uAnchoBar: { value: 0.16 },
+    uGolpe: { value: 0 }, uPersiana: { value: 0 },
     uTinteTr: { value: new THREE.Color('#5b6cff') },
   },
   vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
   fragmentShader: `
     uniform sampler2D tDiffuse; uniform float uT, uGrano, uVinieta, uAberr, uFlash;
-    uniform float uEmpuje, uEmpujeY, uBarrido, uAnchoBar; uniform vec3 uTinteTr;
+    uniform float uEmpuje, uEmpujeY, uBarrido, uAnchoBar, uGolpe, uPersiana; uniform vec3 uTinteTr;
     uniform float uVinForma, uVinAsp; uniform vec2 uVinCentro;
     uniform vec2 uRes; varying vec2 vUv;
     float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898,78.233)))*43758.5453); }
@@ -61,7 +68,10 @@ const Pelicula = {
       // EMPUJE: el cuadro entero se corre. Lo que queda del otro lado NO se estira (una muestra
       // clampeada se lee como un manchon barato): se pinta con el color de la transicion, que es el
       // acento del aire. Asi el empuje se lee como una carta que entra, con su propio borde.
-      vec2 uvp = vUv - vec2(uEmpuje, uEmpujeY);
+      // GOLPE: se escala la UV alrededor del centro ANTES de muestrear, asi que es un zoom optico y
+      // no un escalado del resultado — no hay doble remuestreo ni bordes blandos. Va junto al empuje
+      // porque los dos son el mismo remapeo y compartir la muestra los hace gratis.
+      vec2 uvp = (vUv - 0.5) / max(0.05, 1.0 + uGolpe) + 0.5 - vec2(uEmpuje, uEmpujeY);
       bool fueraEmp = uvp.x < 0.0 || uvp.x > 1.0 || uvp.y < 0.0 || uvp.y > 1.0;
       vec2 uvs = clamp(uvp, 0.0, 1.0);
       vec2 c = uvs - 0.5; float r2 = dot(c,c);
@@ -112,6 +122,13 @@ const Pelicula = {
       if (uBarrido > 0.0001) {
         float d = abs((vUv.x + (vUv.y - 0.5) * 0.35) - uBarrido);
         if (d < uAnchoBar) col.rgb = mix(col.rgb, uTinteTr, smoothstep(uAnchoBar, uAnchoBar * 0.55, d));
+      }
+      // PERSIANA: seis lamas horizontales que crecen desde su propio eje hasta juntarse. Con uPersiana
+      // en 1 el cuadro esta tapado entero y ahi ocurre el corte. Es el gesto vertical equivalente al
+      // barrido, y en 9:16 el eje horizontal es el que el formato tiene de sobra.
+      if (uPersiana > 0.0001) {
+        float lama = abs(fract(vUv.y * 6.0) - 0.5) * 2.0;
+        col.rgb = mix(col.rgb, uTinteTr, step(lama, uPersiana));
       }
       // FLASH: dos o tres frames de blanco sobre el corte. Es lo que hace que un corte seco se lea
       // como decisión de montaje en vez de como un salto.
@@ -457,6 +474,20 @@ export class Anthem {
         const dv = b(0.34)
         this.tl.fromTo(this.pelicula.uniforms.uEmpujeY, { value: 0 }, { value: 0.30 * dirV, duration: dv, ease: 'power3.in', immediateRender: false }, e.t0 - dv)
         this.tl.fromTo(this.pelicula.uniforms.uEmpujeY, { value: -0.30 * dirV }, { value: 0, duration: dv, ease: 'power3.out', immediateRender: false }, e.t0)
+      } else if (tipo === 'golpe') {
+        // PUNCH-IN. Se acerca de golpe ANTES del corte y vuelve despues: el cuadro saliente se va
+        // creciendo y el entrante llega asentandose. 0.18 de escala son un 18% y es mucho — a menos
+        // no se lee como gesto, y a mas la pieza pierde el encuadre que cada escena calibro.
+        const dg = b(0.30)
+        this.tl.fromTo(this.pelicula.uniforms.uGolpe, { value: 0 }, { value: 0.18, duration: dg, ease: 'power3.in', immediateRender: false }, e.t0 - dg)
+        this.tl.fromTo(this.pelicula.uniforms.uGolpe, { value: -0.12 }, { value: 0, duration: dg * 1.2, ease: 'power3.out', immediateRender: false }, e.t0)
+      } else if (tipo === 'persiana') {
+        // Cierra en un tercio de beat y abre en otro. El corte cae con las lamas cerradas, asi que el
+        // salto no se ve; lo que se ve es el mecanismo. Va mas rapido que el barrido porque son seis
+        // eventos simultaneos y el ojo los integra: medio beat cerrando se leia como una pausa.
+        const dp = b(0.30)
+        this.tl.fromTo(this.pelicula.uniforms.uPersiana, { value: 0 }, { value: 1, duration: dp, ease: 'power2.in', immediateRender: false }, e.t0 - dp)
+        this.tl.fromTo(this.pelicula.uniforms.uPersiana, { value: 1 }, { value: 0, duration: dp, ease: 'power2.out', immediateRender: false }, e.t0)
       } else if (tipo === 'empuje') {
         // La saliente se va y la entrante llega DESDE EL OTRO LADO. El signo alterna por corte: dos
         // empujes seguidos en la misma direccion se leen como un scroll, no como un montaje.
