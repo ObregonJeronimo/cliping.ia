@@ -22,7 +22,7 @@
 // SIN FOTO NO HAY PORTADA. Una portada sin imagen es un titular sobre el fondo, y eso ya existe.
 // Se declara vacia y el guionista es quien no deberia haberla elegido.
 
-import { LOOK, b, E, texto, nivel, matAcento, materialMascara, planoRecorte, recortesDe, filete, finMascara, deriva, encaje, dolly, orbita , hex} from '../kit.js'
+import { LOOK, b, E, texto, nivel, matAcento, materialMascara, planoRecorte, recortesDe, filete, finMascara, deriva, encaje, dolly, orbita, hex, texturaDe } from '../kit.js'
 import { D, repartirFrases } from '../datos.js'
 
 export const meta = { id: 'titular', beats: 6 }
@@ -56,8 +56,8 @@ export function build(ctx) {
   const txt = titularDe()
   let tex = null
   for (const e of recortesDe(datosEls || [], ROLES, 4)) {
-    const t = texturas && texturas.get(e.url)
-    if (t && t.image) { tex = t; break }
+    const t = texturaDe(texturas, e)
+    if (t) { tex = t; break }
   }
   if (!txt || !tex) {
     tl.to({}, { duration: DUR }, 0)

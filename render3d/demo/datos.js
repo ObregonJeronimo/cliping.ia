@@ -1,3 +1,4 @@
+import { vetarLaminas } from './kit.js'
 // DATOS — lo que la pieza DICE. Es el otro eje del sistema, perpendicular al aire.
 //
 //     el AIRE decide COMO se ve y COMO se mueve      (paleta, tipografía, ritmo, gesto, cámara)
@@ -85,6 +86,9 @@ export let esDemo = true
 // Rellena SOLO lo que falta. Nunca inventa contenido: si la página no dio frases, quedan las de
 // ANTHEM y la escena de tipografía no debería elegirse — esa decisión es del guionista, no de acá.
 export function configurarDatos(d) {
+  // Si la pagina publico testimonios, sus reseñas se cuentan con PALABRAS: las escenas que muestran
+  // recortes dejan de aceptar laminas de texto. Ver `esLamina` en kit.js.
+  vetarLaminas(!!(d && Array.isArray(d.testimonios) && d.testimonios.some(t => t && t.texto)))
   if (!d) return
   esDemo = d === ANTHEM
   D = { ...ANTHEM, ...d }

@@ -50,9 +50,17 @@ _SECCION = re.compile(
     r"navegaci[oó]n del sitio|men[uú] principal)", re.I)
 
 # Un CTA de verdad es corto e imperativo. "Leer mas sobre nuestra politica de privacidad" no lo es.
+# EL VOCABULARIO DECIDE SI LA PIEZA TIENE CTA O NO, y le faltaban verbos reales.
+# linear.app publica "Open app" arriba a la derecha —es literalmente su boton— y ninguna de las formas
+# de arriba lo reconocia, asi que la pieza cerraba SIN pildora mientras el video de basecamp cerraba con
+# "SIGN IN". El cierre es la escena que pide algo: quedarse sin ella es perder el unico momento en que
+# la pieza tiene una funcion comercial.
+# Los agregados son verbos de accion que aparecen en botones reales, no palabras de navegacion: un
+# "Product" o un "Resources" siguen sin matchear porque no empiezan con ninguno.
 _CTA_BUENO = re.compile(
     r"^(empez|comenz|prob|solicit|pedi|ped[ií]|compr|reserv|agend|contrat|descarg|registr|cre[aá]|"
-    r"suscrib|obten|consegu|habl|escrib|llam|ver |conoc|descubr|start|get |try |book|buy|shop|"
+    r"suscrib|obten|consegu|habl|escrib|llam|ver |conoc|descubr|mira|ingres|entrar|abrir|acced|"
+    r"start|get |try |book|buy|shop|open |watch|view |apply|order|upgrade|activ|instal|"
     r"request|sign |join|download|learn|explore|discover|contact|schedule|demo)", re.I)
 
 # Una cifra que la pagina PRESENTA como dato: lleva unidad o magnitud. Un "2024" suelto no es una

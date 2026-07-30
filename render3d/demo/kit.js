@@ -1069,6 +1069,67 @@ export function cargarRecortes(elementos) {
 
 // Elige recortes por ROL, en el orden en que sirven para una escena. Nunca inventa: si la pagina no
 // dio ninguno del rol pedido, devuelve una lista mas corta o vacia, y la escena se compone sin ellos.
+// ---------------------------------------------------------------- laminas de texto
+// UNA RESEÑA SE CUENTA CON PALABRAS, NO CON UNA CAPTURA DE LA RESEÑA.
+//
+// El reclamo, textual y por tercera vez: "las reseñas se deben de mostrar EN TEXTO, NO UNA IMAGEN".
+// Y tiene razon hasta en lo practico: el motor YA tiene el testimonio como texto —con nombre y empresa,
+// "Gabriel Peal, OpenAI"— y `cita` lo compone en la tipografia del aire, al tamaño del cuadro y sin
+// perder un pixel. Mostrar en su lugar una foto de la tarjeta es cambiar tipografia legible por un JPG
+// de tipografia ajena, y ademas repetir lo que otra escena ya dijo mejor.
+//
+// EL PROBLEMA ES QUE EL EXTRACTOR NO ETIQUETA "RESEÑA". Da roles de forma —tarjeta, foto, logo— y en
+// linear.app las reseñas llegan como 'tarjeta' y en basecamp.com el bloque de estrellas llega como
+// 'foto'. O sea que por rol no se pueden distinguir.
+//
+// LO QUE SI SE PUEDE MEDIR es que una LAMINA DE TEXTO no se parece a una foto. Medido sobre los siete
+// elementos reales de las dos paginas, a dos escalas (detalle fino a 1/2 y grueso a 1/8):
+//
+//   elemento                        luma   grueso/fino
+//   tarjeta de reseña (linear)       224      1.92
+//   tarjeta de reseña (linear)       219      1.97
+//   bloque de estrellas (basecamp)   246      1.34     <- llega como 'foto'
+//   captura de la app (linear)        19      0.82
+//   panel de proyecto (basecamp)      29      1.51
+//   logo (linear)                     85      1.95
+//
+// Las tres laminas de texto son CLARAS y con estructura gruesa; las capturas de producto son oscuras.
+// El umbral es luma > 200 y grueso/fino > 1.2, y separa los seis casos reales sin excepcion.
+//
+// Y SOLO SE APLICA CUANDO LA PAGINA DIO TESTIMONIOS, o sea solo donde el riesgo existe. Ahi la asimetria
+// esta clara: publicar una reseña como captura es un error de contenido que ya se señalo tres veces;
+// saltear una foto clara de mas cuesta un recorte. El vocabulario de un logo claro sobre fondo blanco
+// entraria en la regla, y por eso el rol 'logo' queda exento — un logo ES una lamina y es correcto
+// mostrarlo como imagen.
+const _cacheLamina = new WeakMap()
+export function esLamina(img) {
+  if (!img || !img.width) return false
+  if (_cacheLamina.has(img)) return _cacheLamina.get(img)
+  const p = bandas(img)
+  if (!p || !p.filas.length) { _cacheLamina.set(img, false); return false }
+  let fino = 0, grueso = 0, luma = 0
+  for (const f of p.filas) {
+    fino += f.fino; grueso += f.grueso
+    luma += (f.col[0] * 0.2126 + f.col[1] * 0.7152 + f.col[2] * 0.0722) * 255
+  }
+  const n = p.filas.length
+  const r = (luma / n) > 200 && (grueso / n) / ((fino / n) + 0.5) > 1.2
+  _cacheLamina.set(img, r)
+  return r
+}
+
+// Lo prende `configurarDatos` cuando la pagina publico testimonios: ver la nota de arriba.
+let SIN_LAMINAS = false
+export const vetarLaminas = (v) => { SIN_LAMINAS = !!v }
+// Devuelve la textura de un elemento, o null si es una lamina de texto que no corresponde mostrar como
+// imagen. Las escenas la usan en lugar de `texturas.get(e.url)` para no repetir la regla cinco veces.
+export function texturaDe(texturas, e) {
+  const t = texturas && e && texturas.get(e.url)
+  if (!t || !t.image) return null
+  if (SIN_LAMINAS && e.rol !== 'logo' && esLamina(t.image)) return null
+  return t
+}
+
 // LOS RECORTES TAMBIEN SE REPARTEN, por la misma razon que las frases.
 //
 // Cinco escenas piden recortes y TODAS empezaban por el primero de la lista. En el render de basecamp

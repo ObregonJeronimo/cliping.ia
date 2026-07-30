@@ -251,12 +251,23 @@ export function build(ctx) {
   //
   // Es la misma regla de siempre, aplicada donde faltaba: un slot vacio se compone SIN el, no con un
   // recuadro de su tamano.
-  const hayCta = !!(D.cta && String(D.cta).trim())
+  // SI NO HAY CTA, EL DOMINIO ES EL CTA — y eso no es inventar nada.
+  //
+  // El cierre es la unica escena que PIDE algo, y una pieza que cierra sin pedir nada desperdicia su
+  // ultimo cuadro. En el render de linear.app la pieza terminaba con la marca en grande y sin pildora,
+  // mientras la de basecamp cerraba con "SIGN IN": el mismo motor entregando una pieza con funcion
+  // comercial y otra sin ella.
+  //
+  // El dominio cumple las dos condiciones que importan: es una ACCION (ir al sitio) y es VERDAD — lo
+  // dice la propia URL que se capturo. No es un CTA fabricado como "Empezá ahora", que seria ponerle a
+  // la marca palabras que no escribio. Es lo que hace cualquier pieza de marca que no tiene boton.
+  const ctaTxt = String(D.cta || '').trim() || String(D.dominio || '').trim()
+  const hayCta = !!ctaTxt
   const gPill = new THREE.Group()
   gPill.position.set(0, -5.7, 0.12)
   // El texto va del color del FONDO, no de un negro fijo: sobre la pildora de acento, en un mundo
   // claro tiene que ser claro y en uno oscuro, oscuro. '#050810' acertaba solo en el mundo oscuro.
-  const cta = textoMascara((D.cta || ''), 0.26, LOOK.bg, { fuente: 'DMSans', tracking: 0.075 })
+  const cta = textoMascara(ctaTxt, 0.26, LOOK.bg, { fuente: 'DMSans', tracking: 0.075 })
   cta.material.uniforms.uSuave.value = 0.05
   cta.renderOrder = 9
   const pillW = ancho(cta) + 1.15

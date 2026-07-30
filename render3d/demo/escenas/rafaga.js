@@ -24,7 +24,7 @@
 // todas frases; si no dio frases, todos recortes. El guionista no la elige si no hay ni una cosa ni la
 // otra — no hay ráfaga de nada.
 
-import { LOOK, b, E, hex, texto, planoRecorte, recortesDe, nivel, matAcento, dolly } from '../kit.js'
+import { LOOK, b, E, hex, texto, planoRecorte, recortesDe, nivel, matAcento, dolly, texturaDe } from '../kit.js'
 import { D, marca, repartirFrases } from '../datos.js'
 
 export const meta = { id: 'rafaga', beats: 6 }
@@ -50,8 +50,8 @@ export function build(ctx) {
   // ---- el material que hay
   const recortes = []
   for (const e of recortesDe(datosEls || [], ROLES, SLOTS)) {
-    const tex = texturas && texturas.get(e.url)
-    if (tex && tex.image) recortes.push(tex)
+    const tex = texturaDe(texturas, e)
+    if (tex) recortes.push(tex)
   }
   // Del mostrador, no desde la primera. Esta escena alterna recorte y frase, asi que con SLOTS=6 usa
   // tres: pedir mas seria vaciar el pozo para las escenas de texto que vengan despues. El salto de

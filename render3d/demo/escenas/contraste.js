@@ -18,11 +18,15 @@
 //
 // SIN DOS RECORTES NO HAY COMPARACION. Con uno es una foto, y eso ya lo hacen `titular` y `columna`.
 
-import { LOOK, b, E, nivel, matAcento, materialMascara, planoRecorte, recortesDe, finMascara, deriva, dolly, orbita } from '../kit.js'
+import { LOOK, b, E, nivel, matAcento, materialMascara, planoRecorte, recortesDe, finMascara, deriva, dolly, orbita, texturaDe } from '../kit.js'
 
 export const meta = { id: 'contraste', beats: 6 }
 
-const ROLES = ['foto', 'tarjeta', 'hero', 'cta', 'logo']
+// SIN 'cta', Y ES LA TERCERA VEZ QUE ESTE ROL SE CUELA EN UNA ESCENA. Ya se saco de `rafaga` y de
+// `columna` por el mismo motivo y aca quedo: en el render de linear.app esta escena comparo el boton
+// "Contact sales" contra el boton "Listen", dos pildoras grises arrancadas de sus filas. Un boton fuera
+// de contexto no dice nada, y dos botones fuera de contexto no comparan nada.
+const ROLES = ['foto', 'tarjeta', 'hero', 'logo']
 
 export function build(ctx) {
   const { THREE, gsap, mundoW, mundoH, camera, distBase, texturas, datosEls } = ctx
@@ -34,8 +38,8 @@ export function build(ctx) {
   // ---- el material que hay: DOS piezas distintas
   const fuentes = []
   for (const e of recortesDe(datosEls || [], ROLES, 6)) {
-    const t = texturas && texturas.get(e.url)
-    if (t && t.image && !fuentes.includes(t)) fuentes.push(t)
+    const t = texturaDe(texturas, e)
+    if (t && !fuentes.includes(t)) fuentes.push(t)
     if (fuentes.length >= 2) break
   }
   if (fuentes.length < 2) {

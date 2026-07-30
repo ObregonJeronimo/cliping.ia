@@ -178,7 +178,12 @@ export const familiasDe = () => FAMILIA
 // escena que no aparezca, no pega nada". El problema no es como se ve: es que un feed necesita un
 // caudal de material que una landing no da. Cuando la cosecha de elementos entregue piezas con
 // sentido propio —hoy corta filas a mitad de palabra— esto se puede reconsiderar.
-export const DORMIDAS = new Set(['columna'])
+// `contraste`: el barrido A|B. Se le arreglo el respaldo que cortaba la pieza al medio y se le saco el
+// rol 'cta' —comparaba el boton "Contact sales" contra el boton "Listen"—, y aun asi lo que enfrenta son
+// dos recortes que la pagina publico por separado y que no tienen por que compararse entre si. Thiago,
+// mirando el render: "no tiene sentido mostrar botones de la pagina, esa escena que no aparezca". Se
+// duerme con los arreglos hechos, asi que despertarla es sacarla de este Set y no volver a arreglarla.
+export const DORMIDAS = new Set(['columna', 'contraste'])
 
 // EL ORDEN LO ARMA LA SEMILLA, y antes elegia entre CUATRO listas escritas a mano. Medido sobre las
 // nueve combinaciones de pagina x ritmo x duracion: casi todas daban 4 estructuras para 100 semillas,

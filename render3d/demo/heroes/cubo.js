@@ -22,7 +22,7 @@
 //
 // CONTRATO — ver heroes/telefono.js.
 
-import { LOOK, b, E, hex, matAcento, nivel, recortesDe, dolly, orbita, deslizFijo } from '../kit.js'
+import { LOOK, b, E, hex, matAcento, nivel, recortesDe, texturaDe, dolly, orbita, deslizFijo } from '../kit.js'
 
 export const meta = {
   id: 'cubo',
@@ -50,8 +50,8 @@ export function build(ctx) {
   // ---------------------------------------------------------------- el material que hay
   const texs = []
   for (const e of recortesDe(datosEls || [], ROLES, 6)) {
-    const t = texturas && texturas.get(e.url)
-    if (t && t.image) texs.push(t)
+    const t = texturaDe(texturas, e)
+    if (t) texs.push(t)
   }
   if (!texs.length) {
     tl.to({}, { duration: DUR }, 0)
