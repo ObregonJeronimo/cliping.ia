@@ -30,19 +30,48 @@ export const meta = { id: 'titular', beats: 6 }
 const ROLES = ['foto', 'hero', 'tarjeta']
 const MAX_LINEAS = 3
 
-// El titular sale del material con FORMA de titular. Un medio manda sus titulares partidos en dos
-// renglones (ver anthem-datos), asi que una frase con salto de linea ES un titular ya compuesto; si
-// no hay ninguna, se toma la frase mas larga, que es la que mas se le parece. Nunca se fabrica.
+// EL TITULAR DE UNA PORTADA ES LA PROMESA, NO UN ROTULO DE SECCION.
+//
+// Antes tomaba una frase del mostrador, y las frases son los ENCABEZADOS de la pagina. En el render de
+// basecamp eso puso la captura del workspace arriba —seis paneles, calendario, chat, tareas— y debajo,
+// en cuerpo de portada, "REMEMBER WHEN COMPANIES CARED ABOUT SERVICE?". Las dos cosas salen de la
+// pagina y no tienen nada que ver entre si: la imagen muestra el producto y el texto habla de atencion
+// al cliente. Thiago lo dijo asi: el texto tiene que ser "la mano que le da al usuario", un "veni,
+// mira lo que hago por vos".
+//
+// Ese material EXISTE y es `D.claim`: la description que la marca escribio para que la lea Google, o
+// sea su promesa en una linea. Sobre una imagen del producto dice exactamente eso. Para basecamp da
+// "Trusted by millions, Basecamp puts everything you need to get work done in one place."
+//
+// La frase del mostrador queda de RESPALDO, para las paginas sin description. Y el reparto en renglones
+// se hace aca y no en los datos, porque cuantos renglones entran es una decision de ESTA escena:
+// `destello` compone el mismo tipo de material en dos.
 function titularDe() {
-  // DOS DEL MOSTRADOR, y se queda con la que mejor sirve de titular. Leyendo el pozo entero, esta
-  // escena mostraba SIEMPRE la primera frase de la pagina — la misma con la que abria la escena de
-  // tipografia—. Pedir dos permite seguir prefiriendo la compuesta en dos renglones sin volver al
-  // pozo completo. Ver `repartirFrases` en datos.js.
+  const claim = String(D.claim || '').trim()
+  if (claim) return enLineas(claim, MAX_LINEAS)
   const fr = repartirFrases(2)
   const dosLineas = fr.find(f => f.includes('\n'))
   if (dosLineas) return dosLineas
   if (!fr.length) return ''
   return fr.slice().sort((a, b) => b.length - a.length)[0]
+}
+
+// Reparte un texto en `n` renglones lo mas parejos posible, sin cortar palabras. Busca el reparto que
+// minimiza el renglon MAS LARGO: es lo que decide el cuerpo tipografico, porque la escena escala el
+// bloque entero hasta que la linea mas ancha entre en el cuadro.
+function enLineas(t, n) {
+  const pal = String(t).split(/\s+/).filter(Boolean)
+  if (pal.length <= 1 || n <= 1) return pal.join(' ')
+  const objetivo = Math.ceil(String(t).length / n)
+  const lineas = []
+  let actual = ''
+  for (const p of pal) {
+    const cand = actual ? actual + ' ' + p : p
+    if (actual && cand.length > objetivo && lineas.length < n - 1) { lineas.push(actual); actual = p }
+    else actual = cand
+  }
+  if (actual) lineas.push(actual)
+  return lineas.join(String.fromCharCode(10))
 }
 
 export function build(ctx) {

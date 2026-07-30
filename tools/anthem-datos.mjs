@@ -58,6 +58,36 @@ function corto(t, n) {
   return sinColgar((sp > n * 0.45 ? c.slice(0, sp) : c).trim())
 }
 
+// LA PROMESA DE LA PAGINA, EN ORACIONES ENTERAS.
+//
+// `queHace` es la description que el equipo de marketing de la marca escribio para que la lea Google:
+// es, literalmente, "esto es lo que hacemos por vos". Es el mejor material que tiene el motor para el
+// titular de una portada — y llegaba MUTILADO por los mismos cortes ciegos que ya arregle en los
+// titulos de feature:
+//
+//   linear    "Purpose-built for planning and building products with AI agents."  (64)
+//     claim -> "PURPOSE-BUILT FOR PLANNING AND BUILDING PRODUCTS WITH AI"          (se come "agents")
+//     golpe -> "PURPOSE-BUILT FOR PLANNING"                                        (no dice nada)
+//   basecamp  "Trusted by millions, Basecamp puts everything you need to get work done in one place. ..."
+//     claim -> "TRUSTED BY MILLIONS, BASECAMP PUTS EVERYTHING YOU NEED"            (promesa sin final)
+//
+// Se corta por ORACION, igual que los titulos: se toman las primeras que entren en el presupuesto y
+// nunca media. Para basecamp eso da "Trusted by millions, Basecamp puts everything you need to get work
+// done in one place." — que es exactamente la mano que la pagina le extiende al usuario.
+function promesa(t, n) {
+  const s = String(t || '').replace(/\s+/g, ' ').trim()
+  if (!s) return ''
+  if (s.length <= n) return s
+  const partes = s.split(/(?<=[.!?])\s+/)
+  let acum = ''
+  for (const p of partes) {
+    const cand = acum ? acum + ' ' + p : p
+    if (cand.length > n) break
+    acum = cand
+  }
+  return acum
+}
+
 // Compone una frase en uno o dos renglones, SIN recortarla. Devuelve [] si no hay frase, nunca un
 // pedazo. El tope duro de 52 es el unico caso en que se cae algo, y no deberia ocurrir: `_titulo_util`
 // en el extractor ya garantiza 48 como maximo. Existe por si otro camino alimenta este campo.
@@ -132,7 +162,8 @@ export function datosDe(pm) {
   return {
     marca: (pm.brand || '').toUpperCase(),
     rotulo: [pm.brand, s.tipoNegocio].filter(Boolean).join(' · ').toUpperCase(),
-    claim: corto(s.queHace, 60).toUpperCase(),
+    // 92 es lo que entra en tres renglones de portada sin que el cuerpo baje de lo legible.
+    claim: promesa(s.queHace, 92).toUpperCase(),
     frases: frasesDe(pm),
     // EL BLOQUE ES UN ROTULO DE CUATRO PALABRAS Y SE ELIGE, NO SE RECORTA.
     //
@@ -166,7 +197,18 @@ export function datosDe(pm) {
     testimonios: (pr.testimonios || []).slice(0, 3)
       .filter(x => x && x.texto)
       .map(x => ({ texto: corto(x.texto, 120), firma: corto(x.firma || '', 24) })),
-    golpe: corto(s.queHace, 34).toUpperCase() || null,
+    // EL GOLPE NO ES EL CLAIM. `destello` compone en DOS renglones a sangre y quiere una linea corta y
+    // cerrada; el claim de una pagina rara vez lo es, y ademas ya se lo lleva la portada — mostrarlo dos
+    // veces en la misma pieza es el defecto que el mostrador de frases vino a resolver.
+    // El titulo de feature MAS CORTO es exactamente lo que hace falta: nacio corto, esta completo y es
+    // material distinto. Si la pagina no dio ninguno usable, se cae a la promesa; si tampoco, no hay
+    // golpe y la escena no se elige, que es la respuesta honesta.
+    golpe: (() => {
+      const cortos = (s.features || []).map(f => String(f.titulo || '').trim())
+        .filter(t => t && t.length <= 64 && t.split(/\s+/).length >= 3)
+        .sort((a, b) => a.length - b.length)
+      return (cortos[0] || promesa(s.queHace, 64)).toUpperCase() || null
+    })(),
     cta: s.cta ? corto(s.cta, 20).toUpperCase() : null,
     // El pie son datos REALES: el dominio y el formato. Nunca una promesa.
     pie: [pm.url ? new URL(pm.url).hostname.replace(/^www\./, '') : '', '1080x1920', '30 FPS'].filter(Boolean),
