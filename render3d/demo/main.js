@@ -635,7 +635,8 @@ window.URVID = {
       // identidad de cada marca y despues la tiraba: cinco de siete paginas reales medidas son
       // CLARAS y salian todas en azul marino. Ver render3d/demo/adn.js para el reparto exacto.
       if (spec.dna) aire = personalizar(aire, spec.dna, mulberry32((spec.seed || 1) * 7919))
-      configurar(aire)
+      // La semilla viaja para que el fondo pueda variar dentro del aire (ver `configurar` en el kit).
+      configurar(aire, spec.seed)
       spec.__aire = aire
     }
     // Los DATOS antes de construir, por la misma razon que el aire: las escenas miden la tipografia

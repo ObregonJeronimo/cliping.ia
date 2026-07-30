@@ -107,7 +107,7 @@ export default {
   // Ver el comentario largo de MOB en kit.js — antes esto estaba horneado en las escenas y
   // por eso dos piezas de rubros opuestos seguian teniendo el mismo mueble.
   // DE DONDE VIENE LA LUZ DEL FONDO: la lampara sobre la mesa, apenas corrida.
-  mobiliario: { fondo: 'ondas', marco: 'reglas', hud: false, fondoForma: 0.20, fondoCentro: [0.46, 0.60] },   // la carta de un restaurante lleva filetes, no corchetes de camara
+  mobiliario: { fondo: 'ondas', fondos: ['ondas', 'terrazo', 'arcos'], marco: 'reglas', hud: false, fondoForma: 0.20, fondoCentro: [0.46, 0.60] },   // la carta de un restaurante lleva filetes, no corchetes de camara
   // COMO CORTA ESTE AIRE: la banda pasa como pasa un plato; el vertical, como se baja por una carta.
   // servicio y mostrador: un mecanismo que abre.
   transiciones: ['corte', 'barrido', 'persiana', 'corte', 'empujeV', 'corte'],

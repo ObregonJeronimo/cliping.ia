@@ -115,7 +115,7 @@ export default {
   // Ver el comentario largo de MOB en kit.js — antes esto estaba horneado en las escenas y
   // por eso dos piezas de rubros opuestos seguian teniendo el mismo mueble.
   // DE DONDE VIENE LA LUZ DEL FONDO: la luz entra de una ventana, no del techo: por eso no esta centrada.
-  mobiliario: { fondo: 'contorno', marco: 'reglas', hud: false, fondoForma: 0.50, fondoCentro: [0.42, 0.62] },   // papel: el filete de arriba y abajo de una pagina compuesta a mano
+  mobiliario: { fondo: 'contorno', fondos: ['contorno', 'terrazo', 'malla'], marco: 'reglas', hud: false, fondoForma: 0.50, fondoCentro: [0.42, 0.62] },   // papel: el filete de arriba y abajo de una pagina compuesta a mano
   // COMO CORTA ESTE AIRE: lo hecho a mano no tiene efectos: casi todo corte, con una sola banda que respira.
   transiciones: ['corte', 'corte', 'barrido', 'corte', 'corte', 'corte'],
 

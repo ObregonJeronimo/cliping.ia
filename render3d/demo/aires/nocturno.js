@@ -105,7 +105,7 @@ export default {
   // Ver el comentario largo de MOB en kit.js — antes esto estaba horneado en las escenas y
   // por eso dos piezas de rubros opuestos seguian teniendo el mismo mueble.
   // DE DONDE VIENE LA LUZ DEL FONDO: un cono de luz en un lugar oscuro.
-  mobiliario: { fondo: 'rayas', marco: 'passepartout', hud: false, fondoForma: 0.0, fondoCentro: [0.5, 0.68] },   // la masa oscura alrededor hace que el neon del centro se lea como neon
+  mobiliario: { fondo: 'rayas', fondos: ['rayas', 'destellos', 'fuga'], marco: 'passepartout', hud: false, fondoForma: 0.0, fondoCentro: [0.5, 0.68] },   // la masa oscura alrededor hace que el neon del centro se lea como neon
   // COMO CORTA ESTE AIRE: club: el flash ES la luz estroboscopica del rubro, y el empuje vertical lo baja al
   // formato en el que se mira.
   // idem deportivo, en el aire de mas contraste del catalogo.

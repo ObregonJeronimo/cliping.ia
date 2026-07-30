@@ -406,7 +406,11 @@ export let AIRE = null
 //   hud       los rotulos chicos de formato y dominio. Dicen 'ficha tecnica'.
 //
 // El orden de PATRONES importa: es el indice que viaja al shader como uPatron.
-export const PATRONES = ['fuga', 'puntos', 'ondas', 'rayas', 'bloques', 'panal', 'contorno', 'circuito', 'arcos', 'nada']
+// Los cuatro ultimos entran ANTES de 'nada' y no despues: el shader cierra con un `else` que atrapa
+// todo lo que pase del ultimo umbral, asi que un patron agregado al final del arreglo saldria pintado
+// como 'nada' — presente en la lista, invisible en pantalla, y sin una compuerta que lo dijera.
+export const PATRONES = ['fuga', 'puntos', 'ondas', 'rayas', 'bloques', 'panal', 'contorno', 'circuito',
+                         'arcos', 'terrazo', 'malla', 'topografia', 'destellos', 'nada']
 
 // ---------------------------------------------------------------- el marco del cuadro
 // `esquinas` ERA UN BOOLEANO, y esa es la razon de que todas las piezas se vieran iguales por el
@@ -554,11 +558,24 @@ export let CLARO = false
 
 // configurar(aire) — se llama UNA vez antes de construir la pieza. Todo lo que no venga en el aire
 // se queda con el valor de ANTHEM.
-export function configurar(aire) {
+export function configurar(aire, semilla = null) {
   if (!aire) return
   AIRE = aire
   CLARO = !!aire.claro
   MOB = { ...MOBILIARIO_BASE, ...(aire.mobiliario || {}) }
+  // EL FONDO PUEDE VARIAR DENTRO DEL AIRE. `fondo` es el canonico —el que define la personalidad— y
+  // `fondos` es la lista de los que tambien le quedan. Sin semilla se usa el canonico y nada cambia,
+  // que es lo que necesitan las compuertas; con semilla, dos piezas del mismo aire dejan de tener la
+  // misma trama detras. Es la misma leccion que la familia de aires: un patron nuevo agregado a un
+  // selector que elige siempre lo mismo nace dormido, y en este repo eso ya paso demasiadas veces.
+  const fondos = (aire.mobiliario && aire.mobiliario.fondos) || null
+  if (fondos && fondos.length && semilla != null && Number.isFinite(Number(semilla))) {
+    let x = (Number(semilla) >>> 0) || 1
+    x ^= x << 13; x >>>= 0
+    x ^= x >> 17
+    x ^= x << 5; x >>>= 0
+    MOB.fondo = fondos[(x >>> 0) % fondos.length]
+  }
   CAM = { dolly: 1, orbita: 1, ...(aire.camara || {}) }
   if (aire.bpm) { BPM = aire.bpm; BEAT = 60 / BPM }
   if (aire.paleta) LOOK = { ...LOOK, ...aire.paleta }
@@ -871,8 +888,81 @@ export function fondoVivo(mundoW, mundoH) {
           float fr = fract(r * 7.0 - uT * 0.14);
           linea = smoothstep(0.07, 0.0, min(fr, 1.0 - fr)) * 0.75;
           linea *= smoothstep(0.05, 0.30, r) * smoothstep(1.05, 0.30, r);
+        } else if (uPatron < 9.5) {
+          // TERRAZO: lascas de piedra de tamaños distintos, quietas. Es el unico patron MATERIAL del
+          // grupo — los otros nueve son sistemas de lineas, o sea dibujo. Una lasca dice piso, taller,
+          // mostrador: dice que atras hay una cosa y no una retícula. Va para lo hecho a mano y para
+          // la comida, donde una grilla en fuga miente sobre el negocio.
+          // Tres capas de celdas con escalas no multiplas para que no se lea la reticula que las genera.
+          for (int k = 0; k < 3; k++) {
+            float esc = 13.0 + float(k) * 8.0;
+            vec2 c = floor(g * esc);
+            vec2 f = fract(g * esc) - 0.5;
+            float h = hash(c + float(k) * 37.0);
+            // Solo una parte de las celdas trae lasca, o el fondo se convierte en un empedrado parejo.
+            if (h > 0.62) {
+              // El centro y el tamaño de cada lasca salen del mismo hash: no hay dos iguales y ninguna
+              // se mueve, que es lo que la separa de un patron animado.
+              vec2 off = vec2(hash(c + 5.0), hash(c + 9.0)) - 0.5;
+              float rad = 0.16 + hash(c + 13.0) * 0.20;
+              // Estiradas y giradas: una lasca redonda se lee como punto, y puntos ya hay.
+              float a = h * 6.2831;
+              vec2 d = f - off * 0.5;
+              d = vec2(d.x * cos(a) - d.y * sin(a), d.x * sin(a) + d.y * cos(a)) * vec2(1.0, 0.62);
+              linea += smoothstep(rad, rad * 0.55, length(d)) * (0.30 + h * 0.35);
+            }
+          }
+          linea *= 0.62;
+        } else if (uPatron < 10.5) {
+          // MALLA: dos familias de hilos cruzados con un temblor lento, como un tejido flojo. Es la
+          // version BLANDA de la cuadricula — los hilos no son rectos y no coinciden en los cruces —
+          // y por eso dice textil y cuerpo donde 'bloques' dice pantalla.
+          float ondaX = sin(g.y * 9.0 + uT * 0.16) * 0.012;
+          float ondaY = sin(g.x * 7.4 - uT * 0.13) * 0.012;
+          float hx = abs(fract((g.x + ondaX) * 17.0 + 0.5) - 0.5);
+          float hy = abs(fract((g.y + ondaY) * 17.0 + 0.5) - 0.5);
+          // El minimo y no la suma: en un tejido el cruce no brilla mas que el hilo, se tapa.
+          linea = (smoothstep(0.085, 0.012, hx) + smoothstep(0.085, 0.012, hy)) * 0.42;
+          linea -= smoothstep(0.085, 0.012, hx) * smoothstep(0.085, 0.012, hy) * 0.30;
+          linea *= 0.55 + 0.45 * smoothstep(0.85, 0.10, length(g));
+        } else if (uPatron < 11.5) {
+          // TOPOGRAFIA: curvas de nivel de un terreno inventado. Dice suelo, mapa, lote — el registro
+          // de una inmobiliaria o de cualquier cosa que se mida en metros. Es pariente de 'arcos' pero
+          // al reves: arcos es una radial perfecta que apunta al centro, esta es irregular y no apunta
+          // a ningun lado, que es justo lo que hace que se lea como terreno y no como diana.
+          // Un campo suave hecho con tres senos cruzados hace de altura; las curvas son sus niveles.
+          float h1 = sin(g.x * 3.1 + g.y * 2.3 + uT * 0.05);
+          float h2 = sin(g.x * 5.7 - g.y * 4.1 - uT * 0.037) * 0.6;
+          float h3 = sin(g.x * 1.7 + g.y * 6.2 + uT * 0.028) * 0.4;
+          float alt = (h1 + h2 + h3) * 0.5;
+          float fr2 = fract(alt * 4.0);
+          float d2 = min(fr2, 1.0 - fr2);
+          // Grosor CONSTANTE y no derivado del terreno. La funcion fwidth daria la curva pareja en la
+          // ladera y en la meseta, pero es una derivada: en un shader compilado como GLSL ES 1.00
+          // depende de una extension, y este motor tiene que dar el mismo pixel bajo SwiftShader y bajo
+          // GPU. Con un umbral fijo la ladera junta sus curvas y la meseta las separa — que es como se
+          // lee un mapa de verdad, asi que la restriccion tecnica y el dibujo correcto piden lo mismo.
+          linea = smoothstep(0.030, 0.0, d2) * 0.80;
+        } else if (uPatron < 12.5) {
+          // DESTELLOS: motas de luz sueltas que respiran fuera de fase. No hay ninguna linea: es el
+          // unico patron del grupo sin geometria, y por eso es el que deja respirar a una pieza que
+          // vende noche o lujo, donde cualquier trama se lee como ruido.
+          for (int k = 0; k < 3; k++) {
+            float esc = 6.0 + float(k) * 3.5;
+            vec2 c = floor(g * esc);
+            vec2 f = fract(g * esc) - 0.5;
+            float h = hash(c + float(k) * 71.0);
+            if (h > 0.55) {
+              vec2 off = (vec2(hash(c + 3.0), hash(c + 17.0)) - 0.5) * 0.7;
+              // Cada mota late a su propio ritmo y con su propia fase: juntas no pulsan nunca a la vez.
+              float lat = 0.55 + 0.45 * sin(uT * (0.35 + h * 0.5) + h * 6.2831);
+              float d3 = length((f - off) * vec2(1.0, 1.0));
+              linea += smoothstep(0.16 + h * 0.10, 0.0, d3) * lat * (0.35 + h * 0.5);
+            }
+          }
+          linea *= 0.85 * smoothstep(1.05, 0.15, length(g));
         }
-        // 'nada' (uPatron >= 8.5) deja el degrade solo: es lo que necesita una pieza que vende aire.
+        // 'nada' (uPatron >= 12.5) deja el degrade solo: es lo que necesita una pieza que vende aire.
         linea *= uGrilla;
         // En oscuro la línea SUMA luz; en claro TIÑE hacia el acento. Es la misma grilla y en los dos
         // casos aparece por delante del fondo, que es lo único que importa.

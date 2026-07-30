@@ -102,7 +102,7 @@ export default {
   // Ver el comentario largo de MOB en kit.js — antes esto estaba horneado en las escenas y
   // por eso dos piezas de rubros opuestos seguian teniendo el mismo mueble.
   // DE DONDE VIENE LA LUZ DEL FONDO: corrige aspecto: la luz sigue la forma alta del cuadro y no aprieta por los lados.
-  mobiliario: { fondo: 'ondas', marco: 'nada', hud: false, fondoForma: 0.30, fondoAsp: 0.62 },   // el aire ES el mensaje; cualquier borde lo contradice
+  mobiliario: { fondo: 'ondas', fondos: ['ondas', 'malla', 'topografia'], marco: 'nada', hud: false, fondoForma: 0.30, fondoAsp: 0.62 },   // el aire ES el mensaje; cualquier borde lo contradice
   // COMO CORTA ESTE AIRE: SIN FLASH ni empuje: nada que sobresalte. Es el aire cuyo mensaje es la calma y
   // un golpe lo contradice.
   transiciones: ['corte', 'corte', 'barrido', 'corte', 'barrido', 'corte'],

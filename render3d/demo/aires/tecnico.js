@@ -56,7 +56,7 @@ export default {
   // EL MOBILIARIO DEL CUADRO: el HUD de ANTHEM entero: es la referencia y no se toca.
   // Ver el comentario largo de MOB en kit.js — antes esto estaba horneado en las escenas y
   // por eso dos piezas de rubros opuestos seguian teniendo el mismo mueble.
-  mobiliario: { fondo: 'fuga', marco: 'escuadras', hud: true },   // la linea de base de ANTHEM: no se toca
+  mobiliario: { fondo: 'fuga', fondos: ['fuga', 'circuito', 'topografia'], marco: 'escuadras', hud: true },   // la linea de base de ANTHEM: no se toca
   // COMO CORTA ESTE AIRE: el reparto de ANTHEM tal cual: es la linea de base y no se toca.
   // un solo cambio sobre la linea de base y en la ultima posicion: el reparto de ANTHEM se conserva.
   transiciones: ['corte', 'corte', 'flash', 'barrido', 'empuje', 'golpe'],

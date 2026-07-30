@@ -95,7 +95,7 @@ export default {
   // Ver el comentario largo de MOB en kit.js — antes esto estaba horneado en las escenas y
   // por eso dos piezas de rubros opuestos seguian teniendo el mismo mueble.
   // DE DONDE VIENE LA LUZ DEL FONDO: reparte antes que concentrar.
-  mobiliario: { fondo: 'circuito', marco: 'reglas', hud: true, fondoForma: 0.65 },   // la caja de un informe impreso, abierta a los lados
+  mobiliario: { fondo: 'circuito', fondos: ['circuito', 'fuga', 'puntos'], marco: 'reglas', hud: true, fondoForma: 0.65 },   // la caja de un informe impreso, abierta a los lados
   // COMO CORTA ESTE AIRE: sobrio: casi todo corte duro, y cuando adorna lo hace con la banda y no con un golpe.
   // la persiana es un mecanismo ordenado, que es exactamente lo que este aire dice.
   transiciones: ['corte', 'corte', 'barrido', 'persiana', 'corte', 'empuje'],
