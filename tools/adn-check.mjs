@@ -281,6 +281,37 @@ for (const [rubro, aires] of porRubro) {
 }
 kitG.configurar(null)
 
+// ---------------------------------------------------------------- E-FUENTE-RESUELVE
+// UNA CARA QUE NO RESUELVE NO DA ERROR: mide con la de reserva. Es distinto de E-FUENTE-LLEGA —que
+// comprueba que ALGUIEN la registre para el render— y complementario: aca se comprueba que el nombre
+// que el motor pide sea un nombre que el rasterizador ENCUENTRA.
+//
+// Medido antes de arreglarlo: 'DMSans', 'PlayfairDisplay-700', 'Oswald-700', 'Archivo-900' y una familia
+// INVENTADA daban las cuatro el mismo ancho —1023.73 sobre "ANTHEM HAMBURGO" a 100 px—, o sea la cara de
+// reserva. Solo Anton acertaba, y por casualidad: su familia interna se llama igual que su archivo. Toda
+// compuerta que mide ancho de texto media diez de los once aires con una cara ajena, y el rango real es
+// de 837 (Oswald-700) a 1167 (Archivo-900): un 39% de diferencia.
+//
+// La deteccion es el ancho de una familia que se sabe inexistente: si una cara declarada mide IGUAL que
+// esa, no resolvio.
+{
+  const { registrarFuentes } = await import('./fuentes-reales.mjs')
+  registrarFuentes(join(HERE, '..'))
+  const { createCanvas } = await import('@napi-rs/canvas')
+  const cx = createCanvas(8, 8).getContext('2d')
+  const mide = (fam) => { cx.font = `100px "${fam}"`; return cx.measureText('ANTHEM HAMBURGO').width }
+  const reserva = mide('familiaQueNoExisteXYZ')
+  for (const [nombre, a] of Object.entries(AIRES)) {
+    const pares = [a.fuentes || {}, ...(Array.isArray(a.caras) ? a.caras : [])]
+    for (const [i, par] of pares.entries()) {
+      for (const [rol, fam] of Object.entries(par || {})) {
+        if (Math.abs(mide(fam) - reserva) > 0.01) continue
+        F('E-FUENTE-RESUELVE', `el aire "${nombre}" pide ${i === 0 ? rol : `caras[${i - 1}].${rol}`} "${fam}" y el rasterizador NO la encuentra: mide exactamente igual que una familia inexistente, o sea que toda compuerta que mida su ancho lo hace con la cara de reserva`)
+      }
+    }
+  }
+}
+
 // ---------------------------------------------------------------- E-CARAS-ALCANZABLES
 // LA SEMILLA ELIGE EL VESTUARIO, y hay que comprobar que de verdad lo elija. Un `caras[]` con un solo par
 // es codigo que el usuario no va a ver nunca — la misma muerte silenciosa que ya paso con `sello` (una

@@ -43,7 +43,13 @@ const HERE = dirname(fileURLToPath(import.meta.url))
 const RAIZ = join(HERE, '..')
 const DEMO = join(RAIZ, 'render3d', 'demo')
 const DIRS = [join(DEMO, 'escenas'), join(DEMO, 'heroes')]
-try { GlobalFonts.loadFontsFromDir(join(RAIZ, 'tools', 'fonts')) } catch { /* la medida cae a la fuente por defecto */ }
+// SE REGISTRAN CON EL NOMBRE QUE EL MOTOR PIDE. `loadFontsFromDir` las registra por su familia interna
+// ("DM Sans" con espacio) y el motor las pide por nombre de archivo ('DMSans'), asi que NINGUNA
+// matcheaba salvo Anton —por casualidad, su familia interna se llama igual—. Medido: Oswald-700 mide 837
+// y Archivo-900 mide 1167 sobre el mismo texto, un 39% de diferencia, y esta compuerta las medía a las
+// dos con la cara de reserva. Ver tools/fuentes-reales.mjs.
+const { registrarFuentes } = await import('./fuentes-reales.mjs')
+registrarFuentes(RAIZ)
 
 function lienzo(w = 4, h = 4) { return createCanvas(w, h) }
 globalThis.document = {
@@ -123,6 +129,27 @@ function enCuadro(obj, caja, m) {
   return _frustum.intersectsBox(caja)
 }
 
+// E-ENCAJE-REAL: CONTENCION, no interseccion. `enCuadro` pregunta si la caja TOCA el cuadro, y con eso
+// un renglon que se sale por la derecha da true igual —le basta que un pixel entre—. Es el punto ciego
+// que el handoff documenta y por el que dos textos salieron cortados con la compuerta en verde.
+//
+// Para las mallas que la escena marco `userData.encaja` la exigencia es otra: entran ENTERAS o es un
+// defecto. Se proyectan los ocho vertices de la caja y se pide |x| <= 1 y |y| <= 1 en todos.
+const _cajaE = new THREE.Box3()
+const _vE = new THREE.Vector3()
+function entraEntera(obj, m) {
+  _cajaE.setFromObject(obj)
+  if (_cajaE.isEmpty()) return { ok: true, x: 0, y: 0 }
+  let mx = 0, my = 0
+  for (let i = 0; i < 8; i++) {
+    _vE.set(i & 1 ? _cajaE.max.x : _cajaE.min.x, i & 2 ? _cajaE.max.y : _cajaE.min.y, i & 4 ? _cajaE.max.z : _cajaE.min.z)
+    _vE.applyMatrix4(m)
+    mx = Math.max(mx, Math.abs(_vE.x)); my = Math.max(my, Math.abs(_vE.y))
+  }
+  // 1.5% de tolerancia: el antialias de un canto no es un texto cortado.
+  return { ok: mx <= 1.015 && my <= 1.015, x: mx, y: my }
+}
+
 let revisados = 0
 const _push = fallos.push.bind(fallos)
 for (const [nombreAire, aire] of Object.entries(AIRES)) {
@@ -187,6 +214,12 @@ for (const [nombreAire, aire] of Object.entries(AIRES)) {
         if (!e) { e = { visto: 0, dentro: 0 }; cuenta.set(o, e) }
         e.visto++
         if (enCuadro(o, caja, m)) e.dentro++
+        if (o.userData && o.userData.encaja) {
+          e.enc = true
+          const r = entraEntera(o, m)
+          e.peor = Math.max(e.peor || 0, Math.max(r.x, r.y))
+          if (!r.ok) e.fuera = (e.fuera || 0) + 1
+        }
       })
     }
   }
@@ -211,6 +244,14 @@ for (const [nombreAire, aire] of Object.entries(AIRES)) {
   // seis acusaciones falsas — y una compuerta que acusa en falso se aprende a ignorar, que es la
   // unica forma de que despues no vea el defecto de verdad.
   //
+  for (const [o, gg] of cuenta) {
+    if (!gg.fuera) continue
+    // Dos cuadros de gracia: una entrada con overshoot puede pasarse un frame y volver, y eso no es un
+    // texto cortado. Tres o mas es geometria que no entra.
+    if (gg.fuera <= 2) continue
+    fallos.push(`E-ENCAJE-REAL  ${id}: una malla marcada \`encaja\` se sale del cuadro en ${gg.fuera} de sus ${gg.visto} cuadros — llega a ${gg.peor.toFixed(3)} en coordenadas de recorte (el limite es 1.0)`)
+  }
+
   // Lo que SI es un defecto es que TODO un grupo quede afuera: eso ya no es una serie que sangra, es
   // una pieza que nadie ve. Asi era la pauta del toro, que motivo esta compuerta.
   // DOS REGLAS, porque hay dos defectos distintos y una sola no los caza a los dos.

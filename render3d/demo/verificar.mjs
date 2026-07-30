@@ -29,7 +29,10 @@ const rutaDe = (id) => {
   for (const d of DIRS) { const r = join(d, `${id}.js`); if (existsSync(r)) return r }
   return join(DIRS[0], `${id}.js`)
 }
-try { GlobalFonts.loadFontsFromDir(join(RAIZ, 'tools', 'fonts')) } catch { /* la medida de texto cae a la fuente por defecto */ }
+// Con el nombre que el motor PIDE, no con la familia interna del archivo. Ver tools/fuentes-reales.mjs:
+// sin esto, diez de los once aires se median con la cara de reserva.
+const { registrarFuentes } = await import(pathToFileURL(join(RAIZ, 'tools', 'fuentes-reales.mjs')).href)
+registrarFuentes(RAIZ)
 
 // ---- DOM mínimo. El kit usa document.createElement('canvas') para rasterizar tipografía y
 // document.fonts para esperarla; nada más del navegador hace falta para ARMAR la escena.
