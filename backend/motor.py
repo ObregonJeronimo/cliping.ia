@@ -226,7 +226,13 @@ async def render(url: str, salida: str, hero: str | None = None, dur: int = 20,
         "aire": aire or d["aire"],
         "datos": d["datos"],
         "dna": d.get("dna"),
-        "obturador": {"angulo": 190, "muestras": 2},
+        # CUATRO MUESTRAS, NO DOS. El motor ya pedia cuatro por defecto y esta linea las bajaba a dos
+        # para que el render entrara en tiempo: con dos, las dos muestras caen a 8.8 ms una de otra y
+        # todo lo que se mueve en continuo sale DUPLICADO en vez de barrido.
+        # Medido en esta maquina (basecamp, 20 s, 600 cuadros, GPU): el bucle de dibujo tardaba 11.8 ms
+        # por cuadro contra un presupuesto de 33.3. Sobraba casi el triple. La razon para recortar a dos
+        # dejo de existir el dia que el render paso a rendir mas rapido que tiempo real.
+        "obturador": {"angulo": 190, "muestras": 4},
     }
     if hero:
         spec["hero"] = hero

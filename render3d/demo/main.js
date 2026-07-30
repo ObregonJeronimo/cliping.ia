@@ -167,6 +167,17 @@ export class Anthem {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true })
     this.renderer.setPixelRatio(1)
     this.renderer.setSize(this.W, this.H, false)
+    // SIN CURVA DE TONO, Y ESTA VEZ ESTA MEDIDO. Probar ACES Filmic era una de las tres palancas de
+    // calidad de imagen que se evaluaron; se rechazo con dos cuadros del mismo spec, uno por polaridad:
+    //   - Mundo CLARO (apertura): la saturacion media cayo de 50.4 a 33.9, un 33% menos. El azul de la
+    //     marca —que en basecamp es #2377d2 y sale del sitio, no de un gusto— se lava hasta casi gris.
+    //   - Mundo OSCURO (sello): el blanco puro dejo de ser blanco. El circulo y las barras salieron
+    //     GRISES, y la luma media bajo de 106.3 a 94.3.
+    // ACES existe para comprimir altas luces de una escena con luz FISICA. Acá el blanco no es una alta
+    // luz: es una decision grafica, y el acento no es un color iluminado sino la marca del cliente. Una
+    // curva que los reinterpreta esta corrigiendo algo que nadie rompio. La pieza se autoriza en sRGB y
+    // se entrega en sRGB; el unico tratamiento de luz que corresponde es el bloom, que ya esta
+    // calibrado aire por aire.
     this.renderer.toneMapping = THREE.NoToneMapping
     this.renderer.outputColorSpace = THREE.SRGBColorSpace
 
@@ -288,11 +299,37 @@ export class Anthem {
   }
 
   _composer() {
-    const rt = new THREE.WebGLRenderTarget(this.W, this.H, { type: THREE.HalfFloatType, colorSpace: THREE.SRGBColorSpace })
+    // SUPERMUESTREO. EL `antialias: true` DEL RENDERER NO HACIA NADA.
+    //
+    // Ese flag solo antialiasa el backbuffer del canvas, y por acá no pasa un solo triangulo: TODA la
+    // escena se dibuja dentro del composer, en render targets propios. Un render target sin `samples`
+    // no tiene multimuestreo. O sea que el motor venia rasterizando sin antialiasing DE NINGUN TIPO —
+    // de ahi el borde escalonado en la geometria y el hormigueo de los filetes finos entre cuadros.
+    //
+    // POR QUE SUPERMUESTREO Y NO MSAA. El MSAA arregla el borde del TRIANGULO y nada mas. Acá el
+    // contenido dominante es tipografia rasterizada en canvas 2D y pegada como TEXTURA sobre un plano:
+    // para el MSAA ese plano es un rectangulo con dos bordes limpios, y el filo de cada letra —que es
+    // interior a la textura— le resulta invisible. Dibujar todo al doble y promediar de a cuatro si lo
+    // toma, porque promedia PIXELES, no siluetas.
+    //
+    // EL CANVAS SIGUE EN 1080x1920. Solo crecen los buffers internos. El OutputPass, que es el ultimo y
+    // va a pantalla, estira la textura del doble sobre el viewport del canvas: cada pixel de salida cae
+    // exactamente en la esquina de cuatro texels, asi que el bilineal da el promedio exacto de 2x2. Es
+    // una caja perfecta, no una interpolacion aproximada. Y tiene que seguir en 1x porque `frameCon`
+    // acumula las muestras del obturador copiando ESTE canvas a uno 2D del tamaño final.
+    const SS = 2
+    const rt = new THREE.WebGLRenderTarget(this.W * SS, this.H * SS, { type: THREE.HalfFloatType, colorSpace: THREE.SRGBColorSpace })
     this.composer = new EffectComposer(this.renderer, rt)
     this.composer.addPass(new RenderPass(this.scene, this.camera))
     // Umbral 0.62 con base negra: sólo florecen el acento y el blanco. Sobre negro el bloom es la
     // herramienta principal — es lo que hace que un color se lea como LUZ y no como pintura.
+    // LA RESOLUCION DEL BLOOM QUEDA EN 1x A PROPOSITO, aunque los buffers ahora vayan al doble.
+    // UnrealBloomPass arma cinco mips a partir de ESTE numero y desenfoca cada uno con un nucleo fijo
+    // en pixeles. Si se le pasara el tamaño supermuestreado, cada mip cubriria la mitad del cuadro y el
+    // halo se cerraria a la mitad: el supermuestreo, que es una decision de nitidez, terminaria
+    // recalibrando el tratamiento de luz de los once aires de un plumazo. Leyendo del buffer grande y
+    // resolviendo en mips chicos, el halo mide lo mismo que siempre. El bloom es borroso por
+    // definicion: que su fuente sea de mayor resolucion no le agrega nada.
     this.bloom = new UnrealBloomPass(new THREE.Vector2(this.W, this.H), 0.85, 0.62, 0.62)
     this.composer.addPass(this.bloom)
 
