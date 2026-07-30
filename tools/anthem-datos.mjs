@@ -273,7 +273,49 @@ function afinarServicioLocal(mood) {
   return null
 }
 
-export function aireDe(pm) {
+// LA FAMILIA: QUE OTROS AIRES SIGUEN SIENDO CREIBLES PARA ESTA PAGINA.
+//
+// El mapeo de arriba es correcto y no se toca: el rubro impone un registro y eso es una restriccion
+// fuerte. Pero es una funcion, no una eleccion — la misma pagina da SIEMPRE el mismo aire, y como
+// `saas` y `app` caen los dos en `tecnico` y el respaldo de un rubro no reconocido TAMBIEN es
+// `tecnico`, en la practica casi todo lo que se rinde sale del mismo aire. Once personalidades
+// escritas y una sola en pantalla. Medido: de los once aires, `tecnico` es el unico con
+// `marco: escuadras` y `hud: true`, o sea que todas las piezas salian con las mismas escuadras en las
+// esquinas — el defecto que se veia como "son todos el mismo video" y que no era falta de catalogo
+// sino colapso de la eleccion.
+//
+// La familia dice cuales OTROS aires puede vestir la misma pagina sin mentir sobre lo que es. No es un
+// sorteo libre: un gimnasio no puede salir de panaderia. El PRIMERO de cada lista es el canonico —el
+// que devuelve la funcion cuando no hay semilla— asi que nada de lo que ya andaba cambia.
+const FAMILIA = {
+  tecnico:      ['tecnico', 'corporativo', 'nocturno', 'editorial'],
+  corporativo:  ['corporativo', 'tecnico', 'editorial'],
+  jugueton:     ['jugueton', 'editorial', 'deportivo'],
+  editorial:    ['editorial', 'corporativo', 'lujo'],
+  gastronomico: ['gastronomico', 'artesanal', 'bienestar'],
+  artesanal:    ['artesanal', 'gastronomico', 'editorial'],
+  inmobiliario: ['inmobiliario', 'lujo', 'editorial'],
+  lujo:         ['lujo', 'editorial', 'nocturno'],
+  nocturno:     ['nocturno', 'tecnico', 'lujo'],
+  deportivo:    ['deportivo', 'tecnico', 'jugueton'],
+  bienestar:    ['bienestar', 'artesanal', 'editorial'],
+}
+
+// Un revoltijo de enteros, no un generador: se necesita UN indice a partir de UN numero y tiene que
+// dar lo mismo en cualquier maquina y en cualquier corrida. `Math.random` no entra en este repo.
+const revolver = (n) => {
+  let x = (n >>> 0) || 1
+  x ^= x << 13; x >>>= 0
+  x ^= x >> 17
+  x ^= x << 5; x >>>= 0
+  return x >>> 0
+}
+
+// `semilla` es OPCIONAL y sin ella la funcion se comporta exactamente como siempre. Eso mantiene a las
+// compuertas —que comparan contra el aire canonico de cada fixture— midiendo lo mismo que median, y
+// deja la variacion donde tiene que estar: en el render, que es el unico lugar donde alguien pidio
+// "otra toma".
+export function aireDe(pm, semilla = null) {
   const s = pm.semantica || {}
   const mood = pm.dna?.mood
   const energia = mood?.energia ?? 0.5
@@ -281,10 +323,15 @@ export function aireDe(pm) {
   if (s.tipoNegocio === 'servicio-local') base = afinarServicioLocal(mood) || base
   // Un registro formal DECLARADO pesa mas que cualquier otra señal: es lo unico que la pagina dijo
   // explicitamente sobre como quiere que le hablen a su publico.
-  if (s.audiencia?.register === 'formal') return VARIANTES[base]?.baja || 'corporativo'
-  if (energia > 0.80) return VARIANTES[base]?.alta || base
-  if (energia < 0.30) return VARIANTES[base]?.baja || base
-  return base
+  let elegido
+  if (s.audiencia?.register === 'formal') elegido = VARIANTES[base]?.baja || 'corporativo'
+  else if (energia > 0.80) elegido = VARIANTES[base]?.alta || base
+  else if (energia < 0.30) elegido = VARIANTES[base]?.baja || base
+  else elegido = base
+
+  if (semilla == null || !Number.isFinite(Number(semilla))) return elegido
+  const fam = FAMILIA[elegido] || [elegido]
+  return fam[revolver(Number(semilla)) % fam.length]
 }
 
 // Acepta un NOMBRE de fixture o una RUTA a un pagemodel cualquiera. Lo segundo es lo que usa
@@ -303,7 +350,10 @@ const ruta = nombre.endsWith('.json') && existsSync(nombre) ? nombre
     : join(HERE, 'fixtures', 'director', `${nombre}.json`)
 const pm = normalizePageModel(JSON.parse(readFileSync(ruta, 'utf8')))
 const d = datosDe(pm)
-const aire = aireDe(pm)
+// El cuarto argumento es la SEMILLA de la pieza. Sin ella el aire es el canonico de la pagina, que es
+// lo que quieren las compuertas y cualquiera que corra esto a mano; con ella, la misma pagina puede
+// vestir cualquier aire de su familia y "otra toma" pasa a ser de verdad otra toma.
+const aire = aireDe(pm, process.argv[4])
 const salida = process.argv[3] || join(HERE, 'out', `datos-${nombre}.json`)
 // El ADN viaja ENTERO al spec. Es lo que hace que la paleta, la polaridad claro/oscuro, la tipografía y
 // los radios de la marca lleguen a la pantalla en vez de quedarse en el informe de medición.

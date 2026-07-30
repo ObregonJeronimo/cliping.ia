@@ -130,15 +130,22 @@ async def capturar(url: str, dst: str, con_tira: bool = True) -> dict:
     return pm
 
 
-def datos_de(pagemodel_path: str, dst: str) -> dict:
+def datos_de(pagemodel_path: str, dst: str, seed: int | None = None) -> dict:
     """pagemodel -> DATOS + aire + adn, con el puente de Node.
 
     El puente esta en JS y no se reescribe en Python porque es el MISMO codigo que corre en el
     navegador para la demo: dos implementaciones de la regla anti-invencion es una que se olvida.
     """
     salida = os.path.join(dst, "datos.json")
-    r = subprocess.run(["node", os.path.join("tools", "anthem-datos.mjs"), pagemodel_path, salida],
-                       capture_output=True, text=True, cwd=RAIZ)
+    # LA SEMILLA VIAJA AL PUENTE. Sin ella el aire es una funcion pura de la pagina: `saas` y `app`
+    # caen los dos en "tecnico", el respaldo de un rubro desconocido tambien, y en la practica todo lo
+    # que se rendia salia del mismo aire de los once. Con la semilla, la pieza puede vestir cualquier
+    # aire de la FAMILIA que su rubro autoriza, asi que cambiar --seed cambia de verdad la direccion de
+    # arte y no solo el orden de las escenas.
+    cmd = ["node", os.path.join("tools", "anthem-datos.mjs"), pagemodel_path, salida]
+    if seed is not None:
+        cmd.append(str(seed))
+    r = subprocess.run(cmd, capture_output=True, text=True, cwd=RAIZ)
     if r.returncode != 0:
         raise RuntimeError("anthem-datos fallo: " + (r.stderr or r.stdout or "").strip()[:500])
     print("  " + (r.stdout or "").strip().replace("\n", "\n  "))
@@ -178,7 +185,7 @@ async def render(url: str, salida: str, hero: str | None = None, dur: int = 20,
         with open(pm_path, "w", encoding="utf-8") as f:
             json.dump(pm, f, ensure_ascii=False, indent=1)
 
-    d = datos_de(pm_path, dst)
+    d = datos_de(pm_path, dst, seed)
     with open(pm_path, encoding="utf-8") as f:
         pm = json.load(f)
 
