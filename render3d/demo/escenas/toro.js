@@ -404,7 +404,24 @@ export function build(ctx) {
   // llena el mismo hueco con el mismo peso visual.
   const lectura = lineaMasc(sello(0), mundoW * 0.5,
     { fuente: 'DMSans', size: 110, tracking: 0.18, alineado: 'left', color: TIPO_BAJA() }, 0, 0.12)
-  lectura.position.set(2.6 - mundoW * 0.25, 3.55, 0.6)
+  // ANCLADO POR SU BORDE DERECHO, no por el izquierdo. Estaba en x = 2.6 - mundoW*0.25 = 1.19 con
+  // alineacion izquierda y un ancho de hasta 2.81: el borde derecho caia en 4.00 contra un cuadro que
+  // termina en 2.81, o sea 1.19 unidades —229 px— fuera de pantalla. En el render de basecamp se leia
+  // "BASECAMP.CO" con la M comida por el canto. La compuerta de encuadre no lo caza porque esta pieza
+  // no declara `encaja` y el heuristico de tamaño solo mira lo que se sale ENTERO.
+  //
+  // Se calcula desde el ancho real de la malla, asi que un dominio corto y uno largo terminan los dos
+  // contra el mismo margen en vez de arrancar los dos del mismo punto.
+  // EL MARGEN SE MIDE CONTRA EL CUADRO MAS ANGOSTO, no contra el de reposo. Esta camara se acerca un
+  // 8.5% (`dist = distBase * 0.915` en el pico del arco), asi que el cuadro visible pasa de 5.625 a
+  // 5.15 de ancho: un margen calculado sobre 2.81 deja la pieza afuera justo en los beats en que la
+  // camara ya empujo. Es exactamente la trampa que documentan las muescas de `columna` — "salia 0.039
+  // de mundo por fuera, y no en cualquier momento: en los beats en que la camara se acerco".
+  //
+  // 0.44 del ancho es el borde derecho del cuadro CERRADO con un pelo de aire. Y se ancla por ese borde
+  // usando el ancho real de la malla, asi un dominio corto y uno largo terminan los dos contra el mismo
+  // margen en vez de arrancar los dos del mismo punto.
+  lectura.position.set(mundoW * 0.44 - (lectura.geometry.parameters.width || 0) / 2, 3.55, 0.6)
   g.add(lectura)
 
   // ------------------------------------------------------------------ la pauta del renglon del kicker

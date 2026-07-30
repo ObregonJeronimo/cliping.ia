@@ -275,7 +275,11 @@ export function guionDe({ escenas, datos, seed = 1, beatSeg = 60 / 124, dur = nu
 
   // Se barajan las escenas REGISTRADAS menos las fijas: asi una escena nueva entra al sorteo el dia
   // que se registra, sin que nadie tenga que acordarse de agregarla a una lista.
-  const candidatas = [...escenas.keys()].filter(id => id !== 'apertura' && id !== 'cierre' && !DORMIDAS.has(id))
+  // LAS FIJAS NO ENTRAN AL SORTEO DEL MEDIO. Agregue `gancho` a las fijas y me olvide de esta linea: en
+  // el primer render salio DOS VECES, al principio y a los 19 segundos, diciendo la misma promesa. Una
+  // escena fija que ademas es candidata se duplica sola.
+  const FIJAS = new Set(['apertura', 'cierre', 'gancho'])
+  const candidatas = [...escenas.keys()].filter(id => !FIJAS.has(id) && !DORMIDAS.has(id))
   const orden = barajar(candidatas, rnd)
 
   // CUPO DE ESCENAS DE TEXTO, porque tres beben del mismo pozo.

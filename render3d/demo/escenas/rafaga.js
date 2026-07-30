@@ -54,9 +54,24 @@ export function build(ctx) {
     if (tex) recortes.push(tex)
   }
   // Del mostrador, no desde la primera. Esta escena alterna recorte y frase, asi que con SLOTS=6 usa
-  // tres: pedir mas seria vaciar el pozo para las escenas de texto que vengan despues. El salto de
-  // linea se aplana porque aca la frase pasa un beat y dos renglones compiten con el recorte de atras.
-  const frases = repartirFrases(3).map(f => String(f).replace(/\n/g, ' '))
+  // tres: pedir mas seria vaciar el pozo para las escenas de texto que vengan despues.
+  //
+  // LA FRASE VA EN DOS RENGLONES CUANDO ES LARGA, y esto es lo que hacia que la escena se viera vacia.
+  // Aplanada a un renglon, "Basecamp eliminates the Hassle Tax" tiene proporcion 13:1 y entra por ANCHO:
+  // 75 px de alto en un cuadro de 1920, con el 80% del cuadro en blanco. En dos renglones la proporcion
+  // baja a 6.5 y el mismo texto sale al doble de cuerpo. Las cortas siguen en un renglon: ya llenan.
+  const enDos = (f) => {
+    const t = String(f).replace(/\n/g, ' ').trim()
+    const pal = t.split(' ')
+    if (t.length <= 20 || pal.length < 2) return t
+    let mejor = 1, dif = Infinity
+    for (let k = 1; k < pal.length; k++) {
+      const a = pal.slice(0, k).join(' ').length, c = pal.slice(k).join(' ').length
+      if (Math.abs(a - c) < dif) { dif = Math.abs(a - c); mejor = k }
+    }
+    return pal.slice(0, mejor).join(' ') + String.fromCharCode(10) + pal.slice(mejor).join(' ')
+  }
+  const frases = repartirFrases(3).map(enDos)
 
   // Se ALTERNA, y se arranca por el recorte. Con las frases primero, los primeros cuadros de la
   // ráfaga son tipografía y la escena se confunde con la de tipografía cinética que suele venir
@@ -98,11 +113,15 @@ export function build(ctx) {
   // El índice: sólo números, así que no puede afirmar nada sobre el negocio. Ver `marca` en datos.js.
   const idx = texto(marca(3, 6), { fuente: 'DMSans', peso: 500, size: 90, tracking: 0.3, color: nivel(0.55) })
   const mIdx = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.9 * idx.ar, 0.9),
+    // 0.42 Y NO 0.9. A 0.9 el indice mide 173 px de alto y le gana en peso visual a la pieza que la
+    // escena vino a mostrar: en el render de basecamp "03 / 06" era lo mas grande del cuadro y la frase
+    // de la marca lo mas chico. Un indice es MUEBLE, no contenido — `columna` lo tiene en 0.26.
+    new THREE.PlaneGeometry(0.42 * idx.ar, 0.42),
     new THREE.MeshBasicMaterial({ map: idx.tex, transparent: true, depthWrite: false, toneMapped: false }))
   // Anclado por su BORDE IZQUIERDO, no por su centro. Puesto por el centro, un rotulo de seis
   // caracteres sobresale un metro y medio por fuera del cuadro y en pantalla se lee "/ 06".
-  mIdx.position.set(-mundoW * 0.5 + 0.34 + (0.9 * idx.ar) / 2, mundoH * 0.29, 0.6)
+  // A 0.29 y no a 0.34: el filete de arriba vive en 0.34 y el indice se le montaba encima.
+  mIdx.position.set(-mundoW * 0.5 + 0.30 + (0.42 * idx.ar) / 2, mundoH * 0.29, 0.6)
   g.add(mIdx)
 
   // ---- las doce piezas
