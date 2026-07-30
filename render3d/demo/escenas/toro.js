@@ -527,9 +527,18 @@ export function build(ctx) {
         + 0.58 * sm((tb - 4.50) / 0.50)
         - 0.45 * sm((tb - 5.05) / 0.65)
     }
-    // El flash SOLO se escribe en su ventana: main.js pone su propio flash sobre cada corte y pisarlo
-    // con un 0 le comeria la mitad.
-    if (pelicula && tb >= 4.50 && tb <= 4.80) pelicula.uFlash.value = 0.45 * golpe(tb, 4.50, 0.16)
+    // EL FLASH DE SALIDA SE FUE, Y LO REEMPLAZA LO QUE YA ESTABA. Esta linea escribia `uFlash`, que es
+    // un uniform GLOBAL del compositor cuyo dueño es main.js —lo usa para tapar un corte—, y lo hacia en
+    // el medio de la escena. Bisecado neutralizando un elemento por vez sobre un escaner de los 750
+    // cuadros: no era la onda de choque ni la bomba de bloom, era esto. Con 0.45 el cuadro del beat 4.5
+    // medía 156 de luminancia con 6 de desvio —gris parejo, sin objeto ni tipografia ni fondo—; bajarlo
+    // a 0.20 lo dejaba en 121, todavia un fogonazo.
+    //
+    // Sin el, ese mismo cuadro mide 72 con 16 de desvio: brillante, que es lo que la salida quiere, y
+    // legible. El acento del beat no se pierde — lo sigue marcando la bomba de bloom de la linea de
+    // arriba (0.647 sobre el valor del aire), que es un realce del material que YA esta en el cuadro en
+    // vez de una capa de blanco encima. Un uniform compartido no es el lugar donde una escena pone su
+    // acento.
   }
 
   tl.to(cam, { u: 1, duration: b(U_FIN), ease: 'none', onUpdate: aplicar }, 0)

@@ -165,7 +165,19 @@ export function build(ctx) {
   // siempre, cada frase pasa centrada una vez y —como el mostrador entrega dos o tres— cada tramo dura
   // dos o tres beats enteros, o sea que sigue cayendo en la grilla.
   const PASOS = frases.length
-  const DESLIZ = deslizFijo(DUR, PASOS)
+  // EL DESLIZ DE ESTA ESCENA ES MAS CORTO QUE EL DEL RESTO, y la cuenta obliga.
+  //
+  // Un peldaño de aca mueve UNA FRASE ENTERA —unos 900 px de pantalla—, contra los 42 px del scroll del
+  // telefono o los 450 de la mesa. Con los 0.18 s que usa todo el motor eso da 5000 px/s, y a esa
+  // velocidad las dos submuestras del obturador caen a 47 px una de otra: no es un borron, son dos
+  // copias legibles del mismo texto encimadas. Se ve exacto en el render de nocturno.
+  //
+  // Con una distancia asi no hay duracion que evite el fantasma: para bajar la separacion a 4 px haria
+  // falta un desliz de dos segundos, mas largo que el peldaño entero. Lo que SI se puede elegir es
+  // cuantos cuadros dura: a 0.10 s el transito ocupa tres cuadros y a esa velocidad deja de leerse como
+  // dos textos y pasa a leerse como una estela — que es lo que corresponde ver cuando algo cruza. Los
+  // otros 27 cuadros de cada peldaño siguen perfectamente quietos, que es donde se lee.
+  const DESLIZ = deslizFijo(DUR, PASOS, 0.10)
   deriva(tl, DUR, (u) => {
     const e = escalera(u, PASOS, DESLIZ)
     for (const t of tiras) {
