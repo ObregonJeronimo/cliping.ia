@@ -139,6 +139,46 @@ export function build(ctx) {
   })
 
   // ---- salida
+  // ---------------------------------------------------------------- LA AGUJA QUE BARRE
+  // ESTA ESCENA ERA LA MAS MUERTA DEL CATALOGO, MEDIDO: 1.61 de diferencia media entre cuadros contra
+  // 16.39 de `columna` y 12.14 de `toro`. Mirando el ultimo tercio, tres cuadros seguidos eran casi
+  // identicos — solo cambiaba un pedazo del arco. `verificar` la dejaba pasar porque su regla mide SI la
+  // firma cambia, no CUANTO.
+  //
+  // Y NO ALCANZA CON HACER PULSAR LO QUE YA ESTA. Se probo: un metronomo sobre el aro y el nombre a
+  // amplitudes seguras midio 2.259 -> 2.326 a resolucion completa, o sea un 3%, y subirlo mas hace
+  // bambolear el emblema. Hace falta un elemento que ENTRE.
+  //
+  // La aguja es lo que un sello pide: un radio que barre el emblema, como una firma siendo validada. Y
+  // gira A SALTOS de un octavo de vuelta en cada medio beat, no en deriva continua — la trampa nº8 del
+  // handoff dice que lo suave no lo cuenta ni el ojo ni la medicion, y esta escena es la prueba.
+  const aguja = new THREE.Mesh(new THREE.PlaneGeometry(R * 0.92, 0.026), matAcento(LOOK.acento2, 1.6))
+  aguja.geometry.translate(R * 0.46, 0, 0)          // ancla en el centro: gira desde el eje del emblema
+  aguja.position.z = 0.14
+  aguja.material.transparent = true
+  aguja.material.opacity = 0
+  g.add(aguja)
+
+  // El cubo del centro cierra el radio: sin el, la aguja arranca en el aire y se lee como una linea
+  // suelta en vez de como una aguja.
+  const eje = new THREE.Mesh(new THREE.CircleGeometry(0.045, 24), matAcento(LOOK.acento2, 1.7))
+  eje.position.z = 0.15
+  eje.material.transparent = true
+  eje.material.opacity = 0
+  g.add(eje)
+
+  const ENTRA = b(1.6)
+  tl.to(aguja.material, { opacity: 1, duration: b(0.18), ease: E.frena(2) }, ENTRA)
+  tl.to(eje.material, { opacity: 1, duration: b(0.14), ease: E.frena(2) }, ENTRA)
+  // Un octavo de vuelta por medio beat, con `set`: el salto es el evento. Arranca a las 12 y avanza
+  // horario, que es como se lee un instrumento.
+  let paso = 0
+  for (let bt = 1.6; bt < 5.0; bt += 0.5) {
+    paso++
+    tl.set(aguja.rotation, { z: Math.PI / 2 - paso * (Math.PI / 4) }, b(bt))
+  }
+  tl.to([aguja.material, eje.material], { opacity: 0, duration: b(0.22), ease: E.acelera(2) }, b(5.0))
+
   const SALIDA = DUR - b(0.42)
   tl.to(matN.uniforms.uProg, { value: 0, duration: b(0.32), ease: E.acelera(2) }, SALIDA)
   if (matPie) tl.to(matPie.uniforms.uProg, { value: 0, duration: b(0.28), ease: E.acelera(2) }, SALIDA)
