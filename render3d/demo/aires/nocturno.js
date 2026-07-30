@@ -52,6 +52,8 @@ const CARAS_NOCTURNO = [
   { display: 'Unbounded-800', apoyo: 'ChakraPetch-500' },
   { display: 'Righteous-400', apoyo: 'SpaceMono-400' },
   { display: 'Sora-800', apoyo: 'JetBrainsMono-400' },
+  { display: 'ChakraPetch-700', apoyo: 'SpaceMono-700' },
+  { display: 'Unbounded-600', apoyo: 'JetBrainsMono-700' },
 ]
 
 // Las caras que demo.html NO declara por @font-face hay que meterlas en document.fonts a mano, o el
@@ -59,7 +61,7 @@ const CARAS_NOCTURNO = [
 // que estan cargadas, o sea antes del primer glifo rasterizado — `texto()` cachea la textura para
 // siempre. Lo cazan E-FUENTE-LLEGA y E-FUENTE-RESUELVE sobre caras[].
 if (typeof document !== 'undefined' && document.fonts && typeof FontFace === 'function') {
-  await Promise.all(['ChakraPetch-500', 'JetBrainsMono-400', 'Righteous-400', 'Sora-800', 'SpaceMono-400', 'Unbounded-800'].map(async nombre => {
+  await Promise.all(['ChakraPetch-500', 'ChakraPetch-700', 'JetBrainsMono-400', 'JetBrainsMono-700', 'Righteous-400', 'Sora-800', 'SpaceMono-400', 'SpaceMono-700', 'Unbounded-600', 'Unbounded-800'].map(async nombre => {
     if ([...document.fonts].some(f => f.family === nombre)) return
     try {
       document.fonts.add(await new FontFace(nombre, `url(/fonts/${nombre}.ttf)`, { weight: '100 900' }).load())

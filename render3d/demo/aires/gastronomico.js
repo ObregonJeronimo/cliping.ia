@@ -54,6 +54,7 @@ const CARAS_GASTRONOMICO = [
   { display: 'Fraunces-600', apoyo: 'FamiljenGrotesk-500' },
   { display: 'Caprasimo-400', apoyo: 'Newsreader-400' },
   { display: 'Outfit-800', apoyo: 'Onest-600' },
+  { display: 'Caprasimo-400', apoyo: 'FamiljenGrotesk-700' },
 ]
 
 // Las caras que demo.html NO declara por @font-face hay que meterlas en document.fonts a mano, o el
@@ -61,7 +62,7 @@ const CARAS_GASTRONOMICO = [
 // que estan cargadas, o sea antes del primer glifo rasterizado — `texto()` cachea la textura para
 // siempre. Lo cazan E-FUENTE-LLEGA y E-FUENTE-RESUELVE sobre caras[].
 if (typeof document !== 'undefined' && document.fonts && typeof FontFace === 'function') {
-  await Promise.all(['Caprasimo-400', 'FamiljenGrotesk-500', 'Fraunces-600', 'Newsreader-400', 'Onest-600', 'Outfit-800'].map(async nombre => {
+  await Promise.all(['Caprasimo-400', 'FamiljenGrotesk-500', 'FamiljenGrotesk-700', 'Fraunces-600', 'Newsreader-400', 'Onest-600', 'Outfit-800'].map(async nombre => {
     if ([...document.fonts].some(f => f.family === nombre)) return
     try {
       document.fonts.add(await new FontFace(nombre, `url(/fonts/${nombre}.ttf)`, { weight: '100 900' }).load())

@@ -38,6 +38,7 @@ const CARAS_LUJO = [
   { display: 'PlayfairDisplay-700', apoyo: 'Spectral-400' },
   { display: 'DarkerGrotesque-900', apoyo: 'Spectral-400' },
   { display: 'Fraunces-600', apoyo: 'Newsreader-400' },
+  { display: 'DarkerGrotesque-700', apoyo: 'Newsreader-400' },
 ]
 
 // Las caras que demo.html NO declara por @font-face hay que meterlas en document.fonts a mano, o el
@@ -45,7 +46,7 @@ const CARAS_LUJO = [
 // que estan cargadas, o sea antes del primer glifo rasterizado — `texto()` cachea la textura para
 // siempre. Lo cazan E-FUENTE-LLEGA y E-FUENTE-RESUELVE sobre caras[].
 if (typeof document !== 'undefined' && document.fonts && typeof FontFace === 'function') {
-  await Promise.all(['DarkerGrotesque-900', 'Fraunces-600', 'Newsreader-400', 'PlayfairDisplay-700', 'Spectral-400'].map(async nombre => {
+  await Promise.all(['DarkerGrotesque-700', 'DarkerGrotesque-900', 'Fraunces-600', 'Newsreader-400', 'PlayfairDisplay-700', 'Spectral-400'].map(async nombre => {
     if ([...document.fonts].some(f => f.family === nombre)) return
     try {
       document.fonts.add(await new FontFace(nombre, `url(/fonts/${nombre}.ttf)`, { weight: '100 900' }).load())
