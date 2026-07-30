@@ -19,6 +19,7 @@ import * as prisma from './prisma.js'
 import * as cinta from './cinta.js'
 import * as enjambre from './enjambre.js'
 import * as cubo from './cubo.js'
+import * as columnata from './columnata.js'
 import * as toro from '../escenas/toro.js'
 
 // El toro se registra como hero de RESPALDO. Es geometria pura, asi que no necesita nada de la pagina
@@ -39,7 +40,10 @@ const orbital = {
 // `cubo` va entre los que muestran la PAGINA: necesita recortes y los usa de a seis, que es donde
 // tener mas material se nota. Detras de `mosaico` porque ese muestra la pagina de una sola vez y este
 // la reparte — con poco material, el mosaico sigue siendo la lectura mas clara.
-export const HEROES = [telefono, portatil, ventana, mosaico, cubo, vitrina, prisma, cinta, enjambre, orbital]
+// `columnata` va entre los de geometria pura y ADELANTE de `prisma`: los dos se arman siempre, pero el
+// cristal vende precision y la columnata vende peso, y cuando la captura fallo lo que hay que sostener
+// primero es la seriedad de la marca. Detras de los que muestran la pagina, como todos los de su clase.
+export const HEROES = [telefono, portatil, ventana, mosaico, cubo, vitrina, columnata, prisma, cinta, enjambre, orbital]
 export const porId = (id) => HEROES.find(h => h.meta.id === id) || null
 
 // Los que se pueden armar con el material que HAY. `disponible` es un set con 'tira', 'elementos'...
