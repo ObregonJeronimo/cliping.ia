@@ -73,6 +73,274 @@ export function deriva(tl, dur, paso) {
   return reloj
 }
 
+// ---------------------------------------------------------------- escalera: mover TEXTO sin duplicarlo
+// LA CUENTA QUE OBLIGA A ESTO, hecha con el obturador que este motor usa de verdad.
+//
+// `frameCon` promedia `muestras` capturas repartidas en `angulo/360` de un cuadro. Con muestras=2 y
+// angulo=190 las dos caen separadas 0.5 * (190/360) / 30 = 8.8 ms. Eso convierte cualquier
+// desplazamiento continuo en DOS COPIAS separadas por velocidad x 8.8 ms:
+//
+//   escena    px/s en pantalla   separacion   alto del texto   resultado
+//   mesa            1820            16 px         30 px        ilegible, se lee dos veces
+//   columna          635             5.6 px       22 px        fantasma sobre cada glifo
+//
+// Y NO SE ARREGLA CON MAS MUESTRAS. Con 4 muestras las copias pasan a estar a 4.4 ms una de otra: son
+// cuatro copias mas juntas, o sea un borron parejo en vez de un eco doble. Mas lindo, y sigue ilegible:
+// para que 1820 px/s no se note haria falta que la separacion total fuera de un pixel, o sea un angulo
+// de obturador de 12 grados, que es lo mismo que no tener obturador. La conclusion es incomoda y es
+// firme: NINGUN ajuste del obturador hace legible un texto que se mueve. Solo hace falta que se DETENGA.
+//
+// `escalera(u, n)` devuelve el mismo recorrido 0..1 de siempre, pero repartido en `n` tramos donde cada
+// uno DESLIZA rapido y despues SE QUEDA QUIETO. En la quietud las dos submuestras caen en el mismo lugar
+// y el texto sale nitido; en el desliz hay borron, que es exactamente lo que corresponde ver cuando algo
+// se mueve rapido. El desliz usa media cosenoide, asi que arranca y termina con velocidad CERO: el cuadro
+// de la transicion tampoco tiene un salto duro, que es lo que hacia que cuatro `tl.set` se leyeran como
+// "cuatro imagenes y listo" en vez de como un scroll.
+//
+// `desliz` es la fraccion del tramo que dura el movimiento. 0.26 deja tres cuartos del tiempo para leer,
+// y la velocidad de pico queda en pi/(2*0.26) = 6x la media — o sea el borron esta CONCENTRADO, que es
+// lo que lo hace leer como un gesto y no como suciedad.
+// EL DESLIZ DURA UN TIEMPO FIJO, NO UNA FRACCION DEL PASO. Esto se vio recien al renderizar OTRO aire, y
+// es el tipo de defecto que un solo tempo no puede mostrar: con `desliz` como fraccion, la duracion del
+// borron depende de cuantos peldaños haya y de a que bpm corra la pieza. En `mesa` a 100 bpm con dos
+// peldaños el desliz duraba 0.47 s — CATORCE cuadros con el texto arrastrado, o sea un cuarto de la escena
+// ilegible—, mientras que a 124 bpm con cuatro duraba 0.19 s y se leia como un gesto.
+//
+// Un tiron del pulgar dura lo que dura, no lo que dure el compas: 0.18 s son cinco o seis cuadros, los
+// suficientes para que el ojo vea DIRECCION y los pocos suficientes para que el borron sea el gesto y no
+// el estado. Convertido a fraccion del paso, es la misma curva con la duracion despegada del tempo.
+export const deslizFijo = (dur, n, seg = 0.18) =>
+  Math.max(0.04, Math.min(0.5, seg / (dur / Math.max(1, n))))
+
+// CUANTOS PELDAÑOS, PERO EN LA GRILLA. Medido: pasar de deriva a peldaños subio los cortes de la pieza
+// de 32 a 78 por minuto —bien dentro del rango de un reel moderno— y de paso BAJO "cortes sobre el beat"
+// de 0.875 a 0.692, porque cinco tirones repartidos en seis beats caen en 1.2, 2.4, 3.6... o sea en
+// ningun lado. Cada tiron es un evento tan audible como un corte: si no cae en el pulso, desafina.
+//
+// Solo se permiten cantidades que dividen la escena en medios beats exactos. Es la misma disciplina que
+// ya tiene el montaje entre escenas, aplicada a los eventos de adentro.
+export function pasosEnBeats(nBeats, deseado) {
+  const ok = [2, 3, 4, 6, 8].filter(o => ((nBeats * 2) % o) === 0)
+  if (!ok.length) return Math.max(2, Math.round(deseado))
+  return ok.reduce((a, o) => (Math.abs(o - deseado) < Math.abs(a - deseado) ? o : a))
+}
+
+export const escalera = (u, n, desliz = 0.26) => {
+  if (!(n > 1)) return Math.max(0, Math.min(1, u))
+  const x = Math.max(0, Math.min(1, u)) * n
+  const k = Math.min(n - 1, Math.floor(x))
+  const f = x - k
+  const s = f <= 0 ? 0 : f >= desliz ? 1 : (1 - Math.cos((f / desliz) * Math.PI)) / 2
+  return (k + s) / n
+}
+
+// ---------------------------------------------------------------- cuanto se puede AMPLIAR un recorte
+// El defecto medido: el logo de linear.app se captura con 176 px de ancho y `columna` lo mostraba
+// ocupando 624 px del cuadro — TRES VECES Y MEDIA su resolucion. En el video es lo mas grande que se ve
+// y sale con los bordes deshechos. `rafaga` ya tenia el tope escrito adentro; el resto de las escenas
+// no, asi que vive aca y lo usan todas.
+//
+// 1.4x es el techo: por encima de eso el remuestreo se nota en el canto de un boton, que es la peor
+// superficie posible —borde recto, alto contraste, texto adentro—. Un recorte que no llega al ancho que
+// la escena le ofrece se muestra MAS CHICO, y esta bien: mejor nitido y menor que grande y sucio.
+export const topeNitido = (img, W, mundoW, mag = 1.4) =>
+  ((img && img.width ? img.width : W) * mag / (W || 1080)) * mundoW
+
+// ---------------------------------------------------------------- donde de una PAGINA se puede leer algo
+// EL DEFECTO QUE ESTO ARREGLA, VISTO EN EL VIDEO. El telefono scrolleaba desde el pixel 0 de la tira y
+// recorria 1780 px. Medida la tira de linear.app por bandas de 130 px, eso es exactamente el peor camino
+// posible: los primeros 390 px estan VACIOS (luminancia 8.9, cero detalle) y de 780 a 1820 vive la
+// captura de la app de escritorio, que en un viewport movil entra a 720 px de ancho y deja su tipografia
+// en 4 px. El aparato mostraba medio cuadro en blanco y despues una pantalla entera de ruido gris — "una
+// imagen toda rota", textual.
+//
+// COMO SE DISTINGUE "TEXTO GRANDE" DE "RUIDO FINO" SIN LEER NADA. Se mide el detalle a DOS escalas: el
+// fino a media resolucion y el grueso a 1/16. Un titular sobrevive el remuestreo a 1/16 (grueso alto); un
+// panel de UI diminuta se promedia a gris plano (grueso bajo) aunque tenga muchisimo detalle fino. Una
+// banda vacia no tiene ninguno de los dos. El puntaje grueso^2/(grueso+fino) ordena las tres cosas de
+// una: en linear da 26.7 al titular, 8.2 a la fila de logos, 0.7 al panel de UI y 0 al vacio.
+//
+// Es la misma leccion que el punto 5 del informe de auditoria —la resolucion a la que se mide decide lo
+// que se puede ver— usada al reves: comparar DOS resoluciones es lo que convierte "hay detalle" en "hay
+// algo legible".
+// El alto de banda y las dos escalas TIENEN que dividirse exacto, y esto costo un render entero. Con
+// bandas de 130 px y escala 16 el limite de cada banda cae en la fila 8.125 del mapa reducido; indexar un
+// Uint8ClampedArray con un indice fraccionario devuelve `undefined`, y de ahi salen NaN. La mitad de las
+// bandas quedaba en NaN, el objetivo comparaba NaN contra NaN —siempre falso— y `ventanaLegible` devolvia
+// su primer candidato: y0 = 0, o sea exactamente la ventana que existe para evitar. En el video se veia
+// como si la medicion no estuviera puesta. 128 con escalas 2 y 8 da 64 y 16 filas: enteras las dos.
+const B_ALTO = 128, ESC_FINA = 2, ESC_GRUESA = 8
+const _cacheBandas = new WeakMap()
+export function bandas(img, alto = B_ALTO) {
+  if (!img || !img.width || !img.height) return null
+  if (_cacheBandas.has(img)) return _cacheBandas.get(img)
+  if (typeof document === 'undefined' || !document.createElement) return null
+  let p = null
+  try {
+    const H = img.height, W = img.width
+    // Dos remuestreos con el filtro del navegador, que es promediado por area: justo el que hace falta.
+    const leer = (esc) => {
+      const w = Math.max(2, Math.round(W / esc)), h = Math.max(2, Math.round(H / esc))
+      const c = document.createElement('canvas')
+      c.width = w; c.height = h
+      const x = c.getContext('2d', { willReadFrequently: true })
+      x.imageSmoothingEnabled = true
+      x.imageSmoothingQuality = 'high'
+      x.drawImage(img, 0, 0, w, h)
+      return { d: x.getImageData(0, 0, w, h).data, w, h }
+    }
+    const fina = leer(ESC_FINA), gruesa = leer(ESC_GRUESA)
+    // Detalle horizontal medio de una franja de filas, a la escala que sea. Los limites se redondean a
+    // ENTERO antes de indexar: ver la nota de arriba sobre los NaN.
+    const det = (m, y0, y1) => {
+      let s = 0, n = 0
+      const a = Math.max(0, Math.min(m.h - 1, Math.floor(y0))), bb = Math.max(a + 1, Math.min(m.h, Math.ceil(y1)))
+      for (let y = a; y < bb; y++) {
+        const fila = y * m.w * 4
+        for (let x = 0; x < m.w - 1; x++) {
+          const i = fila + x * 4
+          const l0 = 0.2126 * m.d[i] + 0.7152 * m.d[i + 1] + 0.0722 * m.d[i + 2]
+          const l1 = 0.2126 * m.d[i + 4] + 0.7152 * m.d[i + 5] + 0.0722 * m.d[i + 6]
+          s += Math.abs(l0 - l1); n++
+        }
+      }
+      return n ? s / n : 0
+    }
+    // Color medio de la franja, a la escala gruesa. Sirve para saber de que color es el FONDO de la
+// pagina sin adivinarlo: es el de la banda mas plana, o sea la que no tiene ni detalle fino ni grueso.
+    const col = (m, y0, y1) => {
+      let r = 0, g2 = 0, bl = 0, n = 0
+      const a = Math.max(0, Math.min(m.h - 1, Math.floor(y0))), bb = Math.max(a + 1, Math.min(m.h, Math.ceil(y1)))
+      for (let y = a; y < bb; y++) for (let x = 0; x < m.w; x++) {
+        const i = (y * m.w + x) * 4
+        r += m.d[i]; g2 += m.d[i + 1]; bl += m.d[i + 2]; n++
+      }
+      return n ? [r / n / 255, g2 / n / 255, bl / n / 255] : [0, 0, 0]
+    }
+    // Detalle POR FILA del mapa grueso, o sea con una resolucion de 8 px de pagina. Se guarda porque
+    // sirve para lo que las bandas no pueden decir: DONDE hay un hueco entre dos renglones. Cortar una
+    // ventana en el medio de una linea de texto se ve como una linea partida —"Tho product" en la mesa— y
+    // el hueco esta siempre a menos de medio renglon de distancia.
+    const porFila = new Float32Array(gruesa.h)
+    for (let y = 0; y < gruesa.h; y++) porFila[y] = det(gruesa, y, y + 1)
+    const filas = []
+    for (let y = 0; y < H; y += alto) {
+      const f = det(fina, y / ESC_FINA, (y + alto) / ESC_FINA)
+      const gr = det(gruesa, y / ESC_GRUESA, (y + alto) / ESC_GRUESA)
+      filas.push({
+        y, fino: f, grueso: gr,
+        score: (gr * gr) / (gr + f + 0.5),
+        col: col(gruesa, y / ESC_GRUESA, (y + alto) / ESC_GRUESA),
+      })
+    }
+    p = { alto, H, filas, porFila, escFila: ESC_GRUESA }
+  } catch { p = null }        // canvas manchado o sin contexto 2d: la escena sigue con su ventana de siempre
+  _cacheBandas.set(img, p)
+  return p
+}
+
+// Elige DONDE empieza la ventana y CUANTO recorre, maximizando lo que se puede leer.
+//
+// El recorrido es una VARIABLE y no un dato, y eso es lo que hace que esto funcione con cualquier
+// pagina: si el tramo legible es mas largo que la ventana, recorre entero; si la pagina pone su titular
+// en 390 px y despues una captura de escritorio —que es el caso de linear.app— recorre poco y se queda
+// donde se lee. El movimiento de la escena no depende de este scroll: el aparato flota, la camara hace
+// dolly y el reflejo cruza. Preferir un recorrido largo sobre un cuadro ilegible es elegir el numero
+// sobre la imagen, que es justo el error que el informe de auditoria documenta.
+//
+// El tramo FINAL pesa el 40%: es el que queda en pantalla hasta el corte, o sea el que el espectador
+// realmente lee.
+// El renglon mas cercano SIN TINTA, buscando hasta `radio` px de distancia. Es lo que evita que el borde
+// de una ventana parta una linea de texto por la mitad.
+function alHueco(p, y, radio) {
+  if (!p || !p.porFila || !p.porFila.length) return y
+  const E = p.escFila, R = Math.max(1, Math.round(radio / E))
+  const c = Math.round(y / E)
+  let mej = c, val = Infinity
+  for (let k = Math.max(0, c - R); k <= Math.min(p.porFila.length - 1, c + R); k++) {
+    // A igual detalle gana el mas cercano al pedido: el desempate por distancia es chico a proposito.
+    const v = p.porFila[k] + Math.abs(k - c) * 0.02
+    if (v < val) { val = v; mej = k }
+  }
+  return mej * E
+}
+
+// LOS PELDAÑOS DE UN SCROLL, CADA UNO EN UN HUECO ENTRE RENGLONES.
+//
+// Corregir solo el ARRANQUE de la ventana no alcanza y se vio en el render: `mesa` empieza en un hueco y
+// a mitad de escena, en el segundo peldaño, el canto de la hoja cortaba "The product" por la mitad de las
+// mayusculas. Cada posicion de reposo es un cuadro que el espectador MIRA QUIETO durante tres cuartos de
+// beat, asi que cada una tiene que caer bien, no solo la primera.
+//
+// Devuelve n+1 posiciones absolutas en pixeles de pagina. El radio de correccion es medio peldaño: no
+// puede reordenarlos ni cambiar el recorrido total de forma perceptible, solo elegir donde exactamente
+// se detiene cada uno.
+export function escalones(img, y0, recorrido, n) {
+  const p = bandas(img)
+  const out = []
+  const paso = n > 0 ? recorrido / n : 0
+  for (let k = 0; k <= n; k++) {
+    const y = y0 + paso * k
+    out.push(p ? Math.max(0, Math.min(p.H, alHueco(p, y, paso * 0.5))) : y)
+  }
+  return out
+}
+
+// La posicion dentro de esa lista de peldaños: desliza con media cosenoide y se queda quieta. Es
+// `escalera` con destinos a medida en vez de repartidos parejo.
+export function enEscalon(lista, u, desliz = 0.26) {
+  const n = lista.length - 1
+  if (n < 1) return lista[0] || 0
+  const x = Math.max(0, Math.min(1, u)) * n
+  const k = Math.min(n - 1, Math.floor(x))
+  const f = x - k
+  const s = f <= 0 ? 0 : f >= desliz ? 1 : (1 - Math.cos((f / desliz) * Math.PI)) / 2
+  return lista[k] + (lista[k + 1] - lista[k]) * s
+}
+
+// El color de FONDO de la pagina, medido: la banda mas plana de todas. Un mockup que reserva la franja
+// de la isla necesita rellenarla con algo, y el negro del aparato solo esta bien si la pagina es oscura.
+export function fondoDe(img) {
+  const p = bandas(img)
+  if (!p || !p.filas.length) return null
+  let mejor = p.filas[0]
+  for (const f of p.filas) if (f.fino + f.grueso < mejor.fino + mejor.grueso) mejor = f
+  return mejor.col
+}
+
+export function ventanaLegible(img, altoVentana, recorridoMax, recorridoMin = 0) {
+  const p = bandas(img)
+  const nada = { y0: 0, recorrido: recorridoMax }
+  if (!p || !p.filas.length) return nada
+  const B = p.alto, n = p.filas.length
+  const nV = Math.max(1, Math.round(altoVentana / B))
+  if (nV >= n) return nada
+  // Un puntaje que no sea finito cuenta como CERO y no envenena la media. Sin esta guarda, un solo NaN
+  // hacia que toda comparacion diera falso y la funcion devolviera su primer candidato en silencio — que
+  // es y0 = 0, justo la ventana que existe para evitar. Un defecto que se disfraza de "no esta puesto".
+  const medio = (i, j) => {
+    let s = 0
+    const a = Math.max(0, i), bb = Math.min(n, j)
+    for (let k = a; k < bb; k++) s += Number.isFinite(p.filas[k].score) ? p.filas[k].score : 0
+    return bb > a ? s / (bb - a) : 0
+  }
+  let mejor = null
+  for (let i = 0; i + nV <= n; i++) {
+    for (const frac of [1, 0.62, 0.38, 0.2, 0.08]) {
+      const rec = recorridoMin + (recorridoMax - recorridoMin) * frac
+      const nR = Math.round(rec / B)
+      if (i + nV + nR > n) continue
+      // 60% todo el recorrido, 40% el cuadro en el que queda. El bonus por recorrer es chico a proposito:
+      // rompe empates a favor del movimiento y no compra un cuadro ilegible.
+      const val = (0.6 * medio(i, i + nV + nR) + 0.4 * medio(i + nR, i + nR + nV)) * (0.94 + 0.06 * frac)
+      if (!mejor || val > mejor.val) mejor = { y0: i * B, recorrido: rec, val }
+    }
+  }
+  // El arranque se corre al hueco mas cercano, hasta media banda: no puede cambiar QUE tramo se eligio.
+  if (mejor) mejor.y0 = Math.max(0, Math.min(p.H - altoVentana, alHueco(p, mejor.y0, B / 2)))
+  return mejor || nada
+}
+
 // ---------------------------------------------------------------- paleta
 // Base oscura + UN acento saturado + blanco. Es la fórmula del 90% de los reels de marca que
 // funcionan: el negro deja respirar al bloom y el acento no compite con nada.

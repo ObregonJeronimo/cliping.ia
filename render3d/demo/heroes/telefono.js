@@ -27,7 +27,7 @@
 //   `gr` va a la escena POST-BLOOM: ahí va la pantalla, porque una página es mayormente blanca y el
 //        bloom la convierte en una mancha.
 
-import { LOOK, b, E, hex, matAcento, dolly } from '../kit.js'
+import { LOOK, b, E, hex, matAcento, dolly, escalera, ventanaLegible, fondoDe, escalones, enEscalon, deslizFijo, pasosEnBeats } from '../kit.js'
 
 export const meta = {
   id: 'telefono',
@@ -81,6 +81,38 @@ export function build(ctx) {
   const ZOOM = 2
   const altoVP = ((spec && spec.tiraViewport) || 1560) / ZOOM
   const altoTira = tira && tira.image ? tira.image.height : altoVP
+
+  // LA FRANJA SEGURA DE ARRIBA, y no es decoracion. La isla dinamica vive entre el 94.3% y el 98.7% de
+  // la altura de la pantalla, y la pagina se dibujaba POR DEBAJO: en el render se leia "The pr____ct",
+  // con la pastilla comiendose el medio del primer renglon del titular. La isla es un elemento que YO
+  // agregue al mockup, asi que si tapa contenido el defecto es mio, no de la pagina.
+  //
+  // La solucion es la que usa cualquier app nativa: reservar el inset y empezar el contenido debajo. Se
+  // rellena con el color de fondo REAL de la pagina —medido, la banda mas plana de la tira— y no con el
+  // negro del aparato, porque en una pagina clara un negro ahi arriba se lee como un recorte roto.
+  //
+  // LO QUE NO SE PUEDE HACER es remapear la UV y listo: eso comprimiria la pagina un 7% a lo alto, que
+  // es exactamente el estirado que el dueño de la marca ve antes que nadie. Se muestra MENOS pagina en
+  // la misma escala: la ventana pierde los pixeles que la franja se lleva.
+  const SEGURO = 0.068
+  const VENTANA_PX = altoVP * (1 - SEGURO)
+
+  // DONDE de la pagina se scrollea, MEDIDO. El 24% de la tira que se recorria antes es, en linear.app,
+  // el camino que va del vacio de arriba a la captura de escritorio: 390 px en blanco y despues mil
+  // pixeles de UI a 4 px de tipografia. `ventanaLegible` elige el tramo y ADEMAS cuanto recorrer, porque
+  // con una pagina cuyo titular ocupa 390 px la respuesta correcta es recorrer poco. El movimiento de la
+  // escena no depende de esto: el aparato flota, la camara hace dolly y el reflejo cruza.
+  const RECOR_MAX = Math.max(0, altoTira - VENTANA_PX) * 0.24
+  const vl = tira && tira.image
+    ? ventanaLegible(tira.image, VENTANA_PX, RECOR_MAX, VENTANA_PX * 0.10)
+    : { y0: 0, recorrido: RECOR_MAX }
+  // La V de una textura va de abajo hacia arriba: mostrar los pixeles [y0, y0+ventana] contados desde el
+  // techo de la imagen es un offset de 1 - (y0+ventana)/alto, y bajar por la pagina es RESTARLE.
+  const OFF0 = altoTira > 0
+    ? Math.max(0, Math.min(1 - VENTANA_PX / altoTira, 1 - (vl.y0 + VENTANA_PX) / altoTira))
+    : 0
+  const RECOR = altoTira > 0 ? Math.min(vl.recorrido / altoTira, OFF0) : 0
+  const VENT = { off0: OFF0, rec: RECOR }
 
   // EL TAMAÑO DECIDE SI LA PÁGINA SE LEE O ES RUIDO. A 0.60 de alto de cuadro el teléfono entra
   // entero y elegante, y el texto de la página queda en seis píxeles: una textura gris que no dice
@@ -163,9 +195,9 @@ export function build(ctx) {
     tira.generateMipmaps = false
     tira.minFilter = THREE.LinearFilter
     tira.needsUpdate = true
-    const visible = altoVP / altoTira
+    const visible = VENTANA_PX / altoTira
     tira.repeat.set(1, visible)
-    tira.offset.set(0, 1 - visible)                      // arranca ARRIBA de la página
+    tira.offset.set(0, OFF0)                             // arranca donde la página se LEE
 
     const pw = ANCHO * (1 - BISEL * 1.7)
     const ph = ALTO * (1 - BISEL * 1.7 * AR)
@@ -187,12 +219,14 @@ export function build(ctx) {
         // existia: el tween movia `tira.offset`, que este shader nunca lee. O sea que la promesa del
         // hero (recorrer la pagina de verdad) estaba escrita en el comentario y no en la imagen.
         uRep: { value: new THREE.Vector2(1, visible) },
-        uOff: { value: new THREE.Vector2(0, 1 - visible) },
+        uOff: { value: new THREE.Vector2(0, VENT.off0) },
+        uSeguro: { value: SEGURO },
+        uFondoPag: { value: new THREE.Vector3(...(fondoDe(tira.image) || [0.03, 0.03, 0.04])) },
       },
       vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
       fragmentShader: `
-        uniform sampler2D map; uniform float uR, uAR, uBrillo, uBarrido;
-        uniform vec2 uRep, uOff; varying vec2 vUv;
+        uniform sampler2D map; uniform float uR, uAR, uBrillo, uBarrido, uSeguro;
+        uniform vec2 uRep, uOff; uniform vec3 uFondoPag; varying vec2 vUv;
         // rectángulo redondeado, medido en el espacio del ANCHO para que el radio no se deforme
         float rr(vec2 p, vec2 h, float r){ vec2 d = abs(p) - h + vec2(r); return length(max(d,0.0)) + min(max(d.x,d.y),0.0) - r; }
         void main(){
@@ -201,7 +235,12 @@ export function build(ctx) {
           float a = smoothstep(0.004, -0.002, dist);
           if (a < 0.004) discard;
           // La misma cuenta que hace three: uv' = uv * repeat + offset. Sin esto se ve la pagina entera.
-          vec3 c = texture2D(map, vUv * uRep + uOff).rgb * uBrillo;
+          // La franja segura de arriba NO muestra pagina: muestra su color de fondo. La ventana ya viene
+          // recortada en uRep, asi que la escala de la pagina es la misma con franja y sin ella.
+          // (Sin comillas invertidas aca adentro: cierran el template literal. Es la tercera vez.)
+          float vv = vUv.y / (1.0 - uSeguro);
+          vec3 c = mix(texture2D(map, vec2(vUv.x, min(vv, 1.0)) * uRep + uOff).rgb * uBrillo,
+                       uFondoPag, step(1.0, vv));
 
           // ISLA DINÁMICA. Va acá y no en su propia geometría porque así queda siempre POR ENCIMA de
           // la página pase lo que pase con el z-fighting, y porque sobre una página oscura sólo se
@@ -282,35 +321,40 @@ export function build(ctx) {
   }
   flotar()
 
-  // EL SCROLL recorre como mucho el 68% de la tira: llegar al final delata que la página se acabó.
-  // Se anima el UNIFORM y no `tira.offset`: este shader no lee repeat/offset de la textura (ver la
-  // nota larga arriba). Mientras el tween apunto a `tira.offset`, el telefono no scrolleo NUNCA.
-  if (tira && pantalla) {
-    const visible = altoVP / altoTira
-    // EL SCROLL BAJA A UN TERCIO, y no es solo legibilidad: a 0.68 de recorrido las DOS submuestras del
-    // obturador caian a una altura de linea de distancia y el promedio dibujaba el texto DUPLICADO. Se ve
-    // clarisimo en el render a resolucion completa —"The product / The product", "development /
-    // development"— y es la razon real de que "no se entienda", mas que la velocidad en si.
-    // El fantasma es proporcional al desplazamiento por cuadro, asi que bajarlo a 0.24 lo reduce a un
-    // tercio sin tocar el obturador (que subir a 4 muestras cuesta el doble de render).
-    const recorrido = Math.max(0, 1 - visible) * 0.24
-    // EL SCROLL VA A SALTOS, NO EN DERIVA, y esa es la unica forma de matar el fantasma. El obturador
-    // promedia DOS submuestras separadas en el tiempo: mientras la pantalla se desliza, esas dos caen en
-    // posiciones distintas y el promedio dibuja el texto DUPLICADO. Bajar la velocidad lo reduce pero no
-    // lo elimina —probado: de una altura de linea de separacion a dos copias superpuestas, todavia
-    // ilegible—, porque cualquier movimiento continuo lo produce.
-    //
-    // Con pasos y pausas el problema desaparece por construccion: durante la pausa las dos submuestras
-    // caen en el MISMO lugar y el texto sale nitido, y el borron queda confinado al salto, donde un
-    // borron es exactamente lo que corresponde ver. Es la misma leccion que `sello` y `titular`: en este
-    // motor lo discreto se lee y lo continuo se difumina.
-    //
-    // Cuatro pasos sobre los beats enteros: el ojo tiene un beat completo para leer cada pantalla.
-    const PASOS_P = 4
-    for (let k = 1; k <= PASOS_P; k++) {
-      tl.set(pantalla.material.uniforms.uOff.value, { y: 1 - visible - recorrido * (k / PASOS_P) }, b(0.9 + k * 1.2))
-    }
+  // EL SCROLL VA A SALTOS Y AHORA SE LEE COMO UN SCROLL. Cuatro `tl.set` movian la pagina de golpe, y
+  // Thiago lo describio exacto mirando el video: "se muestra como 4 imagenes y listo, en vez de un
+  // scroll". Un salto instantaneo no tiene DIRECCION — el ojo no ve que la pagina baja, ve que cambio.
+  //
+  // `escalera` reparte el mismo recorrido en tramos que DESLIZAN con media cosenoide y despues se quedan
+  // quietos. Los dos requisitos se cumplen a la vez y no se pelean: hay gesto de scroll donde antes habia
+  // un corte, y en la parte quieta —tres cuartos de cada tramo— las dos submuestras del obturador caen en
+  // el mismo lugar y el texto sale nitido. La cuenta esta en el kit, arriba de `escalera`.
+  //
+  // CUANTOS TRAMOS LO DECIDE EL RECORRIDO, no un numero fijo. Un tramo tiene que mover al menos dos
+  // renglones de la pagina —unos 110 px de la tira, que a 2x es lo que mide un par de lineas de texto
+  // movil— o no se lee como desplazamiento: se lee como que la imagen tembló. Con la ventana que la
+  // medicion elige para linear.app el recorrido es de 210 px, o sea DOS tramos; en una pagina con un
+  // tramo legible largo salen seis. El mismo gesto se adapta al material en vez de imponerle un ritmo.
+  // El tramo del scroll se mide en BEATS ENTEROS —del primero al penultimo— para que los tirones puedan
+  // caer en la grilla. Con b(0.9) al final, el ultimo peldaño quedaba a 0.05 de beat del corte.
+  const BEATS_SCROLL = meta.beats - 2
+  const T0_SCROLL = b(1), T1_SCROLL = b(1 + BEATS_SCROLL)
+  const PASOS_P = pasosEnBeats(BEATS_SCROLL, Math.max(2, Math.min(6, Math.round((VENT.rec * altoTira) / 110))))
+  const DESLIZ_P = deslizFijo(T1_SCROLL - T0_SCROLL, PASOS_P)
+  // Y cada peldaño cae en un HUECO entre renglones, igual que en la mesa. Sin esto solo el arranque estaba
+  // ajustado y los intermedios se detenian donde cayera: en el render de basecamp el aparato quedaba
+  // quieto mostrando la mitad inferior de un renglon del titular contra el borde de la franja segura.
+  const ESC_P = tira && tira.image
+    ? escalones(tira.image, vl.y0, VENT.rec * altoTira, PASOS_P)
+    : null
+  const scrollear = () => {
+    if (!pantalla) return
+    const w = (tl.time() - T0_SCROLL) / Math.max(0.001, T1_SCROLL - T0_SCROLL)
+    pantalla.material.uniforms.uOff.value.y = ESC_P
+      ? Math.max(0, 1 - (enEscalon(ESC_P, w, DESLIZ_P) + VENTANA_PX) / altoTira)
+      : VENT.off0 - VENT.rec * escalera(w, PASOS_P, DESLIZ_P)
   }
+
 
   // El barrido del reflejo cruza una sola vez, empezando cuando el teléfono ya frenó: durante la
   // llegada compite con el movimiento y no se lee.
@@ -348,7 +392,10 @@ export function build(ctx) {
   //
   // El onUpdate de la TIMELINE corre despues de todos sus hijos, que es exactamente la garantia que
   // hace falta. `main.js` avanza con `tl.time(t, false)`, o sea sin suprimir eventos, asi que dispara.
-  tl.eventCallback('onUpdate', () => { flotar(); sincronizar() })
+  // El scroll entra por el MISMO canal que el vaiven y por la misma razon: es una propiedad escrita a
+  // mano en funcion del tiempo, asi que tiene un solo escritor y no puede pisarse con nada.
+  tl.eventCallback('onUpdate', () => { flotar(); scrollear(); sincronizar() })
+  scrollear()
   sincronizar()
 
   return { g, gr, tl }

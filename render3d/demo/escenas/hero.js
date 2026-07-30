@@ -4,7 +4,7 @@
 // usuario elige "telefono" o "vitrina" y la pieza sigue teniendo la misma cantidad de escenas y la
 // misma duracion. Si el hero pedido no se puede armar con el material que la pagina dio, cae al
 // primero que si — nunca dibuja el objeto vacio.
-import { b, E, LOOK, hex } from '../kit.js'
+import { b, E, LOOK, hex, MOB } from '../kit.js'
 import { HEROES, porId, elegibles } from '../heroes/index.js'
 
 export const meta = { id: 'hero', beats: 8 }
@@ -83,19 +83,38 @@ function ambiente(ctx, r) {
   // movimiento medido subio 0.001 en los cinco heroes probados, o sea nada. Costaba doscientas
   // posiciones reescritas por cuadro para eso. Queda anotado porque el impulso de "agregar
   // particulas" vuelve solo cada vez que una escena se siente vacia, y la medicion dice que no.
-  // MARCAS DE COMPAS en los dos margenes. Saltan de largo en cada medio beat: es el metronomo visible
-  // que el toro tiene y los demas no, y ademas ancla el cuadro mientras el objeto flota.
+  // MARCAS DE COMPAS en los margenes. Saltan de largo en cada medio beat: es el metronomo visible que el
+  // toro tiene y los demas no, y ademas ancla el cuadro mientras el objeto flota.
+  //
+  // LAS PONE EL AIRE, Y ANTES NO. Eran diez planos fijos —cinco por lado, siempre a las mismas cinco
+  // alturas, siempre del mismo color— y `hero` entra en practicamente toda pieza de treinta segundos.
+  // Resultado: dos videos de dos paginas distintas con dos aires distintos compartian la MISMA firma en
+  // los dos margenes, y Thiago lo dijo con esas palabras: "los que me venis mostrando son iguales, usan
+  // esos bordes a los costados". Tenia razon y no era el marco del cuadro — era esto.
+  //
+  // Ahora la cantidad y los lados salen del mueble del aire, igual que `marco()`:
+  //   'nada'          un aire que decidio no tener borde tampoco tiene acotacion en el margen;
+  //   'passepartout'  las bandas del margen TAPAN x = ±0.455 del ancho, asi que estas marcas se
+  //                   dibujaban debajo y no se veian nunca: diez mallas de trabajo invisible;
+  //   'rotulado'      un solo lado, que es la asimetria que ese mueble propone;
+  //   'reglas' 3      'escuadras' 5      'ticks' 7      — tres densidades distintas.
+  const POR_MUEBLE = { nada: 0, passepartout: 0, reglas: 3, escuadras: 5, ticks: 7, rotulado: 5 }
+  const N_MARCAS = POR_MUEBLE[MOB.marco] !== undefined ? POR_MUEBLE[MOB.marco] : 5
+  const LADOS = MOB.marco === 'rotulado' ? [-1] : [-1, 1]
   const marcas = []
-  for (let i = 0; i < 10; i++) {
-    const lado = i < 5 ? -1 : 1
-    const k = i % 5
-    const m = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.30, 0.022),
-      new THREE.MeshBasicMaterial({ color: hex(k === 2 ? LOOK.acento2 : LOOK.acento),
-        transparent: true, opacity: 0, toneMapped: false }))
-    m.position.set(lado * mundoW * 0.455, (k - 2) * mundoH * 0.115, 0.5)
-    g.add(m)
-    marcas.push(m)
+  for (const lado of LADOS) {
+    for (let k = 0; k < N_MARCAS; k++) {
+      const c = (N_MARCAS - 1) / 2
+      const m = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.30, 0.022),
+        // La del medio en el segundo acento. Con una cantidad par no hay medio: no se tiñe ninguna, que
+        // es mejor que teñir una cualquiera y que se lea como un error.
+        new THREE.MeshBasicMaterial({ color: hex(k === c ? LOOK.acento2 : LOOK.acento),
+          transparent: true, opacity: 0, toneMapped: false }))
+      m.position.set(lado * mundoW * 0.455, (k - c) * mundoH * (N_MARCAS > 5 ? 0.082 : 0.115), 0.5)
+      g.add(m)
+      marcas.push(m)
+    }
   }
 
   // ------------------------------------------------------------------ tiempo

@@ -24,7 +24,7 @@
 // vacio y ocupa su lugar en silencio, que es la respuesta honesta y la que dan `pantalla`, `columna` y
 // `hero` cuando les falta el suyo.
 
-import { LOOK, b, E, texto, planoRecorte, recortesDe, nivel, matAcento, materialMascara, finMascara, deriva, dolly, orbita } from '../kit.js'
+import { LOOK, b, E, texto, planoRecorte, recortesDe, nivel, matAcento, materialMascara, finMascara, deriva, dolly, orbita, escalera, ventanaLegible, escalones, enEscalon, deslizFijo, pasosEnBeats } from '../kit.js'
 import { D, sello } from '../datos.js'
 
 export const meta = { id: 'mesa', beats: 6 }
@@ -87,8 +87,24 @@ export function build(ctx) {
   tex.wrapS = THREE.ClampToEdgeWrapping
   tex.wrapT = THREE.ClampToEdgeWrapping
   tex.repeat.set(1, visible)
-  tex.offset.set(0, 1 - visible)
   mat.map = tex
+
+  // CUANTA PAGINA PASA POR LA MESA, Y DE DONDE. La version anterior recorria `min(0.62, 1-visible)` de la
+  // tira, y con una tira de 8192 px eso son CINCO MIL pixeles de pagina en 2.9 segundos: 1750 px/s. A esa
+  // velocidad no hay nada que leer, y ademas el obturador la dibujaba dos veces —"Purpose-built" salia
+  // escrito uno arriba del otro, medido 16 px de separacion contra 30 px de altura de letra—. Era la
+  // escena mas ilegible de la pieza y el defecto no estaba en la inclinacion ni en la luz: estaba en que
+  // 0.62 se penso como "un poco de la pagina" y para una tira larga significa media pagina.
+  //
+  // Ahora el recorrido lo elige la MEDICION (ver `ventanaLegible` en el kit) con dos topes duros: nunca
+  // mas de 0.85 de la propia ventana, y en pasos con pausa para que en la pausa se lea.
+  const altoMapa = (mapa.image && mapa.image.height) || 1
+  const VENT_PX = visible * altoMapa
+  const REC_MAX = Math.min(VENT_PX * 0.85, Math.max(0, altoMapa - VENT_PX))
+  const vl = mapa.image ? ventanaLegible(mapa.image, VENT_PX, REC_MAX, VENT_PX * 0.12) : { y0: 0, recorrido: REC_MAX }
+  const OFF0 = Math.max(0, Math.min(1 - visible, 1 - (vl.y0 + VENT_PX) / altoMapa))
+  const RECOR = Math.min(vl.recorrido / altoMapa, OFF0)
+  tex.offset.set(0, OFF0)
 
   // LA ENTRADA Y LA DERIVA NO PUEDEN ESCRIBIR LA MISMA PROPIEDAD. `deriva` mueve `gr.position.y` y el
   // tween de entrada queria moverlo tambien: dos escritores sobre la misma propiedad se pisan y el
@@ -156,9 +172,21 @@ export function build(ctx) {
   // ---------------------------------------------------------------- tiempo
   // DERIVA: la hoja se desplaza sobre su propio plano y la escena respira. Es el movimiento continuo
   // que sostiene la regla de que nada descansa; los golpes duros van aparte, en los beats.
-  const recorrido = Math.min(0.62, Math.max(0.10, 1 - visible))
+  // La hoja avanza en CUATRO tramos —un tramo y medio de beat cada uno— que deslizan rapido y se quedan
+  // quietos. La respiracion continua se queda en el cuadro entero (`g.position.x`, `gr.position.y`), que
+  // se mueve 9 y 23 px en toda la escena: tres ordenes de magnitud por debajo de lo que el obturador
+  // convierte en fantasma, asi que ahi lo continuo es correcto.
+  // Los tramos salen del recorrido y no de un numero fijo, por lo mismo que en el hero: un tramo que
+  // mueve menos de dos renglones no se lee como desplazamiento. Ver la nota en telefono.js.
+  const PASOS_M = pasosEnBeats(meta.beats, Math.max(2, Math.min(6, Math.round((RECOR * altoMapa) / 170))))
+  // Y cada peldaño cae en un hueco entre renglones: sin esto, el segundo se detenia partiendo el titular
+  // por la mitad de las mayusculas contra el canto de la hoja.
+  const ESC_M = mapa.image ? escalones(mapa.image, vl.y0, RECOR * altoMapa, PASOS_M) : null
+  const DESLIZ_M = deslizFijo(DUR, PASOS_M)
   deriva(tl, DUR, (u) => {
-    tex.offset.y = (1 - visible) - recorrido * u
+    tex.offset.y = ESC_M
+      ? Math.max(0, 1 - (enEscalon(ESC_M, u, DESLIZ_M) + VENT_PX) / altoMapa)
+      : OFF0 - RECOR * escalera(u, PASOS_M)
     g.position.x = Math.sin(u * Math.PI * 1.1) * mundoW * 0.008
     gr.position.y = -u * mundoH * 0.012
   })

@@ -1,14 +1,14 @@
-// ESCENA "columna" — un feed que sube. La pagina de verdad, apilada, a velocidad constante.
+// ESCENA "columna" — un feed que sube. La pagina de verdad, apilada, avanzando a tirones como un pulgar.
 //
 // POR QUE EXISTE, CON EL NUMERO AL LADO
 // El gate del guion reporta que 72 de 324 guiones quedan cortos porque SE ACABO EL CATALOGO: ocho
 // escenas no llenan treinta segundos a tempo alto. Y el motor mide 0.118 de movimiento contra 0.226 de
 // la pieza hecha a mano. Las dos brechas piden lo mismo — material nuevo, y del que NO descansa.
 //
-// Esta escena es la version mas barata de "no descansar": una sola idea, desplazamiento constante, sin
-// un solo instante de reposo en seis beats. No hay entrada ni salida de la composicion; cuando la
-// escena empieza la columna YA venia subiendo y cuando termina sigue. Eso es lo que la separa de las
-// otras siete, que arman un cuadro, lo sostienen y lo desarman.
+// Esta escena es la version mas barata de "no descansar": una sola idea y cuatro tirones en seis beats.
+// No hay entrada ni salida de la composicion; cuando la escena empieza la columna YA venia subiendo y
+// cuando termina sigue. Eso es lo que la separa de las otras siete, que arman un cuadro, lo sostienen y
+// lo desarman. Lo que SI descansa, y a proposito, es la pieza entre tiron y tiron: ahi se la lee.
 //
 // POR QUE UN FEED Y NO UNA GRILLA
 // El mosaico ya existe y muestra la pagina de una vez, como un poster. Una columna la muestra COMO SE
@@ -27,7 +27,7 @@
 // SIN RECORTES NO HAY ESCENA. La columna no tiene otro sujeto: si la pagina no dio ni un elemento,
 // devuelve el grupo vacio y ocupa su lugar en silencio. El guionista es quien no deberia elegirla.
 
-import { LOOK, b, E, texto, planoRecorte, recortesDe, nivel, matAcento, materialMascara, deriva, dolly, orbita } from '../kit.js'
+import { LOOK, b, E, texto, planoRecorte, recortesDe, nivel, matAcento, materialMascara, deriva, dolly, orbita, escalera, topeNitido, deslizFijo } from '../kit.js'
 import { marca, sello } from '../datos.js'
 
 export const meta = { id: 'columna', beats: 6 }
@@ -43,16 +43,6 @@ const ROLES = ['tarjeta', 'foto', 'logo']
 // "de camara" de la escena: no hay profundidad de campo, hay un tamaño que delata donde mirar.
 const FOCO = 0.15
 const SIGMA = 1.55
-// Cuanto salta ADEMAS la pieza a la que le toca el beat. Sumado al foco da 1.38 en el pico: se lee
-// como un golpe y todavia no tapa a sus vecinas.
-const SALTO = 0.20
-// Cuanto se corre la destacada hacia el centro del CUADRO mientras salta. Medido antes de esto: con la
-// columna corrida a la derecha y un salto del 38%, la pieza del beat medía 4.96 de ancho en un cuadro
-// de 5.63 y se comía el borde derecho — o sea que el unico instante en que la escena señala algo era
-// tambien el unico en que ese algo salia cortado. Achicar la pila entera para que el PICO entrara
-// dejaba todo el resto del tiempo con piezas chicas; correrla mientras crece la mete adentro sin tocar
-// el tamaño de reposo, y de paso agrega el unico movimiento horizontal de la escena.
-const CENTRA = 0.70
 
 export function build(ctx) {
   const { THREE, gsap, mundoW, mundoH, camera, distBase, rnd, texturas, datosEls } = ctx
@@ -84,17 +74,29 @@ export function build(ctx) {
   // pasaba —los recortes van en la escena post-bloom y se dibujan SIEMPRE por encima de `g`, asi que
   // ningun z los manda atras—.
   const COLX = mundoW * 0.085
-  const ANCHO_MAX = mundoW * 0.62
-  const PASO = mundoH * 0.32
-  const ALTO_MAX = PASO * 0.74
+  // TAMAÑO DE FEED, Y ESTO ES LA MITAD DEL ARREGLO. Con 0.62 de ancho y 0.74 del paso, la tarjeta de
+  // testimonio de linear.app —1400x845 px de archivo— salia en 548 px de cuadro: escala 0.39, o sea la
+  // cita a 19 px y el pie de autoria a 10. En pantalla eso es un bloque de color con una mancha gris
+  // arriba, que es literalmente lo que Thiago describio como "imagenes sin sentido". No era un problema
+  // de QUE se elegia: era que lo elegido no se podia leer.
+  //
+  // Una tarjeta de un feed real va casi de borde a borde, y hay que decirlo en los dos ejes o el otro
+  // tope sigue apretando: con 0.90 de ancho y el paso a 0.44 la misma tarjeta mide 972 px, escala 0.69, la
+  // cita a 33 px y la autoria a 18. Las dos cosas se leen.
+  const ANCHO_MAX = mundoW * 0.90
+  const PASO = mundoH * 0.44
+  const ALTO_MAX = PASO * 0.82
   const SPAN = RANURAS * PASO
-  // UNA RANURA POR BEAT. No es una velocidad elegida a ojo: hace que en cada beat haya exactamente una
-  // pieza pasando por el centro del cuadro, y por eso el destaque puede caer sobre lo que el ojo ya
-  // esta mirando en vez de sobre una pieza cualquiera de la pila.
-  // UNA RANURA CADA DOS BEATS, no cada uno. A un beat el feed pasaba demasiado rapido para leer una
-  // sola tarjeta —mirado en el video—, y estas piezas son contenido real de la pagina, no textura. Sigue
-  // cayendo en la grilla (cada dos beats es grilla igual) y duplica el tiempo de lectura de cada pieza.
-  const VEL = PASO / (UNBEAT * 2)
+  // EL FEED AVANZA A TIRONES, COMO UN PULGAR. La escena decia arriba que muestra la pagina "de a una
+  // pieza, en orden, con el pulgar" — y despues la movia a velocidad CONSTANTE, que es la unica cosa que
+  // un pulgar no hace nunca. Un pulgar tira, suelta, y el feed frena; ahi se lee.
+  //
+  // Ademas de fidelidad, es legibilidad: a 635 px/s el obturador dibujaba cada glifo dos veces, 5.6 px de
+  // separacion sobre 22 px de altura de letra. Con cuatro tirones —uno cada beat y medio— el 70% de los
+  // cuadros tiene la columna QUIETA y ahi el texto sale limpio. La cuenta completa esta en el kit.
+  const PASOS_C = 4
+  const DESLIZ_C = deslizFijo(DUR, PASOS_C)
+  const avance = (t) => PASOS_C * PASO * escalera(t / DUR, PASOS_C, DESLIZ_C)
 
   // El bucle. Cada pieza que sale por arriba vuelve a entrar por abajo. La costura cae en ±SPAN/2, o
   // sea a 12.8 del centro en un cuadro que llega a 5: el salto ocurre fuera de pantalla y no se ve.
@@ -126,7 +128,11 @@ export function build(ctx) {
     // El mismo recorte repetido no puede salir identico dos veces o la pila se lee como un empapelado.
     // Se cambia el TAMAÑO y el corrimiento, nunca la proporcion.
     const enc = 0.86 + rnd() * 0.14
-    const alto = Math.min(ALTO_MAX, ANCHO_MAX / Math.max(0.08, ar)) * enc
+    // El ancho tiene DOS topes y no uno: el del cuadro y el de la propia resolucion del recorte. Sin el
+    // segundo, el logo de 176 px de linear.app salia ocupando 624 px —tres veces y media— y era lo mas
+    // grande y lo mas sucio del cuadro a la vez. Ver `topeNitido` en el kit.
+    const anchoTope = Math.min(ANCHO_MAX, topeNitido(tex.image, ctx.W || 1080, mundoW))
+    const alto = Math.min(ALTO_MAX, anchoTope / Math.max(0.08, ar)) * enc
     const m = planoRecorte(tex, alto)
     // `planoRecorte` devuelve null sin imagen y `fuentes` ya filtro por eso. Si igual pasara, la ranura
     // se saltea: el destaque busca la pieza mas cercana al centro, no un indice fijo, asi que una pila
@@ -152,7 +158,7 @@ export function build(ctx) {
   // donde corresponde aunque cambie el paso, la cantidad de ranuras o el tempo.
   const destPorBeat = []
   for (let k = 0; k < meta.beats; k++) {
-    const off = VEL * b(k)
+    const off = avance(b(k))
     let mejor = piezas[0], dmin = Infinity
     for (const p of piezas) {
       const d = Math.abs(env(p.base + off))
@@ -264,7 +270,7 @@ export function build(ctx) {
   // primero. La llamada obligatoria en t=0 —sin ella la pila entera arranca apilada en y=0— ahora la
   // hace `deriva`; el porque esta en kit.js.
   deriva(tl, DUR, (_u, t) => {
-    const off = VEL * t
+    const off = avance(t)
     const k = Math.min(meta.beats - 1, Math.floor(t / UNBEAT))
     const u = (t - k * UNBEAT) / UNBEAT
     const gp = golpe(u)
@@ -274,15 +280,22 @@ export function build(ctx) {
       const y = env(p.base + off)
       const foco = 1 + FOCO * Math.exp(-(y * y) / (2 * SIGMA * SIGMA))
       const es = p === dest
-      const s = foco * (es ? 1 + SALTO * gp : 1)
-      // Mientras salta, la destacada se corre al centro del cuadro y vuelve sola a la columna cuando el
-      // golpe se apaga. Ver CENTRA arriba: sin esto la pieza del beat sangraba por el borde derecho.
-      const cx = (COLX + p.jx) * (es ? 1 - CENTRA * gp : 1)
-      // La destacada tambien se adelanta en z: creciendo un 38% se solapa con sus vecinas, y con
-      // depthWrite apagado el orden lo decide la distancia a camara, no la geometria.
-      p.m.position.set(cx, y, 0.02 * p.orden + (es ? 0.55 * gp : 0))
+      const s = foco
+      const cx = COLX + p.jx
+      p.m.position.set(cx, y, 0.02 * p.orden)
       p.m.scale.set(s, s, 1)
-      const op = borde(y)
+      // EL DESTAQUE NO MUEVE LA PIEZA, LA ENCIENDE. Antes la destacada crecia un 20% y se corria al centro
+      // en 77 ms: 830 px/s medidos, o sea 7 px de separacion entre las dos submuestras del obturador sobre
+      // un texto de 22 px. El unico instante en que la escena señala algo era tambien el unico en que ese
+      // algo salia escrito dos veces — visible en el render, "Faster app launch" duplicado entero.
+      //
+      // Y ademas ya no cabia: con las tarjetas a 0.90 del ancho del cuadro, cualquier crecimiento las
+      // manda afuera, asi que el correctivo de centrado tenia que crecer hasta deformar la columna.
+      //
+      // La emfasis pasa a ser por LUZ, que no mueve nada: la destacada queda a plena opacidad y el resto
+      // baja a 0.86. Sumado al filete que se abre a su lado, a la muesca del riel y al pulso del fondo, el
+      // beat sigue teniendo cuatro marcas — tres de ellas en piezas sin texto, donde el borron es gratis.
+      const op = borde(y) * (es ? 1 : 0.86)
       p.m.material.opacity = op
       // El filete separador viaja Y CRECE con su pieza: quieto en la columna mientras la de arriba se
       // corre, se leia como que la tira se habia partido en dos.
@@ -297,13 +310,17 @@ export function build(ctx) {
 
     // El filete va PEGADO al borde izquierdo de la destacada, y ahi esta la trampa: ese borde no esta
     // quieto. Con un recorte ancho —un boton, una tira de precio— la destacada crece y ademas se corre
-    // al centro (ver CENTRA), asi que su borde izquierdo baja hasta -2.18 y el filete, que va 0.18 mas
+    // al centro, asi que su borde izquierdo bajaba hasta -2.18 y el filete, que va 0.18 mas
     // a la izquierda y ademas se ensancha 3.4 veces, aterrizaba ENCIMA de las muescas: 0.045 de solape
     // medido en el pico del beat. Dos cosas de acento, las dos con bloom, fundidas en un borron justo
     // en el instante en que la escena señala algo. El filete frena en la calle del chrome: cuando no
     // hay lugar se queda al ras de la muesca en vez de treparse encima, que es la unica de las dos
     // piezas que puede ceder sin perder su trabajo.
-    const escAc = 1 + 2.4 * gp
+    // 0.9 y no 2.4. El filete engordaba 3.4 veces en el pulso, y eso estaba calibrado para competir con
+    // una tarjeta que ADEMAS saltaba. Sin el salto es lo mas fuerte del cuadro: 36 px de verde con bloom
+    // pegados al borde izquierdo, que en el render se leian como dos tubos de neon flotando sin relacion
+    // con nada. Un filete que se enciende tiene que seguir siendo un filete.
+    const escAc = 1 + 0.9 * gp
     const topeAc = CALLE_DER + 0.04 + 0.055 * escAc * 0.5
     acento.position.set(Math.max(topeAc, dest.x - dest.ancho * dest.s * 0.5 - 0.18), dest.y, 0.7)
     acento.scale.set(escAc, dest.alto * dest.s * 0.66 * abre(u), 1)
