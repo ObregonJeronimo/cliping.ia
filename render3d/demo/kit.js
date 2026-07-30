@@ -696,13 +696,36 @@ export function materialMascara(map, color = null) {
       // null revienta el shader con un error que no menciona el uniform. Cuando no hay tinte se
       // manda negro y `uUsaTinte` en 0 lo ignora.
       uSuave: { value: SUAVE }, uTinte: { value: hex(color || '#000000') }, uUsaTinte: { value: color ? 1 : 0 },
+      // LA MATRIZ DE TEXTURA, A MANO. Los materiales que trae three aplican `repeat` y `offset` en su
+      // vertex shader; un shader propio NO los aplica salvo que uno los escriba, y este no los escribia.
+      // Costo una escena entera: `pantalla` le pedia a la tira `repeat.y = 0.159` para mostrar el 16% de
+      // la pagina, y como el shader muestreaba vUv pelado, las siete bandas se repartian los 8192 px
+      // ENTEROS — la pagina salia aplastada 6.3 veces a lo alto, con las letras anchas y chatas, que es
+      // el defecto que su dueño ve antes que ninguno. Y peor: `offset.y`, que la escena reescribia en
+      // cada cuadro para hacer el scroll, tampoco llegaba. El scroll, el indicador, las marcas y el
+      // desfase animaban un valor que nadie leia. La escena cuya razon de ser es DESPLAZAR la pagina
+      // nunca desplazo nada, y no habia como notarlo: el cuadro se ve, no se ve que no se mueve.
+      // Arranca en identidad, asi que los otros veinte usuarios de este material —todos texturas de
+      // texto, que nunca tocan repeat ni offset— no cambian un pixel.
+      // Se apunta a los Vector2 PROPIOS de la textura, no a copias. three sube el valor que encuentra
+      // en el uniform en cada render, asi que compartir el objeto hace que un `tex.offset.y = x` en
+      // medio de la animacion llegue solo, sin gancho, sin sincronizar a mano y sin un orden que haya
+      // que recordar. Es tambien lo unico que se mantiene determinista: no hay un paso que pueda
+      // quedar sin correr. (Si alguien REEMPLAZA la textura del material en caliente tiene que
+      // reapuntar estos dos; ninguna escena lo hace y por eso no se paga esa complejidad.)
+      uRep: { value: map ? map.repeat : new THREE.Vector2(1, 1) },
+      uOff: { value: map ? map.offset : new THREE.Vector2(0, 0) },
     },
     vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
     fragmentShader: `
       uniform sampler2D map; uniform float uProg, uDir, uSuave, uUsaTinte; uniform vec3 uTinte;
+      uniform vec2 uRep, uOff;
       varying vec2 vUv;
       void main(){
-        vec4 t = texture2D(map, vUv);
+        // La IMAGEN se muestrea por la uv transformada; la MASCARA sigue midiendo sobre la uv cruda,
+        // porque el barrido es un gesto sobre el plano y no sobre el contenido. Si el barrido usara la
+        // uv transformada, una banda que muestra el 2% de la textura barreria en el 2% del tiempo.
+        vec4 t = texture2D(map, vUv * uRep + uOff);
         // uDir: 0 izq->der, 1 der->izq, 2 abajo->arriba, 3 arriba->abajo
         float e = uDir < 0.5 ? vUv.x : uDir < 1.5 ? 1.0 - vUv.x : uDir < 2.5 ? vUv.y : 1.0 - vUv.y;
         float m = smoothstep(uProg, uProg - uSuave, e);

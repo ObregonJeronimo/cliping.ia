@@ -27,7 +27,8 @@
 // luz y el cabezal. Esos si florecen, que es justo lo que hace que un hueco se lea como luz y no como
 // un agujero.
 
-import { LOOK, b, E, texto, materialMascara, matAcento, nivel, dolly } from '../kit.js'
+import { LOOK, b, E, texto, materialMascara, matAcento, nivel, dolly,
+         ventanaLegible, escalones, enEscalon, deslizFijo, pasosEnBeats } from '../kit.js'
 import { sello } from '../datos.js'
 
 export const meta = { id: 'pantalla', beats: 6 }
@@ -94,12 +95,38 @@ export function build(ctx) {
     ALTO = ANCHO * (altoTira / anchoTira)
     visible = 1
   }
-  const arriba = 1 - visible                          // el offset que muestra el TOPE de la pagina
+  // ---------------------------------------------------------------- DONDE se mira y CUANTO se recorre
+  // ESTO NO SE ELIGE A MANO, SE MIDE. Arrancar por el tope de la pagina y recorrer el 72% de lo que
+  // queda era una regla escrita sin mirar ninguna pagina: en basecamp mandaba la ventana a 4960 px de
+  // viaje en siete segundos —38 px de cuadro POR CUADRO— y a esa velocidad no hay obturador que salve
+  // el texto. `ventanaLegible` recorre la tira por bandas, puntua cuanto detalle grueso tiene cada una
+  // (titulares y parrafos puntuan; la UI diminuta y el vacio no) y devuelve el tramo que mas se puede
+  // leer Y cuanto conviene recorrer desde ahi. Es el mismo instrumento que usa el hero de telefono, y
+  // esta escena lo necesitaba mas todavia: el aparato muestra la pagina chica dentro de un marco, aca
+  // la pagina ES el cuadro entero.
+  const VENTANA_PX = visible * altoTira
+  const RECOR_MAX = Math.max(0, altoTira - VENTANA_PX) * 0.24
+  const vl = ventanaLegible(tira.image, VENTANA_PX, RECOR_MAX, VENTANA_PX * 0.10)
+  const REC_PX = Math.max(0, Math.min(vl.recorrido, altoTira - VENTANA_PX - vl.y0))
+  // La V de una textura sube desde abajo: mostrar los pixeles [y, y+ventana] contados desde el techo de
+  // la imagen es un offset de 1 - (y + ventana)/alto, y BAJAR por la pagina es restarle.
+  const offDe = (y) => Math.max(0, Math.min(1 - visible, 1 - (y + VENTANA_PX) / altoTira))
+  const arriba = offDe(vl.y0)                         // el offset del tramo elegido, no el del tope
 
-  // CUANTO RECORRE. El 72% de lo que queda, como en el hero: llegar al final delata que la pagina se
-  // acabo y deja el cuadro en el pie de pagina, que es lo mas feo que tiene cualquier sitio. La
-  // diferencia con el hero no es el recorrido sino el TIEMPO — el mismo viaje en la mitad de beats.
-  const recorrido = Math.max(0, 1 - visible) * 0.72
+  // A PELDAÑOS Y NO CONTINUO. Es la doctrina del obturador de esta pieza: con dos muestras el texto en
+  // movimiento sale duplicado y con cuatro sale barrido, y ninguna de las dos se lee. Lo unico que
+  // devuelve un renglon nitido es que el renglon este QUIETO. Asi que la pagina descansa la mayor parte
+  // del tiempo y salta en tirones cortos — que ademas es como se lee una pagina de verdad, a golpes de
+  // pulgar, y no como una cinta transportadora.
+  const BEATS_SCROLL = meta.beats - 2
+  const T0_SCROLL = b(1), T1_SCROLL = b(1 + BEATS_SCROLL)
+  // Un peldaño tiene que mover al menos un par de renglones o se lee como un temblor, no como un
+  // desplazamiento. `pasosEnBeats` ademas obliga a que los tirones caigan en la grilla de medios beats.
+  const PASOS_S = pasosEnBeats(BEATS_SCROLL, Math.max(2, Math.min(6, Math.round(REC_PX / 110))))
+  const DESLIZ_S = deslizFijo(T1_SCROLL - T0_SCROLL, PASOS_S)
+  // Y cada peldaño cae en un HUECO entre renglones: si no, la pagina se queda quieta mostrando medio
+  // renglon cortado contra el canto del cuadro, que es peor que no frenar.
+  const ESC_S = escalones(tira.image, vl.y0, REC_PX, PASOS_S)
 
   const hB = ALTO / N
   const yDe = i => ALTO / 2 - (i + 0.5) * hB
@@ -340,30 +367,31 @@ export function build(ctx) {
   // modificador y nada que animar no corre nunca, sin error y sin aviso — ya costo cuatro bugs en este
   // repo. Y un solo escritor por propiedad evita que dos tweens se peleen por el ultimo render.
 
-  // AVANCE DEL SCROLL. Mitad viaje parejo, mitad EMPUJON por medio beat. Solo parejo, un scroll rapido
-  // es una textura que se desliza y no tiene ritmo; solo a saltos, la pagina se congela entre golpe y
-  // golpe y la escena mas movida del catalogo pasa la mitad del tiempo quieta. Mezclados, avanza
-  // siempre y late doce veces.
-  const avance = (t) => {
-    const u = Math.min(1, Math.max(0, t / DUR))
-    const k = Math.min(PASOS, Math.max(0, t / MEDIO))
-    const i = Math.floor(k)
-    const f = Math.min(1, (k - i) / 0.45)               // el empujon ocupa el 45% del medio beat
-    const suave = f * f * (3 - 2 * f)
-    const pulso = Math.min(1, (i + suave) / PASOS)
-    return recorrido * (0.45 * u + 0.55 * pulso)
+  // AVANCE DEL SCROLL, EN PIXELES DE LA PAGINA. Antes esto mezclaba mitad viaje parejo y mitad empujon:
+  // la intencion era que la escena mas movida del catalogo no se congelara entre golpe y golpe. Pero la
+  // mitad pareja es exactamente lo que arruina el texto — nunca llega a estar quieto, y un renglon que
+  // no esta quieto no se lee a ninguna velocidad. El pulso ahora se lo llevan el marco, que golpea en
+  // cada medio beat, y el desfase de las bandas: dos cosas que laten SIN mover el renglon.
+  const posicion = (t) => {
+    const w = Math.min(1, Math.max(0, (t - T0_SCROLL) / Math.max(0.001, T1_SCROLL - T0_SCROLL)))
+    return ESC_S ? enEscalon(ESC_S, w, DESLIZ_S) : vl.y0 + REC_PX * w
   }
 
   // La curva del revelado, resuelta a funcion. Es la MISMA que usa el tween, no una copia escrita a
   // mano: un aire que cambie `frena` por otra familia mueve el barrido y el cabezal juntos.
   const curvaRev = (gsap.parseEase && gsap.parseEase(GESTO_REV)) || (f => f)
 
-  // DESFASE. Desde el medio beat 7 —con la pagina ya entera— las bandas pares e impares saltan a
-  // contramano y vuelven a alinearse antes del proximo golpe. Es el unico evento duro que se puede
-  // meter sobre una pagina a sangre sin abrir un hueco: no mueve el plano, mueve el CONTENIDO de cada
-  // banda, asi que la ocupacion de cuadro sigue siendo entera mientras pasa.
-  const AMP = 0.0062
+  // DESFASE, APAGADO. Desde el medio beat 7 las bandas pares e impares saltaban a contramano y volvian
+  // a alinearse: un evento duro sobre una pagina a sangre que no abria ningun hueco. Tenia sentido
+  // cuando la pagina era una textura ilegible —el shader no aplicaba `repeat` y entraban los 8192 px
+  // aplastados, asi que romperla en tiras no rompia nada que se estuviera leyendo—. Arreglado eso, la
+  // pagina se lee, y 0.0062 de textura son 51 px de captura: dos renglones. Lo que se ve es el mismo
+  // parrafo DOS VECES a distinta altura y las bandas movidas barridas por el obturador — la pagina
+  // partida, que es justo la lectura que la escena existe para no dar. El pulso ya lo llevan el marco,
+  // que golpea en cada medio beat, y los tirones del scroll: dos cosas que laten sin mover el renglon.
+  const AMP = 0
   const desfase = (i, t) => {
+    if (AMP === 0) return 0
     const k = t / MEDIO
     const j = Math.floor(k)
     if (j < 7 || j >= PASOS) return 0
@@ -373,7 +401,8 @@ export function build(ctx) {
 
   const pintar = () => {
     const t = tl.time()
-    const a = avance(t)
+    const yPx = posicion(t)
+    const off = offDe(yPx)
     // SIN SCROLL TAMBIEN TIENE QUE MOVERSE. Esto era `a / Math.max(1e-6, recorrido)`, y esa guardia
     // no protegia nada: una pagina que entra entera en el cuadro (visible = 1, o sea recorrido = 0)
     // dejaba `u` clavado en 0 y con el se congelaban la cama, el indicador y las marcas. Medido, `g`
@@ -382,15 +411,15 @@ export function build(ctx) {
     // no se ejerce nunca; una captura de 1080x1920 de una pagina de una sola pantalla cae justo ahi
     // (el umbral es una tira mas corta que 1.81 veces su ancho). Cuando no hay recorrido que seguir,
     // el reloj hace de recorrido: la escena sigue siendo la misma, solo que la pagina no scrollea.
-    const u = recorrido > 1e-6 ? a / recorrido : Math.min(1, t / DUR)
+    const u = REC_PX > 1 ? (yPx - vl.y0) / REC_PX : Math.min(1, t / DUR)
 
-    // El offset se queda dentro de [0, arriba], que es exactamente el rango que la textura tiene para
-    // ofrecer (arriba = 1 - visible). Fuera de ahi ClampToEdge repite la primera o la ultima fila de
-    // la captura y el canto sale chorreado: pasaba con el desfase sobre una pagina corta, donde
-    // `arriba` ya vale 0 y cualquier empujon negativo se sale del archivo. Sobre una pagina larga no
-    // muerde nunca; sobre una corta apaga el desfase, que es la degradacion honesta.
+    // El offset se queda dentro de [0, 1 - visible], que es exactamente el rango que la textura tiene
+    // para ofrecer. Fuera de ahi ClampToEdge repite la primera o la ultima fila de la captura y el
+    // canto sale chorreado: pasaba con el desfase sobre una pagina corta, donde el margen ya vale 0 y
+    // cualquier empujon negativo se sale del archivo. Sobre una pagina larga no muerde nunca; sobre una
+    // corta apaga el desfase, que es la degradacion honesta.
     for (let i = 0; i < N; i++) {
-      bandas[i].tex.offset.y = Math.min(arriba, Math.max(0, arriba - a - desfase(i, t)))
+      bandas[i].tex.offset.y = Math.max(0, Math.min(1 - visible, off - desfase(i, t)))
     }
 
     // La cama acompaña el scroll: la luz de atras corre con la pagina, no contra ella. Es ademas lo
