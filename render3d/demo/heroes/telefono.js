@@ -280,10 +280,21 @@ export function build(ctx) {
             vec2 pt = vec2(vUv.x - 0.5, (vUv.y - uToqueY) / uAR);
             float d = length(pt);
             // El disco se achica mientras el aro crece: es como se ve un dedo que aprieta y suelta.
-            float disco = smoothstep(0.055 * (1.3 - uToque * 0.5), 0.0, d) * (1.0 - uToque * 0.65);
-            float rad = 0.03 + uToque * 0.13;
-            float aro = smoothstep(0.016, 0.0, abs(d - rad)) * (1.0 - uToque) * 0.9;
-            c = mix(c, vec3(1.0), clamp((disco * 0.55 + aro * 0.75) * uToque, 0.0, 0.9));
+            // Las tres constantes se subieron despues de verlo forzado: con los valores originales el
+            // aro quedaba en un fantasma que no se leia NI con el uniform clavado en 0.45. Un gesto que
+            // hay que buscar no explica nada — o se ve, o no esta.
+            float disco = smoothstep(0.075 * (1.25 - uToque * 0.45), 0.0, d) * (1.0 - uToque * 0.45);
+            float rad = 0.035 + uToque * 0.155;
+            float aro = smoothstep(0.022, 0.0, abs(d - rad)) * (1.0 - uToque * 0.75);
+            // EL COLOR SALE DE LA PAGINA, NO ES BLANCO FIJO. La primera version dibujaba en blanco y
+            // sobre basecamp.com —una pagina blanca— era invisible: se forzo el uniform a 0.5 y el
+            // cuadro salio identico. Es la MISMA trampa que ya costo el gancho ilegible y la columnata
+            // desaparecida: elegir un color sin mirar contra que se dibuja. El uniform uFondoPag ya trae el
+            // fondo medido de la captura, asi que la polaridad se decide sola: sobre pagina clara el
+            // dedo es oscuro, sobre pagina oscura es claro.
+            float lumPag = dot(uFondoPag, vec3(0.299, 0.587, 0.114));
+            vec3 colToque = lumPag > 0.5 ? vec3(0.08) : vec3(0.97);
+            c = mix(c, colToque, clamp((disco * 0.85 + aro * 1.0) * uToque, 0.0, 0.92));
           }
           gl_FragColor = vec4(c, a);
         }`,
@@ -386,7 +397,7 @@ export function build(ctx) {
   //
   // Cae en el tercio inferior de la pantalla y no al centro: es donde cae un pulgar de verdad, y
   // ademas es la zona que menos texto tapa mientras el aro se abre.
-  const T_TOQUE = 0.30                                  // largo del gesto, en fraccion de un peldaño
+  const T_TOQUE = 0.55                                  // largo del gesto, en fraccion de un peldaño
   const toque = () => {
     if (!pantalla || !PASOS_P) return 0
     const w = (tl.time() - T0_SCROLL) / Math.max(0.001, T1_SCROLL - T0_SCROLL)
