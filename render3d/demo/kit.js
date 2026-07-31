@@ -1552,7 +1552,6 @@ export function fondoVivo(mundoW, mundoH) {
           // y la bruma subio a menos de la mitad con x5.4. Se midio el resultado y se corrigio.
           linea *= 4.50;
         } else if (uPatron < 22.5) {
-        } else if (uPatron < 22.5) {
           // ROSETA: el grabado de seguridad de un billete, un titulo o un sello notarial. La linea
           // no dibuja una cosa: dibuja que ALGUIEN CERTIFICA. Le queda al estudio juridico, a la
           // escribania, al seguro, al banco, a la universidad, a la casa de subastas — todo lo que
@@ -1584,7 +1583,6 @@ export function fondoVivo(mundoW, mundoH) {
           // sobre 7 lobulos son 0.007 radianes por segundo, o sea una vuelta cada quince minutos.
           // Un sello que se mueve rapido deja de leerse como impreso.
           linea *= smoothstep(0.015, 0.10, r) * smoothstep(0.88, 0.30, r);
-        } else if (uPatron < 23.5) {
         } else if (uPatron < 23.5) {
           // CELOSIA: el tejido calado de una mampara, una persiana morisca, un panel de yeso. Es
           // ARQUITECTURA: dice obra, interiorismo, estudio de diseno, hoteleria, sanitarios, hasta
@@ -1618,7 +1616,6 @@ export function fondoVivo(mundoW, mundoH) {
           // La deriva es lentisima y en diagonal: no es la celosia la que se mueve, es la camara
           // que pasa por delante. Una mampara que late seria un cartel luminoso.
           linea *= 0.55 + 0.45 * smoothstep(0.95, 0.12, length(g));
-        } else if (uPatron < 24.5) {
         } else if (uPatron < 24.5) {
           // COSTURA: el pespunte doble de un talabartero. Dice marroquineria, sastreria, calzado,
           // tapiceria, indumentaria, cuero — el rubro donde el argumento de venta es que la union
@@ -1654,7 +1651,6 @@ export function fondoVivo(mundoW, mundoH) {
             linea = (hilo * dash * 1.35 + canal * 1.3) * (0.55 + 0.45 * h);
             linea *= smoothstep(1.05, 0.14, length(g));
           }
-        } else if (uPatron < 25.5) {
         } else if (uPatron < 25.5) {
           // ESPIGAS: un cultivo visto desde adentro, meciendose. Dice agro, cerealera, acopio,
           // forraje, molino, panaderia de campo, cerveza artesanal, cooperativa — todo lo que se
@@ -1699,7 +1695,6 @@ export function fondoVivo(mundoW, mundoH) {
             linea = (cana * 0.34 + esp * 0.76) * hay * (0.55 + 0.45 * h);
           }
           linea *= smoothstep(0.26, -0.14, g.y);
-        } else if (uPatron < 26.5) {
         } else if (uPatron < 26.5) {
           // ENGRANAJE: tres ruedas dentadas engranadas, girando. Dice taller mecanico, industria,
           // metalurgica, servicio tecnico, repuestos, mantenimiento, relojeria — donde el trabajo
