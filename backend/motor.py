@@ -209,6 +209,33 @@ async def render(url: str, salida: str, hero: str | None = None, dur: int = 20,
             m = re.search(r"(el\d+)", f)
             if m:
                 locales[m.group(1)] = f
+    # ---------------------------------------------------------------- recortes que son PLACEHOLDERS
+    # Muchos sitios sirven una miniatura borrosa (LQIP) mientras carga la foto de verdad, y la cambian
+    # por JS al terminar. Si la captura llega antes del cambio, el archivo queda con el tamaño de la
+    # foto final —959x1400— y el CONTENIDO de una imagen de diez por quince pixeles estirada. En el
+    # video de oatly.com eso salio como un rectangulo de bloques rosados ocupando medio cuadro, y lo
+    # encontro Thiago, no las compuertas: el archivo pesaba y medía como una foto buena.
+    #
+    # No alcanza con mirar el tamaño ni con medir "cuanto detalle fino tiene": un boton de CTA tambien
+    # es plano y no por eso esta roto. Las dos señales juntas si lo separan — BLOQUES LARGOS mas
+    # PALETA DE FOTO. Un boton repite el mismo pixel decenas de veces pero tiene dos tonos; un LQIP
+    # repite igual y reparte veinte, porque abajo hay una foto.
+    def _es_placeholder(ruta):
+        try:
+            import numpy as np
+            from PIL import Image
+            im = Image.open(ruta).convert("L")
+            a = np.asarray(im.resize((min(400, im.size[0]), min(400, im.size[1]))), dtype=np.int16)
+            d = np.abs(np.diff(a, axis=1))
+            corrida = d.size / max(1, int((d > 2).sum()))       # pixeles por cambio
+            h = np.histogram(a, bins=32, range=(0, 255))[0].astype(float)
+            h /= max(1e-9, h.sum())
+            tonos = int((h > 0.01).sum())
+            return corrida > 8 and tonos >= 8
+        except Exception:
+            return False                                        # ante la duda, se conserva
+
+    descartados = 0
     faltan = 0
     for e in d["datos"].get("elementos", []):
         if e["url"].startswith("/assets/"):
@@ -216,11 +243,18 @@ async def render(url: str, salida: str, hero: str | None = None, dur: int = 20,
         m = re.search(r"(el\d+)", os.path.basename(e["url"]))
         f = locales.get(m.group(1)) if m else None
         if f:
+            if _es_placeholder(os.path.join(dir_el, f)):
+                e["_descartar"] = True
+                descartados += 1
+                continue
             e["url"] = "/assets/elementos/" + f
         else:
             faltan += 1
     if faltan:
         print(f"  ({faltan} recortes sin archivo local: se piden por red)")
+    if descartados:
+        d["datos"]["elementos"] = [e for e in d["datos"]["elementos"] if not e.get("_descartar")]
+        print(f"  ({descartados} recorte/s descartado/s: son placeholders borrosos, no la foto real)")
 
     spec = {
         "W": 1080, "H": 1920, "fps": 30,

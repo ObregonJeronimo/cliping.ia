@@ -47,8 +47,38 @@ const orbital = {
 export const HEROES = [telefono, portatil, ventana, mosaico, cubo, vitrina, columnata, prisma, gota, cinta, enjambre, orbital]
 export const porId = (id) => HEROES.find(h => h.meta.id === id) || null
 
-// Los que se pueden armar con el material que HAY. `disponible` es un set con 'tira', 'elementos'...
-export function elegibles(disponible) {
-  return HEROES.filter(h => (h.meta.necesita || ['nada'])
+// EL REGISTRO: a que clase de marca le queda cada objeto.
+//
+// Los heroes que muestran LA PAGINA del cliente —telefono, portatil, ventana, mosaico, vitrina, cubo—
+// le quedan a cualquiera: lo que se ve es el sitio de la marca, no una forma que alguien eligio. Los
+// de geometria pura, no. Un poliedro facetado con anillos orbitando es lenguaje de software: sobre una
+// app de idiomas o una marca de avena no dice nada, y peor, dice algo que no es. Thiago, sobre dos
+// videos distintos: "no tienen ningun sentido esas formas, son formas para algo tecnologico, no para
+// una marca de cafes y una aplicacion para aprender idiomas".
+//
+// Un hero sin `aires` le queda a todos. Uno con lista, solo a esos.
+const REGISTRO = {
+  // geometria dura, instrumental: dice ingenieria, sistema, precision
+  orbital: ['tecnico', 'corporativo', 'nocturno', 'deportivo'],
+  prisma: ['tecnico', 'corporativo', 'nocturno', 'lujo'],
+  enjambre: ['tecnico', 'corporativo', 'nocturno', 'deportivo'],
+  cinta: ['tecnico', 'nocturno', 'deportivo', 'jugueton'],
+  // arquitectura: peso, solidez, permanencia
+  columnata: ['lujo', 'inmobiliario', 'corporativo', 'editorial', 'nocturno'],
+  // cuerpo blando: materia, calma, comida
+  gota: ['bienestar', 'gastronomico', 'artesanal', 'jugueton', 'editorial'],
+}
+
+// Los que se pueden armar con el material que HAY y que ADEMAS le quedan a este aire.
+// `disponible` es un set con 'tira', 'elementos'...; `aire` es opcional y sin el no se filtra por
+// registro, que es lo que necesitan las compuertas que barren el catalogo entero.
+export function elegibles(disponible, aire = null) {
+  const hay = HEROES.filter(h => (h.meta.necesita || ['nada'])
     .every(n => n === 'nada' || disponible.has(n)))
+  if (!aire) return hay
+  const encajan = hay.filter(h => !REGISTRO[h.meta.id] || REGISTRO[h.meta.id].includes(aire))
+  // Nunca se devuelve vacio: si el filtro no dejo a nadie —una pagina sin material y un aire para el
+  // que ningun objeto abstracto encaja— es preferible un hero fuera de registro que una escena sin
+  // sujeto. La degradacion honesta es mostrar algo, no un cuadro vacio.
+  return encajan.length ? encajan : hay
 }
