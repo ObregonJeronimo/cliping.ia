@@ -89,13 +89,13 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** NINGUNA, y está dicho por qué en render3d/demo/verificar.mjs:87-89: «Los heroes solo leen image.width/height para decidir la composicion, asi que un canvas de 4 px alcanza... lo que se esta probando es la GEOMETRIA de la grilla, no los pixeles». Este
   - `vec3 c = texture2D(map, vUv).rgb;`
 
-- [ ] **render3d/demo/heroes/vitrina.js:71**
+- [x] **render3d/demo/heroes/vitrina.js:71**
   - **Síntoma:** El logo de stripe (120 px de ancho) se dibuja a 605 px: 5.0x su resolución. El de linear, 3.4x. El de ghost, 2.9x. Sale con los bordes deshechos y las curvas escalonadas — y es LO ÚNICO que hay en el cuadro, centrado sobre un pedestal, quieto, durante los 8 beats enteros de la escena, con la cámara además acercándose (línea 360-361). Es el hero donde más se mira el defecto y el que menos lo tolera
   - **Lo dispara:** Un logo de pocos píxeles, que es lo normal: medidos los PNG reales de tools/fixtures/director/elementos/, stripe-com__el0-logo.png son 120x50, linear-app__el0-logo.png 176x44, ghost-org__el0-logo.png 211x69. El alto se elige por el lado que limita (correcto para la proporción) pero NADA mira la reso
   - **Compuerta:** Ninguna. Pero el instrumento YA EXISTE y no se usa: kit.js:146 `topeNitido(img, W, mundoW, mag = 1.4)`, escrito exactamente para esto («el logo de linear.app se captura con 176 px de ancho y `columna` lo mostraba ocupando 624 px del cuadro — TRES VEC
   - `const altoLogo = Math.min(ALTO_MAX, ANCHO_MAX / ar)`
 
-- [ ] **render3d/demo/heroes/mosaico.js:123**
+- [x] **render3d/demo/heroes/mosaico.js:123**
   - **Síntoma:** Con stripe-com__el0-logo.png (120x50, ar 2.40): altoBanda = min(8*0.46, 5.34/2.40) = 2.2266, alto = 2.1153, ancho = 5.077 unidades = 975 px de cuadro. Un PNG de 120x50 estirado a 975x406 — 8.1x su resolución — cruzando la parte de arriba del cuadro durante seis beats. Con linear (176x44) da 5.5x y con tailwind (317x40) 3.1x. Es peor que el defecto de `columna` que ya se arregló (3.5x). Las celdas 
   - **Lo dispara:** Que la pieza destacada (`piezas[0]`, la banda ancha de arriba) sea un logo chico. ROLES pone 'logo' primero (línea 32), así que es el caso por defecto en toda página que dé logo. Para la banda, `anchoCelda` es ANCHO_UTIL = mundoW entero (línea 120), sin ningún tope por resolución.
   - **Compuerta:** Ninguna. Mismo caso que vitrina: `topeNitido` existe en kit.js:146 y mosaico.js no lo importa (su import de la línea 21 no lo incluye). Ninguna compuerta abre los píxeles de un recorte.
@@ -138,19 +138,19 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** Ninguna. (a) Todas las compuertas construyen con `configurarDatos(ANTHEM)` y ANTHEM trae `bloque: { titulo: 'CADA OBJETO ES REAL' }` (datos.js:28), o sea 4 palabras, el caso mejor. (b) El unico caso adverso que existe es la PAGINA POBRE de verificar.
   - `const ars = PAL.map(p => texto(p, optPal).ar) const sumaAr = ars.reduce((a, v) => a + v, 0) const ALTO_PAL = ANCHO / sumaAr`
 
-- [ ] **render3d/demo/escenas/tarjetas.js:157 (sitio de llamada: 290)**
+- [x] **render3d/demo/escenas/tarjetas.js:157 (sitio de llamada: 290)**
   - **Síntoma:** Construido con datos ['99%','10x','500K'] el espia de fillText devuelve como texto numerico dibujado: 500K (la heroe) y '0'. Las otras dos tarjetas dicen CERO. En el video: 0 UPTIME y 0 MAS RAPIDO en la pieza de una pagina que publica 99% y 10x. No es un problema de encaje: es una cifra falsa, justo lo que la regla anti-invencion existe para impedir.
   - **Lo dispara:** Cualquier cifra que no sea digitos puros en una tarjeta que NO es la heroe. tarjetas.js:56 pone `n = null` cuando `/^\d+$/` falla, y backend/semantica_gratis.py:68-70 (_CIFRA) EXIGE unidad — %, x, K, M, B, mil/millones — asi que en el camino sin brief NINGUNA cifra real es de digitos puros. Con `val
   - **Compuerta:** Ninguna. E-PROCEDENCIA (verificar.mjs:296) descarta todo texto sin letras — '0' no tiene — y E-INVENCION (verificar.mjs:268) solo compara cadenas de 3 caracteres o mas. El caso POBRE del verificador (verificar.mjs:232) manda UNA sola cifra con valor 
   - `for (let k = 0; k <= PASOS; k++) texs.push(texto(String(Math.round(valorFinal * k / PASOS)), { fuente: 'Anton', size }))`
 
-- [ ] **render3d/demo/escenas/tarjetas.js:191**
+- [x] **render3d/demo/escenas/tarjetas.js:191**
   - **Síntoma:** El nombre de la marca, centrado en x=0 y a 1.05 de alto, sobresale 1.2 y 1.9 unidades por CADA lado de un cuadro de 5.625: sale cortado contra los dos bordes. Es literalmente el reclamo textual de Thiago ('textos tan grandes que en los costados se cortan'). Medido con Box3: pieza de 9.38x1.05 centrada en (0.00, 3.10).
   - **Lo dispara:** Una marca larga. El plano se dimensiona SOLO por alto (planoTexto hace PlaneGeometry(alto*ar, alto)) y el ancho sale de la proporcion, sin tope. Medido: desde 15 letras el ancho ya pasa mundoW. 'MERCADO LIBRE ARGENTINA' -> 8.05 de ancho (143% del cuadro); 'TRANSPORTES INTERNACIONALES' -> 9.38 (167%)
   - **Compuerta:** Ninguna, por dos motivos encadenados. (1) E-ENCAJE nunca llega a construir esta escena con marcas largas — ver el hallazgo de verificar.mjs:315. (2) Aunque la construyera: `titulo` no declara `userData.encaja`, y el heuristico `peor` (verificar.mjs:4
   - `const titulo = txt(D.marca, 1.05, { fuente: 'Anton', size: 110 }, C_TIT(), 0)`
 
-- [ ] **render3d/demo/escenas/cierre.js:240**
+- [x] **render3d/demo/escenas/cierre.js:240**
   - **Síntoma:** Medido con Box3 al 72% de la escena: 'ANTHEM' da 4.34x1.71 (17% del alto del cuadro, glifo 226 px de 1920) — que es la composicion pensada. 'Q' da 4.34x7.22: 72% del alto, glifo de 952 px, y se sale por abajo del anillo que la escena declara que la contiene (aro R=2.55 centrado en y=1.35 -> borde inferior -1.20; el glifo baja hasta -1.37). 'GO' da 4.50 de alto (45%). Al otro extremo, 'TRANSPORTES 
   - **Lo dispara:** Una marca muy corta o muy larga. `textoMascara(D.marca, 1, ...)` deja un plano de ar x 1, y despues se le aplica una escala UNIFORME calculada solo con el ANCHO, asi que el alto final es 4.34/ar y nadie lo mira. Ademas usa D.marca entero (no `palabraDeMarca`), asi que el espacio y las palabras secun
   - **Compuerta:** Ninguna, y no es por falta de intento: E-ENCAJE prueba EXACTAMENTE 'Q' y 'TRANSPORTES INTERNACIONALES' (verificar.mjs:314). Pasa porque el unico umbral de alto es `peor.y <= mundoH * 0.85` (verificar.mjs:410), o sea 8.50, y el caso peor medido es 7.2
@@ -162,7 +162,7 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** Ninguna. E-SHADER-ENTERO (verificar.mjs:631-645) solo comprueba que el literal de fragmentShader llegue a gl_FragColor; E-COMPOSITOR-PARSEA corre `node --check`, y esto es JS y GLSL sintacticamente validos. tools/bg-check.mjs mide el fondo de src/pag
   - `} else if (uPatron < 22.5) { } else if (uPatron < 22.5) {`
 
-- [ ] **render3d/demo/escenas/cierre.js:240**
+- [x] **render3d/demo/escenas/cierre.js:240**
   - **Síntoma:** Medido construyendo la escena y tomando el Box3 de la malla (misma cuenta que E-ENCAJE, verificar.mjs:359-390): 'Q' -> 4.34 x 7.22 (72% del alto del cuadro); 'GO' -> 4.34 x 4.50 (45%); 'ANTHEM' -> 4.34 x 1.71 (17%); 'CONSTRUCCIONES' -> 4.34 x 0.86 (9%); 'TRANSPORTES INTERNACIONALES' -> 4.34 x 0.47 (5%). Quince veces de rango en el mismo slot. Con una marca de una o dos letras la letra llena el ani
   - **Lo dispara:** El LARGO del nombre de la marca. `ancho(marca)` (cierre.js:150) devuelve el width de la PlaneGeometry, que con planoTexto(D.marca, 1) es exactamente el `ar` de la textura; el escalar es uniforme, asi que el ALTO final sale 4.34/ar y nadie lo mira.
   - **Compuerta:** No, y la compuerta que existe para esto la mira y la deja pasar. E-ENCAJE (verificar.mjs:315) construye cierre con la marca 'Q' — el caso exacto — pero (a) la malla no declara `userData.encaja`, asi que E-ENCAJE-ENTERO (verificar.mjs:395) no la evalu
@@ -329,7 +329,7 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** NINGUNA, y el agujero es estructural: NINGUNA compuerta construye un hero en mundo claro. verificar.mjs:222 y encuadre-check.mjs:182 pasan `claro: false` fijo, y ninguno de los once aires declara `claro` (lo pone `personalizar()` desde el ADN de la p
   - `tl.to(halo.material.uniforms.uF, { value: 0.36, duration: b(1.4), ease: E.frena(2) }, b(0.5))`
 
-- [ ] **render3d/demo/heroes/vitrina.js:71**
+- [x] **render3d/demo/heroes/vitrina.js:71**
   - **Síntoma:** ANCHO_MAX = mundoW * 0.56 = 3.150 unidades = 605 px de pantalla. Un logo de 176 px se dibuja a 605: x3.44, muy por encima del techo de 1.4x que el propio kit fija en kit.js:146 y explica en kit.js:144-145. Y es el peor lugar posible para que pase: el hero deja el logo centrado, quieto y con reflejo durante la escena entera, o sea el objeto que mas se mira. vitrina NO llama a topeNitido — de los se
   - **Lo dispara:** Un logo capturado chico. kit.js:138 documenta el caso medido: el logo de linear.app se captura con 176 px de ancho. vitrina pide ROLES = ['logo', 'tarjeta', 'foto'] (vitrina.js:28) y toma el PRIMERO que cargue, asi que el logo es su entrada tipica.
   - **Compuerta:** Ninguna. E-ENCAJE mide TAMAÑO contra el cuadro, nunca resolucion contra tamaño; encuadre-check.mjs solo pregunta si el objeto se cruza con el frustum. No existe compuerta de ampliacion en tools/ (busque topeNitido y MAG_MAX en tools/*.mjs: cero resul
