@@ -352,7 +352,7 @@ export function build(ctx) {
   // ajustado y los intermedios se detenian donde cayera: en el render de basecamp el aparato quedaba
   // quieto mostrando la mitad inferior de un renglon del titular contra el borde de la franja segura.
   const ESC_P = tira && tira.image
-    ? escalones(tira.image, vl.y0, VENT.rec * altoTira, PASOS_P)
+    ? escalones(tira.image, vl.y0, VENT.rec * altoTira, PASOS_P, VENTANA_PX)
     : null
   const scrollear = () => {
     if (!pantalla) return

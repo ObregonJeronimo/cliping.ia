@@ -317,20 +317,46 @@ export function build(ctx) {
   // `materialMascara` sin color deja el uniform uTinte en null y WebGLUniforms.setValueV3f revienta
   // al subirlo (lee .x de null) — aunque el shader no lo use porque uUsaTinte vale 0. Se le pone un
   // color valido acá: no cambia un pixel y evita tocar el kit.
-  const lineaMasc = (str, ancho, opts, dir, suave) => {
+  const lineaMasc = (str, ancho, opts, dir, suave, altoMax = Infinity) => {
     const T = texto(str, opts)
     const mat = materialMascara(T.tex)
     if (!mat.uniforms.uTinte.value) mat.uniforms.uTinte.value = hex(LOOK.tinta)
     mat.uniforms.uDir.value = dir
     mat.uniforms.uSuave.value = suave
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(ancho, ancho / T.ar), mat)
-    m.userData.alto = ancho / T.ar
+    // PERO EL ALTO TAMBIEN NECESITA TOPE, PORQUE DIMENSIONAR POR UN SOLO EJE LO DEJA SUELTO. El alto
+    // sale de `ancho / T.ar`, o sea que es inversamente proporcional a cuantos caracteres escribio la
+    // pagina: la bajada del fixture ('GEOMETRIA, NO UN DIBUJO') mide 0.303 y 'HOY' —tres letras en el
+    // MISMO hueco— mide 1.835, seis veces mas, con la tinta pisando el filete 0.078 por arriba. El
+    // dominio hace lo mismo: 'MIDOMINIO.COM.AR' 0.300 contra 'X.CO' 1.134.
+    //
+    // Se recorta el ANCHO hasta que el alto entra, no la escala: la proporcion no se toca y la pieza
+    // sale mas angosta, que es lo correcto — una linea corta no tiene por que llenar el renglon. Quien
+    // pase un tope tiene que anclar la pieza por un borde y no por su centro, porque a partir de aca
+    // el ancho ya no es el que se pidio.
+    const w = Math.min(ancho, altoMax * T.ar)
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, w / T.ar), mat)
+    m.userData.alto = w / T.ar
     return m
   }
 
   const ANCHO = mundoW * 0.86
   const X0 = -ANCHO / 2
   const Y_KICK = -1.94, Y_PAL = -2.62, Y_FIL = -3.06, Y_SUB = -3.48
+  // LOS TOPES DE ALTO SALEN DE ESOS CUATRO NUMEROS, NO DE UN NUMERO LINDO. La reticula de arriba es la
+  // unica geometria que esta escena declara para el bloque tipografico, asi que lo que cada renglon
+  // puede medir de alto es la distancia a su vecino — ida y vuelta, porque el plano esta CENTRADO en su
+  // Y. Es la misma cuenta que el tope del anillo en cierre.js: el limite ya estaba escrito en la escena.
+  //
+  // Medido con las fuentes reales, banda de tinta y no caja del plano (`texto()` rellena el canvas con
+  // 0.42*size de aire transparente, asi que medir el plano exagera 1.85x). El titular del fixture,
+  // 'CADA OBJETO ES REAL', da 0.753 de plano y 0.493 de tinta y entra comodo; pero el slot se llena con
+  // el primer feature de CUATRO PALABRAS O MENOS, o sea que un titulo de UNA palabra es el caso normal:
+  // sweetgreen.com da 'SWEETGREEN' -> 1.287 y su tinta termina a 0.006 del filete (1 px de 1920);
+  // 'Analytics' -> 1.546 y ya lo pisa; 'AI' -> 6.324, con 4.06 de tinta en un mundo de 10, tapando el
+  // objeto y saliendose del cuadro por abajo. La bajada tiene el mismo mecanismo: 0.303 el fixture,
+  // 1.835 con 'HOY'.
+  const ALTO_RENGLON = 2 * Math.min(Y_KICK - Y_PAL, Y_PAL - Y_FIL)   // 0.88 — ni toca el kicker ni el filete
+  const ALTO_BAJADA = 2 * (Y_FIL - Y_SUB)                            // 0.84 — no toca el filete del que cuelga
 
   // -- titular partido en palabras: cuatro masas que llegan escalonadas se leen como intencion; una
   //    sola imagen que aparece se lee como un slide.
@@ -352,7 +378,7 @@ export function build(ctx) {
   const optPal = { fuente: 'Anton', size: 200, tracking: 0.006, color: TIPO_ALTA() }
   const ars = PAL.map(p => texto(p, optPal).ar)
   const sumaAr = ars.reduce((a, v) => a + v, 0)
-  const ALTO_PAL = ANCHO / sumaAr
+  const ALTO_PAL = Math.min(ANCHO / sumaAr, ALTO_RENGLON)
   const palabras = []
   let cur = X0
   PAL.forEach((p, i) => {
@@ -395,15 +421,26 @@ export function build(ctx) {
 
   // -- bajada
   const sub = lineaMasc((D.bloque ? D.bloque.bajada : ''), mundoW * 0.68,
-    { fuente: 'DMSans', size: 120, tracking: 0.16, alineado: 'left', color: TIPO_BAJA() }, 2, 0.12)
-  sub.position.set(X0 + mundoW * 0.34, Y_SUB, 0)
+    { fuente: 'DMSans', size: 120, tracking: 0.16, alineado: 'left', color: TIPO_BAJA() }, 2, 0.12, ALTO_BAJADA)
+  // ANCLADA POR SU BORDE IZQUIERDO, como `lectura` lo esta por el derecho. Con el ancho fijo esta cuenta
+  // daba exactamente X0 + mundoW*0.34 y no cambia un decimal; hace falta desde que el tope puede
+  // angostar el plano, porque una pieza mas angosta centrada en el punto viejo se despega de X0 —el
+  // origen del filete y del kicker— y el bloque deja de tener un solo margen izquierdo.
+  sub.position.set(X0 + sub.geometry.parameters.width / 2, Y_SUB, 0)
   tipo.add(sub)
 
   // -- lectura tecnica arriba a la derecha: el cuadro esta lleno tambien donde no hay protagonista
   // Decia 'R 1.34 · SEG 18 · MALLA VIVA': jerga interna disfrazada de lectura tecnica. El dominio real
   // llena el mismo hueco con el mismo peso visual.
+  // EL TOPE ES EL OTRO ROTULO CHICO DE LA ESCENA, y esa tambien es geometria ya declarada: `kick` es la
+  // misma familia (DMSans, alineado a la izquierda, revelado por mascara) en la esquina de enfrente, y
+  // su alto es CONSTANTE por construccion —`marca(2, 6)` son siempre siete caracteres, cosa que la nota
+  // de la pauta ya usa como dato—. Medido: el dominio va de 0.263 (sothebysrealty.com) a 1.134 ('X.CO'),
+  // o sea de 0.53 a 2.39 veces el kicker en el mismo cuadro. A 2.39 el pie tecnico deja de ser un rotulo
+  // de esquina y compite con el titular. Con el tope, los cinco dominios reales de los pagemodels quedan
+  // igual salvo linear.app (0.502 -> 0.494) y oatly.com (0.516 -> 0.494), que ya venian rozandolo.
   const lectura = lineaMasc(sello(0), mundoW * 0.5,
-    { fuente: 'DMSans', size: 110, tracking: 0.18, alineado: 'left', color: TIPO_BAJA() }, 0, 0.12)
+    { fuente: 'DMSans', size: 110, tracking: 0.18, alineado: 'left', color: TIPO_BAJA() }, 0, 0.12, kick.userData.alto)
   // ANCLADO POR SU BORDE DERECHO, no por el izquierdo. Estaba en x = 2.6 - mundoW*0.25 = 1.19 con
   // alineacion izquierda y un ancho de hasta 2.81: el borde derecho caia en 4.00 contra un cuadro que
   // termina en 2.81, o sea 1.19 unidades —229 px— fuera de pantalla. En el render de basecamp se leia

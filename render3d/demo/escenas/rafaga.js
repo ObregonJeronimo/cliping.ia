@@ -88,9 +88,16 @@ export function build(ctx) {
 
   // Sin material no hay escena. El guionista no debería haberla elegido; si igual llegó acá, un grupo
   // vacío es la respuesta honesta.
+  // Y SE DECLARA `vacia`, QUE FALTABA. El grupo pelado no alcanza: main.js:503 saltea la escena SOLO
+  // si el campo esta, asi que sin el la pieza colgaba los seis beats igual. Medido con una pagina de
+  // tres elementos de rol 'cta' y cero frases —lo que el requisito de guion.js:69 deja pasar, porque
+  // cuenta elementos de CUALQUIER rol y esta escena solo consume ['tarjeta','foto','logo']—: 2.903 s
+  // (6.00 beats) con CERO mallas, ni en `g` ni en `gr`; ni los filetes ni el indice llegan a armarse,
+  // porque este return va antes. Y el guion la elegia igual en 464 de 600 semillas x duraciones. Las
+  // catorce escenas que se quedan sin material ya lo declaran; esta era la unica que no.
   if (!piezas.length) {
     tl.to({}, { duration: DUR }, 0)
-    return { g, gr, tl }
+    return { g, gr, tl, vacia: true }
   }
 
   // ---- estructura fija del cuadro: lo único que NO parpadea

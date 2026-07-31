@@ -252,12 +252,17 @@ export function bandas(img, alto = B_ALTO) {
 // realmente lee.
 // El renglon mas cercano SIN TINTA, buscando hasta `radio` px de distancia. Es lo que evita que el borde
 // de una ventana parta una linea de texto por la mitad.
-function alHueco(p, y, radio) {
+// El `tope` es el ultimo pixel de pagina al que la ventana puede llegar de verdad. Sin el, la busqueda
+// devuelve huecos a los que el render no puede ir —las tres escenas que la usan clampean el offset— y la
+// pieza termina detenida donde cae el pie del archivo en vez de en el hueco que se midio.
+function alHueco(p, y, radio, tope = Infinity) {
   if (!p || !p.porFila || !p.porFila.length) return y
   const E = p.escFila, R = Math.max(1, Math.round(radio / E))
   const c = Math.round(y / E)
   let mej = c, val = Infinity
-  for (let k = Math.max(0, c - R); k <= Math.min(p.porFila.length - 1, c + R); k++) {
+  // La fila k vive en k*E, asi que la ultima que no se pasa del tope es floor(tope/E).
+  const kMax = Math.min(p.porFila.length - 1, c + R, Math.floor(tope / E))
+  for (let k = Math.max(0, c - R); k <= kMax; k++) {
     // A igual detalle gana el mas cercano al pedido: el desempate por distancia es chico a proposito.
     const v = p.porFila[k] + Math.abs(k - c) * 0.02
     if (v < val) { val = v; mej = k }
@@ -275,13 +280,22 @@ function alHueco(p, y, radio) {
 // Devuelve n+1 posiciones absolutas en pixeles de pagina. El radio de correccion es medio peldaño: no
 // puede reordenarlos ni cambiar el recorrido total de forma perceptible, solo elegir donde exactamente
 // se detiene cada uno.
-export function escalones(img, y0, recorrido, n) {
+export function escalones(img, y0, recorrido, n, altoVentana = 0) {
   const p = bandas(img)
   const out = []
   const paso = n > 0 ? recorrido / n : 0
+  // EL TECHO ES p.H - altoVentana, NO p.H, y esta funcion no tenia el dato para escribirlo. Con p.H el
+  // clamp era letra muerta: alHueco nunca devuelve mas de p.H - escFila, o sea que no acotaba nada.
+  // Medido sobre las 7 tiras de tools/out/motor recortadas a 645 alturas de captura plausibles, contra
+  // los tres consumidores: en 23 casos el ultimo peldano caia hasta 49 px por debajo del pie de la tira.
+  // No se rompe la imagen —el offset se clampea en las tres escenas— pero la pagina queda en reposo
+  // donde TERMINA EL ARCHIVO y no en el hueco, que es justo lo que esta funcion existe para evitar: en
+  // stripe la hoja frenaba con 88.4 de tinta en el canto contra 14.8 del hueco alcanzable, y en basecamp
+  // el canto pasaba de 48.9 a 0. Es el mismo tope que `ventanaLegible` ya le aplica al arranque.
+  const tope = p ? Math.max(0, p.H - altoVentana) : 0
   for (let k = 0; k <= n; k++) {
     const y = y0 + paso * k
-    out.push(p ? Math.max(0, Math.min(p.H, alHueco(p, y, paso * 0.5))) : y)
+    out.push(p ? Math.max(0, Math.min(tope, alHueco(p, y, paso * 0.5, tope))) : y)
   }
   return out
 }
@@ -993,7 +1007,16 @@ export function materialMascara(map, color = null) {
       // medio de la animacion llegue solo, sin gancho, sin sincronizar a mano y sin un orden que haya
       // que recordar. Es tambien lo unico que se mantiene determinista: no hay un paso que pueda
       // quedar sin correr. (Si alguien REEMPLAZA la textura del material en caliente tiene que
-      // reapuntar estos dos; ninguna escena lo hace y por eso no se paga esa complejidad.)
+      // reapuntar estos dos EN LA MISMA LINEA. Aca decia "ninguna escena lo hace" y era falso desde
+      // hace rato: columna.js cambia el indice de beat y tarjetas.js el contador. Construidas las 37
+      // escenas y heroes por los 11 aires: 6192 instantes con la textura cambiada, y en TODOS
+      // |uRep - map.repeat| dio 0.000 — las dos solo intercambian texturas de texto(), que nacen en
+      // 1,1 y 0,0, y por eso los Vector2 viejos valian lo mismo que los nuevos. O sea que esto
+      // estaba LATENTE, no roto, y por eso no se ve nada en el video de hoy. Se paga igual porque el
+      // dia que ahi entre una textura con repeat el sintoma es el de `pantalla`: la pagina aplastada
+      // muestreando la matriz de otra textura, sin error y sin compuerta que lo diga. Ese dia no es
+      // hipotetico: siete materiales de esta misma funcion ya viven con repeat.y = 0.209 (las bandas
+      // de pantalla.js), y lo unico que los salva es que ninguno reemplaza su `map`.)
       uRep: { value: map ? map.repeat : new THREE.Vector2(1, 1) },
       uOff: { value: map ? map.offset : new THREE.Vector2(0, 0) },
     },

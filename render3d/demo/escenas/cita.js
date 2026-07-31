@@ -41,7 +41,17 @@ const MAX_LINEAS = 4
 // Corta por PALABRAS. Cortar por caracteres parte un apellido al medio, que es justo lo que esta
 // escena no puede hacer: el texto es de otra persona y se publica como lo dijo.
 function enLineas(txt, porLinea, maxLineas) {
+  // UN TOKEN MAS LARGO QUE EL RENGLON SE PARTE IGUAL, y no contradice la nota de arriba: se parte solo
+  // lo que mide MAS de porLinea, o sea nunca un apellido — el token mas largo de todo el material real
+  // capturado (las 11 citas de los fixtures mas la de ANTHEM) mide 13 caracteres contra 26 de POR_LINEA.
+  // Sin esto una URL, un mail o un handle quedan como un renglon de largo arbitrario, ese renglon gana el
+  // Math.max de las proporciones que alimenta `encaje`, y la CITA ENTERA se achica para que el quepa:
+  // medido sobre 1920, la misma cita cae de 107 a 63 px de cuerpo en tecnico (79 -> 46 px de glifo) y en
+  // nocturno, la display mas ancha, el glifo baja a 24 px. Ninguna compuerta lo ve, porque achicar es
+  // justamente como `encaje` consigue que entre: E-ENCAJE queda verde con el texto ya ilegible.
+  // El flag `u` va para no partir un par sustituto y que un emoji no termine saliendo como tofu.
   const palabras = String(txt || '').split(/\s+/).filter(Boolean)
+    .flatMap(p => (p.length <= porLinea ? p : p.match(new RegExp(`.{1,${porLinea}}`, 'gu'))))
   const lineas = []
   let actual = ''
   for (const p of palabras) {

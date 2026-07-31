@@ -126,7 +126,7 @@ export function build(ctx) {
   const DESLIZ_S = deslizFijo(T1_SCROLL - T0_SCROLL, PASOS_S)
   // Y cada peldaño cae en un HUECO entre renglones: si no, la pagina se queda quieta mostrando medio
   // renglon cortado contra el canto del cuadro, que es peor que no frenar.
-  const ESC_S = escalones(tira.image, vl.y0, REC_PX, PASOS_S)
+  const ESC_S = escalones(tira.image, vl.y0, REC_PX, PASOS_S, VENTANA_PX)
 
   const hB = ALTO / N
   const yDe = i => ALTO / 2 - (i + 0.5) * hB

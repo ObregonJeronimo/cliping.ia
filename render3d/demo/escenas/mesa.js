@@ -197,7 +197,7 @@ export function build(ctx) {
   const PASOS_M = pasosEnBeats(meta.beats, Math.max(2, Math.min(6, Math.round((RECOR * altoMapa) / 170))))
   // Y cada peldaño cae en un hueco entre renglones: sin esto, el segundo se detenia partiendo el titular
   // por la mitad de las mayusculas contra el canto de la hoja.
-  const ESC_M = mapa.image ? escalones(mapa.image, vl.y0, RECOR * altoMapa, PASOS_M) : null
+  const ESC_M = mapa.image ? escalones(mapa.image, vl.y0, RECOR * altoMapa, PASOS_M, VENT_PX) : null
   const DESLIZ_M = deslizFijo(DUR, PASOS_M)
   deriva(tl, DUR, (u) => {
     tex.offset.y = ESC_M

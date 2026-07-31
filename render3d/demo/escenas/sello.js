@@ -80,7 +80,26 @@ export function build(ctx) {
   const t = texto(marca, { fuente: 'Anton', peso: 400, size: 170, tracking: 0.03, upper: true, alineado: 'center' })
   const ANCHO_UTIL = R * 1.42
   const ALTO_BASE = mundoH * 0.055
-  const alto = encaje(ALTO_BASE, t.ar, ANCHO_UTIL)
+  // PISO, porque `encaje` solo achica y no tiene fondo — y lo que se achica aca es EL NOMBRE DE LA
+  // MARCA, en la unica escena que no dice ninguna otra cosa. Medido con las fuentes reales de los once
+  // aires, en altura de mayuscula sobre 1920: ANTHEM sale a 55-68 px, pero "CONSTRUCCIONES DEL SUR"
+  // —el cliente que apertura.js:435 documenta— cae a 19.4-38.6 y "TRANSPORTES INTERNACIONALES" a
+  // 15.5-31.5. El PIE de esta misma escena (ALTO_P = mundoH*0.020) mide 19.3-21.6 px de mayuscula: o
+  // sea que el nombre de la marca salia MAS CHICO que el dominio que va debajo suyo, en 9 de los 11
+  // aires. Achicar es como la escena hace ENTRAR el nombre, asi que E-ENCAJE lo daba por bueno.
+  //
+  // El piso vale mundoH*0.030 —vez y media el pie, contra las 2.75 veces que esta escena declara entre
+  // sus dos textos— y el margen para pagarlo sale de la geometria que la escena YA declaro, igual que
+  // el tope de `cierre` (cierre.js:261): el aro interior esta en R*0.965 y el golpe del sello lo
+  // contrae a 0.94, o sea que el borde de adentro son R*1.81 de ancho mientras ANCHO_UTIL gasta R*1.42.
+  // Ese 1.42 es COMODIDAD y no borde: cuando respetarlo tira el nombre por debajo del piso se gasta
+  // hasta R*1.80 y ni un pelo mas, porque un nombre que pisa el anillo se lee como error de render.
+  //
+  // Medido sobre 17 marcas x 11 aires: cambian 35 casos, y de las 12 marcas de los fixtures solo se
+  // mueve "Mercado Libre" en nocturno (0.284 -> 0.300). La tinta nunca alcanza el aro contraido (peor
+  // caso 0.978 de su radio) y E-ENCAJE-REAL sigue lejos: peor |x| 0.562 contra el 1.015 que exige.
+  const ALTO_MIN = mundoH * 0.030
+  const alto = Math.max(encaje(ALTO_BASE, t.ar, ANCHO_UTIL), Math.min(ALTO_MIN, encaje(ALTO_BASE, t.ar, R * 1.80)))
   // nivel() YA SE DA VUELTA SOLO: va del fondo a la tinta, asi que un k ALTO es oscuro en un mundo
   // claro y claro en uno oscuro. Escribi `CLARO ? 0.06 : 0.97` —o sea, casi el fondo en mundo claro—
   // y el nombre de la marca salio blanco sobre fondo blanco: se leia apenas. El unico motivo para

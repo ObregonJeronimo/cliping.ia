@@ -330,7 +330,16 @@ export function build(ctx) {
     // El indice se REEMPLAZA, no se interpola. El ancho del plano se fija con el del primer rotulo y se
     // compensa con scale.x, asi el numero mantiene su tamaño aunque cambien los glifos.
     const ix = idxTex[k]
-    if (matIdx.uniforms.map.value !== ix.tex) matIdx.uniforms.map.value = ix.tex
+    // Y SE REAPUNTAN uRep/uOff CON EL. `materialMascara` (kit.js:997) los cuelga de los Vector2 de la
+    // textura con la que NACE el material, asi que cambiar solo `map` deja al shader muestreando con la
+    // matriz de la textura vieja. Hoy no mueve un pixel —medido: los seis indices son texturas de
+    // texto(), las once corridas de aire dan |uRep - map.repeat| = 0— pero es la linea que evita que el
+    // dia que aca entre una textura con repeat se repita el defecto que costo la escena `pantalla`.
+    if (matIdx.uniforms.map.value !== ix.tex) {
+      matIdx.uniforms.map.value = ix.tex
+      matIdx.uniforms.uRep.value = ix.tex.repeat
+      matIdx.uniforms.uOff.value = ix.tex.offset
+    }
     mIdx.scale.x = ix.ar / AR_IDX
   })
 

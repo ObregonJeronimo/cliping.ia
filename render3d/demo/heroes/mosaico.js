@@ -107,6 +107,16 @@ export function build(ctx) {
 
   const gM = new THREE.Group()
   g.add(gM)
+  // LOS RECORTES TIENEN QUE BARRER CON EL CONJUNTO, Y NO COLGABAN DE NADA QUE BARRA. El barrido de
+  // gM (0.20 rad, mas abajo) no los tocaba: viven en gr, la escena post-bloom, asi que copiarle la
+  // rotacion los hacia girar sobre su PROPIO centro y quedarse clavados. Medido apagando el barrido
+  // en su pico, con el tiempo y la camara congelados: las cinco piezas daban |Delta mundo| = 0.000000
+  // y 0.0 px de paralaje, contra 0.079 que si se movia el filete —el unico hijo real de gM—.
+  // Colgando los recortes de un grupo que copia esa rotacion, la pieza de adelante (z=0.55) corre
+  // +21.5 px y la de atras (z=-1.10) -47.1 px: 68.6 px de diferencial, que es el paralaje que el
+  // comentario del barrido dice que el 0.20 hace visible.
+  const gRe = new THREE.Group()
+  gr.add(gRe)
 
   const mallas = []
   piezas.forEach((p, i) => {
@@ -149,7 +159,7 @@ export function build(ctx) {
     const z = esBanda ? 0.55 : ((j % 2 ? -0.75 : 0.35) + (fila % 2 ? -0.35 : 0.2))
     m.userData.destino = new THREE.Vector3(x, y, z)
     m.userData.rol = p.e.rol
-    gr.add(m)
+    gRe.add(m)
     mallas.push(m)
   })
 
@@ -217,7 +227,9 @@ export function build(ctx) {
     m.position.copy(base.userData.destino)
     m.visible = false
     m.material.opacity = 1
-    gr.add(m)
+    // El relevo va al MISMO grupo que la pieza que reemplaza: si se quedara colgado de gr, ocuparia
+    // la celda sin barrer y quedaria hasta 47 px corrido de la formacion que vino a completar.
+    gRe.add(m)
     // Los relevos caen en beats enteros y escalonados: 3, 4, 5. Antes del 3 la formacion todavia se
     // esta armando y un cambio ahi se lee como un error de carga.
     const t = b(3 + k)
@@ -250,7 +262,7 @@ export function build(ctx) {
   // Con 0.20 y un desplazamiento lateral, el paralaje de las profundidades se hace visible.
   tl.to(gM.rotation, { y: 0.20, duration: DUR * 0.55, ease: E.vaiven() }, 0)
   tl.to(gM.rotation, { y: -0.06, duration: DUR * 0.45, ease: E.vaiven() }, DUR * 0.55)
-  // gM sólo mueve el filete; los recortes viven en la otra escena y copian su rotación cada frame.
+  // gM mueve el filete; gRe le pasa esa misma rotacion a los recortes, que viven en la otra escena.
   // Acá también respira cada pieza: entre que llegó a su celda y que empieza a salir.
   // EL ORDEN IMPORTA Y CUESTA CARO. Esto colgaba de un tween hijo puesto en 0 con duracion DUR, y
   // GSAP renderiza sus hijos ORDENADOS POR TIEMPO DE INICIO: cualquier tween que arranque despues de 0
@@ -264,8 +276,13 @@ export function build(ctx) {
   // hace falta. `main.js` avanza con `tl.time(t, false)`, o sea sin suprimir eventos, asi que dispara.
   tl.eventCallback('onUpdate', () => {
     const t = tl.time()
+    gRe.rotation.y = gM.rotation.y
     for (const m of mallas) {
-      m.rotation.y = gM.rotation.y
+      // La y de la malla se anula porque gRe ya la lleva. No es una linea muerta: la entrada declara
+      // un tumbo en y de hasta 0.75 rad (linea 174) que la copia anterior venia pisando cuadro a
+      // cuadro. Sacarla le devuelve ese tumbo a la entrada —medido: 34.5 grados de diferencia en la
+      // pieza 4— y eso es otro cambio, no este.
+      m.rotation.y = 0
       const o = m.userData.osc
       if (o && t > o.desde && t < DUR - b(1.1)) {
         m.position.y = m.userData.destino.y + Math.sin(t * o.vel + o.f) * o.amp
@@ -284,7 +301,14 @@ export function build(ctx) {
   // recorrerla en orden se lee como un barrido automático, saltar se lee como una decisión.
   if (mallas.length > 1) {
     for (let i = 2; i < meta.beats - 1; i++) {
-      const m = mallas[(i * 3) % mallas.length]
+      // EL ACENTO TIENE QUE CAER SOBRE LA PIEZA QUE SE VE. La celda que le toca puede estar ya
+      // relevada, y entonces esa malla quedo en visible:false. Medido a 30 fps sobre 88 cruces (11
+      // aires x 4 semillas x 2 fixtures): 2 de los 5 acentos —los de los beats 4 y 6— escalaban 8
+      // cuadros una malla apagada, y el destaque terminaba tocando 3 piezas visibles y no 5. Se
+      // sigue el relevo mas reciente de esa celda; sin relevos el bucle no hace nada.
+      const base = mallas[(i * 3) % mallas.length]
+      let m = base
+      for (const c of cambios) if (c.base === base && c.t <= b(i)) m = c.m
       // El destaque es de ESCALA y no de z: con la banda destacada delante, un adelanto en z de una
       // pieza chica no se lee. Un salto de escala si, y ademas no pelea con el paralaje.
       tl.to(m.scale, { x: 1.13, y: 1.13, duration: b(0.20), ease: E.llega(2.4) }, b(i))

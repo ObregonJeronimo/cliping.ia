@@ -177,7 +177,17 @@ export function build(ctx) {
   const tallos = []
   for (let i = 0; i < N; i++) {
     const fase = rnd() * 6.283
-    const alto = mundoH * (0.60 + rnd() * 0.26)
+    // EL TECHO DE ESTE SORTEO NO ES LA PUNTA DEL TALLO: encima de la punta va la yema, y ABIERTA
+    // sobresale RADIO*2.3*1.7*1.5 = 0.35 de mundo por arriba de ella. Con 0.26 el tubo entraba —peor
+    // caso 0.975 en coordenadas de recorte, medido en los once aires— pero la yema, que es lo unico de
+    // color puro del hero, salia MORDIDA: proyectada vertice a vertice a 30 fps llega a 1.088 en
+    // jugueton y a 1.066 en bienestar, los dos extremos de camara de su registro, o sea 85 y 64 px
+    // fuera del borde de arriba sobre 1920. Con la semilla 7 —la que usa el motor por defecto— eran 58
+    // de los 107 cuadros anteriores a la salida. Y no lo empuja solo el alto: el viento tumba la punta
+    // hasta 0.43 hacia la camara y ahi el semialto util se achica. Con 0.215 el peor sorteo posible
+    // —alto, dz, curvatura y amplitud al maximo, barriendo la fase— queda en 0.988 en jugueton y en
+    // 0.994 con el dolly de 1.55, que es el mas alto de los once.
+    const alto = mundoH * (0.60 + rnd() * 0.215)
     const dz = (rnd() - 0.5) * mundoW * 0.28
     const x0 = (i / (N - 1) - 0.5) * mundoW * 0.56
     // CUANTO SE CURVA DEPENDE DE CUAN AFUERA ESTA, y esto salio de mirar los cuadros. Con una curvatura

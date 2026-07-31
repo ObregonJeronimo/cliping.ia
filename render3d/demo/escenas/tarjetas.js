@@ -15,7 +15,7 @@
 //   · NADA se apaga con opacidad si puede irse por MÁSCARA: el texto se desescribe, no se funde.
 
 import { E,
-  LOOK, b, planoTexto, texto, materialMascara, matAcento, matTarjeta, enArco, nivel, dolly, orbita, MOB } from '../kit.js'
+  LOOK, b, planoTexto, texto, materialMascara, matAcento, matTarjeta, enArco, nivel, dolly, orbita, encaje, MOB } from '../kit.js'
 // TODO EL TEXTO SALE DE LOS DATOS. Este archivo decia que el 'chrome' (rotulos de capitulo,
 // indicadores tecnicos) era direccion de arte y podia quedar escrito aca — y con esa licencia
 // el video de Stripe salia diciendo 'BLOQUE 04 · DATOS' y 'DOS INDICADORES · UNA MISMA
@@ -161,7 +161,7 @@ export function build(ctx) {
   // Resultado medido con los datos ['99%','10x','500K']: en el video salia "0 UPTIME" y "0 MAS
   // RAPIDO" en la pieza de una pagina que publica 99% y 10x. La regla anti-invencion de este motor
   // prohibe inventar una cifra, y esto era peor que inventarla: la contradecia.
-  function contador(alto, valorFinal, size, color, texsPrestadas, arPrestado, textoFijo) {
+  function contador(alto, valorFinal, size, color, texsPrestadas, arPrestado, textoFijo, anchoMax) {
     let texs = texsPrestadas
     if (!texs) {
       texs = []
@@ -172,6 +172,20 @@ export function build(ctx) {
       }
     }
     const arFin = arPrestado || texs[PASOS].ar
+    // LA CIFRA SE DIMENSIONABA SOLO POR ALTO —el mismo defecto que el titulo de esta escena ya tiene
+    // resuelto con ANCHO_UTIL_TIT— y el ancho salia de arFin sin ningun tope. Aca duele mas porque
+    // la cifra no la elige el motor: el extractor EXIGE unidad y `_limpio(valor, 10)` admite diez
+    // caracteres, asi que "500 mil" o "18 cuotas" son el caso NORMAL. Medido en el aire tecnico con
+    // las fuentes reales: "500K" da 1.044 y entra en la tarjeta (CW = 1.24), pero "+3 mil" da 1.274,
+    // "500 mil" 1.565 y "18 cuotas" 1.906 — 54% fuera de su propia tarjeta, sobre el borde de acento
+    // y el fondo, con scale.x en 1.000 exacto (una cifra fija no cuenta, no la achica nadie) y el 56%
+    // de la escena en pantalla. Con cinco cifras largas pisa ademas la tarjeta VECINA: 1.573 de
+    // medio-numero mas media-tarjeta contra 1.258 de separacion entre centros. Y no es solo cosa de
+    // cifras largas: con las de ANTHEM, en el aire nocturno, la display remapeada llega igual a 1.396.
+    // Se baja el ALTO hasta que entre a lo ancho, con `encaje`, que es la funcion del kit que ya
+    // responde esa pregunta y NUNCA agranda: lo que ya componia no se mueve un pelo (ANTHEM 0.825,
+    // "500K" 1.044, "99%" 1.084 se quedan como estaban).
+    alto = encaje(alto, arFin, anchoMax)
     const mat = materialMascara(texs[0].tex, color)
     mat.uniforms.uDir.value = 2                      // se escribe de abajo hacia arriba
     const malla = new THREE.Mesh(new THREE.PlaneGeometry(alto * arFin, alto), mat)
@@ -179,6 +193,12 @@ export function build(ctx) {
     const poner = (k) => {
       const t = texs[k < 0 ? 0 : k > PASOS ? PASOS : k]
       mat.uniforms.map.value = t.tex
+      // uRep/uOff van CON la textura. `materialMascara` (kit.js:997) los apunta a los Vector2 de la que
+      // trae el material al nacer —texs[0]—, asi que reemplazar solo `map` deja al shader muestreando
+      // con la matriz de otra textura. Medido, hoy no cambia un pixel: las PASOS+1 texturas salen de
+      // texto() y valen 1,1 y 0,0, y las once corridas de aire dan |uRep - map.repeat| = 0.
+      mat.uniforms.uRep.value = t.tex.repeat
+      mat.uniforms.uOff.value = t.tex.offset
       malla.scale.x = t.ar / arFin
     }
     return { malla, mat, texs, arFin, poner }
@@ -191,7 +211,12 @@ export function build(ctx) {
   // Sin numero entero no hay cuenta: se repite la misma textura y la tarjeta simplemente aparece.
   const nHero = DATOS[HERO].n
   for (let k = 0; k <= PASOS; k++) heroTexs.push(texto(nHero == null ? DATOS[HERO].txt : String(Math.round(nHero * k / PASOS)), { fuente: 'Anton', size: 130 }))
-  const eco = contador(3.8, nHero == null ? 0 : nHero, 130, nivel(0.22, 0.45), heroTexs, heroTexs[PASOS].ar)
+  // El tope del eco es el ancho VISIBLE EN SU PROPIA z, no el del cuadro en reposo: a z=-7.2 el
+  // frustum ya abrio a 7.795 (mundoW 5.625 por (distBase+7.2)/distBase). Sin el, "18 cuotas" medido
+  // en tecnico salia de 11.68 y se cortaba contra los dos costados en 2261 de 3336 cuadros (once
+  // aires x tres juegos de cifras). Lo que despues del tope siga pasado de 1.0 en `nocturno` es el
+  // empuje de camara y no el contenido, y no se persigue: misma distincion que la nota del titulo.
+  const eco = contador(3.8, nHero == null ? 0 : nHero, 130, nivel(0.22, 0.45), heroTexs, heroTexs[PASOS].ar, null, ctx.mundoW * (distBase + 7.2) / distBase)
   eco.mat.uniforms.uSuave.value = 0.22
   eco.malla.position.set(0, 0.10, -7.2)
   g.add(eco.malla)
@@ -330,7 +355,9 @@ export function build(ctx) {
     idx.position.set(0, CH / 2 - 0.20, zf)
     gr.add(idx)
 
-    const num = contador(0.62, d.n, esHero ? 130 : 80, C_NUM(), esHero ? heroTexs : null, esHero ? heroTexs[PASOS].ar : null, d.txt)
+    // 0.92 del ancho de la tarjeta: el mismo margen con el que ANCHO_UTIL_TIT acota al titulo contra
+    // el cuadro. Da 1.141 y deja 0.10 de aire por lado contra el canto de 1.24.
+    const num = contador(0.62, d.n, esHero ? 130 : 80, C_NUM(), esHero ? heroTexs : null, esHero ? heroTexs[PASOS].ar : null, d.txt, CW * 0.92)
     num.malla.position.set(0, 0.20, zf)
     gr.add(num.malla)
 
