@@ -54,7 +54,7 @@ function lineasGolpe() {
 }
 
 export function build(ctx) {
-  const { THREE, gsap, mundoW, camera, distBase, fondo, pelicula, bloom, rnd } = ctx
+  const { THREE, gsap, mundoW, mundoH, camera, distBase, fondo, pelicula, bloom, rnd } = ctx
   // MUEBLE DE BORDE: LO PIDE EL AIRE, NO LA ESCENA. Este archivo dibujaba perimetro por su cuenta sin
   // preguntar nunca por MOB, y por eso una pieza que eligio "sin marco" seguia teniendo lineas pegadas
   // a los costados: no las ponia el marco, las ponia la escena. Es el reclamo del usuario visto desde
@@ -173,9 +173,17 @@ export function build(ctx) {
   // golpe de ANTHEM ('ESTO NO LO HACE / UNA PLANTILLA'), que en cualquier otra pagina queda como un
   // articulo huerfano colgado en el medio del cuadro. Se toma la primera palabra REAL de la segunda
   // linea, que es lo que la composicion siempre quiso decir: un eco tipografico del hero.
-  const eco = String(lineasGolpe()[1] || '').trim().split(' ')[0] || ''
-  const L2 = capa(eco, 1.75, { dir: 2, suave: 0.10 })
-  L2.position.set(XI + 1.75 / 2, 0.42, 0); tipo.add(L2)
+  // Y NO PUEDE SER LA MISMA PALABRA QUE EL HERO. El eco toma la primera palabra de la segunda linea,
+  // y el hero dibuja esa linea ENTERA a cuerpo de cartel: cuando la linea tiene UNA sola palabra los
+  // dos son la misma, y el cuadro muestra la palabra dos veces, una chica encima de la gigante. En el
+  // render de duolingo.com el golpe era "DUOLINGO ENGLISH TEST", la segunda linea quedo en "TEST" y se
+  // veia un "TEST" chico pisando un "TEST" enorme, los dos ilegibles. Si son la misma, no hay eco: la
+  // barra de acento que lo acompaña sostiene sola esa franja, que es lo que hacia antes de que el eco
+  // existiera.
+  const seg = String(lineasGolpe()[1] || '').trim()
+  const eco = seg.split(' ').length > 1 ? seg.split(' ')[0] : ''
+  const L2 = eco ? capa(eco, 1.75, { dir: 2, suave: 0.10 }) : null
+  if (L2) { L2.position.set(XI + 1.75 / 2, 0.42, 0); tipo.add(L2) }
 
   const barraUna = barra(2.95, 0.56, 'der')
   barraUna.position.set(XD, 0.42, 0); formas.add(barraUna)
@@ -199,8 +207,21 @@ export function build(ctx) {
   const nombre = String(D.marca || '').trim()
   const tocaLaMarca = nombre.length >= 3 && lineaHero.toUpperCase().includes(nombre.toUpperCase())
   const tHero = texto(lineaHero, { fuente: 'ArchivoBlack' })
-  const ANCHO_HERO = mundoW * (tocaLaMarca ? 0.98 : 1.12)
-  const ALTO_HERO = ANCHO_HERO / Math.max(0.2, tHero.ar || 4.6)
+  // EL ANCHO MANDA, PERO EL ALTO TIENE TECHO. Dimensionar solo por ancho es correcto para una linea
+  // larga —es lo que hace que la palabra sangre por los dos lados— y se rompe con una linea CORTA: el
+  // alto sale de dividir el ancho por la proporcion del texto, asi que "TEST" (proporcion 2.2 contra
+  // los 4.6 de una linea normal) da un bloque de 2.86 de alto, el 29% del mundo. Se comia la franja del
+  // eco y la de la barra, y lo que se veia era un amontonamiento.
+  //
+  // El techo es 0.20 del alto del mundo, que es lo que mide una linea de esta escena cuando el golpe
+  // tiene el largo para el que fue compuesta. Pasado eso se achica el ANCHO para conservar la
+  // proporcion: la palabra deja de sangrar y queda centrada, que es la degradacion correcta — una
+  // palabra corta centrada compone bien, una palabra corta gigante no compone de ninguna manera.
+  const ARH = Math.max(0.2, tHero.ar || 4.6)
+  const ANCHO_PEDIDO = mundoW * (tocaLaMarca ? 0.98 : 1.12)
+  const TECHO_HERO = mundoH * 0.20
+  const ALTO_HERO = Math.min(TECHO_HERO, ANCHO_PEDIDO / ARH)
+  const ANCHO_HERO = ALTO_HERO * ARH
   const heroWrap = new THREE.Group(); heroWrap.position.set(0, -0.90, 0); tipo.add(heroWrap)
   const heroG = new THREE.Group(); heroWrap.add(heroG)
   const mArriba = mitad(tHero, ANCHO_HERO, true); heroG.add(mArriba)
@@ -319,7 +340,7 @@ export function build(ctx) {
   tl.fromTo(anilloGrande.scale, { x: 0.0001, y: 0.0001 }, { x: 1, y: 1, duration: b(0.65), ease: E.llega(2.0) }, b(0.46))
   tl.fromTo(anilloGrande.rotation, { z: 0.7 }, { z: 0, duration: b(0.80), ease: E.frena(3) }, b(0.46))
 
-  tl.fromTo(L2.userData.u.uProg, { value: 0 }, { value: ABIERTO, duration: b(0.30), ease: E.frena(3) }, b(0.52))
+  if (L2) tl.fromTo(L2.userData.u.uProg, { value: 0 }, { value: ABIERTO, duration: b(0.30), ease: E.frena(3) }, b(0.52))
   tl.fromTo(barraUna.scale, { x: 0.0001 }, { x: 1, duration: b(0.36), ease: E.llega(1.9) }, b(0.58))
   tl.fromTo(disco.scale, { x: 0.0001, y: 0.0001 }, { x: 1, y: 1, duration: b(0.42), ease: E.llega(2.7) }, b(0.70))
 
@@ -371,7 +392,7 @@ export function build(ctx) {
   tl.to(barraUna.scale, { x: 0.0001, duration: b(0.26), ease: E.acelera(3) }, b(2.20))
   tl.set(L1.userData.u.uDir, { value: 1 }, b(2.27))
   tl.to(L1.userData.u.uProg, { value: 0, duration: b(0.30), ease: E.acelera(2) }, b(2.28))
-  tl.to(L2.userData.u.uProg, { value: 0, duration: b(0.26), ease: E.acelera(2) }, b(2.36))
+  if (L2) tl.to(L2.userData.u.uProg, { value: 0, duration: b(0.26), ease: E.acelera(2) }, b(2.36))
   tl.to(etiqueta.userData.u.uProg, { value: 0, duration: b(0.24), ease: E.acelera(2) }, b(2.44))
   tl.to(puntos.map(m => m.scale), { x: 0.0001, duration: b(0.18), ease: E.acelera(3), stagger: 0.03 }, b(2.44))
   tl.to(caption.userData.u.uProg, { value: 0, duration: b(0.24), ease: E.acelera(2) }, b(2.52))
