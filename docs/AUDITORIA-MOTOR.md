@@ -82,7 +82,8 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
 
 ## Rompen la pieza (20)
 
-- [ ] **render3d/demo/heroes/portatil.js:142**
+- [x] **render3d/demo/heroes/portatil.js:142**
+  - ✅ **HECHO** — e28eacd — matriz de textura a mano: uRep/uOff apuntando a los Vector2 propios de la textura. Arregla el aplastamiento de 7-19x Y revive el scroll, que animaba un valor que nadie leia.
   - **Síntoma:** La página ENTERA se dibuja dentro de la pantalla de la notebook. El plano mide pw/ph = (ANCHO*0.935)/(ALTO_P*0.90) = 1.6622 de proporción y la textura trae 720/8192 = 0.0879: la página sale APLASTADA 18.9 veces a lo alto (3.6 veces con una tira de 1560). No se lee una sola palabra, es una textura de ruido gris con franjas de color. Y el scroll tampoco existe: los 5 saltos de las líneas 213-220 (`t
   - **Lo dispara:** CUALQUIER página cuya tira supere la pantalla del portátil, o sea todas. Medido sobre los 7 tira.png reales del repo (tools/out/motor/*/tira.png): 4 son 720x8192 (linear, stripe, basecamp, duolingo) y 3 son 720x1560. El shader es propio y NUNCA aplica la matriz de textura: las líneas 123-124 (`tira.
   - **Compuerta:** NINGUNA, y está dicho por qué en render3d/demo/verificar.mjs:87-89: «Los heroes solo leen image.width/height para decidir la composicion, asi que un canvas de 4 px alcanza... lo que se esta probando es la GEOMETRIA de la grilla, no los pixeles». Este
@@ -124,7 +125,8 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** NINGUNA mide el cuerpo resultante. E-ENCAJE (encuadre-check.mjs:140-151) solo comprueba que la malla ENTRE entera; achicar hasta lo ilegible es justamente como encaje consigue que entre, asi que la compuerta se pone MAS verde cuanto peor se ve. Adema
   - `export const encaje = (altoBase, arMax, anchoUtil) => altoBase * arMax > anchoUtil ? anchoUtil / arMax : altoBase`
 
-- [ ] **render3d/demo/escenas/mesa.js:78**
+- [x] **render3d/demo/escenas/mesa.js:78**
+  - ✅ **HECHO** — commit de mesa — se achica el PLANO hasta la proporcion real cuando la imagen es mas corta que la ventana, en vez de clampear `visible` y estirar. Verificado renderizando.
   - **Síntoma:** La imagen sale ESTIRADA A LO ALTO. Medido construyendo la escena (arnes de solo lectura con el bootstrap de encuadre-check): plano 5.96 x 8.89 (ar 0.671) con repeat.y = 1.000, o sea la textura entera metida en una caja de otra proporcion. Tarjeta 1400x845 -> x2.47; captura cuadrada 1200x1200 -> x1.49; banner 1600x400 -> x5.96. Solo una imagen mas alta que 1:1.49 sale sin deformar. Es literalmente 
   - **Lo dispara:** `mesa` construida SIN tira. guion.js:66 la habilita con solo tener elementos (`mesa: (d) => !!d.tira || (d.elementos || []).some(e => e && e.url)`) y motor.py:123-126 declara que una captura de tira fallida NO aborta. Ahi mesa.js:56-59 cae al recorte y `arMapa` pasa a ser el de un recorte. La cuenta
   - **Compuerta:** Ninguna, y por una razon concreta: `tejidoFalso` SIEMPRE inyecta la tira (encuadre-check.mjs:99-101 y verificar.mjs:99-101 hacen `tira.image = { width: 720, height: 6240 }` y `m.set('tira', tira)`), asi que la rama de respaldo de mesa.js:56-59 no se 
@@ -166,7 +168,8 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** No, y la compuerta que existe para esto la mira y la deja pasar. E-ENCAJE (verificar.mjs:315) construye cierre con la marca 'Q' — el caso exacto — pero (a) la malla no declara `userData.encaja`, asi que E-ENCAJE-ENTERO (verificar.mjs:395) no la evalu
   - `marca.scale.setScalar(4.34 / ancho(marca)) // 77% del ancho del cuadro`
 
-- [ ] **render3d/demo/guion.js:266 (y la ausencia de la clave en el objeto de las lineas 28-111)**
+- [x] **render3d/demo/guion.js:266 (y la ausencia de la clave en el objeto de las lineas 28-111)**
+  - ✅ **HECHO** — 8b893f2 — requisito de marquesina agregado (>=2 frases, umbral leido de MIN_FRASES en la escena).
   - **Síntoma:** marquesina.js:37-40 se declara `vacia: true` y main.js no mira ese campo (main.js:480-501 la cuelga igual): la pieza se queda los 6 beats con el fondo y nada mas — 2.90 s a 124 bpm, 4.24 s a 85. Medido con el fixture 404 sobre 180 guiones: entra en 146 y sale vacia en los 146. A 15 s es la unica escena del medio: `gancho > apertura > marquesina > cierre`, o sea entre el 19% y el 28% de la pieza en
   - **Lo dispara:** `marquesina` es la UNICA de las 20 escenas registradas en escenas/index.js que no tiene clave en REQUISITOS, asi que ese `: true` la deja entrar siempre. Ademas esta en SEDIENTAS (guion.js:319) y la primera sedienta entra aunque el pozo no la banque (guion.js:353: `if (sobreviven.size && pide > pozo
   - **Compuerta:** Ninguna. `marquesina` no esta en el CAT de tools/guion-check.mjs:27-34, asi que no aparece en ningun guion del gate, ni en E-GUION-ESCENA-MUERTA (recorre CAT.keys()) ni en E-FAMILIA-DECLARADA (idem). Corri el gate: imprime OK sobre 324 guiones.
@@ -178,7 +181,8 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** Ninguna. `titular` no esta en la copia de requisitos del gate, y aunque estuviera, el gate no carga imagenes: `esLamina` mide pixeles y solo corre en el navegador al construir. No re-medi los PNG — me apoyo en la tabla de medicion que el propio kit.j
   - `titular: (d) => (d.elementos || []).some(e => e && ['foto', 'hero', 'tarjeta'].includes(e.rol)) && (d.frases || []).filter(Boolean).length >= 1,`
 
-- [ ] **render3d/demo/heroes/portatil.js:142**
+- [x] **render3d/demo/heroes/portatil.js:142**
+  - ✅ **HECHO** — e28eacd — matriz de textura a mano: uRep/uOff apuntando a los Vector2 propios de la textura. Arregla el aplastamiento de 7-19x Y revive el scroll, que animaba un valor que nadie leia.
   - **Síntoma:** La pantalla de la notebook muestra la pagina ENTERA aplastada 7 a 10 veces a lo alto: letras anchas y chatas, ruido gris donde tendria que leerse el sitio del cliente. Y el scroll de cinco saltos —que se agrego justamente porque la escena daba 0.072 de movimiento y 61% de cuadros casi quietos, segun su propio comentario— no desplaza nada: anima un valor que el shader nunca lee. Es defecto #1 palab
   - **Lo dispara:** Cualquier pagina con captura movil (`tira`) que elija el hero `portatil` — es el SEGUNDO en el orden de preferencia de heroes/index.js:53 y no tiene restriccion en REGISTRO, o sea que le queda a los 11 aires. La escena hace `tira.repeat.set(1, visible)` y `tira.offset.set(0, 1 - visible)` en portati
   - **Compuerta:** NINGUNA. encuadre-check construye portatil y le mide cajas (no cambia ni un decimal con la textura mal); verificar le comprueba contrato, duracion, camara devuelta, determinismo y quietud, y pasa porque gEq rota y la camara hace dolly. E-SHADER-ENTER
@@ -578,7 +582,8 @@ disponible; sus afirmaciones hay que verificarlas a mano antes de actuar sobre e
 
 ### Lo sostiene, con reparos
 
-- [ ] **El plan trata la falta de clave de `marquesina` en REQUISITOS como la causa del aire muerto (Paso 3). Es una de dieciocho puertas a la misma sala, y la que menos importa. La bandera `vacia` NO LA LEE NADIE EN PRODUCCION. Grep sobre render3d/, tools/ y backend/: `r.vacia` se lee en UN solo lugar, render3d/demo/verificar**
+- [x] **El plan trata la falta de clave de `marquesina` en REQUISITOS como la causa del aire muerto (Paso 3). Es una de dieciocho puertas a la misma sala, y la que menos importa. La bandera `vacia` NO LA LEE NADIE EN PRODUCCION. Grep sobre render3d/, tools/ y backend/: `r.vacia` se lee en UN solo lugar, render3d/demo/verificar**
+  - ✅ **HECHO** — 8b893f2 — confirmado y arreglado: ahora main.js lo lee y saltea la escena sin avanzar el beat.
   - **Por qué cambia la decisión:** Cambia QUE se arregla y en que orden, en las dos direcciones. (1) En el video: arreglar `marquesina` deja las otras diecisiete puertas abiertas. Una linea en main.js que respete `vacia` —saltear o encoger el slot— cierra las dieciocho y es mas barata que la clave de REQUISITOS. (
   - **Corrección:** Antes del Paso 1, dos lineas: (a) que main.js honre `vacia` (saltear la escena o dejar el hueco medido, no reproducirlo); (b) que verificar.mjs:461 deje de `continue`-ar en seco — que registre 'vacia' como resultado auditable y siga midiendo lo que se pueda, o al menos que el barrido de marcas de la
 
@@ -613,7 +618,8 @@ disponible; sus afirmaciones hay que verificarlas a mano antes de actuar sobre e
   - **Por qué cambia la decisión:** El valor entero del paso 1 es ser el criterio de aceptación de las tandas del paso 2. Una compuerta de horas no se corre por tanda: se corre una vez, se rompe, y la migración termina haciéndose sin red — que es el escenario que el plan dice estar evitando. Cambia el diseño del pa
   - **Corrección:** Escribir el barrido como SUMA de ejes y no como producto: se varía un eje por vez con el resto clavado en el fixture (≈20 contenidos x 37 escenas = 740 construcciones ≈ 17 s, que sí entra en las compuertas rápidas), y los ejes aire/semilla se dejan donde ya están, en el pase de 11 aires que corre en
 
-- [ ] **`marquesina` está tercera en la cola y es el arreglo más barato y más grave del documento. Confirmado: REQUISITOS (guion.js:28) tiene 19 claves —apertura, bandera, cierre, cita, columna, contraste, destello, gancho, hero, lista, mesa, pantalla, partida, rafaga, sello, tarjetas, tipografia, titular, toro— y en escenas/ **
+- [x] **`marquesina` está tercera en la cola y es el arreglo más barato y más grave del documento. Confirmado: REQUISITOS (guion.js:28) tiene 19 claves —apertura, bandera, cierre, cita, columna, contraste, destello, gancho, hero, lista, mesa, pantalla, partida, rafaga, sello, tarjetas, tipografia, titular, toro— y en escenas/ **
+  - ✅ **HECHO** — 8b893f2 — hecho como pidio el critico: no solo la clave que falta, sino que main.js HONRE `vacia` (saltear la escena sin avanzar el beat). Cubre las otras cuatro escenas que tambien pueden declararse vacias.
   - **Por qué cambia la decisión:** Es 6 beats de fondo pelado en una pieza de 25 s, disparado por el material y no por el aire: es literalmente «el video salió mal» en la boca del dueño, y es lo que sostiene la impresión de «impredecible» tanto como el encaje. Cuesta una línea y no depende de nada del paso 1 ni de
   - **Corrección:** Subirlo al paso 0, junto con los cinco `else if`. Y hacerlo de la forma que impide la recaída: que el consumidor HONRE `vacia` (descartar la escena y replanificar) en vez de agregar sólo la clave que falta en REQUISITOS. Hoy hay dos fuentes de verdad —el requisito y la guarda de la escena— y ya dive
 
