@@ -4,8 +4,9 @@
 // usuario elige "telefono" o "vitrina" y la pieza sigue teniendo la misma cantidad de escenas y la
 // misma duracion. Si el hero pedido no se puede armar con el material que la pagina dio, cae al
 // primero que si — nunca dibuja el objeto vacio.
-import { b, E, LOOK, hex, MOB } from '../kit.js'
+import { b, E, LOOK, hex, MOB, texto, materialMascara, nivel, encaje, finMascara } from '../kit.js'
 import { HEROES, porId, elegibles } from '../heroes/index.js'
+import { D, repartirFrases } from '../datos.js'
 
 export const meta = { id: 'hero', beats: 8 }
 
@@ -44,6 +45,7 @@ export function build(ctx) {
   }
   const r = elegido.build(ctx)
   ambiente(ctx, r)
+  rotular(ctx, r, elegido)
   // LA ESCENA MANDA EL LARGO, no el hero. `meta.beats` de la escena lo lee el secuenciador ANTES de
   // construir, asi que un hero mas corto o mas largo pisaria a la escena siguiente. Se reescala su
   // timeline al hueco disponible: un hero de 6 beats puesto en 8 se estira un 33%, que en un gesto de
@@ -52,6 +54,55 @@ export function build(ctx) {
   const suyo = r.tl.duration()
   if (suyo > 0.01 && Math.abs(suyo - largo) > 0.01) r.tl.timeScale(suyo / largo)
   return { g: r.g, gr: r.gr, tl: r.tl, heroUsado: elegido.meta.id }
+}
+
+// ---------------------------------------------------------------- ROTULO
+// UN OBJETO QUE NO DICE NADA NECESITA QUE ALGUIEN DIGA ALGO.
+//
+// Esta escena delega en el hero y no componia nada por su cuenta. Para los seis que muestran LA
+// PAGINA del cliente eso es correcto: el contenido es la pagina, y ponerle texto encima seria taparla.
+// Para los de geometria pura no: la pieza se queda casi cuatro segundos con un objeto girando y ni una
+// palabra. Thiago, sobre la columnata: "no hace nada, se mueven y suben y bajan esos pilares blancos
+// pero no se muestra texto, no tiene sentido esa escena".
+//
+// La frase sale del MOSTRADOR, no de un texto propio: es una de las que la pagina dijo, y el mostrador
+// se encarga de que ninguna otra escena la repita. Si la pagina no dio ninguna, no hay rotulo — un
+// objeto sin texto es peor que un objeto, pero un texto inventado es peor que las dos cosas.
+function rotular(ctx, r, elegido) {
+  const { THREE, gsap, mundoW, mundoH } = ctx
+  // Solo los abstractos. `necesita: ['nada']` es exactamente la marca de "no muestra la pagina".
+  const nec = elegido.meta.necesita || ['nada']
+  if (!nec.every(n => n === 'nada')) return
+  const fr = (repartirFrases(1) || [])[0]
+  const linea = String(fr || '').split(String.fromCharCode(10)).join(' ').trim()
+  if (!linea) return
+
+  const g = new THREE.Group()
+  r.g.add(g)
+  const ANCHO = mundoW * 0.80
+  const t = texto(linea, { fuente: 'DMSans', peso: 700, size: 130, tracking: 0.01, upper: true })
+  const ALTO = encaje(mundoH * 0.040, t.ar, ANCHO)
+  const mat = materialMascara(t.tex, nivel(0.90))
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(ALTO * t.ar, ALTO), mat)
+  // Abajo y a la izquierda, fuera del eje donde vive el objeto: el rotulo acompaña, no compite.
+  m.position.set(-mundoW * 0.40 + (ALTO * t.ar) / 2, -mundoH * 0.355, 0.6)
+  m.userData.encaja = true
+  g.add(m)
+
+  const filete = new THREE.Mesh(new THREE.PlaneGeometry(ANCHO, mundoH * 0.0042),
+    new THREE.MeshBasicMaterial({ color: hex(LOOK.acento), toneMapped: false, transparent: true }))
+  filete.geometry.translate(ANCHO / 2, 0, 0)
+  filete.position.set(-mundoW * 0.40, -mundoH * 0.385, 0.6)
+  filete.scale.x = 0.0001
+  g.add(filete)
+
+  const tl = r.tl
+  const FIN = finMascara()
+  tl.fromTo(filete.scale, { x: 0.0001 }, { x: 1, duration: b(0.5), ease: E.frena(4), immediateRender: false }, b(1.1))
+  tl.fromTo(mat.uniforms.uProg, { value: 0 }, { value: FIN, duration: b(0.62), ease: E.frena(3), immediateRender: false }, b(1.35))
+  const DUR = tl.duration()
+  tl.to(mat.uniforms.uProg, { value: 0, duration: b(0.34), ease: E.acelera(2) }, DUR - b(0.62))
+  tl.to(filete.scale, { x: 0.0001, duration: b(0.30), ease: E.acelera(3) }, DUR - b(0.52))
 }
 
 // ---------------------------------------------------------------- AMBIENTE
