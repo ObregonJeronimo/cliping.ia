@@ -126,10 +126,29 @@ export function build(ctx) {
     const pw = ANCHO * 0.935, ph = ALTO_P * 0.90
     const matP = new THREE.ShaderMaterial({
       transparent: true, depthWrite: false, side: THREE.DoubleSide,
-      uniforms: { map: { value: tira }, uR: { value: 0.006 }, uAR: { value: pw / ph }, uRevela: { value: 0 } },
+      // LA MATRIZ DE TEXTURA, A MANO — Y ES EL MISMO DEFECTO QUE COSTO LA ESCENA `pantalla`.
+      //
+      // Este es un ShaderMaterial escrito a mano. Los materiales que trae three aplican `repeat` y
+      // `offset` en su vertex shader; uno propio NO los aplica salvo que uno los escriba. Arriba, en
+      // las lineas 123-124, se le pide a la tira que muestre una VENTANA (repeat.y = visible) y desde
+      // que altura (offset.y). El shader muestreaba `vUv` pelado, asi que esa ventana no existia: la
+      // pagina ENTERA —hasta 8192 px— se dibujaba dentro de la pantalla de la notebook, aplastada
+      // entre 7 y 19 veces a lo alto. Letras anchas y chatas, ruido gris donde tendria que leerse el
+      // sitio del cliente. Medido sobre las siete tira.png reales del repo: pasa con TODAS.
+      //
+      // Y peor: el tween de la linea 218 anima `tira.offset.y` para hacer el scroll. Ese valor no
+      // llegaba a ningun lado. El portatil es el hero numero 2 en orden de preferencia y no tiene
+      // restriccion de aire, asi que salia seguido, siempre roto y sin que nada lo dijera.
+      //
+      // Se apunta a los Vector2 PROPIOS de la textura, no a copias: three sube el valor que encuentra
+      // en el uniform en cada render, asi que compartir el objeto hace que el tween del scroll llegue
+      // solo, sin gancho y sin un orden que haya que recordar. Es la misma solucion que se uso en
+      // `materialMascara` cuando aparecio este defecto la primera vez.
+      uniforms: { map: { value: tira }, uR: { value: 0.006 }, uAR: { value: pw / ph }, uRevela: { value: 0 },
+        uRep: { value: tira.repeat }, uOff: { value: tira.offset } },
       vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
       fragmentShader: `
-        uniform sampler2D map; uniform float uR, uAR, uRevela; varying vec2 vUv;
+        uniform sampler2D map; uniform float uR, uAR, uRevela; uniform vec2 uRep, uOff; varying vec2 vUv;
         float rr(vec2 p, vec2 h, float r){ vec2 d = abs(p) - h + vec2(r); return length(max(d,0.0)) + min(max(d.x,d.y),0.0) - r; }
         void main(){
           vec2 p = vec2(vUv.x - 0.5, (vUv.y - 0.5) / uAR);
@@ -139,7 +158,7 @@ export function build(ctx) {
           // el contenido parezca consecuencia de la apertura y no una textura que aparecio de golpe.
           a *= smoothstep(uRevela - 0.14, uRevela + 0.02, vUv.y) * 0.0 + smoothstep(1.0 - uRevela - 0.12, 1.0 - uRevela + 0.06, 1.0 - vUv.y);
           if (a < 0.004) discard;
-          vec3 c = texture2D(map, vUv).rgb;
+          vec3 c = texture2D(map, vUv * uRep + uOff).rgb;
           // brillo de vidrio en diagonal + filo interno, recortados por el mismo SDF
           c += vec3(0.5, 0.56, 0.7) * smoothstep(0.5, 0.0, abs((vUv.x * 0.8 + vUv.y * 1.1) - 1.25)) * 0.05;
           c += vec3(0.4, 0.44, 0.54) * smoothstep(-0.009, -0.001, dist) * 0.5;
