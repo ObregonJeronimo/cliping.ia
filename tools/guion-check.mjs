@@ -30,7 +30,7 @@ const CAT = new Map([
   ['rafaga', { beats: 6 }], ['pantalla', { beats: 6 }], ['columna', { beats: 6 }],
   ['cita', { beats: 6 }], ['lista', { beats: 6 }], ['titular', { beats: 6 }],
   ['partida', { beats: 6 }], ['contraste', { beats: 6 }], ['sello', { beats: 6 }],
-  ['cierre', { beats: 6 }], ['mesa', { beats: 6 }],
+  ['cierre', { beats: 6 }], ['mesa', { beats: 6 }], ['bandera', { beats: 6 }],
 ])
 
 const PAGINAS = {
@@ -116,7 +116,12 @@ for (const [nomPag, datos] of Object.entries(PAGINAS)) {
           }
         }
 
-        if (plan[0] !== 'apertura' || plan[plan.length - 1] !== 'cierre') {
+        // ABRE UNA ESCENA DE ENTRADA, NO NECESARIAMENTE `apertura`. Hay tres que estan compuestas para
+        // ser el primer cuadro: el gancho (la promesa), la apertura (el panel de marca) y la bandera
+        // (el campo de color con el nombre calado). Cualquiera de las tres abre; una escena del medio,
+        // no — un reel que empieza por una lista no abrio, empezo a la mitad.
+        const ENTRADAS = new Set(['apertura', 'bandera', 'gancho'])
+        if (!ENTRADAS.has(plan[0]) || plan[plan.length - 1] !== 'cierre') {
           F('E-GUION-MARCO', `${etiq}: la pieza empieza con "${plan[0]}" y termina con "${plan[plan.length - 1]}"`)
         }
 
@@ -263,7 +268,9 @@ for (const [nomPag, datos] of Object.entries(PAGINAS)) {
 // escrita a mano al lado de un catalogo que crece se desactualiza sin avisar. Acá se avisa.
 const FAM = familiasDe()
 for (const id of CAT.keys()) {
-  if (id === 'apertura' || id === 'cierre') continue     // las fijas no entran al sorteo
+  // Las fijas no entran al sorteo del medio, asi que no compiten por adyacencia: 'gancho' y las dos
+  // aperturas ('apertura', 'bandera') van en posicion fija y 'cierre' cierra.
+  if (id === 'apertura' || id === 'bandera' || id === 'cierre' || id === 'gancho') continue
   if (!FAM[id]) fallos.push(`E-FAMILIA-DECLARADA  la escena "${id}" no declara familia en guion.js: queda fuera del reparto y puede caer pegada a otra que diga lo mismo`)
 }
 

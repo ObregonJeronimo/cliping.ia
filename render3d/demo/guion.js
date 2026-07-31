@@ -31,6 +31,10 @@ const REQUISITOS = {
   gancho: (d) => !!String(d.claim || '').trim(),
   // La apertura sólo necesita el nombre. Toda página tiene uno.
   apertura: (d) => !!d.marca,
+  // La bandera tampoco pide mas: el nombre calado sobre el color de la marca. El dominio es opcional
+  // —si no esta, la escena compone sin pie— porque exigirlo la volveria mas dificil de armar que la
+  // apertura, y las dos tienen que poder abrir cualquier pieza o la eleccion por semilla se sesga.
+  bandera: (d) => !!d.marca,
   // El hero cae a geometría pura si no hay material: siempre se puede armar.
   hero: () => true,
   // CUATRO ES EL MINIMO PARA ELEGIRLA, PERO LA ESCENA COREOGRAFIA SIETE, y esa diferencia es un
@@ -272,13 +276,23 @@ export function guionDe({ escenas, datos, seed = 1, beatSeg = 60 / 124, dur = nu
   let s = ((seed >>> 0) || 1) * 2654435761 >>> 0
   s = (s ^ (s >>> 15)) >>> 0
   const rnd = () => { s = (s * 1664525 + 1013904223) >>> 0; return ((s ^ (s >>> 16)) >>> 0) / 4294967296 }
+  // UN SORTEO APARTE PARA LAS DECISIONES QUE NO SON DEL MEDIO.
+  //
+  // Elegir la apertura con `rnd()` corre el flujo entero y cambia QUE escenas entran para toda semilla.
+  // No es que este mal en si —seguiria siendo determinista— pero destapo una combinacion que el
+  // reordenador por familia no sabe resolver, y de paso invalida cualquier semilla que alguien haya
+  // guardado. Una decision que no participa del reparto del medio no tiene por que moverlo: se saca de
+  // un generador propio, sembrado con la misma semilla y otra constante.
+  let s2 = ((seed >>> 0) || 1) * 2246822519 >>> 0
+  s2 = (s2 ^ (s2 >>> 13)) >>> 0
+  const rndFijas = () => { s2 = (s2 * 1664525 + 1013904223) >>> 0; return ((s2 ^ (s2 >>> 16)) >>> 0) / 4294967296 }
 
   // Se barajan las escenas REGISTRADAS menos las fijas: asi una escena nueva entra al sorteo el dia
   // que se registra, sin que nadie tenga que acordarse de agregarla a una lista.
   // LAS FIJAS NO ENTRAN AL SORTEO DEL MEDIO. Agregue `gancho` a las fijas y me olvide de esta linea: en
   // el primer render salio DOS VECES, al principio y a los 19 segundos, diciendo la misma promesa. Una
   // escena fija que ademas es candidata se duplica sola.
-  const FIJAS = new Set(['apertura', 'cierre', 'gancho'])
+  const FIJAS = new Set(['apertura', 'bandera', 'cierre', 'gancho'])
   const candidatas = [...escenas.keys()].filter(id => !FIJAS.has(id) && !DORMIDAS.has(id))
   const orden = barajar(candidatas, rnd)
 
@@ -304,9 +318,20 @@ export function guionDe({ escenas, datos, seed = 1, beatSeg = 60 / 124, dur = nu
   // frases de las que la pagina dio.
   const SEDIENTAS = ['tipografia', 'lista', 'partida', 'rafaga', 'marquesina']
   const nFr = (d.frases || []).filter(Boolean).length
-  // Cuantas frases pide cada una: tipografia 3, lista 3, partida 2, rafaga 3. El cupo sale de cuantas
-  // hay para repartir sin que ninguna tenga que dar la vuelta al pozo.
-  const cupo = nFr >= 9 ? 3 : nFr >= 5 ? 2 : 1
+  // CUANTAS ENTRAN SALE DEL APETITO DE CADA UNA, NO DE UN ESCALON.
+  //
+  // Cada sedienta bebe una cantidad distinta del mismo pozo: partida 2, tipografia 3, lista 3, rafaga 3
+  // y marquesina 4. El cupo era un escalon plano sobre el total de frases (1 / 2 / 3), y un escalon
+  // trata igual a la que pide 2 y a la que pide 4: con ocho frases dejaba entrar DOS —digamos partida y
+  // lista, cinco frases— y sobraban tres sin usar, suficientes para una tercera. Al reves nunca fallaba
+  // por exceso, fallaba por desperdicio.
+  //
+  // Ahora se llena hasta donde alcance: se van sumando apetitos y entra la siguiente solo si el pozo la
+  // banca entera. Con las cuatro o cinco frases que da una landing real el resultado es el mismo que
+  // antes —una o dos escenas—, y eso NO es un defecto del reparto: es que la pagina no dio mas texto.
+  // Subir el cupo ahi seria hacer que dos escenas se peleen las mismas frases, que es exactamente el
+  // defecto que este bloque existe para evitar.
+  const APETITO = { partida: 2, tipografia: 3, lista: 3, rafaga: 3, marquesina: 4 }
   // Y SE ROTA CON LA SEMILLA, no se corta por prioridad fija. El `slice(0, cupo)` hacia ganar SIEMPRE a
   // `tipografia`, asi que `lista` y `partida` quedaban inalcanzables en toda la franja de 3 a 7 frases —
   // que es justo donde caen las paginas reales. Medido con la compuerta nueva: aparecian en el 0.0% de
@@ -319,7 +344,16 @@ export function guionDe({ escenas, datos, seed = 1, beatSeg = 60 / 124, dur = nu
   const sobreviven = new Set()
   if (califican.length) {
     const desde = Math.floor(rnd() * califican.length) % califican.length
-    for (let i = 0; i < Math.min(cupo, califican.length); i++) sobreviven.add(califican[(desde + i) % califican.length])
+    let pozo = nFr
+    for (let i = 0; i < califican.length; i++) {
+      const id = califican[(desde + i) % califican.length]
+      const pide = APETITO[id] || 3
+      // La primera entra aunque el pozo quede corto: una pagina con dos frases igual merece su escena
+      // de texto, servida con lo que hay. A partir de la segunda se exige que el pozo la banque entera.
+      if (sobreviven.size && pide > pozo) continue
+      sobreviven.add(id)
+      pozo -= pide
+    }
   }
   const medio = orden.filter(puede).filter(id => !SEDIENTAS.includes(id) || sobreviven.has(id))
 
@@ -344,13 +378,19 @@ export function guionDe({ escenas, datos, seed = 1, beatSeg = 60 / 124, dur = nu
   // una pieza que nunca dice de quien es no es una pieza de marca, es un fondo de pantalla animado.
   // Como la decision se toma antes de repartir el presupuesto, los beats que libera se los queda el
   // medio — o sea que sacarla no acorta la pieza, la llena con otra cosa.
-  const fijas = ['gancho', 'apertura', 'cierre'].filter(puede)
+  // QUIEN ABRE: `apertura` o `bandera`, por semilla. Las dos hacen el mismo trabajo —decir de quien es
+  // la pieza— y componen al reves: la apertura es un panel de instrumentos (marco, rotulo, contadores,
+  // HUD) y la bandera es un campo de color a sangre con el nombre calado y nada mas. Hacerla opcional
+  // bajo la apertura del 100% al 74%, pero ese 74% seguia siendo la misma imagen; con dos, el unico
+  // cuadro que todo video tenia garantizado queda partido en dos.
+  const abre = (puede('bandera') && rndFijas() < 0.5) ? 'bandera' : 'apertura'
+  const fijas = ['gancho', abre, 'cierre'].filter(puede)
   // Y SOLO SI HAY GANCHO. Sin apertura y sin gancho la pieza arranca por una escena del medio: la
   // compuerta E-GUION-MARCO lo caza —"empieza con lista y termina con cierre"— y tiene razon, un reel
   // que abre por una lista no abrio, empezo a la mitad. El gancho es el unico que puede reemplazar a la
   // apertura como entrada porque es el unico que tambien esta compuesto para ser el primer cuadro.
-  const sinApertura = fijas.includes('apertura') && fijas.includes('gancho') && rnd() < 0.34
-  const beatsFijos = fijas.reduce((n, id) => n + (id === 'apertura' && sinApertura ? 0 : beatsDe(id)), 0)
+  const sinApertura = fijas.includes(abre) && fijas.includes('gancho') && rndFijas() < 0.34
+  const beatsFijos = fijas.reduce((n, id) => n + (id === abre && sinApertura ? 0 : beatsDe(id)), 0)
   const objetivo = dur ? Math.round(dur / beatSeg) : Infinity
   // Un beat de tolerancia. Sin ella, pidiendo 15 s salian 13.5: la ultima escena que entraba se
   // pasaba por medio beat y se descartaba entera, dejando un segundo y medio de nada. Pasarse un beat
@@ -437,7 +477,7 @@ export function guionDe({ escenas, datos, seed = 1, beatSeg = 60 / 124, dur = nu
   // La marca tiene que quedar dicha en algun lado. `sello` y `destello` la nombran; si ninguna de las
   // dos entro al medio, la apertura se queda aunque la semilla haya pedido sacarla.
   const otraDeMarca = plan.some(id => id === 'sello' || id === 'destello')
-  const ini = (fijas.includes('apertura') && (!sinApertura || !otraDeMarca)) ? ['apertura'] : []
+  const ini = (fijas.includes(abre) && (!sinApertura || !otraDeMarca)) ? [abre] : []
   const hook = fijas.includes('gancho') ? ['gancho'] : []
   return [...hook, ...ini, ...plan, ...fin]
 }
