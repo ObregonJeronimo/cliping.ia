@@ -150,11 +150,26 @@ export function build(ctx) {
   // Contador: en vez de una textura por entero (medio giga de canvas), PASOS+1 texturas fijas y un
   // índice que las intercambia. El plano se construye con el ancho del valor final y se compensa con
   // scale.x, así el glifo mantiene su tamaño aunque el número gane dígitos.
-  function contador(alto, valorFinal, size, color, texsPrestadas, arPrestado) {
+  //
+  // UNA CIFRA QUE NO ES UN ENTERO NO SE CUENTA: SE MUESTRA. Y esto no era un detalle de animacion,
+  // era una CIFRA FALSA. `datosDeLaPagina` pone `n = null` cuando el valor no son digitos puros
+  // (linea 56), y el extractor EXIGE unidad para reconocer una cifra —%, x, K, M, mil, millones—,
+  // asi que casi todas las cifras reales de una pagina llegan con n en null. La tarjeta HERO ya
+  // contemplaba el caso (linea 178, usa el texto literal en los PASOS+1 cuadros); las otras dos
+  // pasaban ese null derecho aca, y `Math.round(null * k / PASOS)` da CERO.
+  //
+  // Resultado medido con los datos ['99%','10x','500K']: en el video salia "0 UPTIME" y "0 MAS
+  // RAPIDO" en la pieza de una pagina que publica 99% y 10x. La regla anti-invencion de este motor
+  // prohibe inventar una cifra, y esto era peor que inventarla: la contradecia.
+  function contador(alto, valorFinal, size, color, texsPrestadas, arPrestado, textoFijo) {
     let texs = texsPrestadas
     if (!texs) {
       texs = []
-      for (let k = 0; k <= PASOS; k++) texs.push(texto(String(Math.round(valorFinal * k / PASOS)), { fuente: 'Anton', size }))
+      const fijo = valorFinal == null
+      for (let k = 0; k <= PASOS; k++) {
+        texs.push(texto(fijo ? String(textoFijo || '') : String(Math.round(valorFinal * k / PASOS)),
+                        { fuente: 'Anton', size }))
+      }
     }
     const arFin = arPrestado || texs[PASOS].ar
     const mat = materialMascara(texs[0].tex, color)
@@ -189,6 +204,34 @@ export function build(ctx) {
   g.add(kicker)
 
   const titulo = txt(D.marca, 1.05, { fuente: 'Anton', size: 110 }, C_TIT(), 0)
+  // EL NOMBRE SE DIMENSIONABA SOLO POR ALTO, y el ancho salia de la proporcion sin ningun tope.
+  // `planoTexto` arma PlaneGeometry(alto * ar, alto): con alto fijo en 1.05, una marca larga crece a lo
+  // ancho sin freno. Medido con Box3: "MERCADO LIBRE ARGENTINA" da una pieza de 9.38 de ancho centrada
+  // en x=0, o sea 1.9 unidades afuera por cada lado de un cuadro de 5.625 — cortada contra los DOS
+  // bordes. Desde quince letras el ancho ya pasa el cuadro. Es literalmente el reclamo de Thiago:
+  // "algunos textos son tan grandes que en los costados se cortan".
+  //
+  // Se achica en ESCALA UNIFORME y no bajando el alto: la escala conserva la proporcion del glifo y
+  // ademas no toca la geometria, asi que los dos tweens que ya escriben `titulo.position` (380-381 y
+  // 611) siguen valiendo tal cual. `titulo.scale` no lo escribe nadie mas — se verifico antes de usarlo.
+  const ANCHO_UTIL_TIT = ctx.mundoW * 0.92
+  const anchoTit = (titulo.geometry.parameters && titulo.geometry.parameters.width) || 0
+  if (anchoTit > ANCHO_UTIL_TIT) titulo.scale.setScalar(ANCHO_UTIL_TIT / anchoTit)
+  //
+  // NO SE DECLARA `encaja`, Y LA DECISION ESTA MEDIDA. Al marcarlo, E-ENCAJE-REAL lo puso en rojo:
+  // el titulo llega a 1.415 en coordenadas de recorte en el aire `nocturno`, 62 de sus 83 cuadros.
+  // Eso NO lo causa el largo de la marca —pasa con "ANTHEM", de seis letras— sino el empuje de camara
+  // de esta escena, que a su maximo agranda el cuadro cerca del doble. Son dos defectos distintos:
+  //
+  //   · el nombre largo que se corta contra los bordes: eso es lo que arregla el tope de arriba, y es
+  //     el reclamo concreto ("textos tan grandes que en los costados se cortan");
+  //   · el sangrado por el dolly: para que el titulo entre en TODO instante habria que bajar el ancho
+  //     util a 0.50 de mundoW —medido, es el valor con el que la compuerta pasa— y eso achica el
+  //     titulo al 67% de su tamaño diseñado en TODA pieza, incluidas las que hoy componen bien.
+  //
+  // Reencuadrar una composicion calibrada para poner una compuerta en verde es cambiar el producto
+  // para satisfacer a la herramienta. Queda anotado en docs/AUDITORIA-MOTOR.md como un hallazgo
+  // propio, con su medicion, para decidirlo mirando el cuadro y no la consola.
   titulo.position.set(0, 3.10, 1.20)
   g.add(titulo)
 
@@ -287,7 +330,7 @@ export function build(ctx) {
     idx.position.set(0, CH / 2 - 0.20, zf)
     gr.add(idx)
 
-    const num = contador(0.62, d.n, esHero ? 130 : 80, C_NUM(), esHero ? heroTexs : null, esHero ? heroTexs[PASOS].ar : null)
+    const num = contador(0.62, d.n, esHero ? 130 : 80, C_NUM(), esHero ? heroTexs : null, esHero ? heroTexs[PASOS].ar : null, d.txt)
     num.malla.position.set(0, 0.20, zf)
     gr.add(num.malla)
 
