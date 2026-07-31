@@ -455,7 +455,7 @@ export const MARCOS = ['nada', 'escuadras', 'cantoneras', 'reglas', 'passepartou
 // Nueve formas de cortar. 'iris' es la unica RADIAL —las otras ocho son rectas o de color— y
 // 'tajo' la unica que parte el cuadro en dos mitades que se van para lados opuestos.
 export const MONTAJES = ['corte', 'flash', 'barrido', 'empuje', 'empujeV', 'golpe', 'persiana',
-                         'iris', 'tajo']
+                         'iris', 'tajo', 'atraviesa']
 
 // El margen tambien es del aire. Era la razon MAS PROFUNDA de que todo se pareciera: el rectangulo
 // invisible al que se alinea el contenido estaba escrito a mano en diez escenas, y las diez habian

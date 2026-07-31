@@ -15,7 +15,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js'
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js'
-import { BEAT, b, LOOK, CLARO, AIRE, hex, mulberry32, fondoVivo, configurar, MONTAJES, reiniciarRecortes } from './kit.js'
+import { BEAT, b, LOOK, CLARO, AIRE, MOB, hex, mulberry32, fondoVivo, configurar, MONTAJES, reiniciarRecortes } from './kit.js'
 import { configurarDatos, reiniciarReparto } from './datos.js'
 import { personalizar } from './adn.js'
 import { ESCENAS } from './escenas/index.js'
@@ -60,12 +60,14 @@ const Pelicula = {
     //            lee como que la camara se movio; con el, como que algo estallo.
     uGolpe: { value: 0 }, uPersiana: { value: 0 }, uEstela: { value: 0 },
     uIris: { value: 0 }, uTajo: { value: 0 },
+    uProgreso: { value: 0 }, uBarra: { value: 0 },
     uTinteTr: { value: new THREE.Color('#5b6cff') },
   },
   vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
   fragmentShader: `
     uniform sampler2D tDiffuse; uniform float uT, uGrano, uVinieta, uAberr, uFlash;
-    uniform float uEmpuje, uEmpujeY, uBarrido, uAnchoBar, uGolpe, uPersiana, uEstela, uIris, uTajo; uniform vec3 uTinteTr;
+    uniform float uEmpuje, uEmpujeY, uBarrido, uAnchoBar, uGolpe, uPersiana, uEstela, uIris, uTajo;
+      uniform float uProgreso, uBarra; uniform vec3 uTinteTr;
     uniform float uVinForma, uVinAsp; uniform vec2 uVinCentro;
     uniform vec2 uRes; varying vec2 vUv;
     float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898,78.233)))*43758.5453); }
@@ -176,6 +178,18 @@ const Pelicula = {
       // FLASH: dos o tres frames de blanco sobre el corte. Es lo que hace que un corte seco se lea
       // como decisión de montaje en vez de como un salto.
       col.rgb = mix(col.rgb, vec3(1.0), uFlash);
+      // BARRA DE PROGRESO DE LA PIEZA. Va en el compositor y no en el mueble de marco porque una escena no
+      // sabe cuanto dura la pieza ni en que momento de ella esta: cada una tiene su timeline propia y
+      // aislada. El progreso es un dato de la PIEZA, y el unico que lo tiene es este pase.
+      //
+      // Y es una linea, no una barra: sobre un cuadro de 1080x1920 en el que ya compiten marco, HUD y
+      // tipografia, un elemento nuevo que pida atencion compite con el mensaje. Lo que retiene no es
+      // que la barra se vea, es que se COMPLETE — alcanza con que este.
+      if (uBarra > 0.001) {
+        float y = smoothstep(0.0, 0.0035, vUv.y) * (1.0 - smoothstep(0.0035, 0.007, vUv.y));
+        float x = step(vUv.x, uProgreso);
+        col.rgb = mix(col.rgb, uTinteTr, y * x * uBarra);
+      }
       gl_FragColor = col;
     }`,
 }
@@ -260,6 +274,10 @@ export class Anthem {
     const u = this.pelicula.uniforms
     if (pel.grano != null) u.uGrano.value = pel.grano
     if (pel.vinieta != null) u.uVinieta.value = pel.vinieta
+    // LA BARRA LA DECIDE EL AIRE. Un aire que eligio no tener marco tampoco quiere una linea de
+    // sistema cruzandole el pie: `barra` viaja con el resto del tratamiento de pelicula y su default
+    // es 0.55 —presente pero por debajo del acento—, salvo que el aire diga otra cosa.
+    u.uBarra.value = pel.barra != null ? pel.barra : (MOB.marco === 'nada' ? 0 : 0.55)
     if (pel.aberr != null) u.uAberr.value = pel.aberr
     if (pel.vinietaForma != null) u.uVinForma.value = pel.vinietaForma
     if (pel.vinietaCentro) u.uVinCentro.value.set(pel.vinietaCentro[0], pel.vinietaCentro[1])
@@ -577,6 +595,30 @@ export class Anthem {
         const dp = b(0.30)
         this.tl.fromTo(this.pelicula.uniforms.uPersiana, { value: 0 }, { value: 1, duration: dp, ease: 'power2.in', immediateRender: false }, e.t0 - dp)
         this.tl.fromTo(this.pelicula.uniforms.uPersiana, { value: 1 }, { value: 0, duration: dp, ease: 'power2.out', immediateRender: false }, e.t0)
+      } else if (tipo === 'atraviesa') {
+        // ZOOM-THROUGH, Y NO ES UN GOLPE MAS GRANDE.
+        //
+        // El gesto pedido es que la camara atraviese la geometria de la escena que sale y salga del
+        // otro lado en la que entra, para que la pieza se lea como un plano secuencia. Hecho con
+        // camaras de verdad exige que una escena TERMINE con la camara adentro del objeto y que la
+        // siguiente ARRANQUE ahi: acopla dos escenas que hoy son independientes y rompe el contrato
+        // que verifica la compuerta en las 31 —cada escena devuelve la camara a su marca—. Ese
+        // invariante es lo que permite reescribir una escena sin tocar ninguna otra, y no se cambia
+        // por una transicion.
+        //
+        // Se resuelve entero en el pase de post, que es donde ya viven las otras ocho. La saliente se
+        // agranda hasta tragarse el cuadro y la entrante NACE agrandada y se acomoda: el ojo lee un
+        // solo movimiento continuo que cruza el corte. La estela radial es lo que lo vuelve un
+        // atravesar en vez de dos zooms pegados — sin ella se ven las dos escalas por separado.
+        //
+        // Es el corte mas largo del repertorio (0.44 de beat contra 0.26 del tajo) porque es el unico
+        // que tiene que leerse como CONTINUO: un gesto continuo necesita tiempo para que el ojo lo
+        // integre, al reves que un golpe, que necesita no tenerlo.
+        const da = b(0.44)
+        this.tl.fromTo(this.pelicula.uniforms.uGolpe, { value: 0 }, { value: 1.75, duration: da, ease: 'power4.in', immediateRender: false }, e.t0 - da)
+        this.tl.fromTo(this.pelicula.uniforms.uGolpe, { value: 1.75 }, { value: 0, duration: da * 1.15, ease: 'power3.out', immediateRender: false }, e.t0)
+        this.tl.fromTo(this.pelicula.uniforms.uEstela, { value: 0 }, { value: 1, duration: da, ease: 'power3.in', immediateRender: false }, e.t0 - da)
+        this.tl.to(this.pelicula.uniforms.uEstela, { value: 0, duration: da * 0.8, ease: 'power2.out' }, e.t0)
       } else if (tipo === 'iris') {
         // OBTURADOR CIRCULAR. Cierra sobre el centro y abre en el cuadro siguiente. Va un pelo mas
         // lento que la persiana —0.34 contra 0.30— porque un circulo que se cierra recorre mas camino
@@ -629,6 +671,12 @@ export class Anthem {
     const esc = (this.ajuste && this.ajuste.escala) || 1
     const tt = Math.max(0, Math.min(this.dur, t)) * esc
     this.tl.time(tt, false)
+    // EL PROGRESO DE LA PIEZA SE ESCRIBE ACA Y NO EN UNA TIMELINE. Es una funcion pura del tiempo de
+    // archivo, asi que atarlo a un tween seria darle historia a algo que no la tiene — y este motor
+    // ya se comio ese defecto: un valor leido de un uniform animado dependia de cuantas veces se
+    // habia renderizado la timeline, y la misma escena daba dos cuadros distintos para el mismo
+    // instante. Escrito desde el tiempo, no hay forma de que se desincronice.
+    this.pelicula.uniforms.uProgreso.value = this.dur > 0 ? Math.max(0, Math.min(1, t / this.dur)) : 0
     // Prender/apagar por ventana: una escena que sigue en la escena 3D consumiendo draw calls y
     // asomando un borde detrás de la siguiente es el defecto más difícil de encontrar mirando.
     for (const e of this.escenas) {

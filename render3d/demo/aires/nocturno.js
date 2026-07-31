@@ -111,6 +111,6 @@ export default {
   // COMO CORTA ESTE AIRE: club: el flash ES la luz estroboscopica del rubro, y el empuje vertical lo baja al
   // formato en el que se mira.
   // idem deportivo, en el aire de mas contraste del catalogo.
-  transiciones: ['corte', 'flash', 'empujeV', 'golpe', 'flash', 'empuje', 'tajo'],
+  transiciones: ['corte', 'flash', 'empujeV', 'golpe', 'flash', 'empuje', 'tajo', 'atraviesa'],
 
 }

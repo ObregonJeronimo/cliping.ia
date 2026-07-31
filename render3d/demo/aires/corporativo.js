@@ -100,6 +100,6 @@ export default {
   mobiliario: { fondo: 'circuito', fondos: ['circuito', 'fuga', 'puntos'], marco: 'reglas', marcos: ['reglas', 'escuadras', 'escalimetro'], hud: true, fondoForma: 0.65 },   // la caja de un informe impreso, abierta a los lados
   // COMO CORTA ESTE AIRE: sobrio: casi todo corte duro, y cuando adorna lo hace con la banda y no con un golpe.
   // la persiana es un mecanismo ordenado, que es exactamente lo que este aire dice.
-  transiciones: ['corte', 'corte', 'barrido', 'persiana', 'corte', 'empuje'],
+  transiciones: ['corte', 'corte', 'barrido', 'persiana', 'corte', 'empuje', 'atraviesa'],
 
 }

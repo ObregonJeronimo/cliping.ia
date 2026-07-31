@@ -61,6 +61,6 @@ export default {
   mobiliario: { fondo: 'fuga', fondos: ['fuga', 'circuito', 'topografia'], marco: 'escuadras', marcos: ['escuadras', 'ticks', 'escalimetro'], hud: true },   // la linea de base de ANTHEM: no se toca
   // COMO CORTA ESTE AIRE: el reparto de ANTHEM tal cual: es la linea de base y no se toca.
   // un solo cambio sobre la linea de base y en la ultima posicion: el reparto de ANTHEM se conserva.
-  transiciones: ['corte', 'corte', 'flash', 'barrido', 'empuje', 'golpe', 'tajo'],
+  transiciones: ['corte', 'corte', 'flash', 'barrido', 'empuje', 'golpe', 'tajo', 'atraviesa'],
 
 }
