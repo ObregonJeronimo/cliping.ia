@@ -204,8 +204,24 @@ export function datosDe(pm) {
     // material distinto. Si la pagina no dio ninguno usable, se cae a la promesa; si tampoco, no hay
     // golpe y la escena no se elige, que es la respuesta honesta.
     golpe: (() => {
+      // Y NO PUEDE SER EL NOMBRE DE UN PRODUCTO. Tres palabras completas alcanzaba como filtro hasta
+      // que salio "Duolingo English Test" a cuerpo de cartel: cumple el largo, cumple las palabras, y
+      // no dice absolutamente nada — es una etiqueta de producto puesta suelta en el medio de la
+      // pieza. Thiago: "ese texto no aporta nada y tampoco tiene sentido que este asi suelto".
+      //
+      // Un titulo que ARRANCA con el nombre de la marca es casi siempre eso: el nombre de una linea
+      // de producto, no una afirmacion sobre lo que hace. La marca ya se dice en la apertura, en el
+      // sello y en el cierre; repetirla acá gasta el unico cuadro de la pieza que grita.
+      const marcaN = String(pm.brand || '').trim().toLowerCase()
+      const esNombreDeProducto = (t) => {
+        if (!marcaN || marcaN.length < 3) return false
+        const n = t.trim().toLowerCase()
+        // Arranca con la marca y lo que sigue son dos o tres palabras sueltas: "<Marca> English Test".
+        return n.startsWith(marcaN) && n.slice(marcaN.length).trim().split(/\s+/).filter(Boolean).length <= 3
+      }
       const cortos = (s.features || []).map(f => String(f.titulo || '').trim())
         .filter(t => t && t.length <= 64 && t.split(/\s+/).length >= 3)
+        .filter(t => !esNombreDeProducto(t))
         .sort((a, b) => a.length - b.length)
       return (cortos[0] || promesa(s.queHace, 64)).toUpperCase() || null
     })(),

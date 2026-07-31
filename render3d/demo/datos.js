@@ -171,9 +171,28 @@ export const reiniciarReparto = () => { _cursor = 0; repetidas = 0; _claimUsado 
 
 // `soloUnaLinea` lo piden las escenas que componen una grilla vertical y no toleran un item del doble
 // de alto. `cuantas` es un maximo: si hay menos, devuelve menos, y la escena decide si le alcanza.
+// EL GOLPE SALE DEL POZO, y esto costo dos videos enteros.
+//
+// El campo `golpe` es distinto de `frases`, asi que el mostrador nunca lo vio — y muy seguido es la
+// MISMA linea que una de las frases, porque las dos se extraen de los titulares de la pagina. En el
+// render de basecamp, `lista` abria con "BIG NUMBERS. HIGHLY-TRUSTED." y dos escenas despues
+// `destello` ponia exactamente eso a cuerpo de cartel. En duolingo pasaba con "DIVERTIDO, EFECTIVO
+// Y GRATIS". Thiago lo marco en los dos videos: "se repitieron los mismos textos en otras escenas".
+//
+// Se compara NORMALIZADO —sin mayusculas, sin puntuacion, sin saltos— porque cada escena trata el
+// mismo texto distinto: una lo parte en dos renglones y la otra lo pone en versales. Comparando
+// crudo, dos strings que el espectador lee como la misma frase no se parecen en nada.
+const _norm = (t) => String(t || '').toLowerCase().replace(/[^a-z0-9à-ÿ ]+/gi, ' ').replace(/[ ]+/g, ' ').trim()
+
 export function repartirFrases(cuantas, soloUnaLinea = false) {
   const pozo = (esDemo ? ANTHEM.frases : (D.frases || [])).filter(Boolean).map(String)
-  const elegibles = soloUnaLinea ? pozo.filter(f => !f.includes('\n')) : pozo
+  const golpe = _norm(esDemo ? ANTHEM.golpe : (D.golpe || ''))
+  // Se saca del pozo la frase que el golpe ya va a decir. Solo si QUEDA material: con una sola frase
+  // y esa igual al golpe, es preferible repetirla a dejar la escena vacia — una escena de texto sin
+  // texto no es mas honesta, es un agujero.
+  const sinGolpe = golpe ? pozo.filter(f => _norm(f) !== golpe) : pozo
+  const base = sinGolpe.length ? sinGolpe : pozo
+  const elegibles = soloUnaLinea ? base.filter(f => !f.includes('\n')) : base
   if (!elegibles.length) return []
   const out = []
   for (let k = 0; k < cuantas; k++) {

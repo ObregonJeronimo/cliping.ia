@@ -218,7 +218,17 @@ export function build(ctx) {
   // proporcion: la palabra deja de sangrar y queda centrada, que es la degradacion correcta — una
   // palabra corta centrada compone bien, una palabra corta gigante no compone de ninguna manera.
   const ARH = Math.max(0.2, tHero.ar || 4.6)
-  const ANCHO_PEDIDO = mundoW * (tocaLaMarca ? 0.98 : 1.12)
+  // YA NO SANGRA NUNCA. El recurso de esta escena era que la palabra midiera el 112% del cuadro y se
+  // cortara contra los dos bordes: sobre el golpe de ANTHEM —"UNA PLANTILLA"— eso corta una letra de
+  // una palabra generica y se lee como estilo. Pero el golpe sale de la PAGINA, y ahi el 6% de
+  // sangrado por lado se come palabras que el espectador necesita leer enteras: en el render de
+  // basecamp salio "HIGHLY-TRUSTED" cortado a los dos lados. Thiago, despues de verlo en varios
+  // videos: "esta cortado en los costados, el tamaño del texto es demasiado grande".
+  //
+  // La excepcion de la marca ya existia por esta misma razon —un nombre propio mutilado se lee como
+  // que el render fallo— y lo que la practica mostro es que la razon vale para CUALQUIER palabra que
+  // la pagina eligio decir. Se pierde el recurso y se gana que se entienda.
+  const ANCHO_PEDIDO = mundoW * 0.96
   const TECHO_HERO = mundoH * 0.20
   const ALTO_HERO = Math.min(TECHO_HERO, ANCHO_PEDIDO / ARH)
   const ANCHO_HERO = ALTO_HERO * ARH

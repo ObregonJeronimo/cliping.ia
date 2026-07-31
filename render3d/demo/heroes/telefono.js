@@ -228,14 +228,11 @@ export function build(ctx) {
         uRep: { value: new THREE.Vector2(1, visible) },
         uOff: { value: new THREE.Vector2(0, VENT.off0) },
         uSeguro: { value: SEGURO },
-        // EL TOQUE. `uToque` va de 0 a 1 en cada peldaño del scroll y `uToqueY` dice a que altura de la
-        // pantalla ocurre. Ver la nota larga donde se anima.
-        uToque: { value: 0 }, uToqueY: { value: 0.5 },
         uFondoPag: { value: new THREE.Vector3(...(fondoDe(tira.image) || [0.03, 0.03, 0.04])) },
       },
       vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
       fragmentShader: `
-        uniform sampler2D map; uniform float uR, uAR, uBrillo, uBarrido, uSeguro, uToque, uToqueY;
+        uniform sampler2D map; uniform float uR, uAR, uBrillo, uBarrido, uSeguro;
         uniform vec2 uRep, uOff; uniform vec3 uFondoPag; varying vec2 vUv;
         // rectángulo redondeado, medido en el espacio del ANCHO para que el radio no se deforme
         float rr(vec2 p, vec2 h, float r){ vec2 d = abs(p) - h + vec2(r); return length(max(d,0.0)) + min(max(d.x,d.y),0.0) - r; }
@@ -271,31 +268,6 @@ export function build(ctx) {
           // FILO INTERNO: la línea especular donde el vidrio muerde el bisel. Sin esto, con una página
           // de fondo oscuro, no se ve dónde termina el aparato y dónde empieza la pantalla.
           c += vec3(0.42, 0.46, 0.56) * smoothstep(-0.010, -0.001, dist) * 0.55;
-          // ---------------------------------------------------------------- EL TOQUE
-          // Un disco blando y un aro que se abre desde el, como la marca de un dedo. Se dibuja ACA
-          // adentro y no como plano aparte por la misma razon que el reflejo y la isla: cualquier
-          // cosa suelta seria un rectangulo asomando por fuera del bisel curvo. El SDF de arriba lo
-          // recorta junto con todo lo demas.
-          if (uToque > 0.001) {
-            vec2 pt = vec2(vUv.x - 0.5, (vUv.y - uToqueY) / uAR);
-            float d = length(pt);
-            // El disco se achica mientras el aro crece: es como se ve un dedo que aprieta y suelta.
-            // Las tres constantes se subieron despues de verlo forzado: con los valores originales el
-            // aro quedaba en un fantasma que no se leia NI con el uniform clavado en 0.45. Un gesto que
-            // hay que buscar no explica nada — o se ve, o no esta.
-            float disco = smoothstep(0.075 * (1.25 - uToque * 0.45), 0.0, d) * (1.0 - uToque * 0.45);
-            float rad = 0.035 + uToque * 0.155;
-            float aro = smoothstep(0.022, 0.0, abs(d - rad)) * (1.0 - uToque * 0.75);
-            // EL COLOR SALE DE LA PAGINA, NO ES BLANCO FIJO. La primera version dibujaba en blanco y
-            // sobre basecamp.com —una pagina blanca— era invisible: se forzo el uniform a 0.5 y el
-            // cuadro salio identico. Es la MISMA trampa que ya costo el gancho ilegible y la columnata
-            // desaparecida: elegir un color sin mirar contra que se dibuja. El uniform uFondoPag ya trae el
-            // fondo medido de la captura, asi que la polaridad se decide sola: sobre pagina clara el
-            // dedo es oscuro, sobre pagina oscura es claro.
-            float lumPag = dot(uFondoPag, vec3(0.299, 0.587, 0.114));
-            vec3 colToque = lumPag > 0.5 ? vec3(0.08) : vec3(0.97);
-            c = mix(c, colToque, clamp((disco * 0.85 + aro * 1.0) * uToque, 0.0, 0.92));
-          }
           gl_FragColor = vec4(c, a);
         }`,
     })
@@ -382,42 +354,12 @@ export function build(ctx) {
   const ESC_P = tira && tira.image
     ? escalones(tira.image, vl.y0, VENT.rec * altoTira, PASOS_P)
     : null
-  // EL TOQUE, Y POR QUE ESTA DONDE ESTA.
-  //
-  // La idea original era un cursor volando hacia un boton clave de la pagina. No se puede sin mentir:
-  // los recortes se extraen como imagenes sueltas y el motor NO sabe en que coordenada de la tira
-  // esta ese boton. Poner el dedo donde queda bien es exactamente lo que la regla anti-invencion
-  // prohibe — seria afirmar que hay un boton ahi.
-  //
-  // Lo que si es cierto es el SCROLL. La pagina se mueve a peldaños, y cada peldaño es un gesto que de
-  // verdad ocurre. El toque marca ESE gesto: aparece justo antes de cada tiron, late, y el peldaño
-  // sale. No afirma nada sobre la pagina; explica el movimiento que el espectador esta viendo, que es
-  // lo que le faltaba —una pagina que se desplaza sola se lee como un video, con el dedo se lee como
-  // alguien usandola—.
-  //
-  // Cae en el tercio inferior de la pantalla y no al centro: es donde cae un pulgar de verdad, y
-  // ademas es la zona que menos texto tapa mientras el aro se abre.
-  const T_TOQUE = 0.55                                  // largo del gesto, en fraccion de un peldaño
-  const toque = () => {
-    if (!pantalla || !PASOS_P) return 0
-    const w = (tl.time() - T0_SCROLL) / Math.max(0.001, T1_SCROLL - T0_SCROLL)
-    if (w < 0 || w > 1) return 0
-    const k = w * PASOS_P
-    const f = k - Math.floor(k)                          // donde estamos DENTRO del peldaño
-    if (f > T_TOQUE) return 0
-    const u = f / T_TOQUE
-    // Sube rapido y baja lento: un dedo aprieta de golpe y el aro se disuelve.
-    return u < 0.25 ? u / 0.25 : 1 - (u - 0.25) / 0.75
-  }
-
   const scrollear = () => {
     if (!pantalla) return
     const w = (tl.time() - T0_SCROLL) / Math.max(0.001, T1_SCROLL - T0_SCROLL)
     pantalla.material.uniforms.uOff.value.y = ESC_P
       ? Math.max(0, 1 - (enEscalon(ESC_P, w, DESLIZ_P) + VENTANA_PX) / altoTira)
       : VENT.off0 - VENT.rec * escalera(w, PASOS_P, DESLIZ_P)
-    pantalla.material.uniforms.uToque.value = toque()
-    pantalla.material.uniforms.uToqueY.value = 0.30
   }
 
 
