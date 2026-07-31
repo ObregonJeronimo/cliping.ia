@@ -701,3 +701,33 @@ aplicarlo sin cerrar antes esas 88 rompe una de las 5 rapidas para todo el mundo
 roja que se aprende a ignorar es peor que la que mide mal.
 
 El orden correcto es al reves: primero se cierran las 88, despues se afila la compuerta.
+
+---
+
+## Dos hallazgos nuevos, vistos renderizando el 2026-07-31 (NO son de los parches de hoy)
+
+- [ ] **backend/site_capture.py — nada verifica que lo capturado sea la pagina**
+  - **Sintoma:** El motor construyo 20 s enteros sobre una pagina de error de CloudFront. En el cuadro
+    87 se lee "Request blocked. We can't connect to the server for..." con el Request ID impreso en
+    pantalla. La pieza se entrego sin una sola queja.
+  - **Lo dispara:** Cualquier captura que devuelva un error del CDN o una pantalla anti-bot. De las 7
+    capturas cacheadas del repo, DOS estan podridas: www-sweetgreen-com da 0 frases (es el error de
+    CloudFront) y www-sothebysrealty-com tiene de marca "HUMAN VERIFICA" (una pantalla de verificacion).
+    O sea 2 de 7, un 29%.
+  - **La senal existe y nadie la lee:** el propio log del render imprime "0 frases - 0 cifras - cta
+    NINGUNO". Una pagina real no da eso nunca. Es una compuerta de una linea que no esta escrita.
+  - **Compuerta:** Ninguna. `_es_placeholder` (motor.py) mira los recortes LQIP, no la pagina.
+
+- [ ] **render3d/demo/heroes/cubo.js — las caras salen VACIAS**
+  - **Sintoma:** Cuadro 429 del render de stripe.com: el cubo ocupa el centro del cuadro con las dos
+    caras visibles planas (una azul oscura, la otra gris), sin una sola imagen. Es el hero de la pieza y
+    dura 8 beats, el doble que una escena normal.
+  - **Lo dispara:** Sin determinar. La pagina SI trae material: 12 elementos (1 logo, 3 cta, 4 tarjetas
+    y mas), y cubo.js:36 declara ROLES ['logo','tarjeta','foto','hero'] con recortesDe(..., 6), asi que
+    deberia tener con que llenar las seis caras.
+  - **NO es de los parches del 2026-07-31, verificado:** los unicos cambios no-comentario que esos
+    parches metieron en kit.js son `alHueco` y `escalones` (el escalonado del scroll), y cubo.js no
+    importa ninguna de las dos (su import de la linea 25 trae LOOK, b, E, hex, matAcento, nivel,
+    recortesDe, texturaDe, dolly, orbita, deslizFijo).
+  - **Compuerta:** Ninguna. Es el mismo punto ciego que documenta verificar.mjs:87-89 — los heroes se
+    prueban con lienzos de 4 px porque lo que se audita es la GEOMETRIA, no los pixeles.
