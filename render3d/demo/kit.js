@@ -410,7 +410,9 @@ export let AIRE = null
 // todo lo que pase del ultimo umbral, asi que un patron agregado al final del arreglo saldria pintado
 // como 'nada' — presente en la lista, invisible en pantalla, y sin una compuerta que lo dijera.
 export const PATRONES = ['fuga', 'puntos', 'ondas', 'rayas', 'bloques', 'panal', 'contorno', 'circuito',
-                         'arcos', 'terrazo', 'malla', 'topografia', 'destellos', 'nada']
+                         'arcos', 'terrazo', 'malla', 'topografia', 'destellos',
+                         'craquelado', 'veta', 'escamas', 'haces', 'bruma', 'caustica', 'recuento', 'estelas', 'latido',
+                         'nada']
 
 // ---------------------------------------------------------------- el marco del cuadro
 // `esquinas` ERA UN BOOLEANO, y esa es la razon de que todas las piezas se vieran iguales por el
@@ -1014,8 +1016,282 @@ export function fondoVivo(mundoW, mundoH) {
             }
           }
           linea *= 0.85 * smoothstep(1.05, 0.15, length(g));
+        } else if (uPatron < 13.5) {
+          // CRAQUELADO: la red de grietas de un esmalte que se contrajo al enfriarse. Es la juntura
+          // y NADA mas. Terrazo llena las lascas y por eso pesa; aca la pieza es el fondo mismo y la
+          // grieta es un pelo de luz, asi que puede ir detras de un titular sin comerle el contraste.
+          // Le queda a la ceramica, a la cosmetica de arcilla, al queso de campo: todo lo que se vende
+          // diciendo que lo hizo una mano y que el material tiene su propia voluntad.
+          // La y va casi al doble que la x a proposito: el plano del fondo tiene el alto del cuadro
+          // vertical, asi que una celda cuadrada en uv sale estirada en pantalla. Con 7 y 12.5 las
+          // piezas salen parejas, que es lo unico que hace que se lean como material y no como trama.
+          vec2 q = g * vec2(7.0, 12.5);
+          vec2 ce = floor(q);
+          vec2 fq = fract(q);
+          // La distancia a la semilla mas cercana y a la segunda, sobre las nueve celdas vecinas.
+          // Donde las dos empatan hay grieta: es literalmente como se parte un esmalte, por el medio
+          // entre dos centros. No hace falta ruido de libreria, alcanza con el hash y la geometria.
+          float d1 = 9.0;
+          float d2 = 9.0;
+          float sid = 0.0;
+          for (int j = -1; j <= 1; j++) {
+            for (int i = -1; i <= 1; i++) {
+              vec2 off = vec2(float(i), float(j));
+              vec2 sem = ce + off;
+              vec2 pt = off + vec2(hash(sem), hash(sem + 23.0));
+              float d = length(pt - fq);
+              if (d < d1) { d2 = d1; d1 = d; sid = hash(sem + 5.0); }
+              else if (d < d2) { d2 = d; }
+            }
+          }
+          // EL MATERIAL NO SE MUEVE. Lo unico que respira es el ANCHO de la grieta, y cada pieza a su
+          // tiempo porque la fase sale de su propia semilla. Esa es la diferencia entre una ceramica
+          // bajo una luz que cambia y un dibujo animado: si las piezas se desplazaran, el fondo se
+          // convertiria en agua y la pieza dejaria de decir barro cocido.
+          float ancho = 0.055 + 0.028 * sin(uT * 0.07 + sid * 6.2831);
+          linea = smoothstep(ancho, 0.0, d2 - d1) * 0.62;
+          linea *= smoothstep(1.00, 0.12, length(g));
+        } else if (uPatron < 14.5) {
+          // VETA: la fibra de una tabla, con dos nudos que la obligan a abrirse. No es un patron de
+          // lineas: es el CORTE de un material que crecio, y por eso la separacion entre vetas no es
+          // constante — se aprieta contra el nudo y se afloja en el medio de la tabla. Eso solo ya
+          // decide si se lee como madera o como rayado.
+          // Le queda a la carpinteria, a la panaderia, al tostado, al bar: cualquier marca que apoye
+          // el producto sobre una tabla antes de fotografiarlo.
+          // La tabla se desliza a lo largo de su propia fibra, lentisimo: en veinticinco segundos los
+          // nudos bajan un cuarto de cuadro y nada mas.
+          vec2 p = g + vec2(0.0, uT * 0.006);
+          // Los nudos son ovalos MUY estirados a lo largo de la veta. Uno redondo se lee como un ojo
+          // dibujado; estirado se lee como una rama que quedo adentro de la tabla.
+          float n1 = length((p - vec2(-0.17, 0.13)) * vec2(1.0, 0.50));
+          float n2 = length((p - vec2(0.21, -0.19)) * vec2(1.0, 0.44));
+          // El campo es la fibra recta MAS la deformacion de cada nudo. El termino inverso a la
+          // distancia es enorme pegado al nudo y despreciable a medio cuadro, asi que solo ahi el
+          // campo deja de ser vertical y se cierra en anillos; en el borde de esa zona la fibra pasa
+          // de largo esquivandolo, que es el gesto que hace toda la lectura. Los dos nudos empujan al
+          // reves —uno abre a la izquierda y el otro a la derecha— o la tabla saldria simetrica.
+          // La fibra va apenas inclinada (el 0.18 en y): una vertical perfecta compite con la
+          // tipografia, que tambien tiene verticales, y ademas ninguna tabla se corta tan derecha.
+          float campo = (p.x + p.y * 0.18) * 22.0
+                      + sin(p.y * 2.6 + uT * 0.02) * 2.4
+                      - 4.0 / (n1 + 0.22)
+                      + 3.6 / (n2 + 0.24);
+          float fv = fract(campo);
+          float anillo = smoothstep(0.09, 0.0, min(fv, 1.0 - fv));
+          // La madera no tiene todas las vetas al mismo tono: vienen de a grupos, claros y oscuros.
+          anillo *= 0.65 + 0.35 * sin(campo * 0.17 + p.y * 1.3);
+          // En el centro del nudo los anillos se juntan mas de lo que conviene y ahi no queda dibujo,
+          // queda ruido. Se apagan, y en su lugar va el ojo del nudo: macizo y blando.
+          anillo *= smoothstep(0.030, 0.12, n1) * smoothstep(0.030, 0.12, n2);
+          float ojo = smoothstep(0.055, 0.014, n1) * 0.30 + smoothstep(0.050, 0.012, n2) * 0.26;
+          // El poro: una estria mucho mas fina que corre con la fibra, con otra inclinacion y una
+          // frecuencia que no es multiplo de la veta, o las dos se alinearian y volveria a verse una
+          // sola rejilla. Va a un octavo del peso: es el detalle que separa una tabla de una
+          // superficie pintada, y con mas peso se come el cuadro.
+          float poro = smoothstep(0.10, 0.01, abs(fract((p.x + p.y * 0.13) * 41.0 + 0.5) - 0.5)) * 0.12;
+          linea = anillo * 0.60 + ojo + poro;
+          linea *= 0.55 + 0.45 * smoothstep(0.95, 0.12, length(g));
+        } else if (uPatron < 15.5) {
+          // ESCAMAS: hileras de piezas curvas montadas una sobre otra, como un techo de tejas o el
+          // esmalte de una vasija. La regularidad es de OFICIO y no de sistema: las hileras van
+          // corridas media pieza, que es como se apoya una teja para tapar la union de las dos de
+          // abajo, y cada pieza tiene su propio tono porque ninguna sale igual del horno.
+          // Le queda a la ceramica, al bano, a la cocina, al vino: donde el producto se apila.
+          // La y va casi al triple que la x y no es un descuido: el plano del fondo tiene el alto del
+          // cuadro vertical, asi que una circunferencia dibujada en uv sale ovalada. Sin esa
+          // correccion las escamas salen estiradas y dejan de parecer piezas.
+          vec2 q = g * vec2(7.0, 19.0);
+          float fila = floor(q.y);
+          float corr = mod(fila, 2.0) * 0.5;
+          vec2 c = vec2(floor(q.x + corr), fila);
+          vec2 f = vec2(fract(q.x + corr) - 0.5, fract(q.y));
+          float h = hash(c + 7.0);
+          // El borde es media elipse que arranca en las dos esquinas de arriba de la celda y toca el
+          // fondo: asi el pico de cada escama cae justo entre las dos puntas de las de la hilera
+          // siguiente y el muro cierra sin huecos. El radio varia un pelo por pieza — nada hecho a
+          // mano calza perfecto, y esa imperfeccion es la que hace que no se lea como una grilla.
+          float r = length(vec2(f.x, f.y * 0.5));
+          float borde = smoothstep(0.045, 0.0, abs(r - 0.5 - (h - 0.5) * 0.02));
+          // Una luz rasante que recorre el muro. No es un brillo: es que una pieza esmaltada devuelve
+          // la luz distinto segun donde este parada. Cada una con su desfasaje propio, o el frente de
+          // onda barreria el cuadro como una linea de escaner y se llevaria toda la atencion.
+          float luz = 0.55 + 0.45 * sin((g.x * 2.2 + g.y * 1.4) - uT * 0.11 + h * 2.4);
+          // El lomo de la pieza, apenas encendido: da el volumen sin dibujar un contorno mas.
+          float lomo = smoothstep(0.50, 0.24, r) * 0.16;
+          linea = (borde * (0.55 + 0.45 * h) + lomo) * (0.45 + 0.55 * luz);
+          linea *= 0.5 + 0.5 * smoothstep(1.00, 0.15, length(g));
+          linea *= 0.62;
+        } else if (uPatron < 16.5) {
+          // HACES: la luz de un reflector cortando bruma. No hay ninguna linea dibujada: hay UNA
+          // fuente fuera de cuadro, arriba a la derecha, y lo unico que se ve es el aire que ilumina.
+          // Es el patron de la marca que se muestra de noche —musica en vivo, un evento, un bar, una
+          // pasarela— donde cualquier trama se lee como mantel.
+          // El haz sale de la PENDIENTE hacia el foco y no de un angulo: sin atan, dividiendo por la
+          // distancia vertical, los haces convergen solos hacia la fuente y se abren hacia abajo, que
+          // es como se abre un reflector de verdad. Un angulo constante daria una rueda de rayos.
+          float dy = max(0.30, 1.25 - g.y);
+          float pend = (g.x - 0.32) / dy;
+          // Tres frecuencias que no son multiplos entre si: los haces salen de anchos distintos y no
+          // se leen como un peine. Un reflector real nunca reparte parejo.
+          float haz = sin(pend * 13.0 + uT * 0.050) * 0.50
+                    + sin(pend * 21.7 - uT * 0.033) * 0.30
+                    + sin(pend * 7.9 + uT * 0.022) * 0.28;
+          // El umbral alto deja encendidas SOLO las crestas: pocos haces separados por mucho aire
+          // oscuro. Bajarlo llena el cuadro de luz y ahi ya no es una atmosfera, es una pantalla velada.
+          linea = smoothstep(0.32, 1.00, haz) * 0.65;
+          // Se apagan con la distancia al foco. Que el pie del cuadro quede limpio no es un efecto
+          // secundario: ahi es donde casi siempre cae el texto.
+          linea *= smoothstep(1.95, 0.65, length(vec2(g.x - 0.32, g.y - 1.25)));
+        } else if (uPatron < 17.5) {
+          // BRUMA: humo lento atravesando el cuadro. Es el patron MAS FLOJO de contraste de todo el
+          // grupo, y eso es la decision, no una limitacion: no tiene que poder nombrarse ninguna forma,
+          // solo tiene que sentirse que el aire pesa. Va para perfumeria, hoteleria, destilados —lo que
+          // vende clima y no producto— y es el reemplazo de nada cuando el degrade solo queda vacio.
+          // El humo se arma con tres capas de ruido de valor, interpolando hash sobre una reticula,
+          // porque en este shader no hay funcion de ruido. Las escalas no son multiplos entre si o se
+          // veria la reticula que las genera, que es el defecto clasico de este truco.
+          for (int k = 0; k < 3; k++) {
+            float esc = 2.7 + float(k) * 4.3;
+            float amp = 0.55 * pow(0.52, float(k));
+            // Cada capa deriva a su propia velocidad. Eso solo ya alcanza para que la masa se DEFORME
+            // en vez de pasar de largo entera, que es la diferencia entre humo y una calcomania.
+            vec2 p = g * esc + vec2(uT * (0.010 + float(k) * 0.006), -uT * (0.016 + float(k) * 0.010));
+            // Un corte lateral suave: el humo se dobla, nunca sube derecho.
+            p.x += sin(p.y * 0.6 + uT * 0.05) * 0.30;
+            vec2 ip = floor(p);
+            vec2 fp = fract(p);
+            // La curva suave de la interpolacion. Con fp crudo se ven los rombos de la celda.
+            vec2 sp = fp * fp * (3.0 - 2.0 * fp);
+            float n0 = mix(hash(ip), hash(ip + vec2(1.0, 0.0)), sp.x);
+            float n1 = mix(hash(ip + vec2(0.0, 1.0)), hash(ip + vec2(1.0, 1.0)), sp.x);
+            linea += mix(n0, n1, sp.y) * amp;
+          }
+          // La ventana angosta se queda con la parte alta del ruido: quedan jirones y claros abiertos.
+          // Sin ese corte queda una niebla pareja, que no es atmosfera sino un degrade sucio.
+          linea = smoothstep(0.38, 0.82, linea) * 0.50;
+          linea *= smoothstep(1.10, 0.20, length(g));
+        } else if (uPatron < 18.5) {
+          // CAUSTICA: la luz que rebota en agua o cruza un vidrio tallado y deja una red de venas
+          // brillantes moviendose. Es un fenomeno, no un dibujo: la superficie ondulada concentra la
+          // luz en filamentos, y es la unica del grupo que llega REBOTADA — no se ve la fuente, se ve
+          // lo que el agua le hizo. Por eso pone la pieza adentro de un lugar humedo: pileta, spa,
+          // hotel, gin, perfume, vidrio.
+          // No confundir con topografia: aquella es un mapa de curvas paralelas y parejas. Aca las venas
+          // se cruzan en angulos distintos y arman celdas de tamaños distintos, y esa irregularidad es
+          // exactamente lo que el ojo lee como agua.
+          vec2 q = (g + vec2(0.0, 0.06)) * 11.0;
+          for (int k = 0; k < 3; k++) {
+            float fk = float(k);
+            float t = uT * 0.10 + fk * 1.7;
+            // Cada pasada dobla el dominio con la anterior. Sin esa deformacion encadenada quedarian
+            // tres juegos de rayas rectas superpuestas, que es una trama y no una caustica.
+            q += vec2(sin(q.y * 1.4 + t), cos(q.x * 1.2 - t)) * 0.90;
+            // La vena vive donde el seno pasa por cero. Elevada a la quinta queda fina y con nucleo:
+            // casi todo apagado y un hilo vivo, que es como se ve una caustica de verdad. Sin la
+            // potencia sale una onda gorda y el fondo pierde el aire que necesita el texto.
+            float vena = 1.0 - abs(sin(q.x * (1.0 + fk * 0.25) + q.y * (0.80 - fk * 0.35) + t));
+            linea += pow(max(0.0, vena), 5.0);
+          }
+          // El oleaje entero sube y baja despacio, como cuando cruza una onda grande la pileta. Es un
+          // solo latido para las tres capas: si cada una respirara sola se veria centelleo, no agua.
+          linea *= 0.40 * (0.78 + 0.22 * sin(uT * 0.16));
+          linea *= smoothstep(1.05, 0.18, length(g));
+        } else if (uPatron < 19.5) {
+          // RECUENTO: grupos de cuatro palotes tachados por una diagonal. Es la cuenta a mano — la de
+          // la pared del deposito, la del margen de un cuaderno, la de una guardia anotando quien
+          // entro. Dice inventario, asistencia, expediente: cosas que se llevan ANOTANDO. Es lo
+          // contrario de un tablero: no muestra un numero, muestra que alguien conto.
+          vec2 q4 = (g + vec2(0.0, uT * 0.004)) * vec2(5.0, 8.0);
+          vec2 ce4 = floor(q4);
+          float h4 = hash(ce4 * 1.7);
+          // Menos de la mitad de las celdas trae un grupo: una pared contada entera vuelve a ser una
+          // trama, y una trama ya no se lee como cuenta.
+          if (h4 > 0.56) {
+            // Ningun grupo cae en el centro exacto de su celda ni queda perfectamente derecho. Ese
+            // corrimiento es la unica razon por la que esto se lee anotado a mano y no tipografiado:
+            // sin el vuelve a asomar la reticula que lo genera, que es justo lo que no queremos.
+            vec2 des = (vec2(hash(ce4 + 4.0), hash(ce4 + 8.0)) - 0.5) * 0.28;
+            float ang = (h4 - 0.5) * 0.22;
+            vec2 fr4 = fract(q4) - vec2(0.5) - des;
+            fr4 = vec2(fr4.x * cos(ang) - fr4.y * sin(ang), fr4.x * sin(ang) + fr4.y * cos(ang)) + vec2(0.5);
+            // De una a cinco marcas, distinto en cada grupo. Los grupos a medio cerrar son los que
+            // hacen que la pared parezca contada en momentos distintos y no estampada de una vez.
+            float n = 1.0 + floor(hash(ce4 + 21.0) * 4.999);
+            // Cada grupo respira con su propia fase y lentisimo, como tiza que se aviva y se apaga.
+            float vive = 0.72 + 0.28 * sin(uT * 0.16 + h4 * 6.2831);
+            for (int k = 0; k < 4; k++) {
+              float px = 0.30 + float(k) * 0.115;
+              float palote = smoothstep(0.030, 0.008, abs(fr4.x - px))
+                           * smoothstep(0.22, 0.18, abs(fr4.y - 0.5));
+              linea += palote * step(float(k) + 0.5, n) * vive * 0.5;
+            }
+            // El quinto trazo no se agrega al lado: TACHA a los otros cuatro. Por eso un grupo cerrado
+            // se distingue de uno abierto aun de lejos, que es toda la gracia de contar de a cinco.
+            vec2 p0 = vec2(0.26, 0.28);
+            vec2 dv = vec2(0.50, 0.44);
+            float tt = min(1.0, max(0.0, dot(fr4 - p0, dv) / dot(dv, dv)));
+            float dd = length(fr4 - p0 - dv * tt);
+            linea += smoothstep(0.030, 0.008, dd) * step(4.5, n) * vive * 0.5;
+          }
+          linea *= 0.72 * smoothstep(1.05, 0.14, length(g));
+        } else if (uPatron < 20.5) {
+          // ESTELAS: trazos horizontales que cruzan el cuadro, cada uno en su carril, con su largo y su
+          // velocidad. Es lo mas cerca que llega el motor a una foto de obturador lento: el objeto no se
+          // ve, se ve por donde paso. No es una variante de rayas — aquellas son una trama infinita de
+          // diagonales todas iguales, y esto son OBJETOS sueltos, con cabeza y con cola, que entran y
+          // salen del cuadro. Una trama dice material; esto dice transito.
+          float carriles = 13.0;
+          float carril = floor((g.y + 0.5) * carriles);
+          float dyE = fract((g.y + 0.5) * carriles) - 0.5;
+          float hE = hash(vec2(carril, 7.0));
+          // Todas para el mismo lado a proposito: cruzadas dan ruido, en fila dan corriente. Y el mismo
+          // hash decide velocidad Y grosor, que es toda la profundidad que hace falta: la estela gruesa
+          // pasa rapido porque esta cerca, la fina se arrastra porque esta lejos. Sin ese amarre son
+          // trece rayas horizontales a la misma distancia, o sea una persiana.
+          float velE = 0.07 + hE * 0.12;
+          float anchoE = 0.09 + hE * 0.15;
+          float xE = fract(g.x + 0.5 + hE * 3.7 - uT * velE);
+          float dE = xE - 0.5;
+          float largoE = 0.16 + hash(vec2(carril, 23.0)) * 0.24;
+          // La cola nace de la nada y la cabeza corta seco. Con los dos bordes iguales queda un fideo
+          // simetrico que no va para ningun lado: el corte al frente es lo unico que dice la direccion.
+          float cuerpo = smoothstep(-largoE, -largoE * 0.12, dE) * smoothstep(0.012, -0.004, dE);
+          cuerpo *= cuerpo;
+          // Dos de cada tres carriles llevan estela. Con todos ocupados se cierra otra vez en trama.
+          float hayE = step(0.34, hash(vec2(carril, 41.0)));
+          linea = cuerpo * smoothstep(anchoE, anchoE * 0.35, abs(dyE)) * hayE * (0.45 + 0.55 * hE);
+          linea *= 0.62 * smoothstep(1.00, 0.22, length(g));
+        } else if (uPatron < 21.5) {
+          // LATIDO: la linea de un monitor cardiaco cruzando el cuadro. Es la unica traza del motor con
+          // un EVENTO dibujado adentro —un pico— en vez de una repeticion: el ojo la sigue esperando el
+          // proximo, y esa espera es el movimiento, no la velocidad.
+          // No la enganchamos al compas del montaje aunque tentaba: a 120 pulsos por minuto el fondo
+          // entero se pone a correr, y un fondo que corre se lleva la frase puesta.
+          float filas = 4.0;
+          float fil = floor((g.y + 0.5) * filas);
+          float dyL = fract((g.y + 0.5) * filas) - 0.5;
+          float hL = hash(vec2(fil, 19.0));
+          // Cada traza con su fase y su velocidad: cuatro picos alineados serian una grilla, no cuatro
+          // cuerpos distintos midiendose al mismo tiempo.
+          float xL = fract(g.x + 0.5 + hL - uT * (0.070 + hL * 0.035));
+          float dL = xL - 0.55;
+          // El complejo a mano: la bajada corta, el pico alto y angosto, el rebote, y la onda ancha que
+          // viene atras. Sin esas cuatro piezas es un triangulo, y un triangulo no se lee como un latido.
+          float alt = smoothstep(0.038, 0.0, abs(dL)) * 0.26
+                    - smoothstep(0.020, 0.0, abs(dL + 0.048)) * 0.070
+                    - smoothstep(0.026, 0.0, abs(dL - 0.052)) * 0.090
+                    + smoothstep(0.080, 0.0, abs(dL - 0.155)) * 0.055;
+          float trazoL = smoothstep(0.034, 0.008, abs(dyL - alt));
+          // El halo ancho la hace fosforo en vez de alambre, y ademas es todo el antialias que tenemos:
+          // sin derivadas, la subida casi vertical del pico queda de un pixel y titila cuadro a cuadro.
+          float haloL = smoothstep(0.11, 0.0, abs(dyL - alt)) * 0.20;
+          // La base va apagada y el pico enciende. Cuatro horizontales parejas detras de un titulo son
+          // justo lo que no hay que hacer: horizontales compitiendo con horizontales.
+          float brilloL = 0.20 + 0.80 * smoothstep(0.30, 0.02, abs(dL - 0.04));
+          linea = (trazoL + haloL) * brilloL * 0.60;
+          linea *= smoothstep(1.05, 0.20, length(g));
         }
-        // 'nada' (uPatron >= 12.5) deja el degrade solo: es lo que necesita una pieza que vende aire.
+        // 'nada' (uPatron >= 21.5) deja el degrade solo: es lo que necesita una pieza que vende aire.
         linea *= uGrilla;
         // En oscuro la línea SUMA luz; en claro TIÑE hacia el acento. Es la misma grilla y en los dos
         // casos aparece por delante del fondo, que es lo único que importa.

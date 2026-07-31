@@ -94,7 +94,7 @@ export default {
   // Ver el comentario largo de MOB en kit.js — antes esto estaba horneado en las escenas y
   // por eso dos piezas de rubros opuestos seguian teniendo el mismo mueble.
   // DE DONDE VIENE LA LUZ DEL FONDO: una pagina no tiene foco: tiene luz pareja.
-  mobiliario: { fondo: 'puntos', fondos: ['puntos', 'contorno', 'malla'], marco: 'rotulado', marcos: ['rotulado', 'cantoneras', 'reglas'], hud: false, fondoForma: 0.90 },   // el margen asimetrico de un cuaderno: rompe la simetria del cuadro
+  mobiliario: { fondo: 'puntos', fondos: ['puntos', 'contorno', 'malla', 'recuento'], marco: 'rotulado', marcos: ['rotulado', 'cantoneras', 'reglas'], hud: false, fondoForma: 0.90 },   // el margen asimetrico de un cuaderno: rompe la simetria del cuadro
   // COMO CORTA ESTE AIRE: el vertical se lee como pasar de pagina, que es exactamente el gesto del rubro.
   transiciones: ['corte', 'corte', 'empujeV', 'corte', 'barrido', 'empujeV', 'iris'],
 
