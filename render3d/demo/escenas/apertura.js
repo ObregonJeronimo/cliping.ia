@@ -203,8 +203,24 @@ export function build(ctx) {
   //
   // Con 0.8 beats la cortina despeja a los 0.23 s en vez de 0.41 y el gesto sigue siendo el correcto:
   // arranca lenta y se va acelerando. La curva estaba bien; el tiempo estaba calibrado para la otra.
-  de(cortina.position, { x: 0, y: 0 }, { x: mundoW * 2.5, y: mundoH * 1.5, duration: b(0.8), ease: E.acelera(2.4) }, 0)
-  tl.set(cortina, { visible: false }, b(1.4))
+  // SEGUNDA CORRECCION, Y ESTA VEZ SOBRE EL EXPONENTE. Bajar 1.35 a 0.8 beats mejoro el sintoma pero
+  // no la causa: con `acelera(2.4)` la cortina recorre el 40% del camino recien al 68% del tiempo, asi
+  // que la fraccion tapada NO depende de la duracion — se achica todo junto y sigue siendo la misma
+  // proporcion. Medido sobre el render de basecamp con 0.8 beats: NUEVE cuadros seguidos, 0.30 s, con
+  // el cuadro liso del color del acento. Un corte en seco son dos o tres cuadros; un tercio de segundo
+  // es tiempo muerto, y justo en el segundo que este archivo dice que hay que proteger.
+  //
+  // EL EXPONENTE NO SE PUEDE TOCAR: `acelera(k)` se compone con la curva del aire y no todo valor da
+  // una potencia entera. Con 1.6 el aire nocturno produce "power3.6.in", que GSAP no parsea y resuelve
+  // en silencio a power1.out — una DESACELERACION, o sea el movimiento al reves del pedido. Lo caza
+  // E-EASE-VALIDO, y es exactamente el bug que este mismo bloque documenta haber sufrido antes.
+  //
+  // Asi que se ataca por los dos lados que si son libres: menos tiempo y ARRANQUE ADELANTADO. La
+  // cortina ya empieza con el 14% del camino hecho, que en el primer cuadro no se nota —sigue tapando
+  // el cuadro entero, que es lo que se busca— y le saca de encima la parte de la curva donde no
+  // recorre nada.
+  de(cortina.position, { x: mundoW * 0.35, y: mundoH * 0.21 }, { x: mundoW * 2.5, y: mundoH * 1.5, duration: b(0.5), ease: E.acelera(2.4) }, 0)
+  tl.set(cortina, { visible: false }, b(0.95))
 
   // ================================================================ A · el filete cruza el cuadro
   // beat 0.0-0.5. Negro casi total: la grilla está apagada y lo único que existe es una línea de
