@@ -132,7 +132,7 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** Ninguna, y por una razon concreta: `tejidoFalso` SIEMPRE inyecta la tira (encuadre-check.mjs:99-101 y verificar.mjs:99-101 hacen `tira.image = { width: 720, height: 6240 }` y `m.set('tira', tira)`), asi que la rama de respaldo de mesa.js:56-59 no se 
   - `let visible = (ALTO / ANCHO) * arMapa if (visible > 1) visible = 1`
 
-- [ ] **render3d/demo/escenas/toro.js:356**
+- [x] **render3d/demo/escenas/toro.js:356**
   - **Síntoma:** El titular se dispara de tamaño. Medido con las fuentes reales (registrarFuentes + la aritmetica exacta de kit.js:892-920): 'CADA OBJETO ES REAL' (el fixture, 4 palabras) da ALTO_PAL 0.753; 'Analytics' da 1.546; 'Pricing' 2.025; 'Speed' 2.513; una palabra de dos letras tipo 'AI' da 6.324 — una caja de 6.3 unidades de alto en un mundo de 10. Desde 'Pricing' hacia abajo la caja de la palabra baja de
   - **Lo dispara:** Un `bloque.titulo` de UNA palabra corta. El slot se llena en tools/anthem-datos.mjs:178-183 con el primer feature cuyo titulo tenga CUATRO PALABRAS O MENOS ('necesita ELEGIR un titulo que ya tenga cuatro palabras o menos'), asi que un feature titulado 'Speed', 'Pricing', 'Security' o 'Analytics' ent
   - **Compuerta:** Ninguna. (a) Todas las compuertas construyen con `configurarDatos(ANTHEM)` y ANTHEM trae `bloque: { titulo: 'CADA OBJETO ES REAL' }` (datos.js:28), o sea 4 palabras, el caso mejor. (b) El unico caso adverso que existe es la PAGINA POBRE de verificar.
@@ -275,19 +275,19 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** Ninguna. El fixture SI ejerce el caso —tejidoFalso trae ar 0.6 y 1.0, las dos por debajo de 1.0688— pero no existe ninguna asercion que relacione la posicion del filo con el borde de la mascara: encuadre-check solo cuenta cuadros dentro/fuera del fru
   - `const encaje = (ar) => { const h = Math.min(BOX_H, BOX_W / Math.max(0.08, ar)); return { h, w: h * ar } } ... const ANCHO_MAX = BOX_W ... filo.position.x = -ANCHO_MAX / 2 + ANCHO_MAX * p respaldo.scal`
 
-- [ ] **render3d/demo/escenas/toro.js:397**
+- [x] **render3d/demo/escenas/toro.js:397**
   - **Síntoma:** Medido con las fuentes reales: 'GEOMETRÍA, NO UN DIBUJO' (el fixture) da alto 0.303; 'GRATIS' da 1.107 (x3.7) con la caja bajando a y=-4.03; 'HOY' da 1.835 con la caja en y=-4.40; con la cadena vacia el plano mide 3.83 x 17.11 unidades. El piso real del cuadro de esta escena esta en y=-3.53 (toro.js:442), asi que con seis caracteres o menos la bajada se corta contra el borde inferior. No es un hal
   - **Lo dispara:** Una bajada corta. Sale de tools/anthem-datos.mjs:183 como `corto(det && det.detalle, 34)`, sin minimo: un feature con detalle de una o dos palabras entra tal cual, y uno SIN detalle entra como cadena vacia. `lineaMasc` dimensiona por ANCHO fijo (mundoW*0.68) y deriva el alto de `ancho / T.ar`, asi q
   - **Compuerta:** Ninguna. ANTHEM trae una bajada de 23 caracteres (datos.js:28) y la pagina pobre de verificar.mjs:231 pone `bloque: null`, con lo cual sub recibe cadena vacia y no dibuja un pixel — el caso que rompe (bajada corta PERO no vacia) no lo construye nadie
   - `const m = new THREE.Mesh(new THREE.PlaneGeometry(ancho, ancho / T.ar), mat) ... const sub = lineaMasc((D.bloque ? D.bloque.bajada : ''), mundoW * 0.68, { fuente: 'DMSans', size: 120, tracking: 0.16, a`
 
-- [ ] **render3d/demo/escenas/toro.js:405**
+- [x] **render3d/demo/escenas/toro.js:405**
   - **Síntoma:** Medido: 'MIDOMINIO.COM.AR' da alto 0.300, 'BASECAMP.COM' 0.370, 'LINEAR.APP' 0.502, 'UP.AR' 0.971, 'X.CO' 1.134. Un dominio de cuatro caracteres sale TRES VECES Y MEDIA mas grande que uno de dieciseis en el mismo hueco: el rotulo chico de esquina se convierte en un segundo titular que compite con el titular. Aparte, el comentario de toro.js:421-423 dice que el anclaje 'se calcula desde el ancho re
   - **Lo dispara:** Un dominio corto. Mismo mecanismo que `sub`: `lineaMasc` fija el ANCHO en mundoW*0.5 y saca el alto de la proporcion del texto, asi que el tamaño de la 'lectura tecnica' depende de cuantos caracteres tiene el dominio del cliente.
   - **Compuerta:** Ninguna. `sello(0)` en el fixture es el dominio de ANTHEM y no se barre ningun largo alternativo; no hay compuerta de tamaño de tipografia para el motor 3D (tools/legibility-check.mjs mide otro motor, importa src/pages/Animaciones/engineCore.js). Tam
   - `const lectura = lineaMasc(sello(0), mundoW * 0.5, { fuente: 'DMSans', size: 110, tracking: 0.18, alineado: 'left', color: TIPO_BAJA() }, 0, 0.12) ... lectura.position.set(mundoW * 0.44 - (lectura.geom`
 
-- [ ] **render3d/demo/escenas/tarjetas.js:162**
+- [x] **render3d/demo/escenas/tarjetas.js:162**
   - **Síntoma:** Medido: '500K' da 1.04 y entra; '+3 mil' da 1.27, '500 mil' 1.57 y '1.250.000' 1.87 — el numero sobresale de su propia tarjeta (1.24 de ancho) hasta un 50%, pisando el borde de acento y el canto. El eco gigante del fondo, con la misma cifra, mide 7.81 / 9.60 / 11.49 contra los 7.80 de ancho visible que hay en z=-7.2: se corta contra los dos costados. Con una cifra de 12 digitos (que el tope de 10 
   - **Lo dispara:** Una cifra de mas de ~5 caracteres. El contador tambien se dimensiona SOLO por alto (0.62 en la tarjeta, 3.8 en el eco de fondo) y el ancho sale de arFin sin comparar contra el ancho de la tarjeta (CW = 1.24) ni contra el cuadro. `_limpio(valor, 10)` en backend/semantica_gratis.py:429 admite hasta 10
   - **Compuerta:** Ninguna. Las cifras no forman parte de lo que E-ENCAJE varia — su bucle solo cambia la marca y ademas manda `datos: []`. El caso POBRE usa una sola cifra de 3 caracteres ('4.9'). Y el heuristico `peor` acepta hasta mundoW*2.2 de ancho.
@@ -440,19 +440,19 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
 
 ## Menores (18)
 
-- [ ] **render3d/demo/heroes/mosaico.js:278**
+- [x] **render3d/demo/heroes/mosaico.js:278**
   - **Síntoma:** Dos de los cinco acentos por beat le pegan a una pieza que ya está apagada: en el beat 4 el destaque escala mallas[2] justo en el instante en que el relevo la pone en `visible: false`, y en el beat 6 escala mallas[3], apagada desde el beat 5. Esos beats se quedan sin su evento. Y las piezas que ENTRAN (`c.m`) no reciben ni oscilación (no se les pone `userData.osc`) ni destaque, así que a partir de
   - **Lo dispara:** Una página con más de 5 recortes útiles, o sea que haya relevos. Con las 5 piezas de formación y 4 relevos: los relevos ocultan mallas[1],[2],[3],[4] en los beats 3, 4, 5 y 6 (líneas 199-224), y el destaque pide mallas[1],[4],[2],[0],[3] en los beats 2, 3, 4, 5 y 6.
   - **Compuerta:** No exactamente. verificar.mjs tiene un chequeo de «nada descansa más de un beat», pero mide la escena entera y el mosaico sigue teniendo tweens corriendo (la banda, el filete, la cámara), así que pasa en verde.
   - `const m = mallas[(i * 3) % mallas.length]`
 
-- [ ] **render3d/demo/heroes/mosaico.js:259**
+- [x] **render3d/demo/heroes/mosaico.js:259**
   - **Síntoma:** El barrido del conjunto (líneas 242-243, `tl.to(gM.rotation, { y: 0.20 ... })`) no traslada las piezas: cada recorte gira sobre su propio centro y se queda donde está. Una pieza en x=1.4, z=0.35 tendría que desplazarse ~0.28 en z al rotar el grupo 0.20 rad, y no se desplaza. El comentario de la línea 240-241 dice «Con 0.20 y un desplazamiento lateral, el paralaje de las profundidades se hace visib
   - **Lo dispara:** Siempre. Los recortes viven en `gr` colgados directo de la escena (línea 143, `gr.add(m)`), no de `gM`, y el onUpdate copia SÓLO la rotación.
   - **Compuerta:** No. Es un movimiento que falta, no un objeto fuera de cuadro ni una timeline mal medida.
   - `m.rotation.y = gM.rotation.y`
 
-- [ ] **render3d/demo/escenas/cita.js:43-51 (constante en la 38)**
+- [x] **render3d/demo/escenas/cita.js:43-51 (constante en la 38)**
   - **Síntoma:** Esa linea unica es la que gana el Math.max(...texs.map(t => t.ar)) de la linea 100, asi que encaje achica LAS CUATRO lineas de la cita para que entre ella. Medido: una cita normal de 4 renglones sale a 109 px de cuerpo; agregandole un token de 50 caracteres sin espacios la cita entera cae a 56 px — la mitad, por una sola palabra. POR_LINEA = 26 tampoco es un ancho: con el ar real de una linea de 2
   - **Lo dispara:** Un testimonio con un token que no se puede cortar por espacios: una URL, un handle, un mail, un compuesto con guiones. enLineas solo parte por /\s+/ y nunca dentro de una palabra, asi que ese token queda como una linea de largo arbitrario.
   - **Compuerta:** E-ENCAJE si mira estas mallas (userData.encaja en la linea 140) y por eso NO hay desborde: el defecto es el remedio de la compuerta llevado al extremo. Achicar es como encaje logra que entre, asi que la compuerta queda verde justo cuando el texto se 
@@ -464,7 +464,7 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** E-ENCUADRE-NUNCA/CASI si barre los 11 aires (encuadre-check.mjs:155) pero no puede acusar a las marcas: la regla por objeto exige lado > mundoW*0.12 (linea 272) y cada marca mide 0.10-0.26, y la regla por grupo usa g.dentro = Math.max(...) sobre todo
   - `const ANCHO = 5.05 // ... FIL = [{ bt: 0, x: -1.65, y: -1.75, l: 3.30, gr: 0.075, ... }] ... barV.position.set(-2.70, -3.55, -0.2) ... mk.position.set(2.62, -6.2 + i * 0.55, -0.3)`
 
-- [ ] **render3d/demo/escenas/pantalla.js:79**
+- [x] **render3d/demo/escenas/pantalla.js:79**
   - **Síntoma:** La proporcion usada para calcular `visible` puede errar hasta 5.3x (720/1560 = 0.4615 contra 720/8192 = 0.0879): la escena mostraria 83% de lo que cree que es la pagina cuando en realidad son 6840 px de captura apretados en el cuadro. En la practica no se llega a ver porque una textura cargada siempre trae medidas — lo reporto porque el encargo pide justo esto (si la cuenta usa medidas reales o un
   - **Lo dispara:** Una textura de tira cuyo `image.height` llegue en 0/undefined (la guarda de pantalla.js:69 solo comprueba que `tira.image` exista, no sus medidas). El respaldo mezcla DOS magnitudes distintas: `spec.tiraViewport` es la altura del VIEWPORT, no la de la tira — backend/motor.py:283 lo llena con `(pm.ge
   - **Compuerta:** Ninguna, pero tampoco hace falta: el camino esta practicamente muerto. Lo dejo anotado como deuda de coherencia, no como defecto visible — los dos respaldos de mesa.js para el mismo dato (1560 y 1) no pueden ser los dos correctos.
@@ -476,13 +476,13 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** E-ENCAJE-REAL de encuadre-check.mjs:217 SI mira esta malla (es la unica de las seis escenas que se declara), pero solo verifica que ENTRE, no que se lea: no existe una compuerta de tamaño minimo de tipografia para el motor 3D.
   - `const t = texto(linea, { fuente: 'DMSans', peso: 700, size: 130, tracking: 0.01, upper: true }) const ALTO = encaje(mundoH * 0.040, t.ar, ANCHO)`
 
-- [ ] **render3d/demo/escenas/sello.js:83**
+- [x] **render3d/demo/escenas/sello.js:83**
   - **Síntoma:** Medido: 'ANTHEM' sale con el glifo a 73 px de 1920; 'CONSTRUCCIONES' a 60; 'TRANSPORTES INTERNACIONALES' a 33; una marca de 31 caracteres (el tope es 32) a 29 px. apertura.js:459 declara un PISO para el mismo tipo de letra y el mismo bloom — `const ALTO_MIN = 0.55` — y su comentario de las lineas 456-457 dice por que: 'por debajo de eso el glifo en Anton se afina tanto que el bloom le rellena los 
   - **Lo dispara:** Una marca larga. Aca el encaje es de dos ejes y por eso NADA se corta — el defecto es el otro extremo: `encaje` baja el alto todo lo que haga falta y no hay piso. ALTO_BASE es mundoH*0.055 = 0.55 y ANCHO_UTIL es R*1.42 = 2.40.
   - **Compuerta:** Ninguna, y por diseño: E-ENCAJE solo comprueba que la pieza ENTRE y que no falte ninguna letra (verificar.mjs:407 y 425). Un nombre entero e ilegible cumple las dos cosas. bandera.js:60 tiene el mismo encaje sin piso, pero parte de mundoH*0.155 y con
   - `const alto = encaje(ALTO_BASE, t.ar, ANCHO_UTIL)`
 
-- [ ] **render3d/demo/heroes/brote.js:180 (con la linea de tierra de :142)**
+- [x] **render3d/demo/heroes/brote.js:180 (con la linea de tierra de :142)**
   - **Síntoma:** La yema —lo unico de color puro del hero, y el sujeto del gesto de crecer— roza o corta el borde de arriba justo cuando termina de crecer y abre a escala 1.5. Medido: dentro de su registro llega a y=1.007 (jugueton/semilla 5), o sea margen cero; con un aire de mas dolly llega a 1.020 (inmobiliario/semilla 5) y la yema sale mordida. No es hipotetico que le toque un aire de esos: `elegibles()` devue
   - **Lo dispara:** Una semilla que saque el sorteo cerca del tope (rnd cerca de 0.26) junto con un `dz` positivo (brote.js:181, `(rnd() - 0.5) * mundoW * 0.28`, o sea hasta +0.79 hacia la camara, que achica el semialto util). La punta cae en mundoH*0.46 = 4.6 contra un semialto de 5: quedan 8 centesimos de margen y el
   - **Compuerta:** NINGUNA. Otra vez E-ENCAJE-REAL solo mira mallas con `userData.encaja` y brote no marca ninguna; el resto de encuadre-check pregunta interseccion, y un tallo que asoma por arriba sigue intersectando el cuadro. La compuerta ademas corre con una sola s
@@ -494,31 +494,33 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** Ninguna de forma preventiva. encuadre-check las construye con los once aires (encuadre-check.mjs:155) y hoy pasan, pero solo pregunta interseccion, no contencion, salvo en mallas marcadas `encaja` — que ninguno de los tres marca. Si mañana uno se pas
   - `const ANCHO = 4.30 ... const BANDAS = [{ y: 3.05, semi: 1.05, ... }, { y: 0.00, semi: 1.75, ... }, { y: -3.05, semi: 1.05, ... }]`
 
-- [ ] **render3d/demo/escenas/contraste.js:58**
+- [x] **render3d/demo/escenas/contraste.js:58**
+  - REFUTADO (ffeea91) - no es defecto. contraste.js:21 NO importa `encaje` del kit, asi que no tapa nada: es reuso de nombre entre archivos. Nadie puede creer que llama al del kit porque el del kit no esta en el alcance del modulo.
   - **Síntoma:** Dos cosas a la vez. (a) Este `encaje` local TAPA el `encaje` del kit dentro del modulo con una firma distinta —recibe un `ar` y devuelve {h, w}— asi que el mismo nombre significa dos cosas segun el archivo: en el kit 'baja el alto para que quepa el ancho', aca 'contain en una caja'. Es el nombre correcto para la funcion equivocada. (b) BOX_W = mundoW * 0.76 = 4.275 unidades = 821 px, y tampoco pas
   - **Lo dispara:** Un logo capturado chico que llegue a esta escena: ROLES = ['foto', 'tarjeta', 'hero', 'logo'] (contraste.js:29), o sea el logo es la cuarta prioridad, y solo entra cuando la pagina no dio foto/tarjeta/hero suficientes.
   - **Compuerta:** Ninguna para la ampliacion; para la colision de nombres tampoco, y no es cazable por compuerta — se arregla dandole al kit la funcion de dos ejes que falta y borrando las siete copias.
   - `const encaje = (ar) => { const h = Math.min(BOX_H, BOX_W / Math.max(0.08, ar)); return { h, w: h * ar } }`
 
-- [ ] **render3d/demo/kit.js:147**
+- [x] **render3d/demo/kit.js:147**
+  - REFUTADO (ffeea91) - el numero es cierto y no llega a la pantalla. topeNitido(null,1080,5.625) = 7.875 unidades = 140% del cuadro, pero los TRES llamadores lo pasan por un Math.min contra un tope mas chico (columna 0.90*mundoW, vitrina 0.56, mosaico por celda), asi que el fallback nunca ensancha nada.
   - **Síntoma:** Con `img` nulo o de ancho 0 la funcion cae al fallback `W` (1080) y devuelve 1.4 * mundoW = 7.875 unidades = 1512 px, o sea el 140% del ancho del cuadro. Una funcion que se llama `topeNitido` devuelve, cuando no puede medir, un tope MAS GRANDE que el cuadro: deja de acotar exactamente en el caso en que hace falta que acote. columna.js:134 se salva sola porque escribe `Math.min(ANCHO_MAX, topeNitid
   - **Lo dispara:** Una textura cuya `.image` todavia no cargo o llego con ancho 0 — el caso que cargarRecortes() (kit.js:1971-1978) resuelve con `() => res()` en el callback de error, o sea que un PNG roto igual resuelve la promesa y la escena construye.
   - **Compuerta:** Ninguna. Y el fallback nunca se ejecuta en las compuertas porque verificar.mjs y encuadre-check construyen con `texturas` vacio, asi que las escenas se declaran `vacia: true` antes de llegar aca.
   - `((img && img.width ? img.width : W) * mag / (W || 1080)) * mundoW`
 
-- [ ] **render3d/demo/kit.js:284**
+- [x] **render3d/demo/kit.js:284**
   - **Síntoma:** `escalones()` (kit.js:278) no recibe el alto de la ventana, asi que no puede acotar donde corresponde: acota el TECHO de la ventana a p.H en vez de a p.H - altoVentana. `ventanaLegible` si lo hace bien en kit.js:340 (`Math.min(p.H - altoVentana, ...)`) porque ella si recibe `altoVentana`. Las dos funciones resuelven lo mismo con criterios distintos y una tiene los datos y la otra no. Efecto real h
   - **Lo dispara:** Una pagina cuyo ultimo peldaño del scroll cae cerca del pie de la tira y `alHueco` encuentra el renglon vacio mas cercano HACIA ABAJO: el radio de busqueda es medio peldaño (`paso * 0.5`), asi que el ultimo destino puede quedar hasta recorrido/(2n) por debajo de y0 + recorrido.
   - **Compuerta:** Ninguna. No hay compuerta sobre el recorrido del scroll; es cazable sin renderizar comparando el ultimo escalon contra p.H - altoVentana.
   - `out.push(p ? Math.max(0, Math.min(p.H, alHueco(p, y, paso * 0.5))) : y)`
 
-- [ ] **render3d/demo/kit.js:996**
+- [x] **render3d/demo/kit.js:996**
   - **Síntoma:** El comentario afirma un invariante que ya es falso: columna.js:333 (`if (matIdx.uniforms.map.value !== ix.tex) matIdx.uniforms.map.value = ix.tex`) y tarjetas.js:166 (`mat.uniforms.map.value = t.tex`) reemplazan la textura de un `materialMascara` en caliente, y ninguna reapunta `uRep`/`uOff` (kit.js:997-998), que siguen colgados de los Vector2 de la textura ORIGINAL. Es exactamente el mecanismo qu
   - **Lo dispara:** Nada de una pagina real lo rompe hoy, y por eso va como menor: las dos escenas que reemplazan la textura solo intercambian texturas de `texto()`, que nunca tocan repeat ni offset (quedan en 1,1 y 0,0), asi que los Vector2 viejos a los que apuntan uRep/uOff tienen el mismo valor. Lo rompería el dia q
   - **Compuerta:** Ninguna. Es cazable sin render: recorrer los materiales creados por materialMascara y comprobar `mat.uniforms.uRep.value === mat.uniforms.map.value.repeat`.
   - `// reapuntar estos dos; ninguna escena lo hace y por eso no se paga esa complejidad.)`
 
-- [ ] **render3d/demo/guion.js:59 y 66**
+- [x] **render3d/demo/guion.js:59 y 66**
   - **Síntoma:** La rafaga se queda sin piezas y devuelve `return { g, gr, tl }` (rafaga.js:93) — ojo, SIN el campo `vacia`, al reves que las otras nueve escenas — o sea 6 beats con dos filetes y el indice '03 / 06' y nada mas, y ademas ningun arnes la puede saltear. `mesa` cae en `vacia: true` (mesa.js:63) con el mismo gatillo. No lo vi disparado por ningun fixture: los cuatro que no tienen frases tampoco tienen 
   - **Lo dispara:** El requisito cuenta elementos de CUALQUIER rol; la escena solo consume `const ROLES = ['tarjeta', 'foto', 'logo']` (rafaga.js:40), asi que los de rol 'cta' y 'hero' inflan la cuenta y nunca se usan (stripe tiene 3 'cta', linear 3, basecamp 3). Lo mismo `mesa` en guion.js:66 (`(d.elementos || []).som
   - **Compuerta:** No. La copia del gate (guion-check.mjs:75) tiene el MISMO requisito con la misma cuenta ciega de roles, y su pagina 'rica' declara un elemento 'cta' que ninguna escena puede usar (guion-check.mjs:47) — o sea que el gate ya esta contando material inut
@@ -683,3 +685,19 @@ rojo por umbral mal puesto, que se corrige aflojando el umbral y no el motor.
 en vez de sólo construir— es lo único que puede cerrar la familia entera de defectos que hoy son
 invisibles para las cinco rápidas. Vale la pena pensarla como la primera de una clase, no como un
 parche para los fondos.
+
+
+---
+
+## Diferido a proposito: tools/adn-check.mjs:81
+
+El parche esta medido y es correcto -- la compuerta mide el contraste contra un fondo que NO es el
+que se dibuja (`fondoVivo` mezcla uA/uB por distancia y el cuadro cubre 1/1.49 del plano), asi que
+un rotulo ilegible pasa sin que ninguna cifra se mueva.
+
+NO se aplico, y el motivo es que **deja la compuerta en ROJO con 88 combinaciones reales**. No son
+falsos positivos: son colores que de verdad se pintan sobre el fondo que de verdad se ve. Pero
+aplicarlo sin cerrar antes esas 88 rompe una de las 5 rapidas para todo el mundo, y una compuerta
+roja que se aprende a ignorar es peor que la que mide mal.
+
+El orden correcto es al reves: primero se cierran las 88, despues se afila la compuerta.
