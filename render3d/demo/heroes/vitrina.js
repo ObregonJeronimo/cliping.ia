@@ -12,7 +12,7 @@
 //
 // CONTRATO: ver heroes/telefono.js
 
-import { LOOK, b, E, hex, nivel, matAcento, planoRecorte, recortesDe, dolly, orbita } from '../kit.js'
+import { LOOK, b, E, hex, nivel, matAcento, planoRecorte, recortesDe, dolly, orbita, topeNitido} from '../kit.js'
 
 export const meta = {
   id: 'vitrina',
@@ -68,7 +68,22 @@ export function build(ctx) {
   const ar = Math.max(0.05, tex.image.width / tex.image.height)
   const ANCHO_MAX = mundoW * 0.56
   const ALTO_MAX = mundoH * 0.21
-  const altoLogo = Math.min(ALTO_MAX, ANCHO_MAX / ar)
+  // Y EL TERCER LIMITE ES LA RESOLUCION DEL ARCHIVO, que faltaba. Un logo de marca son pocos pixeles:
+  // medidos los PNG reales del repo, stripe 120x50, linear 176x44, ghost 211x69. Estirado hasta
+  // ANCHO_MAX, el de stripe se dibujaba a 605 px de cuadro — 5.0 veces su resolucion, con los bordes
+  // deshechos y las curvas escalonadas. Y es LO UNICO que hay en el cuadro: centrado sobre el
+  // pedestal, quieto, los ocho beats enteros, con la camara ademas acercandose.
+  //
+  // `topeNitido` vive en el kit desde hace tiempo con un comentario que dice "lo usan todas" y lo
+  // importaba UN solo archivo de los siete que dibujan recortes. Es exactamente el caso para el que se
+  // escribio: devuelve el ancho maximo en unidades de mundo que no pasa de `mag` veces la resolucion
+  // nativa. Con 1.4 el ojo no distingue el remuestreo; con 5 ve un logo roto.
+  //
+  // Si el archivo es chico, el logo sale mas chico. Un logo pequeño y nitido se lee como una marca; uno
+  // grande y deshecho se lee como un render fallado.
+  const ANCHO_NITIDO = topeNitido(tex.image, 1080, mundoW, 1.4)
+  const anchoTope = Math.min(ANCHO_MAX, ANCHO_NITIDO)
+  const altoLogo = Math.min(ALTO_MAX, anchoTope / ar)
   const anchoLogo = altoLogo * ar
 
   // El pedestal se dimensiona DESPUÉS del logo y a partir de él: una pieza que sobresale de su base se

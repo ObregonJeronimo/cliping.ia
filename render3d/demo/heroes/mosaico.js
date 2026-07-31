@@ -18,7 +18,7 @@
 //
 // CONTRATO: ver heroes/telefono.js
 
-import { LOOK, b, E, hex, planoRecorte, recortesDe, dolly } from '../kit.js'
+import { LOOK, b, E, hex, planoRecorte, recortesDe, dolly, topeNitido} from '../kit.js'
 
 export const meta = {
   id: 'mosaico',
@@ -121,7 +121,16 @@ export function build(ctx) {
     const altoCelda = esBanda ? altoBanda : celdaH
     const hPorAlto = altoCelda * AIRE
     const hPorAncho = (anchoCelda * AIRE) / Math.max(0.05, p.ar)
-    const alto = Math.min(hPorAlto, hPorAncho)
+    // TERCER LIMITE: LA RESOLUCION DEL ARCHIVO. La banda ancha de arriba —`piezas[0]`— toma el ancho
+    // util entero, y ROLES pone 'logo' primero, asi que en toda pagina que de logo el caso por defecto
+    // era estirar un PNG de 120x50 a 975 px de cuadro: 8.1 veces su resolucion, cruzando la parte
+    // superior durante seis beats. Con linear da 5.5x y con tailwind 3.1x.
+    //
+    // El tope se aplica al ALTO porque es la variable con la que se compone aca, convirtiendo el ancho
+    // maximo nitido a su alto equivalente. Una pieza de poca resolucion ocupa menos celda y deja aire
+    // alrededor, que es preferible a llenarla con una version deshecha de si misma.
+    const hPorNitidez = topeNitido(p.tex && p.tex.image, 1080, mundoW, 1.4) / Math.max(0.05, p.ar)
+    const alto = Math.min(hPorAlto, hPorAncho, hPorNitidez)
     const m = planoRecorte(p.tex, alto)
     if (!m) return
     // La última fila puede estar incompleta: se centra sola en vez de quedar pegada a la izquierda.

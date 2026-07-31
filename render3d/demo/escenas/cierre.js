@@ -148,6 +148,7 @@ export function build(ctx) {
   }
 
   const ancho = m => (m.geometry.parameters && m.geometry.parameters.width) || 1
+  const alto = m => (m.geometry.parameters && m.geometry.parameters.height) || 1
 
   // ==================================================================== composición
   // Dos grupos: lo que se comprime fuerte al final y el anillo, que se comprime apenas porque es
@@ -237,7 +238,28 @@ export function build(ctx) {
   const marca = textoMascara(D.marca, 1, nivel(0.78), { fuente: 'Anton', tracking: 0.01 })
   marca.material.uniforms.uDir.value = 2          // se descubre de abajo hacia arriba
   marca.material.uniforms.uSuave.value = 0.10
-  marca.scale.setScalar(4.34 / ancho(marca))      // 77% del ancho del cuadro
+  // LA ESCALA ES UNIFORME Y SALIA DE UNA SOLA MEDIDA: EL ANCHO. `4.34 / ancho(marca)` lleva cualquier
+  // marca a ocupar el 77% del cuadro de lado a lado, y como la escala es uniforme el ALTO va de arrastre.
+  // Medido con la geometria real de Anton a tamano 1:
+  //
+  //   Duolingo English  ancho 5.39 -> escala 0.81 -> alto 0.81   ( 8% del cuadro)
+  //   Tailwind CSS      ancho 4.08 -> escala 1.06 -> alto 1.06   (11%)
+  //   Ghost             ancho 2.00 -> escala 2.17 -> alto 2.17   (22%)
+  //   Ok                ancho 0.96 -> escala 4.54 -> alto 4.54   (45%)
+  //   Q                 ancho 0.60 -> escala 7.22 -> alto 7.22   (72%)
+  //
+  // Una marca de una letra salia con un glifo de 952 px de alto, y sobre todo salia FUERA DEL ANILLO,
+  // que es el unico lugar donde esta escena declara que la marca vive. El anillo tiene R = 2.55 y su
+  // centro esta 0.24 por encima del de la marca, asi que con medio ancho 2.17 el alto que todavia
+  // entra es 2*(sqrt(2.55^2 - 2.17^2) - 0.24) = 2.19.
+  //
+  // Por eso el tope es 2.2 y no un numero elegido de arriba: es la geometria que la escena ya declaro.
+  // Y no toca NINGUNA marca real —Ghost, la mas alta de las medidas, da 2.17 y queda igual—; recorta
+  // solo el caso de una o dos letras, que era el unico roto. Una marca corta sale mas chica de ancho y
+  // eso es correcto: una letra sola a escala de anillo se lee como marca, y desbordandolo se lee como
+  // un error de render.
+  const ALTO_ANILLO = 2.2
+  marca.scale.setScalar(Math.min(4.34 / ancho(marca), ALTO_ANILLO / alto(marca)))
   marca.renderOrder = 6
   gMarca.add(marca)
   gComp.add(gMarca)
