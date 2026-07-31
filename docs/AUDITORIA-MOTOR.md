@@ -639,3 +639,41 @@ disponible; sus afirmaciones hay que verificarlas a mano antes de actuar sobre e
 > Las dos veces el síntoma fue invisible para las compuertas (corren en Node y **no compilan
 > GLSL**) y para el ojo (un degradé liso sigue pareciendo un fondo). Es el argumento más fuerte
 > del documento a favor de una compuerta que ejecute el shader.
+
+---
+
+## Añadido al plan: una compuerta que EJECUTE el shader
+
+**Por qué falta.** Las cinco compuertas rápidas corren en Node, que no tiene GPU ni WebGL. Construyen
+las escenas con un THREE de mentira y miden cajas, timelines y planes — pero nunca ejecutan el código
+del shader. Y un shader, del lado de JavaScript, es apenas un **string** adentro del archivo: puede
+decir cualquier cosa, o nada, y el archivo sigue siendo JS válido.
+
+Los dos errores que llegaron a producción esta semana viven exactamente ahí, y las compuertas dieron
+verde las dos veces:
+
+- un multiplicador de calibración que quedó **fuera** de la cadena `if/else` y afectaba a los 22
+  patrones (`e63e331`);
+- cinco `else if` duplicados con cuerpo vacío que dejaban los cinco fondos nuevos como cuadro liso
+  (`c2c8419`).
+
+Ninguno era visible al ojo tampoco: un degradé sin trama sigue pareciendo un fondo legítimo.
+
+**Qué mide.** Un cuadro por patrón (27) en el Chromium headless, contra dos aserciones:
+
+- [ ] **E-PATRON-DIBUJA** — el patrón produce una trama distinguible del degradé pelado. Se compara
+  cada patrón contra un render de referencia con `fondo: nada`, en la misma escena y semilla. Caza
+  rama muerta, rama vacía, shader que no compila, y patrón invisible por contraste.
+- [ ] **E-PATRON-AISLADO** — cambiar el patrón A no cambia el render del patrón B. Caza cualquier
+  cosa que se escape de su rama, que es la forma exacta del bug del ×4,5.
+
+**Costo medido en este repo:** arrancar Chromium ~4 s, dibujar un cuadro 12-24 ms. 27 cuadros ≈ 5-8 s.
+Entra en las compuertas rápidas (hoy 7 s).
+
+**Riesgo:** ninguno sobre el producto — es sólo lectura y no toca el motor. El riesgo real es un falso
+rojo por umbral mal puesto, que se corrige aflojando el umbral y no el motor.
+
+**Nota de método.** Esto generaliza más allá de los fondos: la misma idea —una compuerta que RENDERICE
+en vez de sólo construir— es lo único que puede cerrar la familia entera de defectos que hoy son
+invisibles para las cinco rápidas. Vale la pena pensarla como la primera de una clase, no como un
+parche para los fondos.
