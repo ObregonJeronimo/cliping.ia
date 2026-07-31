@@ -25,6 +25,32 @@
 // Mínimo con el que cada escena se sostiene. Se lee como "qué le tengo que poder dar".
 // El costo en beats sale de `meta.beats` del módulo, no de acá: duplicarlo es garantía de que en
 // algún momento los dos números dejen de coincidir.
+// QUIEN SE QUEDA CON UN ASSET CUANDO DOS ESCENAS LO QUIEREN.
+//
+// El motor ya tenia dos reparticiones para que nada se repita: el mostrador de datos.js reparte las
+// FRASES (repartirFrases / claimLibre / marcarClaimUsado) y `recortesDe` (kit.js) rota un cursor entre
+// escenas para que no se repitan los RECORTES. La TIRA —la captura scrolleable de la pagina entera—
+// no tenia ninguna de las dos: `pantalla` y `mesa` la leian las dos con un `texturas.get('tira')`
+// directo, sin preguntarle a nadie.
+//
+// El costo, medido en el render de stripe.com del 2026-07-31: la misma captura en pantalla de 0:02 a
+// 0:04 y otra vez de 0:07 a 0:10. No es un defecto de encaje ni de nitidez, asi que ninguna compuerta
+// podia verlo: las dos escenas estaban perfectamente compuestas, y el problema era que contaban lo
+// mismo.
+//
+// LA REGLA DE DESEMPATE NO ES EL ORDEN, ES QUIEN TIENE ALTERNATIVA. `pantalla` ES la tira: sin ella
+// devuelve `vacia` y son seis beats de cuadro liso. `mesa` pide "una superficie con contenido" y ya
+// tenia escrita la rama del recorte. Asi que la tira es de `pantalla` aunque `mesa` vaya antes, y no
+// hay que ordenar nada ni que las escenas se enteren de en que posicion cayeron.
+export const DUENO = { tira: 'pantalla' }
+
+// Y CON QUE SE QUEDA LA QUE PERDIO. Una escena que cede el asset sigue en pie solo si tiene con que
+// componerse; si no, no se la deja adentro esperando a declararse vacia. Es la diferencia entre una
+// pieza mas corta y una pieza con seis beats de fondo pelado en el medio.
+const RESPALDO_SIN_TIRA = {
+  mesa: (d) => (d.elementos || []).some(e => e && e.url),
+}
+
 const REQUISITOS = {
   // El gancho necesita la PROMESA de la pagina y nada mas. Sin description no hay gancho: es preferible
   // abrir por la marca que abrir con un encabezado de seccion puesto en cuerpo de cartel.
@@ -432,6 +458,21 @@ export function guionDe({ escenas, datos, seed = 1, beatSeg = 60 / 124, dur = nu
   // deshacia esa colocacion: medido, dejaba dos heroes pegados en 14 de 324 guiones.
   const plan = separarFamilias(medio.filter(id => mejor.dentro.has(id)))
   let usados = mejor.n
+
+  // SE SACA LA QUE PERDIO LA TIRA Y NO TIENE RESPALDO. Va ACA, despues del reparto por familia y ANTES
+  // del relleno, y ese orden importa: al liberar sus beats el relleno los vuelve a usar, asi que en vez
+  // de una pieza mas corta con una escena muda entra otra escena que si tiene algo que mostrar. Que es
+  // exactamente lo que pidio Thiago: "si no existe otra imagen VALIDA, descartar la escena y
+  // reemplazarla por otra escena, con informacion VALIDA y que aporte al video".
+  //
+  // El filtro por REQUISITOS no puede hacer esto solo: corre ANTES de saber que escenas entraron, y la
+  // condicion de `mesa` no depende de la pagina sino de con quien le toco compartir la pieza.
+  if (plan.includes(DUENO.tira)) {
+    for (const [id, tieneRespaldo] of Object.entries(RESPALDO_SIN_TIRA)) {
+      const i = plan.indexOf(id)
+      if (i >= 0 && !tieneRespaldo(d)) { plan.splice(i, 1); usados -= beatsDe(id) }
+    }
+  }
 
   // TODAVÍA SOBRA TIEMPO. Pasa siempre que se piden 30 s: el material del medio da 20 y quedan diez
   // segundos de nada. La respuesta NO es estirar las escenas —una escena al 150% de su duración es la

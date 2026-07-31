@@ -37,7 +37,7 @@ export const meta = { id: 'mesa', beats: 6 }
 const INCLINA = -0.86
 
 export function build(ctx) {
-  const { THREE, gsap, mundoW, mundoH, camera, distBase, rnd, texturas, datosEls, spec } = ctx
+  const { THREE, gsap, mundoW, mundoH, camera, distBase, rnd, texturas, datosEls, spec, sinTira } = ctx
   const g = new THREE.Group()
   const gr = new THREE.Group()          // la pagina va post-bloom: trae los colores reales de la marca
   const tl = gsap.timeline({ paused: true })
@@ -47,7 +47,16 @@ export function build(ctx) {
   // ---------------------------------------------------------------- el material que hay
   // Primero la tira, que es la pagina entera y el mejor sujeto para una mesa. Si no hay, un recorte
   // grande sirve igual: lo que la escena necesita es UNA superficie con contenido, no la pagina toda.
-  const tira = texturas && texturas.get('tira')
+  // ...SALVO QUE LA TIRA YA LA HAYA MOSTRADO OTRA ESCENA. `pantalla` ES la tira —no tiene con que
+  // sustituirla— asi que cuando las dos entran en la misma pieza la tira es de ella y esta escena
+  // baja a su respaldo, que es el recorte y ya estaba escrito aca abajo.
+  //
+  // El defecto que cierra: en el render de stripe.com del 2026-07-31, `pantalla` (0:02 a 0:04) y
+  // `mesa` (0:07 a 0:10) mostraron LA MISMA CAPTURA con cinco segundos de diferencia. Thiago lo vio
+  // mirando el video. Las dos leian `texturas.get('tira')` directo, salteandose todo reparto: el
+  // mostrador de datos.js reparte FRASES para que no se repitan, `recortesDe` rota un cursor para que
+  // no se repitan los RECORTES, y la tira no tenia ni una cosa ni la otra.
+  const tira = (!sinTira && texturas) ? texturas.get('tira') : null
   let mapa = null, arMapa = 1
   if (tira && tira.image) {
     mapa = tira

@@ -19,7 +19,7 @@ import { BEAT, b, LOOK, CLARO, AIRE, hex, mulberry32, fondoVivo, configurar, MON
 import { configurarDatos, reiniciarReparto } from './datos.js'
 import { personalizar } from './adn.js'
 import { ESCENAS } from './escenas/index.js'
-import { guionDe, ajusteDe } from './guion.js'
+import { guionDe, ajusteDe, DUENO } from './guion.js'
 
 // ---------------------------------------------------------------- pase final de película
 // Grano + viñeta + aberración + un leve halo. El tiempo ENTRA como uniform: un pase con reloj propio
@@ -475,6 +475,15 @@ export class Anthem {
         // de cada siete. En oscuro andaban perfecto, asi que el defecto no aparecia nunca mirando la
         // demo. Un contrato que solo se cumple en el arnes es un contrato que no existe.
         claro: CLARO,
+        // LA TIRA TIENE DUENO CUANDO DOS ESCENAS LA QUIEREN. Ver la nota larga en guion.js sobre
+        // DUENO: `pantalla` ES la tira y `mesa` tiene con que sustituirla, asi que cuando las dos
+        // entran en la misma pieza la tira es de `pantalla` y `mesa` baja a su recorte.
+        //
+        // Se resuelve MIRANDO EL PLAN ENTERO y no acumulando lo que ya se uso, y esa diferencia es la
+        // que hace que no dependa del orden: con un acumulador, `mesa` antes que `pantalla` se
+        // quedaba con la tira y dejaba a `pantalla` sin nada que mostrar, que es peor que el defecto
+        // que se estaba arreglando.
+        sinTira: mod.meta.id !== DUENO.tira && (this.guionUsado || []).includes(DUENO.tira),
       }
       repeticiones.set(mod.meta.id, (repeticiones.get(mod.meta.id) || 0) + 1)
       const r = await mod.build(ctx)

@@ -731,3 +731,18 @@ El orden correcto es al reves: primero se cierran las 88, despues se afila la co
     recortesDe, texturaDe, dolly, orbita, deslizFijo).
   - **Compuerta:** Ninguna. Es el mismo punto ciego que documenta verificar.mjs:87-89 — los heroes se
     prueban con lienzos de 4 px porque lo que se audita es la GEOMETRIA, no los pixeles.
+
+- [ ] **render3d/demo/escenas/mesa.js — el respaldo del recorte deja el tercio de arriba vacio**
+  - **Sintoma:** Medido en 9 cuadros repartidos por toda la escena (228 a 296 del render de stripe.com
+    con la tira cedida a `pantalla`): el tercio superior del cuadro esta plano entre 63.0% y 70.6%. No
+    es transitorio, dura la escena entera.
+  - **Lo dispara:** Que `mesa` componga con un RECORTE en vez de la tira, cosa que hasta el 2026-07-31
+    casi no pasaba porque la tira estaba siempre disponible. Al darle la tira a `pantalla` (ver DUENO en
+    guion.js) este camino pasa a ser el normal. La escena esta calibrada para un sujeto ALTO —la tira
+    mide 720x8192— y un recorte apaisado le deja el hueco.
+  - **La tension a resolver:** mesa.js:24 declara "El plano se compone ANCHO y se recorta por UV: la
+    pagina no se estira nunca", pero el arreglo del estiramiento (mesa.js:78) achica el PLANO cuando la
+    imagen es mas corta que la ventana. Para la tira eso es correcto; para un recorte apaisado habria
+    que recortar por UV y no achicar. Son dos casos distintos con una sola rama.
+  - **Compuerta:** Ninguna. Un hueco de fondo no es desborde ni pieza fuera de cuadro, asi que ni
+    E-ENCAJE ni E-ENCUADRE aplican. Es el mismo punto ciego que titular.js:130.
