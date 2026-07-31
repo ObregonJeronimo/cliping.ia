@@ -1154,7 +1154,7 @@ export function fondoVivo(mundoW, mundoH) {
           // del fondo satura —el factor de mix pasa de 1 y deja de sumar— asi que un patron denso
           // se dispara con poco y uno disperso casi no se mueve. La caustica se fue a 4.51 con x1.6
           // y la bruma subio a menos de la mitad con x5.4. Se midio el resultado y se corrigio.
-          linea *= 4.50;
+          linea *= 13.0;
         } else if (uPatron < 17.5) {
           // BRUMA: humo lento atravesando el cuadro. Es el patron MAS FLOJO de contraste de todo el
           // grupo, y eso es la decision, no una limitacion: no tiene que poder nombrarse ninguna forma,
@@ -1195,7 +1195,7 @@ export function fondoVivo(mundoW, mundoH) {
           // del fondo satura —el factor de mix pasa de 1 y deja de sumar— asi que un patron denso
           // se dispara con poco y uno disperso casi no se mueve. La caustica se fue a 4.51 con x1.6
           // y la bruma subio a menos de la mitad con x5.4. Se midio el resultado y se corrigio.
-          linea *= 9.00;
+          linea *= 34.0;
         } else if (uPatron < 18.5) {
           // CAUSTICA: la luz que rebota en agua o cruza un vidrio tallado y deja una red de venas
           // brillantes moviendose. Es un fenomeno, no un dibujo: la superficie ondulada concentra la
@@ -1272,7 +1272,7 @@ export function fondoVivo(mundoW, mundoH) {
           // del fondo satura —el factor de mix pasa de 1 y deja de sumar— asi que un patron denso
           // se dispara con poco y uno disperso casi no se mueve. La caustica se fue a 4.51 con x1.6
           // y la bruma subio a menos de la mitad con x5.4. Se midio el resultado y se corrigio.
-          linea *= 2.2;
+          linea *= 4.5;
         } else if (uPatron < 20.5) {
           // ESTELAS: trazos horizontales que cruzan el cuadro, cada uno en su carril, con su largo y su
           // velocidad. Es lo mas cerca que llega el motor a una foto de obturador lento: el objeto no se
@@ -1329,7 +1329,6 @@ export function fondoVivo(mundoW, mundoH) {
           float brilloL = 0.20 + 0.80 * smoothstep(0.30, 0.02, abs(dL - 0.04));
           linea = (trazoL + haloL) * brilloL * 0.60;
           linea *= smoothstep(1.05, 0.20, length(g));
-        }
           // CALIBRADO PARA MUNDO CLARO. El shader ya documenta que en claro la trama necesita MAS
           // peso: una linea que sobre negro SUMA luz, sobre blanco tiñe apenas un blanco que ya
           // estaba lleno. Este patron nacio calibrado a ojo sobre fondo oscuro y en el render de
@@ -1343,6 +1342,7 @@ export function fondoVivo(mundoW, mundoH) {
           // se dispara con poco y uno disperso casi no se mueve. La caustica se fue a 4.51 con x1.6
           // y la bruma subio a menos de la mitad con x5.4. Se midio el resultado y se corrigio.
           linea *= 4.50;
+        }
         // 'nada' (uPatron >= 21.5) deja el degrade solo: es lo que necesita una pieza que vende aire.
         linea *= uGrilla;
         // En oscuro la línea SUMA luz; en claro TIÑE hacia el acento. Es la misma grilla y en los dos
