@@ -70,13 +70,29 @@ export function build(ctx) {
   // de la que se ve. Sin esa correccion la mesa entra flotando en una franja demasiado angosta.
   const ANCHO = mundoW * 1.06
   const ALTO_VISTO = mundoH * 0.58
-  const ALTO = ALTO_VISTO / Math.cos(INCLINA)
+  let ALTO = ALTO_VISTO / Math.cos(INCLINA)
 
   // Cuanta pagina entra en esa ventana, con la PROPORCION REAL del archivo. Es la misma cuenta que
   // documenta pantalla.js y por la misma razon: copiar la del hero estira la pagina un 22% a lo ancho,
   // que es el defecto que el dueño de la marca ve antes que nadie.
   let visible = (ALTO / ANCHO) * arMapa
-  if (visible > 1) visible = 1
+  if (visible > 1) {
+    // CLAMPEAR `visible` SIN TOCAR EL PLANO ES ESTIRAR LA IMAGEN, y era lo que pasaba aca. Cuando la
+    // imagen es MAS CORTA que la ventana —una tarjeta apaisada, un recorte 16:9, cualquier cosa que no
+    // sea la tira larga— la cuenta pide mostrar mas del 100% del alto disponible. Topearla en 1 hace
+    // que se muestre la imagen entera... sobre un plano cuya proporcion no es la suya, asi que se
+    // estira a lo alto para llenarlo. Medido: plano 5.96 x 8.89 contra una tarjeta 1400x845, la imagen
+    // salia estirada 2.5 veces. Es el mismo defecto que `pantalla` ya tenia resuelto y que esta escena
+    // no copio, aunque su propio comentario dice "la pagina no se estira nunca".
+    //
+    // Se achica el PLANO hasta la proporcion real de la imagen. Se pierde altura de mesa —la
+    // superficie queda mas baja de lo que la composicion pedia— y se gana que lo que se ve sea la
+    // pagina y no una version deformada de la pagina. Es la misma degradacion honesta que eligio
+    // pantalla.js: una imagen con aire alrededor es peor composicion que una a sangre, pero es la
+    // imagen; la otra es otra imagen.
+    ALTO = ANCHO / arMapa
+    visible = 1
+  }
 
   const mat = new THREE.MeshBasicMaterial({ map: mapa, toneMapped: false, transparent: true })
   // La textura se comparte entre escenas, asi que NO se le tocan repeat ni offset: se clona. Un
