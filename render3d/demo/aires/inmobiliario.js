@@ -53,6 +53,17 @@ const CARAS_INMOBILIARIO = [
   { display: 'PlusJakartaSans-700', apoyo: 'Inter-400' },
   { display: 'Unbounded-600', apoyo: 'SpaceGrotesk-500' },
   { display: 'Sora-600', apoyo: 'SpaceGrotesk-700' },
+  // SPACE GROTESK DE TITULAR, QUE ES DE DONDE VIENE: es la version de texto de Space Mono, con las
+  // curvas cortadas a escuadra y las terminaciones rectas. En el aire cuyo encabezado dice que lo que
+  // vende es que las lineas rectas son rectas, eso es vocabulario propio y no adorno. Aca aparecia
+  // SIEMPRE de apoyo —tres de los cuatro pares— y nunca de titular: de display cambia la pieza entera
+  // sin sumar una familia nueva ni tocar el Promise.all de arriba.
+  // El apoyo es Inter-400 y NO SpaceGrotesk-500: dos pesos de la misma grotesca cuadrada en el mismo
+  // cuadro no se leen como jerarquia, se leen como que alguien no eligio. Inter es la neutra que no
+  // compite con el titular.
+  // Medido a cuerpo 100: 'ENVIOS A TODO EL PAIS' da 1066, la display MAS ANGOSTA del vestuario
+  // (Sora-800 1236, PlusJakarta-700 1163, Unbounded-600 1461). Ningun titular que hoy entre se pasa.
+  { display: 'SpaceGrotesk-700', apoyo: 'Inter-400' },
 ]
 
 // Las caras que demo.html NO declara por @font-face hay que meterlas en document.fonts a mano, o el
@@ -100,7 +111,7 @@ export default {
   // llena. 'ticks' porque la acotacion es el vocabulario literal de un plano, y este aire ya tiene el
   // azul de cianotipo para dibujarla.
   // DE DONDE VIENE LA LUZ DEL FONDO: pared iluminada desde arriba: es como se fotografia un espacio.
-  mobiliario: { fondo: 'panal', fondos: ['panal', 'topografia', 'arcos', 'escamas', 'recuento'], marco: 'ticks', marcos: ['ticks', 'escalimetro', 'rotulado'], hud: false, fondoForma: 0.85, fondoCentro: [0.5, 0.72] },
+  mobiliario: { fondo: 'panal', fondos: ['panal', 'topografia', 'arcos', 'escamas', 'recuento', 'celosia'], marco: 'ticks', marcos: ['ticks', 'escalimetro', 'rotulado', 'zocalo'], hud: false, fondoForma: 0.85, fondoCentro: [0.5, 0.72] },
   // COMO CORTA ESTE AIRE: recorrer un espacio es subir por el: el vertical es el mismo verbo que su camara,
   // que avanza en vez de girar.
   // estructura y superficie: la persiana rima con el panal del fondo.

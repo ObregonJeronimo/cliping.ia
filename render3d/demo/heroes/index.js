@@ -21,6 +21,12 @@ import * as enjambre from './enjambre.js'
 import * as cubo from './cubo.js'
 import * as columnata from './columnata.js'
 import * as gota from './gota.js'
+import * as biela from './biela.js'
+import * as calibre from './calibre.js'
+import * as pulso from './pulso.js'
+import * as brote from './brote.js'
+import * as telar from './telar.js'
+import * as farol from './farol.js'
 import * as toro from '../escenas/toro.js'
 
 // El toro se registra como hero de RESPALDO. Es geometria pura, asi que no necesita nada de la pagina
@@ -44,7 +50,8 @@ const orbital = {
 // `columnata` va entre los de geometria pura y ADELANTE de `prisma`: los dos se arman siempre, pero el
 // cristal vende precision y la columnata vende peso, y cuando la captura fallo lo que hay que sostener
 // primero es la seriedad de la marca. Detras de los que muestran la pagina, como todos los de su clase.
-export const HEROES = [telefono, portatil, ventana, mosaico, cubo, vitrina, columnata, prisma, gota, cinta, enjambre, orbital]
+export const HEROES = [telefono, portatil, ventana, mosaico, cubo, vitrina, columnata, prisma, gota,
+  biela, calibre, pulso, brote, telar, farol, cinta, enjambre, orbital]
 export const porId = (id) => HEROES.find(h => h.meta.id === id) || null
 
 // EL REGISTRO: a que clase de marca le queda cada objeto.
@@ -65,6 +72,13 @@ const REGISTRO = {
   cinta: ['tecnico', 'nocturno', 'deportivo', 'jugueton'],
   // arquitectura: peso, solidez, permanencia
   columnata: ['lujo', 'inmobiliario', 'corporativo', 'editorial', 'nocturno'],
+  // ---- tanda nueva: seis registros que el catalogo no tenia
+  biela: ['tecnico', 'deportivo', 'corporativo', 'nocturno'],
+  calibre: ['tecnico', 'corporativo', 'lujo', 'editorial', 'nocturno'],
+  pulso: ['tecnico', 'deportivo', 'nocturno', 'corporativo', 'bienestar'],
+  brote: ['bienestar', 'gastronomico', 'artesanal', 'editorial', 'jugueton'],
+  telar: ['artesanal', 'editorial', 'lujo', 'bienestar', 'gastronomico'],
+  farol: ['gastronomico', 'nocturno', 'lujo', 'artesanal', 'jugueton'],
   // cuerpo blando: materia, calma, comida
   gota: ['bienestar', 'gastronomico', 'artesanal', 'jugueton', 'editorial'],
 }

@@ -55,6 +55,16 @@ const CARAS_GASTRONOMICO = [
   { display: 'Caprasimo-400', apoyo: 'Newsreader-400' },
   { display: 'Outfit-800', apoyo: 'Onest-600' },
   { display: 'Caprasimo-400', apoyo: 'FamiljenGrotesk-700' },
+  // LA CARTA AL REVES: la grotesca en el cartel y la serif en la letra chica. De los cuatro pares, tres
+  // ponen serif arriba (Fraunces, Caprasimo dos veces) y el cuarto es geometrico de punta a punta —
+  // Outfit-800 con Onest-600, redondo arriba y redondo abajo. Ninguno hace lo que hoy hace medio rubro:
+  // cafe de especialidad, cerveceria y bistro se rotulan con una grotesca de terminaciones rectas y
+  // ponen los precios en serif. Familjen ya vive aca DE APOYO, asi que esto no trae una cara ajena: le
+  // cambia el rol, y de paso obliga a la serif a bajar a la letra chica, que es la inversion que faltaba.
+  // Y NO PUEDE DESBORDAR NADA: medida a cuerpo 100, altura de mayuscula 65 contra 71 de Outfit-800 y de
+  // Fraunces-600; 'ENVIOS A TODO EL PAIS' le da 1043 contra 1160, 1236 y los 1286 de Caprasimo. Es la
+  // display mas angosta y mas baja del vestuario: lo que hoy entra, con esta entra tambien.
+  { display: 'FamiljenGrotesk-700', apoyo: 'Newsreader-400' },
 ]
 
 // Las caras que demo.html NO declara por @font-face hay que meterlas en document.fonts a mano, o el
@@ -108,7 +118,7 @@ export default {
   // Ver el comentario largo de MOB en kit.js — antes esto estaba horneado en las escenas y
   // por eso dos piezas de rubros opuestos seguian teniendo el mismo mueble.
   // DE DONDE VIENE LA LUZ DEL FONDO: la lampara sobre la mesa, apenas corrida.
-  mobiliario: { fondo: 'ondas', fondos: ['ondas', 'terrazo', 'arcos', 'veta', 'escamas'], marco: 'reglas', marcos: ['reglas', 'cantoneras', 'nada'], hud: false, fondoForma: 0.20, fondoCentro: [0.46, 0.60] },   // la carta de un restaurante lleva filetes, no corchetes de camara
+  mobiliario: { fondo: 'ondas', fondos: ['ondas', 'terrazo', 'arcos', 'veta', 'escamas', 'espigas'], marco: 'reglas', marcos: ['reglas', 'cantoneras', 'nada', 'zocalo'], hud: false, fondoForma: 0.20, fondoCentro: [0.46, 0.60] },   // la carta de un restaurante lleva filetes, no corchetes de camara
   // COMO CORTA ESTE AIRE: la banda pasa como pasa un plato; el vertical, como se baja por una carta.
   // servicio y mostrador: un mecanismo que abre.
   transiciones: ['corte', 'barrido', 'persiana', 'corte', 'empujeV', 'corte', 'iris'],

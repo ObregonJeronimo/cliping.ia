@@ -28,6 +28,17 @@ const CARAS_TECNICO = [
   { display: 'InterTight-700', apoyo: 'Inter-500' },
   { display: 'Bricolage', apoyo: 'Inter-600' },
   { display: 'SpaceGrotesk-700', apoyo: 'JetBrainsMono-400' },
+  // EL MISMO CARTEL, LEIDO COMO ESPECIFICACION. Anton es la condensada de ANTHEM y hoy sale solo con
+  // DMSans, que es una geometrica amable: el conjunto se lee campana. Con Plex Mono abajo el titular no
+  // cambia y el par si — la mono es el registro nativo de este aire (HUD, ficha, recuento) y ya es apoyo
+  // de Archivo-900, asi que no hay nada que registrar: Anton la declara el @font-face de demo.html y
+  // IBMPlexMono-400 la registra el Promise.all de arriba. La linea entra sola.
+  // LO QUE HACE DISTINTO A ESTE PAR ES EL ANCHO, NO EL PESO. Medido a cuerpo 100 sobre 'ENVIOS A TODO EL
+  // PAIS': Anton 828, Plex Mono 1260 -> relacion 0.66, la mas extrema de los seis pares (Anton/DMSans
+  // 0.74, SpaceGrotesk-700/JetBrains 0.85, InterTight-700/Inter-500 0.95, Bricolage/Inter-600 0.98,
+  // Archivo-900/Plex 1.02). Y Anton tiene la altura de x mas grande del disco —74, contra 53 de
+  // Archivo-900—: llena el renglon como ninguna. El ritmo lo da ese salto de ancho, no un peso mas.
+  { display: 'Anton', apoyo: 'IBMPlexMono-400' },
 ]
 
 // Las caras que demo.html NO declara por @font-face hay que meterlas en document.fonts a mano, o el
@@ -58,7 +69,7 @@ export default {
   // EL MOBILIARIO DEL CUADRO: el HUD de ANTHEM entero: es la referencia y no se toca.
   // Ver el comentario largo de MOB en kit.js — antes esto estaba horneado en las escenas y
   // por eso dos piezas de rubros opuestos seguian teniendo el mismo mueble.
-  mobiliario: { fondo: 'fuga', fondos: ['fuga', 'circuito', 'topografia', 'haces', 'latido'], marco: 'escuadras', marcos: ['escuadras', 'ticks', 'escalimetro'], hud: true },   // la linea de base de ANTHEM: no se toca
+  mobiliario: { fondo: 'fuga', fondos: ['fuga', 'circuito', 'topografia', 'haces', 'latido', 'engranaje'], marco: 'escuadras', marcos: ['escuadras', 'ticks', 'escalimetro', 'cruces'], hud: true },   // la linea de base de ANTHEM: no se toca
   // COMO CORTA ESTE AIRE: el reparto de ANTHEM tal cual: es la linea de base y no se toca.
   // un solo cambio sobre la linea de base y en la ultima posicion: el reparto de ANTHEM se conserva.
   transiciones: ['corte', 'corte', 'flash', 'barrido', 'empuje', 'golpe', 'tajo', 'atraviesa'],

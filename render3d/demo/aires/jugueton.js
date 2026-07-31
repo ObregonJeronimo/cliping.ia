@@ -111,7 +111,7 @@ export default {
   // Ver el comentario largo de MOB en kit.js — antes esto estaba horneado en las escenas y
   // por eso dos piezas de rubros opuestos seguian teniendo el mismo mueble.
   // DE DONDE VIENE LA LUZ DEL FONDO: plano y centrado, como un afiche.
-  mobiliario: { fondo: 'bloques', fondos: ['bloques', 'puntos', 'terrazo', 'latido', 'escamas'], marco: 'nada', marcos: ['nada', 'cantoneras', 'escuadras'], hud: false, fondoForma: 0.80, fondoCentro: [0.5, 0.5] },   // el color y la forma ya gritan; un marco encima es ruido
+  mobiliario: { fondo: 'bloques', fondos: ['bloques', 'puntos', 'terrazo', 'latido', 'escamas', 'espigas'], marco: 'nada', marcos: ['nada', 'cantoneras', 'escuadras', 'trazo'], hud: false, fondoForma: 0.80, fondoCentro: [0.5, 0.5] },   // el color y la forma ya gritan; un marco encima es ruido
   // COMO CORTA ESTE AIRE: el unico donde el corte duro es minoria: todo se mueve, que es el punto.
   // el mas energico del catalogo: el punch es su gesto natural.
   transiciones: ['empujeV', 'flash', 'golpe', 'corte', 'flash', 'empujeV', 'tajo'],

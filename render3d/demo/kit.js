@@ -412,6 +412,7 @@ export let AIRE = null
 export const PATRONES = ['fuga', 'puntos', 'ondas', 'rayas', 'bloques', 'panal', 'contorno', 'circuito',
                          'arcos', 'terrazo', 'malla', 'topografia', 'destellos',
                          'craquelado', 'veta', 'escamas', 'haces', 'bruma', 'caustica', 'recuento', 'estelas', 'latido',
+                         'roseta', 'celosia', 'costura', 'espigas', 'engranaje',
                          'nada']
 
 // ---------------------------------------------------------------- el marco del cuadro
@@ -440,7 +441,8 @@ export const PATRONES = ['fuga', 'puntos', 'ondas', 'rayas', 'bloques', 'panal',
 // (dos barras horizontales), 'passepartout' (enmarca tapando), 'ticks' (acota los cuatro lados),
 // 'escalimetro' (gradua UN canto), 'rotulado' (una vertical con remates, margen de cuaderno).
 export const MARCOS = ['nada', 'escuadras', 'cantoneras', 'reglas', 'passepartout', 'ticks',
-                       'escalimetro', 'rotulado']
+                       'escalimetro', 'rotulado',
+                       'zocalo', 'cruces', 'boveda', 'carrete', 'trazo']
 
 // ---------------------------------------------------------------- como corta este aire
 // EL MONTAJE ES DEL AIRE, y hasta ahora no lo era. main.js ya sabia repartir cinco gestos de corte y
@@ -581,6 +583,213 @@ export function marco(mundoW, mundoH, o = {}) {
       pieza(placa(LT, GR, col, larga ? 1.35 : 1),
             lado * (X - LT / 2), Y - (i / (N - 1)) * Y * 2, lado, 0)
     }
+  } else if (tipo === 'zocalo') {
+  // PESO ABAJO Y NADA MAS. Todo el resto del mueble es simetrico en Y: o toca los cuatro lados, o toca
+  // arriba Y abajo, o toca un canto vertical entero. rotulado rompe la simetria HORIZONTAL y era el
+  // unico que rompia alguna; este rompe la VERTICAL, que en un 9:16 es el eje que importa — el ojo entra
+  // por arriba y termina abajo, y una masa abajo le da piso a la pieza en vez de encerrarla.
+  // (Va agregado a MARCOS o marco() devuelve null: un tipo que no esta en la lista nace dormido.)
+  //
+  // Es el zocalo de un noticiero, la barra de una placa de datos, el pie de un aviso institucional.
+  // Dice INFORMACION, y eso es justo lo que passepartout no puede decir: passepartout enmarca por el
+  // vacio y quita area de los cuatro lados para que el centro respire; este quita SOLO abajo y la quita
+  // para que la escena PONGA algo ahi.
+  //
+  // CUANTO SE COME, con el numero, porque es el unico riesgo real de esta familia: la masa arranca en el
+  // canto de verdad del mundo y sube hasta by + 0.38, donde by es el mismo sangrado que ya usa
+  // passepartout (0.75 con el margen de base). O sea que entra 0.38 dentro del rectangulo util, que
+  // sobre un alto util de 8.5 es el 4.5% del cuadro compuesto, y es la franja mas baja de todas — donde
+  // ninguna escena pone el titular. Igual hay que elegirla sabiendo esto: una escena que sangra algo
+  // hasta abajo se lo va a encontrar tapado, el mismo trato que ya tiene passepartout.
+  const col = o.color || nivel(0.06)
+  const filo = o.color2 || LOOK.acento
+  const brF = o.brillo === undefined ? 1.15 : o.brillo
+  const by = mundoH / 2 - Y
+  const A = by + (o.alto === undefined ? 0.38 : o.alto) * peso
+  const yFilo = -mundoH / 2 + A
+  pieza(placa(mundoW, A, col), 0, -mundoH / 2 + A / 2, 0, -1)
+  // El filo SI va lleno (1.15): es un segmento de 0.014 de grosor, y cuando un segmento florece florece
+  // como una LINEA, que es exactamente lo que un zocalo quiere. Lo que no puede florecer es una masa, y
+  // la masa de aca nace en nivel(0.06), casi el fondo: no hay umbral de bloom en el motor que la levante.
+  pieza(placa(mundoW, 0.014 * peso, filo, brF), 0, yFilo, 0, -1)
+  // La pestaña arranca en el MARGEN y no en el canto del mundo, y esa es toda su razon de ser: es lo
+  // unico que ata la barra a la tipografia que la escena compone arriba, que tambien se alinea al margen.
+  // Puesta contra el canto real se lee como un error de sangrado.
+  const TW = 0.44 * peso, TH = 0.075 * peso
+  pieza(placa(TW, TH, filo, brF), -X + TW / 2, yFilo, 0, -1)
+  // Las tres se van para abajo (0,-1), asi que cuando una escena empuja las piezas hacia afuera el zocalo
+  // se hunde entero por el pie en vez de desarmarse en tres pedazos para tres lados.
+  } else if (tipo === 'cruces') {
+  // NO TOCA EL CUADRO, y esa es la idea entera. Es la unica familia cuyas piezas viven DESPEGADAS del
+  // rectangulo util: 0.085 mas afuera, en la zona de sangrado, que es exactamente donde una imprenta
+  // pone sus marcas de registro. Y cada marca es una cruz CON EL CENTRO VACIO, cuatro brazos que no se
+  // tocan, que es el dibujo de verdad con el que se calzan las cuatro tintas de un pliego. Una cruz
+  // maciza es un signo de mas; la que sirve tiene el hueco, porque el hueco es para mirar a traves.
+  // (Va agregado a MARCOS o marco() devuelve null: un tipo que no esta en la lista nace dormido.)
+  //
+  // La diferencia con escuadras no es de tamaño, es de idioma, y por eso no es una variante: escuadras
+  // son cuatro L pegadas al margen que cierran el encuadre y hablan de camara; estas son seis cruces
+  // sueltas por fuera del margen que no cierran nada y hablan de papel.
+  //
+  // VAN SEIS Y NO OCHO. Con las cuatro medianeras quedaban ocho marcas repartidas parejo por el
+  // perimetro, y a tamaño de miniatura eso deja de leerse como registro y se lee como ticks: la
+  // acotacion que ya existe. Las dos que sobreviven son las de arriba y abajo, que son las que refuerzan
+  // el eje vertical del formato.
+  const col = o.color || nivel(0.46)
+  const BR = 0.075 * peso, HU = 0.026 * peso, GR = 0.010 * peso
+  const sang = o.sangria === undefined ? 0.085 : o.sangria
+  // Cada cruz es UNA pieza (un grupo de cuatro brazos) y no cuatro: asi el stagger recorre marcas, no
+  // palitos. Con brazos sueltos el escalonado desarma cada cruz en cuatro tiempos y el pliego se lee
+  // como lluvia.
+  const cruz = () => {
+    const c = new THREE.Group()
+    for (const s of [-1, 1]) {
+      const h = placa(BR, GR, col)
+      h.position.x = s * (HU + BR / 2)
+      const v = placa(GR, BR, col)
+      v.position.y = s * (HU + BR / 2)
+      c.add(h, v)
+    }
+    return c
+  }
+  // Horario desde arriba-izquierda, igual que ticks, para que un stagger recorra el pliego en el sentido
+  // en que se lee. El par [fx, fy] hace doble papel: ubica la cruz y es su direccion de afuera — en las
+  // dos del medio fx vale 0 y salen derecho para arriba o para abajo, que es lo correcto.
+  for (const [fx, fy] of [[-1, 1], [0, 1], [1, 1], [1, -1], [0, -1], [-1, -1]]) {
+    pieza(cruz(), fx * (X + sang), fy * (Y + sang), fx, fy)
+  }
+  } else if (tipo === 'boveda') {
+  // LA UNICA CURVA. Todo el mueble hasta aca es recto, y eso no es un detalle de estilo: una recta dice
+  // fabricado, medido, tecnico. Un arco dice construido, hospitalario, hecho por alguien.
+  // (Va agregado a MARCOS o marco() devuelve null: un tipo que no esta en la lista nace dormido.)
+  //
+  // ES UN ARCO REBAJADO Y NO UN MEDIO PUNTO, y esto lo decidio la geometria, no el gusto. Con medio
+  // punto el radio es X y el arranque cae en y = Y - X, o sea a mitad de cuadro: la curva se comia la
+  // mitad del alto util y el titular quedaba adentro de una boca. Con flecha 0.42*X el radio sale 3.43,
+  // el arranque queda en y=3.22 sobre un Y de 4.25, y la boveda ocupa el cuarto de arriba mientras las
+  // jambas bajan por los cantos sin cerrar nada abajo. Sigue siendo una puerta y ya no es un tunel.
+  //
+  // Las dovelas son placas RECTAS: no hay geometria curva en el kit y no hace falta. 23 tramos sobre un
+  // arco de 5.45 dan un paso de 0.248 y cada dovela mide 0.273 (el 1.10), o sea 0.025 de solape, que es
+  // justo lo que tapa la diferencia entre la cuerda y el arco. Sin ese 1.10 la curva sale punteada, y
+  // una curva punteada no se lee como arco: se lee como una fila de rayitas en diagonal.
+  const col = o.color || nivel(0.38)
+  const GR = 0.016 * peso
+  const flecha = (o.flecha === undefined ? 0.42 : o.flecha) * X
+  const R = (X * X + flecha * flecha) / (2 * flecha)
+  const cyc = Y - R                                  // el centro del circulo, bien abajo del cuadro
+  const f0 = Math.asin(Math.min(1, X / R))            // el angulo donde el arco toca los cantos
+  const N = o.dovelas || 23
+  const jamba = o.jamba === undefined ? Y * 0.86 : o.jamba
+  const yArr = Y - flecha                            // el arranque: donde muere el arco y nace la jamba
+  // Jamba derecha, arco de derecha a izquierda, jamba izquierda: un stagger la levanta de un solo trazo,
+  // en el mismo orden en que se levanta un arco de verdad. Empezar por el medio la haria crecer para los
+  // dos lados a la vez, que es como se dibuja un arco, no como se construye.
+  pieza(placa(GR, jamba, col), X, yArr - jamba / 2, 1, 0)
+  const LD = (2 * f0 * R) / (N - 1) * 1.10
+  for (let i = 0; i < N; i++) {
+    const f = f0 - (i / (N - 1)) * 2 * f0
+    const d = placa(LD, GR, col)
+    // La tangente del circulo en el angulo f apunta a -f, asi que cada dovela se acuesta sobre la curva
+    // en vez de quedar horizontal. Sin esta linea el arco es una escalera.
+    d.rotation.z = -f
+    // fuera es RADIAL y no el (0,1) de arriba: cuando una escena empuja las piezas, la boveda se abre
+    // como un arco que se desarma, cada dovela por su propio radio. Con (0,1) sube en bloque y parece un
+    // techo corredizo, que es un gesto de otra pelicula.
+    pieza(d, R * Math.sin(f), cyc + R * Math.cos(f), Math.sin(f), Math.cos(f))
+  }
+  pieza(placa(GR, jamba, col), -X, yArr - jamba / 2, -1, 0)
+  } else if (tipo === 'carrete') {
+  // LOS DOS CANTOS VERTICALES, que es el unico par de lados que ninguna familia usaba: reglas toma
+  // arriba y abajo, escalimetro toma UN canto, ticks toma los cuatro. En un cuadro 9:16 los dos cantos
+  // largos son el 60% del perimetro y ninguna familia los tomaba de a pares.
+  // (Va agregado a MARCOS o marco() devuelve null: un tipo que no esta en la lista nace dormido.)
+  //
+  // Riel continuo mas perforaciones: es la silueta de un negativo de 35mm y se lee de un vistazo aunque
+  // el que mira no sepa por que. Dice CINE, rodaje, master, sesion. Y no es escalimetro con otro numero:
+  // aquel son veintiuna rayas de 0.011 de grosor colgadas de UN canto, sin riel; estas son bloques casi
+  // cuadrados, siete veces mas gruesos, contra una linea continua y de a dos lados.
+  //
+  // LAS PERFORACIONES NO SON AGUJEROS, son bloques pintados. Un agujero de verdad pide recortar el fondo
+  // y el mueble no tiene con que: dibuja placas planas sin profundidad. Sobre un mundo oscuro un bloque
+  // claro igual se lee como perforacion, porque la que hace el trabajo es la CADENCIA y no el hueco.
+  //
+  // VAN POR DENTRO DEL RIEL (x = X - 0.125) y no por fuera, y esto lo cambie despues de medirlo. Por
+  // fuera tambien entran HOY: con el margen de base sobra 0.37 de sangrado y la perforacion necesita
+  // 0.18. Pero el sangrado es un numero del AIRE, no de esta funcion, y basta que un aire declare margen
+  // 0.92 para que con el peso 1.35 que compone cierre.js la perforacion llegue a 2.834 contra un canto
+  // de 2.8125 — o sea que saldria cortada al medio en la ultima escena de la pieza y en ninguna otra,
+  // que es la clase de defecto que aparece una vez cada veinte videos y nadie sabe de donde salio. Por
+  // dentro no depende de nada. Medido con el margen de base: la perforacion termina en 2.379 y el riel
+  // esta en 2.447, quedan 0.06 de aire entre los dos — lo justo para que se lean como dos cosas y no
+  // como una barra dentada.
+  const col = o.color || nivel(0.34)
+  const GR = 0.010 * peso
+  const PW = 0.115 * peso, PH = 0.085 * peso
+  const N = o.perfs || 13
+  const dx = 0.125 * peso
+  // Baja por la derecha y sube por la izquierda: un stagger pasa la pelicula por la ventanilla. El riel
+  // de cada lado sale primero para que la cadena de perforaciones aparezca sobre algo y no en el aire.
+  for (const lado of [1, -1]) {
+    pieza(placa(GR, Y * 2, col), lado * X, 0, lado, 0)
+    for (let i = 0; i < N; i++) {
+      const t = i / (N - 1)
+      // lado hace doble papel: elige el canto y ademas da vuelta el recorrido, asi el lado izquierdo se
+      // arma de abajo hacia arriba y el escalonado no salta de una punta a la otra al cambiar de canto.
+      pieza(placa(PW, PH, col), lado * (X - dx), lado * (Y - t * Y * 2), lado, 0)
+    }
+  }
+  } else if (tipo === 'trazo') {
+  // LO UNICO DEL MOTOR QUE NO ESTA A ESCUADRA. Las ocho familias anteriores son perfectas, y esa
+  // perfeccion ES un mensaje: dice industria, software, precision. Una panaderia, una ceramista, un bar
+  // de barrio o una marca de ropa hecha a mano necesitan lo contrario, y hasta ahora su unica opcion era
+  // nada — porque cualquier marco recto les mentia el registro.
+  // (Va agregado a MARCOS o marco() devuelve null: un tipo que no esta en la lista nace dormido.)
+  //
+  // Es un subrayado: siete tramos que se pisan entre si, cada uno con su micro-rotacion y su
+  // micro-desnivel, mas una segunda pasada mas corta y mas fina por debajo — el gesto de quien subraya
+  // dos veces sin levantar la birome.
+  //
+  // EL TEMBLOR SALE DE UN SENO Y NO DE ctx.rnd, y no es por comodidad: marco() no toca el azar sembrado
+  // a proposito (un marco es una decision del aire, no un sorteo), y meterle rnd aca obligaria a pasarle
+  // el contexto a una funcion que hoy no lo necesita. Los multiplicadores (2.399, 1.117, 0.83) no son
+  // multiplos entre si para que las tres ondas no vuelvan a coincidir adentro de los siete tramos: si
+  // coinciden, el temblor se vuelve un patron y el trazo se lee estampado, no dibujado.
+  //
+  // LAS AMPLITUDES ESTAN ACOTADAS POR EL GROSOR, que es el unico numero que importa aca. Con desnivel
+  // libre los tramos dejan de tocarse y el subrayado se parte en rayitas: deja de leerse como una mano y
+  // pasa a leerse como un error de render. Medido el peor par de vecinos de los siete: las puntas se
+  // desencuentran 0.019 contra un grosor de 0.038, la mitad justa, asi que siempre hay carne comun. Por
+  // la misma razon los tramos se solapan 0.204 en x.
+  const col = o.color || nivel(0.46)
+  const borde = o.borde === 1 ? 1 : -1            // 1 lo sube arriba; por defecto abajo, que es donde vive
+  const N = o.tramos || 7
+  const GR = 0.038 * peso
+  const L = (X * 2 / N) * 1.25
+  // El paso se calcula sobre (2X - L) y no sobre 2X: asi el primer y el ultimo tramo caen ADENTRO del
+  // margen en vez de sobresalir medio tramo para cada lado. Un subrayado que se pasa del ancho del texto
+  // se lee como tachado.
+  const paso = (X * 2 - L) / (N - 1)
+  for (let i = 0; i < N; i++) {
+    // El grosor tambien tiembla: es la presion de la mano sobre el papel. Sin esto los siete tramos
+    // tienen el mismo peso y el trazo se lee impreso aunque este torcido.
+    const k = 0.86 + 0.28 * (0.5 + 0.5 * Math.sin(i * 0.83 + 1.4))
+    const s = placa(L, GR * k, col)
+    s.rotation.z = Math.sin(i * 2.399 + 0.7) * 0.024
+    pieza(s, -X + L / 2 + i * paso, borde * Y + Math.sin(i * 1.117 + 2.1) * 0.013 * peso, 0, borde)
+  }
+  // La segunda pasada va mas corta (el 53% del ancho) y centrada: nadie subraya dos veces igual de largo,
+  // el segundo trazo siempre sale mas corto y mas apurado. Va con su propio par de multiplicadores para
+  // que no repita el temblor del primero — dos temblores identicos uno arriba del otro se leen como una
+  // sola forma duplicada, que es peor que no tener segunda pasada.
+  const M = Math.max(2, Math.round(N / 2))
+  const AN = X * 1.06
+  const LS = (AN / M) * 1.3, pasoS = (AN - LS) / (M - 1)
+  for (let i = 0; i < M; i++) {
+    const s = placa(LS, GR * 0.48, col)
+    s.rotation.z = Math.sin(i * 2.72 + 1.9) * 0.030
+    pieza(s, -AN / 2 + LS / 2 + i * pasoS, borde * (Y + 0.105 * peso) + Math.sin(i * 1.61 + 0.3) * 0.011 * peso, 0, borde)
+  }
   } else if (tipo === 'rotulado') {
     // Una sola vertical, de un lado, con remate arriba y abajo. Rompe la simetria del cuadro: es el
     // margen de un cuaderno, no un marco. `lado` -1 izquierda (default) o 1 derecha.
@@ -1342,8 +1551,215 @@ export function fondoVivo(mundoW, mundoH) {
           // se dispara con poco y uno disperso casi no se mueve. La caustica se fue a 4.51 con x1.6
           // y la bruma subio a menos de la mitad con x5.4. Se midio el resultado y se corrigio.
           linea *= 4.50;
+        } else if (uPatron < 22.5) {
+        } else if (uPatron < 22.5) {
+          // ROSETA: el grabado de seguridad de un billete, un titulo o un sello notarial. La linea
+          // no dibuja una cosa: dibuja que ALGUIEN CERTIFICA. Le queda al estudio juridico, a la
+          // escribania, al seguro, al banco, a la universidad, a la casa de subastas — todo lo que
+          // vende confianza y no producto.
+          // No es una variante de arcos: aquella es una radial perfecta de circunferencias parejas
+          // que apuntan al centro. Aca cada anillo esta MODULADO en angulo, asi que se abre en
+          // lobulos, y dos familias con conteos primos entre si (7 y 11) se cruzan y arman el
+          // enrejado del guilloche. Ese cruce es todo el dibujo; una sola familia seria un adorno.
+          vec2 p = vec2(g.x, g.y * 1.78);
+          // El cuadro es 9:16 y el plano del fondo tambien, asi que una unidad de uv en y ocupa
+          // 1.78 veces mas pantalla que en x. Sin corregirlo la roseta sale como un huevo parado.
+          float r = length(p);
+          float th = atan(p.y, p.x);
+          // LA AMPLITUD CRECE CON EL RADIO, y no es un detalle de gusto. Con amplitud constante los
+          // lobulos del centro se comen su propio anillo, todo colapsa en una margarita y la pieza
+          // pasa de decir SELLO a decir mandala de local de yoga. Creciendo con r, el centro
+          // queda de anillos finos y concentricos —como el ojo de un guilloche de verdad— y los
+          // lobulos recien se abren afuera.
+          float amp = r * 0.145;
+          float a1 = fract((r + amp * sin(th * 7.0 + uT * 0.050)) * 8.5);
+          float a2 = fract((r + amp * 0.86 * sin(th * 11.0 - uT * 0.037)) * 8.5);
+          // La tercera familia va al doble de frecuencia y a un quinto del peso: es el filete fino
+          // que separa un grabado de un dibujo de linea. Con mas peso ensucia, sin ella queda pobre.
+          float a3 = fract((r + amp * 0.55 * sin(th * 17.0 + uT * 0.026)) * 17.0);
+          linea = smoothstep(0.085, 0.0, min(a1, 1.0 - a1)) * 0.34
+                + smoothstep(0.085, 0.0, min(a2, 1.0 - a2)) * 0.34
+                + smoothstep(0.055, 0.0, min(a3, 1.0 - a3)) * 0.16;
+          // El uT entra SOLO en la fase angular: la roseta no se traslada ni pulsa, gira. A 0.050
+          // sobre 7 lobulos son 0.007 radianes por segundo, o sea una vuelta cada quince minutos.
+          // Un sello que se mueve rapido deja de leerse como impreso.
+          linea *= smoothstep(0.015, 0.10, r) * smoothstep(0.88, 0.30, r);
+        } else if (uPatron < 23.5) {
+        } else if (uPatron < 23.5) {
+          // CELOSIA: el tejido calado de una mampara, una persiana morisca, un panel de yeso. Es
+          // ARQUITECTURA: dice obra, interiorismo, estudio de diseno, hoteleria, sanitarios, hasta
+          // heladeria de barrio con azulejo. No es la reticula de una pantalla: es una PIEZA que
+          // alguien calo, y por eso el vacio del medio importa tanto como el hierro.
+          // Se diferencia de malla en que aquella son hilos ortogonales blandos que se cruzan, y de
+          // panal en que aquel es un hexagono limpio. Aca la figura es un OCTOGRAMA —un cuadrado y
+          // su rotado 45 grados, superpuestos—, que es la forma que nadie confunde con una grilla.
+          vec2 p = vec2(g.x + uT * 0.0060, (g.y + uT * 0.0035) * 1.78);
+          vec2 q = p * 6.0;
+          float fila = floor(q.y);
+          // Las hileras van corridas media pieza. Una celosia se arma trabando las piezas, no
+          // apilandolas: sin el corrimiento vuelve a asomar la cuadricula que la genera.
+          float corr = mod(fila, 2.0) * 0.5;
+          vec2 fq = vec2(fract(q.x + corr) - 0.5, fract(q.y) - 0.5);
+          // Las dos normas del octograma. La del maximo da el cuadrado recto; la de la suma da el
+          // rombo. Dibujadas las dos al mismo radio arman la estrella de ocho puntas, y cuesta dos
+          // valores absolutos por pixel en vez de un seno.
+          float ds = max(abs(fq.x), abs(fq.y));
+          float dd = (abs(fq.x) + abs(fq.y)) * 0.7071;
+          float rad = 0.335;
+          float estrella = smoothstep(0.052, 0.012, abs(ds - rad))
+                         + smoothstep(0.052, 0.012, abs(dd - rad));
+          // El puente que ata una pieza con la siguiente por la diagonal. Sin el, las estrellas
+          // quedan flotando sueltas y el panel se lee como un estampado; con el, se lee como una
+          // pieza que se sostiene sola, que es lo que hace que diga obra y no papel pintado.
+          float puente = smoothstep(0.040, 0.010, abs(abs(fq.x) - abs(fq.y)))
+                       * smoothstep(rad * 0.98, rad * 1.30, max(abs(fq.x), abs(fq.y)));
+          float ojo = smoothstep(0.085, 0.020, length(fq)) * 0.30;
+          linea = (estrella * 0.42 + puente * 0.30 + ojo) * 0.62;
+          // La deriva es lentisima y en diagonal: no es la celosia la que se mueve, es la camara
+          // que pasa por delante. Una mampara que late seria un cartel luminoso.
+          linea *= 0.55 + 0.45 * smoothstep(0.95, 0.12, length(g));
+        } else if (uPatron < 24.5) {
+        } else if (uPatron < 24.5) {
+          // COSTURA: el pespunte doble de un talabartero. Dice marroquineria, sastreria, calzado,
+          // tapiceria, indumentaria, cuero — el rubro donde el argumento de venta es que la union
+          // esta HECHA y no pegada.
+          // No es una variante de rayas: aquellas son una trama continua de diagonales todas iguales
+          // que no deja respirar. Aca la linea esta CORTADA en puntadas, va de a pares, y cada par
+          // corre por su propio canal marcado — que es exactamente como se ve una costura de verdad
+          // y no se parece a nada mas del motor.
+          // El eje va en diagonal a proposito. Una costura horizontal compite con el renglon del
+          // titular; inclinada, lo cruza y no lo discute.
+          float s = g.x * 0.94 + g.y * 0.34;
+          float t = g.y * 0.94 - g.x * 0.34;
+          // La pieza de cuero no es una tabla: la costura sigue una curva larga y lentisima.
+          t += sin(s * 3.1 + uT * 0.030) * 0.022;
+          float fila = floor(t * 6.0);
+          float dt = fract(t * 6.0) - 0.5;
+          float h = hash(vec2(fila * 1.7, 11.0));
+          // Casi dos de cada tres bandas llevan costura. Con todas ocupadas vuelve a cerrar en
+          // trama, y una trama ya no se lee como una union entre dos piezas.
+          if (h > 0.36) {
+            // El canal: el surco que el talabartero marca ANTES de coser, para que el hilo quede
+            // hundido. Es continuo donde la puntada es discontinua, y es lo que ata los puntos en
+            // una linea. Sin el quedan guiones sueltos flotando.
+            float canal = smoothstep(0.024, 0.006, abs(abs(dt) - 0.085)) * 0.26;
+            float ph = fract(s * 34.0 + h * 3.7 - uT * 0.010) - 0.5;
+            // La puntada cruza su canal INCLINADA: asi sale del cuero de un lado y entra del otro.
+            // El valor es chico a proposito. Con 0.26 —el primer intento— la inclinacion era mayor
+            // que la separacion de los dos carriles, las puntadas de arriba y de abajo se tocaban y
+            // el pespunte doble se leia como un zigzag de maquina casera.
+            float dtl = dt + ph * 0.075;
+            float hilo = smoothstep(0.042, 0.009, abs(abs(dtl) - 0.085));
+            float dash = smoothstep(0.30, 0.19, abs(ph));
+            linea = (hilo * dash * 1.35 + canal * 1.3) * (0.55 + 0.45 * h);
+            linea *= smoothstep(1.05, 0.14, length(g));
+          }
+        } else if (uPatron < 25.5) {
+        } else if (uPatron < 25.5) {
+          // ESPIGAS: un cultivo visto desde adentro, meciendose. Dice agro, cerealera, acopio,
+          // forraje, molino, panaderia de campo, cerveza artesanal, cooperativa — todo lo que se
+          // vende diciendo que salio de la tierra.
+          // No es una variante de veta: aquella es el corte de un material ya muerto, lineas
+          // continuas que no terminan nunca. Aca hay OBJETOS con principio y fin —cana, espiga,
+          // punta— que ademas se doblan.
+          // Y VIVE EN EL TERCIO DE ABAJO, que es la decision mas importante del patron: un campo
+          // tiene horizonte. Eso resuelve gratis el problema de que dieciocho verticales detras de
+          // un titular le pelean el renglon — no se lo pelean, estan abajo.
+          float qx = g.x * 34.0;
+          float columna = floor(qx);
+          float fx = fract(qx) - 0.5;
+          float h = hash(vec2(columna * 1.3, 5.0));
+          float hay = step(0.14, hash(vec2(columna * 1.3, 29.0)));
+          // Ni la base ni la altura son parejas: un cultivo no es una empalizada. La base cae bien
+          // por debajo del borde inferior del cuadro, asi que las canas entran desde afuera.
+          float base = -0.62 - h * 0.14;
+          float alto = 0.46 + hash(vec2(columna * 1.3, 17.0)) * 0.26;
+          float y = g.y - base;
+          if (y > 0.0 && y < alto * 1.02) {
+            float rel = y / alto;
+            float viento = sin(g.x * 2.4 - uT * 0.20 + h * 4.0)
+                         + 0.40 * sin(g.x * 4.7 - uT * 0.13 + h);
+            // El doblez va con el CUADRADO de la altura: la cana es rigida abajo y blanda arriba,
+            // asi que la punta viaja y el pie no se mueve. Lineal, el campo entero se desplaza de
+            // costado como una calcomania y deja de leerse como viento.
+            float eje = fx - viento * 0.35 * rel * rel;
+            float cana = smoothstep(0.17 - 0.07 * rel, 0.055, abs(eje));
+            float esp = 0.0;
+            float ry = (rel - 0.84) / 0.16;
+            if (ry > 0.0 && ry < 1.0) {
+              // LA ESPIGA ES UN HUSO CON MUESCAS, no una pila de granos sueltos. Primero se
+              // dibujaron los granos de a uno, alternando lado: a este tamano —la espiga mide unos
+              // 47 px de ancho en un cuadro de 1080— cada grano queda de doce pixeles, el ojo los
+              // ve separados y la planta se lee como un tallo de moras. El huso macizo con el brillo
+              // acanalado da la misma informacion y no se desarma nunca.
+              float ancho = sin(pow(ry, 0.75) * 3.1416) * 0.62 + 0.38;
+              esp = smoothstep(0.52 * ancho, 0.30 * ancho, abs(eje))
+                  * (0.62 + 0.38 * cos(ry * 31.416));
+            }
+            linea = (cana * 0.34 + esp * 0.76) * hay * (0.55 + 0.45 * h);
+          }
+          linea *= smoothstep(0.26, -0.14, g.y);
+        } else if (uPatron < 26.5) {
+        } else if (uPatron < 26.5) {
+          // ENGRANAJE: tres ruedas dentadas engranadas, girando. Dice taller mecanico, industria,
+          // metalurgica, servicio tecnico, repuestos, mantenimiento, relojeria — donde el trabajo
+          // es que algo ANDE.
+          // No es una variante de arcos ni de circuito: arcos son circunferencias parejas sin
+          // cuerpo, y circuito es una interfaz. Esto es una MAQUINA, y lo que la delata no son los
+          // dientes sino que engranen: dos ruedas dentadas que se cruzan mal se leen al instante
+          // como un dibujo falso.
+          vec2 p = vec2(g.x, g.y * 1.78);
+          vec2 dir = vec2(0.55, 0.835);
+          float phi = atan(dir.y, dir.x);
+          vec2 c = vec2(-0.16, -0.30);
+          float rp = 0.0;
+          for (int i = 0; i < 3; i++) {
+            float fi = float(i);
+            // Modulo constante: los dientes se cuentan 132 por unidad de radio en las tres ruedas.
+            // Es la condicion fisica para que engranen — dos ruedas de paso distinto no entran una
+            // en la otra por mas que se las apoye bien.
+            float dientes = 34.0 - fi * 10.0;
+            float rr = dientes / 132.0;
+            // Los centros van EN LINEA y a la suma exacta de los dos radios. Alineados, la direccion
+            // de contacto es la misma en toda la cadena, y con conteos PARES eso deja las fases
+            // resueltas con tres constantes en vez de resolver un sistema por rueda.
+            if (i > 0) c += dir * (rp + rr);
+            rp = rr;
+            float impar = mod(fi, 2.0);
+            float atras = step(0.5, fi);
+            // La fase de los dientes. La primera rueda pone un diente mirando a la segunda; la
+            // segunda tiene que poner un HUECO mirando a la primera —de ahi el medio paso que se
+            // resta—; y como su conteo es par, del otro lado le queda tambien un hueco, asi que la
+            // tercera vuelve a poner diente. Sin esto los dientes se atraviesan.
+            float fase = phi + atras * 3.14159 - impar * (3.14159 / dientes);
+            // Velocidad inversa al radio y de signo alternado: es lo que hace que la velocidad del
+            // borde sea la misma en las tres. Con esa igualdad el engrane no se desfasa NUNCA, que
+            // es lo unico que no se puede arreglar mirando un cuadro suelto. La grande da una vuelta
+            // cada tres minutos.
+            float vel = (1.0 - 2.0 * impar) * 0.0080 / rr;
+            vec2 d = p - c;
+            float r = length(d);
+            if (r < rr * 1.15) {
+              float giro = atan(d.y, d.x) - fase - vel * uT;
+              // El flanco recto: un diente es una meseta con paredes. Dejado como coseno crudo, el
+              // canto sale ondulado y la rueda se lee como una flor.
+              float meseta = smoothstep(0.30, 0.70, 0.5 + 0.5 * cos(giro * dientes));
+              float rd = rr * (0.90 + 0.10 * meseta);
+              // Solo el CONTORNO, de todo: canto, aro, cubo y radios. Una rueda rellena a este
+              // tamano es una mancha que se come el cuadro; en linea es un plano de taller, que
+              // ademas es como se dibuja una maquina cuando se la quiere explicar.
+              float llanta = smoothstep(0.0085, 0.0, abs(r - rd));
+              float aro = smoothstep(0.0070, 0.0, abs(r - rr * 0.62));
+              float cubo = smoothstep(0.0075, 0.0, abs(r - rr * 0.19));
+              float radios = smoothstep(0.984, 1.0, cos(giro * 5.0))
+                           * smoothstep(rr * 0.17, rr * 0.24, r)
+                           * smoothstep(rr * 0.66, rr * 0.58, r);
+              linea += llanta * 0.85 + aro * 0.58 + cubo * 0.58 + radios * 0.62;
+            }
+          }
+          linea *= smoothstep(1.10, 0.20, length(g));
         }
-        // 'nada' (uPatron >= 21.5) deja el degrade solo: es lo que necesita una pieza que vende aire.
+        // 'nada' (uPatron >= 26.5) deja el degrade solo: es lo que necesita una pieza que vende aire.
         linea *= uGrilla;
         // En oscuro la línea SUMA luz; en claro TIÑE hacia el acento. Es la misma grilla y en los dos
         // casos aparece por delante del fondo, que es lo único que importa.

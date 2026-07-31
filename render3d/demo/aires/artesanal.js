@@ -70,6 +70,16 @@ const CARAS_ARTESANAL = [
   { display: 'Caprasimo-400', apoyo: 'Fraunces-600' },
   { display: 'Caveat-700', apoyo: 'Newsreader-400' },
   { display: 'Caveat-600', apoyo: 'HankenGrotesk-400' },
+  // EL ROTULADOR CON UNA SERIF ABAJO: la etiqueta de un frasco de conserva. El marker ya esta de display
+  // (arriba esta escrito por que NUNCA de apoyo: a 20 px la unidad y el pie salieron garabateados en el
+  // render de basecamp), pero sale solo con HankenGrotesk-400 — una grotesca de pantalla que empuja la
+  // pieza a 'marca de barrio moderna'. Con Fraunces-600 abajo, la misma mano cae sobre letra de imprenta
+  // y el conjunto pasa a ser producto envasado: manuscrita en la tapa, tipografia en el cuerpo.
+  // Fraunces-600 ya es el apoyo de Caprasimo aca, asi que la linea entra sin tocar el Promise.all.
+  // Y EL CONTRASTE NO ES SOLO DE FORMA: medida a cuerpo 100, Permanent Marker tiene la altura de x mas
+  // grande del vestuario —60, contra 51 de Caprasimo, 49 de Fraunces-900 y 37 de Caveat—, o sea que es la
+  // que mas LLENA el renglon. Arriba mancha; abajo una serif de 600 que ordena.
+  { display: 'PermanentMarker-400', apoyo: 'Fraunces-600' },
 ]
 
 // Las caras que demo.html NO declara por @font-face hay que meterlas en document.fonts a mano, o el
@@ -116,7 +126,7 @@ export default {
   // Ver el comentario largo de MOB en kit.js — antes esto estaba horneado en las escenas y
   // por eso dos piezas de rubros opuestos seguian teniendo el mismo mueble.
   // DE DONDE VIENE LA LUZ DEL FONDO: la luz entra de una ventana, no del techo: por eso no esta centrada.
-  mobiliario: { fondo: 'contorno', fondos: ['contorno', 'terrazo', 'malla', 'craquelado', 'veta'], marco: 'reglas', marcos: ['reglas', 'cantoneras', 'nada'], hud: false, fondoForma: 0.50, fondoCentro: [0.42, 0.62] },   // papel: el filete de arriba y abajo de una pagina compuesta a mano
+  mobiliario: { fondo: 'contorno', fondos: ['contorno', 'terrazo', 'malla', 'craquelado', 'veta', 'costura'], marco: 'reglas', marcos: ['reglas', 'cantoneras', 'nada', 'carrete'], hud: false, fondoForma: 0.50, fondoCentro: [0.42, 0.62] },   // papel: el filete de arriba y abajo de una pagina compuesta a mano
   // COMO CORTA ESTE AIRE: lo hecho a mano no tiene efectos: casi todo corte, con una sola banda que respira.
   transiciones: ['corte', 'corte', 'barrido', 'corte', 'corte', 'corte'],
 

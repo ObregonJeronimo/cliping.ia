@@ -39,6 +39,19 @@ const CARAS_LUJO = [
   { display: 'DarkerGrotesque-900', apoyo: 'Spectral-400' },
   { display: 'Fraunces-600', apoyo: 'Newsreader-400' },
   { display: 'DarkerGrotesque-700', apoyo: 'Newsreader-400' },
+  // EL DIDONE SIN SU SERIF DE LIBRO. Playfair solo salia con Spectral, y Spectral es una serif de
+  // TEXTO: en un epigrafe de cuatro palabras su mancha es densa y le come el aire al titular, que es lo
+  // unico que este aire vende. Newsreader es serif de diario —mas abierta— y ya acompana a Fraunces y a
+  // DarkerGrotesque-700 aca: Playfair era la unica familia del vestuario que no tenia su version con ella.
+  // NO MUEVE UN RENGLON, y eso se midio antes de proponerlo: con el rasterizador de las compuertas a
+  // cuerpo 100, 'ENVIOS A TODO EL PAIS' da 1161 en Newsreader-400 y 1162 en Spectral-400 —un 0.1%— y la
+  // altura de x va 44 contra 46. Cambia el caracter del pie, no su medida.
+  // OJO CON LO QUE SI CAMBIA (vale para cualquier par que se agregue, no solo para este): el pick es
+  // Math.floor(rnd() * caras.length), asi que pasar de 4 a 5 recorre el reparto de semillas. El
+  // determinismo se mantiene (misma semilla, misma cara), pero un video ya aprobado reconstruido con la
+  // MISMA semilla puede salir con otro vestuario. Por eso la linea va al FINAL: caras[0] —el par por
+  // defecto que leen 'fuentes' y las compuertas que miden ancho— no se toca.
+  { display: 'PlayfairDisplay-700', apoyo: 'Newsreader-400' },
 ]
 
 // Las caras que demo.html NO declara por @font-face hay que meterlas en document.fonts a mano, o el
@@ -82,7 +95,7 @@ export default {
   // Ver el comentario largo de MOB en kit.js — antes esto estaba horneado en las escenas y
   // por eso dos piezas de rubros opuestos seguian teniendo el mismo mueble.
   // DE DONDE VIENE LA LUZ DEL FONDO: el foco mas cerrado del catalogo y alto: vitrina.
-  mobiliario: { fondo: 'arcos', fondos: ['arcos', 'destellos', 'contorno', 'bruma', 'caustica'], marco: 'passepartout', marcos: ['passepartout', 'cantoneras', 'rotulado'], hud: false, fondoForma: 0.05, fondoCentro: [0.5, 0.64] },   // el pasepartu de un cuadro colgado: enmarca por el vacio
+  mobiliario: { fondo: 'arcos', fondos: ['arcos', 'destellos', 'contorno', 'bruma', 'caustica', 'roseta', 'celosia'], marco: 'passepartout', marcos: ['passepartout', 'cantoneras', 'rotulado', 'boveda'], hud: false, fondoForma: 0.05, fondoCentro: [0.5, 0.64] },   // el pasepartu de un cuadro colgado: enmarca por el vacio
   // COMO CORTA ESTE AIRE: SIN FLASH. Dos frames de blanco en una pieza de joyeria se leen como un error de
   // archivo, no como acento. Corta seco o pasa una banda; nunca golpea.
   transiciones: ['corte', 'corte', 'corte', 'barrido', 'corte', 'barrido', 'iris', 'atraviesa'],

@@ -52,6 +52,17 @@ const CARAS_BIENESTAR = [
   { display: 'HankenGrotesk-700', apoyo: 'Onest-400' },
   { display: 'HankenGrotesk-700', apoyo: 'Outfit-400' },
   { display: 'Quicksand-700', apoyo: 'Onest-600' },
+  // UNA SOLA FAMILIA, DOS PESOS. Los cinco pares de este aire cruzan dos familias y las cinco dicen lo
+  // mismo —geometrica blanda arriba, humanista blanda abajo—, asi que la variedad es nominal: el ojo no
+  // las separa. Un vestuario de UNA cara es otra decision, y es la que toma medio rubro (spa, yoga,
+  // cosmetica): un tipo, la jerarquia por tamano y peso, y el aire haciendo el resto.
+  // Outfit ya vive aca en los dos roles —display en un par, apoyo en otro—, asi que no hay que tocar la
+  // carga de fuentes.
+  // EL 400 DE APOYO NO ES UN RIESGO EN ESTE AIRE, y en otro si. Este es el de bloom mas bajo del
+  // catalogo (0.30 con umbral 0.88) y el encabezado de este mismo archivo ya dejo anotado que ni las
+  // masas de color ni la tipografia cruzan ese umbral: el halo no le come los blancos internos a la
+  // letra chica. El mismo par en nocturno, con umbral 0.58, se empasta.
+  { display: 'Outfit-700', apoyo: 'Outfit-400' },
 ]
 
 // Las caras que demo.html NO declara por @font-face hay que meterlas en document.fonts a mano, o el
@@ -104,7 +115,7 @@ export default {
   // Ver el comentario largo de MOB en kit.js — antes esto estaba horneado en las escenas y
   // por eso dos piezas de rubros opuestos seguian teniendo el mismo mueble.
   // DE DONDE VIENE LA LUZ DEL FONDO: corrige aspecto: la luz sigue la forma alta del cuadro y no aprieta por los lados.
-  mobiliario: { fondo: 'ondas', fondos: ['ondas', 'malla', 'topografia', 'caustica', 'bruma'], marco: 'nada', marcos: ['nada', 'reglas', 'cantoneras'], hud: false, fondoForma: 0.30, fondoAsp: 0.62 },   // el aire ES el mensaje; cualquier borde lo contradice
+  mobiliario: { fondo: 'ondas', fondos: ['ondas', 'malla', 'topografia', 'caustica', 'bruma', 'roseta'], marco: 'nada', marcos: ['nada', 'reglas', 'cantoneras', 'boveda'], hud: false, fondoForma: 0.30, fondoAsp: 0.62 },   // el aire ES el mensaje; cualquier borde lo contradice
   // COMO CORTA ESTE AIRE: SIN FLASH ni empuje: nada que sobresalte. Es el aire cuyo mensaje es la calma y
   // un golpe lo contradice.
   transiciones: ['corte', 'corte', 'barrido', 'corte', 'barrido', 'corte', 'iris'],
