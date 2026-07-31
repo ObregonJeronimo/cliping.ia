@@ -484,6 +484,26 @@ export class Anthem {
         // tres objetos distintos, y con un solo campo el informe decia que la pieza uso uno.
         ;(this.heroesUsados || (this.heroesUsados = [])).push(r.heroUsado)
       }
+      // UNA ESCENA QUE SE DECLARA VACIA NO SE CUELGA.
+      //
+      // El contrato dice que una escena sin material devuelve `vacia: true` y un grupo vacio con la
+      // duracion correcta — "la pieza no se descoloca y el hueco se ve, que es lo que hay que poder
+      // ver", dice `pantalla`. Pero ESTE lado del contrato no existia: main.js nunca leyo el campo y
+      // colgaba la escena igual. El resultado no es un hueco que se ve: son los beats enteros de esa
+      // escena con el fondo pelado. Medido en `marquesina`: 2.9 a 4.2 segundos de nada.
+      //
+      // Se saltea Y NO SE AVANZA EL BEAT, que es lo que lo vuelve honesto: las escenas siguientes se
+      // corren hacia adelante y `this.dur` —que sale del total de beats— se achica solo. La pieza
+      // queda mas corta en vez de tener un agujero. Una pieza de 22 s que dice algo todo el tiempo es
+      // mejor que una de 25 con tres segundos muertos.
+      //
+      // Esto ademas cierra la FAMILIA y no un caso: hoy se declaran vacias `titular` (cuando su
+      // textura no sobrevive al veto de laminas), `pantalla` (sin tira), `bandera` y `gancho` (sin
+      // marca o sin claim) y `marquesina`. Arreglar solo el requisito de marquesina tapaba uno.
+      if (r.vacia) {
+        if (r.tl) r.tl.kill()
+        continue
+      }
       const t0 = b(beat)
       const dur = b(mod.meta.beats)
       r.g.visible = false

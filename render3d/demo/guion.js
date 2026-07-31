@@ -31,6 +31,16 @@ const REQUISITOS = {
   gancho: (d) => !!String(d.claim || '').trim(),
   // La apertura sólo necesita el nombre. Toda página tiene uno.
   apertura: (d) => !!d.marca,
+  // MARQUESINA ERA LA UNICA DE LAS VEINTE SIN CLAVE ACA, y el objeto de REQUISITOS tenia 19 entradas
+  // para 20 escenas registradas. Sin clave, `puede()` devuelve true sin preguntar nada: la escena
+  // entraba SIEMPRE, incluso en una pagina con una sola frase, y adentro se declaraba vacia. Antes de
+  // que main.js honrara ese campo, eso eran 2.9 a 4.2 segundos de fondo pelado en la pieza.
+  //
+  // El numero sale de la escena y se leyo de ahi, no se eligio: `MIN_FRASES` es 2 (marquesina.js:26),
+  // porque son dos tiras cruzadas y con una sola frase las dos dirian lo mismo. Se pone 2 y no 3
+  // aunque la escena pida tres al mostrador: pedir mas de lo que la escena necesita la suprimiria en
+  // paginas donde si puede componerse, y esta escena ya es de las raras del catalogo.
+  marquesina: (d) => (d.frases || []).filter(Boolean).length >= 2,
   // La bandera tampoco pide mas: el nombre calado sobre el color de la marca. El dominio es opcional
   // —si no esta, la escena compone sin pie— porque exigirlo la volveria mas dificil de armar que la
   // apertura, y las dos tienen que poder abrir cualquier pieza o la eleccion por semilla se sesga.
