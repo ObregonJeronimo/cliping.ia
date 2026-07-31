@@ -731,6 +731,44 @@ _JS_DNA = r"""
       votos.set(c.hex, (votos.get(c.hex) || 0) + ch * par[1] * wArea);
     }
   }
+  // ---------------------------------------------------------------- el LOGO tambien vota
+  // Y PESA MAS QUE UN BOTON, porque es lo unico de la pagina que la marca eligio para SER la marca.
+  // Hasta aca el acento salia unicamente de los botones, y eso falla en dos casos frecuentes: una
+  // pagina cuyo CTA principal esta pintado por un elemento que el selector de botones no agarra, y una
+  // marca cuyo color vive en el simbolo y no en la interfaz. Duolingo es los dos a la vez: el acento
+  // medido salio #1cb0f6 —un azul que la marca si usa, en botones secundarios— y el verde #58cc02, que
+  // es LA marca, no aparecia en el ranking ni como segundo candidato. El video salia celeste.
+  //
+  // Se cuenta UNA VEZ POR COLOR Y POR SVG, no por nodo: un logo de doscientos paths del mismo verde no
+  // puede valer doscientos votos, o cualquier ilustracion vectorial de la pagina se lleva el acento.
+  try {
+    const SEL_LOGO = 'header svg, nav svg, [class*="logo" i] svg, [id*="logo" i] svg, a[href="/"] svg, svg[class*="logo" i], svg[aria-label*="logo" i]';
+    for (const sv of [].slice.call(document.querySelectorAll(SEL_LOGO), 0, 12)) {
+      let r = null; try { r = sv.getBoundingClientRect(); } catch (e) { continue; }
+      // Un simbolo de marca mide decenas de pixeles, no cientos: descartando lo muy grande se evita
+      // que una ilustracion de hero envuelta en un <svg> se haga pasar por logo.
+      if (!r || r.width < 14 || r.height < 10 || r.width > 420 || r.height > 260) continue;
+      const nodos = [sv].concat([].slice.call(sv.querySelectorAll('path, circle, rect, polygon, ellipse, g'), 0, 60));
+      const suyos = new Set();
+      for (const nd of nodos) {
+        let cs = null; try { cs = getComputedStyle(nd); } catch (e) { continue; }
+        let at = ''; try { at = nd.getAttribute('fill') || ''; } catch (e) {}
+        for (const v of [cs.fill, at, cs.color, cs.backgroundColor]) {
+          const c = toRGBA(v); if (!c || c.a < K.ACC_A) continue;
+          suyos.add(c.hex);
+        }
+      }
+      for (const hex of suyos) {
+        accCand.push(hex);
+        const ch = chromaOf(hex), lu = lum01Of(hex);
+        votosSinChroma.set(hex, (votosSinChroma.get(hex) || 0) + Math.max(ch, 0.05) * 2.6);
+        if (ch < K.ACC_CHROMA) { caidosChroma++; continue; }               // un logo monocromo no aporta acento
+        if (lu < K.ACC_LUM_LO || lu > K.ACC_LUM_HI) { caidosLum++; continue; }
+        votos.set(hex, (votos.get(hex) || 0) + ch * 2.6);
+      }
+    }
+  } catch (e) { nota('accent por logo: ' + e); }
+
   // El canvas guarda PREMULTIPLICADO: un color con alfa vuelve con hasta +-2/255 por canal. Sin este
   // bucketing, rgba(91,140,255,.9) y rgb(91,140,255) votan como DOS colores y se parten el score.
   const bucketize = (m) => {

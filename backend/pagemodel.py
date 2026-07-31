@@ -238,7 +238,7 @@ def _norm_signals(raw):
     }
 
 
-def _norm_palette(raw, signals, notas, errores, medido=True, marca=None):
+def _norm_palette(raw, signals, notas, errores, medido=True, marca=None, logo=None):
     """§3.1 formato -> §3.2 acromatismo -> §3.3 contraste -> §3.4 accent2. El ORDEN importa: la
     sanidad de contraste asume que ya se decidio si la marca tiene color.
     `medido=False` = el dna se cayo a defaults (§2.6 formula-vs-default): con chromaMax = 0 porque no
@@ -261,7 +261,24 @@ def _norm_palette(raw, signals, notas, errores, medido=True, marca=None):
     # REALES, Linear (#5e6ad2) y Tailwind (#38bdf8) salian las dos con el MISMO #5b8cff aunque el brief
     # traia el color correcto. O sea: todo video de pagina real era del mismo azul.
     marca_hex = _hex(marca) if marca else None
-    cands = [accent] + ranking + ([marca_hex] if marca_hex and _chroma(marca_hex) >= 0.12 else []) + [DEF_ACCENT]
+    # EL COLOR DEL SIMBOLO VA PRIMERO, ANTES QUE EL MEDIDO EN BOTONES.
+    #
+    # El acento se votaba unicamente desde los botones de la pagina, y eso falla justo donde mas se
+    # nota: una marca puede pintar sus botones secundarios de un color y SER de otro. Duolingo mide
+    # #1cb0f6 —un azul que la marca usa de verdad, en botones— y el verde #58cc02, que es LA marca, no
+    # aparecia ni como segundo candidato del ranking. El video de Duolingo salia celeste. Thiago: "el
+    # color de la marca es un verde fuerte y el video es azul y celeste, no pega nada".
+    #
+    # La extraccion de elementos YA calculaba el color dominante del recorte del logo y lo guardaba en
+    # `elementos[].color`; simplemente nadie lo leia para la paleta. El dato estaba hecho.
+    #
+    # Se exige mas croma que al brandColor del brief (0.18 contra 0.12) y se descarta lo casi negro o
+    # casi blanco: un logo monocromo no dice nada sobre el color de la marca, y aceptarlo pintaria la
+    # pieza de gris. Cuando el simbolo no tiene color, la cadena sigue como siempre.
+    logo_hex = _hex(logo) if logo else None
+    if logo_hex and not (_chroma(logo_hex) >= 0.18 and 0.10 <= _rellum(logo_hex) <= 0.92):
+        logo_hex = None
+    cands = ([logo_hex] if logo_hex else []) + [accent] + ranking         + ([marca_hex] if marca_hex and _chroma(marca_hex) >= 0.12 else []) + [DEF_ACCENT]
     for cand in cands:
         if _contrast(cand, bg) >= 1.15 and (ink_raw is None or cand != ink_raw):
             accent = cand
@@ -269,7 +286,8 @@ def _norm_palette(raw, signals, notas, errores, medido=True, marca=None):
     else:
         accent = DEF_ACCENT
     if accent != _hex(p.get("accent"), DEF_ACCENT):
-        notas.append("accent del brandColor del brief" if marca_hex and accent == marca_hex
+        notas.append("accent del color del logo" if logo_hex and accent == logo_hex
+                     else "accent del brandColor del brief" if marca_hex and accent == marca_hex
                      else "accent descartado: era el fondo o la tinta")
 
     ink = ink_raw if ink_raw else (DEF_INK if bg_lum > PIVOTE_LUM else DEF_INK_DARK)
@@ -372,11 +390,31 @@ def _norm_modernidad(raw_list, raw_scores):
     return orden, {k: scores[k] for k in orden if k in scores}
 
 
-def _norm_dna(raw, notas, errores, marca=None):
+def _color_del_logo(site):
+    """El color dominante del recorte del LOGO, si la extraccion lo dejo.
+
+    Se elige el logo mas GRANDE cuando hay varios: una pagina suele traer el simbolo del header y
+    ademas los logos de sus clientes, y el de la marca es el que ocupa mas.
+    """
+    mejor, area = None, -1
+    for e in _list(_dict(site).get("elementos")):
+        e = _dict(e)
+        if str(e.get("rol") or "").lower() != "logo":
+            continue
+        c = _hex(e.get("color"))
+        if not c:
+            continue
+        a = _f(e.get("w"), 0, 0, 1e9) * _f(e.get("h"), 0, 0, 1e9)
+        if a > area:
+            mejor, area = c, a
+    return mejor
+
+
+def _norm_dna(raw, notas, errores, marca=None, logo=None):
     """Normaliza el bloque MEDIDO. `raw` es lo que devuelve extract_dna() (crudo, sin normalizar)."""
     d = _dict(raw)
     signals = _norm_signals(d.get("signals"))
-    palette = _norm_palette(d.get("palette"), signals, notas, errores, marca=marca)
+    palette = _norm_palette(d.get("palette"), signals, notas, errores, marca=marca, logo=logo)
     modernidad, mscores = _norm_modernidad(d.get("modernidad"), d.get("modernidadScores"))
     mood_raw = _dict(d.get("mood"))
     mood = {"calidez": _f(mood_raw.get("calidez"), 0.50, 0, 1),
@@ -629,7 +667,7 @@ def build_pagemodel(url: str, site=None, brief=None) -> dict:
         dna["palette"] = _norm_palette(dna["palette"], dna["signals"], notas, errores, medido=False, marca=_hex(brief.get("brandColor")))
         notas.append("sin texto: dna por defecto")
     else:
-        dna = _norm_dna(dna_raw, notas, errores, marca=_hex(brief.get("brandColor")))
+        dna = _norm_dna(dna_raw, notas, errores, marca=_hex(brief.get("brandColor")), logo=_color_del_logo(site))
         _derivar_accent2(dna)
 
     semantica = _norm_semantica(brief.get("semantica"), brief, content)
