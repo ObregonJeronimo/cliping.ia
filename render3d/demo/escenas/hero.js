@@ -10,7 +10,7 @@ import { HEROES, porId, elegibles } from '../heroes/index.js'
 export const meta = { id: 'hero', beats: 8 }
 
 export function build(ctx) {
-  const { THREE, gsap, texturas, datosEls } = ctx
+  const { THREE, gsap, texturas, datosEls, rnd } = ctx
   const disponible = new Set()
   if (texturas && texturas.get('tira')) disponible.add('tira')
   if (datosEls && datosEls.length) disponible.add('elementos')
@@ -20,10 +20,18 @@ export function build(ctx) {
   // escena tres veces — el corte entre ellas no se lee como corte. Rotando, el espectador ve el
   // telefono, despues el mosaico de su propia pagina, despues el cristal: tres formas de mirar lo
   // mismo, que es de lo que se trata un reel.
+  // Y CUANDO NADIE PIDE NADA, LO ELIGE LA SEMILLA. Esto arrancaba SIEMPRE en `posibles[0]`, o sea que
+  // toda pieza que no pidiera hero explicitamente empezaba por el mismo objeto — el telefono si habia
+  // tira, y el orbital si no. `rep` rotaba DENTRO de una pieza pero nunca movia el punto de partida,
+  // asi que doce heroes escritos producian dos en pantalla. Medido sobre 240 guiones: la escena de hero
+  // sale en el 67% de las piezas, o sea que era el objeto mas visto del motor y era siempre el mismo.
+  // Thiago, tres veces, sobre tres videos distintos: "ese objeto 3d que gira... devuelta lo mismo".
   const pedido = ctx.spec && ctx.spec.hero
   const posibles = elegibles(disponible)
   const rep = ctx.repeticion || 0
-  const base = pedido ? posibles.findIndex(h => h.meta.id === pedido) : 0
+  const base = pedido
+    ? posibles.findIndex(h => h.meta.id === pedido)
+    : Math.floor(rnd() * Math.max(1, posibles.length))
   const elegido = posibles.length
     ? posibles[(Math.max(0, base) + rep) % posibles.length]
     : null
