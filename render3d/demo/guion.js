@@ -328,8 +328,29 @@ export function guionDe({ escenas, datos, seed = 1, beatSeg = 60 / 124, dur = nu
   // le mostraron un logo. Decide en los primeros dos segundos y decide sobre si le prometieron algo.
   // La regla vieja sigue valiendo, con una palabra mas: la apertura va primera ENTRE LAS ESCENAS DE
   // MARCA. Adelante solo puede ir una promesa, y solo si la pagina la escribio.
+  // LA APERTURA DEJA DE SER OBLIGATORIA, Y ES EL CAMBIO QUE MAS SE VE DE TODO EL GUION.
+  //
+  // Medido sobre 240 guiones: `gancho`, `apertura` y `cierre` salian en el 100% de las piezas. Son
+  // casi la mitad de un video de siete escenas, o sea que todas las piezas compartian la mitad del
+  // esqueleto y en el mismo orden. Ninguna cantidad de fondos, marcos o tipografias nuevas arregla eso
+  // — Thiago, despues de tres tandas de variedad: "los videos son SIEMPRE LO MISMO".
+  //
+  // `gancho` y `cierre` se quedan fijos y no es simetria: el gancho es lo unico que decide si alguien
+  // sigue mirando en un feed, y el cierre es el pedido — una pieza sin CTA no sirve para nada. La
+  // apertura, en cambio, es la escena de MARCA, y la marca ya la dicen `sello`, `destello` y el propio
+  // cierre. Es la unica de las tres que se puede sacar sin perder una funcion.
+  //
+  // Se saca UNA DE CADA TRES por semilla, y solo si el medio trae otra escena que nombre a la marca:
+  // una pieza que nunca dice de quien es no es una pieza de marca, es un fondo de pantalla animado.
+  // Como la decision se toma antes de repartir el presupuesto, los beats que libera se los queda el
+  // medio — o sea que sacarla no acorta la pieza, la llena con otra cosa.
   const fijas = ['gancho', 'apertura', 'cierre'].filter(puede)
-  const beatsFijos = fijas.reduce((n, id) => n + beatsDe(id), 0)
+  // Y SOLO SI HAY GANCHO. Sin apertura y sin gancho la pieza arranca por una escena del medio: la
+  // compuerta E-GUION-MARCO lo caza —"empieza con lista y termina con cierre"— y tiene razon, un reel
+  // que abre por una lista no abrio, empezo a la mitad. El gancho es el unico que puede reemplazar a la
+  // apertura como entrada porque es el unico que tambien esta compuesto para ser el primer cuadro.
+  const sinApertura = fijas.includes('apertura') && fijas.includes('gancho') && rnd() < 0.34
+  const beatsFijos = fijas.reduce((n, id) => n + (id === 'apertura' && sinApertura ? 0 : beatsDe(id)), 0)
   const objetivo = dur ? Math.round(dur / beatSeg) : Infinity
   // Un beat de tolerancia. Sin ella, pidiendo 15 s salian 13.5: la ultima escena que entraba se
   // pasaba por medio beat y se descartaba entera, dejando un segundo y medio de nada. Pasarse un beat
@@ -413,7 +434,10 @@ export function guionDe({ escenas, datos, seed = 1, beatSeg = 60 / 124, dur = nu
   if (!plan.length && puede('toro') && usados + beatsDe('toro') <= disponibles) plan.push('toro')
 
   const fin = fijas.includes('cierre') ? ['cierre'] : []
-  const ini = fijas.includes('apertura') ? ['apertura'] : []
+  // La marca tiene que quedar dicha en algun lado. `sello` y `destello` la nombran; si ninguna de las
+  // dos entro al medio, la apertura se queda aunque la semilla haya pedido sacarla.
+  const otraDeMarca = plan.some(id => id === 'sello' || id === 'destello')
+  const ini = (fijas.includes('apertura') && (!sinApertura || !otraDeMarca)) ? ['apertura'] : []
   const hook = fijas.includes('gancho') ? ['gancho'] : []
   return [...hook, ...ini, ...plan, ...fin]
 }
