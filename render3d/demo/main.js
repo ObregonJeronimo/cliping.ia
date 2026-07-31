@@ -15,7 +15,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js'
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js'
-import { BEAT, b, LOOK, CLARO, AIRE, MOB, hex, mulberry32, fondoVivo, configurar, MONTAJES, reiniciarRecortes } from './kit.js'
+import { BEAT, b, LOOK, CLARO, AIRE, hex, mulberry32, fondoVivo, configurar, MONTAJES, reiniciarRecortes } from './kit.js'
 import { configurarDatos, reiniciarReparto } from './datos.js'
 import { personalizar } from './adn.js'
 import { ESCENAS } from './escenas/index.js'
@@ -60,14 +60,12 @@ const Pelicula = {
     //            lee como que la camara se movio; con el, como que algo estallo.
     uGolpe: { value: 0 }, uPersiana: { value: 0 }, uEstela: { value: 0 },
     uIris: { value: 0 }, uTajo: { value: 0 },
-    uProgreso: { value: 0 }, uBarra: { value: 0 },
     uTinteTr: { value: new THREE.Color('#5b6cff') },
   },
   vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
   fragmentShader: `
     uniform sampler2D tDiffuse; uniform float uT, uGrano, uVinieta, uAberr, uFlash;
-    uniform float uEmpuje, uEmpujeY, uBarrido, uAnchoBar, uGolpe, uPersiana, uEstela, uIris, uTajo;
-      uniform float uProgreso, uBarra; uniform vec3 uTinteTr;
+    uniform float uEmpuje, uEmpujeY, uBarrido, uAnchoBar, uGolpe, uPersiana, uEstela, uIris, uTajo; uniform vec3 uTinteTr;
     uniform float uVinForma, uVinAsp; uniform vec2 uVinCentro;
     uniform vec2 uRes; varying vec2 vUv;
     float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898,78.233)))*43758.5453); }
@@ -178,18 +176,6 @@ const Pelicula = {
       // FLASH: dos o tres frames de blanco sobre el corte. Es lo que hace que un corte seco se lea
       // como decisión de montaje en vez de como un salto.
       col.rgb = mix(col.rgb, vec3(1.0), uFlash);
-      // BARRA DE PROGRESO DE LA PIEZA. Va en el compositor y no en el mueble de marco porque una escena no
-      // sabe cuanto dura la pieza ni en que momento de ella esta: cada una tiene su timeline propia y
-      // aislada. El progreso es un dato de la PIEZA, y el unico que lo tiene es este pase.
-      //
-      // Y es una linea, no una barra: sobre un cuadro de 1080x1920 en el que ya compiten marco, HUD y
-      // tipografia, un elemento nuevo que pida atencion compite con el mensaje. Lo que retiene no es
-      // que la barra se vea, es que se COMPLETE — alcanza con que este.
-      if (uBarra > 0.001) {
-        float y = smoothstep(0.0, 0.0035, vUv.y) * (1.0 - smoothstep(0.0035, 0.007, vUv.y));
-        float x = step(vUv.x, uProgreso);
-        col.rgb = mix(col.rgb, uTinteTr, y * x * uBarra);
-      }
       gl_FragColor = col;
     }`,
 }
@@ -228,6 +214,32 @@ export class Anthem {
     this.camera = new THREE.PerspectiveCamera(this.fov, this.W / this.H, 0.1, 400)
     this.distBase = (this.mundoH / 2) / Math.tan((this.fov * Math.PI / 180) / 2)
     this.camera.position.set(0, 0, this.distBase)
+
+    // ---------------------------------------------------------------- NIEBLA DE PROFUNDIDAD
+    //
+    // Lo que separa un cuadro 3D de un collage es que lo lejano se DESVANEZCA hacia el fondo. Hasta
+    // aca todos los objetos llegaban con el mismo contraste estuvieran donde estuvieran, asi que la
+    // columnata —siete monolitos que se van hasta z -8.7— se leia como siete rectangulos recortados y
+    // pegados, no como una fila que se aleja.
+    //
+    // Y HAY UN DETALLE TECNICO QUE LA VUELVE MEJOR DE LO QUE SUENA. `THREE.Fog` la aplican los
+    // materiales de three; los 25 ShaderMaterial escritos a mano de este motor —el fondo, todas las
+    // mascaras de texto— la ignoran, porque nadie les escribio la niebla. Eso que parece una
+    // inconsistencia es exactamente lo deseable: el TEXTO queda nitido pase lo que pase, el FONDO
+    // queda como lo autorizo el aire, y solo la geometria gana profundidad. Una niebla que empañara
+    // la tipografia seria un defecto, no un efecto.
+    //
+    // EL RANGO ARRANCA DETRAS DEL PLANO DE COMPOSICION, y esto es lo unico delicado. La camara esta a
+    // `distBase` del centro del mundo, que es donde componen casi todas las escenas: si la niebla
+    // empezara antes, TODO se empañaria y la pieza saldria lavada. Empieza un 6% mas lejos que ese
+    // plano, asi que lo que compone en el eje no se toca y solo se desvanece lo que de verdad esta
+    // atras. El color es el del fondo: desvanecer hacia otro color no es distancia, es un velo.
+    const niebla = (spec.__aire && spec.__aire.pelicula && spec.__aire.pelicula.niebla)
+    if (niebla !== 0) {
+      const k = niebla == null ? 1 : niebla          // 1 = el rango de referencia; mas alto, mas cerrada
+      this.scene.fog = new THREE.Fog(hex(LOOK.bg), this.distBase * 1.06,
+                                     this.distBase * (1.06 + 0.72 / Math.max(0.25, k)))
+    }
 
     this.scene.add(new THREE.AmbientLight(0xffffff, 1.5))
     const key = new THREE.DirectionalLight(0xffffff, 2.0); key.position.set(-4, 7, 9)
@@ -274,10 +286,6 @@ export class Anthem {
     const u = this.pelicula.uniforms
     if (pel.grano != null) u.uGrano.value = pel.grano
     if (pel.vinieta != null) u.uVinieta.value = pel.vinieta
-    // LA BARRA LA DECIDE EL AIRE. Un aire que eligio no tener marco tampoco quiere una linea de
-    // sistema cruzandole el pie: `barra` viaja con el resto del tratamiento de pelicula y su default
-    // es 0.55 —presente pero por debajo del acento—, salvo que el aire diga otra cosa.
-    u.uBarra.value = pel.barra != null ? pel.barra : (MOB.marco === 'nada' ? 0 : 0.55)
     if (pel.aberr != null) u.uAberr.value = pel.aberr
     if (pel.vinietaForma != null) u.uVinForma.value = pel.vinietaForma
     if (pel.vinietaCentro) u.uVinCentro.value.set(pel.vinietaCentro[0], pel.vinietaCentro[1])
@@ -671,12 +679,6 @@ export class Anthem {
     const esc = (this.ajuste && this.ajuste.escala) || 1
     const tt = Math.max(0, Math.min(this.dur, t)) * esc
     this.tl.time(tt, false)
-    // EL PROGRESO DE LA PIEZA SE ESCRIBE ACA Y NO EN UNA TIMELINE. Es una funcion pura del tiempo de
-    // archivo, asi que atarlo a un tween seria darle historia a algo que no la tiene — y este motor
-    // ya se comio ese defecto: un valor leido de un uniform animado dependia de cuantas veces se
-    // habia renderizado la timeline, y la misma escena daba dos cuadros distintos para el mismo
-    // instante. Escrito desde el tiempo, no hay forma de que se desincronice.
-    this.pelicula.uniforms.uProgreso.value = this.dur > 0 ? Math.max(0, Math.min(1, t / this.dur)) : 0
     // Prender/apagar por ventana: una escena que sigue en la escena 3D consumiendo draw calls y
     // asomando un borde detrás de la siguiente es el defecto más difícil de encontrar mirando.
     for (const e of this.escenas) {
