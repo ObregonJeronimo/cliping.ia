@@ -61,15 +61,58 @@ _JS_CONSENT = r"""
   return false;
 }
 """
+# El banner se OCULTA, no se acepta. Antes esto clickeaba "Accept" / "Aceptar" en el sitio del cliente,
+# y eso es dar un consentimiento en nombre de alguien que no lo pidio, en una pagina de un tercero. No
+# hace falta: para medir la pagina alcanza con sacar el overlay de nuestra propia vista. Tampoco se
+# clickea "Rechazar", que tambien es una respuesta.
+#
+# Y ADEMAS ANDA MEJOR. El click dependia de encontrar un boton con el texto exacto; oatly.com usa
+# CookieInformation, cuyo boton no dice "Accept" y cuyo dialogo tapa la pagina entera. Resultado: la
+# captura media el aviso legal y no el sitio — las cinco frases del video salian del banner ("Cookie
+# policy", "What is a cookie?", "How long are cookies stored?"). Ocultar el contenedor no depende del
+# idioma ni del texto del boton.
+_JS_OCULTAR_CONSENT = """() => {
+  const NOMBRE = /cookie|consent|gdpr|ccpa|privacy|onetrust|cookiebot|didomi|usercentrics|trustarc|klaro|osano|quantcast|termly|\bcmp\b|\bcoi\b|privacidad|preferencias/i;
+  const cand = [].slice.call(document.querySelectorAll(
+    '[id*="cookie" i],[class*="cookie" i],[id*="consent" i],[class*="consent" i],[id*="gdpr" i],[class*="gdpr" i],' +
+    '[id*="onetrust" i],[id*="cookiebot" i],[id*="didomi" i],[id*="usercentrics" i],[id*="coi" i],[class*="coi-" i],' +
+    '[class*="cmp" i],[role="dialog"],[role="alertdialog"],[aria-modal="true"],[role="banner"]'), 0, 500);
+  let n = 0;
+  for (const el of cand) {
+    let r = null, cs = null;
+    try { r = el.getBoundingClientRect(); cs = getComputedStyle(el); } catch (e) { continue; }
+    if (!r || r.width < 120 || r.height < 40) continue;
+    const cls = String(el.className && el.className.baseVal !== undefined ? el.className.baseVal : (el.className || ''));
+    const firma = (el.id || '') + ' ' + cls + ' ' + (el.getAttribute('aria-label') || '');
+    let txt = ''; try { txt = (el.innerText || '').slice(0, 500); } catch (e) {}
+    const porNombre = NOMBRE.test(firma), porTexto = NOMBRE.test(txt);
+    const esDialogo = ['dialog', 'alertdialog', 'banner'].indexOf(el.getAttribute('role') || '') >= 0 || el.getAttribute('aria-modal') === 'true';
+    const pegado = cs && (cs.position === 'fixed' || cs.position === 'sticky');
+    // Dos señales, nombre/texto y forma: hay marcas cuyo producto se llama "cookie" y banners de
+    // novedades que no son consentimiento. Sin la segunda condicion se podria ocultar media pagina.
+    if (!((porNombre || porTexto) && (esDialogo || pegado))) continue;
+    try { el.style.setProperty('display', 'none', 'important'); n++; } catch (e) {}
+  }
+  // Muchos CMP bloquean el scroll del documento mientras el aviso esta abierto. Ocultandolo sin soltar
+  // el scroll, el paso de lazy-load no recorre la pagina y la captura se queda con el primer viewport.
+  try {
+    for (const el of [document.documentElement, document.body]) {
+      el.style.setProperty('overflow', 'auto', 'important');
+      el.style.setProperty('position', 'static', 'important');
+    }
+  } catch (e) {}
+  return n;
+}"""
+
+
 async def _dismiss_consent(page):
-    """Cierra el banner de cookies/consent (best-effort): selectores conocidos -> heuristica GENERICA por texto."""
-    for sel in ["#onetrust-accept-btn-handler", "button:has-text('Aceptar')",
-                "button:has-text('Accept')", "[aria-label*='accept' i]"]:
-        try:
-            await page.click(sel, timeout=600)
-            return
-        except Exception:
-            pass
+    """OCULTA el aviso de cookies/consent para poder medir la pagina. No lo acepta ni lo rechaza."""
+    try:
+        n = await page.evaluate(_JS_OCULTAR_CONSENT)
+        if n:
+            print(f"[capture_all] aviso de consentimiento oculto ({n} bloque/s) — no se acepto nada")
+    except Exception:
+        pass
     try:
         await page.evaluate(_JS_CONSENT)
     except Exception:
@@ -244,7 +287,25 @@ _JS_EXTRACT = r"""
   const txt = (el) => clean(el && el.innerText);
   const uniq = (arr) => [...new Set(arr.filter(Boolean))];
   const meta = (sel, attr) => { const e = document.querySelector(sel); return e ? (e.getAttribute(attr) || '') : ''; };
-  const headings = uniq([...document.querySelectorAll('h1,h2,h3')].map(txt)
+  // NADA QUE VIVA ADENTRO DE UN AVISO DE COOKIES CUENTA COMO CONTENIDO DE LA PAGINA.
+  //
+  // La captura ya oculta el aviso antes de medir, y eso alcanza para `bodyText` —innerText respeta el
+  // display—. Pero varios CMP se vuelven a mostrar despues del barrido de lazy-load, y entonces sus
+  // <h2> entran como si fueran titulos de la marca. En oatly.com el video terminaba hablando de
+  // cookies: "Cookie policy", "What is a cookie?", "How long are cookies stored?". La regla
+  // anti-invencion funcionaba perfecto —solo uso lo que la pagina decia—; lo que decia era el aviso.
+  //
+  // Este filtro mira los ANCESTROS y no el momento, asi que no depende de si el aviso volvio a
+  // aparecer. Es la red que atrapa lo que al ocultado se le escapa.
+  const AVISO = /cookie|consent|gdpr|ccpa|onetrust|cookiebot|didomi|usercentrics|trustarc|klaro|osano|quantcast|termly|coi-|coibanner|coioverlay|cmp-/i;
+  const enAviso = (el) => {
+    for (let n = el; n && n !== document.body; n = n.parentElement) {
+      const c = String(n.className && n.className.baseVal !== undefined ? n.className.baseVal : (n.className || ''));
+      if (AVISO.test((n.id || '') + ' ' + c)) return true;
+    }
+    return false;
+  };
+  const headings = uniq([...document.querySelectorAll('h1,h2,h3')].filter(el => !enAviso(el)).map(txt)
     .filter(t => t.length >= 3 && t.length <= 90)).slice(0, 14);
   // TITULARES: el texto de los enlaces que son NOTAS, no navegacion.
   //
@@ -297,7 +358,7 @@ _JS_EXTRACT = r"""
   const ctas = uniq([...document.querySelectorAll('button, a.btn, a[class*="button" i], [role="button"]')]
     .concat(porEstilo).map(txt)
     .filter(t => t.length >= 2 && t.length <= 32)).slice(0, 14);
-  const paragraphs = uniq([...document.querySelectorAll('p, li')].map(txt)
+  const paragraphs = uniq([...document.querySelectorAll('p, li')].filter(el => !enAviso(el)).map(txt)
     .filter(t => t.length >= 30 && t.length <= 240)).slice(0, 14);
   // VOZ DEL CLIENTE: testimonios/reseñas reales -> dan el tono y los DOLORES del publico (no la voz de marketing de la
   // marca). Perception los usa para escribir un copy que suene como su cliente. Selectores semanticos + schema.org.
@@ -639,10 +700,58 @@ _JS_DNA = r"""
   const areaVP = (r) => Math.max(0, Math.min(r.right, VW) - Math.max(r.left, 0)) *
                         Math.max(0, Math.min(r.bottom, VH) - Math.max(r.top, 0));
 
+  // ---------------------------------------------------------------- el aviso de cookies NO ES LA PAGINA
+  //
+  // Un modal de consentimiento tapa el sitio y esta hecho de las dos cosas que este motor mide: texto
+  // grande y un boton de color. Sin excluirlo, la pieza entera se arma sobre el. En oatly.com la
+  // captura devolvio cinco frases y las cinco eran del aviso —"Cookie policy", "What is a cookie?",
+  // "How long are cookies stored?"— y el video hablaba de cookies. La regla anti-invencion funciono
+  // perfecto: uso SOLO lo que la pagina decia. El problema es que lo que la pagina decia era el aviso
+  // legal.
+  //
+  // Se IGNORA, no se acepta: no se toca ningun boton ni se da ningun consentimiento. Simplemente los
+  // nodos que viven adentro del aviso dejan de ser candidatos a texto, a boton y a color de acento —
+  // eso ultimo importa tanto como lo primero, porque el boton "Aceptar" suele ser el mas prominente de
+  // la pagina y se llevaba el acento de la marca.
+  //
+  // Se pide DOS señales, nombre y forma, y no una: hay marcas cuyo producto se llama "cookie" y hay
+  // banners de novedades que no son consentimiento. Un contenedor tiene que nombrarse de aviso Y ser un
+  // dialogo, o estar fijo/pegado cubriendo una franja del viewport.
+  const CONSENT = [];
+  try {
+    const NOMBRE = /cookie|consent|gdpr|ccpa|privacy|onetrust|cookiebot|didomi|usercentrics|trustarc|klaro|osano|cmp|preferencias|privacidad/i;
+    const cand = [].slice.call(document.querySelectorAll(
+      '[id*="cookie" i],[class*="cookie" i],[id*="consent" i],[class*="consent" i],[id*="gdpr" i],[class*="gdpr" i],' +
+      '[id*="onetrust" i],[id*="cookiebot" i],[id*="didomi" i],[id*="usercentrics" i],[class*="cmp" i],' +
+      '[role="dialog"],[role="alertdialog"],[aria-modal="true"]'), 0, 400);
+    for (const el of cand) {
+      let r = null, cs = null;
+      try { r = el.getBoundingClientRect(); cs = getComputedStyle(el); } catch (e) { continue; }
+      if (!r || r.width < 120 || r.height < 40) continue;
+      const firma = ((el.id || '') + ' ' + (el.className && el.className.baseVal !== undefined ? el.className.baseVal : el.className || '') + ' ' + (el.getAttribute('aria-label') || ''));
+      const porNombre = NOMBRE.test(String(firma));
+      const esDialogo = el.getAttribute('role') === 'dialog' || el.getAttribute('role') === 'alertdialog' || el.getAttribute('aria-modal') === 'true';
+      const pegado = cs && (cs.position === 'fixed' || cs.position === 'sticky');
+      let texto = ''; try { texto = (el.innerText || '').slice(0, 400); } catch (e) {}
+      const porTexto = NOMBRE.test(texto);
+      // nombre + (dialogo | pegado)  ó  dialogo + texto de aviso
+      if ((porNombre && (esDialogo || pegado)) || (esDialogo && porTexto)) {
+        // Solo el ancestro mas alto: si entran padre e hijo, `contains` del padre ya cubre al hijo.
+        let cubierto = false;
+        for (const c of CONSENT) if (c.contains(el)) { cubierto = true; break; }
+        if (!cubierto) CONSENT.push(el);
+      }
+    }
+    if (CONSENT.length) nota('aviso de consentimiento ignorado: ' + CONSENT.length + ' bloque(s)');
+  } catch (e) { nota('consent: ' + e); }
+  const enConsent = (el) => { for (const c of CONSENT) { try { if (c === el || c.contains(el)) return true; } catch (e) {} } return false; };
+
   let POOL = [];
   try {
     POOL = [].slice.call(document.querySelectorAll('body *'), 0, K.POOL_SCAN)
-             .map(visible).filter(Boolean).slice(0, K.POOL_MAX);
+             .map(visible).filter(Boolean)
+             .filter(x => !enConsent(x.el))
+             .slice(0, K.POOL_MAX);
   } catch (e) { nota('pool: ' + e); }
 
   const inPool = new Map(); for (const x of POOL) inPool.set(x.el, x);
@@ -1457,6 +1566,11 @@ async def _settle(page):
         await page.wait_for_load_state("networkidle", timeout=9000)
     except Exception:
         pass
+    # Y OTRA VEZ DESPUES DE QUE LA RED SE CALME. Esta era la razon por la que el aviso seguia entrando:
+    # los CMP se inyectan por script y en oatly.com el dialogo todavia no existia en el DOM cuando
+    # corria el primer intento. Un solo pase, por temprano, no puede ocultar algo que no llego. El
+    # segundo cuesta milisegundos y es el que de verdad limpia la pagina antes de medirla.
+    await _dismiss_consent(page)
     # Forzar lazy-load de TODA la pagina: recorre el alto en pasos (asi cargan las fotos de producto
     # lazy/servidas por Firebase que estan fuera del primer viewport), despues vuelve arriba.
     try:
@@ -1532,6 +1646,12 @@ async def capture_all(url: str, out_path: str, width: int = 1280, height: int = 
                 goto_fallo = True
                 print(f"[capture_all] goto lento ({ge}); sigo con lo que haya")
             await _settle(page)
+            # UNA VEZ MAS, JUSTO ANTES DE MEDIR. `_settle` recorre la pagina entera para disparar el
+            # lazy-load, y varios CMP se vuelven a mostrar ante el scroll: oatly.com quedaba con el
+            # bodyText ya limpio —o sea que el ocultado habia funcionado— y los `headings` seguian
+            # siendo los del aviso, porque el dialogo habia vuelto despues del barrido. El ocultado es
+            # barato y no acepta nada; el momento que importa es el ultimo antes de la medicion.
+            await _dismiss_consent(page)
             try:
                 data = await page.evaluate(_JS_EXTRACT)
                 if isinstance(data, dict):
