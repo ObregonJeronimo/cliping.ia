@@ -233,7 +233,7 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** No. `recortesDe` cuenta las repeticiones en `recortesRepetidos` (kit.js:2055) pero nadie lo lee como condición de fallo, y el hero se ofrece con que exista UN solo elemento (escenas/hero.js:17: `if (datosEls && datosEls.length) disponible.add('elemen
   - `const tex = texs[i % texs.length]`
 
-- [ ] **render3d/demo/heroes/vitrina.js:53**
+- [x] **render3d/demo/heroes/vitrina.js:53**
   - **Síntoma:** La vitrina exhibe una CAPTURA de una reseña como si fuera el logo de la marca: un JPG de tipografía ajena, encima magnificado (hallazgo 2), sobre el pedestal, cuatro segundos. Es el reclamo textual citado tres veces en kit.js:1985 («las reseñas se deben de mostrar EN TEXTO, NO UNA IMAGEN»). mosaico.js:55 tiene exactamente la misma línea y el mismo agujero. Los cuatro consumidores que sí usan `text
   - **Lo dispara:** Una página que publicó testimonios Y cuyo bloque de reseña se extrajo como 'tarjeta' o 'foto' — que es lo que pasa en linear.app (llega como 'tarjeta') y en basecamp.com (el bloque de estrellas llega como 'foto'), documentado en kit.js:1991-1993. `datos.js:91` prende `vetarLaminas` en ese caso, pero
   - **Compuerta:** No. tools/testimonios-check.py mide sólo el pipeline de TEXTO (que la firma sea literal, que no se invente autor); no sabe nada de qué imagen dibuja una escena.
@@ -251,7 +251,7 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** NINGUNA. No hay compuerta de codigo muerto, y las de encuadre solo miran mallas que existen — estas dos no llegan a construirse.
   - `const sobra = Math.max(0, (Math.min(BANDA_H, altoNativo) - BANDA_H) / 2) if (sobra > 0.001) {`
 
-- [ ] **render3d/demo/escenas/tipografia.js:234 y 238**
+- [x] **render3d/demo/escenas/tipografia.js:234 y 238**
   - **Síntoma:** El unico margen que salva la palabra es el relleno transparente que texto() le pone al canvas (0.3 * size), que no tiene ninguna relacion con el cuadro: con una palabra corta ese relleno es el 13% del ancho y tapa el problema, con una frase larga es el 1.5% y no tapa nada. Medido en el beat 4, que es cuando w5 esta en pantalla: 'MIDE' llega a 2.455 (entra), 'Move work forward across teams and agen
   - **Lo dispara:** Una frase de mas de ~30 caracteres. Con ar > 4.8/3.2 = 1.5 el tope de alto no dispara y el plano queda fijo en 4.8; el 4.8 y el 1.18 son constantes que no salen de mundoW. 4.8 * 1.18 = 5.664 sobre un mundo de 5.625, o sea que YA sangra en reposo, antes de que la camara se acerque.
   - **Compuerta:** NINGUNA. Sin userData.encaja en el archivo, E-ENCAJE no la mira, y E-ENCUADRE da por buena cualquier malla que cruce el frustum. Con el fixture ANTHEM ('MIDE', 'ANIMA') el tope de alto dispara y la pieza entra, asi que la compuerta ni siquiera podria
@@ -305,7 +305,7 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** Es la compuerta. El agujero es que las cuatro marcas de prueba viajan con `datos: []` y `cta: null`, o sea con la pagina mas pobre posible, cuando lo que se quiere probar es el nombre.
   - `configurarDatos({ ...ANTHEM, marca, frases: [marca], datos: [], cta: null, golpe: marca })`
 
-- [ ] **render3d/demo/escenas/cierre.js:273**
+- [x] **render3d/demo/escenas/cierre.js:273**
   - **Síntoma:** Medido: desde 33 caracteres de dominio la pildora mide 5.72 en un cuadro de 5.625 y se corta contra los dos bordes; con 'construccionesdelsurpatagonico.com.ar' (37) da 6.18, un 10% de sangrado por lado sobre el unico elemento de la pieza que pide una accion. Con 'VER EL MOTOR' da 2.74 y entra sobrado. El mismo archivo SI acota la fila de marcas del pie veinte lineas antes: `if (total > 4.9) gMarca
   - **Lo dispara:** Que la pagina no tenga CTA. `ctaTxt` (linea 264) cae al dominio, y el dominio viaja SIN tope: tools/anthem-datos.mjs:231 lo saca crudo de `new URL(pm.url).hostname`, mientras que el CTA de verdad si esta capado a 20 caracteres (anthem-datos.mjs:228). La pildora se construye a la medida del texto y e
   - **Compuerta:** Ninguna. E-ENCAJE pasa `cta: null` en las cuatro marcas (verificar.mjs:315) y ANTHEM.dominio es cadena vacia, asi que `hayCta` queda en false y la pildora NI SE AGREGA al grupo durante todo el bucle de marcas. El caso POBRE tambien manda `cta: null` 
@@ -323,7 +323,7 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** NINGUNA, y por dos motivos a la vez. (1) La regla por objeto de encuadre-check.mjs:281 exige `Math.max(tam.x, tam.y) >= mundoW * 0.12 = 0.675` y la mota mide entre 0.28 y 0.46 de diametro: queda por debajo del umbral que existe para no acusar a las m
   - `m.userData.r = R * (1.55 + rnd() * 0.35) // con const R = mundoH * 0.185`
 
-- [ ] **render3d/demo/heroes/prisma.js:145-147**
+- [x] **render3d/demo/heroes/prisma.js:145-147**
   - **Síntoma:** Sobre una pagina blanca el hero de respaldo pinta todo el cuadro de un velo lavanda que no baja nunca. Es la misma familia del defecto ya documentado en enjambre.js:263-273 ("la escena salia COMPLETAMENTE VACIA") pero al reves: en vez de desaparecer, invade. Y es una inconsistencia dentro del propio catalogo, no una opinion: los otros tres heroes con halo SI lo bajan a la mitad en claro — cinta.js
   - **Lo dispara:** Una pagina CLARA, o sea con `bgLum > 0.42` (adn.js:105) — main.js:474 dice que son cinco de cada siete paginas reales. El halo no tiene rama de polaridad: los tres valores (0.36 / 0.20 / 0.34) son fijos. El plano mide R*9 = 15.3 unidades (prisma.js:108), 2.7 veces el ancho del cuadro, y el `smoothst
   - **Compuerta:** NINGUNA, y el agujero es estructural: NINGUNA compuerta construye un hero en mundo claro. verificar.mjs:222 y encuadre-check.mjs:182 pasan `claro: false` fijo, y ninguno de los once aires declara `claro` (lo pone `personalizar()` desde el ADN de la p
@@ -763,6 +763,24 @@ El orden correcto es al reves: primero se cierran las 88, despues se afila la co
     parches se aplicaron en lote sin volver a medir cada uno.
 
 ---
+
+- [ ] **verificar.mjs:315 — el fixture SIGUE sin construir la pildora de `cierre`**
+  - Se le paso `datos: ANTHEM.datos` y un `dominio` largo derivado del nombre, y ademas se marco la
+    pildora con `userData.encaja`. La compuerta SIGUIO EN VERDE contra la version de `cierre` sin tope,
+    o sea que el fixture todavia no llega a construir la pildora. El fixture quedo mejor (ahora si
+    construye `tarjetas`, que antes salia por `vacia`), pero el objetivo no se cumplio.
+  - Falta averiguar por que `dominio` no llega a `ctaTxt`. Es una linea, pero hay que encontrarla.
+
+- [ ] **heroes/prisma.js:35 y heroes/gota.js:130 — CAMBIADOS, verificacion NO concluyente**
+  - Se ato el radio al lado que recorta (el ANCHO, no mundoH): en prisma el anillo mayor pasa de 3.485
+    a 2.478 contra un semiancho de 2.8125, y en gota la orbita se capa en mundoW*0.42 = 2.36 en vez de
+    quedar entre 2.87 y 3.52. La aritmetica EN REPOSO es inequivoca y por eso el cambio se deja puesto.
+  - Pero la comprobacion propia dio 1.381 y 1.204 en coordenadas de recorte, o sea "se sale". Esa
+    medicion usa CAJAS ENVOLVENTES, y la caja de un toro rotado es mucho mas grande que el toro: es
+    exactamente el error de medir un proxy en vez de la cosa contra el que advierte CLAUDE.md. No
+    prueba ni que este bien ni que este mal.
+  - **Lo que falta:** medir VERTICE A VERTICE, como dice el hallazgo original, y con el dolly de cada
+    aire puesto (deportivo es el que peor da). Hasta entonces esto NO esta cerrado.
 
 # EXTRA — para charlar despues, NO hacer ahora
 

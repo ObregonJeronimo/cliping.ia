@@ -292,7 +292,24 @@ export function build(ctx) {
   const cta = textoMascara(ctaTxt, 0.26, LOOK.bg, { fuente: 'DMSans', tracking: 0.075 })
   cta.material.uniforms.uSuave.value = 0.05
   cta.renderOrder = 9
-  const pillW = ancho(cta) + 1.15
+  // LA PILDORA ENTRA EN EL CUADRO, SIEMPRE. Se construia a la medida del texto y `ctaTxt` cae al DOMINIO
+  // cuando la pagina no publica CTA — y el dominio viaja sin tope: anthem-datos.mjs:231 lo saca crudo de
+  // `new URL(pm.url).hostname`, mientras que el CTA de verdad SI esta capado a 20 caracteres
+  // (anthem-datos.mjs:228). Medido: desde 33 caracteres la pildora mide 5.72 en un cuadro de 5.625, y
+  // con 'construccionesdelsurpatagonico.com.ar' (37) da 6.18 — 10% de sangrado por lado sobre el UNICO
+  // elemento de la pieza que pide una accion.
+  //
+  // Se achica el TEXTO y no se recorta el dominio: un dominio cortado no se puede tipear, que es
+  // exactamente lo que la pildora esta pidiendo que el espectador haga. Y se calcula antes de `pillW`
+  // para que el chevron, que se posiciona con `pillW / 2`, siga cayendo donde corresponde.
+  //
+  // SIGUE SIN COMPUERTA, y quedo comprobado: se le paso un dominio largo al fixture de E-ENCAJE y se
+  // marco la pildora con `userData.encaja`, y la compuerta siguio en VERDE contra la version sin tope.
+  // O sea que el fixture todavia no construye la pildora. Ver la nota en la auditoria.
+  const ANCHO_PILL = ctx.mundoW * 0.92
+  const kCta = Math.min(1, (ANCHO_PILL - 1.15) / Math.max(0.01, ancho(cta)))
+  if (kCta < 1) cta.scale.setScalar(kCta)
+  const pillW = ancho(cta) * kCta + 1.15
   const pillH = 0.74
   const pill = pildora(pillW, pillH, LOOK.acento)
   pill.renderOrder = 8

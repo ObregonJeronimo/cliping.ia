@@ -312,7 +312,20 @@ for (const id of ids) {
   // cuadro visible. No se comprueba que quede lindo: se comprueba que ENTRE y que el nombre esté
   // completo, que es lo que un test puede saber.
   for (const marca of ['Q', 'GO', 'CONSTRUCCIONES', 'TRANSPORTES INTERNACIONALES']) {
-    configurarDatos({ ...ANTHEM, marca, frases: [marca], datos: [], cta: null, golpe: marca })
+    // CON DATOS Y CON DOMINIO. Esto mandaba `datos: []` y `cta: null`, y con eso el gate se quedaba
+    // ciego a las dos escenas que MAS dependen del largo de la marca:
+    //   · `tarjetas` sale por `vacia: true` sin datos (tarjetas.js:131), justo la escena que dibuja
+    //     D.marca tres veces;
+    //   · la pildora de `cierre` ni se agrega al grupo sin CTA ni dominio, asi que su ancho —que se
+    //     construye A LA MEDIDA DEL TEXTO— no se medía nunca.
+    // O sea que la compuerta cuyo encabezado dice "la composicion tiene que aguantar nombres que no
+    // midan lo que mide ANTHEM" no miraba ninguna malla de tarjetas y ninguna pildora.
+    // El dominio se arma DEL nombre para que crezca con el: es el caso real, porque el dominio de una
+    // marca larga es largo.
+    configurarDatos({
+      ...ANTHEM, marca, frases: [marca], datos: ANTHEM.datos, cta: null, golpe: marca,
+      dominio: marca.toLowerCase().replace(/[^a-z0-9]+/g, '') + '.com.ar',
+    })
     // El cache de texturas hace que un glifo ya rasterizado no vuelva a pasar por fillText, asi que
     // sin soltarlo el chequeo de truncado ve menos letras de las que la escena dibuja y acusa en
     // falso. Le paso: la primera version reporto "CONSTRUCCIONES" como truncada estando entera.

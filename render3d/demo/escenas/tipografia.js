@@ -231,7 +231,14 @@ export function build(ctx) {
 
   // 5 · ROTACIÓN EN X DESDE 90°: cae de plano hacia la cámara. Es la ÚNICA que va en el acento, y por
   // eso es también la más grande del tramo rápido: el color y el cuerpo dicen lo mismo.
-  const m5 = medida(fr(4), ANCHA, 4.8, 3.2)
+  // EL ANCHO SALE DEL CUADRO, NO DE UNA CONSTANTE. El 4.8 y el 1.18 de la linea de abajo no salian de
+  // mundoW y su producto es 5.664 sobre un cuadro de 5.625: la palabra del acento YA sangraba en reposo,
+  // antes de que la camara se mueva. Lo unico que la salvaba a veces era el relleno transparente que
+  // texto() le pone al canvas (0.3 * size), que con una palabra corta es el 13% del ancho y tapa el
+  // problema, y con una frase de mas de ~30 caracteres es el 1.5% y no tapa nada.
+  // mundoW * 0.80 = 4.5, y 4.5 * 1.18 = 5.31: entra con margen y la palabra sigue siendo la mas grande
+  // del tramo rapido, que es lo que la escena declara arriba.
+  const m5 = medida(fr(4), ANCHA, mundoW * 0.80, 3.2)
   // 1.3 y no 2.4: es la única palabra que se deja pasar el umbral, y apenas. Con más, el acento deja de
   // ser una palabra encendida y pasa a ser una mancha turquesa.
   const w5 = plano(m5, 0, LOOK.acento2, 1.3)

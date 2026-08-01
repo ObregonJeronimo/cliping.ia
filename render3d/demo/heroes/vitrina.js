@@ -12,7 +12,7 @@
 //
 // CONTRATO: ver heroes/telefono.js
 
-import { LOOK, b, E, hex, nivel, matAcento, planoRecorte, recortesDe, dolly, orbita, topeNitido} from '../kit.js'
+import { LOOK, b, E, hex, nivel, matAcento, planoRecorte, recortesDe, dolly, orbita, topeNitido, texturaDe } from '../kit.js'
 
 export const meta = {
   id: 'vitrina',
@@ -49,8 +49,20 @@ export function build(ctx) {
 
   // ------------------------------------------------------------------ la pieza que se exhibe
   let tex = null
+  // POR `texturaDe` Y NO POR `texturas.get`, que es justo lo que el comentario de kit.js:2053 pide y
+  // este archivo era el que no lo hacia. La diferencia es el VETO DE LAMINAS: cuando la pagina publico
+  // testimonios, datos.js:91 llama `vetarLaminas(true)` para que las reseñas se cuenten con PALABRAS y
+  // no como una captura de tipografia ajena, y ese veto vive dentro de `texturaDe` (kit.js:2057).
+  //
+  // Leyendo el mapa directo, la vitrina se saltaba el veto y exhibia una CAPTURA DE RESEÑA sobre el
+  // pedestal como si fuera el logo de la marca, cuatro segundos, con la camara acercandose. Pasa en
+  // paginas reales: en linear.app el bloque de reseña llega como 'tarjeta' y en basecamp.com el de
+  // estrellas llega como 'foto' (documentado en kit.js:1991-1993).
+  //
+  // El bucle sigue: si el candidato esta vetado se prueba el siguiente, y si no queda ninguno la escena
+  // se declara vacia como ya hacia.
   for (const e of recortesDe(datosEls || [], ROLES, CANDIDATOS)) {
-    const t = texturas && texturas.get(e.url)
+    const t = texturaDe(texturas, e)
     if (t && t.image) { tex = t; break }
   }
   if (!tex) {

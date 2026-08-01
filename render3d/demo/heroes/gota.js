@@ -36,7 +36,7 @@ export const meta = {
 }
 
 export function build(ctx) {
-  const { THREE, gsap, mundoH, camera, distBase, rnd } = ctx
+  const { THREE, gsap, mundoW, mundoH, camera, distBase, rnd } = ctx
   const g = new THREE.Group()
   const tl = gsap.timeline({ paused: true })
   const DUR = b(meta.beats)
@@ -127,7 +127,14 @@ export function build(ctx) {
       matAcento(i ? LOOK.acento2 : LOOK.acento, 1.5))
     m.material.transparent = true
     m.material.opacity = 0
-    m.userData.r = R * (1.55 + rnd() * 0.35)
+    // ACOTADO POR EL ANCHO. R sale de mundoH (1.85) y el radio quedaba entre 2.87 y 3.52 contra un
+    // semiancho de 2.8125 —2.71 con el dolly 1.25 de jugueton—, asi que la mota orbitaba FUERA del
+    // cuadro. Medido vertice a vertice: en artesanal/semilla 17 una de las dos motas es completamente
+    // invisible en los 93 cuadros del tramo sostenido, y pasa en 7 de 50 combinaciones de aire y
+    // semilla. En 8 beats la orbita recorre 1.2-2.0 radianes, o sea que no llega a "volver": si arranca
+    // del lado de afuera, se queda afuera toda la escena.
+    // El 0.42 deja la mota entera adentro con el dolly puesto: mundoW*0.42 = 2.3625 contra 2.71.
+    m.userData.r = Math.min(R * (1.55 + rnd() * 0.35), mundoW * 0.42)
     m.userData.f = rnd() * 6.28
     m.userData.v = 0.30 + rnd() * 0.22
     m.userData.incl = 0.4 + rnd() * 0.7

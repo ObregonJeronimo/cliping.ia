@@ -26,13 +26,21 @@ export const meta = {
 }
 
 export function build(ctx) {
-  const { THREE, gsap, mundoH, camera, distBase, rnd } = ctx
+  const { THREE, gsap, mundoW, mundoH, camera, distBase, rnd, claro } = ctx
   const g = new THREE.Group()
   const gr = new THREE.Group()
   const tl = gsap.timeline({ paused: true })
   const DUR = b(meta.beats)
 
-  const R = mundoH * 0.17
+  // EL RADIO SALE DEL LADO QUE RECORTA, QUE EN 9:16 ES EL ANCHO. Estaba atado a mundoH (10) en un cuadro
+  // donde el semiancho es 2.8125 —y 2.71 con el dolly de esta escena, que se acerca—: el anillo de
+  // afuera mide R*2.05 = 3.485 y llegaba a x=1.313 en coordenadas de recorte, o sea 31% pasado el borde,
+  // cortado en 60 de sus 75 cuadros. Los tres anillos son el sujeto del hero, no un fondo que sangra.
+  //
+  // El 0.215 no es a ojo: el anillo mayor tiene que entrar entero, o sea R*2.05 <= mundoW*0.44 (el 0.44
+  // deja el margen que se come el dolly), y 0.44/2.05 = 0.2146. Se conserva el `mundoH * 0.17` como tope
+  // superior para que en un cuadro que no sea 9:16 el hero no se agrande de golpe.
+  const R = Math.min(mundoH * 0.17, mundoW * 0.215)
   const gP = new THREE.Group()
   g.add(gP)
 
@@ -142,9 +150,21 @@ export function build(ctx) {
   girar()
 
   // El halo LATE con el pulso del fondo, no con un reloj propio.
-  tl.to(halo.material.uniforms.uF, { value: 0.36, duration: b(1.4), ease: E.frena(2) }, b(0.5))
-  tl.to(halo.material.uniforms.uF, { value: 0.20, duration: b(1.6), ease: E.vaiven() }, b(3.4))
-  tl.to(halo.material.uniforms.uF, { value: 0.34, duration: b(1.6), ease: E.vaiven() }, b(5.0))
+  // CON RAMA DE POLARIDAD, que era lo unico que le faltaba. El halo compone en NormalBlending sobre un
+  // plano de R*9 —2.7 veces el ancho del cuadro— y sus tres valores eran fijos. Sobre una pagina CLARA
+  // (bgLum > 0.42, o sea cinco de cada siete paginas reales segun main.js:474) eso es alfa 0.36 del
+  // acento sobre blanco en todo el cuadro: un velo lavanda que no baja nunca.
+  //
+  // Es la misma familia que el defecto ya documentado en enjambre.js:263-273, al reves: aquel
+  // DESAPARECIA en mundo claro por sumar luz sobre blanco, este INVADE por cubrirlo. Y es incoherente
+  // dentro del propio archivo: el cristal SI tiene su rama (`uClaro` en el fragment, lineas 79-80).
+  //
+  // El 0.33 deja el pico en 0.12 de alfa, que sobre blanco se lee como un halo y no como un fondo
+  // teñido. En oscuro no cambia nada: el factor es 1.
+  const HALO = claro ? 0.33 : 1
+  tl.to(halo.material.uniforms.uF, { value: 0.36 * HALO, duration: b(1.4), ease: E.frena(2) }, b(0.5))
+  tl.to(halo.material.uniforms.uF, { value: 0.20 * HALO, duration: b(1.6), ease: E.vaiven() }, b(3.4))
+  tl.to(halo.material.uniforms.uF, { value: 0.34 * HALO, duration: b(1.6), ease: E.vaiven() }, b(5.0))
 
   tl.fromTo(camera.position, { z: dolly(distBase, 0.8) }, { z: dolly(distBase, -0.55), duration: DUR * 0.8, ease: 'none' }, 0)
   tl.to(camera.position, { z: distBase, duration: DUR * 0.2, ease: E.vaiven() }, DUR * 0.8)
