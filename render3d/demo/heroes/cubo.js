@@ -22,7 +22,7 @@
 //
 // CONTRATO — ver heroes/telefono.js.
 
-import { LOOK, b, E, hex, matAcento, nivel, recortesDe, texturaDe, dolly, orbita, deslizFijo } from '../kit.js'
+import { LOOK, b, E, hex, matAcento, nivel, recortesDe, texturaDe, dolly, orbita, deslizFijo, topeNitido } from '../kit.js'
 
 export const meta = {
   id: 'cubo',
@@ -105,8 +105,18 @@ export function build(ctx) {
     const ar = (tex.image.width || 1) / (tex.image.height || 1)
     // CONTIENE: se elige el lado que limita primero y el otro queda con margen. Nunca se estira y nunca
     // se recorta — las dos cosas cuestan contenido en una captura de pagina.
-    const w = ar >= 1 ? UTIL : UTIL * ar
-    const h = ar >= 1 ? UTIL / ar : UTIL
+    // Y CONTIENE TAMBIEN LA RESOLUCION, que faltaba. UTIL = LADO*0.86 = 2.666 unidades = 512 px de
+    // cuadro, y el recorte se estiraba hasta llenarlo sin mirar cuantos pixeles trae: el logo de stripe
+    // (120 px) salia a 512, o sea 4.3 veces su resolucion, y el de linear 2.9. Y es la peor cara para
+    // que pase: el tumbo se DETIENE en cada peldano a proposito (lineas 168-189), asi que el remuestreo
+    // se ve justo en el instante en que la escena pide que se lea.
+    //
+    // Mismo tope que ya usan columna, vitrina y mosaico. Una lamina de poca resolucion ocupa menos cara
+    // y deja mas margen, que es preferible a llenarla con una version deshecha de si misma.
+    const NITIDO = topeNitido(tex.image, 1080, mundoW, 1.4)
+    const util = Math.min(UTIL, ar >= 1 ? NITIDO : NITIDO / ar)
+    const w = ar >= 1 ? util : util * ar
+    const h = ar >= 1 ? util / ar : util
 
     const grupoCara = new THREE.Group()
     grupoCara.position.set(cara.p[0] * LADO / 2, cara.p[1] * LADO / 2, cara.p[2] * LADO / 2)

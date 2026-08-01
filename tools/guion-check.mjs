@@ -16,7 +16,7 @@
 // mismo cliente pidiendo otra versión— y es el que rompía. Un congruencial lineal sembrado con
 // números chicos consecutivos devuelve primeros valores casi iguales, así que las doce caían en el
 // mismo orden narrativo. Con semillas al azar el defecto no se veía.
-import { guionDe, beatsDelGuion, ajusteDe, TOPE_AJUSTE, familiasDe, DORMIDAS } from '../render3d/demo/guion.js'
+import { guionDe, beatsDelGuion, ajusteDe, TOPE_AJUSTE, familiasDe, DORMIDAS, REQUISITOS } from '../render3d/demo/guion.js'
 
 // El catalogo real, copiado de los meta.beats de cada escena. Se declara aca y no se importan los
 // modulos porque importarlos arrastra three y un DOM: esta compuerta tiene que ser instantanea.
@@ -70,14 +70,16 @@ const F = (cod, m) => fallos.push(`${cod}  ${m}`)
 // del catalogo, y se imprime para que sea visible en vez de quedar escondida detras de un OK.
 const cortas = []
 
-const REQ = {
-  tipografia: d => (d.frases || []).filter(Boolean).length >= 4,
-  rafaga: d => ((d.elementos || []).length + (d.frases || []).filter(Boolean).length) >= 3,
-  pantalla: d => !!d.tira,
-  columna: d => (d.elementos || []).length >= 2,
-  tarjetas: d => (d.datos || []).length >= 1,
-  destello: d => !!d.golpe,
-}
+// EL OBJETO DEL GUION, NO UNA COPIA. Aca habia seis requisitos transcriptos a mano de los 19 que
+// declara guion.js, y esa copia era el agujero: para los otros 13 —gancho, apertura, bandera, hero,
+// mesa, cita, lista, titular, partida, contraste, sello, toro, cierre— la compuerta no comprobaba
+// nada, y para los seis copiados comprobaba el MISMO numero escrito dos veces, asi que un umbral mal
+// puesto daba verde en las dos puntas. Paso exactamente eso con `tipografia`: el 4 estaba identico
+// aca y en el guion, y la escena de mensaje mas larga del catalogo no se elegia nunca.
+//
+// Importarlo tiene el costo de que la compuerta ya no es independiente del guion. Se acepta a
+// sabiendas: una compuerta que mide una copia no es independiente, es solo otra cosa.
+const REQ = REQUISITOS
 
 let combinaciones = 0
 for (const [nomPag, datos] of Object.entries(PAGINAS)) {

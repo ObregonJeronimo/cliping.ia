@@ -215,7 +215,7 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** Ninguna. Hoy además está tapado por el hallazgo 1 (el shader ni siquiera lee `visible`), así que arreglar sólo el shader cambia un defecto por otro más chico en vez de arreglar la escena.
   - `const visible = Math.min(1, (altoVP / altoTira) * 0.52)`
 
-- [ ] **render3d/demo/heroes/cubo.js:108**
+- [x] **render3d/demo/heroes/cubo.js:108**
   - **Síntoma:** El logo de stripe (120 px) se dibuja a 512 px en la cara: 4.3x. El de linear, 2.9x. La cara que está en reposo mirando a cámara es justo la que el espectador MIRA quieta —el tumbo se detiene en cada peldaño a propósito, líneas 168-189— así que el remuestreo se ve en el instante en que la escena pide que se lea.
   - **Lo dispara:** Cualquier recorte más angosto que 366 px, que son casi todos los logos y CTA reales (stripe logo 120, linear logo 176, ghost logo 211, stripe cta 168x80). UTIL = LADO*0.86 = 2.666 unidades = 512 px de cuadro, y el recorte se estira hasta llenarlo sin mirar cuántos píxeles tiene.
   - **Compuerta:** Ninguna. `topeNitido` tampoco está en el import de la línea 25.
@@ -335,7 +335,7 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** Ninguna. E-ENCAJE mide TAMAÑO contra el cuadro, nunca resolucion contra tamaño; encuadre-check.mjs solo pregunta si el objeto se cruza con el frustum. No existe compuerta de ampliacion en tools/ (busque topeNitido y MAG_MAX en tools/*.mjs: cero resul
   - `const altoLogo = Math.min(ALTO_MAX, ANCHO_MAX / ar)`
 
-- [ ] **render3d/demo/heroes/mosaico.js:103**
+- [x] **render3d/demo/heroes/mosaico.js:103**
   - **Síntoma:** ANCHO_UTIL * AIRE = mundoW * 0.95 = 5.344 unidades = 1026 px de pantalla. Un logo de 176 px sale a 1026: x5.83 sobre su resolucion, cuatro veces por encima del techo de 1.4x del kit. La banda es la pieza mas grande de la composicion y la unica que identifica a la marca, o sea la que peor aguanta los bordes deshechos. Ninguna de las dos llamadas a planoRecorte del hero (mosaico.js:125 y :206) pasa 
   - **Lo dispara:** Lo mismo: un logo chico. mosaico pide ROLES = ['logo', 'tarjeta', 'foto', 'cta'] (mosaico.js:32) y la 'banda destacada' es piezas[0] — el comentario de mosaico.js:196 lo dice, 'El relevo NUNCA toca la banda destacada (el logo)'. La banda cruza el ancho entero.
   - **Compuerta:** Ninguna, por la misma razon que vitrina: no hay compuerta de resolucion en el motor. Ademas ningun hero declara `userData.encaja` (0 apariciones en heroes/ contra 13 en escenas/), asi que los 18 heroes solo tienen encima el heuristico suelto de verif
@@ -365,7 +365,7 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** Ninguna. `repetidas` se exporta en datos.js:162 y —grep en todo el repo— NADIE la lee; lo mismo `recortesRepetidos` (kit.js:2055). El comentario de datos.js:159-160 dice 'avisa por `repetidas` para que una compuerta pueda medirlo' y esa compuerta no 
   - `if (!elegibles.length) return [] const out = [] for (let k = 0; k < cuantas; k++) { const i = (_cursor + k) % elegibles.length if (_cursor + k >= elegibles.length) repetidas++ out.push(elegibles[i]) }`
 
-- [ ] **render3d/demo/guion.js:320 contra render3d/demo/datos.js:193**
+- [x] **render3d/demo/guion.js:320 contra render3d/demo/datos.js:193**
   - **Síntoma:** El cupo cree que hay una frase mas de las que hay y deja entrar una sedienta de mas; el mostrador no se niega, da la vuelta, y dos escenas dicen la misma linea. Medido sobre stripe-com, 180 guiones, SIN contar lo que bebe el hero: 75 piezas (42%) tienen una frase repetida en dos escenas distintas. Ejemplo exacto: seed5/20s da `gancho>apertura>rafaga>partida>cierre` y 'Global payment acceptance' sa
   - **Lo dispara:** El cupo reparte el pozo con `nFr`, pero el mostrador saca del pozo la frase que el golpe ya va a decir: `const sinGolpe = golpe ? pozo.filter(f => _norm(f) !== golpe) : pozo`. Y el golpe SE ELIGE de los mismos titulos de feature que las frases (tools/anthem-datos.mjs:222-226), asi que casi siempre E
   - **Compuerta:** Ninguna. guion-check no simula el mostrador: solo mira que escena entra, nunca que texto le toca. E-GUION-MATERIAL (guion-check.mjs:128-132) compara contra una COPIA a mano de seis requisitos (lineas 73-80) que es subconjunto del REQUISITOS real, asi
@@ -377,19 +377,19 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** Ninguna. El gate no construye escenas, asi que no ve el consumo; y el unico contador que existiria —`repetidas`— no lo lee nadie.
   - `const fr = (repartirFrases(1) || [])[0]`
 
-- [ ] **render3d/demo/guion.js:87**
+- [x] **render3d/demo/guion.js:87**
   - **Síntoma:** `repartirFrases(2, true)` devuelve ['Submit your website', 'Submit your website'] y la guarda de partida.js:36 no se dispara porque el mostrador nunca devuelve de menos: el cuadro partido muestra la MISMA linea arriba y abajo. Es exactamente lo que el encabezado de la escena declara imposible (partida.js:18-19: 'SIN DOS FRASES NO HAY PAR ... Se declara vacia'). Medido: 16 de 180 guiones de awwward
   - **Lo dispara:** El requisito cuenta las frases de una linea sobre `d.frases` ENTERO; la escena pide `repartirFrases(2, true)` (partida.js:35) y ahi las de una linea se cuentan sobre el pozo YA sin la frase igual al golpe (datos.js:193-195). Fixture awwwards-com: frases = ['Site of the Day', 'Submit your website', '
   - **Compuerta:** Ninguna. `partida` ni siquiera esta en la copia de requisitos de guion-check.mjs:73-80, y el gate no simula el mostrador.
   - `partida: (d) => (d.frases || []).filter(f => f && !/\n/.test(String(f))).length >= 2,`
 
-- [ ] **render3d/demo/guion.js:53 contra render3d/demo/escenas/tipografia.js:187**
+- [x] **render3d/demo/guion.js:53 contra render3d/demo/escenas/tipografia.js:187**
   - **Síntoma:** La escena de mensaje mas larga del catalogo (8 beats, el doble que las otras) no se elige jamas en esas paginas. Medido: `tipografia` aparece en 0 de 180 guiones de no-latina, y tambien en 0 de 180 de una pagina sintetica con 3 frases y material de sobra (cifras, recorte, testimonio, tira). Los beats se los queda el relleno hero/toro/sello. Es el mismo defecto que ya tuvieron `pantalla` y `lista`:
   - **Lo dispara:** El comentario que justifica el 4 (guion.js:40-52) describe una escena que ya no existe: decia que tipografia.js:151-201 pedia `frase(0)` hasta `frase(6)` y dejaba tres slots vacios, y que el arreglo era que la escena se compusiera con las frases que hay. La escena YA hace eso: `const mias = repartir
   - **Compuerta:** No. guion-check tiene `tipografia` en su copia de requisitos (guion-check.mjs:74) con el MISMO numero copiado a mano, asi que mide la misma creencia; y sus tres paginas de prueba dan 4, 4 y 1 frases — ninguna cae en el escalon de 3, que es justo dond
   - `tipografia: (d) => (d.frases || []).filter(Boolean).length >= 4,`
 
-- [ ] **tools/guion-check.mjs:27-34**
+- [x] **tools/guion-check.mjs:27-34**
   - **Síntoma:** El gate corre 324 guiones sobre un catalogo que no es el del motor: `marquesina` nunca entra en un plan del gate (por eso su requisito faltante es invisible) y `gancho` tampoco, aunque en produccion es fija y se come 4 beats del presupuesto — o sea que las mediciones de E-GUION-DURACION y E-GUION-VERSIONES no describen a la pieza que se renderiza. El gate imprime 'GUION OK'.
   - **Lo dispara:** La tabla escrita a mano quedo en 18 escenas y el catalogo real (escenas/index.js:39) tiene 20: faltan `marquesina` y `gancho`. Es exactamente la desincronizacion contra la que avisa el comentario de guion-check.mjs:23-26 ('ESTA LISTA SE DESINCRONIZO UNA VEZ Y NADIE SE ENTERO'), ocurrida por segunda 
   - **Compuerta:** Se caza sola y no lo hace: E-GUION-ESCENA-MUERTA y E-FAMILIA-DECLARADA recorren CAT.keys(), asi que una escena ausente de CAT es invisible para las dos comprobaciones que existen justamente para cazar escenas olvidadas.
@@ -407,13 +407,13 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** Ninguna. Ademas el `_cursor` de frases queda a la deriva a lo largo de las 407 construcciones, asi que el contenido que recibe cada escena depende de su posicion en el bucle: el mensaje de fallo dice '[aire X]' para que se pueda reproducir, y reprodu
   - `export const reiniciarReparto = () => { _cursor = 0; repetidas = 0; _claimUsado = false }`
 
-- [ ] **tools/guion-check.mjs:27**
+- [x] **tools/guion-check.mjs:27**
   - **Síntoma:** Un modo estructural entero sin cobertura — justo el que guion.js:365 llama 'EL CAMBIO QUE MAS SE VE DE TODO EL GUION' — y una escena de texto que puede salir al video pegada a su gemela sin que E-GUION-FAMILIA lo mire. La cifra que la compuerta imprime como respuesta al reclamo ('208 estructuras distintas') tambien esta mal: con el catalogo real da 234.
   - **Lo dispara:** El catalogo copiado a mano volvio a desincronizarse: tiene 18 escenas y `render3d/demo/escenas/` exporta 20 metas. Faltan `gancho` (beats 4) y `marquesina` (beats 6). Como `guionDe` recibe ESE Map, `puede('gancho')` es falso -> gancho nunca entra en FIJAS -> la rama `sinApertura` de guion.js:392 (sa
   - **Compuerta:** Ninguna, y es la segunda vez: el archivo documenta en sus lineas 23-26 que ya midio 10 escenas cuando habia 16, y advierte que el sintoma seria este mismo mensaje con un numero viejo. El arreglo estable es leer `meta.beats` de los archivos como hace 
   - `const CAT = new Map([`
 
-- [ ] **tools/guion-check.mjs:61**
+- [x] **tools/guion-check.mjs:61**
   - **Síntoma:** El gancho, `sinApertura` y la interaccion claim/titular del reparto quedan sin medir. E-GUION-ESCENA-MUERTA no puede avisar de nada de esto porque `presencia` se arma sobre las claves del CAT (linea 169), que no incluye gancho.
   - **Lo dispara:** Ninguna de las tres PAGINAS de prueba declara `claim`, y REQUISITOS.gancho (guion.js:31) es `(d) => !!String(d.claim || '').trim()`. Medido agregando gancho al catalogo: sigue apareciendo en el 0.0% de los guiones. O sea que la escena que el guion define como la unica capaz de abrir un reel en un fe
   - **Compuerta:** E-GUION-ESCENA-MUERTA lo diria (mide 0.0% < 1%) en cuanto gancho entre al CAT — pero mientras no este, la regla no puede ni mirarlo. Faltan las dos cosas: la escena en el catalogo y un `claim` en al menos una pagina de prueba.
@@ -538,7 +538,7 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** Ninguna. Agregar los uniforms escalares y vec2 del material a `firmaDe`, y aceptar isLine/isLineSegments/isSprite en los tres filtros, cierra las dos cosas sin cambiar los umbrales.
   - `+ `${(o.material && o.material.uniforms && o.material.uniforms.uProg ? o.material.uniforms.uProg.value : 0).toFixed(3)};``
 
-- [ ] **tools/guion-check.mjs:73**
+- [x] **tools/guion-check.mjs:73**
   - **Síntoma:** Un fallo en falso de duracion (que se aprende a ignorar, y despues no se ve el de verdad) o, al reves, una divergencia entre los requisitos del motor y los de la compuerta que nadie detecta en 13 de 19 escenas.
   - **Lo dispara:** La compuerta duplica a mano 6 de los 19 REQUISITOS que declara guion.js:28-111 (tipografia, rafaga, pantalla, columna, tarjetas, destello). Para las otras 13 —gancho, apertura, bandera, hero, mesa, cita, lista, titular, partida, contraste, sello, toro, cierre— E-GUION-MATERIAL (linea 129) es un no-o
   - **Compuerta:** Ninguna. Se cierra importando REQUISITOS de guion.js en vez de copiarlo — es la misma leccion que el propio archivo saco con el CAT y que adn-check ya aplico importando MARCOS y MONTAJES del kit.
@@ -772,3 +772,19 @@ arriba este terminada. Van al final a proposito. **No empezar ninguno de los dos
   - La idea es poder seleccionar las imagenes. Hay que definir hablandolo: donde se elige (el estudio,
     el editor de timeline), que pasa si la elegida no le sirve al hero que toco, si la eleccion sobrevive
     a cambiar la semilla, y como convive con el reparto que evita repetir imagenes entre escenas.
+
+
+- [ ] **render3d/demo/escenas/hero.js:76 — INTENTADO Y NO DEMOSTRADO**
+  - Se probo contar en el cupo la frase que bebe el hero (restarle 1 a `nFr`). El plan salio IDENTICO:
+    0.44 sedientas y 0.41 heroes por pieza a 20 s, 0.69 y 0.86 a 30 s, los mismos numeros con y sin el
+    cambio sobre 180 guiones. En las duraciones que se usan el cupo no es la restriccion que ata —ata el
+    presupuesto de beats— asi que el cambio se saco. Queda ABIERTO: la repeticion existe, pero el
+    arreglo por el lado del cupo no la toca y hay que buscarla en otro lado.
+
+- [ ] **render3d/demo/heroes/mosaico.js:224 — REGRESION, ya cerrada, anotada como leccion**
+  - El parche del relevo (de la tanda de 31 del 2026-07-31) creo un SEGUNDO sitio de dimensionado que
+    nacio sin el tope de resolucion que se le habia puesto al primero diez lineas antes. Medido: la
+    banda volvio a 4.28x la resolucion del archivo con la cota puesta a diez lineas de distancia.
+  - **La leccion, que vale mas que el arreglo:** el tamano se calcula en DOS lugares del mismo archivo,
+    asi que arreglar uno no arregla el otro Y la medicion de uno tapa al otro. Y se colo porque los
+    parches se aplicaron en lote sin volver a medir cada uno.

@@ -221,7 +221,14 @@ export function build(ctx) {
     if (!base) return
     const alto = base.geometry.parameters.height
     const anchoCelda = ANCHO_UTIL / cols
-    const h = Math.min(alto, (anchoCelda * AIRE) / Math.max(0.05, p.ar))
+    // CON EL MISMO TOPE DE RESOLUCION QUE LA PIEZA A LA QUE RELEVA (linea 142). Este sitio nacio con el
+    // relevo y quedo sin la cota: medido, la banda salia a 4.28 veces la resolucion del archivo —el logo
+    // de stripe, 120 px, dibujado a 513 px de cuadro— con la cota puesta a diez lineas de distancia.
+    //
+    // Es el mismo defecto dos veces en el mismo archivo, que es lo que pasa cuando el tamaño se calcula
+    // en dos lugares: arreglar uno no arregla el otro y la medicion de uno tapa al otro.
+    const hNitido = topeNitido(p.tex && p.tex.image, 1080, mundoW, 1.4) / Math.max(0.05, p.ar)
+    const h = Math.min(alto, (anchoCelda * AIRE) / Math.max(0.05, p.ar), hNitido)
     const m = planoRecorte(p.tex, h)
     if (!m) return
     m.position.copy(base.userData.destino)

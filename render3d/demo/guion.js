@@ -51,7 +51,44 @@ const RESPALDO_SIN_TIRA = {
   mesa: (d) => (d.elementos || []).some(e => e && e.url),
 }
 
-const REQUISITOS = {
+// LAS FRASES QUE EL MOSTRADOR VA A REPARTIR DE VERDAD — que no son todas las que trae la pagina.
+//
+// `repartirFrases` (datos.js:193) saca del pozo la frase que el GOLPE ya va a decir entera: `pozo
+// .filter(f => _norm(f) !== golpe)`. Y el golpe se elige de los mismos titulos de feature que las
+// frases (anthem-datos.mjs:222-226), asi que casi siempre es una de ellas. Este archivo contaba sobre
+// `d.frases` ENTERO en dos lugares —el cupo de texto y el requisito de `partida`— o sea que creia
+// tener una frase mas de las que hay.
+//
+// El costo medido: sobre stripe-com, 180 guiones, el 42% de las piezas repiten una frase en dos
+// escenas distintas. Y en awwwards `partida` calificaba con dos y el mostrador le devolvia DOS VECES
+// 'Submit your website': el cuadro partido mostrando la misma linea arriba y abajo, que es justo lo
+// que partida.js:18-19 declara imposible. La guarda de partida.js:36 no lo ve porque el mostrador
+// nunca devuelve de menos — da la vuelta al pozo y repite antes que faltar.
+//
+// Es el mismo defecto que la IMAGEN repetida entre `pantalla` y `mesa`, en el otro material: dos
+// reparticiones que no se hablan. La regla es una sola —contar sobre el mismo pozo del que se pide—
+// y esta funcion existe para que no haya dos versiones de esa cuenta.
+//
+// `_norm` es una copia de datos.js:185 a proposito: importarla obligaria a guion.js a depender del
+// modulo de datos, y este archivo se prueba con objetos planos.
+const _norm = (t) => String(t || '').toLowerCase().replace(/[^a-z0-9à-ÿ ]+/gi, ' ').replace(/[ ]+/g, ' ').trim()
+const frasesRepartibles = (d) => {
+  const pozo = (d.frases || []).filter(Boolean)
+  const golpe = _norm(d.golpe || '')
+  if (!golpe) return pozo
+  const sinGolpe = pozo.filter(f => _norm(f) !== golpe)
+  // El mismo respaldo que el mostrador: si sacar el golpe deja el pozo vacio, el pozo entero vale.
+  // Sin esta linea el requisito seria MAS estricto que la escena y la suprimiria donde si se compone.
+  return sinGolpe.length ? sinGolpe : pozo
+}
+
+// SE EXPORTA PARA QUE LA COMPUERTA MIDA ESTE OBJETO Y NO UNA COPIA. tools/guion-check.mjs tenia seis
+// requisitos transcriptos a mano (su `REQ`), o sea que auditaba una CREENCIA sobre el guion en vez del
+// guion. Los efectos eran dos y los dos estaban medidos: los 13 requisitos que no estaban copiados no
+// se auditaban en absoluto, y los 6 que si estaban repetian el mismo numero, asi que un umbral mal
+// puesto salia verde en las dos puntas. Justo lo que paso con `tipografia`, cuyo 4 estaba escrito
+// identico en los dos lados.
+export const REQUISITOS = {
   // El gancho necesita la PROMESA de la pagina y nada mas. Sin description no hay gancho: es preferible
   // abrir por la marca que abrir con un encabezado de seccion puesto en cuerpo de cartel.
   gancho: (d) => !!String(d.claim || '').trim(),
@@ -86,7 +123,17 @@ const REQUISITOS = {
   // frases que hay en vez de coreografiar siete a ciegas: es lo que ya hace `columna`, que con dos
   // recortes reparte esos dos y lo documenta. Mientras eso no se haga, cuatro sigue siendo el umbral
   // porque una escena con huecos es mejor que ninguna escena.
-  tipografia: (d) => (d.frases || []).filter(Boolean).length >= 4,
+  // TRES, QUE ES LO QUE LA ESCENA PIDE. Todo el comentario de arriba describe una escena que ya no
+  // existe: `tipografia` no coreografia siete slots a ciegas desde que se reescribio — pide
+  // `repartirFrases(3)` y compone con lo que le den (`NF = Math.max(1, mias.length)`, tipografia.js:187).
+  // El umbral quedo en 4 y el efecto fue el que el propio comentario decia querer evitar: medido, la
+  // escena de mensaje MAS LARGA del catalogo (8 beats, el doble que las otras) aparecia en 0 de 180
+  // guiones de una pagina con 3 frases y material de sobra. Un requisito mas exigente que su escena no
+  // la protege, la borra.
+  //
+  // Se pone 3 y no 2: con dos, dos de los tres slots dirian lo mismo, que es el mismo defecto que
+  // `marquesina` documenta arriba.
+  tipografia: (d) => frasesRepartibles(d).length >= 3,
   // Una cifra alcanza: la escena ya se compone con la cantidad real. Cero cifras es una escena de
   // datos sin datos.
   tarjetas: (d) => (d.datos || []).length >= 1,
@@ -120,7 +167,9 @@ const REQUISITOS = {
   // Partir el cuadro sirve para decir DOS cosas a la vez, asi que necesita dos. Con una, la mitad
   // vacia es un rectangulo de color esperando contenido. Solo frases de una linea: las de dos
   // renglones son titulares y no entran en media pantalla.
-  partida: (d) => (d.frases || []).filter(f => f && !/\n/.test(String(f))).length >= 2,
+  // SE CUENTA SOBRE EL MISMO POZO DEL QUE SE PIDE. Ver la nota de `frasesRepartibles` arriba: la escena
+  // llama `repartirFrases(2, true)` y el mostrador reparte sin la frase del golpe.
+  partida: (d) => frasesRepartibles(d).filter(f => !/\n/.test(String(f))).length >= 2,
   // Una comparacion necesita DOS piezas reales Y COMPARABLES. Con una es una foto, y eso ya lo hacen
   // otras dos. Pero ademas: dos piezas de proporciones muy distintas —un logo apaisado contra una
   // captura vertical— no se comparan, se estorban; encajadas en la misma caja una queda enorme y la
@@ -353,7 +402,20 @@ export function guionDe({ escenas, datos, seed = 1, beatSeg = 60 / 124, dur = nu
   // que dos escenas muestren la MISMA frase mientras quede material; el cupo evita que se pidan mas
   // frases de las que la pagina dio.
   const SEDIENTAS = ['tipografia', 'lista', 'partida', 'rafaga', 'marquesina']
-  const nFr = (d.frases || []).filter(Boolean).length
+  // SIN LA FRASE DEL GOLPE, por lo mismo que `partida`: el cupo reparte un pozo que el mostrador ya
+  // achico. Contandola de mas, entraba una escena sedienta que no tenia con que llenarse y el
+  // mostrador —que nunca se niega— daba la vuelta y repetia. Ver `frasesRepartibles`.
+  // SIN LA FRASE DEL GOLPE, por lo mismo que `partida`: el cupo reparte un pozo que el mostrador ya
+  // achico. Contandola de mas, entraba una escena sedienta que no tenia con que llenarse y el
+  // mostrador —que nunca se niega— daba la vuelta y repetia. Ver `frasesRepartibles`.
+  //
+  // LO QUE ESTE NUMERO TODAVIA NO CUENTA, y queda anotado porque se intento y NO se pudo demostrar:
+  // `hero` bebe una frase para su rotulo (hero.js:76, `repartirFrases(1)`) y no figura ni en SEDIENTAS
+  // ni en APETITO. Se probo restarle una al cupo y el plan salio IDENTICO —0.44 sedientas y 0.41 heroes
+  // por pieza a 20 s, 0.69 y 0.86 a 30 s, mismos numeros con y sin el cambio sobre 180 guiones—, asi
+  // que en las duraciones que se usan el cupo no es la restriccion que ata: ata el presupuesto de
+  // beats. Un arreglo que no mueve la medicion no se deja puesto.
+  const nFr = frasesRepartibles(d).length
   // CUANTAS ENTRAN SALE DEL APETITO DE CADA UNA, NO DE UN ESCALON.
   //
   // Cada sedienta bebe una cantidad distinta del mismo pozo: partida 2, tipografia 3, lista 3, rafaga 3
