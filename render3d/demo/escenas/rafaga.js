@@ -152,7 +152,18 @@ export function build(ctx) {
   // "Meta is royally..." salia "eta is royally". Un recorte de pagina no puede perder ni un pixel,
   // porque todo lo que tiene es contenido. "A sangre" acá quiere decir que toca los dos bordes, no que
   // los pase.
-  const ANCHO_MAX = mundoW * 1.0
+  // 0.74 Y NO 1.0. El contrato de las lineas 144-148 dice que la pieza entra en el cuadro, pero el plano
+  // se componia a mundoW EXACTO y despues el gesto le sumaba dos cosas mas: un desplazamiento lateral de
+  // 0.30 a 0.52 (linea 210) y una escala que llega a 1.06 (211-212). Medido, el borde termina en 3.107 al
+  // entrar y 3.163 al salir, contra un semicuadro de 2.8125 en reposo y 2.7424 con la camara en su punto
+  // mas cerca: entre 40 y 81 px cortados de un costado, en TODOS los cuadros del slot.
+  //
+  // El numero sale de la cuenta, no de probar: hace falta (ANCHO_MAX/2) * 1.06 + 0.52 <= 2.7424, o sea
+  // ANCHO_MAX <= 4.193 = mundoW * 0.745. Se redondea para abajo.
+  //
+  // Componer a ancho completo y despues mover es la trampa: el margen tiene que existir ANTES del gesto,
+  // porque el gesto es lo que la escena existe para hacer.
+  const ANCHO_MAX = mundoW * 0.74
   const mallas = piezas.map((p) => {
     let m
     if (p.tipo === 'recorte') {

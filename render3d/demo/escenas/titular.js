@@ -131,7 +131,14 @@ export function build(ctx) {
     new THREE.MeshBasicMaterial({ map: texFoto, toneMapped: false, transparent: true }),
   )
   const FOTO_Y = mundoH * 0.5 - BANDA_H / 2       // anclada al canto superior del cuadro
-  foto.position.set(0, FOTO_Y, -0.2)
+  // ANCLADA ARRIBA, no centrada en la banda. `FOTO_Y` es el centro de la BANDA y la foto puede ser mas
+  // BAJA que ella: pasa con cualquier foto apaisada, que es el caso normal (un hero 16:9 con un titular
+  // de un renglon deja 3.78 de hueco). Centrandola, ese hueco se repartia en dos: 363 px de fondo pelado
+  // contra el borde SUPERIOR del cuadro y otros 363 entre el pie de la foto y la barra de acento — o sea
+  // el titular flotando despegado de la imagen sobre la que se supone que se apoya.
+  // El comentario de la linea de arriba ya dice "anclada al canto superior del cuadro"; esto lo cumple.
+  const altoFoto = Math.min(BANDA_H, altoNativo)
+  foto.position.set(0, FOTO_Y + (BANDA_H - altoFoto) / 2, -0.2)
   gr.add(foto)
 
   // ---------------------------------------------------------------- LA FRANJA QUE BARRE LA FOTO

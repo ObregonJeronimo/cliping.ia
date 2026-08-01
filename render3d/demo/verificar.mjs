@@ -340,7 +340,7 @@ for (const id of ids) {
       rm = await mod.build({ ...ctx, camera: cm, fondo: uni(), rnd: () => { sm = (sm * 1664525 + 1013904223) >>> 0; return sm / 4294967296 } })
     } catch (e) { die(`E-ENCAJE ${id}: con la marca "${marca}" build() lanzo — ${e.message}`); continue }
     if (!rm || !rm.g) continue
-    rm.tl.time(mod.meta.beats * BEAT * 0.72, false)      // ya asentada, antes de la salida
+    // (el muestreo va mas abajo: cuatro instantes, no uno)
     // SE MIDE OBJETO POR OBJETO, no la union. La primera version tomaba el bounding box de todo el
     // grupo y acusaba a las dos escenas correctas: `toro` tiene particulas a 80 unidades y
     // `tipografia` estaciona las frases fuera del cuadro esperando su turno. Eso es composicion
@@ -416,7 +416,20 @@ for (const id of ids) {
       if (esFilete || t.y > mundoH * 1.6) return
       if (!peor || t.y > peor.y) peor = { x: t.x, y: t.y }
     }
-    for (const raiz of raices) raiz.traverse(o => mirar(o, raiz === rm.g))
+    // EN VARIOS INSTANTES, NO EN UNO. Esto medía SOLO el 72% de la escena —"ya asentada, antes de la
+    // salida"— y con eso todo lo que sobresale en la ENTRADA o en la SALIDA sencillamente no existía
+    // para la compuerta: un texto que se corta en los costados mientras entra y despues se acomoda es
+    // exactamente lo que se ve en el video y no en una captura. En `destello` el heroWrap arranca
+    // fuera de escala y en `rafaga` las piezas entran desplazadas y creciendo — dos casos donde el
+    // unico instante medido es justo el que no falla.
+    //
+    // Los cuatro instantes son los que la composicion de este motor usa: 0.18 (entrada, con el
+    // overshoot todavia puesto), 0.45 y 0.72 (asentada) y 0.92 (salida, creciendo o escapando). Se
+    // acumula el PEOR de los cuatro por malla, que es lo que `mirar` ya hacia con `peor` y `noEncajan`.
+    for (const frac of [0.18, 0.45, 0.72, 0.92]) {
+      rm.tl.time(mod.meta.beats * BEAT * frac, false)
+      for (const raiz of raices) raiz.traverse(o => mirar(o, raiz === rm.g))
+    }
     ok(noEncajan.length === 0,
       `E-ENCAJE ${id}: con la marca "${marca}" ${noEncajan.length} pieza(s) declaradas encaja=true se salen del cuadro (${mundoW.toFixed(2)}x${mundoH.toFixed(2)}): ${noEncajan.join(' · ')}`)
     if (peor) {

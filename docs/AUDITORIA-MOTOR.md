@@ -108,19 +108,19 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** Ninguna. Mismo caso que vitrina: `topeNitido` existe en kit.js:146 y mosaico.js no lo importa (su import de la línea 21 no lo incluye). Ninguna compuerta abre los píxeles de un recorte.
   - `const hPorAncho = (anchoCelda * AIRE) / Math.max(0.05, p.ar)`
 
-- [ ] **render3d/demo/escenas/titular.js:130 (y 133)**
+- [x] **render3d/demo/escenas/titular.js:130 (y 133)**
   - **Síntoma:** La foto queda CENTRADA en la banda, no anclada arriba: medido, con 16:9 y 1 renglon quedan 3.78 de hueco repartido, o sea 363 px de fondo pelado en el borde SUPERIOR del cuadro y otros 363 px entre el pie de la foto y la barra de acento. La barra y el titular se dibujan en BANDA_Y (el pie de la BANDA, no el de la foto), asi que el titular flota despegado de la imagen en la que se supone que se apo
   - **Lo dispara:** Cualquier foto APAISADA. La banda mide BANDA_H (7.00 / 6.00 / 5.00 segun cuantos renglones tenga el titular) y el alto de la foto sale de ANCHO_FOTO/arFoto = 5.7375/arFoto. En cuanto arFoto > 5.7375/BANDA_H (0.82 con 1 renglon, 0.96 con 2, 1.15 con 3) la foto es MAS BAJA que su banda. Un hero 16:9 c
   - **Compuerta:** NINGUNA. Un hueco de fondo no es ni desborde ni pieza fuera de cuadro, asi que E-ENCAJE y E-ENCUADRE no aplican. Y encuadre-check no puede verlo ni por casualidad: su fixture (tools/encuadre-check.mjs:180) entrega rol 'foto' -> 'f2', que tejidoFalso 
   - `new THREE.PlaneGeometry(ANCHO_FOTO, Math.min(BANDA_H, altoNativo)) // ... foto.position.set(0, FOTO_Y, -0.2) con FOTO_Y = mundoH * 0.5 - BANDA_H / 2`
 
-- [ ] **render3d/demo/escenas/rafaga.js:210-212 contra el contrato declarado en 144-148**
+- [x] **render3d/demo/escenas/rafaga.js:210-212 contra el contrato declarado en 144-148**
   - **Síntoma:** Con el plano ya a ancho completo, el offset horizontal (0.30 a 0.52) y la escala hasta 1.06 llevan el borde a 3.107 al entrar y 3.163 al salir, contra un semicuadro de 2.8125 en reposo y 2.7424 con la camara en su punto mas cerca (dolly 1.55). Medido: entre 40 y 81 px de contenido cortados de un costado, en TODOS los cuadros del slot. Es exactamente el defecto que la linea 145 dice haber arreglado
   - **Lo dispara:** Cualquier recorte APAISADO de 771 px de ancho o mas (una tarjeta, un hero, una captura de seccion: el caso normal). Ahi anchoNativo = imgW*1.4/1080*mundoW supera ANCHO_MAX, el plano se compone exactamente a mundoW*1.0 = 5.625, y no le queda un solo pixel de margen para absorber el desplazamiento ni 
   - **Compuerta:** NINGUNA, y por dos motivos independientes. (1) planoRecorte (kit.js:1964) no pone userData.encaja, y rafaga.js no lo pone en ningun lado, asi que E-ENCAJE nunca mira estas mallas — E-ENCUADRE solo pregunta si la caja CRUZA el frustum y una pieza a sa
   - `m.position.set(lado * desde, (rnd() - 0.5) * 0.5, 0) // desde = 0.30 + rnd() * 0.22 tl.fromTo(m.scale, { x: 0.92, y: 0.92, z: 1 }, { x: 1.06, y: 1.06, z: 1, ... })`
 
-- [ ] **render3d/demo/escenas/tipografia.js:128-133**
+- [x] **render3d/demo/escenas/tipografia.js:128-133**
   - **Síntoma:** El ancho es SIEMPRE la constante que se le pasa; el alto es la variable dependiente y no tiene piso. Medido con las fuentes reales sobre m1 = medida(fr(0), ANTON, 5.10, 3.1): 'MIDE' sale a 3.100 de alto (595 px de 1920) y 'Trusted by millions, Basecamp puts everything you need to get work done in one place' sale a 0.192 (37 px). Dieciseis veces mas chico. La escena que lleva el mensaje, y que adem
   - **Lo dispara:** Un encabezado real de pagina de 35 caracteres o mas. La escena ademas APLANA los saltos de linea (linea 195: `String(mias[i % NF] || '').replace(/\n/g, ' ')`), asi que un titulo de dos renglones llega como una sola linea larguisima y el ar se dispara. El fixture ANTHEM tiene frases de 4 a 19 caracte
   - **Compuerta:** NINGUNA. tipografia.js no tiene una sola marca userData.encaja (verificado por grep), asi que E-ENCAJE no la audita; y de todos modos E-ENCAJE solo mide CONTENCION (|x|,|y| <= 1.015), nunca un cuerpo minimo. No existe compuerta de tamano de texto par
@@ -163,7 +163,12 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** Ninguna, y no es por falta de intento: E-ENCAJE prueba EXACTAMENTE 'Q' y 'TRANSPORTES INTERNACIONALES' (verificar.mjs:314). Pasa porque el unico umbral de alto es `peor.y <= mundoH * 0.85` (verificar.mjs:410), o sea 8.50, y el caso peor medido es 7.2
   - `marca.scale.setScalar(4.34 / ancho(marca)) // 77% del ancho del cuadro`
 
-- [ ] **render3d/demo/kit.js:1554**
+- [x] **render3d/demo/kit.js:1554**
+  - CERRADO POR COMPROBACION, no por parche: el defecto ya no esta. Barrido el shader entero buscando
+    (a) pares consecutivos `} else if (uPatron < X)` con el MISMO umbral y (b) ramas con el cuerpo
+    vacio: cero de cada una. Los cinco pares duplicados que reportaba el hallazgo se cerraron en el
+    "paso 0". Verificado leyendo el shader, NO renderizando: la comprobacion de que los cinco fondos
+    DIBUJAN sigue pendiente y es lo que propone la compuerta E-PATRON-DIBUJA.
   - **Síntoma:** El fondo sale como 'nada': solo el degrade, sin trama. La MISMA pagina y el MISMO aire dan a veces un fondo con textura y a veces un cuadro liso, segun la semilla — que es literalmente 'el motor es impredecible'. Se repite identico en 1587/1588 (celosia), 1621/1622 (costura), 1657/1658 (espigas) y 1702/1703 (engranaje): en los cinco casos la rama VACIA va primera en la cadena else-if y se queda co
   - **Lo dispara:** Cualquier pieza cuyo aire liste uno de los CINCO fondos nuevos en `fondos` y cuya semilla lo elija (kit.js:836-837 `const fondo = elegir(mo.fondos, 0x9e37)`). Estan declarados hoy: roseta en bienestar.js:118 y lujo.js:98; celosia en inmobiliario.js:114, lujo.js:98 y nocturno.js:110; costura en artes
   - **Compuerta:** Ninguna. E-SHADER-ENTERO (verificar.mjs:631-645) solo comprueba que el literal de fragmentShader llegue a gl_FragColor; E-COMPOSITOR-PARSEA corre `node --check`, y esto es JS y GLSL sintacticamente validos. tools/bg-check.mjs mide el fondo de src/pag
@@ -408,7 +413,7 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** E-ENCAJE-REAL (encuadre-check.mjs:252) las cazaria a las dos —pide mas de 2 cuadros fuera y hay 4 y 10— pero solo corre sobre mallas declaradas, y la declaracion esta detras de una condicion que ningun fixture puede encender. La compuerta esta armada
   - `if (tocaLaMarca) { mArriba.userData.encaja = true; mAbajo.userData.encaja = true }`
 
-- [ ] **render3d/demo/datos.js:170**
+- [x] **render3d/demo/datos.js:170**
   - **Síntoma:** Verificado ejecutando el mismo orden: con el reparto sucio `titular` escribe ['NO ES UNA','PLANTILLA','ANTHEM'] (2 renglones); con el reparto limpio escribe ['HECHO A MANO','PARA MEDIR A','LA MÁQUINA','ANTHEM'] (3 renglones del claim, la cadena de copy MAS LARGA del sistema). O sea que la rama del claim de titular.js:52 —la que compone tres renglones y es la que mas riesgo tiene de no entrar— no s
   - **Lo dispara:** encuadre-check.mjs no llama nunca a esta funcion ni a `reiniciarRecortes()`: construye los 37 modulos x 11 aires seguidos con el mostrador sucio (verificar.mjs si las llama, en 239, 326 y 441; main.js en 451-452; el comentario de kit.js:2052 afirma que 'los arneses' lo hacen antes de cada construcci
   - **Compuerta:** Ninguna. Ademas el `_cursor` de frases queda a la deriva a lo largo de las 407 construcciones, asi que el contenido que recibe cada escena depende de su posicion en el bucle: el mensaje de fallo dice '[aire X]' para que se pueda reproducir, y reprodu
@@ -426,7 +431,7 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** E-GUION-ESCENA-MUERTA lo diria (mide 0.0% < 1%) en cuanto gancho entre al CAT — pero mientras no este, la regla no puede ni mirarlo. Faltan las dos cosas: la escena en el catalogo y un `claim` en al menos una pagina de prueba.
   - `pobre: { marca: 'Q', frases: ['a'], datos: [], golpe: null },`
 
-- [ ] **render3d/demo/verificar.mjs:330**
+- [x] **render3d/demo/verificar.mjs:330**
   - **Síntoma:** Un texto que se corta en los costados durante su entrada y despues se acomoda: exactamente lo que se ve en el video y no en una captura. Y el barrido de aires no lo tapa, porque verificar nunca llama `configurar(aire)` en su bucle de escenas: mide con UN vocabulario tipografico de 11 (su propio comentario en encuadre-check.mjs:48-50 mide Oswald-700 en 837 y Archivo-900 en 1167 sobre el mismo texto
   - **Lo dispara:** Todo lo que sobresale en la ENTRADA o en la SALIDA. E-ENCAJE mide UN solo instante (72% de la escena), asi que un overshoot de entrada o un crecimiento de salida no existen para el. En destello el heroWrap arranca en scale 1.10 (destello.js:340) sobre un ancho pedido al 96% y termina en 2.40 (linea 
   - **Compuerta:** Solo encuadre-check barre tiempo (30 fps) Y aires Y proyecta con la camara — pero unicamente sobre las 16 mallas declaradas. El cruce que hace falta (contenido extremo x 11 aires x todos los cuadros) no lo cubre ninguna de las dos.

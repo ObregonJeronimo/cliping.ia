@@ -129,6 +129,24 @@ export function build(ctx) {
     const t = texto(str, op)
     let a = ancho, h = ancho / t.ar
     if (h > altoMax) { h = altoMax; a = altoMax * t.ar }
+    // Y PISO, que faltaba. El ancho es siempre la constante que se le pasa y el alto era la variable
+    // dependiente sin suelo: medido con las fuentes reales sobre m1 = medida(fr(0), ANTON, 5.10, 3.1),
+    // 'MIDE' sale a 3.100 de alto (595 px de 1920) y un encabezado real de 35 caracteres o mas cae a una
+    // fraccion de eso. La escena ademas APLANA los saltos de linea (linea 195), asi que un titulo pensado
+    // en dos renglones llega como una sola linea larguisima y dispara el caso peor.
+    // El piso es el 22% del alto maximo que la propia llamada declara: por debajo de eso la palabra deja
+    // de funcionar como tipografia cinetica y pasa a ser un pie de foto en movimiento.
+    // Y EL PISO NO PUEDE EMPUJAR EL ANCHO FUERA DEL CUADRO, que es el defecto que este mismo archivo
+    // tiene en otra linea: subir el alto sube el ancho en la misma proporcion, asi que un piso sin techo
+    // de ancho cambia "ilegible" por "cortado a los costados", que es peor. Si el piso no entra, se toma
+    // el mayor cuerpo que SI entra — que puede seguir siendo chico, y en ese caso el problema no es de
+    // esta funcion sino del largo del texto que le llega.
+    const PISO = altoMax * 0.22
+    const A_MAX = mundoW * 0.94
+    if (h < PISO) {
+      a = Math.min(PISO * t.ar, A_MAX)
+      h = a / t.ar
+    }
     return { str, op, ancho: a, alto: h, tex: t.tex }
   }
 

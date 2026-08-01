@@ -68,7 +68,7 @@ console.warn = () => {}
 const { gsap } = await import(pathToFileURL(join(RAIZ, 'node_modules', 'gsap', 'dist', 'gsap.js')).href)
 globalThis.gsap = gsap
 const THREE = await import(pathToFileURL(join(RAIZ, 'node_modules', 'three', 'build', 'three.module.js')).href)
-const { BEAT, LOOK, b, configurar } = await import(pathToFileURL(join(DEMO, 'kit.js')).href)
+const { BEAT, LOOK, b, configurar, reiniciarRecortes } = await import(pathToFileURL(join(DEMO, 'kit.js')).href)
 // LOS ONCE AIRES, NO SOLO EL DEFAULT. Esta compuerta construia siempre con la configuracion de ANTHEM,
 // asi que era CIEGA a todo lo que el aire cambia: la tipografia (una display ancha ocupa mas renglon),
 // el ritmo (el bpm cambia la duracion y con ella cuanto recorre cada tween) y —desde que `camara` esta
@@ -79,7 +79,7 @@ const AIRES = {}
 for (const f of readdirSync(join(DEMO, 'aires')).filter(f => f.endsWith('.js'))) {
   AIRES[f.replace('.js', '')] = (await import(pathToFileURL(join(DEMO, 'aires', f)).href)).default
 }
-const { configurarDatos, ANTHEM } = await import(pathToFileURL(join(DEMO, 'datos.js')).href)
+const { configurarDatos, ANTHEM, reiniciarReparto } = await import(pathToFileURL(join(DEMO, 'datos.js')).href)
 
 function tejidoFalso(relaciones) {
   const m = new Map()
@@ -163,6 +163,14 @@ for (const [nombreAire, aire] of Object.entries(AIRES)) {
   try { mod = await import(pathToFileURL(ruta).href) } catch (e) { fallos.push(`${id}: no importa — ${e.message}`); continue }
   if (!mod.meta || typeof mod.build !== 'function') continue
 
+  // EL MOSTRADOR SE REINICIA ENTRE CONSTRUCCIONES. Esta compuerta encadenaba 37 modulos x 11 aires con
+  // el reparto SUCIO: cada escena recibia las frases y los recortes que quedaban despues de las 406
+  // anteriores, o sea que ninguna se auditaba con el material que le va a tocar en una pieza real.
+  // Verificado ejecutando el mismo orden: con el reparto sucio `titular` escribe 3 renglones y con el
+  // limpio 4. Una compuerta que mide una composicion que el motor nunca va a producir no mide nada.
+  // verificar.mjs SI las llama (lineas 239, 326 y 441) y main.js tambien (451-452); faltaba aca.
+  reiniciarReparto()
+  reiniciarRecortes()
   configurarDatos(ANTHEM)
   const camera = new THREE.PerspectiveCamera(fov, W / H, 0.1, 400)
   camera.position.set(0, 0, distBase)
