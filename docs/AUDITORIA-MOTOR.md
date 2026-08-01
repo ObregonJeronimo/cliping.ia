@@ -239,7 +239,7 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** No. tools/testimonios-check.py mide sólo el pipeline de TEXTO (que la firma sea literal, que no se invente autor); no sabe nada de qué imagen dibuja una escena.
   - `const t = texturas && texturas.get(e.url)`
 
-- [ ] **render3d/demo/escenas/marquesina.js:80 (dentro del `for (const f of orden)` que abre en la 72)**
+- [x] **render3d/demo/escenas/marquesina.js:80 (dentro del `for (const f of orden)` que abre en la 72)**
   - **Síntoma:** El encaje se aplica FRASE POR FRASE y no a la tira, asi que cada frase sale de un cuerpo distinto. Medido en una sola cinta: 'Precios' a 135 px y 'Todo lo que necesitas para vender online sin comisiones' a 55 px — dos veces y media — desfilando por la MISMA cama de 259 px de alto: una llena la banda y la siguiente flota en el medio. Es exactamente lo que kit.js:960-967 advierte ('achicar solo la q
   - **Lo dispara:** Una tira que mezcla rotulos cortos de navegacion con titulos completos, que es lo que devuelve repartirFrases en cualquier pagina real ('Precios' junto a 'Todo lo que necesitas para vender online sin comisiones').
   - **Compuerta:** NINGUNA. marquesina.js no declara userData.encaja en ninguna malla (solo userData.relleno en cola y cabeza), asi que E-ENCAJE no la audita; y una escala tipografica inconsistente no es un problema de encuadre, con lo cual ninguna de las cinco compuer
@@ -263,7 +263,7 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** NINGUNA. Las mallas si tienen userData.encaja (linea 112), asi que E-ENCAJE comprueba que entren — y entran, porque el problema es que sobra alto, no que falte ancho. Ninguna compuerta compara el cuerpo de dos items entre si.
   - `const ALTO_ITEM = encaje(ALTO_BASE, Math.max(...texs.map(t => t.ar)), ANCHO_UTIL) const PASO = Math.max(ALTO_ITEM, ALTO_BASE * 0.62) * 1.95`
 
-- [ ] **render3d/demo/escenas/columna.js:86**
+- [x] **render3d/demo/escenas/columna.js:86**
   - **Síntoma:** La tarjeta se corta contra el costado derecho. Proyectado cuadro a cuadro con la camara que mueve la propia escena, en los ONCE aires: el |x| peor en coordenadas de recorte va de 1.180 a 1.196 (el limite es 1.0), o sea 97 a 106 px fuera de pantalla por costado, en 130-253 de 227-421 mediciones pieza-cuadro. El archivo ya sabia de este choque: columna.js:289-294 quito el crecimiento del 20% de la d
   - **Lo dispara:** Un recorte de >=694 px de ancho y proporcion >=1.4 — o sea cualquier tarjeta o captura real: linear.app da 1400x845 (ar 1.657) y 1400x782 (ar 1.790). A esa resolucion `topeNitido` deja pasar 10.2 unidades y el tope que gana es ANCHO_MAX = 5.063, o sea 0.90 del cuadro. Encima, al cruzar el centro `fo
   - **Compuerta:** Ninguna, y la razon es el fixture: `tejidoFalso` genera texturas de 64 px de ALTO (encuadre-check.mjs:86, `const h = 64`), asi que `topeNitido` (kit.js:146) clampea cada pieza de prueba a 0.28-1.59 unidades contra un ANCHO_MAX de 5.063. La compuerta 
@@ -488,7 +488,13 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** NINGUNA. Otra vez E-ENCAJE-REAL solo mira mallas con `userData.encaja` y brote no marca ninguna; el resto de encuadre-check pregunta interseccion, y un tallo que asoma por arriba sigue intersectando el cuadro. La compuerta ademas corre con una sola s
   - `const alto = mundoH * (0.60 + rnd() * 0.26) // sobre const Y0 = -mundoH * 0.40`
 
-- [ ] **render3d/demo/heroes/pulso.js:48-67 (mismo patron en biela.js:51-57,91 y calibre.js:42-55)**
+- [x] **render3d/demo/heroes/pulso.js:48-67 (mismo patron en biela.js:51-57,91 y calibre.js:42-55)**
+  - CERRADO SIN TOCAR NADA: el propio hallazgo dice "Ninguno todavia, y por eso lo pongo como riesgo y
+    no como defecto", y que medidos los tres con todos sus aires y las diez semillas ENTRAN ENTEROS en
+    el tramo sostenido. No hay defecto que arreglar. Lo que describe es una constante sin atar (4.30 y
+    las bandas en 3.05) que se romperia si cambiara MUNDO_H o la relacion de aspecto — o sea una deuda
+    de diseno, no un sintoma. Cambiar tres heroes que hoy entran, para protegerlos de un cambio que no
+    esta planeado, es tocar producto sin motivo medido.
   - **Síntoma:** Ninguno todavia, y por eso lo pongo como riesgo y no como defecto. El margen es delgado y no esta atado a nada: la banda de arriba de pulso llega a 4.10 sobre un semialto de 5 (82%), el carter de biela baja a -4.01 (biela.js:143 con SUBIR de :91), el volante de calibre sube a 3.92 (calibre.js:197). Los tres comentarios ADMITEN la dependencia por escrito —biela.js:340, calibre.js:365 y pulso.js:331
   - **Lo dispara:** Hoy, nada: medidos los tres con todos los aires de su registro y las diez semillas, entran enteros en el tramo sostenido. Lo que los dispararia es un cambio de `MUNDO_H` (main.js:183) o de la relacion de aspecto, o un aire nuevo con dolly por encima de 1.55 — porque estos tres heroes son los unicos 
   - **Compuerta:** Ninguna de forma preventiva. encuadre-check las construye con los once aires (encuadre-check.mjs:155) y hoy pasan, pero solo pregunta interseccion, no contencion, salvo en mallas marcadas `encaja` — que ninguno de los tres marca. Si mañana uno se pas
@@ -526,7 +532,7 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** No. La copia del gate (guion-check.mjs:75) tiene el MISMO requisito con la misma cuenta ciega de roles, y su pagina 'rica' declara un elemento 'cta' que ninguna escena puede usar (guion-check.mjs:47) — o sea que el gate ya esta contando material inut
   - `rafaga: (d) => ((d.elementos || []).length + (d.frases || []).filter(Boolean).length) >= 3,`
 
-- [ ] **render3d/demo/main.js:434 contra render3d/demo/datos.js:98-105**
+- [x] **render3d/demo/main.js:434 contra render3d/demo/datos.js:98-105**
   - **Síntoma:** Una cifra sin etiqueta o un elemento sin url hacen pasar el requisito y despues la escena se declara vacia (tarjetas.js:131) — otros 6 beats de cuadro liso. Ninguno de los 13 fixtures lo dispara hoy: medi la columna 'sin etiqueta' y da 0 en todos, y todos los elementos traen url. Queda como asimetria estructural entre lo que el guion mide y lo que la escena lee, no como defecto observado.
   - **Lo dispara:** Los REQUISITOS se evaluan sobre `spec.datos` CRUDO, mientras que las escenas leen `D`, que `configurarDatos` filtra: `D.datos = d.datos.filter(x => x && x.etiqueta)`, `D.elementos = d.elementos.filter(e => e && e.url)`. Dos de los requisitos no repiten ese filtro: `tarjetas` cuenta `(d.datos || []).
   - **Compuerta:** No, y no puede: el gate le pasa a guionDe su propio objeto de datos y nunca corre `configurarDatos`, asi que la diferencia entre el crudo y el filtrado no existe dentro del gate.

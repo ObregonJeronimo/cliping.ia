@@ -83,7 +83,13 @@ export function build(ctx) {
   // Una tarjeta de un feed real va casi de borde a borde, y hay que decirlo en los dos ejes o el otro
   // tope sigue apretando: con 0.90 de ancho y el paso a 0.44 la misma tarjeta mide 972 px, escala 0.69, la
   // cita a 33 px y la autoria a 18. Las dos cosas se leen.
-  const ANCHO_MAX = mundoW * 0.90
+  // 0.75 Y NO 0.90. Con 0.90 la tarjeta se cortaba contra el costado derecho: proyectada cuadro a cuadro
+  // con la camara que mueve la propia escena, en los ONCE aires, el |x| peor en coordenadas de recorte
+  // iba de 1.180 a 1.196 —el limite es 1.0— o sea entre 97 y 106 px afuera. El 0.90 estaba medido contra
+  // el cuadro EN REPOSO y esta escena tiene foco y deriva, asi que su encuadre real nunca es el de reposo:
+  // es el mismo error que documenta encuadre-check.mjs en su cabecera sobre el toro.
+  // 0.90 / 1.196 = 0.752, y se redondea para abajo.
+  const ANCHO_MAX = mundoW * 0.75
   const PASO = mundoH * 0.44
   const ALTO_MAX = PASO * 0.82
   const SPAN = RANURAS * PASO

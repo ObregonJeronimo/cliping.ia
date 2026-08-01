@@ -431,7 +431,21 @@ export class Anthem {
         // jamas: medido sobre 200 guiones, 0%. No es que perdiera contra `mesa` —que es lo que supuse
         // y escribi en el informe— es que su requisito leia de un objeto donde el dato no vive. La
         // escena estaba escrita, verde en las compuertas y muerta en produccion.
-        datos: { ...this.spec.datos, tira: !!this.spec.tira },
+        // FILTRADO IGUAL QUE LO QUE VAN A LEER LAS ESCENAS. El guion decidia sobre `spec.datos` CRUDO
+        // mientras que las escenas leen `D`, que `configurarDatos` filtra (datos.js:98-101): una cifra
+        // SIN etiqueta y un elemento SIN url hacen pasar el requisito, y despues la escena se declara
+        // vacia y son seis beats de cuadro liso. Es el mismo defecto que ya esta documentado tres
+        // lineas mas arriba —un requisito que lee de un objeto donde el dato no vive— con otra forma.
+        //
+        // Ningun fixture de hoy lo dispara: se midio y ninguna cifra llega sin etiqueta ni ningun
+        // elemento sin url. Se cierra igual porque el filtro es de una linea y la asimetria es
+        // estructural: cualquier extractor que en el futuro deje pasar un campo vacio la despierta.
+        datos: {
+          ...this.spec.datos,
+          datos: (this.spec.datos.datos || []).filter(x => x && x.etiqueta),
+          elementos: (this.spec.datos.elementos || []).filter(e => e && e.url),
+          tira: !!this.spec.tira,
+        },
         seed: this.spec.seed || 7,
         beatSeg: BEAT,
         dur: this.spec.durObjetivo || null,

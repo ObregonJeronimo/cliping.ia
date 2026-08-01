@@ -69,15 +69,28 @@ export function build(ctx) {
     const ANCHO_UTIL = mundoW * 0.92
     let x = 0
     const centros = []
-    for (const f of orden) {
-      const t = texto(f, {
-        fuente: arriba ? 'Anton' : 'DMSans',
-        peso: arriba ? 400 : 700,
-        size: 150, tracking: 0.02, upper: true, alineado: 'center',
-        color: COLOR_TXT,
-      })
-      // Si la frase no entra en el ancho util, se achica el CUERPO — nunca se recorta el texto.
-      const a = encaje(alto, t.ar, ANCHO_UTIL)
+    // Se rasterizan TODAS antes de dibujar ninguna, porque el cuerpo de la cinta depende de la frase
+    // mas larga y eso no se puede saber a mitad del bucle. `texto()` cachea, asi que no cuesta doble.
+    const OPT = {
+      fuente: arriba ? 'Anton' : 'DMSans',
+      peso: arriba ? 400 : 700,
+      size: 150, tracking: 0.02, upper: true, alineado: 'center',
+      color: COLOR_TXT,
+    }
+    const tex_ = orden.map(f => texto(f, OPT))
+    const ALTO_CINTA = encaje(alto, Math.max(...tex_.map(t => t.ar)), ANCHO_UTIL)
+    for (const [iF, f] of orden.entries()) {
+      const t = tex_[iF]
+      // UN SOLO CUERPO PARA TODA LA CINTA. Esto aplicaba `encaje` FRASE POR FRASE, asi que cada una
+      // salia de un tamano distinto: medido en una sola cinta, 'Precios' a 135 px y 'Todo lo que
+      // necesitas para vender online sin comisiones' a 55 px — dos veces y media de diferencia
+      // desfilando una atras de la otra. Una marquesina es UNA tira de texto, no una coleccion de
+      // carteles: el cuerpo desparejo la lee como cinco cosas distintas pegadas.
+      //
+      // Se toma el ar MAS GRANDE de la cinta (la frase mas larga) y ese fija el cuerpo de todas. Es la
+      // misma regla que ya usan `lista` y `cita`, y el efecto es que la frase larga manda: preferible a
+      // que la corta grite. Sigue sin recortarse texto, que es lo que la linea original protegia.
+      const a = ALTO_CINTA
       const w = a * t.ar
       const m = new THREE.Mesh(
         new THREE.PlaneGeometry(w, a),
