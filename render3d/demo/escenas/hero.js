@@ -81,7 +81,22 @@ function rotular(ctx, r, elegido) {
   r.g.add(g)
   const ANCHO = mundoW * 0.80
   const t = texto(linea, { fuente: 'DMSans', peso: 700, size: 130, tracking: 0.01, upper: true })
-  const ALTO = encaje(mundoH * 0.040, t.ar, ANCHO)
+  // CON PISO, Y SI NO ENTRA CON EL PISO NO SE DIBUJA. `encaje` solo achica y no tiene suelo, asi que
+  // el rotulo era una funcion inversa del largo de la frase: medido con copy real de linear.app, 'Plan
+  // and build with AI agents' queda en 0.367 (~37 px de mayuscula sobre 1920) pero el claim completo
+  // 'The product development system for teams and agents' cae a 0.195 — unos 20 px, en el borde de lo
+  // legible en un reel vertical. Y hero.js:77 aplana los saltos de linea, asi que una frase pensada en
+  // dos renglones duplica su proporcion y `encaje` le baja el alto a la mitad.
+  //
+  // El piso es la mitad del alto de diseno (0.040 -> 0.020 de mundo = 38 px de mayuscula), o sea el
+  // limite donde el propio hallazgo dice que la cosa deja de leerse.
+  //
+  // Y SI CON EL PISO NO ENTRA, NO SE DIBUJA. Es la misma regla que el resto del motor: un slot que no
+  // se puede componer se compone SIN el. Un rotulo ilegible no aporta el dato, solo ensucia el cuadro
+  // —y este es un hero de geometria pura, que se sostiene solo—.
+  const PISO = mundoH * 0.020
+  const ALTO = Math.max(PISO, encaje(mundoH * 0.040, t.ar, ANCHO))
+  if (ALTO * t.ar > ANCHO * 1.001) return
   const mat = materialMascara(t.tex, nivel(0.90))
   const m = new THREE.Mesh(new THREE.PlaneGeometry(ALTO * t.ar, ALTO), mat)
   // Abajo y a la izquierda, fuera del eje donde vive el objeto: el rotulo acompaña, no compite.

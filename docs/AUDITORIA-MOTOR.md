@@ -245,7 +245,7 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** NINGUNA. marquesina.js no declara userData.encaja en ninguna malla (solo userData.relleno en cola y cabeza), asi que E-ENCAJE no la audita; y una escala tipografica inconsistente no es un problema de encuadre, con lo cual ninguna de las cinco compuer
   - `const a = encaje(alto, t.ar, ANCHO_UTIL)`
 
-- [ ] **render3d/demo/escenas/titular.js:185-189**
+- [x] **render3d/demo/escenas/titular.js:185-189**
   - **Síntoma:** Las dos tapas que segun el comentario de la linea 168 tienen que cortar la foto 'con filo arriba y abajo o se lee como una imagen suelta flotando' no se crean jamas. Ademas es la prueba de que quien escribio esto esperaba altoNativo >= BANDA_H (foto que DESBORDA la banda), condicion que solo se cumple con imagenes en retrato: es el mismo defecto del hallazgo 1 visto desde el otro lado, y explica p
   - **Lo dispara:** Nada: la rama es inalcanzable por aritmetica. Math.min(x, BANDA_H) - BANDA_H es <= 0 para todo x, asi que sobra vale exactamente 0 siempre y el `if` no entra nunca.
   - **Compuerta:** NINGUNA. No hay compuerta de codigo muerto, y las de encuadre solo miran mallas que existen — estas dos no llegan a construirse.
@@ -257,7 +257,7 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** NINGUNA. Sin userData.encaja en el archivo, E-ENCAJE no la mira, y E-ENCUADRE da por buena cualquier malla que cruce el frustum. Con el fixture ANTHEM ('MIDE', 'ANIMA') el tope de alto dispara y la pieza entra, asi que la compuerta ni siquiera podria
   - `const m5 = medida(fr(4), ANCHA, 4.8, 3.2) w5.position.set(0, 0.25 - 0.22, 0); w5.rotation.x = Math.PI / 2; w5.scale.set(1.18, 1.18, 1)`
 
-- [ ] **render3d/demo/escenas/lista.js:71-72**
+- [x] **render3d/demo/escenas/lista.js:71-72**
   - **Síntoma:** ALTO_ITEM es el alto del BLOQUE de textura, no el del renglon, y texto() hace crecer el canvas con la cantidad de lineas. Como todos los items comparten el mismo ALTO_ITEM, el item de dos renglones reparte ese alto entre dos y el de uno se lo queda entero. Medido sobre un bloque de tres: los items de una linea salen a 66 px de cuerpo y el de dos a 39 px, en el mismo bloque y contra el mismo riel —
   - **Lo dispara:** Una lista que mezcla frases de uno y de dos renglones. Es el caso ESPERADO: la linea 49 llama repartirFrases(MAX_ITEMS) SIN el flag soloUnaLinea (partida.js:35 si lo pasa), y el comentario de cabecera (lineas 22-25) dice que las frases de dos renglones se admiten a proposito porque el extractor entr
   - **Compuerta:** NINGUNA. Las mallas si tienen userData.encaja (linea 112), asi que E-ENCAJE comprueba que entren — y entran, porque el problema es que sobra alto, no que falte ancho. Ninguna compuerta compara el cuerpo de dos items entre si.
@@ -311,13 +311,13 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** Ninguna. E-ENCAJE pasa `cta: null` en las cuatro marcas (verificar.mjs:315) y ANTHEM.dominio es cadena vacia, asi que `hayCta` queda en false y la pildora NI SE AGREGA al grupo durante todo el bucle de marcas. El caso POBRE tambien manda `cta: null` 
   - `const pillW = ancho(cta) + 1.15`
 
-- [ ] **render3d/demo/heroes/prisma.js:35 y :96**
+- [x] **render3d/demo/heroes/prisma.js:35 y :96**
   - **Síntoma:** Los dos anillos exteriores salen cortados por los dos costados durante practicamente toda la escena. Medido vertice a vertice en el tramo sostenido: el exterior llega a x=1.313 en coordenadas de recorte (31% pasado el borde) y esta cortado en 60 de sus 75 cuadros; el del medio llega a 1.121 y esta cortado en 71 de 76. El interior (0.913) entra entero siempre. O sea que de las tres referencias que 
   - **Lo dispara:** Cualquier pieza que caiga en prisma — es el hero de respaldo cuando la captura fallo, el sitio bloqueo al bot o la pagina esta detras de login. No depende del contenido: depende de la FORMA del cuadro. El radio sale de mundoH (10) en un encuadre 9:16 donde lo que recorta es mundoW (5.625). Los tres 
   - **Compuerta:** NINGUNA. E-ENCAJE-REAL (tools/encuadre-check.mjs:217) solo mide contencion en mallas marcadas `userData.encaja`, y prisma no marca ninguna. E-ENCUADRE-NUNCA/CASI usa `_frustum.intersectsBox` (encuadre-check.mjs:129): un anillo MAS GRANDE que el cuadr
   - `const R = mundoH * 0.17 ... new THREE.TorusGeometry(R * (1.45 + i * 0.30), R * 0.011, 8, 96)`
 
-- [ ] **render3d/demo/heroes/gota.js:130 (con el radio de :47)**
+- [x] **render3d/demo/heroes/gota.js:130 (con el radio de :47)**
   - **Síntoma:** Una de las dos motas se anima entera fuera del cuadro. Medido vertice a vertice: en artesanal/semilla 17 la mota esta COMPLETAMENTE invisible en el 100% de los cuadros del tramo sostenido (93 de 93) y llega a x=1.332; la otra, 86%. En al menos 7 de las 50 combinaciones (aire x semilla) probadas hay una mota invisible mas de la mitad de la escena. El comentario de gota.js:121-122 dice que existen p
   - **Lo dispara:** La SEMILLA del spec, en cualquier pagina. El radio de orbita queda entre 2.87 y 3.52 contra un semiancho de 2.8125 (2.71 con el dolly 1.25 de jugueton), y la fase inicial `m.userData.f = rnd() * 6.28` decide donde arranca la mota. En 8 beats la orbita solo recorre 1.2-2.0 radianes, asi que una mota 
   - **Compuerta:** NINGUNA, y por dos motivos a la vez. (1) La regla por objeto de encuadre-check.mjs:281 exige `Math.max(tam.x, tam.y) >= mundoW * 0.12 = 0.675` y la mota mide entre 0.28 y 0.46 de diametro: queda por debajo del umbral que existe para no acusar a las m
@@ -470,7 +470,7 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** Ninguna, pero tampoco hace falta: el camino esta practicamente muerto. Lo dejo anotado como deuda de coherencia, no como defecto visible — los dos respaldos de mesa.js para el mismo dato (1560 y 1) no pueden ser los dos correctos.
   - `const anchoTira = tira.image.width || 720 const altoTira = tira.image.height || (spec && spec.tiraViewport) || 1560`
 
-- [ ] **render3d/demo/escenas/hero.js:84**
+- [x] **render3d/demo/escenas/hero.js:84**
   - **Síntoma:** Medido con el copy real de linear.app: 'Plan and build with AI agents' queda en ALTO 0.367 (~37 px de altura de mayuscula sobre 1920), pero el claim completo 'The product development system for teams and agents' cae a ALTO 0.195 — unos 20 px de mayuscula, en el borde de lo legible en un reel vertical. Es el unico de los seis archivos que hace la cuenta bien (usa `encaje`, mide el `ar` real, y adem
   - **Lo dispara:** Una frase larga en una sola linea. hero.js:77 aplana los saltos de linea (`.split(String.fromCharCode(10)).join(' ')`), asi que una frase pensada en dos renglones duplica su proporcion y `encaje` le baja el alto a la mitad. No hay piso: `encaje` (kit.js:968) solo achica.
   - **Compuerta:** E-ENCAJE-REAL de encuadre-check.mjs:217 SI mira esta malla (es la unica de las seis escenas que se declara), pero solo verifica que ENTRE, no que se lea: no existe una compuerta de tamaño minimo de tipografia para el motor 3D.
@@ -724,7 +724,15 @@ El orden correcto es al reves: primero se cierran las 88, despues se afila la co
     NINGUNO". Una pagina real no da eso nunca. Es una compuerta de una linea que no esta escrita.
   - **Compuerta:** Ninguna. `_es_placeholder` (motor.py) mira los recortes LQIP, no la pagina.
 
-- [ ] **render3d/demo/heroes/cubo.js — las caras salen VACIAS**
+- [ ] **render3d/demo/heroes/cubo.js — las caras salen VACIAS (NO se reproduce en el arnes)**
+  - Intento de reproduccion del 2026-07-31: construida la escena en Node con un fixture tipo stripe
+    (logo + 3 cta + 4 tarjetas), con y sin testimonios (o sea con y sin el veto de laminas), da 6
+    laminas de 4 imagenes DISTINTAS y 2 o 3 visibles por cuadro — que es lo correcto para un cubo. La
+    cara azul oscura que se ve en el video es el NUCLEO (`BoxGeometry` con material #0d1020,
+    cubo.js:70), o sea que lo que falla es que las laminas no se dibujan encima, no que falten.
+  - Como NO se reproduce con material sintetico, hace falta el material REAL del render: hay que
+    correrlo con los recortes de tools/out/motor/stripe-com y mirar cuantas texturas sobreviven a
+    `texturaDe` (el veto de `esLamina` inspecciona pixeles, y con recortes sinteticos nunca dispara).
   - **Sintoma:** Cuadro 429 del render de stripe.com: el cubo ocupa el centro del cuadro con las dos
     caras visibles planas (una azul oscura, la otra gris), sin una sola imagen. Es el hero de la pieza y
     dura 8 beats, el doble que una escena normal.
@@ -777,7 +785,7 @@ El orden correcto es al reves: primero se cierran las 88, despues se afila la co
     construye `tarjetas`, que antes salia por `vacia`), pero el objetivo no se cumplio.
   - Falta averiguar por que `dominio` no llega a `ctaTxt`. Es una linea, pero hay que encontrarla.
 
-- [ ] **heroes/prisma.js:35 y heroes/gota.js:130 — CAMBIADOS, verificacion NO concluyente**
+- [x] **heroes/prisma.js:35 y heroes/gota.js:130 — CAMBIADOS, verificacion NO concluyente**
   - Se ato el radio al lado que recorta (el ANCHO, no mundoH): en prisma el anillo mayor pasa de 3.485
     a 2.478 contra un semiancho de 2.8125, y en gota la orbita se capa en mundoW*0.42 = 2.36 en vez de
     quedar entre 2.87 y 3.52. La aritmetica EN REPOSO es inequivoca y por eso el cambio se deja puesto.

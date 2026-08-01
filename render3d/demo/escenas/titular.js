@@ -182,7 +182,12 @@ export function build(ctx) {
   // por lo tanto se dibuja encima de todo `g`, sin importar el z. El dominio estaba dibujado y no se
   // veia nunca. Si la foto no desborda —el caso normal, porque el alto se elige para cubrir— no se
   // crea ninguna tapa: un plano opaco de mas es siempre algo tapando otra cosa.
-  const sobra = Math.max(0, (Math.min(BANDA_H, altoNativo) - BANDA_H) / 2)
+  // `Math.min(BANDA_H, altoNativo) - BANDA_H` es SIEMPRE <= 0 por definicion del min, asi que `sobra`
+  // daba 0 siempre y las dos tapas NO SE CREABAN NUNCA. El comentario de arriba explica con detalle
+  // para que existen —cortar la foto con filo arriba y abajo— y despues la condicion las apagaba en
+  // todos los casos. Lo que se queria medir es cuanto DESBORDA la foto de su banda, o sea
+  // `altoNativo - BANDA_H`, sin el min.
+  const sobra = Math.max(0, (altoNativo - BANDA_H) / 2)
   if (sobra > 0.001) {
     tapa(FOTO_Y + BANDA_H / 2 + sobra / 2, sobra)
     tapa(FOTO_Y - BANDA_H / 2 - sobra / 2, sobra)

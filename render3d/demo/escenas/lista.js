@@ -68,7 +68,21 @@ export function build(ctx) {
   // (sangrar es una decision de composicion valida) y no si entro entera.
   const FUENTE_ITEM = { fuente: 'Anton', peso: 400, size: 150, tracking: 0.004, upper: true, alineado: 'left' }
   const texs = items.map(t => texto(t, FUENTE_ITEM))
-  const ALTO_ITEM = encaje(ALTO_BASE, Math.max(...texs.map(t => t.ar)), ANCHO_UTIL)
+  // POR RENGLON, NO POR BLOQUE. `t.ar` es ancho/alto del BLOQUE de textura, y `texto()` hace crecer el
+  // canvas con la cantidad de lineas: un item de dos renglones tiene la MITAD de proporcion que el mismo
+  // texto en uno. Tomando el max se elegia siempre el de UNA linea, ALTO_ITEM salia calibrado para el, y
+  // el de dos renglones repartia ese mismo alto entre sus dos lineas — o sea que salia a la mitad de
+  // cuerpo que sus vecinos, en una lista donde todos los items tienen la misma jerarquia.
+  //
+  // Es el caso ESPERADO y no el raro: la linea 49 llama `repartirFrases(MAX_ITEMS)` SIN el flag
+  // `soloUnaLinea` (partida.js:35 si lo pasa), y la cabecera de este archivo dice que las frases de dos
+  // renglones se admiten a proposito.
+  //
+  // Normalizar por lineas pone a todos los items a medir lo mismo POR RENGLON, que es lo que el ojo
+  // compara. El item de dos renglones ocupa el doble de alto, que es correcto: tiene el doble de texto.
+  const LINEAS = items.map(t => String(t).split(String.fromCharCode(10)).length)
+  const arPorRenglon = texs.map((t, i) => t.ar * LINEAS[i])
+  const ALTO_ITEM = encaje(ALTO_BASE, Math.max(...arPorRenglon), ANCHO_UTIL)
   const PASO = Math.max(ALTO_ITEM, ALTO_BASE * 0.62) * 1.95
 
   // El bloque se centra vertical: con tres items o con cuatro, la lista queda a la misma altura
