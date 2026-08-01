@@ -385,7 +385,17 @@ export function build(ctx) {
   // desplazamiento continuo daba 61% de cuadros casi quietos, porque el analizador no distingue una
   // rampa suave de una foto fija; y no la distingue porque el ojo tampoco. Seis saltos son seis
   // EVENTOS, caen cada uno en su beat y se leen como una mano usando el aparato.
-  const recorrido = Math.max(0, 1 - visible) * 0.62
+  // ACOTADO PARA QUE DOS POSICIONES DE REPOSO COMPARTAN PAGINA. Medido, cada salto movia MAS de una
+  // pantalla entera: 2.88, 2.00, 1.75, 1.59, 1.48 y 1.54 ventanas. Entre dos reposos no quedaba UN SOLO
+  // PIXEL en comun, asi que la secuencia no se lee como un scroll sino como seis recortes al azar de la
+  // pagina — justo lo contrario del gesto que el comentario de abajo declara ("una mano usando el
+  // aparato"). Un scroll se reconoce por lo que NO cambia entre dos posiciones.
+  //
+  // El tope sale de la aritmetica del propio bucle: con el exponente 0.76 el salto mas largo es el
+  // PRIMERO y vale recorrido * (1/SALTOS)^0.76 = recorrido * 0.2465. Pidiendo que ese salto no pase del
+  // 85% de una ventana queda recorrido <= visible * 0.85 / 0.2465 = visible * 3.44. Con eso el peor
+  // salto deja un 15% de pagina compartida y los otros cinco, mas.
+  const recorrido = Math.min(Math.max(0, 1 - visible) * 0.62, visible * 3.44)
   const SALTOS = 6
   for (let i = 0; i < SALTOS; i++) {
     // El primero es el más largo: es el que dice "esto se puede scrollear". Los siguientes se acortan,

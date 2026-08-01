@@ -1,3 +1,10 @@
+# Auditoria del MOTOR 3D
+
+**Como se cuenta.** Una fila `- [ ] **archivo:linea**` es UN hallazgo y se cuenta. Una fila que
+empieza con `- SEGUIMIENTO` NO es un hallazgo: es una nota sobre el estado de otro, y no se cuenta.
+La distincion existe porque el contador ya mintio una vez — se tildaron 6 casillas para 5 trabajos,
+porque una nota de seguimiento tenia el mismo formato que un hallazgo y se sumo aparte.
+
 # Auditoría del MOTOR 3D — plan de trabajo
 
 Salida de una auditoría de 12 agentes sobre el motor entero (lectura, no render), disparada por
@@ -221,7 +228,7 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** Ninguna. `topeNitido` tampoco está en el import de la línea 25.
   - `const w = ar >= 1 ? UTIL : UTIL * ar`
 
-- [ ] **render3d/demo/heroes/ventana.js:388**
+- [x] **render3d/demo/heroes/ventana.js:388**
   - **Síntoma:** Cada salto mueve MÁS de una pantalla entera de página: 2.88, 2.00, 1.75, 1.59, 1.48 y 1.54 ventanas. Entre dos posiciones de reposo no queda un solo píxel en común, así que no se lee como un scroll sino como seis recortes al azar de la página — el gesto que el comentario de las líneas 383-387 dice estar haciendo («se leen como una mano usando el aparato») es justo el que no ocurre. Y arranca en el
   - **Lo dispara:** Una página larga, o sea el caso normal: 4 de las 7 tiras reales del repo son de 8192 px. La ventana es apaisada, así que sólo muestra 5.2% de la tira (visible = (720*3.408)/(8192*5.7375) = 0.0522 → 428 px de página). El recorrido, en cambio, es el 62% de TODA la tira restante = 4814 px, repartido en
   - **Compuerta:** Ninguna. Las compuertas construyen la tira con un canvas de 4x4 al que se le sobreescriben `width/height` (verificar.mjs:99-101 y encuadre-check.mjs:92-94), así que no hay contenido de página que medir; y ninguna compara el tamaño del salto contra el
@@ -269,7 +276,7 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** Ninguna, y la razon es el fixture: `tejidoFalso` genera texturas de 64 px de ALTO (encuadre-check.mjs:86, `const h = 64`), asi que `topeNitido` (kit.js:146) clampea cada pieza de prueba a 0.28-1.59 unidades contra un ANCHO_MAX de 5.063. La compuerta 
   - `const ANCHO_MAX = mundoW * 0.90 ... const anchoTope = Math.min(ANCHO_MAX, topeNitido(tex.image, ctx.W || 1080, mundoW)) ... const foco = 1 + FOCO * Math.exp(-(y * y) / (2 * SIGMA * SIGMA)) const s = f`
 
-- [ ] **render3d/demo/escenas/contraste.js:161**
+- [x] **render3d/demo/escenas/contraste.js:161**
   - **Síntoma:** Medido construyendo la escena: con dos verticales (800x1200 arriba) la pieza mide 2.545 y BOX_W 4.275; el filo de acento se despega del borde real del barrido 83 px en p=0.25 y 0.75, y 166 px al final. Con dos cuadradas, 26 px. Se ve como una barra de acento con bloom flotando sola sobre la cama, mientras el corte que dice estar dibujando esta en otro lado — que es justo lo que contraste.js:12-13 
   - **Lo dispara:** Que la pieza DE ARRIBA sea mas angosta que la caja. `encaje` es contain: solo llena BOX_W si su proporcion es >= BOX_W/BOX_H = 1.0688. Cualquier pieza mas vertical que eso —un logo cuadrado, una foto de retrato, la captura 864x960 (ar 0.900) de linear.app— sale con `caja.w` menor que BOX_W, mientras
   - **Compuerta:** Ninguna. El fixture SI ejerce el caso —tejidoFalso trae ar 0.6 y 1.0, las dos por debajo de 1.0688— pero no existe ninguna asercion que relacione la posicion del filo con el borde de la mascara: encuadre-check solo cuenta cuadros dentro/fuera del fru
@@ -293,7 +300,7 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** Ninguna. Las cifras no forman parte de lo que E-ENCAJE varia — su bucle solo cambia la marca y ademas manda `datos: []`. El caso POBRE usa una sola cifra de 3 caracteres ('4.9'). Y el heuristico `peor` acepta hasta mundoW*2.2 de ancho.
   - `const malla = new THREE.Mesh(new THREE.PlaneGeometry(alto * arFin, alto), mat)`
 
-- [ ] **render3d/demo/escenas/destello.js:169 (el helper, en 106-110)**
+- [x] **render3d/demo/escenas/destello.js:169 (el helper, en 106-110)**
   - **Síntoma:** Medido con golpes reales: 'BE UP AND RUNNING' -> L1 'BE UP' con caja 5.32x2.31 (23% del alto del cuadro, por encima del techo de 2.00 que la propia escena se puso para el hero); 'THINK DIFFERENT' -> 2.14; 'AI FOR EVERYONE' -> 2.09; 'GO PRO' -> L1 'GO' con 4.17 (42% del cuadro). L1 vive en y=1.45, asi que a 2.31 su banda de glifos baja hasta y=0.66 y se pisa con `barraUna` (0.14 a 0.70, lineas 188-
   - **Lo dispara:** Un golpe cuyo PRIMER renglon es corto. `lineasGolpe()` parte el golpe por la mitad de las palabras, y `capa()` dimensiona por ancho: el alto sale de dividir. Es el mismo defecto que las lineas 210-233 documentan y ARREGLAN veinte lineas mas abajo — pero el techo `TECHO_HERO = mundoH * 0.20` se le pu
   - **Compuerta:** Ninguna. Peor: la propia compuerta lo construye y no lo ve — verificar.mjs:315 pone `golpe: marca`, asi que con la marca 'Q' destello se arma con L1 de 5.32x6.88 (69% del alto del cuadro) y el gate reporta OK, porque 6.88 < mundoH*0.85 = 8.50.
@@ -395,7 +402,7 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** Se caza sola y no lo hace: E-GUION-ESCENA-MUERTA y E-FAMILIA-DECLARADA recorren CAT.keys(), asi que una escena ausente de CAT es invisible para las dos comprobaciones que existen justamente para cazar escenas olvidadas.
   - `const CAT = new Map([ ['apertura', { beats: 6 }], ['hero', { beats: 8 }], ['toro', { beats: 6 }], ... ['cierre', { beats: 6 }], ['mesa', { beats: 6 }], ['bandera', { beats: 6 }], ])`
 
-- [ ] **render3d/demo/escenas/destello.js:244**
+- [x] **render3d/demo/escenas/destello.js:244**
   - **Síntoma:** Medido reproduciendo el arnes de encuadre-check y aplicando `entraEntera` a las dos mitades del hero: |x| llega a 1.182 en los cuadros 2-5 (18% pasado el borde, con la mascara ya revelando el 41% desde la izquierda, o sea con las primeras letras dibujadas y cortadas) y se sostiene en 1.025-1.034 DIEZ cuadros seguidos (30-39, beats 2.07-2.69) por el desplazamiento x de +/-0.15 del segundo golpe (li
   - **Lo dispara:** La declaracion queda apagada salvo que la SEGUNDA linea del golpe contenga el nombre de la marca. Con ANTHEM —lo unico que usa encuadre-check— marca='ANTHEM' y lineaHero='UNA PLANTILLA': falso. Con las cuatro marcas de verificar.mjs:314, `golpe: marca` hace que lineasGolpe() devuelva ['Q',''], ['GO'
   - **Compuerta:** E-ENCAJE-REAL (encuadre-check.mjs:252) las cazaria a las dos —pide mas de 2 cuadros fuera y hay 4 y 10— pero solo corre sobre mallas declaradas, y la declaracion esta detras de una condicion que ningun fixture puede encender. La compuerta esta armada
@@ -761,14 +768,14 @@ El orden correcto es al reves: primero se cierran las 88, despues se afila la co
   - **Compuerta:** Ninguna. Un hueco de fondo no es desborde ni pieza fuera de cuadro, asi que ni
     E-ENCAJE ni E-ENCUADRE aplican. Es el mismo punto ciego que titular.js:130.
 
-- [ ] **render3d/demo/escenas/hero.js:76 — INTENTADO Y NO DEMOSTRADO**
+- SEGUIMIENTO (abierto, pertenece a hero.js:76) — **intentado por el lado del cupo y no demostrado**
   - Se probo contar en el cupo la frase que bebe el hero (restarle 1 a `nFr`). El plan salio IDENTICO:
     0.44 sedientas y 0.41 heroes por pieza a 20 s, 0.69 y 0.86 a 30 s, los mismos numeros con y sin el
     cambio sobre 180 guiones. En las duraciones que se usan el cupo no es la restriccion que ata —ata el
     presupuesto de beats— asi que el cambio se saco. Queda ABIERTO: la repeticion existe, pero el
     arreglo por el lado del cupo no la toca y hay que buscarla en otro lado.
 
-- [x] **render3d/demo/heroes/mosaico.js:224 — REGRESION, ya cerrada, anotada como leccion**
+- SEGUIMIENTO (cerrado) — **mosaico.js:224, regresion propia**
   - El parche del relevo (de la tanda de 31 del 2026-07-31) creo un SEGUNDO sitio de dimensionado que
     nacio sin el tope de resolucion que se le habia puesto al primero diez lineas antes. Medido: la
     banda volvio a 4.28x la resolucion del archivo con la cota puesta a diez lineas de distancia.
@@ -778,14 +785,14 @@ El orden correcto es al reves: primero se cierran las 88, despues se afila la co
 
 ---
 
-- [ ] **verificar.mjs:315 — el fixture SIGUE sin construir la pildora de `cierre`**
+- SEGUIMIENTO (abierto, pertenece a verificar.mjs:315) — **el fixture sigue sin construir la pildora**
   - Se le paso `datos: ANTHEM.datos` y un `dominio` largo derivado del nombre, y ademas se marco la
     pildora con `userData.encaja`. La compuerta SIGUIO EN VERDE contra la version de `cierre` sin tope,
     o sea que el fixture todavia no llega a construir la pildora. El fixture quedo mejor (ahora si
     construye `tarjetas`, que antes salia por `vacia`), pero el objetivo no se cumplio.
   - Falta averiguar por que `dominio` no llega a `ctaTxt`. Es una linea, pero hay que encontrarla.
 
-- [x] **heroes/prisma.js:35 y heroes/gota.js:130 — CAMBIADOS, verificacion NO concluyente**
+- SEGUIMIENTO (cerrado) — **prisma.js:35 y gota.js:130**
   - Se ato el radio al lado que recorta (el ANCHO, no mundoH): en prisma el anillo mayor pasa de 3.485
     a 2.478 contra un semiancho de 2.8125, y en gota la orbita se capa en mundoW*0.42 = 2.36 en vez de
     quedar entre 2.87 y 3.52. La aritmetica EN REPOSO es inequivoca y por eso el cambio se deja puesto.

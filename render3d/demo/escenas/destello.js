@@ -103,9 +103,19 @@ export function build(ctx) {
   // Texto dimensionado por ANCHO (no por alto): en un reel la tipografía se compone contra los bordes
   // del cuadro, y el alto es lo que salga de la fuente. Revelado por máscara, tintado a negro puro:
   // el glifo se dibuja en blanco y el shader lo pinta, así no hay franjas oscuras en el antialias.
+  // CON TECHO DE ALTO, que la escena declaraba y no aplicaba. El ancho se fijaba en `mundoW * 0.945` y
+  // el alto salia de la fuente sin tope, asi que una linea de POCAS letras se disparaba: medido con
+  // golpes reales, 'BE UP AND RUNNING' parte en 'BE UP' y da una caja de 5.32 x 2.31 —el 23% del alto
+  // del cuadro— contra el techo de 2.00 que la propia escena se puso para el hero. 'THINK DIFFERENT'
+  // da 2.14 y 'AI FOR EVERYONE' 2.09.
+  //
+  // Se achica el ANCHO para respetar el alto, porque la proporcion del glifo no se toca nunca: una
+  // palabra corta ocupa menos ancho y queda centrada, que es como se compone una palabra corta.
+  const ALTO_MAX = 2.00
   function capa(str, ancho, o = {}) {
     const t = texto(str, { fuente: 'ArchivoBlack', size: 200, ...o })
     const ar = Math.max(0.2, t.ar || 4)
+    if (ancho / ar > ALTO_MAX) ancho = ALTO_MAX * ar
     const m = new THREE.Mesh(
       new THREE.PlaneGeometry(ancho, ancho / ar),
       materialMascara(t.tex, o.tinta || NEGRO()),

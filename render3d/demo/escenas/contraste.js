@@ -58,10 +58,13 @@ export function build(ctx) {
   const encaje = (ar) => { const h = Math.min(BOX_H, BOX_W / Math.max(0.08, ar)); return { h, w: h * ar } }
   const ALTO = BOX_H
   const planos = []
+  let anchoArriba = 0
   for (let i = 0; i < 2; i++) {
     const tex = fuentes[i]
     const ar = tex.image.width / tex.image.height
     const caja = encaje(ar)
+    // El ancho REAL de la pieza de arriba lo necesita el filo, que viaja sobre ella. Ver ANCHO_MAX.
+    if (i === 1) anchoArriba = caja.w
     // La de abajo va con material normal; la de arriba con mascara, que es la que barre.
     if (i === 0) {
       const m = planoRecorte(tex, caja.h)
@@ -111,7 +114,17 @@ export function build(ctx) {
   // Va en `g`, no en `gr`: es geometria de la pieza y el bloom la ayuda a leerse como un filo de luz.
   // Pero OJO — `gr` se compone DESPUES del bloom y se dibuja SIEMPRE encima de `g`, asi que un filo
   // en `g` quedaria tapado por los recortes. Va en `gr`, con z por delante de los dos planos.
-  const ANCHO_MAX = BOX_W
+  // EL ANCHO DE LA PIEZA QUE BARRE, NO EL DE LA CAJA. `encaje` es CONTAIN: solo llena BOX_W si la
+  // proporcion de la pieza es >= BOX_W/BOX_H = 1.0688, o sea que cualquier pieza mas vertical que eso
+  // —un logo cuadrado, una foto de retrato, una captura 864x960— entra mas angosta que su caja.
+  // El filo viajaba de -BOX_W/2 a +BOX_W/2 igual, asi que se despegaba del borde real de lo que estaba
+  // barriendo: medido con dos verticales (800x1200 arriba) la pieza mide 2.545 contra BOX_W 4.275, y el
+  // filo se separa 83 px en p=0.25 y p=0.75 y 166 px al final. Con dos cuadradas, 26 px.
+  //
+  // Se lee como una barra suelta cruzando el cuadro en vez de como el filo que corta la imagen, que es
+  // toda la idea de la escena. El filo tiene que viajar el ancho de la pieza DE ARRIBA, que es la que
+  // lleva la mascara y por lo tanto la unica cuyo borde se ve avanzar.
+  const ANCHO_MAX = Math.min(BOX_W, anchoArriba)
   const filo = new THREE.Mesh(
     new THREE.PlaneGeometry(mundoW * 0.008, ALTO * 1.12),
     matAcento(LOOK.acento2, 1.5),
