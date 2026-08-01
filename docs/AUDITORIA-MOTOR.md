@@ -747,6 +747,21 @@ El orden correcto es al reves: primero se cierran las 88, despues se afila la co
   - **Compuerta:** Ninguna. Un hueco de fondo no es desborde ni pieza fuera de cuadro, asi que ni
     E-ENCAJE ni E-ENCUADRE aplican. Es el mismo punto ciego que titular.js:130.
 
+- [ ] **render3d/demo/escenas/hero.js:76 — INTENTADO Y NO DEMOSTRADO**
+  - Se probo contar en el cupo la frase que bebe el hero (restarle 1 a `nFr`). El plan salio IDENTICO:
+    0.44 sedientas y 0.41 heroes por pieza a 20 s, 0.69 y 0.86 a 30 s, los mismos numeros con y sin el
+    cambio sobre 180 guiones. En las duraciones que se usan el cupo no es la restriccion que ata —ata el
+    presupuesto de beats— asi que el cambio se saco. Queda ABIERTO: la repeticion existe, pero el
+    arreglo por el lado del cupo no la toca y hay que buscarla en otro lado.
+
+- [x] **render3d/demo/heroes/mosaico.js:224 — REGRESION, ya cerrada, anotada como leccion**
+  - El parche del relevo (de la tanda de 31 del 2026-07-31) creo un SEGUNDO sitio de dimensionado que
+    nacio sin el tope de resolucion que se le habia puesto al primero diez lineas antes. Medido: la
+    banda volvio a 4.28x la resolucion del archivo con la cota puesta a diez lineas de distancia.
+  - **La leccion, que vale mas que el arreglo:** el tamano se calcula en DOS lugares del mismo archivo,
+    asi que arreglar uno no arregla el otro Y la medicion de uno tapa al otro. Y se colo porque los
+    parches se aplicaron en lote sin volver a medir cada uno.
+
 ---
 
 # EXTRA — para charlar despues, NO hacer ahora
@@ -773,18 +788,3 @@ arriba este terminada. Van al final a proposito. **No empezar ninguno de los dos
     el editor de timeline), que pasa si la elegida no le sirve al hero que toco, si la eleccion sobrevive
     a cambiar la semilla, y como convive con el reparto que evita repetir imagenes entre escenas.
 
-
-- [ ] **render3d/demo/escenas/hero.js:76 — INTENTADO Y NO DEMOSTRADO**
-  - Se probo contar en el cupo la frase que bebe el hero (restarle 1 a `nFr`). El plan salio IDENTICO:
-    0.44 sedientas y 0.41 heroes por pieza a 20 s, 0.69 y 0.86 a 30 s, los mismos numeros con y sin el
-    cambio sobre 180 guiones. En las duraciones que se usan el cupo no es la restriccion que ata —ata el
-    presupuesto de beats— asi que el cambio se saco. Queda ABIERTO: la repeticion existe, pero el
-    arreglo por el lado del cupo no la toca y hay que buscarla en otro lado.
-
-- [ ] **render3d/demo/heroes/mosaico.js:224 — REGRESION, ya cerrada, anotada como leccion**
-  - El parche del relevo (de la tanda de 31 del 2026-07-31) creo un SEGUNDO sitio de dimensionado que
-    nacio sin el tope de resolucion que se le habia puesto al primero diez lineas antes. Medido: la
-    banda volvio a 4.28x la resolucion del archivo con la cota puesta a diez lineas de distancia.
-  - **La leccion, que vale mas que el arreglo:** el tamano se calcula en DOS lugares del mismo archivo,
-    asi que arreglar uno no arregla el otro Y la medicion de uno tapa al otro. Y se colo porque los
-    parches se aplicaron en lote sin volver a medir cada uno.
