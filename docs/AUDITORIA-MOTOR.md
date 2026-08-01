@@ -746,3 +746,29 @@ El orden correcto es al reves: primero se cierran las 88, despues se afila la co
     que recortar por UV y no achicar. Son dos casos distintos con una sola rama.
   - **Compuerta:** Ninguna. Un hueco de fondo no es desborde ni pieza fuera de cuadro, asi que ni
     E-ENCAJE ni E-ENCUADRE aplican. Es el mismo punto ciego que titular.js:130.
+
+---
+
+# EXTRA — para charlar despues, NO hacer ahora
+
+Estos dos NO son hallazgos de la auditoria: son temas que Thiago quiere discutir cuando la lista de
+arriba este terminada. Van al final a proposito. **No empezar ninguno de los dos sin hablarlo antes.**
+
+- [ ] **EXTRA 1 — Que hacer cuando la pagina nos bloquea**
+  - Paso el 2026-07-31 con sweetgreen.com: el CDN devolvio "Request blocked. We can't connect to the
+    server for..." y el motor construyo 20 s enteros sobre esa pantalla de error, con el Request ID
+    impreso en el video. De las 7 capturas cacheadas del repo, DOS estan asi: sweetgreen (CloudFront) y
+    sothebysrealty, cuya marca capturada es "HUMAN VERIFICA" (una pantalla anti-bot).
+  - Lo que HAY que decidir hablandolo, porque son politicas y no bugs: si se reintenta, si se avisa al
+    usuario que esa pagina no se puede capturar, si hay un camino de respaldo (composicion sin captura),
+    o si simplemente se rechaza el pedido. Cada opcion cambia que ve el cliente.
+  - NO confundir con el hallazgo tecnico que ya esta anotado mas arriba ("nada verifica que lo capturado
+    sea la pagina"), que es la DETECCION. Este pendiente es que hacer DESPUES de detectarlo.
+
+- [ ] **EXTRA 2 — Elegir a mano que imagenes van en los heroes**
+  - Hoy el motor elige solo que recortes entran en los objetos 3D que giran (cubo, mosaico, vitrina,
+    prisma, ventana...) a partir de los ROLES que declara cada hero y del orden en que la pagina los
+    entrego. El usuario no tiene voz.
+  - La idea es poder seleccionar las imagenes. Hay que definir hablandolo: donde se elige (el estudio,
+    el editor de timeline), que pasa si la elegida no le sirve al hero que toco, si la eleccion sobrevive
+    a cambiar la semilla, y como convive con el reparto que evita repetir imagenes entre escenas.
