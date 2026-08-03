@@ -57,10 +57,11 @@ npm run gates:guard
 ```
 
 **Nunca `npm run gates` pelado.** El wrapper existe porque una vez un script se comio 28 GB y tiro la
-PC abajo; `gates:guard` mide el pico y aborta. Hoy da **31 OK / 0 FAIL, pico ~7.7 GB**, y tarda
-**~30 minutos**: no son tests de unidad, renderizan miles de cuadros. Para el dia a dia alcanza con
-las cinco de esta zona (`verificar.mjs`, `guion-check`, `encuadre-check`, `adn-check`,
-`testimonios-check`), que juntas tardan **7 segundos**. El guard entero, solo antes de pushear.
+PC abajo; `gates:guard` mide el pico y aborta. Hoy da **31 OK / 0 FAIL, pico ~6.5 GB**, y tarda
+**~30 minutos**: no son tests de unidad, renderizan miles de cuadros. Para el dia a dia alcanzan las
+**siete rapidas** (`verificar.mjs`, `guion-check`, `encuadre-check`, `adn-check`, `testimonios-check`,
+`tira-check` y `heroes-check`), que juntas tardan **8 segundos**. El guard entero, solo antes de
+pushear.
 
 Y OJO CON EL NUMERO: el contador del guard cuenta apariciones de `OK (`, no compuertas. `RUBRO`,
 `ADN` y `ENCUADRE` pasan y nunca se contaron. Es un proxy, no un inventario.
