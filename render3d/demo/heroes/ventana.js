@@ -301,6 +301,11 @@ export function build(ctx) {
     transparent: true, depthWrite: false, uniforms: uCarcasa(false), vertexShader: VERT, fragmentShader: FRAG,
   }))
   carcasa.position.z = Z_CARA
+  // LA PAGINA VA DE 0 A `yBarra`; lo de arriba es la barra del navegador (el shader, en `q.y / uYBar`).
+  // `tools/tira-check.mjs` corre en Node y no compila GLSL, asi que esa frontera no la puede ver: se la
+  // declaramos. Sin esto mide la pagina contra `ALTO` entero y acusa 1.094x de deformacion inexistente
+  // — justo a uno de los dos archivos que documentan la cuenta correcta (linea 154).
+  carcasa.userData.pagina = { anchoFrac: 1, altoFrac: yBarra }
   gCara.add(carcasa)
 
   // EL REFLEJO NO ES DECORACIÓN: ES LO QUE LLENA EL CUADRO. Una ventana apaisada dentro de un cuadro
@@ -315,6 +320,7 @@ export function build(ctx) {
     transparent: true, depthWrite: false, uniforms: uCarcasa(true), vertexShader: VERT, fragmentShader: FRAG,
   }))
   reflejo.position.set(0, -ALTO - ALTO * 0.014, Z_CARA)
+  reflejo.userData.pagina = { anchoFrac: 1, altoFrac: yBarra }   // misma cara, dada vuelta
   gCara.add(reflejo)
 
   // ---------------------------------------------------------------- lo que SÍ tiene que florecer

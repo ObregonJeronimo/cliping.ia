@@ -57,7 +57,7 @@ npm run gates:guard
 ```
 
 **Nunca `npm run gates` pelado.** El wrapper existe porque una vez un script se comio 28 GB y tiro la
-PC abajo; `gates:guard` mide el pico y aborta. Hoy da **28 OK / 0 FAIL, pico ~7.7 GB**, y tarda
+PC abajo; `gates:guard` mide el pico y aborta. Hoy da **30 OK / 0 FAIL, pico ~7.7 GB**, y tarda
 **~30 minutos**: no son tests de unidad, renderizan miles de cuadros. Para el dia a dia alcanza con
 las cinco de esta zona (`verificar.mjs`, `guion-check`, `encuadre-check`, `adn-check`,
 `testimonios-check`), que juntas tardan **7 segundos**. El guard entero, solo antes de pushear.

@@ -29,7 +29,7 @@ export function build(ctx) {
   // Thiago, tres veces, sobre tres videos distintos: "ese objeto 3d que gira... devuelta lo mismo".
   const pedido = ctx.spec && ctx.spec.hero
   // El aire viaja para que la geometria abstracta no le toque a una marca a la que no le queda.
-  const posibles = elegibles(disponible, (ctx.spec && ctx.spec.aire) || null)
+  const posibles = elegibles(disponible, (ctx.spec && ctx.spec.aire) || null, datosEls || [])
   const rep = ctx.repeticion || 0
   const base = pedido
     ? posibles.findIndex(h => h.meta.id === pedido)

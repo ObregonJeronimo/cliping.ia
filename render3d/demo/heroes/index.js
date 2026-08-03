@@ -86,9 +86,17 @@ const REGISTRO = {
 // Los que se pueden armar con el material que HAY y que ADEMAS le quedan a este aire.
 // `disponible` es un set con 'tira', 'elementos'...; `aire` es opcional y sin el no se filtra por
 // registro, que es lo que necesitan las compuertas que barren el catalogo entero.
-export function elegibles(disponible, aire = null) {
-  const hay = HEROES.filter(h => (h.meta.necesita || ['nada'])
+// `datosEls` es opcional y sirve para el segundo filtro: `necesita` dice QUE CLASE de material hace
+// falta ('elementos'), y eso es un booleano — con UN recorte ya se ofrecia un hero que reparte seis.
+// El `cubo` salia con dos imagenes repetidas tres veces cada una sobre las seis caras, que es el reclamo
+// textual registrado en kit.js:2043-2049 ("vuelven a aparecer las mismas imagenes... no innovan nada").
+// Un hero que necesita CANTIDAD lo declara con `meta.puede(datosEls)` y se descarta antes de
+// construirse — antes, no despues: `recortesDe` consume del reparto compartido, asi que construir un
+// hero para descartarlo le sacaria recortes a la escena siguiente.
+export function elegibles(disponible, aire = null, datosEls = null) {
+  let hay = HEROES.filter(h => (h.meta.necesita || ['nada'])
     .every(n => n === 'nada' || disponible.has(n)))
+  if (datosEls) hay = hay.filter(h => !h.meta.puede || h.meta.puede(datosEls))
   if (!aire) return hay
   const encajan = hay.filter(h => !REGISTRO[h.meta.id] || REGISTRO[h.meta.id].includes(aire))
   // Nunca se devuelve vacio: si el filtro no dejo a nadie —una pagina sin material y un aire para el

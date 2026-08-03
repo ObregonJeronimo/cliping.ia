@@ -221,11 +221,31 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
 
 ## Se notan (38)
 
-- [ ] **render3d/demo/heroes/portatil.js:122**
+- [x] **render3d/demo/heroes/portatil.js:122**
   - **Síntoma:** Aunque se arregle el shader (hallazgo 1), la página sale ESTIRADA 1.87 veces a lo ancho: letras anchas y chatas. Es el defecto que dos archivos hermanos documentan a los golpes y que este no aplicó — escenas/pantalla.js:82-88 («Con la misma cuenta, la pagina del cliente sale estirada un 22% a lo ancho — el defecto que su dueño ve antes que ninguno») y ventana.js:148-153 («Y NO ALCANZA CON LA CUENT
   - **Lo dispara:** Es la cuenta del teléfono copiada a una superficie que NO tiene la proporción del viewport capturado. Con la tira real de 720x8192 y tiraViewport 1560 da visible = 0.099, o sea 811 px de página metidos en un plano de proporción 1.6622. La proporción que no deforma sería (720/8192)/1.6622 = 0.0529, o
   - **Compuerta:** Ninguna. Hoy además está tapado por el hallazgo 1 (el shader ni siquiera lee `visible`), así que arreglar sólo el shader cambia un defecto por otro más chico en vez de arreglar la escena.
   - `const visible = Math.min(1, (altoVP / altoTira) * 0.52)`
+  - **CERRADO 2026-08-03.** Confirmado por aritmetica independiente antes de tocar nada: con la tira
+    real de 720x8192, `uAR = pw/ph = 1.6622`, visible 0.09902 contra 0.05288 -> **1.873x**, o sea el
+    1.87 que decia el hallazgo. La cuenta nueva no se invento: sale de pedir que la densidad de pixeles
+    por unidad de mundo sea igual en los dos ejes, que es lo que ya estaba escrito en `pantalla.js:82-88`
+    y `ventana.js:148-153`. `visible = anchoTira * ph / (altoTira * pw)`.
+  - **Y la cuenta estaba DOS VECES** —aca y en el bloque del scroll, con la misma expresion copiada—,
+    asi que arreglar una sola dejaba el recorrido dimensionado sobre una ventana que ya no existia.
+    Ahora hay una sola definicion (`PANT_W`/`PANT_H`/`VISIBLE`).
+  - **Destapo un segundo defecto, y era el mismo que `ventana.js:388`.** Con la ventana correcta (433 px
+    en vez de 811) el recorrido —que se medi­a sobre la tira ENTERA— paso de 1.00 a **1.97 ventanas por
+    salto**: entre dos reposos no quedaba un pixel en comun. Acotado con la aritmetica de SU bucle
+    (SALTOS = 5, exponente 0.78 -> el primer salto vale `recorrido * 0.285`; pidiendo que no pase del 85%
+    de una ventana queda `recorrido <= visible * 2.98`). Los cinco saltos miden ahora 0.85, 0.61, 0.54,
+    0.50 y 0.48 ventanas. Sin esto, el arreglo cambiaba un defecto por otro — que es literalmente lo que
+    la ficha advertia.
+  - **Compuerta nueva: `tools/tira-check.mjs`** (E-PAGINA-SIN-DEFORMAR). Mide px/unidad en los dos ejes
+    sobre los seis lugares que pegan la pagina en un plano, con las tres tiras reales del repo y los 11
+    aires. Corrida contra el codigo VIEJO acusa `portatil` 1.873x y da 1.0000 en los otros cuatro;
+    contra el nuevo, 1.0000 en los cinco. Verificado tambien mirando 8 cuadros a resolucion completa
+    (f300 y f335 con cada version, mas f262 y f364).
 
 - [x] **render3d/demo/heroes/cubo.js:108**
   - **Síntoma:** El logo de stripe (120 px) se dibuja a 512 px en la cara: 4.3x. El de linear, 2.9x. La cara que está en reposo mirando a cámara es justo la que el espectador MIRA quieta —el tumbo se detiene en cada peldaño a propósito, líneas 168-189— así que el remuestreo se ve en el instante en que la escena pide que se lea.
@@ -239,11 +259,28 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** Ninguna. Las compuertas construyen la tira con un canvas de 4x4 al que se le sobreescriben `width/height` (verificar.mjs:99-101 y encuadre-check.mjs:92-94), así que no hay contenido de página que medir; y ninguna compara el tamaño del salto contra el
   - `const recorrido = Math.max(0, 1 - visible) * 0.62`
 
-- [ ] **render3d/demo/heroes/cubo.js:104**
+- [x] **render3d/demo/heroes/cubo.js:104**
   - **Síntoma:** Las seis caras del cubo muestran las MISMAS dos imágenes, tres veces cada una. El tumbo va parando cara por cara para que se lean, y lo que se lee es la misma foto una y otra vez. Es literalmente el reclamo ya registrado en kit.js:2043-2049: «vuelven a aparecer las mismas imagenes que aparecieron en escenas atras, no innovan nada». El archivo se cubre sólo del caso cero (líneas 20-21, 56-59), no d
   - **Lo dispara:** Una página que da pocos recortes de los roles que el cubo pide (ROLES = ['logo','tarjeta','foto','hero']). Con el fixture real de basecamp.com hay 5 elementos y sólo DOS caen en esos roles (basecamp-com__el4-foto.png y __el5-foto.png; los otros tres son 'cta', que el cubo no pide). Además `recortesD
   - **Compuerta:** No. `recortesDe` cuenta las repeticiones en `recortesRepetidos` (kit.js:2055) pero nadie lo lee como condición de fallo, y el hero se ofrece con que exista UN solo elemento (escenas/hero.js:17: `if (datosEls && datosEls.length) disponible.add('elemen
   - `const tex = texs[i % texs.length]`
+  - **CERRADO 2026-08-03.** No se toco el reparto de caras: el defecto no esta en `i % texs.length`
+    —repartir seis caras entre las imagenes que hay es lo correcto— sino en que el hero se OFRECIA con
+    dos. `necesita: ['elementos']` es un booleano y con UN recorte ya alcanzaba.
+  - **El numero sale de las seis caras, no de un gusto:** con N imagenes distintas cada una aparece
+    ceil(6/N) veces; con N = 4 quedan cuatro caras nuevas y dos repetidas —dos tercios del cubo dice
+    algo que el espectador no vio— y con N = 3 cada imagen tiene su gemela y la mitad del cuerpo es eco.
+    `CARAS_MINIMAS = 4`, declarado en `meta.puede(datosEls)` y filtrado por `elegibles` ANTES de
+    construir: `recortesDe` consume del reparto compartido, asi que construir un hero para descartarlo
+    le sacaria recortes a la escena siguiente.
+  - **Y no cuesta material real.** Medido sobre las seis capturas del repo: tres dan CERO elementos (ahi
+    el cubo ya no se ofrecia) y las otras dan 5, 8 y 9 en rol. El unico caso que pierde el cubo es
+    exactamente aquel en el que se veia mal, y `elegibles` entrega el hero siguiente.
+  - **Compuerta nueva: `tools/heroes-check.mjs`** (E-HERO-ELEGIBLE). Declara el REQUISITO, no lee el
+    mecanismo: la primera version recorria los heroes con `meta.puede` y contra el codigo viejo daba
+    verde porque no habia ninguno —cero revisados, cero fallos, el defecto intacto—. Corregida, da
+    ROJO contra el codigo viejo y verde contra el nuevo, y ademas cuida que el cupo no borre el hero
+    del catalogo ni deje una escena sin sujeto.
 
 - [x] **render3d/demo/heroes/vitrina.js:53**
   - **Síntoma:** La vitrina exhibe una CAPTURA de una reseña como si fuera el logo de la marca: un JPG de tipografía ajena, encima magnificado (hallazgo 2), sobre el pedestal, cuatro segundos. Es el reclamo textual citado tres veces en kit.js:1985 («las reseñas se deben de mostrar EN TEXTO, NO UNA IMAGEN»). mosaico.js:55 tiene exactamente la misma línea y el mismo agujero. Los cuatro consumidores que sí usan `text

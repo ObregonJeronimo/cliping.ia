@@ -24,16 +24,37 @@
 
 import { LOOK, b, E, hex, matAcento, nivel, recortesDe, texturaDe, dolly, orbita, deslizFijo, topeNitido } from '../kit.js'
 
+// Los seis roles en orden de preferencia. Se piden por rol y no por posicion en el documento para que
+// la cara que mire al frente al arrancar sea la mas reconocible que la pagina dio.
+const ROLES = ['logo', 'tarjeta', 'foto', 'hero']
+
+// CUATRO IMAGENES DISTINTAS O ESTE HERO NO SE OFRECE.
+//
+// `necesita: ['elementos']` es un booleano: con UN recorte el cubo se ofrecia igual y repartia esa
+// imagen sobre las seis caras. Con el material real de basecamp —5 elementos, de los cuales solo DOS
+// caen en ROLES— las seis caras mostraban las mismas dos imagenes, tres veces cada una, y el tumbo se
+// DETIENE en cada peldano a proposito para que se lean. O sea que la escena para seis veces a mostrar
+// dos cosas. Es el reclamo textual de kit.js:2043-2049.
+//
+// El numero sale de las seis caras, no de un gusto: con N imagenes distintas cada una aparece ceil(6/N)
+// veces, y con N = 4 quedan cuatro caras nuevas y dos repetidas — dos tercios del cubo dice algo que el
+// espectador no vio. Con N = 3 cada imagen tiene su gemela y la mitad del cuerpo es eco.
+//
+// Y cuesta cero en material real: de las seis capturas del repo, tres dan CERO elementos (ahi el cubo
+// ya no se ofrecia) y las otras dan 5, 8 y 9 en rol. El unico caso que pierde el cubo es justamente
+// aquel en el que se veia mal, y `elegibles` le da el hero siguiente — que con poco material es
+// `mosaico`, la lectura mas clara, como ya razona el comentario del registro.
+const CARAS_MINIMAS = 4
+
 export const meta = {
   id: 'cubo',
   nombre: 'Cubo de recortes',
   necesita: ['elementos'],
   beats: 8,
+  puede: (datosEls) => new Set((datosEls || [])
+    .filter(e => e && ROLES.includes(e.rol) && e.url)
+    .map(e => e.url)).size >= CARAS_MINIMAS,
 }
-
-// Los seis roles en orden de preferencia. Se piden por rol y no por posicion en el documento para que
-// la cara que mire al frente al arrancar sea la mas reconocible que la pagina dio.
-const ROLES = ['logo', 'tarjeta', 'foto', 'hero']
 
 // Cuanto mide el cubo. 3.1 unidades sobre un cuadro de 5.625 de ancho deja el solido girando sin que
 // una esquina se salga: la diagonal de la cara es 3.1*1.414 = 4.38, y con la camara en reposo el cuadro

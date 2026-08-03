@@ -21,7 +21,7 @@ otro — y no se cuenta. Esa distincion existe porque el contador ya mintio: se 
 para 5 trabajos porque una nota de seguimiento tenia el mismo formato que un hallazgo. Thiago lo
 noto y por eso el encabezado del documento ahora lo dice explicito.
 
-Al cerrar la sesion: **38 abiertos / 62 cerrados**.
+Al cerrar la sesion con Thiago: **38 abiertos / 62 cerrados**. Despues de cerrar `portatil.js:122` y `cubo.js:104`: **36 abiertos / 64 cerrados**.
 
 Estan agrupados por gravedad: *Rompen la pieza*, *Se notan*, *Menores*. Y al final hay dos secciones
 que NO son hallazgos:
@@ -53,17 +53,19 @@ que NO son hallazgos:
 
 ## 3. Las compuertas
 
-**Las 5 rapidas (~7 s), en cada cambio del motor:**
+**Las 7 rapidas (~8 s), en cada cambio del motor:**
 
 ```
 node render3d/demo/verificar.mjs
 node tools/encuadre-check.mjs
 node tools/guion-check.mjs
 node tools/adn-check.mjs
+node tools/tira-check.mjs
+node tools/heroes-check.mjs
 python tools/testimonios-check.py
 ```
 
-**El guard completo (~30 min), solo antes de pushear:** `npm run gates:guard`. Tiene que dar 28 OK /
+**El guard completo (~30 min), solo antes de pushear:** `npm run gates:guard`. Tiene que dar 30 OK /
 0 FAIL. **Nunca correr dos guards a la vez.**
 
 **Lo que las compuertas NO pueden ver, y hay que tenerlo presente siempre:**
@@ -73,7 +75,10 @@ python tools/testimonios-check.py
 - `encuadre-check` pregunta si la caja **cruza** el cuadro, no si entra entera. La contencion solo se
   exige a las mallas que declaran `userData.encaja`, que son 16 de 799.
 - Ninguna compuerta mide **repeticion de contenido**: dos escenas pueden estar perfectamente
-  compuestas y contar lo mismo. Asi paso el defecto de la imagen repetida que Thiago vio.
+  compuestas y contar lo mismo. Asi paso el defecto de la imagen repetida que Thiago vio. Sigue siendo
+  cierto en general; la unica grieta tapada es `heroes-check`, y solo por el lado del CUPO — comprueba
+  que un hero que reparte imagenes no se ofrezca sin material suficiente, no que lo que muestra sea
+  distinto de lo que mostro la escena anterior.
 
 ---
 
@@ -158,9 +163,12 @@ Es un hallazgo abierto.
 De los 38 abiertos, los mas tratables (un tope, un umbral, un filtro; se hacen y se verifican en
 minutos):
 
-- `heroes/portatil.js:122` — la pagina sale estirada 1.87x a lo ancho. Los dos archivos hermanos
-  (`escenas/pantalla.js:82-88` y `heroes/telefono.js`) ya documentan la cuenta correcta.
-- `heroes/cubo.js:104` — las seis caras muestran las mismas dos imagenes, tres veces cada una.
+- ~~`heroes/portatil.js:122`~~ — **CERRADO 2026-08-03**, y dejo una leccion que conviene tener a mano
+  para los que siguen: arreglar la escala DESTAPO un segundo defecto que estaba escondido detras
+  (el recorrido del scroll se media sobre la tira entera, asi que al achicar la ventana a la mitad cada
+  salto paso a mover 1.97 pantallas — el mismo defecto que `ventana.js:388`). Un arreglo que corrige un
+  numero puede empeorar el que depende de el; hay que medir los dos. Salio de ahi la compuerta
+  `tools/tira-check.mjs`, que ya es una de las rapidas.
 - `kit.js:805` — `marco()` calcula el rectangulo util del aire y lo devuelve, y ninguna escena lo lee.
 - `datos.js:196-206` — el mostrador de frases.
 - `verificar.mjs:410` y `verificar.mjs:530` — dos heuristicos con huecos medidos.

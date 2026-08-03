@@ -272,6 +272,12 @@ export function build(ctx) {
         }`,
     })
     pantalla = new THREE.Mesh(new THREE.PlaneGeometry(pw, ph), matP)
+    // LA PAGINA NO OCUPA TODO EL PLANO: la franja segura de arriba (SEGURO) muestra el color de fondo
+    // del sitio, no pagina — es la linea 248, `vv = vUv.y / (1.0 - uSeguro)`. Eso pasa dentro del
+    // shader, y `tools/tira-check.mjs` corre en Node y no compila GLSL, asi que no hay manera de que lo
+    // deduzca: se lo decimos. Sin esto la compuerta mide la pagina contra `ph` entero y acusa una
+    // deformacion de 1.073x que no existe. La cuenta que SI la hace correcta es la linea 116.
+    pantalla.userData.pagina = { anchoFrac: 1, altoFrac: 1 - SEGURO }
     gr.add(pantalla)
   }
 

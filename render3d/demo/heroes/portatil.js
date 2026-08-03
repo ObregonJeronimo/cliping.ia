@@ -48,9 +48,14 @@ export function build(ctx) {
   const tira = texturas && texturas.get('tira')
   const altoVP = (spec && spec.tiraViewport) || 1560
   const altoTira = tira && tira.image ? tira.image.height : altoVP
+  const anchoTira = tira && tira.image ? tira.image.width : 720   // el viewport movil que captura el pipeline
 
   const ANCHO = mundoW * 0.92
   const ALTO_P = ANCHO / AR_PANTALLA
+  // LA PANTALLA Y CUANTA PAGINA ENTRA — una sola definicion, porque la usan dos bloques lejanos
+  // (el material, ~138, y el recorrido del scroll, ~252). Ver la nota larga en el bloque de la pantalla.
+  const PANT_W = ANCHO * 0.935, PANT_H = ALTO_P * 0.90
+  const VISIBLE = Math.min(1, (anchoTira * PANT_H) / (altoTira * PANT_W))
   const GRUESO = ANCHO * 0.016
   const R = ANCHO * 0.012
 
@@ -119,11 +124,29 @@ export function build(ctx) {
     // La tira se capturó en viewport MÓVIL (9:19.5) y la pantalla de una notebook es 16:10. Mostrarla
     // entera la achataría hasta lo grotesco. Se muestra una VENTANA ancha de la tira, del alto que
     // corresponde: es el mismo recorte que ve alguien con la ventana del navegador a esa altura.
-    const visible = Math.min(1, (altoVP / altoTira) * 0.52)
+    //
+    // Y ESO ES LO QUE ESTE ARCHIVO DECIA HACER Y NO HACIA. La cuenta era `(altoVP / altoTira) * 0.52`:
+    // un 0.52 elegido a ojo, que no mira la proporcion del plano donde la pagina se pega. Con la tira
+    // real de 720x8192 daba 0.0990 —811 px de pagina— contra los 0.0529 que no deforman: la pagina del
+    // cliente salia ESTIRADA 1.873 veces a lo ancho, letras anchas y chatas. Medido con las tres tiras
+    // reales del repo y los once aires: pasa con todas.
+    //
+    // La cuenta correcta no se inventa aca, ya estaba escrita dos veces en los archivos hermanos
+    // —`escenas/pantalla.js:82-88` y `ventana.js:148-153`, cada uno la descubrio por su lado— y sale de
+    // pedir que la densidad de pixeles de pagina por unidad de mundo sea la misma en los dos ejes:
+    //
+    //     anchoTira / pw  ==  (altoTira * visible) / ph     ->     visible = anchoTira * ph / (altoTira * pw)
+    //
+    // El tope de 1 es para una pagina mas CORTA que el plano; ahi se muestra entera y se estira a lo
+    // alto, que es la salida declarada que `ventana.js:155-157` documenta. Lo cuida `tools/tira-check.mjs`.
+    //
+    // VA UNA SOLA VEZ, ARRIBA (PANT_W/PANT_H/VISIBLE). La version anterior calculaba `visible` DOS
+    // veces con la misma expresion copiada —aca y en el bloque del scroll, linea 252— y arreglar una
+    // sola dejaba el recorrido del scroll dimensionado sobre una ventana que ya no era la que se
+    // mostraba. Dos copias de una cuenta son dos cuentas distintas en cuanto alguien toca una.
+    const pw = PANT_W, ph = PANT_H, visible = VISIBLE
     tira.repeat.set(1, visible)
     tira.offset.set(0, 1 - visible)
-
-    const pw = ANCHO * 0.935, ph = ALTO_P * 0.90
     const matP = new THREE.ShaderMaterial({
       transparent: true, depthWrite: false, side: THREE.DoubleSide,
       // LA MATRIZ DE TEXTURA, A MANO — Y ES EL MISMO DEFECTO QUE COSTO LA ESCENA `pantalla`.
@@ -225,8 +248,20 @@ export function build(ctx) {
   // Cinco saltos rápidos con reposo entre medio dan cinco EVENTOS donde antes había una rampa, se leen
   // como una mano usando el aparato, y suman movimiento donde no había. Cada salto arranca en su beat.
   if (tira) {
-    const visible = Math.min(1, (altoVP / altoTira) * 0.52)
-    const recorrido = Math.max(0, 1 - visible) * 0.55
+    const visible = VISIBLE                      // la misma ventana que se esta mostrando, no una copia
+    // ACOTADO PARA QUE DOS POSICIONES DE REPOSO COMPARTAN PAGINA — el mismo defecto que ya se cerro en
+    // `ventana.js:388`, y que ACA LO DESTAPO ARREGLAR LA DEFORMACION. Mostrar la pagina en su
+    // proporcion correcta redujo la ventana de 811 a 433 px; el recorrido, en cambio, se media sobre la
+    // tira ENTERA y no se entero. Medido con la tira real de 8192: el salto pasaba de 1.00 a 1.97
+    // ventanas, o sea que entre dos reposos no quedaba UN SOLO PIXEL en comun y la secuencia se leia
+    // como cinco recortes al azar, no como una mano usando el aparato. Arreglar la escala y dejar esto
+    // habria sido cambiar un defecto por otro, que es justo lo que la auditoria advertia de este hero.
+    //
+    // El tope sale de la aritmetica de ESTE bucle, no se copia del de la ventana: con SALTOS = 5 y el
+    // exponente 0.78 el salto mas largo es el PRIMERO y vale recorrido * (1/5)^0.78 = recorrido *
+    // 0.285. Pidiendo que no pase del 85% de una ventana queda recorrido <= visible * 0.85 / 0.285 =
+    // visible * 2.98. Con eso los cinco saltos miden 0.85, 0.61, 0.54, 0.50 y 0.48 ventanas.
+    const recorrido = Math.min(Math.max(0, 1 - visible) * 0.55, visible * 2.98)
     const SALTOS = 5
     const y0 = 1 - visible
     for (let i = 0; i < SALTOS; i++) {
