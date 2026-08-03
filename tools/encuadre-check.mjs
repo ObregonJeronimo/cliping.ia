@@ -81,6 +81,38 @@ for (const f of readdirSync(join(DEMO, 'aires')).filter(f => f.endsWith('.js')))
 }
 const { configurarDatos, ANTHEM, reiniciarReparto } = await import(pathToFileURL(join(DEMO, 'datos.js')).href)
 
+// EL CONTENIDO TAMBIEN SE BARRE, NO SOLO LOS AIRES.
+//
+// Esta compuerta documenta con orgullo que recorre los once aires, y recorria UN SOLO juego de datos:
+// el fixture ANTHEM, cuya frase mas larga tiene 19 caracteres. Convertidos los 7 pagemodels REALES que
+// ya estan en el repo, la frase mas larga es de 121 — seis veces mas. O sea que la compuerta auditaba
+// la tipografia con el copy mas corto que el motor va a ver en su vida.
+//
+// SE ROTA, NO SE MULTIPLICA. El producto cartesiano (8 juegos x 11 aires x 37 escenas) son 3256
+// construcciones y ~55 segundos, y esta es una de las rapidas: ese no es su presupuesto. Rotando
+// —cada aire recibe un juego distinto— el costo queda igual (407 construcciones, ~7 s) y se ejercitan
+// las dos dimensiones en vez de una.
+//
+// Y CONVIENE SABER QUE HOY NO CAMBIA EL VEREDICTO, medido: los 7 juegos reales pasan los 7, y el
+// conteo de mallas con textura que no entran enteras se mueve un 2% (38432 con ANTHEM, 39241 con
+// stripe). No puede ser de otra manera: esta compuerta pregunta si la caja CRUZA el cuadro, no si
+// entra entera, asi que el largo del copy no tiene por donde hacerla fallar. Esto es cobertura para el
+// dia que alguien toque el encaje, no el arreglo de un defecto de hoy.
+const { datosDe } = await import(pathToFileURL(join(RAIZ, 'tools', 'anthem-datos.mjs')).href)
+const { normalizePageModel } = await import(pathToFileURL(join(RAIZ, 'src', 'director', 'core', 'schema.js')).href)
+const JUEGOS = [{ nombre: 'ANTHEM', datos: ANTHEM }]
+{
+  const dirFix = join(RAIZ, 'tools', 'fixtures', 'director', 'elementos')
+  if (existsSync(dirFix)) {
+    for (const f of readdirSync(dirFix).filter(x => x.endsWith('.json')).sort()) {
+      try {
+        const pm = normalizePageModel(JSON.parse(readFileSync(join(dirFix, f), 'utf8')))
+        JUEGOS.push({ nombre: f.replace('.json', ''), datos: datosDe(pm) })
+      } catch { /* un fixture que no convierte no puede tirar la compuerta abajo */ }
+    }
+  }
+}
+
 function tejidoFalso(relaciones) {
   const m = new Map()
   relaciones.forEach((ar, i) => {
@@ -152,10 +184,13 @@ function entraEntera(obj, m) {
 
 let revisados = 0
 const _push = fallos.push.bind(fallos)
+let _iJuego = 0
 for (const [nombreAire, aire] of Object.entries(AIRES)) {
+  // El juego rota con el aire: el primero con ANTHEM, el segundo con el primer fixture real, y asi.
+  const juego = JUEGOS[_iJuego++ % JUEGOS.length]
  configurar(aire)
  // cada fallo dice en QUE aire aparecio: sin eso, "se sale del cuadro" no se puede reproducir
- fallos.push = (m) => _push(`${m}   [aire ${nombreAire}]`)
+ fallos.push = (m) => _push(`${m}   [aire ${nombreAire} · datos ${juego.nombre}]`)
  for (const id of ids) {
   const ruta = rutaDe(id)
   if (!existsSync(ruta)) continue
@@ -171,7 +206,7 @@ for (const [nombreAire, aire] of Object.entries(AIRES)) {
   // verificar.mjs SI las llama (lineas 239, 326 y 441) y main.js tambien (451-452); faltaba aca.
   reiniciarReparto()
   reiniciarRecortes()
-  configurarDatos(ANTHEM)
+  configurarDatos(juego.datos)
   const camera = new THREE.PerspectiveCamera(fov, W / H, 0.1, 400)
   camera.position.set(0, 0, distBase)
   let semilla = 1
@@ -370,4 +405,5 @@ if (fallos.length) {
 }
 console.log(`ENCUADRE OK — ${revisados} construcciones (${revisados / Object.keys(AIRES).length} escenas y heroes `
   + `x ${Object.keys(AIRES).length} aires): todo lo que se anima entra en el cuadro, proyectado a 30 fps `
-  + 'contra la camara que mueve cada escena CON la amplitud que le pone su aire.')
+  + 'contra la camara que mueve cada escena CON la amplitud que le pone su aire.'
+  + `\n  contenido: ${JUEGOS.length} juegos rotando por aire — ${JUEGOS.map(j => j.nombre).join(', ')}.`)

@@ -205,12 +205,41 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Lo dispara:** Que una escena se olvide de declarar —o decida no declarar— `userData.encaja`. Medido construyendo las 37 escenas y heroes con los datos de ANTHEM: 799 mallas, 16 declaradas (2.0%); 161 con textura (tipografia y recortes reales, o sea todo lo que se puede cortar), 16 declaradas y 145 sin cubrir. Cer
   - **Compuerta:** Ninguna, por construccion: la contencion es declarativa y la unica regla que corre sobre TODO es `enCuadro` (linea 129), que es `intersectsBox` — verdadera si UN pixel toca el cuadro. La contraparte en verificar.mjs:395 tiene la misma condicion, asi 
   - `if (o.userData && o.userData.encaja) {`
+- SEGUIMIENTO de encuadre-check.mjs:217 (2026-08-03): **medido, y el arreglo que la ficha sugiere no
+  sirve.** Se aplico la contencion (`entraEntera`) a TODA malla con textura, declarada o no, sobre las
+  407 construcciones y en los 4 instantes que ya se muestrean:
+  - **38.432 de 148.054 muestras no entran enteras, y las 38.432 estan sin declarar.** O sea que
+    exigir contencion universal produciria decenas de miles de acusaciones.
+  - **Y son deliberadas.** Los peores: `enjambre` llega a x=177252 (particulas dispersas a proposito),
+    `marquesina` a 5.57 (una cinta ES mas ancha que el cuadro, o no hay bucle), `tipografia` a 4.63,
+    `destello` a 2.46 (su golpe de escala).
+  - **Tampoco se separa por magnitud**, que era la salida elegante: la banda mas suave (1.02-1.10, o
+    sea 'roza el borde') tiene 5.452 muestras repartidas en **16 de las 37 escenas**, entre ellas
+    `apertura`, `cierre`, `pantalla`, `portatil` y `mosaico` — todas escenas que sangran por decision
+    de composicion. Un umbral ahi acusa lo correcto junto con lo incorrecto.
+  - Conclusion: el 2% declarado NO es un descuido, es la unica formulacion tratable. '¿esto tiene que
+    entrar entero?' es una intencion de composicion y no se puede deducir de la geometria. Coincide con
+    la objecion de los criticos sobre E-CONTENCION-TOTAL sin opt-in, verificada ahora por medicion
+    propia. Queda ABIERTO: lo que falta no es aplicar la regla a todo, sino DECLARAR mas mallas.
 
-- [ ] **tools/encuadre-check.mjs:166**
+- [x] **tools/encuadre-check.mjs:166**
   - **Síntoma:** Textos que se salen por los costados en la pagina del cliente y nunca en la demo — que es exactamente el reclamo ("algunos textos son tan grandes que en los costados se cortan"). Y ramas enteras sin ejercitar: el techo de alto de destello (destello.js:232-233, el arreglo del defecto #2) solo se activa con una linea CORTA, y el golpe de ANTHEM (`UNA PLANTILLA`, proporcion ~4.6) nunca lo activa; el 
   - **Lo dispara:** Contenido en los extremos. La compuerta barre 11 aires (y lo documenta con orgullo en las lineas 72-77) pero UN SOLO juego de datos, dentro del bucle, en las 407 construcciones. Medido: ANTHEM da frase mas larga 19 caracteres y palabra mas larga 9. Convirtiendo los 7 pagemodels REALES que ya estan e
   - **Compuerta:** Ninguna: verificar.mjs es la unica que varia contenido y solo varia la MARCA (linea 314), nunca frase, golpe, claim ni etiqueta de dato. Los 7 fixtures reales estan en disco, adn-check ya los lee, y ni encuadre-check ni verificar los tocan.
   - `configurarDatos(ANTHEM)`
+  - **CERRADO 2026-08-03, con la premisa corregida.** La cobertura se agrego: los 7 pagemodels reales
+    se convierten con `datosDe()` —el mismo camino que usa produccion— y rotan por aire, asi que ahora
+    se barren 8 juegos de contenido en vez de 1. **Cuesta lo mismo**: rotando en vez de multiplicar,
+    407 construcciones y ~7 s (el producto cartesiano serian 3256 y ~55 s, y esta es una de las
+    rapidas). La frase mas larga pasa de 19 caracteres a 121.
+  - **Pero el contenido real NO cambia el veredicto, y eso hay que decirlo.** Medido: los 7 juegos
+    reales pasan los 7, y el conteo de mallas con textura que no entran enteras se mueve un 2% (38432
+    con ANTHEM, 39241 con stripe). No puede ser de otra manera — esta compuerta pregunta si la caja
+    CRUZA el cuadro, no si entra entera, asi que el largo del copy no tiene por donde hacerla fallar.
+    La ficha esperaba que el contenido real destapara desbordes y no los destapa: **para eso hace falta
+    la regla de contencion, o sea el hallazgo `:217`**. Los dos estaban acoplados y no se veia.
+  - Queda entonces como cobertura para el dia que alguien toque el encaje, no como arreglo de un
+    defecto de hoy.
 
 - [x] **render3d/demo/verificar.mjs:631**
   - **Síntoma:** El shader llega mutilado al navegador —sin main, sin salida— y el objeto simplemente no se dibuja. Sin error en ninguna consola, sin FAIL en ninguna compuerta: el hero aparece vacio o la pantalla del aparato sale negra, y el diagnostico arranca de cero.
