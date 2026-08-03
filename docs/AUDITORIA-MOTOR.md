@@ -212,11 +212,24 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** Ninguna: verificar.mjs es la unica que varia contenido y solo varia la MARCA (linea 314), nunca frase, golpe, claim ni etiqueta de dato. Los 7 fixtures reales estan en disco, adn-check ya los lee, y ni encuadre-check ni verificar los tocan.
   - `configurarDatos(ANTHEM)`
 
-- [ ] **render3d/demo/verificar.mjs:631**
+- [x] **render3d/demo/verificar.mjs:631**
   - **Síntoma:** El shader llega mutilado al navegador —sin main, sin salida— y el objeto simplemente no se dibuja. Sin error en ninguna consola, sin FAIL en ninguna compuerta: el hero aparece vacio o la pantalla del aparato sale negra, y el diagnostico arranca de cero.
   - **Lo dispara:** Una comilla invertida dentro de un comentario de shader escrito en una escena o un hero. E-SHADER-ENTERO existe porque eso paso CUATRO veces en este repo (su propio comentario, lineas 621-630) y lee dos archivos. Contados: 22 literales `fragmentShader: \`` viven en escenas/ y heroes/ (cierre 2, pant
   - **Compuerta:** Ninguna. `node --check` (E-COMPOSITOR-PARSEA, verificar.mjs:655) no ayuda: el caso peligroso es el que sigue siendo JavaScript valido, y ademas esa lista tampoco incluye escenas ni heroes. El import de cada escena (verificar.mjs:189) tampoco: el modu
   - `for (const arch of ['main.js', 'kit.js']) {`
+  - **CERRADO 2026-08-03**, y con una correccion a la ficha. La lista de archivos ahora se arma leyendo
+    `escenas/` y `heroes/` —modismo que ya usaba E-EASE-VALIDO, asi que no hay que acordarse de
+    actualizarla— y ademas mira las DOS formas de declarar un shader: el literal directo y el asignado
+    por variable (`ventana.js` escribe `fragmentShader: FRAG`, con FRAG definido antes; buscando solo la
+    forma directa, los dos shaders mas largos del motor quedaban afuera justo por estar bien escritos).
+    De 4 shaders en 2 archivos se paso a **32 en 41**.
+  - **La ficha atribuye el valor al caso equivocado, y conviene dejarlo escrito.** Se inyecto una comilla
+    invertida en un comentario del shader de `ventana` y fallan las dos versiones con el MISMO mensaje
+    (`no importa — Unexpected identifier 'q'`): el import revienta antes y E-SHADER-ENTERO ni corre. No
+    se pudo construir el caso 'sigue siendo JavaScript valido' que la ficha describe.
+  - **Lo que la extension SI cierra, demostrado:** un fragmentShader de una escena que parsea
+    perfectamente y nunca escribe su salida. Quitandole el `gl_FragColor` a `pantalla.js`, la compuerta
+    vieja dice 'VERIFICAR OK' y la nueva lo acusa por archivo y por clave.
 
 
 ## Se notan (38)
@@ -348,11 +361,18 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** Ninguna. Peor: la propia compuerta lo construye y no lo ve — verificar.mjs:315 pone `golpe: marca`, asi que con la marca 'Q' destello se arma con L1 de 5.32x6.88 (69% del alto del cuadro) y el gate reporta OK, porque 6.88 < mundoH*0.85 = 8.50.
   - `const L1 = capa(lineasGolpe()[0], mundoW * 0.945) // capa(): new THREE.PlaneGeometry(ancho, ancho / ar)`
 
-- [ ] **render3d/demo/verificar.mjs:315**
+- [x] **render3d/demo/verificar.mjs:315**
   - **Síntoma:** La compuerta cuyo encabezado dice 'la composicion tiene que aguantar nombres que no midan lo que mide ANTHEM' no mide UNA SOLA malla de `tarjetas`, que es la escena que dibuja D.marca tres veces (titulo linea 191, pieI linea 229) y una de ellas sin ningun tope de ancho. Lo mismo le pasa a cualquier escena que se apague por falta de material: el gate de marcas largas y el gate de pagina pobre se an
   - **Lo dispara:** El propio bucle E-ENCAJE. `datos: []` hace que `datosDeLaPagina()` devuelva vacio y que `esDemo` sea false (datos.js:93, porque el objeto no es ANTHEM), asi que tarjetas.js:131 sale por `return { g, tl, vacia: true }`. Comprobado construyendo la escena con la config exacta del gate: con 'Q', 'CONSTR
   - **Compuerta:** Es la compuerta. El agujero es que las cuatro marcas de prueba viajan con `datos: []` y `cta: null`, o sea con la pagina mas pobre posible, cuando lo que se quiere probar es el nombre.
   - `configurarDatos({ ...ANTHEM, marca, frases: [marca], datos: [], cta: null, golpe: marca })`
+  - **CERRADO 2026-08-03, y la ficha estaba en parte VENCIDA.** La linea que cita ya no existe: el gate
+    hoy manda `datos: ANTHEM.datos` y un dominio derivado del nombre. Comprobado midiendo que escenas ve
+    el bucle E-ENCAJE: son 15, y `tarjetas` y `cierre` estan entre ellas — o sea que el sintoma central
+    ('no mide UNA SOLA malla de tarjetas') ya no ocurre.
+  - **Quedaba el `cta: null`**, que era el ultimo pedazo. Puesto un CTA real, el peor ancho de `cierre`
+    con la marca 'Q' pasa de 1.56 a 1.59 unidades: es la pildora entrando en la cuenta. Es poco, y esa
+    es justamente la prueba de que antes no estaba — si no hubiera movido nada, se sacaba.
 
 - [x] **render3d/demo/escenas/cierre.js:273**
   - **Síntoma:** Medido: desde 33 caracteres de dominio la pildora mide 5.72 en un cuadro de 5.625 y se corta contra los dos bordes; con 'construccionesdelsurpatagonico.com.ar' (37) da 6.18, un 10% de sangrado por lado sobre el unico elemento de la pieza que pide una accion. Con 'VER EL MOTOR' da 2.74 y entra sobrado. El mismo archivo SI acota la fila de marcas del pie veinte lineas antes: `if (total > 4.9) gMarca

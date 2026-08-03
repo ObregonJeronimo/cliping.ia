@@ -317,13 +317,15 @@ for (const id of ids) {
     //   · `tarjetas` sale por `vacia: true` sin datos (tarjetas.js:131), justo la escena que dibuja
     //     D.marca tres veces;
     //   · la pildora de `cierre` ni se agrega al grupo sin CTA ni dominio, asi que su ancho —que se
-    //     construye A LA MEDIDA DEL TEXTO— no se medía nunca.
+    //     construye A LA MEDIDA DEL TEXTO— no se medía nunca. Con un CTA real entra: medido, el peor
+    //     ancho de `cierre` con la marca "Q" pasa de 1.56 a 1.59 unidades, que es la pildora sumandose
+    //     a la cuenta. Es poco, y esa es la prueba de que antes NO estaba.
     // O sea que la compuerta cuyo encabezado dice "la composicion tiene que aguantar nombres que no
     // midan lo que mide ANTHEM" no miraba ninguna malla de tarjetas y ninguna pildora.
     // El dominio se arma DEL nombre para que crezca con el: es el caso real, porque el dominio de una
     // marca larga es largo.
     configurarDatos({
-      ...ANTHEM, marca, frases: [marca], datos: ANTHEM.datos, cta: null, golpe: marca,
+      ...ANTHEM, marca, frases: [marca], datos: ANTHEM.datos, cta: ANTHEM.cta, golpe: marca,
       dominio: marca.toLowerCase().replace(/[^a-z0-9]+/g, '') + '.com.ar',
     })
     // El cache de texturas hace que un glifo ya rasterizado no vuelva a pasar por fillText, asi que
@@ -692,18 +694,42 @@ for (const id of ids) {
 // invertidas dentro de un comentario del shader. La comprobacion es tonta y definitiva: todo literal de
 // fragmentShader tiene que terminar declarando su salida, y todo vertexShader la suya. Si una comilla lo
 // corto antes, el texto no las contiene.
-for (const arch of ['main.js', 'kit.js']) {
+// LEIA DOS ARCHIVOS Y LOS SHADERS VIVEN EN TREINTA. `main.js` y `kit.js` tienen algunos; escenas/ y
+// heroes/ tienen 28 literales mas y 2 asignados por variable, o sea que la compuerta escrita porque el
+// defecto paso CUATRO veces cubria una fraccion de la superficie donde puede volver a pasar. La lista
+// se arma leyendo las carpetas para que no haya que acordarse de actualizarla: es el mismo modismo que
+// ya usa E-EASE-VALIDO unas lineas mas arriba.
+//
+// Y SE MIRAN LAS DOS FORMAS DE DECLARAR UN SHADER. `ventana.js` no escribe `fragmentShader: \`...\``
+// sino `fragmentShader: FRAG`, con FRAG definido antes como template literal. Buscando solo la forma
+// directa, los dos shaders mas largos del motor —los de la ventana, que es el hero que MUESTRA LA
+// PAGINA— quedaban afuera justo por estar bien escritos.
+const ARCH_SHADER = ['main.js', 'kit.js']
+for (const d of ['escenas', 'heroes']) {
+  for (const f of readdirSync(join(HERE, d)).filter(x => x.endsWith('.js'))) ARCH_SHADER.push(join(d, f))
+}
+let shadersMirados = 0
+for (const arch of ARCH_SHADER) {
   const src = readFileSync(join(RAIZ, 'render3d', 'demo', arch), 'utf8')
+  // Un literal de shader que arranca en `desde` tiene que llegar a su marca ANTES de la comilla que lo
+  // cierra. Si una comilla invertida perdida lo corto antes, el texto no la contiene y eso es todo lo
+  // que hay que preguntar.
+  const revisar = (desde, clave, marca, comoLlega) => {
+    const fin = src.indexOf('`', desde)
+    const cuerpo = fin < 0 ? src.slice(desde) : src.slice(desde, fin)
+    shadersMirados++
+    if (!cuerpo.includes(marca)) {
+      die(`E-SHADER-ENTERO  ${arch}: un ${clave}${comoLlega} se cierra sin llegar a ${marca} — casi seguro una comilla invertida dentro de un comentario del shader`)
+    }
+    return fin < 0 ? src.length : fin + 1
+  }
   for (const [clave, marca] of [['fragmentShader', 'gl_FragColor'], ['vertexShader', 'gl_Position']]) {
     let i = 0
-    while ((i = src.indexOf(clave + ': `', i)) >= 0) {
-      const ini = i + clave.length + 3
-      const fin = src.indexOf('`', ini)
-      const cuerpo = fin < 0 ? src.slice(ini) : src.slice(ini, fin)
-      if (!cuerpo.includes(marca)) {
-        die(`E-SHADER-ENTERO  ${arch}: un ${clave} se cierra sin llegar a ${marca} — casi seguro una comilla invertida dentro de un comentario del shader`)
-      }
-      i = fin < 0 ? src.length : fin + 1
+    while ((i = src.indexOf(clave + ': `', i)) >= 0) i = revisar(i + clave.length + 3, clave, marca, '')
+    // La forma por variable: se busca a que identificador se le asigna y se revisa SU literal.
+    for (const m of src.matchAll(new RegExp(clave + String.fromCharCode(58) + ' ([A-Za-z_$][\w$]*)', 'g'))) {
+      const decl = src.indexOf('const ' + m[1] + ' = `')
+      if (decl >= 0) revisar(decl + ('const ' + m[1] + ' = `').length, clave, marca, ` (por ${m[1]})`)
     }
   }
 }
@@ -727,4 +753,5 @@ for (const arch of ['main.js', 'kit.js', 'guion.js', 'datos.js', 'adn.js']) {
 
 if (fails) { console.error(`\nVERIFICAR: ${fails} FAIL`); process.exit(1) }
 
+console.log(`  E-SHADER-ENTERO: ${shadersMirados} shaders revisados en ${ARCH_SHADER.length} archivos (literales y asignados por variable).`)
 console.log(`VERIFICAR OK (${ids.length} escena${ids.length > 1 ? 's' : ''}: contrato, sin azar ni reloj propio, duracion dentro de sus beats, camara devuelta, nada descansa mas de un beat, determinista).`)
