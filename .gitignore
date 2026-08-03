@@ -28,3 +28,6 @@ tools/tmp/
 
 # Cache del motor: capturas y renders por dominio. Se regenera con backend/motor.py.
 tools/out/motor/
+
+# Investigacion interna: no se pushea
+docs/RESEARCH-RAYLIGHT.md
