@@ -158,6 +158,14 @@ export const frase = (i) => {
 // por falta de material tambien vacia la pieza: el guionista ya limita cuantas escenas de texto entran
 // segun cuantas frases hay (ver el cupo en guion.js). Dar la vuelta es el ultimo recurso y avisa por
 // `repetidas` para que una compuerta pueda medirlo.
+// QUIEN SE LLEVO QUE, y no solo cuantas veces se repitio.
+//
+// `repetidas` cuenta la vuelta del cursor y no dice ni cual frase ni a quien le toco, y sin eso no se
+// puede medir el defecto que de verdad importa: LA MISMA FRASE EN DOS ESCENAS DE LA MISMA PIEZA, que
+// es el reclamo textual sobre dos videos ('se repitieron los mismos textos en otras escenas').
+// `entregadas` guarda cada frase en el orden en que salio del mostrador; quien mida atribuye por
+// tramos, anotando el largo antes y despues de construir cada escena. Cuesta un push por frase.
+export const entregadas = []
 let _cursor = 0
 export let repetidas = 0
 // LA PROMESA TAMBIEN SE REPARTE, y es la unica pieza de copy que dos escenas quieren a la vez: `gancho`
@@ -167,7 +175,7 @@ export let repetidas = 0
 let _claimUsado = false
 export const claimLibre = () => !_claimUsado
 export const marcarClaimUsado = () => { _claimUsado = true }
-export const reiniciarReparto = () => { _cursor = 0; repetidas = 0; _claimUsado = false }
+export const reiniciarReparto = () => { _cursor = 0; repetidas = 0; _claimUsado = false; entregadas.length = 0 }
 
 // `soloUnaLinea` lo piden las escenas que componen una grilla vertical y no toleran un item del doble
 // de alto. `cuantas` es un maximo: si hay menos, devuelve menos, y la escena decide si le alcanza.
@@ -218,6 +226,7 @@ export function repartirFrases(cuantas, soloUnaLinea = false) {
     if (_cursor + k >= elegibles.length) repetidas++
     out.push(elegibles[i])
   }
+  for (const f of out) entregadas.push(f)
   // El cursor avanza por el pozo COMPLETO y no por el filtrado: si `lista` se lleva las de una linea,
   // la escena siguiente tiene que arrancar despues de ellas igual, o vuelve a caer en las mismas.
   _cursor += Math.min(cuantas, elegibles.length)

@@ -401,6 +401,10 @@ export function guionDe({ escenas, datos, seed = 1, beatSeg = 60 / 124, dur = nu
   // "BIG NUMBERS", que era el primer item del bloque de texto de 0:12. El mostrador de datos.js evita
   // que dos escenas muestren la MISMA frase mientras quede material; el cupo evita que se pidan mas
   // frases de las que la pagina dio.
+  // `titular` ESTABA BEBIENDO SIN QUE NADIE LO CONTARA. Medido construyendo 105 piezas con los 7
+  // fixtures reales (`tools/eco-check.mjs`): aparece 75 veces —mas que ninguna otra sedienta— y entraba
+  // por fuera del cupo, asi que se llevaba frases que las demas ya tenian contadas y el mostrador
+  // terminaba dando la vuelta. Ahora pide UNA (ver la nota en titular.js) y esa una se cuenta.
   const SEDIENTAS = ['tipografia', 'lista', 'partida', 'rafaga', 'marquesina']
   // SIN LA FRASE DEL GOLPE, por lo mismo que `partida`: el cupo reparte un pozo que el mostrador ya
   // achico. Contandola de mas, entraba una escena sedienta que no tenia con que llenarse y el
@@ -429,6 +433,10 @@ export function guionDe({ escenas, datos, seed = 1, beatSeg = 60 / 124, dur = nu
   // antes —una o dos escenas—, y eso NO es un defecto del reparto: es que la pagina no dio mas texto.
   // Subir el cupo ahi seria hacer que dos escenas se peleen las mismas frases, que es exactamente el
   // defecto que este bloque existe para evitar.
+  // EL 4 DE `marquesina` NO ES UN ERROR AUNQUE TOME 3, y esto se midio antes de 'corregirlo'. Bajarlo a
+  // su consumo real la deja entrar mas seguido, y cada vez que entra se lleva tres frases de un pozo
+  // que en una landing tiene cuatro: la repeticion entre escenas SUBIO de 12.4% a 18.1% sobre 105
+  // piezas. La frase de mas que reservaba funcionaba como margen. Se deja en 4 a proposito.
   const APETITO = { partida: 2, tipografia: 3, lista: 3, rafaga: 3, marquesina: 4 }
   // Y SE ROTA CON LA SEMILLA, no se corta por prioridad fija. El `slice(0, cupo)` hacia ganar SIEMPRE a
   // `tipografia`, asi que `lista` y `partida` quedaban inalcanzables en toda la franja de 3 a 7 frases —

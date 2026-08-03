@@ -505,6 +505,26 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Lo dispara:** `hero` bebe una frase del mostrador cuando el objeto es de geometria pura (hero.js:74-78, solo los `necesita: ['nada']`, que son 12 de los 18 del registro), y NO figura en SEDIENTAS ni en APETITO: el cupo reparte el pozo entre cinco escenas ignorando a la que mas veces aparece. Encima es el relleno 
   - **Compuerta:** Ninguna. El gate no construye escenas, asi que no ve el consumo; y el unico contador que existiria —`repetidas`— no lo lee nadie.
   - `const fr = (repartirFrases(1) || [])[0]`
+- SEGUIMIENTO de hero.js:76 (2026-08-03): **la atribucion de la ficha no se reproduce, y el culpable
+  real era otro.** Se construyeron 105 piezas con los 7 fixtures reales (compuerta nueva
+  `tools/eco-check.mjs`), midiendo que frases se lleva cada escena del mostrador:
+  - **`hero` aparece 89 veces y bebe CERO.** `rotular` solo bebe cuando el objeto elegido es de
+    geometria pura, y con paginas que traen material gana casi siempre un hero que muestra la pagina.
+    La ficha midio awwwards-com, que no esta entre los fixtures; el mecanismo existe, pero su peso es
+    mucho menor de lo que dice.
+  - **El que bebia sin que nadie lo contara era `titular`:** 75 apariciones, 2 frases cada vez = 150
+    frases, mas que ninguna otra escena (marquesina 126, tipografia 90). Y peor: **pedia 2 y mostraba
+    1** —las pedia para elegir la mas larga— asi que tiraba 75 frases de un pozo que en una landing
+    real tiene cuatro.
+  - **Medido antes y despues:** la misma frase en dos escenas pasa de **40.0% a 12.4%** de las piezas
+    con solo hacer que `titular` pida una, y sin mover una sola aparicion de ninguna escena.
+  - **Lo que se probo y NO se dejo puesto:** meter `titular` en el cupo de `guion.js` baja el eco a
+    1.9%, pero `marquesina` cae de 42 apariciones a 2 — se cambia un defecto que se lee por una escena
+    que desaparece. Y 'corregir' el apetito de `marquesina` de 4 a 3 (su consumo real) SUBE el eco a
+    18.1%: la frase de mas que reservaba funcionaba como margen. Las dos cosas quedan medidas en el
+    codigo para que la decision se tome con numeros.
+  - Queda ABIERTO el hallazgo original (el hero sigue bebiendo sin contarse), con el trinquete de
+    `eco-check` en 13% para que el numero no pueda subir.
 
 - [x] **render3d/demo/guion.js:87**
   - **Síntoma:** `repartirFrases(2, true)` devuelve ['Submit your website', 'Submit your website'] y la guarda de partida.js:36 no se dispara porque el mostrador nunca devuelve de menos: el cuadro partido muestra la MISMA linea arriba y abajo. Es exactamente lo que el encabezado de la escena declara imposible (partida.js:18-19: 'SIN DOS FRASES NO HAY PAR ... Se declara vacia'). Medido: 16 de 180 guiones de awwward

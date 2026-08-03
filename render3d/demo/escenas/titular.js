@@ -50,11 +50,18 @@ function titularDe() {
   const claim = String(D.claim || '').trim()
   // Si el gancho ya la uso, la portada cae a una frase: ver `claimLibre` en datos.js.
   if (claim && claimLibre()) { marcarClaimUsado(); return enLineas(claim, MAX_LINEAS) }
-  const fr = repartirFrases(2)
-  const dosLineas = fr.find(f => f.includes('\n'))
-  if (dosLineas) return dosLineas
+  // UNA, NO DOS. Esto pedia DOS frases y mostraba UNA: las pedia para poder elegir —la de dos renglones,
+  // o la mas larga— y la que no elegia se perdia, porque el mostrador reparte con un cursor que no
+  // vuelve atras. Medido construyendo 105 piezas con los 7 fixtures reales (`tools/eco-check.mjs`):
+  // `titular` aparece 75 veces, o sea 75 frases tiradas de un pozo que en una landing real tiene cuatro.
+  // Esa era la presion que hacia dar la vuelta al mostrador, y el resultado se veia: el 40% de las
+  // piezas decia la misma frase en dos escenas — 'message board' en la marquesina y otra vez en la
+  // portada, en la misma pieza de 15 s.
+  //
+  // Elegir entre dos era una mejora chica; gastar una frase de cuatro para conseguirla no lo vale.
+  const fr = repartirFrases(1)
   if (!fr.length) return ''
-  return fr.slice().sort((a, b) => b.length - a.length)[0]
+  return fr[0]
 }
 
 // Reparte un texto en `n` renglones lo mas parejos posible, sin cortar palabras. Busca el reparto que
