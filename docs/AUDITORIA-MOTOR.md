@@ -407,12 +407,43 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Lo dispara:** Cualquier tipografia o recorte que se pase del cuadro sin llegar a esos umbrales: hasta 12.38 unidades de ancho (2376 px en un cuadro de 1080, o sea 220% del cuadro) y 8.50 de alto pasan en verde.
   - **Compuerta:** Es la compuerta. Y por eso los dos renglones de arriba (cierre 7.22 de alto, y cualquier recorte ampliado) le pasan por debajo.
   - `ok(peor.y <= mundoH * 0.85 && peor.x <= mundoW * 2.2,`
+- SEGUIMIENTO de verificar.mjs:410 (2026-08-03): **el hueco (2) esta cerrado, el (1) NO, y a proposito.**
+  - El hueco de los EJES —guardar una sola pieza, la mas alta, y despues comprobar SU ancho— esta
+    arreglado: ahora se guarda el peor de cada eje por separado. Probado por inyeccion: una malla con
+    textura de 12.50 x 0.50 metida en `tarjetas` (que ya tiene otra de 3.80 de alto) pasa en VERDE con la
+    compuerta vieja y falla con la nueva.
+  - El tope de ancho **no se bajo**, y no por olvido. Medido barriendo los 11 aires y 4 marcas (748
+    combinaciones): con el aire por omision el maximo real es 1.47 cuadros, pero `destello` llega a
+    **2.33 cuadros** en deportivo, jugueton y nocturno. O sea que el 2.2 no es tan holgado como dice la
+    ficha, y bajarlo a ojo rompe una escena. Ademas aparecio algo que la ficha no menciona: **E-ENCAJE
+    corre con UN SOLO aire** (`configurar()` solo se llama en E-EASE), asi que si barriera aires ya
+    estaria en rojo hoy. Los 13.12 u de `destello` son un TRANSITORIO de su golpe de escala —la escena
+    compone a `mundoW * 0.945`— o sea que hay que decidir si ese golpe es legitimo antes de tocar el
+    numero. Queda abierto con la medicion escrita, que es lo que pide el metodo: un tope que no se puede
+    derivar no se elige a ojo.
 
-- [ ] **render3d/demo/datos.js:196-206 (repartirFrases)**
+- [x] **render3d/demo/datos.js:196-206 (repartirFrases)**
   - **Síntoma:** La falta de material no sale como escena vacia (que se ve y se arregla) sino como TEXTO REPETIDO dentro de la misma escena: la lista enumera A/B/A, las dos mitades de `partida` dicen lo mismo, las dos cintas de la marquesina cruzan la misma frase. Ademas el comentario de datos.js:203-204 dice que el cursor avanza por el pozo COMPLETO y el codigo avanza por el FILTRADO (`_cursor += Math.min(cuantas
   - **Lo dispara:** El mostrador devuelve SIEMPRE exactamente `cuantas` items mientras quede un solo elegible: si se piden 5 y hay 2, devuelve 5 = [A,B,A,B,A] y suma 3 a `repetidas`. Entonces las guardas propias de las escenas —lista.js:50 `if (items.length < MIN_ITEMS)`, partida.js:36 `if (fr.length < 2)`, marquesina.
   - **Compuerta:** Ninguna. `repetidas` se exporta en datos.js:162 y —grep en todo el repo— NADIE la lee; lo mismo `recortesRepetidos` (kit.js:2055). El comentario de datos.js:159-160 dice 'avisa por `repetidas` para que una compuerta pueda medirlo' y esa compuerta no 
   - `if (!elegibles.length) return [] const out = [] for (let k = 0; k < cuantas; k++) { const i = (_cursor + k) % elegibles.length if (_cursor + k >= elegibles.length) repetidas++ out.push(elegibles[i]) }`
+  - **CERRADO 2026-08-03.** El archivo se contradecia a si mismo: `datos.js:173` documenta que
+    '`cuantas` es un maximo: si hay menos, devuelve menos, y la escena decide si le alcanza' —que es el
+    contrato contra el que estan escritas `lista.js:50` y `partida.js:36`— y el codigo devolvia SIEMPRE
+    exactamente lo pedido. Gana el comentario.
+  - **Y no contradice el 'dar la vuelta' de las lineas 157-160**, que son dos situaciones distintas
+    resueltas con el mismo codigo: (a) el CURSOR paso del final porque las escenas anteriores se
+    llevaron las frases —repetir ahi es deliberado y sigue igual— y (b) se piden mas de las que hay, que
+    mete la misma frase dos veces EN LA MISMA ESCENA. Ahora el largo se limita a `elegibles.length`, asi
+    que (b) no puede pasar y (a) no cambio.
+  - **Medido antes y despues.** Con 2 frases y un pedido de 5: el codigo viejo devuelve
+    `[Alfa, Beta, Alfa, Beta, Alfa]` (5 items, 2 distintos) y el nuevo devuelve `[Alfa, Beta]`, con lo
+    cual la guarda de la escena por fin se cumple y la escena se declara vacia. Con pagina rica, los dos
+    devuelven lo mismo.
+  - **Compuerta nueva: E-SIN-ECO**, anexada a `tools/guion-check.mjs` — que es la que el comentario de
+    `datos.js:159-160` prometia ('avisa por `repetidas` para que una compuerta pueda medirlo') y no
+    existia. Exige el invariante, no la implementacion: 4 paginas x 4 pedidos, y lo que entra en una
+    escena no puede tener eco. Contra el codigo viejo da ROJO en 14 casos.
 
 - [x] **render3d/demo/guion.js:320 contra render3d/demo/datos.js:193**
   - **Síntoma:** El cupo cree que hay una frase mas de las que hay y deja entrar una sedienta de mas; el mostrador no se niega, da la vuelta, y dos escenas dicen la misma linea. Medido sobre stripe-com, 180 guiones, SIN contar lo que bebe el hero: 75 piezas (42%) tienen una frase repetida en dos escenas distintas. Ejemplo exacto: seed5/20s da `gancho>apertura>rafaga>partida>cierre` y 'Global payment acceptance' sa
@@ -587,11 +618,22 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** No, y no puede: el gate le pasa a guionDe su propio objeto de datos y nunca corre `configurarDatos`, asi que la diferencia entre el crudo y el filtrado no existe dentro del gate.
   - `datos: { ...this.spec.datos, tira: !!this.spec.tira },`
 
-- [ ] **render3d/demo/verificar.mjs:530**
+- [x] **render3d/demo/verificar.mjs:530**
   - **Síntoma:** Doble filo. Una escena que se mueve solo por uniforms puede acusarse en falso de diapositiva, y —peor— una que anima un uniform de forma no determinista o que no se mueve donde dice moverse pasa en verde. En portatil las dos cosas se juntan: el scroll de cinco saltos no mueve nada (el shader ignora offset) y la compuerta no puede confirmarlo ni desmentirlo porque tampoco lee offset.
   - **Lo dispara:** Una escena cuyo movimiento vive en uniforms que no se llamen `uProg`. La firma de 'NADA DESCANSA' y la de DETERMINISMO son la misma funcion y registran matrixWorld + visible + opacity + uProg, nada mas. Quedan afuera `tira.offset` (el scroll de portatil.js:216-217, telefono, ventana, pantalla y mesa
   - **Compuerta:** Ninguna. Agregar los uniforms escalares y vec2 del material a `firmaDe`, y aceptar isLine/isLineSegments/isSprite en los tres filtros, cierra las dos cosas sin cambiar los umbrales.
   - `+ `${(o.material && o.material.uniforms && o.material.uniforms.uProg ? o.material.uniforms.uProg.value : 0).toFixed(3)};``
+  - **CERRADO 2026-08-03.** `firmaDe` ahora registra TODOS los uniforms escalares, vectoriales y de
+    color del material (ordenados por nombre, salteando texturas y matrices), y acepta ademas
+    `isLine`, `isLineSegments` e `isSprite` — las aristas encendidas de un cubo y los filetes eran
+    movimiento que la firma no veia.
+  - **Probado por inyeccion, en los dos sentidos.** Se le puso a `portatil` un uniform cuyo valor
+    cambia en cada build (`uPrueba: ++contador`): con la firma NUEVA la compuerta falla
+    ('dos construcciones con la misma semilla dan escenas distintas'); con la VIEJA, exactamente el
+    mismo defecto, dice 'determinista' y sale en verde. El hueco era real y esta cerrado.
+  - Nota: sumar informacion a la firma no puede inventar un fallo de QUIETUD —solo puede revelar
+    movimiento donde antes se veia una diapositiva— y en cambio hace mas estricto el DETERMINISMO,
+    que es lo que se le pedia.
 
 - [x] **tools/guion-check.mjs:73**
   - **Síntoma:** Un fallo en falso de duracion (que se aprende a ignorar, y despues no se ve el de verdad) o, al reves, una divergencia entre los requisitos del motor y los de la compuerta que nadie detecta en 13 de 19 escenas.

@@ -57,7 +57,7 @@ diagnóstico falso cuesta más que no haberlos hecho. Antes de declarar un defec
 - **7 rápidas (~8 s), en cada cambio del motor:** `verificar.mjs`, `guion-check`, `encuadre-check`,
   `adn-check`, `testimonios-check`, `tira-check` (la página del cliente no se deforma) y
   `heroes-check` (un héroe no se ofrece si no tiene con qué).
-- **Guard completo (~30 min), sólo antes de pushear:** `npm run gates:guard`. Tiene que dar 30 OK /
+- **Guard completo (~30 min), sólo antes de pushear:** `npm run gates:guard`. Tiene que dar 31 OK /
   0 FAIL. Nunca correr dos guards a la vez.
 
 ## Dónde vive el motor

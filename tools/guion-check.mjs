@@ -301,3 +301,51 @@ if (cortas.length) {
   for (const c of casos.slice(0, 6)) console.log(`    ${c}`)
   console.log('    El arreglo es mas escenas, no mas tolerancia de tempo.')
 }
+
+// ---------------------------------------------------------------------------------------------
+// E-SIN-ECO — el mostrador no entrega dos veces la misma frase en la MISMA escena.
+//
+// `datos.js:159-160` promete textualmente que la vuelta del cursor 'avisa por `repetidas` para que una
+// compuerta pueda medirlo'. Esa compuerta no existia: `repetidas` se exporta y —grep en todo el repo—
+// nadie la lee. Y mientras tanto el mostrador devolvia SIEMPRE exactamente lo pedido: con 2 frases y un
+// pedido de 5 salia [A,B,A,B,A], asi que la lista enumeraba A/B/A, las dos mitades de `partida` decian
+// lo mismo y las dos cintas de `marquesina` cruzaban la misma frase.
+//
+// Peor: eso dejaba MUERTAS las guardas de las escenas, escritas contra el contrato que documenta
+// `datos.js:173` ('si hay menos, devuelve menos, y la escena decide si le alcanza'). `lista.js:50` mira
+// `items.length < MIN_ITEMS` y nunca se cumplia. La falta de material no salia como escena vacia —que
+// se ve y se arregla— sino como texto repetido adentro de una escena bien compuesta.
+//
+// Se exige el INVARIANTE, no la implementacion: lo que entra en una escena no puede tener eco.
+if (!globalThis.document) {
+  globalThis.document = { createElement: (t) => (t === 'canvas' ? null : { style: {} }), fonts: { ready: Promise.resolve(), load: async () => {}, add() {}, check: () => true, *[Symbol.iterator]() {} } }
+  globalThis.FontFace = class { constructor(f) { this.family = f } async load() { return this } }
+  globalThis.window = globalThis
+}
+const DAT = await import('../render3d/demo/datos.js')
+const ecos = []
+for (const [nombre, frases] of [
+  ['pagina de una sola frase', ['Una sola cosa que decir']],
+  ['pagina pobre', ['Alfa', 'Beta']],
+  ['pagina normal', ['A', 'B', 'C', 'D']],
+  ['pagina rica', ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']],
+]) {
+  for (const pedido of [2, 3, 5, 8]) {
+    DAT.reiniciarReparto()
+    DAT.configurarDatos({ marca: 'X', frases, golpe: '', claim: '', bloque: { titulo: '', bajada: '' },
+      datos: [], cta: '', pie: [], dominio: 'x.com', elementos: [] })
+    const dado = DAT.repartirFrases(pedido)
+    if (new Set(dado).size !== dado.length) {
+      ecos.push(`${nombre}: pidiendo ${pedido} devuelve ${dado.length} con ${new Set(dado).size} distintas -> ${JSON.stringify(dado)}`)
+    }
+    if (dado.length > frases.length) {
+      ecos.push(`${nombre}: pidiendo ${pedido} devuelve ${dado.length} y la pagina solo tiene ${frases.length} frases`)
+    }
+  }
+}
+if (ecos.length) {
+  console.log(`GATE SIN-ECO FAIL (${ecos.length}):`)
+  for (const e of ecos) console.log('  ' + e)
+  process.exit(1)
+}
+console.log('GATE SIN-ECO OK (4 paginas x 4 pedidos: el mostrador nunca entrega la misma frase dos veces en la misma escena).')

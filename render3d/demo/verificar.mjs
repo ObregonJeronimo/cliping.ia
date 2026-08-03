@@ -414,7 +414,12 @@ for (const id of ids) {
       if (!esG) return                              // el heuristico de abajo es solo para `g`
       const esFilete = Math.min(t.x, t.y) < 0.15
       if (esFilete || t.y > mundoH * 1.6) return
-      if (!peor || t.y > peor.y) peor = { x: t.x, y: t.y }
+      // CADA EJE SE MIDE POR SU CUENTA. Esto guardaba UNA sola pieza —la mas ALTA— y despues comprobaba
+      // SU ancho, asi que una pieza ancha y baja no se medi­a nunca: alcanzaba con que hubiera en la
+      // escena otra mas alta y mas angosta para que el ancho de la primera no llegara a mirarse. Un
+      // renglon que se derrama por los dos costados es exactamente eso, ancho y bajo.
+      if (!peor || t.y > peor.y) peor = { x: t.x, y: t.y, ancha: peor ? peor.ancha : null }
+      if (!peor.ancha || t.x > peor.ancha.x) peor.ancha = { x: t.x, y: t.y }
     }
     // EN VARIOS INSTANTES, NO EN UNO. Esto medía SOLO el 72% de la escena —"ya asentada, antes de la
     // salida"— y con eso todo lo que sobresale en la ENTRADA o en la SALIDA sencillamente no existía
@@ -433,8 +438,9 @@ for (const id of ids) {
     ok(noEncajan.length === 0,
       `E-ENCAJE ${id}: con la marca "${marca}" ${noEncajan.length} pieza(s) declaradas encaja=true se salen del cuadro (${mundoW.toFixed(2)}x${mundoH.toFixed(2)}): ${noEncajan.join(' · ')}`)
     if (peor) {
-      ok(peor.y <= mundoH * 0.85 && peor.x <= mundoW * 2.2,
-        `E-ENCAJE ${id}: con la marca "${marca}" una pieza mide ${peor.x.toFixed(2)}x${peor.y.toFixed(2)} en un cuadro de ${mundoW.toFixed(2)}x${mundoH.toFixed(2)} — se come el cuadro`)
+      if (process.env.MEDIR_ANCHO) console.log(`  ANCHO ${id}/${marca}: alta ${peor.y.toFixed(2)} (ancho ${peor.x.toFixed(2)}) · ancha ${peor.ancha.x.toFixed(2)} = ${(peor.ancha.x / mundoW).toFixed(2)} cuadros`)
+      ok(peor.y <= mundoH * 0.85 && peor.ancha.x <= mundoW * 2.2,
+        `E-ENCAJE ${id}: con la marca "${marca}" una pieza mide ${peor.ancha.x.toFixed(2)} de ancho y otra ${peor.y.toFixed(2)} de alto en un cuadro de ${mundoW.toFixed(2)}x${mundoH.toFixed(2)} — se come el cuadro`)
     }
     // El nombre entero o nada: un truncado silencioso es peor que un nombre chico.
     //
@@ -542,18 +548,50 @@ for (const id of ids) {
   //
   // `gr` es donde va TODO recorte real de la pagina, o sea la parte mas valiosa del producto. Era
   // justo lo que no se estaba controlando.
+  // LOS UNIFORMS TAMBIEN SON MOVIMIENTO, y esta firma miraba UNO SOLO: `uProg`. Todo lo que se anima
+  // por otro uniform quedaba afuera de las dos preguntas que esta funcion contesta, y son las dos que
+  // mas importan: "¿esto se quedo quieto un beat entero?" y "¿esto es determinista?".
+  //
+  // El caso que lo probo es el scroll de la pagina. `portatil`, `telefono`, `ventana`, `pantalla` y
+  // `mesa` mueven la pagina animando `tira.offset`, que viaja al shader en un uniform vec2. Con la
+  // firma vieja eso no existia: el hero del portatil tuvo durante semanas un shader que IGNORABA el
+  // offset —o sea que el scroll no movia un pixel— y la compuerta no podia ni acusarlo ni
+  // desmentirlo, porque tampoco lo leia. Un movimiento que la compuerta no mira es un movimiento que
+  // puede no estar ocurriendo.
+  //
+  // Se registran numeros, vectores y colores; las texturas y las matrices se saltean (una textura no
+  // se anima, y su identidad no dice nada sobre el cuadro). Sumar informacion a la firma NO puede
+  // inventar un fallo de quietud —solo puede revelar movimiento donde antes se veia una diapositiva—
+  // y en cambio hace mas ESTRICTO el determinismo, que es exactamente lo que se le pide.
+  const valorUniforme = (v) => {
+    if (typeof v === 'number') return v.toFixed(4)
+    if (!v || typeof v !== 'object') return ''
+    if (v.isVector2) return `${v.x.toFixed(4)}/${v.y.toFixed(4)}`
+    if (v.isVector3) return `${v.x.toFixed(4)}/${v.y.toFixed(4)}/${v.z.toFixed(4)}`
+    if (v.isVector4 || v.isQuaternion) return `${v.x.toFixed(4)}/${v.y.toFixed(4)}/${v.z.toFixed(4)}/${v.w.toFixed(4)}`
+    if (v.isColor) return `${v.r.toFixed(4)}/${v.g.toFixed(4)}/${v.b.toFixed(4)}`
+    return ''
+  }
   const firmaDe = (grupo, extra) => {
     let s = ''
     for (const raiz of [grupo, extra]) {
       if (!raiz) continue
       raiz.updateWorldMatrix(true, true)
       raiz.traverse(o => {
-      if (!o.isMesh && !o.isPoints) return
+      // LINEAS Y SPRITES CUENTAN. Las aristas encendidas de un cubo, los filetes y los halos son
+      // `LineSegments` y `Sprite`, y quedaban fuera de la firma: una escena cuyo unico movimiento
+      // fueran sus lineas figuraba como diapositiva.
+      if (!o.isMesh && !o.isPoints && !o.isLine && !o.isLineSegments && !o.isSprite) return
       const e = o.matrixWorld.elements
       for (let i = 0; i < 16; i++) s += e[i].toFixed(3) + ','
       s += `${o.visible ? 1 : 0},`
         + `${(o.material && o.material.opacity != null ? o.material.opacity : 1).toFixed(3)},`
-        + `${(o.material && o.material.uniforms && o.material.uniforms.uProg ? o.material.uniforms.uProg.value : 0).toFixed(3)};`
+      const u = o.material && o.material.uniforms
+      if (u) for (const k of Object.keys(u).sort()) {
+        const t = u[k] && valorUniforme(u[k].value)
+        if (t) s += `${k}=${t},`
+      }
+      s += ';'
       })
     }
     return s

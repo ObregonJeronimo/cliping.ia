@@ -194,8 +194,26 @@ export function repartirFrases(cuantas, soloUnaLinea = false) {
   const base = sinGolpe.length ? sinGolpe : pozo
   const elegibles = soloUnaLinea ? base.filter(f => !f.includes('\n')) : base
   if (!elegibles.length) return []
+  // NUNCA DOS VECES LA MISMA FRASE EN LA MISMA ENTREGA — y esto no contradice el "dar la vuelta" de
+  // arriba, son dos situaciones distintas que estaban resueltas con el mismo codigo:
+  //
+  //   (a) EL CURSOR paso del final del pozo porque las escenas anteriores se llevaron las frases. Dar
+  //       la vuelta ahi es deliberado y esta razonado en las lineas 157-160: la escena siguiente
+  //       muestra una frase que ya salio hace rato, y eso es preferible a un agujero.
+  //   (b) SE PIDEN MAS DE LAS QUE HAY. Ahi la vuelta mete la misma frase DOS VECES EN LA MISMA ESCENA:
+  //       se piden 5 con 2 elegibles y salen [A,B,A,B,A]. La lista enumera A/B/A, las dos mitades de
+  //       `partida` dicen lo mismo y las dos cintas de `marquesina` cruzan la misma frase. Eso no es un
+  //       ultimo recurso, es un defecto que el espectador lee de una.
+  //
+  // El (b) ademas dejaba MUERTAS las guardas de las escenas, que estan escritas contra el contrato que
+  // documenta la linea 173 ("`cuantas` es un maximo: si hay menos, devuelve menos, y la escena decide
+  // si le alcanza"): `lista.js:50` mira `items.length < MIN_ITEMS` y `partida.js:36` mira `fr.length < 2`,
+  // y nunca se cumplian porque el mostrador SIEMPRE devolvia exactamente lo pedido. El codigo y su
+  // propio comentario decian cosas distintas; gana el comentario, que es el contrato contra el que se
+  // escribio todo lo demas.
+  const n = Math.min(cuantas, elegibles.length)
   const out = []
-  for (let k = 0; k < cuantas; k++) {
+  for (let k = 0; k < n; k++) {
     const i = (_cursor + k) % elegibles.length
     if (_cursor + k >= elegibles.length) repetidas++
     out.push(elegibles[i])
