@@ -130,6 +130,46 @@ async def capturar(url: str, dst: str, con_tira: bool = True) -> dict:
     return pm
 
 
+# EL FILTRO DE PLACEHOLDERS, Y VIVE ACA ARRIBA PARA QUE SE PUEDA PROBAR.
+#
+# Estaba anidado dentro de `datos_de`, o sea que ninguna prueba podia importarlo: el unico filtro que
+# separa la foto real del cliente de su LQIP borroso —el que se descarga primero, se ve como un
+# rectangulo de bloques de color y ocupa medio cuadro— corria en el camino de captura sin una sola
+# compuerta. Si se rompia, las siete rapidas seguian en verde. Lo encontro el dueño en un video, no
+# nosotros. Ahora lo cubre `tools/placeholder-check.py`.
+#
+# COMO SEPARA, que no es obvio y por eso conviene dejarlo escrito. Se miden dos cosas sobre el gris:
+#
+#   corrida  cuantos pixeles hay por cada cambio de valor a lo largo de una fila. Una imagen borrosa
+#            o de bloques grandes cambia poco: corrida ALTA. Texto o una foto nitida cambia todo el
+#            tiempo: corrida BAJA.
+#   tonos    cuantos de los 32 cajones del histograma tienen mas del 1% de los pixeles. Un logo plano
+#            o un boton usan dos o tres; una foto —aunque este borrosa— usa muchos.
+#
+# Se piden LAS DOS a la vez, y esa conjuncion es la que hace el trabajo: medido sobre los 53 recortes
+# reales del repo, corrida alta viene siempre con tonos 1-4 (logos, botones, bandas planas) y tonos
+# altos vienen siempre con corrida 1.7-3.3 (fotos nitidas). Ninguno de los 53 se descarta, que es lo
+# que tiene que pasar: el material de verdad no se tira. Un LQIP cae en el unico cuadrante que queda
+# libre —borroso Y colorido— y por eso se lo puede separar sin tocar nada mas.
+#
+# LIMITE CONOCIDO: un placeholder de menos de 8 tonos (un bloque gris, dos colores planos) NO se
+# detecta. Es deliberado: bajar el umbral empezaria a descartar logos y botones reales, y perder la
+# imagen del cliente es peor que mostrar un placeholder.
+def es_placeholder(ruta):
+    try:
+        import numpy as np
+        from PIL import Image
+        im = Image.open(ruta).convert("L")
+        a = np.asarray(im.resize((min(400, im.size[0]), min(400, im.size[1]))), dtype=np.int16)
+        d = np.abs(np.diff(a, axis=1))
+        corrida = d.size / max(1, int((d > 2).sum()))       # pixeles por cambio
+        h = np.histogram(a, bins=32, range=(0, 255))[0].astype(float)
+        h /= max(1e-9, h.sum())
+        tonos = int((h > 0.01).sum())
+        return corrida > 8 and tonos >= 8
+    except Exception:
+        return False                                        # ante la duda, se conserva
+
 def datos_de(pagemodel_path: str, dst: str, seed: int | None = None) -> dict:
     """pagemodel -> DATOS + aire + adn, con el puente de Node.
 
@@ -220,20 +260,6 @@ async def render(url: str, salida: str, hero: str | None = None, dur: int = 20,
     # es plano y no por eso esta roto. Las dos señales juntas si lo separan — BLOQUES LARGOS mas
     # PALETA DE FOTO. Un boton repite el mismo pixel decenas de veces pero tiene dos tonos; un LQIP
     # repite igual y reparte veinte, porque abajo hay una foto.
-    def _es_placeholder(ruta):
-        try:
-            import numpy as np
-            from PIL import Image
-            im = Image.open(ruta).convert("L")
-            a = np.asarray(im.resize((min(400, im.size[0]), min(400, im.size[1]))), dtype=np.int16)
-            d = np.abs(np.diff(a, axis=1))
-            corrida = d.size / max(1, int((d > 2).sum()))       # pixeles por cambio
-            h = np.histogram(a, bins=32, range=(0, 255))[0].astype(float)
-            h /= max(1e-9, h.sum())
-            tonos = int((h > 0.01).sum())
-            return corrida > 8 and tonos >= 8
-        except Exception:
-            return False                                        # ante la duda, se conserva
 
     descartados = 0
     faltan = 0
@@ -243,7 +269,7 @@ async def render(url: str, salida: str, hero: str | None = None, dur: int = 20,
         m = re.search(r"(el\d+)", os.path.basename(e["url"]))
         f = locales.get(m.group(1)) if m else None
         if f:
-            if _es_placeholder(os.path.join(dir_el, f)):
+            if es_placeholder(os.path.join(dir_el, f)):
                 e["_descartar"] = True
                 descartados += 1
                 continue

@@ -318,8 +318,14 @@ for (const [nombreAire, aire] of Object.entries(AIRES)) {
     g.visto = Math.max(g.visto, e.visto)
     g.dentro = Math.max(g.dentro, e.dentro)
     g.n++
+    // MEDICION: cuantos miembros del grupo estan encendidos lo suficiente para juzgarlos, y cuantos
+    // de esos NO entran en el cuadro ni una vez.
+    if (e.visto >= N * 0.06) { g.juzgables = (g.juzgables || 0) + 1; if (e.dentro === 0) g.mudos = (g.mudos || 0) + 1 }
   }
   for (const [, g] of porGrupo) {
+    if (process.env.MEDIR_MUDOS && g.mudos) {
+      console.log(`  MUDOS ${id}: grupo de ${g.n} (${g.juzgables} juzgables) -> ${g.mudos} nunca en cuadro  [${g.tipo}]`)
+    }
     if (g.visto < N * 0.06) continue          // aparece un instante: no hay muestra para juzgar
     if (g.n === 1) continue                   // pieza suelta: ya la juzgo la regla de arriba, por tamano
     const cuantos = g.n > 1 ? `un grupo de ${g.n} piezas` : `una ${g.tipo}`
@@ -330,6 +336,29 @@ for (const [nombreAire, aire] of Object.entries(AIRES)) {
     } else if (frac < 0.10) {
       fallos.push(`E-ENCUADRE-CASI  ${id}: ${cuantos} esta encendido el ${Math.min(100, Math.round(g.visto / N * 100))}% `
         + `de la escena y solo entra en el ${(frac * 100).toFixed(0)}% de esos cuadros`)
+    }
+    // E-ENCUADRE-MUDOS: el grupo se juzgaba por su MEJOR hijo y eso lo volvia casi ciego.
+    //
+    // `g.dentro` y `g.visto` se acumulan con `Math.max`, asi que alcanzaba UN hermano bien colocado
+    // para que `frac` diera 1 y las dos reglas de arriba se callaran, aunque los otros veinte no
+    // entraran nunca. Es exactamente la pauta del `toro` volviendo por la ventana: seis eventos
+    // animados que el espectador no ve, con la compuerta en verde.
+    //
+    // No se puede exigir que TODO miembro entre —un enjambre tiene particulas afuera a proposito, y una
+    // compuerta que acusa en falso cuesta mas que no tenerla—, asi que se mide la PROPORCION del grupo
+    // que trabaja sin que nadie la vea. El umbral sale de la medicion, no del gusto: barriendo las 407
+    // construcciones (37 escenas y heroes x 11 aires) los unicos grupos con miembros mudos son
+    // `columna` (1 de 19 juzgables = 0.053) y `tipografia` (3 de 43 = 0.070). La mitad esta siete veces
+    // por encima del peor caso legitimo que el motor produce hoy, y por debajo del caso que hay que
+    // cazar, que es un grupo entero animandose fuera del cuadro.
+    //
+    // Se piden ademas 2 mudos como minimo: uno solo y grande ya lo caza la regla por malla de arriba,
+    // y uno solo y chico no es un defecto, es un borde.
+    const juzgables = g.juzgables || 0
+    const mudos = g.mudos || 0
+    if (mudos >= 2 && juzgables > 0 && mudos / juzgables >= 0.5) {
+      fallos.push(`E-ENCUADRE-MUDOS  ${id}: de ${juzgables} piezas encendidas del grupo, ${mudos} `
+        + 'no entran en el cuadro NI UNA VEZ — el grupo pasa porque un hermano bien colocado lo tapa')
     }
   }
  }

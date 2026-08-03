@@ -505,17 +505,47 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** Solo encuadre-check barre tiempo (30 fps) Y aires Y proyecta con la camara — pero unicamente sobre las 16 mallas declaradas. El cruce que hace falta (contenido extremo x 11 aires x todos los cuadros) no lo cubre ninguna de las dos.
   - `rm.tl.time(mod.meta.beats * BEAT * 0.72, false) // ya asentada, antes de la salida`
 
-- [ ] **tools/encuadre-check.mjs:311**
+- [x] **tools/encuadre-check.mjs:311**
   - **Síntoma:** Vuelve a pasar la pauta del toro: seis eventos animados que el espectador no ve, con la compuerta verde. Solo se caza si la pieza no roza el cuadro en ninguno de los ~60 cuadros y ademas esta sola en su grupo o todo el grupo esta afuera.
   - **Lo dispara:** Una pieza fuera de cuadro que tenga UN hermano bien colocado en el mismo grupo. El grupo se juzga por el MAXIMO de sus hijos, no por la suma ni por el peor: si un hermano esta en cuadro el 100% del tiempo, frac = 1 y ni E-ENCUADRE-NUNCA ni E-ENCUADRE-CASI dicen nada aunque los otros veinte hermanos 
   - **Compuerta:** La propia E-ENCUADRE, degradada. Ninguna otra mira si algo animado se ve.
   - `g.dentro = Math.max(g.dentro, e.dentro)`
+  - **CERRADO 2026-08-03.** Regla nueva **E-ENCUADRE-MUDOS**: no reemplaza el `Math.max` —que sigue
+    sirviendo para las dos reglas de arriba— sino que agrega la pregunta que faltaba, cuantos miembros
+    del grupo NO entran en el cuadro ni una vez.
+  - **El umbral sale de la medicion.** Barriendo las 407 construcciones, los unicos grupos con miembros
+    mudos son `columna` (1 de 19 juzgables = 0.053) y `tipografia` (3 de 43 = 0.070). Se pide mitad o
+    mas del grupo, que esta siete veces por encima del peor caso legitimo de hoy, y un minimo de 2
+    mudos —uno grande ya lo caza la regla por malla, y uno chico es un borde, no un defecto.
+  - **Probado por inyeccion, y la primera prueba no servia.** Se metio en `tarjetas` un grupo de 6 con
+    5 muy afuera, pero con piezas de 0.6 que la regla POR MALLA ya cazaba: no aislaba nada. Repetido
+    con piezas de 0.30 —por debajo de `LADO_MIN = mundoW * 0.12`, que es justo el hueco que la regla de
+    grupo tenia que cubrir— la compuerta VIEJA dice 'ENCUADRE OK' y la nueva acusa en los 11 aires.
+  - Quedan sin reportar, y se deja escrito: 1 de 19 en `columna` y 3 de 43 en `tipografia` estan por
+    debajo del umbral. No se comprobo si son legitimos.
 
-- [ ] **tools/encuadre-check.mjs:84**
+- [x] **tools/encuadre-check.mjs:84**
   - **Síntoma:** Un rectangulo de bloques de color ocupando medio cuadro, en el video de un cliente. Lo encontro el dueño, no las compuertas.
   - **Lo dispara:** Cualquier defecto que viva en los PIXELES del recorte y no en su proporcion. Las dos compuertas que construyen escenas alimentan canvas de 64 px de alto con solo `image.width/height` seteados (encuadre-check.mjs:84-96, verificar.mjs:90-103). El LQIP del defecto #3 —archivo de 959x1400 con el conteni
   - **Compuerta:** Ninguna de las cuatro, y ninguna del motor 3D: el filtro esta en backend/motor.py:223 (`_es_placeholder`, corrida de pixeles > 8 y >= 8 tonos), en Python, en el camino de captura, sin ningun test. Si se rompe, las cinco rapidas siguen en verde. La co
   - `function tejidoFalso(relaciones) {`
+  - **CERRADO 2026-08-03**, y no alimentando pixeles a `tejidoFalso` —que seguiria sin poder cazar
+    esto— sino poniendo bajo compuerta el filtro que SI decide: `_es_placeholder`, que estaba anidado
+    dentro de `datos_de` y por eso ninguna prueba podia importarlo. Extraido a `motor.es_placeholder`.
+  - **Compuerta nueva: `tools/placeholder-check.py`** (E-PLACEHOLDER), en la cadena. Comprueba que los
+    53 recortes reales del repo sobrevivan los 53, que dos LQIP fabricados se descarten, que un texto
+    nitido y un logo plano se conserven, que el limite declarado (pocos tonos no se detecta) siga
+    donde esta, y que un archivo ilegible no tire el recorte.
+  - **Se rompio a proposito en las dos direcciones.** Con el detector apagado la compuerta acusa los 2
+    LQIP; con el umbral de tonos bajado a 2 acusa 9 cosas, entre ellas 6 recortes reales de linear y el
+    logo plano — que es exactamente lo que la nota de limite predice, asi que la nota quedo verificada
+    y no es una excusa.
+  - **Medicion que vale registrar:** de los 53 recortes reales, CERO se marcan como placeholder, y se
+    ve por que la conjuncion funciona — corrida alta viene siempre con tonos 1-4 (logos, botones) y
+    tonos altos con corrida 1.7-3.3 (fotos nitidas). Un LQIP cae en el unico cuadrante libre.
+  - **Un cuidado que casi se cuela:** `tools/out/` esta en .gitignore, asi que en un clon nuevo hay
+    CERO recortes reales y ese caso pasaria sobre nada, informando '0 conservados' como si hubiera
+    comprobado algo. La compuerta ahora lo dice en la salida en vez de esconderlo en un numero.
 
 
 ## Menores (18)
