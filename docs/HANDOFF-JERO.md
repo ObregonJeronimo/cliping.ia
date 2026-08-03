@@ -53,7 +53,7 @@ que NO son hallazgos:
 
 ## 3. Las compuertas
 
-**Las 8 rapidas (~9 s), en cada cambio del motor:**
+**Las 9 rapidas (~9 s), en cada cambio del motor:**
 
 ```
 node render3d/demo/verificar.mjs
@@ -63,10 +63,11 @@ node tools/adn-check.mjs
 node tools/tira-check.mjs
 node tools/heroes-check.mjs
 python tools/placeholder-check.py
+python tools/captura-check.py
 python tools/testimonios-check.py
 ```
 
-**El guard completo (~30 min), solo antes de pushear:** `npm run gates:guard`. Tiene que dar 32 OK /
+**El guard completo (~30 min), solo antes de pushear:** `npm run gates:guard`. Tiene que dar 33 OK /
 0 FAIL. **Nunca correr dos guards a la vez.**
 
 **Lo que las compuertas NO pueden ver, y hay que tenerlo presente siempre:**

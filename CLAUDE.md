@@ -54,11 +54,12 @@ diagnóstico falso cuesta más que no haberlos hecho. Antes de declarar un defec
 
 ## Compuertas
 
-- **8 rápidas (~9 s), en cada cambio del motor:** `verificar.mjs`, `guion-check`, `encuadre-check`,
+- **9 rápidas (~9 s), en cada cambio del motor:** `verificar.mjs`, `guion-check`, `encuadre-check`,
   `adn-check`, `testimonios-check`, `tira-check` (la página del cliente no se deforma),
-  `heroes-check` (un héroe no se ofrece si no tiene con qué) y `placeholder-check` (el recorte que se
-  muestra es la imagen del cliente, no su borrador borroso).
-- **Guard completo (~30 min), sólo antes de pushear:** `npm run gates:guard`. Tiene que dar 32 OK /
+  `heroes-check` (un héroe no se ofrece si no tiene con qué), `placeholder-check` (el recorte que se
+  muestra es la imagen del cliente, no su borrador) y `captura-check` (no se construye un video sobre
+  un muro anti-bot o un error del CDN).
+- **Guard completo (~30 min), sólo antes de pushear:** `npm run gates:guard`. Tiene que dar 33 OK /
   0 FAIL. Nunca correr dos guards a la vez.
 
 ## Dónde vive el motor

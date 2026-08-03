@@ -130,6 +130,59 @@ async def capturar(url: str, dst: str, con_tira: bool = True) -> dict:
     return pm
 
 
+# ¿LO QUE SE CAPTURO ES LA PAGINA, O UN MURO?
+#
+# El motor construyo 20 segundos enteros sobre una pagina de error de CloudFront: en el cuadro 87 se
+# lee "Request blocked. We cant connect to the server for..." con el Request ID impreso, y la pieza se
+# entrego sin una sola queja. De las 7 capturas cacheadas del repo, DOS estaban podridas — una era ese
+# error del CDN y la otra una pantalla anti-bot cuya MARCA quedo como "HUMAN VERIFICA". Un 29%.
+#
+# La senal ya estaba a la vista y nadie la leia: el propio log del render imprime "0 frases · 0 cifras
+# · cta NINGUNO", y una pagina real no da eso nunca. Esto es esa lectura.
+#
+# DOS REGLAS INDEPENDIENTES, las dos calibradas contra las 6 capturas reales que quedan en el repo:
+#
+#   SIN MATERIAL   cero frases Y cero cifras Y sin CTA. La peor pagina real medida —mercadolibre—
+#                  trae 2 frases, 1 cifra y claim de 54 caracteres, asi que el piso de cero deja un
+#                  margen amplio y no puede acusar a una pagina pobre pero legitima.
+#   VOCABULARIO    la marca o los textos dicen lo que dice un muro y no lo que dice un negocio. Se
+#                  compara sin tildes y en minusculas contra frases que ninguna marca usa de si misma.
+#
+# Se devuelve el MOTIVO en texto y no un booleano: quien lo lea tiene que poder decir por que, porque
+# la salida correcta ante esto no es adivinar sino volver a capturar.
+_MUROS = (
+    "human verifica", "verifying you are human", "are you a robot", "checking your browser",
+    "just a moment", "attention required", "access denied", "acceso denegado",
+    "request blocked", "solicitud bloqueada", "403 forbidden", "404 not found",
+    "captcha", "enable javascript", "habilita javascript", "cloudfront", "cloudflare",
+    "service unavailable", "servicio no disponible", "too many requests",
+)
+
+
+def _plano(t):
+    import unicodedata
+    t = unicodedata.normalize("NFD", str(t or ""))
+    return "".join(c for c in t if unicodedata.category(c) != "Mn").lower()
+
+
+def pagina_sospechosa(datos):
+    """Devuelve el motivo (texto) si la captura no parece la pagina del cliente, o None."""
+    d = datos or {}
+    frases = [f for f in (d.get("frases") or []) if str(f).strip()]
+    cifras = d.get("datos") or []
+    cta = str(d.get("cta") or "").strip()
+    if not frases and not cifras and not cta:
+        return "0 frases, 0 cifras y sin CTA: no hay NADA que decir, y una pagina real nunca da eso"
+    campos = [d.get("marca"), d.get("claim"), (d.get("bloque") or {}).get("titulo"), cta]
+    campos += list(frases)
+    for c in campos:
+        p = _plano(c)
+        for muro in _MUROS:
+            if muro in p:
+                return 'dice "%s" (en "%s"): es un muro anti-bot o un error del CDN, no la pagina' % (
+                    muro, str(c)[:60])
+    return None
+
 # EL FILTRO DE PLACEHOLDERS, Y VIVE ACA ARRIBA PARA QUE SE PUEDA PROBAR.
 #
 # Estaba anidado dentro de `datos_de`, o sea que ninguna prueba podia importarlo: el unico filtro que
@@ -195,7 +248,7 @@ def datos_de(pagemodel_path: str, dst: str, seed: int | None = None) -> dict:
 
 async def render(url: str, salida: str, hero: str | None = None, dur: int = 20,
                  seed: int = 7, aire: str | None = None, recapturar: bool = False,
-                 bitrate: int = 8_000_000) -> str:
+                 bitrate: int = 8_000_000, forzar: bool = False) -> str:
     dst = os.path.join(SALIDA, _dominio(url))
     pm_path = os.path.join(dst, "pagemodel.json")
     site_path = os.path.join(dst, "site.json")
@@ -226,6 +279,15 @@ async def render(url: str, salida: str, hero: str | None = None, dur: int = 20,
             json.dump(pm, f, ensure_ascii=False, indent=1)
 
     d = datos_de(pm_path, dst, seed)
+    # NO SE CONSTRUYE UN VIDEO SOBRE UN MURO. Ver `pagina_sospechosa` arriba: ya paso, y salio una
+    # pieza de 20 segundos con el Request ID de CloudFront impreso en pantalla.
+    _motivo = pagina_sospechosa(d.get("datos"))
+    if _motivo and not forzar:
+        print("  LA CAPTURA NO PARECE LA PAGINA: " + _motivo)
+        print("  No se construye el video. Opciones: --recapturar (volver a bajarla) o --forzar (igual).")
+        raise SystemExit(2)
+    if _motivo:
+        print("  (--forzar: la captura parece un muro y se construye igual) " + _motivo)
     with open(pm_path, encoding="utf-8") as f:
         pm = json.load(f)
 
@@ -329,6 +391,8 @@ def main():
     ap.add_argument("--aire", help="forzar un aire en vez del que elige el rubro")
     ap.add_argument("--salida", help="ruta del mp4")
     ap.add_argument("--recapturar", action="store_true", help="volver a bajar la pagina")
+    ap.add_argument("--forzar", action="store_true",
+                    help="construir aunque la captura parezca un muro anti-bot o un error del CDN")
     ap.add_argument("--heroes", action="store_true", help="listar los heroes y que necesita cada uno")
     a = ap.parse_args()
 
@@ -343,7 +407,7 @@ def main():
 
     salida = a.salida or os.path.join(SALIDA, f"{_dominio(a.url)}-{a.hero or 'auto'}-{a.dur}s.mp4")
     os.makedirs(os.path.dirname(salida), exist_ok=True)
-    ruta = asyncio.run(render(a.url, salida, hero=a.hero, dur=a.dur, seed=a.seed,
+    ruta = asyncio.run(render(a.url, salida, hero=a.hero, dur=a.dur, seed=a.seed, forzar=a.forzar,
                               aire=a.aire, recapturar=a.recapturar))
     print(f"\n{ruta}  ({os.path.getsize(ruta) // 1024} kb)")
 

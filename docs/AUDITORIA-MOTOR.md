@@ -853,7 +853,7 @@ El orden correcto es al reves: primero se cierran las 88, despues se afila la co
 
 ## Dos hallazgos nuevos, vistos renderizando el 2026-07-31 (NO son de los parches de hoy)
 
-- [ ] **backend/site_capture.py — nada verifica que lo capturado sea la pagina**
+- [x] **backend/site_capture.py — nada verifica que lo capturado sea la pagina**
   - **Sintoma:** El motor construyo 20 s enteros sobre una pagina de error de CloudFront. En el cuadro
     87 se lee "Request blocked. We can't connect to the server for..." con el Request ID impreso en
     pantalla. La pieza se entrego sin una sola queja.
@@ -864,6 +864,24 @@ El orden correcto es al reves: primero se cierran las 88, despues se afila la co
   - **La senal existe y nadie la lee:** el propio log del render imprime "0 frases - 0 cifras - cta
     NINGUNO". Una pagina real no da eso nunca. Es una compuerta de una linea que no esta escrita.
   - **Compuerta:** Ninguna. `_es_placeholder` (motor.py) mira los recortes LQIP, no la pagina.
+  - **CERRADO 2026-08-03.** `motor.pagina_sospechosa(datos)` devuelve el MOTIVO en texto —no un
+    booleano— porque la salida correcta ante esto no es adivinar sino volver a capturar, y para eso hay
+    que poder decir por que. Dos reglas independientes: SIN MATERIAL (0 frases y 0 cifras y sin CTA) y
+    VOCABULARIO DE MURO (la marca o los textos dicen lo que dice un muro, comparado sin tildes).
+  - **El piso sale de medir las 6 capturas reales que quedan.** La peor —mercadolibre— trae 2 frases,
+    1 cifra y claim de 54 caracteres, asi que exigir 'algo, lo que sea' deja margen de sobra y no puede
+    acusar a una pagina pobre pero legitima.
+  - **El motor ahora CORTA.** Sin `--forzar` imprime el motivo y sale con codigo 2 sin construir un solo
+    mp4; con `--forzar` avisa y sigue. Verificado en los dos caminos.
+  - **Compuerta nueva: `tools/captura-check.py`** (E-CAPTURA-REAL), en la cadena: 6 capturas reales
+    aceptadas, 4 muros rechazados, 3 paginas pobres aceptadas, y dos marcas desafortunadas ('Just a
+    Moment Cafe', 'Acceso Humano') que NO se rechazan — el falso positivo es el riesgo real de este
+    detector, porque no entregar un video es peor que entregar uno feo.
+  - **Rota a proposito en las dos direcciones:** apagado el detector, acusa los 4 muros; exigiendo 5
+    frases, acusa 4 capturas reales.
+  - Los dos muros originales ya no estan en el repo, asi que las fixtures son RECONSTRUCCIONES de lo
+    que la ficha registro de cada uno. Queda dicho aca para que nadie las lea como los archivos
+    originales.
 
 - [ ] **render3d/demo/heroes/cubo.js — las caras salen VACIAS (NO se reproduce en el arnes)**
   - Intento de reproduccion del 2026-07-31: construida la escena en Node con un fixture tipo stripe
