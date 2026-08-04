@@ -51,8 +51,20 @@ export const meta = {
   nombre: 'Cubo de recortes',
   necesita: ['elementos'],
   beats: 8,
-  puede: (datosEls) => new Set((datosEls || [])
+  // CUENTA LOS QUE SE PUEDEN MOSTRAR, NO LOS QUE TIENEN EL ROL — y esto es un arreglo del arreglo.
+  //
+  // La primera version contaba por `e.rol` y con eso NO protegia de nada en el caso que importa: el
+  // veto de laminas (`texturaDe`, que saca los recortes que son texto disfrazado de imagen cuando la
+  // pagina publico testimonios) trabaja sobre PIXELES y saca recortes DESPUES de que este cupo dijo
+  // que si. Medido con linear.app recapturado —7 elementos, 3 testimonios, veto encendido— el cubo
+  // contaba 4 por rol y solo 2 sobrevivian: se ofrecia igual y mostraba dos imagenes repetidas tres
+  // veces cada una, que es exactamente el defecto que este cupo vino a cerrar.
+  //
+  // `texturas` puede no venir: los barridos que no cargan imagenes (compuertas que auditan geometria)
+  // lo llaman sin ellas. Ahi se cuenta por rol, que es lo que se puede saber, y queda dicho.
+  puede: (datosEls, texturas) => new Set((datosEls || [])
     .filter(e => e && ROLES.includes(e.rol) && e.url)
+    .filter(e => (texturas ? !!texturaDe(texturas, e) : true))
     .map(e => e.url)).size >= CARAS_MINIMAS,
 }
 

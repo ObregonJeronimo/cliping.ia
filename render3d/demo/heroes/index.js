@@ -93,10 +93,10 @@ const REGISTRO = {
 // Un hero que necesita CANTIDAD lo declara con `meta.puede(datosEls)` y se descarta antes de
 // construirse — antes, no despues: `recortesDe` consume del reparto compartido, asi que construir un
 // hero para descartarlo le sacaria recortes a la escena siguiente.
-export function elegibles(disponible, aire = null, datosEls = null) {
+export function elegibles(disponible, aire = null, datosEls = null, texturas = null) {
   let hay = HEROES.filter(h => (h.meta.necesita || ['nada'])
     .every(n => n === 'nada' || disponible.has(n)))
-  if (datosEls) hay = hay.filter(h => !h.meta.puede || h.meta.puede(datosEls))
+  if (datosEls) hay = hay.filter(h => !h.meta.puede || h.meta.puede(datosEls, texturas))
   if (!aire) return hay
   const encajan = hay.filter(h => !REGISTRO[h.meta.id] || REGISTRO[h.meta.id].includes(aire))
   // Nunca se devuelve vacio: si el filtro no dejo a nadie —una pagina sin material y un aire para el

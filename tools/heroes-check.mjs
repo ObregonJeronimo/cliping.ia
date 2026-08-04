@@ -68,6 +68,19 @@ const CUPOS = [
   { id: 'cubo', porque: 'reparte imagenes sobre seis caras y el tumbo se detiene en cada una' },
 ]
 
+// LO QUE ESTA COMPUERTA NO CUBRE, DICHO ACA PARA QUE NO SE LEA COMO QUE SI.
+//
+// `elegibles` se llama aca SIN texturas, asi que `meta.puede` cuenta por ROL. El caso que de verdad
+// importa es otro: el veto de laminas (`texturaDe`) saca recortes mirando sus PIXELES, y saca DESPUES
+// de que el cupo dijo que si. Medido con linear.app recapturado —7 elementos, 3 testimonios— el cubo
+// cuenta 4 por rol y solo 2 sobreviven: contando por rol se ofrece, contando lo que vive no.
+//
+// Probarlo aca es posible y la receta esta: `loadImage` de @napi-rs/canvas devuelve una imagen que
+// `esLamina` sabe leer en Node, y los PNG estan en `tools/out/motor/*/elementos/`. No se hizo porque
+// esa carpeta no viaja en el repo y la compuerta quedaria pasando sobre cero archivos en un clon nuevo
+// —el mismo verde vacio que ya aparecio en `placeholder-check`—. Cuando haya fixtures de recortes
+// versionados, este es el lugar.
+
 const fallos = []
 const idsPobre = elegibles(new Set(['elementos', 'tira']), null, POBRE).map(h => h.meta.id)
 const idsRico = elegibles(new Set(['elementos', 'tira']), null, RICO).map(h => h.meta.id)

@@ -357,6 +357,17 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Lo dispara:** Una página que da pocos recortes de los roles que el cubo pide (ROLES = ['logo','tarjeta','foto','hero']). Con el fixture real de basecamp.com hay 5 elementos y sólo DOS caen en esos roles (basecamp-com__el4-foto.png y __el5-foto.png; los otros tres son 'cta', que el cubo no pide). Además `recortesD
   - **Compuerta:** No. `recortesDe` cuenta las repeticiones en `recortesRepetidos` (kit.js:2055) pero nadie lo lee como condición de fallo, y el hero se ofrece con que exista UN solo elemento (escenas/hero.js:17: `if (datosEls && datosEls.length) disponible.add('elemen
   - `const tex = texs[i % texs.length]`
+  - **ARREGLO DEL ARREGLO, 2026-08-04.** El `CARAS_MINIMAS = 4` que cerro este hallazgo contaba por
+    ROL, y eso no protege del caso que importa: el veto de laminas (`texturaDe`) saca recortes mirando
+    sus PIXELES, y saca DESPUES de que el cupo dijo que si.
+  - **Medido con linear.app recapturado** (7 elementos, 3 testimonios, veto encendido): el cubo cuenta
+    **4 por rol** y solo **2 sobreviven**. O sea que se ofrecia igual y mostraba dos imagenes repetidas
+    tres veces cada una — exactamente el defecto que el cupo vino a cerrar.
+  - Ahora `meta.puede(datosEls, texturas)` cuenta los que sobreviven y `hero.js` le pasa las texturas.
+    Verificado cargando los 7 PNG reales: contando por rol el cubo se ofrece, contando lo que vive no.
+  - Y queda escrito en `tools/heroes-check.mjs` lo que esa compuerta NO cubre —sus casos llaman a
+    `elegibles` sin texturas, asi que cuentan por rol— con la receta para cubrirlo el dia que haya
+    fixtures de recortes versionados.
   - **CERRADO 2026-08-03.** No se toco el reparto de caras: el defecto no esta en `i % texs.length`
     —repartir seis caras entre las imagenes que hay es lo correcto— sino en que el hero se OFRECIA con
     dos. `necesita: ['elementos']` es un booleano y con UN recorte ya alcanzaba.
