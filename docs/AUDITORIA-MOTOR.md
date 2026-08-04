@@ -1021,6 +1021,22 @@ El orden correcto es al reves: primero se cierran las 88, despues se afila la co
     (`mesa.js:24` promete recortar por UV y el arreglo del estiramiento achica el plano) se manifiesta
     como TEXTO CORTADO, no como hueco. Es la misma rama, con otro sintoma, y el sintoma que hay que
     buscar al arreglarla.
+  - **Cuanto se pierde, medido:** construida `mesa` con una tarjeta apaisada real (1400x845) y
+    proyectados los ocho vertices del plano contra la camara en 25 instantes y 3 aires, el recorte
+    llega a **x = 1.164** del cuadro (1.000 es el borde), o sea que **se pierde el 13-14% de su ancho**.
+    La escena declara sangrar 6% (`ANCHO = mundoW * 1.06`, 3% por lado): el efectivo es **cuatro veces
+    y media** el declarado.
+  - **La causa NO es la camara** —en esta escena no hay dolly ni orbita, solo una deriva de 0.008 del
+    ancho—: es que el plano esta **INCLINADO 49 grados** (`INCLINA = -0.86`), asi que su borde cercano
+    queda mas cerca de la camara y se magnifica. El ancho se eligio como si el plano fuera plano.
+  - **Y el comentario que justifica ese ancho esta vencido:** dice 'un plano inclinado 35 grados ocupa
+    cos(0.62) del alto que declara, o sea el 81%'. La constante es 0.86 rad = 49.3 grados y el codigo
+    usa `Math.cos(INCLINA)` = 0.652, o sea 65%. El texto describe una escena que ya no es esta.
+  - **La direccion del arreglo, derivada:** para que el borde CERCANO sangre lo declarado haria falta
+    `ANCHO = mundoW * 0.965`. Pero ahi el borde LEJANO deja de cubrir el cuadro — y eso puede estar
+    bien, porque la composicion de esta escena ya reserva la banda de arriba para el texto (ver la nota
+    de la linea 20). Hay que verlo renderizado antes de dejarlo puesto: es un cambio de composicion, no
+    una cuenta.
   - Queda ABIERTO con esa correccion.
 
 - SEGUIMIENTO (abierto, pertenece a hero.js:76) — **intentado por el lado del cupo y no demostrado**
