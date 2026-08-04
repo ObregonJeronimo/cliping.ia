@@ -2,6 +2,10 @@
 
 **Como se cuenta.** Una fila `- [ ] **archivo:linea**` es UN hallazgo y se cuenta. Una fila que
 empieza con `- SEGUIMIENTO` NO es un hallazgo: es una nota sobre el estado de otro, y no se cuenta.
+
+**Y EL TOTAL NO SE ESCRIBE, SE CALCULA:** `node tools/auditoria-conteo.mjs`. Ademas del total da el
+desglose, que es lo que hace falta para contestar 'cuanto falta': mas de la mitad de los abiertos son
+objeciones de los criticos al PLAN de la auditoria, compuertas propuestas y los dos temas EXTRA.
 La distincion existe porque el contador ya mintio una vez — se tildaron 6 casillas para 5 trabajos,
 porque una nota de seguimiento tenia el mismo formato que un hallazgo y se sumo aparte.
 

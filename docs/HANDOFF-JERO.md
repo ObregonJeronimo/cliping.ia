@@ -8,7 +8,7 @@ se cometieron.
 
 ## 1. Donde estan los pendientes
 
-**`docs/AUDITORIA-MOTOR.md`** — es el unico lugar. 100 hallazgos, cada uno con:
+**`docs/AUDITORIA-MOTOR.md`** — es el unico lugar. Cada hallazgo trae:
 
 - **Sintoma** — que se ve, con el numero medido.
 - **Lo dispara** — que contenido o que semilla lo hace aparecer.
@@ -21,7 +21,18 @@ otro — y no se cuenta. Esa distincion existe porque el contador ya mintio: se 
 para 5 trabajos porque una nota de seguimiento tenia el mismo formato que un hallazgo. Thiago lo
 noto y por eso el encabezado del documento ahora lo dice explicito.
 
-Al cerrar la sesion con Thiago: **38 abiertos / 62 cerrados**. Despues de cerrar `portatil.js:122` y `cubo.js:104`: **36 abiertos / 64 cerrados**.
+**EL NUMERO NO SE ESCRIBE ACA, SE CALCULA.** Estaba a mano y quedo diciendo '36 abiertos / 64
+cerrados' cuando ya eran 29 / 74: dos copias de un numero son dos numeros distintos en cuanto alguien
+cierra un hallazgo. Es la segunda vez que el contador de esta auditoria miente, y la primera esta
+contada en el encabezado del propio documento.
+
+```
+node tools/auditoria-conteo.mjs
+```
+
+Y lo importante es el DESGLOSE, no el total: de los abiertos, mas de la mitad no son defectos del
+motor sino objeciones de los criticos al plan, compuertas que habria que escribir, y los dos temas
+EXTRA. Al 2026-08-04 los defectos reales son **12**.
 
 Estan agrupados por gravedad: *Rompen la pieza*, *Se notan*, *Menores*. Y al final hay dos secciones
 que NO son hallazgos:
@@ -163,7 +174,7 @@ Es un hallazgo abierto.
 
 ## 8. Por donde seguir
 
-De los 38 abiertos, los mas tratables (un tope, un umbral, un filtro; se hacen y se verifican en
+De los abiertos, los mas tratables (un tope, un umbral, un filtro; se hacen y se verifican en
 minutos):
 
 - ~~`heroes/portatil.js:122`~~ — **CERRADO 2026-08-03**, y dejo una leccion que conviene tener a mano
