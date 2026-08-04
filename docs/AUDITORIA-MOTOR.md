@@ -1037,24 +1037,30 @@ El orden correcto es al reves: primero se cierran las 88, despues se afila la co
     lo esta. CLAUDE.md ya lo dice —'verlo en el cuadro completo', 'si una metrica da fuera de rango eso
     prueba que hay algo que explicar, no que hay un defecto'— y lo que faltaba era medir los pixeles del
     cuadro que estaba mirando, que cuesta cinco lineas.
-- [ ] **render3d/demo/escenas/apertura.js — la pieza puede abrir con medio segundo de nada**
-  - **Sintoma:** Medido en RGB sobre los 26 videos renderizados que hay en `tools/out/motor`, contando
-    cuadros planos en LOS TRES canales desde el cuadro 0: `www-theverge-com` abre con **17 cuadros
-    (0.57 s)** a 20 s y **15 (0.50 s)** a 15 s, en los que no hay absolutamente nada sobre el fondo. Le
-    siguen stripe 15 s con 6 (0.20 s) y mercadolibre con 5 (0.17 s); los otros 21 abren en 0.00 s.
-  - **Lo dispara:** La pagina, no el ritmo — se descarto el bpm como causa: theverge a 102 y a 112 bpm
-    espera medio segundo, mientras pentagram a 96 espera 0.07 s y ocho piezas a 120-138 esperan cero.
-  - **Por que importa:** lo dice el propio guion en `guion.js` (el bloque del gancho): 'estos videos se
-    ven en un feed, donde nadie decide seguir mirando porque le mostraron un logo. Decide en los
-    primeros dos segundos'. Medio segundo de campo liso es el 28% de esos dos segundos gastado en nada.
-  - **CUIDADO AL MEDIRLO, que ya me mordio dos veces:** (1) convertir a GRIS hace que un campo de color
-    saturado y plano —el violeta [81,10,247] de theverge— sea indistinguible de un cuadro vacio, y
-    marcaba 22 de 28 videos; hay que medir en RGB. (2) `numpy.std()` sobre el arreglo entero mide la
-    dispersion ENTRE canales, no la espacial: daba sd=99 para un cuadro que es liso. Las dos versiones
-    equivocadas dan numeros igual de convincentes.
-  - **Compuerta:** Ninguna. El motor 2D tiene 'cero frame vacio' en sus gates de storyboard y timeline;
-    el motor 3D no tiene nada equivalente.
-
+- [x] **render3d/demo/escenas/apertura.js — el sosten de la cortina se mide en beats y el tiempo muerto
+  se percibe en segundos**
+  - **CORRECCION DE COMO LO ABRI.** Lo escribi como 'la pieza abre con medio segundo de NADA'. Es
+    falso: lo que hay es LA CORTINA —una pared del color de la marca que tapa el cuadro y se corre en
+    diagonal—, y esta puesta A PROPOSITO para arreglar un defecto anterior. Su razonamiento esta en el
+    archivo (`apertura.js`, bloque '0 · LA CORTINA'). No confirme que ninguna linea lo pidiera adrede
+    antes de escribir el hallazgo, que es justo lo que CLAUDE.md manda hacer.
+  - **Lo que si es un defecto, medido:** en el render de theverge.com a 102 bpm el cuadro queda **100%
+    tapado por el color del acento durante 16-17 cuadros, 0.53-0.57 s** (medido en RGB sobre los tres
+    canales; en gris no se distingue de un cuadro vacio). El propio archivo llama tiempo muerto a un
+    tercio de segundo, y reporta 9 cuadros (0.30 s) como resultado de su segunda correccion.
+  - **La causa es la unidad, no la duracion.** La cortina ya fue acortada DOS veces —1.35 -> 0.8 -> 0.5
+    beats, las dos documentadas en el archivo— y las dos midieron en UNA pieza. Pero `b()` depende del
+    bpm del aire: los mismos 0.5 beats son 0.242 s a 124 bpm y 0.312 s a 96, y el apagado pasa de 0.460
+    a 0.594 s. El tiempo muerto se percibe en segundos y estaba escrito en beats.
+  - **Arreglo:** tope en SEGUNDOS derivado de lo que el archivo ya declaro (un tercio de segundo es
+    tiempo muerto): `T_CORTINA = min(b(0.5), 0.24)` y `T_APAGA = min(b(0.95), 0.45)`. Es un `Math.min`,
+    o sea que **solo puede acortar**: a 124 bpm y mas rapido no cambia nada, y por debajo recorta.
+  - **LO QUE NO PUDE DEMOSTRAR, y queda dicho:** no logre reproducir en video el render original de 102
+    bpm — desde entonces cambio la clasificacion de rubro y theverge ahora cae en un aire de 108, y sus
+    planes abren con `gancho`, asi que la cortina de `apertura` ni entra. Se probaron 6 renders (semillas
+    2, 5, 7, 11 y el aire `bienestar` forzado) y en todos el ANTES ya daba 0 cuadros lisos. O sea que el
+    arreglo esta respaldado por la aritmetica del tope y por la medicion del render viejo, no por un
+    antes/despues en video.
 - [x] **tools/anthem-datos.mjs:164 — el rotulo imprimia el valor de reserva del clasificador**
   - **Sintoma:** La pieza escribe en pantalla, pegado a la marca, la categoria del negocio: 'TAILWIND
     CSS · OTRO', 'LINEAR · OTRO'. Y `otro` no es una categoria: es lo que el sistema pone cuando NO

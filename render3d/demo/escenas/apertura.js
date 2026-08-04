@@ -219,8 +219,23 @@ export function build(ctx) {
   // cortina ya empieza con el 14% del camino hecho, que en el primer cuadro no se nota —sigue tapando
   // el cuadro entero, que es lo que se busca— y le saca de encima la parte de la curva donde no
   // recorre nada.
-  de(cortina.position, { x: mundoW * 0.35, y: mundoH * 0.21 }, { x: mundoW * 2.5, y: mundoH * 1.5, duration: b(0.5), ease: E.acelera(2.4) }, 0)
-  tl.set(cortina, { visible: false }, b(0.95))
+  // TERCERA CORRECCION, Y ES LA MISMA CAUSA VISTA UN NIVEL MAS ABAJO: EL TIEMPO MUERTO SE MIDE EN
+  // SEGUNDOS Y ESTABA ESCRITO EN BEATS.
+  //
+  // Las dos correcciones de arriba bajaron la duracion (1.35 -> 0.8 -> 0.5 beats) y midieron el
+  // resultado en UNA pieza cada una. Pero `b()` depende del bpm del aire, que va de 96 a 138: los
+  // mismos 0.5 beats son 0.242 s a 124 bpm y 0.312 s a 96. Medido sobre el render de theverge.com
+  // (102 bpm, aire lento): el cuadro queda **100% tapado por el color del acento durante 16 cuadros,
+  // 0.53 s** — peor que los 9 cuadros que el parrafo de arriba reporta como resultado de la segunda
+  // correccion, y por encima del tercio de segundo que este mismo bloque llama tiempo muerto.
+  //
+  // El tope es en segundos y sale de lo que este archivo ya declaro: 'un tercio de segundo es tiempo
+  // muerto'. Se corta por debajo de eso —0.24 s de recorrido y 0.45 s hasta apagarla— y el aire rapido
+  // no se entera, porque a 124 bpm sus beats ya caen adentro del tope. Solo se acorta donde hacia dano.
+  const T_CORTINA = Math.min(b(0.5), 0.24)
+  const T_APAGA = Math.min(b(0.95), 0.45)
+  de(cortina.position, { x: mundoW * 0.35, y: mundoH * 0.21 }, { x: mundoW * 2.5, y: mundoH * 1.5, duration: T_CORTINA, ease: E.acelera(2.4) }, 0)
+  tl.set(cortina, { visible: false }, T_APAGA)
 
   // ================================================================ A · el filete cruza el cuadro
   // beat 0.0-0.5. Negro casi total: la grilla está apagada y lo único que existe es una línea de
