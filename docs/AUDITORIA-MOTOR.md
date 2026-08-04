@@ -712,11 +712,29 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** E-ENCAJE si mira estas mallas (userData.encaja en la linea 140) y por eso NO hay desborde: el defecto es el remedio de la compuerta llevado al extremo. Achicar es como encaje logra que entre, asi que la compuerta queda verde justo cuando el texto se 
   - `const POR_LINEA = 26 // ... if ((actual + ' ' + p).length <= porLinea) actual += ' ' + p else { lineas.push(actual); actual = p }`
 
-- [ ] **render3d/demo/escenas/tipografia.js:83-84, 90, 270-278, 286-292, 318, 330**
+- [x] **render3d/demo/escenas/tipografia.js:83-84, 90, 270-278, 286-292, 318, 330**
   - **Síntoma:** El comentario de la linea 86-89 justifica el 5.05 diciendo que es 'el ancho que sigue entrando con la camara en su punto mas cerca', pero esa cuenta esta hecha con dolly = 1 y hoy CAM.dolly es un parametro del aire que llega a 1.55. Medido: con dolly 1.55 el semicuadro en el punto mas cerca baja a 2.6022, y la columna de 24 marcas del HUD, clavada en x = 2.62, queda FUERA del cuadro. Con dolly 1 (
   - **Lo dispara:** El dolly del aire. tipografia es la unica de las ocho que tiene su mueble entero escrito en unidades absolutas en vez de en mundoW/mundoH (XI y XD si salen de mundoW, todo lo demas no), y a la vez es la que mas acerca la camara: dolly(distBase, -0.9), que con CAM.dolly = 1.55 son -1.395.
   - **Compuerta:** E-ENCUADRE-NUNCA/CASI si barre los 11 aires (encuadre-check.mjs:155) pero no puede acusar a las marcas: la regla por objeto exige lado > mundoW*0.12 (linea 272) y cada marca mide 0.10-0.26, y la regla por grupo usa g.dentro = Math.max(...) sobre todo
   - `const ANCHO = 5.05 // ... FIL = [{ bt: 0, x: -1.65, y: -1.75, l: 3.30, gr: 0.075, ... }] ... barV.position.set(-2.70, -3.55, -0.2) ... mk.position.set(2.62, -6.2 + i * 0.55, -0.3)`
+  - **CERRADO 2026-08-04, y el escenario de la ficha NO puede ocurrir.** Dice que con `dolly = 1.55` la
+    columna de marcas queda fuera del cuadro. El unico aire con ese dolly es `inmobiliario`, y declara
+    **`hud: false`**: no construye ninguna marca. Los dos que si las construyen —`tecnico` (1.0) y
+    `corporativo` (0.7)— tienen dolly bajo. Verificado sobre los once aires.
+  - **Lo que si ocurre es por el otro eje.** La columna arranca en y = -6.2 con paso 0.55 y **SUBE**
+    1.68 durante la escena (el comentario decia 'baja' y el codigo suma en y). Las tres ultimas marcas
+    empiezan en 5.35, 5.90 y 6.45 contra un semicuadro de 5, y terminan en 7.03, 7.58 y 8.13: medido
+    construyendo la escena, **encendidas los 31 instantes muestreados y dentro del cuadro en ninguno**.
+  - **El numero sale de la geometria, no se eligio:** una marca que arranca por encima del borde no
+    entra nunca porque la columna solo sube, asi que `MK_N = floor((semicuadro - Y0) / paso) + 1 = 21`.
+    Y el recorrido pasa a ser la MISMA constante que dimensiona la columna: escrito dos veces, algun
+    dia dejan de coincidir y vuelven las marcas invisibles.
+  - Medido antes y despues: **de 3 mallas encendidas que nunca entran, a 0**, con la escena
+    construyendo tres mallas menos.
+  - **Por que ninguna compuerta lo veia, que es la parte reutilizable:** la regla por malla pide lado >
+    `mundoW * 0.12` y estas miden 0.12-0.21; y `E-ENCUADRE-MUDOS` —la que agregue en esta misma
+    sesion— se conforma con que 3 de 24 sean invisibles, o sea 12.5% contra el umbral de 50% que
+    derive. El umbral que medi y defendi deja pasar este caso, y queda dicho aca en vez de escondido.
 
 - [x] **render3d/demo/escenas/pantalla.js:79**
   - **Síntoma:** La proporcion usada para calcular `visible` puede errar hasta 5.3x (720/1560 = 0.4615 contra 720/8192 = 0.0879): la escena mostraria 83% de lo que cree que es la pagina cuando en realidad son 6840 px de captura apretados en el cuadro. En la practica no se llega a ver porque una textura cargada siempre trae medidas — lo reporto porque el encargo pide justo esto (si la cuenta usa medidas reales o un

@@ -335,11 +335,27 @@ export function build(ctx) {
   // El bucle entero va bajo la condicion, no solo el push: `barra()` hace `g.add(mesh)` por dentro, asi
   // que filtrar el array dejaba las 24 mallas en la escena igual. Se vio renderizando jugueton —que
   // declara marco 'nada'— y encontrando la columna intacta en el borde derecho.
-  if (hudBorde) for (let i = 0; i < 24; i++) {
+  // CUANTAS MARCAS: SALE DE LA GEOMETRIA, NO DEL 24 QUE HABIA ESCRITO.
+  //
+  // La columna arranca en MK_Y0 y SUBE MK_SUBE durante toda la escena (el tween de mas abajo; el
+  // comentario decia 'baja' y el codigo suma en y). Entonces una marca que arranca POR ENCIMA del borde
+  // superior no entra NUNCA: solo se aleja. Con 24 y paso 0.55, las tres ultimas empezaban en 5.35,
+  // 5.90 y 6.45 contra un semicuadro de 5 y terminaban en 7.03, 7.58 y 8.13 — medido construyendo la
+  // escena: encendidas los 31 instantes muestreados y dentro del cuadro en ninguno.
+  //
+  // Es poca cosa en pixeles y es exactamente lo que E-ENCUADRE existe para no dejar pasar: geometria
+  // animada que nadie ve. Y las compuertas no podian: la regla por malla pide lado > mundoW*0.12 y
+  // estas miden 0.12-0.21, y la de grupo se conforma con que 3 de 24 sean invisibles.
+  const MK_Y0 = -6.2, MK_PASO = 0.55, MK_SUBE = 1.68
+  // El semicuadro sale de la proporcion 9:16 sobre `mundoW`, que es lo que esta escena SI recibe:
+  // mundoH = mundoW * 16/9. Pedir `mundoH` en el ctx seria cambiarle la firma a la escena por una
+  // cuenta de una linea.
+  const MK_N = Math.floor(((mundoW * 16 / 9) / 2 - MK_Y0) / MK_PASO) + 1
+  if (hudBorde) for (let i = 0; i < MK_N; i++) {
     const largo = 0.10 + rnd() * 0.16
     const acentuada = rnd() > 0.72
     const mk = barra(acentuada ? LOOK.acento : LOOK.tinta, acentuada ? 2.6 : 0.8, 1, 0)
-    mk.position.set(2.62, -6.2 + i * 0.55, -0.3)
+    mk.position.set(2.62, MK_Y0 + i * MK_PASO, -0.3)
     mk.scale.set(largo, 0.028, 1)
     marcas.push(mk)
   }
@@ -478,8 +494,10 @@ export function build(ctx) {
   tl.to(barrido.scale, { x: 0, duration: 0.07, ease: E.acelera(2) }, b(7.5) + 0.13)
 
   // -------- columna de marcas: un solo movimiento continuo, de punta a punta de la escena
+  // El recorrido es el MISMO valor con el que se dimensiono la columna (MK_SUBE): escribirlo dos veces
+  // es garantia de que algun dia dejen de coincidir y vuelvan las marcas que nadie ve.
   for (const mk of marcas) {
-    tl.to(mk.position, { y: mk.position.y + 1.68, duration: b(7.9), ease: 'none' }, 0)
+    tl.to(mk.position, { y: mk.position.y + MK_SUBE, duration: b(7.9), ease: 'none' }, 0)
   }
 
   // -------- HUD: rótulo y regla escalonada (un escalón por medio beat)
