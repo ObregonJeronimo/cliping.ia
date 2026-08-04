@@ -902,6 +902,41 @@ El orden correcto es al reves: primero se cierran las 88, despues se afila la co
 
 ## Dos hallazgos nuevos, vistos renderizando el 2026-07-31 (NO son de los parches de hoy)
 
+- [ ] **render3d/demo/escenas/destello.js — con copy real y un aire de tipografia ancha, el titular se
+  sale del cuadro por los dos lados**
+  - **Sintoma:** Cuadro 490 de un render de tailwindcss.com a 20 s, semilla 13, aire `deportivo`:
+    'BUILT FOR THE' llega cortado contra el borde derecho y 'MODERN WEB.' se sale por AMBOS costados —
+    la M inicial mordida a la izquierda y el punto final pegado al borde derecho.
+  - **Lo dispara:** El aire. Medido barriendo los 11 aires y 4 marcas (748 combinaciones), `destello`
+    llega a **2.33 anchos de cuadro** en `deportivo`, `jugueton` y `nocturno`, contra 1.47 como maximo
+    en el aire por omision. Son los aires de tipografia display ancha.
+  - **Y contesta una pregunta que estaba abierta:** en el seguimiento de `verificar.mjs:410` se dejo sin
+    bajar el tope de ancho porque no se sabia si ese 2.33 era un transitorio legitimo del golpe de
+    escala. NO lo es: se corresponde con texto cortado que se ve. O sea que el tope SI se puede bajar, y
+    que **E-ENCAJE deberia barrer aires** —hoy corre con uno solo, `configurar()` solo se llama en
+    E-EASE— porque si los barriera ya estaria en rojo.
+  - **Compuerta:** Ninguna. E-ENCAJE mide con un solo aire; `encuadre-check` pregunta si la caja CRUZA
+    el cuadro, no si entra entera; y la contencion declarativa (`userData.encaja`) no la declara esta
+    escena.
+
+- [ ] **render3d/demo/escenas/apertura.js — la pieza puede abrir con medio segundo de nada**
+  - **Sintoma:** Medido en RGB sobre los 26 videos renderizados que hay en `tools/out/motor`, contando
+    cuadros planos en LOS TRES canales desde el cuadro 0: `www-theverge-com` abre con **17 cuadros
+    (0.57 s)** a 20 s y **15 (0.50 s)** a 15 s, en los que no hay absolutamente nada sobre el fondo. Le
+    siguen stripe 15 s con 6 (0.20 s) y mercadolibre con 5 (0.17 s); los otros 21 abren en 0.00 s.
+  - **Lo dispara:** La pagina, no el ritmo — se descarto el bpm como causa: theverge a 102 y a 112 bpm
+    espera medio segundo, mientras pentagram a 96 espera 0.07 s y ocho piezas a 120-138 esperan cero.
+  - **Por que importa:** lo dice el propio guion en `guion.js` (el bloque del gancho): 'estos videos se
+    ven en un feed, donde nadie decide seguir mirando porque le mostraron un logo. Decide en los
+    primeros dos segundos'. Medio segundo de campo liso es el 28% de esos dos segundos gastado en nada.
+  - **CUIDADO AL MEDIRLO, que ya me mordio dos veces:** (1) convertir a GRIS hace que un campo de color
+    saturado y plano —el violeta [81,10,247] de theverge— sea indistinguible de un cuadro vacio, y
+    marcaba 22 de 28 videos; hay que medir en RGB. (2) `numpy.std()` sobre el arreglo entero mide la
+    dispersion ENTRE canales, no la espacial: daba sd=99 para un cuadro que es liso. Las dos versiones
+    equivocadas dan numeros igual de convincentes.
+  - **Compuerta:** Ninguna. El motor 2D tiene 'cero frame vacio' en sus gates de storyboard y timeline;
+    el motor 3D no tiene nada equivalente.
+
 - [x] **tools/anthem-datos.mjs:164 — el rotulo imprimia el valor de reserva del clasificador**
   - **Sintoma:** La pieza escribe en pantalla, pegado a la marca, la categoria del negocio: 'TAILWIND
     CSS · OTRO', 'LINEAR · OTRO'. Y `otro` no es una categoria: es lo que el sistema pone cuando NO
