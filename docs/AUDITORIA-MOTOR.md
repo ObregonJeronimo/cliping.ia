@@ -216,7 +216,33 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
     —o sea las que encienden el veto— hoy dan CERO elementos (linear-app, stripe, mercadolibre), y las
     que traen elementos (tailwindcss 4/4 en rol, pentagram 6/7, theverge 8/8) no publican testimonios.
     Falta una captura que tenga las dos cosas a la vez.
-  - Queda ABIERTO, y con la receta escrita para reproducirlo: recapturar linear-app y volver a medir.
+  - **REPRODUCIDO el 2026-08-04.** Se recapturo linear.app y ahora da **7 elementos y 3 testimonios**,
+    o sea el veto ENCENDIDO — que es justo la combinacion que faltaba. Cargando sus PNG con `loadImage`
+    y corriendo `esLamina` de verdad:
+
+    | rol | tamano | veredicto |
+    |---|---|---|
+    | logo | 176x44 | pasa |
+    | cta | 256x90 | pasa |
+    | cta | 290x90 | **LAMINA, vetada** |
+    | cta | 172x66 | pasa |
+    | tarjeta | 1400x845 | **LAMINA, vetada** |
+    | tarjeta | 864x960 | **LAMINA, vetada** |
+    | foto | 1400x782 | pasa |
+
+  - **La cuenta que hace el requisito contra la que hace la escena:**
+    - `titular` (roles foto/hero/tarjeta): el requisito cuenta **3**, sobrevive **1**.
+    - `cubo` (logo/tarjeta/foto/hero): cuenta **4**, sobreviven **2**.
+    - `mesa` (foto/tarjeta/logo): cuenta **4**, sobreviven **2**.
+  - O sea que el requisito **sobrecuenta 3x** en esta pagina. En este caso `titular` igual se salva
+    porque le queda 1, asi que NO cae en `vacia` — la ficha decia que si, y con este material no pasa.
+    Pero con un recorte menos caeria, y `cubo` ya queda por debajo de su `CARAS_MINIMAS = 4`.
+  - **El arreglo esta localizado y es viable:** el requisito tendria que contar los que SOBREVIVEN al
+    veto, no los que tienen el rol. Y se puede: verificado en `main.js` que las texturas se cargan
+    ANTES de `construir()` (linea 824 contra 806-816), y el guion corre adentro (linea 427), asi que en
+    el momento en que `REQUISITOS` decide, las imagenes YA estan. Lo que falta es pasarle las texturas
+    a `REQUISITOS`, que hoy solo recibe `datos`.
+  - Queda ABIERTO, ya sin nada que averiguar: es un cambio de contrato del guion, no un misterio.
 
 - [x] **render3d/demo/heroes/portatil.js:142**
   - ✅ **HECHO** — e28eacd — matriz de textura a mano: uRep/uOff apuntando a los Vector2 propios de la textura. Arregla el aplastamiento de 7-19x Y revive el scroll, que animaba un valor que nadie leia.
