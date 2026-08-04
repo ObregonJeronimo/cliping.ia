@@ -87,13 +87,25 @@ const PAGINAS = []
 const W = 1080, H = 1920, mundoH = 10, mundoW = mundoH * (W / H)
 const fov = 30, distBase = (mundoH / 2) / Math.tan((fov * Math.PI / 180) / 2)
 
-function tejido() {
+function tejido(els = []) {
   const m = new Map()
   ;[2.4, 1.0, 0.6, 3.4, 1.35].forEach((ar, i) => {
     const h = 64, w = Math.max(2, Math.round(h * ar))
     const t = new THREE.CanvasTexture(createCanvas(w, h))
     t.image = { width: w, height: h }
     m.set('f' + i, t)
+  })
+  // Y CON LAS CLAVES REALES DE LA PAGINA. El Map se llenaba con 'f0'..'f4' mientras `datosEls` trae
+  // las urls del fixture ('stripe-com__el0-logo.png'), asi que NINGUN recorte resolvia y toda escena
+  // que necesita una imagen se declaraba vacia. La primera medicion decia "titular se cae el 100% de
+  // las veces" y era el arnes, no el motor.
+  ;(els || []).forEach((e, i) => {
+    if (!e || !e.url) return
+    const ar = [2.4, 1.0, 0.6, 3.4, 1.35][i % 5]
+    const h = 64, w = Math.max(2, Math.round(h * ar))
+    const t = new THREE.CanvasTexture(createCanvas(w, h))
+    t.image = { width: w, height: h }
+    m.set(e.url, t)
   })
   const t = new THREE.CanvasTexture(createCanvas(4, 4))
   t.image = { width: 720, height: 6240 }
@@ -127,7 +139,7 @@ async function pieza(datos, seed, dur, aire) {
         fondo: uni(),
         pelicula: { uT: { value: 0 }, uFlash: { value: 0 }, uGrano: { value: 0.055 }, uVinieta: { value: 0.9 }, uAberr: { value: 0.0022 } },
         bloom: { strength: 0.85, radius: 0.62, threshold: 0.62 },
-        texturas: tejido(),
+        texturas: tejido(datos.elementos || []),
         datosEls: datos.elementos || [],
         spec: { tiraViewport: 1560, aire },
         claro: false,

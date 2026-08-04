@@ -196,6 +196,27 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Lo dispara:** El requisito cuenta elementos por ROL; la escena necesita una TEXTURA que sobreviva a `texturaDe` (kit.js:2039: `if (SIN_LAMINAS && e.rol !== 'logo' && esLamina(t.image)) return null`), y ese veto lo enciende `configurarDatos` (datos.js:91) en cuanto la pagina publico testimonios. Fixture linear-app
   - **Compuerta:** Ninguna. `titular` no esta en la copia de requisitos del gate, y aunque estuviera, el gate no carga imagenes: `esLamina` mide pixeles y solo corre en el navegador al construir. No re-medi los PNG — me apoyo en la tabla de medicion que el propio kit.j
   - `titular: (d) => (d.elementos || []).some(e => e && ['foto', 'hero', 'tarjeta'].includes(e.rol)) && (d.frases || []).filter(Boolean).length >= 1,`
+- SEGUIMIENTO de guion.js:82-83 (2026-08-04): **la primera mitad ya estaba arreglada; la segunda no se
+  puede reproducir en esta maquina, y el mecanismo SI quedo demostrado.**
+  - **Ya arreglado:** 'main.js la cuelga igual, 6 beats de cuadro liso' no ocurre. `main.js:526` lee
+    `r.vacia`, mata la timeline y hace `continue` SIN avanzar el beat, con un comentario que describe
+    exactamente este defecto. La pieza sale mas corta en vez de tener un agujero.
+  - **Medido, 0 escenas fantasma:** construidas 105 piezas con los 7 fixtures reales, **0 de 787**
+    escenas programadas se declaran vacias.
+  - **PERO ese 0 hay que leerlo con cuidado, y la primera medicion decia 100%.** El arnes llenaba el
+    Map de texturas con claves 'f0'..'f4' mientras `datosEls` trae las urls del fixture, asi que ningun
+    recorte resolvia y `titular` se caia siempre. Corregido en `tools/eco-check.mjs`: las texturas se
+    crean con las URLs REALES de cada pagina.
+  - **El veto de laminas SI se puede probar, y esto es nuevo:** cargando los PNG de verdad con
+    `loadImage` de @napi-rs/canvas, `esLamina` funciona en Node y dispara sobre **13 de los 53 recortes
+    reales del repo (25%)** — entre ellos 3 de linear-app. O sea que el punto ciego que este documento
+    nombra dos veces ('los heroes se prueban con lienzos de 4 px porque lo que se audita es la
+    GEOMETRIA, no los pixeles') **tiene salida**: alcanza con leer los archivos que ya estan en disco.
+  - **Por que no se reproduce igual:** de las 6 capturas cacheadas, las que publican testimonios
+    —o sea las que encienden el veto— hoy dan CERO elementos (linear-app, stripe, mercadolibre), y las
+    que traen elementos (tailwindcss 4/4 en rol, pentagram 6/7, theverge 8/8) no publican testimonios.
+    Falta una captura que tenga las dos cosas a la vez.
+  - Queda ABIERTO, y con la receta escrita para reproducirlo: recapturar linear-app y volver a medir.
 
 - [x] **render3d/demo/heroes/portatil.js:142**
   - ✅ **HECHO** — e28eacd — matriz de textura a mano: uRep/uOff apuntando a los Vector2 propios de la textura. Arregla el aplastamiento de 7-19x Y revive el scroll, que animaba un valor que nadie leia.
