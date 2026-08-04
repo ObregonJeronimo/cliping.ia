@@ -242,7 +242,20 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
     ANTES de `construir()` (linea 824 contra 806-816), y el guion corre adentro (linea 427), asi que en
     el momento en que `REQUISITOS` decide, las imagenes YA estan. Lo que falta es pasarle las texturas
     a `REQUISITOS`, que hoy solo recibe `datos`.
-  - Queda ABIERTO, ya sin nada que averiguar: es un cambio de contrato del guion, no un misterio.
+  - **SE PROBO EL ARREGLO Y SE SACO, con la medicion escrita.** Se implemento entero: `guionDe` acepta
+    un predicado `sirve` —un PREDICADO y no las texturas, para no romper la independencia de `guion.js`
+    respecto de `kit.js`, que es la que deja a `guion-check` cargarlo sin montar un DOM—, los cinco
+    requisitos que dependen de recortes (`mesa` x2, `rafaga`, `columna`, `titular`, `contraste`) pasaron
+    a contar por ese predicado, y `main.js` lo pasa consultando `texturaDe` con las texturas ya cargadas.
+  - **Y el plan no cambia: 0 de 144.** Medido con las 4 capturas reales que traen elementos, cargando
+    sus PNG de verdad, sobre 3 duraciones x 12 semillas cada una. Los umbrales de esos requisitos son
+    lo bastante bajos como para que el veto no de vuelta ninguno: en linear.app —la unica con el veto
+    encendido— sobreviven 4 de 7 recortes, y `columna` pide 2, `titular` 1 y `mesa` 1.
+  - Se revirtio, por la regla que este documento ya aplico al cupo de la frase del hero: **un arreglo
+    que no mueve la medicion no se deja puesto.** Queda ABIERTO con el numero, y con el codigo probado
+    —es media hora de trabajo el dia que una pagina real haga saltar alguno de esos umbrales.
+  - **Lo que SI se dejo** es el caso hermano donde la medicion si se movio: `cubo.meta.puede`, que con
+    linear.app pasa de ofrecerse a no ofrecerse. Mismo arreglo, distinto resultado, distinta decision.
 
 - [x] **render3d/demo/heroes/portatil.js:142**
   - ✅ **HECHO** — e28eacd — matriz de textura a mano: uRep/uOff apuntando a los Vector2 propios de la textura. Arregla el aplastamiento de 7-19x Y revive el scroll, que animaba un valor que nadie leia.
