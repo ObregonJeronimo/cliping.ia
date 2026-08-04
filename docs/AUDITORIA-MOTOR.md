@@ -902,6 +902,24 @@ El orden correcto es al reves: primero se cierran las 88, despues se afila la co
 
 ## Dos hallazgos nuevos, vistos renderizando el 2026-07-31 (NO son de los parches de hoy)
 
+- [x] **tools/anthem-datos.mjs:164 — el rotulo imprimia el valor de reserva del clasificador**
+  - **Sintoma:** La pieza escribe en pantalla, pegado a la marca, la categoria del negocio: 'TAILWIND
+    CSS · OTRO', 'LINEAR · OTRO'. Y `otro` no es una categoria: es lo que el sistema pone cuando NO
+    SABE — `semantica_gratis.py:521` lo dice textual, "o 'otro' si no hay evidencia suficiente".
+  - **Lo dispara:** Cualquier pagina que el clasificador gratuito no logre ubicar. Medido sobre las 6
+    capturas reales del repo: **2 de 6 (33%)** salen asi, y las dos son sitios de herramientas para
+    desarrolladores.
+  - Es primo de la anti-invencion y del mismo lado: la pieza afirma de la marca algo que la pagina
+    nunca dijo. Sin categoria, el rotulo es la marca sola, que es verdad y alcanza.
+  - **Encontrado MIRANDO un cuadro** (el 425 del render de tailwindcss), no leyendo codigo — igual que
+    los otros dos de esta seccion.
+  - **CERRADO 2026-08-04** + compuerta **E-SIN-RESERVA** en `tools/guion-check.mjs`.
+  - **Y la compuerta nacio sin poder ponerse roja, otra vez.** Barria los 7 pagemodels del repo, que
+    traen `tipoNegocio` real ('saas', 'ecommerce') porque se armaron cuando ese campo lo llenaba un
+    LLM: el 'otro' nace en el camino GRATUITO, que los fixtures saltean. Daba verde con el defecto
+    delante. Corregida probando los 6 valores de reserva a mano; ahora contra el codigo viejo acusa
+    `PANADERIA DEL SUR · OTRO`.
+
 - [x] **backend/site_capture.py — nada verifica que lo capturado sea la pagina**
   - **Sintoma:** El motor construyo 20 s enteros sobre una pagina de error de CloudFront. En el cuadro
     87 se lee "Request blocked. We can't connect to the server for..." con el Request ID impreso en
@@ -990,6 +1008,20 @@ El orden correcto es al reves: primero se cierran las 88, despues se afila la co
     que recortar por UV y no achicar. Son dos casos distintos con una sola rama.
   - **Compuerta:** Ninguna. Un hueco de fondo no es desborde ni pieza fuera de cuadro, asi que ni
     E-ENCAJE ni E-ENCUADRE aplican. Es el mismo punto ciego que titular.js:130.
+- SEGUIMIENTO de mesa.js (2026-08-04): **el sintoma descrito no se reproduce; el que SI se ve es otro.**
+  - Renderizado tailwindcss.com a 30 s, semilla 13, con un plan que pone `pantalla` ANTES que `mesa`
+    —o sea con la tira ya cedida y `mesa` componiendo con un recorte, que es la condicion que la ficha
+    pide—. Medido el tercio superior en 10 cuadros de la escena y comparado contra las otras 8 escenas
+    de la MISMA pieza: `mesa` da 85.2% de planitud y es de las **menos** planas — `apertura` 95.6%,
+    `destello` 96.1%, `cierre` 96.1%, `hero` 94.2%. El tercio de arriba no esta vacio: lleva el rotulo
+    y su regla.
+  - **Lo que si se ve mirando el cuadro 425 a resolucion completa:** el recorte de abajo sale CORTADO
+    POR LOS DOS COSTADOS — se lee 'ors' donde dice 'Colors' y 'alette now uses more vibrant wide gamut
+    colo' con la palabra partida a izquierda y derecha. O sea que la tension que la ficha describe
+    (`mesa.js:24` promete recortar por UV y el arreglo del estiramiento achica el plano) se manifiesta
+    como TEXTO CORTADO, no como hueco. Es la misma rama, con otro sintoma, y el sintoma que hay que
+    buscar al arreglarla.
+  - Queda ABIERTO con esa correccion.
 
 - SEGUIMIENTO (abierto, pertenece a hero.js:76) — **intentado por el lado del cupo y no demostrado**
   - Se probo contar en el cupo la frase que bebe el hero (restarle 1 a `nFr`). El plan salio IDENTICO:

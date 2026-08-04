@@ -161,7 +161,16 @@ export function datosDe(pm) {
   const pr = s.pruebas || {}
   return {
     marca: (pm.brand || '').toUpperCase(),
-    rotulo: [pm.brand, s.tipoNegocio].filter(Boolean).join(' · ').toUpperCase(),
+    // "OTRO" NO ES UNA CATEGORIA, ES "NO SE". `tipoNegocio` sale de un enum cuyo ultimo valor es el
+    // que se pone cuando NO HAY EVIDENCIA suficiente (`semantica_gratis.py:521`, textual: "o 'otro' si
+    // no hay evidencia suficiente"), y el rotulo lo imprimia en pantalla como si fuera un dato de la
+    // marca: "TAILWIND CSS · OTRO", "LINEAR · OTRO". Medido sobre las 6 capturas reales del repo, DOS
+    // salian asi — un tercio de las piezas le decia al espectador que el rubro de esa empresa es "otro".
+    //
+    // Es primo de la anti-invencion y del mismo lado: la pieza afirma algo que la pagina nunca dijo.
+    // Sin categoria, el rotulo es la marca sola, que es verdad y alcanza.
+    rotulo: [pm.brand, s.tipoNegocio === 'otro' ? '' : s.tipoNegocio]
+      .filter(Boolean).join(' · ').toUpperCase(),
     // 92 es lo que entra en tres renglones de portada sin que el cuerpo baje de lo legible.
     claim: promesa(s.queHace, 92).toUpperCase(),
     frases: frasesDe(pm),

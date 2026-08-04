@@ -68,7 +68,7 @@ python tools/captura-check.py
 python tools/testimonios-check.py
 ```
 
-**El guard completo (~30 min), solo antes de pushear:** `npm run gates:guard`. Tiene que dar 34 OK /
+**El guard completo (~30 min), solo antes de pushear:** `npm run gates:guard`. Tiene que dar 35 OK /
 0 FAIL. **Nunca correr dos guards a la vez.**
 
 **Lo que las compuertas NO pueden ver, y hay que tenerlo presente siempre:**

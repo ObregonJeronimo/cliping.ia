@@ -349,3 +349,72 @@ if (ecos.length) {
   process.exit(1)
 }
 console.log('GATE SIN-ECO OK (4 paginas x 4 pedidos: el mostrador nunca entrega la misma frase dos veces en la misma escena).')
+
+// ---------------------------------------------------------------------------------------------
+// E-SIN-RESERVA — lo que la pieza dice de la marca no puede ser un valor interno de reserva.
+//
+// `tipoNegocio` sale de un enum cuyo ultimo valor, `otro`, significa NO SE: `semantica_gratis.py:521`
+// lo dice textual, 'o "otro" si no hay evidencia suficiente'. Y el rotulo lo imprimia en pantalla
+// pegado a la marca: 'TAILWIND CSS · OTRO', 'LINEAR · OTRO'. Medido sobre las 6 capturas reales del
+// repo, DOS salian asi — un tercio de las piezas le decia al espectador que el rubro de esa empresa es
+// 'otro'. Se vio mirando un cuadro, no leyendo codigo.
+//
+// Se comprueba sobre los DATOS que produce `datosDe()` con los 7 pagemodels reales, que es el mismo
+// camino que corre en produccion.
+if (!globalThis.document) {
+  globalThis.document = { createElement: (t) => (t === 'canvas' ? null : { style: {} }), fonts: { ready: Promise.resolve(), load: async () => {}, add() {}, check: () => true, *[Symbol.iterator]() {} } }
+  globalThis.FontFace = class { constructor(f) { this.family = f } async load() { return this } }
+  globalThis.window = globalThis
+}
+{
+  const { readFileSync: _rf, readdirSync: _rd, existsSync: _ex } = await import('node:fs')
+  const { fileURLToPath: _fu, pathToFileURL: _pu } = await import('node:url')
+  const { dirname: _dn, join: _jn } = await import('node:path')
+  const _raiz = _jn(_dn(_fu(import.meta.url)), '..')
+  const { datosDe: _dd } = await import(_pu(_jn(_raiz, 'tools', 'anthem-datos.mjs')).href)
+  const { normalizePageModel: _np } = await import(_pu(_jn(_raiz, 'src', 'director', 'core', 'schema.js')).href)
+  // Los valores que NUNCA pueden llegar a pantalla: son etiquetas del sistema, no de la marca.
+  const RESERVA = ['otro', 'desconocido', 'ninguno', 'null', 'undefined', 'sin definir']
+  const _dir = _jn(_raiz, 'tools', 'fixtures', 'director', 'elementos')
+  const malos = []
+  let mirados = 0
+  if (_ex(_dir)) {
+    for (const f of _rd(_dir).filter(x => x.endsWith('.json')).sort()) {
+      let d
+      try { d = _dd(_np(JSON.parse(_rf(_jn(_dir, f), 'utf8')))) } catch { continue }
+      mirados++
+      for (const [campo, valor] of [['rotulo', d.rotulo], ['marca', d.marca], ['claim', d.claim],
+        ['golpe', d.golpe], ['cta', d.cta], ['bloque.titulo', (d.bloque || {}).titulo]]) {
+        const t = String(valor || '').toLowerCase()
+        for (const r of RESERVA) {
+          // Palabra entera: una marca que se llame 'Otro Studio' no es un defecto.
+          if (new RegExp('(^|[^a-z0-9])' + r + '([^a-z0-9]|$)').test(t)) {
+            malos.push(`${f.replace('.json', '')}: ${campo} = ${JSON.stringify(valor)} — "${r}" es un valor de reserva, no un dato de la marca`)
+          }
+        }
+      }
+    }
+  }
+  // Y EL CASO QUE LOS FIXTURES NO PUEDEN DAR. Los 7 pagemodels del repo traen `tipoNegocio` real
+  // ('saas', 'ecommerce'): se armaron cuando ese campo lo llenaba un LLM. El 'otro' nace en el camino
+  // GRATUITO (`semantica_gratis.rubro_de`, que devuelve 'otro' cuando no hay evidencia), y ese camino
+  // los fixtures lo saltean — o sea que barriendolos solos esta compuerta daba verde con el defecto
+  // delante, que es exactamente lo que paso al escribirla. Se prueba el caso a mano.
+  for (const tn of RESERVA) {
+    let d
+    try {
+      d = _dd(_np({ brand: 'Panaderia Del Sur', url: 'https://x.com',
+        semantica: { tipoNegocio: tn, queHace: 'Pan de masa madre', cta: 'Ver', features: [] } }))
+    } catch { continue }
+    const t = String(d.rotulo || '').toLowerCase()
+    if (new RegExp('(^|[^a-z0-9])' + tn + '([^a-z0-9]|$)').test(t)) {
+      malos.push(`con tipoNegocio="${tn}" el rotulo sale ${JSON.stringify(d.rotulo)} — es el valor que el sistema pone cuando NO SABE`)
+    }
+  }
+  if (malos.length) {
+    console.log(`GATE SIN-RESERVA FAIL (${malos.length}):`)
+    for (const m of malos) console.log('  ' + m)
+    process.exit(1)
+  }
+  console.log(`GATE SIN-RESERVA OK (${mirados} paginas reales + ${RESERVA.length} valores de reserva probados a mano: ninguno llega a lo que la pieza dice).`)
+}
