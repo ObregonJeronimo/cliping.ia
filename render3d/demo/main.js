@@ -808,10 +808,17 @@ window.URVID = {
     const pedidos = []
     if (spec.tira) pedidos.push(['tira', spec.tira])
     for (const e of ((spec.datos && spec.datos.elementos) || [])) pedidos.push([e.url, e.url])
+    // UN RECORTE QUE NO CARGA TIENE QUE HACER RUIDO. El callback de error existe y lo unico que hacia
+    // era seguir: un PNG que no esta, una URL mal armada o un 404 dejaban la escena sin su imagen y el
+    // video salia con huecos sin una sola linea en ningun lado. Esa clase ya costo TODOS los videos de
+    // produccion una vez —el basename remoto era `el_captura_el0.png` y el archivo en disco
+    // `captura_el0.png`, asi que no cargaba ninguno— y se descubrio mirando un video, no por un aviso.
+    // Ahora se cuenta y se devuelve, y `backend/motor.py` lo imprime.
+    const _faltan = []
     if (pedidos.length) {
       const cargador = new THREE.TextureLoader()
       await Promise.all(pedidos.map(([clave, url]) => new Promise(res => {
-        cargador.load(url, t => { a.texturas.set(clave, t); res() }, undefined, () => res())
+        cargador.load(url, t => { a.texturas.set(clave, t); res() }, undefined, () => { _faltan.push(clave); res() })
       })))
     }
     const info = await a.construir()
@@ -823,7 +830,9 @@ window.URVID = {
     // mismo, la tabla de metricas asignaria cada numero a la escena equivocada y nadie se enteraria.
     // Lo escribe quien lo sabe: el secuenciador.
     return {
-      capas: info.escenas.length, texturas: 0, faltan: [], escenas: info.escenas, dur: a.dur,
+      // ESTOS DOS ERAN CERO Y VACIO FIJOS, o sea que el informe decia 'cargaron 0 texturas y no falta
+      // ninguna' pasara lo que pasara. Un campo que siempre dice lo mismo no informa: tranquiliza.
+      capas: info.escenas.length, texturas: a.texturas.size, faltan: _faltan, escenas: info.escenas, dur: a.dur,
       plan: (a.guionUsado || info.escenas.map(e => e.id)),
       montaje: info.montaje || [],
       beats: (a.guionUsado || []).map(id => {

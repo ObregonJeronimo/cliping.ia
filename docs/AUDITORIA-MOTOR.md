@@ -953,6 +953,28 @@ El orden correcto es al reves: primero se cierran las 88, despues se afila la co
     recortesDe, texturaDe, dolly, orbita, deslizFijo).
   - **Compuerta:** Ninguna. Es el mismo punto ciego que documenta verificar.mjs:87-89 — los heroes se
     prueban con lienzos de 4 px porque lo que se audita es la GEOMETRIA, no los pixeles.
+- SEGUIMIENTO de cubo.js caras vacias (2026-08-04): **no se reproduce con material real, y dos de las
+  causas candidatas quedan descartadas por lectura de codigo.**
+  - Renderizado tailwindcss.com con `--hero cubo` (la captura de stripe que hay hoy da 0 elementos, asi
+    que el cubo ni se ofrece). Mirados 3 cuadros a resolucion completa —f170, f220 y f120— y **el cubo
+    dibuja bien**: logo de la marca en una cara y una foto de la pagina en otra, con las laminas por
+    encima del nucleo.
+  - **Descartado que la causa sea una textura que no carga**: si `TextureLoader` falla, la url no entra
+    en el Map, `texturaDe` devuelve null y `cubo.js:52-54` la filtra — con todas fallando `texs` queda
+    vacio y el hero se declara `vacia: true`, o sea que NO dibujaria caras en blanco, no dibujaria
+    nada. El sintoma descrito (caras planas sobre el nucleo) no sale por ahi.
+  - **Descartado que sea material insuficiente**: eso da la MISMA imagen repetida, no caras vacias, y
+    ademas desde el cupo de `CARAS_MINIMAS = 4` el hero ni se ofrece en ese caso.
+  - Queda ABIERTO. La causa mas probable que sobrevive es que los recortes de esa pagina fueran
+    regiones planas (un area lisa capturada como elemento), que es pariente del hallazgo de
+    `_es_placeholder` y hoy tiene compuerta propia.
+  - **Y salio de aca un defecto propio, ese si arreglado:** el informe del render devolvia
+    `texturas: 0, faltan: []` FIJOS —un campo que siempre dice lo mismo no informa, tranquiliza— y
+    `motor.py` ademas llama al render con `log=lambda *a: None`, o sea que el unico aviso sobre
+    recortes que no cargan no se veia desde la entrada principal. Ahora se cuentan, viajan en el
+    `.plan.json` y `motor.py` los imprime. Verificado rompiendo las URLs a proposito: avisa **6
+    recortes no cargaron** y los nombra. Esa es exactamente la clase de defecto que ya costo TODOS los
+    videos de produccion una vez (`el_captura_el0.png` contra `captura_el0.png`).
 
 - [ ] **render3d/demo/escenas/mesa.js — el respaldo del recorte deja el tercio de arriba vacio**
   - **Sintoma:** Medido en 9 cuadros repartidos por toda la escena (228 a 296 del render de stripe.com

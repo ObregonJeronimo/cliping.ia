@@ -1986,6 +1986,10 @@ export function planoRecorte(tex, alto, o = {}) {
 
 // Carga los recortes que declara D.elementos. Devuelve un Map url -> textura. El TextureLoader de
 // three es asincronico: si una escena no espera, construye con texturas vacias y el plano sale negro.
+// NO LA LLAMA NADIE — verificado con un grep sobre todo el repo. El cargador que corre de verdad esta
+// en `main.js` (dentro de `init`, junto al de la tira), y esta copia quedo huerfana. Se deja porque no
+// molesta, pero SI ALGUIEN VIENE A DIAGNOSTICAR POR QUE UN RECORTE NO APARECE, no es aca: este archivo
+// se lee primero por el nombre y es una via muerta. (Me paso.)
 export function cargarRecortes(elementos) {
   const cargador = new THREE.TextureLoader()
   const urls = [...new Set((elementos || []).map(e => e.url).filter(Boolean))]

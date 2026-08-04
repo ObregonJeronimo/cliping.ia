@@ -180,6 +180,12 @@ def _guardar_plan(destino, info):
             # que la pieza lo declara. Un elemento menos que la lista de escenas: son los cortes.
             "montaje": info.get("montaje") or [],
             "escala": round(propios / info["dur"], 4) if propios and info.get("dur") else 1,
+            # LOS RECORTES QUE NO CARGARON, y quedan escritos al lado del mp4 a proposito. El aviso
+            # existia en el log de esta funcion y `motor.py` la llama con `log=lambda *a: None`, o sea
+            # que desde la entrada principal no se veia NADA. Un recorte que no carga deja la escena
+            # sin su imagen y el video sale con huecos: esa clase ya costo todos los videos de
+            # produccion una vez, y se descubrio mirando un video.
+            "texturas": info.get("texturas"), "faltan": info.get("faltan") or [],
         }
         with open(str(destino) + ".plan.json", "w", encoding="utf-8") as f:
             json.dump(datos, f, ensure_ascii=False, indent=1)

@@ -374,6 +374,18 @@ async def render(url: str, salida: str, hero: str | None = None, dur: int = 20,
     print(f"renderizando: aire {spec['aire']} · hero {hero or 'automatico'} · {dur}s · semilla {seed}")
     await render3d.grabar_mp4(spec, salida, raiz_assets=dst, gpu=True, bitrate=bitrate,
                               log=lambda *a: None)
+    # LO QUE NO CARGO, SE DICE. El render silencia su log entero (la linea de arriba) porque imprime
+    # una linea por cuadro, y con eso se perdia tambien el unico aviso que importa: cuantos recortes no
+    # cargaron. Se lee del plan que el render acaba de escribir, que es quien lo sabe.
+    try:
+        with open(str(salida) + '.plan.json', encoding='utf-8') as _f:
+            _plan = json.load(_f)
+        _faltan = _plan.get('faltan') or []
+        if _faltan:
+            print('  ATENCION: %d recorte/s no cargaron y su escena queda sin imagen: %s'
+                  % (len(_faltan), ', '.join(str(x) for x in _faltan[:4])))
+    except Exception:
+        pass                                            # el video ya se grabo; esto es un aviso
     return salida
 
 
