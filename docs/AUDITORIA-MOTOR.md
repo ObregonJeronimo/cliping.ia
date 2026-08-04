@@ -525,6 +525,26 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Lo dispara:** Hoy no lo dispara ningun contenido: ningun aire declara `margen`, asi que MOB.margen es siempre [0.87, 0.85] (kit.js:469). Lo dispararia el dia que un aire lo declare, y ese es justo el parametro que el aire existe para tener.
   - **Compuerta:** Ninguna, y no es un caso que una compuerta pueda cazar mirando un cuadro: es un parametro declarado que ningun consumidor lee, la misma clase de defecto que kit.js:34-39 documenta para `camara` y kit.js:448-451 para `transiciones`.
   - `return { g, piezas, X, Y, tipo }`
+- SEGUIMIENTO de kit.js:805 (2026-08-04): **confirmado que X/Y no los lee nadie, medido que hoy no
+  produce un defecto visible, y aparecio una inconsistencia entre las dos escenas que si dibujan marco.**
+  - `margen` NO esta muerto: `marco()` lo usa para colocar sus piezas. Lo que nadie lee es el
+    rectangulo DEVUELTO, o sea la referencia para el CONTENIDO. Son dos cosas distintas y la ficha las
+    junta.
+  - **Medido construyendo las dos escenas que llaman a `marco()` en los 11 aires** (9 dibujan marco;
+    `bienestar` y `jugueton` declaran `marco: 'nada'`), comparando el ancho de su tipografia y sus
+    recortes contra el X del rectangulo:
+    - `cierre` **lo respeta** en los 9: 2.20 a 2.37 contra X = 2.45.
+    - `apertura` **lo cruza en los 9**: 2.87 a 2.98, o sea entre **17% y 22% mas ancho** que el
+      rectangulo que su propio marco dibuja.
+  - **Y no se ve como un error.** Mirado el cuadro 55 de un render real de tailwindcss y medido en
+    pixeles: el nombre va de x=42 a x=1062 sobre 1080, o sea **42 px de margen a la izquierda y 17 a la
+    derecha** — apretado y asimetrico, pero NO cortado. Se pasa de la regla del marco 27 px por
+    izquierda y 52 por derecha, y eso se lee como tipografia grande POR ENCIMA del marco, no como un
+    desborde.
+  - Queda ABIERTO como lo que es: un valor devuelto que nadie consume y dos consumidores que tratan el
+    mismo rectangulo distinto. No hay parche que aplicar hoy —cablear el contenido al rectangulo
+    cambiaria el ancho de las 25 composiciones escritas a mano, que es un cambio de diseno— y el dia
+    que un aire declare `margen` la inconsistencia se vuelve visible en `apertura` y no en `cierre`.
 
 - [ ] **render3d/demo/verificar.mjs:410**
   - **Síntoma:** El heuristico que deberia atrapar 'una pieza se come el cuadro' tiene dos huecos medibles. (1) El umbral de ancho es mundoW * 2.2 = 12.38 unidades: un renglon que sangra el 120% del cuadro por los dos lados pasa. (2) verificar.mjs:404 (`if (!peor || t.y > peor.y) peor = { x: t.x, y: t.y }`) se queda con UNA sola pieza, la mas ALTA, y despues comprueba SU ancho — asi que una linea ancha y baja, que
