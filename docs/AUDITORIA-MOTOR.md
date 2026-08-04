@@ -902,23 +902,28 @@ El orden correcto es al reves: primero se cierran las 88, despues se afila la co
 
 ## Dos hallazgos nuevos, vistos renderizando el 2026-07-31 (NO son de los parches de hoy)
 
-- [ ] **render3d/demo/escenas/destello.js — con copy real y un aire de tipografia ancha, el titular se
-  sale del cuadro por los dos lados**
-  - **Sintoma:** Cuadro 490 de un render de tailwindcss.com a 20 s, semilla 13, aire `deportivo`:
-    'BUILT FOR THE' llega cortado contra el borde derecho y 'MODERN WEB.' se sale por AMBOS costados —
-    la M inicial mordida a la izquierda y el punto final pegado al borde derecho.
-  - **Lo dispara:** El aire. Medido barriendo los 11 aires y 4 marcas (748 combinaciones), `destello`
-    llega a **2.33 anchos de cuadro** en `deportivo`, `jugueton` y `nocturno`, contra 1.47 como maximo
-    en el aire por omision. Son los aires de tipografia display ancha.
-  - **Y contesta una pregunta que estaba abierta:** en el seguimiento de `verificar.mjs:410` se dejo sin
-    bajar el tope de ancho porque no se sabia si ese 2.33 era un transitorio legitimo del golpe de
-    escala. NO lo es: se corresponde con texto cortado que se ve. O sea que el tope SI se puede bajar, y
-    que **E-ENCAJE deberia barrer aires** —hoy corre con uno solo, `configurar()` solo se llama en
-    E-EASE— porque si los barriera ya estaria en rojo.
-  - **Compuerta:** Ninguna. E-ENCAJE mide con un solo aire; `encuadre-check` pregunta si la caja CRUZA
-    el cuadro, no si entra entera; y la contencion declarativa (`userData.encaja`) no la declara esta
-    escena.
-
+- [x] **render3d/demo/escenas/destello.js — FALSO POSITIVO MIO, retirado el 2026-08-04**
+  - Lo abri diciendo que con copy real y un aire de tipografia ancha el titular se salia del cuadro por
+    los dos lados, a partir de mirar el cuadro 490 de un render. **Estaba equivocado, y lo prueban dos
+    mediciones que hice despues.**
+  - **En el cuadro, con pixeles y no a ojo:** 'BUILT FOR THE' va de x=69 a x=1015 y 'MODERN WEB.' de
+    x=48 a x=1031 sobre 1080 de ancho. Son **48 a 69 px de margen a cada lado**: el texto no toca el
+    borde. Lo que si llega a la columna 1079 es el arco decorativo, que sangra a proposito.
+  - **Construyendo la escena, asentada:** la malla con textura mas ancha cuya escala ya se asento mide
+    entre **0.993 y 1.005 anchos de cuadro en los ONCE aires** — parejo, y sin desborde.
+  - **Y el 2.33 que disparo todo esto SI es un transitorio deliberado:** la malla mide 5.40 u (0.96 del
+    cuadro, correcto) y un tween la escala **2.429x** a t=1.48 s. Es el golpe de ampliacion de la
+    escena, no un error de dimensionado. Se identifico imprimiendo la geometria y la escala mundial de
+    la malla culpable, en vez de deducirlo del tamano final.
+  - **Consecuencia para `verificar.mjs:410`:** la pregunta que quedo abierta ahi —¿el 2.33 es legitimo?—
+    se contesta que **SI**, al reves de lo que escribi. El tope de ancho **no** se puede bajar apoyandose
+    en esto, y sigue valiendo lo que ya estaba anotado: hay que decidir que se hace con el golpe de
+    escala antes de tocar el numero.
+  - **Por que me equivoque, que es lo unico que sirve de esto:** lei un cuadro a ojo y confie en la
+    lectura. Un titular tenso contra el margen con aberracion cromatica en los cantos se ve cortado y no
+    lo esta. CLAUDE.md ya lo dice —'verlo en el cuadro completo', 'si una metrica da fuera de rango eso
+    prueba que hay algo que explicar, no que hay un defecto'— y lo que faltaba era medir los pixeles del
+    cuadro que estaba mirando, que cuesta cinco lineas.
 - [ ] **render3d/demo/escenas/apertura.js — la pieza puede abrir con medio segundo de nada**
   - **Sintoma:** Medido en RGB sobre los 26 videos renderizados que hay en `tools/out/motor`, contando
     cuadros planos en LOS TRES canales desde el cuadro 0: `www-theverge-com` abre con **17 cuadros
