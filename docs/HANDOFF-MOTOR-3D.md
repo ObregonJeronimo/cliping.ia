@@ -56,6 +56,12 @@ Y lo que corres **siempre** antes de pushear:
 npm run gates:guard
 ```
 
+**ANTES DE CORRER ESTO, AVISALE AL OTRO.** Jero y vos comparten el repo pero no la maquina. Corré
+`npm run costo`, que dice cuanta RAM pidio cada tarea **en TU maquina** y cuanta quedaria libre si
+arrancas ahora, y decilo en el chat con el numero antes de largar. Si la tarea nunca se corrio en tu
+PC, `npm run costo` te lo dice — y eso tambien hay que decirlo, porque lo medido en la maquina de Jero
+no predice nada sobre la tuya. La regla completa esta arriba de todo en el CLAUDE.md.
+
 **Ya no hay comando peligroso que tipear por reflejo.** `npm run gates` ES el vigilado; la cadena cruda
 se llama `gates:crudo`. Antes era al reves y por eso este parrafo decia "nunca `npm run gates` pelado":
 la proteccion dependia de acordarse. El wrapper existe porque un script se comio 28 GB y tiro la PC

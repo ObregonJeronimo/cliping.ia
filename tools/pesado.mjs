@@ -15,7 +15,7 @@
 //
 // Y si algo ya tiene el cerrojo, este NO ARRANCA en vez de competirle la RAM.
 import { spawn } from 'node:child_process'
-import { vigilar, matarArbol, disponibleMb, MINIMO_ARRANQUE_MB } from './lib/memoria.mjs'
+import { vigilar, matarArbol, disponibleMb, MINIMO_ARRANQUE_MB, anotarCosto } from './lib/memoria.mjs'
 import { tomar } from './lib/cerrojo.mjs'
 import { moderarCarga } from './lib/carga.mjs'
 
@@ -53,6 +53,7 @@ console.error(carga.ok
 // espacios y SIN volver a citar, asi que cualquier argumento con espacios o comillas —una URL, un
 // `-e "console.log(...)"`— llega partido y el comando falla por una razon que no tiene nada que ver
 // con lo que uno queria correr. Sin shell los limites de cada argumento se respetan tal cual.
+const t0 = Date.now()
 const p = spawn(argv[0], argv.slice(1), { stdio: ['ignore', 'inherit', 'inherit'] })
 
 // Igual que en el guard: si muere el padre, se lleva la cadena. Ver la nota larga en gates-guard.mjs —
@@ -72,6 +73,12 @@ const ojo = vigilar((motivo) => {
 
 p.on('close', (codigo) => {
   ojo.parar()
+  // Se anota lo que REALMENTE costo, para que el aviso previo de la proxima vez sea un dato medido en
+  // ESTA maquina y no una estimacion. Ver la regla de avisos en el CLAUDE.md.
+  anotarCosto(argv.join(" ").slice(0, 60), {
+    arrancoConMb: disp, minimoMb: ojo.libreMinMb,
+    segundos: Math.round((Date.now() - t0) / 1000), cortado: !!cortadoPor,
+  })
   const min = ojo.libreMinMb === null
     ? 'no llego a medirse (termino en menos de un cuarto de segundo)'
     : `${ojo.libreMinMb} MB`

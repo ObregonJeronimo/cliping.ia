@@ -1,5 +1,30 @@
 # cliping.ia — instrucciones del workspace
 
+## AVISAR ANTES DE CUALQUIER TRABAJO PESADO — y esperar el OK
+
+Esto es una regla de convivencia, no una recomendación técnica. **Jero y Thiago comparten este repo
+pero trabajan en dos PC distintas**, con memoria y componentes distintos, y ninguno de los dos puede
+adivinar cuándo el asistente está por ocuparle media máquina. Sin aviso, abrir Photoshop o empezar a
+stremear en el momento equivocado cuelga el equipo — y ya pasó: la noche del 4 de agosto de 2026 se
+colgó **tres veces**, con Photoshop y OBS abiertos, mientras corrían las compuertas.
+
+**Antes de lanzar cualquier cosa pesada** —`npm run gates`, un render de `backend/motor.py`, un barrido
+que construya cientos de escenas, cualquier cosa que se corra con `npm run pesado`— hay que:
+
+1. **Correr `npm run costo`** y leer lo medido **en esta máquina**. Da, por tarea, cuánta RAM pidió en
+   el peor caso ya visto y cuánto quedaría libre si se arranca ahora.
+2. **Decirlo en el chat, con los números**: qué se va a correr, cuánto tarda, y **cuántos MB van a
+   quedar libres**. Por ejemplo: *"voy a correr el guard completo, ~30 min; midió 4.8 GB en el peor
+   caso y ahora hay 7.5 GB, así que te quedan ~2.7 GB — no abras Photoshop mientras tanto"*.
+3. **Esperar el OK.** No arrancar y avisar después.
+
+**Si la tarea nunca se corrió en esta máquina, `npm run costo` lo dice y hay que decirlo también.** Un
+consumo medido en la PC de Jero **no predice nada** sobre la de Thiago. Dar el número de la otra máquina
+como si fuera propio es un dato falso con cara de medición, que es peor que decir "todavía no lo sé".
+
+Lo que **no** hace falta avisar: las 10 compuertas rápidas (~12 s), leer archivos, editar código, medir
+sin renderizar. La regla es para lo que ocupa la máquina, no para todo.
+
 ## Cómo se audita un video del MOTOR 3D
 
 Esta sección existe porque se rompió la confianza en una frase. Decir "miré el video cuadro por

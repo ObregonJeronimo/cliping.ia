@@ -22,7 +22,7 @@
 //
 // Uso:  node tools/gates-guard.mjs
 import { spawn } from 'node:child_process'
-import { vigilar, matarArbol, disponibleMb, MINIMO_ARRANQUE_MB, barrerHuerfanos } from './lib/memoria.mjs'
+import { vigilar, matarArbol, disponibleMb, MINIMO_ARRANQUE_MB, barrerHuerfanos, anotarCosto } from './lib/memoria.mjs'
 import { tomar } from './lib/cerrojo.mjs'
 import { moderarCarga } from './lib/carga.mjs'
 
@@ -72,6 +72,7 @@ console.error(carga.ok
   ? `gates-guard: usando ${carga.usar} de ${carga.total} hilos y prioridad baja, para no saturar la maquina`
   : `gates-guard: no se pudo moderar la carga (${carga.error}) — se sigue igual, es una mitigacion, no la red principal`)
 
+const t0 = Date.now()
 const p = spawn('npm', ['run', CADENA], { shell: true, stdio: ['ignore', 'pipe', 'pipe'] })
 
 // SI MUERE EL GUARD, MUERE LA CADENA. Este es el agujero que colgo la maquina la SEGUNDA vez la misma
@@ -111,6 +112,12 @@ p.stdout.on('data', d => { salida += d; process.stdout.write(d) })
 p.stderr.on('data', d => { salida += d; process.stderr.write(d) })
 p.on('close', codigo => {
   ojo.parar()
+  // Se anota lo que REALMENTE costo, para que el aviso previo de la proxima vez sea un dato medido en
+  // ESTA maquina y no una estimacion. Ver la regla de avisos en el CLAUDE.md.
+  anotarCosto('gates:guard', {
+    arrancoConMb: disp, minimoMb: ojo.libreMinMb,
+    segundos: Math.round((Date.now() - t0) / 1000), cortado: !!cortadoPor,
+  })
   const ok = (salida.match(/OK \(|OK:/g) || []).length
   const fail = (salida.match(/^FAIL|FALLO/gm) || []).length
   console.log(`\ngates-guard: ${ok} OK · ${fail} FAIL · minimo de RAM disponible ${ojo.libreMinMb} MB `

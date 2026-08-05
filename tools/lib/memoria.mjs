@@ -60,8 +60,13 @@
 // del piso antes de que lo mataran. Por eso hay DOS umbrales: el piso normal con espera, y un piso
 // CRITICO (la mitad) que mata en la PRIMERA muestra. Un pico transitorio nunca llega a la mitad del
 // piso; algo que llega ahi ya no es un pico.
-import { freemem, totalmem } from 'node:os'
+import { freemem, totalmem, hostname } from 'node:os'
 import { execFileSync } from 'node:child_process'
+import { appendFileSync, readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const RAIZ_OUT = join(dirname(fileURLToPath(import.meta.url)), '..', 'out')
 
 export const disponibleMb = () => Math.round(freemem() / 1048576)
 export const TECHO_MB = Math.max(2560, Math.round((totalmem() / 1048576) * 0.20))
@@ -133,6 +138,10 @@ export function vigilar(alMatar, { pisoMb = pisoPara(disponibleMb()), intervalo 
     }
   }, intervalo)
   reloj.unref?.()
+  // UNA MUESTRA YA MISMO, no dentro de un cuarto de segundo. Sin esto una tarea corta termina antes de
+  // la primera muestra y el minimo queda en `null`, o sea que el historial de costos no aprende nada de
+  // ella — y el aviso previo de la proxima vez se queda sin dato.
+  try { const m = leer(); if (Number.isFinite(m)) libreMin = m } catch { /* ya lo maneja el reloj */ }
 
   return {
     parar: () => clearInterval(reloj),
@@ -171,4 +180,47 @@ export function barrerHuerfanos() {
     if (matarArbol(Number(pid))) muertos.push({ pid: Number(pid), cmd: cmd.trim().slice(0, 80) })
   }
   return muertos
+}
+
+// EL COSTO REAL DE CADA TAREA, MEDIDO EN ESTA MAQUINA Y NO EN OTRA.
+//
+// La regla del proyecto pide avisar, ANTES de arrancar algo pesado, cuanta RAM va a quedar libre. Para
+// que ese aviso sea un dato y no una corazonada, cada corrida anota lo que realmente consumio.
+//
+// SE GUARDA POR MAQUINA, y esto no es un detalle: el repo lo comparten dos PC distintas, con memoria y
+// componentes distintos. Un numero medido en una no predice nada en la otra, y presentarlo como si lo
+// hiciera es peor que no tener numero — es un dato falso con cara de medicion. Por eso cada renglon
+// lleva el nombre del equipo y su RAM total, y `costoDe` solo devuelve lo medido AQUI.
+//
+// El archivo es local: no se comitea. Cada PC construye su propio historial la primera vez que corre.
+export function anotarCosto(quien, { arrancoConMb, minimoMb, segundos, cortado }) {
+  try {
+    const fila = {
+      equipo: hostname(),
+      totalMb: Math.round(totalmem() / 1048576),
+      quien, arrancoConMb, minimoMb, segundos, cortado: !!cortado,
+      fecha: new Date().toISOString(),
+    }
+    appendFileSync(join(RAIZ_OUT, '.costos.jsonl'), JSON.stringify(fila) + '\n')
+  } catch { /* anotar el costo nunca puede romper la corrida */ }
+}
+
+// Lo medido en ESTA maquina para una tarea. `null` si nunca se corrio aca: eso hay que DECIRLO, no
+// rellenarlo con el numero de la otra PC.
+export function costoDe(quien) {
+  try {
+    const filas = readFileSync(join(RAIZ_OUT, '.costos.jsonl'), 'utf8').trim().split('\n')
+      .map(l => { try { return JSON.parse(l) } catch { return null } })
+      // Ver la nota en tools/costo.mjs: sin `minimoMb`, `arranco - null` da `arranco` y la fila miente.
+      .filter(f => f && f.equipo === hostname() && f.quien === quien && !f.cortado && Number.isFinite(f.minimoMb))
+    if (!filas.length) return null
+    const usos = filas.map(f => f.arrancoConMb - f.minimoMb).filter(n => Number.isFinite(n) && n > 0)
+    if (!usos.length) return null
+    return {
+      corridas: filas.length,
+      pidioMbTipico: Math.round(usos.reduce((a, b) => a + b, 0) / usos.length),
+      pidioMbPeor: Math.max(...usos),
+      segundosTipico: Math.round(filas.reduce((a, f) => a + (f.segundos || 0), 0) / filas.length),
+    }
+  } catch { return null }
 }
