@@ -1144,9 +1144,19 @@ Por escena:
     video mide PIXELES — *"¿cambio algo que se VEA?"*. **No son la misma pregunta.** Una escena que anima
     una opacidad de 0.98 a 0.99, o una deriva por debajo del umbral perceptible, cambia su firma en cada
     cuadro y no mueve la imagen: pasa la compuerta y se ve como una diapositiva.
-  - **Antes de acusar hay que confirmar dos cosas** (no hecho todavia): (1) que la quietud de `sello` no
-    sea deliberada —un sello ES un gesto que se planta— y (2) medir en pixeles y no en firma, para saber
-    cuantas escenas mas estan en esta situacion. Lo primero se lee en la escena; lo segundo pide una
+  - **PRIMERA CONFIRMACION HECHA, leyendo la escena, y parte del hallazgo se cae:**
+    - **La ocupacion baja de `sello` (0.042) es DELIBERADA y esta declarada** en su cabecera: *"esta
+      escena es la unica que compone con el VACIO: un emblema chico, centrado, y tres cuartos de cuadro
+      sin nada"*. Existe para los aires `lujo` e `inmobiliario`, que declaran mobiliario `nada` porque
+      "lo caro se vende con AIRE". **No es un defecto y no hay que tocarla.**
+    - **La quietud, en cambio, contradice su propia intencion escrita:** *"SE CONSTRUYE, NO APARECE. El
+      anillo se dibuja arco por arco, los ejes crecen desde el centro y el nombre se escribe al final:
+      la escena es el PROCESO de sellar"*. Una escena que se define como un proceso no deberia
+      detenerse 1.2 s. **Falta medir CUANDO ocurre esa quietud** —si es despues de terminar el trazo,
+      es un remate largo; si es en el medio, es el proceso que se corta—, y eso decide si es defecto o
+      es cierre.
+  - **Falta todavia** (2) medir en pixeles y no en firma, para saber cuantas escenas mas estan en esta
+    situacion. Lo primero se lee en la escena; lo segundo pide una
     compuerta nueva que compare CUADROS RENDERIZADOS, que es lo que ninguna compuerta hace hoy.
   - Es el mismo punto ciego que ya aparecio con los shaders: *"corren en Node y nunca compilan GLSL"*.
     Aca es *"miden el grafo y nunca miran la imagen"*.
