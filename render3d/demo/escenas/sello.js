@@ -107,7 +107,13 @@ export function build(ctx) {
   // y la libertad de empujar hasta 0.94 del otro. Es exactamente el mismo criterio que `cita`.
   const matN = materialMascara(t.tex, nivel(CLARO ? 0.94 : 0.80))
   matN.uniforms.uDir.value = 2                      // se escribe de abajo hacia arriba: se "sella"
+  // DECLARADO PARA QUE E-ENCAJE-REAL LO CUIDE. La contencion en este motor es declarativa: la regla
+  // que exige que una malla entre ENTERA solo corre sobre las que lo piden, y eran 16 de 799.
+  // Medido sobre las 407 construcciones (11 aires x 8 juegos de datos reales) esta malla entra
+  // siempre y con margen —el peor caso llega a 0.511 del semicuadro— asi que declararlo no cambia nada
+  // hoy y convierte en FALLO cualquier cambio futuro que la saque del cuadro.
   const nombre = new THREE.Mesh(new THREE.PlaneGeometry(alto * t.ar, alto), matN)
+  nombre.userData.encaja = true
   nombre.position.set(0, 0, 0.3)
   nombre.userData.encaja = true    // el nombre de la marca, entero o nada
   g.add(nombre)

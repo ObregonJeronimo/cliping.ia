@@ -143,7 +143,13 @@ export function build(ctx) {
     // nivel() y NUNCA LOOK.tinta: la tinta pura queda por encima del umbral del bloom y la display
     // sale reventada de blanco, sin contraformas. Ademas nivel() se da vuelta solo segun el mundo.
     const mat = materialMascara(t.tex, COLOR_CITA)
+    // DECLARADO PARA QUE E-ENCAJE-REAL LO CUIDE. La contencion en este motor es declarativa: la regla
+    // que exige que una malla entre ENTERA solo corre sobre las que lo piden, y eran 16 de 799.
+    // Medido sobre las 407 construcciones (11 aires x 8 juegos de datos reales) esta malla entra
+    // siempre y con margen —el peor caso llega a 0.807 del semicuadro— asi que declararlo no cambia nada
+    // hoy y convierte en FALLO cualquier cambio futuro que la saque del cuadro.
     const m = new THREE.Mesh(new THREE.PlaneGeometry(ALTO_LINEA * t.ar, ALTO_LINEA), mat)
+    m.userData.encaja = true
     // Anclada por su borde IZQUIERDO: centrada, cada linea arrancaria en un x distinto segun su
     // largo y el bloque dejaria de tener un margen.
     m.position.set(MARGEN + (ALTO_LINEA * t.ar) / 2, TOPE - i * PASO, 0)

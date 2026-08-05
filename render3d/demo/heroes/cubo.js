@@ -168,6 +168,13 @@ export function build(ctx) {
       new THREE.PlaneGeometry(w, h),
       new THREE.MeshBasicMaterial({ map: tex, toneMapped: false, transparent: true, opacity: 0 }))
     lam.position.z = 0.008
+    // DECLARADA PARA QUE E-ENCAJE-REAL LA CUIDE. La contencion de este motor es declarativa —la regla
+    // que exige entrar ENTERO solo corre sobre las mallas que lo piden, 16 de 799— y una lamina que se
+    // sale del cuadro mientras el cubo tumba es exactamente el defecto que nadie ve venir. Medido sobre
+    // las 407 construcciones (11 aires x 8 juegos de datos reales): entra siempre, y el peor caso llega
+    // a 0.660 del semicuadro. Declararlo no cambia nada hoy y convierte en FALLO cualquier cambio de
+    // LADO, de UTIL o del tumbo que la saque.
+    lam.userData.encaja = true
     grupoCara.add(lam)
 
     // Un filete de acento en el canto inferior de cada cara. Es el detalle que hace que las seis se

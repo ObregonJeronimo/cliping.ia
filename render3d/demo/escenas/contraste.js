@@ -77,7 +77,13 @@ export function build(ctx) {
       // de otro color. El null es el caso correcto acá y el unico lugar del motor donde se usa.
       const mat = materialMascara(tex, null)
       mat.uniforms.uDir.value = 0                   // izquierda -> derecha
+      // DECLARADO PARA QUE E-ENCAJE-REAL LO CUIDE. La contencion en este motor es declarativa: la regla
+      // que exige que una malla entre ENTERA solo corre sobre las que lo piden, y eran 16 de 799.
+      // Medido sobre las 407 construcciones (11 aires x 8 juegos de datos reales) esta malla entra
+      // siempre y con margen —el peor caso llega a 0.839 del semicuadro— asi que declararlo no cambia nada
+      // hoy y convierte en FALLO cualquier cambio futuro que la saque del cuadro.
       const m = new THREE.Mesh(new THREE.PlaneGeometry(caja.w, caja.h), mat)
+      m.userData.encaja = true
       m.position.set(0, 0, 0.1)
       gr.add(m)
       planos.push({ m, mat })

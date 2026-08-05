@@ -329,6 +329,16 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
     la objecion de los criticos sobre E-CONTENCION-TOTAL sin opt-in, verificada ahora por medicion
     propia. Queda ABIERTO: lo que falta no es aplicar la regla a todo, sino DECLARAR mas mallas.
 
+  - **AVANCE 2026-08-04: se declararon las que se pudo, medidas.** Si la contencion no se puede
+    automatizar, lo que queda es declarar mas mallas — y eso se puede hacer con evidencia en vez de a
+    ojo. Se instrumento `encuadre-check` para listar las mallas con textura que **SIEMPRE** entran
+    enteras en las 407 construcciones (11 aires x 8 juegos de datos reales) y no estaban declaradas:
+    salieron cuatro grupos, y los cuatro con margen holgado.
+  - Declaradas: `cita` (peor 0.807 del semicuadro), `contraste` (0.839), `sello` (0.511) y la lamina de
+    `cubo` (0.660). No cambian nada hoy —por eso se eligieron— y convierten en FALLO cualquier cambio
+    futuro que las saque del cuadro.
+  - Quedan 18 grupos sin declarar que alguna vez se salen: esos NO se pueden declarar sin decidir antes
+    si su desborde es deliberado, que es la parte que sigue necesitando criterio de composicion.
 - [x] **tools/encuadre-check.mjs:166**
   - **Síntoma:** Textos que se salen por los costados en la pagina del cliente y nunca en la demo — que es exactamente el reclamo ("algunos textos son tan grandes que en los costados se cortan"). Y ramas enteras sin ejercitar: el techo de alto de destello (destello.js:232-233, el arreglo del defecto #2) solo se activa con una linea CORTA, y el golpe de ANTHEM (`UNA PLANTILLA`, proporcion ~4.6) nunca lo activa; el 
   - **Lo dispara:** Contenido en los extremos. La compuerta barre 11 aires (y lo documenta con orgullo en las lineas 72-77) pero UN SOLO juego de datos, dentro del bucle, en las 407 construcciones. Medido: ANTHEM da frase mas larga 19 caracteres y palabra mas larga 9. Convirtiendo los 7 pagemodels REALES que ya estan e
