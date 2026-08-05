@@ -683,7 +683,7 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** Ninguna. guion-check no simula el mostrador: solo mira que escena entra, nunca que texto le toca. E-GUION-MATERIAL (guion-check.mjs:128-132) compara contra una COPIA a mano de seis requisitos (lineas 73-80) que es subconjunto del REQUISITOS real, asi
   - `const nFr = (d.frases || []).filter(Boolean).length`
 
-- [ ] **render3d/demo/escenas/hero.js:76 contra render3d/demo/guion.js:319 y 334**
+- [x] **render3d/demo/escenas/hero.js:76 contra render3d/demo/guion.js:319 y 334**
   - **Síntoma:** Medido sobre awwwards-com, 180 guiones: la misma frase aparece en dos escenas distintas en 93 piezas (52%) si el hero bebe, y en 0 si no bebe. O sea que TODA la repeticion de texto de esa pagina la produce el rotulo del hero. Ejemplo: seed20/20s da `gancho>marquesina>destello>hero>cierre` y 'Submit your website' sale en la marquesina y otra vez debajo del objeto. En una pagina pobre a 30 s el plan
   - **Lo dispara:** `hero` bebe una frase del mostrador cuando el objeto es de geometria pura (hero.js:74-78, solo los `necesita: ['nada']`, que son 12 de los 18 del registro), y NO figura en SEDIENTAS ni en APETITO: el cupo reparte el pozo entre cinco escenas ignorando a la que mas veces aparece. Encima es el relleno 
   - **Compuerta:** Ninguna. El gate no construye escenas, asi que no ve el consumo; y el unico contador que existiria —`repetidas`— no lo lee nadie.
@@ -708,6 +708,19 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
     codigo para que la decision se tome con numeros.
   - Queda ABIERTO el hallazgo original (el hero sigue bebiendo sin contarse), con el trinquete de
     `eco-check` en 13% para que el numero no pueda subir.
+
+- **CERRADO 2026-08-05, sin codigo nuevo, y esa es la conclusion honesta.**
+  - La atribucion de la ficha —"toda la repeticion la produce el rotulo del hero"— **no se reproduce**:
+    medido sobre 105 piezas con los 7 fixtures reales, `hero` aparece 89 veces y bebe CERO. La ficha
+    midio awwwards-com, que no esta entre los fixtures.
+  - El culpable real era `titular`, que pedia 2 frases y mostraba 1. Arreglado: **el eco bajo de 40% a
+    12.4%** sin mover una sola aparicion de nada, y hay un trinquete en `eco-check` que impide que suba.
+  - Lo unico que quedaba era la inconsistencia de fondo: `hero` bebe del pozo y el cupo no lo cuenta.
+    **Se probo y se midio: el plan sale IDENTICO** —0.44 sedientas y 0.41 heroes por pieza a 20 s, 0.69 y
+    0.86 a 30 s, los mismos numeros con y sin el cambio sobre 180 guiones—. En las duraciones que se
+    usan, la restriccion que ata no es el cupo sino el presupuesto de beats.
+  - Un arreglo que no mueve la medicion no se deja puesto. Queda anotado en `guion.js:416-421` para que
+    el dia que las duraciones cambien, el que lea sepa que ya se probo y por que no quedo.
 
 - [x] **render3d/demo/guion.js:87**
   - **Síntoma:** `repartirFrases(2, true)` devuelve ['Submit your website', 'Submit your website'] y la guarda de partida.js:36 no se dispara porque el mostrador nunca devuelve de menos: el cuadro partido muestra la MISMA linea arriba y abajo. Es exactamente lo que el encabezado de la escena declara imposible (partida.js:18-19: 'SIN DOS FRASES NO HAY PAR ... Se declara vacia'). Medido: 16 de 180 guiones de awwward
