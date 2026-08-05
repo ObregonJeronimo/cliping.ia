@@ -1256,7 +1256,24 @@ El orden correcto es al reves: primero se cierran las 88, despues se afila la co
     bien, porque la composicion de esta escena ya reserva la banda de arriba para el texto (ver la nota
     de la linea 20). Hay que verlo renderizado antes de dejarlo puesto: es un cambio de composicion, no
     una cuenta.
-  - Queda ABIERTO con esa correccion.
+  - **SE PROBO EL ARREGLO DERIVADO Y SE SACO, con el render al lado.** Se corrigio `ANCHO` por la
+    magnificacion del borde cercano (`distBase / (distBase - z)`, con z = (ALTO/2)·sin(-INCLINA)) y se
+    renderizo la misma pieza, misma semilla, mismo cuadro 425:
+    - **La superficie principal deja de perder pagina:** el recorte pasa de llegar a x = 1.164 a x =
+      0.93-0.94, o sea de perder 13-14% de su ancho a no perder nada. En el video, la tarjeta del
+      cliente entra ENTERA y con margenes, legible.
+    - **Pero el sintoma que la ficha nombra NO desaparece:** el recorte de ABAJO —otra malla de la
+      escena, no la superficie— sigue cortado por los dos costados. Mejora ('colors wit' donde antes
+      se leia 'colo') y sigue estando.
+    - **Y cambia la composicion:** al no sangrar, la mesa deja ver el fondo a los costados. La escena
+      declara `mundoW * 1.06` justamente para sangrar.
+  - Son DOS intenciones declaradas en conflicto —'sangrar 6%' contra 'la pagina no se estira nunca'— y
+    elegir entre ellas es una decision de diseno, no una cuenta. Se revierte y queda ABIERTO con el
+    arreglo probado y el numero: quien decida sangrar menos tiene el cambio hecho y medido.
+  - **De paso, una precision util para quien lo retome:** la derivacion es CIRCULAR y por eso este
+    intento sobrecorrige. La magnificacion depende del ALTO, y para un recorte apaisado el ALTO final
+    sale de `ANCHO / arMapa` — o sea del propio ancho que se esta calculando. Hace falta dos pasadas o
+    resolver la cuadratica; calcularlo con el alto PROVISIONAL da 0.93 en vez de 1.06.
 
 - SEGUIMIENTO (abierto, pertenece a hero.js:76) — **intentado por el lado del cupo y no demostrado**
   - Se probo contar en el cupo la frase que bebe el hero (restarle 1 a `nFr`). El plan salio IDENTICO:
