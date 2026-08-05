@@ -105,8 +105,18 @@ Dos causas posibles, ninguna probada todavía, y las dos dan el mismo síntoma:
 - **Cuelgue de la placa de video** (RX 7600). No hay un solo evento 4101/4104, o sea que el driver
   nunca llegó a recuperarse — coherente con pantalla negra y congelamiento total.
 
-Lo que descarta la medición: no es el disco (NVMe sana, sin errores), no es EXPO (la RAM corre a 4800,
-JEDEC), y no es una falla crónica (venía de **6 días seguidos** prendida sin un corte).
+Lo que descarta la medición: no es el disco (NVMe sana, sin errores) y no es EXPO (la RAM corre a
+4800, JEDEC).
+
+**Y una conclusión que estuvo escrita acá y era falsa:** se dedujo de los eventos de arranque que el
+equipo venía de "6 días prendido sin un corte". Mentira. Windows tiene **Inicio rápido**
+(`HiberbootEnabled = 1`), así que "Apagar" no apaga —hiberna el núcleo— y el reloj de arranque no se
+reinicia. Jero apaga la máquina todas las noches; el dato decía lo contrario porque estaba mal leído.
+Queda anotado porque una conclusión falsa sobre hardware manda a gastar plata en la pieza que no es.
+
+Y el Inicio rápido no es sólo un error de medición: es **sospechoso**. Con él, el estado del kernel y
+de los drivers —el de la placa incluido— nunca se reinicia del todo y se arrastra entre encendidos. Es
+causa conocida de justo este síntoma: la imagen se congela, la pantalla pierde señal y no vuelve.
 
 **`npm run testigo` es la caja negra.** Anota cada 5 s con `fsync`, así que la última línea sobrevive a
 un apagado por botón. Después de un cuelgue, `node tools/testigo.mjs --leer` dice si la memoria venía

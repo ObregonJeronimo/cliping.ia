@@ -2,15 +2,19 @@
 //
 // POR QUE EXISTE, y esto salio de leer el registro de Windows y no de suponer:
 //
-//   La PC de desarrollo estuvo prendida SEIS DIAS seguidos sin un solo corte (29/07 22:59 -> 04/08
-//   23:41). Esa misma noche se colgo TRES VECES en 50 minutos, mientras corrian las compuertas, los
-//   renders y Chromium. Y los tres cortes fueron con `BugcheckCode = 0` y sin un solo evento WHEA: o
-//   sea SIN pantalla azul y SIN error de hardware registrado. La maquina no fallo, se APAGO.
+//   La PC de desarrollo se colgo TRES VECES en 50 minutos mientras corrian las compuertas, los renders
+//   y Chromium, con Photoshop y OBS abiertos. Los tres con `BugcheckCode = 0` y sin un solo evento
+//   WHEA: ni pantalla azul ni error de hardware registrado.
 //
-//   Eso no es falta de memoria. Un escritorio sin RAM se arrastra, pagina y se vuelve inusable —no se
-//   corta—. Un corte seco bajo carga sostenida, en un equipo que venia estable, apunta a la
-//   alimentacion o a la temperatura: un Ryzen 9600X con los seis nucleos al 100% durante media hora
-//   pide mucha mas corriente que el mismo equipo navegando.
+//   OJO CON UNA CONCLUSION QUE ESTUVO ACA Y ERA FALSA. Se leyeron los eventos de arranque y se dedujo
+//   que el equipo venia de "seis dias prendido sin un corte", o sea que no era una falla cronica. Es
+//   mentira: Windows tiene INICIO RAPIDO activado (`HiberbootEnabled = 1`), asi que "Apagar" no apaga
+//   —hiberna el nucleo— y el reloj de arranque no se reinicia. Esas sesiones de dias eran reanudaciones
+//   hibridas. Jero apaga la maquina todas las noches; el dato decia lo contrario porque estaba mal
+//   leido. Anotado porque una conclusion falsa sobre hardware manda a gastar plata en la pieza que no es.
+//
+//   El sintoma real, dicho por quien lo vio: la imagen se CONGELA, despues la pantalla se va a negro y
+//   no vuelve, y hay que forzar el apagado con el boton. Eso es un cuelgue, no un apagon.
 //
 // LO QUE SE PUEDE HACER POR SOFTWARE es no pedirle a la maquina todo lo que tiene:
 //
