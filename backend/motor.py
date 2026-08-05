@@ -40,6 +40,8 @@ sys.path.insert(0, AQUI)
 
 SALIDA = os.path.join(RAIZ, "tools", "out", "motor")
 
+import cerrojo                                             # noqa: E402  (necesita el sys.path de arriba)
+
 
 def _dominio(url: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", url.split("//")[-1].split("/")[0].lower()).strip("-")
@@ -416,6 +418,10 @@ def main():
         return
     if not a.url:
         ap.error("hace falta una URL (o --heroes)")
+
+    # EL CERROJO VA ACA, antes de levantar Chromium. Un render en paralelo con `gates:guard` es lo que
+    # colgo la maquina el 4 de agosto de 2026 — ver backend/cerrojo.py.
+    cerrojo.exigir(f"motor.py {a.url}")
 
     salida = a.salida or os.path.join(SALIDA, f"{_dominio(a.url)}-{a.hero or 'auto'}-{a.dur}s.mp4")
     os.makedirs(os.path.dirname(salida), exist_ok=True)

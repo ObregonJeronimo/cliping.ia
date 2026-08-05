@@ -56,8 +56,13 @@ Y lo que corres **siempre** antes de pushear:
 npm run gates:guard
 ```
 
-**Nunca `npm run gates` pelado.** El wrapper existe porque una vez un script se comio 28 GB y tiro la
-PC abajo; `gates:guard` mide el pico y aborta. Hoy da **36 OK / 0 FAIL, pico ~6.5 GB**, y tarda
+**Ya no hay comando peligroso que tipear por reflejo.** `npm run gates` ES el vigilado; la cadena cruda
+se llama `gates:crudo`. Antes era al reves y por eso este parrafo decia "nunca `npm run gates` pelado":
+la proteccion dependia de acordarse. El wrapper existe porque un script se comio 28 GB y tiro la PC
+abajo — y porque el 4 de agosto de 2026 volvio a pasar CON el guard corriendo, por tres agujeros que
+estan documentados con el log en `tools/lib/memoria.mjs` y resumidos en el CLAUDE.md. Ahora ademas hay
+un **cerrojo** (`tools/lib/cerrojo.mjs` + `backend/cerrojo.py`): un render y un guard a la vez no
+arrancan, que es exactamente la combinacion que colgo la maquina. Hoy da **36 OK / 0 FAIL**, y tarda
 **~30 minutos**: no son tests de unidad, renderizan miles de cuadros. Para el dia a dia alcanzan las
 **siete rapidas** (`verificar.mjs`, `guion-check`, `encuadre-check`, `adn-check`, `testimonios-check`,
 `tira-check` y `heroes-check`), que juntas tardan **8 segundos**. El guard entero, solo antes de

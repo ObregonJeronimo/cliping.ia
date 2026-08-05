@@ -59,8 +59,40 @@ diagnóstico falso cuesta más que no haberlos hecho. Antes de declarar un defec
   `heroes-check` (un héroe no se ofrece si no tiene con qué), `placeholder-check` (el recorte que se
   muestra es la imagen del cliente, no su borrador) `captura-check` (no se construye un video sobre
   un muro anti-bot o un error del CDN) y `eco-check` (la misma frase no sale en dos escenas).
-- **Guard completo (~30 min), sólo antes de pushear:** `npm run gates:guard`. Tiene que dar 36 OK /
-  0 FAIL. Nunca correr dos guards a la vez.
+- **Guard completo (~30 min), sólo antes de pushear:** `npm run gates`. Tiene que dar 36 OK / 0 FAIL.
+
+## La máquina no se cuelga más
+
+Esta sección existe porque la PC de desarrollo se colgó **dos veces**: el 26 de julio de 2026 (una fuga
+de `getImageData` que llegó a 28 GB en una máquina de 15) y el 4 de agosto de 2026, **con el guard
+corriendo**. La segunda es la que importa, porque la protección ya existía y no sirvió.
+
+Por qué no sirvió, leído del log y no supuesto:
+
+1. **El vigilante se quedó ciego.** Muestreaba con `powershell ... ConvertTo-Json`, y bajo presión de
+   memoria .NET no pudo cargar el ensamblado: `FileLoadException`, seis veces. Un `catch {}` se lo
+   tragaba, así que el guard siguió **sin medir nada** mientras las compuertas seguían pidiendo RAM.
+2. **Miraba sólo procesos `node`.** Chromium de Playwright —lo más pesado de la cadena— era invisible.
+3. **El tope era por proceso (8 GB), no total.** Dos procesos de 7 GB en una máquina de 15 pasaban los
+   dos.
+4. **Nada impedía correr dos cosas pesadas a la vez.** La regla *"nunca dos guards"* estaba escrita
+   acá, y una regla escrita la cumple quien la leyó. El cuelgue fue guard + renders de `motor.py`.
+
+Lo que hay ahora, y **no hace falta acordarse de nada**:
+
+- **`npm run gates` ES el camino vigilado.** La cadena cruda pasó a llamarse `gates:crudo`. Antes el
+  comando más natural de tipear era justo el único sin protección.
+- **`tools/lib/memoria.mjs`** vigila con `os.freemem()` —que no puede fallar por falta de memoria
+  porque no reserva nada— cada 250 ms, mata el **árbol** de procesos, y si el muestreo falla **aborta**
+  en vez de seguir a ciegas.
+- **El piso se calcula contra lo que hay al arrancar** (35% del disponible, techo 20% del total, mínimo
+  800 MB). Un piso fijo cortaría toda corrida en esta máquina, que trabaja con ~2,4 GB disponibles.
+- **`tools/lib/cerrojo.mjs` + `backend/cerrojo.py`** son el mismo cerrojo para los dos lenguajes: un
+  render y un guard a la vez ya no arrancan. El segundo dice quién lo tiene y desde cuándo.
+- **Si hay menos de 1200 MB disponibles, el guard no arranca** y te dice que cierres aplicaciones.
+
+Todo esto está probado, no razonado: el cerrojo se probó desde Node y desde Python, el vigilante se
+probó matando un proceso que pedía 1,3 GB/s, y el cerrojo huérfano se probó con un pid muerto.
 
 ## Dónde vive el motor
 
