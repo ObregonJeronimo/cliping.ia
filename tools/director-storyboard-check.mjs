@@ -147,9 +147,36 @@ function tofuEn(str, family) {
   return false
 }
 
+// SE CORRE POR PARTES, UNA PAGINA POR PROCESO. Cuarta compuerta con la misma fuga: cada texto
+// rasterizado compromete pixeles que la libreria nativa de canvas no devuelve nunca, y esta renderiza
+// 216 videos. Medida desde afuera —con Windows, porque Node informa una fraccion— llegaba a 4015 MB y
+// el vigilante la cortaba, tumbando el guard entero sin que ninguna compuerta estuviera en rojo.
+//
+// El hijo emite sus contadores y sus fallos; el padre los suma. El veredicto sale del total.
+if (!process.env.SB_PAGINA) {
+  const { spawnSync } = await import('node:child_process')
+  const nombres = Object.keys(ARQ)
+  let failsT = 0, nEscT = 0, nVidT = 0
+  for (const na of nombres) {
+    const r = spawnSync(process.execPath, [process.argv[1]],
+      { env: { ...process.env, SB_PAGINA: na }, encoding: 'utf8' })
+    const txt = (r.stdout || '') + (r.stderr || '')
+    const linea = txt.split(String.fromCharCode(10)).find(l => l.startsWith('##SB##'))
+    if (!linea) { console.error(txt); console.error('GATE STORYBOARD FALLO: una parte no devolvio contadores.'); process.exit(1) }
+    const d = JSON.parse(linea.slice(6))
+    if (d.fails) process.stdout.write(txt.split('##SB##')[0])
+    failsT += d.fails; nEscT += d.nEsc; nVidT += d.nVid
+  }
+  if (failsT) { console.error('GATE STORYBOARD FALLO (' + failsT + ' casos).'); process.exit(1) }
+  console.log(`GATE STORYBOARD OK (${nombres.length} paginas x ${SEEDS} seeds = ${nVidT} videos / ${nEscT} `
+    + `escenas renderizadas, cada pagina en su propio proceso para que la memoria vuelva al sistema: `
+    + `1 foco, safe areas, cero texto recortado, cero escena vacia, APCA por tamano, anti-invencion y sin repeticion).`)
+  process.exit(0)
+}
+
 // ---------------------------------------------------------------- corrida
 let nEsc = 0, nVid = 0
-for (const [nombre, raw] of Object.entries(ARQ)) {
+for (const [nombre, raw] of Object.entries(ARQ).filter(([n]) => n === process.env.SB_PAGINA)) {
   const pm = normalizePageModel(raw)
   const corpus = corpusDe(pm)
   const corpusH = corpusHero(pm)          // el que puede escribir el objeto heroe adentro suyo
@@ -305,5 +332,8 @@ for (const [nombre, raw] of Object.entries(ARQ)) {
   }
 }
 
+// El hijo no juzga: emite y el padre suma. Ver la nota de arriba.
+console.log('##SB##' + JSON.stringify({ fails, nEsc, nVid }))
+process.exit(0)
 if (fails) { console.error(`\nGATE STORYBOARD FALLO (${fails} casos).`); process.exit(1) }
 console.log(`GATE STORYBOARD OK (${Object.keys(ARQ).length} paginas x ${SEEDS} seeds = ${nVid} videos / ${nEsc} escenas renderizadas: 1 foco, safe areas, cero texto recortado, cero escena vacia, APCA por tamano, anti-invencion y sin repeticion).`)
