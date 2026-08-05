@@ -24,7 +24,7 @@
 // vacio y ocupa su lugar en silencio, que es la respuesta honesta y la que dan `pantalla`, `columna` y
 // `hero` cuando les falta el suyo.
 
-import { LOOK, b, E, texto, planoRecorte, recortesDe, nivel, matAcento, materialMascara, finMascara, deriva, dolly, orbita, escalera, ventanaLegible, escalones, enEscalon, deslizFijo, pasosEnBeats } from '../kit.js'
+import { LOOK, magnificaInclinado, cuadroMasAngosto, b, E, texto, planoRecorte, recortesDe, nivel, matAcento, materialMascara, finMascara, deriva, dolly, orbita, escalera, ventanaLegible, escalones, enEscalon, deslizFijo, pasosEnBeats } from '../kit.js'
 import { D, sello } from '../datos.js'
 
 export const meta = { id: 'mesa', beats: 6 }
@@ -77,9 +77,22 @@ export function build(ctx) {
   // El ancho sale del cuadro y el alto del escorzo — un plano inclinado 35 grados ocupa cos(0.62) del
   // alto que declara, o sea el 81%, asi que para llenar la banda del medio hay que darle mas geometria
   // de la que se ve. Sin esa correccion la mesa entra flotando en una franja demasiado angosta.
-  const ANCHO = mundoW * 1.06
+  // EL ANCHO SE CORRIGE POR LA INCLINACION, IGUAL QUE EL ALTO. La escena ya divide el alto por el
+  // coseno de `INCLINA` —dos lineas mas abajo— pero al ancho esa correccion nunca le llego, y el ancho
+  // es el que se sale por los costados. Medido proyectando el recorte sobre los 7 pagemodels x los 11
+  // aires: llegaba a **1.507 anchos de cuadro** contra el 1.06 que esta escena declara sangrar, o sea
+  // ocho veces el sangrado declarado. Se ve como texto cortado: 'ors' donde dice 'Colors'.
+  // Ver la cuenta en `magnificaInclinado`, en el kit.
   const ALTO_VISTO = mundoH * 0.58
   let ALTO = ALTO_VISTO / Math.cos(INCLINA)
+  //
+  // Y ADEMAS LA CAMARA SE ACERCA. Son dos cosas distintas que agrandan la misma pieza: la inclinacion
+  // (el borde de adelante esta mas cerca) y el dolly (toda la escena esta mas cerca). Corrigiendo solo
+  // la primera quedaba en 1.117; con las dos, en el 1.06 que la escena declara. El `-0.22` se declara
+  // UNA vez y lo usan el ancho y el movimiento de camara — separados, vuelven a desincronizarse.
+  const ACERCA = -0.22
+  const ANCHO = (cuadroMasAngosto(mundoW, ACERCA / distBase) * 1.06)
+    / magnificaInclinado(distBase, ALTO, INCLINA)
 
   // Cuanta pagina entra en esa ventana, con la PROPORCION REAL del archivo. Es la misma cuenta que
   // documenta pantalla.js y por la misma razon: copiar la del hero estira la pagina un 22% a lo ancho,
@@ -263,7 +276,7 @@ export function build(ctx) {
   // la camara arranca la escena siguiente torcida, y eso no se ve hasta que se ve.
   tl.fromTo(camera.position, { y: 0 }, { y: orbita(1.55), duration: b(1.2), ease: E.frena(2), immediateRender: false }, 0)
   tl.fromTo(camera.rotation, { x: 0 }, { x: orbita(-0.145), duration: b(1.2), ease: E.frena(2), immediateRender: false }, 0)
-  tl.fromTo(camera.position, { z: dolly(distBase, 0.30) }, { z: dolly(distBase, -0.22), duration: DUR * 0.86, ease: 'none', immediateRender: false }, 0)
+  tl.fromTo(camera.position, { z: dolly(distBase, 0.30) }, { z: dolly(distBase, ACERCA), duration: DUR * 0.86, ease: 'none', immediateRender: false }, 0)
   tl.to(camera.position, { y: 0, duration: b(0.8), ease: E.vaiven(2) }, b(5.0))
   tl.to(camera.rotation, { x: 0, duration: b(0.8), ease: E.vaiven(2) }, b(5.0))
   tl.set(camera.position, { x: 0, y: 0, z: distBase }, b(5.94))

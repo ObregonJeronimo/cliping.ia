@@ -1341,7 +1341,7 @@ nueva acusa exactamente 88 si se revierte el arreglo.
     recortes no cargaron** y los nombra. Esa es exactamente la clase de defecto que ya costo TODOS los
     videos de produccion una vez (`el_captura_el0.png` contra `captura_el0.png`).
 
-- [ ] **render3d/demo/escenas/mesa.js — el respaldo del recorte deja el tercio de arriba vacio**
+- [x] **render3d/demo/escenas/mesa.js — el respaldo del recorte deja el tercio de arriba vacio**
   - **Sintoma:** Medido en 9 cuadros repartidos por toda la escena (228 a 296 del render de stripe.com
     con la tira cedida a `pantalla`): el tercio superior del cuadro esta plano entre 63.0% y 70.6%. No
     es transitorio, dura la escena entera.
@@ -1402,6 +1402,26 @@ nueva acusa exactamente 88 si se revierte el arreglo.
     intento sobrecorrige. La magnificacion depende del ALTO, y para un recorte apaisado el ALTO final
     sale de `ANCHO / arMapa` — o sea del propio ancho que se esta calculando. Hace falta dos pasadas o
     resolver la cuadratica; calcularlo con el alto PROVISIONAL da 0.93 en vez de 1.06.
+
+- **CERRADO 2026-08-05.** El sintoma original (hueco arriba) NO era; el real es el que encontro el
+  seguimiento: **el recorte se sale por los costados y corta el texto**. Y la causa es la misma familia
+  que `toro.js:342`: un ancho elegido sin mirar lo que la camara va a mostrar.
+  - **Medido, proyectando el recorte contra la camara sobre los 7 pagemodels x los 11 aires y
+    recorriendo 26 instantes: 1.507 anchos de cuadro.** La escena declara sangrar 6% (`mundoW * 1.06`),
+    o sea que el sangrado efectivo era **ocho veces** el declarado. (La ficha habia medido 1.164 con 3
+    aires; con los once el peor caso es peor.)
+  - **Son DOS cosas que agrandan la misma pieza, y faltaban las dos:**
+    1. La hoja esta **inclinada 49 grados**, asi que su borde de adelante esta mas cerca y la
+       perspectiva lo agranda. La escena YA corregia el ALTO por la inclinacion
+       (`ALTO_VISTO / Math.cos(INCLINA)`) — al ancho esa correccion nunca le llego, y el ancho es
+       justamente el que se sale por los costados.
+    2. La camara **se acerca** `-0.22`, escalado por el `dolly` del aire (hasta 1.55).
+  - `magnificaInclinado(distBase, alto, inclina)` y `cuadroMasAngosto(mundoW, acercamiento)` en el kit.
+    El `-0.22` pasa a declararse UNA vez y lo usan el ancho y el movimiento de camara: separados,
+    vuelven a desincronizarse, que es exactamente lo que le habia pasado a `toro`.
+  - **Medido: 1.507 -> 1.117 corrigiendo solo la inclinacion -> 1.075 con las dos.** El 1.075 contra el
+    1.06 declarado es la deriva de 0.008 que la propia ficha ya documentaba, mas la subida de la orbita.
+  - Las ocho compuertas rapidas y `fondo-check`, verdes.
 
 - SEGUIMIENTO (abierto, pertenece a hero.js:76) — **intentado por el lado del cupo y no demostrado**
   - Se probo contar en el cupo la frase que bebe el hero (restarle 1 a `nFr`). El plan salio IDENTICO:

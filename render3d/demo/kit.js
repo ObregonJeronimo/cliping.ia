@@ -2249,3 +2249,21 @@ export function recortesDe(elementos, roles, n = 3) {
 //
 // `acercamiento` es la fraccion de `distBase` que la escena le pasa a `dolly()`, negativa (se acerca).
 export const cuadroMasAngosto = (mundoW, acercamiento) => mundoW * (1 + acercamiento * CAM.dolly)
+
+// CUANTO AGRANDA LA PERSPECTIVA EL BORDE CERCANO DE UN PLANO INCLINADO.
+//
+// Un plano acostado hacia la camara tiene su borde de adelante MAS CERCA, y la perspectiva lo agranda.
+// El alto ya se suele corregir —`ALTO_VISTO / Math.cos(inclina)` es un idioma comun en este motor— pero
+// al ANCHO esa correccion no le llega nunca, y el ancho es el que se sale por los costados.
+//
+// Medido en `mesa`, que inclina su hoja 49 grados (`INCLINA = -0.86`) y declara sangrar 6%
+// (`ANCHO = mundoW * 1.06`): el recorte llega a **1.507 anchos de cuadro** proyectado sobre los 7
+// pagemodels x los 11 aires. O sea que el sangrado efectivo es OCHO VECES el declarado, y por eso el
+// texto de la tarjeta sale cortado por los dos lados — se lee 'ors' donde dice 'Colors'.
+//
+// La cuenta es directa: el borde cercano esta a `(alto/2) * sin(inclina)` de la camara, y lo que se
+// acerca se agranda en la misma proporcion.
+export const magnificaInclinado = (distBase, alto, inclina) => {
+  const acerca = Math.abs((alto / 2) * Math.sin(inclina))
+  return distBase / Math.max(0.1, distBase - acerca)
+}
