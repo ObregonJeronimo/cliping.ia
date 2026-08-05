@@ -332,7 +332,7 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** NINGUNA. encuadre-check construye portatil y le mide cajas (no cambia ni un decimal con la textura mal); verificar le comprueba contrato, duracion, camara devuelta, determinismo y quietud, y pasa porque gEq rota y la camara hace dolly. E-SHADER-ENTER
   - `vec3 c = texture2D(map, vUv).rgb;`
 
-- [ ] **tools/encuadre-check.mjs:217**
+- [x] **tools/encuadre-check.mjs:217**
   - **Síntoma:** Un renglon cortado por el margen derecho, una marca que pierde su ultima letra, un titular que se come el pie — con la compuerta en verde. Es literalmente el caso del destello al 112%: la regla que lo cazaria existe y no se le aplica.
   - **Lo dispara:** Que una escena se olvide de declarar —o decida no declarar— `userData.encaja`. Medido construyendo las 37 escenas y heroes con los datos de ANTHEM: 799 mallas, 16 declaradas (2.0%); 161 con textura (tipografia y recortes reales, o sea todo lo que se puede cortar), 16 declaradas y 145 sin cubrir. Cer
   - **Compuerta:** Ninguna, por construccion: la contencion es declarativa y la unica regla que corre sobre TODO es `enCuadro` (linea 129), que es `intersectsBox` — verdadera si UN pixel toca el cuadro. La contraparte en verificar.mjs:395 tiene la misma condicion, asi 
@@ -364,6 +364,25 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
     futuro que las saque del cuadro.
   - Quedan 18 grupos sin declarar que alguna vez se salen: esos NO se pueden declarar sin decidir antes
     si su desborde es deliberado, que es la parte que sigue necesitando criterio de composicion.
+- **CERRADA 2026-08-05 COMO "NO AUTOMATIZABLE", que no es lo mismo que "sin resolver".**
+  - El arreglo que la ficha propone —exigir contencion a toda malla con textura— esta medido y NO sirve:
+    **38.432 de 148.054 muestras no entran enteras, y las 38.432 estan sin declarar**. No son olvidos:
+    `enjambre` dispersa particulas a proposito, una cinta de `marquesina` TIENE que ser mas ancha que el
+    cuadro o no hay bucle, `tipografia` sangra por diseño. Una regla que produce decenas de miles de
+    acusaciones correctas-en-forma y falsas-en-fondo no es una compuerta: es ruido que se aprende a
+    ignorar, y entonces deja de proteger tambien donde tenia razon.
+  - **Lo que falta NO es una medicion, es una decision de composicion:** cual de las 145 mallas con
+    textura sin declarar DEBE entrar entera. Eso lo sabe quien compuso cada escena —un titular tiene que
+    entrar, un ornamento no— y no se puede deducir del dibujo: un titular a sangre y un titular que no
+    entro se ven igual en una caja. La compuerta ya sabe hacerla cumplir en cuanto alguien la declara
+    (`userData.encaja`), que es exactamente el diseño correcto.
+  - **Queda como tarea para Jero y Thiago, no como bug:** recorrer las escenas declarando `encaja` en lo
+    que tiene que entrar. Se puede hacer de a una, cada declaracion protege desde el momento en que se
+    escribe, y ninguna requiere tocar la compuerta.
+  - Mientras tanto la contencion SI corre sobre lo declarado (16 mallas) y sobre todo lo demas corre
+    `E-ENCAJE` con su trinquete nuevo en 1.55 cuadros, que es la red que cubre el caso "una pieza se come
+    el cuadro" sin necesitar declaracion.
+
 - [x] **tools/encuadre-check.mjs:166**
   - **Síntoma:** Textos que se salen por los costados en la pagina del cliente y nunca en la demo — que es exactamente el reclamo ("algunos textos son tan grandes que en los costados se cortan"). Y ramas enteras sin ejercitar: el techo de alto de destello (destello.js:232-233, el arreglo del defecto #2) solo se activa con una linea CORTA, y el golpe de ANTHEM (`UNA PLANTILLA`, proporcion ~4.6) nunca lo activa; el 
   - **Lo dispara:** Contenido en los extremos. La compuerta barre 11 aires (y lo documenta con orgullo en las lineas 72-77) pero UN SOLO juego de datos, dentro del bucle, en las 407 construcciones. Medido: ANTHEM da frase mas larga 19 caracteres y palabra mas larga 9. Convirtiendo los 7 pagemodels REALES que ya estan e
