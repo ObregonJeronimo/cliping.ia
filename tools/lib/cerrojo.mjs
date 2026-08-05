@@ -19,6 +19,8 @@ import { fileURLToPath } from 'node:url'
 const HERE = dirname(fileURLToPath(import.meta.url))
 const RAIZ = join(HERE, '..', '..')
 const ARCHIVO = join(RAIZ, 'tools', 'out', '.pesado.lock')
+// Donde queda la foto del ultimo cerrojo que aparecio huerfano: la lee `informe-cuelgue.mjs`.
+const ULTIMO = join(RAIZ, 'tools', 'out', '.pesado.ultimo-huerfano.json')
 
 const vive = (pid) => {
   try { process.kill(pid, 0); return true } catch (e) { return e.code === 'EPERM' }
@@ -32,7 +34,13 @@ export function tomar(quien) {
     try {
       const d = JSON.parse(readFileSync(ARCHIVO, 'utf8'))
       if (d.pid && vive(d.pid)) return { ocupado: d }
-      // huerfano: el dueño ya no existe
+      // EL CERROJO HUERFANO ES EVIDENCIA, NO BASURA. Si el dueño ya no existe, o termino mal o la
+      // maquina se colgo con el corriendo. En el segundo caso este archivo es lo UNICO que dice que
+      // estaba haciendo la maquina cuando se congelo: nadie alcanzo a escribir nada mas.
+      //
+      // Por eso se archiva antes de pisarlo, y por eso no hace falta ningun proceso vigilando en vivo:
+      // el dato se escribe UNA vez al arrancar y se borra al terminar bien. Si sobrevive, paso algo.
+      writeFileSync(ULTIMO, JSON.stringify({ ...d, encontradoHuerfano: new Date().toISOString() }))
     } catch { /* ilegible = huerfano */ }
   }
   writeFileSync(ARCHIVO, JSON.stringify({ pid: process.pid, quien, desde: new Date().toISOString() }))
@@ -44,3 +52,4 @@ export function tomar(quien) {
 }
 
 export const RUTA = ARCHIVO
+export const RUTA_ULTIMO = ULTIMO

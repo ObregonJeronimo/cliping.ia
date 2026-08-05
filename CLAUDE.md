@@ -91,19 +91,30 @@ Lo que hay ahora, y **no hace falta acordarse de nada**:
   render y un guard a la vez ya no arrancan. El segundo dice quién lo tiene y desde cuándo.
 - **Si hay menos de 1200 MB disponibles, el guard no arranca** y te dice que cierres aplicaciones.
 
-### Pero el síntoma real es OTRO, y hay que decirlo
+### Era la memoria, y Windows lo tenía anotado todo el tiempo
 
-Se colgó tres veces la noche del 4/8. Leído del registro de Windows: **`BugcheckCode = 0` y cero
-eventos WHEA en los tres**, o sea ni pantalla azul ni error de hardware. Y el síntoma que reporta Jero
-es **pantalla en negro, nada responde, hay que apagar con el botón**. Eso no es un apagón: es un
-CUELGUE.
+Se colgó tres veces la noche del 4/8, y estuve dando vueltas entre fuente, temperatura y placa de video
+antes de mirar donde había que mirar. Windows trae un **detector de agotamiento de recursos** que se
+dispara solo y **nombra al culpable** (evento 2004, proveedor `Resource-Exhaustion-Detector`):
 
-Dos causas posibles, ninguna probada todavía, y las dos dan el mismo síntoma:
+```
+04/08 23:56:15  node.exe (23276) usó 42.155.171.840 bytes · Photoshop.exe 8.552.357.888
+26/07 22:03:24  node.exe (9512)  usó 47.891.099.648 bytes
+26/07 16:08:56  node.exe (10444) usó 48.150.077.440 bytes
+```
 
-- **Memoria agotada.** 16 GB con Photoshop, OBS, Edge y SQL Server abiertos deja ~2,4 GB disponibles.
-  Ya pasó una vez de verdad (la fuga de `getImageData`, 28 GB).
-- **Cuelgue de la placa de video** (RX 7600). No hay un solo evento 4101/4104, o sea que el driver
-  nunca llegó a recuperarse — coherente con pantalla negra y congelamiento total.
+**42 GB pedidos en una máquina de 15 GB con 22 de paginación**, tres minutos y medio antes del cuelgue
+de las 23:59:52. Y esa vez el `node.exe` era la cadena de compuertas que había quedado **huérfana**
+(ver abajo). Los diecisiete eventos del 25-26 de julio son todos `node.exe` a 47-48 GB: la fuga de
+`getImageData`.
+
+Descartados con datos, no por opinión: disco (NVMe sana, cero errores), EXPO (la RAM va a 4800, JEDEC),
+hardware (**cero** eventos WHEA en 30 días) y pantalla azul (`BugcheckCode = 0` en los tres — la
+máquina se colgó, no falló el kernel).
+
+**La placa de video no era.** Estuvo en la lista de sospechosos porque el síntoma —la imagen se congela
+y después la pantalla se va a negro— apunta ahí, y porque no hay ningún evento 4101/4104. Pero con
+42 GB pedidos y Windows gritándolo en el log, no hace falta otra explicación.
 
 Lo que descarta la medición: no es el disco (NVMe sana, sin errores) y no es EXPO (la RAM corre a
 4800, JEDEC).
@@ -118,9 +129,12 @@ Y el Inicio rápido no es sólo un error de medición: es **sospechoso**. Con é
 de los drivers —el de la placa incluido— nunca se reinicia del todo y se arrastra entre encendidos. Es
 causa conocida de justo este síntoma: la imagen se congela, la pantalla pierde señal y no vuelve.
 
-**`npm run testigo` es la caja negra.** Anota cada 5 s con `fsync`, así que la última línea sobrevive a
-un apagado por botón. Después de un cuelgue, `node tools/testigo.mjs --leer` dice si la memoria venía
-cayendo (era memoria) o si había de sobra (no era memoria, y el sospechoso pasa a ser la placa).
+**`npm run informe` lo cuenta todo, y no hay NADA corriendo en segundo plano.** La primera versión de
+esto era un proceso anotando cada 5 segundos; no hace falta, porque Windows ya lo anota solo. El
+informe lee los cierres inesperados, los eventos 2004 con el culpable y los bytes, los del driver de
+video, los WHEA, y lo cruza con el **cerrojo**: se escribe una vez al arrancar algo pesado y se borra al
+terminar bien, así que si sobrevive a un cuelgue dice exactamente qué estaba corriendo. Costo en vivo:
+un archivo al empezar y otro al terminar.
 
 ### Y se colgó una segunda vez esa misma noche, arreglándolo
 
