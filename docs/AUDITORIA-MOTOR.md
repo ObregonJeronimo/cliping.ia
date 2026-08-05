@@ -1259,13 +1259,25 @@ disponible; sus afirmaciones hay que verificarlas a mano antes de actuar sobre e
     a que oponerse.
   - Se cierra sin descartar su contenido: si al hacer la clasificacion aparece que tenia razon en algo
     mas, vuelve a abrirse con la medicion que lo muestre.
-- [ ] **La tesis se sostiene pero el grano es mas grueso de lo que dice el titular, y eso parte el Paso 2 en dos. (a) 'Cada malla se dimensiona por un solo eje' no describe a los ~9 sitios que usan `encaje` (kit.js:968): `altoBase * arMax > anchoUtil ? anchoUtil / arMax : altoBase` SI mide el `ar` real y SI compara contra un a**
+- [x] **La tesis se sostiene pero el grano es mas grueso de lo que dice el titular, y eso parte el Paso 2 en dos. (a) 'Cada malla se dimensiona por un solo eje' no describe a los ~9 sitios que usan `encaje` (kit.js:968): `altoBase * arMax > anchoUtil ? anchoUtil / arMax : altoBase` SI mide el `ar` real y SI compara contra un a**
   - **Por qué cambia la decisión:** El Paso 2 esta presupuestado como una migracion homogenea de '~30 sitios en tandas chicas' con un solo criterio de aceptacion. En realidad son dos frentes con riesgo y entregable distintos: el de desborde no acotado (tarjetas:191, cierre:240/273, destello:169, rafaga:210, toro:35
   - **Corrección:** Partir el Paso 2 en 2A (techo: sitios de un solo eje sin acotar, criterio E-CONTENCION) y 2B (piso + escalera de ajuste: sitios `encaje`, criterio E-CUERPO-MINIMO de dos ramas), con la migracion de `planoRecorte`/`topeNitido` como 2C independiente. Y agregar al Paso 1 una asercion E-BANDA-LLENA: cua
 
 
 ### Lo sostiene, con reparos
 
+  - **CERRADA 2026-08-05: el hecho que corrige es CORRECTO, verificado en el codigo.**
+    - `kit.js:968` es `altoBase * arMax > anchoUtil ? anchoUtil / arMax : altoBase`: **SI mide el `ar`
+      real y SI compara contra un ancho**. Lo usan ONCE archivos. La afirmacion del diagnostico —"cada
+      malla se dimensiona por un solo eje"— es falsa para todos ellos.
+    - Su propuesta de partir el Paso 2 en 2A/2B/2C es organizacion de un plan que ya quedo decidido por
+      medicion, asi que no aplica. **Pero la DISTINCION que hace si vale y se conserva:** no hay un
+      problema, hay dos, y necesitan criterios distintos —los sitios con desborde no acotado (un eje,
+      sin tope) y los que usan `encaje` (dos ejes, sin piso)—. Quien haga la clasificacion de `encaja`
+      va a necesitar esa separacion, porque un sitio de cada tipo se arregla distinto.
+    - Es la segunda objecion del dia que corrige un dato falso del diagnostico, despues de la de
+      `contraste.js:58`. Los criticos hicieron bien su trabajo: las dos afirmaciones eran verificables y
+      las dos eran falsas.
 - [x] **El plan trata la falta de clave de `marquesina` en REQUISITOS como la causa del aire muerto (Paso 3). Es una de dieciocho puertas a la misma sala, y la que menos importa. La bandera `vacia` NO LA LEE NADIE EN PRODUCCION. Grep sobre render3d/, tools/ y backend/: `r.vacia` se lee en UN solo lugar, render3d/demo/verificar**
   - ✅ **HECHO** — 8b893f2 — confirmado y arreglado: ahora main.js lo lee y saltea la escena sin avanzar el beat.
   - **Por qué cambia la decisión:** Cambia QUE se arregla y en que orden, en las dos direcciones. (1) En el video: arreglar `marquesina` deja las otras diecisiete puertas abiertas. Una linea en main.js que respete `vacia` —saltear o encoger el slot— cierra las dieciocho y es mas barata que la clave de REQUISITOS. (
