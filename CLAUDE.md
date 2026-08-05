@@ -91,6 +91,27 @@ Lo que hay ahora, y **no hace falta acordarse de nada**:
   render y un guard a la vez ya no arrancan. El segundo dice quién lo tiene y desde cuándo.
 - **Si hay menos de 1200 MB disponibles, el guard no arranca** y te dice que cierres aplicaciones.
 
+### Pero el síntoma real es OTRO, y hay que decirlo
+
+Se colgó tres veces la noche del 4/8. Leído del registro de Windows: **`BugcheckCode = 0` y cero
+eventos WHEA en los tres**, o sea ni pantalla azul ni error de hardware. Y el síntoma que reporta Jero
+es **pantalla en negro, nada responde, hay que apagar con el botón**. Eso no es un apagón: es un
+CUELGUE.
+
+Dos causas posibles, ninguna probada todavía, y las dos dan el mismo síntoma:
+
+- **Memoria agotada.** 16 GB con Photoshop, OBS, Edge y SQL Server abiertos deja ~2,4 GB disponibles.
+  Ya pasó una vez de verdad (la fuga de `getImageData`, 28 GB).
+- **Cuelgue de la placa de video** (RX 7600). No hay un solo evento 4101/4104, o sea que el driver
+  nunca llegó a recuperarse — coherente con pantalla negra y congelamiento total.
+
+Lo que descarta la medición: no es el disco (NVMe sana, sin errores), no es EXPO (la RAM corre a 4800,
+JEDEC), y no es una falla crónica (venía de **6 días seguidos** prendida sin un corte).
+
+**`npm run testigo` es la caja negra.** Anota cada 5 s con `fsync`, así que la última línea sobrevive a
+un apagado por botón. Después de un cuelgue, `node tools/testigo.mjs --leer` dice si la memoria venía
+cayendo (era memoria) o si había de sobra (no era memoria, y el sospechoso pasa a ser la placa).
+
 ### Y se colgó una segunda vez esa misma noche, arreglándolo
 
 El primer arreglo tenía un agujero, y lo abrió la **prueba de humo del propio guard**: se corrió
