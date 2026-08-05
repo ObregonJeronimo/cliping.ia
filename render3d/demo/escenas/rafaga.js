@@ -24,7 +24,7 @@
 // todas frases; si no dio frases, todos recortes. El guionista no la elige si no hay ni una cosa ni la
 // otra — no hay ráfaga de nada.
 
-import { LOOK, b, E, hex, texto, planoRecorte, recortesDe, nivel, nivelTexto, matAcento, dolly, texturaDe } from '../kit.js'
+import { LOOK, topeNitido, b, E, hex, texto, planoRecorte, recortesDe, nivel, nivelTexto, matAcento, dolly, texturaDe } from '../kit.js'
 import { D, marca, repartirFrases } from '../datos.js'
 
 export const meta = { id: 'rafaga', beats: 6 }
@@ -178,8 +178,15 @@ export function build(ctx) {
       // boton, que es la peor superficie posible (bordes rectos, alto contraste, texto adentro).
       // Un recorte que no llega al ancho del cuadro se muestra MAS CHICO, y esta bien: mejor una
       // pieza nitida y menor que una grande y sucia.
-      const MAG_MAX = 1.4
-      const anchoNativo = (p.tex.image.width * MAG_MAX / (ctx.W || 1080)) * mundoW
+      // ERA UNA COPIA LITERAL DE `topeNitido`, con su propio 1.4. La formula del kit es
+      // `((img.width) * mag / (W || 1080)) * mundoW` y esta era la misma escrita a mano, asi que el
+      // reemplazo no mueve un pixel — comprobado con las compuertas.
+      //
+      // Y el problema de una copia no es la repeticion: es que el dia que el kit ajuste su tope, esta
+      // escena se queda con el viejo y nadie se entera. Es el mismo patron que ya costo dos arreglos
+      // hoy — el `0.915` de `toro` y el `-0.22` de `mesa`, los dos numeros copiados que se
+      // desincronizaron de lo que describian.
+      const anchoNativo = topeNitido(p.tex.image, ctx.W, mundoW)
       const alto = Math.min(ALTO_MAX, Math.min(ANCHO_MAX, anchoNativo) / Math.max(0.08, ar))
       m = planoRecorte(p.tex, alto)
       if (m) gr.add(m)

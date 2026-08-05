@@ -1283,10 +1283,23 @@ disponible; sus afirmaciones hay que verificarlas a mano antes de actuar sobre e
     a que oponerse.
   - Se cierra sin descartar su contenido: si al hacer la clasificacion aparece que tenia razon en algo
     mas, vuelve a abrirse con la medicion que lo muestre.
-- [ ] **El diagnostico §2(a) apoya 'el kit permite equivocarse' en tres patas y una no existe: 'contraste.js:58 llego a pisar el nombre importado con otra firma'. No pisa nada. render3d/demo/escenas/contraste.js:21 importa `{ LOOK, b, E, nivel, matAcento, materialMascara, planoRecorte, recortesDe, finMascara, deriva, dolly, or**
+- [x] **El diagnostico §2(a) apoya 'el kit permite equivocarse' en tres patas y una no existe: 'contraste.js:58 llego a pisar el nombre importado con otra firma'. No pisa nada. render3d/demo/escenas/contraste.js:21 importa `{ LOOK, b, E, nivel, matAcento, materialMascara, planoRecorte, recortesDe, finMascara, deriva, dolly, or**
   - **Por qué cambia la decisión:** No cambia el Paso 2 —las otras dos patas si estan verificadas: `topeNitido` lo importa UN archivo (columna.js:30) de NUEVE que llaman a `planoRecorte`, y `encaje` (kit.js:968) es de un eje y sin piso—. Cambia que el argumento se presenta con un dato falsificable adentro. En un re
   - **Corrección:** Borrar la frase del shadow. La pata que si aguanta y que ademas es mas fuerte: nueve archivos llaman a `planoRecorte`, uno solo (columna.js:134) usa `topeNitido`, y `rafaga.js:163` se escribio su propia copia del mismo tope (`const MAG_MAX = 1.4`). Cuando un autor reimplementa una funcion del kit qu
 
+  - **CERRADA 2026-08-05: la objecion tenia razon en las tres cosas, verificadas una por una.**
+    - **El dato falso es falso:** `contraste.js` NO pisa `planoRecorte`. Lo importa en la linea 21 y lo
+      llama en la 70. La frase del diagnostico era incorrecta y no se apoya en nada.
+    - **La pata fuerte se confirma y ademas mejoro sola:** nueve archivos llaman a `planoRecorte`, y
+      `topeNitido` hoy lo usan CUATRO (`columna`, `cubo`, `mosaico`, `vitrina`), no uno. La objecion
+      decia "uno de nueve"; alguien lo fue extendiendo desde entonces.
+    - **Y la copia de `rafaga` era real: ARREGLADA.** `rafaga.js:181` tenia su propio `MAG_MAX = 1.4` y
+      la formula escrita a mano —`(img.width * MAG_MAX / (W || 1080)) * mundoW`— que es literalmente la
+      de `topeNitido`. Reemplazada por la del kit: no mueve un pixel (compuertas verdes) y deja de ser
+      un numero que puede desincronizarse.
+    - Es el TERCER numero copiado que se arregla hoy, despues del `0.915` de `toro` y el `-0.22` de
+      `mesa`. El problema nunca es la repeticion: es que el dia que el original cambie, la copia se
+      queda con el valor viejo y nadie se entera.
 - [x] **El Paso 2 dimensiona la migracion en 'los ~30 sitios' y §2(a) habla de 'los SIETE que llaman a planoRecorte' y 'siete composiciones se escribieron su propio contain'. Los llamadores de `planoRecorte` son NUEVE, no siete: columna, contraste, mesa, pantalla, rafaga, titular (escenas) + mosaico, ventana, vitrina (heroes).**
   - **Por qué cambia la decisión:** Es una correccion de alcance del unico paso de riesgo medio del plan. Si el Paso 2 se planifica en tandas contra una lista de siete y son nueve, dos sitios de llamada quedan fuera de la tanda y sin criterio de aceptacion — y `pantalla` y `ventana`, los dos que faltan en la cuenta
   - **Corrección:** Fijar la lista de migracion por grep y no por memoria: nueve llamadores de `planoRecorte`, siete sin tope de resolucion (contraste, mesa, pantalla, titular, mosaico, ventana, vitrina). Meter `topeNitido` DENTRO de `planoRecorte` (kit.js:1964, que hoy termina en `new THREE.PlaneGeometry(alto * ar, al
