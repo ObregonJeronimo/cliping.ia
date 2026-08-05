@@ -27,6 +27,57 @@ const RAIZ = join(HERE, '..')
 const DEMO = join(RAIZ, 'render3d', 'demo')
 const DIRS = [join(DEMO, 'escenas'), join(DEMO, 'heroes')]
 
+// SE CORRE POR PARTES, UNA PAGINA POR PROCESO, POR LA MISMA RAZON QUE `fondo-check`.
+//
+// Cada llamada a `texto()` compromete pixeles que NO vuelven —los reserva la libreria nativa de canvas
+// y no los suelta ni soltando la textura, ni vaciando el cache, ni pidiendo la recoleccion a mano—.
+// Esta compuerta construye 105 piezas de varias escenas cada una, y medida desde afuera llegaba a
+// **12.376 MB de memoria COMPROMETIDA** en un solo proceso. Node informaba una fraccion de eso: la
+// unica forma de verlo es preguntarle a Windows, y la unica forma de devolverlo es terminar el proceso.
+//
+// Se parte por pagina, cada parte emite sus contadores y el padre los suma. El veredicto no cambia
+// —`conEco / piezas` es una suma— y el pico baja a lo que cuesta UNA pagina.
+if (!process.env.ECO_PAGINA) {
+  const { spawnSync } = await import('node:child_process')
+  const NPAG = 8                                    // se descubre abajo; el padre solo necesita el tope
+  let piezasT = 0, conEcoT = 0
+  const culpablesT = new Map()
+  const ejemplosT = []
+  for (let i = 0; i < NPAG; i++) {
+    const r = spawnSync(process.execPath, [process.argv[1]],
+      { env: { ...process.env, ECO_PAGINA: String(i) }, encoding: 'utf8' })
+    const txt = (r.stdout || '') + (r.stderr || '')
+    const linea = txt.split(String.fromCharCode(10)).find(l => l.startsWith('##ECO##'))
+    if (!linea) {
+      if (txt.includes('##FUERA##')) break          // se acabaron las paginas
+      console.log(txt)
+      console.log('GATE ECO FAIL: una parte no devolvio contadores.')
+      process.exit(1)
+    }
+    const d = JSON.parse(linea.slice(7))
+    piezasT += d.piezas; conEcoT += d.conEco
+    for (const [k, v] of d.culpables) culpablesT.set(k, (culpablesT.get(k) || 0) + v)
+    ejemplosT.push(...d.ejemplos)
+  }
+  const pctT = piezasT ? (conEcoT / piezasT * 100) : 0
+  const TOPE = 13.0
+  if (culpablesT.size) {
+    console.log('  escenas involucradas: '
+      + [...culpablesT].sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(' · '))
+  }
+  for (const e of ejemplosT.slice(0, 6)) console.log('    ' + e)
+  if (pctT > TOPE) {
+    console.log(`
+GATE ECO FAIL: ${conEcoT} de ${piezasT} piezas (${pctT.toFixed(1)}%) repiten una frase `
+      + `en dos escenas, y el trinquete esta en ${TOPE}%.`)
+    process.exit(1)
+  }
+  console.log(`GATE ECO OK (${pctT.toFixed(1)}% de ${piezasT} piezas repiten una frase entre escenas; `
+    + `trinquete ${TOPE}%, y es un trinquete: ver la nota de arriba). Barrido en ${NPAG} procesos para `
+    + `que la memoria vuelva al sistema.`)
+  process.exit(0)
+}
+
 const { registrarFuentes } = await import('./fuentes-reales.mjs')
 registrarFuentes(RAIZ)
 const lienzo = (w = 4, h = 4) => createCanvas(w, h)
@@ -160,7 +211,9 @@ const culpables = new Map()
 const _consumo = new Map()
 const ejemplos = []
 
-for (const pag of PAGINAS) {
+const _idx = Number(process.env.ECO_PAGINA)
+if (_idx >= PAGINAS.length) { console.log('##FUERA##'); process.exit(0) }
+for (const pag of PAGINAS.slice(_idx, _idx + 1)) {
   for (const dur of DURS) {
     for (const seed of SEMILLAS) {
       const tramos = await pieza(pag.datos, seed, dur, AIRE)
@@ -200,29 +253,9 @@ if (process.env.MEDIR_SED) {
     console.log(`    ${id.padEnd(12)} ${String(v.veces).padStart(4)} apariciones  ${String(v.total).padStart(4)} frases  ${(v.total / v.veces).toFixed(2)} por vez`)
   }
 }
-const pct = piezas ? (conEco / piezas * 100) : 0
-console.log(`ECO: ${piezas} piezas (${PAGINAS.length} paginas x ${DURS.length} duraciones x ${SEMILLAS.length} semillas)`)
-console.log(`  con la misma frase en dos escenas: ${conEco} (${pct.toFixed(1)}%)`)
-if (culpables.size) {
-  console.log('  escenas involucradas: ' + [...culpables].sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(' · '))
-}
-for (const e of ejemplos) console.log('    ' + e)
-
-// UN TRINQUETE, NO UN IDEAL — y va declarado como tal para que nadie lo lea como "esto esta bien".
-//
-// Hoy el eco es 12.4%, y bajarlo a cero SE PUEDE pero cuesta: metiendo `titular` en el cupo de
-// `guion.js` baja a 1.9% y `marquesina` pasa de 42 apariciones a 2 sobre las mismas 105 piezas, o sea
-// que se cambia un defecto que se lee por una escena que desaparece. Con `titular` pidiendo dos frases
-// otra vez y contandolas en el cupo llega a 0% y el costo es el mismo. Esa decision no se toma sola.
-//
-// Mientras tanto el numero no puede SUBIR, y eso es lo que esta linea protege. El camino para bajarlo
-// no es aflojar el tope sino que las escenas dejen de desperdiciar frases: arreglar `titular` —que
-// pedia dos y mostraba una— bajo el eco de 40% a 12.4% sin mover una sola aparicion de nada.
-const TOPE_PCT = 13.0
-if (pct > TOPE_PCT) {
-  console.log(`\nGATE ECO FAIL: ${conEco} de ${piezas} piezas (${pct.toFixed(1)}%) repiten una frase en `
-    + `dos escenas, y el trinquete esta en ${TOPE_PCT}%.`)
-  process.exit(1)
-}
-console.log(`GATE ECO OK (${pct.toFixed(1)}% de ${piezas} piezas repiten una frase entre escenas; `
-  + `trinquete ${TOPE_PCT}%, y es un trinquete: ver la nota de arriba).`)
+// EL HIJO NO JUZGA: emite sus contadores y el padre suma. El veredicto tiene que salir del TOTAL —una
+// pagina sola nunca sabria si el 13% se cruzo— y ademas asi el trinquete vive en un solo lugar.
+console.log('##ECO##' + JSON.stringify({
+  piezas, conEco, culpables: [...culpables], ejemplos: ejemplos.slice(0, 2),
+}))
+process.exit(0)

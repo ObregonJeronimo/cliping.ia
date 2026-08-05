@@ -136,6 +136,7 @@ p.on('close', (codigo) => {
     arrancoConMb: disp, minimoMb: ojo.libreMinMb,
     segundos: Math.round((Date.now() - t0) / 1000), cortado: !!cortadoPor,
   })
+  console.error(`pesado: pico de memoria COMPROMETIDA del arbol: ${picoCommit} MB (tope ${TOPE_COMMIT_MB})`)
   const min = ojo.libreMinMb === null
     ? 'no llego a medirse (termino en menos de un cuarto de segundo)'
     : `${ojo.libreMinMb} MB`

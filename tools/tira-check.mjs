@@ -56,6 +56,40 @@ globalThis.gsap = gsap
 const THREE = await import(pathToFileURL(join(RAIZ, 'node_modules', 'three', 'build', 'three.module.js')).href)
 const { BEAT, LOOK, b, configurar, reiniciarRecortes } = await import(pathToFileURL(join(DEMO, 'kit.js')).href)
 
+// SE CORRE POR PARTES, UN AIRE POR PROCESO. Misma razon que `eco-check` y `fondo-check`: cada llamada a
+// `texto()` compromete pixeles que la libreria nativa de canvas no devuelve nunca, y esta compuerta hace
+// 1221 construcciones. Medido desde afuera —con Windows, porque Node no lo ve— llegaba a **5078 MB
+// comprometidos**. Hoy eso pasa por debajo del techo, pero el techo se calcula sobre la RAM DISPONIBLE:
+// con Photoshop abierto baja a 4096 y esta compuerta moriria sola.
+//
+// Partido por aire, el pico es el de UN aire y el veredicto no cambia: los fallos son una union y los
+// contadores una suma.
+if (!process.env.TIRA_AIRE) {
+  const { spawnSync } = await import('node:child_process')
+  const { readdirSync: leerDir } = await import('node:fs')
+  const aires = leerDir(join(DEMO, 'aires')).filter(f => f.endsWith('.js')).map(f => f.replace('.js', ''))
+  let revisadosT = 0
+  const fallosT = []
+  for (const na of aires) {
+    const r = spawnSync(process.execPath, [process.argv[1]],
+      { env: { ...process.env, TIRA_AIRE: na }, encoding: 'utf8' })
+    const txt = (r.stdout || '') + (r.stderr || '')
+    const linea = txt.split(String.fromCharCode(10)).find(l => l.startsWith('##TIRA##'))
+    if (!linea) { console.log(txt); console.log('GATE TIRA FAIL: una parte no devolvio contadores.'); process.exit(1) }
+    const d = JSON.parse(linea.slice(8))
+    revisadosT += d.revisados
+    fallosT.push(...d.fallos)
+  }
+  if (fallosT.length) {
+    console.log(`GATE TIRA FAIL (${fallosT.length}):`)
+    for (const f of fallosT) console.log('  ' + f)
+    process.exit(1)
+  }
+  console.log(`GATE TIRA OK (${revisadosT} construcciones x ${aires.length} aires, cada uno en su propio `
+    + `proceso para que la memoria vuelva al sistema: la pagina del cliente no se deforma).`)
+  process.exit(0)
+}
+
 const AIRES = {}
 for (const f of readdirSync(join(DEMO, 'aires')).filter(f => f.endsWith('.js'))) {
   AIRES[f.replace('.js', '')] = (await import(pathToFileURL(join(DEMO, 'aires', f)).href)).default
@@ -136,7 +170,7 @@ const fallos = []
 const medidas = []
 let revisados = 0, planos = 0
 
-for (const [nombreAire, aire] of Object.entries(AIRES)) {
+for (const [nombreAire, aire] of Object.entries(AIRES).filter(([n]) => n === process.env.TIRA_AIRE)) {
   configurar(aire)
   for (const tiraSpec of TIRAS) {
     for (const id of ids) {
@@ -259,6 +293,9 @@ if (medidas.length) {
     console.log(`  ${id.padEnd(10)} peor ${m.razon.toFixed(4)}x   repeat.y ${m.ry.toFixed(5)}   [${m.aire} · ${m.tira}]`)
   }
 }
+// El hijo no juzga: emite y el padre suma. Ver la nota de arriba.
+console.log('##TIRA##' + JSON.stringify({ revisados, fallos: unicos }))
+process.exit(0)
 if (unicos.length) {
   console.log(`\nGATE TIRA FAIL (${unicos.length}):`)
   for (const f of unicos) console.log('  ' + f)
