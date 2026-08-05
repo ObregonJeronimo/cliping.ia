@@ -1206,9 +1206,22 @@ disponible; sus afirmaciones hay que verificarlas a mano antes de actuar sobre e
 
 ### Lo sostiene, con reparos
 
-- [ ] **El defecto MAS GRAVE del corpus no es de encaje, y el plan lo deja huerfano. `tarjetas.js:290` llama `const num = contador(0.62, d.n, esHero ? 130 : 80, C_NUM(), esHero ? heroTexs : null, ...)`. Para toda tarjeta que NO es la heroe pasa `texsPrestadas = null`, asi que se ejecuta `tarjetas.js:157`: `for (let k = 0; k <=**
+- [x] **El defecto MAS GRAVE del corpus no es de encaje, y el plan lo deja huerfano. `tarjetas.js:290` llama `const num = contador(0.62, d.n, esHero ? 130 : 80, C_NUM(), esHero ? heroTexs : null, ...)`. Para toda tarjeta que NO es la heroe pasa `texsPrestadas = null`, asi que se ejecuta `tarjetas.js:157`: `for (let k = 0; k <=**
   - **Por qué cambia la decisión:** El plan lo saca de la fila entera: no esta en Paso 0, no lo caza ninguna de las 4 aserciones del Paso 1, no lo toca la migracion a `caber` del Paso 2, y no figura en los tres items del Paso 3. Es la unica regla que el propio repo llama 'la mentira mas cara que puede cometer este 
   - **Corrección:** Subirlo a Paso 0, al lado de los cinco `else if`. El arreglo es aplicar en `contador` la misma guarda que ya existe para la heroe: cuando `valorFinal == null`, repetir la textura de `d.txt` en vez de contar (el codigo de `tarjetas.js:178` es el molde). Y en Paso 1 agregar una quinta asercion, E-CIFR
+
+  - **CERRADO 2026-08-05: el defecto que describe YA ESTA ARREGLADO, y para todas las tarjetas.**
+    - `tarjetas.js:164-172` tiene la guarda: `const fijo = valorFinal == null` y usa `textoFijo` en los
+      PASOS+1 cuadros en vez de contar. No es solo para la heroe.
+    - `tarjetas.js:360` pasa `d.txt` como texto fijo **sin condicionar por `esHero`**, que era
+      exactamente lo que la objecion decia que faltaba.
+    - Y el arreglo esta documentado en la escena con su propia medicion: *"Resultado medido con los
+      datos ['99%','10x','500K']: en el video salia '0 UPTIME' y '0 MAS RAPIDO' en la pieza de una
+      pagina que publica 99% y 10x. La regla anti-invencion de este motor prohibe inventar una cifra, y
+      esto era peor que inventarla: la contradecia."*
+    - **La objecion tenia razon cuando se escribio** —era el defecto mas grave del corpus, y el propio
+      repo lo llama "la mentira mas cara que puede cometer este motor"— y se arreglo despues. La ficha
+      quedo abierta porque nadie la volvio a mirar, no porque el defecto siguiera vivo.
 
 - [ ] **El umbral de E-CUERPO-MINIMO no caza lo que el plan dice que caza, medido con los numeros de la propia sintesis. El plan fija 'altura de mayuscula >= ~30 px de 1920' y afirma: 'Mata todo lo que `encaje` achica hasta ilegible (sello, hero, cita, gancho, titular, lista, marquesina, partida)'. Pero las mediciones que la e**
   - **Por qué cambia la decisión:** El entregable del Paso 1 es 'poner en rojo 20-30 sitios y entregar la lista real, medida'. Con 30 px la familia entera de degradacion —que es la mitad de la tesis y la que explica el '3 de 5 salen bien'— sale VERDE, y el Paso 2 se queda sin criterio de aceptacion justo para los ~
