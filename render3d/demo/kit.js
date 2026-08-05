@@ -2230,3 +2230,22 @@ export function recortesDe(elementos, roles, n = 3) {
   _cursorEls += Math.min(n, pozo.length)
   return out
 }
+
+// EL CUADRO MAS ANGOSTO QUE VA A HABER EN ESTA ESCENA, con el aire ya puesto.
+//
+// Un ancho declarado en unidades de MUNDO no dice lo que se ve: cuando la camara se acerca, el mismo
+// plano ocupa mas cuadro. Y cuanto se acerca no lo decide la escena sola — lo escala `CAM.dolly`, que
+// va de 0.4 a 1.55 segun el aire.
+//
+// Medido en `toro`, proyectando los vertices contra la camara sobre 7 pagemodels x 11 aires: su bloque
+// tipografico declara `mundoW * 0.86` y llega a **1.099 anchos de cuadro** —o sea 10% afuera— con
+// linear-app y el aire `inmobiliario`, que es el de dolly mas alto. En mundo la misma malla mide 0.68
+// del cuadro y parece sobrarle margen.
+//
+// La escena ya conoci­a la trampa y la tenia escrita con el numero a mano: *"esta camara se acerca un
+// 8.5%, asi que el cuadro visible pasa de 5.625 a 5.15"*. Ese 0.915 vale SOLO con dolly 1; con 1.55 el
+// acercamiento es 13.2% y el cuadro queda en 0.868. El conocimiento estaba y el numero no se actualizo
+// solo, que es lo que pasa siempre que una constante se copia en vez de derivarse.
+//
+// `acercamiento` es la fraccion de `distBase` que la escena le pasa a `dolly()`, negativa (se acerca).
+export const cuadroMasAngosto = (mundoW, acercamiento) => mundoW * (1 + acercamiento * CAM.dolly)

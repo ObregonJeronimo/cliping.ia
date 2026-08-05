@@ -48,7 +48,7 @@
 // reproduce su degrade en coordenadas de mundo: la union cae en el mismo punto del espacio, asi que
 // no hay costura. Se resuelve acá adentro para no tocar el kit.
 
-import { E, LOOK, b, texto, materialMascara, filete, matAcento, matTarjeta, hex, nivel, dolly, orbita, MOB } from '../kit.js'
+import { E, LOOK, b, texto, materialMascara, filete, matAcento, matTarjeta, hex, nivel, dolly, orbita, cuadroMasAngosto, MOB } from '../kit.js'
 // El COPY sale de los DATOS. Lo que queda escrito aca es CHROME de la pieza (rotulos de
 // capitulo, indicadores tecnicos): eso es direccion de arte y no cambia con el contenido.
 // Lo que la marca DICE — su nombre, sus cifras, su claim, su CTA — sale de los datos o NO SALE.
@@ -339,7 +339,12 @@ export function build(ctx) {
     return m
   }
 
-  const ANCHO = mundoW * 0.86
+  // EL ACERCAMIENTO SE DECLARA UNA VEZ Y LO USAN LOS DOS: la camara para moverse y los anchos para
+  // saber contra que cuadro se miden. Estaban separados, y por eso el bloque tipografico se salia un
+  // 10% del cuadro justo en el aire de dolly mas alto. Ver la nota de `cuadroMasAngosto` en el kit.
+  const ACERCA = -0.085
+  const CUADRO = cuadroMasAngosto(mundoW, ACERCA)
+  const ANCHO = CUADRO * 0.86
   const X0 = -ANCHO / 2
   const Y_KICK = -1.94, Y_PAL = -2.62, Y_FIL = -3.06, Y_SUB = -3.48
   // LOS TOPES DE ALTO SALEN DE ESOS CUATRO NUMEROS, NO DE UN NUMERO LINDO. La reticula de arriba es la
@@ -458,7 +463,7 @@ export function build(ctx) {
   // 0.44 del ancho es el borde derecho del cuadro CERRADO con un pelo de aire. Y se ancla por ese borde
   // usando el ancho real de la malla, asi un dominio corto y uno largo terminan los dos contra el mismo
   // margen en vez de arrancar los dos del mismo punto.
-  lectura.position.set(mundoW * 0.44 - (lectura.geometry.parameters.width || 0) / 2, 3.55, 0.6)
+  lectura.position.set(CUADRO * 0.44 - (lectura.geometry.parameters.width || 0) / 2, 3.55, 0.6)
   g.add(lectura)
 
   // ------------------------------------------------------------------ la pauta del renglon del kicker
@@ -578,7 +583,7 @@ export function build(ctx) {
     // hace que la camara vuelva sola— asi que escalarla no puede romper el contrato de devolucion.
     const ang = orbita(0.36) * arco          // arco lateral
     const alt = orbita(5.47) * arco * (0.5 - y)   // sube, cruza el ecuador y desciende
-    const dist = dolly(distBase, distBase * -0.085 * arco)
+    const dist = dolly(distBase, distBase * ACERCA * arco)
 
     // El punto al que mira sube al objeto en la entrada y baja cuando llega la tipografia: el
     // encuadre se reacomoda solo en vez de quedar decidido de antemano.

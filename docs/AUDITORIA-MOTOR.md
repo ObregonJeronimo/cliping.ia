@@ -1161,7 +1161,7 @@ nueva acusa exactamente 88 si se revierte el arreglo.
 
 ## Dos hallazgos nuevos, vistos renderizando el 2026-07-31 (NO son de los parches de hoy)
 
-- [ ] **render3d/demo/escenas/toro.js:342 — el ancho se declara en unidades de mundo y la camara lo agranda**
+- [x] **render3d/demo/escenas/toro.js:342 — el ancho se declara en unidades de mundo y la camara lo agranda**
   - **Sintoma:** El renglon de abajo llega al borde del cuadro. Medido en pixeles sobre el render de
     pentagram.com (cuadro 355): 'SEE LATEST PROJECTS' va de **x = 3 a x = 1075** sobre 1080, o sea 3 y
     4 px de margen. No esta cortado, pero ninguna otra escena compone asi: todas usan entre 0.84 y 0.96
@@ -1179,8 +1179,27 @@ nueva acusa exactamente 88 si se revierte el arreglo.
   - **Verificado que las escenas hermanas NO tienen el problema:** `sello` 0.512, `bandera` 0.873,
     `gancho` 0.912. `destello` llega a 1.623 y ya esta confirmado como transitorio deliberado (su malla
     mide 0.96 del cuadro y un tween la escala 2.429x).
-  - No se parcheo: bajar el ANCHO de `toro` cambia su composicion en los once aires para arreglar el
-    que tiene dolly 1.55, y eso es la misma decision que quedo abierta en `mesa`.
+  - **CERRADO 2026-08-05, y no bajando el ANCHO.** La duda era correcta: bajar el numero arregla el aire
+    de dolly 1.55 y encoge la composicion en los otros diez. La salida es no elegir — **derivar** el
+    ancho del cuadro que de verdad va a haber, que depende del aire.
+  - **La escena YA conocia la trampa y la tenia escrita con el numero a mano**, para otra pieza: *"esta
+    camara se acerca un 8.5%, asi que el cuadro visible pasa de 5.625 a 5.15"*. Ese `0.915` vale SOLO
+    con dolly 1; con 1.55 el acercamiento es 13.2% y el cuadro queda en 0.868. El conocimiento estaba,
+    el numero no se actualizaba solo. Es lo que pasa siempre que una constante se copia en vez de
+    derivarse.
+  - `cuadroMasAngosto(mundoW, acercamiento)` en el kit devuelve el cuadro mas angosto CON EL AIRE PUESTO,
+    y en `toro` el acercamiento pasa a declararse una sola vez (`ACERCA = -0.085`): lo usa la camara para
+    moverse y lo usan los anchos para saber contra que se miden. Antes eran dos numeros sueltos.
+  - **Medido, proyectando los vertices contra la camara sobre los 7 pagemodels x los 11 aires y
+    recorriendo 31 instantes de cada linea de tiempo: 1.099 -> 0.970.** Ya no se sale, y queda en el
+    rango de las hermanas —`sello` 0.521, `bandera` 0.908, `gancho` 0.921— medidas con el mismo
+    instrumento.
+  - Y el instrumento tuvo que corregirse dos veces antes de servir: media TODAS las mallas (los
+    ornamentos sangran a proposito) y proyectaba vertices que estaban DETRAS de la camara, donde la
+    proyeccion se invierte y da numeros sin sentido — la primera lectura fue "5808 anchos de cuadro".
+  - Queda anotado que `mesa` y `columna` **no se pudieron medir con este barrido**: sin texturas de
+    recortes ninguna de las dos llega a construirse, asi que su ficha sigue abierta por falta de
+    medicion, no por falta de arreglo.
 
 - [x] **render3d/demo/escenas/destello.js — FALSO POSITIVO MIO, retirado el 2026-08-04**
   - Lo abri diciendo que con copy real y un aire de tipografia ancha el titular se salia del cuadro por
