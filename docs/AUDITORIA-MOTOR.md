@@ -1340,7 +1340,7 @@ nueva acusa exactamente 88 si se revierte el arreglo.
     que la ficha registro de cada uno. Queda dicho aca para que nadie las lea como los archivos
     originales.
 
-- [ ] **render3d/demo/heroes/cubo.js — las caras salen VACIAS (NO se reproduce en el arnes)**
+- [x] **render3d/demo/heroes/cubo.js — las caras salen VACIAS (NO se reproduce en el arnes)**
   - Intento de reproduccion del 2026-07-31: construida la escena en Node con un fixture tipo stripe
     (logo + 3 cta + 4 tarjetas), con y sin testimonios (o sea con y sin el veto de laminas), da 6
     laminas de 4 imagenes DISTINTAS y 2 o 3 visibles por cuadro — que es lo correcto para un cubo. La
@@ -1383,6 +1383,20 @@ nueva acusa exactamente 88 si se revierte el arreglo.
     `.plan.json` y `motor.py` los imprime. Verificado rompiendo las URLs a proposito: avisa **6
     recortes no cargaron** y los nombra. Esa es exactamente la clase de defecto que ya costo TODOS los
     videos de produccion una vez (`el_captura_el0.png` contra `captura_el0.png`).
+
+- **CERRADO 2026-08-05. La causa era mas simple de lo que la ficha suponia, y ya esta prevenida.**
+  - La ficha pedia correrlo con el material REAL porque el veto de `esLamina` inspecciona pixeles y con
+    recortes sinteticos nunca dispara. Hecho: cargados los recortes de `tools/out/motor/stripe-com`.
+  - **Y no hacia falta llegar al veto.** El `datos.json` real de esa pagina trae **`elementos: 0`**. Hay
+    12 recortes capturados en disco, pero NINGUNO llega al motor. El cubo recibe cero caras y muestra
+    solo su nucleo — que es exactamente el sintoma descrito: una cara azul oscura y otra gris, sin una
+    sola imagen. No es que las laminas no se dibujen encima: no hay laminas.
+  - **Ya no puede volver a pasar.** `cubo.meta.puede` exige `CARAS_MINIMAS = 4` texturas utiles.
+    Verificado: con 0 elementos devuelve `false`, con 3 `false`, con 4 `true`. Un heroe que no tiene
+    con que ya no se ofrece, y `heroes-check` lo hace cumplir.
+  - **Queda una observacion aparte, que NO es del cubo:** que una pagina tenga 12 recortes en disco y
+    `elementos: 0` en sus datos es un problema de la cadena captura -> datos, no del heroe. Se anota
+    como pista, sin abrir ficha, porque no se midio cuantas paginas lo tienen.
 
 - [x] **render3d/demo/escenas/mesa.js — el respaldo del recorte deja el tercio de arriba vacio**
   - **Sintoma:** Medido en 9 cuadros repartidos por toda la escena (228 a 296 del render de stripe.com
