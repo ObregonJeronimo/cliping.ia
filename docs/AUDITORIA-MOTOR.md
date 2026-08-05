@@ -1061,10 +1061,28 @@ Ninguno era visible al ojo tampoco: un degradé sin trama sigue pareciendo un fo
 
 **Qué mide.** Un cuadro por patrón (27) en el Chromium headless, contra dos aserciones:
 
-- [ ] **E-PATRON-DIBUJA** — el patrón produce una trama distinguible del degradé pelado. Se compara
+- [x] **E-PATRON-DIBUJA** — el patrón produce una trama distinguible del degradé pelado. Se compara
   cada patrón contra un render de referencia con `fondo: nada`, en la misma escena y semilla. Caza
   rama muerta, rama vacía, shader que no compila, y patrón invisible por contraste.
-- [ ] **E-PATRON-AISLADO** — cambiar el patrón A no cambia el render del patrón B. Caza cualquier
+- [x] **E-PATRON-AISLADO** — cambiar el patrón A no cambia el render del patrón B. Caza cualquier
+  - **ESCRITAS 2026-08-04 en una sola compuerta: `tools/patron-check.py` (E-PATRON-DIBUJA).** Es la
+    PRIMERA del motor 3D que EJECUTA el shader: levanta el server del render, abre Chromium con
+    SwiftShader, dibuja `fondoVivo` con cada valor de `uPatron` y lee los pixeles.
+  - **La comparacion es EXACTA y sin umbral, y esa fue la leccion.** La primera version exigia 1.5x la
+    desviacion espacial de `nada` y acusaba a `estelas` (1.17x), `panal` (1.18x) y `recuento` (1.44x).
+    Leido el shader, los tres DIBUJAN —`recuento` pone palotes en el 44% de las celdas con trazos de
+    0.03— o sea que un patron discreto no es un patron roto y el umbral acusaba en falso. Lo que si
+    detecta el defecto documentado es que una rama vacia produce **pixel por pixel** la misma imagen
+    que `nada`.
+  - **Probada vaciando la rama de `celosia`** —sintacticamente valida, JS y GLSL correctos—: la
+    compuerta la caza. `E-SHADER-ENTERO` no puede por construccion, porque el literal sigue llegando a
+    `gl_FragColor`, y `node --check` tampoco.
+  - **El bug original ya no esta:** las 26 ramas del else-if escriben en `linea` y los 28 patrones estan
+    cubiertos. Ahora hay quien lo note si vuelve.
+  - **Y el instrumento tuvo DOS defectos antes de servir**, los dos anotados en el archivo: la camara
+    ortografica no llegaba al plano del fondo (z = -14) y renderizaba NEGRO, con lo cual los 28
+    patrones daban 'la misma imagen' con toda seguridad; y la firma muestreaba 1 de cada 997 pixeles,
+    que sobre una trama dispersa no tocaba una sola marca.
   cosa que se escape de su rama, que es la forma exacta del bug del ×4,5.
 
 **Costo medido en este repo:** arrancar Chromium ~4 s, dibujar un cuadro 12-24 ms. 27 cuadros ≈ 5-8 s.

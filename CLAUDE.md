@@ -59,7 +59,7 @@ diagnóstico falso cuesta más que no haberlos hecho. Antes de declarar un defec
   `heroes-check` (un héroe no se ofrece si no tiene con qué), `placeholder-check` (el recorte que se
   muestra es la imagen del cliente, no su borrador) `captura-check` (no se construye un video sobre
   un muro anti-bot o un error del CDN) y `eco-check` (la misma frase no sale en dos escenas).
-- **Guard completo (~30 min), sólo antes de pushear:** `npm run gates:guard`. Tiene que dar 35 OK /
+- **Guard completo (~30 min), sólo antes de pushear:** `npm run gates:guard`. Tiene que dar 36 OK /
   0 FAIL. Nunca correr dos guards a la vez.
 
 ## Dónde vive el motor
