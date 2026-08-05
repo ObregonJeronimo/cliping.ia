@@ -22,7 +22,7 @@
 //
 // Uso:  node tools/gates-guard.mjs
 import { spawn } from 'node:child_process'
-import { vigilar, matarArbol, disponibleMb, MINIMO_ARRANQUE_MB, barrerHuerfanos, anotarCosto } from './lib/memoria.mjs'
+import { vigilar, matarArbol, disponibleMb, MINIMO_ARRANQUE_MB, barrerHuerfanos, anotarCosto, entornoConTecho, TECHO_NODE_MB, costoDe, pisoPara } from './lib/memoria.mjs'
 import { tomar } from './lib/cerrojo.mjs'
 import { moderarCarga } from './lib/carga.mjs'
 
@@ -67,13 +67,45 @@ const CADENA = process.env.GUARD_CADENA || 'gates:crudo'
 // hijo, los nietos y cada Chromium que abra Playwright. Ver la nota larga en lib/carga.mjs: la maquina
 // venia de seis dias estables y se apago tres veces en 50 minutos bajo carga sostenida, sin pantalla
 // azul y sin error de hardware — o sea, no fue memoria.
+// ¿ENTRA EN ESTA MAQUINA? Esta es la pregunta que faltaba, y es la unica preventiva de todas.
+//
+// El reclamo de Jero es correcto y directo: "no puede ser que no consideres que potencia tiene la pc
+// como para pedir tanto recurso". Todo lo demas de la red es reactivo —vigila y mata cuando la cosa ya
+// se fue de mano—; nada preguntaba, ANTES de arrancar, si el trabajo entraba.
+//
+// Ahora se pregunta, y con lo MEDIDO EN ESTA MAQUINA (`costoDe`), no con una estimacion: si lo que esta
+// tarea pidio en su peor corrida no deja al menos el piso libre, no se arranca. Se dice cuanto falta y
+// se pide cerrar aplicaciones. Una corrida que se sabe que no entra es media hora tirada y una PC
+// colgada; negarse es mas util que intentarlo.
+//
+// La primera vez que una tarea corre en una maquina no hay historial, y eso se DICE en vez de suponer
+// que entra: lo medido en la PC de uno no predice nada sobre la del otro.
+const gasto = costoDe('gates:guard')
+if (gasto) {
+  const quedaria = disp - gasto.pidioMbPeor
+  const piso = pisoPara(disp)
+  console.error(`gates-guard: esta tarea pidio hasta ${gasto.pidioMbPeor} MB en esta maquina (${gasto.corridas} corridas). `
+    + `Con ${disp} MB disponibles quedarian ~${quedaria} MB.`)
+  if (quedaria < piso) {
+    console.error(`gates-guard: NO ARRANCA — quedarian ${quedaria} MB, por debajo del piso de ${piso}. `
+      + `Cerrá algunas aplicaciones (te faltan ~${piso - quedaria} MB) y volvé a intentar.`)
+    process.exit(2)
+  }
+} else {
+  console.error('gates-guard: esta tarea nunca se corrio en esta maquina, asi que su consumo se desconoce. '
+    + 'Esta corrida lo va a medir; el vigilante corta si se pasa.')
+}
+
+// EL TECHO VA ANTES QUE LA VIGILANCIA, porque es lo unico PREVENTIVO de toda la cadena: el resto mira
+// y mata cuando la cosa ya se fue de mano. Ver la nota en lib/memoria.mjs.
+console.error(`gates-guard: techo de memoria de Node en ${TECHO_NODE_MB} MB (40% de la RAM de esta maquina)`)
 const carga = moderarCarga()
 console.error(carga.ok
   ? `gates-guard: usando ${carga.usar} de ${carga.total} hilos y prioridad baja, para no saturar la maquina`
   : `gates-guard: no se pudo moderar la carga (${carga.error}) — se sigue igual, es una mitigacion, no la red principal`)
 
 const t0 = Date.now()
-const p = spawn('npm', ['run', CADENA], { shell: true, stdio: ['ignore', 'pipe', 'pipe'] })
+const p = spawn('npm', ['run', CADENA], { shell: true, stdio: ['ignore', 'pipe', 'pipe'], env: entornoConTecho() })
 
 // SI MUERE EL GUARD, MUERE LA CADENA. Este es el agujero que colgo la maquina la SEGUNDA vez la misma
 // noche, y lo peor es que lo abrio la prueba de humo de este mismo archivo: se corrio

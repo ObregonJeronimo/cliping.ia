@@ -10,7 +10,7 @@
 //
 // Uso:  node tools/memoria-test.mjs
 import { spawn } from 'node:child_process'
-import { vigilar, pisoPara, disponibleMb, TECHO_MB, MINIMO_ARRANQUE_MB } from './lib/memoria.mjs'
+import { vigilar, pisoPara, disponibleMb, TECHO_MB, MINIMO_ARRANQUE_MB, TECHO_NODE_MB, entornoConTecho, claveDe } from './lib/memoria.mjs'
 import { tomar } from './lib/cerrojo.mjs'
 
 let fallos = 0
@@ -38,6 +38,29 @@ const conReloj = (fn, ms, siNoPasa) => new Promise((res) => {
   const t = setTimeout(() => { mal(siNoPasa); res() }, ms)
   fn(() => { clearTimeout(t); res() })
 })
+
+// ---------------------------------------------------------------- lo PREVENTIVO: el techo de Node
+//
+// Todo lo de abajo es reactivo: mira y mata. Esto evita que la herramienta PIDA de mas, que es lo que
+// de verdad hacia falta — un `node.exe` pidiendo 42 GB en una maquina de 15 no se arregla vigilandolo.
+{
+  const total = Math.round((await import('node:os')).totalmem() / 1048576)
+  if (TECHO_NODE_MB >= 1024 && TECHO_NODE_MB <= 6144 && TECHO_NODE_MB <= total)
+    ok(`el techo de Node sale de la maquina: ${TECHO_NODE_MB} MB de ${total} totales`)
+  else mal(`techo de Node fuera de rango: ${TECHO_NODE_MB} con ${total} totales`)
+
+  const e = entornoConTecho({ RUTA: 'x' })
+  if (e.NODE_OPTIONS === `--max-old-space-size=${TECHO_NODE_MB}`) ok('el entorno del hijo lleva el techo')
+  else mal(`NODE_OPTIONS quedo en "${e.NODE_OPTIONS}"`)
+
+  const ya = entornoConTecho({ NODE_OPTIONS: '--max-old-space-size=999' })
+  if (ya.NODE_OPTIONS === '--max-old-space-size=999') ok('si alguien ya puso un techo a mano, no se le pisa')
+  else mal(`se piso un techo puesto a mano: "${ya.NODE_OPTIONS}"`)
+
+  if (claveDe('python backend/motor.py https://linear.app --dur 20') === 'python backend/motor.py')
+    ok('el historial agrupa por TAREA y no por linea de comando (misma tarea, otra URL)')
+  else mal(`claveDe devolvio "${claveDe('python backend/motor.py https://linear.app --dur 20')}"`)
+}
 
 // ---------------------------------------------------------------- caida sostenida
 await conReloj((listo) => {

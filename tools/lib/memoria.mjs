@@ -193,12 +193,18 @@ export function barrerHuerfanos() {
 // lleva el nombre del equipo y su RAM total, y `costoDe` solo devuelve lo medido AQUI.
 //
 // El archivo es local: no se comitea. Cada PC construye su propio historial la primera vez que corre.
+// LA CLAVE ES LA TAREA, NO LA LINEA DE COMANDO. `motor.py linear.app` y `motor.py stripe.com` son la
+// MISMA tarea con distinto argumento, y guardarlas por separado hace que el historial nunca reconozca
+// nada: cada corrida parece la primera y el aviso previo se queda siempre sin dato. Se guarda por
+// programa + script, que es lo que de verdad determina cuanta memoria pide.
+export const claveDe = (cmd) => String(cmd).trim().split(/\s+/).slice(0, 2).join(' ')
+
 export function anotarCosto(quien, { arrancoConMb, minimoMb, segundos, cortado }) {
   try {
     const fila = {
       equipo: hostname(),
       totalMb: Math.round(totalmem() / 1048576),
-      quien, arrancoConMb, minimoMb, segundos, cortado: !!cortado,
+      quien: claveDe(quien), arrancoConMb, minimoMb, segundos, cortado: !!cortado,
       fecha: new Date().toISOString(),
     }
     appendFileSync(join(RAIZ_OUT, '.costos.jsonl'), JSON.stringify(fila) + '\n')
@@ -212,7 +218,7 @@ export function costoDe(quien) {
     const filas = readFileSync(join(RAIZ_OUT, '.costos.jsonl'), 'utf8').trim().split('\n')
       .map(l => { try { return JSON.parse(l) } catch { return null } })
       // Ver la nota en tools/costo.mjs: sin `minimoMb`, `arranco - null` da `arranco` y la fila miente.
-      .filter(f => f && f.equipo === hostname() && f.quien === quien && !f.cortado && Number.isFinite(f.minimoMb))
+      .filter(f => f && f.equipo === hostname() && f.quien === claveDe(quien) && !f.cortado && Number.isFinite(f.minimoMb))
     if (!filas.length) return null
     const usos = filas.map(f => f.arrancoConMb - f.minimoMb).filter(n => Number.isFinite(n) && n > 0)
     if (!usos.length) return null
@@ -223,4 +229,33 @@ export function costoDe(quien) {
       segundosTipico: Math.round(filas.reduce((a, f) => a + (f.segundos || 0), 0) / filas.length),
     }
   } catch { return null }
+}
+
+// EL TECHO DE NODE, DIMENSIONADO A LA MAQUINA. Esto es lo PREVENTIVO, y faltaba.
+//
+// Todo lo demas de este archivo es reactivo: mira la memoria y mata cuando ya se esta yendo. Sirve,
+// pero no evita que una herramienta PIDA 42 GB en una maquina de 15 — solo evita que se los lleve
+// puestos. Y el reclamo es correcto: el trabajo tiene que dimensionarse a la PC ANTES de arrancar.
+//
+// Node no tiene techo propio: crece hasta que el sistema operativo diga basta, y en Windows "basta"
+// llega cuando ya no se puede mover el mouse. `--max-old-space-size` le pone un limite a su monton de
+// JavaScript, y al cruzarlo Node se muere SOLO, con un error claro y sin arrastrar la sesion.
+//
+// EL NUMERO SALE DE LA MAQUINA, no de una constante: 40% de la RAM total, con piso en 1 GB y techo en
+// 6 GB. En la de 15 GB da 6 GB; en una de 8 daria 3.2. Nadie tiene que configurar nada ni acordarse de
+// nada, y el mismo repo se comporta distinto en cada PC, que es exactamente lo que hace falta cuando
+// son dos maquinas que no se parecen.
+//
+// LO QUE ESTE TECHO NO CUBRE, dicho para no vender mas de lo que da: los buffers de pixeles viven
+// FUERA del monton de JavaScript, asi que un `getImageData` que gotea no lo frena esta bandera — a esa
+// familia la cazan `sin-fuga-check` (que ya es la primera compuerta de la cadena) y el vigilante de
+// arriba. Son tres cosas distintas y hacen falta las tres.
+export const TECHO_NODE_MB = Math.max(1024, Math.min(6144, Math.round((totalmem() / 1048576) * 0.40)))
+
+// El entorno para lanzar un hijo con ese techo. Se hereda: lo reciben los nietos y los bisnietos, que
+// es donde de verdad corren las compuertas.
+export function entornoConTecho(env = process.env) {
+  const previo = env.NODE_OPTIONS || ''
+  if (/--max-old-space-size/.test(previo)) return env      // ya lo puso alguien; no se pisa
+  return { ...env, NODE_OPTIONS: `${previo} --max-old-space-size=${TECHO_NODE_MB}`.trim() }
 }

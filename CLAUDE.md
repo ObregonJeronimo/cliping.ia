@@ -13,6 +13,22 @@ pidiendo 42 GB en una máquina de 15.
 cientos de escenas, cualquier cosa lanzada con `npm run pesado`. **Qué no:** las 10 compuertas rápidas
 (~12 s), leer archivos, editar código, medir sin renderizar. La regla es para lo que ocupa la máquina.
 
+### Antes de eso: el trabajo se dimensiona a la máquina, solo
+
+Todo lo demás de la red es **reactivo** — vigila y mata cuando la cosa ya se fue de mano. Eso no evita
+que una herramienta *pida* 42 GB en una PC de 15; sólo evita que se los lleve puestos. Lo preventivo,
+que no hay que invocar ni recordar:
+
+- **Techo de memoria de Node calculado contra la RAM real de cada PC** (40%, mínimo 1 GB, máximo 6 GB).
+  Al cruzarlo Node se muere solo, con un error claro, sin arrastrar la sesión. Se hereda: lo reciben
+  todos los procesos hijos. *No cubre los buffers de píxeles, que viven fuera del montón de JavaScript
+  — a esa familia la cazan `sin-fuga-check` y el vigilante. Son tres cosas distintas y hacen falta las
+  tres.*
+- **Si no entra, no arranca.** Antes de lanzar se compara lo que esa tarea pidió **en esta máquina** con
+  lo que hay disponible. Si no queda al menos el piso libre, se niega y dice cuántos MB faltan. Media
+  hora de compuertas que se sabe que no entran es media hora tirada y una PC colgada.
+- **Prioridad baja y dos hilos libres**, para que la sesión siga respondiendo.
+
 ### Antes de largar, mirar tres cosas
 
 1. **Cuánta RAM hay disponible ahora** y **cuánto pidió esa tarea en ESTA máquina**: `npm run costo`.
