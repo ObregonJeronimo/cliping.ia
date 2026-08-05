@@ -130,7 +130,7 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** NINGUNA. tipografia.js no tiene una sola marca userData.encaja (verificado por grep), asi que E-ENCAJE no la audita; y de todos modos E-ENCAJE solo mide CONTENCION (|x|,|y| <= 1.015), nunca un cuerpo minimo. No existe compuerta de tamano de texto par
   - `function medida(str, op, ancho, altoMax) { const t = texto(str, op) let a = ancho, h = ancho / t.ar if (h > altoMax) { h = altoMax; a = altoMax * t.ar } return { str, op, ancho: a, alto: h, tex: t.tex`
 
-- [ ] **render3d/demo/kit.js:968 leido junto con tools/encuadre-check.mjs:166**
+- [x] **render3d/demo/kit.js:968 leido junto con tools/encuadre-check.mjs:166**
   - **Síntoma:** Medido con las fuentes reales, cuerpo del renglon en un cuadro de 1920 px, fixture ANTHEM contra claims reales: gancho 169 -> 84 px (basecamp, 84 ch), titular 163 -> 88, cita 138 -> 109, partida 119 -> 33 (frase de 63 ch), marquesina 135 -> 36, lista 96 -> 35. Con el fixture las seis escenas componen carteles; con una pagina de verdad componen pies de foto. Es la mecanica exacta detras de 'de 5 vi
   - **Lo dispara:** El largo del copy real. encaje resuelve el desborde bajando el alto SIN PISO, asi que el cuerpo tipografico de seis escenas es una funcion inversa de cuantos caracteres escribio la marca. La compuerta que podria notarlo construye siempre con configurarDatos(ANTHEM), cuyo pozo son frases de 4 a 19 ca
   - **Compuerta:** NINGUNA mide el cuerpo resultante. E-ENCAJE (encuadre-check.mjs:140-151) solo comprueba que la malla ENTRE entera; achicar hasta lo ilegible es justamente como encaje consigue que entre, asi que la compuerta se pone MAS verde cuanto peor se ve. Adema
@@ -171,7 +171,13 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
     medidas las otras cuatro escenas, quedan entre 21% y 53% por encima del piso. La trampa que el
     handoff documenta —un piso sin techo de ancho cambia 'ilegible' por 'cortado a los costados'— no se
     paga por un problema que tenia una sola escena.
-  - Queda ABIERTO por `titular`, que es el unico que no se pudo medir (necesita texturas de recorte).
+  - **CERRADO 2026-08-04. `titular` tambien se midio, cargando los PNG reales del disco con `loadImage`**
+    —que es lo unico que hace disparar el veto de laminas— y construye en **11/11 aires** en las cuatro
+    paginas con recortes, con un peor cuerpo de **46 px**, 21% por encima del piso. Era el ultimo hueco
+    de esta medicion y no cambia la conclusion: la sostiene.
+  - **Las seis escenas, medidas:** `gancho` 35 -> 41 px (arreglado), `marquesina` 46, `titular` 46,
+    `cita` 50, `partida` 54, `lista` 58. Piso declarado por `hero.js`: 38 px.
+  - El `encaje` del kit **no se toca**: la ficha describia una familia y lo que habia era un caso.
 
 - [x] **render3d/demo/escenas/mesa.js:78**
   - ✅ **HECHO** — commit de mesa — se achica el PLANO hasta la proporcion real cuando la imagen es mas corta que la ventana, en vez de clampear `visible` y estirar. Verificado renderizando.
@@ -551,7 +557,7 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** Ninguna, por la misma razon que vitrina: no hay compuerta de resolucion en el motor. Ademas ningun hero declara `userData.encaja` (0 apariciones en heroes/ contra 13 en escenas/), asi que los 18 heroes solo tienen encima el heuristico suelto de verif
   - `? Math.min(ALTO_UTIL * 0.46, (ANCHO_UTIL * AIRE) / arBanda)`
 
-- [ ] **render3d/demo/kit.js:968**
+- [x] **render3d/demo/kit.js:968**
   - **Síntoma:** Es la unica funcion del kit que responde '¿entra?' y responde por UN SOLO EJE: solo baja el alto hasta que el ancho quepa en `anchoUtil`, y no existe ninguna hermana que encaje contra el cuadro entero. Consecuencia comprobable: SIETE composiciones se escribieron su propio 'contain' de dos ejes al lado — contraste.js:58 (`const encaje = (ar) => { const h = Math.min(BOX_H, BOX_W / Math.max(0.08, ar)
   - **Lo dispara:** Nada de una pagina real lo rompe HOY, y lo digo asi a proposito: los nueve que la usan (bandera.js:60, cita.js:100, gancho.js:98, hero.js:84, lista.js:71, marquesina.js:80, partida.js:83, sello.js:83, titular.js:211) acotan el eje vertical por su cuenta con constantes (MAX_LINEAS = 3 en gancho y tit
   - **Compuerta:** Parcialmente E-ENCAJE-ENTERO (verificar.mjs:395), pero solo sobre las mallas que se declaran: 13 declaraciones de `userData.encaja` en 21 escenas y CERO en los 18 heroes. Lo demas queda con el heuristico, que ademas es flojo (ver el renglon de verifi
