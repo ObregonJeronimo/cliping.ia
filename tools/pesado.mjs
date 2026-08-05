@@ -15,7 +15,7 @@
 //
 // Y si algo ya tiene el cerrojo, este NO ARRANCA en vez de competirle la RAM.
 import { spawn } from 'node:child_process'
-import { vigilar, matarArbol, disponibleMb, MINIMO_ARRANQUE_MB, anotarCosto, entornoConTecho, TECHO_NODE_MB, costoDe, pisoPara } from './lib/memoria.mjs'
+import { vigilar, matarArbol, disponibleMb, MINIMO_ARRANQUE_MB, anotarCosto, entornoConTecho, TECHO_NODE_MB, costoDe, pisoPara, commitDelArbol } from './lib/memoria.mjs'
 import { tomar } from './lib/cerrojo.mjs'
 import { moderarCarga } from './lib/carga.mjs'
 
@@ -96,6 +96,30 @@ process.on('exit', llevarse)
 for (const s of ['SIGINT', 'SIGTERM', 'SIGHUP', 'SIGBREAK']) process.on(s, () => { llevarse(); process.exit(130) })
 process.on('uncaughtException', (e) => { console.error(e); llevarse(); process.exit(1) })
 
+// VIGILANCIA DEL COMMIT, que es el numero que Node NO VE. `fondo-check` fue cazado en 29 GB de memoria
+// comprometida mientras `process.memoryUsage()` del mismo proceso informaba 303 MB: la reserva la hace
+// la libreria nativa de canvas y ninguna API de Node la registra. Ver la nota larga en lib/memoria.mjs.
+//
+// Por eso son DOS relojes: `os.freemem()` cada 250 ms para el sistema entero (gratis, no puede fallar)
+// y este cada 4 s para los procesos pesados (cuesta una consulta a Windows, pero es el unico que ve la
+// verdad). Sin este, la maquina se colgo cinco veces con el vigilante informando que todo estaba bien.
+const TOPE_COMMIT_MB = Math.max(4096, Math.round((disp * 0.75)))
+let picoCommit = 0
+const relojCommit = setInterval(() => {
+  const m = commitDelArbol(p.pid)
+  if (!m) return                                   // que falle no es fatal: el otro reloj sigue
+  for (const [pid, mb] of m) {
+    if (mb > picoCommit) picoCommit = mb
+    if (mb > TOPE_COMMIT_MB) {
+      console.error(`
+!! pesado: el proceso ${pid} de esta corrida COMPROMETIO ${mb} MB `
+        + `(tope ${TOPE_COMMIT_MB}). Node no lo ve; Windows si. Lo mato antes de que cuelgue la maquina.`)
+      matarArbol(pid)
+    }
+  }
+}, 4000)
+relojCommit.unref?.()
+
 let cortadoPor = null
 const ojo = vigilar((motivo) => {
   cortadoPor = motivo
@@ -105,6 +129,7 @@ const ojo = vigilar((motivo) => {
 
 p.on('close', (codigo) => {
   ojo.parar()
+  clearInterval(relojCommit)
   // Se anota lo que REALMENTE costo, para que el aviso previo de la proxima vez sea un dato medido en
   // ESTA maquina y no una estimacion. Ver la regla de avisos en el CLAUDE.md.
   anotarCosto(argv.join(" ").slice(0, 60), {

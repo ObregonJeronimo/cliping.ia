@@ -17,6 +17,7 @@
 //   7. TRATAMIENTO. Bloom sobre el acento, grano, aberración, viñeta y desenfoque de movimiento.
 
 import * as THREE from 'three'
+import { pisoLegible } from './adn.js'
 
 // ---------------------------------------------------------------- ritmo
 // Todo el tiempo de la pieza se expresa en BEATS y se convierte acá. Es la diferencia entre un video
@@ -930,9 +931,33 @@ export function texto(str, opciones = {}) {
   const med = document.createElement('canvas').getContext('2d')
   med.font = `${o.peso} ${o.size * SS}px "${o.fuente}"`
   med.letterSpacing = `${o.tracking * o.size * SS}px`
+  // EL LIENZO NO PUEDE SER MAS ANCHO QUE LO QUE EL CUADRO PUEDE MOSTRAR, y esto colgo la maquina seis
+  // veces antes de encontrarse.
+  //
+  // Con `SS = 3` y `size` 200 la fuente se dibuja a 600 px. Una frase larga da un lienzo de ~9000 px de
+  // ancho: 29 MB de pixeles para un texto que en pantalla ocupa como mucho 1080. O sea NUEVE VECES la
+  // resolucion horizontal que se puede ver — invisible en el resultado y carisimo en memoria.
+  //
+  // Y lo caro no es que ocupe: es que NO SE DEVUELVE. Medido: cada llamada a `texto()` compromete ~21 MB
+  // que no vuelven ni soltando la textura, ni vaciando el cache, ni pidiendo la recoleccion a mano —
+  // los reserva la libreria nativa de canvas y ahi se quedan. Peor: `process.memoryUsage()` no los ve
+  // (600 textos = 12.9 GB comprometidos con `rss` en 94 MB), asi que ninguna proteccion escrita en Node
+  // podia detectarlo. Una compuerta que construye 2849 escenas llegaba a 52-60 GB en una maquina de 15,
+  // y Windows lo anotaba en el evento 2004 mientras todos nuestros numeros decian que estaba todo bien.
+  //
+  // El tope es 3x el ancho del cuadro (1080), que es lo que un mipmap puede aprovechar. Cuando se cruza,
+  // se dibuja mas chico y la malla lo estira: para una frase larga —que en pantalla entra chica— no hay
+  // diferencia visible, porque la limitacion la pone la pantalla y no la textura.
+  const TOPE_ANCHO = 1080 * 3
+  const anchoCrudo = Math.ceil(Math.max(...lineas.map(l => med.measureText(l).width))) + o.size * SS * 0.3
+  const k = anchoCrudo > TOPE_ANCHO ? TOPE_ANCHO / anchoCrudo : 1
+  if (k < 1) {
+    med.font = `${o.peso} ${o.size * SS * k}px "${o.fuente}"`
+    med.letterSpacing = `${o.tracking * o.size * SS * k}px`
+  }
   const anchos = lineas.map(l => med.measureText(l).width)
-  const w = Math.ceil(Math.max(...anchos)) + o.size * SS * 0.3
-  const h = Math.ceil(o.size * SS * o.linea * lineas.length + o.size * SS * 0.42)
+  const w = Math.ceil(Math.max(...anchos)) + o.size * SS * k * 0.3
+  const h = Math.ceil(o.size * SS * k * o.linea * lineas.length + o.size * SS * k * 0.42)
 
   const cv = document.createElement('canvas')
   cv.width = Math.max(2, w); cv.height = Math.max(2, h)
@@ -941,18 +966,27 @@ export function texto(str, opciones = {}) {
   c.letterSpacing = med.letterSpacing
   c.textBaseline = 'middle'
   c.fillStyle = o.color
-  const y0 = h / 2 - (lineas.length - 1) * o.size * SS * o.linea / 2
+  // Todo lo que sigue va con la MISMA escala `k`: si el interlineado o el margen quedaran con la escala
+  // original, las lineas se apilarian encima o el texto saldria corrido dentro del lienzo.
+  const paso = o.size * SS * k * o.linea
+  const y0 = h / 2 - (lineas.length - 1) * paso / 2
   for (let i = 0; i < lineas.length; i++) {
-    const x = o.alineado === 'left' ? o.size * SS * 0.15
-      : o.alineado === 'right' ? w - anchos[i] - o.size * SS * 0.15
+    const x = o.alineado === 'left' ? o.size * SS * k * 0.15
+      : o.alineado === 'right' ? w - anchos[i] - o.size * SS * k * 0.15
         : (w - anchos[i]) / 2
-    c.fillText(lineas[i], x, y0 + i * o.size * SS * o.linea)
+    c.fillText(lineas[i], x, y0 + i * paso)
   }
   const tex = new THREE.CanvasTexture(cv)
   tex.colorSpace = THREE.SRGBColorSpace
   tex.anisotropy = 8
   tex.minFilter = THREE.LinearMipmapLinearFilter
   tex.generateMipmaps = true
+  // LA TEXTURA DECLARA QUE ES TEXTO, Y CON QUE COLOR SE ESCRIBIO. Sin esto, una compuerta que quiera
+  // medir la legibilidad de lo que se lee tiene que ADIVINAR cual de las mallas con `map` lleva letras
+  // —y adivinar es como se acusa en falso—. Ademas el color no se puede recuperar de la textura: los
+  // pixeles ya pasaron por antialias, asi que el gris del borde de una 'a' no es el color del texto.
+  tex.userData.esTexto = true
+  tex.userData.color = o.color
   const r = { tex, ar: cv.width / cv.height, w: cv.width, h: cv.height }
   _cacheTexto.set(clave, r)
   return r
@@ -1955,6 +1989,84 @@ export function nivel(k, tinte = 0) {
     v = v.map((x, i) => x + (c[i] - x) * tinte)
   }
   return _hex(v)
+}
+
+// UN GRIS DE RELLENO NO ES UN GRIS DE TEXTO, Y `nivel()` NO SABE LA DIFERENCIA.
+//
+// `nivel(k)` interpola entre `bg` y `tinta`, o sea que mide su contraste contra UN fondo — y el
+// shader pinta DOS: `fondoVivo` mezcla `bg` y `bg2` por distancia. Es exactamente el agujero que
+// `forzarContraste2` tapo para la paleta (ver adn.js:89), pero la paleta no es lo unico que se lee:
+// media docena de escenas escriben sus pies, rotulos, indices y firmas con `nivel(k)` directo, y esos
+// grises no los medi­a nadie. Medido sobre los 7 pagemodels reales x los 11 aires:
+//
+//   columna.js:250  pie      nivel(0.48)   55 de 77 combinaciones por debajo del piso, la peor 1.93:1
+//   sello.js:127    pie      nivel(0.52)   55 de 77                                          2.13:1
+//   marquesina:165  rotulo   nivel(0.55)   44 de 77                                          2.30:1
+//   titular.js:263  pie      nivel(0.55)   44 de 77                                          2.30:1
+//   cita.js:176     firma    nivel(0.58)   33 de 77                                          2.49:1
+//   columna.js:234  indice   nivel(0.62)   33 de 77                                          2.78:1
+//
+// (Los textos que ya piden k >= 0.80 —hero, pantalla, sello— pasan 77 de 77 y no se tocan.)
+//
+// LA CORRECCION CAMINA POR LA MISMA RAMPA que la escena eligio, no por HSL: `nivel` va de `bg` a
+// `tinta`, asi que subir `k` es exactamente "el mismo gris, un poco mas presente". Eso conserva la
+// intencion —un pie sigue siendo mas apagado que su titular— donde un empuje en luminancia podria
+// sacarlo del tono. Y no puede irse de mano: el techo es `tinta`, que ya esta forzada a 7:1.
+//
+// Ojo: esto NO se le aplica a `nivel()` en general. `nivel(0.05)` es un tono de relleno de una tarjeta
+// y exigirle legibilidad de texto lo empujaria a gris medio, arruinando 25 composiciones para
+// corregir un defecto que no existe. Lo que decide no es el valor, es el uso; por eso son dos
+// funciones y la que pide legibilidad es la que se usa para pintar letras.
+export function nivelTexto(k, tinte = 0) {
+  const objetivo = pisoLegible(CLARO)
+  const peor = (c) => Math.min(_contraste(c, LOOK.bg), _contraste(c, LOOK.bg2 || LOOK.bg))
+  let t = Math.min(1, Math.max(0, k))
+  let c = nivel(t, tinte)
+  for (let i = 0; i < 60 && t < 1 && peor(c) < objetivo; i++) {
+    t = Math.min(1, t + 0.015)
+    c = nivel(t, tinte)
+  }
+  return c
+}
+
+// TEXTO SOBRE UNA BANDA DE COLOR: el fondo no es el fondo.
+//
+// `nivelTexto` resuelve el texto que se lee CONTRA EL MUNDO. Pero varias escenas escriben encima de
+// una banda —una cinta con el acento, una cama de nivel bajo, una tarjeta— y ahi el fondo relevante es
+// la banda, no `bg`. Elegir el gris contra `bg` y dibujarlo sobre otra cosa es el mismo error que
+// `forzarContraste2` corrigio para la paleta, una capa mas arriba.
+//
+// El caso que lo delato, medido sobre los 7 pagemodels x los 11 aires: `marquesina` escribe su cinta
+// con `nivel(CLARO ? 0.92 : 0.86)` y la dibuja sobre dos bandas —arriba el acento a 0.55, abajo
+// `nivel(CLARO ? 0.88 : 0.10)`—. En mundo claro eso es texto 0.92 sobre banda 0.88: **cuatro
+// centesimas de la misma rampa**. 55 de 77 combinaciones por debajo del piso en cada cinta, la peor a
+// 1.05:1, y confirmado en pixeles renderizados (basecamp, cuadro 410: 1.41:1 sobre la banda azul y
+// 1.13:1 sobre la gris).
+//
+// COMO ELIGE. Los dos extremos de la rampa son los unicos candidatos honestos —`bg` y `tinta` son los
+// colores que esta marca ya declaro— y gana el que mas contraste tenga contra la banda. Eso da la
+// solucion convencional y correcta: texto claro sobre una banda saturada, texto oscuro sobre una banda
+// palida. Despues camina hacia ese extremo hasta cumplir el piso, igual que `nivelTexto`.
+export function tintaSobre(fondo, k0 = 0.92) {
+  const objetivo = pisoLegible(CLARO)
+  const haciaTinta = _contraste(nivel(1), fondo) >= _contraste(nivel(0), fondo)
+  const fin = haciaTinta ? 1 : 0
+  let t = Math.min(1, Math.max(0, k0))
+  let c = nivel(t)
+  for (let i = 0; i < 80 && t !== fin && _contraste(c, fondo) < objetivo; i++) {
+    t = haciaTinta ? Math.min(fin, t + 0.015) : Math.max(fin, t - 0.015)
+    c = nivel(t)
+  }
+  return c
+}
+
+const _lum = (h) => {
+  const c = _canal(h).map(x => x / 255).map(v => (v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)))
+  return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
+}
+const _contraste = (a, b) => {
+  const A = _lum(a), B = _lum(b)
+  return (Math.max(A, B) + 0.05) / (Math.min(A, B) + 0.05)
 }
 
 export const matTarjeta = (color = null) => new THREE.MeshPhysicalMaterial({

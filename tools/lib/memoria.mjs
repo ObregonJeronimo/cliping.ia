@@ -259,3 +259,75 @@ export function entornoConTecho(env = process.env) {
   if (/--max-old-space-size/.test(previo)) return env      // ya lo puso alguien; no se pisa
   return { ...env, NODE_OPTIONS: `${previo} --max-old-space-size=${TECHO_NODE_MB}`.trim() }
 }
+
+// EL COMMIT DE UN PROCESO SEGUN WINDOWS — el unico numero que no miente.
+//
+// POR QUE HIZO FALTA, y es la leccion mas cara de todas:
+//
+//   `fondo-check` fue cazado en 29 GB de memoria COMPROMETIDA mientras `process.memoryUsage()` del
+//   mismo proceso informaba 303 MB. Cien veces de diferencia. La memoria la reserva la libreria nativa
+//   que dibuja los canvas (@napi-rs/canvas, en Rust), y NADA de la API de Node la ve: ni `rss`, ni
+//   `external`, ni `arrayBuffers`.
+//
+//   Eso deja ciegas a las dos protecciones que ya existian, cada una a su manera:
+//     - `--max-old-space-size` limita el monton de JavaScript, y esto no pasa por ahi.
+//     - `autolimitar()` mide `process.memoryUsage()`, o sea el numero equivocado.
+//     - Y el vigilante de `os.freemem()` mira la RAM FISICA, que se mantiene alta mientras el commit
+//       se dispara contra el archivo de paginacion. Por eso informaba "6423 MB disponibles" en las
+//       corridas que despues colgaban la maquina.
+//
+//   Windows si lo ve, y lo dice: evento 2004, `node.exe uso 52.222.877.696 bytes`. La unica forma de
+//   verlo desde adentro es preguntarselo a Windows.
+//
+// COSTO: una consulta cada pocos segundos. Es cara comparada con `os.freemem()` —que es gratis— pero
+// es la unica que ve la verdad, asi que se usa para el hijo y `os.freemem()` sigue cubriendo al sistema
+// entero. Si la consulta falla, se informa y se sigue con la otra: son dos capas, no una.
+// SOLO EL ARBOL DEL HIJO, NUNCA "todos los node". La primera version pedia todos los procesos node y
+// mataba al que se pasara: eso incluye la caja negra que la persona dejo corriendo, o al propio Claude
+// Code, que tambien es node. Matar procesos ajenos para proteger la maquina es cambiar un problema por
+// otro peor. Se arma el arbol con `ParentProcessId` y se juzga solo lo que colgamos nosotros.
+export function commitDelArbol(raizPid) {
+  try {
+    const crudo = execFileSync('powershell', ['-NoProfile', '-Command',
+      'Get-CimInstance Win32_Process | ForEach-Object { "$($_.ProcessId) $($_.ParentProcessId) '
+      + '$([int]($_.PageFileUsage/1KB))" }'],
+    { encoding: 'utf8', timeout: 30000 }).trim()
+    const padres = new Map()
+    const commit = new Map()
+    for (const linea of crudo.split(String.fromCharCode(10))) {
+      const [pid, ppid, mb] = linea.trim().split(/\s+/).map(Number)
+      if (!pid) continue
+      padres.set(pid, ppid)
+      commit.set(pid, mb || 0)
+    }
+    const dentro = (pid) => {
+      // Se sube por los padres hasta la raiz. El tope de 40 saltos es contra un ciclo: si el arbol de
+      // procesos se corrompe, el bucle no puede ser infinito dentro de un vigilante.
+      let p = pid
+      for (let i = 0; i < 40 && p; i++) {
+        if (p === raizPid) return true
+        p = padres.get(p)
+      }
+      return false
+    }
+    const salida = new Map()
+    for (const [pid, mb] of commit) if (pid === raizPid || dentro(pid)) salida.set(pid, mb)
+    return salida
+  } catch { return null }
+}
+function _commitDeSuelto(pids) {  // (sin usar: ver commitDelArbol)
+  const lista = (Array.isArray(pids) ? pids : [pids]).filter(Boolean)
+  if (!lista.length) return new Map()
+  try {
+    const crudo = execFileSync('powershell', ['-NoProfile', '-Command',
+      'Get-CimInstance Win32_Process | Where-Object { $_.Name -eq "node.exe" -or $_.Name -eq "python.exe" '
+      + '-or $_.Name -eq "chrome.exe" } | ForEach-Object { "$($_.ProcessId) $([int]($_.PageFileUsage/1KB))" }'],
+    { encoding: 'utf8', timeout: 30000 }).trim()
+    const m = new Map()
+    for (const linea of crudo.split('\n')) {
+      const [pid, mb] = linea.trim().split(/\s+/).map(Number)
+      if (pid && Number.isFinite(mb)) m.set(pid, mb)
+    }
+    return m
+  } catch { return null }
+}
