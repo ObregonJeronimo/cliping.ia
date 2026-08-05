@@ -19,7 +19,7 @@
 // que la familia que eligio el aire lo tenga dibujado, y una que no lo tenga devuelve un rectangulo
 // vacio sin avisar.
 
-import { LOOK, b, E, texto, nivel, matAcento, materialMascara, CLARO, finMascara, deriva, encaje, dolly , orbita} from '../kit.js'
+import { LOOK, b, E, texto, nivel, nivelTexto, matAcento, materialMascara, CLARO, finMascara, deriva, encaje, dolly , orbita} from '../kit.js'
 import { D } from '../datos.js'
 
 export const meta = { id: 'sello', beats: 6 }
@@ -105,7 +105,7 @@ export function build(ctx) {
   // y el nombre de la marca salio blanco sobre fondo blanco: se leia apenas. El unico motivo para
   // mirar CLARO aca es el BLOOM, que solo muerde en mundo oscuro: por eso el tope de 0.80 de ese lado
   // y la libertad de empujar hasta 0.94 del otro. Es exactamente el mismo criterio que `cita`.
-  const matN = materialMascara(t.tex, nivel(CLARO ? 0.94 : 0.80))
+  const matN = materialMascara(t.tex, nivelTexto(CLARO ? 0.94 : 0.80))
   matN.uniforms.uDir.value = 2                      // se escribe de abajo hacia arriba: se "sella"
   // DECLARADO PARA QUE E-ENCAJE-REAL LO CUIDE. La contencion en este motor es declarativa: la regla
   // que exige que una malla entre ENTERA solo corre sobre las que lo piden, y eran 16 de 799.
@@ -122,9 +122,9 @@ export function build(ctx) {
   const pieTxt = String(D.dominio || '').trim()
   let matPie = null
   if (pieTxt) {
-    const tp = texto(pieTxt, { fuente: 'DMSans', peso: 500, size: 80, tracking: 0.30, upper: true, alineado: 'center', color: nivel(0.52) })
+    const tp = texto(pieTxt, { fuente: 'DMSans', peso: 500, size: 80, tracking: 0.30, upper: true, alineado: 'center', color: nivelTexto(0.52) })
     const ALTO_P = mundoH * 0.020
-    matPie = materialMascara(tp.tex, nivel(0.52))
+    matPie = materialMascara(tp.tex, nivelTexto(0.52))
     const mp = new THREE.Mesh(new THREE.PlaneGeometry(ALTO_P * tp.ar, ALTO_P), matPie)
     mp.position.set(0, -R - mundoH * 0.055, 0.3)
     g.add(mp)

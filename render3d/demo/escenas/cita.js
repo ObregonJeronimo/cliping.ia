@@ -26,7 +26,7 @@
 // SIN TESTIMONIO NO HAY ESCENA. No hay como sustituir el sujeto: una cita sin cita es un cuadro con
 // comillas vacias. Se declara vacia y el guionista es quien no deberia haberla elegido.
 
-import { LOOK, b, E, texto, nivel, matAcento, materialMascara, filete, CLARO, finMascara, deriva, encaje, dolly, orbita } from '../kit.js'
+import { LOOK, b, E, texto, nivel, nivelTexto, matAcento, materialMascara, filete, CLARO, finMascara, deriva, encaje, dolly, orbita } from '../kit.js'
 import { testimonios } from '../datos.js'
 
 export const meta = { id: 'cita', beats: 6 }
@@ -173,7 +173,7 @@ export function build(ctx) {
   if (firmaTxt) {
     const tf = texto(firmaTxt, { fuente: 'DMSans', peso: 500, size: 90, tracking: 0.16, upper: true, alineado: 'left' })
     const ALTO_F = mundoH * 0.026
-    firmaMat = materialMascara(tf.tex, nivel(0.58))
+    firmaMat = materialMascara(tf.tex, nivelTexto(0.58))
     firmaMesh = new THREE.Mesh(new THREE.PlaneGeometry(ALTO_F * tf.ar, ALTO_F), firmaMat)
     firmaMesh.position.set(MARGEN + (ALTO_F * tf.ar) / 2, yFirma - mundoH * 0.032, 0)
     g.add(firmaMesh)

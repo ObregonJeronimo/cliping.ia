@@ -32,7 +32,7 @@
 // El overshoot vive en la ROTACIÓN y en la escala de cada letra, no en z: con la palabra ocupando el
 // 94% del ancho, un back.out sobre la profundidad la empujaba fuera del cuadro en el rebote.
 
-import { E, LOOK, MOB, b, BPM, planoTexto, texto, materialMascara, filete, hex, nivel, marco, dolly, orbita } from '../kit.js'
+import { E, LOOK, MOB, b, BPM, planoTexto, texto, materialMascara, filete, hex, nivel, nivelTexto, marco, dolly, orbita } from '../kit.js'
 // El COPY sale de los DATOS. Lo que queda escrito aca es CHROME de la pieza (rotulos de
 // capitulo, indicadores tecnicos): eso es direccion de arte y no cambia con el contenido.
 // Lo que la marca DICE — su nombre, sus cifras, su claim, su CTA — sale de los datos o NO SALE.
@@ -86,8 +86,8 @@ const ANTON = () => ({ fuente: 'Anton', size: 200, color: TIPO_GRANDE() })
 // Los rotulos chicos tampoco van en LOOK.tinta: son chicos, pero el bloom no mide tamanos — mide
 // luminancia por pixel. Un rotulo de ocho pixeles por encima del umbral florece igual y se convierte
 // en una mancha ilegible, que en un rotulo es peor que en un titular porque no queda ni la silueta.
-const CHICA = () => ({ fuente: 'DMSans', peso: 500, size: 200, tracking: 0.24, color: nivel(0.80) })
-const CIFRA = () => ({ fuente: 'Bricolage', peso: 800, size: 200, tracking: 0.06, color: nivel(0.80) })
+const CHICA = () => ({ fuente: 'DMSans', peso: 500, size: 200, tracking: 0.24, color: nivelTexto(0.80) })
+const CIFRA = () => ({ fuente: 'Bricolage', peso: 800, size: 200, tracking: 0.06, color: nivelTexto(0.80) })
 
 export function build(ctx) {
   const { THREE, gsap, mundoW, mundoH, camera, distBase, rnd, fondo, pelicula, bloom } = ctx
@@ -139,7 +139,7 @@ export function build(ctx) {
   const rotulo = (str, altoMax, anchoMax, o) => {
     const t = texto(str, o)
     const alto = t.ar > 0.01 ? Math.min(altoMax, anchoMax / t.ar) : altoMax
-    const mat = materialMascara(t.tex, o.color || nivel(0.80))
+    const mat = materialMascara(t.tex, o.color || nivelTexto(0.80))
     mat.uniforms.uSuave.value = 0.05
     const m = new THREE.Mesh(new THREE.PlaneGeometry(alto * t.ar, alto), mat)
     m.userData.ancho = alto * t.ar

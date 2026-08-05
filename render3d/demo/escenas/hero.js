@@ -4,7 +4,7 @@
 // usuario elige "telefono" o "vitrina" y la pieza sigue teniendo la misma cantidad de escenas y la
 // misma duracion. Si el hero pedido no se puede armar con el material que la pagina dio, cae al
 // primero que si — nunca dibuja el objeto vacio.
-import { b, E, LOOK, hex, MOB, texto, materialMascara, nivel, encaje, finMascara } from '../kit.js'
+import { b, E, LOOK, hex, MOB, texto, materialMascara, nivel, nivelTexto, encaje, finMascara } from '../kit.js'
 import { HEROES, porId, elegibles } from '../heroes/index.js'
 import { D, repartirFrases } from '../datos.js'
 
@@ -99,7 +99,7 @@ function rotular(ctx, r, elegido) {
   const PISO = mundoH * 0.020
   const ALTO = Math.max(PISO, encaje(mundoH * 0.040, t.ar, ANCHO))
   if (ALTO * t.ar > ANCHO * 1.001) return
-  const mat = materialMascara(t.tex, nivel(0.90))
+  const mat = materialMascara(t.tex, nivelTexto(0.90))
   const m = new THREE.Mesh(new THREE.PlaneGeometry(ALTO * t.ar, ALTO), mat)
   // Abajo y a la izquierda, fuera del eje donde vive el objeto: el rotulo acompaña, no compite.
   m.position.set(-mundoW * 0.40 + (ALTO * t.ar) / 2, -mundoH * 0.355, 0.6)

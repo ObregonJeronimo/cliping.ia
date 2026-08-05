@@ -39,6 +39,42 @@ const HERE = dirname(fileURLToPath(import.meta.url))
 const RAIZ = join(HERE, '..')
 const DEMO = join(RAIZ, 'render3d', 'demo')
 
+// SE CORRE A SI MISMA POR PARTES, UNA PAGINA POR PROCESO. No es una manía: es la unica forma de
+// devolver la memoria.
+//
+// Cada llamada a `texto()` compromete pixeles que NO se recuperan —ni soltando la textura, ni vaciando
+// el cache, ni pidiendo la recoleccion a mano— porque los reserva la libreria nativa de canvas. Medido:
+// 600 textos = 2.85 GB comprometidos (12.9 GB antes de acotar el ancho del lienzo) con `rss` en 94 MB.
+// Este barrido construye 2849 escenas, asi que en un solo proceso termina en decenas de GB, que es
+// exactamente como esta compuerta colgo la maquina la primera vez que se corrio.
+//
+// Lo que SI devuelve la memoria es terminar el proceso: el sistema operativo la reclama entera. Asi que
+// el barrido se parte por pagina y cada parte corre en su propio Node. Cuesta siete arranques (~3 s en
+// total) y a cambio el pico baja de decenas de GB a los ~2.5 GB de una pagina sola.
+if (!process.env.FONDO_PAGINA && !process.env.FONDO_PAGINAS) {
+  const { spawnSync } = await import('node:child_process')
+  const { readdirSync: leerDir } = await import('node:fs')
+  const dirF = join(RAIZ, 'tools', 'fixtures', 'director', 'elementos')
+  const paginas = leerDir(dirF).filter(x => x.endsWith('.json'))
+  let malas = 0
+  const resumen = []
+  for (let i = 0; i < paginas.length; i++) {
+    const r = spawnSync(process.execPath, ['--expose-gc', process.argv[1]],
+      { env: { ...process.env, FONDO_PAGINA: String(i) }, encoding: 'utf8' })
+    const txt = (r.stdout || '') + (r.stderr || '')
+    if (r.status !== 0) { malas++; process.stdout.write(txt) }
+    else resumen.push(txt.trim().split(String.fromCharCode(10)).filter(l => l.includes('parte')).join(''))
+  }
+  if (malas) {
+    console.log(`GATE FONDO FAIL — ${malas} de ${paginas.length} paginas con textos ilegibles (detalle arriba).`)
+    process.exit(1)
+  }
+  console.log(`GATE FONDO OK — ${paginas.length} paginas barridas, cada una en su propio proceso para que `
+    + `la memoria vuelva al sistema.`)
+  for (const l of resumen) if (l) console.log('  ' + l)
+  process.exit(0)
+}
+
 const { registrarFuentes } = await import('./fuentes-reales.mjs')
 registrarFuentes(RAIZ)
 const lienzo = (w = 4, h = 4) => createCanvas(w, h)
@@ -97,7 +133,15 @@ const contraste = (a, B) => {
   const x = lum(a), y = lum(B)
   return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)
 }
-const deColor = (c) => '#' + [c.r, c.g, c.b].map(v => Math.round(Math.min(1, Math.max(0, v)) * 255).toString(16).padStart(2, '0')).join('')
+// EL COLOR SE LEE EN sRGB, NO EN LINEAL. `THREE.Color` guarda sus canales en espacio LINEAL (three
+// convierte al construirlo desde un hex), asi que leer `c.r/g/b` y escalarlos a 0-255 da otro color:
+// mas oscuro y con otro tono. La cama cyan `#2990be` se lei­a como `#064784`, y contra ese azul falso el
+// texto daba 1.04:1 en vez de 2.70:1 — trece acusaciones a `marquesina` que no existian.
+//
+// La conversion la hace `getHexString(SRGBColorSpace)`, que es la que sabe de gamma. Comprobado a mano:
+// 0x29 -> lineal 0.022 -> 0x06, 0x90 -> 0x47, 0xbe -> 0x84. Exactamente el color que la compuerta
+// estaba acusando.
+const deColor = (c) => '#' + c.getHexString(THREE.SRGBColorSpace)
 
 // ---------------------------------------------------------------- el grafo
 // Una malla TAPA si es opaca y su material pinta un color liso. Las que llevan `map` con letras no
@@ -136,7 +180,30 @@ function caja(m) {
   const h = Math.abs(g.parameters.height * e.y) / 2
   return { x0: p.x - w, x1: p.x + w, y0: p.y - h, y1: p.y + h, z: p.z }
 }
-const solapa = (a, c) => a.x0 < c.x1 && a.x1 > c.x0 && a.y0 < c.y1 && a.y1 > c.y0
+// UNA BANDA CON AREA CERO NO TAPA NADA, y esto acuso 63 veces a `apertura` antes de verse: la "banda"
+// medi­a `4.20 x 0.00`. Es un plano a medio abrir —se anima su escala— o sea invisible. La prueba de
+// solapamiento aceptaba la caja degenerada porque `0 < 0.57 && 0 > -0.20` es cierto.
+const AREA_MINIMA = 0.05                       // unidades de mundo; el cuadro mide ~5.06 x 8.99
+// El cuadro es el mismo para todas las escenas: 9:16 a 42 grados y distancia 9.
+const MUNDO_H = 2 * 9 * Math.tan((42 * Math.PI) / 360)
+const MUNDO_W = MUNDO_H * (1080 / 1920)
+
+// Y NO ALCANZA CON QUE SE TOQUEN: la banda tiene que estar DETRAS DEL CENTRO del texto. Un filete de
+// 0.02 de alto que roza el pie de una cifra no es su fondo — lo que se lee detras de la letra sigue
+// siendo el mundo. Se pide que contenga el centro y que cubra al menos la mitad del alto del texto.
+function tapaDeVerdad(banda, texto) {
+  const bw = banda.x1 - banda.x0, bh = banda.y1 - banda.y0
+  if (bw < AREA_MINIMA || bh < AREA_MINIMA) return false
+  // SE JUZGA LA PARTE QUE SE VE, no la pieza entera. Una frase de la cinta de `marquesina` entra por el
+  // borde: su centro real esta fuera del cuadro y fuera de la cama, pero el pedazo visible SI esta
+  // sobre la cama. Tomar el centro de la pieza entera acusaba siete veces algo que en pantalla se ve
+  // perfecto. Se recorta el texto al cuadro y se usa el centro de ESE recorte.
+  const vx0 = Math.max(texto.x0, -MUNDO_W / 2), vx1 = Math.min(texto.x1, MUNDO_W / 2)
+  const vy0 = Math.max(texto.y0, -MUNDO_H / 2), vy1 = Math.min(texto.y1, MUNDO_H / 2)
+  const cx = (vx0 + vx1) / 2, cy = (vy0 + vy1) / 2
+  if (cx < banda.x0 || cx > banda.x1 || cy < banda.y0 || cy > banda.y1) return false
+  return bh >= (texto.y1 - texto.y0) * 0.5
+}
 
 const fallos = []
 const F = (m) => fallos.push(m)
@@ -144,15 +211,27 @@ let textos = 0, sobreBanda = 0, construidas = 0, porLimpiar = 0
 
 // UN AIRE POR PAGINA no alcanza y las 7x11 con todas las escenas seria eterno: se barren las 7 paginas
 // contra los 11 aires, y las escenas se reparten para que cada una vea varios mundos claros y oscuros.
-for (const { id: idPag, pm } of FIX) {
+// BARRIDO ACOTADO PARA PROBAR LA PROPIA COMPUERTA. `FONDO_PAGINAS=1 FONDO_AIRES=2` corre una fraccion
+// y sirve para comprobar que la memoria NO crece antes de soltarla sobre las 77 combinaciones. Existe
+// porque esta compuerta llego a 60 GB la primera vez que se corrio: estrenar una herramienta a escala
+// completa sobre la maquina de alguien es como se cuelga una PC.
+const _unaPagina = process.env.FONDO_PAGINA !== undefined ? Number(process.env.FONDO_PAGINA) : null
+const _paginas = Number(process.env.FONDO_PAGINAS || 0) || FIX.length
+const _aires = Number(process.env.FONDO_AIRES || 0) || Object.keys(AIRES).length
+const _lote = _unaPagina !== null ? FIX.slice(_unaPagina, _unaPagina + 1) : FIX.slice(0, _paginas)
+for (const { id: idPag, pm } of _lote) {
   const datos = datosDe(pm)
-  for (const [nombreAire, aire] of Object.entries(AIRES)) {
+  for (const [nombreAire, aire] of Object.entries(AIRES).slice(0, _aires)) {
     const a = personalizar(aire, pm.dna, () => 0.5)
     configurar({ ...aire, paleta: a.paleta, claro: a.claro })
     const piso = pisoLegible(a.claro)
     DAT.reiniciarReparto()
     reiniciarRecortes()
     DAT.configurarDatos(datos)
+    if (process.env.FONDO_TRAZA) {
+      const u = usoMb()
+      console.error(`  [memoria] ${idPag} x ${nombreAire}: rss ${u.rss} MB · fuera del monton ${u.externo} MB`)
+    }
     for (const [idEsc, mod] of MOD) {
       const W = 1080, H = 1920, fov = 42
       const distBase = 9
@@ -200,12 +279,22 @@ for (const { id: idPag, pm } of FIX) {
         const col = colorTexto(m)
         const c = caja(m)
         if (!col || !c) continue
+
+        // LO QUE NO ENTRA EN EL CUADRO NO SE JUZGA. Esto lo enseño el segundo FAIL: `marquesina` salia
+        // acusada 34 veces por textos "sobre el fondo del mundo". Su cinta es una tira LARGA que se
+        // desliza, asi que en cualquier instante la mayoria de sus frases esta fuera de pantalla — no
+        // solapan la cama porque estan a ocho unidades del centro, y la compuerta juzgaba la
+        // legibilidad de algo que nadie ve.
+        //
+        // Es la misma familia de error que medir en el cuadro 0: juzgar un estado que no es el que se
+        // mira. El cuadro util es mundoW x mundoH centrado en el origen.
+        if (c.x1 < -mundoW / 2 || c.x0 > mundoW / 2 || c.y1 < -mundoH / 2 || c.y0 > mundoH / 2) continue
         textos++
         // La tapa mas cercana POR DETRAS que solape. `depthWrite:false` es lo normal en este motor, asi
         // que el orden real lo da la z.
         let atras = null
         for (const t of tapas) {
-          if (t.m === m || t.c.z >= c.z || !solapa(c, t.c)) continue
+          if (t.m === m || t.c.z >= c.z || !tapaDeVerdad(t.c, c)) continue
           if (!atras || t.c.z > atras.c.z) atras = t
         }
         const fondos = atras ? [atras.col] : [a.paleta.bg, a.paleta.bg2]
@@ -215,6 +304,15 @@ for (const { id: idPag, pm } of FIX) {
           F(`${idPag} × ${nombreAire} · ${idEsc}: un texto en ${col} sobre `
             + `${atras ? `una banda ${atras.col}` : `el fondo ${fondos.join('/')}`} da ${peor.toFixed(2)}:1, `
             + `hace falta ${piso}`)
+          // El detalle no va en el mensaje normal —serian 500 renglones ilegibles— pero hace falta para
+          // ARREGLAR: sin saber donde esta el texto y que tamaño tiene la banda, no se sabe cual de las
+          // veinte piezas de la escena es.
+          if (process.env.FONDO_DETALLE) {
+            console.error(`    texto ${col} en (${c.x0.toFixed(2)}..${c.x1.toFixed(2)}, `
+              + `${c.y0.toFixed(2)}..${c.y1.toFixed(2)}) z ${c.z.toFixed(2)} · alto ${(c.y1 - c.y0).toFixed(2)}`
+              + (atras ? ` || banda ${atras.col} de ${(atras.c.x1 - atras.c.x0).toFixed(2)}x`
+                + `${(atras.c.y1 - atras.c.y0).toFixed(2)} en z ${atras.c.z.toFixed(2)}` : ''))
+          }
         }
       }
 
@@ -278,6 +376,14 @@ if (fallos.length) {
   }
   process.exit(1)
 }
+// EL MENSAJE DICE EL ALCANCE REAL, no el nominal. Con `FONDO_PAGINAS=3 FONDO_AIRES=5` esto informaba
+// "7 paginas x 11 aires" igual, o sea presumia una cobertura que no corrio. Un OK que exagera lo que
+// midio es la forma mas barata de que una compuerta mienta.
+const parcial = _paginas < FIX.length || _aires < Object.keys(AIRES).length
 console.log(`GATE FONDO OK — ${textos} textos medidos en ${construidas} construcciones `
-  + `(${FIX.length} paginas × ${Object.keys(AIRES).length} aires × ${MOD.size} escenas): cada uno contrasta con lo que `
+  + `(${_paginas} paginas × ${_aires} aires × ${MOD.size} escenas): cada uno contrasta con lo que `
   + `tiene DETRAS, que en ${sobreBanda} casos es una banda de color y no el fondo del mundo.`)
+if (parcial) {
+  console.log(`  OJO: BARRIDO PARCIAL (FONDO_PAGINAS/FONDO_AIRES). El completo es `
+    + `${FIX.length} x ${Object.keys(AIRES).length}.`)
+}

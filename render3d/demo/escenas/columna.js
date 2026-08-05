@@ -27,7 +27,7 @@
 // SIN RECORTES NO HAY ESCENA. La columna no tiene otro sujeto: si la pagina no dio ni un elemento,
 // devuelve el grupo vacio y ocupa su lugar en silencio. El guionista es quien no deberia elegirla.
 
-import { LOOK, b, E, texto, planoRecorte, recortesDe, nivel, matAcento, materialMascara, deriva, dolly, orbita, escalera, topeNitido, deslizFijo } from '../kit.js'
+import { LOOK, b, E, texto, planoRecorte, recortesDe, nivel, nivelTexto, matAcento, materialMascara, deriva, dolly, orbita, escalera, topeNitido, deslizFijo } from '../kit.js'
 import { marca, sello } from '../datos.js'
 
 export const meta = { id: 'columna', beats: 6 }
@@ -231,7 +231,7 @@ export function build(ctx) {
   // El alto sale de un tope de ANCHO, no al reves: con otra fuente de apoyo el mismo "01 / 06" puede
   // medir un tercio mas y meterse en la columna.
   const ALTO_IDX = Math.min(0.26, 0.78 / Math.max(0.08, AR_IDX))
-  const matIdx = materialMascara(idxTex[0].tex, nivel(0.62))
+  const matIdx = materialMascara(idxTex[0].tex, nivelTexto(0.62))
   const mIdx = new THREE.Mesh(new THREE.PlaneGeometry(ALTO_IDX * AR_IDX, ALTO_IDX), matIdx)
   // Anclado por su borde IZQUIERDO contra el margen: centrado, un rotulo mas largo se mete en la
   // columna y queda tapado por la primera pieza ancha que pasa.
@@ -247,7 +247,7 @@ export function build(ctx) {
     // El tope es de ANCHO y no de alto: un dominio largo mide el triple que "1080X1920" y, fijado por
     // el alto, se metia debajo de la columna. Achicandolo sigue siendo legible y sigue en su calle.
     const altoPie = Math.min(0.15, 0.88 / Math.max(0.08, tp.ar))
-    matPie = materialMascara(tp.tex, nivel(0.48))
+    matPie = materialMascara(tp.tex, nivelTexto(0.48))
     mPie = new THREE.Mesh(new THREE.PlaneGeometry(altoPie * tp.ar, altoPie), matPie)
     mPie.position.set(-mundoW * 0.5 + 0.20 + (altoPie * tp.ar) / 2, -mundoH * 0.472, 0.6)
     g.add(mPie)

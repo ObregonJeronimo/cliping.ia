@@ -24,7 +24,7 @@
 // todas frases; si no dio frases, todos recortes. El guionista no la elige si no hay ni una cosa ni la
 // otra — no hay ráfaga de nada.
 
-import { LOOK, b, E, hex, texto, planoRecorte, recortesDe, nivel, matAcento, dolly, texturaDe } from '../kit.js'
+import { LOOK, b, E, hex, texto, planoRecorte, recortesDe, nivel, nivelTexto, matAcento, dolly, texturaDe } from '../kit.js'
 import { D, marca, repartirFrases } from '../datos.js'
 
 export const meta = { id: 'rafaga', beats: 6 }
@@ -118,7 +118,7 @@ export function build(ctx) {
   tl.to(abajo.scale, { x: 1, duration: b(0.5), ease: E.frena(4) }, b(0.12))
 
   // El índice: sólo números, así que no puede afirmar nada sobre el negocio. Ver `marca` en datos.js.
-  const idx = texto(marca(3, 6), { fuente: 'DMSans', peso: 500, size: 90, tracking: 0.3, color: nivel(0.55) })
+  const idx = texto(marca(3, 6), { fuente: 'DMSans', peso: 500, size: 90, tracking: 0.3, color: nivelTexto(0.55) })
   const mIdx = new THREE.Mesh(
     // 0.42 Y NO 0.9. A 0.9 el indice mide 173 px de alto y le gana en peso visual a la pieza que la
     // escena vino a mostrar: en el render de basecamp "03 / 06" era lo mas grande del cuadro y la frase
@@ -188,7 +188,7 @@ export function build(ctx) {
       // tiene luminancia ~0.9 contra un umbral de bloom de 0.62: florece entera y sale como un
       // ladrillo blanco sin contraformas. Se vio en un render en vivo de tailwindcss.com — cuatro
       // manchas blancas donde tenian que leerse cuatro frases. Ver el presupuesto de luz en toro.js.
-      const t = texto(p.txt, { fuente: 'Anton', size: 200, color: nivel(0.78) })
+      const t = texto(p.txt, { fuente: 'Anton', size: 200, color: nivelTexto(0.78) })
       // La frase entra por el lado que la limita. Un titular de dos palabras y uno de cinco no pueden
       // salir del mismo alto: el de cinco se saldría del cuadro.
       // La tipografia NO sangra: una palabra cortada por el borde no se lee, y una frase es lo unico

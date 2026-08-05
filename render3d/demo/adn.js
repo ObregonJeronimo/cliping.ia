@@ -108,6 +108,12 @@ function forzarContraste2(c, f1, f2, objetivo) {
   return aHex(h)
 }
 
+// EL PISO DE LEGIBILIDAD VIVE EN UN SOLO LUGAR. Estaba escrito tres veces —aca, en `adn-check.mjs` y
+// de nuevo en el instrumento con que se midieron los grises de texto— y tres copias de un umbral son
+// tres oportunidades de que la compuerta mida contra un numero distinto del que el motor aplica.
+// Mas alto en claro porque sobre papel blanco el ojo perdona menos que sobre fondo oscuro.
+export const pisoLegible = (claro) => (claro ? 3.2 : 2.6)
+
 // ---------------------------------------------------------------- paleta
 // Por debajo de esto el acento de la marca es GRIS y su tono es ruido de medición: un #6b6b6d tiene un
 // hue perfectamente calculable y perfectamente sin sentido. Sólo ahí se descarta el tono de la marca.
@@ -178,7 +184,7 @@ export function paletaDe(aire, dna) {
   // salto de tono de "tecnico" (−62°) desde un acento azul da un verde #00e56a, que sobre blanco da
   // 1.6:1 — el acento secundario existía en la paleta y era invisible en la pantalla. El salto de tono
   // se conserva; lo que se corrige es la LUMINANCIA, que es lo que no cambia el color percibido.
-  const piso = claro ? 3.2 : 2.6
+  const piso = pisoLegible(claro)
   // Contra los DOS fondos que la mezcla del shader recorre. Ver la nota de `forzarContraste2`.
   acento = forzarContraste2(acento, bg, bg2, piso)
   acento2 = forzarContraste2(acento2, bg, bg2, piso)

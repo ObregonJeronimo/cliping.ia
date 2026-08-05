@@ -27,7 +27,7 @@
 // luz y el cabezal. Esos si florecen, que es justo lo que hace que un hueco se lea como luz y no como
 // un agujero.
 
-import { LOOK, b, E, texto, materialMascara, matAcento, nivel, dolly,
+import { LOOK, b, E, texto, materialMascara, matAcento, nivel, nivelTexto, dolly,
          ventanaLegible, escalones, enEscalon, deslizFijo, pasosEnBeats } from '../kit.js'
 import { sello } from '../datos.js'
 
@@ -260,9 +260,9 @@ export function build(ctx) {
   let rotulo = null
   let placa = null
   if (pie) {
-    const t = texto(pie, { fuente: 'DMSans', peso: 500, size: 72, tracking: 0.26, color: nivel(0.94) })
+    const t = texto(pie, { fuente: 'DMSans', peso: 500, size: 72, tracking: 0.26, color: nivelTexto(0.94) })
     const alto = 0.135
-    const mat = materialMascara(t.tex, nivel(0.94))
+    const mat = materialMascara(t.tex, nivelTexto(0.94))
     // El mismo borde blando de las bandas, y por la misma razon: con el barrido terminado en 1 la
     // mascara dejaba el dominio opaco solo hasta el 94% de su ancho y la ULTIMA letra en alfa 0.000.
     // Un pie que termina en ".com.ar" perdia el remate — y el sello es el unico texto de la escena,

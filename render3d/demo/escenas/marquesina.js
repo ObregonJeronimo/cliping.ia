@@ -18,7 +18,7 @@
 //
 // SIN DOS FRASES NO HAY MARQUESINA. Con una, las dos tiras dicen lo mismo y el cruce no compara nada.
 
-import { LOOK, b, E, texto, nivel, matAcento, materialMascara, CLARO, finMascara, deriva, escalera, deslizFijo, encaje, dolly, orbita } from '../kit.js'
+import { LOOK, b, E, texto, nivel, nivelTexto, tintaSobre, hex, matAcento, materialMascara, CLARO, finMascara, deriva, escalera, deslizFijo, encaje, dolly, orbita } from '../kit.js'
 import { repartirFrases, marca } from '../datos.js'
 
 export const meta = { id: 'marquesina', beats: 6 }
@@ -42,7 +42,18 @@ export function build(ctx) {
   // ---- geometria de las dos tiras
   const ALTO_TIRA = mundoH * 0.135
   const SEP = mundoH * 0.085                     // el hueco entre las dos, donde vive el filete
-  const COLOR_TXT = nivel(CLARO ? 0.92 : 0.86)
+  // EL COLOR DE LA CINTA SE ELIGE CONTRA SU BANDA, NO CONTRA EL FONDO. Cada tira se dibuja sobre una
+  // cama de color —arriba el acento, abajo un nivel— y el texto iba con `nivel(CLARO ? 0.92 : 0.86)`,
+  // elegido contra el FONDO DEL MUNDO, que no es lo que hay detras de las letras. En mundo claro eso
+  // daba texto 0.92 sobre cama 0.88: cuatro centesimas de la misma rampa. Medido sobre los 7
+  // pagemodels x los 11 aires, 55 de 77 combinaciones por debajo del piso EN CADA CINTA, la peor a
+  // 1.05:1 — y visible en el cuadro 410 de basecamp, donde la frase de la cinta gris no se lee.
+  // Las camas se declaran aca arriba para que el color del texto pueda mirarlas; se dibujan mas abajo.
+  // La intensidad va en UNA constante: la usa el material de la cama y la usa el calculo del color del
+  // texto, y dos copias del mismo 0.55 es como el texto se despega de su fondo sin que nadie se entere.
+  const INT_CAMA = 0.55
+  const CAMA_ARRIBA = '#' + hex(LOOK.acento).multiplyScalar(INT_CAMA).getHexString()
+  const CAMA_ABAJO = nivel(CLARO ? 0.88 : 0.10)
 
   // UNA MALLA POR FRASE, Y NO UNA CADENA GIGANTE. La primera version armaba las frases en UN texto y
   // salia un plano de 17.86 unidades de ancho en un cuadro de 5.63 — la compuerta de encuadre lo caza y
@@ -75,7 +86,7 @@ export function build(ctx) {
       fuente: arriba ? 'Anton' : 'DMSans',
       peso: arriba ? 400 : 700,
       size: 150, tracking: 0.02, upper: true, alineado: 'center',
-      color: COLOR_TXT,
+      color: tintaSobre(arriba ? CAMA_ARRIBA : CAMA_ABAJO, CLARO ? 0.92 : 0.86),
     }
     const tex_ = orden.map(f => texto(f, OPT))
     const ALTO_CINTA = encaje(alto, Math.max(...tex_.map(t => t.ar)), ANCHO_UTIL)
@@ -145,7 +156,7 @@ export function build(ctx) {
     // banda partida por una linea.
     const cama = new THREE.Mesh(
       new THREE.PlaneGeometry(mundoW * 1.3, ALTO_TIRA),
-      arriba ? matAcento(LOOK.acento, 0.55) : new THREE.MeshBasicMaterial({ color: nivel(CLARO ? 0.88 : 0.10), toneMapped: false }),
+      arriba ? matAcento(LOOK.acento, INT_CAMA) : new THREE.MeshBasicMaterial({ color: CAMA_ABAJO, toneMapped: false }),
     )
     cama.position.set(0, cinta.position.y, -0.15)
     cama.scale.x = 0.001
@@ -162,7 +173,7 @@ export function build(ctx) {
 
   // ---- el rotulo de la escena, arriba: solo numeros, asi que no afirma nada del negocio
   const rot = texto(marca(1, meta.beats), { fuente: 'DMSans', peso: 500, size: 90, tracking: 0.3 })
-  const matRot = materialMascara(rot.tex, nivel(0.55))
+  const matRot = materialMascara(rot.tex, nivelTexto(0.55))
   const ALTO_ROT = 0.24
   const mRot = new THREE.Mesh(new THREE.PlaneGeometry(ALTO_ROT * rot.ar, ALTO_ROT), matRot)
   mRot.position.set(-mundoW * 0.5 + 0.22 + (ALTO_ROT * rot.ar) / 2, mundoH * 0.30, 0.4)

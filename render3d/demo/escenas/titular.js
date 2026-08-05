@@ -22,7 +22,7 @@
 // SIN FOTO NO HAY PORTADA. Una portada sin imagen es un titular sobre el fondo, y eso ya existe.
 // Se declara vacia y el guionista es quien no deberia haberla elegido.
 
-import { LOOK, b, E, texto, nivel, matAcento, materialMascara, planoRecorte, recortesDe, filete, finMascara, deriva, encaje, dolly, orbita, hex, texturaDe } from '../kit.js'
+import { LOOK, b, E, texto, nivel, nivelTexto, matAcento, materialMascara, planoRecorte, recortesDe, filete, finMascara, deriva, encaje, dolly, orbita, hex, texturaDe } from '../kit.js'
 import { D, repartirFrases, claimLibre, marcarClaimUsado } from '../datos.js'
 
 export const meta = { id: 'titular', beats: 6 }
@@ -258,9 +258,9 @@ export function build(ctx) {
   const pieTxt = String(D.dominio || D.marca || '').trim()
   let matPie = null
   if (pieTxt) {
-    const tp = texto(pieTxt, { fuente: 'DMSans', peso: 500, size: 80, tracking: 0.22, upper: true, alineado: 'left', color: nivel(0.55) })
+    const tp = texto(pieTxt, { fuente: 'DMSans', peso: 500, size: 80, tracking: 0.22, upper: true, alineado: 'left', color: nivelTexto(0.55) })
     const ALTO_P = mundoH * 0.024
-    matPie = materialMascara(tp.tex, nivel(0.55))
+    matPie = materialMascara(tp.tex, nivelTexto(0.55))
     const mp = new THREE.Mesh(new THREE.PlaneGeometry(ALTO_P * tp.ar, ALTO_P), matPie)
     mp.position.set(MARGEN + (ALTO_P * tp.ar) / 2, yPie - mundoH * 0.030, 0)
     g.add(mp)

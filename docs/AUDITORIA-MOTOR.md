@@ -941,6 +941,46 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
     E-ADN-LEGIBLE, que es el numero que esta ficha documentaba.
   - Las 88 se repartian `calido` 47 y `acento2` 41, en los once aires — o sea que era estructural del
     derivado de la paleta y no de un aire en particular.
+  - **LA FICHA TENIA DOS MITADES Y YO CERRE UNA.** Lo de arriba arregla los cuatro roles de la paleta.
+    La otra mitad esta escrita en el propio sintoma —*"las escenas escriben sus textos secundarios con
+    la escala `nivel(k)` del kit"*— y quedo sin tocar. La destapo un cuadro renderizado, no un
+    razonamiento: el 184 de linear.app, con el pie a **1.09:1**.
+  - **CERRADA LA SEGUNDA MITAD 2026-08-04.** Medido primero, sobre los mismos 7 pagemodels x 11 aires:
+
+    | sitio | k | por debajo del piso | peor |
+    |---|---|---|---|
+    | `columna.js:250` pie | 0.48 | 55/77 | 1.93:1 |
+    | `sello.js:127` pie | 0.52 | 55/77 | 2.13:1 |
+    | `marquesina.js:165` rotulo | 0.55 | 44/77 | 2.30:1 |
+    | `titular.js:263` pie | 0.55 | 44/77 | 2.30:1 |
+    | `cita.js:176` firma | 0.58 | 33/77 | 2.49:1 |
+    | `columna.js:234` indice | 0.62 | 33/77 | 2.78:1 |
+
+  - **Un numero que descarte a proposito:** el primer barrido midio *todos* los `nivel(k)` y dio
+    **1364 de 2310 (59%)**. No significa nada: `nivel(0.05)` es un tono de relleno de una tarjeta y
+    exigirle legibilidad de texto seria acusar en falso. Lo que decide no es el valor, es el USO.
+  - **El arreglo camina por la misma rampa**, no por HSL: `nivelTexto(k)` sube `k` hacia `tinta` hasta
+    que el peor de `bg`/`bg2` llega al piso. Conserva la intencion (un pie sigue siendo mas apagado
+    que su titular) y no puede irse de mano porque el techo es `tinta`, ya forzada a 7:1.
+  - **Medido: 264 de 462 colores se movieron, 0 quedan por debajo.**
+  - **Y se comprobo que no reabre el defecto del "ladrillo blanco".** `rafaga.js:191` documenta que su
+    0.78 se eligio para quedar DEBAJO del umbral de bloom; subir contraste en mundo oscuro es subir
+    luminancia, o sea empujar justo hacia ese umbral. Medido contra `pelicula.umbral` de cada aire
+    (0.58 a 0.97, la clave correcta — la primera medicion leyo `bloomUmbral`, que no existe):
+    **0 de 693 cruzan el umbral por el arreglo.**
+  - **La compuerta E-ADN-TEXTO tiene dos partes, y hacen falta las dos.** La ESTRUCTURAL prohibe pintar
+    texto con `nivel()` pelado (si no, una escena nueva reabre el agujero y la parte numerica ni se
+    entera, porque solo mira los sitios que ya usan `nivelTexto`); la NUMERICA verifica los 18 sitios
+    en las 77 combinaciones.
+  - **Y cubre DOS vias, no una.** La primera version buscaba solo `materialMascara(tex, color)` y daba
+    verde sobre `apertura` y `rafaga`, que colorean las letras en el canvas: `texto(str, { fuente,
+    color })`. El cuadro que destapo todo esto venia justo de esa via. Se reconoce por `fuente:`, que
+    es lo que distingue un estilo tipografico de un relleno.
+  - **Verificado que puede ponerse roja:** revirtiendo un sitio de cada via, acusa los dos.
+  - **Y verificado en pixeles renderizados**, que es de donde salio: basecamp.com 25 s semilla 26,
+    cuadro 410 (`marquesina`, mundo claro, piso 3.2), el rotulo "01 / 06" pasa de **2.59:1 a 3.78:1**.
+    El cuadro de `cita` medido entero da 6.97:1 antes y despues — esa medicion la domina el resto de la
+    composicion y no dice nada sobre la firma; se anota como lo que es, no como confirmacion.
 
 
 ---

@@ -28,14 +28,21 @@ import { dirname, join } from 'node:path'
 // cadena. Probado A/B: con la version de texto, vaciarle la lista de registro a "lujo" no fallaba.
 // Ejecutar el modulo y anotar lo que construye mide lo que pasa de verdad, sin importar como se escriba.
 let _capturando = []
-globalThis.document = { fonts: { *[Symbol.iterator]() {}, add() {}, check: () => true, load: async () => {} } }
+// `createElement` y `window` los pide `kit.js`, que esta compuerta importa desde que tambien mide los
+// grises de TEXTO (ver E-ADN-TEXTO abajo). No renderiza nada: kit los toca al cargarse.
+globalThis.document = {
+  createElement: () => ({ style: {}, getContext: () => null }),
+  fonts: { ready: Promise.resolve(), *[Symbol.iterator]() {}, add() {}, check: () => true, load: async () => {} },
+}
+globalThis.window = globalThis
 globalThis.FontFace = class {
   constructor(familia) { this.family = familia; _capturando.push(familia) }
   async load() { return this }
 }
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-const { personalizar, contraste, aHsl, SAT_GRIS } = await import('../render3d/demo/adn.js')
+const { personalizar, contraste, aHsl, SAT_GRIS, pisoLegible } = await import('../render3d/demo/adn.js')
+const kit = await import('../render3d/demo/kit.js')
 
 const dirAires = join(HERE, '..', 'render3d', 'demo', 'aires')
 const dirFix = join(HERE, 'fixtures', 'director', 'elementos')
@@ -57,6 +64,60 @@ const F = (cod, msg) => fallos.push(`${cod}  ${msg}`)
 const dHue = (a, b) => Math.abs(((a - b) % 360 + 540) % 360 - 180)
 
 const porAire = {}
+// ------------------------------------------------------- E-ADN-TEXTO: los grises de las escenas
+//
+// LA PALETA NO ES LO UNICO QUE SE LEE. Los cuatro roles de arriba se miden desde que existe esta
+// compuerta, pero media docena de escenas escribe sus pies, rotulos, indices y firmas con un gris
+// sacado de la rampa del kit —`nivel(k)`—, y ese gris no lo medi­a nadie. Se vio en un cuadro real de
+// linear.app: el pie "01 / 06" salia a 1.09:1 contra su fondo. Medido despues sobre los 7 pagemodels x
+// los 11 aires, seis sitios de texto caian por debajo del piso en 33 a 55 de las 77 combinaciones.
+//
+// La compuerta tiene DOS partes, y hacen falta las dos:
+//
+//   ESTRUCTURAL   ninguna escena puede pintar texto con `nivel()` pelado. `nivel` es la rampa cruda
+//                 —sirve para rellenos, y ahi esta bien—; el texto va por `nivelTexto`, que la
+//                 recorre hasta cumplir el piso. Sin esta parte, una escena nueva vuelve a abrir el
+//                 agujero y la parte numerica no se entera, porque solo mira los sitios que ya usan
+//                 `nivelTexto`.
+//   NUMERICA      cada `nivelTexto(k)` que existe cumple el piso en las 77 combinaciones. Sin esta,
+//                 un cambio en `nivelTexto` o en la paleta podria dejar de cumplir sin que se note.
+//
+// Probada contra el codigo VIEJO: los seis sitios pintaban con `nivel()` y la parte estructural los
+// marca a los seis. No es una compuerta que nace verde.
+const dirEsc = join(HERE, '..', 'render3d', 'demo')
+const NIVELES_TEXTO = []
+for (const sub of ['escenas', 'heroes']) {
+  for (const arch of readdirSync(join(dirEsc, sub)).filter(f => f.endsWith('.js'))) {
+    const src = readFileSync(join(dirEsc, sub, arch), 'utf8').split('\n')
+    src.forEach((ln, i) => {
+      // `materialMascara(textura, color)` es COMO se pinta texto en este motor: la textura es un
+      // canvas con letras y el color es el de la tinta. Buscar ese patron es buscar texto.
+      // DOS VIAS, NO UNA — y esto casi se me escapa. La primera version buscaba solo
+      // `materialMascara(tex, color)`, que es como tiñe la mayoria de las escenas, y daba verde sobre
+      // `apertura` y `rafaga`, que colorean las letras EN EL CANVAS: `texto(str, { fuente, color })` y
+      // despues un `MeshBasicMaterial` que ni siquiera lleva color. El cuadro que destapo todo esto
+      // —el 184 de linear.app, con el pie a 1.09:1— venia justo de esa via.
+      //
+      // La segunda via se reconoce por `fuente:`, que es lo que distingue un estilo tipografico de un
+      // relleno: `MeshBasicMaterial({ color: nivel(0.06) })` pinta una barra y NO lleva `fuente`.
+      const esEstilo = /\bfuente:|\bpeso:\s*\d|\btracking:/.test(ln)
+      const usos = [
+        ...ln.matchAll(/materialMascara\([^,]*,\s*(?:\w+\.\w+\s*\|\|\s*)?(nivel|nivelTexto)\(([^)]*)\)/g),
+        ...(esEstilo ? ln.matchAll(/color:\s*(nivel|nivelTexto)\(([^)]*)\)/g) : []),
+      ]
+      for (const m of usos) {
+        const nums = [...m[2].matchAll(/\d*\.?\d+/g)].map(x => parseFloat(x[0])).filter(x => x <= 1)
+        if (m[1] === 'nivel') {
+          F('E-ADN-TEXTO', `${sub}/${arch}:${i + 1} escribe TEXTO con nivel(${m[2]}), que es la rampa cruda y `
+            + `nadie mide su contraste — para letras va nivelTexto(), que recorre la misma rampa hasta cumplir el piso`)
+        } else {
+          for (const k of nums) NIVELES_TEXTO.push({ arch: `${sub}/${arch}`, linea: i + 1, k })
+        }
+      }
+    })
+  }
+}
+
 for (const { id, pm } of FIX) {
   for (const [nombreAire, aire] of Object.entries(AIRES)) {
     const a = personalizar(aire, pm.dna, () => 0.5)
@@ -74,7 +135,7 @@ for (const { id, pm } of FIX) {
       if (d > 14) F('E-ADN-HUE', `${etiq}: la marca es ${marca} (tono ${aHsl(marca).h.toFixed(0)}°) y el acento salió ${P.acento} (${aHsl(P.acento).h.toFixed(0)}°), ${d.toFixed(0)}° de corrimiento`)
     }
 
-    const piso = a.claro ? 3.2 : 2.6
+    const piso = pisoLegible(a.claro)
     const chequeos = [['tinta', P.tinta, 6.5], ['acento', P.acento, piso],
       ['acento2', P.acento2, piso], ['calido', P.calido, piso * 0.85]]
     // CONTRA LOS DOS FONDOS, NO CONTRA `bg`. Esto medi­a el contraste contra un fondo que NO es el que
@@ -92,6 +153,19 @@ for (const { id, pm } of FIX) {
       if (c < min - 0.05) {
         F('E-ADN-LEGIBLE', `${etiq}: ${rol} ${col} da ${cBg.toFixed(2)}:1 sobre ${P.bg} y ${cBg2.toFixed(2)}:1 sobre ${P.bg2} `
           + `— el fondo mezcla los dos, asi que vale el peor; hace falta ${min}`)
+      }
+    }
+
+    // E-ADN-TEXTO — los grises con que las escenas escriben sus pies, rotulos e indices.
+    // La paleta no es lo unico que se lee. Con `configurar` puesto en esta misma combinacion, cada
+    // `nivelTexto(k)` que aparece en una escena tiene que cumplir el mismo piso que un acento.
+    kit.configurar({ ...aire, paleta: P, claro: a.claro })
+    for (const { arch, linea, k } of NIVELES_TEXTO) {
+      const col = kit.nivelTexto(k)
+      const c = Math.min(contraste(col, P.bg), contraste(col, P.bg2))
+      if (c < piso - 0.05) {
+        F('E-ADN-TEXTO', `${etiq}: ${arch}:${linea} escribe texto con nivelTexto(${k}) = ${col}, `
+          + `que da ${c.toFixed(2)}:1 contra el peor de ${P.bg}/${P.bg2} — hace falta ${piso}`)
       }
     }
 
@@ -419,6 +493,8 @@ if (fallos.length) {
 const claras = FIX.filter(x => x.pm.dna.palette.bgLum > 0.42).length
 console.log(`ADN OK — ${n} combinaciones (${FIX.length} páginas × ${Object.keys(AIRES).length} aires): `
   + `polaridad, tono de marca (±14°), legibilidad y variedad.  ${claras}/${FIX.length} páginas dan mundo CLARO.`)
+console.log(`  los ${NIVELES_TEXTO.length} grises con que las escenas escriben pies, rótulos, índices y firmas cumplen el piso en las ${n}, `
+  + `y ninguna escena pinta texto con la rampa cruda.`)
 console.log(`  los ${Object.keys(AIRES).length} aires son alcanzables (${barridos} combinaciones de rubro × energía × calidez × registro).`)
 console.log(`  los 11 declaran su mobiliario y reparten ${marcosVivos.size} marcos distintos: ${[...marcosVivos].sort().join(', ')}.`)
 console.log(`  los 11 declaran su montaje y reparten ${montajesVivos.size} formas distintas de cortar.`)
