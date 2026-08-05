@@ -234,7 +234,7 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** Ninguna. `marquesina` no esta en el CAT de tools/guion-check.mjs:27-34, asi que no aparece en ningun guion del gate, ni en E-GUION-ESCENA-MUERTA (recorre CAT.keys()) ni en E-FAMILIA-DECLARADA (idem). Corri el gate: imprime OK sobre 324 guiones.
   - `const puede = (id) => escenas.has(id) && (REQUISITOS[id] ? REQUISITOS[id](d) : true)`
 
-- [ ] **render3d/demo/guion.js:82-83 contra render3d/demo/escenas/titular.js:88-91**
+- [x] **render3d/demo/guion.js:82-83 contra render3d/demo/escenas/titular.js:88-91**
   - **Síntoma:** titular.js:92 `if (!txt || !tex)` cae en `vacia: true` y main.js la cuelga igual: 6 beats de cuadro liso (2.90 s a 124 bpm). Medido: `titular` entra en 110 de 180 guiones de linear-app (61%). El mismo mecanismo degrada la rafaga en esa pagina: su pozo son las dos laminas vetadas mas el logo, asi que muestra el MISMO logo dos veces.
   - **Lo dispara:** El requisito cuenta elementos por ROL; la escena necesita una TEXTURA que sobreviva a `texturaDe` (kit.js:2039: `if (SIN_LAMINAS && e.rol !== 'logo' && esLamina(t.image)) return null`), y ese veto lo enciende `configurarDatos` (datos.js:91) en cuanto la pagina publico testimonios. Fixture linear-app
   - **Compuerta:** Ninguna. `titular` no esta en la copia de requisitos del gate, y aunque estuviera, el gate no carga imagenes: `esLamina` mide pixeles y solo corre en el navegador al construir. No re-medi los PNG — me apoyo en la tabla de medicion que el propio kit.j
@@ -299,6 +299,31 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
     —es media hora de trabajo el dia que una pagina real haga saltar alguno de esos umbrales.
   - **Lo que SI se dejo** es el caso hermano donde la medicion si se movio: `cubo.meta.puede`, que con
     linear.app pasa de ofrecerse a no ofrecerse. Mismo arreglo, distinto resultado, distinta decision.
+
+- **CERRADO 2026-08-05, y por fin con PIXELES REALES.** El seguimiento habia quedado a medias porque el
+  arnes no cargaba imagenes y `esLamina` mide pixeles. Ahora se cargaron los recortes reales de las 7
+  paginas capturadas y se paso cada uno por el veto de verdad:
+
+  | pagina | con rol de titular | vetadas | utiles |
+  |---|---|---|---|
+  | linear-app | 3 | **2** | 1 |
+  | basecamp-com | 2 | **1** | 1 |
+  | www-pentagram-com | 7 | **1** | 6 |
+  | tailwindcss-com | 4 | 0 | 4 |
+  | www-theverge-com | 8 | 0 | 8 |
+
+  - **El mecanismo que describe la ficha ES REAL:** el veto saca texturas de verdad —4 en el corpus— y
+    justamente en las paginas con testimonios, que es lo que la ficha predijo.
+  - **Pero nunca deja a `titular` en cero.** En las cinco paginas con material siempre sobrevive al
+    menos una textura util, asi que la escena no se declara vacia. Sumado a que `main.js` ya no cuelga
+    un beat cuando una escena sale vacia —verificado en el seguimiento anterior— el defecto no ocurre.
+  - **Queda dicho el borde que NO se observo:** una pagina con exactamente UN elemento del rol correcto
+    que ademas sea lamina dejaria a `titular` sin textura. No aparece en ninguna de las 7 reales, asi
+    que se anota como borde conocido y no como ficha: abrir una ficha sobre un caso que no se midio es
+    como nacieron la mitad de las que se cerraron hoy.
+  - **Y la sonda mintio una vez antes de servir**, con el mismo error de arnes que ya aparecio dos veces
+    en el dia: el archivo en disco es `captura_el0.png` y la url lleva `el_captura_el0.png`, asi que no
+    cargaba una sola imagen e informaba "0 vetadas" — la respuesta mas tranquilizadora y la mas falsa.
 
 - [x] **render3d/demo/heroes/portatil.js:142**
   - ✅ **HECHO** — e28eacd — matriz de textura a mano: uRep/uOff apuntando a los Vector2 propios de la textura. Arregla el aplastamiento de 7-19x Y revive el scroll, que animaba un valor que nadie leia.
