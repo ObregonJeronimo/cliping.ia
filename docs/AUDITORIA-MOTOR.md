@@ -1124,8 +1124,32 @@ Por escena:
 
     - **La ocupacion SI la arrastra `hero`:** sin el vuelve al rango normal. Una escena de 5 s que ocupa
       0.133 del cuadro y no corta ni una vez baja el promedio de toda la pieza.
-    - **La quietud NO es solo `hero`:** 0.439 sin el sigue por encima de las cuatro referencias. Hay una
-      segunda causa, todavia sin identificar, y es el proximo hilo del barrido.
+    - **La quietud NO es solo `hero`:** 0.439 sin el sigue por encima de las cuatro referencias.
+
+- [ ] **La segunda causa: `sello` y `gancho`, y la compuerta que los deja pasar mide OTRA COSA**
+  - **Medido, desglose de vis2 (semilla 11, sin `hero`):**
+
+    | escena | cortes | movimiento | casi quietos | quietud max |
+    |---|---|---|---|---|
+    | **sello** | 1 en 3.53s | 0.0129 | **0.952** | **1.2s** |
+    | **gancho** | 1 | **0.0102** | **0.900** | 0.4s |
+    | rafaga | 2 | 0.0281 | 0.308 | 0.07s |
+    | titular | 4 | 0.0659 | 0.314 | 0.03s |
+    | toro | 6 | 0.1419 | 0.076 | 0.13s |
+
+    `sello` se queda **1.2 s sin que cambie la imagen**. A 124 bpm son **dos beats y medio**, y el
+    CLAUDE.md dice que "un beat quieto ya se lee como diapositiva".
+  - **Y POR QUE PASA LA COMPUERTA, que es lo interesante:** `verificar.mjs:646-654` mide la FIRMA DEL
+    GRAFO (`firmaDe(r.g, r.gr)`, `f === previa`) — o sea *"¿cambio algo en la escena?"*. La medicion del
+    video mide PIXELES — *"¿cambio algo que se VEA?"*. **No son la misma pregunta.** Una escena que anima
+    una opacidad de 0.98 a 0.99, o una deriva por debajo del umbral perceptible, cambia su firma en cada
+    cuadro y no mueve la imagen: pasa la compuerta y se ve como una diapositiva.
+  - **Antes de acusar hay que confirmar dos cosas** (no hecho todavia): (1) que la quietud de `sello` no
+    sea deliberada —un sello ES un gesto que se planta— y (2) medir en pixeles y no en firma, para saber
+    cuantas escenas mas estan en esta situacion. Lo primero se lee en la escena; lo segundo pide una
+    compuerta nueva que compare CUADROS RENDERIZADOS, que es lo que ninguna compuerta hace hoy.
+  - Es el mismo punto ciego que ya aparecio con los shaders: *"corren en Node y nunca compilan GLSL"*.
+    Aca es *"miden el grafo y nunca miran la imagen"*.
   - Anotado asi a proposito: son mediciones, no veredictos. La mitad de las fichas que se cerraron hoy
     nacieron de mirar un numero fuera de rango y llamarlo defecto sin leer la escena.
 
