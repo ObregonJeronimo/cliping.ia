@@ -1121,6 +1121,27 @@ nueva acusa exactamente 88 si se revierte el arreglo.
 
 ## Dos hallazgos nuevos, vistos renderizando el 2026-07-31 (NO son de los parches de hoy)
 
+- [ ] **render3d/demo/escenas/toro.js:342 — el ancho se declara en unidades de mundo y la camara lo agranda**
+  - **Sintoma:** El renglon de abajo llega al borde del cuadro. Medido en pixeles sobre el render de
+    pentagram.com (cuadro 355): 'SEE LATEST PROJECTS' va de **x = 3 a x = 1075** sobre 1080, o sea 3 y
+    4 px de margen. No esta cortado, pero ninguna otra escena compone asi: todas usan entre 0.84 y 0.96
+    del cuadro.
+  - **Lo dispara:** El dolly del aire. Proyectando los ocho vertices contra la camara que la escena
+    mueve, sobre los 7 juegos de datos reales x los 11 aires, `toro` llega a **|x| = 1.030** —o sea que
+    SE SALE un 3%— con linear-app y el aire `inmobiliario`, que es el de dolly mas alto (1.55).
+  - **Y es la MISMA causa que `mesa`:** la escena declara `ANCHO = mundoW * 0.86` en unidades de MUNDO
+    y el ancho proyectado depende de cuanto se acerque la camara. Medido en mundo, la malla mas ancha
+    de `toro` es 0.680 del cuadro y parece sobrarle margen; en pantalla llega a 1.030. Es un patron, no
+    un caso: **un ancho util declarado en unidades de mundo no dice lo que se ve.**
+  - **Compuerta:** Ninguna. `encuadre-check` pregunta si la caja CRUZA el cuadro (cruza), y E-ENCAJE
+    solo exige contencion a las mallas que declaran `userData.encaja`, que `toro` no declara. Se midio
+    con el barrido propio de esta sesion, proyectando.
+  - **Verificado que las escenas hermanas NO tienen el problema:** `sello` 0.512, `bandera` 0.873,
+    `gancho` 0.912. `destello` llega a 1.623 y ya esta confirmado como transitorio deliberado (su malla
+    mide 0.96 del cuadro y un tween la escala 2.429x).
+  - No se parcheo: bajar el ANCHO de `toro` cambia su composicion en los once aires para arreglar el
+    que tiene dolly 1.55, y eso es la misma decision que quedo abierta en `mesa`.
+
 - [x] **render3d/demo/escenas/destello.js — FALSO POSITIVO MIO, retirado el 2026-08-04**
   - Lo abri diciendo que con copy real y un aire de tipografia ancha el titular se salia del cuadro por
     los dos lados, a partir de mirar el cuadro 490 de un render. **Estaba equivocado, y lo prueban dos
