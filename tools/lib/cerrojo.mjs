@@ -28,11 +28,16 @@ const vive = (pid) => {
 
 // Toma el cerrojo o devuelve `null` si lo tiene otro. `quien` es para el mensaje: "gates:guard",
 // "motor.py linear.app", lo que sea que le sirva al que lo encuentre ocupado.
-export function tomar(quien) {
-  mkdirSync(dirname(ARCHIVO), { recursive: true })
-  if (existsSync(ARCHIVO)) {
+// `archivo` existe SOLO para que la prueba use su propio cerrojo. Sin eso, `memoria-test` —que corre
+// como primera compuerta de `npm run gates`— pedia el cerrojo REAL, que en ese momento lo tiene el
+// guard que la esta corriendo: la prueba se auto-bloqueaba y tiraba abajo la cadena entera en la
+// primera compuerta. Una prueba que compite con el sistema que prueba no prueba nada.
+export function tomar(quien, opciones = {}) {
+  const ARCH = opciones.archivo || ARCHIVO
+  mkdirSync(dirname(ARCH), { recursive: true })
+  if (existsSync(ARCH)) {
     try {
-      const d = JSON.parse(readFileSync(ARCHIVO, 'utf8'))
+      const d = JSON.parse(readFileSync(ARCH, 'utf8'))
       if (d.pid && vive(d.pid)) return { ocupado: d }
       // EL CERROJO HUERFANO ES EVIDENCIA, NO BASURA. Si el dueño ya no existe, o termino mal o la
       // maquina se colgo con el corriendo. En el segundo caso este archivo es lo UNICO que dice que
@@ -43,8 +48,8 @@ export function tomar(quien) {
       writeFileSync(ULTIMO, JSON.stringify({ ...d, encontradoHuerfano: new Date().toISOString() }))
     } catch { /* ilegible = huerfano */ }
   }
-  writeFileSync(ARCHIVO, JSON.stringify({ pid: process.pid, quien, desde: new Date().toISOString() }))
-  const soltar = () => { try { if (JSON.parse(readFileSync(ARCHIVO, 'utf8')).pid === process.pid) unlinkSync(ARCHIVO) } catch { /* ya no esta */ } }
+  writeFileSync(ARCH, JSON.stringify({ pid: process.pid, quien, desde: new Date().toISOString() }))
+  const soltar = () => { try { if (JSON.parse(readFileSync(ARCH, 'utf8')).pid === process.pid) unlinkSync(ARCH) } catch { /* ya no esta */ } }
   // Se suelta pase lo que pase: salida normal, Ctrl-C o excepcion sin atrapar.
   process.on('exit', soltar)
   for (const s of ['SIGINT', 'SIGTERM']) process.on(s, () => { soltar(); process.exit(130) })

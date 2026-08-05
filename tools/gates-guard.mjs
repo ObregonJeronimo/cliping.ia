@@ -35,7 +35,11 @@ if (disp < MINIMO_ARRANQUE_MB) {
   process.exit(2)
 }
 
-const cerrojo = tomar('gates:guard')
+// `GUARD_CERROJO` existe SOLO para la prueba de punta a punta, que lanza un guard DENTRO del guard: sin
+// esto pediria el cerrojo real —que en ese momento lo tiene el que la esta corriendo— y se auto-
+// bloquearia. Es el mismo cuidado que `memoria-test` toma con su propio cerrojo.
+const cerrojo = tomar('gates:guard',
+  process.env.GUARD_CERROJO ? { archivo: process.env.GUARD_CERROJO } : {})
 if (cerrojo.ocupado) {
   const { quien, pid, desde } = cerrojo.ocupado
   console.error(`gates-guard: NO ARRANCA — "${quien}" (pid ${pid}) tiene el cerrojo desde ${desde}.`)
@@ -50,9 +54,17 @@ if (cerrojo.ocupado) {
 // arranca con este motor). Ahora `npm run gates` ES el camino vigilado y la puerta sin cerrojo tiene un
 // nombre que nadie escribe por reflejo.
 
-// Con el cerrojo en la mano, cualquier cadena viva es un huerfano de una corrida anterior que murio
-// mal. Se barre antes de arrancar: si no, la corrida nueva compite por la RAM contra un fantasma.
-const huerfanos = barrerHuerfanos()
+// Con el cerrojo REAL en la mano, cualquier cadena viva es un huerfano de una corrida anterior que
+// murio mal. Se barre antes de arrancar: si no, la corrida nueva compite por la RAM contra un fantasma.
+//
+// PERO SOLO CON EL CERROJO REAL, y esto casi cuesta caro. La prueba de punta a punta lanza un guard con
+// su propio cerrojo; ese guard veia el suyo libre, concluia que la cadena de verdad —la que lo estaba
+// ejecutando— era un huerfano, y LA MATABA. El guard se suicidaba a traves de su propia prueba, y el
+// sintoma era una cadena que moria en la primera compuerta sin decir por que.
+//
+// La regla queda explicita: el barrido vale porque "tengo el cerrojo, luego lo que vive es huerfano".
+// Con un cerrojo prestado esa deduccion es falsa, asi que no se barre.
+const huerfanos = process.env.GUARD_CERROJO ? [] : barrerHuerfanos()
 if (huerfanos.length) {
   console.log(`gates-guard: habia ${huerfanos.length} proceso(s) huerfano(s) de una corrida anterior. Muertos:`)
   for (const h of huerfanos) console.log(`  pid ${h.pid} · ${h.cmd}`)

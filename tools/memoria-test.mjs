@@ -12,6 +12,8 @@
 import { spawn } from 'node:child_process'
 import { vigilar, pisoPara, disponibleMb, TECHO_MB, MINIMO_ARRANQUE_MB, TECHO_NODE_MB, entornoConTecho, claveDe } from './lib/memoria.mjs'
 import { tomar } from './lib/cerrojo.mjs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 let fallos = 0
 const ok = (m) => console.log(`  ok · ${m}`)
@@ -140,7 +142,11 @@ await new Promise((res) => {
 // compuertas verdes. `node --check` no lo ve y una prueba de humo con timeout tampoco.
 await new Promise((res) => {
   const g = spawn(process.execPath, ['tools/gates-guard.mjs'],
-    { env: { ...process.env, GUARD_CADENA: 'gates:falsa' }, stdio: ['ignore', 'pipe', 'pipe'] })
+    { env: { ...process.env, GUARD_CADENA: 'gates:falsa',
+      // su propio cerrojo: si no, este guard de prueba choca con el guard que puede estar corriendo la
+      // suite, y la prueba fallaria por una razon que no tiene nada que ver con lo que mide.
+      GUARD_CERROJO: join(dirname(fileURLToPath(import.meta.url)), 'out', '.prueba-guard.lock') },
+      stdio: ['ignore', 'pipe', 'pipe'] })
   let out = ''
   g.stdout.on('data', d => { out += d })
   g.stderr.on('data', d => { out += d })
@@ -154,10 +160,14 @@ await new Promise((res) => {
 
 // ---------------------------------------------------------------- el cerrojo
 {
-  const a = tomar('prueba-a')
+  // CON SU PROPIO ARCHIVO: esta prueba corre como primera compuerta de `npm run gates`, y en ese
+  // momento el cerrojo real lo tiene el guard que la esta ejecutando. Pidiendo el de verdad, la prueba
+  // se auto-bloqueaba y tiraba abajo la cadena entera antes de la primera compuerta util.
+  const CERROJO_PRUEBA = { archivo: join(dirname(fileURLToPath(import.meta.url)), 'out', '.prueba.lock') }
+  const a = tomar('prueba-a', CERROJO_PRUEBA)
   if (a.ocupado) mal('no se pudo tomar un cerrojo libre')
   else ok('se toma un cerrojo libre')
-  const b = tomar('prueba-b')
+  const b = tomar('prueba-b', CERROJO_PRUEBA)
   if (b.ocupado) ok(`el segundo NO arranca y dice quien lo tiene ("${b.ocupado.quien}")`)
   else mal('el segundo tomo el cerrojo igual')
   a.soltar?.()
