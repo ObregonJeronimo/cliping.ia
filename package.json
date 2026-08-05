@@ -12,6 +12,7 @@
     "prefit": "node tools/urvid1-prefit-check.mjs",
     "loop": "node tools/director-loop.mjs",
     "costo": "node tools/costo.mjs",
+    "testigo": "node tools/testigo.mjs",
     "informe": "node tools/informe-cuelgue.mjs",
     "pesado": "node tools/pesado.mjs",
     "gates": "node tools/gates-guard.mjs",
