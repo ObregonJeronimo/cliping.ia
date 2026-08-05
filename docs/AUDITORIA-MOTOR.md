@@ -135,6 +135,31 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Lo dispara:** El largo del copy real. encaje resuelve el desborde bajando el alto SIN PISO, asi que el cuerpo tipografico de seis escenas es una funcion inversa de cuantos caracteres escribio la marca. La compuerta que podria notarlo construye siempre con configurarDatos(ANTHEM), cuyo pozo son frases de 4 a 19 ca
   - **Compuerta:** NINGUNA mide el cuerpo resultante. E-ENCAJE (encuadre-check.mjs:140-151) solo comprueba que la malla ENTRE entera; achicar hasta lo ilegible es justamente como encaje consigue que entre, asi que la compuerta se pone MAS verde cuanto peor se ve. Adema
   - `export const encaje = (altoBase, arMax, anchoUtil) => altoBase * arMax > anchoUtil ? anchoUtil / arMax : altoBase`
+- SEGUIMIENTO de kit.js:968 (2026-08-04): **medido el dano real, y es mucho mas chico de lo que dice la
+  ficha: UNA escena de seis, y por un 8%.**
+  - Se construyeron las seis escenas sedientas con los 7 juegos de datos REALES x los 11 aires, y se
+    midio la caja de texto mas chica de cada una en pixeles de alto sobre 1920:
+
+    | escena | peor cuerpo | contra el piso |
+    |---|---|---|
+    | `gancho` | **35 px** | **-8%, DEBAJO** |
+    | `marquesina` | 46 px | +21% |
+    | `cita` | 50 px | +32% |
+    | `partida` | 54 px | +42% |
+    | `lista` | 58 px | +53% |
+
+  - **El piso no lo invente: lo declara el propio repo.** `hero.js` pone `PISO = mundoH * 0.020` — 38
+    px — y lo justifica como 'el limite donde el propio hallazgo dice que la cosa deja de leerse'. Es
+    la misma medida (alto de la malla de texto), asi que la comparacion es directa.
+  - `titular` **no se pudo medir**: necesita texturas de recorte y el arnes no las carga. Queda como el
+    unico hueco de esta medicion.
+  - **Que cambia esto para la decision.** La ficha describe seis escenas que 'con el fixture componen
+    carteles y con una pagina de verdad componen pies de foto'. Medido, cuatro de las cinco que se
+    pudieron construir quedan entre 21% y 53% POR ENCIMA del piso que el repo se puso, y solo `gancho`
+    cae debajo — por 3 px. O sea que el arreglo grande (poner piso al `encaje`, con su trampa conocida
+    de cambiar 'ilegible' por 'cortado a los costados' en seis escenas) no esta justificado por estos
+    numeros: lo que hay es un caso, no una familia.
+  - Sigue ABIERTO, pero el trabajo que pide ahora es chico y localizado: `gancho` con copy largo.
 
 - [x] **render3d/demo/escenas/mesa.js:78**
   - ✅ **HECHO** — commit de mesa — se achica el PLANO hasta la proporcion real cuando la imagen es mas corta que la ventana, en vez de clampear `visible` y estirar. Verificado renderizando.
