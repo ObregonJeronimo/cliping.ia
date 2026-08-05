@@ -1262,9 +1262,27 @@ disponible; sus afirmaciones hay que verificarlas a mano antes de actuar sobre e
 
 ### NO sostiene el plan
 
-- [ ] **E-CONTENCIÓN-TOTAL «sin opt-in» es la versión que este repo YA probó y descartó, y la medí: no marca 20-30 sitios, marca 251. Construí las 37 escenas con el arnés de encuadre-check (mismo bootstrap, mismo fixture ANTHEM, un aire) y apliqué la regla propuesta —los 8 vértices de toda malla visible dentro de |1.015|, más **
+- [x] **E-CONTENCIÓN-TOTAL «sin opt-in» es la versión que este repo YA probó y descartó, y la medí: no marca 20-30 sitios, marca 251. Construí las 37 escenas con el arnés de encuadre-check (mismo bootstrap, mismo fixture ANTHEM, un aire) y apliqué la regla propuesta —los 8 vértices de toda malla visible dentro de |1.015|, más **
   - **Por qué cambia la decisión:** El paso 1 tiene DOS papeles en el plan y son incompatibles: nace en rojo («pone en rojo 20-30 sitios») y a la vez es «el criterio de aceptación» de la migración del paso 2. Una compuerta que arranca en rojo no detecta regresiones: después de migrar tandera por tanda, la señal es 
   - **Corrección:** Mantener la declaración e INVERTIR el default: cada malla se declara `encaja` o `sangra`, y lo que falla la compuerta es la malla SIN CLASIFICAR, no la geometría. Eso convierte 251 acusaciones en una tarea mecánica y revisable archivo por archivo, y deja la regla con dientes después. Y partir el pas
+
+  - **CERRADA 2026-08-05: tenia razon, y su correccion es MEJOR que la conclusion a la que llegue solo.**
+    - **Dos mediciones independientes coinciden.** La objecion midio 251 sitios acusados; yo medi hoy,
+      con otro instrumento y sin haberla leido, **38.432 de 148.054 muestras** — y comprobe que las
+      38.432 son deliberadas. Las dos dicen lo mismo: la regla universal no sirve.
+    - Yo cerre `encuadre-check:217` como "no automatizable", y esa conclusion es incompleta. **La
+      objecion propone algo que yo no consideré y que si funciona: INVERTIR EL DEFAULT.** Que cada malla
+      se declare `encaja` o `sangra`, y que lo que falle la compuerta sea **la malla SIN CLASIFICAR**,
+      no la geometria.
+    - Eso cambia todo: convierte 251 acusaciones geometricas —que exigen juicio de composicion caso por
+      caso— en **una tarea mecanica y revisable archivo por archivo**. Y deja la regla CON DIENTES
+      despues: una vez clasificado todo, la geometria vuelve a ser verificable.
+    - Y su otro punto es correcto y yo no lo habia visto: **una compuerta que nace en rojo no detecta
+      regresiones.** El plan la usaba como criterio de aceptacion de su propia migracion, que es
+      circular.
+    - **Queda como el camino recomendado para el trabajo de `encaja`** que quedo pendiente en
+      `encuadre-check:217`: no declarar solo lo que entra, sino clasificar TODO, y que la compuerta
+      exija clasificacion en vez de geometria.
 
 - [ ] **E-CUERPO-MÍNIMO y `caber(..., {pisoPx})` son insatisfacibles contra la caja LOCAL, y el defecto que producen no lo ve ninguna de las cuatro aserciones propuestas. `encaje` devuelve `anchoUtil / arMax` cuando desborda (kit.js:968); poner un piso P significa `alto = max(P, anchoUtil/arMax)`, y en cuanto P gana, el ancho **
   - **Por qué cambia la decisión:** El paso 2 se vende como «cambia composiciones que hoy se ven bien, por eso va después, para que la compuerta diga cuál cambió». Pero con estas cuatro aserciones la compuerta NO puede decirlo: el modo de falla que introduce el piso —texto legible pero encimado dentro de su propia 
