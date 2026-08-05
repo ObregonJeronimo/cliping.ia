@@ -83,6 +83,30 @@ const { gsap } = await import(pathToFileURL(join(RAIZ, 'node_modules', 'gsap', '
 globalThis.gsap = gsap
 const THREE = await import(pathToFileURL(join(RAIZ, 'node_modules', 'three', 'build', 'three.module.js')).href)
 const { BEAT, LOOK, b, limpiarCache, reiniciarRecortes } = await import(pathToFileURL(join(HERE, 'kit.js')).href)
+// LOS AIRES, PARA ROTARLOS EN E-ENCAJE. Ese chequeo barria cuatro marcas con UN SOLO aire —el que
+// quedara configurado— y la tipografia display es lo que mas cambia entre aires: medido con la
+// compuerta de encuadre, una cara ancha mide 39% mas que una angosta sobre el mismo texto. O sea que
+// la compuerta cuyo encabezado dice 'la composicion tiene que aguantar nombres que no midan lo que
+// mide ANTHEM' auditaba un solo vestuario.
+//
+// SE ROTA, NO SE MULTIPLICA: cuatro marcas x once aires x 37 escenas son 1628 construcciones y esta es
+// una de las rapidas. Rotando —cada marca recibe un aire distinto, y el punto de partida avanza con la
+// escena— el costo queda igual y a lo largo del barrido entero se ejercitan los once.
+//
+// Y ES UN INTERCAMBIO, NO UNA MEJORA PURA — conviene saberlo antes de tocarlo. Con el aire fijo, cada
+// (escena, marca) se medi­a siempre con el mismo vestuario y el otro eje no existia; rotando, el eje
+// del aire pasa de 1 a 11 pero cada combinacion se mide con UNO solo. Medido: el ancho maximo que ve
+// la compuerta pasa de 8.25 a 7.80 unidades, porque la combinacion que daba 8.25 (tipografia con
+// 'CONSTRUCCIONES') ahora corre bajo otro aire. Se elige la amplitud porque la cara display es el
+// factor mas grande del ancho —39% de diferencia entre una angosta y una ancha sobre el mismo texto,
+// ya medido en encuadre-check— y porque la contencion con el producto cartesiano completo YA la cubre
+// `encuadre-check` con sus 407 construcciones.
+const _kitA = await import(pathToFileURL(join(HERE, 'kit.js')).href)
+const AIRES_E = []
+for (const f of readdirSync(join(HERE, 'aires')).filter(x => x.endsWith('.js'))) {
+  try { AIRES_E.push([f.replace('.js', ''), (await import(pathToFileURL(join(HERE, 'aires', f)).href)).default]) } catch { /* E-EASE ya lo reporta */ }
+}
+let _iAire = 0
 
 // Texturas de mentira con relaciones de aspecto de verdad. Los heroes solo leen `image.width/height`
 // para decidir la composicion, asi que un canvas de 4 px alcanza y no cuesta memoria: lo que se esta
@@ -312,6 +336,9 @@ for (const id of ids) {
   // cuadro visible. No se comprueba que quede lindo: se comprueba que ENTRE y que el nombre esté
   // completo, que es lo que un test puede saber.
   for (const marca of ['Q', 'GO', 'CONSTRUCCIONES', 'TRANSPORTES INTERNACIONALES']) {
+    // El aire rota con la marca: cada construccion se mide con un vestuario tipografico distinto.
+    const [nomAire, aireE] = AIRES_E.length ? AIRES_E[_iAire++ % AIRES_E.length] : ['—', null]
+    if (aireE) _kitA.configurar(aireE)
     // CON DATOS Y CON DOMINIO. Esto mandaba `datos: []` y `cta: null`, y con eso el gate se quedaba
     // ciego a las dos escenas que MAS dependen del largo de la marca:
     //   · `tarjetas` sale por `vacia: true` sin datos (tarjetas.js:131), justo la escena que dibuja
@@ -438,11 +465,11 @@ for (const id of ids) {
       for (const raiz of raices) raiz.traverse(o => mirar(o, raiz === rm.g))
     }
     ok(noEncajan.length === 0,
-      `E-ENCAJE ${id}: con la marca "${marca}" ${noEncajan.length} pieza(s) declaradas encaja=true se salen del cuadro (${mundoW.toFixed(2)}x${mundoH.toFixed(2)}): ${noEncajan.join(' · ')}`)
+      `E-ENCAJE ${id}: con la marca "${marca}" y el aire ${nomAire}, ${noEncajan.length} pieza(s) declaradas encaja=true se salen del cuadro (${mundoW.toFixed(2)}x${mundoH.toFixed(2)}): ${noEncajan.join(' · ')}`)
     if (peor) {
       if (process.env.MEDIR_ANCHO) console.log(`  ANCHO ${id}/${marca}: alta ${peor.y.toFixed(2)} (ancho ${peor.x.toFixed(2)}) · ancha ${peor.ancha.x.toFixed(2)} = ${(peor.ancha.x / mundoW).toFixed(2)} cuadros`)
       ok(peor.y <= mundoH * 0.85 && peor.ancha.x <= mundoW * 2.2,
-        `E-ENCAJE ${id}: con la marca "${marca}" una pieza mide ${peor.ancha.x.toFixed(2)} de ancho y otra ${peor.y.toFixed(2)} de alto en un cuadro de ${mundoW.toFixed(2)}x${mundoH.toFixed(2)} — se come el cuadro`)
+        `E-ENCAJE ${id}: con la marca "${marca}" y el aire ${nomAire}, una pieza mide ${peor.ancha.x.toFixed(2)} de ancho y otra ${peor.y.toFixed(2)} de alto en un cuadro de ${mundoW.toFixed(2)}x${mundoH.toFixed(2)} — se come el cuadro`)
     }
     // El nombre entero o nada: un truncado silencioso es peor que un nombre chico.
     //
@@ -460,6 +487,12 @@ for (const id of ids) {
         `E-ENCAJE ${id}: de la marca "${larga}" no se dibujaron las letras ${faltan.join('')} — se trunco en silencio`)
     }
   }
+  // SE DEVUELVE EL VOCABULARIO COMO ESTABA. `configurar(aire)` reasigna BEAT, y BEAT es lo que usa el
+  // chequeo de duracion de la escena SIGUIENTE: sin este reset, rotar aires aca dejaba el beat del
+  // ultimo y 29 escenas fallaban por "se come la escena siguiente" con timelines que estan bien. El
+  // sintoma no aparece en la escena que rota, aparece en la que viene despues — que es lo que lo hace
+  // dificil de leer. Mismo modismo que E-EASE-VALIDO al terminar su barrido.
+  if (AIRES_E.length) _kitA.configurar(null)
 
   configurarDatos(ANTHEM)
 

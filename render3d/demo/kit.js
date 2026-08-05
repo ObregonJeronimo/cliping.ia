@@ -28,6 +28,9 @@ import * as THREE from 'three'
 // que no se parecen en nada.
 export let BPM = 124
 export let BEAT = 60 / BPM
+// La foto del vocabulario de fabrica, para que `configurar(null)` pueda devolverlo de verdad. Ver la
+// nota larga en `configurar`. `LOOK` se copia mas abajo, apenas se declara.
+const AIRE_BASE = { BPM: 124, LOOK: null }
 export const b = n => n * BEAT                     // lee el BEAT vigente, no una copia
 
 // ---------------------------------------------------------------- cuanto se mueve la camara
@@ -368,6 +371,9 @@ export let LOOK = {
   acento2: '#00e5c0',
   calido: '#ff5a3c',
 }
+// La foto del vocabulario de fabrica, para que `configurar(null)` pueda devolverlo. Se toma aca, justo
+// despues de declararlo y antes de que ningun aire lo toque.
+AIRE_BASE.LOOK = { ...LOOK }
 
 // ---------------------------------------------------------------- GESTO
 // La familia de curvas. Es la mitad de la personalidad de una pieza y casi nadie la mira: el MISMO
@@ -825,8 +831,24 @@ export let CLARO = false
 
 // configurar(aire) — se llama UNA vez antes de construir la pieza. Todo lo que no venga en el aire
 // se queda con el valor de ANTHEM.
+// `configurar(null)` NO RESTAURABA NADA, y tres lugares lo llamaban creyendo que si.
+//
+// El `if (!aire) return` de la primera linea lo volvia un no-op silencioso: `verificar.mjs:708` lo
+// llama con el comentario 'se deja el vocabulario como estaba' y `tools/adn-check.mjs:282` igual, y en
+// los dos casos el aire del ultimo barrido quedaba puesto. No molestaba porque los dos lo hacen al
+// FINAL de su archivo — pero en cuanto alguien rota aires en el medio de una compuerta, el BEAT del
+// ultimo aire se le filtra al chequeo siguiente. Medido al intentarlo: 29 escenas fallando por
+// 'se come la escena siguiente' con timelines que estan perfectamente bien, y el sintoma apareciendo
+// en la escena de DESPUES de la que rotaba.
+//
+// Ahora restaura de verdad: los mismos valores con los que arranca el modulo.
 export function configurar(aire, semilla = null) {
-  if (!aire) return
+  if (!aire) {
+    BPM = AIRE_BASE.BPM; BEAT = 60 / BPM
+    AIRE = null; CLARO = false; MOB = MOBILIARIO_BASE
+    if (AIRE_BASE.LOOK) Object.assign(LOOK, AIRE_BASE.LOOK)
+    return
+  }
   AIRE = aire
   CLARO = !!aire.claro
   MOB = { ...MOBILIARIO_BASE, ...(aire.mobiliario || {}) }

@@ -551,6 +551,24 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Lo dispara:** Cualquier tipografia o recorte que se pase del cuadro sin llegar a esos umbrales: hasta 12.38 unidades de ancho (2376 px en un cuadro de 1080, o sea 220% del cuadro) y 8.50 de alto pasan en verde.
   - **Compuerta:** Es la compuerta. Y por eso los dos renglones de arriba (cierre 7.22 de alto, y cualquier recorte ampliado) le pasan por debajo.
   - `ok(peor.y <= mundoH * 0.85 && peor.x <= mundoW * 2.2,`
+- SEGUIMIENTO de verificar.mjs:410 (2026-08-04): **E-ENCAJE ahora rota aires, y el tope NO se baja.**
+  - El chequeo barria cuatro marcas con UN SOLO aire, y la cara display es el factor mas grande del
+    ancho (39% entre una angosta y una ancha sobre el mismo texto). Ahora el aire rota con la marca: el
+    eje pasa de 1 a 11 al mismo costo, con el mismo modismo que ya se uso en `encuadre-check`.
+  - **Es un intercambio, no una mejora pura, y queda escrito en el codigo:** cada combinacion (escena,
+    marca) se mide ahora con UN aire en vez de siempre el mismo. Medido: el ancho maximo que ve la
+    compuerta pasa de 8.25 a 7.80 u, porque la combinacion que daba 8.25 corre bajo otro aire. Se
+    elige la amplitud porque la contencion con el producto cartesiano completo ya la cubre
+    `encuadre-check` con sus 407 construcciones.
+  - **El tope de ancho sigue en 2.2 y no se baja**, porque el 2.33 de `destello` quedo confirmado como
+    transitorio deliberado (su malla mide 0.96 del cuadro y un tween la escala 2.429x).
+  - **Y esto destapo un no-op que estaba en el repo desde antes:** `configurar(null)` hacia
+    `if (!aire) return`, o sea NADA, y tres lugares lo llamaban creyendo que restauraba el vocabulario
+    —`verificar.mjs:708` con el comentario 'se deja el vocabulario como estaba' y `adn-check.mjs:282`—.
+    No molestaba porque los dos lo hacen al final de su archivo, pero al rotar aires en el medio el
+    BEAT del ultimo se filtraba al chequeo siguiente: **29 escenas fallando por 'se come la escena
+    siguiente' con timelines perfectamente bien**, y el sintoma apareciendo en la escena de DESPUES de
+    la que rotaba. Ahora `configurar(null)` restaura BPM, BEAT, LOOK, CLARO, AIRE y MOB de fabrica.
 - SEGUIMIENTO de verificar.mjs:410 (2026-08-03): **el hueco (2) esta cerrado, el (1) NO, y a proposito.**
   - El hueco de los EJES —guardar una sola pieza, la mas alta, y despues comprobar SU ancho— esta
     arreglado: ahora se guarda el peor de cada eje por separado. Probado por inyeccion: una malla con
