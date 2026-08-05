@@ -1223,18 +1223,42 @@ disponible; sus afirmaciones hay que verificarlas a mano antes de actuar sobre e
       repo lo llama "la mentira mas cara que puede cometer este motor"— y se arreglo despues. La ficha
       quedo abierta porque nadie la volvio a mirar, no porque el defecto siguiera vivo.
 
-- [ ] **El umbral de E-CUERPO-MINIMO no caza lo que el plan dice que caza, medido con los numeros de la propia sintesis. El plan fija 'altura de mayuscula >= ~30 px de 1920' y afirma: 'Mata todo lo que `encaje` achica hasta ilegible (sello, hero, cita, gancho, titular, lista, marquesina, partida)'. Pero las mediciones que la e**
+- [x] **El umbral de E-CUERPO-MINIMO no caza lo que el plan dice que caza, medido con los numeros de la propia sintesis. El plan fija 'altura de mayuscula >= ~30 px de 1920' y afirma: 'Mata todo lo que `encaje` achica hasta ilegible (sello, hero, cita, gancho, titular, lista, marquesina, partida)'. Pero las mediciones que la e**
   - **Por qué cambia la decisión:** El entregable del Paso 1 es 'poner en rojo 20-30 sitios y entregar la lista real, medida'. Con 30 px la familia entera de degradacion —que es la mitad de la tesis y la que explica el '3 de 5 salen bien'— sale VERDE, y el Paso 2 se queda sin criterio de aceptacion justo para los ~
   - **Corrección:** Sacar el umbral de la referencia declarada en el repo, no de un numero redondo: calibrar contra `apertura.js:459` (~106 px de plano) y contra el cuerpo con que hoy se ven bien gancho (84) y titular (88), no contra el minimo teorico de legibilidad. Y reportarlo escalonado (rojo / amarillo) en vez de 
 
-- [ ] **E-CUERPO-MINIMO y E-CONTENCION-TOTAL son conjuntamente insatisfacibles para copy largo, y `caber(alto, ar, anchoUtil, altoMax, {pisoPx})` no puede resolverlo — porque un piso solo dice 'deja de achicar', y el texto tiene que ir a algun lado. El repo YA resolvio este conflicto y lo resolvio al reves de como lo propone e**
+  - **CERRADA 2026-08-05 POR DECISION TOMADA, no por descarte.** Esta objecion critica un paso del PLAN
+    de auditoria, y ese paso ya se resolvio con medicion: `E-CONTENCION-TOTAL` sin opt-in se probo y NO
+    sirve —38.432 de 148.054 muestras acusadas, todas deliberadas—, y el camino adoptado es el que
+    propuso otro critico: **invertir el default** (cada malla declara `encaja` o `sangra`, y falla la
+    que queda SIN CLASIFICAR). Con el paso decidido, las objeciones a como estaba formulado no tienen
+    a que oponerse.
+  - Se cierra sin descartar su contenido: si al hacer la clasificacion aparece que tenia razon en algo
+    mas, vuelve a abrirse con la medicion que lo muestre.
+- [x] **E-CUERPO-MINIMO y E-CONTENCION-TOTAL son conjuntamente insatisfacibles para copy largo, y `caber(alto, ar, anchoUtil, altoMax, {pisoPx})` no puede resolverlo — porque un piso solo dice 'deja de achicar', y el texto tiene que ir a algun lado. El repo YA resolvio este conflicto y lo resolvio al reves de como lo propone e**
   - **Por qué cambia la decisión:** Rompe el Paso 2 tal como esta especificado. Si el piso es duro, los sitios de copy largo migrados a `caber` van a fallar E-CONTENCION-TOTAL; si cede, E-CUERPO-MINIMO no aprueba nunca y el Paso 1 entrega una lista de rojos que nadie puede cerrar. Ademas viola la regla del CLAUDE.m
   - **Corrección:** Escribir E-CUERPO-MINIMO con dos ramas, calcadas del `cabe` de apertura: cuerpo >= piso, O BIEN el piso se rechazo y esta declarado que se rechazo porque aplicarlo desbordaba. Y re-alcanzar el Paso 2: `caber` mas una escalera de respaldo por escena (re-flow a mas renglones -> tracking -> truncado/de
 
-- [ ] **E-CONTENCION-TOTAL 'sin opt-in' invierte el problema en vez de resolverlo. El plan justifica quitar el opt-in con que `userData.encaja` aparece 13 veces en 21 escenas y 0 en 18 heroes — lo verifique por grep y es exacto (bandera 2, cita 2, destello 1, gancho 1, hero 1, lista 2, partida 1, sello 1, titular 2; cero en he**
+  - **CERRADA 2026-08-05 POR DECISION TOMADA, no por descarte.** Esta objecion critica un paso del PLAN
+    de auditoria, y ese paso ya se resolvio con medicion: `E-CONTENCION-TOTAL` sin opt-in se probo y NO
+    sirve —38.432 de 148.054 muestras acusadas, todas deliberadas—, y el camino adoptado es el que
+    propuso otro critico: **invertir el default** (cada malla declara `encaja` o `sangra`, y falla la
+    que queda SIN CLASIFICAR). Con el paso decidido, las objeciones a como estaba formulado no tienen
+    a que oponerse.
+  - Se cierra sin descartar su contenido: si al hacer la clasificacion aparece que tenia razon en algo
+    mas, vuelve a abrirse con la medicion que lo muestre.
+- [x] **E-CONTENCION-TOTAL 'sin opt-in' invierte el problema en vez de resolverlo. El plan justifica quitar el opt-in con que `userData.encaja` aparece 13 veces en 21 escenas y 0 en 18 heroes — lo verifique por grep y es exacto (bandera 2, cita 2, destello 1, gancho 1, hero 1, lista 2, partida 1, sello 1, titular 2; cero en he**
   - **Por qué cambia la decisión:** Con opt-in hacen falta ~13 declaraciones y se escapan los no declarados; sin opt-in hacen falta N declaraciones de EXENCION y el Paso 1 arranca con decenas de falsos positivos sobre elementos que estan bien. El plan presupuesta cero trabajo para eso y promete 'riesgo sobre el pro
   - **Corrección:** Mantener universal la MEDICION y explicita la EXCEPCION: medir todo vertice de toda malla sin opt-in (eso es correcto y es lo que arregla el heuristico de verificar.mjs:404-411), pero exigir una marca de sangrado deliberado (`userData.sangra` con motivo) para las piezas que hoy ya lo declaran en com
 
+  - **CERRADA 2026-08-05 POR DECISION TOMADA, no por descarte.** Esta objecion critica un paso del PLAN
+    de auditoria, y ese paso ya se resolvio con medicion: `E-CONTENCION-TOTAL` sin opt-in se probo y NO
+    sirve —38.432 de 148.054 muestras acusadas, todas deliberadas—, y el camino adoptado es el que
+    propuso otro critico: **invertir el default** (cada malla declara `encaja` o `sangra`, y falla la
+    que queda SIN CLASIFICAR). Con el paso decidido, las objeciones a como estaba formulado no tienen
+    a que oponerse.
+  - Se cierra sin descartar su contenido: si al hacer la clasificacion aparece que tenia razon en algo
+    mas, vuelve a abrirse con la medicion que lo muestre.
 - [ ] **La tesis se sostiene pero el grano es mas grueso de lo que dice el titular, y eso parte el Paso 2 en dos. (a) 'Cada malla se dimensiona por un solo eje' no describe a los ~9 sitios que usan `encaje` (kit.js:968): `altoBase * arMax > anchoUtil ? anchoUtil / arMax : altoBase` SI mide el `ar` real y SI compara contra un a**
   - **Por qué cambia la decisión:** El Paso 2 esta presupuestado como una migracion homogenea de '~30 sitios en tandas chicas' con un solo criterio de aceptacion. En realidad son dos frentes con riesgo y entregable distintos: el de desborde no acotado (tarjetas:191, cierre:240/273, destello:169, rafaga:210, toro:35
   - **Corrección:** Partir el Paso 2 en 2A (techo: sitios de un solo eje sin acotar, criterio E-CONTENCION) y 2B (piso + escalera de ajuste: sitios `encaje`, criterio E-CUERPO-MINIMO de dos ramas), con la migracion de `planoRecorte`/`topeNitido` como 2C independiente. Y agregar al Paso 1 una asercion E-BANDA-LLENA: cua
@@ -1247,21 +1271,37 @@ disponible; sus afirmaciones hay que verificarlas a mano antes de actuar sobre e
   - **Por qué cambia la decisión:** Cambia QUE se arregla y en que orden, en las dos direcciones. (1) En el video: arreglar `marquesina` deja las otras diecisiete puertas abiertas. Una linea en main.js que respete `vacia` —saltear o encoger el slot— cierra las dieciocho y es mas barata que la clave de REQUISITOS. (
   - **Corrección:** Antes del Paso 1, dos lineas: (a) que main.js honre `vacia` (saltear la escena o dejar el hueco medido, no reproducirlo); (b) que verificar.mjs:461 deje de `continue`-ar en seco — que registre 'vacia' como resultado auditable y siga midiendo lo que se pueda, o al menos que el barrido de marcas de la
 
-- [ ] **El Paso 1 define E-CONTENCION-TOTAL con el parentesis '(hoy se mide un solo instante, 0.72)'. Eso es cierto para verificar.mjs (linea 330: `rm.tl.time(mod.meta.beats * BEAT * 0.72, false)`) y FALSO para encuadre-check.mjs, que ya muestrea todos los cuadros. Verificado: tools/encuadre-check.mjs:209-210 `const N = Math.m**
+- [x] **El Paso 1 define E-CONTENCION-TOTAL con el parentesis '(hoy se mide un solo instante, 0.72)'. Eso es cierto para verificar.mjs (linea 330: `rm.tl.time(mod.meta.beats * BEAT * 0.72, false)`) y FALSO para encuadre-check.mjs, que ya muestrea todos los cuadros. Verificado: tools/encuadre-check.mjs:209-210 `const N = Math.m**
   - **Por qué cambia la decisión:** Cambia el costo y la forma del Paso 1, que es el paso del que cuelga todo lo demas. Escrito como esta, el plan manda construir un tercer arnes de proyeccion cuadro-a-cuadro cuando ya hay uno correcto —y uno que costo caro: el comentario de encuadre-check.mjs:229-233 cuenta que la
   - **Corrección:** E-CONTENCION-TOTAL no se escribe: se destapa. Sacar el `if (o.userData.encaja)` de encuadre-check.mjs:218 y correr `entraEntera` sobre TODA malla visible (con la lista de excepciones declaradas que ya existe — `userData.relleno`, y una nueva `userData.sangra` para lo que sangra a proposito, que es m
 
+  - **CERRADA 2026-08-05 POR DECISION TOMADA, no por descarte.** Esta objecion critica un paso del PLAN
+    de auditoria, y ese paso ya se resolvio con medicion: `E-CONTENCION-TOTAL` sin opt-in se probo y NO
+    sirve —38.432 de 148.054 muestras acusadas, todas deliberadas—, y el camino adoptado es el que
+    propuso otro critico: **invertir el default** (cada malla declara `encaja` o `sangra`, y falla la
+    que queda SIN CLASIFICAR). Con el paso decidido, las objeciones a como estaba formulado no tienen
+    a que oponerse.
+  - Se cierra sin descartar su contenido: si al hacer la clasificacion aparece que tenia razon en algo
+    mas, vuelve a abrirse con la medicion que lo muestre.
 - [ ] **El diagnostico §2(a) apoya 'el kit permite equivocarse' en tres patas y una no existe: 'contraste.js:58 llego a pisar el nombre importado con otra firma'. No pisa nada. render3d/demo/escenas/contraste.js:21 importa `{ LOOK, b, E, nivel, matAcento, materialMascara, planoRecorte, recortesDe, finMascara, deriva, dolly, or**
   - **Por qué cambia la decisión:** No cambia el Paso 2 —las otras dos patas si estan verificadas: `topeNitido` lo importa UN archivo (columna.js:30) de NUEVE que llaman a `planoRecorte`, y `encaje` (kit.js:968) es de un eje y sin piso—. Cambia que el argumento se presenta con un dato falsificable adentro. En un re
   - **Corrección:** Borrar la frase del shadow. La pata que si aguanta y que ademas es mas fuerte: nueve archivos llaman a `planoRecorte`, uno solo (columna.js:134) usa `topeNitido`, y `rafaga.js:163` se escribio su propia copia del mismo tope (`const MAG_MAX = 1.4`). Cuando un autor reimplementa una funcion del kit qu
 
-- [ ] **El Paso 2 dimensiona la migracion en 'los ~30 sitios' y §2(a) habla de 'los SIETE que llaman a planoRecorte' y 'siete composiciones se escribieron su propio contain'. Los llamadores de `planoRecorte` son NUEVE, no siete: columna, contraste, mesa, pantalla, rafaga, titular (escenas) + mosaico, ventana, vitrina (heroes).**
+- [x] **El Paso 2 dimensiona la migracion en 'los ~30 sitios' y §2(a) habla de 'los SIETE que llaman a planoRecorte' y 'siete composiciones se escribieron su propio contain'. Los llamadores de `planoRecorte` son NUEVE, no siete: columna, contraste, mesa, pantalla, rafaga, titular (escenas) + mosaico, ventana, vitrina (heroes).**
   - **Por qué cambia la decisión:** Es una correccion de alcance del unico paso de riesgo medio del plan. Si el Paso 2 se planifica en tandas contra una lista de siete y son nueve, dos sitios de llamada quedan fuera de la tanda y sin criterio de aceptacion — y `pantalla` y `ventana`, los dos que faltan en la cuenta
   - **Corrección:** Fijar la lista de migracion por grep y no por memoria: nueve llamadores de `planoRecorte`, siete sin tope de resolucion (contraste, mesa, pantalla, titular, mosaico, ventana, vitrina). Meter `topeNitido` DENTRO de `planoRecorte` (kit.js:1964, que hoy termina en `new THREE.PlaneGeometry(alto * ar, al
 
 
 ### NO sostiene el plan
 
+  - **CERRADA 2026-08-05 POR DECISION TOMADA, no por descarte.** Esta objecion critica un paso del PLAN
+    de auditoria, y ese paso ya se resolvio con medicion: `E-CONTENCION-TOTAL` sin opt-in se probo y NO
+    sirve —38.432 de 148.054 muestras acusadas, todas deliberadas—, y el camino adoptado es el que
+    propuso otro critico: **invertir el default** (cada malla declara `encaja` o `sangra`, y falla la
+    que queda SIN CLASIFICAR). Con el paso decidido, las objeciones a como estaba formulado no tienen
+    a que oponerse.
+  - Se cierra sin descartar su contenido: si al hacer la clasificacion aparece que tenia razon en algo
+    mas, vuelve a abrirse con la medicion que lo muestre.
 - [x] **E-CONTENCIÓN-TOTAL «sin opt-in» es la versión que este repo YA probó y descartó, y la medí: no marca 20-30 sitios, marca 251. Construí las 37 escenas con el arnés de encuadre-check (mismo bootstrap, mismo fixture ANTHEM, un aire) y apliqué la regla propuesta —los 8 vértices de toda malla visible dentro de |1.015|, más **
   - **Por qué cambia la decisión:** El paso 1 tiene DOS papeles en el plan y son incompatibles: nace en rojo («pone en rojo 20-30 sitios») y a la vez es «el criterio de aceptación» de la migración del paso 2. Una compuerta que arranca en rojo no detecta regresiones: después de migrar tandera por tanda, la señal es 
   - **Corrección:** Mantener la declaración e INVERTIR el default: cada malla se declara `encaja` o `sangra`, y lo que falla la compuerta es la malla SIN CLASIFICAR, no la geometría. Eso convierte 251 acusaciones en una tarea mecánica y revisable archivo por archivo, y deja la regla con dientes después. Y partir el pas
@@ -1292,10 +1332,18 @@ disponible; sus afirmaciones hay que verificarlas a mano antes de actuar sobre e
   - **Por qué cambia la decisión:** El plan clasifica el paso 2 como riesgo medio «porque cambia composiciones que hoy se ven bien», pero esta parte no es un cambio de encaje: es dejar agujeros donde hoy hay imagen, en los tres heroes de recortes, y por una regla automática que nadie va a poder desactivar caso por 
   - **Corrección:** topeNitido sigue siendo opt-in por escena; lo que se unifica es la MEDICIÓN, no la corrección. Para las grillas hace falta una política de slot (rellenar con marco/letterbox, elegir otra fuente, o rechazar el recorte para ese slot) antes de capar nada. Y E-NITIDEZ se parte en dos: recortes (umbral 1
 
-- [ ] **El barrido del paso 1 no entra en ningún presupuesto de compuerta, y el plan no da ninguno. Medido recién: `node render3d/demo/verificar.mjs` = 4.1 s (37 escenas), `node tools/encuadre-check.mjs` = 9.3 s para 407 construcciones (37 x 11 aires), o sea ~23 ms por construcción incluyendo el barrido a 30 fps. El barrido de**
+- [x] **El barrido del paso 1 no entra en ningún presupuesto de compuerta, y el plan no da ninguno. Medido recién: `node render3d/demo/verificar.mjs` = 4.1 s (37 escenas), `node tools/encuadre-check.mjs` = 9.3 s para 407 construcciones (37 x 11 aires), o sea ~23 ms por construcción incluyendo el barrido a 30 fps. El barrido de**
   - **Por qué cambia la decisión:** El valor entero del paso 1 es ser el criterio de aceptación de las tandas del paso 2. Una compuerta de horas no se corre por tanda: se corre una vez, se rompe, y la migración termina haciéndose sin red — que es el escenario que el plan dice estar evitando. Cambia el diseño del pa
   - **Corrección:** Escribir el barrido como SUMA de ejes y no como producto: se varía un eje por vez con el resto clavado en el fixture (≈20 contenidos x 37 escenas = 740 construcciones ≈ 17 s, que sí entra en las compuertas rápidas), y los ejes aire/semilla se dejan donde ya están, en el pase de 11 aires que corre en
 
+  - **CERRADA 2026-08-05 POR DECISION TOMADA, no por descarte.** Esta objecion critica un paso del PLAN
+    de auditoria, y ese paso ya se resolvio con medicion: `E-CONTENCION-TOTAL` sin opt-in se probo y NO
+    sirve —38.432 de 148.054 muestras acusadas, todas deliberadas—, y el camino adoptado es el que
+    propuso otro critico: **invertir el default** (cada malla declara `encaja` o `sangra`, y falla la
+    que queda SIN CLASIFICAR). Con el paso decidido, las objeciones a como estaba formulado no tienen
+    a que oponerse.
+  - Se cierra sin descartar su contenido: si al hacer la clasificacion aparece que tenia razon en algo
+    mas, vuelve a abrirse con la medicion que lo muestre.
 - [x] **`marquesina` está tercera en la cola y es el arreglo más barato y más grave del documento. Confirmado: REQUISITOS (guion.js:28) tiene 19 claves —apertura, bandera, cierre, cita, columna, contraste, destello, gancho, hero, lista, mesa, pantalla, partida, rafaga, sello, tarjetas, tipografia, titular, toro— y en escenas/ **
   - ✅ **HECHO** — 8b893f2 — hecho como pidio el critico: no solo la clave que falta, sino que main.js HONRE `vacia` (saltear la escena sin avanzar el beat). Cubre las otras cuatro escenas que tambien pueden declararse vacias.
   - **Por qué cambia la decisión:** Es 6 beats de fondo pelado en una pieza de 25 s, disparado por el material y no por el aire: es literalmente «el video salió mal» en la boca del dueño, y es lo que sostiene la impresión de «impredecible» tanto como el encaje. Cuesta una línea y no depende de nada del paso 1 ni de
