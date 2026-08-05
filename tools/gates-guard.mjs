@@ -24,6 +24,7 @@
 import { spawn } from 'node:child_process'
 import { vigilar, matarArbol, disponibleMb, MINIMO_ARRANQUE_MB, barrerHuerfanos } from './lib/memoria.mjs'
 import { tomar } from './lib/cerrojo.mjs'
+import { moderarCarga } from './lib/carga.mjs'
 
 // NO SE ARRANCA CON LA MAQUINA YA AHOGADA. Media hora de compuertas para morir en el minuto 20 porque
 // habia tres navegadores abiertos no le sirve a nadie, y ademas es indistinguible de un fallo real.
@@ -62,6 +63,15 @@ if (huerfanos.length) {
 // CUANDO TERMINA la corrida. Media hora de compuertas verdes para explotar en la ultima linea. Ni
 // `node --check` ni una prueba de humo de 70 s lo tocan; con una cadena falsa de un segundo, si.
 const CADENA = process.env.GUARD_CADENA || 'gates:crudo'
+// MODERAR LA CARGA ANTES DE LANZAR NADA. La afinidad se hereda, asi que fijarla aca la reciben el
+// hijo, los nietos y cada Chromium que abra Playwright. Ver la nota larga en lib/carga.mjs: la maquina
+// venia de seis dias estables y se apago tres veces en 50 minutos bajo carga sostenida, sin pantalla
+// azul y sin error de hardware — o sea, no fue memoria.
+const carga = moderarCarga()
+console.error(carga.ok
+  ? `gates-guard: usando ${carga.usar} de ${carga.total} hilos y prioridad baja, para no saturar la maquina`
+  : `gates-guard: no se pudo moderar la carga (${carga.error}) — se sigue igual, es una mitigacion, no la red principal`)
+
 const p = spawn('npm', ['run', CADENA], { shell: true, stdio: ['ignore', 'pipe', 'pipe'] })
 
 // SI MUERE EL GUARD, MUERE LA CADENA. Este es el agujero que colgo la maquina la SEGUNDA vez la misma
