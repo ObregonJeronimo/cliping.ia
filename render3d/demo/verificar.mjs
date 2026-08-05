@@ -468,7 +468,17 @@ for (const id of ids) {
       `E-ENCAJE ${id}: con la marca "${marca}" y el aire ${nomAire}, ${noEncajan.length} pieza(s) declaradas encaja=true se salen del cuadro (${mundoW.toFixed(2)}x${mundoH.toFixed(2)}): ${noEncajan.join(' · ')}`)
     if (peor) {
       if (process.env.MEDIR_ANCHO) console.log(`  ANCHO ${id}/${marca}: alta ${peor.y.toFixed(2)} (ancho ${peor.x.toFixed(2)}) · ancha ${peor.ancha.x.toFixed(2)} = ${(peor.ancha.x / mundoW).toFixed(2)} cuadros`)
-      ok(peor.y <= mundoH * 0.85 && peor.ancha.x <= mundoW * 2.2,
+      // UN TRINQUETE, NO UN TOPE HOLGADO. Estaba en `mundoW * 2.2`, o sea que una pieza podia medir
+      // DOS CUADROS Y MEDIO de ancho y pasar en verde: la ficha lo dice sin vueltas —"un renglon que
+      // sangra el 120% del cuadro por los dos lados pasa"—. Un limite que nada real puede cruzar no
+      // mide nada, solo da confianza.
+      //
+      // Medido sobre las 37 escenas x las marcas x los aires que este chequeo barre: el maximo real es
+      // **7.80 unidades = 1.39 cuadros**. El tope queda en 1.55, un 11% por encima de lo peor que hay
+      // hoy: alcanza para que un cambio normal no lo toque y no alcanza para que una pieza se coma el
+      // cuadro sin que nadie se entere. Igual que el trinquete de `eco-check`, sube el piso de calidad
+      // en vez de premiar el statu quo.
+      ok(peor.y <= mundoH * 0.85 && peor.ancha.x <= mundoW * 1.55,
         `E-ENCAJE ${id}: con la marca "${marca}" y el aire ${nomAire}, una pieza mide ${peor.ancha.x.toFixed(2)} de ancho y otra ${peor.y.toFixed(2)} de alto en un cuadro de ${mundoW.toFixed(2)}x${mundoH.toFixed(2)} — se come el cuadro`)
     }
     // El nombre entero o nada: un truncado silencioso es peor que un nombre chico.

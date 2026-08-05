@@ -616,7 +616,7 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
     (17-22%), y eso no se toco porque en pixeles se ve bien (42 px de margen a la izquierda en un render
     real). Cambiarlo seria arreglar un numero y romper una composicion.
 
-- [ ] **render3d/demo/verificar.mjs:410**
+- [x] **render3d/demo/verificar.mjs:410**
   - **Síntoma:** El heuristico que deberia atrapar 'una pieza se come el cuadro' tiene dos huecos medibles. (1) El umbral de ancho es mundoW * 2.2 = 12.38 unidades: un renglon que sangra el 120% del cuadro por los dos lados pasa. (2) verificar.mjs:404 (`if (!peor || t.y > peor.y) peor = { x: t.x, y: t.y }`) se queda con UNA sola pieza, la mas ALTA, y despues comprueba SU ancho — asi que una linea ancha y baja, que
   - **Lo dispara:** Cualquier tipografia o recorte que se pase del cuadro sin llegar a esos umbrales: hasta 12.38 unidades de ancho (2376 px en un cuadro de 1080, o sea 220% del cuadro) y 8.50 de alto pasan en verde.
   - **Compuerta:** Es la compuerta. Y por eso los dos renglones de arriba (cierre 7.22 de alto, y cualquier recorte ampliado) le pasan por debajo.
@@ -653,6 +653,19 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
     compone a `mundoW * 0.945`— o sea que hay que decidir si ese golpe es legitimo antes de tocar el
     numero. Queda abierto con la medicion escrita, que es lo que pide el metodo: un tope que no se puede
     derivar no se elige a ojo.
+
+- **CERRADO 2026-08-05. Los dos agujeros, cada uno a su manera.**
+  - **El segundo ya estaba tapado:** el chequeo se quedaba con UNA pieza —la mas alta— y despues medi­a
+    SU ancho, asi que una linea ancha y baja pasaba invisible. Ahora sigue los dos ejes por separado
+    (`peor.ancha`), y por eso el maximo que informa es real.
+  - **El primero era un tope que nada podia cruzar.** Estaba en `mundoW * 2.2`: una pieza de DOS CUADROS
+    Y MEDIO de ancho pasaba en verde. La ficha lo dice sin vueltas — "un renglon que sangra el 120% del
+    cuadro por los dos lados pasa". Un limite que nada real alcanza no mide: da confianza.
+  - **Medido sobre todo lo que este chequeo barre (37 escenas x marcas x aires): el maximo real es 7.80
+    unidades = 1.39 cuadros.** El tope baja de 2.2 a **1.55**, un 11% por encima de lo peor que existe
+    hoy. Verificado que MUERDE: puesto en 1.30 acusa; en 1.55 pasa.
+  - Es la misma forma que el trinquete de `eco-check`: sube el piso de calidad en vez de premiar el
+    statu quo, y no se puede aflojar sin que se note en el diff.
 
 - [x] **render3d/demo/datos.js:196-206 (repartirFrases)**
   - **Síntoma:** La falta de material no sale como escena vacia (que se ve y se arregla) sino como TEXTO REPETIDO dentro de la misma escena: la lista enumera A/B/A, las dos mitades de `partida` dicen lo mismo, las dos cintas de la marquesina cruzan la misma frase. Ademas el comentario de datos.js:203-204 dice que el cursor avanza por el pozo COMPLETO y el codigo avanza por el FILTRADO (`_cursor += Math.min(cuantas
