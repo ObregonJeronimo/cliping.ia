@@ -69,7 +69,7 @@ export function build(ctx) {
   // mostrador de frases vino a resolver. Quien la toma primero se la queda; la otra cae a su respaldo.
   marcarClaimUsado()
 
-  const lineas = enLineas(claim, MAX_LINEAS)
+  // (los renglones se eligen mas abajo, cuando ya estan ANCHO_UTIL y ALTO_BASE)
 
   // ---- geometria: bandera a la izquierda, cuerpo de cartel
   // A la izquierda y no centrado: el ojo entra por ahi y el primer cuadro tiene que dar la primera
@@ -92,7 +92,32 @@ export function build(ctx) {
   const COLOR = nivel(CLARO ? 0.96 : 0.62)
 
   const FUENTE = { fuente: 'Anton', peso: 400, size: 190, tracking: 0.004, upper: true, alineado: 'left' }
-  const texs = lineas.map(l => texto(l, FUENTE))
+
+  // CUANTOS RENGLONES: TRES, SALVO QUE TRES DEJEN EL CARTEL ILEGIBLE.
+  //
+  // `MAX_LINEAS = 3` es una decision de composicion y sigue siendo la de siempre. El problema aparece
+  // con claims largos: `encaje` achica el bloque entero hasta que el renglon mas ancho entre, asi que
+  // tres renglones largos dan un cuerpo chico. Medido con los 4 claims reales del repo (78 a 87
+  // caracteres) sobre los 11 aires, el peor cuerpo de esta escena cae a **35 px** de alto sobre 1920 —
+  // por debajo de los 38 px que `hero.js` declara como 'el limite donde la cosa deja de leerse'.
+  //
+  // Con un renglon mas el mismo texto entra mas grande, porque cada renglon es mas corto: medido, de
+  // 43-53 px a 60-67. Asi que se prueban 3, 4 y 5 y se toma EL PRIMERO que pase el piso. Una pagina de
+  // claim corto no se entera —tres renglones ya le sobran— y solo cambian de forma las que hoy salen
+  // ilegibles, que es la unica parte que hay que cambiar.
+  //
+  // El piso es el mismo numero y la misma medida que usa `hero.js`, no uno nuevo: si algun dia se
+  // decide que 38 px no es el limite, se cambia en un lugar y las dos escenas lo siguen.
+  const PISO_LEGIBLE = mundoH * 0.020
+  let lineas = enLineas(claim, MAX_LINEAS)
+  let texs = lineas.map(l => texto(l, FUENTE))
+  for (const n of [MAX_LINEAS + 1, MAX_LINEAS + 2]) {
+    if (encaje(ALTO_BASE, Math.max(...texs.map(t => t.ar)), ANCHO_UTIL) >= PISO_LEGIBLE) break
+    const otras = enLineas(claim, n)
+    if (otras.length <= lineas.length) break            // el texto no da para mas renglones
+    lineas = otras
+    texs = lineas.map(l => texto(l, FUENTE))
+  }
   // El bloque entero se achica hasta que el renglon MAS ANCHO entre: si se midiera renglon por renglon,
   // cada uno saldria de un cuerpo distinto y el bloque dejaria de leerse como un bloque.
   const ALTO_L = encaje(ALTO_BASE, Math.max(...texs.map(t => t.ar)), ANCHO_UTIL)

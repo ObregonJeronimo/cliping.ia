@@ -159,7 +159,19 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
     cae debajo — por 3 px. O sea que el arreglo grande (poner piso al `encaje`, con su trampa conocida
     de cambiar 'ilegible' por 'cortado a los costados' en seis escenas) no esta justificado por estos
     numeros: lo que hay es un caso, no una familia.
-  - Sigue ABIERTO, pero el trabajo que pide ahora es chico y localizado: `gancho` con copy largo.
+  - **HECHO el caso, 2026-08-04: `gancho` adapta sus renglones.** Se prueban 3, 4 y 5 y se toma el
+    PRIMERO que pase el piso. Una pagina de claim corto no se entera —tres renglones ya le sobran— y
+    solo cambian de forma las que hoy salen ilegibles.
+  - **Medido antes y despues, mismos 4 claims reales x 11 aires:** el peor cuerpo de la escena pasa de
+    **35 px** (tailwindcss con el aire nocturno, debajo del piso de 38) a **41 px**. De las cuatro
+    paginas, solo tailwindcss pasa a cuatro renglones; las otras tres siguen en tres.
+  - El piso es el MISMO numero y la misma medida que usa `hero.js`, no uno nuevo: si algun dia se decide
+    que 38 px no es el limite, se cambia en un lugar y las dos escenas lo siguen.
+  - **Lo que NO se hizo, y es el fondo de la ficha:** poner piso al `encaje` del kit. No hace falta:
+    medidas las otras cuatro escenas, quedan entre 21% y 53% por encima del piso. La trampa que el
+    handoff documenta —un piso sin techo de ancho cambia 'ilegible' por 'cortado a los costados'— no se
+    paga por un problema que tenia una sola escena.
+  - Queda ABIERTO por `titular`, que es el unico que no se pudo medir (necesita texturas de recorte).
 
 - [x] **render3d/demo/escenas/mesa.js:78**
   - ✅ **HECHO** — commit de mesa — se achica el PLANO hasta la proporcion real cuando la imagen es mas corta que la ventana, en vez de clampear `visible` y estirar. Verificado renderizando.
