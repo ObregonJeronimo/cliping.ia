@@ -1176,10 +1176,20 @@ Por escena:
       AND BUILDING PRODUCTS WITH AI AGENTS."—, no un logo. Hace exactamente lo que promete. Y el cambio
       medido entre sus cuadros es real (3.07 y 3.11). Su movimiento bajo es **inherente a una placa de
       texto**: una vez revelada tiene que quedarse quieta para poder leerse.
-    - **Y lo que SI queda en pie es el punto ciego de la compuerta**, que es independiente de si `sello`
-      esta bien: `verificar.mjs` mide la firma del GRAFO y ninguna compuerta mira la IMAGEN. Una escena
-      que anime un valor imperceptible pasa en verde viendose como una diapositiva. Hoy ninguna escena
-      lo hace —lo acabamos de comprobar en la unica sospechosa— pero nada lo impide.
+    - **El punto ciego SE CERRO con una compuerta nueva: `tools/imagen-check.py` (E-IMAGEN-SE-MUEVE).**
+      Renderiza dos piezas de verdad y compara los cuadros consecutivos sobre los PIXELES, no sobre el
+      grafo, exigiendo el mismo limite de un beat que declara `verificar.mjs`. Las dos compuertas usan
+      el mismo criterio sobre medidas distintas: la del grafo caza el bug de programacion, esta caza el
+      bug visual.
+      - **Y el umbral costo un error propio que vale anotar.** La primera version exigia igualdad EXACTA
+        de pixeles, razonando que "dos cuadros identicos no admiten interpretacion". Probada contra un
+        video hecho a proposito con UNA SOLA imagen repetida dos segundos, informo **0.00 s**: H.264 no
+        reproduce pixeles identicos. Medido, **232 pixeles de 45.440 difieren en ±1** entre dos cuadros
+        que son la misma imagen.
+      - El umbral sale de los dos extremos medidos, que estan bien separados: **0.005** de cambio medio
+        con la imagen congelada de verdad y **0.370** en la escena mas quieta del motor. El corte va en
+        **0.05**, diez veces por encima del ruido del codec y siete por debajo del movimiento real mas
+        bajo. Verificado que ACUSA: el video congelado da 1.90 s y dispara.
   - **Falta todavia** (2) medir en pixeles y no en firma, para saber cuantas escenas mas estan en esta
     situacion. Lo primero se lee en la escena; lo segundo pide una
     compuerta nueva que compare CUADROS RENDERIZADOS, que es lo que ninguna compuerta hace hoy.
