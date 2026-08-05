@@ -31,3 +31,5 @@ tools/out/motor/
 
 # Investigacion interna: no se pushea
 docs/RESEARCH-RAYLIGHT.md
+
+tools/out/referencia/
