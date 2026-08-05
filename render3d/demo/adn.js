@@ -86,6 +86,28 @@ function forzarContraste(c, fondo, objetivo) {
   return aHex(h)
 }
 
+// EL FONDO NO ES UNO SOLO, Y ESE ERA EL AGUJERO.
+//
+// `fondoVivo` no pinta `bg` plano: mezcla `bg` y `bg2` por distancia, asi que un color que contrasta
+// con `bg` puede perderse contra `bg2`. Forzando solo contra `bg` la paleta quedaba legible sobre la
+// mitad del cuadro. Medido sobre los 7 pagemodels reales x los 11 aires: **88 combinaciones** en las
+// que `acento2` o `calido` cumplen contra `bg` y NO contra `bg2` — por ejemplo un verde #439c6b que
+// sobre blanco da 3.38:1 y sobre #cddbea da 2.40 contra un piso de 3.2.
+//
+// Se empuja hasta que el PEOR de los dos llegue al objetivo. La direccion la decide `bg`, que es el
+// fondo dominante: los dos extremos de una mezcla estan siempre del mismo lado del gris, asi que no
+// hay caso donde alejarse de uno acerque al otro.
+function forzarContraste2(c, f1, f2, objetivo) {
+  const haciaAbajo = lum(f1) > 0.35
+  let h = aHsl(c)
+  const peor = (x) => Math.min(contraste(x, f1), contraste(x, f2))
+  for (let i = 0; i < 90 && peor(aHex(h)) < objetivo; i++) {
+    h = { ...h, l: haciaAbajo ? h.l - 0.015 : h.l + 0.015 }
+    if (h.l <= 0 || h.l >= 1) break
+  }
+  return aHex(h)
+}
+
 // ---------------------------------------------------------------- paleta
 // Por debajo de esto el acento de la marca es GRIS y su tono es ruido de medición: un #6b6b6d tiene un
 // hue perfectamente calculable y perfectamente sin sentido. Sólo ahí se descarta el tono de la marca.
@@ -157,9 +179,10 @@ export function paletaDe(aire, dna) {
   // 1.6:1 — el acento secundario existía en la paleta y era invisible en la pantalla. El salto de tono
   // se conserva; lo que se corrige es la LUMINANCIA, que es lo que no cambia el color percibido.
   const piso = claro ? 3.2 : 2.6
-  acento = forzarContraste(acento, bg, piso)
-  acento2 = forzarContraste(acento2, bg, piso)
-  calido = forzarContraste(calido, bg, piso * 0.85)
+  // Contra los DOS fondos que la mezcla del shader recorre. Ver la nota de `forzarContraste2`.
+  acento = forzarContraste2(acento, bg, bg2, piso)
+  acento2 = forzarContraste2(acento2, bg, bg2, piso)
+  calido = forzarContraste2(calido, bg, bg2, piso * 0.85)
 
   return { paleta: { tinta, bg, bg2, acento, acento2, calido }, claro }
 }

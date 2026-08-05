@@ -77,9 +77,22 @@ for (const { id, pm } of FIX) {
     const piso = a.claro ? 3.2 : 2.6
     const chequeos = [['tinta', P.tinta, 6.5], ['acento', P.acento, piso],
       ['acento2', P.acento2, piso], ['calido', P.calido, piso * 0.85]]
+    // CONTRA LOS DOS FONDOS, NO CONTRA `bg`. Esto medi­a el contraste contra un fondo que NO es el que
+    // se dibuja: `fondoVivo` mezcla `bg` y `bg2` por distancia, asi que un rotulo podia cumplir sobre
+    // `bg` y perderse sobre `bg2` sin que ninguna cifra se moviera.
+    //
+    // ESTE PARCHE ESTUVO DIFERIDO A PROPOSITO, y con razon: aplicado solo, dejaba la compuerta en ROJO
+    // con 88 combinaciones REALES —no falsos positivos—, y una compuerta roja que se aprende a ignorar
+    // es peor que una que mide mal. El orden correcto era al reves y es el que se siguio: primero se
+    // cerraron las 88 en `adn.js` (`forzarContraste2` empuja contra el peor de los dos fondos),
+    // despues se afilo esto. Medido: 88 -> 0, y sin colisiones de paleta entre paginas.
     for (const [rol, col, min] of chequeos) {
-      const c = contraste(col, P.bg)
-      if (c < min - 0.05) F('E-ADN-LEGIBLE', `${etiq}: ${rol} ${col} sobre ${P.bg} da ${c.toFixed(2)}:1, hace falta ${min}`)
+      const cBg = contraste(col, P.bg), cBg2 = contraste(col, P.bg2)
+      const c = Math.min(cBg, cBg2)
+      if (c < min - 0.05) {
+        F('E-ADN-LEGIBLE', `${etiq}: ${rol} ${col} da ${cBg.toFixed(2)}:1 sobre ${P.bg} y ${cBg2.toFixed(2)}:1 sobre ${P.bg2} `
+          + `— el fondo mezcla los dos, asi que vale el peor; hace falta ${min}`)
+      }
     }
 
     ;(porAire[nombreAire] ||= []).push({ id, firma: JSON.stringify(P) })

@@ -914,11 +914,23 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** Ninguna. Se cierra importando REQUISITOS de guion.js en vez de copiarlo — es la misma leccion que el propio archivo saco con el CAT y que adn-check ya aplico importando MARCOS y MONTAJES del kit.
   - `const REQ = {`
 
-- [ ] **tools/adn-check.mjs:78**
+- [x] **tools/adn-check.mjs:78**
   - **Síntoma:** Un pie o un rotulo gris ilegible sobre un fondo que no es el que se midio, sin que ninguna cifra se mueva. Es la misma familia que E-ADN existe para cazar —lo medido no llega a la pantalla— entrando por la puerta de al lado: aca la paleta llega bien y lo que no se mide es lo que la escena pinta con ella.
   - **Lo dispara:** Texto pintado con algo que no sea uno de esos cuatro colores declarados, o sobre algo que no sea `P.bg`. Las escenas escriben sus textos secundarios con la escala `nivel(k)` del kit —destello.js:36 `GRIS = () => nivel(0.62)`, y los rotulos, pies y captions de media docena de escenas— y esos grises n
   - **Compuerta:** Ninguna. adn-check nunca construye una escena (no importa three ni arma un grupo), asi que solo puede juzgar la DECLARACION; y las dos que si construyen no miran color.
   - `const chequeos = [['tinta', P.tinta, 6.5], ['acento', P.acento, piso],`
+  - **CERRADO 2026-08-04, y en el orden correcto: primero las 88, despues la compuerta.**
+  - **Las 88 se cerraron de raiz, no una por una.** El agujero no eran 88 colores mal elegidos: era que
+    `forzarContraste` empujaba contra `bg` mientras `fondoVivo` mezcla `bg` y `bg2` por distancia. Se
+    agrego `forzarContraste2`, que empuja hasta que el PEOR de los dos fondos llegue al objetivo, y se
+    aplica a los tres acentos. Un cambio, 88 casos.
+  - **Medido:** 88 -> 0 sobre los 7 pagemodels reales x los 11 aires, sin colisiones de paleta entre
+    paginas (la variedad que E-ADN-VARIEDAD protege sigue intacta).
+  - **Y la compuerta se afilo despues.** `adn-check` ahora mide contra los dos fondos y se queda con el
+    peor. Verificado que puede ponerse roja: revirtiendo `adn.js` acusa **exactamente 88**
+    E-ADN-LEGIBLE, que es el numero que esta ficha documentaba.
+  - Las 88 se repartian `calido` 47 y `acento2` 41, en los once aires — o sea que era estructural del
+    derivado de la paleta y no de un aire en particular.
 
 
 ---
@@ -1071,6 +1083,11 @@ aplicarlo sin cerrar antes esas 88 rompe una de las 5 rapidas para todo el mundo
 roja que se aprende a ignorar es peor que la que mide mal.
 
 El orden correcto es al reves: primero se cierran las 88, despues se afila la compuerta.
+
+**HECHO el 2026-08-04, en ese orden.** Las 88 se cerraron de raiz con `forzarContraste2` en `adn.js`
+—empuja contra el peor de los dos fondos que el shader mezcla, un cambio para los 88 casos— y recien
+despues se afilo `adn-check`. Medido 88 -> 0, sin colisiones de paleta, y verificado que la compuerta
+nueva acusa exactamente 88 si se revierte el arreglo.
 
 ---
 
