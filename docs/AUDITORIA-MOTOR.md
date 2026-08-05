@@ -1168,8 +1168,14 @@ Por escena:
       Hace exactamente lo que su cabecera declara: "se construye, no aparece" y "compone con el vacio".
       **No es un defecto, y las tres metricas que lo señalaban —ocupacion 0.042, movimiento 0.0129,
       quietud 1.2 s— describen su diseño, no una falla.**
-    - **Lo que NO se miro y queda pendiente:** `gancho`, que tiene el movimiento mas bajo de la pieza
-      (0.0102) y 0.900 de cuadros casi quietos. Mismo procedimiento: leer su cabecera y abrir cuadros.
+    - **`gancho` TAMPOCO es defecto, y era el sospechoso mas fuerte.** Su cabecera dice literalmente
+      *"un logo estatico de dos segundos es la señal de scroll mas confiable que existe"*, o sea que la
+      escena existe para que los primeros dos segundos NO sean estaticos — y es la mas quieta de la
+      pieza segun la metrica. Contradiccion aparente perfecta.
+      Miradas las imagenes: a los 1.2 s muestra un filete y **una promesa** —"PURPOSE-BUILT FOR PLANNING
+      AND BUILDING PRODUCTS WITH AI AGENTS."—, no un logo. Hace exactamente lo que promete. Y el cambio
+      medido entre sus cuadros es real (3.07 y 3.11). Su movimiento bajo es **inherente a una placa de
+      texto**: una vez revelada tiene que quedarse quieta para poder leerse.
     - **Y lo que SI queda en pie es el punto ciego de la compuerta**, que es independiente de si `sello`
       esta bien: `verificar.mjs` mide la firma del GRAFO y ninguna compuerta mira la IMAGEN. Una escena
       que anime un valor imperceptible pasa en verde viendose como una diapositiva. Hoy ninguna escena
