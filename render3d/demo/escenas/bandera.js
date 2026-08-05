@@ -16,7 +16,7 @@
 //
 // CONTRATO: ver escenas/apertura.js
 
-import { LOOK, b, E, texto, nivel, hex, materialMascara, matAcento, CLARO, finMascara, deriva, encaje, dolly } from '../kit.js'
+import { anchoUtil, LOOK, b, E, texto, nivel, hex, materialMascara, matAcento, CLARO, finMascara, deriva, encaje, dolly } from '../kit.js'
 import { D } from '../datos.js'
 
 export const meta = { id: 'bandera', beats: 6 }
@@ -55,7 +55,10 @@ export function build(ctx) {
   // texto encima y un texto del color del fondo es un hueco RECORTADO en el campo. Es la diferencia
   // entre poner el nombre y estamparlo.
   const COLOR_CALADO = nivel(0)
-  const ANCHO_UTIL = mundoW * 0.84
+  // El ancho util sigue al margen que declara el aire, en vez de ignorarlo. Con el margen por
+  // defecto da EXACTAMENTE el mismo numero que antes —cero cambio visible— y el dia que un aire
+  // declare un margen mas apretado, el contenido se acomoda igual que el marco. Ver `anchoUtil`.
+  const ANCHO_UTIL = anchoUtil(mundoW, 0.84)
   const t = texto(marca, { fuente: 'Anton', peso: 400, size: 210, tracking: -0.004, upper: true })
   const ALTO = encaje(mundoH * 0.155, t.ar, ANCHO_UTIL)
   const mat = materialMascara(t.tex, COLOR_CALADO)

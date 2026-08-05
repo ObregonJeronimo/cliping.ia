@@ -18,7 +18,7 @@
 // SIN DOS FRASES NO HAY PAR. Con una, la mitad vacia es un rectangulo de color esperando contenido
 // —el defecto exacto que la regla anti-invencion existe para impedir—. Se declara vacia.
 
-import { LOOK, b, E, texto, nivel, matAcento, materialMascara, CLARO, finMascara, deriva, encaje, dolly , orbita} from '../kit.js'
+import { anchoUtil, LOOK, b, E, texto, nivel, matAcento, materialMascara, CLARO, finMascara, deriva, encaje, dolly , orbita} from '../kit.js'
 import { D, repartirFrases } from '../datos.js'
 
 export const meta = { id: 'partida', beats: 6 }
@@ -46,7 +46,10 @@ export function build(ctx) {
   const COSTURA = 0
   const PANEL_H = mundoH * 0.32
   const MARGEN = mundoW * 0.40
-  const ANCHO_UTIL = mundoW * 0.80
+  // El ancho util sigue al margen que declara el aire, en vez de ignorarlo. Con el margen por
+  // defecto da EXACTAMENTE el mismo numero que antes —cero cambio visible— y el dia que un aire
+  // declare un margen mas apretado, el contenido se acomoda igual que el marco. Ver `anchoUtil`.
+  const ANCHO_UTIL = anchoUtil(mundoW, 0.80)
   const FIN = finMascara()                          // 1 + uSuave: con 1 la ultima letra queda lavada
   const COLOR_TXT = nivel(CLARO ? 0.94 : 0.82)
 

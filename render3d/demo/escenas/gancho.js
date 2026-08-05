@@ -25,7 +25,7 @@
 // CUATRO BEATS Y NO SEIS. Es un gancho: si dura mas deja de ser la entrada y pasa a ser una escena de
 // texto mas, compitiendo con `tipografia` por lo mismo que ella hace mejor.
 
-import { LOOK, b, E, texto, nivel, matAcento, materialMascara, CLARO, finMascara, deriva, encaje, dolly } from '../kit.js'
+import { anchoUtil, LOOK, b, E, texto, nivel, matAcento, materialMascara, CLARO, finMascara, deriva, encaje, dolly } from '../kit.js'
 import { D, marcarClaimUsado } from '../datos.js'
 
 export const meta = { id: 'gancho', beats: 4 }
@@ -75,7 +75,10 @@ export function build(ctx) {
   // A la izquierda y no centrado: el ojo entra por ahi y el primer cuadro tiene que dar la primera
   // palabra sin que nadie la busque. Ademas separa el gancho de la apertura, que compone al centro.
   const MARGEN = -mundoW * 0.42
-  const ANCHO_UTIL = mundoW * 0.84
+  // El ancho util sigue al margen que declara el aire, en vez de ignorarlo. Con el margen por
+  // defecto da EXACTAMENTE el mismo numero que antes —cero cambio visible— y el dia que un aire
+  // declare un margen mas apretado, el contenido se acomoda igual que el marco. Ver `anchoUtil`.
+  const ANCHO_UTIL = anchoUtil(mundoW, 0.84)
   const ALTO_BASE = mundoH * 0.088                  // cuerpo de cartel: casi el 9% del alto por renglon
   // EL COLOR TIENE DOS TRAMPAS Y LAS PISE LAS DOS.
   //

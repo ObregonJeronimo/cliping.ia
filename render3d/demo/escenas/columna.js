@@ -27,7 +27,7 @@
 // SIN RECORTES NO HAY ESCENA. La columna no tiene otro sujeto: si la pagina no dio ni un elemento,
 // devuelve el grupo vacio y ocupa su lugar en silencio. El guionista es quien no deberia elegirla.
 
-import { LOOK, b, E, texto, planoRecorte, recortesDe, nivel, nivelTexto, matAcento, materialMascara, deriva, dolly, orbita, escalera, topeNitido, deslizFijo } from '../kit.js'
+import { anchoUtil, LOOK, b, E, texto, planoRecorte, recortesDe, nivel, nivelTexto, matAcento, materialMascara, deriva, dolly, orbita, escalera, topeNitido, deslizFijo } from '../kit.js'
 import { marca, sello } from '../datos.js'
 
 export const meta = { id: 'columna', beats: 6 }
@@ -253,7 +253,10 @@ export function build(ctx) {
     g.add(mPie)
   }
 
-  const ANCHO_BARRA = mundoW * 0.88
+  // El ancho util sigue al margen que declara el aire, en vez de ignorarlo. Con el margen por
+  // defecto da EXACTAMENTE el mismo numero que antes —cero cambio visible— y el dia que un aire
+  // declare un margen mas apretado, el contenido se acomoda igual que el marco. Ver `anchoUtil`.
+  const ANCHO_BARRA = anchoUtil(mundoW, 0.88)
   const geoBarra = new THREE.PlaneGeometry(ANCHO_BARRA, 0.026)
   geoBarra.translate(ANCHO_BARRA / 2, 0, 0)              // crece desde su borde izquierdo
   const barra = new THREE.Mesh(geoBarra, matAcento(LOOK.acento, 1.15))

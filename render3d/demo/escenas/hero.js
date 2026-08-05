@@ -4,7 +4,7 @@
 // usuario elige "telefono" o "vitrina" y la pieza sigue teniendo la misma cantidad de escenas y la
 // misma duracion. Si el hero pedido no se puede armar con el material que la pagina dio, cae al
 // primero que si — nunca dibuja el objeto vacio.
-import { b, E, LOOK, hex, MOB, texto, materialMascara, nivel, nivelTexto, encaje, finMascara } from '../kit.js'
+import { anchoUtil, b, E, LOOK, hex, MOB, texto, materialMascara, nivel, nivelTexto, encaje, finMascara } from '../kit.js'
 import { HEROES, porId, elegibles } from '../heroes/index.js'
 import { D, repartirFrases } from '../datos.js'
 
@@ -81,7 +81,10 @@ function rotular(ctx, r, elegido) {
 
   const g = new THREE.Group()
   r.g.add(g)
-  const ANCHO = mundoW * 0.80
+  // El ancho util sigue al margen que declara el aire, en vez de ignorarlo. Con el margen por
+  // defecto da EXACTAMENTE el mismo numero que antes —cero cambio visible— y el dia que un aire
+  // declare un margen mas apretado, el contenido se acomoda igual que el marco. Ver `anchoUtil`.
+  const ANCHO = anchoUtil(mundoW, 0.80)
   const t = texto(linea, { fuente: 'DMSans', peso: 700, size: 130, tracking: 0.01, upper: true })
   // CON PISO, Y SI NO ENTRA CON EL PISO NO SE DIBUJA. `encaje` solo achica y no tiene suelo, asi que
   // el rotulo era una funcion inversa del largo de la frase: medido con copy real de linear.app, 'Plan

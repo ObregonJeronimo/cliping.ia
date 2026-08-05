@@ -2267,3 +2267,25 @@ export const magnificaInclinado = (distBase, alto, inclina) => {
   const acerca = Math.abs((alto / 2) * Math.sin(inclina))
   return distBase / Math.max(0.1, distBase - acerca)
 }
+
+// EL ANCHO UTIL, ATADO AL MARGEN QUE DECLARA EL AIRE.
+//
+// `marco()` calcula el rectangulo util del aire y lo DEVUELVE — y no lo lee nadie. Las escenas escriben
+// su ancho a mano: `mundoW * 0.80` en hero y partida, `0.84` en bandera y gancho, `0.86` en columna...
+// Medido: `cierre` respeta el rectangulo en los 9 aires que dibujan marco (2.20 a 2.37 contra X = 2.45)
+// y `apertura` lo cruza en los 9 (2.87 a 2.98, entre 17% y 22% mas ancho que el marco que ella misma
+// dibuja). No se ve como error —en un render real el nombre deja 42 px de margen— asi que forzar el
+// rectangulo moveria veinticinco composiciones que hoy estan bien.
+//
+// La salida no es elegir entre "moverlas todas" o "dejarlo muerto": es que la fraccion escrita a mano
+// SIGA al margen del aire en vez de ignorarlo. `anchoUtil(0.86)` devuelve hoy exactamente
+// `mundoW * 0.86` —porque el margen por defecto es el de referencia— y el dia que un aire declare un
+// margen mas apretado, el contenido se acomoda solo en la misma proporcion en que se movio el marco.
+//
+// O sea: cero cambio visible hoy, y el parametro deja de estar muerto. Que es el defecto que la ficha
+// describe — un parametro declarado que ningun consumidor lee, la misma familia que `camara` y
+// `transiciones` antes de que se conectaran.
+// El mundo llega por el ctx de cada escena, asi que se pasa; el kit no lo conoce.
+const MARGEN_REF = MOBILIARIO_BASE.margen
+export const anchoUtil = (mundoW, frac) => mundoW * frac * ((MOB.margen?.[0] ?? MARGEN_REF[0]) / MARGEN_REF[0])
+export const altoUtil = (mundoH, frac) => mundoH * frac * ((MOB.margen?.[1] ?? MARGEN_REF[1]) / MARGEN_REF[1])

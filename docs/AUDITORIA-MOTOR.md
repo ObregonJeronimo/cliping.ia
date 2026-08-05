@@ -573,7 +573,7 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
   - **Compuerta:** Parcialmente E-ENCAJE-ENTERO (verificar.mjs:395), pero solo sobre las mallas que se declaran: 13 declaraciones de `userData.encaja` en 21 escenas y CERO en los 18 heroes. Lo demas queda con el heuristico, que ademas es flojo (ver el renglon de verifi
   - `export const encaje = (altoBase, arMax, anchoUtil) => altoBase * arMax > anchoUtil ? anchoUtil / arMax : altoBase`
 
-- [ ] **render3d/demo/kit.js:805**
+- [x] **render3d/demo/kit.js:805**
   - **Síntoma:** `marco()` calcula en kit.js:488 el rectangulo util del aire (`const X = mundoW / 2 * m[0], Y = mundoH / 2 * m[1]`) y lo DEVUELVE — y ninguna escena lee X ni Y. Las dos unicas que llaman a marco() (apertura.js:280, cierre.js:210) usan solo `.piezas` y `.tipo`. El ancho util del CONTENIDO sigue escrito a mano y distinto en cada escena: mundoW por 0.80 (hero, partida), 0.84 (bandera, gancho), 0.86 (c
   - **Lo dispara:** Hoy no lo dispara ningun contenido: ningun aire declara `margen`, asi que MOB.margen es siempre [0.87, 0.85] (kit.js:469). Lo dispararia el dia que un aire lo declare, y ese es justo el parametro que el aire existe para tener.
   - **Compuerta:** Ninguna, y no es un caso que una compuerta pueda cazar mirando un cuadro: es un parametro declarado que ningun consumidor lee, la misma clase de defecto que kit.js:34-39 documenta para `camara` y kit.js:448-451 para `transiciones`.
@@ -598,6 +598,23 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
     mismo rectangulo distinto. No hay parche que aplicar hoy —cablear el contenido al rectangulo
     cambiaria el ancho de las 25 composiciones escritas a mano, que es un cambio de diseno— y el dia
     que un aire declare `margen` la inconsistencia se vuelve visible en `apertura` y no en `cierre`.
+
+- **CERRADO 2026-08-05, sin mover una sola composicion.** La ficha planteaba una disyuntiva que no
+  habia que aceptar: o se forzaba el rectangulo y se movian veinticinco composiciones que hoy estan
+  bien, o el parametro seguia muerto.
+  - La salida es que la fraccion escrita a mano **siga** al margen del aire en vez de ignorarlo.
+    `anchoUtil(mundoW, 0.86)` devuelve HOY exactamente `mundoW * 0.86` —porque el margen por defecto es
+    el de referencia— y el dia que un aire declare uno mas apretado, el contenido se acomoda en la misma
+    proporcion en que se movio el marco.
+  - **Comprobado que es un no-op exacto:** con el margen por defecto, `anchoUtil(5.06, 0.86)` = 4.3516 y
+    `mundoW * 0.86` = 4.3516. Con un aire que declarara `margen: [0.70, ...]` da 3.5013, o sea que
+    sigue al marco.
+  - Aplicado a las cinco escenas que la ficha nombra (`hero` y `partida` 0.80, `bandera` y `gancho`
+    0.84, `columna` 0.88). Las ocho compuertas rapidas y `fondo-check`, verdes — como tienen que estar,
+    porque el numero no se movio.
+  - **Lo que NO se hizo, y queda dicho:** `apertura` sigue cruzando el rectangulo que ella misma dibuja
+    (17-22%), y eso no se toco porque en pixeles se ve bien (42 px de margen a la izquierda en un render
+    real). Cambiarlo seria arreglar un numero y romper una composicion.
 
 - [ ] **render3d/demo/verificar.mjs:410**
   - **Síntoma:** El heuristico que deberia atrapar 'una pieza se come el cuadro' tiene dos huecos medibles. (1) El umbral de ancho es mundoW * 2.2 = 12.38 unidades: un renglon que sangra el 120% del cuadro por los dos lados pasa. (2) verificar.mjs:404 (`if (!peor || t.y > peor.y) peor = { x: t.x, y: t.y }`) se queda con UNA sola pieza, la mas ALTA, y despues comprueba SU ancho — asi que una linea ancha y baja, que
