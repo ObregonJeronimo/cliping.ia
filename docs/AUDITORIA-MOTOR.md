@@ -1152,9 +1152,18 @@ Por escena:
     - **La quietud, en cambio, contradice su propia intencion escrita:** *"SE CONSTRUYE, NO APARECE. El
       anillo se dibuja arco por arco, los ejes crecen desde el centro y el nombre se escribe al final:
       la escena es el PROCESO de sellar"*. Una escena que se define como un proceso no deberia
-      detenerse 1.2 s. **Falta medir CUANDO ocurre esa quietud** —si es despues de terminar el trazo,
-      es un remate largo; si es en el medio, es el proceso que se corta—, y eso decide si es defecto o
-      es cierre.
+      detenerse 1.2 s.
+    - **PERO MEDIDO CUADRO A CUADRO, `sello` NO SE CONGELA NUNCA — y esto tumba mi propia acusacion.**
+      Extraidos los cuadros de su tramo (12.94s a 16.47s) y comparados de a diez por segundo, el cambio
+      nunca baja de 0.37 y llega a 1.89; el corte al final marca 76.11, o sea que la escala esta bien
+      calibrada. **No hay un solo instante congelado.**
+    - Lo que `medir-video.py` llama "quietud maxima 1.2 s" son cuadros POR DEBAJO DE UN UMBRAL de
+      similitud, no cuadros identicos. La metrica es util para ordenar escenas de mas a menos quieta y
+      **no sirve para afirmar "esto se congelo"** — que es exactamente lo que yo estaba por escribir.
+    - **Lo que queda es una pregunta de criterio, no de medicion:** el movimiento de `sello` es real
+      pero de amplitud baja. Si eso se lee como diapositiva no lo decide un numero: hay que MIRAR los
+      cuadros. Es el paso 2 del procedimiento del CLAUDE.md —abrir 10 a 15 a resolucion completa— y
+      queda como lo siguiente del barrido.
   - **Falta todavia** (2) medir en pixeles y no en firma, para saber cuantas escenas mas estan en esta
     situacion. Lo primero se lee en la escena; lo segundo pide una
     compuerta nueva que compare CUADROS RENDERIZADOS, que es lo que ninguna compuerta hace hoy.
