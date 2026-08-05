@@ -23,13 +23,20 @@ const L = readFileSync(join(RAIZ, 'docs', 'AUDITORIA-MOTOR.md'), 'utf8').split(/
 // hallazgo; una que empieza con `- SEGUIMIENTO` es una nota sobre otro y NO se cuenta.
 const ABIERTO = /^- \[ \] \*\*(.+?)\*\*/
 const CERRADO = /^- \[x\] \*\*(.+?)\*\*/i
+// Y SE AVISA DE LAS FILAS QUE EL CONTADOR NO PUEDE VER. Si alguien parte el titulo de una ficha en dos
+// lineas, el `**` de cierre queda en la segunda y la fila deja de matchear: desaparece del conteo sin
+// que nada falle. Me paso escribiendo una ficha, y el total bajo de 103 a 102 en silencio — que es
+// exactamente la clase de mentira que este contador vino a evitar.
+const HUERFANA = /^- \[[ x]\] /i
 
 let sec = ''
 const abiertos = []
 let cerrados = 0, seguimientos = 0
+const huerfanas = []
 for (const l of L) {
   if (l.startsWith('## ')) sec = l.slice(3).trim()
   if (l.startsWith('- SEGUIMIENTO')) { seguimientos++; continue }
+  if (HUERFANA.test(l) && (l.match(/\*\*/g) || []).length < 2) huerfanas.push(l.slice(0, 78))
   const a = l.match(ABIERTO)
   if (a) { abiertos.push({ sec, t: a[1] }); continue }
   if (CERRADO.test(l)) cerrados++
@@ -48,6 +55,11 @@ for (const h of abiertos) {
   grupos.get(c).push(h.t)
 }
 
+if (huerfanas.length) {
+  console.log(`AVISO: ${huerfanas.length} fila(s) con el titulo partido en dos lineas — el contador NO las ve:`)
+  for (const h of huerfanas) console.log('  ' + h)
+  console.log('')
+}
 const total = abiertos.length + cerrados
 console.log(`AUDITORIA: ${abiertos.length} abiertos · ${cerrados} cerrados · ${total} en total`)
 console.log(`  (${seguimientos} notas de SEGUIMIENTO, que por regla del documento no se cuentan)`)

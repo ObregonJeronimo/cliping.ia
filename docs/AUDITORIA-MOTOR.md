@@ -1055,8 +1055,7 @@ El orden correcto es al reves: primero se cierran las 88, despues se afila la co
     lo esta. CLAUDE.md ya lo dice —'verlo en el cuadro completo', 'si una metrica da fuera de rango eso
     prueba que hay algo que explicar, no que hay un defecto'— y lo que faltaba era medir los pixeles del
     cuadro que estaba mirando, que cuesta cinco lineas.
-- [x] **render3d/demo/escenas/apertura.js — el sosten de la cortina se mide en beats y el tiempo muerto
-  se percibe en segundos**
+- [x] **render3d/demo/escenas/apertura.js — el sosten de la cortina se mide en beats y el tiempo muerto se percibe en segundos**
   - **CORRECCION DE COMO LO ABRI.** Lo escribi como 'la pieza abre con medio segundo de NADA'. Es
     falso: lo que hay es LA CORTINA —una pared del color de la marca que tapa el cuadro y se corre en
     diagonal—, y esta puesta A PROPOSITO para arreglar un defecto anterior. Su razonamiento esta en el
