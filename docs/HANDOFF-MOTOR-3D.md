@@ -56,11 +56,16 @@ Y lo que corres **siempre** antes de pushear:
 npm run gates:guard
 ```
 
-**ANTES DE CORRER ESTO, AVISALE AL OTRO.** Jero y vos comparten el repo pero no la maquina. Corré
-`npm run costo`, que dice cuanta RAM pidio cada tarea **en TU maquina** y cuanta quedaria libre si
-arrancas ahora, y decilo en el chat con el numero antes de largar. Si la tarea nunca se corrio en tu
-PC, `npm run costo` te lo dice — y eso tambien hay que decirlo, porque lo medido en la maquina de Jero
-no predice nada sobre la tuya. La regla completa esta arriba de todo en el CLAUDE.md.
+**ANTES DE CORRER ESTO, AVISALE.** Jero y vos comparten el repo pero no la maquina. Antes de largar
+algo pesado hay que mirar cuanta RAM hay libre (`npm run costo`, que ademas dice cuanto pidio esa tarea
+**en TU maquina**), que aplicaciones tenes abiertas y cuanto ocupan, y decir en el chat **cuanto te va a
+quedar libre**.
+
+Y el tono depende de lo que se encuentre: si hay algo pesado abierto (Photoshop, OBS, una VM) se nombra
+y se recomienda no usarlo mientras corre; si estas solo con el navegador, alcanza con pedir **un OK
+amplio para seguir sin parar**, con el compromiso de avisar si vas a abrir algo pesado. La regla
+completa, con los dos ejemplos de como decirlo, esta **arriba de todo en el CLAUDE.md** — que es el
+archivo que tu sesion de Claude lee sola, sin que se lo pegues.
 
 **Ya no hay comando peligroso que tipear por reflejo.** `npm run gates` ES el vigilado; la cadena cruda
 se llama `gates:crudo`. Antes era al reves y por eso este parrafo decia "nunca `npm run gates` pelado":

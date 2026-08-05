@@ -3,27 +3,51 @@
 ## AVISAR ANTES DE CUALQUIER TRABAJO PESADO — y esperar el OK
 
 Esto es una regla de convivencia, no una recomendación técnica. **Jero y Thiago comparten este repo
-pero trabajan en dos PC distintas**, con memoria y componentes distintos, y ninguno de los dos puede
-adivinar cuándo el asistente está por ocuparle media máquina. Sin aviso, abrir Photoshop o empezar a
-stremear en el momento equivocado cuelga el equipo — y ya pasó: la noche del 4 de agosto de 2026 se
-colgó **tres veces**, con Photoshop y OBS abiertos, mientras corrían las compuertas.
+pero trabajan en dos PC distintas**, y ninguno puede adivinar cuándo el asistente está por ocuparle
+media máquina. Sin aviso, abrir Photoshop o empezar a stremear en el momento equivocado cuelga el
+equipo — y ya pasó: la noche del 4 de agosto de 2026 se colgó **tres veces**, con Photoshop y OBS
+abiertos, mientras corrían las compuertas. El evento 2004 de Windows lo dejó por escrito: `node.exe`
+pidiendo 42 GB en una máquina de 15.
 
-**Antes de lanzar cualquier cosa pesada** —`npm run gates`, un render de `backend/motor.py`, un barrido
-que construya cientos de escenas, cualquier cosa que se corra con `npm run pesado`— hay que:
+**Qué cuenta como pesado:** `npm run gates`, un render de `backend/motor.py`, un barrido que construya
+cientos de escenas, cualquier cosa lanzada con `npm run pesado`. **Qué no:** las 10 compuertas rápidas
+(~12 s), leer archivos, editar código, medir sin renderizar. La regla es para lo que ocupa la máquina.
 
-1. **Correr `npm run costo`** y leer lo medido **en esta máquina**. Da, por tarea, cuánta RAM pidió en
-   el peor caso ya visto y cuánto quedaría libre si se arranca ahora.
-2. **Decirlo en el chat, con los números**: qué se va a correr, cuánto tarda, y **cuántos MB van a
-   quedar libres**. Por ejemplo: *"voy a correr el guard completo, ~30 min; midió 4.8 GB en el peor
-   caso y ahora hay 7.5 GB, así que te quedan ~2.7 GB — no abras Photoshop mientras tanto"*.
-3. **Esperar el OK.** No arrancar y avisar después.
+### Antes de largar, mirar tres cosas
 
-**Si la tarea nunca se corrió en esta máquina, `npm run costo` lo dice y hay que decirlo también.** Un
-consumo medido en la PC de Jero **no predice nada** sobre la de Thiago. Dar el número de la otra máquina
-como si fuera propio es un dato falso con cara de medición, que es peor que decir "todavía no lo sé".
+1. **Cuánta RAM hay disponible ahora** y **cuánto pidió esa tarea en ESTA máquina**: `npm run costo`.
+2. **Qué aplicaciones tiene abiertas la persona**, y cuánto ocupan. Se mide, no se supone.
+3. Con eso, **cuánto le va a quedar libre mientras trabajás**.
 
-Lo que **no** hace falta avisar: las 10 compuertas rápidas (~12 s), leer archivos, editar código, medir
-sin renderizar. La regla es para lo que ocupa la máquina, no para todo.
+Sobre el punto 2, un límite honesto: se puede ver **qué hay abierto ahora y cuánto ocupa**. "Qué venías
+usando la última hora" no se puede saber sin inventarlo — y acá inventar un dato es exactamente lo que
+no se hace. Decí lo que medís.
+
+### Y después, elegir el tono según lo que encontraste
+
+**Si hay aplicaciones pesadas abiertas** (Photoshop, OBS, Premiere, After Effects, DaVinci, Blender,
+una VM, un juego), el aviso es completo y nombra la aplicación:
+
+> Voy a empezar algo pesado: el guard completo, ~30 min. En esta máquina midió 4,8 GB en el peor caso
+> y ahora hay 7,5 GB disponibles, así que te quedarían ~2,7 GB. Veo Photoshop abierto ocupando 8,5 GB
+> y OBS — **no te recomiendo usarlos mientras corre esto**, podría congelarte la PC. ¿Te parece que
+> arranque, o preferís que espere a que termines?
+
+**Si sólo hay aplicaciones livianas** (el navegador, el editor, Spotify), el aviso es corto y pide un OK
+que valga para todo el rato, en vez de interrumpir cada vez:
+
+> Veo que estás sólo con el navegador, que consume poco — con eso no hay problema. Voy a seguir con
+> trabajo pesado un rato largo. **¿Me das el OK para seguir sin parar?** Si en algún momento vas a abrir
+> algo pesado (Photoshop, OBS, un juego), avisame y freno.
+
+**Ese OK amplio dura mientras la situación no cambie.** No hay que volver a preguntar por cada tarea:
+se pregunta de nuevo si la persona avisa que abrió algo pesado, si aparece una aplicación pesada
+nueva, o si la RAM disponible cae tanto que la cuenta ya no cierra.
+
+**Si la tarea nunca se corrió en esta máquina, `npm run costo` lo dice y hay que decirlo también.** Lo
+medido en la PC de Jero **no predice nada** sobre la de Thiago: otra memoria, otros componentes. Dar el
+número de la otra máquina como si fuera propio es un dato falso con cara de medición, y eso es peor que
+decir "todavía no lo sé, es la primera vez que lo corro acá".
 
 ## Cómo se audita un video del MOTOR 3D
 
