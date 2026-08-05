@@ -63,9 +63,14 @@ if (gasto) {
   const piso = pisoPara(disp)
   console.error(`pesado: esta tarea pidio hasta ${gasto.pidioMbPeor} MB en esta maquina (${gasto.corridas} corridas). `
     + `Con ${disp} MB disponibles quedarian ~${quedaria} MB.`)
-  if (quedaria < piso) {
+  if (quedaria < piso && !process.env.PESADO_IGNORAR_HISTORIAL) {
     console.error(`pesado: NO ARRANCA — quedarian ${quedaria} MB, por debajo del piso de ${piso}. `
       + `Cerrá algunas aplicaciones (te faltan ~${piso - quedaria} MB) y volvé a intentar.`)
+    // LA PUERTA DE ATRAS SE DICE, no se esconde. Si la tarea acaba de arreglarse, el historial todavia
+    // guarda el consumo de ANTES y esta negativa es un fantasma. Ocultarlo obliga a borrar el historial
+    // a mano, que es peor: se pierde todo lo medido en esta maquina.
+    console.error('pesado: si acabás de arreglar esta tarea, el numero de arriba es viejo. '
+      + 'Corré una vez con  PESADO_IGNORAR_HISTORIAL=1  para volver a medirla.')
     process.exit(2)
   }
 } else {

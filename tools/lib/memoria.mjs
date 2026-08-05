@@ -220,13 +220,20 @@ export function costoDe(quien) {
       // Ver la nota en tools/costo.mjs: sin `minimoMb`, `arranco - null` da `arranco` y la fila miente.
       .filter(f => f && f.equipo === hostname() && f.quien === claveDe(quien) && !f.cortado && Number.isFinite(f.minimoMb))
     if (!filas.length) return null
-    const usos = filas.map(f => f.arrancoConMb - f.minimoMb).filter(n => Number.isFinite(n) && n > 0)
+    // SOLO LAS ULTIMAS CORRIDAS, no todo el historial. Y esto salio de tropezarlo: se arreglo la fuga de
+    // `urvid1-qa` —de 6.5 GB a una fraccion— y el propio guardian se nego a dejarla correr, porque el
+    // "peor caso" seguia siendo el de ANTES del arreglo. Un historial que nunca olvida convierte cada
+    // fuga arreglada en una tarea prohibida para siempre.
+    //
+    // Cinco corridas alcanzan para que un arreglo se note y para que un pico raro no se pierda enseguida.
+    const recientes = filas.slice(-5)
+    const usos = recientes.map(f => f.arrancoConMb - f.minimoMb).filter(n => Number.isFinite(n) && n > 0)
     if (!usos.length) return null
     return {
-      corridas: filas.length,
+      corridas: recientes.length,
       pidioMbTipico: Math.round(usos.reduce((a, b) => a + b, 0) / usos.length),
       pidioMbPeor: Math.max(...usos),
-      segundosTipico: Math.round(filas.reduce((a, f) => a + (f.segundos || 0), 0) / filas.length),
+      segundosTipico: Math.round(recientes.reduce((a, f) => a + (f.segundos || 0), 0) / recientes.length),
     }
   } catch { return null }
 }

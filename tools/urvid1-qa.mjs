@@ -43,10 +43,45 @@ function box(r) {
   return { left, right: left + r.w, top, bottom: r.y + r.size * 0.62 }
 }
 
+// SE CORRE POR PARTES, UN RUBRO POR PROCESO. Misma fuga que en el motor 3D: cada texto rasterizado
+// compromete pixeles que la libreria nativa de canvas no devuelve, y esta compuerta arma muchos videos.
+// Medida desde afuera —con Windows, porque Node no lo ve— llegaba a **6536 MB comprometidos** y el
+// vigilante la mataba, cortando la cadena entera del guard sin que ninguna compuerta estuviera en rojo.
+//
+// El hijo emite sus defectos y sus contadores, el padre los junta. El veredicto sale del total.
+if (!process.env.QA_RUBRO) {
+  const { spawnSync } = await import('node:child_process')
+  const todo = { listSize: [], ellipsis: [], timing: [], offCanvas: [] }
+  let escenas = 0, trans = 0, videos = 0
+  for (const r of RUBROS) {
+    const res = spawnSync(process.execPath, [process.argv[1]],
+      { env: { ...process.env, QA_RUBRO: String(r) }, encoding: 'utf8' })
+    const txt = (res.stdout || '') + (res.stderr || '')
+    const linea = txt.split(String.fromCharCode(10)).find(l => l.startsWith('##QA##'))
+    if (!linea) { console.log(txt); console.log('GATE QA: una parte no devolvio contadores.'); process.exit(1) }
+    const d = JSON.parse(linea.slice(6))
+    for (const k of Object.keys(todo)) todo[k].push(...d.defects[k])
+    escenas += d.escenas; trans += d.trans; videos += d.videos
+  }
+  console.log(`QA: ${videos} videos · ${escenas} escenas · ${trans} frames de transicion `
+    + `(${RUBROS.length} rubros, cada uno en su propio proceso para que la memoria vuelva al sistema)`)
+  const ver = (nombre, arr) => {
+    console.log(`${arr.length === 0 ? 'OK ' : 'XX '} ${nombre}: ${arr.length}`)
+    for (const e of arr.slice(0, 6)) console.log('     - ' + e)
+    if (arr.length > 6) console.log(`     ... +${arr.length - 6} mas`)
+  }
+  ver('LISTA tamanos disparejos', todo.listSize)
+  ver('ELLIPSIS (texto cortado)', todo.ellipsis)
+  ver('TIMING (A y B juntos en transicion)', todo.timing)
+  const duros = todo.listSize.length + todo.ellipsis.length + todo.timing.length
+  console.log(String.fromCharCode(10) + (duros === 0 ? 'GATE QA OK (cero defectos duros).' : `GATE QA: ${duros} defectos duros.`))
+  process.exit(duros === 0 ? 0 : 1)
+}
+
 const defects = { listSize: [], ellipsis: [], timing: [], offCanvas: [] }
 let scenesChecked = 0, transChecked = 0
 
-for (const rubro of RUBROS) {
+for (const rubro of RUBROS.filter(r => String(r) === process.env.QA_RUBRO)) {
   for (const tone of ['dark', 'light']) {
     for (let s = 1; s <= SEEDS; s++) {
       const brief = { brand: 'Google', rubro, tone, brandColor: '#4285F4', seed: s, content: CONTENT }
@@ -97,6 +132,9 @@ for (const rubro of RUBROS) {
 }
 
 const N = RUBROS.length * 2 * SEEDS
+// El hijo no juzga: emite y el padre junta. Ver la nota de arriba.
+console.log('##QA##' + JSON.stringify({ defects, escenas: scenesChecked, trans: transChecked, videos: N }))
+process.exit(0)
 console.log(`QA: ${N} videos · ${scenesChecked} escenas · ${transChecked} frames de transicion\n`)
 const show = (name, arr, hard) => {
   console.log(`${arr.length === 0 ? 'OK ' : (hard ? 'XX ' : '!! ')} ${name}: ${arr.length}`)
