@@ -205,6 +205,36 @@ function tapaDeVerdad(banda, texto) {
   return bh >= (texto.y1 - texto.y0) * 0.5
 }
 
+// LAS TEXTURAS DE RECORTE, O LA MITAD DE LAS ESCENAS NO SE CONSTRUYE. Aca se pasaba un `Map` vacio, asi
+// que toda escena que necesita una imagen de la pagina se declaraba `vacia` y quedaba sin medir —
+// `mesa` y `columna` entre ellas, que son justo dos fichas abiertas de la auditoria.
+//
+// Es exactamente la trampa que `eco-check` ya documenta: sus texturas se llenaban con claves 'f0'..'f4'
+// mientras `datosEls` trae las urls del fixture, no resolvia ninguna, y la medicion decia "titular se
+// cae el 100% de las veces". Era el arnes, no el motor. Se copian las claves REALES.
+function tejido(els = []) {
+  const m = new Map()
+  const ARS = [2.4, 1.0, 0.6, 3.4, 1.35]
+  ARS.forEach((ar, i) => {
+    const h = 64, w = Math.max(2, Math.round(h * ar))
+    const t = new THREE.CanvasTexture(lienzo(w, h))
+    t.image = { width: w, height: h }
+    m.set('f' + i, t)
+  })
+  ;(els || []).forEach((e, i) => {
+    if (!e || !e.url) return
+    const ar = ARS[i % ARS.length]
+    const h = 64, w = Math.max(2, Math.round(h * ar))
+    const t = new THREE.CanvasTexture(lienzo(w, h))
+    t.image = { width: w, height: h }
+    m.set(e.url, t)
+  })
+  const tira = new THREE.CanvasTexture(lienzo(4, 4))
+  tira.image = { width: 720, height: 6240 }
+  m.set('tira', tira)
+  return m
+}
+
 const fallos = []
 const F = (m) => fallos.push(m)
 let textos = 0, sobreBanda = 0, construidas = 0, porLimpiar = 0
@@ -248,7 +278,7 @@ for (const { id: idPag, pm } of _lote) {
           fondo: { uT: { value: 0 }, uGrilla: { value: 0.55 }, uPulso: { value: 0 }, uA: { value: new THREE.Color(a.paleta.bg) }, uB: { value: new THREE.Color(a.paleta.bg2) } },
           pelicula: { uT: { value: 0 }, uFlash: { value: 0 }, uGrano: { value: 0.055 }, uVinieta: { value: 0.9 }, uAberr: { value: 0.0022 } },
           bloom: { strength: 0.85, radius: 0.62, threshold: (aire.pelicula || {}).umbral ?? 0.62 },
-          texturas: new Map(), datosEls: datos.elementos || [],
+          texturas: tejido(datos.elementos || []), datosEls: datos.elementos || [],
           spec: { tiraViewport: 1560, aire: nombreAire },
           claro: a.claro, repeticion: 0,
         })

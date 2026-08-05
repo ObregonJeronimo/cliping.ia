@@ -1197,9 +1197,12 @@ nueva acusa exactamente 88 si se revierte el arreglo.
   - Y el instrumento tuvo que corregirse dos veces antes de servir: media TODAS las mallas (los
     ornamentos sangran a proposito) y proyectaba vertices que estaban DETRAS de la camara, donde la
     proyeccion se invierte y da numeros sin sentido — la primera lectura fue "5808 anchos de cuadro".
-  - Queda anotado que `mesa` y `columna` **no se pudieron medir con este barrido**: sin texturas de
-    recortes ninguna de las dos llega a construirse, asi que su ficha sigue abierta por falta de
-    medicion, no por falta de arreglo.
+  - Quedo anotado que `mesa` y `columna` no se podian medir porque sin texturas de recortes no llegan a
+    construirse — y ese era **un defecto del arnes, no del motor**. Corregido: `fondo-check` ahora teje
+    las texturas con las claves REALES del fixture, igual que `eco-check`, que ya documentaba
+    exactamente esta trampa (*"la primera medicion decia titular se cae el 100% de las veces, y era el
+    arnes"*). Yo la volvi a pisar pasando un `Map` vacio. Cobertura: **171 -> 219 construcciones** sobre
+    el mismo barrido parcial, o sea un 28% mas de escenas medidas, y el barrido completo sigue verde.
 
 - [x] **render3d/demo/escenas/destello.js — FALSO POSITIVO MIO, retirado el 2026-08-04**
   - Lo abri diciendo que con copy real y un aire de tipografia ancha el titular se salia del cuadro por
