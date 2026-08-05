@@ -1126,7 +1126,7 @@ Por escena:
       0.133 del cuadro y no corta ni una vez baja el promedio de toda la pieza.
     - **La quietud NO es solo `hero`:** 0.439 sin el sigue por encima de las cuatro referencias.
 
-- [ ] **La segunda causa: `sello` y `gancho`, y la compuerta que los deja pasar mide OTRA COSA**
+- [x] **La segunda causa: `sello` NO era defecto; queda `gancho` sin mirar, y un punto ciego real**
   - **Medido, desglose de vis2 (semilla 11, sin `hero`):**
 
     | escena | cortes | movimiento | casi quietos | quietud max |
@@ -1160,10 +1160,20 @@ Por escena:
     - Lo que `medir-video.py` llama "quietud maxima 1.2 s" son cuadros POR DEBAJO DE UN UMBRAL de
       similitud, no cuadros identicos. La metrica es util para ordenar escenas de mas a menos quieta y
       **no sirve para afirmar "esto se congelo"** — que es exactamente lo que yo estaba por escribir.
-    - **Lo que queda es una pregunta de criterio, no de medicion:** el movimiento de `sello` es real
-      pero de amplitud baja. Si eso se lee como diapositiva no lo decide un numero: hay que MIRAR los
-      cuadros. Es el paso 2 del procedimiento del CLAUDE.md —abrir 10 a 15 a resolucion completa— y
-      queda como lo siguiente del barrido.
+    - **MIRADOS LOS CUADROS (paso 2 del procedimiento), `sello` esta BIEN y la ficha se cierra.**
+      Abiertos a resolucion completa los cuadros de 13.2s, 14.0s, 14.8s y 15.6s de su tramo:
+      - **13.2 s** (0.26 s dentro de la escena): un solo arco trazandose. Se esta construyendo.
+      - **15.6 s**: el sello completo — circulo rojo, ejes azules en cruz, `LINEAR` centrado y
+        `LINEAR.APP` al pie. Limpio, legible, compuesto.
+      Hace exactamente lo que su cabecera declara: "se construye, no aparece" y "compone con el vacio".
+      **No es un defecto, y las tres metricas que lo señalaban —ocupacion 0.042, movimiento 0.0129,
+      quietud 1.2 s— describen su diseño, no una falla.**
+    - **Lo que NO se miro y queda pendiente:** `gancho`, que tiene el movimiento mas bajo de la pieza
+      (0.0102) y 0.900 de cuadros casi quietos. Mismo procedimiento: leer su cabecera y abrir cuadros.
+    - **Y lo que SI queda en pie es el punto ciego de la compuerta**, que es independiente de si `sello`
+      esta bien: `verificar.mjs` mide la firma del GRAFO y ninguna compuerta mira la IMAGEN. Una escena
+      que anime un valor imperceptible pasa en verde viendose como una diapositiva. Hoy ninguna escena
+      lo hace —lo acabamos de comprobar en la unica sospechosa— pero nada lo impide.
   - **Falta todavia** (2) medir en pixeles y no en firma, para saber cuantas escenas mas estan en esta
     situacion. Lo primero se lee en la escena; lo segundo pide una
     compuerta nueva que compare CUADROS RENDERIZADOS, que es lo que ninguna compuerta hace hoy.
