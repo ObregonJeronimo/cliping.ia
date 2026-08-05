@@ -91,8 +91,29 @@ Lo que hay ahora, y **no hace falta acordarse de nada**:
   render y un guard a la vez ya no arrancan. El segundo dice quién lo tiene y desde cuándo.
 - **Si hay menos de 1200 MB disponibles, el guard no arranca** y te dice que cierres aplicaciones.
 
-Todo esto está probado, no razonado: el cerrojo se probó desde Node y desde Python, el vigilante se
-probó matando un proceso que pedía 1,3 GB/s, y el cerrojo huérfano se probó con un pid muerto.
+### Y se colgó una segunda vez esa misma noche, arreglándolo
+
+El primer arreglo tenía un agujero, y lo abrió la **prueba de humo del propio guard**: se corrió
+`timeout 70 node tools/gates-guard.mjs`, el timeout mató al guard, el guard soltó el cerrojo
+ordenadamente... y `npm run gates:crudo` —con su node y su Chromium debajo— **siguió corriendo
+huérfano**, sin vigilante y sin cerrojo. Cuatro minutos después la máquina no respondía.
+
+En Windows un proceso no se lleva a sus hijos al morir. Está probado, no supuesto: matando sólo al
+padre, `npm` y `node` sobreviven.
+
+- **Si muere el guard, muere la cadena** — en cualquier muerte: Ctrl-C, timeout, cerrar la terminal, una
+  excepción.
+- **Barrido de huérfanos al arrancar.** Con el cerrojo en la mano, cualquier cadena viva es un huérfano
+  de una corrida anterior; se mata y se informa.
+
+**Y no se prueba un vigilante de memoria agotando la memoria de verdad.** La primera prueba lanzaba un
+proceso que pedía 200 MB cada 150 ms y dejó el disponible en 626 MB: estuvo a un pelo de colgar la
+máquina para comprobar que la máquina no se cuelga. Ahora el lector se inyecta y la caída se **simula**:
+`node tools/memoria-test.mjs` corre en 5 segundos y no reserva un solo byte.
+
+Todo esto está probado, no razonado — y la prueba corre sola, es la primera de `npm run gates`:
+piso adaptativo, caída sostenida, pico que no debe disparar, caída crítica sin espera, muestreo roto que
+aborta, huérfanos, cerrojo, y el guard entero de punta a punta con una cadena falsa de un segundo.
 
 ## Dónde vive el motor
 

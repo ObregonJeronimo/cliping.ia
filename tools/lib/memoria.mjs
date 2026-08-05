@@ -89,7 +89,13 @@ export function matarArbol(pid) {
 //
 // `alMatar(motivo)` se llama UNA vez cuando se cruza el limite; el que llama decide que matar (tiene el
 // pid de su hijo, asi que no hace falta enumerar procesos — enumerar es lo que fallaba).
-export function vigilar(alMatar, { pisoMb = pisoPara(disponibleMb()), intervalo = 250 } = {}) {
+// `leer` EXISTE PARA PODER PROBAR ESTO SIN PONER EN RIESGO LA MAQUINA, y esa leccion tambien salio a
+// los golpes: la primera version se probo con un proceso que pedia 200 MB cada 150 ms, o sea agotando
+// la memoria DE VERDAD en la PC de trabajo de alguien. Funciono —el vigilante mato al glotón— pero
+// dejo el disponible en 626 MB, a un pelo de colgar la maquina para comprobar que la maquina no se
+// cuelga. Una prueba que puede causar el defecto que esta probando no es una prueba, es una ruleta.
+// Ahora el lector se inyecta: la prueba simula la caida y no reserva un solo byte.
+export function vigilar(alMatar, { pisoMb = pisoPara(disponibleMb()), intervalo = 250, leer = disponibleMb } = {}) {
   const totalMb = Math.round(totalmem() / 1048576)
   let libreMin = Infinity
   let bajos = 0
@@ -99,7 +105,7 @@ export function vigilar(alMatar, { pisoMb = pisoPara(disponibleMb()), intervalo 
   const reloj = setInterval(() => {
     let libreMb
     try {
-      libreMb = Math.round(freemem() / 1048576)
+      libreMb = leer()
       if (!Number.isFinite(libreMb) || libreMb <= 0) throw new Error('lectura invalida')
       fallos = 0
     } catch (e) {
@@ -135,4 +141,34 @@ export function vigilar(alMatar, { pisoMb = pisoPara(disponibleMb()), intervalo 
     pisoMb,
     totalMb,
   }
+}
+
+// BARRIDO DE HUERFANOS. Si el guard murio de mala manera antes de que existiera `llevarseLaCadena` —o
+// si alguien mata el arbol a mano y falla— queda una cadena de compuertas corriendo sin cerrojo y sin
+// vigilante. Es invisible: no hay ventana, no hay barra de progreso, y sigue pidiendo memoria.
+//
+// Se barre AL ARRANCAR y solo ahi. Enumerar procesos con PowerShell es justamente lo que fallaba bajo
+// presion de memoria, pero al arrancar ya se comprobo que hay memoria de sobra, asi que el riesgo no
+// existe en ese momento. Y si igual falla, no pasa nada: es una red extra, no la principal.
+//
+// Solo se llama con el cerrojo YA TOMADO. Con el cerrojo en la mano, cualquier cadena viva que aparezca
+// es por definicion un huerfano: una corrida legitima habria tenido el cerrojo.
+export function barrerHuerfanos() {
+  let salida = ''
+  try {
+    salida = execFileSync('powershell', ['-NoProfile', '-Command',
+      "Get-CimInstance Win32_Process -Filter \"Name='node.exe' OR Name='python.exe'\" | "
+      + 'ForEach-Object { "$($_.ProcessId)`t$($_.CommandLine)" }'],
+    { encoding: 'utf8', timeout: 15000 })
+  } catch { return [] }
+  const muertos = []
+  for (const linea of salida.split('\n')) {
+    const [pid, ...resto] = linea.split('\t')
+    const cmd = resto.join('\t')
+    if (!pid || !cmd) continue
+    if (Number(pid) === process.pid) continue
+    if (!/gates:crudo|tools[\/](director-|urvid1-|adn-check|eco-check|encuadre-check|patron-check)/.test(cmd)) continue
+    if (matarArbol(Number(pid))) muertos.push({ pid: Number(pid), cmd: cmd.trim().slice(0, 80) })
+  }
+  return muertos
 }

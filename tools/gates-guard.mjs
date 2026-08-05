@@ -22,7 +22,7 @@
 //
 // Uso:  node tools/gates-guard.mjs
 import { spawn } from 'node:child_process'
-import { vigilar, matarArbol, disponibleMb, pisoPara, MINIMO_ARRANQUE_MB } from './lib/memoria.mjs'
+import { vigilar, matarArbol, disponibleMb, MINIMO_ARRANQUE_MB, barrerHuerfanos } from './lib/memoria.mjs'
 import { tomar } from './lib/cerrojo.mjs'
 
 // NO SE ARRANCA CON LA MAQUINA YA AHOGADA. Media hora de compuertas para morir en el minuto 20 porque
@@ -48,13 +48,52 @@ if (cerrojo.ocupado) {
 // que no se corriera `gates` pelado, y un aviso no protege a quien todavia no lo leyo (Thiago recien
 // arranca con este motor). Ahora `npm run gates` ES el camino vigilado y la puerta sin cerrojo tiene un
 // nombre que nadie escribe por reflejo.
-const p = spawn('npm', ['run', 'gates:crudo'], { shell: true, stdio: ['ignore', 'pipe', 'pipe'] })
+
+// Con el cerrojo en la mano, cualquier cadena viva es un huerfano de una corrida anterior que murio
+// mal. Se barre antes de arrancar: si no, la corrida nueva compite por la RAM contra un fantasma.
+const huerfanos = barrerHuerfanos()
+if (huerfanos.length) {
+  console.log(`gates-guard: habia ${huerfanos.length} proceso(s) huerfano(s) de una corrida anterior. Muertos:`)
+  for (const h of huerfanos) console.log(`  pid ${h.pid} · ${h.cmd}`)
+}
+
+// LA CADENA SE PUEDE SUSTITUIR PARA PROBAR ESTE ARCHIVO, y hace falta: el informe final de abajo tenia
+// una referencia a una constante que ya no se importaba, o sea un ReferenceError que solo aparece
+// CUANDO TERMINA la corrida. Media hora de compuertas verdes para explotar en la ultima linea. Ni
+// `node --check` ni una prueba de humo de 70 s lo tocan; con una cadena falsa de un segundo, si.
+const CADENA = process.env.GUARD_CADENA || 'gates:crudo'
+const p = spawn('npm', ['run', CADENA], { shell: true, stdio: ['ignore', 'pipe', 'pipe'] })
+
+// SI MUERE EL GUARD, MUERE LA CADENA. Este es el agujero que colgo la maquina la SEGUNDA vez la misma
+// noche, y lo peor es que lo abrio la prueba de humo de este mismo archivo: se corrio
+// `timeout 70 node tools/gates-guard.mjs`, el timeout mato al guard, el guard solto el cerrojo
+// ordenadamente... y `npm run gates:crudo` —con su node y su Chromium debajo— siguio corriendo
+// HUERFANO. Sin vigilante, sin cerrojo y sin nadie mirando. Cuatro minutos despues la maquina no
+// respondia.
+//
+// Probado, porque no era obvio: matando solo al padre, `npm` y `node` sobreviven. En Windows un
+// proceso no se lleva a sus hijos al morir.
+//
+// Vale para CUALQUIER muerte del guard: Ctrl-C, timeout, cerrar la terminal, una excepcion. Un guard
+// que deja atras lo que estaba vigilando es peor que no correrlo, porque ademas suelta el cerrojo y el
+// siguiente arranca encima.
+let yaLimpio = false
+const llevarseLaCadena = () => {
+  if (yaLimpio) return
+  yaLimpio = true
+  matarArbol(p.pid)
+}
+process.on('exit', llevarseLaCadena)
+for (const s of ['SIGINT', 'SIGTERM', 'SIGHUP', 'SIGBREAK']) {
+  process.on(s, () => { llevarseLaCadena(); process.exit(130) })
+}
+process.on('uncaughtException', (e) => { console.error(e); llevarseLaCadena(); process.exit(1) })
 
 let cortadoPor = null
 const ojo = vigilar((motivo) => {
   cortadoPor = motivo
   console.error(`\n!! gates-guard: ${motivo}`)
-  matarArbol(p.pid)
+  llevarseLaCadena()
 })
 
 let salida = ''
@@ -64,8 +103,8 @@ p.on('close', codigo => {
   ojo.parar()
   const ok = (salida.match(/OK \(|OK:/g) || []).length
   const fail = (salida.match(/^FAIL|FALLO/gm) || []).length
-  console.log(`\ngates-guard: ${ok} OK · ${fail} FAIL · minimo de RAM libre ${ojo.libreMinMb} MB `
-    + `(piso ${PISO_MB} de ${ojo.totalMb} totales) · exit ${codigo}`)
+  console.log(`\ngates-guard: ${ok} OK · ${fail} FAIL · minimo de RAM disponible ${ojo.libreMinMb} MB `
+    + `(arranco con ${disp}, piso ${ojo.pisoMb}, total ${ojo.totalMb}) · exit ${codigo}`)
   if (cortadoPor) console.log(`gates-guard: CORTADO — ${cortadoPor}`)
   process.exit(cortadoPor ? 1 : codigo)
 })
