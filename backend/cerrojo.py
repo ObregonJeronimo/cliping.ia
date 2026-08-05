@@ -83,7 +83,14 @@ def tomar(quien):
 
 
 def exigir(quien):
-    """Toma el cerrojo o corta el programa explicando quien lo tiene."""
+    """Toma el cerrojo o corta el programa explicando quien lo tiene.
+
+    Si ya venimos corriendo dentro de `npm run pesado`, la red esta puesta y el cerrojo TOMADO por el
+    envoltorio: volver a pedirlo es chocar contra uno mismo. Paso de verdad — un render lanzado con
+    `pesado` se negaba a arrancar citando su propio cerrojo.
+    """
+    if os.environ.get("PESADO_ACTIVO"):
+        return
     dueno = tomar(quien)
     if dueno:
         print('NO ARRANCA: "%s" (pid %s) tiene el cerrojo desde %s.'

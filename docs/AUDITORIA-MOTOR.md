@@ -1072,6 +1072,42 @@ Esto no arregla nada: pone en rojo 20-30 sitios y entrega la lista real, medida.
 
 ---
 
+## Barrido visual (2026-08-05) — arranque, con mediciones y sin conclusiones apuradas
+
+Primera pieza medida por programa con la cadena ya protegida: linear.app, 20 s, semilla 3. El render
+costo 1823 MB de pico, o sea que ya se puede hacer esto sin arriesgar la maquina.
+
+| metrica | valor | referencia |
+|---|---|---|
+| cortes por minuto | 72.0 | un reel moderno: 40-140 |
+| pixeles en movimiento | 0.0825 | fraccion del cuadro que cambia por frame |
+| **frames casi quietos** | **0.519** | mas de la mitad del video es una foto fija |
+| **ocupacion del cuadro** | **0.07** | solo el 7% del cuadro no es fondo |
+| cortes sobre el beat | 0.667 | 1.0 = todos caen en la grilla |
+
+Por escena:
+
+| escena | dur | cortes | movimiento | casi quietos | quietud max | ocupacion |
+|---|---|---|---|---|---|---|
+| gancho | 2.5s | 2 | 0.0235 | 0.851 | 0.4s | 0.039 |
+| apertura | 3.77s | 6 | 0.0943 | 0.679 | 0.4s | 0.054 |
+| tipografia | 5.0s | 9 | 0.1657 | 0.221 | 0.03s | 0.049 |
+| **hero (vitrina)** | **5.0s** | **0** | **0.0147** | **0.705** | **0.7s** | 0.133 |
+
+- [ ] **Dos observaciones que hay que CONFIRMAR antes de llamarlas defecto**
+  - **`hero` es la escena mas larga y la mas quieta:** cero cortes en 5 s, movimiento 0.0147 (un
+    decimo del de `tipografia`) y 70% de cuadros casi quietos. El CLAUDE.md dice que "un beat quieto ya
+    se lee como diapositiva" y su quietud maxima es 0.7 s. **Antes de acusar hay que leer la escena:**
+    `vitrina` puede estar disenada para reposar mientras el objeto habla, y `verificar.mjs` —que tiene
+    una regla de "nada descansa mas de un beat"— la deja pasar, asi que o esta declarado o la regla no
+    la cubre. Las dos cosas hay que mirarlas antes de tocar nada.
+  - **Ocupacion 0.07** parece bajisima, pero es una metrica sin referencia todavia: no se midio cuanto
+    da ANTHEM, que es la pieza hecha a mano que este motor usa como vara. Sin ese numero al lado, 0.07
+    no dice si esta mal — dice que falta el termino de comparacion. **Primer paso del barrido: medir
+    ANTHEM con la misma herramienta.**
+  - Anotado asi a proposito: son mediciones, no veredictos. La mitad de las fichas que se cerraron hoy
+    nacieron de mirar un numero fuera de rango y llamarlo defecto sin leer la escena.
+
 ## Correcciones de los críticos
 
 Tres críticos adversarios revisaron el diagnóstico. **Dos lo sostienen, uno no** — y su objeción

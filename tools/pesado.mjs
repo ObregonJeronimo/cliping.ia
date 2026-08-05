@@ -91,7 +91,12 @@ console.error(carga.ok
 // `-e "console.log(...)"`— llega partido y el comando falla por una razon que no tiene nada que ver
 // con lo que uno queria correr. Sin shell los limites de cada argumento se respetan tal cual.
 const t0 = Date.now()
-const p = spawn(argv[0], argv.slice(1), { stdio: ['ignore', 'inherit', 'inherit'], env: entornoConTecho() })
+// `PESADO_ACTIVO` le avisa al hijo que la red YA esta puesta: cerrojo tomado, vigilante mirando y
+// techo aplicado. Sin esto, `motor.py` —que toma el cerrojo por su cuenta, y hace bien— se encontraba
+// con el cerrojo que acababa de tomar `pesado` y se negaba a arrancar. Dos protecciones correctas que
+// se bloquean entre si son una protección rota: la persona termina desactivando una de las dos.
+const p = spawn(argv[0], argv.slice(1),
+  { stdio: ['ignore', 'inherit', 'inherit'], env: { ...entornoConTecho(), PESADO_ACTIVO: '1' } })
 
 // Igual que en el guard: si muere el padre, se lleva la cadena. Ver la nota larga en gates-guard.mjs —
 // el huerfano que quedo vivo una vez ya colgo la maquina.
