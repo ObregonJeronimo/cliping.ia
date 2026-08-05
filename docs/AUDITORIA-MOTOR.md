@@ -1101,10 +1101,31 @@ Por escena:
     `vitrina` puede estar disenada para reposar mientras el objeto habla, y `verificar.mjs` —que tiene
     una regla de "nada descansa mas de un beat"— la deja pasar, asi que o esta declarado o la regla no
     la cubre. Las dos cosas hay que mirarlas antes de tocar nada.
-  - **Ocupacion 0.07** parece bajisima, pero es una metrica sin referencia todavia: no se midio cuanto
-    da ANTHEM, que es la pieza hecha a mano que este motor usa como vara. Sin ese numero al lado, 0.07
-    no dice si esta mal — dice que falta el termino de comparacion. **Primer paso del barrido: medir
-    ANTHEM con la misma herramienta.**
+  - **Ocupacion 0.07: ya tiene referencia, y es un caso atipico.** ANTHEM no existe como archivo en el
+    repo —esta referenciado como el origen del motor, no como video— asi que la vara se armo con cuatro
+    piezas del propio motor:
+
+    | pieza | frames casi quietos | ocupacion |
+    |---|---|---|
+    | TW-final | 0.102 | 0.277 |
+    | AIRE-lujo | 0.103 | 0.225 |
+    | HERO-telefono | 0.354 | 0.164 |
+    | ADN-stripe | 0.246 | 0.112 |
+    | **vis1 (hoy)** | **0.519** | **0.07** |
+
+    vis1 es la peor en las DOS: 1.5 a 5 veces mas quieta y 1.6 a 4 veces mas vacia.
+  - **Y se separo en dos causas distintas, renderizando otra semilla de la MISMA pagina cuyo plan no
+    incluye `hero`** (`gancho > rafaga > titular > toro > sello > cierre`):
+
+    | | con `hero` | sin `hero` | rango del motor |
+    |---|---|---|---|
+    | ocupacion | 0.07 | **0.124** | 0.112 – 0.277 |
+    | frames casi quietos | 0.519 | **0.439** | 0.102 – 0.354 |
+
+    - **La ocupacion SI la arrastra `hero`:** sin el vuelve al rango normal. Una escena de 5 s que ocupa
+      0.133 del cuadro y no corta ni una vez baja el promedio de toda la pieza.
+    - **La quietud NO es solo `hero`:** 0.439 sin el sigue por encima de las cuatro referencias. Hay una
+      segunda causa, todavia sin identificar, y es el proximo hilo del barrido.
   - Anotado asi a proposito: son mediciones, no veredictos. La mitad de las fichas que se cerraron hoy
     nacieron de mirar un numero fuera de rango y llamarlo defecto sin leer la escena.
 
