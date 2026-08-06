@@ -206,8 +206,32 @@ p.on('close', codigo => {
     arrancoConMb: disp, minimoMb: ojo.libreMinMb,
     segundos: Math.round((Date.now() - t0) / 1000), cortado: !!cortadoPor,
   })
-  const ok = (salida.match(/OK \(|OK:/g) || []).length
-  const fail = (salida.match(/^FAIL|FALLO/gm) || []).length
+  // EL CONTEO MIRA EL VEREDICTO, NO LA PUNTUACION. Contaba con `/OK \(|OK:/`, o sea que sólo sumaba
+  // las compuertas que abren parentesis o dos puntos después del OK — y seis saludan con raya:
+  // MEMORIA-TEST, RUBRO, ADN, GUION, ENCUADRE y GATE FONDO. Pasaban la cadena y no sumaban, así que
+  // el número que todos miran venía subestimado: informaba 38 donde corrían 42.
+  //
+  // Un veredicto es una línea que ARRANCA con el nombre de la compuerta en mayúsculas y dice OK. Eso
+  // no cuenta los "ok ·" de los pasos internos ni un OK a mitad de frase, que es lo que hay que
+  // evitar: contar de más es tan malo como contar de menos, porque el número deja de significar algo.
+  const ok = (salida.match(/^(?:GATE )?[A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ0-9 _/-]*\bOK\b/gm) || []).length
+  // Y EL DE FAIL TENIA EL MISMO AGUJERO, PERO AL REVES DE PELIGROSO. Contaba con `/^FAIL|FALLO/`, o
+  // sea sólo las líneas que ARRANCAN con FAIL — y las compuertas escriben `GATE CAPTURA FAIL (2)`,
+  // `VERIFICAR: 1 FAIL`, `ENCUADRE: 2 FALLO(S)`. Resultado: el 2026-08-06 el guard informó
+  //
+  //     gates-guard: 35 OK · 0 FAIL · exit 1
+  //
+  // con una compuerta fallando de verdad. El único que delataba el problema era el exit code, y un
+  // resumen que dice "0 FAIL" cuando hay uno es peor que no tener resumen: invita a mirar para otro
+  // lado. Ahora se cuenta FAIL o FALLO en cualquier parte de la línea.
+  //
+  // Y SE EXCLUYEN LAS LINEAS DEL PROPIO GUARD, que es donde se fue a meter el primer intento: su
+  // resumen dice "0 FAIL" y el contador se contaba a si mismo. En una corrida de verdad esa linea
+  // todavia no existe —se imprime despues— pero medirlo sobre un log guardado lo destapo, y un
+  // contador que depende de cuando se lo mire no es un contador.
+  const fail = salida.split('\n')
+    .filter(l => !l.startsWith('gates-guard:'))
+    .reduce((n, l) => n + ((l.match(/\b(FAIL|FALLO)\b/g) || []).length), 0)
   console.log(`\ngates-guard: ${ok} OK · ${fail} FAIL · minimo de RAM disponible ${ojo.libreMinMb} MB `
     + `(arranco con ${disp}, piso ${ojo.pisoMb}, total ${ojo.totalMb}) · exit ${codigo}`)
   if (cortadoPor) console.log(`gates-guard: CORTADO — ${cortadoPor}`)
