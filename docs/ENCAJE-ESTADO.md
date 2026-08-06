@@ -29,6 +29,7 @@ Sobre la malla, en la escena:
 | `userData.encaja = true` | tiene que entrar **entera**. `encuadre-check` se lo va a exigir. |
 | `userData.sangra = true` | puede cruzar el borde **a propósito** (cintas, ornamentos, fondos). |
 | `userData.encajaEntre = [a, b]` | entra entera **entre esas fracciones** de la escena. Para las que vuelan hasta su lugar. |
+| `userData.encajaEje = 'x' \| 'y'` | entra entera **sólo en ese eje**. Para feeds y cintas, que sangran en el otro por definición. |
 
 `encajaEntre` tiene guardarraíl: el tramo debe llegar al menos a **0.90** y cubrir el **25%**. La razón
 está en `encuadre-check`: lo que separa "vuela y después se compone" de "me mido donde me conviene" no
@@ -50,13 +51,13 @@ redondo.**
 | fecha | sin clasificar | qué se hizo |
 |---|---|---|
 | 2026-08-06 | 59 de 71 | estado inicial medido |
-| 2026-08-06 | **40 de 71** | `marquesina` (10) y `mosaico` (9) |
+| 2026-08-06 | 40 de 71 | `marquesina` (10) y `mosaico` (9) |
+| 2026-08-06 | **32 de 71** | `columna` (8), primer caso de `encajaEje` |
 
 ## Lo que falta, por archivo
 
 ```
 apertura    14   texto
-columna      8   recorte
 rafaga       7   4 sin tipo + 3 recorte
 tipografia   7   2 sin tipo + 5 texto
 contraste    1   recorte

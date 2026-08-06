@@ -273,9 +273,18 @@ for (const [nombreAire, aire] of Object.entries(AIRES)) {
             e.tramo = ent
             if (frac < ent[0] || frac > ent[1]) return
           }
+          // Y HAY UN TERCER CASO, que no es "entera" ni "sangra": entera EN UN EJE. Un feed vertical
+          // como `columna` sube: sus recortes entran por abajo y salen por arriba, o sea que en alto
+          // sangran por definicion — pero en ancho tienen que entrar enteros, y ese es justo el corte
+          // que duele (un recorte cortado por los costados se lee mal; uno que asoma por abajo es el
+          // gesto de la escena). Sin esta distincion la unica salida era marcarlo `sangra` y perder la
+          // proteccion del ancho, que es la que importa.
+          const eje = o.userData.encajaEje
           const r = entraEntera(o, m)
-          e.peor = Math.max(e.peor || 0, Math.max(r.x, r.y))
-          if (!r.ok) e.fuera = (e.fuera || 0) + 1
+          e.eje = eje
+          const excede = eje === 'x' ? r.x : eje === 'y' ? r.y : Math.max(r.x, r.y)
+          e.peor = Math.max(e.peor || 0, excede)
+          if (excede > 1.015) e.fuera = (e.fuera || 0) + 1
         }
       })
     }
@@ -328,7 +337,8 @@ for (const [nombreAire, aire] of Object.entries(AIRES)) {
     // Dos cuadros de gracia: una entrada con overshoot puede pasarse un frame y volver, y eso no es un
     // texto cortado. Tres o mas es geometria que no entra.
     if (gg.fuera <= 2) continue
-    fallos.push(`E-ENCAJE-REAL  ${id}: una malla marcada \`encaja\` se sale del cuadro en ${gg.fuera} de sus ${gg.visto} cuadros — llega a ${gg.peor.toFixed(3)} en coordenadas de recorte (el limite es 1.0)`)
+    const enEje = gg.eje ? ` en el eje ${gg.eje.toUpperCase()}` : ''
+    fallos.push(`E-ENCAJE-REAL  ${id}: una malla marcada \`encaja\` se sale del cuadro${enEje} en ${gg.fuera} de sus ${gg.visto} cuadros — llega a ${gg.peor.toFixed(3)} en coordenadas de recorte (el limite es 1.0)`)
   }
 
   // Lo que SI es un defecto es que TODO un grupo quede afuera: eso ya no es una serie que sangra, es

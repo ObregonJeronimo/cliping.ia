@@ -49,10 +49,12 @@ try {
 }
 
 // EL TRINQUETE. Medido el 2026-08-06 sobre 37 escenas/heroes x 8 juegos, aire artesanal, guardando el
-// peor juego de cada escena. Arranco en 59 sin clasificar de 71; con `marquesina` (10, sangra: es un
-// bucle) y `mosaico` (9, la banda sangra y la grilla encaja) quedan 40. Cuando bajes este numero,
-// bajalo al medido — no a uno redondo.
-const TRINQUETE = 40
+// peor juego de cada escena. Arranco en 59 sin clasificar de 71. Cuando bajes este numero, bajalo al
+// medido — no a uno redondo.
+//
+//   59 -> 40   marquesina (10, sangra: su cinta es un bucle) y mosaico (9, la banda sangra, la grilla encaja)
+//   40 -> 32   columna (8, encaja de ancho y sangra de alto: es un feed que sube)
+const TRINQUETE = 32
 
 const sinClasificar = censo.filas.filter(f => f.clase === 'SIN CLASIFICAR')
 const n = sinClasificar.length

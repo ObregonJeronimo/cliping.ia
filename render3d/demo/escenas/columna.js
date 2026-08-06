@@ -144,6 +144,16 @@ export function build(ctx) {
     // se saltea: el destaque busca la pieza mas cercana al centro, no un indice fijo, asi que una pila
     // con un hueco sigue cayendo en el beat.
     if (!m) continue
+    // ENTERO DE ANCHO, LIBRE DE ALTO — y son las dos mitades de lo que esta escena es. Un feed SUBE:
+    // los recortes entran por abajo y salen por arriba, asi que en alto sangran por definicion y
+    // exigirles contencion vertical seria exigirle a la columna que deje de correr. En ancho es al
+    // reves: la cabecera dice que este es "el unico encuadre en el que un recorte real no compite con
+    // nada y se lee entero", y `ANCHO_MAX = mundoW * 0.75` esta puesto justamente para eso.
+    //
+    // Sin el eje, la unica opcion era marcarlo `sangra` y perder la proteccion del ancho, que es la que
+    // duele: un recorte cortado por los costados se lee mal, uno que asoma por abajo es el gesto.
+    m.userData.encaja = true
+    m.userData.encajaEje = 'x'
     const jx = (rnd() - 0.5) * 0.22
     const giro = (rnd() - 0.5) * 0.018        // apenas fuera de eje: un feed no esta perfectamente recto
     m.rotation.z = giro

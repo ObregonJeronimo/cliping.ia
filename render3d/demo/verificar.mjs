@@ -434,10 +434,19 @@ for (const id of ids) {
       // una caja. Asi que lo declara quien compone —`userData.encaja = true`— y la compuerta lo hace
       // cumplir. La escena que sangra a proposito simplemente no marca nada y nadie la acusa, que es
       // la unica forma de tener esta regla sin volverla ruido.
+      // Y SE PUEDE DECLARAR POR EJE, con `userData.encajaEje = 'x' | 'y'`. Hay composiciones que tienen
+      // que entrar enteras en UN eje y sangran en el otro por definicion: `columna` es un feed que
+      // SUBE, o sea que sus recortes entran por abajo y salen por arriba —sangran en alto— pero en
+      // ancho tienen que entrar enteros, que es el corte que se nota. Sin el eje la unica salida era no
+      // declarar nada y perder tambien la proteccion del ancho.
       if (o.userData && o.userData.encaja) {
+        const eje = o.userData.encajaEje
         const dx = Math.abs(v.x) + t.x / 2, dy = Math.abs(v.y) + t.y / 2
-        if (dx > mundoW * 0.51 || dy > mundoH * 0.51) {
-          noEncajan.push(`${o.geometry.type} ${t.x.toFixed(2)}x${t.y.toFixed(2)} centrada en (${v.x.toFixed(2)}, ${v.y.toFixed(2)})`)
+        const seSale = eje === 'x' ? dx > mundoW * 0.51
+          : eje === 'y' ? dy > mundoH * 0.51
+            : (dx > mundoW * 0.51 || dy > mundoH * 0.51)
+        if (seSale) {
+          noEncajan.push(`${o.geometry.type} ${t.x.toFixed(2)}x${t.y.toFixed(2)} centrada en (${v.x.toFixed(2)}, ${v.y.toFixed(2)})${eje ? ` [eje ${eje.toUpperCase()}]` : ''}`)
         }
       }
       if (!esG) return                              // el heuristico de abajo es solo para `g`
