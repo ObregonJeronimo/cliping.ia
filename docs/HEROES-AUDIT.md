@@ -80,11 +80,37 @@ superficie conocida. **Medido: 2.41:1 → 5.15:1**, y confirmado en mundo oscuro
   su cabecera explica por qué no alcanza detail 4. Lo que se lee como facetas son los reflejos
   especulares del material físico sobre una superficie deformada.
 
+## Por qué `fondo-check` no puede cazar el contraste del rótulo del héroe
+
+Se persiguió hasta el fondo y la respuesta es **estructural**, no un ajuste pendiente. Eran dos causas:
+
+**1. Era ciega a la geometría 3D.** `caja()` devolvía `null` para todo lo que no declarara
+`parameters.width` — su comentario decía *"sólo planos: es lo que llevan texto y camas en este
+motor"*, cierto para escenas y falso para héroes, que son cilindros, poliedros y extrusiones. Todo eso
+quedaba fuera de `tapas` y la compuerta concluía que detrás del rótulo estaba el fondo del mundo (en
+stripe, blanco → contraste excelente → verde). **Arreglado** con bounding box real.
+
+**2. Mide el color DECLARADO, y el defecto vive en el píxel ILUMINADO.** Medido:
+
+| | color | luminancia |
+|---|---|---|
+| declarado (`mat.color` del cuerpo de `calibre`) | `#989389` beige gris | 0.2935 |
+| píxel real detrás del rótulo, en el render | `rgb(85, 93, 146)` violeta | 0.1186 |
+
+El píxel real es **2,5× más oscuro** y de otro tono. Los héroes usan `MeshPhysicalMaterial` con el
+estudio PMREM: lo que se ve es el color declarado **después** de la luz, los reflejos y el bloom.
+`fondo-check` no renderiza, así que no puede saberlo — no por un descuido, sino por lo que es.
+
+**Consecuencia:** este defecto pertenece a la familia que sólo caza una compuerta que mire PÍXELES.
+Esa familia ya existe (`imagen-check.py`, que renderiza de verdad). El camino es medir ahí el
+contraste del rótulo contra su fondo real, no seguir afinando `fondo-check`.
+
+Probado: quitando la cama a mano —el defecto original— `fondo-check` sigue en verde aun con la
+geometría 3D ya visible. Por eso la cama es el arreglo correcto: **garantiza el fondo en vez de
+depender de medirlo**.
+
 ## Lo que falta
 
 - **14 héroes sin auditar con render.** El orden sugerido sale de la tabla de `heroes-audit`: los de
   cobertura más baja primero (`calibre` ya está, sigue `pulso` 0.401 y `columnata` 0.442).
-- **`fondo-check` no caza el contraste del rótulo** ni con el par escena+hero ya barrido. Sospecha con
-  más peso: compone en su propio cuadro (fov 42, distancia 9) y el render real usa fov 30 y distancia
-  18.66 — otro encuadre, otras superposiciones, otro fondo detrás del texto. **Medir esa diferencia es
-  el paso siguiente**; hasta saberlo, cualquier arreglo de color es a ciegas.
+- **Llevar la medición de contraste del rótulo a `imagen-check.py`**, que es la única que ve píxeles.
