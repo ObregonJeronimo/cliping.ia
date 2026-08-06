@@ -56,7 +56,9 @@ try {
 //   40 -> 32   columna (8, encaja de ancho y sangra de alto: es un feed que sube)
 //   32 -> 28   mesa y titular (sangran, y su propio ancho ya lo declaraba: 1.06 y 1.02 del cuadro),
 //              contraste (encaja: se dimensiona con el helper `encaje`) y vitrina (encaja: es el logo)
-const TRINQUETE = 28
+//   28 -> 21   rafaga (7): sus recortes sangran ("el borde toca los dos lados del cuadro", declarado
+//              en el archivo) y su tipografia encaja ("una palabra cortada por el borde no se lee")
+const TRINQUETE = 21
 
 const sinClasificar = censo.filas.filter(f => f.clase === 'SIN CLASIFICAR')
 const n = sinClasificar.length

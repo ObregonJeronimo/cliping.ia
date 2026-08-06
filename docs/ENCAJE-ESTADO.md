@@ -53,18 +53,28 @@ redondo.**
 | 2026-08-06 | 59 de 71 | estado inicial medido |
 | 2026-08-06 | 40 de 71 | `marquesina` (10) y `mosaico` (9) |
 | 2026-08-06 | 32 de 71 | `columna` (8), primer caso de `encajaEje` |
-| 2026-08-06 | **28 de 71** | `mesa`, `titular`, `contraste`, `vitrina` (1 cada uno) |
+| 2026-08-06 | 28 de 71 | `mesa`, `titular`, `contraste`, `vitrina` (1 cada uno) |
+| 2026-08-06 | **21 de 71** | `rafaga` (7) |
 
 ## Lo que falta, por archivo
 
 ```
 apertura    14   texto
-rafaga       7   4 sin tipo + 3 recorte
 tipografia   7   2 sin tipo + 5 texto
 ```
 
 `tipoImagen` lo declaran `planoTexto` y `planoRecorte` en el kit; las que dicen "sin tipo" son mallas
 que la escena arma por su cuenta con `new THREE.Mesh`, y conviene que también lo declaren al pasar.
+
+**Lo que sé de las dos que faltan, para no arrancar de cero:**
+
+- `tipografia` — las 5 de texto se componen contra `A_MAX = mundoW * 0.94` y `ANCHO = 5.05`, o sea que
+  la intención es que entren. Las 2 "sin tipo" son las mitades de `mitad()` (línea ~225), que arrancan
+  en ±5.0 —bien fuera del cuadro de 5.63— y se juntan: es el mismo caso que `mosaico` y pide
+  `encajaEntre` con el tramo **derivado de su tween**, no medido a ojo.
+- `apertura` — 14 mallas, todas de texto. Ojo con el filete, que la cabecera describe como "un filete
+  que cruza el cuadro pasándose de largo y volviendo": eso sangra por diseño. La palabra de la marca
+  mide ~94% del ancho y tiene que entrar entera.
 
 ## Cómo clasificar sin romper nada — el orden que funcionó
 

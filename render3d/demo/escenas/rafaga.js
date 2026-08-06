@@ -119,6 +119,8 @@ export function build(ctx) {
 
   // El índice: sólo números, así que no puede afirmar nada sobre el negocio. Ver `marca` en datos.js.
   const idx = texto(marca(3, 6), { fuente: 'DMSans', peso: 500, size: 90, tracking: 0.3, color: nivelTexto(0.55) })
+  // ENCAJA. Es mueble, no contenido —lo dice el comentario de abajo— pero un indice cortado por el
+  // borde se lee como un error de maquetado, no como un gesto. Y es texto: tiene que poder leerse.
   const mIdx = new THREE.Mesh(
     // 0.42 Y NO 0.9. A 0.9 el indice mide 173 px de alto y le gana en peso visual a la pieza que la
     // escena vino a mostrar: en el render de basecamp "03 / 06" era lo mas grande del cuadro y la frase
@@ -128,6 +130,8 @@ export function build(ctx) {
   // Anclado por su BORDE IZQUIERDO, no por su centro. Puesto por el centro, un rotulo de seis
   // caracteres sobresale un metro y medio por fuera del cuadro y en pantalla se lee "/ 06".
   // A 0.29 y no a 0.34: el filete de arriba vive en 0.34 y el indice se le montaba encima.
+  mIdx.userData.encaja = true
+  mIdx.userData.tipoImagen = 'texto'
   mIdx.position.set(-mundoW * 0.5 + 0.30 + (0.42 * idx.ar) / 2, mundoH * 0.29, 0.6)
   g.add(mIdx)
 
@@ -189,7 +193,9 @@ export function build(ctx) {
       const anchoNativo = topeNitido(p.tex.image, ctx.W, mundoW)
       const alto = Math.min(ALTO_MAX, Math.min(ANCHO_MAX, anchoNativo) / Math.max(0.08, ar))
       m = planoRecorte(p.tex, alto)
-      if (m) gr.add(m)
+      // SANGRA, y esta escena es el precedente que citan las demas. Lo declara treinta lineas arriba:
+      // "1.06 es una sangria que se LEE como sangria —el borde toca los dos lados del cuadro—".
+      if (m) { m.userData.sangra = true; gr.add(m) }
     } else {
       // NO va en LOOK.tinta. Es tipografia de DISPLAY a media pantalla, y la tinta de un mundo oscuro
       // tiene luminancia ~0.9 contra un umbral de bloom de 0.62: florece entera y sale como un
@@ -204,6 +210,10 @@ export function build(ctx) {
       m = new THREE.Mesh(
         new THREE.PlaneGeometry(alto * t.ar, alto),
         new THREE.MeshBasicMaterial({ map: t.tex, transparent: true, depthWrite: false, toneMapped: false }))
+      // ENCAJA, y lo dice el comentario de arriba con todas las letras: "la tipografia NO sangra, una
+      // palabra cortada por el borde no se lee". El alto ya se calcula contra `mundoW * 0.90` para eso.
+      m.userData.encaja = true
+      m.userData.tipoImagen = 'texto'
       g.add(m)
     }
     if (m) m.visible = false
