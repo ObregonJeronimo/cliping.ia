@@ -87,10 +87,27 @@ textura de página. `titular` usa **1.02** para su foto, que es correcto.
 
 ## Lo que falta
 
-**3 de 20 escenas sin ver**: `columna`, `contraste`, `partida`. No es falta de material —ninguna
-declara `necesita` en su meta—, el guion las elige poco por su propia lógica. Para cubrirlas haría
-falta más barrido o un modo que fuerce una escena, **que hoy no existe**.
+**`columna` y `contraste` están DORMIDAS a propósito** — registradas, verdes en las compuertas y fuera
+del sorteo por decisión de producto, con la cita que la motivó en el Set `DORMIDAS` de `guion.js`. No
+son material sin auditar: son material apagado. La herramienta ahora las informa aparte.
 
-Un intento que falló y no conviene repetir igual: se barrieron 160 guiones para medir cada cuánto
-sale cada escena y devolvió **0** — `guionDe` necesita datos configurados que no se le pasaron. Un
-cero del instrumento, no un dato.
+**`partida` queda SIN AUDITAR con render**, y es la única activa que falta. Aparece poco y no cayó en
+ninguna de las 22 piezas del barrido.
+
+### Cómo NO buscarla, que ya costó dos renders
+
+Se intentó predecir una semilla que la produjera, corriendo `guionDe` fuera del motor. Falló dos
+veces, y las dos por la misma razón de fondo: **el simulador no reproducía al motor**.
+
+| intento | qué se usó | por qué falló |
+|---|---|---|
+| 1º | el fixture `tools/fixtures/director/elementos/*.json` | el motor usa `tools/out/motor/*/datos.json`, que sale de la captura y trae otras frases |
+| 2º | los datos reales, pero con una tabla de bpm **inventada** | `lujo` declara **bpm 76** y el render usó **78**; se simuló con **85** |
+
+Las dos veces la predicción decía que `partida` entraba y el plan real salió sin ella. **El "10,8% de
+las veces" que se reportó en un commit anterior sale de ese mismo simulador y por lo tanto no es un
+dato confiable.**
+
+Si hace falta auditarla, las opciones honestas son renderizar semillas hasta que caiga —caro pero
+real— o agregarle al motor un modo que imprima el plan sin renderizar, que hoy no existe y sería lo
+que vuelve barata cualquier búsqueda de este tipo.
