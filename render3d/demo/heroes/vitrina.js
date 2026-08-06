@@ -93,7 +93,8 @@ export function build(ctx) {
   //
   // Si el archivo es chico, el logo sale mas chico. Un logo pequeño y nitido se lee como una marca; uno
   // grande y deshecho se lee como un render fallado.
-  const ANCHO_NITIDO = topeNitido(tex.image, 1080, mundoW, 1.4)
+  // Ancho de cuadro del contexto y no un 1080 a mano: ver la nota en cubo.js.
+  const ANCHO_NITIDO = topeNitido(tex.image, ctx.W || 1080, mundoW, 1.4)
   const anchoTope = Math.min(ANCHO_MAX, ANCHO_NITIDO)
   const altoLogo = Math.min(ALTO_MAX, anchoTope / ar)
   const anchoLogo = altoLogo * ar

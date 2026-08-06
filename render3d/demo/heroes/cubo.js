@@ -146,7 +146,11 @@ export function build(ctx) {
     //
     // Mismo tope que ya usan columna, vitrina y mosaico. Una lamina de poca resolucion ocupa menos cara
     // y deja mas margen, que es preferible a llenarla con una version deshecha de si misma.
-    const NITIDO = topeNitido(tex.image, 1080, mundoW, 1.4)
+    // EL ANCHO DEL CUADRO SALE DEL CONTEXTO, no de un 1080 escrito a mano. Hoy da el mismo numero
+    // —el motor rinde a 1080— pero es la misma constante en dos lugares, que es el patron que ya costo
+    // cinco arreglos en este repo: el 0.915 de `toro`, la correccion de ancho de `mesa`, el MAG_MAX
+    // propio de `rafaga`, el OBJ de `apertura` y el sangrado de `pantalla`. `columna` ya lo hacia asi.
+    const NITIDO = topeNitido(tex.image, ctx.W || 1080, mundoW, 1.4)
     const util = Math.min(UTIL, ar >= 1 ? NITIDO : NITIDO / ar)
     const w = ar >= 1 ? util : util * ar
     const h = ar >= 1 ? util / ar : util

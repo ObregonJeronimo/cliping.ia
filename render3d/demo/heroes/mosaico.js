@@ -155,7 +155,9 @@ export function build(ctx) {
     // El tope se aplica al ALTO porque es la variable con la que se compone aca, convirtiendo el ancho
     // maximo nitido a su alto equivalente. Una pieza de poca resolucion ocupa menos celda y deja aire
     // alrededor, que es preferible a llenarla con una version deshecha de si misma.
-    const hPorNitidez = topeNitido(p.tex && p.tex.image, 1080, mundoW, 1.4) / Math.max(0.05, p.ar)
+    // Ancho de cuadro del contexto y no un 1080 a mano: ver la nota en cubo.js. Hoy es el mismo
+    // numero; el dia que el motor rinda a otra resolucion, este sitio la sigue solo.
+    const hPorNitidez = topeNitido(p.tex && p.tex.image, ctx.W || 1080, mundoW, 1.4) / Math.max(0.05, p.ar)
     const alto = Math.min(hPorAlto, hPorAncho, hPorNitidez)
     const m = planoRecorte(p.tex, alto)
     if (!m) return
@@ -260,7 +262,7 @@ export function build(ctx) {
     //
     // Es el mismo defecto dos veces en el mismo archivo, que es lo que pasa cuando el tamaño se calcula
     // en dos lugares: arreglar uno no arregla el otro y la medicion de uno tapa al otro.
-    const hNitido = topeNitido(p.tex && p.tex.image, 1080, mundoW, 1.4) / Math.max(0.05, p.ar)
+    const hNitido = topeNitido(p.tex && p.tex.image, ctx.W || 1080, mundoW, 1.4) / Math.max(0.05, p.ar)
     const h = Math.min(alto, (anchoCelda * AIRE) / Math.max(0.05, p.ar), hNitido)
     const m = planoRecorte(p.tex, h)
     if (!m) return
