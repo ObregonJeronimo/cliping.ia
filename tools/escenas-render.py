@@ -16,17 +16,26 @@ QUE MIDE, por tramo:
               0.005 es el ruido del codec sobre una imagen congelada y 0.370 la escena mas quieta
               (`sello`). El piso se pone en 0.05 — diez veces el ruido, siete veces por debajo de lo
               mas quieto que el motor produce a proposito.
-  tinta       fraccion de pixeles que se apartan de la mediana del propio cuadro. Proxy de "que tan
-              lleno esta", medido sobre la imagen y no sobre cajas — la version geometrica subestima
-              las composiciones de lineas finas (`pulso` da 0.401 de cobertura y se ve lleno).
+  tinta       fraccion de pixeles que se apartan del fondo, con umbral RELATIVO al rango del propio
+              cuadro. Absoluto castiga a los mundos oscuros —lo enseño `medir-video.py` y volvio a
+              pasar aca con `rafaga`— y ademas la version geometrica subestima las composiciones de
+              lineas finas (`pulso` da 0.401 de cobertura y se ve lleno).
   quietud     el tramo mas largo, en segundos, con el cambio por debajo del ruido. Un beat entero
               quieto se lee como diapositiva; es el mismo criterio que usa `verificar.mjs` sobre el
               grafo, aplicado a los pixeles.
 
-LO QUE NO SE PUEDE CONCLUIR DE ESTO. Un numero bajo NO es un defecto: `sello` compone con el VACIO a
-proposito (0.042 de ocupacion, documentado en su cabecera) y `gancho` es una placa de texto que hay
-que poder leer, asi que su quietud es inherente. La herramienta dice DONDE MIRAR; la cabecera de la
-escena dice si eso que se ve estaba buscado.
+LO QUE NO SE PUEDE CONCLUIR DE ESTO. Un numero bajo NO es un defecto. Las tres que ya se
+comprobaron leyendo su cabecera, y que van a seguir apareciendo abajo del piso para siempre:
+
+  sello    compone con el VACIO a proposito — "un emblema chico y tres cuartos de cuadro sin nada".
+           Registrado en 0.042 de ocupacion; aca mide 0.049 de tinta.
+  gancho   es una placa de texto que hay que poder LEER, asi que su quietud es inherente.
+  rafaga   "No compone: RAFAGUEA. Doce piezas, media hora de pantalla cada una —241 ms—, reemplazo
+           duro, sin fundidos." Su valor esta en la SUCESION y esta herramienta mide INSTANTES: un
+           cuadro suelto suyo se ve austero por definicion. Por eso su movimiento es alto (2.28) y su
+           tinta baja (0.060) al mismo tiempo — las dos cosas son la misma decision.
+
+La herramienta dice DONDE MIRAR; la cabecera de la escena dice si eso que se ve estaba buscado.
 
 Es cara —un render por pieza— asi que va por `npm run pesado` y NO entra en la cadena del guard.
 
@@ -52,6 +61,24 @@ PIEZAS = [
 RUIDO_CODEC = 0.005
 PISO_MOVIMIENTO = 0.05
 PISO_TINTA = 0.08
+
+
+def _tinta(a, np):
+    """Fraccion de pixeles que se apartan del fondo, con umbral RELATIVO al rango del propio cuadro.
+
+    LA MEDIANA CON UMBRAL ABSOLUTO CASTIGA A LOS MUNDOS OSCUROS, y este repo ya lo tenia anotado por
+    `medir-video.py`: en un mundo oscuro todo vive cerca del negro y casi nada cruza un corte fijo,
+    aunque la composicion este igual de llena. El umbral pasa a ser una fraccion del rango real del
+    cuadro (p2 a p98), con un piso para que un cuadro plano no dispare por ruido.
+
+    Y QUEDA DICHO LO QUE ESTE CAMBIO NO ARREGLO, porque lo escribi al reves antes de medirlo: puse que
+    explicaba el 0.059 de `rafaga` sobre linear.app, y no lo explica — con umbral relativo da 0.060.
+    Lo que si movio fue `sello`, de 0.032 a 0.049 (+53%). El numero bajo de `rafaga` no es el mundo
+    oscuro ni un defecto: es su forma, ver la lista de abajo.
+    """
+    p2, p98 = np.percentile(a, 2), np.percentile(a, 98)
+    umbral = max(8.0, (p98 - p2) * 0.18)
+    return float((np.abs(a - np.median(a)) > umbral).mean())
 
 
 def medir_tramos(mp4, plan):
@@ -80,7 +107,7 @@ def medir_tramos(mp4, plan):
             a = np.asarray(Image.open(pa).convert("L"), dtype=float)
             b = np.asarray(Image.open(pb).convert("L"), dtype=float)
             difs.append(float(np.abs(a - b).mean()))
-            tintas.append(float((np.abs(a - np.median(a)) > 18).mean()))
+            tintas.append(_tinta(a, np))
         if not difs:
             continue
         quietos = sum(1 for d in difs if d < RUIDO_CODEC * 2)
