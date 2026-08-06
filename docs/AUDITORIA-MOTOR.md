@@ -1270,6 +1270,17 @@ Por escena:
   - **Queda como pregunta de producto, bien acotada:** si un guion sin ninguna escena que muestre la
     pagina es aceptable para una pieza que existe para vender esa pagina. No es un defecto del motor
     —cada escena hace lo suyo— es una decision sobre que debe garantizar el guion.
+  - **Y se intento medir "en cuantos guiones pasa" SIN renderizar, y NO SE PUEDE — el intento vale
+    anotarlo.** Se listaron las escenas que "muestran la pagina" y se barrieron 420 guiones (7 paginas x
+    3 duraciones x 20 semillas): **0 de 420** sin ninguna. Pero ese cero es enganoso: la lista incluia
+    `rafaga` y `titular`, que estan en el plan de `linear` —la pieza que midio 0.120—. Esas escenas
+    **PUEDEN** mostrar un recorte y solo lo hacen si una textura sobrevive al veto de `esLamina`, que se
+    resuelve al CONSTRUIR y no al planificar.
+  - **La conclusion util es esa:** "mostrar la pagina" **no es una propiedad del plan**, asi que una
+    regla en `guion.js` no puede garantizarlo — solo puede garantizar que se PROGRAME una escena capaz
+    de hacerlo. Lo que hay que medir es la pieza construida, no el guion, y eso ya lo hace la ocupacion.
+    Si se decide que el motor debe garantizar imagen de la pagina, la compuerta va sobre el video —como
+    `E-IMAGEN-SE-MUEVE`— y no sobre el guion.
   - **Y una leccion sobre mi propia recomendacion:** yo habia recomendado medir 7 paginas x 11 aires
     (~50 min de renders) para decidir esto. Un render lo resolvio. La pregunta "cuantos casos tengo
     realmente" cuesta segundos y ahorro 75 renders — preguntarla ANTES de disenar el barrido vale mas
