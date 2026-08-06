@@ -1198,7 +1198,7 @@ Por escena:
   - Anotado asi a proposito: son mediciones, no veredictos. La mitad de las fichas que se cerraron hoy
     nacieron de mirar un numero fuera de rango y llamarlo defecto sin leer la escena.
 
-- [x] **Los mundos OSCUROS componen mas vacios — y NO es el aire, es la PAGINA (y es el ADN funcionando)**
+- [x] **"Los mundos oscuros componen mas vacios" — REFUTADO. Es `linear` sola, no la polaridad**
   - **Medido sobre tres piezas de tres paginas distintas**, renderizadas hoy:
 
     | pieza | luminancia media | ocupacion | quietos | contraste |
@@ -1237,9 +1237,25 @@ Por escena:
     una interpretacion: es otra marca"*.
   - **Quinta vez en este barrido que un numero fuera de rango resulta ser diseño**, y las cinco se
     resolvieron igual: midiendo lo que faltaba en vez de acusar con lo que habia.
-  - **Lo que queda como pregunta de producto, no de motor:** si una pieza de una marca oscura DEBE
-    componer mas llena de lo que compone hoy (0.12 contra 0.30-0.43 de una clara). Eso no lo decide una
-    medicion — lo deciden Jero y Thiago mirando piezas.
+  - **Y LA HIPOTESIS SE REFUTO EL MISMO DIA, con UN render.** Primero la pregunta barata: cuantas de las
+    7 paginas dan mundo oscuro. **Solo dos** —`linear-app` (bgLum 0.003) y `tailwindcss-com` (0.002)—,
+    asi que un barrido de 7x11 habria dado dos datos oscuros y 75 renders de relleno. Renderizada la
+    otra pagina oscura:
+
+    | pieza | luminancia | ocupacion |
+    |---|---|---|
+    | tailwindcss (oscura) | 64.4 | **0.247** |
+    | linear (oscura) | 43.2 | **0.120** |
+    | pentagram (clara) | 166.3 | 0.326 |
+    | stripe (clara) | 173.2 | 0.299 |
+
+    **La otra oscura da 0.247, mucho mas cerca de las claras que de `linear`.** Asi que la polaridad NO
+    explica el vacio: `linear` compone a la mitad que la otra pagina oscura, y esa es la pregunta que
+    queda —mucho mas chica y mucho mejor definida que la que se abrio.
+  - **Y una leccion sobre mi propia recomendacion:** yo habia recomendado medir 7 paginas x 11 aires
+    (~50 min de renders) para decidir esto. Un render lo resolvio. La pregunta "cuantos casos tengo
+    realmente" cuesta segundos y ahorro 75 renders — preguntarla ANTES de disenar el barrido vale mas
+    que el barrido.
 
 ## Correcciones de los críticos
 
