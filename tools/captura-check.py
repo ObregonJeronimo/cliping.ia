@@ -14,6 +14,9 @@ QUE SE COMPRUEBA:
   1. NINGUNA CAPTURA REAL SE RECHAZA. Las que hay en `tools/out/motor/*/datos.json` tienen que pasar
      todas. Un detector que frena una pagina legitima es peor que el defecto que evita: el defecto
      entrega un video feo, el falso positivo no entrega ninguno.
+     SALVO LAS QUE SON UN MURO, que se excluyen leyendo `site.json`: si la propia captura quedo con
+     `estado = "botwall"` o con un http >= 400, rechazarla es lo que la compuerta tiene que hacer y
+     contarlo como falso positivo invertiria la prueba. Ver la nota larga en el caso 1.
   2. LOS DOS MUROS DOCUMENTADOS SE RECHAZAN. No estan en el repo —se borraron—, asi que se
      reconstruyen desde lo que la ficha registro de cada uno: el de CloudFront por no tener NADA que
      decir, el anti-bot por su marca. Queda dicho que son reconstrucciones y no los archivos originales.
@@ -37,7 +40,32 @@ from motor import pagina_sospechosa                      # noqa: E402
 fallos = []
 
 # ---------------------------------------------------------------- 1. las capturas reales pasan
-reales = sorted(glob.glob(os.path.join(RAIZ, "tools", "out", "motor", "*", "datos.json")))
+# UNA CAPTURA QUE LA PROPIA CAPTURA MARCO COMO MURO NO ES "UNA CAPTURA REAL". Este caso decia "las
+# que hay en tools/out/motor/ tienen que pasar todas", y eso vale mientras ahi solo haya paginas que
+# se bajaron bien. Deja de valer en cuanto alguien captura un sitio que nos BLOQUEA: `site.json` queda
+# con `captura.estado = "botwall"` y http 403, y ahi rechazarla es exactamente lo que la compuerta
+# tiene que hacer — contarlo como falso positivo invierte el sentido de la prueba.
+#
+# Paso de verdad el 2026-08-06: se recapturaron despegar.com.ar y elcorteingles.es para medir por que
+# no daban recortes, los dos devolvieron 403, y esta compuerta se puso en rojo por hacer bien su
+# trabajo. El motor ya habia hecho lo correcto en las dos: se nego a construir el video.
+def _es_muro(dir_pagina):
+    sj = os.path.join(dir_pagina, "site.json")
+    try:
+        with io.open(sj, encoding="utf-8") as fh:
+            cap = (json.load(fh) or {}).get("captura") or {}
+        return cap.get("estado") == "botwall" or int(cap.get("httpStatus") or 200) >= 400
+    except Exception:
+        return False
+
+
+reales = []
+muros_en_disco = 0
+for ruta in sorted(glob.glob(os.path.join(RAIZ, "tools", "out", "motor", "*", "datos.json"))):
+    if _es_muro(os.path.dirname(ruta)):
+        muros_en_disco += 1
+        continue
+    reales.append(ruta)
 for ruta in reales:
     with io.open(ruta, encoding="utf-8") as fh:
         datos = (json.load(fh) or {}).get("datos") or {}
@@ -160,8 +188,9 @@ if fallos:
         print("  " + f)
     sys.exit(1)
 print("GATE CAPTURA OK (%d capturas reales aceptadas, %d muros rechazados, %d paginas pobres "
-      "aceptadas, %d formatos viejos detectados, %d/%d capturas en disco son de formato viejo)."
-      % (len(reales), len(MUROS), len(POBRES), len(VIEJAS), n_viejas, len(sites)))
+      "aceptadas, %d formatos viejos detectados, %d/%d capturas en disco son de formato viejo, "
+      "%d muros en disco excluidos)."
+      % (len(reales), len(MUROS), len(POBRES), len(VIEJAS), n_viejas, len(sites), muros_en_disco))
 if not reales:
     print("  SIN CAPTURAS REALES que revisar (tools/out/ no viaja en el repo): corre "
           "`python backend/motor.py <url>` una vez y esta compuerta suma el caso que mas importa.")
