@@ -172,18 +172,38 @@ function colorTexto(m) {
   return (map && map.userData && map.userData.color) || null
 }
 
-// Caja en coordenadas de mundo. Solo planos: es lo que llevan texto y camas en este motor.
+// Caja en coordenadas de mundo.
+//
+// DECIA "SOLO PLANOS: ES LO QUE LLEVAN TEXTO Y CAMAS EN ESTE MOTOR", y era cierto mientras esta
+// compuerta midiera solo ESCENAS — que componen con planos y camas de color. Dejo de serlo cuando
+// empezo a barrer el par escena+hero: un hero es geometria 3D (cilindros, poliedros, extrusiones,
+// cajas), casi nada de eso tiene `parameters.width`, y todo lo que no lo tenia devolvia null y quedaba
+// fuera de `tapas`. O sea que la compuerta concluia que detras del rotulo estaba el FONDO DEL MUNDO.
+//
+// Lo que costo: con stripe.com el fondo del mundo es blanco, asi que un rotulo oscuro daba contraste
+// excelente y la compuerta pasaba en verde — mientras en el render el texto estaba sobre el bloque
+// gris del calibrador, medido en los pixeles a 2.41:1. Un cero tranquilizador mas.
+//
+// Para lo que no declara `width` se usa el bounding box real. Es una aproximacion que SOBREESTIMA —la
+// caja de una esfera incluye sus esquinas vacias— y eso es lo correcto para esta pregunta: si algo
+// puede estar detras del texto, conviene mirarlo y no asumir que hay fondo limpio.
 function caja(m) {
   m.updateWorldMatrix(true, false)
   const g = m.geometry
-  if (!g || !g.parameters || g.parameters.width === undefined) return null
+  if (!g) return null
   const p = new THREE.Vector3()
   m.getWorldPosition(p)
-  const e = new THREE.Vector3()
-  m.getWorldScale(e)
-  const w = Math.abs(g.parameters.width * e.x) / 2
-  const h = Math.abs(g.parameters.height * e.y) / 2
-  return { x0: p.x - w, x1: p.x + w, y0: p.y - h, y1: p.y + h, z: p.z }
+  if (g.parameters && g.parameters.width !== undefined) {
+    const e = new THREE.Vector3()
+    m.getWorldScale(e)
+    const w = Math.abs(g.parameters.width * e.x) / 2
+    const h = Math.abs(g.parameters.height * e.y) / 2
+    return { x0: p.x - w, x1: p.x + w, y0: p.y - h, y1: p.y + h, z: p.z }
+  }
+  const bb = new THREE.Box3().setFromObject(m)
+  if (bb.isEmpty()) return null
+  // La z que importa es la de la CARA de adelante: es la que decide si tapa al texto.
+  return { x0: bb.min.x, x1: bb.max.x, y0: bb.min.y, y1: bb.max.y, z: bb.max.z }
 }
 // UNA BANDA CON AREA CERO NO TAPA NADA, y esto acuso 63 veces a `apertura` antes de verse: la "banda"
 // medi­a `4.20 x 0.00`. Es un plano a medio abrir —se anima su escala— o sea invisible. La prueba de
