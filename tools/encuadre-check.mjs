@@ -267,12 +267,21 @@ for (const [nombreAire, aire] of Object.entries(AIRES)) {
           //
           // `userData.encajaEntre = [a, b]` declara ese tramo en fracciones de la escena. Sin el, se
           // exige en todos los cuadros y nada cambia para las 12 mallas que ya lo declaraban.
+          // Y EL TRAMO SE MIDE SOBRE LA VIDA VISIBLE DE LA MALLA, no sobre la escena. La primera
+          // version lo media sobre la escena y no alcanzaba: en `tipografia` las mitades de la palabra
+          // se componen y se van en el beat 1.5 de una escena de 8 —son la primera de TRES frases que
+          // se suceden— asi que su tramo compuesto es el 8% de la escena y cualquier guardarrail
+          // razonable lo rechaza, con razon: medido contra la escena entera, un 8% es indistinguible
+          // de una rendija puesta para esquivar la compuerta.
+          //
+          // Contra su propia vida visible la pregunta se vuelve la correcta: "de todo el tiempo en que
+          // se la ve, ¿entra entera en el tramo declarado?". Una malla efimera bien compuesta pasa; una
+          // rendija sigue sin pasar, porque el guardarrail mira el tramo y no la escena.
+          //
+          // Las muestras se acumulan y se juzgan al final: en este punto todavia no se sabe cuantos
+          // cuadros va a estar visible.
           const ent = o.userData.encajaEntre
-          const frac = N ? i / N : 0
-          if (Array.isArray(ent) && ent.length === 2) {
-            e.tramo = ent
-            if (frac < ent[0] || frac > ent[1]) return
-          }
+          if (Array.isArray(ent) && ent.length === 2) e.tramo = ent
           // Y HAY UN TERCER CASO, que no es "entera" ni "sangra": entera EN UN EJE. Un feed vertical
           // como `columna` sube: sus recortes entran por abajo y salen por arriba, o sea que en alto
           // sangran por definicion — pero en ancho tienen que entrar enteros, y ese es justo el corte
@@ -283,8 +292,7 @@ for (const [nombreAire, aire] of Object.entries(AIRES)) {
           const r = entraEntera(o, m)
           e.eje = eje
           const excede = eje === 'x' ? r.x : eje === 'y' ? r.y : Math.max(r.x, r.y)
-          e.peor = Math.max(e.peor || 0, excede)
-          if (excede > 1.015) e.fuera = (e.fuera || 0) + 1
+          ;(e.muestras || (e.muestras = [])).push(excede)
         }
       })
     }
@@ -322,6 +330,19 @@ for (const [nombreAire, aire] of Object.entries(AIRES)) {
   // dura el tramo: es DONDE TERMINA. Una rendija en el medio deja el final sin mirar, y el final es
   // donde la composicion esta quieta y el espectador la lee. Se exige entonces que el tramo llegue al
   // 90% de la escena y cubra al menos el 25%.
+  // SE JUZGA CON LA VIDA VISIBLE YA CONOCIDA. `muestras` trae un valor por cada cuadro en que la malla
+  // estuvo encendida, en orden; el tramo declarado recorta sobre ESE arreglo y no sobre la escena.
+  for (const [, gg] of cuenta) {
+    if (!gg.muestras) continue
+    let ms = gg.muestras
+    if (gg.tramo) {
+      const [a, z] = gg.tramo
+      ms = ms.slice(Math.floor(a * ms.length), Math.max(1, Math.ceil(z * ms.length)))
+    }
+    gg.peor = ms.reduce((p, v) => Math.max(p, v), 0)
+    gg.fuera = ms.filter(v => v > 1.015).length
+  }
+
   for (const [, gg] of cuenta) {
     if (!gg.tramo) continue
     const [a, z] = gg.tramo

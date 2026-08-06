@@ -154,6 +154,14 @@ export function build(ctx) {
   // centro. Anclar en la geometría y no en un Group deja el estado real escrito en la malla.
   function plano(m, anc = 0, color = null, intensidad = LUM) {
     const mesh = planoTexto(m.str, m.alto, m.op)
+    // SIN CLASIFICAR, Y NO SE PUEDE HACER DESDE ACA. `plano()` es la fabrica de TODAS las mallas de
+    // texto de la escena, y no todas quieren lo mismo: declarar `encaja` aca de una vez deja verde a
+    // las frases compuestas y acusa a las que SE VAN DISPARADAS, que es el gesto de la escena. Medido
+    // el 2026-08-06 con el aire tecnico: una llega a 4.448 anchos de cuadro y otra a 1.787, contra una
+    // tercera que se pasa apenas 1.021 en 7 de sus 117 cuadros.
+    //
+    // La clasificacion de esta escena va MALLA POR MALLA en cada llamada a `plano()`, no en la
+    // fabrica. Ver docs/ENCAJE-ESTADO.md.
     mesh.geometry.translate(-anc * m.ancho / 2, 0, 0)
     // multiplyScalar y no setStyle: acá se opera sobre el valor LINEAL ya convertido, sin que la
     // gestión de color vuelva a interpretar el número como sRGB.
