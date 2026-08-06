@@ -42,8 +42,13 @@ hay. Sale del propio tween de entrada de la escena.
 
 ## El trinquete
 
-`tools/encaja-check.mjs` está en la cadena del guard. Arranca en lo medido y **sólo puede bajar**:
-poner el piso en 0 dejaría la cadena roja con 59 casos y nadie podría pushear hasta terminar todo.
+`tools/encaja-check.mjs` está en la cadena del guard. Arrancó en lo medido y **sólo podía bajar**:
+poner el piso en 0 el primer día habría dejado la cadena roja con 59 casos y nadie podría pushear
+hasta terminar todo.
+
+**Está en 0 desde el 2026-08-06, y en cero deja de ser un trinquete: es la regla.** Ninguna malla que
+muestre una imagen puede entrar al motor sin declarar si tiene que entrar entera o si sangra a
+propósito.
 
 Cuando clasifiques una tanda, la compuerta te dice el número nuevo. **Bajalo al medido, no a uno
 redondo.**
@@ -56,13 +61,12 @@ redondo.**
 | 2026-08-06 | 28 de 71 | `mesa`, `titular`, `contraste`, `vitrina` (1 cada uno) |
 | 2026-08-06 | 21 de 71 | `rafaga` (7) |
 | 2026-08-06 | 15 de 71 | `apertura`, sólo el contador (6) |
-| 2026-08-06 | **7 de 71** | `apertura`, sus 8 letras (arreglado el dimensionado) |
+| 2026-08-06 | 7 de 71 | `apertura`, sus 8 letras (arreglado el dimensionado) |
+| 2026-08-06 | **0 de 71** | `tipografia` — **CERRADO**, el trinquete pasa a ser la regla |
 
 ## Lo que falta, por archivo
 
-```
-tipografia   7   2 sin tipo + 5 texto
-```
+Nada. Las 71 están clasificadas.
 
 `tipoImagen` lo declaran `planoTexto` y `planoRecorte` en el kit; las que dicen "sin tipo" son mallas
 que la escena arma por su cuenta con `new THREE.Mesh`, y conviene que también lo declaren al pasar.

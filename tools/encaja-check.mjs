@@ -60,7 +60,13 @@ try {
 //              en el archivo) y su tipografia encaja ("una palabra cortada por el borde no se lee")
 //   21 -> 15   apertura, solo el contador (6)
 //   15 ->  7   apertura, sus 8 letras, despues de arreglar el dimensionado que destaparon
-const TRINQUETE = 7
+//    7 ->  0   tipografia, malla por malla. CERRADO: las 71 declaran que hacen.
+//
+// EN CERO YA NO ES UN TRINQUETE, ES LA REGLA. De aca en adelante ninguna malla que muestre una imagen
+// puede entrar al motor sin decir si tiene que entrar entera o si sangra a proposito. Eso era el punto
+// del pendiente: convertir un juicio de composicion caso por caso en algo que se declara al escribir
+// la escena y se revisa archivo por archivo.
+const TRINQUETE = 0
 
 const sinClasificar = censo.filas.filter(f => f.clase === 'SIN CLASIFICAR')
 const n = sinClasificar.length

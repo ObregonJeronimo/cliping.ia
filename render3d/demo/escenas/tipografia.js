@@ -154,14 +154,12 @@ export function build(ctx) {
   // centro. Anclar en la geometría y no en un Group deja el estado real escrito en la malla.
   function plano(m, anc = 0, color = null, intensidad = LUM) {
     const mesh = planoTexto(m.str, m.alto, m.op)
-    // SIN CLASIFICAR, Y NO SE PUEDE HACER DESDE ACA. `plano()` es la fabrica de TODAS las mallas de
-    // texto de la escena, y no todas quieren lo mismo: declarar `encaja` aca de una vez deja verde a
-    // las frases compuestas y acusa a las que SE VAN DISPARADAS, que es el gesto de la escena. Medido
-    // el 2026-08-06 con el aire tecnico: una llega a 4.448 anchos de cuadro y otra a 1.787, contra una
-    // tercera que se pasa apenas 1.021 en 7 de sus 117 cuadros.
-    //
-    // La clasificacion de esta escena va MALLA POR MALLA en cada llamada a `plano()`, no en la
-    // fabrica. Ver docs/ENCAJE-ESTADO.md.
+    // LA CLASIFICACION VA POR LLAMADA, NO EN LA FABRICA, y esto se probo antes de decidirlo: declarar
+    // `encaja` aca de una vez deja verde a las frases compuestas y acusa a las que SE VAN DISPARADAS,
+    // que es el gesto de la escena. Medido con el aire tecnico, una llega a 4.448 anchos de cuadro y
+    // otra a 1.787, contra una tercera que se pasa apenas 1.021 en 7 de sus 117 cuadros. Son tres
+    // intenciones distintas saliendo de la misma funcion.
+    mesh.userData.tipoImagen = 'texto'
     mesh.geometry.translate(-anc * m.ancho / 2, 0, 0)
     // multiplyScalar y no setStyle: acá se opera sobre el valor LINEAL ya convertido, sin que la
     // gestión de color vuelva a interpretar el número como sRGB.
@@ -236,13 +234,32 @@ export function build(ctx) {
   }
   const x1 = m1.ancho / 4
   const w1a = mitad(0), w1b = mitad(1)
+  // SANGRAN LAS DOS, y es lo que la escena hace con ellas: arrancan en ±(x1 + 5.0) —el cuadro mide
+  // 5.63 de ancho, o sea que empiezan a una pantalla entera de distancia—, se juntan, y salen
+  // disparadas a ±(x1 + 6.6). Su composicion "quieta" dura desde que llegan hasta que se van, que es
+  // el 8% de la escena: son la primera de TRES frases que se suceden.
+  //
+  // Lo correcto seria "enteras mientras estan compuestas" y eso existe (`encajaEntre`), pero medido
+  // contra la escena entera un tramo del 8% es indistinguible de una rendija para esquivar la
+  // compuerta, y su guardarrail lo rechaza con razon. Ver docs/ENCAJE-ESTADO.md.
+  w1a.userData.sangra = true
+  w1b.userData.sangra = true
   w1a.position.set(-x1 - 5.0, 0.30, 0); w1a.scale.y = 0.55
   w1b.position.set(x1 + 5.0, 0.30, 0); w1b.scale.y = 0.55
 
   // 2 · ESCALA DESDE 0 ANCLADA A LA IZQUIERDA. Crece desde el margen, no desde su propio centro: el
   // ojo lee que la palabra sale del borde del cuadro.
   const m2 = medida(fr(1), ANCHA, ANCHO, 2.35)
+  // SANGRA POR SU OVERSHOOT, y el numero lo dice: `medida` la topea en A_MAX = mundoW * 0.94 = 5.29,
+  // y medida en el cuadro da 5.56 — un 5% de mas, que es exactamente el rebote de su tween de entrada
+  // (arranca en `scale 0`). No es un dimensionado mal hecho: es el golpe de llegada, la misma familia
+  // que el transitorio ya confirmado de `destello` (su malla mide 0.96 del cuadro y un tween la escala
+  // 2.429x).
+  //
+  // Igual que `w6`, lo correcto seria "entera una vez asentada" — `encajaEntre` lo expresa pero solo
+  // lo entiende `encuadre-check`. `verificar.mjs` mide UN instante y la agarra en el rebote.
   const w2 = plano(m2, -1)
+  w2.userData.sangra = true
   w2.position.set(XI, 0.55, 0); w2.scale.set(0, 0, 1); w2.rotation.z = -0.07
 
   // 3 · MÁSCARA HORIZONTAL, pegada a la derecha, casi de borde a borde.
@@ -267,18 +284,34 @@ export function build(ctx) {
   const m5 = medida(fr(4), ANCHA, mundoW * 0.80, 3.2)
   // 1.3 y no 2.4: es la única palabra que se deja pasar el umbral, y apenas. Con más, el acento deja de
   // ser una palabra encendida y pasa a ser una mancha turquesa.
+  // SANGRA, Y LO DECLARA SU PROPIA ESCALA. La linea de abajo la agranda un 18% (`scale.set(1.18,
+  // 1.18, 1)`) sobre un ancho que ya se topea cerca del cuadro, y medido en `encuadre-check` llega a
+  // 1.160 anchos de cuadro en 69 de sus 134 cuadros — sostenido, no un rebote. El 1.16 medido y el
+  // 1.18 declarado son el mismo numero: la escena la quiere pasada de cuadro.
   const w5 = plano(m5, 0, LOOK.acento2, 1.3)
+  w5.userData.sangra = true
   w5.position.set(0, 0.25 - 0.22, 0); w5.rotation.x = Math.PI / 2; w5.scale.set(1.18, 1.18, 1)
 
   // 6 · LLEGADA DESDE FUERA DE CUADRO con overshoot, pegada a la derecha.
   const m6 = medida(fr(5), ANTON, ANCHO, 2.25)
+  // SANGRA, y es una limitacion declarada y no una preferencia. Su gesto ES la llegada: arranca en
+  // XD + 6.8, bien fuera del cuadro. Lo que habria que declarar es "entera UNA VEZ llegada", y eso
+  // existe (`encajaEntre`) pero solo lo entiende `encuadre-check`, que recorre la linea de tiempo.
+  // `verificar.mjs` mide UN instante y no puede saber si esta llegando o ya llego, asi que declararla
+  // `encaja` la acusa en el medio del vuelo. Entre una compuerta que acusa en falso y una proteccion
+  // que no tengo, gana no mentir: queda anotado en docs/ENCAJE-ESTADO.md como el caso que pide llevar
+  // `encajaEntre` tambien a `verificar.mjs`.
   const w6 = plano(m6, 1)
+  w6.userData.sangra = true
   w6.position.set(XD + 6.8, 0.50, 0); w6.rotation.z = 0.06
 
   // 7 · EMPUJE EN Z: llega desde el fondo y se pasa hacia la cámara. Se compone a 7.5 de ancho sobre un
   // cuadro de 5.63: se sale por los dos lados a propósito. Un titular al 40% del ancho se lee tímido.
   const m7 = medida(fr(6), NEGRA, 7.5, 3.8)
+  // SANGRA, y lo declara su propio ancho: `medida(fr(6), NEGRA, 7.5, 3.8)` pide 7.5 en un cuadro de
+  // 5.63. El comentario de arriba lo dice sin vueltas: "se sale por los dos lados a proposito".
   const w7 = plano(m7, 0)
+  w7.userData.sangra = true
   w7.position.set(0, 0.10, -13); w7.rotation.z = 0.045
   // Las otras seis se esconden solas por construcción (fuera de cuadro, escala 0, máscara en 0 o
   // canto de plano). Ésta no: aparcada en z=-13 sigue delante de la cámara, sólo que un 40% más
@@ -371,7 +404,10 @@ export function build(ctx) {
   // HUD superior: rótulo fijo + regla de progreso escalonada en 16 pasos, o sea un escalón por medio
   // beat. Es un metrónomo visible, y de paso confirma que la grilla existe.
   const rot = medida(D.rotulo, CHICA, 2.9, 0.20)
+  // ENCAJA: es el rotulo-metronomo, texto chico arriba a la izquierda. Un rotulo cortado por el
+  // borde se lee como error de maquetado.
   const hud = plano(rot, -1)
+  hud.userData.encaja = true
   hud.position.set(XI, 4.45, 0)
   hud.scale.set(0.001, 1, 1)
 

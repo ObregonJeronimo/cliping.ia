@@ -440,6 +440,13 @@ for (const id of ids) {
       // ancho tienen que entrar enteros, que es el corte que se nota. Sin el eje la unica salida era no
       // declarar nada y perder tambien la proteccion del ancho.
       if (o.userData && o.userData.encaja) {
+        // UNA CAJA DEGENERADA NO SE JUZGA. Esta compuerta mide UN instante, y en ese instante hay
+        // mallas a medio abrir: su escala se esta animando y la caja mide `6.24 x 0.00`. Un plano sin
+        // alto no tapa ni se lee, pero pasa cualquier prueba de borde porque su centro sigue donde
+        // estaba. Es la misma trampa que ya acuso 63 veces a `apertura` por una "banda" de 4.20 x 0.00
+        // —esta escrito en tools/fondo-check.mjs, que exige AREA_MINIMA por lo mismo—, y aparecio de
+        // nuevo al clasificar `tipografia`: 4 de sus 7 acusaciones eran cajas de alto cero.
+        if (t.x < 0.02 || t.y < 0.02) return
         const eje = o.userData.encajaEje
         const dx = Math.abs(v.x) + t.x / 2, dy = Math.abs(v.y) + t.y / 2
         const seSale = eje === 'x' ? dx > mundoW * 0.51
