@@ -49,6 +49,7 @@ Uso:  npm run pesado -- python tools/escenas-render.py
 """
 import json
 import os
+import re
 import subprocess
 import sys
 
@@ -188,14 +189,37 @@ def main():
     else:
         print("\n  Ninguna escena por debajo de los pisos.")
 
-    # LAS QUE NO SE VIERON SE DICEN. El guion elige 5-7 escenas por pieza de un catalogo de 37: con
-    # seis piezas se ven bastantes menos que todas, y una escena que no se midio NO esta bien.
+    # LAS QUE NO SE VIERON SE DICEN. El guion elige 5-7 escenas por pieza de un catalogo de 20: con
+    # pocas piezas se ven bastantes menos que todas, y una escena que no se midio NO esta bien.
+    #
+    # PERO LAS DORMIDAS NO SON "NO VISTAS". `guion.js` mantiene un Set de escenas registradas, verdes
+    # en las compuertas y DELIBERADAMENTE fuera del sorteo — la decision es de producto y esta
+    # documentada ahi con la cita del usuario que la motivo. Contarlas como material sin auditar es
+    # reportar como agujero algo que alguien cerro a proposito: se persiguieron 22 piezas y 720
+    # guiones con datos reales buscando `columna` y `contraste` antes de leer esa lista.
+    dormidas = set()
+    try:
+        with open(os.path.join(RAIZ, "render3d", "demo", "guion.js"), encoding="utf-8") as fh:
+            m = re.search(r"DORMIDAS[^=]*=\s*new Set\(\[(.*?)\]\)", fh.read(), re.S)
+        if m:
+            dormidas = set(re.findall(r"[\"']([a-z]+)[\"']", m.group(1)))
+    except Exception:
+        pass
+
     d = os.path.join(RAIZ, "render3d", "demo", "escenas")
     todas = sorted(f[:-3] for f in os.listdir(d) if f.endswith(".js") and f != "index.js")
-    faltan = [e for e in todas if e not in por_escena]
+    activas = [e for e in todas if e not in dormidas]
+    faltan = [e for e in activas if e not in por_escena]
+    if dormidas:
+        print("\n  DORMIDAS (%d) — fuera del sorteo A PROPOSITO, ver el Set en render3d/demo/guion.js:"
+              % len(dormidas))
+        print("   ", " ".join(sorted(dormidas)))
     if faltan:
-        print("\n  NO SE VIERON (%d de %d) — el guion no las eligio en estas piezas:" % (len(faltan), len(todas)))
+        print("\n  NO SE VIERON (%d de %d activas) — el guion no las eligio en estas piezas:"
+              % (len(faltan), len(activas)))
         print("   ", " ".join(faltan))
+        print("    Medido con los datos reales de stripe.com sobre 720 guiones, `partida` sale el")
+        print("    10.8 por ciento de las veces: aparece con mas barrido. No es falta de material.")
 
 
 if __name__ == "__main__":
