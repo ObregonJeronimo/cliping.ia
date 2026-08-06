@@ -137,6 +137,65 @@ def cuadros_congelados(mp4, fps=10):
     return peor / float(fps), peor_en, peor_dif
 
 
+
+# ---------------------------------------------------------------- contraste del ROTULO del hero
+# POR QUE ACA Y NO EN `fondo-check`. Se persiguio hasta el fondo: `fondo-check` mide el color
+# DECLARADO del material (`mat.color`) y este defecto vive en el pixel ILUMINADO. Medido sobre el
+# cuerpo de `calibre`: declara #989389 (luminancia 0.2935) y el pixel real es rgb(85,93,146) (0.1186)
+# — 2.5 veces mas oscuro y de otro tono, porque los heroes usan MeshPhysicalMaterial con el estudio
+# PMREM y encima pasa el bloom. NINGUNA compuerta que no renderice puede saberlo. No es un descuido
+# de `fondo-check`: es lo que es.
+#
+# El defecto que lo motivo: el rotulo del hero salia a 2.41:1 sobre el bloque del calibrador, por
+# debajo hasta del umbral flexible de WCAG. Se arreglo poniendole una cama, y esta medicion es lo que
+# impide que vuelva — la cama garantiza el fondo, esto comprueba que siga garantizandolo.
+#
+# NO SE JUZGA UNA BANDA SIN TEXTO, y esto ya costo un falso positivo: `mosaico` midio 1.05:1 y no era
+# texto ilegible, era que ahi no hay rotulo. Un contraste ~1.0 sobre una franja lisa significa "no hay
+# nada que medir". Se exige evidencia de letras —saltos duros— antes de mirar el contraste.
+BANDA_ROTULO = (0.845, 0.875)   # fraccion del alto donde `hero.js` apoya su rotulo
+PISO_CONTRASTE = 3.0            # WCAG texto grande. El rotulo es grande; el umbral normal es 4.5
+SALTO_HAY_TEXTO = 20            # percentil 99 de |diferencia horizontal|: por debajo, no hay letras
+
+
+def contraste_rotulo(mp4, plan):
+    """Contraste del rotulo del hero contra lo que tiene detras, EN PIXELES.
+
+    Devuelve (contraste, cuadro) si hay algo que medir, o (None, motivo) si no.
+    """
+    import numpy as np
+    from PIL import Image
+    tramos = [t.split(":")[0] for t in plan["tramos"].split(",")]
+    if "hero" not in tramos:
+        return None, "la pieza no lleva la escena hero"
+    sb = 60.0 / plan["bpm"]
+    acc = 0
+    ini = fin = None
+    for nom, bt in zip(tramos, plan["beats"]):
+        if nom == "hero":
+            ini, fin = acc * sb, (acc + bt) * sb
+            break
+        acc += bt
+    t = (ini + fin) / 2.0            # a mitad del tramo: la composicion ya esta armada
+    png = mp4 + ".rotulo.png"
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-ss", "%.3f" % t,
+                    "-i", mp4, "-vframes", "1", png], capture_output=True)
+    if not os.path.exists(png):
+        return None, "no se pudo extraer el cuadro"
+    a = np.asarray(Image.open(png).convert("RGB"), dtype=float)
+    H = a.shape[0]
+    band = a[int(H * BANDA_ROTULO[0]):int(H * BANDA_ROTULO[1])]
+    gris = band.mean(axis=2)
+    if np.percentile(np.abs(np.diff(gris, axis=1)), 99) < SALTO_HAY_TEXTO:
+        return None, "la banda es lisa: esta pieza no dibujo rotulo"
+    c = band / 255.0
+    c = np.where(c <= 0.03928, c / 12.92, ((c + 0.055) / 1.055) ** 2.4)
+    L = 0.2126 * c[..., 0] + 0.7152 * c[..., 1] + 0.0722 * c[..., 2]
+    p5, p50 = np.percentile(L, 5), np.percentile(L, 50)
+    hi, lo = max(p5, p50), min(p5, p50)
+    return (hi + 0.05) / (lo + 0.05), int(t * 30)
+
+
 def main():
     url, seed, dur = PIEZAS[0][0], PIEZAS[0][1], PIEZAS[0][2]
     args = sys.argv[1:]
@@ -150,6 +209,7 @@ def main():
 
     fallos = []
     medidos = []
+    rotulos = []
     for u, s, d in piezas:
         mp4 = os.path.join(SALIDA, "p%d.mp4" % s)
         os.makedirs(SALIDA, exist_ok=True)
@@ -171,6 +231,15 @@ def main():
         # EL MISMO CRITERIO QUE `verificar.mjs`, sobre otra medida. Un beat es el limite que el motor
         # declara, y usar dos numeros distintos para la misma idea es como una compuerta contradice a
         # la otra.
+        cr, dato = contraste_rotulo(mp4, plan)
+        # SE INFORMA SIEMPRE, tambien cuando no se midio y por que. Una comprobacion que calla no se
+        # distingue de una que no corre: de las dos piezas fijas, una no lleva la escena `hero` en su
+        # plan, asi que sin esta linea el silencio se leeria como "el contraste esta bien".
+        rotulos.append((u, s, cr, dato))
+        if cr is not None and cr < PISO_CONTRASTE:
+            fallos.append("%s (seed %d): el rotulo del hero sale a %.2f:1 de contraste sobre lo que "
+                          "tiene detras (cuadro %s) — el piso es %.1f:1. Se lee mal."
+                          % (u, s, cr, dato, PISO_CONTRASTE))
         if congelado >= beat:
             fallos.append("%s (seed %d): la imagen se congela %.2f s seguidos a los %.1f s "
                           "(un beat son %.2f s) — eso se lee como diapositiva"
@@ -183,6 +252,12 @@ def main():
         sys.exit(1)
     detalle = " · ".join("%s seed %d: %.2fs congelado (beat %.2fs), ocupacion %.3f"
                          % (u.split("//")[-1], s, c, b, o) for u, s, c, b, o in medidos)
+    for _u, _s, _cr, _d in rotulos:
+        if _cr is None:
+            print("  rotulo del hero: no medido en %s (seed %d) — %s" % (_u, _s, _d))
+        else:
+            print("  rotulo del hero en %s (seed %d): %.2f:1 sobre lo que tiene detras "
+                  "(cuadro %s, piso %.1f:1)" % (_u, _s, _cr, _d, PISO_CONTRASTE))
     print("GATE IMAGEN OK (%d piezas renderizadas de verdad y comparadas cuadro a cuadro sobre los "
           "PIXELES, no sobre el grafo: ninguna congela la imagen un beat entero). %s"
           % (len(medidos), detalle))
