@@ -1353,10 +1353,23 @@ disponible; sus afirmaciones hay que verificarlas a mano antes de actuar sobre e
   - **Por qué cambia la decisión:** El paso 2 se vende como «cambia composiciones que hoy se ven bien, por eso va después, para que la compuerta diga cuál cambió». Pero con estas cuatro aserciones la compuerta NO puede decirlo: el modo de falla que introduce el piso —texto legible pero encimado dentro de su propia 
   - **Corrección:** Antes del paso 2, tomar la decisión de producto que falta: qué pasa con el texto que no entra — renglones adaptativos (elegir la cantidad de líneas que MAXIMIZA el cuerpo sujeto a que entre, en vez de MAX_LINEAS fijo), truncado en el extractor, o apagar la escena. `caber()` implementa esa política; 
 
-- [ ] **«`planoRecorte` aplica `topeNitido` por dentro» no es un arreglo de nitidez: es un cambio de composición en 7 sitios que VACÍA huecos de grilla. topeNitido (kit.js:146) devuelve `img.width * 1.4 / 1080 * mundoW`; para el logo real de stripe (120x50, tools/fixtures/director/elementos/) eso da 0.875 unidades. En mosaico **
+- [x] **«`planoRecorte` aplica `topeNitido` por dentro» no es un arreglo de nitidez: es un cambio de composición en 7 sitios que VACÍA huecos de grilla. topeNitido (kit.js:146) devuelve `img.width * 1.4 / 1080 * mundoW`; para el logo real de stripe (120x50, tools/fixtures/director/elementos/) eso da 0.875 unidades. En mosaico **
   - **Por qué cambia la decisión:** El plan clasifica el paso 2 como riesgo medio «porque cambia composiciones que hoy se ven bien», pero esta parte no es un cambio de encaje: es dejar agujeros donde hoy hay imagen, en los tres heroes de recortes, y por una regla automática que nadie va a poder desactivar caso por 
   - **Corrección:** topeNitido sigue siendo opt-in por escena; lo que se unifica es la MEDICIÓN, no la corrección. Para las grillas hace falta una política de slot (rellenar con marco/letterbox, elegir otra fuente, o rechazar el recorte para ese slot) antes de capar nada. Y E-NITIDEZ se parte en dos: recortes (umbral 1
 
+  - **CERRADA 2026-08-05: la objecion GANO — su recomendacion es lo que esta implementado.**
+    - **El cambio peligroso que advertia NUNCA SE HIZO:** verificado en `kit.js:2104`, `planoRecorte`
+      no aplica `topeNitido` por dentro. Cero ocurrencias en su cuerpo.
+    - **Y el diseño que proponia es el que rige:** `topeNitido` sigue siendo opt-in por escena.
+      `mosaico.js:142` lo llama explicitamente, igual que `columna`, `cubo` y `vitrina`. Son cuatro
+      escenas que deciden usarlo, no una regla automatica aplicada a las nueve que llaman a
+      `planoRecorte`.
+    - Su argumento era concreto y verificable: el logo real de stripe (120x50) daria 0.875 unidades y en
+      una grilla eso deja un HUECO donde hoy hay imagen. Capar por nitidez sin una politica de slot
+      —rellenar, elegir otra fuente, o rechazar el recorte— cambia la composicion en vez de mejorarla.
+    - Tercera objecion del dia que resulta correcta. Las tres apuntaban a lo mismo: **una regla
+      automatica aplicada sin mirar el caso rompe cosas que estaban bien**, que es exactamente lo que el
+      barrido visual confirmo cuatro veces sobre las escenas.
 - [x] **El barrido del paso 1 no entra en ningún presupuesto de compuerta, y el plan no da ninguno. Medido recién: `node render3d/demo/verificar.mjs` = 4.1 s (37 escenas), `node tools/encuadre-check.mjs` = 9.3 s para 407 construcciones (37 x 11 aires), o sea ~23 ms por construcción incluyendo el barrido a 30 fps. El barrido de**
   - **Por qué cambia la decisión:** El valor entero del paso 1 es ser el criterio de aceptación de las tandas del paso 2. Una compuerta de horas no se corre por tanda: se corre una vez, se rompe, y la migración termina haciéndose sin red — que es el escenario que el plan dice estar evitando. Cambia el diseño del pa
   - **Corrección:** Escribir el barrido como SUMA de ejes y no como producto: se varía un eje por vez con el resto clavado en el fixture (≈20 contenidos x 37 escenas = 740 construcciones ≈ 17 s, que sí entra en las compuertas rápidas), y los ejes aire/semilla se dejan donde ya están, en el pase de 11 aires que corre en
