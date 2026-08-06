@@ -115,3 +115,56 @@ al motor**.
 Las dos veces la predicción decía que `partida` entraba y el plan real salió sin ella. **El "10,8% de
 las veces" que se reportó en un commit anterior sale de ese mismo simulador y no es un dato
 confiable.** Lo que funcionó fue lo caro y honesto: **renderizar de verdad y mirar el plan.**
+
+## Los 11 aires, comparados entre sí — `tools/aires-render.py`
+
+```bash
+npm run pesado -- python tools/aires-render.py
+```
+
+Renderiza la **misma página con la misma semilla** en los once aires. Las compuertas los barren
+*rotando* (cada escena ve uno distinto), lo que da cobertura pero **no comparación**: si un aire
+compusiera peor que los otros diez, quedaría diluido en el promedio.
+
+Había motivo para sospechar: el dolly va de **0,4 (`bienestar`) a 1,55 (`inmobiliario`)**, casi 4×, y
+ese rango ya produjo defectos reales — `toro` se salía del cuadro **sólo** con dolly 1,55.
+
+**Resultado: los once sanos, ninguno por debajo de los pisos.**
+
+| aire | bpm | escenas | movimiento | tinta |
+|---|---|---|---|---|
+| `editorial` | 114 | 6 | 0,899 | 0,347 |
+| `artesanal` | 114 | 6 | 0,955 | 0,328 |
+| `corporativo` | 114 | 6 | 1,081 | 0,338 |
+| `gastronomico` | 114 | 6 | 1,142 | 0,325 |
+| `bienestar` | 96 | 5 | 1,184 | 0,282 |
+| `inmobiliario` | 108 | 6 | 2,099 | 0,327 |
+| `deportivo` | 150 | 8 | 2,780 | 0,337 |
+| `tecnico` | 132 | 7 | 3,354 | 0,311 |
+| `nocturno` | 144 | 8 | 4,787 | 0,279 |
+| `jugueton` | 132 | 7 | 9,033 | 0,350 |
+| `lujo` | 84 | 5 | 11,157 | 0,591 |
+
+### El tempo NO predice el movimiento
+
+Es lo contrario de lo que se esperaría: **`lujo`, el aire más lento del catálogo (bpm declarado 76),
+produce la pieza que más se mueve (11,157)**, y `editorial` la más quieta con bpm efectivo 114.
+
+La razón es que **el aire cambia el guion, no sólo la cámara**: con otra semilla-aire entra otro
+conjunto de escenas, y el movimiento de una pieza depende mucho más de *qué escenas la componen* que
+del tempo. Comparar aires por movimiento sin mirar su plan lleva a la conclusión inversa a la real.
+
+### El bpm efectivo no es el declarado, y es diseño
+
+Los once corren más rápido de lo que declaran, con ratios distintos (5,6% a 14%):
+
+| | declara | usa |
+|---|---|---|
+| `editorial` | 100 | 114 |
+| `lujo` | 76 | 84 |
+| `deportivo` | 140 | 150 |
+
+No es un factor fijo: es el **ajuste de tempo para que el guion calce en la duración pedida**, que
+`guion-check` ya declara (`ajusteDe`, `TOPE_AJUSTE`). Conviene saberlo antes de comparar contra el
+número del archivo del aire — como pasó al intentar predecir semillas, donde simular con el bpm
+declarado dio planes que el motor nunca produjo.
