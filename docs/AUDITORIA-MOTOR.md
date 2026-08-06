@@ -1198,6 +1198,30 @@ Por escena:
   - Anotado asi a proposito: son mediciones, no veredictos. La mitad de las fichas que se cerraron hoy
     nacieron de mirar un numero fuera de rango y llamarlo defecto sin leer la escena.
 
+- [ ] **Los mundos OSCUROS componen mas vacios que los claros, y hay que decidir si es diseño**
+  - **Medido sobre tres piezas de tres paginas distintas**, renderizadas hoy:
+
+    | pieza | luminancia media | ocupacion | quietos | contraste |
+    |---|---|---|---|---|
+    | pentagram (claro) | 166/255 | 0.428 | 0.326 | 0.187 |
+    | stripe (claro) | 173/255 | 0.385 | 0.324 | 0.166 |
+    | **linear (oscuro)** | **43/255** | **0.124** | **0.439** | **0.122** |
+
+  - **Y NO es un artefacto de la metrica, que era la primera sospecha.** `medir-video.py` cuenta pixeles
+    que se apartan de la mediana del cuadro por mas de **60 en valor absoluto**, y en un mundo oscuro
+    todo vive cerca del negro, asi que pocos pixeles cruzan ese umbral aunque la composicion este igual
+    de llena. Se rehizo la cuenta con un umbral **RELATIVO al rango del propio cuadro** (25% del
+    percentil 99) y `linear` sigue dando **0.120 contra 0.30-0.33**. La diferencia es real.
+  - **Lo que falta antes de llamarlo defecto** —y es una muestra de tres piezas, no una conclusion—:
+    - Medir ocupacion sobre los ONCE aires con la misma pagina, para separar "el mundo oscuro compone
+      mas vacio" de "esta pagina compone mas vacio".
+    - Si el efecto es del aire, hay que decidir si es deliberado: `lujo` e `inmobiliario` declaran
+      explicitamente que "lo caro se vende con AIRE" y `sello` existe para componer con el vacio. Pero
+      `nocturno` y `tecnico` no dicen nada parecido, y ahi 0.12 de ocupacion con 0.12 de contraste
+      empieza a parecer una pieza que no se ve, no una que respira.
+  - **Anotado como observacion con medicion, no como defecto.** Es la quinta vez en este barrido que un
+    numero fuera de rango pedia mirar antes de acusar, y las cuatro anteriores terminaron siendo diseño.
+
 ## Correcciones de los críticos
 
 Tres críticos adversarios revisaron el diagnóstico. **Dos lo sostienen, uno no** — y su objeción
