@@ -11,7 +11,9 @@ total— y eso deja pasar el caso que importa, una escena floja dentro de una pi
 
 No cuesta render extra: el `plan.json` dice dónde empieza y termina cada tramo.
 
-## Estado: 17 de 20 escenas medidas, cero defectos
+## Estado: las 18 escenas ACTIVAS medidas, cero defectos
+
+(Las otras 2 del catálogo están dormidas a propósito — ver abajo.)
 
 | escena | veces | movimiento | tinta |
 |---|---|---|---|
@@ -91,13 +93,19 @@ textura de página. `titular` usa **1.02** para su foto, que es correcto.
 del sorteo por decisión de producto, con la cita que la motivó en el Set `DORMIDAS` de `guion.js`. No
 son material sin auditar: son material apagado. La herramienta ahora las informa aparte.
 
-**`partida` queda SIN AUDITAR con render**, y es la única activa que falta. Aparece poco y no cayó en
-ninguna de las 22 piezas del barrido.
+**`partida` ya está auditada.** Cayó al ampliar el barrido a 22 piezas con páginas que nunca se habían
+probado (`pentagram.com`, `theverge.com`) y semillas nuevas. Mide **movimiento 0,933 y tinta 0,837 —
+la más alta de las 18**, o sea el cuadro más lleno del catálogo. Ninguna señal de defecto.
 
-### Cómo NO buscarla, que ya costó dos renders
+**Con la salvedad de que tiene n=1**, y en este mismo documento hay dos casos de conclusiones sacadas
+de una sola muestra que se cayeron con más datos. Su lectura es preliminar hasta que aparezca en más
+piezas.
 
-Se intentó predecir una semilla que la produjera, corriendo `guionDe` fuera del motor. Falló dos
-veces, y las dos por la misma razón de fondo: **el simulador no reproducía al motor**.
+### Cómo NO buscarla, que costó dos renders
+
+Antes de ampliar el barrido se intentó **predecir** una semilla que la produjera, corriendo `guionDe`
+fuera del motor. Falló dos veces, y las dos por la misma razón de fondo: **el simulador no reproducía
+al motor**.
 
 | intento | qué se usó | por qué falló |
 |---|---|---|
@@ -105,9 +113,5 @@ veces, y las dos por la misma razón de fondo: **el simulador no reproducía al 
 | 2º | los datos reales, pero con una tabla de bpm **inventada** | `lujo` declara **bpm 76** y el render usó **78**; se simuló con **85** |
 
 Las dos veces la predicción decía que `partida` entraba y el plan real salió sin ella. **El "10,8% de
-las veces" que se reportó en un commit anterior sale de ese mismo simulador y por lo tanto no es un
-dato confiable.**
-
-Si hace falta auditarla, las opciones honestas son renderizar semillas hasta que caiga —caro pero
-real— o agregarle al motor un modo que imprima el plan sin renderizar, que hoy no existe y sería lo
-que vuelve barata cualquier búsqueda de este tipo.
+las veces" que se reportó en un commit anterior sale de ese mismo simulador y no es un dato
+confiable.** Lo que funcionó fue lo caro y honesto: **renderizar de verdad y mirar el plan.**
