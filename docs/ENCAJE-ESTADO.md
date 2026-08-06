@@ -104,9 +104,28 @@ El cuadro mide 5.63 de ancho (semiancho 2.815) y el borde izquierdo de esa prime
 **−3.03: se sale 0.22**. La causa es que el reparto agranda cada letra para que la *palabra* llegue al
 94% del ancho, y con una o dos letras una sola letra no entra aunque la palabra sí.
 
-**El arreglo va por topear el ancho POR LETRA y no sólo por palabra.** No se hizo de apuro porque el
-dimensionado de `apertura` es la primera impresión de la pieza y su cabecera enumera todo lo que ya se
-probó ahí. Cuando se arregle, las 8 letras se declaran `encaja` y el trinquete baja a 7.
+**Son dos causas, no una** — y conviene saberlo antes de tocar, porque arreglar sólo la primera deja
+el defecto vivo:
+
+1. **El centrado usa el ancho deseado, no el real.** `cursor` arranca en `-OBJ / 2` con
+   `OBJ = mundoW * 0.94`. Cuando `ALTO_MAX = mundoH * 0.34` topea la letra —que es lo que pasa con
+   nombres de 1-2 letras— el ancho real de la palabra queda **menor** que `OBJ`, y la palabra se
+   corre a la izquierda la mitad de esa diferencia en vez de quedar centrada.
+2. **El avance y el dibujo no miden lo mismo.** El cursor avanza `unidad[i] * ALTO`, pero la malla se
+   crea con `planoTexto(L, ALTO, …)`, cuyo ancho sale del `ar` de su textura. Si el `ar` es mayor que
+   `unidad[i]`, la malla sobresale de la celda que el cursor le reservó. Es la familia de defectos que
+   este repo ya conoce: *dos lugares que calculan el mismo tamaño y se desincronizan* (pasó con
+   `toro`, con `mesa` y con `rafaga`).
+
+El chequeo `cabe` no lo caza porque pregunta por la **palabra** (`suma * conPiso + TRACK * (n-1)`), y
+con una sola letra la palabra entra aunque la malla no.
+
+**Cómo verificarlo cuando se arregle:** declarar `encaja` en las letras y correr `verificar.mjs`, que
+es la que lo acusó. Las marcas que lo disparan son de 1-2 letras — el barrido las genera solo.
+
+No se arregló de apuro porque el dimensionado de `apertura` es la primera impresión de la pieza y su
+cabecera enumera todo lo que ya se probó ahí. Cuando se arregle, las 8 letras se declaran `encaja` y el
+trinquete baja a 7.
 
 ## Cómo clasificar sin romper nada — el orden que funcionó
 
