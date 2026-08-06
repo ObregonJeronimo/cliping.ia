@@ -79,6 +79,24 @@ const AIRES = {}
 for (const f of readdirSync(join(DEMO, 'aires')).filter(f => f.endsWith('.js'))) {
   AIRES[f.replace('.js', '')] = (await import(pathToFileURL(join(DEMO, 'aires', f)).href)).default
 }
+// ENCUADRE_AIRE=nombre limita el barrido a UN aire, y existe para poder correr el cartesiano.
+//
+// El producto completo son 3256 construcciones y en un solo proceso NO ENTRA: medido, revienta con
+// "Create skia surface failed" a mitad del barrido. No es un defecto de composicion — es la fuga
+// conocida de `texto()`, que compromete memoria que la libreria nativa de canvas no devuelve nunca.
+// Es la misma razon por la que `fondo-check`, `tira-check` y `eco-check` se parten en procesos "para
+// que la memoria vuelva al sistema".
+//
+// Con esto, el cartesiano se corre en once tandas de ~300 construcciones cada una:
+//   for a in artesanal bienestar ...; do ENCUADRE_CARTESIANO=1 ENCUADRE_AIRE=$a node tools/encuadre-check.mjs; done
+if (process.env.ENCUADRE_AIRE) {
+  const soloEste = process.env.ENCUADRE_AIRE
+  if (!AIRES[soloEste]) {
+    console.error(`ENCUADRE: el aire "${soloEste}" no existe. Hay: ${Object.keys(AIRES).join(', ')}`)
+    process.exit(2)
+  }
+  for (const k of Object.keys(AIRES)) if (k !== soloEste) delete AIRES[k]
+}
 const { configurarDatos, ANTHEM, reiniciarReparto } = await import(pathToFileURL(join(DEMO, 'datos.js')).href)
 
 // EL CONTENIDO TAMBIEN SE BARRE, NO SOLO LOS AIRES.
@@ -187,7 +205,14 @@ const _push = fallos.push.bind(fallos)
 let _iJuego = 0
 for (const [nombreAire, aire] of Object.entries(AIRES)) {
   // El juego rota con el aire: el primero con ANTHEM, el segundo con el primer fixture real, y asi.
-  const juego = JUEGOS[_iJuego++ % JUEGOS.length]
+  // ENCUADRE_CARTESIANO=1 BARRE TODAS LAS COMBINACIONES en vez de rotar. Rotar da 407 construcciones
+  // y el producto completo 3256 — o sea que la compuerta cubre el 12.5%. La cabecera de arriba dice
+  // que rotar "hoy no cambia el veredicto, medido", y eso se midio ANTES de que 71 mallas declararan
+  // `encaja`: la compuerta ahora exige muchisimo mas que entonces, asi que el numero hay que
+  // rehacerlo. No entra en la cadena —tarda ocho veces mas— pero se corre a mano cuando se toca el
+  // encaje, que es justo cuando la diferencia podria aparecer.
+  const juegosDeEstaVuelta = process.env.ENCUADRE_CARTESIANO ? JUEGOS : [JUEGOS[_iJuego++ % JUEGOS.length]]
+  for (const juego of juegosDeEstaVuelta) {
  configurar(aire)
  // cada fallo dice en QUE aire aparecio: sin eso, "se sale del cuadro" no se puede reproducir
  fallos.push = (m) => _push(`${m}   [aire ${nombreAire} · datos ${juego.nombre}]`)
@@ -463,6 +488,7 @@ for (const [nombreAire, aire] of Object.entries(AIRES)) {
         + 'no entran en el cuadro NI UNA VEZ — el grupo pasa porque un hermano bien colocado lo tapa')
     }
   }
+ }
  }
 }
 
