@@ -1349,10 +1349,25 @@ disponible; sus afirmaciones hay que verificarlas a mano antes de actuar sobre e
       `encuadre-check:217`: no declarar solo lo que entra, sino clasificar TODO, y que la compuerta
       exija clasificacion en vez de geometria.
 
-- [ ] **E-CUERPO-MÍNIMO y `caber(..., {pisoPx})` son insatisfacibles contra la caja LOCAL, y el defecto que producen no lo ve ninguna de las cuatro aserciones propuestas. `encaje` devuelve `anchoUtil / arMax` cuando desborda (kit.js:968); poner un piso P significa `alto = max(P, anchoUtil/arMax)`, y en cuanto P gana, el ancho **
+- [x] **E-CUERPO-MÍNIMO y `caber(..., {pisoPx})` son insatisfacibles contra la caja LOCAL, y el defecto que producen no lo ve ninguna de las cuatro aserciones propuestas. `encaje` devuelve `anchoUtil / arMax` cuando desborda (kit.js:968); poner un piso P significa `alto = max(P, anchoUtil/arMax)`, y en cuanto P gana, el ancho **
   - **Por qué cambia la decisión:** El paso 2 se vende como «cambia composiciones que hoy se ven bien, por eso va después, para que la compuerta diga cuál cambió». Pero con estas cuatro aserciones la compuerta NO puede decirlo: el modo de falla que introduce el piso —texto legible pero encimado dentro de su propia 
   - **Corrección:** Antes del paso 2, tomar la decisión de producto que falta: qué pasa con el texto que no entra — renglones adaptativos (elegir la cantidad de líneas que MAXIMIZA el cuerpo sujeto a que entre, en vez de MAX_LINEAS fijo), truncado en el extractor, o apagar la escena. `caber()` implementa esa política; 
 
+  - **CERRADA 2026-08-05: tenia razon, y la alternativa que propuso es la que se implemento.**
+    - **Su advertencia se respeto:** `caber(..., {pisoPx})` —la API que llamaba insatisfacible contra la
+      caja local— **no la usa ningun archivo del motor**. No se fue por ese camino.
+    - **Y su correccion es lo que hay:** proponia "renglones adaptativos (elegir la cantidad de lineas
+      que MAXIMIZA el cuerpo sujeto a que entre, en vez de MAX_LINEAS fijo)". Eso es exactamente
+      `gancho.js:114-124`: prueba 3, 4 y 5 renglones y toma **el primero que pasa el piso**.
+    - Medido cuando se implemento: con los 4 claims reales del repo (78 a 87 caracteres) sobre los 11
+      aires, el peor cuerpo caia a **35 px** sobre 1920 —por debajo del limite de 38 px que declara
+      `hero.js`— y con un renglon mas el mismo texto entra **de 43-53 px a 60-67**. Una pagina de claim
+      corto no se entera; solo cambian de forma las que hoy salen ilegibles.
+    - Y el piso es el MISMO numero y la misma medida que usa `hero.js`, no uno nuevo — que es la leccion
+      que este dia repitio tres veces con las constantes duplicadas.
+    - **Quinta objecion correcta, y ultima.** Las cinco acertaron: dos datos falsos del diagnostico, una
+      regla automatica que habria roto composiciones, una compuerta que faltaba, y una politica de
+      producto que efectivamente hacia falta decidir antes de tocar nada.
 - [x] **«`planoRecorte` aplica `topeNitido` por dentro» no es un arreglo de nitidez: es un cambio de composición en 7 sitios que VACÍA huecos de grilla. topeNitido (kit.js:146) devuelve `img.width * 1.4 / 1080 * mundoW`; para el logo real de stripe (120x50, tools/fixtures/director/elementos/) eso da 0.875 unidades. En mosaico **
   - **Por qué cambia la decisión:** El plan clasifica el paso 2 como riesgo medio «porque cambia composiciones que hoy se ven bien», pero esta parte no es un cambio de encaje: es dejar agujeros donde hoy hay imagen, en los tres heroes de recortes, y por una regla automática que nadie va a poder desactivar caso por 
   - **Corrección:** topeNitido sigue siendo opt-in por escena; lo que se unifica es la MEDICIÓN, no la corrección. Para las grillas hace falta una política de slot (rellenar con marco/letterbox, elegir otra fuente, o rechazar el recorte para ese slot) antes de capar nada. Y E-NITIDEZ se parte en dos: recortes (umbral 1
