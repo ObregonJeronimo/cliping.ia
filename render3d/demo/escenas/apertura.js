@@ -32,7 +32,7 @@
 // El overshoot vive en la ROTACIÓN y en la escala de cada letra, no en z: con la palabra ocupando el
 // 94% del ancho, un back.out sobre la profundidad la empujaba fuera del cuadro en el rebote.
 
-import { E, LOOK, MOB, b, BPM, planoTexto, texto, materialMascara, filete, hex, nivel, nivelTexto, marco, dolly, orbita } from '../kit.js'
+import { E, LOOK, MOB, b, BPM, planoTexto, texto, materialMascara, filete, hex, nivel, nivelTexto, marco, dolly, orbita, cuadroMasAngosto } from '../kit.js'
 // El COPY sale de los DATOS. Lo que queda escrito aca es CHROME de la pieza (rotulos de
 // capitulo, indicadores tecnicos): eso es direccion de arte y no cambia con el contenido.
 // Lo que la marca DICE — su nombre, sus cifras, su claim, su CTA — sale de los datos o NO SALE.
@@ -458,7 +458,14 @@ export function build(ctx) {
     return elegida.split('')
   })()
   const TRACK = 0.016
-  const OBJ = mundoW * 0.94
+  // EL ANCHO OBJETIVO SE MIDE CONTRA EL CUADRO QUE VA A HABER, no contra el de reposo. La camara de
+  // esta escena se acerca hasta `dolly(distBase, -0.55)` y el dolly lo pone el AIRE (0.4 a 1.55), asi
+  // que `mundoW` no dice lo que se ve. Es el mismo patron que ya costo dos arreglos en este repo —el
+  // 0.915 de `toro` y la correccion de ancho de `mesa`—: un ancho util declarado en unidades de mundo
+  // no dice lo que se ve. El acercamiento se declara UNA vez y lo usan la camara y el ancho.
+  const ACERCA = -0.55
+  const CUADRO = cuadroMasAngosto(mundoW, ACERCA / distBase)
+  const OBJ = CUADRO * 0.94
   const unidad = LETRAS.map(L => Math.max(0.05, texto(L, ANTON()).ar - AIRE))
   const suma = unidad.reduce((a, c) => a + c, 0)
   // ENCAJE DE DOS EJES. El reparto original sólo miraba el ANCHO: repartía el 94% del cuadro entre la
@@ -476,12 +483,18 @@ export function build(ctx) {
   // en Anton se afina tanto que el bloom le rellena los contrapunzones y el nombre deja de leerse.
   const ALTO_MAX = mundoH * 0.34
   const ALTO_MIN = 0.55
-  const porAncho = suma > 0.05 ? (OBJ - TRACK * (LETRAS.length - 1)) / suma : 2.2
+  // Y SE REPARTE CONTANDO EL AIRE, que es la otra mitad del defecto. `unidad` es `ar - AIRE`, o sea
+  // SOLO EL GLIFO, pero la malla se dibuja con el `ar` completo: cada plano mide `AIRE * ALTO` mas que
+  // el avance que el cursor le reserva. Repartiendo OBJ entre `suma` a secas, la palabra terminaba
+  // midiendo siempre `AIRE * ALTO` mas de lo pedido, y con el cuadro ya achicado por el dolly eso la
+  // sacaba: medido, hasta 1.128 anchos de cuadro con el aire tecnico. Dividiendo por `suma + AIRE` el
+  // ancho VISUAL de la palabra es el que se pidio.
+  const porAncho = suma > 0.05 ? (OBJ - TRACK * (LETRAS.length - 1)) / (suma + AIRE) : 2.2
   // El piso NO se aplica si haría desbordar el cuadro: entre un nombre chico y un nombre cortado por
   // el borde, gana el chico. Un titular que se sale se lee como un error de render; uno pequeño se
   // lee como una marca de nombre largo, que es lo que es.
   const conPiso = Math.max(ALTO_MIN, Math.min(ALTO_MAX, porAncho))
-  const cabe = suma * conPiso + TRACK * (LETRAS.length - 1) <= mundoW * 0.98
+  const cabe = (suma + AIRE) * conPiso + TRACK * (LETRAS.length - 1) <= CUADRO * 0.98
   const ALTO = cabe ? conPiso : Math.min(ALTO_MAX, porAncho)
 
   // `texto()` dibuja con textBaseline 'middle', y en Anton el centro óptico de la caja de mayúsculas
@@ -492,24 +505,31 @@ export function build(ctx) {
   g.add(gPal)
 
   const letras = []
-  let cursor = -OBJ / 2
+  // SE CENTRA POR EL ANCHO QUE LA PALABRA MIDE, NO POR EL QUE SE LE PIDIO.
+  //
+  // `cursor` arrancaba en -OBJ/2, o sea en el ancho DESEADO (94% del cuadro). Eso es correcto mientras
+  // la palabra efectivamente llegue a OBJ, y deja de serlo en cuanto ALTO_MAX topea la letra — que es
+  // justo lo que pasa con marcas de UNA O DOS letras, donde `porAncho` se dispara y el tope de altura
+  // manda. Ahi la palabra mide bastante menos que OBJ y queda corrida a la izquierda la mitad de esa
+  // diferencia, en vez de centrada.
+  //
+  // Medido con la marca "Q" y el aire artesanal: ALTO topeado en 3.40, glifo de 2.07 de ancho, y la
+  // letra sentada en x = -1.61 en un cuadro que va de -2.82 a 2.82. Una marca de una letra apareciendo
+  // pegada al margen izquierdo en el cuadro mas grande de la pieza.
+  //
+  // Y NO ES QUE SE SALIERA, que fue lo primero que anote y estaba mal: el borde del GLIFO cae en -2.65,
+  // adentro. Lo que cruza el borde es el AIRE transparente que `texto()` deja alrededor del glifo, y
+  // `verificar.mjs` mide la caja de la malla, no la tinta. El defecto es el descentrado.
+  const anchoReal = suma * ALTO + TRACK * (LETRAS.length - 1)
+  let cursor = -anchoReal / 2
   LETRAS.forEach((L, i) => {
     const w = unidad[i] * ALTO
     const m = planoTexto(L, ALTO, ANTON())
-    // SIN CLASIFICAR TODAVIA, Y NO POR OLVIDO — declararlas `encaja` destapa un defecto real que hay
-    // que arreglar antes, medido el 2026-08-06 con `verificar.mjs`:
-    //
-    //   marca "Q"  (1 letra)   aire artesanal   PlaneGeometry 2.83 x 3.42 centrada en x = -1.62
-    //   marca "GO" (2 letras)  aire bienestar   PlaneGeometry 2.51 x 3.32 centrada en x = -1.76
-    //
-    // El cuadro mide 5.63 de ancho, o sea semiancho 2.815, y el borde izquierdo de esa primera letra
-    // cae en -3.03: se sale 0.22. Con marcas de UNA O DOS letras el reparto agranda cada letra para
-    // que la palabra llegue al 94% del ancho, y una sola letra de 2.83 no entra aunque la palabra si.
-    //
-    // No se declara `encaja` para no dejar la compuerta en rojo, y no se arregla de apuro porque el
-    // dimensionado de esta escena es la primera impresion de la pieza y su cabecera enumera todo lo
-    // que ya se probo aca. El arreglo va por el lado de topear el ancho POR LETRA y no solo por
-    // palabra. Ver docs/ENCAJE-ESTADO.md.
+    // ENCAJA: son las LETRAS DEL NOMBRE DE LA MARCA, en el cuadro mas grande del video. La cabecera de
+    // esta escena lo dice dos veces — "la palabra mide ~94% del ancho del cuadro" y, sobre todo lo que
+    // se probo aca, "nada que ensucie el nombre". Una letra cortada por el borde es la marca mal
+    // escrita, y no hay lectura de composicion que lo justifique.
+    m.userData.encaja = true
     m.position.set(cursor + w / 2, 0, -13)
     m.rotation.x = -1.35
     m.rotation.z = (rnd() - 0.5) * 0.16
@@ -545,7 +565,7 @@ export function build(ctx) {
 
   // Empuje de cámara mientras las letras llegan, y una inclinación mínima que se resuelve sola. El
   // empuje se frena en -0.55 porque con la palabra al 94% del ancho, medio metro más la recorta.
-  de(camera.position, { z: dolly(distBase, 0.85) }, { z: dolly(distBase, -0.55), duration: b(1.6), ease: E.frena(2) }, T)
+  de(camera.position, { z: dolly(distBase, 0.85) }, { z: dolly(distBase, ACERCA), duration: b(1.6), ease: E.frena(2) }, T)
   de(camera.rotation, { z: orbita(0.016) }, { z: 0, duration: b(1.4), ease: E.frena(2) }, T)
 
   // Filete de acento debajo de la palabra: dispara de izquierda a derecha y llena el hueco que deja la
@@ -756,7 +776,7 @@ export function build(ctx) {
   // ================================================================ devolver la cámara
   // Si la escena no deja la cámara donde la encontró, la que sigue arranca desde otro punto de vista y
   // la pieza se desarma. El tween la trae y el set la clava.
-  de(camera.position, { z: dolly(distBase, -0.55) }, { z: distBase, duration: b(1.9), ease: E.vaiven() }, b(3.1))
+  de(camera.position, { z: dolly(distBase, ACERCA) }, { z: distBase, duration: b(1.9), ease: E.vaiven() }, b(3.1))
   de(fondo.uGrilla, { value: 0.82 }, { value: 0.58, duration: b(1.6), ease: 'none' }, b(4.2))
   tl.set(camera.position, { x: 0, y: 0, z: distBase }, b(5.2))
   tl.set(camera.rotation, { x: 0, y: 0, z: 0 }, b(5.2))

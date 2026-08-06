@@ -55,12 +55,12 @@ redondo.**
 | 2026-08-06 | 32 de 71 | `columna` (8), primer caso de `encajaEje` |
 | 2026-08-06 | 28 de 71 | `mesa`, `titular`, `contraste`, `vitrina` (1 cada uno) |
 | 2026-08-06 | 21 de 71 | `rafaga` (7) |
-| 2026-08-06 | **15 de 71** | `apertura`, sólo el contador (6) |
+| 2026-08-06 | 15 de 71 | `apertura`, sólo el contador (6) |
+| 2026-08-06 | **7 de 71** | `apertura`, sus 8 letras (arreglado el dimensionado) |
 
 ## Lo que falta, por archivo
 
 ```
-apertura    14   texto
 tipografia   7   2 sin tipo + 5 texto
 ```
 
@@ -89,43 +89,35 @@ sobre la escena: "entra entera durante el último 80% del tiempo en que se la ve
 malla efímera y bien compuesta de una rendija conveniente. No está hecho — se deja anotado en vez de
 forzar `tipografia` con un tramo que el guardarraíl tendría que dejar pasar por excepción, que es
 justamente como se rompen las compuertas.
-- `apertura` — quedan sus **8 letras**, y no por olvido: declararlas `encaja` destapa un defecto real.
 
-## Defecto encontrado y NO arreglado: `apertura` con marcas de una o dos letras
+## `apertura`: el defecto que destapó la clasificación, y cómo se arregló
 
-Medido con `verificar.mjs` el 2026-08-06, al declarar `encaja` en las letras del nombre:
+Declarar `encaja` en las letras del nombre puso en rojo las dos compuertas. **Y el primer diagnóstico
+que escribí estaba mal**, así que conviene dejar las dos versiones:
 
-| marca | aire | malla | centro x |
-|---|---|---|---|
-| `Q` (1 letra) | artesanal | 2.83 × 3.42 | −1.62 |
-| `GO` (2 letras) | bienestar | 2.51 × 3.32 | −1.76 |
+> *Lo que anoté primero:* "con marcas de 1-2 letras la letra se sale 0.22 del cuadro".
 
-El cuadro mide 5.63 de ancho (semiancho 2.815) y el borde izquierdo de esa primera letra cae en
-**−3.03: se sale 0.22**. La causa es que el reparto agranda cada letra para que la *palabra* llegue al
-94% del ancho, y con una o dos letras una sola letra no entra aunque la palabra sí.
+Falso. Con la marca `Q`, el borde del **glifo** cae en −2.65 y el semiancho del cuadro es 2.815: el
+glifo entra. Lo que cruzaba el borde es el **aire transparente** que `texto()` deja alrededor
+(`AIRE = 0.3 / 1.34`), y `verificar.mjs` mide la caja de la malla, no la tinta.
 
-**Son dos causas, no una** — y conviene saberlo antes de tocar, porque arreglar sólo la primera deja
-el defecto vivo:
+Los defectos reales eran **tres**, y hacían falta los tres:
 
-1. **El centrado usa el ancho deseado, no el real.** `cursor` arranca en `-OBJ / 2` con
-   `OBJ = mundoW * 0.94`. Cuando `ALTO_MAX = mundoH * 0.34` topea la letra —que es lo que pasa con
-   nombres de 1-2 letras— el ancho real de la palabra queda **menor** que `OBJ`, y la palabra se
-   corre a la izquierda la mitad de esa diferencia en vez de quedar centrada.
-2. **El avance y el dibujo no miden lo mismo.** El cursor avanza `unidad[i] * ALTO`, pero la malla se
-   crea con `planoTexto(L, ALTO, …)`, cuyo ancho sale del `ar` de su textura. Si el `ar` es mayor que
-   `unidad[i]`, la malla sobresale de la celda que el cursor le reservó. Es la familia de defectos que
-   este repo ya conoce: *dos lugares que calculan el mismo tamaño y se desincronizan* (pasó con
-   `toro`, con `mesa` y con `rafaga`).
+1. **La palabra se centraba por el ancho deseado, no por el real.** `cursor` arrancaba en `-OBJ / 2`.
+   Cuando `ALTO_MAX` topea la letra —lo que pasa con nombres de 1-2 letras— el ancho real queda menor
+   que `OBJ` y la palabra se corre a la izquierda. Medido con `Q`: la letra sentada en **x = −1.61**
+   en un cuadro que va de −2.82 a 2.82. Una marca de una letra pegada al margen izquierdo, en el
+   cuadro más grande de la pieza.
+2. **El reparto no contaba el aire del glifo.** `unidad` es `ar − AIRE` (sólo el glifo) pero la malla
+   se dibuja con el `ar` completo, así que la palabra medía siempre `AIRE * ALTO` más de lo pedido.
+   Se reparte dividiendo por `suma + AIRE`.
+3. **`OBJ` estaba en unidades de mundo y el dolly achica el cuadro.** Es el patrón que ya costó `toro`
+   y `mesa`. La cámara se acerca hasta `dolly(distBase, −0.55)` y el dolly lo pone el aire (0.4 a
+   1.55): medido, hasta **1.128 anchos de cuadro** con el aire técnico. Ahora sale de
+   `cuadroMasAngosto`, y el acercamiento se declara **una sola vez** y lo usan la cámara y el ancho.
 
-El chequeo `cabe` no lo caza porque pregunta por la **palabra** (`suma * conPiso + TRACK * (n-1)`), y
-con una sola letra la palabra entra aunque la malla no.
-
-**Cómo verificarlo cuando se arregle:** declarar `encaja` en las letras y correr `verificar.mjs`, que
-es la que lo acusó. Las marcas que lo disparan son de 1-2 letras — el barrido las genera solo.
-
-No se arregló de apuro porque el dimensionado de `apertura` es la primera impresión de la pieza y su
-cabecera enumera todo lo que ya se probó ahí. Cuando se arregle, las 8 letras se declaran `encaja` y el
-trinquete baja a 7.
+Arreglado: las 8 letras declaran `encaja` y las dos compuertas quedan verdes sobre las 407
+construcciones. Trinquete **15 → 7**.
 
 ## Cómo clasificar sin romper nada — el orden que funcionó
 
