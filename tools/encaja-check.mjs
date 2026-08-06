@@ -82,7 +82,10 @@ if (n > TRINQUETE) {
 const porTipo = {}
 for (const f of censo.filas) porTipo[f.tipo] = (porTipo[f.tipo] || 0) + 1
 
-console.log(`GATE ENCAJE OK — ${total} mallas muestran una imagen; ${total - n} clasificadas, ${n} sin clasificar (trinquete ${TRINQUETE}).`)
+// "OK (" Y NO "OK —": el guard cuenta las compuertas con /OK \(|OK:/ (gates-guard.mjs:209), asi que
+// una compuerta que saluda con raya pasa pero no suma. Paso con esta y le pasa tambien a `encuadre` y
+// a `adn`, o sea que el total que informa el guard viene subestimado desde antes.
+console.log(`GATE ENCAJE OK (${total} mallas muestran una imagen; ${total - n} clasificadas, ${n} sin clasificar, trinquete ${TRINQUETE}).`)
 console.log(`  por tipo: ${Object.entries(porTipo).map(([k, v]) => `${k} ${v}`).join(' · ')}`)
 if (n < TRINQUETE) {
   console.log(`  BAJO EL NUMERO: quedan ${n} y el trinquete dice ${TRINQUETE}. Bajalo a ${n} en tools/encaja-check.mjs`)
