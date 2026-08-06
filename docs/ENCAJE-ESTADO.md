@@ -69,9 +69,25 @@ que la escena arma por su cuenta con `new THREE.Mesh`, y conviene que también l
 **Lo que sé de las dos que faltan, para no arrancar de cero:**
 
 - `tipografia` — las 5 de texto se componen contra `A_MAX = mundoW * 0.94` y `ANCHO = 5.05`, o sea que
-  la intención es que entren. Las 2 "sin tipo" son las mitades de `mitad()` (línea ~225), que arrancan
-  en ±5.0 —bien fuera del cuadro de 5.63— y se juntan: es el mismo caso que `mosaico` y pide
-  `encajaEntre` con el tramo **derivado de su tween**, no medido a ojo.
+  la intención es que entren. **Las 2 mitades no las cubre el mecanismo actual**, y esto es un límite
+  real de `encajaEntre`, no una tarea pendiente de ejecutar (ver abajo).
+
+## El límite conocido de `encajaEntre`, medido
+
+`encajaEntre` se diseñó para mallas que viven **toda** la escena y vuelan hasta su lugar, como las de
+`mosaico`. Las mitades de `tipografia` no son eso: entran desde ±5.0, se componen, y salen en el beat
+1.5 de una escena de 8 porque son la **primera de tres frases que se suceden**. Derivado de sus tweens
+(líneas 405-412): la entrada termina en `b(0.85)` y la salida arranca en `sal(1.5)`, o sea una ventana
+compuesta de **[0.11, 0.19] — el 8% de la escena**.
+
+El guardarraíl la rechaza (pide llegar a 0.90 y cubrir 25%) **y hace bien**: con la escena entera como
+referencia, un tramo así es indistinguible de una rendija puesta para esquivar la compuerta.
+
+Lo que falta para cubrir este caso es medir el tramo sobre **la vida visible de la malla** en vez de
+sobre la escena: "entra entera durante el último 80% del tiempo en que se la ve". Eso sí distingue una
+malla efímera y bien compuesta de una rendija conveniente. No está hecho — se deja anotado en vez de
+forzar `tipografia` con un tramo que el guardarraíl tendría que dejar pasar por excepción, que es
+justamente como se rompen las compuertas.
 - `apertura` — 14 mallas, todas de texto. Ojo con el filete, que la cabecera describe como "un filete
   que cruza el cuadro pasándose de largo y volviendo": eso sangra por diseño. La palabra de la marca
   mide ~94% del ancho y tiene que entrar entera.
