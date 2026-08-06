@@ -183,6 +183,29 @@ con rótulo subieron.** Ocho pasaron a superar el umbral de texto normal.
 **Y el aire cambia el guion**, no sólo la paleta: forzar `artesanal` sobre basecamp/26 da un plan sin
 la escena `hero`. Hace falta un par (página, semilla) cuyo guion además la elija.
 
+## Las 3 páginas con 0 recortes NO son un defecto del extractor
+
+El dato *"de 16 páginas cosechadas, 3 dieron 0 recortes"* parecía señalar que la extracción había que
+mejorarla. Se midió recapturando las tres, y son **dos causas distintas y las dos legítimas**:
+
+| página | estado | qué pasa |
+|---|---|---|
+| `despegar.com.ar` | **botwall, HTTP 403** | nos bloquea; el motor frena y no construye (exit 2) |
+| `elcorteingles.es` | **botwall, HTTP 403** | ídem |
+| `berkshirehathaway.com` | **ok, HTTP 200** | `imagenes: 0, botones: 0, cards: 0` — HTML plano de los 90 |
+
+En los dos botwall el motor hace lo correcto: detecta que *"la captura no parece la página"* y **se
+niega a construir el video** en vez de entregar una pieza con el muro adentro. En la tercera, la
+página se capturó bien y simplemente **no tiene material visual**: el motor compone con geometría y
+entrega la pieza (exit 0).
+
+**O sea que la tasa de extracción no es el cuello de botella que parecía.** Donde hay material, el
+extractor lo saca: las 8 corridas reales dan de 5 a 13 recortes.
+
+Qué hacer cuando la página nos bloquea es una de las **dos fichas EXTRA que Thiago pidió charlar
+antes de que nadie las toque** (`docs/AUDITORIA-MOTOR.md`). Esto no la resuelve — le aporta el número:
+**de las 3 páginas sin recortes, 2 son bloqueo y 1 es una página sin imágenes.**
+
 ## Lo que falta
 
 - **14 héroes sin auditar con render.** El orden sugerido sale de la tabla de `heroes-audit`: los de
