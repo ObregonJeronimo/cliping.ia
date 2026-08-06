@@ -49,7 +49,11 @@ CASOS = [("https://stripe.com", 5, None), ("https://basecamp.com", 26, None),
          # Y DOS CON EL AIRE FORZADO, porque con los cuatro de arriba `cinta` y `farol` no salian en
          # ninguno: el REGISTRO los deja solo en `tecnico` y `artesanal` respectivamente, y ninguna de
          # las paginas de prueba cae ahi. Un hero que no se midio NO esta bien: no se midio.
-         ("https://stripe.com", 5, "tecnico"), ("https://basecamp.com", 26, "artesanal")]
+         #
+         # OJO: EL AIRE CAMBIA EL GUION. basecamp/26 con `artesanal` sale sin la escena `hero` en el
+         # plan (`heroes: []`), asi que forzar el aire no alcanza — hace falta un par (pagina, semilla)
+         # cuyo guion ADEMAS elija esa escena. stripe/5 con `artesanal` si la elige.
+         ("https://stripe.com", 5, "tecnico"), ("https://stripe.com", 5, "artesanal")]
 
 BANDA_ROTULO = (0.845, 0.875)
 PISO_CONTRASTE = 3.0

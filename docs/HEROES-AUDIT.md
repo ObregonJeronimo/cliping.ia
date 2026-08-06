@@ -125,6 +125,46 @@ Probado: quitando la cama a mano —el defecto original— `fondo-check` sigue e
 geometría 3D ya visible. Por eso la cama es el arreglo correcto: **garantiza el fondo en vez de
 depender de medirlo**.
 
+## Auditoría con render de LOS 17 — `tools/heroes-render.py`
+
+```bash
+npm run pesado -- python tools/heroes-render.py
+```
+
+Renderiza una pieza por héroe y mide sobre los cuadros de su tramo. **Cero hallazgos sobre los 17.**
+El contraste más bajo es `columnata` con 3,80:1 (piso 3,0) y el movimiento más bajo `vitrina` con
+0,306 — 61 veces el ruido del códec (0,005).
+
+| | contraste | movimiento | tinta |
+|---|---|---|---|
+| `columnata` | 3,80:1 | 0,758 | 0,269 |
+| `telefono` | 7,04:1 | 4,907 | 0,736 |
+| `brote` | 7,73:1 | 1,283 | 0,380 |
+| `gota` | 7,76:1 | 0,449 | 0,574 |
+| `telar` | 7,78:1 | 1,729 | 0,544 |
+| `farol` | 8,50:1 | 0,513 | 0,385 |
+| `cinta` | 9,46:1 | 4,494 | 0,471 |
+| `biela` | 9,51:1 | 4,184 | 0,783 |
+| `prisma` | 9,65:1 | 1,273 | 0,388 |
+| `enjambre` | 9,68:1 | 1,328 | 0,315 |
+| `calibre` | 9,71:1 | 0,431 | 0,396 |
+| `pulso` | 9,77:1 | 3,392 | 0,357 |
+| `cubo`, `portatil`, `ventana`, `vitrina` | sin rótulo | 0,31–2,61 | 0,33–0,69 |
+| `mosaico` | banda con composición | 1,558 | 0,439 |
+
+### Tres trampas que la herramienta ya trae resueltas
+
+1. **Comprueba el plan.** `--hero X` no garantiza el héroe (el REGISTRO filtra por aire) ni que la
+   escena `hero` entre. Auditar sin verificarlo es medir un héroe creyendo que es otro.
+2. **Exige una cama, no cualquier cosa con bordes duros.** La banda del rótulo es una posición fija, y
+   cuando el héroe llena el cuadro con recortes ahí cae contenido del cliente — en `mosaico`, el
+   recibo de "Quiet Fire Yoga". Se mide la dispersión del fondo: 37,4 es composición, 1–2 es cama.
+3. **Informa los que no pudo medir.** Un héroe que no salió en ningún caso **no está bien: no se
+   midió.** Hicieron falta 6 casos —dos con el aire forzado— para cubrir a `cinta` y `farol`.
+
+**Y el aire cambia el guion**, no sólo la paleta: forzar `artesanal` sobre basecamp/26 da un plan sin
+la escena `hero`. Hace falta un par (página, semilla) cuyo guion además la elija.
+
 ## Lo que falta
 
 - **14 héroes sin auditar con render.** El orden sugerido sale de la tabla de `heroes-audit`: los de
