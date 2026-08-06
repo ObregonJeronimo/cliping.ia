@@ -75,6 +75,14 @@ PIEZAS = [
 PIEZAS_30 = [("https://stripe.com", 5), ("https://linear.app", 11), ("https://basecamp.com", 26),
              ("https://stripe.com", 3)]
 
+# PAGINAS QUE NUNCA SE HABIAN BARRIDO. Las cuatro de arriba son las de siempre; `partida` no cayo en
+# ninguna de las 22 piezas y NO se puede predecir con que semilla sale —se intento dos veces y las dos
+# el simulador del guion difirio del motor, ver docs/ESCENAS-AUDIT.md—. Asi que se barre de verdad:
+# mas paginas y mas semillas, que es caro pero es lo unico que mide lo que pasa.
+PIEZAS_EXTRA = [("https://www.pentagram.com", 5), ("https://www.pentagram.com", 13),
+                ("https://www.theverge.com", 7), ("https://www.theverge.com", 21),
+                ("https://stripe.com", 25), ("https://linear.app", 33)]
+
 RUIDO_CODEC = 0.005
 PISO_MOVIMIENTO = 0.05
 PISO_TINTA = 0.08
@@ -148,7 +156,8 @@ def main():
     os.makedirs(SALIDA, exist_ok=True)
     por_escena = {}
     renders = 0
-    todas_piezas = [(u, s_, 20) for u, s_ in piezas] + [(u, s_, 30) for u, s_ in PIEZAS_30]
+    todas_piezas = ([(u, s_, 20) for u, s_ in piezas] + [(u, s_, 30) for u, s_ in PIEZAS_30]
+                    + [(u, s_, 20) for u, s_ in PIEZAS_EXTRA])
     for url, seed, dur in todas_piezas:
         mp4 = os.path.join(SALIDA, "p_%s_%d_%d.mp4" % (url.split("//")[1].split("/")[0].replace(".", "-"), seed, dur))
         r = subprocess.run([sys.executable, os.path.join(RAIZ, "backend", "motor.py"), url,

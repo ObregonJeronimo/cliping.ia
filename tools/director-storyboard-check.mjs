@@ -168,6 +168,15 @@ if (!process.env.SB_PAGINA) {
     failsT += d.fails; nEscT += d.nEsc; nVidT += d.nVid
   }
   if (failsT) { console.error('GATE STORYBOARD FALLO (' + failsT + ' casos).'); process.exit(1) }
+  // CERO VIDEOS NO ES "TODO BIEN", ES QUE NO SE MIDIO NADA. Sin esto el veredicto imprimiria
+  // "0 paginas x N seeds = 0 videos / 0 escenas renderizadas" y saldria con 0 — el cero tranquilizador
+  // que ya se encontro hoy en `encuadre-check` ("ENCUADRE OK — 0 construcciones") y en `imagen-check`.
+  // Aca el riesgo concreto es que los fixtures no se encuentren: la lista de paginas sale de disco.
+  if (!nVidT || !nEscT) {
+    console.error('GATE STORYBOARD FALLO — 0 videos / 0 escenas. No es que esten todos bien: es que no')
+    console.error('  se midio NADA. Revisa que los fixtures de pagina se esten encontrando.')
+    process.exit(1)
+  }
   console.log(`GATE STORYBOARD OK (${nombres.length} paginas x ${SEEDS} seeds = ${nVidT} videos / ${nEscT} `
     + `escenas renderizadas, cada pagina en su propio proceso para que la memoria vuelva al sistema: `
     + `1 foco, safe areas, cero texto recortado, cero escena vacia, APCA por tamano, anti-invencion y sin repeticion).`)

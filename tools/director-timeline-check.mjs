@@ -183,4 +183,13 @@ for (const [nombre, raw] of Object.entries(ARQ)) {
 }
 
 if (fails) { console.error(`\nGATE TIMELINE FALLO (${fails} casos).`); process.exit(1) }
+// CERO CASOS NO ES "TODO BIEN", ES QUE NO SE MIDIO NADA. Sin esto el veredicto imprime
+// "0 videos / 0 frames" y sale con 0 — el cero tranquilizador que se encontro hoy en `encuadre-check`
+// ("ENCUADRE OK — 0 construcciones", exit 0) y en `imagen-check`. Aca el riesgo concreto es
+// que los fixtures de pagina no se encuentren: la lista sale de disco.
+if (!nVid || !nFrames) {
+  console.error('GATE TIMELINE FALLO — 0 videos / 0 frames. No es que este todo bien: es que no se midio NADA.')
+  console.error('  Revisa que los fixtures de pagina se esten encontrando.')
+  process.exit(1)
+}
 console.log(`GATE TIMELINE OK (${Object.keys(ARQ).length} paginas x ${SEEDS} seeds = ${nVid} videos / ${nFrames} frames medidos: contrato, determinismo, seek-safe, cero frame vacio, cero aire muerto, cero salto de capa).`)

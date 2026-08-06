@@ -386,4 +386,13 @@ for (const [nombre, raw] of Object.entries(ARQ)) {
 }
 
 if (fails) { console.error(`\nGATE EDIT FALLO (${fails} casos).`); process.exit(1) }
+// CERO CASOS NO ES "TODO BIEN", ES QUE NO SE MIDIO NADA. Sin esto el veredicto imprime
+// "0 overlays / 0 frames" y sale con 0 — el cero tranquilizador que se encontro hoy en `encuadre-check`
+// ("ENCUADRE OK — 0 construcciones", exit 0) y en `imagen-check`. Aca el riesgo concreto es
+// que los fixtures de pagina no se encuentren: la lista sale de disco.
+if (!nCasos || !nFrames) {
+  console.error('GATE EDIT FALLO — 0 overlays / 0 frames. No es que este todo bien: es que no se midio NADA.')
+  console.error('  Revisa que los fixtures de pagina se esten encontrando.')
+  process.exit(1)
+}
 console.log(`GATE EDIT OK (${Object.keys(ARQ).length} paginas x ${SEEDS} seeds x ${SETS.length} sets = ${nCasos} overlays / ${nEsc} escenas editadas / ${nFrames} frames renderizados: determinismo, pureza, contrato, 1 foco, tiempos, ${nVacias} anti-vacio reportados, ${nRecortes} textos recortados por caja, re-teñido legible y orden a prueba de basura).`)
