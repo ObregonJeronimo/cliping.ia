@@ -1281,6 +1281,14 @@ Por escena:
     de hacerlo. Lo que hay que medir es la pieza construida, no el guion, y eso ya lo hace la ocupacion.
     Si se decide que el motor debe garantizar imagen de la pagina, la compuerta va sobre el video —como
     `E-IMAGEN-SE-MUEVE`— y no sobre el guion.
+  - **Y mientras se decide, se puso el trinquete.** `imagen-check.py` mide ahora tambien la OCUPACION del
+    cuadro, con umbral relativo al rango del propio cuadro —el absoluto de `medir-video.py` castiga a los
+    mundos oscuros—. Piso en **0.10**, por debajo de la peor pieza que existe hoy (`linear`, 0.120).
+    - **No dice que 0.120 este bien.** Eso es la decision de producto que sigue abierta. Dice que **de
+      aca no se baja** mientras tanto, que es lo unico que una compuerta puede aportar a una pregunta
+      que todavia no tiene respuesta.
+    - Verificado que muerde: con el piso en 0.15 acusa a `linear` con el numero exacto (0.119); con 0.10
+      pasa. Y `basecamp` da 0.406, o sea que hay margen de sobra para las piezas sanas.
   - **Y una leccion sobre mi propia recomendacion:** yo habia recomendado medir 7 paginas x 11 aires
     (~50 min de renders) para decidir esto. Un render lo resolvio. La pregunta "cuantos casos tengo
     realmente" cuesta segundos y ahorro 75 renders — preguntarla ANTES de disenar el barrido vale mas

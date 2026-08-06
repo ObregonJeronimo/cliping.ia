@@ -62,6 +62,44 @@ PIEZAS = [("https://linear.app", 11, 20), ("https://basecamp.com", 26, 20)]
 # calibracion en la cabecera: el ruido del codec da 0.005 y el movimiento real mas bajo del motor 0.37.
 UMBRAL_QUIETO = 0.05
 
+# PISO DE OCUPACION — un trinquete, no un ideal. Mide que fraccion del cuadro NO es fondo, con umbral
+# RELATIVO al rango del propio cuadro (el absoluto de `medir-video.py` castiga a los mundos oscuros:
+# ahi todo vive cerca del negro y casi ningun pixel cruza un corte fijo de 60).
+#
+# Medido hoy sobre cuatro piezas de cuatro paginas: pentagram 0.326, stripe 0.299, tailwindcss 0.247 y
+# linear 0.120. La peor es `linear`, y su causa esta medida: su guion no programo ninguna escena que
+# ponga PIXELES DE LA PAGINA en el cuadro —es tipografia y geometria pura— mientras tailwindcss, que es
+# igual de oscura, programo un heroe `ventana` y llego a 0.247.
+#
+# El piso va en 0.10, por debajo de la peor pieza que existe hoy. NO dice que 0.120 este bien —esa es
+# una decision de producto que Jero y Thiago tienen que tomar— dice que de aca no se baja mientras
+# tanto. Es el mismo trinquete que `eco-check` y `E-ENCAJE`: sube el piso en vez de premiar el statu quo.
+PISO_OCUPACION = 0.10
+
+
+def ocupacion(mp4, fps=1):
+    """Fraccion del cuadro que NO es fondo, con umbral relativo al rango del propio cuadro."""
+    from PIL import Image
+    import glob
+    d = os.path.join(SALIDA, "ocu")
+    os.makedirs(d, exist_ok=True)
+    for viejo in glob.glob(os.path.join(d, "*.png")):
+        os.remove(viejo)
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", mp4,
+                    "-vf", "fps=%d,scale=160:-1" % fps, os.path.join(d, "o%03d.png")], check=True)
+    vals = []
+    for f in sorted(glob.glob(os.path.join(d, "*.png"))):
+        im = Image.open(f).convert("RGB")
+        px = list(im.getdata())
+        n = len(px)
+        # mediana por canal = el fondo del propio cuadro
+        med = [sorted(c)[n // 2] for c in zip(*px)]
+        difs = [abs(p[0] - med[0]) + abs(p[1] - med[1]) + abs(p[2] - med[2]) for p in px]
+        orden = sorted(difs)
+        rango = max(20.0, float(orden[int(n * 0.99)]))
+        vals.append(sum(1 for x in difs if x > rango * 0.25) / float(n))
+    return sum(vals) / max(1, len(vals))
+
 
 def cuadros_congelados(mp4, fps=10):
     """Devuelve (segundos_congelados, momento, cambio). Compara cada cuadro con el anterior.
@@ -125,7 +163,11 @@ def main():
         plan = json.load(open(mp4 + ".plan.json", encoding="utf8"))
         beat = 60.0 / plan["bpm"]
         congelado, cuando, dif = cuadros_congelados(mp4)
-        medidos.append((u, s, congelado, beat))
+        ocu = ocupacion(mp4)
+        medidos.append((u, s, congelado, beat, ocu))
+        if ocu < PISO_OCUPACION:
+            fallos.append("%s (seed %d): la pieza ocupa %.3f del cuadro, por debajo del piso de %.2f "
+                          "— casi todo es fondo" % (u, s, ocu, PISO_OCUPACION))
         # EL MISMO CRITERIO QUE `verificar.mjs`, sobre otra medida. Un beat es el limite que el motor
         # declara, y usar dos numeros distintos para la misma idea es como una compuerta contradice a
         # la otra.
@@ -139,8 +181,8 @@ def main():
         for f in fallos:
             print("  " + f)
         sys.exit(1)
-    detalle = " · ".join("%s seed %d: %.2fs congelado de %.2fs de beat" % (u.split("//")[-1], s, c, b)
-                         for u, s, c, b in medidos)
+    detalle = " · ".join("%s seed %d: %.2fs congelado (beat %.2fs), ocupacion %.3f"
+                         % (u.split("//")[-1], s, c, b, o) for u, s, c, b, o in medidos)
     print("GATE IMAGEN OK (%d piezas renderizadas de verdad y comparadas cuadro a cuadro sobre los "
           "PIXELES, no sobre el grafo: ninguna congela la imagen un beat entero). %s"
           % (len(medidos), detalle))
