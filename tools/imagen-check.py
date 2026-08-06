@@ -258,6 +258,15 @@ def main():
         else:
             print("  rotulo del hero en %s (seed %d): %.2f:1 sobre lo que tiene detras "
                   "(cuadro %s, piso %.1f:1)" % (_u, _s, _cr, _d, PISO_CONTRASTE))
+    # CERO PIEZAS NO ES "TODO BIEN", ES QUE NO SE MIDIO NADA. Esta compuerta renderiza piezas de verdad
+    # y compara sus pixeles; si la lista quedara vacia —alguien edita PIEZAS, un `--url` que no matchea—
+    # el bucle no corre y esto imprimiria OK sin haber mirado un solo cuadro. Es el cero tranquilizador
+    # de siempre, y el mismo agujero que se encontro hoy en `encuadre-check`, que daba
+    # "ENCUADRE OK — 0 construcciones" con exit 0.
+    if not medidos:
+        print("GATE IMAGEN FAIL: 0 piezas medidas. No es que ninguna se congele: es que no se renderizo")
+        print("  ni se midio NADA. Revisa la lista PIEZAS o los argumentos --url/--seed.")
+        sys.exit(1)
     print("GATE IMAGEN OK (%d piezas renderizadas de verdad y comparadas cuadro a cuadro sobre los "
           "PIXELES, no sobre el grafo: ninguna congela la imagen un beat entero). %s"
           % (len(medidos), detalle))
