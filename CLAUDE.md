@@ -124,7 +124,26 @@ diagnóstico falso cuesta más que no haberlos hecho. Antes de declarar un defec
   `heroes-check` (un héroe no se ofrece si no tiene con qué), `placeholder-check` (el recorte que se
   muestra es la imagen del cliente, no su borrador) `captura-check` (no se construye un video sobre
   un muro anti-bot o un error del CDN) y `eco-check` (la misma frase no sale en dos escenas).
-- **Guard completo (~30 min), sólo antes de pushear:** `npm run gates`. Tiene que dar 36 OK / 0 FAIL.
+- **Guard completo (~15 min), sólo antes de pushear:** `npm run gates`. Tiene que dar **44 OK / 0 FAIL**.
+
+  **`npm run gates` ahora corre las compuertas DE A UNA** (`tools/gates-partido.mjs`), y eso no es una
+  versión reducida: son las mismas 42, en el mismo orden, leídas del mismo `gates:crudo`. Lo único que
+  cambia es el agrupamiento — la versión encadenada las mete a todas en un proceso de npm, así que la
+  memoria se acumula hasta la última y el pico llega a **3001 MB**. De a una el pico es el de la
+  compuerta más cara (`fondo-check`, 1052 MB) y el sistema recupera la memoria al cerrar cada proceso.
+  Medido con un juego abierto: nunca bajó de 3363 MB libres, y tarda **la mitad** (15 min contra 30).
+
+  Mantiene el cerrojo, el techo de memoria de Node y el vigilante en vivo que mata el árbol si la
+  memoria se desploma. Y si algo falla, las corre TODAS y te dice todo lo roto de una vez más cómo
+  retomar (`--desde N`), en vez de cortarse en la primera.
+
+  La encadenada sigue disponible como `npm run gates:mono`.
+
+  **El número de referencia pasó de 36 a 44 y no aparecieron compuertas nuevas:** el guard contaba con
+  `/OK \(|OK:/` y seis compuertas saludan con raya, así que informaba de menos. En la misma revisión
+  apareció algo peor — el contador de FAIL exigía que la línea *empezara* con FAIL, y las compuertas
+  escriben `GATE CAPTURA FAIL (2)`: el guard llegó a informar **"35 OK · 0 FAIL · exit 1"** con una
+  compuerta fallando de verdad.
 
 ## La máquina no se cuelga más
 

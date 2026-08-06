@@ -21,12 +21,12 @@
 //
 // Uso:  node tools/gates-partido.mjs            (todas)
 //       node tools/gates-partido.mjs --desde 12 (retomar desde la compuerta 12)
-import { spawnSync } from 'node:child_process'
+import { spawn } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { tomar } from './lib/cerrojo.mjs'
-import { disponibleMb, entornoConTecho } from './lib/memoria.mjs'
+import { disponibleMb, entornoConTecho, vigilar, matarArbol, pisoPara } from './lib/memoria.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const RAIZ = join(HERE, '..')
@@ -60,7 +60,30 @@ const fallaron = []
 let okTotal = 0
 const t0 = Date.now()
 
-for (let i = desde; i < PASOS.length; i++) {
+// EL VIGILANTE EN VIVO, Y POR ESO EL BUCLE ES ASINCRONO. La primera version usaba `spawnSync`, que
+// BLOQUEA el event loop: un reloj de vigilancia no dispararia nunca mientras corre la compuerta — o
+// sea justo cuando hace falta. Medir el disponible ANTES de cada paso no alcanza: la que cuelga la
+// maquina es la que se dispara a la mitad, y esa familia ya la colgo seis veces.
+//
+// Con spawn asincrono el reloj corre en paralelo y mata el arbol del hijo igual que `gates-guard`.
+let procesoActual = null
+let cortadoPor = null
+const ojo = vigilar((motivo) => {
+  cortadoPor = motivo
+  console.error(`\n!! gates-partido: ${motivo}`)
+  if (procesoActual && procesoActual.pid) matarArbol(procesoActual.pid)
+}, { pisoMb: pisoPara(disponibleMb()) })
+
+// SI MUERE EL PADRE, MUERE EL HIJO. En Windows un proceso no se lleva a sus hijos al morir, y eso ya
+// dejo una cadena huerfana corriendo sin vigilante hasta colgar la maquina. Vale igual aca.
+for (const sig of ['SIGINT', 'SIGTERM']) {
+  process.on(sig, () => {
+    if (procesoActual && procesoActual.pid) matarArbol(procesoActual.pid)
+    process.exit(130)
+  })
+}
+
+for (let i = desde; i < PASOS.length && !cortadoPor; i++) {
   const paso = PASOS[i]
   const etiqueta = paso.replace(/^(node|python)\s+/, '').replace(/^tools\//, '')
   const libre = disponibleMb()
@@ -72,12 +95,21 @@ for (let i = desde; i < PASOS.length; i++) {
   const BIN = join(RAIZ, 'node_modules', '.bin')
   const env = { ...entornoConTecho(), PESADO_ACTIVO: '1' }
   env.PATH = BIN + (process.platform === 'win32' ? ';' : ':') + (env.PATH || process.env.PATH || '')
-  const partes = paso.split(/\s+/)
-  const r = spawnSync(partes[0], partes.slice(1), {
-    cwd: RAIZ, encoding: 'utf8', shell: true, env,
-    maxBuffer: 64 * 1024 * 1024,
+  // EL COMANDO ENTERO EN UN STRING, no partido en argumentos. Con `shell: true` Node avisa que pasar
+  // args por separado es riesgoso porque los concatena sin escapar (DEP0190), y aca el comando ya
+  // viene como una linea de package.json: partirlo para que el shell lo vuelva a unir no aporta nada.
+  const r = await new Promise((res) => {
+    const h = spawn(paso, {
+      cwd: RAIZ, shell: true, env, stdio: ['ignore', 'pipe', 'pipe'],
+    })
+    procesoActual = h
+    let out = ''
+    h.stdout.on('data', d => { out += d })
+    h.stderr.on('data', d => { out += d })
+    h.on('close', (status) => { procesoActual = null; res({ status, out }) })
+    h.on('error', (e) => { procesoActual = null; res({ status: 1, out: String(e) }) })
   })
-  const salida = (r.stdout || '') + (r.stderr || '')
+  const salida = r.out
   // El mismo criterio de veredicto que usa `gates-guard`: una linea que arranca con el nombre de la
   // compuerta en mayusculas y dice OK. Ver la nota larga alla sobre por que no se cuenta por puntuacion.
   const oks = (salida.match(/^(?:GATE )?[A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ0-9 _/-]*\bOK\b/gm) || []).length
@@ -92,8 +124,11 @@ for (let i = desde; i < PASOS.length; i++) {
   }
 }
 
+ojo.parar()
 const mins = ((Date.now() - t0) / 60000).toFixed(1)
-console.log(`\ngates-partido: ${okTotal} OK · ${fallaron.length} compuertas con FAIL · ${mins} min`)
+console.log(`\ngates-partido: ${okTotal} OK · ${fallaron.length} compuertas con FAIL · ${mins} min `
+  + `· minimo de RAM disponible ${ojo.libreMinMb} MB (piso ${ojo.pisoMb}, total ${ojo.totalMb})`)
+if (cortadoPor) console.log(`gates-partido: CORTADO — ${cortadoPor}`)
 if (fallaron.length) {
   for (const f of fallaron) {
     console.log(`\n--- [${f.i}] ${f.paso}`)
@@ -104,4 +139,4 @@ if (fallaron.length) {
   console.log(`\n  para retomar desde la primera que fallo:  node tools/gates-partido.mjs --desde ${fallaron[0].i - 1}`)
 }
 cerrojo.soltar && cerrojo.soltar()
-process.exit(fallaron.length ? 1 : 0)
+process.exit(cortadoPor || fallaron.length ? 1 : 0)
