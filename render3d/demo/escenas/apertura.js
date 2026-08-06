@@ -347,6 +347,10 @@ export function build(ctx) {
   const CNT = [['00', 0.25], ['05', 0.5], ['11', 1.0], ['17', 1.25], ['21', 1.375], ['24', 1.4375]]
   CNT.forEach(([txt, beat], i) => {
     const m = planoTexto(txt, 0.30, CIFRA())
+    // ENCAJA. Es el contador que acelera hacia el corte: numeros de 0.30 de alto pegados al margen
+    // derecho, o sea que si se salieran serian ilegibles y no un gesto. Se posicionan restando su
+    // propio medio ancho justamente para que entren.
+    m.userData.encaja = true
     m.position.set(MX - (0.30 * m.userData.ar) / 2, 0.44, 0.1)
     m.renderOrder = 6
     m.visible = false
@@ -492,6 +496,20 @@ export function build(ctx) {
   LETRAS.forEach((L, i) => {
     const w = unidad[i] * ALTO
     const m = planoTexto(L, ALTO, ANTON())
+    // SIN CLASIFICAR TODAVIA, Y NO POR OLVIDO — declararlas `encaja` destapa un defecto real que hay
+    // que arreglar antes, medido el 2026-08-06 con `verificar.mjs`:
+    //
+    //   marca "Q"  (1 letra)   aire artesanal   PlaneGeometry 2.83 x 3.42 centrada en x = -1.62
+    //   marca "GO" (2 letras)  aire bienestar   PlaneGeometry 2.51 x 3.32 centrada en x = -1.76
+    //
+    // El cuadro mide 5.63 de ancho, o sea semiancho 2.815, y el borde izquierdo de esa primera letra
+    // cae en -3.03: se sale 0.22. Con marcas de UNA O DOS letras el reparto agranda cada letra para
+    // que la palabra llegue al 94% del ancho, y una sola letra de 2.83 no entra aunque la palabra si.
+    //
+    // No se declara `encaja` para no dejar la compuerta en rojo, y no se arregla de apuro porque el
+    // dimensionado de esta escena es la primera impresion de la pieza y su cabecera enumera todo lo
+    // que ya se probo aca. El arreglo va por el lado de topear el ancho POR LETRA y no solo por
+    // palabra. Ver docs/ENCAJE-ESTADO.md.
     m.position.set(cursor + w / 2, 0, -13)
     m.rotation.x = -1.35
     m.rotation.z = (rnd() - 0.5) * 0.16

@@ -58,7 +58,9 @@ try {
 //              contraste (encaja: se dimensiona con el helper `encaje`) y vitrina (encaja: es el logo)
 //   28 -> 21   rafaga (7): sus recortes sangran ("el borde toca los dos lados del cuadro", declarado
 //              en el archivo) y su tipografia encaja ("una palabra cortada por el borde no se lee")
-const TRINQUETE = 21
+//   21 -> 15   apertura, solo el contador (6). Sus 8 letras quedan sin clasificar A PROPOSITO:
+//              declararlas destapa un defecto real de dimensionado con marcas de 1-2 letras.
+const TRINQUETE = 15
 
 const sinClasificar = censo.filas.filter(f => f.clase === 'SIN CLASIFICAR')
 const n = sinClasificar.length

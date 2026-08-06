@@ -54,7 +54,8 @@ redondo.**
 | 2026-08-06 | 40 de 71 | `marquesina` (10) y `mosaico` (9) |
 | 2026-08-06 | 32 de 71 | `columna` (8), primer caso de `encajaEje` |
 | 2026-08-06 | 28 de 71 | `mesa`, `titular`, `contraste`, `vitrina` (1 cada uno) |
-| 2026-08-06 | **21 de 71** | `rafaga` (7) |
+| 2026-08-06 | 21 de 71 | `rafaga` (7) |
+| 2026-08-06 | **15 de 71** | `apertura`, sólo el contador (6) |
 
 ## Lo que falta, por archivo
 
@@ -88,9 +89,24 @@ sobre la escena: "entra entera durante el último 80% del tiempo en que se la ve
 malla efímera y bien compuesta de una rendija conveniente. No está hecho — se deja anotado en vez de
 forzar `tipografia` con un tramo que el guardarraíl tendría que dejar pasar por excepción, que es
 justamente como se rompen las compuertas.
-- `apertura` — 14 mallas, todas de texto. Ojo con el filete, que la cabecera describe como "un filete
-  que cruza el cuadro pasándose de largo y volviendo": eso sangra por diseño. La palabra de la marca
-  mide ~94% del ancho y tiene que entrar entera.
+- `apertura` — quedan sus **8 letras**, y no por olvido: declararlas `encaja` destapa un defecto real.
+
+## Defecto encontrado y NO arreglado: `apertura` con marcas de una o dos letras
+
+Medido con `verificar.mjs` el 2026-08-06, al declarar `encaja` en las letras del nombre:
+
+| marca | aire | malla | centro x |
+|---|---|---|---|
+| `Q` (1 letra) | artesanal | 2.83 × 3.42 | −1.62 |
+| `GO` (2 letras) | bienestar | 2.51 × 3.32 | −1.76 |
+
+El cuadro mide 5.63 de ancho (semiancho 2.815) y el borde izquierdo de esa primera letra cae en
+**−3.03: se sale 0.22**. La causa es que el reparto agranda cada letra para que la *palabra* llegue al
+94% del ancho, y con una o dos letras una sola letra no entra aunque la palabra sí.
+
+**El arreglo va por topear el ancho POR LETRA y no sólo por palabra.** No se hizo de apuro porque el
+dimensionado de `apertura` es la primera impresión de la pieza y su cabecera enumera todo lo que ya se
+probó ahí. Cuando se arregle, las 8 letras se declaran `encaja` y el trinquete baja a 7.
 
 ## Cómo clasificar sin romper nada — el orden que funcionó
 
