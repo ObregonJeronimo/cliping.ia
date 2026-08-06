@@ -47,19 +47,28 @@ Se listan porque cada una parecía un hallazgo sólido:
 ### Límite que queda
 
 `telefono`, `ventana` y `portatil` dan `muestra: no` aunque dibujan la tira. Es del instrumento, no de
-los héroes.
+los héroes — **confirmado con render**: `telefono` muestra la página de basecamp.com entera y legible
+en un móvil (cuadro 500).
 
 ## Auditado con render de verdad
 
-El único que ve contraste, shaders y bloom. **Siempre mirar el `plan.json` antes que los cuadros**:
-`--hero X` elige *cuál* héroe usar si la escena `hero` entra, pero **no fuerza que entre**. Pasó: un
-render pedido con `--hero gota` salió con `heroes: []` y ese video no contenía gota.
+El único que ve contraste, shaders y bloom. **Siempre mirar el `plan.json` antes que los cuadros.**
+`--hero X` falla de DOS maneras distintas, y las dos ya pasaron en la misma sesión:
+
+1. **No fuerza que la escena `hero` entre.** Un render pedido con `--hero gota` salió con
+   `heroes: []` — el guion no eligió esa escena. Ese video no contenía gota.
+2. **No garantiza el héroe pedido.** Un render pedido con `--hero pulso` salió con
+   `heroes: ['telefono']`: si el pedido no es elegible para esa página y ese aire, el registro elige
+   otro. El video es válido, pero **no es el héroe que se quería auditar**.
+
+Sin mirar el plan, en los dos casos se audita otra cosa y se reporta con confianza.
 
 | héroe | render | cuadros abiertos | resultado |
 |---|---|---|---|
 | `calibre` | stripe.com, seed 3, aire editorial | 260, 320 | **defecto real**: rótulo a 2.41:1 |
 | `mosaico` | stripe.com, seed 5, aire corporativo | 250 | bien — muestra logo, editor, recibo, QR |
 | `gota` | linear.app, seed 3, aire editorial | 440 | bien — se mueve 1.27–1.91 por píxel |
+| `telefono` | basecamp.com, seed 26 | 500 | bien — muestra la página real, texto nítido |
 
 ### El defecto encontrado, y por qué el arreglo no es para `calibre`
 
