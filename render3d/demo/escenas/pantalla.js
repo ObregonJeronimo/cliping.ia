@@ -75,7 +75,15 @@ export function build(ctx) {
   // Desborda el cuadro por los cuatro lados. Tiene que aguantar el empuje de camara sin descubrir el
   // fondo por un canto: 1.10 de ancho deja 0.28 de margen a la distancia base, que es donde la camara
   // termina y donde el cuadro es mas grande.
-  const ANCHO = mundoW * 1.10
+  // 1.06 Y NO 1.10, que es la regla que este repo ya tiene escrita para el material de pagina:
+  // "un recorte de pagina lleva su contenido adentro y sangrarlo se lo come" (mosaico.js, citando a
+  // rafaga). Las dos usan 1.06 por eso mismo; esta usaba 1.10 y es la escena que MAS texto de la
+  // pagina muestra, asi que el sangrado extra cae justo sobre las letras.
+  //
+  // Visto en un render de basecamp.com (cuadro 412 de 600): se lee "ver 2.7 billion comments" donde
+  // dice "Over" y "decade" donde dice "decades" — el texto cortado por los DOS costados. A sangre
+  // quiere decir que la imagen llega al borde, no que las palabras se corten.
+  const ANCHO = mundoW * 1.06
   const anchoTira = tira.image.width || 720
   const altoTira = tira.image.height || (spec && spec.tiraViewport) || 1560
 
