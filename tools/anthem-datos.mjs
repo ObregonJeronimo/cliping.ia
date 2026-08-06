@@ -373,7 +373,19 @@ const ruta = nombre.endsWith('.json') && existsSync(nombre) ? nombre
   : existsSync(join(dirFix, `${nombre}.json`))
     ? join(dirFix, `${nombre}.json`)
     : join(HERE, 'fixtures', 'director', `${nombre}.json`)
-const pm = normalizePageModel(JSON.parse(readFileSync(ruta, 'utf8')))
+// `_tira` SE RESCATA DEL CRUDO, PORQUE LA NORMALIZACION LO TIRA. `normalizePageModel` valida contra el
+// schema del director y devuelve solo lo que el schema conoce; `_tira` empieza con guion bajo, no esta
+// en el schema, y se perdia ahi. El efecto era silencioso y grande: `tira: !!pm._tira` daba SIEMPRE
+// false, o sea que los tres heroes de dispositivo —telefono, portatil y ventana— no se ofrecian NUNCA,
+// en ninguna pagina. Medido el 2026-08-06 sobre las 8 corridas reales de tools/out/motor/: las 8 tienen
+// `tira.png` en disco (922 a 2249 kB) y las 8 tienen `_tira` en su pagemodel, y las 8 llegaban al
+// guionista con `tira: false`.
+//
+// Se rescata del JSON crudo en vez de agregar `_tira` al schema: el schema lo comparte el director y
+// meterle una clave privada del motor 3D lo ensuciaria para todos sus otros usuarios.
+const _crudo = JSON.parse(readFileSync(ruta, 'utf8'))
+const pm = normalizePageModel(_crudo)
+if (_crudo._tira && !pm._tira) pm._tira = _crudo._tira
 const d = datosDe(pm)
 // El cuarto argumento es la SEMILLA de la pieza. Sin ella el aire es el canonico de la pagina, que es
 // lo que quieren las compuertas y cualquiera que corra esto a mano; con ella, la misma pagina puede
