@@ -1,0 +1,321 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>FireFit — recreacion</title>
+<!--
+  RECREACION 1:1 de la referencia de FireFit (23 s, 25 fps, 1920x1080).
+
+  NO usa ningun motor de urvid. Es HTML + CSS 3D + GSAP, capturado cuadro por cuadro con Playwright y
+  encodeado con ffmpeg. La UI de la app esta redibujada a mano en CSS: no se recorta del video.
+
+  El truco de determinismo es el mismo que usa el motor: UNA timeline en pausa y `seek(t)` por cuadro.
+  Nada de requestAnimationFrame, nada de Date.now.
+-->
+<style>
+  @font-face { font-family: PJS; src: url('fonts/PlusJakartaSans-400.ttf'); font-weight: 400 }
+  @font-face { font-family: PJS; src: url('fonts/PlusJakartaSans-700.ttf'); font-weight: 700 }
+  @font-face { font-family: PJS; src: url('fonts/PlusJakartaSans-800.ttf'); font-weight: 800 }
+
+  :root {
+    --bg: #eceef7;
+    --blob: #dde1f0;
+    --panel: #b9bfdc;
+    --tinta: #24243a;
+    --gris: #8f93a8;
+    --violeta: #5b4bb7;
+    --violeta2: #4a3da0;
+    --coral: #f0454b;
+    --marco: #2f3038;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--bg) }
+  body { font-family: PJS, sans-serif; color: var(--tinta); -webkit-font-smoothing: antialiased }
+  #stage { position: relative; width: 1920px; height: 1080px; perspective: 2200px; overflow: hidden }
+  .cap { position: absolute; inset: 0; transform-style: preserve-3d }
+
+  /* --------------------------------------------------- piezas base */
+  .blob { position: absolute; border-radius: 50%; background: var(--blob); transform: translateZ(-320px) }
+  .panel { position: absolute; background: var(--panel) }
+
+  /* el celular: marco + pantalla. transform-style para que rote de verdad en 3D */
+  .fono { position: absolute; width: 258px; height: 524px; transform-style: preserve-3d;
+          border-radius: 44px; background: var(--marco); padding: 9px;
+          box-shadow: 0 40px 90px rgba(40,42,70,.30), 0 6px 18px rgba(40,42,70,.14) }
+  .fono .scr { position: relative; width: 100%; height: 100%; border-radius: 36px; overflow: hidden;
+               background: var(--violeta) }
+  .fono .notch { position: absolute; top: 9px; left: 50%; transform: translateX(-50%);
+                 width: 96px; height: 20px; border-radius: 12px; background: var(--marco); z-index: 5 }
+
+  /* --------------------------------------------------- UI de la app, redibujada */
+  .ui { position: absolute; inset: 0; font-size: 11px }
+  .ui .top { display: flex; justify-content: space-between; padding: 26px 16px 0; color: #fff; opacity: .9 }
+  .ui-hero { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100% }
+  .llama { width: 54px; height: 62px; position: relative }
+  .llama::before { content: ''; position: absolute; inset: 0;
+    background: var(--coral);
+    clip-path: path('M27 0 C40 16 52 26 52 42 C52 55 41 62 27 62 C13 62 2 55 2 42 C2 26 14 16 27 0 Z') }
+  .llama::after { content: ''; position: absolute; left: 16px; top: 30px; width: 22px; height: 14px;
+    background: var(--bg); border-radius: 3px;
+    box-shadow: -7px 0 0 -3px var(--bg), 7px 0 0 -3px var(--bg) }
+  .ui .marca { color: #fff; font-weight: 800; letter-spacing: .5px; margin-top: 10px; font-size: 15px }
+  .ui .sub { color: #cfc9ee; font-size: 7px; margin-top: 3px }
+  .ui .btn { width: 118px; height: 24px; border-radius: 12px; background: var(--coral); color: #fff;
+             font-size: 8px; font-weight: 700; display: grid; place-items: center; margin-top: 26px }
+  .ui .btn.b2 { background: #fff; color: var(--violeta); margin-top: 8px }
+  .ui .link { color: #cfc9ee; font-size: 7px; margin-top: 10px }
+
+  .ui-w { background: #fff; height: 100%; padding: 30px 14px 0 }
+  .ui-w .hola { font-size: 9px; color: var(--gris) }
+  .ui-w .nom { font-size: 13px; font-weight: 800; color: var(--violeta) }
+  .ui-w .dias { display: flex; justify-content: space-between; margin-top: 14px }
+  .ui-w .d { text-align: center; font-size: 7px; color: var(--gris) }
+  .ui-w .d b { display: block; font-size: 10px; color: var(--tinta); margin-top: 3px }
+  .ui-w .d.on b { background: var(--violeta); color: #fff; border-radius: 6px; padding: 2px 0 }
+  .ui-w .corredora { height: 92px; margin-top: 10px; position: relative }
+  .ui-w .corredora i { position: absolute; background: var(--violeta); border-radius: 4px }
+  .ui-w .km { font-size: 7px; color: var(--gris); text-align: right; margin-top: -66px }
+  .ui-w .km b { display: block; font-size: 15px; color: var(--violeta); font-weight: 800 }
+  .ui-w .det { width: 52px; height: 16px; border-radius: 8px; background: var(--coral); color: #fff;
+               font-size: 7px; display: grid; place-items: center; margin-left: auto; margin-top: 4px }
+
+  .ui-p { height: 100%; background: var(--violeta); display: flex; flex-direction: column; align-items: center }
+  .ui-p .tit { color: #fff; font-weight: 700; font-size: 12px; margin-top: 34px }
+  .ui-p .anillo { width: 150px; height: 150px; border-radius: 50%; background: #fff; margin-top: 20px;
+                  display: grid; place-items: center; box-shadow: 0 0 0 12px rgba(255,255,255,.18) }
+  .ui-p .anillo .n { font-size: 26px; font-weight: 800; color: var(--coral) }
+  .ui-p .anillo .n small { font-size: 13px }
+  .ui-p .anillo .c { font-size: 7px; color: var(--gris); text-align: center; margin-top: -2px }
+  .ui-p .hoja { background: #fff; width: 100%; flex: 1; margin-top: 24px; border-radius: 22px 22px 0 0;
+                padding: 18px 14px }
+  .ui-p .wt { width: 118px; height: 20px; border-radius: 10px; background: var(--coral); color: #fff;
+              font-size: 8px; font-weight: 700; display: grid; place-items: center; margin: 0 auto }
+  .ui-p .cards { display: flex; gap: 8px; margin-top: 14px }
+  .ui-p .cd { flex: 1; height: 46px; border-radius: 12px; background: #eef0f8; display: grid;
+              place-items: center; font-size: 15px }
+  .ui-p .cd.on { background: var(--coral) }
+  .ui-p .lbl { display: flex; gap: 8px; margin-top: 5px }
+  .ui-p .lbl div { flex: 1; text-align: center; font-size: 6px; color: var(--gris) }
+  .ui-p .barras { display: flex; gap: 5px; align-items: flex-end; height: 34px; margin-top: 14px;
+                  background: var(--violeta); border-radius: 10px; padding: 6px 8px }
+  .ui-p .barras i { flex: 1; background: #fff; border-radius: 2px }
+
+  /* --------------------------------------------------- tipografia de la pieza */
+  .h1 { font-size: 58px; font-weight: 800; letter-spacing: -1px }
+  .h2 { font-size: 46px; font-weight: 800; line-height: 1.08; letter-spacing: -.5px }
+  .p  { font-size: 17px; font-weight: 400; color: #5c6070; line-height: 1.55 }
+  .kicker { font-size: 44px; font-weight: 700; color: #fff; letter-spacing: .5px }
+  .badge { height: 42px; border-radius: 8px; background: #111; color: #fff; display: inline-flex;
+           align-items: center; gap: 8px; padding: 0 14px; font-size: 9px }
+  .badge b { display: block; font-size: 14px; font-weight: 700; line-height: 1 }
+  .badge .ico { width: 20px; height: 20px; border-radius: 50%; background: #fff }
+  .tw span { opacity: 0 }                    /* maquina de escribir */
+</style>
+
+<div id="stage">
+  <!-- =========================================== 1 · logo -->
+  <div class="cap" id="c1">
+    <div class="llama" id="c1llama" style="left:934px;top:400px;position:absolute;transform:scale(1.6)"></div>
+    <div class="h1 tw" id="c1txt" style="position:absolute;left:0;right:0;top:540px;text-align:center;font-size:40px"></div>
+  </div>
+
+  <!-- =========================================== 2 · el telefono que gira -->
+  <div class="cap" id="c2">
+    <div class="blob" id="c2blob" style="width:470px;height:470px;left:1120px;top:330px"></div>
+    <div class="fono" id="c2fono" style="left:1235px;top:290px">
+      <div class="notch"></div>
+      <div class="scr"><div class="ui"><div class="top"><span>‹</span><span>☰</span></div>
+        <div class="ui-hero" style="margin-top:-26px;height:calc(100% - 26px)">
+          <div class="llama"></div><div class="marca">FIREFIT</div>
+          <div class="sub">Stay in shape, stay healthy</div>
+          <div class="btn">Sign Up</div><div class="btn b2">Login</div>
+          <div class="link">Forgot your password?</div>
+        </div></div></div>
+    </div>
+    <div style="position:absolute;left:150px;top:380px;width:520px">
+      <div class="h1 tw" id="c2t1"></div>
+      <div class="p tw" id="c2t2" style="margin-top:22px"></div>
+    </div>
+  </div>
+
+  <!-- =========================================== 3 · panel + kicker -->
+  <div class="cap" id="c3">
+    <div class="panel" id="c3panel" style="left:0;top:300px;width:1920px;height:300px"></div>
+    <div class="kicker tw" id="c3txt" style="position:absolute;left:0;right:0;top:415px;text-align:center"></div>
+  </div>
+
+  <!-- =========================================== 4 · modular structure -->
+  <div class="cap" id="c4">
+    <div class="blob" id="c4blob" style="width:560px;height:560px;left:430px;top:250px"></div>
+    <div class="fono" id="c4fono" style="left:600px;top:280px">
+      <div class="notch"></div>
+      <div class="scr"><div class="ui-w">
+        <div class="hola">Hello</div><div class="nom">Amara</div>
+        <div class="dias">
+          <div class="d">Mon<b>8</b></div><div class="d">Tue<b>9</b></div><div class="d">Wed<b>10</b></div>
+          <div class="d">Thu<b>11</b></div><div class="d on">Fri<b>12</b></div><div class="d">Sat<b>13</b></div>
+          <div class="d">Sun<b>14</b></div>
+        </div>
+        <div class="corredora">
+          <i style="left:14px;top:8px;width:16px;height:16px;border-radius:50%;background:#2f2a55"></i>
+          <i style="left:6px;top:26px;width:34px;height:40px;background:var(--coral);border-radius:8px"></i>
+          <i style="left:30px;top:58px;width:14px;height:34px;transform:rotate(20deg)"></i>
+          <i style="left:6px;top:58px;width:14px;height:30px;transform:rotate(-25deg)"></i>
+        </div>
+        <div class="km">Today you run for<b>5.31 km</b></div>
+        <div class="det">Details</div>
+      </div></div>
+    </div>
+    <div style="position:absolute;left:1080px;top:400px;width:600px">
+      <div class="h2 tw" id="c4t1"></div>
+      <div class="p tw" id="c4t2" style="margin-top:20px"></div>
+    </div>
+  </div>
+
+  <!-- =========================================== 5 · progreso -->
+  <div class="cap" id="c5">
+    <div class="blob" id="c5blob" style="width:620px;height:620px;left:650px;top:200px"></div>
+    <div class="fono" id="c5fono" style="left:830px;top:200px;width:300px;height:610px">
+      <div class="notch"></div>
+      <div class="scr"><div class="ui-p">
+        <div class="tit">Current Proggress</div>
+        <div class="anillo"><div><div class="n">75<small>%</small></div><div class="c">Complete</div></div></div>
+        <div class="hoja">
+          <div class="wt">Workout Type</div>
+          <div class="cards"><div class="cd">♥</div><div class="cd on">🏋</div><div class="cd">🏃</div></div>
+          <div class="lbl"><div>Cardio</div><div>Power</div><div>Endurance</div></div>
+          <div class="barras"><i style="height:60%"></i><i style="height:45%"></i><i style="height:70%"></i>
+            <i style="height:100%;background:var(--coral)"></i><i style="height:40%"></i><i style="height:55%"></i></div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+
+  <!-- =========================================== 6 · cierre -->
+  <div class="cap" id="c6">
+    <div class="blob" id="c6blob" style="width:600px;height:600px;left:900px;top:230px"></div>
+    <div class="fono" id="c6f2" style="left:1180px;top:300px;width:270px;height:550px">
+      <div class="notch"></div>
+      <div class="scr" style="background:#fff"><div class="ui-w" style="padding-top:24px">
+        <div class="hola">Hello</div><div class="nom">Amara</div>
+        <div class="dias"><div class="d">M<b>8</b></div><div class="d">T<b>9</b></div><div class="d">W<b>10</b></div>
+          <div class="d on">T<b>11</b></div><div class="d">F<b>12</b></div></div>
+        <div class="km" style="margin-top:30px">Today you run for<b>5.31 km</b></div>
+        <div class="det">Details</div>
+      </div></div>
+    </div>
+    <div class="fono" id="c6f1" style="left:1000px;top:250px;width:290px;height:590px">
+      <div class="notch"></div>
+      <div class="scr"><div class="ui"><div class="ui-hero">
+        <div class="llama"></div><div class="marca">FIREFIT</div>
+        <div class="sub">Stay in shape, stay healthy</div>
+        <div class="btn">Sign Up</div><div class="btn b2">Login</div>
+      </div></div></div>
+    </div>
+    <div style="position:absolute;left:170px;top:430px">
+      <div class="h1 tw" id="c6t1"></div>
+      <div class="p tw" id="c6t2" style="margin-top:120px;font-size:15px"></div>
+      <div id="c6badges" style="margin-top:12px;display:flex;gap:12px;opacity:0">
+        <div class="badge"><span class="ico"></span><span>Download on the<b>App Store</b></span></div>
+        <div class="badge"><span class="ico"></span><span>GET IT ON<b>Google Play</b></span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="gsap.min.js"></script>
+<script>
+// ---------------------------------------------------------------- maquina de escribir
+// Es EL gesto de la referencia: en el mapa de cuadros se ve "FireF", "Fire Fit", "Modular",
+// "Download Now" a medio escribir. Se parte en <span> por caracter y se revelan de a uno.
+function escribir(el, txt) {
+  el.innerHTML = ''
+  const spans = []
+  for (const ch of txt) {
+    const s = document.createElement('span')
+    s.textContent = ch === '\n' ? '' : ch
+    if (ch === '\n') el.appendChild(document.createElement('br'))
+    else { el.appendChild(s); spans.push(s) }
+  }
+  return spans
+}
+const T = {}
+T.c1  = escribir(c1txt, 'FireFit')
+T.c2a = escribir(c2t1, 'FireFit')
+T.c2b = escribir(c2t2, "Fire Fit App you can view class\nschedules, sign-up for classes,\nview ongoing promotions,\nas well as view the studio's\nlocation and contact information.")
+T.c3  = escribir(c3txt, 'WORKOUT TRACKER APP')
+T.c4a = escribir(c4t1, 'Modular\nStructure')
+T.c4b = escribir(c4t2, 'Running Mode, Sports Mode,\nTraking Mode')
+T.c6a = escribir(c6t1, 'Fire Fit')
+T.c6b = escribir(c6t2, 'Available On')
+
+const tl = gsap.timeline({ paused: true })
+const caps = ['c1','c2','c3','c4','c5','c6'].map(id => document.getElementById(id))
+caps.forEach(c => gsap.set(c, { opacity: 0 }))
+
+// tipeo: `stagger` sobre los spans, con la duracion total pedida
+const tipear = (spans, t0, dur) =>
+  tl.to(spans, { opacity: 1, duration: 0.001, stagger: dur / spans.length }, t0)
+
+// ================================================================ 1 · logo (0 - 2.4)
+tl.set(caps[0], { opacity: 1 }, 0)
+tl.fromTo(c1llama, { scale: 0.2, opacity: 0 }, { scale: 1.6, opacity: 1, duration: 0.9, ease: 'back.out(1.6)' }, 0.15)
+tipear(T.c1, 0.9, 0.75)
+tl.to(caps[0], { opacity: 0, duration: 0.35, ease: 'power2.in' }, 2.15)
+
+// ================================================================ 2 · el telefono gira (2.2 - 7.4)
+tl.set(caps[1], { opacity: 1 }, 2.2)
+// ESTE ES EL GESTO CENTRAL DE LA REFERENCIA: el telefono llega DE CANTO (rotateY 90) y gira hasta 3/4.
+tl.fromTo(c2fono, { rotationY: 88, rotationX: 3, rotationZ: -6, x: 260, scale: 1.06, opacity: 0 },
+  { rotationY: -17, rotationX: 5, rotationZ: -9, x: 0, scale: 1.06, opacity: 1,
+    duration: 1.9, ease: 'power3.out' }, 2.25)
+tl.fromTo(c2blob, { scale: 0.5, opacity: 0 }, { scale: 1, opacity: 1, duration: 1.1, ease: 'power2.out' }, 2.6)
+tipear(T.c2a, 3.6, 0.55)
+tipear(T.c2b, 4.25, 1.5)
+// deriva lenta mientras se lee
+tl.to(c2fono, { rotationY: -12, y: -16, duration: 3.0, ease: 'sine.inOut' }, 4.2)
+tl.to(caps[1], { opacity: 0, duration: 0.3 }, 7.3)
+
+// ================================================================ 3 · panel + kicker (7.2 - 10.4)
+tl.set(caps[2], { opacity: 1 }, 7.2)
+tl.fromTo(c3panel, { clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0 0% 0 0)', duration: 0.85, ease: 'power3.inOut' }, 7.25)
+tipear(T.c3, 8.0, 0.85)
+tl.to(c3panel, { clipPath: 'inset(0 0 0 100%)', duration: 0.8, ease: 'power3.inOut' }, 9.7)
+tl.to(c3txt, { opacity: 0, duration: 0.3 }, 9.7)
+tl.set(caps[2], { opacity: 0 }, 10.5)
+
+// ================================================================ 4 · modular (10.3 - 15.0)
+tl.set(caps[3], { opacity: 1 }, 10.3)
+tl.fromTo(c4fono, { rotationY: 34, rotationZ: 6, x: -120, opacity: 0, scale: 1.16 },
+  { rotationY: 12, rotationZ: 2, x: 0, opacity: 1, scale: 1.16, duration: 1.5, ease: 'power3.out' }, 10.35)
+tl.fromTo(c4blob, { scale: 0.6, opacity: 0 }, { scale: 1, opacity: 1, duration: 1.0, ease: 'power2.out' }, 10.5)
+tipear(T.c4a, 11.2, 0.7)
+tipear(T.c4b, 12.0, 0.8)
+tl.to(c4fono, { rotationY: 4, y: -14, duration: 2.6, ease: 'sine.inOut' }, 11.8)
+tl.to(caps[3], { opacity: 0, duration: 0.3 }, 14.9)
+
+// ================================================================ 5 · progreso (14.8 - 18.6)
+tl.set(caps[4], { opacity: 1 }, 14.8)
+tl.fromTo(c5fono, { scale: 0.72, opacity: 0, rotationY: -18 },
+  { scale: 1.02, opacity: 1, rotationY: 0, duration: 1.5, ease: 'power3.out' }, 14.85)
+tl.fromTo(c5blob, { scale: 0.6, opacity: 0 }, { scale: 1, opacity: 1, duration: 1.1, ease: 'power2.out' }, 14.9)
+// empuje continuo: es el unico plano de la referencia que se acerca sostenido
+tl.to(c5fono, { scale: 1.30, y: -40, duration: 2.6, ease: 'sine.inOut' }, 16.0)
+tl.to(caps[4], { opacity: 0, duration: 0.35 }, 18.4)
+
+// ================================================================ 6 · cierre (18.3 - 23.0)
+tl.set(caps[5], { opacity: 1 }, 18.3)
+tl.fromTo(c6f2, { x: 90, opacity: 0, rotationY: -14 }, { x: 0, opacity: 1, rotationY: -7, duration: 1.2, ease: 'power3.out' }, 18.35)
+tl.fromTo(c6f1, { x: -60, opacity: 0, rotationY: 16 }, { x: 0, opacity: 1, rotationY: 9, duration: 1.2, ease: 'power3.out' }, 18.55)
+tl.fromTo(c6blob, { scale: 0.6, opacity: 0 }, { scale: 1, opacity: 1, duration: 1.0, ease: 'power2.out' }, 18.4)
+tipear(T.c6a, 19.1, 0.6)
+tipear(T.c6b, 19.9, 0.5)
+tl.to(c6badges, { opacity: 1, duration: 0.5, ease: 'power2.out' }, 20.5)
+tl.to([c6f1, c6f2], { y: -22, duration: 2.4, ease: 'sine.inOut' }, 20.2)
+
+tl.to({}, { duration: 0.01 }, 23.0)          // fija el largo
+
+// ---------------------------------------------------------------- API para Playwright
+window.__dur = 23.0
+window.__seek = (t) => { tl.time(Math.min(t, 23.0)) }
+window.__seek(0)
+document.title = 'listo'
+</script>
