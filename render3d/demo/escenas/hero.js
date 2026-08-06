@@ -145,7 +145,12 @@ function rotular(ctx, r, elegido) {
   const cama = new THREE.Mesh(
     new THREE.PlaneGeometry(ALTO * t.ar + HOLG_X * 2, ALTO + HOLG_Y * 2),
     new THREE.MeshBasicMaterial({
-      color: hex(nivel(0.04)), transparent: true, opacity: 0.86,
+      // 0.94 Y NO 0.86. Con 0.86 la cama deja pasar lo que tiene detras, y sobre un hero claro eso
+      // se le come el contraste al rotulo: medido con `columnata` —dos columnas claras justo atras—
+      // daba 3.80:1, que pasa el piso de texto grande (3.0) pero no el de texto normal (4.5). Era el
+      // mas bajo de los 17. Con 0.94 sigue siendo una cama translucida —se ve que hay algo atras, que
+      // es lo que la integra a la escena— y el rotulo deja de depender de que el hero sea oscuro.
+      color: hex(nivel(0.0)), transparent: true, opacity: 0.94,
       depthWrite: false, toneMapped: false,
     }))
   // Justo detras del rotulo, no del hero: comparte su posicion y se corre en z lo minimo.

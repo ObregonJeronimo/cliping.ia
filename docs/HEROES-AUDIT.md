@@ -135,22 +135,40 @@ Renderiza una pieza por héroe y mide sobre los cuadros de su tramo. **Cero hall
 El contraste más bajo es `columnata` con 3,80:1 (piso 3,0) y el movimiento más bajo `vitrina` con
 0,306 — 61 veces el ruido del códec (0,005).
 
-| | contraste | movimiento | tinta |
+| héroe | contraste | movimiento | tinta |
 |---|---|---|---|
-| `columnata` | 3,80:1 | 0,758 | 0,269 |
-| `telefono` | 7,04:1 | 4,907 | 0,736 |
-| `brote` | 7,73:1 | 1,283 | 0,380 |
-| `gota` | 7,76:1 | 0,449 | 0,574 |
-| `telar` | 7,78:1 | 1,729 | 0,544 |
-| `farol` | 8,50:1 | 0,513 | 0,385 |
-| `cinta` | 9,46:1 | 4,494 | 0,471 |
-| `biela` | 9,51:1 | 4,184 | 0,783 |
-| `prisma` | 9,65:1 | 1,273 | 0,388 |
-| `enjambre` | 9,68:1 | 1,328 | 0,315 |
-| `calibre` | 9,71:1 | 0,431 | 0,396 |
-| `pulso` | 9,77:1 | 3,392 | 0,357 |
-| `cubo`, `portatil`, `ventana`, `vitrina` | sin rótulo | 0,31–2,61 | 0,33–0,69 |
-| `mosaico` | banda con composición | 1,558 | 0,439 |
+| `columnata` | 4,28:1 | 0,751 | 0,270 |
+| `telefono` | 7,04:1 | 4,905 | 0,737 |
+| `brote` | 8,55:1 | 1,318 | 0,380 |
+| `gota` | 8,69:1 | 0,456 | 0,575 |
+| `telar` | 8,70:1 | 1,865 | 0,545 |
+| `farol` | 9,52:1 | 0,514 | 0,386 |
+| `cinta` | 10,58:1 | 4,506 | 0,472 |
+| `biela` | 10,69:1 | 4,208 | 0,783 |
+| `calibre` | 11,07:1 | 0,844 | 0,396 |
+| `prisma` | 11,18:1 | 1,161 | 0,388 |
+| `enjambre` | 11,19:1 | 1,372 | 0,315 |
+| `pulso` | 11,19:1 | 3,343 | 0,357 |
+| `cubo`, `portatil`, `ventana`, `vitrina` | sin rótulo | 0,30–2,38 | 0,33–0,68 |
+| `mosaico` | banda con composición | 1,426 | 0,439 |
+
+### La cama del rótulo, afinada con esta misma tabla
+
+El peor caso era `columnata` con **3,80:1** — pasaba el piso de texto grande (3,0) pero no el de texto
+normal (4,5). Se ve por qué: la cama tenía opacidad 0,86 y dejaba pasar las dos columnas claras que
+tiene detrás. Dos cambios, medidos de a uno:
+
+| cambio | `columnata` |
+|---|---|
+| original (opacidad 0,86, `nivel(0.04)`) | 3,80:1 |
+| opacidad 0,94 | 4,04:1 |
+| + color de fondo puro `nivel(0.0)` | **4,28:1** |
+
+Se paró ahí a propósito: llegar a 4,5 exigía una cama **opaca**, y que se vea algo detrás es lo que la
+integra a la escena en vez de parecer una etiqueta pegada.
+
+**Y el cambio se verificó sobre los 17, no sobre el que se estaba arreglando: ninguno bajó y los doce
+con rótulo subieron.** Ocho pasaron a superar el umbral de texto normal.
 
 ### Tres trampas que la herramienta ya trae resueltas
 
