@@ -117,6 +117,37 @@ diagnóstico falso cuesta más que no haberlos hecho. Antes de declarar un defec
 - Leer el dato de la **clave correcta** — más de una vez el "defecto" fue leer el campo equivocado.
 - Si una métrica da fuera de rango, eso prueba que hay **algo que explicar**, no que hay un defecto.
 
+## Herramientas de auditoría — miden, no bloquean
+
+Las compuertas dicen *sí o no* y corren en el guard. Estas **miden** y se corren a mano cuando hace
+falta mirar algo: son caras (renderizan) y su salida es una tabla, no un veredicto. Todas van por
+`npm run pesado`.
+
+| herramienta | qué mide | dónde está el estado |
+|---|---|---|
+| `tools/encaja-inventario.mjs` | censo de mallas que muestran imagen y cuáles declaran si entran enteras | `docs/ENCAJE-ESTADO.md` |
+| `tools/heroes-audit.mjs` | los 17 héroes por geometría: mallas, cobertura, movimiento (rápida, sin render) | `docs/HEROES-AUDIT.md` |
+| `tools/heroes-render.py` | los 17 héroes **sobre píxeles**: contraste del rótulo, movimiento real, tinta | `docs/HEROES-AUDIT.md` |
+| `tools/escenas-render.py` | cada escena por separado dentro de la pieza, sobre píxeles | `docs/ESCENAS-AUDIT.md` |
+| `tools/aires-render.py` | los 11 aires comparados entre sí sobre la misma página y semilla | `docs/ESCENAS-AUDIT.md` |
+
+Y dos modos que no son herramientas sino puertas traseras de una compuerta que ya existe:
+
+```bash
+# el producto cartesiano completo de encuadre-check (3256 construcciones en vez de 407).
+# Partido por aire porque en un solo proceso revienta con "Create skia surface failed" — es la fuga
+# de `texto()`, no un defecto. Se corre cuando se toca el encaje.
+for a in artesanal bienestar corporativo deportivo editorial gastronomico inmobiliario jugueton lujo nocturno tecnico; do
+  ENCUADRE_CARTESIANO=1 ENCUADRE_AIRE=$a node tools/encuadre-check.mjs
+done
+```
+
+**LO QUE NINGUNA DE ESTAS PUEDE DECIR.** Un número bajo no es un defecto. Varias escenas componen así
+a propósito —`sello` con el vacío, `bandera` con un campo liso, `gancho` con una placa que hay que
+poder leer— y sus cabeceras lo explican. **La herramienta dice dónde mirar; el archivo dice si eso
+estaba buscado.** Cada documento tiene su lista de falsos positivos ya comprobados, para no volver a
+investigarlos.
+
 ## Compuertas
 
 - **10 rápidas (~12 s), en cada cambio del motor:** `verificar.mjs`, `guion-check`, `encuadre-check`,
