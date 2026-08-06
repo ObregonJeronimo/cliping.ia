@@ -107,6 +107,37 @@ function rotular(ctx, r, elegido) {
   // Abajo y a la izquierda, fuera del eje donde vive el objeto: el rotulo acompaña, no compite.
   m.position.set(-mundoW * 0.40 + (ALTO * t.ar) / 2, -mundoH * 0.355, 0.6)
   m.userData.encaja = true
+
+  // LA CAMA, PORQUE "FUERA DEL EJE DEL OBJETO" NO ALCANZA. El comentario de arriba dice que el rotulo
+  // va abajo y a la izquierda para no competir con el hero, y eso vale mientras el hero sea un objeto
+  // centrado. Varios no lo son: `calibre` apoya su base a lo ancho de todo el cuadro y el rotulo cae
+  // justo encima.
+  //
+  // MEDIDO SOBRE UN RENDER DE VERDAD, no deducido: hero `calibre` sobre stripe.com con el aire
+  // editorial, cuadro 320 de 600, banda del texto — contraste 2.41:1 contra la mediana de lo que tiene
+  // detras. WCAG pide 4.5:1 para texto normal y 3.0:1 para texto grande, asi que estaba por debajo
+  // hasta del umbral flexible. `nivelTexto` elige el tono contra el FONDO DEL MUNDO, y no puede saber
+  // que el hero le puso un bloque gris atras.
+  //
+  // La cama resuelve el caso general en vez del caso `calibre`: sea cual sea el hero y sea cual sea su
+  // geometria, detras del rotulo hay una superficie conocida. Es el mismo recurso que la cabecera de
+  // `fondo-check` enumera para las escenas que ya escriben encima de algo ("una cinta con el acento,
+  // una cama de nivel, una tarjeta").
+  //
+  // Va con el color del FONDO del mundo y no con el acento: el acento compite con el hero, que muchas
+  // veces ya lo usa. Y con holgura, porque un rotulo con la cama justa se lee como una etiqueta pegada.
+  const HOLG_X = ALTO * 0.55, HOLG_Y = ALTO * 0.42
+  const cama = new THREE.Mesh(
+    new THREE.PlaneGeometry(ALTO * t.ar + HOLG_X * 2, ALTO + HOLG_Y * 2),
+    new THREE.MeshBasicMaterial({
+      color: hex(nivel(0.04)), transparent: true, opacity: 0.86,
+      depthWrite: false, toneMapped: false,
+    }))
+  // Justo detras del rotulo, no del hero: comparte su posicion y se corre en z lo minimo.
+  cama.position.set(m.position.x, m.position.y, m.position.z - 0.02)
+  cama.userData.sangra = true          // acompaña al rotulo; si el rotulo entra, ella tambien
+  cama.userData.tipoImagen = 'fondo'
+  g.add(cama)
   g.add(m)
 
   const filete = new THREE.Mesh(new THREE.PlaneGeometry(ANCHO, mundoH * 0.0042),
