@@ -38,8 +38,9 @@
 
   /* el celular: marco + pantalla. transform-style para que rote de verdad en 3D */
   .fono { position: absolute; width: 258px; height: 524px; transform-style: preserve-3d;
-          border-radius: 44px; background: var(--marco); padding: 9px;
-          box-shadow: 0 40px 90px rgba(40,42,70,.30), 0 6px 18px rgba(40,42,70,.14) }
+          border-radius: 44px; background: var(--marco); padding: 9px }
+  .sombra { position: absolute; border-radius: 60px; background: rgba(60,62,95,.22);
+            filter: blur(46px); transform: translateZ(-140px) }
   .fono .scr { position: relative; width: 100%; height: 100%; border-radius: 36px; overflow: hidden;
                background: var(--violeta) }
   .fono .notch { position: absolute; top: 9px; left: 50%; transform: translateX(-50%);
@@ -120,6 +121,7 @@
   <!-- =========================================== 2 · el telefono que gira -->
   <div class="cap" id="c2">
     <div class="blob" id="c2blob" style="width:470px;height:470px;left:1120px;top:330px"></div>
+    <div class="sombra" style="left:1249px;top:340px;width:230px;height:494px"></div>
     <div class="fono" id="c2fono" style="left:1235px;top:290px">
       <div class="notch"></div>
       <div class="scr"><div class="ui"><div class="top"><span>‹</span><span>☰</span></div>
@@ -145,6 +147,7 @@
   <!-- =========================================== 4 · modular structure -->
   <div class="cap" id="c4">
     <div class="blob" id="c4blob" style="width:560px;height:560px;left:430px;top:250px"></div>
+    <div class="sombra" style="left:614px;top:330px;width:230px;height:494px"></div>
     <div class="fono" id="c4fono" style="left:600px;top:280px">
       <div class="notch"></div>
       <div class="scr"><div class="ui-w">
@@ -172,7 +175,9 @@
 
   <!-- =========================================== 5 · progreso -->
   <div class="cap" id="c5">
+    <div class="h2 tw" id="c5txt" style="position:absolute;left:170px;top:470px;width:480px"></div>
     <div class="blob" id="c5blob" style="width:620px;height:620px;left:650px;top:200px"></div>
+    <div class="sombra" style="left:844px;top:250px;width:272px;height:580px"></div>
     <div class="fono" id="c5fono" style="left:830px;top:200px;width:300px;height:610px">
       <div class="notch"></div>
       <div class="scr"><div class="ui-p">
@@ -191,8 +196,9 @@
 
   <!-- =========================================== 6 · cierre -->
   <div class="cap" id="c6">
-    <div class="blob" id="c6blob" style="width:600px;height:600px;left:900px;top:230px"></div>
-    <div class="fono" id="c6f2" style="left:1180px;top:300px;width:270px;height:550px">
+    <div class="blob" id="c6blob" style="width:640px;height:640px;left:940px;top:220px"></div>
+    <div class="sombra" style="left:1282px;top:350px;width:242px;height:520px"></div>
+    <div class="fono" id="c6f2" style="left:1268px;top:300px;width:270px;height:550px">
       <div class="notch"></div>
       <div class="scr" style="background:#fff"><div class="ui-w" style="padding-top:24px">
         <div class="hola">Hello</div><div class="nom">Amara</div>
@@ -202,6 +208,7 @@
         <div class="det">Details</div>
       </div></div>
     </div>
+    <div class="sombra" style="left:1014px;top:300px;width:262px;height:560px"></div>
     <div class="fono" id="c6f1" style="left:1000px;top:250px;width:290px;height:590px">
       <div class="notch"></div>
       <div class="scr"><div class="ui"><div class="ui-hero">
@@ -244,6 +251,7 @@ T.c2b = escribir(c2t2, "Fire Fit App you can view class\nschedules, sign-up for 
 T.c3  = escribir(c3txt, 'WORKOUT TRACKER APP')
 T.c4a = escribir(c4t1, 'Modular\nStructure')
 T.c4b = escribir(c4t2, 'Running Mode, Sports Mode,\nTraking Mode')
+T.c5  = escribir(c5txt, 'Track your' + String.fromCharCode(10) + 'progress')
 T.c6a = escribir(c6t1, 'Fire Fit')
 T.c6b = escribir(c6t2, 'Available On')
 
@@ -271,7 +279,9 @@ tl.fromTo(c2blob, { scale: 0.5, opacity: 0 }, { scale: 1, opacity: 1, duration: 
 tipear(T.c2a, 3.6, 0.55)
 tipear(T.c2b, 4.25, 1.5)
 // deriva lenta mientras se lee
-tl.to(c2fono, { rotationY: -12, y: -16, duration: 3.0, ease: 'sine.inOut' }, 4.2)
+tl.to(c2fono, { rotationY: -12, y: -16, duration: 1.7, ease: 'sine.inOut' }, 4.2)
+tl.to(c2fono, { rotationY: -20, y: 6, duration: 1.9, ease: 'sine.inOut' }, 5.9)
+tl.to(c2blob, { scale: 1.06, duration: 2.2, ease: 'sine.inOut' }, 4.4)
 tl.to(caps[1], { opacity: 0, duration: 0.3 }, 7.3)
 
 // ================================================================ 3 · panel + kicker (7.2 - 10.4)
@@ -289,7 +299,9 @@ tl.fromTo(c4fono, { rotationY: 34, rotationZ: 6, x: -120, opacity: 0, scale: 1.1
 tl.fromTo(c4blob, { scale: 0.6, opacity: 0 }, { scale: 1, opacity: 1, duration: 1.0, ease: 'power2.out' }, 10.5)
 tipear(T.c4a, 11.2, 0.7)
 tipear(T.c4b, 12.0, 0.8)
-tl.to(c4fono, { rotationY: 4, y: -14, duration: 2.6, ease: 'sine.inOut' }, 11.8)
+tl.to(c4fono, { rotationY: 4, y: -14, duration: 1.5, ease: 'sine.inOut' }, 11.8)
+tl.to(c4fono, { rotationY: 15, y: 8, duration: 1.7, ease: 'sine.inOut' }, 13.3)
+tl.to(c4blob, { scale: 1.07, duration: 2.4, ease: 'sine.inOut' }, 11.4)
 tl.to(caps[3], { opacity: 0, duration: 0.3 }, 14.9)
 
 // ================================================================ 5 · progreso (14.8 - 18.6)
@@ -298,7 +310,10 @@ tl.fromTo(c5fono, { scale: 0.72, opacity: 0, rotationY: -18 },
   { scale: 1.02, opacity: 1, rotationY: 0, duration: 1.5, ease: 'power3.out' }, 14.85)
 tl.fromTo(c5blob, { scale: 0.6, opacity: 0 }, { scale: 1, opacity: 1, duration: 1.1, ease: 'power2.out' }, 14.9)
 // empuje continuo: es el unico plano de la referencia que se acerca sostenido
-tl.to(c5fono, { scale: 1.30, y: -40, duration: 2.6, ease: 'sine.inOut' }, 16.0)
+tipear(T.c5, 15.7, 0.7)
+tl.to(c5fono, { scale: 1.22, y: -34, duration: 1.5, ease: 'sine.inOut' }, 16.0)
+tl.to(c5fono, { scale: 1.30, y: -18, rotationY: 6, duration: 1.6, ease: 'sine.inOut' }, 17.0)
+tl.to(c5blob, { scale: 1.08, duration: 2.8, ease: 'sine.inOut' }, 15.2)
 tl.to(caps[4], { opacity: 0, duration: 0.35 }, 18.4)
 
 // ================================================================ 6 · cierre (18.3 - 23.0)
@@ -309,7 +324,11 @@ tl.fromTo(c6blob, { scale: 0.6, opacity: 0 }, { scale: 1, opacity: 1, duration: 
 tipear(T.c6a, 19.1, 0.6)
 tipear(T.c6b, 19.9, 0.5)
 tl.to(c6badges, { opacity: 1, duration: 0.5, ease: 'power2.out' }, 20.5)
-tl.to([c6f1, c6f2], { y: -22, duration: 2.4, ease: 'sine.inOut' }, 20.2)
+tl.to(c6f1, { y: -24, rotationY: 13, duration: 1.4, ease: 'sine.inOut' }, 20.0)
+tl.to(c6f1, { y: -6, rotationY: 7, duration: 1.6, ease: 'sine.inOut' }, 21.4)
+tl.to(c6f2, { y: 16, rotationY: -11, duration: 1.5, ease: 'sine.inOut' }, 20.2)
+tl.to(c6f2, { y: 0, rotationY: -5, duration: 1.5, ease: 'sine.inOut' }, 21.7)
+tl.to(c6blob, { scale: 1.05, duration: 2.6, ease: 'sine.inOut' }, 20.0)
 
 tl.to({}, { duration: 0.01 }, 23.0)          // fija el largo
 
