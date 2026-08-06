@@ -33,12 +33,27 @@ export function build(ctx) {
   // trabaja sobre pixeles. Ver la nota en cubo.js.
   const posibles = elegibles(disponible, (ctx.spec && ctx.spec.aire) || null, datosEls || [], texturas || null)
   const rep = ctx.repeticion || 0
-  const base = pedido
-    ? posibles.findIndex(h => h.meta.id === pedido)
-    : Math.floor(rnd() * Math.max(1, posibles.length))
-  const elegido = posibles.length
-    ? posibles[(Math.max(0, base) + rep) % posibles.length]
-    : null
+  // UN PEDIDO EXPLICITO NO SE DESPLAZA POR REPETICION, Y SI NO SE PUEDE CUMPLIR SE DICE.
+  //
+  // Antes era `posibles[(Math.max(0, base) + rep) % posibles.length]` para los dos casos, y eso
+  // rompia el pedido de dos formas distintas:
+  //
+  //   · con `rep > 0` el indice se corria y salia OTRO hero aunque se hubiera pedido uno. La
+  //     repeticion existe para que la segunda aparicion del hero en una pieza no repita objeto —eso
+  //     esta bien cuando el hero se sortea— pero un pedido explicito no es algo que haya que variar.
+  //   · si el pedido NO estaba entre los elegibles, `findIndex` devuelve -1, `Math.max(0, -1)` da 0 y
+  //     salia el primero de la lista sin una sola queja.
+  //
+  // Se encontro auditando: `--hero pulso` sobre basecamp.com devolvio `heroes: ['telefono']`, y
+  // `pulso` declara `necesita: ['nada']`, o sea que era elegible. Quien audita un hero termina
+  // mirando otro y reportando con confianza — y el plan.json es el unico lugar donde se nota.
+  const idx = pedido ? posibles.findIndex(h => h.meta.id === pedido) : -1
+  if (pedido && idx < 0 && typeof console !== 'undefined' && console.error) {
+    console.error(`  (hero "${pedido}" no es elegible para esta pagina: se elige otro)`)
+  }
+  const elegido = !posibles.length ? null
+    : idx >= 0 ? posibles[idx]
+      : posibles[(Math.floor(rnd() * Math.max(1, posibles.length)) + rep) % posibles.length]
 
   if (!elegido) {
     // Sin material para ningun hero, la escena no tiene sujeto. Grupo vacio: el secuenciador la salta

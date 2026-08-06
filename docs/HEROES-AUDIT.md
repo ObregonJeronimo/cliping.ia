@@ -44,6 +44,12 @@ Se listan porque cada una parecía un hallazgo sólido:
    —cuarenta veces menos que el resto— y no estaba quieta: su movimiento vive entero en la GPU. **Son
    10 de 17.** La columna ahora dice `(gpu)` en vez de un cero que se leería como diapositiva.
 
+### La cobertura NO predice calidad visual
+
+`pulso` tenía la cobertura más baja de los 17 (**0.401**) con 48,7 mallas, y en el render se ve lleno:
+son trazos finos, y la cobertura mide áreas de caja. Una composición de líneas siempre va a puntuar
+bajo aunque llene el cuadro. **La tabla sirve para elegir dónde mirar, no para decidir qué está mal.**
+
 ### Límite que queda
 
 `telefono`, `ventana` y `portatil` dan `muestra: no` aunque dibujan la tira. Es del instrumento, no de
@@ -69,6 +75,7 @@ Sin mirar el plan, en los dos casos se audita otra cosa y se reporta con confian
 | `mosaico` | stripe.com, seed 5, aire corporativo | 250 | bien — muestra logo, editor, recibo, QR |
 | `gota` | linear.app, seed 3, aire editorial | 440 | bien — se mueve 1.27–1.91 por píxel |
 | `telefono` | basecamp.com, seed 26 | 500 | bien — muestra la página real, texto nítido |
+| `pulso` | stripe.com, seed 5, aire corporativo | 220, 280 | bien — rótulo a 9,24 y 9,65:1 |
 
 ### El defecto encontrado, y por qué el arreglo no es para `calibre`
 
