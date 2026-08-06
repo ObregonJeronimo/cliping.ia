@@ -41,7 +41,11 @@ SALIDA = os.path.join(RAIZ, "tools", "out", "heroes-render")
 
 # Pagina y semilla que MIDEN. Se eligieron porque su plan lleva la escena `hero` — sin eso no hay nada
 # que auditar, y el motor no garantiza incluirla (`--hero` elige cual, no obliga a que entre).
-CASOS = [("https://stripe.com", 5), ("https://basecamp.com", 26)]
+# Se prueban EN ORDEN hasta que el hero pedido salga en el plan. Hacen falta varios porque el REGISTRO
+# filtra heroes por AIRE —para que la geometria abstracta no le toque a una marca a la que no le
+# queda— y cada pagina cae en un aire distinto: con dos casos, `cinta` y `farol` no salian en ninguno.
+CASOS = [("https://stripe.com", 5), ("https://basecamp.com", 26), ("https://linear.app", 3),
+         ("https://stripe.com", 3)]
 
 BANDA_ROTULO = (0.845, 0.875)
 PISO_CONTRASTE = 3.0
@@ -86,8 +90,19 @@ def medir(mp4, plan, tag):
     band = medio[int(H * BANDA_ROTULO[0]):int(H * BANDA_ROTULO[1])]
     gris = band.mean(axis=2)
     hay_texto = np.percentile(np.abs(np.diff(gris, axis=1)), 99) >= SALTO_HAY_TEXTO
+    # Y TIENE QUE HABER UNA CAMA, no cualquier cosa con bordes duros. La banda es una posicion FIJA
+    # —donde `hero.js` apoya su rotulo— y eso deja de ser cierto cuando el hero llena el cuadro con
+    # recortes del cliente: en `mosaico` ahi cae el recibo de "Quiet Fire Yoga", que trae su propio
+    # texto. El detector de letras decia "hay texto" (salto p99 = 50) y se media el contenido del
+    # cliente, no el rotulo: 1.07:1, que se reporto como hallazgo y no lo era.
+    #
+    # El rotulo del hero SIEMPRE va sobre su cama, que es una superficie plana. Se mide la dispersion
+    # del fondo de la banda —los pixeles que no son tinta— y si es alta, ahi no hay cama sino
+    # composicion: no se juzga.
+    fondo = gris[gris > np.percentile(gris, 40)]
+    hay_cama = float(fondo.std()) < 22 if fondo.size else False
     contraste = None
-    if hay_texto:
+    if hay_texto and hay_cama:
         c = band / 255.0
         c = np.where(c <= 0.03928, c / 12.92, ((c + 0.055) / 1.055) ** 2.4)
         L = 0.2126 * c[..., 0] + 0.7152 * c[..., 1] + 0.0722 * c[..., 2]
@@ -109,7 +124,10 @@ def medir(mp4, plan, tag):
     g = medio.mean(axis=2)
     tinta = float((np.abs(g - np.median(g)) > 18).mean())
 
-    return {"contraste": contraste, "movimiento": movimiento, "tinta": tinta,
+    motivo = None
+    if contraste is None:
+        motivo = "sin rotulo" if not hay_texto else "la banda tiene composicion, no una cama"
+    return {"contraste": contraste, "movimiento": movimiento, "tinta": tinta, "motivo": motivo,
             "tramo": (int(ini * 30), int(fin * 30))}
 
 
@@ -157,11 +175,11 @@ def main():
             saltados.append(h)
 
     print("AUDITORIA DE HEROES CON RENDER — %d medidos, %d sin caso donde salieran" % (len(filas), len(saltados)))
-    print("  %-12s %10s %12s %8s   %s" % ("hero", "contraste", "movimiento", "tinta", "pagina"))
+    print("  %-12s %36s %12s %8s   %s" % ("hero", "contraste", "movimiento", "tinta", "pagina"))
     for h, url, seed, m in sorted(filas, key=lambda f: (f[3]["contraste"] or 99)):
-        cr = "sin rotulo" if m["contraste"] is None else "%.2f:1" % m["contraste"]
+        cr = (m.get("motivo") or "sin rotulo") if m["contraste"] is None else "%.2f:1" % m["contraste"]
         mv = "-" if m["movimiento"] is None else "%.3f" % m["movimiento"]
-        print("  %-12s %10s %12s %8.3f   %s" % (h, cr, mv, m["tinta"], url.replace("https://", "")))
+        print("  %-12s %36s %12s %8.3f   %s" % (h, cr, mv, m["tinta"], url.replace("https://", "")))
         if m["contraste"] is not None and m["contraste"] < PISO_CONTRASTE:
             fallos.append("%s: rotulo a %.2f:1, el piso es %.1f:1" % (h, m["contraste"], PISO_CONTRASTE))
         if m["movimiento"] is not None and m["movimiento"] < PISO_MOVIMIENTO:
