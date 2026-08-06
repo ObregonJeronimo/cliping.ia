@@ -470,6 +470,20 @@ if (fallos.length) {
   console.error(`ENCUADRE: ${fallos.length} FALLO(S)\n` + fallos.map(f => '  ' + f).join('\n'))
   process.exit(1)
 }
+// CERO CONSTRUCCIONES NO ES "TODO BIEN", ES QUE NO SE MIDIO NADA. Comprobado a mano el 2026-08-06:
+// `node tools/encuadre-check.mjs escena-que-no-existe` imprimia `ENCUADRE OK — 0 construcciones` y
+// salia con 0. O sea que el dia que el descubrimiento de escenas se rompa —una carpeta renombrada, un
+// import que falla, una extension que cambia— esta compuerta pasaria en verde sin mirar un solo
+// objeto, y es la que encontro el defecto que la motivo: la pauta del toro que no se veia NUNCA.
+//
+// Es la familia de defecto que mas veces aparecio en este repo: el cero tranquilizador. La unica
+// defensa es que la compuerta se niegue a dar OK cuando no tuvo nada que revisar.
+if (!revisados) {
+  console.error('ENCUADRE: FALLO — 0 construcciones. No es que todo entre en el cuadro: es que no se')
+  console.error('  midio NADA. Revisa que las escenas se esten descubriendo (render3d/demo/escenas y')
+  console.error('  /heroes) o que los ids pasados por argumento existan.')
+  process.exit(1)
+}
 console.log(`ENCUADRE OK — ${revisados} construcciones (${revisados / Object.keys(AIRES).length} escenas y heroes `
   + `x ${Object.keys(AIRES).length} aires): todo lo que se anima entra en el cuadro, proyectado a 30 fps `
   + 'contra la camara que mueve cada escena CON la amplitud que le pone su aire.'
