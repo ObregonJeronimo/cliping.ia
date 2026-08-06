@@ -68,6 +68,11 @@ PIEZAS = [
     ("https://basecamp.com", 3), ("https://stripe.com", 26),
     ("https://linear.app", 5), ("https://basecamp.com", 11),
 ]
+# Y ALGUNAS DE 30 s. El guion arma 5-7 escenas en 20 s y mas en 30, asi que la duracion mueve QUE
+# escenas entran, no solo cuantas: con doce piezas de 20 s quedaban `columna`, `contraste` y `partida`
+# sin ver. Es otra dimension del barrido, como la semilla y la pagina.
+PIEZAS_30 = [("https://stripe.com", 5), ("https://linear.app", 11), ("https://basecamp.com", 26),
+             ("https://stripe.com", 3)]
 
 RUIDO_CODEC = 0.005
 PISO_MOVIMIENTO = 0.05
@@ -142,20 +147,21 @@ def main():
     os.makedirs(SALIDA, exist_ok=True)
     por_escena = {}
     renders = 0
-    for url, seed in piezas:
-        mp4 = os.path.join(SALIDA, "p_%s_%d.mp4" % (url.split("//")[1].split("/")[0].replace(".", "-"), seed))
+    todas_piezas = [(u, s_, 20) for u, s_ in piezas] + [(u, s_, 30) for u, s_ in PIEZAS_30]
+    for url, seed, dur in todas_piezas:
+        mp4 = os.path.join(SALIDA, "p_%s_%d_%d.mp4" % (url.split("//")[1].split("/")[0].replace(".", "-"), seed, dur))
         r = subprocess.run([sys.executable, os.path.join(RAIZ, "backend", "motor.py"), url,
-                            "--dur", "20", "--seed", str(seed), "--salida", mp4],
+                            "--dur", str(dur), "--seed", str(seed), "--salida", mp4],
                            capture_output=True, text=True)
         if r.returncode != 0 or not os.path.exists(mp4):
-            print("  (no se pudo renderizar %s seed %d — se saltea)" % (url, seed))
+            print("  (no se pudo renderizar %s seed %d dur %d — se saltea)" % (url, seed, dur))
             continue
         renders += 1
         plan = json.load(open(mp4 + ".plan.json", encoding="utf8"))
         for m in medir_tramos(mp4, plan):
             por_escena.setdefault(m["escena"], []).append(m)
 
-    print("AUDITORIA DE ESCENAS CON RENDER — %d piezas, %d escenas distintas vistas"
+    print("AUDITORIA DE ESCENAS CON RENDER — %d piezas (20 s y 30 s), %d escenas distintas vistas"
           % (renders, len(por_escena)))
     print("  proxies sobre PIXELES. Un numero bajo dice DONDE MIRAR, no que haya un defecto:")
     print("  `sello` compone con el vacio a proposito y `gancho` es una placa que hay que poder leer.\n")
