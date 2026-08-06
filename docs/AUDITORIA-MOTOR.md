@@ -1387,7 +1387,7 @@ disponible; sus afirmaciones hay que verificarlas a mano antes de actuar sobre e
   - **Por qué cambia la decisión:** Es 6 beats de fondo pelado en una pieza de 25 s, disparado por el material y no por el aire: es literalmente «el video salió mal» en la boca del dueño, y es lo que sostiene la impresión de «impredecible» tanto como el encaje. Cuesta una línea y no depende de nada del paso 1 ni de
   - **Corrección:** Subirlo al paso 0, junto con los cinco `else if`. Y hacerlo de la forma que impide la recaída: que el consumidor HONRE `vacia` (descartar la escena y replanificar) en vez de agregar sólo la clave que falta en REQUISITOS. Hoy hay dos fuentes de verdad —el requisito y la guarda de la escena— y ya dive
 
-- [ ] **El paso 0 no es «riesgo cero», y el diagnóstico tiene una imprecisión que conviene corregir antes de tocarlo. Lo verificado: los cinco pares duplicados existen (kit.js:1554/1555, 1587/1588, 1621/1622, 1657/1658, 1702/1703), el primero de cada par tiene cuerpo vacío y `float linea = 0.0` está declarado antes de la caden**
+- [x] **El paso 0 no es «riesgo cero», y el diagnóstico tiene una imprecisión que conviene corregir antes de tocarlo. Lo verificado: los cinco pares duplicados existen (kit.js:1554/1555, 1587/1588, 1621/1622, 1657/1658, 1702/1703), el primero de cada par tiene cuerpo vacío y `float linea = 0.0` está declarado antes de la caden**
   - **Por qué cambia la decisión:** No cambia el orden —sigue siendo lo primero— pero cambia el contenido del paso y su etiqueta. Presentado como «riesgo cero, se borran cinco líneas» se hace sin la medición de contraste, y la historia del repo dice que esa medición no es opcional: es el mismo error que ya se pagó 
   - **Corrección:** Paso 0 = borrar los cinco `else if` vacíos + repetir sobre los cinco la medición de contraste de trama de 4b680c8, en mundo claro y oscuro, antes de dar el paso por cerrado. Y anotar la compuerta que falta: que cada entrada de PATRONES produzca un cuadro NO liso y distinto de sus vecinos. Esa compue
 
@@ -1396,6 +1396,19 @@ disponible; sus afirmaciones hay que verificarlas a mano antes de actuar sobre e
 
 ## Ya cerrado
 
+  - **CERRADA 2026-08-05: pedia dos cosas y las DOS estan hechas.**
+    - **Las cinco ramas vacias ya no estan.** `kit.js:1554` y `1587` tienen hoy cuerpo real de shader
+      —trama y estelas, con sus comentarios de calibracion de contraste— en vez de un `else if` vacio.
+    - **Y la compuerta que reclamaba existe y pasa.** Pedia textualmente "que cada entrada de PATRONES
+      produzca un cuadro NO liso y distinto de sus vecinos": eso es `tools/patron-check.py`, que dibuja
+      los 28 patrones en WebGL de verdad —Chromium con SwiftShader, el mismo shader que renderiza el
+      video— y compara las imagenes. Corrida hoy: **28 patrones, ninguno repite imagen**.
+    - Su reclamo de fondo era correcto y quedo atendido: llamar "riesgo cero" a un cambio de shader sin
+      medir es el error que este repo ya pago. La compuerta convierte esa medicion en algo que no se
+      puede saltear.
+    - **Cuarta objecion correcta seguida.** Los criticos acertaron en todo lo verificable: dos datos
+      falsos del diagnostico, una regla automatica que habria roto composiciones, y una compuerta que
+      faltaba.
 - [x] **kit.js:1554/1587/1621/1657/1702 — cinco `else if` duplicados con cuerpo vacío.**
   Los cinco fondos nuevos (roseta, celosía, costura, espigas, engranaje) salían como cuadro liso.
   Error de integración propio: los agentes devolvieron el envoltorio a pesar del contrato y el
