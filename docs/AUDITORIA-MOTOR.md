@@ -1198,7 +1198,7 @@ Por escena:
   - Anotado asi a proposito: son mediciones, no veredictos. La mitad de las fichas que se cerraron hoy
     nacieron de mirar un numero fuera de rango y llamarlo defecto sin leer la escena.
 
-- [ ] **Los mundos OSCUROS componen mas vacios que los claros, y hay que decidir si es diseño**
+- [x] **Los mundos OSCUROS componen mas vacios — y NO es el aire, es la PAGINA (y es el ADN funcionando)**
   - **Medido sobre tres piezas de tres paginas distintas**, renderizadas hoy:
 
     | pieza | luminancia media | ocupacion | quietos | contraste |
@@ -1219,8 +1219,27 @@ Por escena:
       explicitamente que "lo caro se vende con AIRE" y `sello` existe para componer con el vacio. Pero
       `nocturno` y `tecnico` no dicen nada parecido, y ahi 0.12 de ocupacion con 0.12 de contraste
       empieza a parecer una pieza que no se ve, no una que respira.
-  - **Anotado como observacion con medicion, no como defecto.** Es la quinta vez en este barrido que un
-    numero fuera de rango pedia mirar antes de acusar, y las cuatro anteriores terminaron siendo diseño.
+  - **RESUELTO EL MISMO DIA, con la medicion que faltaba.** Renderizada la MISMA pagina y la MISMA
+    semilla con cuatro aires forzados:
+
+    | aire | luminancia | ocupacion relativa |
+    |---|---|---|
+    | nocturno | 35.9 | 0.112 |
+    | tecnico | 39.6 | 0.136 |
+    | editorial | 39.5 | 0.099 |
+    | deportivo | 61.0 | 0.121 |
+
+    **El aire casi no lo mueve.** Hasta `editorial` y `deportivo` —que no son aires oscuros de lujo—
+    salen oscuros en esta pagina. O sea que **no es el aire: es la PAGINA**. La polaridad la decide el
+    ADN por la luminancia REAL del fondo medido (`adn.js:181`, `bgLum > 0.42`), y linear.app es un sitio
+    oscuro. El motor esta haciendo exactamente lo que declara: *"una marca oscura sale oscura"*, y el
+    comentario del ADN lo dice con todas las letras — *"un SaaS blanco renderizado en azul marino no es
+    una interpretacion: es otra marca"*.
+  - **Quinta vez en este barrido que un numero fuera de rango resulta ser diseño**, y las cinco se
+    resolvieron igual: midiendo lo que faltaba en vez de acusar con lo que habia.
+  - **Lo que queda como pregunta de producto, no de motor:** si una pieza de una marca oscura DEBE
+    componer mas llena de lo que compone hoy (0.12 contra 0.30-0.43 de una clara). Eso no lo decide una
+    medicion — lo deciden Jero y Thiago mirando piezas.
 
 ## Correcciones de los críticos
 
