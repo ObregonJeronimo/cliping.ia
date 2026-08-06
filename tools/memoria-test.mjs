@@ -145,7 +145,17 @@ await new Promise((res) => {
     { env: { ...process.env, GUARD_CADENA: 'gates:falsa',
       // su propio cerrojo: si no, este guard de prueba choca con el guard que puede estar corriendo la
       // suite, y la prueba fallaria por una razon que no tiene nada que ver con lo que mide.
-      GUARD_CERROJO: join(dirname(fileURLToPath(import.meta.url)), 'out', '.prueba-guard.lock') },
+      GUARD_CERROJO: join(dirname(fileURLToPath(import.meta.url)), 'out', '.prueba-guard.lock'),
+      // Y SU PROPIO PRESUPUESTO. El cerrojo ya estaba aislado; el HISTORIAL DE COSTO no, y ese era el
+      // otro lugar donde esta prueba competia con lo que prueba. El guard consulta cuanto pidio
+      // `gates:guard` la ultima vez —3001 MB, el costo de la cadena REAL— y se niega a arrancar si no
+      // entra... aunque aca esta corriendo `gates:falsa`, que dura un segundo y pide 5 MB.
+      //
+      // Resultado: en una maquina ocupada la prueba fallaba con "quedarian 767 MB, por debajo del piso
+      // de 1319" — o sea reportaba un defecto del motor cuando lo unico que pasaba es que habia un
+      // juego abierto. Una prueba que depende de cuanta RAM libre hay no prueba el guard, mide la
+      // maquina.
+      PESADO_IGNORAR_HISTORIAL: '1' },
       stdio: ['ignore', 'pipe', 'pipe'] })
   let out = ''
   g.stdout.on('data', d => { out += d })
