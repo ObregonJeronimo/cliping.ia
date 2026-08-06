@@ -75,7 +75,16 @@ async def capturar(url: str, dst: str, con_tira: bool = True) -> dict:
     from site_capture import capture_all
     from pagemodel import build_pagemodel
 
-    site = await capture_all(url, os.path.join(dst, "captura.json"), elementos=True)
+    # .PNG, NO .JSON. Ese segundo argumento es donde `capture_all` escribe el SCREENSHOT, y Playwright
+    # deduce el formato de la extension: con ".json" tiraba "Unsupported screenshot mime type" en cada
+    # captura y `site["screenshot"]` quedaba None en las siete paginas del repo. No sale un video peor
+    # —el screenshot NO entra al video, ver pagemodel.py:562 §4.3— pero es la unica imagen de la pagina
+    # tal como la vimos, y sin ella no se puede auditar a mano si la captura fue la pagina de verdad.
+    # De los seis llamadores de `capture_all`, este era el unico que no pasaba una imagen.
+    #
+    # El nombre de los recortes NO cambia: se derivan de `Path(out_path).stem`, y el stem de las dos
+    # variantes es "captura". Siguen siendo captura_el0.png y siguen emparejando mas abajo.
+    site = await capture_all(url, os.path.join(dst, "captura.png"), elementos=True)
     # SE GUARDA LA CAPTURA ENTERA, no solo el texto. Lo caro de este proceso es abrir el navegador y
     # esperar la red; con la captura completa en disco, el modelo semantico se puede REHACER sin volver
     # a bajar el sitio. Guardando solo `content` habia que recapturar cada vez que cambiaba una linea
@@ -201,15 +210,31 @@ def pagina_sospechosa(datos):
 #   tonos    cuantos de los 32 cajones del histograma tienen mas del 1% de los pixeles. Un logo plano
 #            o un boton usan dos o tres; una foto —aunque este borrosa— usa muchos.
 #
-# Se piden LAS DOS a la vez, y esa conjuncion es la que hace el trabajo: medido sobre los 53 recortes
-# reales del repo, corrida alta viene siempre con tonos 1-4 (logos, botones, bandas planas) y tonos
-# altos vienen siempre con corrida 1.7-3.3 (fotos nitidas). Ninguno de los 53 se descarta, que es lo
-# que tiene que pasar: el material de verdad no se tira. Un LQIP cae en el unico cuadrante que queda
-# libre —borroso Y colorido— y por eso se lo puede separar sin tocar nada mas.
+# Se piden LAS DOS a la vez, y esa conjuncion es la que hace el trabajo: un LQIP cae en el unico
+# cuadrante que queda libre —borroso Y colorido— y por eso se lo puede separar sin tocar nada mas.
 #
-# LIMITE CONOCIDO: un placeholder de menos de 8 tonos (un bloque gris, dos colores planos) NO se
-# detecta. Es deliberado: bajar el umbral empezaria a descartar logos y botones reales, y perder la
-# imagen del cliente es peor que mostrar un placeholder.
+# EL UMBRAL DE TONOS ERA 8 Y EL COMENTARIO DECIA VEINTE. Cuando esto se escribio se midio sobre los 53
+# recortes que habia, y ahi "corrida alta venia siempre con tonos 1-4". Esa frase dejo de ser cierta en
+# cuanto entro material nuevo: al recapturar stripe.com el 2026-08-06 aparecieron DOS recortes reales
+# con corrida alta y tonos 8-9, y los dos se descartaban.
+#
+#   captura_el11  el degradado naranja-rosa de la portada, arte de marca a resolucion completa
+#                 corrida 24.1 · tonos 9  ·  se lo tiraba por SUAVE, que es como fue disenado
+#   captura_el5   la tarjeta de Stripe Atlas, con texto negro perfectamente legible
+#                 corrida  9.9 · tonos 8  ·  saltos de 121 niveles, o sea todo lo contrario a borroso
+#
+# Medidos los LQIP contra ellos, el hueco es amplio y esta en `tonos`: los dos LQIP que fabrica
+# `placeholder-check` dan 21 y 23, el material real da 8 y 9. El umbral pasa a 16 —el medio del
+# hueco— y no a 20 como decia el texto, para dejar margen de los dos lados. Lo que fallaba no era la
+# idea sino el numero: el propio comentario ya decia que un LQIP "reparte veinte".
+#
+# LIMITE CONOCIDO, y ahora es mas ancho: un placeholder de menos de 16 tonos NO se detecta. Es
+# deliberado y la direccion es la correcta — la cabecera de `placeholder-check` lo dice sin vueltas:
+# un filtro que descarta la foto del cliente es peor que no tenerlo, porque el defecto que evita es
+# feo y el que causa es no mostrar al cliente.
+TONOS_LQIP = 16
+
+
 def es_placeholder(ruta):
     try:
         import numpy as np
@@ -221,7 +246,7 @@ def es_placeholder(ruta):
         h = np.histogram(a, bins=32, range=(0, 255))[0].astype(float)
         h /= max(1e-9, h.sum())
         tonos = int((h > 0.01).sum())
-        return corrida > 8 and tonos >= 8
+        return corrida > 8 and tonos >= TONOS_LQIP
     except Exception:
         return False                                        # ante la duda, se conserva
 
@@ -248,13 +273,55 @@ def datos_de(pagemodel_path: str, dst: str, seed: int | None = None) -> dict:
         return json.load(f)
 
 
+def captura_rancia(site) -> str:
+    """Devuelve por que la captura cacheada NO sirve, o "" si esta al dia.
+
+    `pagina_sospechosa` ya cuida de no construir sobre una captura que no es la pagina. Esto cuida el
+    otro caso, que era silencioso: una captura que SI es la pagina pero la escribio una version
+    anterior del extractor, con menos claves de las que el interprete lee hoy.
+
+    Medido sobre las 7 capturas del repo: stripe-com (27/7 18:08) y mercadolibre (27/7 19:32) tienen
+    UNA clave, `content` — son anteriores a que la captura devolviera `elementos`. Las otras cinco,
+    todas posteriores a las 20:06 de ese dia, tienen las seis. `build_pagemodel` sobre una de las
+    viejas devuelve un modelo SIN elementos y sin una sola queja: los 12 recortes de stripe-com estan
+    en disco, al lado del site.json, y ninguno llego nunca a un video. Comprobado A/B pasando el site
+    completo de linear-app por `build_pagemodel` (7 elementos) y el mismo degradado a `{content}` (0).
+
+    El criterio es la AUSENCIA de la clave, no que venga vacia: una lista vacia es una respuesta
+    legitima —la pagina no dio recortes— y esa captura no hay que rehacerla.
+    """
+    from site_capture import CLAVES_CAPTURA
+    if not isinstance(site, dict):
+        return "el site.json no es un objeto"
+    faltan = [k for k in CLAVES_CAPTURA if k not in site]
+    if not faltan:
+        return ""
+    return "la escribio una version anterior del extractor (le faltan: %s)" % ", ".join(sorted(faltan))
+
+
 async def render(url: str, salida: str, hero: str | None = None, dur: int = 20,
                  seed: int = 7, aire: str | None = None, recapturar: bool = False,
                  bitrate: int = 8_000_000, forzar: bool = False) -> str:
     dst = os.path.join(SALIDA, _dominio(url))
     pm_path = os.path.join(dst, "pagemodel.json")
     site_path = os.path.join(dst, "site.json")
-    if recapturar or not os.path.exists(site_path):
+    # SE REUSA LA CAPTURA, PERO NO A CIEGAS. El unico criterio era que el archivo EXISTIERA, y eso
+    # alcanzaba para reusar una captura escrita por una version anterior del extractor: el modelo se
+    # rehacia sobre menos datos de los que hoy se leen y salia incompleto EN SILENCIO. Ver
+    # `captura_rancia`: les paso a stripe-com y a mercadolibre, que perdieron sus 12 y 8 recortes.
+    site = None
+    rancia = ""
+    if not recapturar and os.path.exists(site_path):
+        try:
+            with open(site_path, encoding="utf-8") as f:
+                site = json.load(f)
+            rancia = captura_rancia(site)
+        except Exception as e:
+            site, rancia = None, f"el site.json no se puede leer ({str(e)[:60]})"
+    if rancia:
+        print(f"  la captura cacheada esta vieja: {rancia}")
+        print("  se vuelve a bajar la pagina (reusarla daria un video con menos material del que hay).")
+    if recapturar or site is None or rancia:
         print(f"capturando {url} ...")
         await capturar(url, dst)
     else:
@@ -263,8 +330,6 @@ async def render(url: str, salida: str, hero: str | None = None, dur: int = 20,
         # cambia cada vez que se toca el interprete. Reusar el modelo cacheado hacia que un arreglo de
         # la lectura del DOM no se viera en el video hasta acordarse de pasar --recapturar.
         print(f"reusando la captura de {dst} y rehaciendo el modelo  (--recapturar para volver a bajarla)")
-        with open(site_path, encoding="utf-8") as f:
-            site = json.load(f)
         from semantica_gratis import brief_de
         from pagemodel import build_pagemodel
         brief = brief_de(site, url)

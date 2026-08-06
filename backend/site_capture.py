@@ -1607,6 +1607,18 @@ async def _settle(page):
     await page.wait_for_timeout(900)
 
 
+# LA FORMA DE UNA CAPTURA, EN UN SOLO LUGAR — y por eso `capture_all` arranca copiandola en vez de
+# escribir el literal. Las seis claves se inicializan SIEMPRE, incluso en el retorno temprano de una
+# URL bloqueada, asi que un site.json al que le falte alguna NO lo escribio esta version: es de antes.
+# `motor.py` lo usa para no reusar una captura rancia. Paso de verdad — stripe-com y
+# mercadolibre quedaron cacheadas el 27/7 con solo `content`, el formato anterior a `elementos`, y el
+# motor las reuso sin chistar: los dos videos se construyeron sin uno solo de los recortes que tenian
+# en disco al lado (12 y 8). Importar esta constante en vez de copiar la lista es lo que evita que el
+# detector se quede viejo el dia que la captura devuelva una clave mas.
+CLAVES_CAPTURA = {"screenshot": None, "content": None, "images": [], "dna": {}, "captura": None,
+                  "elementos": []}
+
+
 async def capture_all(url: str, out_path: str, width: int = 1280, height: int = 900, elementos: bool = True) -> dict:
     """UNA sola carga de Chromium: extrae el texto renderizado (content) Y saca el screenshot,
     en vez de abrir el navegador dos veces por video. Devuelve {'screenshot': path|None,
@@ -1619,7 +1631,7 @@ async def capture_all(url: str, out_path: str, width: int = 1280, height: int = 
     ADITIVO (elementos): recortes PNG de los objetos reales de la pagina (logo, tarjetas, botones,
     fotos) para que el video anime la pagina del usuario y no figuras de catalogo. `elementos=False`
     los saltea: son ~10 screenshots extra por captura y no todo llamador los necesita."""
-    out = {"screenshot": None, "content": None, "images": [], "dna": {}, "captura": None, "elementos": []}
+    out = {k: (v.copy() if isinstance(v, (list, dict)) else v) for k, v in CLAVES_CAPTURA.items()}
     viewport = [width, height]
     if not _PW_OK or not url or not _guard(url):
         # `bloqueada` es el UNICO estado que se decide SIN navegar: es la barrera anti-SSRF. Si el

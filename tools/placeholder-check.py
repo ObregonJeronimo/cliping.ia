@@ -95,6 +95,33 @@ logo[60:140, 80:320] = 40
 if es_placeholder(guardar("logo.png", logo)):
     fallos.append("descarta un logo plano de dos tonos")
 
+# ------------------------------------------- 3b. el arte de marca SUAVE se conserva (2026-08-06)
+# Los dos casos que el detector tiraba de verdad, reconstruidos. Aparecieron al recapturar stripe.com:
+# mientras esa pagina llegaba con `elementos: 0` por la captura rancia, este falso positivo era
+# INVISIBLE — no habia material que tirar. Van sinteticos y no como archivos porque `tools/out/` no
+# viaja en el repo y el caso 1 solo tiene dientes en una maquina que ya renderizo.
+#
+# Y van los ARCHIVOS DE VERDAD, no una imitacion: el primer intento los reconstruyo con numpy y las
+# copias median 13-17 tonos contra los 8-9 de los originales — un degradado matematicamente perfecto
+# reparte el histograma mucho mas que una imagen real, asi que probaban un caso mas facil que el que
+# fallo. Reescalados a 600 px de lado mayor, como hace `director-fixture-elementos.mjs` con los suyos;
+# comprobado que las dos metricas sobreviven al reescalado: (24.1, 9) -> (24.3, 9) y (9.9, 8) -> (8.6, 8).
+REALES_SUAVES = [
+    ("stripe-degradado-marca.png",
+     "un DEGRADADO de marca — el abanico naranja-rosa de la portada de stripe.com, arte real y suave "
+     "a proposito (corrida 24.3, tonos 9)"),
+    ("stripe-tarjeta-texto.png",
+     "una TARJETA con texto perfectamente legible — 'Stripe Atlas', con un adorno degradado al lado "
+     "(corrida 8.6, tonos 8, con saltos de 121 niveles: lo contrario de un borrador)"),
+]
+for nombre, desc in REALES_SUAVES:
+    ruta = os.path.join(RAIZ, "tools", "fixtures", "placeholder", nombre)
+    if not os.path.exists(ruta):
+        fallos.append("falta el fixture %s — sin el, el caso que fallo de verdad no se prueba" % nombre)
+        continue
+    if es_placeholder(ruta):
+        fallos.append("descarta %s" % desc)
+
 # ---------------------------------------------------------------- 4. el limite declarado sigue ahi
 # Un placeholder gris de pocos tonos NO se detecta, y es deliberado: para cazarlo habria que bajar el
 # umbral de tonos, y ahi empiezan a caer los logos de arriba. Si algun dia esto cambia, que sea una

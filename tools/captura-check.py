@@ -100,13 +100,68 @@ for nombre, datos in NORMALES:
     if motivo and "just a moment" not in motivo:
         fallos.append("falso positivo por vocabulario (%s): %s" % (nombre, motivo))
 
+# ------------------------------------------------- 5. una captura de formato viejo no se reusa
+# El otro modo de captura podrida, y este era SILENCIOSO: no es que la pagina estuviera mal bajada,
+# es que la bajo una version anterior del extractor. `stripe-com` y `www-mercadolibre-com-ar` quedaron
+# cacheadas el 27/7 con una sola clave (`content`, el formato de antes de `elementos`); el motor las
+# reusaba porque el archivo existia, y los dos videos se construyeron sin uno solo de los recortes que
+# tenian en disco al lado — 12 y 8. Comprobado A/B: el site completo de linear-app da 7 elementos por
+# `build_pagemodel` y el mismo degradado a {content} da 0.
+#
+# El riesgo de este detector es el falso positivo: marcar rancia una captura sana cuesta medio minuto
+# de red por video. Por eso se prueba en las dos direcciones.
+from motor import captura_rancia                            # noqa: E402
+from site_capture import CLAVES_CAPTURA                     # noqa: E402
+
+SANAS = [
+    ("captura completa", {k: v for k, v in CLAVES_CAPTURA.items()}),
+    # Una pagina que no dio NINGUN recorte es una respuesta legitima, no una captura vieja: la clave
+    # esta y viene vacia. Si esto se marcara rancio, toda pagina sin elementos se recapturaria para
+    # siempre, cada vez, sin que eso cambie nunca el resultado.
+    ("pagina sin recortes", dict({k: v for k, v in CLAVES_CAPTURA.items()}, elementos=[])),
+    ("pagina bloqueada", dict({k: v for k, v in CLAVES_CAPTURA.items()},
+                              captura={"estado": "bloqueada"}, dna={"politica": "descartar"})),
+]
+for nombre, site in SANAS:
+    motivo = captura_rancia(site)
+    if motivo:
+        fallos.append("falso positivo de captura rancia (%s): %s" % (nombre, motivo))
+
+# Y las que tienen que acusar. La primera es el formato exacto que quedo en disco el 27/7.
+VIEJAS = [
+    ("formato 27/7, solo content", {"content": {"bodyText": "hola"}}),
+    ("sin la clave elementos", {k: v for k, v in CLAVES_CAPTURA.items() if k != "elementos"}),
+    ("sin la clave dna", {k: v for k, v in CLAVES_CAPTURA.items() if k != "dna"}),
+    ("no es un objeto", ["content"]),
+]
+for nombre, site in VIEJAS:
+    if not captura_rancia(site):
+        fallos.append("captura vieja NO detectada (%s): se reusaria y el video saldria sin material" % nombre)
+
+# Sobre las capturas reales que haya en disco: las que tienen las seis claves no se tocan.
+sites = sorted(glob.glob(os.path.join(RAIZ, "tools", "out", "motor", "*", "site.json")))
+n_viejas = 0
+for ruta in sites:
+    try:
+        with io.open(ruta, encoding="utf-8") as fh:
+            site = json.load(fh)
+    except Exception:
+        continue
+    motivo = captura_rancia(site)
+    completa = all(k in (site or {}) for k in CLAVES_CAPTURA)
+    if completa and motivo:
+        fallos.append("falso positivo sobre captura real %s: %s" % (os.path.basename(os.path.dirname(ruta)), motivo))
+    if motivo:
+        n_viejas += 1
+
 if fallos:
     print("GATE CAPTURA FAIL (%d):" % len(fallos))
     for f in fallos:
         print("  " + f)
     sys.exit(1)
 print("GATE CAPTURA OK (%d capturas reales aceptadas, %d muros rechazados, %d paginas pobres "
-      "aceptadas)." % (len(reales), len(MUROS), len(POBRES)))
+      "aceptadas, %d formatos viejos detectados, %d/%d capturas en disco son de formato viejo)."
+      % (len(reales), len(MUROS), len(POBRES), len(VIEJAS), n_viejas, len(sites)))
 if not reales:
     print("  SIN CAPTURAS REALES que revisar (tools/out/ no viaja en el repo): corre "
           "`python backend/motor.py <url>` una vez y esta compuerta suma el caso que mas importa.")

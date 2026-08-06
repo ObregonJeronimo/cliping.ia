@@ -1950,3 +1950,95 @@ arriba este terminada. Van al final a proposito. **No empezar ninguno de los dos
     el editor de timeline), que pasa si la elegida no le sirve al hero que toco, si la eleccion sobrevive
     a cambiar la semilla, y como convive con el reparto que evita repetir imagenes entre escenas.
 
+
+## La pista de stripe-com tenia causa, y no era ninguna de las tres que sospechabamos (2026-08-06)
+
+Quedaba anotada como *"una pista sin ficha"*: `stripe-com` tenia 12 recortes capturados en disco y
+`elementos: 0` en sus datos, sin medir si era general. Se midio. **No es general y no es una sola
+pagina: son dos de siete.**
+
+- [x] **backend/motor.py:257 — se reusaba la captura cacheada con el unico criterio de que el archivo EXISTIERA**
+  - **Sintoma:** dos de las siete corridas reales de `tools/out/motor/` llegan al video con
+    `elementos: 0` teniendo recortes en disco al lado: `stripe-com` (12 PNG) y
+    `www-mercadolibre-com-ar` (8 PNG). Los otros cinco traen los suyos (11, 9, 7, 6, 5).
+  - **NO era ninguna de las tres hipotesis que estaban escritas.** No los descarto la captura por
+    calidad, no fue `semantica_gratis.py` sin asignar rol, y no se perdieron entre el pagemodel y
+    `datos.js`: el **pagemodel ya viene en 0**, asi que la perdida es aguas arriba de todo eso.
+  - **La causa es el formato del cache.** El `site.json` de esas dos tiene UNA clave, `content`. Son
+    las dos capturas mas viejas del repo —27/7 18:08 y 19:32—, anteriores a que la captura devolviera
+    `elementos`; a las 20:06 de ese mismo dia el formato ya era el completo y las otras cinco tienen
+    las seis claves. La correlacion es 7 de 7.
+  - **Lo que lo dejaba pasar:** `if recapturar or not os.path.exists(site_path)`. Solo la EXISTENCIA.
+    `build_pagemodel` corria sobre menos datos de los que hoy se leen y devolvia un modelo sin
+    elementos sin una sola queja. El motor ya tenia defensa para *"esta captura no es la pagina"*
+    (`pagina_sospechosa`) y ninguna para *"esta captura es de un formato que ya no se entiende"*.
+  - **Probado A/B y sin red, antes de tocar nada:** el `site.json` completo de `linear-app` pasado por
+    `build_pagemodel` da **7** elementos; el mismo degradado a `{content}` da **0**. Es el valor exacto
+    que mostraban las dos paginas, o sea que la forma vieja alcanza para causar el cero.
+  - **Arreglo:** `captura_rancia(site)` compara contra `CLAVES_CAPTURA`, que pasa a vivir UNA sola vez
+    en `site_capture.py` — `capture_all` la copia en vez de escribir el literal. Copiar la lista en
+    `motor.py` la desincronizaria el dia que la captura devuelva una clave mas, que es la trampa que ya
+    costo `toro`, `mesa` y `rafaga`. El criterio es la AUSENCIA de la clave, no que venga vacia:
+    `elementos: []` es una respuesta legitima —la pagina no dio recortes— y esa captura no se rehace.
+  - **Compuerta:** `captura-check.py`, comprobacion 5. Es el mismo archivo que ya cuida el otro modo de
+    captura podrida (el muro anti-bot), y la simetria no es casual: de las 7 capturas cacheadas, DOS
+    estaban podridas por muro y estas son otras DOS podridas por formato.
+  - **Y se comprobo que la compuerta puede ponerse ROJA**, que es lo unico que la hace valer: con
+    `captura_rancia` devolviendo `""` —el defecto original— acusa los 4 casos viejos y sale con 1. Se
+    prueba en las dos direcciones porque el riesgo real de este detector es el falso positivo: marcar
+    rancia una captura sana cuesta medio minuto de red por video, para siempre.
+  - **La rama del motor tambien se probo A/B sin red**, parcheando `capturar` con un centinela: cache
+    rancio -> recaptura, cache completo -> sigue de largo.
+  - **MEDIDO, antes y despues, corriendo el motor de verdad: `stripe-com` 0 -> 12 y
+    `www-mercadolibre-com-ar` 0 -> 8.** Las otras cinco quedaron donde estaban (5, 6, 7, 9, 11): cero
+    falsos positivos, no recapturo ninguna. Y la deteccion funciono **sin pasar `--recapturar`**, que
+    era la prueba de punta a punta.
+
+- [x] **backend/motor.py:78 — el screenshot se pedia con extension .json y no existia en ninguna pagina**
+  - Encontrado por la misma medicion, mirando el log de las dos recapturas:
+    `[capture_all] screenshot: Unsupported screenshot mime type for path "...captura.json"`.
+  - **Sintoma:** `site["screenshot"]` es `None` en las **siete** capturas del repo. El segundo argumento
+    de `capture_all` es donde se escribe el screenshot y Playwright deduce el formato de la extension;
+    con `.json` falla siempre. De los seis llamadores de `capture_all`, este era el unico que no pasaba
+    una imagen.
+  - **No sale un video peor, y por eso no lo vio nadie:** el screenshot NO entra al video, esta
+    declarado en `pagemodel.py:562` (*"SOLO para auditoria humana"*, §4.3). Pero es la unica imagen de
+    la pagina tal como la vimos, y sin ella no se puede auditar a mano si la captura fue la pagina de
+    verdad — que es justo lo que pide el gate del muro.
+  - **Los recortes NO cambian de nombre**, comprobado antes de tocarlo: se derivan de
+    `Path(out_path).stem` y el stem de `captura.json` y `captura.png` es el mismo, `captura`.
+  - **Medido antes y despues:** `None` -> `captura.png`, 914 kB, y el error desaparecio del log. Se
+    abrio la imagen: es la portada de stripe.com, con su titular y los logos de clientes. Los 12
+    elementos siguen emparejando y los 2 placeholders se siguen descartando igual.
+
+- [x] **backend/motor.py:233 — `es_placeholder` tiraba arte de marca real, y el umbral no decia lo que el comentario declaraba**
+  - **Lo destapo el arreglo anterior, y esa cadena es la parte que importa:** mientras `stripe-com`
+    llegaba con `elementos: 0` por la captura rancia, este falso positivo era **invisible** — no habia
+    material que tirar. Al traer los 12 recortes, `placeholder-check` se puso en rojo sola.
+  - **Sintoma:** de los 12 recortes reales de stripe.com, el motor descartaba DOS por "placeholder
+    borroso". Se abrieron los dos archivos y ninguno lo es:
+    - `captura_el11`, el abanico naranja-rosa de la portada: arte de marca a resolucion completa.
+      Corrida 24.1, tonos 9. Se lo tiraba **por suave, que es como fue disenado**.
+    - `captura_el5`, la tarjeta de Stripe Atlas: texto negro perfectamente legible, saltos de 121
+      niveles. Corrida 9.9, tonos 8. Lo contrario de un borrador.
+  - **La causa es un umbral que no coincidia con su propio comentario.** El texto de `es_placeholder`
+    dice que un boton tiene dos tonos y un LQIP *"reparte veinte"* — y el codigo exigia `tonos >= 8`.
+  - **Medido, que es lo que fija el numero:** los dos LQIP que fabrica `placeholder-check` dan **21 y
+    23** tonos; el material real que se tiraba, **8 y 9**. El hueco es amplio y el umbral pasa a **16**,
+    el medio — no a 20 como decia el texto, para dejar margen de los dos lados. Queda como constante
+    nombrada `TONOS_LQIP` en vez de un literal suelto.
+  - **Tambien se corrigio una afirmacion medida que dejo de ser cierta.** El comentario decia *"tonos
+    altos vienen siempre con corrida 1.7-3.3"*, medido sobre los 53 recortes que habia entonces.
+    Material nuevo la rompio: `el11` tiene corrida 24.1 con tonos 9. Una medicion vieja presentada como
+    invariante es una trampa esperando.
+  - **Compuerta:** `placeholder-check`, caso 3b, con los DOS ARCHIVOS REALES como fixtures en
+    `tools/fixtures/placeholder/`. El primer intento los reconstruyo con numpy y las copias median
+    13-17 tonos contra los 8-9 de los originales —un degradado matematicamente perfecto reparte el
+    histograma mucho mas que una imagen real—, o sea que probaban un caso mas facil que el que fallo.
+    Reescalados a 600 px como hace `director-fixture-elementos.mjs`, y comprobado que las metricas
+    sobreviven: (24.1, 9) -> (24.3, 9) y (9.9, 8) -> (8.6, 8).
+  - **Comprobado que la compuerta se pone ROJA** con el umbral viejo: acusa los 4 casos, los dos
+    archivos reales y los dos fixtures.
+  - **MEDIDO: los recortes de stripe.com que llegan al video pasan de 10 a 12** (1 logo, 3 cta, 4
+    tarjetas, 4 fotos), y ningun otro recorte del repo cambia de veredicto: **58 conservados, 0
+    descartados**. Contando el arreglo del cache, la pagina paso de **0 a 12**.

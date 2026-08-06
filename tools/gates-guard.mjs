@@ -121,8 +121,22 @@ console.error(carga.ok
   ? `gates-guard: usando ${carga.usar} de ${carga.total} hilos y prioridad baja, para no saturar la maquina`
   : `gates-guard: no se pudo moderar la carga (${carga.error}) — se sigue igual, es una mitigacion, no la red principal`)
 
+// `PESADO_ACTIVO` VIAJA A LA CADENA, igual que en `pesado.mjs`. Significa "la red ya esta puesta:
+// cerrojo tomado y vigilante mirando", y dentro del guard eso es exactamente cierto — lo tomo doce
+// lineas mas arriba. Sin esto, cualquier compuerta que lance el motor de verdad choca contra el
+// cerrojo DEL PROPIO GUARD y corta la cadena: `imagen-check` renderiza una pieza con
+// `backend/motor.py`, que hace `cerrojo.exigir()`, y el guard moria en
+//
+//     GATE IMAGEN: no se pudo renderizar https://linear.app (seed 11)
+//      NO ARRANCA: "gates:guard" (pid 21264) tiene el cerrojo desde ...
+//
+// dejando 32 OK y un exit 1 sin un solo FAIL — o sea la cadena cortada a la mitad, no un defecto del
+// motor. Es el mismo error que ya mordio a `memoria-test`: una prueba que compite con el sistema que
+// prueba no prueba nada. El guard ya tenia ese cuidado consigo mismo (ver el comentario del cerrojo
+// arriba) y le faltaba tenerlo con sus nietos.
 const t0 = Date.now()
-const p = spawn('npm', ['run', CADENA], { shell: true, stdio: ['ignore', 'pipe', 'pipe'], env: entornoConTecho() })
+const p = spawn('npm', ['run', CADENA], { shell: true, stdio: ['ignore', 'pipe', 'pipe'],
+  env: { ...entornoConTecho(), PESADO_ACTIVO: '1' } })
 
 // SI MUERE EL GUARD, MUERE LA CADENA. Este es el agujero que colgo la maquina la SEGUNDA vez la misma
 // noche, y lo peor es que lo abrio la prueba de humo de este mismo archivo: se corrio
