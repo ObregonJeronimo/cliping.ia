@@ -107,12 +107,17 @@ const AIRES = {}
 for (const f of readdirSync(join(DEMO, 'aires')).filter(f => f.endsWith('.js'))) {
   AIRES[f.replace('.js', '')] = (await import(pathToFileURL(join(DEMO, 'aires', f)).href)).default
 }
+let _iHero = 0
 const MOD = new Map()
+const IDS_HEROES = []
 for (const d of ['escenas', 'heroes']) {
   for (const f of readdirSync(join(DEMO, d)).filter(x => x.endsWith('.js') && x !== 'index.js')) {
     try {
       const m = await import(pathToFileURL(join(DEMO, d, f)).href)
-      if (m.meta && typeof m.build === 'function') MOD.set(m.meta.id, m)
+      if (m.meta && typeof m.build === 'function') {
+        MOD.set(m.meta.id, m)
+        if (d === 'heroes') IDS_HEROES.push(m.meta.id)
+      }
     } catch { /* que una escena no importe ya lo acusa verificar.mjs */ }
   }
 }
@@ -262,7 +267,24 @@ for (const { id: idPag, pm } of _lote) {
       const u = usoMb()
       console.error(`  [memoria] ${idPag} x ${nombreAire}: rss ${u.rss} MB · fuera del monton ${u.externo} MB`)
     }
+    // EL PAR ESCENA+HERO SE BARRE, Y ANTES NO. `hero` es una escena que ENVUELVE a un hero: pone el
+    // rotulo con la frase de la marca (hero.js:88, via `rotular`) encima de la geometria que el hero
+    // dibuja. Esta compuerta construia cada modulo por su cuenta, asi que medía `hero` contra el hero
+    // que le tocara por reparto y a cada hero solo, sin texto encima — y el defecto no vive en ninguna
+    // de las dos piezas, vive en el PAR.
+    //
+    // Se encontro mirando un render de verdad: con el hero `calibre` y la pagina de stripe, la frase
+    // sale en gris oscuro sobre el bloque gris-azulado del calibrador y el fondo violeta del aire
+    // editorial (cuadros 260 y 320 del video de 20 s).
+    //
+    // SE ROTA, NO SE MULTIPLICA, que es lo que este mismo archivo ya decide para los juegos de datos:
+    // el producto cartesiano seria 17 veces mas caro y esta compuerta ya construye ~2800 escenas. Con
+    // 7 paginas x 11 aires hay 77 pasadas y 17 heroes, asi que cada hero se prueba cuatro o cinco veces
+    // contra mundos y copys distintos.
     for (const [idEsc, mod] of MOD) {
+      const heroForzado = idEsc === 'hero' && IDS_HEROES.length
+        ? IDS_HEROES[(_iHero++) % IDS_HEROES.length]
+        : null
       const W = 1080, H = 1920, fov = 42
       const distBase = 9
       const mundoH = 2 * distBase * Math.tan((fov * Math.PI) / 360)
@@ -279,7 +301,7 @@ for (const { id: idPag, pm } of _lote) {
           pelicula: { uT: { value: 0 }, uFlash: { value: 0 }, uGrano: { value: 0.055 }, uVinieta: { value: 0.9 }, uAberr: { value: 0.0022 } },
           bloom: { strength: 0.85, radius: 0.62, threshold: (aire.pelicula || {}).umbral ?? 0.62 },
           texturas: tejido(datos.elementos || []), datosEls: datos.elementos || [],
-          spec: { tiraViewport: 1560, aire: nombreAire },
+          spec: { tiraViewport: 1560, aire: nombreAire, ...(heroForzado ? { hero: heroForzado } : {}) },
           claro: a.claro, repeticion: 0,
         })
       } catch { continue }
