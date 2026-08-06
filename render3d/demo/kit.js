@@ -1002,6 +1002,13 @@ export function planoTexto(str, altoMundo, opciones = {}) {
   })
   const m = new THREE.Mesh(new THREE.PlaneGeometry(altoMundo * t.ar, altoMundo), mat)
   m.userData.ar = t.ar
+  // QUE ES ESTA MALLA, en la malla y no adivinado desde afuera. La textura ya declaraba `esTexto`
+  // (ver `texto()` arriba) pero eso vive en la TEXTURA, y quien recorre el grafo tiene la MALLA: para
+  // saberlo habia que bajar por `material.map.userData`, que no todas las mallas tienen y rompe con
+  // materiales multiples. El censo de encaje lo intento por stack trace y perdio 41 de 59 mallas,
+  // porque las crea el kit y no la escena. Es un dato objetivo —esto lleva letras— y no un juicio de
+  // composicion: si tiene que entrar entero o puede sangrar lo decide la escena con `encaja`/`sangra`.
+  m.userData.tipoImagen = 'texto'
   return m
 }
 
@@ -2115,6 +2122,10 @@ export function planoRecorte(tex, alto, o = {}) {
   })
   const m = new THREE.Mesh(new THREE.PlaneGeometry(alto * ar, alto), mat)
   m.userData.ar = ar
+  // Ver `planoTexto`: el mismo dato, el otro valor. Esto es un RECORTE DE LA PAGINA DEL CLIENTE, que
+  // es la familia donde salir del cuadro duele mas — el logo de la marca cortado por la mitad no es
+  // composicion, es un defecto que el dueño ve en el primer segundo.
+  m.userData.tipoImagen = 'recorte'
   return m
 }
 

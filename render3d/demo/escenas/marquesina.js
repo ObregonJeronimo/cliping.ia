@@ -106,6 +106,14 @@ export function build(ctx) {
       const m = new THREE.Mesh(
         new THREE.PlaneGeometry(w, a),
         new THREE.MeshBasicMaterial({ map: t.tex, transparent: true, depthWrite: false, toneMapped: false }))
+      // SANGRA, Y ES EL CASO MAS CLARO DE TODO EL CATALOGO. La cinta es un BUCLE: en cualquier
+      // instante la mayoria de sus frases esta fuera del cuadro, que es literalmente lo que hace que
+      // se lea como marquesina. Exigirle contencion seria exigirle que deje de ser una marquesina.
+      // Queda declarado y no supuesto — antes esta malla simplemente no decia nada, que es
+      // indistinguible de "nadie lo penso". Ya costo una vez: se acuso 34 veces la legibilidad de
+      // texto que nadie ve, justo aca, por medir frases que no intersectan el cuadro.
+      m.userData.sangra = true
+      m.userData.tipoImagen = 'texto'
       m.position.set(x + w / 2, 0, 0)
       grupo.add(m)
       centros.push(x + w / 2)

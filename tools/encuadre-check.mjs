@@ -259,6 +259,20 @@ for (const [nombreAire, aire] of Object.entries(AIRES)) {
         if (enCuadro(o, caja, m)) e.dentro++
         if (o.userData && o.userData.encaja) {
           e.enc = true
+          // "ENTRA ENTERA" NO SIEMPRE QUIERE DECIR "EN TODO CUADRO". Hay mallas que VUELAN hasta su
+          // lugar: en `mosaico` los recortes entran desde fuera y se arman en formacion, y medido
+          // sobre 101 instantes se salen entre 0.00-0.22 y 0.96-1.00 y en el 74% del medio no se sale
+          // ninguna. Exigirles contencion durante el vuelo obliga a marcarlas `sangra`, y ahi se
+          // pierde la proteccion en el tramo que importa — que es justo cuando el espectador las mira.
+          //
+          // `userData.encajaEntre = [a, b]` declara ese tramo en fracciones de la escena. Sin el, se
+          // exige en todos los cuadros y nada cambia para las 12 mallas que ya lo declaraban.
+          const ent = o.userData.encajaEntre
+          const frac = N ? i / N : 0
+          if (Array.isArray(ent) && ent.length === 2) {
+            e.tramo = ent
+            if (frac < ent[0] || frac > ent[1]) return
+          }
           const r = entraEntera(o, m)
           e.peor = Math.max(e.peor || 0, Math.max(r.x, r.y))
           if (!r.ok) e.fuera = (e.fuera || 0) + 1
@@ -287,6 +301,28 @@ for (const [nombreAire, aire] of Object.entries(AIRES)) {
   // seis acusaciones falsas — y una compuerta que acusa en falso se aprende a ignorar, que es la
   // unica forma de que despues no vea el defecto de verdad.
   //
+  // EL TRAMO DECLARADO NO PUEDE SER UNA RENDIJA. `encajaEntre` existe para no castigar el vuelo de
+  // entrada, no para apagar la compuerta: con [0.5, 0.51] una malla pasaria midiendose en un instante.
+  //
+  // EL PRIMER GUARDARRAIL QUE ESCRIBI PEDIA 60% DE COBERTURA Y ESTABA CALIBRADO A OJO — el mismo error
+  // que vengo corrigiendo en las escenas. En `mosaico` las piezas vuelan hasta el beat 3.55 de 6, o sea
+  // que el vuelo ocupa el 59% de la escena LEGITIMAMENTE: es el gesto del hero, no una excusa. Con el
+  // piso en 60% la unica salida habria sido marcarlas `sangra` y perder la proteccion entera.
+  //
+  // Lo que de verdad separa "vuela y despues se compone" de "me mido donde me conviene" no es cuanto
+  // dura el tramo: es DONDE TERMINA. Una rendija en el medio deja el final sin mirar, y el final es
+  // donde la composicion esta quieta y el espectador la lee. Se exige entonces que el tramo llegue al
+  // 90% de la escena y cubra al menos el 25%.
+  for (const [, gg] of cuenta) {
+    if (!gg.tramo) continue
+    const [a, z] = gg.tramo
+    const cobertura = z - a
+    if (z < 0.9 || cobertura < 0.25) {
+      fallos.push(`E-ENCAJE-TRAMO  ${id}: una malla declara \`encajaEntre\` [${a}, ${z}] — tiene que llegar al menos a 0.90 y cubrir el 25% de la escena. Un tramo que corta antes del final deja sin mirar justo donde la composicion se lee.`)
+      break
+    }
+  }
+
   for (const [o, gg] of cuenta) {
     if (!gg.fuera) continue
     // Dos cuadros de gracia: una entrada con overshoot puede pasarse un frame y volver, y eso no es un

@@ -80,7 +80,17 @@ export function build(ctx) {
   // tomada y documentada en la escena de rafaga.
   // 1.06 y no 1.16, por la misma razon que en la rafaga: un recorte de pagina lleva su contenido
   // adentro y sangrarlo se lo come. Ver el comentario largo alla.
-  const ANCHO_UTIL = mundoW * 1.0
+  // EL RESPIRO SE DECLARA UNA VEZ Y LO USAN LOS DOS: el tween que mueve cada pieza y el ancho util que
+  // tiene que dejarle lugar. Antes el ancho util era `mundoW * 1.0` —el borde de la celda exactamente
+  // sobre el borde del cuadro— y el respiro, que empuja hasta 0.1, sacaba la pieza afuera. Medido con
+  // la marca "TRANSPORTES INTERNACIONALES" y el aire nocturno: una pieza quedaba en x=-2.74 con el
+  // cuadro en 5.63 de ancho, o sea 0.08 fuera (1.4%). No se vio antes porque hasta hoy ninguna pieza
+  // de la grilla declaraba `encaja`, asi que nadie se lo exigia.
+  //
+  // El margen es EXACTAMENTE la amplitud maxima del respiro, no un numero prudente: si alguien cambia
+  // la amplitud, el ancho util lo sigue solo. Cuesta 3.5% de ancho y no cambia el reparto.
+  const AMP_RESPIRO = 0.1
+  const ANCHO_UTIL = mundoW - 2 * AMP_RESPIRO
   const ALTO_UTIL = mundoH * 0.80
   const AIRE = 0.95
   const destacada = n >= 3                       // con una o dos piezas no hay jerarquia que armar
@@ -102,6 +112,12 @@ export function build(ctx) {
   const altoBanda = destacada
     ? Math.min(ALTO_UTIL * 0.46, (ANCHO_UTIL * AIRE) / arBanda)
     : 0
+  // CUANDO TERMINA DE ARMARSE LA FORMACION, en fraccion de la escena. Lo usa `encajaEntre` para que
+  // `encuadre-check` mida la contencion con las piezas ya puestas y no mientras vuelan. Sale de los
+  // mismos numeros que el tween de entrada (ver mas abajo, "ENTRADA"): el ultimo en salir arranca en
+  // b(0.15) + b(1.9) y dura b(1.5). Se le suma un beat de margen por el overshoot del ease.
+  const FIN_ENTRADA = Math.min(0.7, (b(0.15) + b(1.9) + b(1.5) + b(0.25)) / DUR)
+
   const celdaW = ANCHO_UTIL / cols
   const celdaH = (ALTO_UTIL - altoBanda) / filas
 
@@ -143,6 +159,23 @@ export function build(ctx) {
     const alto = Math.min(hPorAlto, hPorAncho, hPorNitidez)
     const m = planoRecorte(p.tex, alto)
     if (!m) return
+    // LA BANDA SANGRA Y LA GRILLA NO, que es la decision que este archivo ya habia tomado arriba
+    // ("Y SANGRA. Una tarjeta ancha cortada por los dos bordes se lee mejor que una entera y
+    // chiquita") — lo que faltaba era DECLARARLA en la malla. Sin eso las nueve piezas quedaban
+    // indistinguibles de "nadie lo penso", y `encuadre-check` no le exigia contencion a ninguna,
+    // incluidas las de la grilla, que si tienen que entrar enteras: van dentro de ANCHO_UTIL y
+    // ALTO_UTIL justamente para eso.
+    m.userData[esBanda ? 'sangra' : 'encaja'] = true
+    // Y ENTRA ENTERA UNA VEZ ARMADA LA FORMACION, no mientras vuela. Las piezas llegan desde fuera del
+    // cuadro —es el gesto de la escena— asi que exigirles contencion en el cuadro 0 obligaria a
+    // marcarlas `sangra` y se perderia la proteccion justo en el tramo que el espectador mira.
+    //
+    // EL INSTANTE SE DERIVA, NO SE CALIBRA. La primera version puso [0.25, 0.95] midiendo UN caso
+    // (aire `lujo` con ANTHEM, donde el vuelo termina en 0.22) y fallo con `deportivo` + ghost-org,
+    // que lo termina en 0.33: el momento de asentarse depende del aire y de cuantas piezas hay. El
+    // numero correcto sale del propio tween de entrada de abajo — el ultimo en salir arranca en
+    // `b(0.15) + b(1.9)` y dura `b(1.5)` — asi que si alguien cambia el escalonado, esto lo sigue.
+    if (!esBanda) m.userData.encajaEntre = [FIN_ENTRADA, 0.95]
     // La última fila puede estar incompleta: se centra sola en vez de quedar pegada a la izquierda.
     const enFila = esBanda ? 1 : Math.min(cols, resto - fila * cols)
     const x = esBanda ? 0 : (col - (enFila - 1) / 2) * celdaW
@@ -196,7 +229,7 @@ export function build(ctx) {
     // entero latiría como una sola cosa, que se nota más que la quietud.
     // El respiro va en userData y lo aplica UN solo onUpdate al final, no un tween con `modifiers`:
     // eso sólo corre para propiedades declaradas en `vars` y acá no había ninguna. Ver telefono.js.
-    m.userData.osc = { f: rnd() * 6.28, vel: 0.5 + rnd() * 0.5, amp: 0.05 + rnd() * 0.05, desde: t0 + b(1.5) }
+    m.userData.osc = { f: rnd() * 6.28, vel: 0.5 + rnd() * 0.5, amp: AMP_RESPIRO * (0.5 + rnd() * 0.5), desde: t0 + b(1.5) }
   })
 
   // ---------------------------------------------------------------- RELEVOS
@@ -231,6 +264,11 @@ export function build(ctx) {
     const h = Math.min(alto, (anchoCelda * AIRE) / Math.max(0.05, p.ar), hNitido)
     const m = planoRecorte(p.tex, h)
     if (!m) return
+    // ENCAJA SIEMPRE, y no hace falta preguntar si es la banda: el relevo NUNCA la toca — esta
+    // declarado veinte lineas arriba ("esa es el ancla de la composicion... lo que rota son las
+    // celdas de abajo") y el indice lo garantiza arrancando en `destacada ? 1 : 0`.
+    m.userData.encaja = true
+    m.userData.encajaEntre = [FIN_ENTRADA, 0.95]   // ver la nota de la grilla: se mide con la formacion armada
     m.position.copy(base.userData.destino)
     m.visible = false
     m.material.opacity = 1
