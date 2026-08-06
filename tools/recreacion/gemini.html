@@ -1,0 +1,386 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Gemini Canvas — recreacion</title>
+<!--
+  RECREACION de la referencia de Gemini Canvas (60 s, 30 fps, 1920x1080).
+
+  DISTINTA TECNOLOGIA QUE LA DE FIREFIT, Y A PROPOSITO. FireFit es composicion plana: paneles, texto y
+  un telefono en 3/4 — CSS 3D alcanzaba y daba texto nitido. Esta pieza vive de OTRA cosa: el borde
+  emisivo de cada panel derramando luz sobre negro puro. Eso es un post-proceso de verdad, no una
+  sombra: hay que extraer las zonas brillantes, desenfocarlas en varias escalas y sumarlas.
+  `box-shadow` no lo hace.
+
+  Asi que: three.js + EffectComposer + UnrealBloomPass. La UI de cada panel se DIBUJA en un canvas 2D
+  y se usa como textura, lo cual da control total y evita depender de capturas ajenas.
+
+  Determinismo igual que antes: una timeline de GSAP en PAUSA y seek(t) por cuadro.
+-->
+<style>
+  @font-face { font-family: G; src: url('fonts/Inter-400.ttf'); font-weight: 400 }
+  @font-face { font-family: G; src: url('fonts/Inter-500.ttf'); font-weight: 500 }
+  @font-face { font-family: G; src: url('fonts/Inter-600.ttf'); font-weight: 600 }
+  * { margin: 0; padding: 0 }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: #000 }
+  canvas { display: block }
+</style>
+<div id="app"></div>
+
+<script src="gsap.min.js"></script>
+<script type="importmap">
+{ "imports": { "three": "./lib/three.module.js", "three/addons/": "./lib/jsm/" } }
+</script>
+<script type="module">
+import * as THREE from 'three'
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js'
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js'
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js'
+
+const W = 1920, H = 1080
+const AZUL = '#4a86ff', VIOLETA = '#a67bff', BLANCO = '#ffffff'
+
+const ren = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true })
+ren.setSize(W, H); ren.setPixelRatio(1)
+ren.setClearColor(0x000000, 1)
+document.getElementById('app').appendChild(ren.domElement)
+
+const esc = new THREE.Scene()
+const cam = new THREE.PerspectiveCamera(34, W / H, 0.1, 400)
+cam.position.set(0, 0, 26)
+
+const comp = new EffectComposer(ren)
+comp.addPass(new RenderPass(esc, cam))
+// EL BLOOM ES EL PRODUCTO, no un adorno — pero el UMBRAL es el parametro que lo decide todo. La
+// primera version uso 0.28 y florecia el CONTENIDO de los paneles: el documento salia como una mancha
+// blanca ilegible y el editor de codigo directamente reventaba. En la referencia el panel es OSCURO y
+// lo unico que derrama es el BORDE. 0.58 pone el contenido por debajo y el borde por encima.
+const bloom = new UnrealBloomPass(new THREE.Vector2(W, H), 0.72, 0.55, 0.58)
+comp.addPass(bloom)
+comp.addPass(new OutputPass())
+
+// ============================================================ dibujo de UI en canvas 2D
+// Cada panel de la app se dibuja a mano. Es mas trabajo que recortar del video, pero da control total
+// y no depende de pixeles ajenos.
+// Todas las texturas de canvas pasan por aca: declara el espacio de color UNA vez, en un solo lugar.
+function tx(c) {
+  const t = new THREE.CanvasTexture(c)
+  t.colorSpace = THREE.SRGBColorSpace
+  return t
+}
+function lienzo(w, h) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h
+  return { c, x: c.getContext('2d') }
+}
+function rr(x, r0, y, w, h, rad) {                     // rectangulo redondeado
+  x.beginPath(); x.moveTo(r0 + rad, y); x.arcTo(r0 + w, y, r0 + w, y + h, rad)
+  x.arcTo(r0 + w, y + h, r0, y + h, rad); x.arcTo(r0, y + h, r0, y, rad)
+  x.arcTo(r0, y, r0 + w, y, rad); x.closePath()
+}
+function texto(x, s, px, py, size, col, peso = 400) {
+  x.font = `${peso} ${size}px G, sans-serif`; x.fillStyle = col; x.fillText(s, px, py)
+}
+// lineas de texto falso: rectangulos de distinto largo. Es lo que se ve en la referencia cuando el
+// panel esta lejos, y a esa distancia el texto real seria ilegible igual.
+function renglones(x, px, py, ancho, n, alto = 9, sep = 20, col = 'rgba(190,200,225,.42)') {
+  x.fillStyle = col
+  for (let i = 0; i < n; i++) {
+    const w = ancho * (0.55 + ((i * 37) % 45) / 100)
+    rr(x, px, py + i * sep, w, alto, alto / 2); x.fill()
+  }
+}
+
+// --- la ventana de Gemini
+function panelGemini(titulo, grande) {
+  const { c, x } = lienzo(1400, 900)
+  x.fillStyle = '#0f1117'; rr(x, 0, 0, 1400, 900, 26); x.fill()
+  x.fillStyle = '#171a22'; rr(x, 0, 0, 1400, 66, 26); x.fill()
+  texto(x, 'Gemini', 34, 30, 20, '#c8cede', 500)
+  texto(x, '2.0 Flash', 34, 54, 14, '#7b8398')
+  x.fillStyle = '#2b3550'; rr(x, 1330, 20, 30, 30, 15); x.fill()
+  if (grande) { texto(x, titulo, 700 - x.measureText(titulo).width / 2, 470, 62, AZUL, 500) }
+  else { texto(x, titulo, 120, 470, 46, AZUL, 500) }
+  // barra de entrada
+  x.fillStyle = '#191d27'; rr(x, 110, 770, 1180, 78, 39); x.fill()
+  texto(x, 'Ask Gemini', 150, 816, 18, '#6f7789')
+  x.fillStyle = '#232936'; rr(x, 1080, 788, 90, 42, 21); x.fill()
+  texto(x, 'Canvas', 1096, 815, 15, '#aab2c6')
+  return tx(c)
+}
+
+// --- un documento con texto
+function panelDoc() {
+  const { c, x } = lienzo(1200, 860)
+  x.fillStyle = '#0d0f15'; rr(x, 0, 0, 1200, 860, 20); x.fill()
+  x.fillStyle = '#151821'; rr(x, 0, 0, 1200, 56, 20); x.fill()
+  texto(x, 'Five-Minute Speech', 70, 36, 19, '#c4cad9', 500)
+  texto(x, 'Certainly! Let us expand on each of those bullet points to create', 60, 130, 21, '#8b93a8')
+  texto(x, 'comprehensive notes for a Communications 101 class.', 60, 162, 21, '#8b93a8')
+  texto(x, 'Comms 101: Effectiveness of Different Communication', 60, 232, 22, '#aeb6c8', 600)
+  texto(x, '(Introduction - 0:00-0:30)', 60, 292, 19, AZUL, 500)
+  renglones(x, 60, 340, 980, 7, 11, 30, 'rgba(150,163,196,.30)')
+  renglones(x, 60, 580, 980, 6, 11, 30, 'rgba(140,152,185,.22)')
+  return tx(c)
+}
+
+// --- editor de codigo
+function panelCodigo() {
+  const { c, x } = lienzo(1200, 860)
+  x.fillStyle = '#0b0d12'; rr(x, 0, 0, 1200, 860, 18); x.fill()
+  for (let i = 0; i < 26; i++) texto(x, String(i + 1), 26, 60 + i * 30, 15, '#2a3040')
+  const cols = ['#7aa2ff', '#c792ea', '#89ddff', '#c3e88d', '#ffcb6b']
+  for (let i = 0; i < 26; i++) {
+    let px = 74
+    const n = 2 + ((i * 13) % 4)
+    for (let k = 0; k < n; k++) {
+      const w = 40 + ((i * 29 + k * 53) % 150)
+      x.fillStyle = cols[(i + k) % cols.length]; x.globalAlpha = 0.34
+      rr(x, px, 52 + i * 30, w, 12, 6); x.fill()
+      px += w + 16
+    }
+  }
+  x.globalAlpha = 1
+  return tx(c)
+}
+
+// --- rotulo de texto grande (los titulares de la pieza)
+function rotulo(partes, size = 62) {
+  const { c, x } = lienzo(1800, 200)
+  x.font = `500 ${size}px G, sans-serif`
+  let ancho = 0
+  for (const [s] of partes) ancho += x.measureText(s).width
+  let px = (1800 - ancho) / 2
+  for (const [s, col] of partes) { texto(x, s, px, 130, size, col, 500); px += x.measureText(s).width }
+  const t = tx(c); t.anisotropy = 8
+  return t
+}
+
+// ============================================================ piezas 3D
+const grupo = (p) => { const g = new THREE.Group(); esc.add(g); return g }
+
+function plano(tex, ancho, op = 1) {
+  const ar = tex.image.width / tex.image.height
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(ancho, ancho / ar),
+    new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: op, toneMapped: false }))
+  return m
+}
+
+// EL BORDE EMISIVO. Es el recurso central de la referencia: un marco apenas mayor que el panel, con un
+// degrade azul->violeta, puesto DETRAS. El bloom lo convierte en el halo que derrama sobre el negro.
+function borde(ancho, alto) {
+  const { c, x } = lienzo(1024, 1024)
+  const g = x.createLinearGradient(0, 0, 1024, 1024)
+  g.addColorStop(0, '#2f6bff'); g.addColorStop(0.5, '#9d5cff'); g.addColorStop(1, '#2f6bff')
+  x.strokeStyle = g; x.lineWidth = 13
+  rr(x, 22, 22, 980, 980, 60); x.stroke()
+  const t = tx(c)
+  return new THREE.Mesh(new THREE.PlaneGeometry(ancho * 1.035, alto * 1.05),
+    new THREE.MeshBasicMaterial({ map: t, transparent: true, opacity: 0, toneMapped: false,
+      blending: THREE.AdditiveBlending, depthWrite: false }))
+}
+
+// resplandor radial suelto: los que se ven detras de los paneles y en los cortes
+function resplandor(rad, col) {
+  const { c, x } = lienzo(512, 512)
+  const g = x.createRadialGradient(256, 256, 0, 256, 256, 256)
+  g.addColorStop(0, col); g.addColorStop(0.35, col.replace('rgb', 'rgba').replace(')', ',.35)'))
+  g.addColorStop(1, 'rgba(0,0,0,0)')
+  x.fillStyle = g; x.fillRect(0, 0, 512, 512)
+  return new THREE.Mesh(new THREE.PlaneGeometry(rad, rad),
+    new THREE.MeshBasicMaterial({ map: tx(c), transparent: true, opacity: 0,
+      blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }))
+}
+
+// la estrella de cuatro puntas
+function estrella(r) {
+  const f = new THREE.Shape()
+  const k = r * 0.30
+  f.moveTo(0, r); f.quadraticCurveTo(k, k, r, 0); f.quadraticCurveTo(k, -k, 0, -r)
+  f.quadraticCurveTo(-k, -k, -r, 0); f.quadraticCurveTo(-k, k, 0, r)
+  return new THREE.Mesh(new THREE.ShapeGeometry(f, 48),
+    new THREE.MeshBasicMaterial({ color: 0x7c9cff, transparent: true, opacity: 0, toneMapped: false }))
+}
+
+// ============================================================ la pieza
+const tl = gsap.timeline({ paused: true })
+const ESC = []                                       // cada escena: { g, t0, t1 }
+
+function escena(t0, t1) {
+  const g = new THREE.Group(); g.visible = false; esc.add(g)
+  ESC.push({ g, t0, t1 })
+  return g
+}
+// aparecer/desaparecer por opacidad de cada hijo, no por `visible`: el fundido es parte del lenguaje
+function fundir(g, t0, dur, hasta = 1) {
+  g.traverse(o => { if (o.isMesh) tl.to(o.material, { opacity: hasta, duration: dur, ease: 'power2.out' }, t0) })
+}
+
+// ---------------------------------------------------------- 1 · logo (0 - 5)
+{
+  const g = escena(0, 5.2)
+  const st = estrella(1.15); st.position.set(-6.2, 0, 0); g.add(st)
+  const rt = plano(rotulo([['Gemini', BLANCO]], 78), 15, 0); rt.position.set(1.4, 0, 0); g.add(rt)
+  const res = resplandor(26, 'rgb(70,110,255)'); res.position.set(-6, 0, -6); g.add(res)
+  tl.to(st.material, { opacity: 1, duration: 0.9, ease: 'power2.out' }, 0.3)
+  tl.fromTo(st.scale, { x: 0.3, y: 0.3 }, { x: 1, y: 1, duration: 1.1, ease: 'back.out(1.7)' }, 0.3)
+  tl.to(rt.material, { opacity: 1, duration: 1.0, ease: 'power2.out' }, 1.0)
+  tl.to(res.material, { opacity: 0.55, duration: 1.4, ease: 'power2.out' }, 0.4)
+  tl.to([st.material, rt.material, res.material], { opacity: 0, duration: 0.7 }, 4.4)
+  tl.to(g.position, { z: 3, duration: 5.2, ease: 'none' }, 0)
+}
+
+// ---------------------------------------------------------- 2 · dos ventanas (4.8 - 12)
+{
+  const g = escena(4.8, 12.4)
+  const mk = (tex, ancho, px, py, pz, ry) => {
+    const p = plano(tex, ancho, 0); p.position.set(px, py, pz); p.rotation.set(0.05, ry, 0.02)
+    const b = borde(ancho, ancho / (tex.image.width / tex.image.height))
+    b.position.copy(p.position); b.rotation.copy(p.rotation); b.position.z -= 0.05
+    g.add(b); g.add(p); return { p, b }
+  }
+  const a = mk(panelGemini('Hello, Teresa', false), 13, -7.5, 0.4, -4, 0.44)
+  const bb = mk(panelGemini('Hello, Teresa', true), 17, 3.2, -0.2, 1, 0.30)
+  const res = resplandor(34, 'rgb(60,90,230)'); res.position.set(2, -3, -8); g.add(res)
+  tl.to([a.p.material, bb.p.material], { opacity: 1, duration: 1.0 }, 5.0)
+  tl.to([a.b.material, bb.b.material], { opacity: 0.9, duration: 1.2 }, 5.1)
+  tl.to(res.material, { opacity: 0.5, duration: 1.4 }, 5.2)
+  tl.fromTo(g.position, { x: 4, z: -6 }, { x: -1.5, z: 2.5, duration: 7.4, ease: 'sine.inOut' }, 4.8)
+  tl.to([a.p.material, bb.p.material, a.b.material, bb.b.material, res.material],
+    { opacity: 0, duration: 0.8 }, 11.4)
+}
+
+// ---------------------------------------------------------- 3 · claim (11.8 - 15.6)
+{
+  const g = escena(11.8, 15.6)
+  const rt = plano(rotulo([['Your ', BLANCO], ['AI', AZUL], [' assistant from Google', BLANCO]], 60), 22, 0)
+  g.add(rt)
+  tl.to(rt.material, { opacity: 1, duration: 0.8 }, 12.0)
+  tl.fromTo(rt.position, { y: -0.5 }, { y: 0.25, duration: 3.6, ease: 'sine.inOut' }, 12.0)
+  tl.to(rt.material, { opacity: 0, duration: 0.6 }, 14.9)
+}
+
+// ---------------------------------------------------------- 4 · palabras en profundidad (15.2 - 19.5)
+{
+  const g = escena(15.2, 19.5)
+  const ps = [['in', -6, 2.4, -3], ['for', -1.5, 3.4, 3], ['bet', 4.6, 2.3, 0.5],
+              ['im', -6.6, -0.6, 1], ['ag', 0.8, -0.4, -2], ['ter', 5.4, -0.7, 2],
+              ['ed', -2.2, -3.0, 0.8]]
+  ps.forEach(([s, px, py, pz], i) => {
+    const t = plano(rotulo([[s, i % 2 ? VIOLETA : BLANCO]], 150), 9.5, 0)
+    t.position.set(px, py, pz); g.add(t)
+    tl.to(t.material, { opacity: 1, duration: 0.5 }, 15.3 + i * 0.16)
+    tl.to(t.position, { z: pz + 5.5, duration: 3.6, ease: 'sine.inOut' }, 15.3 + i * 0.16)
+    tl.to(t.material, { opacity: 0, duration: 0.5 }, 18.6 + i * 0.08)
+  })
+}
+
+// ---------------------------------------------------------- 5 · Introducing Canvas (19.2 - 24)
+{
+  const g = escena(19.2, 24.2)
+  const r1 = plano(rotulo([['Introducing', BLANCO]], 60), 20, 0); r1.position.set(0, 0, 0); g.add(r1)
+  const r2 = plano(rotulo([['Canvas', AZUL], [' in Gemini', BLANCO]], 60), 20, 0); r2.position.set(0, 0, 0.2); g.add(r2)
+  const res = resplandor(28, 'rgb(120,90,255)'); res.position.set(0, 0, -7); g.add(res)
+  tl.to(r1.material, { opacity: 1, duration: 0.7 }, 19.4)
+  tl.to(r1.material, { opacity: 0, duration: 0.5 }, 21.3)
+  tl.to(r2.material, { opacity: 1, duration: 0.7 }, 21.5)
+  tl.to(res.material, { opacity: 0.45, duration: 1.2 }, 21.4)
+  tl.to([r2.material, res.material], { opacity: 0, duration: 0.6 }, 23.5)
+  tl.fromTo(g.position, { z: -1.5 }, { z: 1.2, duration: 5.0, ease: 'sine.inOut' }, 19.2)
+}
+
+// ---------------------------------------------------------- 6 · el documento (23.8 - 32)
+{
+  const g = escena(23.8, 32.4)
+  const tex = panelDoc()
+  const p = plano(tex, 20, 0); p.position.set(3.2, -0.4, 0); p.rotation.set(0.10, -0.34, 0.03); g.add(p)
+  const b = borde(20, 20 / (1200 / 860)); b.position.copy(p.position); b.rotation.copy(p.rotation)
+  b.position.z -= 0.06; g.add(b)
+  const rt = plano(rotulo([['From the first ', BLANCO], ['draft', VIOLETA]], 56), 20, 0)
+  rt.position.set(-4.5, 0.2, 5); g.add(rt)
+  const res = resplandor(30, 'rgb(130,90,255)'); res.position.set(5, 0, -7); g.add(res)
+  tl.to([p.material], { opacity: 1, duration: 1.0 }, 24.0)
+  tl.to([b.material], { opacity: 0.95, duration: 1.2 }, 24.1)
+  tl.to(res.material, { opacity: 0.42, duration: 1.4 }, 24.2)
+  tl.to(rt.material, { opacity: 1, duration: 0.8 }, 25.6)
+  tl.to(rt.material, { opacity: 0, duration: 0.6 }, 29.4)
+  tl.fromTo(g.rotation, { y: -0.14 }, { y: 0.10, duration: 8.4, ease: 'sine.inOut' }, 23.8)
+  tl.to([p.material, b.material, res.material], { opacity: 0, duration: 0.8 }, 31.4)
+}
+
+// ---------------------------------------------------------- 7 · versiones (31.8 - 36)
+{
+  const g = escena(31.8, 36.2)
+  const rt = plano(rotulo([['To all the ', BLANCO], ['versions', AZUL], [' in between', BLANCO]], 56), 23, 0)
+  g.add(rt)
+  tl.to(rt.material, { opacity: 1, duration: 0.8 }, 32.0)
+  tl.fromTo(rt.position, { x: 1.2 }, { x: -1.2, duration: 4.0, ease: 'sine.inOut' }, 32.0)
+  tl.to(rt.material, { opacity: 0, duration: 0.6 }, 35.4)
+}
+
+// ---------------------------------------------------------- 8 · el codigo (35.8 - 44)
+{
+  const g = escena(35.8, 44.4)
+  const p = plano(panelCodigo(), 22, 0); p.position.set(-1.5, 0.5, 0); p.rotation.set(0.16, 0.30, -0.04)
+  g.add(p)
+  const b = borde(22, 22 / (1200 / 860)); b.position.copy(p.position); b.rotation.copy(p.rotation)
+  b.position.z -= 0.06; g.add(b)
+  const rt = plano(rotulo([['And preview the final ', BLANCO], ['prototypes', VIOLETA]], 54), 24, 0)
+  rt.position.set(0, -0.2, 6); g.add(rt)
+  const res = resplandor(30, 'rgb(70,120,255)'); res.position.set(-3, 1, -7); g.add(res)
+  tl.to(p.material, { opacity: 1, duration: 1.0 }, 36.0)
+  tl.to(b.material, { opacity: 0.9, duration: 1.2 }, 36.1)
+  tl.to(res.material, { opacity: 0.4, duration: 1.4 }, 36.2)
+  tl.fromTo(g.position, { z: -3.5, x: 1.5 }, { z: 2.0, x: -0.8, duration: 8.6, ease: 'sine.inOut' }, 35.8)
+  tl.to(rt.material, { opacity: 1, duration: 0.8 }, 40.2)
+  tl.to([p.material, b.material, res.material, rt.material], { opacity: 0, duration: 0.8 }, 43.4)
+}
+
+// ---------------------------------------------------------- 9 · las palabras sueltas (43.8 - 51)
+{
+  const g = escena(43.8, 51.4)
+  const ws = [['docs', 44.2], ['timelines', 46.0], ['games', 47.8], ['apps', 49.6]]
+  ws.forEach(([s, t0], i) => {
+    const r = plano(rotulo([[s, i % 2 ? AZUL : VIOLETA]], 74), 13, 0)
+    r.position.set(0, 0, i * 0.1); g.add(r)
+    const res = resplandor(22, i % 2 ? 'rgb(70,120,255)' : 'rgb(130,90,255)')
+    res.position.set(0, 0, -6); g.add(res)
+    tl.to(r.material, { opacity: 1, duration: 0.45 }, t0)
+    tl.fromTo(r.scale, { x: 0.92, y: 0.92 }, { x: 1, y: 1, duration: 1.4, ease: 'power2.out' }, t0)
+    tl.to(res.material, { opacity: 0.38, duration: 0.6 }, t0)
+    tl.to([r.material, res.material], { opacity: 0, duration: 0.4 }, t0 + 1.45)
+  })
+}
+
+// ---------------------------------------------------------- 10 · cierre (50.8 - 60)
+{
+  const g = escena(50.8, 60)
+  const p = plano(panelGemini('Hello, Teresa', true), 19, 0); p.position.set(0, 0.3, 0)
+  p.rotation.set(0.02, 0.05, 0); g.add(p)
+  const b = borde(19, 19 / (1400 / 900)); b.position.copy(p.position); b.rotation.copy(p.rotation)
+  b.position.z -= 0.06; g.add(b)
+  const res = resplandor(32, 'rgb(60,100,255)'); res.position.set(0, 0, -7); g.add(res)
+  const rt = plano(rotulo([['Try ', BLANCO], ['Canvas', AZUL], [' in Gemini today.', BLANCO]], 52), 22, 0)
+  rt.position.set(0, -0.6, 6); g.add(rt)
+  const url = plano(rotulo([['gemini.google.com/canvas', '#8fa8ff']], 30), 14, 0)
+  url.position.set(0, -1.7, 6); g.add(url)
+  tl.to(p.material, { opacity: 1, duration: 1.1 }, 51.0)
+  tl.to(b.material, { opacity: 0.95, duration: 1.3 }, 51.1)
+  tl.to(res.material, { opacity: 0.5, duration: 1.5 }, 51.2)
+  tl.fromTo(g.position, { z: -4 }, { z: 0.8, duration: 5.0, ease: 'power2.out' }, 50.9)
+  tl.to([p.material, b.material], { opacity: 0, duration: 0.9 }, 55.6)
+  tl.to(res.material, { opacity: 0.25, duration: 0.9 }, 55.6)
+  tl.to(rt.material, { opacity: 1, duration: 0.9 }, 56.0)
+  tl.to(url.material, { opacity: 1, duration: 0.8 }, 56.8)
+}
+
+tl.to({}, { duration: 0.01 }, 60)
+
+// ============================================================ API para Playwright
+window.__dur = 60
+window.__seek = (t) => {
+  tl.time(Math.min(t, 60))
+  for (const e of ESC) e.g.visible = (t >= e.t0 - 0.05 && t <= e.t1 + 0.05)
+  comp.render()
+}
+window.__seek(0)
+document.fonts.ready.then(() => { document.title = 'listo' })
+</script>

@@ -4,7 +4,7 @@
 # Despues ffmpeg los junta. Es determinista: la timeline de GSAP esta en PAUSA y solo se la posiciona,
 # asi que no hay reloj propio ni rAF — dos corridas dan el mismo archivo.
 
-import asyncio, os, shutil, subprocess, sys
+import asyncio, functools, http.server, os, shutil, socket, socketserver, subprocess, sys, threading
 from pathlib import Path
 
 AQUI = Path(__file__).resolve().parent
@@ -12,17 +12,33 @@ FPS = 25
 W, H = 1920, 1080
 
 
+def servir():
+    """Un servidor HTTP local, y no `file://`, porque los MODULOS ES estan bloqueados por CORS sobre
+    file: — Chromium solo los deja cargar por http/https. Sin esto, `import * as THREE from 'three'`
+    falla en silencio y la pagina nunca termina de arrancar."""
+    s = socket.socket(); s.bind(('127.0.0.1', 0)); puerto = s.getsockname()[1]; s.close()
+    h = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(AQUI))
+    srv = socketserver.TCPServer(('127.0.0.1', puerto), h)
+    srv.allow_reuse_address = True
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    return srv, puerto
+
+
 async def main(pagina, salida):
     from playwright.async_api import async_playwright
+    srv, puerto = servir()
     tmp = AQUI / '_frames'
     if tmp.exists():
         shutil.rmtree(tmp)
     tmp.mkdir()
 
     async with async_playwright() as p:
-        br = await p.chromium.launch(args=['--force-color-profile=srgb', '--font-render-hinting=none'])
+        # WebGL en headless: Chromium usa SwiftShader por software. Anda, y es lo que hace que el
+        # bloom sea REAL y no una sombra imitada.
+        br = await p.chromium.launch(args=['--force-color-profile=srgb', '--font-render-hinting=none',
+                                           '--use-gl=angle', '--enable-unsafe-swiftshader'])
         pg = await br.new_page(viewport={'width': W, 'height': H}, device_scale_factor=1)
-        await pg.goto((AQUI / pagina).as_uri())
+        await pg.goto(f'http://127.0.0.1:{puerto}/{pagina}')
         await pg.wait_for_function("document.title === 'listo'")
         await pg.evaluate("document.fonts.ready")
         await asyncio.sleep(0.6)                       # que terminen de cargar las caras

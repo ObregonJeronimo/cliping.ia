@@ -38,3 +38,4 @@ tools/recreacion/_frames/
 tools/recreacion/fonts/
 tools/recreacion/gsap.min.js
 tools/recreacion/*.mp4
+tools/recreacion/lib/
