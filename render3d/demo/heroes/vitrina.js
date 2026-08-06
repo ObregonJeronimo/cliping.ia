@@ -299,6 +299,9 @@ export function build(ctx) {
 
   // ------------------------------------------------------------------ el logo y su reflejo
   const logo = planoRecorte(tex, altoLogo)
+  // ENCAJA, y es el caso donde menos se discute: esto es EL LOGO DE LA MARCA. Un logo cortado por el
+  // borde es lo primero que ve el dueño de la pagina y no hay lectura de composicion que lo justifique.
+  logo.userData.encaja = true
   gr.add(logo)
   logo.material.opacity = 0
 

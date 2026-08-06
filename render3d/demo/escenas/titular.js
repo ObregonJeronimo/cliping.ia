@@ -137,6 +137,10 @@ export function build(ctx) {
     new THREE.PlaneGeometry(ANCHO_FOTO, Math.min(BANDA_H, altoNativo)),
     new THREE.MeshBasicMaterial({ map: texFoto, toneMapped: false, transparent: true }),
   )
+  // SANGRA: `ANCHO_FOTO` es `mundoW * 1.02`, dos por ciento mas ancho que el cuadro. Es una BANDA que
+  // cruza — si entrara justa se leeria como una foto pegada y no como una ventana a la pagina.
+  foto.userData.sangra = true
+  foto.userData.tipoImagen = 'recorte'
   const FOTO_Y = mundoH * 0.5 - BANDA_H / 2       // anclada al canto superior del cuadro
   // ANCLADA ARRIBA, no centrada en la banda. `FOTO_Y` es el centro de la BANDA y la foto puede ser mas
   // BAJA que ella: pasa con cualquier foto apaisada, que es el caso normal (un hero 16:9 con un titular

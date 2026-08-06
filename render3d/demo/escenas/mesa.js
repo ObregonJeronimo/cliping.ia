@@ -153,6 +153,11 @@ export function build(ctx) {
   gr.add(cont)
 
   const hoja = new THREE.Mesh(new THREE.PlaneGeometry(ANCHO, ALTO), mat)
+  // SANGRA, Y ESTA DECLARADO EN SU PROPIO ANCHO: `ANCHO` es `cuadroMasAngosto(...) * 1.06`, o sea un 6%
+  // mas que el cuadro a proposito. Lo que faltaba era decirlo en la malla — no declarar nada era
+  // indistinguible de "nadie lo penso", que es justo lo que este censo vino a separar.
+  hoja.userData.sangra = true
+  hoja.userData.tipoImagen = 'recorte'
   hoja.rotation.x = INCLINA
   hoja.position.set(0, -mundoH * 0.02, 0)
   cont.add(hoja)

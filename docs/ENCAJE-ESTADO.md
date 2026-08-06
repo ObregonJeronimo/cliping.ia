@@ -52,7 +52,8 @@ redondo.**
 |---|---|---|
 | 2026-08-06 | 59 de 71 | estado inicial medido |
 | 2026-08-06 | 40 de 71 | `marquesina` (10) y `mosaico` (9) |
-| 2026-08-06 | **32 de 71** | `columna` (8), primer caso de `encajaEje` |
+| 2026-08-06 | 32 de 71 | `columna` (8), primer caso de `encajaEje` |
+| 2026-08-06 | **28 de 71** | `mesa`, `titular`, `contraste`, `vitrina` (1 cada uno) |
 
 ## Lo que falta, por archivo
 
@@ -60,10 +61,6 @@ redondo.**
 apertura    14   texto
 rafaga       7   4 sin tipo + 3 recorte
 tipografia   7   2 sin tipo + 5 texto
-contraste    1   recorte
-mesa         1   sin tipo
-titular      1   sin tipo
-vitrina      1   recorte
 ```
 
 `tipoImagen` lo declaran `planoTexto` y `planoRecorte` en el kit; las que dicen "sin tipo" son mallas

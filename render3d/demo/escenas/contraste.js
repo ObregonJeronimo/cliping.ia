@@ -69,6 +69,9 @@ export function build(ctx) {
     if (i === 0) {
       const m = planoRecorte(tex, caja.h)
       if (!m) { tl.to({}, { duration: DUR }, 0); return { g, gr, tl, vacia: true } }
+      // ENCAJA, y el dimensionado ya lo buscaba: `caja` sale de `encaje(ar)`, el helper del kit cuyo
+      // trabajo es justamente meter la pieza entera en el cuadro respetando su proporcion.
+      m.userData.encaja = true
       m.position.set(0, 0, 0)
       gr.add(m)
       planos.push({ m, mat: m.material })

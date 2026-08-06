@@ -54,7 +54,9 @@ try {
 //
 //   59 -> 40   marquesina (10, sangra: su cinta es un bucle) y mosaico (9, la banda sangra, la grilla encaja)
 //   40 -> 32   columna (8, encaja de ancho y sangra de alto: es un feed que sube)
-const TRINQUETE = 32
+//   32 -> 28   mesa y titular (sangran, y su propio ancho ya lo declaraba: 1.06 y 1.02 del cuadro),
+//              contraste (encaja: se dimensiona con el helper `encaje`) y vitrina (encaja: es el logo)
+const TRINQUETE = 28
 
 const sinClasificar = censo.filas.filter(f => f.clase === 'SIN CLASIFICAR')
 const n = sinClasificar.length
