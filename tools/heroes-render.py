@@ -44,8 +44,12 @@ SALIDA = os.path.join(RAIZ, "tools", "out", "heroes-render")
 # Se prueban EN ORDEN hasta que el hero pedido salga en el plan. Hacen falta varios porque el REGISTRO
 # filtra heroes por AIRE —para que la geometria abstracta no le toque a una marca a la que no le
 # queda— y cada pagina cae en un aire distinto: con dos casos, `cinta` y `farol` no salian en ninguno.
-CASOS = [("https://stripe.com", 5), ("https://basecamp.com", 26), ("https://linear.app", 3),
-         ("https://stripe.com", 3)]
+CASOS = [("https://stripe.com", 5, None), ("https://basecamp.com", 26, None),
+         ("https://linear.app", 3, None), ("https://stripe.com", 3, None),
+         # Y DOS CON EL AIRE FORZADO, porque con los cuatro de arriba `cinta` y `farol` no salian en
+         # ninguno: el REGISTRO los deja solo en `tecnico` y `artesanal` respectivamente, y ninguna de
+         # las paginas de prueba cae ahi. Un hero que no se midio NO esta bien: no se midio.
+         ("https://stripe.com", 5, "tecnico"), ("https://basecamp.com", 26, "artesanal")]
 
 BANDA_ROTULO = (0.845, 0.875)
 PISO_CONTRASTE = 3.0
@@ -139,9 +143,9 @@ def main():
         if a == "--hero":
             solo = args[i + 1]
         elif a == "--url":
-            casos = [(args[i + 1], casos[0][1])]
+            casos = [(args[i + 1], casos[0][1], None)]
         elif a == "--seed":
-            casos = [(casos[0][0], int(args[i + 1]))]
+            casos = [(casos[0][0], int(args[i + 1]), None)]
 
     os.makedirs(SALIDA, exist_ok=True)
     heroes = [solo] if solo else None
@@ -152,11 +156,13 @@ def main():
     filas, fallos, saltados = [], [], []
     for h in heroes:
         hecho = False
-        for url, seed in casos:
+        for url, seed, aire in casos:
             mp4 = os.path.join(SALIDA, "%s.mp4" % h)
-            r = subprocess.run([sys.executable, os.path.join(RAIZ, "backend", "motor.py"), url,
-                                "--dur", "20", "--seed", str(seed), "--hero", h, "--salida", mp4],
-                               capture_output=True, text=True)
+            cmd = [sys.executable, os.path.join(RAIZ, "backend", "motor.py"), url,
+                   "--dur", "20", "--seed", str(seed), "--hero", h, "--salida", mp4]
+            if aire:
+                cmd += ["--aire", aire]
+            r = subprocess.run(cmd, capture_output=True, text=True)
             if r.returncode != 0 or not os.path.exists(mp4):
                 continue
             plan = json.load(open(mp4 + ".plan.json", encoding="utf8"))
@@ -168,7 +174,7 @@ def main():
             m = medir(mp4, plan, h)
             if "error" in m:
                 continue
-            filas.append((h, url, seed, m))
+            filas.append((h, url + (" [%s]" % aire if aire else ""), seed, m))
             hecho = True
             break
         if not hecho:
