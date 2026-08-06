@@ -1252,6 +1252,24 @@ Por escena:
     **La otra oscura da 0.247, mucho mas cerca de las claras que de `linear`.** Asi que la polaridad NO
     explica el vacio: `linear` compone a la mitad que la otra pagina oscura, y esa es la pregunta que
     queda —mucho mas chica y mucho mejor definida que la que se abrio.
+  - **Y LA CAUSA REAL, encontrada comparando los dos planes:** no es la oscuridad ni el aire — es **si
+    la pieza muestra LA PAGINA o solo tipografia y geometria**.
+
+    | pieza | ocupacion | plan | heroe |
+    |---|---|---|---|
+    | tailwindcss | **0.247** | apertura, hero, mesa, cierre | `ventana` (muestra el sitio) |
+    | linear | **0.120** | gancho, rafaga, titular, toro, sello, cierre | **ninguno** |
+
+    Las dos tienen material equivalente (7 y 8 texturas, 0 faltantes). La diferencia es el GUION: una
+    programo un heroe que muestra la pagina mas `mesa` —que compone con un recorte—, y la otra armo seis
+    escenas de tipografia y geometria pura.
+  - **Y encaja con una medicion anterior que parecia contradecirla:** en `vis1`, el heroe `vitrina`
+    —geometrico— BAJABA la ocupacion (0.07 con el, 0.124 sin el). O sea que **no es "tener heroe": es
+    QUE MUESTRA ese heroe**. `ventana` sube la ocupacion porque pone la pagina en el cuadro; `vitrina`
+    la baja porque es un objeto chico en el aire.
+  - **Queda como pregunta de producto, bien acotada:** si un guion sin ninguna escena que muestre la
+    pagina es aceptable para una pieza que existe para vender esa pagina. No es un defecto del motor
+    —cada escena hace lo suyo— es una decision sobre que debe garantizar el guion.
   - **Y una leccion sobre mi propia recomendacion:** yo habia recomendado medir 7 paginas x 11 aires
     (~50 min de renders) para decidir esto. Un render lo resolvio. La pregunta "cuantos casos tengo
     realmente" cuesta segundos y ahorro 75 renders — preguntarla ANTES de disenar el barrido vale mas
