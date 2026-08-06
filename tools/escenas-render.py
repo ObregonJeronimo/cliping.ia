@@ -28,12 +28,17 @@ LO QUE NO SE PUEDE CONCLUIR DE ESTO. Un numero bajo NO es un defecto. Las tres q
 comprobaron leyendo su cabecera, y que van a seguir apareciendo abajo del piso para siempre:
 
   sello    compone con el VACIO a proposito — "un emblema chico y tres cuartos de cuadro sin nada".
-           Registrado en 0.042 de ocupacion; aca mide 0.049 de tinta.
+           Registrado en 0.042 de ocupacion; aca mide 0.051 de tinta.
   gancho   es una placa de texto que hay que poder LEER, asi que su quietud es inherente.
-  rafaga   "No compone: RAFAGUEA. Doce piezas, media hora de pantalla cada una —241 ms—, reemplazo
-           duro, sin fundidos." Su valor esta en la SUCESION y esta herramienta mide INSTANTES: un
-           cuadro suelto suyo se ve austero por definicion. Por eso su movimiento es alto (2.28) y su
-           tinta baja (0.060) al mismo tiempo — las dos cosas son la misma decision.
+  bandera  "Un campo de color liso ocupando el cuadro entero, el nombre calado adentro. Sin marco,
+           sin HUD, sin contador." Un campo LISO hace que la tinta sea baja por definicion: casi todo
+           el cuadro es el mismo color. Mide 0.036, la mas baja de las 17.
+
+Y UNA QUE PARECIA ESTARLO Y NO LO ESTABA, que es la leccion mas cara de esta herramienta:
+
+  rafaga   con UNA aparicion medida daba 0.060 y entraba en la lista; con TRES da 0.250 y no entra.
+           El promedio de n=1 no es un promedio. Antes de concluir sobre una escena hay que mirar
+           cuantas veces se la vio — la columna `veces` esta para eso.
 
 La herramienta dice DONDE MIRAR; la cabecera de la escena dice si eso que se ve estaba buscado.
 
@@ -56,6 +61,12 @@ PIEZAS = [
     ("https://stripe.com", 5), ("https://stripe.com", 3),
     ("https://basecamp.com", 26), ("https://linear.app", 3),
     ("https://linear.app", 11), ("https://basecamp.com", 5),
+    # Con las seis de arriba quedaban cinco escenas sin ver —bandera, columna, contraste, marquesina,
+    # partida— y una escena que no se midio no esta bien: no se midio. Mas semillas mueven el guion,
+    # que es quien elige que escenas entran.
+    ("https://stripe.com", 11), ("https://linear.app", 26),
+    ("https://basecamp.com", 3), ("https://stripe.com", 26),
+    ("https://linear.app", 5), ("https://basecamp.com", 11),
 ]
 
 RUIDO_CODEC = 0.005
