@@ -163,6 +163,43 @@ Probado: quitando la cama a mano —el defecto original— `fondo-check` sigue e
 geometría 3D ya visible. Por eso la cama es el arreglo correcto: **garantiza el fondo en vez de
 depender de medirlo**.
 
+### 3. Y hay una tercera ceguera, medida y NO arreglada: no ve el texto que revela un shader
+
+Encontrada barriendo el mismo punto ciego que apareció en `heroes-audit` y en `nitidez-inventario` el
+mismo día. `fondo-check` elige qué mallas son texto pidiendo `material.map`, y **19 de las 20 escenas
+dibujan su texto con `materialMascara`** —o con el `matWipe` de `tipografia`—, que son `ShaderMaterial`
+escritos a mano y llevan la textura en `uniforms.map.value`.
+
+Lo llamativo es que **la cabecera de la compuerta ya conocía `materialMascara`**: dice que el color del
+texto sale del tinte *"salvo que el material lo tiña (`materialMascara` con color pisa el canvas)"*.
+La intención estaba; la selección de mallas se quedó atrás. Mismo patrón que el medio arreglo de
+`muestra` en `heroes-audit`.
+
+**Medido: 276 textos en 407 construcciones** — menos de uno por construcción, en un motor donde casi
+toda escena es tipografía.
+
+**Y NO SE ACTIVÓ, a propósito.** Con la búsqueda ampliada a los uniforms, la compuerta pasa a acusar
+**53 textos en UNA sola de las 7 páginas** (`tarjetas` 20, `cierre` 11, `mesa` 11, `sello` 11). La
+evidencia es mixta y no alcanza para creerle:
+
+- `sello`: *"texto #364148 sobre una banda #2884e8 da 2,77:1, hace falta 3,2"* — la banda **sí** se
+  detectó, así que esto podría ser real.
+- `cierre`: *"texto #ffffff sobre el fondo #ffffff/#cddbea da 1,00:1"* — blanco sobre blanco es casi
+  seguro **del instrumento**: no encontró la cama. Y hay una razón declarada para eso, en `esTapa`:
+  `if (mat.isShaderMaterial) return null // fondos y mascaras: no son una cama de color`.
+
+O sea que ampliar el lado del TEXTO sin ampliar el lado del FONDO deja a la compuerta acusando a
+textos cuya cama tampoco puede ver. Las cuatro escenas señaladas están medidas con render en
+`docs/ESCENAS-AUDIT.md` sin defecto de legibilidad.
+
+**Se revirtió el cambio y la compuerta quedó verde.** *"Una compuerta que acusa en falso cuesta más que
+no tenerla: se aprende a ignorarla y después no ve el defecto de verdad."*
+
+**Qué haría falta para activarla**, en orden: arreglar primero `esTapa` para que reconozca las camas
+dibujadas con shader, volver a correr, y **validar una muestra de las acusaciones que queden abriendo
+cuadros del render** — empezando por el caso de `sello`, que es el único que hoy tiene el fondo bien
+detectado.
+
 ## Auditoría con render de LOS 17 — `tools/heroes-render.py`
 
 ```bash
