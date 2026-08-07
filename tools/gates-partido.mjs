@@ -43,7 +43,7 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { tomar } from './lib/cerrojo.mjs'
-import { disponibleMb, entornoConTecho, vigilar, matarArbol, pisoPara, anotarCosto } from './lib/memoria.mjs'
+import { disponibleMb, entornoConTecho, vigilar, matarArbol, pisoPara, anotarCosto, costoDe } from './lib/memoria.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const RAIZ = join(HERE, '..')
@@ -68,6 +68,11 @@ const PASOS = cadena.split('&&').map(s => s.trim()).filter(Boolean)
 
 const args = process.argv.slice(2)
 const desde = args.includes('--desde') ? Number(args[args.indexOf('--desde') + 1]) || 0 : 0
+// `--solo 3,24,35` corre EXACTAMENTE esas, por su numero en la cadena (1..42). Existe para retomar las
+// que quedaron POSPUESTAS por memoria sin volver a correr las 38 que ya pasaron.
+const SOLO = args.includes('--solo')
+  ? new Set(String(args[args.indexOf('--solo') + 1] || '').split(',').map(n => Number(n.trim())).filter(Boolean))
+  : null
 
 console.log(`gates-partido: ${PASOS.length} compuertas, de a una. Disponible ahora ${disponibleMb()} MB.`)
 console.log('  mismas compuertas que `npm run gates`, leidas de gates:crudo. Cambia el agrupamiento,')
@@ -75,6 +80,7 @@ console.log('  no la cobertura: el pico pasa a ser el de la compuerta mas cara y
 
 const fallaron = []
 const costos = []
+const pospuestas = []
 let okTotal = 0
 const t0 = Date.now()
 
@@ -103,9 +109,36 @@ for (const sig of ['SIGINT', 'SIGTERM']) {
 
 for (let i = desde; i < PASOS.length && !cortadoPor; i++) {
   const paso = PASOS[i]
+  if (SOLO && !SOLO.has(i + 1)) continue
   const etiqueta = paso.replace(/^(node|python)\s+/, '').replace(/^tools\//, '')
   const libre = disponibleMb()
   process.stdout.write(`  [${String(i + 1).padStart(2)}/${PASOS.length}] ${etiqueta.padEnd(38)} `)
+
+  // NO ARRANCAR LA QUE YA SE SABE QUE NO ENTRA. Esto existe porque la maquina se comparte con quien
+  // la esta usando: dos corridas seguidas murieron enteras —una en la compuerta 3, otra en la 24—
+  // porque una sola compuerta cara se topo con un juego abierto, y las 20 y pico que ya habian pasado
+  // se perdieron con ella.
+  //
+  // Ahora cada compuerta anota su costo, asi que la pregunta se puede contestar ANTES en vez de
+  // descubrirla a los golpes: si lo que esta compuerta pidio en su peor corrida no entra en lo que hay
+  // libre, se POSPONE y la tanda sigue. Es la misma idea que ya usa `npm run pesado` para negarse a
+  // arrancar, aplicada por compuerta en vez de por tanda entera.
+  //
+  // Y NO CONVIERTE UN GUARD INCOMPLETO EN VERDE. Las pospuestas se listan con nombre y con cuantos MB
+  // faltaron, y la salida es distinta de cero. Un guard que se saltea compuertas y dice OK seria
+  // exactamente el "cero tranquilizador" que este repo persigue en otros seis lugares.
+  //
+  // Sin medicion previa NO se pospone: no saber cuanto pide no es lo mismo que saber que no entra, y
+  // negarse por las dudas dejaria fuera para siempre a toda compuerta nunca medida.
+  const costo = costoDe(paso)
+  if (costo && Number.isFinite(costo.pidioMbPeor)) {
+    const quedaria = libre - costo.pidioMbPeor
+    if (quedaria < ojo.pisoMb) {
+      console.log(`POSPUESTA  (pidio ${costo.pidioMbPeor} MB, quedarian ${quedaria} — piso ${ojo.pisoMb})`)
+      pospuestas.push({ i: i + 1, paso, etiqueta, pidio: costo.pidioMbPeor, faltan: ojo.pisoMb - quedaria })
+      continue
+    }
+  }
 
   // `node_modules/.bin` AL PATH. La cadena la corre npm, que lo agrega solo; corriendo los pasos a
   // mano, `vite build` falla con "no se reconoce como un comando". Es la unica diferencia real entre
@@ -170,6 +203,20 @@ console.log(`\ngates-partido: ${okTotal} OK · ${fallaron.length} compuertas con
   + `· minimo de RAM disponible ${ojo.libreMinMb} MB (piso ${ojo.pisoMb}, total ${ojo.totalMb})`)
 if (cortadoPor) console.log(`gates-partido: CORTADO — ${cortadoPor}`)
 
+// LAS POSPUESTAS SE DICEN PRIMERO Y CON NOMBRE. Es la unica parte de esta salida que puede engañar:
+// "38 OK · 0 FAIL" con cuatro sin correr se lee como un guard verde y no lo es.
+if (pospuestas.length) {
+  console.log(`\ngates-partido: NO ES VERDE — ${pospuestas.length} compuertas POSPUESTAS por memoria, `
+    + 'no corrieron. Un guard con compuertas sin correr no habilita un push.')
+  for (const p of pospuestas) {
+    console.log(`  [${String(p.i).padStart(2)}] ${p.etiqueta.padEnd(38)} pidio ${String(p.pidio).padStart(5)} MB `
+      + `· faltaron ${p.faltan} MB`)
+  }
+  const pico = Math.max(...pospuestas.map(p => p.pidio))
+  console.log(`  para correrlas hace falta liberar hasta ${pico} MB (la mas cara de las pospuestas).`)
+  console.log(`  cuando haya lugar:  node tools/gates-partido.mjs --solo ${pospuestas.map(p => p.i).join(',')}`)
+}
+
 // LAS MÁS CARAS DE ESTA CORRIDA, dichas acá y no sólo guardadas en el historial. El número que hace
 // falta para decidir si el guard entra hoy es el de la compuerta más cara, y hasta ahora había que
 // deducirlo de `npm run costo` — donde faltaban 37 de las 42.
@@ -198,4 +245,7 @@ if (fallaron.length) {
   console.log(`\n  para retomar desde la primera que fallo:  node tools/gates-partido.mjs --desde ${fallaron[0].i - 1}`)
 }
 cerrojo.soltar && cerrojo.soltar()
-process.exit(cortadoPor || fallaron.length ? 1 : 0)
+// UNA POSPUESTA TAMBIEN ES SALIDA 1. No fallo nada, pero tampoco se comprobo nada de esa compuerta, y
+// quien mira el codigo de salida esta preguntando "¿puedo pushear?" — la respuesta con compuertas sin
+// correr es no. Confundir "no encontre defectos" con "no busque" es el error que este repo mas paga.
+process.exit(cortadoPor || fallaron.length || pospuestas.length ? 1 : 0)
