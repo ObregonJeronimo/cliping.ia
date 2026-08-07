@@ -175,6 +175,9 @@ export function build(ctx) {
     const ALTO_F = mundoH * 0.026
     firmaMat = materialMascara(tf.tex, nivelTexto(0.58))
     firmaMesh = new THREE.Mesh(new THREE.PlaneGeometry(ALTO_F * tf.ar, ALTO_F), firmaMat)
+    // Es la firma de la cita: texto que hay que poder LEER, asi que entra entera. Estaba sin declarar
+    // y era invisible para el censo, que buscaba `material.map` y esto lleva `materialMascara`.
+    firmaMesh.userData.encaja = true
     firmaMesh.position.set(MARGEN + (ALTO_F * tf.ar) / 2, yFirma - mundoH * 0.032, 0)
     g.add(firmaMesh)
   }

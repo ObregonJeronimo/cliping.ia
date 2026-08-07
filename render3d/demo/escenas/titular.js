@@ -266,6 +266,8 @@ export function build(ctx) {
     const ALTO_P = mundoH * 0.024
     matPie = materialMascara(tp.tex, nivelTexto(0.55))
     const mp = new THREE.Mesh(new THREE.PlaneGeometry(ALTO_P * tp.ar, ALTO_P), matPie)
+    // Mismo criterio que el pie de `sello`: lleva el dominio y entra entero.
+    mp.userData.encaja = true
     mp.position.set(MARGEN + (ALTO_P * tp.ar) / 2, yPie - mundoH * 0.030, 0)
     g.add(mp)
   }

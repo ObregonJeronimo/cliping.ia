@@ -126,6 +126,10 @@ export function build(ctx) {
     const ALTO_P = mundoH * 0.020
     matPie = materialMascara(tp.tex, nivelTexto(0.52))
     const mp = new THREE.Mesh(new THREE.PlaneGeometry(ALTO_P * tp.ar, ALTO_P), matPie)
+    // El pie lleva el DOMINIO del cliente y entra entero: un dominio cortado no se puede tipear. Es el
+    // mismo criterio que ya arreglo `pantalla` ("se leia .com.ar"). Sin declarar hasta hoy: el censo no
+    // veia las mallas con `materialMascara`.
+    mp.userData.encaja = true
     mp.position.set(0, -R - mundoH * 0.055, 0.3)
     g.add(mp)
   }

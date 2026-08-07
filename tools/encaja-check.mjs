@@ -89,7 +89,17 @@ try {
 // verdadero, medido, sustituyendo a uno que era mentira. Las 71 estan en 17 archivos —tarjetas 21,
 // pantalla 8, toro 7, apertura 6, destello 6, cierre 5, tipografia 5, y diez mas con 1 o 2— y se bajan
 // como se bajaron las otras: archivo por archivo, leyendo que quiso hacer cada escena.
-const TRINQUETE = 71
+//
+//   71 -> 66   los pies y rotulos de texto: `cita` (la firma), `marquesina` (el rotulo), `sello` y
+//              `titular` (el dominio del cliente — un dominio cortado no se puede tipear, mismo
+//              criterio que ya arreglo `pantalla`), y el espejo de `vitrina`.
+//
+//              EL ESPEJO SE PROBO AL REVES PRIMERO: se declaro `encaja` razonando que mide lo mismo
+//              que el logo, y E-ENCAJE-REAL lo refuto —se sale en 5 de 165 cuadros con
+//              bienestar/basecamp, hasta 1.115—. Va mas abajo que el logo y la vitrina se mueve: mismo
+//              ancho no es misma trayectoria. Queda `sangra`, que ademas es lo correcto: el reflejo se
+//              desvanece hacia abajo por diseño, asi que su borde no es un borde que alguien lea.
+const TRINQUETE = 66
 
 const sinClasificar = censo.filas.filter(f => f.clase === 'SIN CLASIFICAR')
 const n = sinClasificar.length

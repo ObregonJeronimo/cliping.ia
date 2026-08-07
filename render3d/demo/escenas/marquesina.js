@@ -184,6 +184,9 @@ export function build(ctx) {
   const matRot = materialMascara(rot.tex, nivelTexto(0.55))
   const ALTO_ROT = 0.24
   const mRot = new THREE.Mesh(new THREE.PlaneGeometry(ALTO_ROT * rot.ar, ALTO_ROT), matRot)
+  // El rotulo entra entero: es texto, y ademas corto y de ancho acotado (solo numeros, como dice la
+  // linea de arriba). Estaba sin declarar porque el censo no veia `materialMascara`.
+  mRot.userData.encaja = true
   mRot.position.set(-mundoW * 0.5 + 0.22 + (ALTO_ROT * rot.ar) / 2, mundoH * 0.30, 0.4)
   g.add(mRot)
 

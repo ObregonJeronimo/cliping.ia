@@ -333,6 +333,18 @@ export function build(ctx) {
           if (gl_FragColor.a < 0.004) discard;
         }`,
     }))
+  // SANGRA, Y SE PROBO AL REVES PRIMERO. Se declaro `encaja` razonando que mide exactamente
+  // `anchoLogo` —lo mismo que el logo, que si entra entero— y E-ENCAJE-REAL lo refuto: se sale en 5 de
+  // 165 cuadros con `bienestar`/basecamp (llega a 1.115) y en 3 de 190 con `lujo`/ANTHEM (1.141). El
+  // razonamiento fallaba porque el espejo va MAS ABAJO que el logo y la vitrina se mueve: mismo ancho
+  // no es misma trayectoria.
+  //
+  // Y sangrar es lo correcto para esto, no un permiso de conveniencia: el reflejo ya se desvanece hacia
+  // abajo por diseño —"se apaga hacia abajo: el reflejo vive pegado a la superficie y se pierde en el
+  // vidrio"—, asi que su borde inferior no es un borde que alguien lea. El logo, que si hay que leer,
+  // sigue declarando `encaja`.
+  espejo.userData.sangra = true
+  espejo.userData.tipoImagen = 'recorte'
   gr.add(espejo)
 
   const yLogo = TAPA + HUECO + altoLogo / 2
