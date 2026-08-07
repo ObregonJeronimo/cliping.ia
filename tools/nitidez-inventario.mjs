@@ -121,6 +121,7 @@ const ids = pedidos.length ? pedidos : DIRS.flatMap(d =>
 const filas = []
 const sinDeclarar = new Map()   // escena -> mallas que dibujan textura sin decir de que tipo
 let construcciones = 0
+let enFundido = 0
 const _caja = new THREE.Box3()
 const _v = new THREE.Vector3()
 const _adelante = new THREE.Vector3()
@@ -191,6 +192,34 @@ for (const [nombreAire, aire] of Object.entries(AIRES)) {
           for (let p = o.parent; p && vis; p = p.parent) vis = p.visible
           const op = o.material.opacity != null ? o.material.opacity : 1
           if (!vis || op <= 0.02) return
+
+          // SOLO DENTRO DE LA VENTANA QUE LA ESCENA DECLARA, si la declara. Y esto no es una
+          // concesion: es lo que separa un defecto de un gesto.
+          //
+          // Costo un diagnostico entero. `mosaico` daba 1.86x contra su tope de 1.4 y la causa NO era
+          // ni la construccion (geomW == permitido, exacto), ni la escala (1.000), ni el giro (3 grados),
+          // ni el dolly de la camara (aporta 1.001x: al instante del pico ya volvio a reposo). Era que
+          // la malla estaba en z=4.6, o sea 25% mas cerca que el plano z=0 contra el que `topeNitido`
+          // mide — y esta ahi porque la escena la MANDA ahi al final: "SALEN HACIA LA CAMARA,
+          // escalonadas. El corte siguiente se siente ganado", volando a z=5.5 mientras se desvanecen.
+          //
+          // Medir la nitidez de una pieza que sale volando y en fundido es medir lo que nadie mira. La
+          // escena ya dice donde quiere ser juzgada, con el mismo `encajaEntre` que usa `encuadre-check`
+          // —ahi por la razon simetrica: no juzgar la ENTRADA—. Aca se respeta la misma declaracion.
+          const vent = o.userData.encajaEntre
+          const frac = i / N
+          if (Array.isArray(vent) && vent.length === 2 && (frac < vent[0] || frac > vent[1])) return
+
+          // Y NO SE JUZGA UNA PIEZA EN FUNDIDO, que es el criterio que no depende de que la escena
+          // declare nada. `mosaico` le pone `encajaEntre` a las celdas de la grilla y NO a la banda
+          // destacada —la que lleva el logo, justo la que pica— asi que filtrar solo por la ventana
+          // declarada dejaba pasar exactamente el caso que habia que explicar.
+          //
+          // El criterio: una pieza que se esta desvaneciendo no se esta ofreciendo para leer. La
+          // nitidez es una promesa sobre lo que el espectador puede mirar; sobre lo que sale de cuadro
+          // en medio beat y en fundido no hay promesa que romper. Se cuenta cuantas muestras quedan
+          // afuera por esto, para que no sea un filtro invisible que baje los numeros solo.
+          if (op < 0.99) { enFundido++; return }
 
           _caja.setFromObject(o)
           if (_caja.isEmpty()) return
@@ -266,6 +295,12 @@ for (const f of orden) {
     + f.nombre.slice(0, 22)
     + (f.rot > 0.05 ? `  (girada ${(f.rot * 180 / Math.PI).toFixed(0)}deg en el mundo: la caja mide de mas)` : ''))
 }
+// EL FILTRO SE DECLARA CON SU NUMERO. Un filtro que baja los resultados y no se anuncia es la forma
+// mas comoda de que una herramienta diga lo que uno queria oir.
+console.log(`\n  muestras descartadas por estar en fundido: ${enFundido}. Son piezas saliendo de cuadro`)
+console.log('  con la opacidad cayendo — sobre eso no hay promesa de nitidez que romper. Sin este')
+console.log('  filtro `mosaico` marca 1.86x, y ese pico es su gesto de salida hacia la camara.')
+
 const dur = orden.filter(f => f.mag > 2)
 console.log(`\n  por encima de 2x: ${dur.length} de ${porEscena.size}. `
   + `topeNitido topea en 1.4x, asi que ~1.4 es la marca de que YA esta topeada.`)
@@ -279,7 +314,7 @@ if (fuera.length) {
   for (const [escena, n] of fuera.slice(0, 14)) console.log(`    ${escena.padEnd(16)} ${n} mallas`)
   if (fuera.length > 14) console.log(`    ... y ${fuera.length - 14} mas`)
   console.log('    Algunas son texturas procedurales y estan bien fuera. Otras son imagen del CLIENTE')
-  console.log('    armada a mano —`cubo` hace sus caras asi, y los heroes de la tira tambien— y esas')
-  console.log('    tendrian que declararse para entrar. Mientras no lo hagan, el veredicto de arriba')
-  console.log('    cubre 7 escenas, no todas las que muestran imagen.')
+  console.log('    armada a mano —`cubo` hacia sus caras asi hasta que se declaro— y esas tendrian que')
+  console.log(`    declararse para entrar. Mientras no lo hagan, el veredicto de arriba cubre`)
+  console.log(`    ${porEscena.size} escenas, no todas las que muestran imagen.`)
 }
