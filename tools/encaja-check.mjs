@@ -66,7 +66,30 @@ try {
 // puede entrar al motor sin decir si tiene que entrar entera o si sangra a proposito. Eso era el punto
 // del pendiente: convertir un juicio de composicion caso por caso en algo que se declara al escribir
 // la escena y se revisa archivo por archivo.
-const TRINQUETE = 0
+//
+//    0 -> 71   EL CERO ERA FALSO, Y NO PORQUE ALGUIEN HAYA HECHO TRAMPA: EL CENSO ESTABA CIEGO.
+//
+// `encaja-inventario` decidia "esta malla muestra una imagen" preguntando por `material.map`, y 19 de
+// las 20 escenas dibujan su texto con `materialMascara` —o con el `matWipe` de `tipografia`—, que son
+// ShaderMaterial escritos a mano y llevan la textura en `uniforms.map.value`. Lo mismo la tira en
+// `telefono`, `ventana` y `portatil`. Todas esas quedaban fuera del censo, y el JSON que lee esta
+// compuerta sale FILTRADO por ese mismo criterio (`filas: conImagen`).
+//
+// O sea: una compuerta cuyo trabajo entero es cazar mallas sin declarar estaba ciega justo a 71 de
+// ellas, y su cero se leia como "esta todo clasificado". El cero tranquilizador otra vez, esta vez en
+// la compuerta que lo persigue.
+//
+// LO CONFIRMA UN NUMERO QUE ESTE REPO YA HABIA DADO POR IRREPRODUCIBLE. `docs/ENCAJE-ESTADO.md` dice:
+// "El pendiente decia 'hoy solo 16 de 161 mallas con textura declaran si tienen que entrar enteras'.
+// Ese 161 no se pudo reproducir con ningun metodo. El censo propio da 71 mallas con imagen". Con el
+// censo arreglado da **161 exacto**. El numero del pendiente era correcto desde el principio y lo que
+// fallaba era el instrumento — que es la misma leccion que el resto de esta sesion, tres veces.
+//
+// EL TRINQUETE VUELVE A 71 Y NO ES UN RETROCESO DEL MOTOR: no se rompio ni una escena. Es el numero
+// verdadero, medido, sustituyendo a uno que era mentira. Las 71 estan en 17 archivos —tarjetas 21,
+// pantalla 8, toro 7, apertura 6, destello 6, cierre 5, tipografia 5, y diez mas con 1 o 2— y se bajan
+// como se bajaron las otras: archivo por archivo, leyendo que quiso hacer cada escena.
+const TRINQUETE = 71
 
 const sinClasificar = censo.filas.filter(f => f.clase === 'SIN CLASIFICAR')
 const n = sinClasificar.length

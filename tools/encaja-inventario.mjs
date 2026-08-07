@@ -185,11 +185,28 @@ async function censarEscena(id, juego) {
       raiz.traverse(o => {
         if (!o.isMesh || vistos.has(o)) return
         vistos.add(o)
-        // LA PREGUNTA ES SI MUESTRA UNA IMAGEN. El texto tambien se dibuja en un canvas y llega como
-        // `map`, asi que esto incluye texto a proposito: un titular cortado por el borde es tan
-        // defecto como un logo cortado, y la clasificacion tiene que decidir sobre los dos.
+        // LA PREGUNTA ES SI MUESTRA UNA IMAGEN. El texto tambien se dibuja en un canvas, asi que esto
+        // incluye texto a proposito: un titular cortado por el borde es tan defecto como un logo
+        // cortado, y la clasificacion tiene que decidir sobre los dos.
+        //
+        // Y NO ALCANZA CON `.map`, aunque el comentario que estaba aca decia que el texto "llega como
+        // map". Llega asi el que dibuja `planoTexto`; el que REVELA un barrido no. `materialMascara`
+        // —que usan 19 de las 20 escenas— y el `matWipe` de `tipografia` son ShaderMaterial escritos a
+        // mano y llevan la textura en `uniforms.map.value`. Lo mismo la tira en `telefono`, `ventana` y
+        // `portatil`. Contarlas como "sin imagen" hacia que este censo informara de menos.
+        //
+        // Es el mismo punto ciego encontrado el mismo dia en `heroes-audit` (decia "muestra: no" para
+        // tres heroes que muestran), en `nitidez-inventario` (los dejaba fuera de la medicion Y de la
+        // lista de faltantes) y en `fondo-check` (ahi es una COMPUERTA: ver docs/HEROES-AUDIT.md).
+        //
+        // NO CAMBIA EL VEREDICTO DE `encaja-check`, y conviene saberlo: esa compuerta mira `clase`, que
+        // sale de `userData` y no de aca. Esto corrige un numero que se informa, no una regla.
         const mats = Array.isArray(o.material) ? o.material : [o.material]
-        const conMapa = mats.some(m => m && m.map)
+        const conMapa = mats.some(m => m && (m.map
+          || (m.uniforms && Object.keys(m.uniforms).some(k => {
+            const v = m.uniforms[k] && m.uniforms[k].value
+            return v && v.isTexture
+          }))))
         const u = o.userData || {}
         const clase = u.encaja ? 'encaja' : (u.sangra ? 'sangra' : (u.relleno ? 'relleno' : 'SIN CLASIFICAR'))
         filas.push({ escena: id, malla: o.name || '(sin nombre)', clase, conMapa, rol: u.rol || '', tipo: u.tipoImagen || '(sin tipo)', origen: u._origen || '(lo crea el kit)' })

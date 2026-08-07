@@ -8,9 +8,37 @@ la geometría.
 ## El número, y por qué no coincide con el que estaba anotado
 
 El pendiente decía *"hoy sólo 16 de 161 mallas con textura declaran si tienen que entrar enteras"*.
-**Ese 161 no se pudo reproducir con ningún método.** El censo propio da **71 mallas con imagen**, y
-arrancó con **12 clasificadas**. Queda dicho así en vez de forzar que coincidan: el método de este
-censo está declarado, es repetible y cualquiera puede correrlo.
+Acá decía que **ese 161 no se pudo reproducir con ningún método** y que el censo propio daba **71
+mallas con imagen** — con la decisión, correcta en su momento, de no forzar que coincidieran.
+
+### Se reprodujo: son 161 exactas, y el que estaba mal era el censo
+
+El censo decidía *"esta malla muestra una imagen"* preguntando por `material.map`. **19 de las 20
+escenas dibujan su texto con `materialMascara`** —o con el `matWipe` de `tipografia`—, que son
+`ShaderMaterial` escritos a mano y llevan la textura en `uniforms.map.value`. Lo mismo la tira en
+`telefono`, `ventana` y `portatil`. Nada de eso entraba.
+
+Con la búsqueda ampliada a los uniforms: **161 mallas con imagen, exacto**. El número del pendiente era
+correcto desde el principio.
+
+**Y eso mueve el estado real de la tarea:** no hay 0 sin clasificar, hay **71**. La compuerta daba
+verde porque el censo del que se alimenta sale filtrado por ese mismo criterio (`filas: conImagen`) —
+o sea que una compuerta cuyo trabajo entero es cazar mallas sin declarar estaba ciega justo a ellas.
+
+El trinquete vuelve a 71. **No es un retroceso del motor: no se rompió ni una escena.** Es el número
+verdadero sustituyendo a uno que era mentira.
+
+| archivo | sin clasificar |
+|---|---|
+| `tarjetas` | 21 |
+| `pantalla` | 8 |
+| `toro` | 7 |
+| `apertura` | 6 |
+| `destello` | 6 |
+| `cierre` | 5 |
+| `tipografia` | 5 |
+| `columna`, `mesa`, `ventana` | 2 c/u |
+| `cita`, `marquesina`, `portatil`, `sello`, `telefono`, `titular`, `vitrina` | 1 c/u |
 
 ```bash
 node tools/encaja-inventario.mjs
