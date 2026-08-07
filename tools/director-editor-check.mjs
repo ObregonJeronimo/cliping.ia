@@ -13,6 +13,22 @@
 //                  se sanean (no se cuelan) · una curva de menos de 2 keys se ignora entera
 //   4. render      el video editado se DIBUJA: ni frame vacio ni capa que teletransporta
 //   5. tolerancia  basura pura (null, strings, arrays de arrays) no rompe nada y se reporta
+//
+// ES LA COMPUERTA MAS CARA DE LAS 42, Y NO ES UNA FUGA — buscado y descartado, se anota para que no
+// se vuelva a buscar. Medida el 7/8/2026 por el registro de costos: **1565 MB y 421 s**, o sea la mas
+// cara en memoria y en tiempo a la vez (siete de los quince minutos del guard entero).
+//
+// Las dos trampas conocidas de este repo YA estan cubiertas acá:
+//   · el lienzo principal (`cv`) se crea UNA vez a nivel de modulo, no por cuadro. Es justo el defecto
+//     que si tenia `urvid1-test`, donde 360 lienzos apilados daban 1713 MB.
+//   · los pixeles se leen con `lib/pixeles.mjs` y no con `getImageData`, que en @napi-rs/canvas no
+//     libera nunca su buffer. Y `medirObjeto` cachea el bbox por nombre, asi que `makeCanvas` se
+//     llama 16 veces en total y no una por cuadro.
+//
+// El costo es TRABAJO REAL: ~15 paginas x 3 seeds x 9 ataques son ~405 casos, y cada uno recorre un
+// tercio de sus cuadros dibujandolos y barriendolos pixel por pixel. La unica palanca para abaratarla
+// es bajar la cobertura —menos casos, o submuestrear el barrido de pixeles—, o sea pagar con
+// deteccion. No es una optimizacion gratis esperando a que alguien la encuentre.
 import { createCanvas, GlobalFonts } from '@napi-rs/canvas'
 import { readdirSync, readFileSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
