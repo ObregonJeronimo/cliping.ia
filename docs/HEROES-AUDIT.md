@@ -17,8 +17,28 @@ empieza con guion bajo— se perdía, y `tira: !!pm._tira` daba `false` siempre.
 
 Lo que esto NO arregla, y está bien que no lo haga: una página que de verdad no da recortes ni tira
 sigue en 12 de 18. Un héroe sin material que finge tenerlo dibuja rectángulos con la paleta de la
-marca, que es lo que `mosaico` prohíbe en su cabecera. Ahí el camino es **subir la tasa de
-extracción**, no relajar el requisito. Dato para eso: de 16 páginas cosechadas, 3 dieron 0 recortes.
+marca, que es lo que `mosaico` prohíbe en su cabecera. Ahí el camino es subir la tasa de extracción,
+no relajar el requisito.
+
+### El dato que sostenía eso estaba mal contado
+
+Acá decía *"de 16 páginas cosechadas, 3 dieron 0 recortes"*, y sonaba a que la extracción falla una
+de cada cinco veces. Contadas de nuevo, mirando `site.captura.estado` en vez del recuento a secas:
+
+| página | estado | http | imágenes | qué es |
+|---|---|---|---|---|
+| `despegar.com.ar` | `botwall` | **403** | 0 | no la vimos: muro anti-bot |
+| `elcorteingles.es` | `botwall` | **403** | 0 | no la vimos: muro anti-bot |
+| `berkshirehathaway.com` | `ok` | 200 | 0 | la vimos entera y no tiene imágenes |
+
+Dos de los tres ceros no son fallas de extracción: son páginas que nunca llegamos a ver, y
+`captura-check` ya las rechaza por eso mismo. El tercero es una captura sana de un sitio que es texto
+plano — la extracción hizo bien su trabajo, no había nada que sacar.
+
+**Así que el número real es 1 de 14 alcanzables, y ese uno no tiene arreglo del lado nuestro.** La
+tasa de extracción sigue valiendo la pena, pero este dato ya no es el argumento: había que medirlo
+antes de citarlo. Es el mismo error que el resto de este documento persigue —un cero que parecía
+significar una cosa y significaba otra— sólo que esta vez lo cometió el documento.
 
 ## La auditoría geométrica
 
