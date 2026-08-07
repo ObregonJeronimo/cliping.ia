@@ -42,23 +42,42 @@ if (!filas.length) {
     : 'No hay mediciones de esta maquina todavia.')
   process.exit(0)
 }
+// SOLO LAS ULTIMAS CORRIDAS, IGUAL QUE `costoDe`. Esto estaba distinto de los dos lados y era un
+// defecto real, no un detalle de estilo: `costoDe` —lo que USA el guard para decidir si arranca— mira
+// las ultimas 5, y esta tabla —lo que LEE una persona para avisar— miraba TODO el historial. La misma
+// pregunta contestada con datos distintos segun quien la haga.
+//
+// Y el sintoma ya habia aparecido: esta tabla informaba `urvid1-qa` con un peor caso de 6426 MB, que
+// es la corrida ANTERIOR a que se le arreglara la fuga. La corrida de despues pidio 1015. Avisar con
+// 6426 manda a cerrar aplicaciones por un problema que ya no existe — y es justo lo que la nota de
+// `costoDe` explica que hay que evitar: "un historial que nunca olvida convierte cada fuga arreglada
+// en una tarea prohibida para siempre".
+//
+// Se muestra ademas cuantas corridas hay en total, para que se vea que la ventana es una ventana.
+const VENTANA = 5
 const porTarea = new Map()
 for (const f of filas) {
   const k = String(f.quien).split(' ').slice(0, 3).join(' ')
-  const uso = f.arrancoConMb - f.minimoMb
-  const q = porTarea.get(k) || { n: 0, usos: [], segs: [] }
-  q.n++
-  if (Number.isFinite(uso) && uso > 0) q.usos.push(uso)
-  if (f.segundos) q.segs.push(f.segundos)
+  const q = porTarea.get(k) || { total: 0, recientes: [] }
+  q.total++
+  q.recientes.push(f)
+  if (q.recientes.length > VENTANA) q.recientes.shift()
   porTarea.set(k, q)
 }
+for (const q of porTarea.values()) {
+  q.n = q.recientes.length
+  q.usos = q.recientes.map(f => f.arrancoConMb - f.minimoMb).filter(u => Number.isFinite(u) && u > 0)
+  q.segs = q.recientes.map(f => f.segundos).filter(Boolean)
+}
 console.log('tarea'.padEnd(40) + 'corridas   pidio tipico   pidio peor   dura')
+console.log(`  "corridas" es ultimas/total: solo las ultimas ${VENTANA} cuentan, para que una fuga ya`)
+console.log('  arreglada deje de prohibir la tarea para siempre (mismo criterio que usa el guard).\n')
 for (const [k, q] of [...porTarea].sort((a, b) => Math.max(0, ...b[1].usos) - Math.max(0, ...a[1].usos))) {
   const tip = q.usos.length ? Math.round(q.usos.reduce((a, b) => a + b, 0) / q.usos.length) : null
   const peor = q.usos.length ? Math.max(...q.usos) : null
   const seg = q.segs.length ? Math.round(q.segs.reduce((a, b) => a + b, 0) / q.segs.length) : null
   console.log(k.slice(0, 39).padEnd(40)
-    + String(q.n).padStart(5)
+    + `${q.n}/${q.total}`.padStart(5)
     + (tip === null ? '        (sin dato)' : `${String(tip).padStart(12)} MB`)
     + (peor === null ? '            ' : `${String(peor).padStart(11)} MB`)
     + (seg === null ? '' : `   ${seg} s`))
