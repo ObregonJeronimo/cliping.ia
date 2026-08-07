@@ -89,16 +89,20 @@ function tejido(n) {
     const h = 700, w = Math.max(2, Math.round(h * ar[i % ar.length]))
     const t = new THREE.CanvasTexture(createCanvas(w, h))
     t.image = { width: w, height: h }
-    m.set('f' + i, t); TEXS.add(t)
+    m.set('f' + i, t); TEXS.add(t); if (t.image) IMGS.add(t.image)
   }
   const tira = new THREE.CanvasTexture(createCanvas(4, 4))
   tira.image = { width: 720, height: 6240 }
-  m.set('tira', tira); TEXS.add(tira); texTira = tira
+  m.set('tira', tira); TEXS.add(tira); texTira = tira; IMGS.add(tira.image)
   return m
 }
 // Se guardan las texturas de prueba para reconocerlas despues: si una malla lleva una de estas, esta
 // mostrando material del cliente, sin importar por que camino la haya puesto la escena.
 const TEXS = new Set()
+// Las IMAGENES de esas texturas, para reconocer tambien a sus CLONES. `Texture.clone()` comparte la
+// fuente, asi que la identidad de "esto es la pagina del cliente" vive en la imagen y no en el objeto
+// textura. Ver la nota larga donde se calcula `muestra`.
+const IMGS = new Set()
 let texTira = null
 const N_ELS = 12
 const ROLES = ['logo', 'tarjeta', 'foto', 'cta', 'tarjeta', 'foto', 'cta', 'tarjeta', 'foto', 'tarjeta', 'foto', 'cta']
@@ -169,8 +173,39 @@ async function auditar(id, juego, nombreAire) {
         // `tipoImagen === 'recorte'`, que lo declara `planoRecorte`, y por eso decia "no" para
         // `telefono`, `ventana`, `portatil` —que dibujan la TIRA— y para `cubo`, que arma sus caras a
         // mano. Los cuatro muestran la pagina del cliente; el que no la veia era el instrumento.
-        if (mat && mat.map && (mat.map === texTira || (o.userData && o.userData.tipoImagen === 'recorte')
-          || TEXS.has(mat.map))) muestra = true
+        //
+        // Y ESE ARREGLO ARREGLO SOLO LA MITAD, que es por lo que `docs/HEROES-AUDIT.md` seguia
+        // anotando como limite sin causa que "telefono, ventana y portatil dan muestra: no aunque
+        // dibujan la tira". Ampliar de `tipoImagen` a `mat.map === texTira` alcanza para `cubo`, que
+        // SI tiene `mat.map`. Los otros tres no tienen `map` en absoluto: llevan la tira en
+        // `uniforms.map.value` de un ShaderMaterial escrito a mano, porque necesitan controlar el
+        // desplazamiento y three aplica `repeat`/`offset` solo a sus propios materiales.
+        //
+        // O sea que la condicion pedia `mat.map` y despues preguntaba cual era: los tres salian en la
+        // primera mitad y nunca llegaban a la segunda. Mismo punto ciego que tenia el censo de
+        // nitidez, encontrado el mismo dia y en tres herramientas mas.
+        const texturasDe = (m) => {
+          const t = []
+          if (m.map) t.push(m.map)
+          if (m.uniforms) for (const k of Object.keys(m.uniforms)) {
+            const v = m.uniforms[k] && m.uniforms[k].value
+            if (v && v.isTexture) t.push(v)
+          }
+          return t
+        }
+        // Y SE COMPARA POR LA IMAGEN, NO POR EL OBJETO TEXTURA. `ventana` hace `fuente.clone()` —y lo
+        // explica: `texturas` es un Map COMPARTIDO y `offset`/`repeat` son estado de la textura, asi
+        // que dos escenas usando la misma se pisarian el scroll. `pantalla` clona por lo mismo. El
+        // clon es otro objeto, asi que `t === texTira` y `TEXS.has(t)` fallan los dos.
+        //
+        // Pero `Texture.clone()` comparte la FUENTE: el clon y el original apuntan a la misma `image`.
+        // O sea que la identidad que importa —"¿esto es la pagina del cliente?"— vive ahi y no en el
+        // objeto textura. Con la comparacion por objeto, `ventana` era el ultimo que seguia diciendo
+        // "muestra: no" despues de arreglar a los otros dos.
+        const esDelCliente = (t) => t && (t === texTira || TEXS.has(t)
+          || (t.image && IMGS.has(t.image)))
+        if (mat && texturasDe(mat).some(esDelCliente)) muestra = true
+        if (mat && mat.map && o.userData && o.userData.tipoImagen === 'recorte') muestra = true
         caja.setFromObject(o)
         if (caja.isEmpty()) return
         // Caja proyectada: se toman los 8 vertices, se descartan los que estan DETRAS de la camara

@@ -70,11 +70,29 @@ Se listan porque cada una parecía un hallazgo sólido:
 son trazos finos, y la cobertura mide áreas de caja. Una composición de líneas siempre va a puntuar
 bajo aunque llene el cuadro. **La tabla sirve para elegir dónde mirar, no para decidir qué está mal.**
 
-### Límite que queda
+### El límite que quedaba, cerrado — y eran DOS causas
 
-`telefono`, `ventana` y `portatil` dan `muestra: no` aunque dibujan la tira. Es del instrumento, no de
-los héroes — **confirmado con render**: `telefono` muestra la página de basecamp.com entera y legible
-en un móvil (cuadro 500).
+Acá decía que `telefono`, `ventana` y `portatil` daban `muestra: no` aunque dibujan la tira, que era
+*"del instrumento, no de los héroes"* y que estaba **confirmado con render** (`telefono` muestra
+basecamp.com entera y legible, cuadro 500). Cierto todo, pero la causa nunca se había buscado. Son dos,
+y la segunda sólo aparece después de arreglar la primera:
+
+1. **La textura no siempre está en `material.map`.** Los tres llevan la tira en `uniforms.map.value` de
+   un `ShaderMaterial` escrito a mano — lo necesitan porque three aplica `repeat`/`offset` sólo a sus
+   materiales de fábrica. La condición pedía `mat.map` *antes* de preguntar cuál era, así que salían en
+   la primera mitad y nunca llegaban a la segunda. Un arreglo anterior había ampliado de `tipoImagen`
+   a `mat.map === texTira`, que alcanzó para `cubo` —que sí tiene `map`— y no para éstos.
+2. **`ventana` no usa la tira: usa un `clone()` de la tira**, y lo explica en su propia línea 110 (el
+   `Map` de texturas es compartido y `offset`/`repeat` son estado de la textura, así que dos escenas
+   se pisarían el scroll). `pantalla` clona por lo mismo. El clon es otro objeto, así que comparar por
+   identidad de textura falla — **pero `Texture.clone()` comparte la fuente**, o sea la `image`. Ahí
+   vive la identidad que importa.
+
+**Medido: `muestra` pasa de 2 héroes a 6** — `mosaico`, `cubo`, `vitrina`, `telefono`, `portatil` y
+`ventana`.
+
+Y el mismo punto ciego apareció el mismo día en `nitidez-inventario` (ver `docs/NITIDEZ-ESTADO.md`),
+donde era peor: los dejaba fuera de la medición **y** fuera de la lista de "no se midió".
 
 ## Auditado con render de verdad
 
