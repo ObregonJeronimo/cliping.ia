@@ -179,6 +179,13 @@ export function build(ctx) {
     // a 0.660 del semicuadro. Declararlo no cambia nada hoy y convierte en FALLO cualquier cambio de
     // LADO, de UTIL o del tumbo que la saque.
     lam.userData.encaja = true
+    // Y DECLARADA COMO RECORTE, que es lo que es: la imagen de la pagina del cliente. `planoRecorte` lo
+    // pone solo, pero esta cara se arma a mano y por eso quedaba sin etiqueta — invisible para todo lo
+    // que filtra por `tipoImagen`. Ya costo dos veces: `heroes-audit` informaba `muestra: no` para
+    // `cubo` aunque muestra, y `nitidez-inventario` lo dejaba en la lista de "no se midio" junto con
+    // 9084 mallas mas. Declararlo no cambia un pixel; lo que cambia es que el instrumento pueda verlo.
+    // Se espera que mida ~1.4x, que es el tope que `topeNitido` le pone doce lineas mas arriba.
+    lam.userData.tipoImagen = 'recorte'
     grupoCara.add(lam)
 
     // Un filete de acento en el canto inferior de cada cara. Es el detalle que hace que las seis se
