@@ -53,6 +53,35 @@ Los dos héroes que muestran la **página entera** —`telefono` y `portatil`—
 sana. Coincide con lo único que había antes sobre esto, que era una inspección visual: *"telefono
 sobre basecamp.com, cuadro 500, muestra la página real, texto nítido"*. Ahora está medido.
 
+## El techo de 1,4 es sobre lo CONSTRUIDO, no sobre lo que se ve
+
+Esto no es un defecto de ninguna escena: es una propiedad del diseño que conviene saber antes de leer
+la tabla. `topeNitido` topea el ancho con el que se **construye** la malla. Lo que pasa después
+—una escala de énfasis, la cámara acercándose— multiplica encima. Sondeado escena por escena, con la
+cuenta cerrando al segundo decimal:
+
+| escena | medido | = 1,4 × | qué lo multiplica |
+|---|---|---|---|
+| `mosaico` | 1,69 | ×1,17 | el destaque de escala 1,13 más el rebote de su *ease* (línea 361) |
+| `columna` | 1,58 | ×1,15 | el foco del centro: `1 + FOCO * exp(-y²/2σ²)` (línea 300) |
+| `rafaga` | 1,48 | ×1,05 | escala 1,052 |
+| `vitrina` | 1,47 | ×1,02 | la cámara, que se acerca 0,45 unidades |
+| `cubo` / `telefono` | 1,60 / 1,59 | — | giro de 64° y 30°: la caja alineada a los ejes mide de más |
+
+**Las dos escalas están declaradas y comentadas en su propio archivo.** Son decisiones de arte: la
+pieza que la escena señala crece.
+
+Es la misma familia que ya obligó a escribir `cuadroMasAngosto` —*"un ancho declarado en unidades de
+MUNDO no dice lo que se ve"*— y `magnificaInclinado`. La diferencia: aquellas dos se arreglaron porque
+el efecto era que algo **se salía del cuadro**, que es binario. Acá el efecto es que el máximo
+entregado llega a **1,69x contra el 1,4 declarado**, un 21% por encima, y sólo en el instante del
+énfasis y sobre la pieza destacada.
+
+**Queda como decisión de producto, no técnica.** Si se quisiera que el 1,4 valga sobre lo VISTO,
+`topeNitido` tendría que recibir la escala máxima que la escena va a aplicar, y las piezas se
+construirían ~13% más chicas para llegar a 1,4 justo en el foco. Eso cambia la composición de cuatro
+escenas, así que no se hace sin decidirlo.
+
 ## Falsos positivos ya comprobados — no volver a investigarlos
 
 ### El 1,86x de `mosaico` era su gesto de salida
