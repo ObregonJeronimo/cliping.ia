@@ -5,10 +5,27 @@
 // hasta 3001 MB. Con un juego abierto no entra, y el vigilante se niega a arrancar — que es lo
 // correcto, pero deja el trabajo parado.
 //
-// Corriéndolas de a una el pico es el de la compuerta MÁS CARA, no la suma: `fondo-check` pide 1052
-// MB, `tira-check` 955, `encuadre-check` 468, `guion-check` 5. El sistema recupera la memoria al
-// cerrar cada proceso — que es exactamente la técnica que varias compuertas ya usan por dentro
-// ("cada una en su propio proceso para que la memoria vuelva al sistema").
+// Corriéndolas de a una el pico es el de la compuerta MÁS CARA, no la suma. El sistema recupera la
+// memoria al cerrar cada proceso — que es exactamente la técnica que varias compuertas ya usan por
+// dentro ("cada una en su propio proceso para que la memoria vuelva al sistema").
+//
+// CUÁL ES LA MÁS CARA: NO SE SABÍA, Y ESTE ARCHIVO AFIRMABA QUE SÍ. Acá decía "el pico es
+// `fondo-check`, 1052 MB", y en CLAUDE.md lo mismo. Era falso, y de la peor manera: no estaba
+// inventado, estaba leído del máximo de `npm run costo` — una tabla que sólo tenía las cuatro o cinco
+// compuertas que alguien había corrido A MANO con `npm run pesado`. Las otras 37 nunca se habían
+// medido por separado, así que el máximo de lo medido se presentó como el máximo de todo.
+//
+// Refutado por una corrida real: cortó en `urvid1-test.mjs` —que no figuraba en la tabla— con el
+// disponible cayendo de 3643 a 901 MB. Unos 2,7 GB, no 1052.
+//
+// Por eso ahora CADA compuerta anota su costo (`anotarCosto`), y a la vuelta `npm run costo` tiene las
+// 42 en vez de cinco. Es el mismo error que el repo ya documenta en otro lado con otro nombre: sacar
+// una conclusión de la ausencia de datos en vez de decir "no se midió".
+//
+// LO QUE ESE NÚMERO NO ES: no es "lo que pidió la compuerta". Es cuánto bajó el disponible del SISTEMA
+// mientras corría, así que incluye lo que hayan pedido el navegador, el juego o Discord en esos
+// segundos. Es la misma definición que ya usa toda la tabla y sirve para avisar —es el caso malo real
+// que se vio— pero atribuírselo entero a la compuerta sería otro dato falso con cara de medición.
 //
 // NO ES UN GUARD MÁS DÉBIL. Corre LAS MISMAS compuertas, en el MISMO orden, leídas del MISMO lugar:
 // el script `gates:crudo` de package.json. Si alguien agrega una compuerta a la cadena, ésta la corre
@@ -26,7 +43,7 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { tomar } from './lib/cerrojo.mjs'
-import { disponibleMb, entornoConTecho, vigilar, matarArbol, pisoPara } from './lib/memoria.mjs'
+import { disponibleMb, entornoConTecho, vigilar, matarArbol, pisoPara, anotarCosto } from './lib/memoria.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const RAIZ = join(HERE, '..')
@@ -57,6 +74,7 @@ console.log('  mismas compuertas que `npm run gates`, leidas de gates:crudo. Cam
 console.log('  no la cobertura: el pico pasa a ser el de la compuerta mas cara y no la suma de todas.\n')
 
 const fallaron = []
+const costos = []
 let okTotal = 0
 const t0 = Date.now()
 
@@ -98,6 +116,18 @@ for (let i = desde; i < PASOS.length && !cortadoPor; i++) {
   // EL COMANDO ENTERO EN UN STRING, no partido en argumentos. Con `shell: true` Node avisa que pasar
   // args por separado es riesgoso porque los concatena sin escapar (DEP0190), y aca el comando ya
   // viene como una linea de package.json: partirlo para que el shell lo vuelva a unir no aporta nada.
+  // EL MEDIDOR DE ESTE PASO. Es un segundo muestreo, aparte del vigilante: aquél mira toda la tanda y
+  // decide si matar; éste sólo anota el mínimo de ESTA compuerta para que el historial la aprenda.
+  // `os.freemem()` no cuesta nada (ver la nota larga en memoria.mjs), así que dos relojes de 250 ms no
+  // son un problema, y separarlos evita que medir el costo pueda alterar la decisión de cortar.
+  const tPaso = Date.now()
+  let minPaso = libre
+  const relojPaso = setInterval(() => {
+    const m = disponibleMb()
+    if (Number.isFinite(m) && m > 0 && m < minPaso) minPaso = m
+  }, 250)
+  relojPaso.unref?.()
+
   const r = await new Promise((res) => {
     const h = spawn(paso, {
       cwd: RAIZ, shell: true, env, stdio: ['ignore', 'pipe', 'pipe'],
@@ -109,6 +139,16 @@ for (let i = desde; i < PASOS.length && !cortadoPor; i++) {
     h.on('close', (status) => { procesoActual = null; res({ status, out }) })
     h.on('error', (e) => { procesoActual = null; res({ status: 1, out: String(e) }) })
   })
+  clearInterval(relojPaso)
+
+  // SE ANOTA MARCADA COMO CORTADA SI EL VIGILANTE MATÓ ESTE PASO, y no es un detalle: `costo.mjs`
+  // descarta las cortadas justamente porque su mínimo no es lo que la tarea pidió sino dónde estaba la
+  // máquina cuando alguien la mató. Sin esta marca, cada corte metería en el historial un "pidió
+  // muchísimo" falso, y el aviso de la próxima vez se construiría sobre él.
+  const segundos = Math.round((Date.now() - tPaso) / 1000)
+  anotarCosto(paso, { arrancoConMb: libre, minimoMb: minPaso, segundos, cortado: !!cortadoPor })
+  costos.push({ paso: etiqueta, pidio: libre - minPaso, segundos, cortado: !!cortadoPor })
+
   const salida = r.out
   // El mismo criterio de veredicto que usa `gates-guard`: una linea que arranca con el nombre de la
   // compuerta en mayusculas y dice OK. Ver la nota larga alla sobre por que no se cuenta por puntuacion.
@@ -129,6 +169,25 @@ const mins = ((Date.now() - t0) / 60000).toFixed(1)
 console.log(`\ngates-partido: ${okTotal} OK · ${fallaron.length} compuertas con FAIL · ${mins} min `
   + `· minimo de RAM disponible ${ojo.libreMinMb} MB (piso ${ojo.pisoMb}, total ${ojo.totalMb})`)
 if (cortadoPor) console.log(`gates-partido: CORTADO — ${cortadoPor}`)
+
+// LAS MÁS CARAS DE ESTA CORRIDA, dichas acá y no sólo guardadas en el historial. El número que hace
+// falta para decidir si el guard entra hoy es el de la compuerta más cara, y hasta ahora había que
+// deducirlo de `npm run costo` — donde faltaban 37 de las 42.
+const medidas = costos.filter(c => !c.cortado && Number.isFinite(c.pidio) && c.pidio > 0)
+if (medidas.length) {
+  const top = [...medidas].sort((a, b) => b.pidio - a.pidio).slice(0, 5)
+  console.log(`\n  las mas caras de esta corrida (${medidas.length} de ${costos.length} medidas):`)
+  for (const c of top) console.log(`    ${c.paso.padEnd(38)} ${String(c.pidio).padStart(6)} MB · ${c.segundos} s`)
+  console.log('    es cuanto bajo el DISPONIBLE DEL SISTEMA mientras corria, no lo que pidio la')
+  console.log('    compuerta sola: lo que hayan pedido el navegador o un juego en esos segundos va')
+  console.log('    incluido. Sirve para avisar —es el caso malo real— no para acusar a la compuerta.')
+}
+const sinMedir = costos.filter(c => c.cortado || !(c.pidio > 0))
+if (sinMedir.length) {
+  console.log(`\n  sin medicion util (${sinMedir.length}): ${sinMedir.map(c => c.paso).join(', ')}`)
+  console.log('    una cortada o una que termino antes de la primera muestra no aporta un costo, y')
+  console.log('    decirlo es el punto: un cero aca se leeria como "no consumio nada".')
+}
 if (fallaron.length) {
   for (const f of fallaron) {
     console.log(`\n--- [${f.i}] ${f.paso}`)

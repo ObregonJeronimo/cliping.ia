@@ -161,8 +161,17 @@ investigarlos.
   versión reducida: son las mismas 42, en el mismo orden, leídas del mismo `gates:crudo`. Lo único que
   cambia es el agrupamiento — la versión encadenada las mete a todas en un proceso de npm, así que la
   memoria se acumula hasta la última y el pico llega a **3001 MB**. De a una el pico es el de la
-  compuerta más cara (`fondo-check`, 1052 MB) y el sistema recupera la memoria al cerrar cada proceso.
-  Medido con un juego abierto: nunca bajó de 3363 MB libres, y tarda **la mitad** (15 min contra 30).
+  compuerta más cara, y el sistema recupera la memoria al cerrar cada proceso. Medido con un juego
+  abierto: nunca bajó de 3363 MB libres, y tarda **la mitad** (15 min contra 30).
+
+  **Cuál es la más cara: acá decía `fondo-check`, 1052 MB, y era falso.** No estaba inventado —salía
+  del máximo de `npm run costo`— pero esa tabla sólo tenía las cuatro o cinco compuertas que alguien
+  había corrido a mano con `npm run pesado`; las otras 37 nunca se habían medido por separado. Se
+  presentó *el máximo de lo medido* como *el máximo de todo*, que es el mismo error que este archivo
+  advierte en otros tres lugares con otro nombre. Lo refutó una corrida real del 7/8/2026: cortó en
+  `urvid1-test.mjs` —que no figuraba en la tabla— con el disponible cayendo de 3643 a 901 MB, o sea
+  unos **2,7 GB**. Ahora **cada compuerta anota su costo al correr**, así que después de un guard
+  completo `npm run costo` tiene las 42 y el número deja de ser una deducción.
 
   Mantiene el cerrojo, el techo de memoria de Node y el vigilante en vivo que mata el árbol si la
   memoria se desploma. Y si algo falla, las corre TODAS y te dice todo lo roto de una vez más cómo
