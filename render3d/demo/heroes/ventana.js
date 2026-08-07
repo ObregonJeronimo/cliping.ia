@@ -300,6 +300,13 @@ export function build(ctx) {
   const carcasa = new THREE.Mesh(geoCara, new THREE.ShaderMaterial({
     transparent: true, depthWrite: false, uniforms: uCarcasa(false), vertexShader: VERT, fragmentShader: FRAG,
   }))
+  // La cara de la ventana ES la pagina del cliente (el shader dibuja la barra y la pagina en una sola
+  // superficie, ver la nota de arriba). Iba en un uniform, asi que hasta hoy no la veia ni el censo de
+  // encaje ni el de nitidez ni `heroes-audit`.
+  carcasa.userData.tipoImagen = 'recorte'
+  // Sin `encaja`, medido: se sale en 98 de 117 cuadros y llega a 1.999 con `tecnico`/cliping-ia. La
+  // ventana se muestra GRANDE y encuadrada por la camara, asi que la mayor parte del tramo su cara
+  // excede el cuadro a proposito. Lo que corresponde es `encaja` + `encajaEntre` derivado del tween.
   carcasa.position.z = Z_CARA
   // LA PAGINA VA DE 0 A `yBarra`; lo de arriba es la barra del navegador (el shader, en `q.y / uYBar`).
   // `tools/tira-check.mjs` corre en Node y no compila GLSL, asi que esa frontera no la puede ver: se la

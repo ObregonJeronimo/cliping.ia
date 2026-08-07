@@ -99,7 +99,18 @@ try {
 //              bienestar/basecamp, hasta 1.115—. Va mas abajo que el logo y la vitrina se mueve: mismo
 //              ancho no es misma trayectoria. Queda `sangra`, que ademas es lo correcto: el reflejo se
 //              desvanece hacia abajo por diseño, asi que su borde no es un borde que alguien lea.
-const TRINQUETE = 66
+//   66 -> 64   el helper `chico()` de `mesa`, que declara en un solo lugar para sus dos llamadas.
+//
+//              EN LA MISMA TANDA SE PROBARON CINCO MAS Y LAS CINCO SE RECHAZARON, con su medicion
+//              anotada en cada archivo para no volver a intentarlo a ciegas:
+//                telefono  3.122 del cuadro (6 de 117)  · portatil 1.963 (71 de 117)
+//                ventana   1.999 (98 de 117)            · columna  1.015 (3 de 88)
+//              Los tres aparatos no desbordan: ENTRAN VOLANDO desde cerca de la camara, que es el
+//              gesto. Ahi no va `sangra` —la pagina si tiene que entrar entera cuando toca leerla—
+//              sino `encaja` + `encajaEntre` con la ventana DERIVADA del tween de entrada. `columna`
+//              es otra cosa: 1,5% de exceso, y sus rotulos estan anclados contra el cuadro EN REPOSO
+//              mientras la escena acerca la camara — si es eso, el arreglo es `cuadroMasAngosto`.
+const TRINQUETE = 64
 
 const sinClasificar = censo.filas.filter(f => f.clase === 'SIN CLASIFICAR')
 const n = sinClasificar.length

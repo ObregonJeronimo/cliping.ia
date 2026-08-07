@@ -188,6 +188,10 @@ export function build(ctx) {
     const a = Math.min(alto, ANCHO_UTIL / Math.max(0.08, t.ar) )
     const m = new THREE.Mesh(new THREE.PlaneGeometry(a * t.ar, a), materialMascara(t.tex, col))
     m.material.uniforms.uSuave.value = 0.05
+    // Entra entero, y el propio helper ya lo garantiza: el alto se acota con `ANCHO_UTIL / ar`, o sea
+    // que ninguna cadena pasa de `mundoW * 0.86` por larga que sea. Se declara aca y no en los dos
+    // sitios que lo llaman, para que el que agregue un tercero lo herede.
+    m.userData.encaja = true
     return m
   }
   const FIN = finMascara()

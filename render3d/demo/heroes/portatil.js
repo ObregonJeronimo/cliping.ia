@@ -189,6 +189,12 @@ export function build(ctx) {
         }`,
     })
     pantalla = new THREE.Mesh(new THREE.PlaneGeometry(pw, ph), matP)
+    // Es la pagina del cliente. La tira viaja en un uniform, asi que todo lo que filtraba por
+    // `material.map` no la veia.
+    pantalla.userData.tipoImagen = 'recorte'
+    // Sin `encaja` por la misma razon medida que en `telefono`: probado, se sale en 71 de 117 cuadros
+    // y llega a 1.963 con `tecnico`/cliping-ia. Es la entrada del equipo, no un desborde. Lo que
+    // corresponde es `encaja` + `encajaEntre` con la ventana derivada del tween.
     gr.add(pantalla)
   }
 

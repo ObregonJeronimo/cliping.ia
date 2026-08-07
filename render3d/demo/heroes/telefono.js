@@ -272,6 +272,19 @@ export function build(ctx) {
         }`,
     })
     pantalla = new THREE.Mesh(new THREE.PlaneGeometry(pw, ph), matP)
+    // ES LA PAGINA DEL CLIENTE, y se declara como tal. Iba sin `tipoImagen` porque la tira viaja en
+    // `uniforms.map.value` y todo lo que filtraba por `material.map` pasaba de largo: el censo de
+    // encaje, el de nitidez y la columna `muestra` de heroes-audit.
+    pantalla.userData.tipoImagen = 'recorte'
+    // FALTA DECIR SI ENCAJA, Y NO ES UN OLVIDO: es trabajo pendiente con la medicion ya hecha.
+    // Se probo `encaja` y E-ENCAJE-REAL lo rechazo — se sale en 6 de 117 cuadros y llega a **3.122**
+    // del cuadro con `tecnico`/cliping-ia. Tres veces el cuadro no es un desborde: es que el aparato
+    // ENTRA volando desde cerca de la camara, que es el gesto de la escena.
+    //
+    // Lo correcto entonces no es `sangra` —la pagina si tiene que entrar entera cuando toca leerla—
+    // sino `encaja` + `encajaEntre` con la ventana en la que el telefono ya esta asentado. Y esa
+    // ventana hay que DERIVARLA del tween de entrada, no calibrarla a ojo: `mosaico` documenta por que
+    // ("la primera version puso [0.25, 0.95] midiendo UN caso y fallo con otro aire").
     // LA PAGINA NO OCUPA TODO EL PLANO: la franja segura de arriba (SEGURO) muestra el color de fondo
     // del sitio, no pagina — es la linea 248, `vv = vUv.y / (1.0 - uSeguro)`. Eso pasa dentro del
     // shader, y `tools/tira-check.mjs` corre en Node y no compila GLSL, asi que no hay manera de que lo
