@@ -92,15 +92,29 @@ const TAMANOS_MEDIDOS = [
   { rol: 'tarjeta', w: 256, h: 90, de: 'linear.app el2' },
 ]
 
+// LAS TEXTURAS DEL CLIENTE SE MARCAN AL CREARLAS, y eso saca la adivinanza del medio.
+//
+// La primera version preguntaba `userData.tipoImagen === 'recorte'`, o sea le creia a la declaracion
+// de la escena. Funciona para las que pasan por `planoRecorte` y deja afuera a las que arman la malla
+// a mano — que resultaron ser justo las que muestran la pagina entera. Y al ampliar la busqueda a los
+// uniforms de shader, el problema se dio vuelta: entraron 21 escenas, casi todas con texturas
+// PROCEDURALES (mascaras, degradados) que no tienen nada que ver con el cliente.
+//
+// Pero el material del cliente lo fabrica ESTE archivo. Marcarlo al crearlo convierte "¿esto es del
+// cliente?" de una inferencia en un hecho: si la malla dibuja una de estas texturas, muestra material
+// del cliente, lo declare o no.
+const CLIENTE = Symbol('material del cliente')
 function texturasReales() {
   const m = new Map()
   TAMANOS_MEDIDOS.forEach((t, i) => {
     const tex = new THREE.CanvasTexture(createCanvas(4, 4))
     tex.image = { width: t.w, height: t.h }
+    tex[CLIENTE] = true
     m.set('f' + i, tex)
   })
   const tira = new THREE.CanvasTexture(createCanvas(4, 4))
   tira.image = { width: 720, height: 6240 }
+  tira[CLIENTE] = true
   m.set('tira', tira)
   return m
 }
@@ -117,6 +131,28 @@ const rutaDe = (id) => {
 }
 const ids = pedidos.length ? pedidos : DIRS.flatMap(d =>
   existsSync(d) ? readdirSync(d).filter(f => f.endsWith('.js')).map(f => f.replace('.js', '')) : [])
+
+// LA TEXTURA NO SIEMPRE ESTA EN `material.map`, y esto casi deja el censo mintiendo por omision.
+//
+// `telefono`, `ventana` y `portatil` —los tres heroes que muestran LA PAGINA DEL CLIENTE, o sea el
+// caso donde el pixelado se veria mas— llevan la tira en `uniforms.map.value` de un ShaderMaterial
+// escrito a mano, porque necesitan controlar el desplazamiento a mano (three aplica `repeat`/`offset`
+// solo a sus propios materiales). `pantalla` hace lo mismo.
+//
+// Con la busqueda limitada a `material.map`, los cuatro salian del recorrido ANTES de llegar al conteo
+// de "no se midio" — asi que no figuraban ni entre los medidos ni entre los faltantes. Un agujero en el
+// mecanismo que existe justamente para que no haya agujeros silenciosos.
+function texturaDe(o) {
+  const mat = o.material
+  if (!mat) return null
+  if (mat.map && mat.map.image) return mat.map
+  const u = mat.uniforms
+  if (u) for (const k of Object.keys(u)) {
+    const v = u[k] && u[k].value
+    if (v && v.image && v.image.width) return v
+  }
+  return null
+}
 
 const filas = []
 const sinDeclarar = new Map()   // escena -> mallas que dibujan textura sin decir de que tipo
@@ -172,7 +208,7 @@ for (const [nombreAire, aire] of Object.entries(AIRES)) {
         raiz.updateWorldMatrix(true, true)
         raiz.traverse(o => {
           if (!o.isMesh) return
-          const tex = o.material && o.material.map
+          const tex = texturaDe(o)
           const nativo = tex && tex.image && tex.image.width
           if (!nativo) return
           // SOLO RECORTES DEL CLIENTE. Un plano de texto o una cama se generan al tamaño que haga
@@ -184,10 +220,21 @@ for (const [nombreAire, aire] of Object.entries(AIRES)) {
           // cliente sin declararlo, y seria INVISIBLE aca. Sin este conteo, un "0 por encima de 2x"
           // se leeria como cobertura y seria otro cero tranquilizador de los que este repo ya
           // documenta a los golpes.
-          if (o.userData.tipoImagen !== 'recorte') {
-            if (!o.userData.tipoImagen) sinDeclarar.set(id, (sinDeclarar.get(id) || 0) + 1)
-            return
-          }
+          // Se mide TODO lo que dibuja material del cliente, venga declarado o no: la marca de arriba
+          // es un hecho y `tipoImagen` es una declaracion que puede faltar. Lo que no es del cliente
+          // —una textura procedural, un degradado, una mascara— no se juzga: esas se generan al tamaño
+          // que haga falta y preguntarles por nitidez no significa nada.
+          //
+          // SON DOS CRITERIOS Y SE USAN LOS DOS, porque cada uno solo pierde algo distinto. La marca
+          // cubre lo que sale del mapa `texturas` que arma este archivo; la declaracion cubre lo que
+          // pasa por `planoRecorte` pero toma su textura por otra via (`texturaDe` del kit). Probado a
+          // los golpes: con la marca sola se cayeron `mesa` y `titular`, que antes SI se median.
+          const esCliente = tex[CLIENTE] || o.userData.tipoImagen === 'recorte'
+          if (!esCliente) return
+          // Igual se anota quien lo muestra SIN declararlo. No cambia el veredicto —ya esta medido—
+          // pero es deuda real: cualquier otra herramienta que filtre por `tipoImagen` lo va a seguir
+          // perdiendo, que es exactamente lo que le paso a `heroes-audit` con `cubo`.
+          if (o.userData.tipoImagen !== 'recorte') sinDeclarar.set(id, (sinDeclarar.get(id) || 0) + 1)
           let vis = o.visible
           for (let p = o.parent; p && vis; p = p.parent) vis = p.visible
           const op = o.material.opacity != null ? o.material.opacity : 1
@@ -310,11 +357,17 @@ console.log('  Antes de tocar una escena, leer su cabecera: varias dibujan a san
 // cubriera todo lo que muestra imagen, y no cubre: solo lo que pasa por `planoRecorte`.
 const fuera = [...sinDeclarar].sort((a, b) => b[1] - a[1])
 if (fuera.length) {
-  console.log(`\n  NO SE MIDIERON — dibujan una textura sin declarar \`tipoImagen\` (${fuera.length} escenas):`)
+  // EL ROTULO CAMBIO Y ES IMPORTANTE QUE CAMBIE. Antes decia "NO SE MIDIERON", y era cierto: sin la
+  // marca de material del cliente, lo que no declaraba quedaba fuera de la medicion. Ahora SI se
+  // miden —estan en la tabla de arriba— y lo que queda es deuda: cualquier OTRA herramienta que filtre
+  // por `tipoImagen` las va a seguir perdiendo, que es lo que le paso a `heroes-audit` con `cubo`.
+  // Dejar el rotulo viejo seria alarmar por un agujero que ya no existe.
+  console.log(`\n  MEDIDAS PERO SIN DECLARAR \`tipoImagen\` (${fuera.length} escenas) — deuda, no agujero:`)
   for (const [escena, n] of fuera.slice(0, 14)) console.log(`    ${escena.padEnd(16)} ${n} mallas`)
   if (fuera.length > 14) console.log(`    ... y ${fuera.length - 14} mas`)
-  console.log('    Algunas son texturas procedurales y estan bien fuera. Otras son imagen del CLIENTE')
-  console.log('    armada a mano —`cubo` hacia sus caras asi hasta que se declaro— y esas tendrian que')
-  console.log(`    declararse para entrar. Mientras no lo hagan, el veredicto de arriba cubre`)
-  console.log(`    ${porEscena.size} escenas, no todas las que muestran imagen.`)
+  console.log('    Las cuatro dibujan material del CLIENTE — eso ya no se deduce, se sabe: la textura')
+  console.log('    lleva la marca que le pone este archivo al fabricarla. Lo que les falta es decirlo')
+  console.log('    en la malla, y eso no afecta a esta tabla pero si a cualquier otra herramienta que')
+  console.log('    filtre por `tipoImagen`. Le paso a `heroes-audit`, que informaba "muestra: no" para')
+  console.log('    `cubo` cuando cubo muestra.')
 }
