@@ -40,6 +40,31 @@ verdadero sustituyendo a uno que era mentira.
 | `columna`, `mesa`, `ventana` | 2 c/u |
 | `cita`, `marquesina`, `portatil`, `sello`, `telefono`, `titular`, `vitrina` | 1 c/u |
 
+### Antes de bajarlo: una de las 71 NO es un olvido
+
+Barridas las 20 escenas buscando decisiones escritas, aparece exactamente una — y es de las grandes,
+el título de `tarjetas` (línea 246):
+
+> *"**NO SE DECLARA `encaja`, Y LA DECISIÓN ESTÁ MEDIDA.** Al marcarlo, E-ENCAJE-REAL lo puso en rojo:
+> el título llega a 1.415 en coordenadas de recorte en el aire `nocturno`, 62 de sus 83 cuadros. Eso NO
+> lo causa el largo de la marca —pasa con "ANTHEM", de seis letras— sino el empuje de cámara de esta
+> escena."*
+
+Y sigue: para que entrara en todo instante habría que bajar el ancho útil a 0,50 de `mundoW`, lo que
+achicaría el título al **67% de su tamaño diseñado en TODA pieza**, incluidas las que hoy componen
+bien. *"Reencuadrar una composición calibrada para poner una compuerta en verde es cambiar el producto
+para satisfacer a la herramienta."* Está remitido a `docs/AUDITORIA-MOTOR.md` para decidirlo mirando el
+cuadro.
+
+**No la toques sin esa conversación.** Las otras 70 sí son mallas que nadie vio nunca — no porque
+alguien las salteara, sino porque el censo no las mostraba.
+
+**Y esto destapa un hueco en el vocabulario:** `SIN CLASIFICAR` significa hoy dos cosas que no son la
+misma, *"nadie lo miró"* y *"se decidió, se midió y está escrito por qué"*. Mientras sean
+indistinguibles, bajar el trinquete corre el riesgo de pisar una decisión creyendo que corrige un
+descuido. Un cuarto valor —algo como `tolera`, con el motivo obligatorio— resolvería las dos cosas a la
+vez: saca a los casos decididos de la cuenta y deja la cuenta significando lo que dice.
+
 ```bash
 node tools/encaja-inventario.mjs
 ```
