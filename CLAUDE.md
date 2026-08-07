@@ -126,6 +126,7 @@ falta mirar algo: son caras (renderizan) y su salida es una tabla, no un veredic
 | herramienta | qué mide | dónde está el estado |
 |---|---|---|
 | `tools/encaja-inventario.mjs` | censo de mallas que muestran imagen y cuáles declaran si entran enteras | `docs/ENCAJE-ESTADO.md` |
+| `tools/nitidez-inventario.mjs` | píxeles nativos del recorte contra los que se dibujan (barata: construye, no renderiza) | `docs/NITIDEZ-ESTADO.md` |
 | `tools/heroes-audit.mjs` | los 17 héroes por geometría: mallas, cobertura, movimiento (rápida, sin render) | `docs/HEROES-AUDIT.md` |
 | `tools/heroes-render.py` | los 17 héroes **sobre píxeles**: contraste del rótulo, movimiento real, tinta | `docs/HEROES-AUDIT.md` |
 | `tools/escenas-render.py` | cada escena por separado dentro de la pieza, sobre píxeles | `docs/ESCENAS-AUDIT.md` |
