@@ -27,7 +27,7 @@
 // SIN RECORTES NO HAY ESCENA. La columna no tiene otro sujeto: si la pagina no dio ni un elemento,
 // devuelve el grupo vacio y ocupa su lugar en silencio. El guionista es quien no deberia elegirla.
 
-import { anchoUtil, LOOK, b, E, texto, planoRecorte, recortesDe, nivel, nivelTexto, matAcento, materialMascara, deriva, dolly, orbita, escalera, topeNitido, deslizFijo } from '../kit.js'
+import { anchoUtil, LOOK, b, E, texto, planoRecorte, recortesDe, nivel, nivelTexto, matAcento, materialMascara, deriva, dolly, orbita, escalera, topeNitido, deslizFijo, cuadroMasAngosto } from '../kit.js'
 import { marca, sello } from '../datos.js'
 
 export const meta = { id: 'columna', beats: 6 }
@@ -74,6 +74,21 @@ export function build(ctx) {
   // pasaba —los recortes van en la escena post-bloom y se dibujan SIEMPRE por encima de `g`, asi que
   // ningun z los manda atras—.
   const COLX = mundoW * 0.085
+  // EL BORDE IZQUIERDO REAL DE ESTA ESCENA, y no el del cuadro en reposo. Los dos rotulos de la calle
+  // —el indice y el pie— se anclaban a `-mundoW * 0.5 + 0.20` y se salian por izquierda: 1.034 y 1.027
+  // en coordenadas de recorte, en `deportivo` y `jugueton`. Son dos efectos que se suman y ninguno se
+  // veia desde el reposo:
+  //
+  //   · la camara SE ACERCA (`dolly(distBase, -0.26)`), asi que el cuadro se angosta. Eso es lo que
+  //     `cuadroMasAngosto` ya sabe calcular con el dolly del aire puesto.
+  //   · y SE CORRE DE COSTADO hasta `orbita(0.12)` (linea de camara, al final del archivo). Cuando la
+  //     camara va a la derecha, el borde izquierdo del cuadro se lleva por delante lo que este pegado
+  //     al margen. Esto no lo cubre `cuadroMasAngosto`: hay que sumarlo aparte.
+  //
+  // Se DERIVA de esos dos numeros en vez de calibrar el margen contra lo medido, que es la trampa que
+  // este repo ya documenta en tres lugares: un margen elegido a ojo vuelve a estar mal apenas alguien
+  // toque el dolly, la orbita o agregue un aire. Si se cambia la camara de abajo, esto la sigue solo.
+  const X_CALLE = -cuadroMasAngosto(mundoW, -0.26 / distBase) / 2 + 0.20 + Math.abs(orbita(0.12))
   // TAMAÑO DE FEED, Y ESTO ES LA MITAD DEL ARREGLO. Con 0.62 de ancho y 0.74 del paso, la tarjeta de
   // testimonio de linear.app —1400x845 px de archivo— salia en 548 px de cuadro: escala 0.39, o sea la
   // cita a 19 px y el pie de autoria a 10. En pantalla eso es un bloque de color con una mancha gris
@@ -243,18 +258,13 @@ export function build(ctx) {
   const ALTO_IDX = Math.min(0.26, 0.78 / Math.max(0.08, AR_IDX))
   const matIdx = materialMascara(idxTex[0].tex, nivelTexto(0.62))
   const mIdx = new THREE.Mesh(new THREE.PlaneGeometry(ALTO_IDX * AR_IDX, ALTO_IDX), matIdx)
-  // SIN DECLARAR TODAVIA, con la medicion hecha para no repetirla. Se probo `encaja` en este rotulo y
-  // en el pie de abajo, y E-ENCAJE-REAL rechazo a UNO de los dos: se sale en 3 de 88 cuadros y llega a
-  // **1.015** con `tecnico`/cliping-ia. Un 1,5%.
-  //
-  // No se dejo puesto en el otro porque la corrida no dice cual de los dos es, y declarar el que no
-  // era seria poner una promesa falsa para que la compuerta calle. La cuenta que hay que cerrar antes:
-  // los dos estan anclados a `-mundoW * 0.5 + 0.20`, o sea contra el cuadro EN REPOSO, y esta escena
-  // acerca la camara (`dolly(distBase, -0.26)`), que angosta el cuadro un 1,4% con dolly 1.0 — casi
-  // exactamente el exceso medido. Si es eso, el arreglo es `cuadroMasAngosto` y no `sangra`.
+  // ENTRA ENTERO, Y EL ANCLA SE DERIVA (ver X_CALLE arriba). Los dos rotulos de la calle izquierda
+  // estaban anclados contra el cuadro EN REPOSO y se salian: medido con ENCUADRE_ORIGEN, este llega a
+  // 1.034 y el pie a 1.027, en `deportivo` y `jugueton`.
+  mIdx.userData.encaja = true
   // Anclado por su borde IZQUIERDO contra el margen: centrado, un rotulo mas largo se mete en la
   // columna y queda tapado por la primera pieza ancha que pasa.
-  mIdx.position.set(-mundoW * 0.5 + 0.20 + (ALTO_IDX * AR_IDX) / 2, mundoH * 0.435, 0.6)
+  mIdx.position.set(X_CALLE + (ALTO_IDX * AR_IDX) / 2, mundoH * 0.435, 0.6)
   g.add(mIdx)
 
   // El pie real de la pagina. Puede no existir —`sello` devuelve cadena vacia— y en ese caso no se
@@ -268,8 +278,8 @@ export function build(ctx) {
     const altoPie = Math.min(0.15, 0.88 / Math.max(0.08, tp.ar))
     matPie = materialMascara(tp.tex, nivelTexto(0.48))
     mPie = new THREE.Mesh(new THREE.PlaneGeometry(altoPie * tp.ar, altoPie), matPie)
-    // Sin declarar todavia, por la misma medicion que el rotulo de arriba (ver la nota larga ahi).
-    mPie.position.set(-mundoW * 0.5 + 0.20 + (altoPie * tp.ar) / 2, -mundoH * 0.472, 0.6)
+    mPie.userData.encaja = true
+    mPie.position.set(X_CALLE + (altoPie * tp.ar) / 2, -mundoH * 0.472, 0.6)
     g.add(mPie)
   }
 

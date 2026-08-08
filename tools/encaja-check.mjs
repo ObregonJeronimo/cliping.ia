@@ -143,7 +143,19 @@ try {
 //              Es la unica escena grande del atraso que salio limpia de una, y por una razon que vale
 //              anotar: su decision ya estaba tomada y escrita en el archivo. No hubo que juzgar nada,
 //              solo traducirla a la malla.
-const TRINQUETE = 55
+//   55 -> 53   `columna`, sus dos rotulos de la calle izquierda — y este no se declaro, se ARREGLO.
+//
+//              Estaban anclados a `-mundoW * 0.5 + 0.20`, o sea contra el cuadro EN REPOSO, y se
+//              salian: 1.034 el indice y 1.027 el pie, en `deportivo` y `jugueton`. Identificados con
+//              `ENCUADRE_ORIGEN=1`, que para esto se hizo — antes la compuerta decia "una malla" y no
+//              habia forma de saber cual de las dos.
+//
+//              Son DOS efectos que se suman y ninguno se ve desde el reposo: la camara se ACERCA
+//              (angosta el cuadro, lo cubre `cuadroMasAngosto`) y ademas se CORRE de costado hasta
+//              `orbita(0.12)` (eso hay que sumarlo aparte). El ancla nueva se deriva de esos dos
+//              numeros en vez de elegir un margen que funcione: calibrarlo volveria a estar mal apenas
+//              alguien toque el dolly, la orbita o agregue un aire.
+const TRINQUETE = 53
 
 const sinClasificar = censo.filas.filter(f => f.clase === 'SIN CLASIFICAR')
 const n = sinClasificar.length
