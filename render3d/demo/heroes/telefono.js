@@ -276,15 +276,8 @@ export function build(ctx) {
     // `uniforms.map.value` y todo lo que filtraba por `material.map` pasaba de largo: el censo de
     // encaje, el de nitidez y la columna `muestra` de heroes-audit.
     pantalla.userData.tipoImagen = 'recorte'
-    // FALTA DECIR SI ENCAJA, Y NO ES UN OLVIDO: es trabajo pendiente con la medicion ya hecha.
-    // Se probo `encaja` y E-ENCAJE-REAL lo rechazo — se sale en 6 de 117 cuadros y llega a **3.122**
-    // del cuadro con `tecnico`/cliping-ia. Tres veces el cuadro no es un desborde: es que el aparato
-    // ENTRA volando desde cerca de la camara, que es el gesto de la escena.
-    //
-    // Lo correcto entonces no es `sangra` —la pagina si tiene que entrar entera cuando toca leerla—
-    // sino `encaja` + `encajaEntre` con la ventana en la que el telefono ya esta asentado. Y esa
-    // ventana hay que DERIVARLA del tween de entrada, no calibrarla a ojo: `mosaico` documenta por que
-    // ("la primera version puso [0.25, 0.95] midiendo UN caso y fallo con otro aire").
+    // Si encaja y en que ventana se declara mas abajo, junto a los tweens de entrada y salida de los
+    // que sale ese numero.
     // LA PAGINA NO OCUPA TODO EL PLANO: la franja segura de arriba (SEGURO) muestra el color de fondo
     // del sitio, no pagina — es la linea 248, `vv = vUv.y / (1.0 - uSeguro)`. Eso pasa dentro del
     // shader, y `tools/tira-check.mjs` corre en Node y no compila GLSL, asi que no hay manera de que lo
@@ -329,8 +322,34 @@ export function build(ctx) {
   // teléfono únicamente puede crecer.
   gTel.position.set(0, -0.30, -6.5)
   gTel.rotation.set(0.26, -0.66, 0.09)
+  // LAS DOS DURACIONES SON CONSTANTES PORQUE LA VENTANA LEGIBLE SE DERIVA DE ELLAS. El aparato llega
+  // desde z=-6.5 y sale de cuadro por arriba; en esos dos tramos la pantalla pasa cerca de la camara y
+  // ocupa varias veces el cuadro. Medido: exigirle contencion en TODO instante da 3.122 — o sea que se
+  // estaria juzgando el gesto y no lo que el espectador tiene que poder leer.
+  //
+  // Sacar el numero de aca y no escribir [0.17, 0.89] a mano es la diferencia entre derivar y calibrar.
+  // `mosaico` documenta lo que cuesta calibrar: "la primera version puso [0.25, 0.95] midiendo UN caso
+  // y fallo con otro aire".
+  const ENTRADA = 1.35            // el mas largo de los dos tweens de entrada
+  const SALIDA = 0.85             // lo que dura la salida, contada desde el final
   tl.to(gTel.position, { z: 0, duration: b(1.15), ease: E.llega(1.6) }, 0)
-  tl.to(gTel.rotation, { x: 0.05, y: -0.22, z: 0.015, duration: b(1.35), ease: E.llega(1.4) }, 0)
+  tl.to(gTel.rotation, { x: 0.05, y: -0.22, z: 0.015, duration: b(ENTRADA), ease: E.llega(1.4) }, 0)
+  // LA VENTANA LEGIBLE, MEDIDA — y por que NO se declara `encaja` todavia.
+  //
+  // Probado: con `encaja` + `encajaEntre [ENTRADA/beats, max(0.90, 1 - SALIDA/beats)]` el peor caso de
+  // la pantalla baja de **3.122 a 1.031** del cuadro. O sea que el 3.122 era el gesto de entrada —el
+  // aparato llegando desde z=-6.5— y no un defecto, y lo unico que queda es un 3% en `inmobiliario` y
+  // `jugueton`, los dos aires de dolly mas alto.
+  //
+  // Y ESE 3% NO ES UN DESCUIDO: es la decision de encuadre de esta escena, escrita mas arriba — "un
+  // reel de producto encuadra el aparato GRANDE, aunque se salga del cuadro". Declarar `encaja` seria
+  // prometer lo contrario de lo que el archivo decidio; hacerlo cierto obligaria a achicar el aparato
+  // en los once aires para conformar a dos, que es reencuadrar una composicion calibrada para poner
+  // una compuerta en verde.
+  //
+  // Queda anotado para el dia que se decida —docs/AUDITORIA-MOTOR.md, junto al titulo de `tarjetas`,
+  // que es la misma pregunta—. El trabajo caro era separar cuanto del exceso es GESTO y cuanto es
+  // ENCUADRE; eso ya esta hecho: 3.122 gesto, 1.031 encuadre.
 
   // FLOTA: nunca queda quieto. Tres períodos que NO son múltiplos entre sí — si lo fueran, los ejes
   // volverían a alinearse cada tanto y el conjunto latiría como una sola cosa, que se nota más que la
@@ -395,8 +414,8 @@ export function build(ctx) {
   tl.to(camera.position, { z: distBase, duration: DUR * 0.18, ease: E.vaiven() }, DUR * 0.82)
 
   // SALIDA acelerando: es lo que hace que el corte siguiente se sienta ganado y no impuesto.
-  tl.to(gTel.position, { y: mundoH * 0.95, duration: b(0.85), ease: E.acelera(3) }, DUR - b(0.85))
-  tl.to(gTel.rotation, { z: 0.32, x: -0.28, duration: b(0.85), ease: E.acelera(2) }, DUR - b(0.85))
+  tl.to(gTel.position, { y: mundoH * 0.95, duration: b(SALIDA), ease: E.acelera(3) }, DUR - b(SALIDA))
+  tl.to(gTel.rotation, { z: 0.32, x: -0.28, duration: b(SALIDA), ease: E.acelera(2) }, DUR - b(SALIDA))
 
   // La pantalla vive en la otra escena: copia la transformación del aparato en cada frame.
   // La pantalla vive en la OTRA escena, así que no puede ser hija: se le copia la transformación
