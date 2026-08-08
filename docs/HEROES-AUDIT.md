@@ -200,6 +200,20 @@ dibujadas con shader, volver a correr, y **validar una muestra de las acusacione
 cuadros del render** — empezando por el caso de `sello`, que es el único que hoy tiene el fondo bien
 detectado.
 
+### El barrido del punto ciego está completo — no hay que volver a buscarlo
+
+Se revisaron las seis herramientas que filtran mallas por su textura. Queda anotado para que nadie
+repita la búsqueda:
+
+| herramienta | estado |
+|---|---|
+| `heroes-audit` | **arreglado** — y eran dos causas: el uniform y el `clone()` de `ventana` |
+| `nitidez-inventario` | **arreglado** — era el peor: los dejaba fuera de la medición *y* de la lista de faltantes |
+| `encaja-inventario` | **arreglado** — era el que más pesaba: 71 mallas invisibles para `encaja-check` |
+| `tira-check` | **ya estaba bien**, y su comentario explica por qué lo previó |
+| `fondo-check` | **medido, no arreglado** — es esta sección |
+| `encaja-check` | no filtra por textura: consume el JSON del inventario |
+
 ## Auditoría con render de LOS 17 — `tools/heroes-render.py`
 
 ```bash
