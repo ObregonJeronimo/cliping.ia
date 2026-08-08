@@ -174,6 +174,14 @@ export function build(ctx) {
     const geo = new THREE.PlaneGeometry(m.ancho, m.alto)
     geo.translate(-anc * m.ancho / 2, 0, 0)
     const mesh = new THREE.Mesh(geo, matWipe(m.tex, o))
+    // SIN `encaja`, MEDIDO, y acá el resultado es el mas interesante de los tres. Declararlo rechaza
+    // DOS de estas cinco mallas: una llega a 1.055 (43 de 114 cuadros) y otra a 1.512 (58 de 114).
+    //
+    // Y las cinco estan dimensionadas con `medida()` contra un ancho maximo explicito (ANCHO, 3.5,
+    // 3.2), o sea que el dimensionado esta hecho. Lo que las saca es lo mismo que en `tarjetas` y
+    // `cierre`: el cuadro contra el que se dimensiono es el de REPOSO, y la camara se acerca.
+    //
+    // Tres escenas, tres veces la misma causa. No son tres arreglos: es una sola pregunta.
     g.add(mesh)
     return mesh
   }

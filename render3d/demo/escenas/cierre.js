@@ -70,6 +70,13 @@ export function build(ctx) {
     m.material.dispose()
     m.material = materialMascara(map, tinte)
     m.material.uniforms.uProg.value = -0.2
+    // SIN `encaja`, MEDIDO. Lo natural seria declararlo —es texto, y en esta escena es todo lo que hay
+    // para leer— pero E-ENCAJE-REAL lo rechaza: una de estas mallas llega a 1.179 del cuadro en 27 de
+    // sus 105 cuadros. Misma familia que `tarjetas`: esta escena tambien mueve la camara, y lo que se
+    // dimensiona contra el cuadro en reposo se pasa cuando la camara entra.
+    //
+    // Lo que corresponde es `encaja` + `encajaEntre` con la ventana en la que la camara ya volvio, y
+    // esa ventana hay que derivarla del tween. No se calibra a ojo: `mosaico` documenta el costo.
     return m
   }
 

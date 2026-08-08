@@ -140,6 +140,19 @@ export function build(ctx) {
     m.material.uniforms.uDir.value = dir
     return m
   }
+  // NO SE DECLARA `encaja` EN ESTA ESCENA, Y NO ES POR EL TEXTO SINO POR LA CAMARA. Se probo declararlo
+  // acá —lo natural: todo lo que pasa por este helper es texto, y una palabra cortada no se lee— y
+  // E-ENCAJE-REAL rechazo cinco mallas de golpe, hasta 2.065 del cuadro.
+  //
+  // Ese 2.065 es la prueba de que no es un problema de dimensionado: la nota del titulo, veinte lineas
+  // mas abajo, ya dice que el empuje de camara de esta escena "a su maximo agranda el cuadro cerca del
+  // doble". Dos veces el cuadro es exactamente eso. O sea que en `tarjetas` NINGUNA malla puede
+  // prometer contencion en todo instante, no por como esta compuesta sino por como se filma.
+  //
+  // Es la misma decision que ya esta tomada y medida para el titulo, y por la misma razon: achicar
+  // todo para que la compuerta calle seria "cambiar el producto para satisfacer a la herramienta".
+  // Queda pendiente en docs/AUDITORIA-MOTOR.md, y lo que corresponde tecnicamente es `encaja` +
+  // `encajaEntre` con la ventana en la que la camara ya volvio — derivada del tween, no calibrada.
   const txt = (str, alto, opts, color, dir = 0) => conMascara(planoTexto(str, alto, opts), color, dir)
   const fundible = (mat) => { mat.transparent = true; mat.needsUpdate = true; return mat }
   const regla = (largo, grosor, color, intensidad) => {
@@ -218,6 +231,11 @@ export function build(ctx) {
   // empuje de camara y no el contenido, y no se persigue: misma distincion que la nota del titulo.
   const eco = contador(3.8, nHero == null ? 0 : nHero, 130, nivel(0.22, 0.45), heroTexs, heroTexs[PASOS].ar, null, ctx.mundoW * (distBase + 7.2) / distBase)
   eco.mat.uniforms.uSuave.value = 0.22
+  // SANGRA, Y ESTA ESCRITO ARRIBA POR QUE. El eco ya se topea contra el ancho visible EN SU PROPIA z
+  // —a -7.2 el frustum abrio a 7.795— y aun asi la nota de doce lineas mas arriba dice que "lo que
+  // despues del tope siga pasado de 1.0 en `nocturno` es el empuje de camara y no el contenido, y no
+  // se persigue". Eso es exactamente lo que `sangra` significa; faltaba decirlo en la malla.
+  eco.malla.userData.sangra = true
   eco.malla.position.set(0, 0.10, -7.2)
   g.add(eco.malla)
 
@@ -257,6 +275,10 @@ export function build(ctx) {
   // Reencuadrar una composicion calibrada para poner una compuerta en verde es cambiar el producto
   // para satisfacer a la herramienta. Queda anotado en docs/AUDITORIA-MOTOR.md como un hallazgo
   // propio, con su medicion, para decidirlo mirando el cuadro y no la consola.
+  //
+  // Y MEDIDO DE NUEVO EL 7/8/2026, ampliando el barrido a las mallas que el censo no veia: no es solo
+  // el titulo. Declarar `encaja` en el helper `txt` rechaza CINCO mallas de esta escena, hasta 2.065
+  // del cuadro — o sea que la conclusion de arriba vale para la escena entera, no para este texto.
   titulo.position.set(0, 3.10, 1.20)
   g.add(titulo)
 
@@ -358,6 +380,10 @@ export function build(ctx) {
     // 0.92 del ancho de la tarjeta: el mismo margen con el que ANCHO_UTIL_TIT acota al titulo contra
     // el cuadro. Da 1.141 y deja 0.10 de aire por lado contra el canto de 1.24.
     const num = contador(0.62, d.n, esHero ? 130 : 80, C_NUM(), esHero ? heroTexs : null, esHero ? heroTexs[PASOS].ar : null, d.txt, CW * 0.92)
+    // Sin `encaja` por lo mismo que el resto de la escena: se probo y llega a 2.065 del cuadro. Y esta
+    // es la que mejor lo demuestra, porque su ancho ya esta acotado a `CW * 0.92` —el ancho de SU
+    // TARJETA— o sea que dentro de la tarjeta entra perfecto. Lo que la saca del cuadro es que la
+    // camara se acerca hasta duplicarlo. El dimensionado no tiene la culpa.
     num.malla.position.set(0, 0.20, zf)
     gr.add(num.malla)
 

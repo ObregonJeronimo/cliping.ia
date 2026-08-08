@@ -110,7 +110,31 @@ try {
 //              sino `encaja` + `encajaEntre` con la ventana DERIVADA del tween de entrada. `columna`
 //              es otra cosa: 1,5% de exceso, y sus rotulos estan anclados contra el cuadro EN REPOSO
 //              mientras la escena acerca la camara — si es eso, el arreglo es `cuadroMasAngosto`.
-const TRINQUETE = 64
+//   64 -> 63   el eco de `tarjetas` (sangra: su propia nota ya decia que lo que pase de 1.0 "es el
+//              empuje de camara y no el contenido, y no se persigue" — faltaba decirlo en la malla).
+//
+// ACA SE FRENA, Y CON UNA RAZON MEDIDA. Se probo declarar `encaja` en los helpers de texto de las tres
+// escenas mas grandes del atraso —`tarjetas` (21), `cierre` (5), `tipografia` (5)— y las tres lo
+// rechazaron. Las mediciones:
+//
+//   tarjetas    hasta 2.065 del cuadro, cinco mallas
+//   tipografia  1.512 y 1.055, dos de cinco
+//   cierre      1.179, una de cinco
+//
+// LAS TRES POR LA MISMA CAUSA, Y NO ES EL DIMENSIONADO. Las mallas de `tipografia` ya se dimensionan
+// con `medida()` contra un ancho maximo explicito; el contador de `tarjetas` ya se acota a `CW * 0.92`,
+// o sea al ancho de SU TARJETA, y dentro de la tarjeta entra perfecto. Lo que las saca del cuadro es
+// que el cuadro contra el que se dimensionaron es el de REPOSO y la camara se acerca. `tarjetas` ya lo
+// tenia escrito para su titulo: su empuje "a su maximo agranda el cuadro cerca del doble" — y 2.065 es
+// exactamente el doble.
+//
+// O sea que lo que queda del atraso no son 63 arreglos: es UNA pregunta que aparece 63 veces, y ya
+// esta planteada y reservada en docs/AUDITORIA-MOTOR.md desde el caso del titulo. Achicar todas las
+// composiciones para que la compuerta calle seria "cambiar el producto para satisfacer a la
+// herramienta". Lo que corresponde tecnicamente es `encaja` + `encajaEntre` con la ventana en la que
+// la camara ya volvio, DERIVADA del tween y no calibrada a ojo — y eso se hace escena por escena, con
+// el video delante, no de corrido.
+const TRINQUETE = 63
 
 const sinClasificar = censo.filas.filter(f => f.clase === 'SIN CLASIFICAR')
 const n = sinClasificar.length

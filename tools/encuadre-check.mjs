@@ -145,6 +145,37 @@ function tejidoFalso(relaciones) {
   return m
 }
 
+// ENCUADRE_ORIGEN=1 — QUE LA COMPUERTA DIGA CUAL MALLA, no "una malla".
+//
+// El mensaje de E-ENCAJE-REAL dice "una malla marcada `encaja` se sale del cuadro", y con eso alcanza
+// para saber que hay un problema y no para arreglarlo: las mallas de este motor no tienen nombre, y
+// una escena como `tarjetas` tiene veintiuna. Clasificando el atraso de `encaja-check` aparecieron
+// siete fallos de golpe en cuatro escenas y no habia forma de saber cual de cada grupo era, asi que la
+// unica salida era revertir el archivo entero y perder tambien lo que si estaba bien.
+//
+// Con esta bandera cada Mesh anota en que archivo y linea se construyo —la misma tecnica que ya usa
+// `encaja-inventario`, leyendo la pila en el constructor— y el fallo lo dice.
+//
+// ES OPT-IN A PROPOSITO: capturar una pila por malla son ~300.000 pilas en las 407 construcciones, y
+// esta es una de las compuertas rapidas (9 s). Se paga solo cuando hace falta diagnosticar.
+const _ORIGEN = !!process.env.ENCUADRE_ORIGEN
+class _MeshEspia extends THREE.Mesh {
+  constructor(...a) {
+    super(...a)
+    const st = (new Error().stack || '').split('\n').slice(2)
+    const dentro = st
+      .filter(l => /render3d[\\/]demo[\\/]/.test(l))
+      .slice(0, 2)
+      .map(l => {
+        const m = l.match(/render3d[\\/]demo[\\/](.+?):(\d+):\d+/)
+        return m ? `${m[1].replace(/\\/g, '/')}:${m[2]}` : null
+      })
+      .filter(Boolean)
+    if (dentro.length) this.userData._origen = dentro.join(' <- ')
+  }
+}
+const THREE_ESC = _ORIGEN ? { ...THREE, Mesh: _MeshEspia } : THREE
+
 const W = 1080, H = 1920, mundoH = 10, mundoW = mundoH * (W / H)
 const fov = 30
 const distBase = (mundoH / 2) / Math.tan((fov * Math.PI / 180) / 2)
@@ -240,7 +271,7 @@ for (const [nombreAire, aire] of Object.entries(AIRES)) {
   let r
   try {
     r = await mod.build({
-      THREE, gsap, look: LOOK, W, H, mundoW, mundoH, camera, distBase, rnd, BEAT, b,
+      THREE: THREE_ESC, gsap, look: LOOK, W, H, mundoW, mundoH, camera, distBase, rnd, BEAT, b,
       fondo: uni(),
       pelicula: { uT: { value: 0 }, uFlash: { value: 0 }, uGrano: { value: 0.055 }, uVinieta: { value: 0.9 }, uAberr: { value: 0.0022 } },
       bloom: { strength: 0.85, radius: 0.62, threshold: 0.62 },
@@ -384,7 +415,9 @@ for (const [nombreAire, aire] of Object.entries(AIRES)) {
     // texto cortado. Tres o mas es geometria que no entra.
     if (gg.fuera <= 2) continue
     const enEje = gg.eje ? ` en el eje ${gg.eje.toUpperCase()}` : ''
-    fallos.push(`E-ENCAJE-REAL  ${id}: una malla marcada \`encaja\` se sale del cuadro${enEje} en ${gg.fuera} de sus ${gg.visto} cuadros — llega a ${gg.peor.toFixed(3)} en coordenadas de recorte (el limite es 1.0)`)
+    const donde = o.userData && o.userData._origen ? `  <${o.userData._origen}>`
+      : (_ORIGEN ? '  <sin origen: la crea el kit>' : '')
+    fallos.push(`E-ENCAJE-REAL  ${id}: una malla marcada \`encaja\` se sale del cuadro${enEje} en ${gg.fuera} de sus ${gg.visto} cuadros — llega a ${gg.peor.toFixed(3)} en coordenadas de recorte (el limite es 1.0)${donde}`)
   }
 
   // Lo que SI es un defecto es que TODO un grupo quede afuera: eso ya no es una serie que sangra, es
