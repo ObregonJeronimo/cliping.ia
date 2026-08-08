@@ -13,6 +13,23 @@ pidiendo 42 GB en una máquina de 15.
 cientos de escenas, cualquier cosa lanzada con `npm run pesado`. **Qué no:** las 10 compuertas rápidas
 (~12 s), leer archivos, editar código, medir sin renderizar. La regla es para lo que ocupa la máquina.
 
+### Y el modo por defecto es FRACCIONADO, no "lanzar y ver si sobrevive"
+
+Si la persona está **usando la máquina para otra cosa** —un juego de Riot, CS, cualquier cosa que
+ocupe— no se lanza el guard entero ni se espera a que el vigilante lo corte. Se fracciona: se mira
+`npm run costo`, se corren **las compuertas que entran, de a una**, y las que no entran se dejan
+anotadas para después. El guard completo es para cuando la PC está libre, o cuando lo único abierto
+es el navegador.
+
+Esto salió de gastar al pedo el 7/8/2026: se lanzó `npm run gates` tres veces con una partida
+cargando y las tres se cortaron sin completar casi nada. Y en dos de ellas se usó `--solo`, que
+justamente **saltea la postergación** construida para este caso. Un intento que se corta no es
+gratis: le pide memoria a una máquina que ya no la tiene, y es lo que estamos tratando de no hacer.
+
+Con un juego abierto la cuenta real de esta máquina es ~2,4 GB disponibles y ~856 de piso: **entran
+41 de las 42 compuertas** corriéndolas de a una. La única que no es `director-editor-check` (1565 MB,
+7 min). Ese es el modo normal de trabajo mientras alguien juega, no un modo degradado.
+
 ### Antes de eso: el trabajo se dimensiona a la máquina, solo
 
 Todo lo demás de la red es **reactivo** — vigila y mata cuando la cosa ya se fue de mano. Eso no evita
