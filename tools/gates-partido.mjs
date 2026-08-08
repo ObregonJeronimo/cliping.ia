@@ -130,7 +130,16 @@ for (let i = desde; i < PASOS.length && !cortadoPor; i++) {
   //
   // Sin medicion previa NO se pospone: no saber cuanto pide no es lo mismo que saber que no entra, y
   // negarse por las dudas dejaria fuera para siempre a toda compuerta nunca medida.
-  const costo = costoDe(paso)
+  // `--solo` NO SE POSPONE NUNCA, y esto tapa un agujero que se vio en la primera corrida de verdad:
+  // `urvid1-qa` quedo pospuesta con 7196 MB libres —o sea con la maquina practicamente vacia— porque
+  // su peor caso registrado es de ANTES de que le arreglaran la fuga (6426 MB contra los ~950 de las
+  // corridas siguientes). Y como la unica forma de retomar una pospuesta es `--solo`, que aplicaba la
+  // misma regla, la compuerta quedaba imposible de correr: la medicion vieja se profetizaba sola.
+  //
+  // `--solo` es un pedido explicito con numeros escritos a mano. Ahi la decision ya la tomo alguien; lo
+  // que corresponde es correr y dejar que el vigilante en vivo haga su trabajo, que es la proteccion
+  // que de verdad mide lo que esta pasando en vez de lo que paso una vez.
+  const costo = SOLO ? null : costoDe(paso)
   if (costo && Number.isFinite(costo.pidioMbPeor)) {
     const quedaria = libre - costo.pidioMbPeor
     if (quedaria < ojo.pisoMb) {
