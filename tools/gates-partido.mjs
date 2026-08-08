@@ -124,9 +124,42 @@ for (const sig of ['SIGINT', 'SIGTERM']) {
   })
 }
 
-for (let i = desde; i < PASOS.length && !cortadoPor; i++) {
-  const paso = PASOS[i]
-  if (SOLO && !SOLO.has(i + 1)) continue
+// --oportunista [minutos] — NO SE RINDE EN UNA PASADA: vuelve por las pospuestas cuando haya lugar.
+//
+// La postergacion por si sola contesta "¿entra AHORA?" una vez y sigue de largo. Eso alcanza cuando la
+// maquina esta libre y sobra cuando esta ocupada, pero desperdicia el caso real de este repo: la
+// persona esta jugando, dentro de veinte minutos cierra, y la RAM aparece sin que nadie la pida.
+//
+// Con esta bandera la tanda se recorre en PASADAS. Cada pasada corre lo que entra en ese momento y
+// deja lo que no; despues espera y vuelve por lo que quedo. Termina cuando no queda nada, o cuando se
+// acaba el plazo, o cuando una pasada entera no logra correr NADA y ya no queda tiempo util.
+//
+// Es literalmente "actuar en el momento segun la RAM disponible", que es lo que hay que hacer a mano
+// si esto no existe — y hacerlo a mano significa depender de que alguien este mirando.
+const OPORTUNISTA = args.includes('--oportunista')
+const PLAZO_MIN = OPORTUNISTA
+  ? (Number(args[args.indexOf('--oportunista') + 1]) || 45)
+  : 0
+const ESPERA_MS = 60000
+const tFin = Date.now() + PLAZO_MIN * 60000
+const esperar = (ms) => new Promise(r => setTimeout(r, ms))
+
+// La lista de lo que falta correr. En el modo normal se recorre una vez; en el oportunista, hasta que
+// se vacie o se acabe el plazo.
+let pendientes = PASOS.map((paso, i) => ({ paso, i }))
+  .filter(({ i }) => i >= desde && (!SOLO || SOLO.has(i + 1)))
+let pasada = 0
+
+while (pendientes.length && !cortadoPor) {
+  pasada++
+  const quedan = []
+  if (OPORTUNISTA && pasada > 1) {
+    console.log(`\n  -- pasada ${pasada}: reintentando ${pendientes.length} pospuesta(s), `
+      + `${disponibleMb()} MB libres --`)
+  }
+
+for (const { paso, i } of pendientes) {
+  if (cortadoPor) { quedan.push({ paso, i }); continue }
   const etiqueta = paso.replace(/^(node|python)\s+/, '').replace(/^tools\//, '')
   const libre = disponibleMb()
   process.stdout.write(`  [${String(i + 1).padStart(2)}/${PASOS.length}] ${etiqueta.padEnd(38)} `)
@@ -161,7 +194,7 @@ for (let i = desde; i < PASOS.length && !cortadoPor; i++) {
     const quedaria = libre - costo.pidioMbPeor
     if (quedaria < ojo.pisoMb) {
       console.log(`POSPUESTA  (pidio ${costo.pidioMbPeor} MB, quedarian ${quedaria} — piso ${ojo.pisoMb})`)
-      pospuestas.push({ i: i + 1, paso, etiqueta, pidio: costo.pidioMbPeor, faltan: ojo.pisoMb - quedaria })
+      quedan.push({ paso, i, pidio: costo.pidioMbPeor, faltan: ojo.pisoMb - quedaria })
       continue
     }
   }
@@ -221,6 +254,33 @@ for (let i = desde; i < PASOS.length && !cortadoPor; i++) {
     okTotal += oks || 1
     console.log(`ok · ${oks || 1}  (libre ${libre} MB)`)
   }
+}
+
+  // FIN DE LA PASADA. En el modo normal se termina aca y lo que quedo son las pospuestas de siempre.
+  if (!OPORTUNISTA || !quedan.length || cortadoPor) { pendientes = quedan; break }
+
+  // En el oportunista: si en TODA la pasada no entro ninguna, esperar tiene sentido —la RAM cambia
+  // sola cuando la persona cierra el juego—. Si entro alguna, se vuelve enseguida: liberar una
+  // compuerta suele destrabar a la siguiente.
+  if (quedan.length === pendientes.length) {
+    const restanMs = tFin - Date.now()
+    if (restanMs <= 0) { pendientes = quedan; break }
+    console.log(`  (no entra ninguna de las ${quedan.length} con ${disponibleMb()} MB libres; espero `
+      + `${ESPERA_MS / 1000}s — quedan ${Math.ceil(restanMs / 60000)} min de plazo)`)
+    await esperar(Math.min(ESPERA_MS, restanMs))
+  }
+  pendientes = quedan
+}
+
+// Lo que quedo sin correr, con el formato que espera el informe de abajo.
+for (const q of pendientes) {
+  pospuestas.push({
+    i: q.i + 1,
+    paso: q.paso,
+    etiqueta: q.paso.replace(/^(node|python)\s+/, '').replace(/^tools\//, ''),
+    pidio: q.pidio || 0,
+    faltan: q.faltan || 0,
+  })
 }
 
 ojo.parar()

@@ -174,6 +174,17 @@ export function build(ctx) {
     mat.uniforms.uDir.value = i % 2 ? 1 : 0            // alternado: la pagina se teje, no se barre
     mat.uniforms.uSuave.value = SUAVE
     const m = new THREE.Mesh(geo, mat)
+    // SANGRAN, Y ES EL PUNTO DE LA ESCENA. Las bandas se dimensionan con `ANCHO = mundoW * 1.06`: la
+    // imagen llega al borde a proposito. Lo dice el propio arreglo del texto cortado de esta escena —"a
+    // sangre quiere decir que la imagen llega al borde, no que las palabras se corten"—, o sea que el
+    // sangrado es la decision y lo que se cuida es que el CONTENIDO no se pierda, que es para lo que
+    // esta el 1.06 en vez de 1.10.
+    //
+    // Y son la PAGINA DEL CLIENTE, asi que ademas lo declaran. Las ocho mallas de esta escena estaban
+    // sin clasificar por la misma razon que otras 70: la textura viaja en `materialMascara`, o sea en
+    // un uniform, y el censo miraba `material.map`.
+    m.userData.sangra = true
+    m.userData.tipoImagen = 'recorte'
     m.position.set(0, yDe(i), 0)
     gr.add(m)
     bandas.push({ m, mat, tex, y: yDe(i), dir: i % 2 })
@@ -280,6 +291,10 @@ export function build(ctx) {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(alto * t.ar, alto), mat)
     // ANCLADO POR SU BORDE IZQUIERDO. Colocado por el centro, un pie largo tipo "midominio.com.ar"
     // sobresale medio metro por fuera del marco y en pantalla se lee ".com.ar".
+    // ENTRA ENTERO: es el dominio, y esta escena ya sabe lo que cuesta cortarlo — la linea de arriba
+    // existe justamente porque "en pantalla se lee .com.ar". Mismo criterio que `sello`, `titular` y
+    // `columna`.
+    m.userData.encaja = true
     const x0 = -X + 0.16
     m.position.set(x0 + (alto * t.ar) / 2, -Y + 0.30, 0.66)
     gr.add(m)

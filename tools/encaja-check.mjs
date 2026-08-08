@@ -134,7 +134,16 @@ try {
 // herramienta". Lo que corresponde tecnicamente es `encaja` + `encajaEntre` con la ventana en la que
 // la camara ya volvio, DERIVADA del tween y no calibrada a ojo — y eso se hace escena por escena, con
 // el video delante, no de corrido.
-const TRINQUETE = 63
+//   63 -> 55   `pantalla`, sus ocho de una: las SIETE BANDAS sangran —se dimensionan con
+//              `mundoW * 1.06`, o sea que la imagen llega al borde a proposito, y el propio arreglo del
+//              texto cortado de esa escena lo dice: "a sangre quiere decir que la imagen llega al
+//              borde, no que las palabras se corten"— y el pie con el dominio encaja, mismo criterio
+//              que `sello`, `titular` y `columna`. Las ocho declaran ademas `tipoImagen: 'recorte'`.
+//
+//              Es la unica escena grande del atraso que salio limpia de una, y por una razon que vale
+//              anotar: su decision ya estaba tomada y escrita en el archivo. No hubo que juzgar nada,
+//              solo traducirla a la malla.
+const TRINQUETE = 55
 
 const sinClasificar = censo.filas.filter(f => f.clase === 'SIN CLASIFICAR')
 const n = sinClasificar.length
