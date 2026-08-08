@@ -120,6 +120,10 @@ const ojo = vigilar((motivo) => {
 for (const sig of ['SIGINT', 'SIGTERM']) {
   process.on(sig, () => {
     if (procesoActual && procesoActual.pid) matarArbol(procesoActual.pid)
+    // Y SE SUELTA EL CERROJO. Faltaba, y se vio al matar una tanda a mano: el guard se iba sin
+    // devolverlo y la corrida siguiente quedaba bloqueada por un dueño que ya no existia. El barrido de
+    // huerfanos limpia procesos vivos, no cerrojos abandonados, asi que nadie lo iba a arreglar solo.
+    try { cerrojo.soltar && cerrojo.soltar() } catch { /* al morir, nada puede volverse mas grave */ }
     process.exit(130)
   })
 }
@@ -189,7 +193,12 @@ for (const { paso, i } of pendientes) {
   // `--solo` es un pedido explicito con numeros escritos a mano. Ahi la decision ya la tomo alguien; lo
   // que corresponde es correr y dejar que el vigilante en vivo haga su trabajo, que es la proteccion
   // que de verdad mide lo que esta pasando en vez de lo que paso una vez.
-  const costo = SOLO ? null : costoDe(paso)
+  // ...PERO EN MODO OPORTUNISTA SI SE POSPONE, aunque sea `--solo`. Las dos banderas quieren cosas
+  // opuestas y hay que elegir por caso: `--solo` saltea la postergacion porque es un pedido explicito
+  // que si no, no habria forma de forzar; `--oportunista` EXISTE para posponer y volver. Combinadas
+  // sin esta linea, la lista se corre a lo bruto y el vigilante mata la tanda — que es exactamente lo
+  // que las dos banderas tratan de evitar, cada una por su lado.
+  const costo = (SOLO && !OPORTUNISTA) ? null : costoDe(paso)
   if (costo && Number.isFinite(costo.pidioMbPeor)) {
     const quedaria = libre - costo.pidioMbPeor
     if (quedaria < ojo.pisoMb) {
