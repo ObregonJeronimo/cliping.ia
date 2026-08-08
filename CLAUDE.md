@@ -196,6 +196,16 @@ investigarlos.
   node tools/gates-partido.mjs --solo 6,26,35  # correr exactamente esas (las que quedaron pospuestas)
   ```
 
+  **Contraintuitivo y útil: si vas a abrir algo pesado, arrancá el guard DESPUÉS y no antes.** El piso
+  del vigilante es el 35% de lo que había *al arrancar*, así que un guard lanzado con la máquina vacía
+  se pone un piso alto y se corta apenas cargue un juego; el mismo guard lanzado con el juego ya
+  abierto se calcula un piso bajo y sobrevive. Medido el 7/8/2026: arrancado con 7,2 GB libres se puso
+  piso 2523 y cortó al caer a 2076 — con la máquina todavía teniendo 2 GB. Relanzado con 2277 libres,
+  el piso dio 800 y entraron todas menos dos.
+  No es una trampa para saltear la protección: 800 MB es el mínimo duro que el propio diseño considera
+  seguro, y el vigilante sigue midiendo en vivo. Es que el piso está pensado para proteger *el margen
+  que había*, y ese margen ya no existe cuando la persona decidió usar su máquina.
+
   Mantiene el cerrojo, el techo de memoria de Node y el vigilante en vivo que mata el árbol si la
   memoria se desploma. Y si algo falla, las corre TODAS y te dice todo lo roto de una vez, en vez de
   cortarse en la primera.
