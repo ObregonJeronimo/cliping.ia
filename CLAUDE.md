@@ -141,6 +141,11 @@ Y dos modos que no son herramientas sino puertas traseras de una compuerta que y
 for a in artesanal bienestar corporativo deportivo editorial gastronomico inmobiliario jugueton lujo nocturno tecnico; do
   ENCUADRE_CARTESIANO=1 ENCUADRE_AIRE=$a node tools/encuadre-check.mjs
 done
+
+# QUE E-ENCAJE-REAL DIGA CUAL MALLA, no "una malla". Las mallas no tienen nombre y `tarjetas` tiene
+# veintiuna: sin esto, siete fallos de golpe obligan a revertir el archivo entero y perder tambien lo
+# que estaba bien. Cada Mesh anota archivo y linea. Opt-in porque son ~300.000 pilas.
+ENCUADRE_ORIGEN=1 node tools/encuadre-check.mjs
 ```
 
 **LO QUE NINGUNA DE ESTAS PUEDE DECIR.** Un número bajo no es un defecto. Varias escenas componen así
@@ -174,9 +179,26 @@ investigarlos.
   unos **2,7 GB**. Ahora **cada compuerta anota su costo al correr**, así que después de un guard
   completo `npm run costo` tiene las 42 y el número deja de ser una deducción.
 
+  **Y con la máquina ocupada ya no se muere entero: pospone la compuerta que no entra y sigue.** Antes
+  una sola compuerta cara cruzándose con un juego se llevaba puestas las veinte que ya habían pasado —
+  ocurrió dos veces el 7/8/2026, cortando en la 3 y en la 24. Ahora, con el costo de cada una medido,
+  antes de arrancarla se compara lo que pidió en su peor corrida contra lo que hay libre.
+
+  Tres cosas que hacen que eso no sea una trampa:
+
+  - **Sin medición previa no se pospone.** No saber cuánto pide no es lo mismo que saber que no entra.
+  - **Una pospuesta NO es verde**: se listan con nombre y con cuántos MB faltaron, y sale con código
+    distinto de cero. "38 OK · 0 FAIL" con cuatro sin correr se lee como un guard verde y no lo es.
+  - Dice **cuánto hay que liberar** y cómo retomarlas.
+
+  ```bash
+  node tools/gates-partido.mjs --desde 25      # retomar desde la 26
+  node tools/gates-partido.mjs --solo 6,26,35  # correr exactamente esas (las que quedaron pospuestas)
+  ```
+
   Mantiene el cerrojo, el techo de memoria de Node y el vigilante en vivo que mata el árbol si la
-  memoria se desploma. Y si algo falla, las corre TODAS y te dice todo lo roto de una vez más cómo
-  retomar (`--desde N`), en vez de cortarse en la primera.
+  memoria se desploma. Y si algo falla, las corre TODAS y te dice todo lo roto de una vez, en vez de
+  cortarse en la primera.
 
   La encadenada sigue disponible como `npm run gates:mono`.
 
