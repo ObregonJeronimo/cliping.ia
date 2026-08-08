@@ -29,6 +29,15 @@
 // tercio de sus cuadros dibujandolos y barriendolos pixel por pixel. La unica palanca para abaratarla
 // es bajar la cobertura —menos casos, o submuestrear el barrido de pixeles—, o sea pagar con
 // deteccion. No es una optimizacion gratis esperando a que alguien la encuentre.
+//
+// Y LA CONSECUENCIA OPERATIVA, medida el 7/8/2026: es LA UNICA compuerta que hace imposible un guard
+// verde con la maquina ocupada. Ese dia el guard se corto tres veces y las tres fue aca — con un juego
+// abierto el disponible ronda los 2,4 GB, ella pide 1565 y el piso del vigilante queda en ~856, asi
+// que no hay margen. Las otras 41 entran sin problema en esa misma maquina.
+//
+// Mientras siga asi, la receta es correr `--solo 26,...,42` con el juego abierto y dejar esta —y
+// `urvid1-qa`— para cuando la maquina este libre. Si algun dia se decide pagar cobertura por tiempo,
+// este es el archivo donde mas rinde: son siete de los quince minutos del guard entero.
 import { createCanvas, GlobalFonts } from '@napi-rs/canvas'
 import { readdirSync, readFileSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'

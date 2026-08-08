@@ -43,10 +43,27 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { tomar } from './lib/cerrojo.mjs'
-import { disponibleMb, entornoConTecho, vigilar, matarArbol, pisoPara, anotarCosto, costoDe } from './lib/memoria.mjs'
+import { disponibleMb, entornoConTecho, vigilar, matarArbol, pisoPara, anotarCosto, costoDe, MINIMO_ARRANQUE_MB } from './lib/memoria.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const RAIZ = join(HERE, '..')
+
+// SI NO HAY LUGAR NI PARA EMPEZAR, NO SE EMPIEZA. CLAUDE.md declara esta regla desde que existe —"si
+// hay menos de 1200 MB disponibles, el guard no arranca y te dice que cierres aplicaciones"— y era
+// FALSA para `npm run gates`: la implementaba solo el envoltorio `npm run pesado`, y cuando la cadena
+// vigilada paso a ser `gates-partido` nadie la trajo. Una proteccion documentada que no existe es peor
+// que no tenerla: alguien la da por hecha.
+//
+// Se vio el 7/8/2026: se lanzo con 542 MB libres —un juego cargado— y arranco igual, tomo el cerrojo,
+// levanto un hijo y murio a los cuatro segundos. No colgo la maquina porque el vigilante hizo su
+// trabajo, pero le pidio memoria a una maquina que no tenia, que es justo lo que hay que no hacer.
+if (disponibleMb() < MINIMO_ARRANQUE_MB) {
+  console.error(`gates-partido: NO ARRANCA — quedan ${disponibleMb()} MB libres y hacen falta al menos `
+    + `${MINIMO_ARRANQUE_MB} para empezar. Cerra alguna aplicacion (un juego suele liberar 1-2 GB).`)
+  console.error('  No es un capricho: con menos que eso la primera compuerta cara muere y la tanda se')
+  console.error('  corta igual, pero despues de haberle pedido memoria a una maquina que no la tiene.')
+  process.exit(2)
+}
 
 // EL CERROJO IGUAL. Que corra de a una no la vuelve liviana: sigue siendo media hora de compuertas y
 // dos corridas pesadas a la vez es lo que cuelga la máquina. Se toma una sola vez para toda la tanda.
