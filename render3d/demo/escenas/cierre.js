@@ -297,35 +297,15 @@ export function build(ctx) {
   // El texto va del color del FONDO, no de un negro fijo: sobre la pildora de acento, en un mundo
   // claro tiene que ser claro y en uno oscuro, oscuro. '#050810' acertaba solo en el mundo oscuro.
   const cta = textoMascara(ctaTxt, 0.26, LOOK.bg, { fuente: 'DMSans', tracking: 0.075 })
-  // AL CTA SE LE SACA, Y ES LA UNICA DE LAS CINCO. Aislada probando de a una: con `encaja` en el
-  // helper fallan 11 corridas y todas son ESTA malla —los valores se agrupan en 1.176-1.184, o sea un
-  // mismo objeto visto en once aires—. Sacandola, las otras cuatro pasan limpias.
+  // EL CTA TAMBIEN ENTRA ENTERO, y llegar hasta aca costo dos diagnosticos fallidos que quedan
+  // escritos en el commit: NO era el rebote elastico de la pildora (el ease se pasa hacia ABAJO,
+  // 0.987..1.050) ni un ancestro que la agrandara (`gComp` comprime a 0.90).
   //
-  // LO QUE SE DESCARTO, para que el proximo no lo repita:
-  //   · NO es la marca (se excluyo primero, por ser la tipografia mas grande: seguian los 11 fallos).
-  //   · NO son las tres del pie (idem).
-  //   · NO es el rebote elastico de la pildora, que era el sospechoso natural. El tween va de 1.05 a
-  //     1.0 con `elastic.out(1, 0.42)`, y el ease se paso pero HACIA ABAJO: muestreado numericamente,
-  //     `scale.x` recorre 0.987..1.050. Cinco por ciento, no treinta.
-  //
-  // UN DATO QUE ESCRIBI ACA Y ERA FALSO, corregido: decia que "la sonda da una escala de MUNDO de 1.124
-  // a 1.317 sobre esta malla" y que eso apuntaba a un ancestro que la agranda. La sonda ordena por
-  // `px / pixeles nativos`, y con texturas de TEXTO —que miden miles de px— ese orden elige cualquier
-  // otra malla, no esta. Estaba mirando otra cosa y reportandolo como si fuera del CTA.
-  //
-  // Descartado ademas el unico ancestro que escala: `gComp` va a 0.90, o sea que COMPRIME.
-  //
-  // LO QUE SI ESTA PROBADO, y es por exclusion y no por deduccion: sacandole `encaja` a ESTA malla, la
-  // escena queda verde; poniendoselo, fallan 11 corridas con valores agrupados en 1.176-1.184. Es
-  // esta, y se sale un 18%. Por que, todavia no se sabe.
-  //
-  // Queda sin declarar: prometer contencion sin saber por que se rompe es como se ponen las promesas
-  // falsas, y ya hubo una en este mismo comentario.
-  //
-  // Y HAY UNA PISTA ESCRITA VEINTE LINEAS MAS ARRIBA, en la nota de `ANCHO_PILL`: "SIGUE SIN COMPUERTA
-  // ... se marco la pildora con userData.encaja y la compuerta siguio en VERDE ... el fixture todavia
-  // no construye la pildora". Ya no: ahora la compuerta SI la ve, a traves de este texto, y dice 1.18.
-  delete cta.userData.encaja
+  // Era el instrumento. Esta malla espera en `y = -5.7` —debajo de un cuadro que llega a 5— hasta que
+  // su tween la sube en el beat 1.5, y en ese rato esta invisible por su MASCARA (`uProg = -0.2`), no
+  // por `visible` ni por opacidad. `encuadre-check` la contaba como "en escena" y le exigia contencion
+  // mientras esperaba su turno fuera de cuadro. Arreglado alla: una malla cuya mascara no dibujo un
+  // solo pixel ya no cuenta, igual que una apagada.
   cta.material.uniforms.uSuave.value = 0.05
   cta.renderOrder = 9
   // LA PILDORA ENTRA EN EL CUADRO, SIEMPRE. Se construia a la medida del texto y `ctaTxt` cae al DOMINIO

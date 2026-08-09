@@ -315,6 +315,14 @@ export function build(ctx) {
   // ventana legible mide el 2% de la escena y el guardarrail exige llegar a 0.90 y cubrir el 25% — con
   // razon, porque si no cualquiera declara una rendija y esquiva el chequeo. El mecanismo esta pensado
   // para mallas que viven toda la escena y vuelan hasta su lugar, no para frases que se relevan.
+  // SIGUE SIN DECLARAR, y el arreglo del instrumento NO la salvo — se probo. Con la excepcion de la
+  // mascara puesta, `encuadre-check` la deja pasar, pero `verificar.mjs` tiene su PROPIO E-ENCAJE y la
+  // caza igual: la encuentra en `y = 6.80` con el cuadro llegando a 5, que es su salida (linea 511,
+  // `tl.to(w4.position, { y: 6.8 })`). Ahi la mascara todavia dibuja, asi que la excepcion no aplica y
+  // no deberia: durante la salida la frase se VE saliendo.
+  //
+  // Sigue siendo el limite documentado de `encajaEntre` — su ventana legible mide el 2% de la escena
+  // contra un guardarrail que exige 25%.
   delete w4.userData.encaja
   w4.position.set(XI, 0.60 - 0.30, 0)
 

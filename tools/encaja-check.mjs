@@ -205,7 +205,17 @@ try {
 //              `medida` (tambien derivado, sin efecto), es su SALIDA a `y: 6.8`. Y ahi `encajaEntre` no
 //              llega: entra en el beat 3.5 y sale en el 4 de una escena de 8, o sea una ventana del 2%
 //              contra un guardarrail que exige 25%. Limite ya documentado en docs/ENCAJE-ESTADO.md.
-const TRINQUETE = 30
+//   30 -> 29   el CTA de `cierre`, y el arreglo fue del INSTRUMENTO y no de la escena. La compuerta
+//              contaba como "en escena" a las mallas que su MASCARA de revelado todavia no habia
+//              dibujado: el CTA espera en `y = -5.7` —debajo de un cuadro que llega a 5— hasta el beat
+//              1.5, invisible por su shader pero con `visible: true` y opacidad 1. Es la tercera forma
+//              de estar apagado en este motor y la unica que no estaba contemplada.
+//
+//              LO ENCONTRO UNA SONDA NUEVA (`tools/encuadre-sonda.mjs`) en su primera corrida, despues
+//              de que yo fallara dos diagnosticos a mano: culpe al rebote elastico de la pildora (el
+//              ease se pasa hacia ABAJO, medido) y despues a un ancestro que la agrandara (`gComp`
+//              COMPRIME a 0.90). La sonda dio `t = 0.11` en la primera linea y con eso alcanzaba.
+const TRINQUETE = 29
 
 const sinClasificar = censo.filas.filter(f => f.clase === 'SIN CLASIFICAR')
 const n = sinClasificar.length

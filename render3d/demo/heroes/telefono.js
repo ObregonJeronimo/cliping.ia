@@ -276,6 +276,11 @@ export function build(ctx) {
     // `uniforms.map.value` y todo lo que filtraba por `material.map` pasaba de largo: el censo de
     // encaje, el de nitidez y la columna `muestra` de heroes-audit.
     pantalla.userData.tipoImagen = 'recorte'
+    // NO SE DECLARA, y un intento de declararla casi se cuela por medir mal. Con el instrumento
+    // arreglado, `node tools/encuadre-check.mjs telefono` pasa limpio — pero la corrida COMPLETA la
+    // rechaza igual, con 3.122 en `tecnico`/cliping-ia. La compuerta ROTA los juegos de datos por aire,
+    // asi que correrla sobre tres escenas le da a cada aire otro juego que el barrido entero: un
+    // subconjunto verde no es una prueba. Ver la nota larga de mas abajo, que sigue valiendo.
     // Si encaja y en que ventana se declara mas abajo, junto a los tweens de entrada y salida de los
     // que sale ese numero.
     // LA PAGINA NO OCUPA TODO EL PLANO: la franja segura de arriba (SEGURO) muestra el color de fondo

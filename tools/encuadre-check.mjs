@@ -335,6 +335,21 @@ for (const [nombreAire, aire] of Object.entries(AIRES)) {
         for (let p = o.parent; p && vis; p = p.parent) vis = p.visible
         const op = o.material && o.material.opacity != null ? o.material.opacity : 1
         if (!vis || op <= 0.02) return
+        // Y TAMPOCO CUENTA LO QUE LA MASCARA DE REVELADO TODAVIA NO DIBUJO. Esta es la tercera forma de
+        // estar apagado en este motor y era la unica sin contemplar: `materialMascara` y el `matWipe`
+        // de `tipografia` no dibujan NADA mientras su `uProg` no arranque, y muchas escenas dejan la
+        // pieza estacionada fuera del cuadro esperando su turno con el `uProg` en 0 o en negativo.
+        //
+        // El caso que lo destapo: el CTA de `cierre` daba 1.34 del cuadro en t=0.11, y no es un
+        // desborde — es que espera en `y = -5.7` con el cuadro llegando a 5, invisible, hasta que su
+        // tween lo sube en el beat 1.5. La compuerta lo contaba como "en escena" porque `visible` es
+        // true y la opacidad del material es 1: lo que lo oculta es el shader.
+        //
+        // Es la misma familia que las otras dos excepciones —"un objeto apagado no esta en escena"— y
+        // el criterio es identico: si no se dibuja un solo pixel, no se le pide estar en cuadro.
+        const up = o.material && !Array.isArray(o.material) && o.material.uniforms
+          && o.material.uniforms.uProg
+        if (up && typeof up.value === 'number' && up.value <= 0) return
         let e = cuenta.get(o)
         if (!e) { e = { visto: 0, dentro: 0 }; cuenta.set(o, e) }
         e.visto++
