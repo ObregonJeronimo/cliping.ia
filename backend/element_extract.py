@@ -425,6 +425,39 @@ async def extraer_elementos(page, max_n: int = MAX_ELEMENTOS) -> list[dict]:
             if await page.query_selector(sel) is None:
                 continue
             await page.evaluate(_JS_LIMPIAR, c["i"])
+            # SE INTENTO CAPTURAR LOS VECTORIALES MAS GRANDES, Y SE REVIRTIO. Queda escrito porque la
+            # idea es correcta, el dato que la motiva esta medido, y el que la vuelva a intentar tiene
+            # que saber por donde se rompe.
+            #
+            # POR QUE VALE LA PENA: los logos son los recortes MAS CHICOS del catalogo —de 100 a 317 px
+            # de ancho, medidos sobre los reales en disco— y por eso `topeNitido` los obliga a dibujarse
+            # mas chicos de lo que la composicion pide. La falta de pixeles no se ve como borrosidad: se
+            # ve como un logo mas chico del que la escena queria. Y son vectoriales: medido el 8/8/2026
+            # sobre cuatro paginas, los TRES logos que aparecieron son `<svg>` (11 de 30 elementos en
+            # total). Un `<svg>` no tiene resolucion nativa, asi que agrandarlo antes de la foto daria
+            # pixeles de verdad.
+            #
+            # COMO SE INTENTO: `transform: scale(k)` sobre el elemento, con `overflow: visible` en los
+            # ancestros para que no lo recortara su propio contenedor.
+            #
+            # DOS DE TRES SALIERON PERFECTOS, con la proporcion intacta al segundo decimal:
+            #     stripe    120x50  -> 480x200    (ar 2.40 -> 2.40)
+            #     tailwind  317x40  -> 1202x152   (ar 7.93 -> 7.91)
+            #
+            # Y LINEAR SALIO ROTO: 176x44 -> 704x69, o sea ar 4.00 -> 10.20. Abierto el PNG, el logo
+            # perdio el icono, el wordmark quedo fantasmal y se colo un "Product" del nav de al lado.
+            # El `overflow: visible` que evita que se recorte es tambien lo que deja entrar a los
+            # vecinos en la caja agrandada.
+            #
+            # POR QUE SE REVIERTE IGUAL AUNQUE FUNCIONE EN DOS DE TRES: un logo corrupto no queda en una
+            # tabla, va al video de un cliente. Y la falla no avisa — sale un PNG valido, con tinta
+            # razonable, que ninguna compuerta de hoy rechaza. Dos tercios de acierto es peor que cero
+            # cuando el tercio restante es invisible.
+            #
+            # EL CAMINO CORRECTO, para no repetir este: no tocar el layout de la pagina. Serializar el
+            # `outerHTML` del `<svg>` y rasterizarlo aparte a la resolucion que se quiera. Tiene su
+            # propio problema conocido —un svg que hereda `currentColor` o estilos de la pagina se
+            # dibuja con otros colores al sacarlo de contexto— y hay que resolverlo antes, no despues.
             loc = page.locator(sel)
             # animations='disabled' NO es cosmetico: Playwright espera a que el elemento quede quieto
             # antes de disparar, y un hero con gradiente o parallax en loop no se queda quieto nunca —
