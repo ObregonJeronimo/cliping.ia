@@ -173,7 +173,16 @@ try {
 //
 //              ES LA SEGUNDA DECISION DELIBERADA que aparece en el atraso (la primera es el titulo de
 //              `tarjetas`). Ver docs/ENCAJE-ESTADO.md: `SIN CLASIFICAR` sigue significando dos cosas.
-const TRINQUETE = 39
+//   39 -> 35   `cierre`, cuatro de sus cinco. La quinta —el texto del CTA— se aislo probando de a una
+//              y quedo con la medicion escrita en su sitio: la sonda le da una escala de MUNDO de
+//              1.124 a 1.317 con el pico a mitad de escena, y `geomW * esc` constante en 4.39 en los
+//              once aires, o sea un ancestro que la agranda y no su propio dimensionado.
+//
+//              SE DESCARTARON TRES SOSPECHOSOS antes de dejarla: la marca (la tipografia mas grande),
+//              las tres del pie, y el rebote elastico de la pildora — este ultimo era el candidato
+//              natural y se cayo midiendo el ease: `elastic.out(1, 0.42)` de 1.05 a 1.0 recorre
+//              0.987..1.050, o sea que se pasa HACIA ABAJO. Cinco por ciento, no treinta.
+const TRINQUETE = 35
 
 const sinClasificar = censo.filas.filter(f => f.clase === 'SIN CLASIFICAR')
 const n = sinClasificar.length

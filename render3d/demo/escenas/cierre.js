@@ -70,13 +70,13 @@ export function build(ctx) {
     m.material.dispose()
     m.material = materialMascara(map, tinte)
     m.material.uniforms.uProg.value = -0.2
-    // SIN `encaja`, MEDIDO. Lo natural seria declararlo —es texto, y en esta escena es todo lo que hay
-    // para leer— pero E-ENCAJE-REAL lo rechaza: una de estas mallas llega a 1.179 del cuadro en 27 de
-    // sus 105 cuadros. Misma familia que `tarjetas`: esta escena tambien mueve la camara, y lo que se
-    // dimensiona contra el cuadro en reposo se pasa cuando la camara entra.
+    // ENTRA ENTERO: es texto, y en esta escena es todo lo que hay para leer. Se declara en el helper
+    // para que lo herede el que agregue otro. Estaban sin clasificar porque `materialMascara` le saca
+    // el `.map` a la malla y el censo miraba justo eso.
     //
-    // Lo que corresponde es `encaja` + `encajaEntre` con la ventana en la que la camara ya volvio, y
-    // esa ventana hay que derivarla del tween. No se calibra a ojo: `mosaico` documenta el costo.
+    // CUATRO DE LAS CINCO PASAN. La quinta —el texto del CTA— se lo saca donde se crea, con la
+    // medicion al lado.
+    m.userData.encaja = true
     return m
   }
 
@@ -297,6 +297,27 @@ export function build(ctx) {
   // El texto va del color del FONDO, no de un negro fijo: sobre la pildora de acento, en un mundo
   // claro tiene que ser claro y en uno oscuro, oscuro. '#050810' acertaba solo en el mundo oscuro.
   const cta = textoMascara(ctaTxt, 0.26, LOOK.bg, { fuente: 'DMSans', tracking: 0.075 })
+  // AL CTA SE LE SACA, Y ES LA UNICA DE LAS CINCO. Aislada probando de a una: con `encaja` en el
+  // helper fallan 11 corridas y todas son ESTA malla —los valores se agrupan en 1.176-1.184, o sea un
+  // mismo objeto visto en once aires—. Sacandola, las otras cuatro pasan limpias.
+  //
+  // LO QUE SE DESCARTO, para que el proximo no lo repita:
+  //   · NO es la marca (se excluyo primero, por ser la tipografia mas grande: seguian los 11 fallos).
+  //   · NO son las tres del pie (idem).
+  //   · NO es el rebote elastico de la pildora, que era el sospechoso natural. El tween va de 1.05 a
+  //     1.0 con `elastic.out(1, 0.42)`, y el ease se paso pero HACIA ABAJO: muestreado numericamente,
+  //     `scale.x` recorre 0.987..1.050. Cinco por ciento, no treinta.
+  //
+  // LO QUE SI ESTA MEDIDO: la sonda da una escala de MUNDO de 1.124 a 1.317 sobre esta malla, con el
+  // pico en t=0.54 —o sea a mitad de escena, no en la entrada— y `geomW * esc` sale constante en 4.39
+  // en todos los aires. Eso apunta a un ancestro que la agranda, no a su propio dimensionado, y no
+  // llegue a aislar cual. Queda ahi y no se declara: prometer contencion sin saber por que se rompe es
+  // como se ponen las promesas falsas.
+  //
+  // Y HAY UNA PISTA ESCRITA VEINTE LINEAS MAS ARRIBA, en la nota de `ANCHO_PILL`: "SIGUE SIN COMPUERTA
+  // ... se marco la pildora con userData.encaja y la compuerta siguio en VERDE ... el fixture todavia
+  // no construye la pildora". Ya no: ahora la compuerta SI la ve, a traves de este texto, y dice 1.18.
+  delete cta.userData.encaja
   cta.material.uniforms.uSuave.value = 0.05
   cta.renderOrder = 9
   // LA PILDORA ENTRA EN EL CUADRO, SIEMPRE. Se construia a la medida del texto y `ctaTxt` cae al DOMINIO
