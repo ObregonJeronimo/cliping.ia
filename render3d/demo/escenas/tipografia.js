@@ -31,7 +31,7 @@
 // barras que entran a contratiempo (en los medios beats), columna de marcas que baja sin parar,
 // regla de progreso escalonada arriba y epígrafe abajo.
 
-import { E, LOOK, b, texto, planoTexto, matAcento, hex, dolly, orbita, MOB } from '../kit.js'
+import { E, LOOK, b, texto, planoTexto, matAcento, hex, dolly, orbita, cuadroMasAngosto, MOB } from '../kit.js'
 // Las frases salen de los DATOS, no del archivo: la misma escena sirve para cualquier pagina.
 // El estilo de cada entrada (que fuente, que ancho, que gesto) SI es de la escena — eso es direccion
 // de arte y no cambia con el contenido.
@@ -80,8 +80,18 @@ export function build(ctx) {
   const g = new THREE.Group()
   const tl = gsap.timeline({ paused: true })
 
-  const XI = -mundoW / 2 + 0.26   // margen izquierdo del cuadro
-  const XD = mundoW / 2 - 0.26    // margen derecho
+  // LOS MARGENES SE MIDEN CONTRA EL CUADRO MAS ANGOSTO, no contra el de reposo. Esta escena ya sabia
+  // que la camara se acerca —el `ANCHO = 5.05` de abajo esta calculado justo por eso, y lo dice— pero
+  // los margenes seguian saliendo de `mundoW / 2`, que es el cuadro quieto. Consecuencia medida: las
+  // dos frases que se apoyan en los bordes (la mascara horizontal a la derecha y la vertical a la
+  // izquierda) se salen, y son las UNICAS dos de las cinco que fallan.
+  //
+  // Se deriva del mismo `dolly(distBase, -0.9)` que la camara usa al final del archivo, asi que el
+  // margen sigue solo a cualquier cambio de camara — y `cuadroMasAngosto` le pone encima el dolly del
+  // aire, que va de 0.4 a 1.55. Es el mismo arreglo que `columna` necesito por la misma razon.
+  const CUADRO = cuadroMasAngosto(mundoW, -0.9 / distBase)
+  const XI = -CUADRO / 2 + 0.26   // margen izquierdo del cuadro, con la camara en su punto mas cerca
+  const XD = CUADRO / 2 - 0.26    // margen derecho, idem
 
   // ANCHO DE COMPOSICIÓN. El cuadro mide 5.63 de ancho, pero la cámara se acerca 0.9 unidades a lo
   // largo de la escena y eso amplía un 5%: lo que en reposo llegaba justo al borde, a mitad de escena
@@ -174,6 +184,9 @@ export function build(ctx) {
     const geo = new THREE.PlaneGeometry(m.ancho, m.alto)
     geo.translate(-anc * m.ancho / 2, 0, 0)
     const mesh = new THREE.Mesh(geo, matWipe(m.tex, o))
+    // ENTRA ENTERO por defecto: esta escena es tipografia y una palabra cortada no se lee. Las dos
+    // excepciones se marcan en su sitio de uso, con el motivo.
+    mesh.userData.encaja = true
     // SIN `encaja`, MEDIDO, y acá el resultado es el mas interesante de los tres. Declararlo rechaza
     // DOS de estas cinco mallas: una llega a 1.055 (43 de 114 cuadros) y otra a 1.512 (58 de 114).
     //
@@ -273,11 +286,22 @@ export function build(ctx) {
   // 3 · MÁSCARA HORIZONTAL, pegada a la derecha, casi de borde a borde.
   const m3 = medida(fr(2), NEGRA, ANCHO, 2.7)
   const w3 = planoW(m3, 1, { dir: 0, borde: 0.05, filo: LOOK.acento2 })
+  // SANGRA, y lo dice el titulo de este bloque: "pegada a la derecha, CASI DE BORDE A BORDE". Se la
+  // ancla en `XD + 0.32`, o sea 0.32 MAS ALLA del margen — con el margen ya derivado del cuadro mas
+  // angosto, eso deja su canto 0.06 afuera. Es la composicion, no un descuido: exigirle contencion
+  // seria pedirle que deje de estar pegada al borde, que es lo unico que la distingue de las otras.
+  delete w3.userData.encaja
+  w3.userData.sangra = true
   w3.position.set(XD + 0.32, 0.15, 0)
 
   // 4 · MÁSCARA VERTICAL (de abajo hacia arriba), pegada a la izquierda.
   const m4 = medida(fr(3), ANTON, ANCHO, 2.45)
   const w4 = planoW(m4, -1, { dir: 2, borde: 0.09, filo: LOOK.acento })
+  // LA UNICA DE LAS CINCO QUE QUEDA SIN DECLARAR, con lo medido para no repetirlo. Derivar los margenes
+  // del cuadro mas angosto arreglo a `w3` a medias (de 11 fallos a 5) y a esta no la movio: sigue en
+  // 11. O sea que lo que la saca NO es el acercamiento de la camara, que es lo que ya se corrigio.
+  // Queda por descartar el movimiento en Y de la camara (`orbita(0.24)`) y el ancla de `planoW`.
+  delete w4.userData.encaja
   w4.position.set(XI, 0.60 - 0.30, 0)
 
   // 5 · ROTACIÓN EN X DESDE 90°: cae de plano hacia la cámara. Es la ÚNICA que va en el acento, y por

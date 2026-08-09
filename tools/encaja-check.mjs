@@ -182,7 +182,21 @@ try {
 //              las tres del pie, y el rebote elastico de la pildora — este ultimo era el candidato
 //              natural y se cayo midiendo el ease: `elastic.out(1, 0.42)` de 1.05 a 1.0 recorre
 //              0.987..1.050, o sea que se pasa HACIA ABAJO. Cinco por ciento, no treinta.
-const TRINQUETE = 35
+//   35 -> 31   `tipografia`, cuatro de sus cinco — y una es un ARREGLO, no una declaracion.
+//
+//              Sus margenes `XI`/`XD` salian de `mundoW / 2`, o sea del cuadro EN REPOSO, mientras la
+//              escena ya sabia que la camara se acerca: su `ANCHO = 5.05` esta calculado justo por eso
+//              y lo dice en el comentario. Derivarlos con `cuadroMasAngosto` bajo los fallos de `w3`
+//              de 11 a 5. Mismo defecto y mismo arreglo que `columna`, en otro archivo.
+//
+//              `w3` queda `sangra`, y lo dice el titulo de su bloque: "pegada a la derecha, CASI DE
+//              BORDE A BORDE". Se ancla en `XD + 0.32`, o sea 0.32 mas alla del margen — su canto vive
+//              0.06 afuera a proposito.
+//
+//              `w4` es la unica que queda, con lo descartado escrito: el arreglo del margen NO la
+//              movio (sigue en 11), asi que lo que la saca no es el acercamiento. Queda por descartar
+//              el movimiento en Y de la camara y el ancla de `planoW`.
+const TRINQUETE = 31
 
 const sinClasificar = censo.filas.filter(f => f.clase === 'SIN CLASIFICAR')
 const n = sinClasificar.length
