@@ -308,11 +308,19 @@ export function build(ctx) {
   //     1.0 con `elastic.out(1, 0.42)`, y el ease se paso pero HACIA ABAJO: muestreado numericamente,
   //     `scale.x` recorre 0.987..1.050. Cinco por ciento, no treinta.
   //
-  // LO QUE SI ESTA MEDIDO: la sonda da una escala de MUNDO de 1.124 a 1.317 sobre esta malla, con el
-  // pico en t=0.54 —o sea a mitad de escena, no en la entrada— y `geomW * esc` sale constante en 4.39
-  // en todos los aires. Eso apunta a un ancestro que la agranda, no a su propio dimensionado, y no
-  // llegue a aislar cual. Queda ahi y no se declara: prometer contencion sin saber por que se rompe es
-  // como se ponen las promesas falsas.
+  // UN DATO QUE ESCRIBI ACA Y ERA FALSO, corregido: decia que "la sonda da una escala de MUNDO de 1.124
+  // a 1.317 sobre esta malla" y que eso apuntaba a un ancestro que la agranda. La sonda ordena por
+  // `px / pixeles nativos`, y con texturas de TEXTO —que miden miles de px— ese orden elige cualquier
+  // otra malla, no esta. Estaba mirando otra cosa y reportandolo como si fuera del CTA.
+  //
+  // Descartado ademas el unico ancestro que escala: `gComp` va a 0.90, o sea que COMPRIME.
+  //
+  // LO QUE SI ESTA PROBADO, y es por exclusion y no por deduccion: sacandole `encaja` a ESTA malla, la
+  // escena queda verde; poniendoselo, fallan 11 corridas con valores agrupados en 1.176-1.184. Es
+  // esta, y se sale un 18%. Por que, todavia no se sabe.
+  //
+  // Queda sin declarar: prometer contencion sin saber por que se rompe es como se ponen las promesas
+  // falsas, y ya hubo una en este mismo comentario.
   //
   // Y HAY UNA PISTA ESCRITA VEINTE LINEAS MAS ARRIBA, en la nota de `ANCHO_PILL`: "SIGUE SIN COMPUERTA
   // ... se marco la pildora con userData.encaja y la compuerta siguio en VERDE ... el fixture todavia
