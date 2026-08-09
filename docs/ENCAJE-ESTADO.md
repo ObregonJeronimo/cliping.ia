@@ -105,9 +105,8 @@ hay. Sale del propio tween de entrada de la escena.
 poner el piso en 0 el primer día habría dejado la cadena roja con 59 casos y nadie podría pushear
 hasta terminar todo.
 
-**Está en 0 desde el 2026-08-06, y en cero deja de ser un trinquete: es la regla.** Ninguna malla que
-muestre una imagen puede entrar al motor sin declarar si tiene que entrar entera o si sangra a
-propósito.
+**Estuvo en 0 el 2026-08-06 y ese cero era falso** — el censo no veía 71 mallas (ver arriba). Volvió al
+número verdadero y se está bajando de nuevo, ahora sobre las 161 reales.
 
 Cuando clasifiques una tanda, la compuerta te dice el número nuevo. **Bajalo al medido, no a uno
 redondo.**
@@ -121,20 +120,36 @@ redondo.**
 | 2026-08-06 | 21 de 71 | `rafaga` (7) |
 | 2026-08-06 | 15 de 71 | `apertura`, sólo el contador (6) |
 | 2026-08-06 | 7 de 71 | `apertura`, sus 8 letras (arreglado el dimensionado) |
-| 2026-08-06 | **0 de 71** | `tipografia` — **CERRADO**, el trinquete pasa a ser la regla |
+| 2026-08-06 | **0 de 71** | `tipografia` — se creyó cerrado, y el censo estaba ciego |
+| 2026-08-08 | **71 de 161** | el censo aprende a ver los `ShaderMaterial`: el 161 del pendiente era correcto |
+| 2026-08-08 | 66 de 161 | `cita`, `marquesina`, `sello`, `titular` (pies y rótulos) y el espejo de `vitrina` |
+| 2026-08-08 | 64 de 161 | el helper `chico()` de `mesa` |
+| 2026-08-08 | 63 de 161 | el eco de `tarjetas` (sangra) |
+| 2026-08-08 | 55 de 161 | `pantalla` entera: 7 bandas sangran, el pie encaja |
+| 2026-08-08 | 53 de 161 | `columna`: no se declaró, se **arregló** el ancla con `cuadroMasAngosto` + órbita |
+| 2026-08-08 | 52 de 161 | `ventana` (sangra: mide 1.02 del cuadro por diseño) |
+| 2026-08-08 | **39 de 161** | `toro` (7) y `apertura` (6), sus fábricas de texto, sin un solo fallo |
 
 ## Lo que falta, por archivo
 
-Nada. Las 71 están clasificadas.
+**39 de 161**, en siete archivos:
+
+| archivo | faltan | qué se sabe ya |
+|---|---|---|
+| `tarjetas` | 20 | **la pregunta reservada.** Su cámara "agranda el cuadro cerca del doble": medido, declarar `encaja` en su fábrica da hasta 2.065. No es dimensionado — el contador ya se acota al ancho de su tarjeta |
+| `destello` | 6 | **decisión por caso ya tomada** (`if (tocaLaMarca)`). No declarar en la fábrica |
+| `cierre` | 5 | probado: 1.179. Misma familia que `tarjetas` — la escena mueve la cámara |
+| `tipografia` | 5 | probado: 1.512 y 1.055. Ya se dimensionan con `medida()` contra un ancho máximo |
+| `telefono` | 1 | 3.122 → **1.031** con la ventana legible. El resto es su encuadre declarado ("aunque se salga del cuadro") |
+| `portatil` | 1 | 1.963 → **1.211**. El resto sale de la apertura de la tapa |
+| `ventana` | 1 | ya resuelto como `sangra`; el 1 que queda es otra malla del mismo archivo |
+
+**Ninguno de los siete es trabajo mecánico pendiente.** Los dos primeros son decisiones ya tomadas y
+escritas; los otros cinco son la misma pregunta de producto, con el número ya separado en **gesto** y
+**encuadre** — que era el trabajo caro.
 
 `tipoImagen` lo declaran `planoTexto` y `planoRecorte` en el kit; las que dicen "sin tipo" son mallas
 que la escena arma por su cuenta con `new THREE.Mesh`, y conviene que también lo declaren al pasar.
-
-**Lo que sé de las dos que faltan, para no arrancar de cero:**
-
-- `tipografia` — las 5 de texto se componen contra `A_MAX = mundoW * 0.94` y `ANCHO = 5.05`, o sea que
-  la intención es que entren. **Las 2 mitades no las cubre el mecanismo actual**, y esto es un límite
-  real de `encajaEntre`, no una tarea pendiente de ejecutar (ver abajo).
 
 ## El límite conocido de `encajaEntre`, medido
 
