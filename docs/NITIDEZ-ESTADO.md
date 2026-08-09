@@ -31,14 +31,16 @@ Leyendo la cabecera IHDR de los **77 recortes** que hay en `tools/out/motor/*/el
 120×50, linear 176×44, pentagram 206×37, basecamp 200×60. El logo es justo lo que una escena quiere
 mostrar grande, y estirarlo es el defecto que su dueño ve antes que ninguno.
 
-## Estado: 11 escenas/héroes con imagen del cliente, ninguna por encima de 2x
+## Estado: 13 escenas/héroes con imagen del cliente, ninguna por encima de 2x
 
 | escena | aumento | dibujado | nativo | nota |
 |---|---|---|---|---|
+| `pantalla` | 1,76x | 1265 px | 720 | sus bandas van **a sangre** por diseño (`mundoW * 1.06`) |
 | `mosaico` | 1,69x | 433 px | 256 | el destaque de escala 1,13 — declarado |
 | `hero` / `cubo` | 1,60x | 192 px | 120 | girada 64° en el tumbo: la caja mide de más |
 | `telefono` | 1,59x | 1143 px | 720 | girada 30° |
-| `columna` | 1,58x | 404 px | 256 | |
+| `columna` | 1,58x | 404 px | 256 | el foco del centro, declarado |
+| `ventana` | 1,56x | 1121 px | 720 | mide 1.02 del cuadro por diseño |
 | `rafaga` | 1,48x | 379 px | 256 | |
 | `vitrina` | 1,47x | 176 px | 120 | |
 | `contraste` | 1,33x | 850 px | 637 | |
