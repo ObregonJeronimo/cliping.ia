@@ -152,7 +152,13 @@ export function build(ctx) {
     // el mayor cuerpo que SI entra — que puede seguir siendo chico, y en ese caso el problema no es de
     // esta funcion sino del largo del texto que le llega.
     const PISO = altoMax * 0.22
-    const A_MAX = mundoW * 0.94
+    // Y EL TECHO DE ANCHO VA CONTRA EL CUADRO MAS ANGOSTO, no contra `mundoW`. El comentario de arriba
+    // dice, con razon, que "el piso no puede empujar el ancho fuera del cuadro... que es el defecto que
+    // este mismo archivo tiene en otra linea" — y despues medía el cuadro con la camara quieta, que es
+    // justo ese defecto. Medido: `w4` (la mascara vertical, que es la que cae por el piso con textos
+    // largos) llegaba a 1.53 del cuadro. Es la tercera vez en este archivo: `ANCHO` lo tiene bien
+    // resuelto y lo explica, los margenes `XI`/`XD` no lo tenian, y esto tampoco.
+    const A_MAX = CUADRO * 0.94
     if (h < PISO) {
       a = Math.min(PISO * t.ar, A_MAX)
       h = a / t.ar
@@ -297,10 +303,18 @@ export function build(ctx) {
   // 4 · MÁSCARA VERTICAL (de abajo hacia arriba), pegada a la izquierda.
   const m4 = medida(fr(3), ANTON, ANCHO, 2.45)
   const w4 = planoW(m4, -1, { dir: 2, borde: 0.09, filo: LOOK.acento })
-  // LA UNICA DE LAS CINCO QUE QUEDA SIN DECLARAR, con lo medido para no repetirlo. Derivar los margenes
-  // del cuadro mas angosto arreglo a `w3` a medias (de 11 fallos a 5) y a esta no la movio: sigue en
-  // 11. O sea que lo que la saca NO es el acercamiento de la camara, que es lo que ya se corrigio.
-  // Queda por descartar el movimiento en Y de la camara (`orbita(0.24)`) y el ancla de `planoW`.
+  // LA UNICA DE LAS CINCO SIN DECLARAR, Y CAE EN UN LIMITE YA DOCUMENTADO — no es una tarea pendiente.
+  //
+  // Perseguida hasta el final: llega a 1.45-1.53 del cuadro, y NO es el acercamiento de la camara
+  // (derivar los margenes con `cuadroMasAngosto` arreglo a `w3` y a esta no la movio) ni el techo de
+  // ancho del piso de `medida` (tambien derivado, sin efecto aca). Es su SALIDA: la linea 511 la manda
+  // a `y: 6.8` con el cuadro llegando a 5, o sea fuera de pantalla a proposito.
+  //
+  // Y ahi `encajaEntre` no la cubre, por la razon que `docs/ENCAJE-ESTADO.md` ya explica: esta frase
+  // entra en el beat 3.5 y sale en el 4 de una escena de 8, porque es una de SIETE que se suceden. Su
+  // ventana legible mide el 2% de la escena y el guardarrail exige llegar a 0.90 y cubrir el 25% — con
+  // razon, porque si no cualquiera declara una rendija y esquiva el chequeo. El mecanismo esta pensado
+  // para mallas que viven toda la escena y vuelan hasta su lugar, no para frases que se relevan.
   delete w4.userData.encaja
   w4.position.set(XI, 0.60 - 0.30, 0)
 

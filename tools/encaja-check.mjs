@@ -196,7 +196,16 @@ try {
 //              `w4` es la unica que queda, con lo descartado escrito: el arreglo del margen NO la
 //              movio (sigue en 11), asi que lo que la saca no es el acercamiento. Queda por descartar
 //              el movimiento en Y de la camara y el ancla de `planoW`.
-const TRINQUETE = 31
+//   31 -> 30   el reflejo de `ventana` (sangra: es la MISMA geometria que su cara, dada vuelta, y la
+//              cara ya sangra porque mide 1.02 del cuadro por diseño).
+//
+//              Y `tipografia` w4 quedo PERSEGUIDA HASTA EL FINAL sin poder declararse, con las tres
+//              causas descartadas anotadas en su sitio: no es el acercamiento de la camara (derivar
+//              los margenes arreglo a `w3` y a esta no la movio), no es el techo de ancho del piso de
+//              `medida` (tambien derivado, sin efecto), es su SALIDA a `y: 6.8`. Y ahi `encajaEntre` no
+//              llega: entra en el beat 3.5 y sale en el 4 de una escena de 8, o sea una ventana del 2%
+//              contra un guardarrail que exige 25%. Limite ya documentado en docs/ENCAJE-ESTADO.md.
+const TRINQUETE = 30
 
 const sinClasificar = censo.filas.filter(f => f.clase === 'SIN CLASIFICAR')
 const n = sinClasificar.length

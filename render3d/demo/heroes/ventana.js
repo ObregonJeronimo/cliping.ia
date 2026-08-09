@@ -326,6 +326,12 @@ export function build(ctx) {
   const reflejo = new THREE.Mesh(geoCara, new THREE.ShaderMaterial({
     transparent: true, depthWrite: false, uniforms: uCarcasa(true), vertexShader: VERT, fragmentShader: FRAG,
   }))
+  // SANGRA, POR ARRASTRE DE LA CARA. Es la MISMA geometria (`geoCara`) dada vuelta, y la cara ya sangra
+  // porque mide 1.02 del cuadro por diseño. Ademas es un reflejo: su borde se desvanece contra el
+  // vidrio, asi que no es un borde que alguien lea — mismo criterio que el espejo de `vitrina`, que se
+  // probo como `encaja` y se refuto.
+  reflejo.userData.sangra = true
+  reflejo.userData.tipoImagen = 'recorte'
   reflejo.position.set(0, -ALTO - ALTO * 0.014, Z_CARA)
   reflejo.userData.pagina = { anchoFrac: 1, altoFrac: yBarra }   // misma cara, dada vuelta
   gCara.add(reflejo)
