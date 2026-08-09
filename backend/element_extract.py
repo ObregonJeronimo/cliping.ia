@@ -505,6 +505,20 @@ async def extraer_elementos(page, max_n: int = MAX_ELEMENTOS) -> list[dict]:
                     # `tag` y `vector` ya venian del navegador y se tiraban aca. Sin ellos no hay forma
                     # de saber cuantos recortes podrian capturarse mas nitidos (ver la nota en el JS).
                     "tag": c.get("tag", ""), "vector": bool(c.get("vector")),
+                    # LA CAJA QUE EL DOM DECIA, al lado de la que salio. Sirve para una comprobacion que
+                    # hoy NO EXISTE y que hace falta: si el recorte cambia de PROPORCION respecto del
+                    # elemento, algo se colo o algo se perdio.
+                    #
+                    # Lo destapo un intento de capturar los svg mas grandes (ver la nota larga arriba):
+                    # el logo de linear salio con ar 10.20 cuando su elemento medía 4.00, con el icono
+                    # perdido y un "Product" del nav adentro. Era un PNG valido, con tinta razonable, y
+                    # ninguna compuerta lo habria rechazado — se iba derecho al video de un cliente.
+                    #
+                    # Se GUARDA y no se juzga todavia: recortar el margen transparente cambia la
+                    # proporcion a proposito en muchos elementos, asi que el umbral hay que medirlo
+                    # sobre las capturas reales antes de convertirlo en un rechazo. Poner un numero a
+                    # ojo aca seria un rechazo que descarta recortes buenos.
+                    "wDom": int(c.get("w") or 0), "hDom": int(c.get("h") or 0),
                     "minPx": c.get("minPx", 0), "texto": c.get("texto", ""), "png": a["png"]})
         if len(out) >= max_n:
             break
