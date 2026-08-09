@@ -38,6 +38,7 @@ import { createCanvas, GlobalFonts } from '@napi-rs/canvas'
 import { readFileSync, existsSync, readdirSync } from 'node:fs'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { dirname, join } from 'node:path'
+import { freemem } from 'node:os'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const RAIZ = join(HERE, '..')
@@ -280,7 +281,32 @@ for (const [nombreAire, aire] of Object.entries(AIRES)) {
         { rol: 'cta', url: 'f3' }, { rol: 'tarjeta', url: 'f4' }],
       spec: { tiraViewport: 1560 }, claro: false, repeticion: 0,
     })
-  } catch (e) { fallos.push(`${id}: build lanzo — ${e.message}`); continue }
+  } catch (e) {
+    // QUEDARSE SIN MEMORIA NO ES UN DEFECTO DE COMPOSICION, Y CONFUNDIRLOS ES PEOR QUE LAS DOS COSAS.
+    //
+    // `texto()` compromete pixeles que la libreria nativa de canvas no devuelve nunca —es la fuga que
+    // este repo documenta en cinco lugares— y cuando se agotan, `createCanvas` tira "Create skia
+    // surface failed". Eso llegaba aca y salia como `${id}: build lanzo`, o sea contado igual que "la
+    // malla se sale del cuadro": la compuerta decia FAIL y el mensaje sonaba a defecto de la escena.
+    //
+    // Visto el 8/8/2026: con un juego cargado, `titular` y `toro` "fallaron" en `nocturno`. Volviendo a
+    // correr con la maquina despejada, las 407 construcciones pasan sin tocar una linea. Una compuerta
+    // que acusa a una escena por el estado de la maquina se aprende a ignorar, y despues no ve el
+    // defecto de verdad.
+    //
+    // Se corta con exit 2 —ni verde ni rojo: NO SE PUDO MEDIR— que es la unica respuesta honesta.
+    if (/skia surface|out of memory|Array buffer allocation|heap out of memory/i.test(e.message || '')) {
+      console.error(`ENCUADRE: NO SE PUDO MEDIR — se acabo la memoria al construir "${id}" (${e.message}).`)
+      console.error(`  Van ${revisados} construcciones de las ~${ids.length * Object.keys(AIRES).length}.`)
+      console.error('  NO es un defecto de la escena: es la fuga de `texto()`, que compromete memoria que')
+      console.error('  la libreria nativa de canvas no devuelve. Se corta en vez de acusar a la escena.')
+      console.error(`  Disponible ahora: ${Math.round(freemem() / 1048576)} MB. Cerra`)
+      console.error('  aplicaciones y volve a correr, o parti el barrido con ENCUADRE_AIRE=<aire>.')
+      process.exit(2)
+    }
+    fallos.push(`${id}: build lanzo — ${e.message}`)
+    continue
+  }
   if (!r || !r.g) continue
   revisados++
 

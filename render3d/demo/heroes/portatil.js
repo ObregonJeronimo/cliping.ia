@@ -222,8 +222,24 @@ export function build(ctx) {
   gEq.position.set(0, -mundoH * 0.06 - 1.6, -3.2)
   gEq.rotation.set(0.42, -0.62, 0)
   pivote.rotation.x = -Math.PI * 0.5 + 0.02              // cerrada del todo
+  const ENTRADA = 1.6             // el mas largo de los dos tweens de entrada
+  const SALIDA = 0.9              // lo que dura la salida, contada desde el final
   tl.to(gEq.position, { y: -mundoH * 0.06, z: 0, duration: b(1.3), ease: E.llega(1.5) }, 0)
-  tl.to(gEq.rotation, { x: 0.30, y: -0.20, duration: b(1.6), ease: E.frena(3) }, 0)
+  tl.to(gEq.rotation, { x: 0.30, y: -0.20, duration: b(ENTRADA), ease: E.frena(3) }, 0)
+  // LA VENTANA LEGIBLE, MEDIDA — y por que NO se declara `encaja`, igual que en `telefono`.
+  //
+  // Con `encaja` + `encajaEntre [ENTRADA/beats, max(0.90, 1 - SALIDA/beats)]` el peor caso de la
+  // pantalla baja de 1.963 a **1.211**. O sea que buena parte del exceso era el gesto —el equipo
+  // llegando y saliendo— pero queda un 21% que no lo es.
+  //
+  // Ese 21% sale de la APERTURA: la tapa mide `ALTO_P` y al abrirse se levanta sobre la bisagra, asi
+  // que la pantalla termina mucho mas arriba que la base. El ancho ya esta acotado (`mundoW * 0.92`);
+  // lo que se sale es el alto, y acotarlo obligaria a achicar el equipo o abrir menos la tapa, que es
+  // el gesto central de este hero ("la unica forma que tiene una pieza de 3D de mostrar una pantalla
+  // SIN que la pantalla aparezca de la nada").
+  //
+  // Misma pregunta reservada que el titulo de `tarjetas` y el encuadre de `telefono`. Lo que aporta
+  // esto es el numero separado: 1.963 con el gesto adentro, 1.211 sin el.
 
   // ABRE. Es el gesto central y se le da un beat entero, con overshoot chico: una tapa que llega
   // clavada a su ángulo final se ve motorizada; con un rebote mínimo se ve empujada por una mano.
@@ -299,8 +315,8 @@ export function build(ctx) {
   tl.to(camera.position, { z: distBase, duration: DUR * 0.18, ease: E.vaiven() }, DUR * 0.82)
 
   // Sale hacia abajo cerrando de a poco: el mismo gesto que la trajo, al revés y acelerando.
-  tl.to(gEq.position, { y: -mundoH * 1.05, duration: b(0.9), ease: E.acelera(3) }, DUR - b(0.9))
-  tl.to(pivote.rotation, { x: -0.55, duration: b(0.9), ease: E.acelera(2) }, DUR - b(0.9))
+  tl.to(gEq.position, { y: -mundoH * 1.05, duration: b(SALIDA), ease: E.acelera(3) }, DUR - b(SALIDA))
+  tl.to(pivote.rotation, { x: -0.55, duration: b(SALIDA), ease: E.acelera(2) }, DUR - b(SALIDA))
 
   // La pantalla vive en la escena post-bloom: hay que copiarle la transformación MUNDIAL del pivote,
   // porque su padre real (la tapa) está dos grupos adentro y rotado.

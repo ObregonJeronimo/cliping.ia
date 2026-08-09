@@ -372,8 +372,18 @@ export function build(ctx) {
   // mientras viaja, los dos gestos se tapan y no se lee ninguno.
   gVent.position.set(0, ALTO * 0.16, -5.2)
   gVent.rotation.set(0.28, -0.74, 0.05)
+  const ENTRADA = 1.4             // el mas largo de los dos tweens de entrada
+  const SALIDA = 0.85             // lo que dura la salida, contada desde el final
   tl.to(gVent.position, { y: 0, z: 0, duration: b(1.15), ease: E.llega(1.5) }, 0)
-  tl.to(gVent.rotation, { x: 0.055, y: -0.30, z: 0, duration: b(1.4), ease: E.llega(1.35) }, 0)
+  tl.to(gVent.rotation, { x: 0.055, y: -0.30, z: 0, duration: b(ENTRADA), ease: E.llega(1.35) }, 0)
+  // SANGRA, Y LO DICE ESTA MISMA ESCENA VEINTE LINEAS MAS ARRIBA: `ANCHO = mundoW * 1.02`, con el
+  // argumento escrito — "a 1.02 del ancho de cuadro la ventana LO LLENA DE PUNTA A PUNTA". Una ventana
+  // dimensionada al 102% del cuadro no puede entrar entera: excederlo es la composicion.
+  //
+  // Probado igual, porque la alternativa habria sido `encaja` + `encajaEntre` como en `telefono`: con
+  // la ventana legible puesta llega a 1.125, o sea que ni siquiera asentada entra — coherente con el
+  // 1.02 declarado mas el giro en Y. No es el gesto de entrada: es el encuadre.
+  carcasa.userData.sangra = true
   tl.fromTo(uProg, { value: 0 }, { value: 1.07, duration: b(1.2), ease: E.frena(3) }, b(0.25))
 
   // FLOTA Y SE DESPLAZA. Cuatro períodos que no son múltiplos entre sí: si lo fueran, los ejes se
@@ -448,7 +458,7 @@ export function build(ctx) {
   // SALE ENROLLÁNDOSE HACIA SU BARRA mientras se va para arriba: el mismo gesto que la trajo, al revés
   // y acelerando. Cerrar una ventana es un gesto que existe de verdad, y por eso el corte siguiente se
   // siente ganado y no impuesto.
-  tl.to(gVent.position, { y: mundoH * 0.72, duration: b(0.85), ease: E.acelera(3) }, DUR - b(0.85))
+  tl.to(gVent.position, { y: mundoH * 0.72, duration: b(SALIDA), ease: E.acelera(3) }, DUR - b(SALIDA))
   tl.to(gVent.rotation, { y: -0.52, z: 0.10, duration: b(0.85), ease: E.acelera(2) }, DUR - b(0.85))
   tl.to(uProg, { value: 0, duration: b(0.60), ease: E.acelera(2) }, DUR - b(0.60))
   tl.to(filete.scale, { x: 0.0001, duration: b(0.50), ease: E.acelera(2) }, DUR - b(0.75))

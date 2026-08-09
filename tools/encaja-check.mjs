@@ -155,7 +155,12 @@ try {
 //              `orbita(0.12)` (eso hay que sumarlo aparte). El ancla nueva se deriva de esos dos
 //              numeros en vez de elegir un margen que funcione: calibrarlo volveria a estar mal apenas
 //              alguien toque el dolly, la orbita o agregue un aire.
-const TRINQUETE = 53
+//   53 -> 52   `ventana`: su carcasa SANGRA, y lo dice la propia escena — `ANCHO = mundoW * 1.02`,
+//              "a 1.02 del ancho de cuadro la ventana LO LLENA DE PUNTA A PUNTA". Una ventana
+//              dimensionada al 102% del cuadro no puede entrar entera: excederlo ES la composicion.
+//              Se probo igual con `encajaEntre` antes de aceptarlo: llega a 1.125 tambien asentada, o
+//              sea que no es el gesto de entrada sino el encuadre. Coherente con el 1.02 declarado.
+const TRINQUETE = 52
 
 const sinClasificar = censo.filas.filter(f => f.clase === 'SIN CLASIFICAR')
 const n = sinClasificar.length
