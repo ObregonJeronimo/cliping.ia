@@ -97,7 +97,19 @@ _JS_CANDIDATOS = r"""
     }
     if (bloquea) visto.push(el);
     el.setAttribute('data-uv', String(n));
+    // `vector` DECIDE SI ESTE RECORTE PODRIA SER MAS NITIDO DE GRATIS. Un <svg> se rasteriza a
+    // cualquier resolucion; un <img> con un PNG no tiene mas pixeles que los que trae. Hoy los dos se
+    // capturan igual, con el device_scale_factor=2 de la pagina, y los logos salen de 100 a 317 px de
+    // ancho — los recortes mas chicos del catalogo, y justo los que `topeNitido` obliga a dibujar mas
+    // chicos de lo que la composicion pide. Si resultan ser mayormente vectoriales, subirles la escala
+    // de captura es nitidez sin costo de red ni de peso.
+    //
+    // Se REGISTRA antes de decidir nada: hoy no hay forma de saber cuantos son vectoriales, y construir
+    // el realce sin ese dato seria optimizar a ciegas.
+    const _svg = el.tagName.toLowerCase() === 'svg' || !!el.querySelector('svg')
+    const _rast = el.tagName.toLowerCase() === 'img' || !!el.querySelector('img') || conImagen(el)
     out.push({ i: n++, rol, score, w: Math.round(r.width), h: Math.round(r.height),
+               vector: _svg && !_rast,
                y: Math.round(r.top + scrollY), tag: el.tagName.toLowerCase(),
                minPx: minPx === 999 ? 0 : Math.round(minPx),
                texto: (el.innerText || el.getAttribute('alt') || '').replace(/\s+/g, ' ').trim().slice(0, 80) });
@@ -457,6 +469,9 @@ async def extraer_elementos(page, max_n: int = MAX_ELEMENTOS) -> list[dict]:
         out.append({"id": f"el{c['i']}", "rol": c["rol"], "w": a["w"], "h": a["h"],
                     "tinta": a["tinta"], "textura": a["textura"], "alfa": a["alfa"],
                     "color": a["color"], "lum": a["lum"],
+                    # `tag` y `vector` ya venian del navegador y se tiraban aca. Sin ellos no hay forma
+                    # de saber cuantos recortes podrian capturarse mas nitidos (ver la nota en el JS).
+                    "tag": c.get("tag", ""), "vector": bool(c.get("vector")),
                     "minPx": c.get("minPx", 0), "texto": c.get("texto", ""), "png": a["png"]})
         if len(out) >= max_n:
             break
