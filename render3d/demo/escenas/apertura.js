@@ -142,6 +142,9 @@ export function build(ctx) {
     const mat = materialMascara(t.tex, o.color || nivelTexto(0.80))
     mat.uniforms.uSuave.value = 0.05
     const m = new THREE.Mesh(new THREE.PlaneGeometry(alto * t.ar, alto), mat)
+    // ENTRA ENTERO: es un rotulo, y `alto` ya sale de `Math.min(altoMax, anchoMax / t.ar)`, o sea que
+    // el ancho esta acotado por construccion. Verificado sobre los once aires: cero fallos.
+    m.userData.encaja = true
     m.userData.ancho = alto * t.ar
     m.userData.prog = mat.uniforms.uProg
     m.renderOrder = 6

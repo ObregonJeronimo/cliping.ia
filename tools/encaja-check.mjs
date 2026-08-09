@@ -160,7 +160,20 @@ try {
 //              dimensionada al 102% del cuadro no puede entrar entera: excederlo ES la composicion.
 //              Se probo igual con `encajaEntre` antes de aceptarlo: llega a 1.125 tambien asentada, o
 //              sea que no es el gesto de entrada sino el encuadre. Coherente con el 1.02 declarado.
-const TRINQUETE = 52
+//   52 -> 39   `toro` (7) y `apertura` (6), sus fabricas de texto — las dos aguantaron `encaja` sin un
+//              solo fallo sobre los once aires y los ocho juegos. Las dos ya recortaban el ancho por
+//              construccion; lo unico que faltaba era decirlo.
+//
+//              Y `destello` NO, aunque se probo en la misma tanda: sus mitades llegan a 2.461 y sus
+//              capas a 1.082. Pero el motivo para no declararlo no es el numero — es que esa escena YA
+//              DECIDE, y por caso: `if (tocaLaMarca) { mArriba.userData.encaja = true; ... }`, con el
+//              razonamiento escrito al lado ("cuando NO lleva la marca no se marca nada, asi que la
+//              escena puede seguir sangrando sin que nadie la acuse"). Declarar en la fabrica pisaba
+//              esa condicion y convertia una decision por caso en una regla ciega.
+//
+//              ES LA SEGUNDA DECISION DELIBERADA que aparece en el atraso (la primera es el titulo de
+//              `tarjetas`). Ver docs/ENCAJE-ESTADO.md: `SIN CLASIFICAR` sigue significando dos cosas.
+const TRINQUETE = 39
 
 const sinClasificar = censo.filas.filter(f => f.clase === 'SIN CLASIFICAR')
 const n = sinClasificar.length

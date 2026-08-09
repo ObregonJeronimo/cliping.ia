@@ -335,6 +335,11 @@ export function build(ctx) {
     // el ancho ya no es el que se pidio.
     const w = Math.min(ancho, altoMax * T.ar)
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, w / T.ar), mat)
+    // ENTRA ENTERO. Todo lo que sale de esta fabrica es texto, y ya viene con el ancho recortado por
+    // la linea de arriba —"se recorta el ANCHO hasta que el alto entra"—. Verificado sobre los once
+    // aires y los ocho juegos de datos: cero fallos. Estaba sin declarar solo porque `materialMascara`
+    // le saca el `.map` a la malla y el censo miraba justo eso.
+    m.userData.encaja = true
     m.userData.alto = w / T.ar
     return m
   }

@@ -120,6 +120,11 @@ export function build(ctx) {
       new THREE.PlaneGeometry(ancho, ancho / ar),
       materialMascara(t.tex, o.tinta || NEGRO()),
     )
+    // SIN `encaja` ACA, Y ES A PROPOSITO. Se probo declararlo en la fabrica y E-ENCAJE lo rechazo: la
+    // etiqueta (linea 160) llega a 1.082 y el caption (269) a 1.064. Pero el motivo de fondo no es el
+    // 8%: es que esta escena YA DECIDE cuando exigir contencion, treinta lineas mas abajo y por caso
+    // —`if (tocaLaMarca)` sobre las dos mitades del hero— con el razonamiento escrito. Declarar en la
+    // fabrica pisa esa condicion y convierte una decision por caso en una regla ciega.
     m.material.uniforms.uSuave.value = o.suave != null ? o.suave : 0.045
     m.material.uniforms.uDir.value = o.dir != null ? o.dir : 0
     m.userData.u = m.material.uniforms
@@ -139,6 +144,9 @@ export function build(ctx) {
     }
     uv.needsUpdate = true
     const m = new THREE.Mesh(geo, materialMascara(t.tex, NEGRO()))
+    // La decision se toma en el sitio de uso y no aca: ver `if (tocaLaMarca)` mas abajo. Declarar en
+    // la fabrica hacia fallar estas mitades con 2.461 del cuadro, que es exactamente el sangrado que
+    // la escena se permite cuando la linea NO lleva la marca.
     m.material.uniforms.uSuave.value = 0.03
     m.position.y = arriba ? alto / 4 : -alto / 4
     m.userData.u = m.material.uniforms

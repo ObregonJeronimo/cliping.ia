@@ -56,7 +56,13 @@ bien. *"Reencuadrar una composición calibrada para poner una compuerta en verde
 para satisfacer a la herramienta."* Está remitido a `docs/AUDITORIA-MOTOR.md` para decidirlo mirando el
 cuadro.
 
-**No la toques sin esa conversación.** Las otras 70 sí son mallas que nadie vio nunca — no porque
+**Y apareció una segunda, en `destello`.** Ahí la decisión no es "no declarar" sino **declarar por
+caso**: `if (tocaLaMarca) { mArriba.userData.encaja = true; ... }`, con el motivo al lado — *"cuando NO
+lleva la marca no se marca nada, así que la escena puede seguir sangrando sin que nadie la acuse — que
+es justo para lo que se hizo declarativo el chequeo."* Declarar `encaja` en su fábrica de texto pisa esa
+condición y convierte una decisión por caso en una regla ciega. Probado: da 2.461 en las mitades.
+
+**No las toques sin esa conversación.** Las otras sí son mallas que nadie vio nunca — no porque
 alguien las salteara, sino porque el censo no las mostraba.
 
 **Y esto destapa un hueco en el vocabulario:** `SIN CLASIFICAR` significa hoy dos cosas que no son la
