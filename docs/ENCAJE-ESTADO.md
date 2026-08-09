@@ -132,24 +132,30 @@ redondo.**
 
 ## Lo que falta, por archivo
 
-**39 de 161**, en siete archivos:
+**31 de 161.** Y no es una lista de tareas: **26 de las 31 son las dos decisiones ya documentadas.**
 
-| archivo | faltan | qué se sabe ya |
+| archivo | faltan | qué es |
 |---|---|---|
-| `tarjetas` | 20 | **la pregunta reservada.** Su cámara "agranda el cuadro cerca del doble": medido, declarar `encaja` en su fábrica da hasta 2.065. No es dimensionado — el contador ya se acota al ancho de su tarjeta |
+| `tarjetas` | 20 | **la pregunta reservada.** Su cámara "agranda el cuadro cerca del doble" — medido, declarar en su fábrica da hasta 2.065, y el contador ya se acota al ancho de su tarjeta |
 | `destello` | 6 | **decisión por caso ya tomada** (`if (tocaLaMarca)`). No declarar en la fábrica |
-| `cierre` | 5 | probado: 1.179. Misma familia que `tarjetas` — la escena mueve la cámara |
-| `tipografia` | 5 | probado: 1.512 y 1.055. Ya se dimensionan con `medida()` contra un ancho máximo |
-| `telefono` | 1 | 3.122 → **1.031** con la ventana legible. El resto es su encuadre declarado ("aunque se salga del cuadro") |
-| `portatil` | 1 | 1.963 → **1.211**. El resto sale de la apertura de la tapa |
-| `ventana` | 1 | ya resuelto como `sangra`; el 1 que queda es otra malla del mismo archivo |
+| `cierre` | 1 | el texto del CTA. Escala de mundo 1.124–1.317 con pico a mitad de escena; descartados la marca, las tres del pie y el rebote elástico |
+| `tipografia` | 1 | `w4`. El arreglo del margen no la movió, así que no es el acercamiento |
+| `telefono` | 1 | 3.122 → **1.031** con la ventana legible; el resto es su encuadre declarado |
+| `portatil` | 1 | 1.963 → **1.211**; el resto sale de la apertura de la tapa |
+| `ventana` | 1 | su carcasa ya es `sangra`; queda otra malla del mismo archivo |
 
-**Ninguno de los siete es trabajo mecánico pendiente.** Los dos primeros son decisiones ya tomadas y
-escritas; los otros cinco son la misma pregunta de producto, con el número ya separado en **gesto** y
-**encuadre** — que era el trabajo caro.
+**Los cinco sueltos tienen el número separado en gesto y encuadre**, que era el trabajo caro. Ninguno
+está esperando que alguien "lo haga": están esperando una decisión de arte o un último descarte.
 
-`tipoImagen` lo declaran `planoTexto` y `planoRecorte` en el kit; las que dicen "sin tipo" son mallas
-que la escena arma por su cuenta con `new THREE.Mesh`, y conviene que también lo declaren al pasar.
+### El patrón que apareció tres veces en un día
+
+`columna`, `tipografia` y (parcialmente) `tarjetas` fallaron por lo mismo: **medir contra el cuadro en
+reposo cuando la escena mueve la cámara**. El kit ya tiene `cuadroMasAngosto` para eso desde que `toro`
+lo necesitó, y las tres lo desconocían — `tipografia` incluso lo tenía resuelto para su `ANCHO` y no
+para sus márgenes.
+
+Y en `columna` hacía falta **sumarle la órbita**: `cuadroMasAngosto` cubre que el cuadro se angoste,
+no que la cámara se corra de costado y se lleve puesto lo que esté pegado al margen.
 
 ## El límite conocido de `encajaEntre`, medido
 
