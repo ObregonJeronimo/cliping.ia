@@ -87,6 +87,10 @@ export function build(ctx) {
       // hoy y convierte en FALLO cualquier cambio futuro que la saque del cuadro.
       const m = new THREE.Mesh(new THREE.PlaneGeometry(caja.w, caja.h), mat)
       m.userData.encaja = true
+      // Y ES LA IMAGEN DEL CLIENTE, que es un hecho y no una promesa. Faltaba decirlo: esta malla se
+      // arma a mano —no pasa por `planoRecorte`, que lo declara solo— y por eso quedaba fuera de todo
+      // lo que filtra por `tipoImagen`. Era la ultima del motor en esa situacion.
+      m.userData.tipoImagen = 'recorte'
       m.position.set(0, 0, 0.1)
       gr.add(m)
       planos.push({ m, mat })

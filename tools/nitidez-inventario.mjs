@@ -365,7 +365,7 @@ if (fuera.length) {
   console.log(`\n  MEDIDAS PERO SIN DECLARAR \`tipoImagen\` (${fuera.length} escenas) — deuda, no agujero:`)
   for (const [escena, n] of fuera.slice(0, 14)) console.log(`    ${escena.padEnd(16)} ${n} mallas`)
   if (fuera.length > 14) console.log(`    ... y ${fuera.length - 14} mas`)
-  console.log('    Las cuatro dibujan material del CLIENTE — eso ya no se deduce, se sabe: la textura')
+  console.log(`    Las ${fuera.length === 1 ? 'que quedan dibujan' : 'que quedan dibujan'} material del CLIENTE — eso ya no se deduce, se sabe: la textura`)
   console.log('    lleva la marca que le pone este archivo al fabricarla. Lo que les falta es decirlo')
   console.log('    en la malla, y eso no afecta a esta tabla pero si a cualquier otra herramienta que')
   console.log('    filtre por `tipoImagen`. Le paso a `heroes-audit`, que informaba "muestra: no" para')

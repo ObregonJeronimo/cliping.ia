@@ -129,12 +129,17 @@ Hacen falta **dos criterios** y se aprendió a los golpes: con la marca sola se 
 `titular`, que toman su textura por `texturaDe` del kit y no por el mapa de la herramienta. La marca
 cubre una vía; la declaración `userData.tipoImagen === 'recorte'` cubre la otra.
 
-## Deuda conocida
+## La deuda quedó cerrada
 
-Cuatro escenas dibujan material del cliente **sin declarar `tipoImagen`**: `portatil`, `telefono`,
-`vitrina` y `contraste`. No afecta a esta tabla —la marca las alcanza igual— pero **sí a cualquier
-otra herramienta que filtre por ahí**. Ya pasó: `heroes-audit` informaba `muestra: no` para `cubo`
-cuando cubo muestra, y por eso `cubo` ahora declara.
+Eran cuatro escenas dibujando material del cliente **sin declarar `tipoImagen`** — `portatil`,
+`telefono`, `vitrina` y `contraste`—. No afectaba a esta tabla, porque la marca las alcanza igual,
+pero **sí a cualquier otra herramienta que filtre por ahí**: `heroes-audit` informaba `muestra: no`
+para `cubo` cuando cubo muestra.
+
+**Las cuatro declaran.** Hoy toda malla del motor que dibuja la imagen del cliente lo dice, así que
+una herramienta nueva puede confiar en `tipoImagen` sin necesitar la marca del censo.
+
+El censo pasó de 7 escenas medidas a **13**.
 
 ## El filtro que se declara con su número
 
