@@ -319,6 +319,31 @@ Dos cosas que el barrido completo confirma y que antes eran de un solo aire:
 
 `titular` da exactamente 1 por aire — es el pie, el mismo que la aritmética de color predice en 1,85:1.
 
+#### `tarjetas` — la marca de año sobre la cuña, 1,62:1, y es ornamento
+
+Confirmado mirando el cuadro, no sólo midiendo: el `2 0 2 6` del pie derecho queda sobre la cuña en 34
+de 99 cuadros y mide **1,62:1**. Es real y está por debajo del techo. Pero es una marca decorativa de
+año, no un dato que la página escribió: la prioridad no es la del dominio ni la del titular.
+
+#### Lo que hace falta para que este ciclo deje de dar números falsos
+
+Cinco mediciones seguidas dieron basura en esta tanda, todas por la misma causa de fondo: **no saber
+exactamente dónde está el texto en el cuadro que se está midiendo.** Se arreglaron dos de los tres
+eslabones y queda uno:
+
+- ✅ **`CUNA_CAJAS=1`** — la construcción emite la caja en píxeles de cada texto sin cama. Se acabó
+  sacar coordenadas a ojo de una tira reescalada, que fue lo que produjo 1,15 / 1,17 / 1,21 / 1,85:1
+  sobre recuadros que abiertos no tenían una letra adentro.
+- ✅ **`CUNA_PAGINA=basecamp-com`** — construye con los datos de la misma captura que va a usar el
+  render. Sin esto las cajas son de otra escena: el dominio pasó de `x=226..744` con ANTHEM a
+  `x=389..580` con basecamp, y medir la primera es medir fondo.
+- ❌ **el momento.** La herramienta muestrea tres instantes de la timeline; el cuadro que uno abre del
+  video es otro. La caja puede estar bien y el texto no estar todavía ahí. Falta que emita la caja
+  *por instante* y que la medición pida el mismo.
+
+Hasta que ese tercero esté, la regla es la de siempre y esta tanda la confirma cinco veces: **el número
+no vale hasta que se abre el recuadro y se ve la letra adentro.**
+
 Las restantes siguen sin verificar — son candidatos, no defectos. Y con `tipografia` medida en
 2,86:1 al 7% del alto, las que siguen están **menos** hondas (`titular` 12%, `tarjetas` 21%, `apertura`
 24%…), o sea que la expectativa es que midan mejor. Eso es una inferencia, no una medición: hay que

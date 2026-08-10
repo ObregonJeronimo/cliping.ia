@@ -101,6 +101,24 @@ function tejidoFalso(relaciones) {
 //
 // O sea que la cuña puede llegar hasta el 15.7% del alto sobre la izquierda y el 46.1% sobre la
 // derecha, contando desde abajo. En NDC (y de -1 abajo a +1 arriba) eso es una recta.
+const SACAR_CAJAS = !!process.env.CUNA_CAJAS
+
+// CON QUE DATOS SE CONSTRUYE, y esto es lo que hace que las cajas sirvan para medir pixeles.
+//
+// Por defecto construye con ANTHEM, que esta bien para censar. Pero si despues se rinde basecamp para
+// verificar, los textos son OTROS —otro largo, otra cantidad de renglones— y las cajas caen en otro
+// lado. Persiguiendo `tarjetas` gaste cuatro mediciones sobre recuadros vacios justamente por eso:
+// median el degradado del fondo y daban 1.15, 1.21, 1.29 y 1.36:1, numeros que parecen defectos graves.
+//
+// Con `CUNA_PAGINA=basecamp-com` construye con los datos de esa captura, o sea con los mismos que va a
+// usar el render. Ahi las cajas que emite `CUNA_CAJAS=1` son las del video y no las de una escena
+// parecida.
+let DATOS_PAGINA = null
+if (process.env.CUNA_PAGINA) {
+  const f = join(RAIZ, 'tools', 'out', 'motor', process.env.CUNA_PAGINA, 'datos.json')
+  if (!existsSync(f)) { console.error(`CUNA: no hay captura de "${process.env.CUNA_PAGINA}" en tools/out/motor/`); process.exit(2) }
+  DATOS_PAGINA = JSON.parse(readFileSync(f, 'utf8')).datos
+}
 const DONDE_MIN = 1.05 - 0.08
 const techoUV = (fx) => 1 - (DONDE_MIN - fx * 0.35) / 1.15     // f.y del borde de la cuña
 const enCuna = (ndcX, ndcY) => {
@@ -199,7 +217,7 @@ for (const [nomAire, aire] of Object.entries(AIRES)) {
     let mod
     try { mod = await import(pathToFileURL(rutaDe(id)).href) } catch { continue }
     if (!mod.meta || typeof mod.build !== 'function') continue
-    reiniciarReparto(); reiniciarRecortes(); configurarDatos(ANTHEM)
+    reiniciarReparto(); reiniciarRecortes(); configurarDatos(DATOS_PAGINA || ANTHEM)
     const camera = new THREE.PerspectiveCamera(fov, W / H, 0.1, 400)
     camera.position.set(0, 0, distBase)
     let s = 1
@@ -298,6 +316,19 @@ for (const [nomAire, aire] of Object.entries(AIRES)) {
       // que un texto pegado a la izquierda casi no la toca aunque este bajo.
       const derecha = (t.c.x1 + 1) / 2 * 100
       filas.push({ id, aire: nomAire, cama: tieneCama, alturaPct, derecha, rol: t.rol })
+      // LAS CAJAS EN PIXELES, PARA QUE LA MEDICION NO ADIVINE DONDE MIRAR.
+      //
+      // Esto existe por cuatro mediciones seguidas que dieron basura, todas por la misma causa: sacar
+      // las coordenadas del recuadro a ojo de una tira reescalada. Salieron 1.15, 1.17, 1.21 y 1.85:1
+      // sobre recuadros que, abiertos, no tenian una sola letra adentro — median el degradado del
+      // fondo. Y el numero equivocado no se nota: parece un defecto grave.
+      //
+      // La construccion YA SABE donde cae cada texto. Emitirlo cuesta una linea y convierte la
+      // verificacion en algo determinista: la construccion dice donde, los pixeles dicen si.
+      if (SACAR_CAJAS && !tieneCama) {
+        const px = (n, tot) => Math.round((n + 1) / 2 * tot)
+        console.log(`CAJA ${id} ${nomAire} x=${px(t.c.x0, W)}..${px(t.c.x1, W)} y=${px(-t.c.y1, H)}..${px(-t.c.y0, H)} rol=${t.rol}`)
+      }
     }
   }
 }
