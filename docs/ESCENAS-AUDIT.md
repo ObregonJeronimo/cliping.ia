@@ -172,6 +172,15 @@ Tres cosas que aprendió a los golpes y que quedan escritas en el archivo, porqu
 Estado al cerrar: **224 textos sin cama en escenas que se despachan**, encabezados por `tipografia` (7%
 del alto), `titular` (12%) y `tarjetas` (21%).
 
+> **Ese 224 quedó viejo y hay que volver a correr la herramienta.** Se le corrigió después un falso
+> positivo: la prueba de "tiene cama" exigía que la cama contuviera la caja ENTERA del texto, así que
+> cualquier renglón más ancho que el cuadro salía acusado aunque estuviera cubierto de punta a punta.
+> Lo destapó `marquesina` — sus dos cintas son camas opacas, y su propio archivo cuenta que se pusieron
+> para arreglar un **1,05:1** medido sobre 55 de 77 combinaciones. La herramienta le marcaba 22 textos
+> sin cama a una escena ya arreglada. Ahora las dos cajas se recortan al cuadro antes de compararlas,
+> que es el mismo criterio que `encuadre-check` documenta al revés: la pregunta es sobre lo que se ve,
+> no sobre la geometría completa. El número baja; cuánto, hay que medirlo.
+
 #### `tipografia` — verificada sobre píxeles y NO se le pone cama
 
 Es la primera de la lista, así que se rindió. Semilla 2 sobre basecamp, aire `editorial`, cuadro 70 del

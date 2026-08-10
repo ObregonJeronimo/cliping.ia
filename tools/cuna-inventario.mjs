@@ -221,10 +221,25 @@ for (const [nomAire, aire] of Object.entries(AIRES)) {
       for (const t of textos) {
         // Toca la franja si CUALQUIERA de sus dos esquinas de abajo cae adentro del sobre.
         if (!(enCuna(t.c.x0, t.c.y0) || enCuna(t.c.x1, t.c.y0))) continue
-        const cama = camas.some(k =>
-          k.c.x0 <= t.c.x0 + 1e-3 && k.c.x1 >= t.c.x1 - 1e-3 &&
-          k.c.y0 <= t.c.y0 + 1e-3 && k.c.y1 >= t.c.y1 - 1e-3 &&
-          (k.o.renderOrder < t.o.renderOrder || k.c.z <= t.c.z + 1e-6))
+        // LA CONTENCION SE MIDE SOBRE LO QUE ESTA EN PANTALLA, recortando las dos cajas al cuadro.
+        //
+        // Sin recortar, cualquier texto MAS ANCHO que el cuadro sale acusado aunque su cama lo cubra
+        // entero de punta a punta. Lo encontro `marquesina`: sus dos cintas son camas opacas —y su
+        // propio archivo documenta que se pusieron justamente para arreglar un 1.05:1 medido— pero las
+        // frases se desplazan en bucle, asi que la caja de cada una se extiende bastante afuera del
+        // cuadro y la prueba de contencion fallaba. 22 acusaciones sobre una escena YA ARREGLADA.
+        //
+        // Es el mismo error de forma que `encuadre-check` documenta al reves ("interseccion caja-frustum,
+        // no contencion de vertices"): la pregunta correcta no es sobre la geometria completa sino sobre
+        // la parte que se ve.
+        const rec = (c) => ({ x0: Math.max(-1, c.x0), x1: Math.min(1, c.x1), y0: Math.max(-1, c.y0), y1: Math.min(1, c.y1) })
+        const tv = rec(t.c)
+        const cama = camas.some(k => {
+          const kv = rec(k.c)
+          return kv.x0 <= tv.x0 + 1e-3 && kv.x1 >= tv.x1 - 1e-3 &&
+            kv.y0 <= tv.y0 + 1e-3 && kv.y1 >= tv.y1 - 1e-3 &&
+            (k.o.renderOrder < t.o.renderOrder || k.c.z <= t.c.z + 1e-6)
+        })
         const prev = estado.get(t.o)
         if (!prev) estado.set(t.o, { c: t.c, cama })
         else { if (cama) prev.cama = true; if (t.c.y0 < prev.c.y0) prev.c = t.c }
