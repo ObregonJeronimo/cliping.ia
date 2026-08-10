@@ -1649,8 +1649,28 @@ async def capture_all(url: str, out_path: str, width: int = 1280, height: int = 
             browser = await p.chromium.launch(args=["--no-sandbox"])
             # ignore_https_errors: muchos sitios legitimos tienen el cert vencido/mal (ERR_CERT_*); sin esto goto FALLA
             # y la captura vuelve vacia -> el brief se inventaria desde el nombre de marca (viola "fiel a la pagina").
+            # ESCALA 3 Y NO 2, POR LOS RECORTES CHICOS. Este contexto es el que saca las fotos de los
+            # ELEMENTOS (logo, CTA, tarjetas), y el logo es el recorte mas chico del catalogo: medido
+            # sobre los 82 que hay en disco, el minimo es 100 px y 30 estan por debajo de 400.
+            #
+            # Eso importa porque `topeNitido` (render3d/demo/kit.js) no deja dibujar un recorte a mas
+            # de 1.4x su resolucion — con razon, arriba de eso el remuestreo se ve en el canto de una
+            # letra. O sea que la falta de pixeles no se ve como borrosidad: se ve como UN LOGO MAS
+            # CHICO DEL QUE LA COMPOSICION QUERIA. El logo de stripe mide 60x25 CSS; a escala 2 llega
+            # con 120 px y no se puede dibujar a mas de 168, a escala 3 llega con 180 y llega a 252.
+            #
+            # NO HAY RIESGO DE ARCHIVOS ENORMES: `element_extract.MAX_LADO` ya topea el lado largo en
+            # 1400 px, asi que los elementos grandes salen igual que antes y los unicos que ganan son
+            # justamente los chicos, que es donde hace falta.
+            #
+            # Se hace en el CONTEXTO y no por elemento a proposito. Escalar un elemento suelto con
+            # `transform` se probo el 8/8/2026 y funciono en dos de tres paginas: en la tercera el
+            # `overflow: visible` que hace falta para que no se recorte dejo entrar contenido vecino y
+            # el logo salio corrupto —sin icono y con un "Product" del nav adentro— en un PNG valido que
+            # ninguna compuerta rechaza. El device_scale_factor no toca el layout: lo resuelve el
+            # navegador antes de pintar.
             page = await browser.new_page(viewport={"width": width, "height": height},
-                                          device_scale_factor=2, ignore_https_errors=True, **_CTX)
+                                          device_scale_factor=3, ignore_https_errors=True, **_CTX)
             try:
                 resp = await page.goto(url, wait_until="domcontentloaded", timeout=30000)
                 http_status = int(getattr(resp, "status", 0) or 0)
