@@ -170,7 +170,30 @@ Tres cosas que aprendió a los golpes y que quedan escritas en el archivo, porqu
   guiones. Se lee de `guion.js`, no se copia.
 
 Estado al cerrar: **224 textos sin cama en escenas que se despachan**, encabezados por `tipografia` (7%
-del alto), `titular` (12%) y `tarjetas` (21%). Siguen sin verificar — son candidatos, no defectos.
+del alto), `titular` (12%) y `tarjetas` (21%).
+
+#### `tipografia` — verificada sobre píxeles y NO se le pone cama
+
+Es la primera de la lista, así que se rindió. Semilla 2 sobre basecamp, aire `editorial`, cuadro 70 del
+tramo: el epígrafe de abajo —`D.rotulo || sello(0)`, o sea **el nombre de la marca del cliente**— cruza
+la diagonal y se parte, igual que el titular de `toro`. Medido a los dos lados del corte:
+
+| mitad | contraste |
+|---|---|
+| izquierda, sobre el fondo claro | **9,05:1** |
+| derecha, sobre la cuña | **2,86:1** |
+
+**Y aun así no se toca, que es la parte que importa.** 2,86:1 es prácticamente el mismo número que da el
+rótulo de `mesa` con este método (2,96:1), y ese rótulo se lee perfecto en el cuadro — o sea que está en
+la banda del texto chico que este motor produce normalmente. Los tres que sí se arreglaron medían 1,02,
+1,11 y 1,77: un orden de magnitud peor, y en el cuadro se ven como manchas, no como texto.
+
+Ponerle cama a un caso limítrofe tiene un costo que el propio comentario de la cuña anticipa —*"un
+bloque sólido detrás de una frase le come el contraste"*— y cuatro camas seguidas empiezan a convertir
+el diseño en una fila de cajas. La regla que queda escrita: **se pone cama cuando el texto no se lee, no
+cuando la herramienta lo nombra.** El sobre dice dónde mirar; el cuadro dice si hay defecto.
+
+Las ocho restantes siguen sin verificar — son candidatos, no defectos.
 
 **Y una trampa de medición que hay que conocer antes de perseguir un número.** El pie de `mesa` pasó de
 1,02:1 a 2,59:1, o sea todavía por debajo del piso de 3,2. Es un artefacto: el tinte real es `#77726a`,
