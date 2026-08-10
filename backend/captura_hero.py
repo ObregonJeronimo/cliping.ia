@@ -43,9 +43,16 @@ ANCHO_MOVIL = 360          # el viewport CSS mas comun en telefonos reales
 #
 # LO QUE SE PAGA, dicho antes de que alguien lo descubra: el tope de textura es DURO —8192 px, arriba
 # de eso SwiftShader devuelve el plano en negro— asi que a mas escala entra menos pagina a lo alto.
-# 8192 px cubren 4096 px CSS a escala 2 y 2730 a escala 3. Es aceptable porque el hero no recorre la
-# tira entera: `ventanaLegible` elige el tramo y el scroll usa el 24% del sobrante, asi que lo que se
-# pierde es alcance de scroll, no contenido visible. La nitidez se ve en CADA cuadro; el alcance no.
+# 8192 px cubren 4096 px CSS a escala 2 y 2730 a escala 3.
+#
+# Y ESO NO ACHICA LO QUE SE VE, que es lo que uno teme: la ventana que muestra el aparato se dimensiona
+# contra el ANCHO de la tira, asi que crece con ella. Medido en `telefono`: 1496 px de textura a escala
+# 2 y 2244 a escala 3 — que son 748 px CSS de pagina EN LOS DOS CASOS. Mismo encuadre, mismos pixeles
+# por pixel de pagina... no: mismo encuadre y 1.5x de pixeles. Identico recorte, mas nitido.
+#
+# Lo unico que se paga es el RECORRIDO del scroll, porque sale del sobrante: 803 px CSS de pagina
+# recorridos a escala 2 contra 476 a escala 3. Es un tercio menos de viaje en un plano de tres
+# segundos, contra una pagina que se ve nitida en los noventa cuadros. El cambio vale.
 ESCALA = 3
 # TOPE DURO DE TEXTURA. SwiftShader —el rasterizador que usa el render determinista— reporta
 # MAX_TEXTURE_SIZE 8192, y una textura mas alta no se rechaza con un error claro: el plano sale NEGRO.
