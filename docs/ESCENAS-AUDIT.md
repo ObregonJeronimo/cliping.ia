@@ -230,8 +230,11 @@ Tres conclusiones que dejan de ser opinión:
    de 3,2 es inalcanzable sobre la cuña con cualquier tinte. La cama no es "una solución más" — es la
    única, junto con mover el texto fuera de la franja. Justifica a posteriori no haber tocado el tinte
    del pie de `mesa` cuando midió 2,59 y la tentación era darle más tinta.
-2. **El acento sobre la cuña es lo peor posible: 1,41:1.** Es acento sobre acento. Y `tipografia` lo usa
-   doce veces, `tarjetas` nueve, `apertura` ocho. Ahí hay que mirar primero.
+2. **El acento sobre la cuña sería lo peor posible: 1,41:1** — acento sobre acento. Conté los usos de
+   `LOOK.acento` por grep y salían doce en `tipografia`, nueve en `tarjetas`, ocho en `apertura`, y de
+   ahí saqué que había que mirar eso primero. **Era falso.** Midiendo el rol del tinte de cada texto
+   marcado, en `editorial` **no hay un solo texto en acento dentro de la franja**: esos usos son barras,
+   filetes y marcas, no letras. El grep contaba apariciones del símbolo, no textos.
 3. **Recalibra el criterio.** Pedir 3,2 sobre la cuña es pedir lo imposible; el corte real es "está
    debajo de lo que la cuña permite". Los tres defectos confirmados medían 1,02, 1,11 y 1,77.
 
@@ -264,7 +267,27 @@ propiedad del aire —lo inyecta el motor junto con la paleta de la página—, 
 paleta oscura da un mundo que el motor nunca produce. Sólo la fila de `editorial` es coherente, y es
 la única que se usa acá.
 
-Las ocho restantes siguen sin verificar — son candidatos, no defectos. Y con `tipografia` medida en
+#### El barrido en `editorial`, ya con el falso positivo corregido
+
+Corriendo sólo el aire cuya paleta está validada (`CUNA_AIRE=editorial`, ocho construcciones en vez de
+220 — sirve con la máquina ocupada):
+
+| escena | en la franja | sin cama | en acento | el más hondo |
+|---|---|---|---|---|
+| `titular` | 1 | 1 | — | 15% del alto |
+| `tarjetas` | 3 | 3 | — | 23% |
+| `apertura` | 4 | 4 | — | 25% |
+| `destello` | 3 | 2 | — | 32% |
+| `gancho` | 1 | 1 | — | 37% |
+| `rafaga` | 2 | 2 | — | 39% |
+| `marquesina` | 3 | **0** | — | — |
+| `toro`, `mesa`, `cierre` | 11 | **0** | — | — |
+
+**13 textos sin cama en `editorial`**, no los 224 del barrido viejo — ese número venía del falso
+positivo de contención y de multiplicar por once aires. `marquesina` cayó a 0, que es la comprobación
+de que el arreglo funcionó.
+
+Las restantes siguen sin verificar — son candidatos, no defectos. Y con `tipografia` medida en
 2,86:1 al 7% del alto, las que siguen están **menos** hondas (`titular` 12%, `tarjetas` 21%, `apertura`
 24%…), o sea que la expectativa es que midan mejor. Eso es una inferencia, no una medición: hay que
 rendirlas igual, sólo que la urgencia bajó.

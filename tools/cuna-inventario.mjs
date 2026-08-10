@@ -62,6 +62,15 @@ const AIRES = {}
 for (const f of readdirSync(join(DEMO, 'aires')).filter(f => f.endsWith('.js'))) {
   AIRES[f.replace('.js', '')] = (await import(pathToFileURL(join(DEMO, 'aires', f)).href)).default
 }
+// FILTROS PARA CORRERLA BARATA. El barrido completo son 220 construcciones y su costo no esta medido,
+// asi que con la maquina ocupada no se puede lanzar a ver que pasa — que es justo la regla de la casa.
+// Con `CUNA_AIRE=editorial CUNA_ESCENA=mesa` construye UNA y sirve de prueba de humo, o para mirar una
+// escena puntual despues de tocarla sin pagar el barrido entero.
+if (process.env.CUNA_AIRE) {
+  const solo = process.env.CUNA_AIRE
+  if (!AIRES[solo]) { console.error(`CUNA: el aire "${solo}" no existe. Hay: ${Object.keys(AIRES).join(', ')}`); process.exit(2) }
+  for (const k of Object.keys(AIRES)) if (k !== solo) delete AIRES[k]
+}
 
 const W = 1080, H = 1920, mundoH = 10, mundoW = mundoH * (W / H)
 const fov = 30
@@ -115,6 +124,32 @@ const mapaDe = (o) => {
 }
 const esTexto = (o) => { const t = mapaDe(o); return !!(t && t.userData && t.userData.esTexto) }
 
+// CON QUE COLOR SE ESCRIBIO, que es la mitad del riesgo y no estaba en el informe.
+//
+// Medido aparte con aritmetica de color: sobre la cuña NINGUN tinte de la paleta llega al piso de 3.2
+// —la tinta mas oscura del motor toca techo en 2.74:1— y el peor de todos es EL ACENTO, en 1.41:1,
+// porque es acento sobre acento. Asi que entre dos textos igual de hondos, el que va en acento es
+// muchisimo mas grave, y hasta ahora el informe los listaba igual.
+//
+// SE INFORMA EL ROL DEL TINTE Y NO UN CONTRASTE, a proposito. Calcular el contraste aca daria un numero
+// falso: esta herramienta construye con la paleta del AIRE, y en un mundo claro real el fondo y el
+// acento los pone LA PAGINA del cliente (el motor lo imprime: "mundo CLARO (#ffffff / acento
+// #2377d2)"). Ya me equivoque una vez por eso y la cuña me salio terracota cuando en el cuadro es azul.
+// El ROL, en cambio, se traslada a cualquier paleta: "este texto va en el acento" sigue siendo cierto
+// sea cual sea el acento.
+const _cerca = (a, b) => a && b && Math.abs(a.r - b.r) + Math.abs(a.g - b.g) + Math.abs(a.b - b.b) < 0.06
+const rolDelTinte = (o) => {
+  const m = o.material
+  let c = null
+  if (m && m.uniforms && m.uniforms.uUsaTinte && m.uniforms.uUsaTinte.value && m.uniforms.uTinte) c = m.uniforms.uTinte.value
+  else { const t = mapaDe(o); const h = t && t.userData && t.userData.color; if (h) { try { c = new THREE.Color(h) } catch { /* un color que three no parsea no es asunto de esta herramienta */ } } }
+  if (!c) return '?'
+  if (_cerca(c, new THREE.Color(LOOK.acento))) return 'ACENTO'
+  if (_cerca(c, new THREE.Color(LOOK.acento2))) return 'acento2'
+  if (_cerca(c, new THREE.Color(LOOK.tinta))) return 'tinta'
+  return 'nivel'
+}
+
 // ---- una cama es una malla OPACA, DETRAS, que contiene la caja del texto
 const opacidadDe = (o) => {
   const m = o.material
@@ -139,8 +174,14 @@ function cajaNDC(obj, m) {
 }
 
 const rutaDe = (id) => join(DEMO, 'escenas', id + '.js')
-const ids = readdirSync(join(DEMO, 'escenas'))
+let ids = readdirSync(join(DEMO, 'escenas'))
   .filter(f => f.endsWith('.js') && f !== 'index.js').map(f => f.replace(/\.js$/, '')).sort()
+if (process.env.CUNA_ESCENA) {
+  const solo = process.env.CUNA_ESCENA.split(',').map(x => x.trim())
+  const faltan = solo.filter(x => !ids.includes(x))
+  if (faltan.length) { console.error(`CUNA: no existe: ${faltan.join(', ')}`); process.exit(2) }
+  ids = solo
+}
 
 // EL MUNDO CLARO SE FUERZA, no se busca entre los aires. `CLARO` no es una propiedad del aire: lo
 // inyecta el motor a partir de la PALETA DE LA PAGINA (`configurar` hace `CLARO = !!aire.claro`, y
@@ -241,7 +282,7 @@ for (const [nomAire, aire] of Object.entries(AIRES)) {
             (k.o.renderOrder < t.o.renderOrder || k.c.z <= t.c.z + 1e-6)
         })
         const prev = estado.get(t.o)
-        if (!prev) estado.set(t.o, { c: t.c, cama })
+        if (!prev) estado.set(t.o, { c: t.c, cama, rol: rolDelTinte(t.o) })
         else { if (cama) prev.cama = true; if (t.c.y0 < prev.c.y0) prev.c = t.c }
       }
     }
@@ -256,7 +297,7 @@ for (const [nomAire, aire] of Object.entries(AIRES)) {
       // Y CUANTO DEL ANCHO OCUPA DEL LADO DONDE LA CUÑA ES MAS ALTA: la cuña sube hacia la derecha, asi
       // que un texto pegado a la izquierda casi no la toca aunque este bajo.
       const derecha = (t.c.x1 + 1) / 2 * 100
-      filas.push({ id, aire: nomAire, cama: tieneCama, alturaPct, derecha })
+      filas.push({ id, aire: nomAire, cama: tieneCama, alturaPct, derecha, rol: t.rol })
     }
   }
 }
@@ -266,28 +307,32 @@ const claros = Object.keys(AIRES)
 console.log(`\nTEXTOS EN EL SOBRE DE LA CUÑA — ${ids.length} escenas x ${claros.length} aires, todos forzados a mundo CLARO\n`)
 const porEscena = new Map()
 for (const f of filas) {
-  const e = porEscena.get(f.id) || { total: 0, sin: 0, hondo: 100, derecha: 0, aires: new Set() }
+  const e = porEscena.get(f.id) || { total: 0, sin: 0, hondo: 100, derecha: 0, acento: 0, aires: new Set() }
   e.total++
   if (!f.cama) {
     e.sin++; e.aires.add(f.aire)
+    if (f.rol === 'ACENTO') e.acento++
     if (f.alturaPct < e.hondo) { e.hondo = f.alturaPct; e.derecha = f.derecha }
   }
   porEscena.set(f.id, e)
 }
 const P = (v, n) => String(v).padEnd(n)
 const D = (v, n) => String(v).padStart(n)
-console.log('  ' + P('escena', 13) + D('franja', 7) + D('SIN cama', 10) + D('el mas hondo', 14) + '  llega hasta')
+console.log('  ' + P('escena', 13) + D('franja', 7) + D('SIN cama', 10) + D('en ACENTO', 11) + D('el mas hondo', 14) + '  llega hasta')
 let totalSin = 0, dormidasSin = 0
 const orden = [...porEscena.entries()].sort((a, b) => a[1].hondo - b[1].hondo || b[1].sin - a[1].sin)
 for (const [id, e] of orden) {
   const durmiendo = DORMIDAS.has(id)
   if (durmiendo) dormidasSin += e.sin; else totalSin += e.sin
   console.log('  ' + P(id + (durmiendo ? ' (dormida)' : ''), 13) + D(e.total, 7) + D(e.sin, 10) +
-    D(e.sin ? e.hondo.toFixed(0) + '% del alto' : '—', 14) +
+    D(e.acento || '—', 11) + D(e.sin ? e.hondo.toFixed(0) + '% del alto' : '—', 14) +
     (e.sin ? '  x hasta ' + e.derecha.toFixed(0) + '%' : ''))
 }
 console.log(`\n  ${filas.length} textos en la franja; ${totalSin} sin cama en escenas que SE DESPACHAN` +
   (dormidasSin ? `, y ${dormidasSin} mas en dormidas (no salen en ninguna pieza: ${[...DORMIDAS].join(', ')})` : '') + '.')
+console.log('  La columna ACENTO es el otro eje de gravedad: sobre la cuña ningun tinte llega al piso de')
+console.log('  3.2 —la tinta mas oscura toca techo en 2.74:1— y el acento es el PEOR, 1.41:1, porque es')
+console.log('  acento sobre acento. Entre dos textos igual de hondos, el que va en acento es mas grave.')
 console.log('  Ordenado por el MAS HONDO, que es por donde hay que empezar: los dos defectos ya')
 console.log('  confirmados sobre pixeles estaban al 8% (`cierre`, 1.77:1) y al 22% (`toro`, 1.11:1).')
 if (rotos.length) {
