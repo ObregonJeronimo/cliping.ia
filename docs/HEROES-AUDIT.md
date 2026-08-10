@@ -40,6 +40,35 @@ tasa de extracción sigue valiendo la pena, pero este dato ya no es el argumento
 antes de citarlo. Es el mismo error que el resto de este documento persigue —un cero que parecía
 significar una cosa y significaba otra— sólo que esta vez lo cometió el documento.
 
+## La tensión que nadie había medido: fidelidad contra variedad
+
+Medido el 9/8/2026 sobre los 11 aires, con material ABUNDANTE (tira + 12 recortes, o sea el mejor caso
+posible):
+
+| | |
+|---|---|
+| héroes que muestran la página del cliente | **6** de 18 |
+| probabilidad media de que salga geometría abstracta igual | **45%** |
+| el peor caso (`nocturno`) | **60%** |
+| el mejor (`inmobiliario`) | 14% — pero porque sólo tiene 1 abstracto |
+
+**Y las dos puntas de la tensión están escritas en el repo, cada una por su lado.**
+
+La promesa, en la cabecera de `telefono.js`: *"Es el hero que mejor cumple la promesa del proyecto: no
+es geometría genérica teñida con la paleta de la marca, es la página real."*
+
+El reclamo, en la de `hero.js`, que es lo que motivó el sorteo actual: la selección empezaba siempre en
+`posibles[0]`, *"doce héroes escritos producían dos en pantalla"*, y **Thiago, tres veces, sobre tres
+videos distintos: "ese objeto 3d que gira... devuelta lo mismo"*.
+
+**Por eso no se toca la selección.** Sesgarla hacia los que muestran la página mejoraría la fidelidad y
+recrearía el reclamo que el sorteo vino a arreglar. No es una mejora que se pueda decidir mirando un
+número: hay que elegir entre dos cosas que el mismo usuario pidió, y esa elección no es del asistente.
+
+Lo que sí se puede decir es la forma del arreglo, si alguna vez se decide: los 6 que muestran la página
+**son 6 objetos distintos**, así que favorecerlos no colapsa la variedad a uno solo como pasaba antes.
+Un peso doble los llevaría de 45% a ~29% de abstractos sin volver al "devuelta lo mismo".
+
 ## La auditoría geométrica
 
 ```bash
