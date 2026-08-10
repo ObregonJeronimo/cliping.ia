@@ -61,6 +61,15 @@ SALTO_HAY_TEXTO = 20
 RUIDO_CODEC = 0.005          # medido: dos cuadros identicos difieren esto por el codec
 PISO_MOVIMIENTO = 0.05       # diez veces el ruido; la escena mas quieta del motor da 0.370
 
+# QUE NECESITA CADA HERO, para no confundir "no se pudo medir" con "no hay nada que medir".
+#
+# Cinco de los diecisiete salian con un motivo que se lee como una limitacion del instrumento —"sin
+# rotulo", "la banda tiene composicion"— y en realidad NO LLEVAN ROTULO POR DISEÑO: `hero.js:90` solo
+# se lo pone a los abstractos, porque un hero que muestra la pagina del cliente no necesita un texto
+# que diga que es. Reportar eso como si el instrumento se hubiera quedado corto es la misma clase de
+# ruido que un cero tranquilizador, al reves: alarma sobre algo que esta bien.
+NECESITA = {}
+
 
 def _cuadro(mp4, t, dst):
     subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-ss", "%.3f" % t,
@@ -139,6 +148,37 @@ def medir(mp4, plan, tag):
             "tramo": (int(ini * 30), int(fin * 30))}
 
 
+def _leer_registro():
+    """Llena NECESITA leyendo `HEROES` de heroes/index.js. Se llama SIEMPRE, tambien con `--hero`.
+
+    LA LISTA SALE DEL REGISTRO Y NO DEL DIRECTORIO, y esa diferencia escondia un hero entero: `orbital`
+    NO TIENE ARCHIVO —esta definido en linea dentro de `index.js`, envolviendo a `toro`— asi que
+    listando los `.js` esta herramienta renderizaba 17 de 18 y llamaba "los 17" al total. `heroes-audit`
+    tenia el mismo punto ciego por la misma razon, y `heroes-check` venia informando 18 en cada corrida
+    del guard sin que nadie cruzara los dos numeros.
+
+    `HEROES` es la lista con la que el motor ELIGE: si un hero puede salir en el video de un cliente,
+    esta ahi. Cualquier otra fuente puede quedar corta.
+
+    Y trae ademas `necesita`, que decide si el hero LLEVA ROTULO — ver la nota de NECESITA arriba.
+    """
+    idx = os.path.join(RAIZ, "render3d", "demo", "heroes", "index.js").replace("\\", "/")
+    js = ("import('file:///" + idx + "').then(m => console.log(m.HEROES.map(h => "
+          "h.meta.id + ':' + (h.meta.necesita || ['nada']).join('+')).join(',')))")
+    r = subprocess.run(["node", "--input-type=module", "-e", js],
+                       capture_output=True, text=True, cwd=RAIZ)
+    for par in [x for x in (r.stdout or "").strip().split(",") if x]:
+        trozos = par.split(":")
+        if len(trozos) == 2:
+            NECESITA[trozos[0]] = trozos[1]
+    if not NECESITA:
+        # UN REGISTRO VACIO NO ES "no hay heroes": es que no se pudo leer. Se dice y se corta, en vez de
+        # renderizar cero y reportar que no hubo hallazgos.
+        print("heroes-render: NO SE PUDO LEER EL REGISTRO `HEROES` de heroes/index.js.")
+        print((r.stderr or "").strip()[:300])
+        sys.exit(2)
+
+
 def main():
     args = sys.argv[1:]
     solo = None
@@ -153,22 +193,12 @@ def main():
 
     os.makedirs(SALIDA, exist_ok=True)
     heroes = [solo] if solo else None
+    # EL REGISTRO SE LEE SIEMPRE, tambien con `--hero`. Con la lectura adentro del `if`, una corrida de
+    # un solo hero se quedaba sin saber si ese hero lleva rotulo, y volvia a reportar "sin rotulo" como
+    # si fuera una limitacion del instrumento.
+    _leer_registro()
     if heroes is None:
-        # LA LISTA SALE DEL REGISTRO, NO DEL DIRECTORIO — y esa diferencia escondia un hero entero.
-        #
-        # Esto listaba los `.js` de `heroes/`, y `orbital` NO TIENE ARCHIVO: esta definido en linea
-        # dentro de `index.js`, envolviendo a `toro`. O sea que de los 18 del catalogo esta herramienta
-        # renderizaba 17 y llamaba "los 17" al total — igual que `heroes-audit`, que tenia el mismo
-        # punto ciego por la misma razon. `heroes-check` dice 18 y nadie cruzo los dos numeros.
-        #
-        # `HEROES` es la lista con la que el motor ELIGE, asi que es la unica que no puede quedar
-        # corta: si un hero puede salir en el video de un cliente, esta ahi.
-        idx = os.path.join(RAIZ, "render3d", "demo", "heroes", "index.js").replace("\\", "/")
-        js = ("import('file:///" + idx + "').then(m => "
-              "console.log(m.HEROES.map(h => h.meta.id).join(',')))")
-        r = subprocess.run(["node", "--input-type=module", "-e", js],
-                           capture_output=True, text=True, cwd=RAIZ)
-        heroes = sorted(x for x in (r.stdout or "").strip().split(",") if x)
+        heroes = sorted(NECESITA.keys())
         if not heroes:
             # UN CERO ACA NO ES "no hay heroes": es que no se pudo leer el registro. Se dice y se corta,
             # en vez de renderizar nada y reportar que todo esta bien.
@@ -206,10 +236,23 @@ def main():
     print("AUDITORIA DE HEROES CON RENDER — %d medidos, %d sin caso donde salieran" % (len(filas), len(saltados)))
     print("  %-12s %36s %12s %8s   %s" % ("hero", "contraste", "movimiento", "tinta", "pagina"))
     for h, url, seed, m in sorted(filas, key=lambda f: (f[3]["contraste"] or 99)):
-        cr = (m.get("motivo") or "sin rotulo") if m["contraste"] is None else "%.2f:1" % m["contraste"]
+        if NECESITA.get(h, "nada") != "nada":
+            cr = "no lleva rotulo (muestra la pagina)"
+        elif m["contraste"] is not None:
+            cr = "%.2f:1" % m["contraste"]
+        else:
+            cr = m.get("motivo") or "sin rotulo"
         mv = "-" if m["movimiento"] is None else "%.3f" % m["movimiento"]
         print("  %-12s %36s %12s %8.3f   %s" % (h, cr, mv, m["tinta"], url.replace("https://", "")))
-        if m["contraste"] is not None and m["contraste"] < PISO_CONTRASTE:
+        # EL CONTRASTE SOLO SE JUZGA EN LOS QUE LLEVAN ROTULO, y esto evita una acusacion falsa que
+        # ademas pasaba desapercibida al reves: `telefono` reportaba 7.05:1 y `telefono` NO LLEVA
+        # ROTULO. Ese numero no medía nuestro texto — medía la pagina del cliente, que es lo que cae en
+        # esa banda cuando el hero la muestra. Salia como un aprobado holgado y era otra cosa.
+        #
+        # Con el numero por encima del piso el efecto era invisible; con una pagina oscura habria sido
+        # un FALLO acusando a un rotulo que no existe. Las dos lecturas estan mal por la misma razon.
+        lleva = NECESITA.get(h, "nada") == "nada"
+        if lleva and m["contraste"] is not None and m["contraste"] < PISO_CONTRASTE:
             fallos.append("%s: rotulo a %.2f:1, el piso es %.1f:1" % (h, m["contraste"], PISO_CONTRASTE))
         if m["movimiento"] is not None and m["movimiento"] < PISO_MOVIMIENTO:
             fallos.append("%s: se mueve %.3f por pixel (el ruido del codec es %.3f) — se lee como diapositiva"
