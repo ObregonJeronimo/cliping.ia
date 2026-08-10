@@ -144,6 +144,7 @@ falta mirar algo: son caras (renderizan) y su salida es una tabla, no un veredic
 |---|---|---|
 | `tools/encaja-inventario.mjs` | censo de mallas que muestran imagen y cuáles declaran si entran enteras | `docs/ENCAJE-ESTADO.md` |
 | `tools/nitidez-inventario.mjs` | píxeles nativos del recorte contra los que se dibujan (barata: construye, no renderiza) | `docs/NITIDEZ-ESTADO.md` |
+| `tools/cuna-inventario.mjs` | que textos caen donde puede llegar la cuña del mundo claro y cuales no tienen cama, ordenados por cuanto se meten (barata: construye, no renderiza) | `docs/ESCENAS-AUDIT.md` |
 | `tools/heroes-cobertura.mjs` | qué héroe puede sostener cada página capturada, y el comando que lo entrega (barata: ni renderiza ni construye) | — sale por pantalla |
 | `tools/heroes-audit.mjs` | los 18 héroes por geometría: mallas, cobertura, movimiento (rápida, sin render) | `docs/HEROES-AUDIT.md` |
 | `tools/heroes-render.py` | los 18 héroes **sobre píxeles**: contraste del rótulo, movimiento real, tinta | `docs/HEROES-AUDIT.md` |

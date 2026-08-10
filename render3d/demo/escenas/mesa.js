@@ -24,7 +24,7 @@
 // vacio y ocupa su lugar en silencio, que es la respuesta honesta y la que dan `pantalla`, `columna` y
 // `hero` cuando les falta el suyo.
 
-import { LOOK, magnificaInclinado, cuadroMasAngosto, b, E, texto, planoRecorte, recortesDe, nivel, matAcento, materialMascara, finMascara, deriva, dolly, orbita, escalera, ventanaLegible, escalones, enEscalon, deslizFijo, pasosEnBeats } from '../kit.js'
+import { LOOK, hex, magnificaInclinado, cuadroMasAngosto, b, E, texto, planoRecorte, recortesDe, nivel, matAcento, materialMascara, finMascara, deriva, dolly, orbita, escalera, ventanaLegible, escalones, enEscalon, deslizFijo, pasosEnBeats } from '../kit.js'
 import { D, sello } from '../datos.js'
 
 export const meta = { id: 'mesa', beats: 6 }
@@ -201,10 +201,47 @@ export function build(ctx) {
   gTexto.add(rot)
 
   const pieTxt = String(sello(1) || D.dominio || '').slice(0, 40)
-  let pie = null
+  let pie = null, camaPie = null
   if (pieTxt) {
     pie = chico(pieTxt, 0.19, nivel(0.55))
     pie.position.set(-ANCHO_UTIL / 2 + (pie.geometry.parameters.width) / 2, -mundoH * 0.475, 0.2)
+
+    // UNA CAMA, POR UN DEFECTO MEDIDO SOBRE PIXELES: 1.03:1.
+    //
+    // Este renglon vive en el 5% de abajo del cuadro, que es adentro de la cuña del fondo del mundo
+    // claro. Medido en el render de basecamp con aire `editorial`, cuadro 60 del tramo: la letra sale
+    // rgb(104,142,215) sobre un fondo rgb(97,140,204). Eso no es "poco contraste" contra el piso de
+    // 3.2 del repo — a 1.03:1 el texto NO SE VE, y en el cuadro se lee como una mancha fantasma que
+    // parece un error de render.
+    //
+    // Y NO ES UN ROTULO DECORATIVO: `sello(1) || D.dominio`. En esa pagina cayo "1080X1920", pero el
+    // respaldo es el DOMINIO DEL CLIENTE — lo que uno tipea despues de ver el video. Es el mismo texto,
+    // en la misma franja y por la misma causa que el pie de `cierre`, que medía 1.77:1 y ya se arreglo
+    // asi. El de `toro` tambien. Tercera escena de la misma familia.
+    //
+    // Lo encontro `tools/cuna-inventario.mjs`, que ordena por cuanto se mete el texto en la franja:
+    // `mesa` quedo primera de las escenas que se despachan, con el borde inferior al 5% del alto.
+    const HOLG_X = 0.20, HOLG_Y = 0.13
+    const W_CAMA = pie.geometry.parameters.width + HOLG_X * 2
+    camaPie = new THREE.Mesh(
+      new THREE.PlaneGeometry(W_CAMA, 0.19 + HOLG_Y * 2),
+      // 0.94, como las otras tres camas del motor y por la razon anotada alla: deja ver que hay algo
+      // detras —lo que la integra a la escena— sin que eso le coma el contraste.
+      new THREE.MeshBasicMaterial({
+        color: hex(nivel(0.0)), transparent: true, opacity: 0.94,
+        depthWrite: false, toneMapped: false,
+      }))
+    // ANCLADA A LA IZQUIERDA, como el propio pie: la geometria se corre media placa para que su origen
+    // quede en el borde izquierdo y crecer sea avanzar, no abrirse hacia los dos lados.
+    camaPie.geometry.translate(W_CAMA / 2, 0, 0)
+    camaPie.position.set(-ANCHO_UTIL / 2 - HOLG_X, -mundoH * 0.475, 0.19)
+    // EL ORDEN DE DIBUJO, NO EL Z. Las dos son transparentes con `depthWrite: false`, asi que three las
+    // pinta en el orden en que se agregaron y no por profundidad. Agregar la cama despues —que es lo
+    // natural, porque necesita el ancho del texto— la taparia. Paso exactamente eso en `toro`, y ahi el
+    // numero MEJORO igual: se vio abriendo el cuadro, no midiendo.
+    camaPie.renderOrder = -1
+    camaPie.userData.sangra = true
+    gTexto.add(camaPie)
     gTexto.add(pie)
   }
 
@@ -254,6 +291,16 @@ export function build(ctx) {
   if (pie) {
     pie.material.uniforms.uProg.value = 0
     tl.to(pie.material.uniforms.uProg, { value: FIN, duration: b(0.5), ease: E.frena(2) }, b(1.0))
+    // La cama se dibuja JUSTO ANTES del renglon y con la misma curva que la regla de arriba, que es el
+    // otro elemento horizontal de la escena. Termina de abrirse en b1.0, cuando el texto recien empieza
+    // a escribirse: la placa va siempre delante, nunca detras. Al reves, aunque fueran dos cuadros, la
+    // primera letra caeria sobre la cuña — que es el 1.03:1 que esta cama vino a arreglar.
+    //
+    // Y NO SE QUEDA SOLA EN EL CUADRO: sin entrada ni salida seria una barra blanca vacia los primeros
+    // 30 cuadros y otros tantos al final. Ese error lo cometi en las camas de `toro` y `cierre` y ahi
+    // costo el cuadro FINAL del video, que es el que queda congelado.
+    tl.set(camaPie.scale, { x: 0.0001 }, 0)
+    tl.to(camaPie.scale, { x: 1, duration: b(0.34), ease: E.frena(3) }, b(0.66))
   }
 
   // ---- METRONOMO: la hoja acusa el beat con un pop de escala minimo. Sin esto la escena es deriva
@@ -270,6 +317,11 @@ export function build(ctx) {
   if (pie) {
     tl.set(pie.material.uniforms.uDir, { value: 1 }, b(5.25))
     tl.to(pie.material.uniforms.uProg, { value: 0, duration: b(0.32), ease: E.acelera(2) }, b(5.25))
+    // SALE POR OPACIDAD Y NO POR ESCALA. El renglon termina de borrarse en b5.57 y una placa que se
+    // encoge le sacaria la cama a las ultimas letras antes de que se vayan, sobre la cuña. Un fundido
+    // no descubre nada: bajan las dos cosas juntas.
+    tl.set(camaPie.material, { opacity: 0.94 }, 0)
+    tl.to(camaPie.material, { opacity: 0, duration: b(0.36), ease: E.acelera(2) }, b(5.35))
   }
   tl.to(regla.scale, { x: 0.0001, duration: b(0.4), ease: E.acelera(3) }, b(5.3))
   tl.to(canto.scale, { x: 0.0001, duration: b(0.35), ease: E.acelera(3) }, b(5.35))

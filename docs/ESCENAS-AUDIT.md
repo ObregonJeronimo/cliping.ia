@@ -146,8 +146,38 @@ barrido dice **dónde mirar**.
 propósito). Los dos puntos ciegos, sobre la misma frase. Ver `docs/HEROES-AUDIT.md`.
 
 **Arreglado en `toro`** con una cama, que es la solución que este repo ya eligió para el rótulo del
-héroe: *"garantiza el fondo en vez de depender de medirlo"*. Las otras diez quedan medidas y sin
-verificar.
+héroe: *"garantiza el fondo en vez de depender de medirlo"*. Después en `cierre` (1,77:1) y en `mesa`
+(**1,02:1**, el peor de los tres).
+
+### Y ahora la lista se ordena sola — `tools/cuna-inventario.mjs`
+
+Barrer las once escenas a ojo era el problema: cada verificación cuesta un render y el barrido no decía
+por cuál empezar. La herramienta cruza dos cosas sin renderizar nada —qué textos caen en la franja donde
+la cuña puede llegar, y cuáles **no tienen una cama detrás**— y ordena por **cuánto se mete** el texto.
+Ese orden es el que sirve: los tres defectos confirmados estaban al 5%, 8% y 22% del alto.
+
+Tres cosas que aprendió a los golpes y que quedan escritas en el archivo, porque cada una la hizo mentir:
+
+- **La franja es un SOBRE, no la cuña.** Reproducir el shader —con su `donde` saltando entre cuatro
+  valores cada dos beats— sería copiar una cuenta que se desincroniza. Se toma la posición más alta que
+  la cuña puede alcanzar. Lo que **no** aparece en la lista está a salvo; lo que aparece hay que mirarlo.
+- **Se mide con la escena montada y en tres instantes.** En `t=0` los textos por máscara tienen `uProg`
+  en 0 y las camas animadas están colapsadas: la de `cierre` arranca en `scale.x = 0.0001` a propósito,
+  así que **la herramienta acusaba el arreglo que se acababa de verificar sobre píxeles**. Con un solo
+  instante tampoco alcanzaba — el pie de `cierre` aterriza al 53% del tramo.
+- **Las dormidas se marcan.** `columna` salió primera del ranking, con texto al 0% del alto, y no sale
+  en ninguna pieza: está en `DORMIDAS`. Se descubrió buscándole una semilla y no encontrándola en 120
+  guiones. Se lee de `guion.js`, no se copia.
+
+Estado al cerrar: **224 textos sin cama en escenas que se despachan**, encabezados por `tipografia` (7%
+del alto), `titular` (12%) y `tarjetas` (21%). Siguen sin verificar — son candidatos, no defectos.
+
+**Y una trampa de medición que hay que conocer antes de perseguir un número.** El pie de `mesa` pasó de
+1,02:1 a 2,59:1, o sea todavía por debajo del piso de 3,2. Es un artefacto: el tinte real es `#77726a`,
+que contra la placa blanca da **13:1**. Lo que baja el número es que el texto es CHICO y antialiaseado,
+así que ningún percentil llega al núcleo del glifo. Calibrado contra el rótulo de la misma escena, que
+se lee perfecto y mide **2,96:1** con el mismo método. Darle más tinta al pie para llegar a 3,2 habría
+sido arreglar el instrumento, no el video — y de paso habría invertido la jerarquía tipográfica.
 
 ## Los 11 aires, comparados entre sí — `tools/aires-render.py`
 
