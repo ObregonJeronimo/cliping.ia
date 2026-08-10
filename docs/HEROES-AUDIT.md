@@ -75,7 +75,7 @@ Un peso doble los llevaría de 45% a ~29% de abstractos sin volver al "devuelta 
 node tools/heroes-audit.mjs
 ```
 
-Construye los 17 sobre las 7 páginas reales, 25 instantes cada una. **Son proxies geométricos, no
+Construye los **18** sobre las 7 páginas reales, 25 instantes cada una. **Son proxies geométricos, no
 píxeles del video**: no hay shaders, ni bloom, ni grano. Sirven para comparar héroes entre sí y
 encontrar extremos, no para dar una nota de calidad.
 
@@ -85,17 +85,17 @@ Se listan porque cada una parecía un hallazgo sólido:
 
 1. **Texturas de prueba de 64 px.** Es lo que usan las otras compuertas, que miden geometría. Acá
    importa: varios héroes topean el tamaño dibujado con `topeNitido` para no pixelar el recorte del
-   cliente, así que con 64 px lo dibujan diminuto. `mosaico` daba **0.044** de cobertura, la peor de
-   las 17 y diez veces menos que la siguiente. Con 700 px da **0.383**.
+   cliente, así que con 64 px lo dibujan diminuto. `mosaico` daba **0.044** de cobertura, la peor
+   del catálogo y diez veces menos que la siguiente. Con 700 px da **0.383**.
 2. **`muestra` preguntaba por `tipoImagen === 'recorte'`**, que lo declara `planoRecorte`. Decía "no"
    para `cubo`, que arma sus caras a mano. Ahora se reconoce la textura.
 3. **El movimiento medido en CPU no ve a los que deforman en el vertex shader.** `gota` daba **0.0029**
    —cuarenta veces menos que el resto— y no estaba quieta: su movimiento vive entero en la GPU. **Son
-   10 de 17.** La columna ahora dice `(gpu)` en vez de un cero que se leería como diapositiva.
+   10 de 18.** La columna ahora dice `(gpu)` en vez de un cero que se leería como diapositiva.
 
 ### La cobertura NO predice calidad visual
 
-`pulso` tenía la cobertura más baja de los 17 (**0.401**) con 48,7 mallas, y en el render se ve lleno:
+`pulso` tenía la cobertura más baja del catálogo (**0.401**) con 48,7 mallas, y en el render se ve lleno:
 son trazos finos, y la cobertura mide áreas de caja. Una composición de líneas siempre va a puntuar
 bajo aunque llene el cuadro. **La tabla sirve para elegir dónde mirar, no para decidir qué está mal.**
 
@@ -124,6 +124,11 @@ Y el mismo punto ciego apareció el mismo día en `nitidez-inventario` (ver `doc
 donde era peor: los dejaba fuera de la medición **y** fuera de la lista de "no se midió".
 
 ## Auditado con render de verdad
+
+**Y hasta el 9/8/2026 auditaba 17 de los 18.** `orbital` no tiene archivo propio —está definido en
+línea dentro de `heroes/index.js`, envolviendo a `toro`— y las dos herramientas listaban los `.js` del
+directorio. `heroes-check` venía informando "18 heroes" en cada corrida del guard y nadie cruzó los dos
+números. Ahora las dos toman la lista de `HEROES`, que es con la que el motor elige.
 
 El único que ve contraste, shaders y bloom. **Siempre mirar el `plan.json` antes que los cuadros.**
 `--hero X` falla de DOS maneras distintas, y las dos ya pasaron en la misma sesión:
@@ -243,13 +248,13 @@ repita la búsqueda:
 | `fondo-check` | **medido, no arreglado** — es esta sección |
 | `encaja-check` | no filtra por textura: consume el JSON del inventario |
 
-## Auditoría con render de LOS 17 — `tools/heroes-render.py`
+## Auditoría con render de LOS 18 — `tools/heroes-render.py`
 
 ```bash
 npm run pesado -- python tools/heroes-render.py
 ```
 
-Renderiza una pieza por héroe y mide sobre los cuadros de su tramo. **Cero hallazgos sobre los 17.**
+Renderiza una pieza por héroe y mide sobre los cuadros de su tramo.
 El contraste más bajo es `columnata` con 3,80:1 (piso 3,0) y el movimiento más bajo `vitrina` con
 0,306 — 61 veces el ruido del códec (0,005).
 
