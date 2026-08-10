@@ -116,6 +116,39 @@ Las dos veces la predicción decía que `partida` entraba y el plan real salió 
 las veces" que se reportó en un commit anterior sale de ese mismo simulador y no es un dato
 confiable.** Lo que funcionó fue lo caro y honesto: **renderizar de verdad y mirar el plan.**
 
+## La cuña del mundo claro pasa por detrás del texto en 11 de las 20 escenas
+
+Encontrado por un cuadro y confirmado por un barrido. En `toro` el titular del cliente —"ENABLE ANY
+BILLING MODEL", copy real de stripe.com— cruza la diagonal violeta del fondo y se parte en dos
+legibilidades: **3,15:1** la mitad sobre el fondo claro y **1,11:1** la mitad sobre la cuña. 1,11:1 no
+es poco contraste, es texto que no se lee.
+
+La cuña declara en su propio comentario (`kit.js`) que *"LA DIAGONAL VA POR DEBAJO DE LA BANDA DE
+TIPOGRAFIA"* y que su borde *"queda entre el 9% y el 39% del alto"*. O sea que asume que los titulares
+viven arriba del 39% contado desde abajo. Barridas las 20 escenas midiendo dónde cae cada malla de
+texto, **11 ponen texto adentro de esa zona**:
+
+| escena | textos en la zona |
+|---|---|
+| `tarjetas` | 9 |
+| `toro` | 6 |
+| `apertura`, `cierre`, `marquesina` | 4 c/u |
+| `destello`, `tipografia` | 2 c/u |
+| `cita`, `hero`, `lista`, `partida` | 1 c/u |
+
+**40 no son 40 defectos, y eso hay que decirlo antes de que alguien lo lea como una lista de tareas.**
+La cuña sólo existe en mundo CLARO, varios de esos textos ya tienen cama —el pie de `toro` la tiene y
+se lee perfecto en el mismo cuadro donde el titular no— y otros pueden estar en tonos que aguanten. El
+barrido dice **dónde mirar**.
+
+**Y no se puede verificar sin renderizar**, que es lo que hace a esta familia cara: el texto viaja por
+`materialMascara` (invisible para `fondo-check`) y el fondo es un shader (que `esTapa` descarta a
+propósito). Los dos puntos ciegos, sobre la misma frase. Ver `docs/HEROES-AUDIT.md`.
+
+**Arreglado en `toro`** con una cama, que es la solución que este repo ya eligió para el rótulo del
+héroe: *"garantiza el fondo en vez de depender de medirlo"*. Las otras diez quedan medidas y sin
+verificar.
+
 ## Los 11 aires, comparados entre sí — `tools/aires-render.py`
 
 ```bash
