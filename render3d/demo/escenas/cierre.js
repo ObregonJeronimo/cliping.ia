@@ -388,6 +388,40 @@ export function build(ctx) {
     }
   })
   if (total > 4.9) gMarcas.scale.setScalar(4.9 / total)
+
+  // UNA CAMA DETRAS DEL PIE, POR UN DEFECTO MEDIDO SOBRE PIXELES.
+  //
+  // Renderizado basecamp.com en `editorial` (mundo CLARO) y medida la fila del pie: **1.77:1**, con el
+  // texto en rgb(29,51,76) sobre rgb(143,173,221). El piso del repo en mundo claro es 3.2. Ese renglon
+  // lleva el DOMINIO del cliente — lo que uno tipea despues de ver el video.
+  //
+  // La causa es la cuña diagonal del fondo del kit, que en mundo claro ocupa la franja de abajo. Su
+  // comentario dice que "LA DIAGONAL VA POR DEBAJO DE LA BANDA DE TIPOGRAFIA" y que queda "entre el 9%
+  // y el 39% del alto": asume que los titulares viven arriba de eso. Este pie vive en el 8%. Barridas
+  // las 20 escenas, ONCE ponen texto en esa zona (ver docs/ESCENAS-AUDIT.md); esta es la segunda
+  // confirmada con render, despues de `toro`.
+  //
+  // Y NO ES UNA SOLUCION INVENTADA ACA: el pie de `toro` y el de `pantalla` ya van sobre placa y se
+  // leen perfecto. El de `cierre` era el que faltaba.
+  {
+    const HOLG_X = 0.34, HOLG_Y = 0.16
+    const camaPie = new THREE.Mesh(
+      new THREE.PlaneGeometry(Math.min(total, 4.9) + HOLG_X * 2, 0.20 + HOLG_Y * 2),
+      // Misma opacidad que las otras camas del motor (rotulo del hero, titular de `toro`): 0.94 deja
+      // ver que hay algo detras —lo que la integra a la escena— sin que eso le coma el contraste.
+      new THREE.MeshBasicMaterial({
+        color: hex(nivel(0.0)), transparent: true, opacity: 0.94,
+        depthWrite: false, toneMapped: false,
+      }))
+    camaPie.position.set(0, 0, -0.02)
+    // EL ORDEN DE DIBUJO, NO EL Z. Cama y textos son transparentes con `depthWrite: false`: three los
+    // pinta en el orden en que se agregaron, no por profundidad. Agregando la cama despues —que es lo
+    // natural, porque necesita el ancho total— tapaba el texto. Paso exactamente eso en `toro`, y ahi
+    // el numero MEJORO igual: se vio abriendo el cuadro, no midiendo.
+    camaPie.renderOrder = -1
+    camaPie.userData.sangra = true
+    gMarcas.add(camaPie)
+  }
   gComp.add(gMarcas)
 
   // ==================================================================== timeline
