@@ -111,13 +111,27 @@ const ELS = Array.from({ length: N_ELS }, (_, i) => ({ rol: ROLES[i % ROLES.leng
 const W = 1080, H = 1920, mundoH = 10, mundoW = mundoH * (W / H), fov = 30
 const distBase = (mundoH / 2) / Math.tan((fov * Math.PI / 180) / 2)
 
-const ids = readdirSync(HEROES).filter(f => f.endsWith('.js') && f !== 'index.js').map(f => f.replace('.js', '')).sort()
+// LA LISTA SALE DEL REGISTRO, NO DEL DIRECTORIO — y esa diferencia escondia un hero entero.
+//
+// Esta herramienta listaba los `.js` de `heroes/`, y `orbital` no tiene archivo: esta definido EN
+// LINEA dentro de `index.js`, envolviendo a `toro`. O sea que de los 18 del catalogo esta auditaba 17
+// y llamaba "los 17" al total, en su cabecera y en `docs/HEROES-AUDIT.md`. `heroes-check` dice 18 y
+// nadie cruzo los dos numeros.
+//
+// `HEROES` es la lista que usa el motor para elegir, asi que es la unica que no puede quedar corta: si
+// un hero se ofrece en un video, esta ahi. Un hero que el motor puede elegir y ninguna auditoria mira
+// es exactamente el agujero que estas herramientas existen para no tener.
+const { HEROES: CATALOGO } = await import(pathToFileURL(join(HEROES, 'index.js')).href)
+const MODS = new Map(CATALOGO.map(h => [h.meta.id, h]))
+const ids = [...MODS.keys()].sort()
 
 async function auditar(id, juego, nombreAire) {
   configurar(AIRES[nombreAire])
   reiniciarReparto(); reiniciarRecortes(); configurarDatos(juego.datos)
   let mod
-  try { mod = await import(pathToFileURL(join(HEROES, `${id}.js`)).href) } catch (e) { return { error: e.message } }
+  // Del registro, no del disco: `orbital` no tiene archivo propio.
+  mod = MODS.get(id)
+  if (!mod) return { error: 'no esta en el registro HEROES' }
   if (!mod.meta || typeof mod.build !== 'function') return null
 
   const camera = new THREE.PerspectiveCamera(fov, W / H, 0.1, 400)

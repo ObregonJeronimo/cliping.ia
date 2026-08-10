@@ -7,7 +7,7 @@ misma sesion, tres cosas que le pasaron por al lado:
 
   · el contraste del rotulo — vive en el pixel iluminado, no en el color declarado. `calibre` salia a
     2.41:1 y ninguna compuerta lo veia.
-  · el movimiento de los heroes que deforman en el VERTEX SHADER. Son 10 de 17: `gota` medida en CPU
+  · el movimiento de los heroes que deforman en el VERTEX SHADER. Son 10 de 18: `gota` medida en CPU
     daba 0.0029 y en pixeles da 1.27-1.91.
   · la calidad de la composicion. `pulso` tiene la cobertura geometrica mas baja de los 17 (0.401) y
     en el cuadro se ve lleno: son trazos finos y la cobertura mide areas de caja.
@@ -154,8 +154,27 @@ def main():
     os.makedirs(SALIDA, exist_ok=True)
     heroes = [solo] if solo else None
     if heroes is None:
-        d = os.path.join(RAIZ, "render3d", "demo", "heroes")
-        heroes = sorted(f[:-3] for f in os.listdir(d) if f.endswith(".js") and f != "index.js")
+        # LA LISTA SALE DEL REGISTRO, NO DEL DIRECTORIO — y esa diferencia escondia un hero entero.
+        #
+        # Esto listaba los `.js` de `heroes/`, y `orbital` NO TIENE ARCHIVO: esta definido en linea
+        # dentro de `index.js`, envolviendo a `toro`. O sea que de los 18 del catalogo esta herramienta
+        # renderizaba 17 y llamaba "los 17" al total — igual que `heroes-audit`, que tenia el mismo
+        # punto ciego por la misma razon. `heroes-check` dice 18 y nadie cruzo los dos numeros.
+        #
+        # `HEROES` es la lista con la que el motor ELIGE, asi que es la unica que no puede quedar
+        # corta: si un hero puede salir en el video de un cliente, esta ahi.
+        idx = os.path.join(RAIZ, "render3d", "demo", "heroes", "index.js").replace("\\", "/")
+        js = ("import('file:///" + idx + "').then(m => "
+              "console.log(m.HEROES.map(h => h.meta.id).join(',')))")
+        r = subprocess.run(["node", "--input-type=module", "-e", js],
+                           capture_output=True, text=True, cwd=RAIZ)
+        heroes = sorted(x for x in (r.stdout or "").strip().split(",") if x)
+        if not heroes:
+            # UN CERO ACA NO ES "no hay heroes": es que no se pudo leer el registro. Se dice y se corta,
+            # en vez de renderizar nada y reportar que todo esta bien.
+            print("heroes-render: NO SE PUDO LEER EL REGISTRO `HEROES` de heroes/index.js.")
+            print((r.stderr or "").strip()[:300])
+            sys.exit(2)
 
     filas, fallos, saltados = [], [], []
     for h in heroes:
