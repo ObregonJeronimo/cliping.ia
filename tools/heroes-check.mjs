@@ -22,6 +22,7 @@
 import { pathToFileURL } from 'node:url'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
+import { readdirSync } from 'node:fs'
 import { createCanvas } from '@napi-rs/canvas'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -100,10 +101,32 @@ for (const { id, porque } of CUPOS) {
 const pelado = elegibles(new Set(), null, [])
 if (!pelado.length) fallos.push('sin material no queda NINGUN hero: una escena sin sujeto es peor que un objeto abstracto')
 // Y con un aire cualquiera tampoco puede quedar vacio.
-for (const aire of ['lujo', 'tecnico', 'gastronomico', 'deportivo', 'editorial', 'jugueton',
-  'artesanal', 'bienestar', 'corporativo', 'inmobiliario', 'nocturno']) {
-  if (!elegibles(new Set(), aire, []).length) fallos.push(`sin material y con aire ${aire} no queda ningun hero`)
+//
+// LA LISTA DE AIRES SE LEE DEL DIRECTORIO, no se escribe a mano. Estaba escrita a mano con los once, y
+// eso significa que un aire nuevo entraba al motor sin que nadie comprobara que le queda algun hero —
+// el mismo error de "la lista sale del lugar equivocado" que escondia a `orbital` en las dos
+// auditorias. El directorio es la fuente que usa el motor; cualquier otra puede quedar corta.
+const AIRES = readdirSync(join(RAIZ, 'render3d', 'demo', 'aires'))
+  .filter(f => f.endsWith('.js')).map(f => f.replace('.js', ''))
+if (!AIRES.length) fallos.push('no se pudo leer ningun aire: sin eso esta comprobacion no comprueba nada')
+const porAire = []
+for (const aire of AIRES) {
+  const n = elegibles(new Set(), aire, []).length
+  porAire.push([aire, n])
+  if (!n) fallos.push(`sin material y con aire ${aire} no queda ningun hero`)
 }
+
+// EL TRINQUETE DEL AIRE MAS FLACO. Que quede UNO no es lo mismo que estar bien: una pagina sin
+// material usable recibe SIEMPRE el mismo hero, y dos videos de la misma inmobiliaria salen con el
+// mismo objeto. Medido el 9/8/2026: `inmobiliario` queda con 1 (columnata) y el resto con 4 a 8.
+//
+// No se sube el piso a 2 desde aca, porque agregarle aires a un hero es una decision de ARTE y este
+// registro existe justamente por un reclamo de arte —"no tienen ningun sentido esas formas, son formas
+// para algo tecnologico, no para una marca de cafes"—. Lo que si se hace es que el numero no pueda
+// EMPEORAR sin que nadie se entere.
+const MIN_ABSTRACTOS = 1
+const flaco = porAire.filter(([, n]) => n < MIN_ABSTRACTOS)
+for (const [aire, n] of flaco) fallos.push(`el aire ${aire} baja a ${n} heroes sin material (trinquete ${MIN_ABSTRACTOS})`)
 
 if (fallos.length) {
   console.log(`GATE HEROES FAIL (${fallos.length}):`)
@@ -112,3 +135,5 @@ if (fallos.length) {
 }
 console.log(`GATE HEROES OK (${HEROES.length} heroes, ${CUPOS.length} con cupo de material: `
   + `rechazan lo pobre, aceptan lo real, y nunca queda la escena sin sujeto).`)
+console.log('  sin material del cliente, por aire: '
+  + porAire.sort((a, b) => a[1] - b[1]).map(([a, n]) => `${a} ${n}`).join(' · '))
