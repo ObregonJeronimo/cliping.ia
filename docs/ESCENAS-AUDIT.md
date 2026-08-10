@@ -193,7 +193,16 @@ bloque sólido detrás de una frase le come el contraste"*— y cuatro camas seg
 el diseño en una fila de cajas. La regla que queda escrita: **se pone cama cuando el texto no se lee, no
 cuando la herramienta lo nombra.** El sobre dice dónde mirar; el cuadro dice si hay defecto.
 
-Las ocho restantes siguen sin verificar — son candidatos, no defectos.
+Las ocho restantes siguen sin verificar — son candidatos, no defectos. Y con `tipografia` medida en
+2,86:1 al 7% del alto, las que siguen están **menos** hondas (`titular` 12%, `tarjetas` 21%, `apertura`
+24%…), o sea que la expectativa es que midan mejor. Eso es una inferencia, no una medición: hay que
+rendirlas igual, sólo que la urgencia bajó.
+
+**Para rendirlas, una trampa que cuesta un render cada vez que se cae en ella.** No se puede elegir la
+semilla corriendo `guionDe` por afuera: el BPM que usa el motor NO es el del aire. Configurando
+`editorial` a mano sale 100, y el render de esa misma página salió en **108** — la página modula el
+tempo (el plan lo guarda en `bpm` y `bpmAire`, que son distintos). Un plan predicho con el BPM
+equivocado trae otras escenas. Lo barato es rendir una vez y leer `plan.json`, no adivinar.
 
 **Y una trampa de medición que hay que conocer antes de perseguir un número.** El pie de `mesa` pasó de
 1,02:1 a 2,59:1, o sea todavía por debajo del piso de 3,2. Es un artefacto: el tinte real es `#77726a`,
