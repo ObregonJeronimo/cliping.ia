@@ -267,25 +267,34 @@ propiedad del aire —lo inyecta el motor junto con la paleta de la página—, 
 paleta oscura da un mundo que el motor nunca produce. Sólo la fila de `editorial` es coherente, y es
 la única que se usa acá.
 
-#### El barrido en `editorial`, ya con el falso positivo corregido
+#### El barrido completo, corrido de a un aire
 
-Corriendo sólo el aire cuya paleta está validada (`CUNA_AIRE=editorial`, ocho construcciones en vez de
-220 — sirve con la máquina ocupada):
+Con la máquina ocupada (un juego abierto) el barrido entero no se puede lanzar de una: son 220
+construcciones. Pero **de a un aire cuesta nada** — medido, un aire completo movió el disponible de
+1238 a 1232 MB, que es ruido. Así que la herramienta acepta `CUNA_AIRE` y `CUNA_ESCENA` y los once se
+corrieron uno por uno, en procesos separados, con un piso que aborta si baja de 700 MB.
 
-| escena | en la franja | sin cama | en acento | el más hondo |
-|---|---|---|---|---|
-| `titular` | 1 | 1 | — | 15% del alto |
-| `tarjetas` | 3 | 3 | — | 23% |
-| `apertura` | 4 | 4 | — | 25% |
-| `destello` | 3 | 2 | — | 32% |
-| `gancho` | 1 | 1 | — | 37% |
-| `rafaga` | 2 | 2 | — | 39% |
-| `marquesina` | 3 | **0** | — | — |
-| `toro`, `mesa`, `cierre` | 11 | **0** | — | — |
+| escena | en la franja | sin cama | en acento | el más hondo | en cuántos aires |
+|---|---|---|---|---|---|
+| `columna` *(dormida)* | 11 | 11 | — | 0% | 11/11 |
+| `tipografia` | 48 | 48 | — | 7% | 11/11 |
+| `titular` | 11 | 11 | — | 12% | 11/11 |
+| `tarjetas` | 38 | 34 | — | 21% | 11/11 |
+| `apertura` | 43 | 43 | — | 24% | 11/11 |
+| `destello` | 33 | 23 | — | 25% | 11/11 |
+| `rafaga` | 21 | 21 | — | 34% | 11/11 |
+| `gancho` | 11 | 11 | — | 35% | 11/11 |
+| `toro`, `cierre`, `mesa`, `marquesina`, `partida` | 165 | **0** | — | — | 0/11 |
 
-**13 textos sin cama en `editorial`**, no los 224 del barrido viejo — ese número venía del falso
-positivo de contención y de multiplicar por once aires. `marquesina` cayó a 0, que es la comprobación
-de que el arreglo funcionó.
+**202 sin cama**, no los 224 de antes: la diferencia son los 22 falsos positivos de `marquesina`.
+
+Dos cosas que el barrido completo confirma y que antes eran de un solo aire:
+
+- **Cinco escenas están limpias en los once aires**, incluidas las tres que se arreglaron esta vuelta.
+- **No hay un solo texto en acento dentro de la franja, en ninguna escena y en ningún aire.** El
+  peligro del 1,41:1 existe en la teoría del color y no se materializa en el motor.
+
+`titular` da exactamente 1 por aire — es el pie, el mismo que la aritmética de color predice en 1,85:1.
 
 Las restantes siguen sin verificar — son candidatos, no defectos. Y con `tipografia` medida en
 2,86:1 al 7% del alto, las que siguen están **menos** hondas (`titular` 12%, `tarjetas` 21%, `apertura`
