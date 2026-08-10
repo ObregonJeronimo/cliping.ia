@@ -345,7 +345,7 @@ def captura_rancia(site) -> str:
 # mejora es el p95, que son los cuadros de mas movimiento — justo donde se ven los bloques.
 async def render(url: str, salida: str, hero: str | None = None, dur: int = 20,
                  seed: int = 7, aire: str | None = None, recapturar: bool = False,
-                 bitrate: int = 12_000_000, forzar: bool = False) -> str:
+                 bitrate: int = 12_000_000, forzar: bool = False, escena: str | None = None) -> str:
     dst = os.path.join(SALIDA, _dominio(url))
     pm_path = os.path.join(dst, "pagemodel.json")
     site_path = os.path.join(dst, "site.json")
@@ -476,6 +476,19 @@ async def render(url: str, salida: str, hero: str | None = None, dur: int = 20,
     }
     if hero:
         spec["hero"] = hero
+    # UNA SOLA ESCENA, CON LA PAGINA Y LA PALETA DE VERDAD.
+    #
+    # `main.js` ya sabia hacerlo (`spec.soloEscena`, linea 423) y no habia forma de pedirlo desde aca:
+    # el unico que lo usaba era `backend/render_escena.py`, que arma la pieza con los datos de demo y
+    # el mundo de ANTHEM. Para auditar una escena eso no alcanza — la mitad de los defectos de contraste
+    # de esta tanda solo existen en MUNDO CLARO, y el mundo claro lo decide la pagina del cliente.
+    #
+    # Sin esto, verificar una escena era ruleta de semillas: hay que rendir la pieza entera y rezar que
+    # el guion la sortee. Buscando `titular` salieron dos piezas sin ella, o sea dos renders tirados —y
+    # predecir el plan por afuera tampoco sirve, porque el motor no corre al BPM del aire. Con `--escena`
+    # es un render y siempre trae lo que se pidio.
+    if escena:
+        spec["soloEscena"] = escena
     tira = os.path.join(dst, "tira.png")
     if os.path.exists(tira):
         spec["tira"] = "/assets/tira.png"
@@ -563,6 +576,8 @@ def main():
     # El parametro existia en `render()` desde siempre y NO habia forma de tocarlo desde la linea de
     # comandos: para probar otra calidad habia que importar el modulo a mano. Es el unico control de
     # calidad del video que hay, asi que tiene que estar a la vista.
+    ap.add_argument("--escena", help="rendir UNA escena sola, con la pagina y la paleta reales "
+                                     "(para auditarla sin ruleta de semillas)")
     ap.add_argument("--bitrate", type=float, default=12.0,
                     help="calidad del video en Mbps (12 por defecto; 20 para bloques mas limpios "
                          "a costa de 2.6x el peso)")
@@ -581,11 +596,11 @@ def main():
     # colgo la maquina el 4 de agosto de 2026 — ver backend/cerrojo.py.
     cerrojo.exigir(f"motor.py {a.url}")
 
-    salida = a.salida or os.path.join(SALIDA, f"{_dominio(a.url)}-{a.hero or 'auto'}-{a.dur}s.mp4")
+    salida = a.salida or os.path.join(SALIDA, f"{_dominio(a.url)}-{a.escena or a.hero or 'auto'}-{a.dur}s.mp4")
     os.makedirs(os.path.dirname(salida), exist_ok=True)
     ruta = asyncio.run(render(a.url, salida, hero=a.hero, dur=a.dur, seed=a.seed, forzar=a.forzar,
                               aire=a.aire, recapturar=a.recapturar,
-                              bitrate=int(a.bitrate * 1_000_000)))
+                              bitrate=int(a.bitrate * 1_000_000), escena=a.escena))
     print(f"\n{ruta}  ({os.path.getsize(ruta) // 1024} kb)")
 
 

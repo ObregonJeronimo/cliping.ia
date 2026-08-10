@@ -242,7 +242,7 @@ De paso valida no haber tocado `tipografia`: sus 2,86:1 medidos están **por enc
 o sea que ese texto no estaba del todo sobre la cuña. Es el caso de la palabra partida, no el de la
 palabra tapada — que es exactamente lo que se ve en el cuadro.
 
-#### `titular` — predicho por aritmética de color, sin renderizar, y queda por confirmar
+#### `titular` — la predicción NO se cumplió: 3,06:1, está sobre el lado claro
 
 Su pie es **el mismo patrón exacto** que los dos defectos confirmados: `D.dominio || D.marca` —el
 dominio del cliente—, tinte `nivelTexto(0.55)`, pegado al margen izquierdo y sin cama. Es el mismo
@@ -258,7 +258,30 @@ La cuña es `mix(col, acento, 0.86)`, así que el contraste se puede calcular si
 | `nivel(0.55)` contra la cuña | **1,85:1** |
 
 Con la paleta de la página, que es la que vale (ver arriba). Predice 1,85 para el mismo tinte que en
-`cierre` **midió 1,77 sobre píxeles**. Falta el render para confirmarlo en `titular`.
+`cierre` **midió 1,77 sobre píxeles**.
+
+**Y el render lo desmintió.** `python backend/motor.py https://basecamp.com --escena titular --aire
+editorial`: el pie sale en 29 de los 99 cuadros y mide **3,10:1 de mediana, 3,06:1 en el peor** — por
+encima de la referencia de texto legible (2,96:1) y por encima del techo de la cuña (2,74:1), que es la
+prueba de que **no está sobre la cuña** sino sobre el triángulo claro. Se ve en el cuadro: `BASECAMP.COM`
+queda a la izquierda de la diagonal, limpio.
+
+La predicción no estaba mal: decía qué pasaría *si* el texto cayera sobre la cuña. Lo que faltaba era la
+geometría, y la geometría lo salva. Es exactamente para lo que la franja se declaró un SOBRE.
+
+*Límite honesto:* esos 29 cuadros son ~1 s, o sea que la cuña no recorre sus cuatro posiciones dentro de
+la ventana en que el pie está en pantalla. Con otra semilla podría no coincidir igual.
+
+**Y tres mediciones falsas antes de la buena, que valen como advertencia.** El mismo recuadro dio 1,15,
+1,17 y 1,15:1 con tres criterios distintos, y las tres veces el número era basura:
+
+1. tomando la mediana del recuadro como "fondo" — con texto grande la mediana cae SOBRE una letra;
+2. cambiándola por el percentil 90 — sigue midiendo los cuadros donde el renglón **todavía no entró**;
+3. filtrando esos cuadros por el spread — el degradado del fondo tiene spread propio y no los filtra.
+
+Lo que funcionó: detectar glifos por su presencia (una fracción del recuadro *muy* por debajo del fondo)
+y recién ahí medir. La señal de alarma estuvo siempre a la vista y la ignoré dos veces: el script decía
+"99 de 99 cuadros con el renglón escrito" cuando yo había visto el recuadro vacío a mitad de escena.
 
 **Lo que ese cálculo NO puede decir, y es la mitad del resultado.** Se corrió sobre los once aires
 forzando `claro: true`, y los otros diez dan números que no hay que creer: salen entre 1,67:1 y 2,26:1
