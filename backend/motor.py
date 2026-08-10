@@ -273,6 +273,30 @@ def datos_de(pagemodel_path: str, dst: str, seed: int | None = None) -> dict:
         return json.load(f)
 
 
+def _aires_de_hero(hid):
+    """A que aires se le ofrece este hero. `[]` = a todos. `None` = no existe.
+
+    Se le pregunta al REGISTRO de heroes/index.js, que es el mismo que usa el motor para decidir, en
+    vez de mantener una copia aca. Una copia se desincroniza el dia que alguien toque un aire, y el
+    aviso pasaria a mandar al usuario a un aire que ya no sirve — peor que no avisar.
+    """
+    import subprocess as _sp
+    idx = os.path.join(RAIZ, "render3d", "demo", "heroes", "index.js").replace("\\", "/")
+    js = ("import('file:///" + idx + "').then(m => { "
+          "const id = process.argv[1]; "
+          "if (!m.porId(id)) return console.log('__NO__'); "
+          "console.log(m.airesDe(id).join(',')) })")
+    try:
+        r = _sp.run(["node", "--input-type=module", "-e", js, "--", hid],
+                    capture_output=True, text=True, cwd=RAIZ, timeout=30)
+        out = (r.stdout or "").strip()
+        if out == "__NO__":
+            return None
+        return [x for x in out.split(",") if x]
+    except Exception:
+        return []
+
+
 def captura_rancia(site) -> str:
     """Devuelve por que la captura cacheada NO sirve, o "" si esta al dia.
 
@@ -451,6 +475,36 @@ async def render(url: str, salida: str, hero: str | None = None, dur: int = 20,
         if _faltan:
             print('  ATENCION: %d recorte/s no cargaron y su escena queda sin imagen: %s'
                   % (len(_faltan), ', '.join(str(x) for x in _faltan[:4])))
+
+        # SI PEDISTE UN HERO Y SALIO OTRO, TE LO DECIMOS — Y TE DECIMOS COMO CONSEGUIRLO.
+        #
+        # Reclamo textual del usuario: "los heros no pude usarlos". Y tenia razon por dos motivos
+        # distintos, los dos silenciosos:
+        #
+        #   1. la escena `hero` entraba al plan por SORTEO, asi que `--hero X` podia renderizar un video
+        #      perfecto que no mostraba ningun hero. Arreglado en guion.js (`fija`).
+        #   2. y aun con la escena adentro, el REGISTRO puede rechazar el hero pedido: la geometria
+        #      abstracta esta restringida por aire a proposito —"no tienen ningun sentido esas formas,
+        #      son formas para algo tecnologico, no para una marca de cafes"—. Ahi el motor elegia otro
+        #      y no decia nada. Pedias `gota` sobre stripe.com y salia `vitrina`, sin una linea.
+        #
+        # Rechazar esta bien; callarse no. Lo que hacia falta es que el aviso traiga la SALIDA: en que
+        # aires si le queda, para poder pedirlo con `--aire`.
+        _pedido = spec.get('hero')
+        _salieron = _plan.get('heroes') or []
+        if _pedido and _pedido not in _salieron:
+            print('  ATENCION: pediste el hero "%s" y salio %s.'
+                  % (_pedido, ('"%s"' % _salieron[0]) if _salieron else 'ninguno'))
+            _aires = _aires_de_hero(_pedido)
+            if _aires is None:
+                print('    Ese hero no existe. Corre `python backend/motor.py --heroes` para ver la lista.')
+            elif not _aires:
+                print('    Le queda a cualquier aire, asi que lo que falto es MATERIAL de la pagina')
+                print('    (necesita recortes o la tira, y esta pagina no dio suficiente).')
+            else:
+                print('    El registro solo se lo ofrece a estos aires: %s' % ', '.join(_aires))
+                print('    Esta pagina cayo en "%s". Para forzarlo:' % spec.get('aire'))
+                print('      python backend/motor.py %s --hero %s --aire %s' % (url, _pedido, _aires[0]))
     except Exception:
         pass                                            # el video ya se grabo; esto es un aviso
     return salida

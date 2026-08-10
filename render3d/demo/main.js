@@ -426,6 +426,10 @@ export class Anthem {
     } else {
       const plan = this.spec.guion || guionDe({
         escenas: catalogo,
+        // SI SE PIDIO UN HERO, LA ESCENA QUE LO MUESTRA ENTRA. Sin esto `--hero X` solo elegia CUAL
+        // hero usar si la escena salia sorteada, y salir sorteada era una moneda al aire: el usuario
+        // pedia un hero, el video se renderizaba sin un solo error y no lo mostraba.
+        fija: this.spec.hero ? 'hero' : null,
         // LA TIRA VIAJA EN EL SPEC, NO EN LOS DATOS, y `pantalla` la pedia como `d.tira`. Como el guion
         // recibe solo `spec.datos`, ese campo era SIEMPRE undefined y la escena no se podia elegir
         // jamas: medido sobre 200 guiones, 0%. No es que perdiera contra `mesa` —que es lo que supuse

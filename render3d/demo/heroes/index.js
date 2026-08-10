@@ -53,6 +53,12 @@ const orbital = {
 export const HEROES = [telefono, portatil, ventana, mosaico, cubo, vitrina, columnata, prisma, gota,
   biela, calibre, pulso, brote, telar, farol, cinta, enjambre, orbital]
 export const porId = (id) => HEROES.find(h => h.meta.id === id) || null
+// A QUE AIRES SE LE OFRECE ESTE HERO. `[]` significa "a todos" — un hero sin entrada en el REGISTRO no
+// esta restringido. Se exporta para que nadie tenga que copiarse la tabla: `motor.py` la necesita para
+// decirle al usuario, cuando le rechaza un hero pedido, en que aires SI se lo puede pedir. Una copia
+// de esta tabla en otro archivo se desincroniza el dia que alguien toque un aire, y el aviso mandaria
+// a un aire que ya no sirve.
+export const airesDe = (id) => (REGISTRO[id] ? REGISTRO[id].slice() : [])
 
 // EL REGISTRO: a que clase de marca le queda cada objeto.
 //

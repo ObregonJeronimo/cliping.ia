@@ -345,7 +345,7 @@ export const DUR_OBJETIVO = { corto: 15, medio: 20, largo: 30 }
 //             probar en Node sin arrastrar three.
 //   beatSeg   cuánto dura un beat con el bpm de ESTE aire.
 //   dur       objetivo en segundos. Sin objetivo, se usa lo que entre con el material disponible.
-export function guionDe({ escenas, datos, seed = 1, beatSeg = 60 / 124, dur = null }) {
+export function guionDe({ escenas, datos, seed = 1, beatSeg = 60 / 124, dur = null, fija = null }) {
   const d = datos || {}
   const beatsDe = (id) => (escenas.get(id) || {}).beats || 0
   const puede = (id) => escenas.has(id) && (REQUISITOS[id] ? REQUISITOS[id](d) : true)
@@ -462,6 +462,26 @@ export function guionDe({ escenas, datos, seed = 1, beatSeg = 60 / 124, dur = nu
     }
   }
   const medio = orden.filter(puede).filter(id => !SEDIENTAS.includes(id) || sobreviven.has(id))
+
+  // `fija` GARANTIZA UNA ESCENA CUANDO EL USUARIO LA PIDIO, y esto arregla un reclamo directo: "los
+  // heros no pude usarlos".
+  //
+  // `--hero mosaico` ponia el hero en el spec y nada mas. Que la escena `hero` ENTRARA al plan seguia
+  // siendo un sorteo, asi que pedir un hero y no verlo era el resultado normal, no un caso raro — y el
+  // video salia valido, sin un solo error, mostrando otra cosa. Documentado en HEROES-AUDIT como una
+  // trampa de la auditoria; visto por el usuario como "no los puedo usar".
+  //
+  // El arreglo es de una linea porque `llenar` recorre la lista EN ORDEN y se saltea lo que no entra:
+  // poniendola primera, la escena pedida entra siempre que quepa en el presupuesto. No se fuerza a la
+  // brava —si no cabe en la duracion pedida no entra, y eso hay que decirlo, no disimularlo— pero deja
+  // de competir por azar contra las otras diecinueve.
+  //
+  // Se aplica a los DOS llenados (el del orden y el de mayor-primero) porque los dos leen `medio`.
+  if (fija && puede(fija)) {
+    const resto = medio.filter(id => id !== fija)
+    medio.length = 0
+    medio.push(fija, ...resto)
+  }
 
   // EL GANCHO ES FIJO Y VA ANTES DE LA MARCA. Es la unica escena que rompe "la apertura va primera", y
   // la razon no es estetica: estos videos se ven en un feed, donde nadie decide seguir mirando porque
