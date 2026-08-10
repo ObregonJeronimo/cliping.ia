@@ -490,9 +490,22 @@ async def render(url: str, salida: str, hero: str | None = None, dur: int = 20,
         #
         # Rechazar esta bien; callarse no. Lo que hacia falta es que el aviso traiga la SALIDA: en que
         # aires si le queda, para poder pedirlo con `--aire`.
+        #   3. y hay un tercer caso que este aviso CONFUNDIA con el segundo: que la escena de hero no
+        #      haya entrado a la pieza. Ahi no sobro ni falto registro ni material — no hubo lugar en
+        #      la duracion pedida. El aviso igual imprimia la lista de aires y mandaba a reintentar con
+        #      `--aire tecnico`, que no arregla nada porque el problema es el presupuesto de beats.
+        #      Visto con `--hero pulso --dur 12`: tramos `gancho,apertura,mesa,cierre`, `heroes: []`.
         _pedido = spec.get('hero')
         _salieron = _plan.get('heroes') or []
-        if _pedido and _pedido not in _salieron:
+        _tramos = [t.split(':')[0] for t in str(_plan.get('tramos') or '').split(',') if t]
+        if _pedido and _pedido not in _salieron and 'hero' not in _tramos:
+            print('  ATENCION: pediste el hero "%s" y la escena de hero NO ENTRO en la pieza.' % _pedido)
+            print('    No es el registro de aires ni el material: no hubo lugar en %ss.' % spec.get('dur'))
+            print('    Los tramos que entraron: %s' % ', '.join(_tramos))
+            print('    Pedi mas duracion:')
+            print('      python backend/motor.py %s --hero %s --dur %d'
+                  % (url, _pedido, int(spec.get('dur') or 20) + 8))
+        elif _pedido and _pedido not in _salieron:
             print('  ATENCION: pediste el hero "%s" y salio %s.'
                   % (_pedido, ('"%s"' % _salieron[0]) if _salieron else 'ninguno'))
             _aires = _aires_de_hero(_pedido)

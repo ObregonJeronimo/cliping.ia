@@ -27,7 +27,7 @@ justamente **saltea la postergación** construida para este caso. Un intento que
 gratis: le pide memoria a una máquina que ya no la tiene, y es lo que estamos tratando de no hacer.
 
 Con un juego abierto la cuenta real de esta máquina es ~2,4 GB disponibles y ~856 de piso: **entran
-41 de las 42 compuertas** corriéndolas de a una. La única que no es `director-editor-check` (1565 MB,
+42 de las 43 compuertas** corriéndolas de a una. La única que no es `director-editor-check` (1565 MB,
 7 min). Ese es el modo normal de trabajo mientras alguien juega, no un modo degradado.
 
 ### Antes de eso: el trabajo se dimensiona a la máquina, solo
@@ -144,8 +144,9 @@ falta mirar algo: son caras (renderizan) y su salida es una tabla, no un veredic
 |---|---|---|
 | `tools/encaja-inventario.mjs` | censo de mallas que muestran imagen y cuáles declaran si entran enteras | `docs/ENCAJE-ESTADO.md` |
 | `tools/nitidez-inventario.mjs` | píxeles nativos del recorte contra los que se dibujan (barata: construye, no renderiza) | `docs/NITIDEZ-ESTADO.md` |
-| `tools/heroes-audit.mjs` | los 17 héroes por geometría: mallas, cobertura, movimiento (rápida, sin render) | `docs/HEROES-AUDIT.md` |
-| `tools/heroes-render.py` | los 17 héroes **sobre píxeles**: contraste del rótulo, movimiento real, tinta | `docs/HEROES-AUDIT.md` |
+| `tools/heroes-cobertura.mjs` | qué héroe puede sostener cada página capturada, y el comando que lo entrega (barata: ni renderiza ni construye) | — sale por pantalla |
+| `tools/heroes-audit.mjs` | los 18 héroes por geometría: mallas, cobertura, movimiento (rápida, sin render) | `docs/HEROES-AUDIT.md` |
+| `tools/heroes-render.py` | los 18 héroes **sobre píxeles**: contraste del rótulo, movimiento real, tinta | `docs/HEROES-AUDIT.md` |
 | `tools/escenas-render.py` | cada escena por separado dentro de la pieza, sobre píxeles | `docs/ESCENAS-AUDIT.md` |
 | `tools/aires-render.py` | los 11 aires comparados entre sí sobre la misma página y semilla | `docs/ESCENAS-AUDIT.md` |
 
@@ -173,15 +174,16 @@ investigarlos.
 
 ## Compuertas
 
-- **10 rápidas (~12 s), en cada cambio del motor:** `verificar.mjs`, `guion-check`, `encuadre-check`,
+- **11 rápidas (~13 s), en cada cambio del motor:** `verificar.mjs`, `guion-check`, `encuadre-check`,
   `adn-check`, `testimonios-check`, `tira-check` (la página del cliente no se deforma),
-  `heroes-check` (un héroe no se ofrece si no tiene con qué), `placeholder-check` (el recorte que se
-  muestra es la imagen del cliente, no su borrador) `captura-check` (no se construye un video sobre
-  un muro anti-bot o un error del CDN) y `eco-check` (la misma frase no sale en dos escenas).
-- **Guard completo (~15 min), sólo antes de pushear:** `npm run gates`. Tiene que dar **44 OK / 0 FAIL**.
+  `heroes-check` (un héroe no se ofrece si no tiene con qué), `hero-pedido-check` (si pediste un héroe
+  y HABÍA LUGAR, la escena de héroe entra — `--hero X` era un sorteo), `placeholder-check` (el recorte
+  que se muestra es la imagen del cliente, no su borrador) `captura-check` (no se construye un video
+  sobre un muro anti-bot o un error del CDN) y `eco-check` (la misma frase no sale en dos escenas).
+- **Guard completo (~15 min), sólo antes de pushear:** `npm run gates`. Tiene que dar **45 OK / 0 FAIL**.
 
   **`npm run gates` ahora corre las compuertas DE A UNA** (`tools/gates-partido.mjs`), y eso no es una
-  versión reducida: son las mismas 42, en el mismo orden, leídas del mismo `gates:crudo`. Lo único que
+  versión reducida: son las mismas 43, en el mismo orden, leídas del mismo `gates:crudo`. Lo único que
   cambia es el agrupamiento — la versión encadenada las mete a todas en un proceso de npm, así que la
   memoria se acumula hasta la última y el pico llega a **3001 MB**. De a una el pico es el de la
   compuerta más cara, y el sistema recupera la memoria al cerrar cada proceso. Medido con un juego
@@ -194,7 +196,7 @@ investigarlos.
   advierte en otros tres lugares con otro nombre. Lo refutó una corrida real del 7/8/2026: cortó en
   `urvid1-test.mjs` —que no figuraba en la tabla— con el disponible cayendo de 3643 a 901 MB, o sea
   unos **2,7 GB**. Ahora **cada compuerta anota su costo al correr**, así que después de un guard
-  completo `npm run costo` tiene las 42 y el número deja de ser una deducción.
+  completo `npm run costo` tiene las 43 y el número deja de ser una deducción.
 
   **Y con la máquina ocupada ya no se muere entero: pospone la compuerta que no entra y sigue.** Antes
   una sola compuerta cara cruzándose con un juego se llevaba puestas las veinte que ya habían pasado —

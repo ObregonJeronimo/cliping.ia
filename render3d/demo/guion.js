@@ -540,7 +540,35 @@ export function guionDe({ escenas, datos, seed = 1, beatSeg = 60 / 124, dur = nu
     return { dentro, n }
   }
   const porOrden = llenar(medio)
-  const porTamano = llenar(medio.slice().sort((x, y) => beatsDe(y) - beatsDe(x)))
+  // LA FIJA TAMBIEN VA ADELANTE ACA. Es una GUARDA, no el arreglo de un defecto observado, y la
+  // diferencia esta medida — conviene no confundirlas al leer esto dentro de un año.
+  //
+  // El agujero es real: poner la escena pedida primera en `medio` solo ordena `porOrden`, y esta otra
+  // estrategia REORDENA por tamaño, asi que la fija vuelve a competir como una mas. Si este llenado
+  // gana, la escena pedida se puede caer sin una sola queja.
+  //
+  // AHORA LO MEDIDO, que es lo que evita escribir de mas: sobre 360 guiones (12 paginas x 5 duraciones
+  // x 6 semillas) `porTamano` gana 82 veces —el 23%— y en NINGUNA de esas 82 se perdia el hero. La
+  // razon es que `hero` es de las escenas mas grandes del catalogo, asi que ordenar por tamaño ya lo
+  // deja adelante. O sea que hoy la guarda no cambia un solo guion.
+  //
+  // Se deja igual porque el invariante no puede depender de esa coincidencia: alcanza con que alguien
+  // le baje los beats al hero, o suba los de otra escena, para que el 0 se vuelva otro numero y falle
+  // en silencio con un video valido. Cuesta tres lineas.
+  //
+  // Y NO ES LO QUE PASABA CON `--hero pulso --dur 12`. Ese caso —que es el que disparo todo esto— no
+  // tiene nada que ver: a la velocidad de `editorial` esos 12 s son 22 beats, las escenas
+  // estructurales se llevan 16 y al medio le quedan 6 contra los 8 que pide el hero. No entraba, y no
+  // entrar es la respuesta correcta. Lo que estaba mal ahi era el AVISO, que culpaba al registro de
+  // aires; se arreglo en motor.py.
+  const grande = medio.slice().sort((x, y) => beatsDe(y) - beatsDe(x))
+  if (fija && puede(fija)) {
+    const i = grande.indexOf(fija)
+    if (i > 0) { grande.splice(i, 1); grande.unshift(fija) }
+  }
+  const porTamano = llenar(grande)
+  // Y CON EMPATE GANA `porOrden`, que es el que respeta la fija sin reordenar nada. Antes el empate se
+  // lo llevaba `porOrden` por el `>`, pero por accidente; ahora es la razon.
   const mejor = porTamano.n > porOrden.n ? porTamano : porOrden
   // El reparto por familia se aplica ACA: despues del filtro por material, del cupo de texto y de la
   // seleccion por presupuesto —los tres pueden sacar la escena que hacia de separador y volver a pegar
