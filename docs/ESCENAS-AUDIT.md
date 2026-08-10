@@ -202,34 +202,42 @@ bloque sólido detrás de una frase le come el contraste"*— y cuatro camas seg
 el diseño en una fila de cajas. La regla que queda escrita: **se pone cama cuando el texto no se lee, no
 cuando la herramienta lo nombra.** El sobre dice dónde mirar; el cuadro dice si hay defecto.
 
-#### El techo sobre la cuña es 2,58:1 — ningún tinte de la paleta llega al piso
+#### El techo sobre la cuña es 2,74:1 — ningún tinte llega al piso de 3,2
 
-Esto reordena el problema entero, y sale de aritmética de color, sin renderizar. En `editorial` la cuña
-queda en `#ca6b62`. Contra ese fondo, TODOS los tintes que usan las escenas:
+Esto reordena el problema entero, y sale de aritmética de color, sin renderizar.
 
-| tinte | color | vs fondo claro | vs la cuña |
+**La paleta la pone la PÁGINA, no el aire, y equivocarse en eso da la cuña de otro color.** La primera
+versión de esta tabla usó `LOOK.bg` y `LOOK.acento` del aire y calculó una cuña `#ca6b62`, terracota.
+La de los cuadros abiertos es azul. El motor lo dice en su propia salida — *"mundo CLARO (#ffffff /
+acento #2377d2)"*—: bajo un mundo claro el fondo y el acento salen del sitio del cliente. Con la paleta
+correcta la cuña calculada da **`#6e95d9`** contra un medido de `#618ccc`, que ya es la misma cuña.
+
+Contra ese azul, los tintes:
+
+| tinte | color | vs fondo blanco | vs la cuña |
 |---|---|---|---|
-| `LOOK.tinta` | `#14110d` | 13,67:1 | **2,58:1** |
-| `nivel(0.86)` | `#332f2a` | 13,20:1 | 2,49:1 |
-| `LOOK.acento2` | `#1d3557` | 13,05:1 | 2,46:1 |
-| `nivel(0.72)` | `#524d47` | 12,17:1 | 2,29:1 |
-| `nivel(0.55)` | `#77726a` | 9,25:1 | 1,74:1 |
-| `LOOK.acento` | `#c3362b` | 6,43:1 | **1,21:1** |
+| la tinta más oscura | `#14110d` | 20,81:1 | **2,74:1** |
+| `nivel(0.55)` | `#77726a` | 14,08:1 | 1,85:1 |
+| el acento de la página | `#2377d2` | 10,76:1 | **1,41:1** |
 
-**La tinta más negra del motor no pasa de 2,58:1 sobre la cuña.** De ahí salen tres conclusiones que
-antes eran opiniones:
+**El modelo se valida contra píxeles:** predice 1,85:1 para el tinte del pie de `cierre`, que **midió
+1,77:1**. (La versión anterior predecía 1,74 y parecía acertar igual: era casualidad, con la cuña de
+otro color.)
 
-1. **Oscurecer el texto no arregla nada.** El piso de 3,2 es inalcanzable ahí con cualquier tinte. La
-   cama no es "una solución más": es la única, junto con mover el texto fuera de la franja.
-2. **`LOOK.acento` sobre la cuña es lo peor posible — 1,21:1.** Es acento sobre acento. Y `tipografia`
-   lo usa doce veces, `tarjetas` nueve, `apertura` ocho.
-3. **Recalibra el criterio.** Si el techo es 2,58, pedir 3,2 sobre la cuña es pedir lo imposible. Los
-   tres defectos confirmados medían 1,02, 1,11 y 1,77 — bien por debajo incluso del techo. Ese es el
-   corte real: no "está bajo 3,2" sino "está bajo lo que la cuña permite".
+Tres conclusiones que dejan de ser opinión:
 
-De paso valida la decisión de no tocar `tipografia`: sus 2,86:1 medidos están **por encima** del techo
-analítico de 2,58, lo que confirma que ese texto no estaba del todo sobre la cuña — es el caso de la
-palabra partida, no el de la palabra tapada.
+1. **Oscurecer el texto no arregla nada.** La tinta más negra del motor no pasa de 2,74:1 ahí: el piso
+   de 3,2 es inalcanzable sobre la cuña con cualquier tinte. La cama no es "una solución más" — es la
+   única, junto con mover el texto fuera de la franja. Justifica a posteriori no haber tocado el tinte
+   del pie de `mesa` cuando midió 2,59 y la tentación era darle más tinta.
+2. **El acento sobre la cuña es lo peor posible: 1,41:1.** Es acento sobre acento. Y `tipografia` lo usa
+   doce veces, `tarjetas` nueve, `apertura` ocho. Ahí hay que mirar primero.
+3. **Recalibra el criterio.** Pedir 3,2 sobre la cuña es pedir lo imposible; el corte real es "está
+   debajo de lo que la cuña permite". Los tres defectos confirmados medían 1,02, 1,11 y 1,77.
+
+De paso valida no haber tocado `tipografia`: sus 2,86:1 medidos están **por encima** del techo de 2,74,
+o sea que ese texto no estaba del todo sobre la cuña. Es el caso de la palabra partida, no el de la
+palabra tapada — que es exactamente lo que se ve en el cuadro.
 
 #### `titular` — predicho por aritmética de color, sin renderizar, y queda por confirmar
 
@@ -243,11 +251,11 @@ La cuña es `mix(col, acento, 0.86)`, así que el contraste se puede calcular si
 
 | | contraste |
 |---|---|
-| `nivel(0.55)` contra el fondo claro | **9,25:1** |
-| `nivel(0.55)` contra la cuña | **1,74:1** |
+| `nivel(0.55)` contra el fondo blanco | **14,08:1** |
+| `nivel(0.55)` contra la cuña | **1,85:1** |
 
-El modelo se valida solo: predice 1,74 para el mismo tinte que en `cierre` **midió 1,77 sobre
-píxeles**. Falta el render para confirmarlo en `titular`, pero la predicción es fuerte.
+Con la paleta de la página, que es la que vale (ver arriba). Predice 1,85 para el mismo tinte que en
+`cierre` **midió 1,77 sobre píxeles**. Falta el render para confirmarlo en `titular`.
 
 **Lo que ese cálculo NO puede decir, y es la mitad del resultado.** Se corrió sobre los once aires
 forzando `claro: true`, y los otros diez dan números que no hay que creer: salen entre 1,67:1 y 2,26:1
