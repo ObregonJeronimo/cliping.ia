@@ -319,7 +319,25 @@ Dos cosas que el barrido completo confirma y que antes eran de un solo aire:
 
 `titular` da exactamente 1 por aire — es el pie, el mismo que la aritmética de color predice en 1,85:1.
 
-#### `tarjetas` — la marca de año sobre la cuña, 1,62:1, y es ornamento
+#### `tarjetas` — dos hallazgos y sólo uno es de la cuña
+
+| qué | dónde | contraste |
+|---|---|---|
+| `2 0 2 6`, marca de año | **sobre la cuña**, 34 de 99 cuadros | **1,62:1** |
+| `BASECAMP.COM`, el dominio | sobre el lado claro, 55 de 99 cuadros | **2,08:1** |
+
+El `2026` es el caso de la cuña, y es real — pero es un ornamento, no un dato que la página escribió, así
+que no tiene la prioridad del dominio ni la del titular.
+
+El dominio **no es un problema de la cuña**: cae sobre el lado claro. Lo que pasa es que su tinte es
+pálido — 2,08:1 contra los 2,96:1 de un rótulo que se lee cómodo, y contra los 3,06:1 que mide el mismo
+dominio en `titular`. Es una decisión de tinte de esta escena, no la diagonal del fondo, y por eso no se
+arregla con cama.
+
+**Y el umbral que hace confiable la detección quedó calibrado: 0,18.** Buscando si había texto en el
+recuadro, con una brecha de 0,12 respecto del fondo el detector daba 60 cuadros y 1,39:1 — contaba el
+borde de la banda azul como si fuera una letra. Con 0,18 y con 0,25 da lo mismo (55 cuadros, 2,08:1),
+que es la señal de que ahí ya está midiendo glifos y no el degradado.
 
 Confirmado mirando el cuadro, no sólo midiendo: el `2 0 2 6` del pie derecho queda sobre la cuña en 34
 de 99 cuadros y mide **1,62:1**. Es real y está por debajo del techo. Pero es una marca decorativa de
@@ -328,8 +346,7 @@ año, no un dato que la página escribió: la prioridad no es la del dominio ni 
 #### Lo que hace falta para que este ciclo deje de dar números falsos
 
 Cinco mediciones seguidas dieron basura en esta tanda, todas por la misma causa de fondo: **no saber
-exactamente dónde está el texto en el cuadro que se está midiendo.** Se arreglaron dos de los tres
-eslabones y queda uno:
+exactamente dónde está el texto en el cuadro que se está midiendo.** Los tres eslabones quedaron arreglados:
 
 - ✅ **`CUNA_CAJAS=1`** — la construcción emite la caja en píxeles de cada texto sin cama. Se acabó
   sacar coordenadas a ojo de una tira reescalada, que fue lo que produjo 1,15 / 1,17 / 1,21 / 1,85:1
@@ -337,11 +354,11 @@ eslabones y queda uno:
 - ✅ **`CUNA_PAGINA=basecamp-com`** — construye con los datos de la misma captura que va a usar el
   render. Sin esto las cajas son de otra escena: el dominio pasó de `x=226..744` con ANTHEM a
   `x=389..580` con basecamp, y medir la primera es medir fondo.
-- ❌ **el momento.** La herramienta muestrea tres instantes de la timeline; el cuadro que uno abre del
-  video es otro. La caja puede estar bien y el texto no estar todavía ahí. Falta que emita la caja
-  *por instante* y que la medición pida el mismo.
+- ✅ **el umbral de presencia, en 0,18.** Con la caja correcta ya no hace falta emparejar el instante:
+  se barren todos los cuadros y se miden sólo aquellos donde hay glifos de verdad. Lo que faltaba era
+  que el criterio de "hay glifos" no confundiera el borde de una banda de color con una letra.
 
-Hasta que ese tercero esté, la regla es la de siempre y esta tanda la confirma cinco veces: **el número
+Aun con los tres, la regla sigue siendo la de siempre y esta tanda la confirma cinco veces: **el número
 no vale hasta que se abre el recuadro y se ve la letra adentro.**
 
 Las restantes siguen sin verificar — son candidatos, no defectos. Y con `tipografia` medida en
