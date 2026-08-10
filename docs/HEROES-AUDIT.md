@@ -66,6 +66,22 @@ aun entrando, el registro podía rechazar el héroe pedido **sin decir una palab
 producían un video perfecto que no mostraba lo pedido. Arreglado: la escena se fuerza cuando se pide un
 héroe, y si el registro lo rechaza el motor explica por qué y **da el comando que sí funciona**.
 
+### Una pista sin cerrar: `orbital` apila tres mallas en la fila del rótulo
+
+`orbital` es el único de los 12 abstractos que la auditoría con render informa **sin rótulo** — los
+otros once dan un contraste. Perseguido hasta acá:
+
+- No es que el rótulo no se dibuje. Construido el par `hero` + `orbital`, hay **tres mallas** en
+  y ≈ −3,55 (la fila del rótulo): una placa de 3,93×0,74 en z=0,58 y **dos textos** en z=0,60.
+- Y la razón de fondo es que `orbital` **es `toro` envuelto** (`heroes/index.js:36`, `build: toro.build`).
+  `toro` es una escena completa con su propia tipografía, incluido un pie con cama en esa misma fila.
+  Encima, `rotular` le agrega el rótulo del héroe: dos textos disputando el mismo renglón.
+- **Pero el cuadro abierto se ve limpio** (t = 8,42 s sobre stripe.com): una sola línea legible. Así
+  que no se declara defecto — puede que en ese instante uno de los dos no esté revelado.
+
+Lo que sí se puede decir sin renderizar más: para `orbital` el rótulo es **redundante**. Existe para
+nombrarle la marca a un objeto abstracto, y `toro` ya muestra el copy del cliente por su cuenta.
+
 ## La tensión que nadie había medido: fidelidad contra variedad
 
 Medido el 9/8/2026 sobre los 11 aires, con material ABUNDANTE (tira + 12 recortes, o sea el mejor caso
