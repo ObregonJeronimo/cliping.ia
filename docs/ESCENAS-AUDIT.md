@@ -202,6 +202,35 @@ bloque sólido detrás de una frase le come el contraste"*— y cuatro camas seg
 el diseño en una fila de cajas. La regla que queda escrita: **se pone cama cuando el texto no se lee, no
 cuando la herramienta lo nombra.** El sobre dice dónde mirar; el cuadro dice si hay defecto.
 
+#### El techo sobre la cuña es 2,58:1 — ningún tinte de la paleta llega al piso
+
+Esto reordena el problema entero, y sale de aritmética de color, sin renderizar. En `editorial` la cuña
+queda en `#ca6b62`. Contra ese fondo, TODOS los tintes que usan las escenas:
+
+| tinte | color | vs fondo claro | vs la cuña |
+|---|---|---|---|
+| `LOOK.tinta` | `#14110d` | 13,67:1 | **2,58:1** |
+| `nivel(0.86)` | `#332f2a` | 13,20:1 | 2,49:1 |
+| `LOOK.acento2` | `#1d3557` | 13,05:1 | 2,46:1 |
+| `nivel(0.72)` | `#524d47` | 12,17:1 | 2,29:1 |
+| `nivel(0.55)` | `#77726a` | 9,25:1 | 1,74:1 |
+| `LOOK.acento` | `#c3362b` | 6,43:1 | **1,21:1** |
+
+**La tinta más negra del motor no pasa de 2,58:1 sobre la cuña.** De ahí salen tres conclusiones que
+antes eran opiniones:
+
+1. **Oscurecer el texto no arregla nada.** El piso de 3,2 es inalcanzable ahí con cualquier tinte. La
+   cama no es "una solución más": es la única, junto con mover el texto fuera de la franja.
+2. **`LOOK.acento` sobre la cuña es lo peor posible — 1,21:1.** Es acento sobre acento. Y `tipografia`
+   lo usa doce veces, `tarjetas` nueve, `apertura` ocho.
+3. **Recalibra el criterio.** Si el techo es 2,58, pedir 3,2 sobre la cuña es pedir lo imposible. Los
+   tres defectos confirmados medían 1,02, 1,11 y 1,77 — bien por debajo incluso del techo. Ese es el
+   corte real: no "está bajo 3,2" sino "está bajo lo que la cuña permite".
+
+De paso valida la decisión de no tocar `tipografia`: sus 2,86:1 medidos están **por encima** del techo
+analítico de 2,58, lo que confirma que ese texto no estaba del todo sobre la cuña — es el caso de la
+palabra partida, no el de la palabra tapada.
+
 #### `titular` — predicho por aritmética de color, sin renderizar, y queda por confirmar
 
 Su pie es **el mismo patrón exacto** que los dos defectos confirmados: `D.dominio || D.marca` —el
