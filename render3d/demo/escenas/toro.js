@@ -425,13 +425,29 @@ export function build(ctx) {
   // el arreglo que este repo ya eligio para el mismo problema en el rotulo del hero — "garantiza el
   // fondo en vez de depender de medirlo". Ademas el pie de ESTA MISMA escena ya usa una y se lee
   // perfecto en el mismo cuadro donde el titular no.
+  //
+  // Y VIVE LO QUE VIVE EL TITULAR, ni un cuadro mas. La primera version no tenia ni entrada ni salida:
+  // se dibujaba en t=0 y se quedaba. Las palabras entran en b1.50 y terminan de irse en b5.18, asi que
+  // la cama quedaba como una BARRA BLANCA VACIA los primeros 50 cuadros de la escena — se ve de una en
+  // el segundo cuadro del tramo. El mismo agujero tenia la cama del pie de `cierre`, y ahi era peor
+  // porque `cierre` es el ultimo tramo y la barra vacia se comia el cuadro final del video.
+  let camaPal = null
+  // Fraccion del ancho total que la cama tiene que tener cuando aterriza cada palabra. Se calcula acá
+  // —donde estan las posiciones— y se consume en la timeline.
+  const pasosCama = []
   if (palabras.length) {
     const HOLG_X = ALTO_PAL * 0.22, HOLG_Y = ALTO_PAL * 0.30
     const x0 = palabras[0].position.x - palabras[0].geometry.parameters.width / 2
     const ultima = palabras[palabras.length - 1]
     const x1 = ultima.position.x + ultima.geometry.parameters.width / 2
-    const camaPal = new THREE.Mesh(
-      new THREE.PlaneGeometry((x1 - x0) + HOLG_X * 2, ALTO_PAL + HOLG_Y * 2),
+    const W_CAMA = (x1 - x0) + HOLG_X * 2
+    const X_IZQ = x0 - HOLG_X
+    palabras.forEach(m => {
+      const der = m.position.x + m.geometry.parameters.width / 2 + HOLG_X
+      pasosCama.push(Math.min(1, (der - X_IZQ) / W_CAMA))
+    })
+    camaPal = new THREE.Mesh(
+      new THREE.PlaneGeometry(W_CAMA, ALTO_PAL + HOLG_Y * 2),
       // Misma opacidad que la del rotulo del hero, y por la misma razon anotada alla: con 0.86 deja
       // pasar lo de atras y sobre un fondo claro le come el contraste al texto; con 0.94 sigue siendo
       // translucida —se ve que hay algo detras, que es lo que la integra— y el texto deja de depender
@@ -440,7 +456,12 @@ export function build(ctx) {
         color: hex(nivel(0.0)), transparent: true, opacity: 0.94,
         depthWrite: false, toneMapped: false,
       }))
-    camaPal.position.set((x0 + x1) / 2, Y_PAL, -0.02)
+    // ANCLADA A LA IZQUIERDA. La geometria nace centrada en su origen, asi que un `scale.x` la abriria
+    // desde el medio hacia los dos lados — y el titular se escribe de izquierda a derecha. Corriendo la
+    // geometria media placa, el origen queda en su borde izquierdo y crecer es avanzar, que es el gesto
+    // que hace el texto.
+    camaPal.geometry.translate(W_CAMA / 2, 0, 0)
+    camaPal.position.set(X_IZQ, Y_PAL, -0.02)
     // EL ORDEN DE DIBUJO, NO EL Z, Y ESTO CASI SE VA ASI. La cama y las palabras son las dos
     // transparentes con `depthWrite: false`: three no las ordena por profundidad, las pinta en el
     // orden en que se agregaron. Agregada DESPUES de las palabras —que es lo natural, porque necesita
@@ -781,6 +802,22 @@ export function build(ctx) {
   // lectura antes de empezar a irse en 4.28, que con un titular de cuatro palabras largas es lo que
   // estaba mas justo. Menos de 0.34 y las entradas vuelven a fundirse en un solo golpe.
   const PASO_PAL = 0.34
+  // La cama se dibuja JUSTO ANTES de la primera palabra y termina de abrirse antes de que ninguna se
+  // revele: arranca en b1.30 y a b1.50 —cuando empieza la primera— ya esta al ~92%. Al reves (abrirla
+  // junto con la palabra) el borde izquierdo del titular quedaria dos o tres cuadros sobre la cuña, que
+  // es exactamente el 1.11:1 que esta cama vino a arreglar.
+  // LA CAMA CRECE CON EL TITULAR, en los mismos cuatro tiempos. Dibujarla entera de una —que fue el
+  // primer intento— deja "BIG" solo sobre una placa que ocupa el ancho del cuadro durante un beat: se
+  // ve en la tira de entrada y parece un error de encuadre, no una intencion.
+  //
+  // Cada tramo TERMINA justo cuando su palabra empieza a revelarse, no cuando termina: la placa va
+  // siempre delante del texto. Al reves, aunque fuera por dos cuadros, la palabra caeria sobre la cuña
+  // — el 1.11:1 que esta cama vino a arreglar.
+  if (camaPal) tl.set(camaPal.material, { opacity: 0.94 }, 0)
+  if (camaPal) tl.set(camaPal.scale, { x: 0.0001 }, 0)
+  if (camaPal) pasosCama.forEach((f, i) => {
+    tl.to(camaPal.scale, { x: f, duration: b(0.26), ease: E.frena(3) }, b(1.50 + i * PASO_PAL) - b(0.26))
+  })
   palabras.forEach((m, i) => {
     const t0 = b(1.50 + i * PASO_PAL)
     tl.fromTo(m.position, { y: Y_PAL - 0.19 }, { y: Y_PAL, duration: b(0.52), ease: E.llega(2.4) }, t0)
@@ -811,6 +848,10 @@ export function build(ctx) {
   if (uProgPal.length) {
     tl.to(uProgPal, { value: 0, duration: b(0.30), ease: E.acelera(2), stagger: { each: b(0.20), from: 'end' } }, b(4.28))
   }
+  // SALE POR OPACIDAD Y NO POR ESCALA. La ultima palabra termina de borrarse en b5.18; una cama que se
+  // encoge desde el centro dejaria a las palabras de los extremos sin cama ANTES de que se vayan, sobre
+  // la cuña. Un fundido no descubre nada: bajan las dos cosas juntas.
+  if (camaPal) tl.to(camaPal.material, { opacity: 0, duration: b(0.42), ease: E.acelera(2) }, b(4.95))
   tl.to([kick.material.uniforms.uProg, sub.material.uniforms.uProg, lectura.material.uniforms.uProg],
     { value: 0, duration: b(0.45), ease: E.acelera(2), stagger: 0.05 }, b(4.28))
   tl.to(tipo.position, { y: -0.5, duration: b(1.0), ease: E.acelera(2) }, b(4.35))

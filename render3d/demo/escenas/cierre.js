@@ -403,17 +403,41 @@ export function build(ctx) {
   //
   // Y NO ES UNA SOLUCION INVENTADA ACA: el pie de `toro` y el de `pantalla` ya van sobre placa y se
   // leen perfecto. El de `cierre` era el que faltaba.
+  //
+  // Y LA CAMA TIENE QUE VIVIR EXACTAMENTE LO QUE VIVEN LAS MARCAS, ni un cuadro mas. La primera version
+  // de esto no tenia ni entrada ni salida: se dibujaba en t=0 y se quedaba hasta el final. Medido sobre
+  // los 99 cuadros del tramo, las marcas solo estan entre f055 y f082, asi que la cama quedaba VACIA en
+  // 71 de 99 — el 72% de la escena— y, como `cierre` es el ultimo tramo, el cuadro final del video era
+  // una barra blanca sin nada adentro. Ese es el cuadro que queda congelado cuando termina y el que
+  // muchas plataformas toman de miniatura.
+  let camaPie = null
+  const pasosPie = []
   {
     const HOLG_X = 0.34, HOLG_Y = 0.16
-    const camaPie = new THREE.Mesh(
-      new THREE.PlaneGeometry(Math.min(total, 4.9) + HOLG_X * 2, 0.20 + HOLG_Y * 2),
+    // EL ANCHO VA EN UNIDADES LOCALES, SIN EL TOPE. La primera version puso `Math.min(total, 4.9)`, y
+    // ese 4.9 es el tope que la linea de arriba aplica ESCALANDO EL GRUPO — no acotando geometrias. La
+    // cama es hija de `gMarcas`, asi que ya se lleva esa escala puesta: con un pie largo (total 6.2)
+    // quedaba en 5.58 locales contra 6.2 de las marcas, o sea cubriendo el 90%, y las puntas del
+    // dominio y del 'FPS' caian igual sobre la cuña. Se dispara justo con los dominios largos.
+    const W_CAMA = total + HOLG_X * 2
+    const X_IZQ = -total / 2 - HOLG_X
+    marcasM.forEach(m => {
+      const der = m.position.x + ancho(m) / 2 + HOLG_X
+      pasosPie.push(Math.min(1, (der - X_IZQ) / W_CAMA))
+    })
+    camaPie = new THREE.Mesh(
+      new THREE.PlaneGeometry(W_CAMA, 0.20 + HOLG_Y * 2),
       // Misma opacidad que las otras camas del motor (rotulo del hero, titular de `toro`): 0.94 deja
       // ver que hay algo detras —lo que la integra a la escena— sin que eso le coma el contraste.
       new THREE.MeshBasicMaterial({
         color: hex(nivel(0.0)), transparent: true, opacity: 0.94,
         depthWrite: false, toneMapped: false,
       }))
-    camaPie.position.set(0, 0, -0.02)
+    // ANCLADA A LA IZQUIERDA: la geometria nace centrada, y un `scale.x` desde el centro abre la placa
+    // hacia los dos lados. El pie se escribe de izquierda a derecha, asi que crecer tiene que ser
+    // avanzar. Corriendo la geometria media placa, el origen queda en su borde izquierdo.
+    camaPie.geometry.translate(W_CAMA / 2, 0, 0)
+    camaPie.position.set(X_IZQ, 0, -0.02)
     // EL ORDEN DE DIBUJO, NO EL Z. Cama y textos son transparentes con `depthWrite: false`: three los
     // pinta en el orden en que se agregaron, no por profundidad. Agregando la cama despues —que es lo
     // natural, porque necesita el ancho total— tapaba el texto. Paso exactamente eso en `toro`, y ahi
@@ -435,6 +459,8 @@ export function build(ctx) {
   tl.set(camera.position, { x: 0, y: 0, z: distBase }, 0)
   tl.set(camera.rotation, { x: 0, y: 0, z: 0 }, 0)
   tl.set(fondo.uPulso, { value: 0 }, 0)
+  tl.set(camaPie.scale, { x: 0.0001 }, 0)
+  tl.set(camaPie.material, { opacity: 0.94 }, 0)
   tl.set(bloom, { strength: oBloom * 0.259 }, 0)
   tl.fromTo(fondo.uGrilla, { value: 0.28 }, { value: 0.28, duration: b(4.5), ease: 'none' }, 0)
 
@@ -516,6 +542,12 @@ export function build(ctx) {
 
   // --- BEAT 3 → 4.5 · el filete cruza y frena, y caen las tres marcas
   tl.fromTo(gFilete.scale, { x: 0.0001 }, { x: 1, duration: b(0.42), ease: E.frena(4) }, b(3))
+  // La cama avanza CON el pie, en los mismos tres tiempos, y cada tramo termina justo cuando su marca
+  // empieza a revelarse: la placa va siempre delante del texto. Abrirla entera de una deja el dominio
+  // solo sobre una barra del ancho del cuadro durante casi un beat, que es lo que se veia en `toro`.
+  pasosPie.forEach((f, i) => {
+    tl.to(camaPie.scale, { x: f, duration: b(0.28), ease: E.frena(3) }, b(3.2 + i * 0.24) - b(0.28))
+  })
   tl.fromTo(cabeza.position, { x: -LF / 2 }, { x: LF / 2, duration: b(0.42), ease: E.frena(4) }, b(3))
   tl.fromTo(cabeza.scale, { x: 0, y: 0, z: 0 }, { x: 1, y: 1, z: 1, duration: b(0.1), ease: E.llega(3) }, b(3))
   tl.to(cabeza.scale, { x: 0, y: 0, z: 0, duration: b(0.22), ease: E.acelera(2) }, b(3.36))
@@ -713,6 +745,11 @@ export function build(ctx) {
   })
   if (puntos.length) tl.to(puntos.map(p => p.scale), { x: 0, y: 0, z: 0, duration: b(0.3), ease: 'back.in(2)', stagger: 0.04 }, b(4.6))
   tl.to(gFilete.scale, { x: 0.0001, duration: b(0.45), ease: E.acelera(3) }, b(4.75))
+  // SALE POR OPACIDAD Y NO POR ESCALA, a proposito. La ultima marca termina de borrarse en b(5.18); una
+  // cama que se encoge desde el centro le sacaria la cama a las marcas de los extremos ANTES de que
+  // terminen de irse, y esos dos o tres cuadros las dejarian sobre la cuña a 1.77:1 — el defecto que
+  // esta cama vino a arreglar. Un fundido no descubre nada: bajan las dos cosas juntas.
+  tl.to(camaPie.material, { opacity: 0, duration: b(0.42), ease: E.acelera(2) }, b(4.95))
   if (hayCta) tl.set(cta.material.uniforms.uDir, { value: 1 }, b(4.8))
   if (hayCta) tl.to(cta.material.uniforms.uProg, { value: 0, duration: b(0.3), ease: E.acelera(2) }, b(4.8))
   if (hayCta) tl.to(gChev.scale, { x: 0, y: 0, z: 0, duration: b(0.2), ease: 'back.in(2.4)' }, b(4.8))
