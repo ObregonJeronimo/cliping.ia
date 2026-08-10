@@ -147,7 +147,17 @@ function tamanoTira() {
       try {
         const b = readFileSync(f).subarray(0, 33)
         if (b.readUInt32BE(1) !== 0x504e470d) continue
-        vistas.push({ de: d, width: b.readUInt32BE(16), height: b.readUInt32BE(20), t: statSync(f).mtimeMs })
+        // BLOQUEADA = no se puede recapturar, asi que no se la nombra como pendiente. Es la misma
+        // distincion que costo corregir un dato en HEROES-AUDIT: dos de los tres ceros de extraccion
+        // eran muros anti-bot, no fallas nuestras. Un aviso que pide hacer algo imposible se ignora, y
+        // despues se ignora tambien cuando pide algo que si se puede.
+        let bloqueada = false
+        try {
+          const sj = JSON.parse(readFileSync(join(R, d, 'site.json'), 'utf8'))
+          const cap = sj.captura || {}
+          bloqueada = cap.estado === 'botwall' || Number(cap.httpStatus || 200) >= 400
+        } catch { /* sin site.json se la trata como recapturable */ }
+        vistas.push({ de: d, width: b.readUInt32BE(16), height: b.readUInt32BE(20), t: statSync(f).mtimeMs, bloqueada })
       } catch { /* una tira ilegible no puede tirar el censo abajo */ }
     }
   }
@@ -158,10 +168,15 @@ function tamanoTira() {
   }
   vistas.sort((a, b2) => b2.t - a.t)
   const nueva = vistas[0]
-  const anchos = [...new Set(vistas.map(v => v.width))]
-  if (anchos.length > 1) {
-    console.log(`  (en disco conviven tiras de ${anchos.join(' y ')} px de ancho: se mide contra la mas`)
-    console.log(`   reciente, ${nueva.de} a ${nueva.width}px. Las otras son capturas viejas — recapturalas.)`)
+  const viejas = vistas.filter(v => v.width < nueva.width && !v.bloqueada)
+  const trabadas = vistas.filter(v => v.width < nueva.width && v.bloqueada)
+  if (viejas.length) {
+    console.log(`  (se mide contra la tira mas reciente: ${nueva.de} a ${nueva.width}px. Hay ${viejas.length} pagina/s`)
+    console.log(`   con la tira vieja y mas chica — recapturalas: ${viejas.map(v => v.de).join(', ')})`)
+  }
+  if (trabadas.length && !viejas.length) {
+    console.log(`  (${trabadas.length} pagina/s quedan con la tira vieja y NO se pueden recapturar —muro`)
+    console.log(`   anti-bot o http >= 400—: ${trabadas.map(v => v.de).join(', ')}. No es una tarea pendiente.)`)
   }
   _tira = { width: nueva.width, height: nueva.height }
   return _tira
