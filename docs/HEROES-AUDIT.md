@@ -40,6 +40,32 @@ tasa de extracción sigue valiendo la pena, pero este dato ya no es el argumento
 antes de citarlo. Es el mismo error que el resto de este documento persigue —un cero que parecía
 significar una cosa y significaba otra— sólo que esta vez lo cometió el documento.
 
+## "¿Se pueden usar con cualquier página?" — medido sobre las 12 capturadas
+
+La pregunta del usuario, contestada con el material REAL de cada página en disco y no con supuestos.
+De los 18 del catálogo:
+
+| página | con su aire | mejor aire | peor aire |
+|---|---|---|---|
+| `linear`, `stripe`, `tailwind`, `mercadolibre`, `pentagram`, `theverge`, `yerco` | **11** | 15 | 7 |
+| `basecamp`, `cliping-ia` | **10** | 14 | 6 |
+| `berkshirehathaway`, `despegar`, `elcorteingles` (0 elementos) | **8** | 12 | 4 |
+
+**Nueve de las doce páginas tienen material completo**: los 6 héroes que muestran la página están
+disponibles. Las tres que no son los dos muros anti-bot y un sitio que es texto plano.
+
+Lo que mueve el número no es el material sino **el aire**: los 12 abstractos están restringidos a 4 ó
+5 aires cada uno, a propósito. El piso de 4 aparece sólo cuando se juntan las dos cosas — una página
+sin material en `inmobiliario`, que es el aire con un solo héroe abstracto (ver el reparto que informa
+`heroes-check` en cada corrida).
+
+### Y pedirlos SÍ funciona, desde el 9/8/2026
+
+Antes `--hero X` no garantizaba nada: la escena que muestra el héroe entraba al plan **por sorteo**, y
+aun entrando, el registro podía rechazar el héroe pedido **sin decir una palabra**. Las dos cosas
+producían un video perfecto que no mostraba lo pedido. Arreglado: la escena se fuerza cuando se pide un
+héroe, y si el registro lo rechaza el motor explica por qué y **da el comando que sí funciona**.
+
 ## La tensión que nadie había medido: fidelidad contra variedad
 
 Medido el 9/8/2026 sobre los 11 aires, con material ABUNDANTE (tira + 12 recortes, o sea el mejor caso
