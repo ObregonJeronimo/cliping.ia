@@ -401,6 +401,60 @@ export function build(ctx) {
   })
   const uProgPal = palabras.map(m => m.material.uniforms.uProg)
 
+  // UNA CAMA DETRAS DEL TITULAR, Y ESTO ARREGLA UN DEFECTO MEDIDO SOBRE PIXELES.
+  //
+  // Renderizado stripe.com y abierto el cuadro del medio del tramo (t = 8.42 s), el titular
+  // "ENABLE ANY BILLING MODEL" cruza la diagonal violeta del fondo y se parte en dos legibilidades:
+  //
+  //     "ENABLE ANY"     sobre el fondo claro   3.15:1   (el piso del repo en mundo claro es 3.2)
+  //     "BILLING MODEL"  sobre la cuña          1.11:1
+  //
+  // 1.11:1 es texto que no se lee. Es del mismo orden que el 1.05:1 de `marquesina` que motivo la
+  // creacion de `fondo-check`, y ninguna compuerta lo caza: el texto viaja por `materialMascara` (que
+  // `fondo-check` no ve) y el fondo es una cuña dibujada en un shader del kit (que `esTapa` descarta a
+  // proposito). Los dos puntos ciegos, juntos, sobre el copy del cliente.
+  //
+  // LA CAUSA ES UN ACOPLE QUE NO ESTABA ESCRITO. La cuña del kit declara, en su propio comentario, que
+  // "LA DIAGONAL VA POR DEBAJO DE LA BANDA DE TIPOGRAFIA" y que su borde "queda entre el 9% y el 39%
+  // del alto". O sea que asume que los titulares viven ARRIBA del 39% contado desde abajo. El de esta
+  // escena vive en el 21%: adentro de la zona que la cuña se reserva. Ninguno de los dos archivos
+  // sabia del otro.
+  //
+  // POR QUE UNA CAMA Y NO MOVER LA CUÑA: la cuña es fondo COMPARTIDO por las veinte escenas y sus
+  // coeficientes estan calibrados con una medicion propia. La cama es local, no toca a nadie mas, y es
+  // el arreglo que este repo ya eligio para el mismo problema en el rotulo del hero — "garantiza el
+  // fondo en vez de depender de medirlo". Ademas el pie de ESTA MISMA escena ya usa una y se lee
+  // perfecto en el mismo cuadro donde el titular no.
+  if (palabras.length) {
+    const HOLG_X = ALTO_PAL * 0.22, HOLG_Y = ALTO_PAL * 0.30
+    const x0 = palabras[0].position.x - palabras[0].geometry.parameters.width / 2
+    const ultima = palabras[palabras.length - 1]
+    const x1 = ultima.position.x + ultima.geometry.parameters.width / 2
+    const camaPal = new THREE.Mesh(
+      new THREE.PlaneGeometry((x1 - x0) + HOLG_X * 2, ALTO_PAL + HOLG_Y * 2),
+      // Misma opacidad que la del rotulo del hero, y por la misma razon anotada alla: con 0.86 deja
+      // pasar lo de atras y sobre un fondo claro le come el contraste al texto; con 0.94 sigue siendo
+      // translucida —se ve que hay algo detras, que es lo que la integra— y el texto deja de depender
+      // de por donde pase la diagonal.
+      new THREE.MeshBasicMaterial({
+        color: hex(nivel(0.0)), transparent: true, opacity: 0.94,
+        depthWrite: false, toneMapped: false,
+      }))
+    camaPal.position.set((x0 + x1) / 2, Y_PAL, -0.02)
+    // EL ORDEN DE DIBUJO, NO EL Z, Y ESTO CASI SE VA ASI. La cama y las palabras son las dos
+    // transparentes con `depthWrite: false`: three no las ordena por profundidad, las pinta en el
+    // orden en que se agregaron. Agregada DESPUES de las palabras —que es lo natural, porque necesita
+    // sus posiciones para dimensionarse— la cama las tapaba.
+    //
+    // Y no fallaba entero, que es lo peor: en el render "BILLING MODEL" salia perfecto sobre la cama y
+    // "ENABLE ANY" DESAPARECIA. Medido en la banda daba 4.02:1 a la derecha —mejor que el 1.11 de
+    // antes— asi que por el numero el arreglo parecia bueno. Se vio abriendo el cuadro.
+    camaPal.renderOrder = -1
+    // SANGRA: sigue al titular, que ya se dimensiona contra `ANCHO` y puede tocar los margenes.
+    camaPal.userData.sangra = true
+    tipo.add(camaPal)
+  }
+
   // -- kicker + marca de tick
   const kick = lineaMasc(marca(2, 6), mundoW * 0.34,
     { fuente: 'DMSans', size: 120, tracking: 0.2, alineado: 'left', color: TIPO_BAJA() }, 0, 0.14)
