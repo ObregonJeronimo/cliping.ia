@@ -323,9 +323,29 @@ def captura_rancia(site) -> str:
     return "la escribio una version anterior del extractor (le faltan: %s)" % ", ".join(sorted(faltan))
 
 
+# EL BITRATE ES LA CALIDAD DEL VIDEO ENTERO, porque no hay segunda codificacion: `grabar_mp4` REMUXEA
+# con `-c copy` lo que codifico Chromium, asi que no queda un CRF que compense despues. Lo que se le
+# pide aca es literalmente lo unico que decide cuantos artefactos tiene la pieza.
+#
+# ESTABA EN 8 Y NO HABIA NINGUNA RAZON ESCRITA. Sale del commit que quito la doble codificacion
+# (7a50b37), cuyo tema era otro; `render3d.grabar_mp4` declara 12 por su cuenta desde entonces, o sea
+# que este 8 la estaba pisando para abajo sin decirlo. Medido sobre basecamp/editorial/semilla 11, 331
+# cuadros de `toro` y `cierre`, con el bloqueo 8x8 (energia de borde EN los limites de bloque contra la
+# de en medio; 1.00 seria no tener bloques):
+#
+#     pedido    archivo   real      bloqueo p95
+#      8 Mbps   19.0 MB   6.90      2.824
+#     12 Mbps   30.4 MB  11.04      2.438   (-14%)
+#     20 Mbps   49.2 MB  17.87      2.074   (-27%)
+#
+# Se elige 12 y no 20. No hay codo en la curva —la mejora sigue bajando parejo— asi que el corte es por
+# tamaño: 20 Mbps son 49 MB en una pieza de 20 s y ~74 MB en una de 30, que ya molesta para subir. Y la
+# mediana casi no se mueve en ningun caso (1.648 / 1.579 / 1.455) porque el grueso de ese numero NO es
+# compresion: son los bordes duros de la propia geometria cayendo sobre la reticula de 8x8. Lo que
+# mejora es el p95, que son los cuadros de mas movimiento — justo donde se ven los bloques.
 async def render(url: str, salida: str, hero: str | None = None, dur: int = 20,
                  seed: int = 7, aire: str | None = None, recapturar: bool = False,
-                 bitrate: int = 8_000_000, forzar: bool = False) -> str:
+                 bitrate: int = 12_000_000, forzar: bool = False) -> str:
     dst = os.path.join(SALIDA, _dominio(url))
     pm_path = os.path.join(dst, "pagemodel.json")
     site_path = os.path.join(dst, "site.json")
@@ -540,6 +560,12 @@ def main():
     ap.add_argument("--forzar", action="store_true",
                     help="construir aunque la captura parezca un muro anti-bot o un error del CDN")
     ap.add_argument("--heroes", action="store_true", help="listar los heroes y que necesita cada uno")
+    # El parametro existia en `render()` desde siempre y NO habia forma de tocarlo desde la linea de
+    # comandos: para probar otra calidad habia que importar el modulo a mano. Es el unico control de
+    # calidad del video que hay, asi que tiene que estar a la vista.
+    ap.add_argument("--bitrate", type=float, default=12.0,
+                    help="calidad del video en Mbps (12 por defecto; 20 para bloques mas limpios "
+                         "a costa de 2.6x el peso)")
     a = ap.parse_args()
 
     if a.heroes:
@@ -558,7 +584,8 @@ def main():
     salida = a.salida or os.path.join(SALIDA, f"{_dominio(a.url)}-{a.hero or 'auto'}-{a.dur}s.mp4")
     os.makedirs(os.path.dirname(salida), exist_ok=True)
     ruta = asyncio.run(render(a.url, salida, hero=a.hero, dur=a.dur, seed=a.seed, forzar=a.forzar,
-                              aire=a.aire, recapturar=a.recapturar))
+                              aire=a.aire, recapturar=a.recapturar,
+                              bitrate=int(a.bitrate * 1_000_000)))
     print(f"\n{ruta}  ({os.path.getsize(ruta) // 1024} kb)")
 
 
