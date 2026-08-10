@@ -44,7 +44,7 @@
 // Uso:  node tools/nitidez-inventario.mjs            (todas)
 //       node tools/nitidez-inventario.mjs hero toro  (algunas)
 import { createCanvas } from '@napi-rs/canvas'
-import { readFileSync, existsSync, readdirSync } from 'node:fs'
+import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { dirname, join } from 'node:path'
 
@@ -113,11 +113,60 @@ function texturasReales() {
     m.set('f' + i, tex)
   })
   const tira = new THREE.CanvasTexture(createCanvas(4, 4))
-  tira.image = { width: 720, height: 6240 }
+  // EL TAMAÑO DE LA TIRA SE LEE DEL DISCO, no se escribe a mano. Estaba fijo en 720x6240 y quedo viejo
+  // el dia que la captura subio a escala 3 (1080 de ancho): el censo seguia midiendo la nitidez del
+  // telefono contra una textura que ya no existe, y por lo tanto informaba una magnificacion que no
+  // era la real. Un fixture con un numero a mano es una medicion con fecha de vencimiento.
+  tira.image = tamanoTira()
   tira[CLIENTE] = true
   m.set('tira', tira)
   return m
 }
+
+// EL TAMAÑO DE LA TIRA MAS RECIENTE que haya en disco, no la primera alfabetica.
+//
+// Y la diferencia importa: al subir la captura a escala 3 solo se recapturo una pagina, asi que en
+// disco conviven tiras de 720 y de 1080. Tomando la primera por nombre, el censo medía contra la mas
+// VIEJA y decia que el telefono agranda 1.59x cuando con la captura de hoy agranda 1.06x. La mas
+// reciente es la que refleja los ajustes vigentes.
+//
+// Si conviven tamaños distintos SE DICE, porque significa que hay capturas viejas que conviene
+// rehacer — y porque un promedio silencioso entre las dos seria un numero que no le corresponde a
+// ninguna pagina real.
+// Se calcula UNA vez: `texturasReales()` corre por construccion (cientos) y el aviso salia repetido
+// tantas veces como escenas hubiera, tapando la tabla que la herramienta viene a mostrar.
+let _tira = null
+function tamanoTira() {
+  if (_tira) return _tira
+  const R = join(RAIZ, 'tools', 'out', 'motor')
+  const vistas = []
+  if (existsSync(R)) {
+    for (const d of readdirSync(R)) {
+      const f = join(R, d, 'tira.png')
+      if (!existsSync(f)) continue
+      try {
+        const b = readFileSync(f).subarray(0, 33)
+        if (b.readUInt32BE(1) !== 0x504e470d) continue
+        vistas.push({ de: d, width: b.readUInt32BE(16), height: b.readUInt32BE(20), t: statSync(f).mtimeMs })
+      } catch { /* una tira ilegible no puede tirar el censo abajo */ }
+    }
+  }
+  if (!vistas.length) {
+    console.log('  (sin tiras en disco: se usa 1080x8190, el ultimo tamaño medido)')
+    _tira = { width: 1080, height: 8190 }
+    return _tira
+  }
+  vistas.sort((a, b2) => b2.t - a.t)
+  const nueva = vistas[0]
+  const anchos = [...new Set(vistas.map(v => v.width))]
+  if (anchos.length > 1) {
+    console.log(`  (en disco conviven tiras de ${anchos.join(' y ')} px de ancho: se mide contra la mas`)
+    console.log(`   reciente, ${nueva.de} a ${nueva.width}px. Las otras son capturas viejas — recapturalas.)`)
+  }
+  _tira = { width: nueva.width, height: nueva.height }
+  return _tira
+}
+
 
 const W = 1080, H = 1920, mundoH = 10, mundoW = mundoH * (W / H)
 const fov = 30

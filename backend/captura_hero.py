@@ -27,7 +27,26 @@ import re
 import sys
 
 ANCHO_MOVIL = 360          # el viewport CSS mas comun en telefonos reales
-ESCALA = 2                 # retina: 720 px de textura, que es lo que se ve nitido en un reel 1080
+# ESCALA 3, Y EL 2 QUE HABIA SE JUSTIFICABA CON UNA PREMISA QUE DEJO DE SER CIERTA.
+#
+# Decia: "retina: 720 px de textura, que es lo que se ve nitido en un reel 1080". El razonamiento era
+# correcto cuando se escribio —si la pantalla del aparato ocupa menos de 720 px del cuadro, 720 de
+# textura alcanzan— y dejo de serlo cuando el telefono se agrando.
+#
+# MEDIDO: `telefono` dibuja la pagina a 1143 px de ancho sobre una textura de 720. La agranda 1.59x.
+# El aparato mide 0.86 del alto del cuadro desde que su propio archivo lo subio de 0.60 para que el
+# texto de la pagina se leyera —"a 0.86 el mismo texto mide un 43% mas y ya se lee"— y nadie volvio a
+# mirar la escala de captura. O sea que se agrando el aparato para ganar legibilidad y se perdio parte
+# de esa ganancia remuestreando.
+#
+# A escala 3 la textura sale de 1080 y el mismo dibujo queda en 1.06x: practicamente pixel a pixel.
+#
+# LO QUE SE PAGA, dicho antes de que alguien lo descubra: el tope de textura es DURO —8192 px, arriba
+# de eso SwiftShader devuelve el plano en negro— asi que a mas escala entra menos pagina a lo alto.
+# 8192 px cubren 4096 px CSS a escala 2 y 2730 a escala 3. Es aceptable porque el hero no recorre la
+# tira entera: `ventanaLegible` elige el tramo y el scroll usa el 24% del sobrante, asi que lo que se
+# pierde es alcance de scroll, no contenido visible. La nitidez se ve en CADA cuadro; el alcance no.
+ESCALA = 3
 # TOPE DURO DE TEXTURA. SwiftShader —el rasterizador que usa el render determinista— reporta
 # MAX_TEXTURE_SIZE 8192, y una textura mas alta no se rechaza con un error claro: el plano sale NEGRO.
 # Con viewport de 780 CSS a escala 2 son 1560 px por pantalla, asi que cinco entran y seis no (9360).
