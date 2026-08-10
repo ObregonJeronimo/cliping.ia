@@ -202,6 +202,31 @@ bloque sólido detrás de una frase le come el contraste"*— y cuatro camas seg
 el diseño en una fila de cajas. La regla que queda escrita: **se pone cama cuando el texto no se lee, no
 cuando la herramienta lo nombra.** El sobre dice dónde mirar; el cuadro dice si hay defecto.
 
+#### `titular` — predicho por aritmética de color, sin renderizar, y queda por confirmar
+
+Su pie es **el mismo patrón exacto** que los dos defectos confirmados: `D.dominio || D.marca` —el
+dominio del cliente—, tinte `nivelTexto(0.55)`, pegado al margen izquierdo y sin cama. Es el mismo
+tinte que usa el pie de `mesa`, que midió **1,02:1** sobre píxeles. Y cae al 12% del alto sobre la
+izquierda, donde la cuña llega hasta el 15,7%.
+
+La cuña es `mix(col, acento, 0.86)`, así que el contraste se puede calcular sin renderizar. Con
+`editorial`:
+
+| | contraste |
+|---|---|
+| `nivel(0.55)` contra el fondo claro | **9,25:1** |
+| `nivel(0.55)` contra la cuña | **1,74:1** |
+
+El modelo se valida solo: predice 1,74 para el mismo tinte que en `cierre` **midió 1,77 sobre
+píxeles**. Falta el render para confirmarlo en `titular`, pero la predicción es fuerte.
+
+**Lo que ese cálculo NO puede decir, y es la mitad del resultado.** Se corrió sobre los once aires
+forzando `claro: true`, y los otros diez dan números que no hay que creer: salen entre 1,67:1 y 2,26:1
+*contra el fondo*, cuando el texto sobre el fondo se lee perfecto. La causa es que `claro` no es una
+propiedad del aire —lo inyecta el motor junto con la paleta de la página—, así que forzarlo sobre una
+paleta oscura da un mundo que el motor nunca produce. Sólo la fila de `editorial` es coherente, y es
+la única que se usa acá.
+
 Las ocho restantes siguen sin verificar — son candidatos, no defectos. Y con `tipografia` medida en
 2,86:1 al 7% del alto, las que siguen están **menos** hondas (`titular` 12%, `tarjetas` 21%, `apertura`
 24%…), o sea que la expectativa es que midan mejor. Eso es una inferencia, no una medición: hay que
