@@ -84,13 +84,46 @@ const { configurarDatos, ANTHEM, reiniciarReparto } = await import(pathToFileURL
 // Si en esta maquina no hay capturas, se usan estos mismos numeros —que salieron de una medicion de
 // verdad y estan anotados aca— y SE DICE que son de reserva. Inventar un tamaño seria inventar el
 // resultado entero.
-const TAMANOS_MEDIDOS = [
-  { rol: 'logo', w: 120, h: 50, de: 'stripe.com el0 (el mas chico tipico: un logo)' },
-  { rol: 'tarjeta', w: 637, h: 400, de: 'la mediana de los 77' },
-  { rol: 'foto', w: 1400, h: 900, de: 'el maximo, o sea el tope de captura' },
-  { rol: 'cta', w: 206, h: 37, de: 'pentagram.com el0' },
-  { rol: 'tarjeta', w: 256, h: 90, de: 'linear.app el2' },
-]
+// LOS TAMAÑOS SE LEEN DEL DISCO, no de una lista escrita a mano.
+//
+// Estaban fijos —120, 637, 1400, 206, 256— y salian de una medicion real, pero de UNA FECHA. El dia
+// que la captura de elementos subio a escala 3, el minimo real paso de 100 a 150 px y la mediana de
+// 637 a 984, y el censo seguia midiendo contra los numeros viejos: informaba una magnificacion que ya
+// no existia y la mejora era invisible para el instrumento que existe para verla. Es la segunda vez
+// en este mismo archivo (la otra fue la tira) y por eso ahora las dos se leen.
+//
+// Se toman PERCENTILES y no el promedio: para la nitidez lo que importa es el caso chico, y el
+// promedio lo esconde. El p10 y el minimo son los que mandan.
+function tamanosReales() {
+  const R = join(RAIZ, 'tools', 'out', 'motor')
+  const anchos = []
+  if (existsSync(R)) {
+    for (const d of readdirSync(R)) {
+      const dir = join(R, d, 'elementos')
+      if (!existsSync(dir)) continue
+      for (const f of readdirSync(dir)) {
+        if (!f.endsWith('.png')) continue
+        try {
+          const b = readFileSync(join(dir, f)).subarray(0, 33)
+          if (b.readUInt32BE(1) === 0x504e470d) anchos.push([b.readUInt32BE(16), b.readUInt32BE(20)])
+        } catch { /* un recorte ilegible no puede tirar el censo abajo */ }
+      }
+    }
+  }
+  if (!anchos.length) {
+    console.log('  (sin recortes en disco: se usan los ultimos tamaños medidos, 150 a 1400 px)')
+    return [{ rol: 'logo', w: 150, h: 62 }, { rol: 'tarjeta', w: 984, h: 600 },
+      { rol: 'foto', w: 1400, h: 900 }, { rol: 'cta', w: 356, h: 64 }, { rol: 'tarjeta', w: 400, h: 140 }]
+  }
+  anchos.sort((a, b) => a[0] - b[0])
+  const en = (p) => anchos[Math.min(anchos.length - 1, Math.floor(anchos.length * p))]
+  const mk = (rol, par) => ({ rol, w: par[0], h: par[1] })
+  // El mas chico va como `logo` porque en la practica ES el logo: los recortes mas chicos del catalogo
+  // son siempre `el0`/`el1`, y el logo es lo que las escenas quieren mostrar grande.
+  return [mk('logo', anchos[0]), mk('tarjeta', en(0.50)), mk('foto', en(0.95)),
+    mk('cta', en(0.10)), mk('tarjeta', en(0.25))]
+}
+const TAMANOS_MEDIDOS = tamanosReales()
 
 // LAS TEXTURAS DEL CLIENTE SE MARCAN AL CREARLAS, y eso saca la adivinanza del medio.
 //
