@@ -290,7 +290,16 @@ export function build(ctx) {
   // caza en vez de que aparezca en el video de un cliente. Cuando NO lleva la marca no se marca nada,
   // asi que la escena puede seguir sangrando sin que nadie la acuse — que es justo para lo que se
   // hizo declarativo el chequeo.
+  // LA RAMA POSITIVA ESTABA ESCRITA Y LA NEGATIVA NO, y por eso estas dos mitades figuraban "sin
+  // clasificar" en el censo de encaje. No era una decision pendiente: la decision esta tomada y
+  // explicada veinte lineas mas arriba —"cuando la linea CONTIENE la marca, el hero encaja (0.98) en
+  // vez de sangrar; en las demas, sangra como siempre"— simplemente nunca se declaro el "sangra".
+  //
+  // El numero del caso negativo tambien esta medido y anotado en la fabrica `mitad`: 2.461 del cuadro,
+  // "que es exactamente el sangrado que la escena se permite cuando la linea NO lleva la marca". O sea
+  // que sangrar ahi no es un descuido, es el recurso: una palabra que revienta el cuadro.
   if (tocaLaMarca) { mArriba.userData.encaja = true; mAbajo.userData.encaja = true }
+  else { mArriba.userData.sangra = true; mAbajo.userData.sangra = true }
 
   const anilloGrande = arco(2.10, 2.145, 0.86, matGris)
   anilloGrande.position.set(0, -0.90, -0.18); formas.add(anilloGrande)

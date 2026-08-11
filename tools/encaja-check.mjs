@@ -215,7 +215,7 @@ try {
 //              de que yo fallara dos diagnosticos a mano: culpe al rebote elastico de la pildora (el
 //              ease se pasa hacia ABAJO, medido) y despues a un ancestro que la agrandara (`gComp`
 //              COMPRIME a 0.90). La sonda dio `t = 0.11` en la primera linea y con eso alcanzaba.
-const TRINQUETE = 24
+const TRINQUETE = 22
 
 const sinClasificar = censo.filas.filter(f => f.clase === 'SIN CLASIFICAR')
 const n = sinClasificar.length
