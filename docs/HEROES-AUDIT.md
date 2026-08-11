@@ -376,3 +376,25 @@ antes de que nadie las toque** (`docs/AUDITORIA-MOTOR.md`). Esto no la resuelve 
 - **14 héroes sin auditar con render.** El orden sugerido sale de la tabla de `heroes-audit`: los de
   cobertura más baja primero (`calibre` ya está, sigue `pulso` 0.401 y `columnata` 0.442).
 - **Llevar la medición de contraste del rótulo a `imagen-check.py`**, que es la única que ve píxeles.
+
+## 2026-08-11 — dos falsos positivos del censo, comprobados con render
+
+Auditados los 18 por geometría (`tools/heroes-audit.mjs`): **7/7 páginas en los 18, cero vacíos.** Dos
+números llamaron la atención y los dos resultaron ser del instrumento, no del hero:
+
+**`calibre` con 0,295 de cobertura** — el más bajo de los 18, contra una mediana de ~0,8. Parecía
+contradecir su propia cabecera, que dice que el trazador vertical *"llena la columna entera del
+formato"*. No la contradice: la cobertura es de ÁREA, y un instrumento alto y angosto llena en vertical
+sin llenar en área. Renderizado (`stripe.com`, aire técnico, 110 cuadros, tres abiertos) el cuadro no
+lee como vacío — la columna del trazador, la pieza escalonada apoyada abajo, el reloj comparador y el
+rótulo del cliente sobre placa. **No es defecto.**
+
+**`mosaico`, `cubo`, `hero` y `vitrina` con aumentos de 1,48x a 1,93x** en el censo de nitidez. Tres de
+los cuatro traen la nota que el propio censo imprime —"girada N grados: la caja mide de más"—, y esa
+nota es correcta: la caja de una malla girada sobreestima los píxeles dibujados. **`mosaico` era el
+único sin esa excusa, y ahí sí había un defecto real** — ver el commit del destaque del beat: su tope
+de nitidez acotaba el tamaño en reposo y el metrónomo lo atravesaba un 13%. Corregido, bajó de 1,67x a
+1,48x, que es la marca de "ya topeada".
+
+La conclusión que sirve para la próxima: **en este censo, un aumento alto con nota de rotación no es
+una tarea; uno sin nota, sí.**
