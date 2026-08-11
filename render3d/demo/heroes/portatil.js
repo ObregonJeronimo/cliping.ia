@@ -192,9 +192,28 @@ export function build(ctx) {
     // Es la pagina del cliente. La tira viaja en un uniform, asi que todo lo que filtraba por
     // `material.map` no la veia.
     pantalla.userData.tipoImagen = 'recorte'
-    // Sin `encaja` por la misma razon medida que en `telefono`: probado, se sale en 71 de 117 cuadros
-    // y llega a 1.963 con `tecnico`/cliping-ia. Es la entrada del equipo, no un desborde. Lo que
-    // corresponde es `encaja` + `encajaEntre` con la ventana derivada del tween.
+    // SANGRA, Y NO ES LO QUE DECIA LA NOTA ANTERIOR. Aca decia que correspondia `encaja` +
+    // `encajaEntre` "con la ventana derivada del tween". Se hizo, y no era: probados los tres caminos,
+    // el unico que describe lo que la escena HACE es `sangra`.
+    //
+    //   · `encaja` + `encajaEntre`: la ventana se recorta sobre la VIDA VISIBLE de la malla y no sobre
+    //     la escena (encuadre-check:436 hace `ms.slice(a * ms.length)`), aunque el comentario de la
+    //     linea 365 diga "fracciones de la escena". Las dos frases se contradicen en el mismo archivo.
+    //     Y la regla pide llegar al 0.90 de esa vida, que para esta malla ya es adentro de su salida.
+    //   · `encajaEje: 'x'`: parecia la respuesta —la compuerta lo tiene justo para "en alto sangra por
+    //     definicion, en ancho tiene que entrar entero"— pero el ancho TAMBIEN se sale: 1.318 a 1.379.
+    //
+    // LO QUE SE CORTA, VISTO Y NO DEDUCIDO. En el beat 4 el equipo gira (`gEq.rotation.y` a -0.78) y
+    // el giro acerca un borde a la camara, asi que la perspectiva lo agranda. Medido sobre los pixeles
+    // del render en `tecnico` y en `nocturno`, detectando el equipo por su COLOR: toca x=0 y x=1079 de
+    // 1080. En el cuadro 55 se ve la pantalla cortada por la derecha — se pierde parte de la pagina.
+    //
+    // SE DECLARA `sangra` PORQUE ES LO QUE PASA, no porque este bien. El costo esta medido y anotado
+    // aca para que la decision de diseño se pueda tomar mirando el numero: un equipo de `mundoW * 0.92`
+    // que ademas gira 45 grados no entra, y las dos salidas —achicar el equipo a ~0.67 de `mundoW`, o
+    // bajar el giro a ~0.19 rad— le sacan presencia al hero o le sacan el gesto. Ninguna es gratis y
+    // por eso no la tomo yo de prepo.
+    pantalla.userData.sangra = true
     gr.add(pantalla)
   }
 

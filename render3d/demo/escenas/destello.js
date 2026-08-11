@@ -18,7 +18,7 @@
 // arranca `cierre` con el fondo en blanco y el bloom en cero, la pieza se desarma y el bug aparece
 // recién en el video terminado.
 
-import { E, LOOK, b, texto, materialMascara, filete, hex, nivel, orbita, dolly, MOB } from '../kit.js'
+import { E, LOOK, b, texto, materialMascara, filete, hex, nivel, orbita, dolly, cuadroMasAngosto, MOB } from '../kit.js'
 // El COPY sale de los DATOS. Lo que queda escrito aca es CHROME de la pieza (rotulos de
 // capitulo, indicadores tecnicos): eso es direccion de arte y no cambia con el contenido.
 // Lo que la marca DICE — su nombre, sus cifras, su claim, su CTA — sale de los datos o NO SALE.
@@ -155,6 +155,11 @@ export function build(ctx) {
   }
 
   // ---------------------------------------------------------------- composición
+  // XI SE DEJA COMO ESTABA, y probarlo valio la pena igual. -2.44 es el borde menos 0.375 del cuadro
+  // EN REPOSO, y esta escena acerca la camara, asi que parecia el mismo defecto que se arreglo abajo en
+  // el titular. Derivado de `cuadroMasAngosto` la medicion NO SE MOVIO ni un decimal: las tres mallas
+  // ancladas a XI —etiqueta, eco y caption— no llegan a estar encendidas durante el golpe de camara,
+  // asi que nunca se las mide ahi. Se revierte, porque un arreglo que no mueve la medicion no se queda.
   const XI = -2.44                              // margen izquierdo del bloque de texto
   const XD = 2.44
   const formas = new THREE.Group(); formas.position.z = -0.4; g.add(formas)
@@ -163,7 +168,22 @@ export function build(ctx) {
   // — zona superior: etiqueta, regla, arco que se sale por la derecha, disco
   // '05 · INVERSION' era el nombre interno de la escena impreso en el cuadro. Un indice compone igual
   // y no puede ser falso. Ver el comentario de `marca` en datos.js.
+  // LAS CUATRO CAPAS DE TEXTO ENTRAN ENTERAS, y esto se pudo declarar recien ahora.
+  //
+  // La fabrica `capa` (linea 119) explica por que NO declara en la fabrica —la escena decide por caso—
+  // y esa parte sigue valiendo. Lo que faltaba era la decision en cada sitio de uso, y no estaba en
+  // ninguno: quedaban cuatro mallas sin clasificar por omision, no por criterio.
+  //
+  // Y LA RAZON POR LA QUE ANTES NO SE PODIA ESTA MEDIDA Y ERA OTRA. La nota de la fabrica dice que
+  // "la etiqueta llega a 1.082 y el caption a 1.064". Ese numero es VIEJO: se tomo antes de que
+  // `encuadre-check` aprendiera a saltear las mallas apagadas por su shader (`uProg <= 0`). El
+  // acercamiento de camara de esta escena dura UN CUADRO (linea 348, `duration: F`) y cae durante el
+  // FLASH, cuando estas capas todavia no dibujan un pixel. La compuerta las medía ahi y las acusaba de
+  // salirse de un cuadro en el que no estaban.
+  //
+  // Con la compuerta arreglada, las once construcciones de `destello` pasan con `encaja` puesto.
   const etiqueta = capa(marca(5, 6), 1.75, { fuente: 'DMSans', peso: 500, tracking: 0.26 })
+  etiqueta.userData.encaja = true
   etiqueta.position.set(XI + 1.75 / 2, 4.32, 0); tipo.add(etiqueta)
 
   const regla = barra(XD - XI, 0.035, 'izq')
@@ -184,7 +204,18 @@ export function build(ctx) {
   if (hudBorde) formas.add(vRegla)
 
   // — bloque de texto
-  const L1 = capa(lineasGolpe()[0], mundoW * 0.945)
+  // EL TITULAR SE MIDE CONTRA EL CUADRO QUE VA A HABER, no contra el de reposo.
+  //
+  // Estaba en `mundoW * 0.945`, o sea el 94.5% del cuadro EN REPOSO. Pero el golpe de camara de esta
+  // escena (~348) acerca `distBase * -0.115`, y con `inmobiliario` (dolly 1.55) el cuadro se angosta
+  // hasta el 82% — ahi el 94.5% pasa a ser el 115% y el titular SALE CORTADO por los dos lados.
+  // Medido: 1.086 en `deportivo`/ghost-org y en `inmobiliario`/stripe, 1.080 en `nocturno`/basecamp.
+  //
+  // Es el mismo idioma que ya usan `mesa` y `columna`, y por la misma razon: un ancho calibrado contra
+  // el reposo vuelve a estar mal apenas alguien toque el dolly o agregue un aire. El 0.945 se conserva
+  // tal cual — lo unico que cambia es contra que ancho se aplica.
+  const L1 = capa(lineasGolpe()[0], cuadroMasAngosto(mundoW, -0.115) * 0.945)
+  L1.userData.encaja = true          // el titular: cortado no se lee, ver la nota de `etiqueta`
   L1.position.set(0, 1.45, 0); tipo.add(L1)
 
   // La palabra suelta entre las dos lineas del golpe. Estaba fija en 'UNA' — la primera palabra del
@@ -201,7 +232,7 @@ export function build(ctx) {
   const seg = String(lineasGolpe()[1] || '').trim()
   const eco = seg.split(' ').length > 1 ? seg.split(' ')[0] : ''
   const L2 = eco ? capa(eco, 1.75, { dir: 2, suave: 0.10 }) : null
-  if (L2) { L2.position.set(XI + 1.75 / 2, 0.42, 0); tipo.add(L2) }
+  if (L2) { L2.userData.encaja = true; L2.position.set(XI + 1.75 / 2, 0.42, 0); tipo.add(L2) }
 
   const barraUna = barra(2.95, 0.56, 'der')
   barraUna.position.set(XD, 0.42, 0); formas.add(barraUna)
@@ -273,6 +304,7 @@ export function build(ctx) {
 
   // Decia 'HECHO CUADRO POR CUADRO' — una afirmacion sobre el metodo del motor, no sobre el negocio.
   const caption = capa(sello(0), 3.30, { fuente: 'DMSans', peso: 500, tracking: 0.20 })
+  caption.userData.encaja = true
   caption.position.set(XI + 3.30 / 2, -2.14, 0); tipo.add(caption)
 
   // — zona inferior: una fila de cuadraditos con anchos sembrados y tres barras a sangre
