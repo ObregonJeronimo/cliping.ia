@@ -211,6 +211,12 @@ investigarlos.
     distinto de cero. "38 OK · 0 FAIL" con cuatro sin correr se lee como un guard verde y no lo es.
   - Dice **cuánto hay que liberar** y cómo retomarlas.
 
+  **Y NO LO PASES POR UN PIPE.** `npm run gates | tail -60` devuelve el codigo de salida de `tail`,
+  que es siempre 0: el guard puede estar diciendo "NO ES VERDE, 1 compuerta POSPUESTA" y la consola
+  informa exito. Paso el 11/8/2026. Redirigi a un archivo y despues miralo:
+  `npm run gates > /tmp/g.txt 2>&1; echo $?`. Es la misma familia de error que el contador de FAIL
+  que exigia que la linea *empezara* con FAIL — la salida decia una cosa y el codigo otra.
+
   ```bash
   node tools/gates-partido.mjs --desde 25      # retomar desde la 26
   node tools/gates-partido.mjs --solo 6,26,35  # correr exactamente esas (las que quedaron pospuestas)
