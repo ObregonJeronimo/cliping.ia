@@ -96,6 +96,7 @@ console.log('  mismas compuertas que `npm run gates`, leidas de gates:crudo. Cam
 console.log('  no la cobertura: el pico pasa a ser el de la compuerta mas cara y no la suma de todas.\n')
 
 const fallaron = []
+const murieron = []   // dijeron OK y despues el proceso se cayo al cerrar — ver la nota mas abajo
 const costos = []
 const pospuestas = []
 let okTotal = 0
@@ -256,7 +257,25 @@ for (const { paso, i } of pendientes) {
   const oks = (salida.match(/^(?:GATE )?[A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ0-9 _/-]*\bOK\b/gm) || []).length
   const fails = (salida.match(/\b(FAIL|FALLO)\b/g) || []).length
 
-  if (r.status !== 0 || fails > 0) {
+  // LA COMPUERTA DIJO OK Y DESPUES EL PROCESO SE MURIO AL CERRAR. No es lo mismo que fallar, y
+  // confundirlos manda a buscar un defecto que no existe.
+  //
+  // Visto el 11/8/2026 con `director-editor-check`: imprimio su "GATE EDITOR OK (15 paginas x 3 seeds
+  // x 8 ataques ...)" ENTERO y despues murio con una asercion de libuv al desmontar los handles en
+  // Windows (UV_HANDLE_CLOSING, src/win/async.c). La corrida anterior del mismo dia la habia pasado, y
+  // corrida sola pasa con codigo 0: es intermitente y es del runtime, no del motor.
+  //
+  // El guard SIGUE saliendo con codigo distinto de cero — una compuerta que no puede terminar de
+  // cerrar es algo que hay que mirar, y esconderlo seria el mismo error que este archivo ya documenta
+  // con el contador de FAIL. Lo unico que cambia es que dice QUE clase de problema es, en vez de
+  // mandarte a auditar el editor de video.
+  const cerroMal = /UV_HANDLE_CLOSING/i.test(salida)
+  const murioAlCerrar = r.status !== 0 && fails === 0 && oks > 0 && cerroMal
+  if (murioAlCerrar) {
+    console.log(`ok · ${oks} PERO MURIO AL CERRAR  (libre ${libre} MB)`)
+    okTotal += oks
+    murieron.push({ i: i + 1, paso })
+  } else if (r.status !== 0 || fails > 0) {
     console.log(`FAIL  (libre ${libre} MB)`)
     fallaron.push({ i: i + 1, paso, salida: salida.trim().split('\n').slice(-12).join('\n') })
   } else {
@@ -297,6 +316,16 @@ const mins = ((Date.now() - t0) / 60000).toFixed(1)
 console.log(`\ngates-partido: ${okTotal} OK · ${fallaron.length} compuertas con FAIL · ${mins} min `
   + `· minimo de RAM disponible ${ojo.libreMinMb} MB (piso ${ojo.pisoMb}, total ${ojo.totalMb})`)
 if (cortadoPor) console.log(`gates-partido: CORTADO — ${cortadoPor}`)
+
+// SE DICE APARTE Y CON NOMBRE, por la misma razon que las pospuestas: mezclarlo con los FAIL manda a
+// auditar una escena que no tiene nada, y esconderlo dejaria un guard "verde" que salio con codigo 1.
+if (murieron.length) {
+  console.log(`\ngates-partido: ${murieron.length} compuerta(s) DIJERON OK Y SE MURIERON AL CERRAR `
+    + '(asercion de libuv al desmontar handles, en Windows). El veredicto de la compuerta es OK; lo que '
+    + 'fallo es el cierre del proceso, y es intermitente — corridas solas pasan con codigo 0.')
+  for (const m of murieron) console.log(`  [${String(m.i).padStart(2)}] ${m.paso}`)
+  console.log('  Para confirmarlo, corrala sola:  node ' + murieron[0].paso.replace(/^node /, ''))
+}
 
 // LAS POSPUESTAS SE DICEN PRIMERO Y CON NOMBRE. Es la unica parte de esta salida que puede engañar:
 // "38 OK · 0 FAIL" con cuatro sin correr se lee como un guard verde y no lo es.

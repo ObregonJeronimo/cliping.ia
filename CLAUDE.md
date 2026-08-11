@@ -231,6 +231,14 @@ investigarlos.
     distinto de cero. "38 OK · 0 FAIL" con cuatro sin correr se lee como un guard verde y no lo es.
   - Dice **cuánto hay que liberar** y cómo retomarlas.
 
+  **Una compuerta puede decir OK y morirse al cerrar, y eso NO es un defecto del motor.** Pasó el
+  11/8/2026 con `director-editor-check`: imprimió su `GATE EDITOR OK (...)` entero y después murió con
+  `Assertion failed: !(handle->flags & UV_HANDLE_CLOSING)` — una aserción de libuv al desmontar los
+  handles, en Windows. La corrida anterior del mismo día la pasó, y corrida sola pasa con código 0: es
+  intermitente y es del runtime. El guard ahora lo informa aparte (`ok · N PERO MURIO AL CERRAR`) en vez
+  de listarlo como FAIL, pero **sigue saliendo con código distinto de cero**: una compuerta que no
+  puede terminar de cerrar es algo que hay que mirar, sólo que no en el motor.
+
   **Y NO LO PASES POR UN PIPE.** `npm run gates | tail -60` devuelve el codigo de salida de `tail`,
   que es siempre 0: el guard puede estar diciendo "NO ES VERDE, 1 compuerta POSPUESTA" y la consola
   informa exito. Paso el 11/8/2026. Redirigi a un archivo y despues miralo:
