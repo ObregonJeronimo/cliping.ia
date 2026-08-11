@@ -312,3 +312,34 @@ superior nunca baja de 357 px.
 averiguar es por qué la `y` proyectada de `pantalla` en `entraEntera` no se corresponde con dónde esa
 malla aparece en el render. Las tres explicaciones fáciles están descartadas con medición: no es el
 ancho, no es la caja, y no es que la escena corte algo.
+
+## 2026-08-11 — de 29 a 22, y lo que queda NO es trabajo pendiente
+
+Tres bajadas, cada una con su razón, y ninguna consistió en declarar por declarar:
+
+| escena | de | a | qué pasó |
+|---|---|---|---|
+| `destello` | 6 | **0** | cuatro capas se pudieron declarar por fin; las dos mitades del hero tenían la rama positiva del `if (tocaLaMarca)` escrita y la negativa no |
+| `portatil` | 1 | **0** | `sangra`, con el costo medido sobre píxeles |
+
+**Y en el camino apareció un defecto real que estaba escondido detrás de un número viejo.** La cabecera
+de la fábrica `capa` de `destello` justificaba no declarar diciendo *"la etiqueta llega a 1.082 y el
+caption a 1.064"*. Ese número se tomó **antes** de que `encuadre-check` aprendiera a saltear las mallas
+apagadas por su shader: el golpe de cámara de esa escena dura UN cuadro y cae durante el flash, cuando
+esas capas no dibujan un píxel. La compuerta las acusaba de salirse de un cuadro en el que no estaban.
+Con eso corregido y las cuatro declaradas, quedó a la vista **la que sí se salía**: el titular `L1`,
+dimensionado en `mundoW * 0.945` contra el cuadro **en reposo**, llegaba a 1.086 en tres aires. Ahora
+se mide contra `cuadroMasAngosto`, igual que `mesa` y `columna`.
+
+### Las 22 que quedan, y por qué ninguna es una tarea
+
+- **`tarjetas` 20 — la pregunta reservada.** Su cámara "a su máximo agranda el cuadro cerca del doble",
+  así que en esa escena *ninguna* malla puede prometer contención en todo instante: no por cómo está
+  compuesta sino por cómo se filma. Es una decisión de producto y está parkeada.
+- **`telefono` 1 — parkeada en `docs/AUDITORIA-MOTOR.md`**, que es de Thiago. El trabajo caro ya está
+  hecho: separar cuánto del exceso es gesto y cuánto es encuadre — 3.122 gesto, 1.031 encuadre.
+- **`tipografia` 1 — límite documentado de `encajaEntre`.** La ventana legible de esa frase mide el 2%
+  de la escena contra un guardarraíl que exige 25%, y el guardarraíl tiene razón: si no, cualquiera
+  declara una rendija y esquiva el chequeo.
+
+**O sea que 22 es el piso de lo que se puede clasificar sin tomar decisiones que son de otro.**
