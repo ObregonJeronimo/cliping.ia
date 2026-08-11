@@ -370,6 +370,28 @@ if (rotos.length) {
   console.log(`\n  ${rotos.length} construcciones no se pudieron medir:`)
   for (const r of rotos.slice(0, 6)) console.log('    ' + r)
 }
+// FALSOS POSITIVOS YA COMPROBADOS, con su numero y como se comprobo. Es la practica que este repo
+// documenta para las otras herramientas —"cada documento tiene su lista de falsos positivos ya
+// comprobados, para no volver a investigarlos"— y aca hace falta igual: sin esto, el proximo que corra
+// la herramienta ve a `destello` con 23 marcas y se gasta un render en descubrir lo mismo.
+//
+// NO se descuentan del total ni se ocultan de la tabla, a proposito: el dia que `destello` deje de
+// oscurecer el mundo sus marcas vuelven a valer, y una exclusion silenciosa lo taparia.
+const COMPROBADOS = [
+  ['destello', 'oscurece el mundo A PROPOSITO ("vuelta a oscuro. Obligatorio: la escena siguiente cuenta con el fondo negro") y la cuña solo se dibuja con uClaro. Su dominio mide 10.01:1.'],
+  ['rafaga', 'sus frases viven ARRIBA de la diagonal. Ojo al medirla: alterna recorte de pagina y frase en el mismo lugar, asi que una banda fija mide un pantallazo de la UI la mitad del tiempo.'],
+  ['apertura', 'la linea del claim cruza la diagonal y pasa de 2.92:1 a 2.42:1. SE LEE — zona gris documentada, no defecto. Los tres arreglados median <=1.77 y se veian rotos.'],
+  ['tarjetas', 'su dominio NO es de la cuña: cae en el lado claro a 2.08:1, o sea que es cuestion de tinte. Sobre la cuña solo esta la marca de año `2026`, a 1.62:1, que es ornamento.'],
+  ['titular', 'el pie cae sobre el lado claro: 3.06:1 en los 29 cuadros en que sale. La aritmetica predecia 1.85 SI cayera sobre la cuña; la geometria lo salva.'],
+]
+const marcados = new Set([...porEscena.entries()].filter(([, e]) => e.sin).map(([id]) => id))
+const pertinentes = COMPROBADOS.filter(([id]) => marcados.has(id))
+if (pertinentes.length) {
+  console.log('')
+  console.log('  YA COMPROBADAS SOBRE PIXELES — no las vuelvas a investigar:')
+  for (const [id, por] of pertinentes) console.log('    · ' + P(id, 11) + por)
+}
+
 console.log('\n  ESTO NO ES UNA LISTA DE DEFECTOS. La franja es un SOBRE: adentro entra tambien la parte')
 console.log('  clara del cuadro. Un texto de aca puede estar perfectamente legible — hay que abrir el')
 console.log('  cuadro y medirlo, como se hizo con `toro` (1.11:1, era defecto) y `cierre` (1.77:1, era')
