@@ -229,3 +229,42 @@ construcciones. Trinquete **15 → 7**.
   material" (con 5 recortes y con 12 da lo mismo).
 - **Calibrar un umbral con un solo caso.** Pasó dos veces el mismo día: el tramo de `mosaico` y el
   guardarraíl de cobertura.
+
+## `portatil` (1 malla) — intentada y REVERTIDA: la compuerta y el render se contradicen
+
+Es la que parecía más fácil de las 29, porque su propio archivo dice qué corresponde: *"Lo que
+corresponde es `encaja` + `encajaEntre` con la ventana derivada del tween"*. Se hizo exactamente eso y
+**no se pudo cerrar**. Queda escrito para que el próximo empiece de acá y no de cero.
+
+**Lo que se hizo.** La ventana sale de los tweens, no de calibrar: la tapa termina de abrirse en
+`b0.9 + b1.5 = b2.4` y la salida arranca en `b8 − b0.9 = b7.1`, o sea `[0.30, 0.8875]` sobre los 8
+beats. Declarado `encaja` + `encajaEntre [0.32, 0.88]`.
+
+**Primer aviso, legítimo y corregido:** E-ENCAJE-TRAMO pide que el tramo llegue al menos a 0.90.
+Ampliado a `[0.32, 0.92]` — y no es hacer trampa: la salida usa `E.acelera(3)`, así que a 0.92 el
+equipo recorrió el 0,01% de su salida. El aviso desapareció. **Importante para el próximo:** con el
+tramo RECHAZADO la compuerta no lo ignora, cae a exigir la malla en *todos* los cuadros, entrada
+incluida. Los dos avisos eran el mismo problema.
+
+**Segundo aviso, sin resolver.** E-ENCAJE-REAL sigue dando **1,206 a 1,223** dentro del tramo
+compuesto, en cinco combinaciones aire × datos. Y eso choca de frente con los píxeles:
+
+- Renderizado `--hero portatil` en **`tecnico`** y en **`nocturno`** (una de las que acusa), 8 cuadros
+  abiertos entre el 35% y el 88% del tramo: **la notebook entra entera y con margen visible**. Nada
+  cortado, ni pantalla ni carcasa.
+- Ampliar la ventana de 0.88 a 0.92 **subió** los cuadros en falta (39 → 43), o sea que el tramo sí se
+  está aplicando y el desborde está *adentro*, no en la salida.
+
+**Dos hipótesis probadas y descartadas:**
+
+1. *La caja alineada a los ejes exagera con una malla inclinada.* La sonda la respalda —`giro 24°`, y
+   su propia ayuda dice "si `giro` es alto… el número exagera"—. Se reescribió `entraEntera` para
+   proyectar la caja **local orientada** en vez de la envolvente del mundo: **los números salieron
+   idénticos** hasta el tercer decimal. Revertido, porque un arreglo que no mueve la medición no se
+   queda.
+2. *Es el gesto de salida.* La sonda marca el peor caso en `t = 1.00`, pero el tramo ya lo excluye y
+   el desborde persiste adentro.
+
+**Estado: sin clasificar, a propósito.** Declarar `encaja` deja la compuerta en rojo; declarar `sangra`
+sería afirmar que la notebook desborda, y dos renders dicen que no. Lo que falta es entender qué mide
+la compuerta que el render no muestra — probablemente el eje **Y** durante el flote, que no se aisló.
