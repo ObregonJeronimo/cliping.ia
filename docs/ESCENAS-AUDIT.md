@@ -202,45 +202,38 @@ bloque sólido detrás de una frase le come el contraste"*— y cuatro camas seg
 el diseño en una fila de cajas. La regla que queda escrita: **se pone cama cuando el texto no se lee, no
 cuando la herramienta lo nombra.** El sobre dice dónde mirar; el cuadro dice si hay defecto.
 
-#### El techo sobre la cuña es 2,74:1 — ningún tinte llega al piso de 3,2
+#### CORREGIDO — el techo sobre la cuña es 5,25:1, no 2,74, y darle más tinta al texto SÍ sirve
 
-Esto reordena el problema entero, y sale de aritmética de color, sin renderizar.
+**Esta sección decía lo contrario y estaba mal. La causa fue mía y es reutilizable.**
 
-**La paleta la pone la PÁGINA, no el aire, y equivocarse en eso da la cuña de otro color.** La primera
-versión de esta tabla usó `LOOK.bg` y `LOOK.acento` del aire y calculó una cuña `#ca6b62`, terracota.
-La de los cuadros abiertos es azul. El motor lo dice en su propia salida — *"mundo CLARO (#ffffff /
-acento #2377d2)"*—: bajo un mundo claro el fondo y el acento salen del sitio del cliente. Con la paleta
-correcta la cuña calculada da **`#6e95d9`** contra un medido de `#618ccc`, que ya es la misma cuña.
+Calculé los contrastes leyendo `.r/.g/.b` de un `THREE.Color` y aplicándoles la conversión sRGB→lineal.
+Pero three ya entrega esos canales **en lineal**: la conversión iba dos veces, y eso comprime las
+diferencias y hunde todos los contrastes. El motor lo hace bien —`_lum` en `kit.js:2070` parte de la
+**cadena hex**, no del objeto— y copiar esa forma es lo que corrige la cuenta.
 
-Contra ese azul, los tintes:
+Recalculado como corresponde, en `editorial` con la paleta de la página (`#ffffff` / acento `#2377d2`),
+cuña `#428ad8` contra un `#618ccc` medido en el cuadro:
 
-| tinte | color | vs fondo blanco | vs la cuña |
+| tinte | color | vs fondo | vs la cuña |
 |---|---|---|---|
-| la tinta más oscura | `#14110d` | 20,81:1 | **2,74:1** |
-| `nivel(0.55)` | `#77726a` | 14,08:1 | 1,85:1 |
-| el acento de la página | `#2377d2` | 10,76:1 | **1,41:1** |
+| la tinta más oscura | `#14110d` | 18,82:1 | **5,25:1** |
+| `nivel(0.55)` | `#77726a` | 4,77:1 | **1,33:1** |
+| el acento de la página | `#2377d2` | 4,53:1 | 1,26:1 |
 
-**El modelo se valida contra píxeles:** predice 1,85:1 para el tinte del pie de `cierre`, que **midió
-1,77:1**. (La versión anterior predecía 1,74 y parecía acertar igual: era casualidad, con la cuña de
-otro color.)
+**Lo que cambia de verdad:** la tinta más oscura **sí pasa el piso de 3,2 sobre la cuña**. Mi conclusión
+anterior —"ningún tinte llega, así que la cama es la única salida"— era falsa. Oscurecer el texto es un
+remedio válido, y en algunos casos más barato que una placa.
 
-Tres conclusiones que dejan de ser opinión:
+**Lo que NO cambia:** los tres arreglos hechos siguen siendo correctos y están verificados sobre
+píxeles, no sobre este cálculo. `nivel(0.55)` sobre la cuña da 1,33:1 acá y midió 1,02:1 en `mesa` —
+mismo orden, y las dos muy por debajo de cualquier piso. La cama sigue siendo una buena solución porque
+conserva la jerarquía tipográfica (un pie no puede quedar tan oscuro como su titular sin dejar de ser un
+pie), pero deja de ser *la única*.
 
-1. **Oscurecer el texto no arregla nada.** La tinta más negra del motor no pasa de 2,74:1 ahí: el piso
-   de 3,2 es inalcanzable sobre la cuña con cualquier tinte. La cama no es "una solución más" — es la
-   única, junto con mover el texto fuera de la franja. Justifica a posteriori no haber tocado el tinte
-   del pie de `mesa` cuando midió 2,59 y la tentación era darle más tinta.
-2. **El acento sobre la cuña sería lo peor posible: 1,41:1** — acento sobre acento. Conté los usos de
-   `LOOK.acento` por grep y salían doce en `tipografia`, nueve en `tarjetas`, ocho en `apertura`, y de
-   ahí saqué que había que mirar eso primero. **Era falso.** Midiendo el rol del tinte de cada texto
-   marcado, en `editorial` **no hay un solo texto en acento dentro de la franja**: esos usos son barras,
-   filetes y marcas, no letras. El grep contaba apariciones del símbolo, no textos.
-3. **Recalibra el criterio.** Pedir 3,2 sobre la cuña es pedir lo imposible; el corte real es "está
-   debajo de lo que la cuña permite". Los tres defectos confirmados medían 1,02, 1,11 y 1,77.
-
-De paso valida no haber tocado `tipografia`: sus 2,86:1 medidos están **por encima** del techo de 2,74,
-o sea que ese texto no estaba del todo sobre la cuña. Es el caso de la palabra partida, no el de la
-palabra tapada — que es exactamente lo que se ve en el cuadro.
+**Y lo que hay que descontar de lo que escribí:** usé el "techo 2,74" para justificar que `tipografia`
+(2,86:1) y `apertura` (2,42:1) no llevaran cama, con el argumento de que estaban por encima del techo.
+Ese argumento se cae. **Las dos decisiones se sostienen igual, pero por la otra razón, que es la que
+vale:** se abrió el cuadro y el texto se lee, mientras que los tres arreglados eran manchas.
 
 #### `titular` — la predicción NO se cumplió: 3,06:1, está sobre el lado claro
 
