@@ -282,9 +282,33 @@ envolvente alineada a los ejes de un plano inclinado tiene PROFUNDIDAD, y al pro
 perspectiva su esquina inferior *cercana* cae más abajo que el borde real del plano. Un 2-8% es
 exactamente el orden de magnitud de ese error a 24°.
 
-**Estado: sin clasificar, a propósito.** Declarar `encaja` deja la compuerta en rojo; declarar `sangra`
-sería afirmar que la notebook desborda, y dos renders dicen que no. **Lo que falta es una sola cosa:**
-entender por qué reescribir `entraEntera` con la caja orientada no movió el número, cuando la
-descomposición por eje dice que el error tiene que estar justo ahí. Probablemente el intento tenía un
-bug —no se verificó que la caja local se estuviera usando de verdad— y conviene rehacerlo imprimiendo
-las dos cajas antes de creerle a ninguna.
+**Y la hipótesis de la caja quedó MUERTA con evidencia, no descartada por sospecha.** Instrumentando
+`entraEntera` para imprimir las dos cajas sobre la misma malla y el mismo instante:
+
+```
+2CAJAS alineada y=1.019  orientada y=1.019  (x 0.188 / 0.188)  localZ=0.000
+2CAJAS alineada y=1.084  orientada y=1.084  (x 0.304 / 0.304)  localZ=0.000
+```
+
+Idénticas hasta el tercer decimal, y `localZ=0.000`: la geometría del plano no tiene profundidad
+propia, así que las dos cajas describen lo mismo. El intento anterior no tenía un bug — la hipótesis
+era falsa.
+
+**Y del lado de los píxeles el caso también quedó cerrado.** Detectando el equipo por su COLOR (azul
+`#15171c` y aluminio `#8b919c`, para no confundirlo con la cuña del fondo, que ya arruinó dos
+mediciones antes) sobre los 105 cuadros del tramo:
+
+| | |
+|---|---|
+| borde superior más alto | y = **357** |
+| borde inferior más bajo | y = **1884** de 1920 |
+| margen mínimo | **357 px arriba, 36 px abajo** |
+
+**La notebook no sale del cuadro en ningún cuadro del tramo.** La compuerta afirma que la pantalla
+llega a 1,084, o sea 161 px afuera — y la pantalla es la parte de ARRIBA del equipo, cuyo margen
+superior nunca baja de 357 px.
+
+**Estado: sin clasificar, y el pendiente ya no es de la escena sino de la compuerta.** Lo que hay que
+averiguar es por qué la `y` proyectada de `pantalla` en `entraEntera` no se corresponde con dónde esa
+malla aparece en el render. Las tres explicaciones fáciles están descartadas con medición: no es el
+ancho, no es la caja, y no es que la escena corte algo.
