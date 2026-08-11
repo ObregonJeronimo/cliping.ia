@@ -265,6 +265,26 @@ compuesto, en cinco combinaciones aire × datos. Y eso choca de frente con los p
 2. *Es el gesto de salida.* La sonda marca el peor caso en `t = 1.00`, pero el tramo ya lo excluye y
    el desborde persiste adentro.
 
+**Y el eje SÍ se aisló, que es lo que deja el hilo listo para cerrar.** Instrumentando `entraEntera`
+para imprimir los dos ejes por separado (`ENCUADRE_EJES=1`, ya revertido):
+
+```
+EJE x=0.181 y=1.059      EJE x=0.223 y=1.045      EJE x=0.304 y=1.084
+EJE x=0.188 y=1.019      EJE x=0.277 y=1.029      EJE x=1.015 y=0.554
+```
+
+**El desborde es vertical y chico: entre 2% y 8%.** En ancho la malla va holgadísima —0,18 a 0,30 de
+un límite de 1,0—. Eso descarta de plano que la pantalla sea demasiado ancha, que era la lectura
+natural del "1,22" y la que habría llevado a achicarla.
+
+Y encaja con la geometría: la pantalla cuelga de un `pivote` que la inclina 24° en **profundidad**. La
+envolvente alineada a los ejes de un plano inclinado tiene PROFUNDIDAD, y al proyectarla en
+perspectiva su esquina inferior *cercana* cae más abajo que el borde real del plano. Un 2-8% es
+exactamente el orden de magnitud de ese error a 24°.
+
 **Estado: sin clasificar, a propósito.** Declarar `encaja` deja la compuerta en rojo; declarar `sangra`
-sería afirmar que la notebook desborda, y dos renders dicen que no. Lo que falta es entender qué mide
-la compuerta que el render no muestra — probablemente el eje **Y** durante el flote, que no se aisló.
+sería afirmar que la notebook desborda, y dos renders dicen que no. **Lo que falta es una sola cosa:**
+entender por qué reescribir `entraEntera` con la caja orientada no movió el número, cuando la
+descomposición por eje dice que el error tiene que estar justo ahí. Probablemente el intento tenía un
+bug —no se verificó que la caja local se estuviera usando de verdad— y conviene rehacerlo imprimiendo
+las dos cajas antes de creerle a ninguna.
