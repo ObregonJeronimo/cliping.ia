@@ -458,3 +458,32 @@ No es un factor fijo: es el **ajuste de tempo para que el guion calce en la dura
 `guion-check` ya declara (`ajusteDe`, `TOPE_AJUSTE`). Conviene saberlo antes de comparar contra el
 número del archivo del aire — como pasó al intentar predecir semillas, donde simular con el bpm
 declarado dio planes que el motor nunca produjo.
+
+## "Medir contra el cuadro en reposo" — barridas las 20, y sólo faltaba una
+
+`columna`, `tipografia`, `mesa` y ahora `destello` fallaron por lo mismo: dimensionar o anclar algo
+contra el cuadro **en reposo** en una escena que después **acerca la cámara**. Cuatro veces el mismo
+defecto es una pregunta que conviene contestar entera en vez de una por una, así que se barrió el
+catálogo buscando el patrón: escenas que acercan la cámara *y* dimensionan contra `mundoW` *sin* usar
+`cuadroMasAngosto`. Salieron once.
+
+La cuenta que decide es una sola: **cuánto angosta el cuadro** (el desplazamiento sobre `distBase`, por
+el dolly más alto del catálogo, 1,55 en `inmobiliario`) contra **cuánto margen** dejó el dimensionado.
+
+| escena | angosta | margen | veredicto |
+|---|---|---|---|
+| `tarjetas` | 14,1% | 8% | **riesgo** — y es la pregunta reservada, ya documentada |
+| `portatil` | 3,7% | 8% | el margen cubre |
+| `cierre` | 2,9% | 8% | el margen cubre |
+| `rafaga` | 2,5% | 10% | el margen cubre |
+| `marquesina` | 1,8% | 8% | el margen cubre |
+| `pantalla`, `ventana`, `pulso`, `bandera`, `titular` | — | — | sangran a propósito, no aplica |
+
+**`destello` angostaba 17,8% con un margen de 5,5%**, y por eso era el único que se salía de verdad.
+Arreglado. La única otra en riesgo es `tarjetas`, que ya estaba identificada y parkeada — su propia nota
+dice que su cámara "a su máximo agranda el cuadro cerca del doble".
+
+O sea que esta familia de defecto **queda cerrada**: no es que se arregló uno, es que se revisaron los
+once candidatos con una cuenta y se sabe por qué los otros diez están bien. Y el criterio queda escrito
+para la próxima escena que acerque la cámara: *si el angostamiento supera el margen, hay que dimensionar
+contra `cuadroMasAngosto`.*
