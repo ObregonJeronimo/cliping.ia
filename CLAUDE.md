@@ -123,6 +123,26 @@ sale más barato y más confiable:
 Una compuerta corre en segundos sobre cientos de combinaciones; una inspección visual corre sobre
 un video. Cuando las dos pueden cazar el mismo defecto, gana la compuerta.
 
+### La aritmética de color reemplaza renders — pero `THREE.Color` viene en LINEAL
+
+Muchas preguntas de contraste no necesitan un render: la cuña del fondo es `mix(col, acento, 0.86)`, y
+con eso el contraste de un texto sobre ella se calcula con un `node -e` de 13 MB. Sirve para **descartar**
+en segundos lo que costaría un render por caso. Confirmar sigue exigiendo abrir el cuadro.
+
+**Y hay una trampa que ya costó una tabla publicada al revés.** `new THREE.Color('#808080').r` no vale
+0.502 sino **0.2159**: con `ColorManagement.enabled` (por defecto desde r152, y acá corre three 184) los
+canales salen en **lineal**. Aplicarles la conversión sRGB→lineal los convierte dos veces, comprime las
+diferencias y hunde todos los contrastes. Así se publicó que "el techo sobre la cuña es 2,74:1 y ningún
+tinte llega al piso"; la cuenta correcta da **5,25:1** y la conclusión era la contraria.
+
+El motor lo hace bien y hay que copiarlo, no reinventarlo: `_lum` (`kit.js:2070`) parte de la **cadena
+hex**, no del objeto. Las herramientas del repo también — `legibility-check.mjs` divide por 255. La
+regla: **medir sobre el hex, nunca sobre `.r/.g/.b` de un `THREE.Color`.**
+
+Y una segunda, de la misma familia: medir un tinte con `configurar(aire)` **no es lo que ve el video**.
+La paleta real la arma `paletaDe` con el ADN de la página, y ahí `adn.js:189` ya fuerza el contraste del
+acento contra los dos fondos. Seis "defectos de legibilidad" resultaron ser eso.
+
 ### Diagnosticar antes de acusar
 
 Está documentado a los golpes en el historial de este repo: revertir arreglos hechos sobre un
