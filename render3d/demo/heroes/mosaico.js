@@ -118,6 +118,23 @@ export function build(ctx) {
   // b(0.15) + b(1.9) y dura b(1.5). Se le suma un beat de margen por el overshoot del ease.
   const FIN_ENTRADA = Math.min(0.7, (b(0.15) + b(1.9) + b(1.5) + b(0.25)) / DUR)
 
+  // EL DESTAQUE DEL BEAT ATRAVIESA EL TOPE DE NITIDEZ, y por eso vive aca arriba y no suelto.
+  //
+  // `topeNitido` acota el tamaño EN REPOSO para que un recorte no se dibuje mas grande que sus propios
+  // pixeles. Despues el metronomo escala la pieza destacada a 1.13 y se lleva ese tope puesto: medido
+  // por `tools/nitidez-inventario.mjs`, `mosaico` dibuja a 1.67x cuando el tope es 1.4x —251 px de
+  // dibujado contra 150 nativos—. 1.4 x 1.13 = 1.58, y el resto lo pone el acercamiento de camara.
+  //
+  // Se declara UNA vez y la usan los dos lados: el tween que da el golpe y el tope que tiene que
+  // preverlo. Dos copias de 1.13 es exactamente como el tope se vuelve a romper el dia que alguien
+  // cambie el destaque — y este archivo ya tuvo "el mismo defecto dos veces" por calcular el tamaño en
+  // dos lugares, esta escrito veinte lineas mas abajo.
+  const DESTAQUE = 1.13
+  // Lo que se le pide a `topeNitido` es el tope YA DESCONTADO el golpe, asi que el pico real no pasa
+  // de 1.4x. Cuesta que una pieza de poca resolucion ocupe un 11% menos de su celda, que es
+  // literalmente la decision que este archivo ya tomo: "una pieza de poca resolucion ocupa menos celda
+  // y deja aire alrededor, que es preferible a llenarla con una version deshecha de si misma".
+  const MAG_NITIDA = 1.4 / DESTAQUE
   const celdaW = ANCHO_UTIL / cols
   const celdaH = (ALTO_UTIL - altoBanda) / filas
 
@@ -157,7 +174,7 @@ export function build(ctx) {
     // alrededor, que es preferible a llenarla con una version deshecha de si misma.
     // Ancho de cuadro del contexto y no un 1080 a mano: ver la nota en cubo.js. Hoy es el mismo
     // numero; el dia que el motor rinda a otra resolucion, este sitio la sigue solo.
-    const hPorNitidez = topeNitido(p.tex && p.tex.image, ctx.W || 1080, mundoW, 1.4) / Math.max(0.05, p.ar)
+    const hPorNitidez = topeNitido(p.tex && p.tex.image, ctx.W || 1080, mundoW, MAG_NITIDA) / Math.max(0.05, p.ar)
     const alto = Math.min(hPorAlto, hPorAncho, hPorNitidez)
     const m = planoRecorte(p.tex, alto)
     if (!m) return
@@ -262,7 +279,7 @@ export function build(ctx) {
     //
     // Es el mismo defecto dos veces en el mismo archivo, que es lo que pasa cuando el tamaño se calcula
     // en dos lugares: arreglar uno no arregla el otro y la medicion de uno tapa al otro.
-    const hNitido = topeNitido(p.tex && p.tex.image, ctx.W || 1080, mundoW, 1.4) / Math.max(0.05, p.ar)
+    const hNitido = topeNitido(p.tex && p.tex.image, ctx.W || 1080, mundoW, MAG_NITIDA) / Math.max(0.05, p.ar)
     const h = Math.min(alto, (anchoCelda * AIRE) / Math.max(0.05, p.ar), hNitido)
     const m = planoRecorte(p.tex, h)
     if (!m) return
@@ -358,7 +375,7 @@ export function build(ctx) {
       for (const c of cambios) if (c.base === base && c.t <= b(i)) m = c.m
       // El destaque es de ESCALA y no de z: con la banda destacada delante, un adelanto en z de una
       // pieza chica no se lee. Un salto de escala si, y ademas no pelea con el paralaje.
-      tl.to(m.scale, { x: 1.13, y: 1.13, duration: b(0.20), ease: E.llega(2.4) }, b(i))
+      tl.to(m.scale, { x: DESTAQUE, y: DESTAQUE, duration: b(0.20), ease: E.llega(2.4) }, b(i))
       tl.to(m.scale, { x: 1, y: 1, duration: b(0.5), ease: E.frena(3) }, b(i + 0.24))
     }
   }
