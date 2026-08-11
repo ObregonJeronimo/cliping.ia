@@ -361,6 +361,33 @@ exactamente dónde está el texto en el cuadro que se está midiendo.** Los tres
 Aun con los tres, la regla sigue siendo la de siempre y esta tanda la confirma cinco veces: **el número
 no vale hasta que se abre el recuadro y se ve la letra adentro.**
 
+#### Las cuatro que faltaban, verificadas con `--escena`
+
+| escena | qué se midió | resultado |
+|---|---|---|
+| `apertura` | la línea del claim, partida por la diagonal | **2,92:1** en la mitad clara → **2,42:1** sobre la cuña |
+| `destello` | el dominio | **10,01:1** — *la cuña no aplica*, ver abajo |
+| `rafaga` | las frases | quedan **arriba** de la cuña; no se pudo medir con banda fija |
+| `gancho` | — | **no emite una sola caja** con los datos de basecamp: no hay candidato |
+
+**`apertura` es el único que queda en zona gris.** La línea del claim —la promesa que la marca escribió—
+cruza la diagonal y pierde medio punto: de 2,92 a 2,42:1. Se lee: en el recorte se ve "TRUSTED BY
+MILLIONS, BASECAMP PUTS EVERYTHING YOU NEED TO GET WORK DONE IN ONE PLACE." entera, con la última parte
+más pálida. No es el caso de `mesa` (1,02:1, una mancha). **No se le pone cama**, por consistencia con
+`tipografia`: los tres arreglados medían ≤1,77 y se veían rotos; estos dos se leen. Queda anotado como
+el peor de los legibles, para que una pasada de diseño decida con el número a la vista.
+
+**`destello` es un falso positivo del inventario, y de una clase nueva: se oscurece el mundo a
+propósito.** Su cabecera lo dice —*"vuelta a oscuro. Obligatorio: la escena siguiente cuenta con el
+fondo negro"*— y `cierre` depende de eso. La cuña sólo se dibuja con `uClaro`, así que ahí no existe.
+Sus 23 marcas salen de que el inventario fuerza `claro: true` en las veinte escenas. El dominio mide
+10,01:1, blanco sobre azul profundo.
+
+**`rafaga` no se dejó medir con una banda fija y eso también es un dato:** alterna recorte de página y
+frase en el mismo lugar, así que la banda mide una captura de la UI de Basecamp la mitad del tiempo. El
+"peor cuadro" resultó ser un pantallazo, no un texto. La tira sí es concluyente: las frases viven arriba
+de la diagonal.
+
 Las restantes siguen sin verificar — son candidatos, no defectos. Y con `tipografia` medida en
 2,86:1 al 7% del alto, las que siguen están **menos** hondas (`titular` 12%, `tarjetas` 21%, `apertura`
 24%…), o sea que la expectativa es que midan mejor. Eso es una inferencia, no una medición: hay que
