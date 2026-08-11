@@ -480,3 +480,19 @@ O sea que esta familia de defecto **queda cerrada**: no es que se arregló uno, 
 once candidatos con una cuenta y se sabe por qué los otros diez están bien. Y el criterio queda escrito
 para la próxima escena que acerque la cámara: *si el angostamiento supera el margen, hay que dimensionar
 contra `cuadroMasAngosto`.*
+
+## El susto del acento — texto en `LOOK.acento2`, y por qué NO era un defecto
+
+Buscando legibilidad fuera de la cuña apareció que tres textos de `apertura` van en `LOOK.acento2`, y
+uno de ellos es **`D.claim`, la promesa del cliente** (línea 651). Con la cuenta de contraste mal hecha
+—la doble conversión, ver la corrección de más arriba— eso daba 1,69:1 en `lujo` y parecía grave.
+
+Con la cuenta bien, **sólo `jugueton`** queda bajo el piso con la paleta cruda del aire. Y ni siquiera
+eso llega al video: `adn.js:189-190` corre `forzarContraste2(acento2, bg, bg2, piso)` cuando se arma la
+paleta con el ADN de la página, así que el acento que el motor usa **ya viene forzado por encima del
+piso**. Medir con `configurar(aire)` a secas es medir una paleta que el motor no produce.
+
+Confirmado en el cuadro: en `editorial` el `acento2` es `#1d3557` (8,88:1) y el renglón se lee.
+
+**La lección, que es la misma de todo este documento en otra forma:** una medición hecha fuera del
+pipeline real no vale, ni cuando da bien ni cuando da mal.
