@@ -67,6 +67,28 @@ const escribirUna = (m, tl, t0, dur) => {
 const borrarUna = (m, tl, t0, dur) =>
   tl.to(m.userData.u.uProg, { value: 0, duration: b(dur != null ? dur : 0.5), ease: 'power2.in' }, b(t0))
 
+// LA CAMA SE VA CON EL TEXTO, y no despues.
+//
+// `borrar` apagaba el texto y dejaba la cama encendida hasta que `sale()` terminara de sacar el bloque
+// del cuadro. Entre las dos cosas hay entre medio beat y un beat, y en ese hueco lo que se ve es UNA
+// PLACA BLANCA VACIA en medio de la pieza. Aparecio en las fotos de `marea` y de `archivo`, y no es un
+// defecto de esas dos: la cama la pone `bloques.js`, asi que el hueco existe en las dieciocho cada vez
+// que un bloque con cama se borra antes de salir.
+//
+// Se apaga un pelin ANTES que el texto (0.1 beats) y mas rapido: una cama que se va despues de su
+// texto deja el mismo hueco, solo que mas corto.
+const irseLaCama = (cm, tl, t0) => {
+  if (!cm) return
+  tl.to(cm.material, { opacity: 0, duration: b(0.45), ease: 'power2.in' }, b(t0 - 0.1))
+}
+// Y VUELVE con el texto, por si el bloque se escribe mas de una vez. Sin esto, un bloque reescrito
+// despues de borrarse sale sin fondo — que es peor que el hueco, porque ahi el texto compite con lo
+// que la plantilla resulto poner detras.
+const volverLaCama = (cm, tl, t0, op0) => {
+  if (!cm) return
+  tl.set(cm.material, { opacity: op0 }, b(t0))
+}
+
 // ---------------------------------------------------------------- 2 · MARCA
 //
 // El nombre grande y solo, con un filete que se abre debajo y —si la pagina dio rubro— una bajada.
@@ -80,6 +102,7 @@ export function bloqueMarca(op) {
   if (!nombre) return null
   const g = new THREE.Group()
   const AM = conMargen(op.anchoMax, op.margen)
+  let camaM = null
   const m = letras(nombre, op.alto != null ? op.alto : 1.5, nivelTexto(0.94),
     { fuente: op.fuente || 'Anton', tracking: op.tracking != null ? op.tracking : 0.02, anchoMax: AM })
   // CAMA OPCIONAL, y apagada por defecto — al reves que en el claim.
@@ -92,11 +115,12 @@ export function bloqueMarca(op) {
   //
   // La decision es de la plantilla porque solo ella sabe que hay detras. Se pide con `cama: true`.
   if (op.cama === true) {
-    g.add(cama(m.userData.ancho, m.userData.alto, {
+    camaM = cama(m.userData.ancho, m.userData.alto, {
       opacidad: op.camaOpacidad != null ? op.camaOpacidad : 0.88,
       color: op.camaColor || nivel(0.03),
       holgX: m.userData.alto * 0.22, holgY: m.userData.alto * 0.20,
-    }))
+    })
+    g.add(camaM)
   }
   g.add(m)
 
@@ -123,11 +147,13 @@ export function bloqueMarca(op) {
     g, malla: m, filete: fil, rotulo: rot,
     ancho: m.userData.ancho, alto: m.userData.alto * (rot ? 1.5 : 1.0),
     escribir(tl, t0, dur) {
+      volverLaCama(camaM, tl, t0 - 0.15, op.camaOpacidad != null ? op.camaOpacidad : 0.88)
       escribirUna(m, tl, t0, dur != null ? dur : 1.1)
       if (fil) tl.to(fil.scale, { x: 1, duration: b(0.85), ease: 'power3.out' }, b(t0 + 0.55))
       if (rot) escribirUna(rot, tl, t0 + 0.75, 0.7)
     },
     borrar(tl, t0) {
+      irseLaCama(camaM, tl, t0)
       borrarUna(m, tl, t0)
       if (fil) tl.to(fil.scale, { x: 0.0001, duration: b(0.4), ease: 'power2.in' }, b(t0))
       if (rot) borrarUna(rot, tl, t0)
@@ -150,18 +176,21 @@ export function bloquePromesa(op) {
   })
   if (!p) return null
   const g = new THREE.Group()
+  const OPC = op.camaOpacidad != null ? op.camaOpacidad : 0.91
+  let cm = null
   if (op.cama !== false) {
-    g.add(cama(p.userData.ancho, p.userData.alto, {
-      opacidad: op.camaOpacidad != null ? op.camaOpacidad : 0.91,
-      color: op.camaColor || nivel(0.02),
-    }))
+    cm = cama(p.userData.ancho, p.userData.alto, { opacidad: OPC, color: op.camaColor || nivel(0.02) })
+    g.add(cm)
   }
   g.add(p)
   return {
     g, parrafo: p, ancho: p.userData.ancho, alto: p.userData.alto,
     lineas: p.userData.lineas.length, recortado: p.userData.recortado,
-    escribir(tl, t0, dur) { p.userData.escribir(tl, t0, dur != null ? dur : 0.9, op.paso != null ? op.paso : 0.3) },
-    borrar(tl, t0) { p.userData.borrar(tl, t0) },
+    escribir(tl, t0, dur) {
+      volverLaCama(cm, tl, t0 - 0.15, OPC)
+      p.userData.escribir(tl, t0, dur != null ? dur : 0.9, op.paso != null ? op.paso : 0.3)
+    },
+    borrar(tl, t0) { irseLaCama(cm, tl, t0); p.userData.borrar(tl, t0) },
   }
 }
 
@@ -307,17 +336,20 @@ export function bloquesFrase(n, op) {
     })
     if (!p) return null
     const g = new THREE.Group()
+    const OPF = op.camaOpacidad != null ? op.camaOpacidad : 0.90
+    let cm = null
     if (op.cama !== false) {
-      g.add(cama(p.userData.ancho, p.userData.alto, {
-        opacidad: op.camaOpacidad != null ? op.camaOpacidad : 0.90,
-        color: op.camaColor || nivel(0.03),
-      }))
+      cm = cama(p.userData.ancho, p.userData.alto, { opacidad: OPF, color: op.camaColor || nivel(0.03) })
+      g.add(cm)
     }
     g.add(p)
     return {
       g, indice: i, ancho: p.userData.ancho, alto: p.userData.alto,
-      escribir(tl, t0, dur) { p.userData.escribir(tl, t0, dur != null ? dur : 0.8, 0.28) },
-      borrar(tl, t0) { p.userData.borrar(tl, t0) },
+      escribir(tl, t0, dur) {
+        volverLaCama(cm, tl, t0 - 0.15, OPF)
+        p.userData.escribir(tl, t0, dur != null ? dur : 0.8, 0.28)
+      },
+      borrar(tl, t0) { irseLaCama(cm, tl, t0); p.userData.borrar(tl, t0) },
     }
   }).filter(Boolean)
 }
