@@ -68,9 +68,46 @@ async def render(url: str, salida: str, plantilla: str = "", dur: int = 0, seed:
 
     cat = plantillas_disponibles()
     ids = [p.get("id") for p in cat]
-    pid = (plantilla or "").strip() or (ids[0] if ids else "")
-    if pid not in ids:
+    pid = (plantilla or "").strip()
+    if pid and pid not in ids:
         raise SystemExit(f"plantilla desconocida: {pid!r}. Hay: {', '.join(i for i in ids if i)}")
+
+    # SIN PLANTILLA PEDIDA SE ELIGE UNA ELEGIBLE, no la primera de la lista.
+    #
+    # La version anterior tomaba `ids[0]`, o sea `atrio` siempre. Eso no fallaba nunca —`atrio` no
+    # necesita material— pero volvia mentira a "elegis otra y es otro video": sin elegir, el motor
+    # devolvia doce veces la misma pieza. Y el dia que la primera del catalogo pida una tira, todas las
+    # paginas sin tira reventarian en vez de componer con otra.
+    #
+    # El material se mide de lo que la captura consiguio DE VERDAD, no de lo que se esperaba.
+    if not pid:
+        tira_hay = os.path.exists(os.path.join(dst, "tira.png"))
+        elementos = [e for e in (d.get("elementos") or []) if e.get("url")]
+        cifras = len([x for x in ((d.get("datos") or {}).get("datos") or []) if x and x.get("valor")])
+        disp = set()
+        if tira_hay:
+            disp.add("tira")
+        if elementos:
+            disp.add("elementos")
+
+        def entra(m):
+            for n in (m.get("necesita") or ["nada"]):
+                if n == "nada":
+                    continue
+                if n == "cifras":
+                    if cifras < int(m.get("minCifras") or 1):
+                        return False
+                elif n not in disp:
+                    return False
+            return True
+
+        posibles = [m for m in cat if entra(m)] or cat
+        # La semilla, que es el mismo mando con el que el estudio pide "otra version". Deterministico:
+        # la misma pagina con la misma semilla da siempre la misma plantilla.
+        pid = posibles[seed % len(posibles)].get("id")
+        print(f"boveda: sin plantilla pedida -> \"{pid}\" ({len(posibles)} elegibles de {len(cat)}"
+              f" · tira={tira_hay} elementos={len(elementos)} cifras={cifras})")
+
     meta = next(p for p in cat if p.get("id") == pid)
 
     spec = {
@@ -96,6 +133,17 @@ async def render(url: str, salida: str, plantilla: str = "", dur: int = 0, seed:
     import render3d
     print(f"boveda: plantilla \"{pid}\" ({meta.get('nombre','')}) · aire {spec['aire']} · semilla {seed}")
     await render3d.grabar_mp4(spec, salida, raiz_assets=dst, gpu=True, bitrate=bitrate, log=print)
+
+    # QUE CORRIO DE VERDAD, al lado del mp4. Es la misma leccion que el otro motor aprendio con su
+    # `plan.json`: el video no dice con que se hizo, y cuando aparece un defecto lo primero que hace
+    # falta es saber que plantilla, que aire y que semilla lo produjeron. Tres campos y un archivo.
+    try:
+        with open(os.path.splitext(salida)[0] + ".plan.json", "w", encoding="utf-8") as f:
+            json.dump({"plantilla": pid, "nombre": meta.get("nombre", ""), "beats": meta.get("beats"),
+                       "tiempos": meta.get("tiempos"), "aire": spec["aire"], "seed": seed,
+                       "url": url, "tira": bool(spec.get("tira"))}, f, ensure_ascii=False, indent=1)
+    except Exception as e:
+        print(f"boveda: no se pudo anotar el plan ({e}) — el video igual esta")
     return salida
 
 

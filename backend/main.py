@@ -1632,3 +1632,167 @@ async def _run_motor3d_job(job_id: str, url: str, hero: str, aire: str,
     except Exception as e:
         print(f"[motor3d] ERROR: {e}")
         jobs[job_id].update({"status": "error", "error": str(e)[:400]})
+
+
+# ==================================================================== BOVEDA
+#
+# El motor de PLANTILLAS COMPLETAS. La diferencia con /api/motor3d no es tecnica sino de producto:
+# alli el usuario elige un HERO y el motor sortea un guion alrededor; aca elige una PLANTILLA y recibe
+# una pieza entera ya compuesta. Elegir otra da otro video con los mismos datos.
+#
+# Los dos endpoints copian la forma de motor3d a proposito —200 + {"error"}, job + polling, un turno a
+# la vez— porque el front ya sabe leerla y porque el cuello de botella es el mismo: Chromium con GPU.
+
+_boveda_turno = asyncio.Semaphore(1)
+_BOVEDA_CAT_TTL = 60
+_boveda_cat_cache: dict = {"ts": 0.0, "data": []}
+
+
+async def _boveda_plantillas() -> list[dict]:
+    """El catalogo sale del REGISTRO de JavaScript, no de una copia en Python.
+
+    Misma decision que `_motor3d_heroes` y por la misma razon: una lista duplicada se desincroniza el
+    dia que alguien agrega una plantilla, y el sintoma es un estudio que ofrece algo que no existe — o
+    peor, que esconde algo que si. Se cachea 60 s porque lanza un `node`.
+    """
+    ahora = time.time()
+    if _boveda_cat_cache["data"] and (ahora - _boveda_cat_cache["ts"]) < _BOVEDA_CAT_TTL:
+        return _boveda_cat_cache["data"]
+    import boveda as _bov
+    data = await asyncio.to_thread(_bov.plantillas_disponibles)
+    _boveda_cat_cache.update({"ts": ahora, "data": data})
+    return data
+
+
+@app.get("/api/boveda/plantillas")
+async def boveda_plantillas():
+    """Que plantillas hay, que necesita cada una y en que beat cae cada uno de sus seis tiempos.
+
+    Van tambien los aires, por lo mismo que en motor3d: es el otro parametro de vocabulario cerrado y
+    el selector los pide en la misma pantalla."""
+    try:
+        return {"plantillas": await _boveda_plantillas(), "aires": _motor3d_aires(), "error": ""}
+    except Exception as e:
+        print(f"[boveda] leer el catalogo fallo: {e}")
+        return {"plantillas": [], "aires": _motor3d_aires(), "error": str(e)[:300]}
+
+
+class BovedaRequest(BaseModel):
+    url: str = ""
+    plantilla: str = ""        # '' = la primera elegible con el material que consiguio la captura
+    seed: int = 7              # el motor es determinista: cambiarla da OTRA version del mismo video
+    aire: str = ""             # '' = el que sale del rubro + el DNA medidos
+    recapturar: bool = False
+
+
+@app.post("/api/boveda/render")
+async def boveda_render(req: BovedaRequest):
+    """URL -> pieza vertical 9:16 con la plantilla elegida. Asincronico: devuelve {job_id}.
+
+    LA DURACION NO ES UN PARAMETRO, y esa es la diferencia de fondo con motor3d: cada plantilla tiene
+    su propia cantidad de beats porque su composicion esta pensada para ella. Pedirle 15 segundos a una
+    pieza de 40 beats seria cortarla, no adaptarla.
+    """
+    url = (req.url or "").strip()
+    if not url:
+        return {"error": "Necesitas una URL"}
+
+    # Misma barrera anti-SSRF que motor3d, y por las mismas dos razones: el POST devuelve el motivo, y
+    # con el dominio ya capturado el render reusa el cache sin pasar por la guarda de adentro.
+    import site_capture
+    ok, motivo = await asyncio.to_thread(site_capture.url_is_safe, url)
+    if not ok:
+        print(f"[boveda] URL rechazada (SSRF guard): {motivo} :: {url!r}")
+        return {"error": f"URL rechazada: {motivo}"}
+
+    # `plantilla` elige un MODULO. Se valida contra el catalogo real y nunca se interpola cruda: lo que
+    # no esta en la lista no llega al motor.
+    plantilla = (req.plantilla or "").strip()
+    if plantilla:
+        try:
+            ids = [p.get("id") for p in await _boveda_plantillas()]
+        except Exception as e:
+            return {"error": f"no se pudo validar la plantilla contra el catalogo: {str(e)[:200]}"}
+        if plantilla not in ids:
+            return {"error": f"plantilla desconocida: {plantilla!r}. Hay: {', '.join(i for i in ids if i)}"}
+
+    aire = (req.aire or "").strip()
+    if aire:
+        aires = _motor3d_aires()
+        if aire not in aires:
+            return {"error": f"aire desconocido: {aire!r}. Hay: {', '.join(aires)}"}
+
+    # La semilla se envuelve en 32 bits en vez de recortarse, por lo mismo que en motor3d: el boton de
+    # "otra version" la avanza con el salto aureo, y con un tope todas las grandes colapsarian en el
+    # mismo numero y devolverian el MISMO video.
+    seed = abs(int(req.seed or 0)) % (2 ** 32)
+
+    job_id = str(uuid.uuid4())
+    jobs[job_id] = {
+        "id": job_id, "kind": "boveda", "status": "queued", "step": None, "progress": 0,
+        "videoPath": None, "videoFilename": None, "videoUrl": "", "cloudinaryUrl": "",
+        "url": url, "plantilla": plantilla, "aire": aire, "seed": seed,
+        "error": None, "createdAt": datetime.utcnow().isoformat(),
+    }
+    asyncio.create_task(_run_boveda_job(job_id, url, plantilla, aire, seed, bool(req.recapturar)))
+    return {"job_id": job_id}
+
+
+async def _run_boveda_job(job_id: str, url: str, plantilla: str, aire: str, seed: int, recapturar: bool):
+    OUTPUTS_DIR.mkdir(exist_ok=True)
+    salida = (OUTPUTS_DIR / f"{job_id}_boveda.mp4").absolute()
+    try:
+        if _boveda_turno.locked() or _motor3d_turno.locked():
+            jobs[job_id].update({"step": "en cola (hay otro render 3D en curso)", "progress": 3})
+        # SE TOMAN LOS DOS SEMAFOROS, y el de motor3d PRIMERO — el mismo orden que usa el otro modulo,
+        # que es lo unico que impide un abrazo mortal entre los dos.
+        #
+        # No es celo: son dos Chromium con GPU y dos renders simultaneos son exactamente el escenario
+        # que colgo esta maquina el 4 de agosto. El cerrojo de `tools/lib/cerrojo.mjs` ya lo impide a
+        # nivel de proceso, pero un job que muere contra un cerrojo le devuelve al usuario un error
+        # feo; encolarlo aca le devuelve "en cola", que es lo que esta pasando de verdad.
+        async with _motor3d_turno, _boveda_turno:
+            import boveda as _bov
+            jobs[job_id].update({"status": "processing", "step": "captura + render", "progress": 10})
+            print(f"[boveda] job {job_id[:8]} -> {url} | plantilla {plantilla or 'auto'} · aire {aire or 'auto'} · semilla {seed}")
+
+            # En un hilo con su propio loop, igual que motor3d: `render()` es corrutina pero tiene
+            # tramos bloqueantes (el `node` del catalogo y el ffmpeg del remux) que congelarian la API
+            # entera, incluido el /api/jobs con el que el front sigue ESTE job.
+            def _correr():
+                return asyncio.run(_bov.render(
+                    url, str(salida), plantilla=plantilla or "", seed=seed,
+                    aire=aire or None, recapturar=recapturar))
+
+            await asyncio.to_thread(_correr)
+
+        # QUE PLANTILLA SALIO DE VERDAD. Puede no ser la pedida: si la pagina no dio el material que
+        # necesita, `render` elige otra elegible. Callarlo dejaria al usuario creyendo que vio la que
+        # eligio — el mismo defecto que motor3d ya documenta con los heroes.
+        jobs[job_id]["plantillaPedida"] = plantilla or "(auto)"
+        try:
+            plan = Path(str(salida)).with_suffix(".plan.json")
+            if plan.exists():
+                jobs[job_id]["plantillaUsada"] = json.loads(plan.read_text(encoding="utf-8")).get("plantilla", "")
+        except Exception as e:
+            print(f"[boveda] no se pudo leer el plan (no informo la plantilla usada): {e}")
+
+        jobs[job_id].update({"status": "uploading", "step": "upload", "progress": 88})
+        cloud = ""
+        try:
+            from cloudinary_upload import upload_video
+            cloud = await upload_video(str(salida), f"boveda_{job_id[:8]}")
+            print(f"[boveda] Cloudinary OK -> {cloud}")
+        except Exception as ce:
+            # Igual que en motor3d: sin Cloudinary el video existe y se sirve local; no es un fallo.
+            print(f"[boveda] Cloudinary fallo (sigue el archivo local): {ce}")
+
+        jobs[job_id].update({
+            "status": "done", "step": "export", "progress": 100,
+            "videoPath": str(salida), "videoFilename": salida.name,
+            "cloudinaryUrl": cloud, "videoUrl": cloud or f"/api/video/{salida.name}",
+        })
+        print(f"[boveda] OK -> {salida.name} ({salida.stat().st_size // 1024} kb)")
+    except Exception as e:
+        print(f"[boveda] ERROR: {e}")
+        jobs[job_id].update({"status": "error", "error": str(e)[:400]})

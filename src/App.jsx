@@ -8,6 +8,7 @@ import KineticStudio from './pages/Kinetic/KineticStudio'
 import DirectorStudio from './pages/Director/DirectorStudio'
 import MotionStudio from './pages/Motion/MotionStudio'
 import Motor3DStudio from './pages/Motor3D/Motor3DStudio'
+import BovedaStudio from './pages/Boveda/BovedaStudio'
 import BibliotecaStudio from './pages/Biblioteca/BibliotecaStudio'
 import TemplateEditor from './pages/TemplateEditor/TemplateEditor'
 import Login from './pages/Login'
@@ -49,6 +50,7 @@ function AppRoutes() {
         <Route path="kinetic" element={<KineticStudio />} />
         <Route path="motion" element={<MotionStudio />} />
         <Route path="motor3d" element={<Motor3DStudio />} />
+        <Route path="boveda" element={<BovedaStudio />} />
         <Route path="anim" element={<AnimLab />} />
         <Route path="biblioteca" element={<AdminRoute><BibliotecaStudio /></AdminRoute>} />
         <Route path="templates" element={<AdminRoute><TemplateEditor /></AdminRoute>} />
