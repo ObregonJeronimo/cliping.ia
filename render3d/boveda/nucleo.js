@@ -302,6 +302,41 @@ export function barra(largo, grosor, color, intensidad) {
   return new THREE.Mesh(new THREE.PlaneGeometry(largo, grosor), luz(color, intensidad))
 }
 
+// ---------------------------------------------------------------- la forma, segun la marca
+//
+// UN PRISMA CUYA SECCION VA DE CUADRADA A REDONDA. Es la traduccion mas directa que hay entre lo que
+// mide el retrato y lo que se ve en el video: si la marca redondea sus tarjetas y sus botones, el
+// espacio 3D redondea sus columnas.
+//
+// La cuenta es de una linea y por eso vale: `CylinderGeometry` con 4 lados es un cuadrado, con 24 es
+// un circulo, y todos los valores intermedios son formas reales —hexagono, octogono, dodecagono— que
+// el ojo lee como "mas o menos anguloso" sin verlas nunca como un poligono contado.
+//
+//   dureza 1.00  ->  4 lados, seccion cuadrada. Pentagram mide 1.00.
+//   dureza 0.60  ->  12 lados. La banda donde todavia se percibe una arista.
+//   dureza 0.25  ->  19 lados, practicamente un cilindro. Tailwind mide 0.25.
+//
+// El giro de 45 grados en el caso de 4 lados no es cosmetico: sin el, `CylinderGeometry(r,r,h,4)`
+// devuelve un rombo apoyado en un vertice, y una columnata de rombos no se lee como arquitectura.
+//
+// Y `radialSegments` se mantiene PAR a proposito. Con un numero impar, la cara que mira a la camara
+// tiene una arista en el medio en vez de una superficie, asi que un mismo objeto se ve partido al
+// avanzar y entero al girar — un parpadeo que parece un defecto de render.
+export function prismaDe(lado, alto, dureza, material) {
+  const d = Math.max(0, Math.min(1, dureza != null ? dureza : 0.75))
+  let n = Math.round(4 + (1 - d) * 20)
+  if (n % 2) n += 1
+  // El radio del circunscripto para que el ANCHO APARENTE sea `lado` en los dos extremos: un cuadrado
+  // de lado L tiene circunscripto L/sqrt(2), y un circulo de diametro L tiene radio L/2. Sin esta
+  // correccion, bajar la dureza adelgazaria la columna un 30% y se leeria como otro objeto.
+  const r = n <= 4 ? (lado / Math.SQRT2) : (lado / 2) * (1 + 0.06 * (1 - d))
+  const g = new THREE.CylinderGeometry(r, r, alto, n, 1)
+  const m = new THREE.Mesh(g, material)
+  if (n <= 4) m.rotation.y = Math.PI / 4
+  m.userData.lados = n
+  return m
+}
+
 // ---------------------------------------------------------------- luces
 // UN SOLO SITIO PARA LAS LUCES, y no es pereza: la iluminacion es lo que hace que doce plantillas se
 // sientan del mismo estudio. Lo que las diferencia es la composicion, no el tratamiento.

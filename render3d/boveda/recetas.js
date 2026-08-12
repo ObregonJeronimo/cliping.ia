@@ -100,10 +100,33 @@ export function recetasDe(retrato) {
 export function colorDePeso(recetas, respaldo, minCroma) {
   const mc = minCroma != null ? minCroma : 0.22
   const p = (recetas && recetas.paleta) || []
+  let oscuro = null
   for (const c of p) {
-    if (c && c.hex && (c.croma || 0) >= mc) return c.hex
+    if (!c || !c.hex || (c.croma || 0) < mc) continue
+    // LA LUMINANCIA IMPORTA TANTO COMO EL CROMA, y la primera version solo miraba el croma.
+    //
+    // Sobre tailwindcss devolvia `#103030`: croma 0.67 —es color de verdad— y luminancia 0.02. Como
+    // color de marca es correcto; como MATERIAL es negro. Un vidrio de ese color no se distingue del
+    // fondo y la columnata desaparece, que es el mismo defecto que ya costo tres arreglos con
+    // `metalness` — un color que existe, que se calcula bien, y que en el video no se ve.
+    if ((c.lum || 0) >= 0.05) return c.hex
+    if (!oscuro) oscuro = c.hex
   }
+  // Y SI EL UNICO COLOR DE LA MARCA ES OSCURO, se ACLARA en vez de descartarse. Descartarlo dejaria a
+  // la pieza sin el color de la marca, que es peor: el tono es de esa marca y sigue siendolo mas
+  // claro. Levantarlo NO es inventar un color, es elegir a que luminancia mostrarlo — la misma
+  // decision que toma cualquier identidad cuando lleva su color a un fondo oscuro.
+  if (oscuro) return aclarar(oscuro, 2.6)
   return respaldo
+}
+
+// Multiplica los canales conservando el tono. Se satura en 255 a proposito: pasado ese punto el color
+// vira hacia el blanco, que es exactamente lo que hace una luz fuerte sobre una superficie de color.
+export function aclarar(hex, factor) {
+  const h = String(hex || '').replace('#', '')
+  if (h.length !== 6) return hex
+  const v = [0, 2, 4].map(i => Math.min(255, Math.round(parseInt(h.slice(i, i + 2), 16) * factor)))
+  return '#' + v.map(x => x.toString(16).padStart(2, '0')).join('')
 }
 
 // EL GRIS DE MÁS PESO, para pisos, muros y todo lo que tiene que ser estructura y no marca. Se busca

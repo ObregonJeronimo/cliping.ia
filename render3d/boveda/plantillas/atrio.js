@@ -37,9 +37,10 @@
 // SIN MATERIAL: sin tira, PRUEBA usa el recorte mas grande; sin recortes, el tiempo se compone vacio y
 // la columnata se queda sola. Lo que no hay, no se anuncia.
 
-import { THREE, vidrio, metal, luz, barra, iluminar, domo, polvo } from '../nucleo.js'
+import { THREE, vidrio, metal, luz, barra, iluminar, domo, polvo, prismaDe } from '../nucleo.js'
 import { vueloAvance, entra, sale, paralaje, respirar, juntar, anchoConDeriva } from '../movimiento.js'
 import { bloqueMarca, bloquePromesa, bloquePrueba, bloquesCifra, bloquesFrase, bloquePedido } from '../bloques.js'
+import { colorDePeso, grisDePeso } from '../recetas.js'
 import { LOOK, nivel, E, b } from '../../demo/kit.js'
 
 export const meta = {
@@ -59,15 +60,32 @@ export function build(ctx) {
   const uso = {}
   const respiraciones = []
 
+  // ---------------------------------------------------------------- LO QUE LA PAGINA DECIDE
+  //
+  // Todo lo de abajo sale de `backend/retrato.py`, que mide la tira, el DOM y los recortes. Sin
+  // retrato, `ctx.recetas` devuelve los valores neutros y esta plantilla compone exactamente como se
+  // componia antes de que el analisis existiera — no hay una rama distinta ni un caso especial.
+  //
+  // Lo que se modula es el GRADO, nunca la idea: `atrio` siempre es una columnata con un vuelo frontal.
+  // Lo que cambia entre una marca y otra es cuantas columnas hay, de que forma son, de que color, a que
+  // velocidad se pasan y cuanto aire deja el texto.
+  const R = ctx.recetas || { velocidad: 1, capas: 3, dureza: 0.75, margen: 0.88, cifras: 3, frases: 2,
+    acentoMasa: false, vacio: 0.5, movimientos: 4, paleta: [], medido: false }
+  uso.retrato = !!R.medido
+
   iluminar(escena, { key: 1.05, relleno: 0.5 })
   const uDomo = domo(escena, { fuerza: 0.26 })
   const motas = polvo(escena, 1200, 40)
 
   // EL VUELO PRIMERO. Todo lo demas se cuelga de el: en una pieza que avanza, la posicion de un objeto
   // no es una decision de composicion sino una consecuencia de cuando tiene que leerse.
-  const DERIVA = 0.55
+  // LA DERIVA SALE DEL AIRE DE LA PAGINA. Un sitio denso aguanta —y pide— una camara que serpentea;
+  // uno muy aireado se lee como un temblor si la camara no va derecha. Queda entre 0.35 y 0.75.
+  const DERIVA = 0.35 + 0.40 * (1 - (R.vacio != null ? R.vacio : 0.5))
+  // Y EL RECORRIDO SALE DE LA ENERGIA. Mismo tiempo, mas o menos camino: eso es literalmente la
+  // velocidad. Un sitio de 0.89 recorre 9.8 separaciones en 40 beats y uno de 1.16 recorre 12.8.
   const vuelo = vueloAvance(camara, tl, {
-    distBase, beats: meta.beats, largo: SEP * 11, desde: 0.85, deriva: DERIVA,
+    distBase, beats: meta.beats, largo: SEP * 11 * R.velocidad, desde: 0.85, deriva: DERIVA,
   })
   const zEn = vuelo.zEn
   // Todo lo que se compone al ancho se mide contra ESTO y no contra `mundoW`: la camara deriva, asi que
@@ -81,18 +99,37 @@ export function build(ctx) {
   // se lee como un zoom sobre un decorado plano.
   const X = mundoW * 0.60
   const ALTO = 30
-  const matCol = vidrio(LOOK.acento, { rug: 0.06, trans: 0.72, grosor: 2.4, opacidad: 0.92 })
+  // EL COLOR DEL ESPACIO SALE DE LOS PIXELES, no de `LOOK.acento` a secas.
+  //
+  // `colorDePeso` devuelve la primera masa CROMATICA de la paleta medida sobre la tira, saltando los
+  // grises. No es lo mismo que el acento del ADN: el acento es el color de los BOTONES, y lo que se
+  // busca aca es el color que de verdad ocupa superficie. En un sitio con botones azules y fotos
+  // ocres, una columnata azul miente sobre como se ve ese sitio.
+  const COL_VIDRIO = colorDePeso(R, LOOK.acento, 0.20)
+  // Y SI EL ACENTO NO DA PARA MASA, el vidrio va neutro y el acento queda en los cantos. `acentoMasa`
+  // es cobertura mayor al 3% de la tira: por debajo de eso el acento de esa marca es un detalle, y
+  // construir el espacio entero con el lo convierte en otra cosa.
+  const matCol = vidrio(R.acentoMasa ? COL_VIDRIO : grisDePeso(R, nivel(0.32)),
+    { rug: 0.06, trans: 0.72, grosor: 2.4, opacidad: 0.92 })
   const matCanto = luz(LOOK.acento2 || LOOK.acento, 0.5)
+  // LA SECCION DE LA COLUMNA LA DECIDE LA MARCA: cuadrada si redondea poco, cilindrica si redondea
+  // mucho. Ver `prismaDe` en nucleo.js. Es la traduccion mas visible de todo el retrato.
   const columna = (esc, xs) => {
     const g = new THREE.Group()
-    g.add(new THREE.Mesh(new THREE.BoxGeometry(1.15 * esc, ALTO, 1.15 * esc), matCol))
+    g.add(prismaDe(1.15 * esc, ALTO, R.dureza, matCol))
     const canto = new THREE.Mesh(new THREE.PlaneGeometry(0.055, ALTO * 0.92), matCanto)
     canto.position.set(-xs * 0.60 * esc, 0, 0.58 * esc)
     g.add(canto)
     return g
   }
+  // CUANTAS CAPAS LO DECIDE LA DENSIDAD DE LA PAGINA, y la tercera no es "mas de lo mismo": va muy
+  // cerca del lente y cruza el cuadro en menos de un beat, o sea que funciona como barrido entre
+  // tiempos. En un sitio aireado eso ensucia; en uno denso es lo que lo hace parecer de esa marca.
+  const capas = []
   const cerca = new THREE.Group(), lejos = new THREE.Group()
   escena.add(cerca); escena.add(lejos)
+  capas.push({ grupo: cerca, vel: 0, largo: SEP * 16 })
+  capas.push({ grupo: lejos, vel: 0.9, largo: SEP * 1.7 * 16, z0: 0 })
   const Z_TOPE = distBase * 0.85
   for (let i = 0; i < 16; i++) {
     for (const s of [-1, 1]) {
@@ -100,8 +137,35 @@ export function build(ctx) {
       const c = columna(1.9, s); c.position.set(s * X * 2.35, -2, Z_TOPE - i * SEP * 1.7 - 12); lejos.add(c)
     }
   }
+  if (R.capas >= 3) {
+    const roce = new THREE.Group()
+    escena.add(roce)
+    for (let i = 0; i < 7; i++) {
+      for (const s of [-1, 1]) {
+        const c = columna(0.42, s)
+        c.position.set(s * mundoW * (0.86 + (i % 3) * 0.12), (i % 2 ? 1 : -1) * 1.2, Z_TOPE - i * SEP * 0.55)
+        roce.add(c)
+      }
+    }
+    capas.push({ grupo: roce, vel: 2.6, largo: SEP * 0.55 * 7 })
+  }
+  if (R.capas >= 4) {
+    // La cuarta solo aparece en los sitios mas densos que el motor midio. Es una trama al fondo, sin
+    // detalle: no se lee como objetos sino como que el espacio sigue mas alla.
+    const trama = new THREE.Group()
+    escena.add(trama)
+    for (let i = 0; i < 22; i++) {
+      const c = columna(3.2, i % 2 ? 1 : -1)
+      c.position.set((i % 2 ? 1 : -1) * X * 4.4, -6, Z_TOPE - i * SEP * 2.6 - 40)
+      trama.add(c)
+    }
+    capas.push({ grupo: trama, vel: 0.4, largo: SEP * 2.6 * 22 })
+  }
+  uso.capas = capas.length
   // Piso oscuro con una banda de acento bajo el eje. Un reflejo real costaria un render por cuadro.
-  const piso = new THREE.Mesh(new THREE.PlaneGeometry(X * 6, 400), metal(nivel(0.04), 0.22))
+  // El piso toma el gris de mas peso de la pagina, no un valor fijo: es la superficie mas grande de
+  // la pieza y la que mas dice de que marca se trata.
+  const piso = new THREE.Mesh(new THREE.PlaneGeometry(X * 6, 400), metal(grisDePeso(R, nivel(0.04)), 0.22))
   piso.rotation.x = -Math.PI / 2
   piso.position.set(0, -ALTO / 2, -100)
   escena.add(piso)
@@ -117,11 +181,11 @@ export function build(ctx) {
   // CAMA EN LA MARCA, y por medicion: la foto del beat 6 la muestra sobre columnas de vidrio
   // iluminadas y un piso claro. `nivelTexto` garantiza contraste contra la PALETA, no contra lo que
   // esta plantilla resulto poner detras — y lo que puso detras es lo mas claro de la pieza.
-  const marca = bloqueMarca({ alto: 1.5, anchoMax: UTIL(0.92) * 0.94, cama: true, camaOpacidad: 0.86 })
-  const promesa = bloquePromesa({ alto: 0.60, anchoMax: UTIL(0.95) * 0.92 })
+  const marca = bloqueMarca({ alto: 1.5, anchoMax: UTIL(0.92) * Math.min(0.95, R.margen + 0.06), cama: true, camaOpacidad: 0.86 })
+  const promesa = bloquePromesa({ alto: 0.60, anchoMax: UTIL(0.95) * Math.min(0.94, R.margen + 0.04) })
   const prueba = bloquePrueba(ctx, { ancho: mundoW * 0.58, ar: 1.6 })
-  const cifras = bloquesCifra(3, { alto: 0.95, anchoMax: UTIL(0.78) * 0.42 })
-  const frases = bloquesFrase(2, { alto: 0.30, anchoMax: UTIL(0.78) * 0.86 })
+  const cifras = bloquesCifra(R.cifras, { alto: 0.95, anchoMax: UTIL(0.78) * 0.42 })
+  const frases = bloquesFrase(R.frases, { alto: 0.30, anchoMax: UTIL(0.78) * (R.margen - 0.02) })
   const pedido = bloquePedido({ alto: 0.34, anchoMax: UTIL(0.82) * 0.66 })
 
   // ---------------------------------------------------------------- 2 · MARCA
@@ -224,11 +288,10 @@ export function build(ctx) {
   // Va aca y no en tweens porque tiene que evaluarse en CADA submuestra del obturador: un movimiento
   // continuo escrito como tween se muestrea una vez por cuadro y sale a saltos justo donde el obturador
   // deberia barrerlo.
-  const capas = paralaje([
-    { grupo: cerca, vel: 0, largo: SEP * 16 },
-    { grupo: lejos, vel: 0.9, largo: SEP * 1.7 * 16, z0: 0 },
-  ])
-  const alSeek = juntar(vuelo.alSeek, capas, latido, (t) => {
+  // Las capas ya se armaron arriba, cuando se construyo el espacio: cuantas hay depende de la pagina,
+  // asi que la lista no puede estar escrita aca abajo con dos entradas fijas.
+  const mover = paralaje(capas)
+  const alSeek = juntar(vuelo.alSeek, mover, latido, (t) => {
     uDomo.uT.value = t
     motas.rotation.y = t * 0.02
     motas.position.z = camara.position.z

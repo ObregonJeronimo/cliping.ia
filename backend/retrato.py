@@ -554,12 +554,51 @@ def retrato_de(dst: str) -> dict:
     acento = _acento_espacial(a, pal.get("accent") or "")
     cont = _contenido(site, pm)
     img = _imagenes(site, dst)
+    # EL ACENTO DECLARADO NO ES LA UNICA FUENTE. `_acento_espacial` mide cuanta pagina cubre el color
+    # que el DOM llama "accent", y eso se equivoca cuando la marca usa varios: stripe.com —el sitio mas
+    # colorido de las doce capturas— daba `masa: False` porque su accent declarado no llega al 3%,
+    # mientras su paleta MEDIDA tiene un rosa con el 6% de la superficie. Se mira tambien el color
+    # cromatico de mas peso de la paleta: si una masa de color ocupa superficie, hay masa de color,
+    # se llame como se llame en el CSS.
+    # SE SUMA EL PESO CROMATICO, no se mira el color de mas peso. Una marca con un degradado —stripe.com
+    # es el caso— reparte su color entre cinco celdas de la cuantizacion y ninguna sola llega al
+    # umbral, aunque juntas cubran el 9% de la pagina. Mirando solo la primera, el sitio mas colorido
+    # de las doce capturas daba "sin masa de color".
+    #
+    # Y NO SE EXIGE LUMINANCIA. tailwindcss tiene un verdeazulado cubriendo el 8.2% con luminancia
+    # 0.02: es masa de color, solo que oscura. Excluirla por oscura confunde dos preguntas distintas
+    # —cuanto color hay, y a que luminancia se puede mostrar— y la segunda ya la resuelve
+    # `colorDePeso`, que lo aclara conservando el tono.
+    crom = [c for c in paleta if c.get("croma", 0) >= 0.25]
+    peso_crom = sum(c["peso"] for c in crom)
+    acento["pesoCromatico"] = round(peso_crom, 4)
+    acento["masaMedida"] = bool(peso_crom >= 0.05)
+    acento["colorDeMasa"] = crom[0]["hex"] if crom else ""
+    acento["masa"] = bool(acento["masa"] or acento["masaMedida"])
     rec = _recetas(dna, perfil, aire, cont, img, acento)
     afin = _afinidad(rec, dna, aire)
+
+    # ¿ESTA CAPTURA ES LA PAGINA, O ES UN MURO?
+    #
+    # No es una pregunta teorica: de las doce capturas del repo, DOS —despegar y El Corte Ingles— dan
+    # cero titulares, cero imagenes y cero peso cromatico. No son sitios sobrios: son muros de cookies
+    # que quedaron guardados como si fueran la pagina. `captura-check` ya vigila esto en el guard, pero
+    # el retrato es el primero que lo VE, porque es el unico que mira los pixeles y el DOM juntos.
+    #
+    # Callarlo seria peor que no medirlo: las recetas de un muro son perfectamente calculables —dan un
+    # sitio aireado, acromatico y lento— y producirian un video correcto sobre nada.
+    sospechas = []
+    if cont["titulares"] == 0 and cont["imagenes"] == 0:
+        sospechas.append("cero titulares y cero imagenes: la captura no parece la pagina")
+    if aire["vacio"] > 0.95 and cont["parrafos"] < 4:
+        sospechas.append(f"{aire['vacio']*100:.0f}% de la tira es fondo liso con {cont['parrafos']} parrafos")
+    if (perfil["bandas"] or 0) <= 1 and tam[1] > 2000:
+        sospechas.append("una sola banda en una tira larga: la pagina no cambia nunca")
 
     return {
         "v": 1,
         "url": pm.get("url") or site.get("url") or "",
+        "sospechas": sospechas,
         "marca": pm.get("brand") or "",
         "tira": {"ancho": tam[0], "alto": tam[1],
                  "razon": round(tam[1] / max(1, tam[0]), 2) if tam[0] else 0},
@@ -586,6 +625,8 @@ def _tabla(r: dict) -> str:
     """La salida por pantalla. Una tabla, no un veredicto: esto MIDE, no bloquea."""
     L = []
     L.append(f"RETRATO de {r.get('marca') or '(sin marca)'} — {r.get('url')}")
+    for sos in (r.get("sospechas") or []):
+        L.append(f"  !! LA CAPTURA ES SOSPECHOSA: {sos}")
     t = r["tira"]
     L.append(f"  tira {t['ancho']}x{t['alto']} (razon {t['razon']}:1)")
     p, ai = r["perfil"], r["aire"]

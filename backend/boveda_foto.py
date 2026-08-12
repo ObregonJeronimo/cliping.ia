@@ -110,7 +110,11 @@ async def fotos(url: str, plantilla: str, beats: list[float], aire: str | None, 
             for bt in beats:
                 t = bt * beat_seg
                 await pg.evaluate("(t) => window.URVID.frame(t)", t)
-                nom = os.path.join(salida_dir, f"{plantilla}-b{bt:g}.png")
+                # EL DOMINIO VA EN EL NOMBRE. Sin el, sacar la misma plantilla para dos sitios
+                # sobrescribe la primera tanda EN SILENCIO — y comparar dos marcas sobre la misma
+                # plantilla es justamente para lo que sirve esta herramienta desde que existe el
+                # retrato. Se perdio una tanda de tres sitios asi.
+                nom = os.path.join(salida_dir, f"{plantilla}--{motor._dominio(url)}-b{bt:g}.png")
                 await pg.locator("#acc").screenshot(path=nom)
                 hechas.append(nom)
             for e in errores[:5]:
