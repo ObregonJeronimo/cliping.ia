@@ -343,9 +343,17 @@ def captura_rancia(site) -> str:
 # mediana casi no se mueve en ningun caso (1.648 / 1.579 / 1.455) porque el grueso de ese numero NO es
 # compresion: son los bordes duros de la propia geometria cayendo sobre la reticula de 8x8. Lo que
 # mejora es el p95, que son los cuadros de mas movimiento — justo donde se ven los bloques.
-async def render(url: str, salida: str, hero: str | None = None, dur: int = 20,
-                 seed: int = 7, aire: str | None = None, recapturar: bool = False,
-                 bitrate: int = 12_000_000, forzar: bool = False, escena: str | None = None) -> str:
+# LA PREPARACION ES DE LOS DOS MOTORES, asi que vive en una funcion y no adentro de `render`.
+#
+# Bajar el sitio, decidir si la captura cacheada sirve, rehacer el modelo semantico, traducirlo a
+# DATOS, rechazar un muro anti-bot, emparejar los recortes con sus archivos locales y descartar los
+# placeholders borrosos: nada de eso depende de COMO se dibuja el video. `boveda.py` necesita
+# exactamente lo mismo, y la alternativa era copiar cien lineas — o sea copiar tambien los seis
+# defectos que estas lineas documentan haber pagado.
+#
+# Devuelve `(d, pm)`: los datos ya listos y el pagemodel, que hace falta para el viewport de la tira.
+async def preparar(url: str, dst: str, seed: int = 7, recapturar: bool = False,
+                   forzar: bool = False):
     dst = os.path.join(SALIDA, _dominio(url))
     pm_path = os.path.join(dst, "pagemodel.json")
     site_path = os.path.join(dst, "site.json")
@@ -455,6 +463,14 @@ async def render(url: str, salida: str, hero: str | None = None, dur: int = 20,
         d["datos"]["elementos"] = [e for e in d["datos"]["elementos"] if not e.get("_descartar")]
         print(f"  ({descartados} recorte/s descartado/s: son placeholders borrosos, no la foto real)")
 
+    return d, pm
+
+
+async def render(url: str, salida: str, hero: str | None = None, dur: int = 20,
+                 seed: int = 7, aire: str | None = None, recapturar: bool = False,
+                 bitrate: int = 12_000_000, forzar: bool = False, escena: str | None = None) -> str:
+    dst = os.path.join(SALIDA, _dominio(url))
+    d, pm = await preparar(url, dst, seed=seed, recapturar=recapturar, forzar=forzar)
     spec = {
         "W": 1080, "H": 1920, "fps": 30,
         # `dur` es el tope del arnes de grabacion; el largo REAL lo fija el guion y lo devuelve la
