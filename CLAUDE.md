@@ -27,7 +27,7 @@ justamente **saltea la postergación** construida para este caso. Un intento que
 gratis: le pide memoria a una máquina que ya no la tiene, y es lo que estamos tratando de no hacer.
 
 Con un juego abierto la cuenta real de esta máquina es ~2,4 GB disponibles y ~856 de piso: **entran
-42 de las 43 compuertas** corriéndolas de a una. La única que no es `director-editor-check` (1565 MB,
+42 de las 44 compuertas** corriéndolas de a una. La única que no es `director-editor-check` (1565 MB,
 7 min). Ese es el modo normal de trabajo mientras alguien juega, no un modo degradado.
 
 ### Antes de eso: el trabajo se dimensiona a la máquina, solo
@@ -195,16 +195,18 @@ investigarlos.
 
 ## Compuertas
 
-- **11 rápidas (~13 s), en cada cambio del motor:** `verificar.mjs`, `guion-check`, `encuadre-check`,
+- **12 rápidas (~17 s), en cada cambio del motor:** `verificar.mjs`, `guion-check`, `encuadre-check`,
   `adn-check`, `testimonios-check`, `tira-check` (la página del cliente no se deforma),
   `heroes-check` (un héroe no se ofrece si no tiene con qué), `hero-pedido-check` (si pediste un héroe
   y HABÍA LUGAR, la escena de héroe entra — `--hero X` era un sorteo), `placeholder-check` (el recorte
   que se muestra es la imagen del cliente, no su borrador) `captura-check` (no se construye un video
-  sobre un muro anti-bot o un error del CDN) y `eco-check` (la misma frase no sale en dos escenas).
-- **Guard completo (~15 min), sólo antes de pushear:** `npm run gates`. Tiene que dar **45 OK / 0 FAIL**.
+  sobre un muro anti-bot o un error del CDN), `eco-check` (la misma frase no sale en dos escenas) y
+  `boveda-check` (una plantilla de Bóveda cuenta los seis tiempos, en orden, y se arma también con una
+  página que no dio casi nada — ver `docs/BOVEDA.md`).
+- **Guard completo (~15 min), sólo antes de pushear:** `npm run gates`. Tiene que dar **46 OK / 0 FAIL**.
 
   **`npm run gates` ahora corre las compuertas DE A UNA** (`tools/gates-partido.mjs`), y eso no es una
-  versión reducida: son las mismas 43, en el mismo orden, leídas del mismo `gates:crudo`. Lo único que
+  versión reducida: son las mismas 44, en el mismo orden, leídas del mismo `gates:crudo`. Lo único que
   cambia es el agrupamiento — la versión encadenada las mete a todas en un proceso de npm, así que la
   memoria se acumula hasta la última y el pico llega a **3001 MB**. De a una el pico es el de la
   compuerta más cara, y el sistema recupera la memoria al cerrar cada proceso. Medido con un juego
@@ -217,7 +219,7 @@ investigarlos.
   advierte en otros tres lugares con otro nombre. Lo refutó una corrida real del 7/8/2026: cortó en
   `urvid1-test.mjs` —que no figuraba en la tabla— con el disponible cayendo de 3643 a 901 MB, o sea
   unos **2,7 GB**. Ahora **cada compuerta anota su costo al correr**, así que después de un guard
-  completo `npm run costo` tiene las 43 y el número deja de ser una deducción.
+  completo `npm run costo` tiene las 44 y el número deja de ser una deducción.
 
   **Y con la máquina ocupada ya no se muere entero: pospone la compuerta que no entra y sigue.** Antes
   una sola compuerta cara cruzándose con un juego se llevaba puestas las veinte que ya habían pasado —
@@ -371,7 +373,24 @@ Todo esto está probado, no razonado — y la prueba corre sola, es la primera d
 piso adaptativo, caída sostenida, pico que no debe disparar, caída crítica sin espera, muestreo roto que
 aborta, huérfanos, cerrojo, y el guard entero de punta a punta con una cadena falsa de un segundo.
 
-## Dónde vive el motor
+## Dónde vive el motor de escenas
 
 `render3d/demo/` (escenas, héroes, kit, guion) + `backend/motor.py` y `backend/render3d.py`.
 No es `src/urvid` (canvas 2D) ni `remotion/`.
+
+## Y dónde vive BÓVEDA, que es otro motor
+
+`render3d/boveda/` + `backend/boveda.py`. Comparte el arnés de grabación (`render3d.py`), la captura y
+el análisis de la página (`motor.preparar`), el kit de tipografía y color, y los once aires. **No
+comparte el guion**: allá se sortea una secuencia de escenas alrededor de un héroe, y acá cada plantilla
+es una pieza entera ya compuesta. Elegir otra plantilla da otro video con los mismos datos.
+
+Todo lo que hay que saber para escribir la plantilla trece está en `docs/BOVEDA.md`, incluida la lista
+de defectos que ya costaron caro. Dos que conviene saber antes de tocar una línea:
+
+- **`nivel(0)` es el CLARO y `nivel(1)` la TINTA.** Pedir `nivel(0.95)` para "casi blanco" devuelve
+  `#1f1c17`. Dos lámparas del motor eran negras por esto.
+- **`metal()` ya no usa `metalness: 1.0`.** Un metal PBR sin mapa de entorno no tiene componente difusa
+  y renderiza NEGRO por claro que sea su color base. El síntoma parece una escena mal iluminada, así que
+  se gastan arreglos en las luces antes de mirar el material.
+
