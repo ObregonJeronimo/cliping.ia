@@ -174,6 +174,81 @@ function construir(P, datos, aire, retrato) {
   return { r, textos, tl, escena, paginaEsc, camara }
 }
 
+// ---------------------------------------------------------------- 8 · alSeek contra la linea de tiempo
+//
+// LA FAMILIA DE DEFECTOS QUE MAS CARO SALIO EN ESTE MOTOR, y la unica que se puede cazar sola.
+//
+// `seek(t)` corre `tl.time(t)` PRIMERO y `alSeek(t)` DESPUES. Si `alSeek` ESCRIBE una propiedad que la
+// linea de tiempo tambien anima, la pisa — y el sintoma es que la animacion simplemente no ocurre. Sin
+// excepcion, sin aviso, sin nada raro en el cuadro: el objeto aparece quieto en su sitio final, que es
+// justo lo que la regla 2 del motor prohibe.
+//
+// Ya paso tres veces: `respirar` escribia en vez de sumar y anulaba la entrada y el giro de la pagina
+// en `atrio`; las nervaduras de `tectonica` se dibujaban fuera de cuadro; el domo se tueneaba por una
+// clave que el shader no lee. Ninguna dio error.
+//
+// COMO SE DETECTA sin saber nada de la plantilla: GSAP sabe que objetos son objetivo de un tween. Se
+// toma una foto de esos objetos justo despues de `tl.time(t)`, se llama a `alSeek(t)`, y se vuelve a
+// mirar. Si algo se movio MUCHO, `alSeek` no esta sumando un gesto: esta reescribiendo.
+//
+// El umbral tiene que dejar pasar lo legitimo. `respirar` suma hasta 0.15 de posicion y 0.06 de giro,
+// y esta bien que lo haga. Se cortan en 0.6 y 0.35: cuatro veces la respiracion mas amplia, y muy por
+// debajo de lo que significa reemplazar un valor.
+const EPS_POS = 0.6, EPS_ROT = 0.35
+
+// LA CAMARA ES LA EXCEPCION, y es la unica.
+//
+// Todos los vuelos tuenean `camara.position` para el eje principal y escriben los otros dos ejes en
+// `alSeek` — esa es la deriva, y es lo que hace que un vuelo no se lea como un riel. O sea que la
+// camara siempre "pisa la linea de tiempo", por diseno. Sin excluirla, el detector marca las dieciocho
+// plantillas y deja de servir.
+//
+// Se excluye por IDENTIDAD y no por nombre: se le pasan los objetos concretos de esta construccion.
+function pisadas(P, r, tl, beat, durReal, camara) {
+  const exentos = new Set(camara ? [camara.position, camara.rotation, camara.scale] : [])
+  // SE MIRA EJE POR EJE, no el objeto entero — y la primera version miraba el objeto entero.
+  //
+  // Un reparto perfectamente valido es que la linea de tiempo anime `rotation.x` y `rotation.z` de un
+  // objeto y `alSeek` maneje `rotation.y`. Eso es dos gestos sobre ejes distintos, no una pelea: los
+  // anillos de `nucleo` giran sobre su eje mientras el pedido los inclina. Comparando el maximo de los
+  // tres ejes, el detector marcaba eso como si fuera un defecto — y un detector que llama defecto al
+  // comportamiento correcto hace perder mas tiempo que no tenerlo, que es una leccion que este motor
+  // ya pago con la sonda.
+  //
+  // `tw.vars` trae las claves que ese tween anima, asi que se sabe exactamente cuales defender.
+  const claves = new Map()
+  for (const tw of tl.getChildren(true, true, false)) {
+    const ks = Object.keys(tw.vars || {}).filter(k => k === 'x' || k === 'y' || k === 'z')
+    if (!ks.length) continue
+    for (const o of (tw.targets ? tw.targets() : [])) {
+      if (exentos.has(o)) continue
+      if (!o || typeof o.x !== 'number') continue
+      if (!claves.has(o)) claves.set(o, new Set())
+      for (const k of ks) claves.get(o).add(k)
+    }
+  }
+  if (!claves.size) return []
+  tl.time(Math.min(b(beat), durReal), false)
+  const antes = new Map()
+  for (const [o, ks] of claves) {
+    const f = {}
+    for (const k of ks) f[k] = o[k]
+    antes.set(o, f)
+  }
+  try { r.alSeek(b(beat)) } catch { return [] }
+  const malos = []
+  for (const [o, ks] of claves) {
+    const a0 = antes.get(o)
+    // Un objeto de rotacion tiene `order`; uno de posicion, no. Es la unica forma de saber contra que
+    // umbral compararlo sin que la plantilla lo declare.
+    const esRot = typeof o.order === 'string'
+    let d = 0
+    for (const k of ks) d = Math.max(d, Math.abs(o[k] - a0[k]))
+    if (d > (esRot ? EPS_ROT : EPS_POS)) malos.push({ esRot, d, ejes: [...ks].join('') })
+  }
+  return malos
+}
+
 // El aire rota por plantilla en vez de correr los once por cada una: once aires por doce plantillas
 // por dos juegos de datos son 264 construcciones y esta compuerta tiene que costar segundos. Rotando,
 // cada aire se ejerce igual y el costo es de 24.
@@ -202,6 +277,24 @@ PLANTILLAS.forEach((P, i) => {
 
   // Y con lo minimo. Aca lo unico que se exige es que NO EXPLOTE y que la marca se vea: todo lo demas
   // puede faltar legitimamente, y componer sin ello es el comportamiento correcto.
+  // Y QUE `alSeek` NO PISE LA LINEA DE TIEMPO. Se mira en los seis tiempos, porque un `alSeek` puede
+  // ser inocente en el beat 0 —cuando ningun tween arranco todavia— y estar reescribiendo en el 20.
+  if (typeof r.alSeek === 'function') {
+    for (const nombre of TIEMPOS) {
+      const bt = (P.meta.tiempos || {})[nombre] || 0
+      const malos = pisadas(P, r, full.tl, bt, r.dur || b(P.meta.beats), full.camara)
+      if (malos.length) {
+        const p = malos.filter(m => !m.esRot).length, rr = malos.length - p
+        falla(id, 'alSeek() PISA la linea de tiempo en el tiempo "' + nombre + '" (beat ' + bt + '): '
+          + p + ' objeto(s) de posicion y ' + rr + ' de rotacion se mueven despues de tl.time(), el peor '
+          + malos.reduce((m, x) => Math.max(m, x.d), 0).toFixed(2) + ' de golpe, sobre el eje ' + malos[0].ejes
+          + '. Si la linea de tiempo anima ese eje, el gesto continuo tiene que SUMAR (+=); si no lo anima nadie, '
+          + 'tiene que asignar sobre una base guardada — sumar sin tween que restablezca acumula en cada submuestra.')
+        break
+      }
+    }
+  }
+
   // Y CON EL RETRATO EN LOS EXTREMOS. Es una comprobacion distinta de la de datos minimos y no la
   // reemplaza: alli falta CONTENIDO, aca sobra PERSONALIDAD. Una plantilla que multiplica su recorrido
   // por la velocidad medida y no acota el resultado se rompe con 1.45 y con nada mas.
@@ -241,7 +334,7 @@ PLANTILLAS.forEach((P, i) => {
   }
 })
 
-// ---------------------------------------------------------------- 8 · elegibilidad
+// ---------------------------------------------------------------- 9 · elegibilidad
 //
 // Con material completo tienen que estar TODAS: una plantilla que se descarta con la pagina mas rica
 // posible no se puede elegir nunca, y eso es un error de `necesita`, no una decision.

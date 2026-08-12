@@ -90,7 +90,7 @@ export function build(ctx) {
     const nodo = new THREE.Mesh(new THREE.SphereGeometry(0.075 + i * 0.012, 12, 10), luz(LOOK.acento2 || LOOK.acento, 1.7))
     g.add(nodo)
     gSis.add(g)
-    anillos.push({ g, nodo, r, v: VEL[i], fase: i * 1.1 })
+    anillos.push({ g, nodo, r, v: VEL[i], fase: i * 1.1, y0: g.rotation.y })
   }
 
   // ---------------------------------------------------------------- los bloques
@@ -201,10 +201,21 @@ export function build(ctx) {
   const alSeek = juntar(vuelo.alSeek, latido, (t) => {
     uDomo.uT.value = t
     for (const a of anillos) {
-      // El giro del anillo se SUMA a lo que dejo la linea de tiempo, por lo mismo que documenta
-      // `respirar`: en el ultimo tiempo hay tweens sobre `rotation.x` y `rotation.z`, y escribir en vez
-      // de sumar los anularia justo en el remate de la pieza.
-      a.g.rotation.y += t * a.v
+      // SE ASIGNA SOBRE UNA BASE GUARDADA, no se suma. Sumar parecia lo correcto —es lo que documenta
+      // `respirar`— y aca es un defecto, porque las dos situaciones no son la misma:
+      //
+      //   `respirar` suma un OFFSET a una propiedad que la linea de tiempo vuelve a escribir en cada
+      //   seek. El tween restablece el valor, la suma lo desplaza, y no se acumula nada.
+      //
+      //   Aca NO hay tween sobre `rotation.y` —los del pedido son sobre `x` y `z`—, asi que nadie lo
+      //   restablece: cada llamada sumaba encima de la anterior. Con cuatro submuestras de obturador
+      //   por cuadro y 594 cuadros, los anillos giraban varias veces mas rapido de lo escrito, y la
+      //   velocidad dependia de cuantas veces se hubiera llamado a `alSeek` — o sea que el motor
+      //   dejaba de ser determinista.
+      //
+      // La regla, entonces, no es "sumar siempre" sino: SUMAR si la linea de tiempo escribe esa misma
+      // propiedad, ASIGNAR sobre una base si no la escribe nadie. Lo caza `boveda-check`.
+      a.g.rotation.y = a.y0 + t * a.v
       const ang = t * a.v * 1.7 + a.fase
       a.nodo.position.set(Math.cos(ang) * a.r, Math.sin(ang) * a.r, 0)
     }
