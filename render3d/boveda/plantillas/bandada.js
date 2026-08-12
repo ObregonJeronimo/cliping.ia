@@ -61,7 +61,9 @@ export function build(ctx) {
   const motas = polvo(escena, 1200, 28)
 
   // ---------------------------------------------------------------- el vuelo vertical
-  const SUBIDA = mundoH * 4.2
+  // El recorrido se estira o se acorta con la ENERGIA medida de la pagina: mismo tiempo, mas o menos
+  // camino, que es literalmente la velocidad. Sin retrato, `R.velocidad` vale 1 y no cambia nada.
+  const SUBIDA = mundoH * 4.2 * R.velocidad
   const DERIVA = 0.55
   const est = { k: 0 }
   tl.fromTo(est, { k: 0 }, { k: 1, duration: b(meta.beats), ease: 'none' }, 0)

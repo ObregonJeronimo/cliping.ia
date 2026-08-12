@@ -158,7 +158,9 @@ export function build(ctx) {
   // recta. V_MIN es 0.36 y no 0: la camara llega al final a un tercio de su velocidad, que se lee como
   // "se acomodo", no como "se detuvo".
   const BEATS = meta.beats
-  const LARGO = distBase * 3.2
+  // El recorrido se estira o se acorta con la ENERGIA medida de la pagina: mismo tiempo, mas o menos
+  // camino, que es literalmente la velocidad. Sin retrato, `R.velocidad` vale 1 y no cambia nada.
+  const LARGO = distBase * 3.2 * R.velocidad
   const Z0 = distBase * 0.92
   const U_FRENO = meta.tiempos.pedido / BEATS
   const V_MIN = 0.36

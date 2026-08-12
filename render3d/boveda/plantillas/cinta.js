@@ -62,7 +62,9 @@ export function build(ctx) {
   // Un vuelo propio y no uno de `movimiento.js`: los tres de alli son en linea, en circulo o de
   // costado, y esta plantilla necesita SEGUIR UNA CURVA. Cumple las mismas reglas —no para nunca,
   // deriva sin repetirse— pero la trayectoria sale de la geometria, que es justamente su idea.
-  const LARGO = distBase * 5.2
+  // El recorrido se estira o se acorta con la ENERGIA medida de la pagina: mismo tiempo, mas o menos
+  // camino, que es literalmente la velocidad. Sin retrato, `R.velocidad` vale 1 y no cambia nada.
+  const LARGO = distBase * 5.2 * R.velocidad
   const curva = (u) => new THREE.Vector3(
     Math.sin(u * Math.PI * 2.1) * mundoW * 0.95,
     Math.sin(u * Math.PI * 1.35 + 0.6) * mundoH * 0.42 - u * 0.6,
