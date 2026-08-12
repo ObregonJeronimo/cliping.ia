@@ -152,6 +152,8 @@ export function build(ctx) {
   })
   uso.cifras = cifras.length
 
+  const gFrase = new THREE.Group()
+  escena.add(gFrase)
   const frases = repartirFrases(1).filter(Boolean)
   let fraseM = null
   if (frases.length) {
@@ -160,7 +162,16 @@ export function build(ctx) {
     fraseM.position.set(0, -2.6, 0)
     const cf = cama(fraseM.userData.ancho, fraseM.userData.alto, { opacidad: 0.86, color: nivel(0.02) })
     cf.position.copy(fraseM.position)
-    escena.add(cf); escena.add(fraseM)
+    // VAN EN SU PROPIO GRUPO, y esto es un defecto que costo caro y que es facil de repetir.
+    //
+    // Estaban colgados de `escena` directo, mientras el resto del tiempo de RAZONES cuelga de `gRaz` y
+    // se apaga con el. O sea que la CAMA —una placa blanca de mundoW * 0.8— quedaba encendida durante
+    // los 36 beats: en las fotos aparece una losa blanca fija en el medio de todos los cuadros, incluso
+    // en los tiempos donde no hay ninguna frase que sostener.
+    //
+    // La regla que queda: en Boveda, todo lo que pertenece a un tiempo cuelga del grupo de ese tiempo.
+    // Una cama huerfana no se ve como un error de codigo: se ve como una decision de diseño horrible.
+    gFrase.add(cf); gFrase.add(fraseM)
     uso.frases = 1
   }
 
@@ -255,6 +266,8 @@ export function build(ctx) {
   // 5 · RAZONES
   gRaz.visible = false
   tl.set(gRaz, { visible: true }, b(24))
+  gFrase.visible = false
+  tl.set(gFrase, { visible: true }, b(24))
   filasCifra.forEach((f, i) => {
     enc(f.val, 24 + i * 1.5, 0.6, 2)
     enc(f.et, 24.3 + i * 1.5, 0.6)
@@ -263,6 +276,7 @@ export function build(ctx) {
   filasCifra.forEach((f, i) => { apag(f.val, 29.2 + i * 0.12); apag(f.et, 29.3 + i * 0.12) })
   if (fraseM) fraseM.userData.borrar(tl, 29.2)
   tl.set(gRaz, { visible: false }, b(30.2))
+  tl.set(gFrase, { visible: false }, b(30.2))
 
   // 6 · PEDIDO
   gCTA.visible = false

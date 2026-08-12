@@ -90,20 +90,35 @@ const r = P.build({
 const dur = r.dur || b(P.meta.beats)
 
 // ---- que hay en el grafo
-const textos = [], otras = []
+const textos = [], imagenes = [], otras = []
 for (const raiz of [escena, paginaEsc]) {
   raiz.traverse(o => {
     if (!o.isMesh) return
     const u = o.material && !Array.isArray(o.material) && o.material.uniforms
     if (u && u.uProg && u.map) { o.userData.__que = 'texto#' + textos.length; textos.push(o) }
+    // LA PAGINA DEL CLIENTE CUENTA COMO CONTENIDO, y no contarla era un defecto del instrumento.
+    //
+    // La primera version solo miraba mallas de texto, asi que en el tiempo de PRUEBA —ocho beats en los
+    // que se muestra la pagina y a proposito no hay una sola letra— informaba "encendido 0, legible 0" y
+    // remataba con "MAS DE LA MITAD DE LA PIEZA ES MUDA". La pieza no estaba muda: la sonda era ciega
+    // justo al unico tiempo que ninguna plantilla generica puede fingir.
+    else if (o.userData.tipoImagen === 'recorte') { o.userData.__que = 'pagina#' + imagenes.length; imagenes.push(o) }
     else otras.push(o)
   })
 }
+
+// VISIBLE DE VERDAD: `visible` no se hereda como una bandera que se pueda leer en la malla. Un objeto
+// cuyo grupo padre esta apagado se dibuja igual de invisible, y la sonda lo contaba como encendido —
+// por eso marcaba "encendido pero NO se ve" en los beats 29 a 33 de `atrio`, que es exactamente cuando
+// las cifras YA SALIERON y `sale()` las apago. Eso no es un defecto de la plantilla: es la salida
+// funcionando. Un instrumento que llama defecto al comportamiento correcto hace perder mas tiempo que
+// no tenerlo.
+const seVe = (o) => { for (let n = o; n; n = n.parent) if (!n.visible) return false; return true }
 console.log('\nSONDA — plantilla "%s" · aire %s · %s beats (%.1f s a %d bpm)',
   P.meta.id, nomAire, P.meta.beats, dur, Math.round(60 / BEAT))
 console.log('  datos: "%s" · claim de %d caracteres · %d frases · %d cifras',
   DATOS.marca, String(DATOS.claim || '').length, (DATOS.frases || []).length, (DATOS.datos || []).length)
-console.log('  mallas de TEXTO: %d   ·   otras mallas: %d', textos.length, otras.length)
+console.log('  mallas de TEXTO: %d   ·   de PAGINA: %d   ·   otras: %d', textos.length, imagenes.length, otras.length)
 if (!textos.length) console.log('  >>> NO HAY UNA SOLA MALLA DE TEXTO. La pieza va a salir muda.')
 
 // ---- se muestrea la timeline y se mira, en cada beat, que texto esta ENCENDIDO y DELANTE
@@ -115,10 +130,11 @@ for (let bt = 0; bt <= P.meta.beats; bt += 1) {
   tl.time(Math.min(b(bt), dur), false)
   if (r.alSeek) r.alSeek(b(bt))
   escena.updateMatrixWorld(true); paginaEsc.updateMatrixWorld(true); camara.updateMatrixWorld(true)
-  let vivos = 0, delante = 0, legibles = 0
+  let vivos = 0, delante = 0, legibles = 0, pag = 0
   for (const o of textos) {
     const u = o.material.uniforms
     if (!(u.uProg.value > 0.02)) continue
+    if (!seVe(o)) continue
     vivos++
     o.getWorldPosition(_v)
     const d = _v.clone().sub(camara.position)
@@ -134,7 +150,16 @@ for (let bt = 0; bt <= P.meta.beats; bt += 1) {
       else if (bt === MUESTRA) fuera.push(o.userData.__que + ' ndc(' + _v.x.toFixed(2) + ',' + _v.y.toFixed(2) + ') dist ' + dist.toFixed(1))
     }
   }
-  filas.push({ bt, vivos, delante, legibles })
+  for (const o of imagenes) {
+    if (!seVe(o) || o.scale.x < 0.05) continue
+    o.getWorldPosition(_v)
+    const d = _v.clone().sub(camara.position)
+    if (d.z >= -0.5) continue
+    const dist = d.length()
+    _v.project(camara)
+    if (Math.abs(_v.x) < 1.05 && Math.abs(_v.y) < 1.05 && dist > distBase * 0.2 && dist < distBase * 3.2) pag++
+  }
+  filas.push({ bt, vivos, delante, legibles, pag })
 }
 // ---- CUANTO OCUPA CADA TEXTO EN EL CUADRO. Es la pregunta que faltaba: un texto puede estar
 // encendido, delante y dentro del cuadro, y aun asi ser ilegible por chico. Se proyectan las cuatro
@@ -162,7 +187,7 @@ function enPantalla(o, cam) {
   console.log('    camara en (' + camara.position.x.toFixed(1) + ', ' + camara.position.y.toFixed(1) + ', ' + camara.position.z.toFixed(1) + ')  distBase ' + distBase.toFixed(1))
   let n = 0
   for (const o of textos) {
-    if (!(o.material.uniforms.uProg.value > 0.02)) continue
+    if (!(o.material.uniforms.uProg.value > 0.02) || !seVe(o)) continue
     const m = enPantalla(o, camara)
     n++
     console.log('    ' + o.userData.__que.padEnd(9) + ' mundo ' + String(m.mundo).slice(0, 5).padStart(5)
@@ -172,14 +197,15 @@ function enPantalla(o, cam) {
   if (!n) console.log('    (ninguno encendido en ese beat)')
 }
 
-console.log('\n  beat  encendidos  delante  a distancia de lectura')
+console.log('\n  beat  encendidos  delante  legibles  pagina')
 let mudos = 0
 for (const f of filas) {
   const alarma = f.vivos > 0 && f.legibles === 0 ? '   <-- encendido pero NO se ve' : ''
-  if (f.legibles === 0) mudos++
-  console.log('   %s %s %s %s%s',
+  // MUDO = ni una letra NI la pagina. El tiempo de PRUEBA no lleva texto y no por eso esta vacio.
+  if (f.legibles === 0 && f.pag === 0) mudos++
+  console.log('   %s %s %s %s %s%s',
     String(f.bt).padStart(4), String(f.vivos).padStart(9), String(f.delante).padStart(8),
-    String(f.legibles).padStart(10), alarma)
+    String(f.legibles).padStart(8), String(f.pag).padStart(6), alarma)
 }
 const pct = Math.round(100 * mudos / filas.length)
 console.log('\n  beats SIN un solo texto legible: %d de %d (%d%%)', mudos, filas.length, pct)
