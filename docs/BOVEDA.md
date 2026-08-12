@@ -20,8 +20,8 @@ Desde la web: `start.bat` → **Bóveda IA** en el menú lateral.
 ## Los seis tiempos — el contrato
 
 Toda plantilla cuenta **lo mismo, en el mismo orden**. No es una convención estética: es lo que hace que
-doce piezas distintas le sirvan a la misma marca. El espectador ve doce videos; el cliente ve la misma
-historia contada de doce maneras.
+dieciocho piezas distintas le sirvan a la misma marca. El espectador ve dieciocho videos; el cliente ve
+la misma historia contada de dieciocho maneras.
 
 | # | tiempo | qué entra |
 |---|---|---|
@@ -119,7 +119,7 @@ una idea adentro.
 4. Pedí los bloques a `bloques.js` y colocalos contra `zEn` / `xEn` / `puntoEn`, **nunca a ojo**.
 5. Corré `node tools/boveda-check.mjs` y `node tools/boveda-sonda.mjs <id>`. Después, las fotos.
 
-## Las doce
+## Las dieciocho
 
 | id | familia | beats | espacio · vuelo |
 |---|---|---|---|
@@ -135,6 +135,12 @@ una idea adentro.
 | `cardumen` | multitud | 40 | 420 instancias que se abren · avance |
 | `cinta` | recorrido | 40 | banda que serpentea · vuelo sobre curva |
 | `bandada` | energia | 34 | cascada cayendo · vuelo vertical **en contra** |
+| `escalera` | arquitectura | 38 | escalinata monumental · ascenso diagonal |
+| `telar` | trama | 38 | cables tensos cruzados · avance que abre la trama |
+| `marea` | atmosfera | 38 | plano líquido que ondula · vuelo al ras |
+| `prisma` | luz | 38 | haz que se abre en bandas · órbita que sigue el abanico |
+| `archivo` | objeto | 38 | cajones que se extienden solos · desliz lateral |
+| `torre` | escala | 38 | losas apiladas girando · espiral ascendente |
 
 Que dos usen el mismo vuelo y se vean distintas es la prueba de que **el vuelo no es la plantilla**:
 `monolito` y `nucleo` son las dos órbitas y en una el objeto es sólido y la cámara lo rodea, en la otra
