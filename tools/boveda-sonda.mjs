@@ -58,6 +58,16 @@ configurarDatos(DATOS)
 reiniciarReparto(); reiniciarRecortes()
 
 const { porId, PLANTILLAS } = await import(pathToFileURL(join(BOV, 'index.js')).href)
+const { recetasDe } = await import(pathToFileURL(join(BOV, 'recetas.js')).href)
+// EL MISMO RETRATO QUE VE EL VIDEO. La sonda ya aprendio esta leccion una vez: medía con ANTHEM
+// mientras las fotos se sacaban con basecamp, y las dos verdades eran sobre piezas distintas. Con las
+// recetas pasa igual — sin el retrato, la sonda mediria una pieza compuesta con los valores neutros.
+let RETRATO = null
+try {
+  const fr = join(RAIZ, 'tools', 'out', 'motor', cual, 'retrato.json')
+  if (existsSync(fr)) RETRATO = JSON.parse(readFileSync(fr, 'utf8'))
+  else console.log('  (sin retrato de ' + cual + ': se mide con los valores neutros)')
+} catch { /* neutros, y ya se aviso */ }
 const P = porId(idP)
 if (!P) { console.error('no existe: ' + idP + '. Hay: ' + PLANTILLAS.map(p => p.meta.id).join(', ')); process.exit(2) }
 
@@ -84,6 +94,7 @@ datosEls.forEach((e, i) => texturas.set(e.url, tex(600 + i * 40, 420)))
 const r = P.build({
   THREE, gsap, escena, pagina: paginaEsc, camara, tl, W, H, mundoW, mundoH, distBase,
   BEAT, b, rnd, spec: { W, H }, texturas, datosEls,
+  retrato: RETRATO, recetas: recetasDe(RETRATO),
   bloom: { strength: 0.55 }, pelicula: { uFlash: { value: 0 } },
   rig: { scene: escena, escenaPagina: paginaEsc, camera: camara, tl },
 }) || {}

@@ -64,6 +64,7 @@ const THREE = await import(pathToFileURL(join(RAIZ, 'node_modules', 'three', 'bu
 const { configurar, BEAT, b, reiniciarRecortes } = await import(pathToFileURL(join(DEMO, 'kit.js')).href)
 const { configurarDatos, ANTHEM, reiniciarReparto } = await import(pathToFileURL(join(DEMO, 'datos.js')).href)
 const { PLANTILLAS, TIEMPOS, elegibles } = await import(pathToFileURL(join(BOV, 'index.js')).href)
+const { recetasDe } = await import(pathToFileURL(join(BOV, 'recetas.js')).href)
 
 const fallos = []
 const falla = (id, txt) => fallos.push(id + ': ' + txt)
@@ -124,7 +125,24 @@ const MINIMO = { marca: 'X', claim: '', frases: [], datos: [], cta: '', dominio:
 const W = 1080, H = 1920, mundoH = 10, mundoW = mundoH * (W / H), fov = 32
 const distBase = (mundoH / 2) / Math.tan((fov / 2) * Math.PI / 180)
 
-function construir(P, datos, aire) {
+// UN RETRATO EXTREMO, hecho a mano y a proposito. No es el de una pagina real: es el de la pagina mas
+// incomoda que el motor puede recibir, con TODAS las recetas en un extremo del rango a la vez.
+//
+// Ninguna pagina real va a dar esto —un sitio con la camara al maximo, cuatro capas, todo redondeado,
+// margen al minimo y dos cifras es una combinacion improbable—, y esa es justamente la gracia: si una
+// plantilla sobrevive a los extremos simultaneos, sobrevive a cualquier punto interior.
+const EXTREMO = {
+  recetas: {
+    velocidadCamara: 1.45, capas: 4, dureza: 0.0, margenTexto: 0.74, beatsSugeridos: 44,
+    cifrasAPedir: 4, frasesAPedir: 3, acentoComoMasa: true, pruebaGrande: false,
+    movimientos: 6, sistematico: true, formalidad: 0.05, calidez: 0.95,
+  },
+  aire: { vacio: 0.05 },
+  paleta: [{ hex: '#123456', peso: 0.4, croma: 0.75, lum: 0.08 },
+           { hex: '#9a9a9a', peso: 0.2, croma: 0.0, lum: 0.32 }],
+}
+
+function construir(P, datos, aire, retrato) {
   configurar(aire, 5)
   configurarDatos(datos)
   reiniciarReparto(); reiniciarRecortes()
@@ -142,6 +160,7 @@ function construir(P, datos, aire) {
   const r = P.build({
     THREE, gsap, escena, pagina: paginaEsc, camara, tl, W, H, mundoW, mundoH, distBase,
     BEAT, b, rnd, spec: { W, H }, texturas, datosEls,
+    retrato: retrato || null, recetas: recetasDe(retrato),
     bloom: { strength: 0.55 }, pelicula: { uFlash: { value: 0 } },
     rig: { scene: escena, escenaPagina: paginaEsc, camera: camara, tl },
   }) || {}
@@ -183,6 +202,22 @@ PLANTILLAS.forEach((P, i) => {
 
   // Y con lo minimo. Aca lo unico que se exige es que NO EXPLOTE y que la marca se vea: todo lo demas
   // puede faltar legitimamente, y componer sin ello es el comportamiento correcto.
+  // Y CON EL RETRATO EN LOS EXTREMOS. Es una comprobacion distinta de la de datos minimos y no la
+  // reemplaza: alli falta CONTENIDO, aca sobra PERSONALIDAD. Una plantilla que multiplica su recorrido
+  // por la velocidad medida y no acota el resultado se rompe con 1.45 y con nada mas.
+  try {
+    const ext = construir(P, DATOS, aire, EXTREMO)
+    if (ext.textos < 4) falla(id, 'con el retrato en los extremos quedan solo ' + ext.textos + ' mallas de texto')
+    if (typeof ext.r.alSeek === 'function') {
+      ext.tl.time(Math.min(b(P.meta.beats * 0.5), ext.r.dur || 1), false)
+      ext.r.alSeek(b(P.meta.beats * 0.5))
+    }
+  } catch (e) {
+    falla(id, 'EXPLOTA con el retrato en los extremos (velocidad 1.45, 4 capas, dureza 0, margen 0.74): '
+      + String(e && e.message || e).slice(0, 160))
+    return
+  }
+
   let min
   try { min = construir(P, MINIMO, aire) } catch (e) {
     falla(id, 'EXPLOTA con datos minimos (sin claim, sin cifras, sin frases, sin CTA): ' + String(e && e.message || e).slice(0, 160))
@@ -225,4 +260,4 @@ if (fallos.length) {
   for (const f of fallos) console.log('  - ' + f)
   process.exit(1)
 }
-console.log('GATE BOVEDA OK (' + PLANTILLAS.length + ' plantillas · ' + TIEMPOS.length + ' tiempos · datos completos y minimos)')
+console.log('GATE BOVEDA OK (' + PLANTILLAS.length + ' plantillas · ' + TIEMPOS.length + ' tiempos · datos completos, minimos y retrato en los extremos)')

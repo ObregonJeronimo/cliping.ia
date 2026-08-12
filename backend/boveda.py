@@ -130,6 +130,29 @@ async def render(url: str, salida: str, plantilla: str = "", dur: int = 0, seed:
         spec["tira"] = "/assets/tira.png"
         spec["tiraViewport"] = (pm.get("_tira") or {}).get("viewport", 1560)
 
+    # EL RETRATO — lo que separa "una plantilla 3D" de "una plantilla 3D DE ESTA MARCA".
+    #
+    # Mide la tira, el DOM y los recortes, y devuelve recetas: velocidad de camara, capas de paralaje,
+    # dureza de las aristas, margen del texto, cuantas cifras pedir. Cuesta segundos de CPU sobre
+    # imagenes que ya estan en disco, asi que se recalcula siempre en vez de cachearse: es la misma
+    # decision que toma `preparar` con el pagemodel, y por la misma razon — un arreglo de la medicion
+    # que no se ve en el video hasta acordarse de pasar una bandera es un arreglo que no existe.
+    #
+    # SI FALLA, LA PIEZA SE CONSTRUYE IGUAL. `recetasDe(null)` devuelve los valores neutros, que son
+    # exactamente con los que se compusieron las doce primeras plantillas. Un retrato roto tiene que
+    # costar personalidad, no el video.
+    try:
+        import retrato as _retrato
+        spec["retrato"] = _retrato.escribir(dst)
+        _rec = spec["retrato"]["recetas"]
+        print(f"  retrato: velocidad {_rec['velocidadCamara']} · {_rec['capas']} capas · dureza "
+              f"{_rec['dureza']} · margen {_rec['margenTexto']} · {_rec['movimientos']} movimientos"
+              + ("  · el acento da para masa" if _rec["acentoComoMasa"] else "  · el acento va en filetes"))
+        _af = spec["retrato"]["afinidad"][:3]
+        print("  familias mas afines: " + ", ".join(f"{x['familia']} {x['score']:.2f}" for x in _af))
+    except Exception as e:
+        print(f"  sin retrato ({str(e)[:120]}) — se compone con los valores neutros")
+
     import render3d
     print(f"boveda: plantilla \"{pid}\" ({meta.get('nombre','')}) · aire {spec['aire']} · semilla {seed}")
     await render3d.grabar_mp4(spec, salida, raiz_assets=dst, gpu=True, bitrate=bitrate, log=print)

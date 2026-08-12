@@ -13,6 +13,7 @@
 import * as THREE from 'three'
 import { Rig } from './nucleo.js'
 import { PLANTILLAS, porId } from './index.js'
+import { recetasDe } from './recetas.js'
 import { configurar, BEAT, b } from '../demo/kit.js'
 import { configurarDatos, reiniciarReparto } from '../demo/datos.js'
 import { personalizar } from '../demo/adn.js'
@@ -109,6 +110,16 @@ window.URVID = {
       datosEls: (spec.datos && spec.datos.elementos) || [],
       bloom: rig.bloom,
       pelicula: rig.uPelicula,
+      // EL RETRATO DE LA PAGINA — lo que `backend/retrato.py` midio sobre la tira, el DOM y los
+      // recortes. Es lo que hace que dos sitios distintos no produzcan el mismo espacio.
+      //
+      // Va por `recetasDe()` y NO crudo: una plantilla que lea `retrato.recetas.velocidadCamara` a
+      // pelo se rompe el dia que falte el retrato, y va a faltar — una captura vieja no lo tiene, y la
+      // sonda y la compuerta construyen sin el a proposito. `recetasDe` devuelve el mismo juego de
+      // claves siempre, con valores NEUTROS cuando no hay medicion. Neutro no es inventado: es "no se
+      // midio, compone como antes".
+      retrato: spec.retrato || null,
+      recetas: recetasDe(spec.retrato),
     }
 
     const r = (await P.build(ctx)) || {}

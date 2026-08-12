@@ -42,6 +42,15 @@ async def fotos(url: str, plantilla: str, beats: list[float], aire: str | None, 
         # UNA muestra: el obturador cuadruplica el costo y para juzgar composicion no aporta nada.
         "obturador": {"angulo": 190, "muestras": 1},
     }
+    # El mismo retrato que usa el render de verdad. Sin esto la foto compondria con los valores
+    # neutros y mostraria una pieza que el video no produce — un instrumento que mide otro caso no es
+    # un instrumento, que es la leccion que ya costo una sonda entera.
+    try:
+        import retrato as _retrato
+        spec["retrato"] = _retrato.escribir(dst)
+    except Exception as e:
+        print(f"  (sin retrato: {str(e)[:80]} — se compone con los neutros)")
+
     tira = os.path.join(dst, "tira.png")
     if os.path.exists(tira):
         spec["tira"] = "/assets/tira.png"

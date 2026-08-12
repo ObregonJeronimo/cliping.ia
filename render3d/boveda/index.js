@@ -52,10 +52,16 @@ import * as eclipse from './plantillas/eclipse.js'
 import * as cardumen from './plantillas/cardumen.js'
 import * as cinta from './plantillas/cinta.js'
 import * as bandada from './plantillas/bandada.js'
+import * as escalera from './plantillas/escalera.js'
+import * as telar from './plantillas/telar.js'
+import * as marea from './plantillas/marea.js'
+import * as prisma from './plantillas/prisma.js'
+import * as archivo from './plantillas/archivo.js'
+import * as torre from './plantillas/torre.js'
 
 // EL ORDEN ES EL DE PRESENTACION en el estudio, y no es alfabetico: adelante van las que muestran la
 // pagina del cliente como objeto protagonico, que es lo que ninguna plantilla generica puede fingir.
-export const PLANTILLAS = [atrio, reticula, pasillo, vitral, deriva, tectonica, monolito, nucleo, eclipse, cardumen, cinta, bandada]
+export const PLANTILLAS = [atrio, reticula, pasillo, vitral, deriva, tectonica, monolito, nucleo, eclipse, cardumen, cinta, bandada, escalera, telar, marea, prisma, archivo, torre]
 
 export const porId = (id) => PLANTILLAS.find(p => p.meta && p.meta.id === id) || null
 
