@@ -29,7 +29,10 @@
 //   7. QUE HAYA TEXTO. Una plantilla que construye sin una sola malla de texto sale muda, y eso ya
 //      paso tres veces en este motor: el domo pintando ultimo, el bloom del aire y `repartirFrases`
 //      con el parametro equivocado. Ninguna de las tres dio error.
-//   8. QUE `necesita` SEA VOCABULARIO CONOCIDO. Una palabra mal escrita en `necesita` hace que
+//   8. QUE `alSeek` NO PISE LA LINEA DE TIEMPO. Es la comprobacion que mas defectos encontro y la unica
+//      que se puede hacer sin saber nada de la plantilla: si `alSeek` escribe una clave que un tween
+//      anima, la animacion no ocurre — sin excepcion y sin aviso.
+//   9. QUE `necesita` SEA VOCABULARIO CONOCIDO. Una palabra mal escrita en `necesita` hace que
 //      `elegibles` la descarte siempre, y la plantilla desaparece del estudio sin que nadie lo note.
 //
 // LO QUE NO COMPRUEBA, Y HAY QUE DECIRLO: si la pieza se VE bien. Eso no lo puede decir una compuerta.

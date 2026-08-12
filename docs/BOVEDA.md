@@ -111,6 +111,24 @@ trece lo repite, cuesta lo mismo que la primera y nunca hay trece.
 Una plantilla nueva es: **inventar un espacio, elegir un vuelo y colocar los bloques.** Cien líneas con
 una idea adentro.
 
+### La regla de `alSeek`, que es sutil y ya me equivoqué con ella
+
+`seek(t)` corre `tl.time(t)` **primero** y `alSeek(t)` **después**. De ahí salen dos casos opuestos, y
+confundirlos produce defectos que no dan síntoma:
+
+- **Si la línea de tiempo anima esa clave → SUMAR (`+=`).** El tween restablece el valor en cada seek y
+  la suma lo desplaza. Es lo que hace `respirar`. Asignar ahí **anula el tween**: en `atrio` la página
+  tenía una entrada volando y un giro de 7 beats, y los dos quedaban en nada.
+- **Si no la anima nadie → ASIGNAR sobre una base guardada.** Sumar acá acumula: `nucleo` hacía
+  `rotation.y += t * v` sin tween sobre ese eje, así que con cuatro submuestras de obturador por cuadro
+  los anillos giraban varias veces más rápido de lo escrito **y la velocidad dependía de cuántas veces
+  se hubiera llamado a `alSeek`**.
+
+La única excepción es la **cámara**: todos los vuelos tunean su eje principal y escriben los otros dos
+en `alSeek` — eso es la deriva, y es lo que impide que un vuelo se lea como un riel.
+
+`boveda-check` lo verifica solo, eje por eje, en los seis tiempos.
+
 ### Escribir la plantilla trece
 
 1. Copiá la cabecera de `atrio.js` y leela entera — no por su composición sino por cómo está armada.
@@ -190,6 +208,7 @@ Todos están comentados en el archivo donde viven; acá está el índice.
 | `colorDePeso` elegía por croma e ignoraba la luminancia | devolvía `#103030` (lum 0.02) como material | `recetas.js` |
 | `acentoComoMasa` miraba un solo color | Stripe, el sitio más colorido, daba "sin masa de color" | `retrato.py` |
 | el retrato calibrado sobre una sola página | tres recetas saturadas, ninguna daba error | `retrato-barrido.py` |
+| `+=` en `alSeek` sobre un eje **sin** tween | acumula en cada submuestra: el motor deja de ser determinista | `nucleo.js` |
 | la sonda medía "delante" contra -z del mundo | 87% de beats mudos informados sobre una plantilla sana | `boveda-sonda.mjs` |
 | la sonda contaba `uProg` sin mirar `visible` | llamaba defecto a `sale()` funcionando | `boveda-sonda.mjs` |
 
