@@ -41,7 +41,10 @@ export function build(ctx) {
   const uso = {}
   const respiraciones = []
 
-  iluminar(escena, { key: 0.75, relleno: 0.35 })
+  // La primera version tenia key 0.75 y relleno 0.35 sobre metal a nivel 0.07-0.11. Resultado medido en
+  // la foto del beat 16: TRES BARRAS NEGRAS. La falla —el sujeto entero de la plantilla— no se leia
+  // como un hueco iluminado sino como el espacio entre dos rectangulos apagados.
+  iluminar(escena, { key: 1.25, relleno: 0.55 })
   const uDomo = domo(escena, { fuerza: 0.18 })
   const motas = polvo(escena, 1300, 30)
 
@@ -58,19 +61,33 @@ export function build(ctx) {
   const masa = (arriba) => {
     const g = new THREE.Group()
     const H = mundoH * 3.2
-    const cuerpo = new THREE.Mesh(new THREE.BoxGeometry(LARGO * 3.2, H, mundoW * 2.2), metal(nivel(arriba ? 0.11 : 0.07), 0.52))
+    const cuerpo = new THREE.Mesh(new THREE.BoxGeometry(LARGO * 3.2, H, mundoW * 2.2), metal(nivel(arriba ? 0.26 : 0.18), 0.50))
     cuerpo.position.y = arriba ? (HUECO / 2 + H / 2) : -(HUECO / 2 + H / 2)
+    // LAS MASAS SE CORREN HACIA ATRAS. Con la cara delantera en z = +6.2 y la camara en 17.7, cada
+    // masa esta a 11.5 del lente: ahi el cuadro mide 6.6 de alto y el hueco de 6.2 se lo come entero,
+    // asi que no queda masa visible arriba ni abajo — solo el borde. Corridas a -0.9·mundoW la cara
+    // queda a ~17 del lente, el cuadro mide 9.7 y el hueco ocupa el 64%: se ve el hueco Y se ven las
+    // dos masas que lo forman, que es lo unico que lo vuelve un hueco.
+    cuerpo.position.z = -mundoW * 0.9
     g.add(cuerpo)
     // EL CANTO EN EMISIVO ES LO QUE HACE LA FALLA. Sin el, dos masas oscuras juntas son una sola masa
     // oscura: el hueco no se lee como hueco sino como sombra. La linea de luz es el sujeto.
     const canto = barra(LARGO * 3.2, 0.06, LOOK.acento, 1.7)
-    canto.position.set(0, arriba ? HUECO / 2 : -HUECO / 2, mundoW * 1.12)
+    canto.position.set(0, arriba ? HUECO / 2 : -HUECO / 2, mundoW * 0.22)
     g.add(canto)
     // Nervaduras: cajas finas cada tanto, que son lo que da la VELOCIDAD. Una masa lisa deslizandose no
     // se percibe moviendose — no hay nada contra que medirla.
-    for (let i = 0; i < 60; i++) {
-      const n = new THREE.Mesh(new THREE.BoxGeometry(0.16, H * 0.9, 0.5), metal(nivel(arriba ? 0.19 : 0.14), 0.38))
-      n.position.set(-LARGO * 1.6 + i * (LARGO * 3.2 / 60), cuerpo.position.y, mundoW * 1.05)
+    // LAS NERVADURAS VAN EN LA CARA QUE MIRA AL HUECO, no en el centro de la masa.
+    //
+    // Estaban en `cuerpo.position.y`, o sea a dieciseis unidades de altura: fuera de cuadro siempre.
+    // Existian, se dibujaban y no las veia nadie — la masa se leia lisa, y una masa lisa deslizandose
+    // no se percibe moviendose porque no hay nada contra que medirla, que es justo lo que venian a
+    // resolver. Puestas al ras del hueco y hacia adentro, desfilan y dan la velocidad.
+    for (let i = 0; i < 90; i++) {
+      const n = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.5, mundoW * 1.9),
+        metal(nivel(arriba ? 0.42 : 0.32), 0.34))
+      n.position.set(-LARGO * 1.6 + i * (LARGO * 3.2 / 90),
+        (arriba ? 1 : -1) * (HUECO / 2 + 0.22), -mundoW * 0.9)
       g.add(n)
     }
     return g
@@ -80,9 +97,26 @@ export function build(ctx) {
 
   // Una lampara larga en el fondo de la falla: es lo que la ilumina desde atras y separa los bloques de
   // texto del vacio. Emisiva y no una luz real, por lo mismo de siempre.
-  const lampara = new THREE.Mesh(new THREE.PlaneGeometry(LARGO * 3.2, HUECO * 0.9), luz(LOOK.acento2 || LOOK.acento, 0.45))
-  lampara.position.set(0, 0, -mundoW * 1.4)
+  // LA LAMPARA ES LA FUENTE, asi que tiene que ser LUZ y no acento oscuro al 45%. Con el acento a 0.45
+  // el fondo del hueco medía menos que las masas y la falla salia mas oscura que lo que la rodea, o sea
+  // exactamente al reves de lo que la plantilla dice hacer.
+  //
+  // Y la intensidad va por ENCIMA de 1: el umbral del bloom del aire esta en 0.80, asi que una fuente a
+  // 0.9 x 0.8 = 0.72 no florece y se lee como una pared clara. Lo que la vuelve una LAMPARA es pasar el
+  // umbral, no ser clara.
+  // `nivel(0)` ES EL CLARO Y `nivel(1)` LA TINTA. Pedir `nivel(0.95)` para "casi blanco" devuelve
+  // #1f1c17 — o sea que la lampara de esta plantilla era NEGRA, y por eso la falla salia mas oscura
+  // que las masas que la rodean. Para una fuente el numero va cerca de cero.
+  const lampara = new THREE.Mesh(new THREE.PlaneGeometry(LARGO * 3.2, HUECO * 1.6), luz(nivel(0.02), 1.55))
+  lampara.position.set(0, 0, -mundoW * 3.0)
   escena.add(lampara)
+  // Y una veladura de acento por delante, que es lo que la tine sin apagarla.
+  const tinte = new THREE.Mesh(new THREE.PlaneGeometry(LARGO * 3.2, HUECO * 1.5), luz(LOOK.acento2 || LOOK.acento, 1.0))
+  tinte.material.transparent = true
+  tinte.material.opacity = 0.34
+  tinte.material.depthWrite = false
+  tinte.position.set(0, 0, -mundoW * 2.7)
+  escena.add(tinte)
 
   // ---------------------------------------------------------------- los bloques
   //
@@ -191,6 +225,7 @@ export function build(ctx) {
     arriba.position.x = -t * 1.55 * freno
     abajo.position.x = t * 1.05 * freno
     lampara.position.x = camara.position.x
+    tinte.position.x = camara.position.x
     motas.position.x = camara.position.x
     motas.rotation.z = t * 0.02
   }, ...respiraciones)

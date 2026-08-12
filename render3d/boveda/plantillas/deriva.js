@@ -22,7 +22,7 @@
 //   28  RAZONES   las cifras aparecen apoyadas contra laminas, a distintas alturas.
 //   35  PEDIDO    las laminas se abren, la niebla baja y el CTA queda solo en el eje.
 
-import { THREE, vidrio, metal, iluminar, domo, polvo } from '../nucleo.js'
+import { THREE, vidrio, metal, luz, iluminar, domo, polvo } from '../nucleo.js'
 import { vueloAvance, entra, sale, paralaje, respirar, juntar, anchoConDeriva } from '../movimiento.js'
 import { bloqueMarca, bloquePromesa, bloquePrueba, bloquesCifra, bloquesFrase, bloquePedido } from '../bloques.js'
 import { LOOK, nivel, E, b } from '../../demo/kit.js'
@@ -42,7 +42,10 @@ export function build(ctx) {
   const uso = {}
   const respiraciones = []
 
-  iluminar(escena, { key: 0.85, relleno: 0.8 })
+  // Key alta para una plantilla oscura, y no es una contradiccion: lo que la hace atmosferica es la
+  // NIEBLA del domo, no la falta de luz. Con key 0.85 las laminas de vidrio oscuro quedaban en negro
+  // plano y la pieza se veia como una pantalla apagada con un texto encima.
+  iluminar(escena, { key: 1.30, relleno: 0.95 })
   const uDomo = domo(escena, { fuerza: 0.38 })
   const motas = polvo(escena, 1800, 26)
 
@@ -64,7 +67,7 @@ export function build(ctx) {
 
   const matVidrio = vidrio(LOOK.acento, { rug: 0.08, trans: 0.80, grosor: 2.0, opacidad: 0.88 })
   const matVidrio2 = vidrio(LOOK.acento2 || LOOK.acento, { rug: 0.14, trans: 0.70, grosor: 1.6, opacidad: 0.82 })
-  const matMate = metal(nivel(0.13), 0.44)
+  const matMate = metal(nivel(0.30), 0.44)
 
   // TRES CAPAS, otra vez, y aca la del medio es la que trabaja. La de adelante son laminas grandes que
   // cruzan el cuadro en un beat —el "wipe" gratis que hace que un corte no se note— y la del fondo son
@@ -88,9 +91,26 @@ export function build(ctx) {
       distBase * 0.7 - az() * LARGO * 1.05)
     medio.add(m)
   }
-  for (let i = 0; i < 10; i++) {
-    const m = lamina(mundoW * 2.2, mundoH * 1.6, matVidrio2)
-    m.position.set((az() - 0.5) * mundoW * 3, (az() - 0.5) * mundoH * 2, distBase * (0.5 - az() * 0.35))
+  // LA CAPA CERCANA ES UN BARRIDO, NO UNA CORTINA — y en la primera version era una cortina.
+  //
+  // Diez laminas de 2.2 x 1.6 del mundo, a entre 0.15 y 0.5 de `distBase`, tapaban el cuadro entero de
+  // forma permanente: la foto del beat 19 es una masa negra con un filo azul. Una lamina a esa
+  // distancia ocupa varias veces la pantalla, asi que "de vez en cuando pasa una" se convirtio en
+  // "siempre hay una encima".
+  //
+  // Cinco, mas chicas, mas lejos, y con el canto en emisivo: asi cuando cruzan se leen como un objeto
+  // que pasa —que es el barrido gratis que se buscaba— en vez de como un fundido a negro.
+  for (let i = 0; i < 5; i++) {
+    const m = lamina(mundoW * 0.85, mundoH * 0.75, matVidrio2)
+    // FUERA DEL CORREDOR CENTRAL, igual que la capa del medio y por una razon mas fuerte: una lamina a
+    // 0.34 de `distBase` tapa varias pantallas, asi que si cae en el eje no oscurece el cuadro — lo
+    // BORRA. En la foto del beat 39.9 el CTA no aparecia por esto, y un CTA tapado es la pieza entera
+    // desperdiciada.
+    const lado = az() < 0.5 ? -1 : 1
+    m.position.set(lado * mundoW * (0.95 + az() * 0.9), (az() - 0.5) * mundoH * 1.8, distBase * (0.34 + az() * 0.22))
+    const filo = new THREE.Mesh(new THREE.BoxGeometry(0.05, mundoH * 0.75, 0.11), luz(LOOK.acento2 || LOOK.acento, 1.5))
+    filo.position.x = mundoW * 0.42
+    m.add(filo)
     cerca.add(m)
   }
   for (let i = 0; i < 30; i++) {
@@ -201,7 +221,7 @@ export function build(ctx) {
   // sacadas del indice, asi que no hay dos sincronizadas y el conjunto nunca se percibe en bucle.
   const giratorias = medio.children.map((m, i) => ({ m, v: 0.012 + (i % 7) * 0.004, f: i * 1.37 }))
   const capas = paralaje([
-    { grupo: cerca, vel: 2.4, largo: distBase * 1.2 },
+    { grupo: cerca, vel: 2.4, largo: distBase * 1.6 },
     { grupo: lejos, vel: 0.35, largo: LARGO * 1.4 },
   ])
   const alSeek = juntar(vuelo.alSeek, capas, latido, (t) => {

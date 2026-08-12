@@ -92,10 +92,24 @@ export function build(ctx) {
     r.position.set(s * R * 0.74, -mundoH * 0.44, -110)
     escena.add(r)
   }
-  const piso = new THREE.Mesh(new THREE.PlaneGeometry(R * 4, 400), metal(nivel(0.06), 0.26))
+  // EL PISO NO PUEDE SER NEGRO PURO, y en la primera version lo era: metal a nivel 0.06, sin nada que
+  // lo iluminara desde arriba, ocupando el 35% de abajo del cuadro. La foto del beat 23 mostraba un
+  // pasillo correcto con un tercio de pantalla muerta. Un espacio 3D en el que un tercio del cuadro no
+  // tiene informacion se lee como un render sin terminar, no como una decision.
+  //
+  // Sube de nivel, baja de altura —asi entra menos en cuadro— y lleva una banda de acento por el eje,
+  // que es lo mismo que hace `atrio` y por la misma razon: da la direccion del vuelo.
+  const piso = new THREE.Mesh(new THREE.PlaneGeometry(R * 4, 400), metal(nivel(0.16), 0.30))
   piso.rotation.x = -Math.PI / 2
-  piso.position.set(0, -mundoH * 0.46, -100)
+  piso.position.set(0, -mundoH * 0.62, -100)
   escena.add(piso)
+  const guia = barra(R * 0.5, 400, LOOK.acento, 0.55)
+  guia.material.transparent = true
+  guia.material.opacity = 0.22
+  guia.material.depthWrite = false
+  guia.rotation.x = -Math.PI / 2
+  guia.position.set(0, -mundoH * 0.62 + 0.03, -100)
+  escena.add(guia)
 
   // ---------------------------------------------------------------- los bloques
   const marca = bloqueMarca({ alto: 1.4, anchoMax: UTIL(0.9) * 0.88 })
@@ -138,7 +152,10 @@ export function build(ctx) {
     entra(prueba.g, tl, 17, { desde: 'fondo', dist: 9, dur: 2.2 })
     prueba.escribir(tl, 17.3, 1.2)
     prueba.recorrer(tl, 18, 5.8, 0.92)
-    tl.to(prueba.g.position, { x: -mundoW * 0.42, duration: b(4.2), ease: E.frena(2) }, b(20.4))
+    // 0.26 y no 0.42: a 0.42 la pagina quedaba con la mitad fuera del cuadro durante cuatro beats.
+    // Esquivar es correrse lo suficiente para que la camara pase al lado, no salirse de pantalla — el
+    // tiempo de PRUEBA es el unico que muestra algo que ninguna plantilla generica puede fingir.
+    tl.to(prueba.g.position, { x: -mundoW * 0.26, duration: b(4.2), ease: E.frena(2) }, b(20.4))
     tl.to(prueba.g.rotation, { y: 0.55, duration: b(4.2), ease: E.frena(2) }, b(20.4))
     sale(prueba.g, tl, 23.4, { hacia: 'izq', dist: 7, dur: 1.2 })
     respiraciones.push(respirar(prueba.g, { amp: 0.11, giro: 0.03, fase: 2.2 }))

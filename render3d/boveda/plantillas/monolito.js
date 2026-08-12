@@ -23,7 +23,7 @@
 //   28  PEDIDO    la orbita se cierra, el monolito se abre en luz y el CTA queda al frente.
 
 import { THREE, vidrio, metal, luz, barra, iluminar, domo, polvo } from '../nucleo.js'
-import { vueloOrbita, entra, sale, respirar, juntar } from '../movimiento.js'
+import { vueloOrbita, entra, sale, respirar, juntar, anchoADistancia } from '../movimiento.js'
 import { bloqueMarca, bloquePromesa, bloquePrueba, bloquesCifra, bloquesFrase, bloquePedido } from '../bloques.js'
 import { LOOK, nivel, E, b } from '../../demo/kit.js'
 
@@ -49,13 +49,21 @@ export function build(ctx) {
   // Vueltas bajas por la razon de siempre —la ventana de lectura— y ademas porque el monolito gira en
   // el mismo sentido: entre los dos ya desfilan las caras suficientes.
   const vuelo = vueloOrbita(camara, tl, {
-    distBase, beats: meta.beats, radio0: 1.25, radio1: 0.78, vueltas: 0.40, alto0: 3.4, alto1: -0.2, miraY: 0.0,
+    distBase, beats: meta.beats, radio0: 1.62, radio1: 1.05, vueltas: 0.40, alto0: 3.4, alto1: -0.2, miraY: 0.0,
   })
   const puntoEn = vuelo.puntoEn
 
   // ---------------------------------------------------------------- el espacio: el objeto
-  const ANCHO = mundoW * 0.62
-  const ALTO = mundoH * 1.35
+  // EL OBJETO TIENE QUE ENTRAR EN EL CUADRO, y en la primera version no entraba.
+  //
+  // 13.5 de alto visto desde 21.8 del lente: ahi el cuadro mide 12.5, asi que el prisma salia cortado
+  // arriba y abajo en TODA la pieza. Una plantilla que se llama `monolito` y nunca muestra el monolito
+  // entero no falla — se ve como dos barras azules verticales, que es lo que mostro la foto.
+  //
+  // Baja el objeto y se abre la orbita: las dos cosas, porque con solo una de ellas o el objeto queda
+  // chico o la camara queda tan lejos que el prisma pierde presencia.
+  const ANCHO = mundoW * 0.58
+  const ALTO = mundoH * 0.92
   const gMono = new THREE.Group()
   escena.add(gMono)
   const cuerpo = new THREE.Mesh(new THREE.BoxGeometry(ANCHO, ALTO, ANCHO),
@@ -76,7 +84,9 @@ export function build(ctx) {
   const base = new THREE.Mesh(new THREE.CylinderGeometry(ANCHO * 1.5, ANCHO * 1.8, 0.3, 40), metal(nivel(0.10), 0.30))
   base.position.y = -ALTO / 2 - 0.15
   escena.add(base)
-  const piso = new THREE.Mesh(new THREE.CircleGeometry(distBase * 3, 56), metal(nivel(0.05), 0.18))
+  // Nivel 0.20 y no 0.05: un piso de metal oscuro sin nada que lo ilumine desde arriba es negro puro, y
+  // se comia el 40% de abajo del cuadro. Mismo defecto que `pasillo`, misma correccion.
+  const piso = new THREE.Mesh(new THREE.CircleGeometry(distBase * 3, 56), metal(nivel(0.20), 0.22))
   piso.rotation.x = -Math.PI / 2
   piso.position.y = -ALTO / 2 - 0.3
   escena.add(piso)
@@ -84,19 +94,30 @@ export function build(ctx) {
   // ademas marcan el avance de la orbita mientras la camara baja.
   for (let i = 1; i <= 5; i++) {
     const a = new THREE.Mesh(new THREE.RingGeometry(ANCHO * (0.9 + i * 0.85), ANCHO * (0.92 + i * 0.85), 64),
-      luz(LOOK.acento, 0.35 - i * 0.05))
+      luz(LOOK.acento, 0.85 - i * 0.11))
     a.rotation.x = -Math.PI / 2
     a.position.y = -ALTO / 2 - 0.28
     escena.add(a)
   }
 
   // ---------------------------------------------------------------- los bloques
-  const marca = bloqueMarca({ alto: 1.15, anchoMax: mundoW * 0.82 })
-  const promesa = bloquePromesa({ alto: 0.48, anchoMax: mundoW * 0.80, maxLineas: 3 })
-  const prueba = bloquePrueba(ctx, { ancho: mundoW * 0.46, ar: 1.5 })
-  const cifras = bloquesCifra(3, { alto: 0.72, anchoMax: mundoW * 0.42 })
-  const frases = bloquesFrase(2, { alto: 0.28, anchoMax: mundoW * 0.70 })
-  const pedido = bloquePedido({ alto: 0.32, anchoMax: mundoW * 0.58 })
+  // El ancho sale de la DISTANCIA a la que queda cada bloque, no de `mundoW`. La explicacion larga esta
+  // en `vitral`, que es donde este defecto se vio primero: en una orbita el cuadro util cambia con el
+  // beat porque el radio se cierra, y aca se cierra de 1.25 a 0.78.
+  const DONDE = {
+    marca: [5.4, 0.34, 0.35], promesa: [10.6, 0.36, 0.0], prueba: [18.0, 0.26, 0.0],
+    cifra: [22.8, 0.30, 0], frase: [23.4, 0.28, -1.55], pedido: [meta.beats - 0.6, 0.24, 0.0],
+  }
+  const anchoDe = (que, margen) => {
+    const d = DONDE[que]
+    return anchoADistancia(mundoW, distBase, puntoEn(d[0], d[1]).dist, 0) * margen
+  }
+  const marca = bloqueMarca({ alto: 1.15, anchoMax: anchoDe('marca', 0.88) })
+  const promesa = bloquePromesa({ alto: 0.48, anchoMax: anchoDe('promesa', 0.88), maxLineas: 3 })
+  const prueba = bloquePrueba(ctx, { ancho: anchoDe('prueba', 0.56), ar: 1.5 })
+  const cifras = bloquesCifra(3, { alto: 0.72, anchoMax: anchoDe('cifra', 0.5) })
+  const frases = bloquesFrase(2, { alto: 0.28, anchoMax: anchoDe('frase', 0.84) })
+  const pedido = bloquePedido({ alto: 0.32, anchoMax: anchoDe('pedido', 0.68) })
 
   // El patron de los dos grupos que documenta `vitral`: el externo lo planta `puntoEn` mirando a la
   // camara, y `entra` mueve el interno en coordenadas ya alineadas con el cuadro.
@@ -112,7 +133,7 @@ export function build(ctx) {
 
   // ---------------------------------------------------------------- 2 · MARCA
   if (marca) {
-    plantar(marca, 5.4, 0.34, 0.35)
+    plantar(marca, DONDE.marca[0], DONDE.marca[1], DONDE.marca[2])
     entra(marca.g, tl, 4, { desde: 'fondo', dist: 4.5, dur: 1.6 })
     marca.escribir(tl, 4.4, 1.2)
     marca.borrar(tl, 7.8)
@@ -122,7 +143,7 @@ export function build(ctx) {
 
   // ---------------------------------------------------------------- 3 · PROMESA
   if (promesa) {
-    plantar(promesa, 10.6, 0.36, 0.0)
+    plantar(promesa, DONDE.promesa[0], DONDE.promesa[1], DONDE.promesa[2])
     entra(promesa.g, tl, 9, { desde: 'izq', dist: 5, dur: 1.5 })
     promesa.escribir(tl, 9.4, 0.9)
     promesa.borrar(tl, 13.4)
@@ -135,7 +156,7 @@ export function build(ctx) {
   // SE DESPEGA DE UNA CARA. Se planta mas cerca del eje que el resto —0.26— porque tiene que durar
   // siete beats y en una orbita la duracion es una funcion de la distancia al eje.
   if (prueba) {
-    plantar(prueba, 18.0, 0.26, 0.0, pagina)
+    plantar(prueba, DONDE.prueba[0], DONDE.prueba[1], DONDE.prueba[2], pagina)
     entra(prueba.g, tl, 15, { desde: 'fondo', dist: 5, dur: 2.0 })
     prueba.escribir(tl, 15.2, 1.1)
     prueba.recorrer(tl, 16, 5.4, 0.92)
@@ -148,7 +169,7 @@ export function build(ctx) {
   cifras.forEach((c, i) => {
     const t0 = 22 + i * 1.9
     const s = i % 2 === 0 ? 1 : -1
-    plantar(c, t0 + 0.8, 0.30, s * 1.1)
+    plantar(c, t0 + 0.8, DONDE.cifra[1], s * 1.1)
     entra(c.g, tl, t0, { desde: s > 0 ? 'arriba' : 'abajo', dist: 4, dur: 1.1 })
     c.escribir(tl, t0 + 0.25, 0.7)
     sale(c.g, tl, t0 + 2.0, { hacia: s > 0 ? 'arriba' : 'abajo', dist: 4.5, dur: 0.9 })
@@ -157,7 +178,7 @@ export function build(ctx) {
 
   frases.forEach((f, i) => {
     const t0 = 22.6 + i * 2.4
-    plantar(f, t0 + 0.8, 0.28, -1.55)
+    plantar(f, t0 + 0.8, DONDE.frase[1], DONDE.frase[2])
     entra(f.g, tl, t0, { desde: 'der', dist: 4.5, dur: 1.2 })
     f.escribir(tl, t0 + 0.35, 0.78)
     f.borrar(tl, t0 + 2.1)
@@ -172,7 +193,7 @@ export function build(ctx) {
   // todo el tiempo no tiene con que rematar.
   let latido = null
   if (pedido) {
-    plantar(pedido, meta.beats - 0.6, 0.24, 0.0)
+    plantar(pedido, DONDE.pedido[0], DONDE.pedido[1], DONDE.pedido[2])
     entra(pedido.g, tl, 28, { desde: 'fondo', dist: 4.5, dur: 1.7 })
     pedido.escribir(tl, 28.4, 0.85)
     latido = pedido.latir(0.032)

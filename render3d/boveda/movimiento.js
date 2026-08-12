@@ -94,6 +94,13 @@ export function vueloOrbita(camara, tl, op) {
       // La camara esta en ese mismo angulo mirando al centro, asi que un objeto girado `a` en Y la
       // encara. Sin esto se ve de canto, que en un plano es no verse.
       yaw: a,
+      // Y A QUE DISTANCIA DEL LENTE QUEDA, que es lo que hace falta para dimensionarlo.
+      //
+      // La camara esta a `R` del eje y el objeto a `frac·R` sobre la misma linea, asi que los separan
+      // `(1 - frac)·R` — y NO `distBase`. Medir el ancho de un bloque contra `distBase` cuando esta a
+      // 0.43 de eso lo hace verse dos veces y media mas grande de lo calculado: el claim de `vitral`
+      // salia cortado a los dos lados con el numero "bien" puesto.
+      dist: (r0 + (r1 - r0) * k) - r,
     }
   }
   return { est, mira, alSeek, puntoEn, radioEn: (k) => r0 + (r1 - r0) * k }
@@ -142,6 +149,17 @@ export function vueloDesliz(camara, tl, op) {
 // `atrio` esta a 0.92, donde el cuadro mide 5.17 y no 5.62, y seguia saliendo cortada despues de
 // "arreglarla".
 export const anchoConDeriva = (mundoW, deriva, k) => (k != null ? k : 1) * mundoW - 2 * (deriva != null ? deriva : 0.5)
+
+// EL ANCHO UTIL A UNA DISTANCIA CUALQUIERA DEL LENTE.
+//
+// `anchoConDeriva` responde la pregunta para un objeto a `k · distBase`, que es como se colocan las
+// cosas en un vuelo de avance. En una orbita, en un vuelo sobre curva o en cualquier espacio donde el
+// bloque se planta por geometria y no por profundidad, lo que se conoce es la DISTANCIA — y traducirla
+// a un `k` a mano es justo donde se cuela el error.
+//
+// El cuadro crece linealmente con la distancia: a `d` del lente mide `mundoW · d / distBase`.
+export const anchoADistancia = (mundoW, distBase, dist, deriva) =>
+  Math.max(0.5, mundoW * (dist / distBase) - 2 * (deriva || 0))
 
 // ---------------------------------------------------------------- entradas y salidas
 //

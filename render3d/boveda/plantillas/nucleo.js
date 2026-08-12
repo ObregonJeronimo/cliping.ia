@@ -21,7 +21,7 @@
 //   32  PEDIDO    los anillos se alinean, el nucleo se abre y el CTA queda en el centro.
 
 import { THREE, vidrio, metal, luz, iluminar, domo, polvo } from '../nucleo.js'
-import { vueloOrbita, entra, sale, respirar, juntar } from '../movimiento.js'
+import { vueloOrbita, entra, sale, respirar, juntar, anchoADistancia } from '../movimiento.js'
 import { bloqueMarca, bloquePromesa, bloquePrueba, bloquesCifra, bloquesFrase, bloquePedido } from '../bloques.js'
 import { LOOK, nivel, E, b } from '../../demo/kit.js'
 
@@ -81,12 +81,23 @@ export function build(ctx) {
   }
 
   // ---------------------------------------------------------------- los bloques
-  const marca = bloqueMarca({ alto: 1.15, anchoMax: mundoW * 0.80 })
-  const promesa = bloquePromesa({ alto: 0.48, anchoMax: mundoW * 0.78 })
-  const prueba = bloquePrueba(ctx, { ancho: mundoW * 0.46, ar: 1.55 })
-  const cifras = bloquesCifra(3, { alto: 0.70, anchoMax: mundoW * 0.40 })
-  const frases = bloquesFrase(2, { alto: 0.27, anchoMax: mundoW * 0.68 })
-  const pedido = bloquePedido({ alto: 0.31, anchoMax: mundoW * 0.56 })
+  // Mismo criterio que `vitral` y `monolito`: el ancho sale de la distancia, no de `mundoW`. Aca el
+  // radio se cierra de 1.5 a 0.55, o sea que un bloque del final queda a menos de la mitad de lente que
+  // uno del principio y con el mismo numero se veria al doble de tamano.
+  const DONDE = {
+    marca: [6.8, 0.34, 0.9], promesa: [12.6, 0.32, -0.2], prueba: [20.4, 0.20, 0.0],
+    cifra: [26.8, 0.28, 0], frase: [27.4, 0.26, -1.5], pedido: [meta.beats - 0.6, 0.22, 0.0],
+  }
+  const anchoDe = (que, margen) => {
+    const d = DONDE[que]
+    return anchoADistancia(mundoW, distBase, puntoEn(d[0], d[1]).dist, 0) * margen
+  }
+  const marca = bloqueMarca({ alto: 1.15, anchoMax: anchoDe('marca', 0.86) })
+  const promesa = bloquePromesa({ alto: 0.48, anchoMax: anchoDe('promesa', 0.86) })
+  const prueba = bloquePrueba(ctx, { ancho: anchoDe('prueba', 0.56), ar: 1.55 })
+  const cifras = bloquesCifra(3, { alto: 0.70, anchoMax: anchoDe('cifra', 0.48) })
+  const frases = bloquesFrase(2, { alto: 0.27, anchoMax: anchoDe('frase', 0.82) })
+  const pedido = bloquePedido({ alto: 0.31, anchoMax: anchoDe('pedido', 0.66) })
 
   const plantar = (blk, beat, frac, y, padre) => {
     const p = puntoEn(beat, frac, y)
@@ -100,7 +111,7 @@ export function build(ctx) {
 
   // ---------------------------------------------------------------- 2 · MARCA
   if (marca) {
-    plantar(marca, 6.8, 0.34, 0.9)
+    plantar(marca, DONDE.marca[0], DONDE.marca[1], DONDE.marca[2])
     entra(marca.g, tl, 5, { desde: 'frente', dist: 5, dur: 1.7 })
     marca.escribir(tl, 5.4, 1.25)
     marca.borrar(tl, 9.4)
@@ -110,7 +121,7 @@ export function build(ctx) {
 
   // ---------------------------------------------------------------- 3 · PROMESA
   if (promesa) {
-    plantar(promesa, 12.6, 0.32, -0.2)
+    plantar(promesa, DONDE.promesa[0], DONDE.promesa[1], DONDE.promesa[2])
     entra(promesa.g, tl, 11, { desde: 'izq', dist: 5.5, dur: 1.6 })
     promesa.escribir(tl, 11.4, 0.92)
     promesa.borrar(tl, 15.4)
@@ -124,7 +135,7 @@ export function build(ctx) {
   // razones a la vez: dura mas en cuadro, y ademas queda literalmente dentro del sistema, que es lo
   // que hace que la pagina del cliente se lea como el CONTENIDO de la plataforma y no como un cartel.
   if (prueba) {
-    plantar(prueba, 20.4, 0.20, 0.0, pagina)
+    plantar(prueba, DONDE.prueba[0], DONDE.prueba[1], DONDE.prueba[2], pagina)
     entra(prueba.g, tl, 17, { desde: 'fondo', dist: 6, dur: 2.2 })
     prueba.escribir(tl, 17.2, 1.2)
     prueba.recorrer(tl, 18, 6.0, 0.92)
@@ -137,7 +148,7 @@ export function build(ctx) {
   cifras.forEach((c, i) => {
     const t0 = 26 + i * 1.9
     const s = i % 2 === 0 ? 1 : -1
-    plantar(c, t0 + 0.8, 0.28, s * 1.05)
+    plantar(c, t0 + 0.8, DONDE.cifra[1], s * 1.05)
     entra(c.g, tl, t0, { desde: 'fondo', dist: 4, dur: 1.2 })
     c.escribir(tl, t0 + 0.25, 0.7)
     sale(c.g, tl, t0 + 2.0, { hacia: s > 0 ? 'arriba' : 'abajo', dist: 4.5, dur: 0.9 })
@@ -146,7 +157,7 @@ export function build(ctx) {
 
   frases.forEach((f, i) => {
     const t0 = 26.6 + i * 2.5
-    plantar(f, t0 + 0.8, 0.26, -1.5)
+    plantar(f, t0 + 0.8, DONDE.frase[1], DONDE.frase[2])
     entra(f.g, tl, t0, { desde: 'abajo', dist: 4, dur: 1.3 })
     f.escribir(tl, t0 + 0.35, 0.78)
     f.borrar(tl, t0 + 2.1)
@@ -161,7 +172,7 @@ export function build(ctx) {
   // visual de la pieza y por eso esta guardada hasta el final.
   let latido = null
   if (pedido) {
-    plantar(pedido, meta.beats - 0.6, 0.22, 0.0)
+    plantar(pedido, DONDE.pedido[0], DONDE.pedido[1], DONDE.pedido[2])
     entra(pedido.g, tl, 32, { desde: 'fondo', dist: 4.5, dur: 1.8 })
     pedido.escribir(tl, 32.4, 0.88)
     latido = pedido.latir(0.03)

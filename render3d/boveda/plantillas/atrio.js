@@ -114,7 +114,10 @@ export function build(ctx) {
   escena.add(brillo)
 
   // ---------------------------------------------------------------- los bloques, pedidos y colocados
-  const marca = bloqueMarca({ alto: 1.5, anchoMax: UTIL(0.92) * 0.94 })
+  // CAMA EN LA MARCA, y por medicion: la foto del beat 6 la muestra sobre columnas de vidrio
+  // iluminadas y un piso claro. `nivelTexto` garantiza contraste contra la PALETA, no contra lo que
+  // esta plantilla resulto poner detras — y lo que puso detras es lo mas claro de la pieza.
+  const marca = bloqueMarca({ alto: 1.5, anchoMax: UTIL(0.92) * 0.94, cama: true, camaOpacidad: 0.86 })
   const promesa = bloquePromesa({ alto: 0.60, anchoMax: UTIL(0.95) * 0.92 })
   const prueba = bloquePrueba(ctx, { ancho: mundoW * 0.58, ar: 1.6 })
   const cifras = bloquesCifra(3, { alto: 0.95, anchoMax: UTIL(0.78) * 0.42 })

@@ -266,11 +266,28 @@ export function vidrio(color, op) {
   })
 }
 
-// Metal anodizado. Con roughness bajo se vuelve un espejo que refleja una escena vacia y sale NEGRO;
-// con roughness alto se vuelve plastico. 0.34 es la banda donde se lee como aluminio.
-export function metal(color, rug) {
+// Metal anodizado.
+//
+// `metalness` VA EN 0.30 Y NO EN 1.0, y esto es la correccion mas cara del motor despues del domo.
+//
+// Un metal PBR con metalness 1.0 NO TIENE COMPONENTE DIFUSA: todo su color sale de lo que refleja. En
+// una escena sin mapa de entorno —que es la de las doce plantillas, porque un envMap cuesta una pasada
+// de PMREM— eso significa que refleja el vacio, y una superficie grande de metal puro renderiza NEGRA
+// por claro que sea su color base. Solo se salvan los pixeles donde pega un reflejo especular directo.
+//
+// El sintoma no se parece a un error de material: se parece a una composicion mal iluminada. Los pisos
+// de `atrio`, `pasillo` y `monolito`, las dos masas de `tectonica` y sus nervaduras estaban todos en un
+// nivel claro y salian negros. Se perdio tiempo subiendo luces, subiendo el nivel del color y bajando
+// el domo — tres arreglos sobre un diagnostico falso, que es exactamente lo que el archivo de
+// instrucciones advierte que cuesta mas que no haber hecho nada.
+//
+// Con 0.30 la superficie conserva difusa —o sea, responde a las luces y muestra su color— y mantiene
+// el brillo especular que la hace leerse como metal y no como papel. Quien quiera espejo de verdad
+// tiene que traer un entorno, y entonces `metalness` alto vuelve a tener sentido.
+export function metal(color, rug, metalico) {
   return new THREE.MeshPhysicalMaterial({
-    color: hex(color), metalness: 1.0, roughness: rug != null ? rug : 0.34,
+    color: hex(color), metalness: metalico != null ? metalico : 0.30,
+    roughness: rug != null ? rug : 0.34,
     clearcoat: 0.45, clearcoatRoughness: 0.3,
   })
 }

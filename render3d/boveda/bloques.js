@@ -66,6 +66,22 @@ export function bloqueMarca(op) {
   const g = new THREE.Group()
   const m = letras(nombre, op.alto != null ? op.alto : 1.5, nivelTexto(0.94),
     { fuente: op.fuente || 'Anton', tracking: op.tracking != null ? op.tracking : 0.02, anchoMax: op.anchoMax })
+  // CAMA OPCIONAL, y apagada por defecto — al reves que en el claim.
+  //
+  // El nombre de la marca es lo unico de la pieza que tiene que verse como parte del espacio y no como
+  // un cartel apoyado encima; una cama detras lo convierte en subtitulo. Pero hay plantillas donde el
+  // fondo que le toca es claro y variable —`atrio` lo planta en un corredor con columnas de vidrio
+  // iluminadas pasando por detras— y ahi `nivelTexto` no alcanza: garantiza contraste contra la paleta,
+  // no contra lo que la plantilla resulto poner atras.
+  //
+  // La decision es de la plantilla porque solo ella sabe que hay detras. Se pide con `cama: true`.
+  if (op.cama === true) {
+    g.add(cama(m.userData.ancho, m.userData.alto, {
+      opacidad: op.camaOpacidad != null ? op.camaOpacidad : 0.88,
+      color: op.camaColor || nivel(0.03),
+      holgX: m.userData.alto * 0.22, holgY: m.userData.alto * 0.20,
+    }))
+  }
   g.add(m)
 
   let fil = null

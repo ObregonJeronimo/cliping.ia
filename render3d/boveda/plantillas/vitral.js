@@ -30,7 +30,7 @@
 //   32  PEDIDO    la orbita se cierra sobre el ultimo panel y el CTA queda al frente, latiendo.
 
 import { THREE, vidrio, metal, luz, barra, iluminar, domo, polvo } from '../nucleo.js'
-import { vueloOrbita, entra, sale, respirar, juntar } from '../movimiento.js'
+import { vueloOrbita, entra, sale, respirar, juntar, anchoADistancia } from '../movimiento.js'
 import { bloqueMarca, bloquePromesa, bloquePrueba, bloquesCifra, bloquesFrase, bloquePedido } from '../bloques.js'
 import { LOOK, nivel, E, b } from '../../demo/kit.js'
 
@@ -98,7 +98,10 @@ export function build(ctx) {
     }
     // La lampara: un plano emisivo detras del panel, no una luz de verdad. Doce luces reales cuestan
     // doce pasadas de sombreado por cuadro y se ven casi igual con el bloom encima.
-    const lam = new THREE.Mesh(new THREE.PlaneGeometry(mundoW * 1.4, mundoH * 2.3), luz(nivel(0.92), 0.7))
+    // `nivel(0)` ES EL CLARO Y `nivel(1)` LA TINTA — al reves de lo que dice la intuicion.
+    // La rampa va del fondo a la tinta, asi que pedir `nivel(0.92)` para "casi blanco" devuelve
+    // #26221c: una lampara negra. Para una FUENTE de luz el numero va cerca de cero.
+    const lam = new THREE.Mesh(new THREE.PlaneGeometry(mundoW * 1.4, mundoH * 2.3), luz(nivel(0.03), 1.15))
     lam.position.z = -0.4
     g.add(lam)
     anillo.add(g)
@@ -115,15 +118,29 @@ export function build(ctx) {
 
   // ---------------------------------------------------------------- los bloques
   //
-  // Los anchos se miden contra `mundoW` y no contra un cuadro util con deriva: la orbita no deriva
-  // lateralmente —ya gira— y `lookAt` mantiene el objetivo centrado. Lo que si hay que dejar es margen
-  // para que un panel entero quepa detras del texto, y de ahi salen los 0.8.
-  const marca = bloqueMarca({ alto: 1.25, anchoMax: mundoW * 0.80 })
-  const promesa = bloquePromesa({ alto: 0.52, anchoMax: mundoW * 0.80 })
-  const prueba = bloquePrueba(ctx, { ancho: mundoW * 0.50, ar: 1.6 })
-  const cifras = bloquesCifra(3, { alto: 0.78, anchoMax: mundoW * 0.44 })
-  const frases = bloquesFrase(2, { alto: 0.29, anchoMax: mundoW * 0.72 })
-  const pedido = bloquePedido({ alto: 0.32, anchoMax: mundoW * 0.58 })
+  // CADA BLOQUE SE MIDE CONTRA EL CUADRO QUE HAY A SU DISTANCIA, no contra `mundoW`.
+  //
+  // Un bloque plantado a `frac` del radio no esta a `distBase` del lente sino a `(1 - frac)*R`, y ese
+  // radio ademas se cierra durante la pieza. Para el claim, a 0.32 del radio en el beat 12, el cuadro
+  // mide 4.15 unidades; para una frase en el beat 29 mide 2.94. Dandoles `mundoW * 0.72 = 4.05` a las
+  // dos, la primera entra justa y la segunda ocupa el 138% del ancho — sale cortada a los dos lados,
+  // que es exactamente lo que mostro la foto.
+  //
+  // El sitio y el tamano dejan de ser dos decisiones separadas: se elige DONDE, y el ancho sale de ahi.
+  const DONDE = {
+    marca: [6.8, 0.30, 0.5], promesa: [12.6, 0.32, 0.0], prueba: [20.2, 0.30, 0.0],
+    cifra: [26.0, 0.32, 0], frase: [26.0, 0.30, -1.7], pedido: [meta.beats - 0.8, 0.26, 0.0],
+  }
+  const anchoDe = (que, margen) => {
+    const d = DONDE[que]
+    return anchoADistancia(mundoW, distBase, puntoEn(d[0], d[1]).dist, 0) * margen
+  }
+  const marca = bloqueMarca({ alto: 1.25, anchoMax: anchoDe('marca', 0.86) })
+  const promesa = bloquePromesa({ alto: 0.52, anchoMax: anchoDe('promesa', 0.88) })
+  const prueba = bloquePrueba(ctx, { ancho: anchoDe('prueba', 0.58), ar: 1.6 })
+  const cifras = bloquesCifra(3, { alto: 0.78, anchoMax: anchoDe('cifra', 0.5) })
+  const frases = bloquesFrase(2, { alto: 0.29, anchoMax: anchoDe('frase', 0.84) })
+  const pedido = bloquePedido({ alto: 0.32, anchoMax: anchoDe('pedido', 0.66) })
 
   // El patron de los dos grupos, explicado arriba. Devuelve el grupo externo por si la plantilla quiere
   // moverlo, pero lo que se le pasa a `entra` es SIEMPRE el del bloque.
@@ -143,7 +160,7 @@ export function build(ctx) {
 
   // ---------------------------------------------------------------- 2 · MARCA
   if (marca) {
-    plantar(marca, 6.8, 0.30, 0.5)
+    plantar(marca, DONDE.marca[0], DONDE.marca[1], DONDE.marca[2])
     entra(marca.g, tl, 5, { desde: 'fondo', dist: 5, dur: 1.8 })
     marca.escribir(tl, 5.4, 1.3)
     marca.borrar(tl, 9.4)
@@ -153,7 +170,7 @@ export function build(ctx) {
 
   // ---------------------------------------------------------------- 3 · PROMESA
   if (promesa) {
-    plantar(promesa, 12.6, 0.32, 0.0)
+    plantar(promesa, DONDE.promesa[0], DONDE.promesa[1], DONDE.promesa[2])
     entra(promesa.g, tl, 11, { desde: 'der', dist: 5.5, dur: 1.6 })
     promesa.escribir(tl, 11.4, 0.95)
     promesa.borrar(tl, 15.4)
@@ -166,7 +183,7 @@ export function build(ctx) {
   // La pagina ocupa el hueco de un panel: se planta a la MISMA distancia del eje que el anillo, asi
   // que se lee como uno mas de la vuelta y no como algo pegado encima.
   if (prueba) {
-    plantar(prueba, 20.2, 0.30, 0.0, pagina)
+    plantar(prueba, DONDE.prueba[0], DONDE.prueba[1], DONDE.prueba[2], pagina)
     entra(prueba.g, tl, 17, { desde: 'fondo', dist: 6, dur: 2.1 })
     prueba.escribir(tl, 17.2, 1.2)
     prueba.recorrer(tl, 18, 5.6, 0.92)
@@ -179,7 +196,7 @@ export function build(ctx) {
   cifras.forEach((c, i) => {
     const t0 = 25 + i * 2.4
     const s = i % 2 === 0 ? 1 : -1
-    plantar(c, t0 + 1.0, 0.32, s * 1.0)
+    plantar(c, t0 + 1.0, DONDE.cifra[1], s * 1.0)
     entra(c.g, tl, t0, { desde: s > 0 ? 'arriba' : 'abajo', dist: 4.5, dur: 1.3 })
     c.escribir(tl, t0 + 0.3, 0.75)
     sale(c.g, tl, t0 + 2.6, { hacia: s > 0 ? 'arriba' : 'abajo', dist: 5, dur: 1.0 })
@@ -188,7 +205,7 @@ export function build(ctx) {
 
   frases.forEach((f, i) => {
     const t0 = 26.0 + i * 3.0
-    plantar(f, t0 + 1.0, 0.30, -1.7)
+    plantar(f, t0 + 1.0, DONDE.frase[1], DONDE.frase[2])
     entra(f.g, tl, t0, { desde: 'izq', dist: 5, dur: 1.4 })
     f.escribir(tl, t0 + 0.4, 0.85)
     f.borrar(tl, t0 + 2.6)
@@ -199,7 +216,7 @@ export function build(ctx) {
   // ---------------------------------------------------------------- 6 · PEDIDO
   let latido = null
   if (pedido) {
-    plantar(pedido, meta.beats - 0.8, 0.26, 0.0)
+    plantar(pedido, DONDE.pedido[0], DONDE.pedido[1], DONDE.pedido[2])
     entra(pedido.g, tl, 32, { desde: 'fondo', dist: 5, dur: 1.9 })
     pedido.escribir(tl, 32.4, 0.9)
     latido = pedido.latir(0.03)
