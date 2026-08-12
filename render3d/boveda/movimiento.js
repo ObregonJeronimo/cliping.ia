@@ -232,6 +232,33 @@ export function sale(g, tl, t0, op) {
   return g
 }
 
+// ---------------------------------------------------------------- acompanar a la camara
+//
+// CUANTO DURA UN OBJETO QUIETO EN UN VUELO QUE NO PARA. La cuenta es simple y decide la mitad del
+// ritmo de una plantilla: si la camara recorre `v` unidades por beat y el cuadro mide `mundoW`, un
+// objeto plantado en un punto fijo se ve durante `mundoW / v` beats y ni uno mas.
+//
+// En `reticula` eso daban cinco beats — y el tiempo de PRUEBA dura ocho, y el de PEDIDO seis. El
+// resultado no fue "se ve poco": fue la pagina desapareciendo a mitad de su propio tiempo y el CTA
+// entrando fuera de cuadro y llegando recien tres beats despues. La sonda lo marco como "encendido
+// pero NO se ve" y tenia razon.
+//
+// La respuesta del genero no es frenar la camara —eso rompe la regla 1— sino que los bloques LARGOS
+// VIAJEN. Un objeto que acompana a la camara sigue teniendo movimiento relativo contra el fondo, que
+// es de donde sale la sensacion de velocidad; simplemente no se sale del cuadro.
+//
+//   `retraso` 1.0  clavado al cuadro. Es lo que corresponde al CTA final: el ultimo bloque de una
+//                  pieza tiene que quedarse quieto respecto del ojo aunque el mundo siga corriendo.
+//   `retraso` 0.7  se queda atras despacio. Para la pagina: dura todo su tiempo y ademas se percibe
+//                  que la camara la esta pasando, que es lo que la vuelve un objeto del espacio.
+//   `retraso` 0    no acompana. Equivale a no llamar a esto.
+export function acompanar(g, tl, t0, t1, en, retraso) {
+  const r = retraso != null ? retraso : 1
+  const x0 = en(t0), x1 = en(t1)
+  tl.to(g.position, { x: g.position.x + (x1 - x0) * r, duration: b(t1 - t0), ease: 'none' }, b(t0))
+  return g
+}
+
 // ---------------------------------------------------------------- paralaje
 //
 // CAPAS A DISTINTAS VELOCIDADES. Sin esto, volar por un espacio vacio es indistinguible de un zoom: no
@@ -278,15 +305,24 @@ export function respirar(obj, op) {
   const a = op.amp != null ? op.amp : 0.12
   const g = op.giro != null ? op.giro : 0.06
   const f = op.fase != null ? op.fase : 0
-  const p0 = obj.position.clone()
-  const r0 = obj.rotation.clone()
+  // SUMA, NO ESCRIBE — y la primera version escribia, que es un defecto sin sintomas visibles y por eso
+  // el peor de todos.
+  //
+  // Guardaba la posicion del objeto al construirlo y en cada seek la volvia a poner. Como `seek()`
+  // corre `tl.time(t)` PRIMERO y `alSeek(t)` DESPUES, eso pisaba la salida de la linea de tiempo: en
+  // `atrio`, la pagina del cliente tenia una entrada volando desde la derecha y un giro de 7 beats, y
+  // los dos quedaban anulados. La pieza no fallaba ni se veia rota — simplemente la pagina aparecia
+  // quieta en su sitio final, o sea justo lo que la regla 2 prohibe, en la plantilla de referencia.
+  //
+  // Sumar es correcto y no hace falta acumular nada: cada submuestra del obturador vuelve a evaluar la
+  // linea de tiempo antes de llamar aca, asi que el valor de partida siempre es el del tween.
   return (t) => {
-    obj.position.set(p0.x + Math.sin(t * 0.61 + f) * a * 0.7,
-      p0.y + Math.sin(t * 0.74 + f * 1.7) * a,
-      p0.z + Math.sin(t * 0.43 + f * 2.3) * a * 0.5)
-    obj.rotation.set(r0.x + Math.sin(t * 0.51 + f) * g * 0.5,
-      r0.y + Math.sin(t * 0.39 + f * 1.3) * g,
-      r0.z + Math.sin(t * 0.29 + f * 0.7) * g * 0.35)
+    obj.position.x += Math.sin(t * 0.61 + f) * a * 0.7
+    obj.position.y += Math.sin(t * 0.74 + f * 1.7) * a
+    obj.position.z += Math.sin(t * 0.43 + f * 2.3) * a * 0.5
+    obj.rotation.x += Math.sin(t * 0.51 + f) * g * 0.5
+    obj.rotation.y += Math.sin(t * 0.39 + f * 1.3) * g
+    obj.rotation.z += Math.sin(t * 0.29 + f * 0.7) * g * 0.35
   }
 }
 

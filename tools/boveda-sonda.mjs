@@ -123,6 +123,14 @@ if (!textos.length) console.log('  >>> NO HAY UNA SOLA MALLA DE TEXTO. La pieza 
 
 // ---- se muestrea la timeline y se mira, en cada beat, que texto esta ENCENDIDO y DELANTE
 const _v = new THREE.Vector3()
+// HACIA DONDE MIRA LA CAMARA DE VERDAD, y no "a -z porque siempre fue asi".
+//
+// La primera version daba por hecho que la camara mira a -z del mundo, que es cierto en los vuelos de
+// avance y de desliz y FALSO en una orbita, donde `lookAt` la reorienta en cada cuadro. Sobre `vitral`
+// informo 87% de beats mudos con la plantilla funcionando: los textos estaban delante de la camara,
+// pero no delante del eje -z del mundo. Un instrumento calibrado sobre un caso particular miente en
+// cuanto aparece el segundo.
+const _dir = new THREE.Vector3()
 const filas = []
 const fuera = []
 const MUESTRA = Number(process.argv[4] || 7)
@@ -130,6 +138,7 @@ for (let bt = 0; bt <= P.meta.beats; bt += 1) {
   tl.time(Math.min(b(bt), dur), false)
   if (r.alSeek) r.alSeek(b(bt))
   escena.updateMatrixWorld(true); paginaEsc.updateMatrixWorld(true); camara.updateMatrixWorld(true)
+  camara.getWorldDirection(_dir)
   let vivos = 0, delante = 0, legibles = 0, pag = 0
   for (const o of textos) {
     const u = o.material.uniforms
@@ -139,7 +148,7 @@ for (let bt = 0; bt <= P.meta.beats; bt += 1) {
     o.getWorldPosition(_v)
     const d = _v.clone().sub(camara.position)
     // Delante = del lado en que mira la camara. En este motor la camara mira a -z siempre.
-    if (d.z < -0.5) {
+    if (d.dot(_dir) > 0.5) {
       delante++
       // Y DENTRO DEL CUADRO, que es la pregunta que de verdad importa y que la primera version de esta
       // sonda no hacia: media distancia y decia "legible" de algo que estaba fuera de pantalla.
@@ -154,7 +163,7 @@ for (let bt = 0; bt <= P.meta.beats; bt += 1) {
     if (!seVe(o) || o.scale.x < 0.05) continue
     o.getWorldPosition(_v)
     const d = _v.clone().sub(camara.position)
-    if (d.z >= -0.5) continue
+    if (d.dot(_dir) <= 0.5) continue
     const dist = d.length()
     _v.project(camara)
     if (Math.abs(_v.x) < 1.05 && Math.abs(_v.y) < 1.05 && dist > distBase * 0.2 && dist < distBase * 3.2) pag++
