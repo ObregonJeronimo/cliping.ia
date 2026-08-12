@@ -49,6 +49,18 @@ export const meta = {
 export function build(ctx) {
   const { escena, pagina, camara, tl, mundoW, mundoH, distBase } = ctx
   const uso = {}
+
+  // ---------------------------------------------------------------- LO QUE LA PAGINA DECIDE
+  //
+  // `ctx.recetas` sale de `backend/retrato.py`, que mide la tira, el DOM y los recortes de ESTA pagina.
+  // Sin retrato devuelve los valores neutros y la plantilla compone como se componia antes: no hay una
+  // rama distinta ni un caso especial. Lo que se modula es el GRADO, nunca la idea.
+  //
+  // La explicacion larga de cada receta esta en `render3d/boveda/recetas.js`, y la de por que existe
+  // este mecanismo, en `atrio.js`.
+  const R = ctx.recetas || { velocidad: 1, capas: 3, dureza: 0.75, margen: 0.88, cifras: 3, frases: 2,
+    acentoMasa: false, vacio: 0.5, movimientos: 4, paleta: [], medido: false }
+  uso.retrato = !!R.medido
   const respiraciones = []
 
   iluminar(escena, { key: 1.15, relleno: 0.48 })
@@ -67,7 +79,7 @@ export function build(ctx) {
   // sean deslices y elijan velocidades tan distintas no es un descuido: la velocidad sale de lo que el
   // espacio permite, y un muro liso permite lo que un mecanismo no.
   const LARGO = mundoW * 4.6
-  const vuelo = vueloDesliz(camara, tl, { distBase, beats: meta.beats, largo: LARGO, dist: 1.0 })
+  const vuelo = vueloDesliz(camara, tl, { distBase, beats: meta.beats, largo: (LARGO) * R.velocidad, dist: 1.0 })
   const xEn = vuelo.xEn
   const Z_CAM = distBase
 
@@ -226,12 +238,12 @@ export function build(ctx) {
   }
 
   // ---------------------------------------------------------------- los bloques, medidos contra la cara
-  const marca = bloqueMarca({ alto: 1.10, anchoMax: ANCHO_TXT })
-  const promesa = bloquePromesa({ alto: 0.52, anchoMax: ANCHO_TXT, maxLineas: 3 })
+  const marca = bloqueMarca({ alto: 1.10, anchoMax: ANCHO_TXT , margen: R.margen })
+  const promesa = bloquePromesa({ alto: 0.52, anchoMax: ANCHO_TXT, maxLineas: 3 , margen: R.margen })
   const prueba = bloquePrueba(ctx, { ancho: mundoW * 0.44, ar: 1.5 })
-  const cifras = bloquesCifra(3, { alto: 0.78, anchoMax: ANCHO_TXT * 0.52 })
-  const frases = bloquesFrase(2, { alto: 0.28, anchoMax: ANCHO_TXT * 0.70, maxLineas: 2 })
-  const pedido = bloquePedido({ alto: 0.32, anchoMax: ANCHO_TXT * 0.72 })
+  const cifras = bloquesCifra(R.cifras, { alto: 0.78, anchoMax: ANCHO_TXT * 0.52 , margen: R.margen })
+  const frases = bloquesFrase(R.frases, { alto: 0.28, anchoMax: ANCHO_TXT * 0.70, maxLineas: 2 , margen: R.margen })
+  const pedido = bloquePedido({ alto: 0.32, anchoMax: ANCHO_TXT * 0.72 , margen: R.margen })
 
   // LOS BLOQUES ENTRAN POR EL AIRE Y SALEN POR EL AIRE; EL QUE SE GUARDA ES EL CAJON. Un bloque que se
   // fuera hacia el fondo desapareceria en el primer decimo de su salida —cualquier z negativa ya esta

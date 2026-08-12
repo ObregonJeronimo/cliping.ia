@@ -21,9 +21,10 @@
 //   22  RAZONES   las cifras caen con la cascada, a distinta velocidad que las laminas.
 //   28  PEDIDO    la caida se frena, la camara sube mas despacio y el CTA queda al frente.
 
-import { THREE, vidrio, metal, luz, iluminar, domo, polvo } from '../nucleo.js'
+import { THREE, vidrio, metal, luz, iluminar, domo, polvo, prismaDe } from '../nucleo.js'
 import { entra, sale, respirar, juntar, anchoConDeriva } from '../movimiento.js'
 import { bloqueMarca, bloquePromesa, bloquePrueba, bloquesCifra, bloquesFrase, bloquePedido } from '../bloques.js'
+import { colorDePeso, grisDePeso } from '../recetas.js'
 import { LOOK, nivel, E, b } from '../../demo/kit.js'
 
 export const meta = {
@@ -41,6 +42,18 @@ const N = 300
 export function build(ctx) {
   const { escena, pagina, camara, tl, mundoW, mundoH, distBase } = ctx
   const uso = {}
+
+  // ---------------------------------------------------------------- LO QUE LA PAGINA DECIDE
+  //
+  // `ctx.recetas` sale de `backend/retrato.py`, que mide la tira, el DOM y los recortes de ESTA pagina.
+  // Sin retrato devuelve los valores neutros y la plantilla compone como se componia antes: no hay una
+  // rama distinta ni un caso especial. Lo que se modula es el GRADO, nunca la idea.
+  //
+  // La explicacion larga de cada receta esta en `render3d/boveda/recetas.js`, y la de por que existe
+  // este mecanismo, en `atrio.js`.
+  const R = ctx.recetas || { velocidad: 1, capas: 3, dureza: 0.75, margen: 0.88, cifras: 3, frases: 2,
+    acentoMasa: false, vacio: 0.5, movimientos: 4, paleta: [], medido: false }
+  uso.retrato = !!R.medido
   const respiraciones = []
 
   iluminar(escena, { key: 1.3, relleno: 0.85 })
@@ -60,8 +73,10 @@ export function build(ctx) {
   // Instanciada, por lo mismo que `cardumen`: trescientas mallas sueltas son trescientas llamadas de
   // dibujo por submuestra de obturador, o sea mil doscientas por cuadro.
   const cascada = new THREE.InstancedMesh(
-    new THREE.BoxGeometry(0.42, 0.62, 0.05),
-    vidrio(LOOK.acento, { rug: 0.09, trans: 0.60, grosor: 0.9, opacidad: 0.93 }), N)
+    // La lamina de la cascada tambien sigue la forma de la marca; se toma la geometria porque
+    // `InstancedMesh` no acepta una malla.
+    prismaDe(0.42, 0.05, R.dureza, null).geometry,
+    vidrio(colorDePeso(R, LOOK.acento, 0.20), { rug: 0.09, trans: 0.60, grosor: 0.9, opacidad: 0.93 }), N)
   cascada.frustumCulled = false
   escena.add(cascada)
   const chispas = new THREE.InstancedMesh(
@@ -99,12 +114,12 @@ export function build(ctx) {
   }
 
   // ---------------------------------------------------------------- los bloques
-  const marca = bloqueMarca({ alto: 1.25, anchoMax: UTIL(0.9) * 0.90 })
-  const promesa = bloquePromesa({ alto: 0.50, anchoMax: UTIL(0.95) * 0.88, maxLineas: 3 })
+  const marca = bloqueMarca({ alto: 1.25, anchoMax: UTIL(0.9) * 0.90 , margen: R.margen })
+  const promesa = bloquePromesa({ alto: 0.50, anchoMax: UTIL(0.95) * 0.88, maxLineas: 3 , margen: R.margen })
   const prueba = bloquePrueba(ctx, { ancho: mundoW * 0.48, ar: 1.55 })
-  const cifras = bloquesCifra(3, { alto: 0.74, anchoMax: UTIL(0.85) * 0.46 })
-  const frases = bloquesFrase(2, { alto: 0.28, anchoMax: UTIL(0.85) * 0.78 })
-  const pedido = bloquePedido({ alto: 0.31, anchoMax: UTIL(0.85) * 0.60 })
+  const cifras = bloquesCifra(R.cifras, { alto: 0.74, anchoMax: UTIL(0.85) * 0.46 , margen: R.margen })
+  const frases = bloquesFrase(R.frases, { alto: 0.28, anchoMax: UTIL(0.85) * 0.78 , margen: R.margen })
+  const pedido = bloquePedido({ alto: 0.31, anchoMax: UTIL(0.85) * 0.60 , margen: R.margen })
 
   // Los bloques se plantan a la altura del beat en que se leen, igual que `zEn` en un avance. Y como la
   // camara SUBE, un bloque quieto sale del cuadro por abajo: los que duran mucho suben con ella.

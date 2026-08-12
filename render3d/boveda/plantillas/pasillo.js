@@ -38,6 +38,18 @@ const SEP = 6.2
 export function build(ctx) {
   const { escena, pagina, camara, tl, mundoW, mundoH, distBase } = ctx
   const uso = {}
+
+  // ---------------------------------------------------------------- LO QUE LA PAGINA DECIDE
+  //
+  // `ctx.recetas` sale de `backend/retrato.py`, que mide la tira, el DOM y los recortes de ESTA pagina.
+  // Sin retrato devuelve los valores neutros y la plantilla compone como se componia antes: no hay una
+  // rama distinta ni un caso especial. Lo que se modula es el GRADO, nunca la idea.
+  //
+  // La explicacion larga de cada receta esta en `render3d/boveda/recetas.js`, y la de por que existe
+  // este mecanismo, en `atrio.js`.
+  const R = ctx.recetas || { velocidad: 1, capas: 3, dureza: 0.75, margen: 0.88, cifras: 3, frases: 2,
+    acentoMasa: false, vacio: 0.5, movimientos: 4, paleta: [], medido: false }
+  uso.retrato = !!R.medido
   const respiraciones = []
 
   iluminar(escena, { key: 0.9, relleno: 0.65 })
@@ -46,7 +58,7 @@ export function build(ctx) {
 
   const DERIVA = 0.42
   const vuelo = vueloAvance(camara, tl, {
-    distBase, beats: meta.beats, largo: SEP * 13, desde: 0.8, deriva: DERIVA,
+    distBase, beats: meta.beats, largo: (SEP * 13) * R.velocidad, desde: 0.8, deriva: DERIVA,
   })
   const zEn = vuelo.zEn
   const UTIL = (k) => anchoConDeriva(mundoW, DERIVA, k)
@@ -56,15 +68,18 @@ export function build(ctx) {
   // Un arco es un toro aplastado y CORTADO: `thetaLength` menor que 2π deja la parte de abajo abierta,
   // que es lo que lo vuelve arco y no aro. El canto interior va en emisivo puro porque es lo unico que
   // el bloom convierte en luz — y sin ese halo, un tunel de arcos se ve como un tunel de tuberias.
-  const R = mundoW * 0.82
+  // RAD y no R: `R` es el nombre de las recetas de la pagina en las dieciocho plantillas, y tener el
+  // mismo identificador significando dos cosas en un archivo es como se escriben los defectos que no
+  // dan sintomas. Aca R era un radio, asi que se llama RAD.
+  const RAD = mundoW * 0.82
   const matArco = metal(nivel(0.16), 0.30)
   const matBorde = luz(LOOK.acento, 1.15)
   const arco = (esc) => {
     const g = new THREE.Group()
-    const t = new THREE.Mesh(new THREE.TorusGeometry(R * esc, R * esc * 0.055, 10, 64, Math.PI * 1.62), matArco)
+    const t = new THREE.Mesh(new THREE.TorusGeometry(RAD * esc, RAD * esc * 0.055, 10, 64, Math.PI * 1.62), matArco)
     t.rotation.z = -Math.PI * 0.19
     g.add(t)
-    const l = new THREE.Mesh(new THREE.TorusGeometry(R * esc * 0.94, R * esc * 0.012, 8, 64, Math.PI * 1.62), matBorde)
+    const l = new THREE.Mesh(new THREE.TorusGeometry(RAD * esc * 0.94, RAD * esc * 0.012, 8, 64, Math.PI * 1.62), matBorde)
     l.rotation.z = -Math.PI * 0.19
     g.add(l)
     return g
@@ -89,7 +104,7 @@ export function build(ctx) {
   // continuo, un espacio hecho solo de repeticiones no dice a que velocidad se avanza.
   for (const s of [-1, 1]) {
     const r = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 300), vidrio(LOOK.acento2 || LOOK.acento, { trans: 0.55, rug: 0.08 }))
-    r.position.set(s * R * 0.74, -mundoH * 0.44, -110)
+    r.position.set(s * RAD * 0.74, -mundoH * 0.44, -110)
     escena.add(r)
   }
   // EL PISO NO PUEDE SER NEGRO PURO, y en la primera version lo era: metal a nivel 0.06, sin nada que
@@ -99,11 +114,11 @@ export function build(ctx) {
   //
   // Sube de nivel, baja de altura —asi entra menos en cuadro— y lleva una banda de acento por el eje,
   // que es lo mismo que hace `atrio` y por la misma razon: da la direccion del vuelo.
-  const piso = new THREE.Mesh(new THREE.PlaneGeometry(R * 4, 400), metal(nivel(0.16), 0.30))
+  const piso = new THREE.Mesh(new THREE.PlaneGeometry(RAD * 4, 400), metal(nivel(0.16), 0.30))
   piso.rotation.x = -Math.PI / 2
   piso.position.set(0, -mundoH * 0.62, -100)
   escena.add(piso)
-  const guia = barra(R * 0.5, 400, LOOK.acento, 0.55)
+  const guia = barra(RAD * 0.5, 400, LOOK.acento, 0.55)
   guia.material.transparent = true
   guia.material.opacity = 0.22
   guia.material.depthWrite = false
@@ -112,12 +127,12 @@ export function build(ctx) {
   escena.add(guia)
 
   // ---------------------------------------------------------------- los bloques
-  const marca = bloqueMarca({ alto: 1.4, anchoMax: UTIL(0.9) * 0.88 })
-  const promesa = bloquePromesa({ alto: 0.56, anchoMax: UTIL(0.95) * 0.86 })
+  const marca = bloqueMarca({ alto: 1.4, anchoMax: UTIL(0.9) * 0.88 , margen: R.margen })
+  const promesa = bloquePromesa({ alto: 0.56, anchoMax: UTIL(0.95) * 0.86 , margen: R.margen })
   const prueba = bloquePrueba(ctx, { ancho: mundoW * 0.52, ar: 1.6 })
-  const cifras = bloquesCifra(3, { alto: 0.85, anchoMax: UTIL(0.8) * 0.44 })
-  const frases = bloquesFrase(2, { alto: 0.30, anchoMax: UTIL(0.85) * 0.80 })
-  const pedido = bloquePedido({ alto: 0.34, anchoMax: UTIL(0.85) * 0.62 })
+  const cifras = bloquesCifra(R.cifras, { alto: 0.85, anchoMax: UTIL(0.8) * 0.44 , margen: R.margen })
+  const frases = bloquesFrase(R.frases, { alto: 0.30, anchoMax: UTIL(0.85) * 0.80 , margen: R.margen })
+  const pedido = bloquePedido({ alto: 0.34, anchoMax: UTIL(0.85) * 0.62 , margen: R.margen })
 
   // ---------------------------------------------------------------- 2 · MARCA
   // Llega desde el fondo por el eje: el arco que la camara esta cruzando la encuadra sola.
@@ -166,7 +181,7 @@ export function build(ctx) {
   cifras.forEach((c, i) => {
     const s = i % 2 === 0 ? -1 : 1
     const t0 = 25 + i * 2.2
-    c.g.position.set(s * R * 0.30, 0.7 - i * 0.55, zEn(t0 + 0.9, distBase * 0.92))
+    c.g.position.set(s * RAD * 0.30, 0.7 - i * 0.55, zEn(t0 + 0.9, distBase * 0.92))
     c.g.rotation.y = s * 0.30
     escena.add(c.g)
     entra(c.g, tl, t0, { desde: s < 0 ? 'izq' : 'der', dist: 5, dur: 1.3 })

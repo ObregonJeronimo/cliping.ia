@@ -39,6 +39,18 @@ export const meta = {
 export function build(ctx) {
   const { escena, pagina, camara, tl, mundoW, mundoH, distBase } = ctx
   const uso = {}
+
+  // ---------------------------------------------------------------- LO QUE LA PAGINA DECIDE
+  //
+  // `ctx.recetas` sale de `backend/retrato.py`, que mide la tira, el DOM y los recortes de ESTA pagina.
+  // Sin retrato devuelve los valores neutros y la plantilla compone como se componia antes: no hay una
+  // rama distinta ni un caso especial. Lo que se modula es el GRADO, nunca la idea.
+  //
+  // La explicacion larga de cada receta esta en `render3d/boveda/recetas.js`, y la de por que existe
+  // este mecanismo, en `atrio.js`.
+  const R = ctx.recetas || { velocidad: 1, capas: 3, dureza: 0.75, margen: 0.88, cifras: 3, frases: 2,
+    acentoMasa: false, vacio: 0.5, movimientos: 4, paleta: [], medido: false }
+  uso.retrato = !!R.medido
   const respiraciones = []
 
   // La primera version tenia key 0.75 y relleno 0.35 sobre metal a nivel 0.07-0.11. Resultado medido en
@@ -49,7 +61,7 @@ export function build(ctx) {
   const motas = polvo(escena, 1300, 30)
 
   const LARGO = mundoW * 6.2
-  const vuelo = vueloDesliz(camara, tl, { distBase, beats: meta.beats, largo: LARGO, dist: 1.02 })
+  const vuelo = vueloDesliz(camara, tl, { distBase, beats: meta.beats, largo: (LARGO) * R.velocidad, dist: 1.02 })
   const xEn = vuelo.xEn
   const UTIL = (k) => anchoConDeriva(mundoW, 0.35, k)
 
@@ -122,12 +134,12 @@ export function build(ctx) {
   //
   // El alto se pide contra `HUECO` y no contra `mundoH`: en esta plantilla el cuadro util no es el
   // cuadro, es la falla. Un claim que respeta el ancho y se pasa de alto queda tapado por una masa.
-  const marca = bloqueMarca({ alto: Math.min(1.25, HUECO * 0.34), anchoMax: UTIL(0.92) * 0.90 })
-  const promesa = bloquePromesa({ alto: Math.min(0.50, HUECO * 0.16), anchoMax: UTIL(0.95) * 0.88, maxLineas: 2 })
+  const marca = bloqueMarca({ alto: Math.min(1.25, HUECO * 0.34), anchoMax: UTIL(0.92) * 0.90 , margen: R.margen })
+  const promesa = bloquePromesa({ alto: Math.min(0.50, HUECO * 0.16), anchoMax: UTIL(0.95) * 0.88, maxLineas: 2 , margen: R.margen })
   const prueba = bloquePrueba(ctx, { ancho: mundoW * 0.42, ar: 1.35 })
-  const cifras = bloquesCifra(3, { alto: Math.min(0.78, HUECO * 0.22), anchoMax: UTIL(0.9) * 0.5 })
-  const frases = bloquesFrase(2, { alto: 0.28, anchoMax: UTIL(0.9) * 0.80, maxLineas: 2 })
-  const pedido = bloquePedido({ alto: 0.32, anchoMax: UTIL(0.9) * 0.62 })
+  const cifras = bloquesCifra(R.cifras, { alto: Math.min(0.78, HUECO * 0.22), anchoMax: UTIL(0.9) * 0.5 , margen: R.margen })
+  const frases = bloquesFrase(R.frases, { alto: 0.28, anchoMax: UTIL(0.9) * 0.80, maxLineas: 2 , margen: R.margen })
+  const pedido = bloquePedido({ alto: 0.32, anchoMax: UTIL(0.9) * 0.62 , margen: R.margen })
 
   const enBeat = (g, beat, y, z) => { g.position.set(xEn(beat), y || 0, z || 0) }
 

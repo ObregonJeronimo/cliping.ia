@@ -39,6 +39,18 @@ export const meta = {
 export function build(ctx) {
   const { escena, pagina, camara, tl, mundoW, mundoH, distBase } = ctx
   const uso = {}
+
+  // ---------------------------------------------------------------- LO QUE LA PAGINA DECIDE
+  //
+  // `ctx.recetas` sale de `backend/retrato.py`, que mide la tira, el DOM y los recortes de ESTA pagina.
+  // Sin retrato devuelve los valores neutros y la plantilla compone como se componia antes: no hay una
+  // rama distinta ni un caso especial. Lo que se modula es el GRADO, nunca la idea.
+  //
+  // La explicacion larga de cada receta esta en `render3d/boveda/recetas.js`, y la de por que existe
+  // este mecanismo, en `atrio.js`.
+  const R = ctx.recetas || { velocidad: 1, capas: 3, dureza: 0.75, margen: 0.88, cifras: 3, frases: 2,
+    acentoMasa: false, vacio: 0.5, movimientos: 4, paleta: [], medido: false }
+  uso.retrato = !!R.medido
   const respiraciones = []
 
   iluminar(escena, { key: 1.25, relleno: 0.6 })
@@ -105,12 +117,12 @@ export function build(ctx) {
   // ---------------------------------------------------------------- los bloques
   const DERIVA = 0.45
   const UTIL = (k) => anchoConDeriva(mundoW, DERIVA, k)
-  const marca = bloqueMarca({ alto: 1.15, anchoMax: UTIL(0.85) * 0.86 })
-  const promesa = bloquePromesa({ alto: 0.50, anchoMax: UTIL(0.9) * 0.86 })
+  const marca = bloqueMarca({ alto: 1.15, anchoMax: UTIL(0.85) * 0.86 , margen: R.margen })
+  const promesa = bloquePromesa({ alto: 0.50, anchoMax: UTIL(0.9) * 0.86 , margen: R.margen })
   const prueba = bloquePrueba(ctx, { ancho: mundoW * 0.44, ar: 1.5 })
-  const cifras = bloquesCifra(3, { alto: 0.72, anchoMax: UTIL(0.8) * 0.44 })
-  const frases = bloquesFrase(2, { alto: 0.28, anchoMax: UTIL(0.8) * 0.78 })
-  const pedido = bloquePedido({ alto: 0.31, anchoMax: UTIL(0.8) * 0.60 })
+  const cifras = bloquesCifra(R.cifras, { alto: 0.72, anchoMax: UTIL(0.8) * 0.44 , margen: R.margen })
+  const frases = bloquesFrase(R.frases, { alto: 0.28, anchoMax: UTIL(0.8) * 0.78 , margen: R.margen })
+  const pedido = bloquePedido({ alto: 0.31, anchoMax: UTIL(0.8) * 0.60 , margen: R.margen })
 
   // MONTAR SOBRE LA CINTA: la posicion sale de la curva en el beat pedido, mas una separacion en la
   // normal. Asi el bloque queda sobre la banda por construccion, no por haber acertado un numero.

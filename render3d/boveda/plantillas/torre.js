@@ -60,6 +60,18 @@ const TORRE_H = N_LOSAS * PASO_Y   // 27.2
 export function build(ctx) {
   const { escena, pagina, camara, tl, mundoW, distBase } = ctx
   const uso = {}
+
+  // ---------------------------------------------------------------- LO QUE LA PAGINA DECIDE
+  //
+  // `ctx.recetas` sale de `backend/retrato.py`, que mide la tira, el DOM y los recortes de ESTA pagina.
+  // Sin retrato devuelve los valores neutros y la plantilla compone como se componia antes: no hay una
+  // rama distinta ni un caso especial. Lo que se modula es el GRADO, nunca la idea.
+  //
+  // La explicacion larga de cada receta esta en `render3d/boveda/recetas.js`, y la de por que existe
+  // este mecanismo, en `atrio.js`.
+  const R = ctx.recetas || { velocidad: 1, capas: 3, dureza: 0.75, margen: 0.88, cifras: 3, frases: 2,
+    acentoMasa: false, vacio: 0.5, movimientos: 4, paleta: [], medido: false }
+  uso.retrato = !!R.medido
   const respiraciones = []
 
   // ALEATORIEDAD PROPIA Y DETERMINISTA. `Math.random` daria un video distinto por render y romperia lo
@@ -258,12 +270,12 @@ export function build(ctx) {
   const anchoDe = (que, margen) =>
     anchoADistancia(mundoW, distBase, puntoEn(DONDE[que][0], DONDE[que][1]).dist, DERIVA) * margen
 
-  const marca = bloqueMarca({ alto: 1.30, anchoMax: anchoDe('marca', 0.90), cama: true, camaOpacidad: 0.85 })
-  const promesa = bloquePromesa({ alto: 0.50, anchoMax: anchoDe('promesa', 0.90), maxLineas: 3 })
+  const marca = bloqueMarca({ alto: 1.30, anchoMax: anchoDe('marca', 0.90), cama: true, camaOpacidad: 0.85 , margen: R.margen })
+  const promesa = bloquePromesa({ alto: 0.50, anchoMax: anchoDe('promesa', 0.90), maxLineas: 3 , margen: R.margen })
   const prueba = bloquePrueba(ctx, { ancho: anchoDe('prueba', 0.60), ar: 1.5 })
-  const cifras = bloquesCifra(3, { alto: 0.74, anchoMax: anchoDe('cifra', 0.46) })
-  const frases = bloquesFrase(2, { alto: 0.28, anchoMax: anchoDe('frase', 0.80) })
-  const pedido = bloquePedido({ alto: 0.32, anchoMax: anchoDe('pedido', 0.72) })
+  const cifras = bloquesCifra(R.cifras, { alto: 0.74, anchoMax: anchoDe('cifra', 0.46) , margen: R.margen })
+  const frases = bloquesFrase(R.frases, { alto: 0.28, anchoMax: anchoDe('frase', 0.80) , margen: R.margen })
+  const pedido = bloquePedido({ alto: 0.32, anchoMax: anchoDe('pedido', 0.72) , margen: R.margen })
 
   // DOS GRUPOS, igual que en `monolito` y por el mismo motivo: el de afuera lo planta el vuelo
   // —posicion y encare— y el de adentro es el que mueven `entra`, `sale` y `respirar`, en coordenadas

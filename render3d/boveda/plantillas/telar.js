@@ -238,6 +238,18 @@ function cablesUrdimbre(az, mundoW, zIni, largoTotal, n) {
 export function build(ctx) {
   const { escena, pagina, camara, tl, mundoW, mundoH, distBase } = ctx
   const uso = {}
+
+  // ---------------------------------------------------------------- LO QUE LA PAGINA DECIDE
+  //
+  // `ctx.recetas` sale de `backend/retrato.py`, que mide la tira, el DOM y los recortes de ESTA pagina.
+  // Sin retrato devuelve los valores neutros y la plantilla compone como se componia antes: no hay una
+  // rama distinta ni un caso especial. Lo que se modula es el GRADO, nunca la idea.
+  //
+  // La explicacion larga de cada receta esta en `render3d/boveda/recetas.js`, y la de por que existe
+  // este mecanismo, en `atrio.js`.
+  const R = ctx.recetas || { velocidad: 1, capas: 3, dureza: 0.75, margen: 0.88, cifras: 3, frases: 2,
+    acentoMasa: false, vacio: 0.5, movimientos: 4, paleta: [], medido: false }
+  uso.retrato = !!R.medido
   const respiraciones = []
 
   // Semilla propia y determinista. Dos renders de la misma pagina tienen que dar el mismo video, y
@@ -256,7 +268,7 @@ export function build(ctx) {
   const DERIVA = 0.42
   const LARGO = distBase * 4.6
   const vuelo = vueloAvance(camara, tl, {
-    distBase, beats: meta.beats, largo: LARGO, desde: 0.92, deriva: DERIVA,
+    distBase, beats: meta.beats, largo: (LARGO) * R.velocidad, desde: 0.92, deriva: DERIVA,
   })
   const zEn = vuelo.zEn
   const UTIL = (k) => anchoConDeriva(mundoW, DERIVA, k)
@@ -327,12 +339,12 @@ export function build(ctx) {
   // CAMA EN LA MARCA: detras del nombre convergen las puntas de la urdimbre y, mas lejos, la trama de
   // los bastidores que todavia no se abrieron. `nivelTexto` garantiza contraste contra la PALETA, no
   // contra lo que esta plantilla resulto poner atras — y lo que puso atras son filamentos emisivos.
-  const marca = bloqueMarca({ alto: 1.45, anchoMax: UTIL(0.90) * 0.92, cama: true, camaOpacidad: 0.85 })
-  const promesa = bloquePromesa({ alto: 0.58, anchoMax: UTIL(0.95) * 0.90 })
+  const marca = bloqueMarca({ alto: 1.45, anchoMax: UTIL(0.90) * 0.92, cama: true, camaOpacidad: 0.85 , margen: R.margen })
+  const promesa = bloquePromesa({ alto: 0.58, anchoMax: UTIL(0.95) * 0.90 , margen: R.margen })
   const prueba = bloquePrueba(ctx, { ancho: mundoW * 0.56, ar: 1.58 })
-  const cifras = bloquesCifra(3, { alto: 0.88, anchoMax: UTIL(0.78) * 0.42 })
-  const frases = bloquesFrase(2, { alto: 0.30, anchoMax: UTIL(0.80) * 0.84 })
-  const pedido = bloquePedido({ alto: 0.34, anchoMax: UTIL(0.85) * 0.64 })
+  const cifras = bloquesCifra(R.cifras, { alto: 0.88, anchoMax: UTIL(0.78) * 0.42 , margen: R.margen })
+  const frases = bloquesFrase(R.frases, { alto: 0.30, anchoMax: UTIL(0.80) * 0.84 , margen: R.margen })
+  const pedido = bloquePedido({ alto: 0.34, anchoMax: UTIL(0.85) * 0.64 , margen: R.margen })
 
   // ---------------------------------------------------------------- 2 · MARCA
   // Llega desde el fondo por el corredor recien abierto y se va hacia arriba ANTES de que la camara la

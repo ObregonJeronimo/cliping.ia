@@ -54,6 +54,7 @@
 import { THREE, vidrio, luz, iluminar, domo, polvo } from '../nucleo.js'
 import { entra, sale, respirar, juntar, anchoADistancia } from '../movimiento.js'
 import { bloqueMarca, bloquePromesa, bloquePrueba, bloquesCifra, bloquesFrase, bloquePedido } from '../bloques.js'
+import { colorDePeso, grisDePeso } from '../recetas.js'
 import { LOOK, nivel, E, b } from '../../demo/kit.js'
 
 export const meta = {
@@ -125,6 +126,18 @@ const cuna = (largo, w0, w1) => {
 export function build(ctx) {
   const { escena, pagina, camara, tl, mundoW, distBase } = ctx
   const uso = {}
+
+  // ---------------------------------------------------------------- LO QUE LA PAGINA DECIDE
+  //
+  // `ctx.recetas` sale de `backend/retrato.py`, que mide la tira, el DOM y los recortes de ESTA pagina.
+  // Sin retrato devuelve los valores neutros y la plantilla compone como se componia antes: no hay una
+  // rama distinta ni un caso especial. Lo que se modula es el GRADO, nunca la idea.
+  //
+  // La explicacion larga de cada receta esta en `render3d/boveda/recetas.js`, y la de por que existe
+  // este mecanismo, en `atrio.js`.
+  const R = ctx.recetas || { velocidad: 1, capas: 3, dureza: 0.75, margen: 0.88, cifras: 3, frases: 2,
+    acentoMasa: false, vacio: 0.5, movimientos: 4, paleta: [], medido: false }
+  uso.retrato = !!R.medido
   const respiraciones = []
   const BEATS = meta.beats
 
@@ -181,7 +194,7 @@ export function build(ctx) {
   escena.add(gPrisma)
   // Tres lados: un cilindro de 3 segmentos ES un prisma triangular, y sale mas barato que una malla.
   const cuerpo = new THREE.Mesh(new THREE.CylinderGeometry(R_P, R_P, ALTO_P, 3),
-    vidrio(LOOK.acento, { rug: 0.04, trans: 0.90, grosor: 2.8, opacidad: 0.92 }))
+    vidrio(colorDePeso(R, LOOK.acento, 0.20), { rug: 0.04, trans: 0.90, grosor: 2.8, opacidad: 0.92 }))
   gPrisma.add(cuerpo)
   // Los tres cantos verticales en emisivo: son lo que se lee como VOLUMEN cuando el objeto gira. Un
   // prisma sin aristas marcadas es una silueta plana en cada instante.
@@ -400,12 +413,13 @@ export function build(ctx) {
   // poner ahi. Es la misma decision que tomo `atrio` con su columnata, por la misma razon.
   const marca = bloqueMarca({
     alto: 1.25 * esc(D_MARCA), anchoMax: cuadro(D_MARCA) * 0.86, cama: true, camaOpacidad: 0.82,
+    margen: R.margen,
   })
-  const promesa = bloquePromesa({ alto: 0.52 * esc(D_PROM), anchoMax: cuadro(D_PROM) * 0.88 })
+  const promesa = bloquePromesa({ alto: 0.52 * esc(D_PROM), anchoMax: cuadro(D_PROM) * 0.88 , margen: R.margen })
   const prueba = bloquePrueba(ctx, { ancho: cuadro(D_PRUE) * 0.58, ar: 1.5 })
-  const cifras = bloquesCifra(3, { alto: 0.80 * esc(D_CIF), anchoMax: cuadro(D_CIF) * 0.40 })
-  const frases = bloquesFrase(2, { alto: 0.36 * esc(D_FRA), anchoMax: cuadro(D_FRA) * 0.76 })
-  const pedido = bloquePedido({ alto: 0.32 * esc(D_PED), anchoMax: cuadro(D_PED) * 0.60 })
+  const cifras = bloquesCifra(R.cifras, { alto: 0.80 * esc(D_CIF), anchoMax: cuadro(D_CIF) * 0.40 , margen: R.margen })
+  const frases = bloquesFrase(R.frases, { alto: 0.36 * esc(D_FRA), anchoMax: cuadro(D_FRA) * 0.76 , margen: R.margen })
+  const pedido = bloquePedido({ alto: 0.32 * esc(D_PED), anchoMax: cuadro(D_PED) * 0.60 , margen: R.margen })
 
   // ---------------------------------------------------------------- 2 · MARCA
   // El unico bloque que NO viaja: se queda plantado sobre el prisma mientras la camara lo rodea. Ahi el

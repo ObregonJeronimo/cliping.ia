@@ -25,6 +25,7 @@
 import { THREE, vidrio, metal, luz, iluminar, domo, polvo } from '../nucleo.js'
 import { vueloAvance, entra, sale, paralaje, respirar, juntar, anchoConDeriva } from '../movimiento.js'
 import { bloqueMarca, bloquePromesa, bloquePrueba, bloquesCifra, bloquesFrase, bloquePedido } from '../bloques.js'
+import { colorDePeso, grisDePeso } from '../recetas.js'
 import { LOOK, nivel, E, b } from '../../demo/kit.js'
 
 export const meta = {
@@ -40,6 +41,18 @@ export const meta = {
 export function build(ctx) {
   const { escena, pagina, camara, tl, mundoW, mundoH, distBase } = ctx
   const uso = {}
+
+  // ---------------------------------------------------------------- LO QUE LA PAGINA DECIDE
+  //
+  // `ctx.recetas` sale de `backend/retrato.py`, que mide la tira, el DOM y los recortes de ESTA pagina.
+  // Sin retrato devuelve los valores neutros y la plantilla compone como se componia antes: no hay una
+  // rama distinta ni un caso especial. Lo que se modula es el GRADO, nunca la idea.
+  //
+  // La explicacion larga de cada receta esta en `render3d/boveda/recetas.js`, y la de por que existe
+  // este mecanismo, en `atrio.js`.
+  const R = ctx.recetas || { velocidad: 1, capas: 3, dureza: 0.75, margen: 0.88, cifras: 3, frases: 2,
+    acentoMasa: false, vacio: 0.5, movimientos: 4, paleta: [], medido: false }
+  uso.retrato = !!R.medido
   const respiraciones = []
 
   // Key alta para una plantilla oscura, y no es una contradiccion: lo que la hace atmosferica es la
@@ -52,7 +65,7 @@ export function build(ctx) {
   const DERIVA = 0.95
   const LARGO = distBase * 4.6
   const vuelo = vueloAvance(camara, tl, {
-    distBase, beats: meta.beats, largo: LARGO, desde: 0.9, deriva: DERIVA,
+    distBase, beats: meta.beats, largo: (LARGO) * R.velocidad, desde: 0.9, deriva: DERIVA,
   })
   const zEn = vuelo.zEn
   const UTIL = (k) => anchoConDeriva(mundoW, DERIVA, k)
@@ -65,7 +78,7 @@ export function build(ctx) {
   let sem = 771103
   const az = () => { sem = (sem * 1664525 + 1013904223) >>> 0; return sem / 4294967296 }
 
-  const matVidrio = vidrio(LOOK.acento, { rug: 0.08, trans: 0.80, grosor: 2.0, opacidad: 0.88 })
+  const matVidrio = vidrio(colorDePeso(R, LOOK.acento, 0.20), { rug: 0.08, trans: 0.80, grosor: 2.0, opacidad: 0.88 })
   const matVidrio2 = vidrio(LOOK.acento2 || LOOK.acento, { rug: 0.14, trans: 0.70, grosor: 1.6, opacidad: 0.82 })
   const matMate = metal(nivel(0.30), 0.44)
 
@@ -120,12 +133,12 @@ export function build(ctx) {
   }
 
   // ---------------------------------------------------------------- los bloques
-  const marca = bloqueMarca({ alto: 1.3, anchoMax: UTIL(0.9) * 0.92 })
-  const promesa = bloquePromesa({ alto: 0.54, anchoMax: UTIL(0.95) * 0.90 })
+  const marca = bloqueMarca({ alto: 1.3, anchoMax: UTIL(0.9) * 0.92 , margen: R.margen })
+  const promesa = bloquePromesa({ alto: 0.54, anchoMax: UTIL(0.95) * 0.90 , margen: R.margen })
   const prueba = bloquePrueba(ctx, { ancho: mundoW * 0.52, ar: 1.6 })
-  const cifras = bloquesCifra(3, { alto: 0.80, anchoMax: UTIL(0.85) * 0.46 })
-  const frases = bloquesFrase(2, { alto: 0.29, anchoMax: UTIL(0.85) * 0.82 })
-  const pedido = bloquePedido({ alto: 0.33, anchoMax: UTIL(0.85) * 0.64 })
+  const cifras = bloquesCifra(R.cifras, { alto: 0.80, anchoMax: UTIL(0.85) * 0.46 , margen: R.margen })
+  const frases = bloquesFrase(R.frases, { alto: 0.29, anchoMax: UTIL(0.85) * 0.82 , margen: R.margen })
+  const pedido = bloquePedido({ alto: 0.33, anchoMax: UTIL(0.85) * 0.64 , margen: R.margen })
 
   // ---------------------------------------------------------------- 2 · MARCA
   if (marca) {

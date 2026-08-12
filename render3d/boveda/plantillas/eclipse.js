@@ -40,6 +40,18 @@ export const meta = {
 export function build(ctx) {
   const { escena, pagina, camara, tl, mundoW, mundoH, distBase } = ctx
   const uso = {}
+
+  // ---------------------------------------------------------------- LO QUE LA PAGINA DECIDE
+  //
+  // `ctx.recetas` sale de `backend/retrato.py`, que mide la tira, el DOM y los recortes de ESTA pagina.
+  // Sin retrato devuelve los valores neutros y la plantilla compone como se componia antes: no hay una
+  // rama distinta ni un caso especial. Lo que se modula es el GRADO, nunca la idea.
+  //
+  // La explicacion larga de cada receta esta en `render3d/boveda/recetas.js`, y la de por que existe
+  // este mecanismo, en `atrio.js`.
+  const R = ctx.recetas || { velocidad: 1, capas: 3, dureza: 0.75, margen: 0.88, cifras: 3, frases: 2,
+    acentoMasa: false, vacio: 0.5, movimientos: 4, paleta: [], medido: false }
+  uso.retrato = !!R.medido
   const respiraciones = []
 
   iluminar(escena, { key: 0.6, relleno: 0.5 })
@@ -51,7 +63,7 @@ export function build(ctx) {
   const DERIVA = 0.30
   const LARGO = distBase * 2.6
   const vuelo = vueloAvance(camara, tl, {
-    distBase, beats: meta.beats, largo: LARGO, desde: 1.0, deriva: DERIVA,
+    distBase, beats: meta.beats, largo: (LARGO) * R.velocidad, desde: 1.0, deriva: DERIVA,
   })
   const zEn = vuelo.zEn
   const UTIL = (k) => anchoConDeriva(mundoW, DERIVA, k)
@@ -62,16 +74,19 @@ export function build(ctx) {
   // delante del final —y no exactamente en el— es lo que hace que el ultimo tiempo pase DEL OTRO LADO,
   // que es el remate de la plantilla.
   const Z_DISCO = zEn(30, 0)
-  const R = mundoW * 1.35
+  // RAD y no R: `R` es el nombre de las recetas de la pagina en las dieciocho plantillas, y tener el
+  // mismo identificador significando dos cosas en un archivo es como se escriben los defectos que no
+  // dan sintomas. Aca R era un radio, asi que se llama RAD.
+  const RAD = mundoW * 1.35
   const gEcl = new THREE.Group()
   gEcl.position.z = Z_DISCO
   escena.add(gEcl)
-  const disco = new THREE.Mesh(new THREE.CircleGeometry(R, 96), metal(nivel(0.03), 0.62))
+  const disco = new THREE.Mesh(new THREE.CircleGeometry(RAD, 96), metal(nivel(0.03), 0.62))
   gEcl.add(disco)
-  const anillo = new THREE.Mesh(new THREE.RingGeometry(R * 1.002, R * 1.045, 128), luz(LOOK.acento, 1.9))
+  const anillo = new THREE.Mesh(new THREE.RingGeometry(RAD * 1.002, RAD * 1.045, 128), luz(LOOK.acento, 1.9))
   anillo.position.z = -0.02
   gEcl.add(anillo)
-  const corona = new THREE.Mesh(new THREE.CircleGeometry(R * 2.6, 96), luz(LOOK.acento2 || LOOK.acento, 0.30))
+  const corona = new THREE.Mesh(new THREE.CircleGeometry(RAD * 2.6, 96), luz(LOOK.acento2 || LOOK.acento, 0.30))
   corona.material.transparent = true
   corona.material.opacity = 0.30
   corona.material.depthWrite = false
@@ -83,12 +98,12 @@ export function build(ctx) {
   gEcl.add(rayos)
   for (let i = 0; i < 28; i++) {
     const a = (i / 28) * Math.PI * 2
-    const l = R * (0.5 + (i % 5) * 0.16)
+    const l = RAD * (0.5 + (i % 5) * 0.16)
     const r = barra(l, 0.035, LOOK.acento, 0.85)
     r.material.transparent = true
     r.material.opacity = 0.42
     r.material.depthWrite = false
-    r.position.set(Math.cos(a) * (R + l / 2), Math.sin(a) * (R + l / 2), -0.4)
+    r.position.set(Math.cos(a) * (RAD + l / 2), Math.sin(a) * (RAD + l / 2), -0.4)
     r.rotation.z = a
     rayos.add(r)
   }
@@ -99,9 +114,9 @@ export function build(ctx) {
   const gLejos = new THREE.Group()
   gLejos.position.set(mundoW * 0.9, mundoH * 0.5, Z_DISCO - distBase * 2.2)
   escena.add(gLejos)
-  const d2 = new THREE.Mesh(new THREE.CircleGeometry(R * 0.5, 64), metal(nivel(0.05), 0.6))
+  const d2 = new THREE.Mesh(new THREE.CircleGeometry(RAD * 0.5, 64), metal(nivel(0.05), 0.6))
   gLejos.add(d2)
-  const a2 = new THREE.Mesh(new THREE.RingGeometry(R * 0.502, R * 0.525, 96), luz(LOOK.acento2 || LOOK.acento, 1.2))
+  const a2 = new THREE.Mesh(new THREE.RingGeometry(RAD * 0.502, RAD * 0.525, 96), luz(LOOK.acento2 || LOOK.acento, 1.2))
   a2.position.z = -0.02
   gLejos.add(a2)
 
@@ -110,12 +125,12 @@ export function build(ctx) {
   // SIN CAMA: es la unica plantilla de la boveda donde el claim no la lleva, y no es un descuido sino
   // el resultado de la construccion. El disco YA es una cama —un circulo mate del ancho del cuadro— y
   // apilarle otra encima le pone un rectangulo a una composicion que es toda curva.
-  const marca = bloqueMarca({ alto: 1.25, anchoMax: Math.min(UTIL(0.95) * 0.92, R * 1.55) })
-  const promesa = bloquePromesa({ alto: 0.52, anchoMax: Math.min(UTIL(0.95) * 0.9, R * 1.5), cama: false })
+  const marca = bloqueMarca({ alto: 1.25, anchoMax: Math.min(UTIL(0.95) * 0.92, RAD * 1.55) , margen: R.margen })
+  const promesa = bloquePromesa({ alto: 0.52, anchoMax: Math.min(UTIL(0.95) * 0.9, RAD * 1.5), cama: false , margen: R.margen })
   const prueba = bloquePrueba(ctx, { ancho: mundoW * 0.5, ar: 1.55 })
-  const cifras = bloquesCifra(3, { alto: 0.70, anchoMax: R * 0.8 })
-  const frases = bloquesFrase(2, { alto: 0.28, anchoMax: R * 1.3, cama: false })
-  const pedido = bloquePedido({ alto: 0.32, anchoMax: UTIL(0.9) * 0.6 })
+  const cifras = bloquesCifra(R.cifras, { alto: 0.70, anchoMax: RAD * 0.8 , margen: R.margen })
+  const frases = bloquesFrase(R.frases, { alto: 0.28, anchoMax: RAD * 1.3, cama: false , margen: R.margen })
+  const pedido = bloquePedido({ alto: 0.32, anchoMax: UTIL(0.9) * 0.6 , margen: R.margen })
 
   // ---------------------------------------------------------------- 2 · MARCA
   if (marca) {
@@ -160,7 +175,7 @@ export function build(ctx) {
   cifras.forEach((c, i) => {
     const t0 = 24 + i * 1.9
     const ang = -0.55 + i * 0.55
-    c.g.position.set(Math.sin(ang) * R * 0.62, Math.cos(ang) * R * 0.42, zEn(t0 + 0.8, distBase * 0.85))
+    c.g.position.set(Math.sin(ang) * RAD * 0.62, Math.cos(ang) * RAD * 0.42, zEn(t0 + 0.8, distBase * 0.85))
     escena.add(c.g)
     entra(c.g, tl, t0, { desde: i % 2 ? 'der' : 'izq', dist: 5, dur: 1.2 })
     c.escribir(tl, t0 + 0.28, 0.7)
@@ -170,7 +185,7 @@ export function build(ctx) {
 
   frases.forEach((f, i) => {
     const t0 = 24.6 + i * 2.5
-    f.g.position.set(0, -R * 0.55, zEn(t0 + 0.8, distBase * 0.85))
+    f.g.position.set(0, -RAD * 0.55, zEn(t0 + 0.8, distBase * 0.85))
     escena.add(f.g)
     entra(f.g, tl, t0, { desde: 'abajo', dist: 4.5, dur: 1.3 })
     f.escribir(tl, t0 + 0.35, 0.8)

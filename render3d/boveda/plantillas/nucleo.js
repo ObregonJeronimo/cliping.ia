@@ -23,6 +23,7 @@
 import { THREE, vidrio, metal, luz, iluminar, domo, polvo } from '../nucleo.js'
 import { vueloOrbita, entra, sale, respirar, juntar, anchoADistancia } from '../movimiento.js'
 import { bloqueMarca, bloquePromesa, bloquePrueba, bloquesCifra, bloquesFrase, bloquePedido } from '../bloques.js'
+import { colorDePeso, grisDePeso } from '../recetas.js'
 import { LOOK, nivel, E, b } from '../../demo/kit.js'
 
 export const meta = {
@@ -38,6 +39,18 @@ export const meta = {
 export function build(ctx) {
   const { escena, pagina, camara, tl, mundoW, mundoH, distBase } = ctx
   const uso = {}
+
+  // ---------------------------------------------------------------- LO QUE LA PAGINA DECIDE
+  //
+  // `ctx.recetas` sale de `backend/retrato.py`, que mide la tira, el DOM y los recortes de ESTA pagina.
+  // Sin retrato devuelve los valores neutros y la plantilla compone como se componia antes: no hay una
+  // rama distinta ni un caso especial. Lo que se modula es el GRADO, nunca la idea.
+  //
+  // La explicacion larga de cada receta esta en `render3d/boveda/recetas.js`, y la de por que existe
+  // este mecanismo, en `atrio.js`.
+  const R = ctx.recetas || { velocidad: 1, capas: 3, dureza: 0.75, margen: 0.88, cifras: 3, frases: 2,
+    acentoMasa: false, vacio: 0.5, movimientos: 4, paleta: [], medido: false }
+  uso.retrato = !!R.medido
   const respiraciones = []
 
   iluminar(escena, { key: 1.0, relleno: 0.95 })
@@ -57,7 +70,7 @@ export function build(ctx) {
   const nucleoLuz = new THREE.Mesh(new THREE.IcosahedronGeometry(R0 * 0.34, 2), luz(LOOK.acento2 || LOOK.acento, 1.6))
   gSis.add(nucleoLuz)
   const jaula = new THREE.Mesh(new THREE.IcosahedronGeometry(R0 * 0.52, 1),
-    vidrio(LOOK.acento, { rug: 0.05, trans: 0.9, grosor: 1.2, opacidad: 0.5 }))
+    vidrio(colorDePeso(R, LOOK.acento, 0.20), { rug: 0.05, trans: 0.9, grosor: 1.2, opacidad: 0.5 }))
   gSis.add(jaula)
 
   // SEIS ANILLOS, cada uno con su inclinacion, su radio y su velocidad. La regla que los hace parecer
@@ -92,12 +105,12 @@ export function build(ctx) {
     const d = DONDE[que]
     return anchoADistancia(mundoW, distBase, puntoEn(d[0], d[1]).dist, 0) * margen
   }
-  const marca = bloqueMarca({ alto: 1.15, anchoMax: anchoDe('marca', 0.86) })
-  const promesa = bloquePromesa({ alto: 0.48, anchoMax: anchoDe('promesa', 0.86) })
+  const marca = bloqueMarca({ alto: 1.15, anchoMax: anchoDe('marca', 0.86) , margen: R.margen })
+  const promesa = bloquePromesa({ alto: 0.48, anchoMax: anchoDe('promesa', 0.86) , margen: R.margen })
   const prueba = bloquePrueba(ctx, { ancho: anchoDe('prueba', 0.56), ar: 1.55 })
-  const cifras = bloquesCifra(3, { alto: 0.70, anchoMax: anchoDe('cifra', 0.48) })
-  const frases = bloquesFrase(2, { alto: 0.27, anchoMax: anchoDe('frase', 0.82) })
-  const pedido = bloquePedido({ alto: 0.31, anchoMax: anchoDe('pedido', 0.66) })
+  const cifras = bloquesCifra(R.cifras, { alto: 0.70, anchoMax: anchoDe('cifra', 0.48) , margen: R.margen })
+  const frases = bloquesFrase(R.frases, { alto: 0.27, anchoMax: anchoDe('frase', 0.82) , margen: R.margen })
+  const pedido = bloquePedido({ alto: 0.31, anchoMax: anchoDe('pedido', 0.66) , margen: R.margen })
 
   const plantar = (blk, beat, frac, y, padre) => {
     const p = puntoEn(beat, frac, y)

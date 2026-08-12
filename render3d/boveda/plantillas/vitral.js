@@ -32,6 +32,7 @@
 import { THREE, vidrio, metal, luz, barra, iluminar, domo, polvo } from '../nucleo.js'
 import { vueloOrbita, entra, sale, respirar, juntar, anchoADistancia } from '../movimiento.js'
 import { bloqueMarca, bloquePromesa, bloquePrueba, bloquesCifra, bloquesFrase, bloquePedido } from '../bloques.js'
+import { colorDePeso, grisDePeso } from '../recetas.js'
 import { LOOK, nivel, E, b } from '../../demo/kit.js'
 
 export const meta = {
@@ -47,6 +48,18 @@ export const meta = {
 export function build(ctx) {
   const { escena, pagina, camara, tl, mundoW, mundoH, distBase } = ctx
   const uso = {}
+
+  // ---------------------------------------------------------------- LO QUE LA PAGINA DECIDE
+  //
+  // `ctx.recetas` sale de `backend/retrato.py`, que mide la tira, el DOM y los recortes de ESTA pagina.
+  // Sin retrato devuelve los valores neutros y la plantilla compone como se componia antes: no hay una
+  // rama distinta ni un caso especial. Lo que se modula es el GRADO, nunca la idea.
+  //
+  // La explicacion larga de cada receta esta en `render3d/boveda/recetas.js`, y la de por que existe
+  // este mecanismo, en `atrio.js`.
+  const R = ctx.recetas || { velocidad: 1, capas: 3, dureza: 0.75, margen: 0.88, cifras: 3, frases: 2,
+    acentoMasa: false, vacio: 0.5, movimientos: 4, paleta: [], medido: false }
+  uso.retrato = !!R.medido
   const respiraciones = []
 
   iluminar(escena, { key: 0.7, relleno: 1.15 })
@@ -79,7 +92,7 @@ export function build(ctx) {
   const RAD = distBase * 1.32
   const anillo = new THREE.Group()
   escena.add(anillo)
-  const matPanel = vidrio(LOOK.acento, { rug: 0.05, trans: 0.88, grosor: 3.2, opacidad: 0.85 })
+  const matPanel = vidrio(colorDePeso(R, LOOK.acento, 0.20), { rug: 0.05, trans: 0.88, grosor: 3.2, opacidad: 0.85 })
   const matPanel2 = vidrio(LOOK.acento2 || LOOK.acento, { rug: 0.05, trans: 0.88, grosor: 3.2, opacidad: 0.85 })
   const paneles = []
   for (let i = 0; i < N; i++) {
@@ -135,12 +148,12 @@ export function build(ctx) {
     const d = DONDE[que]
     return anchoADistancia(mundoW, distBase, puntoEn(d[0], d[1]).dist, 0) * margen
   }
-  const marca = bloqueMarca({ alto: 1.25, anchoMax: anchoDe('marca', 0.86) })
-  const promesa = bloquePromesa({ alto: 0.52, anchoMax: anchoDe('promesa', 0.88) })
+  const marca = bloqueMarca({ alto: 1.25, anchoMax: anchoDe('marca', 0.86) , margen: R.margen })
+  const promesa = bloquePromesa({ alto: 0.52, anchoMax: anchoDe('promesa', 0.88) , margen: R.margen })
   const prueba = bloquePrueba(ctx, { ancho: anchoDe('prueba', 0.58), ar: 1.6 })
-  const cifras = bloquesCifra(3, { alto: 0.78, anchoMax: anchoDe('cifra', 0.5) })
-  const frases = bloquesFrase(2, { alto: 0.29, anchoMax: anchoDe('frase', 0.84) })
-  const pedido = bloquePedido({ alto: 0.32, anchoMax: anchoDe('pedido', 0.66) })
+  const cifras = bloquesCifra(R.cifras, { alto: 0.78, anchoMax: anchoDe('cifra', 0.5) , margen: R.margen })
+  const frases = bloquesFrase(R.frases, { alto: 0.29, anchoMax: anchoDe('frase', 0.84) , margen: R.margen })
+  const pedido = bloquePedido({ alto: 0.32, anchoMax: anchoDe('pedido', 0.66) , margen: R.margen })
 
   // El patron de los dos grupos, explicado arriba. Devuelve el grupo externo por si la plantilla quiere
   // moverlo, pero lo que se le pasa a `entra` es SIEMPRE el del bloque.

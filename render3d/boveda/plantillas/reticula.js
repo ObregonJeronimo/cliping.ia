@@ -27,9 +27,10 @@
 //   24  RAZONES   las cifras cruzan en columna; las frases entran por el lado contrario.
 //   30  PEDIDO    el desliz baja a velocidad de lectura y el CTA llega desde el fondo, latiendo.
 
-import { THREE, vidrio, metal, luz, barra, iluminar, domo, polvo } from '../nucleo.js'
+import { THREE, vidrio, metal, luz, barra, iluminar, domo, polvo, prismaDe } from '../nucleo.js'
 import { vueloDesliz, entra, sale, acompanar, respirar, juntar, anchoConDeriva } from '../movimiento.js'
 import { bloqueMarca, bloquePromesa, bloquePrueba, bloquesCifra, bloquesFrase, bloquePedido } from '../bloques.js'
+import { colorDePeso, grisDePeso } from '../recetas.js'
 import { LOOK, nivel, E, b } from '../../demo/kit.js'
 
 export const meta = {
@@ -45,6 +46,18 @@ export const meta = {
 export function build(ctx) {
   const { escena, pagina, camara, tl, mundoW, mundoH, distBase } = ctx
   const uso = {}
+
+  // ---------------------------------------------------------------- LO QUE LA PAGINA DECIDE
+  //
+  // `ctx.recetas` sale de `backend/retrato.py`, que mide la tira, el DOM y los recortes de ESTA pagina.
+  // Sin retrato devuelve los valores neutros y la plantilla compone como se componia antes: no hay una
+  // rama distinta ni un caso especial. Lo que se modula es el GRADO, nunca la idea.
+  //
+  // La explicacion larga de cada receta esta en `render3d/boveda/recetas.js`, y la de por que existe
+  // este mecanismo, en `atrio.js`.
+  const R = ctx.recetas || { velocidad: 1, capas: 3, dureza: 0.75, margen: 0.88, cifras: 3, frases: 2,
+    acentoMasa: false, vacio: 0.5, movimientos: 4, paleta: [], medido: false }
+  uso.retrato = !!R.medido
   const respiraciones = []
 
   iluminar(escena, { key: 1.2, relleno: 0.42 })
@@ -54,7 +67,7 @@ export function build(ctx) {
   // EL VUELO. `largo` es cuanto recorre la camara de punta a punta; el muro tiene que ser mas largo que
   // eso o se termina antes que la pieza — y un muro que se acaba deja ver el vacio detras.
   const LARGO = mundoW * 7.5
-  const vuelo = vueloDesliz(camara, tl, { distBase, beats: meta.beats, largo: LARGO, dist: 0.98 })
+  const vuelo = vueloDesliz(camara, tl, { distBase, beats: meta.beats, largo: (LARGO) * R.velocidad, dist: 0.98 })
   const xEn = vuelo.xEn
   // El desliz no deriva lateralmente como el avance —ya se mueve en ese eje— pero si oscila en `y` y en
   // `z`. Lo que se le come al ancho es el vaiven de `z`: 0.7 unidades de acercamiento.
@@ -66,11 +79,18 @@ export function build(ctx) {
   // muro propiamente dicho; la de adelante son baldosas sueltas que pasan MUCHO mas rapido —cruzan el
   // cuadro en menos de un beat— y la de atras es una trama tenue que casi no se mueve.
   const T = mundoH * 0.42                       // lado de una baldosa
-  const matBald = vidrio(LOOK.acento, { rug: 0.10, trans: 0.62, grosor: 1.8, opacidad: 0.9 })
+  const matBald = vidrio(colorDePeso(R, LOOK.acento, 0.20), { rug: 0.10, trans: 0.62, grosor: 1.8, opacidad: 0.9 })
   const matHueco = metal(nivel(0.10), 0.42)
+  // LA BALDOSA CAMBIA DE FORMA CON LA MARCA: cuadrada para una identidad angulosa, un disco para una
+  // redondeada. Es un muro hecho de la forma que esa marca usa en sus tarjetas, y con el mismo helper
+  // que `atrio` usa para sus columnas — la coherencia entre plantillas sale de compartir la primitiva,
+  // no de acordarse.
+  //
+  // Se gira 90 grados para que el eje del prisma quede perpendicular al muro: `prismaDe` construye
+  // sobre el eje Y, y una baldosa es una pieza CHATA contra un plano vertical.
   const baldosa = (esc, hueca) => {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(T * esc * 0.92, T * esc * 0.92, T * esc * 0.16),
-      hueca ? matHueco : matBald)
+    const m = prismaDe(T * esc * 0.92, T * esc * 0.16, R.dureza, hueca ? matHueco : matBald)
+    m.rotation.x = Math.PI / 2
     return m
   }
   const muro = new THREE.Group(), frente = new THREE.Group(), fondo = new THREE.Group()
@@ -113,12 +133,12 @@ export function build(ctx) {
   escena.add(piso)
 
   // ---------------------------------------------------------------- los bloques
-  const marca = bloqueMarca({ alto: 1.35, anchoMax: UTIL(0.9) * 0.92 })
-  const promesa = bloquePromesa({ alto: 0.55, anchoMax: UTIL(0.95) * 0.90, maxLineas: 3 })
+  const marca = bloqueMarca({ alto: 1.35, anchoMax: UTIL(0.9) * 0.92 , margen: R.margen })
+  const promesa = bloquePromesa({ alto: 0.55, anchoMax: UTIL(0.95) * 0.90, maxLineas: 3 , margen: R.margen })
   const prueba = bloquePrueba(ctx, { ancho: mundoW * 0.54, ar: 1.55 })
-  const cifras = bloquesCifra(3, { alto: 0.82, anchoMax: UTIL(0.9) * 0.55 })
-  const frases = bloquesFrase(2, { alto: 0.30, anchoMax: UTIL(0.9) * 0.82 })
-  const pedido = bloquePedido({ alto: 0.34, anchoMax: UTIL(0.9) * 0.66 })
+  const cifras = bloquesCifra(R.cifras, { alto: 0.82, anchoMax: UTIL(0.9) * 0.55 , margen: R.margen })
+  const frases = bloquesFrase(R.frases, { alto: 0.30, anchoMax: UTIL(0.9) * 0.82 , margen: R.margen })
+  const pedido = bloquePedido({ alto: 0.34, anchoMax: UTIL(0.9) * 0.66 , margen: R.margen })
 
   // TODO SE COLOCA CONTRA `xEn`, que es el equivalente de `zEn` en el vuelo de avance: donde tiene que
   // estar un objeto para que la camara lo tenga enfrente EN su beat. Elegir la x a ojo y el beat a ojo

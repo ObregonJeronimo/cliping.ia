@@ -22,9 +22,10 @@
 //   22  RAZONES   las cifras salen de los cantos, una por arista.
 //   28  PEDIDO    la orbita se cierra, el monolito se abre en luz y el CTA queda al frente.
 
-import { THREE, vidrio, metal, luz, barra, iluminar, domo, polvo } from '../nucleo.js'
+import { THREE, vidrio, metal, luz, barra, iluminar, domo, polvo, prismaDe } from '../nucleo.js'
 import { vueloOrbita, entra, sale, respirar, juntar, anchoADistancia } from '../movimiento.js'
 import { bloqueMarca, bloquePromesa, bloquePrueba, bloquesCifra, bloquesFrase, bloquePedido } from '../bloques.js'
+import { colorDePeso, grisDePeso } from '../recetas.js'
 import { LOOK, nivel, E, b } from '../../demo/kit.js'
 
 export const meta = {
@@ -40,6 +41,18 @@ export const meta = {
 export function build(ctx) {
   const { escena, pagina, camara, tl, mundoW, mundoH, distBase } = ctx
   const uso = {}
+
+  // ---------------------------------------------------------------- LO QUE LA PAGINA DECIDE
+  //
+  // `ctx.recetas` sale de `backend/retrato.py`, que mide la tira, el DOM y los recortes de ESTA pagina.
+  // Sin retrato devuelve los valores neutros y la plantilla compone como se componia antes: no hay una
+  // rama distinta ni un caso especial. Lo que se modula es el GRADO, nunca la idea.
+  //
+  // La explicacion larga de cada receta esta en `render3d/boveda/recetas.js`, y la de por que existe
+  // este mecanismo, en `atrio.js`.
+  const R = ctx.recetas || { velocidad: 1, capas: 3, dureza: 0.75, margen: 0.88, cifras: 3, frases: 2,
+    acentoMasa: false, vacio: 0.5, movimientos: 4, paleta: [], medido: false }
+  uso.retrato = !!R.medido
   const respiraciones = []
 
   iluminar(escena, { key: 1.35, relleno: 0.75 })
@@ -66,8 +79,12 @@ export function build(ctx) {
   const ALTO = mundoH * 0.92
   const gMono = new THREE.Group()
   escena.add(gMono)
-  const cuerpo = new THREE.Mesh(new THREE.BoxGeometry(ANCHO, ALTO, ANCHO),
-    vidrio(LOOK.acento, { rug: 0.045, trans: 0.78, grosor: 3.4, opacidad: 0.94 }))
+  // LA FORMA SALE DE LA MARCA. `prismaDe` da una seccion que va de cuadrada (dureza 1, Pentagram) a
+  // cilindrica (dureza 0.25, Tailwind), pasando por hexagono y octogono. Es la traduccion mas directa
+  // que hay entre lo que mide el retrato y lo que se ve: si la marca redondea sus tarjetas, esto
+  // redondea. Ver `prismaDe` en nucleo.js.
+  const cuerpo = prismaDe(ANCHO, ALTO, R.dureza,
+    vidrio(colorDePeso(R, LOOK.acento, 0.20), { rug: 0.045, trans: 0.78, grosor: 3.4, opacidad: 0.94 }))
   gMono.add(cuerpo)
   // UN NUCLEO EMISIVO ADENTRO. Es lo que convierte un prisma de vidrio en un objeto que vale la pena
   // rodear: sin algo que refractar, el vidrio se ve como plastico gris desde cualquier angulo.
@@ -76,9 +93,16 @@ export function build(ctx) {
   gMono.add(nucleoLuz)
   // Los cuatro cantos verticales en emisivo: dan la ARISTA, que es lo que se lee como volumen cuando el
   // objeto gira. Un prisma sin cantos marcados parece una silueta plana en cada instante.
-  for (const [sx, sz] of [[-1, -1], [-1, 1], [1, -1], [1, 1]]) {
+  // LOS CANTOS SIGUEN A LA SECCION. Cuatro cantos sobre un cilindro de veinte lados se ven como cuatro
+  // varillas pegadas al aire; sobre un cuadrado son las aristas del objeto. Se reparten por el numero
+  // de lados que `prismaDe` decidio, y se limitan a ocho: mas que eso deja de leerse como arista y
+  // empieza a leerse como reja.
+  const LADOS = Math.min(8, cuerpo.userData.lados || 4)
+  const RC = (cuerpo.userData.lados <= 4 ? ANCHO / Math.SQRT2 : ANCHO / 2) * 0.99
+  for (let i = 0; i < LADOS; i++) {
+    const ang = (i / LADOS) * Math.PI * 2 + (cuerpo.userData.lados <= 4 ? Math.PI / 4 : 0)
     const c = new THREE.Mesh(new THREE.BoxGeometry(0.035, ALTO * 1.005, 0.035), luz(LOOK.acento, 1.5))
-    c.position.set(sx * ANCHO / 2, 0, sz * ANCHO / 2)
+    c.position.set(Math.cos(ang) * RC, 0, Math.sin(ang) * RC)
     gMono.add(c)
   }
   const base = new THREE.Mesh(new THREE.CylinderGeometry(ANCHO * 1.5, ANCHO * 1.8, 0.3, 40), metal(nivel(0.10), 0.30))
@@ -112,12 +136,12 @@ export function build(ctx) {
     const d = DONDE[que]
     return anchoADistancia(mundoW, distBase, puntoEn(d[0], d[1]).dist, 0) * margen
   }
-  const marca = bloqueMarca({ alto: 1.15, anchoMax: anchoDe('marca', 0.88) })
-  const promesa = bloquePromesa({ alto: 0.48, anchoMax: anchoDe('promesa', 0.88), maxLineas: 3 })
+  const marca = bloqueMarca({ alto: 1.15, anchoMax: anchoDe('marca', 0.88) , margen: R.margen })
+  const promesa = bloquePromesa({ alto: 0.48, anchoMax: anchoDe('promesa', 0.88), maxLineas: 3 , margen: R.margen })
   const prueba = bloquePrueba(ctx, { ancho: anchoDe('prueba', 0.56), ar: 1.5 })
-  const cifras = bloquesCifra(3, { alto: 0.72, anchoMax: anchoDe('cifra', 0.5) })
-  const frases = bloquesFrase(2, { alto: 0.28, anchoMax: anchoDe('frase', 0.84) })
-  const pedido = bloquePedido({ alto: 0.32, anchoMax: anchoDe('pedido', 0.68) })
+  const cifras = bloquesCifra(R.cifras, { alto: 0.72, anchoMax: anchoDe('cifra', 0.5) , margen: R.margen })
+  const frases = bloquesFrase(R.frases, { alto: 0.28, anchoMax: anchoDe('frase', 0.84) , margen: R.margen })
+  const pedido = bloquePedido({ alto: 0.32, anchoMax: anchoDe('pedido', 0.68) , margen: R.margen })
 
   // El patron de los dos grupos que documenta `vitral`: el externo lo planta `puntoEn` mirando a la
   // camara, y `entra` mueve el interno en coordenadas ya alineadas con el cuadro.

@@ -24,9 +24,10 @@
 //   27  RAZONES   las cifras salen disparadas del banco, una por costado.
 //   34  PEDIDO    el banco se aquieta, se abre del todo y el CTA queda solo.
 
-import { THREE, vidrio, metal, luz, iluminar, domo, polvo } from '../nucleo.js'
+import { THREE, vidrio, metal, luz, iluminar, domo, polvo, prismaDe } from '../nucleo.js'
 import { vueloAvance, entra, sale, respirar, juntar, anchoConDeriva } from '../movimiento.js'
 import { bloqueMarca, bloquePromesa, bloquePrueba, bloquesCifra, bloquesFrase, bloquePedido } from '../bloques.js'
+import { colorDePeso, grisDePeso } from '../recetas.js'
 import { LOOK, nivel, E, b } from '../../demo/kit.js'
 
 export const meta = {
@@ -44,6 +45,18 @@ const N = 420
 export function build(ctx) {
   const { escena, pagina, camara, tl, mundoW, mundoH, distBase } = ctx
   const uso = {}
+
+  // ---------------------------------------------------------------- LO QUE LA PAGINA DECIDE
+  //
+  // `ctx.recetas` sale de `backend/retrato.py`, que mide la tira, el DOM y los recortes de ESTA pagina.
+  // Sin retrato devuelve los valores neutros y la plantilla compone como se componia antes: no hay una
+  // rama distinta ni un caso especial. Lo que se modula es el GRADO, nunca la idea.
+  //
+  // La explicacion larga de cada receta esta en `render3d/boveda/recetas.js`, y la de por que existe
+  // este mecanismo, en `atrio.js`.
+  const R = ctx.recetas || { velocidad: 1, capas: 3, dureza: 0.75, margen: 0.88, cifras: 3, frases: 2,
+    acentoMasa: false, vacio: 0.5, movimientos: 4, paleta: [], medido: false }
+  uso.retrato = !!R.medido
   const respiraciones = []
 
   iluminar(escena, { key: 1.15, relleno: 0.7 })
@@ -53,7 +66,7 @@ export function build(ctx) {
   const DERIVA = 0.5
   const LARGO = distBase * 5.0
   const vuelo = vueloAvance(camara, tl, {
-    distBase, beats: meta.beats, largo: LARGO, desde: 0.9, deriva: DERIVA,
+    distBase, beats: meta.beats, largo: (LARGO) * R.velocidad, desde: 0.9, deriva: DERIVA,
   })
   const zEn = vuelo.zEn
   const UTIL = (k) => anchoConDeriva(mundoW, DERIVA, k)
@@ -64,8 +77,11 @@ export function build(ctx) {
   // objetos sueltos son cuatrocientas llamadas de dibujo por cuadro, y por cuatro submuestras de
   // obturador son mil seiscientas. Con instancias es UNA. Es lo que hace que esta plantilla cueste lo
   // mismo que las demas.
-  const geo = new THREE.BoxGeometry(0.30, 0.30, 0.05)
-  const mat = vidrio(LOOK.acento, { rug: 0.08, trans: 0.55, grosor: 0.8, opacidad: 0.95 })
+  // LA PIEZA DEL BANCO TOMA LA FORMA DE LA MARCA. Se saca la geometria de `prismaDe` en vez de la
+  // malla porque `InstancedMesh` necesita una geometria, no un Mesh — cuatrocientas mallas sueltas son
+  // cuatrocientas llamadas de dibujo y esta plantilla existe justamente por no hacer eso.
+  const geo = prismaDe(0.30, 0.05, R.dureza, null).geometry
+  const mat = vidrio(colorDePeso(R, LOOK.acento, 0.20), { rug: 0.08, trans: 0.55, grosor: 0.8, opacidad: 0.95 })
   const banco = new THREE.InstancedMesh(geo, mat, N)
   banco.frustumCulled = false
   escena.add(banco)
@@ -97,12 +113,12 @@ export function build(ctx) {
   const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(), _p = new THREE.Vector3(), _s = new THREE.Vector3(1, 1, 1)
 
   // ---------------------------------------------------------------- los bloques
-  const marca = bloqueMarca({ alto: 1.3, anchoMax: UTIL(0.9) * 0.90 })
-  const promesa = bloquePromesa({ alto: 0.54, anchoMax: UTIL(0.95) * 0.88 })
+  const marca = bloqueMarca({ alto: 1.3, anchoMax: UTIL(0.9) * 0.90 , margen: R.margen })
+  const promesa = bloquePromesa({ alto: 0.54, anchoMax: UTIL(0.95) * 0.88 , margen: R.margen })
   const prueba = bloquePrueba(ctx, { ancho: mundoW * 0.5, ar: 1.6 })
-  const cifras = bloquesCifra(3, { alto: 0.78, anchoMax: UTIL(0.85) * 0.46 })
-  const frases = bloquesFrase(2, { alto: 0.29, anchoMax: UTIL(0.85) * 0.80 })
-  const pedido = bloquePedido({ alto: 0.33, anchoMax: UTIL(0.85) * 0.62 })
+  const cifras = bloquesCifra(R.cifras, { alto: 0.78, anchoMax: UTIL(0.85) * 0.46 , margen: R.margen })
+  const frases = bloquesFrase(R.frases, { alto: 0.29, anchoMax: UTIL(0.85) * 0.80 , margen: R.margen })
+  const pedido = bloquePedido({ alto: 0.33, anchoMax: UTIL(0.85) * 0.62 , margen: R.margen })
 
   // ---------------------------------------------------------------- 2 · MARCA
   if (marca) {

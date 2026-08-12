@@ -181,12 +181,12 @@ export function build(ctx) {
   // CAMA EN LA MARCA, y por medicion: la foto del beat 6 la muestra sobre columnas de vidrio
   // iluminadas y un piso claro. `nivelTexto` garantiza contraste contra la PALETA, no contra lo que
   // esta plantilla resulto poner detras — y lo que puso detras es lo mas claro de la pieza.
-  const marca = bloqueMarca({ alto: 1.5, anchoMax: UTIL(0.92) * Math.min(0.95, R.margen + 0.06), cama: true, camaOpacidad: 0.86 })
-  const promesa = bloquePromesa({ alto: 0.60, anchoMax: UTIL(0.95) * Math.min(0.94, R.margen + 0.04) })
+  const marca = bloqueMarca({ alto: 1.5, anchoMax: UTIL(0.92) * 0.94, cama: true, camaOpacidad: 0.86, margen: R.margen })
+  const promesa = bloquePromesa({ alto: 0.60, anchoMax: UTIL(0.95) * 0.92, margen: R.margen })
   const prueba = bloquePrueba(ctx, { ancho: mundoW * 0.58, ar: 1.6 })
-  const cifras = bloquesCifra(R.cifras, { alto: 0.95, anchoMax: UTIL(0.78) * 0.42 })
-  const frases = bloquesFrase(R.frases, { alto: 0.30, anchoMax: UTIL(0.78) * (R.margen - 0.02) })
-  const pedido = bloquePedido({ alto: 0.34, anchoMax: UTIL(0.82) * 0.66 })
+  const cifras = bloquesCifra(R.cifras, { alto: 0.95, anchoMax: UTIL(0.78) * 0.42 , margen: R.margen })
+  const frases = bloquesFrase(R.frases, { alto: 0.30, anchoMax: UTIL(0.78) * 0.86, margen: R.margen })
+  const pedido = bloquePedido({ alto: 0.34, anchoMax: UTIL(0.82) * 0.66 , margen: R.margen })
 
   // ---------------------------------------------------------------- 2 · MARCA
   //

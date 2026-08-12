@@ -44,6 +44,7 @@
 import { THREE, vidrio, metal, luz, iluminar, domo, polvo } from '../nucleo.js'
 import { entra, sale, respirar, juntar, anchoConDeriva } from '../movimiento.js'
 import { bloqueMarca, bloquePromesa, bloquePrueba, bloquesCifra, bloquesFrase, bloquePedido } from '../bloques.js'
+import { colorDePeso, grisDePeso } from '../recetas.js'
 import { LOOK, hex, nivel, CLARO, E, b } from '../../demo/kit.js'
 
 export const meta = {
@@ -64,6 +65,18 @@ const NIVEL = -1.3
 export function build(ctx) {
   const { escena, pagina, camara, tl, mundoW, distBase } = ctx
   const uso = {}
+
+  // ---------------------------------------------------------------- LO QUE LA PAGINA DECIDE
+  //
+  // `ctx.recetas` sale de `backend/retrato.py`, que mide la tira, el DOM y los recortes de ESTA pagina.
+  // Sin retrato devuelve los valores neutros y la plantilla compone como se componia antes: no hay una
+  // rama distinta ni un caso especial. Lo que se modula es el GRADO, nunca la idea.
+  //
+  // La explicacion larga de cada receta esta en `render3d/boveda/recetas.js`, y la de por que existe
+  // este mecanismo, en `atrio.js`.
+  const R = ctx.recetas || { velocidad: 1, capas: 3, dureza: 0.75, margen: 0.88, cifras: 3, frases: 2,
+    acentoMasa: false, vacio: 0.5, movimientos: 4, paleta: [], medido: false }
+  uso.retrato = !!R.medido
   const respiraciones = []
 
   // Key alta y relleno generoso: una superficie casi lisa devuelve luz en un solo sitio, y con key
@@ -252,7 +265,7 @@ export function build(ctx) {
   const geoDisco = new THREE.CylinderGeometry(1, 1, 0.06, 28)
   const geoAro = new THREE.RingGeometry(0.86, 1.0, 44)
   geoAro.rotateX(-Math.PI / 2)
-  const matDisco = vidrio(LOOK.acento, { rug: 0.10, trans: 0.78, grosor: 1.4, opacidad: 0.86 })
+  const matDisco = vidrio(colorDePeso(R, LOOK.acento, 0.20), { rug: 0.10, trans: 0.78, grosor: 1.4, opacidad: 0.86 })
   const matAro = luz(LOOK.acento2 || LOOK.acento, 1.1)
   const anillos = []
   for (let i = 0; i < N_ANILLO; i++) {
@@ -298,12 +311,12 @@ export function build(ctx) {
   }
 
   // ---------------------------------------------------------------- los bloques, pedidos y colocados
-  const marca = bloqueMarca({ alto: 1.35, anchoMax: UTIL(0.94) * 0.92, cama: true, camaOpacidad: 0.80 })
-  const promesa = bloquePromesa({ alto: 0.56, anchoMax: UTIL(0.98) * 0.90 })
+  const marca = bloqueMarca({ alto: 1.35, anchoMax: UTIL(0.94) * 0.92, cama: true, camaOpacidad: 0.80 , margen: R.margen })
+  const promesa = bloquePromesa({ alto: 0.56, anchoMax: UTIL(0.98) * 0.90 , margen: R.margen })
   const prueba = bloquePrueba(ctx, { ancho: mundoW * 0.50, ar: 1.5 })
-  const cifras = bloquesCifra(3, { alto: 0.88, anchoMax: UTIL(0.84) * 0.40 })
-  const frases = bloquesFrase(2, { alto: 0.30, anchoMax: UTIL(0.84) * 0.80 })
-  const pedido = bloquePedido({ alto: 0.33, anchoMax: UTIL(0.86) * 0.62 })
+  const cifras = bloquesCifra(R.cifras, { alto: 0.88, anchoMax: UTIL(0.84) * 0.40 , margen: R.margen })
+  const frases = bloquesFrase(R.frases, { alto: 0.30, anchoMax: UTIL(0.84) * 0.80 , margen: R.margen })
+  const pedido = bloquePedido({ alto: 0.33, anchoMax: UTIL(0.86) * 0.62 , margen: R.margen })
 
   // ---------------------------------------------------------------- 2 · MARCA
   //

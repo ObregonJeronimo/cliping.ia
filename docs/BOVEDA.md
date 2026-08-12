@@ -47,9 +47,55 @@ encima". Las tres salieron de que las dos primeras plantillas quedaron por debaj
 3. **El espacio tiene capas a distintas velocidades.** Sin paralaje, volar por un espacio vacío es
    indistinguible de un zoom.
 
+## El retrato: qué mide de la página, y qué hace con eso
+
+Bóveda no compone el mismo espacio para todos. `backend/retrato.py` mide la página **para un motor 3D**
+y devuelve *recetas*: números que las plantillas leen para decidir el grado de cada cosa.
+
+La fuente más rica es la que nadie miraba: **`tira.png`**, la página entera en píxeles. De ahí salen el
+ritmo de las secciones, cuánto aire respira el diseño, dónde vive el acento y cuál es la paleta real
+con sus pesos. Nada de eso está en el DOM.
+
+| receta | de dónde sale | qué cambia en el video |
+|---|---|---|
+| `velocidad` | energía del ánimo + falta de aire | cuánto camino recorre la cámara en los mismos beats |
+| `capas` | densidad de la tira | 2, 3 o 4 capas de paralaje |
+| `dureza` | `shape.radiusRatio` y `pill` | **la sección de los objetos: de cuadrada a cilíndrica** |
+| `margen` | fracción de fondo liso | cuánto ancho puede ocupar un bloque de texto |
+| `beats` | cuánto material hay | 30 a 44 |
+| `cifras` / `frases` | lo que la página dio | cuántos bloques se piden |
+| `acentoMasa` | peso cromático sumado de la paleta | el espacio se construye en color, o el color va en filetes |
+| `movimientos` | cortes de luminancia en la tira | cuántos cambios de espacio pide la pieza |
+| `paleta` | cuantización de los píxeles | el color de los materiales, vía `colorDePeso` / `grisDePeso` |
+
+**Todo pasa por `render3d/boveda/recetas.js`**, que es el único traductor. Devuelve siempre las mismas
+claves, con valores **neutros** cuando no hay retrato — y neutro no es inventado: es exactamente con lo
+que se compusieron las doce primeras plantillas.
+
+```bash
+python backend/retrato.py https://tusitio.com      # la tabla de una página
+python tools/retrato-barrido.py                    # todas las capturas + si cada receta discrimina
+```
+
+### Calibrar sobre una página no es calibrar
+
+`retrato.py` se escribió mirando basecamp.com y parecía correcto. Pasado por las doce capturas del repo
+aparecieron tres defectos invisibles en una sola: `capas` daba 3 en once de doce, `movimientos` daba 6
+en once de doce, y `vacio` daba 7% en el sitio más aireado del conjunto porque confiaba en el `bgLum`
+del DOM (tailwindcss declara 0.002 y su tira mide 0.98). Por eso existe `retrato-barrido.py`: marca la
+receta que casi no varía. **Una receta que da el mismo valor en once de doce sitios no está midiendo.**
+
+### Y avisa cuando la captura no es la página
+
+Dos de las doce capturas del repo —despegar y El Corte Inglés— dan cero titulares, cero imágenes y cero
+peso cromático: son muros de cookies guardados como si fueran el sitio. Las recetas de un muro son
+perfectamente calculables y producirían un video correcto sobre nada.
+
 ## Cómo está partido el motor
 
 ```
+retrato.py      QUÉ ES LA MARCA    la página medida: ritmo, aire, paleta, forma, contenido
+recetas.js      CUÁNTO DE CADA     el único traductor de esa medición a números de plantilla
 nucleo.js       CÓMO SE DIBUJA     texto, vidrio, metal, luz, camas, el panel de la página, el domo
 bloques.js      QUÉ SE CUENTA      los seis tiempos, ya compuestos y MEDIDOS
 movimiento.js   CÓMO SE MUEVE      vuelos, entradas, salidas, paralaje, respiración
@@ -134,6 +180,10 @@ Todos están comentados en el archivo donde viven; acá está el índice.
 | un objeto quieto en un desliz dura `mundoW/velocidad` beats | la página desaparecía a mitad de su tiempo | `movimiento.js:acompanar` |
 | montar los bloques donde la cámara **está** y no donde **mira** | 80% de beats mudos | `cinta.js` |
 | `tl.to(uDomo, {fuerza})` en vez de `uDomo.uFuerza.value` | compila, corre y no hace nada | `deriva.js` |
+| `metal()` con `metalness: 1.0` | **media Bóveda salía negra**; se perdieron tres arreglos en las luces | `nucleo.js:metal` |
+| `colorDePeso` elegía por croma e ignoraba la luminancia | devolvía `#103030` (lum 0.02) como material | `recetas.js` |
+| `acentoComoMasa` miraba un solo color | Stripe, el sitio más colorido, daba "sin masa de color" | `retrato.py` |
+| el retrato calibrado sobre una sola página | tres recetas saturadas, ninguna daba error | `retrato-barrido.py` |
 | la sonda medía "delante" contra -z del mundo | 87% de beats mudos informados sobre una plantilla sana | `boveda-sonda.mjs` |
 | la sonda contaba `uProg` sin mirar `visible` | llamaba defecto a `sale()` funcionando | `boveda-sonda.mjs` |
 

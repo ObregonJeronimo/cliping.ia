@@ -67,6 +67,18 @@ const RELL = PROF * 3.6   // el rellano: casi cuatro huellas de descanso, y sin 
 export function build(ctx) {
   const { escena, pagina, camara, tl, mundoW, mundoH, distBase } = ctx
   const uso = {}
+
+  // ---------------------------------------------------------------- LO QUE LA PAGINA DECIDE
+  //
+  // `ctx.recetas` sale de `backend/retrato.py`, que mide la tira, el DOM y los recortes de ESTA pagina.
+  // Sin retrato devuelve los valores neutros y la plantilla compone como se componia antes: no hay una
+  // rama distinta ni un caso especial. Lo que se modula es el GRADO, nunca la idea.
+  //
+  // La explicacion larga de cada receta esta en `render3d/boveda/recetas.js`, y la de por que existe
+  // este mecanismo, en `atrio.js`.
+  const R = ctx.recetas || { velocidad: 1, capas: 3, dureza: 0.75, margen: 0.88, cifras: 3, frases: 2,
+    acentoMasa: false, vacio: 0.5, movimientos: 4, paleta: [], medido: false }
+  uso.retrato = !!R.medido
   const respiraciones = []
   const BEATS = meta.beats
 
@@ -286,8 +298,8 @@ export function build(ctx) {
   // CAMA EN LA MARCA por lo que esta plantilla puso detras y no por costumbre: el fondo del nombre son
   // los filos emisivos de veinte contrahuellas trepando, o sea lo mas claro y lo mas variable de la
   // pieza. `nivelTexto` garantiza contraste contra la PALETA, no contra eso.
-  const marca = bloqueMarca({ alto: 1.35, anchoMax: UTIL * 0.88, cama: true, camaOpacidad: 0.82 })
-  const promesa = bloquePromesa({ alto: 0.56, anchoMax: UTIL * 0.90 })
+  const marca = bloqueMarca({ alto: 1.35, anchoMax: UTIL * 0.88, cama: true, camaOpacidad: 0.82 , margen: R.margen })
+  const promesa = bloquePromesa({ alto: 0.56, anchoMax: UTIL * 0.90 , margen: R.margen })
   // 2.93 de ancho por 4.39 de alto: a 16.5 del lente el cuadro mide 5.34 x 9.50, asi que la pagina ocupa
   // el 55% del ancho y el 46% del alto. Centrada en MIRAY + 0.35, su borde de abajo cae a 0.41 sobre el
   // rellano — o sea, sobre el zocalo. Se apoya, no flota.
@@ -295,9 +307,9 @@ export function build(ctx) {
   // Las cifras van a los flancos, a mundoW·0.21 = 1.18 del eje. El semiancho util es 4.34/2 = 2.17, asi
   // que lo que le queda a la cifra es 2·(2.17 - 1.18) = 1.98 y pide 1.74. A 0.26 del cuadro —que fue el
   // primer numero— pedia mas de lo que quedaba, que es como `atrio` se comio el primer digito de `10X`.
-  const cifras = bloquesCifra(3, { alto: 0.82, anchoMax: UTIL * 0.40 })
-  const frases = bloquesFrase(2, { alto: 0.29, anchoMax: UTIL * 0.80 })
-  const pedido = bloquePedido({ alto: 0.33, anchoMax: UTIL * 0.62 })
+  const cifras = bloquesCifra(R.cifras, { alto: 0.82, anchoMax: UTIL * 0.40 , margen: R.margen })
+  const frases = bloquesFrase(R.frases, { alto: 0.29, anchoMax: UTIL * 0.80 , margen: R.margen })
+  const pedido = bloquePedido({ alto: 0.33, anchoMax: UTIL * 0.62 , margen: R.margen })
 
   // APOYAR ALGO EN LA ESCALERA. La altura sale de la linea de la escalera EN ESE z, nunca de un numero
   // absoluto: cada rellano esta varias unidades mas arriba que el anterior.
