@@ -385,12 +385,34 @@ el análisis de la página (`motor.preparar`), el kit de tipografía y color, y 
 comparte el guion**: allá se sortea una secuencia de escenas alrededor de un héroe, y acá cada plantilla
 es una pieza entera ya compuesta. Elegir otra plantilla da otro video con los mismos datos.
 
+**Y no compone lo mismo para todas las páginas.** `backend/retrato.py` mide la página *para un motor
+3D* —el ritmo de sus secciones, cuánto aire respira, su paleta real con pesos, qué tan angulosa es— y
+devuelve **recetas** que las plantillas leen: velocidad de cámara, capas de paralaje, **la sección de
+los objetos** (de cuadrada a cilíndrica), margen del texto, cuántas cifras pedir. La fuente principal
+es `tira.png`, la página entera en píxeles, que es lo que nadie estaba mirando.
+
+Todo pasa por `render3d/boveda/recetas.js`, que es el único traductor y devuelve valores **neutros**
+cuando no hay retrato — neutro no es inventado, es "componé como antes".
+
+```bash
+python backend/retrato.py <url>        # la tabla de una página
+python tools/retrato-barrido.py        # todas las capturas, y si cada receta DISCRIMINA
+```
+
+**Calibrar sobre una página no es calibrar.** El retrato se escribió mirando basecamp y parecía
+correcto; pasado por las doce capturas del repo, tres recetas daban el mismo valor en once de doce
+sitios. Una receta que no varía no está midiendo. Por eso existe el barrido.
+
 Todo lo que hay que saber para escribir la plantilla trece está en `docs/BOVEDA.md`, incluida la lista
-de defectos que ya costaron caro. Dos que conviene saber antes de tocar una línea:
+de defectos que ya costaron caro. Tres que conviene saber antes de tocar una línea:
 
 - **`nivel(0)` es el CLARO y `nivel(1)` la TINTA.** Pedir `nivel(0.95)` para "casi blanco" devuelve
   `#1f1c17`. Dos lámparas del motor eran negras por esto.
 - **`metal()` ya no usa `metalness: 1.0`.** Un metal PBR sin mapa de entorno no tiene componente difusa
   y renderiza NEGRO por claro que sea su color base. El síntoma parece una escena mal iluminada, así que
   se gastan arreglos en las luces antes de mirar el material.
+- **En `alSeek`: SUMAR si un tween anima esa clave, ASIGNAR sobre una base si no la anima nadie.** Los
+  dos casos existen y confundirlos no da síntoma. Asignar donde hay tween lo anula —así la página de
+  `atrio` perdió su entrada y su giro—; sumar donde no lo hay acumula en cada submuestra del obturador
+  y el motor deja de ser determinista. `boveda-check` lo verifica solo, eje por eje.
 
