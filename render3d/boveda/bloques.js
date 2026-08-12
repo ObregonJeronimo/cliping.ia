@@ -374,9 +374,20 @@ export function bloquePedido(op) {
     latir(amp) {
       if (!pastilla) return null
       const a = amp != null ? amp : 0.035
+      // MULTIPLICA, NO ASIGNA — y asignar era un defecto que se comia el gesto de apertura del CTA en
+      // las DIECIOCHO plantillas.
+      //
+      // `escribir` abre la pastilla con un tween sobre `scale.x` de 0.0001 a 1. `seek()` corre la linea
+      // de tiempo primero y `alSeek` despues, asi que este latido, asignando, pisaba ese tween entero:
+      // durante los 0.7 beats de la apertura la pastilla ya valia ~1, o sea que el CTA aparecia a ancho
+      // completo de golpe en vez de abrirse. Sin error y sin nada raro en el cuadro.
+      //
+      // Multiplicar compone: el tween pone el valor y el latido lo modula. Y multiplicar es seguro
+      // —no acumula— justamente porque hay un tween que lo restablece en cada submuestra, que es la
+      // otra mitad de la regla que documenta `movimiento.js:respirar`.
       return (t) => {
-        pastilla.scale.y = 1 + Math.sin(t * 3.1) * a
-        pastilla.scale.x = 1 + Math.sin(t * 3.1) * a * 0.45
+        pastilla.scale.y *= 1 + Math.sin(t * 3.1) * a
+        pastilla.scale.x *= 1 + Math.sin(t * 3.1) * a * 0.45
       }
     },
   }

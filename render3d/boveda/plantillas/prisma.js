@@ -464,10 +464,27 @@ export function build(ctx) {
 
   // ---------------------------------------------------------------- 5 · RAZONES
   //
-  // UNA CIFRA POR BANDA, y es el pago de la idea: no hay que repartirlas ni cuidar que no se pisen,
-  // porque el abanico las separa solo — cuanto mas lejos del prisma, mas lejos entre si. Cada una entra
-  // por el borde hacia el que se desvia su banda.
-  const B_CIFRA = [5, 1, 6]
+  // UNA CIFRA POR BANDA: cada una entra por el borde hacia el que se desvia la suya, y el abanico las va
+  // separando entre si mientras se abre.
+  //
+  // PERO EL ABANICO NO LAS SEPARA SOLO, Y EL ORDEN DE LAS BANDAS DECIDE DOS COSAS. Aca decia que no
+  // habia que cuidar que no se pisaran, y con `[5, 1, 6]` se pisaban. Las dos cuentas, medidas
+  // proyectando las cuatro esquinas de cada bloque contra el lente:
+  //
+  //   · SEPARACION ENTRE BANDAS CONTIGUAS. A la distancia x valen x·(tan a1 - tan a0) = 0.067·x, o sea
+  //     1.14 unidades en el beat 27. Una cifra baja 0.04 por debajo de su banda y una frase de dos
+  //     renglones sube 1.54 por encima de la suya: hacen falta 1.58 y hay 1.14. La cifra de la banda 5
+  //     y la frase de la banda 4 —contiguas— quedan QUIETAS A LA VEZ en el beat 26.9 y se solapan el
+  //     7.2% de la semialtura del cuadro. Separadas por dos pasos (2.31) no se tocan.
+  //   · LA BANDA MAS DESVIADA LLEVA LA CIFRA MAS TEMPRANA, no la ultima. Es exactamente la razon por la
+  //     que la banda 0 quedo libre —esta escrita tres parrafos mas abajo— y `[5, 1, 6]` la contradecia
+  //     poniendo la ultima cifra en la banda 6, que es su espejo, justo donde y = 0.203·x ya vale 4.5:
+  //     el borde de arriba del bloque llegaba al 90% de la semialtura. Entrando primera, en el beat 27,
+  //     la misma banda lo deja en 82%.
+  //
+  // La cuarta entrada existe porque el retrato puede pedir hasta cuatro cifras: vuelve a la banda 1,
+  // que para el beat 31.9 hace tres beats que quedo libre.
+  const B_CIFRA = [6, 1, 5, 1]
   cifras.forEach((c, i) => {
     const t0 = 25 + i * 1.9
     const bd = B_CIFRA[i % B_CIFRA.length]

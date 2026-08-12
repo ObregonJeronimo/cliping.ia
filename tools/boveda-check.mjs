@@ -197,7 +197,18 @@ function construir(P, datos, aire, retrato) {
 // El umbral tiene que dejar pasar lo legitimo. `respirar` suma hasta 0.15 de posicion y 0.06 de giro,
 // y esta bien que lo haga. Se cortan en 0.6 y 0.35: cuatro veces la respiracion mas amplia, y muy por
 // debajo de lo que significa reemplazar un valor.
-const EPS_POS = 0.6, EPS_ROT = 0.35
+// 0.45 y no 0.6: con 0.6 se escapaba el caso mas caro de todos, que era el latido del CTA pisando la
+// apertura de su propia pastilla —un tween de escala de 0.0001 a 1—. A mitad de la apertura el tween
+// vale ~0.4 y la asignacion lo llevaba a ~1.0: 0.6 exactos, justo en el borde. `respirar`, que es el
+// gesto legitimo mas amplio del motor, suma 0.15, asi que 0.45 sigue teniendo tres veces de margen.
+const EPS_POS = 0.45, EPS_ROT = 0.35
+
+// Y SE MUESTREA TAMBIEN A MITAD DE CADA ENTRADA, no solo en el beat exacto de cada tiempo.
+//
+// En el beat exacto los tweens de entrada todavia no arrancaron o ya terminaron, y un `alSeek` que
+// asigna el valor FINAL es indistinguible de uno que no hace nada. El conflicto solo se ve mientras el
+// tween esta a mitad de camino — que es, ademas, el unico momento en que el espectador lo notaria.
+const DESFASES = [0, 0.6, 1.3]
 
 // LA CAMARA ES LA EXCEPCION, y es la unica.
 //
@@ -284,8 +295,13 @@ PLANTILLAS.forEach((P, i) => {
   // ser inocente en el beat 0 —cuando ningun tween arranco todavia— y estar reescribiendo en el 20.
   if (typeof r.alSeek === 'function') {
     for (const nombre of TIEMPOS) {
-      const bt = (P.meta.tiempos || {})[nombre] || 0
-      const malos = pisadas(P, r, full.tl, bt, r.dur || b(P.meta.beats), full.camara)
+      const bt0 = (P.meta.tiempos || {})[nombre] || 0
+      let malos = [], bt = bt0
+      for (const df of DESFASES) {
+        bt = bt0 + df
+        malos = pisadas(P, r, full.tl, bt, r.dur || b(P.meta.beats), full.camara)
+        if (malos.length) break
+      }
       if (malos.length) {
         const p = malos.filter(m => !m.esRot).length, rr = malos.length - p
         falla(id, 'alSeek() PISA la linea de tiempo en el tiempo "' + nombre + '" (beat ' + bt + '): '

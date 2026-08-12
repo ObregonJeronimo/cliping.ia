@@ -23,7 +23,10 @@
 // alinearse y el mar se percibe en bucle a los pocos segundos, que es exactamente lo contrario de lo
 // que un mar tiene que transmitir.
 //
-// POR QUE ESTA PIEZA TIENE NIEBLA Y NINGUNA OTRA LA TIENE
+// POR QUE ESTA PIEZA TIENE NIEBLA — y por que hay que mirar cada material antes de encenderla
+// (Aca decia "y ninguna otra la tiene". Es falso: `escalera.js:294` tambien pone `escena.fog`, y
+// `telar.js:490` explica por que la evito. Lo unico propio de aca es que la niebla se calcula para
+// COINCIDIR con el domo en el horizonte, no que exista.)
 // Un plano finito visto desde 1.3 unidades de altura termina en un BORDE, y ese borde cae siempre un
 // poco por debajo del horizonte: a 68 unidades de largo son atan(1.3/68) = 1.1 grados, o sea 66 px de
 // costura en un cuadro de 1920. La niebla lo disuelve antes de que llegue y ademas da perspectiva
@@ -245,6 +248,18 @@ export function build(ctx) {
   matBrillo.opacity = 0.55
   matBrillo.blending = THREE.AdditiveBlending
   matBrillo.depthWrite = false
+  // Y SE LE APAGA LA NIEBLA, que es lo unico de esta plantilla que no puede llevarla.
+  //
+  // three aplica la niebla ANTES de la mezcla: `gl_FragColor.rgb = mix(color, fogColor, f)`. Con mezcla
+  // NORMAL eso hace desaparecer al objeto contra el fondo, que es lo que uno espera. Con mezcla
+  // ADITIVA hace lo contrario: lo que se suma al cuadro pasa a ser `opacidad · fogColor`, o sea que la
+  // teja lejana BRILLA MAS cuanto mas lejos esta. La ranura mas lejana cae a ~58 del ojo y ahi
+  // f = (58 - 22.67) / (62.77 - 22.67) = 0.88, con lo cual el 88% de lo que suma es niebla pura.
+  // En un aire CLARO `cNiebla` vale ~0.74 en lineal, asi que cada teja del fondo suma 0.55 · 0.74 =
+  // 0.41 sobre un mar que ya esta en 0.74: satura en blanco y el camino de brillos termina siendo una
+  // fila de rectangulos reventados marchando al horizonte. El resto de la pieza si lleva niebla —el
+  // aro y el disco de los anillos son mezcla normal y se funden bien.
+  matBrillo.fog = false
   const geoTeja = new THREE.PlaneGeometry(0.34, 1.5)
   geoTeja.rotateX(-Math.PI / 2)
   const tejas = []
@@ -397,12 +412,32 @@ export function build(ctx) {
   // beat, asi que llega a ese borde en t0 + 3.16 — y para entonces la cifra ya se esta hundiendo
   // (sale en t0 + 2.3 y se apaga en t0 + 3.25). `atrio` pago justo esto al reves: cifras encendidas y
   // fuera del encuadre dos beats enteros.
+  //
+  // Y LA ALTURA SALE DE LA MISMA CLASE DE CUENTA, porque aca decia 2.45 - i·0.22 y las cifras se
+  // pisaban con las frases. Los dos tiempos se cruzan a proposito, asi que la separacion tiene que
+  // existir de verdad y no estar declarada en un comentario: con las frases en 1.50 la cifra mas baja
+  // (i = 2, alto 2.01) tenia su borde inferior en 0.00 y el bloque de la frase —con su cama— llegaba
+  // hasta 0.76. Se superponian 0.76 en vertical y 1.43 en horizontal, y como las separan 2.6 de
+  // profundidad a ~16 del lente, angularmente estaban en el mismo sitio. `atrio` deja 0.78 de aire
+  // limpio entre las dos familias; aca no habia ninguno.
+  //
+  // La banda utilizable de esta plantilla es corta —el agua corta abajo en -1.3 y el picado corta
+  // arriba— asi que se reparte entera: las frases van DEBAJO del horizonte con su cama apoyada en el
+  // mar y las cifras ARRIBA, contra el cielo. Con `sigue` en 0.45 la ola mueve cada bloque +-0.205 en
+  // vez de +-0.36, que es lo que hace que la cuenta cierre:
+  //
+  //   frase (2 renglones + cama)  alto 1.02  ->  techo -1.3 + 1.02 + 0.56 = 0.28, peor caso 0.55
+  //   cifra i = 2                 alto 3.00  ->  piso  -1.3 + 3.00 - 0.709 = 0.99, peor caso 0.75
+  //
+  // 0.71 de aire en calma y 0.20 con la ola y el balanceo en contra. Y el techo de la cifra mas alta
+  // (i = 0, 2.36 en calma) sigue dentro del cuadro en el instante en que empieza a hundirse: a 15.2
+  // del lente el borde de arriba del encuadre esta en 3.56.
   cifras.forEach((c, i) => {
     const s = i % 2 === 0 ? -1 : 1
     const t0 = 26 + i * 2.2
     flotar(c, {
-      alto: 2.45 - i * 0.22, x: s * mundoW * 0.18, beat: t0 + 1.1,
-      lectura: distBase * 0.98, sigue: 0.80, giro: 0.30,
+      alto: 3.22 - i * 0.11, x: s * mundoW * 0.18, beat: t0 + 1.1,
+      lectura: distBase * 0.98, sigue: 0.45, giro: 0.30,
     })
     c.g.rotation.y = s * 0.28
     entra(c.g, tl, t0, { desde: 'abajo', dist: 4.6, dur: 1.4 })
@@ -413,10 +448,16 @@ export function build(ctx) {
 
   // Las frases van BAJAS, casi tocando el agua, y las cifras altas. Es la unica separacion que tienen
   // —los dos tiempos se cruzan a proposito, razones es el unico que puede tener dos cosas a la vez— y
-  // sin ella se pisan en el centro del cuadro.
+  // sin ella se pisan en el centro del cuadro. La cuenta que la sostiene esta arriba, en las cifras.
+  //
+  // `alto` 1.02 y no 1.50: el bloque de una frase mide 0.666 de texto MAS su cama (holgura 0.34 por
+  // lado, o sea 1.12 de alto total), asi que su borde de abajo queda en -0.84 en calma. El agua debajo
+  // esta en -1.3 y sube hasta -0.845; como la frase la sigue al 45%, la separacion nunca baja de 0.14.
+  // Es "casi tocando el agua" de verdad y no de nombre — y deja la mitad de arriba de la banda libre
+  // para las cifras.
   frases.forEach((f, i) => {
     const t0 = 26.8 + i * 2.6
-    flotar(f, { alto: 1.50, beat: t0 + 1.1, lectura: distBase * 0.92, sigue: 0.75, giro: 0.26 })
+    flotar(f, { alto: 1.02, beat: t0 + 1.1, lectura: distBase * 0.92, sigue: 0.45, giro: 0.26 })
     entra(f.g, tl, t0, { desde: 'abajo', dist: 4.2, dur: 1.4 })
     f.escribir(tl, t0 + 0.4, 0.85)
     f.borrar(tl, t0 + 2.1)

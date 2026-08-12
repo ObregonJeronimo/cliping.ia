@@ -299,7 +299,17 @@ export function build(ctx) {
   // los filos emisivos de veinte contrahuellas trepando, o sea lo mas claro y lo mas variable de la
   // pieza. `nivelTexto` garantiza contraste contra la PALETA, no contra eso.
   const marca = bloqueMarca({ alto: 1.35, anchoMax: UTIL * 0.88, cama: true, camaOpacidad: 0.82 , margen: R.margen })
-  const promesa = bloquePromesa({ alto: 0.56, anchoMax: UTIL * 0.90 , margen: R.margen })
+  // 0.78 Y NO 0.90, Y EL QUE SE PASABA DEL CUADRO NO ERA EL TEXTO SINO SU CAMA.
+  //
+  // `cama()` (nucleo.js:236) deja de holgura horizontal el 32% del ALTO DEL PARRAFO ENTERO, no el del
+  // renglon. Un claim de tres renglones a 0.56 mide 1.93 de alto, asi que la cama se lleva
+  // 2 x 0.32 x 1.93 = 1.23 de ancho que el `anchoMax` no sabe que existen. Con 0.90 el bloque medía
+  // 5.14 contra un cuadro de 5.34 a la distancia de lectura —el 96%— y con `R.margen` en su techo de
+  // 0.95 medía 5.45, o sea el 102%. Proyectado: en el beat 12.8, que es EXACTAMENTE el que la
+  // plantilla eligio para leerlo, la cama ya salia de cuadro por los dos lados, y en el 15.3 tapaba el
+  // 116% del ancho con el 87% del bloque adentro. Con 0.78 queda en 86% con el margen neutro y 92% en
+  // el peor caso, que es lo que hay que reservar para un bloque que ademas dura hasta el beat 15.4.
+  const promesa = bloquePromesa({ alto: 0.56, anchoMax: UTIL * 0.78 , margen: R.margen })
   // 2.93 de ancho por 4.39 de alto: a 16.5 del lente el cuadro mide 5.34 x 9.50, asi que la pagina ocupa
   // el 55% del ancho y el 46% del alto. Centrada en MIRAY + 0.35, su borde de abajo cae a 0.41 sobre el
   // rellano — o sea, sobre el zocalo. Se apoya, no flota.
@@ -326,11 +336,29 @@ export function build(ctx) {
   const subirCon = (g, t0, t1, retraso) => {
     const r = retraso != null ? retraso : 1
     const z0 = zCam(t0), z1 = zCam(t1)
+    const dy = (alturaEn(z1) - alturaEn(z0)) * r
+    const dz = (z1 - z0) * r
     tl.to(g.position, {
-      y: g.position.y + (alturaEn(z1) - alturaEn(z0)) * r,
-      z: g.position.z + (z1 - z0) * r,
+      y: g.position.y + dy,
+      z: g.position.z + dz,
       duration: b(t1 - t0), ease: 'none',
     }, b(t0))
+    // Y EL VIAJE SE ANOTA EN `g.position`. No es contabilidad: es el arreglo de un defecto medido.
+    //
+    // `sale` (movimiento.js:232) calcula su destino leyendo `g.position` EN EL MOMENTO DE LA LLAMADA, y
+    // un tween solo se REGISTRA: al construir, la posicion sigue siendo la plantada. Sin esta linea la
+    // salida no empuja al bloque hacia afuera sino de vuelta al punto de partida — o sea HACIA EL
+    // LENTE, la direccion contraria. Medido sobre la pagina: `sale` la devolvia de z -46.0 a -40.77,
+    // 5.2 unidades, y la distancia al lente se derrumbaba de 13.3 a 4.0 en 1.3 beats. Un objeto que
+    // triplica su tamano aparente mientras "se va" no se lee como una salida sino como que se viene
+    // encima, y con el obturador a 190 grados sale como un manchon. La marca se volvia 2.5 y el claim
+    // 2.7.
+    //
+    // No pisa nada de lo ya animado: `entra` capturo su destino antes, y la linea de tiempo escribe
+    // las tres coordenadas en cada seek. Esto corrige solo la BASE que leen las llamadas posteriores.
+    g.position.y += dy
+    g.position.z += dz
+    return g
   }
   // Todo lo que se apoya se inclina hacia atras, como un atril. La camara mira 26 grados hacia arriba y
   // un plano vertical visto desde ahi se acorta en alto un 10%, ademas de leerse como pegado en el
@@ -443,11 +471,17 @@ export function build(ctx) {
   const est = { beat: 0 }
   tl.fromTo(est, { beat: 0 }, { beat: BEATS, duration: b(BEATS), ease: 'none' }, 0)
 
-  // TRES FILOS DE LUZ QUE SUBEN LA ESCALERA MAS RAPIDO QUE LA CAMARA. Es la tercera velocidad de la
-  // pieza y su gesto de firma: la luz trepa, adelanta al que sube y se pierde arriba. Nacen seis
-  // unidades DETRAS de la camara, o sea fuera de cuadro, asi que el reciclado no se ve nunca.
+  // FILOS DE LUZ QUE SUBEN LA ESCALERA MAS RAPIDO QUE LA CAMARA. Es la tercera velocidad de la pieza y
+  // su gesto de firma: la luz trepa, adelanta al que sube y se pierde arriba. Nacen seis unidades
+  // DETRAS de la camara, o sea fuera de cuadro, asi que el nacimiento no se ve nunca.
+  //
+  // SEIS Y NO TRES, Y EL RECORRIDO EL DOBLE — por donde MUEREN, no por cuantos hacen falta. Con un
+  // recorrido de 66 el filo se apagaba a 60 de z por delante de la camara, o sea a 67 del lente: ahi
+  // la niebla (46..132) recien va por el 24%, asi que una barra emisiva de medio cuadro de ancho
+  // desaparecia de golpe a plena vista. Con 132 muere a 140 del lente, pasada la niebla entera. Y con
+  // seis en vez de tres la separacion en el campo cercano queda igual que antes: uno cada 22 unidades.
   const pulsos = []
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 6; i++) {
     const q = barra(ANCHO * 0.99, 0.30, LOOK.acento2 || LOOK.acento, 0.9)
     q.material.transparent = true
     q.material.opacity = 0.42
@@ -455,7 +489,7 @@ export function build(ctx) {
     escena.add(q)
     pulsos.push(q)
   }
-  const LARGO_P = 66, VEL_P = 7.2
+  const LARGO_P = 132, VEL_P = 7.2
 
   const _mira = new THREE.Vector3()
   const alSeek = juntar(latido, (t) => {
@@ -477,7 +511,17 @@ export function build(ctx) {
     camara.rotation.z += Math.sin(t * 0.19 + 0.4) * 0.013
     for (let i = 0; i < pulsos.length; i++) {
       const zp = zc + 6 - ((t * VEL_P + i * (LARGO_P / pulsos.length)) % LARGO_P)
-      pulsos[i].position.set(0, alturaEn(zp) - 0.16, zp + 0.03)
+      // +0.52 Y NO -0.16, QUE ES LO QUE TENIA ENTERRADO EL GESTO DE FIRMA DE LA PLANTILLA.
+      //
+      // `alturaEn` es la recta que pasa por los CENTROS de las pisadas, no el techo de la piedra: entre
+      // un centro y el siguiente el escalon de arriba ya subio, asi que la recta corre hasta 0.26 POR
+      // DEBAJO de la superficie solida. Un filo de 0.30 de alto centrado 0.16 mas abajo todavia queda
+      // entero dentro del bloque, y el bloque tiene 3.2 de espesor. Medido barriendo 80 unidades de
+      // escalera: solo el 41% de las posiciones mostraba algo, y en promedio se veia el 17% del filo.
+      // Eso no es una luz que trepa: a 4.3 unidades por beat sobre huellas de 1.05 son cuatro
+      // destellos por beat, o sea un parpadeo que a 30 cuadros se lee como un defecto de render.
+      // Con +0.52 —una contrahuella— el filo va entero al aire en el 100% del recorrido.
+      pulsos[i].position.set(0, alturaEn(zp) + 0.52, zp + 0.03)
     }
     lejos.position.set(0, yc * 0.7, -(Z_CAM0 - zc) * 0.55)
     motas.position.copy(camara.position)

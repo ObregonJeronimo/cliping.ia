@@ -27,7 +27,7 @@
 //   5   MARCA     el nombre llega desde el fondo y queda montado en el canto de una losa.
 //   11  PROMESA   el claim cruza el cuadro de izquierda a derecha mientras la torre sigue girando.
 //   17  PRUEBA    la pagina del cliente se monta en el canto y la camara la pasa mientras sube.
-//   25  RAZONES   las cifras se apoyan alternadas a un lado y a otro; las frases, mas abajo.
+//   25  RAZONES   las cifras se apoyan alternadas en DOS ALTURAS; las frases, debajo de las dos.
 //   32  PEDIDO    la subida baja a la mitad, se descubre el remate de la torre y el CTA queda al frente.
 //
 // SIN MATERIAL: sin tira, PRUEBA usa el recorte mas grande; sin recortes, ese tiempo no se compone y
@@ -263,19 +263,64 @@ export function build(ctx) {
   // y el cuadro mide unas 10 de alto: un bloque plantado en su entrada ya bajo un tercio del cuadro
   // cuando termina de leerse. Plantado en el medio, deriva la mitad para cada lado — y esa deriva es
   // deseable, porque es lo que hace que se lea como que la camara lo PASA.
+  //
+  // LA TABLA TIENE CINCO COLUMNAS Y NO DOS, Y LAS TRES NUEVAS SON UN ARREGLO, no una comodidad:
+  //
+  //   `vive`   cuantos beats se aleja el bloque de su beat mientras TODAVIA SE LEE. Es lo que decide
+  //            su ancho, y no tenerlo en cuenta es el defecto que se explica en `plantar`.
+  //   `sigue`  cuanto acompana a la orbita. Ver `plantar`.
+  //   `margen` que parte del cuadro util se le da. Estaba suelto en cada llamada; junto al resto se ve
+  //            de un vistazo que la pagina se compone al 60% y el nombre al 90%, que es una decision.
   const DONDE = {
-    marca: [7.3, 0.45], promesa: [13.4, -0.15], prueba: [20.3, 0.0],
-    cifra: [26.0, 1.30], frase: [26.8, -1.95], pedido: [35.0, 0.25],
+    marca:   { beat: 7.3,  dy:  0.45, vive: 2.1, sigue: 0.75, margen: 0.90 },
+    promesa: { beat: 13.4, dy: -0.15, vive: 2.0, sigue: 0.75, margen: 0.90 },
+    prueba:  { beat: 20.3, dy:  0.00, vive: 3.1, sigue: 0.75, margen: 0.60 },
+    cifra:   { beat: 26.0, dy:  1.30, vive: 1.0, sigue: 0.55, margen: 0.46 },
+    frase:   { beat: 26.4, dy: -2.10, vive: 1.0, sigue: 0.55, margen: 0.80 },
+    pedido:  { beat: 35.0, dy:  0.25, vive: 3.0, sigue: 0.75, margen: 0.68 },
   }
-  const anchoDe = (que, margen) =>
-    anchoADistancia(mundoW, distBase, puntoEn(DONDE[que][0], DONDE[que][1]).dist, DERIVA) * margen
 
-  const marca = bloqueMarca({ alto: 1.30, anchoMax: anchoDe('marca', 0.90), cama: true, camaOpacidad: 0.85 , margen: R.margen })
-  const promesa = bloquePromesa({ alto: 0.50, anchoMax: anchoDe('promesa', 0.90), maxLineas: 3 , margen: R.margen })
-  const prueba = bloquePrueba(ctx, { ancho: anchoDe('prueba', 0.60), ar: 1.5 })
-  const cifras = bloquesCifra(R.cifras, { alto: 0.74, anchoMax: anchoDe('cifra', 0.46) , margen: R.margen })
-  const frases = bloquesFrase(R.frases, { alto: 0.28, anchoMax: anchoDe('frase', 0.80) , margen: R.margen })
-  const pedido = bloquePedido({ alto: 0.32, anchoMax: anchoDe('pedido', 0.72) , margen: R.margen })
+  // EL BARRIDO: cuanto se corre un bloque HACIA EL BORDE mientras se lee, y por que hay que
+  // descontarlo del ancho antes de componerlo.
+  //
+  // `anchoADistancia` responde "cuanto entra en el cuadro DE ESTE BEAT", y en un avance eso alcanza
+  // porque un bloque centrado se queda centrado. En una orbita no: el bloque esta a `CANTO` del eje y
+  // la camara barre `0.155` rad por beat, asi que cada beat se corre `CANTO * sin(0.155)` = 0.34 hacia
+  // el borde, sobre un semicuadro de 2.8. Compuesto al 90% del cuadro de su beat le quedan 0.27 de
+  // sobra: sale cortado a los 0.8 beats. Es la misma cuenta que `vitral` dejo escrita como
+  // `16/(vueltas*360/beats)` — aca 16/8.05, o sea DOS beats de ventana.
+  const barridoDe = (d) =>
+    CANTO * Math.abs(Math.sin((1 - (d.sigue || 0)) * (ang(kEn(d.beat + d.vive)) - ang(kEn(d.beat)))))
+  const anchoDe = (que) => {
+    const d = DONDE[que]
+    return Math.max(0.6,
+      anchoADistancia(mundoW, distBase, puntoEn(d.beat, d.dy).dist, DERIVA) - 2 * barridoDe(d)) * d.margen
+  }
+
+  // LAS CIFRAS ALTERNAN EN ALTURA Y ESE PAR DE NUMEROS NO ES DECORATIVO.
+  //
+  // Dos cifras seguidas se plantan con 1.6 beats de diferencia, o sea 1.06 de subida de la camara: sin
+  // alternancia quedarian a 1.06 una de otra y sus placas miden 1.26 de alto — se pisan. Alternando
+  // 1.30 arriba y abajo del centro, los pares consecutivos quedan a 1.54 y a 3.66.
+  //
+  // Y EL CENTRO ESTA EN +1.30 Y NO EN 0, que es lo que las despega de las frases. Estaba en 0 con las
+  // frases en -1.95, y como la camara SUBE, una frase plantada 1.4 beats despues de una cifra baja
+  // sube 0.93 y se le come los 0.65 de separacion: quedaban a 0.28 con 1.15 de altos sumados, o sea el
+  // numero encima de la frase durante casi dos beats. No se ve en ninguna cuenta de ancho porque no es
+  // un problema de ancho: las dos familias se miden contra un centro de cuadro QUE SE MUEVE.
+  //
+  // `DONDE.cifra.dy` es el CENTRO de la alternancia, no una de las dos posiciones: las dos salen de
+  // sumarle y restarle `CIF_A`. Asi `anchoDe` mide en el medio de las dos —la de arriba queda un poco
+  // mas lejos del lente y la de abajo un poco mas cerca, o sea con un cuadro 8% mas angosto— y el 46%
+  // que se les da deja sitio de sobra para esa diferencia.
+  const CIF_A = 1.30
+
+  const marca = bloqueMarca({ alto: 1.30, anchoMax: anchoDe('marca'), cama: true, camaOpacidad: 0.85, margen: R.margen })
+  const promesa = bloquePromesa({ alto: 0.50, anchoMax: anchoDe('promesa'), maxLineas: 3, margen: R.margen })
+  const prueba = bloquePrueba(ctx, { ancho: anchoDe('prueba'), ar: 1.5 })
+  const cifras = bloquesCifra(R.cifras, { alto: 0.74, anchoMax: anchoDe('cifra'), margen: R.margen })
+  const frases = bloquesFrase(R.frases, { alto: 0.28, anchoMax: anchoDe('frase'), margen: R.margen })
+  const pedido = bloquePedido({ alto: 0.32, anchoMax: anchoDe('pedido'), margen: R.margen })
 
   // DOS GRUPOS, igual que en `monolito` y por el mismo motivo: el de afuera lo planta el vuelo
   // —posicion y encare— y el de adentro es el que mueven `entra`, `sale` y `respirar`, en coordenadas
@@ -285,13 +330,46 @@ export function build(ctx) {
   // eje: colgados de ella, el texto se iria del otro lado del eje a mitad de su propio tiempo y no
   // aparecerian en ningun cuadro. Se plantan en el mundo, la torre pasa por detras, y lo que los
   // sostiene contra ese fondo cambiante es la cama o la placa, no la suerte.
-  const plantar = (blk, beat, dy, padre) => {
+  //
+  // Y LOS BLOQUES LARGOS VIAJAN CON LA ORBITA — el `acompanar` de este vuelo, y sin el la pieza sale
+  // cortada. `movimiento.js:acompanar` resuelve el caso del desliz: si la camara recorre `v` por beat,
+  // un bloque clavado al mundo dura `mundoW/v` beats EN CUADRO y ni uno mas, "y la respuesta del genero
+  // no es frenar la camara sino que los bloques LARGOS VIAJEN". En una orbita la cuenta es la misma
+  // sobre otro eje —la del `barridoDe` de arriba— y da DOS beats. La marca vive 2.6, el claim 2.5, la
+  // pagina 5.0 y el CTA 4.2.
+  //
+  // Medido antes de esto, sobre el ancho que devolvia `anchoDe`: la marca al 113% del cuadro en el beat
+  // 9.4, el claim al 114% en el 15.4, el CTA al 115% en el 38. O sea el NOMBRE DE LA MARCA y el CTA con
+  // las ultimas letras afuera mientras se leen, y la pagina asomando por el borde de abajo.
+  //
+  // Achicarlos no era la salida: para que la pagina entrara clavada habia que bajarla de 2.31 a 1.10 de
+  // ancho —el 23% del cuadro— y una captura de web a ese tamaño no se lee, que es el defecto que
+  // `parrafo` documenta con otras palabras ("entraba, se medía bien, y no se leia").
+  //
+  // Se lo cuelga de un PIVOTE EN EL EJE de la torre y se gira ese pivote con la camara. El pivote va en
+  // el eje y no en el bloque a proposito: girar el pivote mueve al bloque POR el canto —que es donde
+  // tiene que estar— en vez de hacerlo girar sobre si mismo, y de paso el encare que dejo `lookAt`
+  // viaja con el, asi que sigue mirando a la camara sin necesidad de un segundo angulo.
+  //
+  // `sigue` significa lo mismo que el `retraso` del desliz: 1.0 lo clava al cuadro, 0.75 lo deja
+  // quedarse atras despacio —que es lo que se sigue leyendo como que la camara lo PASA, y mas todavia
+  // contra la torre, que gira al reves— y 0 es no llamar a esto. Las cifras y las frases van en 0.55:
+  // viven un beat en cuadro y ahi el barrido casi no alcanza a sacarlas.
+  const plantar = (blk, que, beat, dy, padre, t0, t1) => {
     const p = puntoEn(beat, dy)
     const gExt = new THREE.Group()
     gExt.position.copy(p.pos)
     gExt.lookAt(p.ojo)
     gExt.add(blk.g)
-    ;(padre || escena).add(gExt)
+    const eje = new THREE.Group()
+    eje.add(gExt)
+    ;(padre || escena).add(eje)
+    const r = DONDE[que].sigue || 0
+    if (r > 0) {
+      const gira = (t) => r * (ang(kEn(t)) - ang(kEn(beat)))
+      tl.fromTo(eje.rotation, { y: gira(t0) },
+        { y: gira(t1), duration: b(t1 - t0), ease: 'none' }, b(t0))
+    }
     return gExt
   }
 
@@ -315,7 +393,7 @@ export function build(ctx) {
   // Llega desde el fondo y se hunde con la torre. Sale hacia ABAJO y no hacia arriba: en un vuelo que
   // sube, lo que se va hacia arriba viaja con la camara y tarda el doble en dejar el cuadro.
   if (marca) {
-    plantar(marca, DONDE.marca[0], DONDE.marca[1])
+    plantar(marca, 'marca', DONDE.marca.beat, DONDE.marca.dy, null, 5, 10.8)
     entra(marca.g, tl, 5, { desde: 'fondo', dist: 6.5, dur: 1.8 })
     marca.escribir(tl, 5.4, 1.4)
     marca.borrar(tl, 9.4)
@@ -327,7 +405,7 @@ export function build(ctx) {
   // Cruza el cuadro en vez de posarse en el, que es la unica manera de que un claim de tres renglones
   // no se lea como una placa.
   if (promesa) {
-    plantar(promesa, DONDE.promesa[0], DONDE.promesa[1])
+    plantar(promesa, 'promesa', DONDE.promesa.beat, DONDE.promesa.dy, null, 11, 16.9)
     entra(promesa.g, tl, 11, { desde: 'izq', dist: 7, dur: 1.7 })
     promesa.escribir(tl, 11.4, 0.95)
     promesa.borrar(tl, 15.4)
@@ -345,7 +423,7 @@ export function build(ctx) {
     const respaldo = new THREE.Mesh(new THREE.PlaneGeometry(prueba.ancho + 0.24, prueba.alto + 0.24), luz(nivel(0.12), 1.0))
     respaldo.position.z = -0.03
     prueba.g.add(respaldo)
-    plantar(prueba, DONDE.prueba[0], DONDE.prueba[1], pagina)
+    plantar(prueba, 'prueba', DONDE.prueba.beat, DONDE.prueba.dy, pagina, 17, 24.9)
     entra(prueba.g, tl, 17, { desde: 'fondo', dist: 6.5, dur: 2.0 })
     prueba.escribir(tl, 17.2, 1.2)
     prueba.recorrer(tl, 18, 5.6, 0.94)
@@ -361,12 +439,14 @@ export function build(ctx) {
   // como la senaletica de los pisos y no como una lista.
   cifras.forEach((c, i) => {
     const s = i % 2 === 0 ? 1 : -1
-    const t0 = 25 + i * 1.9
+    // 1.6 y no 1.9: con cuatro cifras —lo que pide el retrato en su extremo— el paso de 1.9 metia la
+    // ultima hasta el beat 33.8, o sea dos beats DENTRO del pedido.
+    const t0 = 25 + i * 1.6
     // La placa cubre desde el valor hasta la etiqueta. `bloquesCifra` centra el valor en 0, cuelga la
     // etiqueta en -0.72 de su alto y esta mide 0.17: el contenido va de +0.50 a -0.81, o sea 1.31 de
     // alto centrado en -0.15. Se le da 1.35 para que el filete de acento tampoco quede afuera.
     placa(c, c.ancho, c.alto * 1.35, -c.alto * 0.15)
-    plantar(c, t0 + 1.0, DONDE.cifra[1] * s)
+    plantar(c, 'cifra', t0 + 1.0, DONDE.cifra.dy + CIF_A * s, null, t0, t0 + 3.1)
     entra(c.g, tl, t0, { desde: s > 0 ? 'der' : 'izq', dist: 5.5, dur: 1.1 })
     c.escribir(tl, t0 + 0.28, 0.72)
     sale(c.g, tl, t0 + 2.0, { hacia: s > 0 ? 'der' : 'izq', dist: 6, dur: 0.9 })
@@ -374,8 +454,11 @@ export function build(ctx) {
   uso.cifras = cifras.length
 
   frases.forEach((f, i) => {
-    const t0 = 25.6 + i * 2.5
-    plantar(f, t0 + 1.2, DONDE.frase[1])
+    // 25.2 y 2.3, no 25.6 y 2.5: adelanta la primera y junta las tres para que la ultima se apague en
+    // el 33.4 en vez del 34.2, y de paso corre la segunda fuera del beat en que la cifra impar pasa
+    // por su altura — el choque que se explica arriba de `CIF_A`.
+    const t0 = 25.2 + i * 2.3
+    plantar(f, 'frase', t0 + 1.2, DONDE.frase.dy, null, t0, t0 + 3.6)
     entra(f.g, tl, t0, { desde: 'abajo', dist: 5, dur: 1.25 })
     f.escribir(tl, t0 + 0.4, 0.8)
     f.borrar(tl, t0 + 2.2)
@@ -390,7 +473,7 @@ export function build(ctx) {
     // que declara el bloque, centrado en -0.15 de ese alto. Sin CTA solo queda el dominio, centrado.
     const A = pedido.alto
     placa(pedido, pedido.ancho, pedido.tieneCta ? A * 0.80 : A * 0.42, pedido.tieneCta ? -A * 0.15 : 0)
-    plantar(pedido, DONDE.pedido[0], DONDE.pedido[1])
+    plantar(pedido, 'pedido', DONDE.pedido.beat, DONDE.pedido.dy, null, 32, meta.beats)
     entra(pedido.g, tl, 32, { desde: 'fondo', dist: 6, dur: 1.8 })
     pedido.escribir(tl, 32.4, 0.9)
     latido = pedido.latir(0.03)

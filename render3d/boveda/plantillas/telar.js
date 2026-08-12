@@ -36,7 +36,7 @@
 // y el telar se queda solo. Lo que no hay, no se anuncia.
 
 import { THREE, metal, luz, barra, iluminar, domo, polvo } from '../nucleo.js'
-import { vueloAvance, entra, sale, paralaje, respirar, juntar, anchoConDeriva } from '../movimiento.js'
+import { vueloAvance, entra, sale, paralaje, respirar, juntar, anchoConDeriva, anchoADistancia } from '../movimiento.js'
 import { bloqueMarca, bloquePromesa, bloquePrueba, bloquesCifra, bloquesFrase, bloquePedido } from '../bloques.js'
 import { LOOK, nivel, E, b } from '../../demo/kit.js'
 
@@ -336,15 +336,21 @@ export function build(ctx) {
 
   // ---------------------------------------------------------------- los bloques, pedidos y colocados
   //
+  // Y LA `k` DE CADA `UTIL` ES LA MISMA A LA QUE ESE BLOQUE SE PLANTA, sin excepcion. Medir el claim
+  // contra `UTIL(0.95)` y despues clavarlo en `distBase * 0.93` es el error que `anchoConDeriva`
+  // documenta —el cuadro a 0.93 mide 5.23 y no 5.34— y con `margen` en su tope (0.95) dejaba 0.017
+  // unidades de aire sobre el ancho util: cero. Lo mismo el pedido, medido a 0.85 y plantado a 0.80.
+  // Usar una `k` MENOR que la de plantado no es defecto —subestima el cuadro y sobra aire—, y por eso
+  // las cifras y las frases se quedan como estaban.
   // CAMA EN LA MARCA: detras del nombre convergen las puntas de la urdimbre y, mas lejos, la trama de
   // los bastidores que todavia no se abrieron. `nivelTexto` garantiza contraste contra la PALETA, no
   // contra lo que esta plantilla resulto poner atras — y lo que puso atras son filamentos emisivos.
   const marca = bloqueMarca({ alto: 1.45, anchoMax: UTIL(0.90) * 0.92, cama: true, camaOpacidad: 0.85 , margen: R.margen })
-  const promesa = bloquePromesa({ alto: 0.58, anchoMax: UTIL(0.95) * 0.90 , margen: R.margen })
+  const promesa = bloquePromesa({ alto: 0.58, anchoMax: UTIL(0.93) * 0.90 , margen: R.margen })
   const prueba = bloquePrueba(ctx, { ancho: mundoW * 0.56, ar: 1.58 })
   const cifras = bloquesCifra(R.cifras, { alto: 0.88, anchoMax: UTIL(0.78) * 0.42 , margen: R.margen })
   const frases = bloquesFrase(R.frases, { alto: 0.30, anchoMax: UTIL(0.80) * 0.84 , margen: R.margen })
-  const pedido = bloquePedido({ alto: 0.34, anchoMax: UTIL(0.85) * 0.64 , margen: R.margen })
+  const pedido = bloquePedido({ alto: 0.34, anchoMax: UTIL(0.80) * 0.64 , margen: R.margen })
 
   // ---------------------------------------------------------------- 2 · MARCA
   // Llega desde el fondo por el corredor recien abierto y se va hacia arriba ANTES de que la camara la
@@ -385,8 +391,17 @@ export function build(ctx) {
     // Van en emisivo y NO en metal, y no es estetica: viven en la escena de la pagina, que no tiene una
     // sola luz. Un material fisico ahi renderiza negro, que es exactamente la trampa que `nucleo.js`
     // documenta en `metal()`.
-    const largoT = prueba.ancho * 0.85
+    //
+    // Y EL LARGO DEL TENSOR SE MIDE CONTRA EL CUADRO, NO CONTRA LA PAGINA. Con `prueba.ancho * 0.85` los
+    // cuatro tensores median 6.94 de punta a punta y el cuadro util a `0.98 * distBase` mide 4.67: los
+    // ocho extremos salian cortados por los bordes durante TODA la vida del bloque, o sea que la pagina
+    // se veia amarrada a nada — justo lo contrario de lo unico que los tensores estan para decir. Es el
+    // mismo error que `anchoConDeriva` documenta para el texto, sobre otro objeto.
+    //
+    // Se acota, no se reemplaza: cuando la prueba es un recorte chico el 85% entra y se usa entero.
     const k = 0.7071
+    const utilAqui = anchoADistancia(mundoW, distBase, distBase * 0.98, DERIVA)
+    const largoT = Math.max(0.2, Math.min(prueba.ancho * 0.85, (utilAqui - prueba.ancho) / (2 * k)))
     for (const s of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
       const tns = barra(largoT, 0.024, LOOK.acento, 1.3)
       tns.position.set(s[0] * (prueba.ancho / 2 + k * largoT / 2), s[1] * (prueba.alto / 2 + k * largoT / 2), -0.04)

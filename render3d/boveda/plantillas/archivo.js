@@ -193,6 +193,19 @@ export function build(ctx) {
       if (Math.abs(yy) + h / 2 > TOPE_Y) continue
       if (!chocan(rectDe(x, yy, w, h))) return yy
     }
+    // Y SI NINGUN MODULO ENTERO ENTRA, SE BUSCA FINO ANTES DE RENDIRSE. El salto de un modulo es
+    // groseramente grande cuando una cara mide tres unidades y media: hay huecos de un cuarto de modulo
+    // que sirven y que la busqueda gruesa saltea, y entonces la funcion devolvia la altura PEDIDA — o
+    // sea dos cajones cruzados dentro del mismo agujero, que es exactamente lo que esto existe para
+    // evitar. Un cajon grande no esta alineado a la grilla del mueble de todos modos: su alto sale del
+    // texto, no del modulo.
+    for (let k = 1; k <= 40; k++) {
+      for (const s of [-1, 1]) {
+        const yy = y + s * k * (MODH / 8)
+        if (Math.abs(yy) + h / 2 > TOPE_Y) continue
+        if (!chocan(rectDe(x, yy, w, h))) return yy
+      }
+    }
     return y
   }
 
@@ -216,10 +229,31 @@ export function build(ctx) {
   // filete y su rotulo, la cifra su etiqueta y el pedido su dominio, asi que el centro de dibujo de
   // esos bloques NO es el centro de su caja. Sin corregirlo quedan pegados al canto de abajo del cajon.
   // `altoK` es la misma correccion del otro lado: cuanto mide de verdad lo que el bloque declara.
+  //
+  // Y LO QUE UN BLOQUE DIBUJA NO ES SIEMPRE LO QUE DECLARA, que es el agujero por el que se colaba el
+  // unico bloque que no entraba en su propia cara. `bloquePromesa` monta una CAMA detras del claim y
+  // `cama()` la hace `alto·0.32` mas ancha y `alto·0.34` mas alta que el texto: con tres renglones son
+  // 0.31 y 0.35 por lado que NO figuran en `bloque.ancho` ni en `bloque.alto`. Cortada la madera a la
+  // medida declarada, la placa quedaba colgando fuera de la cara y tapaba el filete — que es justo la
+  // senal de que ese cajon es el que esta hablando.
+  //
+  // `cama()` y `letras()` anotan su tamano en `userData`, asi que se mide lo que hay colgado del grupo
+  // en vez de creerle al bloque. Para los cinco que no traen cama el maximo es el declarado y no cambia
+  // nada; es la misma idea de siempre —preguntar antes de cortar— aplicada al objeto y no al informe.
+  const dibujado = (bloque) => {
+    let w = bloque.ancho, h = bloque.alto
+    for (const o of bloque.g.children) {
+      const u = o.userData || {}
+      if (u.ancho > w) w = u.ancho
+      if (u.alto > h) h = u.alto
+    }
+    return { w, h }
+  }
   const cajonPara = (bloque, beat, y, op) => {
     op = op || {}
-    const w = Math.min(CARA, bloque.ancho + MARGEN * 2)
-    const h = bloque.alto * (op.altoK != null ? op.altoK : 1) + MARGEN * 2
+    const dib = dibujado(bloque)
+    const w = Math.min(CARA, dib.w + MARGEN * 2)
+    const h = Math.max(bloque.alto * (op.altoK != null ? op.altoK : 1), dib.h) + MARGEN * 2
     const c = cajonEn(beat, y, w, h)
     bloque.g.position.set(0, (op.sesgo || 0) * bloque.alto, 0.06)
     c.g.add(bloque.g)
@@ -299,7 +333,22 @@ export function build(ctx) {
     prueba.g.position.set(c.x, c.y + prueba.alto / 2 + 0.42, SAL + 0.1)
     prueba.g.rotation.y = 0.30
     pagina.add(prueba.g)
-    entra(prueba.g, tl, 17, { desde: 'abajo', dist: prueba.alto * 0.9 + 1.4, dur: 2.0 })
+    // ENTRA Y SALE POR FUERA DEL CUADRO, Y EL CUADRO A SU PROFUNDIDAD NO MIDE `mundoH`. La pagina vive
+    // en `SAL + 0.1`, o sea a 15.14 del lente, donde el alto util es `mundoH · 15.14 / 17.44` = 8.68:
+    // +-4.34 desde el eje, mas el vaiven de 0.42 que el desliz le mete a la camara en `y`.
+    //
+    // Con la distancia atada al alto de la pagina —`alto·0.9 + 1.4` = 4.74— arrancaba con su borde de
+    // arriba 0.84 unidades DENTRO del encuadre, y salia dejandolo 0.69 adentro: la pagina se encendia y
+    // se apagaba a la vista. Es el cartel que prohibe la regla 2, y encima en la unica capa que se
+    // dibuja siempre por encima de todo, asi que no hay nada que la tape mientras aparece.
+    //
+    // El salto se calcula, no se calibra: desde donde esta parada hasta el piso del cuadro, mas su
+    // propio medio alto y un margen. El piso de `alto·0.9 + 1.4` queda por si la bandeja termina muy
+    // abajo y la cuenta diera un salto corto.
+    const ALTO_PAG = mundoH * ((Z_CAM - (SAL + 0.1)) / distBase)
+    const SALTO_P = Math.max(prueba.alto * 0.9 + 1.4,
+      prueba.g.position.y + ALTO_PAG / 2 + prueba.alto / 2 + 0.6)
+    entra(prueba.g, tl, 17, { desde: 'abajo', dist: SALTO_P, dur: 2.0 })
     prueba.escribir(tl, 17.2, 1.2)
     prueba.recorrer(tl, 17.8, 5.4, 0.92)
     // El giro es lo que la vuelve un OBJETO. Un plano de frente con una captura encima es una textura
@@ -307,7 +356,7 @@ export function build(ctx) {
     tl.to(prueba.g.rotation, { y: -0.24, duration: b(6.0), ease: 'none' }, b(18.4))
     acompanar(prueba.g, tl, 18.6, 24.0, xEn, 0.6)
     acompanar(c.g, tl, 18.6, 24.0, xEn, 0.6)
-    sale(prueba.g, tl, 23.4, { hacia: 'abajo', dist: prueba.alto + 1.6, dur: 1.3 })
+    sale(prueba.g, tl, 23.4, { hacia: 'abajo', dist: SALTO_P, dur: 1.3 })
     cerrar(c, 24.6)
     respiraciones.push(respirar(prueba.g, { amp: 0.07, giro: 0.018, fase: 0.9 }))
     uso.pagina = prueba.fuente
@@ -378,7 +427,17 @@ export function build(ctx) {
   // Va FILA POR FILA caminando en x y eligiendo cada ancho. Un archivo real no es una grilla perfecta
   // —hay cajones anchos, angostos y huecos donde falta uno— y la grilla perfecta es justo lo que hace
   // que un muro se lea como papel pintado.
-  const ANCHO_MUEBLE = LARGO + mundoW * 2.6
+  // EL MUEBLE SE MIDE CONTRA EL RECORRIDO REAL, NO CONTRA `LARGO`. La camara viaja `LARGO · R.velocidad`
+  // y el retrato manda esa velocidad hasta 1.45, asi que el multiplicador tiene que estar en los DOS
+  // lados de la cuenta. Estaba solo en el vuelo: con 1.45 la camara llegaba a 18.76 y el mueble
+  // terminaba en 20.25, o sea que en el ultimo beat —el del CTA— el borde derecho del cuadro se quedaba
+  // 1.32 unidades sin mueble, un 23% del ancho. Y lo que se ve ahi no es el vacio: es `fondoLuz`, un
+  // plano emisivo de acento a intensidad plena que ademas florece con el bloom.
+  //
+  // No hay sintoma a velocidad neutra y por eso se escapa leyendo: la cuenta sale mal recien pasado
+  // 1.348. Es el mismo aviso que `reticula` deja escrito para su muro — "tiene que ser mas largo que
+  // eso o se termina antes que la pieza" — y el caso que la compuerta ejerce con su retrato extremo.
+  const ANCHO_MUEBLE = LARGO * R.velocidad + mundoW * 2.6
   const mueble = new THREE.Group()
   escena.add(mueble)
   const coro = []
