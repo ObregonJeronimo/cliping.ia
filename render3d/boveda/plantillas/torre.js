@@ -33,7 +33,7 @@
 // SIN MATERIAL: sin tira, PRUEBA usa el recorte mas grande; sin recortes, ese tiempo no se compone y
 // la torre se queda sola. Lo que no hay, no se anuncia.
 
-import { THREE, metal, luz, barra, cama, iluminar, domo, polvo } from '../nucleo.js'
+import { THREE, metal, luz, barra, cama, iluminar, domo, polvo, prismaDe } from '../nucleo.js'
 import { entra, sale, respirar, juntar, anchoADistancia } from '../movimiento.js'
 import { bloqueMarca, bloquePromesa, bloquePrueba, bloquesCifra, bloquesFrase, bloquePedido } from '../bloques.js'
 import { LOOK, nivel, E, b } from '../../demo/kit.js'
@@ -171,7 +171,14 @@ export function build(ctx) {
     const g = new THREE.Group()
     g.position.y = -TORRE_H / 2 + PASO_Y * (i + 0.5)
     g.rotation.y = i * PASO_G
-    g.add(new THREE.Mesh(new THREE.BoxGeometry(LADO_A, ESP, LADO_F), i % 2 ? matLosaA : matLosaB))
+    // LA SECCION DE LA LOSA LA DECIDE LA MARCA: cuadrada para una identidad angulosa, cilindrica para
+    // una redondeada. Son cuarenta piezas apiladas y son el objeto entero de la plantilla, asi que es
+    // el sitio del catalogo donde la forma medida se lee mas claro. Ver `prismaDe` en nucleo.js.
+    //
+    // Se le pasa `LADO_A` como lado y no el par (LADO_A, LADO_F): `prismaDe` construye una seccion
+    // REGULAR, que es lo que hace que la torsion se lea igual desde cualquier angulo de la espiral.
+    // Con una losa rectangular la misma torsion se ve fuerte de frente y casi nula de costado.
+    g.add(prismaDe(LADO_A, ESP, R.dureza, i % 2 ? matLosaA : matLosaB))
     // EL CANTO EN EMISIVO ES LO QUE HACE LA TORSION VISIBLE. Cuarenta losas iguales apiladas son una
     // columna; cuarenta filetes de luz girando un poco cada uno son una espiral. Sin ellos el giro
     // existe en la geometria y no se lee en el cuadro, que es como no existir.

@@ -40,7 +40,7 @@
 // es arquitectura; un espacio que cambia de forma segun lo que la pagina dio es un espacio que hay que
 // volver a mirar entero cada vez que cambia el cliente.
 
-import { THREE, metal, luz, barra, iluminar, domo, polvo } from '../nucleo.js'
+import { THREE, metal, luz, barra, iluminar, domo, polvo, prismaDe } from '../nucleo.js'
 import { entra, sale, respirar, juntar, anchoADistancia } from '../movimiento.js'
 import { bloqueMarca, bloquePromesa, bloquePrueba, bloquesCifra, bloquesFrase, bloquePedido } from '../bloques.js'
 import { LOOK, nivel, E, b } from '../../demo/kit.js'
@@ -277,7 +277,11 @@ export function build(ctx) {
       const w = mundoW * (0.30 + az() * 0.55)
       const x = sx * (mundoW * 1.55 + az() * mundoW * 1.9)
       const z = Z_CAM0 - i * 13 - az() * 4
-      const t = new THREE.Mesh(new THREE.BoxGeometry(w, mundoH * 9, w * 0.7), matTorre)
+      // LAS TORRES DEL FONDO TOMAN LA FORMA DE LA MARCA. Es la capa mas grande de la pieza y la que el
+      // ojo lee como "que clase de ciudad es esta": cuadradas para una identidad angulosa, cilindricas
+      // para una redondeada. La escalinata en si NO cambia de forma, y es a proposito — un peldano
+      // redondeado deja de ser un peldano, o sea que ahi la receta cambiaria la idea y no el grado.
+      const t = prismaDe(w, mundoH * 9, R.dureza, matTorre)
       t.position.set(x, 0, z)
       lejos.add(t)
       const c = new THREE.Mesh(new THREE.PlaneGeometry(0.07, mundoH * 8.4), matCanto)
