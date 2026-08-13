@@ -101,6 +101,32 @@ async def fotos(url: str, plantilla: str, beats: list[float], aire: str | None, 
               }
               return out
             }''')
+            # Sonda de materiales y luces, opt-in. Sirve para responder "de que color es de verdad esa
+            # malla y cuanta luz le llega", que es la pregunta que aparece cada vez que algo renderiza
+            # mas oscuro de lo que dice su color base.
+            if os.environ.get("BOVEDA_LUCES"):
+                info2 = await pg.evaluate('''() => {
+                  const r = window.__boveda && window.__boveda.rig
+                  if (!r) return {}
+                  const luces = [], mallas = []
+                  r.scene.traverse(o => {
+                    if (o.isLight) luces.push({ tipo: o.type, i: +o.intensity.toFixed(2),
+                      col: '#' + o.color.getHexString(),
+                      pos: [o.position.x, o.position.y, o.position.z].map(v => +v.toFixed(1)) })
+                    if (o.isMesh && o.geometry && o.geometry.attributes &&
+                        o.geometry.attributes.position && o.geometry.attributes.position.count > 5000) {
+                      const m = o.material
+                      mallas.push({ verts: o.geometry.attributes.position.count,
+                        col: m && m.color ? '#' + m.color.getHexString() : '?',
+                        metal: m ? m.metalness : null, rug: m ? m.roughness : null,
+                        tipo: m ? m.type : '?' })
+                    }
+                  })
+                  return { luces, mallas }
+                }''')
+                print("  luces:", info2.get("luces"))
+                print("  mallas grandes:", info2.get("mallas"))
+
             if os.environ.get("BOVEDA_MEDIR"):
                 print("  mallas de texto en el navegador (ancho x alto en unidades de mundo):")
                 for m in medidas[:14]:

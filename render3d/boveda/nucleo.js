@@ -292,6 +292,21 @@ export function metal(color, rug, metalico) {
   })
 }
 
+// MATE DE VERDAD: sin metalness y SIN CLEARCOAT. La primitiva que faltaba.
+//
+// `metal()` lleva `clearcoat: 0.45` con `clearcoatRoughness: 0.3`, o sea una capa de barniz que
+// devuelve un reflejo NITIDO. Sobre una pieza chica eso es un brillo y esta bien; sobre una superficie
+// grande y casi horizontal es un lampazo que pasa el umbral del bloom (0.80) y florece hasta llenar el
+// cuadro. Medido en `duna`: el 10.6% de los pixeles saturados a blanco puro, y bajar la luz de 2.6 a
+// 0.95 NO lo cambio — porque no era la luz, era el barniz.
+//
+// Arena, piedra, hormigon, papel y tela no tienen barniz. Para eso es esto.
+export function mate(color, rug) {
+  return new THREE.MeshStandardMaterial({
+    color: hex(color), metalness: 0.0, roughness: rug != null ? rug : 0.95,
+  })
+}
+
 // Emisivo puro: lo unico que el bloom convierte en LUZ.
 export function luz(color, intensidad) {
   return new THREE.MeshBasicMaterial({ color: hex(color).multiplyScalar(intensidad != null ? intensidad : 1), toneMapped: false })
