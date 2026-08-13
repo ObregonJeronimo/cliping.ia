@@ -272,9 +272,19 @@ export function build(ctx) {
   const pedido = bloquePedido({ alto: 0.33, anchoMax: UTIL(LEC) * 0.62, margen: R.margen })
 
   // Planta un bloque sobre la arena, en el beat en que la camara lo va a estar mirando.
-  const plantar = (blk, beat, x, sobre, padre) => {
+  // LA ALTURA DEL BLOQUE SE MIDE CONTRA EL OJO, no contra la arena.
+  //
+  // La primera version los apoyaba a una unidad del suelo con numeros fijos. Cuando la camara subio de
+  // 2.6 a 8.4 —para poder ver POR ENCIMA de la cresta proxima, que es lo que hace que un desierto se
+  // lea como desierto— los bloques quedaron seis unidades por debajo del encuadre y la sonda paso de
+  // 29% a 56% de beats mudos. El texto no se movio: se movio el punto de vista.
+  //
+  // `sobre` pasa a ser una fraccion de la altura del ojo EN ESE BEAT. Asi la composicion sobrevive a
+  // cualquier cambio del vuelo, que es justamente lo que va a seguir pasando mientras se afina.
+  const plantar = (blk, beat, x, frac, padre) => {
     const z = zEn(beat, LEC)
-    blk.g.position.set(x || 0, alturaDe(x || 0, z, sobre), z)
+    const k = Math.min(1, beat / meta.beats)
+    blk.g.position.set(x || 0, alturaDe(x || 0, z, OJO(k) * (frac != null ? frac : 0.55)), z)
     ;(padre || escena).add(blk.g)
     return blk.g
   }
@@ -283,7 +293,7 @@ export function build(ctx) {
   // Se planta sobre la cresta que la camara esta por coronar: sube desde la arena y se va hacia arriba
   // antes de que la camara lo alcance, porque en un vuelo lo que se queda te lo comes.
   if (marca) {
-    plantar(marca, 8.0, 0, 1.35)
+    plantar(marca, 8.0, 0, 0.72)
     entra(marca.g, tl, 6, { desde: 'abajo', dist: 4.2, dur: 1.8 })
     marca.escribir(tl, 6.5, 1.4)
     marca.borrar(tl, 11.2)
@@ -296,7 +306,7 @@ export function build(ctx) {
   // Baja al valle y CRUZA el cuadro: entra por la derecha y se va por la izquierda. En una pieza donde
   // todo sube y baja, el claim es el unico movimiento lateral y por eso se destaca sin ser mas grande.
   if (promesa) {
-    plantar(promesa, 15.0, 0, 0.95)
+    plantar(promesa, 15.0, 0, 0.58)
     entra(promesa.g, tl, 13, { desde: 'der', dist: 6.5, dur: 1.8 })
     promesa.escribir(tl, 13.5, 1.0)
     promesa.borrar(tl, 17.4)
@@ -309,7 +319,7 @@ export function build(ctx) {
   // Se levanta de la arena como una lamina clavada en la cresta, y gira mientras la camara la pasa. El
   // giro es lo que la vuelve OBJETO: un plano de frente con una captura encima es una textura pegada.
   if (prueba) {
-    plantar(prueba, 21.6, 0, prueba.alto * 0.5 + 0.15, pagina)
+    plantar(prueba, 21.6, 0, 0.62, pagina)
     prueba.g.rotation.y = 0.52
     entra(prueba.g, tl, 19, { desde: 'abajo', dist: 6.5, dur: 2.1 })
     prueba.escribir(tl, 19.3, 1.2)
@@ -326,7 +336,7 @@ export function build(ctx) {
   cifras.forEach((c, i) => {
     const s = i % 2 === 0 ? -1 : 1
     const t0 = 27 + i * 2.3
-    plantar(c, t0 + 1.0, s * mundoW * 0.26, 1.15)
+    plantar(c, t0 + 1.0, s * mundoW * 0.26, 0.66)
     c.g.rotation.y = s * 0.22
     entra(c.g, tl, t0, { desde: s < 0 ? 'izq' : 'der', dist: 5, dur: 1.4 })
     c.escribir(tl, t0 + 0.3, 0.78)
@@ -336,7 +346,7 @@ export function build(ctx) {
 
   frases.forEach((f, i) => {
     const t0 = 27.8 + i * 2.8
-    plantar(f, t0 + 1.0, 0, 0.62)
+    plantar(f, t0 + 1.0, 0, 0.40)
     entra(f.g, tl, t0, { desde: 'abajo', dist: 4, dur: 1.4 })
     f.escribir(tl, t0 + 0.4, 0.85)
     f.borrar(tl, t0 + 2.4)
@@ -350,7 +360,7 @@ export function build(ctx) {
   // ascenso esta en la funcion de altura y no en un tween: tiene que evaluarse en cada submuestra.
   let latido = null
   if (pedido) {
-    plantar(pedido, meta.beats - 1.2, 0, 2.35)
+    plantar(pedido, meta.beats - 1.2, 0, 0.70)
     entra(pedido.g, tl, 34, { desde: 'fondo', dist: 5.5, dur: 2.0 })
     pedido.escribir(tl, 34.5, 0.9)
     latido = pedido.latir(0.03)
@@ -377,7 +387,15 @@ export function build(ctx) {
     // camara cabecea con cada cresta y el horizonte entra y sale del cuadro. Lejos, el horizonte se
     // queda quieto y lo que se mueve es el relieve pasando por debajo, que es lo que se quiere ver.
     const zm = z - distBase * 2.3
-    _mira.set(Math.sin(t * 0.19) * DERIVA * 0.6, alturaDe(0, zm, OJO(k) * 0.34), zm)
+    // EL OBJETIVO SIGUE AL OJO, NO AL TERRENO. Apuntar a la altura de la arena a 2.3 distBase de
+    // distancia parecia lo correcto —la camara mira el suelo que viene— y con la amplitud subida a 6.4
+    // hace CABECEAR el encuadre varias unidades por beat: los bloques, que estan a una altura fija,
+    // entran y salen del cuadro solos. La sonda lo marco como "encendido pero NO se ve" en los beats
+    // 15 a 17.
+    //
+    // Con una caida constante respecto del ojo, el horizonte se queda quieto y lo que se mueve es el
+    // relieve pasando por debajo — que ademas es lo que se queria ver.
+    _mira.set(Math.sin(t * 0.19) * DERIVA * 0.6, camara.position.y - OJO(k) * 0.46, zm)
     camara.lookAt(_mira)
     camara.rotation.z += Math.sin(t * 0.23 + 0.4) * 0.013
     // LAS CAPAS SIGUEN A LA CAMARA. La primera version las corria con `(t * vel) % largo` a secas, o
