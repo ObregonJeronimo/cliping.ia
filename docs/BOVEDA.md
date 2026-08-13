@@ -166,7 +166,33 @@ en `alSeek` — eso es la deriva, y es lo que impide que un vuelo se lea como un
 | `archivo` | objeto | 38 | cajones que se extienden solos · desliz lateral |
 | `torre` | escala | 38 | losas apiladas girando · espiral ascendente |
 
-### Y el registro sobrio
+### El registro contenido — y una corrección de rumbo
+
+La primera vez que se pidieron plantillas "menos potentes", con la referencia de los videos que los
+estudios de motion hacen para marcas como Google o Gemini, se entendió **austeras**. Salieron `folio`,
+`halo`, `pliegue` y `hilo`: un objeto sobre un fondo plano. El veredicto sobre `hilo` fue *"qué es esa
+cagada"*, y era correcto — una línea azul sobre un gris plano no se ve sobria, se ve **sin terminar**.
+
+La referencia no es austera. Es **contenida pero densa**:
+
+| | |
+|---|---|
+| contenida | la cámara casi no se mueve, hay dos o tres elementos, no hay cortes duros, la tipografía manda |
+| **densa** | la **superficie** es rica: degradados que fluyen, vidrio que refracta y tiñe los bordes, luz que se dobla |
+
+**Lo que faltaba no era menos, era mejor terminado.** De ahí salieron dos primitivas:
+
+- **`campoDegradado()`** — cuatro manchas de color de la página que orbitan y se funden. Períodos
+  inconmensurables (con múltiplos el conjunto vuelve a su posición y el ojo lo lee como bucle), mezcla
+  **por distancia y no por capas** (apilar con `mix` deja bordes donde una tapa a la otra), y un dither
+  de 1/255 — un degradado suave en 8 bits *siempre* tiene bandas.
+- **`iridiscente()`** — vidrio con la película que tiñe el borde según el ángulo. Lo que importa no es
+  activar el efecto sino el **rango de espesor**: el de fábrica (100–400 nm) da el arcoíris entero y se
+  ve a juguete; 180–520 da azules y magentas.
+
+`hilo` quedó fuera del catálogo; las otras tres se reescribieron sobre el vocabulario nuevo.
+
+### El registro sobrio
 
 Las primeras veinticuatro son todas **intensas**, y un catálogo que grita igual en las veinticuatro no
 le sirve a una marca sobria — que son justamente las que más video piden. Estas tres son el registro de
@@ -183,6 +209,8 @@ sombra.
 | `folio` | sobrio | 34 | una hoja en un cuarto vacío · deriva de 1,6 unidades |
 | `halo` | sobrio | 36 | un anillo de luz sobre campo claro · casi sin vuelo |
 | `pliegue` | sobrio | 36 | un plano que se dobla, y **el doblez es la transición** |
+| `aurora` | superficie | 38 | campo que fluye + lente de vidrio iridiscente; el texto pasa **por detrás** |
+| `seda` | superficie | 38 | una tela iridiscente que ondula y llena el cuadro |
 
 Tres decisiones que definen el registro y que conviene copiar al escribir la cuarta:
 
