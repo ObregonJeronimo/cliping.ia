@@ -352,6 +352,141 @@ export function prismaDe(lado, alto, dureza, material) {
   return m
 }
 
+
+// ---------------------------------------------------------------- el campo de degradado
+//
+// LA FIRMA DEL GENERO QUE FALTABA, y la razon por la que las primeras piezas sobrias se veian pobres.
+//
+// Un showreel de motion para una marca de software no es austero: es DENSO. Lo que lo hace ver caro no
+// es la cantidad de objetos sino la calidad de la SUPERFICIE — degradados que fluyen, vidrio que
+// refracta, luz que se dobla. Una linea de color sobre un gris plano no es "sobrio": es un cuadro sin
+// terminar, y asi se ve.
+//
+// Esto resuelve la mitad de esa distancia: un campo de manchas de color que se mueven despacio y se
+// funden entre si. Es lo que en After Effects se arma con cuatro capas de ruido y un desenfoque
+// gaussiano, y aca cuesta un fragment shader y una malla.
+//
+// TRES DECISIONES QUE SEPARAN ESTO DE UN DEGRADADO CUALQUIERA:
+//
+//   1. LAS MANCHAS ORBITAN CON PERIODOS INCONMENSURABLES. Con periodos multiplos, el conjunto vuelve a
+//      su posicion cada tantos segundos y el ojo lo detecta como bucle — que es lo que delata una
+//      plantilla.
+//   2. SE MEZCLAN POR DISTANCIA, NO POR CAPAS. Cada mancha aporta un peso que cae con la distancia y el
+//      color final es el promedio ponderado. Apilar capas con `mix` deja bordes donde una tapa a la
+//      otra; ponderar da una transicion continua de verdad.
+//   3. LLEVA RUIDO DE UN CUARTO DE NIVEL. Un degradado suave en 8 bits SIEMPRE tiene bandas: en un
+//      tramo de 200 pixeles que va de #202020 a #242424 hay cuatro escalones y se ven los cuatro. Un
+//      dither por debajo del escalon de cuantizacion los rompe sin percibirse como grano.
+//
+// El campo NO se ilumina —es `ShaderMaterial`— y va al fondo de todo con un `renderOrder` muy bajo, por
+// la misma razon que documenta `domo`: three ordena los transparentes por la distancia de su origen, y
+// sin esto un plano centrado cerca del ojo se pintaria encima de la escena entera.
+export function campoDegradado(escena, op) {
+  op = op || {}
+  // Cuatro colores. Con tres el campo se lee como un degradado lineal; con cinco se vuelve una mancha
+  // sin direccion. Salen de la paleta medida de la pagina.
+  const base = (op.colores && op.colores.length ? op.colores.slice(0, 4) : [LOOK.bg, LOOK.acento, LOOK.bg2 || LOOK.bg, LOOK.acento])
+  const cols = base.map(c => hex(c))
+  while (cols.length < 4) cols.push(cols[cols.length - 1].clone())
+
+  const mat = new THREE.ShaderMaterial({
+    depthWrite: false,
+    uniforms: {
+      uT: { value: 0 },
+      uC0: { value: cols[0] }, uC1: { value: cols[1] }, uC2: { value: cols[2] }, uC3: { value: cols[3] },
+      // Cuanto se mueven las manchas. Bajo = un fondo que respira; alto = un fondo que compite.
+      uVel: { value: op.vel != null ? op.vel : 0.045 },
+      // Que tan concentrada es cada mancha. Chico = manchas grandes y blandas; grande = nucleos duros.
+      uFoco: { value: op.foco != null ? op.foco : 1.35 },
+      // Viñeteado suave hacia el borde: es lo que evita que el campo se lea como un fondo plano pegado
+      // detras. Un cielo real tambien se oscurece hacia afuera.
+      uVineta: { value: op.vineta != null ? op.vineta : 0.16 },
+    },
+    vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: [
+      'uniform float uT, uVel, uFoco, uVineta;',
+      'uniform vec3 uC0, uC1, uC2, uC3;',
+      'varying vec2 vUv;',
+      'vec2 orbita(float a, float bb, float r, float t){ return vec2(0.5 + cos(t*a)*r, 0.5 + sin(t*bb)*r*0.72); }',
+      'float peso(vec2 p, vec2 c, float f){ float d = distance(p, c); return 1.0 / (0.02 + pow(d, f) * 6.0); }',
+      'void main(){',
+      '  float t = uT * uVel;',
+      '  vec2 p = vUv;',
+      // 0.61 / 0.83 / 0.47 / 1.09 / 0.93 / 0.55 / 1.13 / 0.71: ninguno es multiplo de otro.
+      '  vec2 qa = orbita(0.61, 0.83, 0.38, t);',
+      '  vec2 qb = orbita(-0.47, 1.09, 0.44, t + 1.7);',
+      '  vec2 qc = orbita(0.93, -0.55, 0.33, t + 3.1);',
+      '  vec2 qd = orbita(-1.13, -0.71, 0.41, t + 4.9);',
+      '  float wa = peso(p, qa, uFoco), wb = peso(p, qb, uFoco);',
+      '  float wc = peso(p, qc, uFoco), wd = peso(p, qd, uFoco);',
+      '  float s = wa + wb + wc + wd;',
+      '  vec3 col = (uC0*wa + uC1*wb + uC2*wc + uC3*wd) / s;',
+      '  float v = distance(p, vec2(0.5)) * 1.45;',
+      '  col *= 1.0 - v * v * uVineta;',
+      // 1/255 de amplitud: por debajo del escalon de cuantizacion, o sea invisible como grano y
+      // suficiente para romper la banda.
+      '  float n = fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);',
+      '  col += (n - 0.5) / 255.0;',
+      '  gl_FragColor = vec4(col, 1.0);',
+      '}',
+    ].join('\n'),
+  })
+
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat)
+  m.frustumCulled = false
+  m.renderOrder = -2000
+  const dist = op.dist != null ? op.dist : 40
+
+  // SE CUELGA DE LA CAMARA cuando se le pasa una. Asi el campo llena el cuadro pase lo que pase con el
+  // vuelo, que es lo unico que lo hace reutilizable: una plantilla con la camara quieta lo tendria
+  // igual con un plano lejano, pero una con vuelo lo dejaria atras a los cinco beats.
+  //
+  // Y una camara con hijos SOLO los dibuja si ella misma esta en el grafo de la escena. En este motor
+  // la camara del rig no siempre lo esta, asi que se agrega — es un no-op si ya estaba.
+  const cam = op.camara
+  if (cam) {
+    m.position.z = -dist
+    const h = 2 * Math.tan((cam.fov * Math.PI / 180) / 2) * dist
+    m.scale.set((h * cam.aspect) / 2 * 1.06, h / 2 * 1.06, 1)
+    cam.add(m)
+    if (!cam.parent) escena.add(cam)
+  } else {
+    m.position.z = -dist
+    m.scale.set(200, 200, 1)
+    escena.add(m)
+  }
+  return mat.uniforms
+}
+
+// ---------------------------------------------------------------- vidrio iridiscente
+//
+// La otra mitad de lo que separa una pieza cara de una plana. `vidrio()` da un cristal correcto y
+// neutro; esto le agrega la pelicula que tiñe el borde segun el angulo — el arcoiris de una burbuja de
+// jabon o de una lente con tratamiento.
+//
+// `iridescence` es parte del mismo shader fisico de three desde r147, asi que no cuesta una pasada
+// extra. Lo que si importa es `iridescenceThicknessRange`, que decide QUE colores aparecen: el rango
+// por defecto (100-400 nm) da el arcoiris entero y se ve a juguete; 180-520 da azules y magentas, que
+// es la banda que usan las piezas de marca de software.
+export function iridiscente(color, op) {
+  op = op || {}
+  return new THREE.MeshPhysicalMaterial({
+    color: hex(color),
+    metalness: op.metal != null ? op.metal : 0.0,
+    roughness: op.rug != null ? op.rug : 0.08,
+    transmission: op.trans != null ? op.trans : 0.92,
+    thickness: op.grosor != null ? op.grosor : 2.2,
+    ior: op.ior != null ? op.ior : 1.42,
+    iridescence: op.iris != null ? op.iris : 1.0,
+    iridescenceIOR: 1.35,
+    iridescenceThicknessRange: op.rango || [180, 520],
+    clearcoat: 1.0,
+    clearcoatRoughness: 0.06,
+    transparent: true,
+    opacity: op.opacidad != null ? op.opacidad : 1.0,
+  })
+}
+
 // ---------------------------------------------------------------- luces
 // UN SOLO SITIO PARA LAS LUCES, y no es pereza: la iluminacion es lo que hace que doce plantillas se
 // sientan del mismo estudio. Lo que las diferencia es la composicion, no el tratamiento.
