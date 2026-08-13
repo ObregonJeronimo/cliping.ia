@@ -124,7 +124,17 @@ for (const raiz of [escena, paginaEsc]) {
 // las cifras YA SALIERON y `sale()` las apago. Eso no es un defecto de la plantilla: es la salida
 // funcionando. Un instrumento que llama defecto al comportamiento correcto hace perder mas tiempo que
 // no tenerlo.
-const seVe = (o) => { for (let n = o; n; n = n.parent) if (!n.visible) return false; return true }
+const seVe = (o) => {
+  for (let n = o; n; n = n.parent) if (!n.visible) return false
+  // Y LA OPACIDAD TAMBIEN, que la primera version no miraba. Una malla transparente con `opacity` en 0
+  // es invisible de verdad —no dibuja un solo pixel— y la sonda la contaba igual. Lo encontro `panal`:
+  // sus celdas encienden la cara del cliente al acercarse la camara, o sea que durante ESPACIO valen 0,
+  // y la sonda seguia informando dos imagenes de pagina en el cuadro cero. El arreglo estaba bien y el
+  // instrumento decia que no. Es la tercera vez que esta sonda llama defecto a algo que funciona.
+  const m = o.material
+  if (m && !Array.isArray(m) && m.transparent && typeof m.opacity === 'number' && m.opacity <= 0.02) return false
+  return true
+}
 console.log('\nSONDA — plantilla "%s" · aire %s · %s beats (%.1f s a %d bpm)',
   P.meta.id, nomAire, P.meta.beats, dur, Math.round(60 / BEAT))
 console.log('  datos: "%s" · claim de %d caracteres · %d frases · %d cifras',

@@ -58,10 +58,15 @@ import * as marea from './plantillas/marea.js'
 import * as prisma from './plantillas/prisma.js'
 import * as archivo from './plantillas/archivo.js'
 import * as torre from './plantillas/torre.js'
+import * as panal from './plantillas/panal.js'
+import * as pendulo from './plantillas/pendulo.js'
+import * as imprenta from './plantillas/imprenta.js'
+import * as orbita from './plantillas/orbita.js'
+import * as vitrina from './plantillas/vitrina.js'
 
 // EL ORDEN ES EL DE PRESENTACION en el estudio, y no es alfabetico: adelante van las que muestran la
 // pagina del cliente como objeto protagonico, que es lo que ninguna plantilla generica puede fingir.
-export const PLANTILLAS = [atrio, reticula, pasillo, vitral, deriva, tectonica, monolito, nucleo, eclipse, cardumen, cinta, bandada, escalera, telar, marea, prisma, archivo, torre]
+export const PLANTILLAS = [atrio, reticula, pasillo, vitral, deriva, tectonica, monolito, nucleo, eclipse, cardumen, cinta, bandada, escalera, telar, marea, prisma, archivo, torre, panal, pendulo, imprenta, orbita, vitrina]
 
 export const porId = (id) => PLANTILLAS.find(p => p.meta && p.meta.id === id) || null
 
