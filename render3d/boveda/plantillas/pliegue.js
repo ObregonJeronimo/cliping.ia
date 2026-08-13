@@ -54,7 +54,16 @@ export function build(ctx) {
   uso.retrato = !!R.medido
   const medio = (v) => 1 + (v - 1) * 0.45
 
-  iluminar(escena, { key: 0.95, relleno: 0.90 })
+  // LUZ DIRECCIONAL, no pareja — y es lo contrario de lo que pide el registro sobrio en general.
+  //
+  // `folio` y `halo` usan luz blanda porque su sujeto es un objeto contra un fondo: lo que tiene que
+  // leerse es el BORDE. Aca el sujeto es una superficie que se dobla, o sea que lo que tiene que leerse
+  // es el ANGULO — y un angulo solo se ve si la luz cambia cuando la cara gira.
+  //
+  // Con key 0.95 y relleno 0.90 un doblez de 46 grados cambiaba el sombreado un 6%: el papel se doblaba
+  // y en pantalla no pasaba nada. Con 1.9 contra 0.25 el mismo doblez cambia un 40%, que es lo que el
+  // ojo necesita para leerlo como un movimiento fisico y no como un degradado.
+  iluminar(escena, { key: 1.90, relleno: 0.25 })
   const uDomo = domo(escena, { fuerza: 0.05 })
   if (ctx.bloom) ctx.bloom.strength = Math.min(ctx.bloom.strength || 0.5, 0.16)
 
@@ -91,8 +100,18 @@ export function build(ctx) {
     m.material.side = THREE.DoubleSide
     return m
   }
-  const CLARO = nivel(0.02)
-  const APENAS = nivel(0.055)     // la otra cara, un pelo mas oscura: es lo que hace visible el doblez
+  // LAS DOS CARAS TIENEN QUE SEPARARSE DE VERDAD. `nivel(0.02)` y `nivel(0.055)` se parecen poco en el
+  // hex y mucho en pantalla: la iluminacion fisica del motor devuelve alrededor de un tercio del albedo
+  // y esa compresion junta todo lo que estaba cerca. Con las dos caras en el mismo valor el doblez no
+  // se ve — y el doblez es la plantilla entera.
+  //
+  // 0.02 contra 0.22 es un salto que sobrevive a la compresion sin volverse dramatico: sigue siendo
+  // papel de dos tonos, no blanco contra negro.
+  // Y AHORA LAS DOS CARAS SON DEL MISMO COLOR. Con la luz direccional, lo que separa una cara de la
+  // otra es el ANGULO, que es lo correcto: dos tonos distintos de papel se leen como dos papeles, y lo
+  // que se quiere es UNA hoja doblada. El pigmento igual, la luz distinta.
+  const CLARO = nivel(0.04)
+  const APENAS = nivel(0.04)
   gArriba.add(caraDe(CLARO, true))
   gAbajo.add(caraDe(APENAS, false))
 
@@ -112,7 +131,9 @@ export function build(ctx) {
   sombra.position.z = 0.006
   escena.add(sombra)
 
-  const fondo = new THREE.Mesh(new THREE.PlaneGeometry(mundoW * 6, mundoH * 6), mate(grisDePeso(R, nivel(0.12)), 1.0))
+  // Y el fondo mas oscuro que las dos caras, por lo mismo: si el papel y lo que hay detras comparten
+  // valor, el borde del papel deja de existir y la pieza se lee como un degradado.
+  const fondo = new THREE.Mesh(new THREE.PlaneGeometry(mundoW * 6, mundoH * 6), mate(nivel(0.48), 1.0))
   fondo.position.z = -4
   escena.add(fondo)
 

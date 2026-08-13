@@ -120,7 +120,16 @@ export function build(ctx) {
 
   // El fondo: un plano grande y liso, apenas mas oscuro que la hoja. No es el domo — el domo tine y
   // gira, y aca hace falta una pared quieta contra la que la hoja se recorte.
-  const pared = new THREE.Mesh(new THREE.PlaneGeometry(mundoW * 6, mundoH * 6), mate(grisDePeso(R, nivel(0.09)), 1.0))
+  // EL CONTRASTE ES LA UNICA HERRAMIENTA QUE LE QUEDA A UNA PIEZA CALLADA, asi que tiene que ser
+  // deliberado. La primera version puso la hoja en nivel(0.02) y la pared en nivel(0.09): dos valores
+  // que en el hex se parecen poco y en pantalla se parecen mucho, porque la iluminacion fisica de este
+  // motor devuelve alrededor de un TERCIO del albedo (medido en `duna`) y esa compresion junta todo lo
+  // que estaba cerca. Resultado: la hoja y el cuarto en el mismo gris, y la pieza sin sujeto.
+  //
+  // Con la pared en 0.42 la separacion sobrevive a la compresion. En una plantilla con columnas y luces
+  // esto no haria falta — hay veinte cosas que separan una superficie de otra— y por eso es un problema
+  // exclusivo del registro sobrio.
+  const pared = new THREE.Mesh(new THREE.PlaneGeometry(mundoW * 6, mundoH * 6), mate(nivel(0.42), 1.0))
   pared.position.z = -6
   escena.add(pared)
 

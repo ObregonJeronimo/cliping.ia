@@ -137,7 +137,7 @@ en `alSeek` — eso es la deriva, y es lo que impide que un vuelo se lea como un
 4. Pedí los bloques a `bloques.js` y colocalos contra `zEn` / `xEn` / `puntoEn`, **nunca a ojo**.
 5. Corré `node tools/boveda-check.mjs` y `node tools/boveda-sonda.mjs <id>`. Después, las fotos.
 
-## Las dieciocho
+## Las veintisiete
 
 | id | familia | beats | espacio · vuelo |
 |---|---|---|---|
@@ -153,12 +153,46 @@ en `alSeek` — eso es la deriva, y es lo que impide que un vuelo se lea como un
 | `cardumen` | multitud | 40 | 420 instancias que se abren · avance |
 | `cinta` | recorrido | 40 | banda que serpentea · vuelo sobre curva |
 | `bandada` | energia | 34 | cascada cayendo · vuelo vertical **en contra** |
+| `panal` | trama | 36 | túnel de celdas hexagonales · avance |
+| `pendulo` | objeto | 38 | masas colgando en onda · desliz |
+| `imprenta` | arquitectura | 38 | tipos móviles que componen una línea · desliz |
+| `orbita` | escala | 38 | horizonte curvo de un cuerpo grande · órbita rasante |
+| `vitrina` | objeto | 38 | hilera de vitrinas iluminadas · desliz |
+| `duna` | atmosfera | 40 | desierto con contraluz · vuelo bajo propio |
 | `escalera` | arquitectura | 38 | escalinata monumental · ascenso diagonal |
 | `telar` | trama | 38 | cables tensos cruzados · avance que abre la trama |
 | `marea` | atmosfera | 38 | plano líquido que ondula · vuelo al ras |
 | `prisma` | luz | 38 | haz que se abre en bandas · órbita que sigue el abanico |
 | `archivo` | objeto | 38 | cajones que se extienden solos · desliz lateral |
 | `torre` | escala | 38 | losas apiladas girando · espiral ascendente |
+
+### Y el registro sobrio
+
+Las primeras veinticuatro son todas **intensas**, y un catálogo que grita igual en las veinticuatro no
+le sirve a una marca sobria — que son justamente las que más video piden. Estas tres son el registro de
+las piezas que un estudio de motion presenta cuando le muestra su trabajo a una marca como Google: casi
+todo blanco, un objeto, la cámara moviéndose poco, la tipografía de protagonista y un solo acento.
+
+**Las tres reglas siguen valiendo, en otra escala:** la cámara no se detiene, pero recorre 0,9 a 1,6
+unidades en toda la pieza en vez de ochenta; nada aparece por encendido, pero los bloques entran desde
+0,7 unidades y con el doble de duración; y hay capas a distintas velocidades, sólo que son la hoja y su
+sombra.
+
+| id | familia | beats | espacio · vuelo |
+|---|---|---|---|
+| `folio` | sobrio | 34 | una hoja en un cuarto vacío · deriva de 1,6 unidades |
+| `halo` | sobrio | 36 | un anillo de luz sobre campo claro · casi sin vuelo |
+| `pliegue` | sobrio | 36 | un plano que se dobla, y **el doblez es la transición** |
+
+Tres decisiones que definen el registro y que conviene copiar al escribir la cuarta:
+
+- **Bajan el bloom del aire a mano.** Viene calibrado para piezas con emisivos; sin uno grande, sólo
+  levanta el blanco del fondo y lo lava.
+- **El retrato se aplica con la mitad del rango.** Una pieza callada que acelera 45% porque la página es
+  enérgica deja de ser callada.
+- **El contraste hay que ponerlo a mano.** La iluminación física devuelve ~⅓ del albedo, y esa
+  compresión junta todo lo que estaba cerca: `nivel(0.02)` contra `nivel(0.09)` se parecen poco en el
+  hex y mucho en pantalla. En una plantilla con veinte objetos no importa; acá es la única herramienta.
 
 Que dos usen el mismo vuelo y se vean distintas es la prueba de que **el vuelo no es la plantilla**:
 `monolito` y `nucleo` son las dos órbitas y en una el objeto es sólido y la cámara lo rodea, en la otra
