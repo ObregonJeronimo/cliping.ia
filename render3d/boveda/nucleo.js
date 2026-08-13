@@ -481,6 +481,19 @@ export function campoDegradado(escena, op) {
 // extra. Lo que si importa es `iridescenceThicknessRange`, que decide QUE colores aparecen: el rango
 // por defecto (100-400 nm) da el arcoiris entero y se ve a juguete; 180-520 da azules y magentas, que
 // es la banda que usan las piezas de marca de software.
+// LO QUE `transmission` NO PUEDE REFRACTAR, Y ES LA MITAD DE LO QUE HAY QUE SABER PARA USARLO
+//
+// three renderiza la transmision con un pase auxiliar que contiene SOLO LOS OBJETOS OPACOS. Un objeto
+// transparente que este detras de una superficie con `transmission` no aparece en ese buffer, o sea que
+// el vidrio no lo refracta — y como el vidrio SI se dibuja encima, el objeto desaparece del cuadro.
+//
+// En este motor eso es grave y no obvio, porque TODO EL TEXTO ES TRANSPARENTE: `letras()` usa un
+// material de mascara con `transparent: true`. `aurora` se escribio con la idea de que el texto pasara
+// por detras de la lente para verse deformado un instante, y el resultado fue que el nombre de la marca
+// y el CTA no aparecian en ningun cuadro. Comprobado moviendo el texto delante: aparece entero.
+//
+// LA REGLA: lo que tenga que verse a traves de un vidrio de este motor tiene que ser OPACO. El texto,
+// las camas y los recortes de la pagina van SIEMPRE DELANTE.
 export function iridiscente(color, op) {
   op = op || {}
   return new THREE.MeshPhysicalMaterial({

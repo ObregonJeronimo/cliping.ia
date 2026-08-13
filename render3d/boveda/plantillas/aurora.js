@@ -21,8 +21,18 @@
 //   1. EL CAMPO — cuatro manchas de color de la pagina orbitando y fundiendose. Es el 90% del cuadro.
 //   2. LA LENTE — un disco de vidrio iridiscente que flota sobre el campo, lo refracta y le tiñe el
 //      borde. Es lo que convierte un fondo bonito en un objeto.
-//   3. EL TEXTO — que pasa POR DETRAS de la lente en cada transicion, y por eso se ve deformado un
-//      instante antes de acomodarse. Ese instante es la pieza entera.
+//   3. EL TEXTO — que va SIEMPRE DELANTE de la lente, y la lente se corre para acompanarlo.
+//
+// SOBRE ESE TERCER PUNTO, QUE ERA OTRO Y ESTABA MAL. La idea original era que el texto pasara POR
+// DETRAS de la lente para verse deformado un instante — el gesto mas lindo de la pieza. Es imposible:
+// three renderiza `transmission` con un pase auxiliar que contiene solo los objetos OPACOS, y todo el
+// texto de este motor es transparente. El resultado no fue un texto sin deformar: fue que el nombre de
+// la marca y el CTA NO APARECIAN EN NINGUN CUADRO. Comprobado moviendolo delante: aparece entero.
+//
+// Asi que la coreografia cambio de sentido y la pieza mejoro: en vez de que el texto atraviese al
+// vidrio, el vidrio se CORRE para dejarle lugar — sube en PROMESA, se va del cuadro en PRUEBA, cambia
+// de lado en cada cifra y se centra detras del CTA al final. La lente deja de ser un filtro y pasa a
+// ser un acompanante, que ademas es mas dificil de componer y se nota mas.
 //
 // LOS SEIS TIEMPOS (beats sobre 38)
 //   0   ESPACIO   el campo fluyendo y la lente derivando. Nada de texto.
@@ -119,8 +129,8 @@ export function build(ctx) {
 
   // ---------------------------------------------------------------- los bloques
   //
-  // El texto va DETRAS de la lente en z, que es la decision que define la plantilla: al cruzar, el
-  // vidrio lo deforma un instante. Por eso ademas no lleva cama — una cama opaca detras del texto
+  // El texto va DELANTE de la lente. Ver la cabecera: detras no se ve, porque `transmission` solo
+  // refracta objetos opacos y el texto de este motor es transparente. Sin cama, ademas: una cama opaca
   // taparia el campo justo donde el campo es el sujeto.
   const CAJA = UTIL * R.margen * 0.92
   const marca = bloqueMarca({ alto: mundoH * 0.115, anchoMax: CAJA, margen: R.margen })
@@ -130,10 +140,9 @@ export function build(ctx) {
   const frases = bloquesFrase(R.frases, { alto: mundoH * 0.030, anchoMax: CAJA * 0.9, cama: false, margen: R.margen })
   const pedido = bloquePedido({ alto: mundoH * 0.030, anchoMax: CAJA * 0.62, margen: R.margen })
 
-  // Z NEGATIVO: detras de la lente, que esta en +0.30 de distBase. La diferencia son unas cinco
-  // unidades, suficiente para que la refraccion sea visible sin que el texto se vuelva ilegible.
+  // Z POSITIVO Y MAYOR QUE EL DE LA LENTE (+0.30): el texto queda entre la lente y la camara.
   const poner = (blk, x, y, padre) => {
-    blk.g.position.set(x * UTIL, y * mundoH, -distBase * 0.06)
+    blk.g.position.set(x * UTIL, y * mundoH, distBase * 0.44)
     ;(padre || escena).add(blk.g)
     return blk.g
   }

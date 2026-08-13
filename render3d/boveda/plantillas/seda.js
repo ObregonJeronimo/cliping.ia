@@ -83,8 +83,17 @@ export function build(ctx) {
   const geo = new THREE.PlaneGeometry(ANCHO_T, ALTO_T, SEGX, SEGY)
   const pos = geo.attributes.position
   const nor = geo.attributes.normal
-  const tela = new THREE.Mesh(geo, iridiscente(nivel(0.03), {
-    rug: 0.16, trans: 0.72, grosor: 1.1, iris: 1.0, ior: 1.36, rango: [200, 560],
+  // TRANSMISION BAJA, Y ESO ES LO CONTRARIO DE LO QUE PARECE PEDIR "TELA FINA".
+  //
+  // Con `trans: 0.72` la tela transmitia casi todo el campo que tiene detras y quedaba INVISIBLE: la
+  // foto del beat 4.6 mostraba el degradado y nada mas. No estaba mal construida —los 12000 vertices
+  // ondulaban— sino que no habia nada que la distinguiera de lo que dejaba pasar.
+  //
+  // Una tela real no es un vidrio: dispersa. Con 0.34 de transmision y rugosidad alta, lo que se ve es
+  // la SUPERFICIE tenida por lo que hay detras, que es exactamente como se ve una seda a contraluz. Y
+  // ahi si el iris de los pliegues tiene sobre que aparecer.
+  const tela = new THREE.Mesh(geo, iridiscente(nivel(0.06), {
+    rug: 0.34, trans: 0.34, grosor: 0.7, iris: 1.0, ior: 1.32, rango: [200, 560],
   }))
   tela.material.side = THREE.DoubleSide
   tela.position.z = -1.6
@@ -111,9 +120,9 @@ export function build(ctx) {
   const frases = bloquesFrase(R.frases, { alto: mundoH * 0.030, anchoMax: CAJA * 0.9, cama: false, margen: R.margen })
   const pedido = bloquePedido({ alto: mundoH * 0.030, anchoMax: CAJA * 0.62, margen: R.margen })
 
-  // El texto va DELANTE de la tela, no detras. Es al reves que en `aurora` y es a proposito: alli el
-  // vidrio es una lente y deformar el texto es el gesto; aca la tela es opaca a medias y el texto
-  // detras se perderia. Lo que se busca es que la tela pase POR DETRAS del renglon.
+  // El texto va DELANTE de la tela, y no es una eleccion de composicion sino la unica opcion: three
+  // renderiza `transmission` con un pase que contiene solo objetos OPACOS, y el texto de este motor es
+  // transparente. Detras de la tela no se veria en ningun cuadro. Esta escrito entero en `iridiscente`.
   const poner = (blk, y, padre) => {
     blk.g.position.set(0, y * mundoH, distBase * 0.16)
     ;(padre || escena).add(blk.g)
