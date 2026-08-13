@@ -137,7 +137,7 @@ en `alSeek` — eso es la deriva, y es lo que impide que un vuelo se lea como un
 4. Pedí los bloques a `bloques.js` y colocalos contra `zEn` / `xEn` / `puntoEn`, **nunca a ojo**.
 5. Corré `node tools/boveda-check.mjs` y `node tools/boveda-sonda.mjs <id>`. Después, las fotos.
 
-## Las treinta
+## Las treinta y una
 
 | id | familia | beats | espacio · vuelo |
 |---|---|---|---|
@@ -257,6 +257,24 @@ análisis a la zona del monitor y al tramo de los gráficos. La tabla, y lo que 
 | id | familia | beats | espacio · vuelo |
 |---|---|---|---|
 | `vortice` | grafico | 32 | remolino de color a cuadro completo · **encuadre fijo** |
+| `pulso` | grafico | 30 | anillos que salen del centro en cada golpe · **encuadre fijo** |
+
+**`pulso` es la hermana clara, y la variación que le sirve a un catálogo no es otro fondo bonito: es
+otra REGLA.** De la medición quedaron tres cosas que son el género —encuadre fijo, el golpe cada medio
+beat, una palabra gigante por golpe— y una cuarta que era sólo esa pieza: el suelo oscuro. Confundirlas
+es como se hacen treinta plantillas que se ven igual.
+
+`vortice` construye su propio suelo y por eso tiene que hacerse cargo de la tinta; `pulso` se apoya en
+el fondo del mundo y saca toda su intensidad de lo que **emite**. Sobre la misma página blanca, una da
+una pieza nocturna y la otra una pieza de papel, con la misma gramática. Y `pulso` **no tiene shader
+nuevo**: los anillos son toros de verdad que se escalan, y eso no es economía — un anillo 3D se
+desalinea del campo plano cuando la cámara empuja un décimo, y esa desalineación es la única pista de
+que hay volumen.
+
+Dos correcciones que costaron fotos también acá: **todo lo que emite va detrás del texto** (la primera
+foto tenía un aro cruzando la marca y el núcleo tapando el CTA), y **tres de los cuatro colores del
+campo tienen que ser casi el fondo** — con dos manchas de color el campo se vuelve un lavado parejo y
+los anillos quedan del mismo valor que el suelo.
 
 **Y el ritmo cae solo.** La referencia corta cada 0,23 s; el motor trabaja a 124 BPM, o sea 0,484 s por
 beat, y su **medio beat** mide 0,242 s. El golpe del género es el contratiempo de la grilla que ya
