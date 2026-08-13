@@ -28,10 +28,10 @@
 //   24  RAZONES   dos dobleces cortos, uno por cifra.
 //   30  PEDIDO    el plano se aplana del todo y el CTA queda en el centro.
 
-import { THREE, mate, barra, iluminar, domo } from '../nucleo.js'
+import { THREE, mate, barra, iluminar, campoDegradado } from '../nucleo.js'
 import { entra, sale, juntar, anchoADistancia } from '../movimiento.js'
 import { bloqueMarca, bloquePromesa, bloquePrueba, bloquesCifra, bloquesFrase, bloquePedido } from '../bloques.js'
-import { colorDePeso, grisDePeso } from '../recetas.js'
+import { colorDePeso, grisDePeso, aclarar } from '../recetas.js'
 import { LOOK, nivel, E, b } from '../../demo/kit.js'
 
 export const meta = {
@@ -64,7 +64,6 @@ export function build(ctx) {
   // y en pantalla no pasaba nada. Con 1.9 contra 0.25 el mismo doblez cambia un 40%, que es lo que el
   // ojo necesita para leerlo como un movimiento fisico y no como un degradado.
   iluminar(escena, { key: 1.90, relleno: 0.25 })
-  const uDomo = domo(escena, { fuerza: 0.05 })
   if (ctx.bloom) ctx.bloom.strength = Math.min(ctx.bloom.strength || 0.5, 0.16)
 
   const Z_CAM = distBase * 0.90
@@ -131,11 +130,16 @@ export function build(ctx) {
   sombra.position.z = 0.006
   escena.add(sombra)
 
-  // Y el fondo mas oscuro que las dos caras, por lo mismo: si el papel y lo que hay detras comparten
-  // valor, el borde del papel deja de existir y la pieza se lee como un degradado.
-  const fondo = new THREE.Mesh(new THREE.PlaneGeometry(mundoW * 6, mundoH * 6), mate(nivel(0.48), 1.0))
-  fondo.position.z = -4
-  escena.add(fondo)
+  // EL FONDO ES UN CAMPO QUE FLUYE, y va OSCURO porque el sujeto es un papel claro. Un plano liso
+  // detras de un plano liso hace que la pieza entera se lea como un degradado sin sujeto — que fue
+  // exactamente lo que paso en la primera version.
+  const uCampo = campoDegradado(escena, {
+    camara,
+    colores: [nivel(0.46), nivel(0.58), aclarar(COL, 0.5), nivel(0.52)],
+    vel: 0.026 * medio(R.velocidad),
+    foco: 1.20,
+    vineta: 0.26,
+  })
 
   // ---------------------------------------------------------------- los bloques
   const CAJA = UTIL * R.margen * 0.92
@@ -255,7 +259,7 @@ export function build(ctx) {
   // Se ASIGNA porque ningun tween toca `linea.position` ni `linea.scale`, y sumar sobre algo que nadie
   // restablece acumula en cada submuestra del obturador.
   const alSeek = juntar(latido, (t) => {
-    uDomo.uT.value = t
+    uCampo.uT.value = t
     const k = est.k
     camara.position.set(Math.sin(t * 0.10) * DERIVA, Math.sin(t * 0.079 + 0.9) * DERIVA * 0.6,
       Z_CAM + RECORRIDO * 0.5 - RECORRIDO * k)

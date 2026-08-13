@@ -35,10 +35,10 @@
 //   23  RAZONES   las cifras entran por el pie de la hoja, una debajo de la otra.
 //   29  PEDIDO    la hoja se endereza y el CTA queda en su tercio inferior.
 
-import { THREE, mate, barra, iluminar, domo } from '../nucleo.js'
+import { THREE, mate, barra, iluminar, campoDegradado } from '../nucleo.js'
 import { entra, sale, respirar, juntar, anchoADistancia } from '../movimiento.js'
 import { bloqueMarca, bloquePromesa, bloquePrueba, bloquesCifra, bloquesFrase, bloquePedido } from '../bloques.js'
-import { grisDePeso } from '../recetas.js'
+import { colorDePeso, grisDePeso, aclarar } from '../recetas.js'
 import { LOOK, nivel, E, b } from '../../demo/kit.js'
 
 export const meta = {
@@ -69,7 +69,6 @@ export function build(ctx) {
   // LUZ SUAVE Y PAREJA. Key baja, relleno alto: al reves que todas las demas. Lo que se busca es una
   // sombra larga y blanda, no un modelado dramatico.
   iluminar(escena, { key: 0.85, relleno: 0.95 })
-  const uDomo = domo(escena, { fuerza: 0.06 })
   // EL BLOOM BAJA, y es la decision que define el registro. El aire trae un bloom pensado para piezas
   // con emisivos; aca no hay un solo emisivo grande, asi que ese bloom solo levanta el blanco del fondo
   // y lo lava. A 0.18 el borde de la hoja sigue teniendo un halo minimo y el blanco se queda quieto.
@@ -129,9 +128,24 @@ export function build(ctx) {
   // Con la pared en 0.42 la separacion sobrevive a la compresion. En una plantilla con columnas y luces
   // esto no haria falta — hay veinte cosas que separan una superficie de otra— y por eso es un problema
   // exclusivo del registro sobrio.
-  const pared = new THREE.Mesh(new THREE.PlaneGeometry(mundoW * 6, mundoH * 6), mate(nivel(0.42), 1.0))
-  pared.position.z = -6
-  escena.add(pared)
+  // EL FONDO ES UN CAMPO QUE FLUYE, no un plano liso — y ese cambio es la correccion de rumbo entera.
+  //
+  // Esta plantilla se escribio bajo una lectura equivocada de la referencia: "menos potente" se
+  // entendio como AUSTERA, y salio una hoja sobre un gris plano. La referencia real —los videos que los
+  // estudios de motion hacen para marcas de software— es CONTENIDA pero DENSA: pocos elementos, camara
+  // quieta, y una superficie rica. Un gris plano no es sobrio, es un cuadro sin terminar.
+  //
+  // Los colores van OSCUROS a proposito: el sujeto de esta pieza es una hoja clara, asi que el campo
+  // tiene que ir al lado opuesto. Es la regla que costo dos errores en direcciones contrarias y que
+  // ahora esta en `docs/BOVEDA.md`.
+  const CROMA = colorDePeso(R, LOOK.acento, 0.18)
+  const uCampo = campoDegradado(escena, {
+    camara,
+    colores: [nivel(0.40), nivel(0.52), aclarar(CROMA, 0.55), nivel(0.46)],
+    vel: 0.030 * medio(R.velocidad),
+    foco: 1.22,
+    vineta: 0.24,
+  })
 
   // ---------------------------------------------------------------- los bloques
   //
@@ -248,7 +262,7 @@ export function build(ctx) {
   // Se SUMA sobre la rotacion porque el tiempo de PRUEBA tuenea `gHoja.rotation.y`: asignar ahi
   // anularia el giro entero. Es la regla que verifica `boveda-check`, y aca cae del lado de sumar.
   const alSeek = juntar(latido, (t) => {
-    uDomo.uT.value = t
+    uCampo.uT.value = t
     const k = est.k
     camara.position.set(Math.sin(t * 0.11) * DERIVA, Math.sin(t * 0.083 + 1.1) * DERIVA * 0.7,
       Z_CAM + RECORRIDO * 0.5 - RECORRIDO * k)

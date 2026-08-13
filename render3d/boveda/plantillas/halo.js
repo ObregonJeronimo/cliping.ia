@@ -28,10 +28,10 @@
 //   24  RAZONES   las cifras entran de a una en el centro, sin superponerse.
 //   30  PEDIDO    el anillo se cierra un poco y el CTA queda en su centro exacto.
 
-import { THREE, mate, luz, iluminar, domo } from '../nucleo.js'
+import { THREE, mate, luz, iluminar, campoDegradado, iridiscente } from '../nucleo.js'
 import { entra, sale, juntar, anchoADistancia } from '../movimiento.js'
 import { bloqueMarca, bloquePromesa, bloquePrueba, bloquesCifra, bloquesFrase, bloquePedido } from '../bloques.js'
-import { colorDePeso, grisDePeso } from '../recetas.js'
+import { colorDePeso, grisDePeso, aclarar } from '../recetas.js'
 import { LOOK, nivel, E, b } from '../../demo/kit.js'
 
 export const meta = {
@@ -56,11 +56,12 @@ export function build(ctx) {
   // pagina es enerxica deja de ser callada, y el registro es lo que promete la plantilla.
   const medio = (v) => 1 + (v - 1) * 0.45
 
-  iluminar(escena, { key: 0.75, relleno: 1.05 })
-  const uDomo = domo(escena, { fuerza: 0.05 })
+  // Key alta porque ahora el interior del anillo es VIDRIO, y un cristal iluminado parejo es una
+  // mancha gris: lo que dibuja su forma son las caustics del borde, y esas necesitan una fuente.
+  iluminar(escena, { key: 1.75, relleno: 0.70 })
   // El bloom baja, pero MENOS que en `folio`: aca si hay un emisivo grande y es el sujeto. 0.34 le deja
   // al anillo su halo sin lavar el fondo.
-  if (ctx.bloom) ctx.bloom.strength = Math.min(ctx.bloom.strength || 0.5, 0.34)
+  if (ctx.bloom) ctx.bloom.strength = Math.max(Math.min(ctx.bloom.strength || 0.5, 0.55), 0.45)
 
   // ---------------------------------------------------------------- el vuelo: casi ninguno
   //
@@ -105,15 +106,28 @@ export function build(ctx) {
   }
   // Y un relleno interior apenas mas claro que el fondo. Es lo que convierte el anillo en un LUGAR:
   // sin el, los bloques flotan sobre el mismo campo que hay afuera y el anillo es un adorno.
-  const dentro = new THREE.Mesh(new THREE.CircleGeometry(RAD * 0.995, 96), mate(nivel(0.015), 1.0))
+  // EL INTERIOR ES VIDRIO, no un circulo mate. Un disco opaco adentro de un anillo es un boton; un
+  // disco de vidrio que refracta el campo que tiene detras es una LENTE, y la diferencia es todo lo
+  // que separa esta pieza de un logo animado. Cuesta cambiar un material.
+  const dentro = new THREE.Mesh(new THREE.CylinderGeometry(RAD * 0.995, RAD * 0.995, RAD * 0.10, 96, 1),
+    iridiscente(nivel(0.02), { rug: 0.07, trans: 0.95, grosor: RAD * 0.5, iris: 0.85 }))
+  dentro.rotation.x = Math.PI / 2
   dentro.position.z = -0.05
   gHalo.add(dentro)
 
-  // El campo: un plano liso y grande, apenas mas oscuro que el interior del anillo. Como en `folio`, no
-  // se usa el domo — el domo tine y gira, y aca hace falta un fondo quieto.
-  const campo = new THREE.Mesh(new THREE.PlaneGeometry(mundoW * 6, mundoH * 6), mate(grisDePeso(R, nivel(0.07)), 1.0))
-  campo.position.z = -5
-  escena.add(campo)
+  // EL CAMPO FLUYE. Un anillo de luz sobre un gris plano se lee como un logo de carga; el mismo anillo
+  // sobre un degradado que se mueve se lee como una pieza. Es la correccion de rumbo que documenta
+  // `aurora`: la referencia no es austera, es contenida pero DENSA.
+  //
+  // Los colores van claros —el sujeto es el anillo y el texto oscuro que va adentro— y el acento entra
+  // aclarado y en poca proporcion: si el campo compitiera con el anillo, dejaria de haber anillo.
+  const uCampo = campoDegradado(escena, {
+    camara,
+    colores: [nivel(0.03), nivel(0.10), aclarar(COL, 1.5), nivel(0.06)],
+    vel: 0.032 * medio(R.velocidad),
+    foco: 1.30,
+    vineta: 0.18,
+  })
 
   // La unica capa aparte del anillo: un segundo halo mucho mas grande, muy tenue y detras. No se lee
   // como objeto — se lee como que el aire tiene algo. Es la regla 3 en su version mas callada.
@@ -233,7 +247,7 @@ export function build(ctx) {
   // pedido— y sumar sobre algo que nadie restablece acumularia en cada submuestra. Y se asigna sobre la
   // opacidad BASE guardada, no sobre la actual, que es la otra mitad de la regla.
   const alSeek = juntar(latido, (t) => {
-    uDomo.uT.value = t
+    uCampo.uT.value = t
     const k = est.k
     camara.position.set(Math.sin(t * 0.09) * DERIVA, Math.sin(t * 0.071 + 1.3) * DERIVA * 0.6,
       Z_CAM + RECORRIDO * 0.5 - RECORRIDO * k)
