@@ -441,8 +441,21 @@ export function campoDegradado(escena, op) {
   // vuelo, que es lo unico que lo hace reutilizable: una plantilla con la camara quieta lo tendria
   // igual con un plano lejano, pero una con vuelo lo dejaria atras a los cinco beats.
   //
-  // Y una camara con hijos SOLO los dibuja si ella misma esta en el grafo de la escena. En este motor
-  // la camara del rig no siempre lo esta, asi que se agrega — es un no-op si ya estaba.
+  // Y una camara con hijos SOLO los dibuja si ella misma esta en el grafo de la escena que se esta
+  // renderizando. El `Rig` crea la camara suelta —nunca la agrega a ninguna escena— asi que hay que
+  // agregarla, y ESA es la linea que ademas resuelve un problema que no se ve venir:
+  //
+  // este motor renderiza en DOS pases. El primero dibuja `scene` y pasa por el bloom; el segundo dibuja
+  // `escenaPagina` con `clear: false`, o sea encima del anterior, para que los recortes del cliente no
+  // florezcan. Los dos usan LA MISMA CAMARA.
+  //
+  // Si el campo se dibujara en los dos, taparia la pagina del cliente — el segundo pase pintaria el
+  // degradado sobre lo que el primero ya habia compuesto. No pasa, y no por casualidad: la camara se
+  // agrega a `escena` y no a `escenaPagina`, y three solo recorre los hijos de la escena que le pasan.
+  // El campo existe en el primer pase y no en el segundo, que es exactamente lo que hace falta.
+  //
+  // Si algun dia alguien agrega la camara tambien a `escenaPagina` para otra cosa, esto se rompe y el
+  // sintoma va a ser "la pagina del cliente desaparecio" — sin ningun error.
   const cam = op.camara
   if (cam) {
     m.position.z = -dist
