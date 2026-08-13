@@ -456,18 +456,186 @@ export function campoDegradado(escena, op) {
   //
   // Si algun dia alguien agrega la camara tambien a `escenaPagina` para otra cosa, esto se rompe y el
   // sintoma va a ser "la pagina del cliente desaparecio" — sin ningun error.
-  const cam = op.camara
+  alCuadro(m, escena, op.camara, dist)
+  return mat.uniforms
+}
+
+// El plano de 2x2 escalado para tapar el cuadro, colgado de la camara si hay una. Lo usan los dos
+// campos —`campoDegradado` y `campoVortice`— y esta aparte por una razon que no es la de siempre: la
+// explicacion de arriba es larga y facil de perder de vista, y tener DOS copias de estas doce lineas
+// significa que el dia que alguien arregle una, la otra queda rota y sin sintoma.
+function alCuadro(m, escena, cam, dist) {
+  m.position.z = -dist
   if (cam) {
-    m.position.z = -dist
     const h = 2 * Math.tan((cam.fov * Math.PI / 180) / 2) * dist
     m.scale.set((h * cam.aspect) / 2 * 1.06, h / 2 * 1.06, 1)
     cam.add(m)
     if (!cam.parent) escena.add(cam)
   } else {
-    m.position.z = -dist
     m.scale.set(200, 200, 1)
     escena.add(m)
   }
+}
+
+
+// ---------------------------------------------------------------- campo de VORTICE
+//
+// POR QUE EXISTE, Y DE DONDE SALEN LOS NUMEROS
+//
+// Este no es un fondo "de gusto". Sale de medir una referencia real —un reel de motion graphics de
+// pantalla— con `tools/ref-analisis.py`, recortando el analisis a la zona de la pantalla y al tramo
+// donde corren los graficos. Lo que dijo la medicion, y lo que este shader tiene que reproducir:
+//
+//   simetria angular 0.743 + perfil radial 0.60 -> 0.33 monotono    => CAMPO RADIAL con nucleo
+//   pendiente espectral -4.20                                       => campo MUY liso, sin grano
+//   saturacion 0.53, tonos violeta -> azul -> celeste en 3 segundos  => el color GIRA, no se queda
+//   halo de 0.067 del ancho alrededor de las altas luces             => bloom fuerte y umbral bajo
+//   camara quieta el 75% y velocidad 0.0146 del ancho por segundo    => NO se vuela: se queda
+//   cortes cada 0.23 s (257 bpm) sin cambio de encuadre              => lo que corta es el CAMPO
+//
+// Ese ultimo renglon es el que define la plantilla. En el video de referencia la camara no se mueve y
+// sin embargo la pieza no se siente quieta ni un cuadro, porque lo que late a 0,23 s es el fondo.
+//
+// COMO SE HACE UN REMOLINO Y NO UNA TEXTURA QUE GIRA
+//
+// Girando todo por igual sale un disco con una calcomania. Lo que lo convierte en fluido es la
+// ROTACION DIFERENCIAL: el angulo se desplaza en proporcion a 1/r, asi que el centro da vueltas mucho
+// mas rapido que el borde y las formas se estiran en espiral solas. Es lo mismo que hace una galaxia,
+// y cuesta una division.
+//
+// Encima va DEFORMACION DE DOMINIO: un fbm se usa para desplazar las coordenadas de OTRO fbm. Un ruido
+// solo se lee como nubes; un ruido que muestrea a un ruido se lee como algo que fluye.
+export function campoVortice(escena, op) {
+  op = op || {}
+  const base = (op.colores && op.colores.length ? op.colores.slice(0, 3)
+    : [LOOK.bg, LOOK.acento, LOOK.acento2 || LOOK.acento])
+  const cols = base.map(c => hex(c))
+  while (cols.length < 3) cols.push(cols[cols.length - 1].clone())
+
+  const mat = new THREE.ShaderMaterial({
+    depthWrite: false,
+    uniforms: {
+      uT: { value: 0 },
+      uC0: { value: cols[0] }, uC1: { value: cols[1] }, uC2: { value: cols[2] },
+      uAspecto: { value: op.aspecto != null ? op.aspecto : 0.5625 },
+      // Velocidad del flujo. La referencia mide 0.0146 del ancho por segundo de CAMARA; el campo se
+      // mueve mucho mas que eso, y esa diferencia es el efecto.
+      uVel: { value: op.vel != null ? op.vel : 0.36 },
+      // Cuanto se enrosca. Es el termino que se divide por el radio.
+      uGiro: { value: op.giro != null ? op.giro : 1.15 },
+      // Escala del ruido: pocos brazos gruesos o muchos filamentos.
+      uBrazos: { value: op.brazos != null ? op.brazos : 3.4 },
+      // Fuerza del nucleo luminoso del centro.
+      uNucleo: { value: op.nucleo != null ? op.nucleo : 0.55 },
+      // Esquirlas: los rayos finos que salen disparados del centro. En la referencia aparecen en los
+      // planos de entrada de palabra y desaparecen en los de reposo, asi que es un uniforme y no una
+      // constante: la plantilla lo enciende en el golpe.
+      uEsquirlas: { value: op.esquirlas != null ? op.esquirlas : 0.0 },
+      // Vineteado. Medido: el borde vale 0.54 de lo que vale el centro.
+      uVineta: { value: op.vineta != null ? op.vineta : 0.46 },
+      // Giro de tono en radianes. La plantilla lo escalona en el beat: es como se replica un corte de
+      // color sin cortar el plano.
+      uTinte: { value: 0 },
+      // Golpe: sube el brillo entero por un instante. Decae solo, lo maneja la plantilla.
+      uPulso: { value: 0 },
+      // LA BANDA, que es como se pone texto encima de un campo denso sin ponerle una placa.
+      //
+      // El problema es viejo y aca aparece en su forma mas dura: `nivelTexto` —quien elige el color de
+      // TODO el texto de Boveda— garantiza contraste contra `bg` y `bg2`, y contra nada mas. Un campo
+      // saturado que ocupa el cuadro entero no es `bg`, asi que la garantia deja de valer justo en la
+      // plantilla que mas texto grande pone.
+      //
+      // La salida obvia es una cama: un rectangulo opaco detras de la palabra. Y arruina el genero,
+      // porque lo que se esta copiando NO tiene placas — tiene una palabra flotando en el campo.
+      //
+      // Esto es la salida que si funciona: una franja horizontal donde el campo se MEZCLA HACIA `bg`,
+      // con bordes suaves. Donde vive el texto el fondo vuelve a ser el fondo del mundo —y la garantia
+      // de `nivelTexto` vuelve a valer— mientras arriba y abajo el campo sigue entero. No se lee como
+      // una placa porque no tiene borde ni color propio: es el mismo fondo, mas presente.
+      uBanda: { value: 0 },
+      uBandaY: { value: 0.5 },
+      uBandaAlto: { value: 0.17 },
+    },
+    vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: [
+      'uniform float uT, uVel, uGiro, uBrazos, uNucleo, uEsquirlas, uVineta, uTinte, uPulso, uAspecto;',
+      'uniform float uBanda, uBandaY, uBandaAlto;',
+      'uniform vec3 uC0, uC1, uC2;',
+      'varying vec2 vUv;',
+      'float hs(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }',
+      'float rd(vec2 p){',
+      '  vec2 i = floor(p), f = fract(p);',
+      '  vec2 u = f*f*(3.0-2.0*f);',
+      '  return mix(mix(hs(i), hs(i+vec2(1.0,0.0)), u.x), mix(hs(i+vec2(0.0,1.0)), hs(i+vec2(1.0,1.0)), u.x), u.y);',
+      '}',
+      // Cinco octavas. Con tres el campo se ve a poligonos cuando ocupa 1080 px de ancho; con siete no
+      // cambia nada visible y son dos muestreos mas por pixel en cada uno de los 900 cuadros.
+      'float fbm(vec2 p){ float s=0.0, a=0.5; for(int i=0;i<5;i++){ s += a*rd(p); p *= 2.03; a *= 0.5; } return s; }',
+      // Giro de tono alrededor del eje gris. Es una rotacion de Rodrigues sobre (1,1,1)/sqrt(3): mueve
+      // el matiz sin tocar el brillo, que es justo lo que hace falta para escalonar color sin que la
+      // pieza parpadee de luminancia.
+      'vec3 tono(vec3 c, float a){ const vec3 k = vec3(0.57735027); float cs=cos(a), sn=sin(a);',
+      '  return c*cs + cross(k,c)*sn + k*dot(k,c)*(1.0-cs); }',
+      'void main(){',
+      '  vec2 p = (vUv - 0.5) * vec2(uAspecto, 1.0) * 2.0;',
+      '  float r = length(p);',
+      '  float ang = atan(p.y, p.x);',
+      '  float t = uT * uVel;',
+      // ROTACION DIFERENCIAL. El 0.22 evita la division por cero en el centro exacto y, de paso, pone
+      // un techo a la velocidad angular: sin el, el pixel del medio gira infinito y titila.
+      '  float a2 = ang + t * uGiro / (0.22 + r);',
+      '  vec2 q = vec2(cos(a2), sin(a2)) * r;',
+      '  float w = fbm(q * 2.2 + vec2(t * 0.42, -t * 0.31));',
+      '  float n = fbm(q * uBrazos + vec2(w * 1.7, w * 1.3) + t * 0.24);',
+      '  float nucleo = uNucleo / (0.05 + r * r * 5.5);',
+      // ESQUIRLAS. Un seno de 26 vueltas elevado a 36 deja solo las crestas: rayos finisimos. La banda
+      // radial los hace nacer cerca del centro y morir antes del borde, que es como se ven en la
+      // referencia — salen disparados, no atraviesan el cuadro.
+      '  float ray = pow(max(0.0, sin(ang * 26.0 + w * 6.0 + t * 2.6)), 36.0)',
+      '            * smoothstep(0.06, 0.30, r) * (1.0 - smoothstep(0.42, 0.95, r)) * uEsquirlas;',
+      // TODO ES MEZCLA ENTRE TRES COLORES, NUNCA MULTIPLICACION POR UNA LUMINANCIA.
+      //
+      // La primera version hacia `col *= 0.52 + 0.92*n` y sumaba el nucleo encima. Eso da por sentado
+      // que el fondo es oscuro: en un mundo CLARO —y basecamp lo es, `bg` blanco— multiplicar por 0.52
+      // ensucia el blanco con manchas grises y sumar el nucleo lo lleva a 1.0 en medio cuadro. La
+      // primera foto de esta plantilla salio literalmente blanca con humo gris.
+      //
+      // Con mezclas, el mismo shader compone en los dos registros sin una sola rama: con `uC0` oscuro
+      // sale el remolino saturado de la referencia, y con `uC0` claro sale la version palida —que
+      // tambien esta en la referencia, es su ultimo plano.
+      // 1.9 y -0.42 y no 1.45 y -0.18: con la curva blanda el ruido se queda casi todo en la mitad
+      // del rango y el campo sale lavado — la segunda foto de `vortice` era un cuadro blanco con la
+      // palabra en el medio. Estirar el contraste del ruido es lo que separa un remolino de una
+      // niebla, y no cuesta una instruccion mas.
+      '  vec3 col = mix(uC0, uC1, clamp(n * 1.90 - 0.42, 0.0, 1.0));',
+      // Y UNA SEGUNDA CAPA DE FILAMENTOS, mas fina y girando al reves. La referencia mide pendiente
+      // espectral -4.2 —campo liso— pero tiene hebras finas visibles: son dos escalas, no una.
+      '  float f2 = fbm(q * uBrazos * 3.1 - vec2(w * 1.1, -w * 0.9) - t * 0.19);',
+      '  col = mix(col, uC1, clamp(f2 * 1.6 - 0.72, 0.0, 1.0) * 0.55);',
+      '  col = mix(col, uC2, clamp(nucleo * 0.85, 0.0, 1.0));',
+      '  col = mix(col, uC2, clamp(ray, 0.0, 1.0));',
+      '  col = tono(col, uTinte);',
+      // La vineta tambien es mezcla, y HACIA EL FONDO. Multiplicar oscurece siempre; mezclar hacia
+      // `uC0` oscurece en un mundo oscuro y aclara en uno claro, que es lo que quiere decir "vineta"
+      // en cada uno de los dos.
+      '  col = mix(col, uC0, clamp(r * 0.72, 0.0, 1.0) * uVineta);',
+      '  float bd = 1.0 - smoothstep(uBandaAlto * 0.30, uBandaAlto, abs(vUv.y - uBandaY));',
+      '  col = mix(col, uC0, bd * uBanda);',
+      '  col += uPulso * 0.18;',
+      // 1/255 de amplitud: por debajo del escalon de cuantizacion, o sea invisible como grano y
+      // suficiente para romper la banda. Un campo con pendiente espectral -4.2 es exactamente donde
+      // aparecen los aros de banding.
+      '  float d = fract(sin(dot(vUv, vec2(12.9898, 78.233))) * 43758.5453);',
+      '  col += (d - 0.5) / 255.0;',
+      '  gl_FragColor = vec4(col, 1.0);',
+      '}',
+    ].join('\n'),
+  })
+
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat)
+  m.frustumCulled = false
+  m.renderOrder = -2000
+  alCuadro(m, escena, op.camara, op.dist != null ? op.dist : 40)
   return mat.uniforms
 }
 

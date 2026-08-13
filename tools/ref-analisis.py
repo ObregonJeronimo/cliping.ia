@@ -1,4 +1,4 @@
-"""REF-ANALISIS — desarma un video de referencia para poder replicarlo.
+"""REF-ANALISIS v2 — desarma un video de referencia para poder replicarlo.
 
 POR QUE EXISTE
 ==============
@@ -9,19 +9,31 @@ Cuando el usuario pasó una referencia concreta y le erré al registro dos veces
 el problema no era la ejecución sino que **no estaba midiendo la referencia**.
 
 Esto la mide. Le das un video —un reel, un showreel de After Effects, lo que sea— y te devuelve los
-números que hacen falta para replicarlo: dónde corta, a qué ritmo, cuánto se mueve la cámara, qué
-paleta usa y cómo cambia, dónde vive la masa en el cuadro, cuánta pantalla ocupa el texto.
+números que hacen falta para replicarlo.
 
-No es un análisis "de video" genérico. Cada medición está elegida porque **hay un parámetro de Bóveda
-del otro lado**:
+QUE CAMBIO EN LA v2, Y POR QUE
+------------------------------
 
-    corte / ritmo        ->  meta.beats y meta.tiempos de la plantilla
-    movimiento global    ->  el vuelo: avance, desliz, órbita, o quieto
-    zoom (divergencia)   ->  si la cámara se acerca o el objeto crece
-    paleta en el tiempo  ->  si el espacio cambia de color entre tiempos
-    masa en el cuadro    ->  dónde se compone: centrado, tercios, borde
-    cobertura de texto   ->  cuánto cuadro ocupa la tipografía
-    energía              ->  R.velocidad, R.capas
+La v1 promediaba TODO el video. Para un reel de 19 planos cortados cada 0,6 s eso es casi un dato
+falso con cara de medición: mezcla el gancho filmado con cámara en mano, los planos de pantalla, y el
+cierre. Decía "cámara quieta el 89% del tiempo" cuando en realidad hay planos quietos y planos con
+paneo, y "paleta #202020 59%" cuando en verdad **cada plano tiene su propio color**, que es justo el
+dato que hace falta para replicarlo.
+
+La v2 mide **por plano**, y agrega lo que faltaba para escribir la plantilla sin adivinar:
+
+    tono (HSV) por plano       ->  el color del campo de degradado, en hex, listo para usar
+    perfil radial              ->  si el fondo es un estallido centrado o un campo parejo
+    simetria angular           ->  vortice / radial  vs  direccional
+    divergencia y ROTACION     ->  zoom  vs  giro, separados (4 cuadrantes, no 2)
+    espectro radial            ->  cuanto es degradado suave y cuanto es detalle duro
+    falda de altas luces       ->  cuanto bloom hay
+    caja del texto             ->  donde vive la palabra y cuanto ocupa, no solo cuanta area
+    curva de aparicion         ->  el easing, ajustado, y su nombre en GSAP
+    transiciones               ->  corte seco / fundido a negro / flash / disolvencia
+    tempo por autocorrelacion  ->  el pulso real, que no es lo mismo que la mediana de los planos
+    planos repetidos           ->  si la pieza vuelve a un plano ya visto
+    RECETA                     ->  la traduccion a parametros de Boveda, al final
 
 COMO ESTA OPTIMIZADO, que es la parte que importa
 -------------------------------------------------
@@ -33,17 +45,24 @@ COMO ESTA OPTIMIZADO, que es la parte que importa
    movimiento global— y a 160 px de ancho da el mismo resultado que a 1080 con 45 veces menos píxeles.
    Los cuadros que se guardan como imagen se extraen después, en un segundo pase y sólo esos.
 3. **Memoria constante.** Se procesa en streaming: en cualquier instante hay dos cuadros en RAM, no
-   novecientos. Un reel de 60 s ocupa lo mismo que uno de 5.
+   novecientos. Un reel de 60 s ocupa lo mismo que uno de 5. Lo único que crece con la duración son
+   series de escalares y una miniatura de 16x28 por cuadro: **medio megabyte para un reel de 17 s.**
 4. **Todo vectorizado en numpy.** Ni un bucle sobre píxeles en Python.
-5. **El movimiento global se estima por CORRELACION DE FASE** —una FFT por cuadro— y no por flujo
-   óptico denso. Da el desplazamiento entero de la imagen, que es justo lo que hace una cámara, y
-   cuesta O(n log n) en vez de O(n·k).
+5. **Las FFT se calculan UNA vez por cuadro y se guardan para el siguiente.** La v1 transformaba el
+   cuadro anterior de nuevo en cada paso: la mitad del trabajo de FFT era trabajo repetido. Con el
+   caché, las cinco regiones (cuadro entero + cuatro cuadrantes) cuestan lo mismo que costaban dos.
+6. **El espectro radial sale gratis.** Es `|F|²` de una transformada que ya se hizo para la correlación
+   de fase, sumada por anillos con un `bincount`. Medir la suavidad del fondo no agrega ni una FFT.
+7. **El movimiento global se estima por CORRELACION DE FASE** —no por flujo óptico denso—. Da el
+   desplazamiento entero de la imagen, que es justo lo que hace una cámara, y cuesta O(n log n).
 
 Uso:
 
     python tools/ref-analisis.py <archivo.mp4>
-    python tools/ref-analisis.py <archivo.mp4> --hoja 12      (además, una hoja de contactos)
-    python tools/ref-analisis.py <url>                        (baja con yt-dlp y analiza)
+    python tools/ref-analisis.py <archivo.mp4> --planos          (un cuadro por plano + hoja)
+    python tools/ref-analisis.py <archivo.mp4> --rango 9.3 13.5  (analizar solo ese tramo)
+    python tools/ref-analisis.py <archivo.mp4> --denso 9.3 13.5 6
+    python tools/ref-analisis.py <url>                           (baja con yt-dlp y analiza)
 
 Escribe `tools/out/ref/<nombre>.analisis.json` con todo, e imprime la lectura en castellano.
 """
@@ -51,6 +70,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import subprocess
 import sys
@@ -66,6 +86,12 @@ SALIDA = os.path.join(RAIZ, "tools", "out", "ref")
 # un 2%. Bajar a 80 empieza a perder cortes suaves.
 ANCHO_W = 160
 
+ANILLOS = 12        # anillos concéntricos del perfil radial
+SECTORES = 16       # sectores angulares de la simetría
+TONOS = 24          # celdas del histograma de tono (15° cada una)
+BANDAS = 8          # bandas del espectro radial
+MINI_W, MINI_H = 16, 28   # miniatura por cuadro, para comparar planos entre sí
+
 
 # ---------------------------------------------------------------------------- entrada
 
@@ -73,7 +99,7 @@ def sondear(ruta: str) -> dict:
     """Dimensiones, fps y duración reales. Se leen del contenedor, no se suponen."""
     r = subprocess.run(
         ["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
-         "stream=width,height,r_frame_rate,nb_frames:format=duration", "-of", "json", ruta],
+         "stream=width,height,r_frame_rate,nb_frames,codec_name:format=duration", "-of", "json", ruta],
         capture_output=True, text=True)
     if r.returncode != 0:
         raise RuntimeError("ffprobe fallo: " + (r.stderr or "")[:200])
@@ -84,22 +110,35 @@ def sondear(ruta: str) -> dict:
     dur = float((j.get("format") or {}).get("duration") or 0)
     return {
         "w": int(st.get("width") or 0), "h": int(st.get("height") or 0),
+        "codec": st.get("codec_name") or "?",
         "fps": round(fps, 3), "dur": round(dur, 3),
         "cuadros": int(st.get("nb_frames") or 0) or int(round(dur * fps)),
     }
 
 
-def cuadros(ruta: str, w: int, h: int):
+def cuadros(ruta: str, w: int, h: int, desde: float = 0.0, hasta: float = 0.0, recorte=None):
     """Generador de cuadros como arrays uint8 (h, w, 3), en streaming.
 
     UNA sola decodificación y ni un archivo intermedio. `-vsync 0` para que ffmpeg no duplique ni tire
     cuadros al reescalar: si lo hiciera, el eje de tiempo del análisis dejaría de coincidir con el del
     video y todos los tiempos medidos estarían corridos.
+
+    `desde`/`hasta` van ANTES de `-i` (búsqueda por contenedor, salta sin decodificar) salvo que se
+    pida precisión, que acá no hace falta: el recorte es para elegir un tramo, no para cuadrar un
+    fotograma exacto.
     """
-    p = subprocess.Popen(
-        ["ffmpeg", "-v", "error", "-i", ruta, "-vf", f"scale={w}:{h}:flags=area",
-         "-vsync", "0", "-f", "rawvideo", "-pix_fmt", "rgb24", "-"],
-        stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, bufsize=w * h * 3 * 8)
+    cmd = ["ffmpeg", "-v", "error"]
+    if desde > 0:
+        cmd += ["-ss", f"{desde:.3f}"]
+    if hasta > desde:
+        cmd += ["-to", f"{hasta:.3f}"]
+    vf = ""
+    if recorte:
+        x0, y0, x1, y1 = recorte
+        vf = "crop=iw*%.5f:ih*%.5f:iw*%.5f:ih*%.5f," % (x1 - x0, y1 - y0, x0, y0)
+    cmd += ["-i", ruta, "-vf", vf + f"scale={w}:{h}:flags=area",
+            "-vsync", "0", "-f", "rawvideo", "-pix_fmt", "rgb24", "-"]
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, bufsize=w * h * 3 * 8)
     n = w * h * 3
     try:
         while True:
@@ -115,15 +154,10 @@ def cuadros(ruta: str, w: int, h: int):
         p.wait()
 
 
-# ---------------------------------------------------------------------------- mediciones
-
-def _lum(f: np.ndarray) -> np.ndarray:
-    """Luminancia perceptual en 0..1. Sobre float32 porque todo lo demás la consume así."""
-    return (0.2126 * f[:, :, 0] + 0.7152 * f[:, :, 1] + 0.0722 * f[:, :, 2]).astype(np.float32) / 255.0
-
+# ---------------------------------------------------------------------------- primitivas
 
 def _hist(f: np.ndarray) -> np.ndarray:
-    """Histograma conjunto de color, 4×4×4 celdas, normalizado.
+    """Histograma conjunto de color, 4x4x4 celdas, normalizado.
 
     Grueso a propósito. Un histograma fino distingue dos cuadros consecutivos del MISMO plano —cambia
     el grano, cambia una sombra— y entonces todo parece un corte. Con 64 celdas sólo se mueve cuando
@@ -131,272 +165,922 @@ def _hist(f: np.ndarray) -> np.ndarray:
     """
     q = (f >> 6).astype(np.int32)          # 0..3 por canal
     idx = (q[:, :, 0] << 4) | (q[:, :, 1] << 2) | q[:, :, 2]
-    h = np.bincount(idx.ravel(), minlength=64).astype(np.float32)
-    return h / max(1.0, h.sum())
+    hh = np.bincount(idx.ravel(), minlength=64).astype(np.float32)
+    return hh / max(1.0, hh.sum())
 
 
-def _fase(a: np.ndarray, b: np.ndarray, ventana: np.ndarray):
-    """Desplazamiento global entre dos cuadros por CORRELACION DE FASE.
+def _vertice(a: float, b: float, d: float) -> float:
+    """Vertice de la parabola que pasa por (-1,a), (0,b), (1,d). Acotado a media celda."""
+    den = a - 2.0 * b + d
+    if abs(den) < 1e-12:
+        return 0.0
+    return float(max(-0.5, min(0.5, 0.5 * (a - d) / den)))
 
-    Es la forma barata y robusta de contestar "¿cuánto se movió la cámara?". Se multiplican los
-    espectros de los dos cuadros (uno conjugado), se normaliza por el módulo —de ahí lo de *fase*: se
-    tira la amplitud y se queda sólo el desfase— y la antitransformada tiene un pico en el
-    desplazamiento. Es inmune a cambios de brillo, que es exactamente lo que hace falta en un video con
-    luces animadas.
 
-    La ventana de Hann evita que los bordes del cuadro, que son un salto abrupto, metan un pico falso
-    en el centro.
+def _pico(A: np.ndarray, B: np.ndarray, forma: tuple):
+    """Desplazamiento entre dos espectros ya calculados, por CORRELACION DE FASE.
+
+    Es la forma barata y robusta de contestar "¿cuánto se movió?". Se multiplican los espectros (uno
+    conjugado), se normaliza por el módulo —de ahí lo de *fase*: se tira la amplitud y queda sólo el
+    desfase— y la antitransformada tiene un pico en el desplazamiento. Es inmune a cambios de brillo,
+    que es exactamente lo que hace falta en un video con luces animadas.
+
+    Recibe los espectros YA transformados porque el del cuadro anterior se guarda de la vuelta
+    anterior: transformarlo de nuevo sería hacer dos veces el mismo trabajo.
     """
-    A = np.fft.rfft2(a * ventana)
-    B = np.fft.rfft2(b * ventana)
     R = A * np.conj(B)
     m = np.abs(R)
     R = np.divide(R, m, out=np.zeros_like(R), where=m > 1e-8)
-    c = np.fft.irfft2(R, s=a.shape)
-    pico = int(np.argmax(c))
-    y, x = np.unravel_index(pico, c.shape)
-    # El pico vive en coordenadas cíclicas: más de medio cuadro significa desplazamiento negativo.
-    if y > a.shape[0] // 2:
-        y -= a.shape[0]
-    if x > a.shape[1] // 2:
-        x -= a.shape[1]
-    return float(x), float(y), float(c.max())
+    c = np.fft.irfft2(R, s=forma)
+    iy, ix = np.unravel_index(int(np.argmax(c)), c.shape)
+    # SUBPIXEL. A 160 px de ancho, un temblor de camara de medio pixel por cuadro se redondea a cero:
+    # la primera version informaba "pan 0.00 - quieta x19" sobre material filmado a pulso, que es un
+    # cero de resolucion disfrazado de cero de movimiento. Una parabola por los tres valores
+    # alrededor del pico recupera la fraccion y cuesta seis lecturas.
+    ay = _vertice(float(c[(iy - 1) % forma[0], ix]), float(c[iy, ix]), float(c[(iy + 1) % forma[0], ix]))
+    ax = _vertice(float(c[iy, (ix - 1) % forma[1]]), float(c[iy, ix]), float(c[iy, (ix + 1) % forma[1]]))
+    y, x = float(iy), float(ix)
+    # El pico vive en coordenadas ciclicas: mas de medio cuadro significa desplazamiento negativo.
+    if y > forma[0] // 2:
+        y -= forma[0]
+    if x > forma[1] // 2:
+        x -= forma[1]
+    return x + ax, y + ay, float(c.max())
 
 
-def analizar(ruta: str) -> dict:
-    info = sondear(ruta)
-    if not info["w"]:
-        raise RuntimeError("el archivo no tiene stream de video")
+def _hsv_hex(tono_grados: float, sat: float, val: float) -> str:
+    """HSV -> hex. Para poder DEVOLVER un color usable, no un número de bin."""
+    h = (tono_grados % 360.0) / 60.0
+    s = max(0.0, min(1.0, sat))
+    v = max(0.0, min(1.0, val))
+    i = int(math.floor(h)) % 6
+    f = h - math.floor(h)
+    p, q, t = v * (1 - s), v * (1 - s * f), v * (1 - s * (1 - f))
+    r, g, b = [(v, t, p), (q, v, p), (p, v, t), (p, q, v), (t, p, v), (v, p, q)][i]
+    return "#%02x%02x%02x" % (int(r * 255 + 0.5), int(g * 255 + 0.5), int(b * 255 + 0.5))
+
+
+NOMBRE_TONO = [
+    (0, "rojo"), (15, "bermellon"), (30, "naranja"), (45, "ambar"), (60, "amarillo"),
+    (75, "lima"), (90, "verde claro"), (120, "verde"), (150, "esmeralda"), (165, "turquesa"),
+    (180, "cian"), (200, "celeste"), (220, "azul"), (250, "indigo"), (275, "violeta"),
+    (300, "magenta"), (320, "fucsia"), (340, "carmin"), (360, "rojo"),
+]
+
+
+def _nombre_tono(g: float) -> str:
+    g = g % 360.0
+    mejor, dist = "rojo", 999.0
+    for a, n in NOMBRE_TONO:
+        d = abs(((g - a + 180) % 360) - 180)
+        if d < dist:
+            mejor, dist = n, d
+    return mejor
+
+
+# ---------------------------------------------------------------------------- pase unico
+#
+# LA CAJA DE CONTENIDO, que es lo que la v2.0 hacia mal
+# ------------------------------------------------------
+# La primera version media TODO el cuadro. Para esta referencia —un telefono filmando un monitor en
+# una pieza a oscuras— eso significa que el 60% de cada medicion es pared negra. Salia "paleta
+# #202020 al 59%", "casi sin halo" y "simetria 0.125", y las tres son ciertas del cuadro y falsas
+# del video que se quiere copiar, que es EL QUE ESTA EN LA PANTALLA.
+#
+# Asi que el color, la estructura, el texto y el bloom se miden dentro de la caja de contenido: el
+# rectangulo donde hay algo. Se calcula por cuadro, se cuantiza a 4 px y se suaviza con la mediana de
+# los ultimos cuadros —una caja que salta de tamano cada cuadro invalidaria la comparacion— y los
+# mapas de anillos y sectores se cachean por tamano, asi que se reconstruyen una vez por plano y no
+# mil veces.
+
+_CACHE_MAPAS: dict = {}
+
+
+def _mapas(hc: int, wc: int):
+    """Anillos concentricos y sectores angulares para un recorte de (hc, wc). Cacheado por tamano."""
+    k = (hc, wc)
+    m = _CACHE_MAPAS.get(k)
+    if m is not None:
+        return m
+    yy = (np.arange(hc, dtype=np.float32)[:, None] - (hc - 1) / 2) / max(1.0, hc / 2.0)
+    xx = (np.arange(wc, dtype=np.float32)[None, :] - (wc - 1) / 2) / max(1.0, wc / 2.0)
+    rad = np.sqrt(yy * yy + xx * xx)
+    rad = rad / max(1e-6, float(rad.max()))
+    ia = np.clip((rad * ANILLOS).astype(np.int32), 0, ANILLOS - 1).ravel()
+    ca = np.maximum(1.0, np.bincount(ia, minlength=ANILLOS).astype(np.float32))
+    # La simetria angular se mide solo en la corona media: el centro no tiene angulo definido y las
+    # esquinas entran en unos sectores si y en otros no, lo que fabricaria asimetria donde no la hay.
+    corona = (rad > 0.25) & (rad < 0.95)
+    ang = ((np.arctan2(yy + 0 * xx, xx + 0 * yy) + np.pi) / (2 * np.pi) * SECTORES).astype(np.int32) % SECTORES
+    isec = ang[corona]
+    cs = np.maximum(1.0, np.bincount(isec, minlength=SECTORES).astype(np.float32))
+    if len(_CACHE_MAPAS) > 32:
+        _CACHE_MAPAS.clear()
+    _CACHE_MAPAS[k] = (ia, ca, corona, isec, cs)
+    return _CACHE_MAPAS[k]
+
+
+def _caja(l: np.ndarray, modo: float):
+    """El rectangulo donde hay algo, en pixeles. Devuelve (y0, y1, x0, x1)."""
+    m = l > (modo + 0.12)
+    h, w = l.shape
+    pf, pc = m.mean(axis=1), m.mean(axis=0)
+    y0, y1 = _extremos(pf)
+    x0, x1 = _extremos(pc)
+    y0, y1 = int(y0 * h), max(int(y1 * h), int(y0 * h) + 8)
+    x0, x1 = int(x0 * w), max(int(x1 * w), int(x0 * w) + 8)
+    return y0, min(h, y1), x0, min(w, x1)
+
+
+def _trazos(lc: np.ndarray, dmax: int = 8):
+    """Cuenta TRAZOS de glifo y estima su grosor.
+
+    Un glifo es un par de bordes horizontales opuestos muy cerca: sube el brillo al entrar en el asta
+    y baja al salir. Contar bordes fuertes sueltos —lo que hacia la v2.0— tambien cuenta el marco de
+    un monitor, la juntura de una ventana y el borde de una foto, y por eso decia que el 93% del
+    cuadro era tipografia cuando lo que habia era un navegador abierto.
+
+    Devuelve (mapa de trazos por fila-columna, grosor tipico en px). El grosor es el que mas pares
+    produce, y es informacion util por si sola: dice si la letra es fina o pesada.
+    """
+    g = np.diff(lc, axis=1)
+    pos = g > 0.10
+    neg = g < -0.10
+    acum = np.zeros((lc.shape[0], lc.shape[1] - 1), dtype=np.float32)
+    total_d = np.zeros(dmax + 1, dtype=np.float64)
+    for d in range(1, dmax + 1):
+        par = pos[:, :-d] & neg[:, d:]
+        total_d[d] = float(par.sum())
+        acum[:, :par.shape[1]] += par
+    grosor = int(np.argmax(total_d)) if total_d.max() > 0 else 0
+    return acum, grosor
+
+
+def _bandas_texto(dens: np.ndarray, umbral: float = 0.045, alto_max: float = 0.34):
+    """Filas densas en trazos, agrupadas en BANDAS de altura razonable.
+
+    Una linea de texto es una franja acotada: si la franja densa ocupa media pantalla no es una
+    palabra, es una textura. Se exige entre 1.5% y 34% del alto.
+    """
+    n = len(dens)
+    marca = dens > umbral
+    bandas = []
+    i = 0
+    while i < n:
+        if marca[i]:
+            j = i
+            while j + 1 < n and marca[j + 1]:
+                j += 1
+            alt = (j - i + 1) / n
+            if 0.015 <= alt <= alto_max:
+                bandas.append((i, j + 1))
+            i = j + 1
+        else:
+            i += 1
+    return bandas
+
+
+def medir(ruta: str, info: dict, desde: float = 0.0, hasta: float = 0.0, recorte=None) -> dict:
+    """EL PASE. Una decodificacion, memoria constante, todo lo que se mide por cuadro sale de aca.
+
+    Devuelve series de numpy. Nada de esto interpreta todavia: interpretar es el paso siguiente y se
+    hace sobre arrays chicos, no sobre pixeles.
+
+    Que se mide DONDE, que no es un detalle:
+      - composicion y movimiento  ->  cuadro entero (es una propiedad del encuadre y de la camara)
+      - color, estructura, texto, bloom, detalle  ->  DENTRO de la caja de contenido
+    """
     w = ANCHO_W
-    h = max(2, int(round(ANCHO_W * info["h"] / info["w"])) // 2 * 2)
+    prop = info["h"] / max(1, info["w"])
+    if recorte:
+        prop *= (recorte[3] - recorte[1]) / max(1e-6, (recorte[2] - recorte[0]))
+    h = max(2, int(round(ANCHO_W * prop)) // 2 * 2)
     fps = info["fps"] or 30.0
+    my, mx_ = h // 2, w // 2
 
-    ventana = np.outer(np.hanning(h), np.hanning(w)).astype(np.float32)
-    # Cuadrantes, para sacar la DIVERGENCIA del movimiento: si los cuatro se separan del centro, la
-    # cámara se acerca (o el objeto crece). Es la señal que distingue un avance de un desliz.
-    mitad_y, mitad_x = h // 2, w // 2
+    # Espectro radial del cuadro entero: anillos en el plano de frecuencias de la rfft2.
+    fy = np.fft.fftfreq(h).astype(np.float32)[:, None]
+    fx = np.fft.rfftfreq(w).astype(np.float32)[None, :]
+    fr = np.sqrt(fy * fy + fx * fx)
+    fr = fr / max(1e-6, float(fr.max()))
+    idx_banda = np.clip((fr * BANDAS).astype(np.int32), 0, BANDAS - 1).ravel()
+    cnt_banda = np.maximum(1.0, np.bincount(idx_banda, minlength=BANDAS).astype(np.float32))
+    log_f = np.log10(np.arange(1, BANDAS) + 0.5)
+    log_f = log_f - log_f.mean()
+    den_f = float((log_f * log_f).sum())
 
-    prev_l = prev_h = None
-    prev_q = None
-    L, DIF, HD, MX, MY, DIVG, TINTA, CX, CY, TXT = [], [], [], [], [], [], [], [], [], []
-    paleta_acum = np.zeros(64, dtype=np.float64)
+    # Cinco regiones: cuadro entero + cuatro cuadrantes. Con los cuatro se separan DIVERGENCIA (zoom)
+    # y ROTACION (giro), que con dos cuadrantes se confunden — y en este genero el giro es la mitad
+    # del vocabulario.
+    regiones = [(slice(0, h), slice(0, w)),
+                (slice(0, my), slice(0, mx_)), (slice(0, my), slice(mx_, w)),
+                (slice(my, h), slice(0, mx_)), (slice(my, h), slice(mx_, w))]
+    formas = [(sy.stop - sy.start, sx.stop - sx.start) for sy, sx in regiones]
+    ventanas = [np.outer(np.hanning(a), np.hanning(b)).astype(np.float32) for a, b in formas]
+    prevF = [None] * len(regiones)
+    SGN = [(-1, -1), (1, -1), (-1, 1), (1, 1)]   # signo (x, y) del centro de cada cuadrante
 
+    sy_mini = np.round(np.linspace(0, h - 1, MINI_H)).astype(np.int32)
+    sx_mini = np.round(np.linspace(0, w - 1, MINI_W)).astype(np.int32)
+    ang_bin = ((np.arange(TONOS) + 0.5) / TONOS * 2 * np.pi).astype(np.float64)
     ys = np.arange(h, dtype=np.float32)[:, None]
     xs = np.arange(w, dtype=np.float32)[None, :]
 
-    for f in cuadros(ruta, w, h):
-        l = _lum(f)
-        hh = _hist(f)
-        paleta_acum += hh
+    S = {k: [] for k in (
+        "brillo", "contraste", "tinta", "cx", "cy", "sat", "tono", "tono_disp",
+        "detalle", "pendiente", "altas", "falda", "vineta", "simetria", "brillo_caja",
+        "txt_area", "txt_x0", "txt_x1", "txt_y0", "txt_y1", "txt_alto", "txt_lineas", "trazo",
+        "caja_x0", "caja_x1", "caja_y0", "caja_y1", "caja_area", "borde_oscuro",
+        "dif", "hd", "mx", "my", "div", "rot", "conf")}
+    anillos_ser, tonos_ser, minis = [], [], []
+    paleta_acum = np.zeros(64, dtype=np.float64)
+    ultimas_cajas: list = []
+    prev_l = None
+    prev_h = None
 
-        L.append(float(l.mean()))
+    for f in cuadros(ruta, w, h, desde, hasta, recorte):
+        ff = f.astype(np.float32)
+        l = (0.2126 * ff[:, :, 0] + 0.7152 * ff[:, :, 1] + 0.0722 * ff[:, :, 2]) / 255.0
 
-        # TINTA: cuánto del cuadro se aparta del valor dominante. Es la medida de "cuánto está pasando"
-        # y no depende de si el fondo es claro u oscuro.
+        # ---------------------------------------------------------------- cuadro entero
+        S["brillo"].append(float(l.mean()))
+        S["contraste"].append(float(l.std()))
         modo = float(np.median(l))
-        tinta = float((np.abs(l - modo) > 0.18).mean())
-        TINTA.append(tinta)
-
-        # DONDE ESTA LA MASA. El centro de gravedad de lo que se aparta del fondo, en coordenadas
-        # 0..1. Es lo que dice si la pieza compone al centro, a un tercio o contra un borde.
         peso = np.abs(l - modo)
+        S["tinta"].append(float((peso > 0.18).mean()))
         s = float(peso.sum())
         if s > 1e-6:
-            CX.append(float((peso * xs).sum() / s) / w)
-            CY.append(float((peso * ys).sum() / s) / h)
+            S["cx"].append(float((peso * xs).sum() / s) / w)
+            S["cy"].append(float((peso * ys).sum() / s) / h)
         else:
-            CX.append(0.5)
-            CY.append(0.5)
+            S["cx"].append(0.5)
+            S["cy"].append(0.5)
+        minis.append(l[sy_mini][:, sx_mini].astype(np.float32))
 
-        # TEXTO: energía de bordes VERTICALES en franjas horizontales. Un glifo es un patrón de trazos
-        # verticales cortos y muy juntos; una foto o un degradado no tienen esa firma. No detecta
-        # *qué* dice, que no hace falta: lo que se quiere saber es cuánta pantalla ocupa la tipografía.
-        gx = np.abs(np.diff(l, axis=1))
-        fuerte = gx > 0.10
-        # densidad por fila: una fila de texto tiene muchos cruces; una de imagen, pocos y dispersos
-        por_fila = fuerte.mean(axis=1)
-        TXT.append(float((por_fila > 0.09).mean()))
+        # ---------------------------------------------------------------- la caja
+        y0, y1, x0, x1 = _caja(l, modo)
+        ultimas_cajas.append((y0, y1, x0, x1))
+        if len(ultimas_cajas) > 9:
+            ultimas_cajas.pop(0)
+        cj = np.median(np.array(ultimas_cajas), axis=0)
+        y0 = int(cj[0]) // 4 * 4
+        y1 = min(h, max(y0 + 16, int(math.ceil(cj[1] / 4)) * 4))
+        x0 = int(cj[2]) // 4 * 4
+        x1 = min(w, max(x0 + 16, int(math.ceil(cj[3] / 4)) * 4))
+        S["caja_y0"].append(y0 / h); S["caja_y1"].append(y1 / h)
+        S["caja_x0"].append(x0 / w); S["caja_x1"].append(x1 / w)
+        S["caja_area"].append((y1 - y0) * (x1 - x0) / float(h * w))
+        fuera = float(l.sum() - l[y0:y1, x0:x1].sum()) / max(1.0, float(h * w - (y1 - y0) * (x1 - x0)))
+        S["borde_oscuro"].append(fuera)
+
+        lc = l[y0:y1, x0:x1]
+        fc = f[y0:y1, x0:x1]
+        ffc = ff[y0:y1, x0:x1]
+        hc, wc = lc.shape
+        S["brillo_caja"].append(float(lc.mean()))
+
+        hh = _hist(fc)
+        paleta_acum += hh
+
+        # ---------------------------------------------------------------- color, dentro de la caja
+        # El histograma RGB de 64 celdas dice "hay gris y hay rojo"; el TONO dice QUE rojo, y eso es
+        # lo que se copia a un degradado. Se pondera por saturacion*valor para que el negro —que
+        # tiene un tono numerico pero no tiene color— no vote.
+        r, g, b = ffc[:, :, 0], ffc[:, :, 1], ffc[:, :, 2]
+        mxc = ffc.max(axis=2)
+        d = mxc - ffc.min(axis=2)
+        dz = np.maximum(d, 1e-6)
+        sat = np.where(mxc > 1e-6, d / np.maximum(mxc, 1e-6), 0.0)
+        hu = np.where(mxc == r, ((g - b) / dz) % 6.0,
+                      np.where(mxc == g, (b - r) / dz + 2.0, (r - g) / dz + 4.0)) * 60.0
+        wgt = (sat * (mxc / 255.0)).astype(np.float32)
+        tb = ((hu / 360.0 * TONOS).astype(np.int32) % TONOS).ravel()
+        ht = np.bincount(tb, weights=wgt.ravel(), minlength=TONOS).astype(np.float64)
+        tot = float(ht.sum())
+        tonos_ser.append((ht / max(1e-6, tot)).astype(np.float32))
+        S["sat"].append(float(wgt.sum() / max(1e-6, float((mxc / 255.0).sum()))))
+        if tot > 1e-6:
+            # Media CIRCULAR: promediar 350 y 10 grados a mano da 180, que es el color opuesto.
+            vx = float((ht * np.cos(ang_bin)).sum() / tot)
+            vy = float((ht * np.sin(ang_bin)).sum() / tot)
+            S["tono"].append(float(np.degrees(np.arctan2(vy, vx)) % 360.0))
+            S["tono_disp"].append(float(1.0 - math.hypot(vx, vy)))
+        else:
+            S["tono"].append(0.0)
+            S["tono_disp"].append(1.0)
+
+        # ---------------------------------------------------------------- estructura, en la caja
+        ia, ca, corona, isec, cs = _mapas(hc, wc)
+        anillos = np.bincount(ia, weights=lc.ravel(), minlength=ANILLOS) / ca
+        anillos_ser.append(anillos.astype(np.float32))
+        S["vineta"].append(float(anillos[-1] / max(1e-4, anillos[0])))
+        sect = np.bincount(isec, weights=lc[corona], minlength=SECTORES) / cs
+        S["simetria"].append(float(1.0 - sect.std() / max(1e-4, sect.mean())))
+
+        if hc > 3 and wc > 3:
+            lap = np.abs(4.0 * lc[1:-1, 1:-1] - lc[:-2, 1:-1] - lc[2:, 1:-1] - lc[1:-1, :-2] - lc[1:-1, 2:])
+            S["detalle"].append(float(lap.mean()))
+        else:
+            S["detalle"].append(0.0)
+
+        # ALTAS LUCES y ANCHO DEL HALO.
+        #
+        # La primera version dividia el area por encima de 0.60 por el area por encima de 0.85 y lo
+        # llamaba "falda". Esa cuenta esta dominada por el TAMANO DEL NUCLEO, no por el halo: una
+        # palabra blanca gigante con un halo hermoso da 2, igual que una palabra sin halo ninguno.
+        # Por eso informaba "casi sin halo" sobre cuadros que tienen un resplandor evidente.
+        #
+        # Lo que hay que medir es el ESPESOR de la rampa: cuantos pixeles de ancho tiene el anillo
+        # intermedio alrededor del nucleo quemado. Area del anillo dividido el perimetro del nucleo
+        # da exactamente eso, y el perimetro sale de dos diferencias sobre la mascara.
+        nuc = lc > 0.82
+        a85 = float(nuc.mean())
+        anillo = float(((lc > 0.45) & (~nuc)).sum())
+        if nuc.any():
+            per = float(np.abs(np.diff(nuc.astype(np.int8), axis=1)).sum()
+                        + np.abs(np.diff(nuc.astype(np.int8), axis=0)).sum())
+        else:
+            per = 0.0
+        S["altas"].append(a85)
+        S["falda"].append(float(anillo / per / max(1.0, wc)) if per > 4 else 0.0)
+
+        # ---------------------------------------------------------------- texto, en la caja
+        trz, grosor = _trazos(lc)
+        S["trazo"].append(grosor / max(1.0, float(wc)))
+        dens = trz.mean(axis=1)
+        bandas_t = _bandas_texto(dens)
+        if bandas_t:
+            filas = sum(b - a for a, b in bandas_t)
+            S["txt_area"].append(filas / float(hc))
+            S["txt_lineas"].append(float(len(bandas_t)))
+            a0, b0 = bandas_t[0][0], bandas_t[-1][1]
+            S["txt_y0"].append((y0 + a0) / h)
+            S["txt_y1"].append((y0 + b0) / h)
+            S["txt_alto"].append(max(b - a for a, b in bandas_t) / float(hc))
+            sel = np.zeros(hc, dtype=bool)
+            for a, b in bandas_t:
+                sel[a:b] = True
+            perfil = trz[sel].mean(axis=0)
+            pmax = float(perfil.max())
+            if pmax > 1e-6:
+                ci = np.flatnonzero(perfil > 0.18 * pmax)
+                S["txt_x0"].append((x0 + float(ci[0])) / w)
+                S["txt_x1"].append((x0 + float(ci[-1] + 2)) / w)
+            else:
+                S["txt_x0"].append(0.5)
+                S["txt_x1"].append(0.5)
+        else:
+            S["txt_area"].append(0.0)
+            S["txt_lineas"].append(0.0)
+            S["txt_alto"].append(0.0)
+            S["txt_y0"].append(0.5); S["txt_y1"].append(0.5)
+            S["txt_x0"].append(0.5); S["txt_x1"].append(0.5)
+
+        # ---------------------------------------------------------------- movimiento, cuadro entero
+        # Cinco FFT por cuadro; las cinco del cuadro anterior estan guardadas de la vuelta anterior.
+        Fs = [np.fft.rfft2(l[sy, sx] * ventanas[k]) for k, (sy, sx) in enumerate(regiones)]
+        # PENDIENTE ESPECTRAL, gratis: |F|^2 de una transformada que ya esta hecha, ajustada en
+        # log-log. Una imagen natural cae como 1/f^2; un degradado liso cae mucho mas rapido. Es la
+        # forma bien condicionada de preguntar "cuanto de esto es campo suave y cuanto es detalle":
+        # la version anterior dividia la banda baja por el total y daba 0.99 para TODO.
+        P = (np.abs(Fs[0]) ** 2).ravel()
+        bandas = np.bincount(idx_banda, weights=P, minlength=BANDAS) / cnt_banda
+        lp = np.log10(np.maximum(bandas[1:], 1e-12))
+        S["pendiente"].append(float((log_f * (lp - lp.mean())).sum() / max(1e-9, den_f)))
 
         if prev_l is not None:
-            DIF.append(float(np.abs(l - prev_l).mean()))
-            # Distancia de histograma en L1. Entre 0 (idéntico) y 2 (sin un color en común).
-            HD.append(float(np.abs(hh - prev_h).sum()))
-            dx, dy, _pk = _fase(l, prev_l, ventana)
-            MX.append(dx)
-            MY.append(dy)
-            # Divergencia: se compara el desplazamiento del cuadrante superior-izquierdo contra el
-            # inferior-derecho. Si se separan, hay zoom.
-            a1 = l[:mitad_y, :mitad_x]
-            b1 = prev_l[:mitad_y, :mitad_x]
-            a2 = l[mitad_y:, mitad_x:]
-            b2 = prev_l[mitad_y:, mitad_x:]
-            v1 = np.outer(np.hanning(a1.shape[0]), np.hanning(a1.shape[1])).astype(np.float32)
-            v2 = np.outer(np.hanning(a2.shape[0]), np.hanning(a2.shape[1])).astype(np.float32)
-            dx1, dy1, _ = _fase(a1, b1, v1)
-            dx2, dy2, _ = _fase(a2, b2, v2)
-            DIVG.append(float((dx2 - dx1) + (dy2 - dy1)))
+            S["dif"].append(float(np.abs(l - prev_l).mean()))
+            S["hd"].append(float(np.abs(hh - prev_h).sum()))
+            dx, dy, pk = _pico(Fs[0], prevF[0], formas[0])
+            S["mx"].append(dx)
+            S["my"].append(dy)
+            S["conf"].append(pk)
+            div = rot = 0.0
+            for k in range(1, 5):
+                qx, qy, _ = _pico(Fs[k], prevF[k], formas[k])
+                sgx, sgy = SGN[k - 1]
+                div += qx * sgx + qy * sgy          # componente radial: si crece, se acerca
+                rot += qx * (-sgy) + qy * sgx       # componente tangencial: si crece, gira
+            S["div"].append(div / 4.0)
+            S["rot"].append(rot / 4.0)
+        prevF = Fs
         prev_l, prev_h = l, hh
 
-    n = len(L)
+    n = len(S["brillo"])
     if n < 4:
-        raise RuntimeError(f"solo {n} cuadros: el video no se pudo decodificar")
+        raise RuntimeError("solo %d cuadros: el video no se pudo decodificar" % n)
 
-    L = np.array(L); TINTA = np.array(TINTA); CX = np.array(CX); CY = np.array(CY); TXT = np.array(TXT)
-    DIF = np.array(DIF); HD = np.array(HD); MX = np.array(MX); MY = np.array(MY); DIVG = np.array(DIVG)
+    out = {k: np.asarray(v, dtype=np.float32) for k, v in S.items()}
+    out["_anillos"] = np.stack(anillos_ser)
+    out["_tonos"] = np.stack(tonos_ser)
+    out["_minis"] = np.stack(minis)
+    out["_paleta"] = paleta_acum / max(1e-9, float(paleta_acum.sum()))
+    out["_n"] = n
+    out["_w"], out["_h"], out["_fps"] = w, h, fps
+    return out
 
-    # ---------------------------------------------------------------- cortes
-    #
-    # DOS SEÑALES Y LAS DOS TIENEN QUE ESTAR DE ACUERDO. La diferencia de píxeles sola marca cualquier
-    # movimiento rápido como corte; la de histograma sola se pierde los cortes entre dos planos de la
-    # misma paleta, que en este género son la mayoría. Juntas, el falso positivo tiene que engañar a las
-    # dos a la vez.
-    #
-    # Y el umbral es RELATIVO al propio material —mediana más k desviaciones— porque un video con mucho
-    # movimiento tiene un piso alto y uno quieto lo tiene casi en cero. Un umbral absoluto encuentra
-    # cuarenta cortes en uno y ninguno en el otro.
-    def _umbral(v, k=4.5):
-        med = float(np.median(v))
-        mad = float(np.median(np.abs(v - med))) or 1e-6
-        return med + k * mad * 1.4826
+# ---------------------------------------------------------------------------- interpretacion
 
-    u_dif, u_hd = _umbral(DIF), _umbral(HD)
-    cand = (DIF > u_dif) & (HD > u_hd)
-    cortes, ultimo = [], -99
+def _extremos(p: np.ndarray):
+    """Primer y ultimo indice, en 0..1, donde el perfil supera el 15% de su maximo."""
+    m = float(p.max())
+    if m < 1e-6:
+        return 0.0, 1.0
+    i = np.flatnonzero(p > 0.15 * m)
+    return float(i[0]) / len(p), float(i[-1] + 1) / len(p)
+
+
+def _umbral(v: np.ndarray, k: float = 4.5) -> float:
+    """Mediana mas k desviaciones robustas (MAD escalada).
+
+    RELATIVO al propio material, no absoluto: un video con mucho movimiento tiene el piso alto y uno
+    quieto lo tiene casi en cero. Un umbral fijo encuentra cuarenta cortes en uno y ninguno en el otro.
+    """
+    med = float(np.median(v))
+    mad = float(np.median(np.abs(v - med))) or 1e-6
+    return med + k * mad * 1.4826
+
+
+def _cortes(dif: np.ndarray, hd: np.ndarray, fps: float):
+    """DOS SEÑALES Y LAS DOS TIENEN QUE ESTAR DE ACUERDO.
+
+    La diferencia de pixeles sola marca cualquier movimiento rapido como corte; la de histograma sola
+    se pierde los cortes entre dos planos de la misma paleta, que en este genero son la mayoria.
+    Juntas, el falso positivo tiene que enganar a las dos a la vez.
+    """
+    u_dif, u_hd = _umbral(dif), _umbral(hd)
+    cand = (dif > u_dif) & (hd > u_hd)
     sep = max(2, int(fps * 0.20))          # dos cortes a menos de 200 ms son el mismo corte
+    idx, ultimo = [], -99
     for i in range(len(cand)):
         if cand[i] and (i - ultimo) > sep:
-            cortes.append(round((i + 1) / fps, 3))
+            idx.append(i + 1)              # DIF[i] compara el cuadro i+1 contra el i
             ultimo = i
+    return idx, u_dif, u_hd
 
-    # ---------------------------------------------------------------- ritmo
-    planos = np.diff([0.0] + cortes + [n / fps]) if cortes else np.array([n / fps])
-    planos = planos[planos > 0.05]
-    bpm = None
-    regular = 0.0
-    if len(planos) >= 2:
-        med = float(np.median(planos))
-        if med > 0.05:
-            bpm = round(60.0 / med, 1)
-        regular = float(max(0.0, 1.0 - (planos.std() / max(1e-6, planos.mean()))))
 
-    # ---------------------------------------------------------------- movimiento de cámara
-    #
-    # La mediana y no la media: un solo corte mete un desplazamiento enorme y espurio que arrastraría
-    # cualquier promedio. La mediana lo ignora por construcción.
-    mov_x = float(np.median(np.abs(MX)))
-    mov_y = float(np.median(np.abs(MY)))
-    zoom = float(np.median(np.abs(DIVG)))
-    # Fracción del ancho por segundo, que es la unidad con la que se puede comparar contra Bóveda.
-    pan_seg = round(float(np.median(np.abs(MX)) / w * fps), 4)
-    tilt_seg = round(float(np.median(np.abs(MY)) / h * fps), 4)
+def _transicion(i: int, brillo: np.ndarray, dif: np.ndarray, u_dif: float, fps: float) -> str:
+    """Que CLASE de corte es. Un fundido a negro y un corte seco piden cosas distintas en la plantilla.
 
-    if mov_x < 0.35 and mov_y < 0.35 and zoom < 0.6:
-        vuelo = "quieta"
-    elif zoom > max(mov_x, mov_y) * 1.4:
-        vuelo = "avance (zoom / dolly)"
-    elif mov_x > mov_y * 1.8:
-        vuelo = "desliz lateral"
-    elif mov_y > mov_x * 1.8:
-        vuelo = "vertical"
+    Se mira una ventana de +-4 cuadros alrededor del corte: si el brillo cae a una fraccion del
+    entorno hay negro de por medio; si sube, es un flash; si la diferencia se sostiene alta durante
+    varios cuadros en vez de un pico, es una disolvencia.
+    """
+    r = max(2, int(fps * 0.08))
+    a, b = max(0, i - r), min(len(brillo), i + r + 1)
+    ent = brillo[a:b]
+    if len(ent) < 3:
+        return "corte"
+    base = float(np.median(brillo))
+    mn, mx = float(ent.min()), float(ent.max())
+    if mn < 0.35 * max(1e-4, base):
+        return "fundido a negro"
+    if mx > 1.9 * max(1e-4, base) and mx > 0.55:
+        return "flash"
+    ancho = int(np.sum(dif[max(0, i - r - 1):min(len(dif), i + r)] > u_dif * 0.5))
+    if ancho >= max(4, int(fps * 0.10)):
+        return "disolvencia"
+    return "corte"
+
+
+def _curva(y: np.ndarray):
+    """Que EASING describe esta serie. Devuelve (tipo, exponente, error, nombre GSAP).
+
+    Se normaliza a 0..1 y se ajusta contra las dos familias que usa todo el mundo —t^p (entrada) y
+    1-(1-t)^p (salida)— barriendo el exponente. Si la recta explica casi lo mismo, gana la recta: un
+    ajuste con exponente 1.2 y 5% menos de error que lineal no es "ease", es ruido.
+
+    Sale barato: 41 exponentes por dos familias sobre una serie de decenas de muestras.
+    """
+    y = np.asarray(y, dtype=np.float64)
+    if len(y) < 5:
+        return None
+    y = y - y.min()
+    top = float(y.max())
+    if top < 1e-6:
+        return None
+    y = y / top
+    t = np.linspace(0.0, 1.0, len(y))
+    e_lin = float(np.mean((y - t) ** 2))
+    mejor = ("lineal", 1.0, e_lin)
+    for p in np.arange(1.2, 5.01, 0.1):
+        ei = float(np.mean((y - t ** p) ** 2))
+        eo = float(np.mean((y - (1.0 - (1.0 - t) ** p)) ** 2))
+        if ei < mejor[2]:
+            mejor = ("entrada", float(p), ei)
+        if eo < mejor[2]:
+            mejor = ("salida", float(p), eo)
+    if mejor[0] != "lineal" and e_lin <= mejor[2] * 1.15:
+        mejor = ("lineal", 1.0, e_lin)
+    tipo, p, err = mejor
+    if tipo == "lineal":
+        gsap = "none"
     else:
-        vuelo = "mixto / orbita"
+        k = max(1, min(4, int(round(p)) - 1))
+        gsap = "power%d.%s" % (k, "in" if tipo == "entrada" else "out")
+    return {"tipo": tipo, "exponente": round(p, 2), "error": round(err, 5), "gsap": gsap}
 
-    # ---------------------------------------------------------------- paleta
-    paleta_acum /= max(1e-9, paleta_acum.sum())
-    orden = np.argsort(-paleta_acum)[:8]
+
+def _tempo(dif: np.ndarray, fps: float):
+    """El PULSO, por autocorrelacion de la señal de movimiento.
+
+    No es lo mismo que 60/mediana-de-los-planos: esa cuenta supone que todos los planos duran igual.
+    La autocorrelacion encuentra el periodo que de verdad se repite, aunque haya planos de uno y de
+    dos tiempos mezclados — que es como se corta de verdad contra la musica.
+    """
+    x = np.asarray(dif, dtype=np.float64)
+    if len(x) < int(fps * 2):
+        return None
+    x = x - x.mean()
+    nfft = 1 << int(math.ceil(math.log2(len(x) * 2)))
+    F = np.fft.rfft(x, n=nfft)
+    ac = np.fft.irfft(F * np.conj(F), n=nfft)[:len(x)]
+    ac = ac / max(1e-9, float(ac[0]))
+    lo, hi = max(2, int(fps * 0.15)), min(len(ac) - 1, int(fps * 2.5))
+    if hi - lo < 3:
+        return None
+    seg = ac[lo:hi]
+    k = int(np.argmax(seg)) + lo
+    return {"periodo": round(k / fps, 3), "bpm": round(60.0 * fps / k, 1),
+            "fuerza": round(float(ac[k]), 3)}
+
+
+def _clase(sat, detalle, pendiente, simetria, contraste):
+    """GRAFICO SINTETICO o IMAGEN REAL. Se devuelve con los numeros al lado, a proposito.
+
+    Ninguna de las cuatro señales alcanza sola: una foto de un atardecer tambien esta saturada, y un
+    grafico con grano tambien tiene detalle. El puntaje suma evidencia y el que lee ve de que se
+    compone, para poder desconfiar del rotulo sin tener que volver a medir.
+    """
+    ev = 0.0
+    ev += 1.0 if sat > 0.34 else (-0.6 if sat < 0.18 else 0.0)
+    ev += 1.0 if detalle < 0.035 else (-1.0 if detalle > 0.075 else 0.0)
+    ev += 0.9 if pendiente < -3.2 else (-0.9 if pendiente > -2.4 else 0.0)
+    ev += 0.6 if simetria > 0.62 else 0.0
+    ev += 0.4 if contraste > 0.18 else 0.0
+    return ("grafico" if ev >= 1.4 else ("real" if ev <= -0.6 else "mixto")), round(ev, 2)
+
+
+def _planos(S: dict, idx_cortes: list) -> list:
+    """UN INFORME POR PLANO. Esto es lo que faltaba en la v1.
+
+    Promediar diecinueve planos de 0,6 s da el promedio de nada. Cada plano de este genero tiene su
+    color, su palabra y su movimiento, y la plantilla se escribe plano por plano.
+    """
+    n, fps = S["_n"], S["_fps"]
+    bordes = [0] + [i for i in idx_cortes if 0 < i < n] + [n]
+    out = []
+    for k in range(len(bordes) - 1):
+        a, b = bordes[k], bordes[k + 1]
+        if b - a < 2:
+            continue
+        # las series de movimiento tienen un elemento menos y estan corridas uno
+        am, bm = max(0, a - 1), max(1, b - 1)
+        sl = slice(a, b)
+        ml = slice(am, bm)
+
+        ht = S["_tonos"][sl].mean(axis=0)
+        tot = float(ht.sum())
+        ang_bin = (np.arange(TONOS) + 0.5) / TONOS * 2 * np.pi
+        if tot > 1e-6:
+            vx = float((ht * np.cos(ang_bin)).sum() / tot)
+            vy = float((ht * np.sin(ang_bin)).sum() / tot)
+            tono = float(np.degrees(np.arctan2(vy, vx)) % 360.0)
+            pureza = float(math.hypot(vx, vy))
+        else:
+            tono, pureza = 0.0, 0.0
+        sat = float(S["sat"][sl].mean())
+        bri = float(S["brillo"][sl].mean())
+        # el color que se DEVUELVE se construye con el brillo del plano, no con uno inventado
+        hexa = _hsv_hex(tono, min(1.0, sat * 1.35), min(1.0, 0.35 + bri * 1.6))
+        # segundo tono: el pico del histograma mas lejano al dominante (los degradados son de dos)
+        lejos = np.array([abs(((i + 0.5) / TONOS * 360 - tono + 180) % 360 - 180) for i in range(TONOS)])
+        sec = int(np.argmax(ht * (lejos > 45)))
+        hexa2 = _hsv_hex((sec + 0.5) / TONOS * 360.0, min(1.0, sat * 1.2), min(1.0, 0.30 + bri * 1.6))
+
+        pan = float(np.median(np.abs(S["mx"][ml]))) if bm > am else 0.0
+        tilt = float(np.median(np.abs(S["my"][ml]))) if bm > am else 0.0
+        zoom = float(np.median(S["div"][ml])) if bm > am else 0.0
+        giro = float(np.median(S["rot"][ml])) if bm > am else 0.0
+        if pan < 0.35 and tilt < 0.35 and abs(zoom) < 0.45 and abs(giro) < 0.45:
+            camara = "quieta"
+        elif abs(giro) > max(pan, tilt, abs(zoom)) * 1.3:
+            camara = "giro"
+        elif abs(zoom) > max(pan, tilt) * 1.2:
+            camara = "acerca" if zoom > 0 else "aleja"
+        elif pan > tilt * 1.6:
+            camara = "desliz"
+        elif tilt > pan * 1.6:
+            camara = "vertical"
+        else:
+            camara = "mixto"
+
+        cls, ev = _clase(sat, float(S["detalle"][sl].mean()), float(S["pendiente"][sl].mean()),
+                         float(S["simetria"][sl].mean()), float(S["contraste"][sl].mean()))
+        area = float(S["caja_area"][sl].mean())
+        borde = float(S["borde_oscuro"][sl].mean())
+        # PANTALLA FILMADA: el contenido no ocupa el cuadro y lo que sobra es negro. Es un dato
+        # distinto de la clase —lo que se ve DENTRO puede ser grafico igual— y hace falta saberlo,
+        # porque lo que se replica es el contenido, no el cuarto donde se filmo.
+        pantalla = bool(area < 0.55 and borde < 0.12)
+        ancho_txt = S["txt_x1"][sl] - S["txt_x0"][sl]
+        curva = _curva(np.maximum.accumulate(ancho_txt)) if float(S["txt_area"][sl].max()) > 0.04 else None
+        if curva is None:
+            cum = np.cumsum(S["dif"][ml]) if bm > am else np.array([0.0])
+            curva = _curva(cum)
+        out.append({
+            "n": len(out) + 1,
+            "t0": round(a / fps, 3), "t1": round(b / fps, 3), "dur": round((b - a) / fps, 3),
+            "clase": cls, "evidencia": ev,
+            "color": hexa, "color2": hexa2,
+            "tono": round(tono, 1), "tono_nombre": _nombre_tono(tono), "pureza_tono": round(pureza, 3),
+            "saturacion": round(sat, 3), "brillo": round(bri, 3),
+            "contraste": round(float(S["contraste"][sl].mean()), 3),
+            "detalle": round(float(S["detalle"][sl].mean()), 4),
+            "pendiente": round(float(S["pendiente"][sl].mean()), 3),
+            "caja_area": round(area, 3), "pantalla_filmada": pantalla,
+            "borde": round(borde, 3),
+            "brillo_caja": round(float(S["brillo_caja"][sl].mean()), 3),
+            "trazo": round(float(np.median(S["trazo"][sl])), 4),
+            "lineas_texto": round(float(np.median(S["txt_lineas"][sl])), 1),
+            "simetria": round(float(S["simetria"][sl].mean()), 3),
+            "vineta": round(float(S["vineta"][sl].mean()), 3),
+            "bloom_halo": round(float(np.median(S["falda"][sl])), 4),
+            "altas_luces": round(float(S["altas"][sl].mean()), 4),
+            "camara": camara,
+            "pan": round(pan, 2), "tilt": round(tilt, 2), "zoom": round(zoom, 2), "giro": round(giro, 2),
+            "movimiento": round(float(S["dif"][ml].mean()), 4) if bm > am else 0.0,
+            "texto_area": round(float(S["txt_area"][sl].max()), 3),
+            "texto_ancho": round(float(np.percentile(ancho_txt, 85)), 3),
+            "texto_alto": round(float(np.percentile(S["txt_alto"][sl], 85)), 3),
+            "texto_y": round(float(np.median((S["txt_y0"][sl] + S["txt_y1"][sl]) / 2)), 3),
+            "caja": [round(float(np.median(S["caja_x0"][sl])), 3), round(float(np.median(S["caja_y0"][sl])), 3),
+                     round(float(np.median(S["caja_x1"][sl])), 3), round(float(np.median(S["caja_y1"][sl])), 3)],
+            "curva": curva,
+            "perfil_radial": [round(float(v), 3) for v in S["_anillos"][sl].mean(axis=0)],
+        })
+    return out
+
+
+def _repetidos(S: dict, planos: list, umbral: float = 0.055) -> list:
+    """PLANOS QUE VUELVEN. Una pieza que retoma un plano ya visto tiene estructura de estribillo, y eso
+    se replica con una escena reutilizada, no con una nueva.
+
+    Se compara la MEDIANA de las miniaturas de cada plano —16x28 luminancias— contra las de los otros.
+    Es O(planos^2) sobre veinte elementos: no cuesta nada y evita guardar cuadros.
+    """
+    fps = S["_fps"]
+    firmas = []
+    for p in planos:
+        a, b = int(p["t0"] * fps), int(p["t1"] * fps)
+        firmas.append(np.median(S["_minis"][a:b], axis=0).ravel())
+    pares = []
+    for i in range(len(firmas)):
+        for j in range(i + 1, len(firmas)):
+            d = float(np.abs(firmas[i] - firmas[j]).mean())
+            if d < umbral:
+                pares.append({"a": planos[i]["n"], "b": planos[j]["n"], "distancia": round(d, 4)})
+    return sorted(pares, key=lambda x: x["distancia"])[:12]
+
+
+def analizar(ruta: str, desde: float = 0.0, hasta: float = 0.0, recorte=None) -> dict:
+    info = sondear(ruta)
+    if not info["w"]:
+        raise RuntimeError("el archivo no tiene stream de video")
+    S = medir(ruta, info, desde, hasta, recorte)
+    n, fps, w, h = S["_n"], S["_fps"], S["_w"], S["_h"]
+
+    idx, u_dif, u_hd = _cortes(S["dif"], S["hd"], fps)
+    cortes = [round(i / fps, 3) for i in idx]
+    tipos = [_transicion(i, S["brillo"], S["dif"], u_dif, fps) for i in idx]
+    planos = _planos(S, idx)
+
+    dur = [p["dur"] for p in planos] or [n / fps]
+    med = float(np.median(dur))
+    regular = float(max(0.0, 1.0 - (np.std(dur) / max(1e-6, np.mean(dur))))) if len(dur) > 1 else 0.0
+
+    mov_x = float(np.median(np.abs(S["mx"])))
+    mov_y = float(np.median(np.abs(S["my"])))
+    zoom = float(np.median(np.abs(S["div"])))
+    giro = float(np.median(np.abs(S["rot"])))
+
+    pal = S["_paleta"]
+    orden = np.argsort(-pal)[:8]
     paleta = []
     for i in orden:
-        if paleta_acum[i] < 0.004:
+        if pal[i] < 0.004:
             break
-        r = ((int(i) >> 4) & 3) * 64 + 32
-        g = ((int(i) >> 2) & 3) * 64 + 32
-        bl = (int(i) & 3) * 64 + 32
-        mx, mn = max(r, g, bl), min(r, g, bl)
-        paleta.append({
-            "hex": "#%02x%02x%02x" % (r, g, bl),
-            "peso": round(float(paleta_acum[i]), 4),
-            "croma": round((mx - mn) / max(1, mx), 3),
-        })
+        rr = ((int(i) >> 4) & 3) * 64 + 32
+        gg = ((int(i) >> 2) & 3) * 64 + 32
+        bb = (int(i) & 3) * 64 + 32
+        mxc, mnc = max(rr, gg, bb), min(rr, gg, bb)
+        paleta.append({"hex": "#%02x%02x%02x" % (rr, gg, bb), "peso": round(float(pal[i]), 4),
+                       "croma": round((mxc - mnc) / max(1, mxc), 3)})
 
-    # ---------------------------------------------------------------- lecturas de composición
-    comp_x = float(np.median(CX))
-    comp_y = float(np.median(CY))
-    disp_x = float(np.std(CX))
+    anillo_medio = S["_anillos"].mean(axis=0)
+    graf = [p for p in planos if p["clase"] == "grafico"]
+    reales = [p for p in planos if p["clase"] == "real"]
 
     return {
-        "v": 1,
+        "v": 2,
         "archivo": os.path.basename(ruta),
         "info": info,
-        "trabajo": {"w": w, "h": h, "cuadros_leidos": n},
+        "rango": {"desde": desde, "hasta": hasta} if (desde or hasta) else None,
+        "recorte": list(recorte) if recorte else None,
+        "trabajo": {"w": w, "h": h, "cuadros_leidos": n, "umbral_dif": round(u_dif, 5),
+                    "umbral_hist": round(u_hd, 5)},
         "cortes": cortes,
+        "transiciones": [{"t": cortes[i], "tipo": tipos[i]} for i in range(len(cortes))],
         "ritmo": {
             "planos": len(planos),
-            "duracion_mediana": round(float(np.median(planos)), 3) if len(planos) else None,
-            "bpm_equivalente": bpm,
+            "duracion_mediana": round(med, 3),
+            "bpm_equivalente": round(60.0 / med, 1) if med > 0.05 else None,
             "regularidad": round(regular, 3),
-            "corte_mas_corto": round(float(planos.min()), 3) if len(planos) else None,
-            "corte_mas_largo": round(float(planos.max()), 3) if len(planos) else None,
+            "mas_corto": round(float(np.min(dur)), 3),
+            "mas_largo": round(float(np.max(dur)), 3),
+            "tempo_autocorrelacion": _tempo(S["dif"], fps),
         },
         "camara": {
-            "tipo": vuelo,
-            "pan_por_segundo": pan_seg,
-            "tilt_por_segundo": tilt_seg,
-            "zoom": round(zoom, 3),
-            "quietud": round(float((np.abs(MX) < 0.5).mean()), 3),
+            "pan_px": round(mov_x, 3), "tilt_px": round(mov_y, 3),
+            "zoom": round(zoom, 3), "giro": round(giro, 3),
+            "quietud": round(float((np.abs(S["mx"]) < 0.5).mean()), 3),
+            "reparto": {c: sum(1 for p in planos if p["camara"] == c)
+                        for c in sorted(set(p["camara"] for p in planos))},
         },
         "energia": {
-            "movimiento_medio": round(float(DIF.mean()), 4),
-            "movimiento_p90": round(float(np.percentile(DIF, 90)), 4),
-            "tinta_media": round(float(TINTA.mean()), 4),
-            "brillo_medio": round(float(L.mean()), 4),
-            "brillo_rango": round(float(L.max() - L.min()), 4),
+            "movimiento_medio": round(float(S["dif"].mean()), 4),
+            "movimiento_p90": round(float(np.percentile(S["dif"], 90)), 4),
+            "tinta_media": round(float(S["tinta"].mean()), 4),
+            "brillo_medio": round(float(S["brillo"].mean()), 4),
+            "brillo_rango": round(float(S["brillo"].max() - S["brillo"].min()), 4),
+            "contraste_medio": round(float(S["contraste"].mean()), 4),
+            "saturacion_media": round(float(S["sat"].mean()), 4),
+            "detalle_medio": round(float(S["detalle"].mean()), 4),
+            "pendiente_espectral": round(float(S["pendiente"].mean()), 3),
+            "brillo_caja": round(float(S["brillo_caja"].mean()), 4),
+            "bloom_falda_mediana": round(float(np.median(S["falda"])), 4),
+        },
+        "estructura": {
+            "perfil_radial": [round(float(v), 3) for v in anillo_medio],
+            "vineta": round(float(anillo_medio[-1] / max(1e-4, anillo_medio[0])), 3),
+            "simetria_angular": round(float(S["simetria"].mean()), 3),
+            "caja_contenido": [round(float(np.median(S["caja_x0"])), 3), round(float(np.median(S["caja_y0"])), 3),
+                               round(float(np.median(S["caja_x1"])), 3), round(float(np.median(S["caja_y1"])), 3)],
+            "caja_area": round(float(np.median(S["caja_area"])), 3),
+            "borde_oscuro": round(float(np.median(S["borde_oscuro"])), 3),
+            "planos_de_pantalla": sum(1 for p in planos if p.get("pantalla_filmada")),
         },
         "texto": {
-            "cobertura_media": round(float(TXT.mean()), 4),
-            "cobertura_p90": round(float(np.percentile(TXT, 90)), 4),
-            "cuadros_con_texto": round(float((TXT > 0.05).mean()), 3),
+            "cobertura_media": round(float(S["txt_area"].mean()), 4),
+            "cobertura_p90": round(float(np.percentile(S["txt_area"], 90)), 4),
+            "cuadros_con_texto": round(float((S["txt_area"] > 0.05).mean()), 3),
+            "ancho_p85": round(float(np.percentile(S["txt_x1"] - S["txt_x0"], 85)), 3),
+            "alto_p85": round(float(np.percentile(S["txt_alto"], 85)), 3),
+            "y_mediana": round(float(np.median((S["txt_y0"] + S["txt_y1"]) / 2)), 3),
+            "trazo_mediano": round(float(np.median(S["trazo"][S["trazo"] > 0])) if float((S["trazo"] > 0).sum()) else 0.0, 4),
+            "lineas_tipicas": round(float(np.median(S["txt_lineas"][S["txt_lineas"] > 0])) if float((S["txt_lineas"] > 0).sum()) else 0.0, 1),
         },
         "composicion": {
-            "centro_x": round(comp_x, 3),
-            "centro_y": round(comp_y, 3),
-            "dispersion_x": round(disp_x, 3),
-            "lectura": ("centrada" if abs(comp_x - 0.5) < 0.06 else
-                        ("a la izquierda" if comp_x < 0.5 else "a la derecha")),
+            "centro_x": round(float(np.median(S["cx"])), 3),
+            "centro_y": round(float(np.median(S["cy"])), 3),
+            "dispersion_x": round(float(S["cx"].std()), 3),
+            "lectura": ("centrada" if abs(float(np.median(S["cx"])) - 0.5) < 0.06 else
+                        ("a la izquierda" if float(np.median(S["cx"])) < 0.5 else "a la derecha")),
         },
         "paleta": paleta,
-        # Las series completas, para poder graficarlas o volver a leerlas sin re-decodificar.
+        "planos": planos,
+        "repetidos": _repetidos(S, planos),
+        "reparto_clase": {"grafico": len(graf), "real": len(reales),
+                          "mixto": len(planos) - len(graf) - len(reales)},
         "series": {
             "fps": fps,
-            "brillo": [round(float(v), 4) for v in L],
-            "movimiento": [round(float(v), 4) for v in DIF],
-            "texto": [round(float(v), 4) for v in TXT],
-            "centro_x": [round(float(v), 3) for v in CX],
-            "centro_y": [round(float(v), 3) for v in CY],
+            "brillo": [round(float(v), 4) for v in S["brillo"]],
+            "movimiento": [round(float(v), 4) for v in S["dif"]],
+            "texto": [round(float(v), 4) for v in S["txt_area"]],
+            "texto_ancho": [round(float(v), 3) for v in (S["txt_x1"] - S["txt_x0"])],
+            "caja_area": [round(float(v), 3) for v in S["caja_area"]],
+            "saturacion": [round(float(v), 3) for v in S["sat"]],
+            "tono": [round(float(v), 1) for v in S["tono"]],
+            "centro_x": [round(float(v), 3) for v in S["cx"]],
+            "centro_y": [round(float(v), 3) for v in S["cy"]],
+            "giro": [round(float(v), 3) for v in S["rot"]],
+            "zoom": [round(float(v), 3) for v in S["div"]],
         },
     }
 
 
-# ---------------------------------------------------------------------------- cuadros clave
+# ---------------------------------------------------------------------------- receta
+
+def receta(a: dict) -> dict:
+    """LA TRADUCCION. De numeros medidos a parametros de Boveda, que es para lo que se midio.
+
+    Cada linea de acá tiene del otro lado una clave que existe en el motor. Lo que NO se puede derivar
+    de la medicion no se inventa: se deja en None y se dice.
+    """
+    r, c, e, t, es = a["ritmo"], a["camara"], a["energia"], a["texto"], a["estructura"]
+    planos = a["planos"]
+    graf = [p for p in planos if p["clase"] != "real"]
+    fuente = graf or planos
+
+    beat = r["duracion_mediana"]
+    tempo = r.get("tempo_autocorrelacion") or {}
+    # El pulso: si la autocorrelacion es fuerte, manda ella; si no, la mediana de los planos. Y si se
+    # la descarta por debil, se la descarta ENTERA: la primera version se quedaba con la mediana para
+    # el beat pero imprimia igual el bpm de la autocorrelacion descartada, y por eso decia "beats de
+    # 0.60 s - 360 bpm", dos numeros que se contradicen en la misma linea.
+    fiable = (tempo.get("fuerza", 0) > 0.25 and 0.2 < tempo.get("periodo", 0) < 2.0)
+    if fiable:
+        beat = tempo["periodo"]
+
+    # velocidad de camara: fraccion del ancho por segundo, que es como se compara contra Boveda
+    fps = a["series"]["fps"]
+    vel = round((c["pan_px"] + c["tilt_px"]) / max(1, a["trabajo"]["w"]) * fps, 4)
+
+    tonos = [p["tono"] for p in fuente]
+    colores = []
+    vistos = []
+    for p in fuente:
+        if any(abs(((p["tono"] - v + 180) % 360) - 180) < 22 for v in vistos):
+            continue
+        vistos.append(p["tono"])
+        colores.append(p["color"])
+    curvas = [p["curva"]["gsap"] for p in fuente if p.get("curva")]
+    comun = max(set(curvas), key=curvas.count) if curvas else None
+
+    caja = es["caja_contenido"]
+    return {
+        "beats": len(planos),
+        "beat_segundos": round(beat, 3),
+        "duracion_total": round(sum(p["dur"] for p in planos), 2),
+        "bpm": (tempo.get("bpm") if fiable else r["bpm_equivalente"]),
+        "bpm_fuente": ("autocorrelacion" if fiable else "mediana de los planos"),
+        "regularidad": r["regularidad"],
+        "camara": {
+            "velocidad": vel,
+            "modo_dominante": max(c["reparto"], key=c["reparto"].get) if c["reparto"] else "quieta",
+            "reparto": c["reparto"],
+            "nota": ("la camara casi no vuela: el movimiento lo hace la TIPOGRAFIA y el FONDO"
+                     if vel < 0.05 else "hay vuelo real de camara"),
+        },
+        "fondo": {
+            "tipo": ("campo radial" if es["simetria_angular"] > 0.60 and es["perfil_radial"][0] > es["perfil_radial"][-1] * 1.25
+                     else ("campo parejo" if es["simetria_angular"] > 0.60 else "direccional")),
+            "vineta": es["vineta"],
+            "pendiente_espectral": e["pendiente_espectral"],
+            "giro_medio": c["giro"],
+            "colores": colores[:8],
+            "saturacion": e["saturacion_media"],
+        },
+        "bloom": {
+            "falda": e["bloom_falda_mediana"],
+            "lectura": ("halo ancho: bloom fuerte y umbral bajo" if e["bloom_falda_mediana"] > 0.06
+                        else ("halo medio" if e["bloom_falda_mediana"] > 0.025 else "casi sin halo")),
+            "unidad": "espesor del halo como fraccion del ancho de la caja",
+        },
+        "tipografia": {
+            "ancho_relativo_al_cuadro": t["ancho_p85"],
+            "ancho_relativo_a_la_caja": (round(t["ancho_p85"] / max(1e-3, caja[2] - caja[0]), 3)
+                                         if caja[2] > caja[0] else None),
+            "alto_relativo": t["alto_p85"],
+            "y": t["y_mediana"],
+            "presencia": t["cuadros_con_texto"],
+            "easing_dominante": comun,
+            "grosor_de_trazo": t["trazo_mediano"],
+            "lineas_por_plano": t["lineas_tipicas"],
+            "lectura": ("una palabra gigante centrada por plano" if t["ancho_p85"] > 0.45
+                        else "texto de apoyo, no protagonista"),
+        },
+        "tono_general": {
+            "brillo": e["brillo_medio"],
+            "brillo_del_contenido": e["brillo_caja"],
+            "contraste": e["contraste_medio"],
+            "registro": ("oscuro y saturado" if e["brillo_caja"] < 0.35 and e["saturacion_media"] > 0.25
+                         else ("claro" if e["brillo_caja"] > 0.6 else "medio")),
+        },
+        "transiciones": {k: sum(1 for x in a["transiciones"] if x["tipo"] == k)
+                         for k in sorted(set(x["tipo"] for x in a["transiciones"]))},
+        "no_medible": ["texto literal de cada palabra", "tipo de letra", "musica"],
+    }
+
+
+# ---------------------------------------------------------------------------- cuadros a mirar
 
 def clave(a: dict, cuantos: int = 12) -> list:
-    """Qué instantes conviene MIRAR, elegidos por la medición y no a ojo.
+    """Que instantes conviene MIRAR, elegidos por la medicion y no a ojo.
 
-    Uno por plano, en su punto medio: es donde el plano ya se estableció y todavía no empezó a salir.
+    Uno por plano, en su punto medio: es donde el plano ya se establecio y todavia no empezo a salir.
     Si hay menos planos que cuadros pedidos, se completa con los instantes de mayor cobertura de texto,
-    que son los que más dicen sobre cómo compone la pieza.
+    que son los que mas dicen sobre como compone la pieza.
     """
     fps = a["series"]["fps"]
     n = a["trabajo"]["cuadros_leidos"]
-    bordes = [0.0] + list(a["cortes"]) + [n / fps]
-    medios = [(bordes[i] + bordes[i + 1]) / 2 for i in range(len(bordes) - 1)]
-    medios = [t for t in medios if 0 <= t < n / fps]
+    medios = [round((p["t0"] + p["t1"]) / 2, 3) for p in a["planos"]]
     if len(medios) >= cuantos:
         paso = len(medios) / cuantos
         return sorted(medios[int(i * paso)] for i in range(cuantos))
     txt = np.array(a["series"]["texto"])
-    extra = np.argsort(-txt)[: cuantos * 3]
     vistos = set(round(t, 1) for t in medios)
-    for i in extra:
+    for i in np.argsort(-txt)[: cuantos * 4]:
         t = round(float(i) / fps, 2)
         if round(t, 1) in vistos:
             continue
@@ -407,31 +1091,52 @@ def clave(a: dict, cuantos: int = 12) -> list:
     return sorted(medios)
 
 
-def extraer(ruta: str, tiempos: list, dst: str, ancho: int = 540) -> list:
-    """Segundo pase: sólo los cuadros elegidos, a resolución de mirar.
+def extraer(ruta: str, tiempos: list, dst: str, ancho: int = 540, desfase: float = 0.0, recorte=None) -> list:
+    """Segundo pase: solo los cuadros elegidos, a resolucion de mirar.
 
-    Un `-ss` por cuadro con `-accurate_seek`. Son doce llamadas cortas contra una decodificación entera
-    del video, y para un reel de 30 s eso es diez veces más rápido.
+    Un `-ss` por cuadro con `-accurate_seek`. Son doce llamadas cortas contra una decodificacion entera
+    del video, y para un reel de 30 s eso es diez veces mas rapido.
     """
     os.makedirs(dst, exist_ok=True)
     out = []
     for i, t in enumerate(tiempos):
-        f = os.path.join(dst, f"f{i:02d}_{t:.2f}s.png")
-        r = subprocess.run(["ffmpeg", "-v", "error", "-accurate_seek", "-ss", f"{t:.3f}",
-                            "-i", ruta, "-frames:v", "1", "-vf", f"scale={ancho}:-1", "-y", f],
+        f = os.path.join(dst, "f%02d_%.2fs.png" % (i, t))
+        vf = ""
+        if recorte:
+            x0, y0, x1, y1 = recorte
+            vf = "crop=iw*%.5f:ih*%.5f:iw*%.5f:ih*%.5f," % (x1 - x0, y1 - y0, x0, y0)
+        r = subprocess.run(["ffmpeg", "-v", "error", "-accurate_seek", "-ss", "%.3f" % (t + desfase),
+                            "-i", ruta, "-frames:v", "1", "-vf", vf + "scale=%d:-1" % ancho, "-y", f],
                            capture_output=True, text=True)
         if r.returncode == 0 and os.path.exists(f):
             out.append(f)
     return out
 
 
-def hoja(imgs: list, destino: str, cols: int = 6):
+def denso(ruta: str, t0: float, t1: float, fps: float, dst: str, ancho: int = 420) -> list:
+    """Muchos cuadros seguidos de un tramo, en UNA sola llamada a ffmpeg.
+
+    Para mirar COMO se anima algo —una palabra que aparece, un barrido— hace falta la secuencia, no
+    instantes sueltos. Y `-r` dentro de un solo proceso cuesta una decodificacion del tramo, no una
+    por cuadro.
+    """
+    os.makedirs(dst, exist_ok=True)
+    for viejo in os.listdir(dst):
+        if viejo.endswith(".png"):
+            os.remove(os.path.join(dst, viejo))
+    subprocess.run(["ffmpeg", "-v", "error", "-accurate_seek", "-ss", "%.3f" % t0, "-to", "%.3f" % t1,
+                    "-i", ruta, "-vf", "fps=%g,scale=%d:-1" % (fps, ancho), "-y",
+                    os.path.join(dst, "d%03d.png")], capture_output=True, text=True)
+    return sorted(os.path.join(dst, f) for f in os.listdir(dst) if f.endswith(".png"))
+
+
+def hoja(imgs: list, destino: str, cols: int = 6, ancho: int = 220):
     from PIL import Image
     if not imgs:
         return None
     ims = [Image.open(p).convert("RGB") for p in imgs]
     w, h = ims[0].size
-    esc = 220 / w
+    esc = ancho / w
     w, h = int(w * esc), int(h * esc)
     filas = (len(ims) + cols - 1) // cols
     out = Image.new("RGB", (w * cols, h * filas), "#101010")
@@ -445,34 +1150,106 @@ def hoja(imgs: list, destino: str, cols: int = 6):
 
 def tabla(a: dict) -> str:
     L = []
-    i, r, c, e, t, co = a["info"], a["ritmo"], a["camara"], a["energia"], a["texto"], a["composicion"]
-    L.append(f"REFERENCIA  {a['archivo']}")
-    L.append(f"  {i['w']}x{i['h']} · {i['fps']} fps · {i['dur']:.1f} s · {a['trabajo']['cuadros_leidos']} cuadros analizados")
+    i, r, c, e, t, co, es = a["info"], a["ritmo"], a["camara"], a["energia"], a["texto"], a["composicion"], a["estructura"]
+    L.append("REFERENCIA  %s" % a["archivo"])
+    L.append("  %dx%d - %s - %s fps - %.1f s - %d cuadros analizados"
+             % (i["w"], i["h"], i["codec"], i["fps"], i["dur"], a["trabajo"]["cuadros_leidos"]))
+    if a.get("rango"):
+        L.append("  RANGO      solo %.2f s a %.2f s" % (a["rango"]["desde"], a["rango"]["hasta"]))
+    if a.get("recorte"):
+        L.append("  RECORTE    solo x[%.2f-%.2f] y[%.2f-%.2f] del cuadro"
+                 % (a["recorte"][0], a["recorte"][2], a["recorte"][1], a["recorte"][3]))
     L.append("")
-    L.append(f"  RITMO      {r['planos']} planos · mediana {r['duracion_mediana']} s"
-             + (f" (equivale a {r['bpm_equivalente']} bpm)" if r["bpm_equivalente"] else "")
-             + f" · regularidad {r['regularidad']}")
-    if r["corte_mas_corto"] is not None:
-        L.append(f"             el mas corto {r['corte_mas_corto']} s · el mas largo {r['corte_mas_largo']} s")
-    L.append(f"  CAMARA     {c['tipo']} · pan {c['pan_por_segundo']} del ancho por segundo · "
-             f"tilt {c['tilt_por_segundo']} · zoom {c['zoom']} · quieta el {c['quietud']*100:.0f}% del tiempo")
-    L.append(f"  ENERGIA    movimiento medio {e['movimiento_medio']} (p90 {e['movimiento_p90']}) · "
-             f"tinta {e['tinta_media']} · brillo {e['brillo_medio']} con rango {e['brillo_rango']}")
-    L.append(f"  TEXTO      ocupa {t['cobertura_media']*100:.1f}% del cuadro de media "
-             f"(p90 {t['cobertura_p90']*100:.1f}%) · hay texto en el {t['cuadros_con_texto']*100:.0f}% de los cuadros")
-    L.append(f"  COMPOSICION {co['lectura']} · centro ({co['centro_x']}, {co['centro_y']}) · "
-             f"dispersion horizontal {co['dispersion_x']}")
-    L.append("  PALETA     " + "  ".join(f"{p['hex']}({p['peso']*100:.0f}%)" for p in a["paleta"]))
-    if a["cortes"]:
-        cs = ", ".join(f"{t:.2f}" for t in a["cortes"][:18])
-        L.append(f"  CORTES     {cs}" + (" ..." if len(a["cortes"]) > 18 else ""))
+    ta = r.get("tempo_autocorrelacion") or {}
+    L.append("  RITMO      %d planos - mediana %.2f s (%s bpm) - regularidad %.3f - de %.2f a %.2f s"
+             % (r["planos"], r["duracion_mediana"], r["bpm_equivalente"], r["regularidad"],
+                r["mas_corto"], r["mas_largo"]))
+    if ta:
+        L.append("             pulso por autocorrelacion: %.2f s = %s bpm (fuerza %.2f)"
+                 % (ta["periodo"], ta["bpm"], ta["fuerza"]))
+    trs = {}
+    for x in a["transiciones"]:
+        trs[x["tipo"]] = trs.get(x["tipo"], 0) + 1
+    if trs:
+        L.append("             transiciones: " + ", ".join("%s x%d" % (k, v) for k, v in sorted(trs.items())))
+    L.append("  CAMARA     pan %.2f px/cuadro - tilt %.2f - zoom %.2f - giro %.2f - quieta el %.0f%%"
+             % (c["pan_px"], c["tilt_px"], c["zoom"], c["giro"], c["quietud"] * 100))
+    L.append("             por plano: " + ", ".join("%s x%d" % (k, v) for k, v in c["reparto"].items()))
+    L.append("  ENERGIA    mov %.4f (p90 %.4f) - tinta %.3f - brillo %.3f (rango %.3f) - contraste %.3f"
+             % (e["movimiento_medio"], e["movimiento_p90"], e["tinta_media"], e["brillo_medio"],
+                e["brillo_rango"], e["contraste_medio"]))
+    L.append("             saturacion %.3f - detalle %.4f - pendiente espectral %.2f - halo %.3f"
+             % (e["saturacion_media"], e["detalle_medio"], e["pendiente_espectral"], e["bloom_falda_mediana"]))
+    L.append("             brillo del contenido (dentro de la caja) %.3f" % e["brillo_caja"])
+    L.append("  ESTRUCTURA perfil radial centro->borde  " + " ".join("%.2f" % v for v in es["perfil_radial"]))
+    L.append("             vineta %.2f - simetria angular %.3f - caja de contenido x[%.2f-%.2f] y[%.2f-%.2f]"
+             % (es["vineta"], es["simetria_angular"], es["caja_contenido"][0], es["caja_contenido"][2],
+                es["caja_contenido"][1], es["caja_contenido"][3]))
+    L.append("             la caja ocupa el %.0f%% del cuadro - lo de afuera brilla %.3f - %d planos son pantalla filmada"
+             % (es["caja_area"] * 100, es["borde_oscuro"], es["planos_de_pantalla"]))
+    L.append("  TEXTO      area media %.1f%% (p90 %.1f%%) - presente en %.0f%% de los cuadros"
+             % (t["cobertura_media"] * 100, t["cobertura_p90"] * 100, t["cuadros_con_texto"] * 100))
+    L.append("             ancho p85 %.2f del cuadro - alto %.2f - centrado en y=%.2f - trazo %.3f - %.0f lineas"
+             % (t["ancho_p85"], t["alto_p85"], t["y_mediana"], t["trazo_mediano"], t["lineas_tipicas"]))
+    L.append("  COMPOSICION %s - centro (%.2f, %.2f) - dispersion %.3f"
+             % (co["lectura"], co["centro_x"], co["centro_y"], co["dispersion_x"]))
+    L.append("  PALETA     " + "  ".join("%s(%.0f%%)" % (p["hex"], p["peso"] * 100) for p in a["paleta"]))
+    L.append("  CLASE      " + ", ".join("%s x%d" % (k, v) for k, v in a["reparto_clase"].items() if v))
+    return "\n".join(L)
+
+
+def tabla_planos(a: dict) -> str:
+    L = ["", "  PLANO POR PLANO", "  " + "-" * 116,
+         "  %-3s %-6s %-6s %-8s %-9s %-8s %-7s %-6s %-6s %-5s %-5s %s"
+         % ("#", "t0", "dur", "clase", "camara", "color", "tono", "sat", "bri", "txt", "pant", "curva")]
+    for p in a["planos"]:
+        cur = p["curva"]["gsap"] if p.get("curva") else "-"
+        L.append("  %-3d %-6.2f %-6.2f %-8s %-9s %-8s %-7s %-6.2f %-6.2f %-5.2f %-5s %s"
+                 % (p["n"], p["t0"], p["dur"], p["clase"], p["camara"], p["color"],
+                    p["tono_nombre"][:7], p["saturacion"], p["brillo_caja"], p["texto_ancho"],
+                    "si" if p.get("pantalla_filmada") else "-", cur))
+    if a["repetidos"]:
+        L.append("")
+        L.append("  PLANOS QUE VUELVEN: " + ", ".join("%d~%d(%.3f)" % (x["a"], x["b"], x["distancia"])
+                                                      for x in a["repetidos"][:6]))
+    return "\n".join(L)
+
+
+def tabla_receta(rc: dict) -> str:
+    L = ["", "  RECETA PARA BOVEDA", "  " + "-" * 116]
+    L.append("  ritmo       %d beats de %.2f s = %.1f s totales - %s bpm (%s) - regularidad %.2f"
+             % (rc["beats"], rc["beat_segundos"], rc["duracion_total"], rc["bpm"],
+                rc["bpm_fuente"], rc["regularidad"]))
+    L.append("  camara      velocidad %.4f del ancho/s - dominante '%s'  ->  %s"
+             % (rc["camara"]["velocidad"], rc["camara"]["modo_dominante"], rc["camara"]["nota"]))
+    f = rc["fondo"]
+    L.append("  fondo       %s - vineta %.2f - pendiente espectral %.2f - giro %.2f - saturacion %.2f"
+             % (f["tipo"], f["vineta"], f["pendiente_espectral"], f["giro_medio"], f["saturacion"]))
+    L.append("  colores     " + "  ".join(f["colores"]))
+    L.append("  bloom       halo de %.3f del ancho  ->  %s" % (rc["bloom"]["falda"], rc["bloom"]["lectura"]))
+    tp = rc["tipografia"]
+    L.append("  tipografia  ancho %.2f del cuadro (%.2f de la caja util) - alto %.2f - y=%.2f - easing %s"
+             % (tp["ancho_relativo_al_cuadro"], tp["ancho_relativo_a_la_caja"] or 0,
+                tp["alto_relativo"], tp["y"], tp["easing_dominante"]))
+    L.append("              %s - trazo %.3f del ancho - %.0f linea(s) por plano"
+             % (tp["lectura"], tp["grosor_de_trazo"], tp["lineas_por_plano"]))
+    L.append("  registro    %s (brillo %.2f, contraste %.2f)"
+             % (rc["tono_general"]["registro"], rc["tono_general"]["brillo"], rc["tono_general"]["contraste"]))
+    L.append("  transiciones " + ", ".join("%s x%d" % (k, v) for k, v in rc["transiciones"].items()))
+    L.append("  NO MEDIBLE  " + ", ".join(rc["no_medible"]))
     return "\n".join(L)
 
 
 def main():
     ap = argparse.ArgumentParser(description="Desarma un video de referencia para poder replicarlo")
     ap.add_argument("entrada", help="archivo mp4 o URL")
-    ap.add_argument("--hoja", type=int, default=0, help="ademas, extraer N cuadros clave y armar una hoja")
+    ap.add_argument("--hoja", type=int, default=0, help="extraer N cuadros clave y armar una hoja")
+    ap.add_argument("--planos", action="store_true", help="un cuadro por plano + hoja")
+    ap.add_argument("--rango", nargs=2, type=float, metavar=("T0", "T1"), help="analizar solo ese tramo")
+    ap.add_argument("--recorte", nargs=4, type=float, metavar=("X0", "Y0", "X1", "Y1"),
+                    help="analizar solo ese rectangulo del cuadro, en fracciones 0..1")
+    ap.add_argument("--denso", nargs=3, type=float, metavar=("T0", "T1", "FPS"),
+                    help="ademas, muchos cuadros seguidos de ese tramo")
     ap.add_argument("--json", action="store_true")
     a = ap.parse_args()
 
@@ -482,7 +1259,7 @@ def main():
         nom = ruta.rstrip("/").split("/")[-1] or "ref"
         dst = os.path.join(SALIDA, nom + ".mp4")
         if not os.path.exists(dst):
-            print(f"bajando {ruta} ...")
+            print("bajando %s ..." % ruta)
             r = subprocess.run(["yt-dlp", "--no-warnings", "-f", "bv*+ba/b", "-o", dst, ruta],
                                capture_output=True, text=True)
             if r.returncode != 0:
@@ -491,24 +1268,45 @@ def main():
         ruta = dst
 
     if not os.path.exists(ruta):
-        print(f"no existe: {ruta}")
+        print("no existe: %s" % ruta)
         raise SystemExit(2)
 
-    res = analizar(ruta)
+    d0, d1 = (a.rango or (0.0, 0.0))
+    res = analizar(ruta, d0, d1, tuple(a.recorte) if a.recorte else None)
+    res["receta"] = receta(res)
     base = os.path.splitext(os.path.basename(ruta))[0]
+    if a.rango:
+        base += "_%.0f-%.0f" % (d0, d1)
+    if a.recorte:
+        base += "_rec"
     with open(os.path.join(SALIDA, base + ".analisis.json"), "w", encoding="utf-8") as f:
         json.dump(res, f, ensure_ascii=False, indent=1)
 
-    print(json.dumps(res, ensure_ascii=False, indent=1) if a.json else tabla(res))
+    if a.json:
+        print(json.dumps(res, ensure_ascii=False, indent=1))
+    else:
+        print(tabla(res))
+        print(tabla_planos(res))
+        print(tabla_receta(res["receta"]))
 
-    if a.hoja:
-        ts = clave(res, a.hoja)
-        d = os.path.join(SALIDA, base + "_cuadros")
-        imgs = extraer(ruta, ts, d)
+    n_hoja = a.hoja or (len(res["planos"]) if a.planos else 0)
+    if n_hoja:
+        ts = clave(res, n_hoja)
+        dd = os.path.join(SALIDA, base + "_cuadros")
+        imgs = extraer(ruta, ts, dd, desfase=d0, recorte=tuple(a.recorte) if a.recorte else None)
         h = hoja(imgs, os.path.join(SALIDA, base + "_hoja.png"))
-        print(f"\n  {len(imgs)} cuadros clave en {d}")
+        print("\n  %d cuadros clave en %s" % (len(imgs), dd))
         if h:
-            print(f"  hoja de contactos: {h}")
+            print("  hoja de contactos: %s" % h)
+
+    if a.denso:
+        t0, t1, fp = a.denso
+        dd = os.path.join(SALIDA, base + "_denso")
+        imgs = denso(ruta, t0, t1, fp, dd)
+        h = hoja(imgs, os.path.join(SALIDA, base + "_denso.png"), cols=8, ancho=180)
+        print("\n  %d cuadros densos (%.1f a %.1f s, %g fps) en %s" % (len(imgs), t0, t1, fp, dd))
+        if h:
+            print("  hoja densa: %s" % h)
 
 
 if __name__ == "__main__":

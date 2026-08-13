@@ -137,7 +137,7 @@ en `alSeek` — eso es la deriva, y es lo que impide que un vuelo se lea como un
 4. Pedí los bloques a `bloques.js` y colocalos contra `zEn` / `xEn` / `puntoEn`, **nunca a ojo**.
 5. Corré `node tools/boveda-check.mjs` y `node tools/boveda-sonda.mjs <id>`. Después, las fotos.
 
-## Las veintisiete
+## Las treinta
 
 | id | familia | beats | espacio · vuelo |
 |---|---|---|---|
@@ -238,6 +238,63 @@ Que dos usen el mismo vuelo y se vean distintas es la prueba de que **el vuelo n
 `monolito` y `nucleo` son las dos órbitas y en una el objeto es sólido y la cámara lo rodea, en la otra
 es hueco y la cámara entra.
 
+### El registro medido — `vortice`, y la primera plantilla que no se escribió de memoria
+
+Las veintinueve anteriores salieron de mi idea del género. Esta salió de **medir una referencia**: un
+reel de motion graphics corriendo en pantalla, pasado por `tools/ref-analisis.py` recortando el
+análisis a la zona del monitor y al tramo de los gráficos. La tabla, y lo que cada renglón obligó:
+
+| medido | valor | qué obliga |
+|---|---|---|
+| cámara quieta | 75% del tiempo, 0.0146 del ancho/s | **no se vuela**: el empuje es un décimo del de cualquier otra |
+| cortes | cada 0.23 s, sin cambio de encuadre | lo que corta es el **campo**, no el plano |
+| campo | simetría angular 0.743, perfil 0.60 → 0.33 | radial, con núcleo, y viñeta fuerte |
+| pendiente espectral | −4.20 | campo liso: nada de grano ni de detalle duro |
+| halo de altas luces | 0.067 del ancho | bloom fuerte y umbral bajo |
+| tipografía | una palabra, 0.49 del ancho, trazo 0.019 | **una sola** palabra centrada por golpe, y pesada |
+| tono | violeta → azul → celeste en 3 s | el color **gira**, escalonado |
+
+| id | familia | beats | espacio · vuelo |
+|---|---|---|---|
+| `vortice` | grafico | 32 | remolino de color a cuadro completo · **encuadre fijo** |
+
+**Y el ritmo cae solo.** La referencia corta cada 0,23 s; el motor trabaja a 124 BPM, o sea 0,484 s por
+beat, y su **medio beat** mide 0,242 s. El golpe del género es el contratiempo de la grilla que ya
+existe: no hubo que forzar nada.
+
+Cuatro cosas de esta plantilla son nuevas en el motor y sirven para la treinta y uno:
+
+- **`campoVortice()`** (`nucleo.js`). Un remolino a pantalla completa. Lo que lo hace fluido y no una
+  textura girando es la **rotación diferencial** —el ángulo se desplaza en proporción a 1/r, así que el
+  centro da vueltas mucho más rápido que el borde— más **deformación de dominio**: un fbm desplaza las
+  coordenadas de otro fbm.
+- **La banda** (`uBanda`). Cómo se pone texto encima de un campo denso **sin ponerle una placa**: una
+  franja horizontal donde el campo se mezcla hacia el fondo, con bordes suaves. Donde vive la palabra
+  el fondo vuelve a ser el fondo, y la garantía de `nivelTexto` vuelve a valer.
+- **`op.tinta` en los seis bloques** (`bloques.js`). Una plantilla que construye **su propio suelo** se
+  hace cargo también de la tinta. Por omisión no cambia nada. Es la primera vez que hacía falta y está
+  explicado ahí: `vortice` es oscura y saturada **siempre**, también sobre una página blanca, porque
+  eso es lo que se midió del género.
+- **Todo el movimiento vive en `alSeek` y es función pura de `t`.** En las otras veintinueve `alSeek`
+  acompaña al vuelo; acá es el gesto principal, porque la cámara no hace nada. Sin estado acumulado,
+  las cuatro submuestras del obturador dan lo mismo que daría una — y el escalón de color, en vez de
+  saltar, sale con un cuadro de transición que parece intencional.
+
+**Lo que costó llegar, en cuatro tandas de fotos, y no repetirlo:**
+
+1. `R.paleta` **no es una lista de colores**: es una lista de `{hex, peso, croma, lum}`. Indexarla y
+   usar el elemento como color da `[object Object]`, que `THREE.Color` acepta sin chistar y pinta
+   **blanco**. Un campo blanco a pantalla completa más bloom da una **pantalla blanca perfecta**: seis
+   fotos con valor 255 exacto en todos los píxeles y cero errores en la consola. El accesor es
+   `colorDePeso()`.
+2. El halo medido es un **absoluto**, no un factor. Aplicarlo como `bloom × 1.85` funciona sobre
+   `editorial` (0,14) y revienta sobre `nocturno` (1,15): la marca sale convertida en una mancha. Va
+   con techo.
+3. El segundo acento del aire **puede ser de otra familia** (en basecamp sale un caqui). El núcleo del
+   remolino es el mismo tono del campo subido de valor, no `LOOK.acento2`.
+4. Un anillo luminoso se hace con **poco cuerpo y mucho halo**, no con espesor. Con un tubo de 0,075
+   del radio quedó un aro opaco pintado encima de las seis fotos, idéntico en todas.
+
 ## Los tres instrumentos, y por qué hacen falta los tres
 
 | herramienta | qué dice | cuesta |
@@ -285,6 +342,9 @@ Todos están comentados en el archivo donde viven; acá está el índice.
 | `+=` en `alSeek` sobre un eje **sin** tween | acumula en cada submuestra: el motor deja de ser determinista | `nucleo.js` |
 | la sonda medía "delante" contra -z del mundo | 87% de beats mudos informados sobre una plantilla sana | `boveda-sonda.mjs` |
 | la sonda contaba `uProg` sin mirar `visible` | llamaba defecto a `sale()` funcionando | `boveda-sonda.mjs` |
+| `R.paleta[1]` usado como color | `[object Object]` → **blanco**: seis fotos en 255 exacto, sin un error | `vortice.js` · `recetas.js:colorDePeso` |
+| el halo medido aplicado como **factor** del bloom del aire | sobre `nocturno` la marca queda sin contorno | `vortice.js` |
+| `transmission` no refracta lo transparente | el texto y la tela **desaparecen** detrás del vidrio | `nucleo.js:iridiscente` |
 
 El patrón que comparten casi todos: **el código dice que pasa algo y en el video no pasa**, sin una sola
 excepción ni un aviso. Por eso los tres instrumentos, y por eso la compuerta se valida rompiéndola.

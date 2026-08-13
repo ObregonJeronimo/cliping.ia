@@ -96,6 +96,24 @@ const volverLaCama = (cm, tl, t0, op0) => {
 // EL FILETE NO ES DECORACION: es lo que le da al nombre un gesto propio. Un texto que solo se escribe
 // se lee como un subtitulo; un texto con una linea que se abre debajo se lee como una identidad. Cuesta
 // una malla.
+// ---------------------------------------------------------------- TINTA PROPIA: `op.tinta`
+//
+// Todo el texto de Boveda se pinta con `nivelTexto(k)`, que camina la rampa entre `bg` y `tinta` hasta
+// pasar el piso de contraste CONTRA EL FONDO DEL MUNDO. Es la garantia que hace que treinta plantillas
+// se lean sin medir cada una.
+//
+// La garantia tiene un limite y hasta ahora ninguna plantilla lo habia tocado: vale contra `bg` y
+// `bg2`. Una plantilla que construye SU PROPIO SUELO —un campo que ocupa el cuadro entero y no es el
+// fondo del mundo— cae afuera. `vortice` es la primera: su remolino es oscuro y saturado siempre,
+// tambien cuando la pagina del cliente es blanca, porque eso es lo que se midio del genero que
+// replica. En un mundo claro `nivelTexto` devuelve tinta OSCURA, y esa tinta sobre ese campo no se ve.
+//
+// `op.tinta` es la salida: la plantilla que se hace cargo del suelo se hace cargo tambien de la tinta.
+// Por omision no cambia nada —sigue mandando `nivelTexto`— asi que las veintinueve anteriores no se
+// enteran. Quien la usa asume la responsabilidad de medir su propio contraste, y por eso no es un
+// atajo: es un traspaso explicito.
+const conTinta = (op, k) => (op && op.tinta) || nivelTexto(k)
+
 export function bloqueMarca(op) {
   op = op || {}
   const nombre = String(op.texto || D.marca || '').trim()
@@ -103,7 +121,7 @@ export function bloqueMarca(op) {
   const g = new THREE.Group()
   const AM = conMargen(op.anchoMax, op.margen)
   let camaM = null
-  const m = letras(nombre, op.alto != null ? op.alto : 1.5, nivelTexto(0.94),
+  const m = letras(nombre, op.alto != null ? op.alto : 1.5, conTinta(op, 0.94),
     { fuente: op.fuente || 'Anton', tracking: op.tracking != null ? op.tracking : 0.02, anchoMax: AM })
   // CAMA OPCIONAL, y apagada por defecto — al reves que en el claim.
   //
@@ -137,7 +155,7 @@ export function bloqueMarca(op) {
   let rot = null
   const txtRot = op.rotulo === false ? '' : String(op.rotulo != null ? op.rotulo : (D.rotulo || sello(0) || '')).trim()
   if (txtRot) {
-    rot = letras(txtRot, m.userData.alto * 0.135, nivelTexto(0.70),
+    rot = letras(txtRot, m.userData.alto * 0.135, conTinta(op, 0.70),
       { fuente: 'DMSans', tracking: 0.30, anchoMax: AM ? AM * 0.8 : undefined })
     rot.position.y = -m.userData.alto * 1.15
     g.add(rot)
@@ -170,7 +188,7 @@ export function bloquePromesa(op) {
   op = op || {}
   const txt = String(op.texto || D.claim || '').trim()
   if (!txt) return null
-  const p = parrafo(txt, op.alto != null ? op.alto : 0.60, nivelTexto(0.93), {
+  const p = parrafo(txt, op.alto != null ? op.alto : 0.60, conTinta(op, 0.93), {
     fuente: op.fuente || 'Bricolage', anchoMax: conMargen(op.anchoMax, op.margen) || 4.6,
     upper: op.upper === true, maxLineas: op.maxLineas || 3,
   })
@@ -289,13 +307,13 @@ export function bloquesCifra(n, op) {
   const cifras = (D.datos || []).filter(d => d && d.valor).slice(0, n || 2)
   return cifras.map((c, i) => {
     const g = new THREE.Group()
-    const v = letras(String(c.valor), op.alto != null ? op.alto : 1.15, nivelTexto(0.95),
+    const v = letras(String(c.valor), op.alto != null ? op.alto : 1.15, conTinta(op, 0.95),
       { fuente: op.fuente || 'Anton', tracking: 0.01, anchoMax: AM })
     g.add(v)
     let et = null
     const txt = String(c.etiqueta || '').trim()
     if (txt) {
-      et = letras(txt, v.userData.alto * 0.17, nivelTexto(0.72),
+      et = letras(txt, v.userData.alto * 0.17, conTinta(op, 0.72),
         { fuente: 'DMSans', tracking: 0.16, anchoMax: AM })
       et.position.y = -v.userData.alto * 0.72
       g.add(et)
@@ -330,7 +348,7 @@ export function bloquesFrase(n, op) {
   op = op || {}
   const fs = repartirFrases(n || 2, op.unaLinea === true) || []
   return fs.filter(Boolean).map((f, i) => {
-    const p = parrafo(String(f), op.alto != null ? op.alto : 0.34, nivelTexto(0.90), {
+    const p = parrafo(String(f), op.alto != null ? op.alto : 0.34, conTinta(op, 0.90), {
       fuente: op.fuente || 'DMSans', anchoMax: conMargen(op.anchoMax, op.margen) || 3.4, upper: false,
       maxLineas: op.maxLineas || 2,
     })
@@ -370,7 +388,7 @@ export function bloquePedido(op) {
 
   let pastilla = null, mCta = null
   if (cta) {
-    mCta = letras(cta, altoT, nivelTexto(0.97), { fuente: op.fuente || 'DMSans', tracking: 0.10, anchoMax: AM })
+    mCta = letras(cta, altoT, conTinta(op, 0.97), { fuente: op.fuente || 'DMSans', tracking: 0.10, anchoMax: AM })
     // LA PASTILLA VA EN ACENTO PLENO Y EL TEXTO ENCIMA, no al reves. Un CTA es lo unico de la pieza que
     // tiene que pedir el click, asi que es el unico sitio donde el acento se usa como masa y no como
     // filete. El contraste lo garantiza `nivelTexto`, que camina la rampa hasta pasar el piso.
@@ -384,7 +402,7 @@ export function bloquePedido(op) {
 
   let mDom = null
   if (dom) {
-    mDom = letras(dom, altoT * 0.62, nivelTexto(0.80), { fuente: 'DMSans', tracking: 0.22, anchoMax: AM })
+    mDom = letras(dom, altoT * 0.62, conTinta(op, 0.80), { fuente: 'DMSans', tracking: 0.22, anchoMax: AM })
     mDom.position.y = cta ? -altoT * 2.1 : 0
     g.add(mDom)
   }
