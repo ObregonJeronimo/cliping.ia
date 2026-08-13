@@ -233,3 +233,247 @@ del motor web **con la misma vara** — ritmo de corte, curva de movimiento, qui
   deshacer a mano. Si Thiago va a mirar y corregir lo que hago, es imprescindible.
 - **AE puede abrir diálogos modales** (fuente faltante, archivo no encontrado) que **cuelgan el
   script** esperando un clic. Un MCP que se cuelga sin decir por qué es peor que uno que falla.
+
+---
+
+# PARTE II — lo que volvió de la investigación (2026-08-06)
+
+10 frentes + crítico. **El crítico sólo recibió 4 de los 10** (el payload se cortó), así que sus
+objeciones valen para esos cuatro; el resto lo leí yo.
+
+---
+
+## 9. Las preguntas abiertas, respondidas
+
+### `[CERRADA A MEDIAS]` P1 — cómo hablarle a un AE abierto
+
+**En el papel: resuelto.** `AfterFX.exe -r dispatcher.jsx` como **timbre**, más un **buzón de archivos
+JSON** como canal de datos. La `-r` corre en la instancia abierta (y arranca una si no hay), pero en
+Windows es **fire-and-forget**: no acepta argumentos, no devuelve nada, y su código de salida es ruido.
+De ahí el buzón.
+
+Y quedó bien cerrado lo de si Adobe lo está matando, que era mi miedo:
+
+| camino | estado |
+|---|---|
+| **CEP** | **muerto** — Adobe declaró en 10/2024 que CEP 12 sería la última versión mayor |
+| **UXP** | **no existe para AE** — Adobe no lo lista en su matriz de julio 2026 |
+| **BridgeTalk** | fuera de la guía de scripting actual |
+| **ExtendScript** | **vivo** — recibió API nueva en AE 26.0, 26.3 y 26.5, todas de 2026 |
+
+O sea que el único camino disponible es además el único que no está sobre plataforma muerta. Eso es
+suerte, no diseño, pero sirve.
+
+**En la práctica: NO resuelto, y por un motivo que da vergüenza.** Cita del crítico:
+
+> Nadie ejecutó `AfterFX.exe -r` ni una vez. **No hay AE en la máquina.** Dos frentes lo verificaron
+> por separado y ninguno sacó la conclusión operativa: **el paso 0 del proyecto es instalar After
+> Effects, y no está en el plan.** Diez frentes construidos sobre una herramienta que no existe.
+
+Y lo que va a doler todos los días: **todos los modos de falla se ven igual desde afuera — un
+timeout.** AE cerrado (arranca solo y tarda ~60 s), un diálogo modal abierto (bloquea el scripting **el
+resto de la sesión**), la preferencia de escritura apagada, AE renderizando. Un agente iterando
+animación hace cientos de llamadas: esto no es un caso borde.
+
+### `[CERRADA]` P2 — cuánta fidelidad sobrevive
+
+**Mejor de lo que temía en un punto, y peor en otro.**
+
+**La conversión de curvas SÍ es exacta.** Yo había anotado que las manijas de AE son de velocidad e
+influencia y que quizás no se pudieran convertir. Se puede: AE guarda un bezier cúbico, y velocidad e
+influencia son ese mismo bezier en otras coordenadas. Un frente corrió la fórmula y da
+`cubic-bezier(0.3333, 0, 0.6667, 1)` para el Easy Ease, que es la equivalencia canónica conocida. Y
+otro comprobó que **GSAP 3.15 CustomEase la reproduce con error máximo 7.5e-4**, overshoot incluido.
+Deja de ser exacta sólo en dos casos nombrables: posición espacial con trayectoria curva, y expresiones.
+
+**Pero la frase del crítico es la que hay que llevarse:**
+
+> **Viajan las curvas de velocidad; no viaja la imagen.**
+
+Lo que se pierde, con nombre: los **efectos** (se lee *que* hay un Glow con radio 48; no se reproduce
+el píxel del Glow de Adobe), los valores `CUSTOM_VALUE` (curvas de Curves, histograma de Levels), las
+**expresiones**, el **motion blur** (se aproxima, no se iguala), el **renderer 3D** (luces, sombras,
+materiales, DOF con iris de N lados), los **text animators**, y las **shape layers** — Trim Paths,
+Repeater, Offset Paths, que son media animación gráfica moderna y **no los mencionó ni un frente**.
+
+Y el corolario, que es la parte incómoda:
+
+> Si el 80% de lo que hace que se vea caro son efectos + renderer + text animators, entonces el paso 2
+> **no es una tarea de serialización: es reimplementar After Effects.** Ya existe un producto que hizo
+> el subconjunto viable hace diez años y define empíricamente dónde está el techo: **Lottie**.
+
+Nadie investigó Lottie como opción, sólo como cosa a descartar. Planear un exportador propio sin mirar
+dónde se estrelló Lottie es planear repetir diez años de trabajo ajeno para llegar al mismo techo.
+
+### `[CERRADA]` P3 — MOGRT
+
+Un `.mogrt` es un **ZIP** con `definition.json` (la **declaración de controles, legible desde JS**) más
+`project.aegraphic`, que contiene un `.aep` **RIFX binario** donde vive toda la animación. O sea: **se
+puede leer qué es editable sin Adobe; no se puede leer el movimiento.**
+
+Como modelo de qué es editable sirve y hay que copiarlo — pero conviene copiar el esquema del
+**Describe API** de Adobe (público, limpio, versionado) y no el `definition.json` interno (no
+documentado, con dos tablas de tipos que se contradicen).
+
+Todo el autoring de MOGRT es scriptable desde AE 15.0. **Ojo con una trampa**: MOGRT soporta **sólo
+Classic 3D**, así que el código de ejemplo que un frente propuso —que activa el renderer *Advanced 3D*
+para tener profundidad de campo— **produce comps que no exportan**. Nadie verificó si Advanced 3D
+exporta a MOGRT: la doc de Adobe dice que Cinema 4D y Ray-traced no, y **no dice nada de Advanced 3D**.
+Está sin resolver, y es la diferencia entre tener DOF real o no tenerlo.
+
+### `[CERRADA A MEDIAS]` P4 — el texto que no mide lo que medía
+
+`sourceRectAtTime()` existe y es lo que yo esperaba. Y un frente **midió el problema en nuestro propio
+repo**: el mismo hueco entrega **192 px de tipografía para ACME y 86 px para CONSTRUCCIONES DEL SUR
+PATAGÓNICO — un 55 % menos**. `encaje()` garantiza que *entre*, no que siga siendo un titular.
+
+La media solución ya está adentro: la compuerta `E-ENCAJE` construye cada escena con cuatro marcas de
+largo distinto. **Falta el piso tipográfico**, que es exactamente la cláusula que hoy deja pasar los
+86 px — y es un hallazgo que la auditoría ya tiene abierto (`kit.js:968`).
+
+---
+
+## 10. Lo que apareció y yo no sabía
+
+### 10.1 Ya existe un MCP de AE que hace casi todo
+
+`a-y-ibrahim/after-effects-mcp` — **MIT, 48 herramientas, último push el mismo día de la
+investigación**. Tiene las dos piezas que importan:
+
+- **`execute-script`**: ExtendScript arbitrario con timeout configurable. **Elimina el techo** de las
+  APIs enlatadas.
+- **`see-frame` / `contact-sheet` / `match-reference`**: el bucle visual para comparar contra una
+  referencia y autocorregirse.
+
+O sea: **lo que yo anoté en 8.6 como "el MCP tiene que poder ver desde el día uno" ya está
+construido.** La mitad de la autoría se compra de la góndola.
+
+El popular (Dakkshin, 546 estrellas) es el ancestro y es **peor** para esto: lista blanca de 19
+comandos sin escape hatch, polling de 2000 ms, una sola ranura de comando.
+
+Adobe lanzó su MCP oficial el 2026-04-28 junto con Anthropic, y **After Effects no está incluido**: no
+hay camino oficial, pero tampoco riesgo de que Adobe pise a la comunidad.
+
+### 10.2 Adobe renderiza AE en la nube por HTTP, y eso invalida un supuesto mío
+
+**Dynamic Graphics Render API** (Firefly Services): renderiza `.mogrt` **y `.aep`** server-side, por
+HTTP, **sin AE en tu infraestructura y sin licencia propia**.
+
+Yo escribí arriba, como cosa decidida, que AE no puede estar en el camino del usuario. **Con DGR esa
+afirmación es falsa.** Y si es viable, hace innecesario el 80 % del exportador y del runtime.
+
+**Pero es el hallazgo con menos respaldo de todo el paquete**, y el crítico lo marca:
+
+> Es el hallazgo etiquetado como que cambia la decisión, cambia la arquitectura completa, y está
+> **100 % basado en leer developer.adobe.com**. Cero llamadas hechas. Cero token conseguido. **Cero
+> precio.**
+
+Es tier enterprise. Sin el precio no se puede decidir nada.
+
+### 10.3 La trampa de pipeline que explica por qué el bloom porteado no se ve igual
+
+**Todos los efectos de AE son 2D**: el glow se calcula sobre el ráster 2D de la capa **antes** de la
+transformación 3D, así que **se deforma con el panel**. En three.js el bloom es post-proceso en espacio
+de pantalla. **Son dos lugares distintos del pipeline**, y por eso el bloom porteado no se ve igual
+aunque los números coincidan.
+
+Esto lo viví ayer recreando Gemini, sin saber que tenía nombre.
+
+### 10.4 Adobe Fonts es un bloqueo duro, no una molestia
+
+Las cláusulas 3.4(E)(1), (7), (11) y (12) prohíben self-hostear el archivo de fuente, copiarlo de la
+carpeta sincronizada de tu propia PC, hostearlo para tus clientes, y usarlo en una **Reseller
+Platform** — que es **la definición literal de cliping.ia** si el usuario elige tipografía.
+
+La licencia de AE **no** es el problema: diseñar y vender el resultado está permitido y retenés la
+propiedad. **Las fuentes sí.** Regla operativa: las plantillas se autoran **sólo con tipografías de
+licencia libre**, las que ya están en `tools/fonts/`.
+
+### 10.5 ExtendScript es ES3, y eso necesita una compuerta
+
+Sin `let`, sin `const`, sin arrow functions, sin `map`/`filter`/`forEach`/`indexOf`. **El modelo escribe
+ES2020 por defecto.** Cada `const` que yo genere es un error de sintaxis dentro de AE que vuelve como
+un **timeout ambiguo**.
+
+El crítico propone la compuerta y tiene razón: **validar el JSX generado con `acorn` en
+`ecmaVersion: 3` antes de mandarlo al buzón.** Es una tarde de trabajo y convierte una clase entera de
+timeouts ambiguos en un error legible. Encaja exacto con la filosofía del repo: cazarlo al construir
+sale más barato que verlo en un cuadro.
+
+---
+
+## 11. `[ABIERTO NUEVO]` P5 — la aritmética que nadie sumó, y que puede matar el bucle
+
+Dos hallazgos de dos frentes distintos que nadie multiplicó:
+
+- Un cuadro a 1024 px cuesta **~18k tokens**.
+- Claude Code corta la salida de una herramienta en **25k tokens**.
+
+O sea **un cuadro por llamada**. Y el `CLAUDE.md` de este repo exige **entre 10 y 15 cuadros** para
+juzgar algo. Son 10-15 llamadas, **~200k tokens: una ventana de contexto entera para juzgar UNA
+animación** — multiplicado por las decenas de iteraciones que necesita afinar un ease.
+
+**Ése es el costo real del bucle de autoría, y hay que resolverlo antes de empezar.** Ideas: hojas de
+contacto de 6-9 cuadros en UNA imagen (que es justo lo que hace `contact-sheet` del MCP que ya existe),
+y medir por programa con `mirar-video.py` en vez de mirar, dejando los ojos para el veredicto final.
+
+---
+
+## 12. `[ABIERTO NUEVO]` P6 — la pregunta que ningún frente hizo
+
+> Los cuatro frentes resolvieron cómo mandar un comando a AE y qué comandos existen. **Ninguno
+> preguntó si el modelo puede escribir movimiento bueno.**
+
+Y hay evidencia en este mismo repo de que no, sin ayuda: las 113 animaciones FX de calibre AE
+necesitaron **32 arreglos manuales** después de una auditoría cuadro por cuadro. Esta semana mi
+prototipo de `recorrido` falló por lo mismo: no por falta de capacidad, por falta de coreografía.
+
+> **El problema nunca fue el transporte. AE no lo resuelve — AE es un lienzo más grande donde el mismo
+> problema tiene más superficie para salir mal.**
+
+Es la objeción más importante del informe entero y no tiene respuesta todavía.
+
+---
+
+## 13. El plan de un día, que es lo único que importa ahora
+
+**Paso 0 — instalar After Effects.** No es programar y no estaba en el plan. **Decidir la versión antes
+de descargar 30 GB**: si DGR entra en consideración es AE 2025, no 26 (DGR es compatible con MOGRTs de
+AE 2025 o anterior). Y prender Preferences → Scripting & Expressions → *Allow Scripts to Write Files
+and Access Network*.
+
+**Lo que NO hay que hacer el día 1: escribir el servidor MCP.** Ya hay uno gratis y probado. Meterlo
+primero pone una capa de indirección entre nosotros y el único experimento que importa.
+
+**Prueba 1 · ¿suena el timbre? (30 min)** Un `.jsx` de cinco líneas que escriba un archivo, lanzado con
+`AfterFX.exe -r`. Se mide: si aparece el archivo, **cuánto tarda** (esa es la latencia real por llamada,
+el número que decide si el bucle es viable), y si el proceso vuelve antes o después. Resuelve de una la
+contradicción entre frentes sobre si `-r` es síncrono.
+
+**Prueba 2 · ¿los fallos son distinguibles? (30 min)** El mismo script con la preferencia apagada, con
+un diálogo modal abierto, y con AE renderizando. **Es la prueba que nadie planeó y la que va a doler
+todos los días.**
+
+**Prueba 3 · LA QUE DECIDE (2 h).** Un texto que entra con *whip* —eases asimétricos, motion blur,
+obturador 180°— renderizado en AE a 3 cuadros. Después **el mismo movimiento en nuestro motor**,
+convirtiendo los eases a cubic-bezier. Los mismos 3 cuadros. Se miran los 6 a resolución completa, de a
+uno, nunca en tira reescalada. Pregunta binaria: **¿son la misma imagen?**
+
+> Si a los 3 cuadros del caso más simple posible las dos imágenes ya se ven distintas, **el paso 2 del
+> plan está muerto**, y la decisión pasa a ser DGR o AE en el camino del render. Cuesta dos horas
+> averiguarlo, no semanas.
+
+**Prueba 4 · el precio de DGR (1 h, y no es código).** Preguntarle a Adobe el piso comercial de Firefly
+Services. **Un solo número reordena toda la arquitectura**, y es lo único de la lista que no puedo
+hacer yo.
+
+---
+
+## 14. La estimación, para que esté escrita
+
+**16 a 29 semanas-persona (4 a 7 meses)** antes de tocar la UI web de edición. Y el costo **no está
+donde parece**: el MCP es lo barato (hay más de seis implementaciones abiertas, una de un empleado de
+Adobe); lo caro es el exportador, y que el runtime tenga que reimplementar la semántica de render de AE.
+
+Con la frase que hay que releer antes de arrancar: **el subconjunto exportable es exactamente el
+subconjunto que NO hace que se vea caro.**
