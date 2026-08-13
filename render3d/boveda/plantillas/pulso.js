@@ -99,7 +99,13 @@ export function build(ctx) {
   // DETRAS DE TODO, y esto no es un detalle de profundidad: los anillos EMITEN, asi que puestos
   // delante del texto le pasan por encima. La primera foto tenia un aro azul cruzando "BASECAMP" y el
   // nucleo tapando el CTA. Todo lo que brilla va al fondo; el texto, siempre delante.
+  // renderOrder POR DEBAJO DE LA PASTILLA DEL CTA. La profundidad ya estaba bien —los anillos estan
+  // mas lejos que todos los bloques— pero `bloquePedido` le pone `renderOrder = -1` a su pastilla y
+  // three desempata por renderOrder ANTES que por profundidad. Con los anillos en 0 y los tres
+  // materiales sin escribir profundidad, lo que brilla se pintaba sobre el CTA. Mismo criterio que
+  // `nucleo.js`, `prisma.js` y `torre.js`, que ya resolvieron esto.
   const gPulsos = new THREE.Group()
+  gPulsos.renderOrder = -1500
   gPulsos.position.z = zEn(15, distBase * 1.14)
   escena.add(gPulsos)
   const RB = mundoW * 0.22

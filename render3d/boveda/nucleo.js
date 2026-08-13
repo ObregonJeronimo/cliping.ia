@@ -587,7 +587,7 @@ export function campoVortice(escena, op) {
       '  vec2 q = vec2(cos(a2), sin(a2)) * r;',
       '  float w = fbm(q * 2.2 + vec2(t * 0.42, -t * 0.31));',
       '  float n = fbm(q * uBrazos + vec2(w * 1.7, w * 1.3) + t * 0.24);',
-      '  float nucleo = uNucleo / (0.05 + r * r * 5.5);',
+      '  float nucleo = uNucleo / (0.02 + r * r * 16.0);',
       // ESQUIRLAS. Un seno de 26 vueltas elevado a 36 deja solo las crestas: rayos finisimos. La banda
       // radial los hace nacer cerca del centro y morir antes del borde, que es como se ven en la
       // referencia — salen disparados, no atraviesan el cuadro.
@@ -611,8 +611,13 @@ export function campoVortice(escena, op) {
       // Y UNA SEGUNDA CAPA DE FILAMENTOS, mas fina y girando al reves. La referencia mide pendiente
       // espectral -4.2 —campo liso— pero tiene hebras finas visibles: son dos escalas, no una.
       '  float f2 = fbm(q * uBrazos * 3.1 - vec2(w * 1.1, -w * 0.9) - t * 0.19);',
-      '  col = mix(col, uC1, clamp(f2 * 1.6 - 0.72, 0.0, 1.0) * 0.55);',
+      '  col = mix(col, uC1, clamp(f2 * 1.35 - 0.66, 0.0, 1.0) * 0.34);',
       '  col = mix(col, uC2, clamp(nucleo * 0.85, 0.0, 1.0));',
+      // Y UN TERMINO ADITIVO PARA EL NUCLEO. Mezclar hacia `uC2` no puede superar a `uC2`, asi que con
+      // mezcla sola el punto mas brillante del cuadro es el color del nucleo y nada mas: nunca pasa el
+      // umbral del bloom y no hay halo. Medido en la replica: 0.008 del ancho contra los 0.067 de la
+      // referencia. El aditivo es lo que convierte un color claro en una FUENTE.
+      '  col += clamp(nucleo, 0.0, 1.0) * 0.34;',
       '  col = mix(col, uC2, clamp(ray, 0.0, 1.0));',
       '  col = tono(col, uTinte);',
       // La vineta tambien es mezcla, y HACIA EL FONDO. Multiplicar oscurece siempre; mezclar hacia

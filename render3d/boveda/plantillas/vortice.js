@@ -139,9 +139,9 @@ export function build(ctx) {
   // esto (ver la cabecera de `bloques.js`). Lo que sigue viniendo del mundo es el COLOR: el acento de
   // la marca es el que pinta el remolino, y por eso dos paginas distintas siguen dando dos piezas
   // distintas.
-  const CBASE = _mez(OSCURO, ACENTO, 0.10)
+  const CBASE = _mez(OSCURO, ACENTO, 0.20)
   const CCUERPO = ACENTO
-  const CNUCLEO = _mez(ACENTO2, CLARIN, 0.34)
+  const CNUCLEO = _mez(ACENTO2, CLARIN, 0.46)
   // La tinta de esta plantilla: el claro del mundo empujado hacia el blanco. No blanco puro —eso
   // pierde el tinte del aire y las treinta piezas dejarian de sentirse del mismo estudio.
   const TINTA = _mez(CLARIN, '#ffffff', CLAROMUNDO ? 0.55 : 0.30)
@@ -152,7 +152,7 @@ export function build(ctx) {
     // gruesos. Es el unico parametro del remolino que la pagina decide.
     brazos: 2.6 + R.dureza * 1.8,
     vel: 0.30 + R.velocidad * 0.10,
-    giro: 1.22, nucleo: 0.26, vineta: 0.46,
+    giro: 1.22, nucleo: 0.24, vineta: 0.30,
     // La banda vuelve al suelo del campo, no al fondo del mundo: el suelo ya es oscuro y la tinta ya
     // es clara, asi que lo unico que hace falta es CALMAR el remolino donde vive la palabra.
   })
@@ -163,12 +163,16 @@ export function build(ctx) {
   // la palabra atraviesa. Sirve para dos cosas a la vez — le da un eje 3D al campo, que es plano, y le
   // pone al texto un borde detras en vez de una mancha.
   const gAnillo = new THREE.Group()
-  gAnillo.position.z = zEn(16, distBase * 0.62)
+  // DETRAS DEL TEXTO. Estaba a 0.62 del lente y los bloques a 0.74-0.88, o sea que el anillo y las
+  // esquirlas —transparentes, sin escribir profundidad y sin renderOrder— se pintaban ENCIMA de las
+  // letras. `pulso` documenta el mismo sintoma ya pagado. El radio se ajusta para conservar el tamano
+  // aparente: al doble de distancia, el doble de radio.
+  gAnillo.position.z = zEn(16, distBase * 1.24)
   escena.add(gAnillo)
   // FINO. La primera version le puso un tubo de 0.075 del radio y quedo un aro opaco pintado encima
   // de las seis fotos, identico en todas: no se leia como luz sino como un circulo dibujado. Un anillo
   // luminoso se hace con poco cuerpo y mucho halo —de eso se encarga el bloom—, no con espesor.
-  const RA = mundoW * 0.30
+  const RA = mundoW * 0.30 * (1.24 / 0.62)
   const toro = new THREE.Mesh(new THREE.TorusGeometry(RA, RA * 0.020, 14, 128), luz(CNUCLEO, 1.25))
   toro.material.transparent = true
   toro.material.opacity = 0.88
@@ -345,7 +349,21 @@ export function build(ctx) {
   // porque el campo y el anillo YA emiten. En `nocturno` el techo baja el bloom por debajo de su base,
   // y esta bien que lo haga.
   const BLOOM0 = ctx.bloom.strength || 0.5
-  const BLOOMF = Math.min(BLOOM0 * 1.85, 0.55)
+  // PISO Y TECHO, NO UN FACTOR — y esta es la version que la medicion obliga.
+  //
+  // Un factor sobre el bloom del aire ya habia fallado hacia arriba (`nocturno` pide 1.15 y x1.85
+  // convertia la marca en una mancha). Falla igual hacia abajo: `editorial` pide 0.03, y x1.85 son
+  // 0.056 — nada. Medido sobre la replica renderizada, el halo daba 0.015 del ancho contra los 0.067
+  // de la referencia, o sea cuatro veces menos.
+  //
+  // El halo medido es un ABSOLUTO. Un rango absoluto es lo unico que puede reproducirlo en los once
+  // aires: piso para que exista y techo para que no se coma el texto.
+  // 0.24 y no 0.34: con el piso alto el halo medido se acerca mas al de la referencia y las letras
+  // EMPIEZAN A FUNDIRSE entre si. La referencia se filmo de una pantalla, que agrega su propio
+  // resplandor al que ya tenia el grafico, asi que perseguir su 0.067 exacto es perseguir un numero
+  // que incluye el telefono. Entre el numero y la legibilidad manda la legibilidad, y eso se decide
+  // mirando, no midiendo.
+  const BLOOMF = Math.min(0.55, Math.max(BLOOM0 * 1.85, 0.24))
   tl.to(ctx.bloom, { strength: BLOOMF, duration: b(3), ease: E.frena(2) }, b(0.5))
   tl.to(ctx.bloom, { strength: BLOOMF * 0.55, duration: b(2.4), ease: E.frena(2) }, b(27.6))
 
@@ -363,8 +381,8 @@ export function build(ctx) {
   // obturador dan el mismo resultado que daria una sola: el motor sigue siendo determinista y el
   // escalon de color, en vez de saltar feo, sale con un cuadro de transicion que parece intencional.
   const MEDIO = b(0.5)
-  const NUC0 = 0.24
-  const VIN0 = 0.46
+  const NUC0 = 0.22
+  const VIN0 = 0.30
   // LA BANDA SE ABRE CUANDO HAY TEXTO GRANDE Y SE CIERRA CUANDO NO.
   //
   // Los tramos salen de los mismos beats declarados en `meta.tiempos`, no de una lista paralela: una

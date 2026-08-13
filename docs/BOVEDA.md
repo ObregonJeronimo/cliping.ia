@@ -298,6 +298,46 @@ Cuatro cosas de esta plantilla son nuevas en el motor y sirven para la treinta y
   las cuatro submuestras del obturador dan lo mismo que daría una — y el escalón de color, en vez de
   saltar, sale con un cuadro de transición que parece intencional.
 
+### Y después, medir la réplica con el mismo instrumento
+
+Esto es lo que hace que la plantilla no sea otra vez una opinión. Renderizado el video, se lo pasa por
+`ref-analisis.py` igual que a la referencia y se comparan las medidas que son independientes de escala
+—las otras no son comparables, porque la referencia se midió sobre un recorte 16:9 de 3,4 s y la
+réplica sobre el cuadro 9:16 entero—:
+
+| medida | referencia | réplica 1ª | réplica final | lectura |
+|---|---|---|---|---|
+| cámara quieta | 75% | 75% | 75% | ✔ |
+| fondo | campo radial | campo radial | campo radial | ✔ |
+| simetría angular | 0.743 | — | 0.752 | ✔ |
+| brillo del contenido | 0.476 | 0.16 | **0.425** | ✔ |
+| saturación | 0.531 | 0.72 | **0.436** | ✔ |
+| pendiente espectral | −4.20 | −3.43 | −3.79 | ~ |
+| viñeta (borde/centro) | 0.54 | 0.29 | 0.34 | ~ |
+| detalle | 0.038 | — | 0.080 | ✘ las vetas siguen duras |
+| halo de altas luces | 0.067 | 0.008 | 0.009 | ✘ ver abajo |
+
+**Y LA PRIMERA COMPARACIÓN ERA INVÁLIDA**, que es la parte que conviene no repetir: la referencia se
+midió sobre un recorte 16:9 y la réplica sobre el cuadro 9:16 entero. La viñeta, el perfil radial y el
+halo se calculan sobre la geometría del cuadro, así que comparar los dos era comparar dos encuadres, no
+dos piezas. La tabla de arriba mide la réplica **con el mismo `--recorte` que la referencia**; sin eso,
+el brillo daba 0.16 contra 0.44 y parecía un defecto enorme donde había, en parte, un encuadre distinto.
+
+**El halo es el único que sigue lejos, y el número no lo aísla.** Se calcula como área del anillo sobre
+perímetro del núcleo: en la referencia el núcleo es la palabra sola; en la réplica el bloom quema
+también parte del campo, así que el perímetro crece y el cociente baja aunque el resplandor sea mayor.
+Subiendo el piso de bloom a 0.34 el número mejoraba y **las letras empezaban a fundirse entre sí**.
+Entre el número y la legibilidad manda la legibilidad, y eso se decide mirando. Quedó en 0.24.
+
+Los tres defectos apuntaban al mismo lado y la causa se ve en los cuadros: **el núcleo era una bola de
+niebla grande y blanda**, que nunca pasa el umbral del bloom. Un núcleo se hace chico y quemado, no
+grande y tibio — la caída pasó de `r²·5.5` a `r²·16` y se le agregó un término **aditivo**, porque
+mezclar hacia un color claro no puede superar a ese color y por lo tanto no puede florecer.
+
+Y una advertencia sobre el propio instrumento: en este material el detector de texto por trazos **cuenta
+los filamentos del remolino como tipografía**, así que su métrica de texto no sirve acá. Lo que hay que
+mirar para eso son los cuadros.
+
 **Lo que costó llegar, en cuatro tandas de fotos, y no repetirlo:**
 
 1. `R.paleta` **no es una lista de colores**: es una lista de `{hex, peso, croma, lum}`. Indexarla y
