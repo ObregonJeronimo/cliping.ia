@@ -106,7 +106,15 @@ def sondear(ruta: str) -> dict:
     j = json.loads(r.stdout)
     st = (j.get("streams") or [{}])[0]
     num, _, den = (st.get("r_frame_rate") or "30/1").partition("/")
-    fps = float(num) / float(den or 1)
+    # "0/0" es lo que informan algunos contenedores sin indice de tiempo, y el `or 1` no lo cubre
+    # porque la cadena "0" es verdadera. Sin esto muere con ZeroDivisionError antes de llegar al
+    # respaldo de 30 fps que ya existe mas abajo.
+    try:
+        fps = float(num) / float(den or 1)
+    except (ValueError, ZeroDivisionError):
+        fps = 0.0
+    if not (fps > 0):
+        fps = 0.0
     dur = float((j.get("format") or {}).get("duration") or 0)
     return {
         "w": int(st.get("width") or 0), "h": int(st.get("height") or 0),
@@ -354,7 +362,9 @@ def medir(ruta: str, info: dict, desde: float = 0.0, hasta: float = 0.0, recorte
     prop = info["h"] / max(1, info["w"])
     if recorte:
         prop *= (recorte[3] - recorte[1]) / max(1e-6, (recorte[2] - recorte[0]))
-    h = max(2, int(round(ANCHO_W * prop)) // 2 * 2)
+    # Techo duro ademas de la validacion de `main`: `medir` es publica y nadie garantiza que quien la
+    # llame haya validado. 4096 de alto de trabajo ya es absurdo para medir grano grueso.
+    h = max(2, min(4096, int(round(ANCHO_W * prop)) // 2 * 2))
     fps = info["fps"] or 30.0
     my, mx_ = h // 2, w // 2
 
@@ -590,14 +600,22 @@ def _extremos(p: np.ndarray):
     return float(i[0]) / len(p), float(i[-1] + 1) / len(p)
 
 
-def _umbral(v: np.ndarray, k: float = 4.5) -> float:
+def _umbral(v: np.ndarray, k: float = 4.5, piso: float = 0.02) -> float:
     """Mediana mas k desviaciones robustas (MAD escalada).
 
     RELATIVO al propio material, no absoluto: un video con mucho movimiento tiene el piso alto y uno
     quieto lo tiene casi en cero. Un umbral fijo encuentra cuarenta cortes en uno y ninguno en el otro.
     """
     med = float(np.median(v))
-    mad = float(np.median(np.abs(v - med))) or 1e-6
+    mad = float(np.median(np.abs(v - med)))
+    # MAD CERO NO ES "ESCALA CHIQUITA", ES "NO HAY ESCALA". Pasa cuando mas de la mitad de los cuadros
+    # son identicos: una animacion a 12 fps exportada a 30 (ffmpeg pasa los duplicados tal cual con
+    # `-vsync 0`) o una captura de pantalla casi quieta. Con `or 1e-6` el umbral quedaba en 6.7e-6, o
+    # sea cero absoluto, y CADA cambio minimo era un corte: simulado, 20 s a 12 fps con 4 cortes reales
+    # daban 80 cortes y "257 bpm con regularidad 0.899". Es exactamente el umbral fijo contra el que
+    # previene el parrafo de arriba, colado por la puerta de atras.
+    if mad <= 1e-9:
+        return med + piso
     return med + k * mad * 1.4826
 
 
@@ -608,7 +626,10 @@ def _cortes(dif: np.ndarray, hd: np.ndarray, fps: float):
     se pierde los cortes entre dos planos de la misma paleta, que en este genero son la mayoria.
     Juntas, el falso positivo tiene que enganar a las dos a la vez.
     """
-    u_dif, u_hd = _umbral(dif), _umbral(hd)
+    # El piso de cada senal en su propia unidad: `dif` es una media de |diferencia| en 0..1 y `hd` una
+    # distancia L1 de histograma en 0..2.
+    u_dif, u_hd = _umbral(dif, piso=0.02), _umbral(hd, piso=0.08)
+    degenerado = bool(float(np.median(np.abs(dif - np.median(dif)))) <= 1e-9)
     cand = (dif > u_dif) & (hd > u_hd)
     sep = max(2, int(fps * 0.20))          # dos cortes a menos de 200 ms son el mismo corte
     idx, ultimo = [], -99
@@ -616,7 +637,7 @@ def _cortes(dif: np.ndarray, hd: np.ndarray, fps: float):
         if cand[i] and (i - ultimo) > sep:
             idx.append(i + 1)              # DIF[i] compara el cuadro i+1 contra el i
             ultimo = i
-    return idx, u_dif, u_hd
+    return idx, u_dif, u_hd, degenerado
 
 
 def _transicion(i: int, brillo: np.ndarray, dif: np.ndarray, u_dif: float, fps: float) -> str:
@@ -663,21 +684,40 @@ def _curva(y: np.ndarray):
     t = np.linspace(0.0, 1.0, len(y))
     e_lin = float(np.mean((y - t) ** 2))
     mejor = ("lineal", 1.0, e_lin)
+    # TRES FAMILIAS, NO DOS. `t^p` esta siempre por DEBAJO de la recta y `1-(1-t)^p` siempre por
+    # ENCIMA: una `inOut` es una S —debajo en la primera mitad, encima en la segunda— y no pertenece a
+    # ninguna de las dos. Con dos familias ninguna mejoraba a la recta y la funcion informaba "lineal /
+    # gsap none", o sea AFIRMABA que no hay ease. Y cuanto mas marcado el inOut, mas firme la
+    # afirmacion: power2.inOut daba error 0.008, power5.inOut 0.034.
+    mitad = t < 0.5
     for p in np.arange(1.2, 5.01, 0.1):
         ei = float(np.mean((y - t ** p) ** 2))
         eo = float(np.mean((y - (1.0 - (1.0 - t) ** p)) ** 2))
+        s_io = np.where(mitad, 0.5 * (2 * t) ** p, 1.0 - 0.5 * (2.0 - 2 * t) ** p)
+        eio = float(np.mean((y - s_io) ** 2))
         if ei < mejor[2]:
             mejor = ("entrada", float(p), ei)
         if eo < mejor[2]:
             mejor = ("salida", float(p), eo)
+        if eio < mejor[2]:
+            mejor = ("simetrica", float(p), eio)
     if mejor[0] != "lineal" and e_lin <= mejor[2] * 1.15:
         mejor = ("lineal", 1.0, e_lin)
     tipo, p, err = mejor
+    # NO ENCAJAR NO ES SER LINEAL. Si la mejor de las cuatro sigue errando mas que este piso, la curva
+    # no es de esta familia y decirlo es la respuesta honesta.
+    if err > 0.006 and tipo != "lineal":
+        return {"tipo": "no encaja", "exponente": round(p, 2), "error": round(err, 5), "gsap": None}
     if tipo == "lineal":
-        gsap = "none"
+        gsap = "none" if e_lin <= 0.006 else None
+    elif p < 1.5:
+        # Un exponente entre 1.2 y 1.5 no es una cuadratica: `power1` lo agrandaria. `sine` es la curva
+        # suave del vocabulario de GSAP y es la que corresponde a ese tramo.
+        gsap = "sine.%s" % ("in" if tipo == "entrada" else ("out" if tipo == "salida" else "inOut"))
     else:
         k = max(1, min(4, int(round(p)) - 1))
-        gsap = "power%d.%s" % (k, "in" if tipo == "entrada" else "out")
+        suf = "in" if tipo == "entrada" else ("out" if tipo == "salida" else "inOut")
+        gsap = "power%d.%s" % (k, suf)
     return {"tipo": tipo, "exponente": round(p, 2), "error": round(err, 5), "gsap": gsap}
 
 
@@ -701,6 +741,16 @@ def _tempo(dif: np.ndarray, fps: float):
         return None
     seg = ac[lo:hi]
     k = int(np.argmax(seg)) + lo
+    # CORRECCION DE OCTAVA. En un tren de cortes sobre una grilla con beats salteados, el retardo donde
+    # TODOS los cortes emparejan es el del COMPAS, no el del pulso, y siempre gana el maximo. Sobre un
+    # patron 1-1-2 con beat de 0.40 s devolvia 1.60 s = 37.5 bpm con fuerza 0.92 —lo bastante alto para
+    # pasar por fiable— y la receta imprimia "30 beats de 1.60 s = 16.0 s totales", dos numeros que se
+    # contradicen en la misma linea. Si un submultiplo explica casi lo mismo, gana el mas chico: es la
+    # misma navaja que usa cualquier detector de tempo.
+    for m in (k // 2, k // 3, k // 4):
+        if m >= lo and float(ac[m]) >= 0.75 * float(ac[k]):
+            k = m
+            break
     return {"periodo": round(k / fps, 3), "bpm": round(60.0 * fps / k, 1),
             "fuerza": round(float(ac[k]), 3)}
 
@@ -734,8 +784,12 @@ def _planos(S: dict, idx_cortes: list) -> list:
         a, b = bordes[k], bordes[k + 1]
         if b - a < 2:
             continue
-        # las series de movimiento tienen un elemento menos y estan corridas uno
-        am, bm = max(0, a - 1), max(1, b - 1)
+        # LAS SERIES DE MOVIMIENTO TIENEN UN ELEMENTO MENOS Y ESTAN CORRIDAS UNO, y el borde de abajo
+        # NO se incluye: `dif[a-1]` es exactamente la diferencia que CRUZA el corte —la mas grande de
+        # la serie por construccion, porque es la que disparo la deteccion—. Incluirla duplicaba el
+        # movimiento informado de un plano quieto: en la referencia, el plano 6 daba 0.0277 en vez de
+        # 0.0132. No afecta a pan/tilt/zoom/giro, que son medianas y la ignoran.
+        am, bm = a, max(a + 1, b - 1)
         sl = slice(a, b)
         ml = slice(am, bm)
 
@@ -750,13 +804,20 @@ def _planos(S: dict, idx_cortes: list) -> list:
         else:
             tono, pureza = 0.0, 0.0
         sat = float(S["sat"][sl].mean())
-        bri = float(S["brillo"][sl].mean())
-        # el color que se DEVUELVE se construye con el brillo del plano, no con uno inventado
-        hexa = _hsv_hex(tono, min(1.0, sat * 1.35), min(1.0, 0.35 + bri * 1.6))
+        # EL BRILLO DE LA CAJA, no el del cuadro. El tono y la saturacion salen del recorte; tomar el
+        # valor del cuadro entero mezclaba las dos escalas y devolvia un color hasta 40% mas oscuro que
+        # el que se ve — justo en los planos de pantalla filmada, que son los que se quieren copiar.
+        # Sobre la referencia, el plano 3 (pantalla al 33% del cuadro, pared negra alrededor) devolvia
+        # un oliva sucio para una pantalla casi blanca. Y ese hex es el que viaja a `receta.colores`.
+        bri = float(S["brillo_caja"][sl].mean())
+        # La rampa se reescala con la fuente: con el piso 0.35 y la ganancia 1.6 de antes, `brillo_caja`
+        # satura en 0.406 y casi todos los planos clipearian a valor 1.0. Cambiar la clave sin tocar la
+        # rampa habria cambiado un sesgo por otro.
+        hexa = _hsv_hex(tono, min(1.0, sat * 1.35), min(1.0, 0.30 + bri * 1.20))
         # segundo tono: el pico del histograma mas lejano al dominante (los degradados son de dos)
         lejos = np.array([abs(((i + 0.5) / TONOS * 360 - tono + 180) % 360 - 180) for i in range(TONOS)])
         sec = int(np.argmax(ht * (lejos > 45)))
-        hexa2 = _hsv_hex((sec + 0.5) / TONOS * 360.0, min(1.0, sat * 1.2), min(1.0, 0.30 + bri * 1.6))
+        hexa2 = _hsv_hex((sec + 0.5) / TONOS * 360.0, min(1.0, sat * 1.2), min(1.0, 0.26 + bri * 1.20))
 
         pan = float(np.median(np.abs(S["mx"][ml]))) if bm > am else 0.0
         tilt = float(np.median(np.abs(S["my"][ml]))) if bm > am else 0.0
@@ -791,6 +852,11 @@ def _planos(S: dict, idx_cortes: list) -> list:
         out.append({
             "n": len(out) + 1,
             "t0": round(a / fps, 3), "t1": round(b / fps, 3), "dur": round((b - a) / fps, 3),
+            # LOS INDICES ENTEROS VIAJAN CON EL PLANO. `_repetidos` los reconstruia con
+            # `int(t0*fps)` sobre un `t0` ya redondeado a milesimas, y el truncado devolvia `a-1` en
+            # un tercio de los casos a 29.97 fps: el ultimo cuadro del plano ANTERIOR, del otro lado
+            # de un corte duro, o sea el mas distinto que existe.
+            "_i0": a, "_i1": b,
             "clase": cls, "evidencia": ev,
             "color": hexa, "color2": hexa2,
             "tono": round(tono, 1), "tono_nombre": _nombre_tono(tono), "pureza_tono": round(pureza, 3),
@@ -832,8 +898,7 @@ def _repetidos(S: dict, planos: list, umbral: float = 0.055) -> list:
     fps = S["_fps"]
     firmas = []
     for p in planos:
-        a, b = int(p["t0"] * fps), int(p["t1"] * fps)
-        firmas.append(np.median(S["_minis"][a:b], axis=0).ravel())
+        firmas.append(np.median(S["_minis"][p["_i0"]:p["_i1"]], axis=0).ravel())
     pares = []
     for i in range(len(firmas)):
         for j in range(i + 1, len(firmas)):
@@ -850,7 +915,7 @@ def analizar(ruta: str, desde: float = 0.0, hasta: float = 0.0, recorte=None) ->
     S = medir(ruta, info, desde, hasta, recorte)
     n, fps, w, h = S["_n"], S["_fps"], S["_w"], S["_h"]
 
-    idx, u_dif, u_hd = _cortes(S["dif"], S["hd"], fps)
+    idx, u_dif, u_hd, degenerado = _cortes(S["dif"], S["hd"], fps)
     cortes = [round(i / fps, 3) for i in idx]
     tipos = [_transicion(i, S["brillo"], S["dif"], u_dif, fps) for i in idx]
     planos = _planos(S, idx)
@@ -878,6 +943,7 @@ def analizar(ruta: str, desde: float = 0.0, hasta: float = 0.0, recorte=None) ->
                        "croma": round((mxc - mnc) / max(1, mxc), 3)})
 
     anillo_medio = S["_anillos"].mean(axis=0)
+    hayTxt = S["txt_area"] > 0.05
     graf = [p for p in planos if p["clase"] == "grafico"]
     reales = [p for p in planos if p["clase"] == "real"]
 
@@ -888,7 +954,10 @@ def analizar(ruta: str, desde: float = 0.0, hasta: float = 0.0, recorte=None) ->
         "rango": {"desde": desde, "hasta": hasta} if (desde or hasta) else None,
         "recorte": list(recorte) if recorte else None,
         "trabajo": {"w": w, "h": h, "cuadros_leidos": n, "umbral_dif": round(u_dif, 5),
-                    "umbral_hist": round(u_hd, 5)},
+                    "umbral_hist": round(u_hd, 5),
+                    # Cuando mas de la mitad de los cuadros son identicos el umbral no salio del
+                    # material sino de un piso, y quien lea los cortes tiene que saberlo.
+                    "umbral_de_piso": degenerado},
         "cortes": cortes,
         "transiciones": [{"t": cortes[i], "tipo": tipos[i]} for i in range(len(cortes))],
         "ritmo": {
@@ -903,7 +972,11 @@ def analizar(ruta: str, desde: float = 0.0, hasta: float = 0.0, recorte=None) ->
         "camara": {
             "pan_px": round(mov_x, 3), "tilt_px": round(mov_y, 3),
             "zoom": round(zoom, 3), "giro": round(giro, 3),
-            "quietud": round(float((np.abs(S["mx"]) < 0.5).mean()), 3),
+            # LOS CUATRO EJES, no solo el horizontal. El clasificador por plano define "quieta" con
+            # pan, tilt, zoom y giro; este agregado usaba la misma palabra mirando solo `mx`, asi que
+            # un tilt puro de 3 px por cuadro imprimia "quieta el 100%".
+            "quietud": round(float(((np.abs(S["mx"]) < 0.5) & (np.abs(S["my"]) < 0.5)
+                                    & (np.abs(S["div"]) < 0.5) & (np.abs(S["rot"]) < 0.5)).mean()), 3),
             "reparto": {c: sum(1 for p in planos if p["camara"] == c)
                         for c in sorted(set(p["camara"] for p in planos))},
         },
@@ -919,6 +992,7 @@ def analizar(ruta: str, desde: float = 0.0, hasta: float = 0.0, recorte=None) ->
             "pendiente_espectral": round(float(S["pendiente"].mean()), 3),
             "brillo_caja": round(float(S["brillo_caja"].mean()), 4),
             "bloom_falda_mediana": round(float(np.median(S["falda"])), 4),
+            "altas_luces_p90": round(float(np.percentile(S["altas"], 90)), 5),
         },
         "estructura": {
             "perfil_radial": [round(float(v), 3) for v in anillo_medio],
@@ -933,10 +1007,17 @@ def analizar(ruta: str, desde: float = 0.0, hasta: float = 0.0, recorte=None) ->
         "texto": {
             "cobertura_media": round(float(S["txt_area"].mean()), 4),
             "cobertura_p90": round(float(np.percentile(S["txt_area"], 90)), 4),
-            "cuadros_con_texto": round(float((S["txt_area"] > 0.05).mean()), 3),
-            "ancho_p85": round(float(np.percentile(S["txt_x1"] - S["txt_x0"], 85)), 3),
-            "alto_p85": round(float(np.percentile(S["txt_alto"], 85)), 3),
-            "y_mediana": round(float(np.median((S["txt_y0"] + S["txt_y1"]) / 2)), 3),
+            "cuadros_con_texto": round(float(hayTxt.mean()), 3),
+            # SOLO LOS CUADROS QUE TIENEN TEXTO. Cuando no hay bandas, `medir()` escribe 0.5 en los
+            # cuatro bordes y 0 en el alto; promediar eso con los cuadros reales no da un valor
+            # imposible sino exactamente "centrado", asi que el fallo es mudo: un reel con el texto
+            # siempre en el tercio inferior y presente en el 40% de los cuadros imprimia "centrado en
+            # y=0.50" y la receta mandaba la palabra al centro. Dos claves de al lado ya filtraban.
+            "ancho_p85": (round(float(np.percentile((S["txt_x1"] - S["txt_x0"])[hayTxt], 85)), 3)
+                          if hayTxt.any() else None),
+            "alto_p85": round(float(np.percentile(S["txt_alto"][hayTxt], 85)), 3) if hayTxt.any() else None,
+            "y_mediana": (round(float(np.median(((S["txt_y0"] + S["txt_y1"]) / 2)[hayTxt])), 3)
+                          if hayTxt.any() else None),
             "trazo_mediano": round(float(np.median(S["trazo"][S["trazo"] > 0])) if float((S["trazo"] > 0).sum()) else 0.0, 4),
             "lineas_tipicas": round(float(np.median(S["txt_lineas"][S["txt_lineas"] > 0])) if float((S["txt_lineas"] > 0).sum()) else 0.0, 1),
         },
@@ -1004,7 +1085,7 @@ def receta(a: dict) -> dict:
             continue
         vistos.append(p["tono"])
         colores.append(p["color"])
-    curvas = [p["curva"]["gsap"] for p in fuente if p.get("curva")]
+    curvas = [p["curva"]["gsap"] for p in fuente if p.get("curva") and p["curva"].get("gsap")]
     comun = max(set(curvas), key=curvas.count) if curvas else None
 
     caja = es["caja_contenido"]
@@ -1033,22 +1114,28 @@ def receta(a: dict) -> dict:
         },
         "bloom": {
             "falda": e["bloom_falda_mediana"],
-            "lectura": ("halo ancho: bloom fuerte y umbral bajo" if e["bloom_falda_mediana"] > 0.06
-                        else ("halo medio" if e["bloom_falda_mediana"] > 0.025 else "casi sin halo")),
+            # "SIN ALTAS LUCES QUE MEDIR" NO ES "SIN HALO". Los umbrales del nucleo son absolutos
+            # (0.82 de luminancia): un material oscuro no llega nunca y la cuenta da cero en todos los
+            # cuadros. Decir "casi sin halo" ahi es afirmar algo que no se midio.
+            "lectura": ("sin altas luces que medir: nada del material pasa de 0.82 de luminancia"
+                        if e["altas_luces_p90"] < 1e-4 else
+                        ("halo ancho: bloom fuerte y umbral bajo" if e["bloom_falda_mediana"] > 0.06
+                         else ("halo medio" if e["bloom_falda_mediana"] > 0.025 else "casi sin halo"))),
             "unidad": "espesor del halo como fraccion del ancho de la caja",
         },
         "tipografia": {
             "ancho_relativo_al_cuadro": t["ancho_p85"],
             "ancho_relativo_a_la_caja": (round(t["ancho_p85"] / max(1e-3, caja[2] - caja[0]), 3)
-                                         if caja[2] > caja[0] else None),
+                                         if (t["ancho_p85"] is not None and caja[2] > caja[0]) else None),
             "alto_relativo": t["alto_p85"],
             "y": t["y_mediana"],
             "presencia": t["cuadros_con_texto"],
             "easing_dominante": comun,
             "grosor_de_trazo": t["trazo_mediano"],
             "lineas_por_plano": t["lineas_tipicas"],
-            "lectura": ("una palabra gigante centrada por plano" if t["ancho_p85"] > 0.45
-                        else "texto de apoyo, no protagonista"),
+            "lectura": ("sin texto medible" if t["ancho_p85"] is None else
+                        ("una palabra gigante centrada por plano" if t["ancho_p85"] > 0.45
+                         else "texto de apoyo, no protagonista")),
         },
         "tono_general": {
             "brillo": e["brillo_medio"],
@@ -1148,6 +1235,15 @@ def hoja(imgs: list, destino: str, cols: int = 6, ancho: int = 220):
 
 # ---------------------------------------------------------------------------- salida
 
+def _n(x, fmt="%.2f", si_no="sin medir"):
+    """Un valor que no se pudo medir se escribe como tal, nunca como 0.00.
+
+    Es la regla de todo este archivo aplicada al ultimo tramo: `t["ancho_p85"] or 0` convertia un "no
+    hay texto en ningun cuadro" en un 0.00 con cara de medicion, y `%s` sobre None imprimia "None bpm".
+    """
+    return si_no if x is None else (fmt % x)
+
+
 def tabla(a: dict) -> str:
     L = []
     i, r, c, e, t, co, es = a["info"], a["ritmo"], a["camara"], a["energia"], a["texto"], a["composicion"], a["estructura"]
@@ -1189,8 +1285,9 @@ def tabla(a: dict) -> str:
              % (es["caja_area"] * 100, es["borde_oscuro"], es["planos_de_pantalla"]))
     L.append("  TEXTO      area media %.1f%% (p90 %.1f%%) - presente en %.0f%% de los cuadros"
              % (t["cobertura_media"] * 100, t["cobertura_p90"] * 100, t["cuadros_con_texto"] * 100))
-    L.append("             ancho p85 %.2f del cuadro - alto %.2f - centrado en y=%.2f - trazo %.3f - %.0f lineas"
-             % (t["ancho_p85"], t["alto_p85"], t["y_mediana"], t["trazo_mediano"], t["lineas_tipicas"]))
+    L.append("             ancho p85 %s del cuadro - alto %s - centrado en y=%s - trazo %s - %s lineas"
+             % (_n(t["ancho_p85"]), _n(t["alto_p85"]), _n(t["y_mediana"]),
+                _n(t["trazo_mediano"], "%.3f"), _n(t["lineas_tipicas"], "%.0f")))
     L.append("  COMPOSICION %s - centro (%.2f, %.2f) - dispersion %.3f"
              % (co["lectura"], co["centro_x"], co["centro_y"], co["dispersion_x"]))
     L.append("  PALETA     " + "  ".join("%s(%.0f%%)" % (p["hex"], p["peso"] * 100) for p in a["paleta"]))
@@ -1217,8 +1314,10 @@ def tabla_planos(a: dict) -> str:
 
 def tabla_receta(rc: dict) -> str:
     L = ["", "  RECETA PARA BOVEDA", "  " + "-" * 116]
-    L.append("  ritmo       %d beats de %.2f s = %.1f s totales - %s bpm (%s) - regularidad %.2f"
-             % (rc["beats"], rc["beat_segundos"], rc["duracion_total"], rc["bpm"],
+    # El "=" de antes decia una falsedad cuando el beat sale de la autocorrelacion: beats x beat no
+    # tiene por que dar el total, porque no todos los planos duran un beat. Se separan.
+    L.append("  ritmo       %d planos - beat %s s - %.1f s totales - %s bpm (%s) - regularidad %.2f"
+             % (rc["beats"], _n(rc["beat_segundos"]), rc["duracion_total"], _n(rc["bpm"], "%.1f"),
                 rc["bpm_fuente"], rc["regularidad"]))
     L.append("  camara      velocidad %.4f del ancho/s - dominante '%s'  ->  %s"
              % (rc["camara"]["velocidad"], rc["camara"]["modo_dominante"], rc["camara"]["nota"]))
@@ -1226,13 +1325,13 @@ def tabla_receta(rc: dict) -> str:
     L.append("  fondo       %s - vineta %.2f - pendiente espectral %.2f - giro %.2f - saturacion %.2f"
              % (f["tipo"], f["vineta"], f["pendiente_espectral"], f["giro_medio"], f["saturacion"]))
     L.append("  colores     " + "  ".join(f["colores"]))
-    L.append("  bloom       halo de %.3f del ancho  ->  %s" % (rc["bloom"]["falda"], rc["bloom"]["lectura"]))
+    L.append("  bloom       halo de %s del ancho  ->  %s" % (_n(rc["bloom"]["falda"], "%.3f"), rc["bloom"]["lectura"]))
     tp = rc["tipografia"]
-    L.append("  tipografia  ancho %.2f del cuadro (%.2f de la caja util) - alto %.2f - y=%.2f - easing %s"
-             % (tp["ancho_relativo_al_cuadro"], tp["ancho_relativo_a_la_caja"] or 0,
-                tp["alto_relativo"], tp["y"], tp["easing_dominante"]))
-    L.append("              %s - trazo %.3f del ancho - %.0f linea(s) por plano"
-             % (tp["lectura"], tp["grosor_de_trazo"], tp["lineas_por_plano"]))
+    L.append("  tipografia  ancho %s del cuadro (%s de la caja util) - alto %s - y=%s - easing %s"
+             % (_n(tp["ancho_relativo_al_cuadro"]), _n(tp["ancho_relativo_a_la_caja"]),
+                _n(tp["alto_relativo"]), _n(tp["y"]), tp["easing_dominante"] or "sin medir"))
+    L.append("              %s - trazo %s del ancho - %s linea(s) por plano"
+             % (tp["lectura"], _n(tp["grosor_de_trazo"], "%.3f"), _n(tp["lineas_por_plano"], "%.0f")))
     L.append("  registro    %s (brillo %.2f, contraste %.2f)"
              % (rc["tono_general"]["registro"], rc["tono_general"]["brillo"], rc["tono_general"]["contraste"]))
     L.append("  transiciones " + ", ".join("%s x%d" % (k, v) for k, v in rc["transiciones"].items()))
@@ -1269,6 +1368,27 @@ def main():
 
     if not os.path.exists(ruta):
         print("no existe: %s" % ruta)
+        raise SystemExit(2)
+
+    # VALIDAR EL RECORTE ANTES DE CONSTRUIR NADA. Con `x1 < x0`, el `max(1e-6, x1-x0)` de `medir`
+    # convertia un divisor negativo en 1e-6 y la proporcion se multiplicaba por ~800.000: el alto de
+    # trabajo daba 72 millones y las ventanas de Hann se reservaban con ese alto, todo antes de que
+    # ffmpeg arrancara. En esta maquina eso son 23 GB de pedido, o sea el cuelgue que este repo tiene
+    # documentado en tres lugares. Y con el eje Y invertido el sintoma era mudo: h=2, ffmpeg fallaba
+    # con el stderr en DEVNULL y el error culpaba al video en vez del argumento.
+    if a.recorte:
+        x0, y0, x1, y1 = a.recorte
+        malos = []
+        if not (0 <= x0 < x1 <= 1):
+            malos.append("X (%.3f a %.3f)" % (x0, x1))
+        if not (0 <= y0 < y1 <= 1):
+            malos.append("Y (%.3f a %.3f)" % (y0, y1))
+        if malos:
+            print("--recorte va X0 Y0 X1 Y1 en fracciones de 0 a 1, y cada par tiene que ir de menor a")
+            print("mayor. Esta mal: " + ", ".join(malos))
+            raise SystemExit(2)
+    if a.rango and not (a.rango[1] > a.rango[0] >= 0):
+        print("--rango va T0 T1 en segundos, con T1 mayor que T0.")
         raise SystemExit(2)
 
     d0, d1 = (a.rango or (0.0, 0.0))
