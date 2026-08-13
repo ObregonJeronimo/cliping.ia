@@ -203,10 +203,17 @@ investigarlos.
   sobre un muro anti-bot o un error del CDN), `eco-check` (la misma frase no sale en dos escenas) y
   `boveda-check` (una plantilla de Bóveda cuenta los seis tiempos, en orden, y se arma también con una
   página que no dio casi nada — ver `docs/BOVEDA.md`).
-- **Guard completo (~15 min), sólo antes de pushear:** `npm run gates`. Tiene que dar **46 OK / 0 FAIL**.
+- **Y una compuerta nueva que no es rápida pero tapa un agujero que tenían las tres:**
+  `boveda-obturador-check` construye la MISMA plantilla dos veces y la recorre entera, una con una
+  muestra por cuadro y otra con las cuatro del obturador. Al mismo instante tienen que estar en el mismo
+  estado. Encontró que **las 31 plantillas acumulaban** —de 1,4 a 38,3 unidades de mundo en un cuadro
+  que mide 5,6 de ancho— porque `alSeek` sumaba sobre claves cuyo tween ya había terminado y gsap no
+  reescribe. No lo cazaba nada: `boveda-check` llama a `alSeek` UNA vez, la sonda una por beat y las
+  fotos 24 en toda la pieza. Sólo se veía en el video, y se veía como "se fue de cuadro", sin error.
+- **Guard completo (~17 min), sólo antes de pushear:** `npm run gates`. Tiene que dar **47 OK / 0 FAIL**.
 
   **`npm run gates` ahora corre las compuertas DE A UNA** (`tools/gates-partido.mjs`), y eso no es una
-  versión reducida: son las mismas 44, en el mismo orden, leídas del mismo `gates:crudo`. Lo único que
+  versión reducida: son las mismas 45, en el mismo orden, leídas del mismo `gates:crudo`. Lo único que
   cambia es el agrupamiento — la versión encadenada las mete a todas en un proceso de npm, así que la
   memoria se acumula hasta la última y el pico llega a **3001 MB**. De a una el pico es el de la
   compuerta más cara, y el sistema recupera la memoria al cerrar cada proceso. Medido con un juego

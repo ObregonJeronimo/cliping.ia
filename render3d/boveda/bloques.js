@@ -56,6 +56,10 @@ import { LOOK, hex, nivel, nivelTexto, recortesDe, topeNitido, b } from '../demo
 const conMargen = (anchoMax, margen) =>
   (anchoMax == null || margen == null) ? anchoMax : anchoMax * (margen / 0.88)
 import { D, sello, repartirFrases } from '../demo/datos.js'
+// `sumador` vive en movimiento.js porque el problema que resuelve es de movimiento, no de bloques, y
+// porque ahi esta escrita la historia entera de las tres versiones. No hay ciclo: movimiento.js no
+// importa nada de aca.
+import { sumador } from './movimiento.js'
 
 // Escribir una malla de `letras`: la mascara la barre en vez de encenderla. `1.04` y no `1.0` porque el
 // borde suave de la mascara se come el ultimo glifo si se para justo en el final.
@@ -432,12 +436,23 @@ export function bloquePedido(op) {
       // durante los 0.7 beats de la apertura la pastilla ya valia ~1, o sea que el CTA aparecia a ancho
       // completo de golpe en vez de abrirse. Sin error y sin nada raro en el cuadro.
       //
-      // Multiplicar compone: el tween pone el valor y el latido lo modula. Y multiplicar es seguro
-      // —no acumula— justamente porque hay un tween que lo restablece en cada submuestra, que es la
-      // otra mitad de la regla que documenta `movimiento.js:respirar`.
+      // ...Y MULTIPLICAR A SECAS TAMPOCO, que es la tercera version de esta misma linea.
+      //
+      // Aca decia: "multiplicar es seguro porque hay un tween que lo restablece en cada submuestra".
+      // El tween existe —el `fromTo` de `escribir`— pero dura 0,75 beats. Terminado, gsap no vuelve a
+      // escribir `scale`: no tiene por que. Los otros veintisiete beats de la pieza el `*=` se
+      // multiplica por su propio resultado, cuatro veces por cuadro. La pastilla del CTA de `vortice`
+      // llegaba a `scale.y` 6,44 en el beat 30,8 — diez veces mas alta que su texto, en el ultimo
+      // tiempo de la pieza.
+      //
+      // La salida es la misma que en `movimiento.js:respirar`, y por la misma razon: se recuerda lo que
+      // este latido dejo escrito. Si al volver el valor es exactamente ese, nadie lo toco y la base es
+      // la de antes; si es otro, lo escribio el tween y esa es la base nueva. Compone con el tween sin
+      // pisarlo y sin acumular. Lo comprueba `tools/boveda-obturador-check.mjs`.
+      const { aplicarPor } = sumador(pastilla)
       return (t) => {
-        pastilla.scale.y *= 1 + Math.sin(t * 3.1) * a
-        pastilla.scale.x *= 1 + Math.sin(t * 3.1) * a * 0.45
+        aplicarPor('scale', 'y', 1 + Math.sin(t * 3.1) * a)
+        aplicarPor('scale', 'x', 1 + Math.sin(t * 3.1) * a * 0.45)
       }
     },
   }

@@ -318,6 +318,52 @@ export function capa(escena, n, sep, hacer) {
 // mueva. Esto le da una deriva continua que no se lee como animacion sino como que el objeto ESTA VIVO.
 // Va en `alSeek` y no en tweens: tiene que evaluarse en cada submuestra del obturador o sale a saltos
 // justo donde el obturador deberia barrerlo.
+// SUMARLE ALGO A LO QUE ESCRIBIO LA LINEA DE TIEMPO, SIN PISARLA Y SIN ACUMULAR.
+//
+// Es el problema mas sutil de este motor y se equivoco tres veces, cada una arreglando la anterior:
+//
+//   1. ASIGNAR.     `seek()` corre `tl.time(t)` y despues `alSeek(t)`, asi que asignar pisa el tween.
+//                   La pagina de `atrio` perdio su entrada y su giro; el CTA aparecia abierto de golpe.
+//   2. SUMAR (`+=`) Arregla lo anterior y rompe otra cosa: gsap no vuelve a escribir una propiedad
+//      o MULTIPLICAR  cuyo tween ya termino —no tiene por que— y el video busca la linea de tiempo
+//      (`*=`).      CUATRO veces por cuadro para el obturador. Fuera de la ventana del tween el valor
+//                   se suma sobre si mismo ~120 veces por segundo. Medido con
+//                   `tools/boveda-obturador-check.mjs`: las 31 plantillas divergian, de 1,4 a 38,3
+//                   unidades de mundo, en un cuadro que mide 5,6 de ancho.
+//   3. ESTO.        Se recuerda lo que se dejo escrito. Si al volver el valor es exactamente ese,
+//                   nadie lo toco y la base sigue siendo la de antes; si es otro, lo escribio un tween
+//                   en este mismo seek y esa es la base nueva.
+//
+// La comparacion por igualdad exacta de flotantes es deliberada y es lo que hace que esto funcione:
+// no se pregunta "cambio mucho" sino "lo escribio alguien". Si nadie escribio, los bits son los
+// mismos. Y no hace falta saber de antemano que ejes anima la plantilla — que es justo lo que no se
+// puede saber desde aca.
+//
+// Devuelve `aplicar(campo, eje, delta)` para sumar y `aplicarPor(campo, eje, factor)` para multiplicar.
+export function sumador(obj) {
+  const memo = {}
+  const base = (clave, actual) => {
+    const m = memo[clave]
+    return (m && actual === m.salida) ? m.base : actual
+  }
+  return {
+    aplicar(campo, eje, delta) {
+      const clave = campo + eje
+      const b0 = base(clave, obj[campo][eje])
+      const salida = b0 + delta
+      obj[campo][eje] = salida
+      memo[clave] = { base: b0, salida }
+    },
+    aplicarPor(campo, eje, factor) {
+      const clave = campo + eje
+      const b0 = base(clave, obj[campo][eje])
+      const salida = b0 * factor
+      obj[campo][eje] = salida
+      memo[clave] = { base: b0, salida }
+    },
+  }
+}
+
 export function respirar(obj, op) {
   op = op || {}
   const a = op.amp != null ? op.amp : 0.12
@@ -332,15 +378,58 @@ export function respirar(obj, op) {
   // los dos quedaban anulados. La pieza no fallaba ni se veia rota — simplemente la pagina aparecia
   // quieta en su sitio final, o sea justo lo que la regla 2 prohibe, en la plantilla de referencia.
   //
-  // Sumar es correcto y no hace falta acumular nada: cada submuestra del obturador vuelve a evaluar la
-  // linea de tiempo antes de llamar aca, asi que el valor de partida siempre es el del tween.
+  // ...Y SUMAR A SECAS TAMPOCO ERA CORRECTO, que es la segunda mitad de esta historia y costo mas que
+  // la primera.
+  //
+  // Aca decia: "sumar no acumula porque cada submuestra del obturador vuelve a evaluar la linea de
+  // tiempo antes de llamar aca, asi que el valor de partida siempre es el del tween". Eso vale MIENTRAS
+  // EL TWEEN CORRE. Terminado el tween, gsap no vuelve a escribir la propiedad aunque se siga buscando
+  // la linea de tiempo: no tiene por que, el valor ya es el final. Y `entra(desde:'fondo')` solo anima
+  // `z` y la escala, asi que `rotation.x`, `rotation.z` y `position.y` de ese bloque no los anima NADIE
+  // en toda la pieza.
+  //
+  // O sea que el `+=` se sumaba sobre su propio resultado, cuatro veces por cuadro, ~120 veces por
+  // segundo. Medido con `tools/boveda-obturador-check.mjs`: en `vortice` el estado a los 4,8 s difiere
+  // en 18,97 unidades de mundo segun cuantas muestras se hayan tomado para llegar. Un bloque a 19
+  // unidades de donde deberia estar, en un cuadro que mide 5,6 de ancho, es un bloque que no esta.
+  //
+  // No lo cazaba nada: `boveda-check` llama a `alSeek` UNA vez, la sonda una por beat y las fotos 24 en
+  // toda la pieza. Solo aparecia en el video, y aparecia como "se fue" sin ningun error. Por eso ahora
+  // hay una compuerta que compara una pasada de una muestra por cuadro contra una de cuatro.
+  //
+  // LA SALIDA, que tiene que servir para los dos casos a la vez: se recuerda lo que ESTE respirar dejo
+  // escrito. Si al volver el valor es exactamente ese, nadie lo toco y la base es la de antes; si es
+  // otro, lo escribio un tween en este mismo seek y esa es la base nueva. Ni pisa ni acumula, y no hay
+  // que saber de antemano que ejes anima la plantilla — que es justo lo que nadie puede saber desde
+  // aca.
+  // ...Y NI SIQUIERA `sumador` ALCANZA SI SE ESCRIBE DONDE TAMBIEN ESCRIBE UN TWEEN. Cuarta version, y
+  // esta es la que la compuerta deja pasar.
+  //
+  // `sumador` arregla la acumulacion, pero queda un efecto mas fino y peor: `tl.to(obj.rotation, {y})`
+  // NO guarda su valor de partida al crearse sino la primera vez que se lo renderiza. Si en ese
+  // instante la respiracion ya sumo su delta, el tween arranca desde un punto que incluye la
+  // respiracion — y COMO el primer renderizado cae en una submuestra distinta segun cuantas haya, la
+  // trayectoria entera del tween cambia. Medido en `duna`: la misma pieza da 0.443 con una muestra por
+  // cuadro y 0.528 con cuatro, a partir del segundo 11,9 y por el resto del tiempo del tween.
+  //
+  // La unica salida limpia es no compartir la propiedad. La respiracion pasa a un grupo INTERNO que se
+  // mete entre `obj` y sus hijos: los tweens siguen escribiendo `obj` como siempre y la respiracion
+  // escribe el interno, que no lo toca nadie. Asignar ahi es ademas lo correcto —no hay nada que
+  // preservar— asi que no hace falta ni `sumador` ni recordar bases.
+  //
+  // LO QUE HAY QUE SABER PARA USARLO: los hijos que `obj` tenga DESPUES de esta llamada quedan afuera
+  // del grupo interno y no respiran. En las 31 plantillas `respirar()` se llama cuando el bloque ya
+  // esta armado, que es lo natural; si alguna vez hace falta al reves, se le pasa el grupo interno.
+  const gi = new THREE.Group()
+  while (obj.children.length) gi.add(obj.children[0])
+  obj.add(gi)
   return (t) => {
-    obj.position.x += Math.sin(t * 0.61 + f) * a * 0.7
-    obj.position.y += Math.sin(t * 0.74 + f * 1.7) * a
-    obj.position.z += Math.sin(t * 0.43 + f * 2.3) * a * 0.5
-    obj.rotation.x += Math.sin(t * 0.51 + f) * g * 0.5
-    obj.rotation.y += Math.sin(t * 0.39 + f * 1.3) * g
-    obj.rotation.z += Math.sin(t * 0.29 + f * 0.7) * g * 0.35
+    gi.position.set(Math.sin(t * 0.61 + f) * a * 0.7,
+      Math.sin(t * 0.74 + f * 1.7) * a,
+      Math.sin(t * 0.43 + f * 2.3) * a * 0.5)
+    gi.rotation.set(Math.sin(t * 0.51 + f) * g * 0.5,
+      Math.sin(t * 0.39 + f * 1.3) * g,
+      Math.sin(t * 0.29 + f * 0.7) * g * 0.35)
   }
 }
 

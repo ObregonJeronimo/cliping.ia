@@ -318,6 +318,7 @@ Cuatro cosas de esta plantilla son nuevas en el motor y sirven para la treinta y
 | herramienta | qué dice | cuesta |
 |---|---|---|
 | `node tools/boveda-check.mjs` | **sí o no**: el contrato se cumple. Corre en el guard. | ~4 s, no renderiza |
+| `node tools/boveda-obturador-check.mjs` | **sí o no**: ninguna plantilla acumula entre submuestras del obturador. Corre en el guard. | ~2 min, no renderiza |
 | `node tools/boveda-sonda.mjs <id> [aire]` | cuántos beats quedan **sin contenido**, y dónde | ~2 s, no renderiza |
 | `python backend/boveda_foto.py <id> --tira` | los **píxeles** de seis beats repartidos | ~40 s, renderiza cuadros sueltos |
 | `python backend/boveda.py <url> --plantilla <id>` | la pieza entera, con obturador y ritmo | 1-3 min |
@@ -360,6 +361,9 @@ Todos están comentados en el archivo donde viven; acá está el índice.
 | `+=` en `alSeek` sobre un eje **sin** tween | acumula en cada submuestra: el motor deja de ser determinista | `nucleo.js` |
 | la sonda medía "delante" contra -z del mundo | 87% de beats mudos informados sobre una plantilla sana | `boveda-sonda.mjs` |
 | la sonda contaba `uProg` sin mirar `visible` | llamaba defecto a `sale()` funcionando | `boveda-sonda.mjs` |
+| `+=` / `*=` en `alSeek` fuera de la ventana de su tween | **las 31 plantillas** divergían de 1,4 a 38,3 unidades de mundo | `movimiento.js:sumador` |
+| `respirar` escribía la misma propiedad que un `to()` posterior | el tween capturaba su arranque contaminado, distinto según la submuestra | `movimiento.js:respirar` |
+| el instrumento rebobinaba para comparar | 12 falsos FAIL: gsap recaptura al retroceder | `boveda-obturador-check.mjs` |
 | `R.paleta[1]` usado como color | `[object Object]` → **blanco**: seis fotos en 255 exacto, sin un error | `vortice.js` · `recetas.js:colorDePeso` |
 | el halo medido aplicado como **factor** del bloom del aire | sobre `nocturno` la marca queda sin contorno | `vortice.js` |
 | `transmission` no refracta lo transparente | el texto y la tela **desaparecen** detrás del vidrio | `nucleo.js:iridiscente` |

@@ -36,7 +36,7 @@
 //   29  PEDIDO    la hoja se endereza y el CTA queda en su tercio inferior.
 
 import { THREE, mate, barra, iluminar, campoDegradado } from '../nucleo.js'
-import { entra, sale, respirar, juntar, anchoADistancia } from '../movimiento.js'
+import { entra, sale, respirar, juntar, anchoADistancia, sumador } from '../movimiento.js'
 import { bloqueMarca, bloquePromesa, bloquePrueba, bloquesCifra, bloquesFrase, bloquePedido } from '../bloques.js'
 import { colorDePeso, grisDePeso, aclarar } from '../recetas.js'
 import { LOOK, nivel, E, b } from '../../demo/kit.js'
@@ -259,16 +259,22 @@ export function build(ctx) {
   // unico que da profundidad, y es tambien lo que hace que la pieza no se sienta congelada: el ojo
   // registra el movimiento relativo mucho antes que el absoluto.
   //
-  // Se SUMA sobre la rotacion porque el tiempo de PRUEBA tuenea `gHoja.rotation.y`: asignar ahi
-  // anularia el giro entero. Es la regla que verifica `boveda-check`, y aca cae del lado de sumar.
+  // SE SUMA CON `sumador`, no con `+=`, y la diferencia es todo.
+  //
+  // El tiempo de PRUEBA tuenea `gHoja.rotation.y` (l.211 y 217), asi que asignar anularia el giro: eso
+  // ya estaba bien visto. Lo que faltaba es que `rotation.x` no lo anima NADIE y que el tween de `y`
+  // dura 2,6 beats de 34 — fuera de esa ventana gsap no reescribe nada y el `+=` se sumaba sobre su
+  // propio resultado cuatro veces por cuadro. `tools/boveda-obturador-check.mjs` lo midio en 22,58
+  // radianes de deriva sobre `Group@1 rot.x`, que es esta hoja: tres vueltas y media de mas.
+  const { aplicar: sumHoja } = sumador(gHoja)
   const alSeek = juntar(latido, (t) => {
     uCampo.uT.value = t
     const k = est.k
     camara.position.set(Math.sin(t * 0.11) * DERIVA, Math.sin(t * 0.083 + 1.1) * DERIVA * 0.7,
       Z_CAM + RECORRIDO * 0.5 - RECORRIDO * k)
     camara.rotation.set(0, 0, Math.sin(t * 0.07) * 0.004)
-    gHoja.rotation.x += Math.sin(t * 0.13) * 0.013
-    gHoja.rotation.y += Math.sin(t * 0.09 + 0.7) * 0.010
+    sumHoja('rotation', 'x', Math.sin(t * 0.13) * 0.013)
+    sumHoja('rotation', 'y', Math.sin(t * 0.09 + 0.7) * 0.010)
     // La sombra sigue a la hoja con un 0.62 de ganancia y un desfase: mas que eso y parece pegada,
     // menos y parece de otro objeto.
     gSombra.rotation.x = gHoja.rotation.x * 0.62
