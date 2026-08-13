@@ -576,3 +576,88 @@ proyecto avanza, esto se vendorea o se forkea.
 
 Las cuatro pruebas suman ~4 h. La de 7 días alcanza de sobra para correr **la que decide** antes de
 poner un peso.
+
+---
+
+# PARTE IV — la primera vez que esto toca la realidad (2026-08-06)
+
+After Effects **26.3x87** instalado en la PC de Thiago. Windows 10, que Adobe ya no soporta: el
+instalador avisó que las futuras versiones no se van a poder instalar y que el rendimiento podría
+verse afectado. **Queda anotado como primer sospechoso**: si AE se cuelga o va raro, es candidato
+antes que un bug nuestro. Sin esta nota, un AE inestable se vería igual que un defecto propio, porque
+los dos se manifiestan como un timeout mudo.
+
+---
+
+## 19. `[CERRADA CON EJECUCIÓN]` P1 — el canal existe y anda
+
+La primera sonda: cinco líneas de ES3 que escriben un archivo con la versión de AE y la hora.
+
+**El canal funciona.** `AfterFX.exe -r` llega a la instancia **que ya estaba abierta**, ejecuta el
+script y escribe el archivo. Deja de ser "resuelto en el papel".
+
+### La latencia, que es el número que decide si el bucle es viable
+
+Cinco corridas seguidas, midiendo desde antes de lanzar hasta que el archivo cambia:
+
+| corrida | lanzador | archivo | diferencia |
+|---|---|---|---|
+| 1 | 1066 ms | 1106 ms | 40 |
+| 2 | 1015 | 1015 | 0 |
+| 3 | 1014 | 1015 | 1 |
+| 4 | 1026 | 1026 | 0 |
+| 5 | 1013 | 1014 | 1 |
+
+**Mediana 1015 ms. Muy estable: entre 1014 y 1106.**
+
+Lo que significa en la práctica: **cien llamadas son casi dos minutos de puro transporte.** El segundo
+entero es arranque de proceso, no ejecución — el script tarda 2 ms. Consecuencia de diseño: **hay que
+agrupar operaciones en una sola llamada**, no mandarlas de a una. Es exactamente el argumento que hace
+buena a la `apply_edits` de Raylight, que acepta hasta 50 operaciones por llamada.
+
+### `-r` es ASÍNCRONO. Resuelto, y casi me equivoco
+
+Los dos frentes de la investigación se contradecían: uno decía síncrono, otro fire-and-forget.
+
+**Y en las cinco corridas de arriba no se puede distinguir**: el archivo aparece a los 0-1 ms de que
+vuelve el lanzador. Estuve a punto de concluir "asíncrono" por los 40 ms de la primera corrida, que
+son ruido de primera ejecución. **Con un script que tarda 2 ms, sync y async se ven idénticos.**
+
+La prueba que sí lo distingue es un script LENTO — uno que duerme 3 segundos adentro de AE:
+
+```
+el lanzador VOLVIO a los   1096 ms
+el script TERMINO a los    3502 ms
+```
+
+**El lanzador vuelve mientras el script sigue corriendo.** Es asíncrono, sin ambigüedad.
+
+**Consecuencia dura: el buzón de archivos es obligatorio.** Leer el resultado apenas vuelve el proceso
+devuelve un archivo a medio escribir — y eso no falla ruidosamente, falla con datos corruptos
+intermitentes, que es la peor clase.
+
+**Y la lección de método, que vale más que el dato:** medí lo correcto con el instrumento equivocado.
+Un script rápido no puede responder una pregunta sobre sincronía. Es la misma familia de error que las
+cajas envolventes contra los vértices de la semana pasada: el número era real y la conclusión habría
+sido falsa.
+
+## 20. `[CERRADA]` La preferencia de escritura: se lee, pero no bloquea lo que yo creía
+
+La clave es `Pref_SCRIPTING_FILE_NETWORK_SECURITY` en `Main Pref Section`, y **se lee bien**: devolvió
+`0` con la casilla desmarcada y `1` después de marcarla. O sea que **el MCP va a poder
+autodiagnosticarse** — preguntarle a AE si la preferencia está puesta, en vez de adivinar.
+
+**Pero con la preferencia en 0 el script escribió el archivo igual.** O sea que esa preferencia **no
+gobierna `File.write()`** en AE 2026 — probablemente sólo el acceso a red.
+
+Importa para el diagnóstico: uno de los cuatro modos de falla que el crítico listó como
+indistinguibles (*"la preferencia apagada → timeout"*) **no es un modo de falla para escribir
+archivos**. Queda por ver si lo es para red.
+
+## 21. Lo que sigue
+
+Prueba 2 (los fallos distinguibles) y prueba 3 (la que decide: el mismo movimiento en AE y en el
+motor, ¿son la misma imagen?).
+
+Y una nota para la futura skill, del tipo que quiero que la llene: **agrupar operaciones**. No es una
+preferencia de estilo — sale de que el transporte cuesta 1015 ms y la ejecución 2 ms.
