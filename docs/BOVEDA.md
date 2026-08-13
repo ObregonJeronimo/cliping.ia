@@ -193,6 +193,18 @@ Tres decisiones que definen el registro y que conviene copiar al escribir la cua
 - **El contraste hay que ponerlo a mano.** La iluminación física devuelve ~⅓ del albedo, y esa
   compresión junta todo lo que estaba cerca: `nivel(0.02)` contra `nivel(0.09)` se parecen poco en el
   hex y mucho en pantalla. En una plantilla con veinte objetos no importa; acá es la única herramienta.
+- **Y el fondo va al lado OPUESTO DEL SUJETO, que no siempre es el mismo.** Es el error que más veces
+  cometí en este registro, en las dos direcciones:
+  - `folio`: el sujeto es una **hoja clara** → el cuarto tiene que ir oscuro.
+  - `hilo`: el sujeto es la **tipografía**, que `nivelTexto` pinta oscura → el campo tiene que ir claro.
+
+  Copiar la corrección de una en la otra da el defecto inverso. `nivelTexto` garantiza contraste contra
+  la **paleta de la página**, nunca contra lo que la plantilla resolvió poner detrás — eso es siempre
+  responsabilidad de la plantilla.
+
+| id | familia | beats | espacio · vuelo |
+|---|---|---|---|
+| `hilo` | sobrio | 36 | una línea que se dibuja sola, seis formas · casi sin vuelo |
 
 Que dos usen el mismo vuelo y se vean distintas es la prueba de que **el vuelo no es la plantilla**:
 `monolito` y `nucleo` son las dos órbitas y en una el objeto es sólido y la cámara lo rodea, en la otra

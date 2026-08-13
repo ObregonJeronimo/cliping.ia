@@ -67,10 +67,11 @@ import * as duna from './plantillas/duna.js'
 import * as folio from './plantillas/folio.js'
 import * as halo from './plantillas/halo.js'
 import * as pliegue from './plantillas/pliegue.js'
+import * as hilo from './plantillas/hilo.js'
 
 // EL ORDEN ES EL DE PRESENTACION en el estudio, y no es alfabetico: adelante van las que muestran la
 // pagina del cliente como objeto protagonico, que es lo que ninguna plantilla generica puede fingir.
-export const PLANTILLAS = [atrio, reticula, pasillo, vitral, deriva, tectonica, monolito, nucleo, eclipse, cardumen, cinta, bandada, escalera, telar, marea, prisma, archivo, torre, panal, pendulo, imprenta, orbita, vitrina, duna, folio, halo, pliegue]
+export const PLANTILLAS = [atrio, reticula, pasillo, vitral, deriva, tectonica, monolito, nucleo, eclipse, cardumen, cinta, bandada, escalera, telar, marea, prisma, archivo, torre, panal, pendulo, imprenta, orbita, vitrina, duna, folio, halo, pliegue, hilo]
 
 export const porId = (id) => PLANTILLAS.find(p => p.meta && p.meta.id === id) || null
 
