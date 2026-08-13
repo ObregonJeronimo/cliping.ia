@@ -477,3 +477,102 @@ Adobe); lo caro es el exportador, y que el runtime tenga que reimplementar la se
 
 Con la frase que hay que releer antes de arrancar: **el subconjunto exportable es exactamente el
 subconjunto que NO hace que se vea caro.**
+
+---
+
+# PARTE III — lo que se construyó y se verificó sin AE (2026-08-06)
+
+Tres cosas, mientras After Effects no está instalado. Las tres verificadas corriendo, no razonadas.
+
+## 15. `[HECHO]` La compuerta ES3 — `tools/ae/es3-check.mjs`
+
+Caza JavaScript moderno antes de mandarlo a AE. Probada en las dos direcciones, que es lo que hace que
+una compuerta valga:
+
+- Un archivo escrito como lo escribiría yo por defecto: **16 defectos cazados**, salida 1.
+- Un archivo en ES3 válido: **verde**, salida 0.
+
+**El falso positivo que tuve que arreglar, porque es la lección.** La primera versión sacaba las
+cadenas reemplazándolas por espacios, así que `["uno", "dos"]` quedaba como `[     ,      ]` y disparaba
+la regla de coma final: **acusaba a código ES3 perfectamente válido.** Ahora reemplaza por `x`, que
+conserva la estructura y pierde el contenido. Una compuerta que acusa en falso se aprende a ignorar, y
+después no ve el defecto de verdad — es lo mismo que dejó escrito `encuadre-check` en su cabecera.
+
+Es un **escáner, no un parser**, y está dicho en el archivo. Con `acorn` en `ecmaVersion: 3` sería
+estrictamente mejor; no se hizo así porque no hay acorn en el repo y no se quiso agregar dependencia.
+
+## 16. `[HECHO]` El conversor de curvas — `tools/ae/curvas.mjs`
+
+**Es la pieza central del paso 2** y ahora está verificada.
+
+La cuenta: influencia es el porcentaje del intervalo de tiempo que ocupa la manija (la X), y velocidad
+por `dt/dv` es la pendiente (de ahí sale la Y). Son el mismo bezier en otras coordenadas.
+
+```
+x1 = i1/100                  y1 = (s1 · dt/dv) · x1
+x2 = 1 − i2/100              y2 = 1 − (s2 · dt/dv) · (i2/100)
+```
+
+Lo que se midió corriendo:
+
+| prueba | resultado |
+|---|---|
+| Easy Ease → bezier canónico `(0.3333, 0, 0.6667, 1)` | error **1.11e-16** |
+| Mi evaluador contra **GSAP CustomEase**, 6 casos × 200 muestras | error máximo **5.8e-4** |
+| Overshoot (velocidad 260 → `y1 = 1.04`) | reproducido |
+| `dv = 0` | devuelve lineal y lo **marca** como degenerado |
+
+**Qué significa: el motor web puede consumir curvas de AE sin escribir un interpolador propio.** Se le
+pasa la cadena a `CustomEase` y listo.
+
+Y queda escrito dónde deja de ser exacta: trayectorias espaciales curvas (ahí el ease gobierna el
+avance por largo de arco, no por eje) y expresiones.
+
+## 17. `[HECHO]` Auditoría de la dependencia — y cambia la recomendación
+
+El crítico marcó que el plan iba a depender de un paquete que nadie miró. Miré los dos, con datos de
+npm:
+
+| | `@kumoproductions/mcp-aftereffects` | `after-effects-mcp` (a-y-ibrahim) |
+|---|---|---|
+| versión | 0.2.0 | **1.11.1** (8 versiones desde el 07/07) |
+| **Node que pide** | **>= 24** | **>= 18** |
+| SDK de MCP | `@modelcontextprotocol/sdk` ^1.29 | `~1.9.0` |
+| última publicación | 2026-08-12 | **2026-08-13** |
+| licencia | MIT | MIT |
+
+**Las dos preguntas del crítico, contestadas:**
+
+1. **¿Contra qué era del protocolo están escritos?** Los dos usan `@modelcontextprotocol/sdk` de la
+   **línea v1**, que es la era *legacy*. Y el Claude Code de esta PC es un cliente legacy. **Legacy con
+   legacy funciona**: no hay desajuste de protocolo. El riesgo que el crítico marcó como "verificación
+   de dos minutos que nadie hizo" no existe.
+
+2. **¿Node?** Acá está el dato que decide: tenemos **Node 20.16.0**. El de kumoproductions pide **>= 24**
+   — no corre sin actualizar Node, y actualizar Node toca el motor 3D, Playwright y el build. El de
+   a-y-ibrahim pide **>= 18**: **corre tal cual**.
+
+**Recomendación, corregida respecto de lo que decía el informe:** `after-effects-mcp` de a-y-ibrahim.
+No sólo tiene las herramientas que importan (`execute-script` para no tener techo, y
+`see-frame`/`contact-sheet` para el bucle visual): además **es el que corre en el Node que tenemos** y
+el que tiene ocho versiones publicadas en cinco semanas contra 0.2.0 del otro.
+
+Queda un `[ABIERTO]` que sólo se puede cerrar con AE instalado: **si instala algo adentro de AE** y
+cómo. Y una advertencia de método: "MIT y en npm" sigue sin ser "mantenido para siempre". Si el
+proyecto avanza, esto se vendorea o se forkea.
+
+---
+
+## 18. Estado del tablero
+
+| pieza | estado |
+|---|---|
+| Compuerta ES3 | **hecha y verificada** |
+| Conversor de curvas | **hecho y verificado contra GSAP** |
+| Auditoría de la dependencia | **hecha** — gana a-y-ibrahim, corre en nuestro Node |
+| Instalar AE | **bloqueado — depende de Thiago.** Prueba de 7 días alcanza para las 4 pruebas |
+| Precio de la API de Adobe en la nube | **bloqueado — sólo lo puede preguntar Thiago** |
+| Pruebas 1 a 4 | esperando AE |
+
+Las cuatro pruebas suman ~4 h. La de 7 días alcanza de sobra para correr **la que decide** antes de
+poner un peso.
