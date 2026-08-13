@@ -56,7 +56,7 @@ def bajar(origen, destino):
     # que se mide aca. `merge_output_format` evita quedarse con un webm que despues ffmpeg lea distinto.
     r = correr([sys.executable, '-m', 'yt_dlp', '-f',
                 'bestvideo[height<=1080]+bestaudio/best[height<=1080]/best',
-                '--merge-output-format', 'mp4', '-o', str(salida), origen])
+                '--merge-output-format', 'mp4', '--no-playlist', '-o', str(salida), origen])
     if not salida.exists():
         print(r.stderr[-1500:] if r.stderr else 'yt-dlp no dejo archivo')
         sys.exit(1)
