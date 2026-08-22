@@ -331,14 +331,55 @@ var G = (function () {
       var vieP = prop.keyTime(1) * FPS, vieU = prop.keyTime(prop.numKeys) * FPS;
       var nueP = lista[0][0], nueU = lista[lista.length - 1][0];
       var pisa = (nueP < vieU - 0.5) && (nueU > vieP + 0.5);
+
+      // PERO SOLO ES PELIGROSO SI QUEDA UNA CLAVE VIEJA QUE ESTA LISTA NO REDEFINE.
+      //
+      // La primera version de este guardia tiraba con solo ver los rangos superpuestos, y eso reprobo
+      // un control POSITIVO de la propia biblioteca: `debeAndar("claves lineales normales")` escribe
+      // 0-110 sobre una propiedad que traia claves en 0 y 10, y las dos quedan REDEFINIDAS por la lista
+      // nueva. Ahi no hay dos juegos peleando: hay uno que reemplaza al otro entero.
+      //
+      // Lo que rompe es la clave que sobrevive. `setValueAtTime` pisa las que coinciden en tiempo y
+      // deja las demas, y una clave vieja en medio de un tramo nuevo es la que queda con un tipo de
+      // interpolacion que la lista nueva nunca eligio. Asi que la pregunta correcta no es "se
+      // superponen los rangos" sino "queda alguna clave vieja huerfana".
+      var huerfana = -1;
       if (pisa) {
+        var kv, tv, jn, hay;
+        for (kv = 1; kv <= prop.numKeys; kv++) {
+          tv = prop.keyTime(kv) * FPS;
+          hay = false;
+          for (jn = 0; jn < lista.length; jn++) {
+            if (Math.abs(lista[jn][0] - tv) < 0.5) { hay = true; break; }
+          }
+          if (!hay) { huerfana = Math.round(tv); break; }
+        }
+      }
+      if (pisa && huerfana >= 0) {
         throw new Error("dos juegos de claves se pisan" + (dondeEstoy ? " en " + dondeEstoy : "") +
                         ": esta propiedad ya tenia claves entre los cuadros " + Math.round(vieP) +
                         " y " + Math.round(vieU) + ", y estas van de " + nueP + " a " + nueU + ". " +
-                        "AE mezcla los tipos de interpolacion en la union y el tramo queda lineal de " +
-                        "un lado y bezier del otro: no se ve en AE y el exportador lo rechaza despues, " +
-                        "sin decir quien lo escribio. Escribi UN solo juego con todas las claves, o " +
-                        "sacale a esta capa el gesto que ya cubre el otro.");
+                        "y la del cuadro " + huerfana + " no la redefinis. AE mezcla los tipos de " +
+                        "interpolacion en la union y el tramo queda lineal de un lado y bezier del " +
+                        "otro: no se ve en AE y el exportador lo rechaza despues, sin decir quien lo " +
+                        "escribio. Escribi UN solo juego con todas las claves, o sacale a esta capa el " +
+                        "gesto que ya cubre el otro.");
+      }
+    }
+
+    // LOS NOMBRES DE CURVA SE VALIDAN ANTES DE ESCRIBIR NADA, para que `claves()` sea TODO O NADA.
+    //
+    // Estaban validados adentro del bucle que aplica las influencias, o sea DESPUES de haber escrito
+    // las claves. Una curva mal tipeada tiraba dejando la propiedad a medio escribir, y esa basura
+    // sobrevive a la excepcion: el control negativo `debeTirar("curva inventada")` de la propia
+    // biblioteca dejaba dos claves puestas, y el guardia de mas arriba —que es nuevo— las encontraba y
+    // reprobaba el control POSITIVO que venia despues. Un fallo dejando estado a medias es una trampa
+    // para el que venga atras.
+    for (i = 0; i < lista.length - 1; i++) {
+      var nomV = lista[i][2] || "LINEAL";
+      if (nomV !== "HOLD" && nomV !== "LINEAL" && !CURVAS[nomV]) {
+        throw new Error("curva desconocida: " + nomV + (dondeEstoy ? " en " + dondeEstoy : "") +
+                        ". Validas: LINEAL, SUAVE, C1..C4, C6..C8, HOLD");
       }
     }
 
