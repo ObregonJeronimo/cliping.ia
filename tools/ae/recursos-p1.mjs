@@ -190,7 +190,12 @@ function palabras (base, frase, cuerpo, opciones = {}) {
 // La frase se arma en TRES TIEMPOS y en dos lineas, porque a 300 px "Construido para equipos" mide
 // 3464 px y el cuadro tiene 1920: una sola linea no entraria ni aunque se quisiera. Entra "Construido"
 // arriba, despues "para" abajo, y despues "equipos" se le suma a la derecha de "para".
-palabras('p-k', 'Construido para equipos', 300, { c0: '#FFFFFF', c1: '#CBB6FF', c2: '#6B3BFF' })
+//
+// 270 Y NO 300, y el que lo dijo fue `marco-check`. A 300 la segunda linea mide 1791 px de tinta, que
+// con los margenes de los PNG da 1959 px de caja: MAS ANCHA QUE EL CUADRO. La compuerta la marco
+// cortada por la izquierda, 21 px afuera, quieta 16 cuadros. A 270 la linea da 1611 de tinta y 1763
+// de caja, y entra con 78 px de aire de cada lado.
+palabras('p-k', 'Construido para equipos', 270, { c0: '#FFFFFF', c1: '#CBB6FF', c2: '#6B3BFF' })
 
 // PLANO 2 · un solo golpe de 0,8 s. En 24 cuadros no se lee una frase: se lee UNA palabra. Poner tres
 // ahi seria escribir para nadie.

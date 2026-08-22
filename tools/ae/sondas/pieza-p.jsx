@@ -137,33 +137,49 @@ var k2 = G.img("p-k-2", "k-para", 0, 0, 0, 50);
 var k3 = G.img("p-k-3", "k-equipos", 0, 0, 0, 50);
 
 // las posiciones LOCALES, calculadas del ancho real que midio el generador
-G.colgar(k1, eje1, [0, -160, 0]);
-G.colgar(k2, eje1, [-583, 160, 0]);
-G.colgar(k3, eje1, [337, 160, 0]);
+// linea 2 = "para" (563) + espacio (45) + "equipos" (1005) = 1613 px de tinta, centrada en el cuadro
+G.colgar(k1, eje1, [0, -170, 0]);
+G.colgar(k2, eje1, [-524, 170, 0]);
+G.colgar(k3, eje1, [303, 170, 0]);
 
 var e1 = G.ejes(k1), e2 = G.ejes(k2), e3 = G.ejes(k3);
 
 // TIEMPO 1 — "Construido" llega desde la izquierda y se pasa 46 px antes de asentarse.
 // Tres claves y no una curva: easeOutBack no existe en AE, la influencia vive en [0,100] y no puede
 // producir y>1 ni por casualidad. El sobrepaso se escribe.
-G.claves(e1.x, [[0, -2300, "C1"], [13, 46, "C8"], [20, 0]], "construido-x");
+// ARRANCA EN -1300 Y NO EN -2300, y el que lo dijo fue `escena-check`: contaba 10 cuadros en los que
+// la capa se movia con el 0% de si misma en pantalla. Un gesto que empieza fuera de cuadro no es una
+// entrada mas amplia, es una entrada mas corta con cuadros gastados adelante. Desde -1300 la palabra
+// ya asoma un 30% en el primer cuadro en que se enciende, y llega igual de rapido.
+G.claves(e1.x, [[0, -1300, "C1"], [13, 46, "C8"], [20, 0]], "construido-x");
 G.claves(G.op(k1), [[0, 0, "C6"], [6, 100]], "construido-op");
 
 // TIEMPO 2 — "para" sube desde abajo, 14 cuadros despues. El retardo es lo que hace que se lea como
 // una segunda llegada y no como parte de la primera.
-G.claves(e2.y, [[14, 780, "C1"], [26, 128, "C8"], [33, 160]], "para-y");
+G.claves(e2.y, [[14, 560, "C1"], [26, 138, "C8"], [33, 170]], "para-y");
 G.claves(G.op(k2), [[14, 0, "C6"], [20, 100]], "para-op");
 
 // TIEMPO 3 — "equipos" entra por la derecha y se PEGA a "para". Es el momento en que la frase existe.
-G.claves(e3.x, [[27, 1650, "C1"], [39, 302, "C8"], [46, 337]], "equipos-x");
+G.claves(e3.x, [[27, 1200, "C1"], [39, 268, "C8"], [46, 303]], "equipos-x");
 G.claves(G.op(k3), [[27, 0, "C6"], [33, 100]], "equipos-op");
 
-// la deriva: 46-58 el bloque armado se corre despacio, que es lo que le da el caracter "cinetico".
-// x1,00 a x1,04 — la mediana del corpus para una entrada de rotulo es x1,08, y esto es MENOS que eso
-// a proposito: no es una entrada, es un asentamiento.
+// LA DERIVA, Y NINGUNA SALIDA: EL CORTE ES LA SALIDA.
+//
+// La primera version sacaba el bloque volando hacia la izquierda, y `escena-check` conto 9 cuadros en
+// los que "para" se movia con el 0% de si misma en pantalla. Se puede acortar el viaje, pero la
+// pregunta de atras es mejor: para que hay una salida.
+//
+// La medicion del original contesta que no la hay. Dieciseis cortes en 53 s, todos duros. Un bloque
+// que se esta moviendo cuando llega el corte se lee mas rapido que uno que se va y deja el cuadro
+// vacio — y el cuadro vacio es medio segundo que hay que pagar dos veces, en el que sale y en el que
+// entra. El bloque deriva hasta el ultimo cuadro y el corte lo levanta en movimiento.
+//
+// La deriva va x1,00 a x1,05. La mediana del corpus para una ENTRADA de rotulo es x1,08, y esto es
+// menos a proposito: no es una entrada, es un asentamiento que no tiene que competir con las tres
+// llegadas que acaban de pasar.
 var eE1 = G.ejes(eje1);
-G.claves(eE1.x, [[46, 960, "LINEAL"], [58, 918, "C1"], [C[1], -1500]], "eje1-deriva-y-salida");
-G.claves(G.esc(eje1), [[46, [100, 100, 100], "LINEAL"], [58, [104, 104, 104]]], "eje1-escala");
+G.claves(eE1.x, [[46, 960, "C6"], [C[1], 902]], "eje1-deriva");
+G.claves(G.esc(eje1), [[46, [100, 100, 100], "C6"], [C[1], [105, 105, 100]]], "eje1-escala");
 
 G.plano(eje1, 0, C[1]); G.plano(k1, 0, C[1]); G.plano(k2, 14, C[1]); G.plano(k3, 27, C[1]);
 
@@ -242,7 +258,7 @@ for (iB = 0; iB < 5; iB++) {
 
 // LA ATRIBUCION. La licencia CC-BY la exige y este es su lugar: dentro de la pieza, legible, sin
 // competir. Entra 4,7 s despues del corte y se queda hasta el final del plano.
-var cred = G.img("p-credito", "credito", 960, 1000, 0, 33);
+var cred = G.img("p-credito", "credito", 960, 980, 0, 33);
 G.claves(G.op(cred), [[C[2] + 140, 0, "C6"], [C[2] + 156, 100, "C3"], [C[3] - 16, 100], [C[3] - 2, 0]], "credito-op");
 G.plano(cred, C[2] + 140, C[3]);
 
@@ -265,13 +281,15 @@ G.plano(latido, C[2] + 186, C[2] + 241);
 
 // LA SALIDA: todo el conjunto se va HACIA LA CAMARA. No es un fundido — es el gesto que justifica el
 // corte al mundo claro, porque atravesar la lente deja el cuadro vacio un instante.
-// EL CREDITO NO ENTRA EN ESTA LISTA, y esa es la unica razon por la que hay un comentario aca: ya
-// tiene su propio fundido de salida. Con las dos cosas, su opacidad recibia claves de dos lugares que
-// no se conocian entre si, se interponian, y el tramo quedaba lineal de un lado y bezier del otro.
-// AE lo dibujaba sin quejarse y el documento salia INCOMPLETO al exportar. Se lleva el empuje en z
-// —viaja con el grupo— pero el fundido lo maneja el suyo.
-G.claves(G.ejes(cred).z, [[C[3] - 20, 0, "C1"], [C[3], -1400]], "credito-salida-z");
-
+// EL CREDITO NO SALE CON EL GRUPO, por dos razones distintas y las dos medidas.
+//
+// La primera: ya tiene su propio fundido, y sumarle el del grupo le daba claves de opacidad de dos
+// lugares que no se conocian entre si. Se interponian, el tramo quedaba lineal de un lado y bezier del
+// otro, AE lo dibujaba sin quejarse y el documento salia INCOMPLETO al exportar.
+//
+// La segunda: el empuje hacia la camara lo sacaba del cuadro. A z=-1400 la magnificacion es 2,4x, y
+// una linea que vive a 0,93 de alto se va por abajo — `escena-check` conto 14 cuadros moviendose con
+// el 0% de si misma en pantalla. Se queda donde esta y se funde. Un credito no necesita gesto.
 var salida = [iso];
 var iS;
 for (iS = 0; iS < letras.length; iS++) { salida[salida.length] = letras[iS]; }
