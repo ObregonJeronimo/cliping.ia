@@ -138,9 +138,13 @@ var k3 = G.img("p-k-3", "k-equipos", 0, 0, 0, 50);
 
 // las posiciones LOCALES, calculadas del ancho real que midio el generador
 // linea 2 = "para" (563) + espacio (45) + "equipos" (1005) = 1613 px de tinta, centrada en el cuadro
+// CADA PALABRA EN SU PROPIA Z, separadas 2 unidades. No es para que se note la profundidad —a esta
+// distancia de camara 2 unidades cambian el tamano un 0,08%— sino porque dos capas EN LA MISMA Z no
+// tienen un orden de dibujo definido: el motor ordena por profundidad y un empate lo resuelve como
+// quiere, asi que la misma comp puede salir distinta en dos corridas. `ritmo.mjs` lo cuenta en M7.
 G.colgar(k1, eje1, [0, -170, 0]);
-G.colgar(k2, eje1, [-524, 170, 0]);
-G.colgar(k3, eje1, [303, 170, 0]);
+G.colgar(k2, eje1, [-524, 170, 2]);
+G.colgar(k3, eje1, [303, 170, 4]);
 
 var e1 = G.ejes(k1), e2 = G.ejes(k2), e3 = G.ejes(k3);
 
@@ -235,7 +239,7 @@ var LX = [778, 898, 1020, 1142];
 var letras = [];
 var iL;
 for (iL = 0; iL < 4; iL++) {
-  var lt = G.img("p-w-" + (iL + 1), "w-" + (iL + 1), LX[iL], 620, 0, 33);
+  var lt = G.img("p-w-" + (iL + 1), "w-" + (iL + 1), LX[iL], 620, 2 + iL * 2, 33);
   var eL = G.ejes(lt);
   var t0 = C[2] + 54 + iL * 7;
   G.claves(eL.y, [[t0, 740, "C1"], [t0 + 11, 610, "C8"], [t0 + 17, 620]], "w" + (iL + 1) + "-y");
@@ -249,7 +253,7 @@ for (iL = 0; iL < 4; iL++) {
 var BX = [745, 847, 958, 1017, 1121];
 var iB;
 for (iB = 0; iB < 5; iB++) {
-  var bp = G.img("p-bajada-" + (iB + 1), "bajada-" + (iB + 1), BX[iB], 726, 0, 50);
+  var bp = G.img("p-bajada-" + (iB + 1), "bajada-" + (iB + 1), BX[iB], 726, 12 + iB * 2, 50);
   var t0b = C[2] + 96 + iB * 4;
   G.claves(G.ejes(bp).y, [[t0b, 748, "C1"], [t0b + 10, 726]], "bajada" + (iB + 1) + "-y");
   G.claves(G.op(bp), [[t0b, 0, "C6"], [t0b + 8, 100]], "bajada" + (iB + 1) + "-op");
@@ -258,7 +262,7 @@ for (iB = 0; iB < 5; iB++) {
 
 // LA ATRIBUCION. La licencia CC-BY la exige y este es su lugar: dentro de la pieza, legible, sin
 // competir. Entra 4,7 s despues del corte y se queda hasta el final del plano.
-var cred = G.img("p-credito", "credito", 960, 980, 0, 33);
+var cred = G.img("p-credito", "credito", 960, 980, 24, 33);
 G.claves(G.op(cred), [[C[2] + 140, 0, "C6"], [C[2] + 156, 100, "C3"], [C[3] - 16, 100], [C[3] - 2, 0]], "credito-op");
 G.plano(cred, C[2] + 140, C[3]);
 
@@ -294,7 +298,19 @@ var salida = [iso];
 var iS;
 for (iS = 0; iS < letras.length; iS++) { salida[salida.length] = letras[iS]; }
 for (iS = 0; iS < salida.length; iS++) {
-  G.claves(G.ejes(salida[iS]).z, [[C[3] - 20, 0, "C1"], [C[3], -1400]], "salida-z-" + iS);
+  // ARRANCA DESDE LA Z QUE LA CAPA TIENE EN ESE CUADRO, y las dos mitades de esa frase costaron algo.
+  //
+  // Escribir 0 en la primera clave le daria un salto de hasta 8 unidades a las capas que viven
+  // escalonadas en profundidad. Y leerla con `.value` es peor y no se ve: sobre una propiedad CON
+  // CLAVES, `.value` devuelve el valor en el cuadro donde esta parado AE —el 0— y no el ultimo. El
+  // isotipo tiene claves de z (1700 -> 0 en su entrada), asi que `.value` daba 1700 y la salida
+  // empezaba mandandolo de golpe a mil setecientos de distancia. `valueAtTime` lee donde hay que leer.
+  //
+  // Y EL DESTINO CONSERVA LA SEPARACION en vez de ser el mismo para todos: partiendo de z distintas y
+  // llegando todas a -1400, las cuatro letras CONVERGEN durante el viaje y se empatan en profundidad a
+  // mitad de camino. Restando el mismo delta, la separacion se mantiene los veinte cuadros.
+  var zBase = G.ejes(salida[iS]).z.valueAtTime((C[3] - 20) / G.fps(), false);
+  G.claves(G.ejes(salida[iS]).z, [[C[3] - 20, zBase, "C1"], [C[3], zBase - 1408]], "salida-z-" + iS);
   G.claves(G.op(salida[iS]), [[C[3] - 20, 100, "C3"], [C[3] - 4, 0]], "salida-op-" + iS);
 }
 
@@ -315,7 +331,7 @@ G.claves(G.esc(malla4), [[C[3], [42, 42, 100], "LINEAL"], [C[4], [40, 40, 100]]]
 var CX = [534, 816, 1242];
 var iC;
 for (iC = 0; iC < 3; iC++) {
-  var cw = G.img("p-claro-" + (iC + 1), "claro-" + (iC + 1), CX[iC], 540, 0, 50);
+  var cw = G.img("p-claro-" + (iC + 1), "claro-" + (iC + 1), CX[iC], 540, iC * 2, 50);
   var t0c = C[3] + 2 + iC * 6;
   G.claves(G.ejes(cw).y, [[t0c, 592, "C1"], [t0c + 11, 534, "C8"], [t0c + 16, 540]], "claro" + (iC + 1) + "-y");
   G.claves(G.op(cw), [[t0c, 0, "C6"], [t0c + 7, 100, "C3"], [C[4] - 6, 100], [C[4] - 1, 0]], "claro" + (iC + 1) + "-op");
@@ -337,7 +353,7 @@ G.plano(malla5, C[4], C[5]);
 
 var iA;
 for (iA = 0; iA < 3; iA++) {
-  var an = G.img("p-anillo-" + (iA + 1), "anillo-" + (iA + 1), 960, 540, 40, 50);
+  var an = G.img("p-anillo-" + (iA + 1), "anillo-" + (iA + 1), 960, 540, 40 + iA * 2, 50);
   var t0a = C[4] + iA * 6;
   G.claves(G.esc(an), [[t0a, [30, 30, 100], "C1"], [t0a + 20, [50, 50, 100]]], "anillo" + (iA + 1) + "-esc");
   G.claves(G.op(an), [[t0a, 0, "C6"], [t0a + 12, 34, "C3"], [C[5] - 8, 34], [C[5] - 1, 0]], "anillo" + (iA + 1) + "-op");
@@ -349,7 +365,7 @@ for (iA = 0; iA < 3; iA++) {
 var FX = [673, 889, 1176];
 var iF;
 for (iF = 0; iF < 3; iF++) {
-  var cf = G.img("p-cifra-" + (iF + 1), "cifra-" + (iF + 1), FX[iF], 540, 0, 50);
+  var cf = G.img("p-cifra-" + (iF + 1), "cifra-" + (iF + 1), FX[iF], 540, iF * 2, 50);
   var t0f = C[4] + 6 + iF * 6;
   G.claves(G.ejes(cf).y, [[t0f, 566, "C1"], [t0f + 12, 540]], "cifra" + (iF + 1) + "-y");
   G.claves(G.op(cf), [[t0f, 0, "C6"], [t0f + 9, 100, "C3"], [C[5] - 6, 100], [C[5] - 1, 0]], "cifra" + (iF + 1) + "-op");
@@ -405,7 +421,12 @@ G.plano(panel, C[5], C[6]);
 
 // --- el filo del canto. Lo que hace que un plano inclinado se lea como un objeto con espesor.
 var filo = G.img("p-filo", "filo", 0, 0, 0, 33);
-G.colgar(filo, eje6b, [0, 360, 0]);
+// LAS SEPARACIONES DEL TABLERO VAN DE 1,2 Y NO DE 2, y la razon es geometrica: estas capas cuelgan
+// de un nulo que GIRA hasta 20 grados en Y, asi que un desplazamiento en z se convierte en uno
+// horizontal de z*sen(20) = 0,34*z. Con 2 unidades por capa y quince capas, la ultima se correria 10
+// px respecto del panel y la maqueta dejaria de estar alineada. Con 1,2 el corrimiento maximo es de 6
+// px sobre el puntero, que flota, y de 6 sobre el filo, que es un degradado de 1180 px de ancho.
+G.colgar(filo, eje6b, [0, 360, -18]);
 G.claves(G.op(filo), [[C[5], 0, "C1"], [C[5] + 14, 100, "C3"], [C[5] + 30, 62, "C6"],
                       [C[6] - 12, 62], [C[6] - 2, 0]], "filo-op");
 G.plano(filo, C[5], C[6]);
@@ -416,11 +437,11 @@ G.plano(filo, C[5], C[6]);
 // se corre a la derecha. Por eso el campo del panel se genero PLANO: con un degradado ahi, ningun
 // color de tapa lo igualaria y se veria el borde de la tapa cruzando la pantalla.
 var graf = G.img("p-grafico", "grafico", 0, 0, 0, 50);
-G.colgar(graf, eje6b, [-30, -102, -1]);
+G.colgar(graf, eje6b, [-30, -102, -2.4]);
 G.plano(graf, C[5] + 20, C[6]);
 
 var tapa = G.solido("tapa-grafico", [0.082, 0.067, 0.161], 640, 320, 0, 0, 0);
-G.colgar(tapa, eje6b, [-30, -102, -2]);
+G.colgar(tapa, eje6b, [-30, -102, -3.6]);
 G.anc(tapa).setValue([0, 160, 0]);   // el ancla en el borde IZQUIERDO: la tapa se corre desde ahi
 var eT = G.ejes(tapa);
 G.claves(eT.x, [[C[5] + 24, -350, "LINEAL"], [C[5] + 54, 310]], "tapa-corre");
@@ -433,7 +454,7 @@ var tarjetas = [];
 var iT;
 for (iT = 0; iT < 3; iT++) {
   var tj = G.img("p-cifra-t" + (iT + 1), "tarjeta-" + (iT + 1), 0, 0, 0, 50);
-  G.colgar(tj, eje6b, [TX[iT], 138, -1]);
+  G.colgar(tj, eje6b, [TX[iT], 138, -6 - iT * 1.2]);
   var t0t = C[5] + 48 + iT * 12;
   G.claves(G.esc(tj), [[t0t, [30, 30, 100], "C1"], [t0t + 10, [54, 54, 100], "C8"],
                        [t0t + 17, [50, 50, 100]]], "tarjeta" + (iT + 1) + "-esc");
@@ -448,11 +469,21 @@ var evs = [];
 var iE;
 for (iE = 0; iE < 5; iE++) {
   var ev = G.img("p-ev-" + (iE + 1), "ev-" + (iE + 1), 0, 0, 0, 50);
-  G.colgar(ev, eje6b, [429, -184 + iE * 72, -1]);
+  G.colgar(ev, eje6b, [429, -184 + iE * 72, -9.6 - iE * 1.2]);
   var t0e = C[5] + 84 + iE * 30;
   G.claves(G.ejes(ev).x, [[t0e, 700, "C1"], [t0e + 12, 418, "C8"], [t0e + 18, 429]], "ev" + (iE + 1) + "-x");
-  G.claves(G.op(ev), [[t0e, 0, "C6"], [t0e + 8, 100, "C3"], [C[6] - 12, 100], [C[6] - 2, 0]], "ev" + (iE + 1) + "-op");
-  G.plano(ev, t0e, C[6]);
+  // LA PRIMERA FILA SE APAGA EN EL CUADRO 782, cuando el desplazamiento de mas abajo la saca por el
+  // borde de arriba — y ESO VA ESCRITO ACA, en la misma llamada que su entrada.
+  //
+  // Escribirlo alla, junto al desplazamiento, es lo natural y es lo que hice primero: la biblioteca lo
+  // rechazo. Esta capa ya tenia claves de opacidad del cuadro 566 al 968, y las nuevas caian justo en
+  // el medio; AE habria mezclado los tipos de interpolacion en la union y el exportador habria
+  // rechazado la capa, sin decir quien escribio el segundo juego.
+  var vidaOp = (iE === 0)
+    ? [[t0e, 0, "C6"], [t0e + 8, 100, "C3"], [770, 100], [782, 0]]
+    : [[t0e, 0, "C6"], [t0e + 8, 100, "C3"], [C[6] - 12, 100], [C[6] - 2, 0]];
+  G.claves(G.op(ev), vidaOp, "ev" + (iE + 1) + "-op");
+  G.plano(ev, t0e, (iE === 0) ? 783 : C[6]);
   evs[evs.length] = ev;
 }
 
@@ -462,7 +493,7 @@ for (iE = 0; iE < 5; iE++) {
 // estaria decidido desde el primer cuadro y el puntero clickearia sin que nada cambie. Es el defecto
 // exacto que tuvo el conmutador de la PIEZA-I.
 var pastilla = G.img("p-pastilla", "pastilla", 0, 0, 0, 33);
-G.colgar(pastilla, eje6b, [-497, -265, -1]);
+G.colgar(pastilla, eje6b, [-497, -265, -1.2]);
 G.claves(G.op(pastilla), [[C[5] + 6, 0, "C6"], [C[5] + 18, 100, "C3"], [C[6] - 12, 100], [C[6] - 2, 0]], "pastilla-op");
 G.plano(pastilla, C[5] + 6, C[6]);
 
@@ -470,7 +501,7 @@ G.plano(pastilla, C[5] + 6, C[6]);
 // sin eso el puntero apunta con su centro y el clic cae 30 px abajo y a la derecha de donde parece.
 var pt = G.img("p-puntero", "puntero", 0, 0, 0, 34);
 G.anc(pt).setValue([6 * 4, 4 * 4, 0]);
-G.colgar(pt, eje6b, [560, 420, -20]);
+G.colgar(pt, eje6b, [560, 420, -20.4]);
 var ePt = G.ejes(pt);
 var T_CLIC = C[5] + 250;
 G.claves(ePt.x, [[T_CLIC - 40, 560, "C1"], [T_CLIC, -497]], "puntero-x");
@@ -489,7 +520,7 @@ G.claves(G.ejes(pastilla).y, [[T_CLIC + 2, -265, "C1"], [T_CLIC + 12, -213]], "p
 // y el grafico se recarga: la tapa vuelve y se corre otra vez. Es lo que hace cualquier tablero
 // cuando cambias de vista, y ocupa los 40 cuadros posteriores al clic.
 var tapa2 = G.solido("tapa-recarga", [0.082, 0.067, 0.161], 640, 320, 0, 0, 0);
-G.colgar(tapa2, eje6b, [-30, -102, -2]);
+G.colgar(tapa2, eje6b, [-30, -102, -4.8]);
 G.anc(tapa2).setValue([640, 160, 0]);   // ancla en el borde DERECHO: entra desde la derecha
 var eT2 = G.ejes(tapa2);
 G.claves(eT2.x, [[T_CLIC + 4, 990, "C1"], [T_CLIC + 16, 290, "C6"], [T_CLIC + 46, 990]], "tapa-recarga-corre");
@@ -499,6 +530,74 @@ G.plano(tapa2, T_CLIC + 4, T_CLIC + 48);
 for (iT = 0; iT < 3; iT++) {
   Gd.acuseDeGolpe({ capa: tarjetas[iT], cuadro: T_CLIC + 18 + iT * 5, eje: "y", ida: 2, vuelta: 9,
                     desplazamiento: 7 });
+}
+
+// ================================================================================================
+// EL ULTIMO TERCIO DEL PLANO 6 · 758-946 · lo que llenaba un hueco de 6,3 segundos
+// ================================================================================================
+//
+// `ritmo.mjs` marco un hueco de 188 cuadros entre el 758 y el 946 donde lo unico que pasaba era el
+// giro lento del nulo. Es el mismo defecto que la PIEZA-M tuvo con un acto entero vacio, y lo mismo
+// que aprendi de ella: un plano no se sostiene con una deriva, se sostiene con cosas que pasan.
+//
+// Cuatro tiempos nuevos, y ninguno es relleno: los cuatro son lo que hace un tablero de verdad
+// mientras alguien lo mira.
+
+// TIEMPO 1 (762) · LA LISTA SIGUE VIVIENDO. Las cinco filas se corren hacia arriba 72 px y la primera
+// se va por el borde de arriba. El escalonado de 3 cuadros es lo que lo hace leer como un desplazamiento
+// y no como cinco capas que se movieron juntas.
+var iSc;
+for (iSc = 0; iSc < 5; iSc++) {
+  var t0s = 762 + iSc * 3;
+  G.claves(G.ejes(evs[iSc]).y, [[t0s, -184 + iSc * 72, "C6"], [t0s + 16, -256 + iSc * 72]],
+           "ev-sube-" + (iSc + 1));
+}
+// TIEMPO 2 (800 y 818) · ENTRAN DOS FILAS NUEVAS por abajo, con la misma entrada que tuvieron las
+// cinco primeras. Son filas NUEVAS y no repeticiones: repetir una que ya salio se habria notado antes
+// que el hueco que estoy tapando.
+var iNv;
+for (iNv = 0; iNv < 2; iNv++) {
+  var nv = G.img("p-ev-" + (iNv + 6), "ev-" + (iNv + 6), 0, 0, 0, 50);
+  G.colgar(nv, eje6b, [429, 176 + iNv * 72, -17.6 - iNv * 1.2]);
+  var t0n = 800 + iNv * 18;
+  G.claves(G.ejes(nv).x, [[t0n, 700, "C1"], [t0n + 12, 418, "C8"], [t0n + 18, 429]], "ev" + (iNv + 6) + "-x");
+  G.claves(G.op(nv), [[t0n, 0, "C6"], [t0n + 8, 100, "C3"], [C[6] - 12, 100], [C[6] - 2, 0]], "ev" + (iNv + 6) + "-op");
+  G.plano(nv, t0n, C[6]);
+}
+
+// TIEMPO 3 (838) · EL PUNTERO VUELVE Y SE PARA SOBRE EL ULTIMO DIA DEL GRAFICO, y ahi aparece el
+// globo. Es la segunda aparicion del puntero y por eso es OTRA CAPA: la biblioteca cuenta los gestos
+// por aparicion, y ademas una capa que ya se fue del cuadro no vuelve, entra una nueva.
+var pt2 = G.img("p-puntero", "puntero-2", 0, 0, 0, 34);
+G.anc(pt2).setValue([6 * 4, 4 * 4, 0]);
+G.colgar(pt2, eje6b, [560, 300, -21.6]);
+var ePt2 = G.ejes(pt2);
+G.claves(ePt2.x, [[838, 560, "C1"], [856, 254]], "puntero2-x");
+G.claves(ePt2.y, [[838, 300, "C1"], [856, -88]], "puntero2-y");
+G.claves(G.op(pt2), [[838, 0, "C6"], [846, 100, "C3"], [916, 100], [928, 0]], "puntero2-op");
+G.plano(pt2, 838, 929);
+
+var globo = G.img("p-globo", "globo", 0, 0, 0, 33);
+G.colgar(globo, eje6b, [254, -156, -19.2]);
+G.anc(globo).setValue([228, 252, 0]);   // el ancla en la PUNTA: el globo crece desde el dato, no desde su centro
+G.claves(G.esc(globo), [[858, [12, 12, 100], "C1"], [868, [36, 36, 100], "C8"], [874, [33, 33, 100]]], "globo-esc");
+G.claves(G.op(globo), [[858, 0, "C6"], [866, 100, "C3"], [916, 100], [926, 0]], "globo-op");
+G.plano(globo, 858, 927);
+
+// TIEMPO 4 (880) · LA PROFUNDIDAD. Tres copias apagadas del tablero se abren en abanico por detras.
+// Es lo que convierte el plano de "una pantalla inclinada" en "un espacio", y ocupa los ultimos
+// segundos sin pedirle nada nuevo al espectador — que es justo lo que corresponde al final de un plano
+// de dieciseis segundos.
+var iFa;
+for (iFa = 0; iFa < 3; iFa++) {
+  var fa = G.img("p-panel", "fondo-" + (iFa + 1), 0, 0, 0, 50);
+  G.colgar(fa, eje6b, [0, 0, 60 + iFa * 60]);
+  var t0fa = 880 + iFa * 10;
+  G.claves(G.ejes(fa).x, [[t0fa, 0, "C1"], [t0fa + 26, -170 - iFa * 150]], "fondo" + (iFa + 1) + "-x");
+  G.claves(G.rotZ(fa), [[t0fa, 0, "C1"], [t0fa + 26, -3 - iFa * 2]], "fondo" + (iFa + 1) + "-giro");
+  G.claves(G.op(fa), [[t0fa, 0, "C6"], [t0fa + 16, 34 - iFa * 8, "C3"], [C[6] - 12, 34 - iFa * 8],
+                      [C[6] - 2, 0]], "fondo" + (iFa + 1) + "-op");
+  G.plano(fa, t0fa, C[6]);
 }
 
 // --- MICRO-MOVIMIENTO sobre el nulo. Nada queda perfectamente quieto en dieciseis segundos: un

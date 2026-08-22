@@ -236,12 +236,19 @@ for (let i = 0; i < CIFRAS.length; i++) {
 }
 
 // --- las cinco filas de actividad, una por capa: entran de a una y ESO es lo que sostiene el plano
+// SIETE Y NO CINCO. Las dos ultimas existen porque `ritmo.mjs` encontro un hueco de 188 cuadros
+// —6,3 s— en el ultimo tercio del plano 6, donde lo unico que pasaba era el giro lento del nulo. La
+// salida no era estirar lo que ya habia sino que la lista SIGA VIVIENDO: se corre hacia arriba, la
+// primera se va por el borde y entran dos nuevas. Repetir una fila que ya salio hubiera sido peor que
+// el hueco.
 const EVENTOS = [
   ['Ana M.', 'subio la revision final', VIOLETA],
   ['Bruno T.', 'aprobo tres entregas', VERDE],
   ['Cami R.', 'abrio un proyecto nuevo', NARANJA],
   ['Dario L.', 'dejo dos comentarios', VIOLETA_CL],
   ['Eva P.', 'cerro el sprint', VERDE],
+  ['Facu S.', 'publico la version 2.4', VIOLETA],
+  ['Gina A.', 'sumo a dos personas', NARANJA],
 ]
 for (let i = 0; i < EVENTOS.length; i++) {
   const quien = EVENTOS[i][0], que = EVENTOS[i][1], col = EVENTOS[i][2]
@@ -259,6 +266,26 @@ for (let i = 0; i < EVENTOS.length; i++) {
   g.font = `400 13px "${FUENTE}"`; g.fillStyle = GRIS
   g.fillText(que, 48, 42)
   guardar(`p-ev-${i + 1}`, cv, `fila "${quien}" — capa propia para entrar sola`)
+}
+
+// --- el globo del grafico: lo que aparece cuando el puntero se para sobre el ultimo dia
+{
+  const W = 152, H = 74
+  const [cv, g] = lienzo(W, H + 10, 3)
+  ruta(g, 0, 0, W, H, 12)
+  g.fillStyle = '#241C4E'; g.fill()
+  g.strokeStyle = 'rgba(179,155,255,0.65)'; g.lineWidth = 1; g.stroke()
+  // la punta que lo ata al dato — sin ella el globo flota y no senala nada
+  g.beginPath(); g.moveTo(W / 2 - 8, H - 1); g.lineTo(W / 2, H + 9); g.lineTo(W / 2 + 8, H - 1)
+  g.closePath(); g.fillStyle = '#241C4E'; g.fill()
+  g.textBaseline = 'middle'
+  g.font = `400 13px "${FUENTE}"`; g.fillStyle = GRIS
+  g.fillText('domingo', 16, 22)
+  g.font = `700 26px "${FUENTE}"`; g.fillStyle = CLARO
+  g.fillText('31', 16, 50)
+  g.font = `600 13px "${FUENTE}"`; g.fillStyle = VERDE
+  g.fillText('+9', 62, 52)
+  guardar('p-globo', cv, 'el globo del ultimo dato — lleva punta, sin ella no senala nada')
 }
 
 // --- el filo de luz del borde inclinado. Lo que hace que un plano inclinado se lea como un OBJETO
