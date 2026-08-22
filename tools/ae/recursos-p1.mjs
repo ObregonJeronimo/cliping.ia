@@ -232,13 +232,25 @@ palabras('p-bajada', 'el tablero de tu equipo', 46, { plano: true, color: '#8B85
   const T = [cx, cy - R], B = [cx, cy + R], I = [cx - R * 0.78, cy], D = [cx + R * 0.78, cy]
   const M = [cx, cy]
   cara([T, D, M], '#B79BFF', '#6B3BFF')
-  cara([D, B, M], '#7C4DFF', '#3A1FB0')
-  cara([B, I, M], '#5B2FE0', '#2A1590')
+  // LAS CARAS DE ABAJO SE LEVANTARON. Con '#3A1FB0' y '#2A1590' la mitad inferior del rombo quedaba
+  // casi negra contra un fondo negro: el simbolo perdia la mitad de su silueta y se leia como un
+  // triangulo. La luz viene de arriba, asi que abajo va mas oscuro — pero no hasta desaparecer.
+  cara([D, B, M], '#7C4DFF', '#5A34D0')
+  cara([B, I, M], '#6B3BFF', '#4526B8')
   cara([I, T, M], '#9B7BFF', '#5426D8')
-  // el filo especular: una linea clara sobre la arista superior derecha, que es lo que hace que se lea
-  // como una superficie dura y no como un degradado
-  g.strokeStyle = 'rgba(255,255,255,0.92)'; g.lineWidth = L * 0.018; g.lineCap = 'round'
+  // EL FILO ESPECULAR VA RECORTADO A LA SILUETA, y ese `clip` es todo el arreglo.
+  //
+  // Sin el, una linea de 9 px con punta redonda dibujada de vertice a vertice SOBRESALE por los dos
+  // extremos: en el cuadro se ve un palito blanco asomando arriba del rombo y otro a la derecha. Es
+  // exactamente la clase de defecto que ninguna compuerta puede tener: no esta fuera de cuadro, no
+  // tapa nada, no baja ningun contraste. Se ve, y ya.
+  g.save()
+  g.beginPath()
+  g.moveTo(T[0], T[1]); g.lineTo(D[0], D[1]); g.lineTo(B[0], B[1]); g.lineTo(I[0], I[1]); g.closePath()
+  g.clip()
+  g.strokeStyle = 'rgba(255,255,255,0.92)'; g.lineWidth = L * 0.018; g.lineCap = 'butt'
   g.beginPath(); g.moveTo(T[0], T[1]); g.lineTo(D[0], D[1]); g.stroke()
+  g.restore()
   guardar('p-iso', cv, 'el isotipo: cuatro caras con luces distintas y un filo especular')
 }
 
@@ -258,15 +270,23 @@ palabras('p-bajada', 'el tablero de tu equipo', 46, { plano: true, color: '#8B85
 // TRES ANILLOS EN CAPAS SEPARADAS Y NO UNA IMAGEN CON LOS TRES. Es la ley L23: un PNG plano tiene UN
 // estado. Con los tres horneados juntos no se pueden escalonar, y el gesto de este plano ES el
 // escalonado — se expanden de adentro hacia afuera, uno atras del otro.
-for (let i = 0; i < 3; i++) {
-  const L = 1500, k = 2
-  const [cv, g] = lienzo(L, L * 0.62, k)
-  const w = L * (0.30 + i * 0.20), h = L * 0.62 * (0.30 + i * 0.22)
-  ruta(g, (L - w) / 2, (L * 0.62 - h) / 2, w, h, h / 2)
-  g.strokeStyle = `rgba(108,80,240,${0.95 - i * 0.24})`
-  g.lineWidth = L * 0.030
+// LAS MEDIDAS SALEN DE MIRAR EL CUADRO, y la primera version estaba mal en las dos.
+//
+// Eran demasiado GRUESOS —45 px de trazo— asi que dominaban el plano en vez de acompanarlo, y el mas
+// chico media 450 px de ancho contra los 751 que mide "10x mas rapido": el anillo interior le cruzaba
+// las letras por los dos lados. Un fondo que atraviesa el texto que tiene que sostener no es un fondo.
+//
+// Ahora el interior mide 900 y el texto entra entero, con 75 px de aire de cada lado.
+const AROS = [[900, 340], [1240, 520], [1580, 700]]
+for (let i = 0; i < AROS.length; i++) {
+  const CW = 1700, CH = 800, k = 2
+  const [cv, g] = lienzo(CW, CH, k)
+  const w = AROS[i][0], h = AROS[i][1]
+  ruta(g, (CW - w) / 2, (CH - h) / 2, w, h, h / 2)
+  g.strokeStyle = `rgba(108,80,240,${0.92 - i * 0.20})`
+  g.lineWidth = 14
   g.stroke()
-  guardar(`p-anillo-${i + 1}`, cv, `anillo ${i + 1} de 3, EN CAPA APARTE para poder escalonarlos`)
+  guardar(`p-anillo-${i + 1}`, cv, `anillo ${i + 1} de 3, ${w}x${h}, EN CAPA APARTE para escalonarlos`)
 }
 
 console.log(`\nrecursos-p1 -> ${DESTINO}\n`)

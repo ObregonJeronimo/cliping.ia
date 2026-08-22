@@ -100,7 +100,10 @@ function ruta (g, x, y, w, h, r) {
 }
 
 // ================================================================ 2 · EL TABLERO, EN PIEZAS
-const PW = 1180, PH = 720   // el tablero entero mide esto; cada pieza sale en su propio lienzo
+// 620 DE ALTO Y NO 720. La primera version dejaba 164 px vacios debajo de las tarjetas — un tercio
+// del panel sin nada, que mirando un cuadro se ve al instante y ninguna compuerta puede ver, porque
+// el vacio no es un defecto medible: es una decision de composicion mal tomada.
+const PW = 1180, PH = 620   // el tablero entero mide esto; cada pieza sale en su propio lienzo
 
 // --- el cuerpo: marco, barra lateral y cabecera. Lo unico que NO se mueve.
 {
@@ -117,9 +120,15 @@ const PW = 1180, PH = 720   // el tablero entero mide esto; cada pieza sale en s
   g.beginPath(); g.moveTo(218, 74); g.lineTo(PW, 74); g.stroke()
   g.restore()
 
-  // el punto de marca del panel
-  g.fillStyle = VIOLETA
-  ruta(g, 26, 24, 26, 26, 8); g.fill()
+  // LA MARCA DEL PANEL ES EL MISMO ROMBO DEL ISOTIPO, no un cuadrado redondeado. Un producto que
+  // lleva un simbolo en la pieza y otro adentro de su propia interfaz se contradice, y se nota aunque
+  // nadie sepa decir por que.
+  g.save(); g.translate(39, 37)
+  g.beginPath(); g.moveTo(0, -14); g.lineTo(11, 0); g.lineTo(0, 14); g.lineTo(-11, 0); g.closePath()
+  g.fillStyle = VIOLETA; g.fill()
+  g.beginPath(); g.moveTo(0, -14); g.lineTo(11, 0); g.lineTo(0, 0); g.closePath()
+  g.fillStyle = VIOLETA_CL; g.fill()
+  g.restore()
   g.font = `600 19px "${FUENTE}"`; g.fillStyle = CLARO; g.textBaseline = 'middle'
   g.fillText('nodo', 62, 38)
 
