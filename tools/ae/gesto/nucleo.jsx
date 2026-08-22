@@ -37,6 +37,7 @@ var G = (function () {
   var comp = null;
   var FPS = 30, ANCHO = 1920, ALTO = 1080, CUADROS = 240;
   var RECURSOS = null;
+  var PROYECTO = null;   // el .aep propio, cuando `G.iniciar` recibe `proyecto`
   var DIST_CAM = 2400;
   var camara = null, opcCam = null;
   var avisos = [];
@@ -118,6 +119,42 @@ var G = (function () {
 
     var pv = new File(RUTA_INFORME);
     if (pv.exists) { pv.remove(); }
+
+    // ---------------------------------------------------------------- `proyecto`: un .aep propio
+    //
+    // POR QUE EXISTE. Una comp creada por script nace adentro del PROYECTO ABIERTO. Autorar dos piezas
+    // seguidas las deja a las dos en el mismo .aep, y el usuario que queria conservar la anterior se
+    // encuentra la nueva encima. Pedido textual: "no uses el .aep VideoUrvidPrueba, ese lo quiero
+    // dejar guardado, crea otro proyecto desde cero para este video nuevo".
+    //
+    // Y POR QUE NO CIERRA SIN MAS. `app.project.close(DO_NOT_SAVE_CHANGES)` deja un proyecto nuevo al
+    // instante y **tira los cambios sin preguntar**. Un script no puede tomar esa decision por nadie:
+    // si el proyecto abierto tiene cambios sin guardar, esta funcion los GUARDA primero cuando sabe
+    // donde, y cuando no sabe (proyecto sin archivo) se NIEGA y lo dice. Perder trabajo ajeno para
+    // ahorrarse un mensaje no es una opcion.
+    if (o.proyecto) {
+      var destino = new File(o.proyecto);
+      var abierto = null;
+      try { abierto = app.project.file; } catch (exF) { abierto = null; }
+      var mismo = (abierto !== null && abierto.fsName === destino.fsName);
+
+      if (!mismo) {
+        if (app.project.dirty) {
+          if (abierto === null) {
+            throw new Error("hay un proyecto SIN GUARDAR abierto en AE y con cambios. No lo cierro yo: " +
+                            "no tiene archivo, asi que cerrarlo perderia todo. Guardalo con un nombre " +
+                            "y volve a correr esto.");
+          }
+          app.project.close(CloseOptions.SAVE_CHANGES);
+        } else if (abierto !== null || app.project.numItems > 0) {
+          app.project.close(CloseOptions.DO_NOT_SAVE_CHANGES);
+        }
+        // despues de cerrar, AE ya deja un proyecto vacio; si el .aep de destino existe se abre, y si
+        // no, se guarda el vacio con ese nombre para que exista desde el primer momento
+        if (destino.exists) { app.open(destino); } else { app.project.save(destino); }
+      }
+      PROYECTO = destino;
+    }
 
     // LEY (a) · LA PROFUNDIDAD DE COLOR SE FIJA, NO SE HEREDA.
     // Una comp creada por script vive adentro del proyecto abierto y hereda su profundidad de bits. Con
@@ -955,6 +992,13 @@ var G = (function () {
     anotar("CAPAS|" + comp.numLayers);
     anotar("CONSTRUIDOS|" + construidos);
     anotar("AVISOS|" + avisos.length);
+    // SE GUARDA SOLO CUANDO LA PIEZA TIENE PROYECTO PROPIO. Sin esto el .aep queda en disco vacio —
+    // el que se creo al arrancar— y todo lo construido vive nada mas que en la memoria de AE: se
+    // pierde entero al cerrar la aplicacion, y peor, la proxima corrida lo abre y lo encuentra vacio.
+    if (PROYECTO !== null) {
+      app.project.save(PROYECTO);
+      anotar("PROYECTO|" + PROYECTO.fsName);
+    }
     anotar("--- fin ---");
     return { capas: comp.numLayers, avisos: avisos };
   };
