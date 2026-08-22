@@ -264,13 +264,19 @@ var filo = G.img("p-barra-filo", "barra-filo", 960, 452, 2, 33);
 var barra = G.img("p-barra", "barra", 960, 540, 4, 50);
 var lupa = G.img("p-lupa", "lupa", 1660, 540, 0, 25);
 
+// LA FUENTE SE ESCRIBE CON SU NOMBRE POSTSCRIPT — "SegoeUI", sin espacio.
+//
+// Con "Segoe UI" AE la sustituyo en silencio por Century Gothic. Lo dijo una sonda que le pregunto a
+// AE por `doc.font`, no un cuadro: en pantalla las dos son geometricas y a simple vista pasa. Es
+// exactamente el fallo que la biblioteca ya vigila en Skia, y del lado de AE se cuela porque
+// `TextDocument.font` no espera el nombre de familia sino el POSTSCRIPT.
 var tec = Gt.maquinaDeEscribir({
   cadena: "The smartest way to ship",
-  tam: 96, x: 300, y: 566, z: 0, centrado: false,
+  tam: 96, x: 300, y: 566, z: 1, centrado: false,
   desde: C[4] + 15, porCaracter: 1, parpadeo: 12,
   cursorDesde: C[4], hasta: C[5] - 24,
   color: [0.96, 0.95, 1], colorCursor: [0.68, 0.55, 1],
-  fuente: "Segoe UI", nombre: "tecleo"
+  fuente: "SegoeUI", nombre: "tecleo"
 });
 
 G.colgar(filo, ejeB); G.colgar(barra, ejeB); G.colgar(lupa, ejeB);
@@ -282,7 +288,19 @@ if (tec.cursor) { G.colgar(tec.cursor, ejeB); }
 // queda viva y con opacidad cero desde el arranque de la pieza — invisible, pero presente, y por eso
 // `ritmo` la contaba empatada en profundidad con la tipografia del plano 1 durante 130 cuadros.
 G.plano(tec.capa, C[4] + 12, C[5]);
-G.ejes(tec.capa).z.setValue(6);
+
+// Y EL ARREGLO DE ESE EMPATE ROMPIO EL PLANO ENTERO, que es el defecto mas caro de esta pieza.
+//
+// Le puse z=6 a la capa del texto para desempatarla. La barra vive en z=4, y en este motor una z mayor
+// esta MAS LEJOS de la camara: el texto quedo DETRAS del cuerpo opaco de la barra. En pantalla se veia
+// la barra vacia con el cursor moviendose solo —el cursor es otra capa y habia quedado en z=0, o sea
+// delante—, o sea exactamente "ni se muestra como si estuviera escribiendo".
+//
+// Ninguna compuerta lo vio: la capa esta viva, visible segun su opacidad, dentro de cuadro y sin
+// chocar con nada. Lo tapa otra capa, que es una pregunta que ninguna de las seis hace.
+//
+// El apilado del plano, de adelante hacia atras: lupa 0, texto 1, filo 2, cursor 3, barra 4.
+if (tec.cursor) { G.ejes(tec.cursor).z.setValue(3); }
 
 // EL ALEJAMIENTO. De escala 132 a 26 en noventa cuadros, con la curva casi lineal: en el original no
 // frena ni acelera, es una deriva pareja. Y sube un poco, porque la camara no baja con ella.
@@ -314,22 +332,44 @@ G.claves(G.esc(lupa), [[C[4] + 39, [8, 8, 100], "C1"], [C[4] + 46, [27, 27, 100]
 G.claves(G.op(lupa), [[C[4] + 39, 0, "C6"], [C[4] + 45, 100, "C3"], [C[5] - 14, 100], [C[5] - 2, 0]], "lupa-op");
 G.plano(lupa, C[4] + 39, C[5]);
 
-// EL PUNTERO. Vive FUERA del nulo: en el original no se aleja con la barra, se queda del lado de aca
-// del vidrio. Es la unica pieza de este plano que no obedece al alejamiento, y por eso se lee como
-// alguien mirando la pantalla en vez de como un dibujo pegado encima.
-var pt = G.img("p-puntero", "puntero", 1500, 900, -60, 16);
-G.anc(pt).setValue([6 * 5, 4 * 5, 0]);
-var ePt = G.ejes(pt);
+// EL PUNTERO SIGUE A LA LUPA CON UN ENLACE, Y ESA ES LA UNICA FORMA DE QUE NO CLICKEE AL VACIO.
+//
+// La primera version le puso al puntero un destino FIJO: (1338, 600). Pero la lupa cuelga de un nulo
+// que se achica de 132% a 26% mientras se aleja, asi que su posicion en pantalla cambia todos los
+// cuadros. En el cuadro del clic la lupa estaba en (1380, 509) y el puntero apoyaba en (1338, 600):
+// 42 px a la izquierda y 91 px abajo. Thiago: "el mouse clickea en cualquier lado".
+//
+// No hay forma de acertarle con un numero escrito a mano — habria que recalcularlo cada vez que se
+// toca el alejamiento. `G.enlazar` lee la posicion de la lupa EN EL MUNDO (con `toWorld`, que es lo
+// que compone la cadena de padres) y se la da al nulo del puntero. El puntero pasa a apuntar donde
+// esta la lupa, y va a seguir apuntando ahi aunque manana cambie el alejamiento entero.
+//
+// Y el nulo NO se escala: el puntero se queda del lado de aca del vidrio, del tamano de un cursor,
+// mientras la interfaz se aleja. Es lo que hace el original.
 var T_CLIC = C[4] + 55;
-G.claves(ePt.x, [[T_CLIC - 12, 1500, "C1"], [T_CLIC, 1338]], "puntero-x");
-G.claves(ePt.y, [[T_CLIC - 12, 900, "C1"], [T_CLIC, 600]], "puntero-y");
+var ejeP = G.nulo("eje-puntero", 960, 540, 0);
+var eEP = G.ejes(ejeP);
+G.enlazar({ capa: ejeP, prop: eEP.x, a: lupa, deQue: "posX", offset: 0, retardo: 0, donde: "puntero-sigue-lupa-x" });
+G.enlazar({ capa: ejeP, prop: eEP.y, a: lupa, deQue: "posY", offset: 0, retardo: 0, donde: "puntero-sigue-lupa-y" });
+G.plano(ejeP, T_CLIC - 14, C[5]);
+
+var pt = G.img("p-puntero", "puntero", 0, 0, 0, 16);
+G.anc(pt).setValue([6 * 5, 4 * 5, 0]);
+G.colgar(pt, ejeP, [0, 0, -60]);
+var ePt = G.ejes(pt);
+// la aproximacion es LOCAL: viene de abajo a la derecha y termina en (0,0), o sea exactamente sobre la
+// lupa, sin que haga falta saber donde va a estar la lupa en ese cuadro
+G.claves(ePt.x, [[T_CLIC - 12, 420, "C1"], [T_CLIC, 0]], "puntero-x");
+G.claves(ePt.y, [[T_CLIC - 12, 330, "C1"], [T_CLIC, 0]], "puntero-y");
 G.claves(G.esc(pt), [[T_CLIC, [16, 16, 100], "C7"], [T_CLIC + 3, [13, 13, 100], "C8"],
                      [T_CLIC + 12, [16, 16, 100], "C6"], [C[5] - 10, [11, 11, 100]]], "puntero-aprieta");
 G.claves(G.op(pt), [[T_CLIC - 12, 0, "C6"], [T_CLIC - 6, 100, "C3"], [C[5] - 12, 100], [C[5] - 2, 0]], "puntero-op");
 G.plano(pt, T_CLIC - 12, C[5]);
 
 // y el clic produce algo: la barra acusa el golpe en el cuadro exacto en que el puntero apoya
-var anillo = G.img("p-clic", "clic", 1338, 600, -50, 6);
+// el anillo del clic cuelga del mismo nulo, asi que nace exactamente donde el puntero apoya
+var anillo = G.img("p-clic", "clic", 0, 0, 0, 6);
+G.colgar(anillo, ejeP, [0, 0, -50]);
 G.claves(G.esc(anillo), [[T_CLIC + 2, [6, 6, 100], "C3"], [T_CLIC + 16, [30, 30, 100]]], "clic-esc");
 G.claves(G.op(anillo), [[T_CLIC + 2, 90, "C3"], [T_CLIC + 16, 0]], "clic-op");
 G.plano(anillo, T_CLIC + 2, T_CLIC + 17);
