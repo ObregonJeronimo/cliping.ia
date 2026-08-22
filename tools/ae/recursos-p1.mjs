@@ -92,8 +92,17 @@ function ruta (g, x, y, w, h, r) {
 // LA CUENTA DE LA ESCALA, que ya me la comi una vez: AE escala sobre los pixeles NATIVOS, no sobre el
 // tamano logico del lienzo. Estos archivos miden 4800 px, asi que cubrir el cuadro pide escala >= 40
 // (1920/4800) y el piso de nitidez de 2x se mantiene hasta escala 50. La banda legal es 40-50.
+// LOS FONDOS VAN A k=1,2 Y NO A k=2, Y ES UNA EXCEPCION A LA LEY Q2 QUE HAY QUE DECIR EN VOZ ALTA.
+//
+// El piso de 2x existe porque una imagen con DETALLE dibujada por encima de sus pixeles se ve
+// pixelada — un recorte de 120 px pintado a 900. Un degradado radial no tiene detalle: a 1,25x y a 4x
+// se ve exactamente igual, porque entre dos pixeles vecinos no hay informacion que perder.
+//
+// Y el costo del otro lado es real y medido: con los fondos a 4800 px la comp entera sumaba 200
+// megapixeles de PNG y AE tardaba SEIS MINUTOS en construirla. A 2880 tarda la mitad. Seis minutos por
+// iteracion no es un detalle de comodidad: es la diferencia entre poder mirar cuadros y no poder.
 function mancha (nombre, x, y, r, color, alfa, nota) {
-  const W = 2400, H = 1350, k = 2
+  const W = 2400, H = 1350, k = 1.2
   const [cv, g] = lienzo(W, H, k)
   const d = g.createRadialGradient(x * W, y * H, 0, x * W, y * H, r * W)
   d.addColorStop(0.00, `rgba(${color},${alfa})`)
@@ -111,7 +120,7 @@ mancha('p-luz-naranja', 0.56, 1.06, 0.42, '255,110,36', 1.00, 'el naranja, para 
 mancha('p-luz-azul',    0.50, 0.96, 0.34, '72,64,255',  0.95, 'el azul cerrado del revelado de marca')
 
 {
-  const [cv, g] = lienzo(2400, 1350, 2)
+  const [cv, g] = lienzo(2400, 1350, 1.2)
   g.fillStyle = '#030308'
   g.fillRect(0, 0, 2400, 1350)
   guardar('p-negro', cv, 'el negro de base')
@@ -206,25 +215,25 @@ const CLARO_SOBRE_OSCURO = { peso: '600 ', c0: '#F2EEFF', c1: '#F2EEFF', c2: '#C
 // ---- PLANOS 1-2 · "Build" gigante y despues "Build SaaS Promo" chico
 const CG1 = medirCuerpo('Build', 1730, '700 ')
 console.log(`\n  "Build" a 1730 px de tinta pide cuerpo ${CG1}`)
-palabraConEstela('p-build-g', 'Build', CG1, { c0: '#FFFFFF', c1: '#D8CBFF', c2: '#7C4DFF', k: 1.4 })
+palabraConEstela('p-build-g', 'Build', CG1, { c0: '#FFFFFF', c1: '#D8CBFF', c2: '#7C4DFF', k: 1.5 })
 frase('p-f1', ['Build', 'SaaS', 'Promo'], CUERPO_CHICO, CLARO_SOBRE_OSCURO)
 
 // ---- PLANOS 3-4 · "Engineered for Scale"
 const CG2 = medirCuerpo('Engineered', 2600, '700 ')
 console.log(`\n  "Engineered" a 2600 px de tinta pide cuerpo ${CG2}`)
-palabraConEstela('p-eng-g', 'Engineered', CG2, { c0: '#FFFFFF', c1: '#FFFFFF', c2: '#EFEAFF', k: 1.1 })
+palabraConEstela('p-eng-g', 'Engineered', CG2, { c0: '#FFFFFF', c1: '#FFFFFF', c2: '#EFEAFF', k: 1.2 })
 frase('p-f2', ['Engineered', 'for', 'Scale'], CUERPO_CHICO, CLARO_SOBRE_OSCURO)
 
 // ---- PLANO 8 · "Give your team", sobre blanco. La tercera palabra va en el acento, como el original.
 const CG3 = medirCuerpo('Give', 900, '700 ')
-palabraConEstela('p-give-g', 'Give', CG3, { peso: '700 ', plano: true, color: '#120B24', k: 2 })
+palabraConEstela('p-give-g', 'Give', CG3, { peso: '700 ', plano: true, color: '#120B24', k: 1.5 })
 frase('p-f3', ['Give', 'your', 'team'], CUERPO_CHICO, {
   peso: '700 ', colores: ['#1A1030', '#6B6480', '#6B3BFF'], hueco: 0.32, estela: 62, k: 3
 })
 
 // ---- PLANO 10 · "Growth" gigante sobre oscuro
 const CG4 = medirCuerpo('Growth', 1500, '700 ')
-palabraConEstela('p-growth-g', 'Growth', CG4, { c0: '#FFFFFF', c1: '#F0EBFF', c2: '#B9A6FF', k: 1.6 })
+palabraConEstela('p-growth-g', 'Growth', CG4, { c0: '#FFFFFF', c1: '#F0EBFF', c2: '#B9A6FF', k: 1.5 })
 
 // ================================================================ 3 · EL ODOMETRO DEL PLANO 9
 //
@@ -251,7 +260,7 @@ for (let i = 0; i < ODO.length; i++) {
 // cuatro lineas duras, que es lo que tenia la version anterior y lo que la hacia parecer un diagrama.
 const AROS = [[840, 320], [1200, 490], [1580, 670], [2000, 860]]
 for (let i = 0; i < AROS.length; i++) {
-  const CW = 2140, CH = 920, k = 2
+  const CW = 2140, CH = 920, k = 1.4
   const [cv, g] = lienzo(CW, CH, k)
   const w = AROS[i][0], h = AROS[i][1]
   ruta(g, (CW - w) / 2, (CH - h) / 2, w, h, h / 2)
@@ -262,7 +271,7 @@ for (let i = 0; i < AROS.length; i++) {
 
 // ================================================================ 5 · LA MALLA CLARA DE LOS PLANOS 8-9
 {
-  const W = 2400, H = 1350, k = 2
+  const W = 2400, H = 1350, k = 1.2
   const [cv, g] = lienzo(W, H, k)
   g.fillStyle = '#FBFAFF'
   g.fillRect(0, 0, W, H)

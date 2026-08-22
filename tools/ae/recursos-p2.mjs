@@ -1,11 +1,19 @@
-// RECURSOS DE LA PIEZA-P, plano 3 (la marca) y plano 6 (el tablero).
+// RECURSOS DE LA PIEZA-P · la barra de busqueda, la marca y el tablero.
 //
-// LOS DOS PLANOS MAS LARGOS: 9,7 s y 16,3 s. Entre los dos son 26 de los 53 segundos de la pieza, y
-// los dos tienen el mismo problema — sostener una imagen fija durante mucho tiempo es imposible, asi
-// que lo que hay que entregar no es una imagen sino UN JUEGO DE PIEZAS QUE PUEDEN MOVERSE SOLAS.
+// LO QUE ESTE ARCHIVO CORRIGE, y sale de volver a mirar la referencia en color:
 //
-// Es la ley L23 llevada al extremo: un PNG plano tiene UN estado. Si el tablero sale como una sola
-// imagen, los dieciseis segundos son dieciseis segundos de una foto. Salen 22 piezas.
+//   · LA BARRA existe y yo no la habia visto. Ocupa del segundo 4,2 al 7,2 y es el plano con mas
+//     mecanica de la pieza: se dibuja sola empezando por un FILO de luz arriba, se escribe letra a
+//     letra con cursor, se aleja de camara los cinco segundos enteros, le aparece una lupa a la
+//     derecha, y llega un puntero que hace clic. Yo habia leido ese plano como "revelado de marca".
+//
+//   · EL TABLERO tiene otro reparto: cuatro tarjetas de cifra en fila arriba y un panel de grafico
+//     grande abajo, no tres tarjetas y una columna de actividad. Y su titulo SE ESCRIBE.
+//
+//   · LA MARCA no es Nexus ni es Nodo. Pedido de Thiago: "cambiale el nombre a otra cosa, que no sea
+//     Nodo". Va ARCO, con un simbolo que no se parece al del original — un arco de 3/4 con su punto,
+//     en vez de los dos galones cruzados. El nombre y el simbolo son lo unico que se reemplaza: la
+//     licencia CC-BY del original cubre su diseno, no su marca.
 //
 // USO
 //   node tools/ae/recursos-p2.mjs
@@ -19,16 +27,16 @@ if (!existsSync(DESTINO)) mkdirSync(DESTINO, { recursive: true })
 const FUENTE = 'Segoe UI'
 const hechos = []
 
-// la paleta de la pieza, en un solo lugar
-const TINTA_PANEL = '#0E0B1E'   // el cuerpo del tablero
-const CAMPO       = '#151129'   // el area del grafico — PLANA A PROPOSITO (ver mas abajo)
-const LINEA       = '#26204A'
-const CLARO       = '#EDEAFB'
-const GRIS        = '#8B85A8'
-const VIOLETA     = '#7C4DFF'
-const VIOLETA_CL  = '#B79BFF'
-const NARANJA     = '#EC6036'
-const VERDE       = '#3DD68C'
+const TINTA   = '#07060F'
+const CAMPO   = '#101020'
+const LINEA   = '#232238'
+const CLARO   = '#EFECFB'
+const GRIS    = '#8A85A0'
+const VIOLETA = '#6B3BFF'
+const VIOL_CL = '#B9A6FF'
+const VERDE   = '#3DD68C'
+const ROJO    = '#F2604A'
+const AMBAR   = '#F5A524'
 
 const lienzo = (w, h, k = 2) => {
   const cv = createCanvas(Math.round(w * k), Math.round(h * k))
@@ -51,275 +59,379 @@ function ruta (g, x, y, w, h, r) {
   g.closePath()
 }
 
-// ================================================================ 1 · EL LOGOTIPO, LETRA POR LETRA
+// EL RESPLANDOR SE HORNEA APILANDO TRAZOS, y esa es la unica forma que tiene este motor.
 //
-// Cuatro PNGs, uno por letra. El plano 3 dura 9,7 s y el revelado de marca es su unico gesto: con el
-// logotipo entero en una imagen ese gesto seria "aparece", que dura un cuadro y deja 9,4 s de nada.
-// Con las letras sueltas la marca SE ESCRIBE — cada una llega con su retardo y se asienta.
-//
-// El interletrado se calcula aca y se imprime, porque la pieza necesita las posiciones exactas: una
-// letra mal ubicada en un logotipo se ve al instante, mucho mas que en una frase.
-{
-  const MARCA = 'nodo'
-  const CUERPO = 210
-  const gm = createCanvas(10, 10).getContext('2d')
-  gm.font = `700 ${CUERPO}px "${FUENTE}"`
-  const anchos = [...MARCA].map(c => gm.measureText(c).width)
-  // interletra negativa: un logotipo se aprieta, un parrafo no
-  const APRIETE = -CUERPO * 0.035
-  const total = anchos.reduce((a, b) => a + b, 0) + APRIETE * (MARCA.length - 1)
+// No hay desenfoque gaussiano ni sombra con blur en el motor web, asi que un halo se construye
+// dibujando el mismo contorno N veces con el trazo cada vez mas ancho y el alfa cada vez menor. Es una
+// aproximacion, y es la buena: el perfil que sale es casi el de un gaussiano porque el area entre dos
+// trazos consecutivos crece linealmente con el radio.
+function halo (g, x, y, w, h, r, color, capas, anchoMax, alfaMax) {
+  for (let i = capas; i >= 1; i--) {
+    const t = i / capas
+    ruta(g, x, y, w, h, r)
+    g.strokeStyle = `rgba(${color},${alfaMax * Math.pow(1 - t, 2.1)})`
+    g.lineWidth = anchoMax * t
+    g.stroke()
+  }
+}
 
+// ================================================================ 1 · LA BARRA DE BUSQUEDA
+//
+// Sale en TRES piezas y no en una, porque en el video hace tres cosas en tiempos distintos: primero
+// aparece SOLO el filo de arriba, despues se completa el cuerpo con su halo, y la lupa llega al final
+// cuando el texto ya casi termino. Horneadas juntas, las tres empezarian a existir en el mismo cuadro
+// y el plano perderia sus dos primeros tiempos.
+const BW = 1700, BH = 214
+
+{
+  const [cv, g] = lienzo(BW + 240, BH + 240, 2)
+  const x = 120, y = 120
+  halo(g, x, y, BW, BH, BH / 2, '108,64,255', 22, 78, 0.42)
+  ruta(g, x, y, BW, BH, BH / 2)
+  g.fillStyle = '#08060F'; g.fill()
+  g.strokeStyle = 'rgba(150,110,255,0.95)'; g.lineWidth = 3; g.stroke()
+  guardar('p-barra', cv, 'el cuerpo de la barra con su halo apilado')
+}
+
+{
+  // el filo de arriba: el arco que en el video aparece SOLO, antes que el resto de la barra
+  const [cv, g] = lienzo(BW + 240, 180, 3)
+  const x = 120
+  g.beginPath()
+  g.moveTo(x + BH / 2, 90)
+  g.arcTo(x + BW / 2, 40, x + BW - BH / 2, 90, 400)
+  const d = g.createLinearGradient(x, 0, x + BW, 0)
+  d.addColorStop(0.00, 'rgba(120,70,255,0)')
+  d.addColorStop(0.30, 'rgba(196,150,255,0.95)')
+  d.addColorStop(0.58, 'rgba(255,225,255,1)')
+  d.addColorStop(1.00, 'rgba(255,120,190,0)')
+  g.strokeStyle = d; g.lineWidth = 4; g.lineCap = 'round'
+  g.stroke()
+  guardar('p-barra-filo', cv, 'el filo de luz de arriba — aparece SOLO, antes que la barra')
+}
+
+{
+  // la lupa
+  const [cv, g] = lienzo(90, 90, 4)
+  g.strokeStyle = 'rgba(210,200,240,0.85)'; g.lineWidth = 5; g.lineCap = 'round'
+  g.beginPath(); g.arc(38, 38, 22, 0, Math.PI * 2); g.stroke()
+  g.beginPath(); g.moveTo(54, 54); g.lineTo(74, 74); g.stroke()
+  guardar('p-lupa', cv, 'la lupa del extremo derecho de la barra')
+}
+
+// el puntero. La punta esta en (6,4) del lienzo: ahi va el ancla, o el clic cae 30 px abajo y a la
+// derecha de donde parece que apunta.
+{
+  const [cv, g] = lienzo(64, 93, 5)
+  g.beginPath()
+  g.moveTo(6, 4); g.lineTo(6, 62); g.lineTo(21, 48); g.lineTo(31, 71); g.lineTo(41, 66)
+  g.lineTo(31, 44); g.lineTo(50, 43); g.closePath()
+  const d = g.createLinearGradient(6, 4, 50, 71)
+  d.addColorStop(0, '#E8E0FF'); d.addColorStop(1, '#9B7BFF')
+  g.fillStyle = d; g.fill()
+  g.strokeStyle = 'rgba(255,255,255,0.75)'; g.lineWidth = 2; g.lineJoin = 'round'; g.stroke()
+  guardar('p-puntero', cv, 'puntero — la punta esta en (6,4), ahi va el ancla')
+}
+
+// el anillo del clic
+{
+  const [cv, g] = lienzo(220, 220, 3)
+  g.beginPath(); g.arc(110, 110, 92, 0, Math.PI * 2)
+  g.strokeStyle = 'rgba(200,170,255,0.9)'; g.lineWidth = 7; g.stroke()
+  guardar('p-clic', cv, 'el anillo del clic')
+}
+
+// ================================================================ 2 · LA MARCA — ARCO
+//
+// Un arco de 3/4 con su punto. NO se parece al simbolo del original (dos galones cruzados) y no tiene
+// por que: la licencia CC-BY cubre el diseno de la plantilla, no la marca de nadie.
+function isotipo (nombre, L, k) {
+  const [cv, g] = lienzo(L, L, k)
+  const cx = L / 2, cy = L / 2, R = L * 0.34, gr = L * 0.115
+  // el arco, de -220 a +30 grados
+  const d = g.createLinearGradient(cx - R, cy - R, cx + R, cy + R)
+  d.addColorStop(0.00, '#C9B4FF')
+  d.addColorStop(0.45, '#7C4DFF')
+  d.addColorStop(1.00, '#4620C8')
+  g.beginPath()
+  g.arc(cx, cy, R, Math.PI * -1.22, Math.PI * 0.17)
+  g.strokeStyle = d; g.lineWidth = gr; g.lineCap = 'round'
+  g.stroke()
+  // EL FILO ESPECULAR NO NECESITA RECORTE, Y EL INTENTO DE RECORTARLO PINTO EL SIMBOLO DE NEGRO.
+  //
+  // La primera version dibujaba el arco otra vez EN NEGRO para tener una base y componia el filo con
+  // `source-atop`. Pero `source-atop` no borra la base: la deja debajo. El resultado fue un arco negro
+  // sobre un fondo negro con una raya blanca encima — en el cuadro se veia una mancha.
+  //
+  // Y el recorte era innecesario desde el principio: el trazo principal ocupa la banda [R-gr/2,
+  // R+gr/2], y un filo a radio R+0,28*gr con ancho 0,30*gr ocupa [R+0,13*gr, R+0,43*gr], que entra
+  // entero adentro. Alcanza con dibujarlo.
+  g.beginPath(); g.arc(cx, cy, R + gr * 0.28, Math.PI * -1.10, Math.PI * -0.62)
+  g.strokeStyle = 'rgba(255,255,255,0.92)'; g.lineWidth = gr * 0.30; g.lineCap = 'butt'
+  g.stroke()
+  // el punto: cierra el arco y es lo que lo vuelve un simbolo en vez de una letra C
+  g.beginPath(); g.arc(cx + R * 0.72, cy - R * 0.72, gr * 0.58, 0, Math.PI * 2)
+  g.fillStyle = '#E4DAFF'; g.fill()
+  guardar(nombre, cv, 'el isotipo: un arco de 3/4 con su punto')
+}
+isotipo('p-iso', 520, 3)
+
+// el logotipo, LETRA POR LETRA: en el video la marca se escribe, no aparece
+{
+  const MARCA = 'Arco'
+  const CUERPO = 200
+  const gm = createCanvas(10, 10).getContext('2d')
+  gm.font = `600 ${CUERPO}px "${FUENTE}"`
+  const anchos = [...MARCA].map(c => gm.measureText(c).width)
+  const total = anchos.reduce((a, b) => a + b, 0)
   let acum = 0
   console.log(`\n  logotipo "${MARCA}" · ${CUERPO}px · linea de ${Math.round(total)} px`)
   const letras = [...MARCA]
   for (let i = 0; i < letras.length; i++) {
-    const ch = letras[i]
     const m = Math.ceil(CUERPO * 0.30)
-    const [cv, g] = lienzo(Math.ceil(anchos[i]) + m * 2, Math.ceil(CUERPO * 1.5) + m * 2, 3)
-    g.font = `700 ${CUERPO}px "${FUENTE}"`
+    const [cv, g] = lienzo(Math.ceil(anchos[i]) + m * 2, Math.ceil(CUERPO * 1.45) + m * 2, 3)
+    g.font = `600 ${CUERPO}px "${FUENTE}"`
     g.textBaseline = 'middle'
+    // el degradado corre a lo largo de la MARCA ENTERA y se recorta en la ventana de esta letra: asi,
+    // cuando las cuatro terminan de juntarse, el degradado es continuo
     const d = g.createLinearGradient(m - acum, 0, m - acum + total, 0)
-    d.addColorStop(0, '#FFFFFF'); d.addColorStop(0.6, '#DACCFF'); d.addColorStop(1, VIOLETA_CL)
+    d.addColorStop(0, '#FFFFFF'); d.addColorStop(0.55, '#DACCFF'); d.addColorStop(1, '#7C4DFF')
     g.fillStyle = d
-    g.fillText(ch, m, (cv.height / 3) / 2)
-    guardar(`p-w-${i + 1}`, cv, `letra "${ch}" del logotipo`)
-    const centro = acum + anchos[i] / 2 - total / 2
-    console.log(`    p-w-${i + 1}  "${ch}"  centro relativo ${Math.round(centro)}`)
-    acum += anchos[i] + APRIETE
+    g.fillText(letras[i], m, (cv.height / 3) / 2)
+    guardar(`p-w-${i + 1}`, cv, `letra "${letras[i]}" del logotipo`)
+    console.log(`    p-w-${i + 1}  "${letras[i]}"  centro relativo ${Math.round(acum + anchos[i] / 2 - total / 2)}`)
+    acum += anchos[i]
   }
 }
 
-// la linea de atribucion — la licencia CC-BY la exige y va en la pieza, no en un comentario
+// las letras fantasma gigantes del fondo del revelado
 {
-  const [cv, g] = lienzo(1100, 60, 3)
-  g.font = `400 26px "${FUENTE}"`
-  g.fillStyle = 'rgba(237,234,251,0.42)'
+  const [cv, g] = lienzo(2400, 1350, 1.2)
+  g.font = `700 1000px "${FUENTE}"`
+  g.fillStyle = 'rgba(255,255,255,0.045)'
+  g.textBaseline = 'middle'; g.textAlign = 'center'
+  g.fillText('Arco', 1200, 640)
+  guardar('p-fantasma', cv, 'las letras gigantes del fondo del revelado, al 4,5%')
+}
+
+// las particulas que suben debajo de la marca
+{
+  const [cv, g] = lienzo(1200, 420, 2)
+  let s = 20260821
+  const rnd = () => { s = (s * 1103515245 + 12345) % 2147483648; return s / 2147483648 }
+  for (let i = 0; i < 90; i++) {
+    const x = rnd() * 1200, y = rnd() * 420
+    const r = 1 + rnd() * 2.4
+    g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2)
+    g.fillStyle = `rgba(200,180,255,${0.14 + rnd() * 0.5})`
+    g.fill()
+  }
+  guardar('p-particulas', cv, 'las particulas del revelado — semilla fija, deterministas')
+}
+
+// la atribucion que exige la licencia CC-BY
+{
+  const [cv, g] = lienzo(1180, 60, 3)
+  g.font = `400 25px "${FUENTE}"`
+  g.fillStyle = 'rgba(230,226,250,0.40)'
   g.textBaseline = 'middle'
   g.fillText('Recreacion de una plantilla de AE Template & Premiere Pro Template · CC BY', 0, 30)
   guardar('p-credito', cv, 'la atribucion que exige la licencia CC-BY del original')
 }
 
-// ================================================================ 2 · EL TABLERO, EN PIEZAS
-// 620 DE ALTO Y NO 720. La primera version dejaba 164 px vacios debajo de las tarjetas — un tercio
-// del panel sin nada, que mirando un cuadro se ve al instante y ninguna compuerta puede ver, porque
-// el vacio no es un defecto medible: es una decision de composicion mal tomada.
-const PW = 1180, PH = 620   // el tablero entero mide esto; cada pieza sale en su propio lienzo
+// ================================================================ 3 · EL TABLERO
+//
+// El reparto sale del video: cuatro tarjetas de cifra en fila arriba y un panel de grafico grande
+// abajo. La version anterior tenia tres tarjetas y una columna de actividad — era otro tablero.
+const PW = 1420, PH = 860
+const SB = 236          // la barra lateral
+const CAB = 78          // la cabecera
 
-// --- el cuerpo: marco, barra lateral y cabecera. Lo unico que NO se mueve.
 {
   const [cv, g] = lienzo(PW, PH, 2)
-  ruta(g, 0, 0, PW, PH, 26)
-  g.fillStyle = TINTA_PANEL; g.fill()
-  g.strokeStyle = 'rgba(124,77,255,0.30)'; g.lineWidth = 2; g.stroke()
+  ruta(g, 0, 0, PW, PH, 28)
+  g.fillStyle = TINTA; g.fill()
+  g.save(); ruta(g, 0, 0, PW, PH, 28); g.clip()
 
   // barra lateral
-  g.save(); ruta(g, 0, 0, PW, PH, 26); g.clip()
-  g.fillStyle = '#0A0818'; g.fillRect(0, 0, 218, PH)
+  g.fillStyle = '#050410'; g.fillRect(0, 0, SB, PH)
   g.strokeStyle = LINEA; g.lineWidth = 1
-  g.beginPath(); g.moveTo(218, 0); g.lineTo(218, PH); g.stroke()
-  g.beginPath(); g.moveTo(218, 74); g.lineTo(PW, 74); g.stroke()
-  g.restore()
+  g.beginPath(); g.moveTo(SB, 0); g.lineTo(SB, PH); g.stroke()
+  g.beginPath(); g.moveTo(0, CAB); g.lineTo(PW, CAB); g.stroke()
 
-  // LA MARCA DEL PANEL ES EL MISMO ROMBO DEL ISOTIPO, no un cuadrado redondeado. Un producto que
-  // lleva un simbolo en la pieza y otro adentro de su propia interfaz se contradice, y se nota aunque
-  // nadie sepa decir por que.
-  g.save(); g.translate(39, 37)
-  g.beginPath(); g.moveTo(0, -14); g.lineTo(11, 0); g.lineTo(0, 14); g.lineTo(-11, 0); g.closePath()
-  g.fillStyle = VIOLETA; g.fill()
-  g.beginPath(); g.moveTo(0, -14); g.lineTo(11, 0); g.lineTo(0, 0); g.closePath()
-  g.fillStyle = VIOLETA_CL; g.fill()
+  // la marca del panel: el mismo arco, chico
+  g.save(); g.translate(34, 39)
+  g.beginPath(); g.arc(0, 0, 11, Math.PI * -1.22, Math.PI * 0.17)
+  g.strokeStyle = VIOLETA; g.lineWidth = 5; g.lineCap = 'round'; g.stroke()
+  g.beginPath(); g.arc(11 * 0.72, -11 * 0.72, 2.6, 0, Math.PI * 2)
+  g.fillStyle = VIOL_CL; g.fill()
   g.restore()
   g.font = `600 19px "${FUENTE}"`; g.fillStyle = CLARO; g.textBaseline = 'middle'
-  g.fillText('nodo', 62, 38)
+  g.fillText('Arco', 56, 39)
 
-  // los items del menu — texto de verdad, no lineas grises: una tarjeta con parrafos falsos es
-  // vocabulario de maqueta y no puede ser el sujeto de un plano
-  const menu = ['Resumen', 'Proyectos', 'Entregas', 'Equipo', 'Ajustes']
-  // LA PASTILLA DEL MENU NO SE HORNEA ACA — sale en `p-pastilla`, capa aparte.
-  //
-  // Horneada, el item activo queda decidido desde el primer cuadro y NINGUNA animacion podria
-  // moverlo: el puntero clickearia "Proyectos" y el resaltado seguiria en "Resumen". Es exactamente el
-  // defecto que la PIEZA-I tuvo con su conmutador — el estado final existia en el PNG, asi que el
-  // gesto no tenia nada que cambiar. Todos los items van en gris; el activo lo pinta la pastilla.
-  for (let i = 0; i < menu.length; i++) {
-    const y = 112 + i * 52
-    g.font = `400 17px "${FUENTE}"`
-    g.fillStyle = GRIS
-    g.fillText(menu[i], 40, y + 3)
+  // los grupos del menu
+  const grupos = [['CORE', ['Overview', 'AI Models', 'Analytics']],
+                  ['WORKSPACE', ['API Keys', 'Team', 'Settings']]]
+  let y = CAB + 42
+  for (const [tit, items] of grupos) {
+    g.font = `600 11px "${FUENTE}"`; g.fillStyle = 'rgba(138,133,160,0.7)'
+    g.fillText(tit, 26, y)
+    y += 30
+    for (const it of items) {
+      g.font = `400 15px "${FUENTE}"`; g.fillStyle = GRIS
+      g.fillText(it, 42, y)
+      y += 40
+    }
+    y += 18
   }
 
-  // cabecera
-  g.font = `600 21px "${FUENTE}"`; g.fillStyle = CLARO
-  g.fillText('Resumen del equipo', 250, 38)
-  g.font = `400 15px "${FUENTE}"`; g.fillStyle = GRIS
-  g.fillText('ultimos 30 dias', 470, 39)
+  // la cabecera de la derecha: fecha, "Live" y el boton
+  g.font = `400 12px "${FUENTE}"`
+  ruta(g, PW - 344, 26, 118, 26, 13); g.fillStyle = CAMPO; g.fill()
+  g.fillStyle = GRIS; g.fillText('May 09 · 2026', PW - 332, 39)
+  ruta(g, PW - 214, 26, 66, 26, 13); g.fillStyle = 'rgba(61,214,140,0.14)'; g.fill()
+  g.beginPath(); g.arc(PW - 200, 39, 3.6, 0, Math.PI * 2); g.fillStyle = VERDE; g.fill()
+  g.fillStyle = VERDE; g.fillText('Live', PW - 190, 39)
 
-  // EL CAMPO DEL GRAFICO VA PLANO Y ESO ES DELIBERADO. La linea se dibuja sola con una tapa del color
-  // exacto del fondo que se corre a la derecha (LEY 4). Si el campo tuviera un degradado, ningun color
-  // de tapa lo igualaria y se veria el borde de la tapa cruzando la pantalla.
-  ruta(g, 250, 108, 620, 300, 16)
-  g.fillStyle = CAMPO; g.fill()
-
-  // la grilla del grafico
-  g.strokeStyle = 'rgba(38,32,74,0.9)'; g.lineWidth = 1
-  for (let i = 1; i < 4; i++) {
-    const y = 108 + (300 / 4) * i
-    g.beginPath(); g.moveTo(266, y); g.lineTo(854, y); g.stroke()
-  }
-  g.font = `400 13px "${FUENTE}"`; g.fillStyle = 'rgba(139,133,168,0.75)'
-  const dias = ['lun', 'mar', 'mie', 'jue', 'vie', 'sab', 'dom']
-  for (let i = 0; i < dias.length; i++) g.fillText(dias[i], 276 + i * 84, 428)
-  g.font = `500 15px "${FUENTE}"`; g.fillStyle = CLARO
-  g.fillText('Entregas por dia', 268, 132)
-
-  // el titulo de la columna de eventos
-  g.font = `600 15px "${FUENTE}"`; g.fillStyle = CLARO
-  g.fillText('Actividad', 900, 122)
-
-  guardar('p-panel', cv, 'el cuerpo del tablero: marco, barra lateral, cabecera y el campo PLANO')
+  guardar('p-d-marco', cv, 'el tablero: marco, barra lateral y cabecera — lo unico que no se mueve')
+  g.restore()
 }
 
-// --- la pastilla del menu: se mueve cuando el puntero clickea otro item
+// el boton, en capa aparte porque en el video entra despues y acusa el golpe
 {
-  const [cv, g] = lienzo(186, 40, 3)
-  ruta(g, 0, 0, 186, 40, 10)
-  g.fillStyle = 'rgba(124,77,255,0.20)'; g.fill()
-  g.strokeStyle = 'rgba(124,77,255,0.55)'; g.lineWidth = 1; g.stroke()
-  // el filo izquierdo, que es lo que dice "este es el activo" de un vistazo
-  g.fillStyle = VIOLETA
-  ruta(g, 0, 8, 3, 24, 1.5); g.fill()
-  guardar('p-pastilla', cv, 'el resaltado del item activo — capa aparte para que el clic lo mueva')
-}
-
-// --- la linea del grafico, en su propia capa para poder dibujarse
-{
-  const AW = 620, AH = 300
-  const [cv, g] = lienzo(AW, AH, 2)
-  const pts = [0.30, 0.44, 0.38, 0.58, 0.52, 0.74, 0.92]
-  const px = i => 26 + i * 84
-  const py = v => AH - 32 - v * (AH - 92)
-  // el area bajo la linea
-  g.beginPath(); g.moveTo(px(0), AH - 32)
-  for (let i = 0; i < pts.length; i++) g.lineTo(px(i), py(pts[i]))
-  g.lineTo(px(pts.length - 1), AH - 32); g.closePath()
-  const d = g.createLinearGradient(0, py(0.92), 0, AH - 32)
-  d.addColorStop(0, 'rgba(124,77,255,0.42)'); d.addColorStop(1, 'rgba(124,77,255,0)')
+  const [cv, g] = lienzo(158, 34, 4)
+  ruta(g, 0, 0, 158, 34, 17)
+  const d = g.createLinearGradient(0, 0, 158, 0)
+  d.addColorStop(0, '#6B3BFF'); d.addColorStop(1, '#9B5BFF')
   g.fillStyle = d; g.fill()
-  // la linea
-  g.beginPath()
-  for (let i = 0; i < pts.length; i++) {
-    if (i) g.lineTo(px(i), py(pts[i])); else g.moveTo(px(i), py(pts[i]))
-  }
-  g.strokeStyle = VIOLETA_CL; g.lineWidth = 3.5; g.lineJoin = 'round'; g.lineCap = 'round'
-  g.stroke()
-  // los nodos
-  for (let i = 0; i < pts.length; i++) {
-    g.beginPath(); g.arc(px(i), py(pts[i]), 5, 0, Math.PI * 2)
-    g.fillStyle = TINTA_PANEL; g.fill()
-    g.strokeStyle = VIOLETA_CL; g.lineWidth = 3; g.stroke()
-  }
-  guardar('p-grafico', cv, 'la linea, en capa aparte: se dibuja con una tapa del color del campo')
+  g.font = `600 13px "${FUENTE}"`; g.fillStyle = '#FFFFFF'
+  g.textBaseline = 'middle'; g.textAlign = 'center'
+  g.fillText('+ Deploy Model', 79, 18)
+  guardar('p-d-boton', cv, 'el boton "+ Deploy Model", capa aparte para poder acusar el clic')
 }
 
-// --- las tres cifras. CADA UNA CON SU ROTULO PEGADO: un numero sin sujeto no es un dato.
-const CIFRAS = [
-  ['128', 'entregas', VERDE, '+14%'],
-  ['3,4 h', 'promedio', VIOLETA_CL, '-22%'],
-  ['9', 'en curso', NARANJA, 'hoy'],
+// EL TITULO DEL TABLERO, que en la primera version era un SOLIDO BLANCO y se veia como una barra.
+// Fue una capa de relleno que puse "hasta escribir el texto de verdad" y quedo en el cuadro: un
+// rectangulo blanco de 300 px en el lugar donde tiene que decir de que trata la pantalla.
+{
+  const [cv, g] = lienzo(560, 50, 3)
+  g.font = `600 26px "${FUENTE}"`; g.fillStyle = CLARO; g.textBaseline = 'middle'
+  g.fillText('AI Management Overview', 0, 25)
+  guardar('p-d-titulo', cv, 'el titulo del tablero — se revela con una tapa, como si se escribiera')
+}
+
+// la bajada del titulo
+{
+  const [cv, g] = lienzo(560, 40, 3)
+  g.font = `400 15px "${FUENTE}"`; g.fillStyle = GRIS; g.textBaseline = 'middle'
+  g.fillText('Monitor models, requests & performance in real-time', 0, 20)
+  guardar('p-d-bajada', cv, 'la bajada del titulo del tablero')
+}
+
+// LAS CUATRO TARJETAS DE CIFRA. Cada una lleva su rotulo pegado: un numero sin sujeto no es un dato.
+// Y la linea de tendencia sale en capa APARTE, para que pueda dibujarse.
+const TARJ = [
+  ['REQUESTS', '2.4M',   '19.2%', VERDE, VIOLETA, '#7C4DFF'],
+  ['ACCURACY', '98.4%',  '0.6%',  VERDE, VERDE,   '#3DD68C'],
+  ['LATENCY',  '142ms',  '12ms',  ROJO,  ROJO,    '#F2604A'],
+  ['COST / 1K', '$8,240', '3.1%', AMBAR, AMBAR,   '#F5A524'],
 ]
-for (let i = 0; i < CIFRAS.length; i++) {
-  const n = CIFRAS[i][0], rot = CIFRAS[i][1], col = CIFRAS[i][2], delta = CIFRAS[i][3]
-  const W = 196, H = 116
-  const [cv, g] = lienzo(W, H, 2)
-  ruta(g, 0, 0, W, H, 16)
+const TW = 252, TH = 148
+for (let i = 0; i < TARJ.length; i++) {
+  const [rot, cif, delta, colDelta, colIco] = TARJ[i]
+  const [cv, g] = lienzo(TW, TH, 3)
+  ruta(g, 0, 0, TW, TH, 16)
   g.fillStyle = CAMPO; g.fill()
   g.strokeStyle = LINEA; g.lineWidth = 1; g.stroke()
   g.textBaseline = 'middle'
-  g.font = `400 14px "${FUENTE}"`; g.fillStyle = GRIS
-  g.fillText(rot, 18, 26)
-  g.font = `700 34px "${FUENTE}"`; g.fillStyle = CLARO
-  g.fillText(n, 18, 64)
-  g.font = `600 13px "${FUENTE}"`; g.fillStyle = col
-  g.fillText(delta, 18, 95)
-  guardar(`p-cifra-t${i + 1}`, cv, `tarjeta "${n} ${rot}" — la cifra lleva su rotulo pegado`)
+  ruta(g, 18, 18, 28, 28, 9)
+  g.fillStyle = `${colIco}22`; g.fill()
+  g.beginPath(); g.arc(32, 32, 6, 0, Math.PI * 2); g.fillStyle = colIco; g.fill()
+  g.font = `600 11px "${FUENTE}"`; g.fillStyle = 'rgba(138,133,160,0.85)'
+  g.fillText(rot, 18, 66)
+  g.font = `700 32px "${FUENTE}"`; g.fillStyle = CLARO
+  g.fillText(cif, 18, 98)
+  g.font = `600 12px "${FUENTE}"`; g.fillStyle = colDelta
+  g.fillText((colDelta === ROJO ? '▼ ' : '▲ ') + delta, 18, 126)
+  guardar(`p-d-t${i + 1}`, cv, `tarjeta "${cif} ${rot}"`)
 }
 
-// --- las cinco filas de actividad, una por capa: entran de a una y ESO es lo que sostiene el plano
-// SIETE Y NO CINCO. Las dos ultimas existen porque `ritmo.mjs` encontro un hueco de 188 cuadros
-// —6,3 s— en el ultimo tercio del plano 6, donde lo unico que pasaba era el giro lento del nulo. La
-// salida no era estirar lo que ya habia sino que la lista SIGA VIVIENDO: se corre hacia arriba, la
-// primera se va por el borde y entran dos nuevas. Repetir una fila que ya salio hubiera sido peor que
-// el hueco.
-const EVENTOS = [
-  ['Ana M.', 'subio la revision final', VIOLETA],
-  ['Bruno T.', 'aprobo tres entregas', VERDE],
-  ['Cami R.', 'abrio un proyecto nuevo', NARANJA],
-  ['Dario L.', 'dejo dos comentarios', VIOLETA_CL],
-  ['Eva P.', 'cerro el sprint', VERDE],
-  ['Facu S.', 'publico la version 2.4', VIOLETA],
-  ['Gina A.', 'sumo a dos personas', NARANJA],
+// las cuatro lineas de tendencia, en capas propias
+const CURVAS = [
+  [0.20, 0.34, 0.28, 0.52, 0.46, 0.78],
+  [0.40, 0.44, 0.52, 0.50, 0.62, 0.72],
+  [0.72, 0.60, 0.66, 0.44, 0.40, 0.26],
+  [0.30, 0.42, 0.38, 0.56, 0.60, 0.74],
 ]
-for (let i = 0; i < EVENTOS.length; i++) {
-  const quien = EVENTOS[i][0], que = EVENTOS[i][1], col = EVENTOS[i][2]
-  const W = 258, H = 62
-  const [cv, g] = lienzo(W, H, 2)
-  ruta(g, 0, 0, W, H, 12)
-  g.fillStyle = 'rgba(21,17,41,0.92)'; g.fill()
-  g.beginPath(); g.arc(24, H / 2, 13, 0, Math.PI * 2); g.fillStyle = col; g.fill()
-  g.font = `700 12px "${FUENTE}"`; g.fillStyle = TINTA_PANEL
-  g.textAlign = 'center'; g.textBaseline = 'middle'
-  g.fillText(quien[0], 24, H / 2 + 1)
-  g.textAlign = 'left'
-  g.font = `600 14px "${FUENTE}"`; g.fillStyle = CLARO
-  g.fillText(quien, 48, 22)
-  g.font = `400 13px "${FUENTE}"`; g.fillStyle = GRIS
-  g.fillText(que, 48, 42)
-  guardar(`p-ev-${i + 1}`, cv, `fila "${quien}" — capa propia para entrar sola`)
-}
-
-// --- el globo del grafico: lo que aparece cuando el puntero se para sobre el ultimo dia
-{
-  const W = 152, H = 74
-  const [cv, g] = lienzo(W, H + 10, 3)
-  ruta(g, 0, 0, W, H, 12)
-  g.fillStyle = '#241C4E'; g.fill()
-  g.strokeStyle = 'rgba(179,155,255,0.65)'; g.lineWidth = 1; g.stroke()
-  // la punta que lo ata al dato — sin ella el globo flota y no senala nada
-  g.beginPath(); g.moveTo(W / 2 - 8, H - 1); g.lineTo(W / 2, H + 9); g.lineTo(W / 2 + 8, H - 1)
-  g.closePath(); g.fillStyle = '#241C4E'; g.fill()
-  g.textBaseline = 'middle'
-  g.font = `400 13px "${FUENTE}"`; g.fillStyle = GRIS
-  g.fillText('domingo', 16, 22)
-  g.font = `700 26px "${FUENTE}"`; g.fillStyle = CLARO
-  g.fillText('31', 16, 50)
-  g.font = `600 13px "${FUENTE}"`; g.fillStyle = VERDE
-  g.fillText('+9', 62, 52)
-  guardar('p-globo', cv, 'el globo del ultimo dato — lleva punta, sin ella no senala nada')
-}
-
-// --- el filo de luz del borde inclinado. Lo que hace que un plano inclinado se lea como un OBJETO
-// con canto y no como una imagen deformada.
-{
-  const [cv, g] = lienzo(PW, 14, 3)
-  const d = g.createLinearGradient(0, 0, PW, 0)
-  d.addColorStop(0.00, 'rgba(124,77,255,0)')
-  d.addColorStop(0.28, 'rgba(200,178,255,0.95)')
-  d.addColorStop(0.62, 'rgba(255,255,255,0.85)')
-  d.addColorStop(1.00, 'rgba(236,96,54,0)')
-  g.fillStyle = d
-  ruta(g, 0, 4, PW, 6, 3); g.fill()
-  guardar('p-filo', cv, 'el canto luminoso del plano inclinado')
-}
-
-// --- el cursor que senala dentro del tablero
-{
-  const [cv, g] = lienzo(64, 93, 4)
+for (let i = 0; i < CURVAS.length; i++) {
+  const W = 96, H = 40
+  const [cv, g] = lienzo(W, H, 4)
   g.beginPath()
-  g.moveTo(6, 4); g.lineTo(6, 62); g.lineTo(21, 48); g.lineTo(31, 71); g.lineTo(41, 66)
-  g.lineTo(31, 44); g.lineTo(50, 43); g.closePath()
-  g.fillStyle = '#FFFFFF'; g.fill()
-  g.strokeStyle = 'rgba(10,8,24,0.55)'; g.lineWidth = 2.4; g.lineJoin = 'round'; g.stroke()
-  guardar('p-puntero', cv, 'puntero — la punta esta en (6,4), ahi va el ancla')
+  CURVAS[i].forEach((v, j) => {
+    const x = (W / (CURVAS[i].length - 1)) * j, y = H - 4 - v * (H - 12)
+    if (j) g.lineTo(x, y); else g.moveTo(x, y)
+  })
+  g.strokeStyle = TARJ[i][5]; g.lineWidth = 2.4; g.lineJoin = 'round'; g.lineCap = 'round'
+  g.stroke()
+  guardar(`p-d-s${i + 1}`, cv, `la tendencia de la tarjeta ${i + 1}, en capa propia para dibujarse`)
+}
+
+// EL PANEL DEL GRAFICO. El campo va PLANO a proposito: la linea se dibuja con una tapa del color
+// exacto del fondo, y con un degradado ningun color de tapa lo igualaria.
+const GW = 1112, GH = 300
+{
+  const [cv, g] = lienzo(GW, GH, 2)
+  ruta(g, 0, 0, GW, GH, 18)
+  g.fillStyle = CAMPO; g.fill()
+  g.strokeStyle = LINEA; g.lineWidth = 1; g.stroke()
+  g.textBaseline = 'middle'
+  g.font = `600 15px "${FUENTE}"`; g.fillStyle = CLARO
+  g.fillText('Request Volume', 22, 30)
+  const tog = ['10', '30', '100']
+  for (let i = 0; i < 3; i++) {
+    const x = GW - 150 + i * 44
+    if (i === 1) { ruta(g, x - 8, 18, 38, 24, 8); g.fillStyle = 'rgba(107,59,255,0.20)'; g.fill() }
+    g.font = `500 12px "${FUENTE}"`; g.fillStyle = i === 1 ? VIOL_CL : GRIS
+    g.fillText(tog[i], x, 30)
+  }
+  g.strokeStyle = 'rgba(35,34,56,0.9)'; g.lineWidth = 1
+  for (let i = 1; i <= 3; i++) {
+    const y = 56 + ((GH - 76) / 4) * i
+    g.beginPath(); g.moveTo(22, y); g.lineTo(GW - 22, y); g.stroke()
+  }
+  guardar('p-d-grafico', cv, 'el panel del grafico con su campo PLANO')
+}
+
+{
+  const [cv, g] = lienzo(GW - 44, GH - 76, 2)
+  const W = GW - 44, H = GH - 76
+  const pts = [0.12, 0.20, 0.17, 0.30, 0.26, 0.38, 0.34, 0.52, 0.48, 0.66, 0.62, 0.86]
+  const px = i => (W / (pts.length - 1)) * i
+  const py = v => H - 10 - v * (H - 30)
+  g.beginPath(); g.moveTo(px(0), H - 10)
+  pts.forEach((v, i) => g.lineTo(px(i), py(v)))
+  g.lineTo(px(pts.length - 1), H - 10); g.closePath()
+  const d = g.createLinearGradient(0, py(0.86), 0, H - 10)
+  d.addColorStop(0, 'rgba(107,59,255,0.38)'); d.addColorStop(1, 'rgba(107,59,255,0)')
+  g.fillStyle = d; g.fill()
+  g.beginPath()
+  pts.forEach((v, i) => (i ? g.lineTo(px(i), py(v)) : g.moveTo(px(i), py(v))))
+  g.strokeStyle = VIOL_CL; g.lineWidth = 3; g.lineJoin = 'round'; g.lineCap = 'round'
+  g.stroke()
+  guardar('p-d-linea', cv, 'la linea del grafico, en capa aparte para dibujarse con una tapa')
+}
+
+// el filo de luz del canto inclinado
+{
+  const [cv, g] = lienzo(PW, 16, 3)
+  const d = g.createLinearGradient(0, 0, PW, 0)
+  d.addColorStop(0.00, 'rgba(150,110,255,0)')
+  d.addColorStop(0.24, 'rgba(206,186,255,0.95)')
+  d.addColorStop(0.60, 'rgba(255,255,255,0.9)')
+  d.addColorStop(1.00, 'rgba(255,150,60,0)')
+  g.fillStyle = d
+  ruta(g, 0, 5, PW, 6, 3); g.fill()
+  guardar('p-d-filo', cv, 'el canto luminoso del plano inclinado')
 }
 
 console.log(`\nrecursos-p2 -> ${DESTINO}\n`)
