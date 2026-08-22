@@ -1,22 +1,42 @@
-// RECURSOS DE LA PIEZA-P, planos 1 a 5 — el mundo oscuro y el revelado de marca.
+// RECURSOS DE LA PIEZA-P · fondos, tipografia cinetica, malla clara y anillos.
 //
-// LA PIEZA-P RECREA UNA REFERENCIA CON LICENCIA CC-BY:
-//   "SaaS Product Promo After Effects Template" · canal "AE Template & Premiere Pro Template"
-//   Creative Commons Attribution license (reuse allowed) — verificado en los metadatos de YouTube.
-// La licencia habilita adaptar y redistribuir con atribucion, que va escrita en la cabecera de la pieza.
+// ================================================================================================
+// ESTE ARCHIVO SE REESCRIBIO ENTERO, Y LA RAZON IMPORTA MAS QUE EL CODIGO
+// ================================================================================================
 //
-// LO QUE ORDENA ESTE ARCHIVO: cada texto se entrega PARTIDO EN PIEZAS, no como un bloque.
+// La primera version de la PIEZA-P no era una recreacion: era una pieza propia montada sobre el
+// esqueleto de tiempos de la referencia. Thiago lo dijo sin vueltas — "la recreacion la verdad no se
+// acerca mucho, cumpli por favor" — y tenia razon.
 //
-// Es la correccion mas importante que dio el usuario, y vale mas que cualquier numero de la medicion:
+// Debajo habia un error concreto y comprobable: LEI MAL LOS PLANOS. Arme el mapa desde una hoja de
+// contacto a 320 px y llame "revelado de marca" a un plano de 9,7 s que en realidad son CUATRO cosas
+// distintas — una barra de busqueda que se dibuja sola, se escribe, se aleja de camara y recibe un
+// clic. Es exactamente el fallo que la skill ya tiene documentado con otro nombre: preguntarse a que
+// cadencia se observo. A 320 px una barra que se aleja y un logotipo quieto se ven parecidos.
 //
-//   "una diferencia grande es poner un texto entero que dure 2 segundos que aparece de la nada, a usar
-//    una animacion que muestra 'tu video' y luego otra animacion que se junta con 'tu video' y queda el
-//    texto entero, eso si esta bien, POR BUENA COREOGRAFIA"
+// Ahora esta medido sobre cuadros en COLOR a 640 px, en tres hojas de contacto y dos de detalle a
+// 0,13 s de paso. Lo que sigue es lo que hay en el video, no lo que me parecio.
 //
-// Un rotulo que aparece completo no tiene coreografia: tiene una entrada. Un rotulo que se ARMA —una
-// parte llega, se asienta, y la siguiente se le suma— tiene tantos tiempos como partes. Por eso aca
-// ninguna frase sale como un solo PNG: salen las palabras sueltas, y la pieza decide cuando entra cada
-// una y como se junta con la anterior.
+// ================================================================================================
+// LA GRAMATICA DE LA REFERENCIA, que es UNA y se repite cuatro veces
+// ================================================================================================
+//
+//   1. una palabra GIGANTE cruza el cuadro con ESTELA (mas alta que medio cuadro)
+//   2. un zoom-out violento de ~20 cuadros la deja chica, y ahi ya es la FRASE ENTERA
+//   3. las palabras de la frase SE ENFOCAN DE A UNA, de izquierda a derecha
+//   4. la frase se sigue alejando despacio hasta que la levanta el latigazo siguiente
+//
+// Pasa con "Build SaaS Promo", con "Engineered for Scale", con "Give your team" y con "Growth".
+//
+// Y EL DESENFOQUE ES EL 80% DEL EFECTO. No es adorno: es lo que hace que un texto que aparece se lea
+// como un texto que LLEGA. Thiago lo nombro solo — "las letras en unos momentos al principio se
+// desenfocan".
+//
+// COMO SE HACE SIN EFECTOS, que es lo que el motor tiene. El motor no tiene desenfoque gaussiano y la
+// profundidad de campo es cara y global. Pero la estela de movimiento ES un promedio de N muestras
+// corridas, asi que se hornea: se dibuja la palabra 28 veces con la x corrida y `lighter` al 1/28.
+// Eso no imita una estela, ES una estela — la misma cuenta que hace un obturador, resuelta al generar
+// en vez de al renderizar, y sin costar un solo cuadro de render.
 //
 // USO
 //   node tools/ae/recursos-p1.mjs
@@ -27,21 +47,6 @@ import { createCanvas } from '@napi-rs/canvas'
 const DESTINO = process.env.RECURSOS_P || 'C:/ae-probe/recursos-p'
 if (!existsSync(DESTINO)) mkdirSync(DESTINO, { recursive: true })
 
-const W = 1920, H = 1080
-
-// LOS FONDOS SE DIBUJAN MAS GRANDES QUE EL CUADRO, Y NO ES POR LAS DUDAS.
-//
-// La ley Q2 pide entre 2x y 4x los pixeles con los que se dibuja. Un fondo de 1920 puesto a escala 100
-// se dibuja a 1920 con 1920 nativos: 1x, la mitad del piso. Y encima estos fondos DERIVAN —se agrandan
-// despacio a lo largo del plano— asi que la escala pasa de 100, y el ratio cae todavia mas: la primera
-// version de esta pieza tenia 'suelo-6' en 0,77x.
-//
-// Con un lienzo de 2400x1350 a k=2 el nativo es 4800 px. Y OJO CON LA CUENTA, que me la comi una vez:
-// la escala de AE se aplica sobre los pixeles NATIVOS, no sobre el tamano logico del lienzo — escala
-// 100 de este archivo dibuja 4800 px, no 2400. Asi que cubrir el cuadro pide escala >= 40 (1920/4800)
-// y el piso de 2x se mantiene hasta escala 50. La banda legal es 40-50, y ahi entra la deriva.
-const BW = 2400, BH = 1350
-const KB = 2
 const FUENTE = 'Segoe UI'
 const hechos = []
 
@@ -77,216 +82,205 @@ function ruta (g, x, y, w, h, r) {
   }
 }
 
-// ================================================================ 1 · el suelo oscuro con su resplandor
+// ================================================================ 1 · EL SUELO, EN CAPAS SEPARADAS
 //
-// El mundo de los planos 1, 2, 3 y 12 es NEGRO con una luz que sube desde abajo. No es un degradado de
-// arriba a abajo: es una fuente puntual baja, que es lo que hace que el negro de arriba se lea como
-// PROFUNDIDAD y no como un fondo plano.
-function suelo (nombre, manchas, nota) {
-  const [cv, g] = lienzo(BW, BH, KB)
-  g.fillStyle = '#030308'
-  g.fillRect(0, 0, BW, BH)
-  for (const m of manchas) {
-    const d = g.createRadialGradient(m.x * BW, m.y * BH, 0, m.x * BW, m.y * BH, m.r * BW)
-    d.addColorStop(0.00, `rgba(${m.c},${m.a})`)
-    d.addColorStop(0.45, `rgba(${m.c},${m.a * 0.34})`)
-    d.addColorStop(1.00, `rgba(${m.c},0)`)
-    g.fillStyle = d
-    g.fillRect(0, 0, BW, BH)
-  }
+// En la referencia la luz de abajo CAMBIA DE COLOR a lo largo de la pieza: arranca violeta, se pone
+// magenta cuando la barra se escribe, y vira a NARANJA mientras la barra se aleja. Con un solo PNG eso
+// seria imposible — L23, un PNG plano tiene un estado. Salen cuatro manchas sueltas y la pieza cruza
+// sus opacidades.
+//
+// LA CUENTA DE LA ESCALA, que ya me la comi una vez: AE escala sobre los pixeles NATIVOS, no sobre el
+// tamano logico del lienzo. Estos archivos miden 4800 px, asi que cubrir el cuadro pide escala >= 40
+// (1920/4800) y el piso de nitidez de 2x se mantiene hasta escala 50. La banda legal es 40-50.
+function mancha (nombre, x, y, r, color, alfa, nota) {
+  const W = 2400, H = 1350, k = 2
+  const [cv, g] = lienzo(W, H, k)
+  const d = g.createRadialGradient(x * W, y * H, 0, x * W, y * H, r * W)
+  d.addColorStop(0.00, `rgba(${color},${alfa})`)
+  d.addColorStop(0.35, `rgba(${color},${alfa * 0.55})`)
+  d.addColorStop(0.70, `rgba(${color},${alfa * 0.14})`)
+  d.addColorStop(1.00, `rgba(${color},0)`)
+  g.fillStyle = d
+  g.fillRect(0, 0, W, H)
   guardar(nombre, cv, nota)
 }
 
-suelo('p-suelo', [
-  { x: 0.50, y: 1.06, r: 0.52, c: '92,66,255', a: 0.95 },
-  { x: 0.16, y: 1.02, r: 0.34, c: '236,96,54',  a: 0.55 },
-  { x: 0.86, y: 1.00, r: 0.32, c: '196,72,220', a: 0.50 },
-  { x: 0.50, y: 0.72, r: 0.42, c: '58,40,170',  a: 0.35 },
-], 'negro con la luz subiendo desde abajo: fuente puntual, no degradado')
+mancha('p-luz-violeta', 0.50, 1.02, 0.46, '104,58,255', 1.00, 'la luz violeta de abajo')
+mancha('p-luz-magenta', 0.34, 1.04, 0.40, '214,54,190', 0.95, 'el magenta, para cuando se escribe')
+mancha('p-luz-naranja', 0.56, 1.06, 0.42, '255,110,36', 1.00, 'el naranja, para cuando se aleja')
+mancha('p-luz-azul',    0.50, 0.96, 0.34, '72,64,255',  0.95, 'el azul cerrado del revelado de marca')
 
-suelo('p-suelo-cierre', [
-  { x: 0.50, y: 1.10, r: 0.40, c: '92,66,255', a: 0.70 },
-  { x: 0.50, y: 0.52, r: 0.16, c: '128,88,255', a: 0.55 },
-], 'el mismo suelo, mas cerrado, para el plano 12')
-
-// ================================================================ 2 · la malla clara del plano 4
 {
-  const [cv, g] = lienzo(BW, BH, KB)
-  g.fillStyle = '#F4F2FB'
-  g.fillRect(0, 0, BW, BH)
-  const manchas = [
-    { x: 0.22, y: 0.30, r: 0.46, c: '198,188,252', a: 0.85 },
-    { x: 0.74, y: 0.20, r: 0.40, c: '226,220,255', a: 0.80 },
-    { x: 0.30, y: 0.86, r: 0.52, c: '124,96,246',  a: 0.62 },
-    { x: 0.86, y: 0.74, r: 0.44, c: '166,138,250', a: 0.55 },
-    { x: 0.54, y: 0.52, r: 0.30, c: '255,255,255', a: 0.70 },
-  ]
-  for (const m of manchas) {
-    const d = g.createRadialGradient(m.x * BW, m.y * BH, 0, m.x * BW, m.y * BH, m.r * BW)
-    d.addColorStop(0.00, `rgba(${m.c},${m.a})`)
-    d.addColorStop(0.50, `rgba(${m.c},${m.a * 0.4})`)
-    d.addColorStop(1.00, `rgba(${m.c},0)`)
-    g.fillStyle = d
-    g.fillRect(0, 0, BW, BH)
-  }
-  guardar('p-malla-clara', cv, 'la malla lila del plano 4')
+  const [cv, g] = lienzo(2400, 1350, 2)
+  g.fillStyle = '#030308'
+  g.fillRect(0, 0, 2400, 1350)
+  guardar('p-negro', cv, 'el negro de base')
 }
 
-// ================================================================ 3 · LA TIPOGRAFIA, PARTIDA EN PALABRAS
+// ================================================================ 2 · LA TIPOGRAFIA, CON SU ESTELA
 //
-// Cada palabra es su propio PNG. La pieza las hace entrar por separado y se juntan en el aire — que es
-// exactamente la coreografia que el usuario pidio y la que un bloque unico no puede dar.
+// `medirCuerpo` despeja el cuerpo que hace falta para que una cadena mida X px de tinta. Es al reves
+// de lo comodo —elegir un cuerpo y ver que sale— y es lo unico que sirve cuando lo que esta fijado es
+// el ANCHO EN EL CUADRO: en la referencia "Build" ocupa el 90% del ancho, y ese dato no se puede
+// convertir a un cuerpo sin medir.
+function medirCuerpo (cadena, anchoObjetivo, peso) {
+  const g = createCanvas(10, 10).getContext('2d')
+  g.font = `${peso}100px "${FUENTE}"`
+  return Math.round(100 * anchoObjetivo / g.measureText(cadena).width)
+}
+
+// LA ESTELA. 28 muestras corridas en x, compuestas con `lighter` al 1/28.
 //
-// El degradado va sobre el ancho de CADA palabra pero con las paradas corridas segun su lugar en la
-// frase, asi que cuando las palabras terminan de juntarse el degradado corre CONTINUO a lo largo de
-// toda la linea. Si cada palabra tuviera su propio degradado completo, la frase armada se leeria como
-// tres cosas pegadas.
-function palabras (base, frase, cuerpo, opciones = {}) {
+// `lighter` y no alfa normal, y la diferencia no es de gusto: con `source-over` cada muestra tapa a la
+// anterior y el resultado es una escalera de copias semitransparentes. Con `lighter` los canales SE
+// SUMAN, asi que donde las 28 muestras se pisan el alfa llega a 1 y el color es el promedio exacto —
+// que es la definicion de una estela de movimiento.
+//
+// Y LAS DOS VERSIONES COMPARTEN LIENZO Y CENTRO a proposito: la pieza las intercambia con opacidad, y
+// si la nitida y la de estela tuvieran anclas distintas la palabra pegaria un salto justo en el cuadro
+// en que se enfoca, que es el cuadro que el ojo esta mirando.
+function palabraConEstela (base, cadena, cuerpo, opciones = {}) {
   const peso = opciones.peso || '700 '
   const k = opciones.k || 2
+  const MUESTRAS = 28
   const gm = createCanvas(10, 10).getContext('2d')
   gm.font = `${peso}${cuerpo}px "${FUENTE}"`
+  const ancho = gm.measureText(cadena).width
+  const margen = Math.ceil(cuerpo * 0.30)
+  const estela = opciones.estela === undefined ? Math.round(cuerpo * 0.55) : opciones.estela
 
-  const trozos = frase.split(' ')
-  const anchos = trozos.map(t => gm.measureText(t).width)
-  const espacio = gm.measureText(' ').width
-  const total = anchos.reduce((a, b) => a + b, 0) + espacio * (trozos.length - 1)
+  const W = Math.ceil(ancho) + margen * 2 + estela
+  const H = Math.ceil(cuerpo * 1.42) + margen * 2
 
-  let acum = 0
-  const salida = []
-  trozos.forEach((t, i) => {
-    const margen = Math.ceil(cuerpo * 0.28)
-    const [cv, g] = lienzo(Math.ceil(anchos[i]) + margen * 2, Math.ceil(cuerpo * 1.5) + margen * 2, k)
-    const ch = cv.height / k
-    g.font = `${peso}${cuerpo}px "${FUENTE}"`
-    g.textBaseline = 'middle'
+  function pintar (g, x0) {
     if (opciones.plano) {
       g.fillStyle = opciones.color || '#111'
     } else {
-      // el degradado de la FRASE ENTERA, recortado en la ventana que le toca a esta palabra
-      const d = g.createLinearGradient(margen - acum, 0, margen - acum + total, 0)
+      const d = g.createLinearGradient(x0, 0, x0 + ancho, 0)
       d.addColorStop(0.00, opciones.c0 || '#FFFFFF')
-      d.addColorStop(0.50, opciones.c1 || '#D9C8FF')
-      d.addColorStop(1.00, opciones.c2 || '#7C4DFF')
+      d.addColorStop(0.55, opciones.c1 || '#CFC0FF')
+      d.addColorStop(1.00, opciones.c2 || '#6B3BFF')
       g.fillStyle = d
     }
-    g.fillText(t, margen, ch / 2)
-    guardar(`${base}-${i + 1}`, cv, `"${t}" · ${cuerpo}px · ${Math.round(anchos[i])} px de tinta`)
-    salida.push({ palabra: t, ancho: anchos[i], desde: acum })
-    acum += anchos[i] + espacio
-  })
-  // la pieza necesita saber donde va cada palabra para armarlas: se imprime la tabla
-  console.log(`\n  ${base} — "${frase}" · ${cuerpo}px · linea de ${Math.round(total)} px`)
-  salida.forEach((s, i) => {
-    const centro = s.desde + s.ancho / 2 - total / 2
-    console.log(`    ${base}-${i + 1}  "${s.palabra}"  ancho ${Math.round(s.ancho)}  centro relativo ${Math.round(centro)}`)
-  })
-  return salida
-}
-
-// PLANO 1 · la tipografia cinetica gigante. 300 px de cuerpo: en la referencia las letras son mas
-// altas que medio cuadro, y esa escala es la mitad del efecto.
-//
-// La frase se arma en TRES TIEMPOS y en dos lineas, porque a 300 px "Construido para equipos" mide
-// 3464 px y el cuadro tiene 1920: una sola linea no entraria ni aunque se quisiera. Entra "Construido"
-// arriba, despues "para" abajo, y despues "equipos" se le suma a la derecha de "para".
-//
-// 270 Y NO 300, y el que lo dijo fue `marco-check`. A 300 la segunda linea mide 1791 px de tinta, que
-// con los margenes de los PNG da 1959 px de caja: MAS ANCHA QUE EL CUADRO. La compuerta la marco
-// cortada por la izquierda, 21 px afuera, quieta 16 cuadros. A 270 la linea da 1611 de tinta y 1763
-// de caja, y entra con 78 px de aire de cada lado.
-palabras('p-k', 'Construido para equipos', 270, { c0: '#FFFFFF', c1: '#CBB6FF', c2: '#6B3BFF' })
-
-// PLANO 2 · un solo golpe de 0,8 s. En 24 cuadros no se lee una frase: se lee UNA palabra. Poner tres
-// ahi seria escribir para nadie.
-palabras('p-k2', 'veloces.', 300, { c0: '#FFFFFF', c1: '#FFC9A8', c2: '#EC6036', k: 3 })
-
-// PLANOS 4 y 5 · LA FRASE CRUZA EL CORTE. "Tu equipo entrega" termina el plano 4 y "10x mas rapido"
-// abre el 5: el espectador completa la oracion por encima de un corte duro, y eso ata dos planos que
-// de otro modo serian dos afirmaciones sueltas.
-palabras('p-claro', 'Tu equipo entrega', 118, { plano: true, color: '#1A1030', peso: '600 ' })
-
-// La cifra LLEVA SU ROTULO PEGADO: un numero sin sujeto no es un dato, es la forma de un dato — la
-// regla que la PIEZA-M rompio con su "100%" suelto.
-palabras('p-cifra', '10x mas rapido', 104, { plano: true, color: '#3B2A8C', peso: '700 ' })
-
-// PLANO 3 · la bajada de la marca, debajo del logotipo
-palabras('p-bajada', 'el tablero de tu equipo', 46, { plano: true, color: '#8B85A8', peso: '400 ' })
-
-// ================================================================ 4 · el isotipo facetado
-//
-// Un rombo partido en cuatro caras con luces distintas. Las facetas son lo que lo hace leer como un
-// objeto con volumen y no como una silueta: cada una recibe la luz en otro angulo.
-{
-  const L = 520, k = 3
-  const [cv, g] = lienzo(L, L, k)
-  const cx = L / 2, cy = L / 2, R = L * 0.44
-  const cara = (pts, c0, c1) => {
-    g.beginPath()
-    pts.forEach((p, i) => (i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])))
-    g.closePath()
-    const d = g.createLinearGradient(pts[0][0], pts[0][1], pts[2] ? pts[2][0] : pts[1][0], pts[2] ? pts[2][1] : pts[1][1])
-    d.addColorStop(0, c0); d.addColorStop(1, c1)
-    g.fillStyle = d; g.fill()
+    g.font = `${peso}${cuerpo}px "${FUENTE}"`
+    g.textBaseline = 'middle'
+    g.fillText(cadena, x0, H / 2)
   }
-  const T = [cx, cy - R], B = [cx, cy + R], I = [cx - R * 0.78, cy], D = [cx + R * 0.78, cy]
-  const M = [cx, cy]
-  cara([T, D, M], '#B79BFF', '#6B3BFF')
-  // LAS CARAS DE ABAJO SE LEVANTARON. Con '#3A1FB0' y '#2A1590' la mitad inferior del rombo quedaba
-  // casi negra contra un fondo negro: el simbolo perdia la mitad de su silueta y se leia como un
-  // triangulo. La luz viene de arriba, asi que abajo va mas oscuro — pero no hasta desaparecer.
-  cara([D, B, M], '#7C4DFF', '#5A34D0')
-  cara([B, I, M], '#6B3BFF', '#4526B8')
-  cara([I, T, M], '#9B7BFF', '#5426D8')
-  // EL FILO ESPECULAR VA RECORTADO A LA SILUETA, y ese `clip` es todo el arreglo.
-  //
-  // Sin el, una linea de 9 px con punta redonda dibujada de vertice a vertice SOBRESALE por los dos
-  // extremos: en el cuadro se ve un palito blanco asomando arriba del rombo y otro a la derecha. Es
-  // exactamente la clase de defecto que ninguna compuerta puede tener: no esta fuera de cuadro, no
-  // tapa nada, no baja ningun contraste. Se ve, y ya.
-  g.save()
-  g.beginPath()
-  g.moveTo(T[0], T[1]); g.lineTo(D[0], D[1]); g.lineTo(B[0], B[1]); g.lineTo(I[0], I[1]); g.closePath()
-  g.clip()
-  g.strokeStyle = 'rgba(255,255,255,0.92)'; g.lineWidth = L * 0.018; g.lineCap = 'butt'
-  g.beginPath(); g.moveTo(T[0], T[1]); g.lineTo(D[0], D[1]); g.stroke()
-  g.restore()
-  guardar('p-iso', cv, 'el isotipo: cuatro caras con luces distintas y un filo especular')
+
+  const x0 = margen + estela / 2
+  const [cvN, gN] = lienzo(W, H, k)
+  pintar(gN, x0)
+  guardar(base, cvN, `"${cadena}" · ${cuerpo}px · ${Math.round(ancho)} px de tinta`)
+
+  const [cvE, gE] = lienzo(W, H, k)
+  gE.globalCompositeOperation = 'lighter'
+  gE.globalAlpha = 1 / MUESTRAS
+  for (let i = 0; i < MUESTRAS; i++) {
+    pintar(gE, x0 - estela / 2 + (estela * i) / (MUESTRAS - 1))
+  }
+  guardar(base + '-e', cvE, `"${cadena}" CON ESTELA de ${estela} px · 28 muestras`)
+  return { ancho, W, H }
 }
 
-// las letras fantasma del fondo del plano 3
-{
-  const [cv, g] = lienzo(BW, BH, KB)
-  g.font = `700 950px "${FUENTE}"`
-  g.fillStyle = 'rgba(255,255,255,0.030)'
+// una frase entregada palabra por palabra, con la tabla de centros que la pieza necesita
+function frase (base, palabras, cuerpo, opciones) {
+  const gm = createCanvas(10, 10).getContext('2d')
+  gm.font = `${opciones.peso}${cuerpo}px "${FUENTE}"`
+  const anchos = palabras.map(w => gm.measureText(w).width)
+  const HUECO = cuerpo * (opciones.hueco === undefined ? 0.40 : opciones.hueco)
+  const total = anchos.reduce((a, b) => a + b, 0) + HUECO * (palabras.length - 1)
+  let acum = 0
+  console.log(`\n  ${base} — "${palabras.join(' ')}" · ${cuerpo}px · linea de ${Math.round(total)} px`)
+  for (let i = 0; i < palabras.length; i++) {
+    const o = Object.assign({}, opciones)
+    if (opciones.colores) { o.plano = true; o.color = opciones.colores[i] }
+    palabraConEstela(`${base}-${i + 1}`, palabras[i], cuerpo, o)
+    console.log(`    ${base}-${i + 1}  "${palabras[i]}"  centro relativo ${Math.round(acum + anchos[i] / 2 - total / 2)}`)
+    acum += anchos[i] + HUECO
+  }
+}
+
+const CUERPO_CHICO = 92
+const CLARO_SOBRE_OSCURO = { peso: '600 ', c0: '#F2EEFF', c1: '#F2EEFF', c2: '#CBB8FF', estela: 62, k: 3 }
+
+// ---- PLANOS 1-2 · "Build" gigante y despues "Build SaaS Promo" chico
+const CG1 = medirCuerpo('Build', 1730, '700 ')
+console.log(`\n  "Build" a 1730 px de tinta pide cuerpo ${CG1}`)
+palabraConEstela('p-build-g', 'Build', CG1, { c0: '#FFFFFF', c1: '#D8CBFF', c2: '#7C4DFF', k: 1.4 })
+frase('p-f1', ['Build', 'SaaS', 'Promo'], CUERPO_CHICO, CLARO_SOBRE_OSCURO)
+
+// ---- PLANOS 3-4 · "Engineered for Scale"
+const CG2 = medirCuerpo('Engineered', 2600, '700 ')
+console.log(`\n  "Engineered" a 2600 px de tinta pide cuerpo ${CG2}`)
+palabraConEstela('p-eng-g', 'Engineered', CG2, { c0: '#FFFFFF', c1: '#FFFFFF', c2: '#EFEAFF', k: 1.1 })
+frase('p-f2', ['Engineered', 'for', 'Scale'], CUERPO_CHICO, CLARO_SOBRE_OSCURO)
+
+// ---- PLANO 8 · "Give your team", sobre blanco. La tercera palabra va en el acento, como el original.
+const CG3 = medirCuerpo('Give', 900, '700 ')
+palabraConEstela('p-give-g', 'Give', CG3, { peso: '700 ', plano: true, color: '#120B24', k: 2 })
+frase('p-f3', ['Give', 'your', 'team'], CUERPO_CHICO, {
+  peso: '700 ', colores: ['#1A1030', '#6B6480', '#6B3BFF'], hueco: 0.32, estela: 62, k: 3
+})
+
+// ---- PLANO 10 · "Growth" gigante sobre oscuro
+const CG4 = medirCuerpo('Growth', 1500, '700 ')
+palabraConEstela('p-growth-g', 'Growth', CG4, { c0: '#FFFFFF', c1: '#F0EBFF', c2: '#B9A6FF', k: 1.6 })
+
+// ================================================================ 3 · EL ODOMETRO DEL PLANO 9
+//
+// Tres cifras sueltas que la pieza intercambia. En la referencia el numero SALTA de uno a otro
+// mientras los anillos crecen; no es un contador continuo, son tres estados, y por eso son tres capas
+// y no una animacion de texto.
+const ODO = ['2x Faster', '9x Faster', '10x Faster']
+for (let i = 0; i < ODO.length; i++) {
+  const [cv, g] = lienzo(760, 200, 3)
+  g.font = `700 96px "${FUENTE}"`
   g.textBaseline = 'middle'
   g.textAlign = 'center'
-  g.fillText('nodo', BW / 2, BH * 0.42)
-  guardar('p-fantasma', cv, 'las letras gigantes del fondo, al 3% — llenan sin competir')
+  const gr = g.createLinearGradient(120, 0, 640, 0)
+  gr.addColorStop(0, '#33249E'); gr.addColorStop(1, '#5B3BFF')
+  g.fillStyle = gr
+  g.fillText(ODO[i], 380, 100)
+  guardar(`p-odo-${i + 1}`, cv, `"${ODO[i]}" — un estado del odometro`)
 }
 
-// ================================================================ 5 · los anillos del plano 5
+// ================================================================ 4 · LOS ANILLOS DEL PLANO 9
 //
-// TRES ANILLOS EN CAPAS SEPARADAS Y NO UNA IMAGEN CON LOS TRES. Es la ley L23: un PNG plano tiene UN
-// estado. Con los tres horneados juntos no se pueden escalonar, y el gesto de este plano ES el
-// escalonado — se expanden de adentro hacia afuera, uno atras del otro.
-// LAS MEDIDAS SALEN DE MIRAR EL CUADRO, y la primera version estaba mal en las dos.
-//
-// Eran demasiado GRUESOS —45 px de trazo— asi que dominaban el plano en vez de acompanarlo, y el mas
-// chico media 450 px de ancho contra los 751 que mide "10x mas rapido": el anillo interior le cruzaba
-// las letras por los dos lados. Un fondo que atraviesa el texto que tiene que sostener no es un fondo.
-//
-// Ahora el interior mide 900 y el texto entra entero, con 75 px de aire de cada lado.
-const AROS = [[900, 340], [1240, 520], [1580, 700]]
+// En la referencia son pastillas concentricas RELLENAS y difusas, no trazos: cada una es un halo que
+// se desvanece hacia afuera, y el apilado de cuatro es lo que produce las bandas. Con `stroke` saldrian
+// cuatro lineas duras, que es lo que tenia la version anterior y lo que la hacia parecer un diagrama.
+const AROS = [[840, 320], [1200, 490], [1580, 670], [2000, 860]]
 for (let i = 0; i < AROS.length; i++) {
-  const CW = 1700, CH = 800, k = 2
+  const CW = 2140, CH = 920, k = 2
   const [cv, g] = lienzo(CW, CH, k)
   const w = AROS[i][0], h = AROS[i][1]
   ruta(g, (CW - w) / 2, (CH - h) / 2, w, h, h / 2)
-  g.strokeStyle = `rgba(108,80,240,${0.92 - i * 0.20})`
-  g.lineWidth = 14
-  g.stroke()
-  guardar(`p-anillo-${i + 1}`, cv, `anillo ${i + 1} de 3, ${w}x${h}, EN CAPA APARTE para escalonarlos`)
+  g.fillStyle = `rgba(122,98,255,${0.52 - i * 0.10})`
+  g.fill()
+  guardar(`p-aro-${i + 1}`, cv, `pastilla ${i + 1} de 4, ${w}x${h}, RELLENA — el apilado hace el halo`)
+}
+
+// ================================================================ 5 · LA MALLA CLARA DE LOS PLANOS 8-9
+{
+  const W = 2400, H = 1350, k = 2
+  const [cv, g] = lienzo(W, H, k)
+  g.fillStyle = '#FBFAFF'
+  g.fillRect(0, 0, W, H)
+  const manchas = [
+    { x: 0.30, y: 0.94, r: 0.52, c: '86,58,246',   a: 0.98 },
+    { x: 0.74, y: 1.02, r: 0.44, c: '128,96,255',  a: 0.82 },
+    { x: 0.12, y: 0.76, r: 0.30, c: '176,150,255', a: 0.55 },
+    { x: 0.52, y: 0.36, r: 0.34, c: '255,255,255', a: 0.85 },
+  ]
+  for (const m of manchas) {
+    const d = g.createRadialGradient(m.x * W, m.y * H, 0, m.x * W, m.y * H, m.r * W)
+    d.addColorStop(0.00, `rgba(${m.c},${m.a})`)
+    d.addColorStop(0.50, `rgba(${m.c},${m.a * 0.36})`)
+    d.addColorStop(1.00, `rgba(${m.c},0)`)
+    g.fillStyle = d
+    g.fillRect(0, 0, W, H)
+  }
+  guardar('p-blanco', cv, 'el mundo claro: blanco con la luz violeta subiendo desde abajo')
 }
 
 console.log(`\nrecursos-p1 -> ${DESTINO}\n`)
