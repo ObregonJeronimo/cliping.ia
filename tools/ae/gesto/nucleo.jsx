@@ -312,6 +312,36 @@ var G = (function () {
                         ". AE pisa la clave anterior en silencio y el gesto desaparece sin error.");
       }
     }
+
+    // LEY (c) · DOS JUEGOS DE CLAVES QUE SE INTERPONEN EN LA MISMA PROPIEDAD.
+    //
+    // Llamar a `claves()` dos veces sobre la misma propiedad es legitimo mientras los tramos no se
+    // pisen — una entrada temprano y una salida al final conviven bien. Lo que rompe es que el
+    // segundo juego caiga ENTRE las claves del primero: AE mezcla los tipos de interpolacion en la
+    // union y el tramo queda lineal de un lado y bezier del otro.
+    //
+    // Y NO DA NINGUN SINTOMA EN AE, que si sabe dibujar esa mezcla. Aparece al exportar, como una
+    // linea "tipos mezclados" que no dice que funcion escribio las claves — hay que salir a buscarla.
+    // Paso en la PIEZA-P: el credito tenia su propio fundido y ademas entraba en la lista de la
+    // salida general, asi que recibia claves de dos lugares que ninguno sabia del otro.
+    //
+    // Este guardia lo caza en el momento de escribir y NOMBRA LOS DOS RANGOS, que es lo que hace
+    // falta para encontrar al otro autor.
+    if (prop.numKeys > 0) {
+      var vieP = prop.keyTime(1) * FPS, vieU = prop.keyTime(prop.numKeys) * FPS;
+      var nueP = lista[0][0], nueU = lista[lista.length - 1][0];
+      var pisa = (nueP < vieU - 0.5) && (nueU > vieP + 0.5);
+      if (pisa) {
+        throw new Error("dos juegos de claves se pisan" + (dondeEstoy ? " en " + dondeEstoy : "") +
+                        ": esta propiedad ya tenia claves entre los cuadros " + Math.round(vieP) +
+                        " y " + Math.round(vieU) + ", y estas van de " + nueP + " a " + nueU + ". " +
+                        "AE mezcla los tipos de interpolacion en la union y el tramo queda lineal de " +
+                        "un lado y bezier del otro: no se ve en AE y el exportador lo rechaza despues, " +
+                        "sin decir quien lo escribio. Escribi UN solo juego con todas las claves, o " +
+                        "sacale a esta capa el gesto que ya cubre el otro.");
+      }
+    }
+
     for (i = 0; i < lista.length; i++) { prop.setValueAtTime(lista[i][0] / FPS, lista[i][1]); }
     for (i = 0; i < lista.length - 1; i++) {
       var nom = lista[i][2] || "LINEAL";

@@ -265,7 +265,14 @@ G.plano(latido, C[2] + 186, C[2] + 241);
 
 // LA SALIDA: todo el conjunto se va HACIA LA CAMARA. No es un fundido — es el gesto que justifica el
 // corte al mundo claro, porque atravesar la lente deja el cuadro vacio un instante.
-var salida = [iso, cred];
+// EL CREDITO NO ENTRA EN ESTA LISTA, y esa es la unica razon por la que hay un comentario aca: ya
+// tiene su propio fundido de salida. Con las dos cosas, su opacidad recibia claves de dos lugares que
+// no se conocian entre si, se interponian, y el tramo quedaba lineal de un lado y bezier del otro.
+// AE lo dibujaba sin quejarse y el documento salia INCOMPLETO al exportar. Se lleva el empuje en z
+// —viaja con el grupo— pero el fundido lo maneja el suyo.
+G.claves(G.ejes(cred).z, [[C[3] - 20, 0, "C1"], [C[3], -1400]], "credito-salida-z");
+
+var salida = [iso];
 var iS;
 for (iS = 0; iS < letras.length; iS++) { salida[salida.length] = letras[iS]; }
 for (iS = 0; iS < salida.length; iS++) {
