@@ -126,11 +126,16 @@ const PW = 1180, PH = 720   // el tablero entero mide esto; cada pieza sale en s
   // los items del menu — texto de verdad, no lineas grises: una tarjeta con parrafos falsos es
   // vocabulario de maqueta y no puede ser el sujeto de un plano
   const menu = ['Resumen', 'Proyectos', 'Entregas', 'Equipo', 'Ajustes']
+  // LA PASTILLA DEL MENU NO SE HORNEA ACA — sale en `p-pastilla`, capa aparte.
+  //
+  // Horneada, el item activo queda decidido desde el primer cuadro y NINGUNA animacion podria
+  // moverlo: el puntero clickearia "Proyectos" y el resaltado seguiria en "Resumen". Es exactamente el
+  // defecto que la PIEZA-I tuvo con su conmutador — el estado final existia en el PNG, asi que el
+  // gesto no tenia nada que cambiar. Todos los items van en gris; el activo lo pinta la pastilla.
   for (let i = 0; i < menu.length; i++) {
     const y = 112 + i * 52
-    if (i === 0) { g.fillStyle = 'rgba(124,77,255,0.16)'; ruta(g, 16, y - 17, 186, 40, 10); g.fill() }
-    g.font = `${i === 0 ? '600' : '400'} 17px "${FUENTE}"`
-    g.fillStyle = i === 0 ? CLARO : GRIS
+    g.font = `400 17px "${FUENTE}"`
+    g.fillStyle = GRIS
     g.fillText(menu[i], 40, y + 3)
   }
 
@@ -163,6 +168,18 @@ const PW = 1180, PH = 720   // el tablero entero mide esto; cada pieza sale en s
   g.fillText('Actividad', 900, 122)
 
   guardar('p-panel', cv, 'el cuerpo del tablero: marco, barra lateral, cabecera y el campo PLANO')
+}
+
+// --- la pastilla del menu: se mueve cuando el puntero clickea otro item
+{
+  const [cv, g] = lienzo(186, 40, 3)
+  ruta(g, 0, 0, 186, 40, 10)
+  g.fillStyle = 'rgba(124,77,255,0.20)'; g.fill()
+  g.strokeStyle = 'rgba(124,77,255,0.55)'; g.lineWidth = 1; g.stroke()
+  // el filo izquierdo, que es lo que dice "este es el activo" de un vistazo
+  g.fillStyle = VIOLETA
+  ruta(g, 0, 8, 3, 24, 1.5); g.fill()
+  guardar('p-pastilla', cv, 'el resaltado del item activo — capa aparte para que el clic lo mueva')
 }
 
 // --- la linea del grafico, en su propia capa para poder dibujarse

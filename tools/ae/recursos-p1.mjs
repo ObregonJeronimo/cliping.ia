@@ -170,16 +170,29 @@ function palabras (base, frase, cuerpo, opciones = {}) {
   return salida
 }
 
-// PLANOS 1-2 · la tipografia cinetica gigante. 300 px de cuerpo: en la referencia las letras son mas
+// PLANO 1 · la tipografia cinetica gigante. 300 px de cuerpo: en la referencia las letras son mas
 // altas que medio cuadro, y esa escala es la mitad del efecto.
+//
+// La frase se arma en TRES TIEMPOS y en dos lineas, porque a 300 px "Construido para equipos" mide
+// 3464 px y el cuadro tiene 1920: una sola linea no entraria ni aunque se quisiera. Entra "Construido"
+// arriba, despues "para" abajo, y despues "equipos" se le suma a la derecha de "para".
 palabras('p-k', 'Construido para equipos', 300, { c0: '#FFFFFF', c1: '#CBB6FF', c2: '#6B3BFF' })
 
-// PLANO 4 · sobre la malla clara, tipografia oscura
-palabras('p-claro', 'Dale a tu equipo', 118, { plano: true, color: '#1A1030', peso: '600 ' })
+// PLANO 2 · un solo golpe de 0,8 s. En 24 cuadros no se lee una frase: se lee UNA palabra. Poner tres
+// ahi seria escribir para nadie.
+palabras('p-k2', 'veloces.', 300, { c0: '#FFFFFF', c1: '#FFC9A8', c2: '#EC6036' })
 
-// PLANO 5 · la cifra del centro. LLEVA SU ROTULO PEGADO: un numero sin sujeto no es un dato, es la
-// forma de un dato — la regla que la PIEZA-M rompio con su "100%" suelto.
+// PLANOS 4 y 5 · LA FRASE CRUZA EL CORTE. "Tu equipo entrega" termina el plano 4 y "10x mas rapido"
+// abre el 5: el espectador completa la oracion por encima de un corte duro, y eso ata dos planos que
+// de otro modo serian dos afirmaciones sueltas.
+palabras('p-claro', 'Tu equipo entrega', 118, { plano: true, color: '#1A1030', peso: '600 ' })
+
+// La cifra LLEVA SU ROTULO PEGADO: un numero sin sujeto no es un dato, es la forma de un dato — la
+// regla que la PIEZA-M rompio con su "100%" suelto.
 palabras('p-cifra', '10x mas rapido', 104, { plano: true, color: '#3B2A8C', peso: '700 ' })
+
+// PLANO 3 · la bajada de la marca, debajo del logotipo
+palabras('p-bajada', 'el tablero de tu equipo', 46, { plano: true, color: '#8B85A8', peso: '400 ' })
 
 // ================================================================ 4 · el isotipo facetado
 //
