@@ -1,0 +1,1905 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>cargando</title>
+<!--
+  EL REPRODUCTOR 3D. Reemplaza al de divs con matrices, y no por gusto: lo que separa nuestra pieza del
+  video de Gemini son paneles en PERSPECTIVA con una cámara moviéndose entre ellos, y eso el DOM no lo
+  hace con la fidelidad que necesitamos.
+
+  ══════════════════════════════════════════════════════════════════════════════════════════════
+  LA DECISIÓN QUE LO HACE CORRECTO POR CONSTRUCCIÓN
+
+  La tentación es reimplementar la transformación de After Effects directamente en coordenadas de
+  three.js. Es donde se pierden los signos: AE tiene la Y hacia ABAJO y la Z hacia ADENTRO de la
+  pantalla; three.js tiene la Y hacia arriba y la Z hacia el espectador. Dos ejes invertidos significa
+  que cada rotación cambia de signo de una forma que hay que razonar caso por caso — y un signo mal
+  puesto no rompe: espeja algo, que después se busca durante horas.
+
+  Acá NO se reimplementa nada. La matriz se arma en COORDENADAS DE AFTER EFFECTS, tal como quedó
+  medida (cuaderno, sección 60):
+
+      M = trasladar(posición) · Rx · Ry · Rz · orientación(XYZ) · escalar · trasladar(−anclaje)
+
+  y después se compone con UN cambio de base, una sola vez:
+
+      Φ(p) = (p.x − ancho/2,  −(p.y − alto/2),  −p.z)
+
+  El resultado, `Φ · M`, mapea directamente puntos del espacio de la capa (en coordenadas de AE) al
+  mundo de three.js. La geometría del plano también se declara en coordenadas de AE. Así el único
+  lugar donde vive la conversión de ejes es esa línea, y el resto es la fórmula ya verificada contra
+  120 cuadros y 39 rotaciones.
+  ══════════════════════════════════════════════════════════════════════════════════════════════
+
+  Y TODAS LAS CAPAS SON UN PLANO CON UNA TEXTURA. Un sólido, un texto, una imagen y una forma
+  rasterizada son la misma cosa con distinto contenido. Eso hace que agregar imágenes y formas después
+  sea casi gratis, en vez de tres caminos separados que se desincronizan.
+-->
+<style>
+  html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
+  canvas { display: block; }
+</style>
+
+<script type="importmap">
+{ "imports": {
+    "three": "/node_modules/three/build/three.module.js",
+    "three/addons/": "/node_modules/three/examples/jsm/"
+} }
+</script>
+
+<script type="module">
+import * as THREE from 'three'
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js'
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js'
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js'
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js'
+import { evaluar } from '/tools/ae/curvas.mjs'
+// LA MISMA CUENTA QUE VERIFICA LA COMPUERTA, no una copia. `selector-check.mjs` compara
+// `selector.mjs` contra 88 configuraciones medidas en AE; si el reproductor tuviera su propia
+// version, la compuerta estaria verificando codigo que nadie ejecuta.
+import { factorCompuesto } from '/tools/ae/selector.mjs'
+
+// ESTA PAGINA NO SE VISITA: SE MANEJA DESDE AFUERA.
+//
+// El documento no esta en disco. `capturar-comp.py` INTERCEPTA el pedido de `comp.json` con
+// `pg.route` y lo responde con el contenido del archivo que le pasaste por `--doc`, asi que la pagina
+// nunca sabe de donde sale la escena: recibe datos, no rutas. Abierta a mano con doble clic no hay
+// nadie que intercepte, el `fetch` falla, y hasta hoy eso se veia como UNA PANTALLA NEGRA Y NADA MAS.
+//
+// Que la pagina se quede muda cuando no puede arrancar es la misma familia de defecto que este archivo
+// persigue en otros lados, asi que ahora lo dice en la propia pagina. El capturador ya escuchaba la
+// consola y sigue haciendolo; esto es para el humano que la abre.
+function morir(e) {
+  document.title = 'error'
+  document.body.style.cssText = 'margin:0;background:#0e1116;color:#f1f3f7;font:15px/1.6 ui-monospace,monospace;padding:40px'
+  // SE PREGUNTA EN MINUSCULAS. La primera version buscaba 'fetch' o 'JSON' y el mensaje real dice
+  // "comp.json respondio 404" — ninguna de las dos, asi que caia en la rama generica justo en el caso
+  // para el que fue escrita. Lo destapo probarla; leyendo el codigo se ve bien.
+  const dedo = /comp\.json|fetch|failed/i.test(String(e))
+    ? 'No se pudo leer <b>comp.json</b>. Es lo esperable si abriste este archivo a mano: el documento ' +
+      'no vive en disco, lo inyecta <b>capturar-comp.py</b> al vuelo. Esta pagina es un reproductor que ' +
+      'se maneja desde afuera, no un sitio.<br><br>Para verla con contenido:<br>' +
+      '<code>python tools/ae/motor/capturar-comp.py --doc C:/ae-probe/&lt;pieza&gt;.json ' +
+      '--salida C:/ae-probe/render/&lt;pieza&gt; --con-fondo --cuadros 100</code>'
+    : 'El reproductor se cayo al arrancar. El mensaje de abajo es el de verdad.'
+  document.body.innerHTML = '<h2 style="margin:0 0 18px;font-weight:600">El reproductor no arranco</h2>' +
+    '<p style="max-width:60em;color:#9aa3b5">' + dedo + '</p>' +
+    '<pre style="margin-top:24px;color:#ff7ab8;white-space:pre-wrap">' +
+    String(e && e.stack ? e.stack : e) + '</pre>'
+}
+
+;(async function () {
+  let doc
+  try {
+    const res = await fetch('comp.json')
+    if (!res.ok) throw new Error('comp.json respondio ' + res.status)
+    doc = await res.json()
+  } catch (e) { morir(e); return }
+  const { ancho, alto, fps, duracion } = doc.comp
+
+  // EL COLOR DE FONDO DE LA COMPOSICION LO PINTA LA PAGINA, y hasta hoy no lo pintaba nadie.
+  //
+  // `--con-fondo` saca la captura sin omitir el fondo, asi que lo que aparece detras de la escena es el
+  // fondo del navegador: BLANCO. En las piezas no se notaba porque todas llevan un solido negro que
+  // tapa el cuadro entero — pero una composicion que confia en el fondo declarado de AE salia blanca, y
+  // el dato estaba en el documento (`comp.fondo`) todo el tiempo.
+  // SOLO CUANDO LO PIDEN. Pintar el fondo siempre rompio la captura CON ALFA: `omit_background` de
+  // Playwright saca el fondo del NAVEGADOR, no un `background` puesto por CSS, asi que el cuadro salia
+  // opaco y la comparacion contra AE daba 79,8% de diferencia — toda ella el fondo. Lo cazo
+  // `mascara-check` a los cinco minutos de existir, que es exactamente para lo que sirve.
+  //
+  // Los dos usos son legitimos y opuestos: con alfa para MEDIR (el lector pesa por alfa), con fondo
+  // para MIRAR. Asi que lo decide quien captura, no la pagina.
+  if (new URLSearchParams(location.search).get('fondo') === '1') {
+    document.documentElement.style.background = doc.comp.fondo || '#000000'
+    document.body.style.background = doc.comp.fondo || '#000000'
+  }
+
+  const render = new THREE.WebGLRenderer({ antialias: true, alpha: true, premultipliedAlpha: false })
+  // EL RECORTE ES *LOCAL*: cada material lleva sus propios planos. El global (`render.clippingPlanes`)
+  // recortaria la escena entera, que es lo contrario de lo que hace un matte.
+  render.localClippingEnabled = true
+  render.setPixelRatio(1)
+  render.setSize(ancho, alto)
+  render.setClearAlpha(0)
+  // El color de AE ya viene en sRGB de 8 bits. Si three lo volviera a convertir, los negros saldrían
+  // grises — es la trampa que ya me comió una vez recreando Gemini, y está anotada en el cuaderno.
+  render.outputColorSpace = THREE.SRGBColorSpace
+  document.body.appendChild(render.domElement)
+
+  const escena = new THREE.Scene()
+
+  // LAS CAPAS 2D DE UNA COMPOSICIÓN CON CÁMARA VIVEN PEGADAS AL CUADRO, no en el mundo.
+  //
+  // En After Effects una capa que no está marcada como 3D IGNORA la cámara: se queda donde está aunque
+  // la cámara viaje. Es como se hace un título, un rótulo o un logo — cualquier cosa que tiene que
+  // seguir ahí mientras el fondo se mueve.
+  //
+  // Aplicarle la cámara a todo no falla: hace que el título se deslice y se corte contra el borde
+  // mientras la cámara viaja, y eso se lee como un error de layout, no como un error del motor.
+  //
+  // La cámara ortográfica se arma en coordenadas de la composición ya convertidas: después de Φ el
+  // mundo va de −ancho/2 a +ancho/2 en X y de +alto/2 a −alto/2 en Y.
+  // Y NO TODAS VAN ARRIBA: las que están DEBAJO del grupo 3D van debajo.
+  //
+  // Acá había una limitación declarada —"acá todas las 2D van arriba"— que en la práctica rompía el
+  // caso más común que existe: un fondo plano abajo de todo, el contenido en 3D, y los rótulos planos
+  // encima. Con la regla vieja el fondo se dibujaba último y tapaba la composición entera. No dio
+  // error ni aviso: dio veinte cuadros del color del fondo, y la comparación los reportó como "22,63%
+  // de píxeles distintos", que se lee como un problema de proyección.
+  //
+  // La regla de AE es por TANDAS: las capas 3D consecutivas se componen juntas con la cámara, y una
+  // capa 2D parte el grupo. Acá se cubren las dos tandas que importan —lo que está debajo de todo lo
+  // 3D y lo que está encima— con tres escenas y un orden de dibujo. Lo que sigue sin cubrirse, y ahora
+  // se declara con precisión: una capa 2D INTERCALADA entre dos capas 3D se dibuja arriba, no en el
+  // medio.
+  const escena2D = new THREE.Scene()
+  const escena2Dfondo = new THREE.Scene()
+  const ultima3D = Math.max(...doc.capas.filter(c => c.es3D || c.tipo === 'camara').map(c => c.indice), -1)
+  const camara2D = new THREE.OrthographicCamera(-ancho / 2, ancho / 2, alto / 2, -alto / 2, -10000, 10000)
+  camara2D.position.z = 1000
+
+  // ---------------------------------------------------------------- el cambio de base, una sola vez
+  const PHI = new THREE.Matrix4().set(
+    1, 0, 0, -ancho / 2,
+    0, -1, 0, alto / 2,
+    0, 0, -1, 0,
+    0, 0, 0, 1)
+
+  // ---------------------------------------------------------------- utilidades de matriz en AE
+  const gr = Math.PI / 180
+  const mRotX = (g) => new THREE.Matrix4().makeRotationX(g * gr)
+  const mRotY = (g) => new THREE.Matrix4().makeRotationY(g * gr)
+  const mRotZ = (g) => new THREE.Matrix4().makeRotationZ(g * gr)
+
+  // OJO: `makeRotationX` de three usa la convención de mano derecha con la Y arriba. Acá se aplica
+  // sobre vectores en coordenadas de AE, donde la Y va hacia abajo — así que estas matrices no son
+  // "rotaciones de three", son las matrices de AE escritas con la misma aritmética. Lo que garantiza
+  // que sea correcto no es el nombre de la función: es que el orden XYZ y los signos quedaron
+  // determinados midiendo (sección 59.1, ganador a 10× del siguiente candidato).
+
+  // ---------------------------------------------------------------- el estado animable
+  const HOLD = (p) => (p < 1 ? 0 : 1)
+  const valorEn = (t, comp, porDefecto) => {
+    if (!t) return porDefecto
+    if (t.horneado) return t.horneado[0]?.[comp] ?? porDefecto
+    if (t.estatico) return t.estatico[comp] ?? porDefecto
+    const pista = t.pistas?.[comp] ?? t.pistas?.[0]
+    return pista?.tramos?.[0]?.v1 ?? (t.base?.[comp] ?? porDefecto)
+  }
+
+  const tl = window.gsapTL = { tweens: [] }   // línea de tiempo propia: no hace falta GSAP acá
+  // Cada tramo del documento se guarda tal cual y se evalúa al buscar un instante. Es más simple que
+  // construir tweens y además elimina la trampa del valor inicial perezoso que ya mordió una vez.
+  function evaluarPista(pista, t) {
+    const tr = pista.tramos
+    if (!tr.length) return null
+    if (t <= tr[0].t1) return tr[0].v1
+    const ult = tr[tr.length - 1]
+    if (t >= ult.t2) return ult.v2
+    let j = 0
+    while (j < tr.length - 1 && t >= tr[j + 1].t1) j++
+    const s = tr[j]
+    if (s.tipo === 'rechazado') return s.v1
+    if (s.tipo === 'hold') return s.v1
+    const u = (t - s.t1) / (s.t2 - s.t1)
+    if (s.tipo === 'lineal') return s.v1 + (s.v2 - s.v1) * u
+    return s.v1 + (s.v2 - s.v1) * evaluar(s.bezier, u)
+  }
+  // UNA PISTA HORNEADA ES UNA MUESTRA POR CUADRO, y entre cuadros se interpola LINEAL. No es un atajo:
+  // el obturador pide instantes a mitad de cuadro y hay que contestarle algo. El error de esa
+  // interpolación está MEDIDO y viaja en el documento (`exprError`), así que no se supone: `expr-check`
+  // lo lee y reprueba si una expresión se muestreó demasiado grueso para su propia frecuencia.
+  function horneadoEn(h, t, fps, comp, porDefecto) {
+    const f = t * fps
+    const i0 = Math.floor(f)
+    const a = h[Math.max(0, Math.min(h.length - 1, i0))]
+    const b = h[Math.max(0, Math.min(h.length - 1, i0 + 1))]
+    if (!a) return porDefecto
+    const va = a[comp] ?? a[0] ?? porDefecto
+    if (!b) return va
+    const vb = b[comp] ?? b[0] ?? va
+    const u = f - i0
+    return va + (vb - va) * (u < 0 ? 0 : u > 1 ? 1 : u)
+  }
+  const propEn = (T, nombre, comp, t, porDefecto) => {
+    const p = T[nombre]
+    if (!p) return porDefecto
+    if (p.horneado) return horneadoEn(p.horneado, t, doc.comp.fps, comp, porDefecto)
+    if (p.estatico) return p.estatico[comp] ?? porDefecto
+    const pista = p.pistas?.[comp]
+    if (!pista) return p.base?.[comp] ?? porDefecto
+    const v = evaluarPista(pista, t)
+    return v === null ? porDefecto : v
+  }
+
+  // ---------------------------------------------------------------- texturas
+  const SUPER = 2          // supermuestreo de las texturas de texto, para que el borde no escale mal
+
+  // ================================================================ EL TEXTO, CARACTER POR CARACTER
+  //
+  // POR QUE EXISTE. `texturaDeTexto` dibuja la cadena entera en UNA textura, y con eso un animador de
+  // texto no se puede aplicar: cada caracter necesita su propia transformacion. Hasta hoy la escritura
+  // por caracter —que el barrido midio en 8 de 8 referencias del genero— se falseaba con UNA CAPA POR
+  // LETRA, quince capas a mano para una frase. Mientras cada gesto cuesta una capa, las piezas salen
+  // ralas: es la causa real del fallo M1 de `ritmo.mjs`.
+  //
+  // CADA CARACTER ES UN PLANO CON SU PROPIA TEXTURA, agrupados en un THREE.Group que lleva la matriz de
+  // la capa. La disposicion sale del mismo medidor que ya usa el resto del archivo, asi que el ancho
+  // total coincide con el que `comp-check` compara contra la caja de AE.
+  //
+  // EL PIVOTE DE CADA CARACTER ESTA MEDIDO, no elegido: es (centro de su AVANCE, linea de base). Ver
+  // `.claude/skills/pieza-ae/reference/animador-de-texto.md` — la escala al 200% da px = 35,499 sobre
+  // un avance de 70,996, y la rotacion de 90 grados lo confirma por otro camino. No es el centro de la
+  // tinta: una "y" con descendente da py = 0 igual.
+  function textoPorCaracter(capa) {
+    const t = capa.texto
+    const tg = t.tipografia || { ps: t.fuente, familia: t.fuente, peso: 400 }
+    const fuente = `${tg.cursiva ? 'italic ' : ''}${tg.peso} ${t.tamano}px "${tg.ps}", "${tg.familia}", sans-serif`
+    const interletra = t.interletra ? (t.tamano * t.interletra / 1000) : 0
+    const medidor = document.createElement('canvas').getContext('2d')
+    medidor.font = fuente
+    medidor.textAlign = 'left'
+    medidor.letterSpacing = interletra + 'px'
+
+    const cadena = t.contenido
+    const chars = []
+    let x = 0
+    for (let k = 0; k < cadena.length; k++) {
+      const c = cadena[k]
+      // EL AVANCE SE MIDE CON EL PREFIJO, no con el caracter suelto: el interletrado de Chrome se suma
+      // DESPUES de cada glifo, asi que medir "H" da un avance distinto que la diferencia entre "HH" y
+      // "H". La diferencia de prefijos es la que reproduce la disposicion real de la linea.
+      const anchoHasta = medidor.measureText(cadena.slice(0, k + 1)).width
+      const anchoAntes = k === 0 ? 0 : medidor.measureText(cadena.slice(0, k)).width
+      const avance = anchoHasta - anchoAntes
+      const m = medidor.measureText(c)
+      const izq = -m.actualBoundingBoxLeft, der = m.actualBoundingBoxRight
+      const arr = -m.actualBoundingBoxAscent, aba = m.actualBoundingBoxDescent
+      chars.push({ c, x, avance, izq, der, arr, aba, tieneTinta: (der - izq) > 0.01 && (aba - arr) > 0.01 })
+      x += avance
+    }
+    const anchoTotal = x
+
+    // LA ALINEACION CORRE LA LINEA ENTERA. El origen de una capa de texto en AE es el punto de
+    // alineacion sobre la linea de base, asi que centrada la linea arranca en -total/2.
+    const corrimiento = t.alineacion === 'centro' ? -anchoTotal / 2
+                      : t.alineacion === 'derecha' ? -anchoTotal : 0
+
+    const grupo = new THREE.Group()
+    grupo.matrixAutoUpdate = false
+    const margen = Math.ceil(t.tamano * 0.3)
+    const piezas = []
+    for (const ch of chars) {
+      ch.x += corrimiento
+      if (!ch.tieneTinta) { piezas.push({ ...ch, malla: null, mat: null }); continue }
+      const w = ch.der - ch.izq, h = ch.aba - ch.arr
+      const cv = document.createElement('canvas')
+      cv.width = Math.max(2, Math.ceil((w + margen * 2) * SUPER))
+      cv.height = Math.max(2, Math.ceil((h + margen * 2) * SUPER))
+      const g = cv.getContext('2d')
+      g.scale(SUPER, SUPER)
+      g.font = fuente
+      g.textAlign = 'left'
+      g.textBaseline = 'alphabetic'
+      g.fillStyle = '#ffffff'      // el color va por el material: asi el animador lo puede cambiar
+      g.letterSpacing = '0px'      // el interletrado ya esta en la posicion del plano, no en el glifo
+      g.fillText(ch.c, margen - ch.izq, margen - ch.arr)
+
+      const tex = new THREE.CanvasTexture(cv)
+      tex.colorSpace = THREE.SRGBColorSpace
+      tex.flipY = false
+      tex.minFilter = THREE.LinearFilter
+      tex.magFilter = THREE.LinearFilter
+      tex.anisotropy = render.capabilities.getMaxAnisotropy()
+
+      // LA GEOMETRIA VA EN COORDENADAS DE LA CAPA, NO DEL CARACTER — y errar esto no da error: da
+      // TODOS LOS CARACTERES APILADOS EN EL MISMO PUNTO. La primera version dejaba cada glifo relativo
+      // a su propio origen y confiaba en que la matriz lo llevara a su lugar; pero esa matriz es
+      // `T(pivote) · R · S · T(-pivote)`, que con rotacion y escala neutras es la IDENTIDAD. O sea que
+      // sin animacion ningun caracter se movia de cero. Se ve en el primer cuadro y no lo dice nadie.
+      const geo = new THREE.PlaneGeometry(w + margen * 2, h + margen * 2)
+      geo.translate(ch.x + ch.izq - margen + (w + margen * 2) / 2, ch.arr - margen + (h + margen * 2) / 2, 0)
+      geo.computeBoundingSphere()
+      const mat = new THREE.MeshBasicMaterial({
+        map: tex, transparent: true, side: THREE.DoubleSide,
+        color: new THREE.Color(t.relleno || '#ffffff'),
+      })
+      mat.depthTest = false
+      mat.depthWrite = false
+      const malla = new THREE.Mesh(geo, mat)
+      malla.matrixAutoUpdate = false
+      grupo.add(malla)
+      piezas.push({ ...ch, malla, mat })
+    }
+    // `ordenarPorProfundidad` pide `malla.geometry.boundingSphere`, y un Group no tiene geometria. Se
+    // le pone una envolvente de la linea entera: es lo unico que esa funcion lee.
+    grupo.geometry = {
+      boundingSphere: new THREE.Sphere(
+        new THREE.Vector3(corrimiento + anchoTotal / 2, -t.tamano * 0.35, 0),
+        Math.max(anchoTotal, t.tamano) * 0.75),
+    }
+    return { grupo, piezas, colorBase: new THREE.Color(t.relleno || '#ffffff') }
+  }
+
+  // ================================================================ LAS MASCARAS
+  //
+  // LA DECISION DE DISENO, y por que esta: la mascara de AE es un ALFA POR PIXEL EN COORDENADAS DE
+  // CAPA. No es un volumen ni un recorte geometrico. El modelo fiel es entonces una TEXTURA DE ALFA en
+  // ese mismo espacio, multiplicada en el fragmento.
+  //
+  // Se descartaron las otras tres con motivo:
+  //   · planos de recorte — solo sirven para poligonos CONVEXOS, y es lo que ya se usa para el matte
+  //     rectangular. Un rombo restado no es convexo.
+  //   · buffer de stencil — obliga a una limpieza y un dibujo extra por capa Y POR SUBMUESTRA, y este
+  //     reproductor hace hasta 16 submuestras de obturador por cuadro.
+  //   · triangular el trazado como geometria — no sabe hacer calado, que es la mitad del efecto.
+  //
+  // Y sobre todo: este repo ya pago caro haber modelado el matte de pista como un prisma en el espacio
+  // equivocado. La mascara vive en el espacio de la capa; la textura vive en el espacio de la capa.
+  //
+  // EL COSTO. Una mascara fija se rasteriza UNA vez. Una animada se rasteriza una vez POR CUADRO, no
+  // por submuestra: entre dos submuestras del mismo cuadro el trazado no cambia (viaja muestreado por
+  // cuadro), asi que rehacerlo 16 veces seria tirar 15.
+  const MASCARA_MAX = 1024      // el lado mayor del lienzo de alfa
+
+  function trazadoEn(m, cuadro) {
+    // los trazados viajan como [cuadro, trazado] ordenados; -1 significa "vale para toda la pieza"
+    const T = m.trazados
+    if (!T || !T.length) return null
+    if (T.length === 1) return T[0][1]
+    let mejor = T[0][1]
+    for (const [k, v] of T) { if (k <= cuadro) mejor = v; else break }
+    return mejor
+  }
+
+  function dibujarTrazado(g, tz, esc, ox, oy) {
+    const v = tz.v, ent = tz.ent, sal = tz.sal
+    if (!v.length) return
+    g.beginPath()
+    g.moveTo((v[0][0] - ox) * esc, (v[0][1] - oy) * esc)
+    const n = v.length
+    const hasta = tz.cerrado ? n : n - 1
+    for (let i = 0; i < hasta; i++) {
+      const a = v[i], b = v[(i + 1) % n]
+      // LAS TANGENTES SON RELATIVAS AL VERTICE — medido en `sondas/mascara.jsx`: una elipse de radio
+      // 110 devuelve tangentes de 60,753, que es 110 x 0,5523. Sumarlas como si fueran absolutas
+      // dibuja una maraña alrededor del origen, y no da error.
+      const c1 = [a[0] + sal[i][0], a[1] + sal[i][1]]
+      const c2 = [b[0] + ent[(i + 1) % n][0], b[1] + ent[(i + 1) % n][1]]
+      g.bezierCurveTo((c1[0] - ox) * esc, (c1[1] - oy) * esc,
+                      (c2[0] - ox) * esc, (c2[1] - oy) * esc,
+                      (b[0] - ox) * esc, (b[1] - oy) * esc)
+    }
+    if (tz.cerrado) g.closePath()
+  }
+
+  // ================================================================ LA FORMA VECTORIAL
+  //
+  // El trazo que se dibuja, y el morphing. Antes toda forma se rasterizaba en AE a un PNG, y una forma
+  // ANIMADA salia congelada — por eso se rechazaba. Ahora el trazado viaja muestreado y se redibuja
+  // aca, con Canvas2D, en coordenadas de capa: la misma maquinaria que las mascaras.
+  //
+  // EL RECORTE ES POR LONGITUD DE ARCO, y esta medido con cuadros de AE (`sondas/trazo.jsx`):
+  //   · una recta de 300 px al 50% dibuja 150
+  //   · una ELE de 300+100 al 50% dibuja 200 px del tramo horizontal y NADA del vertical: la longitud
+  //     corre sobre el trazado entero, no por segmento
+  //   · EL DESFASE ESTA EN GRADOS. Con desfase 25 la ventana corrio 28 px sobre un trazado de 400, y
+  //     25/360 x 400 = 27,8. Es la trampa de esta funcion y no se deduce de ningun lado.
+  //   · con varios subtrazados se recorta CADA UNO POR SU LADO: dos tramos de 140 al 50% dan 0..69 y
+  //     180..249, no 0..140 y nada
+  const PASOS_BEZIER = 24      // por segmento: el error de cuerda de una bezier de 300 px queda en ~0,1
+
+  function aplanar(tz) {
+    // la polilinea del trazado, con la longitud acumulada en cada punto
+    const v = tz.v, ent = tz.ent, sal = tz.sal
+    if (!v || v.length < 2) return null
+    const pts = [[v[0][0], v[0][1]]]
+    const n = v.length
+    const hasta = tz.cerrado ? n : n - 1
+    for (let i = 0; i < hasta; i++) {
+      const a = v[i], b = v[(i + 1) % n]
+      const c1 = [a[0] + sal[i][0], a[1] + sal[i][1]]
+      const c2 = [b[0] + ent[(i + 1) % n][0], b[1] + ent[(i + 1) % n][1]]
+      for (let s = 1; s <= PASOS_BEZIER; s++) {
+        const u = s / PASOS_BEZIER, w = 1 - u
+        pts.push([
+          w * w * w * a[0] + 3 * w * w * u * c1[0] + 3 * w * u * u * c2[0] + u * u * u * b[0],
+          w * w * w * a[1] + 3 * w * w * u * c1[1] + 3 * w * u * u * c2[1] + u * u * u * b[1],
+        ])
+      }
+    }
+    const acum = [0]
+    for (let i = 1; i < pts.length; i++) {
+      acum.push(acum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]))
+    }
+    return { pts, acum, largo: acum[acum.length - 1] }
+  }
+
+  function trazarTramo(g, pl, d0, d1, esc, ox, oy) {
+    // dibuja la parte de la polilinea entre las longitudes d0 y d1, interpolando en los extremos
+    if (d1 <= d0) return
+    const { pts, acum } = pl
+    let empezado = false
+    for (let i = 1; i < pts.length; i++) {
+      const a0 = acum[i - 1], a1 = acum[i]
+      if (a1 <= d0 || a0 >= d1) continue
+      const u0 = a1 > a0 ? Math.max(0, (d0 - a0) / (a1 - a0)) : 0
+      const u1 = a1 > a0 ? Math.min(1, (d1 - a0) / (a1 - a0)) : 1
+      const P = (u) => [(pts[i - 1][0] + (pts[i][0] - pts[i - 1][0]) * u - ox) * esc,
+                        (pts[i - 1][1] + (pts[i][1] - pts[i - 1][1]) * u - oy) * esc]
+      const p0 = P(u0), p1 = P(u1)
+      if (!empezado) { g.moveTo(p0[0], p0[1]); empezado = true }
+      g.lineTo(p1[0], p1[1])
+    }
+  }
+
+  function texturaDeForma(capa, rect, cuadro, lienzo) {
+    const w = rect.x1 - rect.x0, h = rect.y1 - rect.y0
+    const esc = Math.min(2, MASCARA_MAX / Math.max(w, h))
+    const cw = Math.max(2, Math.round(w * esc)), ch = Math.max(2, Math.round(h * esc))
+    const cv = lienzo || document.createElement('canvas')
+    if (cv.width !== cw || cv.height !== ch) { cv.width = cw; cv.height = ch }
+    const g = cv.getContext('2d')
+    g.setTransform(1, 0, 0, 1, 0, 0)
+    g.clearRect(0, 0, cw, ch)
+
+    const T = capa.transformacion
+    const t = cuadro / fps
+    const P = (n2, d) => propEn(T, n2, 0, t, d)
+    const partes = capa.forma.partes
+    const trazados = partes.filter(p => p.tipo === 'trazado')
+    const recorte = partes.find(p => p.tipo === 'recorte')
+
+    // los subtrazados, ya aplanados y recortados
+    const polis = []
+    for (const P2 of trazados) {
+      const tz = trazadoEn(P2, cuadro)
+      const pl = tz && aplanar(tz)
+      if (pl) polis.push({ pl, cerrado: tz.cerrado })
+    }
+    let ini = 0, fin = 100, desf = 0
+    if (recorte) {
+      ini = P(`forma${recorte.orden}.recorteIni`, 0)
+      fin = P(`forma${recorte.orden}.recorteFin`, 100)
+      desf = P(`forma${recorte.orden}.recorteDesf`, 0)
+    }
+
+    function armarCamino() {
+      g.beginPath()
+      for (const { pl, cerrado } of polis) {
+        if (!recorte) {
+          // sin recorte se dibuja entero, con las curvas y no con la polilinea
+          trazarTramo(g, pl, 0, pl.largo, esc, rect.x0, rect.y0)
+          if (cerrado) g.closePath()
+          continue
+        }
+        // EL DESFASE EN GRADOS, medido: 360 grados = el trazado completo
+        const corr = (desf / 360) * pl.largo
+        let d0 = (ini / 100) * pl.largo + corr
+        let d1 = (fin / 100) * pl.largo + corr
+        if (d1 < d0) { const z = d0; d0 = d1; d1 = z }
+        // la ventana puede salirse por cualquiera de los dos lados; en un trazado CERRADO da la vuelta
+        if (cerrado) {
+          const L = pl.largo
+          let a = ((d0 % L) + L) % L
+          let b = a + (d1 - d0)
+          trazarTramo(g, pl, a, Math.min(b, L), esc, rect.x0, rect.y0)
+          if (b > L) trazarTramo(g, pl, 0, b - L, esc, rect.x0, rect.y0)
+        } else {
+          trazarTramo(g, pl, Math.max(0, d0), Math.min(pl.largo, d1), esc, rect.x0, rect.y0)
+        }
+      }
+    }
+
+    for (const p of partes) {
+      if (p.tipo === 'relleno') {
+        armarCamino()
+        g.globalAlpha = Math.max(0, Math.min(1, P(`forma${p.orden}.opacidadRelleno`, 100) / 100))
+        g.fillStyle = p.color
+        g.fill(p.regla === 2 ? 'evenodd' : 'nonzero')
+        g.globalAlpha = 1
+      } else if (p.tipo === 'trazo') {
+        armarCamino()
+        g.globalAlpha = Math.max(0, Math.min(1, P(`forma${p.orden}.opacidadTrazo`, 100) / 100))
+        g.strokeStyle = p.color
+        g.lineWidth = Math.max(0.01, P(`forma${p.orden}.grosor`, 2) * esc)
+        // los enum de AE, verificados contra un cuadro renderizado: el remate 2 sobresale medio grosor
+        g.lineCap = p.cap === 2 ? 'round' : p.cap === 3 ? 'square' : 'butt'
+        g.lineJoin = p.union === 2 ? 'round' : p.union === 3 ? 'bevel' : 'miter'
+        g.miterLimit = p.inglete || 4
+        g.stroke()
+        g.globalAlpha = 1
+      }
+    }
+    return cv
+  }
+
+  function texturaDeMascara(capa, rect, cuadro, lienzo) {
+    const w = rect.x1 - rect.x0, h = rect.y1 - rect.y0
+    const esc = Math.min(1, MASCARA_MAX / Math.max(w, h))
+    const cw = Math.max(2, Math.round(w * esc)), ch = Math.max(2, Math.round(h * esc))
+    const cv = lienzo || document.createElement('canvas')
+    if (cv.width !== cw || cv.height !== ch) { cv.width = cw; cv.height = ch }
+    const g = cv.getContext('2d')
+    g.setTransform(1, 0, 0, 1, 0, 0)
+    g.clearRect(0, 0, cw, ch)
+
+    let primera = true
+    for (const m of capa.mascaras) {
+      const tz = trazadoEn(m, cuadro)
+      if (!tz) continue
+      const T = capa.transformacion
+      const t = cuadro / fps
+      const opa = propEn(T, `mascara${m.indice}.opacidad`, 0, t, 100) / 100
+      const exp = propEn(T, `mascara${m.indice}.expansion`, 0, t, 0)
+      const cal = propEn(T, `mascara${m.indice}.calado`, 0, t, 0)
+
+      // EL PRIMER MODO SE MIDE CONTRA UN LIENZO VACIO Y LOS QUE RESTAN NECESITAN ALGO DE DONDE RESTAR.
+      // Si la primera mascara es RESTAR o INTERSECAR, AE parte de la capa ENTERA; si es SUMAR, de nada.
+      if (primera && (m.modo === 6814 || m.modo === 6815)) {
+        g.globalCompositeOperation = 'source-over'
+        g.fillStyle = '#ffffff'
+        g.fillRect(0, 0, cw, ch)
+      }
+      primera = false
+
+      const capaAux = document.createElement('canvas')
+      capaAux.width = cw; capaAux.height = ch
+      const ga = capaAux.getContext('2d')
+      ga.fillStyle = '#ffffff'
+      dibujarTrazado(ga, tz, esc, rect.x0, rect.y0)
+      ga.fill('nonzero')
+      // LA EXPANSION SE HACE ENGROSANDO EL BORDE: un trazo de 2x el valor centrado en el contorno
+      // agranda la figura en exactamente ese valor hacia afuera. Negativa, achica — y para eso el
+      // trazo se recorta contra la figura.
+      if (exp !== 0) {
+        ga.lineWidth = Math.abs(exp) * 2 * esc
+        ga.lineJoin = 'round'
+        ga.strokeStyle = '#ffffff'
+        ga.globalCompositeOperation = exp > 0 ? 'source-over' : 'destination-out'
+        if (exp < 0) { ga.strokeStyle = '#ffffff' }
+        dibujarTrazado(ga, tz, esc, rect.x0, rect.y0)
+        ga.stroke()
+        ga.globalCompositeOperation = 'source-over'
+      }
+      if (m.invertida) {
+        ga.globalCompositeOperation = 'xor'
+        ga.fillStyle = '#ffffff'
+        ga.fillRect(0, 0, cw, ch)
+        ga.globalCompositeOperation = 'source-over'
+      }
+
+      g.save()
+      // EL RADIO DEL DESENFOQUE SALE DE MEDIR AE, no de elegirlo.
+      //
+      // La primera version usaba `cal / 2` porque parecia razonable, y daba un borde mas blando que el
+      // de AE: con calado 26 la rampa del motor medía 20 px de 5% a 95% y la de AE 15. El cruce del 50%
+      // coincidia exacto, asi que la geometria estaba bien y lo unico mal era el radio.
+      //
+      // Medido con seis calados (`sondas/calado.jsx` + un cuadro de AE): el calado de AE es el RADIO y
+      // la rampa esta CENTRADA en el trazado —el cruce del 50% no se mueve— con un ancho total de
+      // exactamente 2 x calado (8->17, 16->33, 26->54, 40->82, 64->130 px). La rampa de 5% a 95% mide
+      // 1,40 x calado, y para una gaussiana eso es 3,29 sigma, o sea sigma = 0,426 x calado.
+      //
+      // `blur()` de CSS toma la DESVIACION ESTANDAR como argumento, no el radio, asi que va directo.
+      if (cal > 0) g.filter = `blur(${(cal * esc * 0.426).toFixed(2)}px)`
+      g.globalAlpha = Math.max(0, Math.min(1, opa))
+      // los modos, medidos: 6813 sumar · 6814 restar · 6815 intersecar · 6816 aclarar · 6817 oscurecer
+      // · 6818 diferencia
+      g.globalCompositeOperation =
+        m.modo === 6814 ? 'destination-out' :
+        m.modo === 6815 ? 'destination-in' :
+        m.modo === 6817 ? 'destination-in' :
+        m.modo === 6818 ? 'xor' : 'source-over'
+      g.drawImage(capaAux, 0, 0)
+      g.restore()
+    }
+    return cv
+  }
+
+  function texturaDeTexto(capa) {
+    const t = capa.texto
+    const tg = t.tipografia || { ps: t.fuente, familia: t.fuente, peso: 400 }
+    // EL ESTILO VA ANTES DEL PESO O LA CADENA CSS SE DESCARTA ENTERA, EN SILENCIO. `tg.cursiva` viajaba
+    // desde AE y no aparecia en ninguna parte de este archivo: Chromium no resuelve "Arial-ItalicMT"
+    // como familia y caia a la romana. El ancho casi no cambia (0,55%), asi que `comp-check` con umbral
+    // del 2% no lo ve nunca — solo se ve abriendo el cuadro.
+    const fuente = `${tg.cursiva ? 'italic ' : ''}${tg.peso} ${t.tamano}px "${tg.ps}", "${tg.familia}", sans-serif`
+    const interletra = t.interletra ? (t.tamano * t.interletra / 1000) + 'px' : '0px'
+    const medidor = document.createElement('canvas').getContext('2d')
+    medidor.font = fuente
+    // EL MEDIDOR TIENE QUE TENER LA MISMA INTERLETRA QUE EL DIBUJO. Sin esto el lienzo se dimensiona
+    // con el ancho SIN trackear y despues se dibuja el texto CON tracking encima: las ultimas letras
+    // se cortan contra el borde. No da error — da un titular al que le faltan letras, que se
+    // diagnostica como "no cargo la fuente". Y ademas `comp-check` comparaba la caja de AE (que SI
+    // trae el tracking) contra una del navegador sin el: divergencia permanente en toda capa con
+    // interletra. Dos lineas, y estaba latente esperando a la primera pieza que usara tracking.
+    medidor.letterSpacing = interletra
+    medidor.textAlign = t.alineacion === 'centro' ? 'center' : t.alineacion === 'derecha' ? 'right' : 'left'
+    const m = medidor.measureText(t.contenido)
+
+    // El origen de una capa de texto en AE es la LÍNEA DE BASE, no una esquina. La caja se declara
+    // alrededor de ese origen: la tinta que sube va en y negativa porque la Y de AE crece hacia abajo.
+    const margen = Math.ceil(t.tamano * 0.25)
+    const izq = m.actualBoundingBoxLeft + margen
+    const der = m.actualBoundingBoxRight + margen
+    const arr = m.actualBoundingBoxAscent + margen
+    const aba = m.actualBoundingBoxDescent + margen
+
+    const cv = document.createElement('canvas')
+    cv.width = Math.max(2, Math.ceil((izq + der) * SUPER))
+    cv.height = Math.max(2, Math.ceil((arr + aba) * SUPER))
+    const g = cv.getContext('2d')
+    g.scale(SUPER, SUPER)
+    g.font = fuente
+    g.textAlign = medidor.textAlign
+    g.textBaseline = 'alphabetic'
+    g.fillStyle = t.relleno || '#ffffff'
+    g.letterSpacing = interletra
+    g.fillText(t.contenido, izq, arr)
+
+    const tex = new THREE.CanvasTexture(cv)
+    tex.colorSpace = THREE.SRGBColorSpace
+    tex.flipY = false            // la geometría está en coordenadas de AE, con la Y hacia abajo
+    tex.minFilter = THREE.LinearFilter
+    tex.magFilter = THREE.LinearFilter
+    tex.anisotropy = render.capabilities.getMaxAnisotropy()
+    // EL CORRIMIENTO DEL ORIGEN, que es una regresion que introduje yo al arreglar la interletra.
+    //
+    // Chrome mete un espaciado de mas DESPUES del ultimo caracter y el punto de alineacion sale de ese
+    // avance; AE deja la tinta centrada en el origen. Con alineacion al centro la tinta queda medio
+    // espaciado a la izquierda, y con alineacion a la derecha un espaciado entero. Medido con tracking
+    // 200 sobre 86 px: 8,6 px. El ANCHO queda exacto al 0,10%, asi que ninguna compuerta lo ve — es un
+    // defecto que solo aparece comparando la POSICION, y `capa.caja.x` viaja desde AE sin lectores.
+    const sp = t.interletra ? t.tamano * t.interletra / 1000 : 0
+    const corr = t.alineacion === 'centro' ? sp / 2 : t.alineacion === 'derecha' ? sp : 0
+    return { tex, x0: -izq + corr, y0: -arr, x1: der + corr, y1: aba }
+  }
+
+  // ---------------------------------------------------------------- imágenes
+  //
+  // SE ESPERA A QUE CARGUEN ANTES DE DECIR "LISTO", y eso no es prolijidad: un cargador de texturas es
+  // asíncrono, así que sin la espera los primeros cuadros se capturan con la capa en blanco. No falla
+  // ni avisa — salen unos cuadros sin imagen al principio, que es exactamente el tipo de defecto que
+  // uno mira diez veces sin ver.
+  const pendientes = []
+  const cargador = new THREE.TextureLoader()
+  function texturaDeImagen(nombre) {
+    const tex = cargador.load(`/medios/${encodeURIComponent(nombre)}`)
+    pendientes.push(new Promise((ok, mal) => {
+      tex.image ? ok() : (tex.onUpdate = ok)
+      cargador.load(`/medios/${encodeURIComponent(nombre)}`, ok, undefined, mal)
+    }))
+    // EL PNG YA ESTÁ EN sRGB. Si three lo tratara como lineal, los medios tonos se corren y los negros
+    // salen grises — me pasó recreando Gemini y está anotado en el cuaderno. Se declara explícito.
+    tex.colorSpace = THREE.SRGBColorSpace
+    tex.flipY = false          // la geometría va en coordenadas de AE, con la Y hacia abajo
+    tex.minFilter = THREE.LinearMipmapLinearFilter
+    tex.magFilter = THREE.LinearFilter
+    tex.anisotropy = render.capabilities.getMaxAnisotropy()
+    return tex
+  }
+
+  // ---------------------------------------------------------------- construir las capas
+  const capas = []
+  const sinSoporte = []
+  // LA CAMARA SE BUSCA ANTES DEL BUCLE, no dentro. Si se asignara al encontrarla, las capas que
+  // vinieran ANTES que ella en el apilado se construirían creyendo que no hay cámara y se irían a la
+  // escena equivocada. Que hoy la cámara sea la capa 1 es una casualidad de esta composición.
+  const camaraDoc = doc.capas.find(c => c.tipo === 'camara') || null
+
+  for (const capa of doc.capas) {
+    if (capa.tipo === 'camara') continue
+    if (capa.tipo === 'nula') { capas.push({ capa, malla: null }); continue }
+    if (capa.tipo === 'luz') { sinSoporte.push(`capa ${capa.indice} (luz)`); continue }
+    if (capa.tipo === 'forma' && !capa.raster && !capa.arco && !capa.forma) { sinSoporte.push(`capa ${capa.indice} (forma sin rasterizar)`); continue }
+
+    let geo, mat
+    if (capa.arco) {
+      // EL ARCO QUE CRECE, EXACTO Y A CUALQUIER ESCALA.
+      //
+      // Se dibuja el anillo COMPLETO una sola vez y el recorrido se resuelve DESCARTANDO por angulo en
+      // el fragmento. La alternativa —rehacer la geometria por cuadro con `thetaLength`— parece mas
+      // directa y es la trampa: con el obturador en dieciseis muestras serian dieciseis geometrias
+      // nuevas por cuadro, y three no libera las viejas solo.
+      const rx = capa.arco.ancho / 2, ry = capa.arco.alto / 2, g = capa.arco.grosor / 2
+      geo = new THREE.RingGeometry(Math.max(0.01, rx - g), rx + g, 192, 1)
+      if (Math.abs(ry - rx) > 0.01) geo.scale(1, ry / rx, 1)   // una elipse es un anillo escalado en Y
+      mat = new THREE.MeshBasicMaterial({ color: new THREE.Color(capa.arco.color), transparent: true, side: THREE.DoubleSide })
+      // LOS UNIFORMS SE CREAN ACA, NO ADENTRO DE onBeforeCompile.
+      //
+      // three llama a `onBeforeCompile` en el PRIMER DIBUJO del material, no al crearlo. Con los
+      // objetos de uniform creados adentro, `mat.userData.arco` no existe todavia mientras se prepara
+      // el primer cuadro, asi que el bucle que los escribe se saltea entero y el shader arranca con
+      // sus valores iniciales: uDesde 0 y uHasta 1, o sea EL ANILLO COMPLETO.
+      //
+      // El sintoma es de los peores que hay: solo el PRIMER cuadro de cada tanda sale mal, y sale mal
+      // en silencio. Rendericen 555 y 530 en ese orden y el 555 sale con el aro entero; rendericen 530
+      // y 555 y el que falla es el 530. Yo lo lei como "el desfase no da la vuelta" y casi arreglo la
+      // funcion equivocada. Con el objeto creado antes, el bucle escribe siempre sobre el mismo
+      // `value` y la compilacion posterior se engancha a el.
+      const uniArco = { uDesde: { value: 0 }, uHasta: { value: 1 } }
+      mat.userData.arcoUni = uniArco
+      mat.onBeforeCompile = (sh) => {
+        sh.uniforms.uDesde = uniArco.uDesde
+        sh.uniforms.uHasta = uniArco.uHasta
+        sh.vertexShader = `varying vec2 vLocal;
+` + sh.vertexShader.replace(
+          '#include <begin_vertex>', `#include <begin_vertex>
+  vLocal = position.xy;`)
+        sh.fragmentShader = `varying vec2 vLocal;
+uniform float uDesde;
+uniform float uHasta;
+` +
+          sh.fragmentShader.replace('#include <clipping_planes_fragment>', `
+  #include <clipping_planes_fragment>
+  // EL ANGULO DESDE LAS DOCE Y EN SENTIDO HORARIO, que es como AE recorta un trazado de elipse.
+  //
+  // La coordenada Y va NEGADA, y no es un ajuste a ojo: el anillo se construye en el espacio de three,
+  // donde +Y es arriba,
+  // pero la matriz de la capa lleva PHI, que da vuelta la Y para pasar a coordenadas de AE.
+  // O sea que el +Y de la geometria termina apuntando hacia ABAJO en pantalla. Sin negarla, el arco
+  // arranca desde las seis y gira al reves — se ve enseguida, pero solo si uno lo mira.
+  float ang = atan( vLocal.x, -vLocal.y ) / 6.2831853072;
+  if ( ang < 0.0 ) ang += 1.0;
+  // EL DESFASE TIENE QUE DAR LA VUELTA, y la version anterior no la daba.
+  //
+  // uDesde y uHasta traen sumado el desfase del recorte (ADBE Vector Trim Offset, en grados
+  // sobre 360), asi que salen de [0,1) en cuanto el autor lo anima: con un desfase de -274 grados el
+  // intervalo pasaba a [-0,761 , -0,591] y la comparacion ang > uHasta era cierta para TODO angulo,
+  // porque ang nunca es negativo. Resultado: el arco desaparecia entero, sin error y sin aviso.
+  //
+  // Y sobrevivio por el motivo de siempre: la sonda que estreno esta funcion usaba desfase CERO. Una
+  // sonda escrita para el caso que uno implemento no prueba el caso en el que se va a usar.
+  //
+  // Aca el intervalo se normaliza a [d, d+largo) con d en [0,1), y se le suma una vuelta al angulo
+  // cuando queda por detras del arranque. Un largo de una vuelta o mas no descarta nada.
+  float largo = uHasta - uDesde;
+  if ( largo <= 0.0 ) discard;
+  if ( largo < 1.0 ) {
+    float d = uDesde - floor( uDesde );
+    float a = ang < d ? ang + 1.0 : ang;
+    if ( a > d + largo ) discard;
+  }
+`)
+      }
+    } else if (capa.tipo === 'solido' && capa.solido) {
+      const { ancho: w, alto: h, color } = capa.solido
+      geo = new THREE.PlaneGeometry(w, h)
+      geo.translate(w / 2, h / 2, 0)              // la esquina en el origen: coordenadas de capa de AE
+      mat = new THREE.MeshBasicMaterial({ color: new THREE.Color(color), transparent: true, side: THREE.DoubleSide })
+    } else if (capa.tipo === 'forma' && capa.raster && !capa.forma) {
+      // EL VECTOR LE GANA AL RASTER. El exportador manda LAS DOS COSAS cuando puede: el arbol vectorial
+      // y el PNG rasterizado, que sigue siendo el camino de toda forma que el motor no sabe dibujar.
+      // Sin este `&& !capa.forma` la rama del raster agarraba la capa primero y la del vector no corria
+      // nunca: las seis figuras salieron en negro, sin un solo error. Un `else if` de mas arriba se
+      // come al de mas abajo y no lo dice nadie.
+      // UNA FORMA RASTERIZADA ES UNA IMAGEN MÁS. Toda la ganancia de haber decidido en el punto 1 que
+      // "cada capa es un plano con una textura" está acá: portar el árbol de formas de AE habría sido
+      // el build más grande del exportador, y así son diez líneas.
+      //
+      // Lo único que no es obvio: el ráster NO está centrado en el origen de la capa, está centrado en
+      // el centro de la FORMA — que casi nunca es lo mismo. Por eso viaja la caja medida: el plano se
+      // ubica en coordenadas de la capa usando esa caja, más el margen que se dejó para que el
+      // suavizado del borde no quedara recortado.
+      const R = capa.raster
+      const x0 = R.caja.x - R.margen, y0 = R.caja.y - R.margen
+      geo = new THREE.PlaneGeometry(R.ancho, R.alto)
+      geo.translate(x0 + R.ancho / 2, y0 + R.alto / 2, 0)
+      mat = new THREE.MeshBasicMaterial({
+        map: texturaDeImagen(R.archivo), transparent: true, side: THREE.DoubleSide,
+      })
+    } else if (capa.tipo === 'av' && capa.origen?.copiado) {
+      // UNA IMAGEN ES UN PLANO CON UNA TEXTURA — igual que un sólido, igual que un texto. Esa decisión
+      // tomada en el punto 1 es lo que hace que esto sean doce líneas y no un camino nuevo.
+      const { ancho: w, alto: h } = capa.origen
+      geo = new THREE.PlaneGeometry(w, h)
+      geo.translate(w / 2, h / 2, 0)
+      mat = new THREE.MeshBasicMaterial({
+        map: texturaDeImagen(capa.origen.copiado),
+        transparent: true, side: THREE.DoubleSide,
+        // ALFA DIRECTO O PREMULTIPLICADO: se ven idénticos sobre fondo oscuro y distintos sobre claro.
+        // El dato viene del documento, no se asume — AE lo informa y el exportador lo lleva.
+        premultipliedAlpha: capa.alfa === 'premultiplicado',
+      })
+    } else if (capa.forma) {
+      // UNA FORMA VECTORIAL ES UN PLANO CON UNA TEXTURA QUE SE REDIBUJA. No se rasteriza en AE, asi que
+      // un trazado animado —el trazo que se dibuja, el morphing— llega vivo hasta el cuadro.
+      const R = rectDeCapa(capa)
+      if (!R) { sinSoporte.push(`capa ${capa.indice}: forma vectorial sin trazado medible`); continue }
+      const lienzo = texturaDeForma(capa, R, 0)
+      const tex = new THREE.CanvasTexture(lienzo)
+      tex.colorSpace = THREE.SRGBColorSpace
+      tex.flipY = false
+      tex.minFilter = THREE.LinearFilter
+      tex.magFilter = THREE.LinearFilter
+      tex.anisotropy = render.capabilities.getMaxAnisotropy()
+      geo = new THREE.PlaneGeometry(R.x1 - R.x0, R.y1 - R.y0)
+      geo.translate((R.x0 + R.x1) / 2, (R.y0 + R.y1) / 2, 0)
+      mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide })
+      capa.__formaEstado = { rect: R, lienzo, tex, cuadro: 0 }
+    } else if (capa.tipo === 'texto' && capa.texto && capa.animadores && capa.animadores.length) {
+      // TEXTO CON ANIMADOR: un plano por caracter, agrupados. No pasa por el camino de abajo porque un
+      // animador no se puede aplicar a una textura unica.
+      const { grupo, piezas, colorBase } = textoPorCaracter(capa)
+      grupo.renderOrder = doc.capas.length - capa.indice
+      for (const pz of piezas) if (pz.malla) pz.malla.renderOrder = grupo.renderOrder
+      const enElMundo = capa.es3D || !camaraDoc
+      const alFondo = !enElMundo && capa.indice > ultima3D
+      ;(enElMundo ? escena : alFondo ? escena2Dfondo : escena2D).add(grupo)
+      // el material que ve `poner` es un maniqui: el estado real se reparte a los caracteres. Se deja
+      // para no ramificar el bloque comun, que hace media docena de cosas que igual valen.
+      const maniqui = new THREE.MeshBasicMaterial()
+      capas.push({ capa, malla: grupo, mat: maniqui, enElMundo, alFondo, piezas, colorBase })
+      continue
+    } else if (capa.tipo === 'texto' && capa.texto) {
+      const { tex, x0, y0, x1, y1 } = texturaDeTexto(capa)
+      geo = new THREE.PlaneGeometry(x1 - x0, y1 - y0)
+      geo.translate((x0 + x1) / 2, (y0 + y1) / 2, 0)
+      mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide })
+    } else {
+      sinSoporte.push(`capa ${capa.indice} (${capa.tipo}, sin contenido dibujable)`)
+      continue
+    }
+    mat.depthTest = false
+    mat.depthWrite = false
+
+    // EL DESENFOQUE POR CAPA — el circulo de confusion de la profundidad de campo de la camara.
+    //
+    // POR QUE ES BARATO ACA Y CARO EN GENERAL. Una profundidad de campo de verdad necesita leer la
+    // profundidad de cada pixel, y este reproductor dibuja con `depthTest` apagado y orden de pintor:
+    // no hay buffer de profundidad que leer. Pero cada capa es un PLANO a una profundidad conocida, asi
+    // que su circulo de confusion es CONSTANTE sobre toda la capa y se resuelve con un solo numero.
+    //
+    // LO QUE ESO NO CUBRE, dicho para que nadie confie de mas: un plano muy inclinado hacia la camara
+    // tiene su borde cercano y su borde lejano a profundidades distintas, y aca se desenfoca parejo.
+    // Ese caso —el foco que varia DENTRO de una superficie— es el que el barrido marco como
+    // irreproducible, y sigue siendolo.
+    //
+    // Y UNA SEGUNDA LIMITACION, VISIBLE: son diecisiete muestras en dos anillos. Para los radios chicos
+    // que pide una entrada por foco (5-20 px) queda liso; pasando los ~60 px se ven ANILLOS
+    // concentricos, porque el anillo de muestreo se separa mas que el detalle que esta difuminando. Se
+    // arregla con dos pasadas separables, y hoy no hace falta: el uso medido es la entrada por foco,
+    // no el fondo completamente fuera de foco.
+    //
+    // TAMPOCO ESTA MEDIDO CONTRA AE. Se comporta bien —el plano de enfoque queda nitido, la borrosidad
+    // crece con la distancia y el foco animado barre— pero que el numero COINCIDA con el de AE es otra
+    // afirmacion, y esa no la hice.
+    if (mat.map) {
+      // EL MISMO CASO QUE EL ARCO: el objeto del uniform se crea antes de compilar. Con el adentro de
+      // onBeforeCompile, el primer cuadro de cada tanda se dibujaba SIN NADA DE DESENFOQUE, y como un
+      // cuadro nitido no parece un error, se leia como "aca la profundidad de campo no llega".
+      const uniFoco = { uRadio: { value: 0 } }
+      mat.userData.focoUni = uniFoco
+      mat.onBeforeCompile = (sh) => {
+        sh.uniforms.uRadio = uniFoco.uRadio
+        // `vMapUv` A SECAS, no detectado. La primera version lo buscaba en `sh.fragmentShader` para
+        // elegir entre el nombre nuevo y el viejo — y en `onBeforeCompile` los `#include` TODAVIA NO
+        // ESTAN EXPANDIDOS, asi que la busqueda fallaba siempre y caia al nombre viejo. Resultado: el
+        // shader no compilaba, ningun material se dibujaba, y el render salia negro de punta a punta
+        // sin un solo error visible en la captura.
+        // three usa `vMapUv` desde r152 (aca corre r184); si algun dia se sube de version y esto se
+        // rompe, el sintoma va a ser exactamente el mismo: todo negro.
+        const uv = 'vMapUv'
+        // comillas INVERTIDAS: un literal de comillas simples no puede tener un salto de linea real, y
+        // el archivo entero deja de compilar. Es el mismo error que en ExtendScript costo dos carteles.
+        sh.fragmentShader = `uniform float uRadio;
+` + sh.fragmentShader.replace(
+          '#include <map_fragment>', `
+#ifdef USE_MAP
+  vec4 muestra;
+  if ( uRadio < 0.0004 ) {
+    muestra = texture2D( map, ${uv} );
+  } else {
+    // ESPIRAL DE ANGULO AUREO, NO ANILLOS CONCENTRICOS.
+    //
+    // La version anterior eran dos anillos de ocho muestras mas el centro, y su limitacion estaba
+    // ESCRITA justo arriba: "pasando los ~60 px se ven anillos concentricos... hoy no hace falta: el
+    // uso medido es la entrada por foco, no el fondo completamente fuera de foco". Despues la PIEZA-I
+    // puso un panel a 32 px de circulo de confusion —la mitad del limite que yo mismo habia declarado
+    // seguro— y el defecto se vio a simple vista: el titulo del panel aparecia TRES VECES, corrido en
+    // horizontal. Con dieciseis direcciones fijas, un texto que es una fila de trazos verticales se
+    // replica en vez de difuminarse; el ojo lee copias, no borrosidad.
+    //
+    // Con el angulo aureo (2,39996 rad) y el radio en raiz de i/N, las 32 muestras cubren el disco de
+    // forma casi uniforme y SIN NINGUNA direccion privilegiada, que es justo lo que producia las
+    // copias. No hay dos pasadas ni buffer intermedio: sigue siendo una sola lectura por muestra, y
+    // 32 muestras en un render fuera de linea no se notan.
+    //
+    // El peso 1/sqrt aclara levemente el centro para que el nucleo no se lave; sin el, un desenfoque
+    // grande apaga el elemento ademas de difuminarlo.
+    // Y ADEMAS SE GIRA LA ESPIRAL UN ANGULO DISTINTO EN CADA PIXEL.
+    //
+    // Con la espiral fija, 32 muestras sobre un radio grande siguen siendo 32 puntos: el resultado es
+    // una RETICULA de puntitos, que se ve peor que el desenfoque que reemplaza. Medido sobre esta
+    // misma pieza a 32 px de circulo de confusion. Girando la espiral con un hash de la coordenada de
+    // pantalla, el error deja de estar correlacionado entre pixeles vecinos y se lee como grano fino
+    // en vez de como trama. Es el mismo motivo por el que un tramado ordenado se ve peor que uno
+    // aleatorio aunque tenga el mismo error.
+    //
+    // LO QUE ESTO NO ARREGLA, y hay que decirlo porque ya me paso creerme una limitacion vencida: la
+    // varianza sigue siendo la de 32 muestras. A radios grandes hay ruido. El desenfoque grande de
+    // verdad son dos pasadas separables, y eso no esta escrito. Por eso ademas existe la compuerta
+    // foco-check.mjs, que mide el circulo de confusion de cada capa SIN renderizar y no deja que una
+    // pieza se apoye en un radio que este motor no sabe dibujar.
+    float sem = fract( sin( dot( gl_FragCoord.xy, vec2( 12.9898, 78.233 ) ) ) * 43758.5453 );
+    float giro = sem * 6.2831853072;
+    muestra = vec4( 0.0 );
+    float total = 0.0;
+    for ( int i = 0; i < 48; i ++ ) {
+      float fi = float( i ) + 0.5;
+      float rr = sqrt( fi / 48.0 );
+      float aa = fi * 2.3999632297 + giro;
+      float peso = 1.0 / ( 0.35 + rr );
+      muestra += texture2D( map, ${uv} + vec2( cos( aa ), sin( aa ) ) * rr * uRadio ) * peso;
+      total += peso;
+    }
+    muestra /= total;
+  }
+  diffuseColor *= muestra;
+#endif
+`)
+      }
+    }
+    // EL RECORTE POR MATTE DE PISTA. Cuatro planos que se MUTAN EN SU LUGAR cada cuadro.
+    //
+    // La trampa, y no da error: three llavea el programa de shader por la CANTIDAD de planos de
+    // recorte. Reasignar el arreglo con otra longitud fuerza a recompilar el shader — por cuadro y por
+    // submuestra de obturador, o sea hasta 16 veces por cuadro. Los cuatro planos se crean UNA vez y
+    // despues solo se les mueve la normal y la distancia, que son uniforms y son gratis.
+    if (capa.matte) {
+      mat.clippingPlanes = [new THREE.Plane(), new THREE.Plane(), new THREE.Plane(), new THREE.Plane()]
+      mat.clipIntersection = false
+    }
+
+    // LA FUSION ADITIVA, QUE ES LA FAMILIA DE LA LUZ. Un cometa de escritura, un destello o un halo
+    // SUMAN luz; en modo normal se leen como pintura blanca. `depthTest` se apaga porque una capa que
+    // suma no oculta lo que tiene detras — al reves, lo necesita para sumarse encima.
+    if (capa.fusion === 'suma') {
+      mat.blending = THREE.AdditiveBlending
+      mat.depthTest = false
+    }
+    // ---------------------------------------------------------------- LA MASCARA, SI LA HAY
+    //
+    // Se multiplica el alfa del fragmento por una textura en coordenadas de CAPA. La UV del plano ya
+    // recorre la capa de (0,0) a (1,1), asi que la correspondencia es directa — y por eso este modelo
+    // es el fiel: la mascara de AE vive en el mismo espacio.
+    let mascaraEstado = null
+    if (capa.mascaras && capa.mascaras.length) {
+      const R = rectDeCapa(capa)
+      if (!R) {
+        sinSoporte.push(`capa ${capa.indice}: tiene mascara y no se le pudo calcular la caja`)
+      } else {
+        // EL LIENZO SE AGRANDA POR EL CALADO Y LA EXPANSION, Y NO ES UN DETALLE.
+        //
+        // Rasterizar la mascara justo en la caja de la capa mete un BORDE FALSO: el desenfoque del
+        // calado chupa transparencia desde el filo del lienzo y oscurece la figura entera. Medido: con
+        // calado 64 sobre una capa de 90 px de alto, la rampa del motor paso de 87 px (AE) a 671, o sea
+        // que el alfa nunca llegaba a saturar en ningun lado. Con calado 26 no se veia.
+        //
+        // En AE la mascara se calcula sobre una figura SIN BORDES —puede salirse de la capa, y en esta
+        // sonda se sale— y recien despues la limita la capa. Asi que el lienzo lleva un margen del
+        // tamano del calado mas la expansion, y la UV se mapea contra el rectangulo AGRANDADO.
+        let margenM = 0
+        for (const m of capa.mascaras) {
+          const pf = capa.transformacion[`mascara${m.indice}.calado`]
+          const pe = capa.transformacion[`mascara${m.indice}.expansion`]
+          const mx = (q) => {
+            let v = Math.abs(q?.estatico?.[0] ?? 0)
+            for (const s of (q?.pistas?.[0]?.tramos || [])) v = Math.max(v, Math.abs(s.v1), Math.abs(s.v2))
+            return v
+          }
+          margenM = Math.max(margenM, mx(pf) + mx(pe))
+        }
+        margenM = Math.ceil(margenM * 1.6) + 4
+        R.x0 -= margenM; R.y0 -= margenM; R.x1 += margenM; R.y1 += margenM
+        const lienzo = texturaDeMascara(capa, R, 0)
+        const tex = new THREE.CanvasTexture(lienzo)
+        tex.colorSpace = THREE.NoColorSpace     // es un alfa, no un color: no se le aplica gamma
+        tex.flipY = false
+        tex.minFilter = THREE.LinearFilter
+        tex.magFilter = THREE.LinearFilter
+        const animada = capa.mascaras.some(m => m.animada)
+        mascaraEstado = { rect: R, lienzo, tex, animada, cuadro: 0 }
+        const antes = mat.onBeforeCompile
+        mat.onBeforeCompile = (sh) => {
+          if (antes) antes(sh)
+          sh.uniforms.uMascara = { value: tex }
+          sh.uniforms.uMascRect = { value: new THREE.Vector4(R.x0, R.y0, R.x1 - R.x0, R.y1 - R.y0) }
+          // LA UV SE CALCULA DESDE LA POSICION, NO SE TOMA DE `vMapUv`.
+          //
+          // La primera version usaba `vMapUv`, que es la varying que three declara cuando el material
+          // tiene un `map`. UN SOLIDO NO TIENE MAPA: la varying no existe, el shader no compila, y el
+          // material falla — las cuatro capas enmascaradas salieron INVISIBLES y la unica que se veia
+          // era justo aquella cuya mascara habia sido rechazada. Sin error en consola: un shader que no
+          // compila deja el objeto sin dibujar.
+          //
+          // Calcularla desde `position` ademas la hace independiente de la orientacion de la UV de la
+          // geometria: la posicion YA esta en coordenadas de capa de AE (el comentario del solido lo
+          // dice), y el lienzo de la mascara se rasteriza en esas mismas coordenadas. Las dos cosas
+          // salen del mismo origen en vez de tener que coincidir.
+          sh.vertexShader = `varying vec2 vMascUv;
+uniform vec4 uMascRect;
+` + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+  vMascUv = ( position.xy - uMascRect.xy ) / uMascRect.zw;`)
+          sh.fragmentShader = `varying vec2 vMascUv;
+uniform sampler2D uMascara;
+` + sh.fragmentShader.replace('#include <opaque_fragment>', `
+  // LA MASCARA ES ALFA, Y SOLO ALFA. Multiplicar tambien el color oscureceria el borde calado en vez
+  // de volverlo transparente: el defecto se ve como una orla sucia alrededor de la figura.
+  //
+  // Y FUERA DE LA CAJA DE LA CAPA NO HAY NADA. Sin el descarte, el muestreo con borde repetido estira
+  // el ultimo pixel del lienzo hacia afuera y una mascara que toca el borde pinta una franja infinita.
+  if ( vMascUv.x < 0.0 || vMascUv.x > 1.0 || vMascUv.y < 0.0 || vMascUv.y > 1.0 ) discard;
+  diffuseColor.a *= texture2D( uMascara, vMascUv ).a;
+  #include <opaque_fragment>`)
+          mat.userData.mascaraUni = sh.uniforms
+        }
+        mat.needsUpdate = true
+      }
+    }
+
+    geo.computeBoundingSphere()
+    const malla = new THREE.Mesh(geo, mat)
+    malla.matrixAutoUpdate = false
+    // EL ORDEN DE APILADO DE AE: la capa 1 va arriba de todo, así que se dibuja última.
+    // Para las capas 3D esto es sólo el DESEMPATE: el orden real se recalcula por distancia a la
+    // cámara en cada cuadro, más abajo. Ver el comentario en `poner`.
+    malla.renderOrder = doc.capas.length - capa.indice
+    // una capa 2D en una comp con cámara va a la escena pegada al cuadro; una 3D, al mundo
+    const enElMundo = capa.es3D || !camaraDoc
+    const alFondo = !enElMundo && capa.indice > ultima3D
+    ;(enElMundo ? escena : alFondo ? escena2Dfondo : escena2D).add(malla)
+    capas.push({ capa, malla, mat, enElMundo, alFondo, mascara: mascaraEstado,
+                 forma: capa.__formaEstado || null })
+  }
+
+  // ---------------------------------------------------------------- la cámara
+  const zoomPorDefecto = ancho * 50 / 36
+  const camara = new THREE.PerspectiveCamera(1, ancho / alto, 1, 100000)
+  camara.matrixAutoUpdate = false
+
+  const ojoMundo = new THREE.Vector3()
+  function ponerCamara(t) {
+    let zoom = zoomPorDefecto, pos = [ancho / 2, alto / 2, -zoom], poi = [ancho / 2, alto / 2, 0]
+    let apunta = true, ori = [0, 0, 0]
+    let TC = { }
+    if (camaraDoc) {
+      const T = TC = camaraDoc.transformacion
+      zoom = camaraDoc.camara?.zoom || zoomPorDefecto
+      if (T.zoom) zoom = propEn(T, 'zoom', 0, t, zoom)
+      // LA CAMARA TAMBIEN PUEDE TENER LAS DIMENSIONES SEPARADAS, y eso ya se contemplaba para las
+      // capas y no para ella. Separar dimensiones es la forma limpia de evitar que AE le invente una
+      // curvatura al camino (las tangentes espaciales, que no se pueden portar), asi que es lo que hace
+      // toda camara autorada con cuidado — y era justo la que se leia como quieta. Sin error: el
+      // documento traia posX/posY/posZ y aca se preguntaba por 'posicion', que no existia, asi que la
+      // camara se quedaba en su valor por defecto los 450 cuadros.
+      const ejeC = (n2D, n3D, comp2, def) => camaraDoc.separadas ? propEn(T, n3D, 0, t, def) : propEn(T, n2D, comp2, t, def)
+      pos = [ejeC('posicion', 'posX', 0, pos[0]), ejeC('posicion', 'posY', 1, pos[1]), ejeC('posicion', 'posZ', 2, pos[2])]
+      poi = [propEn(T, 'anclaje', 0, t, poi[0]), propEn(T, 'anclaje', 1, t, poi[1]), propEn(T, 'anclaje', 2, t, poi[2])]
+      apunta = camaraDoc.camara?.apuntaAlPunto !== false
+      ori = [propEn(T, 'orientacion', 0, t, 0), propEn(T, 'orientacion', 1, t, 0), propEn(T, 'orientacion', 2, t, 0)]
+    }
+
+    // EL OJO, EN COORDENADAS DE MUNDO Y SACADO DE LA MISMA FUENTE QUE LA CAMARA.
+    //
+    // El recorte por matte necesita la posicion del ojo para armar la piramide. La primera version se la
+    // pedia a `camara.getWorldPosition()`, o sea al objeto de three, que lleva su propia contabilidad de
+    // matrices — y daba un punto que NO estaba en los planos: para una camara en (0,0,-2666) la ecuacion
+    // del plano daba 1320 en vez de 0. Sin error: unos planos plausibles que recortaban de mas y una
+    // capa que desaparecia entera.
+    //
+    // Aca se toma `pos`, que es la posicion en coordenadas de AE recien evaluada, y se le aplica PHI:
+    // queda en el mismo espacio que los vertices del rectangulo de la matte, que es la unica forma de
+    // que la cuenta cierre.
+    ojoMundo.set(pos[0], pos[1], pos[2]).applyMatrix4(PHI)
+
+    // el campo VERTICAL sale del zoom, que AE da en píxeles
+    camara.fov = 2 * Math.atan(alto / (2 * zoom)) * 180 / Math.PI
+    camara.updateProjectionMatrix()
+
+    // LA BASE DE LA CÁMARA, EN COORDENADAS DE AE.
+    // Si la cámara es de DOS NODOS, su apuntado NO está en sus rotaciones: informan cero y la cámara
+    // igual mira al punto de interés. Leerlas devuelve cero sin error y la cámara queda mirando a
+    // cualquier lado — está medido: da 1480 px de error (sección 59.2).
+    // Y LAS ROTACIONES DE LA CAMARA SE COMPONEN ENCIMA DE ESA BASE, no en lugar de ella. Es lo que
+    // faltaba: el apuntado da el marco —look-at si es de dos nodos, identidad si es de uno— y la
+    // orientacion y las tres rotaciones giran DENTRO de ese marco. Sin esto, una camara de dos nodos
+    // con balanceo (el "dutch", inclinar el horizonte) se reproducia perfectamente horizontal, y una
+    // de un nodo con rotaciones animadas quedaba quieta: la base se leia y las rotaciones se tiraban.
+    const B = new THREE.Matrix4()
+    if (apunta) {
+      const norm = (v) => { const n = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0] / n, v[1] / n, v[2] / n] }
+      const cruz = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]
+      const ff = norm([poi[0] - pos[0], poi[1] - pos[1], poi[2] - pos[2]])
+      const rr = norm(cruz(ff, [0, -1, 0]))
+      const uu = cruz(ff, rr)
+      B.set(rr[0], uu[0], ff[0], 0,
+            rr[1], uu[1], ff[1], 0,
+            rr[2], uu[2], ff[2], 0,
+            0, 0, 0, 1)
+    }
+    // el mismo orden que ya está verificado para las capas (XYZ, y la orientación después)
+    B.multiply(mRotX(propEn(TC, 'rotacionX', 0, t, 0)))
+     .multiply(mRotY(propEn(TC, 'rotacionY', 0, t, 0)))
+     .multiply(mRotZ(propEn(TC, 'rotacion', 0, t, 0)))
+     .multiply(mRotX(ori[0])).multiply(mRotY(ori[1])).multiply(mRotZ(ori[2]))
+    const e = B.elements
+    const r = [e[0], e[1], e[2]], u = [e[4], e[5], e[6]], f = [e[8], e[9], e[10]]
+
+    // A three: la X se conserva, la Y y la Z se invierten. Y three mira por su −Z con el +Y arriba,
+    // mientras que en AE el "arriba de pantalla" es −u. Verificado contra el caso identidad.
+    const A = (v) => [v[0], -v[1], -v[2]]
+    const cx = A(r), cy = A(u).map(x => -x), cz = A(f).map(x => -x)
+    const p = [pos[0] - ancho / 2, -(pos[1] - alto / 2), -pos[2]]
+    camara.matrix.set(
+      cx[0], cy[0], cz[0], p[0],
+      cx[1], cy[1], cz[1], p[1],
+      cx[2], cy[2], cz[2], p[2],
+      0, 0, 0, 1)
+    camara.matrixWorld.copy(camara.matrix)
+    camara.matrixWorldInverse.copy(camara.matrix).invert()
+  }
+
+  // ---------------------------------------------------------------- la matriz de una capa
+  const matrices = new Map()
+  function matrizDe(indice, t) {
+    if (matrices.has(indice)) return matrices.get(indice)
+    const item = capas.find(c => c.capa.indice === indice)
+    if (!item) return new THREE.Matrix4()
+    const c = item.capa, T = c.transformacion
+
+    const ax = propEn(T, 'anclaje', 0, t, 0), ay = propEn(T, 'anclaje', 1, t, 0), az = propEn(T, 'anclaje', 2, t, 0)
+    const px = c.separadas ? propEn(T, 'posX', 0, t, 0) : propEn(T, 'posicion', 0, t, 0)
+    const py = c.separadas ? propEn(T, 'posY', 0, t, 0) : propEn(T, 'posicion', 1, t, 0)
+    const pz = c.separadas ? propEn(T, 'posZ', 0, t, 0) : propEn(T, 'posicion', 2, t, 0)
+    const sx = propEn(T, 'escala', 0, t, 100) / 100
+    const sy = propEn(T, 'escala', 1, t, 100) / 100
+    const sz = propEn(T, 'escala', 2, t, 100) / 100
+
+    // LA FORMULA, MEDIDA — y CORREGIDA el 16/8/2026:
+    //   M = T(pos) · orientacion(XYZ) · Rx · Ry · Rz · S · T(−anclaje)
+    //
+    // LA ORIENTACION VA ENCIMA DE LAS ROTACIONES, no debajo. La version anterior las tenia al reves y
+    // el comentario decia "medida, probando los seis candidatos" — pero esa medicion nunca puso las
+    // DOS distintas de cero a la vez, y con una sola de las dos los dos ordenes dan lo mismo. Es el
+    // mismo patron que este repo repite: se prueba el caso que uno implemento.
+    //
+    // POR QUE APARECIO RECIEN AHORA. Nadie escribe orientaciones a mano. Pero **AE le asigna una
+    // orientacion sola a cualquier capa que se emparenta**, para conservar su orientacion en el mundo
+    // — igual que hace con la posicion. Un hijo con `rotacionY = 45` termina con orientacion
+    // [300,36 · 8,42 · 300,36] que nadie puso, y ahi las dos son distintas de cero.
+    //
+    // Medido contra cuadros de AE (`sondas/rotpadre2.jsx`), dos casos independientes:
+    //   rotaciones y despues orientacion  ->  error de 30,3 y 39,8 px
+    //   orientacion y despues rotaciones  ->  error de  1,4 y  1,2 px
+    //
+    // Con la formula vieja, un hijo emparentado y rotado se desviaba hasta 388% de area.
+    const M = new THREE.Matrix4().makeTranslation(px, py, pz)
+    if (c.es3D) {
+      M.multiply(mRotX(propEn(T, 'orientacion', 0, t, 0)))
+      M.multiply(mRotY(propEn(T, 'orientacion', 1, t, 0)))
+      M.multiply(mRotZ(propEn(T, 'orientacion', 2, t, 0)))
+      M.multiply(mRotX(propEn(T, 'rotacionX', 0, t, 0)))
+      M.multiply(mRotY(propEn(T, 'rotacionY', 0, t, 0)))
+    }
+    M.multiply(mRotZ(propEn(T, 'rotacion', 0, t, 0)))
+    M.multiply(new THREE.Matrix4().makeScale(sx, sy, sz))
+    M.multiply(new THREE.Matrix4().makeTranslation(-ax, -ay, -az))
+
+    const total = c.padre ? matrizDe(c.padre, t).clone().multiply(M) : M
+    matrices.set(indice, total)
+    return total
+  }
+
+  // ---------------------------------------------------------------- el resplandor
+  //
+  // NO SE PORTA DE AFTER EFFECTS, SE DECLARA. Los efectos de AE se calculan sobre el ráster 2D de la
+  // capa ANTES de la transformación 3D —así que un resplandor se deforma junto con el panel— y el
+  // bloom de un motor web es post-proceso en espacio de pantalla. Son dos lugares distintos del
+  // pipeline: perseguir identidad de píxel ahí es perseguir algo que no existe.
+  //
+  // Lo que viaja es la intención ("esta capa brilla así de fuerte", en el comentario de la capa) y el
+  // reproductor la resuelve con la mejor herramienta que tiene. Es la única parte de la cadena donde
+  // NO se exige identidad con AE — y por eso se exige otra cosa, que es más difícil de conseguir:
+  // que con el resplandor apagado el resultado sea EXACTAMENTE el de antes. Si la maquinaria de bloom
+  // cambia un solo píxel cuando nadie la pidió, contamina todo lo que ya está medido.
+  // SE AGRUPA POR PARAMETROS Y VA UNA PASADA POR GRUPO. La primera versión aplicaba UNA pasada con los
+  // parámetros de la PRIMERA capa que brillara — así que la declaración por capa existía en el
+  // documento y no llegaba al render: dos capas con fuerzas distintas salían con la misma. El
+  // documento decía una cosa y la imagen otra, que es la forma de fallar que menos se nota.
+  const conBrillo = capas.filter(c => c.capa.brillo && c.malla)
+  const grupos = new Map()
+  for (const c of conBrillo) {
+    const k = JSON.stringify(c.capa.brillo)
+    if (!grupos.has(k)) grupos.set(k, { params: c.capa.brillo, capas: [] })
+    grupos.get(k).capas.push(c)
+  }
+
+  // El acumulador se declara ANTES de la mezcla porque la mezcla lo referencia: en JavaScript un
+  // `const` usado antes de su declaración no da undefined, tira ReferenceError al evaluar el módulo —
+  // y la página se queda en blanco sin decir por qué, que es el modo de falla que ya me costó dos
+  // corridas con `process` y con el MIME de los `.mjs`.
+  const acumulador = new THREE.WebGLRenderTarget(ancho, alto, { type: THREE.HalfFloatType })
+  let composBrillo = null, composFinal = null
+  const pasadas = []
+  if (conBrillo.length) {
+    for (const { params, capas: delGrupo } of grupos.values()) {
+      const comp = new EffectComposer(render)
+      comp.renderToScreen = false
+      comp.addPass(new RenderPass(escena, camara))
+      comp.addPass(new UnrealBloomPass(
+        new THREE.Vector2(ancho, alto), params.fuerza, params.radio, params.umbral))
+      pasadas.push({ comp, capas: new Set(delGrupo.map(c => c.capa.indice)) })
+    }
+    composBrillo = pasadas[0].comp
+
+    // La mezcla es ADITIVA: el resplandor SUMA luz, no la reemplaza. Reemplazar apagaría el detalle
+    // que hay debajo del halo, que es justo lo que hace que un panel encendido se lea como encendido
+    // y no como una mancha.
+    const mezcla = new ShaderPass(new THREE.ShaderMaterial({
+      uniforms: { base: { value: null }, brillo: { value: acumulador.texture } },
+      vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
+      fragmentShader: `
+        uniform sampler2D base; uniform sampler2D brillo; varying vec2 vUv;
+        void main(){
+          vec4 b = texture2D(base, vUv);
+          vec4 g = texture2D(brillo, vUv);
+          gl_FragColor = vec4(b.rgb + g.rgb, max(b.a, max(g.r, max(g.g, g.b))));
+        }`,
+    }), 'base')
+    composFinal = new EffectComposer(render)
+    composFinal.addPass(new RenderPass(escena, camara))
+    composFinal.addPass(mezcla)
+    // EL `OutputPass` NO ES OPCIONAL, y su ausencia no se ve como un error: se ve como que TODO se
+    // oscureció. `EffectComposer` renderiza a un búfer intermedio y saltea la conversión a sRGB que el
+    // renderizador aplica sola cuando dibuja directo a la pantalla, así que la imagen sale en lineal.
+    // Los grises se hunden a negro y los brillantes se recortan. Es la misma familia que los negros
+    // que salían grises recreando Gemini, al revés.
+    //
+    // Y la prueba de no-regresión NO lo cazó, porque sin resplandor declarado el camino es
+    // `render.render()` directo, que sí convierte. Dos caminos con distinta gestión de color y la
+    // regresión cubría uno solo: una compuerta sólo protege lo que atraviesa.
+    composFinal.addPass(new OutputPass())
+  }
+
+  // SE DICE ANTES DE RENDERIZAR, no se descubre mirando el video. Con resplandor declarado, el
+  // compositor escribe la pantalla entera en su última pasada, así que una capa 2D puesta debajo del
+  // grupo 3D no sobrevive. La salida es de una línea —marcar el fondo como capa 3D y mandarlo lejos—
+  // pero hay que enterarse, y un fondo que desaparece se lee como "el motor no dibujó nada".
+  // LA FUSION ADITIVA Y EL RESPLANDOR NO CONVIVEN, y hay que declararlo.
+  //
+  // Sin resplandor la escena va directo al framebuffer, donde `outputColorSpace` ya codifico a sRGB: la
+  // suma la hace la GPU sobre valores sRGB. Con resplandor la misma escena pasa por el compositor, cuyos
+  // destinos son HalfFloat SIN espacio de color declarado — o sea LINEAL — asi que la suma ocurre en
+  // lineal y el OutputPass codifica despues. Medido por el revisor: dos capas de 128 sumadas dan 255 sin
+  // brillo y 176 CON brillo. El mismo documento, dos imagenes distintas, y lo que lo cambia es que otra
+  // capa —que puede no tener nada que ver— declare `brillo` en su comentario.
+  //
+  // La que coincide con AE (proyecto de 8 bits, sin mezcla en gamma 1.0) es la de sRGB, o sea la que se
+  // pierde al encender el resplandor. El arreglo de fondo seria darle sRGB a los destinos del
+  // compositor, y eso cambia tambien el caracter del propio resplandor: hay que MEDIRLO contra AE antes,
+  // no cambiarlo a ciegas. Hasta entonces se declara, que es lo unico honesto.
+  if (composBrillo && capas.some(c => c.capa.fusion === 'suma')) {
+    sinSoporte.push('hay capas en modo Anadir Y capas con resplandor: la suma pasa a ocurrir en lineal ' +
+      'en vez de sRGB y da otro resultado. Sacar el resplandor o sacar la fusion aditiva.')
+  }
+
+  // EL DESENFOQUE DE MOVIMIENTO POR CAPA VIAJA Y ESTE MOTOR NO LO MIRA. Y AHORA LO DICE.
+  //
+  // El interruptor sale de AE (`exportar.jsx`, MOVBLUR), lo traduce `comp.mjs` a `capa.desenfoque` y lo
+  // escribe en el documento. Aca no se consulta en ningun lado: el obturador se aplica a la escena
+  // ENTERA, muestreando todo el mundo en cada submuestra. O sea que una capa con el desenfoque APAGADO
+  // en AE igual sale arrastrada por el motor, y AE y el reproductor divergen justo en esa capa.
+  //
+  // La divergencia existia igual; lo unico que cambia es que antes era silenciosa. Es la regla que
+  // costo tres defectos esta semana: una limitacion que no es una declaracion de maquina no existe.
+  // El arreglo de verdad es evaluar esas capas en el tiempo base del cuadro en vez del de la
+  // submuestra, y eso todavia no esta escrito.
+  {
+    // SOLO LAS QUE SE MUEVEN. El obturador no puede arrastrar una capa quieta, asi que declarar un
+    // fondo estatico es ruido — y un aviso que sale en todos los renders se aprende a ignorar, que es
+    // como se pierde el aviso que si importaba.
+    const seMueve = (c) => ['posX', 'posY', 'posZ', 'posicion', 'escala', 'rotacion', 'rotacionX', 'rotacionY', 'orientacion']
+      .some(k => c.transformacion?.[k]?.pistas?.length)
+    const apagadas = doc.capas.filter(c =>
+      c.desenfoque === false && c.tipo !== 'camara' && c.visible !== false && seMueve(c))
+    if (apagadas.length && doc.obturador && doc.obturador.muestras > 1) {
+      sinSoporte.push(`${apagadas.length} capa(s) tienen el desenfoque de movimiento APAGADO en AE y este ` +
+        'reproductor no lo respeta: el obturador se aplica a la escena entera. Van a salir arrastradas. ' +
+        `(${apagadas.slice(0, 4).map(c => c.nombre).join(', ')})`)
+    }
+  }
+
+  if (composBrillo && escena2Dfondo.children.length) {
+    sinSoporte.push('hay un fondo 2D debajo del grupo 3D y la composición usa resplandor: ' +
+      'con resplandor esa capa no se compone. Marcala como 3D y mandala atrás.')
+  }
+
+  const escenaQuad = new THREE.Scene()
+  const camQuad = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1)
+  const matSuma = new THREE.MeshBasicMaterial({ transparent: true, blending: THREE.AdditiveBlending, depthTest: false })
+  escenaQuad.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), matSuma))
+
+  // las capas pegadas al cuadro se dibujan DESPUES del mundo, encima. Es el caso normal —un título,
+  // un rótulo— y cubre la mayoría. Lo que NO cubre está declarado: en AE una capa 2D intercalada entre
+  // capas 3D parte el grupo 3D en dos y compone por separado. Acá todas las 2D van arriba.
+  function dibujar2D(cual) {
+    if (!cual.children.length) return
+    const auto = render.autoClear
+    render.autoClear = false
+    render.render(cual, camara2D)
+    render.autoClear = auto
+  }
+
+  // el fondo se dibuja PRIMERO y limpiando; después el mundo 3D; después los rótulos planos
+  function dibujarFondo() {
+    if (!escena2Dfondo.children.length) return
+    render.render(escena2Dfondo, camara2D)
+    render.autoClear = false
+  }
+
+  function dibujar() {
+    if (!composBrillo) {
+      const auto = render.autoClear
+      dibujarFondo()
+      render.render(escena, camara)
+      render.autoClear = auto
+      dibujar2D(escena2D)
+      return
+    }
+    const antes = capas.map(c => c.malla && c.malla.visible)
+
+    // una pasada por grupo de parámetros, con SOLO las capas de ese grupo visibles. Se ocultan las
+    // demás en vez de pintarlas de negro: pintarlas de negro les daría un halo oscuro alrededor.
+    render.setRenderTarget(acumulador)
+    render.setClearColor(0x000000, 0)
+    render.clear()
+    render.setRenderTarget(null)
+    // `autoClear` EN FALSO DURANTE LA ACUMULACION. Por defecto el renderizador limpia el destino antes
+    // de cada dibujo, así que cada grupo borraba al anterior y "aditivo" no sumaba nada: quedaba sólo
+    // el último. No falla — da un resplandor que existe y es el de una sola capa.
+    const autoAntes = render.autoClear
+    render.autoClear = false
+    for (const { comp, capas: delGrupo } of pasadas) {
+      for (const c of capas) if (c.malla) c.malla.visible = antes[capas.indexOf(c)] && delGrupo.has(c.capa.indice)
+      comp.render()
+      // `readBuffer` Y NO `renderTarget2`: EffectComposer intercambia sus dos búferes según cuántas
+      // pasadas haya y cuáles pidan intercambio (UnrealBloomPass no lo pide). Nombrar el búfer
+      // concreto acierta con una cantidad de pasadas y falla con otra — y falla en silencio, leyendo
+      // un búfer vacío.
+      matSuma.map = comp.readBuffer.texture
+      matSuma.needsUpdate = true
+      render.setRenderTarget(acumulador)
+      render.render(escenaQuad, camQuad)     // aditivo: los grupos se suman, no se pisan
+      render.setRenderTarget(null)
+    }
+    render.autoClear = autoAntes
+
+    capas.forEach((c, i) => { if (c.malla) c.malla.visible = antes[i] })
+    // La pasada final del compositor escribe la pantalla entera con un quad sin mezcla: lo que hubiera
+    // debajo se pierde. Por eso el fondo plano NO se puede dibujar antes acá, y por eso se declara
+    // arriba en vez de dibujarse mal. Con resplandor, el fondo va como capa 3D lejana.
+    composFinal.render()
+    dibujar2D(escena2D)
+  }
+
+  // EL ORDEN DE DIBUJO DE LAS CAPAS 3D, QUE NO ES EL ORDEN DE LA LISTA.
+  //
+  // El renderizador Clásico 3D de AE no deja que dos capas se atraviesen: las ordena por distancia a la
+  // cámara y las compone de atrás hacia adelante, que es el algoritmo del pintor. Este reproductor
+  // dibuja con `depthTest = false`, así que el orden de dibujo ES el orden de oclusión — y hasta ahora
+  // ese orden salía del apilado. Coinciden solamente cuando uno los hace coincidir: basta con que una
+  // toma acerque una capa que estaba abajo en la lista para que AE la tape y el navegador la muestre.
+  // No da error, no da aviso: da una toma distinta.
+  //
+  // Se ordena por el centro de la geometría ya transformado, no por la posición de la capa, porque el
+  // punto de anclaje puede estar en cualquier lado. El desempate mantiene el apilado, que es lo que
+  // hace AE con dos capas a la misma profundidad.
+  const enElMundo3D = () => capas.filter(c => c.malla && c.enElMundo)
+  const centro = new THREE.Vector3()
+  function ordenarPorProfundidad() {
+    const conZ = enElMundo3D()
+    if (conZ.length < 2) return
+    // POR EL EJE DE LA CÁMARA, no por distancia al ojo: un rótulo 6 unidades delante de su tarjeta pero
+    // más abajo en el cuadro está más LEJOS del ojo, y ordenando por distancia se dibujaría detrás de su
+    // propia tarjeta. Lo cazó M7 sobre la PIEZA-C antes de que llegara a un solo píxel.
+    for (const c of conZ) {
+      centro.copy(c.malla.geometry.boundingSphere.center)
+        .applyMatrix4(c.malla.matrix).applyMatrix4(camara.matrixWorldInverse)
+      c.profundidad = -centro.z
+    }
+    conZ.sort((a, b) => (b.profundidad - a.profundidad) || (b.capa.indice - a.capa.indice))
+    conZ.forEach((c, k) => {
+      c.malla.renderOrder = k
+      // UN GRUPO NO LE PASA SU `renderOrder` A SUS HIJOS. three ordena objeto por objeto, asi que sin
+      // esto los caracteres se dibujarian todos con orden 0 y una capa de texto animado quedaria
+      // siempre al fondo — sin error, sin aviso, y solo visible en el cuadro.
+      if (c.piezas) for (const pz of c.piezas) if (pz.malla) pz.malla.renderOrder = k
+    })
+  }
+
+  // LOS CUATRO PLANOS DE UN MATTE RECTANGULAR.
+  //
+  // EL MATTE DE PISTA DE AE ES ALFA DE PANTALLA: la capa se ve donde la matte TAPA su pixel, o sea que
+  // el volumen que hay que conservar es la PIRAMIDE que sale del ojo y pasa por el rectangulo. La
+  // primera version armaba un PRISMA infinito con la normal del rectangulo, y eso coincide con AE solo
+  // si la matte y la capa son coplanares y la matte no esta rotada — que es exactamente y unicamente lo
+  // que montaba la sonda. Medido por el revisor: con la capa 600 unidades detras de su matte el solape
+  // caia al 76%, y con la matte girada 45 grados el motor ensanchaba un 187% donde AE escorza.
+  //
+  // Escribi la prueba para el caso que habia implementado, en vez de para el caso en que se va a usar.
+  //
+  // Y FALLA CERRADO. Los dos `return` tempranos dejaban los cuatro Plane en su estado de constructor
+  // —normal (1,0,0), constante 0— que significa "mostrar toda la mitad derecha del cuadro" donde AE no
+  // muestra nada. Entradas reales que caian ahi: una matte con escala 0 (o sea el cuadro 0 de cualquier
+  // barrido) y una matte que resulta ser una capa nula. Un recorte que falla abierto es peor que uno
+  // que no existe: se ve bien en la sonda y mal en la pieza.
+  const _e1 = new THREE.Vector3(), _n = new THREE.Vector3()
+  const _nq = new THREE.Vector3(), _c = new THREE.Vector3(), _ojo = new THREE.Vector3()
+  const _mRec = new THREE.Matrix4(), _tmp = new THREE.Vector3()
+  function cerrar(planos) {
+    for (const p of planos) { p.normal.set(1, 0, 0); p.constant = -1e9 }
+  }
+  function ponerRecorte(capa, planos, t) {
+    // el matte es SIEMPRE un solido —el exportador rechaza cualquier otra cosa— asi que su rectangulo
+    // en coordenadas de capa es (0,0)-(ancho,alto), igual que la geometria que se le arma arriba
+    const dm = doc.capas.find(c => c.indice === capa.matte.de)
+    if (!dm || !dm.solido) { cerrar(planos); return }
+    const M = _mRec.copy(PHI).multiply(matrizDe(dm.indice, t))
+    const q = [[0, 0], [dm.solido.ancho, 0], [dm.solido.ancho, dm.solido.alto], [0, dm.solido.alto]]
+      .map(([x, y]) => new THREE.Vector3(x, y, 0).applyMatrix4(M))
+
+    // EL AREA SE MIDE ANTES DE NORMALIZAR, y esa es la unica forma de que la guarda sirva. La version
+    // anterior preguntaba `lengthSq() < 1e-12` DESPUES de `.normalize()`, donde el valor es 1 o 0
+    // exacto: no podia dispararse nunca por orientacion. Con la matte girada 90 grados en Y, AE revela
+    // cero pixeles y el motor revelaba los 1920.
+    _e1.subVectors(q[1], q[0])
+    _nq.subVectors(q[3], q[0]).cross(_e1)
+    const area = _nq.length()
+    if (!(area > 1e-6)) { cerrar(planos); return }
+    _nq.divideScalar(area)
+
+    _c.set(0, 0, 0); for (const p of q) _c.add(p); _c.multiplyScalar(0.25)
+
+    // con camara, los planos salen del OJO (piramide); sin camara el reproductor es ortografico y la
+    // normal del rectangulo ES la direccion de mirada, asi que el prisma es correcto
+    // EL PRISMA DESDE LA NORMAL DEL RECTANGULO, y no una piramide desde el ojo.
+    //
+    // Los dos son correctos en su caso: el prisma equivale a la proyeccion cuando la matte y la capa son
+    // coplanares y la matte no esta girada, y la piramide seria lo general. Probe la piramide, los
+    // cuatro planos dieron residuo CERO contra el ojo —o sea bien armados— y el recorte igual salio mal:
+    // el ojo y las esquinas no terminan en el mismo espacio, y eso hay que MEDIRLO antes de confiarlo.
+    //
+    // Mientras tanto el exportador rechaza con nombre y motivo cualquier matte girada o a distinta
+    // profundidad, asi que lo unico que llega hasta aca es el caso donde el prisma ES la proyeccion.
+    for (let i = 0; i < 4; i++) {
+      const a = q[i], b = q[(i + 1) % 4]
+      _e1.subVectors(b, a)
+      _n.copy(_nq)
+      _n.crossVectors(_e1, _n)
+      const m = _n.length()
+      if (!(m > 1e-9)) { cerrar(planos); return }      // arista degenerada: la matte esta de canto
+      _n.divideScalar(m)
+      if (_n.dot(_tmp.copy(_c).sub(a)) < 0) _n.negate()
+      planos[i].setFromNormalAndCoplanarPoint(_n, a)
+    }
+  }
+
+  // EL RADIO DEL DESENFOQUE, EN UNIDADES DE TEXTURA.
+  //
+  // El circulo de confusion se aproxima con `apertura * |d - enfoque| / d`, que es la forma usual y es
+  // dimensionalmente sana: la apertura de AE esta en pixeles y el cociente es adimensional.
+  //
+  // ESTO TODAVIA NO ESTA MEDIDO CONTRA AE. Se comporta bien —el plano de enfoque queda nitido y la
+  // borrosidad crece con la distancia— pero que el numero COINCIDA con el de AE es otra afirmacion y
+  // no la hice.
+  const _cen = new THREE.Vector3()
+  function radioDesenfoque(capa, malla, t) {
+    const cam = camaraDoc && camaraDoc.camara
+    if (!cam || !cam.conProfundidad || !capa.es3D) return 0
+    _cen.copy(malla.geometry.boundingSphere.center).applyMatrix4(malla.matrix).applyMatrix4(camara.matrixWorldInverse)
+    const d = -_cen.z
+    if (!(d > 1)) return 0
+    const T = camaraDoc.transformacion
+    const enfoque = propEn(T, 'enfoque', 0, t, cam.enfoque)
+    const apertura = propEn(T, 'apertura', 0, t, cam.apertura)
+    const zoom = propEn(T, 'zoom', 0, t, cam.zoom)
+    const coc = apertura * Math.abs(d - enfoque) / d * ((cam.difusion ?? 100) / 100)
+    if (coc < 0.4) return 0
+    // de pixeles de PANTALLA a unidades de TEXTURA: la textura cubre el ancho de la capa, y la capa
+    // ocupa en pantalla su ancho de mundo por la magnificacion (zoom/d)
+    const R = rectDe(capa)
+    if (!R) return 0
+    const escX = Math.abs(propEn(capa.transformacion, 'escala', 0, t, 100)) / 100
+    const anchoPantalla = R * escX * zoom / d
+    if (!(anchoPantalla > 1)) return 0
+    return Math.min(0.25, coc / anchoPantalla)
+  }
+  // LA CAJA DE LA CAPA EN SUS PROPIAS COORDENADAS, que es donde vive la mascara y donde vive la UV del
+  // plano. Tiene que coincidir EXACTAMENTE con la geometria o la mascara sale corrida, asi que sale de
+  // los mismos datos.
+  function rectDeCapa(capa) {
+    // UNA FORMA VECTORIAL NO TIENE RASTER, asi que su caja sale de los propios trazados. Se toma la
+    // union de TODOS los cuadros muestreados —no la del cuadro actual— porque el lienzo se reusa entre
+    // cuadros: si la caja cambiara de tamano con el trazado, la textura se redimensionaria sola y la UV
+    // dejaria de corresponder. Y se agranda por el grosor del trazo y sus remates.
+    if (capa.forma) {
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity
+      for (const P of capa.forma.partes) {
+        if (P.tipo !== 'trazado') continue
+        for (const [, tz] of P.trazados) {
+          for (let i = 0; i < tz.v.length; i++) {
+            for (const p of [tz.v[i], [tz.v[i][0] + tz.ent[i][0], tz.v[i][1] + tz.ent[i][1]],
+                             [tz.v[i][0] + tz.sal[i][0], tz.v[i][1] + tz.sal[i][1]]]) {
+              if (p[0] < x0) x0 = p[0]; if (p[0] > x1) x1 = p[0]
+              if (p[1] < y0) y0 = p[1]; if (p[1] > y1) y1 = p[1]
+            }
+          }
+        }
+      }
+      if (!isFinite(x0)) return null
+      let gordo = 0
+      for (const P of capa.forma.partes) {
+        if (P.tipo !== 'trazo') continue
+        const pista = capa.transformacion[`forma${P.orden}.grosor`]
+        let mx = pista?.estatico?.[0] ?? 2
+        for (const s of (pista?.pistas?.[0]?.tramos || [])) mx = Math.max(mx, s.v1, s.v2)
+        gordo = Math.max(gordo, mx)
+      }
+      const m = gordo / 2 + 2
+      return { x0: x0 - m, y0: y0 - m, x1: x1 + m, y1: y1 + m }
+    }
+    if (capa.solido) return { x0: 0, y0: 0, x1: capa.solido.ancho, y1: capa.solido.alto }
+    if (capa.raster && !capa.forma) {
+      const x0 = capa.raster.caja.x - capa.raster.margen, y0 = capa.raster.caja.y - capa.raster.margen
+      return { x0, y0, x1: x0 + capa.raster.ancho, y1: y0 + capa.raster.alto }
+    }
+    if (capa.origen && capa.origen.copiado) {
+      return { x0: 0, y0: 0, x1: capa.origen.ancho, y1: capa.origen.alto }
+    }
+    if (capa.caja) {
+      return { x0: capa.caja.x, y0: capa.caja.y, x1: capa.caja.x + capa.caja.ancho, y1: capa.caja.y + capa.caja.alto }
+    }
+    return null
+  }
+
+  // el ancho de la capa en sus propias coordenadas, que es lo que cubre la textura
+  function rectDe(capa) {
+    if (capa.solido) return capa.solido.ancho
+    if (capa.origen) return capa.origen.ancho
+    if (capa.caja) return capa.caja.ancho
+    return 0
+  }
+
+  // ================================================================ EL ANIMADOR, APLICADO
+  //
+  // Para cada caracter se compone el factor de todos los selectores del animador —con la cuenta que
+  // `selector-check.mjs` verifica contra 88 configuraciones medidas en AE— y con ese factor se
+  // interpola cada propiedad desde su valor base hasta el valor del animador.
+  //
+  // LA INTERLETRA NO SE REPARTE POR CARACTER SINO POR HUECO, y esta medido: con los diez caracteres
+  // seleccionados y interletra 100 el ancho crecio 900, o sea (N-1) x 100, no N x 100. Cada hueco
+  // crece con el PROMEDIO de los dos caracteres que lo rodean; por eso el primero y el ultimo pesan la
+  // mitad. Repartirla por caracter daria una linea un caracter mas ancha y todo corrido medio hueco.
+  const _mT = new THREE.Matrix4(), _mR = new THREE.Matrix4(), _mS = new THREE.Matrix4(), _mA = new THREE.Matrix4()
+  const _col = new THREE.Color()
+  function ponerCaracteres(entrada, t, dentro, opCapa) {
+    const { capa, malla, piezas, colorBase } = entrada
+    const n = piezas.length
+    const T = capa.transformacion
+    const P = (nombre, comp, def) => propEn(T, nombre, comp, t, def)
+
+    // 1 · resolver cada animador a esta altura del tiempo
+    const anims = []
+    for (const A of capa.animadores) {
+      const sels = A.selectores.map(s => ({
+        unidades: s.unidades, forma: s.forma, modo: s.modo,
+        inicio: P(`anim${A.indice}sel${s.indice}.inicio`, 0, 0),
+        fin: P(`anim${A.indice}sel${s.indice}.fin`, 0, s.unidades === 2 ? n : 100),
+        desplazamiento: P(`anim${A.indice}sel${s.indice}.desplazamiento`, 0, 0),
+        cantidadMaxima: P(`anim${A.indice}sel${s.indice}.cantidadMaxima`, 0, 100),
+        easeAlto: P(`anim${A.indice}sel${s.indice}.easeAlto`, 0, 0),
+        easeBajo: P(`anim${A.indice}sel${s.indice}.easeBajo`, 0, 0),
+        suavidad: P(`anim${A.indice}sel${s.indice}.suavidad`, 0, s.suavidad),
+      }))
+      const val = {}
+      for (const pv of A.propiedades) {
+        const base = `anim${A.indice}.val.${pv.nombre}`
+        val[pv.nombre] = pv.dims > 1
+          ? [P(base, 0, 0), P(base, 1, 0), P(base, 2, 0)]
+          : P(base, 0, 0)
+      }
+      anims.push({ sels, val })
+    }
+
+    // 2 · el factor de cada caracter, y de ahi su transformacion
+    const trac = new Array(n).fill(0)
+    const est = []
+    for (let k = 0; k < n; k++) {
+      let dx = 0, dy = 0, sx = 1, sy = 1, rot = 0, opa = 1, ax = 0, ay = 0
+      _col.copy(colorBase)
+      for (const A of anims) {
+        const f = factorCompuesto(A.sels, k, n)
+        if (!f) continue
+        const v = A.val
+        if (v['ADBE Text Position 3D']) { dx += f * v['ADBE Text Position 3D'][0]; dy += f * v['ADBE Text Position 3D'][1] }
+        if (v['ADBE Text Anchor Point 3D']) { ax += f * v['ADBE Text Anchor Point 3D'][0]; ay += f * v['ADBE Text Anchor Point 3D'][1] }
+        if (v['ADBE Text Scale 3D']) {
+          sx *= 1 + f * (v['ADBE Text Scale 3D'][0] / 100 - 1)
+          sy *= 1 + f * (v['ADBE Text Scale 3D'][1] / 100 - 1)
+        }
+        if (v['ADBE Text Rotation'] !== undefined) rot += f * v['ADBE Text Rotation']
+        if (v['ADBE Text Opacity'] !== undefined) opa *= 1 + f * (v['ADBE Text Opacity'] / 100 - 1)
+        if (v['ADBE Text Tracking Amount'] !== undefined) trac[k] += f * v['ADBE Text Tracking Amount']
+        if (v['ADBE Text Fill Color']) {
+          const c = v['ADBE Text Fill Color']
+          _col.setRGB(_col.r + f * (c[0] - _col.r), _col.g + f * (c[1] - _col.g), _col.b + f * (c[2] - _col.b))
+        }
+      }
+      est.push({ dx, dy, sx, sy, rot, opa, ax, ay, r: _col.r, g: _col.g, b: _col.b })
+    }
+
+    // 3 · el corrimiento acumulado de la interletra, hueco por hueco
+    let corrido = 0
+    for (let k = 0; k < n; k++) {
+      if (k > 0) corrido += (trac[k - 1] + trac[k]) / 2
+      est[k].corrido = corrido
+    }
+
+    // 4 · aplicar
+    for (let k = 0; k < n; k++) {
+      const pz = piezas[k]
+      if (!pz.malla) continue
+      const e = est[k]
+      // EL PIVOTE MEDIDO: centro del avance, sobre la linea de base. Y el corrimiento de la
+      // interletra va SOLO en la traslacion de ida: si estuviera tambien en la de vuelta se
+      // cancelarian y la interletra del animador no movería un pixel — que es lo que pasaba.
+      const px = pz.x + pz.avance / 2
+      const py = 0
+      _mT.makeTranslation(px + e.corrido + e.dx, py + e.dy, 0)
+      _mR.makeRotationZ(e.rot * Math.PI / 180)
+      _mS.makeScale(e.sx || 1e-6, e.sy || 1e-6, 1)
+      _mA.makeTranslation(-(px + e.ax), -(py + e.ay), 0)
+      pz.malla.matrix.copy(_mT).multiply(_mR).multiply(_mS).multiply(_mA)
+      pz.malla.matrixWorld.multiplyMatrices(malla.matrixWorld, pz.malla.matrix)
+      const o = dentro ? Math.max(0, Math.min(100, opCapa)) / 100 * Math.max(0, Math.min(1, e.opa)) : 0
+      pz.mat.opacity = o
+      pz.mat.visible = o > 0.0005
+      pz.mat.color.setRGB(e.r, e.g, e.b)
+    }
+  }
+
+  function poner(t) {
+    matrices.clear()
+    ponerCamara(t)
+    const estado = {}
+    for (const entrada of capas) {
+      const { capa, malla, mat } = entrada
+      const M = matrizDe(capa.indice, t)
+      if (!malla) continue
+      // Φ · M en un solo paso: del espacio de la capa (coordenadas de AE) al mundo de three
+      malla.matrix.copy(PHI).multiply(M)
+      malla.matrixWorld.copy(malla.matrix)
+      // el punto de salida de AE es EXCLUSIVO: una capa que sale en 4,80 s no se ve en el cuadro 144
+      const dentro = t >= capa.entra - 1e-9 && t < capa.sale - 1e-9 && capa.visible
+      const op = propEn(capa.transformacion, 'opacidad', 0, t, 100)
+      mat.opacity = dentro ? Math.max(0, Math.min(100, op)) / 100 : 0
+      mat.visible = mat.opacity > 0.0005
+      // UNA CAPA QUE HACE DE MATTE NO SE DIBUJA. En AE tampoco: se usa su forma y desaparece.
+      if (capa.esMatte) mat.visible = false
+      if (capa.matte && mat.clippingPlanes) ponerRecorte(capa, mat.clippingPlanes, t)
+      if (mat.userData.focoUni) mat.userData.focoUni.uRadio.value = radioDesenfoque(capa, malla, t)
+      if (capa.arco && mat.userData.arcoUni) {
+        const T2 = capa.transformacion
+        const desfase = propEn(T2, 'arcoDesfase', 0, t, 0) / 360
+        mat.userData.arcoUni.uDesde.value = propEn(T2, 'arcoDesde', 0, t, 0) / 100 + desfase
+        mat.userData.arcoUni.uHasta.value = propEn(T2, 'arcoHasta', 0, t, 100) / 100 + desfase
+      }
+      if (entrada.piezas) ponerCaracteres(entrada, t, dentro, op)
+      // UNA MASCARA ANIMADA SE REHACE UNA VEZ POR CUADRO, NO POR SUBMUESTRA. El trazado viaja
+      // muestreado por cuadro, asi que entre las 16 submuestras del obturador no cambia: rasterizarlo
+      // en cada una seria tirar quince rasterizaciones.
+      // LA FORMA SE REDIBUJA UNA VEZ POR CUADRO. Igual que la mascara: entre las 16 submuestras del
+      // obturador ni el trazado muestreado ni el recorte cambian de cuadro, asi que rasterizar en cada
+      // una seria tirar quince rasterizaciones. El recorte SI se mueve dentro del cuadro, pero su
+      // valor se toma en el instante del cuadro para que las dos cosas queden en el mismo tiempo.
+      if (entrada.forma) {
+        const k = Math.round(t * fps)
+        if (k !== entrada.forma.cuadro) {
+          entrada.forma.cuadro = k
+          texturaDeForma(capa, entrada.forma.rect, k, entrada.forma.lienzo)
+          entrada.forma.tex.needsUpdate = true
+        }
+      }
+      if (entrada.mascara && entrada.mascara.animada) {
+        const k = Math.round(t * fps)
+        if (k !== entrada.mascara.cuadro) {
+          entrada.mascara.cuadro = k
+          texturaDeMascara(capa, entrada.mascara.rect, k, entrada.mascara.lienzo)
+          entrada.mascara.tex.needsUpdate = true
+        }
+      }
+      // EL ESTADO SE INFORMA EN LAS MISMAS CLAVES QUE EL REPRODUCTOR ANTERIOR, a propósito: es lo que
+      // permite comparar la reescritura contra las mediciones que ya existen. Un formato distinto
+      // habría dado NaN en la columna de geometría y habría parecido un defecto del 3D.
+      const T = capa.transformacion
+      estado[capa.indice] = {
+        ax: propEn(T, 'anclaje', 0, t, 0), ay: propEn(T, 'anclaje', 1, t, 0),
+        px: capa.separadas ? propEn(T, 'posX', 0, t, 0) : propEn(T, 'posicion', 0, t, 0),
+        py: capa.separadas ? propEn(T, 'posY', 0, t, 0) : propEn(T, 'posicion', 1, t, 0),
+        sx: propEn(T, 'escala', 0, t, 100), sy: propEn(T, 'escala', 1, t, 100),
+        rot: propEn(T, 'rotacion', 0, t, 0), op,
+      }
+    }
+    ordenarPorProfundidad()
+    dibujar()
+    return estado
+  }
+
+  window.__dur = duracion
+  window.__fps = fps
+  window.__sinSoporte = sinSoporte
+  window.__poner = poner
+  // LAS CUATRO ESQUINAS DE CADA CAPA, YA PROYECTADAS A PIXELES DE PANTALLA.
+  //
+  // Existe para que la métrica de ritmo pueda COMPROBARSE contra el motor de verdad. La métrica
+  // recalcula la misma cadena (evaluar la propiedad, armar la matriz, proyectar) en Node, sin
+  // navegador — es lo que la hace barata. El riesgo de eso es conocido y este repo ya lo pagó: dos
+  // implementaciones de la misma cuenta divergen en silencio, y entonces la métrica mide una pieza que
+  // nadie va a ver. Con esto la divergencia se mide en vez de suponerse.
+  window.__esquinas = function (t) {
+    poner(t)
+    camara2D.updateMatrixWorld()
+    const r = {}
+    const v = new THREE.Vector3()
+    for (const { capa, malla, enElMundo } of capas) {
+      if (!malla) continue
+      // EN ORDEN CICLICO, no en el que las guarda `PlaneGeometry`. three las entrega en zigzag
+      // (arriba-izq, arriba-der, abajo-izq, abajo-der) porque las consume como dos triángulos; para
+      // comparar un cuadrilátero —y para calcularle el área— hay que recorrerlo por el borde. Con el
+      // zigzag, dos de las cuatro esquinas quedan cruzadas y la comparación informa 2200 px de error
+      // sin que haya ningún error. Es lo que reportó la primera corrida de la comprobación.
+      const g = malla.geometry.attributes.position
+      const pts = []
+      for (const k of [2, 3, 1, 0]) {
+        v.fromBufferAttribute(g, k).applyMatrix4(malla.matrix).project(enElMundo ? camara : camara2D)
+        pts.push([(v.x + 1) / 2 * ancho, (1 - v.y) / 2 * alto])
+      }
+      r[capa.indice] = pts
+    }
+    return r
+  }
+  // LOS PLANOS DE RECORTE, PARA PODER MIRARLOS. Igual que `__cajas`: una funcion geometrica equivocada
+  // no da error, da numeros, y sin poder leerlos la unica forma de depurar es adivinar.
+  window.__planos = function () {
+    const r = {}
+    for (const { capa, mat } of capas) {
+      if (!capa.matte || !mat || !mat.clippingPlanes) continue
+      // EL RESIDUO DEL OJO es la comprobacion que importa: si los planos forman una piramide desde el
+      // ojo, entonces n.ojo + d TIENE que dar cero en los cuatro. Cualquier otro numero dice que los
+      // planos son de otra figura, y ahi no hay nada que interpretar mirando el cuadro.
+      r[capa.nombre] = {
+        recorteLocal: render.localClippingEnabled,
+        ojo: [+ojoMundo.x.toFixed(1), +ojoMundo.y.toFixed(1), +ojoMundo.z.toFixed(1)],
+        planos: mat.clippingPlanes.map(p => ({
+          n: [+p.normal.x.toFixed(3), +p.normal.y.toFixed(3), +p.normal.z.toFixed(3)],
+          d: +p.constant.toFixed(1),
+          residuoOjo: +(p.normal.dot(ojoMundo) + p.constant).toFixed(2),
+        })),
+      }
+    }
+    return r
+  }
+
+  // EL ORDEN DE DIBUJO QUE EL MOTOR USO DE VERDAD, para poder contrastarlo contra el que CALCULA.
+  // No es lo mismo: una cosa es la profundidad que sale de la cuenta y otra el `renderOrder` que
+  // termina en la escena, y entre las dos hay tres o cuatro lugares donde se puede perder.
+  window.__orden = function (t) {
+    poner(t)
+    return capas.filter(c => c.malla).map(c => ({
+      nombre: c.capa.nombre, indice: c.capa.indice,
+      profundidad: c.profundidad === undefined ? null : c.profundidad,
+      renderOrder: c.malla.renderOrder,
+      enElMundo: !!c.enElMundo,
+      visible: c.mat ? c.mat.visible : null,
+    })).sort((a, b) => a.renderOrder - b.renderOrder)
+  }
+
+  window.__cajas = function () {
+    const r = {}
+    for (const { capa } of capas) {
+      if (!capa.texto) continue
+      const medidor = document.createElement('canvas').getContext('2d')
+      const tg = capa.texto.tipografia
+      medidor.font = `${tg.cursiva ? 'italic ' : ''}${tg.peso} ${capa.texto.tamano}px "${tg.ps}", "${tg.familia}", sans-serif`
+      // la misma interletra que en el dibujo: esta es la caja contra la que compara `comp-check`
+      medidor.letterSpacing = capa.texto.interletra ? (capa.texto.tamano * capa.texto.interletra / 1000) + 'px' : '0px'
+      const m = medidor.measureText(capa.texto.contenido)
+      r[capa.indice] = {
+        ancho: m.actualBoundingBoxLeft + m.actualBoundingBoxRight,
+        alto: m.actualBoundingBoxAscent + m.actualBoundingBoxDescent,
+        tinta: {
+          ancho: m.actualBoundingBoxLeft + m.actualBoundingBoxRight,
+          alto: m.actualBoundingBoxAscent + m.actualBoundingBoxDescent,
+          avance: m.width,
+        },
+      }
+    }
+    return r
+  }
+
+  // LA CAJA DE TINTA DE UN TEXTO ANIMADO, EN UN INSTANTE DADO.
+  //
+  // `__cajas` mide la cadena quieta, que para un animador no dice nada: la caja cambia en cada cuadro
+  // porque las letras se mueven, escalan y rotan. Esta devuelve la union de las cajas de los caracteres
+  // VISIBLES, ya transformadas, en coordenadas de la capa — que es exactamente lo que
+  // `sourceRectAtTime` mide del lado de AE. Con eso las dos se pueden comparar cuadro a cuadro.
+  //
+  // DOS COSAS QUE ASUMI MAL Y QUE LA PROPIA COMPUERTA REFUTO EN SU PRIMERA CORRIDA:
+  //
+  // 1. "AE tampoco cuenta la tinta invisible". FALSO. `sourceRectAtTime` IGNORA LA OPACIDAD: en el
+  //    tecleo, con las letras al 0%, AE informa 769,1 px de ancho en todos los cuadros, constante. Asi
+  //    que aca se cuentan TODOS los caracteres — si se filtrara por opacidad se estarian comparando dos
+  //    magnitudes distintas y el rojo no significaria nada.
+  // 2. Medir los vertices del PLANO. Cada glifo se dibuja en un lienzo con margen (0,3 del cuerpo por
+  //    lado) para que no se corte el antialias, y ese margen entraba en la caja: 56 px de mas sobre un
+  //    cuerpo de 92, o sea "alto AE 69,2 contra motor 125,0" en TODAS las capas. Se transforman las
+  //    cuatro esquinas de la TINTA, que es lo que mide AE.
+  const _v4 = new THREE.Vector3()
+  window.__cajasAnimadas = function (t) {
+    poner(t)
+    const r = {}
+    for (const entrada of capas) {
+      if (!entrada.piezas) continue
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity, vistos = 0
+      for (const pz of entrada.piezas) {
+        if (!pz.malla || !pz.tieneTinta) continue
+        vistos++
+        // las cuatro esquinas de la tinta del glifo, en coordenadas de la capa
+        const ex = [pz.x + pz.izq, pz.x + pz.der], ey = [pz.arr, pz.aba]
+        for (let a = 0; a < 2; a++) for (let b2 = 0; b2 < 2; b2++) {
+          _v4.set(ex[a], ey[b2], 0).applyMatrix4(pz.malla.matrix)
+          if (_v4.x < x0) x0 = _v4.x
+          if (_v4.x > x1) x1 = _v4.x
+          if (_v4.y < y0) y0 = _v4.y
+          if (_v4.y > y1) y1 = _v4.y
+        }
+      }
+      r[entrada.capa.indice] = vistos
+        ? { x: x0, y: y0, ancho: x1 - x0, alto: y1 - y0, caracteres: vistos }
+        : { x: 0, y: 0, ancho: 0, alto: 0, caracteres: 0 }
+    }
+    return r
+  }
+
+  // NADA SE DECLARA LISTO HASTA QUE LAS TEXTURAS ESTAN. Sin esta espera los primeros cuadros salen
+  // con las imagenes en blanco: no hay error, no hay aviso, hay unos cuadros vacios al principio.
+  if (pendientes.length) {
+    try { await Promise.all(pendientes) } catch (e) { sinSoporte.push(`no cargo un medio: ${e}`) }
+  }
+  poner(0)
+  document.title = 'listo'
+})()
+</script>

@@ -1,0 +1,185 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>cargando</title>
+<!--
+  LA TERCERA COLUMNA DE LA PRUEBA 3.
+
+  Hasta acá la prueba comparaba los píxeles de After Effects contra un número calculado en Node. Eso
+  mide UN eslabón: que nuestra matemática reproduzca la de AE. El otro eslabón —que un navegador,
+  reproduciendo esas curvas, dibuje lo mismo— no estaba medido, y es el que decide si la animación
+  portada se VE igual.
+
+  DOS REGLAS DE DISEÑO PARA QUE ESTA PÁGINA NO HAGA TRAMPA:
+
+  1. USA GSAP `CustomEase` CON LA CADENA QUE PRODUJO NUESTRO CONVERSOR, no el evaluador de curvas.mjs.
+     Si evaluara con nuestro propio código estaríamos comparando nuestra matemática contra sí misma y
+     el resultado sería verde por construcción.
+
+  2. CONSTRUYE UNA TIMELINE DE VERDAD y la posiciona con `tl.time(t)`. No calcula la posición a mano.
+     Así entran a la prueba el armado de tweens, la aritmética de tiempos de GSAP y el redondeo del
+     navegador — que es exactamente donde viven los errores de medio cuadro que nadie ve venir.
+
+  La timeline está EN PAUSA: no hay reloj propio ni requestAnimationFrame, así que dos corridas dan el
+  mismo píxel.
+
+  ─────────────────────────────────────────────────────────────────────────────────────────────
+  TRES DEFECTOS QUE LA PRIMERA VERSIÓN DE ESTA PÁGINA TENÍA, Y QUE LA PRUEBA ENCONTRÓ. Están
+  anotados porque los tres son trampas del navegador, no de After Effects, y van a volver.
+
+  A. `left`/`top` ENCAJAN A PÍXEL ENTERO. La primera versión posicionaba con `left`, y el motor pintó
+     337.000, 800.000, 1484.000 — todos enteros exactos. Medio píxel de error constante en todas las
+     piezas, que es justo el tamaño del redondeo. Con `transform: translate()` el elemento se compone
+     aparte y el navegador conserva la posición en subpíxeles. Sin esto, ninguna medición fina tiene
+     sentido: el instrumento de AE mide milésimas y el motor sólo puede contestar en enteros.
+
+  B. SI EL ESTADO SE RESETEA A MANO, EL SEEK PUEDE NO PISARLO. La primera versión reseteaba el estado
+     y después llamaba a `tl.time(t)`. GSAP no vuelve a dibujar si considera que el tiempo no cambió
+     —y todo instante posterior al final de la timeline se recorta al mismo—, así que el reseteo
+     quedaba como resultado final: la pieza aparecía en su posición inicial cuando tenía que estar en
+     la final. Daba 1300 px de error, o sea el recorrido entero. Ahora cada pieza tiene SU estado y no
+     se resetea nada: la timeline es la única dueña.
+
+  C. `steps(1)` NO ES UN HOLD. Redondea, así que cambia a la mitad del tramo. El HOLD de AE mantiene
+     el valor hasta el final y ahí salta. Se hace con una función de ease explícita.
+  ─────────────────────────────────────────────────────────────────────────────────────────────
+-->
+<style>
+  html, body { margin: 0; padding: 0; background: transparent; }
+  #escenario { position: relative; overflow: hidden; }
+  .objeto {
+    position: absolute; left: 0; top: 0; background: #ff0000;
+    /* sin bordes redondeados ni sombra: la medición pesa por alfa y cualquier adorno mueve el centroide */
+    transform-origin: 50% 50%;
+    display: none;
+  }
+</style>
+
+<div id="escenario"></div>
+
+<script src="/node_modules/gsap/dist/gsap.js"></script>
+<script src="/node_modules/gsap/dist/CustomEase.js"></script>
+<script type="module">
+// `evaluar` sale del MISMO archivo que usa el lado de Node — no una copia. Si fueran dos
+// implementaciones, este experimento compararia dos cosas a la vez y no probaria ninguna.
+import { evaluar } from '/tools/ae/curvas.mjs'
+
+;(async function () {
+  gsap.registerPlugin(CustomEase)
+
+  const doc = await (await fetch('escena.json')).json()
+  const { ancho, alto, lado } = doc.mundo
+  const escenario = document.getElementById('escenario')
+  escenario.style.width = ancho + 'px'
+  escenario.style.height = alto + 'px'
+
+  // EL HOLD DE VERDAD: el valor se mantiene hasta el final del tramo y ahí salta. `steps(1)` de GSAP
+  // redondea, o sea que salta a la mitad — que es lo que hacía la versión anterior y daba 500 px de
+  // error en un cuadro.
+  const HOLD = (p) => (p < 1 ? 0 : 1)
+
+  // DOS FORMAS DE REPRODUCIR LA MISMA CURVA, para poder atribuir el error que quede.
+  //
+  //   'custom' — GSAP CustomEase, alimentado con la cadena que produce nuestro conversor. Es el camino
+  //              natural: no hay que escribir un interpolador. CustomEase MUESTREA el bezier en una
+  //              tabla, o sea que introduce su propio error de aproximacion.
+  //   'propio' — una funcion de ease que RESUELVE el bezier (Newton, con biseccion de respaldo), que
+  //              es lo que hacen los navegadores para cubic-bezier() de CSS.
+  //
+  // Sin las dos, un residuo de 0,7 px se le atribuye a la conversion de curvas — que ya esta medida en
+  // 0,016 px contra AE— y se sale a arreglar algo que esta sano. Es el mismo razonamiento que separo
+  // "AE dice" de "AE pinta" del otro lado, y que ahi ya evito un diagnostico falso.
+  let n = 0
+  const curva = (tramo, modo) => {
+    if (tramo.tipo === 'hold') return HOLD
+    if (tramo.tipo === 'lineal') return 'none'
+    if (modo === 'propio') { const b = tramo.bezier; return (p) => evaluar(b, p) }
+    return CustomEase.create('ae' + (n++), tramo.ease)
+  }
+
+  const MODOS = ['custom', 'propio']
+  const piezas = new Map()
+  for (const p of doc.piezas) {
+    if (p.rechazado) continue
+
+    // UN ESTADO Y UN ELEMENTO POR PIEZA **Y POR MODO**, y esto costó una corrida entera.
+    //
+    // La versión anterior compartía un solo `estado` entre los dos modos, y el modo `propio` devolvía
+    // el valor FINAL en el cuadro 0. La causa es una trampa de GSAP que conviene tener escrita: un
+    // tween **captura su valor inicial de forma perezosa, en su primer dibujado**, no cuando se lo
+    // construye. Como el capturador recorre primero todos los cuadros de `custom` —dejando el estado
+    // en el valor final— los tweens de `propio` se inicializaron desde ahí y animaban de 1600 a 1600.
+    //
+    // Se arregla dos veces a propósito: estado propio por modo, y `fromTo` en vez de `to`. El `fromTo`
+    // es además lo correcto por sí solo: el documento dice v1 Y v2, así que el tween tiene que usar
+    // los dos y no depender de lo que el objeto tenga puesto en ese instante.
+    const lineas = {}
+    const objetos = {}
+    for (const modo of MODOS) {
+      const objeto = document.createElement('div')
+      objeto.className = 'objeto'
+      objeto.style.width = lado + 'px'
+      objeto.style.height = lado + 'px'
+      escenario.appendChild(objeto)
+      objetos[modo] = objeto
+
+      const estado = { x: ancho / 2, y: alto / 2, ex: 100, ey: 100 }
+      const pintar = () => {
+        // TRANSFORM Y NO left/top: es lo único que conserva subpíxeles (ver nota A arriba).
+        // El origen de After Effects está arriba a la izquierda y la Y crece hacia abajo, igual que
+        // CSS. Y la posición de una capa es la de su punto de anclaje, que en un sólido es su centro;
+        // con transform-origin al 50% el escalado también ocurre alrededor de ese centro, como en AE.
+        // Ésta es LA conversión de coordenadas, y está sola en una línea para que la prueba la mida.
+        objeto.style.transform =
+          `translate(${estado.x - lado / 2}px, ${estado.y - lado / 2}px) scale(${estado.ex / 100}, ${estado.ey / 100})`
+      }
+
+      const tl = gsap.timeline({ paused: true })
+      for (const pista of p.pistas) {
+        const clave = p.magnitud === 'escala' ? (pista.componente === 0 ? 'ex' : 'ey')
+                    : (p.eje === 'y' ? 'y' : 'x')
+        estado[clave] = pista.tramos[0].v1
+
+        for (const tr of pista.tramos) {
+          // Posición ABSOLUTA del tramo (`, tr.t1`): encadenando con la posición por defecto, un tramo
+          // de duración cero o un redondeo correrían todo lo que viene después.
+          tl.fromTo(estado, { [clave]: tr.v1 }, {
+            [clave]: tr.v2,
+            duration: tr.t2 - tr.t1,
+            ease: curva(tr, modo),
+            onUpdate: pintar,
+            immediateRender: false,
+          }, tr.t1)
+        }
+      }
+      pintar()
+      lineas[modo] = { tl, estado, pintar }
+    }
+    piezas.set(p.id, { lineas, objetos })
+  }
+
+  // La API que usa el capturador. Devuelve el estado, así el capturador puede ANOTAR lo que la página
+  // creía estar dibujando — otra columna gratis, que separa "el motor calculó mal" de "el navegador
+  // dibujó distinto". Es la misma idea que `valueAtTime` del lado de AE, que ya resolvió un
+  // diagnóstico que sin ella habría mandado a arreglar la conversión de curvas estando sana.
+  window.__piezas = [...piezas.keys()]
+  window.__modos = MODOS
+  window.__poner = function (id, t, modo) {
+    const p = piezas.get(id)
+    const m = modo || 'custom'
+    if (!p || !p.lineas[m]) return null
+    // se muestra SOLO el elemento de esta pieza y este modo: cualquier otro visible contaminaría el
+    // centroide con su masa, y el error saldría suave y plausible en vez de ruidoso
+    for (const [otro, q] of piezas) {
+      for (const [mm, obj] of Object.entries(q.objetos)) {
+        obj.style.display = (otro === id && mm === m) ? 'block' : 'none'
+      }
+    }
+    const l = p.lineas[m]
+    l.tl.time(t, false)
+    l.pintar()          // explícito: si GSAP decide que el tiempo no cambió, igual se dibuja el estado
+    return { x: l.estado.x, y: l.estado.y, ex: l.estado.ex, ey: l.estado.ey }
+  }
+
+  document.title = 'listo'
+})()
+</script>

@@ -60,9 +60,22 @@ const PROHIBIDO = [
     porque: 'ES3 la rechaza en objetos y arreglos. Es un error de sintaxis, no un aviso.' },
 
   // --- metodos que no existen en ES3
-  { re: /\.(map|filter|forEach|reduce|reduceRight|some|every|indexOf|lastIndexOf)\s*\(/g,
+  // `indexOf` y `lastIndexOf` SALIERON DE ESTA LISTA, y no por comodidad: en ES3 NO EXISTEN sobre
+  // arreglos pero SI sobre CADENAS — String.prototype.indexOf es ES1. Estaticamente no se puede saber
+  // cual de los dos es, y marcar los dos convierte a esta compuerta en algo que hay que desobedecer.
+  //
+  // Una compuerta que da falsos positivos ensena a ignorarla, y despues no atrapa el verdadero. Paso
+  // con `_prueba-nucleo.jsx`: la compuerta dijo FAIL, el archivo corrio perfecto en AE, y la lectura
+  // correcta de ese FAIL era "ignorame".
+  //
+  // Queda como AVISO aparte, que informa sin reprobar.
+  { re: /\.(map|filter|forEach|reduce|reduceRight|some|every)\s*\(/g,
     que: 'metodo de arreglo de ES5',
     porque: 'ES3 no los tiene. Escribir el bucle for a mano.' },
+  { re: /\.(indexOf|lastIndexOf)\s*\(/g,
+    aviso: true,
+    que: 'indexOf/lastIndexOf',
+    porque: 'sobre una CADENA es ES3 y esta bien; sobre un ARREGLO no existe en ES3. Miralo.' },
   { re: /\.(trim|trimStart|trimEnd|startsWith|endsWith|includes|repeat|padStart|padEnd)\s*\(/g,
     que: 'metodo de cadena de ES5+',
     porque: 'ES3 no los tiene. trim se hace con replace y una expresion regular.' },
@@ -125,6 +138,64 @@ const posicion = (src, idx) => {
   return { linea, col: idx - antes.lastIndexOf('\n') }
 }
 
+// ---------------------------------------------------------------- la regla que costo un dia
+//
+// CONCATENAR LA VARIABLE DE UN catch ES FATAL EN EXTENDSCRIPT, y esta regla existe porque me lo comi
+// en carne propia autorando la primera composicion (cuaderno 21.1).
+//
+//   try { ...algo de AE... } catch (ex) { falla = "" + ex; }
+//
+// La llamada de AE falla, el catch la agarra bien, y entonces MUERE EL `"" + ex`: ExtendScript se
+// niega a convertir un Error a cadena implicitamente y tira "Se encontro un objeto de tipo Error,
+// donde se requiere un numero, un conjunto o una propiedad". Ese segundo error ya no lo agarra nadie:
+// dialogo modal, script muerto, y el buzon sin respuesta.
+//
+// O sea que EL MANEJO DEL ERROR ES LO QUE MATA AL SCRIPT — justo cuando ya habia algo que reportar, y
+// se lleva puesto el reporte. Y el dialogo culpa a la linea del try, asi que uno acusa a la llamada
+// de AE, que era inocente.
+//
+// La cura es `ex.toString()` adentro de su propio try. Por eso aca se acepta cualquier cosa que pase
+// por un punto o un corchete (`ex.message`, `ex.toString()`) y se rechaza solo la variable pelada.
+//
+// Esto NO se puede escribir como una expresion regular suelta de la lista de arriba: hay que saber
+// que nombre le puso el catch y mirar SU bloque. Por eso vive aparte.
+function catchConcatenado(limpio) {
+  const hallazgos = []
+  const abre = /\bcatch\s*\(\s*([A-Za-z_$][\w$]*)\s*\)\s*\{/g
+  let m
+  while ((m = abre.exec(limpio)) !== null) {
+    const nombre = m[1]
+    // recorrer el bloque contando llaves, para que un catch de varias lineas tambien se revise
+    let i = abre.lastIndex, prof = 1
+    while (i < limpio.length && prof > 0) {
+      if (limpio[i] === '{') prof++
+      else if (limpio[i] === '}') prof--
+      i++
+    }
+    const cuerpo = limpio.slice(abre.lastIndex, i - 1)
+    const base = abre.lastIndex
+    // la variable PELADA a un lado de un +. Si la sigue un punto o un corchete esta bien: eso ya es
+    // .message o .toString(), que devuelven cadena y no explotan.
+    const usos = [
+      new RegExp('\\+\\s*' + nombre + '\\b(?!\\s*[.\\[])', 'g'),
+      new RegExp('\\b' + nombre + '\\b(?!\\s*[.\\[])\\s*\\+', 'g'),
+    ]
+    for (const re of usos) {
+      let u
+      while ((u = re.exec(cuerpo)) !== null) {
+        const { linea, col } = posicion(limpio, base + u.index)
+        hallazgos.push({
+          linea, col, texto: u[0].trim(),
+          que: 'concatenar la variable de un catch',
+          porque: 'ExtendScript NO convierte un Error a cadena implicitamente: "" + ex tira un error ' +
+                  'nuevo, fatal y modal. Usar ' + nombre + '.toString() adentro de su propio try.',
+        })
+      }
+    }
+  }
+  return hallazgos
+}
+
 export function revisarES3(src) {
   const limpio = limpiar(src)
   const problemas = []
@@ -133,11 +204,15 @@ export function revisarES3(src) {
     let m
     while ((m = p.re.exec(limpio)) !== null) {
       const { linea, col } = posicion(limpio, m.index)
-      problemas.push({ linea, col, que: p.que, porque: p.porque, texto: m[0].trim() })
+      problemas.push({ linea, col, aviso: !!p.aviso, que: p.que, porque: p.porque, texto: m[0].trim() })
     }
   }
+  problemas.push(...catchConcatenado(limpio))
   problemas.sort((a, b) => a.linea - b.linea || a.col - b.col)
-  return { ok: problemas.length === 0, problemas }
+  // `ok` mira solo los DUROS: un aviso informa y no reprueba. Una compuerta con falsos positivos
+  // ensena a ignorarla, y despues no atrapa el verdadero.
+  var duros = problemas.filter(q => !q.aviso)
+  return { ok: duros.length === 0, problemas }
 }
 
 // ---------------------------------------------------------------- linea de comandos
@@ -152,11 +227,20 @@ if (import.meta.url === `file://${process.argv[1]?.replace(/\\/g, '/')}` ||
   let fallos = 0
   for (const f of archivos) {
     const r = revisarES3(readFileSync(f, 'utf8'))
-    if (r.ok) { console.log(`ES3 OK  ${f}`); continue }
-    fallos += r.problemas.length
-    console.log(`ES3 FAIL  ${f}  (${r.problemas.length})`)
-    for (const p of r.problemas) {
+    const duros = r.problemas.filter(p => !p.aviso)
+    const blandos = r.problemas.filter(p => p.aviso)
+    if (!duros.length) {
+      console.log(`ES3 OK  ${f}${blandos.length ? `  (${blandos.length} aviso(s))` : ''}`)
+    } else {
+      fallos += duros.length
+      console.log(`ES3 FAIL  ${f}  (${duros.length})`)
+    }
+    for (const p of duros) {
       console.log(`  ${String(p.linea).padStart(4)}:${String(p.col).padEnd(3)} ${p.que}  ->  ${p.texto}`)
+      console.log(`       ${p.porque}`)
+    }
+    for (const p of blandos) {
+      console.log(`  ${String(p.linea).padStart(4)}:${String(p.col).padEnd(3)} aviso · ${p.que}  ->  ${p.texto}`)
       console.log(`       ${p.porque}`)
     }
   }

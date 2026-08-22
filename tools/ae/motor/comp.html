@@ -1,0 +1,315 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>cargando</title>
+<!--
+  EL REPRODUCTOR: dibuja una composición entera de After Effects, sin After Effects.
+
+  Lo anterior movía un rectángulo rojo con una propiedad. Esto dibuja capas de texto y de sólido, con
+  las seis propiedades de transformación, emparentado, orden de capas y entradas/salidas en el tiempo.
+
+  ─────────────────────────────────────────────────────────────────────────────────────────────
+  LA DECISIÓN QUE GOBIERNA TODO: LAS MATRICES SE COMPONEN EN JS, NO ANIDANDO ELEMENTOS.
+
+  Lo tentador es meter el div del hijo adentro del div del padre y dejar que CSS componga las
+  transformaciones solo. Funciona para el movimiento… y rompe el ORDEN DE DIBUJADO, porque en el DOM
+  un hijo siempre se pinta sobre su padre. En After Effects el emparentado NO cambia el apilado: eso
+  lo decide el orden de capas, y una capa hija puede estar debajo de su padre.
+
+  Anidando, esa composición sale dada vuelta y el defecto se ve como "una capa tapa a otra" — sin
+  ningún número fuera de rango que lo delate. Así que las capas son HERMANAS en orden de apilado, y la
+  transformación del padre se compone a mano.
+
+  LA FÓRMULA, que es la definición de AE y conviene tenerla escrita:
+
+      M_capa = Trasladar(posición) · Rotar(rotación) · Escalar(escala) · Trasladar(−anclaje)
+      M_mundo = M_mundo(padre) · M_capa
+
+  El punto de anclaje aparece DOS VECES y con signos opuestos: define el centro de giro y de escalado,
+  y además es el punto que aterriza en la posición. Perderlo no rompe nada — hace que la capa gire
+  alrededor del lugar equivocado, que es otra vez "parecido".
+
+  Y la OPACIDAD no se hereda del padre en AE, a diferencia de la transformación. Va suelta.
+  ─────────────────────────────────────────────────────────────────────────────────────────────
+
+  EL TEXTO SE DIBUJA CON SVG y no con un div, porque el origen de una capa de texto en AE es la LÍNEA
+  DE BASE, no la esquina de una caja. `<text y="0">` de SVG posiciona exactamente por línea de base, así
+  que la conversión es directa. Con un div habría que adivinar el corrimiento a partir del alto de
+  línea, que cambia con la fuente.
+-->
+<style>
+  html, body { margin: 0; padding: 0; background: transparent; }
+  #escenario { position: relative; overflow: hidden; }
+  .capa { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform, opacity; }
+  /* UN SVG DE 0x0 NO DIBUJA NADA, aunque tenga overflow:visible. Un `<svg>` recorta a su viewport, y
+     con la caja en cero el texto queda entero afuera: el reproductor pintaba los solidos y el texto no
+     aparecia. No daba error ni advertencia — simplemente faltaba. Por eso la caja es grande y el
+     ORIGEN (la linea de base del texto en AE) va en el medio, para que quepan tambien los ascendentes,
+     que viven en y negativo. */
+  .capa svg { position: absolute; overflow: visible; }
+  .capa .caja { position: absolute; left: 0; top: 0; }
+</style>
+
+<div id="escenario"></div>
+
+<script src="/node_modules/gsap/dist/gsap.js"></script>
+<script type="module">
+import { evaluar } from '/tools/ae/curvas.mjs'
+
+;(async function () {
+  const doc = await (await fetch('comp.json')).json()
+  const { ancho, alto, fps, duracion, fondo } = doc.comp
+  const escenario = document.getElementById('escenario')
+  escenario.style.width = ancho + 'px'
+  escenario.style.height = alto + 'px'
+
+  // ---------------------------------------------------------------- matrices afines 2D
+  // [a c e]   se guardan como {a,b,c,d,e,f}, igual que `matrix()` de CSS, para no traducir dos veces.
+  // [b d f]
+  const I = () => ({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 })
+  const por = (m, n) => ({
+    a: m.a * n.a + m.c * n.b,       b: m.b * n.a + m.d * n.b,
+    c: m.a * n.c + m.c * n.d,       d: m.b * n.c + m.d * n.d,
+    e: m.a * n.e + m.c * n.f + m.e, f: m.b * n.e + m.d * n.f + m.f,
+  })
+  const trasladar = (x, y) => ({ a: 1, b: 0, c: 0, d: 1, e: x, f: y })
+  const escalar = (x, y) => ({ a: x, b: 0, c: 0, d: y, e: 0, f: 0 })
+  const rotar = (g) => {
+    const r = g * Math.PI / 180, co = Math.cos(r), si = Math.sin(r)
+    return { a: co, b: si, c: -si, d: co, e: 0, f: 0 }
+  }
+
+  // ---------------------------------------------------------------- el estado animable
+  // Un objeto plano por capa con las magnitudes DEL DOCUMENTO (píxeles de comp, por ciento, grados).
+  // GSAP anima esto; la traducción a CSS ocurre en un solo lugar, que es donde tiene que estar.
+  const capas = new Map()
+  const HOLD = (p) => (p < 1 ? 0 : 1)
+  const OFS = 2048          // medio lado de la caja del SVG del texto (ver la nota del CSS)
+
+  const valorInicial = (t, comp, porDefecto) => {
+    if (!t) return porDefecto
+    if (t.estatico) return t.estatico[comp] ?? porDefecto
+    const pista = t.pistas?.[comp] ?? t.pistas?.[0]
+    return pista?.tramos?.[0]?.v1 ?? (t.base?.[comp] ?? porDefecto)
+  }
+
+  const tl = gsap.timeline({ paused: true })
+  const sinSoporte = []
+
+  // se dibujan de la ÚLTIMA a la PRIMERA: en AE la capa 1 es la de arriba, y en el DOM el último
+  // hermano es el que se pinta encima
+  const ordenadas = [...doc.capas].sort((a, b) => b.indice - a.indice)
+
+  for (const capa of ordenadas) {
+    if (capa.tipo === 'forma' || capa.tipo === 'camara' || capa.tipo === 'luz') {
+      sinSoporte.push(`capa ${capa.indice} (${capa.tipo})`)
+      continue
+    }
+    // ESTE REPRODUCTOR ES MUDO PARA TODO LO QUE SE AGREGO AL 3D, y callarse es lo peor que puede hacer.
+    //
+    // Ninguna de las cinco funciones nuevas —fusion, matte, arco, y las imagenes, que nunca estuvieron—
+    // existe aca. Antes eso no importaba porque el EXPORTADOR las rechazaba; al quitarle el rechazo a la
+    // fusion se saco la red y no se puso nada en su lugar de este lado. Resultado: `comp.mjs` dice
+    // DOCUMENTO COMPLETO, el capturador elige este reproductor para cualquier composicion sin camara ni
+    // capas 3D, `__sinSoporte` vuelve vacio, y el destello se dibuja como pintura plana — el defecto
+    // exacto que el cambio decia haber arreglado.
+    //
+    // Una imagen, ademas, no caia en ninguna rama: no se dibujaba Y no se declaraba. Desaparecia.
+    if (capa.tipo === 'av') sinSoporte.push(`capa ${capa.indice} (imagen: este reproductor no dibuja medios)`)
+    if (capa.fusion && capa.fusion !== 'normal') sinSoporte.push(`capa ${capa.indice}: modo de fusion "${capa.fusion}" (solo lo hace el reproductor 3D)`)
+    if (capa.matte) sinSoporte.push(`capa ${capa.indice}: recorte por matte (solo lo hace el reproductor 3D)`)
+    // EL ANIMADOR DE TEXTO NO EXISTE EN ESTE REPRODUCTOR, Y HAY QUE DECIRLO.
+    //
+    // `comp3d.html` lo dibuja caracter por caracter; este camino sigue dibujando la cadena entera en una
+    // textura. Sin esta linea, una composicion 2D con animadores se renderizaba PARECIDA —el texto
+    // puesto y quieto— que es peor que fallar, porque no se puede señalar con el dedo. Y la trampa cae
+    // justo en las composiciones mas simples: `capturar-comp.py` elige ESTE reproductor cuando no hay
+    // camara ni capas 3D.
+    if (capa.animadores && capa.animadores.length) {
+      sinSoporte.push(`capa ${capa.indice}: animador de texto (solo lo hace el reproductor 3D)`)
+    }
+    // MISMA HISTORIA CON LA FORMA VECTORIAL Y CON LAS MASCARAS. Las tres las dibuja solo el reproductor
+    // 3D, y las tres caen en composiciones SIMPLES —sin camara ni capas 3D— que es justo cuando el
+    // capturador elige este camino. Sin declararlo, una forma animada sale congelada y una capa
+    // enmascarada sale entera: las dos PARECIDAS.
+    if (capa.forma) {
+      sinSoporte.push(`capa ${capa.indice}: forma vectorial (solo la dibuja el reproductor 3D)`)
+    }
+    if (capa.mascaras && capa.mascaras.length) {
+      sinSoporte.push(`capa ${capa.indice}: mascara (solo la dibuja el reproductor 3D)`)
+    }
+    if (capa.arco) sinSoporte.push(`capa ${capa.indice}: arco (solo lo hace el reproductor 3D)`)
+    if (capa.esMatte) sinSoporte.push(`capa ${capa.indice}: es un matte y aca se dibujaria como un solido opaco`)
+
+    const el = document.createElement('div')
+    el.className = 'capa'
+    el.dataset.indice = capa.indice
+    escenario.appendChild(el)
+
+    if (capa.tipo === 'solido' && capa.solido) {
+      const caja = document.createElement('div')
+      caja.className = 'caja'
+      caja.style.width = capa.solido.ancho + 'px'
+      caja.style.height = capa.solido.alto + 'px'
+      caja.style.background = capa.solido.color
+      el.appendChild(caja)
+    } else if (capa.tipo === 'texto' && capa.texto) {
+      const t = capa.texto
+      // El origen del SVG se corre a (OFS, OFS) para que la línea de base del texto —que en AE es el
+      // origen de la capa— quede en el centro de la caja y los ascendentes no se recorten.
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+      svg.setAttribute('width', OFS * 2)
+      svg.setAttribute('height', OFS * 2)
+      svg.style.left = (-OFS) + 'px'
+      svg.style.top = (-OFS) + 'px'
+      const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text')
+      txt.setAttribute('x', OFS)
+      txt.setAttribute('y', OFS)                     // y = LÍNEA DE BASE, igual que el origen en AE
+      txt.setAttribute('fill', t.relleno || '#ffffff')
+      txt.setAttribute('font-size', t.tamano)
+      // el nombre PostScript PRIMERO (si el navegador lo resuelve, es la coincidencia exacta) y la
+      // familia deducida detrás como red. Ver `tipografia()` en comp.mjs: pasarle sólo el nombre
+      // PostScript falla EN SILENCIO — cae en otra fuente y el texto mide otra cosa.
+      const tg = t.tipografia || { ps: t.fuente, familia: t.fuente, peso: 400, cursiva: false }
+      txt.setAttribute('font-family', `"${tg.ps}", "${tg.familia}", sans-serif`)
+      txt.setAttribute('font-weight', tg.peso)
+      if (tg.cursiva) txt.setAttribute('font-style', 'italic')
+      txt.setAttribute('text-anchor', t.alineacion === 'centro' ? 'middle' : t.alineacion === 'derecha' ? 'end' : 'start')
+      // el interletrado de AE viene en milésimas de em; CSS lo quiere en píxeles
+      if (t.interletra) txt.setAttribute('letter-spacing', (t.tamano * t.interletra / 1000) + 'px')
+      txt.textContent = t.contenido
+      svg.appendChild(txt)
+      el.appendChild(svg)
+    }
+    // las capas nulas no dibujan nada: existen para que sus hijas hereden su transformación
+
+    const estado = {
+      ax: valorInicial(capa.transformacion.anclaje, 0, 0),
+      ay: valorInicial(capa.transformacion.anclaje, 1, 0),
+      px: valorInicial(capa.transformacion.posicion ?? capa.transformacion.posX, 0, 0),
+      py: capa.separadas
+        ? valorInicial(capa.transformacion.posY, 0, 0)
+        : valorInicial(capa.transformacion.posicion, 1, 0),
+      sx: valorInicial(capa.transformacion.escala, 0, 100),
+      sy: valorInicial(capa.transformacion.escala, 1, 100),
+      rot: valorInicial(capa.transformacion.rotacion, 0, 0),
+      op: valorInicial(capa.transformacion.opacidad, 0, 100),
+    }
+    capas.set(capa.indice, { capa, el, estado })
+
+    // --- los tweens, uno por componente animada
+    const enchufar = (t, comp, clave) => {
+      if (!t || !t.pistas) return
+      const pista = t.pistas[comp]
+      if (!pista) return
+      for (const tr of pista.tramos) {
+        if (tr.tipo === 'rechazado') { sinSoporte.push(`capa ${capa.indice} ${clave}: ${tr.motivo}`); continue }
+        // `evaluar` y no la cadena de CustomEase: está medido que resolver el bezier es entre 34 y 262
+        // veces más fiel a lo que renderiza AE (tools/ae/motor-check.mjs).
+        const ease = tr.tipo === 'hold' ? HOLD : tr.tipo === 'lineal' ? 'none' : ((p) => evaluar(tr.bezier, p))
+        // `fromTo` y no `to`: un tween captura su valor inicial al PRIMER DIBUJADO, no al construirse,
+        // así que con `to` el resultado depende de en qué orden se hayan recorrido los cuadros.
+        tl.fromTo(estado, { [clave]: tr.v1 },
+          { [clave]: tr.v2, duration: Math.max(tr.t2 - tr.t1, 1e-6), ease, immediateRender: false }, tr.t1)
+      }
+    }
+    const T = capa.transformacion
+    enchufar(T.anclaje, 0, 'ax'); enchufar(T.anclaje, 1, 'ay')
+    if (capa.separadas) { enchufar(T.posX, 0, 'px'); enchufar(T.posY, 0, 'py') }
+    else { enchufar(T.posicion, 0, 'px'); enchufar(T.posicion, 1, 'py') }
+    enchufar(T.escala, 0, 'sx'); enchufar(T.escala, 1, 'sy')
+    enchufar(T.rotacion, 0, 'rot')
+    enchufar(T.opacidad, 0, 'op')
+  }
+
+  // ---------------------------------------------------------------- pintar
+  const matrizDe = (indice, vistas) => {
+    if (vistas.has(indice)) return vistas.get(indice)
+    const c = capas.get(indice)
+    if (!c) return I()
+    const s = c.estado
+    const propia = por(por(por(trasladar(s.px, s.py), rotar(s.rot)),
+                           escalar(s.sx / 100, s.sy / 100)),
+                       trasladar(-s.ax, -s.ay))
+    const m = c.capa.padre ? por(matrizDe(c.capa.padre, vistas), propia) : propia
+    vistas.set(indice, m)
+    return m
+  }
+
+  function pintar(t) {
+    const vistas = new Map()
+    for (const [indice, c] of capas) {
+      const m = matrizDe(indice, vistas)
+      c.el.style.transform = `matrix(${m.a},${m.b},${m.c},${m.d},${m.e},${m.f})`
+      // fuera de su tramo de tiempo, la capa no existe — como en AE
+      const dentro = t >= c.capa.entra - 1e-9 && t <= c.capa.sale + 1e-9 && c.capa.visible
+      c.el.style.opacity = dentro ? Math.max(0, Math.min(100, c.estado.op)) / 100 : 0
+    }
+  }
+
+  window.__dur = duracion
+  window.__fps = fps
+  window.__fondo = fondo
+  window.__sinSoporte = sinSoporte
+  window.__poner = function (t) {
+    tl.time(t, false)
+    pintar(t)
+    // se devuelve lo que la página CREE haber dibujado: separa "el motor calculó mal" de "el navegador
+    // dibujó distinto", que llevan a arreglos opuestos
+    // SE ENUMERAN LAS CLAVES A MANO, no `{...estado}`. GSAP le cuelga al objeto que anima una
+    // referencia interna a su propia caché, así que copiarlo entero produce una estructura circular y
+    // `JSON.stringify` revienta. Copiar sólo lo que es dato también documenta qué es el estado.
+    const salida = {}
+    for (const [i, c] of capas) {
+      const s = c.estado
+      salida[i] = { ax: s.ax, ay: s.ay, px: s.px, py: s.py, sx: s.sx, sy: s.sy, rot: s.rot, op: s.op }
+    }
+    return salida
+  }
+  // LA CAJA DEL TEXTO, medida DE DOS FORMAS, y la distinción es el punto.
+  //
+  // `sourceRectAtTime` de After Effects devuelve la caja AJUSTADA A LA TINTA: dónde empieza y termina
+  // la mancha de los glifos. `getBBox` de SVG devuelve la caja de AVANCE: incluye los espacios
+  // laterales que cada glifo reserva a sus costados, y su alto es el de la línea entera.
+  //
+  // Comparar una contra la otra da un error que parece de renderizado y es de definición. Se nota en
+  // que la diferencia es casi CONSTANTE en píxeles absolutos y no proporcional: sobre "MOTION" (877 px)
+  // son 28,9 px = 3,3%, y sobre "10" (254 px) son 25,7 px = 10,1%. Un error de escala daría el mismo
+  // porcentaje en los dos; un error de definición da el mismo ABSOLUTO. Es la misma trampa que los
+  // altos, sólo que menos evidente.
+  //
+  // `actualBoundingBoxLeft/Right` de un contexto 2D sí son bordes de TINTA, así que esa es la medida
+  // que se puede comparar de verdad contra AE.
+  const medidor = document.createElement('canvas').getContext('2d')
+  window.__cajas = function () {
+    const r = {}
+    for (const [i, c] of capas) {
+      const txt = c.el.querySelector('text')
+      if (!txt) continue
+      // se descuenta el corrimiento del SVG para devolver la caja en coordenadas de la CAPA, que es
+      // el mismo sistema en el que AE informa `sourceRectAtTime`
+      const b = txt.getBBox()
+      const t = c.capa.texto
+      const tg = t.tipografia || { ps: t.fuente, familia: t.fuente, peso: 400 }
+      // LA TERCERA COPIA DEL MISMO DEFECTO. El SVG de arriba DIBUJA con `letter-spacing` y este medidor
+      // MEDIA sin el: con la capa real de la sonda, AE daba 1346,7 px y esto 1004,08 — 25,4% de desvio,
+      // y `comp-check` salia con codigo 0 igual. El `: '0px'` explicito no es adorno: el medidor se crea
+      // una sola vez y se reusa, asi que sin el, el tracking de una capa se filtra a la siguiente.
+      medidor.font = `${tg.cursiva ? 'italic ' : ''}${tg.peso} ${t.tamano}px "${tg.ps}", "${tg.familia}", sans-serif`
+      medidor.letterSpacing = t.interletra ? (t.tamano * t.interletra / 1000) + 'px' : '0px'
+      const m = medidor.measureText(t.contenido)
+      r[i] = {
+        x: b.x - OFS, y: b.y - OFS, ancho: b.width, alto: b.height,
+        tinta: {
+          ancho: m.actualBoundingBoxLeft + m.actualBoundingBoxRight,
+          alto: m.actualBoundingBoxAscent + m.actualBoundingBoxDescent,
+          avance: m.width,
+        },
+      }
+    }
+    return r
+  }
+
+  pintar(0)
+  document.title = 'listo'
+})()
+</script>

@@ -42,11 +42,32 @@
 //   import { aeACubicBezier, evaluar } from './curvas.mjs'
 
 // ---------------------------------------------------------------- la conversion
-export function aeACubicBezier(salida, entrada, dt, dv) {
+// SE ACEPTA INFLUENCIA 0, Y ESO COSTO 0,6 PIXELES DE ERROR HASTA QUE SE MIDIO.
+//
+// La documentacion de Adobe dice que la influencia va de 0.1 a 100, asi que la primera version recortaba
+// abajo en 0.1. Pero AE, cuando calcula el ease de un keyframe POR SU CUENTA —el del medio de una
+// cadena, o el lado que queda contra un tramo lineal— devuelve influencia **0**. Verificado en el
+// volcado: `KEY|P3-E|pos|2|0.35|600;540;0|1|0;0|0;0`.
+//
+// Con el recorte, x1 pasaba de 0 a 0.001 y el error quedaba en ~0,6 px sobre un recorrido de 1000 —
+// unas 425 veces el piso de ruido del instrumento (0,0014 px), mientras los casos con influencias
+// puestas a mano daban 0,0001. O sea: el defecto NO estaba en la conversion sino en una defensa contra
+// un rango documentado que el propio AE no respeta. Un recorte silencioso convierte un dato real en
+// uno inventado, y despues el error se le atribuye a la formula.
+//
+// La leccion para la skill: cuando la documentacion y el programa se contradicen, gana el programa.
+const acotar = (v, quien, avisos) => {
+  if (v >= 0 && v <= 100) return v
+  const c = Math.min(100, Math.max(0, v))
+  if (avisos) avisos.push(`influencia ${quien} fuera de rango: ${v} -> ${c}`)
+  return c
+}
+
+export function aeACubicBezier(salida, entrada, dt, dv, avisos = null) {
   // `salida` = { velocidad, influencia } del keyframe de la IZQUIERDA (su ease de salida)
   // `entrada` = { velocidad, influencia } del keyframe de la DERECHA (su ease de entrada)
-  const i1 = Math.min(100, Math.max(0.1, salida.influencia))
-  const i2 = Math.min(100, Math.max(0.1, entrada.influencia))
+  const i1 = acotar(salida.influencia, 'de salida', avisos)
+  const i2 = acotar(entrada.influencia, 'de entrada', avisos)
   const x1 = i1 / 100
   const x2 = 1 - i2 / 100
 
@@ -60,8 +81,14 @@ export function aeACubicBezier(salida, entrada, dt, dv) {
   return { x1, y1, x2, y2, degenerada: false }
 }
 
-// Presets de AE, para tenerlos escritos y no adivinarlos
-export const EASY_EASE = { velocidad: 0, influencia: 33.33 }
+// Presets de AE, para tenerlos escritos y no adivinarlos.
+//
+// 33.333333 NO ES UN REDONDEO MIO: es lo que AE guarda, medido. La sonda le pidio a AE guardar
+// 33.3333333333333 (trece decimales) y AE lo guardo tal cual; despues se ejecuto el comando de menu
+// "Aceleracion suave" (id 2511 en la interfaz en espanol) sobre los mismos keyframes y AE lo piso con
+// 33.333333. O sea que la constante de AE tiene seis decimales, no los que uno quiera.
+// Medido contra After Effects 26.3x87 el 2026-08-13. Antes aca decia 33.33, adivinado.
+export const EASY_EASE = { velocidad: 0, influencia: 33.333333 }
 export const LINEAL = { velocidad: null, influencia: 0.1 }   // lineal es tipo de interpolacion, no ease
 
 // ---------------------------------------------------------------- evaluar un cubic-bezier
@@ -103,7 +130,16 @@ export const aCadenaGSAP = ({ x1, y1, x2, y2 }) =>
   `M0,0 C${x1.toFixed(6)},${y1.toFixed(6)} ${x2.toFixed(6)},${y2.toFixed(6)} 1,1`
 
 // ---------------------------------------------------------------- verificacion
-if (process.argv[1]?.endsWith('curvas.mjs')) {
+//
+// `typeof process !== 'undefined'` NO ES PARANOIA: este modulo lo importa TAMBIEN el navegador, en la
+// pagina que reproduce las curvas (tools/ae/motor/escena.html). Ahi `process` no existe, asi que un
+// `process.argv` suelto tira ReferenceError AL EVALUAR EL MODULO — o sea que ni siquiera llegan a
+// definirse las funciones, y la pagina se queda en blanco sin decir por que. Paso: la captura informo
+// "la pagina no arranco (title = 'cargando')" y nada mas.
+//
+// Y la razon por la que el navegador importa este archivo y no una copia es la que importa: si fueran
+// dos implementaciones, la prueba compararia dos cosas a la vez y no probaria ninguna.
+if (typeof process !== 'undefined' && process.argv?.[1]?.endsWith('curvas.mjs')) {
   const { createRequire } = await import('node:module')
   const require = createRequire(import.meta.url)
   const { gsap } = require('gsap/dist/gsap.js')
@@ -117,7 +153,7 @@ if (process.argv[1]?.endsWith('curvas.mjs')) {
   const esperado = [0.3333, 0, 0.6667, 1]
   const dado = [ee.x1, ee.y1, ee.x2, ee.y2]
   const errCanon = Math.max(...dado.map((v, i) => Math.abs(v - esperado[i])))
-  console.log('1. Easy Ease (influencia 33.33, velocidad 0) debe dar el bezier canonico')
+  console.log(`1. Easy Ease (influencia ${EASY_EASE.influencia}, velocidad ${EASY_EASE.velocidad}) debe dar el bezier canonico`)
   console.log(`   esperado  cubic-bezier(${esperado.join(', ')})`)
   console.log(`   obtenido  cubic-bezier(${dado.map(v => v.toFixed(4)).join(', ')})`)
   console.log(`   error maximo ${errCanon.toExponential(2)}  ${errCanon < 1e-3 ? 'OK' : 'FALLA'}\n`)
@@ -158,8 +194,14 @@ if (process.argv[1]?.endsWith('curvas.mjs')) {
 
   const ok = errCanon < 1e-3 && peorGlobal < 1e-3 && deg.degenerada
   console.log(ok
-    ? 'CURVAS OK — la conversion da el bezier canonico y GSAP la reproduce. El motor web puede\n' +
-      'consumir curvas de AE sin escribir un interpolador propio.'
+    ? 'CURVAS OK — la conversion da el bezier canonico.\n\n' +
+      'PERO OJO CON LA LINEA 2, que durante un tiempo se leyo al reves. Que GSAP CustomEase coincida\n' +
+      'con nuestro evaluador en 5.8e-4 NO significa "el motor web puede consumir estas curvas sin\n' +
+      'escribir un interpolador". Significa que CustomEase MUESTREA el bezier en una tabla y se aparta\n' +
+      `en ~${peorGlobal.toExponential(1)}. Sobre un recorrido de 1300 px eso son ${(peorGlobal * 1300).toFixed(2)} px de error real, y esta\n` +
+      'medido sobre pixeles contra After Effects (tools/ae/motor-check.mjs): CustomEase da 0,10 a 0,70 px\n' +
+      'y una funcion de ease que RESUELVE el bezier da 0,002 a 0,018 px. Entre 34 y 262 veces mejor.\n\n' +
+      'Conclusion para produccion: pasarle `evaluar` a GSAP como funcion de ease, no la cadena.'
     : 'CURVAS FALLA')
   process.exit(ok ? 0 : 1)
 }
