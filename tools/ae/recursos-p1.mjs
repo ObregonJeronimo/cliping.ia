@@ -28,6 +28,20 @@ const DESTINO = process.env.RECURSOS_P || 'C:/ae-probe/recursos-p'
 if (!existsSync(DESTINO)) mkdirSync(DESTINO, { recursive: true })
 
 const W = 1920, H = 1080
+
+// LOS FONDOS SE DIBUJAN MAS GRANDES QUE EL CUADRO, Y NO ES POR LAS DUDAS.
+//
+// La ley Q2 pide entre 2x y 4x los pixeles con los que se dibuja. Un fondo de 1920 puesto a escala 100
+// se dibuja a 1920 con 1920 nativos: 1x, la mitad del piso. Y encima estos fondos DERIVAN —se agrandan
+// despacio a lo largo del plano— asi que la escala pasa de 100, y el ratio cae todavia mas: la primera
+// version de esta pieza tenia 'suelo-6' en 0,77x.
+//
+// Con un lienzo de 2400x1350 a k=2 el nativo es 4800 px. Y OJO CON LA CUENTA, que me la comi una vez:
+// la escala de AE se aplica sobre los pixeles NATIVOS, no sobre el tamano logico del lienzo — escala
+// 100 de este archivo dibuja 4800 px, no 2400. Asi que cubrir el cuadro pide escala >= 40 (1920/4800)
+// y el piso de 2x se mantiene hasta escala 50. La banda legal es 40-50, y ahi entra la deriva.
+const BW = 2400, BH = 1350
+const KB = 2
 const FUENTE = 'Segoe UI'
 const hechos = []
 
@@ -69,16 +83,16 @@ function ruta (g, x, y, w, h, r) {
 // arriba a abajo: es una fuente puntual baja, que es lo que hace que el negro de arriba se lea como
 // PROFUNDIDAD y no como un fondo plano.
 function suelo (nombre, manchas, nota) {
-  const [cv, g] = lienzo(W, H, 1)
+  const [cv, g] = lienzo(BW, BH, KB)
   g.fillStyle = '#030308'
-  g.fillRect(0, 0, W, H)
+  g.fillRect(0, 0, BW, BH)
   for (const m of manchas) {
-    const d = g.createRadialGradient(m.x * W, m.y * H, 0, m.x * W, m.y * H, m.r * W)
+    const d = g.createRadialGradient(m.x * BW, m.y * BH, 0, m.x * BW, m.y * BH, m.r * BW)
     d.addColorStop(0.00, `rgba(${m.c},${m.a})`)
     d.addColorStop(0.45, `rgba(${m.c},${m.a * 0.34})`)
     d.addColorStop(1.00, `rgba(${m.c},0)`)
     g.fillStyle = d
-    g.fillRect(0, 0, W, H)
+    g.fillRect(0, 0, BW, BH)
   }
   guardar(nombre, cv, nota)
 }
@@ -97,9 +111,9 @@ suelo('p-suelo-cierre', [
 
 // ================================================================ 2 · la malla clara del plano 4
 {
-  const [cv, g] = lienzo(W, H, 1)
+  const [cv, g] = lienzo(BW, BH, KB)
   g.fillStyle = '#F4F2FB'
-  g.fillRect(0, 0, W, H)
+  g.fillRect(0, 0, BW, BH)
   const manchas = [
     { x: 0.22, y: 0.30, r: 0.46, c: '198,188,252', a: 0.85 },
     { x: 0.74, y: 0.20, r: 0.40, c: '226,220,255', a: 0.80 },
@@ -108,12 +122,12 @@ suelo('p-suelo-cierre', [
     { x: 0.54, y: 0.52, r: 0.30, c: '255,255,255', a: 0.70 },
   ]
   for (const m of manchas) {
-    const d = g.createRadialGradient(m.x * W, m.y * H, 0, m.x * W, m.y * H, m.r * W)
+    const d = g.createRadialGradient(m.x * BW, m.y * BH, 0, m.x * BW, m.y * BH, m.r * BW)
     d.addColorStop(0.00, `rgba(${m.c},${m.a})`)
     d.addColorStop(0.50, `rgba(${m.c},${m.a * 0.4})`)
     d.addColorStop(1.00, `rgba(${m.c},0)`)
     g.fillStyle = d
-    g.fillRect(0, 0, W, H)
+    g.fillRect(0, 0, BW, BH)
   }
   guardar('p-malla-clara', cv, 'la malla lila del plano 4')
 }
@@ -180,7 +194,7 @@ palabras('p-k', 'Construido para equipos', 300, { c0: '#FFFFFF', c1: '#CBB6FF', 
 
 // PLANO 2 · un solo golpe de 0,8 s. En 24 cuadros no se lee una frase: se lee UNA palabra. Poner tres
 // ahi seria escribir para nadie.
-palabras('p-k2', 'veloces.', 300, { c0: '#FFFFFF', c1: '#FFC9A8', c2: '#EC6036' })
+palabras('p-k2', 'veloces.', 300, { c0: '#FFFFFF', c1: '#FFC9A8', c2: '#EC6036', k: 3 })
 
 // PLANOS 4 y 5 · LA FRASE CRUZA EL CORTE. "Tu equipo entrega" termina el plano 4 y "10x mas rapido"
 // abre el 5: el espectador completa la oracion por encima de un corte duro, y eso ata dos planos que
@@ -225,12 +239,12 @@ palabras('p-bajada', 'el tablero de tu equipo', 46, { plano: true, color: '#8B85
 
 // las letras fantasma del fondo del plano 3
 {
-  const [cv, g] = lienzo(W, H, 1)
-  g.font = `700 760px "${FUENTE}"`
+  const [cv, g] = lienzo(BW, BH, KB)
+  g.font = `700 950px "${FUENTE}"`
   g.fillStyle = 'rgba(255,255,255,0.030)'
   g.textBaseline = 'middle'
   g.textAlign = 'center'
-  g.fillText('nodo', W / 2, H * 0.42)
+  g.fillText('nodo', BW / 2, BH * 0.42)
   guardar('p-fantasma', cv, 'las letras gigantes del fondo, al 3% — llenan sin competir')
 }
 

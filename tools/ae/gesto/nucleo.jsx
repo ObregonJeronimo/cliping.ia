@@ -800,6 +800,24 @@ var G = (function () {
     return c;
   };
 
+  // UN NULO DE VERDAD, y no un solido apagado.
+  //
+  // Las piezas de este repo venian usando `G.solido(...)` con la opacidad en 0 como eje. Funciona, y
+  // arrastra dos costos que no se ven: el exportador lo manda al motor como una capa que hay que
+  // dibujar —para no dibujar nada— y las compuertas de lectura y escena lo cuentan como contenido.
+  // Un nulo de AE no se dibuja por definicion y todas las herramientas ya saben lo que es.
+  //
+  // La duracion es la de la comp A PROPOSITO: el defecto de `addNull` cambio entre versiones de AE, y
+  // un nulo de un segundo deja de mover a sus hijos a mitad de la pieza sin dar un solo error.
+  api.nulo = function (nombre, x, y, z) {
+    var n = comp.layers.addNull(CUADROS / FPS);
+    n.name = nombre;
+    if (z === undefined || z === null) { api.pos(n).setValue([x, y]); }
+    else { n.threeDLayer = true; api.pos(n).setValue([x, y, z]); }
+    construidos++;
+    return n;
+  };
+
   api.solido = function (nombre, color, w, h, x, y, z) {
     var s = comp.layers.addSolid(color, nombre, w, h, 1);
     if (z === undefined) { api.pos(s).setValue([x, y]); }

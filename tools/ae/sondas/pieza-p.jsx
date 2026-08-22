@@ -124,14 +124,13 @@ var C = [0, 70, 94, 384, 431, 482, 970];
 // Las tres cuelgan de un NULO. Sin el, la deriva final y la salida serian nueve juegos de claves que
 // hay que mantener sincronizados a mano; con el, es un solo juego y las tres lo obedecen. Es lo mismo
 // que hace un enlace, resuelto con la herramienta mas barata que alcanza.
-var suelo1 = G.img("p-suelo", "suelo-1", 960, 540, 600, 100);
+var suelo1 = G.img("p-suelo", "suelo-1", 960, 540, 600, 40);
 G.plano(suelo1, 0, C[2]);
 // vive hasta el plano 2 porque los dos comparten mundo: el corte del cuadro 70 es de CONTENIDO, no de
 // fondo, y cambiar el fondo tambien lo volveria un corte de lugar.
-G.claves(G.esc(suelo1), [[0, [100, 100, 100], "LINEAL"], [C[2], [107, 107, 107]]], "suelo-1-deriva");
+G.claves(G.esc(suelo1), [[0, [40, 40, 100], "LINEAL"], [C[2], [43, 43, 100]]], "suelo-1-deriva");
 
-var eje1 = G.solido("eje-1", [0, 0, 0], 10, 10, 960, 540, 0);
-G.op(eje1).setValue(0);
+var eje1 = G.nulo("eje-1", 960, 540, 0);
 
 var k1 = G.img("p-k-1", "k-construido", 0, 0, 0, 50);
 var k2 = G.img("p-k-2", "k-para", 0, 0, 0, 50);
@@ -178,8 +177,8 @@ G.plano(eje1, 0, C[1]); G.plano(k1, 0, C[1]); G.plano(k2, 14, C[1]); G.plano(k3,
 // Entra en x1,18 y se asienta en x1,00. La banda del corpus para una entrada de rotulo es x1,00 a
 // x1,30 con mediana x1,08; este es el unico rotulo de los seis planos que pasa de la mediana, porque
 // es el unico cuyo trabajo es golpear.
-var k2b = G.img("p-k2-1", "k2-veloces", 960, 540, 0, 59);
-G.claves(G.esc(k2b), [[C[1], [59, 59, 59], "C1"], [C[1] + 8, [50, 50, 50]]], "veloces-esc");
+var k2b = G.img("p-k2-1", "k2-veloces", 960, 540, 0, 39);
+G.claves(G.esc(k2b), [[C[1], [39, 39, 100], "C1"], [C[1] + 8, [33, 33, 100]]], "veloces-esc");
 G.claves(G.op(k2b), [[C[1], 0, "C6"], [C[1] + 4, 100, "C3"], [C[2] - 4, 100], [C[2] - 1, 0]], "veloces-op");
 G.plano(k2b, C[1], C[2]);
 
@@ -194,12 +193,12 @@ G.plano(k2b, C[1], C[2]);
 // cuatro letras del logotipo escribiendose de a una, la bajada en cinco palabras, la atribucion, un
 // barrido de brillo sobre el isotipo, la deriva lenta del conjunto y la salida hacia la camara. El
 // silencio mas largo que queda son 1,9 s, y el genero admite hasta 8,18.
-var suelo3 = G.img("p-suelo", "suelo-3", 960, 540, 600, 107);
+var suelo3 = G.img("p-suelo", "suelo-3", 960, 540, 600, 43);
 G.plano(suelo3, C[2], C[3]);
-G.claves(G.esc(suelo3), [[C[2], [107, 107, 107], "LINEAL"], [C[3], [100, 100, 100]]], "suelo-3-deriva");
+G.claves(G.esc(suelo3), [[C[2], [43, 43, 100], "LINEAL"], [C[3], [40, 40, 100]]], "suelo-3-deriva");
 
 // las letras gigantes del fondo, al 3%: llenan el cuadro sin competir con nada
-var fant = G.img("p-fantasma", "fantasma", 960, 540, 900, 100);
+var fant = G.img("p-fantasma", "fantasma", 960, 540, 900, 40);
 G.claves(G.op(fant), [[C[2], 0, "C6"], [C[2] + 24, 100, "C3"], [C[3] - 20, 100], [C[3] - 2, 0]], "fantasma-op");
 G.claves(G.ejes(fant).x, [[C[2], 1010, "LINEAL"], [C[3], 890]], "fantasma-deriva");
 G.plano(fant, C[2], C[3]);
@@ -259,9 +258,9 @@ G.plano(cred, C[2] + 140, C[3]);
 //
 // El reemplazo trabaja CON el fondo en vez de contra el: la fuente de luz de abajo late. El isotipo
 // se lee cargandose, y no hay ninguna tapa que pueda delatarse.
-var latido = G.img("p-suelo-cierre", "latido", 960, 540, 1200, 118);
+var latido = G.img("p-suelo-cierre", "latido", 960, 540, 1200, 47);
 G.claves(G.op(latido), [[C[2] + 186, 0, "C6"], [C[2] + 206, 82, "C8"], [C[2] + 240, 0]], "latido-op");
-G.claves(G.esc(latido), [[C[2] + 186, [104, 104, 104], "C1"], [C[2] + 240, [126, 126, 126]]], "latido-esc");
+G.claves(G.esc(latido), [[C[2] + 186, [44, 44, 100], "C1"], [C[2] + 240, [50, 50, 100]]], "latido-esc");
 G.plano(latido, C[2] + 186, C[2] + 241);
 
 // LA SALIDA: todo el conjunto se va HACIA LA CAMARA. No es un fundido — es el gesto que justifica el
@@ -284,9 +283,9 @@ for (iS = 0; iS < salida.length; iS++) {
 // LA FRASE NO TERMINA ACA. "Tu equipo entrega" cierra este plano y "10x mas rapido" abre el
 // siguiente: el espectador completa la oracion por encima de un corte duro, y eso ata dos planos que
 // de otro modo serian dos afirmaciones sueltas.
-var malla4 = G.img("p-malla-clara", "malla-4", 960, 540, 600, 100);
+var malla4 = G.img("p-malla-clara", "malla-4", 960, 540, 600, 42);
 G.plano(malla4, C[3], C[4]);
-G.claves(G.esc(malla4), [[C[3], [104, 104, 104], "LINEAL"], [C[4], [100, 100, 100]]], "malla-4-deriva");
+G.claves(G.esc(malla4), [[C[3], [42, 42, 100], "LINEAL"], [C[4], [40, 40, 100]]], "malla-4-deriva");
 
 var CX = [534, 816, 1242];
 var iC;
@@ -308,7 +307,7 @@ for (iC = 0; iC < 3; iC++) {
 //
 // Al 34% de opacidad, que no es timidez: la cifra vive encima y un anillo al 95% cruzandole las
 // letras la vuelve ilegible justo en los cuadros en que el ojo la engancha.
-var malla5 = G.img("p-malla-clara", "malla-5", 900, 560, 600, 118);
+var malla5 = G.img("p-malla-clara", "malla-5", 900, 560, 600, 47);
 G.plano(malla5, C[4], C[5]);
 
 var iA;
@@ -344,20 +343,18 @@ for (iF = 0; iF < 3; iF++) {
 // diecisiete capas y esperar que sus ejes coincidan — y no coinciden, porque cada una gira alrededor
 // de SU centro. Colgadas, giran alrededor del centro del tablero, que es lo unico que se ve como un
 // objeto solido.
-var suelo6 = G.img("p-suelo", "suelo-6", 960, 540, 1400, 130);
+var suelo6 = G.img("p-suelo", "suelo-6", 960, 540, 1400, 50);
 G.plano(suelo6, C[5], C[6]);
-G.claves(G.esc(suelo6), [[C[5], [130, 130, 130], "LINEAL"], [C[6], [118, 118, 118]]], "suelo-6-deriva");
+G.claves(G.esc(suelo6), [[C[5], [50, 50, 100], "LINEAL"], [C[6], [47, 47, 100]]], "suelo-6-deriva");
 
 // SON DOS NULOS Y NO UNO, y la razon es concreta: el nulo de afuera lleva el giro, la profundidad y
 // la deriva —o sea, claves en rotY, posZ y posY—, y el micro-movimiento tambien escribe en posX y
 // posY. Sobre la misma capa, las claves del micro pisarian las de la deriva sin dar ningun error: la
 // deriva simplemente dejaria de existir. Separados, cada uno anima lo suyo y se componen solos.
-var eje6 = G.solido("eje-6", [0, 0, 0], 10, 10, 960, 540, 0);
-G.op(eje6).setValue(0);
+var eje6 = G.nulo("eje-6", 960, 540, 0);
 var eE6 = G.ejes(eje6);
 
-var eje6b = G.solido("eje-6b", [0, 0, 0], 10, 10, 960, 540, 0);
-G.op(eje6b).setValue(0);
+var eje6b = G.nulo("eje-6b", 960, 540, 0);
 G.colgar(eje6b, eje6, [0, 0, 0]);
 G.plano(eje6b, C[5], C[6]);
 
@@ -481,7 +478,7 @@ for (iT = 0; iT < 3; iT++) {
 
 // --- MICRO-MOVIMIENTO sobre el nulo. Nada queda perfectamente quieto en dieciseis segundos: un
 // objeto inmovil delata que es una imagen, y esto es lo que lo desmiente sin que se note.
-Gd.microMovimiento({ capa: eje6b, desde: C[5] + 30, hasta: C[6] - 24, cada: 14,
+Gd.microMovimiento({ capa: eje6b, desde: C[5] + 30, hasta: C[6] - 24, cada: 8,
                      propiedades: ["posx", "posy"], amplitudes: { posx: 3, posy: 3 },
                      donde: "tablero-respira" });
 

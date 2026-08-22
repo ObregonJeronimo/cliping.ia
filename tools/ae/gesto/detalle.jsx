@@ -210,12 +210,35 @@ var Gd = (function () {
                       " cuadros, o lo que queres es una entrada (familia E), no esto.");
     }
     var op = opacidadEn(capa, antes);
-    if (op <= 1) {
+    if (op <= 1 && !tieneHijos(capa)) {
       throw new Error(quien + " en " + don + ": en el cuadro " + antes + " la capa esta viva pero su " +
                       "opacidad vale " + Math.round(op) + ". Invisible es invisible: el gesto le va a " +
                       "pasar a algo que el espectador no vio nunca, y no da error ni sintoma — " +
                       "simplemente no pasa nada en pantalla.");
     }
+  }
+
+  // LA EXCEPCION, Y NO ES UN AGUJERO EN LA LEY: UNA CAPA CON HIJOS SE VE POR SUS HIJOS.
+  //
+  // Un nulo de control tiene opacidad 0 porque ese es su trabajo — no se dibuja nunca, y aun asi
+  // moverlo cambia la pantalla, porque todo lo que cuelga de el se mueve con el. El guardia de arriba
+  // fue escrito pensando en el caso que importa (animarle algo a una capa que el espectador no ve),
+  // y no distinguia los dos: rechazaba el micro-movimiento sobre el nulo del tablero de la PIEZA-P,
+  // que es exactamente donde tiene que ir.
+  //
+  // Se pregunta por HIJOS y no por `nullLayer`, a proposito. Un nulo sin hijos sigue siendo invisible
+  // de verdad y ahi el rechazo es correcto; y un solido apagado usado como eje —que es como se
+  // escribieron varias piezas de este repo antes de que existiera `G.nulo`— tambien queda cubierto.
+  // La pregunta util no es "que clase de capa es" sino "moverla cambia algo en pantalla".
+  function tieneHijos(capa) {
+    var comp = G.comp(), i, pa;
+    for (i = 1; i <= comp.numLayers; i++) {
+      if (comp.layer(i) === capa) { continue; }
+      pa = null;
+      try { pa = comp.layer(i).parent; } catch (exH) { pa = null; }
+      if (pa === capa) { return true; }
+    }
+    return false;
   }
 
   // ==============================================================================================
